@@ -464,7 +464,7 @@ _vnode_validate(hammer_dedup_cache_t dcp, void *data, int *errorp)
 	ip = hammer_get_inode(&trans, NULL, dcp->obj_id, HAMMER_MAX_TID,
 	    dcp->localization, 0, &error);
 	if (ip == NULL) {
-		kprintf("dedup: unable to find objid %016jx:%08x\n",
+		hkprintf("dedup: unable to find objid %016jx:%08x\n",
 		    (intmax_t)dcp->obj_id, dcp->localization);
 		*errorp = 1;
 		goto failed2;
@@ -472,7 +472,7 @@ _vnode_validate(hammer_dedup_cache_t dcp, void *data, int *errorp)
 
 	error = hammer_get_vnode(ip, &vp);
 	if (error) {
-		kprintf("dedup: unable to acquire vnode for %016jx:%08x\n",
+		hkprintf("dedup: unable to acquire vnode for %016jx:%08x\n",
 		    (intmax_t)dcp->obj_id, dcp->localization);
 		*errorp = 2;
 		goto failed;

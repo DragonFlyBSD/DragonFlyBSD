@@ -314,11 +314,11 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor,
 	 * avg_elms to also calculate as 0.
 	 */
 	if (hammer_debug_general & 0x1000)
-		kprintf("lockroot %p count %d\n", &lockroot, lockroot.count);
+		hdkprintf("lockroot %p count %d\n", &lockroot, lockroot.count);
 	count = 0;
 	TAILQ_FOREACH(item, &lockroot.list, entry) {
 		if (hammer_debug_general & 0x1000)
-			kprintf("add count %d\n", item->count);
+			hdkprintf("add count %d\n", item->count);
 		count += item->count;
 		KKASSERT(item->node->ondisk->type == type1);
 	}
@@ -528,8 +528,7 @@ rebalance_closeout(hammer_node_lock_t base_item, int base_count,
 	 * degenerate leaf case.
 	 */
 	if (hammer_debug_general & 0x1000) {
-		kprintf("rebalance_closeout %016llx:",
-			(long long)base_item->node->node_offset);
+		hdkprintf("%016llx:", (long long)base_item->node->node_offset);
 	}
 	if (base_item->copy->count != base_count) {
 		base_item->flags |= HAMMER_NODE_LOCK_UPDATED;

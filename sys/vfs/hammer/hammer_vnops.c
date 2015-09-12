@@ -428,7 +428,7 @@ hammer_vop_read(struct vop_read_args *ap)
 		}
 skip:
 		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IODEBUG)) {
-			kprintf("doff %016jx read file %016jx@%016jx\n",
+			hdkprintf("doff %016jx read file %016jx@%016jx\n",
 				(intmax_t)bp->b_bio2.bio_offset,
 				(intmax_t)ip->obj_id,
 				(intmax_t)bp->b_loffset);
@@ -2087,7 +2087,7 @@ retry:
 				vrele(vp);
 				break;
 			}
-			kprintf("Debug: HAMMER ip/vp race2 avoided\n");
+			hdkprintf("ip/vp race2 avoided\n");
 		}
 	}
 
@@ -2321,21 +2321,21 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 					hammer_inode_dirty(ip);
 #ifdef DEBUG_TRUNCATE
 					if (ip == HammerTruncIp)
-					kprintf("truncate1 %016llx\n",
-						(long long)ip->trunc_off);
+						hdkprintf("truncate1 %016llx\n",
+							(long long)ip->trunc_off);
 #endif
 				} else if (ip->trunc_off > vap->va_size) {
 					ip->trunc_off = vap->va_size;
 #ifdef DEBUG_TRUNCATE
 					if (ip == HammerTruncIp)
-					kprintf("truncate2 %016llx\n",
-						(long long)ip->trunc_off);
+						hdkprintf("truncate2 %016llx\n",
+							(long long)ip->trunc_off);
 #endif
 				} else {
 #ifdef DEBUG_TRUNCATE
 					if (ip == HammerTruncIp)
-					kprintf("truncate3 %016llx (ignored)\n",
-						(long long)vap->va_size);
+						hdkprintf("truncate3 %016llx (ignored)\n",
+							(long long)vap->va_size);
 #endif
 				}
 			}
@@ -3055,7 +3055,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_simple_transaction(&trans, hmp);
 #if 0
-	kprintf("bmap_beg %016llx ip->cache %p\n",
+	hkprintf("bmap_beg %016llx ip->cache %p\n",
 		(long long)ap->a_loffset, ip->cache[1]);
 #endif
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
@@ -3164,11 +3164,11 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	}
 
 #if 0
-	kprintf("BMAP %016llx:  %016llx - %016llx\n",
+	hkprintf("BMAP %016llx:  %016llx - %016llx\n",
 		(long long)ap->a_loffset,
 		(long long)base_offset,
 		(long long)last_offset);
-	kprintf("BMAP %16s:  %016llx - %016llx\n", "",
+	hkprintf("BMAP %16s:  %016llx - %016llx\n", "",
 		(long long)base_disk_offset,
 		(long long)last_disk_offset);
 #endif
@@ -3176,7 +3176,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	if (cursor.node) {
 		hammer_cache_node(&ip->cache[1], cursor.node);
 #if 0
-		kprintf("bmap_end2 %016llx ip->cache %p\n",
+		hkprintf("bmap_end2 %016llx ip->cache %p\n",
 			(long long)ap->a_loffset, ip->cache[1]);
 #endif
 	}
@@ -3546,7 +3546,7 @@ retry:
 					vrele(vp);
 					break;
 				}
-				kprintf("Debug: HAMMER ip/vp race1 avoided\n");
+				hdkprintf("ip/vp race1 avoided\n");
 			}
 		}
 		if (ip)

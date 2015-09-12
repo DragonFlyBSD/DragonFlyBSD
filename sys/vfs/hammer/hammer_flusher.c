@@ -370,7 +370,7 @@ hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 	while (flg && flg->running) {
 		++count;
 		if (hammer_debug_general & 0x0001) {
-			kprintf("hammer_flush %d ttl=%d recs=%d\n",
+			hdkprintf("%d ttl=%d recs=%d\n",
 				flg->seq, flg->total_count, flg->refs);
 		}
 		if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)

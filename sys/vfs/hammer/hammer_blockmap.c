@@ -797,7 +797,7 @@ update_bytes_free(hammer_reserve_t resv, int bytes)
 	temp = resv->bytes_free - HAMMER_BIGBLOCK_SIZE * 2;
 	cpu_ccfence(); /* XXX do we really need it ? */
 	if (temp > resv->bytes_free) {
-		kprintf("BIGBLOCK UNDERFLOW\n");
+		hdkprintf("BIGBLOCK UNDERFLOW\n");
 		return (0);
 	}
 
@@ -1283,7 +1283,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 		hammer_modify_volume_done(trans->rootvol);
 	}
 	if (layer2->zone != zone)
-		kprintf("layer2 zone mismatch %d %d\n", layer2->zone, zone);
+		hdkprintf("layer2 zone mismatch %d %d\n", layer2->zone, zone);
 	KKASSERT(layer2->zone == zone);
 	KKASSERT(bytes != 0);
 	layer2->bytes_free -= bytes;

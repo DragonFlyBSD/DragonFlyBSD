@@ -1265,12 +1265,12 @@ retry:
 
 		error = hammer_btree_lookup(cursor);
 		if (hammer_debug_inode)
-			kprintf("IPDEL %p %08x %d", ip, ip->flags, error);
+			hdkprintf("IPDEL %p %08x %d", ip, ip->flags, error);
 
 		if (error == 0) {
 			error = hammer_ip_delete_record(cursor, ip, trans->tid);
 			if (hammer_debug_inode)
-				kprintf(" error %d\n", error);
+				hdkprintf("error %d\n", error);
 			if (error == 0) {
 				ip->flags |= HAMMER_INODE_DELONDISK;
 			}
@@ -1282,7 +1282,7 @@ retry:
 			error = hammer_init_cursor(trans, cursor,
 						   &ip->cache[0], ip);
 			if (hammer_debug_inode)
-				kprintf("IPDED %p %d\n", ip, error);
+				hdkprintf("IPDED %p %d\n", ip, error);
 			if (error == 0)
 				goto retry;
 		}
@@ -1329,7 +1329,7 @@ retry:
 		for (;;) {
 			error = hammer_ip_sync_record_cursor(cursor, record);
 			if (hammer_debug_inode)
-				kprintf("GENREC %p rec %08x %d\n",
+				hdkprintf("GENREC %p rec %08x %d\n",
 					ip, record->flags, error);
 			if (error != EDEADLK)
 				break;
@@ -1337,7 +1337,7 @@ retry:
 			error = hammer_init_cursor(trans, cursor,
 						   &ip->cache[0], ip);
 			if (hammer_debug_inode)
-				kprintf("GENREC reinit %d\n", error);
+				hdkprintf("GENREC reinit %d\n", error);
 			if (error)
 				break;
 		}
@@ -1357,7 +1357,7 @@ retry:
 		 */
 		if (error == 0) {
 			if (hammer_debug_inode)
-				kprintf("CLEANDELOND %p %08x\n", ip, ip->flags);
+				hdkprintf("CLEANDELOND %p %08x\n", ip, ip->flags);
 			ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
 					    HAMMER_INODE_SDIRTY |
 					    HAMMER_INODE_ATIME |
@@ -1378,7 +1378,7 @@ retry:
 				hammer_modify_volume_done(trans->rootvol);
 				ip->flags |= HAMMER_INODE_ONDISK;
 				if (hammer_debug_inode)
-					kprintf("NOWONDISK %p\n", ip);
+					hdkprintf("NOWONDISK %p\n", ip);
 			}
 			hammer_sync_unlock(trans);
 		}
@@ -2230,7 +2230,7 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	ip->flags &= ~HAMMER_INODE_MODMASK | HAMMER_INODE_TRUNCATED;
 #ifdef DEBUG_TRUNCATE
 	if ((ip->sync_flags & HAMMER_INODE_TRUNCATED) && ip == HammerTruncIp)
-		kprintf("truncateS %016llx\n", ip->sync_trunc_off);
+		hdkprintf("truncate %016llx\n", ip->sync_trunc_off);
 #endif
 
 	/*
@@ -2724,7 +2724,11 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 		return(0);
 
 	if (record->flush_group != record->ip->flush_group) {
-		kprintf("sync_record %p ip %p bad flush group %p %p\n", record, record->ip, record->flush_group ,record->ip->flush_group);
+		hdkprintf("rec %p ip %p bad flush group %p %p\n",
+			record,
+			record->ip,
+			record->flush_group,
+			record->ip->flush_group);
 		if (hammer_debug_critical)
 			Debugger("blah2");
 		return(0);
@@ -3371,7 +3375,7 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 			stats->count = hammer_limit_reclaims / 2;
 		lower_limit = hammer_limit_reclaims - stats->count;
 		if (hammer_debug_general & 0x10000) {
-			kprintf("pid %5d limit %d\n",
+			hdkprintf("pid %5d limit %d\n",
 				(int)curthread->td_proc->p_pid, lower_limit);
 		}
 	} else {
@@ -3435,7 +3439,7 @@ hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
 			stats->count = stats->count * hz / (hz + delta);
 	}
 	if (hammer_debug_general & 0x10000)
-		kprintf("pid %5d stats %d\n", (int)pid, stats->count);
+		hdkprintf("pid %5d stats %d\n", (int)pid, stats->count);
 	return (stats);
 }
 

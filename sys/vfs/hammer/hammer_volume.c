@@ -79,17 +79,17 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
-		kprintf("Cannot add volume to read-only HAMMER filesystem\n");
+		hmkprintf(hmp, "Cannot add volume to read-only HAMMER filesystem\n");
 		return (EINVAL);
 	}
 
 	if (hmp->nvolumes >= HAMMER_MAX_VOLUMES) {
-		kprintf("Max number of HAMMER volumes exceeded\n");
+		hmkprintf(hmp, "Max number of HAMMER volumes exceeded\n");
 		return (EINVAL);
 	}
 
 	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
-		kprintf("Another volume operation is in progress!\n");
+		hmkprintf(hmp, "Another volume operation is in progress!\n");
 		return (EAGAIN);
 	}
 
@@ -101,7 +101,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		++free_vol_no;
 	}
 	if (free_vol_no >= HAMMER_MAX_VOLUMES) {
-		kprintf("Max number of HAMMER volumes exceeded\n");
+		hmkprintf(hmp, "Max number of HAMMER volumes exceeded\n");
 		error = EINVAL;
 		goto end;
 	}
@@ -143,7 +143,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 end:
 	hammer_unlock(&hmp->volume_lock);
 	if (error)
-		kprintf("An error occurred: %d\n", error);
+		hmkprintf(hmp, "An error occurred: %d\n", error);
 	return (error);
 }
 
@@ -164,12 +164,12 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	int error = 0;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
-		kprintf("Cannot del volume from read-only HAMMER filesystem\n");
+		hmkprintf(hmp, "Cannot del volume from read-only HAMMER filesystem\n");
 		return (EINVAL);
 	}
 
 	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
-		kprintf("Another volume operation is in progress!\n");
+		hmkprintf(hmp, "Another volume operation is in progress!\n");
 		return (EAGAIN);
 	}
 
@@ -188,13 +188,13 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	if (volume == NULL) {
-		kprintf("Couldn't find volume\n");
+		hmkprintf(hmp, "Couldn't find volume\n");
 		error = EINVAL;
 		goto end;
 	}
 
 	if (volume == trans->rootvol) {
-		kprintf("Cannot remove root-volume\n");
+		hmkprintf(hmp, "Cannot remove root-volume\n");
 		hammer_rel_volume(volume, 0);
 		error = EINVAL;
 		goto end;
@@ -227,7 +227,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	error = hammer_free_freemap(trans, volume, &stat);
 	if (error) {
-		kprintf("Failed to free volume: ");
+		hmkprintf(hmp, "Failed to free volume: ");
 		if (error == EBUSY)
 			kprintf("Volume %d not empty\n", volume->vol_no);
 		else
@@ -247,7 +247,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	bzero(&ondisk, sizeof(ondisk));
 	error = hammer_unload_volume(volume, &ondisk);
 	if (error == -1) {
-		kprintf("Failed to unload volume\n");
+		hmkprintf(hmp, "Failed to unload volume\n");
 		goto end1;
 	}
 
@@ -263,7 +263,7 @@ end1:
 end:
 	hammer_unlock(&hmp->volume_lock);
 	if (error)
-		kprintf("An error occurred: %d\n", error);
+		hmkprintf(hmp, "An error occurred: %d\n", error);
 	return (error);
 }
 
@@ -278,7 +278,7 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 	int i, len, cnt = 0;
 
 	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
-		kprintf("Another volume operation is in progress!\n");
+		hmkprintf(hmp, "Another volume operation is in progress!\n");
 		return (EAGAIN);
 	}
 
@@ -309,6 +309,7 @@ static
 int
 hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 {
+	struct hammer_mount *hmp = trans->hmp;
 	int error;
 	int vol_no;
 
@@ -327,7 +328,7 @@ hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 	reblock.allpfs = 1;	/* reblock all PFS */
 	reblock.vol_no = vol_no;
 
-	kprintf("reblock started\n");
+	hmkprintf(hmp, "reblock started\n");
 	error = hammer_ioc_reblock(trans, ip, &reblock);
 
 	if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
@@ -336,9 +337,9 @@ hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 
 	if (error) {
 		if (error == EINTR) {
-			kprintf("reblock was interrupted\n");
+			hmkprintf(hmp, "reblock was interrupted\n");
 		} else {
-			kprintf("reblock failed: %d\n", error);
+			hmkprintf(hmp, "reblock failed: %d\n", error);
 		}
 		return(error);
 	}
@@ -661,7 +662,7 @@ hammer_format_volume_header(struct hammer_mount *hmp,
 	ondisk->vol_buf_end = vol_size & ~(int64_t)HAMMER_BUFMASK;
 
 	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
-		kprintf("volume %d %s is too small to hold the volume header\n",
+		hmkprintf(hmp, "volume %d %s is too small to hold the volume header\n",
 		     ondisk->vol_no, ondisk->vol_name);
 		return(EFTYPE);
 	}

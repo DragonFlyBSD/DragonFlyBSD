@@ -1252,7 +1252,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	cursor->flags |= HAMMER_CURSOR_INSERT;
 	error = hammer_btree_lookup(cursor);
 	if (hammer_debug_inode)
-		kprintf("DOINSERT LOOKUP %d\n", error);
+		hdkprintf("DOINSERT LOOKUP %d\n", error);
 	if (error == 0) {
 		hdkprintf("duplicate rec at (%016llx)\n",
 			(long long)record->leaf.base.key);
@@ -1262,7 +1262,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	}
 #if 0
 	if (record->type == HAMMER_MEM_RECORD_DATA)
-		kprintf("sync_record  %016llx ---------------- %016llx %d\n",
+		hdkprintf("%016llx ---------------- %016llx %d\n",
 			record->leaf.base.key - record->leaf.data_len,
 			record->leaf.data_offset, error);
 #endif
@@ -1318,7 +1318,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 
 	error = hammer_btree_insert(cursor, &record->leaf, &doprop);
 	if (hammer_debug_inode && error) {
-		kprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n",
+		hdkprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n",
 			error,
 			(long long)cursor->node->node_offset,
 			cursor->index,
@@ -1481,7 +1481,7 @@ _hammer_ip_seek_btree(hammer_cursor_t cursor)
 		error = hammer_btree_lookup(cursor);
 		if (error == ENOENT || error == EDEADLK) {
 			if (hammer_debug_general & 0x2000) {
-				kprintf("error %d node %p %016llx index %d\n",
+				hdkprintf("error %d node %p %016llx index %d\n",
 					error, cursor->node,
 					(long long)cursor->node->node_offset,
 					cursor->index);
@@ -1957,7 +1957,7 @@ hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 	int64_t tmp64;
 
 #if 0
-	kprintf("delete_range %p %016llx-%016llx\n", ip, ran_beg, ran_end);
+	hdkprintf("%p %016llx-%016llx\n", ip, ran_beg, ran_end);
 #endif
 
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
@@ -2342,7 +2342,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			error = copyin(udata, ndata, leaf->data_len);
 			if (error == 0) {
 				if (hammer_crc_test_leaf(ndata, leaf) == 0) {
-					kprintf("data crc mismatch on pipe\n");
+					hdkprintf("data crc mismatch on pipe\n");
 					error = EINVAL;
 				} else {
 					error = hammer_cursor_localize_data(

@@ -350,7 +350,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 				metatype = "unknown";
 				break;
 			}
-			kprintf("doff %016jx %s\n",
+			hdkprintf("doff %016jx %s\n",
 				(intmax_t)bp->b_bio2.bio_offset,
 				metatype);
 		}

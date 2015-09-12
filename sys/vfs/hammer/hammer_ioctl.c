@@ -609,7 +609,7 @@ hammer_ioc_set_version(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	if (over < HAMMER_VOL_VERSION_FOUR &&
 	    ver->cur_version >= HAMMER_VOL_VERSION_FOUR) {
-		kprintf("upgrade undo to version 4\n");
+		hkprintf("upgrade undo to version 4\n");
 		error = hammer_upgrade_undo_4(trans);
 		if (error)
 			goto failed;

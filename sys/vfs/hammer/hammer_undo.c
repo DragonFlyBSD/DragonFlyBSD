@@ -222,7 +222,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 				(int)sizeof(struct hammer_fifo_tail);
 		}
 		if (hammer_debug_general & 0x0080) {
-			kprintf("undo %016llx %d %d\n",
+			hdkprintf("undo %016llx %d %d\n",
 				(long long)next_offset, bytes, n);
 		}
 
@@ -413,7 +413,7 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 	 * The sequence number will be the next sequence number to lay down.
 	 */
 	hmp->undo_seqno = seqno;
-	kprintf("version upgrade seqno start %08x\n", seqno);
+	hmkprintf(hmp, "version upgrade seqno start %08x\n", seqno);
 
 	hammer_modify_volume_done(root_volume);
 	hammer_unlock(&hmp->undo_lock);

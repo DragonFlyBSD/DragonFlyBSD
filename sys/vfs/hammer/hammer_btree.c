@@ -174,7 +174,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 
 		if (cursor->index == node->count) {
 			if (hammer_debug_btree) {
-				kprintf("BRACKETU %016llx[%d] -> %016llx[%d] td=%p\n",
+				hkprintf("BRACKETU %016llx[%d] -> %016llx[%d] td=%p\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
 					(long long)(cursor->parent ? cursor->parent->node_offset : -1),
@@ -606,7 +606,7 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 				break;
 			}
 			if (hammer_debug_btree) {
-				kprintf("CREATE_CHECK %016llx\n",
+				hkprintf("CREATE_CHECK %016llx\n",
 					(long long)cursor->create_check);
 			}
 			cursor->key_beg.create_tid = cursor->create_check;
@@ -760,7 +760,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	 */
 	if (error == 0 &&
 	    hammer_crc_test_leaf(cursor->data, &elm->leaf) == 0) {
-		kprintf("CRC DATA @ %016llx/%d FAILED\n",
+		hdkprintf("CRC DATA @ %016llx/%d FAILED\n",
 			(long long)elm->leaf.data_offset, elm->leaf.data_len);
 		if (hammer_debug_critical)
 			Debugger("CRC FAILED: DATA");
@@ -1074,7 +1074,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 */
 		++hammer_stats_btree_iterations;
 		if (hammer_debug_btree) {
-			kprintf("SEARCH-I %016llx count=%d\n",
+			hkprintf("SEARCH-I %016llx count=%d\n",
 				(long long)cursor->node->node_offset,
 				node->count);
 		}
@@ -1089,7 +1089,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			elm = &node->elms[i];
 			r = hammer_btree_cmp(&cursor->key_beg, &elm->base);
 			if (hammer_debug_btree > 2) {
-				kprintf(" IELM %p [%d] r=%d\n",
+				hkprintf(" IELM %p [%d] r=%d\n",
 					&node->elms[i], i, r);
 			}
 			if (r < 0)
@@ -1102,7 +1102,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			++i;
 		}
 		if (hammer_debug_btree) {
-			kprintf("SEARCH-I preI=%d/%d r=%d\n",
+			hkprintf("SEARCH-I preI=%d/%d r=%d\n",
 				i, node->count, r);
 		}
 
@@ -1274,7 +1274,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	KKASSERT (node->type == HAMMER_BTREE_TYPE_LEAF);
 	KKASSERT(node->count <= HAMMER_BTREE_LEAF_ELMS);
 	if (hammer_debug_btree) {
-		kprintf("SEARCH-L %016llx count=%d\n",
+		hkprintf("SEARCH-L %016llx count=%d\n",
 			(long long)cursor->node->node_offset,
 			node->count);
 	}
@@ -1291,7 +1291,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		r = hammer_btree_cmp(&cursor->key_beg, &elm->leaf.base);
 
 		if (hammer_debug_btree > 1)
-			kprintf(" LELM %p [%d] r=%d\n", &node->elms[i], i, r);
+			hkprintf(" LELM %p [%d] r=%d\n", &node->elms[i], i, r);
 
 		/*
 		 * We are at a record element.  Stop if we've flipped past
@@ -1328,7 +1328,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		cursor->index = i;
 		error = 0;
 		if (hammer_debug_btree) {
-			kprintf("RESULT-L %016llx[%d] (SUCCESS)\n",
+			hkprintf("RESULT-L %016llx[%d] (SUCCESS)\n",
 				(long long)cursor->node->node_offset, i);
 		}
 		goto done;
@@ -1339,7 +1339,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 */
 failed:
 	if (hammer_debug_btree) {
-		kprintf("RESULT-L %016llx[%d] (FAILED)\n",
+		hkprintf("RESULT-L %016llx[%d] (FAILED)\n",
 			(long long)cursor->node->node_offset, i);
 	}
 
@@ -3017,7 +3017,7 @@ void
 hammer_debug_btree_elm(hammer_cursor_t cursor, hammer_btree_elm_t elm,
 		const char *s, int res)
 {
-	kprintf("%-8s %016llx[%02d] %c "
+	hkprintf("%-8s %016llx[%02d] %c "
 		"lo=%08x obj=%016llx rec=%02x key=%016llx tid=%016llx td=%p "
 		"r=%d\n",
 		s,
@@ -3040,7 +3040,7 @@ hammer_debug_btree_parent(hammer_cursor_t cursor, const char *s)
 	hammer_btree_elm_t elm =
 	    &cursor->parent->ondisk->elms[cursor->parent_index];
 
-	kprintf("%-8s %016llx[%d] %c "
+	hkprintf("%-8s %016llx[%d] %c "
 		"(%016llx/%016llx %016llx/%016llx) (%p/%p %p/%p)\n",
 		s,
 		(long long)cursor->parent->node_offset,

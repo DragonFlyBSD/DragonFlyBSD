@@ -207,7 +207,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 			(int)sizeof(struct hammer_fifo_redo) +
 			(int)sizeof(struct hammer_fifo_tail);
 		if (hammer_debug_general & 0x0080) {
-			kprintf("redo %016llx %d %d\n",
+			hdkprintf("redo %016llx %d %d\n",
 				(long long)next_offset, bytes, n);
 		}
 
@@ -329,7 +329,7 @@ hammer_generate_redo_sync(hammer_transaction_t trans)
 	}
 	if (redo_fifo_start) {
 		if (hammer_debug_io & 0x0004) {
-			kprintf("SYNC IP %p %016jx\n",
+			hdkprintf("SYNC IP %p %016jx\n",
 				ip, (intmax_t)redo_fifo_start);
 		}
 		hammer_generate_redo(trans, NULL, redo_fifo_start,

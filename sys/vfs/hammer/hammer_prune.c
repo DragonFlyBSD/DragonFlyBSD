@@ -163,7 +163,7 @@ retry:
 			prune->stat_oldest_tid = elm->base.create_tid;
 
 		if (hammer_debug_general & 0x0200) {
-			kprintf("check %016llx %016llx cre=%016llx del=%016llx\n",
+			hdkprintf("check %016llx %016llx cre=%016llx del=%016llx\n",
 					(long long)elm->base.obj_id,
 					(long long)elm->base.key,
 					(long long)elm->base.create_tid,
@@ -172,7 +172,7 @@ retry:
 
 		if (prune_should_delete(prune, elm)) {
 			if (hammer_debug_general & 0x0200) {
-				kprintf("check %016llx %016llx: DELETE\n",
+				hdkprintf("check %016llx %016llx: DELETE\n",
 					(long long)elm->base.obj_id,
 					(long long)elm->base.key);
 			}
@@ -219,7 +219,7 @@ retry:
 			prune_check_nlinks(&cursor, elm);
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			if (hammer_debug_general & 0x0100) {
-				kprintf("check %016llx %016llx: SKIP\n",
+				hdkprintf("check %016llx %016llx: SKIP\n",
 					(long long)elm->base.obj_id,
 					(long long)elm->base.key);
 			}
@@ -330,13 +330,13 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 		      0, &error);
 	if (ip) {
 		if (hammer_debug_general & 0x0001) {
-			kprintf("pruning disconnected inode %016llx\n",
+			hdkprintf("pruning disconnected inode %016llx\n",
 				(long long)elm->base.obj_id);
 		}
 		hammer_rel_inode(ip, 0);
 		hammer_inode_waitreclaims(cursor->trans);
 	} else {
-		kprintf("unable to prune disconnected inode %016llx\n",
+		hkprintf("unable to prune disconnected inode %016llx\n",
 			(long long)elm->base.obj_id);
 	}
 }

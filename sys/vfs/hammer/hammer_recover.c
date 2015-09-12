@@ -380,7 +380,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 		(intmax_t)bytes,
 		(hmp->ronly ? " (RO)" : "(RW)"));
 	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
-		kprintf("Undo size is absurd, unable to mount\n");
+		hkprintf("Undo size is absurd, unable to mount\n");
 		error = EIO;
 		goto done;
 	}
@@ -595,7 +595,7 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		(hmp->ronly ? " (RO)" : "(RW)"));
 	verbose = 1;
 	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
-		kprintf("Undo size is absurd, unable to mount\n");
+		hkprintf("Undo size is absurd, unable to mount\n");
 		error = EIO;
 		goto fatal;
 	}
@@ -785,7 +785,7 @@ hammer_recover_scan_rev(hammer_mount_t hmp, hammer_volume_t root_volume,
 	scan_offset = *scan_offsetp;
 
 	if (hammer_debug_general & 0x0080)
-		kprintf("rev scan_offset %016jx\n", (intmax_t)scan_offset);
+		hdkprintf("rev scan_offset %016jx\n", (intmax_t)scan_offset);
 	if (scan_offset == HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0))
 		scan_offset = rootmap->alloc_offset;
 	if (scan_offset - sizeof(*tail) <
@@ -838,7 +838,7 @@ hammer_recover_scan_fwd(hammer_mount_t hmp, hammer_volume_t root_volume,
 	scan_offset = *scan_offsetp;
 
 	if (hammer_debug_general & 0x0080)
-		kprintf("fwd scan_offset %016jx\n", (intmax_t)scan_offset);
+		hdkprintf("fwd scan_offset %016jx\n", (intmax_t)scan_offset);
 	if (scan_offset == rootmap->alloc_offset)
 		scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
 
@@ -1143,11 +1143,11 @@ hammer_recover_copy_undo(hammer_off_t undo_offset,
 			 char *src, char *dst, int bytes)
 {
 	if (hammer_debug_general & 0x0080) {
-		kprintf("UNDO %016jx: %d\n",
+		hdkprintf("UNDO %016jx: %d\n",
 			(intmax_t)undo_offset, bytes);
 	}
 #if 0
-	kprintf("UNDO %016jx:", (intmax_t)undo_offset);
+	hkprintf("UNDO %016jx:", (intmax_t)undo_offset);
 	hammer_recover_debug_dump(22, dst, bytes);
 	kprintf("%22s", "to:");
 	hammer_recover_debug_dump(22, src, bytes);
@@ -1188,7 +1188,7 @@ hammer_recover_redo_rec(hammer_mount_t hmp, struct hammer_rterm_rb_tree *root,
 		rterm = nrterm;
 
 	if (bootverbose) {
-		kprintf("record record %016jx objid %016jx "
+		hkprintf("record record %016jx objid %016jx "
 			"offset %016jx flags %08x\n",
 			(intmax_t)scan_offset,
 			(intmax_t)redo->redo_objid,
@@ -1244,7 +1244,7 @@ hammer_recover_redo_run(hammer_mount_t hmp, struct hammer_rterm_rb_tree *root,
 		rterm = RB_FIND(hammer_rterm_rb_tree, root, &rtval);
 		if (rterm) {
 			if (bootverbose) {
-				kprintf("ignore record %016jx objid %016jx "
+				hkprintf("ignore record %016jx objid %016jx "
 					"offset %016jx flags %08x\n",
 					(intmax_t)scan_offset,
 					(intmax_t)redo->redo_objid,
@@ -1254,7 +1254,7 @@ hammer_recover_redo_run(hammer_mount_t hmp, struct hammer_rterm_rb_tree *root,
 			break;
 		}
 		if (bootverbose) {
-			kprintf("run    record %016jx objid %016jx "
+			hkprintf("run    record %016jx objid %016jx "
 				"offset %016jx flags %08x\n",
 				(intmax_t)scan_offset,
 				(intmax_t)redo->redo_objid,
@@ -1309,13 +1309,13 @@ hammer_recover_redo_exec(hammer_mount_t hmp, hammer_fifo_redo_t redo)
 			      HAMMER_MAX_TID, redo->redo_localization,
 			      0, &error);
 	if (ip == NULL) {
-		kprintf("unable to find objid %016jx:%08x\n",
+		hkprintf("unable to find objid %016jx:%08x\n",
 			(intmax_t)redo->redo_objid, redo->redo_localization);
 		goto done2;
 	}
 	error = hammer_get_vnode(ip, &vp);
 	if (error) {
-		kprintf("unable to acquire vnode for %016jx:%08x\n",
+		hkprintf("unable to acquire vnode for %016jx:%08x\n",
 			(intmax_t)redo->redo_objid, redo->redo_localization);
 		goto done1;
 	}
@@ -1324,7 +1324,7 @@ hammer_recover_redo_exec(hammer_mount_t hmp, hammer_fifo_redo_t redo)
 	case HAMMER_REDO_WRITE:
 		error = VOP_OPEN(vp, FREAD|FWRITE, proc0.p_ucred, NULL);
 		if (error) {
-			kprintf("vn_rdwr open %016jx:%08x returned %d\n",
+			hkprintf("vn_rdwr open %016jx:%08x returned %d\n",
 				(intmax_t)redo->redo_objid,
 				redo->redo_localization, error);
 			break;
@@ -1336,7 +1336,7 @@ hammer_recover_redo_exec(hammer_mount_t hmp, hammer_fifo_redo_t redo)
 				0, proc0.p_ucred, NULL);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		if (error) {
-			kprintf("write %016jx:%08x returned %d\n",
+			hkprintf("write %016jx:%08x returned %d\n",
 				(intmax_t)redo->redo_objid,
 				redo->redo_localization, error);
 		}
@@ -1347,7 +1347,7 @@ hammer_recover_redo_exec(hammer_mount_t hmp, hammer_fifo_redo_t redo)
 		va.va_size = redo->redo_offset;
 		error = VOP_SETATTR(vp, &va, proc0.p_ucred);
 		if (error) {
-			kprintf("setattr offset %016jx error %d\n",
+			hkprintf("setattr offset %016jx error %d\n",
 				(intmax_t)redo->redo_offset, error);
 		}
 		break;

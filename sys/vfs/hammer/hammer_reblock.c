@@ -313,7 +313,7 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		reblock->data_byte_count += elm->leaf.data_len;
 		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
 		if (hammer_debug_general & 0x4000)
-			kprintf("D %6d/%d\n", bytes, reblock->free_level);
+			hdkprintf("D %6d/%d\n", bytes, reblock->free_level);
 		/*
 		 * Start data reblock if
 		 * 1. there is no error
@@ -394,7 +394,7 @@ skip:
 		++reblock->btree_count;
 		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
 		if (hammer_debug_general & 0x4000)
-			kprintf("B %6d/%d\n", bytes, reblock->free_level);
+			hdkprintf("B %6d/%d\n", bytes, reblock->free_level);
 		/*
 		 * Start node reblock if
 		 * 1. there is no error
@@ -486,7 +486,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	hammer_modify_node_done(cursor->node);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK DATA %08x %016llx -> %016llx\n",
+		hdkprintf("%08x %016llx -> %016llx\n",
 			(elm ? elm->base.localization : -1),
 			(long long)odata_offset,
 			(long long)ndata_offset);
@@ -536,8 +536,7 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK %cNODE %08x %016llx -> %016llx\n",
-			nnode->ondisk->type,
+		hdkprintf("%08x %016llx -> %016llx\n",
 			(elm ? elm->base.localization : -1),
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);
@@ -597,8 +596,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK %cNODE %08x %016llx -> %016llx\n",
-			nnode->ondisk->type,
+		hdkprintf("%08x %016llx -> %016llx\n",
 			(elm ? elm->base.localization : -1),
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);

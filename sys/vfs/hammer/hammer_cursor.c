@@ -100,7 +100,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		cpu_ccfence();
 		if (rticks < xticks) {
 			if (hammer_debug_general & 0x0004)
-				kprintf("rt %3u, xt %3u, tt %3u\n",
+				hdkprintf("rt %3u, xt %3u, tt %3u\n",
 					rticks, xticks, tticks);
 			tsleep(&dummy, 0, "htdmux", xticks - rticks);
 		}

@@ -188,7 +188,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	if (ronly == 0 && data) {
 		img = (struct hammer_volume_ondisk *)data;
 		if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
-			kprintf("Formatting of valid HAMMER volume "
+			hkprintf("Formatting of valid HAMMER volume "
 				"%s denied. Erase with dd!\n", volname);
 			error = EFTYPE;
 			goto late_failure;
@@ -197,7 +197,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	}
 
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
-		hdkprintf("volume %s has an invalid header\n",
+		hkprintf("volume %s has an invalid header\n",
 			volume->vol_name);
 		for (i = 0; i < (int)sizeof(ondisk->vol_signature); i++) {
 			kprintf("%02x", ((char*)&ondisk->vol_signature)[i] & 0xFF);
@@ -219,7 +219,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
 		hmp->fsid = ondisk->vol_fsid;
 	} else if (bcmp(&hmp->fsid, &ondisk->vol_fsid, sizeof(uuid_t))) {
-		hdkprintf("volume %s's fsid does not match other volumes\n",
+		hkprintf("volume %s's fsid does not match other volumes\n",
 			volume->vol_name);
 		error = EFTYPE;
 		goto late_failure;
@@ -229,7 +229,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	 * Insert the volume structure into the red-black tree.
 	 */
 	if (RB_INSERT(hammer_vol_rb_tree, &hmp->rb_vols_root, volume)) {
-		hdkprintf("volume %s has a duplicate vol_no %d\n",
+		hkprintf("volume %s has a duplicate vol_no %d\n",
 			volume->vol_name, volume->vol_no);
 		error = EEXIST;
 	}
@@ -312,13 +312,13 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 		img = (struct hammer_volume_ondisk *)data;
 		error = bread(volume->devvp, 0LL, HAMMER_BUFSIZE, &bp);
 		if (error || bp->b_bcount < sizeof(*img)) {
-			kprintf("Failed to read volume header: %d\n", error);
+			hmkprintf(hmp, "Failed to read volume header: %d\n", error);
 			brelse(bp);
 		} else {
 			bcopy(img, bp->b_data, sizeof(*img));
 			error = bwrite(bp);
 			if (error)
-				kprintf("Failed to clear volume header: %d\n",
+				hmkprintf(hmp, "Failed to clear volume header: %d\n",
 					error);
 		}
 	}
@@ -925,7 +925,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	volume = buffer->io.volume;
 
 	if (hammer_debug_io & 0x0004) {
-		kprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
+		hdkprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
 			(long long)buffer->zoneX_offset,
 			(long long)buffer->zone2_offset,
 			isnew, buffer->ondisk);
