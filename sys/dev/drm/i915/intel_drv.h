@@ -552,7 +552,6 @@ struct intel_dp {
 	uint8_t downstream_ports[DP_MAX_DOWNSTREAM_PORTS];
 	struct drm_dp_aux aux;
 	device_t dp_iic_bus;
-//	device_t adapter;
 	uint8_t train_set[4];
 	int panel_power_up_delay;
 	int panel_power_down_delay;
