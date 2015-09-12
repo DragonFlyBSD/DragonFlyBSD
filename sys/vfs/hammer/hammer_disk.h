@@ -426,10 +426,8 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
  * Hammer version 5 contains a minor adjustment making layer2's bytes_free
  * field signed, allowing dedup to push it into the negative domain.
  */
-#define HAMMER_HEAD_ONDISK_SIZE		32
 #define HAMMER_HEAD_ALIGN		8
 #define HAMMER_HEAD_ALIGN_MASK		(HAMMER_HEAD_ALIGN - 1)
-#define HAMMER_TAIL_ONDISK_SIZE		8
 #define HAMMER_HEAD_DOALIGN(bytes)	\
 	(((bytes) + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK)
 
