@@ -16,10 +16,8 @@ LDFLAGS+= -nodefaultlibs
 #
 .include "${.CURDIR}/Makefile.inc"
 
-.if defined(RELEASE42)
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${CMAPS}
-.endif
 
 KSRCS=	bcmp.c ffs.c index.c mcount.c rindex.c strcat.c strcmp.c strcpy.c \
 	strlen.c strncpy.c
