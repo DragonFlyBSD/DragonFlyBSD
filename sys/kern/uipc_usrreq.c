@@ -1457,22 +1457,22 @@ unp_externalize(struct mbuf *rights)
 static void
 unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 {
-	struct file *fx;
-	int error;
-
 	lwkt_gettoken(&unp_token);
 
 	if (lp) {
 		KKASSERT(fd >= 0);
 		if (fp->f_flag & FREVOKED) {
+			struct file *fx;
+			int error;
+
 			kprintf("Warning: revoked fp exiting unix socket\n");
-			fx = NULL;
 			error = falloc(lp, &fx, NULL);
-			if (error == 0)
+			if (error == 0) {
 				fsetfd(lp->lwp_proc->p_fd, fx, fd);
-			else
+				fdrop(fx);
+			} else {
 				fsetfd(lp->lwp_proc->p_fd, NULL, fd);
-			fdrop(fx);
+			}
 		} else {
 			fsetfd(lp->lwp_proc->p_fd, fp, fd);
 		}
