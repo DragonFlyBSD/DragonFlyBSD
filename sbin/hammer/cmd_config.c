@@ -38,7 +38,7 @@ static void config_get(const char *dirpath, struct hammer_ioc_config *config);
 static void config_set(const char *dirpath, struct hammer_ioc_config *config);
 static void config_remove_path(void);
 
-char *ConfigPath;
+static char *ConfigPath;
 
 /*
  * hammer config [<fs> [configfile]]
@@ -206,7 +206,6 @@ config_get(const char *dirpath, struct hammer_ioc_config *config)
 		err(2, "hammer config: unable to open directory %s", dirpath);
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		errx(2, "hammer config: not a HAMMER filesystem!");
-
 	if (ioctl(fd, HAMMERIOC_GET_CONFIG, config) < 0)
 		errx(2, "hammer config: config_get");
 	close(fd);
