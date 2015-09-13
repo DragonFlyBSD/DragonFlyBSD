@@ -1641,11 +1641,6 @@ device		pccard
 device		cardbus
 device		cbb
 
-# For older notebooks that signal a powerfail condition (external
-# power supply dropped, or battery state low) by issuing an NMI:
-
-options 	POWERFAIL_NMI	# make it beep instead of panicing
-
 #
 # MMC/SD
 #
