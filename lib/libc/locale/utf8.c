@@ -210,7 +210,7 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		us->ch = wch;
 		return ((size_t)-2);
 	}
-	if (wch < lbound || (wch & ~0x10ffff)) {
+	if (wch < lbound || wch > 0x10ffff) {
 		/*
 		 * Malformed input; redundant encoding or illegal
 		 *		    code sequence.
@@ -340,7 +340,7 @@ _UTF8_wcrtomb(char * __restrict s, wchar_t wc, mbstate_t * __restrict ps)
 	} else if ((wc & ~0xffff) == 0) {
 		lead = 0xe0;
 		len = 3;
-	} else if ((wc & ~0x10ffff) == 0) {
+	} else if (wc <= 0x10ffff) {
 		lead = 0xf0;
 		len = 4;
 	} else {
@@ -556,8 +556,7 @@ _UTF8_mbintowcr(wchar_t * __restrict dst, const char * __restrict src,
 		 * 5-byte or 6-byte code).
 		 */
 		if (wch < lbound ||
-		    ((flags & WCSBIN_LONGCODES) == 0 && (wch & ~0x10ffff)) ||
-		    ((flags & WCSBIN_LONGCODES) == 0 && want >= 5)) {
+		    ((flags & WCSBIN_LONGCODES) == 0 && wch > 0x10ffff)) {
 			goto forceesc;
 		}
 
@@ -668,7 +667,7 @@ _UTF8_wcrtombin(char * __restrict dst, const wchar_t * __restrict src,
 			}
 			lead = 0xe0;
 			len = 3;
-		} else if ((wc & ~0x10ffff) == 0) {
+		} else if (wc <= 0x10ffff) {
 			lead = 0xf0;
 			len = 4;
 		} else if ((flags & WCSBIN_LONGCODES) && wc < 0x200000) {
