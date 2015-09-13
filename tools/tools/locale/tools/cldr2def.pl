@@ -770,6 +770,7 @@ sub make_makefile {
 	print "Creating Makefile for $TYPE\n";
 	my $SRCOUT;
 	my $SRCOUT2;
+	my $SRCOUT3;
 	my $MAPLOC;
 	if ($TYPE eq "colldef") {
 		$SRCOUT = "localedef -D -U -i \${.IMPSRC} \\\n" .
@@ -787,6 +788,15 @@ sub make_makefile {
 		$SRCOUT2 = "LC_CTYPE";
 		$MAPLOC = "MAPLOC=\t\t\${.CURDIR}/../../tools/tools/" .
 				"locale/etc/final-maps\n";
+		$SRCOUT3 = "## SYMPAIRS\n\n" .
+			".for PAIR in \${SYMPAIRS}\n" .
+			"\${PAIR:C/^.*://:S/src\$/LC_CTYPE/}: " .
+			"\${PAIR:C/:.*//}\n" .
+			"\tlocaledef -D -U -c -w \${MAPLOC}/widths.txt \\\n" .
+			"\t-f \${MAPLOC}/map.\${.TARGET:T:R:C/^.*\\.//} " .
+			"\\\n\t-i \${.ALLSRC} \${.OBJDIR}/\${.TARGET:T:R} " .
+			" || true\n" .
+			".endfor\n\n";
 	}
 	else {
 		$SRCOUT = "grep -v -E '^(\#\$\$|\#[ ])' < \${.IMPSRC} > \${.TARGET}";
@@ -917,7 +927,7 @@ SYMLINKS+=	../\${f:C/:.*\$//}/\${FILESNAME} \${LOCALEDIR}/\${f:C/^.*://}
 FILESDIR_\${f}.${SRCOUT2}= \${LOCALEDIR}/\${f}
 .endfor
 
-.include <bsd.prog.mk>
+${SRCOUT3}.include <bsd.prog.mk>
 EOF
 
 	close(FOUT);
