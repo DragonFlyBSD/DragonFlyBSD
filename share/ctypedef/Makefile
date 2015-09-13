@@ -182,4 +182,28 @@ SYMLINKS+=	../${f:C/:.*$//}/${FILESNAME} ${LOCALEDIR}/${f:C/^.*://}
 FILESDIR_${f}.LC_CTYPE= ${LOCALEDIR}/${f}
 .endfor
 
+SYMPAIRS+=	be_BY.CP1131.src:ru_RU.CP1251.src
+SYMPAIRS+=	be_BY.CP1131.src:ru_RU.CP866.src
+SYMPAIRS+=	be_BY.CP1131.src:ru_RU.ISO8859-5.src
+SYMPAIRS+=	be_BY.CP1131.src:ru_RU.KOI8-R.src
+SYMPAIRS+=	uk_UA.CP1251.src:uk_UA.ISO8859-5.src
+SYMPAIRS+=	uk_UA.CP1251.src:uk_UA.KOI8-U.src
+SYMPAIRS+=	zh_Hans_CN.GB18030.src:zh_Hans_CN.GB2312.src
+SYMPAIRS+=	zh_Hans_CN.GB18030.src:zh_Hans_CN.GBK.src
+SYMPAIRS+=	zh_Hans_CN.GB18030.src:zh_Hans_CN.eucCN.src
+SYMPAIRS+=	zh_Hant_HK.Big5HKSCS.src:zh_Hant_TW.Big5.src
+SYMPAIRS+=	en_GB.ISO8859-15.src:en_US.ISO8859-1.src
+SYMPAIRS+=	en_GB.ISO8859-15.src:en_US.US-ASCII.src
+SYMPAIRS+=	en_GB.ISO8859-15.src:lv_LV.ISO8859-13.src
+SYMPAIRS+=	en_GB.ISO8859-15.src:sr_Latn_RS.ISO8859-2.src
+SYMPAIRS+=	en_GB.ISO8859-15.src:tr_TR.ISO8859-9.src
+SYMPAIRS+=	ja_JP.SJIS.src:ja_JP.eucJP.src
+
+.for PAIR in ${SYMPAIRS}
+${PAIR:C/^.*://:S/src$/LC_CTYPE/}: ${PAIR:C/:.*//}
+	localedef -D -U -c -w ${MAPLOC}/widths.txt \
+	-f ${MAPLOC}/map.${.TARGET:T:R:C/^.*\.//} \
+	-i ${.ALLSRC} ${.OBJDIR}/${.TARGET:T:R}  || true
+.endfor
+
 .include <bsd.prog.mk>
