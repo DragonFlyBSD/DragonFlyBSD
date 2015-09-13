@@ -43,7 +43,7 @@ static void loaddelay(struct timespec *ts, const char *arg);
 #define bstats_title	\
 "  elements iterations    lookups    inserts    deletes     splits"
 #define iostats_title	\
-"  file-rd   file-wr  dev-read dev-write inode_ops ino_flush    commit      undo"
+"  file-rd   file-wr  dev-read dev-write  ino_rops  ino_wops ino_flush    commit      undo"
 
 static __inline
 void
@@ -63,15 +63,15 @@ print_bstats(const struct libhammer_btree_stats *p1,
 static __inline
 void
 print_iostats(const struct libhammer_io_stats *p1,
-	      const struct libhammer_io_stats *p2,
-	      int64_t tiops)
+	      const struct libhammer_io_stats *p2)
 {
-	printf("%9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd",
+	printf("%9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd",
 		(intmax_t)(p1->file_reads - p2->file_reads),
 		(intmax_t)(p1->file_writes - p2->file_writes),
 		(intmax_t)(p1->dev_reads - p2->dev_reads),
 		(intmax_t)(p1->dev_writes - p2->dev_writes),
-		(intmax_t)tiops,
+		(intmax_t)(p1->file_iop_reads - p2->file_iop_reads),
+		(intmax_t)(p1->file_iop_writes - p2->file_iop_writes),
 		(intmax_t)(p1->inode_flushes - p2->inode_flushes),
 		(intmax_t)(p1->commits - p2->commits),
 		(intmax_t)(p1->undo - p2->undo));
@@ -108,7 +108,6 @@ hammer_cmd_iostats(char **av, int ac)
 {
 	struct libhammer_io_stats ios, iosc;
 	struct timespec delay = { 1, 0 };
-	int64_t tiops = 0;
 	int count;
 
 	if (ac > 0)
@@ -118,12 +117,10 @@ hammer_cmd_iostats(char **av, int ac)
 	for (count = 0; ; ++count) {
 		if (libhammer_io_stats(&ios) < 0)
 			err(1, "Failed to get information from HAMMER sysctls");
-		tiops = (ios.file_iop_writes + ios.file_iop_reads) -
-		    (iosc.file_iop_writes + iosc.file_iop_reads);
 		if (count) {
 			if ((count & 15) == 1)
 				printf(iostats_title"\n");
-			print_iostats(&ios, &iosc, tiops);
+			print_iostats(&ios, &iosc);
 			printf("\n");
 		}
 		nanosleep(&delay, NULL);
@@ -137,7 +134,6 @@ hammer_cmd_stats(char **av, int ac)
 	struct libhammer_btree_stats bs, bsc;
 	struct libhammer_io_stats ios, iosc;
 	struct timespec delay = { 1, 0 };
-	int64_t tiops = 0;
 	int count;
 
 	if (ac > 0)
@@ -149,15 +145,13 @@ hammer_cmd_stats(char **av, int ac)
 	for (count = 0; ; ++count) {
 		if (libhammer_btree_stats(&bs) || libhammer_io_stats(&ios))
 			err(1, "Failed to get information from HAMMER sysctls");
-		tiops = (ios.file_iop_writes + ios.file_iop_reads) -
-		    (iosc.file_iop_writes + iosc.file_iop_reads);
 		if (count) {
 			if ((count & 15) == 1) {
 				printf(bstats_title"\t"iostats_title"\n");
 			}
 			print_bstats(&bs, &bsc);
 			printf("\t");
-			print_iostats(&ios, &iosc, tiops);
+			print_iostats(&ios, &iosc);
 			printf("\n");
 		}
 		bcopy(&bs, &bsc, sizeof(bs));
