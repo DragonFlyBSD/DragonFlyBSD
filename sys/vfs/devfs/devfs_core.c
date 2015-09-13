@@ -2818,24 +2818,23 @@ struct cdev_privdata {
 int
 devfs_get_cdevpriv(struct file *fp, void **datap)
 {
-	struct cdev_privdata *p;
 	int error;
 
 	if (fp == NULL)
 		return(EBADF);
-	if ((fp->f_flag & FCDEVPRIV) == 0) {
+
+	spin_lock_shared(&fp->f_spin);
+	if (fp->f_data1 == NULL) {
 		*datap = NULL;
 		error = ENOENT;
 	} else {
-		p  = (struct cdev_privdata *)fp->f_data1;
-		if (p != NULL) {
-			error = 0;
-			*datap = p->cdpd_data;
-		} else {
-			*datap = NULL;
-			error = ENOENT;
-		}
+		struct cdev_privdata *p = fp->f_data1;
+
+		*datap = p->cdpd_data;
+		error = 0;
 	}
+	spin_unlock_shared(&fp->f_spin);
+
 	return (error);
 }
 
@@ -2854,7 +2853,6 @@ devfs_set_cdevpriv(struct file *fp, void *priv, cdevpriv_dtr_t dtr)
 
 	spin_lock(&fp->f_spin);
 	if (fp->f_data1 == NULL) {
-		atomic_set_int(&fp->f_flag, FCDEVPRIV);
 		fp->f_data1 = p;
 		error = 0;
 	} else {
@@ -2879,15 +2877,11 @@ devfs_clear_cdevpriv(struct file *fp)
 	spin_lock(&fp->f_spin);
 	p = fp->f_data1;
 	fp->f_data1 = NULL;
-	if (fp->f_flag & FCDEVPRIV) {
-		atomic_clear_int(&fp->f_flag, FCDEVPRIV);
-		spin_unlock(&fp->f_spin);
-		if (p != NULL) {
-			(p->cdpd_dtr)(p->cdpd_data);
-			kfree(p, M_DEVFS);
-		}
-	} else {
-		spin_unlock(&fp->f_spin);
+	spin_unlock(&fp->f_spin);
+
+	if (p != NULL) {
+		p->cdpd_dtr(p->cdpd_data);
+		kfree(p, M_DEVFS);
 	}
 }
 
