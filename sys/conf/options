@@ -260,7 +260,6 @@ ACCEPT_FILTER_HTTP
 BOOTP			opt_bootp.h
 BOOTP_COMPAT		opt_bootp.h
 BOOTP_NFSROOT		opt_bootp.h
-BOOTP_NFSV3		opt_bootp.h
 BOOTP_WIRED_TO		opt_bootp.h
 CARP			opt_carp.h
 MROUTING		opt_mrouting.h

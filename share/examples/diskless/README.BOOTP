@@ -76,7 +76,6 @@ be useful to set up clients and server for diskless boot.
 #
 options         BOOTP           # Use BOOTP to obtain IP address/hostname
 options         BOOTP_NFSROOT   # NFS mount root filesystem using BOOTP info
-options         "BOOTP_NFSV3"   # Use NFS v3 to NFS mount rootoptions
 options         BOOTP_COMPAT    # Workaround for broken bootp daemons.
 #options         "BOOTP_WIRED_TO=de0"
 
