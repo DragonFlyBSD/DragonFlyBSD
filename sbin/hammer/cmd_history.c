@@ -36,7 +36,15 @@
 
 #include "hammer.h"
 
+typedef struct cmd_attr {
+	char *path;
+	long long offset;
+	long length;
+} cmd_attr_t;
+
 static void hammer_do_history(const char *path, off_t off, int len);
+static int parse_attr(const char *s, cmd_attr_t *ca);
+static int parse_attr_path(const char *s, cmd_attr_t *ca);
 static void dumpat(const char *path, off_t off, int len);
 static const char *timestr32(u_int32_t time32);
 static __inline int test_strtol(int res, long val);
@@ -49,35 +57,22 @@ void
 hammer_cmd_history(const char *offset_str, char **av, int ac)
 {
 	int i;
-	long long off;
-	long len;
-	char *rptr;
+	int old_behavior = 0;
+	cmd_attr_t ca;
 
-	len = 32;
-	if (*offset_str == '@') {
-		errno = 0; /* clear */
-		off = strtoll(offset_str + 1, &rptr, 0);
-		if (test_strtoll(errno, off)) {
-			*rptr = '\0'; /* side effect */
-			printf("%s: %s\n", strerror(errno), offset_str);
-			exit(1);
-		}
-		if (*rptr == ',') {
-			errno = 0; /* clear */
-			len = strtol(rptr + 1, NULL, 0);
-			if (test_strtol(errno, len)) {
-				printf("%s: %s\n", strerror(errno), rptr);
-				exit(1);
-			}
-			if (len < 0)
-				len = 32;
-		}
-	} else {
-		off = -1;
+	bzero(&ca, sizeof(ca));
+	if (parse_attr(offset_str, &ca) == 0)
+		old_behavior = 1;
+
+	for (i = 0; i < ac; ++i) {
+		if (!old_behavior)
+			parse_attr_path(av[i], &ca);
+		if (ca.path == NULL)
+			ca.path = strdup(av[i]);
+		hammer_do_history(ca.path, ca.offset, ca.length);
+		free(ca.path);
+		ca.path = NULL;
 	}
-
-	for (i = 0; i < ac; ++i)
-		hammer_do_history(av[i], (off_t)off, (int)len);
 }
 
 static void
@@ -146,6 +141,70 @@ hammer_do_history(const char *path, off_t off, int len)
 	}
 	printf("}\n");
 	close(fd);
+}
+
+static int
+parse_attr(const char *s, cmd_attr_t *ca)
+{
+	long long offset;
+	long length;
+	char *rptr;
+
+	ca->offset = -1;  /* Don't use offset as a key */
+	ca->length = 32;  /* Default dump size */
+
+	if (*s != '@')
+		return(-1);  /* not parsed */
+
+	errno = 0;  /* clear */
+	offset = strtoll(s + 1, &rptr, 0);
+	if (test_strtoll(errno, offset)) {
+		*rptr = '\0';  /* side effect */
+		printf("%s: %s\n", strerror(errno), s);
+		exit(1);
+	}
+	ca->offset = offset;
+
+	if (*rptr == ',') {
+		errno = 0;  /* clear */
+		length = strtol(rptr + 1, NULL, 0);
+		if (test_strtol(errno, length)) {
+			printf("%s: %s\n", strerror(errno), rptr);
+			exit(1);
+		}
+		if (length >= 0)
+			ca->length = length;
+	}
+
+	return(0);
+}
+
+static int
+parse_attr_path(const char *s, cmd_attr_t *ca)
+{
+	int length, ret;
+	char *p;
+	struct stat st;
+
+	ca->path = NULL;
+
+	if (stat(s, &st) == 0)
+		return(-1);  /* real path */
+
+	p = strstr(s, "@");
+	if (p == NULL || p == s)
+		return(-1);  /* no attr specified */
+
+	ret = parse_attr(p, ca);
+
+	length = p - s + 1;
+	ca->path = malloc(length);
+	if (ca->path == NULL)
+		err(1, "malloc");
+	bzero(ca->path, length);
+	strncpy(ca->path, s, length - 1);
+
+	return(ret);
 }
 
 static void

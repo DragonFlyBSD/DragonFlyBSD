@@ -317,7 +317,7 @@ Pause
 seconds between each display.
 The default interval is one second.
 .\" ==== history ====
-.It Cm history Ns Oo Cm @ Ns Ar offset Ns Oo Cm \&, Ns Ar length Oc Oc Ar path ...
+.It Cm history Ns Oo Cm @ Ns Ar offset Ns Oo Cm \&, Ns Ar length Oc Oc Ar path Ns Oo Cm @ Ns Ar offset Ns Oo Cm \&, Ns Ar length Oc Oc Ar ...
 Show the modification history for inode and data of
 .Nm HAMMER
 files.
@@ -339,6 +339,19 @@ and for each object version it shows transaction id and time stamp.
 Files has to exist for this directive to be applicable,
 to track inodes which has been deleted or renamed see
 .Xr undo 1 .
+.Pp
+Different
+.Ar offset
+and
+.Ar length
+can be used for each
+.Ar path
+by specifying
+.Ar offset
+and
+.Ar length
+for each
+.Ar path .
 .\" ==== blockmap ====
 .It Cm blockmap
 Dump the blockmap for the file system.
