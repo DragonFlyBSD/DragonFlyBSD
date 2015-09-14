@@ -71,6 +71,7 @@
 	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 
 int	atomic_testandset_int(volatile u_int *p, u_int v);
+int	atomic_testandclear_int(volatile u_int *p, u_int v);
 
 #else /* !KLD_MODULE */
 #define MPLOCKED	"lock ; "
@@ -481,6 +482,23 @@ atomic_testandset_int(volatile u_int *p, u_int v)
 	"	btsl	%2,%1 ;		"
 	"	setc	%0 ;		"
 	"# atomic_testandset_int"
+	: "=q" (res),			/* 0 */
+	  "+m" (*p)			/* 1 */
+	: "Ir" (v & 0x1f)		/* 2 */
+	: "cc");
+	return (res);
+}
+
+static __inline int
+atomic_testandclear_int(volatile u_int *p, u_int v)
+{
+	u_char res;
+
+	__asm __volatile(
+	"	" MPLOCKED "		"
+	"	btrl	%2,%1 ;		"
+	"	setc	%0 ;		"
+	"# atomic_testandclear_int"
 	: "=q" (res),			/* 0 */
 	  "+m" (*p)			/* 1 */
 	: "Ir" (v & 0x1f)		/* 2 */
