@@ -81,7 +81,6 @@ extern u_int64_t BandwidthOpt;
 extern u_int64_t SplitupOpt;
 extern u_int64_t MemoryLimit;
 extern const char *SplitupOptStr;
-extern const char *LinkPath;
 extern const char *CyclePath;
 
 void hammer_cmd_show(hammer_tid_t node_offset, const char *arg,

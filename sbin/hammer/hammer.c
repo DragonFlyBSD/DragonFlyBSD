@@ -59,7 +59,6 @@ u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 u_int64_t MemoryLimit = 1024LLU * 1024 * 1024;
 const char *SplitupOptStr;
 const char *CyclePath;
-const char *LinkPath;
 const char *RestrictTarget;
 
 int
@@ -73,7 +72,7 @@ main(int ac, char **av)
 	int cacheSize = 0;
 
 	while ((ch = getopt(ac, av,
-			    "b:c:de:hf:i:m:p:qrs:t:v2yABC:FR:S:T:X")) != -1) {
+			    "b:c:de:hf:i:m:p:qrt:v2yABC:FR:S:T:X")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -176,9 +175,6 @@ main(int ac, char **av)
 			break;
 		case 'f':
 			blkdevs = optarg;
-			break;
-		case 's':
-			LinkPath = optarg;
 			break;
 		case 't':
 			TimeoutOpt = strtol(optarg, NULL, 0);
