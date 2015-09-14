@@ -653,6 +653,7 @@ usage(int exit_code)
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
+		"hammer stats [interval]\n"
 		"hammer history[@offset[,len]] <file> ...\n"
 		"hammer namekey1 <path>\n"
 		"hammer namekey2 <path>\n"
