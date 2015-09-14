@@ -647,9 +647,10 @@ usage(int exit_code)
 {
 	fprintf(stderr,
 		"hammer -h\n"
-		"hammer [-2ABqrvXy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
-		"       [-f blkdevs] [-i delay] [-t seconds] [-S splitup]\n"
-		"	command [argument ...]\n"
+		"hammer [-2ABFqrvXy] [-b bandwidth] [-C cachesize[:readahead]] \n"
+		"       [-R restrictcmd] [-T restrictpath] [-c cyclefile]\n"
+		"       [-e scoreboardfile] [-f blkdevs] [-i delay] [-p ssh-port]\n"
+		"       [-S splitsize] [-t seconds] [-m memlimit] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
