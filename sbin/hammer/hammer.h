@@ -92,7 +92,6 @@ void hammer_cmd_sshremote(const char *cmd, const char *target);
 void hammer_cmd_recover(const char *target_dir);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_checkmap(void);
-void hammer_cmd_prune(char **av, int ac);
 void hammer_cmd_softprune(char **av, int ac, int everything_opt);
 void hammer_cmd_bstats(char **av, int ac);
 void hammer_cmd_iostats(char **av, int ac);
