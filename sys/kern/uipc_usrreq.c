@@ -51,6 +51,7 @@
 #include <sys/un.h>
 #include <sys/unpcb.h>
 #include <sys/vnode.h>
+#include <sys/kern_syscall.h>
 
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
@@ -1425,13 +1426,39 @@ unp_externalize(struct mbuf *rights)
 		fdp = (int *)CMSG_DATA(cm);
 		rp = (struct file **)CMSG_DATA(cm);
 		for (i = 0; i < newfds; i++) {
-			if (fdalloc(p, 0, &f))
-				panic("unp_externalize");
-			fp = *rp++;
+			if (fdalloc(p, 0, &f)) {
+				int j;
+
+				/*
+				 * Previous fdavail() can't garantee
+				 * fdalloc() success due to SMP race.
+				 * Just clean up and return the same
+				 * error value as if fdavail() failed.
+				 */
+
+				/* Close externalized files */
+				for (j = 0; j < i; j++)
+					kern_close(fdp[j]);
+				/* Discard the rest of internal files */
+				for (; i < newfds; i++)
+					unp_discard(rp[i], NULL);
+				/* Wipe out the control message */
+				for (i = 0; i < newfds; i++)
+					rp[i] = NULL;
+
+				lwkt_reltoken(&unp_token);
+				return (EMSGSIZE);
+			}
+			fp = rp[i];
 			unp_fp_externalize(lp, fp, f);
-			*fdp++ = f;
+			fdp[i] = f;
 		}
 	} else {
+		/*
+		 * XXX
+		 * Will this ever happen?  I don't think compiler will
+		 * generate code for this code segment -- sephe
+		 */
 		fdp = (int *)CMSG_DATA(cm) + newfds - 1;
 		rp = (struct file **)CMSG_DATA(cm) + newfds - 1;
 		for (i = 0; i < newfds; i++) {
@@ -1611,6 +1638,11 @@ unp_internalize(struct mbuf *control, struct thread *td)
 			spin_unlock(&unp_spin);
 		}
 	} else {
+		/*
+		 * XXX
+		 * Will this ever happen?  I don't think compiler will
+		 * generate code for this code segment -- sephe
+		 */
 		fdp = (int *)CMSG_DATA(cm);
 		rp = (struct file **)CMSG_DATA(cm);
 		for (i = 0; i < oldfds; i++) {
