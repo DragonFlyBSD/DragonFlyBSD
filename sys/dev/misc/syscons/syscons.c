@@ -1850,6 +1850,14 @@ sccngetch(int flags)
 static void
 sccnupdate(scr_stat *scp)
 {
+    int ddb_active;
+
+#ifdef DDB
+    ddb_active = db_active;
+#else
+    ddb_active = 0;
+#endif
+
     /* this is a cut-down version of scrn_timer()... */
 
     /*
@@ -1858,11 +1866,11 @@ sccnupdate(scr_stat *scp)
      * so ignore it in such cases.
      */
     if (scp->sc->font_loading_in_progress || scp->sc->videoio_in_progress) {
-	if (panicstr == NULL && db_active == 0 && shutdown_in_progress == 0)
+	if (panicstr == NULL && ddb_active == 0 && shutdown_in_progress == 0)
 		return;
     }
 
-    if (debugger > 0 || panicstr || db_active || shutdown_in_progress) {
+    if (debugger > 0 || panicstr || ddb_active || shutdown_in_progress) {
 	sc_touch_scrn_saver();
     } else if (scp != scp->sc->cur_scp) {
 	return;
@@ -2029,6 +2037,13 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
     int copos;
     int s;
     int e;
+    int ddb_active;
+
+#ifdef DDB
+    ddb_active = db_active;
+#else
+    ddb_active = 0;
+#endif
 
     /*
      * Try to run large screen updates as an async operation, which will
@@ -2038,7 +2053,7 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
      */
     if ((flags & SCRN_ASYNCOK) && syscons_async && scp->asynctd &&
 	(scp->end - scp->start) > 16 &&
-	panicstr == NULL && db_active == 0 && shutdown_in_progress == 0) {
+	panicstr == NULL && ddb_active == 0 && shutdown_in_progress == 0) {
 	scp->show_cursor = show_cursor;
 	scp->queue_update_td = 1;
 	wakeup(&scp->asynctd);
