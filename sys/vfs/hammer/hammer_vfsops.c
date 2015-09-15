@@ -635,8 +635,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * Make sure we found a root volume
 	 */
 	if (hmp->rootvol == NULL) {
-		kprintf("hammer_mount: No root volume found!\n");
-		error = EINVAL;
+		if (error == EBUSY) {
+			kprintf("hammer_mount: The volumes are probably mounted\n");
+		} else {
+			kprintf("hammer_mount: No root volume found!\n");
+			error = EINVAL;
+		}
 		goto failed;
 	}
 
