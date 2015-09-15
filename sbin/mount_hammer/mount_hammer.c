@@ -55,9 +55,7 @@
 #include <ctype.h>
 #include <mntopts.h>
 
-typedef const char **ary_ptr_t;
-
-static void extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac);
+static void extract_volumes(const char ***aryp, int *countp, char **av, int ac);
 
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
 
@@ -220,11 +218,11 @@ main(int ac, char **av)
  * Extract a volume list
  */
 static void
-extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac)
+extract_volumes(const char ***aryp, int *countp, char **av, int ac)
 {
 	int idx = 0;
 	int arymax = 32;
-	const char **ary = malloc(sizeof(char *) * 32);
+	const char **ary = malloc(sizeof(char *) * arymax);
 	char *ptr;
 	char *next;
 
