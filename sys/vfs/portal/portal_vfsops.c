@@ -121,7 +121,8 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	VTOPORTAL(rvp)->pt_size = 0;
 	VTOPORTAL(rvp)->pt_fileid = PORTAL_ROOTFILEID;
 	fmp->pm_root = rvp;
-	fmp->pm_server = fp; fp->f_count++;
+	fmp->pm_server = fp;
+	fhold(fp);
 
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_data = (qaddr_t) fmp;

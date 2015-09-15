@@ -618,7 +618,7 @@ ng_internalize(struct mbuf *control, struct thread *td)
 		vn = (struct vnode *) fp->f_data;
 		if (vn && (vn->v_type == VCHR)) {
 			/* for a VCHR, actually reference the FILE */
-			fp->f_count++;
+			fhold(fp);
 			/* XXX then what :) */
 			/* how to pass on to other modules? */
 		} else {

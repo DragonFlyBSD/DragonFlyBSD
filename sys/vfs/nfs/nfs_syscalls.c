@@ -420,7 +420,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 
 	slp->ns_so = so;
 	slp->ns_nam = mynam;
-	fp->f_count++;
+	fhold(fp);
 	slp->ns_fp = fp;
 
 	so->so_upcallarg = (caddr_t)slp;
