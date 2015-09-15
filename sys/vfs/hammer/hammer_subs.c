@@ -61,8 +61,7 @@ hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 				break;
 		} else {
 			if (hammer_debug_locks) {
-				kprintf("hammer_lock_ex: held by %p\n",
-					lock->lowner);
+				hdkprintf("held by %p\n", lock->lowner);
 			}
 			nlv = lv | HAMMER_LOCKF_WANTED;
 			++hammer_contention_count;
@@ -70,7 +69,7 @@ hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
 				tsleep(&lock->lockval, PINTERLOCKED, ident, 0);
 				if (hammer_debug_locks)
-					kprintf("hammer_lock_ex: try again\n");
+					hdkprintf("try again\n");
 			}
 		}
 	}
@@ -1020,7 +1019,7 @@ hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
 		if ((key & 0xFFFFFFFF00000000LL) == 0)
 			key |= 0x100000000LL;
 		if (hammer_debug_general & 0x0400) {
-			kprintf("namekey2: 0x%016llx %*.*s\n",
+			hdkprintf("0x%016llx %*.*s\n",
 				(long long)key, len, len, aname);
 		}
 		*max_iterationsp = 0x00FFFFFF;

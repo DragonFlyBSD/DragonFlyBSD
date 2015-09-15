@@ -611,7 +611,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 			cdev_t dev = kgetdiskbyname(path);
 			error = bdevvp(dev, &devvp);
 			if (error) {
-				kprintf("hammer_mount: can't find devvp\n");
+				hdkprintf("can't find devvp\n");
 			}
 		} else {
 			error = copyin(&info.volumes[i], &upath,
@@ -632,9 +632,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	if (hmp->rootvol == NULL) {
 		if (error == EBUSY) {
-			kprintf("hammer_mount: The volumes are probably mounted\n");
+			hdkprintf("The volumes are probably mounted\n");
 		} else {
-			kprintf("hammer_mount: No root volume found!\n");
+			hdkprintf("No root volume found!\n");
 			error = EINVAL;
 		}
 		goto failed;
@@ -644,7 +644,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * Check that all required volumes are available
 	 */
 	if (error == 0 && hammer_mountcheck_volumes(hmp)) {
-		kprintf("hammer_mount: Missing volumes, cannot mount!\n");
+		hdkprintf("Missing volumes, cannot mount!\n");
 		error = EINVAL;
 		goto failed;
 	}
@@ -653,14 +653,13 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * Other errors
 	 */
 	if (error) {
-		kprintf("hammer_mount: Failed to load volumes!\n");
+		hdkprintf("Failed to load volumes!\n");
 		goto failed;
 	}
 
 	nvolumes = hammer_get_installed_volumes(hmp);
 	if (hmp->nvolumes != nvolumes) {
-		kprintf("hammer_mount: volume header says %d volumes, "
-			"but %d installed\n",
+		hdkprintf("volume header says %d volumes, but %d installed\n",
 			hmp->nvolumes, nvolumes);
 		error = EINVAL;
 		goto failed;

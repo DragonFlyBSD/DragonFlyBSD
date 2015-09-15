@@ -2827,7 +2827,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		rec_offset += roff;
 		n = cursor.leaf->data_len - roff;
 		if (n <= 0) {
-			kprintf("strategy_read: bad n=%d roff=%d\n", n, roff);
+			hdkprintf("bad n=%d roff=%d\n", n, roff);
 			n = 0;
 		} else if (n > bp->b_bufsize - boff) {
 			n = bp->b_bufsize - boff;

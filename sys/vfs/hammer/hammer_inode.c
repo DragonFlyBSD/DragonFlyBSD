@@ -1612,8 +1612,8 @@ hammer_destroy_inode_callback(struct hammer_inode *ip, void *data __unused)
 	 * least one ref, if we do have a vp steal its ip ref.
 	 */
 	if (ip->vp) {
-		kprintf("hammer_destroy_inode_callback: Unexpected "
-			"vnode association ip %p vp %p\n", ip, ip->vp);
+		hdkprintf("Unexpected vnode association ip %p vp %p\n",
+			ip, ip->vp);
 		ip->vp->v_data = NULL;
 		ip->vp = NULL;
 	} else {

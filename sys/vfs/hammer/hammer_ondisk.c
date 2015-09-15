@@ -197,7 +197,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	}
 
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
-		kprintf("hammer_mount: volume %s has an invalid header\n",
+		hdkprintf("volume %s has an invalid header\n",
 			volume->vol_name);
 		for (i = 0; i < (int)sizeof(ondisk->vol_signature); i++) {
 			kprintf("%02x", ((char*)&ondisk->vol_signature)[i] & 0xFF);
@@ -219,8 +219,8 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
 		hmp->fsid = ondisk->vol_fsid;
 	} else if (bcmp(&hmp->fsid, &ondisk->vol_fsid, sizeof(uuid_t))) {
-		kprintf("hammer_mount: volume %s's fsid does not match "
-			"other volumes\n", volume->vol_name);
+		hdkprintf("volume %s's fsid does not match other volumes\n",
+			volume->vol_name);
 		error = EFTYPE;
 		goto late_failure;
 	}
@@ -229,7 +229,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	 * Insert the volume structure into the red-black tree.
 	 */
 	if (RB_INSERT(hammer_vol_rb_tree, &hmp->rb_vols_root, volume)) {
-		kprintf("hammer_mount: volume %s has a duplicate vol_no %d\n",
+		hdkprintf("volume %s has a duplicate vol_no %d\n",
 			volume->vol_name, volume->vol_no);
 		error = EEXIST;
 	}

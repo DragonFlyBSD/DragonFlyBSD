@@ -262,8 +262,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				 */
 				KKASSERT(cursor->flags &
 					 HAMMER_CURSOR_ITERATE_CHECK);
-				kprintf("hammer_btree_iterate: "
-					"DEBUG: Caught parent seek "
+				hdkprintf("DEBUG: Caught parent seek "
 					"in internal iteration\n");
 			}
 
@@ -305,8 +304,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				s = hammer_btree_cmp(&cursor->key_beg,
 						     &elm->base);
 				if (s > 0) {
-					kprintf("hammer_btree_iterate: "
-						"DEBUG: Caught parent seek "
+					hdkprintf("DEBUG: Caught parent seek "
 						"in leaf iteration\n");
 					++cursor->index;
 					continue;
@@ -2435,8 +2433,7 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 		elm->mirror_tid = mirror_tid;
 		hammer_modify_node_done(node);
 		if (hammer_debug_general & 0x0002) {
-			kprintf("mirror_propagate: propagate "
-				"%016llx @%016llx:%d\n",
+			hdkprintf("propagate %016llx @%016llx:%d\n",
 				(long long)mirror_tid,
 				(long long)node->node_offset,
 				cursor->index);
@@ -2452,8 +2449,7 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 		node->ondisk->mirror_tid = mirror_tid;
 		hammer_modify_node_done(node);
 		if (hammer_debug_general & 0x0002) {
-			kprintf("mirror_propagate: propagate "
-				"%016llx @%016llx\n",
+			hdkprintf("propagate %016llx @%016llx\n",
 				(long long)mirror_tid,
 				(long long)node->node_offset);
 		}

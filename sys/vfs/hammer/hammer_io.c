@@ -724,7 +724,7 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	hammer_rel(&io->lock);
 
 	if (hammer_debug_io & 0x0002)
-		kprintf("hammer io_write %016jx\n", bp->b_bio1.bio_offset);
+		hdkprintf("%016jx\n", bp->b_bio1.bio_offset);
 
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
@@ -1456,8 +1456,7 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 	hammer_rel_volume(volume, 0);
 done:
 	if (error) {
-		kprintf("hammer_direct_read: failed @ %016llx\n",
-			(long long)zone2_offset);
+		hdkprintf("failed @ %016llx\n", (long long)zone2_offset);
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
@@ -1540,8 +1539,7 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 	hammer_rel_volume(volume, 0);
 done:
 	if (error) {
-		kprintf("hammer_direct_read: failed @ %016llx\n",
-			(long long)zone2_offset);
+		hdkprintf("failed @ %016llx\n", (long long)zone2_offset);
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
@@ -1714,8 +1712,7 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 		 * never added to the tree so we do not have to worry
 		 * about the backend.
 		 */
-		kprintf("hammer_direct_write: failed @ %016llx\n",
-			(long long)leaf->data_offset);
+		hdkprintf("failed @ %016llx\n", (long long)leaf->data_offset);
 		bp = bio->bio_buf;
 		bp->b_resid = 0;
 		bp->b_error = EIO;

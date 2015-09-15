@@ -995,7 +995,7 @@ nodedup:
 		record->resv = hammer_blockmap_reserve(ip->hmp, zone, bytes,
 		       &record->leaf.data_offset, errorp);
 		if (record->resv == NULL) {
-			kprintf("hammer_ip_add_bulk: reservation failed\n");
+			hdkprintf("reservation failed\n");
 			hammer_rel_mem_record(record);
 			return(NULL);
 		}
@@ -1254,8 +1254,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (hammer_debug_inode)
 		kprintf("DOINSERT LOOKUP %d\n", error);
 	if (error == 0) {
-		kprintf("hammer_ip_sync_record_cursor: duplicate rec "
-			"at (%016llx)\n", (long long)record->leaf.base.key);
+		hdkprintf("duplicate rec at (%016llx)\n",
+			(long long)record->leaf.base.key);
 		if (hammer_debug_critical)
 			Debugger("duplicate record1");
 		error = EIO;
@@ -2499,8 +2499,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			hammer_modify_node_done(node);
 			doprop = 1;
 			if (hammer_debug_general & 0x0002) {
-				kprintf("delete_at_cursor: propagate %016llx"
-					" @%016llx\n",
+				hdkprintf("propagate %016llx @%016llx\n",
 					(long long)elm->leaf.base.delete_tid,
 					(long long)node->node_offset);
 			}

@@ -1697,6 +1697,8 @@ hammer_dir_localization(hammer_inode_t dip)
 	kprintf("HAMMER(%s) "format, vol->ondisk->vol_name,## args)
 #define hmkprintf(hmp, format, args...)			\
 	kprintf("HAMMER(%s) "format, hmp->mp->mnt_stat.f_mntfromname,## args)
+#define hdkprintf(format, args...)			\
+	kprintf("%s: "format, __func__,## args)
 
 #define hkrateprintf(rate , format, args...)		\
 	krateprintf(rate, "HAMMER: "format,## args)
@@ -1704,6 +1706,8 @@ hammer_dir_localization(hammer_inode_t dip)
 	krateprintf(rate, "HAMMER(%s) "format, vol->ondisk->vol_name,## args)
 #define hmkrateprintf(rate, hmp, format, args...)	\
 	krateprintf(rate, "HAMMER(%s) "format, hmp->mp->mnt_stat.f_mntfromname,## args)
+#define hdkrateprintf(rate, format, args...)		\
+	krateprintf(rate, "%s: "format, __func__,## args)
 #endif  /* _KERNEL */
 
 #endif /* !VFS_HAMMER_HAMMER_H_ */
