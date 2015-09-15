@@ -1387,7 +1387,7 @@ unp_externalize(struct mbuf *rights)
 	struct file **rp;
 	struct file *fp;
 	int newfds = (cm->cmsg_len - (CMSG_DATA(cm) - (u_char *)cm))
-		/ sizeof (struct file *);
+		/ sizeof(struct file *);
 	int f;
 
 	lwkt_gettoken(&unp_token);
@@ -1421,7 +1421,7 @@ unp_externalize(struct mbuf *rights)
 	 * If sizeof (struct file *) is smaller than sizeof int, then
 	 * do it in reverse order.
 	 */
-	if (sizeof (struct file *) >= sizeof (int)) {
+	if (sizeof(struct file *) >= sizeof(int)) {
 		fdp = (int *)CMSG_DATA(cm);
 		rp = (struct file **)CMSG_DATA(cm);
 		for (i = 0; i < newfds; i++) {
@@ -1539,7 +1539,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	if (cm->cmsg_len < CMSG_LEN(0))
 		return EINVAL;
 
-	oldfds = (cm->cmsg_len - CMSG_LEN(0)) / sizeof (int);
+	oldfds = (cm->cmsg_len - CMSG_LEN(0)) / sizeof(int);
 
 	/*
 	 * Now replace the integer FDs with pointers to
@@ -1598,7 +1598,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	 * If sizeof (struct file *) is smaller than sizeof int, then
 	 * do it in forward order.
 	 */
-	if (sizeof (struct file *) >= sizeof (int)) {
+	if (sizeof(struct file *) >= sizeof(int)) {
 		fdp = (int *)CMSG_DATA(cm) + oldfds - 1;
 		rp = (struct file **)CMSG_DATA(cm) + oldfds - 1;
 		for (i = 0; i < oldfds; i++) {
