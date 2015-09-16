@@ -60,7 +60,7 @@ struct hammer_mount_info {
 
 #define HMNT_NOHISTORY	0x00000001
 #define HMNT_MASTERID	0x00000002	/* master_id field set */
-#define HMNT_EXPORTREQ	0x00000004
+#define HMNT_RESERVED	0x00000004	/* not used */
 #define HMNT_UNDO_DIRTY	0x00000008
 
 #define HMNT_USERFLAGS	(HMNT_NOHISTORY | HMNT_MASTERID)
