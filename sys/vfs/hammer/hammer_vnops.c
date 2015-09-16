@@ -2594,7 +2594,6 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 				      (const struct export_args *)ap->a_ctl);
 		break;
 	case MOUNTCTL_MOUNTFLAGS:
-	{
 		/*
 		 * Call standard mountctl VOP function
 		 * so we get user mount flags.
@@ -2614,7 +2613,6 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 
 		*ap->a_res += usedbytes;
 		break;
-	}
 	default:
 		error = vop_stdmountctl(ap);
 		break;
