@@ -290,7 +290,7 @@ struct	dup_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	u_int	fd;	char fd_[PAD_(u_int)];
+	int	fd;	char fd_[PAD_(int)];
 };
 struct	pipe_args {
 #ifdef _KERNEL
@@ -536,8 +536,8 @@ struct	dup2_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	u_int	from;	char from_[PAD_(u_int)];
-	u_int	to;	char to_[PAD_(u_int)];
+	int	from;	char from_[PAD_(int)];
+	int	to;	char to_[PAD_(int)];
 };
 struct	fcntl_args {
 #ifdef _KERNEL

@@ -93,7 +93,7 @@
 38	COMPAT	{ int stat(char *path, struct ostat *ub); }
 39	STD	{ pid_t getppid(void); }
 40	COMPAT	{ int lstat(char *path, struct ostat *ub); }
-41	STD	{ int dup(u_int fd); }
+41	STD	{ int dup(int fd); }
 42	STD	{ int pipe(void); }
 43	STD	{ gid_t getegid(void); }
 44	STD	{ int profil(caddr_t samples, size_t size, \
@@ -154,7 +154,7 @@
 88	COMPAT	{ int sethostname(char *hostname, u_int len); } \
 			    sethostname sethostname_args int
 89	STD	{ int getdtablesize(void); }
-90	STD	{ int dup2(u_int from, u_int to); }
+90	STD	{ int dup2(int from, int to); }
 91	UNIMPL	getdopt
 92	STD	{ int fcntl(int fd, int cmd, long arg); }
 ; XXX should be		{ int fcntl(int fd, int cmd, ...); }
