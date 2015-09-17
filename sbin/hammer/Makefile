@@ -8,7 +8,7 @@ SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c \
 	cmd_config.c cmd_recover.c cmd_dedup.c cmd_abort.c
 MAN=	hammer.8
 
-CFLAGS+= -I${.CURDIR}/../../sys -DALIST_NO_DEBUG
+CFLAGS+= -I${.CURDIR}/../../sys
 LDADD=	-lm -lutil -lmd -lhammer
 DPADD=	${LIBM} ${LIBUTIL} ${LIBMD} ${LIBHAMMER}
 

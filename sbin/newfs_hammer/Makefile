@@ -3,7 +3,7 @@
 
 PROG=	newfs_hammer
 MAN=	newfs_hammer.8
-CFLAGS+= -I${.CURDIR}/../../sys -I${.CURDIR}/../hammer -DALIST_NO_DEBUG
+CFLAGS+= -I${.CURDIR}/../../sys -I${.CURDIR}/../hammer
 SRCS= newfs_hammer.c
 
 .PATH: ${.CURDIR}/../../sys/libkern
