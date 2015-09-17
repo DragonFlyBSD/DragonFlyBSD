@@ -423,7 +423,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * master-id validation.  The master id may not be changed by a
 	 * mount update.
 	 */
-	if (info.hflags & HMNT_MASTERID) {
+	if (info.hflags & HMNT_MASTERID || info.hflags & HMNT_NOMIRROR) {
 		if (hmp && hmp->master_id != info.master_id) {
 			hkprintf("cannot change master id with mount update\n");
 			return(EINVAL);

@@ -62,7 +62,7 @@ static void extract_volumes(const char ***aryp, int *countp, char **av, int ac);
 #define MOPT_HAMMEROPTS		\
 	{ "history", 1, HMNT_NOHISTORY, 1 },	\
 	{ "master=", 0, HMNT_MASTERID, 1 },	\
-	{ "mirror", 1, HMNT_MASTERID, 1 }
+	{ "mirror", 1, HMNT_NOMIRROR, 1 }
 
 static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
 				 MOPT_UPDATE, MOPT_NULL };
@@ -115,6 +115,8 @@ main(int ac, char **av)
 	"settings should probably use 1-15\n");
 					}
 				}
+			}
+			if (info.hflags & HMNT_NOMIRROR) {
 				ptr = strstr(optarg, "nomirror");
 				if (ptr)
 					info.master_id = -1;

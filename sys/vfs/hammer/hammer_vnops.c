@@ -2569,6 +2569,7 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 	static const struct mountctl_opt extraopt[] = {
 		{ HMNT_NOHISTORY,	"nohistory" },
 		{ HMNT_MASTERID,	"master" },
+		{ HMNT_NOMIRROR,	"nomirror" },
 		{ 0, NULL}
 
 	};

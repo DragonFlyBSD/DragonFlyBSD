@@ -60,9 +60,9 @@ struct hammer_mount_info {
 
 #define HMNT_NOHISTORY	0x00000001
 #define HMNT_MASTERID	0x00000002	/* master_id field set */
-#define HMNT_RESERVED	0x00000004	/* not used */
+#define HMNT_NOMIRROR	0x00000004	/* master_id field set to -1 */
 #define HMNT_UNDO_DIRTY	0x00000008
 
-#define HMNT_USERFLAGS	(HMNT_NOHISTORY | HMNT_MASTERID)
+#define HMNT_USERFLAGS	(HMNT_NOHISTORY | HMNT_MASTERID | HMNT_NOMIRROR)
 
 #endif /* !VFS_HAMMER_MOUNT_H_ */
