@@ -32,7 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include "newfs_hammer.h"
+#include <sys/sysctl.h>
+#include <sys/ioctl_compat.h>
+
+#include "hammer_util.h"
 
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
