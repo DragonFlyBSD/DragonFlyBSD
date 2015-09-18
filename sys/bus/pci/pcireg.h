@@ -81,6 +81,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIM_CMD_BACKTOBACK	0x0200
 #define	PCIM_CMD_INTxDIS	0x0400
 #define	PCIR_STATUS	0x06
+#define PCIM_STATUS_INTxSTATE	0x0008
 #define	PCIM_STATUS_CAPPRESENT	0x0010
 #define	PCIM_STATUS_66CAPABLE	0x0020
 #define	PCIM_STATUS_BACKTOBACK	0x0080
