@@ -107,7 +107,6 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/endian.h>
 #include <sys/firmware.h>
 #include <sys/kernel.h>
@@ -122,37 +121,37 @@ __FBSDID("$FreeBSD$");
 #include <sys/sysctl.h>
 #include <sys/linker.h>
 
-#include <machine/bus.h>
 #include <machine/endian.h>
-#include <machine/resource.h>
 
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #include <net/bpf.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_arp.h>
+#include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
-#include <net80211/ieee80211_ratectl.h>
-#include <net80211/ieee80211_radiotap.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
-#include <dev/iwm/if_iwmreg.h>
-#include <dev/iwm/if_iwmvar.h>
-#include <dev/iwm/if_iwm_debug.h>
-#include <dev/iwm/if_iwm_util.h>
-#include <dev/iwm/if_iwm_mac_ctxt.h>
+#include "if_iwmreg.h"
+#include "if_iwmvar.h"
+#include "if_iwm_debug.h"
+#include "if_iwm_util.h"
+#include "if_iwm_mac_ctxt.h"
 
 /*
  * BEGIN mvm/mac-ctxt.c
@@ -242,7 +241,7 @@ static void
 iwm_mvm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	struct iwm_mac_ctx_cmd *cmd, uint32_t action)
 {
-	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211com *ic = sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	struct ieee80211_node *ni = vap->iv_bss;
 	int cck_ack_rates, ofdm_ack_rates;
@@ -273,7 +272,7 @@ iwm_mvm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	 */
 	cmd->tsf_id = htole32(IWM_DEFAULT_TSFID);
 
-	IEEE80211_ADDR_COPY(cmd->node_addr, ic->ic_macaddr);
+	IEEE80211_ADDR_COPY(cmd->node_addr, sc->sc_bssid);
 
 	/*
 	 * XXX should we error out if in_assoc is 1 and ni == NULL?
@@ -342,7 +341,7 @@ iwm_mvm_mac_ctxt_cmd_fill_sta(struct iwm_softc *sc, struct iwm_node *in,
 {
 	struct ieee80211_node *ni = &in->in_ni;
 	unsigned dtim_period, dtim_count;
-	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211com *ic = sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 
 	/* will this work? */

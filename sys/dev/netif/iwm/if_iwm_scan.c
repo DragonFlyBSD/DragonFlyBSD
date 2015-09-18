@@ -107,7 +107,6 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/endian.h>
 #include <sys/firmware.h>
 #include <sys/kernel.h>
@@ -122,37 +121,37 @@ __FBSDID("$FreeBSD$");
 #include <sys/sysctl.h>
 #include <sys/linker.h>
 
-#include <machine/bus.h>
 #include <machine/endian.h>
-#include <machine/resource.h>
 
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #include <net/bpf.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_arp.h>
+#include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
-#include <net80211/ieee80211_ratectl.h>
-#include <net80211/ieee80211_radiotap.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
-#include <dev/iwm/if_iwmreg.h>
-#include <dev/iwm/if_iwmvar.h>
-#include <dev/iwm/if_iwm_debug.h>
-#include <dev/iwm/if_iwm_util.h>
-#include <dev/iwm/if_iwm_scan.h>
+#include "if_iwmreg.h"
+#include "if_iwmvar.h"
+#include "if_iwm_debug.h"
+#include "if_iwm_util.h"
+#include "if_iwm_scan.h"
 
 /*
  * BEGIN mvm/scan.c
@@ -256,7 +255,7 @@ static int
 iwm_mvm_scan_fill_channels(struct iwm_softc *sc, struct iwm_scan_cmd *cmd,
 	int flags, int n_ssids, int basic_ssid)
 {
-	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211com *ic = sc->sc_ic;
 	uint16_t passive_dwell = iwm_mvm_get_passive_dwell(sc, flags);
 	uint16_t active_dwell = iwm_mvm_get_active_dwell(sc, flags, n_ssids);
 	struct iwm_scan_channel *chan = (struct iwm_scan_channel *)
@@ -419,7 +418,7 @@ iwm_mvm_scan_request(struct iwm_softc *sc, int flags,
 
 	cmd->tx_cmd.len = htole16(iwm_mvm_fill_probe_req(sc,
 			    (struct ieee80211_frame *)cmd->data,
-			    sc->sc_ic.ic_macaddr, n_ssids, ssid, ssid_len,
+			    sc->sc_bssid, n_ssids, ssid, ssid_len,
 			    NULL, 0, sc->sc_capa_max_probe_len));
 
 	cmd->channel_count

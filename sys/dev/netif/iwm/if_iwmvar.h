@@ -152,8 +152,8 @@ struct iwm_tx_radiotap_header {
 #define IWM_FW_STATUS_INPROGRESS	1
 #define IWM_FW_STATUS_DONE		2
 
-#define	IWM_LOCK(_sc)	mtx_lock(&sc->sc_mtx)
-#define	IWM_UNLOCK(_sc)	mtx_unlock(&sc->sc_mtx)
+#define	IWM_LOCK(_sc)	lockmgr(&sc->sc_lk, LK_EXCLUSIVE)
+#define	IWM_UNLOCK(_sc)	lockmgr(&sc->sc_lk, LK_RELEASE)
 
 enum iwm_ucode_type {
 	IWM_UCODE_TYPE_INIT,
@@ -381,15 +381,20 @@ struct iwm_vap {
 #define IWM_VAP(_vap)   ((struct iwm_vap *)(_vap))
 
 struct iwm_softc {
-	struct mtx		sc_mtx;
-	struct mbufq		sc_snd;
-	struct ieee80211com	sc_ic;
-	device_t		sc_dev;
+	struct lock		sc_lk;
+	struct ifnet *sc_ifp;
+	device_t sc_dev;
+	struct ieee80211com *sc_ic;
+
+	int sc_newstate_pending;
+
+	uint8_t sc_bssid[IEEE80211_ADDR_LEN];
 
 	struct intr_config_hook sc_preinit_hook;
 	struct callout sc_watchdog_to;
 
 	struct task		init_task;
+	uint8_t			sc_macaddr[IEEE80211_ADDR_LEN];
 
 	struct resource *sc_irq;
 	struct resource *sc_mem;

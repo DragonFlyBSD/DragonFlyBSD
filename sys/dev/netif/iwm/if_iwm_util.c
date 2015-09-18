@@ -107,7 +107,6 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/endian.h>
 #include <sys/firmware.h>
 #include <sys/kernel.h>
@@ -122,38 +121,40 @@ __FBSDID("$FreeBSD$");
 #include <sys/sysctl.h>
 #include <sys/linker.h>
 
-#include <machine/bus.h>
 #include <machine/endian.h>
-#include <machine/resource.h>
 
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #include <net/bpf.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_arp.h>
+#include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
-#include <net80211/ieee80211_ratectl.h>
-#include <net80211/ieee80211_radiotap.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
-#include <dev/iwm/if_iwmreg.h>
-#include <dev/iwm/if_iwmvar.h>
-#include <dev/iwm/if_iwm_debug.h>
-#include <dev/iwm/if_iwm_binding.h>
-#include <dev/iwm/if_iwm_util.h>
-#include <dev/iwm/if_iwm_pcie_trans.h>
+#include "if_iwmreg.h"
+#include "if_iwmvar.h"
+#include "if_iwm_debug.h"
+#include "if_iwm_binding.h"
+#include "if_iwm_util.h"
+#include "if_iwm_pcie_trans.h"
+
+int iwmsleep(void *chan, struct lock *lk, int flags, const char *wmesg, int to);
 
 static void
 iwm_dma_map_mem(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
@@ -191,6 +192,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	code = hcmd->id;
 	async = hcmd->flags & IWM_CMD_ASYNC;
 	wantresp = hcmd->flags & IWM_CMD_WANT_SKB;
+	data = NULL;
 
 	for (i = 0, paylen = 0; i < nitems(hcmd->len); i++) {
 		paylen += hcmd->len[i];
@@ -200,7 +202,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	if (wantresp) {
 		KASSERT(!async, ("invalid async parameter"));
 		while (sc->sc_wantresp != -1)
-			msleep(&sc->sc_wantresp, &sc->sc_mtx, 0, "iwmcmdsl", 0);
+			iwmsleep(&sc->sc_wantresp, &sc->sc_lk, 0, "iwmcmdsl", 0);
 		sc->sc_wantresp = ring->qid << 16 | ring->cur;
 		IWM_DPRINTF(sc, IWM_DEBUG_CMD,
 		    "wantresp is %x\n", sc->sc_wantresp);
@@ -303,7 +305,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	if (!async) {
 		/* m..m-mmyy-mmyyyy-mym-ym m-my generation */
 		int generation = sc->sc_generation;
-		error = msleep(desc, &sc->sc_mtx, PCATCH, "iwmcmd", hz);
+		error = iwmsleep(desc, &sc->sc_lk, PCATCH, "iwmcmd", hz);
 		if (error == 0) {
 			/* if hardware is no longer up, return error */
 			if (generation != sc->sc_generation) {
