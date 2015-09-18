@@ -97,18 +97,41 @@ test_recv_desc(int s)
 	fprintf(stderr, "fd content: %s\n", data);
 }
 
-int
-main(void)
+static void
+usage(const char *cmd)
 {
-	int s[2], fd, status, n;
+	fprintf(stderr, "%s [-d]\n", cmd);
+	exit(1);
+}
+
+int
+main(int argc, char *argv[])
+{
+	int s[2], fd, status, n, discard;
+	int opt;
 	off_t ofs;
+
+	discard = 0;
+	while ((opt = getopt(argc, argv, "d")) != -1) {
+		switch (opt) {
+		case 'd':
+			discard = 1;
+			break;
+
+		default:
+			usage(argv[0]);
+		}
+	}
 
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, s) < 0)
 		err(1, "socketpair(LOCAL, STREAM) failed");
 
 	if (fork() == 0) {
 		close(s[0]);
-		test_recv_desc(s[1]);
+		if (!discard)
+			test_recv_desc(s[1]);
+		else
+			sleep(5);
 		exit(0);
 	}
 	close(s[1]);

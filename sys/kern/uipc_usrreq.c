@@ -52,6 +52,7 @@
 #include <sys/unpcb.h>
 #include <sys/vnode.h>
 #include <sys/kern_syscall.h>
+#include <sys/taskqueue.h>
 
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
@@ -72,10 +73,11 @@
 #define UNP_ASSERT_TOKEN_HELD(unp)
 #endif	/* INVARIANTS */
 
-typedef struct unp_defdiscard {
-	struct unp_defdiscard *next;
+struct unp_defdiscard {
+	SLIST_ENTRY(unp_defdiscard) next;
 	struct file *fp;
-} *unp_defdiscard_t;
+};
+SLIST_HEAD(unp_defdiscard_list, unp_defdiscard);
 
 static	MALLOC_DEFINE(M_UNPCB, "unpcb", "unpcb struct");
 static	unp_gen_t unp_gencnt;
@@ -84,8 +86,11 @@ static	u_int unp_count;
 static	struct unp_head unp_shead, unp_dhead;
 
 static struct lwkt_token unp_token = LWKT_TOKEN_INITIALIZER(unp_token);
-static int unp_defdiscard_nest;
-static unp_defdiscard_t unp_defdiscard_base;
+static struct taskqueue *unp_taskqueue;
+
+static struct unp_defdiscard_list unp_defdiscard_head;
+static struct spinlock unp_defdiscard_spin;
+static struct task unp_defdiscard_task;
 
 /*
  * Unix communications domain.
@@ -122,6 +127,7 @@ static int     unp_find_lockref(struct sockaddr *nam, struct thread *td,
 		   short type, struct unpcb **unp_ret);
 static int     unp_connect_pair(struct unpcb *unp, struct unpcb *unp2);
 static void    unp_drop(struct unpcb *unp, int error);
+static void    unp_defdiscard_taskfunc(void *, int);
 
 /*
  * SMP Considerations:
@@ -1513,13 +1519,25 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 	lwkt_reltoken(&unp_token);
 }
 
-
 void
 unp_init(void)
 {
 	LIST_INIT(&unp_dhead);
 	LIST_INIT(&unp_shead);
 	spin_init(&unp_spin, "unpinit");
+
+	SLIST_INIT(&unp_defdiscard_head);
+	spin_init(&unp_defdiscard_spin, "unpdisc");
+	TASK_INIT(&unp_defdiscard_task, 0, unp_defdiscard_taskfunc, NULL);
+
+	/*
+	 * Create taskqueue for defered discard, and stick it to
+	 * the last CPU.
+	 */
+	unp_taskqueue = taskqueue_create("unp_taskq", M_WAITOK,
+	    taskqueue_thread_enqueue, &unp_taskqueue);
+	taskqueue_start_threads(&unp_taskqueue, 1, TDPRI_KERN_DAEMON,
+	    ncpus - 1, "unp taskq");
 }
 
 static int
@@ -2021,21 +2039,9 @@ unp_revoke_gc_check(struct file *fps, void *vinfo)
 void
 unp_dispose(struct mbuf *m)
 {
-	unp_defdiscard_t dds;
-
 	lwkt_gettoken(&unp_token);
-	++unp_defdiscard_nest;
-	if (m) {
+	if (m)
 		unp_scan(m, unp_discard, NULL);
-	}
-	if (unp_defdiscard_nest == 1) {
-		while ((dds = unp_defdiscard_base) != NULL) {
-			unp_defdiscard_base = dds->next;
-			closef(dds->fp, NULL);
-			kfree(dds, M_UNPCB);
-		}
-	}
-	--unp_defdiscard_nest;
 	lwkt_reltoken(&unp_token);
 }
 
@@ -2108,21 +2114,21 @@ unp_mark(struct file *fp, void *data)
 static void
 unp_discard(struct file *fp, void *data __unused)
 {
-	unp_defdiscard_t dds;
+	struct unp_defdiscard *d;
 
 	spin_lock(&unp_spin);
 	fp->f_msgcount--;
 	unp_rights--;
 	spin_unlock(&unp_spin);
 
-	if (unp_defdiscard_nest) {
-		dds = kmalloc(sizeof(*dds), M_UNPCB, M_WAITOK|M_ZERO);
-		dds->fp = fp;
-		dds->next = unp_defdiscard_base;
-		unp_defdiscard_base = dds;
-	} else {
-		closef(fp, NULL);
-	}
+	d = kmalloc(sizeof(*d), M_UNPCB, M_WAITOK);
+	d->fp = fp;
+
+	spin_lock(&unp_defdiscard_spin);
+	SLIST_INSERT_HEAD(&unp_defdiscard_head, d, next);
+	spin_unlock(&unp_defdiscard_spin);
+
+	taskqueue_enqueue(unp_taskqueue, &unp_defdiscard_task);
 }
 
 static int
@@ -2253,4 +2259,22 @@ unp_drop(struct unpcb *unp, int error)
 		lwkt_relpooltoken(unp2);
 	}
 	unp_setflags(unp, UNP_DROPPED);
+}
+
+static void
+unp_defdiscard_taskfunc(void *arg __unused, int pending __unused)
+{
+	struct unp_defdiscard *d;
+
+	spin_lock(&unp_defdiscard_spin);
+	while ((d = SLIST_FIRST(&unp_defdiscard_head)) != NULL) {
+		SLIST_REMOVE_HEAD(&unp_defdiscard_head, next);
+		spin_unlock(&unp_defdiscard_spin);
+
+		closef(d->fp, NULL);
+		kfree(d, M_UNPCB);
+
+		spin_lock(&unp_defdiscard_spin);
+	}
+	spin_unlock(&unp_defdiscard_spin);
 }
