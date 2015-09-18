@@ -102,6 +102,42 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+/*
+ *				DragonFly work
+ *
+ * NOTE: Relative to roughly August 8th sources, does not include FreeBSD
+ *	 changes to remove per-device network interface (DragonFly has not
+ *	 caught up to that yet on the WLAN side).
+ *
+ * Comprehensive list of adjustments for DragonFly not #ifdef'd:
+ *	malloc -> kmalloc	(in particular, changing improper M_NOWAIT
+ *				specifications to M_INTWAIT.  We still don't
+ *				understand why FreeBSD uses M_NOWAIT for
+ *				critical must-not-fail kmalloc()s).
+ *	free -> kfree
+ *	printf -> kprintf
+ *	(bug fix) memset in iwm_reset_rx_ring.
+ *	(debug)   added several kprintf()s on error
+ *
+ *	wlan_serialize_enter()/exit() hacks (will be removable when we
+ *					     do the device netif removal).
+ *	header file paths (DFly allows localized path specifications).
+ *	minor header file differences.
+ *
+ * Comprehensive list of adjustments for DragonFly #ifdef'd:
+ *	(safety)  added register read-back serialization in iwm_reset_rx_ring().
+ *	packet counters
+ *	RUNNING and OACTIVE tests
+ *	msleep -> iwmsleep (handle deadlocks due to dfly interrupt serializer)
+ *	mtx -> lk  (mtx functions -> lockmgr functions)
+ *	callout differences
+ *	taskqueue differences
+ *	iwm_start() and ifq differences
+ *	iwm_ioctl() differences
+ *	MSI differences
+ *	bus_setup_intr() differences
+ *	minor PCI config register naming differences
+ */
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
@@ -353,6 +389,7 @@ static void	iwm_scan_curchan(struct ieee80211_scan_state *, unsigned long);
 static void	iwm_scan_mindwell(struct ieee80211_scan_state *);
 static int	iwm_detach(device_t);
 
+#if defined(__DragonFly__)
 /*
  * This is a hack due to the wlan_serializer deadlocking sleepers.
  */
@@ -374,6 +411,8 @@ iwmsleep(void *chan, struct lock *lk, int flags, const char *wmesg, int to)
 	}
 	return error;
 }
+
+#endif
 
 /*
  * Firmware parser.
@@ -478,7 +517,11 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 		return 0;
 
 	while (fw->fw_status == IWM_FW_STATUS_INPROGRESS) {
+#if defined(__DragonFly__)
 		iwmsleep(&sc->sc_fw, &sc->sc_lk, 0, "iwmfwp", 0);
+#else
+		msleep(&sc->sc_fw, &sc->sc_mtx, 0, "iwmfwp", 0);
+#endif
 	}
 	fw->fw_status = IWM_FW_STATUS_INPROGRESS;
 
@@ -778,8 +821,6 @@ iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
 	return 0;
 
 fail:
-	kprintf("iwm_dma_contig_alloc: failed: error %d align %d\n",
-		error, (int)alignment);
 	iwm_dma_contig_free(dma);
 
 	return error;
@@ -876,7 +917,7 @@ iwm_alloc_rx_ring(struct iwm_softc *sc, struct iwm_rx_ring *ring)
 
 	/* Allocate RX descriptors (256-byte aligned). */
 	size = IWM_RX_RING_COUNT * sizeof(uint32_t);
-	error = iwm_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, size, size);
+	error = iwm_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, size, 256);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate RX ring DMA memory\n");
@@ -933,7 +974,7 @@ fail:	iwm_free_rx_ring(sc, ring);
 static void
 iwm_reset_rx_ring(struct iwm_softc *sc, struct iwm_rx_ring *ring)
 {
-
+	/* XXX conditional nic locks are stupid */
 	/* XXX print out if we can't lock the NIC? */
 	if (iwm_nic_lock(sc)) {
 		/* XXX handle if RX stop doesn't finish? */
@@ -941,6 +982,12 @@ iwm_reset_rx_ring(struct iwm_softc *sc, struct iwm_rx_ring *ring)
 		iwm_nic_unlock(sc);
 	}
 	ring->cur = 0;
+
+	/*
+	 * The hw rx ring index in shared memory must also be cleared,
+	 * otherwise the discrepancy can cause reprocessing chaos.
+	 */
+	memset(sc->rxq.stat, 0, sizeof(*sc->rxq.stat));
 }
 
 static void
@@ -1229,16 +1276,6 @@ iwm_stop_device(struct iwm_softc *sc)
 	IWM_CLRBITS(sc, IWM_CSR_GP_CNTRL,
 	    IWM_CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
 
-#if 1
-	/*
-	 * Clear the hw rxring index, otherwise a spurious interrupt can
-	 * cause elements already processed to be reprocessed and other
-	 * chaos.
-	 */
-	memset(sc->rxq.stat, 0, sizeof(*sc->rxq.stat));
-	kprintf("purge rx hw\n");
-#endif
-
 	/* Stop the device, and put it in low power state */
 	iwm_apm_stop(sc);
 
@@ -1323,8 +1360,11 @@ iwm_nic_rx_init(struct iwm_softc *sc)
 	/* Set physical address of RX status (16-byte aligned). */
 	IWM_WRITE(sc,
 	    IWM_FH_RSCSR_CHNL0_STTS_WPTR_REG, sc->rxq.stat_dma.paddr >> 4);
+
+#if defined(__DragonFly__)
+	/* Force serialization (probably not needed but don't trust the HW) */
 	IWM_READ(sc, IWM_FH_RSCSR_CHNL0_STTS_WPTR_REG);
-	cpu_mfence();
+#endif
 
 	/* Enable RX. */
 	/*
@@ -1999,7 +2039,11 @@ iwm_firmware_load_chunk(struct iwm_softc *sc, uint32_t dst_addr,
 	/* wait 1s for this segment to load */
 	error = 0;
 	while (!sc->sc_fw_chunk_done) {
+#if defined(__DragonFly__)
 		error = iwmsleep(&sc->sc_fw, &sc->sc_lk, 0, "iwmfw", hz);
+#else
+		error = msleep(&sc->sc_fw, &sc->sc_mtx, 0, "iwmfw", hz);
+#endif
 		if (error)
 			break;
 	}
@@ -2039,7 +2083,11 @@ iwm_load_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 	IWM_WRITE(sc, IWM_CSR_RESET, 0);
 
 	for (w = 0; !sc->sc_uc.uc_intr && w < 10; w++) {
+#if defined(__DragonFly__)
 		error = iwmsleep(&sc->sc_uc, &sc->sc_lk, 0, "iwmuc", hz/10);
+#else
+		error = msleep(&sc->sc_uc, &sc->sc_mtx, 0, "iwmuc", hz/10);
+#endif
 	}
 
 	return error;
@@ -2209,8 +2257,14 @@ iwm_run_init_mvm_ucode(struct iwm_softc *sc, int justnvm)
 	 * from the firmware
 	 */
 	while (!sc->sc_init_complete) {
-		if ((error = iwmsleep(&sc->sc_init_complete, &sc->sc_lk,
-		    0, "iwminit", 2*hz)) != 0) {
+#if defined(__DragonFly__)
+		error = iwmsleep(&sc->sc_init_complete, &sc->sc_lk,
+				 0, "iwminit", 2*hz);
+#else
+		error = msleep(&sc->sc_init_complete, &sc->sc_mtx,
+				 0, "iwminit", 2*hz);
+#endif
+		if (error) {
 			kprintf("init complete failed %d\n",
 				sc->sc_init_complete);
 			break;
@@ -3407,8 +3461,13 @@ iwm_auth(struct ieee80211vap *vap, struct iwm_softc *sc)
 	}
 
 	/* a bit superfluous? */
-	while (sc->sc_auth_prot)
+	while (sc->sc_auth_prot) {
+#if defined(__DragonFly__)
 		iwmsleep(&sc->sc_auth_prot, &sc->sc_lk, 0, "iwmauth", 0);
+#else
+		msleep(&sc->sc_auth_prot, &sc->sc_mtx, 0, "iwmauth", 0);
+#endif
+	}
 	sc->sc_auth_prot = 1;
 
 	duration = min(IWM_MVM_TE_SESSION_PROTECTION_MAX_TIME_MS,
@@ -3436,7 +3495,11 @@ iwm_auth(struct ieee80211vap *vap, struct iwm_softc *sc)
 			error = EAUTH;
 			goto out;
 		}
+#if defined(__DragonFly__)
 		iwmsleep(&sc->sc_auth_prot, &sc->sc_lk, 0, "iwmau2", 0);
+#else
+		msleep(&sc->sc_auth_prot, &sc->sc_mtx, 0, "iwmau2", 0);
+#endif
 	}
 	IWM_DPRINTF(sc, IWM_DEBUG_RESET, "<-%s\n", __func__);
 	error = 0;
@@ -4360,10 +4423,8 @@ iwm_notif_intr(struct iwm_softc *sc)
 		struct iwm_cmd_response *cresp;
 		int qid, idx;
 
-		cpu_lfence();
 		bus_dmamap_sync(sc->rxq.data_dmat, data->map,
 		    BUS_DMASYNC_POSTREAD);
-		cpu_lfence();
 		pkt = mtod(data->m, struct iwm_rx_packet *);
 
 		qid = pkt->hdr.qid & ~0x80;
@@ -4849,7 +4910,7 @@ iwm_pci_attach(device_t dev)
 	/* Install interrupt handler. */
 	count = 1;
 	rid = 0;
-#ifdef OLD_MSI
+#if !defined(__DragonFly__)
 	if (pci_alloc_msi(dev, &count) == 0)
 		rid = 1;
 #endif
@@ -4882,11 +4943,6 @@ iwm_pci_detach(device_t dev)
 	struct iwm_softc *sc = device_get_softc(dev);
 
 	if (sc->sc_irq != NULL) {
-#if defined(__DragonFly__)
-#if 0
-		iwm_disable_interrupts(sc);
-#endif
-#endif
 		bus_teardown_intr(dev, sc->sc_irq, sc->sc_ih);
 		bus_release_resource(dev, SYS_RES_IRQ,
 		    rman_get_rid(sc->sc_irq), sc->sc_irq);
@@ -4917,8 +4973,13 @@ iwm_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	sc->sc_dev = dev;
+#if defined(__DragonFly__)
 	lockinit(&sc->sc_lk, "iwm_lk", 0, 0);
 	callout_init_lk(&sc->sc_watchdog_to, &sc->sc_lk);
+#else
+	mtx_init(&sc->sc_mtx, "iwm_mtx", MTX_DEF, 0);
+	callout_init_mtx(&sc->sc_watchdog_to, &sc->sc_mtx, 0);
+#endif
 	TASK_INIT(&sc->sc_es_task, 0, iwm_endscan_cb, sc);
 	sc->sc_tq = taskqueue_create("iwm_taskq", M_WAITOK,
             taskqueue_thread_enqueue, &sc->sc_tq);
@@ -5272,8 +5333,13 @@ iwm_init_task(void *arg1)
 	struct ifnet *ifp = sc->sc_ifp;
 
 	IWM_LOCK(sc);
-	while (sc->sc_flags & IWM_FLAG_BUSY)
+	while (sc->sc_flags & IWM_FLAG_BUSY) {
+#if defined(__DragonFly__)
 		iwmsleep(&sc->sc_flags, &sc->sc_lk, 0, "iwmpwr", 0);
+#else
+		msleep(&sc->sc_flags, &sc->sc_mtx, 0, "iwmpwr", 0);
+#endif
+}
 	sc->sc_flags |= IWM_FLAG_BUSY;
 	iwm_stop_locked(ifp);
 #if defined(__DragonFly__)

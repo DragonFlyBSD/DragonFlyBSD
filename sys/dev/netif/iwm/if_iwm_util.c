@@ -154,7 +154,9 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_util.h"
 #include "if_iwm_pcie_trans.h"
 
+#if defined(__DragonFly__)
 int iwmsleep(void *chan, struct lock *lk, int flags, const char *wmesg, int to);
+#endif
 
 static void
 iwm_dma_map_mem(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
@@ -201,8 +203,13 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	/* if the command wants an answer, busy sc_cmd_resp */
 	if (wantresp) {
 		KASSERT(!async, ("invalid async parameter"));
-		while (sc->sc_wantresp != -1)
+		while (sc->sc_wantresp != -1) {
+#if defined(__DragonFly__)
 			iwmsleep(&sc->sc_wantresp, &sc->sc_lk, 0, "iwmcmdsl", 0);
+#else
+			msleep(&sc->sc_wantresp, &sc->sc_mtx, 0, "iwmcmdsl", 0);
+#endif
+		}
 		sc->sc_wantresp = ring->qid << 16 | ring->cur;
 		IWM_DPRINTF(sc, IWM_DEBUG_CMD,
 		    "wantresp is %x\n", sc->sc_wantresp);
@@ -305,7 +312,11 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	if (!async) {
 		/* m..m-mmyy-mmyyyy-mym-ym m-my generation */
 		int generation = sc->sc_generation;
+#if defined(__DragonFly__)
 		error = iwmsleep(desc, &sc->sc_lk, PCATCH, "iwmcmd", hz);
+#else
+		error = msleep(desc, &sc->sc_mtx, PCATCH, "iwmcmd", hz);
+#endif
 		if (error == 0) {
 			/* if hardware is no longer up, return error */
 			if (generation != sc->sc_generation) {
