@@ -70,7 +70,7 @@ typedef	u_quad_t	unp_gen_t;
 LIST_HEAD(unp_head, unpcb);
 
 struct	unpcb {
-	LIST_ENTRY(unpcb) unp_link; 	/* glue on list of all PCBs */
+	TAILQ_ENTRY(unpcb) unp_link; 	/* glue on list of all PCBs */
 	struct	socket *unp_socket;	/* pointer back to socket */
 	struct	vnode *unp_vnode;	/* if associated with file */
 	struct	vnode *unp_rvnode;	/* root vp for creating process */
@@ -99,13 +99,14 @@ struct	unpcb {
  * (there may not even be a peer).  This is set in unp_listen() when
  * it fills in unp_peercred for later consumption by unp_connect().
  *
- * UNP_PRIVATE1, UNP_PRIVATE2, UNP_PRIVATE3 - Implementation private.
+ * UNP_PRIVATE{1,2,3,4} - Implementation private.
  */
 #define UNP_HAVEPC			0x001
 #define UNP_HAVEPCCACHED		0x002
 #define UNP_PRIVATE1			0x004
 #define UNP_PRIVATE2			0x008
 #define UNP_PRIVATE3			0x010
+#define UNP_PRIVATE4			0x020
 
 /* Hack alert -- this structure depends on <sys/socketvar.h>. */
 #ifdef	_SYS_SOCKETVAR_H_

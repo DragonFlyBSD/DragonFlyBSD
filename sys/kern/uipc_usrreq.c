@@ -62,6 +62,7 @@
 #define UNP_DETACHED		UNP_PRIVATE1
 #define UNP_CONNECTING		UNP_PRIVATE2
 #define UNP_DROPPED		UNP_PRIVATE3
+#define UNP_MARKER		UNP_PRIVATE4
 
 #define UNP_ISATTACHED(unp)	\
     ((unp) != NULL && ((unp)->unp_flags & UNP_DETACHED) == 0)
@@ -79,11 +80,18 @@ struct unp_defdiscard {
 };
 SLIST_HEAD(unp_defdiscard_list, unp_defdiscard);
 
+TAILQ_HEAD(unpcb_qhead, unpcb);
+struct unp_global_head {
+	struct unpcb_qhead	list;
+	int			count;
+};
+
 static	MALLOC_DEFINE(M_UNPCB, "unpcb", "unpcb struct");
 static	unp_gen_t unp_gencnt;
-static	u_int unp_count;
 
-static	struct unp_head unp_shead, unp_dhead;
+static struct unp_global_head unp_stream_head;
+static struct unp_global_head unp_dgram_head;
+static struct unp_global_head unp_seqpkt_head;
 
 static struct lwkt_token unp_token = LWKT_TOKEN_INITIALIZER(unp_token);
 static struct taskqueue *unp_taskqueue;
@@ -194,6 +202,21 @@ static __inline void
 unp_clrflags(struct unpcb *unp, int flags)
 {
 	atomic_clear_int(&unp->unp_flags, flags);
+}
+
+static __inline struct unp_global_head *
+unp_globalhead(short type)
+{
+	switch (type) {
+	case SOCK_STREAM:
+		return &unp_stream_head;
+	case SOCK_DGRAM:
+		return &unp_dgram_head;
+	case SOCK_SEQPACKET:
+		return &unp_seqpkt_head;
+	default:
+		panic("unknown socket type %d", type);
+	}
 }
 
 /*
@@ -876,6 +899,7 @@ SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
 static int
 unp_attach(struct socket *so, struct pru_attach_info *ai)
 {
+	struct unp_global_head *head;
 	struct unpcb *unp;
 	int error;
 
@@ -918,14 +942,15 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 	}
 	unp->unp_refcnt = 1;
 	unp->unp_gencnt = ++unp_gencnt;
-	unp_count++;
 	LIST_INIT(&unp->unp_refs);
 	unp->unp_socket = so;
 	unp->unp_rvnode = ai->fd_rdir;		/* jail cruft XXX JH */
-	LIST_INSERT_HEAD(so->so_type == SOCK_DGRAM ? &unp_dhead
-			 : &unp_shead, unp, unp_link);
 	so->so_pcb = (caddr_t)unp;
 	soreference(so);
+
+	head = unp_globalhead(so->so_type);
+	TAILQ_INSERT_TAIL(&head->list, unp, unp_link);
+	head->count++;
 	error = 0;
 failed:
 	lwkt_reltoken(&unp_token);
@@ -935,21 +960,26 @@ failed:
 static void
 unp_detach(struct unpcb *unp)
 {
+	struct unp_global_head *head;
 	struct socket *so;
 
 	lwkt_gettoken(&unp_token);
 	lwkt_getpooltoken(unp);
 
-	LIST_REMOVE(unp, unp_link);	/* both tokens required */
+	so = unp->unp_socket;
+
+	head = unp_globalhead(so->so_type);
+	KASSERT(head->count > 0, ("invalid unp count"));
+	TAILQ_REMOVE(&head->list, unp, unp_link);
+	head->count--;
+
 	unp->unp_gencnt = ++unp_gencnt;
-	--unp_count;
 	if (unp->unp_vnode) {
 		unp->unp_vnode->v_socket = NULL;
 		vrele(unp->unp_vnode);
 		unp->unp_vnode = NULL;
 	}
-	soisdisconnected(unp->unp_socket);
-	so = unp->unp_socket;
+	soisdisconnected(so);
 	soreference(so);		/* for delayed sorflush */
 	KKASSERT(so->so_pcb == unp);
 	so->so_pcb = NULL;		/* both tokens required */
@@ -1283,12 +1313,9 @@ prison_unpcb(struct thread *td, struct unpcb *unp)
 static int
 unp_pcblist(SYSCTL_HANDLER_ARGS)
 {
+	struct unp_global_head *head = arg1;
 	int error, i, n;
-	struct unpcb *unp, **unp_list;
-	unp_gen_t gencnt;
-	struct unp_head *head;
-
-	head = ((intptr_t)arg1 == SOCK_DGRAM ? &unp_dhead : &unp_shead);
+	struct unpcb *unp, *marker;
 
 	KKASSERT(curproc != NULL);
 
@@ -1297,7 +1324,7 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * resource-intensive to repeat twice on every request.
 	 */
 	if (req->oldptr == NULL) {
-		n = unp_count;
+		n = head->count;
 		req->oldidx = (n + n/8) * sizeof(struct xunpcb);
 		return 0;
 	}
@@ -1305,61 +1332,72 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	if (req->newptr != NULL)
 		return EPERM;
 
+	marker = kmalloc(sizeof(*marker), M_UNPCB, M_WAITOK | M_ZERO);
+	marker->unp_flags |= UNP_MARKER;
+
 	lwkt_gettoken(&unp_token);
 
-	/*
-	 * OK, now we're committed to doing something.
-	 */
-	gencnt = unp_gencnt;
-	n = unp_count;
-
-	unp_list = kmalloc(n * sizeof *unp_list, M_TEMP, M_WAITOK);
-	
-	for (unp = LIST_FIRST(head), i = 0; unp && i < n;
-	     unp = LIST_NEXT(unp, unp_link)) {
-		if (unp->unp_gencnt <= gencnt && !prison_unpcb(req->td, unp))
-			unp_list[i++] = unp;
-	}
-	n = i;			/* in case we lost some during malloc */
-
+	n = head->count;
+	i = 0;
 	error = 0;
-	for (i = 0; i < n; i++) {
-		unp = unp_list[i];
-		if (unp->unp_gencnt <= gencnt) {
-			struct xunpcb xu;
-			xu.xu_len = sizeof xu;
-			xu.xu_unpp = unp;
-			/*
-			 * XXX - need more locking here to protect against
-			 * connect/disconnect races for SMP.
-			 */
-			if (unp->unp_addr)
-				bcopy(unp->unp_addr, &xu.xu_addr, 
-				      unp->unp_addr->sun_len);
-			if (unp->unp_conn && unp->unp_conn->unp_addr)
-				bcopy(unp->unp_conn->unp_addr,
-				      &xu.xu_caddr,
-				      unp->unp_conn->unp_addr->sun_len);
-			bcopy(unp, &xu.xu_unp, sizeof *unp);
-			sotoxsocket(unp->unp_socket, &xu.xu_socket);
-			error = SYSCTL_OUT(req, &xu, sizeof xu);
-		}
-	}
-	lwkt_reltoken(&unp_token);
-	kfree(unp_list, M_TEMP);
 
+	TAILQ_INSERT_HEAD(&head->list, marker, unp_link);
+	while ((unp = TAILQ_NEXT(marker, unp_link)) != NULL && i < n) {
+		struct xunpcb xu;
+
+		TAILQ_REMOVE(&head->list, marker, unp_link);
+		TAILQ_INSERT_AFTER(&head->list, unp, marker, unp_link);
+
+		if (unp->unp_flags & UNP_MARKER)
+			continue;
+		if (prison_unpcb(req->td, unp))
+			continue;
+
+		xu.xu_len = sizeof(xu);
+		xu.xu_unpp = unp;
+
+		/*
+		 * NOTE:
+		 * unp->unp_addr and unp->unp_conn are protected by
+		 * unp_token.  So if we want to get rid of unp_token
+		 * or reduce the coverage of unp_token, care must be
+		 * taken.
+		 */
+		if (unp->unp_addr) {
+			bcopy(unp->unp_addr, &xu.xu_addr, 
+			      unp->unp_addr->sun_len);
+		}
+		if (unp->unp_conn && unp->unp_conn->unp_addr) {
+			bcopy(unp->unp_conn->unp_addr,
+			      &xu.xu_caddr,
+			      unp->unp_conn->unp_addr->sun_len);
+		}
+		bcopy(unp, &xu.xu_unp, sizeof(*unp));
+		sotoxsocket(unp->unp_socket, &xu.xu_socket);
+
+		/* NOTE: This could block and temporarily release unp_token */
+		error = SYSCTL_OUT(req, &xu, sizeof(xu));
+		if (error)
+			break;
+		++i;
+	}
+	TAILQ_REMOVE(&head->list, marker, unp_link);
+
+	lwkt_reltoken(&unp_token);
+
+	kfree(marker, M_UNPCB);
 	return error;
 }
 
 SYSCTL_PROC(_net_local_dgram, OID_AUTO, pcblist, CTLFLAG_RD, 
-	    (caddr_t)(long)SOCK_DGRAM, 0, unp_pcblist, "S,xunpcb",
+	    &unp_dgram_head, 0, unp_pcblist, "S,xunpcb",
 	    "List of active local datagram sockets");
 SYSCTL_PROC(_net_local_stream, OID_AUTO, pcblist, CTLFLAG_RD, 
-	    (caddr_t)(long)SOCK_STREAM, 0, unp_pcblist, "S,xunpcb",
+	    &unp_stream_head, 0, unp_pcblist, "S,xunpcb",
 	    "List of active local stream sockets");
 SYSCTL_PROC(_net_local_seqpacket, OID_AUTO, pcblist, CTLFLAG_RD, 
-	    (caddr_t)(long)SOCK_SEQPACKET, 0, unp_pcblist, "S,xunpcb",
-	    "List of active local seqpacket stream sockets");
+	    &unp_seqpkt_head, 0, unp_pcblist, "S,xunpcb",
+	    "List of active local seqpacket sockets");
 
 static void
 unp_shutdown(struct unpcb *unp)
@@ -1522,8 +1560,10 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 void
 unp_init(void)
 {
-	LIST_INIT(&unp_dhead);
-	LIST_INIT(&unp_shead);
+	TAILQ_INIT(&unp_stream_head.list);
+	TAILQ_INIT(&unp_dgram_head.list);
+	TAILQ_INIT(&unp_seqpkt_head.list);
+
 	spin_init(&unp_spin, "unpinit");
 
 	SLIST_INIT(&unp_defdiscard_head);
