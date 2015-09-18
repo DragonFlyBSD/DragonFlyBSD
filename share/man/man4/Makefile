@@ -144,6 +144,8 @@ MAN=	aac.4 \
 	it.4 \
 	iwi.4 \
 	iwifw.4 \
+	iwm.4 \
+	iwmfw.4 \
 	iwn.4 \
 	iwnfw.4 \
 	ix.4 \
@@ -453,6 +455,7 @@ MLINKS+=ipfirewall.4 ipaccounting.4 \
 	ipfirewall.4 ipfw.4
 MLINKS+=ipheth.4 if_ipheth.4
 MLINKS+=iwi.4 if_iwi.4
+MLINKS+=iwm.4 if_iwm.4
 MLINKS+=iwn.4 if_iwn.4
 MLINKS+=ix.4 if_ix.4 \
 	ix.4 ixgbe.4 \
