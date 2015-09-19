@@ -751,8 +751,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	/*
 	 * Finish setup now that we have a good root volume.
 	 * vol_name is a filesystem label string.
-	 *
-	 * The top 16 bits of fsid.val[1] is a pfs id.
 	 */
 	ksnprintf(mp->mnt_stat.f_mntfromname,
 		  sizeof(mp->mnt_stat.f_mntfromname), "%s",
@@ -761,7 +759,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		crc32((char *)&rootvol->ondisk->vol_fsid + 0, 8);
 	mp->mnt_stat.f_fsid.val[1] =
 		crc32((char *)&rootvol->ondisk->vol_fsid + 8, 8);
-	mp->mnt_stat.f_fsid.val[1] &= 0x0000FFFF;
+	mp->mnt_stat.f_fsid.val[1] &= HAMMER_LOCALIZE_MASK;
 
 	mp->mnt_vstat.f_fsid_uuid = rootvol->ondisk->vol_fsid;
 	mp->mnt_vstat.f_fsid = crc32(&mp->mnt_vstat.f_fsid_uuid,
