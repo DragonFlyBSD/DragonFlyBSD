@@ -66,9 +66,7 @@ returns a pointer to a lightweight buffer representing
 The
 .Fa lwb
 argument is an lwbuf structure, used to avoid allocation of an lwbuf
-on the x86_64 architecture. The
-.Fa lwb
-argument is unused on the i386 architecture.
+on the x86_64 architecture.
 .Pp
 .Fn lwbuf_free
 frees all resources associated with the lightweight buffer
@@ -96,12 +94,7 @@ It should not be used.
 The implementation of
 .Nm lwbuf
 is CPU-dependent.
-On i386, pages taken from
-per-processor pools of kernel virtual address space (KVA) are used to map
-arbitrary
-.Vt vm_page_t
-objects.
-On x86_64 such tricks are unnecessary, the
+On x86_64 the
 kernel maintains a direct map of KVA covering all physical memory.
 .Pp
 Lightweight buffers are thread and cross-processor safe with a number of

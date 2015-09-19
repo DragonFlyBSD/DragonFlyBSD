@@ -49,10 +49,11 @@ An automatic consistency check of the file systems will be performed,
 and unless this fails, the system will resume multi-user operations.
 .Pp
 .Sy Cold starts .
-Most i386 PCs attempt to boot first from floppy disk drive 0 (sometimes
-known as drive A:) and, failing that, from hard disk drive 0 (sometimes
-known as drive C:, or as drive 0x80 to the BIOS).  Some BIOSes allow
-you to change this default sequence, and may also include a CD-ROM
+Most PCs attempt to boot first from hard disk drive 0 (sometimes
+known as drive C:) and, failing that, from various other mass storage
+devices.
+Usually, BIOSes allow
+you to change this default sequence, and typically also include a CD-ROM
 drive as a boot device.
 .Pp
 By default, a three-stage bootstrap is employed, and control is

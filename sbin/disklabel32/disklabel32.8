@@ -1005,30 +1005,6 @@ for read-only operation.
 .Xr newfs_hammer 8 ,
 .Xr vinum 8
 .Sh BUGS
-For the i386 architecture, the primary bootstrap sector contains
-an embedded
-.Em fdisk
-table.
-The
-.Nm
-utility takes care to not clobber it when installing a bootstrap only
-.Pq Fl B ,
-or when editing an existing label
-.Pq Fl e ,
-but it unconditionally writes the primary bootstrap program onto
-the disk for
-.Fl w
-or
-.Fl R ,
-thus replacing the
-.Em fdisk
-table by the dummy one in the bootstrap program.
-This is only of
-concern if the disk is fully dedicated, so that the
-.Bx
-disklabel
-starts at absolute block 0 on the disk.
-.Pp
 The
 .Nm
 utility

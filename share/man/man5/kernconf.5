@@ -75,17 +75,7 @@ The following keywords are recognized in a configuration file:
 .It Sy cpu Ar name
 This system is to run on the CPU type
 .Ar name .
-Legal types are, for
-.Sy i386 :
-.Sy I486_CPU
-(i486),
-.Sy I586_CPU
-.Tn ( Pentium ) ,
-and
-.Sy I686_CPU
-.Tn ( Pentium Pro ) ;
-for
-.Sy x86_64 :
+Legal types are:
 .Sy HAMMER_CPU
 .Tn ( x86-64 ) .
 More than one CPU type specification can appear in a configuration file.
@@ -137,9 +127,7 @@ This is a legacy keyword, it is normally set to same value as
 .It Sy machine_arch Ar name
 The system is to run on the machine architecture
 .Ar name .
-The legal architectures are
-.Sy i386 ,
-and
+Currently, the only legal architecture is
 .Sy x86_64 .
 .Pp
 .It Sy makeoptions Ar name Ns Sy = Ns Ar value

@@ -163,14 +163,6 @@ operation need to be atomic on the processor performing the operation, but
 the result of the operation needs to be pushed out to stable storage and the
 caches of all other processors on the system need to invalidate any cache
 lines that include the affected memory region.
-On the
-.Tn i386
-architecture, the cache coherency model requires that the hardware perform
-this task, thus the atomic operations are atomic across multiple processors.
-.\"On the
-.\".Tn ia64
-.\"architecture, coherency is only guaranteed for pages that are configured to
-.\"using a caching policy of either uncached or write back.
 .Ss Semantics
 This section describes the semantics of each operation using a C like notation.
 .Bl -hang
@@ -281,15 +273,6 @@ functions are not implemented for the type
 The
 .Fn atomic_store
 functions are only provided with release memory barriers.
-.\".Pp
-.\"The type
-.\".Dq Li 64
-.\"is currently not implemented for any of the atomic operations on the
-.\".Tn arm ,
-.\".Tn i386 ,
-.\"and
-.\".Tn powerpc
-.\"architectures.
 .Sh RETURN VALUES
 The
 .Fn atomic_cmpset

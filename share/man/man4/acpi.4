@@ -325,10 +325,7 @@ driver completely, set the kernel environment variable
 .Va hint.acpi.0.disabled
 to 1.
 .Pp
-Some i386 machines totally fail to operate with some or all of ACPI disabled.
-Other i386 machines fail with ACPI enabled.
-Disabling all or part of ACPI on non-i386 platforms (i.e., platforms where
-ACPI support is mandatory) may result in a non-functional system.
+Disabling all or part of ACPI may result in a non-functional system.
 .Pp
 The
 .Nm
@@ -621,8 +618,6 @@ In order to prepare your AML code, you will need the
 and
 .Xr iasl 8
 utilities and some ACPI knowledge.
-.\".Sh COMPATIBILITY
-.\"ACPI is only found and supported on i386 and x86_64.
 .Sh SEE ALSO
 .Xr kenv 1 ,
 .Xr acpi_asus 4 ,
