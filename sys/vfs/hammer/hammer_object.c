@@ -1828,7 +1828,7 @@ again:
 				}
 				/* fall through to memory entry */
 			} else {
-				hpanic("duplicate mem/b-tree entry %p %d %08x",
+				hpanic("duplicate mem/B-Tree entry %p %d %08x",
 					cursor->iprec,
 					cursor->iprec->type,
 					cursor->iprec->flags);
@@ -1853,7 +1853,7 @@ again:
 		 */
 		if (cursor->iprec->type == HAMMER_MEM_RECORD_DEL &&
 		    (cursor->flags & HAMMER_CURSOR_DELETE_VISIBILITY) == 0) {
-			hpanic("del-on-disk with no b-tree entry iprec %p flags %08x",
+			hpanic("del-on-disk with no B-Tree entry iprec %p flags %08x",
 				cursor->iprec,
 				cursor->iprec->flags);
 		}

@@ -661,9 +661,9 @@ By default prune, dedup and rebalance operations are time limited to 5 minutes,
 and reblock operations to a bit over 5 minutes,
 and recopy operations to a bit over 10 minutes.
 Reblocking and recopy runs are each broken down into four separate functions:
-btree, inodes, dirs and data.
+B-Tree, inodes, dirs and data.
 Each function is time limited to the time given in the configuration file,
-but the btree, inodes and dirs functions usually does not take very long time,
+but the B-Tree, inodes and dirs functions usually does not take very long time,
 full defragmentation is always used for these three functions.
 Also note that this directive will by default disable snapshots on
 the following PFS's:

@@ -99,10 +99,10 @@ hammer_cmd_rebalance(char **av, int ac)
 	RunningIoctl = 0;
 	close(fd);
 	printf("Rebalance:\n"
-	       "    %jd btree nodes scanned\n"
-	       "    %jd btree nodes deleted\n"
+	       "    %jd B-Tree nodes scanned\n"
+	       "    %jd B-Tree nodes deleted\n"
 	       "    %jd collision retries\n"
-	       "    %jd btree nodes rebalanced\n",
+	       "    %jd B-Tree nodes rebalanced\n",
 	       (intmax_t)rebal.stat_ncount,
 	       (intmax_t)rebal.stat_deletions,
 	       (intmax_t)rebal.stat_collisions,

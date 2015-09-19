@@ -215,7 +215,7 @@ hammer_cmd_dedup_simulate(char **av, int ac)
 		MemoryUse = 0;
 
 		if (VerboseOpt) {
-			printf("b-tree pass  crc-range %08x-max\n",
+			printf("B-Tree pass  crc-range %08x-max\n",
 				DedupCrcStart);
 			fflush(stdout);
 		}
@@ -303,7 +303,7 @@ hammer_cmd_dedup(char **av, int ac)
 		MemoryUse = 0;
 
 		if (VerboseOpt) {
-			printf("b-tree pass  crc-range %08x-max\n",
+			printf("B-Tree pass  crc-range %08x-max\n",
 				DedupCrcStart);
 			fflush(stdout);
 		}

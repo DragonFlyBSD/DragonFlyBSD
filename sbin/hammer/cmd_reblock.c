@@ -128,8 +128,8 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	RunningIoctl = 0;
 	close(fd);
 	printf("Reblocked:\n"
-	       "    %jd/%jd btree nodes\n"
-	       "    %jd/%jd btree bytes\n"
+	       "    %jd/%jd B-Tree nodes\n"
+	       "    %jd/%jd B-Tree bytes\n"
 	       "    %jd/%jd data elements\n"
 	       "    %jd/%jd data bytes\n",
 	       (intmax_t)reblock.btree_moves, (intmax_t)reblock.btree_count,
