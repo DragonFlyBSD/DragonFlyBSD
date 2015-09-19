@@ -599,7 +599,7 @@ struct hammer_volume_ondisk {
 
 	uuid_t    vol_fsid;	/* identify filesystem */
 	uuid_t    vol_fstype;	/* identify filesystem type */
-	char	  vol_name[64];	/* Name of volume */
+	char	  vol_name[64];	/* filesystem label */
 
 	int32_t vol_no;		/* volume number within filesystem */
 	int32_t vol_count;	/* number of volumes making up FS */

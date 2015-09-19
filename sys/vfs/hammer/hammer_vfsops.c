@@ -750,6 +750,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	/*
 	 * Finish setup now that we have a good root volume.
+	 * vol_name is a filesystem label string.
 	 *
 	 * The top 16 bits of fsid.val[1] is a pfs id.
 	 */
