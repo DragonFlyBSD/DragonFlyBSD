@@ -48,7 +48,6 @@ static void usage(void);
 
 static int ForceOpt = 0;
 static int HammerVersion = -1;
-static int Eflag = 0;
 
 #define GIG	(1024LL*1024*1024)
 
@@ -60,6 +59,7 @@ main(int ac, char **av)
 	off_t avg_vol_size;
 	int ch;
 	int i;
+	int eflag = 0;
 	const char *label = NULL;
 	struct volume_info *vol;
 	char *fsidstr;
@@ -91,7 +91,7 @@ main(int ac, char **av)
 			ForceOpt = 1;
 			break;
 		case 'E':
-			Eflag = 1;
+			eflag = 1;
 			break;
 		case 'L':
 			label = optarg;
@@ -201,7 +201,7 @@ main(int ac, char **av)
 			vol->vol_no, vol->type, vol->name,
 			sizetostr(vol->size));
 
-		if (Eflag) {
+		if (eflag) {
 			if (strcmp(vol->type, "REGFILE") == 0) {
 				fprintf(stderr, "Cannot TRIM regular file %s\n",
 					vol->name);
