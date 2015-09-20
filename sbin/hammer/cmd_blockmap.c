@@ -315,6 +315,7 @@ check_btree_node(hammer_off_t node_offset, int depth)
 			badc, badm, (uintmax_t)node_offset);
 		if (node == NULL) {
 			printf("(IO ERROR)\n");
+			rel_buffer(buffer);
 			return;
 		} else {
 			printf("cnt=%02d p=%016jx type=%c depth=%d mirror=%016jx\n",

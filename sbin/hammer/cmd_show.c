@@ -193,6 +193,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	printf("%c%c   NODE %016jx ", badc, badm, (uintmax_t)node_offset);
 	if (node == NULL) {
 		printf("(IO ERROR)\n");
+		rel_buffer(buffer);
 		return;
 	}
 
