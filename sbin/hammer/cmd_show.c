@@ -244,15 +244,13 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	}
 	printf("     }\n");
 
-	for (i = 0; i < node->count; ++i) {
-		elm = &node->elms[i];
-
-		switch(node->type) {
-		case HAMMER_BTREE_TYPE_INTERNAL:
+	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
+		for (i = 0; i < node->count; ++i) {
+			elm = &node->elms[i];
 			if (search && search->filter) {
 				if (test_btree_search(elm, search) > 0 ||
 				    test_btree_search(elm + 1, search) < 0)
-					break;
+					continue;
 			}
 			if (elm->internal.subtree_offset) {
 				print_btree_node(elm->internal.subtree_offset,
@@ -268,9 +266,6 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 				if (search && search->filter == -1)  /* default */
 					search->filter = 0;
 			}
-			break;
-		default:
-			break;
 		}
 	}
 	rel_buffer(buffer);
