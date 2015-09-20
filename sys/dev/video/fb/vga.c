@@ -1411,7 +1411,6 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
 {
     video_info_t info;
     u_char *buf;
-    int crtc_addr;
     int i, j;
 
     if (size == 0) {
@@ -1426,7 +1425,6 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
     ((adp_state_t *)p)->sig = V_STATE_SIG;
     buf = ((adp_state_t *)p)->regs;
     bzero(buf, V_MODE_PARAM_SIZE);
-    crtc_addr = CRTC;
 
     crit_enter();
 
@@ -1439,11 +1437,11 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
     outb(TSIDX, 0x00); outb(TSREG, 0x03);	/* start sequencer */
 
     for (i = 0, j = 10; i < 25; i++) {		/* crtc */
-	outb(crtc_addr, i);
-	buf[j++]  =  inb(crtc_addr + 1);
+	outb(CRTC, i);
+	buf[j++]  =  inb(CRTC + 1);
     }
     for (i = 0, j = 35; i < 20; i++) {		/* attribute ctrl */
-        inb(crtc_addr + 6);			/* reset flip-flop */
+        inb(CRTC + 6);				/* reset flip-flop */
 	outb(ATC, i);
 	buf[j++]  =  inb(ATC + 1);
     }
@@ -1451,7 +1449,7 @@ vga_save_state(video_adapter_t *adp, void *p, size_t size)
 	outb(GDCIDX, i);
 	buf[j++]  =  inb(GDCREG);
     }
-    inb(crtc_addr + 6);				/* reset flip-flop */
+    inb(CRTC + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
 
     crit_exit();
@@ -1492,7 +1490,6 @@ static int
 vga_load_state(video_adapter_t *adp, void *p)
 {
     u_char *buf;
-    int crtc_addr;
     int i;
 
     prologue(adp, V_ADP_STATELOAD, ENODEV);
@@ -1500,7 +1497,6 @@ vga_load_state(video_adapter_t *adp, void *p)
 	return EINVAL;
 
     buf = ((adp_state_t *)p)->regs;
-    crtc_addr = CRTC;
 
 #if VGA_DEBUG > 1
     hexdump(buf, V_MODE_PARAM_SIZE, NULL, HD_OMIT_CHARS | HD_OMIT_COUNT);
@@ -1515,13 +1511,13 @@ vga_load_state(video_adapter_t *adp, void *p)
     }
     outb(MISC, buf[9]);				/* set dot-clock */
     outb(TSIDX, 0x00); outb(TSREG, 0x03);	/* start sequencer */
-    outb(crtc_addr, 0x11);
-    outb(crtc_addr + 1, inb(crtc_addr + 1) & 0x7F);
+    outb(CRTC, 0x11);
+    outb(CRTC + 1, inb(CRTC + 1) & 0x7F);
     for (i = 0; i < 25; ++i) {			/* program crtc */
-	outb(crtc_addr, i);
-	outb(crtc_addr + 1, buf[i + 10]);
+	outb(CRTC, i);
+	outb(CRTC + 1, buf[i + 10]);
     }
-    inb(crtc_addr+6);				/* reset flip-flop */
+    inb(CRTC + 6);				/* reset flip-flop */
     for (i = 0; i < 20; ++i) {			/* program attribute ctrl */
 	outb(ATC, i);
 	outb(ATC, buf[i + 35]);
@@ -1530,7 +1526,7 @@ vga_load_state(video_adapter_t *adp, void *p)
 	outb(GDCIDX, i);
 	outb(GDCREG, buf[i + 55]);
     }
-    inb(crtc_addr + 6);				/* reset flip-flop */
+    inb(CRTC + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
 
 #if 0 /* XXX a temporary workaround for kernel panic */
