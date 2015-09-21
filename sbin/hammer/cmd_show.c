@@ -76,6 +76,8 @@ static void print_bigblock_fill(hammer_off_t offset);
 static int init_btree_search(const char *arg, int filter,
 			btree_search_t search);
 static int test_btree_search(hammer_btree_elm_t elm, btree_search_t search);
+static int test_btree_match(hammer_btree_elm_t elm, btree_search_t search);
+static int test_btree_out_of_range(hammer_btree_elm_t elm, btree_search_t search);
 
 static int num_bad_node = 0;
 static int num_bad_elm = 0;
@@ -216,20 +218,20 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 
 	for (i = 0; i < node->count; ++i) {
 		elm = &node->elms[i];
+		ext = NULL;
 
-		if (node->type != HAMMER_BTREE_TYPE_INTERNAL) {
-			ext = NULL;
-			if (search && test_btree_search(elm, search) == 0)
-				ext = " *";
-		} else if (search) {
-			ext = " *";
-			if (test_btree_search(elm, search) > 0 ||
-			    test_btree_search(elm + 1, search) < 0)
-				ext = NULL;
-		} else {
-			ext = NULL;
+		if (search) {
+			switch (node->type) {
+			case HAMMER_BTREE_TYPE_INTERNAL:
+				if (!test_btree_out_of_range(elm, search))
+					ext = " *";
+				break;
+			case HAMMER_BTREE_TYPE_LEAF:
+				if (test_btree_match(elm, search))
+					ext = " *";
+				break;
+			}
 		}
-
 		flags = get_elm_flags(node, node_offset, elm, i,
 					left_bound, right_bound);
 		print_btree_elm(elm, i, node->type, flags, "ELM", ext, stats);
@@ -248,8 +250,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		for (i = 0; i < node->count; ++i) {
 			elm = &node->elms[i];
 			if (search && search->filter) {
-				if (test_btree_search(elm, search) > 0 ||
-				    test_btree_search(elm + 1, search) < 0)
+				if (test_btree_out_of_range(elm, search))
 					continue;
 			}
 			if (elm->internal.subtree_offset) {
@@ -855,6 +856,26 @@ test_btree_search(hammer_btree_elm_t elm, btree_search_t search)
 		return(-5);
 	if (base->create_tid > search->create_tid)
 		return(5);
+	return(0);
+}
+
+static __inline
+int
+test_btree_match(hammer_btree_elm_t elm, btree_search_t search)
+{
+	if (test_btree_search(elm, search) == 0)
+		return(1);
+	return(0);
+}
+
+static __inline
+int
+test_btree_out_of_range(hammer_btree_elm_t elm, btree_search_t search)
+{
+	if (test_btree_search(elm, search) > 0)
+		return(1);  /* search < this elm */
+	if (test_btree_search(elm + 1, search) < 0)
+		return(1);  /* next elm < search */
 	return(0);
 }
 
