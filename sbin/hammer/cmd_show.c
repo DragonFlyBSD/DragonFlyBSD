@@ -43,11 +43,7 @@
 #define FLAG_BADMIRRORTID	0x0010
 
 typedef struct btree_search {
-	u_int32_t	lo;
-	int64_t		obj_id;
-	u_int16_t	rec_type;
-	int64_t		key;
-	hammer_tid_t	create_tid;
+	struct hammer_base_elm base;
 	int		limit;   /* # of fields to test */
 	int		filter;  /* filter type (default -1) */
 } *btree_search_t;
@@ -89,7 +85,6 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 {
 	struct volume_info *volume;
 	struct btree_search search;
-	btree_search_t searchp = NULL;
 	struct zone_stat *stats = NULL;
 	int zone;
 
@@ -118,22 +113,22 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	}
 
 	printf("show %016jx", (uintmax_t)node_offset);
+	init_btree_search(arg, filter, &search);
 	if (arg) {
-		assert(init_btree_search(arg, filter, &search) != -1);
 		if (search.limit >= 1)
 			printf(" lo %08x obj_id %016jx",
-				search.lo, (uintmax_t)search.obj_id);
+				search.base.localization,
+				(uintmax_t)search.base.obj_id);
 		if (search.limit >= 3)
-			printf(" rec_type %02x", search.rec_type);
+			printf(" rec_type %02x", search.base.rec_type);
 		if (search.limit >= 4)
-			printf(" key %016jx", (uintmax_t)search.key);
+			printf(" key %016jx", (uintmax_t)search.base.key);
 		if (search.limit == 5)
 			printf(" create_tid %016jx\n",
-				(uintmax_t)search.create_tid);
-		searchp = &search;
+				(uintmax_t)search.base.create_tid);
 	}
 	printf(" depth %d\n", depth);
-	print_btree_node(node_offset, searchp, depth, HAMMER_MAX_TID,
+	print_btree_node(node_offset, &search, depth, HAMMER_MAX_TID,
 			 left_bound, right_bound, stats);
 
 	AssertOnFailure = 1;
@@ -220,7 +215,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		elm = &node->elms[i];
 		ext = NULL;
 
-		if (search) {
+		if (search->limit) {
 			switch (node->type) {
 			case HAMMER_BTREE_TYPE_INTERNAL:
 				if (!test_btree_out_of_range(elm, search))
@@ -249,7 +244,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		for (i = 0; i < node->count; ++i) {
 			elm = &node->elms[i];
-			if (search && search->filter) {
+			if (search->limit && search->filter) {
 				if (test_btree_out_of_range(elm, search))
 					continue;
 			}
@@ -264,7 +259,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 				 * seeking to the lo:objid:rectype:key:tid
 				 * by default
 				 */
-				if (search && search->filter == -1)  /* default */
+				if (search->limit && search->filter == -1)  /* default */
 					search->filter = 0;
 			}
 		}
@@ -779,13 +774,16 @@ init_btree_search(const char *arg, int filter, btree_search_t search)
 	char *s, *p;
 	int i = 0;
 
-	search->lo = 0;
-	search->obj_id = (int64_t)HAMMER_MIN_OBJID;
-	search->rec_type = HAMMER_RECTYPE_LOWEST;
-	search->key = 0;
-	search->create_tid = 0;
+	search->base.localization = 0;
+	search->base.obj_id = (int64_t)HAMMER_MIN_OBJID;
+	search->base.rec_type = HAMMER_RECTYPE_LOWEST;
+	search->base.key = 0;
+	search->base.create_tid = 0;
 	search->limit = 0;
 	search->filter = filter;
+
+	if (arg == NULL)
+		return(-1);
 
 	s = strdup(arg);
 	if (s == NULL)
@@ -795,66 +793,68 @@ init_btree_search(const char *arg, int filter, btree_search_t search)
 		if ((s = strchr(s, ':')) != NULL)
 			*s++ = 0;
 		if (++i == 1) {
-			search->lo = _strtoul(p, 16);
+			search->base.localization = _strtoul(p, 16);
 		} else if (i == 2) {
-			search->obj_id = _strtoull(p, 16);
+			search->base.obj_id = _strtoull(p, 16);
 		} else if (i == 3) {
-			search->rec_type = _strtoul(p, 16);
+			search->base.rec_type = _strtoul(p, 16);
 		} else if (i == 4) {
-			search->key = _strtoull(p, 16);
+			search->base.key = _strtoull(p, 16);
 		} else if (i == 5) {
-			search->create_tid = _strtoull(p, 16);
+			search->base.create_tid = _strtoull(p, 16);
 			break;
 		}
 	}
 	search->limit = i;
 	free(s);
+
 	return(i);
 }
 
 static int
 test_btree_search(hammer_btree_elm_t elm, btree_search_t search)
 {
-	hammer_base_elm_t base = &elm->base;
+	hammer_base_elm_t base1 = &elm->base;
+	hammer_base_elm_t base2 = &search->base;
 	assert(search);
 
-	if (base->localization < search->lo)
+	if (base1->localization < base2->localization)
 		return(-1);
-	if (base->localization > search->lo)
+	if (base1->localization > base2->localization)
 		return(1);
 	/* fall through */
 
-	if (base->obj_id < search->obj_id)
+	if (base1->obj_id < base2->obj_id)
 		return(-2);
-	if (base->obj_id > search->obj_id)
+	if (base1->obj_id > base2->obj_id)
 		return(2);
 	if (search->limit == 2)
 		return(0);  /* ignore below */
 
-	if (base->rec_type < search->rec_type)
+	if (base1->rec_type < base2->rec_type)
 		return(-3);
-	if (base->rec_type > search->rec_type)
+	if (base1->rec_type > base2->rec_type)
 		return(3);
 	if (search->limit == 3)
 		return(0);  /* ignore below */
 
-	if (base->key < search->key)
+	if (base1->key < base2->key)
 		return(-4);
-	if (base->key > search->key)
+	if (base1->key > base2->key)
 		return(4);
 	if (search->limit == 4)
 		return(0);  /* ignore below */
 
-	if (base->create_tid == 0) {
-		if (search->create_tid == 0)
+	if (base1->create_tid == 0) {
+		if (base2->create_tid == 0)
 			return(0);
 		return(5);
 	}
-	if (search->create_tid == 0)
+	if (base2->create_tid == 0)
 		return(-5);
-	if (base->create_tid < search->create_tid)
+	if (base1->create_tid < base2->create_tid)
 		return(-5);
-	if (base->create_tid > search->create_tid)
+	if (base1->create_tid > base2->create_tid)
 		return(5);
 	return(0);
 }
