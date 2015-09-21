@@ -868,14 +868,20 @@ test_btree_match(hammer_btree_elm_t elm, btree_search_t search)
 	return(0);
 }
 
-static __inline
+static
 int
 test_btree_out_of_range(hammer_btree_elm_t elm, btree_search_t search)
 {
 	if (test_btree_search(elm, search) > 0)
 		return(1);  /* search < this elm */
-	if (test_btree_search(elm + 1, search) < 0)
-		return(1);  /* next elm < search */
+
+	if (search->limit >= 5) {
+		if (test_btree_search(elm + 1, search) <= 0)
+			return(1);  /* next elm <= search */
+	} else {
+		if (test_btree_search(elm + 1, search) < 0)
+			return(1);  /* next elm < search */
+	}
 	return(0);
 }
 
