@@ -515,6 +515,8 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	symtabindex = -1;
 	symstrindex = -1;
 	for (i = 0; i < hdr->e_shnum; i++) {
+		if (shdr[i].sh_size == 0)
+			continue;
 		switch (shdr[i].sh_type) {
 		case SHT_PROGBITS:
 		case SHT_NOBITS:
@@ -617,12 +619,12 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	/* Size up code/data(progbits) and bss(nobits). */
 	alignmask = 0;
 	for (i = 0; i < hdr->e_shnum; i++) {
+		if (shdr[i].sh_size == 0)
+			continue;
 		switch (shdr[i].sh_type) {
 		case SHT_PROGBITS:
 		case SHT_NOBITS:
 			alignmask = shdr[i].sh_addralign - 1;
-			if (alignmask == -1)
-                                alignmask = 0;
 			mapsize += alignmask;
 			mapsize &= ~alignmask;
 			mapsize += shdr[i].sh_size;
@@ -691,12 +693,12 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	ra = 0;
 	alignmask = 0;
 	for (i = 0; i < hdr->e_shnum; i++) {
+		if (shdr[i].sh_size == 0)
+			continue;
 		switch (shdr[i].sh_type) {
 		case SHT_PROGBITS:
 		case SHT_NOBITS:
 			alignmask = shdr[i].sh_addralign - 1;
-			if (alignmask == -1)
-                                alignmask = 0;
 			mapbase += alignmask;
 			mapbase &= ~alignmask;
 			if (ef->shstrtab && shdr[i].sh_name != 0)
