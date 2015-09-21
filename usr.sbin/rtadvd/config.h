@@ -1,9 +1,10 @@
-/*	$KAME: config.h,v 1.3 2000/05/16 13:34:13 itojun Exp $	*/
+/*	$FreeBSD: stable/10/usr.sbin/rtadvd/config.h 224144 2011-07-17 19:24:54Z hrs $	*/
+/*	$KAME: config.h,v 1.8 2003/06/17 08:26:22 itojun Exp $	*/
 
 /*
  * Copyright (C) 1995, 1996, 1997, 1998, and 1999 WIDE Project.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +16,7 @@
  * 3. Neither the name of the project nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,14 +28,26 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/usr.sbin/rtadvd/config.h,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/config.h,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
-extern void getconfig(char *);
+extern struct ifinfo *getconfig(struct ifinfo *);
+extern int rm_ifinfo(struct ifinfo *);
+extern int rm_ifinfo_index(int);
+extern int rm_rainfo(struct rainfo *);
+extern int loadconfig_ifname(char *);
+extern int loadconfig_index(int);
 extern void delete_prefix(struct prefix *);
 extern void invalidate_prefix(struct prefix *);
 extern void update_prefix(struct prefix *);
 extern void make_prefix(struct rainfo *, int, struct in6_addr *, int);
 extern void make_packet(struct rainfo *);
+extern void get_prefix(struct rainfo *);
+
+/*
+ * it is highly unlikely to have 100 prefix information options,
+ * so it should be okay to limit it
+ */
+#define MAXPREFIX	100
+#define MAXROUTE	100
+#define MAXRDNSSENT	100
+#define MAXDNSSLENT	100

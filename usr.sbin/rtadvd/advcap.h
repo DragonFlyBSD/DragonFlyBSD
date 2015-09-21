@@ -1,4 +1,5 @@
-/*	$KAME: advcap.h,v 1.3 2001/02/01 09:12:08 jinmei Exp $	*/
+/*	$FreeBSD: stable/10/usr.sbin/rtadvd/advcap.h 173412 2007-11-07 10:53:41Z kevlo $	*/
+/*	$KAME: advcap.h,v 1.5 2003/06/09 05:40:54 t-momose Exp $	*/
 
 /*
  * Copyright (C) 1994,1995 by Andrey A. Chernov, Moscow, Russia.
@@ -24,9 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/usr.sbin/rtadvd/advcap.h,v 1.1.2.2 2001/07/03 11:02:14 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/advcap.h,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 /* Based on Id: termcap.h,v 1.8 1996/09/10 12:42:10 peter Exp */
@@ -40,7 +38,7 @@ __BEGIN_DECLS
 
 extern int agetent(char *, const char *);
 extern int agetflag(const char *);
-extern long long agetnum(const char *);
+extern int64_t agetnum(const char *);
 extern char *agetstr(const char *, char **);
 
 __END_DECLS

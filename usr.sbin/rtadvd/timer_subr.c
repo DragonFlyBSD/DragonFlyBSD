@@ -1,5 +1,5 @@
-/*	$FreeBSD: stable/10/usr.sbin/rtadvd/rrenum.h 222732 2011-06-06 03:06:43Z hrs $	*/
-/*	$KAME: rrenum.h,v 1.3 2001/01/21 15:37:14 itojun Exp $	*/
+/*	$FreeBSD: stable/10/usr.sbin/rtadvd/timer_subr.c 253970 2013-08-05 20:13:02Z hrs $	*/
+/*	$KAME: timer.c,v 1.9 2002/06/10 19:59:47 itojun Exp $	*/
 
 /*
  * Copyright (C) 1998 WIDE Project.
@@ -30,5 +30,62 @@
  * SUCH DAMAGE.
  */
 
-void rr_input(int, struct icmp6_router_renum *, struct in6_pktinfo *,
-	struct sockaddr_in6 *, struct in6_addr *);
+#include <sys/queue.h>
+#include <sys/socket.h>
+#include <syslog.h>
+#include <stdio.h>
+#include <inttypes.h>
+#include <time.h>
+
+#include "timer.h"
+#include "timer_subr.h"
+
+struct timespec *
+rtadvd_timer_rest(struct rtadvd_timer *rat)
+{
+	static struct timespec returnval, now;
+
+	clock_gettime(CLOCK_MONOTONIC_FAST, &now);
+	if (TS_CMP(&rat->rat_tm, &now, <=)) {
+		syslog(LOG_DEBUG,
+		    "<%s> a timer must be expired, but not yet",
+		    __func__);
+		returnval.tv_sec = returnval.tv_nsec = 0;
+	}
+	else
+		TS_SUB(&rat->rat_tm, &now, &returnval);
+
+	return (&returnval);
+}
+
+char *
+sec2str(uint32_t s, char *buf)
+{
+	uint32_t day;
+	uint32_t hour;
+	uint32_t min;
+	uint32_t sec;
+	char *p;
+
+	min = s / 60;
+	sec = s % 60;
+
+	hour = min / 60;
+	min = min % 60;
+
+	day = hour / 24;
+	hour = hour % 24;
+
+	p = buf;
+	if (day > 0)
+		p += sprintf(p, "%" PRIu32 "d", day);
+	if (hour > 0)
+		p += sprintf(p, "%" PRIu32 "h", hour);
+	if (min > 0)
+		p += sprintf(p, "%" PRIu32 "m", min);
+
+	if ((p == buf) || (sec > 0 && p > buf))
+		sprintf(p, "%" PRIu32 "s", sec);
+
+	return (buf);
+}

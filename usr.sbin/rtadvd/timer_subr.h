@@ -1,5 +1,5 @@
-/*	$FreeBSD: stable/10/usr.sbin/rtadvd/rrenum.h 222732 2011-06-06 03:06:43Z hrs $	*/
-/*	$KAME: rrenum.h,v 1.3 2001/01/21 15:37:14 itojun Exp $	*/
+/*	$FreeBSD: stable/10/usr.sbin/rtadvd/timer_subr.h 253970 2013-08-05 20:13:02Z hrs $	*/
+/*	$KAME: timer.h,v 1.5 2002/05/31 13:30:38 jinmei Exp $	*/
 
 /*
  * Copyright (C) 1998 WIDE Project.
@@ -30,5 +30,30 @@
  * SUCH DAMAGE.
  */
 
-void rr_input(int, struct icmp6_router_renum *, struct in6_pktinfo *,
-	struct sockaddr_in6 *, struct in6_addr *);
+#define	SSBUFLEN	1024
+
+#define TS_CMP(tsp, usp, cmp)						\
+	(((tsp)->tv_sec == (usp)->tv_sec) ?				\
+	    ((tsp)->tv_nsec cmp (usp)->tv_nsec) :			\
+	    ((tsp)->tv_sec cmp (usp)->tv_sec))
+#define TS_ADD(tsp, usp, vsp)						\
+	do {								\
+		(vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec;		\
+		(vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec;	\
+		if ((vsp)->tv_nsec >= 1000000000L) {			\
+			(vsp)->tv_sec++;				\
+			(vsp)->tv_nsec -= 1000000000L;			\
+		}							\
+	} while (0)
+#define TS_SUB(tsp, usp, vsp)						\
+	do {								\
+		(vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;		\
+		(vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;	\
+		if ((vsp)->tv_nsec < 0) {				\
+			(vsp)->tv_sec--;				\
+			(vsp)->tv_nsec += 1000000000L;			\
+		}							\
+	} while (0)
+
+struct timespec *rtadvd_timer_rest(struct rtadvd_timer *);
+char		*sec2str(uint32_t, char *buf);

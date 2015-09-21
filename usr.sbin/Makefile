@@ -104,6 +104,7 @@ SUBDIR= 802_11 \
 	rpcbind \
 	rrenumd \
 	rtadvd \
+	rtadvctl \
 	rtprio \
 	rtsold \
 	rwhod \

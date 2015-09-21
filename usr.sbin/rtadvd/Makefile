@@ -11,14 +11,19 @@
 # AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, WITHOUT
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
-# $FreeBSD: src/usr.sbin/rtadvd/Makefile,v 1.1.2.2 2001/04/25 12:10:48 ru Exp $
+#
+# $FreeBSD: stable/10/usr.sbin/rtadvd/Makefile 224144 2011-07-17 19:24:54Z hrs $
 
 PROG=	rtadvd
-SRCS=	rtadvd.c rrenum.c advcap.c if.c config.c timer.c dump.c
-WARNS?=	2
-
-CFLAGS+=-DINET6
-
 MAN=	rtadvd.conf.5 rtadvd.8
+SRCS=	rtadvd.c rrenum.c advcap.c if.c config.c timer.c timer_subr.c	\
+	control.c control_server.c
+
+DPADD=	${LIBUTIL}
+LDADD=	-lutil
+
+CFLAGS+= -DHAVE_ARC4RANDOM
+
+WARNS?=	1
 
 .include <bsd.prog.mk>

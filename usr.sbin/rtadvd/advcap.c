@@ -1,4 +1,5 @@
-/*	$KAME: advcap.c,v 1.5 2001/02/01 09:12:08 jinmei Exp $	*/
+/*	$FreeBSD: stable/10/usr.sbin/rtadvd/advcap.c 222824 2011-06-07 15:40:17Z hrs $	*/
+/*	$KAME: advcap.c,v 1.11 2003/05/19 09:46:50 keiichi Exp $	*/
 
 /*
  * Copyright (c) 1983 The Regents of the University of California.
@@ -12,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -27,9 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/usr.sbin/rtadvd/advcap.c,v 1.1.2.2 2001/07/03 11:02:13 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/advcap.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
  */
 
 /*
@@ -66,8 +64,6 @@
 #define V_TERM		"HOST"
 #endif
 
-char	*RM;
-
 /*
  * termcap - routines for dealing with the terminal capability data base
  *
@@ -85,16 +81,14 @@ char	*RM;
 static	char *tbuf;
 static	int hopcount;	/* detect infinite loops in termcap, init 0 */
 
-static	char *remotefile;
-
-extern char *conffile;
+extern const char *conffile;
 
 int tgetent(char *, char *);
-int getent(char *, char *, char *);
+int getent(char *, char *, const char *);
 int tnchktc(void);
 int tnamatch(char *);
 static char *tskip(char *);
-long long tgetnum(char *);
+int64_t tgetnum(char *);
 int tgetflag(char *);
 char *tgetstr(char *, char **);
 static char *tdecode(char *, char **);
@@ -107,18 +101,16 @@ static char *tdecode(char *, char **);
 int
 tgetent(char *bp, char *name)
 {
-	char *cp;
-
-	remotefile = cp = conffile ? conffile : _PATH_RTADVDCONF;
-	return (getent(bp, name, cp));
+	return (getent(bp, name, conffile));
 }
 
 int
-getent(char *bp, char *name, char *cp)
+getent(char *bp, char *name, const char *cfile)
 {
 	int c;
 	int i = 0, cnt = 0;
 	char ibuf[BUFSIZ];
+	char *cp;
 	int tf;
 
 	tbuf = bp;
@@ -130,9 +122,9 @@ getent(char *bp, char *name, char *cp)
 	 * use so we don't have to read the file. In this case it
 	 * has to already have the newlines crunched out.
 	 */
-	if (cp && *cp) {
-		tf = open(RM = cp, O_RDONLY);
-	}
+	if (cfile && *cfile)
+		tf = open(cfile, O_RDONLY);
+
 	if (tf < 0) {
 		syslog(LOG_INFO,
 		       "<%s> open: %s", __func__, strerror(errno));
@@ -157,8 +149,9 @@ getent(char *bp, char *name, char *cp)
 				}
 				break;
 			}
-			if (cp >= bp+BUFSIZ) {
-				write(2,"Remcap entry too long\n", 23);
+			if (cp >= bp + BUFSIZ) {
+				write(STDERR_FILENO, "Remcap entry too long\n",
+				      23);
 				break;
 			} else
 				*cp++ = c;
@@ -193,31 +186,31 @@ tnchktc(void)
 
 	p = tbuf + strlen(tbuf) - 2;	/* before the last colon */
 	while (*--p != ':')
-		if (p<tbuf) {
-			write(2, "Bad remcap entry\n", 18);
+		if (p < tbuf) {
+			write(STDERR_FILENO, "Bad remcap entry\n", 18);
 			return (0);
 		}
 	p++;
 	/* p now points to beginning of last field */
 	if (p[0] != 't' || p[1] != 'c')
 		return (1);
-	strcpy(tcname, p+3);
+	strlcpy(tcname, p + 3, sizeof tcname);
 	q = tcname;
 	while (*q && *q != ':')
 		q++;
 	*q = 0;
 	if (++hopcount > MAXHOP) {
-		write(2, "Infinite tc= loop\n", 18);
+		write(STDERR_FILENO, "Infinite tc= loop\n", 18);
 		return (0);
 	}
-	if (getent(tcbuf, tcname, remotefile) != 1) {
+	if (getent(tcbuf, tcname, conffile) != 1) {
 		return (0);
 	}
 	for (q = tcbuf; *q++ != ':'; )
 		;
 	l = p - holdtbuf + strlen(q);
 	if (l > BUFSIZ) {
-		write(2, "Remcap entry too long\n", 23);
+		write(STDERR_FILENO, "Remcap entry too long\n", 23);
 		q[BUFSIZ - (p-holdtbuf)] = 0;
 	}
 	strcpy(p, q);
@@ -301,10 +294,10 @@ breakbreak:
  * a # character.  If the option is not found we return -1.
  * Note that we handle octal numbers beginning with 0.
  */
-long long
+int64_t
 tgetnum(char *id)
 {
-	long long i;
+	int64_t i;
 	int base;
 	char *bp = tbuf;
 
@@ -385,7 +378,7 @@ tgetstr(char *id, char **area)
 }
 
 /*
- * Tdecode does the grunt work to decode the
+ * Tdecode does the grung work to decode the
  * string capability escapes.
  */
 static char *
@@ -393,7 +386,7 @@ tdecode(char *str, char **area)
 {
 	char *cp;
 	int c;
-	char *dp;
+	const char *dp;
 	int i;
 	char term;
 
