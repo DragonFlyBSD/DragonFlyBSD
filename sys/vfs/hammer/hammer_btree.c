@@ -1570,7 +1570,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * reference to the original node, and reference the new node.
 	 * The separator is P.
 	 *
-	 * Remember that base.count does not include the right-hand boundary.
+	 * Remember that ondisk->count does not include the right-hand boundary.
 	 */
 	hammer_modify_node_all(cursor->trans, parent);
 	ondisk = parent->ondisk;
@@ -1822,7 +1822,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * reference to the original node, and reference the new node.
 	 * The separator is P.
 	 *
-	 * Remember that base.count does not include the right-hand boundary.
+	 * Remember that ondisk->count does not include the right-hand boundary.
 	 * We are copying parent_index+1 to parent_index+2, not +0 to +1.
 	 */
 	hammer_modify_node_all(cursor->trans, parent);
