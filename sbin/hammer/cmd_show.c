@@ -116,9 +116,9 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	init_btree_search(arg, filter, &search);
 	if (arg) {
 		if (search.limit >= 1)
-			printf(" lo %08x obj_id %016jx",
-				search.base.localization,
-				(uintmax_t)search.base.obj_id);
+			printf(" lo %08x", search.base.localization);
+		if (search.limit >= 2)
+			printf(" obj_id %016jx", (uintmax_t)search.base.obj_id);
 		if (search.limit >= 3)
 			printf(" rec_type %02x", search.base.rec_type);
 		if (search.limit >= 4)
@@ -774,11 +774,7 @@ init_btree_search(const char *arg, int filter, btree_search_t search)
 	char *s, *p;
 	int i = 0;
 
-	search->base.localization = 0;
-	search->base.obj_id = (int64_t)HAMMER_MIN_OBJID;
-	search->base.rec_type = HAMMER_RECTYPE_LOWEST;
-	search->base.key = 0;
-	search->base.create_tid = 0;
+	bzero(&search->base, sizeof(search->base));
 	search->limit = 0;
 	search->filter = filter;
 
@@ -822,7 +818,8 @@ test_btree_search(hammer_btree_elm_t elm, btree_search_t search)
 		return(-1);
 	if (base1->localization > base2->localization)
 		return(1);
-	/* fall through */
+	if (search->limit == 1)
+		return(0);  /* ignore below */
 
 	if (base1->obj_id < base2->obj_id)
 		return(-2);

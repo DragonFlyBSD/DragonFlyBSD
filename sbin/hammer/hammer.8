@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 18, 2015
+.Dd Sep 21, 2015
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -396,7 +396,7 @@ This command needs the
 .Fl f Ar blkdevs
 option.
 .\" ==== show ====
-.It Cm show Op Ar localization Ns Op Cm \&: Ns Ar object_id
+.It Cm show Op Ar localization Ns Op Cm \&: Ns Ar object_id Ns Op Cm \&: Ns Ar rec_type Ns Op Cm \&: Ns Ar key Ns Op Cm \&: Ns Ar create_tid
 Dump the B-Tree.
 By default this command will validate all B-Tree
 linkages and CRCs, including data CRCs, and will report the most verbose
@@ -410,6 +410,12 @@ If you specify
 .Ar localization
 or
 .Ar localization Ns Cm \&: Ns Ar object_id
+or
+.Ar localization Ns Cm \&: Ns Ar object_id Ns Cm \&: Ns Ar rec_type
+or
+.Ar localization Ns Cm \&: Ns Ar object_id Ns Cm \&: Ns Ar rec_type Ns Cm \&: Ns Ar key
+or
+.Ar localization Ns Cm \&: Ns Ar object_id Ns Cm \&: Ns Ar rec_type Ns Cm \&: Ns Ar key Ns Cm \&: Ns Ar create_tid
 the dump will
 search for the key printing nodes as it recurses down, and then
 will iterate forwards.
