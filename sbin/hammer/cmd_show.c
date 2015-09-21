@@ -219,11 +219,11 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			switch (node->type) {
 			case HAMMER_BTREE_TYPE_INTERNAL:
 				if (!test_btree_out_of_range(elm, search))
-					ext = " *";
+					ext = "*";
 				break;
 			case HAMMER_BTREE_TYPE_LEAF:
 				if (test_btree_match(elm, search))
-					ext = " *";
+					ext = "*";
 				break;
 			}
 		}
@@ -366,8 +366,6 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			printf(" %s", ext);
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
-		if (ext)
-			printf(" %s", ext);
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
 			if (QuietOpt < 3)
@@ -394,6 +392,8 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			printf("badtype=%d", elm->base.btype);
 			break;
 		}
+		if (ext)
+			printf(" %s", ext);
 		break;
 	default:
 		break;
