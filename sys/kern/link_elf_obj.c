@@ -694,6 +694,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		switch (shdr[i].sh_type) {
 		case SHT_PROGBITS:
 		case SHT_NOBITS:
+			alignmask = shdr[i].sh_addralign - 1;
 			if (alignmask == -1)
                                 alignmask = 0;
 			alignmask = shdr[i].sh_addralign - 1;
