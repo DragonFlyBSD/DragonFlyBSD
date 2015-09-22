@@ -966,7 +966,6 @@ hammer_free_inode(hammer_inode_t ip)
 		ip->pfsm = NULL;
 	}
 	kfree(ip, hmp->m_inodes);
-	ip = NULL;
 }
 
 /*
