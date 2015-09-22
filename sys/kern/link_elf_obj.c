@@ -621,6 +621,8 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		case SHT_PROGBITS:
 		case SHT_NOBITS:
 			alignmask = shdr[i].sh_addralign - 1;
+			if (alignmask == -1)
+                                alignmask = 0;
 			mapsize += alignmask;
 			mapsize &= ~alignmask;
 			mapsize += shdr[i].sh_size;
@@ -692,6 +694,8 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 		switch (shdr[i].sh_type) {
 		case SHT_PROGBITS:
 		case SHT_NOBITS:
+			if (alignmask == -1)
+                                alignmask = 0;
 			alignmask = shdr[i].sh_addralign - 1;
 			mapbase += alignmask;
 			mapbase &= ~alignmask;
