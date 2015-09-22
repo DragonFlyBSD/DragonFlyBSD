@@ -1338,7 +1338,7 @@ struct fdrevoke_info {
 	void *data;
 	short type;
 	short unused;
-	int count;
+	int found;
 	int intransit;
 	struct ucred *cred;
 	struct file *nfp;
@@ -1378,7 +1378,7 @@ fdrevoke(void *f_data, short f_type, struct ucred *cred)
 	 * scan.  Races against fps leaving the socket are closed by
 	 * the socket code checking for FREVOKED.
 	 */
-	if (info.count)
+	if (info.found)
 		allproc_scan(fdrevoke_proc_callback, &info);
 	if (info.intransit)
 		unp_revoke_gc(info.nfp);
@@ -1416,11 +1416,11 @@ fdrevoke_check_callback(struct file *fp, void *vinfo)
 	 * If the file pointer matches then mark it for revocation.  The
 	 * flag is currently only used by unp_revoke_gc().
 	 *
-	 * info->count is a heuristic and can race in a SMP environment.
+	 * info->found is a heuristic and can race in a SMP environment.
 	 */
 	if (info->data == fp->f_data && info->type == fp->f_type) {
 		atomic_set_int(&fp->f_flag, FREVOKED);
-		info->count += fp->f_count;
+		info->found = 1;
 		if (fp->f_msgcount)
 			++info->intransit;
 	}
@@ -1483,7 +1483,6 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
 			knote_fdclose(fp, fdp, n);	/* XXX */
 			closef(fp, p);
 			spin_lock(&fdp->fd_spin);
-			--info->count;
 		}
 	}
 	spin_unlock(&fdp->fd_spin);
