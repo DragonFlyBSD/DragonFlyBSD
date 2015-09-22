@@ -406,8 +406,6 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		if (ext)
 			printf(" %s", ext);
 		break;
-	default:
-		break;
 	}
 	printf("\n");
 }
@@ -677,18 +675,19 @@ print_record(hammer_btree_elm_t elm)
 				data->inode.mode,
 				data->inode.uflags);
 			printf("%17s", "");
-			printf("ctime=%016jx pobjid=%016jx obj_type=%d\n",
+			printf("ctime=%016jx pobjid=%016jx ot=%02x\n",
 				(uintmax_t)data->inode.ctime,
 				(uintmax_t)data->inode.parent_obj_id,
 				data->inode.obj_type);
 			printf("%17s", "");
-			printf("mtime=%016jx", (uintmax_t)data->inode.mtime);
-			printf(" caps=%02x", data->inode.cap_flags);
+			printf("mtime=%016jx caps=%02x",
+				(uintmax_t)data->inode.mtime,
+				data->inode.cap_flags);
 		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
-		printf("\n%17s", "");
 		data_len -= HAMMER_ENTRY_NAME_OFF;
+		printf("\n%17s", "");
 		printf("dir-entry ino=%016jx lo=%08x name=\"%*.*s\"",
 		       (uintmax_t)data->entry.obj_id,
 		       data->entry.localization,
@@ -701,8 +700,6 @@ print_record(hammer_btree_elm_t elm)
 			printf("\n%17s", "");
 			printf("symlink=\"%*.*s\"", data_len, data_len,
 				data->symlink.name);
-			break;
-		default:
 			break;
 		}
 		break;
