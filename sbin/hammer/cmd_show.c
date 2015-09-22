@@ -354,16 +354,16 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		label = "ELM";
 
 	printf("%s\t%s %2d %c ", flagstr, label, i, hammer_elm_btype(elm));
-	printf("lo=%08x obj=%016jx rt=%02x key=%016jx ot=%02x\n",
+	printf("lo=%08x obj=%016jx rt=%02x key=%016jx tid=%016jx\n",
 	       elm->base.localization,
 	       (uintmax_t)elm->base.obj_id,
 	       elm->base.rec_type,
 	       (uintmax_t)elm->base.key,
-	       elm->base.obj_type);
-	printf("\t       %c tids=%016jx:%016jx ",
+	       (uintmax_t)elm->base.create_tid);
+	printf("\t       %c del=%016jx ot=%02x ",
 	       (rootelm == ' ' ? deleted : rootelm),
-	       (uintmax_t)elm->base.create_tid,
-	       (uintmax_t)elm->base.delete_tid);
+	       (uintmax_t)elm->base.delete_tid,
+	       elm->base.obj_type);
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
