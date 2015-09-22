@@ -55,11 +55,10 @@ static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			struct zone_stat *stats);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
-static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
-			int flags, const char *label, const char *ext,
-			struct zone_stat *stats);
+static void print_btree_elm(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
+			int flags, const char *ext, struct zone_stat *stats);
 static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
-			hammer_btree_elm_t elm, int i,
+			hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static int test_lr(hammer_btree_elm_t elm,
@@ -227,17 +226,17 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 				break;
 			}
 		}
-		flags = get_elm_flags(node, node_offset, elm, i,
+		flags = get_elm_flags(node, node_offset, elm,
 					left_bound, right_bound);
-		print_btree_elm(elm, i, node->type, flags, "ELM", ext, stats);
+		print_btree_elm(node, elm, flags, ext, stats);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		assert(i == node->count);  /* boundary */
 		elm = &node->elms[i];
 
-		flags = get_elm_flags(node, node_offset, elm, i,
+		flags = get_elm_flags(node, node_offset, elm,
 					left_bound, right_bound);
-		print_btree_elm(elm, i, node->type, flags, "RBN", NULL, stats);
+		print_btree_elm(node, elm, flags, NULL, stats);
 	}
 	printf("     }\n");
 
@@ -305,13 +304,14 @@ is_root_btree_end(u_int8_t type, int i, hammer_btree_elm_t elm)
 
 static
 void
-print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
-		int flags, const char *label, const char *ext,
-		struct zone_stat *stats)
+print_btree_elm(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
+		int flags, const char *ext, struct zone_stat *stats)
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 	char deleted;
 	char rootelm;
+	const char *label;
+	int i = ((char*)elm - (char*)node) / 64 - 1;
 
 	flagstr[0] = flags ? 'B' : 'G';
 	if (flags & FLAG_TOOFARLEFT)
@@ -330,9 +330,9 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	/*
 	 * Check if elm is derived from root split
 	 */
-	if (is_root_btree_beg(type, i, elm))
+	if (is_root_btree_beg(node->type, i, elm))
 		rootelm = '>';
-	else if (is_root_btree_end(type, i, elm))
+	else if (is_root_btree_end(node->type, i, elm))
 		rootelm = '<';
 	else
 		rootelm = ' ';
@@ -341,6 +341,11 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		deleted = 'd';
 	else
 		deleted = ' ';
+
+	if (node->type == HAMMER_BTREE_TYPE_INTERNAL && node->count == i)
+		label = "RBN";
+	else
+		label = "ELM";
 
 	printf("%s\t%s %2d %c ", flagstr, label, i, hammer_elm_btype(elm));
 	printf("lo=%08x obj=%016jx rt=%02x key=%016jx ot=%02x\n",
@@ -354,7 +359,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	       (uintmax_t)elm->base.create_tid,
 	       (uintmax_t)elm->base.delete_tid);
 
-	switch(type) {
+	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
 		printf("suboff=%016jx",
 		       (uintmax_t)elm->internal.subtree_offset);
@@ -404,11 +409,12 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 static
 int
 get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
-		hammer_btree_elm_t elm, int i,
+		hammer_btree_elm_t elm,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	hammer_off_t child_offset;
 	int flags = 0;
+	int i = ((char*)elm - (char*)node) / 64 - 1;
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
