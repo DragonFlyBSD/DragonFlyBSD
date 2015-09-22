@@ -219,8 +219,9 @@ main(int ac, char **av)
 			errno=0;
 			sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
 			if(errno == ENOENT) {
-				printf("Device:%s (%s) does not support the "
-				    "TRIM command\n", vol->name,sysctl_name);
+				printf("%s %s (%s) does not support the TRIM "
+				    "command\n",
+				    vol->type, vol->name, sysctl_name);
 				usage();
 			}
 			if(!trim_enabled) {
@@ -431,9 +432,12 @@ trim_volume(struct volume_info *vol)
 		/* 1MB offset to prevent destroying disk-reserved area */
 		ioarg[0] = vol->device_offset;
 		ioarg[1] = vol->size;
-		printf("Trimming Device:%s, sectors (%llu -%llu)\n",vol->name,
+
+		printf("Trimming %s %s, sectors (%llu -%llu)\n",
+		    vol->type, vol->name,
 		    (unsigned long long)ioarg[0]/512,
 		    (unsigned long long)ioarg[1]/512);
+
 		if (ioctl(vol->fd, IOCTLTRIM, ioarg) < 0) {
 			printf("Device trim failed\n");
 			usage ();
