@@ -55,8 +55,11 @@ static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			struct zone_stat *stats);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
-static void print_btree_elm(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
-			int flags, const char *ext, struct zone_stat *stats);
+static void print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
+			hammer_btree_elm_t elm,
+			hammer_base_elm_t left_bound,
+			hammer_base_elm_t right_bound,
+			const char *ext, struct zone_stat *stats);
 static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
@@ -155,7 +158,6 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	int i;
-	int flags;
 	int maxcount;
 	char badc = ' ';  /* good */
 	char badm = ' ';  /* good */
@@ -226,17 +228,16 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 				break;
 			}
 		}
-		flags = get_elm_flags(node, node_offset, elm,
-					left_bound, right_bound);
-		print_btree_elm(node, elm, flags, ext, stats);
+		print_btree_elm(node, node_offset,
+				elm, left_bound, right_bound,
+				ext, stats);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		assert(i == node->count);  /* boundary */
 		elm = &node->elms[i];
-
-		flags = get_elm_flags(node, node_offset, elm,
-					left_bound, right_bound);
-		print_btree_elm(node, elm, flags, NULL, stats);
+		print_btree_elm(node, node_offset,
+				elm, left_bound, right_bound,
+				NULL, stats);
 	}
 	printf("     }\n");
 
@@ -304,15 +305,20 @@ is_root_btree_end(u_int8_t type, int i, hammer_btree_elm_t elm)
 
 static
 void
-print_btree_elm(hammer_node_ondisk_t node, hammer_btree_elm_t elm,
-		int flags, const char *ext, struct zone_stat *stats)
+print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
+		hammer_btree_elm_t elm,
+		hammer_base_elm_t left_bound,
+		hammer_base_elm_t right_bound,
+		const char *ext, struct zone_stat *stats)
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 	char deleted;
 	char rootelm;
 	const char *label;
+	int flags;
 	int i = ((char*)elm - (char*)node) / 64 - 1;
 
+	flags = get_elm_flags(node, node_offset, elm, left_bound, right_bound);
 	flagstr[0] = flags ? 'B' : 'G';
 	if (flags & FLAG_TOOFARLEFT)
 		flagstr[2] = 'L';
@@ -410,7 +416,8 @@ static
 int
 get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		hammer_btree_elm_t elm,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+		hammer_base_elm_t left_bound,
+		hammer_base_elm_t right_bound)
 {
 	hammer_off_t child_offset;
 	int flags = 0;
