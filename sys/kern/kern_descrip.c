@@ -1729,10 +1729,6 @@ void
 ffree(struct file *fp)
 {
 	KASSERT((fp->f_count == 0), ("ffree: fp_fcount not 0!"));
-	spin_lock(&filehead_spin);
-	LIST_REMOVE(fp, f_list);
-	nfiles--;
-	spin_unlock(&filehead_spin);
 	fsetcred(fp, NULL);
 	if (fp->f_nchandle.ncp)
 	    cache_drop(&fp->f_nchandle);
@@ -2422,33 +2418,62 @@ closef(struct file *fp, struct proc *p)
  * caller of fhold() already has a reference to the file pointer in some
  * manner or other). 
  *
- * f_count is not spin-locked.  Instead, atomic ops are used for
- * incrementing, decrementing, and handling the 1->0 transition.
+ * Atomic ops are used for incrementing and decrementing f_count before
+ * the 1->0 transition.  f_count 1->0 transition is special, see the
+ * comment in fdrop().
  */
 void
 fhold(struct file *fp)
 {
+	/* 0->1 transition will never work */
+	KASSERT(fp->f_count > 0, ("fhold: invalid f_count %d", fp->f_count));
 	atomic_add_int(&fp->f_count, 1);
 }
 
 /*
  * fdrop() - drop a reference to a descriptor
- *
- * MPALMOSTSAFE - acquires mplock for final close sequence
  */
 int
 fdrop(struct file *fp)
 {
 	struct flock lf;
 	struct vnode *vp;
-	int error;
+	int error, do_free = 0;
 
 	/*
-	 * A combined fetch and subtract is needed to properly detect
-	 * 1->0 transitions, otherwise two cpus dropping from a ref
-	 * count of 2 might both try to run the 1->0 code.
+	 * NOTE:
+	 * Simple atomic_fetchadd_int(f_count, -1) here will cause use-
+	 * after-free or double free (due to f_count 0->1 transition), if
+	 * fhold() is called on the fps found through filehead iteration.
 	 */
-	if (atomic_fetchadd_int(&fp->f_count, -1) > 1)
+	for (;;) {
+		int count = fp->f_count;
+
+		cpu_ccfence();
+		KASSERT(count > 0, ("fdrop: invalid f_count %d", count));
+		if (count == 1) {
+			/*
+			 * About to drop the last reference, hold the
+			 * filehead spin lock and drop it, so that no
+			 * one could see this fp through filehead anymore,
+			 * let alone fhold() this fp.
+			 */
+			spin_lock(&filehead_spin);
+			if (atomic_cmpset_int(&fp->f_count, count, 0)) {
+				LIST_REMOVE(fp, f_list);
+				nfiles--;
+				spin_unlock(&filehead_spin);
+				do_free = 1; /* free this fp */
+				break;
+			}
+			spin_unlock(&filehead_spin);
+			/* retry */
+		} else if (atomic_cmpset_int(&fp->f_count, count, count - 1)) {
+			break;
+		}
+		/* retry */
+	}
+	if (!do_free)
 		return (0);
 
 	KKASSERT(SLIST_FIRST(&fp->f_klist) == NULL);
