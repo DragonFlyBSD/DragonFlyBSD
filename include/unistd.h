@@ -119,20 +119,22 @@ typedef	__uid_t		uid_t;
 #define	_POSIX_TRACE_EVENT_FILTER	-1
 #define	_POSIX_TRACE_INHERIT		-1
 #define	_POSIX_TRACE_LOG		-1
-#define	_POSIX2_C_BIND			200112L	/* mandatory */
-#define	_POSIX2_C_DEV			-1 /* need c99 utility */
+
+#define	_POSIX2_C_BIND			200809L	/* mandatory */
+#define	_POSIX2_C_DEV			200809L	/* [CD] */
 #define	_POSIX2_CHAR_TERM		1
-#define	_POSIX2_FORT_DEV		-1 /* need fort77 utility */
-#define	_POSIX2_FORT_RUN		200112L
-#define	_POSIX2_LOCALEDEF		-1
-#define	_POSIX2_PBS			-1
-#define	_POSIX2_PBS_ACCOUNTING		-1
-#define	_POSIX2_PBS_CHECKPOINT		-1
-#define	_POSIX2_PBS_LOCATE		-1
-#define	_POSIX2_PBS_MESSAGE		-1
-#define	_POSIX2_PBS_TRACK		-1
-#define	_POSIX2_SW_DEV			-1 /* XXX ??? */
-#define	_POSIX2_UPE			200112L
+#define	_POSIX2_FORT_DEV		-1	/* [FD] need fort77 utility */
+#define	_POSIX2_FORT_RUN		200809L	/* [FR] */
+#define	_POSIX2_LOCALEDEF		200809L
+#define	_POSIX2_PBS			-1	/* [BE] obsolescent */
+#define	_POSIX2_PBS_ACCOUNTING		-1	/* [BE] obsolescent */
+#define	_POSIX2_PBS_CHECKPOINT		-1	/* [BE] obsolescent */
+#define	_POSIX2_PBS_LOCATE		-1	/* [BE] obsolescent */
+#define	_POSIX2_PBS_MESSAGE		-1	/* [BE] obsolescent */
+#define	_POSIX2_PBS_TRACK		-1	/* [BE] obsolescent */
+#define	_POSIX2_SW_DEV			200809L	/* [SD] */
+#define	_POSIX2_UPE			200809L	/* [UP] */
+
 #define	_V6_ILP32_OFF32			-1
 #define	_V6_ILP32_OFFBIG		0
 #define	_V6_LP64_OFF64			0
