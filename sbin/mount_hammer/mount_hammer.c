@@ -33,10 +33,7 @@
  */
 
 #include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <sys/syslimits.h>
 #include <vfs/hammer/hammer_mount.h>
 #include <vfs/hammer/hammer_disk.h>
@@ -47,15 +44,12 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <string.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <uuid.h>
 #include <err.h>
-#include <assert.h>
-#include <ctype.h>
 #include <mntopts.h>
 
 static void extract_volumes(const char ***aryp, int *countp, char **av, int ac);
+static void usage(void);
 
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
 
@@ -67,8 +61,6 @@ static void extract_volumes(const char ***aryp, int *countp, char **av, int ac);
 static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
 				 MOPT_UPDATE, MOPT_NULL };
 
-static void usage(void);
-
 int
 main(int ac, char **av)
 {
@@ -76,9 +68,9 @@ main(int ac, char **av)
 	struct vfsconf vfc;
 	struct hammer_volume_ondisk *od;
 	int mount_flags = 0;
+	int init_flags = 0;
 	int error;
 	int ch;
-	int init_flags = 0;
 	int ax;
 	int fd;
 	int pr;
@@ -86,12 +78,9 @@ main(int ac, char **av)
 	char *mountpt;
 	char *ptr;
 	char *fdevs;
-
+	const char *fdev;
 
 	bzero(&info, sizeof(info));
-	info.asof = 0;
-	mount_flags = 0;
-	info.hflags = 0;
 
 	while ((ch = getopt(ac, av, "o:T:u")) != -1) {
 		switch(ch) {
@@ -100,7 +89,6 @@ main(int ac, char **av)
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mount_flags, &info.hflags);
-
 
 			/*
 			 * Handle extended flags with parameters.
@@ -111,7 +99,7 @@ main(int ac, char **av)
 					info.master_id = strtol(ptr + 7, NULL, 0);
 					if (info.master_id == 0) {
 						fprintf(stderr,
-	"hammer_mount: Warning: a master id of 0 is the default, explicit\n"
+	"mount_hammer: Warning: a master id of 0 is the default, explicit\n"
 	"settings should probably use 1-15\n");
 					}
 				}
@@ -175,15 +163,16 @@ main(int ac, char **av)
 
 	if (mount(vfc.vfc_name, mountpt, mount_flags, &info)) {
 		/* Build fdevs in case of error to report failed devices */
-		fdevs_size = ac * PATH_MAX;
+		fdevs_size = ac * (PATH_MAX + 1);
 		fdevs = malloc(fdevs_size);
 		bzero(fdevs, fdevs_size);
 
 		for (ax = 0; ax < info.nvolumes; ax++) {
-			fd = open(info.volumes[ax], O_RDONLY);
-			if (fd < 0 ) {
-				fprintf(stderr, "%s: open failed\n", info.volumes[ax]);
-				strlcat(fdevs, info.volumes[ax], fdevs_size);
+			fdev = info.volumes[ax];
+			fd = open(fdev, O_RDONLY);
+			if (fd < 0) {
+				fprintf(stderr, "%s: open failed\n", fdev);
+				strlcat(fdevs, fdev, fdevs_size);
 				if (ax < ac - 2)
 					strlcat(fdevs, " ", fdevs_size);
 				continue;
@@ -191,7 +180,7 @@ main(int ac, char **av)
 
 			od = malloc(HAMMER_BUFSIZE);
 			if (od == NULL) {
-				close (fd);
+				close(fd);
 				perror("malloc");
 				continue;
 			}
@@ -200,12 +189,14 @@ main(int ac, char **av)
 			pr = pread(fd, od, HAMMER_BUFSIZE, 0);
 			if (pr != HAMMER_BUFSIZE ||
 				od->vol_signature != HAMMER_FSBUF_VOLUME) {
-				fprintf(stderr, "%s: Not a valid HAMMER filesystem\n",
-					info.volumes[ax]);
-				strlcat(fdevs, info.volumes[ax], fdevs_size);
+				fprintf(stderr,
+					"%s: Not a valid HAMMER filesystem\n",
+					fdev);
+				strlcat(fdevs, fdev, fdevs_size);
 				if (ax < ac - 2)
 					strlcat(fdevs, " ", fdevs_size);
 			}
+			free(od);
 			close(fd);
 		}
 		if (strlen(fdevs))
