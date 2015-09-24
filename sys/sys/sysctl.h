@@ -533,17 +533,17 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	USER_EXPR_NEST_MAX	 7	/* int: EXPR_NEST_MAX */
 #define	USER_LINE_MAX		 8	/* int: LINE_MAX */
 #define	USER_RE_DUP_MAX		 9	/* int: RE_DUP_MAX */
-#define	USER_POSIX2_VERSION	10	/* int: POSIX2_VERSION */
-#define	USER_POSIX2_C_BIND	11	/* int: POSIX2_C_BIND */
-#define	USER_POSIX2_C_DEV	12	/* int: POSIX2_C_DEV */
-#define	USER_POSIX2_CHAR_TERM	13	/* int: POSIX2_CHAR_TERM */
-#define	USER_POSIX2_FORT_DEV	14	/* int: POSIX2_FORT_DEV */
-#define	USER_POSIX2_FORT_RUN	15	/* int: POSIX2_FORT_RUN */
-#define	USER_POSIX2_LOCALEDEF	16	/* int: POSIX2_LOCALEDEF */
-#define	USER_POSIX2_SW_DEV	17	/* int: POSIX2_SW_DEV */
-#define	USER_POSIX2_UPE		18	/* int: POSIX2_UPE */
-#define	USER_STREAM_MAX		19	/* int: POSIX2_STREAM_MAX */
-#define	USER_TZNAME_MAX		20	/* int: POSIX2_TZNAME_MAX */
+#define	USER_POSIX2_VERSION	10	/* int: _POSIX2_VERSION */
+#define	USER_POSIX2_C_BIND	11	/* int: _POSIX2_C_BIND */
+#define	USER_POSIX2_C_DEV	12	/* int: _POSIX2_C_DEV */
+#define	USER_POSIX2_CHAR_TERM	13	/* int: _POSIX2_CHAR_TERM */
+#define	USER_POSIX2_FORT_DEV	14	/* int: _POSIX2_FORT_DEV */
+#define	USER_POSIX2_FORT_RUN	15	/* int: _POSIX2_FORT_RUN */
+#define	USER_POSIX2_LOCALEDEF	16	/* int: _POSIX2_LOCALEDEF */
+#define	USER_POSIX2_SW_DEV	17	/* int: _POSIX2_SW_DEV */
+#define	USER_POSIX2_UPE		18	/* int: _POSIX2_UPE */
+#define	USER_STREAM_MAX		19	/* int: _POSIX2_STREAM_MAX */
+#define	USER_TZNAME_MAX		20	/* int: _POSIX2_TZNAME_MAX */
 #define	USER_MAXID		21	/* number of valid user ids */
 
 #define	CTL_USER_NAMES { \

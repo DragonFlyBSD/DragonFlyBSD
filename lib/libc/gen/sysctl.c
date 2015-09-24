@@ -48,9 +48,21 @@ sysctl(const int *name, u_int namelen, void *oldp, size_t *oldlenp,
     const void *newp, size_t newlen)
 {
 	int retval;
+	size_t orig_oldlen;
 
+	orig_oldlen = oldlenp ? *oldlenp : 0;
 	retval = __sysctl(name, namelen, oldp, oldlenp, newp, newlen);
-	if (retval != -1 || errno != ENOENT || name[0] != CTL_USER)
+	/*
+	 * All valid names under CTL_USER have a dummy entry in the sysctl
+	 * tree (to support name lookups and enumerations) with an
+	 * empty/zero value, and the true value is supplied by this routine.
+	 * For all such names, __sysctl() is used solely to validate the
+	 * name.
+	 *
+	 * Return here unless there was a successful lookup for a CTL_USER
+	 * name.
+	 */
+	if (retval || name[0] != CTL_USER)
 		return (retval);
 
 	if (newp != NULL) {
@@ -64,7 +76,7 @@ sysctl(const int *name, u_int namelen, void *oldp, size_t *oldlenp,
 
 	switch (name[1]) {
 	case USER_CS_PATH:
-		if (oldp && *oldlenp < sizeof(_PATH_STDPATH)) {
+		if (oldp && orig_oldlen < sizeof(_PATH_STDPATH)) {
 			errno = ENOMEM;
 			return -1;
 		}
@@ -111,56 +123,56 @@ sysctl(const int *name, u_int namelen, void *oldp, size_t *oldlenp,
 		*(int *)oldp = _POSIX2_VERSION;
 		return (0);
 	case USER_POSIX2_C_BIND:
-#ifdef POSIX2_C_BIND
+#if _POSIX2_C_BIND > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
 #endif
 		return (0);
 	case USER_POSIX2_C_DEV:
-#ifdef	POSIX2_C_DEV
+#if _POSIX2_C_DEV > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
 #endif
 		return (0);
 	case USER_POSIX2_CHAR_TERM:
-#ifdef	POSIX2_CHAR_TERM
+#if _POSIX2_CHAR_TERM > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
 #endif
 		return (0);
 	case USER_POSIX2_FORT_DEV:
-#ifdef	POSIX2_FORT_DEV
+#if _POSIX2_FORT_DEV > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
 #endif
 		return (0);
 	case USER_POSIX2_FORT_RUN:
-#ifdef	POSIX2_FORT_RUN
+#if _POSIX2_FORT_RUN > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
 #endif
 		return (0);
 	case USER_POSIX2_LOCALEDEF:
-#ifdef	POSIX2_LOCALEDEF
+#if _POSIX2_LOCALEDEF > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
 #endif
 		return (0);
 	case USER_POSIX2_SW_DEV:
-#ifdef	POSIX2_SW_DEV
+#if _POSIX2_SW_DEV > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
 #endif
 		return (0);
 	case USER_POSIX2_UPE:
-#ifdef	POSIX2_UPE
+#if _POSIX2_UPE > 0
 		*(int *)oldp = 1;
 #else
 		*(int *)oldp = 0;
