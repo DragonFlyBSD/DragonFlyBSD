@@ -72,7 +72,6 @@ int	uipc_usrreq (struct socket *so, int req, struct mbuf *m,
 void	uipc_ctloutput (union netmsg *msg);
 int	unp_connect2 (struct socket *so, struct socket *so2);
 void	unp_dispose (struct mbuf *m);
-void	unp_revoke_gc (struct file *fx);
 int	unp_externalize (struct mbuf *rights);
 void	unp_init (void);
 extern	struct pr_usrreqs uipc_usrreqs;

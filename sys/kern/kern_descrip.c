@@ -130,6 +130,8 @@ static struct spinlock filehead_spin = SPINLOCK_INITIALIZER(&filehead_spin, "fil
 static int nfiles;		/* actual number of open files */
 extern int cmask;	
 
+struct lwkt_token revoke_token = LWKT_TOKEN_INITIALIZER(revoke_token);
+
 /*
  * Fixup fd_freefile and fd_lastfile after a descriptor has been cleared.
  *
@@ -1339,7 +1341,6 @@ struct fdrevoke_info {
 	short type;
 	short unused;
 	int found;
-	int intransit;
 	struct ucred *cred;
 	struct file *nfp;
 };
@@ -1365,23 +1366,23 @@ fdrevoke(void *f_data, short f_type, struct ucred *cred)
 	 * Scan the file pointer table once.  dups do not dup file pointers,
 	 * only descriptors, so there is no leak.  Set FREVOKED on the fps
 	 * being revoked.
+	 *
+	 * Any fps sent over unix-domain sockets will be revoked by the
+	 * socket code checking for FREVOKED when the fps are externialized.
+	 * revoke_token is used to make sure that fps marked FREVOKED and
+	 * externalized will be picked up by the following allproc_scan().
 	 */
+	lwkt_gettoken(&revoke_token);
 	allfiles_scan_exclusive(fdrevoke_check_callback, &info);
+	lwkt_reltoken(&revoke_token);
 
 	/*
 	 * If any fps were marked track down the related descriptors
 	 * and close them.  Any dup()s at this point will notice
 	 * the FREVOKED already set in the fp and do the right thing.
-	 *
-	 * Any fps with non-zero msgcounts (aka sent over a unix-domain
-	 * socket) bumped the intransit counter and will require a
-	 * scan.  Races against fps leaving the socket are closed by
-	 * the socket code checking for FREVOKED.
 	 */
 	if (info.found)
 		allproc_scan(fdrevoke_proc_callback, &info);
-	if (info.intransit)
-		unp_revoke_gc(info.nfp);
 	fdrop(info.nfp);
 	return(0);
 }
@@ -1421,8 +1422,6 @@ fdrevoke_check_callback(struct file *fp, void *vinfo)
 	if (info->data == fp->f_data && info->type == fp->f_type) {
 		atomic_set_int(&fp->f_flag, FREVOKED);
 		info->found = 1;
-		if (fp->f_msgcount)
-			++info->intransit;
 	}
 	return(0);
 }

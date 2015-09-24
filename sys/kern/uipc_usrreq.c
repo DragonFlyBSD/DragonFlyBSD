@@ -123,7 +123,6 @@ static void    unp_gc (void);
 static int     unp_gc_clearmarks(struct file *, void *);
 static int     unp_gc_checkmarks(struct file *, void *);
 static int     unp_gc_checkrefs(struct file *, void *);
-static int     unp_revoke_gc_check(struct file *, void *);
 static void    unp_scan (struct mbuf *, void (*)(struct file *, void *),
 				void *data);
 static void    unp_mark (struct file *, void *data);
@@ -1435,8 +1434,6 @@ unp_externalize(struct mbuf *rights)
 		/ sizeof(struct file *);
 	int f;
 
-	lwkt_gettoken(&unp_token);
-
 	/*
 	 * if the new FD's will not fit, then we free them all
 	 */
@@ -1451,7 +1448,6 @@ unp_externalize(struct mbuf *rights)
 			*rp++ = NULL;
 			unp_discard(fp, NULL);
 		}
-		lwkt_reltoken(&unp_token);
 		return (EMSGSIZE);
 	}
 
@@ -1465,7 +1461,11 @@ unp_externalize(struct mbuf *rights)
 	 * struct file pointer.
 	 * If sizeof (struct file *) is smaller than sizeof int, then
 	 * do it in reverse order.
+	 *
+	 * Hold revoke_token in 'shared' mode, so that we won't miss
+	 * the FREVOKED update on fps being externalized (fsetfd).
 	 */
+	lwkt_gettoken_shared(&revoke_token);
 	if (sizeof(struct file *) >= sizeof(int)) {
 		fdp = (int *)CMSG_DATA(cm);
 		rp = (struct file **)CMSG_DATA(cm);
@@ -1490,7 +1490,7 @@ unp_externalize(struct mbuf *rights)
 				for (i = 0; i < newfds; i++)
 					rp[i] = NULL;
 
-				lwkt_reltoken(&unp_token);
+				lwkt_reltoken(&revoke_token);
 				return (EMSGSIZE);
 			}
 			fp = rp[i];
@@ -1513,6 +1513,7 @@ unp_externalize(struct mbuf *rights)
 			*fdp-- = f;
 		}
 	}
+	lwkt_reltoken(&revoke_token);
 
 	/*
 	 * Adjust length, in case sizeof(struct file *) and sizeof(int)
@@ -1521,15 +1522,12 @@ unp_externalize(struct mbuf *rights)
 	cm->cmsg_len = CMSG_LEN(newfds * sizeof(int));
 	rights->m_len = cm->cmsg_len;
 
-	lwkt_reltoken(&unp_token);
 	return (0);
 }
 
 static void
 unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 {
-	lwkt_gettoken(&unp_token);
-
 	if (lp) {
 		KKASSERT(fd >= 0);
 		if (fp->f_flag & FREVOKED) {
@@ -1553,8 +1551,6 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 	unp_rights--;
 	spin_unlock(&unp_spin);
 	fdrop(fp);
-
-	lwkt_reltoken(&unp_token);
 }
 
 void
@@ -1956,117 +1952,6 @@ unp_gc_checkmarks(struct file *fp, void *data)
 		++info->defer;
 	}
 	return (0);
-}
-
-/*
- * Scan all unix domain sockets and replace any revoked file pointers
- * found with the dummy file pointer fx.  We don't worry about races
- * against file pointers being read out as those are handled in the
- * externalize code.
- */
-
-#define REVOKE_GC_MAXFILES	32
-
-struct unp_revoke_gc_info {
-	struct file	*fx;
-	struct file	*fary[REVOKE_GC_MAXFILES];
-	int		fcount;
-};
-
-void
-unp_revoke_gc(struct file *fx)
-{
-	struct unp_revoke_gc_info info;
-	int i;
-
-	lwkt_gettoken(&unp_token);
-	info.fx = fx;
-	do {
-		info.fcount = 0;
-		allfiles_scan_exclusive(unp_revoke_gc_check, &info);
-		for (i = 0; i < info.fcount; ++i)
-			unp_fp_externalize(NULL, info.fary[i], -1);
-	} while (info.fcount == REVOKE_GC_MAXFILES);
-	lwkt_reltoken(&unp_token);
-}
-
-/*
- * Check for and replace revoked descriptors.
- *
- * WARNING:  This routine is not allowed to block.
- */
-static int
-unp_revoke_gc_check(struct file *fps, void *vinfo)
-{
-	struct unp_revoke_gc_info *info = vinfo;
-	struct file *fp;
-	struct socket *so;
-	struct mbuf *m0;
-	struct mbuf *m;
-	struct file **rp;
-	struct cmsghdr *cm;
-	int i;
-	int qfds;
-
-	/*
-	 * Is this a unix domain socket with rights-passing abilities?
-	 */
-	if (fps->f_type != DTYPE_SOCKET)
-		return (0);
-	if ((so = (struct socket *)fps->f_data) == NULL)
-		return(0);
-	if (so->so_proto->pr_domain != &localdomain)
-		return(0);
-	if ((so->so_proto->pr_flags & PR_RIGHTS) == 0)
-		return(0);
-
-	/*
-	 * Scan the mbufs for control messages and replace any revoked
-	 * descriptors we find.
-	 */
-	lwkt_gettoken(&so->so_rcv.ssb_token);
-	m0 = so->so_rcv.ssb_mb;
-	while (m0) {
-		for (m = m0; m; m = m->m_next) {
-			if (m->m_type != MT_CONTROL)
-				continue;
-			if (m->m_len < sizeof(*cm))
-				continue;
-			cm = mtod(m, struct cmsghdr *);
-			if (cm->cmsg_level != SOL_SOCKET ||
-			    cm->cmsg_type != SCM_RIGHTS) {
-				continue;
-			}
-			qfds = (cm->cmsg_len - CMSG_LEN(0)) / sizeof(void *);
-			rp = (struct file **)CMSG_DATA(cm);
-			for (i = 0; i < qfds; i++) {
-				fp = rp[i];
-				if (fp->f_flag & FREVOKED) {
-					kprintf("Warning: Removing revoked fp from unix domain socket queue\n");
-					fhold(info->fx);
-					info->fx->f_msgcount++;
-					unp_rights++;
-					rp[i] = info->fx;
-					info->fary[info->fcount++] = fp;
-				}
-				if (info->fcount == REVOKE_GC_MAXFILES)
-					break;
-			}
-			if (info->fcount == REVOKE_GC_MAXFILES)
-				break;
-		}
-		m0 = m0->m_nextpkt;
-		if (info->fcount == REVOKE_GC_MAXFILES)
-			break;
-	}
-	lwkt_reltoken(&so->so_rcv.ssb_token);
-
-	/*
-	 * Stop the scan if we filled up our array.
-	 */
-	if (info->fcount == REVOKE_GC_MAXFILES)
-		return(-1);
-	return(0);
 }
 
 /*
