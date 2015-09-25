@@ -48,7 +48,8 @@
 #include <err.h>
 #include <mntopts.h>
 
-static void extract_volumes(const char ***aryp, int *countp, char **av, int ac);
+static void extract_volumes(struct hammer_mount_info *info, char **av, int ac);
+static void free_volumes(struct hammer_mount_info *info);
 static void usage(void);
 
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
@@ -144,7 +145,7 @@ main(int ac, char **av)
 	/*
 	 * Mount arguments: vol [vol...] mountpt
 	 */
-	extract_volumes(&info.volumes, &info.nvolumes, av, ac - 1);
+	extract_volumes(&info, av, ac - 1);
 	mountpt = av[ac - 1];
 
 	/*
@@ -204,20 +205,23 @@ main(int ac, char **av)
 		else
 			err(1, "Unknown error");
 	}
+	free_volumes(&info);
 	exit (0);
 }
 
 /*
  * Extract a volume list
  */
-static void
-extract_volumes(const char ***aryp, int *countp, char **av, int ac)
+static
+void
+extract_volumes(struct hammer_mount_info *info, char **av, int ac)
 {
 	int idx = 0;
 	int arymax = 32;
 	const char **ary = malloc(sizeof(char *) * arymax);
 	char *ptr;
 	char *next;
+	char *orig;
 
 	while (ac) {
 		if (idx == arymax) {
@@ -225,9 +229,9 @@ extract_volumes(const char ***aryp, int *countp, char **av, int ac)
 			ary = realloc(ary, sizeof(char *) * arymax);
 		}
 		if (strchr(*av, ':') == NULL) {
-			ary[idx++] = *av;
+			ary[idx++] = strdup(*av);
 		} else {
-			next = strdup(*av);
+			orig = next = strdup(*av);
 			while ((ptr = next) != NULL) {
 				if (idx == arymax) {
 					arymax += 32;
@@ -236,14 +240,26 @@ extract_volumes(const char ***aryp, int *countp, char **av, int ac)
 				}
 				if ((next = strchr(ptr, ':')) != NULL)
 					*next++ = 0;
-				ary[idx++] = ptr;
+				ary[idx++] = strdup(ptr);
 			}
+			free(orig);
 		}
 		--ac;
 		++av;
 	}
-	*aryp = ary;
-	*countp = idx;
+	info->nvolumes = idx;
+	info->volumes = ary;
+}
+
+static
+void
+free_volumes(struct hammer_mount_info *info)
+{
+	int i;
+
+	for (i = 0; i < info->nvolumes; i++)
+		; /* free((char*)info->volumes[i]); */
+	free(info->volumes);
 }
 
 static
