@@ -50,6 +50,7 @@
 
 static void extract_volumes(struct hammer_mount_info *info, char **av, int ac);
 static void free_volumes(struct hammer_mount_info *info);
+static void test_volumes(struct hammer_mount_info *info);
 static void usage(void);
 
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
@@ -67,19 +68,12 @@ main(int ac, char **av)
 {
 	struct hammer_mount_info info;
 	struct vfsconf vfc;
-	struct hammer_volume_ondisk *od;
 	int mount_flags = 0;
 	int init_flags = 0;
 	int error;
 	int ch;
-	int ax;
-	int fd;
-	int pr;
-	int fdevs_size;
 	char *mountpt;
 	char *ptr;
-	char *fdevs;
-	const char *fdev;
 
 	bzero(&info, sizeof(info));
 
@@ -163,50 +157,12 @@ main(int ac, char **av)
 		errx(1, "hammer filesystem is not available");
 
 	if (mount(vfc.vfc_name, mountpt, mount_flags, &info)) {
-		/* Build fdevs in case of error to report failed devices */
-		fdevs_size = ac * (PATH_MAX + 1);
-		fdevs = malloc(fdevs_size);
-		bzero(fdevs, fdevs_size);
-
-		for (ax = 0; ax < info.nvolumes; ax++) {
-			fdev = info.volumes[ax];
-			fd = open(fdev, O_RDONLY);
-			if (fd < 0) {
-				fprintf(stderr, "%s: open failed\n", fdev);
-				strlcat(fdevs, fdev, fdevs_size);
-				if (ax < ac - 2)
-					strlcat(fdevs, " ", fdevs_size);
-				continue;
-			}
-
-			od = malloc(HAMMER_BUFSIZE);
-			if (od == NULL) {
-				close(fd);
-				perror("malloc");
-				continue;
-			}
-
-			bzero(od, HAMMER_BUFSIZE);
-			pr = pread(fd, od, HAMMER_BUFSIZE, 0);
-			if (pr != HAMMER_BUFSIZE ||
-				od->vol_signature != HAMMER_FSBUF_VOLUME) {
-				fprintf(stderr,
-					"%s: Not a valid HAMMER filesystem\n",
-					fdev);
-				strlcat(fdevs, fdev, fdevs_size);
-				if (ax < ac - 2)
-					strlcat(fdevs, " ", fdevs_size);
-			}
-			free(od);
-			close(fd);
-		}
-		if (strlen(fdevs))
-			err(1, "mount %s on %s", fdevs, mountpt);
-		else
-			err(1, "Unknown error");
+		perror("mount");
+		test_volumes(&info);
+		exit(1);
 	}
 	free_volumes(&info);
-	exit (0);
+	exit(0);
 }
 
 /*
@@ -260,6 +216,48 @@ free_volumes(struct hammer_mount_info *info)
 	for (i = 0; i < info->nvolumes; i++)
 		; /* free((char*)info->volumes[i]); */
 	free(info->volumes);
+}
+
+static
+void
+test_volumes(struct hammer_mount_info *info)
+{
+	int i, fd, ret;
+	const char *vol;
+	char buf[HAMMER_BUFSIZE];
+	hammer_volume_ondisk_t ondisk;
+
+	for (i = 0; i < info->nvolumes; i++) {
+		vol = info->volumes[i];
+		fd = open(vol, O_RDONLY);
+		if (fd < 0) {
+			fprintf(stderr, "%s: Failed to open\n", vol);
+			goto next;
+		}
+
+		bzero(buf, HAMMER_BUFSIZE);
+		ret = pread(fd, buf, HAMMER_BUFSIZE, 0);
+		if (ret != HAMMER_BUFSIZE) {
+			fprintf(stderr,
+				"%s: Failed to read volume header\n", vol);
+			goto next;
+		}
+
+		ondisk = (hammer_volume_ondisk_t)buf;
+		if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
+			fprintf(stderr,
+				"%s: Not a valid HAMMER filesystem\n", vol);
+			goto next;
+		}
+		if (ondisk->vol_count != info->nvolumes) {
+			fprintf(stderr,
+				"%s: Volume header says %d volumes\n",
+				vol, ondisk->vol_count);
+			goto next;
+		}
+next:
+		close(fd);
+	}
 }
 
 static
