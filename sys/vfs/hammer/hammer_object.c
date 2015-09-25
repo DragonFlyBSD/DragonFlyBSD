@@ -2342,7 +2342,9 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			error = copyin(udata, ndata, leaf->data_len);
 			if (error == 0) {
 				if (hammer_crc_test_leaf(ndata, leaf) == 0) {
-					hdkprintf("data crc mismatch on pipe\n");
+					hdkprintf("CRC DATA @ %016llx/%d MISMATCH ON PIPE\n",
+						(long long)ndata_offset,
+						leaf->data_len);
 					error = EINVAL;
 				} else {
 					error = hammer_cursor_localize_data(

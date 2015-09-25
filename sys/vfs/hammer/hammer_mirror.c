@@ -886,7 +886,9 @@ hammer_mirror_write(hammer_cursor_t cursor,
 		error = copyin(udata, ndata, mrec->leaf.data_len);
 		if (error == 0) {
 			if (hammer_crc_test_leaf(ndata, &mrec->leaf) == 0) {
-				hdkprintf("data crc mismatch on pipe\n");
+				hdkprintf("CRC DATA @ %016llx/%d MISMATCH ON PIPE\n",
+					(long long)ndata_offset,
+					mrec->leaf.data_len);
 				error = EINVAL;
 			} else {
 				error = hammer_mirror_localize_data(
