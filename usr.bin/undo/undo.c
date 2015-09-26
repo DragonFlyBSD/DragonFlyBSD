@@ -266,6 +266,7 @@ doiterate(const char *filename, const char *outFileName,
 		asprintf(&path, "%s@@0x%016jx", filename, (uintmax_t)tse1->tse.tid);
 		if (stat(path, &sb) == 0 && sb.st_mode & S_IFIFO) {
 			fprintf(stderr, "Warning: fake transaction id 0x%016jx\n", (uintmax_t)tse1->tse.tid);
+			free(path);
 			continue;
 		}
 		if ((fd = open(path, O_RDONLY)) > 0) {
@@ -399,8 +400,6 @@ dogenerate(const char *filename, const char *outFileName,
 	char datestr[64];
 	int n;
 
-	buf = malloc(8192);
-
 	/*
 	 * Open the input file.  If ts1 is 0 try to locate the most recent
 	 * version of the file prior to the current version.
@@ -422,7 +421,7 @@ dogenerate(const char *filename, const char *outFileName,
 		}
 		free(ipath1);
 		free(ipath2);
-		goto done;
+		return;
 	}
 
 	/*
@@ -486,11 +485,17 @@ dogenerate(const char *filename, const char *outFileName,
 
 	switch(type) {
 	case TYPE_FILE:
+		buf = malloc(8192);
+		if (buf == NULL) {
+			perror("malloc");
+			exit(1);
+		}
 		if ((fi = fopen(ipath1, "r")) != NULL) {
 			while ((n = fread(buf, 1, 8192, fi)) > 0)
 				fwrite(buf, 1, n, fp);
 			fclose(fi);
 		}
+		free(buf);
 		break;
 	case TYPE_DIFF:
 		printf("diff -N -r -u %s %s (to %s)\n",
@@ -518,8 +523,6 @@ dogenerate(const char *filename, const char *outFileName,
 
 	if (fp != stdout)
 		fclose(fp);
-done:
-	free(buf);
 }
 
 static
@@ -612,6 +615,7 @@ collect_dir_history(const char *filename, int *errorp,
 		collect_history(fd, &error, dir_tree);
 		close(fd);
 	}
+	free(dirname);
 }
 
 static
