@@ -264,7 +264,7 @@ doiterate(const char *filename, const char *outFileName,
 	collect_dir_history(filename, &error, &dir_tree);
 	RB_FOREACH(tse1, undo_hist_entry_rb_tree, &dir_tree) {
 		asprintf(&path, "%s@@0x%016jx", filename, (uintmax_t)tse1->tse.tid);
-		if (stat(path, &sb) == 0 && sb.st_mode & S_IFIFO) {
+		if (stat(path, &sb) == 0 && (sb.st_mode & S_IFIFO)) {
 			fprintf(stderr, "Warning: fake transaction id 0x%016jx\n", (uintmax_t)tse1->tse.tid);
 			free(path);
 			continue;
@@ -281,7 +281,7 @@ doiterate(const char *filename, const char *outFileName,
 	}
 	if (cmd == CMD_DUMP) {
 		if ((ts1.tid == 0 ||
-		     flags & (UNDO_FLAG_SETTID1|UNDO_FLAG_SETTID2)) &&
+		    (flags & (UNDO_FLAG_SETTID1|UNDO_FLAG_SETTID2))) &&
 		    RB_EMPTY(&tse_tree)) {
 			if ((fd = open(filename, O_RDONLY)) > 0) {
 				collect_history(fd, &error, &tse_tree);
@@ -291,7 +291,7 @@ doiterate(const char *filename, const char *outFileName,
 		/*
 		 * Find entry if tid set to placeholder index
 		 */
-		if (flags & UNDO_FLAG_SETTID1){
+		if (flags & UNDO_FLAG_SETTID1) {
 			tse1 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
 			while (tse1 && ts1.tid--) {
 				tse1 = RB_PREV(undo_hist_entry_rb_tree,
@@ -302,7 +302,7 @@ doiterate(const char *filename, const char *outFileName,
 			else
 				ts1.tid = 0;
 		}
-		if (flags & UNDO_FLAG_SETTID2){
+		if (flags & UNDO_FLAG_SETTID2) {
 			tse2 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
 			while (tse2 && ts2.tid--) {
 				tse2 = RB_PREV(undo_hist_entry_rb_tree,
@@ -501,12 +501,14 @@ dogenerate(const char *filename, const char *outFileName,
 		printf("diff -N -r -u %s %s (to %s)\n",
 		       ipath1, ipath2, timestamp(&ts2));
 		fflush(stdout);
-		runcmd(fileno(fp), "/usr/bin/diff", "diff", "-N", "-r", "-u", ipath1, ipath2, NULL);
+		runcmd(fileno(fp), "/usr/bin/diff", "diff", "-N", "-r", "-u",
+			ipath1, ipath2, NULL);
 		break;
 	case TYPE_RDIFF:
 		printf("diff -N -r -u %s %s\n", ipath2, ipath1);
 		fflush(stdout);
-		runcmd(fileno(fp), "/usr/bin/diff", "diff", "-N", "-r", "-u", ipath2, ipath1, NULL);
+		runcmd(fileno(fp), "/usr/bin/diff", "diff", "-N", "-r", "-u",
+			ipath2, ipath1, NULL);
 		break;
 	case TYPE_HISTORY:
 		t = (time_t)ts1.time32;
