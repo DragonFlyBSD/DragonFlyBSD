@@ -70,8 +70,8 @@ enum undo_cmd { CMD_DUMP, CMD_ITERATEALL };
 
 #define UNDO_FLAG_MULT		0x0001
 #define UNDO_FLAG_INOCHG	0x0002
-#define UNDO_FLAG_SETTID1	0x0004
-#define UNDO_FLAG_SETTID2	0x0008
+#define UNDO_FLAG_TID_INDEX1	0x0004
+#define UNDO_FLAG_TID_INDEX2	0x0008
 
 static int undo_hist_entry_compare(struct undo_hist_entry *he1,
 		    struct undo_hist_entry *he2);
@@ -157,10 +157,10 @@ main(int ac, char **av)
 			++count_t;
 			if (count_t == 1) {
 				ts1.tid = parse_delta_time(optarg, &flags,
-				                           UNDO_FLAG_SETTID1);
+							UNDO_FLAG_TID_INDEX1);
 			} else if (count_t == 2) {
 				ts2.tid = parse_delta_time(optarg, &flags,
-				                           UNDO_FLAG_SETTID2);
+							UNDO_FLAG_TID_INDEX2);
 				if (type == TYPE_FILE)
 					type = TYPE_DIFF;
 			} else {
@@ -283,7 +283,7 @@ doiterate(const char *filename, const char *outFileName,
 	}
 	if (cmd == CMD_DUMP) {
 		if ((ts1.tid == 0 ||
-		    (flags & (UNDO_FLAG_SETTID1|UNDO_FLAG_SETTID2))) &&
+		    (flags & (UNDO_FLAG_TID_INDEX1 | UNDO_FLAG_TID_INDEX2))) &&
 		    RB_EMPTY(&tse_tree)) {
 			if ((fd = open(filename, O_RDONLY)) > 0) {
 				collect_history(fd, &error, &tse_tree);
@@ -293,7 +293,7 @@ doiterate(const char *filename, const char *outFileName,
 		/*
 		 * Find entry if tid set to placeholder index
 		 */
-		if (flags & UNDO_FLAG_SETTID1) {
+		if (flags & UNDO_FLAG_TID_INDEX1) {
 			tse1 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
 			while (tse1 && ts1.tid--) {
 				tse1 = RB_PREV(undo_hist_entry_rb_tree,
@@ -304,7 +304,7 @@ doiterate(const char *filename, const char *outFileName,
 			else
 				ts1.tid = 0;
 		}
-		if (flags & UNDO_FLAG_SETTID2) {
+		if (flags & UNDO_FLAG_TID_INDEX2) {
 			tse2 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
 			while (tse2 && ts2.tid--) {
 				tse2 = RB_PREV(undo_hist_entry_rb_tree,
