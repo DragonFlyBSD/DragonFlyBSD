@@ -282,14 +282,6 @@ doiterate(const char *filename, const char *outFileName,
 		close(fd);
 	}
 	if (cmd == CMD_DUMP) {
-		if ((ts1.tid == 0 ||
-		    (flags & (UNDO_FLAG_TID_INDEX1 | UNDO_FLAG_TID_INDEX2))) &&
-		    RB_EMPTY(&tse_tree)) {
-			if ((fd = open(filename, O_RDONLY)) > 0) {
-				collect_history(fd, &error, &tse_tree);
-				close(fd);
-			}
-		}
 		/*
 		 * Find entry if tid set to placeholder index
 		 */
