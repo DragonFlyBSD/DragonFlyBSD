@@ -541,7 +541,6 @@ collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
 	struct hammer_ioc_history hist;
 	struct undo_hist_entry *tse;
 	struct stat st;
-	int istmp;
 	int i;
 
 	/*
@@ -556,14 +555,6 @@ collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
 
 	*errorp = 0;
 
-	if (tse_tree == NULL) {
-		tse_tree = malloc(sizeof(*tse_tree));
-		RB_INIT(tse_tree);
-		istmp = 1;
-	} else {
-		istmp = 0;
-	}
-
 	/*
 	 * Save the inode so inode changes can be reported.
 	 */
@@ -575,7 +566,7 @@ collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
 	 */
 	if (ioctl(fd, HAMMERIOC_GETHISTORY, &hist) < 0) {
 		*errorp = errno;
-		goto done;
+		return;
 	}
 	for (;;) {
 		for (i = 0; i < hist.count; ++i) {
@@ -598,15 +589,6 @@ collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
 			*errorp = errno;
 			break;
 		}
-	}
-
-	/*
-	 * Cleanup
-	 */
-done:
-	if (istmp) {
-		clean_tree(tse_tree);
-		free(tse_tree);
 	}
 }
 
