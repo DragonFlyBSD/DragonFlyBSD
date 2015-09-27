@@ -641,6 +641,7 @@ collect_dir_history(const char *filename, int *errorp,
 	}
 	if ((fd = open(dirname, O_RDONLY)) > 0) {
 		collect_history(fd, &error, dir_tree);
+		*errorp = error;
 		close(fd);
 	}
 	free(dirname);
