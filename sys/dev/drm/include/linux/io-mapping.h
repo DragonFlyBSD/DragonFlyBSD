@@ -30,12 +30,46 @@
 #include <linux/types.h>
 #include <linux/io.h>
 
-struct io_mapping;
+struct io_mapping {
+	resource_size_t base;
+	unsigned long size;
+	unsigned long prot;
+	void *vaddr;
+};
 
 static inline struct io_mapping *
 io_mapping_create_wc(resource_size_t base, unsigned long size)
 {
-	return pmap_mapdev_attr(base, size, VM_MEMATTR_WRITE_COMBINING);
+	struct io_mapping *map;
+
+	map = kmalloc(sizeof(struct io_mapping), M_DRM, M_WAITOK);
+	map->base = base;
+	map->size = size;
+	map->prot = VM_MEMATTR_WRITE_COMBINING;
+
+	map->vaddr = pmap_mapdev_attr(base, size,
+					VM_MEMATTR_WRITE_COMBINING);
+	if (map->vaddr == NULL)
+		return NULL;
+
+	return map;
+}
+
+static inline void io_mapping_free(struct io_mapping *mapping)
+{
+	/* Default memory attribute is write-back */
+	pmap_mapdev_attr(mapping->base, mapping->size, VM_MEMATTR_WRITE_BACK);
+	kfree(mapping);
+}
+
+static inline void *
+io_mapping_map_atomic_wc(struct io_mapping *mapping, unsigned long offset)
+{
+	return (void *)PHYS_TO_DMAP(mapping->base + offset);
+}
+
+static inline void io_mapping_unmap_atomic(void *vaddr)
+{
 }
 
 #endif	/* _LINUX_IOMAPPING_H_ */
