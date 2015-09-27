@@ -2242,11 +2242,14 @@ intel_gtt_insert_pages(u_int first_entry, u_int num_entries, vm_page_t *pages,
 void intel_gtt_get(size_t *gtt_total, size_t *stolen_size,
 		   phys_addr_t *mappable_base, unsigned long *mappable_end)
 {
+	struct agp_info ainfo;
+
 	intel_private.base = agp_intel_gtt_get(intel_agp);
 
 	*gtt_total = intel_private.base.gtt_total_entries << PAGE_SHIFT;
 	*stolen_size = intel_private.base.stolen_size;
-	*mappable_base = intel_private.base.gma_bus_addr;
+	agp_get_info(intel_agp, &ainfo);
+	*mappable_base = ainfo.ai_aperture_base;
 	*mappable_end = intel_private.base.gtt_mappable_entries << PAGE_SHIFT;
 }
 
