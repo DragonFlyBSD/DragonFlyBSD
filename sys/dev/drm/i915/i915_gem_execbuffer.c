@@ -305,6 +305,7 @@ relocate_entry_gtt(struct drm_i915_gem_object *obj,
 		   uint64_t target_offset)
 {
 	struct drm_device *dev = obj->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	uint64_t delta = reloc->delta + target_offset;
 	uint32_t __iomem *reloc_entry;
 	void __iomem *reloc_page;
@@ -320,8 +321,8 @@ relocate_entry_gtt(struct drm_i915_gem_object *obj,
 
 	/* Map the page containing the relocation we're going to perform.  */
 	reloc->offset += i915_gem_obj_ggtt_offset(obj);
-	reloc_page = pmap_mapdev_attr(dev->agp->base + (reloc->offset &
-		    ~PAGE_MASK), PAGE_SIZE, PAT_WRITE_COMBINING);
+	reloc_page = io_mapping_map_atomic_wc(dev_priv->gtt.mappable,
+			reloc->offset & ~PAGE_MASK);
 	reloc_entry = (uint32_t __iomem *)
 		((char *)reloc_page + offset_in_page(reloc->offset));
 	iowrite32(lower_32_bits(delta), reloc_entry);
@@ -330,18 +331,17 @@ relocate_entry_gtt(struct drm_i915_gem_object *obj,
 		reloc_entry += 1;
 
 		if (offset_in_page(reloc->offset + sizeof(uint32_t)) == 0) {
-			pmap_unmapdev((vm_offset_t)reloc_page, PAGE_SIZE);
-			reloc_page = pmap_mapdev_attr(
-					dev->agp->base +
-					reloc->offset + sizeof(uint32_t),
-					PAGE_SIZE, PAT_WRITE_COMBINING);
+			io_mapping_unmap_atomic(reloc_page);
+			reloc_page = io_mapping_map_atomic_wc(
+					dev_priv->gtt.mappable,
+					reloc->offset + sizeof(uint32_t));
 			reloc_entry = reloc_page;
 		}
 
 		iowrite32(upper_32_bits(delta), reloc_entry);
 	}
 
-	pmap_unmapdev((vm_offset_t)reloc_page, PAGE_SIZE);
+	io_mapping_unmap_atomic(reloc_page);
 
 	return 0;
 }

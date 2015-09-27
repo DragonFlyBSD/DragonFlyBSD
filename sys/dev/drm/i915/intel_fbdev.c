@@ -148,9 +148,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		container_of(helper, struct intel_fbdev, helper);
 	struct intel_framebuffer *intel_fb = ifbdev->fb;
 	struct drm_device *dev = helper->dev;
-#if 0
 	struct drm_i915_private *dev_priv = dev->dev_private;
-#endif
 	struct fb_info *info;
 	struct drm_framebuffer *fb;
 	struct drm_i915_gem_object *obj;
@@ -207,7 +205,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->stride =
 	    ALIGN(sizes->surface_width * ((sizes->surface_bpp + 7) / 8), 64);
 	info->depth = sizes->surface_bpp;
-	info->paddr = dev->agp->base + i915_gem_obj_ggtt_offset(obj);
+	info->paddr = dev_priv->gtt.mappable_base + i915_gem_obj_ggtt_offset(obj);
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 	info->vaddr =
 	    (vm_offset_t)pmap_mapdev_attr(info->paddr,

@@ -1530,6 +1530,7 @@ static void intel_destroy_ringbuffer_obj(struct intel_ringbuffer *ringbuf)
 static int intel_alloc_ringbuffer_obj(struct drm_device *dev,
 				      struct intel_ringbuffer *ringbuf)
 {
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_i915_gem_object *obj;
 	int ret;
 
@@ -1556,7 +1557,7 @@ static int intel_alloc_ringbuffer_obj(struct drm_device *dev,
 		goto err_unpin;
 
 	ringbuf->virtual_start =
-		ioremap_wc(dev->agp->base + i915_gem_obj_ggtt_offset(obj),
+		ioremap_wc(dev_priv->gtt.mappable_base + i915_gem_obj_ggtt_offset(obj),
 				ringbuf->size);
 	if (ringbuf->virtual_start == NULL) {
 		ret = -EINVAL;

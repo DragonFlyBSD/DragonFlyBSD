@@ -189,14 +189,14 @@ struct intel_overlay {
 static struct overlay_registers __iomem *
 intel_overlay_map_regs(struct intel_overlay *overlay)
 {
+	struct drm_i915_private *dev_priv = overlay->dev->dev_private;
 	struct overlay_registers __iomem *regs;
 
 	if (OVERLAY_NEEDS_PHYSICAL(overlay->dev))
 		regs = (struct overlay_registers __iomem *)overlay->reg_bo->phys_handle->vaddr;
 	else
-		regs = pmap_mapdev_attr(overlay->dev->agp->base +
-		    i915_gem_obj_ggtt_offset(overlay->reg_bo), PAGE_SIZE,
-		    PAT_WRITE_COMBINING);
+		regs = io_mapping_map_wc(dev_priv->gtt.mappable,
+					 i915_gem_obj_ggtt_offset(overlay->reg_bo));
 
 	return regs;
 }

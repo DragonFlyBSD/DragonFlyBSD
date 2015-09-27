@@ -724,7 +724,6 @@ unlock:
  * page faults in the source data
  */
 
-#if 0	/* XXX: buggy on core2 machines */
 static inline int
 fast_user_write(struct io_mapping *mapping,
 		loff_t page_base, int page_offset,
@@ -743,27 +742,6 @@ fast_user_write(struct io_mapping *mapping,
 	io_mapping_unmap_atomic(vaddr_atomic);
 	return unwritten;
 }
-#endif
-
-static int
-i915_gem_gtt_write(struct drm_device *dev, struct drm_i915_gem_object *obj,
-    uint64_t data_ptr, uint64_t size, uint64_t offset, struct drm_file *file)
-{
-	vm_offset_t mkva;
-	int ret;
-
-	/*
-	 * Pass the unaligned physical address and size to pmap_mapdev_attr()
-	 * so it can properly calculate whether an extra page needs to be
-	 * mapped or not to cover the requested range.  The function will
-	 * add the page offset into the returned mkva for us.
-	 */
-	mkva = (vm_offset_t)pmap_mapdev_attr(dev->agp->base +
-	    i915_gem_obj_ggtt_offset(obj) + offset, size, PAT_WRITE_COMBINING);
-	ret = -copyin_nofault((void *)(uintptr_t)data_ptr, (char *)mkva, size);
-	pmap_unmapdev(mkva, size);
-	return ret;
-}
 
 /**
  * This is the fast pwrite path, where we copy the data directly from the
@@ -775,6 +753,7 @@ i915_gem_gtt_pwrite_fast(struct drm_device *dev,
 			 struct drm_i915_gem_pwrite *args,
 			 struct drm_file *file)
 {
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	ssize_t remain;
 	loff_t offset, page_base;
 	char __user *user_data;
@@ -814,12 +793,8 @@ i915_gem_gtt_pwrite_fast(struct drm_device *dev,
 		 * source page isn't available.  Return the error and we'll
 		 * retry in the slow path.
 		 */
-#if 0
 		if (fast_user_write(dev_priv->gtt.mappable, page_base,
 				    page_offset, user_data, page_length)) {
-#else
-		if (i915_gem_gtt_write(dev, obj, args->data_ptr, args->size, args->offset, file)) {
-#endif
 			ret = -EFAULT;
 			goto out_unpin;
 		}
@@ -1700,7 +1675,7 @@ retry:
 	 * Relock object for insertion, leave locked for return.
 	 */
 	VM_OBJECT_LOCK(vm_obj);
-	m = vm_phys_fictitious_to_vm_page(dev->agp->base +
+	m = vm_phys_fictitious_to_vm_page(dev_priv->gtt.mappable_base +
 					  i915_gem_obj_ggtt_offset(obj) +
 					  offset);
 	if (m == NULL) {
