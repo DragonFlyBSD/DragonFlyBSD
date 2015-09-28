@@ -91,8 +91,10 @@ static void dogenerate(const char *filename, int flags,
 		   struct hammer_ioc_hist_entry ts1,
 		   struct hammer_ioc_hist_entry ts2,
 		   int idx, enum undo_type type);
-static void collect_history(int fd, int *error,
+static void __collect_history(int fd, int *error,
 		   struct undo_hist_entry_rb_tree *tse_tree);
+static void collect_history(const char *filename, int *errorp,
+		   struct undo_hist_entry_rb_tree *dir_tree);
 static void collect_dir_history(const char *filename, int *error,
 		   struct undo_hist_entry_rb_tree *dir_tree);
 static void clean_tree(struct undo_hist_entry_rb_tree *tree);
@@ -249,7 +251,6 @@ doiterate(const char *filename, int flags,
 	struct undo_hist_entry *tse;
 	struct stat sb;
 	char *path = NULL;
-	int fd;
 	int error;
 
 	RB_INIT(&dir_tree);
@@ -269,16 +270,10 @@ doiterate(const char *filename, int flags,
 			free(path);
 			continue;
 		}
-		if ((fd = open(path, O_RDONLY)) > 0) {
-			collect_history(fd, &error, &tse_tree);
-			close(fd);
-		}
+		collect_history(path, &error, &tse_tree);
 		free(path);
 	}
-	if ((fd = open(filename, O_RDONLY)) > 0) {
-		collect_history(fd, &error, &tse_tree);
-		close(fd);
-	}
+	collect_history(filename, &error, &tse_tree);
 
 	switch (cmd) {
 	case CMD_DUMP:
@@ -566,7 +561,7 @@ clean_tree(struct undo_hist_entry_rb_tree *tree)
 
 static
 void
-collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
+__collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
 {
 	struct hammer_ioc_history hist;
 	struct undo_hist_entry *tse;
@@ -624,25 +619,35 @@ collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
 
 static
 void
+collect_history(const char *filename, int *errorp,
+		struct undo_hist_entry_rb_tree *dir_tree)
+{
+	int fd;
+
+	fd = open(filename, O_RDONLY);
+	if (fd == -1) {
+		*errorp = errno;
+		return;
+	}
+	__collect_history(fd, errorp, dir_tree);
+	close(fd);
+}
+
+static
+void
 collect_dir_history(const char *filename, int *errorp,
 		    struct undo_hist_entry_rb_tree *dir_tree)
 {
 	char *dirname;
-	int fd;
-	int error;
 
-	*errorp = 0;
 	if (strrchr(filename, '/')) {
 		dirname = strdup(filename);
 		*strrchr(dirname, '/') = 0;
 	} else {
 		dirname = strdup(".");
 	}
-	if ((fd = open(dirname, O_RDONLY)) > 0) {
-		collect_history(fd, &error, dir_tree);
-		*errorp = error;
-		close(fd);
-	}
+
+	collect_history(dirname, errorp, dir_tree);
 	free(dirname);
 }
 
