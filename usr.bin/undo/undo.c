@@ -100,6 +100,7 @@ static void collect_dir_history(const char *filename, int *error,
 static void clean_tree(struct undo_hist_entry_rb_tree *tree);
 static hammer_tid_t parse_delta_time(const char *timeStr, int *flags,
 		   int ind_flag);
+static FILE *_fopen(const char *filename, const char *mode);
 static void runcmd(int fd, const char *cmd, ...);
 static char *timestamp(hammer_ioc_hist_entry_t hen);
 static void usage(void);
@@ -458,18 +459,10 @@ dogenerate(const char *filename, int flags,
 	if (OutFileName) {
 		if (flags & UNDO_FLAG_MULT) {
 			asprintf(&path, OutFileName, elm);
-			fp = fopen(path, "w");
-			if (fp == NULL) {
-				perror(path);
-				exit(1);
-			}
+			fp = _fopen(path, "w");
 			free(path);
 		} else {
-			fp = fopen(OutFileName, "w");
-			if (fp == NULL) {
-				perror(OutFileName);
-				exit(1);
-			}
+			fp = _fopen(OutFileName, "w");
 		}
 	} else if (OutFilePostfix) {
 		if (idx >= 0) {
@@ -478,11 +471,7 @@ dogenerate(const char *filename, int flags,
 		} else {
 			asprintf(&path, "%s%s", filename, OutFilePostfix);
 		}
-		fp = fopen(path, "w");
-		if (fp == NULL) {
-			perror(path);
-			exit(1);
-		}
+		fp = _fopen(path, "w");
 		free(path);
 	} else {
 		if ((flags & UNDO_FLAG_MULT) && type == TYPE_FILE) {
@@ -663,6 +652,20 @@ parse_delta_time(const char *timeStr, int *flags, int ind_flag)
 	if (timeStr[0] >= '0' && timeStr[0] <= '9' && timeStr[1] != 'x')
 		*flags |= ind_flag;
 	return(tid);
+}
+
+static
+FILE*
+_fopen(const char *filename, const char *mode)
+{
+	FILE *fp;
+
+	fp = fopen(filename, mode);
+	if (fp == NULL) {
+		perror(filename);
+		exit(1);
+	}
+	return(fp);
 }
 
 static void
