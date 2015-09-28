@@ -91,10 +91,10 @@ static int doiterate_iterall(const char *filename, const char *outFileName,
 		   struct undo_hist_entry_rb_tree *ptse_tree,
 		   enum undo_type type);
 static void dogenerate(const char *filename, const char *outFileName,
-		   const char *outFilePostfix,
-		   int flags, int idx, enum undo_type type,
+		   const char *outFilePostfix, int flags,
 		   struct hammer_ioc_hist_entry ts1,
-		   struct hammer_ioc_hist_entry ts2);
+		   struct hammer_ioc_hist_entry ts2,
+		   int idx, enum undo_type type);
 static void collect_history(int fd, int *error,
 		   struct undo_hist_entry_rb_tree *tse_tree);
 static void collect_dir_history(const char *filename, int *error,
@@ -361,8 +361,7 @@ doiterate_dump(const char *filename, const char *outFileName,
 
 	if (ts1.tid) {
 		dogenerate(filename, outFileName, outFilePostfix,
-			   0, 0, type,
-			   ts1, ts2);
+			   0, ts1, ts2, 0, type);
 		return(0);
 	}
 	return(-1);
@@ -393,8 +392,7 @@ doiterate_iterall(const char *filename, const char *outFileName,
 	RB_FOREACH(tse2, undo_hist_entry_rb_tree, ptse_tree) {
 		if (tse1) {
 			dogenerate(filename, outFileName, outFilePostfix,
-				   flags, i, type,
-				   tse1->tse, tse2->tse);
+				   flags, tse1->tse, tse2->tse, i, type);
 		}
 		if (tse1 && tse2->inum != tse1->inum)
 			flags |= UNDO_FLAG_INOCHG;
@@ -412,8 +410,7 @@ doiterate_iterall(const char *filename, const char *outFileName,
 		tid_max.tid = HAMMER_MAX_TID;
 		tid_max.time32 = 0;
 		dogenerate(filename, outFileName, outFilePostfix,
-			   flags, i, type,
-			   tse1->tse, tid_max);
+			   flags, tse1->tse, tid_max, i, type);
 	}
 	return(0);
 }
@@ -425,10 +422,10 @@ doiterate_iterall(const char *filename, const char *outFileName,
 static
 void
 dogenerate(const char *filename, const char *outFileName,
-	   const char *outFilePostfix,
-	   int flags, int idx, enum undo_type type,
+	   const char *outFilePostfix, int flags,
 	   struct hammer_ioc_hist_entry ts1,
-	   struct hammer_ioc_hist_entry ts2)
+	   struct hammer_ioc_hist_entry ts2,
+	   int idx, enum undo_type type)
 {
 	struct stat st;
 	const char *elm;
