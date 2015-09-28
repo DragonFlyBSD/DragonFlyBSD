@@ -991,7 +991,7 @@ int drm_fb_helper_pan_display(struct fb_var_screeninfo *var,
 EXPORT_SYMBOL(drm_fb_helper_pan_display);
 #endif
 
-/* XXX: DragonFly-specific */
+#ifdef __DragonFly__
 static void
 do_restore_fbdev_mode(void *context, int pending)
 {
@@ -1006,7 +1006,6 @@ do_restore_fbdev_mode(void *context, int pending)
 	drm_modeset_unlock_all(dev);
 }
 
-/* XXX: DragonFly-specific */
 static void
 sc_restore_fbdev_mode(void *cookie)
 {
@@ -1017,6 +1016,7 @@ sc_restore_fbdev_mode(void *cookie)
 
 	taskqueue_enqueue(taskqueue_thread[0], &fb_helper->fb_mode_task);
 }
+#endif
 
 /*
  * Allocates the backing storage and sets up the fbdev info structure through
@@ -1032,7 +1032,9 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	struct fb_info *info;
 	struct drm_fb_helper_surface_size sizes;
 	int gamma_size = 0;
-	int kms_console = 1;	/* XXX: DragonFly-specific */
+#ifdef __DragonFly__
+	int kms_console = 1;
+#endif
 
 	memset(&sizes, 0, sizeof(struct drm_fb_helper_surface_size));
 	sizes.surface_depth = 24;
@@ -1122,8 +1124,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 		if (fb_helper->crtc_info[i].mode_set.num_connectors)
 			fb_helper->crtc_info[i].mode_set.fb = fb_helper->fb;
 
-
-	/* XXX: DragonFly-specific */
+#ifdef __DragonFly__
 	TUNABLE_INT_FETCH("kern.kms_console", &kms_console);
 	if (kms_console) {
 		TASK_INIT(&fb_helper->fb_mode_task, 0, do_restore_fbdev_mode,
@@ -1133,6 +1134,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 		if (register_framebuffer(info) < 0)
 			return -EINVAL;
 	}
+#endif
 
 #if 0
 	info->var.pixclock = 0;

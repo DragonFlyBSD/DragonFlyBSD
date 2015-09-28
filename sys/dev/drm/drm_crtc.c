@@ -4566,9 +4566,13 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 		e->event.user_data = page_flip->user_data;
 		e->base.event = &e->event.base;
 		e->base.file_priv = file_priv;
-		/* XXX: DragonFly-specific */
+#ifdef __DragonFly__
 		e->base.destroy =
 			(void (*) (struct drm_pending_event *)) drm_kms_free;
+#else
+		e->base.destroy =
+			(void (*) (struct drm_pending_event *)) kfree;
+#endif
 	}
 
 	old_fb = crtc->primary->fb;

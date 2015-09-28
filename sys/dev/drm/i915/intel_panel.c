@@ -1230,7 +1230,7 @@ static int vlv_setup_backlight(struct intel_connector *connector)
 	return 0;
 }
 
-/* XXX: DragonFly-specific begin */
+#ifdef __DragonFly__
 /*
  * Read max backlight level
  */
@@ -1284,7 +1284,7 @@ sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
 
 	return(err);
 }
-/* XXX: DragonFly-specific end */
+#endif /* __DragonFly__ */
 
 int intel_panel_setup_backlight(struct drm_connector *connector)
 {
@@ -1318,7 +1318,7 @@ int intel_panel_setup_backlight(struct drm_connector *connector)
 
 	panel->backlight.present = true;
 
-	/* XXX: DragonFly-specific begin */
+#ifdef __DragonFly__
 	SYSCTL_ADD_PROC(&connector->dev->sysctl->ctx, &sysctl__hw_children,
 			OID_AUTO, "backlight_max",
 			CTLTYPE_INT | CTLFLAG_RD | CTLFLAG_ANYBODY,
@@ -1331,7 +1331,7 @@ int intel_panel_setup_backlight(struct drm_connector *connector)
 			connector, sizeof(int),
 			sysctl_backlight_handler,
 			"I", "Backlight level");
-	/* XXX: DragonFly-specific end */
+#endif
 
 	DRM_DEBUG_KMS("backlight initialized, %s, brightness %u/%u, "
 		      "sysfs interface %sregistered\n",

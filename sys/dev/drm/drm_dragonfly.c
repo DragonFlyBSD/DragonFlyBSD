@@ -27,17 +27,6 @@
 #include <sys/ctype.h>
 #include <drm/drmP.h>
 
-#if 0
-commit 26a028bf8c7694e64d44f9e2bb8bd0fba47d7519
-Author: Imre Vadász <imre@vdsz.com>
-Date:   Tue Jun 2 23:14:52 2015 +0200
-
-    drm: hack together an implementation of fb_get_options
-    
-    This can be used to set the video mode used for the syscons fb console,
-    a la "video=..." in linux.
-#endif
-
 /*
  * An implementation of fb_get_options()
  * This can be used to set the video mode used for the syscons fb console,

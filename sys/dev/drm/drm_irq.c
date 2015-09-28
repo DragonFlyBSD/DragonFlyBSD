@@ -848,8 +848,9 @@ static void send_vblank_event(struct drm_device *dev,
 	list_add_tail(&e->base.link,
 		      &e->base.file_priv->event_list);
 	wake_up_interruptible(&e->base.file_priv->event_wait);
-	/* XXX: DragonFly-specific */
+#ifdef __DragonFly__
 	KNOTE(&e->base.file_priv->dkq.ki_note, 0);
+#endif
 #if 0
 	trace_drm_vblank_event_delivered(e->base.pid, e->pipe,
 					 e->event.sequence);
@@ -1258,12 +1259,13 @@ int drm_modeset_ctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-/* DragonFly-specific */
+#ifdef __DragonFly__
 static void
 drm_vblank_event_destroy(struct drm_pending_event *e)
 {
 	kfree(e);
 }
+#endif
 
 static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 				  union drm_wait_vblank *vblwait,

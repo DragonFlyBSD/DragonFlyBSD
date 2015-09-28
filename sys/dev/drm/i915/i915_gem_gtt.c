@@ -1754,13 +1754,14 @@ void i915_gem_setup_global_gtt(struct drm_device *dev,
 				     hole_end - hole_start, true);
 	}
 
-	/* XXX: DragonFly-specific */
+#ifdef __DragonFly__
 	intel_gtt_clear_range(start / PAGE_SIZE, (end-start) / PAGE_SIZE);
 	device_printf(dev->dev,
 	    "taking over the fictitious range 0x%lx-0x%lx\n",
 	    dev_priv->gtt.mappable_base + start, dev_priv->gtt.mappable_base + start + mappable);
 	error = -vm_phys_fictitious_reg_range(dev_priv->gtt.mappable_base + start,
 	    dev_priv->gtt.mappable_base + start + mappable, VM_MEMATTR_WRITE_COMBINING);
+#endif
 
 	/* And finally clear the reserved guard page */
 	ggtt_vm->clear_range(ggtt_vm, end - PAGE_SIZE, PAGE_SIZE, true);

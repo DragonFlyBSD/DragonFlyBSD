@@ -96,8 +96,9 @@ struct drm_fb_helper {
 	   delay until next set_par */
 	bool delayed_hotplug;
 
-	/* XXX: DragonFly-specific */
+#ifdef __DragonFly__
 	struct task fb_mode_task;
+#endif
 };
 
 void drm_fb_helper_prepare(struct drm_device *dev, struct drm_fb_helper *helper,
