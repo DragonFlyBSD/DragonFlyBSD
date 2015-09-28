@@ -75,23 +75,19 @@ enum undo_cmd { CMD_DUMP, CMD_ITERATEALL };
 
 static int undo_hist_entry_compare(struct undo_hist_entry *he1,
 		    struct undo_hist_entry *he2);
-static void doiterate(const char *filename, const char *outFileName,
-		   const char *outFilePostfix, int flags,
+static void doiterate(const char *filename, int flags,
 		   struct hammer_ioc_hist_entry ts1,
 		   struct hammer_ioc_hist_entry ts2,
 		   enum undo_cmd cmd, enum undo_type type);
-static int doiterate_dump(const char *filename, const char *outFileName,
-		   const char *outFilePostfix, int flags,
+static int doiterate_dump(const char *filename, int flags,
 		   struct undo_hist_entry_rb_tree *ptse_tree,
 		   struct hammer_ioc_hist_entry ts1,
 		   struct hammer_ioc_hist_entry ts2,
 		   enum undo_type type);
-static int doiterate_iterall(const char *filename, const char *outFileName,
-		   const char *outFilePostfix, int flags,
+static int doiterate_iterall(const char *filename, int flags,
 		   struct undo_hist_entry_rb_tree *ptse_tree,
 		   enum undo_type type);
-static void dogenerate(const char *filename, const char *outFileName,
-		   const char *outFilePostfix, int flags,
+static void dogenerate(const char *filename, int flags,
 		   struct hammer_ioc_hist_entry ts1,
 		   struct hammer_ioc_hist_entry ts2,
 		   int idx, enum undo_type type);
@@ -107,6 +103,8 @@ static char *timestamp(hammer_ioc_hist_entry_t hen);
 static void usage(void);
 
 static int VerboseOpt;
+static const char *OutFileName = NULL;
+static const char *OutFilePostfix = NULL;
 
 RB_GENERATE2(undo_hist_entry_rb_tree, undo_hist_entry, rbnode,
 	undo_hist_entry_compare, hammer_tid_t, tse.tid);
@@ -115,8 +113,6 @@ RB_GENERATE2(undo_hist_entry_rb_tree, undo_hist_entry, rbnode,
 int
 main(int ac, char **av)
 {
-	const char *outFileName = NULL;
-	const char *outFilePostfix = NULL;
 	enum undo_cmd cmd;
 	enum undo_type type;
 	struct hammer_ioc_hist_entry ts1;
@@ -151,13 +147,13 @@ main(int ac, char **av)
 			cmd = CMD_ITERATEALL;
 			break;
 		case 'u':
-			outFilePostfix = ".undo";
+			OutFilePostfix = ".undo";
 			break;
 		case 'v':
 			++VerboseOpt;
 			break;
 		case 'o':
-			outFileName = optarg;
+			OutFileName = optarg;
 			break;
 		case 't':
 			/*
@@ -187,7 +183,7 @@ main(int ac, char **av)
 	/*
 	 * Option validation
 	 */
-	if (outFileName && outFilePostfix) {
+	if (OutFileName && OutFilePostfix) {
 		fprintf(stderr, "The -o option may not be combined with -u\n");
 		usage();
 	}
@@ -203,8 +199,8 @@ main(int ac, char **av)
 	/*
 	 * Validate the output template, if specified.
 	 */
-	if (outFileName && (flags & UNDO_FLAG_MULT)) {
-		const char *ptr = outFileName;
+	if (OutFileName && (flags & UNDO_FLAG_MULT)) {
+		const char *ptr = OutFileName;
 		int didStr = 0;
 
 		while ((ptr = strchr(ptr, '%')) != NULL) {
@@ -226,8 +222,7 @@ main(int ac, char **av)
 	}
 
 	while (ac) {
-		doiterate(*av, outFileName, outFilePostfix,
-			  flags, ts1, ts2, cmd, type);
+		doiterate(*av, flags, ts1, ts2, cmd, type);
 		++av;
 		--ac;
 	}
@@ -244,8 +239,7 @@ main(int ac, char **av)
  */
 static
 void
-doiterate(const char *filename, const char *outFileName,
-	  const char *outFilePostfix, int flags,
+doiterate(const char *filename, int flags,
 	  struct hammer_ioc_hist_entry ts1,
 	  struct hammer_ioc_hist_entry ts2,
 	  enum undo_cmd cmd, enum undo_type type)
@@ -288,13 +282,11 @@ doiterate(const char *filename, const char *outFileName,
 
 	switch (cmd) {
 	case CMD_DUMP:
-		if (doiterate_dump(filename, outFileName, outFilePostfix,
-				flags, &tse_tree, ts1, ts2, type) == -1)
+		if (doiterate_dump(filename, flags, &tse_tree, ts1, ts2, type) == -1)
 			printf("%s: No UNDO history found\n", filename);
 		break;
 	case CMD_ITERATEALL:
-		if (doiterate_iterall(filename, outFileName, outFilePostfix,
-				flags, &tse_tree, type) == -1)
+		if (doiterate_iterall(filename, flags, &tse_tree, type) == -1)
 			printf("%s: ITERATE ENTIRE HISTORY: %s\n",
 			       filename, strerror(error));
 		break;
@@ -309,8 +301,7 @@ doiterate(const char *filename, const char *outFileName,
 
 static
 int
-doiterate_dump(const char *filename, const char *outFileName,
-		const char *outFilePostfix, int flags,
+doiterate_dump(const char *filename, int flags,
 		struct undo_hist_entry_rb_tree *ptse_tree,
 		struct hammer_ioc_hist_entry ts1,
 		struct hammer_ioc_hist_entry ts2,
@@ -360,8 +351,7 @@ doiterate_dump(const char *filename, const char *outFileName,
 	}
 
 	if (ts1.tid) {
-		dogenerate(filename, outFileName, outFilePostfix,
-			   0, ts1, ts2, 0, type);
+		dogenerate(filename, 0, ts1, ts2, 0, type);
 		return(0);
 	}
 	return(-1);
@@ -369,8 +359,7 @@ doiterate_dump(const char *filename, const char *outFileName,
 
 static
 int
-doiterate_iterall(const char *filename, const char *outFileName,
-		const char *outFilePostfix, int flags,
+doiterate_iterall(const char *filename, int flags,
 		struct undo_hist_entry_rb_tree *ptse_tree,
 		enum undo_type type)
 {
@@ -391,8 +380,7 @@ doiterate_iterall(const char *filename, const char *outFileName,
 	i = 0;
 	RB_FOREACH(tse2, undo_hist_entry_rb_tree, ptse_tree) {
 		if (tse1) {
-			dogenerate(filename, outFileName, outFilePostfix,
-				   flags, tse1->tse, tse2->tse, i, type);
+			dogenerate(filename, flags, tse1->tse, tse2->tse, i, type);
 		}
 		if (tse1 && tse2->inum != tse1->inum)
 			flags |= UNDO_FLAG_INOCHG;
@@ -409,8 +397,7 @@ doiterate_iterall(const char *filename, const char *outFileName,
 	if (type != TYPE_DIFF && type != TYPE_RDIFF) {
 		tid_max.tid = HAMMER_MAX_TID;
 		tid_max.time32 = 0;
-		dogenerate(filename, outFileName, outFilePostfix,
-			   flags, tse1->tse, tid_max, i, type);
+		dogenerate(filename, flags, tse1->tse, tid_max, i, type);
 	}
 	return(0);
 }
@@ -421,8 +408,7 @@ doiterate_iterall(const char *filename, const char *outFileName,
  */
 static
 void
-dogenerate(const char *filename, const char *outFileName,
-	   const char *outFilePostfix, int flags,
+dogenerate(const char *filename, int flags,
 	   struct hammer_ioc_hist_entry ts1,
 	   struct hammer_ioc_hist_entry ts2,
 	   int idx, enum undo_type type)
@@ -475,9 +461,9 @@ dogenerate(const char *filename, const char *outFileName,
 	/*
 	 * Where do we stuff our output?
 	 */
-	if (outFileName) {
+	if (OutFileName) {
 		if (flags & UNDO_FLAG_MULT) {
-			asprintf(&path, outFileName, elm);
+			asprintf(&path, OutFileName, elm);
 			fp = fopen(path, "w");
 			if (fp == NULL) {
 				perror(path);
@@ -485,18 +471,18 @@ dogenerate(const char *filename, const char *outFileName,
 			}
 			free(path);
 		} else {
-			fp = fopen(outFileName, "w");
+			fp = fopen(OutFileName, "w");
 			if (fp == NULL) {
-				perror(outFileName);
+				perror(OutFileName);
 				exit(1);
 			}
 		}
-	} else if (outFilePostfix) {
+	} else if (OutFilePostfix) {
 		if (idx >= 0) {
 			asprintf(&path, "%s%s.%04d", filename,
-				 outFilePostfix, idx);
+				 OutFilePostfix, idx);
 		} else {
-			asprintf(&path, "%s%s", filename, outFilePostfix);
+			asprintf(&path, "%s%s", filename, OutFilePostfix);
 		}
 		fp = fopen(path, "w");
 		if (fp == NULL) {
