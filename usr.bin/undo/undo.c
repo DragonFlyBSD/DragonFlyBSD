@@ -287,8 +287,7 @@ doiterate(const char *filename, int flags,
 		break;
 	case CMD_ITERATEALL:
 		if (doiterate_iterall(filename, flags, &tse_tree, type) == -1)
-			printf("%s: ITERATE ENTIRE HISTORY: %s\n",
-			       filename, strerror(error));
+			printf("%s: No UNDO history found\n", filename);
 		break;
 	default:
 		fprintf(stderr, "Invalid command %d\n", cmd);
