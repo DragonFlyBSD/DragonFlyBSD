@@ -72,7 +72,7 @@ static int
 dm_target_zero_strategy(dm_table_entry_t * table_en, struct buf * bp)
 {
 
-	/* printf("Zero target read function called %d!!\n", bp->b_bcount); */
+	/* kprintf("Zero target read function called %d!!\n", bp->b_bcount); */
 
 	memset(bp->b_data, 0, bp->b_bcount);
 	bp->b_resid = 0;

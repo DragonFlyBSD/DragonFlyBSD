@@ -65,7 +65,7 @@ static int
 dm_target_error_strategy(dm_table_entry_t * table_en, struct buf * bp)
 {
 
-	kprintf("Error target read function called!!\n");
+	/* kprintf("Error target read function called!!\n"); */
 
 	bp->b_error = EIO;
 	bp->b_resid = 0;
