@@ -59,7 +59,6 @@ static	d_strategy_t	dmstrategy;
 static	d_dump_t	dmdump;
 
 /* attach and detach routines */
-void dmattach(int);
 static int dm_modcmd(module_t mod, int cmd, void *unused);
 static int dmdestroy(void);
 
