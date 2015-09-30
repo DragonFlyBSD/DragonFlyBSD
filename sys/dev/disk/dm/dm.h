@@ -45,6 +45,7 @@
 #include <sys/lock.h>
 #include <sys/queue.h>
 
+#include <sys/buf.h>
 #include <sys/device.h>
 #include <sys/devicestat.h>
 #include <sys/diskslice.h>
@@ -72,9 +73,6 @@
  * A device mapper table is a list of physical ranges plus the mapping target
  * applied to them.
  */
-struct buf;
-struct bio;
-
 typedef struct dm_table_entry {
 	struct dm_dev *dm_dev;		/* backlink */
 	uint64_t start;
