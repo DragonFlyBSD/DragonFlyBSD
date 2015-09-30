@@ -250,7 +250,7 @@ dmioctl(struct dev_ioctl_args *ap)
 
 	KKASSERT(data != NULL);
 
-	if (( r = disk_ioctl_switch(dev, cmd, data)) == ENOTTY) {
+	if ((r = disk_ioctl_switch(dev, cmd, data)) == ENOTTY) {
 		struct plistref *pref = (struct plistref *) data;
 
 		/* Check if we were called with NETBSD_DM_IOCTL ioctl
@@ -258,7 +258,7 @@ dmioctl(struct dev_ioctl_args *ap)
 		if ((r = dm_ioctl_switch(cmd)) != 0)
 			return r;
 
-		if((r = prop_dictionary_copyin_ioctl(pref, cmd, &dm_dict_in)) != 0)
+		if ((r = prop_dictionary_copyin_ioctl(pref, cmd, &dm_dict_in)) != 0)
 			return r;
 
 		if ((r = dm_check_version(dm_dict_in)) != 0)
@@ -285,7 +285,8 @@ cleanup_exit:
  * Translate command sent from libdevmapper to func.
  */
 static int
-dm_cmd_to_fun(prop_dictionary_t dm_dict){
+dm_cmd_to_fun(prop_dictionary_t dm_dict)
+{
 	int i, r;
 	prop_string_t command;
 
@@ -294,7 +295,7 @@ dm_cmd_to_fun(prop_dictionary_t dm_dict){
 	if ((command = prop_dictionary_get(dm_dict, DM_IOCTL_COMMAND)) == NULL)
 		return EINVAL;
 
-	for(i = 0; cmd_fn[i].cmd != NULL; i++)
+	for (i = 0; cmd_fn[i].cmd != NULL; i++)
 		if (prop_string_equals_cstring(command, cmd_fn[i].cmd))
 			break;
 
@@ -318,12 +319,12 @@ dm_ioctl_switch(u_long cmd)
 		aprint_debug("dm NetBSD_DM_IOCTL called\n");
 		break;
 	default:
-		 aprint_debug("dm unknown ioctl called\n");
-		 return ENOTTY;
-		 break; /* NOT REACHED */
+		aprint_debug("dm unknown ioctl called\n");
+		return ENOTTY;
+		break; /* NOT REACHED */
 	}
 
-	 return 0;
+	return 0;
 }
 
  /*

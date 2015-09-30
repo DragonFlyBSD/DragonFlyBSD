@@ -51,9 +51,6 @@
  * simply use shared/exclusive locking to ensure this.
  */
 
-static int dm_table_busy(dm_table_head_t *, uint8_t);
-static void dm_table_unbusy(dm_table_head_t *);
-
 /*
  * Function to increment table user reference counter. Return id
  * of table_id table.

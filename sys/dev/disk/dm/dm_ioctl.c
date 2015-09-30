@@ -100,8 +100,6 @@
 		prop_dictionary_set_uint32(dm_dict,DM_IOCTL_FLAGS,flag); \
 } while (/*CONSTCOND*/0)
 
-static int dm_dbg_print_flags(int);
-
 /*
  * Print flags sent to the kernel from libevmapper.
  */
