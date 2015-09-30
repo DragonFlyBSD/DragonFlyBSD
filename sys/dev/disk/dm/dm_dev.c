@@ -48,7 +48,7 @@
 
 extern struct dev_ops dm_ops;
 
-struct devfs_bitmap dm_minor_bitmap;
+static struct devfs_bitmap dm_minor_bitmap;
 uint64_t dm_dev_counter;
 
 static dm_dev_t *dm_dev_lookup_name(const char *);
@@ -58,7 +58,7 @@ static dm_dev_t *dm_dev_lookup_minor(int);
 static struct dm_dev_head dm_dev_list =
 TAILQ_HEAD_INITIALIZER(dm_dev_list);
 
-struct lock dm_dev_mutex;
+static struct lock dm_dev_mutex;
 
 /* dm_dev_mutex must be held by caller before using disable_dev. */
 static void

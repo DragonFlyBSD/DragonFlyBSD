@@ -47,7 +47,7 @@ TAILQ_HEAD(dm_target_head, dm_target);
 static struct dm_target_head dm_target_list =
 TAILQ_HEAD_INITIALIZER(dm_target_list);
 
-struct lock dm_target_mutex;
+static struct lock dm_target_mutex;
 
 /*
  * Called indirectly from dm_table_load_ioctl to mark target as used.

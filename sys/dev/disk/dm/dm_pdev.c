@@ -44,7 +44,7 @@
 
 SLIST_HEAD(dm_pdevs, dm_pdev) dm_pdev_list;
 
-struct lock dm_pdev_mutex;
+static struct lock dm_pdev_mutex;
 
 static dm_pdev_t *dm_pdev_alloc(const char *);
 static int dm_pdev_rem(dm_pdev_t *);
