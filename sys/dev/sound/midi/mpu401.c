@@ -124,12 +124,12 @@ mpu401_intr(struct mpu401 *m)
 	int s;
 
 /*
-	printf("mpu401_intr\n");
+	kprintf("mpu401_intr\n");
 */
 #define RXRDY(m) ( (STATUS(m) & MPU_INPUTBUSY) == 0)
 #define TXRDY(m) ( (STATUS(m) & MPU_OUTPUTBUSY) == 0)
 #if 0
-#define D(x,l) printf("mpu401_intr %d %x %s %s\n",l, x, x&MPU_INPUTBUSY?"RX":"", x&MPU_OUTPUTBUSY?"TX":"")
+#define D(x,l) kprintf("mpu401_intr %d %x %s %s\n",l, x, x&MPU_INPUTBUSY?"RX":"", x&MPU_OUTPUTBUSY?"TX":"")
 #else
 #define D(x,l)
 #endif
@@ -139,7 +139,7 @@ mpu401_intr(struct mpu401 *m)
 	while ((s & MPU_INPUTBUSY) == 0 && i < MPU_INTR_BUF) {
 		b[i] = READ(m);
 /*
-		printf("mpu401_intr in i %d d %d\n", i, b[i]);
+		kprintf("mpu401_intr in i %d d %d\n", i, b[i]);
 */
 		i++;
 		s = STATUS(m);
@@ -150,13 +150,13 @@ mpu401_intr(struct mpu401 *m)
 	while (!(s & MPU_OUTPUTBUSY) && i < MPU_INTR_BUF) {
 		if (midi_out(m->mid, b, 1)) {
 /*
-			printf("mpu401_intr out i %d d %d\n", i, b[0]);
+			kprintf("mpu401_intr out i %d d %d\n", i, b[0]);
 */
 
 			WRITE(m, *b);
 		} else {
 /*
-			printf("mpu401_intr write: no output\n");
+			kprintf("mpu401_intr write: no output\n");
 */
 			return 0;
 		}
@@ -178,14 +178,11 @@ mpu401_init(kobj_class_t cls, void *cookie, driver_intr_t softintr,
 	struct mpu401 *m;
 
 	*cb = NULL;
-	m = malloc(sizeof(*m), M_MIDI, M_NOWAIT | M_ZERO);
-
-	if (!m)
-		return NULL;
+	m = kmalloc(sizeof(*m), M_MIDI, M_WAITOK | M_ZERO);
 
 	kobj_init((kobj_t)m, cls);
 
-	callout_init(&m->timer, CALLOUT_MPSAFE);
+	callout_init_mp(&m->timer);
 
 	m->si = softintr;
 	m->cookie = cookie;
@@ -197,8 +194,8 @@ mpu401_init(kobj_class_t cls, void *cookie, driver_intr_t softintr,
 	*cb = mpu401_intr;
 	return m;
 err:
-	printf("mpu401_init error\n");
-	free(m, M_MIDI);
+	kprintf("mpu401_init error\n");
+	kfree(m, M_MIDI);
 	return NULL;
 }
 
@@ -211,7 +208,7 @@ mpu401_uninit(struct mpu401 *m)
 	retval = midi_uninit(m->mid);
 	if (retval)
 		return retval;
-	free(m, M_MIDI);
+	kfree(m, M_MIDI);
 	return 0;
 }
 
@@ -235,7 +232,7 @@ mpu401_minit(struct snd_midi *sm, void *arg)
 		CMD(m, MPU_UART);
 		return 0;
 	}
-	printf("mpu401_minit failed active sensing\n");
+	kprintf("mpu401_minit failed active sensing\n");
 	return 1;
 }
 
@@ -265,7 +262,7 @@ mpu401_mcallback(struct snd_midi *sm, void *arg, int flags)
 {
 	struct mpu401 *m = arg;
 #if 0
-	printf("mpu401_callback %s %s %s %s\n",
+	kprintf("mpu401_callback %s %s %s %s\n",
 	    flags & M_RX ? "M_RX" : "",
 	    flags & M_TX ? "M_TX" : "",
 	    flags & M_RXEN ? "M_RXEN" : "",
@@ -280,7 +277,7 @@ mpu401_mcallback(struct snd_midi *sm, void *arg, int flags)
 static void
 mpu401_mcallbackp(struct snd_midi *sm, void *arg, int flags)
 {
-/*	printf("mpu401_callbackp\n"); */
+/*	kprintf("mpu401_callbackp\n"); */
 	mpu401_mcallback(sm, arg, flags);
 }
 

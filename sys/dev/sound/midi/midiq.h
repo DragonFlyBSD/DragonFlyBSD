@@ -58,7 +58,7 @@ struct name {                           \
  */
 #define MIDIQ_ENQ(head, buf, size) do {                                                                 \
 		if(MIDIQ_DEBUG)\
-                	printf("#1 %p %p bytes copied %jd tran req s %d h %d t %d\n",            \
+                	kprintf("#1 %p %p bytes copied %jd tran req s %d h %d t %d\n",            \
 			       &(head).b[(head).h], (buf),                                        \
 			       (intmax_t)(sizeof(*(head).b) *                                     \
 					  MIN( (size), (head).s - (head).h) ),                   \
@@ -66,24 +66,24 @@ struct name {                           \
                 MIDIQ_MOVE(&(head).b[(head).h], (buf), sizeof(*(head).b) * MIN((size), (head).s - (head).h));                       \
                 if( (head).s - (head).h < (size) ) {                                                    \
 			if(MIDIQ_DEBUG) \
-                        	printf("#2 %p %p bytes copied %jd\n",  (head).b, (buf) + (head).s - (head).h, (intmax_t)sizeof(*(head).b) * ((size) - (head).s + (head).h) );      \
+                        	kprintf("#2 %p %p bytes copied %jd\n",  (head).b, (buf) + (head).s - (head).h, (intmax_t)sizeof(*(head).b) * ((size) - (head).s + (head).h) );      \
                         MIDIQ_MOVE((head).b, (buf) + (head).s - (head).h, sizeof(*(head).b) * ((size) - (head).s + (head).h) );      \
 		} \
                 (head).h+=(size);                                                                         \
                 (head).h%=(head).s;                                                                     \
 		if(MIDIQ_EMPTY(head)) (head).h=-1; \
 		if(MIDIQ_DEBUG)\
-                	printf("#E h %d t %d\n", (head).h, (head).t);                       \
+                	kprintf("#E h %d t %d\n", (head).h, (head).t);                       \
 } while (0)
 
 #define MIDIQ_DEQ_I(head, buf, size, move, update) do {                                                                 \
 		if(MIDIQ_FULL(head)) (head).h=(head).t; \
 		if(MIDIQ_DEBUG)\
-                	printf("#1 %p %p bytes copied %jd tran req s %d h %d t %d\n", &(head).b[(head).t], (buf), (intmax_t)sizeof(*(head).b) * MIN((size), (head).s - (head).t), (size), (head).h, (head).t);                       \
+                	kprintf("#1 %p %p bytes copied %jd tran req s %d h %d t %d\n", &(head).b[(head).t], (buf), (intmax_t)sizeof(*(head).b) * MIN((size), (head).s - (head).t), (size), (head).h, (head).t);                       \
                 if (move) MIDIQ_MOVE((buf), &(head).b[(head).t], sizeof(*(head).b) * MIN((size), (head).s - (head).t));                       \
                 if( (head).s - (head).t < (size) ) {                                                    \
 			if(MIDIQ_DEBUG) \
-                        	printf("#2 %p %p bytes copied %jd\n",  (head).b, (buf) + (head).s - (head).t, (intmax_t)sizeof(*(head).b) * ((size) - (head).s + (head).t) );      \
+                        	kprintf("#2 %p %p bytes copied %jd\n",  (head).b, (buf) + (head).s - (head).t, (intmax_t)sizeof(*(head).b) * ((size) - (head).s + (head).t) );      \
                         if (move) MIDIQ_MOVE((buf) + (head).s - (head).t, (head).b, sizeof(*(head).b) * ((size) - (head).s + (head).t) );      \
 		} \
 		if (update) { \
@@ -93,7 +93,7 @@ struct name {                           \
 		  if (MIDIQ_EMPTY(head)) (head).h=-1; \
 		} \
 		if(MIDIQ_DEBUG)\
-                	printf("#E h %d t %d\n", (head).h, (head).t);                       \
+                	kprintf("#E h %d t %d\n", (head).h, (head).t);                       \
 } while (0)
 
 #define MIDIQ_SIZE(head) ((head).s)

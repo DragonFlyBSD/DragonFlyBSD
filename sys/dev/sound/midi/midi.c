@@ -45,7 +45,6 @@ __FBSDID("$FreeBSD: head/sys/dev/sound/midi/midi.c 227309 2011-11-07 15:43:11Z e
 #include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/conf.h>
-#include <sys/selinfo.h>
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #include <sys/malloc.h>
@@ -59,6 +58,7 @@ __FBSDID("$FreeBSD: head/sys/dev/sound/midi/midi.c 227309 2011-11-07 15:43:11Z e
 #include <sys/sbuf.h>
 #include <sys/kobj.h>
 #include <sys/module.h>
+#include <sys/device.h>
 
 #ifdef HAVE_KERNEL_OPTION_HEADERS
 #include "opt_snd.h"
@@ -99,7 +99,7 @@ enum midi_states {
 #define MIDI_NAMELEN   16
 struct snd_midi {
 	KOBJ_FIELDS;
-	struct mtx lock;		/* Protects all but queues */
+	struct lock lock;		/* Protects all but queues */
 	void   *cookie;
 
 	int	unit;			/* Should only be used in midistat */
@@ -108,10 +108,10 @@ struct snd_midi {
 	int	busy;
 	int	flags;			/* File flags */
 	char	name[MIDI_NAMELEN];
-	struct mtx qlock;		/* Protects inq, outq and flags */
+	struct lock qlock;		/* Protects inq, outq and flags */
 	MIDIQ_HEAD(, char) inq, outq;
 	int	rchan, wchan;
-	struct selinfo rsel, wsel;
+	struct kqinfo rkq, wkq;
 	int	hiwat;			/* QLEN(outq)>High-water -> disable
 					 * writes from userland */
 	enum midi_states inq_state;
@@ -180,7 +180,7 @@ TAILQ_HEAD(, snd_midi) midi_devs;
  * /dev/midistat variables and declarations, protected by midistat_lock
  */
 
-static struct mtx midistat_lock;
+static struct lock midistat_lock;
 static int      midistat_isopen = 0;
 static struct sbuf midistat_sbuf;
 static int      midistat_bufptr;
@@ -194,14 +194,21 @@ static d_open_t midistat_open;
 static d_close_t midistat_close;
 static d_read_t midistat_read;
 
-static struct cdevsw midistat_cdevsw = {
-	.d_version = D_VERSION,
+static void	midi_filter_detach(struct knote *);
+static int	midi_filter_read(struct knote *, long);
+static int	midi_filter_write(struct knote *, long);
+
+static struct dev_ops midistat_ops = {
+	{ "midistat", 0, D_MPSAFE },
 	.d_open = midistat_open,
 	.d_close = midistat_close,
 	.d_read = midistat_read,
-	.d_name = "midistat",
 };
 
+static struct filterops midi_read_filterops =
+	{ FILTEROP_ISFD, NULL, midi_filter_detach, midi_filter_read };
+static struct filterops midi_write_filterops =
+	{ FILTEROP_ISFD, NULL, midi_filter_detach, midi_filter_write };
 
 /*
  * /dev/rmidi dev_t declarations, struct variable access is protected by
@@ -213,17 +220,16 @@ static d_close_t midi_close;
 static d_ioctl_t midi_ioctl;
 static d_read_t midi_read;
 static d_write_t midi_write;
-static d_poll_t midi_poll;
+static d_kqfilter_t midi_kqfilter;
 
-static struct cdevsw midi_cdevsw = {
-	.d_version = D_VERSION,
+static struct dev_ops midi_ops = {
+	{ "rmidi", 0, D_MPSAFE },
 	.d_open = midi_open,
 	.d_close = midi_close,
 	.d_read = midi_read,
 	.d_write = midi_write,
 	.d_ioctl = midi_ioctl,
-	.d_poll = midi_poll,
-	.d_name = "rmidi",
+	.d_kqfilter = midi_kqfilter,
 };
 
 /*
@@ -281,18 +287,18 @@ midi_init(kobj_class_t cls, int unit, int channel, void *cookie)
 	int inqsize, outqsize;
 	MIDI_TYPE *buf;
 
-	MIDI_DEBUG(1, printf("midiinit: unit %d/%d.\n", unit, channel));
-	mtx_lock(&midistat_lock);
+	MIDI_DEBUG(1, kprintf("midiinit: unit %d/%d.\n", unit, channel));
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 	/*
 	 * Protect against call with existing unit/channel or auto-allocate a
 	 * new unit number.
 	 */
 	i = -1;
 	TAILQ_FOREACH(m, &midi_devs, link) {
-		mtx_lock(&m->lock);
+		lockmgr(&m->lock, LK_EXCLUSIVE);
 		if (unit != 0) {
 			if (m->unit == unit && m->channel == channel) {
-				mtx_unlock(&m->lock);
+				lockmgr(&m->lock, LK_RELEASE);
 				goto err0;
 			}
 		} else {
@@ -302,43 +308,41 @@ midi_init(kobj_class_t cls, int unit, int channel, void *cookie)
 			if (m->unit > i)
 				i = m->unit;
 		}
-		mtx_unlock(&m->lock);
+		lockmgr(&m->lock, LK_RELEASE);
 	}
 
 	if (unit == 0)
 		unit = i + 1;
 
-	MIDI_DEBUG(1, printf("midiinit #2: unit %d/%d.\n", unit, channel));
-	m = malloc(sizeof(*m), M_MIDI, M_NOWAIT | M_ZERO);
-	if (m == NULL)
-		goto err0;
+	MIDI_DEBUG(1, kprintf("midiinit #2: unit %d/%d.\n", unit, channel));
+	m = kmalloc(sizeof(*m), M_MIDI, M_WAITOK | M_ZERO);
 
-	m->synth = malloc(sizeof(*m->synth), M_MIDI, M_NOWAIT | M_ZERO);
+	m->synth = kmalloc(sizeof(*m->synth), M_MIDI, M_WAITOK | M_ZERO);
 	kobj_init((kobj_t)m->synth, &midisynth_class);
 	m->synth->m = m;
 	kobj_init((kobj_t)m, cls);
 	inqsize = MPU_INQSIZE(m, cookie);
 	outqsize = MPU_OUTQSIZE(m, cookie);
 
-	MIDI_DEBUG(1, printf("midiinit queues %d/%d.\n", inqsize, outqsize));
+	MIDI_DEBUG(1, kprintf("midiinit queues %d/%d.\n", inqsize, outqsize));
 	if (!inqsize && !outqsize)
 		goto err1;
 
-	mtx_init(&m->lock, "raw midi", NULL, 0);
-	mtx_init(&m->qlock, "q raw midi", NULL, 0);
+	lockinit(&m->lock, "raw midi", 0, LK_CANRECURSE);
+	lockinit(&m->qlock, "q raw midi", 0, LK_CANRECURSE);
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	if (inqsize)
-		buf = malloc(sizeof(MIDI_TYPE) * inqsize, M_MIDI, M_NOWAIT);
+		buf = kmalloc(sizeof(MIDI_TYPE) * inqsize, M_MIDI, M_WAITOK);
 	else
 		buf = NULL;
 
 	MIDIQ_INIT(m->inq, buf, inqsize);
 
 	if (outqsize)
-		buf = malloc(sizeof(MIDI_TYPE) * outqsize, M_MIDI, M_NOWAIT);
+		buf = kmalloc(sizeof(MIDI_TYPE) * outqsize, M_MIDI, M_WAITOK);
 	else
 		buf = NULL;
 	m->hiwat = outqsize / 2;
@@ -359,30 +363,30 @@ midi_init(kobj_class_t cls, int unit, int channel, void *cookie)
 	if (MPU_INIT(m, cookie))
 		goto err2;
 
-	mtx_unlock(&m->lock);
-	mtx_unlock(&m->qlock);
+	lockmgr(&m->lock, LK_RELEASE);
+	lockmgr(&m->qlock, LK_RELEASE);
 
 	TAILQ_INSERT_TAIL(&midi_devs, m, link);
 
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 
-	m->dev = make_dev(&midi_cdevsw,
+	m->dev = make_dev(&midi_ops,
 	    MIDIMKMINOR(unit, MIDI_DEV_RAW, channel),
 	    UID_ROOT, GID_WHEEL, 0666, "midi%d.%d", unit, channel);
 	m->dev->si_drv1 = m;
 
 	return m;
 
-err2:	mtx_destroy(&m->qlock);
-	mtx_destroy(&m->lock);
+err2:	lockuninit(&m->qlock);
+	lockuninit(&m->lock);
 
 	if (MIDIQ_BUF(m->inq))
-		free(MIDIQ_BUF(m->inq), M_MIDI);
+		kfree(MIDIQ_BUF(m->inq), M_MIDI);
 	if (MIDIQ_BUF(m->outq))
-		free(MIDIQ_BUF(m->outq), M_MIDI);
-err1:	free(m, M_MIDI);
-err0:	mtx_unlock(&midistat_lock);
-	MIDI_DEBUG(1, printf("midi_init ended in error\n"));
+		kfree(MIDIQ_BUF(m->outq), M_MIDI);
+err1:	kfree(m, M_MIDI);
+err0:	lockmgr(&midistat_lock, LK_RELEASE);
+	MIDI_DEBUG(1, kprintf("midi_init ended in error\n"));
 	return NULL;
 }
 
@@ -399,8 +403,8 @@ midi_uninit(struct snd_midi *m)
 	int err;
 
 	err = ENXIO;
-	mtx_lock(&midistat_lock);
-	mtx_lock(&m->lock);
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
 	if (m->busy) {
 		if (!(m->rchan || m->wchan))
 			goto err;
@@ -418,8 +422,8 @@ midi_uninit(struct snd_midi *m)
 	if (!err)
 		goto exit;
 
-err:	mtx_unlock(&m->lock);
-exit:	mtx_unlock(&midistat_lock);
+err:	lockmgr(&m->lock, LK_RELEASE);
+exit:	lockmgr(&midistat_lock, LK_RELEASE);
 	return err;
 }
 
@@ -451,7 +455,7 @@ midi_in(struct snd_midi *m, MIDI_TYPE *buf, int size)
 	int used;
 
 	/* MIDI_TYPE       data; */
-	MIDI_DEBUG(5, printf("midi_in: m=%p size=%d\n", m, size));
+	MIDI_DEBUG(5, kprintf("midi_in: m=%p size=%d\n", m, size));
 
 /*
  * XXX: locking flub
@@ -461,7 +465,7 @@ midi_in(struct snd_midi *m, MIDI_TYPE *buf, int size)
 
 	used = 0;
 
-	mtx_lock(&m->qlock);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 #if 0
 	/*
 	 * Don't bother queuing if not in read mode.  Discard everything and
@@ -544,31 +548,31 @@ midi_in(struct snd_midi *m, MIDI_TYPE *buf, int size)
 	}
 	if (sig) {
 #endif
-		MIDI_DEBUG(6, printf("midi_in: len %jd avail %jd\n",
+		MIDI_DEBUG(6, kprintf("midi_in: len %jd avail %jd\n",
 		    (intmax_t)MIDIQ_LEN(m->inq),
 		    (intmax_t)MIDIQ_AVAIL(m->inq)));
 		if (MIDIQ_AVAIL(m->inq) > size) {
 			used = size;
 			MIDIQ_ENQ(m->inq, buf, size);
 		} else {
-			MIDI_DEBUG(4, printf("midi_in: Discarding data qu\n"));
-			mtx_unlock(&m->qlock);
+			MIDI_DEBUG(4, kprintf("midi_in: Discarding data qu\n"));
+			lockmgr(&m->qlock, LK_RELEASE);
 			return 0;
 		}
 		if (m->rchan) {
 			wakeup(&m->rchan);
 			m->rchan = 0;
 		}
-		selwakeup(&m->rsel);
+		KNOTE(&m->rkq.ki_note, 0);
 		if (m->async) {
-			PROC_LOCK(m->async);
-			kern_psignal(m->async, SIGIO);
-			PROC_UNLOCK(m->async);
+			PHOLD(m->async);
+			ksignal(m->async, SIGIO);
+			PRELE(m->async);
 		}
 #if 0
 	}
 #endif
-	mtx_unlock(&m->qlock);
+	lockmgr(&m->qlock, LK_RELEASE);
 	return used;
 }
 
@@ -586,10 +590,10 @@ midi_out(struct snd_midi *m, MIDI_TYPE *buf, int size)
 	if (!(m->flags & M_TXEN))
 		return 0;
 
-	MIDI_DEBUG(2, printf("midi_out: %p\n", m));
-	mtx_lock(&m->qlock);
+	MIDI_DEBUG(2, kprintf("midi_out: %p\n", m));
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 	used = MIN(size, MIDIQ_LEN(m->outq));
-	MIDI_DEBUG(3, printf("midi_out: used %d\n", used));
+	MIDI_DEBUG(3, kprintf("midi_out: used %d\n", used));
 	if (used)
 		MIDIQ_DEQ(m->outq, buf, used);
 	if (MIDIQ_EMPTY(m->outq)) {
@@ -601,14 +605,14 @@ midi_out(struct snd_midi *m, MIDI_TYPE *buf, int size)
 			wakeup(&m->wchan);
 			m->wchan = 0;
 		}
-		selwakeup(&m->wsel);
+		KNOTE(&m->wkq.ki_note, 0);
 		if (m->async) {
-			PROC_LOCK(m->async);
-			kern_psignal(m->async, SIGIO);
-			PROC_UNLOCK(m->async);
+			PHOLD(m->async);
+			ksignal(m->async, SIGIO);
+			PRELE(m->async);
 		}
 	}
-	mtx_unlock(&m->qlock);
+	lockmgr(&m->qlock, LK_RELEASE);
 	return used;
 }
 
@@ -617,18 +621,22 @@ midi_out(struct snd_midi *m, MIDI_TYPE *buf, int size)
  * /dev/rmidi#.#	device access functions
  */
 int
-midi_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
+midi_open(struct dev_open_args *ap)
 {
+	cdev_t i_dev = ap->a_head.a_dev;
+	int flags = ap->a_oflags;
 	struct snd_midi *m = i_dev->si_drv1;
 	int retval;
 
-	MIDI_DEBUG(1, printf("midiopen %p %s %s\n", td,
+#if 0 /* XXX */
+	MIDI_DEBUG(1, kprintf("midiopen %p %s %s\n", td,
 	    flags & FREAD ? "M_RX" : "", flags & FWRITE ? "M_TX" : ""));
+#endif
 	if (m == NULL)
 		return ENXIO;
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	retval = 0;
 
@@ -668,28 +676,32 @@ midi_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
 
 	MPU_CALLBACK(m, m->cookie, m->flags);
 
-	MIDI_DEBUG(2, printf("midi_open: opened.\n"));
+	MIDI_DEBUG(2, kprintf("midi_open: opened.\n"));
 
-err:	mtx_unlock(&m->qlock);
-	mtx_unlock(&m->lock);
+err:	lockmgr(&m->qlock, LK_RELEASE);
+	lockmgr(&m->lock, LK_RELEASE);
 	return retval;
 }
 
 int
-midi_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
+midi_close(struct dev_close_args *ap)
 {
+	cdev_t i_dev = ap->a_head.a_dev;
+	int flags = ap->a_fflag;
 	struct snd_midi *m = i_dev->si_drv1;
 	int retval;
 	int oldflags;
 
-	MIDI_DEBUG(1, printf("midi_close %p %s %s\n", td,
+#if 0 /* XXX */
+	MIDI_DEBUG(1, kprintf("midi_close %p %s %s\n", td,
 	    flags & FREAD ? "M_RX" : "", flags & FWRITE ? "M_TX" : ""));
+#endif
 
 	if (m == NULL)
 		return ENXIO;
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	if ((flags & FREAD && !(m->flags & M_RX)) ||
 	    (flags & FWRITE && !(m->flags & M_TX))) {
@@ -708,10 +720,10 @@ midi_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
 	if ((m->flags & (M_TXEN | M_RXEN)) != (oldflags & (M_RXEN | M_TXEN)))
 		MPU_CALLBACK(m, m->cookie, m->flags);
 
-	MIDI_DEBUG(1, printf("midi_close: closed, busy = %d.\n", m->busy));
+	MIDI_DEBUG(1, kprintf("midi_close: closed, busy = %d.\n", m->busy));
 
-	mtx_unlock(&m->qlock);
-	mtx_unlock(&m->lock);
+	lockmgr(&m->qlock, LK_RELEASE);
+	lockmgr(&m->lock, LK_RELEASE);
 	retval = 0;
 err:	return retval;
 }
@@ -721,15 +733,18 @@ err:	return retval;
  * as data is available.
  */
 int
-midi_read(struct cdev *i_dev, struct uio *uio, int ioflag)
+midi_read(struct dev_read_args *ap)
 {
+	cdev_t i_dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
+	int ioflag = ap->a_ioflag;
 #define MIDI_RSIZE 32
 	struct snd_midi *m = i_dev->si_drv1;
 	int retval;
 	int used;
 	char buf[MIDI_RSIZE];
 
-	MIDI_DEBUG(5, printf("midiread: count=%lu\n",
+	MIDI_DEBUG(5, kprintf("midiread: count=%lu\n",
 	    (unsigned long)uio->uio_resid));
 
 	retval = EIO;
@@ -737,8 +752,8 @@ midi_read(struct cdev *i_dev, struct uio *uio, int ioflag)
 	if (m == NULL)
 		goto err0;
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	if (!(m->flags & M_RX))
 		goto err1;
@@ -748,10 +763,10 @@ midi_read(struct cdev *i_dev, struct uio *uio, int ioflag)
 			retval = EWOULDBLOCK;
 			if (ioflag & O_NONBLOCK)
 				goto err1;
-			mtx_unlock(&m->lock);
+			lockmgr(&m->lock, LK_RELEASE);
 			m->rchan = 1;
-			retval = msleep(&m->rchan, &m->qlock,
-			    PCATCH | PDROP, "midi RX", 0);
+			retval = lksleep(&m->rchan, &m->qlock,
+			    PCATCH, "midi RX", 0);
 			/*
 			 * We slept, maybe things have changed since last
 			 * dying check
@@ -763,13 +778,13 @@ midi_read(struct cdev *i_dev, struct uio *uio, int ioflag)
 			/* if (retval && retval != ERESTART) */
 			if (retval)
 				goto err0;
-			mtx_lock(&m->lock);
-			mtx_lock(&m->qlock);
+			lockmgr(&m->lock, LK_EXCLUSIVE);
+			lockmgr(&m->qlock, LK_EXCLUSIVE);
 			m->rchan = 0;
 			if (!m->busy)
 				goto err1;
 		}
-		MIDI_DEBUG(6, printf("midi_read start\n"));
+		MIDI_DEBUG(6, kprintf("midi_read start\n"));
 		/*
 	         * At this point, it is certain that m->inq has data
 	         */
@@ -777,7 +792,7 @@ midi_read(struct cdev *i_dev, struct uio *uio, int ioflag)
 		used = MIN(MIDIQ_LEN(m->inq), uio->uio_resid);
 		used = MIN(used, MIDI_RSIZE);
 
-		MIDI_DEBUG(6, printf("midiread: uiomove cc=%d\n", used));
+		MIDI_DEBUG(6, kprintf("midiread: uiomove cc=%d\n", used));
 		MIDIQ_DEQ(m->inq, buf, used);
 		retval = uiomove(buf, used, uio);
 		if (retval)
@@ -788,9 +803,9 @@ midi_read(struct cdev *i_dev, struct uio *uio, int ioflag)
 	 * If we Made it here then transfer is good
 	 */
 	retval = 0;
-err1:	mtx_unlock(&m->qlock);
-	mtx_unlock(&m->lock);
-err0:	MIDI_DEBUG(4, printf("midi_read: ret %d\n", retval));
+err1:	lockmgr(&m->qlock, LK_RELEASE);
+	lockmgr(&m->lock, LK_RELEASE);
+err0:	MIDI_DEBUG(4, kprintf("midi_read: ret %d\n", retval));
 	return retval;
 }
 
@@ -799,8 +814,11 @@ err0:	MIDI_DEBUG(4, printf("midi_read: ret %d\n", retval));
  */
 
 int
-midi_write(struct cdev *i_dev, struct uio *uio, int ioflag)
+midi_write(struct dev_write_args *ap)
 {
+	cdev_t i_dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
+	int ioflag = ap->a_ioflag;
 #define MIDI_WSIZE 32
 	struct snd_midi *m = i_dev->si_drv1;
 	int retval;
@@ -808,13 +826,13 @@ midi_write(struct cdev *i_dev, struct uio *uio, int ioflag)
 	char buf[MIDI_WSIZE];
 
 
-	MIDI_DEBUG(4, printf("midi_write\n"));
+	MIDI_DEBUG(4, kprintf("midi_write\n"));
 	retval = 0;
 	if (m == NULL)
 		goto err0;
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	if (!(m->flags & M_TX))
 		goto err1;
@@ -824,11 +842,11 @@ midi_write(struct cdev *i_dev, struct uio *uio, int ioflag)
 			retval = EWOULDBLOCK;
 			if (ioflag & O_NONBLOCK)
 				goto err1;
-			mtx_unlock(&m->lock);
+			lockmgr(&m->lock, LK_RELEASE);
 			m->wchan = 1;
-			MIDI_DEBUG(3, printf("midi_write msleep\n"));
-			retval = msleep(&m->wchan, &m->qlock,
-			    PCATCH | PDROP, "midi TX", 0);
+			MIDI_DEBUG(3, kprintf("midi_write lksleep\n"));
+			retval = lksleep(&m->wchan, &m->qlock,
+			    PCATCH, "midi TX", 0);
 			/*
 			 * We slept, maybe things have changed since last
 			 * dying check
@@ -839,8 +857,8 @@ midi_write(struct cdev *i_dev, struct uio *uio, int ioflag)
 				retval = ENXIO;
 			if (retval)
 				goto err0;
-			mtx_lock(&m->lock);
-			mtx_lock(&m->qlock);
+			lockmgr(&m->lock, LK_EXCLUSIVE);
+			lockmgr(&m->qlock, LK_EXCLUSIVE);
 			m->wchan = 0;
 			if (!m->busy)
 				goto err1;
@@ -852,12 +870,12 @@ midi_write(struct cdev *i_dev, struct uio *uio, int ioflag)
 
 		used = MIN(MIDIQ_AVAIL(m->outq), uio->uio_resid);
 		used = MIN(used, MIDI_WSIZE);
-		MIDI_DEBUG(5, printf("midiout: resid %zd len %jd avail %jd\n",
+		MIDI_DEBUG(5, kprintf("midiout: resid %zd len %jd avail %jd\n",
 		    uio->uio_resid, (intmax_t)MIDIQ_LEN(m->outq),
 		    (intmax_t)MIDIQ_AVAIL(m->outq)));
 
 
-		MIDI_DEBUG(5, printf("midi_write: uiomove cc=%d\n", used));
+		MIDI_DEBUG(5, kprintf("midi_write: uiomove cc=%d\n", used));
 		retval = uiomove(buf, used, uio);
 		if (retval)
 			goto err1;
@@ -874,51 +892,94 @@ midi_write(struct cdev *i_dev, struct uio *uio, int ioflag)
 	 * If we Made it here then transfer is good
 	 */
 	retval = 0;
-err1:	mtx_unlock(&m->qlock);
-	mtx_unlock(&m->lock);
+err1:	lockmgr(&m->qlock, LK_RELEASE);
+	lockmgr(&m->lock, LK_RELEASE);
 err0:	return retval;
 }
 
 int
-midi_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
-    struct thread *td)
+midi_ioctl(struct dev_ioctl_args *ap)
 {
 	return ENXIO;
 }
 
 int
-midi_poll(struct cdev *i_dev, int events, struct thread *td)
+midi_kqfilter(struct dev_kqfilter_args *ap)
 {
-	struct snd_midi *m = i_dev->si_drv1;
-	int revents;
+	cdev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
+	struct snd_midi *m;
+	struct klist *klist;
 
-	if (m == NULL)
-		return 0;
+	ap->a_result = 0;
+	m = dev->si_drv1;
 
-	revents = 0;
-
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
-
-	if (events & (POLLIN | POLLRDNORM))
-		if (!MIDIQ_EMPTY(m->inq))
-			events |= events & (POLLIN | POLLRDNORM);
-
-	if (events & (POLLOUT | POLLWRNORM))
-		if (MIDIQ_AVAIL(m->outq) < m->hiwat)
-			events |= events & (POLLOUT | POLLWRNORM);
-
-	if (revents == 0) {
-		if (events & (POLLIN | POLLRDNORM))
-			selrecord(td, &m->rsel);
-
-		if (events & (POLLOUT | POLLWRNORM))
-			selrecord(td, &m->wsel);
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &midi_read_filterops;
+		kn->kn_hook = (caddr_t)m;
+		klist = &m->rkq.ki_note;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &midi_write_filterops;
+		kn->kn_hook = (caddr_t)m;
+		klist = &m->wkq.ki_note;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
 	}
-	mtx_unlock(&m->lock);
-	mtx_unlock(&m->qlock);
 
-	return (revents);
+	knote_insert(klist, kn);
+
+	return(0);
+}
+
+static void
+midi_filter_detach(struct knote *kn)
+{
+	struct snd_midi *m = (struct snd_midi *)kn->kn_hook;
+	struct klist *rklist = &m->rkq.ki_note;
+	struct klist *wklist = &m->wkq.ki_note;
+
+	knote_remove(rklist, kn);
+	knote_remove(wklist, kn);
+}
+
+static int
+midi_filter_read(struct knote *kn, long hint)
+{
+	struct snd_midi *m = (struct snd_midi *)kn->kn_hook;
+	int ready = 0;
+
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
+
+	if (!MIDIQ_EMPTY(m->inq))
+		ready = 1;
+
+	lockmgr(&m->lock, LK_RELEASE);
+	lockmgr(&m->qlock, LK_RELEASE);
+
+	return (ready);
+}
+
+static int
+midi_filter_write(struct knote *kn, long hint)
+{
+	struct snd_midi *m = (struct snd_midi *)kn->kn_hook;
+	int ready = 0;
+
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
+
+	if (MIDIQ_AVAIL(m->outq) < m->hiwat)
+		ready = 1;
+
+	lockmgr(&m->lock, LK_RELEASE);
+	lockmgr(&m->qlock, LK_RELEASE);
+
+	return (ready);
 }
 
 /*
@@ -926,73 +987,74 @@ midi_poll(struct cdev *i_dev, int events, struct thread *td)
  *
  */
 static int
-midistat_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
+midistat_open(struct dev_open_args *ap)
 {
 	int error;
 
-	MIDI_DEBUG(1, printf("midistat_open\n"));
-	mtx_lock(&midistat_lock);
+	MIDI_DEBUG(1, kprintf("midistat_open\n"));
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 
 	if (midistat_isopen) {
-		mtx_unlock(&midistat_lock);
+		lockmgr(&midistat_lock, LK_RELEASE);
 		return EBUSY;
 	}
 	midistat_isopen = 1;
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 
 	if (sbuf_new(&midistat_sbuf, NULL, 4096, SBUF_AUTOEXTEND) == NULL) {
 		error = ENXIO;
-		mtx_lock(&midistat_lock);
+		lockmgr(&midistat_lock, LK_EXCLUSIVE);
 		goto out;
 	}
-	mtx_lock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 	midistat_bufptr = 0;
 	error = (midistat_prepare(&midistat_sbuf) > 0) ? 0 : ENOMEM;
 
 out:	if (error)
 		midistat_isopen = 0;
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 	return error;
 }
 
 static int
-midistat_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
+midistat_close(struct dev_close_args *ap)
 {
-	MIDI_DEBUG(1, printf("midistat_close\n"));
-	mtx_lock(&midistat_lock);
+	MIDI_DEBUG(1, kprintf("midistat_close\n"));
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 	if (!midistat_isopen) {
-		mtx_unlock(&midistat_lock);
+		lockmgr(&midistat_lock, LK_RELEASE);
 		return EBADF;
 	}
 	sbuf_delete(&midistat_sbuf);
 	midistat_isopen = 0;
 
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 	return 0;
 }
 
 static int
-midistat_read(struct cdev *i_dev, struct uio *buf, int flag)
+midistat_read(struct dev_read_args *ap)
 {
+	struct uio *buf = ap->a_uio;
 	int l, err;
 
-	MIDI_DEBUG(4, printf("midistat_read\n"));
-	mtx_lock(&midistat_lock);
+	MIDI_DEBUG(4, kprintf("midistat_read\n"));
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 	if (!midistat_isopen) {
-		mtx_unlock(&midistat_lock);
+		lockmgr(&midistat_lock, LK_RELEASE);
 		return EBADF;
 	}
 	l = min(buf->uio_resid, sbuf_len(&midistat_sbuf) - midistat_bufptr);
 	err = 0;
 	if (l > 0) {
-		mtx_unlock(&midistat_lock);
+		lockmgr(&midistat_lock, LK_RELEASE);
 		err = uiomove(sbuf_data(&midistat_sbuf) + midistat_bufptr, l,
 		    buf);
-		mtx_lock(&midistat_lock);
+		lockmgr(&midistat_lock, LK_EXCLUSIVE);
 	} else
 		l = 0;
 	midistat_bufptr += l;
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 	return err;
 }
 
@@ -1005,7 +1067,7 @@ midistat_prepare(struct sbuf *s)
 {
 	struct snd_midi *m;
 
-	mtx_assert(&midistat_lock, MA_OWNED);
+	KKASSERT(lockowned(&midistat_lock));
 
 	sbuf_printf(s, "FreeBSD Midi Driver (midi2)\n");
 	if (TAILQ_EMPTY(&midi_devs)) {
@@ -1016,12 +1078,12 @@ midistat_prepare(struct sbuf *s)
 	sbuf_printf(s, "Installed devices:\n");
 
 	TAILQ_FOREACH(m, &midi_devs, link) {
-		mtx_lock(&m->lock);
+		lockmgr(&m->lock, LK_EXCLUSIVE);
 		sbuf_printf(s, "%s [%d/%d:%s]", m->name, m->unit, m->channel,
 		    MPU_PROVIDER(m, m->cookie));
 		sbuf_printf(s, "%s", MPU_DESCR(m, m->cookie, midistat_verbose));
 		sbuf_printf(s, "\n");
-		mtx_unlock(&m->lock);
+		lockmgr(&m->lock, LK_RELEASE);
 	}
 
 	sbuf_finish(s);
@@ -1077,14 +1139,14 @@ midisynth_open(void *n, void *arg, int flags)
 	struct snd_midi *m = ((struct synth_midi *)n)->m;
 	int retval;
 
-	MIDI_DEBUG(1, printf("midisynth_open %s %s\n",
+	MIDI_DEBUG(1, kprintf("midisynth_open %s %s\n",
 	    flags & FREAD ? "M_RX" : "", flags & FWRITE ? "M_TX" : ""));
 
 	if (m == NULL)
 		return ENXIO;
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	retval = 0;
 
@@ -1129,9 +1191,9 @@ midisynth_open(void *n, void *arg, int flags)
 	MPU_CALLBACK(m, m->cookie, m->flags);
 
 
-err:	mtx_unlock(&m->qlock);
-	mtx_unlock(&m->lock);
-	MIDI_DEBUG(2, printf("midisynth_open: return %d.\n", retval));
+err:	lockmgr(&m->qlock, LK_RELEASE);
+	lockmgr(&m->lock, LK_RELEASE);
+	MIDI_DEBUG(2, kprintf("midisynth_open: return %d.\n", retval));
 	return retval;
 }
 
@@ -1142,15 +1204,15 @@ midisynth_close(void *n)
 	int retval;
 	int oldflags;
 
-	MIDI_DEBUG(1, printf("midisynth_close %s %s\n",
+	MIDI_DEBUG(1, kprintf("midisynth_close %s %s\n",
 	    m->synth_flags & FREAD ? "M_RX" : "",
 	    m->synth_flags & FWRITE ? "M_TX" : ""));
 
 	if (m == NULL)
 		return ENXIO;
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	if ((m->synth_flags & FREAD && !(m->flags & M_RX)) ||
 	    (m->synth_flags & FWRITE && !(m->flags & M_TX))) {
@@ -1169,10 +1231,10 @@ midisynth_close(void *n)
 	if ((m->flags & (M_TXEN | M_RXEN)) != (oldflags & (M_RXEN | M_TXEN)))
 		MPU_CALLBACK(m, m->cookie, m->flags);
 
-	MIDI_DEBUG(1, printf("midi_close: closed, busy = %d.\n", m->busy));
+	MIDI_DEBUG(1, kprintf("midi_close: closed, busy = %d.\n", m->busy));
 
-	mtx_unlock(&m->qlock);
-	mtx_unlock(&m->lock);
+	lockmgr(&m->qlock, LK_RELEASE);
+	lockmgr(&m->lock, LK_RELEASE);
 	retval = 0;
 err:	return retval;
 }
@@ -1189,21 +1251,21 @@ midisynth_writeraw(void *n, uint8_t *buf, size_t len)
 	int used;
 	int i;
 
-	MIDI_DEBUG(4, printf("midisynth_writeraw\n"));
+	MIDI_DEBUG(4, kprintf("midisynth_writeraw\n"));
 
 	retval = 0;
 
 	if (m == NULL)
 		return ENXIO;
 
-	mtx_lock(&m->lock);
-	mtx_lock(&m->qlock);
+	lockmgr(&m->lock, LK_EXCLUSIVE);
+	lockmgr(&m->qlock, LK_EXCLUSIVE);
 
 	if (!(m->flags & M_TX))
 		goto err1;
 
 	if (midi_dumpraw)
-		printf("midi dump: ");
+		kprintf("midi dump: ");
 
 	while (len > 0) {
 		while (MIDIQ_AVAIL(m->outq) == 0) {
@@ -1211,11 +1273,11 @@ midisynth_writeraw(void *n, uint8_t *buf, size_t len)
 				m->flags |= M_TXEN;
 				MPU_CALLBACK(m, m->cookie, m->flags);
 			}
-			mtx_unlock(&m->lock);
+			lockmgr(&m->lock, LK_RELEASE);
 			m->wchan = 1;
-			MIDI_DEBUG(3, printf("midisynth_writeraw msleep\n"));
-			retval = msleep(&m->wchan, &m->qlock,
-			    PCATCH | PDROP, "midi TX", 0);
+			MIDI_DEBUG(3, kprintf("midisynth_writeraw lksleep\n"));
+			retval = lksleep(&m->wchan, &m->qlock,
+			    PCATCH, "midi TX", 0);
 			/*
 			 * We slept, maybe things have changed since last
 			 * dying check
@@ -1225,8 +1287,8 @@ midisynth_writeraw(void *n, uint8_t *buf, size_t len)
 
 			if (retval)
 				goto err0;
-			mtx_lock(&m->lock);
-			mtx_lock(&m->qlock);
+			lockmgr(&m->lock, LK_EXCLUSIVE);
+			lockmgr(&m->qlock, LK_EXCLUSIVE);
 			m->wchan = 0;
 			if (!m->busy)
 				goto err1;
@@ -1239,13 +1301,13 @@ midisynth_writeraw(void *n, uint8_t *buf, size_t len)
 		used = MIN(MIDIQ_AVAIL(m->outq), len);
 		used = MIN(used, MIDI_WSIZE);
 		MIDI_DEBUG(5,
-		    printf("midi_synth: resid %zu len %jd avail %jd\n",
+		    kprintf("midi_synth: resid %zu len %jd avail %jd\n",
 		    len, (intmax_t)MIDIQ_LEN(m->outq),
 		    (intmax_t)MIDIQ_AVAIL(m->outq)));
 
 		if (midi_dumpraw)
 			for (i = 0; i < used; i++)
-				printf("%x ", buf[i]);
+				kprintf("%x ", buf[i]);
 
 		MIDIQ_ENQ(m->outq, buf, used);
 		len -= used;
@@ -1262,11 +1324,11 @@ midisynth_writeraw(void *n, uint8_t *buf, size_t len)
 	 * If we Made it here then transfer is good
 	 */
 	if (midi_dumpraw)
-		printf("\n");
+		kprintf("\n");
 
 	retval = 0;
-err1:	mtx_unlock(&m->qlock);
-	mtx_unlock(&m->lock);
+err1:	lockmgr(&m->qlock, LK_RELEASE);
+	lockmgr(&m->lock, LK_RELEASE);
 err0:	return retval;
 }
 
@@ -1369,21 +1431,21 @@ static int
 midi_destroy(struct snd_midi *m, int midiuninit)
 {
 
-	mtx_assert(&midistat_lock, MA_OWNED);
-	mtx_assert(&m->lock, MA_OWNED);
+	KKASSERT(lockowned(&midistat_lock));
+	KKASSERT(lockowned(&m->lock));
 
-	MIDI_DEBUG(3, printf("midi_destroy\n"));
+	MIDI_DEBUG(3, kprintf("midi_destroy\n"));
 	m->dev->si_drv1 = NULL;
-	mtx_unlock(&m->lock);	/* XXX */
+	lockmgr(&m->lock, LK_RELEASE);	/* XXX */
 	destroy_dev(m->dev);
 	TAILQ_REMOVE(&midi_devs, m, link);
 	if (midiuninit)
 		MPU_UNINIT(m, m->cookie);
-	free(MIDIQ_BUF(m->inq), M_MIDI);
-	free(MIDIQ_BUF(m->outq), M_MIDI);
-	mtx_destroy(&m->qlock);
-	mtx_destroy(&m->lock);
-	free(m, M_MIDI);
+	kfree(MIDIQ_BUF(m->inq), M_MIDI);
+	kfree(MIDIQ_BUF(m->outq), M_MIDI);
+	lockuninit(&m->qlock);
+	lockuninit(&m->lock);
+	kfree(m, M_MIDI);
 	return 0;
 }
 
@@ -1392,12 +1454,12 @@ midi_destroy(struct snd_midi *m, int midiuninit)
  */
 
 static int
-midi_load()
+midi_load(void)
 {
-	mtx_init(&midistat_lock, "midistat lock", NULL, 0);
+	lockinit(&midistat_lock, "midistat lock", 0, LK_CANRECURSE);
 	TAILQ_INIT(&midi_devs);		/* Initialize the queue. */
 
-	midistat_dev = make_dev(&midistat_cdevsw,
+	midistat_dev = make_dev(&midistat_ops,
 	    MIDIMKMINOR(0, MIDI_DEV_MIDICTL, 0),
 	    UID_ROOT, GID_WHEEL, 0666, "midistat");
 
@@ -1405,19 +1467,19 @@ midi_load()
 }
 
 static int
-midi_unload()
+midi_unload(void)
 {
 	struct snd_midi *m;
 	int retval;
 
-	MIDI_DEBUG(1, printf("midi_unload()\n"));
+	MIDI_DEBUG(1, kprintf("midi_unload()\n"));
 	retval = EBUSY;
-	mtx_lock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 	if (midistat_isopen)
 		goto exit0;
 
 	TAILQ_FOREACH(m, &midi_devs, link) {
-		mtx_lock(&m->lock);
+		lockmgr(&m->lock, LK_EXCLUSIVE);
 		if (m->busy)
 			retval = EBUSY;
 		else
@@ -1426,21 +1488,21 @@ midi_unload()
 			goto exit1;
 	}
 
-	mtx_unlock(&midistat_lock);	/* XXX */
+	lockmgr(&midistat_lock, LK_RELEASE);	/* XXX */
 
 	destroy_dev(midistat_dev);
 	/*
 	 * Made it here then unload is complete
 	 */
-	mtx_destroy(&midistat_lock);
+	lockuninit(&midistat_lock);
 	return 0;
 
 exit1:
-	mtx_unlock(&m->lock);
+	lockmgr(&m->lock, LK_RELEASE);
 exit0:
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 	if (retval)
-		MIDI_DEBUG(2, printf("midi_unload: failed\n"));
+		MIDI_DEBUG(2, kprintf("midi_unload: failed\n"));
 	return retval;
 }
 
@@ -1491,13 +1553,13 @@ midimapper_open(void *arg1, void **cookie)
 	int retval = 0;
 	struct snd_midi *m;
 
-	mtx_lock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 
 	TAILQ_FOREACH(m, &midi_devs, link) {
 		retval++;
 	}
 
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 	return retval;
 }
 
@@ -1513,17 +1575,17 @@ midimapper_fetch_synth(void *arg, void *cookie, int unit)
 	struct snd_midi *m;
 	int retval = 0;
 
-	mtx_lock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_EXCLUSIVE);
 
 	TAILQ_FOREACH(m, &midi_devs, link) {
 		if (unit == retval) {
-			mtx_unlock(&midistat_lock);
+			lockmgr(&midistat_lock, LK_RELEASE);
 			return (kobj_t)m->synth;
 		}
 		retval++;
 	}
 
-	mtx_unlock(&midistat_lock);
+	lockmgr(&midistat_lock, LK_RELEASE);
 	return NULL;
 }
 
