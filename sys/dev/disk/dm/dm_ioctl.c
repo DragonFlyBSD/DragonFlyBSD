@@ -203,7 +203,6 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	}
 
 	r = dm_dev_create(&dmv, name, uuid, flags);
-	
 	if (r == 0) {
 		prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 		DM_ADD_FLAG(flags, DM_EXISTS_FLAG);

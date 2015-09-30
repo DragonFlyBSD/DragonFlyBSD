@@ -153,7 +153,7 @@ typedef struct dm_dev {
 
 /* Device types used for upcalls */
 #define DM_ZERO_DEV            (1 << 0)
-#define DM_ERROR_DEV           (1 << 1)	
+#define DM_ERROR_DEV           (1 << 1)
 #define DM_LINEAR_DEV          (1 << 2)
 #define DM_MIRROR_DEV          (1 << 3)
 #define DM_STRIPE_DEV          (1 << 4)
@@ -161,16 +161,16 @@ typedef struct dm_dev {
 #define DM_SNAPSHOT_ORIG_DEV   (1 << 6)
 #define DM_SPARE_DEV           (1 << 7)
 /* Set this device type only during dev remove ioctl. */
-#define DM_DELETING_DEV        (1 << 8) 
-#define DM_CRYPTO_DEV		(1 << 9)
-#define DM_RAID1_DEV		(1 << 10)
+#define DM_DELETING_DEV        (1 << 8)
+#define DM_CRYPTO_DEV          (1 << 9)
+#define DM_RAID1_DEV           (1 << 10)
 
 /* for zero, error : dm_target->target_config == NULL */
-				
+
 /*
  * Target config is initiated with target_init function.
  */
-				
+
 /* for linear : */
 typedef struct target_linear_config {
 	dm_pdev_t *pdev;
@@ -206,7 +206,7 @@ typedef struct target_snapshot_config {
 	dm_pdev_t *tsc_snap_dev;
 	/* cow dev is set only for persistent snapshot devices */
 	dm_pdev_t *tsc_cow_dev;
-	
+
 	uint64_t tsc_chunk_size;
 	uint32_t tsc_persistent_dev;
 } dm_target_snapshot_config_t;
@@ -228,7 +228,7 @@ typedef struct dm_target {
 
 	/* Destroy target_config area */
 	int (*destroy)(dm_table_entry_t *);
-	
+
 	int (*deps) (dm_table_entry_t *, prop_array_t);
 	/*
 	 * Status routine is called to get params string, which is target
@@ -242,7 +242,7 @@ typedef struct dm_target {
 
 	uint32_t version[3];
 	int ref_cnt;
-	
+
 	TAILQ_ENTRY(dm_target) dm_target_next;
 } dm_target_t;
 
