@@ -168,14 +168,11 @@ _dm_table_size(dm_table_head_t * head, int table)
 	dm_table_t *tbl;
 	dm_table_entry_t *table_en;
 	uint64_t length;
-	uint8_t id;
 
 	length = 0;
 
-	id = dm_table_busy(head, table);
-
 	/* Select active table */
-	tbl = &head->tables[id];
+	tbl = dm_table_get_entry(head, table);
 
 	/*
 	 * Find out what tables I want to select.
@@ -214,13 +211,10 @@ dm_table_get_target_count(dm_table_head_t * head, uint8_t table_id)
 	dm_table_entry_t *table_en;
 	dm_table_t *tbl;
 	uint32_t target_count;
-	uint8_t id;
 
 	target_count = 0;
 
-	id = dm_table_busy(head, table_id);
-
-	tbl = &head->tables[id];
+	tbl = dm_table_get_entry(head, table_id);
 
 	SLIST_FOREACH(table_en, tbl, next)
 	    target_count++;
