@@ -66,6 +66,7 @@
 #include <netinet/if_ether.h>
 
 #include <net/ipfw3/ip_fw.h>
+#include <net/ipfw3/ip_fw3_table.h>
 
 #include "ip_fw3_basic.h"
 
@@ -194,11 +195,15 @@ void check_prob(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_from_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
@@ -549,6 +554,34 @@ check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 }
 
 void
+check_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw_table_context *table_ctx;
+	struct radix_node_head *rnh;
+	struct sockaddr_in sa;
+
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	struct in_addr src_ip = ip->ip_src;
+
+	*cmd_val = IP_FW_NOT_MATCH;
+
+	table_ctx = ctx->table_ctx;
+	table_ctx += cmd->arg1;
+
+        if (table_ctx->type != 0) {
+                rnh = table_ctx->node;
+                sa.sin_len = 8;
+                sa.sin_addr.s_addr = src_ip.s_addr;
+                if(rnh->rnh_lookup((char *)&sa, NULL, rnh) != NULL)
+                        *cmd_val = IP_FW_MATCH;
+        }
+	*cmd_ctl = IP_FW_CTL_NO;
+}
+
+void
 check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
@@ -610,6 +643,34 @@ check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	}
 	*cmd_val = (hlen > 0 &&
 			((ipfw_insn_ip *)cmd)->addr.s_addr == dst_ip.s_addr);
+	*cmd_ctl = IP_FW_CTL_NO;
+}
+
+void
+check_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw_table_context *table_ctx;
+	struct radix_node_head *rnh;
+	struct sockaddr_in sa;
+
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	struct in_addr dst_ip = ip->ip_dst;
+
+	*cmd_val = IP_FW_NOT_MATCH;
+
+	table_ctx = ctx->table_ctx;
+	table_ctx += cmd->arg1;
+
+        if (table_ctx->type != 0) {
+                rnh = table_ctx->node;
+                sa.sin_len = 8;
+                sa.sin_addr.s_addr = dst_ip.s_addr;
+                if(rnh->rnh_lookup((char *)&sa, NULL, rnh) != NULL)
+                        *cmd_val = IP_FW_MATCH;
+        }
 	*cmd_ctl = IP_FW_CTL_NO;
 }
 
@@ -942,11 +1003,15 @@ ipfw_basic_init(void)
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC, (filter_func)check_from);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_SRC_LOOKUP, (filter_func)check_from_lookup);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC_ME, (filter_func)check_from_me);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC_MASK, (filter_func)check_from_mask);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST, (filter_func)check_to);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_DST_LOOKUP, (filter_func)check_to_lookup);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST_ME, (filter_func)check_to_me);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,

@@ -376,6 +376,7 @@ parse_via(ipfw_insn **cmd, int *ac, char **av[])
 
 /*
  * Below formats are supported:
+ * from table 1		O_BASIC_IP_SRC_LOOKUP
  * from any		return 0 len instruction
  * from me		O_BASIC_IP_SRC_ME
  * from 1.2.3.4  	O_BASIC_IP_SRC
@@ -389,7 +390,13 @@ parse_from(ipfw_insn **cmd, int *ac, char **av[])
 
 	(*cmd)->module = MODULE_BASIC_ID;
 	NEXT_ARG1;
-	if (strcmp(**av, "any") == 0) {
+	if (strcmp(**av, "table") == 0) {
+			NEXT_ARG1;
+			NEED(*ac, 1, "table id missing");
+			(*cmd)->len = F_INSN_SIZE(ipfw_insn);
+			(*cmd)->opcode = O_BASIC_IP_SRC_LOOKUP;
+			(*cmd)->arg1 = strtoul(**av, NULL, 10);
+	} else if (strcmp(**av, "any") == 0) {
 		(*cmd)->len &= ~F_LEN_MASK;
 	} else if (strcmp(**av, "me") == 0) {
 		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
@@ -439,7 +446,13 @@ parse_to(ipfw_insn **cmd, int *ac, char **av[])
 
 	(*cmd)->module = MODULE_BASIC_ID;
 	NEXT_ARG1;
-	if (strcmp(**av, "any") == 0) {
+	if (strcmp(**av, "table") == 0) {
+		NEXT_ARG1;
+                NEED(*ac, 1, "table id missing");
+		(*cmd)->len = F_INSN_SIZE(ipfw_insn);
+		(*cmd)->opcode = O_BASIC_IP_DST_LOOKUP;
+		(*cmd)->arg1 = strtoul(**av, NULL, 10);
+	}else if (strcmp(**av, "any") == 0) {
 		(*cmd)->len &= ~F_LEN_MASK;
 	} else if (strcmp(**av, "me") == 0) {
 		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
@@ -677,6 +690,15 @@ show_from(ipfw_insn *cmd, int show_or)
 }
 
 void
+show_from_lookup(ipfw_insn *cmd, int show_or)
+{
+	char *word = "from";
+	if (show_or)
+		word = "or";
+	printf(" %s table %d", word, cmd->arg1);
+}
+
+void
 show_from_me(ipfw_insn *cmd, int show_or)
 {
 	char *word = "from";
@@ -707,6 +729,15 @@ show_to(ipfw_insn *cmd, int show_or)
 	if (show_or)
 		word = "or";
 	printf(" %s %s", word, inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
+}
+
+void
+show_to_lookup(ipfw_insn *cmd, int show_or)
+{
+	char *word = "to";
+	if (show_or)
+		word = "or";
+	printf(" %s table %d", word, cmd->arg1);
 }
 
 void
@@ -836,6 +867,12 @@ load_module(register_func function, register_keyword keyword)
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC,
 			(parser_func)parse_from, (shower_func)show_from);
+
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP, "[from table]",
+			IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP,
+			(parser_func)parse_from, (shower_func)show_from_lookup);
+
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME, "[from me]",
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME,
@@ -848,6 +885,12 @@ load_module(register_func function, register_keyword keyword)
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST,
 			(parser_func)parse_to, (shower_func)show_to);
+
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP, "[to table]",
+			IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP,
+			(parser_func)parse_to, (shower_func)show_to_lookup);
+
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_ME, "[to me]",
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_ME,

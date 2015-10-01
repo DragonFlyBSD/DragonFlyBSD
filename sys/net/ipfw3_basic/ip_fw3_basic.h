@@ -58,12 +58,13 @@ enum ipfw_basic_opcodes {
 	O_BASIC_IP_SRC,
 	O_BASIC_IP_SRC_MASK,	/*  ip = IP/mask*/
 	O_BASIC_IP_SRC_ME,	/*  me  */
-	O_BASIC_IP_SRC_SET,	/*  u32=base, arg1=len, bitmap	*/
+	O_BASIC_IP_SRC_LOOKUP,	/*  from lookup table */
 
 	O_BASIC_IP_DST,
 	O_BASIC_IP_DST_MASK,	/*  ip = IP/mask */
 	O_BASIC_IP_DST_ME,	/*  me	*/
-	O_BASIC_IP_DST_SET,	/*  u32=base, arg1=len, bitmap	*/
+	O_BASIC_IP_DST_LOOKUP,	/*  to lookup table */
+
 	O_BASIC_IP_SRCPORT,	/*  (n)port list:mask 4 byte ea	*/
 	O_BASIC_IP_DSTPORT,	/*  (n)port list:mask 4 byte ea	*/
 	O_BASIC_PROB,		/*  probability 0~1*/
