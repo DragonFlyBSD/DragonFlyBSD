@@ -111,10 +111,10 @@ dm_dbg_print_flags(int flags)
 		aprint_debug("dbg_flags: DM_READONLY_FLAG set In/Out\n");
 
 	if (flags & DM_SUSPEND_FLAG)
-		aprint_debug("dbg_flags: DM_SUSPEND_FLAG set In/Out \n");
+		aprint_debug("dbg_flags: DM_SUSPEND_FLAG set In/Out\n");
 
 	if (flags & DM_PERSISTENT_DEV_FLAG)
-		aprint_debug("db_flags: DM_PERSISTENT_DEV_FLAG set In\n");
+		aprint_debug("dbg_flags: DM_PERSISTENT_DEV_FLAG set In\n");
 
 	if (flags & DM_STATUS_TABLE_FLAG)
 		aprint_debug("dbg_flags: DM_STATUS_TABLE_FLAG set In\n");
@@ -751,7 +751,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * therfore I have to pass it to target init
 		 * routine and parse parameters there.
 		 */
-		aprint_debug("DM: str passed in is: %s", str);
+		aprint_debug("DM: str passed in is: \"%s\"\n", str);
 		if ((ret = target->init(dmv, &table_en->target_config,
 			    str)) != 0) {
 

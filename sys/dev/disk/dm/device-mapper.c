@@ -315,7 +315,7 @@ dm_ioctl_switch(u_long cmd)
 	switch(cmd) {
 
 	case NETBSD_DM_IOCTL:
-		aprint_debug("dm NetBSD_DM_IOCTL called\n");
+		aprint_debug("dm NETBSD_DM_IOCTL called\n");
 		break;
 	default:
 		aprint_debug("dm unknown ioctl called\n");
@@ -456,9 +456,9 @@ dmstrategy(struct dev_strategy_args *ap)
 			    PRIu64"\n", buf_start, buf_len);
 			aprint_normal("start-buf_start %010"PRIu64", end %010"
 			    PRIu64"\n", start - buf_start, end);
-			aprint_normal("start %010" PRIu64" , end %010"
+			aprint_normal("start %010" PRIu64", end %010"
 			    PRIu64"\n", start, end);
-			aprint_normal("\n----------------------------------------\n");
+			aprint_normal("----------------------------------------\n");
 		}
 
 		if (bypass) {
