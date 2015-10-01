@@ -481,13 +481,22 @@ struct ipfw_module{
 	char name[20];
 };
 
-#define IPFW_KEYWORD_TYPE_NONE		0
-#define IPFW_KEYWORD_TYPE_ACTION	1
-#define IPFW_KEYWORD_TYPE_FILTER	2
-#define IPFW_KEYWORD_TYPE_OTHERS	3
+/*
+ * type of the keyword, it indecates the position of the keyword in the rule
+ *      BEFORE ACTION FROM TO FILTER OTHER
+ */
+#define NONE            0
+#define BEFORE          1
+#define ACTION          2
+#define PROTO           3
+#define FROM            4
+#define TO              5
+#define FILTER          6
+#define AFTER           7
 
-#define IPFW_MAPPING_TYPE_NONE		0
-#define IPFW_MAPPING_TYPE_IN_USE	1
+#define NOT_IN_USE      0
+#define IN_USE          1
+
 
 #define NEED1(msg)  {if (ac < 1) errx(EX_USAGE, msg);}
 #define NEED2(msg)  {if (ac < 2) errx(EX_USAGE, msg);}

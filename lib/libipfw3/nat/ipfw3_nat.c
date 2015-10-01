@@ -66,7 +66,7 @@ show_nat(ipfw_insn *cmd, int show_or)
 void
 load_module(register_func function, register_keyword keyword)
 {
-	keyword(MODULE_NAT_ID, O_NAT_NAT, "nat", IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_NAT_ID, O_NAT_NAT, "nat", ACTION);
 	function(MODULE_NAT_ID, O_NAT_NAT,
 		(parser_func)parse_nat, (shower_func)show_nat);
 }

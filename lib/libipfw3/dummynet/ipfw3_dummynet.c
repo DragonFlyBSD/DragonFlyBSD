@@ -81,11 +81,11 @@ show_queue(ipfw_insn *cmd, int show_or)
 void
 load_module(register_func function, register_keyword keyword)
 {
-	keyword(MODULE_DUMMYNET_ID,O_DUMMYNET_PIPE,"pipe", IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_DUMMYNET_ID,O_DUMMYNET_PIPE,"pipe", ACTION);
 	function(MODULE_DUMMYNET_ID,O_DUMMYNET_PIPE,
 			(parser_func)parse_pipe, (shower_func)show_pipe);
 
-	keyword(MODULE_DUMMYNET_ID,O_DUMMYNET_QUEUE,"queue", IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_DUMMYNET_ID,O_DUMMYNET_QUEUE,"queue", ACTION);
 	function(MODULE_DUMMYNET_ID,O_DUMMYNET_QUEUE,
 			(parser_func)parse_queue, (shower_func)show_queue);
 }

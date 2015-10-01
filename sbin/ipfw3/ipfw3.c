@@ -352,17 +352,13 @@ void
 prepare_default_funcs(void)
 {
 	/* register allow*/
-	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT,
-			"allow", IPFW_KEYWORD_TYPE_ACTION);
-	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT,
-			"accept", IPFW_KEYWORD_TYPE_ACTION);
+	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT, "allow", ACTION);
+	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT, "accept", ACTION);
 	register_ipfw_func(MODULE_BASIC_ID, O_BASIC_ACCEPT,
 			(parser_func)parse_accept, (shower_func)show_accept);
 	/* register deny*/
-	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_DENY, "deny",
-			IPFW_KEYWORD_TYPE_ACTION);
-	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_DENY, "reject",
-			IPFW_KEYWORD_TYPE_ACTION);
+	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_DENY, "deny", ACTION);
+	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_DENY, "reject", ACTION);
 	register_ipfw_func(MODULE_BASIC_ID, O_BASIC_DENY,
 			(parser_func)parse_deny, (shower_func)show_deny);
 }
@@ -374,7 +370,7 @@ register_ipfw_keyword(int module, int opcode, char *word, int type)
 
 	tmp=keywords;
 	for(;;) {
-		if (tmp->type == IPFW_KEYWORD_TYPE_NONE) {
+		if (tmp->type == NONE) {
 			strcpy(tmp->word, word);
 			tmp->module = module;
 			tmp->opcode = opcode;
@@ -396,12 +392,12 @@ register_ipfw_func(int module, int opcode, parser_func parser, shower_func showe
 
 	tmp = mappings;
 	while (1) {
-		if (tmp->type == IPFW_MAPPING_TYPE_NONE) {
+		if (tmp->type == NONE) {
 			tmp->module = module;
 			tmp->opcode = opcode;
 			tmp->parser = parser;
 			tmp->shower = shower;
-			tmp->type = IPFW_MAPPING_TYPE_IN_USE;
+			tmp->type = IN_USE;
 			break;
 		} else {
 			if (tmp->opcode == opcode && tmp->module == module) {
@@ -416,11 +412,10 @@ register_ipfw_func(int module, int opcode, parser_func parser, shower_func showe
 }
 
 /*
- * check whether 'or' need to be printed,
- *
- * first filter with 'or', print name without 'or'
- * same as previous, then print or and no filter name
- * not first but different from previous, print name without 'or'
+ * this func need to check whether 'or' need to be printed,
+ * when the filter is the first filter with 'or' when dont print
+ * when not first and same as previous, then print or and no filter name
+ * when not first but different from previous, print name without 'or'
  * show_or = 1: show or and ignore filter name
  * show_or = 0: show filter name ignore or
  */
@@ -429,16 +424,16 @@ void prev_show_chk(ipfw_insn *cmd, uint8_t *prev_module, uint8_t *prev_opcode,
 {
 	if (cmd->len & F_OR) {
 		if (*prev_module == 0 && *prev_opcode == 0) {
-			/* if first or */
+			/* first cmd with 'or' flag */
 			*show_or = 0;
 			*prev_module = cmd->module;
 			*prev_opcode = cmd->opcode;
-		} else if (cmd->module == *prev_module && cmd->opcode ==
-				*prev_opcode) {
-			/* if same as previous */
+		} else if (cmd->module == *prev_module &&
+				cmd->opcode == *prev_opcode) {
+			/* cmd same as previous, same module and opcode */
 			*show_or = 1;
 		} else {
-			/* then different */
+			/* cmd different from prev*/
 			*show_or = 0;
 			*prev_module = cmd->module;
 			*prev_opcode = cmd->opcode;
@@ -450,6 +445,7 @@ void prev_show_chk(ipfw_insn *cmd, uint8_t *prev_module, uint8_t *prev_opcode,
 		*prev_opcode = 0;
 	}
 }
+
 /*
  * word can be: proto from to other
  * proto show proto
@@ -462,28 +458,17 @@ int show_filter(ipfw_insn *cmd, char *word, int type)
 	struct ipfw_keyword *k;
 	struct ipfw_mapping *m;
 	shower_func fn;
-	int i, j;
-	int need_check, show_or;
+	int i, j, show_or;
 	uint8_t prev_module, prev_opcode;
 
 	k = keywords;
 	m = mappings;
-	for (i = 1; i< KEYWORD_SIZE; i++, k++) {
-		if (strcmp(word, "proto") == 0 ||
-				strcmp(word, "from") == 0 ||
-				strcmp(word, "to") == 0) {
-			need_check = strcmp(k->word, word) == 0;
-		} else {
-			need_check = strcmp(k->word, "proto") != 0 &&
-				strcmp(k->word, "from")!=0 &&
-				strcmp(k->word,	"to")!=0;
-		}
-		if (k->type == type && need_check) {
+	for (i = 1; i < KEYWORD_SIZE; i++, k++) {
+		if (k->type == type) {
 			if (k->module == cmd->module &&
 					k->opcode == cmd->opcode) {
-				for (j = 1; j< MAPPING_SIZE; j++, m++) {
-					if (m->type ==
-						IPFW_MAPPING_TYPE_IN_USE &&
+				for (j = 1; j < MAPPING_SIZE; j++, m++) {
+					if (m->type == IN_USE &&
 						k->module == m->module &&
 						k->opcode == m->opcode) {
 						prev_show_chk(cmd, &prev_module,
@@ -565,7 +550,7 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		for (i = 1; i< KEYWORD_SIZE; i++, k++) {
 			if ( k->module == cmd->module && k->opcode == cmd->opcode ) {
 				for (j = 1; j< MAPPING_SIZE; j++, m++) {
-					if (m->type == IPFW_MAPPING_TYPE_IN_USE &&
+					if (m->type == IN_USE &&
 						m->module == cmd->module &&
 						m->opcode == cmd->opcode) {
 						if (cmd->module == MODULE_BASIC_ID &&
@@ -595,7 +580,7 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 	changed=0;
 	for (l = rule->act_ofs, cmd = rule->cmd; l > 0; l -= F_LEN(cmd),
 			cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		changed = show_filter(cmd, "proto", IPFW_KEYWORD_TYPE_FILTER);
+		changed = show_filter(cmd, "proto", PROTO);
 	}
 	if (!changed && !do_quiet)
 		printf(" ip");
@@ -606,7 +591,7 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 	changed = 0;
 	for (l = rule->act_ofs, cmd = rule->cmd; l > 0; l -= F_LEN(cmd),
 			cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		changed = show_filter(cmd, "from", IPFW_KEYWORD_TYPE_FILTER);
+		changed = show_filter(cmd, "from", FROM);
 	}
 	if (!changed && !do_quiet)
 		printf(" from any");
@@ -617,7 +602,7 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 	changed = 0;
 	for (l = rule->act_ofs, cmd = rule->cmd; l > 0; l -= F_LEN(cmd),
 			cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		changed = show_filter(cmd, "to", IPFW_KEYWORD_TYPE_FILTER);
+		changed = show_filter(cmd, "to", TO);
 	}
 	if (!changed && !do_quiet)
 		printf(" to any");
@@ -628,7 +613,7 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 	for (l = rule->act_ofs, cmd = rule->cmd, m = mappings;
 			l > 0; l -= F_LEN(cmd),
 			cmd=(ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		show_filter(cmd, "other", IPFW_KEYWORD_TYPE_FILTER);
+		show_filter(cmd, "other", FILTER);
 	}
 
 	/* show the comment in the end */
@@ -2133,15 +2118,15 @@ add(int ac, char *av[])
 	}
 
 	/*
-	 * parse others
+	 * parse before
 	 */
 	for (;;) {
 		for (i = 0, key = keywords; i < KEYWORD_SIZE; i++, key++) {
-			if (key->type == IPFW_KEYWORD_TYPE_OTHERS &&
+			if (key->type == BEFORE &&
 				strcmp(key->word, *av) == 0) {
 				for (j = 0, map = mappings;
 					j < MAPPING_SIZE; j++, map++) {
-					if (map->type == IPFW_MAPPING_TYPE_IN_USE &&
+					if (map->type == IN_USE &&
 						map->module == key->module &&
 						map->opcode == key->opcode ) {
 						fn = map->parser;
@@ -2171,10 +2156,10 @@ add(int ac, char *av[])
 	 */
 	NEED1("missing action");
 	for (i = 0, key = keywords; i < KEYWORD_SIZE; i++, key++) {
-		if (ac > 0 && key->type == IPFW_KEYWORD_TYPE_ACTION &&
+		if (ac > 0 && key->type == ACTION &&
 			strcmp(key->word, *av) == 0) {
 			for (j = 0, map = mappings; j<MAPPING_SIZE; j++, map++) {
-				if (map->type == IPFW_MAPPING_TYPE_IN_USE &&
+				if (map->type == IN_USE &&
 					map->module == key->module &&
 					map->opcode == key->opcode) {
 					fn = map->parser;
@@ -2197,10 +2182,10 @@ add(int ac, char *av[])
 
 	NEED1("missing protocol");
 	for (i = 0, key = keywords; i < KEYWORD_SIZE; i++, key++) {
-		if (key->type == IPFW_KEYWORD_TYPE_FILTER &&
+		if (key->type == PROTO &&
 			strcmp(key->word, "proto") == 0) {
 			for (j = 0, map = mappings; j<MAPPING_SIZE; j++, map++) {
-				if (map->type == IPFW_MAPPING_TYPE_IN_USE &&
+				if (map->type == IN_USE &&
 					map->module == key->module &&
 					map->opcode == key->opcode ) {
 					fn = map->parser;
@@ -2240,11 +2225,14 @@ add(int ac, char *av[])
 		}
 		cur = *av;
 		for (i = 0, key = keywords; i < KEYWORD_SIZE; i++, key++) {
-			if (key->type == IPFW_KEYWORD_TYPE_FILTER &&
+			if ((key->type == FILTER ||
+                                key->type == AFTER ||
+                                key->type == FROM ||
+                                key->type == TO) &&
 				strcmp(key->word, cur) == 0) {
 				for (j = 0, map = mappings;
 					j< MAPPING_SIZE; j++, map++) {
-					if (map->type == IPFW_MAPPING_TYPE_IN_USE &&
+					if (map->type == IN_USE &&
 						map->module == key->module &&
 						map->opcode == key->opcode ) {
 						fn = map->parser;
@@ -2253,7 +2241,7 @@ add(int ac, char *av[])
 					}
 				}
 				break;
-			} else if (i == KEYWORD_SIZE-1) {
+			} else if (i == KEYWORD_SIZE - 1) {
 				errx(EX_USAGE, "bad command `%s'", cur);
 			}
 		}

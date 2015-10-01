@@ -206,19 +206,19 @@ show_bpf(ipfw_insn *cmd, int show_or)
 void
 load_module(register_func function, register_keyword keyword)
 {
-	keyword(MODULE_LAYER4_ID, O_LAYER4_TCPFLAG, "tcpflag", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_TCPFLAG, "tcpflag", FILTER);
 	function(MODULE_LAYER4_ID, O_LAYER4_TCPFLAG,
 			(parser_func)parse_tcpflag, (shower_func)show_tcpflag);
-	keyword(MODULE_LAYER4_ID, O_LAYER4_UID, "uid", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_UID, "uid", FILTER);
 	function(MODULE_LAYER4_ID, O_LAYER4_UID,
 			(parser_func)parse_uid, (shower_func)show_uid);
-	keyword(MODULE_LAYER4_ID, O_LAYER4_GID, "gid", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_GID, "gid", FILTER);
 	function(MODULE_LAYER4_ID, O_LAYER4_GID,
 			(parser_func)parse_gid, (shower_func)show_gid);
-	keyword(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED, "established", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED, "established", FILTER);
 	function(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED,
 			(parser_func)parse_established, (shower_func)show_established);
-	keyword(MODULE_LAYER4_ID, O_LAYER4_BPF, "bpf", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_BPF, "bpf", FILTER);
 	function(MODULE_LAYER4_ID, O_LAYER4_BPF,
 			(parser_func)parse_bpf, (shower_func)show_bpf);
 }

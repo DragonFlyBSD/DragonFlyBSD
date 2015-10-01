@@ -172,11 +172,11 @@ show_mac(ipfw_insn *cmd, int show_or)
 void
 load_module(register_func function, register_keyword keyword)
 {
-	keyword(MODULE_LAYER2_ID, O_LAYER2_LAYER2, "layer2", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_LAYER2_ID, O_LAYER2_LAYER2, "layer2", FILTER);
 	function(MODULE_LAYER2_ID, O_LAYER2_LAYER2,
 			(parser_func)parse_layer2, (shower_func)show_layer2);
 
-	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC, "mac", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC, "mac", FILTER);
 	function(MODULE_LAYER2_ID, O_LAYER2_MAC,
 			(parser_func)parse_mac,(shower_func)show_mac);
 }

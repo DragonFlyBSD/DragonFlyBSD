@@ -826,118 +826,98 @@ show_untag(ipfw_insn *cmd, int show_or)
 void
 load_module(register_func function, register_keyword keyword)
 {
-	keyword(MODULE_BASIC_ID, O_BASIC_COUNT, "count",
-			IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_BASIC_ID, O_BASIC_COUNT, "count", ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_COUNT,
 			(parser_func)parse_count, (shower_func)show_count);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_SKIPTO, "skipto",
-			IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_BASIC_ID, O_BASIC_SKIPTO, "skipto", ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_SKIPTO,
 			(parser_func)parse_skipto, (shower_func)show_skipto);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_FORWARD, "forward",
-			IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_BASIC_ID, O_BASIC_FORWARD, "forward", ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_FORWARD,
 			(parser_func)parse_forward, (shower_func)show_forward);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IN, "in", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IN, "in", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IN,
 			(parser_func)parse_in, (shower_func)show_in);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_OUT, "out", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_OUT, "out", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_OUT,
 			(parser_func)parse_out, (shower_func)show_out);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_VIA, "via", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_VIA, "via", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_VIA,
 			(parser_func)parse_via, (shower_func)show_via);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_XMIT, "xmit",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_XMIT, "xmit", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_XMIT,
 			(parser_func)parse_via, (shower_func)show_via);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_RECV, "recv",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_RECV, "recv", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_RECV,
 			(parser_func)parse_via, (shower_func)show_via);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC, "from",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC, "from", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC,
 			(parser_func)parse_from, (shower_func)show_from);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP, "[from table]",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP, "[from table]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP,
 			(parser_func)parse_from, (shower_func)show_from_lookup);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME, "[from me]",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME, "[from me]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME,
 			(parser_func)parse_from, (shower_func)show_from_me);
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK, "[from mask]",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK, "[from mask]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK,
 			(parser_func)parse_from, (shower_func)show_from_mask);
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST, "to",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST, "to", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST,
 			(parser_func)parse_to, (shower_func)show_to);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP, "[to table]",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP, "[to table]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP,
 			(parser_func)parse_to, (shower_func)show_to_lookup);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_ME, "[to me]",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_ME, "[to me]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_ME,
 			(parser_func)parse_to, (shower_func)show_to_me);
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK, "[to mask]",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK, "[to mask]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK,
 			(parser_func)parse_to, (shower_func)show_to_mask);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_PROTO, "proto",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_PROTO, "proto", PROTO);
 	function(MODULE_BASIC_ID, O_BASIC_PROTO,
 			(parser_func)parse_proto, (shower_func)show_proto);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_PROB, "prob",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_PROB, "prob", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_PROB,
 			(parser_func)parse_prob, (shower_func)show_prob);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_KEEP_STATE, "keep-state",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_KEEP_STATE, "keep-state", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_KEEP_STATE,
 			(parser_func)parse_keep_state,
 			(shower_func)show_keep_state);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_CHECK_STATE, "check-state",
-			IPFW_KEYWORD_TYPE_OTHERS);
+	keyword(MODULE_BASIC_ID, O_BASIC_CHECK_STATE, "check-state", ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_CHECK_STATE,
 			(parser_func)parse_check_state,
 			(shower_func)show_check_state);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_TAG, "tag", IPFW_KEYWORD_TYPE_OTHERS);
+	keyword(MODULE_BASIC_ID, O_BASIC_TAG, "tag", ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_TAG,
 			(parser_func)parse_tag, (shower_func)show_tag);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_UNTAG, "untag",
-			IPFW_KEYWORD_TYPE_OTHERS);
+	keyword(MODULE_BASIC_ID, O_BASIC_UNTAG, "untag", ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_UNTAG,
 			(parser_func)parse_untag, (shower_func)show_untag);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_TAGGED, "tagged",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_TAGGED, "tagged", FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_TAGGED,
 			(parser_func)parse_tagged, (shower_func)show_tagged);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_COMMENT, "//",
-			IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_COMMENT, "//", AFTER);
 	function(MODULE_BASIC_ID, O_BASIC_COMMENT,
 			(parser_func)parse_comment, (shower_func)show_comment);
 }
