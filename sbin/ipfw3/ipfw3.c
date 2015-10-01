@@ -1360,6 +1360,53 @@ table_delete(int ac, char *av[])
 }
 
 static void
+table_test(int ac, char *av[])
+{
+	struct ipfw_ioc_table tbl;
+	int size;
+
+	NEXT_ARG;
+	if (isdigit(**av))
+		tbl.id = atoi(*av);
+	else
+		errx(EX_USAGE, "table id `%s' invalid", *av);
+
+	if (tbl.id < 0 || tbl.id > IPFW_TABLES_MAX - 1)
+		errx(EX_USAGE, "table id `%d' invalid", tbl.id);
+
+	NEXT_ARG;
+	if (strcmp(*av, "ip") == 0)
+		tbl.type = 1;
+	else if (strcmp(*av, "mac") == 0)
+		tbl.type = 2;
+	else
+		errx(EX_USAGE, "table type `%s' not supported", *av);
+
+	NEXT_ARG;
+        if (tbl.type == 1) { /* table type ipv4 */
+                struct ipfw_ioc_table_ip_entry ip_ent;
+                if (lookup_host(*av, (struct in_addr *)&ip_ent.addr) != 0)
+                        errx(EX_NOHOST, "hostname ``%s'' unknown", *av);
+
+                tbl.ip_ent[0] = ip_ent;
+                size = sizeof(tbl) + sizeof(ip_ent);
+        } else if (tbl.type == 2) { /* table type mac */
+                struct ipfw_ioc_table_mac_entry mac_ent;
+                if (!ac)
+                        errx(EX_USAGE, "MAC address required");
+
+                mac_ent.addr = *ether_aton(*av);
+                tbl.mac_ent[0] = mac_ent;
+                size = sizeof(tbl) + sizeof(mac_ent);
+        }
+	if (do_set_x(IP_FW_TABLE_TEST, &tbl, size) < 0 ) {
+		printf("NO, %s not exists in table %d\n", *av, tbl.id);
+	} else {
+		printf("YES, %s exists in table %d\n", *av, tbl.id);
+	}
+}
+
+static void
 list(int ac, char *av[])
 {
 	struct ipfw_ioc_state *dynrules, *d;
@@ -3427,6 +3474,8 @@ ipfw_main(int ac, char **av)
 			table_create(ac, av);
 		} else if (!strncmp(*av, "delete", strlen(*av))) {
 			table_delete(ac, av);
+		} else if (!strncmp(*av, "test", strlen(*av))) {
+			table_test(ac,av);
 		} else {
 			errx(EX_USAGE, "bad ipfw table command `%s'", *av);
 		}
