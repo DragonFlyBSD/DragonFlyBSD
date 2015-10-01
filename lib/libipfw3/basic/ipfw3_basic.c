@@ -862,28 +862,28 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC,
 			(parser_func)parse_from, (shower_func)show_from);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP, "[from table]", FROM);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP, "from-[table]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_LOOKUP,
 			(parser_func)parse_from, (shower_func)show_from_lookup);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME, "[from me]", FROM);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME, "from-[me]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME,
 			(parser_func)parse_from, (shower_func)show_from_me);
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK, "[from mask]", FROM);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK, "from-[mask]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK,
 			(parser_func)parse_from, (shower_func)show_from_mask);
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST, "to", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST,
 			(parser_func)parse_to, (shower_func)show_to);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP, "[to table]", TO);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP, "to-[table]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_LOOKUP,
 			(parser_func)parse_to, (shower_func)show_to_lookup);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_ME, "[to me]", TO);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_ME, "to-[me]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_ME,
 			(parser_func)parse_to, (shower_func)show_to_me);
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK, "[to mask]", TO);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK, "to-[mask]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK,
 			(parser_func)parse_to, (shower_func)show_to_mask);
 

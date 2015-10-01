@@ -260,7 +260,7 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_LAYER2_ID, O_LAYER2_MAC_SRC,
 			(parser_func)parse_mac_from,(shower_func)show_mac_from);
 	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC_SRC_LOOKUP,
-			"mac-from-table", FROM);
+			"mac-from-[table]", FROM);
 	function(MODULE_LAYER2_ID, O_LAYER2_MAC_SRC_LOOKUP,
 			(parser_func)parse_mac_from,
 			(shower_func)show_mac_from_lookup);
@@ -269,7 +269,7 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_LAYER2_ID, O_LAYER2_MAC_DST,
 			(parser_func)parse_mac_to,(shower_func)show_mac_to);
 	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC_DST_LOOKUP,
-			"mac-to-table", TO);
+			"mac-to-[table]", TO);
 	function(MODULE_LAYER2_ID, O_LAYER2_MAC_DST_LOOKUP,
 			(parser_func)parse_mac_to,
 			(shower_func)show_mac_to_lookup);
