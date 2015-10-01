@@ -33,7 +33,6 @@
  * This file implements initial version of device-mapper error target.
  */
 #include <sys/types.h>
-#include <sys/param.h>
 
 #include <sys/buf.h>
 

@@ -38,7 +38,6 @@
  * DragonFly changes: Increase to an unlimited number of stripes
  */
 #include <sys/types.h>
-#include <sys/param.h>
 
 #include <sys/buf.h>
 #include <sys/malloc.h>

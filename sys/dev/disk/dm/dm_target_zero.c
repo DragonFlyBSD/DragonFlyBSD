@@ -34,7 +34,6 @@
  * This file implements initial version of device-mapper zero target.
  */
 #include <sys/types.h>
-#include <sys/param.h>
 
 #include <sys/buf.h>
 

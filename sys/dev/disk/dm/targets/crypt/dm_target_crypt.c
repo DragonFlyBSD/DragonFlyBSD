@@ -36,7 +36,6 @@
  * This file implements initial version of device-mapper crypt target.
  */
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/endian.h>
 
 #include <sys/bio.h>
