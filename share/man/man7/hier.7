@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd June 22, 2015
+.Dd October 1, 2015
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -126,6 +126,16 @@ see
 .El
 .It Pa /home/
 HOME directories of non-root users
+.It Pa /lib/
+critical system libraries needed for binaries in
+.Pa /bin
+and
+.Pa /sbin
+.It Pa /libexec/
+critical system utilities needed for binaries in
+.Pa /bin
+and
+.Pa /sbin
 .It Pa /mnt/
 empty directory commonly used by
 system administrators as a temporary mount point
@@ -303,12 +313,6 @@ see
 utilities and filters for LP print system;
 see
 .Xr lpr 1
-.It Pa sendmail/
-the sendmail binary;
-see
-.Xr mailwrapper 8
-and
-.Xr sendmail 8
 .It Pa sm.bin/
 restricted shell for sendmail;
 see
