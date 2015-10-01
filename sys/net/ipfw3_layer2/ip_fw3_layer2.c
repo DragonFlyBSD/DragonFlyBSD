@@ -50,13 +50,27 @@
 #include <netinet/ip_var.h>
 
 #include <net/ipfw3/ip_fw.h>
+#include <net/ipfw3/ip_fw3_table.h>
 
 #include "ip_fw3_layer2.h"
 
+extern struct ipfw_context      *ipfw_ctx[MAXCPU];
 
 void check_layer2(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_mac(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void
+check_mac_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void
+check_mac_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void
+check_mac_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void
+check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 
 void
@@ -85,6 +99,94 @@ check_mac(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	}
 }
 
+void
+check_mac_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	*cmd_ctl = IP_FW_CTL_NO;
+	if ((*args)->eh != NULL) {
+		uint16_t *want = (uint16_t *)((ipfw_insn_mac *)cmd)->addr;
+		uint16_t *mask = (uint16_t *)((ipfw_insn_mac *)cmd)->mask;
+		uint16_t *hdr = (uint16_t *)(*args)->eh;
+		*cmd_val =
+			(want[3] == (hdr[3] & mask[3]) &&
+			 want[4] == (hdr[4] & mask[4]) &&
+			 want[5] == (hdr[5] & mask[5]));
+	} else {
+		*cmd_val = IP_FW_NOT_MATCH;
+	}
+}
+
+void
+check_mac_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+        struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+        struct ipfw_table_context *table_ctx;
+        struct radix_node_head *rnh;
+        struct table_mac_entry *ent = NULL;
+
+        table_ctx = ctx->table_ctx;
+        table_ctx += cmd->arg1;
+        rnh = table_ctx->node;
+
+        *cmd_ctl = IP_FW_CTL_NO;
+        *cmd_val = IP_FW_NOT_MATCH;
+        if ((*args)->eh != NULL) {
+                struct sockaddr sa;
+                sa.sa_len = 8;
+                strncpy(sa.sa_data, (*args)->eh->ether_shost, 6);
+                ent = (struct table_mac_entry *)rnh->rnh_lookup((char *)&sa,
+								NULL, rnh);
+                if(ent != NULL)
+                        *cmd_val = IP_FW_MATCH;
+        }
+}
+
+void
+check_mac_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	*cmd_ctl = IP_FW_CTL_NO;
+	if ((*args)->eh != NULL) {
+		uint16_t *want = (uint16_t *)((ipfw_insn_mac *)cmd)->addr;
+		uint16_t *mask = (uint16_t *)((ipfw_insn_mac *)cmd)->mask;
+		uint16_t *hdr = (uint16_t *)(*args)->eh;
+		*cmd_val =
+			(want[0] == (hdr[0] & mask[0]) &&
+			 want[1] == (hdr[1] & mask[1]) &&
+			 want[2] == (hdr[2] & mask[2]));
+	} else {
+		*cmd_val = IP_FW_NOT_MATCH;
+	}
+}
+
+void
+check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+        struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+        struct ipfw_table_context *table_ctx;
+        struct radix_node_head *rnh;
+        struct table_mac_entry *ent = NULL;
+
+        table_ctx = ctx->table_ctx;
+        table_ctx += cmd->arg1;
+        rnh = table_ctx->node;
+
+        *cmd_ctl = IP_FW_CTL_NO;
+        *cmd_val = IP_FW_NOT_MATCH;
+        if ((*args)->eh != NULL) {
+                struct sockaddr sa;
+                sa.sa_len = 8;
+                strncpy(sa.sa_data, (*args)->eh->ether_dhost, 6);
+                ent = (struct table_mac_entry *)rnh->rnh_lookup((char *)&sa,
+								NULL, rnh);
+                if(ent != NULL)
+                        *cmd_val = IP_FW_MATCH;
+        }
+}
+
 static int
 ipfw3_layer2_init(void)
 {
@@ -93,6 +195,16 @@ ipfw3_layer2_init(void)
 			O_LAYER2_LAYER2, (filter_func)check_layer2);
 	register_ipfw_filter_funcs(MODULE_LAYER2_ID,
 			O_LAYER2_MAC, (filter_func)check_mac);
+        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+			O_LAYER2_MAC_SRC, (filter_func)check_mac_from);
+        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+			O_LAYER2_MAC_DST, (filter_func)check_mac_to);
+        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+			O_LAYER2_MAC_SRC_LOOKUP,
+			(filter_func)check_mac_from_lookup);
+        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+			O_LAYER2_MAC_DST_LOOKUP,
+			(filter_func)check_mac_to_lookup);
 	return 0;
 }
 

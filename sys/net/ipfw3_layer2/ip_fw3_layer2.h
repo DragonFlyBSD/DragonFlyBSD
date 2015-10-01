@@ -45,6 +45,10 @@ enum ipfw_layer2_opcodes {
 	O_LAYER2_LAYER2,
 	O_LAYER2_MAC,
 	O_LAYER2_MAC_TYPE,
+        O_LAYER2_MAC_SRC,               /* from with layer2     */
+        O_LAYER2_MAC_DST,               /* to   with layer2     */
+        O_LAYER2_MAC_SRC_LOOKUP,        /* from table N +layer2 */
+        O_LAYER2_MAC_DST_LOOKUP,        /* to   table N +layer2 */
 };
 
 #endif

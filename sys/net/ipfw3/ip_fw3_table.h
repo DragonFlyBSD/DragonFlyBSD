@@ -58,9 +58,6 @@ struct table_mac_entry {
 	struct radix_node	rn[2];
         struct sockaddr         addr;
         struct sockaddr         mask;
-        uint64_t                pcnt;   /* packet match counter */
-        uint64_t                bcnt;   /* byte match counter   */
-        uint32_t                timestamp;
 };
 
 struct netmsg_table {

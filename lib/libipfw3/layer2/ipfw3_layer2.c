@@ -140,6 +140,55 @@ parse_layer2(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
+parse_mac_from(ipfw_insn **cmd, int *ac, char **av[])
+{
+	NEED(*ac, 2, "mac-from src");
+	NEXT_ARG1;
+        if (strcmp(**av, "table") == 0) {
+                NEED(*ac, 2, "mac-from table N");
+                NEXT_ARG1;
+                (*cmd)->opcode = O_LAYER2_MAC_SRC_LOOKUP;
+                (*cmd)->module = MODULE_LAYER2_ID;
+                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn);
+                (*cmd)->arg1 = strtoul(**av, NULL, 10);
+                NEXT_ARG1;
+        } else {
+                (*cmd)->opcode = O_LAYER2_MAC_SRC;
+                (*cmd)->module = MODULE_LAYER2_ID;
+                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn_mac);
+                ipfw_insn_mac *mac = (ipfw_insn_mac *)(*cmd);
+		/* src */
+                get_mac_addr_mask(**av, &(mac->addr[6]), &(mac->mask[6]));
+                NEXT_ARG1;
+        }
+}
+
+void
+parse_mac_to(ipfw_insn **cmd, int *ac, char **av[])
+{
+	NEED(*ac, 2, "mac-to dst");
+	NEXT_ARG1;
+        if (strcmp(**av, "table") == 0) {
+                NEED(*ac, 2, "mac-to table N");
+                NEXT_ARG1;
+                (*cmd)->opcode = O_LAYER2_MAC_DST_LOOKUP;
+                (*cmd)->module = MODULE_LAYER2_ID;
+                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn);
+                (*cmd)->arg1 = strtoul(**av, NULL, 10);
+                NEXT_ARG1;
+        } else {
+                (*cmd)->opcode = O_LAYER2_MAC_DST;
+                (*cmd)->module = MODULE_LAYER2_ID;
+                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn_mac);
+                ipfw_insn_mac *mac = (ipfw_insn_mac *)(*cmd);
+		/* dst */
+                get_mac_addr_mask(**av, mac->addr, mac->mask);
+                NEXT_ARG1;
+        }
+}
+
+
+void
 parse_mac(ipfw_insn **cmd, int *ac, char **av[])
 {
 	NEED(*ac, 3, "mac dst src");
@@ -170,6 +219,34 @@ show_mac(ipfw_insn *cmd, int show_or)
 }
 
 void
+show_mac_from(ipfw_insn *cmd, int show_or)
+{
+        ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
+	printf(" mac-from");
+	print_mac( m->addr + 6, m->mask + 6);
+}
+
+void
+show_mac_from_lookup(ipfw_insn *cmd, int show_or)
+{
+	printf(" mac-from table %d", cmd->arg1);
+}
+
+void
+show_mac_to(ipfw_insn *cmd, int show_or)
+{
+        ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
+	printf(" mac-to");
+	print_mac( m->addr, m->mask);
+}
+
+void
+show_mac_to_lookup(ipfw_insn *cmd, int show_or)
+{
+	printf(" mac-to table %d", cmd->arg1);
+}
+
+void
 load_module(register_func function, register_keyword keyword)
 {
 	keyword(MODULE_LAYER2_ID, O_LAYER2_LAYER2, "layer2", FILTER);
@@ -179,4 +256,21 @@ load_module(register_func function, register_keyword keyword)
 	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC, "mac", FILTER);
 	function(MODULE_LAYER2_ID, O_LAYER2_MAC,
 			(parser_func)parse_mac,(shower_func)show_mac);
+	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC_SRC, "mac-from", FROM);
+	function(MODULE_LAYER2_ID, O_LAYER2_MAC_SRC,
+			(parser_func)parse_mac_from,(shower_func)show_mac_from);
+	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC_SRC_LOOKUP,
+			"mac-from-table", FROM);
+	function(MODULE_LAYER2_ID, O_LAYER2_MAC_SRC_LOOKUP,
+			(parser_func)parse_mac_from,
+			(shower_func)show_mac_from_lookup);
+
+	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC_DST, "mac-to", TO);
+	function(MODULE_LAYER2_ID, O_LAYER2_MAC_DST,
+			(parser_func)parse_mac_to,(shower_func)show_mac_to);
+	keyword(MODULE_LAYER2_ID, O_LAYER2_MAC_DST_LOOKUP,
+			"mac-to-table", TO);
+	function(MODULE_LAYER2_ID, O_LAYER2_MAC_DST_LOOKUP,
+			(parser_func)parse_mac_to,
+			(shower_func)show_mac_to_lookup);
 }
