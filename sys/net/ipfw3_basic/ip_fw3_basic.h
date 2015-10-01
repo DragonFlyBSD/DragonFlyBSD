@@ -56,17 +56,19 @@ enum ipfw_basic_opcodes {
 
 	O_BASIC_PROTO,		/*  arg1=protocol	*/
 	O_BASIC_IP_SRC,
+	O_BASIC_IP_SRC_N_PORT,	/* src ip: src port */
 	O_BASIC_IP_SRC_MASK,	/*  ip = IP/mask*/
 	O_BASIC_IP_SRC_ME,	/*  me  */
 	O_BASIC_IP_SRC_LOOKUP,	/*  from lookup table */
 
 	O_BASIC_IP_DST,
+	O_BASIC_IP_DST_N_PORT,	/* dst ip: dst port */
 	O_BASIC_IP_DST_MASK,	/*  ip = IP/mask */
 	O_BASIC_IP_DST_ME,	/*  me	*/
 	O_BASIC_IP_DST_LOOKUP,	/*  to lookup table */
 
-	O_BASIC_IP_SRCPORT,	/*  (n)port list:mask 4 byte ea	*/
-	O_BASIC_IP_DSTPORT,	/*  (n)port list:mask 4 byte ea	*/
+	O_BASIC_IP_SRCPORT,	/*  src-port */
+	O_BASIC_IP_DSTPORT,	/*  dst-port */
 	O_BASIC_PROB,		/*  probability 0~1*/
 	O_BASIC_KEEP_STATE,	/*  */
 	O_BASIC_CHECK_STATE,	/*  */

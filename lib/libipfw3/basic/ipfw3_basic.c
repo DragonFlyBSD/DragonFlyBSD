@@ -374,6 +374,35 @@ parse_via(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 }
 
+void
+parse_src_port(ipfw_insn **cmd, int *ac, char **av[])
+{
+
+        NEXT_ARG1;
+        (*cmd)->opcode = O_BASIC_IP_SRCPORT;
+        (*cmd)->module = MODULE_BASIC_ID;
+        (*cmd)->len = LEN_OF_IPFWINSN;
+        double v = strtol(**av, NULL, 0);
+        if (v <= 0 || v >= 65535)
+                errx(EX_NOHOST, "port `%s' invalid", **av);
+        (*cmd)->arg1 = v;
+        NEXT_ARG1;
+}
+
+void
+parse_dst_port(ipfw_insn **cmd, int *ac, char **av[])
+{
+        NEXT_ARG1;
+        (*cmd)->opcode = O_BASIC_IP_DSTPORT;
+        (*cmd)->module = MODULE_BASIC_ID;
+        (*cmd)->len = LEN_OF_IPFWINSN;
+        double v = strtol(**av, NULL, 0);
+        if (v <= 0 || v >= 65535)
+                errx(EX_NOHOST, "port `%s' invalid", **av);
+        (*cmd)->arg1 = v;
+        NEXT_ARG1;
+}
+
 /*
  * Below formats are supported:
  * from table 1		O_BASIC_IP_SRC_LOOKUP
@@ -386,16 +415,17 @@ void
 parse_from(ipfw_insn **cmd, int *ac, char **av[])
 {
 	ipfw_insn_ip *p = (ipfw_insn_ip *)(*cmd);
+	double port;
 	int i;
 
 	(*cmd)->module = MODULE_BASIC_ID;
 	NEXT_ARG1;
 	if (strcmp(**av, "table") == 0) {
-			NEXT_ARG1;
-			NEED(*ac, 1, "table id missing");
-			(*cmd)->len = F_INSN_SIZE(ipfw_insn);
-			(*cmd)->opcode = O_BASIC_IP_SRC_LOOKUP;
-			(*cmd)->arg1 = strtoul(**av, NULL, 10);
+		NEXT_ARG1;
+		NEED(*ac, 1, "table id missing");
+		(*cmd)->len = F_INSN_SIZE(ipfw_insn);
+		(*cmd)->opcode = O_BASIC_IP_SRC_LOOKUP;
+		(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	} else if (strcmp(**av, "any") == 0) {
 		(*cmd)->len &= ~F_LEN_MASK;
 	} else if (strcmp(**av, "me") == 0) {
@@ -404,6 +434,8 @@ parse_from(ipfw_insn **cmd, int *ac, char **av[])
 	} else {
 		char *c = NULL, md = 0;
 		c = strchr(**av, '/');
+		if (!c)
+			c = strchr(**av, ':');
 		if (c) {
 			md = *c;
 			*c++ = '\0';
@@ -411,6 +443,14 @@ parse_from(ipfw_insn **cmd, int *ac, char **av[])
 		if (lookup_host(**av, &p->addr) != 0)
 			errx(EX_NOHOST, "hostname ``%s'' unknown", **av);
 		switch (md) {
+			case ':':
+				port = strtol(c, NULL, 0);
+				if (port <= 0 || port >= 65535)
+					errx(EX_NOHOST, "port `%s' invalid", c);
+				(*cmd)->arg1 = port;
+				(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
+				(*cmd)->opcode = O_BASIC_IP_SRC_N_PORT;
+				break;
 			case '/':
 				i = atoi(c);
 				if (i == 0)
@@ -419,20 +459,15 @@ parse_from(ipfw_insn **cmd, int *ac, char **av[])
 					errx(EX_DATAERR, "bad width ``%s''", c);
 				else
 					p->mask.s_addr = htonl(~0 << (32 - i));
+				(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
+				(*cmd)->opcode = O_BASIC_IP_SRC_MASK;
+				p->addr.s_addr &= p->mask.s_addr;
 				break;
 			default:
 				p->mask.s_addr = htonl(~0);
+				(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
+				(*cmd)->opcode = O_BASIC_IP_SRC;
 				break;
-		}
-		p->addr.s_addr &= p->mask.s_addr;
-		if (p->mask.s_addr == 0) {
-			/* high kneel */
-		} else if (p->mask.s_addr == IP_MASK_ALL) {
-			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
-			(*cmd)->opcode = O_BASIC_IP_SRC;
-		} else {
-			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
-			(*cmd)->opcode = O_BASIC_IP_SRC_MASK;
 		}
 	}
 	NEXT_ARG1;
@@ -442,17 +477,18 @@ void
 parse_to(ipfw_insn **cmd, int *ac, char **av[])
 {
 	ipfw_insn_ip *p = (ipfw_insn_ip *)(*cmd);
+	double port;
 	int i;
 
 	(*cmd)->module = MODULE_BASIC_ID;
 	NEXT_ARG1;
 	if (strcmp(**av, "table") == 0) {
 		NEXT_ARG1;
-                NEED(*ac, 1, "table id missing");
+		NEED(*ac, 1, "table id missing");
 		(*cmd)->len = F_INSN_SIZE(ipfw_insn);
 		(*cmd)->opcode = O_BASIC_IP_DST_LOOKUP;
 		(*cmd)->arg1 = strtoul(**av, NULL, 10);
-	}else if (strcmp(**av, "any") == 0) {
+	} else if (strcmp(**av, "any") == 0) {
 		(*cmd)->len &= ~F_LEN_MASK;
 	} else if (strcmp(**av, "me") == 0) {
 		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
@@ -460,6 +496,8 @@ parse_to(ipfw_insn **cmd, int *ac, char **av[])
 	} else {
 		char *c = NULL, md = 0;
 		c = strchr(**av, '/');
+		if (!c)
+			c = strchr(**av, ':');
 		if (c) {
 			md = *c;
 			*c++ = '\0';
@@ -467,6 +505,14 @@ parse_to(ipfw_insn **cmd, int *ac, char **av[])
 		if (lookup_host(**av, &p->addr) != 0)
 			errx(EX_NOHOST, "hostname ``%s'' unknown", **av);
 		switch (md) {
+			case ':':
+				port = strtol(c, NULL, 0);
+				if (port <= 0 || port >= 65535)
+					errx(EX_NOHOST, "port `%s' invalid", c);
+				(*cmd)->arg1 = port;
+				(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
+				(*cmd)->opcode = O_BASIC_IP_DST_N_PORT;
+				break;
 			case '/':
 				i = atoi(c);
 				if (i == 0)
@@ -475,23 +521,19 @@ parse_to(ipfw_insn **cmd, int *ac, char **av[])
 					errx(EX_DATAERR, "bad width ``%s''", c);
 				else
 					p->mask.s_addr = htonl(~0 << (32 - i));
+				(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
+				(*cmd)->opcode = O_BASIC_IP_DST_MASK;
+				p->addr.s_addr &= p->mask.s_addr;
 				break;
 			default:
 				p->mask.s_addr = htonl(~0);
+				(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
+				(*cmd)->opcode = O_BASIC_IP_DST;
 				break;
-		}
-		p->addr.s_addr &= p->mask.s_addr;
-		if (p->mask.s_addr == 0) {
-			/* high kneel */
-		} else if (p->mask.s_addr == IP_MASK_ALL) {
-			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
-			(*cmd)->opcode = O_BASIC_IP_DST;
-		} else {
-			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
-			(*cmd)->opcode = O_BASIC_IP_DST_MASK;
 		}
 	}
 	NEXT_ARG1;
+
 }
 
 void
@@ -681,6 +723,18 @@ show_via(ipfw_insn *cmd, int show_or)
 }
 
 void
+show_src_port(ipfw_insn *cmd, int show_or)
+{
+        printf(" src-port %d", cmd->arg1);
+}
+
+void
+show_dst_port(ipfw_insn *cmd, int show_or)
+{
+        printf(" dst-port %d", cmd->arg1);
+}
+
+void
 show_from(ipfw_insn *cmd, int show_or)
 {
 	char *word = "from";
@@ -723,12 +777,24 @@ show_from_mask(ipfw_insn *cmd, int show_or)
 }
 
 void
+show_from_src_n_port(ipfw_insn *cmd, int show_or)
+{
+	char *word = "from";
+	if (show_or)
+		word = "or";
+	ipfw_insn_ip *p = (ipfw_insn_ip *)cmd;
+	printf(" %s %s", word, inet_ntoa(p->addr));
+	printf(":%d", cmd->arg1);
+}
+
+void
 show_to(ipfw_insn *cmd, int show_or)
 {
 	char *word = "to";
 	if (show_or)
 		word = "or";
-	printf(" %s %s", word, inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
+	ipfw_insn_ip *p = (ipfw_insn_ip *)cmd;
+	printf(" %s %s", word, inet_ntoa(p->addr));
 }
 
 void
@@ -762,6 +828,16 @@ show_to_mask(ipfw_insn *cmd, int show_or)
 	mask = contigmask((u_char *)&(p->mask.s_addr), 32);
 	if (mask < 32)
 		printf("/%d", mask);
+}
+
+void
+show_to_src_n_port(ipfw_insn *cmd, int show_or)
+{
+	char *word = "to";
+	if (show_or)
+		word = "or";
+	printf(" %s %s", word, inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
+	printf(":%d", cmd->arg1);
 }
 
 void
@@ -858,6 +934,14 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_BASIC_ID, O_BASIC_RECV,
 			(parser_func)parse_via, (shower_func)show_via);
 
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRCPORT, "src-port", FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_SRCPORT,
+	                (parser_func)parse_src_port, (shower_func)show_src_port);
+
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DSTPORT, "dst-port", FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_DSTPORT,
+	                (parser_func)parse_dst_port, (shower_func)show_dst_port);
+
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC, "from", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC,
 			(parser_func)parse_from, (shower_func)show_from);
@@ -869,9 +953,15 @@ load_module(register_func function, register_keyword keyword)
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME, "from-[me]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME,
 			(parser_func)parse_from, (shower_func)show_from_me);
+
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK, "from-[mask]", FROM);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK,
 			(parser_func)parse_from, (shower_func)show_from_mask);
+
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_N_PORT, "from-[ip:port]", FROM);
+	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_N_PORT,
+			(parser_func)parse_from, (shower_func)show_from_src_n_port);
+
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST, "to", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST,
 			(parser_func)parse_to, (shower_func)show_to);
@@ -883,9 +973,14 @@ load_module(register_func function, register_keyword keyword)
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_ME, "to-[me]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_ME,
 			(parser_func)parse_to, (shower_func)show_to_me);
+
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK, "to-[mask]", TO);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK,
 			(parser_func)parse_to, (shower_func)show_to_mask);
+
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_N_PORT, "to-[ip:port]", FROM);
+	function(MODULE_BASIC_ID, O_BASIC_IP_DST_N_PORT,
+			(parser_func)parse_to, (shower_func)show_to_src_n_port);
 
 	keyword(MODULE_BASIC_ID, O_BASIC_PROTO, "proto", PROTO);
 	function(MODULE_BASIC_ID, O_BASIC_PROTO,

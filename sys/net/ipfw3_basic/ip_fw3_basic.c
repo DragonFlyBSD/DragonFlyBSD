@@ -217,6 +217,14 @@ void check_untag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_tagged(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_src_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_dst_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_src_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_dst_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 
 /*	prototype of the utility functions	*/
 static struct ip_fw *lookup_next_rule(struct ip_fw *me);
@@ -790,6 +798,74 @@ check_tagged(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		*cmd_val = IP_FW_NOT_MATCH;
 }
 
+void
+check_src_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+        struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+        *cmd_ctl = IP_FW_CTL_NO;
+        if ((*args)->f_id.src_port == cmd->arg1)
+                *cmd_val = IP_FW_MATCH;
+        else
+                *cmd_val = IP_FW_NOT_MATCH;
+}
+
+void
+check_dst_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+        struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+        *cmd_ctl = IP_FW_CTL_NO;
+        if ((*args)->f_id.dst_port == cmd->arg1)
+                *cmd_val = IP_FW_MATCH;
+        else
+                *cmd_val = IP_FW_NOT_MATCH;
+}
+
+void
+check_src_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct in_addr src_ip;
+	u_int hlen = 0;
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	src_ip = ip->ip_src;
+	if ((*args)->eh == NULL ||
+		(m->m_pkthdr.len >= sizeof(struct ip) &&
+		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
+		hlen = ip->ip_hl << 2;
+	}
+	*cmd_val = (hlen > 0 && ((ipfw_insn_ip *)cmd)->addr.s_addr == src_ip.s_addr);
+	*cmd_ctl = IP_FW_CTL_NO;
+	if (*cmd_val && (*args)->f_id.src_port == cmd->arg1)
+		*cmd_val = IP_FW_MATCH;
+	else
+		*cmd_val = IP_FW_NOT_MATCH;
+}
+
+void
+check_dst_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct in_addr dst_ip;
+	u_int hlen = 0;
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	dst_ip = ip->ip_dst;
+	if ((*args)->eh == NULL ||
+		(m->m_pkthdr.len >= sizeof(struct ip) &&
+		 ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
+		hlen = ip->ip_hl << 2;
+	}
+	*cmd_val = (hlen > 0 && ((ipfw_insn_ip *)cmd)->addr.s_addr == dst_ip.s_addr);
+	*cmd_ctl = IP_FW_CTL_NO;
+	if (*cmd_val && (*args)->f_id.dst_port == cmd->arg1)
+		*cmd_val = IP_FW_MATCH;
+	else
+		*cmd_val = IP_FW_NOT_MATCH;
+}
+
+
+
 static void
 ipfw_basic_add_state(struct ipfw_ioc_state *ioc_state)
 {
@@ -1022,6 +1098,14 @@ ipfw_basic_init(void)
 			O_BASIC_UNTAG, (filter_func)check_untag);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_TAGGED, (filter_func)check_tagged);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_SRCPORT, (filter_func)check_src_port);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_DSTPORT, (filter_func)check_dst_port);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_SRC_N_PORT, (filter_func)check_src_n_port);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_DST_N_PORT, (filter_func)check_dst_n_port);
 
 	int cpu;
 	struct ipfw_context *ctx;
