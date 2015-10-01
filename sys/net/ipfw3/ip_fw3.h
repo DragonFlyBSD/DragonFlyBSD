@@ -554,4 +554,4 @@ typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
 
 #endif
 
-#endif /* _IPFW3_H_ */
+#endif /* _IP_FW3_H_ */
