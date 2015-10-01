@@ -361,21 +361,26 @@ extern int fw3_enable;
 #define IPFW_ASSERT_CFGPORT(msgport)				\
 	KASSERT((msgport) == IPFW_CFGPORT, ("not IPFW CFGPORT"))
 
+#define	IPFW_TABLES_MAX		32
 
+/* root of place holding all information, per-cpu */
 struct ipfw_context {
 	struct ip_fw	*ipfw_rule_chain;		/* list of rules*/
 	struct ip_fw	*ipfw_default_rule;	 /* default rule */
 	struct ipfw_state_context *state_ctx;
+	struct ipfw_table_context *table_ctx;
 	uint16_t		state_hash_size;
 	uint32_t		ipfw_set_disable;
 };
 
+/* place to hold the states */
 struct ipfw_state_context {
 	struct ip_fw_state *state;
 	struct ip_fw_state *last;
 	int	count;
 };
 
+/* place to hold the nat conf */
 struct ipfw_nat_context {
 	LIST_HEAD(, cfg_nat) nat;		/* list of nat entries */
 };
@@ -536,6 +541,17 @@ typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
 #define IP_FW_STATE_ADD		56   /* add one state */
 #define IP_FW_STATE_DEL		57   /* delete states of one rulenum */
 #define IP_FW_STATE_FLUSH	58   /* flush all states */
+
+#define IP_FW_TABLE_CREATE	73	/* table_create 	*/
+#define IP_FW_TABLE_DELETE	74	/* table_delete 	*/
+#define IP_FW_TABLE_APPEND	75	/* table_append 	*/
+#define IP_FW_TABLE_REMOVE	76	/* table_remove 	*/
+#define IP_FW_TABLE_LIST	77	/* table_list 		*/
+#define IP_FW_TABLE_FLUSH	78	/* table_flush 		*/
+#define IP_FW_TABLE_SHOW	79	/* table_show 		*/
+#define IP_FW_TABLE_TEST	80	/* table_test 		*/
+#define IP_FW_TABLE_RENAME	81	/* rename a table 	*/
+
 #endif
 
 #endif /* _IPFW3_H_ */

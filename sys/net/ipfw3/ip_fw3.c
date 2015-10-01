@@ -75,11 +75,13 @@
 #include <netinet/if_ether.h>
 
 #include <net/if.h>
+#include <net/radix.h>
 #include <net/route.h>
 #include <net/pfil.h>
 #include <net/netmsg2.h>
 
 #include <net/ipfw3/ip_fw.h>
+#include <net/ipfw3/ip_fw3_table.h>
 #include <net/ipfw3_basic/ip_fw3_basic.h>
 #include <net/ipfw3_nat/ip_fw3_nat.h>
 #include <net/dummynet3/ip_dummynet3.h>
@@ -1699,6 +1701,15 @@ ipfw_ctl(struct sockopt *sopt)
 		case IP_FW_STATE_FLUSH:
 			error = ipfw_ctl_flush_state(sopt);
 			break;
+		case IP_FW_TABLE_CREATE:
+		case IP_FW_TABLE_DELETE:
+		case IP_FW_TABLE_APPEND:
+		case IP_FW_TABLE_REMOVE:
+		case IP_FW_TABLE_LIST:
+		case IP_FW_TABLE_FLUSH:
+		case IP_FW_TABLE_SHOW:
+			error = ipfw_ctl_table_sockopt(sopt);
+			break;
 		default:
 			kprintf("ipfw_ctl invalid option %d\n",
 				sopt->sopt_name);
@@ -2036,10 +2047,16 @@ static int
 ipfw3_init(void)
 {
 	struct netmsg_base smsg;
+	int error;
+
 	init_module();
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 			0, ipfw_init_dispatch);
-	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
+	error = lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport,
+			0, table_init_dispatch);
+	error = lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
+	return error;
 }
 
 #ifdef KLD_MODULE
@@ -2057,6 +2074,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	ip_fw_ctl_x_ptr = NULL;
 	ip_fw_dn_io_ptr = NULL;
 	ipfw_ctl_flush_rule(1 /* kill default rule */);
+	table_fini();
 	/* Free pre-cpu context */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		if (ipfw_ctx[cpu] != NULL) {
