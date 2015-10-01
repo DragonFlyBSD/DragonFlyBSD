@@ -449,16 +449,18 @@ dmstrategy(struct dev_strategy_args *ap)
 		start = MAX(table_start, buf_start);
 		end = MIN(table_end, buf_start + buf_len);
 
-		aprint_debug("----------------------------------------\n");
-		aprint_debug("table_start %010" PRIu64", table_end %010"
-		    PRIu64 "\n", table_start, table_end);
-		aprint_debug("buf_start %010" PRIu64", buf_len %010"
-		    PRIu64"\n", buf_start, buf_len);
-		aprint_debug("start-buf_start %010"PRIu64", end %010"
-		    PRIu64"\n", start - buf_start, end);
-		aprint_debug("start %010" PRIu64" , end %010"
-                    PRIu64"\n", start, end);
-		aprint_debug("\n----------------------------------------\n");
+		if (dm_debug_level) {
+			aprint_normal("----------------------------------------\n");
+			aprint_normal("table_start %010" PRIu64", table_end %010"
+			    PRIu64 "\n", table_start, table_end);
+			aprint_normal("buf_start %010" PRIu64", buf_len %010"
+			    PRIu64"\n", buf_start, buf_len);
+			aprint_normal("start-buf_start %010"PRIu64", end %010"
+			    PRIu64"\n", start - buf_start, end);
+			aprint_normal("start %010" PRIu64" , end %010"
+			    PRIu64"\n", start, end);
+			aprint_normal("\n----------------------------------------\n");
+		}
 
 		if (bypass) {
 			nestbuf = getpbuf(NULL);
