@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 21, 2015
+.Dd October 1, 2015
 .Dt IASL 8
 .Os
 .Sh NAME
@@ -43,6 +43,8 @@ The following options are supported:
 .Bl -tag -width indent
 .It Fl @ Ar file
 Specify command file.
+.It Fl ar
+Enable reference typechecking.
 .It Fl bf
 Create debug file (full tree only) (*.txt).
 .It Fl bp Ar depth
@@ -117,6 +119,8 @@ Set internal line buffer size (in Kbytes).
 Parse only, no output generation.
 .It Fl oa
 Disable all optimizations (compatibility mode).
+.It Fl oc
+Display compile times and statistics.
 .It Fl of
 Disable constant folding.
 .It Fl oi
@@ -124,7 +128,7 @@ Disable integer optimization to Zero/One/Ones.
 .It Fl on
 Disable named reference string optimization.
 .It Fl ot
-Display compile times and statistics.
+Disable typechecking.
 .It Fl P
 Preprocess only and create preprocessor output file (*.i).
 .It Fl p Ar prefix
@@ -190,7 +194,7 @@ Do not insert new compiler ID for DataTables.
 .Pp
 .Lk https://acpica.org/documentation/
 .Pp
-.Lk https://acpica.org/sites/acpica/files/aslcompiler_5.pdf
+.Lk https://acpica.org/sites/acpica/files/aslcompiler_9.pdf
 .Sh AUTHORS
 The
 .Nm

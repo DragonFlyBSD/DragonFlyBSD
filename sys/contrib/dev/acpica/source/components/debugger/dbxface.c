@@ -102,12 +102,10 @@ AcpiDbStartCommand (
         {
             /* Handshake with the front-end that gets user command lines */
 
-            Status = AcpiUtReleaseMutex (ACPI_MTX_DEBUG_CMD_COMPLETE);
-            if (ACPI_FAILURE (Status))
-            {
-                return (Status);
-            }
-            Status = AcpiUtAcquireMutex (ACPI_MTX_DEBUG_CMD_READY);
+            AcpiOsReleaseMutex (AcpiGbl_DbCommandComplete);
+
+            Status = AcpiOsAcquireMutex (AcpiGbl_DbCommandReady,
+                ACPI_WAIT_FOREVER);
             if (ACPI_FAILURE (Status))
             {
                 return (Status);
@@ -451,14 +449,16 @@ AcpiInitializeDebugger (
     {
         /* These were created with one unit, grab it */
 
-        Status = AcpiUtAcquireMutex (ACPI_MTX_DEBUG_CMD_COMPLETE);
+        Status = AcpiOsAcquireMutex (AcpiGbl_DbCommandComplete,
+            ACPI_WAIT_FOREVER);
         if (ACPI_FAILURE (Status))
         {
             AcpiOsPrintf ("Could not get debugger mutex\n");
             return_ACPI_STATUS (Status);
         }
 
-        Status = AcpiUtAcquireMutex (ACPI_MTX_DEBUG_CMD_READY);
+        Status = AcpiOsAcquireMutex (AcpiGbl_DbCommandReady,
+            ACPI_WAIT_FOREVER);
         if (ACPI_FAILURE (Status))
         {
             AcpiOsPrintf ("Could not get debugger mutex\n");
@@ -512,35 +512,5 @@ AcpiTerminateDebugger (
 }
 
 ACPI_EXPORT_SYMBOL (AcpiTerminateDebugger)
-
-
-#ifdef ACPI_OBSOLETE_FUNCTIONS
-/*******************************************************************************
- *
- * FUNCTION:    AcpiDbMethodEnd
- *
- * PARAMETERS:  WalkState       - Current walk
- *
- * RETURN:      Status
- *
- * DESCRIPTION: Called at method termination
- *
- ******************************************************************************/
-
-void
-AcpiDbMethodEnd (
-    ACPI_WALK_STATE         *WalkState)
-{
-
-    if (!AcpiGbl_CmSingleStep)
-    {
-        return;
-    }
-
-    AcpiOsPrintf ("<Method Terminating>\n");
-
-    AcpiDbStartCommand (WalkState, NULL);
-}
-#endif
 
 #endif /* ACPI_DEBUGGER */
