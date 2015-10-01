@@ -1709,6 +1709,7 @@ ipfw_ctl(struct sockopt *sopt)
 		case IP_FW_TABLE_FLUSH:
 		case IP_FW_TABLE_SHOW:
 		case IP_FW_TABLE_TEST:
+		case IP_FW_TABLE_RENAME:
 			error = ipfw_ctl_table_sockopt(sopt);
 			break;
 		default:

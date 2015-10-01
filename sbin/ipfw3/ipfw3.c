@@ -1227,10 +1227,16 @@ table_list(int ac, char *av[])
 		count = nbytes / sizeof(struct ipfw_ioc_table);
 		for (i = 0; i < count; i++, ioc_table++) {
 			if (ioc_table->type > 0) {
-				printf("table %d type %s count %d\n",
-					ioc_table->id,
-					ioc_table->type == 1 ? "ip" : "mac",
-					ioc_table->count);
+				printf("table %d",ioc_table->id);
+				if (ioc_table->type == 1)
+					printf(" type ip");
+				else if (ioc_table->type == 2)
+					printf(" type mac");
+				printf(" count %d",ioc_table->count);
+				if (strlen(ioc_table->name) > 0)
+					printf(" name %s",ioc_table->name);
+				printf("\n");
+
 			}
 		}
 	} else {
@@ -1252,6 +1258,9 @@ print_table(struct ipfw_ioc_table * tbl)
                 printf(" type mac");
 
         printf(" count %d", tbl->count);
+	if (strlen(tbl->name) > 0)
+		printf(" name %s", tbl->name);
+
 	printf("\n");
 
         if (tbl->type == 1) {
@@ -1332,6 +1341,19 @@ table_create(int ac, char *av[])
 	else
 		errx(EX_USAGE, "table type `%s' not supported", *av);
 
+	NEXT_ARG;
+	memset(t->name, 0, IPFW_TABLE_NAME_LEN);
+	if (ac == 2 && strcmp(*av, "name") == 0) {
+		NEXT_ARG;
+		if (strlen(*av) < IPFW_TABLE_NAME_LEN) {
+			strncpy(t->name, *av, strlen(*av));
+		} else {
+			errx(EX_USAGE, "table name `%s' too long", *av);
+		}
+	} else if (ac == 1) {
+		errx(EX_USAGE, "table `%s' invalid", *av);
+	}
+
 	if (do_set_x(IP_FW_TABLE_CREATE, t, sizeof(struct ipfw_ioc_table)) < 0)
 		errx(EX_USAGE, "do_set_x(IP_FW_TABLE_CREATE) "
 					"table `%d' in use", t->id);
@@ -1404,6 +1426,30 @@ table_test(int ac, char *av[])
 	} else {
 		printf("YES, %s exists in table %d\n", *av, tbl.id);
 	}
+}
+
+static void
+table_rename(int ac, char *av[])
+{
+	struct ipfw_ioc_table tbl;
+	int size;
+
+	bzero(&tbl, sizeof(tbl));
+	NEXT_ARG;
+	if (isdigit(**av))
+		tbl.id = atoi(*av);
+	else
+		errx(EX_USAGE, "table id `%s' invalid", *av);
+
+	if (tbl.id < 0 || tbl.id > IPFW_TABLES_MAX - 1)
+		errx(EX_USAGE, "table id `%d' invalid", tbl.id);
+
+	NEXT_ARG;
+	strlcpy(tbl.name, *av, IPFW_TABLE_NAME_LEN);
+	size = sizeof(tbl);
+	if (do_set_x(IP_FW_TABLE_RENAME, &tbl, size) < 0 )
+		errx(EX_USAGE, "do_set_x(IP_FW_TABLE_RENAME) "
+					"table `%d' not in use", tbl.id);
 }
 
 static void
@@ -3476,6 +3522,8 @@ ipfw_main(int ac, char **av)
 			table_delete(ac, av);
 		} else if (!strncmp(*av, "test", strlen(*av))) {
 			table_test(ac,av);
+		} else if (!strncmp(*av, "name", strlen(*av))) {
+			table_rename(ac, av);
 		} else {
 			errx(EX_USAGE, "bad ipfw table command `%s'", *av);
 		}

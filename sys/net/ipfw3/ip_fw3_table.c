@@ -96,6 +96,7 @@ table_create_dispatch(netmsg_t nmsg)
 	table_ctx += id;
 	table_ctx->type = ioc_table->type;
 	table_ctx->count = 0;
+	strlcpy(table_ctx->name , ioc_table->name, IPFW_TABLE_NAME_LEN);
 	if (table_ctx->type == 1) {
 		rn_inithead((void **)&table_ctx->mask, NULL, 0);
 		rn_inithead((void **)&table_ctx->node, table_ctx->mask, 32);
@@ -291,6 +292,7 @@ table_rename_dispatch(netmsg_t nmsg)
 	ioc_tbl = tbmsg->ioc_table;
 	table_ctx = ctx->table_ctx;
 	table_ctx += ioc_tbl->id;
+	strlcpy(table_ctx->name, ioc_tbl->name, IPFW_TABLE_NAME_LEN);
 	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
 }
 
@@ -316,6 +318,7 @@ ipfw_ctl_table_list(struct sockopt *sopt)
 		ioc_table->id = i;
 		ioc_table->type = table_ctx->type;
 		ioc_table->count = table_ctx->count;
+		strlcpy(ioc_table->name, table_ctx->name, IPFW_TABLE_NAME_LEN);
 	}
 	sopt->sopt_valsize = size;
 	return error;
@@ -415,6 +418,7 @@ ipfw_ctl_table_show(struct sockopt *sopt)
                 tbl = (struct ipfw_ioc_table *)data;
                 tbl->id = *id;
                 tbl->type = table_ctx->type;
+		strlcpy(tbl->name, table_ctx->name, IPFW_TABLE_NAME_LEN);
                 rnh = table_ctx->node;
                 rnh->rnh_walktree(rnh, dump_table_ip_entry, tbl);
                 bcopy(tbl, sopt->sopt_val, size);
@@ -432,6 +436,7 @@ ipfw_ctl_table_show(struct sockopt *sopt)
                 tbl = (struct ipfw_ioc_table *)data;
                 tbl->id = *id;
                 tbl->type = table_ctx->type;
+		strlcpy(tbl->name, table_ctx->name, IPFW_TABLE_NAME_LEN);
                 rnh = table_ctx->node;
                 rnh->rnh_walktree(rnh, dump_table_mac_entry, tbl);
                 bcopy(tbl, sopt->sopt_val, size);

@@ -36,13 +36,14 @@
 #ifndef _IP_FW3_TABLE_H_
 #define _IP_FW3_TABLE_H_
 
-#define IPFW_TABLES_MAX         32
-#define IPFW_TABLES_IFACE_MAX   128
+#define IPFW_TABLES_MAX		32
+#define IPFW_TABLE_NAME_LEN	32
 
 #ifdef _KERNEL
 struct ipfw_table_context {
 	struct	radix_node_head *node;
 	struct	radix_node_head *mask;
+	char	name[IPFW_TABLE_NAME_LEN];
 	int	count;
 	int 	type;
 };
@@ -101,6 +102,7 @@ struct ipfw_ioc_table {
 	int	id;
 	int 	type;
 	int	count;
+	char	name[IPFW_TABLE_NAME_LEN];
 	struct ipfw_ioc_table_ip_entry ip_ent[0];
 	struct ipfw_ioc_table_mac_entry mac_ent[0];
 };
