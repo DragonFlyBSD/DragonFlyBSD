@@ -227,6 +227,11 @@ void check_dst_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 
 /*	prototype of the utility functions	*/
+int match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
+	struct ip_fw_state *state);
+int count_match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
+	struct ip_fw_state *state, int *count);
+
 static struct ip_fw *lookup_next_rule(struct ip_fw *me);
 static int iface_match(struct ifnet *ifp, ipfw_insn_if *cmd);
 static __inline int hash_packet(struct ipfw_flow_id *id);
@@ -264,7 +269,58 @@ lookup_next_rule(struct ip_fw *me)
 }
 
 /*
+ * return value
+ * 0 : not match  1: same direction 2: reverse direction
+ */
+int
+match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid, struct ip_fw_state *state)
+{
+	 if (fid->src_ip == state->flow_id.src_ip &&
+		 fid->dst_ip == state->flow_id.dst_ip &&
+		 (fid->src_port == state->flow_id.src_port ||
+				 state->flow_id.src_port == 0) &&
+		 (fid->dst_port == state->flow_id.dst_port ||
+				 state->flow_id.dst_port == 0)) {
+		 return 1;
+	 }
+	 if (fid->src_ip == state->flow_id.dst_ip &&
+		 fid->dst_ip == state->flow_id.src_ip &&
+		 (fid->src_port == state->flow_id.dst_port ||
+				 state->flow_id.dst_port == 0) &&
+		 (fid->dst_port == state->flow_id.src_port ||
+				 state->flow_id.src_port == 0)) {
+		 return 2;
+	 }
+	 return 0;
+}
+
+/*
+ * return 1 when more states than limit
+ * arg3: limit type (1=src ip, 2=src port, 3=dst ip, 4=dst port)
+ * arg1: limit
+ */
+int
+count_match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
+	struct ip_fw_state *state, int *count)
+{
+	 if ((cmd->arg3 == 1 && fid->src_ip == state->flow_id.src_ip) ||
+		 (cmd->arg3 == 2 && fid->src_port == state->flow_id.src_port) ||
+		 (cmd->arg3 == 3 && fid->dst_ip == state->flow_id.dst_ip) ||
+		 (cmd->arg3 == 4 && fid->dst_port == state->flow_id.dst_port)) {
+		 *count = *count + 1;
+		 if (*count >= cmd->arg1)
+			 return 1;
+	 }
+	  return 0;
+}
+
+/*
  * when all = 1, it will check all the state_ctx
+ * all = 1 during keep-state
+ * all = 0 during check-state
+ *
+ * in the cmd of keep_state
+ * arg3=type arg1=limit
  */
 static struct ip_fw_state *
 lookup_state(struct ip_fw_args *args, ipfw_insn *cmd, int *limited, int all)
@@ -281,60 +337,25 @@ lookup_state(struct ip_fw_args *args, ipfw_insn *cmd, int *limited, int all)
 		start = hash_packet(&args->f_id);
 		end = hash_packet(&args->f_id);
 	}
+
 	for (i = start; i <= end; i++) {
 		state_ctx = &ctx->state_ctx[i];
 		if (state_ctx != NULL) {
 			state = state_ctx->state;
 			struct ipfw_flow_id	*fid = &args->f_id;
 			while (state != NULL) {
-				if (cmd->arg1) {
-					if ((cmd->arg3 == 1 &&
-						fid->src_ip ==
-						state->flow_id.src_ip) ||
-						(cmd->arg3 == 2 &&
-						fid->src_port ==
-						state->flow_id.src_port) ||
-						(cmd->arg3 == 3 &&
-						fid->dst_ip ==
-						state->flow_id.dst_ip) ||
-						(cmd->arg3 == 4 &&
-						fid->dst_port ==
-						state->flow_id.dst_port)) {
+				/* has limit and already exceed the limit */
+				if (cmd->arg1 &&
+					count_match_state(cmd, fid,
+							state, &count) != 0) {
+					*limited = 1;
+					 goto done;
+				 }
 
-						count++;
-						if (count >= cmd->arg1) {
-							*limited = 1;
-							goto done;
-						}
-					}
-				}
+				if (fid->proto == state->flow_id.proto &&
+						 match_state(cmd, fid, state) != 0)
+					 goto done;
 
-				if (fid->proto == state->flow_id.proto) {
-					if (fid->src_ip ==
-					state->flow_id.src_ip &&
-					fid->dst_ip ==
-					state->flow_id.dst_ip &&
-					(fid->src_port ==
-					state->flow_id.src_port ||
-					state->flow_id.src_port == 0) &&
-					(fid->dst_port ==
-					state->flow_id.dst_port ||
-					state->flow_id.dst_port == 0)) {
-						goto done;
-					}
-					if (fid->src_ip ==
-					state->flow_id.dst_ip &&
-					fid->dst_ip ==
-					state->flow_id.src_ip &&
-					(fid->src_port ==
-					state->flow_id.dst_port ||
-					state->flow_id.dst_port == 0) &&
-					(fid->dst_port ==
-					state->flow_id.src_port ||
-					state->flow_id.src_port == 0)) {
-						goto done;
-					}
-				}
 				state = state->next;
 			}
 		}
