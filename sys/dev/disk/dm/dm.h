@@ -159,6 +159,7 @@ typedef struct dm_dev {
 #define DM_DELETING_DEV        (1 << 8)
 #define DM_CRYPTO_DEV          (1 << 9)
 #define DM_RAID1_DEV           (1 << 10)
+#define DM_DELAY_DEV           (1 << 11)
 
 /* for zero, error : dm_target->target_config == NULL */
 
