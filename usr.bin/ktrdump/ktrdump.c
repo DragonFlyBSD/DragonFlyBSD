@@ -1095,6 +1095,7 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 					else
 						is_long = 1;
 					break;
+				case '#':
 				case '.':
 				case '-':
 				case '+':
