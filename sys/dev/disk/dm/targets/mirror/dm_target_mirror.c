@@ -39,6 +39,25 @@
 
 #include "dm.h"
 
+typedef struct target_mirror_config {
+#define MAX_MIRROR_COPIES 4
+	dm_pdev_t *orig;
+	dm_pdev_t *copies[MAX_MIRROR_COPIES];
+
+	/* copied blocks bitmaps administration etc*/
+	dm_pdev_t *log_pdev;	/* for administration */
+	uint64_t log_regionsize;	/* blocksize of mirror */
+
+	/* list of parts that still need copied etc.; run length encoded? */
+} dm_target_mirror_config_t;
+
+int dm_target_mirror_init(dm_dev_t *, void**, char *);
+char * dm_target_mirror_status(void *);
+int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
+int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
+int dm_target_mirror_destroy(dm_table_entry_t *);
+int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
+
 /*
  * Init function called from dm_table_load_ioctl.
  * start length mirror log_type #logargs logarg1 ... logargN #devs device1 offset1 ... deviceN offsetN

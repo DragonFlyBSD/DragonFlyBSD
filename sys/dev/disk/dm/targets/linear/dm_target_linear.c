@@ -43,6 +43,11 @@
 #include <dev/disk/dm/dm.h>
 MALLOC_DEFINE(M_DMLINEAR, "dm_linear", "Device Mapper Target Linear");
 
+typedef struct target_linear_config {
+	dm_pdev_t *pdev;
+	uint64_t offset;
+} dm_target_linear_config_t;
+
 /*
  * Allocate target specific config data, and link them to table.
  * This function is called only when, flags is not READONLY and

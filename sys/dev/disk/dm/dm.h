@@ -166,52 +166,6 @@ typedef struct dm_dev {
  * Target config is initiated with target_init function.
  */
 
-/* for linear : */
-typedef struct target_linear_config {
-	dm_pdev_t *pdev;
-	uint64_t offset;
-} dm_target_linear_config_t;
-
-/* for stripe : */
-
-#define MAX_STRIPES 32
-
-typedef struct target_stripe_config {
-	struct target_linear_config stripe_devs[MAX_STRIPES];
-	int stripe_num;
-	uint64_t stripe_chunksize;
-} dm_target_stripe_config_t;
-
-/* for mirror : */
-typedef struct target_mirror_config {
-#define MAX_MIRROR_COPIES 4
-	dm_pdev_t *orig;
-	dm_pdev_t *copies[MAX_MIRROR_COPIES];
-
-	/* copied blocks bitmaps administration etc*/
-	dm_pdev_t *log_pdev;	/* for administration */
-	uint64_t log_regionsize;	/* blocksize of mirror */
-
-	/* list of parts that still need copied etc.; run length encoded? */
-} dm_target_mirror_config_t;
-
-
-/* for snapshot : */
-typedef struct target_snapshot_config {
-	dm_pdev_t *tsc_snap_dev;
-	/* cow dev is set only for persistent snapshot devices */
-	dm_pdev_t *tsc_cow_dev;
-
-	uint64_t tsc_chunk_size;
-	uint32_t tsc_persistent_dev;
-} dm_target_snapshot_config_t;
-
-/* for snapshot-origin devices */
-typedef struct target_snapshot_origin_config {
-	dm_pdev_t *tsoc_real_dev;
-	/* list of snapshots ? */
-} dm_target_snapshot_origin_config_t;
-
 /* constant dm_target structures for error, zero, linear, stripes etc. */
 typedef struct dm_target {
 	char name[DM_MAX_TYPE_NAME];
@@ -294,30 +248,6 @@ void dm_target_busy(dm_target_t *);
 
 /* Generic function used to convert char to string */
 uint64_t atoi64(const char *);
-
-/* dm_target_mirror.c */
-int dm_target_mirror_init(dm_dev_t *, void**, char *);
-char * dm_target_mirror_status(void *);
-int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_mirror_destroy(dm_table_entry_t *);
-int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm_target_snapshot.c */
-int dm_target_snapshot_init(dm_dev_t *, void**, char *);
-char * dm_target_snapshot_status(void *);
-int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_snapshot_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_snapshot_destroy(dm_table_entry_t *);
-int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
-
-/* dm snapshot origin driver */
-int dm_target_snapshot_orig_init(dm_dev_t *, void**, char *);
-char * dm_target_snapshot_orig_status(void *);
-int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_snapshot_orig_deps(dm_table_entry_t *, prop_array_t);
-int dm_target_snapshot_orig_destroy(dm_table_entry_t *);
-int dm_target_snapshot_orig_upcall(dm_table_entry_t *, struct buf *);
 
 /* dm_table.c  */
 #define DM_TABLE_ACTIVE 0

@@ -85,6 +85,34 @@
 
 #include "dm.h"
 
+typedef struct target_snapshot_config {
+	dm_pdev_t *tsc_snap_dev;
+	/* cow dev is set only for persistent snapshot devices */
+	dm_pdev_t *tsc_cow_dev;
+
+	uint64_t tsc_chunk_size;
+	uint32_t tsc_persistent_dev;
+} dm_target_snapshot_config_t;
+
+typedef struct target_snapshot_origin_config {
+	dm_pdev_t *tsoc_real_dev;
+	/* list of snapshots ? */
+} dm_target_snapshot_origin_config_t;
+
+int dm_target_snapshot_init(dm_dev_t *, void**, char *);
+char * dm_target_snapshot_status(void *);
+int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
+int dm_target_snapshot_deps(dm_table_entry_t *, prop_array_t);
+int dm_target_snapshot_destroy(dm_table_entry_t *);
+int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
+
+int dm_target_snapshot_orig_init(dm_dev_t *, void**, char *);
+char * dm_target_snapshot_orig_status(void *);
+int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
+int dm_target_snapshot_orig_deps(dm_table_entry_t *, prop_array_t);
+int dm_target_snapshot_orig_destroy(dm_table_entry_t *);
+int dm_target_snapshot_orig_upcall(dm_table_entry_t *, struct buf *);
+
 /*
  * Init function called from dm_table_load_ioctl.
  * argv:  /dev/mapper/my_data_org /dev/mapper/tsc_cow_dev p 64

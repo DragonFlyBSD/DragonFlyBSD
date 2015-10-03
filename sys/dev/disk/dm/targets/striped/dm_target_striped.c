@@ -46,6 +46,19 @@
 #include <dev/disk/dm/dm.h>
 MALLOC_DEFINE(M_DMSTRIPE, "dm_stripe", "Device Mapper Target Stripe");
 
+#define MAX_STRIPES 32
+
+struct target_stripe_dev {
+	dm_pdev_t *pdev;
+	uint64_t offset;
+};
+
+typedef struct target_stripe_config {
+	struct target_stripe_dev stripe_devs[MAX_STRIPES];
+	int stripe_num;
+	uint64_t stripe_chunksize;
+} dm_target_stripe_config_t;
+
 static void dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc);
 
 /*
