@@ -760,7 +760,6 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			kfree(str, M_TEMP);
 
 			dm_dev_unbusy(dmv);
-			dm_target_unbusy(target);
 			return ret;
 		}
 		last_table = table_en;
