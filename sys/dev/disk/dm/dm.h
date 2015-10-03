@@ -65,11 +65,6 @@
 /*** Internal device-mapper structures ***/
 
 /*
- * A table entry describes a physical range of the logical volume.
- */
-#define MAX_TARGET_STRING_LEN 32
-
-/*
  * A device mapper table is a list of physical ranges plus the mapping target
  * applied to them.
  */
