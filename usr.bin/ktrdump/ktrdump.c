@@ -431,14 +431,14 @@ print_header(FILE *fo, int row)
 			fprintf(fo, "%-16s ", "timestamp");
 		if (xflag) {
 			if (nflag)
-			    fprintf(fo, "%-10s %-10s", "caller2", "caller1");
+			    fprintf(fo, "%-18s %-18s ", "caller2", "caller1");
 			else
-			    fprintf(fo, "%-20s %-20s", "caller2", "caller1");
+			    fprintf(fo, "%-25s %-25s ", "caller2", "caller1");
 		}
 		if (iflag)
 			fprintf(fo, "%-20s ", "ID");
 		if (fflag)
-			fprintf(fo, "%10s%-30s ", "", "file and line");
+			fprintf(fo, "%10s%-30s", "", "file and line");
 		if (pflag)
 			fprintf(fo, "%s", "trace");
 		fprintf(fo, "\n");
