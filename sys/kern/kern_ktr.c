@@ -82,6 +82,7 @@
 #include <sys/spinlock.h>
 #include <sys/kbio.h>
 #include <sys/ctype.h>
+#include <sys/limits.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
@@ -124,19 +125,45 @@
 #endif
 KTR_INFO_MASTER(testlog);
 #if KTR_TESTLOG
-KTR_INFO(KTR_TESTLOG, testlog, test1, 0, "test1 %d %d %d %d", int dummy1, int dummy2, int dummy3, int dummy4);
-KTR_INFO(KTR_TESTLOG, testlog, test2, 1, "test2 %d %d %d %d", int dummy1, int dummy2, int dummy3, int dummy4);
-KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3 %d %d %d %d", int dummy1, int dummy2, int dummy3, int dummy4);
-KTR_INFO(KTR_TESTLOG, testlog, test4, 3, "test4");
-KTR_INFO(KTR_TESTLOG, testlog, test5, 4, "test5");
-KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6");
+KTR_INFO(KTR_TESTLOG, testlog, charfmt, 0,
+    "charfmt %hhd %hhi %#hho %hhu %#hhx %#hhX\n",
+    signed char d1, signed char d2,
+    unsigned char d3, unsigned char d4,
+    unsigned char d5, unsigned char d6);
+KTR_INFO(KTR_TESTLOG, testlog, shortfmt, 1,
+    "shortfmt %hd %hi %#ho %hu %#hx %#hX\n",
+    short d1, short d2,
+    unsigned short d3, unsigned short d4,
+    unsigned short d5, unsigned short d6);
+KTR_INFO(KTR_TESTLOG, testlog, longfmt, 2,
+    "longfmt %ld %li %#lo %lu %#lx %#lX\n",
+    long d1, long d2,
+    unsigned long d3, unsigned long d4,
+    unsigned long d5, unsigned long d6);
+KTR_INFO(KTR_TESTLOG, testlog, longlongfmt, 3,
+    "longlongfmt %lld %lli %#llo %llu %#llx %#llX\n",
+    long long d1, long long d2,
+    unsigned long long d3, unsigned long long d4,
+    unsigned long long d5, unsigned long long d6);
+KTR_INFO(KTR_TESTLOG, testlog, intmaxfmt, 4,
+    "intmaxfmt %jd %ji %#jo %ju %#jx %#jX\n",
+    intmax_t d1, intmax_t d2,
+    uintmax_t d3, uintmax_t d4,
+    uintmax_t d5, uintmax_t d6);
+KTR_INFO(KTR_TESTLOG, testlog, ptrdifffmt, 5,
+    "ptrdifffmt %td %ti\n",
+    ptrdiff_t d1, ptrdiff_t d2);
+KTR_INFO(KTR_TESTLOG, testlog, sizefmt, 6,
+    "sizefmt %zd %zi %#zo %zu %#zx %#zX\n",
+    ssize_t d1, ssize_t d2,
+    size_t d3, size_t d4,
+    size_t d5, size_t d6);
 KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong");
 KTR_INFO(KTR_TESTLOG, testlog, pipeline, 7, "pipeline");
 KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 8, "crit_beg");
 KTR_INFO(KTR_TESTLOG, testlog, crit_end, 9, "crit_end");
 KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg");
 KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end");
-#define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
 #endif
 
@@ -260,12 +287,32 @@ ktr_resync_callback(void *dummy __unused)
 	if (ktr_testlogcnt) {
 		--ktr_testlogcnt;
 		cpu_disable_intr();
-		logtest(test1);
-		logtest(test2);
-		logtest(test3);
-		logtest_noargs(test4);
-		logtest_noargs(test5);
-		logtest_noargs(test6);
+		KTR_LOG(testlog_charfmt,
+		    (signed char)UCHAR_MAX, (signed char)UCHAR_MAX,
+		    (unsigned char)-1, (unsigned char)-1,
+		    (unsigned char)-1, (unsigned char)-1);
+		KTR_LOG(testlog_shortfmt,
+		    (short)USHRT_MAX, (short)USHRT_MAX,
+		    (unsigned short)-1, (unsigned short)-1,
+		    (unsigned short)-1, (unsigned short)-1);
+		KTR_LOG(testlog_longfmt,
+		    (long)ULONG_MAX, (long)ULONG_MAX,
+		    (unsigned long)-1, (unsigned long)-1,
+		    (unsigned long)-1, (unsigned long)-1);
+		KTR_LOG(testlog_longlongfmt,
+		    (long long)ULLONG_MAX, (long long)ULLONG_MAX,
+		    (unsigned long long)-1, (unsigned long long)-1,
+		    (unsigned long long)-1, (unsigned long long)-1);
+		KTR_LOG(testlog_intmaxfmt,
+		    (intmax_t)UINTMAX_MAX, (intmax_t)UINTMAX_MAX,
+		    (uintmax_t)-1, (uintmax_t)-1,
+		    (uintmax_t)-1, (uintmax_t)-1);
+		KTR_LOG(testlog_ptrdifffmt,
+		    (ptrdiff_t)PTRDIFF_MAX, (ptrdiff_t)PTRDIFF_MAX);
+		KTR_LOG(testlog_sizefmt,
+		    (ssize_t)SIZE_T_MAX, (ssize_t)SIZE_T_MAX,
+		    (size_t)-1, (size_t)-1,
+		    (size_t)-1, (size_t)-1);
 		cpu_enable_intr();
 	}
 
@@ -408,12 +455,32 @@ ktr_resync_callback(void *dummy __unused)
 	if (ktr_testlogcnt) {
 		--ktr_testlogcnt;
 		cpu_disable_intr();
-		logtest(test1);
-		logtest(test2);
-		logtest(test3);
-		logtest_noargs(test4);
-		logtest_noargs(test5);
-		logtest_noargs(test6);
+		KTR_LOG(testlog_charfmt,
+		    (signed char)UCHAR_MAX, (signed char)UCHAR_MAX,
+		    (unsigned char)-1, (unsigned char)-1,
+		    (unsigned char)-1, (unsigned char)-1);
+		KTR_LOG(testlog_shortfmt,
+		    (short)USHRT_MAX, (short)USHRT_MAX,
+		    (unsigned short)-1, (unsigned short)-1,
+		    (unsigned short)-1, (unsigned short)-1);
+		KTR_LOG(testlog_longfmt,
+		    (long)ULONG_MAX, (long)ULONG_MAX,
+		    (unsigned long)-1, (unsigned long)-1,
+		    (unsigned long)-1, (unsigned long)-1);
+		KTR_LOG(testlog_longlongfmt,
+		    (long long)ULLONG_MAX, (long long)ULLONG_MAX,
+		    (unsigned long long)-1, (unsigned long long)-1,
+		    (unsigned long long)-1, (unsigned long long)-1);
+		KTR_LOG(testlog_intmaxfmt,
+		    (intmax_t)UINTMAX_MAX, (intmax_t)UINTMAX_MAX,
+		    (uintmax_t)-1, (uintmax_t)-1,
+		    (uintmax_t)-1, (uintmax_t)-1);
+		KTR_LOG(testlog_ptrdifffmt,
+		    (ptrdiff_t)PTRDIFF_MAX, (ptrdiff_t)PTRDIFF_MAX);
+		KTR_LOG(testlog_sizefmt,
+		    (ssize_t)SIZE_T_MAX, (ssize_t)SIZE_T_MAX,
+		    (size_t)-1, (size_t)-1,
+		    (size_t)-1, (size_t)-1);
 		cpu_enable_intr();
 	}
 	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
