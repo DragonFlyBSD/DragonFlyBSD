@@ -158,12 +158,12 @@ KTR_INFO(KTR_TESTLOG, testlog, sizefmt, 6,
     ssize_t d1, ssize_t d2,
     size_t d3, size_t d4,
     size_t d5, size_t d6);
-KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong");
-KTR_INFO(KTR_TESTLOG, testlog, pipeline, 7, "pipeline");
-KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 8, "crit_beg");
-KTR_INFO(KTR_TESTLOG, testlog, crit_end, 9, "crit_end");
-KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg");
-KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end");
+KTR_INFO(KTR_TESTLOG, testlog, pingpong, 17, "pingpong");
+KTR_INFO(KTR_TESTLOG, testlog, pipeline, 18, "pipeline");
+KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 19, "crit_beg");
+KTR_INFO(KTR_TESTLOG, testlog, crit_end, 20, "crit_end");
+KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 21, "spin_beg");
+KTR_INFO(KTR_TESTLOG, testlog, spin_end, 22, "spin_end");
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
 #endif
 
