@@ -566,6 +566,14 @@ mangle_string_ptrs(const char *fmt, uint8_t *fmtdata, int dofree)
 			;
 		intsz = 0;
 		switch (p[0]) {
+		case 'h':
+			if (p[1] == 'h') {
+				++p;
+				intsz = sizeof(char);
+			} else {
+				intsz = sizeof(short);
+			}
+			break;
 		case 'l':
 			if (p[1] == 'l') {
 				++p;
@@ -1033,6 +1041,7 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 					is_long = 1;
 					/* fall through */
 				case 'd':
+				case 'i':
 				case 'u':
 				case 'x':
 				case 'o':
@@ -1084,10 +1093,14 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 					++n;
 					break;
 				case 'j':
+				case 't':
 					is_long = 2;
 					break;
 				case 'z':
 					is_long = 3;
+					break;
+				case 'h':
+					is_long = 0;
 					break;
 				case 'l':
 					if (is_long)
