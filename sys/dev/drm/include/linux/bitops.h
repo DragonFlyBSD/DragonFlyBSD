@@ -486,7 +486,7 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 
 /* Returns a contiguous bitmask from bits h to l */
 #define GENMASK(h, l)	\
-	((~0UL) >> (BITS_PER_LONG - h - 1)) && ((~0UL) << l)
+	((~0UL) >> (BITS_PER_LONG - h - 1)) & ((~0UL) << l)
 
 #include <asm/bitops/non-atomic.h>
 #include <asm/bitops/const_hweight.h>
