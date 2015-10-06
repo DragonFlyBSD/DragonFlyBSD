@@ -203,7 +203,7 @@ KTR_INFO(KTR_ACPI_EC, acpi_ec, burstdisok, 1,
 KTR_INFO(KTR_ACPI_EC, acpi_ec, burstenl, 2,
     "ec burst enabled");
 KTR_INFO(KTR_ACPI_EC, acpi_ec, cmdrun, 3,
-    "ec running command %#x", EC_COMMAND cmd);
+    "ec running command %#hhx", EC_COMMAND cmd);
 KTR_INFO(KTR_ACPI_EC, acpi_ec, gpehdlstart, 4,
     "ec gpe handler start");
 KTR_INFO(KTR_ACPI_EC, acpi_ec, gpequeuehdl, 5,
@@ -211,17 +211,17 @@ KTR_INFO(KTR_ACPI_EC, acpi_ec, gpequeuehdl, 5,
 KTR_INFO(KTR_ACPI_EC, acpi_ec, gperun, 6,
     "ec running gpe handler directly");
 KTR_INFO(KTR_ACPI_EC, acpi_ec, qryoknotrun, 7,
-    "ec query ok, not running _Q%02X", uint8_t Data);
+    "ec query ok, not running _Q%02hhX", uint8_t Data);
 KTR_INFO(KTR_ACPI_EC, acpi_ec, qryokrun, 8,
-    "ec query ok, running _Q%02X", uint8_t Data);
+    "ec query ok, running _Q%02hhX", uint8_t Data);
 KTR_INFO(KTR_ACPI_EC, acpi_ec, readaddr, 9,
-    "ec read from %#x", UINT8 Address);
+    "ec read from %#hhx", UINT8 Address);
 KTR_INFO(KTR_ACPI_EC, acpi_ec, timeout, 10,
     "error: ec wait timed out");
 KTR_INFO(KTR_ACPI_EC, acpi_ec, waitrdy, 11,
-    "ec %s wait ready, status %#x", const char *msg, EC_STATUS ec_status);
+    "ec %s wait ready, status %#hhx", const char *msg, EC_STATUS ec_status);
 KTR_INFO(KTR_ACPI_EC, acpi_ec, writeaddr, 12,
-    "ec write to %#x, data %#x", UINT8 Address, UINT8 Data);
+    "ec write to %#hhx, data %#hhx", UINT8 Address, UINT8 Data);
 
 static ACPI_STATUS
 EcLock(struct acpi_ec_softc *sc)
