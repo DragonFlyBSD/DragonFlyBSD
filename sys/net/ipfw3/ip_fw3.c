@@ -143,7 +143,6 @@ ipfw_nat_cfg_t *ipfw_nat_get_log_ptr;
 ipfw_basic_delete_state_t *ipfw_basic_flush_state_prt = NULL;
 ipfw_basic_append_state_t *ipfw_basic_append_state_prt = NULL;
 
-static struct ipfw_context	*ipfw_ctx[MAXCPU];
 static struct ipfw_nat_context *ipfw_nat_ctx;
 
 extern int ip_fw_loaded;
@@ -178,6 +177,7 @@ SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, static_count, CTLFLAG_RD,
 
 filter_func filter_funcs[MAX_MODULE][MAX_OPCODE_PER_MODULE];
 struct ipfw_module ipfw_modules[MAX_MODULE];
+struct ipfw_context *ipfw_ctx[MAXCPU];
 static int ipfw_ctl(struct sockopt *sopt);
 
 

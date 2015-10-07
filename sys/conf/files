@@ -1517,6 +1517,7 @@ net/ipfw/ip_fw2.c		optional ipfirewall
 net/ipfw/ip_fw2_glue.c		optional inet
 net/ipfw3/ip_fw3.c		optional ipfirewall3
 net/ipfw3/ip_fw3_glue.c		optional inet
+net/ipfw3/ip_fw3_table.c	optional ipfirewall3
 netinet/ip_icmp.c		optional inet
 netinet/ip_input.c		optional inet
 netinet/ip_demux.c		optional inet
