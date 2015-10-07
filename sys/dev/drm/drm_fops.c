@@ -281,18 +281,26 @@ drm_dequeue_event(struct drm_device *dev, struct drm_file *file_priv,
     struct uio *uio, struct drm_pending_event **out)
 {
 	struct drm_pending_event *e;
+	bool ret = false;
 
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+
+	*out = NULL;
 	if (list_empty(&file_priv->event_list))
-		return (false);
+		goto out;
 	e = list_first_entry(&file_priv->event_list,
 	    struct drm_pending_event, link);
 	if (e->event->length > uio->uio_resid)
-		return (false);
+		goto out;
 
 	file_priv->event_space += e->event->length;
 	list_del(&e->link);
 	*out = e;
-	return (true);
+	ret = true;
+
+out:
+	lockmgr(&dev->event_lock, LK_RELEASE);
+	return ret;
 }
 
 int
@@ -312,22 +320,18 @@ drm_read(struct dev_read_args *ap)
 		return (EINVAL);
 	}
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	ret = wait_event_interruptible(file_priv->event_wait,
 				       !list_empty(&file_priv->event_list));
 	if (ret < 0)
 		return ret;
 
 	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
-		lockmgr(&dev->event_lock, LK_RELEASE);
 		error = uiomove((caddr_t)e->event, e->event->length, uio);
 		e->destroy(e);
 		if (error != 0)
 			return (error);
-		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	}
 
-	lockmgr(&dev->event_lock, LK_RELEASE);
 	return (error);
 }
 
