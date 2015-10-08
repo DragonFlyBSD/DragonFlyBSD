@@ -130,9 +130,9 @@ int drm_dma(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	if (dev->driver->dma_ioctl) {
 		/* shared code returns -errno */
-		return -dev->driver->dma_ioctl(dev, data, file_priv);
+		return dev->driver->dma_ioctl(dev, data, file_priv);
 	} else {
 		DRM_DEBUG("DMA ioctl on driver with no dma handler\n");
-		return EINVAL;
+		return -EINVAL;
 	}
 }

@@ -171,7 +171,7 @@ int drm_getunique(struct drm_device *dev, void *data,
 
 	if (u->unique_len >= dev->unique_len) {
 		if (copy_to_user(u->unique, dev->unique, dev->unique_len))
-			return EFAULT;
+			return -EFAULT;
 	}
 	u->unique_len = dev->unique_len;
 
@@ -201,15 +201,15 @@ int drm_setunique(struct drm_device *dev, void *data,
 
 	/* Check and copy in the submitted Bus ID */
 	if (!u->unique_len || u->unique_len > 1024)
-		return EINVAL;
+		return -EINVAL;
 
 	busid = kmalloc(u->unique_len + 1, M_DRM, M_WAITOK);
 	if (busid == NULL)
-		return ENOMEM;
+		return -ENOMEM;
 
 	if (copy_from_user(busid, u->unique, u->unique_len)) {
 		drm_free(busid, M_DRM);
-		return EFAULT;
+		return -EFAULT;
 	}
 	busid[u->unique_len] = '\0';
 
@@ -219,7 +219,7 @@ int drm_setunique(struct drm_device *dev, void *data,
 	ret = ksscanf(busid, "PCI:%d:%d:%d", &bus, &slot, &func);
 	if (ret != 3) {
 		drm_free(busid, M_DRM);
-		return EINVAL;
+		return -EINVAL;
 	}
 	domain = bus >> 8;
 	bus &= 0xff;
@@ -229,14 +229,14 @@ int drm_setunique(struct drm_device *dev, void *data,
 	    (slot != dev->pci_slot) ||
 	    (func != dev->pci_func)) {
 		drm_free(busid, M_DRM);
-		return EINVAL;
+		return -EINVAL;
 	}
 
 	/* Actually set the device's busid now. */
 	DRM_LOCK(dev);
 	if (dev->unique_len || dev->unique) {
 		DRM_UNLOCK(dev);
-		return EBUSY;
+		return -EBUSY;
 	}
 
 	dev->unique_len = u->unique_len;
@@ -255,7 +255,7 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 	dev->unique = kmalloc(dev->unique_len + 1, M_DRM, M_WAITOK | M_NULLOK);
 	if (dev->unique == NULL) {
 		DRM_UNLOCK(dev);
-		return ENOMEM;
+		return -ENOMEM;
 	}
 
 	ksnprintf(dev->unique, dev->unique_len, "pci:%04x:%02x:%02x.%1x",
@@ -290,7 +290,7 @@ int drm_getmap(struct drm_device *dev, void *data,
 
 	idx = map->offset;
 	if (idx < 0) {
-		return EINVAL;
+		return -EINVAL;
 	}
 
 	i = 0;
@@ -355,7 +355,7 @@ int drm_getclient(struct drm_device *dev, void *data,
 	}
 	DRM_UNLOCK(dev);
 
-	return EINVAL;
+	return -EINVAL;
 }
 
 /**
@@ -419,7 +419,7 @@ int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		req->value = drm_timestamp_monotonic;
 		break;
 	default:
-		return EINVAL;
+		return -EINVAL;
 	}
 	return 0;
 }
@@ -479,7 +479,7 @@ int drm_setversion(struct drm_device *dev, void *data, struct drm_file *file_pri
 	if (ver.drm_di_major != -1) {
 		if (ver.drm_di_major != DRM_IF_MAJOR ||
 		    ver.drm_di_minor < 0 || ver.drm_di_minor > DRM_IF_MINOR) {
-			return EINVAL;
+			return -EINVAL;
 		}
 		if_version = DRM_IF_VERSION(ver.drm_di_major,
 		    ver.drm_dd_minor);
@@ -500,7 +500,7 @@ int drm_setversion(struct drm_device *dev, void *data, struct drm_file *file_pri
 		    ver.drm_dd_minor < 0 ||
 		    ver.drm_dd_minor > dev->driver->minor)
 		{
-			return EINVAL;
+			return -EINVAL;
 		}
 	}
 
@@ -648,7 +648,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
 
 	if (drm_device_is_unplugged(dev))
-		return -ENODEV;
+		return ENODEV;
 
 	if (IOCGROUP(cmd) != DRM_IOCTL_BASE) {
 		DRM_DEBUG("Bad ioctl group 0x%x\n", (int)IOCGROUP(cmd));
@@ -689,10 +689,14 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 			mutex_lock(&drm_global_mutex);
 		/* shared code returns -errno */
 		retcode = -func(dev, data, file_priv);
+		if (retcode == ERESTARTSYS)
+			retcode = EINTR;
 		if ((ioctl->flags & DRM_UNLOCKED) == 0)
 			mutex_unlock(&drm_global_mutex);
 	} else {
-		retcode = func(dev, data, file_priv);
+		retcode = -func(dev, data, file_priv);
+		if (retcode == ERESTARTSYS)
+			retcode = EINTR;
 	}
 
 	if (!ioctl)

@@ -198,7 +198,7 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
 	    (irq->busnum & 0xff) != dev->pci_bus ||
 	    irq->devnum != dev->pci_slot ||
 	    irq->funcnum != dev->pci_func)
-		return EINVAL;
+		return -EINVAL;
 
 	irq->irq = dev->irq;
 

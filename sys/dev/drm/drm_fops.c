@@ -322,8 +322,10 @@ drm_read(struct dev_read_args *ap)
 
 	ret = wait_event_interruptible(file_priv->event_wait,
 				       !list_empty(&file_priv->event_list));
+	if (ret == -ERESTARTSYS)
+		ret = -EINTR;
 	if (ret < 0)
-		return ret;
+		return -ret;
 
 	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
 		error = uiomove((caddr_t)e->event, e->event->length, uio);

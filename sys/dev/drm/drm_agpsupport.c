@@ -72,7 +72,7 @@ int drm_agp_info(struct drm_device * dev, struct drm_agp_info *info)
 	struct agp_info *kern;
 
 	if (!dev->agp || !dev->agp->acquired)
-		return EINVAL;
+		return -EINVAL;
 
 	kern                   = &dev->agp->agp_info;
 	agp_get_info(dev->agp->agpdev, kern);
@@ -115,9 +115,9 @@ int drm_agp_acquire(struct drm_device *dev)
 	int retcode;
 
 	if (!dev->agp || dev->agp->acquired)
-		return EINVAL;
+		return -EINVAL;
 
-	retcode = agp_acquire(dev->agp->agpdev);
+	retcode = -agp_acquire(dev->agp->agpdev);
 	if (retcode)
 		return retcode;
 
@@ -135,7 +135,7 @@ int drm_agp_release_ioctl(struct drm_device *dev, void *data,
 int drm_agp_release(struct drm_device * dev)
 {
 	if (!dev->agp || !dev->agp->acquired)
-		return EINVAL;
+		return -EINVAL;
 	agp_release(dev->agp->agpdev);
 	dev->agp->acquired = 0;
 	return 0;
@@ -145,7 +145,7 @@ int drm_agp_enable(struct drm_device *dev, struct drm_agp_mode mode)
 {
 
 	if (!dev->agp || !dev->agp->acquired)
-		return EINVAL;
+		return -EINVAL;
 	
 	dev->agp->mode    = mode.mode;
 	agp_enable(dev->agp->agpdev, mode.mode);
@@ -172,11 +172,11 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 	struct agp_memory_info info;
 
 	if (!dev->agp || !dev->agp->acquired)
-		return EINVAL;
+		return -EINVAL;
 
 	entry = kmalloc(sizeof(*entry), M_DRM, M_WAITOK | M_NULLOK | M_ZERO);
 	if (entry == NULL)
-		return ENOMEM;
+		return -ENOMEM;
 
 	pages = (request->size + PAGE_SIZE - 1) / PAGE_SIZE;
 	type = (u_int32_t) request->type;
@@ -184,7 +184,7 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 	handle = drm_agp_allocate_memory(pages, type);
 	if (handle == NULL) {
 		drm_free(entry, M_DRM);
-		return ENOMEM;
+		return -ENOMEM;
 	}
 	
 	entry->handle    = handle;
@@ -270,13 +270,13 @@ int drm_agp_bind(struct drm_device *dev, struct drm_agp_binding *request)
 	int               page;
 	
 	if (!dev->agp || !dev->agp->acquired)
-		return EINVAL;
+		return -EINVAL;
 
 	DRM_DEBUG("agp_bind, page_size=%x\n", (int)PAGE_SIZE);
 
 	entry = drm_agp_lookup_entry(dev, (void *)request->handle);
 	if (entry == NULL || entry->bound)
-		return EINVAL;
+		return -EINVAL;
 
 	page = (request->offset + PAGE_SIZE - 1) / PAGE_SIZE;
 
@@ -305,11 +305,11 @@ int drm_agp_free(struct drm_device *dev, struct drm_agp_buffer *request)
 	drm_agp_mem_t    *entry;
 	
 	if (!dev->agp || !dev->agp->acquired)
-		return EINVAL;
+		return -EINVAL;
 
 	entry = drm_agp_lookup_entry(dev, (void*)request->handle);
 	if (entry == NULL)
-		return EINVAL;
+		return -EINVAL;
    
 	if (entry->prev)
 		entry->prev->next = entry->next;
@@ -398,9 +398,9 @@ int drm_agp_bind_memory(void *handle, off_t start)
 
 	agpdev = DRM_AGP_FIND_DEVICE();
 	if (!agpdev || !handle)
-		return EINVAL;
+		return -EINVAL;
 
-	return agp_bind_memory(agpdev, handle, start * PAGE_SIZE);
+	return -agp_bind_memory(agpdev, handle, start * PAGE_SIZE);
 }
 
 int drm_agp_unbind_memory(void *handle)
@@ -409,7 +409,7 @@ int drm_agp_unbind_memory(void *handle)
 
 	agpdev = DRM_AGP_FIND_DEVICE();
 	if (!agpdev || !handle)
-		return EINVAL;
+		return -EINVAL;
 
-	return agp_unbind_memory(agpdev, handle);
+	return -agp_unbind_memory(agpdev, handle);
 }

@@ -363,7 +363,7 @@ int drm_irq_install(struct drm_device *dev, int irq)
 		dev->driver->irq_preinstall(dev);
 
 	/* Install handler */
-	ret = bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
+	ret = -bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
 	    dev->driver->irq_handler, dev, &dev->irqh, &dev->irq_lock);
 
 	if (ret != 0) {

@@ -59,7 +59,7 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	if (lock->context == DRM_KERNEL_CONTEXT) {
 		DRM_ERROR("Process %d using kernel context %d\n",
 		    DRM_CURRENTPID, lock->context);
-		return EINVAL;
+		return -EINVAL;
 	}
 
 	DRM_DEBUG("%d (pid %d) requests lock (0x%08x), flags = 0x%08x\n",
@@ -68,7 +68,7 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	if (drm_core_check_feature(dev, DRIVER_DMA_QUEUE) &&
 	    lock->context < 0)
-		return EINVAL;
+		return -EINVAL;
 
 	DRM_LOCK(dev);
 	for (;;) {
@@ -94,7 +94,7 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		    ret ? "interrupted" : "has lock");
 
 	if (ret != 0)
-		return ret;
+		return -ret;
 
 	/* XXX: Add signal blocking here */
 
@@ -116,7 +116,7 @@ int drm_unlock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	if (lock->context == DRM_KERNEL_CONTEXT) {
 		DRM_ERROR("Process %d using kernel context %d\n",
 		    DRM_CURRENTPID, lock->context);
-		return EINVAL;
+		return -EINVAL;
 	}
 
 	atomic_inc(&dev->counts[_DRM_STAT_UNLOCKS]);

@@ -41,7 +41,7 @@ int drm_sg_alloc(struct drm_device *dev, void *data,
 	vm_pindex_t pindex;
 
 	if (dev->sg)
-		return EINVAL;
+		return -EINVAL;
 
 	DRM_DEBUG("request size=%ld\n", request->size);
 
@@ -56,7 +56,7 @@ int drm_sg_alloc(struct drm_device *dev, void *data,
 	    0, BUS_SPACE_MAXADDR_32BIT, VM_MEMATTR_WRITE_COMBINING);
 	if (entry->vaddr == 0) {
 		drm_sg_cleanup(entry);
-		return (ENOMEM);
+		return (-ENOMEM);
 	}
 
 	for(pindex = 0; pindex < entry->pages; pindex++) {
@@ -68,7 +68,7 @@ int drm_sg_alloc(struct drm_device *dev, void *data,
 	if (dev->sg) {
 		DRM_UNLOCK(dev);
 		drm_sg_cleanup(entry);
-		return (EINVAL);
+		return (-EINVAL);
 	}
 	dev->sg = entry;
 	DRM_UNLOCK(dev);
@@ -109,7 +109,7 @@ drm_sg_free(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	DRM_UNLOCK(dev);
 
 	if (!entry || entry->vaddr != request->handle)
-		return (EINVAL);
+		return (-EINVAL);
 
 	DRM_DEBUG("free 0x%jx\n", (uintmax_t)entry->vaddr);
 
