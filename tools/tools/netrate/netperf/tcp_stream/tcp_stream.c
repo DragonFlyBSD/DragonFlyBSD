@@ -18,7 +18,8 @@ struct netperf_child {
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -H host [-l len_s] [-i instances] [-r|-s]\n", cmd);
+	fprintf(stderr, "%s -H host [-l len_s] [-i instances] [-m msgsz] "
+	    "[-r|-s]\n", cmd);
 	exit(1);
 }
 
@@ -28,29 +29,34 @@ main(int argc, char *argv[])
 	struct netperf_child *instance;
 	char len_str[32];
 	char *args[32];
-	const char *host;
-	volatile int ninst;
+	const char *host, *msgsz;
+	volatile int ninst, set_minmax = 0;
 	int len, ninst_done;
-	int opt, i, null_fd, set_minmax = 0;
+	int opt, i, null_fd;
 	volatile int reverse = 0, sfile = 0;
 	double result, res_max, res_min, jain;
 
 	host = NULL;
 	ninst = 2;
 	len = 10;
+	msgsz = NULL;
 
-	while ((opt = getopt(argc, argv, "i:H:l:rs")) != -1) {
+	while ((opt = getopt(argc, argv, "H:i:l:m:rs")) != -1) {
 		switch (opt) {
-		case 'i':
-			ninst = strtoul(optarg, NULL, 10);
-			break;
-
 		case 'H':
 			host = optarg;
 			break;
 
+		case 'i':
+			ninst = strtoul(optarg, NULL, 10);
+			break;
+
 		case 'l':
 			len = strtoul(optarg, NULL, 10);
+			break;
+
+		case 'm':
+			msgsz = optarg;
 			break;
 
 		case 'r':
@@ -86,6 +92,11 @@ main(int argc, char *argv[])
 		args[i++] = __DECONST(char *, "TCP_SENDFILE");
 	else
 		args[i++] = __DECONST(char *, "TCP_STREAM");
+	if (msgsz != NULL) {
+		args[i++] = __DECONST(char *, "--");
+		args[i++] = __DECONST(char *, "-m");
+		args[i++] = __DECONST(char *, msgsz);
+	}
 	args[i] = NULL;
 
 	instance = calloc(ninst, sizeof(struct netperf_child));
