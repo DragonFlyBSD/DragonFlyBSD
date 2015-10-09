@@ -137,12 +137,9 @@ dm_target_linear_strategy(dm_table_entry_t * table_en, struct buf * bp)
 
 	tlc = table_en->target_config;
 
-/*	printf("Linear target read function called %" PRIu64 "!!\n",
+/*	kprintf("Linear target read function called %" PRIu64 "!!\n",
 	tlc->offset);*/
 
-#if 0
-	bp->b_blkno += tlc->offset;
-#endif
 	bp->b_bio1.bio_offset += tlc->offset * DEV_BSIZE;
 
 	vn_strategy(tlc->pdev->pdev_vnode, &bp->b_bio1);
