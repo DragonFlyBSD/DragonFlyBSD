@@ -249,7 +249,7 @@ dm_target_init(void)
 
 /*
  * Destroy all targets and remove them from queue.
- * This routine is called from dm_detach, before module
+ * This routine is called from dmdestroy, before module
  * is unloaded.
  */
 int

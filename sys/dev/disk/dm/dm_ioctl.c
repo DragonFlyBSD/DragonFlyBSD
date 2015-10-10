@@ -349,7 +349,7 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 		return EBUSY;
 
 	/*
-	 * This will call dm_detach routine which will actually remove
+	 * This will call dm_dev_rem_dev routine which will actually remove
 	 * device.
 	 */
 	return dm_dev_remove(dmv);

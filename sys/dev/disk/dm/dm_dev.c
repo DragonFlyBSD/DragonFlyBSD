@@ -314,7 +314,7 @@ dm_dev_destroy(dm_dev_t *dmv)
 }
 
 /*
- * dm_detach is called to completely destroy & remove a dm disk device.
+ * dm_dev_remove is called to completely destroy & remove a dm disk device.
  */
 int
 dm_dev_remove(dm_dev_t *dmv)

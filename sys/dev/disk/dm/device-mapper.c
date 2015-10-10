@@ -57,7 +57,7 @@ static	d_psize_t	dmsize;
 static	d_strategy_t	dmstrategy;
 static	d_dump_t	dmdump;
 
-/* attach and detach routines */
+/* New module handle and destroy routines */
 static int dm_modcmd(module_t mod, int cmd, void *unused);
 static int dmdestroy(void);
 

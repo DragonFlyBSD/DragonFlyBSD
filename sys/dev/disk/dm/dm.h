@@ -210,7 +210,6 @@ struct cmd_function {
 
 /* device-mapper */
 void dmsetdiskinfo(struct disk *, dm_table_head_t *);
-int dm_detach(dm_dev_t *);
 
 /* dm_ioctl.c */
 int dm_dev_create_ioctl(prop_dictionary_t);
