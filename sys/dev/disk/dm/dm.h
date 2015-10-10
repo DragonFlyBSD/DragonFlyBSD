@@ -154,9 +154,8 @@ typedef struct dm_dev {
 #define DM_STRIPE_DEV          (1 << 4)
 #define DM_SNAPSHOT_DEV        (1 << 5)
 #define DM_SNAPSHOT_ORIG_DEV   (1 << 6)
-#define DM_SPARE_DEV           (1 << 7)
-/* Set this device type only during dev remove ioctl. */
-#define DM_DELETING_DEV        (1 << 8)
+#define DM_RESERVED1_DEV       (1 << 7)
+#define DM_RESERVED2_DEV       (1 << 8)
 #define DM_CRYPTO_DEV          (1 << 9)
 #define DM_RAID1_DEV           (1 << 10)
 #define DM_DELAY_DEV           (1 << 11)
