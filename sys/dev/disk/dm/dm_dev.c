@@ -169,14 +169,15 @@ dm_dev_insert(dm_dev_t * dev)
 
 	KKASSERT(dev != NULL);
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
+
 	if (((dmv = dm_dev_lookup_uuid(dev->uuid)) == NULL) &&
 	    ((dmv = dm_dev_lookup_name(dev->name)) == NULL) &&
 	    ((dmv = dm_dev_lookup_minor(dev->minor)) == NULL)) {
-
 		TAILQ_INSERT_TAIL(&dm_dev_list, dev, next_devlist);
-
-	} else
+	} else {
+		KKASSERT(dmv != NULL);
 		r = EEXIST;
+	}
 
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	return r;
@@ -291,7 +292,7 @@ dm_dev_destroy(dm_dev_t *dmv)
 	cv_destroy(&dmv->dev_cv);
 
 	/* Destroy device */
-	(void)dm_dev_free(dmv);
+	dm_dev_free(dmv);
 
 	/* Decrement device counter After removing device */
 	--dm_dev_counter; /* XXX: was atomic 64 */
@@ -367,9 +368,9 @@ dm_dev_free(dm_dev_t * dmv)
 	KKASSERT(dmv != NULL);
 
 	if (dmv->diskp != NULL)
-		(void) kfree(dmv->diskp, M_DM);
+		kfree(dmv->diskp, M_DM);
 
-	(void) kfree(dmv, M_DM);
+	kfree(dmv, M_DM);
 
 	return 0;
 }

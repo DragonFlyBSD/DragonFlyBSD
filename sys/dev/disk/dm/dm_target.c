@@ -187,7 +187,7 @@ dm_target_rem(char *dm_target_name)
 
 	lockmgr(&dm_target_mutex, LK_RELEASE);
 
-	(void) kfree(dmt, M_DM);
+	kfree(dmt, M_DM);
 
 	return 0;
 }
@@ -265,7 +265,7 @@ dm_target_uninit(void)
 		TAILQ_REMOVE(&dm_target_list, TAILQ_FIRST(&dm_target_list),
 		    dm_target_next);
 
-		(void) kfree(dm_target, M_DM);
+		kfree(dm_target, M_DM);
 	}
 	lockmgr(&dm_target_mutex, LK_RELEASE);
 
