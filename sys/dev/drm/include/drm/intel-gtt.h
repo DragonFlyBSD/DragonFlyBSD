@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011 The FreeBSD Foundation
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * This software was developed by Konstantin Belousov under sponsorship from
@@ -94,5 +95,9 @@ void intel_gtt_insert_pages(u_int first_entry, u_int num_entries,
     vm_page_t *pages, u_int flags);
 void intel_gtt_sync_pte(u_int entry);
 void intel_gtt_write(u_int entry, uint32_t val);
+
+static inline void intel_gmch_remove(void)
+{
+}
 
 #endif
