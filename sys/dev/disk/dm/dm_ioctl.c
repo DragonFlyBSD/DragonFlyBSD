@@ -286,7 +286,7 @@ dm_dev_rename_ioctl(prop_dictionary_t dm_dict)
 	if (strlen(n_name) + 1 > DM_NAME_LEN)
 		return EINVAL;
 
-	if ((dmv = dm_dev_rem(NULL, name, uuid, minor)) == NULL) {
+	if ((dmv = dm_dev_rem(name, uuid, minor)) == NULL) {
 		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
