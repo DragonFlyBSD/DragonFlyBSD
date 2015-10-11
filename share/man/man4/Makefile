@@ -84,6 +84,7 @@ MAN=	aac.4 \
 	dm.4 \
 	dm_target_striped.4 \
 	dm_target_crypt.4 \
+	dm_target_delay.4 \
 	dpt.4 \
 	drm.4 \
 	dsched.4 \

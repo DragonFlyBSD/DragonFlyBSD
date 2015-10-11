@@ -1,0 +1,76 @@
+.\" Copyright (c) 2015 The DragonFly BSD Project.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly BSD Project
+.\" by Tomohiro Kusumi <kusumi.tomohiro@gmail.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.Dd October 11, 2015
+.Dt DM_TARGET_DELAY 4
+.Os
+.Sh NAME
+.Nm dm_target_delay
+.Nd Device-mapper delay target
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device dm"
+.Cd "device dm_target_delay"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+dm_target_delay_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+target for
+.Xr dm 4
+provides I/O delay for read or both read and write, and maps them to specified devices, compatible with Linux dm-delay.
+.Xr dmsetup 8
+.Xr create
+takes following list of parameters for
+.Nm dm_target_delay
+table.
+.Bd -ragged -offset indent
+.Cd "<read_device> <read_offset> <read_delay> [<write_device> <write_offset> <write_delay>]"
+.Ed
+.Pp
+Parameters for write delay are optional.
+Offsets are specified in 512 bytes sectors.
+Delays are specified in milliseconds.
+.Sh SEE ALSO
+.Xr dm 4 ,
+.Xr dmsetup 8
+.Sh HISTORY
+The
+.Nm
+.Xr dm 4
+target first appeared in
+.Dx 4.3.
+.Sh AUTHORS
+.An Tomohiro Kusumi
