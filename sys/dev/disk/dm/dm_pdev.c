@@ -145,7 +145,7 @@ dm_pdev_insert(const char *dev_name)
 	if (error) {
 		aprint_debug("dk_lookup on device: %s failed with error %d!\n",
 		    dev_name, error);
-		kfree(dmp, M_DM);
+		dm_pdev_rem(dmp);
 		return NULL;
 	}
 	dmp->ref_cnt = 1;
