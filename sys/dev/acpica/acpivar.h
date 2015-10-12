@@ -216,6 +216,7 @@ extern struct lock acpi_lock;
 #define ACPI_OSCERR_UUID	(1 << 2) /* Unrecognized UUID */
 #define ACPI_OSCERR_REVISION	(1 << 3) /* Unrecognized revision ID */
 #define ACPI_OSCERR_CAPSMASKED	(1 << 4) /* Capabilities have been cleared */
+#define ACPI_OSCERR_MASK	0x0000001e
 
 /*
  * Quirk flags.
