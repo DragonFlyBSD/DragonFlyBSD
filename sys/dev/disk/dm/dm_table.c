@@ -140,8 +140,8 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
 
 	tbl = &head->tables[id];
 
-	while (!SLIST_EMPTY(tbl)) {	/* List Deletion. */
-		table_en = SLIST_FIRST(tbl);
+	while ((table_en = SLIST_FIRST(tbl)) != NULL) {
+		SLIST_REMOVE(tbl, table_en, dm_table_entry, next);
 		/*
 		 * Remove target specific config data. After successfull
 		 * call table_en->target_config must be set to NULL.
@@ -150,10 +150,9 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
 		/* decrement the refcount for the target */
 		dm_target_unbusy(table_en->target);
 
-		SLIST_REMOVE_HEAD(tbl, next);
-
 		kfree(table_en, M_DM);
 	}
+	KKASSERT(SLIST_EMPTY(tbl));
 
 	lockmgr(&head->table_mtx, LK_RELEASE);
 

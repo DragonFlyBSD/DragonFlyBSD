@@ -264,17 +264,16 @@ dm_pdev_init(void)
 int
 dm_pdev_uninit(void)
 {
-	dm_pdev_t *dm_pdev;
+	dm_pdev_t *dmp;
 
 	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
-	while (!SLIST_EMPTY(&dm_pdev_list)) {	/* List Deletion. */
 
-		dm_pdev = SLIST_FIRST(&dm_pdev_list);
-
-		SLIST_REMOVE_HEAD(&dm_pdev_list, next_pdev);
-
-		dm_pdev_rem(dm_pdev);
+	while ((dmp = SLIST_FIRST(&dm_pdev_list)) != NULL) {
+		SLIST_REMOVE(&dm_pdev_list, dmp, dm_pdev, next_pdev);
+		dm_pdev_rem(dmp);
 	}
+	KKASSERT(SLIST_EMPTY(&dm_pdev_list));
+
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 
 	lockuninit(&dm_pdev_mutex);
