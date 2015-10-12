@@ -303,7 +303,6 @@ dm_ioctl_switch(u_long cmd)
 {
 
 	switch(cmd) {
-
 	case NETBSD_DM_IOCTL:
 		aprint_debug("dm NETBSD_DM_IOCTL called\n");
 		break;
@@ -331,17 +330,15 @@ disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 
 	switch(cmd) {
 	case DIOCGPART:
-	{
-		struct partinfo *dpart;
-		u_int64_t size;
-		dpart = data;
-		bzero(dpart, sizeof(*dpart));
-
 		if ((dmv = dev->si_drv1) == NULL)
 			return ENODEV;
 		if (dmv->diskp->d_info.d_media_blksize == 0) {
 			return ENOTSUP;
 		} else {
+			u_int64_t size;
+			struct partinfo *dpart = data;
+			bzero(dpart, sizeof(*dpart));
+
 			size = dm_table_size(&dmv->table_head);
 			dpart->media_offset  = 0;
 			dpart->media_size    = size * DEV_BSIZE;
@@ -350,7 +347,6 @@ disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 			dpart->fstype = FS_BSDFFS;
 		}
 		break;
-	}
 
 	default:
 		aprint_debug("unknown disk_ioctl called\n");

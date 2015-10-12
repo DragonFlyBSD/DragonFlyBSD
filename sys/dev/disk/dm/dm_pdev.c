@@ -157,6 +157,17 @@ dm_pdev_insert(const char *dev_name)
 	bzero(&dmp->pdev_pinfo, sizeof(dmp->pdev_pinfo));
 	error = dev_dioctl(dmp->pdev_vnode->v_rdev, DIOCGPART,
 	    (void *)&dmp->pdev_pinfo, 0, proc0.p_ucred, NULL, NULL);
+	if (!error) {
+		struct partinfo *dpart = &dmp->pdev_pinfo;
+		aprint_debug("dmp_pdev_insert DIOCGPART "
+			"offset=%ju size=%ju blocks=%ju blksize=%d\n",
+			dpart->media_offset,
+			dpart->media_size,
+			dpart->media_blocks,
+			dpart->media_blksize);
+	} else {
+		aprint_normal("dmp_pdev_insert DIOCGPART failed %d\n", error);
+	}
 
 	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&dm_pdev_list, dmp, next_pdev);
