@@ -50,11 +50,11 @@ The
 .Nm
 target for
 .Xr dm 4
-provides I/O delay for read or both read and write, and maps them to specified devices, compatible with Linux dm-delay.
-.Xr dmsetup 8
-.Xr create
-takes following list of parameters for
-.Nm dm_target_delay
+provides I/O delay for read or both read and write, and maps them to
+specified devices, compatible with Linux dm-delay.
+.Dq Nm dmsetup Cm create
+takes the following list of parameters for the
+.Nm
 table.
 .Bd -ragged -offset indent
 .Cd "<read_device> <read_offset> <read_delay> [<write_device> <write_offset> <write_delay>]"
@@ -71,6 +71,6 @@ The
 .Nm
 .Xr dm 4
 target first appeared in
-.Dx 4.3.
+.Dx 4.3 .
 .Sh AUTHORS
 .An Tomohiro Kusumi
