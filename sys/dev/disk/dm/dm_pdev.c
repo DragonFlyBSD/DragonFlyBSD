@@ -211,7 +211,6 @@ dm_pdev_rem(dm_pdev_t * dmp)
 			return err;
 	}
 	kfree(dmp, M_DM);
-	dmp = NULL;
 
 	return 0;
 }
