@@ -1539,8 +1539,8 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
 	fsetcred(fp, cred);
+	atomic_add_int(&nfiles, 1);
 	spin_lock(&filehead_spin);
-	nfiles++;
 	LIST_INSERT_HEAD(&filehead, fp, f_list);
 	spin_unlock(&filehead_spin);
 	if (resultfd) {
@@ -2460,8 +2460,8 @@ fdrop(struct file *fp)
 			spin_lock(&filehead_spin);
 			if (atomic_cmpset_int(&fp->f_count, count, 0)) {
 				LIST_REMOVE(fp, f_list);
-				nfiles--;
 				spin_unlock(&filehead_spin);
+				atomic_subtract_int(&nfiles, 1);
 				do_free = 1; /* free this fp */
 				break;
 			}
