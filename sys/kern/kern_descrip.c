@@ -125,8 +125,17 @@ static struct dev_ops fildesc_ops = {
 /*
  * Descriptor management.
  */
-static struct filelist filehead = LIST_HEAD_INITIALIZER(&filehead);
-static struct spinlock filehead_spin = SPINLOCK_INITIALIZER(&filehead_spin, "filehead_spin");
+#ifndef NFILELIST_HEADS
+#define NFILELIST_HEADS		257	/* primary number */
+#endif
+
+struct filelist_head {
+	struct spinlock		spin;
+	struct filelist		list;
+} __cachealign;
+
+static struct filelist_head	filelist_heads[NFILELIST_HEADS];
+
 static int nfiles;		/* actual number of open files */
 extern int cmask;	
 
@@ -150,6 +159,15 @@ fdfixup_locked(struct filedesc *fdp, int fd)
 	) {
 		--fdp->fd_lastfile;
 	}
+}
+
+static __inline struct filelist_head *
+fp2filelist(const struct file *fp)
+{
+	u_int i;
+
+	i = (u_int)(uintptr_t)fp % NFILELIST_HEADS;
+	return &filelist_heads[i];
 }
 
 /*
@@ -1509,6 +1527,7 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 {
 	static struct timeval lastfail;
 	static int curfail;
+	struct filelist_head *head;
 	struct file *fp;
 	struct ucred *cred = lp ? lp->lwp_thread->td_ucred : proc0.p_ucred;
 	int error;
@@ -1540,9 +1559,12 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 	fp->f_seqcount = 1;
 	fsetcred(fp, cred);
 	atomic_add_int(&nfiles, 1);
-	spin_lock(&filehead_spin);
-	LIST_INSERT_HEAD(&filehead, fp, f_list);
-	spin_unlock(&filehead_spin);
+
+	head = fp2filelist(fp);
+	spin_lock(&head->spin);
+	LIST_INSERT_HEAD(&head->list, fp, f_list);
+	spin_unlock(&head->spin);
+
 	if (resultfd) {
 		if ((error = fdalloc(lp->lwp_proc, 0, resultfd)) != 0) {
 			fdrop(fp);
@@ -2451,21 +2473,23 @@ fdrop(struct file *fp)
 		cpu_ccfence();
 		KASSERT(count > 0, ("fdrop: invalid f_count %d", count));
 		if (count == 1) {
+			struct filelist_head *head = fp2filelist(fp);
+
 			/*
 			 * About to drop the last reference, hold the
 			 * filehead spin lock and drop it, so that no
 			 * one could see this fp through filehead anymore,
 			 * let alone fhold() this fp.
 			 */
-			spin_lock(&filehead_spin);
+			spin_lock(&head->spin);
 			if (atomic_cmpset_int(&fp->f_count, count, 0)) {
 				LIST_REMOVE(fp, f_list);
-				spin_unlock(&filehead_spin);
+				spin_unlock(&head->spin);
 				atomic_subtract_int(&nfiles, 1);
 				do_free = 1; /* free this fp */
 				break;
 			}
-			spin_unlock(&filehead_spin);
+			spin_unlock(&head->spin);
 			/* retry */
 		} else if (atomic_cmpset_int(&fp->f_count, count, count - 1)) {
 			break;
@@ -2689,16 +2713,22 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 void
 allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data)
 {
-	struct file *fp;
-	int res;
+	int i;
 
-	spin_lock(&filehead_spin);
-	LIST_FOREACH(fp, &filehead, f_list) {
-		res = callback(fp, data);
-		if (res < 0)
-			break;
+	for (i = 0; i < NFILELIST_HEADS; ++i) {
+		struct filelist_head *head = &filelist_heads[i];
+		struct file *fp;
+
+		spin_lock(&head->spin);
+		LIST_FOREACH(fp, &head->list, f_list) {
+			int res;
+
+			res = callback(fp, data);
+			if (res < 0)
+				break;
+		}
+		spin_unlock(&head->spin);
 	}
-	spin_unlock(&filehead_spin);
 }
 
 /*
@@ -2908,3 +2938,19 @@ nofo_shutdown(struct file *fp, int how)
 
 SYSINIT(fildescdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR,
     fildesc_drvinit,NULL);
+
+static void
+filelist_heads_init(void *arg __unused)
+{
+	int i;
+
+	for (i = 0; i < NFILELIST_HEADS; ++i) {
+		struct filelist_head *head = &filelist_heads[i];
+
+		spin_init(&head->spin, "filehead_spin");
+		LIST_INIT(&head->list);
+	}
+}
+
+SYSINIT(filelistheads, SI_BOOT1_LOCK, SI_ORDER_ANY,
+    filelist_heads_init, NULL);
