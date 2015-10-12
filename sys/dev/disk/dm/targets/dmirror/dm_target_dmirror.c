@@ -309,7 +309,7 @@ dmirror_read(dm_target_crypt_config_t config, struct bio *bio)
  * Do IO operation, called from dmstrategy routine.
  */
 int
-dm_target_dmirror_strategy(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_dmirror_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 	struct bio *bio, *split_bio1, *split_bio2;
 	struct buf *bp;

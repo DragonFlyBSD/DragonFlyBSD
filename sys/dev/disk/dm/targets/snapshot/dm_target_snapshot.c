@@ -100,14 +100,14 @@ typedef struct target_snapshot_origin_config {
 } dm_target_snapshot_origin_config_t;
 
 int dm_target_snapshot_init(dm_dev_t *, void**, char *);
-char * dm_target_snapshot_status(void *);
+char *dm_target_snapshot_status(void *);
 int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_snapshot_destroy(dm_table_entry_t *);
 int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
 
 int dm_target_snapshot_orig_init(dm_dev_t *, void**, char *);
-char * dm_target_snapshot_orig_status(void *);
+char *dm_target_snapshot_orig_status(void *);
 int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_orig_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_snapshot_orig_destroy(dm_table_entry_t *);
@@ -119,7 +119,7 @@ int dm_target_snapshot_orig_upcall(dm_table_entry_t *, struct buf *);
  *        snapshot_origin device, cow device, persistent flag, chunk size
  */
 int
-dm_target_snapshot_init(dm_dev_t * dmv, void **target_config, char *params)
+dm_target_snapshot_init(dm_dev_t *dmv, void **target_config, char *params)
 {
 	dm_target_snapshot_config_t *tsc;
 	dm_pdev_t *dmp_snap, *dmp_cow;
@@ -222,7 +222,7 @@ dm_target_snapshot_status(void *target_config)
 }
 /* Strategy routine called from dm_strategy. */
 int
-dm_target_snapshot_strategy(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_snapshot_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 
 	printf("Snapshot target read function called!!\n");
@@ -236,7 +236,7 @@ dm_target_snapshot_strategy(dm_table_entry_t * table_en, struct buf * bp)
 }
 /* Doesn't do anything here. */
 int
-dm_target_snapshot_destroy(dm_table_entry_t * table_en)
+dm_target_snapshot_destroy(dm_table_entry_t *table_en)
 {
 	dm_target_snapshot_config_t *tsc;
 
@@ -266,7 +266,7 @@ dm_target_snapshot_destroy(dm_table_entry_t * table_en)
 }
 /* Add this target dependiences to prop_array_t */
 int
-dm_target_snapshot_deps(dm_table_entry_t * table_en,
+dm_target_snapshot_deps(dm_table_entry_t *table_en,
     prop_array_t prop_array)
 {
 	dm_target_snapshot_config_t *tsc;
@@ -297,7 +297,7 @@ dm_target_snapshot_deps(dm_table_entry_t * table_en,
 }
 /* Upcall is used to inform other depended devices about IO. */
 int
-dm_target_snapshot_upcall(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_snapshot_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	printf("dm_target_snapshot_upcall called\n");
 
@@ -322,7 +322,7 @@ dm_target_snapshot_upcall(dm_table_entry_t * table_en, struct buf * bp)
  * argv: /dev/mapper/my_data_real
  */
 int
-dm_target_snapshot_orig_init(dm_dev_t * dmv, void **target_config,
+dm_target_snapshot_orig_init(dm_dev_t *dmv, void **target_config,
     prop_dictionary_t dict)
 {
 	dm_target_snapshot_origin_config_t *tsoc;
@@ -385,7 +385,7 @@ dm_target_snapshot_orig_status(void *target_config)
 }
 /* Strategy routine called from dm_strategy. */
 int
-dm_target_snapshot_orig_strategy(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_snapshot_orig_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 
 	printf("Snapshot_Orig target read function called!!\n");
@@ -399,7 +399,7 @@ dm_target_snapshot_orig_strategy(dm_table_entry_t * table_en, struct buf * bp)
 }
 /* Decrement pdev and free allocated space. */
 int
-dm_target_snapshot_orig_destroy(dm_table_entry_t * table_en)
+dm_target_snapshot_orig_destroy(dm_table_entry_t *table_en)
 {
 	dm_target_snapshot_origin_config_t *tsoc;
 
@@ -429,7 +429,7 @@ dm_target_snapshot_orig_destroy(dm_table_entry_t * table_en)
  * Get target deps and add them to prop_array_t.
  */
 int
-dm_target_snapshot_orig_deps(dm_table_entry_t * table_en,
+dm_target_snapshot_orig_deps(dm_table_entry_t *table_en,
     prop_array_t prop_array)
 {
 	dm_target_snapshot_origin_config_t *tsoc;
@@ -452,7 +452,7 @@ dm_target_snapshot_orig_deps(dm_table_entry_t * table_en,
 }
 /* Unsupported for this target. */
 int
-dm_target_snapshot_orig_upcall(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_snapshot_orig_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
 }

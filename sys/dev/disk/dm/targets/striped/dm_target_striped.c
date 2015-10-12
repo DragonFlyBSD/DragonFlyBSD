@@ -409,7 +409,7 @@ dm_target_stripe_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
  * Unsupported for this target.
  */
 static int
-dm_target_stripe_upcall(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_stripe_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
 }

@@ -61,7 +61,7 @@ static struct lock dm_dev_mutex;
 
 /* dm_dev_mutex must be held by caller before using disable_dev. */
 static void
-disable_dev(dm_dev_t * dmv)
+disable_dev(dm_dev_t *dmv)
 {
 	KKASSERT(lockstatus(&dm_dev_mutex, curthread) == LK_EXCLUSIVE);
 
@@ -159,7 +159,7 @@ dm_dev_lookup_uuid(const char *dm_dev_uuid)
  * Insert new device to the global list of devices.
  */
 int
-dm_dev_insert(dm_dev_t * dev)
+dm_dev_insert(dm_dev_t *dev)
 {
 	dm_dev_t *dmv;
 	int r;
@@ -376,7 +376,7 @@ dm_dev_alloc(void)
  * Freed device entry.
  */
 int
-dm_dev_free(dm_dev_t * dmv)
+dm_dev_free(dm_dev_t *dmv)
 {
 	KKASSERT(dmv != NULL);
 
@@ -389,7 +389,7 @@ dm_dev_free(dm_dev_t * dmv)
 }
 
 void
-dm_dev_busy(dm_dev_t * dmv)
+dm_dev_busy(dm_dev_t *dmv)
 {
 	lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
 	dmv->ref_cnt++;
@@ -397,7 +397,7 @@ dm_dev_busy(dm_dev_t * dmv)
 }
 
 void
-dm_dev_unbusy(dm_dev_t * dmv)
+dm_dev_unbusy(dm_dev_t *dmv)
 {
 	KKASSERT(dmv->ref_cnt != 0);
 

@@ -56,13 +56,13 @@ static dm_pdev_t *dm_pdev_lookup_name(const char *);
 static dm_pdev_t *
 dm_pdev_lookup_name(const char *dm_pdev_name)
 {
-	dm_pdev_t *dm_pdev;
+	dm_pdev_t *dmp;
 
 	KKASSERT(dm_pdev_name != NULL);
 
-	SLIST_FOREACH(dm_pdev, &dm_pdev_list, next_pdev) {
-		if (strcmp(dm_pdev_name, dm_pdev->name) == 0)
-			return dm_pdev;
+	SLIST_FOREACH(dmp, &dm_pdev_list, next_pdev) {
+		if (strcmp(dm_pdev_name, dmp->name) == 0)
+			return dmp;
 	}
 
 	return NULL;
@@ -199,7 +199,7 @@ dm_pdev_alloc(const char *name)
  * Destroy allocated dm_pdev.
  */
 static int
-dm_pdev_rem(dm_pdev_t * dmp)
+dm_pdev_rem(dm_pdev_t *dmp)
 {
 	int err;
 
@@ -227,7 +227,7 @@ dm_pdev_rem(dm_pdev_t * dmp)
  * Decrement pdev reference counter if 0 remove it.
  */
 int
-dm_pdev_decr(dm_pdev_t * dmp)
+dm_pdev_decr(dm_pdev_t *dmp)
 {
 	KKASSERT(dmp != NULL);
 	/*

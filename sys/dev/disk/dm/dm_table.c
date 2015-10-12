@@ -57,7 +57,7 @@
  * DM_TABLE_INACTIVE will return inactive table id.
  */
 static int
-dm_table_busy(dm_table_head_t * head, uint8_t table_id)
+dm_table_busy(dm_table_head_t *head, uint8_t table_id)
 {
 	uint8_t id;
 
@@ -78,7 +78,7 @@ dm_table_busy(dm_table_head_t * head, uint8_t table_id)
  * Function release table lock and eventually wakeup all waiters.
  */
 static void
-dm_table_unbusy(dm_table_head_t * head)
+dm_table_unbusy(dm_table_head_t *head)
 {
 	KKASSERT(head->io_cnt != 0);
 
@@ -90,7 +90,7 @@ dm_table_unbusy(dm_table_head_t * head)
  * Return current active table to caller, increment io_cnt reference counter.
  */
 dm_table_t *
-dm_table_get_entry(dm_table_head_t * head, uint8_t table_id)
+dm_table_get_entry(dm_table_head_t *head, uint8_t table_id)
 {
 	uint8_t id;
 
@@ -102,7 +102,7 @@ dm_table_get_entry(dm_table_head_t * head, uint8_t table_id)
  * Decrement io reference counter and release shared lock.
  */
 void
-dm_table_release(dm_table_head_t * head, uint8_t table_id)
+dm_table_release(dm_table_head_t *head, uint8_t table_id)
 {
 	dm_table_unbusy(head);
 }
@@ -110,7 +110,7 @@ dm_table_release(dm_table_head_t * head, uint8_t table_id)
  * Switch table from inactive to active mode. Have to wait until io_cnt is 0.
  */
 void
-dm_table_switch_tables(dm_table_head_t * head)
+dm_table_switch_tables(dm_table_head_t *head)
 {
 	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
@@ -123,7 +123,7 @@ dm_table_switch_tables(dm_table_head_t * head)
  * readers on table lists.
  */
 int
-dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
+dm_table_destroy(dm_table_head_t *head, uint8_t table_id)
 {
 	dm_table_t *tbl;
 	dm_table_entry_t *table_en;
@@ -162,7 +162,7 @@ dm_table_destroy(dm_table_head_t * head, uint8_t table_id)
  * Return length of active or inactive table in device.
  */
 static uint64_t
-_dm_table_size(dm_table_head_t * head, int table)
+_dm_table_size(dm_table_head_t *head, int table)
 {
 	dm_table_t *tbl;
 	dm_table_entry_t *table_en;
@@ -205,7 +205,7 @@ dm_inactive_table_size(dm_table_head_t *head)
  * there can be dm_dev_resume_ioctl), therfore this isonly informative.
  */
 int
-dm_table_get_target_count(dm_table_head_t * head, uint8_t table_id)
+dm_table_get_target_count(dm_table_head_t *head, uint8_t table_id)
 {
 	dm_table_entry_t *table_en;
 	dm_table_t *tbl;
@@ -229,7 +229,7 @@ dm_table_get_target_count(dm_table_head_t * head, uint8_t table_id)
  * opaque as possible.
  */
 void
-dm_table_head_init(dm_table_head_t * head)
+dm_table_head_init(dm_table_head_t *head)
 {
 	head->cur_active_table = 0;
 	head->io_cnt = 0;
@@ -244,7 +244,7 @@ dm_table_head_init(dm_table_head_t * head)
  * Destroy all variables in table_head
  */
 void
-dm_table_head_destroy(dm_table_head_t * head)
+dm_table_head_destroy(dm_table_head_t *head)
 {
 	KKASSERT(lockcount(&head->table_mtx) == 0);
 

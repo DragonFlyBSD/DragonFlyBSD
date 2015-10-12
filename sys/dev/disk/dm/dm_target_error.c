@@ -40,7 +40,7 @@
 
 /* Init function called from dm_table_load_ioctl. */
 static int
-dm_target_error_init(dm_dev_t * dmv, void **target_config, char *argv)
+dm_target_error_init(dm_dev_t *dmv, void **target_config, char *argv)
 {
 
 	kprintf("Error target init function called!!\n");
@@ -61,7 +61,7 @@ dm_target_error_status(void *target_config)
 
 /* Strategy routine called from dm_strategy. */
 static int
-dm_target_error_strategy(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_error_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 
 	/* kprintf("Error target read function called!!\n"); */
@@ -76,7 +76,7 @@ dm_target_error_strategy(dm_table_entry_t * table_en, struct buf * bp)
 
 /* Doesn't do anything here. */
 static int
-dm_target_error_destroy(dm_table_entry_t * table_en)
+dm_target_error_destroy(dm_table_entry_t *table_en)
 {
 	table_en->target_config = NULL;
 
@@ -85,14 +85,14 @@ dm_target_error_destroy(dm_table_entry_t * table_en)
 
 /* Doesn't not need to do anything here. */
 static int
-dm_target_error_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
+dm_target_error_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
 {
 	return 0;
 }
 
 /* Unsupported for this target. */
 static int
-dm_target_error_upcall(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_error_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
 }

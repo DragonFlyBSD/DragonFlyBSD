@@ -57,7 +57,7 @@ typedef struct target_linear_config {
  * @argv[1] is physical data offset.
  */
 static int
-dm_target_linear_init(dm_dev_t * dmv, void **target_config, char *params)
+dm_target_linear_init(dm_dev_t *dmv, void **target_config, char *params)
 {
 	dm_target_linear_config_t *tlc;
 	dm_pdev_t *dmp;
@@ -131,7 +131,7 @@ dm_target_linear_status(void *target_config)
  * Do IO operation, called from dmstrategy routine.
  */
 static int
-dm_target_linear_strategy(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_linear_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 	dm_target_linear_config_t *tlc;
 
@@ -168,7 +168,7 @@ dm_target_linear_dump(dm_table_entry_t *table_en, void *data, size_t length, off
  * Destroy target specific data. Decrement table pdevs.
  */
 static int
-dm_target_linear_destroy(dm_table_entry_t * table_en)
+dm_target_linear_destroy(dm_table_entry_t *table_en)
 {
 	dm_target_linear_config_t *tlc;
 
@@ -193,7 +193,7 @@ dm_target_linear_destroy(dm_table_entry_t * table_en)
 }
 /* Add this target pdev dependiences to prop_array_t */
 static int
-dm_target_linear_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
+dm_target_linear_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
 {
 	dm_target_linear_config_t *tlc;
 	struct vattr va;
@@ -219,7 +219,7 @@ dm_target_linear_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
  * mirror, snapshot, multipath, stripe will use this functionality.
  */
 static int
-dm_target_linear_upcall(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_linear_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
 }

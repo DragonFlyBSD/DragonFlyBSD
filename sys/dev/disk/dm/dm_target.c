@@ -52,7 +52,7 @@ static struct lock dm_target_mutex;
  * Called indirectly from dm_table_load_ioctl to mark target as used.
  */
 void
-dm_target_busy(dm_target_t * target)
+dm_target_busy(dm_target_t *target)
 {
 	atomic_add_int(&target->ref_cnt, 1);
 }
@@ -60,7 +60,7 @@ dm_target_busy(dm_target_t * target)
  * Release reference counter on target.
  */
 void
-dm_target_unbusy(dm_target_t * target)
+dm_target_unbusy(dm_target_t *target)
 {
 	KKASSERT(target->ref_cnt > 0);
 	atomic_subtract_int(&target->ref_cnt, 1);
@@ -141,7 +141,7 @@ dm_target_lookup_name(const char *dm_target_name)
  *   contains name, version, function pointer to specifif target functions.
  */
 int
-dm_target_insert(dm_target_t * dm_target)
+dm_target_insert(dm_target_t *dm_target)
 {
 	dm_target_t *dmt;
 

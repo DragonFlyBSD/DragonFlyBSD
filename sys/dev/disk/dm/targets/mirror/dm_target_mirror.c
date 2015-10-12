@@ -52,7 +52,7 @@ typedef struct target_mirror_config {
 } dm_target_mirror_config_t;
 
 int dm_target_mirror_init(dm_dev_t *, void**, char *);
-char * dm_target_mirror_status(void *);
+char *dm_target_mirror_status(void *);
 int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_mirror_destroy(dm_table_entry_t *);
@@ -64,7 +64,7 @@ int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
  * 0 52428800 mirror clustered_disk 4 253:2 1024 UUID block_on_error 3 253:3 0 253:4 0 253:5 0
  */
 int
-dm_target_mirror_init(dm_dev_t * dmv, void **target_config, char *argv)
+dm_target_mirror_init(dm_dev_t *dmv, void **target_config, char *argv)
 {
 
 	printf("Mirror target init function called!!\n");
@@ -83,7 +83,7 @@ dm_target_mirror_status(void *target_config)
 }
 /* Strategy routine called from dm_strategy. */
 int
-dm_target_mirror_strategy(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_mirror_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 
 	printf("Mirror target read function called!!\n");
@@ -97,7 +97,7 @@ dm_target_mirror_strategy(dm_table_entry_t * table_en, struct buf * bp)
 }
 /* Doesn't do anything here. */
 int
-dm_target_mirror_destroy(dm_table_entry_t * table_en)
+dm_target_mirror_destroy(dm_table_entry_t *table_en)
 {
 	table_en->target_config = NULL;
 
@@ -108,13 +108,13 @@ dm_target_mirror_destroy(dm_table_entry_t * table_en)
 }
 /* Doesn't not need to do anything here. */
 int
-dm_target_mirror_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
+dm_target_mirror_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
 {
 	return 0;
 }
 /* Unsupported for this target. */
 int
-dm_target_mirror_upcall(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_mirror_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
 }

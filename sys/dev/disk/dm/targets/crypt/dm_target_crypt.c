@@ -506,7 +506,7 @@ hex2key(char *hex, size_t key_len, u_int8_t *key)
 }
 
 static int
-dm_target_crypt_init(dm_dev_t * dmv, void **target_config, char *params)
+dm_target_crypt_init(dm_dev_t *dmv, void **target_config, char *params)
 {
 	dm_target_crypt_config_t *priv;
 	size_t len;
@@ -769,7 +769,7 @@ dm_target_crypt_status(void *target_config)
 }
 
 static int
-dm_target_crypt_destroy(dm_table_entry_t * table_en)
+dm_target_crypt_destroy(dm_table_entry_t *table_en)
 {
 	dm_target_crypt_config_t *priv;
 
@@ -808,7 +808,7 @@ dm_target_crypt_destroy(dm_table_entry_t * table_en)
 }
 
 static int
-dm_target_crypt_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
+dm_target_crypt_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
 {
 	dm_target_crypt_config_t *priv;
 	struct vattr va;
@@ -831,7 +831,7 @@ dm_target_crypt_deps(dm_table_entry_t * table_en, prop_array_t prop_array)
 
 /* Unsupported for this target. */
 static int
-dm_target_crypt_upcall(dm_table_entry_t * table_en, struct buf * bp)
+dm_target_crypt_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
 }

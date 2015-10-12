@@ -184,7 +184,7 @@ typedef struct dm_target {
 	 * specific. When dm_table_status_ioctl is called with flag
 	 * DM_STATUS_TABLE_FLAG I have to sent params string back.
 	 */
-	char * (*status)(void *);
+	char *(*status)(void *);
 	int (*strategy)(dm_table_entry_t *, struct buf *);
 	int (*upcall)(dm_table_entry_t *, struct buf *);
 	int (*dump)(dm_table_entry_t *, void *data, size_t length, off_t offset);
@@ -255,7 +255,7 @@ uint64_t atoi64(const char *);
 int dm_table_destroy(dm_table_head_t *, uint8_t);
 uint64_t dm_table_size(dm_table_head_t *);
 uint64_t dm_inactive_table_size(dm_table_head_t *);
-dm_table_t * dm_table_get_entry(dm_table_head_t *, uint8_t);
+dm_table_t *dm_table_get_entry(dm_table_head_t *, uint8_t);
 int dm_table_get_target_count(dm_table_head_t *, uint8_t);
 void dm_table_release(dm_table_head_t *, uint8_t s);
 void dm_table_switch_tables(dm_table_head_t *);
