@@ -86,7 +86,11 @@ extern int lwkt_sched_debug;
 #define LWKT_NUM_POOL_TOKENS	4001	/* prime number */
 #endif
 
-static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
+struct lwkt_pool_token {
+	struct lwkt_token	token;
+} __cachealign;
+
+static struct lwkt_pool_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 struct spinlock		tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin, "tok_debug_spin");
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
@@ -209,7 +213,7 @@ _lwkt_token_pool_lookup(void *ptr)
 	u_int i;
 
 	i = (u_int)(uintptr_t)ptr % LWKT_NUM_POOL_TOKENS;
-	return(&pool_tokens[i]);
+	return (&pool_tokens[i].token);
 }
 
 /*
@@ -703,8 +707,8 @@ lwkt_gettoken_shared(lwkt_token_t tok)
          * token and you may end up with an exclusive-shared livelock.
          * Warn in this condition.
          */
-        if ((tok >= &pool_tokens[0]) &&
-            (tok < &pool_tokens[LWKT_NUM_POOL_TOKENS]))
+        if ((tok >= &pool_tokens[0].token) &&
+            (tok < &pool_tokens[LWKT_NUM_POOL_TOKENS].token))
                 kprintf("Warning! Taking pool token %p in shared mode\n", tok);
 #endif
 
@@ -863,7 +867,7 @@ lwkt_token_pool_init(void)
 	int i;
 
 	for (i = 0; i < LWKT_NUM_POOL_TOKENS; ++i)
-		lwkt_token_init(&pool_tokens[i], "pool");
+		lwkt_token_init(&pool_tokens[i].token, "pool");
 }
 
 lwkt_token_t
