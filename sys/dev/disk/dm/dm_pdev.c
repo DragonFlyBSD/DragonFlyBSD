@@ -136,16 +136,18 @@ dm_pdev_insert(const char *dev_name)
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		return dmp;
 	}
-	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 
-	if ((dmp = dm_pdev_alloc(dev_name)) == NULL)
+	if ((dmp = dm_pdev_alloc(dev_name)) == NULL) {
+		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		return NULL;
+	}
 
 	error = dm_dk_lookup(dev_name, &dmp->pdev_vnode);
 	if (error) {
 		aprint_debug("dk_lookup on device: %s failed with error %d!\n",
 		    dev_name, error);
 		dm_pdev_rem(dmp);
+		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		return NULL;
 	}
 	dmp->ref_cnt = 1;
@@ -169,7 +171,6 @@ dm_pdev_insert(const char *dev_name)
 		aprint_normal("dmp_pdev_insert DIOCGPART failed %d\n", error);
 	}
 
-	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&dm_pdev_list, dmp, next_pdev);
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 
