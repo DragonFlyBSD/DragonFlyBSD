@@ -178,11 +178,12 @@ so_pru_connect_async(struct socket *so, struct sockaddr *nam, struct thread *td)
 	    ("async pru_connect is not supported"));
 
 	/* NOTE: sockaddr immediately follows netmsg */
-	msg = kmalloc(sizeof(*msg) + nam->sa_len, M_LWKTMSG, M_NOWAIT);
+	msg = kmalloc(sizeof(*msg) + nam->sa_len, M_LWKTMSG,
+	    M_WAITOK | M_NULLOK);
 	if (msg == NULL) {
 		/*
-		 * Fail to allocate message w/o waiting;
-		 * fallback to synchronized pru_connect.
+		 * Fail to allocate message; fallback to
+		 * synchronized pru_connect.
 		 */
 		return so_pru_connect(so, nam, td);
 	}
