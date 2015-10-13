@@ -428,7 +428,7 @@ usb_bus_detach(struct usb_proc_msg *pm)
 	dev = bus->bdev;
 
 	/* intr_config_hook */
-	if (bus->do_hook >= 0) {
+	if (bus->do_hook > 0) {
 		bus->do_hook = -1;
 		config_intrhook_disestablish(&bus->hook);
 	}
