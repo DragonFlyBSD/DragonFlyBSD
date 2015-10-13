@@ -59,6 +59,8 @@ TAILQ_HEAD_INITIALIZER(dm_dev_list);
 
 static struct lock dm_dev_mutex;
 
+static char dummy_uuid[DM_UUID_LEN];
+
 /* dm_dev_mutex must be held by caller before using disable_dev. */
 static void
 disable_dev(dm_dev_t *dmv)
@@ -170,7 +172,13 @@ dm_dev_insert(dm_dev_t *dev)
 	KKASSERT(dev != NULL);
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
-	if (((dmv = dm_dev_lookup_uuid(dev->uuid)) == NULL) &&
+	/*
+	 * Ignore uuid lookup if dev->uuid is zero-filled.
+	 */
+	if (memcmp(dev->uuid, dummy_uuid, DM_UUID_LEN))
+		dmv = dm_dev_lookup_uuid(dev->uuid);
+
+	if ((dmv == NULL) &&
 	    ((dmv = dm_dev_lookup_name(dev->name)) == NULL) &&
 	    ((dmv = dm_dev_lookup_minor(dev->minor)) == NULL)) {
 		TAILQ_INSERT_TAIL(&dm_dev_list, dev, next_devlist);
@@ -442,6 +450,8 @@ dm_dev_init(void)
 	TAILQ_INIT(&dm_dev_list);	/* initialize global dev list */
 	lockinit(&dm_dev_mutex, "dmdevlist", 0, LK_CANRECURSE);
 	devfs_clone_bitmap_init(&dm_minor_bitmap);
+
+	memset(dummy_uuid, 0, sizeof(dummy_uuid));
 	return 0;
 }
 
