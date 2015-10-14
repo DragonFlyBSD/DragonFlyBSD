@@ -390,6 +390,10 @@ static void	iwm_scan_mindwell(struct ieee80211_scan_state *);
 static int	iwm_detach(device_t);
 
 #if defined(__DragonFly__)
+static int	iwm_msi_enable = 1;
+
+TUNABLE_INT("hw.iwm.msi.enable", &iwm_msi_enable);
+
 /*
  * This is a hack due to the wlan_serializer deadlocking sleepers.
  */
@@ -4881,6 +4885,9 @@ iwm_pci_attach(device_t dev)
 	struct iwm_softc *sc;
 	int count, error, rid;
 	uint16_t reg;
+#if defined(__DragonFly__)
+	int irq_flags;
+#endif
 
 	sc = device_get_softc(dev);
 
@@ -4910,12 +4917,15 @@ iwm_pci_attach(device_t dev)
 	/* Install interrupt handler. */
 	count = 1;
 	rid = 0;
-#if !defined(__DragonFly__)
+#if defined(__DragonFly__)
+	pci_alloc_1intr(dev, iwm_msi_enable, &rid, &irq_flags);
+	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, irq_flags);
+#else
 	if (pci_alloc_msi(dev, &count) == 0)
 		rid = 1;
-#endif
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
 	    (rid != 0 ? 0 : RF_SHAREABLE));
+#endif
 	if (sc->sc_irq == NULL) {
 		device_printf(dev, "can't map interrupt\n");
 			return (ENXIO);
@@ -4930,6 +4940,9 @@ iwm_pci_attach(device_t dev)
 #endif
 	if (sc->sc_ih == NULL) {
 		device_printf(dev, "can't establish interrupt");
+#if defined(__DragonFly__)
+                pci_release_msi(dev);
+#endif
 			return (ENXIO);
 	}
 	sc->sc_dmat = bus_get_dma_tag(sc->sc_dev);
