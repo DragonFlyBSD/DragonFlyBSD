@@ -693,7 +693,7 @@ soabort_async(struct socket *so, boolean_t clr_head)
 }
 
 void
-soabort_oncpu(struct socket *so)
+soabort_direct(struct socket *so)
 {
 	soreference(so);
 	so_pru_abort_direct(so);

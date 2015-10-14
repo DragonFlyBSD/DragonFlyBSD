@@ -74,9 +74,9 @@ so_pru_abort_async(struct socket *so)
 }
 
 /*
- * Abort a socket and free it.  Called from soabort_oncpu() only.
+ * Abort a socket and free it.  Called from soabort_direct() only.
  * Caller must make sure that the current CPU is inpcb's owner CPU.
- * soabort_oncpu() got a ref on the socket which we must free.
+ * soabort_direct() got a ref on the socket which we must free.
  */
 void
 so_pru_abort_direct(struct socket *so)

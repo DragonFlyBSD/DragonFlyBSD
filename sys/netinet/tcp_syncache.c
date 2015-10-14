@@ -883,7 +883,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 
 abort:
 	if (so != NULL)
-		soabort_oncpu(so);
+		soabort_direct(so);
 	return (NULL);
 }
 

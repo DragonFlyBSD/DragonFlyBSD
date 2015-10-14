@@ -1154,10 +1154,8 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		unp_setflags(unp, UNP_HAVEPC);
 
 		error = unp_connect_pair(unp, unp3);
-		if (error) {
-			/* XXX we need a better name */
-			soabort_oncpu(so3);
-		}
+		if (error)
+			soabort_direct(so3);
 
 		/* Done with unp3 */
 		unp_free(unp3);
