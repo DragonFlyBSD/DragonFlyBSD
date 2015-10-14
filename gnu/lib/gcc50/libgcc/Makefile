@@ -99,8 +99,7 @@ EXTRA_HEADERS = \
 	${GCCDIR}/gcc/config/i386/pcommitintrin.h \
 	${GCCDIR}/gcc/config/i386/mwaitxintrin.h \
 	${GCCDIR}/gcc/ginclude/stdatomic.h \
-	${GCCDIR}/gcc/ginclude/stdfix.h \
-	${GCCDIR}/gcc/ginclude/tgmath.h
+	${GCCDIR}/gcc/ginclude/stdfix.h
 
 #generated sources
 SRCS+=	mm_malloc.h unwind.h
