@@ -48,6 +48,7 @@
 
 typedef struct __kvm kvm_t;
 
+struct kinfo_file;
 struct kinfo_proc;
 struct proc;
 struct nchstats;
@@ -70,7 +71,8 @@ int	  kvm_close (kvm_t *);
 char	**kvm_getargv (kvm_t *, const struct kinfo_proc *, int);
 char	**kvm_getenvv (kvm_t *, const struct kinfo_proc *, int);
 char	 *kvm_geterr (kvm_t *);
-char	 *kvm_getfiles (kvm_t *, int, int, int *);
+struct kinfo_file *
+	  kvm_getfiles (kvm_t *, int, int, int *);
 int	  kvm_getloadavg (kvm_t *, double [], int);
 struct kinfo_proc *
 	  kvm_getprocs (kvm_t *, int, int, int *);

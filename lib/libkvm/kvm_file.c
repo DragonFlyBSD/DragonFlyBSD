@@ -31,10 +31,7 @@
  */
 
 /*
- * File list interface for kvm.  pstat, fstat and netstat are
- * users of this code, so we've factored it out into a separate module.
- * Thus, we keep this grunge out of the other kvm applications (i.e.,
- * most other applications are interested only in open/close/read/nlist).
+ * File list interface for kvm.
  */
 
 #include <sys/user.h>	/* MUST BE FIRST */
@@ -45,6 +42,7 @@
 #undef _KERNEL
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/kinfo.h>
 #include <nlist.h>
 #include <kvm.h>
 
@@ -57,121 +55,215 @@
 #include <limits.h>
 #include <ndbm.h>
 #include <paths.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "kvm_private.h"
 
 #define KREAD(kd, addr, obj) \
 	(kvm_read(kd, addr, obj, sizeof(*obj)) != sizeof(*obj))
 
+/* XXX copied from sys/kern/subr_kcore.c */
+static void
+kcore_make_file(struct kinfo_file *ufile, struct file *kfile,
+    pid_t pid, uid_t owner, int n)
+{
+	bzero(ufile, sizeof(*ufile));
+	ufile->f_size = sizeof(*ufile);
+	ufile->f_pid = pid;
+	ufile->f_uid = owner;
+
+	ufile->f_fd = n;
+	ufile->f_file = kfile;
+	ufile->f_data = kfile->f_data;
+	ufile->f_type = kfile->f_type;
+	ufile->f_count = kfile->f_count;
+	ufile->f_msgcount = kfile->f_msgcount;
+	ufile->f_offset = kfile->f_offset;
+	ufile->f_flag = kfile->f_flag;
+}
+
 /*
  * Get file structures.
  */
 static int
-kvm_deadfiles(kvm_t *kd, int op, int arg, long filehead_o, int nfiles)
+kvm_deadfiles(kvm_t *kd, struct kinfo_proc *kproc, int kproc_cnt, int nfiles)
 {
-	int buflen = kd->arglen, n = 0;
-	struct file *fp;
-	char *where = kd->argspc;
-	struct filelist filehead;
+	struct kinfo_file *kinfo_file = (struct kinfo_file *)kd->argspc;
+	struct fdnode *fd_files;
+	int i, fd_nfiles, found = 0;
 
-	/*
-	 * first copyout filehead
-	 */
-	if (buflen > sizeof (filehead)) {
-		if (KREAD(kd, filehead_o, &filehead)) {
-			_kvm_err(kd, kd->program, "can't read filehead");
-			return (0);
-		}
-		buflen -= sizeof (filehead);
-		where += sizeof (filehead);
-		*(struct filelist *)kd->argspc = filehead;
+	fd_nfiles = NDFILE;
+	fd_files = malloc(fd_nfiles * sizeof(struct fdnode));
+	if (fd_files == NULL) {
+		_kvm_err(kd, kd->program, "alloc fd_files failed");
+		return 0;
 	}
-	/*
-	 * followed by an array of file structures
-	 */
-	for (fp = filehead.lh_first; fp != NULL; fp = fp->f_list.le_next) {
-		if (buflen > sizeof (struct file)) {
-			if (KREAD(kd, (long)fp, ((struct file *)where))) {
-				_kvm_err(kd, kd->program, "can't read kfp");
-				return (0);
+
+	for (i = 0; i < kproc_cnt; ++i) {
+		const struct kinfo_proc *kp = &kproc[i];
+		struct filedesc fdp;
+		int n, f;
+
+		if (kp->kp_fd == 0)
+			continue;
+		if (KREAD(kd, kp->kp_fd, &fdp)) {
+			_kvm_err(kd, kd->program, "can't read fdp");
+			free(fd_files);
+			return 0;
+		}
+		if (fdp.fd_files == NULL)
+			continue;
+
+		if (fdp.fd_nfiles > fd_nfiles) {
+			struct fdnode *new_fd_files;
+
+			fd_nfiles = fdp.fd_nfiles;
+			new_fd_files =
+			    malloc(fd_nfiles * sizeof(struct fdnode));
+			free(fd_files);
+			if (new_fd_files == NULL) {
+				_kvm_err(kd, kd->program,
+				    "realloc fd_files failed");
+				return 0;
 			}
-			buflen -= sizeof (struct file);
-			fp = (struct file *)where;
-			where += sizeof (struct file);
-			n++;
+			fd_files = new_fd_files;
+		}
+		n = fdp.fd_nfiles * sizeof(struct fdnode);
+
+		if (kvm_read(kd, (uintptr_t)fdp.fd_files, fd_files, n) != n) {
+			_kvm_err(kd, kd->program, "can't read fd_files");
+			free(fd_files);
+			return 0;
+		}
+		for (f = 0; f < fdp.fd_nfiles; ++f) {
+			struct file kf;
+
+			if (fd_files[f].fp == NULL)
+				continue;
+			if (KREAD(kd, (uintptr_t)fd_files[f].fp, &kf)) {
+				_kvm_err(kd, kd->program, "can't read file");
+				free(fd_files);
+				return 0;
+			}
+
+			kcore_make_file(kinfo_file, &kf,
+			    kp->kp_pid, kp->kp_uid, f);
+			kinfo_file++;
+			found++;
+
+			if (found == nfiles) {
+				size_t size;
+
+				nfiles *= 2;
+				size = nfiles * sizeof(struct kinfo_file);
+
+				kd->argspc = _kvm_realloc(kd, kd->argspc, size);
+				if (kd->argspc == NULL) {
+					free(fd_files);
+					return 0;
+				}
+				kd->arglen = size;
+
+				kinfo_file = (struct kinfo_file *)kd->argspc;
+				kinfo_file += found;
+			}
 		}
 	}
-	if (n != nfiles) {
-		_kvm_err(kd, kd->program, "inconsistent nfiles");
-		return (0);
-	}
-	return (nfiles);
+	free(fd_files);
+	return found;
 }
 
-char *
+struct kinfo_file *
 kvm_getfiles(kvm_t *kd, int op, int arg, int *cnt)
 {
-	int mib[2], st, nfiles;
+	int nfiles;
 	size_t size;
-	struct file *fp, *fplim;
-	struct filelist filehead;
 
 	if (kvm_ishost(kd)) {
+		int mib[2], st;
+
 		size = 0;
 		mib[0] = CTL_KERN;
 		mib[1] = KERN_FILE;
 		st = sysctl(mib, 2, NULL, &size, NULL, 0);
 		if (st == -1) {
-			_kvm_syserr(kd, kd->program, "kvm_getfiles");
-			return (0);
+			_kvm_syserr(kd, kd->program, "sysctl KERN_FILE failed");
+			return NULL;
 		}
-		if (kd->argspc == 0)
-			kd->argspc = (char *)_kvm_malloc(kd, size);
+		if (kd->argspc == NULL)
+			kd->argspc = _kvm_malloc(kd, size);
 		else if (kd->arglen < size)
-			kd->argspc = (char *)_kvm_realloc(kd, kd->argspc, size);
-		if (kd->argspc == 0)
-			return (0);
+			kd->argspc = _kvm_realloc(kd, kd->argspc, size);
+		if (kd->argspc == NULL)
+			return NULL;
 		kd->arglen = size;
 		st = sysctl(mib, 2, kd->argspc, &size, NULL, 0);
-		if (st == -1 || size < sizeof(filehead)) {
-			_kvm_syserr(kd, kd->program, "kvm_getfiles");
-			return (0);
+		if (st == -1 || size % sizeof(struct kinfo_file) != 0) {
+			_kvm_syserr(kd, kd->program, "sysctl KERN_FILE failed");
+			return NULL;
 		}
-		filehead = *(struct filelist *)kd->argspc;
-		fp = (struct file *)(kd->argspc + sizeof (filehead));
-		fplim = (struct file *)(kd->argspc + size);
-		for (nfiles = 0; filehead.lh_first && (fp < fplim); nfiles++, fp++)
-			filehead.lh_first = fp->f_list.le_next;
+		nfiles = size / sizeof(struct kinfo_file);
 	} else {
-		struct nlist nl[3], *p;
+		struct kinfo_proc *kproc0, *kproc;
+		int kproc_cnt, kproc_len;
+		struct nlist nl[2];
 
-		nl[0].n_name = "_filehead";
-		nl[1].n_name = "_nfiles";
-		nl[2].n_name = 0;
+		/*
+		 * Get all processes and save them in kproc.
+		 */
+		kproc0 = kvm_getprocs(kd, KERN_PROC_ALL, 0, &kproc_cnt);
+		if (kproc0 == NULL)
+			return NULL;
+		kproc_len = kproc_cnt * sizeof(struct kinfo_proc);
+		kproc = malloc(kproc_len);
+		if (kproc == NULL) {
+			_kvm_syserr(kd, kd->program,
+			    "malloc kinfo_proc failed");
+			return NULL;
+		}
+		memcpy(kproc, kproc0, kproc_len);
 
+		/*
+		 * Get the # of files
+		 */
+		memset(nl, 0, sizeof(nl));
+		nl[0].n_name = "_nfiles";
 		if (kvm_nlist(kd, nl) != 0) {
-			for (p = nl; p->n_type != 0; ++p)
-				;
-			_kvm_err(kd, kd->program,
-				 "%s: no such symbol", p->n_name);
-			return (0);
+			_kvm_err(kd, kd->program, "%s: no such symbol",
+			    nl[0].n_name);
+			free(kproc);
+			return NULL;
 		}
 		if (KREAD(kd, nl[0].n_value, &nfiles)) {
 			_kvm_err(kd, kd->program, "can't read nfiles");
-			return (0);
+			free(kproc);
+			return NULL;
 		}
-		size = sizeof(filehead) + (nfiles + 10) * sizeof(struct file);
-		if (kd->argspc == 0)
-			kd->argspc = (char *)_kvm_malloc(kd, size);
+
+		/*
+		 * stdio/stderr/stdout are normally duplicated
+		 * across all processes.
+		 */
+		nfiles += (kproc_cnt * 3);
+		size = nfiles * sizeof(struct kinfo_file);
+		if (kd->argspc == NULL)
+			kd->argspc = _kvm_malloc(kd, size);
 		else if (kd->arglen < size)
-			kd->argspc = (char *)_kvm_realloc(kd, kd->argspc, size);
-		if (kd->argspc == 0)
-			return (0);
+			kd->argspc = _kvm_realloc(kd, kd->argspc, size);
+		if (kd->argspc == NULL) {
+			free(kproc);
+			return NULL;
+		}
 		kd->arglen = size;
-		nfiles = kvm_deadfiles(kd, op, arg, nl[1].n_value, nfiles);
+
+		nfiles = kvm_deadfiles(kd, kproc, kproc_cnt, nfiles);
+		free(kproc);
+
 		if (nfiles == 0)
-			return (0);
+			return NULL;
 	}
 	*cnt = nfiles;
-	return (kd->argspc);
+	return (struct kinfo_file *)(kd->argspc);
 }
