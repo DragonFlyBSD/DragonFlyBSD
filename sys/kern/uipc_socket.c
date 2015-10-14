@@ -526,8 +526,12 @@ soclose_sync(struct socket *so, int fflag)
 {
 	int error = 0;
 
+	if ((so->so_proto->pr_flags & PR_SYNC_PORT) == 0)
+		so_pru_sync(so); /* unpend async prus */
+
 	if (so->so_pcb == NULL)
 		goto discard;
+
 	if (so->so_state & SS_ISCONNECTED) {
 		if ((so->so_state & SS_ISDISCONNECTING) == 0) {
 			error = sodisconnect(so);
@@ -563,32 +567,18 @@ drop:
 	}
 discard:
 	sodiscard(so);
-	so_pru_sync(so);	/* unpend async sending */
 	sofree(so);		/* dispose of ref */
 
 	return (error);
 }
 
 static void
-soclose_sofree_async_handler(netmsg_t msg)
-{
-	sofree(msg->base.nm_so);
-}
-
-static void
-soclose_sofree_async(struct socket *so)
-{
-	struct netmsg_base *base = &so->so_clomsg;
-
-	netmsg_init(base, so, &netisr_apanic_rport, 0,
-	    soclose_sofree_async_handler);
-	lwkt_sendmsg(so->so_port, &base->lmsg);
-}
-
-static void
-soclose_disconn_async_handler(netmsg_t msg)
+soclose_fast_handler(netmsg_t msg)
 {
 	struct socket *so = msg->base.nm_so;
+
+	if (so->so_pcb == NULL)
+		goto discard;
 
 	if ((so->so_state & SS_ISCONNECTED) &&
 	    (so->so_state & SS_ISDISCONNECTING) == 0)
@@ -606,73 +596,19 @@ soclose_disconn_async_handler(netmsg_t msg)
 			return;
 		}
 	}
-
+discard:
 	sodiscard(so);
 	sofree(so);
-}
-
-static void
-soclose_disconn_async(struct socket *so)
-{
-	struct netmsg_base *base = &so->so_clomsg;
-
-	netmsg_init(base, so, &netisr_apanic_rport, 0,
-	    soclose_disconn_async_handler);
-	lwkt_sendmsg(so->so_port, &base->lmsg);
-}
-
-static void
-soclose_detach_async_handler(netmsg_t msg)
-{
-	struct socket *so = msg->base.nm_so;
-
-	if (so->so_pcb) {
-		int error;
-
-		error = so_pru_detach_direct(so);
-		if (error == EJUSTRETURN) {
-			/*
-			 * Protocol will call sodiscard()
-			 * and sofree() for us.
-			 */
-			return;
-		}
-	}
-
-	sodiscard(so);
-	sofree(so);
-}
-
-static void
-soclose_detach_async(struct socket *so)
-{
-	struct netmsg_base *base = &so->so_clomsg;
-
-	netmsg_init(base, so, &netisr_apanic_rport, 0,
-	    soclose_detach_async_handler);
-	lwkt_sendmsg(so->so_port, &base->lmsg);
 }
 
 static void
 soclose_fast(struct socket *so)
 {
-	if (so->so_pcb == NULL)
-		goto discard;
+	struct netmsg_base *base = &so->so_clomsg;
 
-	if ((so->so_state & SS_ISCONNECTED) &&
-	    (so->so_state & SS_ISDISCONNECTING) == 0) {
-		soclose_disconn_async(so);
-		return;
-	}
-
-	if (so->so_pcb) {
-		soclose_detach_async(so);
-		return;
-	}
-
-discard:
-	sodiscard(so);
-	soclose_sofree_async(so);
+	netmsg_init(base, so, &netisr_apanic_rport, 0,
+	    soclose_fast_handler);
+	lwkt_sendmsg(so->so_port, &base->lmsg);
 }
 
 /*
