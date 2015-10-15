@@ -311,7 +311,7 @@ dm_dev_rename_ioctl(prop_dictionary_t dm_dict)
 	 *	that would trigger a node rename in devfs.
 	 */
 	kprintf("dm_dev_rename_ioctl called, but not implemented!\n");
-	return 0;
+	return ENOSYS;
 }
 
 /*
