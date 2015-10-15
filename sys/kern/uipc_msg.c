@@ -134,6 +134,34 @@ so_pru_attach_direct(struct socket *so, int proto, struct pru_attach_info *ai)
 	return(msg.base.lmsg.ms_error);
 }
 
+int
+so_pru_attach_fast(struct socket *so, int proto, struct pru_attach_info *ai)
+{
+	struct netmsg_pru_attach *msg;
+	int error;
+
+	error = so->so_proto->pr_usrreqs->pru_preattach(so, proto, ai);
+	if (error)
+		return error;
+
+	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_WAITOK | M_NULLOK);
+	if (msg == NULL) {
+		/*
+		 * Fail to allocate message; fallback to
+		 * synchronized pru_attach.
+		 */
+		return so_pru_attach(so, proto, NULL /* postattach */);
+	}
+
+	netmsg_init(&msg->base, so, &netisr_afree_rport, 0,
+	    so->so_proto->pr_usrreqs->pru_attach);
+	msg->nm_proto = proto;
+	msg->nm_ai = NULL; /* postattach */
+	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
+
+	return 0;
+}
+
 /*
  * NOTE: If the target port changes the bind operation will deal with it.
  */

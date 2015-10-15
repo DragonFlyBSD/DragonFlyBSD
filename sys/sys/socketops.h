@@ -82,6 +82,8 @@ int so_pru_accept (struct socket *so, struct sockaddr **nam);
 int so_pru_attach (struct socket *so, int proto, struct pru_attach_info *ai);
 int so_pru_attach_direct(struct socket *so, int proto,
 		struct pru_attach_info *ai);
+int so_pru_attach_fast(struct socket *so, int proto,
+		struct pru_attach_info *ai);
 int so_pru_bind (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect_async (struct socket *so, struct sockaddr *nam,

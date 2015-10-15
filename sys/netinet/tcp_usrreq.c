@@ -171,6 +171,26 @@ static int	tcp_disable_nopush = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, disable_nopush, CTLFLAG_RW,
     &tcp_disable_nopush, 0, "TCP_NOPUSH socket option will have no effect");
 
+static int
+tcp_usr_preattach(struct socket *so, int proto __unused,
+    struct pru_attach_info *ai)
+{
+	int error;
+
+	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
+		error = soreserve(so, tcp_sendspace, tcp_recvspace,
+				  ai->sb_rlimit);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
+		if (error)
+			return (error);
+	}
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE | SSB_PREALLOC);
+	atomic_set_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE | SSB_PREALLOC);
+
+	return 0;
+}
+
 /*
  * TCP attaches to socket via pru_attach(), reserving space,
  * and an internet control block.  This is likely occuring on
@@ -902,7 +922,8 @@ struct pr_usrreqs tcp_usrreqs = {
 	.pru_sosend = sosendtcp,
 	.pru_soreceive = sorecvtcp,
 	.pru_savefaddr = tcp_usr_savefaddr,
-	.pru_preconnect = tcp_usr_preconnect
+	.pru_preconnect = tcp_usr_preconnect,
+	.pru_preattach = tcp_usr_preattach
 };
 
 #ifdef INET6
@@ -1598,16 +1619,14 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	boolean_t isipv6 = INP_CHECK_SOCKAF(so, AF_INET6);
 #endif
 
-	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
-		lwkt_gettoken(&so->so_rcv.ssb_token);
-		error = soreserve(so, tcp_sendspace, tcp_recvspace,
-				  ai->sb_rlimit);
-		lwkt_reltoken(&so->so_rcv.ssb_token);
+	if (ai != NULL) {
+		error = tcp_usr_preattach(so, 0 /* don't care */, ai);
 		if (error)
 			return (error);
+	} else {
+		/* Post attach; do nothing */
 	}
-	atomic_set_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE | SSB_PREALLOC);
-	atomic_set_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE | SSB_PREALLOC);
+
 	cpu = mycpu->gd_cpuid;
 
 	/*

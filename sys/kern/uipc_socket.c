@@ -148,6 +148,10 @@ int use_soconnect_async = 1;
 SYSCTL_INT(_kern_ipc, OID_AUTO, soconnect_async, CTLFLAG_RW,
     &use_soconnect_async, 0, "soconnect uses asynchronized pru_connect");
 
+static int use_socreate_fast = 1;
+SYSCTL_INT(_kern_ipc, OID_AUTO, socreate_fast, CTLFLAG_RW,
+    &use_socreate_fast, 0, "Fast socket creation");
+
 /*
  * Socket operation routines.
  * These routines are called by the routines in
@@ -260,7 +264,10 @@ socreate(int dom, struct socket **aso, int type,
 	 * Auto-sizing of socket buffers is managed by the protocols and
 	 * the appropriate flags must be set in the pru_attach function.
 	 */
-	error = so_pru_attach(so, proto, &ai);
+	if (use_socreate_fast && prp->pr_usrreqs->pru_preattach)
+		error = so_pru_attach_fast(so, proto, &ai);
+	else
+		error = so_pru_attach(so, proto, &ai);
 	if (error) {
 		sosetstate(so, SS_NOFDREF);
 		sofree(so);	/* from soalloc */

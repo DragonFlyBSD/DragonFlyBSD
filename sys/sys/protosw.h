@@ -289,6 +289,8 @@ struct pr_usrreqs {
 	int	(*pru_preconnect) (struct socket *so,
 				      const struct sockaddr *addr,
 				      struct thread *td);
+	int	(*pru_preattach) (struct socket *so,
+				      int, struct pru_attach_info *);
 };
 
 typedef int (*pru_sosend_fn_t) (struct socket *so, struct sockaddr *addr,
