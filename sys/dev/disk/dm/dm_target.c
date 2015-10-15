@@ -258,15 +258,13 @@ dm_target_uninit(void)
 	dm_target_t *dm_target;
 
 	lockmgr(&dm_target_mutex, LK_EXCLUSIVE);
-	while (TAILQ_FIRST(&dm_target_list) != NULL) {
 
-		dm_target = TAILQ_FIRST(&dm_target_list);
-
-		TAILQ_REMOVE(&dm_target_list, TAILQ_FIRST(&dm_target_list),
-		    dm_target_next);
-
+	while ((dm_target = TAILQ_FIRST(&dm_target_list)) != NULL) {
+		TAILQ_REMOVE(&dm_target_list, dm_target, dm_target_next);
 		kfree(dm_target, M_DM);
 	}
+	KKASSERT(TAILQ_EMPTY(&dm_target_list));
+
 	lockmgr(&dm_target_mutex, LK_RELEASE);
 
 	lockuninit(&dm_target_mutex);
