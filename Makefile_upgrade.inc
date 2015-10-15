@@ -2225,7 +2225,7 @@ TO_REMOVE+=/usr/share/man/man1/compile_et.1.gz
 TO_REMOVE+=/usr/share/man/man3/com_err.3.gz
 TO_REMOVE+=/usr/share/man/man7/com_err.7.gz
 TO_REMOVE+=/usr/include/emulation/posix4
-TO_REMOVE+=/usr/libdata/gcc47/tgmath.h
+TO_REMOVE+=/usr/libdata/gcc50/tgmath.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
