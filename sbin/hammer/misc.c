@@ -323,13 +323,13 @@ void
 _hammer_add_zone_stat(struct zone_stat *stats, int zone,
 			hammer_off_t bytes, int new_block, int new_item)
 {
-	struct zone_stat *stat = stats + zone;
+	struct zone_stat *sp = stats + zone;
 
 	if (new_block)
-		stat->blocks++;
+		sp->blocks++;
 	if (new_item)
-		stat->items++;
-	stat->used += bytes;
+		sp->items++;
+	sp->used += bytes;
 }
 
 void
