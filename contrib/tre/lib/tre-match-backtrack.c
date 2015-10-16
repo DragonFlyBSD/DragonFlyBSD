@@ -257,6 +257,9 @@ tre_tnfa_run_backtrack(const tre_tnfa_t *tnfa, const void *string,
 #ifdef TRE_MBSTATE
   memset(&mbstate, '\0', sizeof(mbstate));
 #endif /* TRE_MBSTATE */
+#ifndef TRE_USE_ALLOCA
+  buf = NULL;
+#endif
 
   if (!mem)
     return REG_ESPACE;
