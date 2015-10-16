@@ -33,13 +33,6 @@
 #ifndef _h_sh
 #define _h_sh
 
-/*
- * All xprintf with %S emit error because Char* used instead of wchar_t*
- * WARNS doesn't help, and CFLAGS is added before -Werror, so use a
- * pragma to turn off the format check.
- */
-#pragma GCC diagnostic ignored "-Wformat"
-
 #include "config.h"
 
 #include <stddef.h>
