@@ -76,7 +76,7 @@ static void _strategy(struct dm_delay_info *di, struct buf *bp);
 static void _submit(struct dm_delay_info *di, struct buf *bp);
 static void _submit_queue(struct dm_delay_info *di, int submit_all);
 static void _destroy(struct dm_delay_info *di);
-static int _deps(struct dm_delay_info *di, prop_array_t prop_array);
+static uint64_t _makeudev(struct dm_delay_info *di);
 static void _timeout(void *arg);
 static void _thread(void *arg);
 static __inline void _debug(struct dm_delay_info *di, const char *msg);
@@ -348,37 +348,36 @@ static int
 dm_target_delay_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
 {
 	dm_target_delay_config_t *tdc;
-	int error;
+	uint64_t u1, u2;
 
 	tdc = table_en->target_config;
 	if (tdc == NULL)
 		return ENOENT;
 
-	error = _deps(&tdc->read, prop_array);
-	if (error)
-		return error;
-	if (tdc->argc == 6) {
-		error = _deps(&tdc->write, prop_array);
-		if (error)
-			return error;
+	u1 = _makeudev(&tdc->read);
+	u2 = _makeudev(&tdc->write);
+
+	prop_array_add_uint64(prop_array, u1);
+	if (u1 != u2) {
+		prop_array_add_uint64(prop_array, u2);
 	}
 	return 0;
 }
 
-static int
-_deps(struct dm_delay_info *di, prop_array_t prop_array)
+static uint64_t
+_makeudev(struct dm_delay_info *di)
 {
 	struct vattr va;
+	uint64_t ret;
 	int error;
 
-	_debug(di, "deps");
+	_debug(di, "makeudev");
 
 	error = VOP_GETATTR(di->pdev->pdev_vnode, &va);
-	if (error)
-		return error;
-	prop_array_add_uint64(prop_array,
-		(uint64_t)makeudev(va.va_rmajor, va.va_rminor));
-	return 0;
+	KKASSERT(error == 0);
+
+	ret = makeudev(va.va_rmajor, va.va_rminor);
+	return (uint64_t)ret;
 }
 
 static int
