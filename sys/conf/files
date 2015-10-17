@@ -2363,7 +2363,7 @@ ${ACPICA_COMP_DIR}/parser/psxface.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rsaddr.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rscalc.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rscreate.c		optional acpi
-${ACPICA_COMP_DIR}/resources/rsdump.c		optional acpi
+${ACPICA_COMP_DIR}/resources/rsdump.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/resources/rsdumpinfo.c	optional acpi
 ${ACPICA_COMP_DIR}/resources/rsinfo.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rsio.c		optional acpi
