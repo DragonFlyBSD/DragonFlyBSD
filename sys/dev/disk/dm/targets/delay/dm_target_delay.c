@@ -67,9 +67,10 @@ struct dm_delay_info {
 typedef struct target_delay_config {
 	struct dm_delay_info read;
 	struct dm_delay_info write;
+	int argc;  /* either 3 or 6 */
 } dm_target_delay_config_t;
 
-static int _init(struct dm_delay_info *di, char **argv);
+static int _init(struct dm_delay_info *di, char **argv, int id);
 static int _status(struct dm_delay_info *di, char *p);
 static void _strategy(struct dm_delay_info *di, struct buf *bp);
 static void _submit(struct dm_delay_info *di, struct buf *bp);
@@ -110,25 +111,25 @@ dm_target_delay_init(dm_dev_t *dmv, void **target_config, char *params)
 	}
 
 	tdc = kmalloc(sizeof(*tdc), M_DMDELAY, M_WAITOK | M_ZERO);
-	ret = _init(&tdc->read, argv);
+	tdc->argc = argc;
+
+	ap = argv;
+	ret = _init(&tdc->read, ap, 0);
 	if (ret) {
 		kfree(tdc, M_DMDELAY);
 		return ret;
 	}
 
-	if (argc == 3) {
-		kprintf("Delay target without write delay\n");
-		tdc->write.pdev = tdc->read.pdev;
-		goto end;
-	}
+	if (argc == 6)
+		ap += 3;
 
-	ret = _init(&tdc->write, argv + 3);
+	ret = _init(&tdc->write, ap, 1);
 	if (ret) {
 		dm_pdev_decr(tdc->read.pdev);
 		kfree(tdc, M_DMDELAY);
 		return ret;
 	}
-end:
+
 	*target_config = tdc;
 	dmv->dev_type = DM_DELAY_DEV;
 
@@ -136,11 +137,10 @@ end:
 }
 
 static int
-_init(struct dm_delay_info *di, char **argv)
+_init(struct dm_delay_info *di, char **argv, int id)
 {
 	dm_pdev_t *dmp;
 	int tmp;
-	static int id = 0;
 
 	if (argv[0] == NULL)
 		return EINVAL;
@@ -159,7 +159,7 @@ _init(struct dm_delay_info *di, char **argv)
 	mtx_init(&di->cal_mtx, "dmdlcal");
 	lwkt_token_init(&di->token, "dmdlthr");
 
-	di->enabled = ++id;
+	di->enabled = 1;
 	lwkt_create(_thread, di, &di->td, NULL, 0, -1, "dmdl%d", id);
 
 	_debug(di, "init");
@@ -178,7 +178,7 @@ dm_target_delay_status(void *target_config)
 	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
 	p = params;
 	p += _status(&tdc->read, p);
-	if (tdc->write.enabled) {
+	if (tdc->argc == 6) {
 		p += ksnprintf(p, DM_MAX_PARAMS_SIZE, " ");
 		_status(&tdc->write, p);
 	}
@@ -219,7 +219,7 @@ dm_target_delay_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	}
 
 	if (di) {
-		if (di->enabled) {
+		if (di->delay) {
 			_strategy(di, bp);
 		} else {
 			_submit(di, bp);
@@ -312,8 +312,7 @@ dm_target_delay_destroy(dm_table_entry_t *table_en)
 		return 0;
 
 	_destroy(&tdc->read);
-	if (tdc->write.enabled)
-		_destroy(&tdc->write);
+	_destroy(&tdc->write);
 
 	kfree(tdc, M_DMDELAY);
 	table_en->target_config = NULL;
@@ -358,7 +357,7 @@ dm_target_delay_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
 	error = _deps(&tdc->read, prop_array);
 	if (error)
 		return error;
-	if (tdc->write.enabled) {
+	if (tdc->argc == 6) {
 		error = _deps(&tdc->write, prop_array);
 		if (error)
 			return error;

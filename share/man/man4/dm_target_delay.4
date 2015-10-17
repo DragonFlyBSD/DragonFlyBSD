@@ -61,6 +61,9 @@ table.
 .Ed
 .Pp
 Parameters for write delay are optional.
+If write parameters are not specified, read parameters are used for write.
+In order to only delay read, explicitly specify 0 delay for write.
+.Pp
 Offsets are specified in 512 bytes sectors.
 Delays are specified in milliseconds.
 .Sh SEE ALSO
