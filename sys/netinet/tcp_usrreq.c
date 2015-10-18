@@ -1640,20 +1640,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		inp->in6p_hops = -1;	/* use kernel default */
 #endif
 	tp = tcp_newtcpcb(inp);
-	if (tp == NULL) {
-		/*
-		 * Make sure the socket is destroyed by the pcbdetach.
-		 */
-		soreference(so);
-#ifdef INET6
-		if (isipv6)
-			in6_pcbdetach(inp);
-		else
-#endif
-		in_pcbdetach(inp);
-		sofree(so);	/* from ref above */
-		return (ENOBUFS);
-	}
+	KASSERT(tp != NULL, ("tcp_newtcpcb failed"));
 	tp->t_state = TCPS_CLOSED;
 	/* Keep a reference for asynchronized pru_rcvd */
 	soreference(so);
