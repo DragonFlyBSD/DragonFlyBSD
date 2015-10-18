@@ -110,7 +110,7 @@ MODULE_VERSION(dm, 1);
  *
  */
 static struct cmd_function cmd_fn[] = {
-		{ .cmd = "version", .fn = dm_get_version_ioctl},
+		{ .cmd = "version", .fn = NULL},
 		{ .cmd = "targets", .fn = dm_list_versions_ioctl},
 		{ .cmd = "create",  .fn = dm_dev_create_ioctl},
 		{ .cmd = "info",    .fn = dm_dev_status_ioctl},
@@ -291,7 +291,9 @@ dm_cmd_to_fun(prop_dictionary_t dm_dict)
 	if (cmd_fn[i].cmd == NULL)
 		return EINVAL;
 
-	aprint_debug("ioctl %s called\n", cmd_fn[i].cmd);
+	aprint_debug("ioctl %s called %p\n", cmd_fn[i].cmd, cmd_fn[i].fn);
+	if (cmd_fn[i].fn == NULL)
+		return 0;  /* No handler required */
 	r = cmd_fn[i].fn(dm_dict);
 
 	return r;

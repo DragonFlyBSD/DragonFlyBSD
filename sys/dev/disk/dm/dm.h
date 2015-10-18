@@ -222,7 +222,6 @@ int dm_dev_status_ioctl(prop_dictionary_t);
 int dm_dev_suspend_ioctl(prop_dictionary_t);
 
 int dm_check_version(prop_dictionary_t);
-int dm_get_version_ioctl(prop_dictionary_t);
 int dm_list_versions_ioctl(prop_dictionary_t);
 
 int dm_table_clear_ioctl(prop_dictionary_t);

@@ -140,15 +140,6 @@ dm_dbg_print_flags(int flags)
 	return 0;
 }
 /*
- * Get version ioctl call I do it as default therefore this
- * function is unused now.
- */
-int
-dm_get_version_ioctl(prop_dictionary_t dm_dict)
-{
-	return 0;
-}
-/*
  * Get list of all available targets from global
  * target list and sent them back to libdevmapper.
  */
