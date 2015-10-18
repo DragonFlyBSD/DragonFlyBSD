@@ -140,6 +140,11 @@ typedef	__uid_t		uid_t;
 #define	_V6_LP64_OFF64			0
 #define	_V6_LPBIG_OFFBIG		-1
 
+#define	_V7_ILP32_OFF32			-1
+#define	_V7_ILP32_OFFBIG		0
+#define	_V7_LP64_OFF64			0
+#define	_V7_LPBIG_OFFBIG		-1
+
 #if __XSI_VISIBLE
 #define	_XOPEN_CRYPT			-1 /* XXX ??? */
 #define	_XOPEN_ENH_I18N			-1 /* mandatory in XSI */
@@ -295,6 +300,13 @@ typedef	__uid_t		uid_t;
 /* Extensions found in Solaris and Linux. */
 #define	_SC_PHYS_PAGES		121
 
+#if __POSIX_VISIBLE >= 200809
+#define	_SC_V7_ILP32_OFF32	122 /* user */
+#define	_SC_V7_ILP32_OFFBIG	123 /* user */
+#define	_SC_V7_LP64_OFF64	124 /* user */
+#define	_SC_V7_LPBIG_OFFBIG	125 /* user */
+#endif
+
 /* Keys for the confstr(3) function. */
 #if __POSIX_VISIBLE >= 199209
 #define	_CS_PATH		1	/* default value of PATH */
@@ -314,6 +326,22 @@ typedef	__uid_t		uid_t;
 #define	_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS	12
 #define	_CS_POSIX_V6_LPBIG_OFFBIG_LIBS		13
 #define	_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS	14
+#endif
+
+#if __POSIX_VISIBLE >= 200809
+#define	_CS_POSIX_V7_ILP32_OFF32_CFLAGS		15
+#define	_CS_POSIX_V7_ILP32_OFF32_LDFLAGS	16
+#define	_CS_POSIX_V7_ILP32_OFF32_LIBS		17
+#define	_CS_POSIX_V7_ILP32_OFFBIG_CFLAGS	18
+#define	_CS_POSIX_V7_ILP32_OFFBIG_LDFLAGS	19
+#define	_CS_POSIX_V7_ILP32_OFFBIG_LIBS		20
+#define	_CS_POSIX_V7_LP64_OFF64_CFLAGS		21
+#define	_CS_POSIX_V7_LP64_OFF64_LDFLAGS		22
+#define	_CS_POSIX_V7_LP64_OFF64_LIBS		23
+#define	_CS_POSIX_V7_LPBIG_OFFBIG_CFLAGS	24
+#define	_CS_POSIX_V7_LPBIG_OFFBIG_LDFLAGS	25
+#define	_CS_POSIX_V7_LPBIG_OFFBIG_LIBS		26
+#define	_CS_POSIX_V7_WIDTH_RESTRICTED_ENVS	27
 #endif
 
 __BEGIN_DECLS

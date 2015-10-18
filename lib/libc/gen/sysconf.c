@@ -31,7 +31,6 @@
  *
  * @(#)sysconf.c	8.2 (Berkeley) 3/20/94
  * $FreeBSD: src/lib/libc/gen/sysconf.c,v 1.26 2008/02/27 05:56:57 wollman Exp $
- * $DragonFly: src/lib/libc/gen/sysconf.c,v 1.5 2008/02/21 12:47:54 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -500,6 +499,54 @@ yesno:
 			return -1;
 #else
 		return (_V6_LPBIG_OFFBIG);
+#endif
+	case _SC_V7_ILP32_OFF32:
+#if _V7_ILP32_OFF32 == 0
+		if (sizeof(int) * CHAR_BIT == 32 &&
+		    sizeof(int) == sizeof(long) &&
+		    sizeof(long) == sizeof(void *) &&
+		    sizeof(void *) == sizeof(off_t))
+			return 1;
+		else
+			return -1;
+#else
+		return (_V7_ILP32_OFF32);
+#endif
+	case _SC_V7_ILP32_OFFBIG:
+#if _V7_ILP32_OFFBIG == 0
+		if (sizeof(int) * CHAR_BIT == 32 &&
+		    sizeof(int) == sizeof(long) &&
+		    sizeof(long) == sizeof(void *) &&
+		    sizeof(off_t) * CHAR_BIT >= 64)
+			return 1;
+		else
+			return -1;
+#else
+		return (_V7_ILP32_OFFBIG);
+#endif
+	case _SC_V7_LP64_OFF64:
+#if _V7_LP64_OFF64 == 0
+		if (sizeof(int) * CHAR_BIT == 32 &&
+		    sizeof(long) * CHAR_BIT == 64 &&
+		    sizeof(long) == sizeof(void *) &&
+		    sizeof(void *) == sizeof(off_t))
+			return 1;
+		else
+			return -1;
+#else
+		return (_V7_LP64_OFF64);
+#endif
+	case _SC_V7_LPBIG_OFFBIG:
+#if _V7_LPBIG_OFFBIG == 0
+		if (sizeof(int) * CHAR_BIT >= 32 &&
+		    sizeof(long) * CHAR_BIT >= 64 &&
+		    sizeof(void *) * CHAR_BIT >= 64 &&
+		    sizeof(off_t) * CHAR_BIT >= 64)
+			return 1;
+		else
+			return -1;
+#else
+		return (_V7_LPBIG_OFFBIG);
 #endif
 	case _SC_ATEXIT_MAX:
 		return (ATEXIT_SIZE);

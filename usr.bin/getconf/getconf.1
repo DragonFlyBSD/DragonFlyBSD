@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: head/usr.bin/getconf/getconf.1 267773 2014-06-23 08:23:05Z bapt $
 .\"
-.Dd August 11, 2015
+.Dd October 18, 2015
 .Dt GETCONF 1
 .Os
 .Sh NAME
@@ -109,20 +109,20 @@ Specifying an environment which is not supported on the current execution
 platform gives undefined results.
 .Pp
 The standard programming environments are as follows:
-.Bl -tag -width ".Li POSIX_V6_LPBIG_OFFBIG" -offset indent
-.It Li POSIX_V6_ILP32_OFF32
+.Bl -tag -width ".Li POSIX_V7_LPBIG_OFFBIG" -offset indent
+.It Li POSIX_V7_ILP32_OFF32
 Exactly 32-bit integer, long, pointer, and file offset.
 .Sy Supported platforms :
 None.
-.It Li POSIX_V6_ILP32_OFFBIG
+.It Li POSIX_V7_ILP32_OFFBIG
 Exactly 32-bit integer, long, and pointer; at least 64-bit file offset.
 .Sy Supported platforms :
 None.
-.It Li POSIX_V6_LP64_OFF64
+.It Li POSIX_V7_LP64_OFF64
 Exactly 32-bit integer; exactly 64-bit long, pointer, and file offset.
 .Sy Supported platforms :
 .Tn x86_64 .
-.It Li POSIX_V6_LPBIG_OFFBIG
+.It Li POSIX_V7_LPBIG_OFFBIG
 At least 32-bit integer; at least 64-bit long, pointer, and file offset.
 .Sy Supported platforms :
 None.
@@ -130,7 +130,7 @@ None.
 .Pp
 The command:
 .Pp
-.Dl "getconf POSIX_V6_WIDTH_RESTRICTED_ENVS"
+.Dl "getconf POSIX_V7_WIDTH_RESTRICTED_ENVS"
 .Pp
 returns a newline-separated list of environments in which the width
 of certain fundamental types is no greater than the width of the native
@@ -164,12 +164,12 @@ directory.
 .Pp
 The command:
 .Pp
-.Dl "getconf -v POSIX_V6_LPBIG_OFFBIG LONG_MAX"
+.Dl "getconf -v _POSIX_V7_LPBIG_OFFBIG LONG_MAX"
 .Pp
 will display the maximum value of the C type
 .Vt long
 in the
-.Li POSIX_V6_LPBIG_OFFBIG
+.Li POSIX_V7_LPBIG_OFFBIG
 programming environment,
 if the system supports that environment.
 .Sh DIAGNOSTICS
