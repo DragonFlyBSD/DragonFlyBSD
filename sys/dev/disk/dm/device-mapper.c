@@ -127,7 +127,6 @@ static struct cmd_function cmd_fn[] = {
 		{ .cmd = "status",  .fn = dm_table_status_ioctl},
 		{ .cmd = "table",   .fn = dm_table_status_ioctl},
 		{ .cmd = "message", .fn = dm_message_ioctl},
-		{NULL, NULL}
 };
 
 /* New module handle routine */
@@ -276,27 +275,32 @@ dmioctl(struct dev_ioctl_args *ap)
 static int
 dm_cmd_to_fun(prop_dictionary_t dm_dict)
 {
-	int i, r;
+	int i, size;
 	prop_string_t command;
+	struct cmd_function *p = NULL;
 
-	r = 0;
+	size = sizeof(cmd_fn) / sizeof(cmd_fn[0]);
 
 	if ((command = prop_dictionary_get(dm_dict, DM_IOCTL_COMMAND)) == NULL)
 		return EINVAL;
 
-	for (i = 0; cmd_fn[i].cmd != NULL; i++)
-		if (prop_string_equals_cstring(command, cmd_fn[i].cmd))
+	for (i = 0; i < size; i++) {
+		p = &cmd_fn[i];
+		if (prop_string_equals_cstring(command, p->cmd))
 			break;
+	}
 
-	if (cmd_fn[i].cmd == NULL)
+	KKASSERT(p);
+	if (i == size) {
+		aprint_debug("Unknown ioctl\n");
 		return EINVAL;
+	}
 
-	aprint_debug("ioctl %s called %p\n", cmd_fn[i].cmd, cmd_fn[i].fn);
-	if (cmd_fn[i].fn == NULL)
+	aprint_debug("ioctl %s called %p\n", p->cmd, p->fn);
+	if (p->fn == NULL)
 		return 0;  /* No handler required */
-	r = cmd_fn[i].fn(dm_dict);
 
-	return r;
+	return p->fn(dm_dict);
 }
 
 /* Call apropriate ioctl handler function. */
