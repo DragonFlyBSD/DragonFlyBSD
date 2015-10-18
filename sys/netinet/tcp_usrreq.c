@@ -171,6 +171,9 @@ static int	tcp_disable_nopush = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, disable_nopush, CTLFLAG_RW,
     &tcp_disable_nopush, 0, "TCP_NOPUSH socket option will have no effect");
 
+/*
+ * Allocate socket buffer space.
+ */
 static int
 tcp_usr_preattach(struct socket *so, int proto __unused,
     struct pru_attach_info *ai)
@@ -193,8 +196,8 @@ tcp_usr_preattach(struct socket *so, int proto __unused,
 
 /*
  * TCP attaches to socket via pru_attach(), reserving space,
- * and an internet control block.  This is likely occuring on
- * cpu0 and may have to move later when we bind/connect.
+ * and an internet control block.  This socket may move to
+ * other CPU later when we bind/connect.
  */
 static void
 tcp_usr_attach(netmsg_t msg)
@@ -246,8 +249,9 @@ tcp_usr_detach(netmsg_t msg)
 	inp = so->so_pcb;
 
 	/*
-	 * If the inp is already detached it may have been due to an async
-	 * close.  Just return as if no error occured.
+	 * If the inp is already detached or never attached, it may have
+	 * been due to an async close or async attach failure.  Just return
+	 * as if no error occured.
 	 *
 	 * It's possible for the tcpcb (tp) to disconnect from the inp due
 	 * to tcp_drop()->tcp_close() being called.  This may occur *after*
@@ -323,8 +327,8 @@ tcp_usr_bind(netmsg_t msg)
 	error = in_pcbbind(inp, nam, td);
 	if (error)
 		goto out;
-	COMMON_END(PRU_BIND);
 
+	COMMON_END(PRU_BIND);
 }
 
 #ifdef INET6
@@ -643,7 +647,7 @@ tcp_usr_accept(netmsg_t msg)
 		error = ECONNABORTED;
 		goto out;
 	}
-	if (inp == 0) {
+	if (inp == NULL) {
 		error = EINVAL;
 		goto out;
 	}
@@ -671,7 +675,7 @@ tcp6_usr_accept(netmsg_t msg)
 		error = ECONNABORTED;
 		goto out;
 	}
-	if (inp == 0) {
+	if (inp == NULL) {
 		error = EINVAL;
 		goto out;
 	}
@@ -681,6 +685,7 @@ tcp6_usr_accept(netmsg_t msg)
 	COMMON_END(PRU_ACCEPT);
 }
 #endif /* INET6 */
+
 /*
  * Mark the connection as being incapable of further output.
  */
@@ -1630,8 +1635,8 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	cpu = mycpu->gd_cpuid;
 
 	/*
-	 * Set the default port for protocol processing. This will likely
-	 * change when we connect.
+	 * Set the default pcbinfo.  This will likely change when we
+	 * bind/connect.
 	 */
 	error = in_pcballoc(so, &tcbinfo[cpu]);
 	if (error)
