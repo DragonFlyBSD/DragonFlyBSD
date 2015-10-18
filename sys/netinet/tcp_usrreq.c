@@ -209,11 +209,8 @@ tcp_usr_attach(netmsg_t msg)
 
 	soreference(so);
 	inp = so->so_pcb;
+	KASSERT(inp == NULL, ("tcp socket attached"));
 	TCPDEBUG1();
-	if (inp) {
-		error = EISCONN;
-		goto out;
-	}
 
 	error = tcp_attach(so, ai);
 	if (error)
