@@ -207,7 +207,6 @@ tcp_usr_attach(netmsg_t msg)
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
-	soreference(so);
 	inp = so->so_pcb;
 	KASSERT(inp == NULL, ("tcp socket attached"));
 	TCPDEBUG1();
@@ -220,7 +219,6 @@ tcp_usr_attach(netmsg_t msg)
 		so->so_linger = TCP_LINGERTIME;
 	tp = sototcpcb(so);
 out:
-	sofree(so);		/* from ref above */
 	TCPDEBUG2(PRU_ATTACH);
 	lwkt_replymsg(&msg->lmsg, error);
 }
