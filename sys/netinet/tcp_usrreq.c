@@ -181,10 +181,8 @@ tcp_usr_preattach(struct socket *so, int proto __unused,
 	int error;
 
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
-		lwkt_gettoken(&so->so_rcv.ssb_token);
 		error = soreserve(so, tcp_sendspace, tcp_recvspace,
 				  ai->sb_rlimit);
-		lwkt_reltoken(&so->so_rcv.ssb_token);
 		if (error)
 			return (error);
 	}
