@@ -245,17 +245,13 @@ tcp_usr_detach(netmsg_t msg)
 	 * If the inp is already detached or never attached, it may have
 	 * been due to an async close or async attach failure.  Just return
 	 * as if no error occured.
-	 *
-	 * It's possible for the tcpcb (tp) to disconnect from the inp due
-	 * to tcp_drop()->tcp_close() being called.  This may occur *after*
-	 * the detach message has been queued so we may find a NULL tp here.
 	 */
 	if (inp) {
-		if ((tp = intotcpcb(inp)) != NULL) {
-			TCPDEBUG1();
-			tp = tcp_disconnect(tp);
-			TCPDEBUG2(PRU_DETACH);
-		}
+		tp = intotcpcb(inp);
+		KASSERT(tp != NULL, ("tcp_usr_detach: tp is NULL"));
+		TCPDEBUG1();
+		tp = tcp_disconnect(tp);
+		TCPDEBUG2(PRU_DETACH);
 	}
 	lwkt_replymsg(&msg->lmsg, error);
 }
