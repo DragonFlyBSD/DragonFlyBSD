@@ -377,7 +377,7 @@ _makeudev(struct dm_delay_info *di)
 	KKASSERT(error == 0);
 
 	ret = makeudev(va.va_rmajor, va.va_rminor);
-	return (uint64_t)ret;
+	return ret;
 }
 
 static int
