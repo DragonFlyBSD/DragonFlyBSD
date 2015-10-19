@@ -750,9 +750,9 @@ notsup:
 	return ENOTSUP;
 }
 
-/* Status routine called to get params string. */
+/* Table routine called to get params string. */
 static char *
-dm_target_crypt_status(void *target_config)
+dm_target_crypt_table(void *target_config)
 {
 	dm_target_crypt_config_t *priv;
 	char *params;
@@ -1473,7 +1473,7 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "crypt", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_crypt_init;
-		dmt->status = &dm_target_crypt_status;
+		dmt->table = &dm_target_crypt_table;
 		dmt->strategy = &dm_target_crypt_strategy;
 		dmt->deps = &dm_target_crypt_deps;
 		dmt->destroy = &dm_target_crypt_destroy;

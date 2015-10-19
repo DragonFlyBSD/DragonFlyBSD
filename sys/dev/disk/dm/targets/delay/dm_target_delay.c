@@ -71,7 +71,7 @@ typedef struct target_delay_config {
 } dm_target_delay_config_t;
 
 static int _init(struct dm_delay_info *di, char **argv, int id);
-static int _status(struct dm_delay_info *di, char *p);
+static int _table(struct dm_delay_info *di, char *p);
 static void _strategy(struct dm_delay_info *di, struct buf *bp);
 static void _submit(struct dm_delay_info *di, struct buf *bp);
 static void _submit_queue(struct dm_delay_info *di, int submit_all);
@@ -183,7 +183,7 @@ dm_target_delay_info(void *target_config)
 }
 
 static char *
-dm_target_delay_status(void *target_config)
+dm_target_delay_table(void *target_config)
 {
 	dm_target_delay_config_t *tdc;
 	char *params, *p;
@@ -193,16 +193,16 @@ dm_target_delay_status(void *target_config)
 
 	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
 	p = params;
-	p += _status(&tdc->read, p);
+	p += _table(&tdc->read, p);
 	if (tdc->argc == 6) {
 		p += ksnprintf(p, DM_MAX_PARAMS_SIZE, " ");
-		_status(&tdc->write, p);
+		_table(&tdc->write, p);
 	}
 
 	return params;
 }
 
-static int _status(struct dm_delay_info *di, char *p)
+static int _table(struct dm_delay_info *di, char *p)
 {
 	int ret = 0;
 
@@ -481,7 +481,7 @@ dmtd_mod_handler(module_t mod, int type, void *unused)
 		strlcpy(dmt->name, "delay", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_delay_init;
 		dmt->info = &dm_target_delay_info;
-		dmt->status = &dm_target_delay_status;
+		dmt->table = &dm_target_delay_table;
 		dmt->strategy = &dm_target_delay_strategy;
 		dmt->destroy = &dm_target_delay_destroy;
 		dmt->deps = &dm_target_delay_deps;

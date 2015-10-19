@@ -100,14 +100,14 @@ typedef struct target_snapshot_origin_config {
 } dm_target_snapshot_origin_config_t;
 
 int dm_target_snapshot_init(dm_dev_t *, void**, char *);
-char *dm_target_snapshot_status(void *);
+char *dm_target_snapshot_table(void *);
 int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_snapshot_destroy(dm_table_entry_t *);
 int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
 
 int dm_target_snapshot_orig_init(dm_dev_t *, void**, char *);
-char *dm_target_snapshot_orig_status(void *);
+char *dm_target_snapshot_orig_table(void *);
 int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_orig_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_snapshot_orig_destroy(dm_table_entry_t *);
@@ -173,12 +173,12 @@ dm_target_snapshot_init(dm_dev_t *dmv, void **target_config, char *params)
 	return 0;
 }
 /*
- * Status routine is called to get params string, which is target
+ * Table routine is called to get params string, which is target
  * specific. When dm_table_status_ioctl is called with flag
  * DM_STATUS_TABLE_FLAG I have to sent params string back.
  */
 char *
-dm_target_snapshot_status(void *target_config)
+dm_target_snapshot_table(void *target_config)
 {
 	dm_target_snapshot_config_t *tsc;
 
@@ -194,7 +194,7 @@ dm_target_snapshot_status(void *target_config)
 	count = 0;
 	cow_name = NULL;
 
-	printf("Snapshot target status function called\n");
+	printf("Snapshot target table function called\n");
 
 	/* count number of chars in offset */
 	for (i = tsc->tsc_chunk_size; i != 0; i /= 10)
@@ -351,12 +351,12 @@ dm_target_snapshot_orig_init(dm_dev_t *dmv, void **target_config,
 	return 0;
 }
 /*
- * Status routine is called to get params string, which is target
+ * Table routine is called to get params string, which is target
  * specific. When dm_table_status_ioctl is called with flag
  * DM_STATUS_TABLE_FLAG I have to sent params string back.
  */
 char *
-dm_target_snapshot_orig_status(void *target_config)
+dm_target_snapshot_orig_table(void *target_config)
 {
 	dm_target_snapshot_origin_config_t *tsoc;
 
@@ -367,7 +367,7 @@ dm_target_snapshot_orig_status(void *target_config)
 
 	prm_len = 0;
 
-	printf("Snapshot origin target status function called\n");
+	printf("Snapshot origin target table function called\n");
 
 	/* length of names + count of chars + spaces and null char */
 	prm_len = strlen(tsoc->tsoc_real_dev->name) + 1;

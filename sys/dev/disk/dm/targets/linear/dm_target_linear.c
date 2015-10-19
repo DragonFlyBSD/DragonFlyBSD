@@ -105,18 +105,18 @@ dm_target_linear_init(dm_dev_t *dmv, void **target_config, char *params)
 	return 0;
 }
 /*
- * Status routine is called to get params string, which is target
+ * Table routine is called to get params string, which is target
  * specific. When dm_table_status_ioctl is called with flag
  * DM_STATUS_TABLE_FLAG I have to sent params string back.
  */
 static char *
-dm_target_linear_status(void *target_config)
+dm_target_linear_table(void *target_config)
 {
 	dm_target_linear_config_t *tlc;
 	char *params;
 	tlc = target_config;
 
-	aprint_debug("Linear target status function called\n");
+	aprint_debug("Linear target table function called\n");
 
 	/* target expects use of M_DM */
 	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
@@ -242,7 +242,7 @@ dmtl_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 2;
 		strlcpy(dmt->name, "linear", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_linear_init;
-		dmt->status = &dm_target_linear_status;
+		dmt->table = &dm_target_linear_table;
 		dmt->strategy = &dm_target_linear_strategy;
 		dmt->deps = &dm_target_linear_deps;
 		dmt->destroy = &dm_target_linear_destroy;

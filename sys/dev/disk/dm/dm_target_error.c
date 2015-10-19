@@ -52,9 +52,9 @@ dm_target_error_init(dm_dev_t *dmv, void **target_config, char *argv)
 	return 0;
 }
 
-/* Status routine called to get params string. */
+/* Table routine called to get params string. */
 static char *
-dm_target_error_status(void *target_config)
+dm_target_error_table(void *target_config)
 {
 	return NULL;
 }
@@ -115,7 +115,7 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "error", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_error_init;
-		dmt->status = &dm_target_error_status;
+		dmt->table = &dm_target_error_table;
 		dmt->strategy = &dm_target_error_strategy;
 		dmt->deps = &dm_target_error_deps;
 		dmt->destroy = &dm_target_error_destroy;

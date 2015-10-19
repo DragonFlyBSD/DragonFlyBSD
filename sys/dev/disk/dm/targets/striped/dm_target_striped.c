@@ -143,10 +143,10 @@ dm_target_stripe_init(dm_dev_t *dmv, void **target_config, char *params)
 }
 
 /*
- * Status routine called to get params string.
+ * Table routine called to get params string.
  */
 static char *
-dm_target_stripe_status(void *target_config)
+dm_target_stripe_table(void *target_config)
 {
 	dm_target_stripe_config_t *tsc;
 	char *params;
@@ -432,7 +432,7 @@ dmts_mod_handler(module_t mod, int type, void *unused)
                 dmt->version[2] = 3;
                 strlcpy(dmt->name, "striped", DM_MAX_TYPE_NAME);
                 dmt->init = &dm_target_stripe_init;
-                dmt->status = &dm_target_stripe_status;
+                dmt->table = &dm_target_stripe_table;
                 dmt->strategy = &dm_target_stripe_strategy;
                 dmt->deps = &dm_target_stripe_deps;
                 dmt->destroy = &dm_target_stripe_destroy;

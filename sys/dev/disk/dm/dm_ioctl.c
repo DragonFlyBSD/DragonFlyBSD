@@ -877,7 +877,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 		    dmv->table_head.cur_active_table);
 
 		if (flags & DM_STATUS_TABLE_FLAG) {
-			params = table_en->target->status
+			params = table_en->target->table
 			    (table_en->target_config);
 		} else if (table_en->target->info) {
 			params = table_en->target->info

@@ -56,9 +56,9 @@ dm_target_zero_init(dm_dev_t *dmv, void **target_config, char *argv)
 	return 0;
 }
 
-/* Status routine called to get params string. */
+/* Table routine called to get params string. */
 static char *
-dm_target_zero_status(void *target_config)
+dm_target_zero_table(void *target_config)
 {
 	return NULL;
 }
@@ -120,7 +120,7 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "zero", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_zero_init;
-		dmt->status = &dm_target_zero_status;
+		dmt->table = &dm_target_zero_table;
 		dmt->strategy = &dm_target_zero_strategy;
 		dmt->deps = &dm_target_zero_deps;
 		dmt->destroy = &dm_target_zero_destroy;

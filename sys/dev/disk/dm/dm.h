@@ -180,12 +180,12 @@ typedef struct dm_target {
 
 	int (*deps) (dm_table_entry_t *, prop_array_t);
 	/*
-	 * Info and status are called to get params string, which is target
+	 * Info and table are called to get params string, which is target
 	 * specific. When dm_table_status_ioctl is called with flag
 	 * DM_STATUS_TABLE_FLAG I have to sent params string back.
 	 */
 	char *(*info)(void *);
-	char *(*status)(void *);
+	char *(*table)(void *);
 	int (*strategy)(dm_table_entry_t *, struct buf *);
 	int (*upcall)(dm_table_entry_t *, struct buf *);
 	int (*dump)(dm_table_entry_t *, void *data, size_t length, off_t offset);

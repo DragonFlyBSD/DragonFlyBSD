@@ -52,7 +52,7 @@ typedef struct target_mirror_config {
 } dm_target_mirror_config_t;
 
 int dm_target_mirror_init(dm_dev_t *, void**, char *);
-char *dm_target_mirror_status(void *);
+char *dm_target_mirror_table(void *);
 int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_mirror_destroy(dm_table_entry_t *);
@@ -75,9 +75,9 @@ dm_target_mirror_init(dm_dev_t *dmv, void **target_config, char *argv)
 
 	return ENOSYS;
 }
-/* Status routine called to get params string. */
+/* Table routine called to get params string. */
 char *
-dm_target_mirror_status(void *target_config)
+dm_target_mirror_table(void *target_config)
 {
 	return NULL;
 }
