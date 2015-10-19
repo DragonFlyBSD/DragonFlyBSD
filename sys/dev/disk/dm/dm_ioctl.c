@@ -879,14 +879,18 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 		if (flags & DM_STATUS_TABLE_FLAG) {
 			params = table_en->target->status
 			    (table_en->target_config);
-
-			if (params != NULL) {
-				prop_dictionary_set_cstring(target_dict,
-				    DM_TABLE_PARAMS, params);
-
-				kfree(params, M_DM);
-			}
+		} else if (table_en->target->info) {
+			params = table_en->target->info
+			    (table_en->target_config);
+		} else {
+			params = NULL;
 		}
+		if (params != NULL) {
+			prop_dictionary_set_cstring(target_dict,
+			    DM_TABLE_PARAMS, params);
+			kfree(params, M_DM);
+		}
+
 		prop_array_add(cmd_array, target_dict);
 		prop_object_release(target_dict);
 	}

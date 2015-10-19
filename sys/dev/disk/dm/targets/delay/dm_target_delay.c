@@ -167,6 +167,22 @@ _init(struct dm_delay_info *di, char **argv, int id)
 }
 
 static char *
+dm_target_delay_info(void *target_config)
+{
+	dm_target_delay_config_t *tdc;
+	char *params;
+
+	tdc = target_config;
+	KKASSERT(tdc != NULL);
+
+	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
+	ksnprintf(params, DM_MAX_PARAMS_SIZE,
+		"%d %d", tdc->read.count, tdc->write.count);
+
+	return params;
+}
+
+static char *
 dm_target_delay_status(void *target_config)
 {
 	dm_target_delay_config_t *tdc;
@@ -464,6 +480,7 @@ dmtd_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "delay", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_delay_init;
+		dmt->info = &dm_target_delay_info;
 		dmt->status = &dm_target_delay_status;
 		dmt->strategy = &dm_target_delay_strategy;
 		dmt->destroy = &dm_target_delay_destroy;
