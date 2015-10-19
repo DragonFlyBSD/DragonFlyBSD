@@ -121,7 +121,6 @@ dm_target_linear_table(void *target_config)
 	/* target expects use of M_DM */
 	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
 
-	aprint_normal("%s %" PRIu64, tlc->pdev->name, tlc->offset);
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s %" PRIu64,
 	    tlc->pdev->name, tlc->offset);
 
