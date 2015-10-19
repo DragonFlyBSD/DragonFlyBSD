@@ -532,7 +532,6 @@ void	in_pcbnotifyall (struct inpcbinfo *, struct in_addr,
 	    int, inp_notify_t);
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
 void	in_setpeeraddr_dispatch(union netmsg *);
-int	in_setsockaddr (struct socket *so, struct sockaddr **nam);
 void	in_setsockaddr_dispatch(netmsg_t msg);
 int	in_baddynamic(u_int16_t, u_int16_t);
 void	in_pcbremwildcardhash(struct inpcb *inp);

@@ -1055,38 +1055,25 @@ in_pcbdetach(struct inpcb *inp)
 }
 
 /*
- * The calling convention of in_setsockaddr() and in_setpeeraddr() was
- * modified to match the pru_sockaddr() and pru_peeraddr() entry points
- * in struct pr_usrreqs, so that protocols can just reference then directly
- * without the need for a wrapper function.  The socket must have a valid
- * (i.e., non-nil) PCB, but it should be impossible to get an invalid one
- * except through a kernel programming error, so it is acceptable to panic
- * (or in this case trap) if the PCB is invalid.  (Actually, we don't trap
- * because there actually /is/ a programming error somewhere... XXX)
+ * The socket may have an invalid PCB, i.e. NULL.  For example, a TCP
+ * socket received RST.
  */
-int
+static int
 in_setsockaddr(struct socket *so, struct sockaddr **nam)
 {
 	struct inpcb *inp;
 	struct sockaddr_in *sin;
 
-	/*
-	 * Do the malloc first in case it blocks.
-	 */
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+	inp = so->so_pcb;
+	if (!inp)
+		return (ECONNRESET);
+
 	sin = kmalloc(sizeof *sin, M_SONAME, M_WAITOK | M_ZERO);
 	sin->sin_family = AF_INET;
 	sin->sin_len = sizeof *sin;
-
-	crit_enter();
-	inp = so->so_pcb;
-	if (!inp) {
-		crit_exit();
-		kfree(sin, M_SONAME);
-		return (ECONNRESET);
-	}
 	sin->sin_port = inp->inp_lport;
 	sin->sin_addr = inp->inp_laddr;
-	crit_exit();
 
 	*nam = (struct sockaddr *)sin;
 	return (0);
@@ -1101,29 +1088,26 @@ in_setsockaddr_dispatch(netmsg_t msg)
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
+/*
+ * The socket may have an invalid PCB, i.e. NULL.  For example, a TCP
+ * socket received RST.
+ */
 int
 in_setpeeraddr(struct socket *so, struct sockaddr **nam)
 {
 	struct inpcb *inp;
 	struct sockaddr_in *sin;
 
-	/*
-	 * Do the malloc first in case it blocks.
-	 */
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+	inp = so->so_pcb;
+	if (!inp)
+		return (ECONNRESET);
+
 	sin = kmalloc(sizeof *sin, M_SONAME, M_WAITOK | M_ZERO);
 	sin->sin_family = AF_INET;
 	sin->sin_len = sizeof *sin;
-
-	crit_enter();
-	inp = so->so_pcb;
-	if (!inp) {
-		crit_exit();
-		kfree(sin, M_SONAME);
-		return (ECONNRESET);
-	}
 	sin->sin_port = inp->inp_fport;
 	sin->sin_addr = inp->inp_faddr;
-	crit_exit();
 
 	*nam = (struct sockaddr *)sin;
 	return (0);

@@ -440,47 +440,25 @@ in6_pcbdetach(struct inpcb *inp)
 }
 
 /*
- * The calling convention of in6_setsockaddr() and in6_setpeeraddr() was
- * modified to match the pru_sockaddr() and pru_peeraddr() entry points
- * in struct pr_usrreqs, so that protocols can just reference then directly
- * without the need for a wrapper function.  The socket must have a valid
- * (i.e., non-nil) PCB, but it should be impossible to get an invalid one
- * except through a kernel programming error, so it is acceptable to panic
- * (or in this case trap) if the PCB is invalid.  (Actually, we don't trap
- * because there actually /is/ a programming error somewhere... XXX)
+ * The socket may have an invalid PCB, i.e. NULL.  For example, a TCP
+ * socket received RST.
  */
-void
-in6_setsockaddr_dispatch(netmsg_t msg)
-{
-	int error;
-
-	error = in6_setsockaddr(msg->sockaddr.base.nm_so, msg->sockaddr.nm_nam);
-	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
-}
-
-int
+static int
 in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 {
 	struct inpcb *inp;
 	struct sockaddr_in6 *sin6;
 
-	/*
-	 * Do the malloc first in case it blocks.
-	 */
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+	inp = so->so_pcb;
+	if (!inp)
+		return EINVAL;
+
 	sin6 = kmalloc(sizeof *sin6, M_SONAME, M_WAITOK | M_ZERO);
 	sin6->sin6_family = AF_INET6;
 	sin6->sin6_len = sizeof(*sin6);
-
-	crit_enter();
-	inp = so->so_pcb;
-	if (!inp) {
-		crit_exit();
-		kfree(sin6, M_SONAME);
-		return EINVAL;
-	}
 	sin6->sin6_port = inp->inp_lport;
 	sin6->sin6_addr = inp->in6p_laddr;
-	crit_exit();
 	if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr))
 		sin6->sin6_scope_id = ntohs(sin6->sin6_addr.s6_addr16[1]);
 	else
@@ -493,6 +471,15 @@ in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 }
 
 void
+in6_setsockaddr_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in6_setsockaddr(msg->sockaddr.base.nm_so, msg->sockaddr.nm_nam);
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
+}
+
+void
 in6_setpeeraddr_dispatch(netmsg_t msg)
 {
 	int error;
@@ -501,29 +488,26 @@ in6_setpeeraddr_dispatch(netmsg_t msg)
 	lwkt_replymsg(&msg->peeraddr.base.lmsg, error);
 }
 
+/*
+ * The socket may have an invalid PCB, i.e. NULL.  For example, a TCP
+ * socket received RST.
+ */
 int
 in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 {
 	struct inpcb *inp;
 	struct sockaddr_in6 *sin6;
 
-	/*
-	 * Do the malloc first in case it blocks.
-	 */
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+	inp = so->so_pcb;
+	if (!inp)
+		return EINVAL;
+
 	sin6 = kmalloc(sizeof(*sin6), M_SONAME, M_WAITOK | M_ZERO);
 	sin6->sin6_family = AF_INET6;
 	sin6->sin6_len = sizeof(struct sockaddr_in6);
-
-	crit_enter();
-	inp = so->so_pcb;
-	if (!inp) {
-		crit_exit();
-		kfree(sin6, M_SONAME);
-		return EINVAL;
-	}
 	sin6->sin6_port = inp->inp_fport;
 	sin6->sin6_addr = inp->in6p_faddr;
-	crit_exit();
 	if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr))
 		sin6->sin6_scope_id = ntohs(sin6->sin6_addr.s6_addr16[1]);
 	else
