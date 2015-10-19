@@ -24,7 +24,7 @@ static void	mainloop(struct sockaddr_in *, int, int, uint32_t);
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -4 addr4 -p port [-i ninst] [-r rcvbuf] "
+	fprintf(stderr, "%s [-4 addr4] -p port [-i ninst] [-r rcvbuf] "
 	    "[-N] [-B]\n", cmd);
 	exit(2);
 }
@@ -80,7 +80,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (in.sin_port == 0 || in.sin_addr.s_addr == INADDR_ANY)
+	if (in.sin_port == 0)
 		usage(argv[0]);
 
 	s = -1;
