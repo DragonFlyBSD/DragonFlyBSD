@@ -34,8 +34,6 @@
 
 #include <libprop/proplib.h>
 
-#define DM_CMD_LEN 16
-
 #define DM_IOCTL 0xfd
 
 #define DM_IOCTL_CMD 0
