@@ -284,7 +284,6 @@ MALLOC_DECLARE(M_DM);
 
 #define aprint_debug(format, ...)	\
     do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)
-#define aprint_normal	kprintf
 
 #define DM_TARGET_MODULE(name, evh)				\
     static moduledata_t name##_mod = {				\

@@ -168,7 +168,7 @@ dm_pdev_insert(const char *dev_name)
 			dpart->media_blocks,
 			dpart->media_blksize);
 	} else {
-		aprint_normal("dmp_pdev_insert DIOCGPART failed %d\n", error);
+		kprintf("dmp_pdev_insert DIOCGPART failed %d\n", error);
 	}
 
 	SLIST_INSERT_HEAD(&dm_pdev_list, dmp, next_pdev);
