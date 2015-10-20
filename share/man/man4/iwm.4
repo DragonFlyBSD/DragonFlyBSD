@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/iwm.4 286441 2015-08-08 06:06:48Z rpaulo $
 .\"
-.Dd September 18, 2015
+.Dd October 20, 2015
 .Dt IWM 4
 .Os
 .Sh NAME
@@ -89,6 +89,12 @@ For more information on configuring this device, see
 This driver requires the firmware built with the
 .Nm iwmfw
 module to work.
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.iwm.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
+.El
 .Sh EXAMPLES
 Join an existing BSS network (i.e., connect to an access point):
 .Bd -literal -offset indent

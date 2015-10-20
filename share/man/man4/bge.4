@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bge.4,v 1.1.2.4 2003/02/17 21:20:39 trhodes Exp $
 .\"
-.Dd March 4, 2007
+.Dd October 20, 2015
 .Dt BGE 4
 .Os
 .Sh NAME
@@ -172,8 +172,11 @@ The
 .Nm
 driver supports
 .Xr polling 4 .
-.Sh TUNABLES
-.Bl -tag -width ".Va hw.bge.fake_autoneg"
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.iwn.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
 .It Va hw.bge.fake_autoneg
 Set to 1 for some
 .Tn IBM
