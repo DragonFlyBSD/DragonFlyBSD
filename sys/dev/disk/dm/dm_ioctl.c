@@ -473,7 +473,7 @@ dm_dev_resume_ioctl(prop_dictionary_t dm_dict)
 
 	/*
 	 * char *xml; xml = prop_dictionary_externalize(dm_dict);
-	 * printf("%s\n",xml);
+	 * kprintf("%s\n",xml);
 	 */
 
 	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_NAME, &name);
@@ -654,7 +654,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 
 	/*
 	 * char *xml; xml = prop_dictionary_externalize(dm_dict);
-	 * printf("%s\n",xml);
+	 * kprintf("%s\n",xml);
 	 */
 
 	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_NAME, &name);

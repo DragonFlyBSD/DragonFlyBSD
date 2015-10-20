@@ -139,8 +139,8 @@ dm_target_snapshot_init(dm_dev_t *dmv, void **target_config, char *params)
 			ap++;
 	}
 
-	printf("Snapshot target init function called!!\n");
-	printf("Snapshotted device: %s, cow device %s,\n\t persistent flag: %s, "
+	kprintf("Snapshot target init function called!!\n");
+	kprintf("Snapshotted device: %s, cow device %s,\n\t persistent flag: %s, "
 	    "chunk size: %s\n", argv[0], argv[1], argv[2], argv[3]);
 
 	/* Insert snap device to global pdev list */
@@ -194,7 +194,7 @@ dm_target_snapshot_table(void *target_config)
 	count = 0;
 	cow_name = NULL;
 
-	printf("Snapshot target table function called\n");
+	kprintf("Snapshot target table function called\n");
 
 	/* count number of chars in offset */
 	for (i = tsc->tsc_chunk_size; i != 0; i /= 10)
@@ -209,7 +209,7 @@ dm_target_snapshot_table(void *target_config)
 	/* target expects use of M_DM */
 	params = kmalloc(prm_len, M_DM, M_WAITOK);
 
-	printf("%s %s %s %" PRIu64 "\n", tsc->tsc_snap_dev->name,
+	kprintf("%s %s %s %" PRIu64 "\n", tsc->tsc_snap_dev->name,
 	    tsc->tsc_cow_dev->name, tsc->tsc_persistent_dev ? "p" : "n",
 	    tsc->tsc_chunk_size);
 
@@ -225,7 +225,7 @@ int
 dm_target_snapshot_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 
-	printf("Snapshot target read function called!!\n");
+	kprintf("Snapshot target read function called!!\n");
 
 	bp->b_error = EIO;
 	bp->b_resid = 0;
@@ -248,7 +248,7 @@ dm_target_snapshot_destroy(dm_table_entry_t *table_en)
 	if (table_en->target_config == NULL)
 		return 0;
 
-	printf("Snapshot target destroy function called\n");
+	kprintf("Snapshot target destroy function called\n");
 
 	tsc = table_en->target_config;
 
@@ -299,9 +299,9 @@ dm_target_snapshot_deps(dm_table_entry_t *table_en,
 int
 dm_target_snapshot_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
-	printf("dm_target_snapshot_upcall called\n");
+	kprintf("dm_target_snapshot_upcall called\n");
 
-	printf("upcall buf flags %s %s\n",
+	kprintf("upcall buf flags %s %s\n",
 	    (bp->b_flags & B_WRITE) ? "B_WRITE" : "",
 	    (bp->b_flags & B_READ) ? "B_READ" : "");
 
@@ -331,8 +331,8 @@ dm_target_snapshot_orig_init(dm_dev_t *dmv, void **target_config,
 	if (params == NULL)
 		return EINVAL;
 
-	printf("Snapshot origin target init function called!!\n");
-	printf("Parent device: %s\n", params);
+	kprintf("Snapshot origin target init function called!!\n");
+	kprintf("Parent device: %s\n", params);
 
 	/* Insert snap device to global pdev list */
 	if ((dmp_real = dm_pdev_insert(params)) == NULL)
@@ -367,17 +367,17 @@ dm_target_snapshot_orig_table(void *target_config)
 
 	prm_len = 0;
 
-	printf("Snapshot origin target table function called\n");
+	kprintf("Snapshot origin target table function called\n");
 
 	/* length of names + count of chars + spaces and null char */
 	prm_len = strlen(tsoc->tsoc_real_dev->name) + 1;
 
-	printf("real_dev name %s\n", tsoc->tsoc_real_dev->name);
+	kprintf("real_dev name %s\n", tsoc->tsoc_real_dev->name);
 
 	if ((params = kmem_alloc(prm_len, KM_NOSLEEP)) == NULL)
 		return NULL;
 
-	printf("%s\n", tsoc->tsoc_real_dev->name);
+	kprintf("%s\n", tsoc->tsoc_real_dev->name);
 
 	snprintf(params, prm_len, "%s", tsoc->tsoc_real_dev->name);
 
@@ -388,7 +388,7 @@ int
 dm_target_snapshot_orig_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 
-	printf("Snapshot_Orig target read function called!!\n");
+	kprintf("Snapshot_Orig target read function called!!\n");
 
 	bp->b_error = EIO;
 	bp->b_resid = 0;

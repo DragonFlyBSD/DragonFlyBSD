@@ -67,7 +67,7 @@ int
 dm_target_mirror_init(dm_dev_t *dmv, void **target_config, char *argv)
 {
 
-	printf("Mirror target init function called!!\n");
+	kprintf("Mirror target init function called!!\n");
 
 	*target_config = NULL;
 
@@ -86,7 +86,7 @@ int
 dm_target_mirror_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 
-	printf("Mirror target read function called!!\n");
+	kprintf("Mirror target read function called!!\n");
 
 	bp->b_error = EIO;
 	bp->b_resid = 0;
