@@ -963,10 +963,7 @@ findpcb:
 #endif
 
 	tp = intotcpcb(inp);
-	if (tp == NULL) {
-		rstreason = BANDLIM_RST_CLOSEDPORT;
-		goto dropwithreset;
-	}
+	KASSERT(tp != NULL, ("tcp_input: tp is NULL"));
 	if (tp->t_state <= TCPS_CLOSED)
 		goto drop;
 

@@ -1070,16 +1070,19 @@ tcp_drain_oncpu(struct inpcbinfo *pcbinfo)
 	 * we block during the inpcb list iteration, i.e.
 	 * we don't need to use inpcb marker here.
 	 */
-	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
-	    ("not in correct netisr"));
+	ASSERT_IN_NETISR(pcbinfo->cpu);
 
 	LIST_FOREACH(inpb, head, inp_list) {
 		struct tcpcb *tcpb;
 		struct tseg_qent *te;
 
-		if ((inpb->inp_flags & INP_PLACEMARKER) == 0 &&
-		    (tcpb = intotcpcb(inpb)) != NULL &&
-		    (te = TAILQ_FIRST(&tcpb->t_segq)) != NULL) {
+		if (inpb->inp_flags & INP_PLACEMARKER)
+			continue;
+
+		tcpb = intotcpcb(inpb);
+		KASSERT(tcpb != NULL, ("tcp_drain_oncpu: tcpb is NULL"));
+
+		if ((te = TAILQ_FIRST(&tcpb->t_segq)) != NULL) {
 			TAILQ_REMOVE(&tcpb->t_segq, te, tqe_q);
 			if (te->tqe_th->th_flags & TH_FIN)
 				tcpb->t_flags &= ~TF_QUEDFIN;
@@ -1664,10 +1667,9 @@ tcp_quench(struct inpcb *inp, int error)
 {
 	struct tcpcb *tp = intotcpcb(inp);
 
-	if (tp != NULL) {
-		tp->snd_cwnd = tp->t_maxseg;
-		tp->snd_wacked = 0;
-	}
+	KASSERT(tp != NULL, ("tcp_quench: tp is NULL"));
+	tp->snd_cwnd = tp->t_maxseg;
+	tp->snd_wacked = 0;
 }
 
 /*
@@ -1680,7 +1682,8 @@ tcp_drop_syn_sent(struct inpcb *inp, int error)
 {
 	struct tcpcb *tp = intotcpcb(inp);
 
-	if ((tp != NULL) && (tp->t_state == TCPS_SYN_SENT))
+	KASSERT(tp != NULL, ("tcp_drop_syn_sent: tp is NULL"));
+	if (tp->t_state == TCPS_SYN_SENT)
 		tcp_drop(tp, error);
 }
 
@@ -1703,8 +1706,7 @@ tcp_mtudisc(struct inpcb *inp, int mtu)
 	const boolean_t isipv6 = FALSE;
 #endif
 
-	if (tp == NULL)
-		return;
+	KASSERT(tp != NULL, ("tcp_mtudisc: tp is NULL"));
 
 	/*
 	 * If no MTU is provided in the ICMP message, use the
@@ -2342,11 +2344,7 @@ tcp_drop_sysctl_dispatch(netmsg_t nmsg)
 
 		KASSERT((inp->inp_flags & INP_WILDCARD) == 0,
 		    ("in wildcard hash"));
-
-		if (tp == NULL) {
-			error = ESRCH;
-			goto done;
-		}
+		KASSERT(tp != NULL, ("tcp_drop_sysctl_dispatch: tp is NULL"));
 		KASSERT((tp->t_flags & TF_LISTEN) == 0, ("listen socket"));
 		tcp_drop(tp, ECONNABORTED);
 		error = 0;
