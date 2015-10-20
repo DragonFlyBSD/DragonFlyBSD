@@ -230,6 +230,8 @@ res_nopt(res_state statp,
 	*cp++ = 0;				/*%< "." */
 	ns_put16(ns_t_opt, cp);			/*%< TYPE */
 	cp += INT16SZ;
+	if (anslen > 0xffff)
+		anslen = 0xffff;
 	ns_put16(anslen & 0xffff, cp);		/*%< CLASS = UDP payload size */
 	cp += INT16SZ;
 	*cp++ = NOERROR;			/*%< extended RCODE */
