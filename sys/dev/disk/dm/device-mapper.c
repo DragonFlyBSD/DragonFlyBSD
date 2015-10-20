@@ -101,32 +101,40 @@ DECLARE_MODULE(dm, dm_mod, SI_SUB_RAID, SI_ORDER_ANY);
 MODULE_VERSION(dm, 1);
 
 /*
+ * This structure is used to translate command sent to kernel driver in
+ * <key>command</key>
+ * <value></value>
+ * to function
+ */
+/*
  * This array is used to translate cmd to function pointer.
  *
  * Interface between libdevmapper and lvm2tools uses different
  * names for one IOCTL call because libdevmapper do another thing
  * then. When I run "info" or "mknodes" libdevmapper will send same
  * ioctl to kernel but will do another things in userspace.
- *
  */
-static struct cmd_function cmd_fn[] = {
-		{ .cmd = "version", .fn = NULL},
-		{ .cmd = "targets", .fn = dm_list_versions_ioctl},
-		{ .cmd = "create",  .fn = dm_dev_create_ioctl},
-		{ .cmd = "info",    .fn = dm_dev_status_ioctl},
-		{ .cmd = "mknodes", .fn = dm_dev_status_ioctl},
-		{ .cmd = "names",   .fn = dm_dev_list_ioctl},
-		{ .cmd = "suspend", .fn = dm_dev_suspend_ioctl},
-		{ .cmd = "remove",  .fn = dm_dev_remove_ioctl},
-		{ .cmd = "remove_all", .fn = dm_dev_remove_all_ioctl},
-		{ .cmd = "rename",  .fn = dm_dev_rename_ioctl},
-		{ .cmd = "resume",  .fn = dm_dev_resume_ioctl},
-		{ .cmd = "clear",   .fn = dm_table_clear_ioctl},
-		{ .cmd = "deps",    .fn = dm_table_deps_ioctl},
-		{ .cmd = "reload",  .fn = dm_table_load_ioctl},
-		{ .cmd = "status",  .fn = dm_table_status_ioctl},
-		{ .cmd = "table",   .fn = dm_table_status_ioctl},
-		{ .cmd = "message", .fn = dm_message_ioctl},
+static struct cmd_function {
+	const char *cmd;
+	int (*fn)(prop_dictionary_t);
+} cmd_fn[] = {
+	{.cmd = "version",    .fn = NULL},
+	{.cmd = "targets",    .fn = dm_list_versions_ioctl},
+	{.cmd = "create",     .fn = dm_dev_create_ioctl},
+	{.cmd = "info",       .fn = dm_dev_status_ioctl},
+	{.cmd = "mknodes",    .fn = dm_dev_status_ioctl},
+	{.cmd = "names",      .fn = dm_dev_list_ioctl},
+	{.cmd = "suspend",    .fn = dm_dev_suspend_ioctl},
+	{.cmd = "remove",     .fn = dm_dev_remove_ioctl},
+	{.cmd = "remove_all", .fn = dm_dev_remove_all_ioctl},
+	{.cmd = "rename",     .fn = dm_dev_rename_ioctl},
+	{.cmd = "resume",     .fn = dm_dev_resume_ioctl},
+	{.cmd = "clear",      .fn = dm_table_clear_ioctl},
+	{.cmd = "deps",       .fn = dm_table_deps_ioctl},
+	{.cmd = "reload",     .fn = dm_table_load_ioctl},
+	{.cmd = "status",     .fn = dm_table_status_ioctl},
+	{.cmd = "table",      .fn = dm_table_status_ioctl},
+	{.cmd = "message",    .fn = dm_message_ioctl},
 };
 
 /* New module handle routine */

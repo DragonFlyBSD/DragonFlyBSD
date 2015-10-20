@@ -198,17 +198,6 @@ typedef struct dm_target {
 
 /* Interface structures */
 
-/*
- * This structure is used to translate command sent to kernel driver in
- * <key>command</key>
- * <value></value>
- * to function which I can call.
- */
-struct cmd_function {
-	const char *cmd;
-	int  (*fn)(prop_dictionary_t);
-};
-
 /* device-mapper */
 void dmsetdiskinfo(struct disk *, dm_table_head_t *);
 
