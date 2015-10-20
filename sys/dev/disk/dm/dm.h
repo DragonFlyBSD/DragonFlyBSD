@@ -124,10 +124,10 @@ typedef struct dm_dev {
 	uint64_t minor;
 	uint32_t flags; /* store communication protocol flags */
 
-	struct lock dev_mtx; /* mutex for generall device lock */
-	struct cv dev_cv; /* cv for between ioctl synchronisation */
+	struct lock dev_mtx; /* mutex for general device lock */
+	struct cv dev_cv; /* cv for between ioctl synchronization */
 
-	uint32_t event_nr;
+	/* uint32_t event_nr; */
 	uint32_t ref_cnt;
 
 	uint32_t dev_type;
@@ -135,13 +135,13 @@ typedef struct dm_dev {
 
 	dm_table_head_t table_head;
 
-	struct dm_dev_head upcalls;
+	/* struct dm_dev_head upcalls; */
 
 	struct disk *diskp;
 
 	struct devstat stats;
 
-	TAILQ_ENTRY(dm_dev) next_upcall; /* LIST of mirrored, snapshoted devices. */
+	/* TAILQ_ENTRY(dm_dev) next_upcall;*/ /* LIST of mirrored, snapshoted devices. */
 
 	TAILQ_ENTRY(dm_dev) next_devlist; /* Major device list. */
 } dm_dev_t;
