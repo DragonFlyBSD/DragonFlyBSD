@@ -1499,6 +1499,8 @@ make_packet(struct rainfo *rai)
 
 	TAILQ_FOREACH(dns, &rai->rai_dnssl, dn_next) {
 		struct dnssl_addr *dnsa;
+		uint8_t modulo;
+		uint8_t pad_len;
 
 		ndopt_dnssl = (struct nd_opt_dnssl *)buf;
 		ndopt_dnssl->nd_opt_dnssl_type = ND_OPT_DNSSL;
@@ -1517,7 +1519,10 @@ make_packet(struct rainfo *rai)
 
 		/* Padding to next 8 octets boundary */
 		len = buf - (char *)ndopt_dnssl;
-		len += (len % 8) ? 8 - len % 8 : 0;
+		modulo = len % 8;
+		pad_len = (modulo != 0) ? (8 - modulo) : 0;
+		len += pad_len;
+		buf += pad_len;
 
 		/* Length field must be in 8 octets */
 		ndopt_dnssl->nd_opt_dnssl_len = len / 8;
