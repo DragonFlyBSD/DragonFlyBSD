@@ -43,7 +43,9 @@ typedef	__ssize_t	ssize_t;
 #endif
 
 __BEGIN_DECLS
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 ssize_t	strfmon(char * __restrict, size_t, const char * __restrict, ...);
+#endif
 
 #if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
 #include <xlocale/_monetary.h>

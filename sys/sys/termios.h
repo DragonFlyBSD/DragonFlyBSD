@@ -32,7 +32,6 @@
  *
  *	@(#)termios.h	8.3 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/termios.h,v 1.13.2.1 2001/03/06 06:31:44 jhb Exp $
- * $DragonFly: src/sys/sys/termios.h,v 1.5 2007/01/08 19:29:23 dillon Exp $
  */
 
 #ifndef _SYS_TERMIOS_H_
@@ -263,9 +262,9 @@ int	tcflow (int, int);
 int	tcflush (int, int);
 int	tcsendbreak (int, int);
 
-#if	__XSI_VISIBLE
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 pid_t	tcgetsid(int);
-#endif	/* !_XSI_VISIBLE */
+#endif	/* __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE */
 
 #ifndef _POSIX_SOURCE
 void	cfmakeraw (struct termios *);

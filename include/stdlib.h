@@ -176,11 +176,14 @@ int	 setenv(const char *, const char *, int);
 int	 unsetenv(const char *);
 #endif
 
-#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
+#if __POSIX_VISIBLE >= 200809
 #ifndef _MKDTEMP_DECLARED
 char	*mkdtemp(char *);
 #define	_MKDTEMP_DECLARED
 #endif
+#endif /* __POSIX_VISIBLE >= 200809 */
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
+int	 getsubopt(char **, char *const *, char **);
 #ifndef _MKSTEMP_DECLARED
 int	 mkstemp(char *);
 #define	_MKSTEMP_DECLARED
@@ -205,7 +208,6 @@ char	*fcvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
 char	*gcvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
 #endif
 #endif
-int	 getsubopt(char **, char *const *, char **);
 int	 grantpt(int);
 char	*initstate(unsigned long /* XSI requires u_int */, char *, long);
 long	 jrand48(unsigned short[3]);

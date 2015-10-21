@@ -89,9 +89,11 @@ typedef	__nl_item	nl_item;
 #endif
 
 __BEGIN_DECLS
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 nl_catd  catopen(const char *, int);
 char    *catgets(nl_catd, int, int, const char *) __format_arg(4);
 int	 catclose(nl_catd);
+#endif
 __END_DECLS
 
 #endif	/* _NL_TYPES_H_ */

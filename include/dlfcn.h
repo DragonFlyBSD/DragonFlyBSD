@@ -110,11 +110,12 @@ typedef void (*dlfunc_t)(struct __dlfunc_arg);
 #endif /* __BSD_VISIBLE */
 
 __BEGIN_DECLS
-/* XSI functions first. */
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 int		 dlclose(void *);
 char		*dlerror(void);
 void		*dlopen(const char *, int);
 void		*dlsym(void * __restrict, const char * __restrict);
+#endif
 
 #if __BSD_VISIBLE
 void		*fdlopen(int, int);

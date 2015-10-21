@@ -49,11 +49,13 @@ struct __tag_iconv_t;
 typedef	struct __tag_iconv_t	*iconv_t;
 
 __BEGIN_DECLS
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 iconv_t	iconv_open(const char *, const char *);
 size_t	iconv(iconv_t, char ** __restrict,
 	      size_t * __restrict, char ** __restrict,
 	      size_t * __restrict);
 int	iconv_close(iconv_t);
+#endif
 /*
  * non-portable interfaces for iconv
  */

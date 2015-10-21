@@ -90,7 +90,7 @@ int	 strcoll(const char *, const char *);
 char	*strcpy(char * __restrict, const char * __restrict);
 #endif
 size_t	 strcspn(const char *, const char *) __pure;
-#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 char	*strdup(const char *);
 #endif
 char	*strerror(int);

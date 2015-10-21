@@ -447,6 +447,10 @@ int	 getsid(pid_t _pid);
 int	 fchdir(int);
 int	 getpgid(pid_t _pid);
 int	 lchown(const char *, uid_t, gid_t);
+#ifndef _MKSTEMP_DECLARED
+int	 mkstemp(char *);
+#define	_MKSTEMP_DECLARED
+#endif
 ssize_t	 pread(int, void *, size_t, off_t);
 ssize_t	 pwrite(int, const void *, size_t, off_t);
 
@@ -464,6 +468,10 @@ int	fchownat(int, const char *, uid_t, gid_t, int);
 int	fexecve(int, char *const [], char *const []);
 #endif
 int	linkat(int, const char *, int, const char *, int);
+#ifndef _MKDTEMP_DECLARED
+char	*mkdtemp(char *);
+#define	_MKDTEMP_DECLARED
+#endif
 ssize_t	readlinkat(int, const char * __restrict, char * __restrict, size_t);
 int	symlinkat(const char *, int, const char *);
 int	unlinkat(int, const char *, int);
@@ -549,17 +557,9 @@ int	 issetugid(void);
 long	 lpathconf(const char *, int);
 int	 lwp_create(struct lwp_params *);
 lwpid_t	 lwp_gettid(void);
-#ifndef _MKDTEMP_DECLARED
-char	*mkdtemp(char *);
-#define	_MKDTEMP_DECLARED
-#endif
 #ifndef	_MKNOD_DECLARED
 int	 mknod(const char *, mode_t, dev_t);
 #define	_MKNOD_DECLARED
-#endif
-#ifndef _MKSTEMP_DECLARED
-int	 mkstemp(char *);
-#define	_MKSTEMP_DECLARED
 #endif
 int	 mkstemps(char *, int);
 #ifndef _MKTEMP_DECLARED
