@@ -31,7 +31,6 @@
 .\"
 .\"     @(#)kvm_getfiles.3	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libkvm/kvm_getfiles.3,v 1.6.2.6 2001/12/17 10:08:30 ru Exp $
-.\" $DragonFly: src/lib/libkvm/kvm_getfiles.3,v 1.3 2006/02/17 19:35:07 swildner Exp $
 .\"
 .Dd October 14, 2015
 .Dt KVM_GETFILES 3
@@ -44,7 +43,7 @@
 .Sh SYNOPSIS
 .In sys/types.h
 .In kvm.h
-.Ft kinfo_file *
+.Ft struct kinfo_file *
 .Fn kvm_getfiles "kvm_t *kd" "int op" "int arg" "int *cnt"
 .Sh DESCRIPTION
 .Fn kvm_getfiles
