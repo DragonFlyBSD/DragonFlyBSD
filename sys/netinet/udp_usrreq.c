@@ -260,8 +260,10 @@ udp_ctloutput(netmsg_t msg)
 	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct inpcb *inp = so->so_pcb;
 
-	if (inp == NULL)
+	if (inp == NULL) {
 		lwkt_replymsg(&msg->lmsg, EINVAL);
+		return;
+	}
 
 	if (sopt->sopt_level == IPPROTO_IP && sopt->sopt_dir == SOPT_SET) {
 		switch (sopt->sopt_name) {
