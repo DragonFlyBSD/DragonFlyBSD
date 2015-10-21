@@ -50,12 +50,10 @@ imaxdiv_t	imaxdiv(intmax_t, intmax_t) __pure2;
 
 intmax_t	strtoimax(const char * __restrict, char ** __restrict, int);
 uintmax_t	strtoumax(const char * __restrict, char ** __restrict, int);
-#ifndef __cplusplus
 intmax_t	wcstoimax(const wchar_t * __restrict,
 		    wchar_t ** __restrict, int);
 uintmax_t	wcstoumax(const wchar_t * __restrict,
 		    wchar_t ** __restrict, int);
-#endif
 __END_DECLS
 
 #endif /* !_INTTYPES_H_ */
