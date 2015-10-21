@@ -258,7 +258,10 @@ udp_ctloutput(netmsg_t msg)
 {
 	struct socket *so = msg->base.nm_so;
 	struct sockopt *sopt = msg->ctloutput.nm_sopt;
-	struct	inpcb *inp = so->so_pcb;
+	struct inpcb *inp = so->so_pcb;
+
+	if (inp == NULL)
+		lwkt_replymsg(&msg->lmsg, EINVAL);
 
 	if (sopt->sopt_level == IPPROTO_IP && sopt->sopt_dir == SOPT_SET) {
 		switch (sopt->sopt_name) {
@@ -1202,11 +1205,8 @@ udp_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	inp = so->so_pcb;
-	if (inp != NULL) {
-		error = EINVAL;
-		goto out;
-	}
+	KASSERT(so->so_pcb == NULL, ("udp socket attached"));
+
 	error = soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
 	if (error)
 		goto out;
@@ -1215,7 +1215,7 @@ udp_attach(netmsg_t msg)
 	if (error)
 		goto out;
 
-	inp = (struct inpcb *)so->so_pcb;
+	inp = so->so_pcb;
 	inp->inp_flags |= INP_DIRECT_DETACH;
 	inp->inp_ip_ttl = ip_defttl;
 	error = 0;
