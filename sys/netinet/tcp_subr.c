@@ -2351,7 +2351,9 @@ tcp_drop_sysctl_dispatch(netmsg_t nmsg)
 	} else {
 		error = ESRCH;
 	}
+#ifdef INET6
 done:
+#endif
 	lwkt_replymsg(lmsg, error);
 }
 
