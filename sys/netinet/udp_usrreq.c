@@ -1199,19 +1199,29 @@ udp_abort(netmsg_t msg __unused)
 	panic("udp_abort is called");
 }
 
+static int
+udp_preattach(struct socket *so, int proto __unused, struct pru_attach_info *ai)
+{
+	return soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
+}
+
 static void
 udp_attach(netmsg_t msg)
 {
 	struct socket *so = msg->attach.base.nm_so;
 	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct inpcb *inp;
-	int error;
+	int error = 0;
 
 	KASSERT(so->so_pcb == NULL, ("udp socket attached"));
 
-	error = soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
-	if (error)
-		goto out;
+	if (ai != NULL)
+		error = udp_preattach(so, 0 /* don't care */, ai);
+		if (error)
+			goto out;
+	else {
+		/* Post attach; do nothing */
+	}
 
 	error = in_pcballoc(so, &udbinfo[mycpuid]);
 	if (error)
@@ -1760,5 +1770,6 @@ struct pr_usrreqs udp_usrreqs = {
 	.pru_shutdown = udp_shutdown,
 	.pru_sockaddr = in_setsockaddr_dispatch,
 	.pru_sosend = sosendudp,
-	.pru_soreceive = soreceive
+	.pru_soreceive = soreceive,
+	.pru_preattach = udp_preattach
 };
