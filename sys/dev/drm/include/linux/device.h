@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
 
 #ifndef	_LINUX_DEVICE_H_
 #define	_LINUX_DEVICE_H_
+
+#include <linux/lockdep.h>
 
 #define	dev_err(dev, fmt, ...)						\
 	device_printf((dev), "error: " fmt, ## __VA_ARGS__)

@@ -28,6 +28,7 @@
 #define _LINUX_MUTEX_H_
 
 #include <sys/lock.h>
+#include <linux/lockdep.h>
 
 #define mutex_is_locked(lock)	(lockcount(lock) != 0)
 

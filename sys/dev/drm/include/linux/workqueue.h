@@ -36,6 +36,7 @@
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/timer.h>
+#include <linux/lockdep.h>
 
 #include <sys/taskqueue.h>
 

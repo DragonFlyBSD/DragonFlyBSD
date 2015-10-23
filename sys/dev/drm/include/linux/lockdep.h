@@ -24,10 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_FS_H_
-#define _LINUX_FS_H_
+#ifndef _LINUX_LOCKDEP_H_
+#define _LINUX_LOCKDEP_H_
 
-#include <linux/rculist.h>
-#include <linux/lockdep.h>
+static inline void
+lockdep_assert_held(struct lock *l)
+{
+	/* XXX: This function does nothing */
+}
 
-#endif	/* _LINUX_FS_H_ */
+#endif	/* _LINUX_LOCKDEP_H_ */
