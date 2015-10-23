@@ -1410,6 +1410,14 @@ udp_bind(netmsg_t msg)
 	lwkt_replymsg(&msg->bind.base.lmsg, error);
 }
 
+static int
+udp_preconnect(struct socket *so, const struct sockaddr *nam __unused,
+    struct thread *td __unused)
+{
+	sosetstate(so, SS_ISCONNECTED);		/* XXX */
+	return 0;
+}
+
 static void
 udp_connect(netmsg_t msg)
 {
@@ -1519,6 +1527,12 @@ udp_connect(netmsg_t msg)
 	}
 	error = udp_connect_oncpu(inp, sin, if_sin);
 out:
+	if (msg->connect.nm_flags & PRUC_HELDTD)
+		lwkt_rele(td);
+	if (error && (msg->connect.nm_flags & PRUC_ASYNC)) {
+		so->so_error = error;
+		soclrstate(so, SS_ISCONNECTED);		/* XXX */
+	}
 	if (error && inp != NULL && inp->inp_lport != 0 &&
 	    (inp->inp_flags & INP_WILDCARD) == 0) {
 		boolean_t forwarded;
@@ -1820,5 +1834,6 @@ struct pr_usrreqs udp_usrreqs = {
 	.pru_sockaddr = in_setsockaddr_dispatch,
 	.pru_sosend = sosendudp,
 	.pru_soreceive = soreceive,
+	.pru_preconnect = udp_preconnect,
 	.pru_preattach = udp_preattach
 };
