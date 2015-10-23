@@ -166,6 +166,8 @@ struct socket {
 
 	struct spinlock so_rcvd_spin;
 	struct netmsg_pru_rcvd so_rcvd_msg;
+
+	lwkt_port_t so_orig_port;
 };
 
 #endif

@@ -1484,6 +1484,25 @@ udp_connect(netmsg_t msg)
 			udp_remwildcardhash(inp);
 		}
 
+		if (so->so_orig_port == NULL) {
+			/*
+			 * First time change protocol processing port.
+			 * Save the current port for synchronization upon
+			 * udp_detach.
+			 */
+			so->so_orig_port = &curthread->td_msgport;
+		} else {
+			/*
+			 * We have changed protocol processing port more
+			 * than once.  We could not do direct detach
+			 * anymore, because we lose the track of the
+			 * original protocol processing ports to perform
+			 * synchronization upon udp_detach.  This should
+			 * be rare though.
+			 */
+			inp->inp_flags &= ~INP_DIRECT_DETACH;
+		}
+
 		/*
 		 * We are moving the protocol processing port the socket
 		 * is on, we have to unlink here and re-link on the
@@ -1632,6 +1651,21 @@ udp_detach_oncpu_dispatch(netmsg_t msg)
 }
 
 static void
+udp_detach_syncorig_dispatch(netmsg_t msg)
+{
+	struct netmsg_base *clomsg = &msg->base;
+	struct socket *so = clomsg->nm_so;
+
+	/*
+	 * Original protocol processing port is synchronized;
+	 * destroy this inpcb in its owner netisr.
+	 */
+	netmsg_init(clomsg, so, &netisr_apanic_rport, 0,
+	    udp_detach_final_dispatch);
+	lwkt_sendmsg(so->so_port, &clomsg->lmsg);
+}
+
+static void
 udp_detach(netmsg_t msg)
 {
 	struct socket *so = msg->detach.base.nm_so;
@@ -1669,7 +1703,22 @@ udp_detach(netmsg_t msg)
 		KASSERT((inp->inp_flags & INP_WILDCARD) == 0,
 		    ("in the wildcardhash"));
 		KASSERT(inp->inp_moptions == NULL, ("has mcast options"));
-		udp_detach2(so);
+		if (so->so_orig_port == NULL) {
+			udp_detach2(so);
+		} else {
+			/*
+			 * Protocol processing port changed once, so
+			 * we need to make sure that there are nothing
+			 * left on the original protocol processing
+			 * port before we destroy this socket and inpcb.
+			 * This is more lightweight than going through
+			 * all UDP processing netisrs.
+			 */
+			clomsg = &so->so_clomsg;
+			netmsg_init(clomsg, so, &netisr_apanic_rport,
+			    MSGF_IGNSOPORT, udp_detach_syncorig_dispatch);
+			lwkt_sendmsg(so->so_orig_port, &clomsg->lmsg);
+		}
 		return;
 	}
 
