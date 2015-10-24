@@ -7,7 +7,7 @@ struct dm_target {
 	int (*strategy)(struct dm_table_entry *, struct buf *);
 	int (*upcall)(struct dm_table_entry *, struct buf *);
 
-	SLIST_ENTRY(dm_target) next;
+	TAILQ_ENTRY(dm_target) dm_target_next;
 };
 
 
@@ -28,7 +28,7 @@ struct dm_pdev {
 	int refcnt;
 	TAILQ_ENTRY(dm_pdev) next_pdev;
 };
-TAILQ(dm_pdevs, pm_pdev);
+TAILQ_HEAD(dm_pdevs, pm_pdev);
 
 
 struct dm_dev {
@@ -48,11 +48,11 @@ struct dm_dev {
 	struct dm_table tables[2];
 
 	struct dm_dev_list upcalls;
-	SLIST_NEXT(dm_dev) next_upcall;
+	TAILQ_NEXT(dm_dev) next_upcall;
 
-	SLIST_NEXT(dm_dev) next_devlist;
+	TAILQ_NEXT(dm_dev) next_devlist;
 };
-SLIST(dm_dev_list, dm_dev) dm_devs;
+TAILQ_HEAD(dm_dev_list, dm_dev) dm_devs;
 
 
 /* for zero,error : dm_target->target_config == NULL */
