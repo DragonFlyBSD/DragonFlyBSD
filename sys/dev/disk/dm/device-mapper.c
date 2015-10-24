@@ -440,7 +440,7 @@ dmstrategy(struct dev_strategy_args *ap)
 		 * I need need number of bytes not blocks.
 		 */
 		table_start = table_en->start * DEV_BSIZE;
-		table_end = table_start + (table_en->length) * DEV_BSIZE;
+		table_end = table_start + table_en->length * DEV_BSIZE;
 
 		/*
 		 * Calculate the start and end
@@ -526,7 +526,7 @@ dmdump(struct dev_dump_args *ap)
 		 * I need need number of bytes not blocks.
 		 */
 		table_start = table_en->start * DEV_BSIZE;
-		table_end = table_start + (table_en->length) * DEV_BSIZE;
+		table_end = table_start + table_en->length * DEV_BSIZE;
 
 		/*
 		 * Calculate the start and end

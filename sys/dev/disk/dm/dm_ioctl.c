@@ -950,7 +950,7 @@ dm_message_ioctl(prop_dictionary_t dm_dict)
 	} else {
 		SLIST_FOREACH(table_en, tbl, next) {
 			table_start = table_en->start;
-			table_end = table_start + (table_en->length);
+			table_end = table_start + table_en->length;
 
 			if ((sector >= table_start) && (sector < table_end)) {
 				found = 1;
