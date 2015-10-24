@@ -3,6 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -77,6 +78,18 @@ INIT_LIST_HEAD(struct list_head *list)
 	list->next = list->prev = list;
 }
  
+static inline struct list_head *
+list_first(const struct list_head *head)
+{
+	return head->next;
+}
+
+static inline struct list_head *
+list_last(const struct list_head *head)
+{
+	return head->prev;
+}
+
 static inline int
 list_empty(const struct list_head *head)
 {
@@ -124,6 +137,12 @@ list_del_init(struct list_head *entry)
 
 #define list_first_entry(ptr, type, member) \
         list_entry((ptr)->next, type, member)
+
+#define list_first_entry_or_null(ptr, type, member) \
+	(list_empty(ptr) ? NULL: list_first_entry(ptr, type, member))
+
+#define list_last_entry(ptr, type, field) \
+	list_entry(list_last((ptr)), type, field)
 
 #define list_next_entry(ptr, member)					\
 	list_entry(((ptr)->member.next), typeof(*(ptr)), member)
