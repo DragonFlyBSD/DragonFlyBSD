@@ -69,7 +69,7 @@
  * applied to them.
  */
 typedef struct dm_table_entry {
-	struct dm_dev *dm_dev;		/* backlink */
+	struct dm_dev *dev;		/* backlink */
 	uint64_t start;
 	uint64_t length;
 

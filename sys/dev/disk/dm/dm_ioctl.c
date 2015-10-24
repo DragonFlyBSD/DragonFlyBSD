@@ -718,7 +718,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			     (uintmax_t)table_en->length);
 
 		table_en->target = target;
-		table_en->dm_dev = dmv;
+		table_en->dev = dmv;
 		table_en->target_config = NULL;
 
 		/*
