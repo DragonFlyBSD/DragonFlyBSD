@@ -102,14 +102,12 @@ typedef struct target_snapshot_origin_config {
 int dm_target_snapshot_init(dm_table_entry_t *, char *);
 char *dm_target_snapshot_table(void *);
 int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_snapshot_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_snapshot_destroy(dm_table_entry_t *);
 int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
 
 int dm_target_snapshot_orig_init(dm_table_entry_t *, char *);
 char *dm_target_snapshot_orig_table(void *);
 int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
-int dm_target_snapshot_orig_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_snapshot_orig_destroy(dm_table_entry_t *);
 int dm_target_snapshot_orig_upcall(dm_table_entry_t *, struct buf *);
 
@@ -165,6 +163,9 @@ dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
 
 	tsc->tsc_snap_dev = dmp_snap;
 	tsc->tsc_cow_dev = dmp_cow;
+
+	dm_table_add_deps(table_en, dmp_snap);
+	dm_table_add_deps(table_en, dmp_cow);
 
 	table_en->target_config = tsc;
 	table_en->dev->dev_type = DM_SNAPSHOT_DEV;
@@ -263,37 +264,7 @@ dm_target_snapshot_destroy(dm_table_entry_t *table_en)
 
 	return 0;
 }
-/* Add this target dependiences to prop_array_t */
-int
-dm_target_snapshot_deps(dm_table_entry_t *table_en,
-    prop_array_t prop_array)
-{
-	dm_target_snapshot_config_t *tsc;
-	struct vattr va;
 
-	int error;
-
-	if (table_en->target_config == NULL)
-		return 0;
-
-	tsc = table_en->target_config;
-
-	if ((error = VOP_GETATTR(tsc->tsc_snap_dev->pdev_vnode, &va, curlwp->l_cred)) != 0)
-		return error;
-
-	prop_array_add_uint64(prop_array, (uint64_t) va.va_rdev);
-
-	if (tsc->tsc_persistent_dev) {
-
-		if ((error = VOP_GETATTR(tsc->tsc_cow_dev->pdev_vnode, &va,
-			    curlwp->l_cred)) != 0)
-			return error;
-
-		prop_array_add_uint64(prop_array, (uint64_t) va.va_rdev);
-
-	}
-	return 0;
-}
 /* Upcall is used to inform other depended devices about IO. */
 int
 dm_target_snapshot_upcall(dm_table_entry_t *table_en, struct buf *bp)
@@ -341,6 +312,8 @@ dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
 		return 1;
 
 	tsoc->tsoc_real_dev = dmp_real;
+
+	dm_table_add_deps(table_en, dmp_real);
 
 	table_en->target_config = tsoc;
 	table_en->dev->dev_type = DM_SNAPSHOT_ORIG_DEV;
@@ -422,31 +395,7 @@ dm_target_snapshot_orig_destroy(dm_table_entry_t *table_en)
 
 	return 0;
 }
-/*
- * Get target deps and add them to prop_array_t.
- */
-int
-dm_target_snapshot_orig_deps(dm_table_entry_t *table_en,
-    prop_array_t prop_array)
-{
-	dm_target_snapshot_origin_config_t *tsoc;
-	struct vattr va;
 
-	int error;
-
-	if (table_en->target_config == NULL)
-		return 0;
-
-	tsoc = table_en->target_config;
-
-	if ((error = VOP_GETATTR(tsoc->tsoc_real_dev->pdev_vnode, &va,
-		    curlwp->l_cred)) != 0)
-		return error;
-
-	prop_array_add_uint64(prop_array, (uint64_t) va.va_rdev);
-
-	return 0;
-}
 /* Unsupported for this target. */
 int
 dm_target_snapshot_orig_upcall(dm_table_entry_t *table_en, struct buf *bp)

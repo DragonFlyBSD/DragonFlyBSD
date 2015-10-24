@@ -129,6 +129,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, char *params)
 		if (ap == NULL)
 			break;
 		tsc->stripe_devs[n].offset = atoi64(ap);
+		dm_table_add_deps(table_en, tsc->stripe_devs[n].pdev);
 	}
 	if (n != tsc->stripe_num) {
 		dm_target_stripe_destroy_config(tsc);
@@ -379,32 +380,6 @@ dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc)
 }
 
 /*
- * Generate properties from stripe table entry.
- */
-static int
-dm_target_stripe_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
-{
-	dm_target_stripe_config_t *tsc;
-	struct vattr va;
-	int error;
-	int n;
-
-	if (table_en->target_config == NULL)
-		return ENOENT;
-
-	tsc = table_en->target_config;
-	error = 0;
-	for (n = 0; n < tsc->stripe_num; ++n) {
-		error = VOP_GETATTR(tsc->stripe_devs[n].pdev->pdev_vnode, &va);
-		if (error)
-			break;
-		prop_array_add_uint64(prop_array,
-				(uint64_t)makeudev(va.va_rmajor, va.va_rminor));
-	}
-	return (error);
-}
-
-/*
  * Unsupported for this target.
  */
 static int
@@ -433,7 +408,6 @@ dmts_mod_handler(module_t mod, int type, void *unused)
                 dmt->init = &dm_target_stripe_init;
                 dmt->table = &dm_target_stripe_table;
                 dmt->strategy = &dm_target_stripe_strategy;
-                dmt->deps = &dm_target_stripe_deps;
                 dmt->destroy = &dm_target_stripe_destroy;
                 dmt->upcall = &dm_target_stripe_upcall;
                 dmt->dump = &dm_target_stripe_dump;

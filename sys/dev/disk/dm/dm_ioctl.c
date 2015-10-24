@@ -99,6 +99,9 @@
 		prop_dictionary_set_uint32(dm_dict,DM_IOCTL_FLAGS,flag); \
 } while (/*CONSTCOND*/0)
 
+static int
+dm_table_deps(dm_table_entry_t *, prop_array_t);
+
 /*
  * Print flags sent to the kernel from libevmapper.
  */
@@ -606,7 +609,7 @@ dm_table_deps_ioctl(prop_dictionary_t dm_dict)
 	tbl = dm_table_get_entry(&dmv->table_head, table_type);
 
 	SLIST_FOREACH(table_en, tbl, next)
-	    table_en->target->deps(table_en, cmd_array);
+		dm_table_deps(table_en, cmd_array);
 
 	dm_table_release(&dmv->table_head, table_type);
 	dm_dev_unbusy(dmv);
@@ -616,6 +619,34 @@ dm_table_deps_ioctl(prop_dictionary_t dm_dict)
 
 	return 0;
 }
+
+static int
+dm_table_deps(dm_table_entry_t *table_en, prop_array_t array)
+{
+	dm_mapping_t *map;
+	int i, size;
+	uint64_t ret, tmp;
+
+	size = prop_array_count(array);
+
+	TAILQ_FOREACH(map, &table_en->pdev_maps, next) {
+		ret = dm_pdev_get_udev(map->data.pdev);
+		for (i = 0; i < size; i++) {
+			if (prop_array_get_uint64(array, i, &tmp) == true)
+				if (ret == tmp)
+					break; /* exists */
+		}
+		/*
+		 * Ignore if the device has already been added by
+		 * other tables.
+		 */
+		if (i == size)
+			prop_array_add_uint64(array, ret);
+	}
+
+	return 0;
+}
+
 /*
  * Load new table/tables to device.
  * Call apropriate target init routine open all physical pdev's and
@@ -720,6 +751,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		table_en->target = target;
 		table_en->dev = dmv;
 		table_en->target_config = NULL;
+		TAILQ_INIT(&table_en->pdev_maps);
 
 		/*
 		 * There is a parameter string after dm_target_spec

@@ -247,6 +247,24 @@ dm_pdev_decr(dm_pdev_t *dmp)
 	return 0;
 }
 
+uint64_t
+dm_pdev_get_udev(dm_pdev_t *dmp)
+{
+	struct vattr va;
+	int ret;
+
+	if (dmp->pdev_vnode == NULL)
+		return (uint64_t)-1;
+
+	ret = VOP_GETATTR(dmp->pdev_vnode, &va);
+	if (ret)
+		return (uint64_t)-1;
+
+	ret = makeudev(va.va_rmajor, va.va_rminor);
+
+	return ret;
+}
+
 /*
  * Initialize pdev subsystem.
  */

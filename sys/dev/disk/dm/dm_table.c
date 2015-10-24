@@ -147,6 +147,9 @@ dm_table_destroy(dm_table_head_t *head, uint8_t table_id)
 		 * call table_en->target_config must be set to NULL.
 		 */
 		table_en->target->destroy(table_en);
+
+		dm_table_free_deps(table_en);
+
 		/* decrement the refcount for the target */
 		dm_target_unbusy(table_en->target);
 
@@ -253,4 +256,55 @@ dm_table_head_destroy(dm_table_head_t *head)
 	KKASSERT(head->io_cnt == 0);
 
 	lockuninit(&head->table_mtx);
+}
+
+int
+dm_table_add_deps(dm_table_entry_t *table_en, dm_pdev_t *pdev)
+{
+	dm_table_head_t *head;
+	dm_mapping_t *map;
+	uint64_t udev;
+
+	KKASSERT(pdev);
+	udev = dm_pdev_get_udev(pdev);
+	if (udev == (uint64_t)-1) {
+		kprintf("%s: makeudev %s failed\n", __func__, pdev->name);
+		return -1;
+	}
+
+	head = &table_en->dev->table_head;
+	lockmgr(&head->table_mtx, LK_SHARED);
+
+	TAILQ_FOREACH(map, &table_en->pdev_maps, next) {
+		if (dm_pdev_get_udev(map->data.pdev) == udev) {
+			lockmgr(&head->table_mtx, LK_RELEASE);
+			return -1;
+		}
+	}
+
+	map = kmalloc(sizeof(*map), M_DM, M_WAITOK | M_ZERO);
+	map->data.pdev = pdev;
+	TAILQ_INSERT_TAIL(&table_en->pdev_maps, map, next);
+
+	lockmgr(&head->table_mtx, LK_RELEASE);
+
+	return 0;
+}
+
+void
+dm_table_free_deps(dm_table_entry_t *table_en)
+{
+	dm_table_head_t *head;
+	dm_mapping_t *map;
+
+	head = &table_en->dev->table_head;
+	lockmgr(&head->table_mtx, LK_SHARED);
+
+	while ((map = TAILQ_FIRST(&table_en->pdev_maps)) != NULL) {
+		TAILQ_REMOVE(&table_en->pdev_maps, map, next);
+		kfree(map, M_DM);
+	}
+	KKASSERT(TAILQ_EMPTY(&table_en->pdev_maps));
+
+	lockmgr(&head->table_mtx, LK_RELEASE);
 }

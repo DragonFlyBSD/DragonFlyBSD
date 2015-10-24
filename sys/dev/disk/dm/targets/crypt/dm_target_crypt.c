@@ -673,6 +673,8 @@ dm_target_crypt_init(dm_table_entry_t *table_en, char *params)
 	priv->block_offset = block_offset;
 	priv->iv_offset = iv_offset - block_offset;
 
+	dm_table_add_deps(table_en, priv->pdev);
+
 	table_en->target_config = priv;
 	table_en->dev->dev_type = DM_CRYPTO_DEV;
 
@@ -802,28 +804,6 @@ dm_target_crypt_destroy(dm_table_entry_t *table_en)
 
 	dmtc_crypto_clear(priv, sizeof(dm_target_crypt_config_t));
 	kfree(priv, M_DMCRYPT);
-
-	return 0;
-}
-
-static int
-dm_target_crypt_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
-{
-	dm_target_crypt_config_t *priv;
-	struct vattr va;
-
-	int error;
-
-	if (table_en->target_config == NULL)
-		return ENOENT;
-
-	priv = table_en->target_config;
-
-	if ((error = VOP_GETATTR(priv->pdev->pdev_vnode, &va)) != 0)
-		return error;
-
-	prop_array_add_uint64(prop_array,
-			      (uint64_t)makeudev(va.va_rmajor, va.va_rminor));
 
 	return 0;
 }
@@ -1474,7 +1454,6 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 		dmt->init = &dm_target_crypt_init;
 		dmt->table = &dm_target_crypt_table;
 		dmt->strategy = &dm_target_crypt_strategy;
-		dmt->deps = &dm_target_crypt_deps;
 		dmt->destroy = &dm_target_crypt_destroy;
 		dmt->upcall = &dm_target_crypt_upcall;
 		dmt->dump = &dm_target_crypt_dump;

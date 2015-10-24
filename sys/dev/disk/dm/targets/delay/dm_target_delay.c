@@ -76,7 +76,6 @@ static void _strategy(struct dm_delay_info *di, struct buf *bp);
 static void _submit(struct dm_delay_info *di, struct buf *bp);
 static void _submit_queue(struct dm_delay_info *di, int submit_all);
 static void _destroy(struct dm_delay_info *di);
-static uint64_t _makeudev(struct dm_delay_info *di);
 static void _timeout(void *arg);
 static void _thread(void *arg);
 static __inline void _debug(struct dm_delay_info *di, const char *msg);
@@ -129,6 +128,9 @@ dm_target_delay_init(dm_table_entry_t *table_en, char *params)
 		kfree(tdc, M_DMDELAY);
 		return ret;
 	}
+
+	dm_table_add_deps(table_en, tdc->read.pdev);
+	dm_table_add_deps(table_en, tdc->write.pdev);
 
 	table_en->target_config = tdc;
 	table_en->dev->dev_type = DM_DELAY_DEV;
@@ -366,40 +368,6 @@ _destroy(struct dm_delay_info *di)
 }
 
 static int
-dm_target_delay_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
-{
-	dm_target_delay_config_t *tdc;
-	uint64_t u1, u2;
-
-	tdc = table_en->target_config;
-	if (tdc == NULL)
-		return ENOENT;
-
-	u1 = _makeudev(&tdc->read);
-	u2 = _makeudev(&tdc->write);
-
-	prop_array_add_uint64(prop_array, u1);
-	if (u1 != u2) {
-		prop_array_add_uint64(prop_array, u2);
-	}
-	return 0;
-}
-
-static uint64_t
-_makeudev(struct dm_delay_info *di)
-{
-	struct vattr va;
-	uint64_t ret;
-	int error;
-
-	error = VOP_GETATTR(di->pdev->pdev_vnode, &va);
-	KKASSERT(error == 0);
-
-	ret = makeudev(va.va_rmajor, va.va_rminor);
-	return ret;
-}
-
-static int
 dm_target_delay_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
@@ -487,7 +455,6 @@ dmtd_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_delay_table;
 		dmt->strategy = &dm_target_delay_strategy;
 		dmt->destroy = &dm_target_delay_destroy;
-		dmt->deps = &dm_target_delay_deps;
 		dmt->upcall = &dm_target_delay_upcall;
 		dmt->dump = NULL;
 

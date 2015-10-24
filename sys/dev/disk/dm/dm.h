@@ -64,6 +64,13 @@
 
 /*** Internal device-mapper structures ***/
 
+typedef struct dm_mapping {
+	union {
+		struct dm_pdev *pdev;
+	} data;
+	TAILQ_ENTRY(dm_mapping) next;
+} dm_mapping_t;
+
 /*
  * A device mapper table is a list of physical ranges plus the mapping target
  * applied to them.
@@ -76,6 +83,8 @@ typedef struct dm_table_entry {
 	struct dm_target *target;      /* Link to table target. */
 	void *target_config;           /* Target specific data. */
 	SLIST_ENTRY(dm_table_entry) next;
+
+	TAILQ_HEAD(, dm_mapping) pdev_maps;
 } dm_table_entry_t;
 
 SLIST_HEAD(dm_table, dm_table_entry);
@@ -178,7 +187,6 @@ typedef struct dm_target {
 	/* Destroy target_config area */
 	int (*destroy)(dm_table_entry_t *);
 
-	int (*deps) (dm_table_entry_t *, prop_array_t);
 	/*
 	 * Info and table are called to get params string, which is target
 	 * specific. When dm_table_status_ioctl is called with flag
@@ -250,6 +258,8 @@ void dm_table_release(dm_table_head_t *, uint8_t s);
 void dm_table_switch_tables(dm_table_head_t *);
 void dm_table_head_init(dm_table_head_t *);
 void dm_table_head_destroy(dm_table_head_t *);
+int dm_table_add_deps(dm_table_entry_t *table_en, dm_pdev_t *pdev);
+void dm_table_free_deps(dm_table_entry_t *table_en);
 
 /* dm_dev.c */
 int dm_dev_init(void);
@@ -272,6 +282,7 @@ void dm_dev_unbusy(dm_dev_t *);
 int dm_pdev_init(void);
 int dm_pdev_uninit(void);
 int dm_pdev_decr(dm_pdev_t *);
+uint64_t dm_pdev_get_udev(dm_pdev_t *);
 dm_pdev_t* dm_pdev_insert(const char *);
 off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
 

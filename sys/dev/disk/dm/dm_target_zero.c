@@ -88,12 +88,6 @@ dm_target_zero_destroy(dm_table_entry_t *table_en)
 	return 0;
 }
 
-/* Doesn't not need to do anything here. */
-static int
-dm_target_zero_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
-{
-	return 0;
-}
 /* Unsuported for this target. */
 static int
 dm_target_zero_upcall(dm_table_entry_t *table_en, struct buf *bp)
@@ -121,7 +115,6 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		dmt->init = &dm_target_zero_init;
 		dmt->table = &dm_target_zero_table;
 		dmt->strategy = &dm_target_zero_strategy;
-		dmt->deps = &dm_target_zero_deps;
 		dmt->destroy = &dm_target_zero_destroy;
 		dmt->upcall = &dm_target_zero_upcall;
 		dmt->dump = NULL;

@@ -98,6 +98,8 @@ dm_target_linear_init(dm_table_entry_t *table_en, char *params)
 	/* Check user input if it is not leave offset as 0. */
 	tlc->offset = atoi64(argv[1]);
 
+	dm_table_add_deps(table_en, dmp);
+
 	table_en->target_config = tlc;
 	table_en->dev->dev_type = DM_LINEAR_DEV;
 
@@ -189,28 +191,7 @@ dm_target_linear_destroy(dm_table_entry_t *table_en)
 
 	return 0;
 }
-/* Add this target pdev dependiences to prop_array_t */
-static int
-dm_target_linear_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
-{
-	dm_target_linear_config_t *tlc;
-	struct vattr va;
 
-	int error;
-
-	if (table_en->target_config == NULL)
-		return ENOENT;
-
-	tlc = table_en->target_config;
-
-	if ((error = VOP_GETATTR(tlc->pdev->pdev_vnode, &va)) != 0)
-		return error;
-
-	prop_array_add_uint64(prop_array,
-	    (uint64_t) makeudev(va.va_rmajor, va.va_rminor));
-
-	return 0;
-}
 /*
  * Register upcall device.
  * Linear target doesn't need any upcall devices but other targets like
@@ -242,7 +223,6 @@ dmtl_mod_handler(module_t mod, int type, void *unused)
 		dmt->init = &dm_target_linear_init;
 		dmt->table = &dm_target_linear_table;
 		dmt->strategy = &dm_target_linear_strategy;
-		dmt->deps = &dm_target_linear_deps;
 		dmt->destroy = &dm_target_linear_destroy;
 		dmt->upcall = &dm_target_linear_upcall;
 		dmt->dump = &dm_target_linear_dump;
