@@ -435,7 +435,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	/*
 	 * Find out what tables I want to select.
 	 */
-	SLIST_FOREACH(table_en, tbl, next) {
+	TAILQ_FOREACH(table_en, tbl, next) {
 		/*
 		 * I need need number of bytes not blocks.
 		 */
@@ -521,7 +521,7 @@ dmdump(struct dev_dump_args *ap)
 	/*
 	 * Find out what tables I want to select.
 	 */
-	SLIST_FOREACH(table_en, tbl, next) {
+	TAILQ_FOREACH(table_en, tbl, next) {
 		/*
 		 * I need need number of bytes not blocks.
 		 */

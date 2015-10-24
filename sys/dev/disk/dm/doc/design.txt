@@ -160,7 +160,7 @@
      Implementation:
        Kernel driver will find device with name from struct dm_ioctl-name/uuid.
        Table is added to the inactive slot. Every device can have more than one 
-       table loaded. Tables are stored in SLIST. This ioctl also open physical 
+       table loaded. Tables are stored in TAILQ. This ioctl also open physical
        device spedcified in table and add it to dm_device specific pdev list.
 
  11) DM_TABLE_CLEAR

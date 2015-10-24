@@ -55,7 +55,7 @@
  * dm_table_get_entry. Between these to calls tables can'tbe switched
  * or destroyed.
  *
- * dm_table_head_init initialize talbe_entries SLISTS and io_cv.
+ * dm_table_head_init initialize talbe_entries TAILQS and io_cv.
  *
  * dm_table_head_destroy destroy cv.
  *
@@ -608,7 +608,7 @@ dm_table_deps_ioctl(prop_dictionary_t dm_dict)
 
 	tbl = dm_table_get_entry(&dmv->table_head, table_type);
 
-	SLIST_FOREACH(table_en, tbl, next)
+	TAILQ_FOREACH(table_en, tbl, next)
 		dm_table_deps(table_en, cmd_array);
 
 	dm_table_release(&dmv->table_head, table_type);
@@ -661,7 +661,7 @@ int
 dm_table_load_ioctl(prop_dictionary_t dm_dict)
 {
 	dm_dev_t *dmv;
-	dm_table_entry_t *table_en, *last_table;
+	dm_table_entry_t *table_en;
 	dm_table_t *tbl;
 	dm_target_t *target;
 
@@ -680,7 +680,6 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	name = NULL;
 	uuid = NULL;
 	dmv = NULL;
-	last_table = NULL;
 	str = NULL;
 
 	/*
@@ -763,11 +762,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		prop_dictionary_get_cstring(target_dict,
 		    DM_TABLE_PARAMS, &str);
 
-		if (SLIST_EMPTY(tbl))
-			/* insert this table to head */
-			SLIST_INSERT_HEAD(tbl, table_en, next);
-		else
-			SLIST_INSERT_AFTER(last_table, table_en, next);
+		TAILQ_INSERT_TAIL(tbl, table_en, next);
 
 		/*
 		 * Params string is different for every target,
@@ -785,7 +780,6 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 			dm_dev_unbusy(dmv);
 			return ret;
 		}
-		last_table = table_en;
 		kfree(str, M_TEMP);
 	}
 	prop_object_iterator_release(iter);
@@ -890,7 +884,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 
 	tbl = dm_table_get_entry(&dmv->table_head, table_type);
 
-	SLIST_FOREACH(table_en, tbl, next) {
+	TAILQ_FOREACH(table_en, tbl, next) {
 		target_dict = prop_dictionary_create();
 		aprint_debug("%016" PRIu64 ", length %016" PRIu64
 		    ", target %s\n", table_en->start, table_en->length,
@@ -975,12 +969,12 @@ dm_message_ioctl(prop_dictionary_t dm_dict)
 	ret = EINVAL;
 
 	if (sector == 0) {
-		if (!SLIST_EMPTY(tbl)) {
-			table_en = SLIST_FIRST(tbl);
+		if (!TAILQ_EMPTY(tbl)) {
+			table_en = TAILQ_FIRST(tbl);
 			found = 1;
 		}
 	} else {
-		SLIST_FOREACH(table_en, tbl, next) {
+		TAILQ_FOREACH(table_en, tbl, next) {
 			table_start = table_en->start;
 			table_end = table_start + table_en->length;
 

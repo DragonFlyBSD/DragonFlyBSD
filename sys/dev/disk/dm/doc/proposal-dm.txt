@@ -18,9 +18,9 @@ struct dm_table_entry {
 
 	struct dm_target *target;
 	void *target_config;
-	SLIST_ENTRY(dm_table_entry) next;
+	TAILQ_ENTRY(dm_table_entry) next;
 };
-SLIST(dm_table, dm_table_entry);
+TAILQ_HEAD(dm_table, dm_table_entry);
 
 
 struct dm_pdev {

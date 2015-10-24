@@ -82,12 +82,12 @@ typedef struct dm_table_entry {
 
 	struct dm_target *target;      /* Link to table target. */
 	void *target_config;           /* Target specific data. */
-	SLIST_ENTRY(dm_table_entry) next;
+	TAILQ_ENTRY(dm_table_entry) next;
 
 	TAILQ_HEAD(, dm_mapping) pdev_maps;
 } dm_table_entry_t;
 
-SLIST_HEAD(dm_table, dm_table_entry);
+TAILQ_HEAD(dm_table, dm_table_entry);
 
 typedef struct dm_table dm_table_t;
 

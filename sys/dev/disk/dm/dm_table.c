@@ -140,8 +140,8 @@ dm_table_destroy(dm_table_head_t *head, uint8_t table_id)
 
 	tbl = &head->tables[id];
 
-	while ((table_en = SLIST_FIRST(tbl)) != NULL) {
-		SLIST_REMOVE(tbl, table_en, dm_table_entry, next);
+	while ((table_en = TAILQ_FIRST(tbl)) != NULL) {
+		TAILQ_REMOVE(tbl, table_en, next);
 		/*
 		 * Remove target specific config data. After successfull
 		 * call table_en->target_config must be set to NULL.
@@ -155,7 +155,7 @@ dm_table_destroy(dm_table_head_t *head, uint8_t table_id)
 
 		kfree(table_en, M_DM);
 	}
-	KKASSERT(SLIST_EMPTY(tbl));
+	KKASSERT(TAILQ_EMPTY(tbl));
 
 	lockmgr(&head->table_mtx, LK_RELEASE);
 
@@ -180,7 +180,7 @@ _dm_table_size(dm_table_head_t *head, int table)
 	 * Find out what tables I want to select.
 	 * if length => rawblkno then we should used that table.
 	 */
-	SLIST_FOREACH(table_en, tbl, next) {
+	TAILQ_FOREACH(table_en, tbl, next) {
 		length += table_en->length;
 	}
 
@@ -218,7 +218,7 @@ dm_table_get_target_count(dm_table_head_t *head, uint8_t table_id)
 
 	tbl = dm_table_get_entry(head, table_id);
 
-	SLIST_FOREACH(table_en, tbl, next)
+	TAILQ_FOREACH(table_en, tbl, next)
 	    target_count++;
 
 	dm_table_unbusy(head);
@@ -238,8 +238,8 @@ dm_table_head_init(dm_table_head_t *head)
 	head->io_cnt = 0;
 
 	/* Initialize tables. */
-	SLIST_INIT(&head->tables[0]);
-	SLIST_INIT(&head->tables[1]);
+	TAILQ_INIT(&head->tables[0]);
+	TAILQ_INIT(&head->tables[1]);
 
 	lockinit(&head->table_mtx, "dmtbl", 0, LK_CANRECURSE);
 }
