@@ -62,7 +62,7 @@ nbsd_get_dm_major(uint32_t *major,  int type)
 {
 	struct stat sb;
 	if (stat("/dev/mapper/control", &sb) < 0) {
-		printf("stat failed");
+		printf("stat failed\n");
 		return 0;
 	}
 	*major = major(sb.st_dev);
