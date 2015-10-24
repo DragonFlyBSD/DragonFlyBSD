@@ -2006,6 +2006,7 @@ dev/drm/drm_sysctl.c			optional drm
 dev/drm/drm_sysfs.c			optional drm
 dev/drm/drm_vm.c			optional drm
 dev/drm/drm_vma_manager.c		optional drm
+dev/drm/linux_async.c			optional drm
 dev/drm/linux_compat.c			optional drm
 dev/drm/linux_hdmi.c			optional drm
 dev/drm/linux_list_sort.c		optional drm
