@@ -88,6 +88,9 @@ param_sysinit(struct kernel_param *param)
 #define	module_param_named(name, var, type, mode)			\
 	module_param_call(name, param_set_##type, param_get_##type, &var, mode)
 
+#define module_param_named_unsafe(name, value, type, perm)		\
+	module_param_named(name, value, type, perm)
+
 #define	module_param(var, type, mode)					\
 	module_param_named(var, var, type, mode)
 
