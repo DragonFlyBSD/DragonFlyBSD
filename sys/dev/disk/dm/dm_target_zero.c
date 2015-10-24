@@ -44,14 +44,13 @@
  * target specific config area.
  */
 static int
-dm_target_zero_init(dm_dev_t *dmv, void **target_config, char *argv)
+dm_target_zero_init(dm_table_entry_t *table_en, char *params)
 {
 
 	kprintf("Zero target init function called!!\n");
 
-	dmv->dev_type = DM_ZERO_DEV;
-
-	*target_config = NULL;
+	table_en->target_config = NULL;
+	table_en->dev->dev_type = DM_ZERO_DEV;
 
 	return 0;
 }

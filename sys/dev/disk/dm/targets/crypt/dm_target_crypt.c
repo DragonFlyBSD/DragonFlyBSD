@@ -506,7 +506,7 @@ hex2key(char *hex, size_t key_len, u_int8_t *key)
 }
 
 static int
-dm_target_crypt_init(dm_dev_t *dmv, void **target_config, char *params)
+dm_target_crypt_init(dm_table_entry_t *table_en, char *params)
 {
 	dm_target_crypt_config_t *priv;
 	size_t len;
@@ -673,9 +673,8 @@ dm_target_crypt_init(dm_dev_t *dmv, void **target_config, char *params)
 	priv->block_offset = block_offset;
 	priv->iv_offset = iv_offset - block_offset;
 
-	*target_config = priv;
-
-	dmv->dev_type = DM_CRYPTO_DEV;
+	table_en->target_config = priv;
+	table_en->dev->dev_type = DM_CRYPTO_DEV;
 
 	error = hex2key(key, priv->crypto_klen >> 3,
 			(u_int8_t *)priv->crypto_key);

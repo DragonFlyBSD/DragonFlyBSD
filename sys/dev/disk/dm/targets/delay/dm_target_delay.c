@@ -87,7 +87,7 @@ static struct objcache_malloc_args obj_args = {
 };
 
 static int
-dm_target_delay_init(dm_dev_t *dmv, void **target_config, char *params)
+dm_target_delay_init(dm_table_entry_t *table_en, char *params)
 {
 	dm_target_delay_config_t *tdc;
 	int ret, argc;
@@ -130,8 +130,8 @@ dm_target_delay_init(dm_dev_t *dmv, void **target_config, char *params)
 		return ret;
 	}
 
-	*target_config = tdc;
-	dmv->dev_type = DM_DELAY_DEV;
+	table_en->target_config = tdc;
+	table_en->dev->dev_type = DM_DELAY_DEV;
 
 	return 0;
 }

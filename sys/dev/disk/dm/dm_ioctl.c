@@ -743,9 +743,9 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * routine and parse parameters there.
 		 */
 		aprint_debug("DM: str passed in is: \"%s\"\n", str);
-		if ((ret = target->init(dmv, &table_en->target_config,
-			    str)) != 0) {
+		KKASSERT(target->init);
 
+		if ((ret = target->init(table_en, str)) != 0) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
 			kfree(str, M_TEMP);

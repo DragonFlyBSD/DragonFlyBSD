@@ -40,14 +40,13 @@
 
 /* Init function called from dm_table_load_ioctl. */
 static int
-dm_target_error_init(dm_dev_t *dmv, void **target_config, char *argv)
+dm_target_error_init(dm_table_entry_t *table_en, char *params)
 {
 
 	kprintf("Error target init function called!!\n");
 
-	*target_config = NULL;
-
-	dmv->dev_type = DM_ERROR_DEV;
+	table_en->target_config = NULL;
+	table_en->dev->dev_type = DM_ERROR_DEV;
 
 	return 0;
 }

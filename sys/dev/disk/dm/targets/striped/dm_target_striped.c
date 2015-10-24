@@ -69,7 +69,7 @@ static void dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc);
  * 0 65536 striped 2 512 /dev/hda 0 /dev/hdb 0
  */
 static int
-dm_target_stripe_init(dm_dev_t *dmv, void **target_config, char *params)
+dm_target_stripe_init(dm_table_entry_t *table_en, char *params)
 {
 	dm_target_stripe_config_t *tsc;
 	int n;
@@ -135,9 +135,8 @@ dm_target_stripe_init(dm_dev_t *dmv, void **target_config, char *params)
 		return (ENOENT);
 	}
 
-	*target_config = tsc;
-
-	dmv->dev_type = DM_STRIPE_DEV;
+	table_en->target_config = tsc;
+	table_en->dev->dev_type = DM_STRIPE_DEV;
 
 	return 0;
 }

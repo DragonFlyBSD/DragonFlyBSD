@@ -57,7 +57,7 @@ typedef struct target_linear_config {
  * @argv[1] is physical data offset.
  */
 static int
-dm_target_linear_init(dm_dev_t *dmv, void **target_config, char *params)
+dm_target_linear_init(dm_table_entry_t *table_en, char *params)
 {
 	dm_target_linear_config_t *tlc;
 	dm_pdev_t *dmp;
@@ -98,9 +98,8 @@ dm_target_linear_init(dm_dev_t *dmv, void **target_config, char *params)
 	/* Check user input if it is not leave offset as 0. */
 	tlc->offset = atoi64(argv[1]);
 
-	*target_config = tlc;
-
-	dmv->dev_type = DM_LINEAR_DEV;
+	table_en->target_config = tlc;
+	table_en->dev->dev_type = DM_LINEAR_DEV;
 
 	return 0;
 }

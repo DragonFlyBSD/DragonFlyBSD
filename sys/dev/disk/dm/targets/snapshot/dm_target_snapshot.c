@@ -99,14 +99,14 @@ typedef struct target_snapshot_origin_config {
 	/* list of snapshots ? */
 } dm_target_snapshot_origin_config_t;
 
-int dm_target_snapshot_init(dm_dev_t *, void**, char *);
+int dm_target_snapshot_init(dm_table_entry_t *, char *);
 char *dm_target_snapshot_table(void *);
 int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_snapshot_destroy(dm_table_entry_t *);
 int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
 
-int dm_target_snapshot_orig_init(dm_dev_t *, void**, char *);
+int dm_target_snapshot_orig_init(dm_table_entry_t *, char *);
 char *dm_target_snapshot_orig_table(void *);
 int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_orig_deps(dm_table_entry_t *, prop_array_t);
@@ -119,7 +119,7 @@ int dm_target_snapshot_orig_upcall(dm_table_entry_t *, struct buf *);
  *        snapshot_origin device, cow device, persistent flag, chunk size
  */
 int
-dm_target_snapshot_init(dm_dev_t *dmv, void **target_config, char *params)
+dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
 {
 	dm_target_snapshot_config_t *tsc;
 	dm_pdev_t *dmp_snap, *dmp_cow;
@@ -166,9 +166,8 @@ dm_target_snapshot_init(dm_dev_t *dmv, void **target_config, char *params)
 	tsc->tsc_snap_dev = dmp_snap;
 	tsc->tsc_cow_dev = dmp_cow;
 
-	*target_config = tsc;
-
-	dmv->dev_type = DM_SNAPSHOT_DEV;
+	table_en->target_config = tsc;
+	table_en->dev->dev_type = DM_SNAPSHOT_DEV;
 
 	return 0;
 }
@@ -322,8 +321,7 @@ dm_target_snapshot_upcall(dm_table_entry_t *table_en, struct buf *bp)
  * argv: /dev/mapper/my_data_real
  */
 int
-dm_target_snapshot_orig_init(dm_dev_t *dmv, void **target_config,
-    prop_dictionary_t dict)
+dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
 {
 	dm_target_snapshot_origin_config_t *tsoc;
 	dm_pdev_t *dmp_real;
@@ -344,9 +342,8 @@ dm_target_snapshot_orig_init(dm_dev_t *dmv, void **target_config,
 
 	tsoc->tsoc_real_dev = dmp_real;
 
-	dmv->dev_type = DM_SNAPSHOT_ORIG_DEV;
-
-	*target_config = tsoc;
+	table_en->target_config = tsoc;
+	table_en->dev->dev_type = DM_SNAPSHOT_ORIG_DEV;
 
 	return 0;
 }

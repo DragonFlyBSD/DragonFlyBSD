@@ -170,7 +170,7 @@ typedef struct dm_dev {
 typedef struct dm_target {
 	char name[DM_MAX_TYPE_NAME];
 	/* Initialize target_config area */
-	int (*init)(dm_dev_t *, void **, char *);
+	int (*init)(dm_table_entry_t *, char *);
 
 	/* Message interface */
 	int (*message)(dm_table_entry_t *, char *);
