@@ -44,6 +44,9 @@
 #include <linux/pm_runtime.h>
 #include <linux/vga_switcheroo.h>
 #endif
+
+#include <drm/drm_gem.h>
+
 #include "drm/drm_crtc_helper.h"
 /*
  * KMS wrapper.

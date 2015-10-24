@@ -45,103 +45,6 @@ static struct drm_framebuffer *add_framebuffer_internal(struct drm_device *dev,
 							struct drm_mode_fb_cmd2 *r,
 							struct drm_file *file_priv);
 
-/**
- * drm_modeset_lock_all - take all modeset locks
- * @dev: drm device
- *
- * This function takes all modeset locks, suitable where a more fine-grained
- * scheme isn't (yet) implemented. Locks must be dropped with
- * drm_modeset_unlock_all.
- */
-void drm_modeset_lock_all(struct drm_device *dev)
-{
-	struct drm_mode_config *config = &dev->mode_config;
-	struct drm_modeset_acquire_ctx *ctx;
-	int ret;
-
-	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
-	if (WARN_ON(!ctx))
-		return;
-
-	mutex_lock(&config->mutex);
-
-	drm_modeset_acquire_init(ctx, 0);
-
-retry:
-	ret = drm_modeset_lock(&config->connection_mutex, ctx);
-	if (ret)
-		goto fail;
-	ret = drm_modeset_lock_all_crtcs(dev, ctx);
-	if (ret)
-		goto fail;
-
-	WARN_ON(config->acquire_ctx);
-
-	/* now we hold the locks, so now that it is safe, stash the
-	 * ctx for drm_modeset_unlock_all():
-	 */
-	config->acquire_ctx = ctx;
-
-	drm_warn_on_modeset_not_all_locked(dev);
-
-	return;
-
-fail:
-	if (ret == -EDEADLK) {
-		drm_modeset_backoff(ctx);
-		goto retry;
-	}
-}
-EXPORT_SYMBOL(drm_modeset_lock_all);
-
-/**
- * drm_modeset_unlock_all - drop all modeset locks
- * @dev: device
- *
- * This function drop all modeset locks taken by drm_modeset_lock_all.
- */
-void drm_modeset_unlock_all(struct drm_device *dev)
-{
-	struct drm_mode_config *config = &dev->mode_config;
-	struct drm_modeset_acquire_ctx *ctx = config->acquire_ctx;
-
-	if (WARN_ON(!ctx))
-		return;
-
-	config->acquire_ctx = NULL;
-	drm_modeset_drop_locks(ctx);
-	drm_modeset_acquire_fini(ctx);
-
-	kfree(ctx);
-
-	mutex_unlock(&dev->mode_config.mutex);
-}
-EXPORT_SYMBOL(drm_modeset_unlock_all);
-
-/**
- * drm_warn_on_modeset_not_all_locked - check that all modeset locks are locked
- * @dev: device
- *
- * Useful as a debug assert.
- */
-void drm_warn_on_modeset_not_all_locked(struct drm_device *dev)
-{
-	struct drm_crtc *crtc;
-
-	/* Locking is currently fubar in the panic handler. */
-#if 0
-	if (oops_in_progress)
-		return;
-#endif
-
-	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head)
-		WARN_ON(!drm_modeset_is_locked(&crtc->mutex));
-
-	WARN_ON(!drm_modeset_is_locked(&dev->mode_config.connection_mutex));
-	WARN_ON(!mutex_is_locked(&dev->mode_config.mutex));
-}
-EXPORT_SYMBOL(drm_warn_on_modeset_not_all_locked);
-
 /* Avoid boilerplate.  I'm tired of typing. */
 #define DRM_ENUM_NAME_FN(fnname, list)				\
 	const char *fnname(int val)				\
@@ -501,9 +404,6 @@ int drm_framebuffer_init(struct drm_device *dev, struct drm_framebuffer *fb,
 	if (ret)
 		goto out;
 
-	/* Grab the idr reference. */
-	drm_framebuffer_reference(fb);
-
 	dev->mode_config.num_fb++;
 	list_add(&fb->head, &dev->mode_config.fb_list);
 out:
@@ -513,10 +413,34 @@ out:
 }
 EXPORT_SYMBOL(drm_framebuffer_init);
 
+/* dev->mode_config.fb_lock must be held! */
+static void __drm_framebuffer_unregister(struct drm_device *dev,
+					 struct drm_framebuffer *fb)
+{
+	mutex_lock(&dev->mode_config.idr_mutex);
+	idr_remove(&dev->mode_config.crtc_idr, fb->base.id);
+	mutex_unlock(&dev->mode_config.idr_mutex);
+
+	fb->base.id = 0;
+}
+
 static void drm_framebuffer_free(struct kref *kref)
 {
 	struct drm_framebuffer *fb =
 			container_of(kref, struct drm_framebuffer, refcount);
+	struct drm_device *dev = fb->dev;
+
+	/*
+	 * The lookup idr holds a weak reference, which has not necessarily been
+	 * removed at this point. Check for that.
+	 */
+	mutex_lock(&dev->mode_config.fb_lock);
+	if (fb->base.id) {
+		/* Mark fb as reaped and drop idr ref. */
+		__drm_framebuffer_unregister(dev, fb);
+	}
+	mutex_unlock(&dev->mode_config.fb_lock);
+
 	fb->funcs->destroy(fb);
 }
 
@@ -553,8 +477,10 @@ struct drm_framebuffer *drm_framebuffer_lookup(struct drm_device *dev,
 
 	mutex_lock(&dev->mode_config.fb_lock);
 	fb = __drm_framebuffer_lookup(dev, id);
-	if (fb)
-		drm_framebuffer_reference(fb);
+	if (fb) {
+		if (!kref_get_unless_zero(&fb->refcount))
+			fb = NULL;
+	}
 	mutex_unlock(&dev->mode_config.fb_lock);
 
 	return fb;
@@ -596,19 +522,6 @@ static void __drm_framebuffer_unreference(struct drm_framebuffer *fb)
 {
 	DRM_DEBUG("%p: FB ID: %d (%d)\n", fb, fb->base.id, atomic_read(&fb->refcount.refcount));
 	kref_put(&fb->refcount, drm_framebuffer_free_bug);
-}
-
-/* dev->mode_config.fb_lock must be held! */
-static void __drm_framebuffer_unregister(struct drm_device *dev,
-					 struct drm_framebuffer *fb)
-{
-	mutex_lock(&dev->mode_config.idr_mutex);
-	idr_remove(&dev->mode_config.crtc_idr, fb->base.id);
-	mutex_unlock(&dev->mode_config.idr_mutex);
-
-	fb->base.id = 0;
-
-	__drm_framebuffer_unreference(fb);
 }
 
 /**
@@ -750,11 +663,7 @@ int drm_crtc_init_with_planes(struct drm_device *dev, struct drm_crtc *crtc,
 	crtc->funcs = funcs;
 	crtc->invert_dimensions = false;
 
-	drm_modeset_lock_all(dev);
 	drm_modeset_lock_init(&crtc->mutex);
-	/* dropped by _unlock_all(): */
-	drm_modeset_lock(&crtc->mutex, config->acquire_ctx);
-
 	ret = drm_mode_object_get(dev, &crtc->base, DRM_MODE_OBJECT_CRTC);
 	if (ret)
 		goto out;
@@ -772,7 +681,6 @@ int drm_crtc_init_with_planes(struct drm_device *dev, struct drm_crtc *crtc,
 		cursor->possible_crtcs = 1 << drm_crtc_index(crtc);
 
  out:
-	drm_modeset_unlock_all(dev);
 
 	return ret;
 }
@@ -839,6 +747,59 @@ static void drm_mode_remove(struct drm_connector *connector,
 }
 
 /**
+ * drm_connector_get_cmdline_mode - reads the user's cmdline mode
+ * @connector: connector to quwery
+ * @mode: returned mode
+ *
+ * The kernel supports per-connector configration of its consoles through
+ * use of the video= parameter. This function parses that option and
+ * extracts the user's specified mode (or enable/disable status) for a
+ * particular connector. This is typically only used during the early fbdev
+ * setup.
+ */
+static void drm_connector_get_cmdline_mode(struct drm_connector *connector)
+{
+	struct drm_cmdline_mode *mode = &connector->cmdline_mode;
+	char *option = NULL;
+
+	if (fb_get_options(connector->name, &option))
+		return;
+
+	if (!drm_mode_parse_command_line_for_connector(option,
+						       connector,
+						       mode))
+		return;
+
+	if (mode->force) {
+		const char *s;
+
+		switch (mode->force) {
+		case DRM_FORCE_OFF:
+			s = "OFF";
+			break;
+		case DRM_FORCE_ON_DIGITAL:
+			s = "ON - dig";
+			break;
+		default:
+		case DRM_FORCE_ON:
+			s = "ON";
+			break;
+		}
+
+		DRM_INFO("forcing %s connector %s\n", connector->name, s);
+		connector->force = mode->force;
+	}
+
+	DRM_DEBUG_KMS("cmdline mode for connector %s %dx%d@%dHz%s%s%s\n",
+		      connector->name,
+		      mode->xres, mode->yres,
+		      mode->refresh_specified ? mode->refresh : 60,
+		      mode->rb ? " reduced blanking" : "",
+		      mode->margins ? " with margins" : "",
+		      mode->interlace ?  " interlaced" : "");
+}
+
+/**
  * drm_connector_init - Init a preallocated connector
  * @dev: DRM device
  * @connector: the connector to init
@@ -888,6 +849,8 @@ int drm_connector_init(struct drm_device *dev,
 	connector->edid_blob_ptr = NULL;
 	connector->status = connector_status_unknown;
 
+	drm_connector_get_cmdline_mode(connector);
+
 	list_add_tail(&connector->head, &dev->mode_config.connector_list);
 	dev->mode_config.num_connector++;
 
@@ -936,6 +899,29 @@ void drm_connector_cleanup(struct drm_connector *connector)
 	dev->mode_config.num_connector--;
 }
 EXPORT_SYMBOL(drm_connector_cleanup);
+
+/**
+ * drm_connector_index - find the index of a registered connector
+ * @connector: connector to find index for
+ *
+ * Given a registered connector, return the index of that connector within a DRM
+ * device's list of connectors.
+ */
+unsigned int drm_connector_index(struct drm_connector *connector)
+{
+	unsigned int index = 0;
+	struct drm_connector *tmp;
+
+	list_for_each_entry(tmp, &connector->dev->mode_config.connector_list, head) {
+		if (tmp == connector)
+			return index;
+
+		index++;
+	}
+
+	BUG();
+}
+EXPORT_SYMBOL(drm_connector_index);
 
 /**
  * drm_connector_register - register a connector
@@ -1244,6 +1230,29 @@ void drm_plane_cleanup(struct drm_plane *plane)
 EXPORT_SYMBOL(drm_plane_cleanup);
 
 /**
+ * drm_plane_index - find the index of a registered plane
+ * @plane: plane to find index for
+ *
+ * Given a registered plane, return the index of that CRTC within a DRM
+ * device's list of planes.
+ */
+unsigned int drm_plane_index(struct drm_plane *plane)
+{
+	unsigned int index = 0;
+	struct drm_plane *tmp;
+
+	list_for_each_entry(tmp, &plane->dev->mode_config.plane_list, head) {
+		if (tmp == plane)
+			return index;
+
+		index++;
+	}
+
+	BUG();
+}
+EXPORT_SYMBOL(drm_plane_index);
+
+/**
  * drm_plane_force_disable - Forcibly disable a plane
  * @plane: plane to disable
  *
@@ -1254,19 +1263,21 @@ EXPORT_SYMBOL(drm_plane_cleanup);
  */
 void drm_plane_force_disable(struct drm_plane *plane)
 {
-	struct drm_framebuffer *old_fb = plane->fb;
 	int ret;
 
-	if (!old_fb)
+	if (!plane->fb)
 		return;
 
+	plane->old_fb = plane->fb;
 	ret = plane->funcs->disable_plane(plane);
 	if (ret) {
 		DRM_ERROR("failed to disable plane with busy fb\n");
+		plane->old_fb = NULL;
 		return;
 	}
 	/* disconnect the plane from the fb and crtc: */
-	__drm_framebuffer_unreference(old_fb);
+	__drm_framebuffer_unreference(plane->old_fb);
+	plane->old_fb = NULL;
 	plane->fb = NULL;
 	plane->crtc = NULL;
 }
@@ -2231,33 +2242,29 @@ out:
  *
  * src_{x,y,w,h} are provided in 16.16 fixed point format
  */
-static int setplane_internal(struct drm_plane *plane,
-			     struct drm_crtc *crtc,
-			     struct drm_framebuffer *fb,
-			     int32_t crtc_x, int32_t crtc_y,
-			     uint32_t crtc_w, uint32_t crtc_h,
-			     /* src_{x,y,w,h} values are 16.16 fixed point */
-			     uint32_t src_x, uint32_t src_y,
-			     uint32_t src_w, uint32_t src_h)
+static int __setplane_internal(struct drm_plane *plane,
+			       struct drm_crtc *crtc,
+			       struct drm_framebuffer *fb,
+			       int32_t crtc_x, int32_t crtc_y,
+			       uint32_t crtc_w, uint32_t crtc_h,
+			       /* src_{x,y,w,h} values are 16.16 fixed point */
+			       uint32_t src_x, uint32_t src_y,
+			       uint32_t src_w, uint32_t src_h)
 {
-	struct drm_device *dev = plane->dev;
-	struct drm_framebuffer *old_fb = NULL;
 	int ret = 0;
 	unsigned int fb_width, fb_height;
 	int i;
 
 	/* No fb means shut it down */
 	if (!fb) {
-		drm_modeset_lock_all(dev);
-		old_fb = plane->fb;
+		plane->old_fb = plane->fb;
 		ret = plane->funcs->disable_plane(plane);
 		if (!ret) {
 			plane->crtc = NULL;
 			plane->fb = NULL;
 		} else {
-			old_fb = NULL;
+			plane->old_fb = NULL;
 		}
-		drm_modeset_unlock_all(dev);
 		goto out;
 	}
 
@@ -2297,8 +2304,7 @@ static int setplane_internal(struct drm_plane *plane,
 		goto out;
 	}
 
-	drm_modeset_lock_all(dev);
-	old_fb = plane->fb;
+	plane->old_fb = plane->fb;
 	ret = plane->funcs->update_plane(plane, crtc, fb,
 					 crtc_x, crtc_y, crtc_w, crtc_h,
 					 src_x, src_y, src_w, src_h);
@@ -2307,18 +2313,37 @@ static int setplane_internal(struct drm_plane *plane,
 		plane->fb = fb;
 		fb = NULL;
 	} else {
-		old_fb = NULL;
+		plane->old_fb = NULL;
 	}
-	drm_modeset_unlock_all(dev);
 
 out:
 	if (fb)
 		drm_framebuffer_unreference(fb);
-	if (old_fb)
-		drm_framebuffer_unreference(old_fb);
+	if (plane->old_fb)
+		drm_framebuffer_unreference(plane->old_fb);
+	plane->old_fb = NULL;
 
 	return ret;
+}
 
+static int setplane_internal(struct drm_plane *plane,
+			     struct drm_crtc *crtc,
+			     struct drm_framebuffer *fb,
+			     int32_t crtc_x, int32_t crtc_y,
+			     uint32_t crtc_w, uint32_t crtc_h,
+			     /* src_{x,y,w,h} values are 16.16 fixed point */
+			     uint32_t src_x, uint32_t src_y,
+			     uint32_t src_w, uint32_t src_h)
+{
+	int ret;
+
+	drm_modeset_lock_all(plane->dev);
+	ret = __setplane_internal(plane, crtc, fb,
+				  crtc_x, crtc_y, crtc_w, crtc_h,
+				  src_x, src_y, src_w, src_h);
+	drm_modeset_unlock_all(plane->dev);
+
+	return ret;
 }
 
 /**
@@ -2422,7 +2447,7 @@ int drm_mode_set_config_internal(struct drm_mode_set *set)
 	 * crtcs. Atomic modeset will have saner semantics ...
 	 */
 	list_for_each_entry(tmp, &crtc->dev->mode_config.crtc_list, head)
-		tmp->old_fb = tmp->primary->fb;
+		tmp->primary->old_fb = tmp->primary->fb;
 
 	fb = set->fb;
 
@@ -2435,8 +2460,9 @@ int drm_mode_set_config_internal(struct drm_mode_set *set)
 	list_for_each_entry(tmp, &crtc->dev->mode_config.crtc_list, head) {
 		if (tmp->primary->fb)
 			drm_framebuffer_reference(tmp->primary->fb);
-		if (tmp->old_fb)
-			drm_framebuffer_unreference(tmp->old_fb);
+		if (tmp->primary->old_fb)
+			drm_framebuffer_unreference(tmp->primary->old_fb);
+		tmp->primary->old_fb = NULL;
 	}
 
 	return ret;
@@ -2683,6 +2709,7 @@ static int drm_mode_cursor_universal(struct drm_crtc *crtc,
 	int ret = 0;
 
 	BUG_ON(!crtc->cursor);
+	WARN_ON(crtc->cursor->crtc != crtc && crtc->cursor->crtc != NULL);
 
 	/*
 	 * Obtain fb we'll be using (either new or existing) and take an extra
@@ -2702,11 +2729,9 @@ static int drm_mode_cursor_universal(struct drm_crtc *crtc,
 			fb = NULL;
 		}
 	} else {
-		mutex_lock(&dev->mode_config.mutex);
 		fb = crtc->cursor->fb;
 		if (fb)
 			drm_framebuffer_reference(fb);
-		mutex_unlock(&dev->mode_config.mutex);
 	}
 
 	if (req->flags & DRM_MODE_CURSOR_MOVE) {
@@ -2728,7 +2753,7 @@ static int drm_mode_cursor_universal(struct drm_crtc *crtc,
 	 * setplane_internal will take care of deref'ing either the old or new
 	 * framebuffer depending on success.
 	 */
-	ret = setplane_internal(crtc->cursor, crtc, fb,
+	ret = __setplane_internal(crtc->cursor, crtc, fb,
 				crtc_x, crtc_y, crtc_w, crtc_h,
 				0, 0, src_w, src_h);
 
@@ -2764,10 +2789,12 @@ static int drm_mode_cursor_common(struct drm_device *dev,
 	 * If this crtc has a universal cursor plane, call that plane's update
 	 * handler rather than using legacy cursor handlers.
 	 */
-	if (crtc->cursor)
-		return drm_mode_cursor_universal(crtc, req, file_priv);
+	drm_modeset_lock_crtc(crtc);
+	if (crtc->cursor) {
+		ret = drm_mode_cursor_universal(crtc, req, file_priv);
+		goto out;
+	}
 
-	drm_modeset_lock(&crtc->mutex, NULL);
 	if (req->flags & DRM_MODE_CURSOR_BO) {
 		if (!crtc->funcs->cursor_set && !crtc->funcs->cursor_set2) {
 			ret = -ENXIO;
@@ -2791,7 +2818,7 @@ static int drm_mode_cursor_common(struct drm_device *dev,
 		}
 	}
 out:
-	drm_modeset_unlock(&crtc->mutex);
+	drm_modeset_unlock_crtc(crtc);
 
 	return ret;
 
@@ -3340,7 +3367,16 @@ void drm_fb_release(struct drm_file *priv)
 	struct drm_device *dev = priv->dev;
 	struct drm_framebuffer *fb, *tfb;
 
-	mutex_lock(&priv->fbs_lock);
+	/*
+	 * When the file gets released that means no one else can access the fb
+	 * list any more, so no need to grab fpriv->fbs_lock. And we need to to
+	 * avoid upsetting lockdep since the universal cursor code adds a
+	 * framebuffer while holding mutex locks.
+	 *
+	 * Note that a real deadlock between fpriv->fbs_lock and the modeset
+	 * locks is impossible here since no one else but this function can get
+	 * at it any more.
+	 */
 	list_for_each_entry_safe(fb, tfb, &priv->fbs, filp_head) {
 
 		mutex_lock(&dev->mode_config.fb_lock);
@@ -3353,7 +3389,6 @@ void drm_fb_release(struct drm_file *priv)
 		/* This will also drop the fpriv->fbs reference. */
 		drm_framebuffer_remove(fb);
 	}
-	mutex_unlock(&priv->fbs_lock);
 }
 
 /**
@@ -3465,9 +3500,10 @@ EXPORT_SYMBOL(drm_property_create_enum);
  * @flags: flags specifying the property type
  * @name: name of the property
  * @props: enumeration lists with property bitflags
- * @num_values: number of pre-defined values
+ * @num_props: size of the @props array
+ * @supported_bits: bitmask of all supported enumeration values
  *
- * This creates a new generic drm property which can then be attached to a drm
+ * This creates a new bitmask drm property which can then be attached to a drm
  * object with drm_object_attach_property. The returned property object must be
  * freed with drm_property_destroy.
  *
@@ -3480,19 +3516,28 @@ EXPORT_SYMBOL(drm_property_create_enum);
 struct drm_property *drm_property_create_bitmask(struct drm_device *dev,
 					 int flags, const char *name,
 					 const struct drm_prop_enum_list *props,
-					 int num_values)
+					 int num_props,
+					 uint64_t supported_bits)
 {
 	struct drm_property *property;
-	int i, ret;
+	int i, ret, index = 0;
+	int num_values = hweight64(supported_bits);
 
 	flags |= DRM_MODE_PROP_BITMASK;
 
 	property = drm_property_create(dev, flags, name, num_values);
 	if (!property)
 		return NULL;
+	for (i = 0; i < num_props; i++) {
+		if (!(supported_bits & (1ULL << props[i].type)))
+			continue;
 
-	for (i = 0; i < num_values; i++) {
-		ret = drm_property_add_enum(property, i,
+		if (WARN_ON(index >= num_values)) {
+			drm_property_destroy(dev, property);
+			return NULL;
+		}
+
+		ret = drm_property_add_enum(property, index++,
 				      props[i].type,
 				      props[i].name);
 		if (ret) {
@@ -4118,12 +4163,25 @@ static int drm_mode_crtc_set_obj_prop(struct drm_mode_object *obj,
 	return ret;
 }
 
-static int drm_mode_plane_set_obj_prop(struct drm_mode_object *obj,
-				      struct drm_property *property,
-				      uint64_t value)
+/**
+ * drm_mode_plane_set_obj_prop - set the value of a property
+ * @plane: drm plane object to set property value for
+ * @property: property to set
+ * @value: value the property should be set to
+ *
+ * This functions sets a given property on a given plane object. This function
+ * calls the driver's ->set_property callback and changes the software state of
+ * the property if the callback succeeds.
+ *
+ * Returns:
+ * Zero on success, error code on failure.
+ */
+int drm_mode_plane_set_obj_prop(struct drm_plane *plane,
+				struct drm_property *property,
+				uint64_t value)
 {
 	int ret = -EINVAL;
-	struct drm_plane *plane = obj_to_plane(obj);
+	struct drm_mode_object *obj = &plane->base;
 
 	if (plane->funcs->set_property)
 		ret = plane->funcs->set_property(plane, property, value);
@@ -4132,6 +4190,7 @@ static int drm_mode_plane_set_obj_prop(struct drm_mode_object *obj,
 
 	return ret;
 }
+EXPORT_SYMBOL(drm_mode_plane_set_obj_prop);
 
 /**
  * drm_mode_getproperty_ioctl - get the current value of a object's property
@@ -4270,7 +4329,8 @@ int drm_mode_obj_set_property_ioctl(struct drm_device *dev, void *data,
 		ret = drm_mode_crtc_set_obj_prop(arg_obj, property, arg->value);
 		break;
 	case DRM_MODE_OBJECT_PLANE:
-		ret = drm_mode_plane_set_obj_prop(arg_obj, property, arg->value);
+		ret = drm_mode_plane_set_obj_prop(obj_to_plane(arg_obj),
+						  property, arg->value);
 		break;
 	}
 
@@ -4499,7 +4559,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 {
 	struct drm_mode_crtc_page_flip *page_flip = data;
 	struct drm_crtc *crtc;
-	struct drm_framebuffer *fb = NULL, *old_fb = NULL;
+	struct drm_framebuffer *fb = NULL;
 	struct drm_pending_vblank_event *e = NULL;
 	int ret = -EINVAL;
 
@@ -4514,7 +4574,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 	if (!crtc)
 		return -ENOENT;
 
-	drm_modeset_lock(&crtc->mutex, NULL);
+	drm_modeset_lock_crtc(crtc);
 	if (crtc->primary->fb == NULL) {
 		/* The framebuffer is currently unbound, presumably
 		 * due to a hotplug event, that userspace has not
@@ -4575,7 +4635,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 #endif
 	}
 
-	old_fb = crtc->primary->fb;
+	crtc->primary->old_fb = crtc->primary->fb;
 	ret = crtc->funcs->page_flip(crtc, fb, e, page_flip->flags);
 	if (ret) {
 		if (page_flip->flags & DRM_MODE_PAGE_FLIP_EVENT) {
@@ -4585,7 +4645,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 			kfree(e);
 		}
 		/* Keep the old fb, don't unref it. */
-		old_fb = NULL;
+		crtc->primary->old_fb = NULL;
 	} else {
 		/*
 		 * Warn if the driver hasn't properly updated the crtc->fb
@@ -4601,9 +4661,10 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 out:
 	if (fb)
 		drm_framebuffer_unreference(fb);
-	if (old_fb)
-		drm_framebuffer_unreference(old_fb);
-	drm_modeset_unlock(&crtc->mutex);
+	if (crtc->primary->old_fb)
+		drm_framebuffer_unreference(crtc->primary->old_fb);
+	crtc->primary->old_fb = NULL;
+	drm_modeset_unlock_crtc(crtc);
 
 	return ret;
 }
@@ -4619,8 +4680,13 @@ out:
 void drm_mode_config_reset(struct drm_device *dev)
 {
 	struct drm_crtc *crtc;
+	struct drm_plane *plane;
 	struct drm_encoder *encoder;
 	struct drm_connector *connector;
+
+	list_for_each_entry(plane, &dev->mode_config.plane_list, head)
+		if (plane->funcs->reset)
+			plane->funcs->reset(plane);
 
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head)
 		if (crtc->funcs->reset)
@@ -5072,3 +5138,21 @@ void drm_mode_config_cleanup(struct drm_device *dev)
 	drm_modeset_lock_fini(&dev->mode_config.connection_mutex);
 }
 EXPORT_SYMBOL(drm_mode_config_cleanup);
+
+struct drm_property *drm_mode_create_rotation_property(struct drm_device *dev,
+						       unsigned int supported_rotations)
+{
+	static const struct drm_prop_enum_list props[] = {
+		{ DRM_ROTATE_0,   "rotate-0" },
+		{ DRM_ROTATE_90,  "rotate-90" },
+		{ DRM_ROTATE_180, "rotate-180" },
+		{ DRM_ROTATE_270, "rotate-270" },
+		{ DRM_REFLECT_X,  "reflect-x" },
+		{ DRM_REFLECT_Y,  "reflect-y" },
+	};
+
+	return drm_property_create_bitmask(dev, 0, "rotation",
+					   props, ARRAY_SIZE(props),
+					   supported_rotations);
+}
+EXPORT_SYMBOL(drm_mode_create_rotation_property);

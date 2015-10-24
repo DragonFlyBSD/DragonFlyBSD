@@ -27,6 +27,9 @@
 #ifndef _ASM_CACHEFLUSH_H_
 #define _ASM_CACHEFLUSH_H_
 
+#include <vm/pmap.h>
+#include <vm/vm_page.h>
+
 static inline int set_memory_wc(unsigned long vaddr, int numpages)
 {
 	pmap_change_attr(vaddr, numpages, PAT_WRITE_COMBINING);

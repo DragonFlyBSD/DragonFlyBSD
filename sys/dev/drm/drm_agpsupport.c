@@ -35,6 +35,8 @@
  */
 
 #include <drm/drmP.h>
+#include <linux/module.h>
+#include "drm_legacy.h"
 
 #include <dev/agp/agpreg.h>
 #include <bus/pci/pcireg.h>
@@ -341,10 +343,10 @@ int drm_agp_free_ioctl(struct drm_device *dev, void *data,
 	return retcode;
 }
 
-drm_agp_head_t *drm_agp_init(void)
+struct drm_agp_head *drm_agp_init(void)
 {
 	device_t agpdev;
-	drm_agp_head_t *head   = NULL;
+	struct drm_agp_head *head = NULL;
 	int      agp_available = 1;
    
 	agpdev = DRM_AGP_FIND_DEVICE();

@@ -1,17 +1,12 @@
-/**
- * \file drm_bufs.c
- * Generic buffer template
- *
- * \author Rickard E. (Rik) Faith <faith@valinux.com>
- * \author Gareth Hughes <gareth@valinux.com>
- */
-
 /*
- * Created: Thu Nov 23 03:10:50 2000 by gareth@valinux.com
+ * Legacy: Generic DRM Buffer Management
  *
  * Copyright 1999, 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
+ *
+ * Author: Rickard E. (Rik) Faith <faith@valinux.com>
+ * Author: Gareth Hughes <gareth@valinux.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -31,8 +26,6 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/drm2/drm_bufs.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 #include <sys/conf.h>
@@ -40,66 +33,11 @@
 #include <linux/types.h>
 #include <linux/export.h>
 #include <drm/drmP.h>
+#include "drm_legacy.h"
 
-/* Allocation of PCI memory resources (framebuffer, registers, etc.) for
- * drm_get_resource_*.  Note that they are not RF_ACTIVE, so there's no virtual
- * address for accessing them.  Cleaned up at unload.
- */
-static int drm_alloc_resource(struct drm_device *dev, int resource)
-{
-	struct resource *res;
-	int rid;
-
-	DRM_LOCK_ASSERT(dev);
-
-	if (resource >= DRM_MAX_PCI_RESOURCE) {
-		DRM_ERROR("Resource %d too large\n", resource);
-		return 1;
-	}
-
-	if (dev->pcir[resource] != NULL) {
-		return 0;
-	}
-
-	DRM_UNLOCK(dev);
-	rid = PCIR_BAR(resource);
-	res = bus_alloc_resource_any(dev->dev, SYS_RES_MEMORY, &rid,
-	    RF_SHAREABLE);
-	DRM_LOCK(dev);
-	if (res == NULL) {
-		DRM_ERROR("Couldn't find resource 0x%x\n", resource);
-		return 1;
-	}
-
-	if (dev->pcir[resource] == NULL) {
-		dev->pcirid[resource] = rid;
-		dev->pcir[resource] = res;
-	}
-
-	return 0;
-}
-
-unsigned long drm_get_resource_start(struct drm_device *dev,
-				     unsigned int resource)
-{
-	if (drm_alloc_resource(dev, resource) != 0)
-		return 0;
-
-	return rman_get_start(dev->pcir[resource]);
-}
-
-unsigned long drm_get_resource_len(struct drm_device *dev,
-				   unsigned int resource)
-{
-	if (drm_alloc_resource(dev, resource) != 0)
-		return 0;
-
-	return rman_get_size(dev->pcir[resource]);
-}
-
-int drm_addmap(struct drm_device * dev, resource_size_t offset,
-	       unsigned int size, enum drm_map_type type,
-	       enum drm_map_flags flags, struct drm_local_map ** map_ptr)
+int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
+		      unsigned int size, enum drm_map_type type,
+		      enum drm_map_flags flags, struct drm_local_map **map_ptr)
 {
 	struct drm_local_map *map;
 	struct drm_map_list *entry = NULL;
@@ -269,8 +207,8 @@ done:
  * \return zero on success or a negative value on error.
  *
  */
-int drm_addmap_ioctl(struct drm_device *dev, void *data,
-		     struct drm_file *file_priv)
+int drm_legacy_addmap_ioctl(struct drm_device *dev, void *data,
+			    struct drm_file *file_priv)
 {
 	struct drm_map *request = data;
 	drm_local_map_t *map;
@@ -283,7 +221,7 @@ int drm_addmap_ioctl(struct drm_device *dev, void *data,
 		return -EACCES;
 
 	DRM_LOCK(dev);
-	err = drm_addmap(dev, request->offset, request->size, request->type,
+	err = drm_legacy_addmap(dev, request->offset, request->size, request->type,
 	    request->flags, &map);
 	DRM_UNLOCK(dev);
 	if (err != 0)
@@ -299,29 +237,34 @@ int drm_addmap_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
+/**
+ * Remove a map private from list and deallocate resources if the mapping
+ * isn't in use.
+ *
+ * Searches the map on drm_device::maplist, removes it from the list, see if
+ * its being used, and free any associate resource (such as MTRR's) if it's not
+ * being on use.
+ *
+ * \sa drm_legacy_addmap
+ */
+int drm_legacy_rmmap_locked(struct drm_device *dev, struct drm_local_map *map)
 {
 	struct drm_map_list *r_list = NULL, *list_t;
 	drm_dma_handle_t dmah;
 	int found = 0;
 
-	DRM_LOCK_ASSERT(dev);
-
-	if (map == NULL)
-		return;
-
 	/* Find the list entry for the map and remove it */
 	list_for_each_entry_safe(r_list, list_t, &dev->maplist, head) {
 		if (r_list->map == map) {
 			list_del(&r_list->head);
-			drm_free(r_list, M_DRM);
+			kfree(r_list);
 			found = 1;
 			break;
 		}
 	}
 
 	if (!found)
-		return;
+		return -EINVAL;
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
@@ -345,15 +288,26 @@ void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
 	case _DRM_CONSISTENT:
 		dmah.vaddr = map->handle;
 		dmah.busaddr = map->offset;
-		drm_pci_free(dev, &dmah);
-		break;
-	default:
-		DRM_ERROR("Bad map type %d\n", map->type);
+		dmah.size = map->size;
+		__drm_legacy_pci_free(dev, &dmah);
 		break;
 	}
+	kfree(map);
 
-	drm_free(map, M_DRM);
+	return 0;
 }
+
+int drm_legacy_rmmap(struct drm_device *dev, struct drm_local_map *map)
+{
+	int ret;
+
+	mutex_lock(&dev->struct_mutex);
+	ret = drm_legacy_rmmap_locked(dev, map);
+	mutex_unlock(&dev->struct_mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL(drm_legacy_rmmap);
 
 /* The rmmap ioctl appears to be unnecessary.  All mappings are torn down on
  * the last close of the device, and this is necessary for cleanup when things
@@ -370,8 +324,8 @@ void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
  * \param arg pointer to a struct drm_map structure.
  * \return zero on success or a negative value on error.
  */
-int drm_rmmap_ioctl(struct drm_device *dev, void *data,
-		    struct drm_file *file_priv)
+int drm_legacy_rmmap_ioctl(struct drm_device *dev, void *data,
+			   struct drm_file *file_priv)
 {
 	struct drm_map *request = data;
 	struct drm_local_map *map = NULL;
@@ -401,7 +355,7 @@ int drm_rmmap_ioctl(struct drm_device *dev, void *data,
 		return 0;
 	}
 
-	drm_rmmap(dev, map);
+	drm_legacy_rmmap(dev, map);
 
 	DRM_UNLOCK(dev);
 
@@ -847,7 +801,7 @@ static int drm_do_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *reques
  * reallocates the buffer list of the same size order to accommodate the new
  * buffers.
  */
-int drm_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * request)
+int drm_legacy_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * request)
 {
 	int order, ret;
 
@@ -878,7 +832,7 @@ int drm_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * request)
 	return ret;
 }
 
-static int drm_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request)
+static int drm_legacy_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request)
 {
 	int order, ret;
 
@@ -912,7 +866,7 @@ static int drm_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request
 	return ret;
 }
 
-int drm_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
+int drm_legacy_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
 {
 	int order, ret;
 
@@ -960,18 +914,18 @@ int drm_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
  * addbufs_sg() or addbufs_pci() for AGP, scatter-gather or consistent
  * PCI memory respectively.
  */
-int drm_addbufs(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
+int drm_legacy_addbufs(struct drm_device *dev, void *data,
+		       struct drm_file *file_priv)
 {
 	struct drm_buf_desc *request = data;
 	int err;
 
 	if (request->flags & _DRM_AGP_BUFFER)
-		err = drm_addbufs_agp(dev, request);
+		err = drm_legacy_addbufs_agp(dev, request);
 	else if (request->flags & _DRM_SG_BUFFER)
-		err = drm_addbufs_sg(dev, request);
+		err = drm_legacy_addbufs_sg(dev, request);
 	else
-		err = drm_addbufs_pci(dev, request);
+		err = drm_legacy_addbufs_pci(dev, request);
 
 	return err;
 }
@@ -993,8 +947,8 @@ int drm_addbufs(struct drm_device *dev, void *data,
  * lock, preventing of allocating more buffers after this call. Information
  * about each requested buffer is then copied into user space.
  */
-int drm_infobufs(struct drm_device *dev, void *data,
-		 struct drm_file *file_priv)
+int drm_legacy_infobufs(struct drm_device *dev, void *data,
+			struct drm_file *file_priv)
 {
 	struct drm_device_dma *dma = dev->dma;
 	struct drm_buf_info *request = data;
@@ -1074,8 +1028,8 @@ int drm_infobufs(struct drm_device *dev, void *data,
  *
  * \note This ioctl is deprecated and mostly never used.
  */
-int drm_markbufs(struct drm_device *dev, void *data,
-		 struct drm_file *file_priv)
+int drm_legacy_markbufs(struct drm_device *dev, void *data,
+			struct drm_file *file_priv)
 {
 	struct drm_device_dma *dma = dev->dma;
 	struct drm_buf_desc *request = data;
@@ -1121,8 +1075,8 @@ int drm_markbufs(struct drm_device *dev, void *data,
  * Calls free_buffer() for each used buffer.
  * This function is primarily used for debugging.
  */
-int drm_freebufs(struct drm_device *dev, void *data,
-		 struct drm_file *file_priv)
+int drm_legacy_freebufs(struct drm_device *dev, void *data,
+			struct drm_file *file_priv)
 {
 	drm_device_dma_t *dma = dev->dma;
 	struct drm_buf_free *request = data;
@@ -1152,7 +1106,7 @@ int drm_freebufs(struct drm_device *dev, void *data,
 			retcode = -EINVAL;
 			break;
 		}
-		drm_free_buffer(dev, buf);
+		drm_legacy_free_buffer(dev, buf);
 	}
 	spin_unlock(&dev->dma_lock);
 
@@ -1173,8 +1127,8 @@ int drm_freebufs(struct drm_device *dev, void *data,
  * offset equal to 0, which drm_mmap() interpretes as PCI buffers and calls
  * drm_mmap_dma().
  */
-int drm_mapbufs(struct drm_device *dev, void *data,
-	        struct drm_file *file_priv)
+int drm_legacy_mapbufs(struct drm_device *dev, void *data,
+		       struct drm_file *file_priv)
 {
 	drm_device_dma_t *dma = dev->dma;
 	int retcode = 0;
@@ -1250,3 +1204,29 @@ int drm_mapbufs(struct drm_device *dev, void *data,
 
 	return retcode;
 }
+
+int drm_legacy_dma_ioctl(struct drm_device *dev, void *data,
+		  struct drm_file *file_priv)
+{
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+	if (dev->driver->dma_ioctl)
+		return dev->driver->dma_ioctl(dev, data, file_priv);
+	else
+		return -EINVAL;
+}
+
+struct drm_local_map *drm_legacy_getsarea(struct drm_device *dev)
+{
+	struct drm_map_list *entry;
+
+	list_for_each_entry(entry, &dev->maplist, head) {
+		if (entry->map && entry->map->type == _DRM_SHM &&
+		    (entry->map->flags & _DRM_CONTAINS_LOCK)) {
+			return entry->map;
+		}
+	}
+	return NULL;
+}
+EXPORT_SYMBOL(drm_legacy_getsarea);

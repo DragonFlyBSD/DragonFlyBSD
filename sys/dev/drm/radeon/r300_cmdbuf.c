@@ -34,10 +34,10 @@
  */
 
 #include <drm/drmP.h>
-#include <drm/drm_buffer.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon_drv.h"
 #include "r300_reg.h"
+#include "drm_buffer.h"
 
 #define R300_SIMULTANEOUS_CLIPRECTS		4
 

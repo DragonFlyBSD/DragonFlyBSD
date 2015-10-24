@@ -33,4 +33,12 @@ struct fb_var_screeninfo {
 struct fb_cmap {
 };
 
+#define VESA_NO_BLANKING        0
+#define VESA_POWERDOWN          3
+
+enum {
+	FB_BLANK_UNBLANK       = VESA_NO_BLANKING,
+	FB_BLANK_POWERDOWN     = VESA_POWERDOWN + 1
+};
+
 #endif /* _UAPI_LINUX_FB_H_ */

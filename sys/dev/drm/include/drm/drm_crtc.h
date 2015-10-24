@@ -41,6 +41,7 @@ struct drm_framebuffer;
 struct drm_object_properties;
 struct drm_file;
 struct drm_clip_rect;
+struct device_node;
 
 #define DRM_MODE_OBJECT_CRTC 0xcccccccc
 #define DRM_MODE_OBJECT_CONNECTOR 0xc0c0c0c0
@@ -74,6 +75,14 @@ static inline uint64_t I642U64(int64_t val)
 {
 	return (uint64_t)*((uint64_t *)&val);
 }
+
+/* rotation property bits */
+#define DRM_ROTATE_0	0
+#define DRM_ROTATE_90	1
+#define DRM_ROTATE_180	2
+#define DRM_ROTATE_270	3
+#define DRM_REFLECT_X	4
+#define DRM_REFLECT_Y	5
 
 enum drm_connector_force {
 	DRM_FORCE_UNSPECIFIED,
@@ -209,10 +218,6 @@ struct drm_property {
 	struct list_head enum_blob_list;
 };
 
-void drm_modeset_lock_all(struct drm_device *dev);
-void drm_modeset_unlock_all(struct drm_device *dev);
-void drm_warn_on_modeset_not_all_locked(struct drm_device *dev);
-
 struct drm_crtc;
 struct drm_connector;
 struct drm_encoder;
@@ -314,6 +319,7 @@ struct drm_crtc_funcs {
  */
 struct drm_crtc {
 	struct drm_device *dev;
+	struct device_node *port;
 	struct list_head head;
 
 	/**
@@ -334,10 +340,6 @@ struct drm_crtc {
 	/* position of cursor plane on crtc */
 	int cursor_x;
 	int cursor_y;
-
-	/* Temporary tracking of the old fb while a modeset is ongoing. Used
-	 * by drm_mode_set_config_internal to implement correct refcounting. */
-	struct drm_framebuffer *old_fb;
 
 	bool enabled;
 
@@ -365,6 +367,12 @@ struct drm_crtc {
 	void *helper_private;
 
 	struct drm_object_properties properties;
+
+	/*
+	 * For legacy crtc ioctls so that atomic drivers can get at the locking
+	 * acquire context.
+	 */
+	struct drm_modeset_acquire_ctx *acquire_ctx;
 };
 
 
@@ -538,6 +546,7 @@ struct drm_connector {
 	void *helper_private;
 
 	/* forced on connector */
+	struct drm_cmdline_mode cmdline_mode;
 	enum drm_connector_force force;
 	bool override_edid;
 	uint32_t encoder_ids[DRM_CONNECTOR_MAX_ENCODER];
@@ -572,6 +581,7 @@ struct drm_plane_funcs {
 			    uint32_t src_w, uint32_t src_h);
 	int (*disable_plane)(struct drm_plane *plane);
 	void (*destroy)(struct drm_plane *plane);
+	void (*reset)(struct drm_plane *plane);
 
 	int (*set_property)(struct drm_plane *plane,
 			    struct drm_property *property, uint64_t val);
@@ -609,6 +619,10 @@ struct drm_plane {
 
 	struct drm_crtc *crtc;
 	struct drm_framebuffer *fb;
+
+	/* Temporary tracking of the old fb while a modeset is ongoing. Used
+	 * by drm_mode_set_config_internal to implement correct refcounting. */
+	struct drm_framebuffer *old_fb;
 
 	const struct drm_plane_funcs *funcs;
 
@@ -811,6 +825,7 @@ struct drm_mode_config {
 	struct drm_property *dpms_property;
 	struct drm_property *path_property;
 	struct drm_property *plane_type_property;
+	struct drm_property *rotation_property;
 
 	/* DVI-I properties */
 	struct drm_property *dvi_i_subconnector_property;
@@ -893,6 +908,7 @@ int drm_connector_register(struct drm_connector *connector);
 void drm_connector_unregister(struct drm_connector *connector);
 
 extern void drm_connector_cleanup(struct drm_connector *connector);
+extern unsigned int drm_connector_index(struct drm_connector *connector);
 /* helper to unplug all connectors from sysfs for device */
 extern void drm_connector_unplug_all(struct drm_device *dev);
 
@@ -932,6 +948,7 @@ extern int drm_plane_init(struct drm_device *dev,
 			  const uint32_t *formats, uint32_t format_count,
 			  bool is_primary);
 extern void drm_plane_cleanup(struct drm_plane *plane);
+extern unsigned int drm_plane_index(struct drm_plane *plane);
 extern void drm_plane_force_disable(struct drm_plane *plane);
 extern int drm_crtc_check_viewport(const struct drm_crtc *crtc,
 				   int x, int y,
@@ -1010,7 +1027,8 @@ extern struct drm_property *drm_property_create_enum(struct drm_device *dev, int
 struct drm_property *drm_property_create_bitmask(struct drm_device *dev,
 					 int flags, const char *name,
 					 const struct drm_prop_enum_list *props,
-					 int num_values);
+					 int num_props,
+					 uint64_t supported_bits);
 struct drm_property *drm_property_create_range(struct drm_device *dev, int flags,
 					 const char *name,
 					 uint64_t min, uint64_t max);
@@ -1109,6 +1127,9 @@ extern int drm_mode_obj_get_properties_ioctl(struct drm_device *dev, void *data,
 					     struct drm_file *file_priv);
 extern int drm_mode_obj_set_property_ioctl(struct drm_device *dev, void *data,
 					   struct drm_file *file_priv);
+extern int drm_mode_plane_set_obj_prop(struct drm_plane *plane,
+				       struct drm_property *property,
+				       uint64_t value);
 
 extern void drm_fb_get_bpp_depth(uint32_t format, unsigned int *depth,
 				 int *bpp);
@@ -1117,6 +1138,10 @@ extern int drm_format_plane_cpp(uint32_t format, int plane);
 extern int drm_format_horz_chroma_subsampling(uint32_t format);
 extern int drm_format_vert_chroma_subsampling(uint32_t format);
 extern const char *drm_get_format_name(uint32_t format);
+extern struct drm_property *drm_mode_create_rotation_property(struct drm_device *dev,
+							      unsigned int supported_rotations);
+extern unsigned int drm_rotation_simplify(unsigned int rotation,
+					  unsigned int supported_rotations);
 
 /* Helpers */
 

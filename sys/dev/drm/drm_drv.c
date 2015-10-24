@@ -31,11 +31,12 @@
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 #include "drm_legacy.h"
+#include "drm_internal.h"
 
 unsigned int drm_debug = 0;	/* 1 to enable debug output */
 EXPORT_SYMBOL(drm_debug);
 
-unsigned int drm_vblank_offdelay = 5000;    /* Default to 5000 msecs. */
+int drm_vblank_offdelay = 5000;    /* Default to 5000 msecs. */
 
 unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
 
@@ -49,7 +50,7 @@ MODULE_AUTHOR(CORE_AUTHOR);
 MODULE_DESCRIPTION(CORE_DESC);
 MODULE_LICENSE("GPL and additional rights");
 MODULE_PARM_DESC(debug, "Enable debug output");
-MODULE_PARM_DESC(vblankoffdelay, "Delay until vblank irq auto-disable [msecs]");
+MODULE_PARM_DESC(vblankoffdelay, "Delay until vblank irq auto-disable [msecs] (0: never disable, <0: disable immediately)");
 MODULE_PARM_DESC(timestamp_precision_usec, "Max. error on timestamps [usecs]");
 MODULE_PARM_DESC(timestamp_monotonic, "Use monotonic timestamps");
 
@@ -68,7 +69,7 @@ struct class *drm_class;
 static struct dentry *drm_debugfs_root;
 #endif
 
-int drm_err(const char *func, const char *format, ...)
+void drm_err(const char *func, const char *format, ...)
 {
 #if 0
 	struct va_format vaf;
@@ -86,7 +87,6 @@ int drm_err(const char *func, const char *format, ...)
 
 	return r;
 #endif
-	return 0;
 }
 EXPORT_SYMBOL(drm_err);
 
@@ -139,7 +139,6 @@ EXPORT_SYMBOL(drm_master_get);
 static void drm_master_destroy(struct kref *kref)
 {
 	struct drm_master *master = container_of(kref, struct drm_master, refcount);
-	struct drm_magic_entry *pt, *next;
 	struct drm_device *dev = master->minor->dev;
 	struct drm_map_list *r_list, *list_temp;
 
@@ -149,7 +148,7 @@ static void drm_master_destroy(struct kref *kref)
 
 	list_for_each_entry_safe(r_list, list_temp, &dev->maplist, head) {
 		if (r_list->master == master) {
-			drm_rmmap_locked(dev, r_list->map);
+			drm_legacy_rmmap_locked(dev, r_list->map);
 			r_list = NULL;
 		}
 	}
@@ -158,12 +157,6 @@ static void drm_master_destroy(struct kref *kref)
 		kfree(master->unique);
 		master->unique = NULL;
 		master->unique_len = 0;
-	}
-
-	list_for_each_entry_safe(pt, next, &master->magicfree, head) {
-		list_del(&pt->head);
-		drm_ht_remove_item(&master->magiclist, &pt->hash_item);
-		kfree(pt);
 	}
 
 	drm_ht_remove(&master->magiclist);
@@ -586,7 +579,7 @@ struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 		goto err_ht;
 	}
 
-	if (driver->driver_features & DRIVER_GEM) {
+	if (drm_core_check_feature(dev, DRIVER_GEM)) {
 		ret = drm_gem_init(dev);
 		if (ret) {
 			DRM_ERROR("Cannot initialize graphics execution manager (GEM)\n");
@@ -616,7 +609,7 @@ static void drm_dev_release(struct kref *ref)
 {
 	struct drm_device *dev = container_of(ref, struct drm_device, ref);
 
-	if (dev->driver->driver_features & DRIVER_GEM)
+	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_destroy(dev);
 
 	drm_legacy_ctxbitmap_cleanup(dev);
@@ -750,7 +743,7 @@ void drm_dev_unregister(struct drm_device *dev)
 	drm_vblank_cleanup(dev);
 
 	list_for_each_entry_safe(r_list, list_temp, &dev->maplist, head)
-		drm_rmmap(dev, r_list->map);
+		drm_legacy_rmmap(dev, r_list->map);
 
 	drm_minor_unregister(dev, DRM_MINOR_LEGACY);
 	drm_minor_unregister(dev, DRM_MINOR_RENDER);
@@ -1136,83 +1129,6 @@ drm_pci_id_list_t *drm_find_description(int vendor, int device,
 	return NULL;
 }
 
-/**
- * Take down the DRM device.
- *
- * \param dev DRM device structure.
- *
- * Frees every resource in \p dev.
- *
- * \sa drm_device
- */
-int drm_lastclose(struct drm_device * dev)
-{
-	drm_magic_entry_t *pt, *next;
-
-	DRM_DEBUG("\n");
-
-	if (dev->driver->lastclose != NULL)
-		dev->driver->lastclose(dev);
-
-	if (!drm_core_check_feature(dev, DRIVER_MODESET) && dev->irq_enabled)
-		drm_irq_uninstall(dev);
-
-	DRM_LOCK(dev);
-	if (dev->unique) {
-		drm_free(dev->unique, M_DRM);
-		dev->unique = NULL;
-		dev->unique_len = 0;
-	}
-
-	/* Clear pid list */
-	if (dev->magicfree.next) {
-		list_for_each_entry_safe(pt, next, &dev->magicfree, head) {
-			list_del(&pt->head);
-			drm_ht_remove_item(&dev->magiclist, &pt->hash_item);
-			kfree(pt);
-		}
-		drm_ht_remove(&dev->magiclist);
-	}
-	
-	/* Clear AGP information */
-	if (dev->agp) {
-		drm_agp_mem_t *entry;
-		drm_agp_mem_t *nexte;
-
-		/* Remove AGP resources, but leave dev->agp intact until
-		 * drm_unload is called.
-		 */
-		for (entry = dev->agp->memory; entry; entry = nexte) {
-			nexte = entry->next;
-			if (entry->bound)
-				drm_agp_unbind_memory(entry->handle);
-			drm_agp_free_memory(entry->handle);
-			drm_free(entry, M_DRM);
-		}
-		dev->agp->memory = NULL;
-
-		if (dev->agp->acquired)
-			drm_agp_release(dev);
-
-		dev->agp->acquired = 0;
-		dev->agp->enabled  = 0;
-	}
-	if (dev->sg != NULL) {
-		drm_sg_cleanup(dev->sg);
-		dev->sg = NULL;
-	}
-
-	drm_dma_takedown(dev);
-	if (dev->lock.hw_lock) {
-		dev->lock.hw_lock = NULL; /* SHM removed */
-		dev->lock.file_priv = NULL;
-		wakeup(&dev->lock.lock_queue);
-	}
-	DRM_UNLOCK(dev);
-
-	return 0;
-}
-
 static int drm_load(struct drm_device *dev)
 {
 	int i, retcode;
@@ -1371,7 +1287,7 @@ void drm_cdevpriv_dtor(void *cd)
 
 	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA) &&
 	    !dev->driver->reclaim_buffers_locked)
-		drm_reclaim_buffers(dev, file_priv);
+		drm_legacy_reclaim_buffers(dev, file_priv);
 
 	funsetown(&dev->buf_sigio);
 
@@ -1391,20 +1307,6 @@ void drm_cdevpriv_dtor(void *cd)
 	}
 
 	DRM_UNLOCK(dev);
-}
-
-drm_local_map_t *drm_getsarea(struct drm_device *dev)
-{
-	struct drm_map_list *entry;
-
-	list_for_each_entry(entry, &dev->maplist, head) {
-		if (entry->map && entry->map->type == _DRM_SHM &&
-		    (entry->map->flags & _DRM_CONTAINS_LOCK)) {
-			return entry->map;
-		}
-	}
-
-	return NULL;
 }
 
 int

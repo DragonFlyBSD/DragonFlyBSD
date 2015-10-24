@@ -79,6 +79,7 @@
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_execbuf_util.h>
 
+#include <drm/drm_gem.h>
 #define CONFIG_ACPI 1
 
 #include "radeon_family.h"

@@ -18,6 +18,7 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_tiling.c \
 	i915_gem_userptr.c \
 	i915_irq.c \
+	intel_lrc.o \
 	intel_ringbuffer.c \
 	intel_uncore.c
 
@@ -49,6 +50,7 @@ SRCS += \
 	intel_crt.c \
 	intel_ddi.c \
 	intel_dp.c \
+	intel_dp_mst.c \
 	intel_dsi_cmd.c \
 	intel_dsi.c \
 	intel_dsi_pll.c \

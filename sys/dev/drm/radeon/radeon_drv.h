@@ -32,6 +32,7 @@
 #define __RADEON_DRV_H__
 
 #include <linux/firmware.h>
+#include <drm/drm_legacy.h>
 
 #include "radeon_family.h"
 

@@ -1,4 +1,14 @@
-/*-
+/**
+ * \file drm_dma.c
+ * DMA IOCTL and function support
+ *
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ */
+
+/*
+ * Created: Fri Mar 19 14:30:16 1999 by faith@valinux.com
+ *
  * Copyright 1999, 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -21,38 +31,49 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
- * $FreeBSD: head/sys/dev/drm2/drm_dma.c 235783 2012-05-22 11:07:44Z kib $
  */
 
-/** @file drm_dma.c
- * Support code for DMA buffer management.
- *
- * The implementation used to be significantly more complicated, but the
- * complexity has been moved into the drivers as different buffer management
- * schemes evolved.
- */
-
+#include <linux/export.h>
 #include <drm/drmP.h>
+#include "drm_legacy.h"
 
-int drm_dma_setup(struct drm_device *dev)
+/**
+ * Initialize the DMA data.
+ *
+ * \param dev DRM device.
+ * \return zero on success or a negative value on failure.
+ *
+ * Allocate and initialize a drm_device_dma structure.
+ */
+int drm_legacy_dma_setup(struct drm_device *dev)
 {
 
-	dev->dma = kmalloc(sizeof(*dev->dma), M_DRM,
-			   M_WAITOK | M_NULLOK | M_ZERO);
-	if (dev->dma == NULL)
-		return ENOMEM;
+	if (!drm_core_check_feature(dev, DRIVER_HAVE_DMA) ||
+	    drm_core_check_feature(dev, DRIVER_MODESET)) {
+		return 0;
+	}
+
+	dev->buf_use = 0;
+	atomic_set(&dev->buf_alloc, 0);
+
+	dev->dma = kzalloc(sizeof(*dev->dma), GFP_KERNEL);
+	if (!dev->dma)
+		return -ENOMEM;
 
 	spin_init(&dev->dma_lock, "drmdma_lock");
 
 	return 0;
 }
 
-void drm_dma_takedown(struct drm_device *dev)
+/**
+ * Cleanup the DMA resources.
+ *
+ * \param dev DRM device.
+ *
+ * Free all pages associated with DMA buffers, the buffers and pages lists, and
+ * finally the drm_device::dma structure itself.
+ */
+void drm_legacy_dma_takedown(struct drm_device *dev)
 {
 	drm_device_dma_t  *dma = dev->dma;
 	int		  i, j;
@@ -89,7 +110,7 @@ void drm_dma_takedown(struct drm_device *dev)
 }
 
 
-void drm_free_buffer(struct drm_device *dev, drm_buf_t *buf)
+void drm_legacy_free_buffer(struct drm_device *dev, struct drm_buf * buf)
 {
 	if (!buf)
 		return;
@@ -99,7 +120,8 @@ void drm_free_buffer(struct drm_device *dev, drm_buf_t *buf)
 	buf->used     = 0;
 }
 
-void drm_reclaim_buffers(struct drm_device *dev, struct drm_file *file_priv)
+void drm_legacy_reclaim_buffers(struct drm_device *dev,
+				struct drm_file *file_priv)
 {
 	drm_device_dma_t *dma = dev->dma;
 	int		 i;
@@ -111,7 +133,7 @@ void drm_reclaim_buffers(struct drm_device *dev, struct drm_file *file_priv)
 		if (dma->buflist[i]->file_priv == file_priv) {
 			switch (dma->buflist[i]->list) {
 			case DRM_LIST_NONE:
-				drm_free_buffer(dev, dma->buflist[i]);
+				drm_legacy_free_buffer(dev, dma->buflist[i]);
 				break;
 			case DRM_LIST_WAIT:
 				dma->buflist[i]->list = DRM_LIST_RECLAIM;
@@ -121,18 +143,5 @@ void drm_reclaim_buffers(struct drm_device *dev, struct drm_file *file_priv)
 				break;
 			}
 		}
-	}
-}
-
-/* Call into the driver-specific DMA handler */
-int drm_dma(struct drm_device *dev, void *data, struct drm_file *file_priv)
-{
-
-	if (dev->driver->dma_ioctl) {
-		/* shared code returns -errno */
-		return dev->driver->dma_ioctl(dev, data, file_priv);
-	} else {
-		DRM_DEBUG("DMA ioctl on driver with no dma handler\n");
-		return -EINVAL;
 	}
 }

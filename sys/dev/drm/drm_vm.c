@@ -34,6 +34,8 @@
 #include <vm/vm_pager.h>
 
 #include <drm/drmP.h>
+#include <asm/pgtable.h>
+#include "drm_legacy.h"
 
 int drm_mmap(struct dev_mmap_args *ap)
 {

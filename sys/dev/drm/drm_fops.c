@@ -41,6 +41,7 @@
 #include <drm/drmP.h>
 #include <linux/module.h>
 #include "drm_legacy.h"
+#include "drm_internal.h"
 
 /* from BKL pushdown: note that nothing else serializes idr_find() */
 DEFINE_MUTEX(drm_global_mutex);
@@ -58,7 +59,7 @@ static int drm_setup(struct drm_device *dev)
 	DRM_LOCK_ASSERT(dev);
 
 	/* prebuild the SAREA */
-	i = drm_addmap(dev, 0, SAREA_MAX, _DRM_SHM,
+	i = drm_legacy_addmap(dev, 0, SAREA_MAX, _DRM_SHM,
 	    _DRM_CONTAINS_LOCK, &map);
 	if (i != 0)
 		return i;
@@ -69,7 +70,7 @@ static int drm_setup(struct drm_device *dev)
 	dev->buf_use = 0;
 
 	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA)) {
-		i = drm_dma_setup(dev);
+		i = drm_legacy_dma_setup(dev);
 		if (i != 0)
 			return i;
 	}
@@ -157,7 +158,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	init_waitqueue_head(&priv->event_wait);
 	priv->event_space = 4096; /* set aside 4k for event buffer */
 
-	if (dev->driver->driver_features & DRIVER_GEM)
+	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_open(dev, priv);
 
 	if (dev->driver->open) {
@@ -207,7 +208,7 @@ static void drm_unload(struct drm_device *dev)
 	if (dev->devnode != NULL)
 		destroy_dev(dev->devnode);
 
-	if (dev->driver->driver_features & DRIVER_GEM)
+	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_destroy(dev);
 
 	if (dev->agp && dev->agp->agp_mtrr) {
@@ -259,11 +260,105 @@ static void drm_unload(struct drm_device *dev)
 	lockuninit(&dev->struct_mutex);
 }
 
+/**
+ * Take down the DRM device.
+ *
+ * \param dev DRM device structure.
+ *
+ * Frees every resource in \p dev.
+ *
+ * \sa drm_device
+ */
+int drm_lastclose(struct drm_device * dev)
+{
+	DRM_DEBUG("\n");
+
+	if (dev->driver->lastclose)
+		dev->driver->lastclose(dev);
+	DRM_DEBUG("driver lastclose completed\n");
+
+	if (dev->irq_enabled && !drm_core_check_feature(dev, DRIVER_MODESET))
+		drm_irq_uninstall(dev);
+
+	mutex_lock(&dev->struct_mutex);
+
+	if (dev->unique) {
+		drm_free(dev->unique, M_DRM);
+		dev->unique = NULL;
+		dev->unique_len = 0;
+	}
+
+	/* Clear AGP information */
+	if (dev->agp) {
+		drm_agp_mem_t *entry;
+		drm_agp_mem_t *nexte;
+
+		/* Remove AGP resources, but leave dev->agp intact until
+		 * drm_unload is called.
+		 */
+		for (entry = dev->agp->memory; entry; entry = nexte) {
+			nexte = entry->next;
+			if (entry->bound)
+				drm_agp_unbind_memory(entry->handle);
+			drm_agp_free_memory(entry->handle);
+			drm_free(entry, M_DRM);
+		}
+		dev->agp->memory = NULL;
+
+		if (dev->agp->acquired)
+			drm_agp_release(dev);
+
+		dev->agp->acquired = 0;
+		dev->agp->enabled  = 0;
+	}
+	if (dev->sg != NULL) {
+		drm_legacy_sg_cleanup(dev->sg);
+		dev->sg = NULL;
+	}
+
+	drm_legacy_dma_takedown(dev);
+
+	if (dev->lock.hw_lock) {
+		dev->lock.hw_lock = NULL; /* SHM removed */
+		dev->lock.file_priv = NULL;
+		wakeup(&dev->lock.lock_queue);
+	}
+
+	mutex_unlock(&dev->struct_mutex);
+
+	DRM_DEBUG("lastclose completed\n");
+	return 0;
+}
+
+/**
+ * Release file.
+ *
+ * \param inode device inode
+ * \param file_priv DRM file private.
+ * \return zero on success or a negative number on failure.
+ *
+ * If the hardware lock is held then free it, and take it again for the kernel
+ * context since it's necessary to reclaim buffers. Unlink the file private
+ * data from its list and free it. Decreases the open count and if it reaches
+ * zero calls drm_lastclose().
+ */
 int drm_release(device_t kdev)
 {
-	struct drm_device *dev;
+	struct drm_device *dev = device_get_softc(kdev);
+	struct drm_magic_entry *pt, *next;
 
-	dev = device_get_softc(kdev);
+	mutex_lock(&drm_global_mutex);
+
+	/* Clear pid list */
+	if (dev->magicfree.next) {
+		list_for_each_entry_safe(pt, next, &dev->magicfree, head) {
+			list_del(&pt->head);
+			drm_ht_remove_item(&dev->magiclist, &pt->hash_item);
+			kfree(pt);
+		}
+		drm_ht_remove(&dev->magiclist);
+	}
+
 	drm_unload(dev);
 	if (dev->irqr) {
 		bus_release_resource(dev->dev, SYS_RES_IRQ, dev->irqrid,
@@ -273,6 +368,9 @@ int drm_release(device_t kdev)
 			DRM_INFO("MSI released\n");
 		}
 	}
+
+	mutex_unlock(&drm_global_mutex);
+
 	return (0);
 }
 

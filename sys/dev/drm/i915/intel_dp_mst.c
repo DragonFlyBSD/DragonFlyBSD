@@ -29,6 +29,7 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
 
+#if 0
 static bool intel_dp_mst_compute_config(struct intel_encoder *encoder,
 					struct intel_crtc_config *pipe_config)
 {
@@ -353,6 +354,7 @@ static const struct drm_connector_helper_funcs intel_dp_mst_connector_helper_fun
 	.mode_valid = intel_dp_mst_mode_valid,
 	.best_encoder = intel_mst_best_encoder,
 };
+#endif
 
 static void intel_dp_mst_encoder_destroy(struct drm_encoder *encoder)
 {
@@ -366,6 +368,7 @@ static const struct drm_encoder_funcs intel_dp_mst_enc_funcs = {
 	.destroy = intel_dp_mst_encoder_destroy,
 };
 
+#if 0
 static bool intel_dp_mst_get_hw_state(struct intel_connector *connector)
 {
 	if (connector->encoder) {
@@ -514,11 +517,13 @@ intel_dp_create_fake_mst_encoders(struct intel_digital_port *intel_dig_port)
 		intel_dp->mst_encoders[i] = intel_dp_create_fake_mst_encoder(intel_dig_port, i);
 	return true;
 }
+#endif
 
 int
 intel_dp_mst_encoder_init(struct intel_digital_port *intel_dig_port, int conn_base_id)
 {
 	struct intel_dp *intel_dp = &intel_dig_port->dp;
+#if 0
 	struct drm_device *dev = intel_dig_port->base.base.dev;
 	int ret;
 
@@ -532,6 +537,8 @@ intel_dp_mst_encoder_init(struct intel_digital_port *intel_dig_port, int conn_ba
 		intel_dp->can_mst = false;
 		return ret;
 	}
+#endif
+	intel_dp->can_mst = false;
 	return 0;
 }
 
@@ -543,6 +550,8 @@ intel_dp_mst_encoder_cleanup(struct intel_digital_port *intel_dig_port)
 	if (!intel_dp->can_mst)
 		return;
 
+#if 0
 	drm_dp_mst_topology_mgr_destroy(&intel_dp->mst_mgr);
+#endif
 	/* encoders will get killed by normal cleanup */
 }

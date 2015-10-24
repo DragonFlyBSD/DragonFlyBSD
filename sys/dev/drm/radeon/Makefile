@@ -136,7 +136,8 @@ SRCS	+=								\
 	radeon_irq.c							\
 	r300_cmdbuf.c							\
 	r600_blit.c							\
-	r600_cp.c
+	r600_cp.c							\
+	drm_buffer.c
 
 #radeon_ioc32.c
 #radeon_prime.c

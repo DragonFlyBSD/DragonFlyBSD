@@ -35,6 +35,7 @@ struct i915_params i915 __read_mostly = {
 	.vbt_sdvo_panel_type = -1,
 	.enable_rc6 = -1,
 	.enable_fbc = -1,
+	.enable_execlists = 0,
 	.enable_hangcheck = true,
 	.enable_ppgtt = -1,
 	.enable_psr = 0,
@@ -69,13 +70,13 @@ TUNABLE_INT("drm.i915.powersave", &i915.powersave);
 MODULE_PARM_DESC(powersave,
 	"Enable powersavings, fbc, downclocking, etc. (default: true)");
 
-module_param_named(semaphores, i915.semaphores, int, 0400);
+module_param_named_unsafe(semaphores, i915.semaphores, int, 0400);
 TUNABLE_INT("drm.i915.semaphores", &i915.semaphores);
 MODULE_PARM_DESC(semaphores,
 	"Use semaphores for inter-ring sync "
 	"(default: -1 (use per-chip defaults))");
 
-module_param_named(enable_rc6, i915.enable_rc6, int, 0400);
+module_param_named_unsafe(enable_rc6, i915.enable_rc6, int, 0400);
 TUNABLE_INT("drm.i915.enable_rc6", &i915.enable_rc6);
 MODULE_PARM_DESC(enable_rc6,
 	"Enable power-saving render C-state 6. "
@@ -84,7 +85,7 @@ MODULE_PARM_DESC(enable_rc6,
 	"For example, 3 would enable rc6 and deep rc6, and 7 would enable everything. "
 	"default: -1 (use per-chip default)");
 
-module_param_named(enable_fbc, i915.enable_fbc, int, 0600);
+module_param_named_unsafe(enable_fbc, i915.enable_fbc, int, 0600);
 TUNABLE_INT("drm.i915.enable_fbc", &i915.enable_fbc);
 MODULE_PARM_DESC(enable_fbc,
 	"Enable frame buffer compression for power savings "
@@ -124,11 +125,16 @@ MODULE_PARM_DESC(enable_hangcheck,
 	"WARNING: Disabling this can cause system wide hangs. "
 	"(default: true)");
 
-module_param_named(enable_ppgtt, i915.enable_ppgtt, int, 0400);
+module_param_named_unsafe(enable_ppgtt, i915.enable_ppgtt, int, 0400);
 TUNABLE_INT("drm.i915.enable_ppgtt", &i915.enable_ppgtt);
 MODULE_PARM_DESC(enable_ppgtt,
 	"Override PPGTT usage. "
 	"(-1=auto [default], 0=disabled, 1=aliasing, 2=full)");
+
+module_param_named(enable_execlists, i915.enable_execlists, int, 0400);
+MODULE_PARM_DESC(enable_execlists,
+	"Override execlists usage. "
+	"(-1=auto, 0=disabled [default], 1=enabled)");
 
 module_param_named(enable_psr, i915.enable_psr, int, 0600);
 TUNABLE_INT("drm.i915.enable_psr", &i915.enable_psr);

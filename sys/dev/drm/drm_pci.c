@@ -1,5 +1,6 @@
-/*-
- * Copyright 2003 Eric Anholt.
+/*
+ * Copyright 2003 José Fonseca.
+ * Copyright 2003 Leif Delgass.
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -16,21 +17,13 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/drm2/drm_pci.c,v 1.1 2012/05/22 11:07:44 kib Exp $
- */
-
-/**
- * \file drm_pci.h
- * \brief PCI consistent, DMA-accessible memory allocation.
- *
- * \author Eric Anholt <anholt@FreeBSD.org>
  */
 
 #include <drm/drmP.h>
+#include <drm/drm_legacy.h>
 
 /**********************************************************************/
 /** \name PCI memory */
@@ -109,22 +102,30 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 	return dmah;
 }
 
-/**
- * \brief Free a DMA-accessible consistent memory block.
+/*
+ * Free a PCI consistent memory block without freeing its descriptor.
+ *
+ * This function is for internal use in the Linux-specific DRM core code.
  */
-void
-drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah)
+void __drm_legacy_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
 {
 	if (dmah == NULL)
 		return;
 
 	bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 	bus_dma_tag_destroy(dmah->tag);
-
-	drm_free(dmah, M_DRM);
 }
 
-/*@}*/
+/**
+ * drm_pci_free - Free a PCI consistent memory block
+ * @dev: DRM device
+ * @dmah: handle to memory block
+ */
+void drm_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
+{
+	__drm_legacy_pci_free(dev, dmah);
+	kfree(dmah);
+}
 
 int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 {

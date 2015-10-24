@@ -252,3 +252,14 @@ ssize_t drm_dp_dpcd_write(struct drm_dp_aux *aux, unsigned int offset,
 }
 EXPORT_SYMBOL(drm_dp_dpcd_write);
 
+/**
+ * drm_dp_aux_unregister() - unregister an AUX adapter
+ * @aux: DisplayPort AUX channel
+ */
+void drm_dp_aux_unregister(struct drm_dp_aux *aux)
+{
+#if 0
+	i2c_del_adapter(&aux->ddc);
+#endif
+}
+EXPORT_SYMBOL(drm_dp_aux_unregister);

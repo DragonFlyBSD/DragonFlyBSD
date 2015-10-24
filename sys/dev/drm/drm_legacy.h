@@ -23,6 +23,16 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/*
+ * This file contains legacy interfaces that modern drm drivers
+ * should no longer be using. They cannot be removed as legacy
+ * drivers use them, and removing them are API breaks.
+ */
+#include <linux/list.h>
+#include <drm/drm_legacy.h>
+
+struct agp_memory;
+
 struct drm_device;
 struct drm_file;
 
@@ -47,5 +57,43 @@ int drm_legacy_rmctx(struct drm_device *d, void *v, struct drm_file *f);
 
 int drm_legacy_setsareactx(struct drm_device *d, void *v, struct drm_file *f);
 int drm_legacy_getsareactx(struct drm_device *d, void *v, struct drm_file *f);
+
+/*
+ * Generic Buffer Management
+ */
+
+#define DRM_MAP_HASH_OFFSET 0x10000000
+
+int drm_legacy_addmap_ioctl(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_rmmap_ioctl(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_addbufs(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_infobufs(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_markbufs(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_freebufs(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_mapbufs(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_dma_ioctl(struct drm_device *d, void *v, struct drm_file *f);
+
+/*
+ * AGP Support
+ */
+
+/*
+ * Generic Userspace Locking-API
+ */
+
+/* DMA support */
+int drm_legacy_dma_setup(struct drm_device *dev);
+void drm_legacy_dma_takedown(struct drm_device *dev);
+void drm_legacy_free_buffer(struct drm_device *dev,
+			    struct drm_buf * buf);
+void drm_legacy_reclaim_buffers(struct drm_device *dev,
+				struct drm_file *filp);
+
+/* Scatter Gather Support */
+void drm_legacy_sg_cleanup(struct drm_sg_mem *entry);
+int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
+			struct drm_file *file_priv);
+int drm_legacy_sg_free(struct drm_device *dev, void *data,
+		       struct drm_file *file_priv);
 
 #endif /* __DRM_LEGACY_H__ */

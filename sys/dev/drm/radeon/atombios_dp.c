@@ -321,8 +321,8 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 
 /***** general DP utility functions *****/
 
-#define DP_VOLTAGE_MAX         DP_TRAIN_VOLTAGE_SWING_1200
-#define DP_PRE_EMPHASIS_MAX    DP_TRAIN_PRE_EMPHASIS_9_5
+#define DP_VOLTAGE_MAX         DP_TRAIN_VOLTAGE_SWING_LEVEL_3
+#define DP_PRE_EMPHASIS_MAX    DP_TRAIN_PRE_EMPH_LEVEL_3
 
 static void dp_get_adjust_train(u8 link_status[DP_LINK_STATUS_SIZE],
 				int lane_count,

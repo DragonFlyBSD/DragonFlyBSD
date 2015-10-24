@@ -144,3 +144,59 @@ void drm_fini_pdev(struct pci_dev **pdev)
 
 	kfree(*pdev);
 }
+
+/* Allocation of PCI memory resources (framebuffer, registers, etc.) for
+ * drm_get_resource_*.  Note that they are not RF_ACTIVE, so there's no virtual
+ * address for accessing them.  Cleaned up at unload.
+ */
+static int drm_alloc_resource(struct drm_device *dev, int resource)
+{
+	struct resource *res;
+	int rid;
+
+	DRM_LOCK_ASSERT(dev);
+
+	if (resource >= DRM_MAX_PCI_RESOURCE) {
+		DRM_ERROR("Resource %d too large\n", resource);
+		return 1;
+	}
+
+	if (dev->pcir[resource] != NULL) {
+		return 0;
+	}
+
+	DRM_UNLOCK(dev);
+	rid = PCIR_BAR(resource);
+	res = bus_alloc_resource_any(dev->dev, SYS_RES_MEMORY, &rid,
+	    RF_SHAREABLE);
+	DRM_LOCK(dev);
+	if (res == NULL) {
+		DRM_ERROR("Couldn't find resource 0x%x\n", resource);
+		return 1;
+	}
+
+	if (dev->pcir[resource] == NULL) {
+		dev->pcirid[resource] = rid;
+		dev->pcir[resource] = res;
+	}
+
+	return 0;
+}
+
+unsigned long drm_get_resource_start(struct drm_device *dev,
+				     unsigned int resource)
+{
+	if (drm_alloc_resource(dev, resource) != 0)
+		return 0;
+
+	return rman_get_start(dev->pcir[resource]);
+}
+
+unsigned long drm_get_resource_len(struct drm_device *dev,
+				   unsigned int resource)
+{
+	if (drm_alloc_resource(dev, resource) != 0)
+		return 0;
+
+	return rman_get_size(dev->pcir[resource]);
+}
