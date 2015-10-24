@@ -132,8 +132,7 @@ dm_target_delay_init(dm_table_entry_t *table_en, char *params)
 	dm_table_add_deps(table_en, tdc->read.pdev);
 	dm_table_add_deps(table_en, tdc->write.pdev);
 
-	table_en->target_config = tdc;
-	table_en->dev->dev_type = DM_DELAY_DEV;
+	dm_table_init_target(table_en, DM_DELAY_DEV, tdc);
 
 	return 0;
 }

@@ -136,8 +136,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, char *params)
 		return (ENOENT);
 	}
 
-	table_en->target_config = tsc;
-	table_en->dev->dev_type = DM_STRIPE_DEV;
+	dm_table_init_target(table_en, DM_STRIPE_DEV, tsc);
 
 	return 0;
 }

@@ -258,6 +258,13 @@ dm_table_head_destroy(dm_table_head_t *head)
 	lockuninit(&head->table_mtx);
 }
 
+void
+dm_table_init_target(dm_table_entry_t *table_en, uint32_t type, void *cfg)
+{
+	table_en->dev->dev_type = type;
+	table_en->target_config = cfg;
+}
+
 int
 dm_table_add_deps(dm_table_entry_t *table_en, dm_pdev_t *pdev)
 {

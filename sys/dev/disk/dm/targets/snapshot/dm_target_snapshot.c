@@ -167,8 +167,7 @@ dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
 	dm_table_add_deps(table_en, dmp_snap);
 	dm_table_add_deps(table_en, dmp_cow);
 
-	table_en->target_config = tsc;
-	table_en->dev->dev_type = DM_SNAPSHOT_DEV;
+	dm_table_init_target(table_en, DM_SNAPSHOT_DEV, tsc);
 
 	return 0;
 }
@@ -315,8 +314,7 @@ dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
 
 	dm_table_add_deps(table_en, dmp_real);
 
-	table_en->target_config = tsoc;
-	table_en->dev->dev_type = DM_SNAPSHOT_ORIG_DEV;
+	dm_table_init_target(table_en, DM_SNAPSHOT_ORIG_DEV, tsoc);
 
 	return 0;
 }

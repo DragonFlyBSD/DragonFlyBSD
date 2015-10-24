@@ -258,6 +258,7 @@ void dm_table_release(dm_table_head_t *, uint8_t s);
 void dm_table_switch_tables(dm_table_head_t *);
 void dm_table_head_init(dm_table_head_t *);
 void dm_table_head_destroy(dm_table_head_t *);
+void dm_table_init_target(dm_table_entry_t *table_en, uint32_t type, void *cfg);
 int dm_table_add_deps(dm_table_entry_t *table_en, dm_pdev_t *pdev);
 void dm_table_free_deps(dm_table_entry_t *table_en);
 

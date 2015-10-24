@@ -675,8 +675,7 @@ dm_target_crypt_init(dm_table_entry_t *table_en, char *params)
 
 	dm_table_add_deps(table_en, priv->pdev);
 
-	table_en->target_config = priv;
-	table_en->dev->dev_type = DM_CRYPTO_DEV;
+	dm_table_init_target(table_en, DM_CRYPTO_DEV, priv);
 
 	error = hex2key(key, priv->crypto_klen >> 3,
 			(u_int8_t *)priv->crypto_key);

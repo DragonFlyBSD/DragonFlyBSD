@@ -45,8 +45,7 @@ dm_target_error_init(dm_table_entry_t *table_en, char *params)
 
 	kprintf("Error target init function called!!\n");
 
-	table_en->target_config = NULL;
-	table_en->dev->dev_type = DM_ERROR_DEV;
+	dm_table_init_target(table_en, DM_ERROR_DEV, NULL);
 
 	return 0;
 }

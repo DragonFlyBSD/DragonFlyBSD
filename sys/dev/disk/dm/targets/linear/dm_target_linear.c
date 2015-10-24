@@ -100,8 +100,7 @@ dm_target_linear_init(dm_table_entry_t *table_en, char *params)
 
 	dm_table_add_deps(table_en, dmp);
 
-	table_en->target_config = tlc;
-	table_en->dev->dev_type = DM_LINEAR_DEV;
+	dm_table_init_target(table_en, DM_LINEAR_DEV, tlc);
 
 	return 0;
 }
