@@ -116,7 +116,7 @@ typedef struct dm_pdev {
 	struct vnode *pdev_vnode;
 	int ref_cnt; /* reference counter for users ofthis pdev */
 
-	SLIST_ENTRY(dm_pdev) next_pdev;
+	TAILQ_ENTRY(dm_pdev) next_pdev;
 } dm_pdev_t;
 
 /*

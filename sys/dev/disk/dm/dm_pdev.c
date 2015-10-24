@@ -41,7 +41,7 @@
 
 #include <dev/disk/dm/dm.h>
 
-SLIST_HEAD(dm_pdevs, dm_pdev) dm_pdev_list;
+TAILQ_HEAD(dm_pdevs, dm_pdev) dm_pdev_list;
 
 static struct lock dm_pdev_mutex;
 
@@ -60,7 +60,7 @@ dm_pdev_lookup_name(const char *dm_pdev_name)
 
 	KKASSERT(dm_pdev_name != NULL);
 
-	SLIST_FOREACH(dmp, &dm_pdev_list, next_pdev) {
+	TAILQ_FOREACH(dmp, &dm_pdev_list, next_pdev) {
 		if (strcmp(dm_pdev_name, dmp->name) == 0)
 			return dmp;
 	}
@@ -116,7 +116,7 @@ dm_pdev_correct_dump_offset(dm_pdev_t *pdev, off_t offset)
 
 /*
  * Create entry for device with name dev_name and open vnode for it.
- * If entry already exists in global SLIST I will only increment
+ * If entry already exists in global TAILQ I will only increment
  * reference counter.
  */
 dm_pdev_t *
@@ -171,7 +171,7 @@ dm_pdev_insert(const char *dev_name)
 		kprintf("dmp_pdev_insert DIOCGPART failed %d\n", error);
 	}
 
-	SLIST_INSERT_HEAD(&dm_pdev_list, dmp, next_pdev);
+	TAILQ_INSERT_TAIL(&dm_pdev_list, dmp, next_pdev);
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 
 	return dmp;
@@ -238,7 +238,7 @@ dm_pdev_decr(dm_pdev_t *dmp)
 	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
 
 	if (--dmp->ref_cnt == 0) {
-		SLIST_REMOVE(&dm_pdev_list, dmp, dm_pdev, next_pdev);
+		TAILQ_REMOVE(&dm_pdev_list, dmp, next_pdev);
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		dm_pdev_rem(dmp);
 		return 0;
@@ -271,7 +271,7 @@ dm_pdev_get_udev(dm_pdev_t *dmp)
 int
 dm_pdev_init(void)
 {
-	SLIST_INIT(&dm_pdev_list);	/* initialize global pdev list */
+	TAILQ_INIT(&dm_pdev_list);	/* initialize global pdev list */
 	lockinit(&dm_pdev_mutex, "dmpdev", 0, LK_CANRECURSE);
 
 	return 0;
@@ -287,11 +287,11 @@ dm_pdev_uninit(void)
 
 	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
 
-	while ((dmp = SLIST_FIRST(&dm_pdev_list)) != NULL) {
-		SLIST_REMOVE(&dm_pdev_list, dmp, dm_pdev, next_pdev);
+	while ((dmp = TAILQ_FIRST(&dm_pdev_list)) != NULL) {
+		TAILQ_REMOVE(&dm_pdev_list, dmp, next_pdev);
 		dm_pdev_rem(dmp);
 	}
-	KKASSERT(SLIST_EMPTY(&dm_pdev_list));
+	KKASSERT(TAILQ_EMPTY(&dm_pdev_list));
 
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 

@@ -26,9 +26,9 @@ TAILQ_HEAD(dm_table, dm_table_entry);
 struct dm_pdev {
 	struct vnode *pdev_vnode;
 	int refcnt;
-	SLIST_ENTRY(dm_pdev) next_pdev;
+	TAILQ_ENTRY(dm_pdev) next_pdev;
 };
-SLIST(dm_pdevs, pm_pdev);
+TAILQ(dm_pdevs, pm_pdev);
 
 
 struct dm_dev {
