@@ -33,6 +33,7 @@
 					 * network */
 #define VIRTIO_NET_F_MQ		0x400000 /* Device supports Receive Flow
 					  * Steering */
+#define VIRTIO_NET_F_CTRL_MAC_ADDR 0x800000 /* Set MAC address */
 
 #define VIRTIO_NET_S_LINK_UP	1	/* Link is up */
 #define VIRTIO_NET_S_ANNOUNCE	2	/* Announcement is needed */
@@ -131,6 +132,7 @@ struct virtio_net_ctrl_mac {
 
 #define VIRTIO_NET_CTRL_MAC		1
 #define VIRTIO_NET_CTRL_MAC_TABLE_SET	0
+#define VIRTIO_NET_CTRL_MAC_ADDR_SET	1
 
 /*
  * Control VLAN filtering

@@ -98,12 +98,14 @@ struct vtnet_softc {
 	uint32_t		vtnet_flags;
 #define VTNET_FLAG_LINK		0x0001
 #define VTNET_FLAG_SUSPENDED	0x0002
-#define VTNET_FLAG_CTRL_VQ	0x0004
-#define VTNET_FLAG_CTRL_RX	0x0008
-#define VTNET_FLAG_VLAN_FILTER	0x0010
-#define VTNET_FLAG_TSO_ECN	0x0020
-#define VTNET_FLAG_MRG_RXBUFS	0x0040
-#define VTNET_FLAG_LRO_NOMRG	0x0080
+#define VTNET_FLAG_MAC		0x0004
+#define VTNET_FLAG_CTRL_VQ	0x0008
+#define VTNET_FLAG_CTRL_RX	0x0010
+#define VTNET_FLAG_CTRL_MAC	0x0020
+#define VTNET_FLAG_VLAN_FILTER	0x0040
+#define VTNET_FLAG_TSO_ECN	0x0080
+#define VTNET_FLAG_MRG_RXBUFS	0x0100
+#define VTNET_FLAG_LRO_NOMRG	0x0200
 
 	struct virtqueue	*vtnet_rx_vq;
 	struct virtqueue	*vtnet_tx_vq;
@@ -211,6 +213,7 @@ struct vtnet_mac_filter {
      VIRTIO_NET_F_STATUS	| \
      VIRTIO_NET_F_CTRL_VQ	| \
      VIRTIO_NET_F_CTRL_RX	| \
+     VIRTIO_NET_F_CTRL_MAC_ADDR	| \
      VIRTIO_NET_F_CTRL_VLAN	| \
      VIRTIO_NET_F_CSUM		| \
      VIRTIO_NET_F_HOST_TSO4	| \
@@ -329,10 +332,11 @@ static void	vtnet_init(void *);
 static void	vtnet_exec_ctrl_cmd(struct vtnet_softc *, void *,
 		    struct sglist *, int, int);
 
-static void	vtnet_rx_filter(struct vtnet_softc *sc);
+static int	vtnet_ctrl_mac_cmd(struct vtnet_softc *, uint8_t *);
 static int	vtnet_ctrl_rx_cmd(struct vtnet_softc *, int, int);
 static int	vtnet_set_promisc(struct vtnet_softc *, int);
 static int	vtnet_set_allmulti(struct vtnet_softc *, int);
+static void	vtnet_rx_filter(struct vtnet_softc *sc);
 static void	vtnet_rx_filter_mac(struct vtnet_softc *);
 
 static int	vtnet_exec_vlan_filter(struct vtnet_softc *, int, uint16_t);
@@ -388,7 +392,9 @@ static struct virtio_feature_desc vtnet_feature_desc[] = {
 	{ VIRTIO_NET_F_CTRL_RX,		"RxMode"	},
 	{ VIRTIO_NET_F_CTRL_VLAN,	"VLanFilter"	},
 	{ VIRTIO_NET_F_CTRL_RX_EXTRA,	"RxModeExtra"	},
+	{ VIRTIO_NET_F_GUEST_ANNOUNCE,	"GuestAnnounce"	},
 	{ VIRTIO_NET_F_MQ,		"RFS"		},
+	{ VIRTIO_NET_F_CTRL_MAC_ADDR,	"SetMacAddress"	},
 	{ 0, NULL }
 };
 
@@ -476,6 +482,11 @@ vtnet_attach(device_t dev)
 	virtio_set_feature_desc(dev, vtnet_feature_desc);
 	vtnet_negotiate_features(sc);
 
+	if (virtio_with_feature(dev, VIRTIO_NET_F_MAC)) {
+		/* This feature should always be negotiated. */
+		sc->vtnet_flags |= VTNET_FLAG_MAC;
+	}
+
 	if (virtio_with_feature(dev, VIRTIO_NET_F_MRG_RXBUF)) {
 		sc->vtnet_flags |= VTNET_FLAG_MRG_RXBUFS;
 		sc->vtnet_hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
@@ -493,8 +504,12 @@ vtnet_attach(device_t dev)
 			sc->vtnet_flags |= VTNET_FLAG_CTRL_RX;
 		if (virtio_with_feature(dev, VIRTIO_NET_F_CTRL_VLAN))
 			sc->vtnet_flags |= VTNET_FLAG_VLAN_FILTER;
+		if (virtio_with_feature(dev, VIRTIO_NET_F_CTRL_MAC_ADDR) &&
+		    virtio_with_feature(dev, VIRTIO_NET_F_CTRL_RX))
+			sc->vtnet_flags |= VTNET_FLAG_CTRL_MAC;
 	}
 
+	/* Read (or generate) the MAC address for the adapter. */
 	vtnet_get_hwaddr(sc);
 
 	error = vtnet_alloc_virtqueues(sc);
@@ -817,33 +832,45 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 }
 
 static void
-vtnet_get_hwaddr(struct vtnet_softc *sc)
-{
-	device_t dev;
-
-	dev = sc->vtnet_dev;
-
-	if (virtio_with_feature(dev, VIRTIO_NET_F_MAC)) {
-		virtio_read_device_config(dev,
-		    offsetof(struct virtio_net_config, mac),
-		    sc->vtnet_hwaddr, ETHER_ADDR_LEN);
-	} else {
-		/* Generate random locally administered unicast address. */
-		sc->vtnet_hwaddr[0] = 0xB2;
-		karc4rand(&sc->vtnet_hwaddr[1], ETHER_ADDR_LEN - 1);
-
-		vtnet_set_hwaddr(sc);
-	}
-}
-
-static void
 vtnet_set_hwaddr(struct vtnet_softc *sc)
 {
 	device_t dev;
 
 	dev = sc->vtnet_dev;
 
-	virtio_write_device_config(dev,
+	if ((sc->vtnet_flags & VTNET_FLAG_CTRL_MAC) &&
+	    (sc->vtnet_flags & VTNET_FLAG_CTRL_RX)) {
+		if (vtnet_ctrl_mac_cmd(sc, sc->vtnet_hwaddr) != 0)
+			device_printf(dev, "unable to set MAC address\n");
+	} else if (sc->vtnet_flags & VTNET_FLAG_MAC) {
+		virtio_write_device_config(dev,
+		    offsetof(struct virtio_net_config, mac),
+		    sc->vtnet_hwaddr, ETHER_ADDR_LEN);
+	}
+}
+
+static void
+vtnet_get_hwaddr(struct vtnet_softc *sc)
+{
+	device_t dev;
+
+	dev = sc->vtnet_dev;
+
+	if ((sc->vtnet_flags & VTNET_FLAG_MAC) == 0) {
+		/*
+		 * Generate a random locally administered unicast address.
+		 *
+		 * It would be nice to generate the same MAC address across
+		 * reboots, but it seems all the hosts currently available
+		 * support the MAC feature, so this isn't too important.
+		 */
+		sc->vtnet_hwaddr[0] = 0xB2;
+		karc4rand(&sc->vtnet_hwaddr[1], ETHER_ADDR_LEN - 1);
+		vtnet_set_hwaddr(sc);
+		return;
+	}
+
+	virtio_read_device_config(dev,
 	    offsetof(struct virtio_net_config, mac),
 	    sc->vtnet_hwaddr, ETHER_ADDR_LEN);
 }
@@ -2263,6 +2290,41 @@ vtnet_exec_ctrl_cmd(struct vtnet_softc *sc, void *cookie,
 	 */
 	c = virtqueue_poll(vq, NULL);
 	KASSERT(c == cookie, ("unexpected control command response"));
+}
+
+static int
+vtnet_ctrl_mac_cmd(struct vtnet_softc *sc, uint8_t *hwaddr)
+{
+	struct {
+		struct virtio_net_ctrl_hdr hdr __aligned(2);
+		uint8_t pad1;
+		char aligned_hwaddr[ETHER_ADDR_LEN] __aligned(8);
+		uint8_t pad2;
+		uint8_t ack;
+	} s;
+	struct sglist_seg segs[3];
+	struct sglist sg;
+	int error;
+
+	s.hdr.class = VIRTIO_NET_CTRL_MAC;
+	s.hdr.cmd = VIRTIO_NET_CTRL_MAC_ADDR_SET;
+	s.ack = VIRTIO_NET_ERR;
+
+	/* Copy the mac address into physically contiguous memory */
+	memcpy(s.aligned_hwaddr, hwaddr, ETHER_ADDR_LEN);
+
+	sglist_init(&sg, 3, segs);
+	error = 0;
+	error |= sglist_append(&sg, &s.hdr,
+	    sizeof(struct virtio_net_ctrl_hdr));
+	error |= sglist_append(&sg, s.aligned_hwaddr, ETHER_ADDR_LEN);
+	error |= sglist_append(&sg, &s.ack, sizeof(uint8_t));
+	KASSERT(error == 0 && sg.sg_nseg == 3,
+	    ("%s: error %d adding set MAC msg to sglist", __func__, error));
+
+	vtnet_exec_ctrl_cmd(sc, &s.ack, &sg, sg.sg_nseg - 1, 1);
+
+	return (s.ack == VIRTIO_NET_OK ? 0 : EIO);
 }
 
 static void
