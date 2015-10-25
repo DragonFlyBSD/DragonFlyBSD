@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/sysconf.3,v 1.7 2008/05/02 02:05:03 swildner Exp $
 .\"
-.Dd November 7, 2009
+.Dd October 26, 2015
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -135,6 +134,12 @@ The version of
 .St -p1003.1
 with which the system
 attempts to comply.
+.It Li _SC_XOPEN_SHM
+Return 1 if the system supports the
+.St -xpg4.2
+Shared Memory Feature
+for both compilation and execution, or 0 if only compilation support is
+guaranteed.
 .It Li _SC_2_C_BIND
 Return 1 if the system's C-language development facilities support the
 C-Language Bindings Option, otherwise \-1.
