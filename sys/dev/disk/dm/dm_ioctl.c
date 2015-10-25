@@ -911,10 +911,14 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 		} else {
 			params = NULL;
 		}
+
 		if (params != NULL) {
 			prop_dictionary_set_cstring(target_dict,
 			    DM_TABLE_PARAMS, params);
 			kfree(params, M_DM);
+		} else {
+			prop_dictionary_set_cstring(target_dict,
+			    DM_TABLE_PARAMS, "");
 		}
 
 		prop_array_add(cmd_array, target_dict);
