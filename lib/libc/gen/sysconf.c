@@ -588,15 +588,7 @@ yesno:
 		return (_XOPEN_REALTIME_THREADS);
 #endif
 	case _SC_XOPEN_SHM:
-		len = sizeof(lvalue);
-		sverrno = errno;
-		if (sysctlbyname("kern.ipc.shmmin", &lvalue, &len, NULL,
-		    0) == -1) {
-			errno = sverrno;
-			return (-1);
-		}
-		errno = sverrno;
-		return (1);
+		return (_XOPEN_SHM);
 	case _SC_XOPEN_STREAMS:
 		return (_XOPEN_STREAMS);
 	case _SC_XOPEN_UNIX:
