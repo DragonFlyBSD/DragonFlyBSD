@@ -117,7 +117,6 @@ DF404.0 {
 	isxdigit_l;
 	localeconv;
 	localeconv_l;
-	locale_isstrict;
 	mbintowcr;
 	mbintowcr_l;
 	mblen;

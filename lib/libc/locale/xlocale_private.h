@@ -135,8 +135,6 @@ struct _xlocale {
 	__mbstate_t wctomb;
 	/** Buffer used by nl_langinfo_l() */
 	char *csym;
-	/** strict mode from LOCALE_STRICT */
-	int	strict_mode;
 };
 
 /**

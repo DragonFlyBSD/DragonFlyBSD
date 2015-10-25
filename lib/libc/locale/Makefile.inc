@@ -14,7 +14,7 @@ SRCS+=	big5.c btowc.c collate.c collcmp.c euc.c fix_grouping.c \
 	mbintowcr.c \
 	mskanji.c nextwctype.c nl_langinfo.c nomacros.c none.c rpmatch.c \
 	rune.c \
-	runetype.c setlocale.c setrunelocale.c locale_isstrict.c \
+	runetype.c setlocale.c setrunelocale.c \
 	table.c \
 	tolower.c toupper.c utf8.c wcrtomb.c wcsnrtombs.c \
 	wcsrtombs.c wcsftime.c \
