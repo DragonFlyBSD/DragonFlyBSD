@@ -50,6 +50,7 @@
 #include <sys/devicestat.h>
 #include <sys/diskslice.h>
 #include <sys/disklabel.h>
+#include <sys/vfscache.h>
 
 #include <libprop/proplib.h>
 
@@ -111,6 +112,7 @@ typedef struct dm_table_head {
 
 typedef struct dm_pdev {
 	char name[MAX_DEV_NAME];
+	char udev_name[MAX_DEV_NAME];
 	struct partinfo pdev_pinfo; /* partinfo of the underlying device */
 
 	struct vnode *pdev_vnode;
@@ -284,6 +286,7 @@ int dm_pdev_init(void);
 int dm_pdev_uninit(void);
 int dm_pdev_decr(dm_pdev_t *);
 uint64_t dm_pdev_get_udev(dm_pdev_t *);
+int dm_pdev_get_vattr(dm_pdev_t *, struct vattr *);
 dm_pdev_t* dm_pdev_insert(const char *);
 off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
 

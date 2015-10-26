@@ -205,16 +205,11 @@ dm_target_delay_table(void *target_config)
 
 static int _table(struct dm_delay_info *di, char *p)
 {
-	struct vattr va;
-	int ret = 0;
-	int error;
+	int ret;
 
-	error = VOP_GETATTR(di->pdev->pdev_vnode, &va);
-	KKASSERT(error == 0);
-
-	ret += ksnprintf(p, DM_MAX_PARAMS_SIZE,
-		"%d:%d %" PRIu64 " %d",
-		va.va_rmajor, va.va_rminor, di->offset, di->delay);
+	ret = ksnprintf(p, DM_MAX_PARAMS_SIZE,
+		"%s %" PRIu64 " %d",
+		di->pdev->udev_name, di->offset, di->delay);
 	return ret;
 }
 

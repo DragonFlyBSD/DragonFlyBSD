@@ -123,6 +123,7 @@ dm_pdev_t *
 dm_pdev_insert(const char *dev_name)
 {
 	dm_pdev_t *dmp;
+	struct vattr va;
 	int error;
 
 	KKASSERT(dev_name != NULL);
@@ -152,6 +153,15 @@ dm_pdev_insert(const char *dev_name)
 	}
 	dmp->ref_cnt = 1;
 
+	if (dm_pdev_get_vattr(dmp, &va) == -1) {
+		aprint_debug("makeudev %s failed\n", dev_name);
+		dm_pdev_rem(dmp);
+		lockmgr(&dm_pdev_mutex, LK_RELEASE);
+		return NULL;
+	}
+	ksnprintf(dmp->udev_name, sizeof(dmp->udev_name),
+		"%d:%d", va.va_rmajor, va.va_rminor);
+
 	/*
 	 * Get us the partinfo from the underlying device, it's needed for
 	 * dumps.
@@ -173,6 +183,9 @@ dm_pdev_insert(const char *dev_name)
 
 	TAILQ_INSERT_TAIL(&dm_pdev_list, dmp, next_pdev);
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
+
+	aprint_debug("dmp_pdev_insert pdev %s %s\n",
+		dmp->name, dmp->udev_name);
 
 	return dmp;
 }
@@ -256,13 +269,29 @@ dm_pdev_get_udev(dm_pdev_t *dmp)
 	if (dmp->pdev_vnode == NULL)
 		return (uint64_t)-1;
 
-	ret = VOP_GETATTR(dmp->pdev_vnode, &va);
+	ret = dm_pdev_get_vattr(dmp, &va);
 	if (ret)
 		return (uint64_t)-1;
 
 	ret = makeudev(va.va_rmajor, va.va_rminor);
 
 	return ret;
+}
+
+int
+dm_pdev_get_vattr(dm_pdev_t *dmp, struct vattr *vap)
+{
+	int ret;
+
+	if (dmp->pdev_vnode == NULL)
+		return -1;
+
+	KKASSERT(vap);
+	ret = VOP_GETATTR(dmp->pdev_vnode, vap);
+	if (ret)
+		return -1;
+
+	return 0;
 }
 
 /*
