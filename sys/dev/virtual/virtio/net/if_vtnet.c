@@ -671,7 +671,7 @@ vtnet_detach(device_t dev)
 		sc->vtnet_vlan_attach = NULL;
 	}
 	if (sc->vtnet_vlan_detach != NULL) {
-		EVENTHANDLER_DEREGISTER(vlan_unconfg, sc->vtnet_vlan_detach);
+		EVENTHANDLER_DEREGISTER(vlan_unconfig, sc->vtnet_vlan_detach);
 		sc->vtnet_vlan_detach = NULL;
 	}
 
@@ -2413,11 +2413,10 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	mcnt = 0;
 	promisc = 0;
 	allmulti = 0;
-	error = 0;
 
 	ASSERT_SERIALIZED(&sc->vtnet_slz);
 	KASSERT(sc->vtnet_flags & VTNET_FLAG_CTRL_RX,
-	    ("CTRL_RX feature not negotiated"));
+	    ("%s: CTRL_RX feature not negotiated", __func__));
 
 	/* Use the MAC filtering table allocated in vtnet_attach. */
 	filter = sc->vtnet_macfilter;
@@ -2429,8 +2428,13 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 		ifa = ifac->ifa;
 		if (ifa->ifa_addr->sa_family != AF_LINK)
 			continue;
-		else if (ucnt == VTNET_MAX_MAC_ENTRIES)
+		else if (memcmp(LLADDR((struct sockaddr_dl *)ifa->ifa_addr),
+		    sc->vtnet_hwaddr, ETHER_ADDR_LEN) == 0)
+			continue;
+		else if (ucnt == VTNET_MAX_MAC_ENTRIES) {
+			promisc = 1;
 			break;
+		}
 
 		bcopy(LLADDR((struct sockaddr_dl *)ifa->ifa_addr),
 		    &filter->vmf_unicast.macs[ucnt], ETHER_ADDR_LEN);
@@ -2438,10 +2442,8 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	}
 	//if_addr_runlock(ifp);
 
-	if (ucnt >= VTNET_MAX_MAC_ENTRIES) {
-		promisc = 1;
+	if (promisc != 0) {
 		filter->vmf_unicast.nentries = 0;
-
 		if_printf(ifp, "more than %d MAC addresses assigned, "
 		    "falling back to promiscuous mode\n",
 		    VTNET_MAX_MAC_ENTRIES);
@@ -2453,8 +2455,10 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		else if (mcnt == VTNET_MAX_MAC_ENTRIES)
+		else if (mcnt == VTNET_MAX_MAC_ENTRIES) {
+			allmulti = 1;
 			break;
+		}
 
 		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
 		    &filter->vmf_multicast.macs[mcnt], ETHER_ADDR_LEN);
@@ -2462,17 +2466,15 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	}
 	//if_maddr_runlock(ifp);
 
-	if (mcnt >= VTNET_MAX_MAC_ENTRIES) {
-		allmulti = 1;
+	if (allmulti != 0) {
 		filter->vmf_multicast.nentries = 0;
-
 		if_printf(ifp, "more than %d multicast MAC addresses "
 		    "assigned, falling back to all-multicast mode\n",
 		    VTNET_MAX_MAC_ENTRIES);
 	} else
 		filter->vmf_multicast.nentries = mcnt;
 
-	if (promisc && allmulti)
+	if (promisc != 0 && allmulti != 0)
 		goto out;
 
 	hdr.class = VIRTIO_NET_CTRL_MAC;
@@ -2480,6 +2482,7 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	ack = VIRTIO_NET_ERR;
 
 	sglist_init(&sg, 4, segs);
+	error = 0;
 	error |= sglist_append(&sg, &hdr, sizeof(struct virtio_net_ctrl_hdr));
 	error |= sglist_append(&sg, &filter->vmf_unicast,
 	    sizeof(uint32_t) + filter->vmf_unicast.nentries * ETHER_ADDR_LEN);
@@ -2487,7 +2490,7 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	    sizeof(uint32_t) + filter->vmf_multicast.nentries * ETHER_ADDR_LEN);
 	error |= sglist_append(&sg, &ack, sizeof(uint8_t));
 	KASSERT(error == 0 && sg.sg_nseg == 4,
-	    ("error adding MAC filtering message to sglist"));
+	    ("%s: error %d adding MAC filter msg to sglist", __func__, error));
 
 	vtnet_exec_ctrl_cmd(sc, &ack, &sg, sg.sg_nseg - 1, 1);
 
@@ -2495,38 +2498,42 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 		if_printf(ifp, "error setting host MAC filter table\n");
 
 out:
-	if (promisc)
-		if (vtnet_set_promisc(sc, 1) != 0)
-			if_printf(ifp, "cannot enable promiscuous mode\n");
-	if (allmulti)
-		if (vtnet_set_allmulti(sc, 1) != 0)
-			if_printf(ifp, "cannot enable all-multicast mode\n");
+	if (promisc != 0 && vtnet_set_promisc(sc, 1) != 0)
+		if_printf(ifp, "cannot enable promiscuous mode\n");
+	if (allmulti != 0 && vtnet_set_allmulti(sc, 1) != 0)
+		if_printf(ifp, "cannot enable all-multicast mode\n");
 }
 
 static int
 vtnet_exec_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 {
-	struct virtio_net_ctrl_hdr hdr __aligned(2);
 	struct sglist_seg segs[3];
 	struct sglist sg;
-	uint8_t ack;
+	struct {
+		struct virtio_net_ctrl_hdr hdr __aligned(2);
+		uint8_t pad1;
+		uint16_t tag;
+		uint8_t pad2;
+		uint8_t ack;
+	} s;
 	int error;
 
-	hdr.class = VIRTIO_NET_CTRL_VLAN;
-	hdr.cmd = add ? VIRTIO_NET_CTRL_VLAN_ADD : VIRTIO_NET_CTRL_VLAN_DEL;
-	ack = VIRTIO_NET_ERR;
-	error = 0;
+	s.hdr.class = VIRTIO_NET_CTRL_VLAN;
+	s.hdr.cmd = add ? VIRTIO_NET_CTRL_VLAN_ADD : VIRTIO_NET_CTRL_VLAN_DEL;
+	s.tag = tag;
+	s.ack = VIRTIO_NET_ERR;
 
 	sglist_init(&sg, 3, segs);
-	error |= sglist_append(&sg, &hdr, sizeof(struct virtio_net_ctrl_hdr));
-	error |= sglist_append(&sg, &tag, sizeof(uint16_t));
-	error |= sglist_append(&sg, &ack, sizeof(uint8_t));
+	error = 0;
+	error |= sglist_append(&sg, &s.hdr, sizeof(struct virtio_net_ctrl_hdr));
+	error |= sglist_append(&sg, &s.tag, sizeof(uint16_t));
+	error |= sglist_append(&sg, &s.ack, sizeof(uint8_t));
 	KASSERT(error == 0 && sg.sg_nseg == 3,
-	    ("error adding VLAN control message to sglist"));
+	    ("%s: error %d adding VLAN message to sglist", __func__, error));
 
-	vtnet_exec_ctrl_cmd(sc, &ack, &sg, sg.sg_nseg - 1, 1);
+	vtnet_exec_ctrl_cmd(sc, &s.ack, &sg, sg.sg_nseg - 1, 1);
 
-	return (ack == VIRTIO_NET_OK ? 0 : EIO);
+	return (s.ack == VIRTIO_NET_OK ? 0 : EIO);
 }
 
 static void
