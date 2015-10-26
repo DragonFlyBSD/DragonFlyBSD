@@ -169,7 +169,7 @@ dm_target_stripe_table(void *target_config)
 
 	for (n = 0; n < tsc->stripe_num; ++n) {
 		ksnprintf(ptr, nlen, " %s %jd",
-			  tsc->stripe_devs[n].pdev->name,
+			  tsc->stripe_devs[n].pdev->udev_name,
 			  (intmax_t)tsc->stripe_devs[n].offset);
 		len = strlen(ptr);
 		ptr += len;
