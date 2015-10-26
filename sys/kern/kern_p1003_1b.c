@@ -353,10 +353,12 @@ sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 static void
 p31binit(void *notused)
 {
-	(void) sched_attach();
-	p31b_setcfg(CTL_P1003_1B_PAGESIZE, PAGE_SIZE);
+	sched_attach();
 	p31b_setcfg(CTL_P1003_1B_ASYNCHRONOUS_IO, -1);
 	p31b_setcfg(CTL_P1003_1B_MESSAGE_PASSING, _POSIX_MESSAGE_PASSING);
+	p31b_setcfg(CTL_P1003_1B_PAGESIZE, PAGE_SIZE);
+	p31b_setcfg(CTL_P1003_1B_SHARED_MEMORY_OBJECTS,
+	    _POSIX_SHARED_MEMORY_OBJECTS);
 }
 
 SYSINIT(p31b, SI_SUB_P1003_1B, SI_ORDER_FIRST, p31binit, NULL);
