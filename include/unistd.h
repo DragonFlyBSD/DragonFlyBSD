@@ -102,8 +102,8 @@ typedef	__uid_t		uid_t;
  * returns -1, the functions may be stubbed out.
  */
 #define	_POSIX_READER_WRITER_LOCKS	200112L
-#define	_POSIX_REGEXP			1
-#define	_POSIX_SHELL			1
+#define	_POSIX_REGEXP			1	/* mandatory */
+#define	_POSIX_SHELL			1	/* mandatory */
 #define	_POSIX_SPAWN			200112L
 #define	_POSIX_THREAD_ATTR_STACKADDR	200112L
 #define	_POSIX_THREAD_ATTR_STACKSIZE	200112L
@@ -115,10 +115,10 @@ typedef	__uid_t		uid_t;
 #define	_POSIX_THREAD_SAFE_FUNCTIONS	-1
 #define	_POSIX_THREAD_SPORADIC_SERVER	-1
 #define	_POSIX_THREADS			200112L
-#define	_POSIX_TRACE			-1
-#define	_POSIX_TRACE_EVENT_FILTER	-1
-#define	_POSIX_TRACE_INHERIT		-1
-#define	_POSIX_TRACE_LOG		-1
+#define	_POSIX_TRACE			-1	/* [TRC] obsolescent */
+#define	_POSIX_TRACE_EVENT_FILTER	-1	/* [TEF] obsolescent */
+#define	_POSIX_TRACE_INHERIT		-1	/* [TRI] obsolescent */
+#define	_POSIX_TRACE_LOG		-1	/* [TRL] obsolescent */
 
 #define	_POSIX2_C_BIND			200809L	/* mandatory */
 #define	_POSIX2_C_DEV			200809L	/* [CD] */
