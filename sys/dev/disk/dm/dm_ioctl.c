@@ -630,7 +630,7 @@ dm_table_deps(dm_table_entry_t *table_en, prop_array_t array)
 	size = prop_array_count(array);
 
 	TAILQ_FOREACH(map, &table_en->pdev_maps, next) {
-		ret = dm_pdev_get_udev(map->data.pdev);
+		ret = map->data.pdev->udev;
 		for (i = 0; i < size; i++) {
 			if (prop_array_get_uint64(array, i, &tmp) == true)
 				if (ret == tmp)

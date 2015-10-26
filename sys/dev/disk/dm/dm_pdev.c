@@ -161,6 +161,7 @@ dm_pdev_insert(const char *dev_name)
 	}
 	ksnprintf(dmp->udev_name, sizeof(dmp->udev_name),
 		"%d:%d", va.va_rmajor, va.va_rminor);
+	dmp->udev = dm_pdev_get_udev(dmp);
 
 	/*
 	 * Get us the partinfo from the underlying device, it's needed for
@@ -184,8 +185,8 @@ dm_pdev_insert(const char *dev_name)
 	TAILQ_INSERT_TAIL(&dm_pdev_list, dmp, next_pdev);
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 
-	aprint_debug("dmp_pdev_insert pdev %s %s\n",
-		dmp->name, dmp->udev_name);
+	aprint_debug("dmp_pdev_insert pdev %s %s 0x%016jx\n",
+		dmp->name, dmp->udev_name, (uintmax_t)dmp->udev);
 
 	return dmp;
 }

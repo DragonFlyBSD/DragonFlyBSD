@@ -270,20 +270,14 @@ dm_table_add_deps(dm_table_entry_t *table_en, dm_pdev_t *pdev)
 {
 	dm_table_head_t *head;
 	dm_mapping_t *map;
-	uint64_t udev;
 
 	KKASSERT(pdev);
-	udev = dm_pdev_get_udev(pdev);
-	if (udev == (uint64_t)-1) {
-		kprintf("%s: makeudev %s failed\n", __func__, pdev->name);
-		return -1;
-	}
 
 	head = &table_en->dev->table_head;
 	lockmgr(&head->table_mtx, LK_SHARED);
 
 	TAILQ_FOREACH(map, &table_en->pdev_maps, next) {
-		if (dm_pdev_get_udev(map->data.pdev) == udev) {
+		if (map->data.pdev->udev == pdev->udev) {
 			lockmgr(&head->table_mtx, LK_RELEASE);
 			return -1;
 		}

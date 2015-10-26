@@ -113,6 +113,7 @@ typedef struct dm_table_head {
 typedef struct dm_pdev {
 	char name[MAX_DEV_NAME];
 	char udev_name[MAX_DEV_NAME];
+	udev_t udev;
 	struct partinfo pdev_pinfo; /* partinfo of the underlying device */
 
 	struct vnode *pdev_vnode;
