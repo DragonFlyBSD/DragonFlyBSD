@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 10, 2015
+.Dd October 27, 2015
 .Dt I915KMS 4
 .Os
 .Sh NAME
@@ -51,8 +51,16 @@ prompt before booting the kernel or stored in
 .Xr loader.conf 5 .
 .Bl -tag -width "xxxxxx"
 .It Va drm.i915.enable_psr
-Enable PSR (panel self refresh).
-1 = enable, 0 = disable (default)
+Enable PSR (panel self refresh), only relevant for Haswell and Broadwell
+CPUs.
+1 = enable, 0 = disable (default).
+To maximize PSR usage, it can be beneficial to set
+.Va hw.dri.vblank_offdelay
+(see
+.Xr drm 4 )
+to a sufficiently low value (or
+.Li -1 ),
+to minimize vblank interrupt activity.
 .El
 .Sh SYSCTL VARIABLES
 If display backlight level can be controlled by the GPU (which is often

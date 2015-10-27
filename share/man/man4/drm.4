@@ -23,7 +23,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd June 9, 2015
+.Dd October 27, 2015
 .Dt DRM 4
 .Os
 .Sh NAME
@@ -97,11 +97,17 @@ loader tunable.
 A read only
 .Xr sysctl 8
 variable of the same name is provided for obtaining its current value.
-.Pp
+.Sh SYSCTL VARIABLES
 Debugging output can be enabled and disabled by setting the
 .Xr sysctl 8
 node
-.Ar hw.dri.0.debug .
+.Va hw.dri.debug .
+.Pp
+The
+.Va hw.dri.vblank_offdelay
+variable specifies the delay (in milliseconds) until the vblank
+interrupt is disabled again when it's no longer needed.
+(0 = never disable, negative value = disable immediately)
 .Sh SEE ALSO
 .Xr Xorg 1 ,
 .Xr i915kms 4 ,
