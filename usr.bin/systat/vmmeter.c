@@ -15,7 +15,8 @@
 #include "extern.h"
 
 #define X_START		1
-#define CPU_START	1
+#define TOT_START	1
+#define CPU_START	2
 #define CPU_STARTX	(3 + vmm_ncpus)
 #define CPU_LABEL_W	7
 
@@ -33,6 +34,7 @@ do { \
 
 static int vmm_ncpus;
 static int vmm_fetched;
+static struct vmmeter vmm_totcur, vmm_totprev;
 static struct vmmeter *vmm_cur, *vmm_prev;
 static struct kinfo_cputime *vmm_cptime_cur, *vmm_cptime_prev;
 #if 0
@@ -46,6 +48,10 @@ getvmm(void)
 	size_t sz;
 	int i;
 
+	vmm_totcur.v_ipi = 0;
+	vmm_totcur.v_intr = 0;
+	vmm_totcur.v_lock_colls = 0;
+
 	for (i = 0; i < vmm_ncpus; ++i) {
 		struct vmmeter *vmm = &vmm_cur[i];
 		char buf[64];
@@ -56,6 +62,10 @@ getvmm(void)
 			err(1, "sysctlbyname(cpu%d)", i);
 
 		vmm->v_intr -= (vmm->v_timer + vmm->v_ipi);
+
+		vmm_totcur.v_ipi += vmm->v_ipi;
+		vmm_totcur.v_intr += vmm->v_intr;
+		vmm_totcur.v_lock_colls += vmm->v_lock_colls;
 	}
 
 	sz = vmm_ncpus * sizeof(struct kinfo_cputime);
@@ -76,6 +86,28 @@ showvmm(void)
 
 	if (!vmm_fetched)
 		return;
+
+	n = X_START + CPU_LABEL_W;
+
+#define DTOT(field) \
+	(vmm_totcur.field - vmm_totprev.field) / (u_int)naptime
+
+	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* timer */
+	DRAW_ROW(n, TOT_START, 8, "%*u", DTOT(v_ipi));
+	DRAW_ROW(n, TOT_START, 8, "%*u", DTOT(v_intr));
+
+	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* user */
+/*	DRAW_ROW(n, TOT_START, 6, "%*s", "");	   nice */
+	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* sys */
+	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* intr */
+	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* idle */
+	if (DTOT(v_lock_colls) > 9999999)
+		DRAW_ROW(n, TOT_START, 8, "%*u", 9999999);
+	else
+		DRAW_ROW(n, TOT_START, 8, "%*u", DTOT( v_lock_colls));
+	DRAW_ROW2(n, TOT_START, 18, "%*.*s", ""); /* label */
+
+#undef DTOT
 
 	for (i = 0; i < vmm_ncpus; ++i) {
 		struct kinfo_cputime d;
@@ -136,17 +168,17 @@ do { \
 #undef D
 #undef CPUV
 #undef CPUD
-#define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
 
 #if 0
+#define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
 		n = X_START + CPU_LABEL_W;
 
 		DRAW_ROW(n, CPU_STARTX + i, 15, "%-*s", CPUC(i, msg));
 		DRAW_ROW(n, CPU_STARTX + i, 35, "%-*s",
 			address_to_symbol((void *)(intptr_t)CPUC(i, stallpc),
 					  &symctx));
-#endif
 #undef CPUC
+#endif
 	}
 }
 
@@ -158,6 +190,7 @@ fetchvmm(void)
 	memcpy(vmm_prev, vmm_cur, sizeof(struct vmmeter) * vmm_ncpus);
 	memcpy(vmm_cptime_prev, vmm_cptime_cur,
 	       sizeof(struct kinfo_cputime) * vmm_ncpus);
+	vmm_totprev = vmm_totcur;
 	getvmm();
 }
 
@@ -170,24 +203,25 @@ labelvmm(void)
 
 	n = X_START + CPU_LABEL_W;
 
-	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "timer");
-	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "ipi");
-	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "extint");
-	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "user%");
-/*	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "nice%");*/
-	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "sys%");
-	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "intr%");
-	DRAW_ROW(n, CPU_START - 1, 6, "%*s", "idle%");
-	DRAW_ROW(n, CPU_START - 1, 8, "%*s", "smpcol");
-	DRAW_ROW(n, CPU_START - 1, 18, "%*s", "label");
+	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "timer");
+	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "ipi");
+	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "extint");
+	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "user%");
+/*	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "nice%");*/
+	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "sys%");
+	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "intr%");
+	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "idle%");
+	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "smpcol");
+	DRAW_ROW(n, TOT_START - 1, 18, "%*s", "label");
 
+	mvprintw(TOT_START, X_START, "total");
 	for (i = 0; i < vmm_ncpus; ++i)
 		mvprintw(CPU_START + i, X_START, "cpu%d", i);
 
 #if 0
 	n = X_START + CPU_LABEL_W;
-	DRAW_ROW(n, CPU_STARTX - 1, 15, "%-*s", "contention");
-	DRAW_ROW(n, CPU_STARTX - 1, 35, "%-*s", "function");
+	DRAW_ROW(n, TOT_STARTX - 1, 15, "%-*s", "contention");
+	DRAW_ROW(n, TOT_STARTX - 1, 35, "%-*s", "function");
 
 	for (i = 0; i < vmm_ncpus; ++i)
 		mvprintw(CPU_STARTX + i, X_START, "cpu%d", i);
