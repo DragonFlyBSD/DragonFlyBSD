@@ -122,7 +122,7 @@ dm_target_linear_table(void *target_config)
 	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
 
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s %" PRIu64,
-	    tlc->pdev->name, tlc->offset);
+	    tlc->pdev->udev_name, tlc->offset);
 
 	return params;
 }
