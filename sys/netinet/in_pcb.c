@@ -90,6 +90,7 @@
 #include <net/if_types.h>
 #include <net/route.h>
 #include <net/netisr2.h>
+#include <net/toeplitz2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_pcb.h>
@@ -183,6 +184,11 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hifirst, CTLTYPE_INT|CTLFLAG_RW,
 	   &ipport_hifirstauto, 0, &sysctl_net_ipport_check, "I", "");
 SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
 	   &ipport_hilastauto, 0, &sysctl_net_ipport_check, "I", "");
+
+static int ip_porthash_trycount = 15;
+SYSCTL_INT(_net_inet_ip, OID_AUTO, porthash_trycount, CTLFLAG_RW,
+    &ip_porthash_trycount, 0,
+    "Number of tries to find local port matching hash of 4-tuple");
 
 /*
  * in_pcb.c: manage the Protocol Control Blocks.
@@ -672,6 +678,8 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 	u_short first, last, lport, step;
 	int count, error, dup;
 	int portinfo_first, portinfo_idx;
+	int hash_cpu, hash_count, hash_count0;
+	uint32_t hash_base = 0, hash;
 
 	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
@@ -691,12 +699,22 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 	}
 	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
+	hash_count0 = ip_porthash_trycount;
+	if (hash_count0 > 0) {
+		hash_base = toeplitz_piecemeal_addr(sin->sin_addr.s_addr) ^
+		    toeplitz_piecemeal_addr(inp->inp_laddr.s_addr) ^
+		    toeplitz_piecemeal_port(sin->sin_port);
+	} else {
+		hash_count0 = 0;
+	}
+
 	inp->inp_flags |= INP_ANONPORT;
 
 	step = pcbinfo->portinfo_mask + 1;
 	portinfo_first = mycpuid & pcbinfo->portinfo_mask;
 	portinfo_idx = portinfo_first;
 loop:
+	hash_cpu = portinfo_idx & ncpus2_mask;
 	portinfo = &pcbinfo->portinfo[portinfo_idx];
 	dup = 0;
 
@@ -734,14 +752,15 @@ again:
 	 * We split the two cases (up and down) so that the direction
 	 * is not being tested on each round of the loop.
 	 */
+	hash_count = hash_count0;
 	if (first > last) {
 		/*
 		 * counting down
 		 */
 		in_pcbportrange(&first, &last, portinfo->offset, step);
-		count = (first - last) / step;
+		count = ((first - last) / step) + hash_count;
 
-		do {
+		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EADDRNOTAVAIL;
 				goto done;
@@ -752,16 +771,27 @@ again:
 			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
 			lport = htons(*lastport);
-		} while (in_pcblookup_localremote(portinfo, inp->inp_laddr,
-		    lport, sin->sin_addr, sin->sin_port, cred));
+
+			if (hash_count) {
+				--hash_count;
+				hash = hash_base ^
+				    toeplitz_piecemeal_port(lport);
+				if ((hash & ncpus2_mask) != hash_cpu && hash_count)
+					continue;
+			}
+
+			if (in_pcblookup_localremote(portinfo, inp->inp_laddr,
+			    lport, sin->sin_addr, sin->sin_port, cred) == NULL)
+				break;
+		}
 	} else {
 		/*
 		 * counting up
 		 */
 		in_pcbportrange(&last, &first, portinfo->offset, step);
-		count = (last - first) / step;
+		count = ((last - first) / step) + hash_count;
 
-		do {
+		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EADDRNOTAVAIL;
 				goto done;
@@ -772,8 +802,19 @@ again:
 			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
 			lport = htons(*lastport);
-		} while (in_pcblookup_localremote(portinfo, inp->inp_laddr,
-		    lport, sin->sin_addr, sin->sin_port, cred));
+
+			if (hash_count) {
+				--hash_count;
+				hash = hash_base ^
+				    toeplitz_piecemeal_port(lport);
+				if ((hash & ncpus2_mask) != hash_cpu && hash_count)
+					continue;
+			}
+
+			if (in_pcblookup_localremote(portinfo, inp->inp_laddr,
+			    lport, sin->sin_addr, sin->sin_port, cred) == NULL)
+				break;
+		}
 	}
 
 	/* This could happen on loopback interface */
