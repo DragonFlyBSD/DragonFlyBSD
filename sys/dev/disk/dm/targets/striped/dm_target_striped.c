@@ -436,38 +436,38 @@ dm_target_stripe_upcall(dm_table_entry_t *table_en, struct buf *bp)
 static int
 dmts_mod_handler(module_t mod, int type, void *unused)
 {
-        dm_target_t *dmt = NULL;
-        int err = 0;
+	dm_target_t *dmt = NULL;
+	int err = 0;
 
-        switch(type) {
-        case MOD_LOAD:
-                if ((dmt = dm_target_lookup("striped")) != NULL) {
-                        dm_target_unbusy(dmt);
-                        return EEXIST;
-                }
-                dmt = dm_target_alloc("striped");
-                dmt->version[0] = 1;
-                dmt->version[1] = 0;
-                dmt->version[2] = 3;
-                strlcpy(dmt->name, "striped", DM_MAX_TYPE_NAME);
-                dmt->init = &dm_target_stripe_init;
+	switch(type) {
+	case MOD_LOAD:
+		if ((dmt = dm_target_lookup("striped")) != NULL) {
+			dm_target_unbusy(dmt);
+			return EEXIST;
+		}
+		dmt = dm_target_alloc("striped");
+		dmt->version[0] = 1;
+		dmt->version[1] = 0;
+		dmt->version[2] = 3;
+		strlcpy(dmt->name, "striped", DM_MAX_TYPE_NAME);
+		dmt->init = &dm_target_stripe_init;
 		dmt->info = &dm_target_stripe_info;
-                dmt->table = &dm_target_stripe_table;
-                dmt->strategy = &dm_target_stripe_strategy;
-                dmt->destroy = &dm_target_stripe_destroy;
-                dmt->upcall = &dm_target_stripe_upcall;
-                dmt->dump = &dm_target_stripe_dump;
+		dmt->table = &dm_target_stripe_table;
+		dmt->strategy = &dm_target_stripe_strategy;
+		dmt->destroy = &dm_target_stripe_destroy;
+		dmt->upcall = &dm_target_stripe_upcall;
+		dmt->dump = &dm_target_stripe_dump;
 
-                err = dm_target_insert(dmt);
+		err = dm_target_insert(dmt);
 		if (err == 0)
 			kprintf("dm_target_stripe: Successfully initialized\n");
-                break;
+		break;
 
-        case MOD_UNLOAD:
-                err = dm_target_rem("striped");
-                if (err == 0)
-                        kprintf("dm_target_stripe: unloaded\n");
-                break;
+	case MOD_UNLOAD:
+		err = dm_target_rem("striped");
+		if (err == 0)
+			kprintf("dm_target_stripe: unloaded\n");
+		break;
 
 	default:
 		break;
