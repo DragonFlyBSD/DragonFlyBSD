@@ -35,6 +35,9 @@
 struct virtqueue;
 struct sglist;
 
+/* Support for indirect buffer descriptors. */
+#define VIRTIO_RING_F_INDIRECT_DESC	(1 << 28)
+
 /* The guest publishes the used index for which it expects an interrupt
  * at the end of the avail ring. Host should ignore the avail->flags field.
  * The host publishes the avail index for which it expects a kick

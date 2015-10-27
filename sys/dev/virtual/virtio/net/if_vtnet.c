@@ -422,7 +422,7 @@ static driver_t vtnet_driver = {
 static devclass_t vtnet_devclass;
 
 DRIVER_MODULE(vtnet, virtio_pci, vtnet_driver, vtnet_devclass,
-	      vtnet_modevent, 0);
+    vtnet_modevent, 0);
 MODULE_VERSION(vtnet, 1);
 MODULE_DEPEND(vtnet, virtio, 1, 1, 1);
 
@@ -479,6 +479,7 @@ vtnet_attach(device_t dev)
 
 	vtnet_add_statistics(sc);
 
+	/* Register our feature descriptions. */
 	virtio_set_feature_desc(dev, vtnet_feature_desc);
 	vtnet_negotiate_features(sc);
 
@@ -773,8 +774,8 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 		mask |= VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
 
 	/*
-	 * TSO and LRO are only available when their corresponding
-	 * checksum offload feature is also negotiated.
+	 * TSO and LRO are only available when their corresponding checksum
+	 * offload feature is also negotiated.
 	 */
 
 	if (vtnet_csum_disable || vtnet_tso_disable)
@@ -787,6 +788,29 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 	features = VTNET_FEATURES & ~mask;
 	features |= VIRTIO_F_NOTIFY_ON_EMPTY;
 	sc->vtnet_features = virtio_negotiate_features(dev, features);
+
+	if (virtio_with_feature(dev, VTNET_LRO_FEATURES) &&
+	    virtio_with_feature(dev, VIRTIO_NET_F_MRG_RXBUF) == 0) {
+		/*
+		 * LRO without mergeable buffers requires special care. This
+		 * is not ideal because every receive buffer must be large
+		 * enough to hold the maximum TCP packet, the Ethernet header,
+		 * and the header. This requires up to 34 descriptors with
+		 * MCLBYTES clusters. If we do not have indirect descriptors,
+		 * LRO is disabled since the virtqueue will not contain very
+		 * many receive buffers.
+		 */
+		if (!virtio_with_feature(dev, VIRTIO_RING_F_INDIRECT_DESC)) {
+			device_printf(dev,
+			    "LRO disabled due to both mergeable buffers and "
+			    "indirect descriptors not negotiated\n");
+
+			features &= ~VTNET_LRO_FEATURES;
+			sc->vtnet_features =
+			    virtio_negotiate_features(dev, features);
+		} else
+			sc->vtnet_flags |= VTNET_FLAG_LRO_NOMRG;
+	}
 }
 
 static int
