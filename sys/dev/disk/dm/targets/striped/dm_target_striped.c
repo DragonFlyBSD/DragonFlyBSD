@@ -142,6 +142,52 @@ dm_target_stripe_init(dm_table_entry_t *table_en, char *params)
 }
 
 /*
+ * Info routine called to get params string.
+ */
+static char *
+dm_target_stripe_info(void *target_config)
+{
+	dm_target_stripe_config_t *tsc;
+	char *params;
+	char *ptr;
+	size_t len;
+	int ret;
+	int i;
+
+	tsc = target_config;
+
+	len = DM_MAX_PARAMS_SIZE;
+	params = kmalloc(len, M_DM, M_WAITOK | M_ZERO);
+	ptr = params;
+
+	ret = ksnprintf(ptr, len, "%d ", tsc->stripe_num);
+	ptr += ret;
+	len -= ret;
+
+	for (i = 0; i < tsc->stripe_num; i++) {
+		ret = ksnprintf(ptr, len, "%s ",
+			tsc->stripe_devs[i].pdev->udev_name);
+		ptr += ret;
+		len -= ret;
+	}
+
+	ret = ksnprintf(ptr, len, "1 ");
+	ptr += ret;
+	len -= ret;
+
+	/*
+	 * stripe target currently has no error_count.
+	 */
+	for (i = 0; i < tsc->stripe_num; i++) {
+		ret = ksnprintf(ptr, len, "A");
+		ptr += ret;
+		len -= ret;
+	}
+
+	return params;
+}
+
+/*
  * Table routine called to get params string.
  */
 static char *
@@ -405,6 +451,7 @@ dmts_mod_handler(module_t mod, int type, void *unused)
                 dmt->version[2] = 3;
                 strlcpy(dmt->name, "striped", DM_MAX_TYPE_NAME);
                 dmt->init = &dm_target_stripe_init;
+		dmt->info = &dm_target_stripe_info;
                 dmt->table = &dm_target_stripe_table;
                 dmt->strategy = &dm_target_stripe_strategy;
                 dmt->destroy = &dm_target_stripe_destroy;
