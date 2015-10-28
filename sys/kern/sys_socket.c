@@ -132,6 +132,9 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	so = (struct socket *)fp->f_data;
 
 	switch (cmd) {
+	case FIONBIO:
+		error = 0;
+		break;
 	case FIOASYNC:
 		if (*(int *)data) {
 			sosetstate(so, SS_ASYNC);
