@@ -288,6 +288,7 @@ static void	vtnet_update_link_status(struct vtnet_softc *);
 static void	vtnet_watchdog(struct vtnet_softc *);
 #endif
 static void	vtnet_config_change_task(void *, int);
+static int	vtnet_setup_interface(struct vtnet_softc *);
 static int	vtnet_change_mtu(struct vtnet_softc *, int);
 static int	vtnet_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
@@ -463,8 +464,7 @@ static int
 vtnet_attach(device_t dev)
 {
 	struct vtnet_softc *sc;
-	struct ifnet *ifp;
-	int tx_size, error;
+	int error;
 
 	sc = device_get_softc(dev);
 	sc->vtnet_dev = dev;
@@ -519,101 +519,10 @@ vtnet_attach(device_t dev)
 		goto fail;
 	}
 
-	ifp = sc->vtnet_ifp = if_alloc(IFT_ETHER);
-	if (ifp == NULL) {
-		device_printf(dev, "cannot allocate ifnet structure\n");
-		error = ENOSPC;
+	error = vtnet_setup_interface(sc);
+	if (error) {
+		device_printf(dev, "cannot setup interface\n");
 		goto fail;
-	}
-
-	ifp->if_softc = sc;
-	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_init = vtnet_init;
-	ifp->if_start = vtnet_start;
-	ifp->if_ioctl = vtnet_ioctl;
-
-	sc->vtnet_rx_size = virtqueue_size(sc->vtnet_rx_vq);
-	sc->vtnet_rx_process_limit = sc->vtnet_rx_size;
-
-	tx_size = virtqueue_size(sc->vtnet_tx_vq);
-	sc->vtnet_tx_size = tx_size;
-	sc->vtnet_txhdridx = 0;
-	sc->vtnet_txhdrarea = contigmalloc(
-	    ((sc->vtnet_tx_size / 2) + 1) * sizeof(struct vtnet_tx_header),
-	    M_VTNET, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
-	if (sc->vtnet_txhdrarea == NULL) {
-		device_printf(dev, "cannot contigmalloc the tx headers\n");
-		goto fail;
-	}
-	sc->vtnet_macfilter = contigmalloc(
-	    sizeof(struct vtnet_mac_filter),
-	    M_DEVBUF, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
-	if (sc->vtnet_macfilter == NULL) {
-		device_printf(dev,
-		    "cannot contigmalloc the mac filter table\n");
-		goto fail;
-	}
-	ifq_set_maxlen(&ifp->if_snd, tx_size - 1);
-	ifq_set_ready(&ifp->if_snd);
-
-	ether_ifattach(ifp, sc->vtnet_hwaddr, NULL);
-
-	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)){
-		//ifp->if_capabilities |= IFCAP_LINKSTATE;
-		 kprintf("add dynamic link state\n");
-	}
-
-	/* Tell the upper layer(s) we support long frames. */
-	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
-	ifp->if_capabilities |= IFCAP_JUMBO_MTU | IFCAP_VLAN_MTU;
-
-	if (virtio_with_feature(dev, VIRTIO_NET_F_CSUM)) {
-		ifp->if_capabilities |= IFCAP_TXCSUM;
-
-		if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO4))
-			ifp->if_capabilities |= IFCAP_TSO4;
-		if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO6))
-			ifp->if_capabilities |= IFCAP_TSO6;
-		if (ifp->if_capabilities & IFCAP_TSO)
-			ifp->if_capabilities |= IFCAP_VLAN_HWTSO;
-
-		if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_ECN))
-			sc->vtnet_flags |= VTNET_FLAG_TSO_ECN;
-	}
-
-	if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_CSUM)) {
-		ifp->if_capabilities |= IFCAP_RXCSUM;
-
-		if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO4) ||
-		    virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO6))
-			ifp->if_capabilities |= IFCAP_LRO;
-	}
-
-	if (ifp->if_capabilities & IFCAP_HWCSUM) {
-		/*
-		 * VirtIO does not support VLAN tagging, but we can fake
-		 * it by inserting and removing the 802.1Q header during
-		 * transmit and receive. We are then able to do checksum
-		 * offloading of VLAN frames.
-		 */
-		ifp->if_capabilities |=
-			IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_HWCSUM;
-	}
-
-	ifp->if_capenable = ifp->if_capabilities;
-
-	/*
-	 * Capabilities after here are not enabled by default.
-	 */
-
-	if (sc->vtnet_flags & VTNET_FLAG_VLAN_FILTER) {
-		ifp->if_capabilities |= IFCAP_VLAN_HWFILTER;
-
-		sc->vtnet_vlan_attach = EVENTHANDLER_REGISTER(vlan_config,
-		    vtnet_register_vlan, sc, EVENTHANDLER_PRI_FIRST);
-		sc->vtnet_vlan_detach = EVENTHANDLER_REGISTER(vlan_unconfig,
-		    vtnet_unregister_vlan, sc, EVENTHANDLER_PRI_FIRST);
 	}
 
 	TASK_INIT(&sc->vtnet_cfgchg_task, 0, vtnet_config_change_task, sc);
@@ -621,7 +530,7 @@ vtnet_attach(device_t dev)
 	error = virtio_setup_intr(dev, &sc->vtnet_slz);
 	if (error) {
 		device_printf(dev, "cannot setup virtqueue interrupts\n");
-		ether_ifdetach(ifp);
+		ether_ifdetach(sc->vtnet_ifp);
 		goto fail;
 	}
 
@@ -632,13 +541,13 @@ vtnet_attach(device_t dev)
 	if (sc->vtnet_flags & VTNET_FLAG_CTRL_RX) {
 		lwkt_serialize_enter(&sc->vtnet_slz);
 		if (vtnet_set_promisc(sc, 0) != 0) {
-			ifp->if_flags |= IFF_PROMISC;
+			sc->vtnet_ifp->if_flags |= IFF_PROMISC;
 			device_printf(dev,
 			    "cannot disable promiscuous mode\n");
 		}
 		lwkt_serialize_exit(&sc->vtnet_slz);
 	} else
-		ifp->if_flags |= IFF_PROMISC;
+		sc->vtnet_ifp->if_flags |= IFF_PROMISC;
 
 fail:
 	if (error)
@@ -853,6 +762,114 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 	}
 
 	return (virtio_alloc_virtqueues(dev, 0, nvqs, vq_info));
+}
+
+static int
+vtnet_setup_interface(struct vtnet_softc *sc)
+{
+	device_t dev;
+	struct ifnet *ifp;
+	int tx_size;
+
+	dev = sc->vtnet_dev;
+
+	ifp = sc->vtnet_ifp = if_alloc(IFT_ETHER);
+	if (ifp == NULL) {
+		device_printf(dev, "cannot allocate ifnet structure\n");
+		return (ENOSPC);
+	}
+
+	ifp->if_softc = sc;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
+	ifp->if_init = vtnet_init;
+	ifp->if_start = vtnet_start;
+	ifp->if_ioctl = vtnet_ioctl;
+
+	sc->vtnet_rx_size = virtqueue_size(sc->vtnet_rx_vq);
+	sc->vtnet_rx_process_limit = sc->vtnet_rx_size;
+
+	tx_size = virtqueue_size(sc->vtnet_tx_vq);
+	sc->vtnet_tx_size = tx_size;
+	sc->vtnet_txhdridx = 0;
+	sc->vtnet_txhdrarea = contigmalloc(
+	    ((sc->vtnet_tx_size / 2) + 1) * sizeof(struct vtnet_tx_header),
+	    M_VTNET, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
+	if (sc->vtnet_txhdrarea == NULL) {
+		device_printf(dev, "cannot contigmalloc the tx headers\n");
+		return (ENOMEM);
+	}
+	sc->vtnet_macfilter = contigmalloc(
+	    sizeof(struct vtnet_mac_filter),
+	    M_DEVBUF, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
+	if (sc->vtnet_macfilter == NULL) {
+		device_printf(dev,
+		    "cannot contigmalloc the mac filter table\n");
+		return (ENOMEM);
+	}
+	ifq_set_maxlen(&ifp->if_snd, tx_size - 1);
+	ifq_set_ready(&ifp->if_snd);
+
+	ether_ifattach(ifp, sc->vtnet_hwaddr, NULL);
+
+	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)){
+		//ifp->if_capabilities |= IFCAP_LINKSTATE;
+		 kprintf("add dynamic link state\n");
+	}
+
+	/* Tell the upper layer(s) we support long frames. */
+	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
+	ifp->if_capabilities |= IFCAP_JUMBO_MTU | IFCAP_VLAN_MTU;
+
+	if (virtio_with_feature(dev, VIRTIO_NET_F_CSUM)) {
+		ifp->if_capabilities |= IFCAP_TXCSUM;
+
+		if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO4))
+			ifp->if_capabilities |= IFCAP_TSO4;
+		if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO6))
+			ifp->if_capabilities |= IFCAP_TSO6;
+		if (ifp->if_capabilities & IFCAP_TSO)
+			ifp->if_capabilities |= IFCAP_VLAN_HWTSO;
+
+		if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_ECN))
+			sc->vtnet_flags |= VTNET_FLAG_TSO_ECN;
+	}
+
+	if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_CSUM)) {
+		ifp->if_capabilities |= IFCAP_RXCSUM;
+
+		if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO4) ||
+		    virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO6))
+			ifp->if_capabilities |= IFCAP_LRO;
+	}
+
+	if (ifp->if_capabilities & IFCAP_HWCSUM) {
+		/*
+		 * VirtIO does not support VLAN tagging, but we can fake
+		 * it by inserting and removing the 802.1Q header during
+		 * transmit and receive. We are then able to do checksum
+		 * offloading of VLAN frames.
+		 */
+		ifp->if_capabilities |=
+			IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_HWCSUM;
+	}
+
+	ifp->if_capenable = ifp->if_capabilities;
+
+	/*
+	 * Capabilities after here are not enabled by default.
+	 */
+
+	if (sc->vtnet_flags & VTNET_FLAG_VLAN_FILTER) {
+		ifp->if_capabilities |= IFCAP_VLAN_HWFILTER;
+
+		sc->vtnet_vlan_attach = EVENTHANDLER_REGISTER(vlan_config,
+		    vtnet_register_vlan, sc, EVENTHANDLER_PRI_FIRST);
+		sc->vtnet_vlan_detach = EVENTHANDLER_REGISTER(vlan_unconfig,
+		    vtnet_unregister_vlan, sc, EVENTHANDLER_PRI_FIRST);
+	}
+
+	return (0);
 }
 
 static void
