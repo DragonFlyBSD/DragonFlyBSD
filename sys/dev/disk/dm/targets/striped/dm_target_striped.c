@@ -44,7 +44,7 @@
 #include <sys/vnode.h>
 
 #include <dev/disk/dm/dm.h>
-MALLOC_DEFINE(M_DMSTRIPE, "dm_stripe", "Device Mapper Target Stripe");
+MALLOC_DEFINE(M_DMSTRIPE, "dm_striped", "Device Mapper Target Striped");
 
 #define MAX_STRIPES 32
 
@@ -458,13 +458,13 @@ dmts_mod_handler(module_t mod, int type, void *unused)
 
 		err = dm_target_insert(dmt);
 		if (err == 0)
-			kprintf("dm_target_stripe: Successfully initialized\n");
+			kprintf("dm_target_striped: Successfully initialized\n");
 		break;
 
 	case MOD_UNLOAD:
 		err = dm_target_rem("striped");
 		if (err == 0)
-			kprintf("dm_target_stripe: unloaded\n");
+			kprintf("dm_target_striped: unloaded\n");
 		break;
 
 	default:
