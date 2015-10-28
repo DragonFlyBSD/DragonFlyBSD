@@ -36,9 +36,20 @@
 #define ioread16(addr)		*(volatile uint16_t *)((char *)addr)
 #define ioread32(addr)		*(volatile uint32_t *)((char *)addr)
 
-#define iowrite8(data, addr)	*(volatile uint8_t *)((char *)addr) = data;
-#define iowrite16(data, addr)	*(volatile uint16_t *)((char *)addr) = data;
-#define iowrite32(data, addr)	*(volatile uint32_t *)((char *)addr) = data;
+#define iowrite8(data, addr)					\
+	do {							\
+		*(volatile uint8_t *)((char *)addr) = data;	\
+	} while (0)
+
+#define iowrite16(data, addr)					\
+	do {							\
+		*(volatile uint16_t *)((char *)addr) = data;	\
+	} while (0)
+
+#define iowrite32(data, addr)					\
+	do {							\
+		*(volatile uint32_t *)((char *)addr) = data;	\
+	} while (0)
 
 /* ioremap: map bus memory into CPU space */
 static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
