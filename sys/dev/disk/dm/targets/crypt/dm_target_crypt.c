@@ -506,50 +506,37 @@ hex2key(char *hex, size_t key_len, u_int8_t *key)
 }
 
 static int
-dm_target_crypt_init(dm_table_entry_t *table_en, char *params)
+dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_crypt_config_t *priv;
 	size_t len;
-	char **ap, *args[5];
 	char *crypto_alg, *crypto_mode, *iv_mode, *iv_opt, *key, *dev;
 	char *status_str;
-	int i, argc, klen, error;
+	int i, klen, error;
 	uint64_t iv_offset, block_offset;
-
-	if (params == NULL)
-		return EINVAL;
-
-	len = strlen(params) + 1;
-	argc = 0;
-
-	status_str = kmalloc(len, M_DMCRYPT, M_WAITOK);
-	/*
-	 * Parse a string, containing tokens delimited by white space,
-	 * into an argument vector
-	 */
-	for (ap = args; ap < &args[5] &&
-	    (*ap = strsep(&params, " \t")) != NULL;) {
-		if (**ap != '\0') {
-			argc++;
-			ap++;
-		}
-	}
 
 	if (argc != 5) {
 		kprintf("dm_target_crypt: not enough arguments, "
 			"need exactly 5\n");
-		kfree(status_str, M_DMCRYPT);
 		return ENOMEM; /* XXX */
 	}
 
-	crypto_alg = strsep(&args[0], "-");
-	crypto_mode = strsep(&args[0], "-");
-	iv_opt = strsep(&args[0], "-");
+	len = 0;
+	for (i = 0; i < argc; i++) {
+		len += strlen(argv[i]);
+		len++;
+	}
+	/* len is strlen() of input string +1 */
+	status_str = kmalloc(len, M_DMCRYPT, M_WAITOK);
+
+	crypto_alg = strsep(&argv[0], "-");
+	crypto_mode = strsep(&argv[0], "-");
+	iv_opt = strsep(&argv[0], "-");
 	iv_mode = strsep(&iv_opt, ":");
-	key = args[1];
-	iv_offset = strtouq(args[2], NULL, 0);
-	dev = args[3];
-	block_offset = strtouq(args[4], NULL, 0);
+	key = argv[1];
+	iv_offset = strtouq(argv[2], NULL, 0);
+	dev = argv[3];
+	block_offset = strtouq(argv[4], NULL, 0);
 	/* bits / 8 = bytes, 1 byte = 2 hexa chars, so << 2 */
 	klen = strlen(key) << 2;
 

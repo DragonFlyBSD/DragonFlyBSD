@@ -40,7 +40,7 @@
 
 /* Init function called from dm_table_load_ioctl. */
 static int
-dm_target_error_init(dm_table_entry_t *table_en, char *params)
+dm_target_error_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 
 	kprintf("Error target init function called!!\n");

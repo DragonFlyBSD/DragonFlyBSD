@@ -69,22 +69,18 @@ static void dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc);
  * 0 65536 striped 2 512 /dev/hda 0 /dev/hdb 0
  */
 static int
-dm_target_stripe_init(dm_table_entry_t *table_en, char *params)
+dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_stripe_config_t *tsc;
-	int n;
-	char *ap;
+	char *arg;
+	int i, n;
 
-	if (params == NULL)
+	if (argc < 4) {
+		kprintf("Stripe target takes 4 or more args\n");
 		return EINVAL;
+	}
 
-	/*
-	 * nstripes
-	 */
-	ap = strsep(&params, " \t");
-	if (ap == NULL)
-		return EINVAL;
-	n = (int)atoi64(ap);
+	n = (int)atoi64(argv[0]);
 	if (n < 0 || n > MAX_STRIPES) {
 		kprintf("dm: Error %d stripes not supported (%d max)\n",
 			n, MAX_STRIPES);
@@ -95,12 +91,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, char *params)
 		      M_DMSTRIPE, M_WAITOK | M_ZERO);
 	tsc->stripe_num = n;
 
-	ap = strsep(&params, " \t");
-	if (ap == NULL) {
-		dm_target_stripe_destroy_config(tsc);
-		return EINVAL;
-	}
-	tsc->stripe_chunksize = atoi64(ap);
+	tsc->stripe_chunksize = atoi64(argv[1]);
 	if (tsc->stripe_chunksize < 1 ||
 	    tsc->stripe_chunksize * DEV_BSIZE > MAXPHYS) {
 		kprintf("dm: Error unsupported chunk size %jdKB\n",
@@ -118,17 +109,18 @@ dm_target_stripe_init(dm_table_entry_t *table_en, char *params)
 		(int)tsc->stripe_chunksize
 	);
 
-	for (n = 0; n < tsc->stripe_num; ++n) {
-		ap = strsep(&params, " \t");
-		if (ap == NULL)
+	argv += 2;
+	for (n = 0, i = 0; n < tsc->stripe_num; ++n) {
+		arg = argv[i++];
+		if (arg == NULL)
 			break;
-		tsc->stripe_devs[n].pdev = dm_pdev_insert(ap);
+		tsc->stripe_devs[n].pdev = dm_pdev_insert(arg);
 		if (tsc->stripe_devs[n].pdev == NULL)
 			break;
-		ap = strsep(&params, " \t");
-		if (ap == NULL)
+		arg = argv[i++];
+		if (arg == NULL)
 			break;
-		tsc->stripe_devs[n].offset = atoi64(ap);
+		tsc->stripe_devs[n].offset = atoi64(arg);
 		dm_table_add_deps(table_en, tsc->stripe_devs[n].pdev);
 	}
 	if (n != tsc->stripe_num) {
@@ -455,6 +447,7 @@ dmts_mod_handler(module_t mod, int type, void *unused)
 		dmt->destroy = &dm_target_stripe_destroy;
 		dmt->upcall = &dm_target_stripe_upcall;
 		dmt->dump = &dm_target_stripe_dump;
+		dmt->max_argc = 2 + (MAX_STRIPES * 2);
 
 		err = dm_target_insert(dmt);
 		if (err == 0)

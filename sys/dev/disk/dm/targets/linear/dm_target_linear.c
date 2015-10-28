@@ -57,32 +57,18 @@ typedef struct target_linear_config {
  * @argv[1] is physical data offset.
  */
 static int
-dm_target_linear_init(dm_table_entry_t *table_en, char *params)
+dm_target_linear_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_linear_config_t *tlc;
 	dm_pdev_t *dmp;
 
-	char **ap, *argv[3];
-
-	if (params == NULL)
+	if (argc != 2) {
+		kprintf("Linear target takes 2 args\n");
 		return EINVAL;
-
-	/*
-	 * Parse a string, containing tokens delimited by white space,
-	 * into an argument vector
-	 */
-	for (ap = argv; ap < &argv[2] &&
-	    (*ap = strsep(&params, " \t")) != NULL;) {
-		if (**ap != '\0')
-			ap++;
 	}
 
 	aprint_debug("Linear target init function called %s--%s!!\n",
 	    argv[0], argv[1]);
-
-	/* XXX: temp hack */
-	if (argv[0] == NULL)
-		return EINVAL;
 
 	/* Insert dmp to global pdev list */
 	if ((dmp = dm_pdev_insert(argv[0])) == NULL)

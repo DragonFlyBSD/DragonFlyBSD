@@ -101,6 +101,8 @@
 
 static int
 dm_table_deps(dm_table_entry_t *, prop_array_t);
+static int
+dm_table_init(dm_target_t *, dm_table_entry_t *, char *);
 
 /*
  * Print flags sent to the kernel from libevmapper.
@@ -770,9 +772,8 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * routine and parse parameters there.
 		 */
 		aprint_debug("DM: str passed in is: \"%s\"\n", str);
-		KKASSERT(target->init);
 
-		if ((ret = target->init(table_en, str)) != 0) {
+		if ((ret = dm_table_init(target, table_en, str)) != 0) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
 			dm_table_destroy(&dmv->table_head, DM_TABLE_INACTIVE);
 			kfree(str, M_TEMP);
@@ -795,6 +796,45 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 #endif
 	return 0;
 }
+
+static int
+dm_table_init(dm_target_t *target, dm_table_entry_t *table_en, char *params)
+{
+	int i, n, ret, argc;
+	char **ap, **argv;
+
+	if (params == NULL)
+		return EINVAL;
+
+	n = target->max_argc;
+	if (n) {
+		aprint_debug("Max argc %d for %s target\n", n, target->name);
+	} else {
+		n = 20;  /* large enough slots for most targets */
+	}
+
+	argv = kmalloc(sizeof(*argv) * n, M_DM, M_WAITOK | M_ZERO);
+
+	for (ap = argv;
+	     ap < &argv[n] && (*ap = strsep(&params, " \t")) != NULL;) {
+		if (**ap != '\0')
+			ap++;
+	}
+	argc = ap - argv;
+
+	if (dm_debug_level) {
+		for (i = 0; i < argc; i++)
+			kprintf("DM: argv[%d] = \"%s\"\n", i, argv[i]);
+	}
+
+	KKASSERT(target->init);
+	ret = target->init(table_en, argc, argv);
+
+	kfree(argv, M_DM);
+
+	return ret;
+}
+
 /*
  * Get description of all tables loaded to device from kernel
  * and send it to libdevmapper.

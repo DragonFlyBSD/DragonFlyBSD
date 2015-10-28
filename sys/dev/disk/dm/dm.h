@@ -182,7 +182,7 @@ typedef struct dm_dev {
 typedef struct dm_target {
 	char name[DM_MAX_TYPE_NAME];
 	/* Initialize target_config area */
-	int (*init)(dm_table_entry_t *, char *);
+	int (*init)(dm_table_entry_t *, int, char **);
 
 	/* Message interface */
 	int (*message)(dm_table_entry_t *, char *);
@@ -203,6 +203,7 @@ typedef struct dm_target {
 
 	uint32_t version[3];
 	int ref_cnt;
+	int max_argc;
 
 	TAILQ_ENTRY(dm_target) dm_target_next;
 } dm_target_t;

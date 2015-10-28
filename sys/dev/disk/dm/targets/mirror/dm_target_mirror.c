@@ -51,7 +51,7 @@ typedef struct target_mirror_config {
 	/* list of parts that still need copied etc.; run length encoded? */
 } dm_target_mirror_config_t;
 
-int dm_target_mirror_init(dm_table_entry_t *, char *);
+int dm_target_mirror_init(dm_table_entry_t *, int, char **);
 char *dm_target_mirror_table(void *);
 int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
@@ -64,7 +64,7 @@ int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
  * 0 52428800 mirror clustered_disk 4 253:2 1024 UUID block_on_error 3 253:3 0 253:4 0 253:5 0
  */
 int
-dm_target_mirror_init(dm_table_entry_t *table_en, char *params)
+dm_target_mirror_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 
 	kprintf("Mirror target init function called!!\n");

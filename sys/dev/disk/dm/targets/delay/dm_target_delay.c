@@ -86,23 +86,11 @@ static struct objcache_malloc_args obj_args = {
 };
 
 static int
-dm_target_delay_init(dm_table_entry_t *table_en, char *params)
+dm_target_delay_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_delay_config_t *tdc;
-	int ret, argc;
-	char **ap, *argv[7];
+	int ret;
 
-	if (params == NULL)
-		return EINVAL;
-
-	/* Parse params */
-	for (ap = argv; ap < &argv[6] &&
-	    (*ap = strsep(&params, " \t")) != NULL;) {
-		if (**ap != '\0')
-			ap++;
-	}
-
-	argc = ap - argv;
 	aprint_debug("Delay target init: argc=%d\n", argc);
 	if (argc != 3 && argc != 6) {
 		kprintf("Delay target takes 3 or 6 args\n");
@@ -112,17 +100,16 @@ dm_target_delay_init(dm_table_entry_t *table_en, char *params)
 	tdc = kmalloc(sizeof(*tdc), M_DMDELAY, M_WAITOK | M_ZERO);
 	tdc->argc = argc;
 
-	ap = argv;
-	ret = _init(&tdc->read, ap, 0);
+	ret = _init(&tdc->read, argv, 0);
 	if (ret) {
 		kfree(tdc, M_DMDELAY);
 		return ret;
 	}
 
 	if (argc == 6)
-		ap += 3;
+		argv += 3;
 
-	ret = _init(&tdc->write, ap, 1);
+	ret = _init(&tdc->write, argv, 1);
 	if (ret) {
 		dm_pdev_decr(tdc->read.pdev);
 		kfree(tdc, M_DMDELAY);

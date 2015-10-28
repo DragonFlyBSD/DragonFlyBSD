@@ -44,7 +44,7 @@
  * target specific config area.
  */
 static int
-dm_target_zero_init(dm_table_entry_t *table_en, char *params)
+dm_target_zero_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 
 	kprintf("Zero target init function called!!\n");

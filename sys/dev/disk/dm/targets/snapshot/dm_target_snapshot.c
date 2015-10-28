@@ -99,13 +99,13 @@ typedef struct target_snapshot_origin_config {
 	/* list of snapshots ? */
 } dm_target_snapshot_origin_config_t;
 
-int dm_target_snapshot_init(dm_table_entry_t *, char *);
+int dm_target_snapshot_init(dm_table_entry_t *, int, char **);
 char *dm_target_snapshot_table(void *);
 int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_destroy(dm_table_entry_t *);
 int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
 
-int dm_target_snapshot_orig_init(dm_table_entry_t *, char *);
+int dm_target_snapshot_orig_init(dm_table_entry_t *, int, char **);
 char *dm_target_snapshot_orig_table(void *);
 int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_orig_destroy(dm_table_entry_t *);
@@ -117,25 +117,12 @@ int dm_target_snapshot_orig_upcall(dm_table_entry_t *, struct buf *);
  *        snapshot_origin device, cow device, persistent flag, chunk size
  */
 int
-dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
+dm_target_snapshot_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_snapshot_config_t *tsc;
 	dm_pdev_t *dmp_snap, *dmp_cow;
-	char **ap, *argv[5];
 
 	dmp_cow = NULL;
-
-	if (params == NULL)
-		return EINVAL;
-	/*
-	 * Parse a string, containing tokens delimited by white space,
-	 * into an argument vector
-	 */
-	for (ap = argv; ap < &argv[4] &&
-	    (*ap = strsep(&params, " \t")) != NULL;) {
-		if (**ap != '\0')
-			ap++;
-	}
 
 	kprintf("Snapshot target init function called!!\n");
 	kprintf("Snapshotted device: %s, cow device %s,\n\t persistent flag: %s, "
@@ -291,19 +278,16 @@ dm_target_snapshot_upcall(dm_table_entry_t *table_en, struct buf *bp)
  * argv: /dev/mapper/my_data_real
  */
 int
-dm_target_snapshot_init(dm_table_entry_t *table_en, char *params)
+dm_target_snapshot_orig_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_snapshot_origin_config_t *tsoc;
 	dm_pdev_t *dmp_real;
 
-	if (params == NULL)
-		return EINVAL;
-
 	kprintf("Snapshot origin target init function called!!\n");
-	kprintf("Parent device: %s\n", params);
+	kprintf("Parent device: %s\n", argv[0]);
 
 	/* Insert snap device to global pdev list */
-	if ((dmp_real = dm_pdev_insert(params)) == NULL)
+	if ((dmp_real = dm_pdev_insert(argv[0])) == NULL)
 		return ENOENT;
 
 	if ((tsoc = kmem_alloc(sizeof(dm_target_snapshot_origin_config_t), KM_NOSLEEP))
