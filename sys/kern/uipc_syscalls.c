@@ -97,8 +97,19 @@ kern_socket(int domain, int type, int protocol, int *res)
 	struct socket *so;
 	struct file *fp;
 	int fd, error;
+	u_int fflags = 0;
+	int oflags = 0;
 
 	KKASSERT(td->td_lwp);
+
+	if (type & SOCK_NONBLOCK) {
+		type &= ~SOCK_NONBLOCK;
+		fflags |= FNONBLOCK;
+	}
+	if (type & SOCK_CLOEXEC) {
+		type &= ~SOCK_CLOEXEC;
+		oflags |= O_CLOEXEC;
+	}
 
 	error = falloc(td->td_lwp, &fp, &fd);
 	if (error)
@@ -108,9 +119,15 @@ kern_socket(int domain, int type, int protocol, int *res)
 		fsetfd(fdp, NULL, fd);
 	} else {
 		fp->f_type = DTYPE_SOCKET;
-		fp->f_flag = FREAD | FWRITE;
+		fp->f_flag = FREAD | FWRITE | fflags;
 		fp->f_ops = &socketops;
 		fp->f_data = so;
+		if (oflags & O_CLOEXEC)
+			fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+		if (fflags & FNONBLOCK) {
+			int tmp = 1;
+			fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
+		}
 		*res = fd;
 		fsetfd(fdp, fp, fd);
 	}
@@ -599,6 +616,17 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	struct file *fp1, *fp2;
 	struct socket *so1, *so2;
 	int fd1, fd2, error;
+	u_int fflags = 0;
+	int oflags = 0;
+
+	if (type & SOCK_NONBLOCK) {
+		type &= ~SOCK_NONBLOCK;
+		fflags |= FNONBLOCK;
+	}
+	if (type & SOCK_CLOEXEC) {
+		type &= ~SOCK_CLOEXEC;
+		oflags |= O_CLOEXEC;
+	}
 
 	fdp = td->td_proc->p_fd;
 	error = socreate(domain, &so1, type, protocol, td);
@@ -629,8 +657,20 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 			goto free4;
 	}
 	fp1->f_type = fp2->f_type = DTYPE_SOCKET;
-	fp1->f_flag = fp2->f_flag = FREAD|FWRITE;
+	fp1->f_flag = fp2->f_flag = FREAD|FWRITE|fflags;
 	fp1->f_ops = fp2->f_ops = &socketops;
+	if (oflags & O_CLOEXEC) {
+		fdp->fd_files[fd1].fileflags |= UF_EXCLOSE;
+		fdp->fd_files[fd2].fileflags |= UF_EXCLOSE;
+	}
+	if (fflags & FNONBLOCK) {
+		int tmp;
+
+		tmp = 1;
+		fo_ioctl(fp1, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
+		tmp = 1;
+		fo_ioctl(fp2, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
+	}
 	fsetfd(fdp, fp1, fd1);
 	fsetfd(fdp, fp2, fd2);
 	fdrop(fp1);

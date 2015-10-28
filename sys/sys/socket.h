@@ -80,6 +80,12 @@ typedef __socklen_t	socklen_t;
 #define	SOCK_SEQPACKET	5		/* sequenced packet stream */
 
 /*
+ * Creation flags, OR'ed into socket() and socketpair() type argument.
+ */
+#define SOCK_CLOEXEC	0x10000000
+#define SOCK_NONBLOCK	0x20000000
+
+/*
  * Option flags per-socket.
  */
 #define	SO_DEBUG	0x0001		/* turn on debugging info recording */
