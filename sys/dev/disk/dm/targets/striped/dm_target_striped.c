@@ -197,29 +197,27 @@ dm_target_stripe_table(void *target_config)
 	char *params;
 	char *ptr;
 	size_t len;
-	size_t nlen;
-	int n;
+	int ret;
+	int i;
 
 	tsc = target_config;
 
-	/* caller expects use of M_DM for returned params */
-	nlen = DM_MAX_PARAMS_SIZE;
-	params = kmalloc(nlen, M_DM, M_WAITOK);
+	len = DM_MAX_PARAMS_SIZE;
+	params = kmalloc(len, M_DM, M_WAITOK | M_ZERO);
 	ptr = params;
 
-	ksnprintf(ptr, nlen, "%d %jd",
-		  tsc->stripe_num, (intmax_t)tsc->stripe_chunksize);
-	len = strlen(params);
-	ptr += len;
-	nlen -= len;
+	ret = ksnprintf(ptr, len, "%d %jd",
+		tsc->stripe_num,
+		(intmax_t)tsc->stripe_chunksize);
+	ptr += ret;
+	len -= ret;
 
-	for (n = 0; n < tsc->stripe_num; ++n) {
-		ksnprintf(ptr, nlen, " %s %jd",
-			  tsc->stripe_devs[n].pdev->udev_name,
-			  (intmax_t)tsc->stripe_devs[n].offset);
-		len = strlen(ptr);
-		ptr += len;
-		nlen -= len;
+	for (i = 0; i < tsc->stripe_num; i++) {
+		ret = ksnprintf(ptr, len, " %s %jd",
+			tsc->stripe_devs[i].pdev->udev_name,
+			(intmax_t)tsc->stripe_devs[i].offset);
+		ptr += ret;
+		len -= ret;
 	}
 
 	return params;
