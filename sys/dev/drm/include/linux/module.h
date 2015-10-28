@@ -36,7 +36,6 @@
 
 #define MODULE_AUTHOR(name)
 #define MODULE_DESCRIPTION(name)
-#define MODULE_LICENSE(name)
 
 #ifndef MODULE_VERSION
 #define MODULE_VERSION(name)

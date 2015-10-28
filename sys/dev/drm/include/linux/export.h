@@ -28,6 +28,5 @@
 #define _LINUX_EXPORT_H_
 
 #define EXPORT_SYMBOL(name)
-#define EXPORT_SYMBOL_GPL(name)
 
 #endif	/* _LINUX_EXPORT_H_ */
