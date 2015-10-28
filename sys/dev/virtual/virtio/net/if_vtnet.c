@@ -70,24 +70,23 @@
 #include "virtio_if.h"
 
 struct vtnet_statistics {
-	unsigned long		mbuf_alloc_failed;
+	uint64_t	mbuf_alloc_failed;
 
-	unsigned long		rx_frame_too_large;
-	unsigned long		rx_enq_replacement_failed;
-	unsigned long		rx_mergeable_failed;
-	unsigned long		rx_csum_bad_ethtype;
-	unsigned long		rx_csum_bad_start;
-	unsigned long		rx_csum_bad_ipproto;
-	unsigned long		rx_csum_bad_offset;
-	unsigned long		rx_csum_failed;
-	unsigned long		rx_csum_offloaded;
-	unsigned long		rx_task_rescheduled;
+	uint64_t	rx_frame_too_large;
+	uint64_t	rx_enq_replacement_failed;
+	uint64_t	rx_mergeable_failed;
+	uint64_t	rx_csum_bad_ethtype;
+	uint64_t	rx_csum_bad_ipproto;
+	uint64_t	rx_csum_bad_offset;
+	uint64_t	rx_csum_failed;
+	uint64_t	rx_csum_offloaded;
+	uint64_t	rx_task_rescheduled;
 
-	unsigned long		tx_csum_offloaded;
-	unsigned long		tx_tso_offloaded;
-	unsigned long		tx_csum_bad_ethtype;
-	unsigned long		tx_tso_bad_ethtype;
-	unsigned long		tx_task_rescheduled;
+	uint64_t	tx_csum_offloaded;
+	uint64_t	tx_tso_offloaded;
+	uint64_t	tx_csum_bad_ethtype;
+	uint64_t	tx_tso_bad_ethtype;
+	uint64_t	tx_task_rescheduled;
 };
 
 struct vtnet_softc {
@@ -326,7 +325,7 @@ static void	vtnet_tx_intr_task(void *);
 static int	vtnet_tx_vq_intr(void *);
 
 static void	vtnet_stop(struct vtnet_softc *);
-static int	vtnet_reinit(struct vtnet_softc *);
+static int	vtnet_virtio_reinit(struct vtnet_softc *);
 static void	vtnet_init_locked(struct vtnet_softc *);
 static void	vtnet_init(void *);
 
@@ -2181,11 +2180,14 @@ vtnet_stop(struct vtnet_softc *sc)
 }
 
 static int
-vtnet_reinit(struct vtnet_softc *sc)
+vtnet_virtio_reinit(struct vtnet_softc *sc)
 {
+	device_t dev;
 	struct ifnet *ifp;
 	uint64_t features;
+	int error;
 
+	dev = sc->vtnet_dev;
 	ifp = sc->vtnet_ifp;
 	features = sc->vtnet_features;
 
@@ -2210,7 +2212,11 @@ vtnet_reinit(struct vtnet_softc *sc)
 			features &= ~VIRTIO_NET_F_CTRL_VLAN;
 	}
 
-	return (virtio_reinit(sc->vtnet_dev, features));
+	error = virtio_reinit(dev, features);
+	if (error)
+		device_printf(dev, "virtio reinit error %d\n", error);
+
+	return (error);
 }
 
 static void
@@ -2232,7 +2238,7 @@ vtnet_init_locked(struct vtnet_softc *sc)
 	vtnet_stop(sc);
 
 	/* Reinitialize the host device. */
-	error = vtnet_reinit(sc);
+	error = vtnet_virtio_reinit(sc);
 	if (error) {
 		device_printf(dev,
 		    "reinitialization failed, stopping device...\n");
@@ -2719,56 +2725,54 @@ vtnet_add_statistics(struct vtnet_softc *sc)
 	tree = device_get_sysctl_tree(dev);
 	child = SYSCTL_CHILDREN(tree);
 
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "mbuf_alloc_failed",
-	    CTLFLAG_RD, &stats->mbuf_alloc_failed,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "mbuf_alloc_failed",
+	    CTLFLAG_RD, &stats->mbuf_alloc_failed, 0,
 	    "Mbuf cluster allocation failures");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_frame_too_large",
-	    CTLFLAG_RD, &stats->rx_frame_too_large,
+
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_frame_too_large",
+	    CTLFLAG_RD, &stats->rx_frame_too_large, 0,
 	    "Received frame larger than the mbuf chain");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_enq_replacement_failed",
-	    CTLFLAG_RD, &stats->rx_enq_replacement_failed,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_enq_replacement_failed",
+	    CTLFLAG_RD, &stats->rx_enq_replacement_failed, 0,
 	    "Enqueuing the replacement receive mbuf failed");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_mergeable_failed",
-	    CTLFLAG_RD, &stats->rx_mergeable_failed,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_mergeable_failed",
+	    CTLFLAG_RD, &stats->rx_mergeable_failed, 0,
 	    "Mergeable buffers receive failures");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_csum_bad_ethtype",
-	    CTLFLAG_RD, &stats->rx_csum_bad_ethtype,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_csum_bad_ethtype",
+	    CTLFLAG_RD, &stats->rx_csum_bad_ethtype, 0,
 	    "Received checksum offloaded buffer with unsupported "
 	    "Ethernet type");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_csum_bad_start",
-	    CTLFLAG_RD, &stats->rx_csum_bad_start,
-	    "Received checksum offloaded buffer with incorrect start offset");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_csum_bad_ipproto",
-	    CTLFLAG_RD, &stats->rx_csum_bad_ipproto,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_csum_bad_ipproto",
+	    CTLFLAG_RD, &stats->rx_csum_bad_ipproto, 0,
 	    "Received checksum offloaded buffer with incorrect IP protocol");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_csum_bad_offset",
-	    CTLFLAG_RD, &stats->rx_csum_bad_offset,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_csum_bad_offset",
+	    CTLFLAG_RD, &stats->rx_csum_bad_offset, 0,
 	    "Received checksum offloaded buffer with incorrect offset");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_csum_failed",
-	    CTLFLAG_RD, &stats->rx_csum_failed,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_csum_failed",
+	    CTLFLAG_RD, &stats->rx_csum_failed, 0,
 	    "Received buffer checksum offload failed");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_csum_offloaded",
-	    CTLFLAG_RD, &stats->rx_csum_offloaded,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_csum_offloaded",
+	    CTLFLAG_RD, &stats->rx_csum_offloaded, 0,
 	    "Received buffer checksum offload succeeded");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "rx_task_rescheduled",
-	    CTLFLAG_RD, &stats->rx_task_rescheduled,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "rx_task_rescheduled",
+	    CTLFLAG_RD, &stats->rx_task_rescheduled, 0,
 	    "Times the receive interrupt task rescheduled itself");
 
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "tx_csum_offloaded",
-	    CTLFLAG_RD, &stats->tx_csum_offloaded,
-	    "Offloaded checksum of transmitted buffer");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "tx_tso_offloaded",
-	    CTLFLAG_RD, &stats->tx_tso_offloaded,
-	    "Segmentation offload of transmitted buffer");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "tx_csum_bad_ethtype",
-	    CTLFLAG_RD, &stats->tx_csum_bad_ethtype,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_csum_bad_ethtype",
+	    CTLFLAG_RD, &stats->tx_csum_bad_ethtype, 0,
 	    "Aborted transmit of checksum offloaded buffer with unknown "
 	    "Ethernet type");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "tx_tso_bad_ethtype",
-	    CTLFLAG_RD, &stats->tx_tso_bad_ethtype,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_tso_bad_ethtype",
+	    CTLFLAG_RD, &stats->tx_tso_bad_ethtype, 0,
 	    "Aborted transmit of TSO buffer with unknown Ethernet type");
-	SYSCTL_ADD_ULONG(ctx, child, OID_AUTO, "tx_task_rescheduled",
-	    CTLFLAG_RD, &stats->tx_task_rescheduled,
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_csum_offloaded",
+	    CTLFLAG_RD, &stats->tx_csum_offloaded, 0,
+	    "Offloaded checksum of transmitted buffer");
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_tso_offloaded",
+	    CTLFLAG_RD, &stats->tx_tso_offloaded, 0,
+	    "Segmentation offload of transmitted buffer");
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_task_rescheduled",
+	    CTLFLAG_RD, &stats->tx_task_rescheduled, 0,
 	    "Times the transmit interrupt task rescheduled itself");
 }
 
