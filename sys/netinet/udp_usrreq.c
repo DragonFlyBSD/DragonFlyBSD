@@ -1211,15 +1211,15 @@ udp_attach(netmsg_t msg)
 	struct socket *so = msg->attach.base.nm_so;
 	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct inpcb *inp;
-	int error = 0;
+	int error;
 
 	KASSERT(so->so_pcb == NULL, ("udp socket attached"));
 
-	if (ai != NULL)
+	if (ai != NULL) {
 		error = udp_preattach(so, 0 /* don't care */, ai);
 		if (error)
 			goto out;
-	else {
+	} else {
 		/* Post attach; do nothing */
 	}
 
