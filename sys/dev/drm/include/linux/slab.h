@@ -37,6 +37,6 @@
 		kfree(ptr, M_DRM);	\
 } while (0)
 
-#define kcalloc(n, size, flags)	kzalloc(n * size, flags)
+#define kcalloc(n, size, flags)	kzalloc((n) * (size), flags)
 
 #endif	/* _LINUX_SLAB_H_ */
