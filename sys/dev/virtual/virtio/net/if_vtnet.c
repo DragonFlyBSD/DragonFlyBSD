@@ -44,6 +44,8 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
+#include <machine/limits.h>
+
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -243,8 +245,6 @@ struct vtnet_mac_filter {
 #define VTNET_MAX_RX_SEGS	34
 #define VTNET_MAX_TX_SEGS	34
 
-#define IFCAP_TSO4              0x00100 /* can do TCP Segmentation Offload */
-#define IFCAP_TSO6              0x00200 /* can do TCP6 Segmentation Offload */
 #define IFCAP_LRO               0x00400 /* can do Large Receive Offload */
 #define IFCAP_VLAN_HWFILTER     0x10000 /* interface hw can filter vlan tag */
 #define IFCAP_VLAN_HWTSO        0x40000 /* can do IFCAP_TSO on VLANs */
@@ -341,7 +341,7 @@ static void	vtnet_rx_filter_mac(struct vtnet_softc *);
 
 static int	vtnet_exec_vlan_filter(struct vtnet_softc *, int, uint16_t);
 static void	vtnet_rx_filter_vlan(struct vtnet_softc *);
-static void	vtnet_set_vlan_filter(struct vtnet_softc *, int, uint16_t);
+static void	vtnet_update_vlan_filter(struct vtnet_softc *, int, uint16_t);
 static void	vtnet_register_vlan(void *, struct ifnet *, uint16_t);
 static void	vtnet_unregister_vlan(void *, struct ifnet *, uint16_t);
 
@@ -2399,32 +2399,36 @@ vtnet_rx_filter(struct vtnet_softc *sc)
 static int
 vtnet_ctrl_rx_cmd(struct vtnet_softc *sc, int cmd, int on)
 {
-	struct virtio_net_ctrl_hdr hdr __aligned(2);
 	struct sglist_seg segs[3];
 	struct sglist sg;
-	uint8_t onoff, ack;
+	struct {
+		struct virtio_net_ctrl_hdr hdr __aligned(2);
+		uint8_t pad1;
+		uint8_t onoff;
+		uint8_t pad2;
+		uint8_t ack;
+	} s;
 	int error;
 
-	if ((sc->vtnet_flags & VTNET_FLAG_CTRL_RX) == 0)
-		return (ENOTSUP);
+	KASSERT(sc->vtnet_flags & VTNET_FLAG_CTRL_RX,
+	    ("%s: CTRL_RX feature not negotiated", __func__));
 
-	error = 0;
-
-	hdr.class = VIRTIO_NET_CTRL_RX;
-	hdr.cmd = cmd;
-	onoff = !!on;
-	ack = VIRTIO_NET_ERR;
+	s.hdr.class = VIRTIO_NET_CTRL_RX;
+	s.hdr.cmd = cmd;
+	s.onoff = !!on;
+	s.ack = VIRTIO_NET_ERR;
 
 	sglist_init(&sg, 3, segs);
-	error |= sglist_append(&sg, &hdr, sizeof(struct virtio_net_ctrl_hdr));
-	error |= sglist_append(&sg, &onoff, sizeof(uint8_t));
-	error |= sglist_append(&sg, &ack, sizeof(uint8_t));
+	error = 0;
+	error |= sglist_append(&sg, &s.hdr, sizeof(struct virtio_net_ctrl_hdr));
+	error |= sglist_append(&sg, &s.onoff, sizeof(uint8_t));
+	error |= sglist_append(&sg, &s.ack, sizeof(uint8_t));
 	KASSERT(error == 0 && sg.sg_nseg == 3,
-	    ("error adding Rx filter message to sglist"));
+	    ("%s: error %d adding Rx message to sglist", __func__, error));
 
-	vtnet_exec_ctrl_cmd(sc, &ack, &sg, sg.sg_nseg - 1, 1);
+	vtnet_exec_ctrl_cmd(sc, &s.ack, &sg, sg.sg_nseg - 1, 1);
 
-	return (ack == VIRTIO_NET_OK ? 0 : EIO);
+	return (s.ack == VIRTIO_NET_OK ? 0 : EIO);
 }
 
 static int
@@ -2586,52 +2590,46 @@ vtnet_exec_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 static void
 vtnet_rx_filter_vlan(struct vtnet_softc *sc)
 {
-	device_t dev;
-	uint32_t w, mask;
+	uint32_t w;
 	uint16_t tag;
-	int i, nvlans, error;
+	int i, bit, nvlans;
 
 	ASSERT_SERIALIZED(&sc->vtnet_slz);
 	KASSERT(sc->vtnet_flags & VTNET_FLAG_VLAN_FILTER,
-	    ("VLAN_FILTER feature not negotiated"));
+	    ("%s: VLAN_FILTER feature not negotiated", __func__));
 
-	dev = sc->vtnet_dev;
 	nvlans = sc->vtnet_nvlans;
-	error = 0;
 
-	/* Enable filtering for each configured VLAN. */
+	/* Enable the filter for each configured VLAN. */
 	for (i = 0; i < VTNET_VLAN_SHADOW_SIZE && nvlans > 0; i++) {
 		w = sc->vtnet_vlan_shadow[i];
-		for (mask = 1, tag = i * 32; w != 0; mask <<= 1, tag++) {
-			if ((w & mask) != 0) {
-				w &= ~mask;
-				nvlans--;
-				if (vtnet_exec_vlan_filter(sc, 1, tag) != 0)
-					error++;
+		while ((bit = ffs(w) - 1) != -1) {
+			w &= ~(1 << bit);
+			tag = sizeof(w) * CHAR_BIT * i + bit;
+			nvlans--;
+
+			if (vtnet_exec_vlan_filter(sc, 1, tag) != 0) {
+				device_printf(sc->vtnet_dev,
+				    "cannot enable VLAN %d filter\n", tag);
 			}
 		}
 	}
 
 	KASSERT(nvlans == 0, ("VLAN count incorrect"));
-	if (error)
-		device_printf(dev, "cannot restore VLAN filter table\n");
 }
 
 static void
-vtnet_set_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
+vtnet_update_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 {
 	struct ifnet *ifp;
 	int idx, bit;
 
-	KASSERT(sc->vtnet_flags & VTNET_FLAG_VLAN_FILTER,
-	    ("VLAN_FILTER feature not negotiated"));
-
-	if ((tag == 0) || (tag > 4095))
-		return;
-
 	ifp = sc->vtnet_ifp;
 	idx = (tag >> 5) & 0x7F;
 	bit = tag & 0x1F;
+
+	if (tag == 0 || tag > 4095)
+		return;
 
 	lwkt_serialize_enter(&sc->vtnet_slz);
 
@@ -2644,13 +2642,11 @@ vtnet_set_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 		sc->vtnet_vlan_shadow[idx] &= ~(1 << bit);
 	}
 
-	if (ifp->if_capenable & IFCAP_VLAN_HWFILTER) {
-		if (vtnet_exec_vlan_filter(sc, add, tag) != 0) {
-			device_printf(sc->vtnet_dev,
-			    "cannot %s VLAN %d %s the host filter table\n",
-			    add ? "add" : "remove", tag,
-			    add ? "to" : "from");
-		}
+	if (ifp->if_capenable & IFCAP_VLAN_HWFILTER &&
+	    vtnet_exec_vlan_filter(sc, add, tag) != 0) {
+		device_printf(sc->vtnet_dev,
+		    "cannot %s VLAN %d %s the host filter table\n",
+		    add ? "add" : "remove", tag, add ? "to" : "from");
 	}
 
 	lwkt_serialize_exit(&sc->vtnet_slz);
@@ -2663,7 +2659,7 @@ vtnet_register_vlan(void *arg, struct ifnet *ifp, uint16_t tag)
 	if (ifp->if_softc != arg)
 		return;
 
-	vtnet_set_vlan_filter(arg, 1, tag);
+	vtnet_update_vlan_filter(arg, 1, tag);
 }
 
 static void
@@ -2673,7 +2669,7 @@ vtnet_unregister_vlan(void *arg, struct ifnet *ifp, uint16_t tag)
 	if (ifp->if_softc != arg)
 		return;
 
-	vtnet_set_vlan_filter(arg, 0, tag);
+	vtnet_update_vlan_filter(arg, 0, tag);
 }
 
 static int
