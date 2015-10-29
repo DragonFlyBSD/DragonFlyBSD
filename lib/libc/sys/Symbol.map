@@ -23,6 +23,7 @@ DF404.0 {
     __syscall;
     __sysctl;
     accept;
+    accept4;
     access;
     acct;
     adjtime;
@@ -318,6 +319,7 @@ DFprivate_1.0 {
     __sys___syscall;
     __sys___sysctl;
     __sys_accept;
+    __sys_accept4;
     __sys_access;
     __sys_acct;
     __sys_adjtime;
@@ -609,6 +611,7 @@ DFprivate_1.0 {
     ___syscall;
     ___sysctl;
     _accept;
+    _accept4;
     _access;
     _acct;
     _adjtime;

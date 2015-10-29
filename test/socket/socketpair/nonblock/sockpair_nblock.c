@@ -43,11 +43,11 @@ main(void)
 	if (n < 0) {
 		error = errno;
 		if (error != EAGAIN) {
-			fprintf(stderr, "invalid errno %d\n", error);
+			warnx("invalid errno %d", error);
 			abort();
 		}
 	} else {
-		fprintf(stderr, "read0 works\n");
+		warnx("read0 works");
 		abort();
 	}
 
@@ -55,11 +55,11 @@ main(void)
 	if (n < 0) {
 		error = errno;
 		if (error != EAGAIN) {
-			fprintf(stderr, "invalid errno %d\n", error);
+			warnx("invalid errno %d", error);
 			abort();
 		}
 	} else {
-		fprintf(stderr, "read1 works\n");
+		warnx("read1 works");
 		abort();
 	}
 

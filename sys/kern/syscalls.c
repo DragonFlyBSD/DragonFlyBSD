@@ -549,4 +549,5 @@ const char *syscallnames[] = {
 	"pipe2",			/* 538 = pipe2 */
 	"utimensat",			/* 539 = utimensat */
 	"futimens",			/* 540 = futimens */
+	"accept4",			/* 541 = accept4 */
 };

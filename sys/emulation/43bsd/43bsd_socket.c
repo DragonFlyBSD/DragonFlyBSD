@@ -113,7 +113,7 @@ sys_oaccept(struct accept_args *uap)
 
 		get_mplock();
 		error = kern_accept(uap->s, 0, &sa, &sa_len,
-				    &uap->sysmsg_iresult);
+				    &uap->sysmsg_iresult, 0);
 		rel_mplock();
 
 		if (error) {
@@ -134,7 +134,7 @@ sys_oaccept(struct accept_args *uap)
 			kfree(sa, M_SONAME);
 	} else {
 		get_mplock();
-		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_iresult);
+		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_iresult, 0);
 		rel_mplock();
 	}
 	return (error);

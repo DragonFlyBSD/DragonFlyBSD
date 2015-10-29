@@ -744,3 +744,4 @@
 538	STD	{ int pipe2(int *fildes, int flags); }
 539	STD	{ int utimensat(int fd, const char *path, const struct timespec *ts, int flags); }
 540	STD	{ int futimens(int fd, const struct timespec *ts); }
+541	STD	{ int accept4(int s, caddr_t name, int *anamelen, int flags); }

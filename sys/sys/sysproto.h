@@ -2301,6 +2301,15 @@ struct	futimens_args {
 	int	fd;	char fd_[PAD_(int)];
 	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
 };
+struct	accept4_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	s;	char s_[PAD_(int)];
+	caddr_t	name;	char name_[PAD_(caddr_t)];
+	int *	anamelen;	char anamelen_[PAD_(int *)];
+	int	flags;	char flags_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2847,6 +2856,7 @@ int	sys_chflagsat (struct chflagsat_args *);
 int	sys_pipe2 (struct pipe2_args *);
 int	sys_utimensat (struct utimensat_args *);
 int	sys_futimens (struct futimens_args *);
+int	sys_accept4 (struct accept4_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

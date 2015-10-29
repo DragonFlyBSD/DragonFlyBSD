@@ -432,7 +432,8 @@ linux_accept(struct linux_accept_args *args, int *res)
 		if (error)
 			return (error);
 
-		error = kern_accept(linux_args.s, 0, &sa, &sa_len, res);
+		error = kern_accept(linux_args.s, 0, &sa, &sa_len, res,
+		    SOCK_KERN_NOINHERIT);
 
 		if (error) {
 			/*

@@ -110,7 +110,8 @@ int kern_getrlimit(u_int which, struct rlimit *limp);
 /*
  * Prototypes for syscalls in kern/uipc_syscalls.c
  */
-int kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res);
+int kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res,
+	int sockflags /* SOCK_{NONBLOCK,CLOEXEC,KERN_NOINHERIT} */);
 int kern_bind(int s, struct sockaddr *sa);
 int kern_connect(int s, int fflags, struct sockaddr *sa);
 int kern_listen(int s, int backlog);

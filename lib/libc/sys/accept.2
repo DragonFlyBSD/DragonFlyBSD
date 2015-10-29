@@ -29,11 +29,12 @@
 .\" $FreeBSD: src/lib/libc/sys/accept.2,v 1.10.2.11 2002/05/09 02:24:40 silby Exp $
 .\" $DragonFly: src/lib/libc/sys/accept.2,v 1.4 2006/06/25 10:55:51 corecode Exp $
 .\"
-.Dd December 11, 1993
+.Dd October 29, 2015
 .Dt ACCEPT 2
 .Os
 .Sh NAME
-.Nm accept
+.Nm accept ,
+.Nm accept4
 .Nd accept a connection on a socket
 .Sh LIBRARY
 .Lb libc
@@ -42,6 +43,8 @@
 .In sys/socket.h
 .Ft int
 .Fn accept "int s" "struct sockaddr *addr" "socklen_t *addrlen"
+.Ft int
+.Fn accept4 "int s" "struct sockaddr * restrict addr" "socklen_t * restrict addrlen" "int flags"
 .Sh DESCRIPTION
 The argument
 .Fa s
@@ -53,13 +56,46 @@ and is listening for connections after a
 .Xr listen 2 .
 The
 .Fn accept
-call
-extracts the first connection request
-on the queue of pending connections, creates
-a new socket with the same properties as
-.Fa s ,
+system call extracts the first connection request
+on the queue of pending connections,
+creates a new socket,
 and allocates a new file descriptor
-for the socket.  If no pending connections are
+for the socket
+which inherits the state of the
+.Dv O_NONBLOCK
+and
+.Dv O_ASYNC
+properties,
+socket buffer settings,
+socket options,
+and the destination of
+.Dv SIGIO
+and
+.Dv SIGURG
+signals from the original socket
+.Fa s .
+.Pp
+The
+.Fn accept4
+system call is similar,
+but the
+.Dv O_NONBLOCK
+property of the new socket is instead determined by the
+.Dv SOCK_NONBLOCK
+flag in the
+.Fa flags
+argument,
+the
+.Dv O_ASYNC
+property is cleared,
+the signal destination is cleared
+and the close-on-exec flag on the new file descriptor can be set via the
+.Dv SOCK_CLOEXEC
+flag in the
+.Fa flags
+argument.
+.Pp
+If no pending connections are
 present on the queue, and the socket is not marked
 as non-blocking,
 .Fn accept
@@ -94,9 +130,11 @@ amount of space pointed to by
 .Fa addr ;
 on return it will contain the actual length (in bytes) of the
 address returned.
-This call
-is used with connection-based socket types, currently with
-.Dv SOCK_STREAM .
+These system calls
+are used with connection-based socket types, currently with
+.Dv SOCK_STREAM
+and
+.Dv SOCK_SEQPACKET .
 .Pp
 It is possible to
 .Xr select 2
@@ -121,12 +159,16 @@ For some applications, performance may be enhanced by using an
 .Xr accept_filter 9
 to pre-process incoming connections.
 .Sh RETURN VALUES
-The call returns \-1 on error.  If it succeeds, it returns a non-negative
-integer that is a descriptor for the accepted socket.
+These calls returns \-1 on error.
+If they succeed,
+they return a non-negative integer
+that is a descriptor for the accepted socket.
 .Sh ERRORS
 The
 .Fn accept
-will fail if:
+and
+.Fn accept4
+system calls will fail if:
 .Bl -tag -width Er
 .It Bq Er EBADF
 The descriptor is invalid.
@@ -155,6 +197,16 @@ are present to be accepted.
 A connection arrived, but it was closed while waiting
 on the listen queue.
 .El
+.Pp
+The
+.Fn accept4
+system call will also fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The
+.Fa flags
+argument is invalid.
+.El
 .Sh SEE ALSO
 .Xr bind 2 ,
 .Xr connect 2 ,
@@ -166,5 +218,10 @@ on the listen queue.
 .Sh HISTORY
 The
 .Fn accept
-function appeared in
+system call appeared in
 .Bx 4.2 .
+.Pp
+The
+.Fn accept4
+system call appeared in
+.Dx 4.3 .

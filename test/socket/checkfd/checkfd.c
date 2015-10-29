@@ -1,3 +1,4 @@
+#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,11 +24,11 @@ main(int argc, char *argv[])
 			int error = errno;
 
 			if (error != EBADF) {
-				fprintf(stderr, "close error %d\n", error);
+				warnx("close error %d", error);
 				exit(2);
 			}
 		} else {
-			fprintf(stderr, "%d is still valid\n", fd);
+			warnx("%d is still valid", fd);
 			exit(2);
 		}
 	}

@@ -84,6 +84,12 @@ typedef __socklen_t	socklen_t;
  */
 #define SOCK_CLOEXEC	0x10000000
 #define SOCK_NONBLOCK	0x20000000
+#ifdef _KERNEL
+/*
+ * For kern_accept(): don't inherit FNONBLOCK or FASYNC.
+ */
+#define SOCK_KERN_NOINHERIT 0x00100000
+#endif
 
 /*
  * Option flags per-socket.
@@ -482,6 +488,7 @@ struct sf_hdtr {
 
 __BEGIN_DECLS
 int	accept(int, struct sockaddr *, socklen_t *);
+int	accept4(int, struct sockaddr *, socklen_t *, int);
 int	extaccept(int, int, struct sockaddr *, socklen_t *);
 int	bind(int, const struct sockaddr *, socklen_t);
 int	connect(int, const struct sockaddr *, socklen_t);

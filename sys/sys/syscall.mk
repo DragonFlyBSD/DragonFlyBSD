@@ -303,4 +303,5 @@ MIASM =  \
 	chflagsat.o \
 	pipe2.o \
 	utimensat.o \
-	futimens.o
+	futimens.o \
+	accept4.o

@@ -1,9 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/wait.h>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
 
 #include <err.h>
 #include <errno.h>
@@ -18,20 +16,20 @@ int
 main(void)
 {
 	pid_t pid;
-	int s, status, ecode;
+	int s[2], status, ecode;
 
-	s = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (s < 0)
-		err(1, "socket failed");
+	if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0, s) < 0)
+		err(1, "socketpair failed");
 
 	pid = fork();
 	if (pid < 0) {
 		err(1, "fork failed");
 	} else if (pid == 0) {
-		char fd[8];
+		char fd1[8], fd2[8];
 
-		snprintf(fd, sizeof(fd), "%d", s);
-		if (execl(CHECKFD_PATH, CHECKFD_CMD, fd, NULL) < 0)
+		snprintf(fd1, sizeof(fd1), "%d", s[0]);
+		snprintf(fd2, sizeof(fd2), "%d", s[1]);
+		if (execl(CHECKFD_PATH, CHECKFD_CMD, fd1, fd2, NULL) < 0)
 			err(3, "execl failed");
 	}
 
@@ -43,7 +41,7 @@ main(void)
 
 	ecode = WEXITSTATUS(status);
 	if (ecode != 0) {
-		fprintf(stderr, "exit code %d\n", ecode);
+		warnx("exit code %d", ecode);
 		abort();
 	}
 

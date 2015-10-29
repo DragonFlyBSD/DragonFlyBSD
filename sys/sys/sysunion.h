@@ -393,4 +393,5 @@ union sysunion {
 	struct	pipe2_args pipe2;
 	struct	utimensat_args utimensat;
 	struct	futimens_args futimens;
+	struct	accept4_args accept4;
 };

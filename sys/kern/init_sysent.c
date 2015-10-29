@@ -566,4 +566,5 @@ struct sysent sysent[] = {
 	{ AS(pipe2_args), (sy_call_t *)sys_pipe2 },	/* 538 = pipe2 */
 	{ AS(utimensat_args), (sy_call_t *)sys_utimensat },	/* 539 = utimensat */
 	{ AS(futimens_args), (sy_call_t *)sys_futimens },	/* 540 = futimens */
+	{ AS(accept4_args), (sy_call_t *)sys_accept4 },		/* 541 = accept4 */
 };

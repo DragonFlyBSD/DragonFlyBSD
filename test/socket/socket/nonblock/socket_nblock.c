@@ -47,7 +47,7 @@ main(int argc, char *argv[])
 		case 'p':
 			port = strtol(optarg, &endptr, 0);
 			if (*endptr != '\0')
-				fprintf(stderr, "invalid -p argument\n");
+				errx(1, "invalid -p argument");
 			break;
 
 		default:
@@ -78,11 +78,11 @@ main(int argc, char *argv[])
 	if (n < 0) {
 		error = errno;
 		if (error != EAGAIN) {
-			fprintf(stderr, "invalid errno %d\n", error);
+			warnx("invalid errno %d", error);
 			abort();
 		}
 	} else {
-		fprintf(stderr, "read works\n");
+		warnx("read works");
 		abort();
 	}
 

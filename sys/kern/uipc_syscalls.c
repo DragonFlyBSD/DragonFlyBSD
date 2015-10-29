@@ -276,7 +276,8 @@ soaccept_predicate(struct netmsg_so_notify *msg)
  * initialize *name to NULL.
  */
 int
-kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
+kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res,
+    int sockflags)
 {
 	struct thread *td = curthread;
 	struct filedesc *fdp = td->td_proc->p_fd;
@@ -359,8 +360,14 @@ accepted:
 	/* connection has been removed from the listen queue */
 	KNOTE(&head->so_rcv.ssb_kq.ki_note, 0);
 
-	if (head->so_sigio != NULL)
-		fsetown(fgetown(&head->so_sigio), &so->so_sigio);
+	if (sockflags & SOCK_KERN_NOINHERIT) {
+		fflag &= ~(FASYNC | FNONBLOCK);
+		if (sockflags & SOCK_NONBLOCK)
+			fflag |= FNONBLOCK;
+	} else {
+		if (head->so_sigio != NULL)
+			fsetown(fgetown(&head->so_sigio), &so->so_sigio);
+	}
 
 	nfp->f_type = DTYPE_SOCKET;
 	nfp->f_flag = fflag;
@@ -410,6 +417,8 @@ done:
 	if (error) {
 		fsetfd(fdp, NULL, fd);
 	} else {
+		if (sockflags & SOCK_CLOEXEC)
+			fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
 		*res = fd;
 		fsetfd(fdp, nfp, fd);
 	}
@@ -436,7 +445,7 @@ sys_accept(struct accept_args *uap)
 			return (error);
 
 		error = kern_accept(uap->s, 0, &sa, &sa_len,
-				    &uap->sysmsg_iresult);
+				    &uap->sysmsg_iresult, 0);
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -448,7 +457,7 @@ sys_accept(struct accept_args *uap)
 			kfree(sa, M_SONAME);
 	} else {
 		error = kern_accept(uap->s, 0, NULL, 0,
-				    &uap->sysmsg_iresult);
+				    &uap->sysmsg_iresult, 0);
 	}
 	return (error);
 }
@@ -472,7 +481,7 @@ sys_extaccept(struct extaccept_args *uap)
 			return (error);
 
 		error = kern_accept(uap->s, fflags, &sa, &sa_len,
-				    &uap->sysmsg_iresult);
+				    &uap->sysmsg_iresult, 0);
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -484,11 +493,50 @@ sys_extaccept(struct extaccept_args *uap)
 			kfree(sa, M_SONAME);
 	} else {
 		error = kern_accept(uap->s, fflags, NULL, 0,
-				    &uap->sysmsg_iresult);
+				    &uap->sysmsg_iresult, 0);
 	}
 	return (error);
 }
 
+/*
+ * accept4(int s, caddr_t name, int *anamelen, int flags)
+ *
+ * MPALMOSTSAFE
+ */
+int
+sys_accept4(struct accept4_args *uap)
+{
+	struct sockaddr *sa = NULL;
+	int sa_len;
+	int error;
+	int sockflags;
+
+	if (uap->flags & ~(SOCK_NONBLOCK | SOCK_CLOEXEC))
+		return (EINVAL);
+	sockflags = uap->flags | SOCK_KERN_NOINHERIT;
+
+	if (uap->name) {
+		error = copyin(uap->anamelen, &sa_len, sizeof(sa_len));
+		if (error)
+			return (error);
+
+		error = kern_accept(uap->s, 0, &sa, &sa_len,
+				    &uap->sysmsg_iresult, sockflags);
+
+		if (error == 0)
+			error = copyout(sa, uap->name, sa_len);
+		if (error == 0) {
+			error = copyout(&sa_len, uap->anamelen,
+			    sizeof(*uap->anamelen));
+		}
+		if (sa)
+			kfree(sa, M_SONAME);
+	} else {
+		error = kern_accept(uap->s, 0, NULL, 0,
+				    &uap->sysmsg_iresult, sockflags);
+	}
+	return (error);
+}
 
 /*
  * Returns TRUE if predicate satisfied.

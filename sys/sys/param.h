@@ -127,9 +127,10 @@
  * 400302 - Replacement of libm with OpenBSD's libm
  * 400303 - environ and __progname are no longer linkable symbols
  * 400304 - Activate symbol versioning for libc.so (still on version 8)
+ * 400305 - Add accept4() system call
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400304	/* propagated to newvers */
+#define __DragonFly_version 400305	/* propagated to newvers */
 
 #include <sys/_null.h>
 
