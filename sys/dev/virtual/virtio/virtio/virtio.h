@@ -59,6 +59,9 @@ struct vq_alloc_info;
  */
 #define VIRTIO_F_NOTIFY_ON_EMPTY (1 << 24)
 
+/* The device accepts arbitrary descriptor layouts */
+#define VIRTIO_F_ANY_LAYOUT (1 << 27)
+
 /*
  * The guest should never negotiate this feature; it
  * is used to detect faulty drivers.

@@ -695,6 +695,7 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 
 	features = VTNET_FEATURES & ~mask;
 	features |= VIRTIO_F_NOTIFY_ON_EMPTY;
+	features |= VIRTIO_F_ANY_LAYOUT;
 	sc->vtnet_features = virtio_negotiate_features(dev, features);
 
 	if (virtio_with_feature(dev, VTNET_LRO_FEATURES) &&
