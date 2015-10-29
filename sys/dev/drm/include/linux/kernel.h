@@ -166,8 +166,8 @@
 #define	simple_strtoul	strtoul
 #define	simple_strtol	strtol
 
-#define min(x, y)			(x < y ? x : y)
-#define max(x, y)			(x > y ? x : y)
+#define min(x, y)			((x) < (y) ? (x) : (y))
+#define max(x, y)			((x) > (y) ? (x) : (y))
 
 #define min3(a, b, c)			min(a, min(b,c))
 #define max3(a, b, c)			max(a, max(b,c))
