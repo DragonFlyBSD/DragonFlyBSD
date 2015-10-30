@@ -53,6 +53,7 @@ typedef int virtqueue_intr_t(void *);
 /* One for each virtqueue the device wishes to allocate. */
 struct vq_alloc_info {
 	char		   vqai_name[VIRTQUEUE_MAX_NAME_SZ];
+	int		   vqai_maxindirsz;
 	virtqueue_intr_t  *vqai_intr;
 	void		  *vqai_intr_arg;
 	struct virtqueue **vqai_vq;
@@ -61,6 +62,7 @@ struct vq_alloc_info {
 #define VQ_ALLOC_INFO_INIT(_i,_nsegs,_intr,_arg,_vqp,_str,...) do {	\
 	ksnprintf((_i)->vqai_name, VIRTQUEUE_MAX_NAME_SZ, _str,		\
 	    ##__VA_ARGS__);						\
+	(_i)->vqai_maxindirsz = (_nsegs);				\
 	(_i)->vqai_intr = (_intr);					\
 	(_i)->vqai_intr_arg = (_arg);					\
 	(_i)->vqai_vq = (_vqp);						\

@@ -82,6 +82,19 @@ struct vq_alloc_info;
 #define VIRTIO_MAX_VIRTQUEUES 8
 
 /*
+ * XXX malloc(9) comment not correct on DragonFly
+ * Each virtqueue indirect descriptor list must be physically contiguous.
+ * To allow us to malloc(9) each list individually, limit the number
+ * supported to what will fit in one page. With 4KB pages, this is a limit
+ * of 256 descriptors. If there is ever a need for more, we can switch to
+ * contigmalloc(9) for the larger allocations, similar to what
+ * bus_dmamem_alloc(9) does.
+ *
+ * Note the sizeof(struct vring_desc) is 16 bytes.
+ */
+#define VIRTIO_MAX_INDIRECT ((int) (PAGE_SIZE / 16))
+
+/*
  * VirtIO instance variables indices.
  */
 #define VIRTIO_IVAR_DEVTYPE		1
