@@ -241,7 +241,7 @@ hammer_extend_layer1_bits(int vol, int newsiz, int oldsiz)
 	else
 		p = realloc(p, HAMMER_LAYER1_BYTES * newsiz);
 	if (p == NULL)
-		perror("alloc");
+		err(1, "alloc");
 	l1_bits[vol] = p;
 
 	p += HAMMER_LAYER1_UINT64 * oldsiz;
@@ -282,11 +282,11 @@ hammer_init_zone_stat_bits(void)
 
 	l1_max = calloc(HAMMER_MAX_VOLUMES, sizeof(int));
 	if (l1_max == NULL)
-		perror("calloc");
+		err(1, "calloc");
 
 	l1_bits = calloc(HAMMER_MAX_VOLUMES, sizeof(uint64_t*));
 	if (l1_bits == NULL)
-		perror("calloc");
+		err(1, "calloc");
 
 	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
 		l1_max[i] = -1;  /* +1 needs to be 0 */
