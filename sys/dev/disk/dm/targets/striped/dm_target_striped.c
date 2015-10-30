@@ -81,7 +81,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 	}
 
 	n = (int)atoi64(argv[0]);
-	if (n < 0 || n > MAX_STRIPES) {
+	if (n <= 0 || n > MAX_STRIPES) {
 		kprintf("dm: Error %d stripes not supported (%d max)\n",
 			n, MAX_STRIPES);
 		return ENOTSUP;
