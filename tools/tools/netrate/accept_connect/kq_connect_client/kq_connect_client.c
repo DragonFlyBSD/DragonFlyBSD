@@ -201,7 +201,9 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 	u_long count = 0;
 	double time_us;
 	u_int in_idx = 0;
+#ifndef SOCK_NONBLOCK
 	int nblock = 1;
+#endif
 
 	if (bindcpu) {
 		int cpu = inst % cpucnt;
@@ -242,12 +244,18 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 			if (do_udp)
 				udp_send(tmp);
 
+#ifndef SOCK_NONBLOCK
 			s = socket(AF_INET, SOCK_STREAM, 0);
 			if (s < 0)
 				err(1, "socket failed");
 
 			if (ioctl(s, FIONBIO, &nblock, sizeof(nblock)) < 0)
 				err(1, "ioctl failed");
+#else
+			s = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+			if (s < 0)
+				err(1, "socket failed");
+#endif
 
 			n = connect(s, (const struct sockaddr *)tmp,
 			    sizeof(*tmp));
