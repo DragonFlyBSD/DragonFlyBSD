@@ -518,7 +518,7 @@ dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 	if (argc != 5) {
 		kprintf("dm_target_crypt: not enough arguments, "
 			"need exactly 5\n");
-		return ENOMEM; /* XXX */
+		return EINVAL;
 	}
 
 	len = 0;
