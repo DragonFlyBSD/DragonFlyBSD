@@ -88,6 +88,8 @@ struct vtnet_statistics {
 	uint64_t	tx_tso_offloaded;
 	uint64_t	tx_csum_bad_ethtype;
 	uint64_t	tx_tso_bad_ethtype;
+	uint64_t	tx_defragged;
+	uint64_t	tx_defrag_failed;
 	uint64_t	tx_task_rescheduled;
 };
 
@@ -1902,38 +1904,37 @@ vtnet_enqueue_txbuf(struct vtnet_softc *sc, struct mbuf **m_head,
 	struct sglist_seg segs[VTNET_MAX_TX_SEGS];
 	struct virtqueue *vq;
 	struct mbuf *m;
-	int collapsed, error;
+	int error;
 
 	vq = sc->vtnet_tx_vq;
 	m = *m_head;
-	collapsed = 0;
 
 	sglist_init(&sg, VTNET_MAX_TX_SEGS, segs);
 	error = sglist_append(&sg, &txhdr->vth_uhdr, sc->vtnet_hdr_size);
 	KASSERT(error == 0 && sg.sg_nseg == 1,
-	    ("cannot add header to sglist"));
+	    ("%s: error %d adding header to sglist", __func__, error));
 
-again:
 	error = sglist_append_mbuf(&sg, m);
 	if (error) {
-		if (collapsed)
-			goto fail;
-
-		//m = m_collapse(m, M_NOWAIT, VTNET_MAX_TX_SEGS - 1);
 		m = m_defrag(m, M_NOWAIT);
 		if (m == NULL)
 			goto fail;
 
 		*m_head = m;
-		collapsed = 1;
-		goto again;
+		sc->vtnet_stats.tx_defragged++;
+
+		error = sglist_append_mbuf(&sg, m);
+		if (error)
+			goto fail;
 	}
 
 	txhdr->vth_mbuf = m;
+	error = virtqueue_enqueue(vq, txhdr, &sg, sg.sg_nseg, 0);
 
-	return (virtqueue_enqueue(vq, txhdr, &sg, sg.sg_nseg, 0));
+	return (error);
 
 fail:
+	sc->vtnet_stats.tx_defrag_failed++;
 	m_freem(*m_head);
 	*m_head = NULL;
 
@@ -2763,6 +2764,12 @@ vtnet_add_statistics(struct vtnet_softc *sc)
 	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_tso_bad_ethtype",
 	    CTLFLAG_RD, &stats->tx_tso_bad_ethtype, 0,
 	    "Aborted transmit of TSO buffer with unknown Ethernet type");
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_defragged",
+	    CTLFLAG_RD, &stats->tx_defragged, 0,
+	    "Transmit mbufs defragged");
+	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_defrag_failed",
+	    CTLFLAG_RD, &stats->tx_defrag_failed, 0,
+	    "Aborted transmit of buffer because defrag failed");
 	SYSCTL_ADD_UQUAD(ctx, child, OID_AUTO, "tx_csum_offloaded",
 	    CTLFLAG_RD, &stats->tx_csum_offloaded, 0,
 	    "Offloaded checksum of transmitted buffer");
