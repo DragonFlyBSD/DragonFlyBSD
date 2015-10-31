@@ -73,7 +73,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_stripe_config_t *tsc;
 	char *arg;
-	int i, n;
+	int i, n, chunksize;
 
 	if (argc < 4) {
 		kprintf("Stripe target takes 4 or more args\n");
@@ -87,18 +87,17 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 		return ENOTSUP;
 	}
 
+	chunksize = atoi64(argv[1]);
+	if (chunksize < 1 || chunksize * DEV_BSIZE > MAXPHYS) {
+		kprintf("dm: Error unsupported chunk size %jdKB\n",
+			(intmax_t)chunksize * DEV_BSIZE / 1024);
+		return EINVAL;
+	}
+
 	tsc = kmalloc(sizeof(dm_target_stripe_config_t),
 		      M_DMSTRIPE, M_WAITOK | M_ZERO);
 	tsc->stripe_num = n;
-
-	tsc->stripe_chunksize = atoi64(argv[1]);
-	if (tsc->stripe_chunksize < 1 ||
-	    tsc->stripe_chunksize * DEV_BSIZE > MAXPHYS) {
-		kprintf("dm: Error unsupported chunk size %jdKB\n",
-			(intmax_t)tsc->stripe_chunksize * DEV_BSIZE / 1024);
-		dm_target_stripe_destroy_config(tsc);
-		return EINVAL;
-	}
+	tsc->stripe_chunksize = chunksize;
 
 	/*
 	 * Parse the devices
