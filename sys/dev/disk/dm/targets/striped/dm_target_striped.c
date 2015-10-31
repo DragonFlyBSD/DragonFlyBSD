@@ -66,7 +66,6 @@ static void dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc);
  *
  * Example line sent to dm from lvm tools when using striped target.
  * start length striped #stripes chunk_size device1 offset1 ... deviceN offsetN
- * 0 65536 striped 2 512 /dev/hda 0 /dev/hdb 0
  */
 static int
 dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
