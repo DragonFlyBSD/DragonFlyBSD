@@ -65,19 +65,23 @@ struct vtnet_softc {
 #define VTNET_FLAG_TSO_ECN	0x0080
 #define VTNET_FLAG_MRG_RXBUFS	0x0100
 #define VTNET_FLAG_LRO_NOMRG	0x0200
+#define VTNET_FLAG_INDIRECT	0x0400
 
 	struct virtqueue	*vtnet_rx_vq;
 	struct virtqueue	*vtnet_tx_vq;
 	struct virtqueue	*vtnet_ctrl_vq;
 
+	int			vtnet_txhdrcount;
 	struct vtnet_tx_header	*vtnet_txhdrarea;
 	uint32_t		vtnet_txhdridx;
 	struct vtnet_mac_filter *vtnet_macfilter;
 
 	int			vtnet_hdr_size;
 	int			vtnet_tx_size;
+	int			vtnet_tx_nsegs;
 	int			vtnet_rx_size;
 	int			vtnet_rx_process_limit;
+	int			vtnet_rx_nsegs;
 	int			vtnet_rx_mbuf_size;
 	int			vtnet_rx_mbuf_count;
 	int			vtnet_if_flags;
@@ -180,7 +184,8 @@ struct vtnet_mac_filter {
      VIRTIO_NET_F_GUEST_TSO4	| \
      VIRTIO_NET_F_GUEST_TSO6	| \
      VIRTIO_NET_F_GUEST_ECN	| \
-     VIRTIO_NET_F_MRG_RXBUF)
+     VIRTIO_NET_F_MRG_RXBUF	| \
+     VIRTIO_RING_F_INDIRECT_DESC)
 
 /*
  * The VIRTIO_NET_F_GUEST_TSO[46] features permit the host to send us
@@ -197,9 +202,11 @@ struct vtnet_mac_filter {
  * Used to preallocate the Vq indirect descriptors. The first segment
  * is reserved for the header.
  */
+#define VTNET_MRG_RX_SEGS	1
 #define VTNET_MIN_RX_SEGS	2
 #define VTNET_MAX_RX_SEGS	34
-#define VTNET_MAX_TX_SEGS	34
+#define VTNET_MIN_TX_SEGS	4
+#define VTNET_MAX_TX_SEGS	64
 
 #define IFCAP_LRO               0x00400 /* can do Large Receive Offload */
 #define IFCAP_VLAN_HWFILTER     0x10000 /* interface hw can filter vlan tag */

@@ -167,7 +167,7 @@ static int vtnet_csum_disable = 0;
 TUNABLE_INT("hw.vtnet.csum_disable", &vtnet_csum_disable);
 static int vtnet_tso_disable = 1;
 TUNABLE_INT("hw.vtnet.tso_disable", &vtnet_tso_disable);
-static int vtnet_lro_disable = 1;
+static int vtnet_lro_disable = 0;
 TUNABLE_INT("hw.vtnet.lro_disable", &vtnet_lro_disable);
 
 /*
@@ -290,6 +290,9 @@ vtnet_attach(device_t dev)
 	virtio_set_feature_desc(dev, vtnet_feature_desc);
 	vtnet_negotiate_features(sc);
 
+	if (virtio_with_feature(dev, VIRTIO_RING_F_INDIRECT_DESC))
+		sc->vtnet_flags |= VTNET_FLAG_INDIRECT;
+
 	if (virtio_with_feature(dev, VIRTIO_NET_F_MAC)) {
 		/* This feature should always be negotiated. */
 		sc->vtnet_flags |= VTNET_FLAG_MAC;
@@ -406,8 +409,8 @@ vtnet_detach(device_t dev)
 
 	if (sc->vtnet_txhdrarea != NULL) {
 		contigfree(sc->vtnet_txhdrarea,
-		    ((sc->vtnet_tx_size / 2) + 1) *
-		    sizeof(struct vtnet_tx_header), M_VTNET);
+		    sc->vtnet_txhdrcount * sizeof(struct vtnet_tx_header),
+		    M_VTNET);
 		sc->vtnet_txhdrarea = NULL;
 	}
 	if (sc->vtnet_macfilter != NULL) {
@@ -535,7 +538,7 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 {
 	device_t dev;
 	struct vq_alloc_info vq_info[3];
-	int nvqs, rxsegs;
+	int nvqs;
 
 	dev = sc->vtnet_dev;
 	nvqs = 2;
@@ -548,16 +551,22 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 	 * always physically contiguous.
 	 */
 	if ((sc->vtnet_flags & VTNET_FLAG_MRG_RXBUFS) == 0) {
-		rxsegs = sc->vtnet_flags & VTNET_FLAG_LRO_NOMRG ?
+		sc->vtnet_rx_nsegs = sc->vtnet_flags & VTNET_FLAG_LRO_NOMRG ?
 		    VTNET_MAX_RX_SEGS : VTNET_MIN_RX_SEGS;
 	} else
-		rxsegs = 0;
+		sc->vtnet_rx_nsegs = VTNET_MRG_RX_SEGS;
 
-	VQ_ALLOC_INFO_INIT(&vq_info[0], rxsegs,
+	if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO4) ||
+            virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO6))
+		sc->vtnet_tx_nsegs = VTNET_MAX_TX_SEGS;
+	else
+		sc->vtnet_tx_nsegs = VTNET_MIN_TX_SEGS;
+
+	VQ_ALLOC_INFO_INIT(&vq_info[0], sc->vtnet_rx_nsegs,
 	    vtnet_rx_vq_intr, sc, &sc->vtnet_rx_vq,
 	    "%s receive", device_get_nameunit(dev));
 
-	VQ_ALLOC_INFO_INIT(&vq_info[1], VTNET_MAX_TX_SEGS,
+	VQ_ALLOC_INFO_INIT(&vq_info[1], sc->vtnet_tx_nsegs,
 	    vtnet_tx_vq_intr, sc, &sc->vtnet_tx_vq,
 	    "%s transmit", device_get_nameunit(dev));
 
@@ -600,8 +609,12 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	tx_size = virtqueue_size(sc->vtnet_tx_vq);
 	sc->vtnet_tx_size = tx_size;
 	sc->vtnet_txhdridx = 0;
+	if (sc->vtnet_flags & VTNET_FLAG_INDIRECT)
+		sc->vtnet_txhdrcount = sc->vtnet_tx_size;
+	else
+		sc->vtnet_txhdrcount = (sc->vtnet_tx_size / 2) + 1;
 	sc->vtnet_txhdrarea = contigmalloc(
-	    ((sc->vtnet_tx_size / 2) + 1) * sizeof(struct vtnet_tx_header),
+	    sc->vtnet_txhdrcount * sizeof(struct vtnet_tx_header),
 	    M_VTNET, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
 	if (sc->vtnet_txhdrarea == NULL) {
 		device_printf(dev, "cannot contigmalloc the tx headers\n");
@@ -1244,7 +1257,7 @@ vtnet_enqueue_rxbuf(struct vtnet_softc *sc, struct mbuf *m)
 	if ((sc->vtnet_flags & VTNET_FLAG_LRO_NOMRG) == 0)
 		KASSERT(m->m_next == NULL, ("chained Rx mbuf"));
 
-	sglist_init(&sg, VTNET_MAX_RX_SEGS, segs);
+	sglist_init(&sg, sc->vtnet_rx_nsegs, segs);
 
 	mdata = mtod(m, uint8_t *);
 	offset = 0;
@@ -1714,7 +1727,7 @@ vtnet_enqueue_txbuf(struct vtnet_softc *sc, struct mbuf **m_head,
 	vq = sc->vtnet_tx_vq;
 	m = *m_head;
 
-	sglist_init(&sg, VTNET_MAX_TX_SEGS, segs);
+	sglist_init(&sg, sc->vtnet_tx_nsegs, segs);
 	error = sglist_append(&sg, &txhdr->vth_uhdr, sc->vtnet_hdr_size);
 	KASSERT(error == 0 && sg.sg_nseg == 1,
 	    ("%s: error %d adding header to sglist", __func__, error));
@@ -1818,7 +1831,7 @@ vtnet_encap(struct vtnet_softc *sc, struct mbuf **m_head)
 	error = vtnet_enqueue_txbuf(sc, m_head, txhdr);
 	if (error == 0)
 		sc->vtnet_txhdridx =
-		    (sc->vtnet_txhdridx + 1) % ((sc->vtnet_tx_size / 2) + 1);
+		    (sc->vtnet_txhdridx + 1) % sc->vtnet_txhdrcount;
 fail:
 	return (error);
 }
