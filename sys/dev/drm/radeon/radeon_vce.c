@@ -507,11 +507,7 @@ static int radeon_vce_validate_handle(struct radeon_cs_parser *p, uint32_t handl
 
 	/* handle not found try to alloc a new one */
 	for (i = 0; i < RADEON_MAX_VCE_HANDLES; ++i) {
-#ifdef zRJ_TODO
 		if (!atomic_cmpxchg(&p->rdev->vce.handles[i], 0, handle)) {
-#else
-		if (!atomic_cmpset(&p->rdev->vce.handles[i], 0, handle)) {
-#endif
 			p->rdev->vce.filp[i] = p->filp;
 			p->rdev->vce.img_size[i] = 0;
 			return i;

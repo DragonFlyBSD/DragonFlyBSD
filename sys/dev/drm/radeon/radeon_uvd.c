@@ -425,10 +425,7 @@ static int radeon_uvd_cs_msg(struct radeon_cs_parser *p, struct radeon_bo *bo,
 
 	/* handle not found try to alloc a new one */
 	for (i = 0; i < RADEON_MAX_UVD_HANDLES; ++i) {
-#if 0
 		if (!atomic_cmpxchg(&p->rdev->uvd.handles[i], 0, handle)) {
-#endif
-		if (atomic_cmpset(&p->rdev->uvd.handles[i], 0, handle) == 1) {
 			p->rdev->uvd.filp[i] = p->filp;
 			p->rdev->uvd.img_size[i] = img_size;
 			return 0;
