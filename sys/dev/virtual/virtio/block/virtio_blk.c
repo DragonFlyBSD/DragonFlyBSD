@@ -197,7 +197,8 @@ TUNABLE_INT("hw.vtblk.writecache_mode", &vtblk_writecache_mode);
      VIRTIO_BLK_F_RO			| \
      VIRTIO_BLK_F_BLK_SIZE		| \
      VIRTIO_BLK_F_WCE			| \
-     VIRTIO_BLK_F_CONFIG_WCE)
+     VIRTIO_BLK_F_CONFIG_WCE		| \
+     VIRTIO_RING_F_INDIRECT_DESC)
 
 /*
  * Each block request uses at least two segments - one for the header
@@ -282,6 +283,8 @@ vtblk_attach(device_t dev)
 	virtio_set_feature_desc(dev, vtblk_feature_desc);
 	vtblk_negotiate_features(sc);
 
+	if (virtio_with_feature(dev, VIRTIO_RING_F_INDIRECT_DESC))
+		sc->vtblk_flags |= VTBLK_FLAG_INDIRECT;
 	if (virtio_with_feature(dev, VIRTIO_BLK_F_RO))
 		sc->vtblk_flags |= VTBLK_FLAG_READONLY;
 	if (virtio_with_feature(dev, VIRTIO_BLK_F_BARRIER))
@@ -537,6 +540,8 @@ vtblk_maximum_segments(struct vtblk_softc *sc,
 
 	if (virtio_with_feature(dev, VIRTIO_BLK_F_SEG_MAX)) {
 		nsegs += MIN(blkcfg->seg_max, MAXPHYS / PAGE_SIZE + 1);
+		if (sc->vtblk_flags & VTBLK_FLAG_INDIRECT)
+			nsegs = MIN(nsegs, VIRTIO_MAX_INDIRECT);
 	} else
 		nsegs += 1;
 
@@ -1052,13 +1057,19 @@ vtblk_alloc_requests(struct vtblk_softc *sc)
 	 * request consumes VTBLK_MIN_SEGMENTS or more descriptors so reduce
 	 * the number allocated when indirect descriptors are not available.
 	 */
-	nreqs /= VTBLK_MIN_SEGMENTS;
+	if ((sc->vtblk_flags & VTBLK_FLAG_INDIRECT) == 0)
+		nreqs /= VTBLK_MIN_SEGMENTS;
 
 	for (i = 0; i < nreqs; i++) {
 		req = contigmalloc(sizeof(struct vtblk_request), M_DEVBUF,
 		    M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
 		if (req == NULL)
 			return (ENOMEM);
+
+		KKASSERT(sglist_count(&req->vbr_hdr, sizeof(req->vbr_hdr))
+		    == 1);
+		KKASSERT(sglist_count(&req->vbr_ack, sizeof(req->vbr_ack))
+		    == 1);
 
 		sc->vtblk_request_count++;
 		vtblk_enqueue_request(sc, req);
