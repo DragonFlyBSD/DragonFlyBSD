@@ -119,20 +119,20 @@ atomic_dec(atomic_t *v)
 	return atomic_fetchadd_int(&v->counter, -1) - 1;
 }
 
-static inline int atomic_add_unless(atomic_t *v, int a, int u)
+static inline int atomic_add_unless(atomic_t *v, int add, int unless)
 {
         int c, old;
         c = atomic_read(v);
         for (;;) {
-                if (unlikely(c == (u)))
+                if (unlikely(c == unless))
                         break;
                 // old = atomic_cmpxchg((v), c, c + (a)); /*Linux*/
-                old = atomic_cmpset_int(&v->counter, c, c + (a));
+                old = atomic_cmpxchg_int(&v->counter, c, c + add);
                 if (likely(old == c))
                         break;
                 c = old;
         }
-        return c != (u);
+        return c != unless;
 }
 
 #define atomic_inc_not_zero(v) atomic_add_unless((v), 1, 0)
