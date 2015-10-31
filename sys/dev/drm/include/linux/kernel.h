@@ -172,10 +172,10 @@
 #define min3(a, b, c)			min(a, min(b,c))
 #define max3(a, b, c)			max(a, max(b,c))
 
-#define min_t(type, _x, _y)		(type)(_x) < (type)(_y) ? (type)(_x) : (_y)
-#define max_t(type, _x, _y)		(type)(_x) > (type)(_y) ? (type)(_x) : (_y)
-#define clamp_t(type, _x, min, max)	min_t(type, max_t(type, _x, min), max)
+#define min_t(type, _x, _y)		((type)(_x) < (type)(_y) ? (type)(_x) : (type)(_y))
+#define max_t(type, _x, _y)		((type)(_x) > (type)(_y) ? (type)(_x) : (type)(_y))
 
+#define clamp_t(type, _x, min, max)	min_t(type, max_t(type, _x, min), max)
 #define clamp(x, lo, hi)		min( max(x,lo), hi)
 
 /*
