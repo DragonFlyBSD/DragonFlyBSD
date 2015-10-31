@@ -51,13 +51,11 @@ typedef _Bool bool;
 typedef u64 phys_addr_t;
 
 typedef unsigned long kernel_ulong_t;
-typedef unsigned gfp_t;
+typedef unsigned int gfp_t;
 typedef uint64_t loff_t;
 typedef vm_paddr_t resource_size_t;
 
 #define	DECLARE_BITMAP(n, bits)						\
 	unsigned long n[howmany(bits, sizeof(long) * 8)]
-
-typedef unsigned int gfp_t;
 
 #endif	/* _LINUX_TYPES_H_ */
