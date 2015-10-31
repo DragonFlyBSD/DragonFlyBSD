@@ -93,6 +93,7 @@ MALLOC_DECLARE(M_DRM);
 
 #include <linux/atomic.h>
 #include <linux/bug.h>
+#include <linux/dma-mapping.h>
 #include <linux/capability.h>
 #include <linux/err.h>
 #include <linux/idr.h>
