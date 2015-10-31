@@ -1400,7 +1400,7 @@ dontblock:
 				if (pr->pr_domain->dom_externalize &&
 				    mtod(m, struct cmsghdr *)->cmsg_type ==
 				    SCM_RIGHTS)
-				   error = (*pr->pr_domain->dom_externalize)(m);
+				   error = (*pr->pr_domain->dom_externalize)(m, flags);
 				*controlp = m;
 				m = n;
 			} else {

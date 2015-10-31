@@ -129,7 +129,8 @@ static void    unp_mark (struct file *, void *data);
 static void    unp_discard (struct file *, void *);
 static int     unp_internalize (struct mbuf *, struct thread *);
 static int     unp_listen (struct unpcb *, struct thread *);
-static void    unp_fp_externalize(struct lwp *lp, struct file *fp, int fd);
+static void    unp_fp_externalize(struct lwp *lp, struct file *fp, int fd,
+		   int flags);
 static int     unp_find_lockref(struct sockaddr *nam, struct thread *td,
 		   short type, struct unpcb **unp_ret);
 static int     unp_connect_pair(struct unpcb *unp, struct unpcb *unp2);
@@ -1418,7 +1419,7 @@ unp_drain(void)
 #endif
 
 int
-unp_externalize(struct mbuf *rights)
+unp_externalize(struct mbuf *rights, int flags)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;		/* XXX */
@@ -1492,7 +1493,7 @@ unp_externalize(struct mbuf *rights)
 				return (EMSGSIZE);
 			}
 			fp = rp[i];
-			unp_fp_externalize(lp, fp, f);
+			unp_fp_externalize(lp, fp, f, flags);
 			fdp[i] = f;
 		}
 	} else {
@@ -1507,7 +1508,7 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp--;
-			unp_fp_externalize(lp, fp, f);
+			unp_fp_externalize(lp, fp, f, flags);
 			*fdp-- = f;
 		}
 	}
@@ -1524,9 +1525,11 @@ unp_externalize(struct mbuf *rights)
 }
 
 static void
-unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
+unp_fp_externalize(struct lwp *lp, struct file *fp, int fd, int flags)
 {
 	if (lp) {
+		struct filedesc *fdp = lp->lwp_proc->p_fd;
+
 		KKASSERT(fd >= 0);
 		if (fp->f_flag & FREVOKED) {
 			struct file *fx;
@@ -1535,13 +1538,17 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 			kprintf("Warning: revoked fp exiting unix socket\n");
 			error = falloc(lp, &fx, NULL);
 			if (error == 0) {
-				fsetfd(lp->lwp_proc->p_fd, fx, fd);
+				if (flags & MSG_CMSG_CLOEXEC)
+					fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+				fsetfd(fdp, fx, fd);
 				fdrop(fx);
 			} else {
-				fsetfd(lp->lwp_proc->p_fd, NULL, fd);
+				fsetfd(fdp, NULL, fd);
 			}
 		} else {
-			fsetfd(lp->lwp_proc->p_fd, fp, fd);
+			if (flags & MSG_CMSG_CLOEXEC)
+				fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
+			fsetfd(fdp, fp, fd);
 		}
 	}
 	spin_lock(&unp_spin);

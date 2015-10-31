@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)recv.2	8.3 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/recv.2,v 1.8.2.8 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.7 2008/05/02 02:05:04 swildner Exp $
 .\"
-.Dd February 21, 1994
+.Dd November 1, 2015
 .Dt RECV 2
 .Os
 .Sh NAME
@@ -49,19 +48,24 @@
 .Ft ssize_t
 .Fn recvmsg "int s" "struct msghdr *msg" "int flags"
 .Sh DESCRIPTION
-.Fn Recvfrom
+The
+.Fn recvfrom
 and
 .Fn recvmsg
+system calls
 are used to receive messages from a socket,
 and may be used to receive data on a socket whether or not
 it is connection-oriented.
 .Pp
 If
 .Fa from
-is non-nil, and the socket is not connection-oriented,
+is not a null pointer
+and the socket is not connection-oriented,
 the source address of the message is filled in.
-.Fa Fromlen
-is a value-result parameter, initialized to the size of
+The
+.Fa fromlen
+argument
+is a value-result argument, initialized to the size of
 the buffer associated with
 .Fa from ,
 and modified on return to indicate the actual size of the
@@ -69,16 +73,16 @@ address stored there.
 .Pp
 The
 .Fn recv
-call is normally used only on a
+function is normally used only on a
 .Em connected
 socket (see
 .Xr connect 2 )
 and is identical to
 .Fn recvfrom
-with a nil
+with a
+null pointer passed as its
 .Fa from
-parameter.
-As it is redundant, it may not be supported in future releases.
+argument.
 .Pp
 All three routines return the length of the message on successful
 completion.
@@ -89,12 +93,12 @@ the message is received from (see
 .Pp
 If no messages are available at the socket, the
 receive call waits for a message to arrive, unless
-the socket is nonblocking (see
+the socket is non-blocking (see
 .Xr fcntl 2 )
 in which case the value
--1 is returned and the external variable
+\-1 is returned and the global variable
 .Va errno
-set to
+is set to
 .Er EAGAIN .
 The receive calls normally return any data available,
 up to the requested amount,
@@ -108,17 +112,21 @@ described in
 .Pp
 The
 .Xr select 2
-call may be used to determine when more data arrive.
+system call may be used to determine when more data arrives.
 .Pp
 The
 .Fa flags
-argument to a recv call is formed by
+argument to a
+.Fn recv
+function is formed by
 .Em or Ap ing
 one or more of the values:
-.Bl -column MSG_WAITALL -offset indent
+.Bl -column ".Dv MSG_CMSG_CLOEXEC" -offset indent
 .It Dv MSG_OOB Ta process out-of-band data
 .It Dv MSG_PEEK Ta peek at incoming message
 .It Dv MSG_WAITALL Ta wait for full request or error
+.It Dv MSG_DONTWAIT Ta do not block
+.It Dv MSG_CMSG_CLOEXEC Ta set received fds close-on-exec
 .El
 .Pp
 The
@@ -127,32 +135,46 @@ flag requests receipt of out-of-band data
 that would not be received in the normal data stream.
 Some protocols place expedited data at the head of the normal
 data queue, and thus this flag cannot be used with such protocols.
-The MSG_PEEK flag causes the receive operation to return data
+The
+.Dv MSG_PEEK
+flag causes the receive operation to return data
 from the beginning of the receive queue without removing that
 data from the queue.
 Thus, a subsequent receive call will return the same data.
-The MSG_WAITALL flag requests that the operation block until
+The
+.Dv MSG_WAITALL
+flag requests that the operation block until
 the full request is satisfied.
 However, the call may still return less data than requested
 if a signal is caught, an error or disconnect occurs,
 or the next data to be received is of a different type than that returned.
+The
+.Dv MSG_DONTWAIT
+flag requests the call to return when it would block otherwise.
+If no data is available,
+.Va errno
+is set to
+.Er EAGAIN .
+This flag is not available in strict
+.Tn ANSI
+or C99 compilation mode.
 .Pp
 The
 .Fn recvmsg
-call uses a
+system call uses a
 .Fa msghdr
-structure to minimize the number of directly supplied parameters.
+structure to minimize the number of directly supplied arguments.
 This structure has the following form, as defined in
 .In sys/socket.h :
 .Bd -literal
 struct msghdr {
-	caddr_t	msg_name;	/* optional address */
-	u_int	msg_namelen;	/* size of address */
-	struct	iovec *msg_iov;	/* scatter/gather array */
-	u_int	msg_iovlen;	/* # elements in msg_iov */
-	caddr_t	msg_control;	/* ancillary data, see below */
-	u_int	msg_controllen; /* ancillary data buffer len */
-	int	msg_flags;	/* flags on received message */
+	void		*msg_name;	/* optional address */
+	socklen_t	 msg_namelen;	/* size of address */
+	struct iovec	*msg_iov;	/* scatter/gather array */
+	int		 msg_iovlen;	/* # elements in msg_iov */
+	void		*msg_control;	/* ancillary data, see below */
+	socklen_t	 msg_controllen;/* ancillary data buffer len */
+	int		 msg_flags;	/* flags on received message */
 };
 .Ed
 .Pp
@@ -163,12 +185,16 @@ and
 specify the destination address if the socket is unconnected;
 .Fa msg_name
 may be given as a null pointer if no names are desired or required.
-.Fa Msg_iov
+The
+.Fa msg_iov
 and
 .Fa msg_iovlen
+arguments
 describe scatter gather locations, as discussed in
 .Xr read 2 .
-.Fa Msg_control ,
+The
+.Fa msg_control
+argument,
 which has length
 .Fa msg_controllen ,
 points to a buffer for other protocol control related messages
@@ -176,19 +202,21 @@ or other miscellaneous ancillary data.
 The messages are of the form:
 .Bd -literal
 struct cmsghdr {
-	u_int	cmsg_len;	/* data byte count, including hdr */
-	int	cmsg_level;	/* originating protocol */
-	int	cmsg_type;	/* protocol-specific type */
+	socklen_t  cmsg_len;	/* data byte count, including hdr */
+	int	   cmsg_level;	/* originating protocol */
+	int	   cmsg_type;	/* protocol-specific type */
 /* followed by
-	u_char	cmsg_data[]; */
+	u_char	   cmsg_data[]; */
 };
 .Ed
 .Pp
 As an example, one could use this to learn of changes in the data-stream
 in XNS/SPP, or in ISO, to obtain user-connection-request data by requesting
-a recvmsg with no data buffer provided immediately after an
+a
+.Fn recvmsg
+with no data buffer provided immediately after an
 .Fn accept
-call.
+system call.
 .Pp
 Open file descriptors are now passed as ancillary data for
 .Dv AF_UNIX
@@ -200,6 +228,10 @@ and
 .Fa cmsg_type
 set to
 .Dv SCM_RIGHTS .
+The close-on-exec flag on received descriptors is set according to the
+.Dv MSG_CMSG_CLOEXEC
+flag passed to
+.Fn recvmsg .
 .Pp
 Process credentials can also be passed as ancillary data for
 .Dv AF_UNIX
@@ -268,9 +300,9 @@ The argument
 .Fa s
 does not refer to a socket.
 .It Bq Er EAGAIN
-The socket is marked non-blocking, and the receive operation
+The socket is marked non-blocking and the receive operation
 would block, or
-a receive timeout had been set,
+a receive timeout had been set
 and the timeout expired before data were received.
 .It Bq Er EINTR
 The receive was interrupted by delivery of a signal before
@@ -284,9 +316,10 @@ address space.
 .Xr getsockopt 2 ,
 .Xr read 2 ,
 .Xr select 2 ,
-.Xr socket 2
+.Xr socket 2 ,
+.Xr unix 4
 .Sh HISTORY
 The
 .Fn recv
-function call appeared in
+function appeared in
 .Bx 4.2 .

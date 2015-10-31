@@ -383,14 +383,16 @@ struct msghdr {
 #define	MSG_UNUSED09	0x00000200	/* was: notification message (SCTP) */
 #define	MSG_NOSIGNAL	0x00000400	/* No SIGPIPE to unconnected socket stream */
 #define	MSG_SYNC	0x00000800	/* No asynchronized pru_send */
-
+#define	MSG_CMSG_CLOEXEC 0x00001000	/* make received fds close-on-exec */
+/* 0x2000 unused */
+/* 0x4000 unused */
+/* 0x8000 unused */
 /*
  * These override FIONBIO.  MSG_FNONBLOCKING is functionally equivalent to
  * MSG_DONTWAIT.
  */
 #define	MSG_FBLOCKING	0x00010000	/* force blocking operation */
 #define	MSG_FNONBLOCKING 0x00020000	/* force non-blocking operation */
-
 #define	MSG_FMASK	0xFFFF0000	/* force mask */
 
 /*
