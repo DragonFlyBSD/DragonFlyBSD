@@ -86,7 +86,12 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 			n, MAX_STRIPES);
 		return ENOTSUP;
 	}
-
+#if 0
+	if (table_en->length % n) {
+		kprintf("dm: Target device size not multiple of stripes\n");
+		return EINVAL;
+	}
+#endif
 	if (argc != (2 + n * 2)) {
 		kprintf("dm: Invalid argc %d for %d stripe devices\n",
 			argc, n);
@@ -99,7 +104,12 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 			(intmax_t)chunksize * DEV_BSIZE / 1024);
 		return EINVAL;
 	}
-
+#if 0
+	if ((table_en->length / n) % chunksize) {
+		kprintf("dm: Stripe device size not multiple of chunk size\n");
+		return EINVAL;
+	}
+#endif
 	tsc = kmalloc(sizeof(dm_target_stripe_config_t),
 		      M_DMSTRIPE, M_WAITOK | M_ZERO);
 	tsc->stripe_num = n;
