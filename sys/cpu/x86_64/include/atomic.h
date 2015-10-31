@@ -417,12 +417,25 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
  */
 #if defined(KLD_MODULE)
 
+extern int atomic_cmpxchg_int(volatile u_int *_dst, u_int _old, u_int _new);
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
 extern long atomic_cmpset_long(volatile u_long *_dst, u_long _exp, u_long _src);
 extern u_int atomic_fetchadd_int(volatile u_int *_p, u_int _v);
 extern u_long atomic_fetchadd_long(volatile u_long *_p, u_long _v);
 
 #else
+
+static __inline int
+atomic_cmpxchg_int(volatile u_int *_dst, u_int _old, u_int _new)
+{
+	u_int res = _old;
+
+	__asm __volatile(MPLOCKED "cmpxchgl %2,%1; " \
+			 : "+a" (res), "=m" (*_dst) \
+			 : "r" (_new), "m" (*_dst) \
+			 : "memory");
+	return (res);
+}
 
 static __inline int
 atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
