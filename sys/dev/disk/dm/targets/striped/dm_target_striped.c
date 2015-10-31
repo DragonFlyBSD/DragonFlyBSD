@@ -87,6 +87,12 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 		return ENOTSUP;
 	}
 
+	if (argc != (2 + n * 2)) {
+		kprintf("dm: Invalid argc %d for %d stripe devices\n",
+			argc, n);
+		return EINVAL;
+	}
+
 	chunksize = atoi64(argv[1]);
 	if (chunksize < 1 || chunksize * DEV_BSIZE > MAXPHYS) {
 		kprintf("dm: Error unsupported chunk size %jdKB\n",
@@ -111,14 +117,12 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 	argv += 2;
 	for (n = 0, i = 0; n < tsc->stripe_num; ++n) {
 		arg = argv[i++];
-		if (arg == NULL)
-			break;
+		KKASSERT(arg);
 		tsc->stripe_devs[n].pdev = dm_pdev_insert(arg);
 		if (tsc->stripe_devs[n].pdev == NULL)
 			break;
 		arg = argv[i++];
-		if (arg == NULL)
-			break;
+		KKASSERT(arg);
 		tsc->stripe_devs[n].offset = atoi64(arg);
 		dm_table_add_deps(table_en, tsc->stripe_devs[n].pdev);
 	}
