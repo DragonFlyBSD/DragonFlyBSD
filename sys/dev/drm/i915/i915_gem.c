@@ -1593,6 +1593,19 @@ retry:
 		goto unlock;
 	}
 
+	/* Now bind it into the GTT if needed */
+	ret = i915_gem_obj_ggtt_pin(obj, 0, PIN_MAPPABLE);
+	if (ret)
+		goto unlock;
+
+	ret = i915_gem_object_set_to_gtt_domain(obj, write);
+	if (ret)
+		goto unpin;
+
+	ret = i915_gem_object_get_fence(obj);
+	if (ret)
+		goto unpin;
+
 	/*
 	 * START FREEBSD MAGIC
 	 *
@@ -1657,25 +1670,6 @@ retry:
 	 * be locked.
 	 */
 	VM_OBJECT_UNLOCK(vm_obj);
-
-	/* Now bind it into the GTT if needed */
-	ret = i915_gem_obj_ggtt_pin(obj, 0, PIN_MAPPABLE);
-	if (ret) {
-		VM_OBJECT_LOCK(vm_obj);
-		goto unlock;
-	}
-
-	ret = i915_gem_object_set_to_gtt_domain(obj, write);
-	if (ret) {
-		VM_OBJECT_LOCK(vm_obj);
-		goto unpin;
-	}
-
-	ret = i915_gem_object_get_fence(obj);
-	if (ret) {
-		VM_OBJECT_LOCK(vm_obj);
-		goto unpin;
-	}
 
 	obj->fault_mappable = true;
 
