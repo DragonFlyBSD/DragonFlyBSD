@@ -34,6 +34,16 @@
 
 #include <drm/drmP.h>
 
+SYSCTL_NODE(_hw, OID_AUTO, dri, CTLFLAG_RD, 0, "DRI Graphics");
+SYSCTL_INT(_hw_dri, OID_AUTO, debug, CTLFLAG_RW, &drm_debug, 0,
+	    "Enable debugging output");
+SYSCTL_INT(_hw_dri, OID_AUTO, notyet, CTLFLAG_RW, &drm_notyet_flag, 0,
+	    "Enable notyet reminders");
+SYSCTL_INT(_hw_dri, OID_AUTO, vblank_offdelay, CTLFLAG_RW,
+	    &drm_vblank_offdelay, 0, "Delay until vblank irq auto-disable");
+SYSCTL_INT(_hw_dri, OID_AUTO, timestamp_precision, CTLFLAG_RW,
+	    &drm_timestamp_precision, 0, "Max. error on timestamps");
+
 static int	   drm_name_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_vm_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_clients_info DRM_SYSCTL_HANDLER_ARGS;
@@ -54,7 +64,7 @@ int drm_sysctl_init(struct drm_device *dev)
 {
 	struct drm_sysctl_info *info;
 	struct sysctl_oid *oid;
-	struct sysctl_oid *top, *drioid;
+	struct sysctl_oid *top;
 	int		  i;
 
 	info = kmalloc(sizeof *info, M_DRM, M_WAITOK | M_ZERO);
@@ -62,15 +72,9 @@ int drm_sysctl_init(struct drm_device *dev)
 		return 1;
 	dev->sysctl = info;
 
-	/* Add the sysctl node for DRI if it doesn't already exist */
-	drioid = SYSCTL_ADD_NODE(&info->ctx, &sysctl__hw_children, OID_AUTO,
-	    "dri", CTLFLAG_RW, NULL, "DRI Graphics");
-	if (!drioid)
-		return 1;
-
 	/* Find the next free slot under hw.dri */
 	i = 0;
-	SLIST_FOREACH(oid, SYSCTL_CHILDREN(drioid), oid_link) {
+	SLIST_FOREACH(oid, &SYSCTL_NODE_CHILDREN(_hw, dri), oid_link) {
 		if (i <= oid->oid_arg2)
 			i = oid->oid_arg2 + 1;
 	}
@@ -81,7 +85,7 @@ int drm_sysctl_init(struct drm_device *dev)
 	/* Add the hw.dri.x for our device */
 	info->name[0] = '0' + i;
 	info->name[1] = 0;
-	top = SYSCTL_ADD_NODE(&info->ctx, SYSCTL_CHILDREN(drioid),
+	top = SYSCTL_ADD_NODE(&info->ctx, &SYSCTL_NODE_CHILDREN(_hw, dri),
 	    OID_AUTO, info->name, CTLFLAG_RW, NULL, NULL);
 	if (!top)
 		return 1;
@@ -100,24 +104,8 @@ int drm_sysctl_init(struct drm_device *dev)
 		if (!oid)
 			return 1;
 	}
-	SYSCTL_ADD_INT(&info->ctx, SYSCTL_CHILDREN(drioid), OID_AUTO, "debug",
-	    CTLFLAG_RW, &drm_debug, sizeof(drm_debug),
-	    "Enable debugging output");
-	SYSCTL_ADD_INT(&info->ctx, SYSCTL_CHILDREN(drioid), OID_AUTO, "notyet",
-	    CTLFLAG_RW, &drm_notyet_flag, sizeof(drm_debug),
-	    "Enable notyet reminders");
-
 	if (dev->driver->sysctl_init != NULL)
 		dev->driver->sysctl_init(dev, &info->ctx, top);
-
-	SYSCTL_ADD_INT(&info->ctx, SYSCTL_CHILDREN(drioid), OID_AUTO,
-	    "vblank_offdelay", CTLFLAG_RW, &drm_vblank_offdelay,
-	    sizeof(drm_vblank_offdelay),
-	    "");
-	SYSCTL_ADD_INT(&info->ctx, SYSCTL_CHILDREN(drioid), OID_AUTO,
-	    "timestamp_precision", CTLFLAG_RW, &drm_timestamp_precision,
-	    sizeof(drm_timestamp_precision),
-	    "");
 
 	return (0);
 }
