@@ -106,7 +106,7 @@ SYSTEM_LD= @${LD} -Bdynamic -T $S/platform/$P/conf/ldscript.$M \
 # kernel itself, so leave the gold default alone and treat the kernel
 # page size as an exception.
 #
-.if ${P} == "pc64" || ${P} == "vkernel64"
+.if ${P} == "pc64"
 SYSTEM_LD+= -z max-page-size=0x200000
 .endif
 
