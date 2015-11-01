@@ -51,6 +51,7 @@ MALLOC_DEFINE(M_DMSTRIPE, "dm_striped", "Device Mapper Target Striped");
 struct target_stripe_dev {
 	dm_pdev_t *pdev;
 	uint64_t offset;
+	int num_error;  /* not used */
 };
 
 typedef struct target_stripe_config {
@@ -156,6 +157,7 @@ dm_target_stripe_info(void *target_config)
 	dm_target_stripe_config_t *tsc;
 	char *params;
 	char *ptr;
+	char buf[MAX_STRIPES + 1];
 	size_t len;
 	int ret;
 	int i;
@@ -170,25 +172,21 @@ dm_target_stripe_info(void *target_config)
 	ptr += ret;
 	len -= ret;
 
+	memset(buf, 0, sizeof(buf));
 	for (i = 0; i < tsc->stripe_num; i++) {
 		ret = ksnprintf(ptr, len, "%s ",
 			tsc->stripe_devs[i].pdev->udev_name);
+		if (tsc->stripe_devs[i].num_error)
+			buf[i] = 'D';
+		else
+			buf[i] = 'A';
 		ptr += ret;
 		len -= ret;
 	}
 
-	ret = ksnprintf(ptr, len, "1 ");
+	ret = ksnprintf(ptr, len, "1 %s", buf);
 	ptr += ret;
 	len -= ret;
-
-	/*
-	 * stripe target currently has no error_count.
-	 */
-	for (i = 0; i < tsc->stripe_num; i++) {
-		ret = ksnprintf(ptr, len, "A");
-		ptr += ret;
-		len -= ret;
-	}
 
 	return params;
 }
