@@ -14,7 +14,11 @@ S=	../..
 
 # Override the normal kernel link and link as a normal user program
 #
+# Note that the vkernel requires .hash section to be present as the kernel
+# linker uses it to resolve its symbols.
+#
 SYSTEM_LD= @${CC} ${DEBUG} ${PROF} -export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o -pthread
+SYSTEM_LD+= -Wl,--hash-style=sysv
 
 %BEFORE_DEPEND
 
