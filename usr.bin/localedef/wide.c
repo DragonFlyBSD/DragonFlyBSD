@@ -59,7 +59,8 @@ static int tomb_mbs(char *, wchar_t);
 
 static int (*_towide)(wchar_t *, const char *, unsigned) = towide_none;
 static int (*_tomb)(char *, wchar_t) = tomb_none;
-static const char *_encoding = "NONE";
+static char _encoding_buffer[20] = {'N','O','N','E'};
+static const char *_encoding = _encoding_buffer;
 static int _nbits = 7;
 
 /*
@@ -639,9 +640,10 @@ set_wide_encoding(const char *encoding)
 
 	_towide = towide_none;
 	_tomb = tomb_none;
-	_encoding = "NONE";
 	_nbits = 8;
 
+	strcpy (_encoding_buffer, "NONE:");
+	strncat (_encoding_buffer, encoding, 14);
 	for (i = 0; mb_encodings[i].name; i++) {
 		if (strcasecmp(encoding, mb_encodings[i].name) == 0) {
 			_towide = mb_encodings[i].towide;
