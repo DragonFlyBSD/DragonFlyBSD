@@ -54,9 +54,9 @@ struct target_stripe_dev {
 };
 
 typedef struct target_stripe_config {
-	struct target_stripe_dev stripe_devs[MAX_STRIPES];
 	int stripe_num;
 	uint64_t stripe_chunksize;
+	struct target_stripe_dev stripe_devs[0];
 } dm_target_stripe_config_t;
 
 static void dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc);
@@ -72,7 +72,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
 	dm_target_stripe_config_t *tsc;
 	char *arg;
-	int i, n, chunksize;
+	int i, n, siz, chunksize;
 
 	if (argc < 4) {
 		kprintf("Stripe target takes 4 or more args\n");
@@ -109,8 +109,10 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 		return EINVAL;
 	}
 #endif
-	tsc = kmalloc(sizeof(dm_target_stripe_config_t),
-		      M_DMSTRIPE, M_WAITOK | M_ZERO);
+
+	siz = sizeof(dm_target_stripe_config_t) +
+		n * sizeof(struct target_stripe_dev);
+	tsc = kmalloc(siz, M_DMSTRIPE, M_WAITOK | M_ZERO);
 	tsc->stripe_num = n;
 	tsc->stripe_chunksize = chunksize;
 
