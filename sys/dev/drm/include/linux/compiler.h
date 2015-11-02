@@ -70,5 +70,6 @@
 
 #define barrier()	cpu_ccfence()
 
+#define ACCESS_ONCE(x)	(*(volatile typeof(x) *)&(x))
 
 #endif	/* _LINUX_COMPILER_H_ */
