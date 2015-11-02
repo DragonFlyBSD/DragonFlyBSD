@@ -173,11 +173,36 @@ amd64dfly_supply_pcb(struct regcache *regcache, struct pcb *pcb)
 
 static void (*super_mourn_inferior) (struct target_ops *ops);
 
+/*
+ * XXX Checks if inside a vkernel.
+ *
+ * Current vkernel(7) does not have support for PT_GETDBREGS/PT_SETDBREGS
+ * via ptrace(2). It is not a platform on its own either so there are not
+ * platform-specific files to change but this one. This is just a workaround.
+ */
+static int
+is_vkernel(void)
+{
+	size_t len;
+	char buf[64];
+
+	len = sizeof(buf);
+	if (sysctlbyname("kern.vmm_guest", buf, &len, NULL, 0) < 0) {
+		return 0;
+	}
+
+	if (strncmp("vkernel", buf, len) == 0)
+		return 1;
+	else
+		return 0;
+}
+
 static void
 amd64dfly_mourn_inferior(struct target_ops *ops)
 {
 #ifdef HAVE_PT_GETDBREGS
-	i386_cleanup_dregs();
+	if (!is_vkernel())
+		i386_cleanup_dregs();
 #endif
 	super_mourn_inferior(ops);
 }
@@ -199,14 +224,16 @@ _initialize_amd64dfly_nat(void)
 
 #ifdef HAVE_PT_GETDBREGS
 
-	i386_use_watchpoints(t);
+	if (!is_vkernel()) {
+		i386_use_watchpoints(t);
 
-	i386_dr_low.set_control = amd64bsd_dr_set_control;
-	i386_dr_low.set_addr = amd64bsd_dr_set_addr;
-	i386_dr_low.get_addr = amd64bsd_dr_get_addr;
-	i386_dr_low.get_status = amd64bsd_dr_get_status;
-	i386_dr_low.get_control = amd64bsd_dr_get_control;
-	i386_set_debug_register_length(8);
+		i386_dr_low.set_control = amd64bsd_dr_set_control;
+		i386_dr_low.set_addr = amd64bsd_dr_set_addr;
+		i386_dr_low.get_addr = amd64bsd_dr_get_addr;
+		i386_dr_low.get_status = amd64bsd_dr_get_status;
+		i386_dr_low.get_control = amd64bsd_dr_get_control;
+		i386_set_debug_register_length(8);
+	}
 
 #endif				/* HAVE_PT_GETDBREGS */
 
