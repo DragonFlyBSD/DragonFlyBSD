@@ -108,6 +108,15 @@ If set, enables debugging output.
 Specifies the delay (in milliseconds) until the vblank
 interrupt is disabled again when it's no longer needed.
 (0 = never disable, negative value = disable immediately)
+.It Va hw.dri.%d.busid
+Indicates the location of the device on the PCI bus.
+The format is:
+.Pp
+.Dl [0000-ffff]:[00-ff]:[00-1f].[0-7]
+.It Va hw.dri.%d.modesetting
+Indicates if kernel mode setting
+.Dv ( DRIVER_MODESET
+feature) is set in the device driver.
 .El
 .Sh SEE ALSO
 .Xr Xorg 1 ,
