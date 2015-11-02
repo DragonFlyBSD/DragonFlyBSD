@@ -58,7 +58,6 @@ SYMLINKS+=	${symdir}.ISO8859-15 ${LOCALEDIR}/${symdir}
          ${STD5:M${symdir}} || ${STD15:M${symdir}} || ${MANUAL:M${symdir}})
 SYMLINKS+=	${symdir}.UTF-8 ${LOCALEDIR}/${symdir}
 .  endif
-SYMLINKS+=	${symdir}.UTF-8 ${LOCALEDIR}/${symdir}.UTF8
 .endfor
 .for symdir in ${EURO}
 SYMLINKS+=	${symdir}.ISO8859-15 ${LOCALEDIR}/${symdir}@euro
