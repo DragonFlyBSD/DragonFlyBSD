@@ -31,22 +31,22 @@
 
 static int i386dfly_r_reg_offset[] =
 {
-  44, /* %eax */
-  40, /* %ecx */
-  36, /* %edx */
-  32, /* %ebx */
-  72, /* %esp */
-  24, /* %ebp */
-  20, /* %esi */
-  16, /* %edi */
-  60, /* %eip */
-  68, /* %eflags */
-  64, /* %cs */
-  76, /* %ss */
-  12, /* %ds */
-  8, /* %es */
-  4, /* %fs */
-  0  /* %gs */
+	44,			/* %eax */
+	40,			/* %ecx */
+	36,			/* %edx */
+	32,			/* %ebx */
+	72,			/* %esp */
+	24,			/* %ebp */
+	20,			/* %esi */
+	16,			/* %edi */
+	60,			/* %eip */
+	68,			/* %eflags */
+	64,			/* %cs */
+	76,			/* %ss */
+	12,			/* %ds */
+	8,			/* %es */
+	4,			/* %fs */
+	0			/* %gs */
 };
 
 /* Sigtramp routine location.  */
@@ -55,49 +55,50 @@ CORE_ADDR i386dfly_sigtramp_end_addr = 0xbfbfdff0;
 
 int i386dfly_sc_reg_offset[] =
 {
-  64, /* %eax */
-  60, /* %ecx */
-  56, /* %edx */
-  52, /* %ebx */
-  92, /* %esp */
-  44, /* %ebp */
-  40, /* %esi */
-  36, /* %edi */
-  80, /* %eip */
-  88, /* %eflags */
-  84, /* %cs */
-  96, /* %ss */
-  32, /* %ds */
-  28, /* %es */
-  24, /* %fs */
-  20  /* %gs */
+	64,			/* %eax */
+	60,			/* %ecx */
+	56,			/* %edx */
+	52,			/* %ebx */
+	92,			/* %esp */
+	44,			/* %ebp */
+	40,			/* %esi */
+	36,			/* %edi */
+	80,			/* %eip */
+	88,			/* %eflags */
+	84,			/* %cs */
+	96,			/* %ss */
+	32,			/* %ds */
+	28,			/* %es */
+	24,			/* %fs */
+	20			/* %gs */
 };
 
 static void
-i386dfly_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
+i386dfly_init_abi(struct gdbarch_info info, struct gdbarch *gdbarch)
 {
-  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+	struct gdbarch_tdep *tdep = gdbarch_tdep(gdbarch);
 
-  i386_elf_init_abi(info, gdbarch);
+	i386_elf_init_abi(info, gdbarch);
 
-  tdep->gregset_reg_offset = i386dfly_r_reg_offset;
-  tdep->gregset_num_regs = ARRAY_SIZE (i386dfly_r_reg_offset);
-  tdep->sizeof_gregset = 80;
+	tdep->gregset_reg_offset = i386dfly_r_reg_offset;
+	tdep->gregset_num_regs = ARRAY_SIZE(i386dfly_r_reg_offset);
+	tdep->sizeof_gregset = 80;
 
-  tdep->sc_reg_offset = i386dfly_sc_reg_offset;
-  tdep->sc_num_regs = ARRAY_SIZE (i386dfly_sc_reg_offset);
+	tdep->sc_reg_offset = i386dfly_sc_reg_offset;
+	tdep->sc_num_regs = ARRAY_SIZE(i386dfly_sc_reg_offset);
 
-  set_solib_svr4_fetch_link_map_offsets
-    (gdbarch, svr4_ilp32_fetch_link_map_offsets);
+	set_solib_svr4_fetch_link_map_offsets
+	    (gdbarch, svr4_ilp32_fetch_link_map_offsets);
 }
 
-
+
+
 /* Provide a prototype to silence -Wmissing-prototypes.  */
-void _initialize_i386dfly_tdep (void);
+void _initialize_i386dfly_tdep(void);
 
 void
-_initialize_i386dfly_tdep (void)
+_initialize_i386dfly_tdep(void)
 {
-  gdbarch_register_osabi (bfd_arch_i386, 0, GDB_OSABI_DRAGONFLY,
-			  i386dfly_init_abi);
+	gdbarch_register_osabi(bfd_arch_i386, 0, GDB_OSABI_DRAGONFLY,
+	    i386dfly_init_abi);
 }
