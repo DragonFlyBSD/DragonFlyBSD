@@ -1,0 +1,14 @@
+ELF Tool Chain
+==============
+
+Original source can be checked out with subversion:
+svn co svn://svn.code.sf.net/p/elftoolchain/code/trunk elftoolchain
+
+rev  = 3255
+date = 28 Oct 2015
+
+A list of files and directories removed is in README.DELETED
+
+Currently only libelf is built and it is only used internally.
+In the future, the entire toolchain could be added, perhaps to
+replace one of the binutils sets.
