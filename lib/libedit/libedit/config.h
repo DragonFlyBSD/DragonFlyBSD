@@ -209,12 +209,11 @@
    slash. */
 #define LSTAT_FOLLOWS_SLASHED_SYMLINK 1
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
 
 /* Name of package */
-#define PACKAGE "libedit-20140620"
+#define PACKAGE "libedit-20150325"
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT ""
@@ -226,7 +225,7 @@
 #define PACKAGE_STRING "libedit 3.1"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "libedit-20140620"
+#define PACKAGE_TARNAME "libedit-20150325"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""

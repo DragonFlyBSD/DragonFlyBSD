@@ -17,7 +17,6 @@ examples/
 install-sh
 libedit.pc.in
 ltmain.sh
-m4/
 missing
 src/Makefile.am
 src/Makefile.in
