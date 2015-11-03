@@ -728,6 +728,8 @@ struct hammer_buffer {
 
 typedef struct hammer_buffer *hammer_buffer_t;
 
+#define HAMMER_ITOB(iop) ((hammer_buffer_t)(iop))
+
 /*
  * In-memory B-Tree node, representing an on-disk B-Tree node.
  *

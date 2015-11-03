@@ -541,7 +541,7 @@ hammer_undo_reclaim(hammer_io_t io)
 
 	undomap = &io->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	next_offset = undomap->next_offset & ~HAMMER_BUFMASK64;
-	if (((struct hammer_buffer *)io)->zoneX_offset == next_offset)
+	if (HAMMER_ITOB(io)->zoneX_offset == next_offset)
 		return(0);
 	return(1);
 }
