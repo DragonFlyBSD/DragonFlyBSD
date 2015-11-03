@@ -1,4 +1,4 @@
-/*	$NetBSD: filecomplete.c,v 1.32 2014/06/05 22:07:42 christos Exp $	*/
+/*	$NetBSD: filecomplete.c,v 1.34 2014/10/18 15:07:02 riz Exp $	*/
 
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
@@ -32,7 +32,7 @@
 #include "config.h"
 
 #if !defined(lint) && !defined(SCCSID)
-__RCSID("$NetBSD: filecomplete.c,v 1.32 2014/06/05 22:07:42 christos Exp $");
+__RCSID("$NetBSD: filecomplete.c,v 1.34 2014/10/18 15:07:02 riz Exp $");
 #endif /* not lint && not SCCSID */
 
 #include <sys/types.h>
@@ -66,7 +66,7 @@ static const Char break_chars[] = { ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
  * if ``user'' isn't valid user name or ``txt'' doesn't start
  * w/ '~', returns pointer to strdup()ed copy of ``txt''
  *
- * it's callers's responsibility to free() returned string
+ * it's the caller's responsibility to free() the returned string
  */
 char *
 fn_tilde_expand(const char *txt)
@@ -139,7 +139,7 @@ fn_tilde_expand(const char *txt)
  * such file can be found
  * value of ``state'' is ignored
  *
- * it's caller's responsibility to free returned string
+ * it's the caller's responsibility to free the returned string
  */
 char *
 fn_filename_completion_function(const char *text, int state)
