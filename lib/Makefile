@@ -4,22 +4,28 @@
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
 #
-# ${_libc_r} must be built before libpthread.
-# libcrypt must be built before libpam.
-# libmd must be built before libarchive, libopie, libradius, and libtacplus.
-# libncurses must be built before libdialog and libedit.
-# libradius must be built before libpam.
+# [Handled by /usr/src/Makefile.inc1, before this Makefile triggers]
+#    libmd must be built before libopie, libradius, libtacplus
+#    libthread_xu|libc_r must be built before libpthread.
+#    libpthread must be built before liblmza, libprop.
+#    libprop must be built before libdevattr
+#    libpam must be built before pam_module
+#
+# libmd must be built before libfetch, libarchive.
+# libcrypt must be built before libfetch and libradius.
+# libz must be built before libarchive, libmagic.
+# libbz2 must be built before libarchive
+# libncurses must be built before libedit.
 # libsbuf must be built before libcam.
-# libtacplus must be built before libpam.
-# libthread_xu must be built before libpthread.
-# libutil must be built before libpam.
-# libpthread must be built before liblmza.
-# libelf must be built before libexecinfo
+# libpthread must be built before librt, and libusb.
+# liblmza must be built before libarchive.
+# libelf must be built before libexecinfo.
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
 SUBDIR_ORDERED=	${_libc_r} \
 	libcrypt \
+	libz \
 	libmd \
 	libncurses \
 	libradius \
@@ -29,19 +35,23 @@ SUBDIR_ORDERED=	${_libc_r} \
 	libutil \
 	libpthread \
 	liblzma \
+	libarchive \
+	libfetch \
+	libedit \
+	libcam \
+	librt \
+	libusb \
 	libelf \
 	libexecinfo
 SUBDIR=	${SUBDIR_ORDERED} \
 	csu \
 	i18n_module \
 	libalias \
-	libarchive \
 	libbluetooth \
 	libbz2 \
 	libc \
 	libc_rtld \
 	libcalendar \
-	libcam \
 	libcompat \
 	libdevattr \
 	libdevinfo \
@@ -49,10 +59,8 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libdl \
 	libdm \
 	${_libdmsg} \
-	libedit \
 	libevtr \
 	libexpat \
-	libfetch \
 	libfsid \
 	libftpio \
 	libhammer \
@@ -75,7 +83,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libpuffs \
 	librefuse \
 	librpcsvc \
-	librt \
 	libsdp \
 	${_libsm} \
 	libsmb \
@@ -84,13 +91,11 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libstand \
 	libtcplay \
 	libtelnet \
-	libusb \
 	libu4bhid \
 	libvgl \
 	libwrap \
 	liby \
 	libypclnt \
-	libz \
 	pam_module
 
 .if make(install)
