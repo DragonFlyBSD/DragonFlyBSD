@@ -13,7 +13,7 @@ LZMAINCS=	base.h \
 		hardware.h \
 		index.h \
 		index_hash.h \
-		lzma.h \
+		lzma12.h \
 		stream_flags.h \
 		version.h \
 		vli.h
@@ -21,7 +21,7 @@ LZMAINCSDIR=	${INCLUDEDIR}/lzma
 INCSGROUPS=	MAININCS LZMAINCS
 
 .PATH: ${LZMADIR}/../common
-SRCS+=	tuklib_physmem.c
+SRCS+=	tuklib_physmem.c tuklib_cpucores.c
 
 .PATH: ${LZMADIR}/common
 SRCS+=	common.c \
@@ -29,6 +29,7 @@ SRCS+=	common.c \
 	easy_preset.c \
 	filter_common.c \
 	hardware_physmem.c \
+	hardware_cputhreads.c \
 	index.c \
 	stream_flags_common.c \
 	vli_size.c \
@@ -61,18 +62,18 @@ SRCS+=	common.c \
 	stream_buffer_decoder.c \
 	stream_decoder.c \
 	stream_flags_decoder.c \
-	vli_decoder.c
+	stream_encoder_mt.c \
+	vli_decoder.c \
+	outqueue.c
 
 .PATH: ${LZMADIR}/check
 SRCS+=	check.c \
 	crc32_table.c \
 	crc64_table.c \
 	sha256.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	crc32_x86.S crc64_x86.S
-.else
+
+# For x86_64 (other arch could have their own versions)
 SRCS+=	crc32_fast.c crc64_fast.c
-.endif
 
 .PATH: ${LZMADIR}/lz
 SRCS+=	lz_encoder.c \
@@ -124,5 +125,8 @@ CFLAGS+= -DHAVE_CONFIG_H -DTUKLIB_SYMBOL_PREFIX=lzma_ \
 
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
+
+LDADD=	-lpthread
+DPADD=	${LIBPTHREAD}
 
 .include <bsd.lib.mk>

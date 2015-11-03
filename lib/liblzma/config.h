@@ -23,6 +23,12 @@
 /* Define to 1 if you have the <byteswap.h> header file. */
 /* #undef HAVE_BYTESWAP_H */
 
+/* Define to 1 if the system has the type `CC_SHA256_CTX'. */
+/* #undef HAVE_CC_SHA256_CTX */
+
+/* Define to 1 if you have the `CC_SHA256_Init' function. */
+/* #undef HAVE_CC_SHA256_INIT */
+
 /* Define to 1 if you have the MacOS X function CFLocaleCopyCurrent in the
    CoreFoundation framework. */
 /* #undef HAVE_CFLOCALECOPYCURRENT */
@@ -40,9 +46,19 @@
 /* Define to 1 if sha256 integrity check is enabled. */
 #define HAVE_CHECK_SHA256 1
 
+/* Define to 1 if you have the `clock_gettime' function. */
+#define HAVE_CLOCK_GETTIME 1
+
+/* Define to 1 if you have the <CommonCrypto/CommonDigest.h> header file. */
+/* #undef HAVE_COMMONCRYPTO_COMMONDIGEST_H */
+
 /* Define if the GNU dcgettext() function is already present or preinstalled.
    */
 /* #undef HAVE_DCGETTEXT */
+
+/* Define to 1 if you have the declaration of `CLOCK_MONOTONIC', and to 0 if
+   you don't. */
+#define HAVE_DECL_CLOCK_MONOTONIC 1
 
 /* Define to 1 if you have the declaration of `program_invocation_name', and
    to 0 if you don't. */
@@ -129,6 +145,9 @@
 /* Define if you have the iconv() function and it works. */
 /* #undef HAVE_ICONV */
 
+/* Define to 1 if you have the <immintrin.h> header file. */
+#define HAVE_IMMINTRIN_H 1
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
@@ -156,14 +175,38 @@
 /* Define to 1 to enable hc4 match finder. */
 #define HAVE_MF_HC4 1
 
+/* Define to 1 if you have the <minix/sha2.h> header file. */
+/* #undef HAVE_MINIX_SHA2_H */
+
 /* Define to 1 if getopt.h declares extern int optreset. */
 #define HAVE_OPTRESET 1
 
-/* Define if you have POSIX threads libraries and header files. */
-#define HAVE_PTHREAD 1
+/* Define to 1 if you have the `posix_fadvise' function. */
+/* #undef HAVE_POSIX_FADVISE */
+
+/* Define to 1 if you have the `pthread_condattr_setclock' function. */
+#define HAVE_PTHREAD_CONDATTR_SETCLOCK 1
 
 /* Have PTHREAD_PRIO_INHERIT. */
 #define HAVE_PTHREAD_PRIO_INHERIT 1
+
+/* Define to 1 if you have the `SHA256Init' function. */
+/* #undef HAVE_SHA256INIT */
+
+/* Define to 1 if the system has the type `SHA256_CTX'. */
+/* OVERRIDE #define HAVE_SHA256_CTX 1 */
+
+/* Define to 1 if you have the <sha256.h> header file. */
+/* OVERRIDE #define HAVE_SHA256_H 1 */
+
+/* Define to 1 if you have the `SHA256_Init' function. */
+/* OVERRIDE #define HAVE_SHA256_INIT 1 */
+
+/* Define to 1 if the system has the type `SHA2_CTX'. */
+/* #undef HAVE_SHA2_CTX */
+
+/* Define to 1 if you have the <sha2.h> header file. */
+/* #undef HAVE_SHA2_H */
 
 /* Define to 1 if optimizing for size. */
 /* #undef HAVE_SMALL */
@@ -238,8 +281,22 @@
 /* Define to 1 if the system has the type `_Bool'. */
 #define HAVE__BOOL 1
 
+/* Define to 1 if _mm_movemask_epi8 is available. */
+#define HAVE__MM_MOVEMASK_EPI8 1
+
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
+
+/* Define to 1 when using POSIX threads (pthreads). */
+#define MYTHREAD_POSIX 1
+
+/* Define to 1 when using Windows Vista compatible threads. This uses features
+   that are not available on Windows XP. */
+/* #undef MYTHREAD_VISTA */
+
+/* Define to 1 when using Windows 95 (and thus XP) compatible threads. This
+   avoids use of features that were added in Windows Vista. */
+/* #undef MYTHREAD_WIN95 */
 
 /* Define to 1 to disable debugging code. */
 #define NDEBUG 1
@@ -254,7 +311,7 @@
 #define PACKAGE_NAME "XZ Utils"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "XZ Utils 5.0.7"
+#define PACKAGE_STRING "XZ Utils 5.2.2"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "xz"
@@ -263,7 +320,7 @@
 #define PACKAGE_URL "http://tukaani.org/xz/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.0.7"
+#define PACKAGE_VERSION "5.2.2"
 
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */
@@ -274,6 +331,10 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
+
+/* Define to 1 if the number of available CPU cores can be detected with
+   cpuset(2). */
+/* #undef TUKLIB_CPUCORES_CPUSET */
 
 /* Define to 1 if the number of available CPU cores can be detected with
    pstat_getdynamic(). */
@@ -342,7 +403,7 @@
 
 
 /* Version number of package */
-#define VERSION "5.0.7"
+#define VERSION "5.2.2"
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */

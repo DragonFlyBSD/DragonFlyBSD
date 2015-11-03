@@ -38,6 +38,7 @@ src/liblzma/lz/Makefile.inc
 src/liblzma/lzma/Makefile.inc
 src/liblzma/rangecoder/Makefile.inc
 src/liblzma/simple/Makefile.inc
+src/liblzma/validate_map.sh
 src/lzmainfo/Makefile.am
 src/lzmainfo/Makefile.in
 src/lzmainfo/lzmainfo_w32res.rc
