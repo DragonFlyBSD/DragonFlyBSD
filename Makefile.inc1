@@ -1014,7 +1014,7 @@ _startup_libs50=	gnu/usr.bin/cc50/cc_prep \
 			gnu/lib/gcc50/libgcc_pic
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
-_prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
+_prebuild_libs=		lib/libbz2 lib/libz
 _prebuild_libs+=	lib/libutil
 
 _prebuild_libs+=	lib/libpcap
@@ -1041,7 +1041,7 @@ _generic_libs+=	secure/lib
 
 _prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \
 		lib/libpam lib/libypclnt lib/lib${THREAD_LIB} \
-		lib/libpthread lib/libprop lib/libdevattr
+		lib/libpthread lib/liblzma lib/libprop lib/libdevattr
 
 _generic_libs+=	usr.bin/flex/lib
 
