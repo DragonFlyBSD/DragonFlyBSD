@@ -13,7 +13,7 @@
 # libtacplus must be built before libpam.
 # libthread_xu must be built before libpthread.
 # libutil must be built before libpam.
-# libpthread must be built before libprop.
+# libpthread must be built before liblmza.
 # libelf must be built before libexecinfo
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
@@ -28,6 +28,7 @@ SUBDIR_ORDERED=	${_libc_r} \
 	libthread_xu \
 	libutil \
 	libpthread \
+	liblzma \
 	libelf \
 	libexecinfo
 SUBDIR=	${SUBDIR_ORDERED} \
@@ -62,7 +63,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libkinfo \
 	libkvm \
 	libldns \
-	liblzma \
 	libm \
 	libmagic \
 	libmandoc \
