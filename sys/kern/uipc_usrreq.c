@@ -549,8 +549,10 @@ uipc_send(netmsg_t msg)
 				error = EISCONN;
 				break;
 			}
+			lwkt_gettoken(&unp_token);
 			error = unp_find_lockref(msg->send.nm_addr,
 			    msg->send.nm_td, so->so_type, &unp2);
+			lwkt_reltoken(&unp_token);
 			if (error)
 				break;
 			/*
@@ -2061,6 +2063,16 @@ unp_discard(struct file *fp, void *data __unused)
 	taskqueue_enqueue(unp_taskqueue, &unp_defdiscard_task);
 }
 
+/*
+ * NOTE:
+ * unp_token must be held before calling this function to avoid name
+ * resolution and v_socket accessing races, especially racing against
+ * the unp_detach().
+ *
+ * NOTE:
+ * For anyone caring about unconnected unix socket sending performance,
+ * other approach could be taken...
+ */
 static int
 unp_find_lockref(struct sockaddr *nam, struct thread *td, short type,
     struct unpcb **unp_ret)
@@ -2073,6 +2085,8 @@ unp_find_lockref(struct sockaddr *nam, struct thread *td, short type,
 	int error, len;
 	struct nlookupdata nd;
 	char buf[SOCK_MAXADDRLEN];
+
+	ASSERT_LWKT_TOKEN_HELD(&unp_token);
 
 	*unp_ret = NULL;
 
