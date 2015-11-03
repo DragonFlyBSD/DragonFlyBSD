@@ -1,4 +1,4 @@
-/*	$NetBSD: eln.c,v 1.17 2014/06/18 18:12:28 christos Exp $	*/
+/*	$NetBSD: eln.c,v 1.18 2015/03/24 21:26:50 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009 The NetBSD Foundation, Inc.
@@ -34,7 +34,7 @@
  */
 #include "config.h"
 #if !defined(lint) && !defined(SCCSID)
-__RCSID("$NetBSD: eln.c,v 1.17 2014/06/18 18:12:28 christos Exp $");
+__RCSID("$NetBSD: eln.c,v 1.18 2015/03/24 21:26:50 christos Exp $");
 #endif /* not lint && not SCCSID */
 
 #include "histedit.h"
@@ -86,7 +86,6 @@ el_gets(EditLine *el, int *nread)
 		el->el_flags &= ~IGNORE_EXTCHARS;
 	for (int i = 0; i < nwread; i++)
 		*nread += ct_enc_width(tmp[i]);
-
 	return ct_encode_string(tmp, &el->el_lgcyconv);
 }
 

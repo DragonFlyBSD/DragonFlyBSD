@@ -1,4 +1,4 @@
-/*	$NetBSD: chartype.h,v 1.10 2011/11/16 01:45:10 christos Exp $	*/
+/*	$NetBSD: chartype.h,v 1.13 2015/02/22 02:16:19 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009 The NetBSD Foundation, Inc.
@@ -46,7 +46,7 @@
  * been around since 2001... */
 
 #if 0 /* DragonFly wchar supports ISO 10646 */
-#if !defined(__NetBSD__) && !defined(__sun) && !(defined(__APPLE__) && defined(__MACH__))
+#if !defined(__NetBSD__) && !defined(__sun) && !(defined(__APPLE__) && defined(__MACH__)) && !defined(__OpenBSD__)
 #ifndef __STDC_ISO_10646__
 /* In many places it is assumed that the first 127 code points are ASCII
  * compatible, so ensure wchar_t indeed does ISO 10646 and not some other
@@ -196,7 +196,8 @@ public Char *ct_decode_string(const char *, ct_buffer_t *);
 protected Char **ct_decode_argv(int, const char *[],  ct_buffer_t *);
 
 /* Resizes the conversion buffer(s) if needed. */
-protected void ct_conv_buff_resize(ct_buffer_t *, size_t, size_t);
+protected int ct_conv_cbuff_resize(ct_buffer_t *, size_t);
+protected int ct_conv_wbuff_resize(ct_buffer_t *, size_t);
 protected ssize_t ct_encode_char(char *, size_t, Char);
 protected size_t ct_enc_width(Char);
 
@@ -206,7 +207,8 @@ protected size_t ct_enc_width(Char);
 #define	ct_encode_string(s, b)	(s)
 #define ct_decode_string(s, b)	(s)
 #define ct_decode_argv(l, s, b)	(s)
-#define ct_conv_buff_resize(b, os, ns)
+#define ct_conv_cbuff_resize(b, s) ((s) == (0))
+#define ct_conv_wbuff_resize(b, s) ((s) == (0))
 #define ct_encode_char(d, l, s)	(*d = s, 1)
 #define ct_free_argv(s)
 #endif
