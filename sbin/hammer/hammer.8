@@ -801,7 +801,7 @@ layer1 blockmap and UNDO FIFO.
 .Pp
 This command may
 .Cm reblock
-filesystem before it attemps to remove the volume if the volume is not empty.
+filesystem before it attempts to remove the volume if the volume is not empty.
 .\" ==== volume-list ====
 .It Cm volume-list Ar filesystem
 List the volumes that make up
@@ -1621,7 +1621,7 @@ block
 device (which doesn't recycle unless you umount the filesystem) instead
 of the cached VM pages backing the file vnodes.
 .Pp
-Double buffering is normally desireable when working with large filesystems,
+Double buffering is normally desirable when working with large filesystems,
 particularly when swapcache is used.
 The swapcache can only back active VM objects, including the block device,
 and large filesystems often have far more inodes than the kernel can support.
