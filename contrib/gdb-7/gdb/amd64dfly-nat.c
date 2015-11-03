@@ -208,7 +208,7 @@ static void
 amd64dfly_mourn_inferior (struct target_ops *ops)
 {
 #ifdef HAVE_PT_GETDBREGS
-  if (!isvkernel())
+  if (!is_vkernel())
   i386_cleanup_dregs ();
 #endif
   super_mourn_inferior (ops);
