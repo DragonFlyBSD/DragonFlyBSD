@@ -982,11 +982,9 @@ unp_detach(struct unpcb *unp)
 		unp->unp_vnode = NULL;
 	}
 	soisdisconnected(so);
-	soreference(so);		/* for delayed sorflush */
 	KKASSERT(so->so_pcb == unp);
 	so->so_pcb = NULL;		/* both tokens required */
 	unp->unp_socket = NULL;
-	sofree(so);		/* remove pcb ref */
 
 	if (unp_rights) {
 		/*
