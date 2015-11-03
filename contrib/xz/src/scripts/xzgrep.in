@@ -22,10 +22,10 @@
 
 # Instead of unsetting XZ_OPT, just make sure that xz will use file format
 # autodetection. This way memory usage limit and thread limit can be
-# specified via XZ_OPT. With gzip and bzip2 it's OK to just unset the
+# specified via XZ_OPT. With gzip, bzip2, and lzop it's OK to just unset the
 # environment variables.
 xz='@xz@ --format=auto'
-unset GZIP BZIP BZIP2
+unset GZIP BZIP BZIP2 LZOP
 
 case ${0##*/} in
   *egrep*) prog=xzegrep; grep=${GREP:-egrep};;
@@ -106,9 +106,11 @@ while test $# -ne 0; do
     with_filename=1
     continue;;
   (-l | --files-with-*)
-    files_with_matches=1;;
+    files_with_matches=1
+    continue;;
   (-L | --files-witho*)
-    files_without_matches=1;;
+    files_without_matches=1
+    continue;;
   (-h | --no-f*)
     no_filename=1;;
   (-V | --v | --ve | --ver | --vers | --versi | --versio | --version)
@@ -155,6 +157,7 @@ for i; do
   case $i in
     *[-.][zZ] | *_z | *[-.]gz | *.t[ag]z) uncompress="gzip -cdfq";;
     *[-.]bz2 | *[-.]tbz | *.tbz2) uncompress="bzip2 -cdfq";;
+    *[-.]lzo | *[-.]tzo) uncompress="lzop -cdfq";;
     *) uncompress="$xz -cdfq";;
   esac
   # Fail if xz or grep (or sed) fails.
