@@ -986,6 +986,9 @@ unp_detach(struct unpcb *unp)
 	so->so_pcb = NULL;		/* both tokens required */
 	unp->unp_socket = NULL;
 
+	lwkt_relpooltoken(unp);
+	lwkt_reltoken(&unp_token);
+
 	if (unp_rights) {
 		/*
 		 * Normally the receive buffer is flushed later,
@@ -998,8 +1001,6 @@ unp_detach(struct unpcb *unp)
 		unp_gc();
 	}
 	sofree(so);
-	lwkt_relpooltoken(unp);
-	lwkt_reltoken(&unp_token);
 
 	KASSERT(unp->unp_conn == NULL, ("unp is still connected"));
 	KASSERT(LIST_EMPTY(&unp->unp_refs), ("unp still has references"));
