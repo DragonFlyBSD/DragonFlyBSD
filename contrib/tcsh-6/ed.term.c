@@ -67,8 +67,7 @@ ttyperm_t ttylist = {
 	{ "chars:", (C_SH(C_MIN)|C_SH(C_TIME)|C_SH(C_SWTCH)|C_SH(C_DSWTCH)|
 		     C_SH(C_WERASE)|C_SH(C_REPRINT)|C_SH(C_SUSP)|C_SH(C_DSUSP)|
 		     C_SH(C_EOF)|C_SH(C_EOL)|C_SH(C_DISCARD)|C_SH(C_PGOFF)|
-		     C_SH(C_KILL2)|C_SH(C_PAGE)|C_SH(C_STATUS)|C_SH(C_CHECKPT)|
-		     C_SH(C_LNEXT)),
+		     C_SH(C_KILL2)|C_SH(C_PAGE)|C_SH(C_STATUS)|C_SH(C_LNEXT)), 
 		     0 }
     },
     {
@@ -508,9 +507,6 @@ static const struct tcshmodes {
 # if defined(VSTATUS) || defined(TIOCGPAGE)
     { "status",		C_SH(C_STATUS),	M_CHAR },
 # endif /* VSTATUS */
-# if defined(VCHECKPT) || defined(TIOCGPAGE)
-    { "ckpt",		C_SH(C_CHECKPT),M_CHAR },
-# endif /* VCHECKPT */
 # if defined(VPAGE) || defined(TIOCGPAGE)
     { "page",		C_SH(C_PAGE), 	M_CHAR },
 # endif /* VPAGE */
@@ -838,9 +834,6 @@ tty_getchar(ttydata_t *td, unsigned char *s)
 # ifdef VSTATUS
 	s[C_STATUS]	= n->c_cc[VSTATUS];
 # endif /* VSTATUS */
-# ifdef VCHECKPT
-	s[C_CHECKPT]	= n->c_cc[VCHECKPT];
-# endif /* VCHECKPT */
 # ifdef VPAGE
 	s[C_PAGE]	= n->c_cc[VPAGE];
 # endif /* VPAGE */
@@ -865,7 +858,6 @@ tty_getchar(ttydata_t *td, unsigned char *s)
 	struct ttypagestat *n = &td->d_pc;
 
 	s[C_STATUS]	= n->tps_statc;
-	s[C_CHECKPT]	= n->tps_checkp;
 	s[C_PAGE]	= n->tps_pagec;
 	s[C_PGOFF]	= n->tps_pgoffc;
     }
@@ -978,9 +970,6 @@ tty_setchar(ttydata_t *td, unsigned char *s)
 # ifdef VSTATUS
 	n->c_cc[VSTATUS]	= s[C_STATUS];
 # endif /* VSTATUS */
-# ifdef VCHECKPT
-	n->c_cc[VCHECKPT]	= s[C_CHECKPT];
-# endif /* VCHECKPT */
 # ifdef VPAGE
 	n->c_cc[VPAGE]		= s[C_PAGE];
 # endif /* VPAGE */

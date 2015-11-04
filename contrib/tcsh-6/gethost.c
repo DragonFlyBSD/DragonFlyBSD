@@ -165,6 +165,7 @@ explode(const char *defs)
 	static char *buf;
 	size_t len;
 	const char *ptr, *bptr, *eptr = NULL, *name;
+	size_t buflen = 0;
 
 	if (strstr(defs, "#machine(" /* ) */))
 		return defs;

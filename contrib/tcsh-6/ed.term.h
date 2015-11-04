@@ -196,7 +196,6 @@
 # undef  CDISCARD
 # undef  CLNEXT
 # undef  CSTATUS
-# undef  CCHECKPT
 # undef  CPAGE
 # undef  CPGOFF
 # undef  CKILL2
@@ -284,9 +283,6 @@
 #ifndef CSTATUS
 # define CSTATUS	TO_CONTROL('t')
 #endif /* CSTATUS */
-#ifndef CCHECKPT
-# define CCHECKPT	TO_CONTROL('e')
-#endif /* CCHECKPT */
 #ifndef CPAGE
 # define CPAGE		' '
 #endif /* CPAGE */
@@ -418,11 +414,6 @@
 #    undef VSTATUS
 #   endif /* NUMCC <= VSTATUS */
 #  endif /* VSTATUS */
-#  ifdef VCHECKPT
-#   if NUMCC <= VCHECKPT
-#    undef VCHECKPT
-#   endif /* NUMCC <= VCHECKPT */
-#  endif /* VCHECKPT */
 #  ifdef VPAGE
 #   if NUMCC <= VPAGE
 #    undef VPAGE
@@ -492,8 +483,7 @@
 #define C_BRK		22
 #define C_MIN		23
 #define C_TIME		24
-#define C_CHECKPT	25
-#define C_NCC		26
+#define C_NCC		25
 #define C_SH(A)		(1 << (A))
 
 /*

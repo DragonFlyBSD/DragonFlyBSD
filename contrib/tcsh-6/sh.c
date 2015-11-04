@@ -751,17 +751,13 @@ main(int argc, char **argv)
     /*
      * Re-initialize path if set in environment
      */
-    if ((tcp = getenv("PATH")) == NULL) {
+    if ((tcp = getenv("PATH")) == NULL)
 #ifdef _PATH_DEFPATH
 	importpath(str2short(_PATH_DEFPATH));
 #else /* !_PATH_DEFPATH */
 	setq(STRpath, defaultpath(), &shvhed, VAR_READWRITE);
 #endif /* _PATH_DEFPATH */
-	/*
-	 * Export the path setting so that subsequent processes use the same path as we do.
-	 */
-	exportpath(adrof(STRpath)->vec);
-    } else
+    else
 	/* Importpath() allocates memory for the path, and the
 	 * returned pointer from SAVE() was discarded, so
 	 * this was a memory leak.. (sg)

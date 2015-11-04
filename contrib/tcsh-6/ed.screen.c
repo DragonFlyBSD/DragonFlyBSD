@@ -1625,6 +1625,7 @@ ChangeSize(int lins, int cols)
 	if ((tptr = getenv("TERMCAP")) != NULL) {
 	    /* Leave 64 characters slop in case we enlarge the termcap string */
 	    Char    termcap[TC_BUFSIZE+64], backup[TC_BUFSIZE+64], *ptr;
+	    Char buf[4];
 
 	    ptr = str2short(tptr);
 	    (void) Strncpy(termcap, ptr, TC_BUFSIZE);
