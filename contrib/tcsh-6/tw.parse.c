@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/tw.parse.c,v 3.133 2011/04/14 14:33:05 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/tw.parse.c,v 3.136 2015/05/04 15:31:13 christos Exp $ */
 /*
  * tw.parse.c: Everyone has taken a shot in this futile effort to
  *	       lexically analyze a csh line... Well we cannot good
@@ -35,7 +35,7 @@
  */
 #include "sh.h"
 
-RCSID("$tcsh: tw.parse.c,v 3.133 2011/04/14 14:33:05 christos Exp $")
+RCSID("$tcsh: tw.parse.c,v 3.136 2015/05/04 15:31:13 christos Exp $")
 
 #include "tw.h"
 #include "ed.h"
@@ -1236,7 +1236,7 @@ static Char
 tw_suffix(int looking, struct Strbuf *word, const Char *exp_dir, Char *exp_name)
 {
     Char *ptr;
-    Char *dollar;
+    Char *dol;
     struct varent *vp;
 
     (void) strip(exp_name);
@@ -1258,8 +1258,8 @@ tw_suffix(int looking, struct Strbuf *word, const Char *exp_dir, Char *exp_name)
 	else if ((ptr = tgetenv(exp_name)) == NULL || *ptr == '\0')
 	    return ' ';
 
-	if ((dollar = Strrchr(word->s, '$')) != 0 && 
-	    dollar[1] == '{' && Strchr(dollar, '}') == NULL)
+	if ((dol = Strrchr(word->s, '$')) != 0 && 
+	    dol[1] == '{' && Strchr(dol, '}') == NULL)
 	  return '}';
 
 	return isadirectory(exp_dir, ptr) ? '/' : ' ';

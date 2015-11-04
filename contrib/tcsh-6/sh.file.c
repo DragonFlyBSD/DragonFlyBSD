@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.file.c,v 3.37 2010/02/09 20:21:49 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/sh.file.c,v 3.38 2015/03/07 18:07:46 christos Exp $ */
 /*
  * sh.file.c: File completion for csh. This file is not used in tcsh.
  */
@@ -33,7 +33,7 @@
 #include "sh.h"
 #include "ed.h"
 
-RCSID("$tcsh: sh.file.c,v 3.37 2010/02/09 20:21:49 christos Exp $")
+RCSID("$tcsh: sh.file.c,v 3.38 2015/03/07 18:07:46 christos Exp $")
 
 #if defined(FILEC) && defined(TIOCSTI)
 
@@ -231,7 +231,7 @@ pushback(const Char *string)
 # ifdef POSIX
     (void) tcgetattr(SHOUT, &tty);
 # else
-    (void) ioctl(SHOUT, TCSETAW, (ioctl_t) &tty);
+    (void) ioctl(SHOUT, TCGETA, (ioctl_t) &tty);
 # endif /* POSIX */
     tty_normal = tty;
     tty.c_lflag &= ~(ECHOKE | ECHO | ECHOE | ECHOK | ECHONL |

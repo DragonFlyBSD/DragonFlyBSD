@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/ed.chared.c,v 3.98 2010/05/08 00:37:39 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/ed.chared.c,v 3.99 2014/03/09 00:20:26 christos Exp $ */
 /*
  * ed.chared.c: Character editing functions.
  */
@@ -72,7 +72,7 @@
 
 #include "sh.h"
 
-RCSID("$tcsh: ed.chared.c,v 3.98 2010/05/08 00:37:39 christos Exp $")
+RCSID("$tcsh: ed.chared.c,v 3.99 2014/03/09 00:20:26 christos Exp $")
 
 #include "ed.h"
 #include "tw.h"
@@ -941,7 +941,7 @@ c_push_kill(Char *start, Char *end)
 
 /* Save InputBuf etc in SavedBuf etc for restore after cmd exec */
 static void
-c_save_inputbuf()
+c_save_inputbuf(void)
 {
     SavedBuf.len = 0;
     Strbuf_append(&SavedBuf, InputBuf);
@@ -953,7 +953,7 @@ c_save_inputbuf()
 }
 
 CCRETVAL
-GetHistLine()
+GetHistLine(void)
 {
     struct Hist *hp;
     int     h;

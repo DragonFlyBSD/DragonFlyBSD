@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/tc.func.c,v 3.148 2011/12/14 16:36:44 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/tc.func.c,v 3.153 2014/10/11 21:52:26 christos Exp $ */
 /*
  * tc.func.c: New tcsh builtins.
  */
@@ -32,7 +32,7 @@
  */
 #include "sh.h"
 
-RCSID("$tcsh: tc.func.c,v 3.148 2011/12/14 16:36:44 christos Exp $")
+RCSID("$tcsh: tc.func.c,v 3.153 2014/10/11 21:52:26 christos Exp $")
 
 #include "ed.h"
 #include "ed.defns.h"		/* for the function names */
@@ -193,7 +193,7 @@ void
 dolist(Char **v, struct command *c)
 {
     Char **globbed;
-    int     i, k;
+    int     i, k, ret = 0;
     struct stat st;
 
     USE(c);
@@ -333,8 +333,11 @@ dolist(Char **v, struct command *c)
 			xputchar('\n');
 		    print_by_column(STRNULL, &v[i], k - i, FALSE);
 		}
+		haderr = 1;
 		xprintf("%S: %s.\n", tmp, strerror(err));
+		haderr = 0;
 		i = k + 1;
+		ret = 1;
 	    }
 	    else if (S_ISDIR(st.st_mode)) {
 		Char   *cp;
@@ -372,6 +375,8 @@ dolist(Char **v, struct command *c)
 		xputchar('\n');
 	    print_by_column(STRNULL, &v[i], k - i, FALSE);
 	}
+	if (ret)
+	    stderror(ERR_SILENT);
     }
 
     cleanup_until(globbed);
@@ -481,6 +486,19 @@ dowhich(Char **v, struct command *c)
 	setcopy(STRstatus, STR1, VAR_READWRITE);
 }
 
+static int
+findvv(Char **vv, const char *cp)
+{
+    for (; vv && *vv; vv++) {
+	size_t i;
+	for (i = 0; (*vv)[i] && (*vv)[i] == cp[i]; i++)
+	    continue;
+	if ((*vv)[i] == '\0' && cp[i] == '\0')
+	    return 1;
+    }
+    return 0;
+}
+
 /* PWP: a hack to start up your stopped editor on a single keystroke */
 /* jbs - fixed hack so it worked :-) 3/28/89 */
 
@@ -492,6 +510,8 @@ find_stop_ed(void)
     char *cp, *p;
     size_t epl, vpl;
     int pstatus;
+    struct varent *varp;
+    Char **vv;
 
     if ((ep = getenv("EDITOR")) != NULL) {	/* if we have a value */
 	if ((p = strrchr(ep, '/')) != NULL) 	/* if it has a path */
@@ -514,6 +534,11 @@ find_stop_ed(void)
 
     if (pcurrent == NULL)	/* see if we have any jobs */
 	return NULL;		/* nope */
+
+    if ((varp = adrof(STReditors)) != NULL)
+	vv = varp->vec;
+    else
+	vv = NULL;
 
     retp = NULL;
     for (pp = proclist.p_next; pp; pp = pp->p_next)
@@ -542,7 +567,7 @@ find_stop_ed(void)
 
 	    /* if we find either in the current name, fg it */
 	    if (strncmp(ep, cp, epl) == 0 ||
-		strncmp(vp, cp, vpl) == 0) {
+		strncmp(vp, cp, vpl) == 0 || findvv(vv, cp)) {
 
 		/*
 		 * If there is a choice, then choose the current process if
@@ -733,7 +758,7 @@ auto_lock(void)
 	pp = xgetpass("Password:");
 
 	crpp = XCRYPT(pw, pp, srpp);
-	if ((strcmp(crpp, srpp) == 0)
+	if ((crpp && strcmp(crpp, srpp) == 0)
 #ifdef AFS
 	    || (ka_UserAuthenticateGeneral(KA_USERAUTH_VERSION,
 					   afsname,     /* name */
@@ -1109,7 +1134,7 @@ rmstar(struct wordent *cp)
 #endif /* RMDEBUG */
     Char   *charac;
     char    c;
-    int     ask, doit, star = 0, silent = 0;
+    int     ask, doit, star = 0, silent = 0, opintr_disabled;
 
     if (!adrof(STRrmstar))
 	return;
@@ -1119,6 +1144,8 @@ rmstar(struct wordent *cp)
     we = cp->next;
     while (*we->word == ';' && we != cp)
 	we = we->next;
+    opintr_disabled = pintr_disabled;
+    pintr_disabled = 0;
     while (we != cp) {
 #ifdef RMDEBUG
 	if (*tag)
@@ -1195,6 +1222,7 @@ rmstar(struct wordent *cp)
 	    xprintf("%S ", we->word);
     }
 #endif /* RMDEBUG */
+    pintr_disabled = opintr_disabled;
     return;
 }
 

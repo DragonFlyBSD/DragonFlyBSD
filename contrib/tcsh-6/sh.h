@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.h,v 3.165 2011/04/14 18:25:25 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/sh.h,v 3.174 2015/05/10 13:29:28 christos Exp $ */
 /*
  * sh.h: Catch it all globals and includes file!
  */
@@ -126,6 +126,11 @@ typedef int eChar;
 
 #if !defined(__inline) && !defined(__GNUC__) && !defined(_MSC_VER)
 #define __inline
+#endif
+#ifdef _MSC_VER
+#define TCSH_PTRDIFF_T_FMT "I"
+#else
+#define TCSH_PTRDIFF_T_FMT "t"
 #endif
 /* Elide unused argument warnings */
 #define USE(a)	(void) (a)
@@ -428,9 +433,7 @@ typedef long tcsh_number_t;
 # if (defined(_SS_SIZE) || defined(_SS_MAXSIZE)) && defined(HAVE_STRUCT_SOCKADDR_STORAGE_SS_FAMILY)
 #  if !defined(__APPLE__) /* Damnit, where is getnameinfo() folks? */
 #   if !defined(sgi)
-#    if !defined(__CYGWIN__)
-#     define INET6
-#    endif /* __CYGWIN__ */
+#    define INET6
 #   endif /* sgi */
 #  endif /* __APPLE__ */
 # endif
@@ -440,21 +443,7 @@ typedef long tcsh_number_t;
 #ifdef PURIFY
 /* exit normally, allowing purify to trace leaks */
 # define _exit		exit
-typedef  int		pret_t;
-#else /* !PURIFY */
-/*
- * If your compiler complains, then you can either
- * throw it away and get gcc or, use the following define
- * and get rid of the typedef.
- * [The 4.2/3BSD vax compiler does not like that]
- * Both MULTIFLOW and PCC compilers exhbit this bug.  -- sterling@netcom.com
- */
-# if (defined(vax) || defined(uts) || defined(MULTIFLOW) || defined(PCC)) && !defined(__GNUC__)
-#  define pret_t void
-# else /* !((vax || uts || MULTIFLOW || PCC) && !__GNUC__) */
-typedef void pret_t;
-# endif /* (vax || uts || MULTIFLOW || PCC) && !__GNUC__ */
-#endif /* PURIFY */
+#endif /* !PURIFY */
 
 /*
  * ASCII vs. EBCDIC
@@ -573,7 +562,7 @@ EXTERN int    neednote IZERO;	/* Need to pnotify() */
 EXTERN int    noexec IZERO;	/* Don't execute, just syntax check */
 EXTERN int    pjobs IZERO;	/* want to print jobs if interrupted */
 EXTERN int    setintr IZERO;	/* Set interrupts on/off -> Wait intr... */
-EXTERN int    handle_intr IZERO;/* Are we currently handling an interrupt? */
+EXTERN int    handle_interrupt IZERO;/* Are we currently handling an interrupt? */
 EXTERN int    havhash IZERO;	/* path hashing is available */
 EXTERN int    editing IZERO;	/* doing filename expansion and line editing */
 EXTERN int    noediting IZERO;	/* initial $term defaulted to noedit */
@@ -585,7 +574,8 @@ EXTERN int    isdiagatty IZERO;/* is SHDIAG a tty */
 EXTERN int    is1atty IZERO;	/* is file descriptor 1 a tty (didfds mode) */
 EXTERN int    is2atty IZERO;	/* is file descriptor 2 a tty (didfds mode) */
 EXTERN int    arun IZERO;	/* Currently running multi-line-aliases */
-EXTERN int     implicit_cd IZERO;/* implicit cd enabled?(1=enabled,2=verbose) */
+EXTERN int    implicit_cd IZERO;/* implicit cd enabled?(1=enabled,2=verbose) */
+EXTERN int    cdtohome IZERO;	/* cd without args goes home */
 EXTERN int    inheredoc IZERO;	/* Currently parsing a heredoc */
 /* We received a window change event */
 EXTERN volatile sig_atomic_t windowchg IZERO;
@@ -1020,10 +1010,6 @@ EXTERN Char  **alvec IZERO_STRUCT,
  * Filename/command name expansion variables
  */
 
-#ifdef __CYGWIN__
-# undef MAXPATHLEN
-#endif /* __CYGWIN__ */
-
 #ifndef MAXPATHLEN
 # ifdef PATH_MAX
 #  define MAXPATHLEN PATH_MAX
@@ -1065,7 +1051,7 @@ EXTERN struct Hist {
     unsigned Hhash;                     /* hash value of command line */
 }       Histlist IZERO_STRUCT;
 
-EXTERN struct wordent paraml;	/* Current lexical word list */
+extern struct wordent paraml;	/* Current lexical word list */
 EXTERN int     eventno;		/* Next events number */
 EXTERN int     lastev;		/* Last event reference (default) */
 

@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/ed.refresh.c,v 3.47 2011/02/27 00:14:51 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/ed.refresh.c,v 3.50 2015/05/04 15:31:13 christos Exp $ */
 /*
  * ed.refresh.c: Lower level screen refreshing functions
  */
@@ -32,7 +32,7 @@
  */
 #include "sh.h"
 
-RCSID("$tcsh: ed.refresh.c,v 3.47 2011/02/27 00:14:51 christos Exp $")
+RCSID("$tcsh: ed.refresh.c,v 3.50 2015/05/04 15:31:13 christos Exp $")
 
 #include "ed.h"
 /* #define DEBUG_UPDATE */
@@ -1299,7 +1299,7 @@ ClearDisp(void)
     CursorV = 0;		/* clear the display buffer */
     CursorH = 0;
     for (i = 0; i < TermV; i++)
-	(void) memset(Display[i], 0, TermH * sizeof(Display[0][0]));
+	(void) memset(Display[i], 0, (TermH + 1) * sizeof(Display[0][0]));
     OldvcV = 0;
     litlen = 0;
 }

@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/ed.screen.c,v 3.78 2011/02/27 00:14:38 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/ed.screen.c,v 3.81 2014/03/15 21:25:11 christos Exp $ */
 /*
  * ed.screen.c: Editor/termcap-curses interface
  */
@@ -32,7 +32,7 @@
  */
 #include "sh.h"
 
-RCSID("$tcsh: ed.screen.c,v 3.78 2011/02/27 00:14:38 christos Exp $")
+RCSID("$tcsh: ed.screen.c,v 3.81 2014/03/15 21:25:11 christos Exp $")
 
 #include "ed.h"
 #include "tc.h"
@@ -994,14 +994,14 @@ SetAttributes(Char atr)
 int highlighting = 0;
 
 void
-StartHighlight()
+StartHighlight(void)
 {
     (void) tputs(Str(T_mr), 1, PUTPURE);
     highlighting = 1;
 }
 
 void
-StopHighlight()
+StopHighlight(void)
 {
     (void) tputs(Str(T_me), 1, PUTPURE);
     highlighting = 0;
@@ -1437,7 +1437,8 @@ GetTermCaps(void)
     if (i <= 0) {
 	if (i == -1) {
 #if (SYSVREL == 0) || defined(IRIS3D)
-	    xprintf(CGETS(7, 20, "%s: Cannot open /etc/termcap.\n"), progname);
+	    xprintf(CGETS(7, 20,
+		"%s: The terminal database could not be opened.\n"), progname);
 	}
 	else if (i == 0) {
 #endif /* SYSVREL */
@@ -1625,7 +1626,6 @@ ChangeSize(int lins, int cols)
 	if ((tptr = getenv("TERMCAP")) != NULL) {
 	    /* Leave 64 characters slop in case we enlarge the termcap string */
 	    Char    termcap[TC_BUFSIZE+64], backup[TC_BUFSIZE+64], *ptr;
-	    Char buf[4];
 
 	    ptr = str2short(tptr);
 	    (void) Strncpy(termcap, ptr, TC_BUFSIZE);
