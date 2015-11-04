@@ -5,7 +5,7 @@
 
 #define CURSES_WACS_ARRAY _nc_wacs
 #define CURSES_WACS_SYMBOLS 1
-#define DIALOG_PATCHDATE 20121230
+#define DIALOG_PATCHDATE 20150920
 #define DIALOG_VERSION "1.2"
 #define HAVE_ALLOCA 1
 #define HAVE_BTOWC 1
@@ -102,7 +102,8 @@
 #define PACKAGE "dialog"
 #define RETSIGTYPE void
 #define STDC_HEADERS 1
-#define SYSTEM_NAME "dragonfly3.3"
+#define SYSTEM_NAME "dragonfly4.3"
 #define TIME_WITH_SYS_TIME 1
 #define TYPE_CHTYPE_IS_SCALAR 1
 #define USE_WIDE_CURSES 1
+#define WIDEC_CURSES 1

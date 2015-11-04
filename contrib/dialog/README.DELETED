@@ -7,6 +7,7 @@ configure.in
 dialog-config.in
 dialog.lsm
 dialog.pl
+headers-sh
 headers-sh.in
 install-sh
 makefile.in

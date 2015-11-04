@@ -1,5 +1,16 @@
-This is dialog from:
+DIALOG
+======
+
+Original source can be downloaded from:
 http://invisible-island.net/dialog/dialog.html
+
+file = dialog.tar.gz  (dialog-20150920)
+date = 21 September 2015
+size = 498181
+sha1 = 520b0d21b6f3bb859f67927616027b0432b650fb
+
+Note that author "rerolls" this file with the latest version.
+It's unclear if previous versions are renamed and archived.
 
 configure hint:
 ./configure --with-ncursesw
