@@ -1,1 +1,17 @@
-Original source is obtained from NetBSD's usr.bin/ftp.
+NetBSD's Enhanced FTP Client
+============================
+
+Original source can be downloaded from:
+ftp://ftp.netbsd.org/pub/NetBSD/misc/tnftp/
+
+file = tnftp-20151004.tar.gz
+date = 04 October 2015
+size = 613482
+sha1 = 9c9d689c5bde979a30191d06e1b30e533c768e0b
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	src/fetch.c
+	src/ssl.c
+	src/util.c

@@ -1,0 +1,15 @@
+ChangeLog
+INSTALL
+Makefile.am
+Makefile.in
+THANKS
+aclocal.m4
+buildaux/
+configure
+configure.ac
+libedit/
+libnetbsd/
+src/Makefile.am
+src/Makefile.in
+tnftp_config.h.in
+todo
