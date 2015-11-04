@@ -1,6 +1,6 @@
 /* Traverse a file hierarchy.
 
-   Copyright (C) 2004-2014 Free Software Foundation, Inc.
+   Copyright (C) 2004-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -62,7 +62,9 @@ static char sccsid[] = "@(#)fts.c       8.6 (Berkeley) 8/14/94";
 #endif
 #include <fcntl.h>
 #include <errno.h>
+#include <stdalign.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -189,7 +191,7 @@ enum Fts_stat
 #endif
 
 #ifdef NDEBUG
-# define fts_assert(expr) ((void) 0)
+# define fts_assert(expr) ((void) (0 && (expr)))
 #else
 # define fts_assert(expr)       \
     do                          \
@@ -1079,9 +1081,6 @@ cd_dot_dot:
                 }
         } else if (p->fts_flags & FTS_SYMFOLLOW) {
                 if (FCHDIR(sp, p->fts_symfd)) {
-                        int saved_errno = errno;
-                        (void)close(p->fts_symfd);
-                        __set_errno (saved_errno);
                         p->fts_errno = errno;
                         SET(FTS_STOP);
                 }
@@ -1091,9 +1090,15 @@ cd_dot_dot:
                 p->fts_errno = errno;
                 SET(FTS_STOP);
         }
-        p->fts_info = p->fts_errno ? FTS_ERR : FTS_DP;
-        if (p->fts_errno == 0)
-                LEAVE_DIR (sp, p, "3");
+
+        /* If the directory causes a cycle, preserve the FTS_DC flag and keep
+           the corresponding dev/ino pair in the hash table.  It is going to be
+           removed when leaving the original directory.  */
+        if (p->fts_info != FTS_DC) {
+                p->fts_info = p->fts_errno ? FTS_ERR : FTS_DP;
+                if (p->fts_errno == 0)
+                        LEAVE_DIR (sp, p, "3");
+        }
         return ISSET(FTS_STOP) ? NULL : p;
 }
 
@@ -1293,6 +1298,7 @@ fts_build (register FTS *sp, int type)
         int dir_fd;
         FTSENT *cur = sp->fts_cur;
         bool continue_readdir = !!cur->fts_dirp;
+        size_t max_entries;
 
         /* When cur->fts_dirp is non-NULL, that means we should
            continue calling readdir on that existing DIR* pointer
@@ -1354,8 +1360,7 @@ fts_build (register FTS *sp, int type)
            function.  But when no such function is specified, we can read
            entries in batches that are large enough to help us with inode-
            sorting, yet not so large that we risk exhausting memory.  */
-        size_t max_entries = (sp->fts_compar == NULL
-                              ? FTS_MAX_READDIR_ENTRIES : SIZE_MAX);
+        max_entries = sp->fts_compar ? SIZE_MAX : FTS_MAX_READDIR_ENTRIES;
 
         /*
          * Nlinks is the number of possible entries of type directory in the
@@ -1902,7 +1907,17 @@ fts_alloc (FTS *sp, const char *name, register size_t namelen)
          * The file name is a variable length array.  Allocate the FTSENT
          * structure and the file name in one chunk.
          */
-        len = sizeof(FTSENT) + namelen;
+        len = offsetof(FTSENT, fts_name) + namelen + 1;
+        /* Align the allocation size so that it works for FTSENT,
+           so that trailing padding may be referenced by direct access
+           to the flexible array members, without triggering undefined behavior
+           by accessing bytes beyond the heap allocation.  This implicit access
+           was seen for example with ISDOT() and GCC 5.1.1 at -O2.
+           Do not use alignof (FTSENT) here, since C11 prohibits
+           taking the alignment of a structure containing a flexible
+           array member.  */
+        len += alignof (max_align_t) - 1;
+        len &= ~ (alignof (max_align_t) - 1);
         if ((p = malloc(len)) == NULL)
                 return (NULL);
 

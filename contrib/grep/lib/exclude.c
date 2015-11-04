@@ -1,6 +1,6 @@
 /* exclude.c -- exclude file names
 
-   Copyright (C) 1992-1994, 1997, 1999-2007, 2009-2014 Free Software
+   Copyright (C) 1992-1994, 1997, 1999-2007, 2009-2015 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -392,7 +392,7 @@ exclude_fnmatch (char const *pattern, char const *f, int options)
   return matched;
 }
 
-bool
+static bool
 exclude_patopts (struct patopts const *opts, char const *f)
 {
   int options = opts->options;

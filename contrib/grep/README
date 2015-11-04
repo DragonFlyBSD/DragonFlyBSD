@@ -1,4 +1,4 @@
-  Copyright (C) 1992, 1997-2002, 2004-2014 Free Software Foundation, Inc.
+  Copyright (C) 1992, 1997-2002, 2004-2015 Free Software Foundation, Inc.
 
   Copying and distribution of this file, with or without modification,
   are permitted in any medium without royalty provided the copyright
@@ -23,6 +23,8 @@ will run more slowly, however.)
 See the files AUTHORS and THANKS for a list of authors and other contributors.
 
 See the file INSTALL for compilation and installation instructions.
+If there is no INSTALL file, this copy of the source code is intended
+for expert hackers; please see the file README-hacking.
 
 See the file NEWS for a description of major changes in this release.
 
@@ -45,9 +47,9 @@ The option -i does not work properly in some multibyte locales such as
 tr_TR.UTF-8 where the upper case and lower case forms of a character are not
 necessarily of the same byte length.
 
-Additional bug reports can be found at:
+A list of outstanding and resolved bugs can be found at:
 
-        http://savannah.gnu.org/bugs/?group=grep
+        http://debbugs.gnu.org/cgi/pkgreport.cgi?package=grep
 
 You can also browse the bug-grep mailing list archive at:
 

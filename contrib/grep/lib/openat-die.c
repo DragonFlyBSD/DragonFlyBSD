@@ -1,6 +1,6 @@
 /* Report a save- or restore-cwd failure in our openat replacement and then exit.
 
-   Copyright (C) 2005-2006, 2008-2014 Free Software Foundation, Inc.
+   Copyright (C) 2005-2006, 2008-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include "gettext.h"
 #define _(msgid) gettext (msgid)
 
-void
+_Noreturn void
 openat_save_fail (int errnum)
 {
 #ifndef GNULIB_LIBPOSIX
@@ -49,7 +49,7 @@ openat_save_fail (int errnum)
    during an openat emulation.  The caller must ensure that fd 2 is
    not a just-opened fd, even when openat_safer is not in use.  */
 
-void
+_Noreturn void
 openat_restore_fail (int errnum)
 {
 #ifndef GNULIB_LIBPOSIX

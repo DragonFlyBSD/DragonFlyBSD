@@ -1,5 +1,5 @@
 /* searchutils.c - helper subroutines for grep's matchers.
-   Copyright 1992, 1998, 2000, 2007, 2009-2014 Free Software Foundation, Inc.
+   Copyright 1992, 1998, 2000, 2007, 2009-2015 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,12 +17,16 @@
    02110-1301, USA.  */
 
 #include <config.h>
-#include <assert.h>
+
+#define SEARCH_INLINE _GL_EXTERN_INLINE
+#define SYSTEM_INLINE _GL_EXTERN_INLINE
 #include "search.h"
+
+#include <assert.h>
 
 #define NCHAR (UCHAR_MAX + 1)
 
-static size_t mbclen_cache[NCHAR];
+size_t mbclen_cache[NCHAR];
 
 void
 kwsinit (kwset_t *kwset)
@@ -218,7 +222,8 @@ build_mbclen_cache (void)
       char c = i;
       unsigned char uc = i;
       mbstate_t mbs = { 0 };
-      mbclen_cache[uc] = mbrlen (&c, 1, &mbs);
+      size_t len = mbrlen (&c, 1, &mbs);
+      mbclen_cache[uc] = len ? len : 1;
     }
 }
 
@@ -244,20 +249,17 @@ mb_goback (char const **mb_start, char const *cur, char const *end)
 
   while (p < cur)
     {
-      size_t mbclen = mbclen_cache[to_uchar (*p)];
+      size_t clen = mb_clen (p, end - p, &cur_state);
 
-      if (mbclen == (size_t) -2)
-        mbclen = mbrlen (p, end - p, &cur_state);
-
-      if (! (0 < mbclen && mbclen < (size_t) -2))
+      if ((size_t) -2 <= clen)
         {
-          /* An invalid sequence, or a truncated multibyte character, or
-             a null wide character.  Treat it as a single byte character.  */
-          mbclen = 1;
+          /* An invalid sequence, or a truncated multibyte character.
+             Treat it as a single byte character.  */
+          clen = 1;
           memset (&cur_state, 0, sizeof cur_state);
         }
       p0 = p;
-      p += mbclen;
+      p += clen;
     }
 
   *mb_start = p;
@@ -285,5 +287,6 @@ mb_next_wc (char const *cur, char const *end)
 {
   wchar_t wc;
   mbstate_t mbs = { 0 };
-  return mbrtowc (&wc, cur, end - cur, &mbs) < (size_t) -2 ? wc : WEOF;
+  return (end - cur != 0 && mbrtowc (&wc, cur, end - cur, &mbs) < (size_t) -2
+          ? wc : WEOF);
 }

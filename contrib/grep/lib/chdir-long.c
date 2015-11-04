@@ -1,5 +1,5 @@
 /* provide a chdir function that tries not to fail due to ENAMETOOLONG
-   Copyright (C) 2004-2014 Free Software Foundation, Inc.
+   Copyright (C) 2004-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@
 
 #include "chdir-long.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "assure.h"
 
 #ifndef PATH_MAX
 # error "compile this file only if your system defines PATH_MAX"
@@ -60,7 +61,7 @@ cdb_free (struct cd_buf const *cdb)
   if (0 <= cdb->fd)
     {
       bool close_fail = close (cdb->fd);
-      assert (! close_fail);
+      assure (! close_fail);
     }
 }
 
@@ -122,8 +123,8 @@ chdir_long (char *dir)
 
     /* If DIR is the empty string, then the chdir above
        must have failed and set errno to ENOENT.  */
-    assert (0 < len);
-    assert (PATH_MAX <= len);
+    assure (0 < len);
+    assure (PATH_MAX <= len);
 
     /* Count leading slashes.  */
     n_leading_slash = strspn (dir, "/");
@@ -158,8 +159,8 @@ chdir_long (char *dir)
         dir += n_leading_slash;
       }
 
-    assert (*dir != '/');
-    assert (dir <= dir_end);
+    assure (*dir != '/');
+    assure (dir <= dir_end);
 
     while (PATH_MAX <= dir_end - dir)
       {
@@ -175,7 +176,7 @@ chdir_long (char *dir)
           }
 
         *slash = '\0';
-        assert (slash - dir < PATH_MAX);
+        assure (slash - dir < PATH_MAX);
         err = cdb_advance_fd (&cdb, dir);
         *slash = '/';
         if (err != 0)
