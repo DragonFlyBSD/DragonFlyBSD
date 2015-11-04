@@ -1970,10 +1970,8 @@ unp_gc_checkmarks(struct file *fp, void *data)
 void
 unp_dispose(struct mbuf *m)
 {
-	lwkt_gettoken(&unp_token);
 	if (m)
 		unp_scan(m, unp_discard, NULL);
-	lwkt_reltoken(&unp_token);
 }
 
 static int
