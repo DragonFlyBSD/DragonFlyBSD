@@ -458,7 +458,6 @@ dmstrategy(struct dev_strategy_args *ap)
 			    PRIu64"\n", start - buf_start, end);
 			kprintf("start %010" PRIu64", end %010"
 			    PRIu64"\n", start, end);
-			kprintf("----------------------------------------\n");
 		}
 
 		if (bypass) {
