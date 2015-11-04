@@ -2228,6 +2228,8 @@ TO_REMOVE+=/usr/include/emulation/posix4
 TO_REMOVE+=/usr/libdata/gcc50/tgmath.h
 TO_REMOVE+=/usr/share/locale/*.UTF8
 TO_REMOVE+=/usr/include/lzma/lzma.h
+TO_REMOVE+=/usr/share/locale/en_US.ISO-8859-1
+TO_REMOVE+=/usr/share/locale/ja_JP.eucjp
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
