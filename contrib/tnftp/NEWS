@@ -1,0 +1,73 @@
+$NetBSD: NEWS,v 1.12 2015/10/04 06:20:58 lukem Exp $
+
+This is tnftp version 20151004.
+
+Changes in tnftp 20141104 to 20151004:
+
+	Implement '-x xferbufsize' to set xferbuf size.
+
+	Add Server Name Indication (SNI) support for https.
+
+	Increase buffer limit used for response handling.
+
+Changes in tnftp from 20141031 to 20141104:
+
+	Portability fixes.
+
+Changes in tnftp from 20130505 to 20141031:
+
+	Ignore special character behaviour in filenames not provided
+	by the user.
+	Fixes CVE-2014-8517.
+
+	Fix timeout on HTTP fetches.
+
+Changes in tnftp from 20100108 to 20130505:
+
+	Support https:// fetch if OpenSSL is available and enabled.
+
+	Allow -R to restart non-existent ftp:// URIs.
+
+	Parse HTTP 'Date' entries in the `C' locale rather than the user's.
+
+	When using the response to SYST to decide whether to default
+	to 'binary' be a lot less specific.
+
+	Portability fixes.
+
+Changes in tnftp from 20091122 to 20100108:
+
+	Portability fixes.
+
+Changes in tnftp from 20090606 to 20091122:
+
+	Portability fixes.
+
+Changes in tnftp from 20090520 to 20090606:
+
+	Portability fixes.
+
+Changes in tnftp from 20070806 to 20090520:
+
+	Fix intermittent "Alarm clock" error.
+
+	Add epsv6 and epsv to disable extended passive mode for IPv6 or
+	both IPv4 and IPv6 respectively.
+
+	Improve parsing of HTTP chunked transfers per RFC2616.
+
+	Use the service name to getaddrinfo() (along with the host name),
+	so that features such as DNS Service Discovery will work.
+
+	Fix various compiler warnings.
+
+Changes in tnftp from 20050625 to 20070806:
+
+	Implement '-s srcaddr' to set the local IP address for
+	all connections.
+
+	Support '-q quittime' when waiting for server replies.
+
+	Use IEC 60027-2 "KiB", "MiB" (etc) instead of "KB", "MB", ...
+
+	Portability fixes, including for FreeBSD, Mac OS X, and Solaris.
