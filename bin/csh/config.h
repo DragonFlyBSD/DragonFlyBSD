@@ -1,5 +1,5 @@
 /* config.h.  Generated from config.h.in by configure.  */
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define to the type of elements in the array set by `getgroups'. Usually
    this is either `int' or `gid_t'. */
@@ -212,7 +212,7 @@
 #define PACKAGE_NAME "tcsh"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "tcsh 6.18.01"
+#define PACKAGE_STRING "tcsh 6.19.00"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "tcsh"
@@ -221,7 +221,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "6.18.01"
+#define PACKAGE_VERSION "6.19.00"
 
 /* Define to 1 if the `setpgrp' function takes no argument. */
 /* #undef SETPGRP_VOID */

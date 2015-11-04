@@ -1,3 +1,5 @@
+.cvsignore
+.travis.yml
 BUGS
 FAQ
 Fixes
@@ -12,6 +14,8 @@ Ported
 README.imake
 WishList
 Y2K
+aclocal.m4
+bar
 config.guess
 config.h.in
 config.sub
@@ -107,7 +111,7 @@ config/vms
 config/win32
 config/xenix
 configure
-configure.in
+configure.ac
 csh-mode.el
 cygwin/
 eight-bit.me
@@ -115,6 +119,7 @@ glob.3
 host.defs
 imake.config
 install-sh
+m4/
 ma.setp.c
 mi.varargs.h
 mi.wait.h

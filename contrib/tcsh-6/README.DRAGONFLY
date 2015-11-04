@@ -4,10 +4,10 @@ TCSH
 Original source is availale from:
 ftp://ftp.astron.com/pub/tcsh/
 
-file = tcsh-6.18.01.tar.gz
-date = 13 February 2012
-size = 926872
-sha1 = eee2035645737197ff8059c84933a75d23cd76f9
+file = tcsh-6.19.00.tar.gz
+date = 21 May 2015
+size = 947135
+sha1 = cdb1abe319fab5d3caff101c393293e5b3607f0c
 
 A list of files removed is in README.DELETED
 
@@ -15,12 +15,8 @@ Local modifications applied to following files:
 	ed.init.c
 	ed.term.c
 	ed.term.h
-	ed.screen.c
-	gethost.c
 	sh.c
-	sh.h
 	sh.decls.h
 	sh.func.c
 	sh.init.c
 	sh.set.c
-	sh.term.h

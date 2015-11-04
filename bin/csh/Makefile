@@ -19,7 +19,7 @@ SRCS=	sh.c sh.dir.c sh.dol.c sh.err.c sh.exec.c sh.char.c \
 	sh.exp.c sh.file.c sh.func.c sh.glob.c sh.hist.c sh.init.c \
 	sh.lex.c sh.misc.c sh.parse.c sh.print.c sh.proc.c sh.sem.c \
 	sh.set.c sh.time.c sh.char.h sh.dir.h sh.proc.h sh.h
-SRCS+=	sh.decls.h glob.c glob.h mi.termios.c
+SRCS+=	sh.decls.h glob.c glob.h mi.termios.c dotlock.c
 SRCS+=	tw.decls.h tw.h tw.help.c tw.init.c tw.parse.c tw.spell.c \
 	tw.comp.c tw.color.c
 SRCS+=	ed.chared.c ed.decls.h ed.defns.c ed.h ed.init.c ed.inputl.c \
