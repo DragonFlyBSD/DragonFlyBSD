@@ -998,7 +998,7 @@ unp_detach(struct unpcb *unp)
 		 * in sofree, but if our receive buffer holds references
 		 * to descriptors that are now garbage, we will dispose
 		 * of those descriptor references after the garbage collector
-		 * gets them (resulting in a "panic: closef: count < 0").
+		 * gets them (resulting in a "panic: fdrop: invalid f_count").
 		 */
 		sorflush(so);
 		unp_gc();
@@ -1689,7 +1689,7 @@ done:
  * loops (i.e. when a socket is sent to another process over itself,
  * and more complex situations).
  *
- * NOT MPSAFE - TODO socket flush code and maybe closef.  Rest is MPSAFE.
+ * NOT MPSAFE - TODO socket flush code and maybe fdrop.  Rest is MPSAFE.
  */
 
 struct unp_gc_info {
@@ -1751,8 +1751,8 @@ unp_gc(void)
 	 * times -- consider the case of sockets A and B that contain
 	 * references to each other.  On a last close of some other socket,
 	 * we trigger a gc since the number of outstanding rights (unp_rights)
-	 * is non-zero.  If during the sweep phase the gc code un_discards,
-	 * we end up doing a (full) closef on the descriptor.  A closef on A
+	 * is non-zero.  If during the sweep phase the gc code unp_discards,
+	 * we end up doing a (full) fdrop on the descriptor.  A fdrop on A
 	 * results in the following chain.  Closef calls soo_close, which
 	 * calls soclose.   Soclose calls first (through the switch
 	 * uipc_usrreq) unp_detach, which re-invokes unp_gc.  Unp_gc simply
@@ -1762,17 +1762,17 @@ unp_gc(void)
 	 * to free up the rights that are queued in messages on the socket A,
 	 * i.e., the reference on B.  The sorflush calls via the dom_dispose
 	 * switch unp_dispose, which unp_scans with unp_discard.  This second
-	 * instance of unp_discard just calls closef on B.
+	 * instance of unp_discard just calls fdrop on B.
 	 *
 	 * Well, a similar chain occurs on B, resulting in a sorflush on B,
-	 * which results in another closef on A.  Unfortunately, A is already
+	 * which results in another fdrop on A.  Unfortunately, A is already
 	 * being closed, and the descriptor has already been marked with
 	 * SS_NOFDREF, and soclose panics at this point.
 	 *
 	 * Here, we first take an extra reference to each inaccessible
 	 * descriptor.  Then, we call sorflush ourself, since we know
 	 * it is a Unix domain socket anyhow.  After we destroy all the
-	 * rights carried in messages, we do a last closef to get rid
+	 * rights carried in messages, we do a last fdrop to get rid
 	 * of our extra reference.  This is the last close, and the
 	 * unp_detach etc will shut down the socket.
 	 *
@@ -1797,7 +1797,7 @@ unp_gc(void)
 				sorflush((struct socket *)(tfp->f_data));
 		}
 		for (i = info.index, fpp = info.extra_ref; --i >= 0; ++fpp)
-			closef(*fpp, NULL);
+			fdrop(*fpp);
 	} while (info.index == info.maxindex);
 
 	lwkt_reltoken(&unp_token);
@@ -2175,7 +2175,7 @@ unp_defdiscard_taskfunc(void *arg __unused, int pending __unused)
 		SLIST_REMOVE_HEAD(&unp_defdiscard_head, next);
 		spin_unlock(&unp_defdiscard_spin);
 
-		closef(d->fp, NULL);
+		fdrop(d->fp);
 		kfree(d, M_UNPCB);
 
 		spin_lock(&unp_defdiscard_spin);
