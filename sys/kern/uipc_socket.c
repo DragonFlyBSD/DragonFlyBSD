@@ -1250,6 +1250,7 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 	struct protosw *pr = so->so_proto;
 	int moff, type = 0;
 	size_t resid, orig_resid;
+	boolean_t free_rights = FALSE;
 
 	if (uio)
 		resid = uio->uio_resid;
@@ -1395,15 +1396,22 @@ dontblock:
 				*controlp = m_copy(m, 0, m->m_len);
 			m = m->m_next;	/* XXX race */
 		} else {
+			const struct cmsghdr *cm = mtod(m, struct cmsghdr *);
+
 			if (controlp) {
 				n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
 				if (pr->pr_domain->dom_externalize &&
-				    mtod(m, struct cmsghdr *)->cmsg_type ==
-				    SCM_RIGHTS)
-				   error = (*pr->pr_domain->dom_externalize)(m, flags);
+				    cm->cmsg_level == SOL_SOCKET &&
+				    cm->cmsg_type == SCM_RIGHTS) {
+					error = pr->pr_domain->dom_externalize
+					    (m, flags);
+				}
 				*controlp = m;
 				m = n;
 			} else {
+				if (cm->cmsg_level == SOL_SOCKET &&
+				    cm->cmsg_type == SCM_RIGHTS)
+					free_rights = TRUE;
 				m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
 			}
 		}
@@ -1564,8 +1572,12 @@ release:
 	ssb_unlock(&so->so_rcv);
 done:
 	lwkt_reltoken(&so->so_rcv.ssb_token);
-	if (free_chain)
+	if (free_chain) {
+		if (free_rights && (pr->pr_flags & PR_RIGHTS) &&
+		    pr->pr_domain->dom_dispose)
+			pr->pr_domain->dom_dispose(free_chain);
 		m_freem(free_chain);
+	}
 	return (error);
 }
 

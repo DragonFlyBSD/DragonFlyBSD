@@ -100,22 +100,27 @@ test_recv_desc(int s)
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s [-d]\n", cmd);
+	fprintf(stderr, "%s [-d] [-s]\n", cmd);
 	exit(1);
 }
 
 int
 main(int argc, char *argv[])
 {
-	int s[2], fd, status, n, discard;
+	int s[2], fd, status, n, discard, skipfd;
 	int opt;
 	off_t ofs;
 
 	discard = 0;
-	while ((opt = getopt(argc, argv, "d")) != -1) {
+	skipfd = 0;
+	while ((opt = getopt(argc, argv, "ds")) != -1) {
 		switch (opt) {
 		case 'd':
 			discard = 1;
+			break;
+
+		case 's':
+			skipfd = 1;
 			break;
 
 		default:
@@ -128,10 +133,19 @@ main(int argc, char *argv[])
 
 	if (fork() == 0) {
 		close(s[0]);
-		if (!discard)
+		if (!discard && !skipfd) {
 			test_recv_desc(s[1]);
-		else
+		} else if (skipfd) {
+			int buf;
+
+			fprintf(stderr, "skipfd\n");
+			n = read(s[1], &buf, sizeof(buf));
+			if (n < 0)
+				err(1, "read failed");
+		} else {
+			fprintf(stderr, "discard msg\n");
 			sleep(5);
+		}
 		exit(0);
 	}
 	close(s[1]);
