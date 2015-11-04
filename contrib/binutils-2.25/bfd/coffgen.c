@@ -146,8 +146,9 @@ make_a_section_from_file (bfd *abfd,
   /* Compress/decompress DWARF debug sections with names: .debug_* and
      .zdebug_*, after the section flags is set.  */
   if ((flags & SEC_DEBUGGING)
+      && strlen (name) > 7
       && ((name[1] == 'd' && name[6] == '_')
-	  || (name[1] == 'z' && name[7] == '_')))
+	  || (strlen (name) > 8 && name[1] == 'z' && name[7] == '_')))
     {
       enum { nothing, compress, decompress } action = nothing;
       char *new_name = NULL;
@@ -365,6 +366,10 @@ coff_object_p (bfd *abfd)
 	  bfd_release (abfd, opthdr);
 	  return NULL;
 	}
+      /* PR 17512: file: 11056-1136-0.004.  */
+      if (internal_f.f_opthdr < aoutsz)
+	memset (((char *) opthdr) + internal_f.f_opthdr, 0, aoutsz - internal_f.f_opthdr);
+
       bfd_coff_swap_aouthdr_in (abfd, opthdr, (void *) &internal_a);
       bfd_release (abfd, opthdr);
     }
@@ -463,7 +468,10 @@ _bfd_coff_internal_syment_name (bfd *abfd,
 	  if (strings == NULL)
 	    return NULL;
 	}
-      if (sym->_n._n_n._n_offset >= obj_coff_strings_len (abfd))
+      /* PR 17910: Only check for string overflow if the length has been set.
+	 Some DLLs, eg those produced by Visual Studio, may not set the length field.  */
+      if (obj_coff_strings_len (abfd) > 0
+	  && sym->_n._n_n._n_offset >= obj_coff_strings_len (abfd))
 	return NULL;
       return strings + sym->_n._n_n._n_offset;
     }
@@ -760,8 +768,9 @@ coff_renumber_symbols (bfd *bfd_ptr, int *first_undef)
 
   for (symbol_index = 0; symbol_index < symbol_count; symbol_index++)
     {
-      coff_symbol_type *coff_symbol_ptr = coff_symbol_from (bfd_ptr, symbol_ptr_ptr[symbol_index]);
+      coff_symbol_type *coff_symbol_ptr;
 
+      coff_symbol_ptr = coff_symbol_from (bfd_ptr, symbol_ptr_ptr[symbol_index]);
       symbol_ptr_ptr[symbol_index]->udata.i = symbol_index;
       if (coff_symbol_ptr && coff_symbol_ptr->native)
 	{
@@ -805,9 +814,9 @@ coff_mangle_symbols (bfd *bfd_ptr)
 
   for (symbol_index = 0; symbol_index < symbol_count; symbol_index++)
     {
-      coff_symbol_type *coff_symbol_ptr =
-      coff_symbol_from (bfd_ptr, symbol_ptr_ptr[symbol_index]);
+      coff_symbol_type *coff_symbol_ptr;
 
+      coff_symbol_ptr = coff_symbol_from (bfd_ptr, symbol_ptr_ptr[symbol_index]);
       if (coff_symbol_ptr && coff_symbol_ptr->native)
 	{
 	  int i;
@@ -1711,14 +1720,14 @@ _bfd_coff_read_string_table (bfd *abfd)
     }
 
   strings = (char *) bfd_malloc (strsize + 1);
+  if (strings == NULL)
+    return NULL;
+
   /* PR 17521 file: 079-54929-0.004.
      A corrupt file could contain an index that points into the first
      STRING_SIZE_SIZE bytes of the string table, so make sure that
      they are zero.  */
   memset (strings, 0, STRING_SIZE_SIZE);
-
-  if (strings == NULL)
-    return NULL;
 
   if (bfd_bread (strings + STRING_SIZE_SIZE, strsize - STRING_SIZE_SIZE, abfd)
       != strsize - STRING_SIZE_SIZE)
@@ -1808,6 +1817,16 @@ coff_get_normalized_symtab (bfd *abfd)
       symbol_ptr = internal_ptr;
       internal_ptr->is_sym = TRUE;
 
+      /* PR 17512: file: 1353-1166-0.004.  */
+      if (symbol_ptr->u.syment.n_sclass == C_FILE
+	  && symbol_ptr->u.syment.n_numaux > 0
+	  && raw_src + symesz + symbol_ptr->u.syment.n_numaux
+	  * symesz > raw_end)
+	{
+	  bfd_release (abfd, internal);
+	  return NULL;
+	}
+
       for (i = 0;
 	   i < symbol_ptr->u.syment.n_numaux;
 	   i++)
@@ -1815,7 +1834,10 @@ coff_get_normalized_symtab (bfd *abfd)
 	  internal_ptr++;
 	  /* PR 17512: Prevent buffer overrun.  */
 	  if (internal_ptr >= internal_end)
-	    return NULL;
+	    {
+	      bfd_release (abfd, internal);
+	      return NULL;
+	    }
 
 	  raw_src += symesz;
 	  bfd_coff_swap_aux_in (abfd, (void *) raw_src,
@@ -1823,6 +1845,7 @@ coff_get_normalized_symtab (bfd *abfd)
 				symbol_ptr->u.syment.n_sclass,
 				(int) i, symbol_ptr->u.syment.n_numaux,
 				&(internal_ptr->u.auxent));
+
 	  internal_ptr->is_sym = FALSE;
 	  coff_pointerize_aux (abfd, internal, symbol_ptr, i,
 			       internal_ptr);

@@ -531,6 +531,9 @@
 #ifndef elf_backend_count_relocs
 #define elf_backend_count_relocs		NULL
 #endif
+#ifndef elf_backend_sort_relocs_p
+#define elf_backend_sort_relocs_p		NULL
+#endif
 #ifndef elf_backend_grok_prstatus
 #define elf_backend_grok_prstatus		NULL
 #endif
@@ -733,6 +736,7 @@ static struct elf_backend_data elfNN_bed =
   elf_backend_ignore_undef_symbol,
   elf_backend_emit_relocs,
   elf_backend_count_relocs,
+  elf_backend_sort_relocs_p,
   elf_backend_grok_prstatus,
   elf_backend_grok_psinfo,
   elf_backend_write_core_note,

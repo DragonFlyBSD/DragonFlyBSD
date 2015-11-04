@@ -239,6 +239,8 @@ bfd_get_full_section_contents (bfd *abfd, sec_ptr sec, bfd_byte **ptr)
 #endif
 
     case COMPRESS_SECTION_DONE:
+      if (sec->contents == NULL)
+	return FALSE;
       if (p == NULL)
 	{
 	  p = (bfd_byte *) bfd_malloc (sz);
@@ -246,7 +248,9 @@ bfd_get_full_section_contents (bfd *abfd, sec_ptr sec, bfd_byte **ptr)
 	    return FALSE;
 	  *ptr = p;
 	}
-      memcpy (p, sec->contents, sz);
+      /* PR 17512; file: 5bc29788.  */
+      if (p != sec->contents)
+	memcpy (p, sec->contents, sz);
       return TRUE;
 
     default:

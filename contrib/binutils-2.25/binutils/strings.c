@@ -164,6 +164,7 @@ main (int argc, char **argv)
 
   program_name = argv[0];
   xmalloc_set_program_name (program_name);
+  bfd_set_error_program_name (program_name);
 
   expandargv (&argc, &argv);
 
@@ -578,14 +579,14 @@ print_strings (const char *filename, FILE *stream, file_ptr address,
 	switch (address_radix)
 	  {
 	  case 8:
-#if __STDC_VERSION__ >= 199901L || (defined(__GNUC__) && __GNUC__ >= 2)
+#ifdef HAVE_LONG_LONG
 	    if (sizeof (start) > sizeof (long))
 	      {
-#ifndef __MSVCRT__
+# ifndef __MSVCRT__
 	        printf ("%7llo ", (unsigned long long) start);
-#else
+# else
 	        printf ("%7I64o ", (unsigned long long) start);
-#endif
+# endif
 	      }
 	    else
 #elif !BFD_HOST_64BIT_LONG
@@ -597,14 +598,14 @@ print_strings (const char *filename, FILE *stream, file_ptr address,
 	    break;
 
 	  case 10:
-#if __STDC_VERSION__ >= 199901L || (defined(__GNUC__) && __GNUC__ >= 2)
+#ifdef HAVE_LONG_LONG
 	    if (sizeof (start) > sizeof (long))
 	      {
-#ifndef __MSVCRT__
+# ifndef __MSVCRT__
 	        printf ("%7lld ", (unsigned long long) start);
-#else
+# else
 	        printf ("%7I64d ", (unsigned long long) start);
-#endif
+# endif
 	      }
 	    else
 #elif !BFD_HOST_64BIT_LONG
@@ -616,14 +617,14 @@ print_strings (const char *filename, FILE *stream, file_ptr address,
 	    break;
 
 	  case 16:
-#if __STDC_VERSION__ >= 199901L || (defined(__GNUC__) && __GNUC__ >= 2)
+#ifdef HAVE_LONG_LONG
 	    if (sizeof (start) > sizeof (long))
 	      {
-#ifndef __MSVCRT__
+# ifndef __MSVCRT__
 	        printf ("%7llx ", (unsigned long long) start);
-#else
+# else
 	        printf ("%7I64x ", (unsigned long long) start);
-#endif
+# endif
 	      }
 	    else
 #elif !BFD_HOST_64BIT_LONG

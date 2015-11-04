@@ -940,15 +940,19 @@ bfd_alloc (bfd *abfd, bfd_size_type size)
   unsigned long ul_size = (unsigned long) size;
 
   if (size != ul_size
-      /* A small negative size can result in objalloc_alloc allocating just
-	 1 byte of memory, but the caller will be expecting more.  So catch
-	 this case here.  */
-      || (size != 0 && (((ul_size + OBJALLOC_ALIGN - 1) &~ (OBJALLOC_ALIGN - 1)) == 0)))
+      /* Note - although objalloc_alloc takes an unsigned long as its
+	 argument, internally the size is treated as a signed long.  This can
+	 lead to problems where, for example, a request to allocate -1 bytes
+	 can result in just 1 byte being allocated, rather than
+	 ((unsigned long) -1) bytes.  Also memory checkers will often
+	 complain about attempts to allocate a negative amount of memory.
+	 So to stop these problems we fail if the size is negative.  */
+      || ((signed long) ul_size) < 0)
     {
       bfd_set_error (bfd_error_no_memory);
       return NULL;
     }
-							
+
   ret = objalloc_alloc ((struct objalloc *) abfd->memory, ul_size);
   if (ret == NULL)
     bfd_set_error (bfd_error_no_memory);

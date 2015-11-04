@@ -29,7 +29,8 @@ extern void *read_debugging_info (bfd *, asymbol **, long, bfd_boolean);
 /* Routine used to print generic debugging information.  */
 
 extern bfd_boolean print_debugging_info
-  (FILE *, void *, bfd *, asymbol **, void *, bfd_boolean);
+  (FILE *, void *, bfd *, asymbol **,
+   char * (*) (struct bfd *, const char *, int), bfd_boolean);
 
 /* Routines used to read and write stabs information.  */
 

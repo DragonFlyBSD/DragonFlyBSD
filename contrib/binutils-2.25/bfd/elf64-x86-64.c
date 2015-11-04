@@ -54,7 +54,7 @@
    special_function, name, partial_inplace, src_mask, dst_mask, pcrel_offset.  */
 static reloc_howto_type x86_64_elf_howto_table[] =
 {
-  HOWTO(R_X86_64_NONE, 0, 0, 0, FALSE, 0, complain_overflow_dont,
+  HOWTO(R_X86_64_NONE, 0, 3, 0, FALSE, 0, complain_overflow_dont,
 	bfd_elf_generic_reloc, "R_X86_64_NONE",	FALSE, 0x00000000, 0x00000000,
 	FALSE),
   HOWTO(R_X86_64_64, 0, 4, 64, FALSE, 0, complain_overflow_bitfield,
@@ -302,7 +302,7 @@ elf_x86_64_reloc_type_lookup (bfd *abfd,
 	return elf_x86_64_rtype_to_howto (abfd,
 					  x86_64_reloc_map[i].elf_reloc_val);
     }
-  return 0;
+  return NULL;
 }
 
 static reloc_howto_type *
@@ -2431,7 +2431,7 @@ elf_x86_64_adjust_dynamic_symbol (struct bfd_link_info *info,
 
   s = htab->sdynbss;
 
-  return _bfd_elf_adjust_dynamic_copy (h, s);
+  return _bfd_elf_adjust_dynamic_copy (info, h, s);
 }
 
 /* Allocate space in .plt, .got and associated reloc sections for
@@ -2677,13 +2677,23 @@ elf_x86_64_allocate_dynrelocs (struct elf_link_hash_entry *h, void * inf)
 		       && ! bfd_elf_link_record_dynamic_symbol (info, h))
 		return FALSE;
 	    }
-	  /* For PIE, discard space for relocs against symbols which
-	     turn out to need copy relocs.  */
+	  /* For PIE, discard space for pc-relative relocs against
+	     symbols which turn out to need copy relocs.  */
 	  else if (info->executable
 		   && (h->needs_copy || eh->needs_copy)
 		   && h->def_dynamic
 		   && !h->def_regular)
-	    eh->dyn_relocs = NULL;
+	    {
+	      struct elf_dyn_relocs **pp;
+
+	      for (pp = &eh->dyn_relocs; (p = *pp) != NULL; )
+		{
+		  if (p->pc_count != 0)
+		    *pp = p->next;
+		  else
+		    pp = &p->next;
+		}
+	    }
 	}
     }
   else if (ELIMINATE_COPY_RELOCS)
@@ -5400,7 +5410,7 @@ bad_return:
   if (plt_sym_val == NULL)
     goto bad_return;
 
-  for (i = 0; i < count; i++, p++)
+  for (i = 0; i < count; i++)
     plt_sym_val[i] = -1;
 
   plt_offset = bed->plt_entry_size;
@@ -5408,6 +5418,10 @@ bad_return:
   for (i = 0; i < count; i++, p++)
     {
       long reloc_index;
+
+      /* Skip unknown relocation.  */
+      if (p->howto == NULL)
+	continue;
 
       if (p->howto->type != R_X86_64_JUMP_SLOT
 	  && p->howto->type != R_X86_64_IRELATIVE)

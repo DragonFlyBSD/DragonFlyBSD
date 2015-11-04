@@ -4100,6 +4100,8 @@ Target_x86_64<size>::Relocate::tls_ie_to_le(
       // movq
       if (op1 == 0x4c)
 	view[-3] = 0x49;
+      else if (size == 32 && op1 == 0x44)
+	view[-3] = 0x41;
       view[-2] = 0xc7;
       view[-1] = 0xc0 | reg;
     }
@@ -4108,6 +4110,8 @@ Target_x86_64<size>::Relocate::tls_ie_to_le(
       // Special handling for %rsp.
       if (op1 == 0x4c)
 	view[-3] = 0x49;
+      else if (size == 32 && op1 == 0x44)
+	view[-3] = 0x41;
       view[-2] = 0x81;
       view[-1] = 0xc0 | reg;
     }
@@ -4116,6 +4120,8 @@ Target_x86_64<size>::Relocate::tls_ie_to_le(
       // addq
       if (op1 == 0x4c)
 	view[-3] = 0x4d;
+      else if (size == 32 && op1 == 0x44)
+	view[-3] = 0x45;
       view[-2] = 0x8d;
       view[-1] = 0x80 | reg | (reg << 3);
     }
@@ -4457,6 +4463,14 @@ Target_x86_64<size>::do_ehframe_datarel_base() const
 // code.  We have to change the function so that it always ensures
 // that it has enough stack space to run some random function.
 
+static const unsigned char cmp_insn_32[] = { 0x64, 0x3b, 0x24, 0x25 };
+static const unsigned char lea_r10_insn_32[] = { 0x44, 0x8d, 0x94, 0x24 };
+static const unsigned char lea_r11_insn_32[] = { 0x44, 0x8d, 0x9c, 0x24 };
+
+static const unsigned char cmp_insn_64[] = { 0x64, 0x48, 0x3b, 0x24, 0x25 };
+static const unsigned char lea_r10_insn_64[] = { 0x4c, 0x8d, 0x94, 0x24 };
+static const unsigned char lea_r11_insn_64[] = { 0x4c, 0x8d, 0x9c, 0x24 };
+
 template<int size>
 void
 Target_x86_64<size>::do_calls_non_split(Relobj* object, unsigned int shndx,
@@ -4467,25 +4481,40 @@ Target_x86_64<size>::do_calls_non_split(Relobj* object, unsigned int shndx,
 					std::string* from,
 					std::string* to) const
 {
+  const char* const cmp_insn = reinterpret_cast<const char*>
+      (size == 32 ? cmp_insn_32 : cmp_insn_64);
+  const char* const lea_r10_insn = reinterpret_cast<const char*>
+      (size == 32 ? lea_r10_insn_32 : lea_r10_insn_64);
+  const char* const lea_r11_insn = reinterpret_cast<const char*>
+      (size == 32 ? lea_r11_insn_32 : lea_r11_insn_64);
+
+  const size_t cmp_insn_len =
+      (size == 32 ? sizeof(cmp_insn_32) : sizeof(cmp_insn_64));
+  const size_t lea_r10_insn_len =
+      (size == 32 ? sizeof(lea_r10_insn_32) : sizeof(lea_r10_insn_64));
+  const size_t lea_r11_insn_len =
+      (size == 32 ? sizeof(lea_r11_insn_32) : sizeof(lea_r11_insn_64));
+  const size_t nop_len = (size == 32 ? 7 : 8);
+
   // The function starts with a comparison of the stack pointer and a
   // field in the TCB.  This is followed by a jump.
 
   // cmp %fs:NN,%rsp
-  if (this->match_view(view, view_size, fnoffset, "\x64\x48\x3b\x24\x25", 5)
-      && fnsize > 9)
+  if (this->match_view(view, view_size, fnoffset, cmp_insn, cmp_insn_len)
+      && fnsize > nop_len + 1)
     {
       // We will call __morestack if the carry flag is set after this
       // comparison.  We turn the comparison into an stc instruction
       // and some nops.
       view[fnoffset] = '\xf9';
-      this->set_view_to_nop(view, view_size, fnoffset + 1, 8);
+      this->set_view_to_nop(view, view_size, fnoffset + 1, nop_len);
     }
   // lea NN(%rsp),%r10
   // lea NN(%rsp),%r11
   else if ((this->match_view(view, view_size, fnoffset,
-			     "\x4c\x8d\x94\x24", 4)
+			     lea_r10_insn, lea_r10_insn_len)
 	    || this->match_view(view, view_size, fnoffset,
-				"\x4c\x8d\x9c\x24", 4))
+				lea_r11_insn, lea_r11_insn_len))
 	   && fnsize > 8)
     {
       // This is loading an offset from the stack pointer for a

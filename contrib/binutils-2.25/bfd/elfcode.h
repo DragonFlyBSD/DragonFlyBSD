@@ -1501,7 +1501,9 @@ elf_slurp_reloc_table (bfd *abfd,
       rel_hdr2 = d->rela.hdr;
       reloc_count2 = rel_hdr2 ? NUM_SHDR_ENTRIES (rel_hdr2) : 0;
 
-      BFD_ASSERT (asect->reloc_count == reloc_count + reloc_count2);
+      /* PR 17512: file: 0b4f81b7.  */
+      if (asect->reloc_count != reloc_count + reloc_count2)
+	return FALSE;
       BFD_ASSERT ((rel_hdr && asect->rel_filepos == rel_hdr->sh_offset)
 		  || (rel_hdr2 && asect->rel_filepos == rel_hdr2->sh_offset));
 
