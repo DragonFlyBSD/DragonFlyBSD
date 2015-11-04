@@ -51,7 +51,7 @@ MALLOC_DEFINE(M_DMSTRIPE, "dm_striped", "Device Mapper Target Striped");
 struct target_stripe_dev {
 	dm_pdev_t *pdev;
 	uint64_t offset;
-	int num_error;  /* not used */
+	int num_error;
 };
 
 typedef struct target_stripe_config {
@@ -176,7 +176,7 @@ dm_target_stripe_info(void *target_config)
 	for (i = 0; i < tsc->stripe_num; i++) {
 		ret = ksnprintf(ptr, len, "%s ",
 			tsc->stripe_devs[i].pdev->udev_name);
-		if (tsc->stripe_devs[i].num_error)
+		if (tsc->stripe_devs[i].num_error) /* no lock */
 			buf[i] = 'D';
 		else
 			buf[i] = 'A';
@@ -227,6 +227,34 @@ dm_target_stripe_table(void *target_config)
 	return params;
 }
 
+static void
+dm_target_stripe_iodone(struct bio *bio)
+{
+	struct bio *obio;
+	struct buf *bp;
+	dm_target_stripe_config_t *tsc;
+
+	bp = bio->bio_buf;
+	tsc = bio->bio_caller_info1.ptr;
+
+	if (bp->b_error) {
+		int devnr;
+		uint64_t blkno, stripe;
+
+		blkno = bio->bio_offset / DEV_BSIZE;
+		stripe = blkno / tsc->stripe_chunksize;
+		devnr = stripe % tsc->stripe_num;
+		KKASSERT(devnr < MAX_STRIPES);
+		tsc->stripe_devs[devnr].num_error++;
+
+		aprint_debug("stripe_iodone: device=%d error=%d\n",
+			devnr, bp->b_error);
+	}
+
+	obio = pop_bio(bio);
+	biodone(obio);
+}
+
 /*
  * Strategy routine called from dm_strategy.
  */
@@ -235,7 +263,9 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
 	dm_target_stripe_config_t *tsc;
 	struct bio *bio = &bp->b_bio1;
+	struct bio *nbio;
 	struct buf *nestbuf;
+	struct target_stripe_dev *dev;
 	uint64_t blkno, blkoff;
 	uint64_t stripe, blknr;
 	uint32_t stripe_off, stripe_rest, num_blks, issue_blks;
@@ -268,6 +298,7 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 			/* where we are inside the stripe */
 			devnr = stripe % tsc->stripe_num;
 			blknr = stripe / tsc->stripe_num;
+			dev = &tsc->stripe_devs[devnr];
 
 			/* how much is left before we hit a boundary */
 			stripe_rest = tsc->stripe_chunksize - stripe_off;
@@ -280,15 +311,16 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 			nestiobuf_add(bio, nestbuf, blkoff,
 					issue_blks * DEV_BSIZE, NULL);
 
-			/* I need number of bytes. */
-			nestbuf->b_bio1.bio_offset =
-				blknr * tsc->stripe_chunksize + stripe_off;
-			nestbuf->b_bio1.bio_offset +=
-				tsc->stripe_devs[devnr].offset;
-			nestbuf->b_bio1.bio_offset *= DEV_BSIZE;
+			/* push bio for striped iodone callback */
+			nbio = push_bio(&nestbuf->b_bio1);
+			nbio->bio_offset = blknr * tsc->stripe_chunksize;
+			nbio->bio_offset += stripe_off;
+			nbio->bio_offset += dev->offset;
+			nbio->bio_offset *= DEV_BSIZE;
+			nbio->bio_caller_info1.ptr = tsc;
+			nbio->bio_done = dm_target_stripe_iodone;
 
-			vn_strategy(tsc->stripe_devs[devnr].pdev->pdev_vnode,
-				    &nestbuf->b_bio1);
+			vn_strategy(dev->pdev->pdev_vnode, nbio);
 
 			blkno += issue_blks;
 			blkoff += issue_blks * DEV_BSIZE;
@@ -299,13 +331,19 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	case BUF_CMD_FLUSH:
 		nestiobuf_init(bio);
 		for (devnr = 0; devnr < tsc->stripe_num; ++devnr) {
+			dev = &tsc->stripe_devs[devnr];
 			nestbuf = getpbuf(NULL);
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf, 0, 0, NULL);
-			nestbuf->b_bio1.bio_offset = 0;
-			vn_strategy(tsc->stripe_devs[devnr].pdev->pdev_vnode,
-				    &nestbuf->b_bio1);
+
+			/* push bio for striped iodone callback */
+			nbio = push_bio(&nestbuf->b_bio1);
+			nbio->bio_offset = 0;
+			nbio->bio_caller_info1.ptr = tsc;
+			nbio->bio_done = dm_target_stripe_iodone;
+
+			vn_strategy(dev->pdev->pdev_vnode, nbio);
 		}
 		nestiobuf_start(bio);
 		break;
