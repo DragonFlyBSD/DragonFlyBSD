@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.dir.c,v 3.82 2011/10/16 16:25:05 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/sh.dir.c,v 3.84 2014/10/28 18:40:46 christos Exp $ */
 /*
  * sh.dir.c: Directory manipulation functions
  */
@@ -33,7 +33,7 @@
 #include "sh.h"
 #include "ed.h"
 
-RCSID("$tcsh: sh.dir.c,v 3.82 2011/10/16 16:25:05 christos Exp $")
+RCSID("$tcsh: sh.dir.c,v 3.84 2014/10/28 18:40:46 christos Exp $")
 
 /*
  * C Shell - directory management
@@ -501,7 +501,9 @@ dochngd(Char **v, struct command *c)
     cp = (dflag & DIR_OLD) ? varval(STRowd) : *v;
 
     if (cp == NULL) {
-	if ((cp = varval(STRhome)) == STRNULL || *cp == 0)
+	if (!cdtohome)
+	    stderror(ERR_NAME | ERR_TOOFEW);
+	else if ((cp = varval(STRhome)) == STRNULL || *cp == 0)
 	    stderror(ERR_NAME | ERR_NOHOMEDIR);
 	if (chdir(short2str(cp)) < 0)
 	    stderror(ERR_NAME | ERR_CANTCHANGE);

@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.time.c,v 3.35 2010/12/09 15:39:29 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/sh.time.c,v 3.36 2013/03/18 21:00:46 christos Exp $ */
 /*
  * sh.time.c: Shell time keeping and printing.
  */
@@ -32,7 +32,7 @@
  */
 #include "sh.h"
 
-RCSID("$tcsh: sh.time.c,v 3.35 2010/12/09 15:39:29 christos Exp $")
+RCSID("$tcsh: sh.time.c,v 3.36 2013/03/18 21:00:46 christos Exp $")
 
 #ifdef SUNOS4
 # include <machine/param.h>
@@ -158,12 +158,12 @@ donice(Char **v, struct command *c)
 	nval = 4;
     else if (*v	== 0 &&	any("+-", cp[0]))
 	nval = getn(cp);
-#ifdef HAVE_SETPRIORITY
+#if defined(HAVE_SETPRIORITY) && defined(PRIO_PROCESS)
     if (setpriority(PRIO_PROCESS, 0, nval) == -1 && errno)
 	stderror(ERR_SYSTEM, "setpriority", strerror(errno));
-#else /* !HAVE_SETPRIORITY */
+#else /* !HAVE_SETPRIORITY || !PRIO_PROCESS */
     (void) nice(nval);
-#endif /* HAVE_SETPRIORITY */
+#endif /* HAVE_SETPRIORITY && PRIO_PROCESS */
 }
 
 #ifdef BSDTIMES

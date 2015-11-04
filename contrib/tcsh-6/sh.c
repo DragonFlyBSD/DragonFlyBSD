@@ -1,4 +1,4 @@
-/* $Header: /p/tcsh/cvsroot/tcsh/sh.c,v 3.174 2011/11/29 18:38:54 christos Exp $ */
+/* $Header: /p/tcsh/cvsroot/tcsh/sh.c,v 3.185 2015/05/10 13:28:54 christos Exp $ */
 /*
  * sh.c: Main shell routines
  */
@@ -39,7 +39,7 @@ char    copyright[] =
  All rights reserved.\n";
 #endif /* not lint */
 
-RCSID("$tcsh: sh.c,v 3.174 2011/11/29 18:38:54 christos Exp $")
+RCSID("$tcsh: sh.c,v 3.185 2015/05/10 13:28:54 christos Exp $")
 
 #include "tc.h"
 #include "ed.h"
@@ -78,7 +78,8 @@ extern int NLSMapsAreInited;
  * ported to Apple Unix (TM) (OREO)  26 -- 29 Jun 1987
  */
 
-jmp_buf_t reslab;
+jmp_buf_t reslab IZERO_STRUCT;
+struct wordent paraml IZERO_STRUCT;
 
 static const char tcshstr[] = "tcsh";
 
@@ -250,10 +251,11 @@ main(int argc, char **argv)
     int osetintr;
     struct sigaction oparintr;
 
-    (void)memset(&reslab, 0, sizeof(reslab));
 #ifdef WINNT_NATIVE
     nt_init();
 #endif /* WINNT_NATIVE */
+
+    (void)memset(&reslab, 0, sizeof(reslab));
 #if defined(NLS_CATALOGS) && defined(LC_MESSAGES)
     (void) setlocale(LC_MESSAGES, "");
 #endif /* NLS_CATALOGS && LC_MESSAGES */
@@ -355,6 +357,7 @@ main(int argc, char **argv)
 
     /* Default history size to 100 */
     setcopy(STRhistory, str2short("100"), VAR_READWRITE);
+    sethistory(100);
 
     tempv = argv;
     ffile = SAVE(tempv[0]);
@@ -477,6 +480,9 @@ main(int argc, char **argv)
      */
     initdesc();
 
+    cdtohome = 1;
+    setv(STRcdtohome, SAVE(""), VAR_READWRITE);
+
     /*
      * Get and set the tty now
      */
@@ -493,6 +499,7 @@ main(int argc, char **argv)
     }
     else
 	setv(STRtty, cp = SAVE(""), VAR_READWRITE);
+
     /*
      * Initialize the shell variables. ARGV and PROMPT are initialized later.
      * STATUS is also munged in several places. CHILD is munged when
@@ -797,6 +804,8 @@ main(int argc, char **argv)
 #ifdef COLOR_LS_F
     if ((tcp = getenv("LS_COLORS")) != NULL)
 	parseLS_COLORS(str2short(tcp));
+    if ((tcp = getenv("LSCOLORS")) != NULL)
+	parseLSCOLORS(str2short(tcp));
 #endif /* COLOR_LS_F */
 
     doldol = putn((tcsh_number_t)getpid());	/* For $$ */
@@ -818,7 +827,7 @@ main(int argc, char **argv)
 #else /* !WINNT_NATIVE */
 #ifdef HAVE_MKSTEMP
     {
-	char *tmpdir = getenv ("TMPDIR");
+	const char *tmpdir = getenv ("TMPDIR");
 	if (!tmpdir)
 	    tmpdir = "/tmp";
 	shtemp = Strspl(SAVE(tmpdir), SAVE("/sh" TMP_TEMPLATE)); /* For << */
@@ -1215,14 +1224,14 @@ main(int argc, char **argv)
 
 #ifdef NeXT
 	    /* NeXT 2.0 /usr/etc/rlogind, does not set our process group! */
-	    if (shpgrp == 0) {
+	    if (f != -1 && shpgrp == 0) {
 	        shpgrp = getpid();
 		(void) setpgid(0, shpgrp);
 	        (void) tcsetpgrp(f, shpgrp);
 	    }
 #endif /* NeXT */
 #ifdef BSDJOBS			/* if we have tty job control */
-	    if (grabpgrp(f, shpgrp) != -1) {
+	    if (f != -1 && grabpgrp(f, shpgrp) != -1) {
 		/*
 		 * Thanks to Matt Day for the POSIX references, and to
 		 * Paul Close for the SGI clarification.
@@ -1904,6 +1913,8 @@ pintr1(int wantnl)
     {
 	(void) Cookedmode();
 	GettingInput = 0;
+	if (evalvec)
+	    doneinp = 1;
     }
     drainoline();
 #ifdef HAVE_GETPWENT
@@ -2178,6 +2189,7 @@ dosource(Char **t, struct command *c)
     cleanup_push(file, xfree);
     xfree(f);
     t = glob_all_or_error(t);
+    cleanup_push(t, blk_cleanup);
     if ((!srcfile(file, 0, hflg, t)) && (!hflg) && (!bequiet))
 	stderror(ERR_SYSTEM, file, strerror(errno));
     cleanup_until(file);

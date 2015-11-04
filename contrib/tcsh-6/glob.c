@@ -433,6 +433,7 @@ glob(const char *pattern, int flags, int (*errfunc) (const char *, int),
 	    dest = copy;
 	    src = pattern;
 	    while (*src != EOS) {
+		/* Don't interpret quotes. The spec does not say we should do */
 		if (*src == QUOTE) {
 		    if (*++src == EOS)
 			--src;
