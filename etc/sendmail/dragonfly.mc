@@ -47,6 +47,8 @@ VERSIONID(`DragonFly: 10 MARCH 2015')
 OSTYPE(dragonfly)
 DOMAIN(generic)
 
+define(`confEBINDIR', `/usr/local/libexec')
+
 FEATURE(access_db, `hash -o -T<TMPF> /etc/mail/access')
 FEATURE(blacklist_recipients)
 FEATURE(local_lmtp)
