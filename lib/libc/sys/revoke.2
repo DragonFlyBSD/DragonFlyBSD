@@ -32,7 +32,7 @@
 .\" $FreeBSD: src/lib/libc/sys/revoke.2,v 1.7.2.3 2001/12/14 18:34:01 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/revoke.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd November 4, 2015
 .Dt REVOKE 2
 .Os
 .Sh NAME
@@ -63,10 +63,9 @@ the device close function
 is called as if all open references to the file had been closed.
 .Pp
 Access to a file may be revoked only by its owner or the super user.
-The
-.Fn revoke
-function is currently supported only for block and character special
-device files.
+Root,
+jail root,
+and chrooted directories cannot be revoked.
 It is normally used to prepare a terminal device for a new login session,
 preventing any access by a previous user of the terminal.
 .Sh RETURN VALUES
@@ -88,10 +87,6 @@ Too many symbolic links were encountered in translating the pathname.
 .It Bq Er EFAULT
 .Fa Path
 points outside the process's allocated address space.
-.It Bq Er EINVAL
-The implementation does not support the
-.Fn revoke
-operation on the named file.
 .It Bq Er EPERM
 The caller is neither the owner of the file nor the super user.
 .El
