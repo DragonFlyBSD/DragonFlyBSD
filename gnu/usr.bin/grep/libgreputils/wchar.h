@@ -1,7 +1,7 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* A substitute for ISO C99 <wchar.h>, for platforms that have issues.
 
-   Copyright (C) 2007-2014 Free Software Foundation, Inc.
+   Copyright (C) 2007-2015 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,9 +31,14 @@
 #endif
 
 
-#if defined __need_mbstate_t || defined __need_wint_t || (defined __hpux && ((defined _INTTYPES_INCLUDED && !defined strtoimax) || defined _GL_JUST_INCLUDE_SYSTEM_WCHAR_H)) || defined _GL_ALREADY_INCLUDING_WCHAR_H
+#if (((defined __need_mbstate_t || defined __need_wint_t)               \
+      && !defined __MINGW32__)                                          \
+     || (defined __hpux                                                 \
+         && ((defined _INTTYPES_INCLUDED && !defined strtoimax)         \
+             || defined _GL_JUST_INCLUDE_SYSTEM_WCHAR_H))               \
+     || defined _GL_ALREADY_INCLUDING_WCHAR_H)
 /* Special invocation convention:
-   - Inside glibc and uClibc header files.
+   - Inside glibc and uClibc header files, but not MinGW.
    - On HP-UX 11.00 we have a sequence of nested includes
      <wchar.h> -> <stdlib.h> -> <stdint.h>, and the latter includes <wchar.h>,
      once indirectly <stdint.h> -> <sys/types.h> -> <inttypes.h> -> <wchar.h>
@@ -741,7 +746,7 @@ _GL_WARN_ON_USE (wcsnrtombs, "wcsnrtombs is unportable - "
 
 /* Return the number of screen columns needed for WC.  */
 #if 1
-# if 1
+# if 0
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
 #   undef wcwidth
 #   define wcwidth rpl_wcwidth

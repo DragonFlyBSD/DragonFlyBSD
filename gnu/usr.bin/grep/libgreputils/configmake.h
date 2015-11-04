@@ -20,7 +20,7 @@
 #define PSDIR "/usr/share/doc/grep"
 #define LIBDIR "/usr/lib"
 #define LISPDIR "/usr/share/emacs/site-lisp"
-#define LOCALEDIR "/usr/sharee"
+#define LOCALEDIR "/usr/share/locale"
 #define MANDIR "/usr/share/man"
 #define PKGDATADIR "/usr/share/grep"
 #define PKGINCLUDEDIR "/usr/include/grep"

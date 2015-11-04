@@ -4,10 +4,10 @@ GNU GREP
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/grep
 
-file = grep-2.20.tar.xz
-date = 03 June 2014
-size = 1237196
-sha1 = 55aac6158b51baa505669cf8f86440bcc106ec65
+file = grep-2.22.tar.xz
+date = 02 November 2015
+size = 1297864
+sha1 = 561ba83226872b1c45205bdd583106ee8df0fe79
 
 A list of files and directories removed is in README.DELETED
 

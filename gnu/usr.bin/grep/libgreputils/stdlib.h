@@ -1,7 +1,7 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* A GNU-like <stdlib.h>.
 
-   Copyright (C) 1995, 2001-2004, 2006-2014 Free Software Foundation, Inc.
+   Copyright (C) 1995, 2001-2004, 2006-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -842,6 +842,29 @@ _GL_CXXALIAS_SYS (putenv, int, (char *string));
 _GL_CXXALIASWARN (putenv);
 #endif
 
+#if 0
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef qsort_r
+#   define qsort_r rpl_qsort_r
+#  endif
+_GL_FUNCDECL_RPL (qsort_r, void, (void *base, size_t nmemb, size_t size,
+                                  int (*compare) (void const *, void const *,
+                                                  void *),
+                                  void *arg) _GL_ARG_NONNULL ((1, 4)));
+_GL_CXXALIAS_RPL (qsort_r, void, (void *base, size_t nmemb, size_t size,
+                                  int (*compare) (void const *, void const *,
+                                                  void *),
+                                  void *arg));
+# else
+_GL_CXXALIAS_SYS (qsort_r, void, (void *base, size_t nmemb, size_t size,
+                                  int (*compare) (void const *, void const *,
+                                                  void *),
+                                  void *arg));
+# endif
+_GL_CXXALIASWARN (qsort_r);
+#endif
+
 
 #if 0
 # if !1
@@ -1231,7 +1254,7 @@ _GL_WARN_ON_USE (unlockpt, "unlockpt is not portable - "
 
 #if IN_GREP_GNULIB_TESTS
 /* Remove the variable NAME from the environment.  */
-# if 1
+# if 0
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
 #   undef unsetenv
 #   define unsetenv rpl_unsetenv
@@ -1244,7 +1267,7 @@ _GL_FUNCDECL_SYS (unsetenv, int, (const char *name) _GL_ARG_NONNULL ((1)));
 #  endif
 _GL_CXXALIAS_SYS (unsetenv, int, (const char *name));
 # endif
-# if !(1 && !1)
+# if !(0 && !1)
 _GL_CXXALIASWARN (unsetenv);
 # endif
 #elif defined GNULIB_POSIXCHECK

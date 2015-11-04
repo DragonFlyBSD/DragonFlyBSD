@@ -9,19 +9,18 @@
 .		if \w'\(rq' .ds rq "\(rq
 .	\}
 .\}
-.ie t .ds Tx \s-1T\v'.4n'\h'-.1667'E\v'-.4n'\h'-.125'X\s0
-. el  .ds Tx TeX
-.de Id
-. ds Yr \\$4
-. substring Yr 0 3
-. ds Mn \\$4
-. substring Mn 5 6
-. ds Dy \\$4
-. substring Dy 8 9
-. \" ISO 8601 date, complete format, extended representation
-. ds Dt \\*(Yr-\\*(Mn-\\*(Dy
+.
+.ie \n[.g] .mso www.tmac
+.el \{\
+. de MTO
+\\$2 \(laemail: \\$1 \(ra\\$3
 ..
-.TH GREP 1 \*(Dt "GNU grep 2.20" "User Commands"
+. de URL
+\\$2 \(laURL: \\$1 \(ra\\$3
+..
+.\}
+.
+.TH GREP 1 \*(Dt "GNU grep 2.22" "User Commands"
 .hy 0
 .
 .SH NAME
@@ -46,64 +45,50 @@ grep, egrep, fgrep \- print lines matching a pattern
 .B grep
 searches the named input
 .IR FILE s
-(or standard input if no files are named,
-or if a single hyphen-minus
-.RB ( \- )
-is given as file name)
 for lines containing a match to the given
 .IR PATTERN .
+If no files are specified, or if the file
+.RB "\*(lq" \- "\*(rq"
+is given,
+.B grep
+searches standard input.
 By default,
 .B grep
 prints the matching lines.
 .PP
-In addition, two variant programs
+In addition, the variant programs
 .B egrep
 and
 .B fgrep
-are available.
-.B egrep
-is the same as
-.BR "grep\ \-E" .
-.B fgrep
-is the same as
-.BR "grep\ \-F" .
-Direct invocation as either
-.B egrep
-or
-.B fgrep
-is deprecated,
-but is provided to allow historical applications
-that rely on them to run unmodified.
+are the same as
+.B "grep\ \-E"
+and
+.BR "grep\ \-F" ,
+respectively.
+These variants are deprecated, but are provided for backward compatibility.
 .
 .SH OPTIONS
 .SS "Generic Program Information"
 .TP
 .B \-\^\-help
-Print a usage message briefly summarizing these command-line options
-and the bug-reporting address, then exit.
+Output a usage message and exit.
 .TP
 .BR \-V ", " \-\^\-version
-Print the version number of
+Output the version number of
 .B grep
-to the standard output stream.
-This version number should
-be included in all bug reports (see below).
+and exit.
 .SS "Matcher Selection"
 .TP
 .BR \-E ", " \-\^\-extended\-regexp
 Interpret
 .I PATTERN
 as an extended regular expression (ERE, see below).
-.RB ( \-E
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-F ", " \-\^\-fixed\-strings
 Interpret
 .I PATTERN
 as a list of fixed strings, separated by newlines,
 any of which is to be matched.
-.RB ( \-F
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-G ", " \-\^\-basic\-regexp
 Interpret
@@ -127,28 +112,20 @@ as the pattern.
 This can be used to specify multiple search patterns,
 or to protect a pattern beginning with a hyphen
 .RB ( \- ).
-.RB ( \-e
-is specified by \s-1POSIX\s0.)
 .TP
 .BI \-f " FILE" "\fR,\fP \-\^\-file=" FILE
 Obtain patterns from
 .IR FILE ,
 one per line.
 The empty file contains zero patterns, and therefore matches nothing.
-.RB ( \-f
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-i ", " \-\^\-ignore\-case
 Ignore case distinctions in both the
 .I PATTERN
 and the input files.
-.RB ( \-i
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-v ", " \-\^\-invert\-match
 Invert the sense of matching, to select non-matching lines.
-.RB ( \-v
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-w ", " \-\^\-word\-regexp
 Select only those lines containing matches that form whole words.
@@ -161,8 +138,6 @@ Word-constituent characters are letters, digits, and the underscore.
 .TP
 .BR \-x ", " \-\^\-line\-regexp
 Select only those matches that exactly match the whole line.
-.RB ( \-x
-is specified by \s-1POSIX\s0.)
 .TP
 .B \-y
 Obsolete synonym for
@@ -175,8 +150,6 @@ matching lines for each input file.
 With the
 .BR \-v ", " \-\^\-invert\-match
 option (see below), count non-matching lines.
-.RB ( \-c
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-\^\-color [ =\fIWHEN\fP "], " \-\^\-colour [ =\fIWHEN\fP ]
 Surround the matched (non-empty) strings, matching lines, context lines,
@@ -203,8 +176,6 @@ Suppress normal output; instead print
 the name of each input file from which output
 would normally have been printed.
 The scanning will stop on the first match.
-.RB ( \-l
-is specified by \s-1POSIX\s0.)
 .TP
 .BI \-m " NUM" "\fR,\fP \-\^\-max\-count=" NUM
 Stop reading a file after
@@ -255,41 +226,9 @@ Also see the
 or
 .B \-\^\-no\-messages
 option.
-.RB ( \-q
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-s ", " \-\^\-no\-messages
 Suppress error messages about nonexistent or unreadable files.
-Portability note: unlike \s-1GNU\s0
-.BR grep ,
-7th Edition Unix
-.B grep
-did not conform to \s-1POSIX\s0, because it lacked
-.B \-q
-and its
-.B \-s
-option behaved like \s-1GNU\s0
-.BR grep 's
-.B \-q
-option.
-\s-1USG\s0-style
-.B grep
-also lacked
-.B \-q
-but its
-.B \-s
-option behaved like \s-1GNU\s0
-.BR grep .
-Portable shell scripts
-should avoid both
-.B \-q
-and
-.B \-s
-and should redirect standard and error output to
-.B /dev/null
-instead.
-.RB ( \-s
-is specified by \s-1POSIX\s0.)
 .SS "Output Line Prefix Control"
 .TP
 .BR \-b ", " \-\^\-byte\-offset
@@ -324,8 +263,6 @@ option.
 .BR \-n ", " \-\^\-line\-number
 Prefix each line of output with the 1-based line number
 within its input file.
-.RB ( \-n
-is specified by \s-1POSIX\s0.)
 .TP
 .BR \-T ", " \-\^\-initial\-tab
 Make sure that the first character of actual line content lies on a
@@ -446,6 +383,12 @@ is
 processes a binary file as if it were text; this is equivalent to the
 .B \-a
 option.
+When processing binary data,
+.B grep
+may treat non-text bytes as line terminators; for example, the pattern
+.RB ' . '\&
+(period) might not match a null byte, as the null byte might be
+treated as a line terminator.
 .I Warning:
 .B "grep \-\^\-binary\-files=text"
 might output binary garbage,
@@ -530,6 +473,7 @@ Search only files whose base name matches
 .BR \-r ", " \-\^\-recursive
 Read all files under each directory, recursively,
 following symbolic links only if they are on the command line.
+Note that if no file operand is given, grep searches the working directory.
 This is equivalent to the
 .B "\-d recurse"
 option.
@@ -789,37 +733,6 @@ versions
 .BR \e( ,
 and
 .BR \e) .
-.PP
-Traditional
-.B egrep
-did not support the
-.B {
-meta-character, and some
-.B egrep
-implementations support
-.B \e{
-instead, so portable scripts should avoid
-.B {
-in
-.B "grep\ \-E"
-patterns and should use
-.B [{]
-to match a literal
-.BR { .
-.PP
-\s-1GNU\s0
-.B "grep\ \-E"
-attempts to support traditional usage by assuming that
-.B {
-is not special if it would be the start of an invalid interval
-specification.
-For example, the command
-.B "grep\ \-E\ '{1'"
-searches for the two-character string
-.B {1
-instead of reporting a syntax error in the regular expression.
-\s-1POSIX\s0 allows this behavior as an extension, but portable scripts
-should avoid it.
 .
 .SH "ENVIRONMENT VARIABLES"
 The behavior of
@@ -851,19 +764,13 @@ was not compiled with national language support (\s-1NLS\s0).
 .B GREP_OPTIONS
 This variable specifies default options
 to be placed in front of any explicit options.
-For example, if
-.B GREP_OPTIONS
-is
-.BR "'\-\^\-binary-files=without-match \-\^\-directories=skip'" ,
-.B grep
-behaves as if the two options
-.B \-\^\-binary\-files=without-match
+As this causes problems when writing portable scripts,
+this feature will be removed in a future release of
+.BR grep ,
 and
-.B \-\^\-directories=skip
-had been specified before any explicit options.
-Option specifications are separated by whitespace.
-A backslash escapes the next character,
-so it can be used to specify an option containing whitespace or a backslash.
+.B grep
+warns if it is used.
+Please use an alias or script instead.
 .TP
 .B GREP_COLOR
 This variable specifies the color used to highlight matched (non-empty) text.
@@ -1149,26 +1056,18 @@ when
 is not set.
 .
 .SH "EXIT STATUS"
-Normally, the exit status is 0 if selected lines are found and 1 otherwise.
-But the exit status is 2 if an error occurred, unless the
+Normally the exit status is 0 if a line is selected, 1 if no lines
+were selected, and 2 if an error occurred.  However, if the
 .B \-q
 or
 .B \-\^\-quiet
 or
 .B \-\^\-silent
-option is used and a selected line is found.
-Note, however, that \s-1POSIX\s0 only mandates, for programs such as
-.BR grep ,
-.BR cmp ,
-and
-.BR diff ,
-that the exit status in case of error be greater than 1;
-it is therefore advisable, for the sake of portability,
-to use logic that tests for this general condition
-instead of strict equality with\ 2.
+is used and a line is selected, the exit status is 0 even if an error
+occurred.
 .
 .SH COPYRIGHT
-Copyright 1998-2000, 2002, 2005-2014 Free Software Foundation, Inc.
+Copyright 1998-2000, 2002, 2005-2015 Free Software Foundation, Inc.
 .PP
 This is free software;
 see the source for copying conditions.
@@ -1178,12 +1077,12 @@ not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 .SH BUGS
 .SS "Reporting Bugs"
 Email bug reports to
-.RB < bug\-grep@gnu.org >,
-a mailing list whose web page is
-.RB < http://lists.gnu.org/mailman/listinfo/bug\-grep >.
-.BR grep 's
-Savannah bug tracker is located at
-.RB < http://savannah.gnu.org/bugs/?group=grep >.
+.MTO bug-grep@gnu.org "the bug-reporting address" .
+An
+.URL http://lists.gnu.org/mailman/listinfo/bug-grep "email archive"
+and a
+.URL http://debbugs.gnu.org/cgi/pkgreport.cgi?package=grep "bug tracker"
+are available.
 .SS "Known Bugs"
 Large repetition counts in the
 .BI { n , m }
@@ -1208,11 +1107,10 @@ terminfo(5),
 glob(7), regex(7).
 .SS "\s-1POSIX\s0 Programmer's Manual Page"
 grep(1p).
-.SS "\*(Txinfo Documentation"
-The full documentation for
-.B grep
-is maintained as a \*(Txinfo manual,
-which you can read at http://www.gnu.org/software/grep/manual/.
+.SS "Full Documentation"
+A
+.URL http://www.gnu.org/software/grep/manual/ "complete manual"
+is available.
 If the
 .B info
 and
@@ -1226,8 +1124,5 @@ should give you access to the complete manual.
 .SH NOTES
 This man page is maintained only fitfully;
 the full documentation is often more up-to-date.
-.PP
-\s-1GNU\s0's not Unix, but Unix is a beast;
-its plural form is Unixen.
 .\" Work around problems with some troff -man implementations.
 .br

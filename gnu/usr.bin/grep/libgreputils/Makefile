@@ -28,6 +28,7 @@ SRCS=		argmatch.c \
 		exitfail.c \
 		creat-safer.c \
 		open-safer.c \
+		fcntl.c \
 		fd-hook.c \
 		filenamecat-lgpl.c \
 		hash.c \
@@ -55,6 +56,7 @@ SRCS=		argmatch.c \
 		trim.c \
 		unistd.c \
 		dup-safer.c \
+		dup2.c \
 		fd-safer.c \
 		pipe-safer.c \
 		u8-mbtoucr.c \
@@ -79,8 +81,8 @@ SRCS=		argmatch.c \
 		obstack.c \
 		openat-proc.c \
 		regex.c \
+		strstr.c \
 		strerror.c \
-		strerror-override.c \
-		wcwidth.c
+		strerror-override.c
 
 .include <bsd.lib.mk>

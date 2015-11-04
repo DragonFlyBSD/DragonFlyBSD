@@ -1,7 +1,7 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* A GNU-like <string.h>.
 
-   Copyright (C) 1995-1996, 2001-2014 Free Software Foundation, Inc.
+   Copyright (C) 1995-1996, 2001-2015 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,15 +16,31 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef _GL_STRING_H
-
 #if __GNUC__ >= 3
 #pragma GCC system_header
 #endif
 
 
+#if defined _GL_ALREADY_INCLUDING_STRING_H
+/* Special invocation convention:
+   - On OS X/NetBSD we have a sequence of nested includes
+       <string.h> -> <strings.h> -> "string.h"
+     In this situation system _chk variants due to -D_FORTIFY_SOURCE
+     might be used after any replacements defined here.  */
+
+#include_next <string.h>
+
+#else
+/* Normal invocation convention.  */
+
+#ifndef _GL_STRING_H
+
+#define _GL_ALREADY_INCLUDING_STRING_H
+
 /* The include_next requires a split double-inclusion guard.  */
 #include_next <string.h>
+
+#undef _GL_ALREADY_INCLUDING_STRING_H
 
 #ifndef _GL_STRING_H
 #define _GL_STRING_H
@@ -871,8 +887,8 @@ _GL_WARN_ON_USE (strsep, "strsep is unportable - "
 # endif
 #endif
 
-#if 0
-# if 0
+#if 1
+# if 1
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
 #   define strstr rpl_strstr
 #  endif
@@ -1339,3 +1355,4 @@ _GL_WARN_ON_USE (strverscmp, "strverscmp is unportable - "
 
 #endif /* _GL_STRING_H */
 #endif /* _GL_STRING_H */
+#endif

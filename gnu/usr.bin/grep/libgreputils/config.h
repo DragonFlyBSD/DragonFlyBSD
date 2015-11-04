@@ -64,14 +64,16 @@
 /* #undef ENABLE_NLS */
 
 /* Define this to 1 if F_DUPFD behavior does not match POSIX */
-/* #undef FCNTL_DUPFD_BUGGY */
+#define FCNTL_DUPFD_BUGGY 1
 
-/* Enable compile-time and run-time bounds-checking, and some warnings,
-      without upsetting glibc 2.15+. */
-   #if !defined _FORTIFY_SOURCE && defined __OPTIMIZE__ && __OPTIMIZE__
-   # define _FORTIFY_SOURCE 2
-   #endif
-  
+/* Define to nothing if C supports flexible array members, and to 1 if it does
+   not. That way, with a declaration like 'struct s { int n; double
+   d[FLEXIBLE_ARRAY_MEMBER]; };', the struct hack can be used with pre-C99
+   compilers. When computing the size of such an object, don't use 'sizeof
+   (struct s)' as it overestimates the size. Use 'offsetof (struct s, d)'
+   instead. Don't use 'offsetof (struct s, d[0])', as this doesn't work with
+   MSVC and with C++ compilers. */
+#define FLEXIBLE_ARRAY_MEMBER /**/
 
 /* Define to 1 if nl_langinfo (YESEXPR) returns a non-empty string. */
 #define FUNC_NL_LANGINFO_YESEXPR_WORKS 1
@@ -125,6 +127,17 @@
 
 /* enable some gnulib portability checks */
 /* #undef GNULIB_PORTCHECK */
+
+/* Enable compile-time and run-time bounds-checking, and some warnings,
+      without upsetting glibc 2.15+. */
+   #if (defined GNULIB_PORTCHECK && !defined _FORTIFY_SOURCE \
+        && defined __OPTIMIZE__ && __OPTIMIZE__)
+   # define _FORTIFY_SOURCE 2
+   #endif
+
+/* Define to 1 if printf and friends should be labeled with attribute
+   "__gnu_printf__" instead of "__printf__" */
+/* #undef GNULIB_PRINTF_ATTRIBUTE_FLAVOR_GNU */
 
 /* Define to a C preprocessor expression that evaluates to 1 or 0, depending
    whether the gnulib module realloc-gnu shall be considered present. */
@@ -307,6 +320,9 @@
 /* Define to 1 when the gnulib module strnlen should be tested. */
 #define GNULIB_TEST_STRNLEN 1
 
+/* Define to 1 when the gnulib module strstr should be tested. */
+#define GNULIB_TEST_STRSTR 1
+
 /* Define to 1 when the gnulib module strtoll should be tested. */
 #define GNULIB_TEST_STRTOLL 1
 
@@ -430,6 +446,10 @@
    don't. */
 #define HAVE_DECL_GETC_UNLOCKED 1
 
+/* Define to 1 if you have the declaration of `getdtablesize', and to 0 if you
+   don't. */
+#define HAVE_DECL_GETDTABLESIZE 1
+
 /* Define to 1 if you have the declaration of `getenv', and to 0 if you don't.
    */
 #define HAVE_DECL_GETENV 1
@@ -551,7 +571,7 @@
 #define HAVE_DIRENT_H 1
 
 /* Define to 1 if you have the `dirfd' function. */
-/* #undef HAVE_DIRFD */
+#define HAVE_DIRFD 1
 
 /* Define to 1 if you have the 'dup2' function. */
 #define HAVE_DUP2 1
@@ -579,6 +599,9 @@
 
 /* Define to 1 if you have the 'getdtablesize' function. */
 #define HAVE_GETDTABLESIZE 1
+
+/* Define to 1 if you have the `getlocalename_l' function. */
+/* #undef HAVE_GETLOCALENAME_L */
 
 /* Define to 1 if you have the <getopt.h> header file. */
 #define HAVE_GETOPT_H 1
@@ -641,7 +664,7 @@
 #define HAVE_LC_MESSAGES 1
 
 /* Define to 1 if you have the <libintl.h> header file. */
-#define HAVE_LIBINTL_H 1
+/* #undef HAVE_LIBINTL_H */
 
 /* Define to 1 if you have the Perl Compatible Regular Expressions library
    (-lpcre). */
@@ -713,7 +736,7 @@
 /* Define to 1 if you have the 'nl_langinfo' function. */
 #define HAVE_NL_LANGINFO 1
 
-/* Define to 1 if libc includes obstacks. */
+/* Define to 1 if the system has obstacks that work with any size object. */
 /* #undef HAVE_OBSTACK */
 
 /* Define to 1 if you have the 'openat' function. */
@@ -724,15 +747,6 @@
 
 /* Define to 1 if you have the <OS.h> header file. */
 /* #undef HAVE_OS_H */
-
-/* Define to 1 if you have the `pcre_compile' function. */
-/* #undef HAVE_PCRE_COMPILE */
-
-/* Define to 1 if you have the <pcre.h> header file. */
-/* #undef HAVE_PCRE_H */
-
-/* Define to 1 if you have the <pcre/pcre.h> header file. */
-/* #undef HAVE_PCRE_PCRE_H */
 
 /* Define to 1 if you have the 'pipe' function. */
 #define HAVE_PIPE 1
@@ -766,7 +780,7 @@
 #define HAVE_RAW_DECL_CLOSEDIR 1
 
 /* Define to 1 if dirfd is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_DIRFD */
+#define HAVE_RAW_DECL_DIRFD 1
 
 /* Define to 1 if dprintf is declared even after undefining macros. */
 #define HAVE_RAW_DECL_DPRINTF 1
@@ -841,7 +855,7 @@
 #define HAVE_RAW_DECL_FTRUNCATE 1
 
 /* Define to 1 if futimens is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_FUTIMENS */
+#define HAVE_RAW_DECL_FUTIMENS 1
 
 /* Define to 1 if getcwd is declared even after undefining macros. */
 #define HAVE_RAW_DECL_GETCWD 1
@@ -1003,7 +1017,7 @@
 #define HAVE_RAW_DECL_PIPE 1
 
 /* Define to 1 if pipe2 is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_PIPE2 */
+#define HAVE_RAW_DECL_PIPE2 1
 
 /* Define to 1 if popen is declared even after undefining macros. */
 #define HAVE_RAW_DECL_POPEN 1
@@ -1030,7 +1044,7 @@
 /* #undef HAVE_RAW_DECL_RANDOM_R */
 
 /* Define to 1 if rawmemchr is declared even after undefining macros. */
-#define HAVE_RAW_DECL_RAWMEMCHR 1
+/* #undef HAVE_RAW_DECL_RAWMEMCHR */
 
 /* Define to 1 if readdir is declared even after undefining macros. */
 #define HAVE_RAW_DECL_READDIR 1
@@ -1183,7 +1197,7 @@
 #define HAVE_RAW_DECL_USLEEP 1
 
 /* Define to 1 if utimensat is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_UTIMENSAT */
+#define HAVE_RAW_DECL_UTIMENSAT 1
 
 /* Define to 1 if vdprintf is declared even after undefining macros. */
 #define HAVE_RAW_DECL_VDPRINTF 1
@@ -1533,7 +1547,7 @@
 #define MALLOC_0_IS_NONNULL 1
 
 /* Define to a substitute value for mmap()'s MAP_ANONYMOUS flag. */
-#define MAP_ANONYMOUS MAP_ANON
+/* #undef MAP_ANONYMOUS */
 
 /* Define if the mbrtowc function does not return (size_t) -2 for empty input.
    */
@@ -1573,7 +1587,7 @@
 /* #undef PACKAGE_PACKAGER_VERSION */
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "GNU grep 2.20"
+#define PACKAGE_STRING "GNU grep 2.22"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "grep"
@@ -1582,7 +1596,7 @@
 #define PACKAGE_URL "http://www.gnu.org/software/grep/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.20"
+#define PACKAGE_VERSION "2.22"
 
 /* the number of pending output bytes on stream 'fp' */
 /* #undef PENDING_OUTPUT_N_BYTES */
@@ -1690,6 +1704,10 @@
 #ifndef _GNU_SOURCE
 # define _GNU_SOURCE 1
 #endif
+/* Use GNU style printf and scanf.  */
+#ifndef __USE_MINGW_ANSI_STDIO
+# define __USE_MINGW_ANSI_STDIO 1
+#endif
 /* Enable threading extensions on Solaris.  */
 #ifndef _POSIX_PTHREAD_SEMANTICS
 # define _POSIX_PTHREAD_SEMANTICS 1
@@ -1719,7 +1737,7 @@
 /* #undef USE_WINDOWS_THREADS */
 
 /* Version number of package */
-#define VERSION "2.20"
+#define VERSION "2.22"
 
 /* Define to 1 if unsetenv returns void instead of int. */
 /* #undef VOID_UNSETENV */
@@ -1812,13 +1830,28 @@
    'reference to static identifier "f" in extern inline function'.
    This bug was observed with Sun C 5.12 SunOS_i386 2011/11/16.
 
-   Suppress the use of extern inline on problematic Apple configurations.
-   OS X 10.8 and earlier mishandle it; see, e.g.,
-   <http://lists.gnu.org/archive/html/bug-gnulib/2012-12/msg00023.html>.
+   Suppress extern inline (with or without __attribute__ ((__gnu_inline__)))
+   on configurations that mistakenly use 'static inline' to implement
+   functions or macros in standard C headers like <ctype.h>.  For example,
+   if isdigit is mistakenly implemented via a static inline function,
+   a program containing an extern inline function that calls isdigit
+   may not work since the C standard prohibits extern inline functions
+   from calling static functions.  This bug is known to occur on:
+
+     OS X 10.8 and earlier; see:
+     http://lists.gnu.org/archive/html/bug-gnulib/2012-12/msg00023.html
+
+     DragonFly; see
+     http://muscles.dragonflybsd.org/bulk/bleeding-edge-potential/latest-per-pkg/ah-tty-0.3.12.log
+
+     FreeBSD; see:
+     http://lists.gnu.org/archive/html/bug-gnulib/2014-07/msg00104.html
+
    OS X 10.9 has a macro __header_inline indicating the bug is fixed for C and
    for clang but remains for g++; see <http://trac.macports.org/ticket/41033>.
-   Perhaps Apple will fix this some day.  */
-#if (defined __APPLE__ \
+   Assume DragonFly and FreeBSD will be similar.  */
+#if (((defined __APPLE__ && defined __MACH__) \
+      || defined __DragonFly__ || defined __FreeBSD__) \
      && (defined __header_inline \
          ? (defined __cplusplus && defined __GNUC_STDC_INLINE__ \
             && ! defined __clang__) \
@@ -1826,19 +1859,19 @@
              && (defined __GNUC__ || defined __cplusplus)) \
             || (defined _FORTIFY_SOURCE && 0 < _FORTIFY_SOURCE \
                 && defined __GNUC__ && ! defined __cplusplus))))
-# define _GL_EXTERN_INLINE_APPLE_BUG
+# define _GL_EXTERN_INLINE_STDHEADER_BUG
 #endif
 #if ((__GNUC__ \
       ? defined __GNUC_STDC_INLINE__ && __GNUC_STDC_INLINE__ \
       : (199901L <= __STDC_VERSION__ \
          && !defined __HP_cc \
          && !(defined __SUNPRO_C && __STDC__))) \
-     && !defined _GL_EXTERN_INLINE_APPLE_BUG)
+     && !defined _GL_EXTERN_INLINE_STDHEADER_BUG)
 # define _GL_INLINE inline
 # define _GL_EXTERN_INLINE extern inline
 # define _GL_EXTERN_INLINE_IN_USE
 #elif (2 < __GNUC__ + (7 <= __GNUC_MINOR__) && !defined __STRICT_ANSI__ \
-       && !defined _GL_EXTERN_INLINE_APPLE_BUG)
+       && !defined _GL_EXTERN_INLINE_STDHEADER_BUG)
 # if defined __GNUC_GNU_INLINE__ && __GNUC_GNU_INLINE__
    /* __gnu_inline__ suppresses a GCC 4.2 diagnostic.  */
 #  define _GL_INLINE extern inline __attribute__ ((__gnu_inline__))
@@ -1852,17 +1885,19 @@
 # define _GL_EXTERN_INLINE static _GL_UNUSED
 #endif
 
-#if 4 < __GNUC__ + (6 <= __GNUC_MINOR__)
+/* In GCC 4.6 (inclusive) to 5.1 (exclusive),
+   suppress bogus "no previous prototype for 'FOO'"
+   and "no previous declaration for 'FOO'" diagnostics,
+   when FOO is an inline function in the header; see
+   <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54113> and
+   <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63877>.  */
+#if __GNUC__ == 4 && 6 <= __GNUC_MINOR__
 # if defined __GNUC_STDC_INLINE__ && __GNUC_STDC_INLINE__
 #  define _GL_INLINE_HEADER_CONST_PRAGMA
 # else
 #  define _GL_INLINE_HEADER_CONST_PRAGMA \
      _Pragma ("GCC diagnostic ignored \"-Wsuggest-attribute=const\"")
 # endif
-  /* Suppress GCC's bogus "no previous prototype for 'FOO'"
-     and "no previous declaration for 'FOO'"  diagnostics,
-     when FOO is an inline function in the header; see
-     <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=54113>.  */
 # define _GL_INLINE_HEADER_BEGIN \
     _Pragma ("GCC diagnostic push") \
     _Pragma ("GCC diagnostic ignored \"-Wmissing-prototypes\"") \
@@ -1998,6 +2033,16 @@
 /* The name _UNUSED_PARAMETER_ is an earlier spelling, although the name
    is a misnomer outside of parameter lists.  */
 #define _UNUSED_PARAMETER_ _GL_UNUSED
+
+/* gcc supports the "unused" attribute on possibly unused labels, and
+   g++ has since version 4.5.  Note to support C++ as well as C,
+   _GL_UNUSED_LABEL should be used with a trailing ;  */
+#if !defined __cplusplus || __GNUC__ > 4 \
+    || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
+# define _GL_UNUSED_LABEL _GL_UNUSED
+#else
+# define _GL_UNUSED_LABEL
+#endif
 
 /* The __pure__ attribute was added in gcc 2.96.  */
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)

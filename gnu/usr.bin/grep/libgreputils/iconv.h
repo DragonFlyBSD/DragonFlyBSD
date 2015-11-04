@@ -1,7 +1,7 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* A GNU-like <iconv.h>.
 
-   Copyright (C) 2007-2014 Free Software Foundation, Inc.
+   Copyright (C) 2007-2015 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -386,21 +386,21 @@ _GL_CXXALIASWARN (iconv_open);
 #  endif
 _GL_FUNCDECL_RPL (iconv, size_t,
                   (iconv_t cd,
-                   const char **inbuf, size_t *inbytesleft,
+                    char **inbuf, size_t *inbytesleft,
                    char **outbuf, size_t *outbytesleft));
 _GL_CXXALIAS_RPL (iconv, size_t,
                   (iconv_t cd,
-                   const char **inbuf, size_t *inbytesleft,
+                    char **inbuf, size_t *inbytesleft,
                    char **outbuf, size_t *outbytesleft));
 # else
 _GL_CXXALIAS_SYS (iconv, size_t,
                   (iconv_t cd,
-                   const char **inbuf, size_t *inbytesleft,
+                    char **inbuf, size_t *inbytesleft,
                    char **outbuf, size_t *outbytesleft));
 # endif
 _GL_CXXALIASWARN (iconv);
 # ifndef ICONV_CONST
-#  define ICONV_CONST
+#  define ICONV_CONST 
 # endif
 #endif
 

@@ -1,6 +1,6 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Substitute for and wrapper around <unistd.h>.
-   Copyright (C) 2003-2014 Free Software Foundation, Inc.
+   Copyright (C) 2003-2015 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -657,7 +657,7 @@ _GL_WARN_ON_USE (dup, "dup is unportable - "
    Return newfd if successful, otherwise -1 and errno set.
    See the POSIX:2008 specification
    <http://pubs.opengroup.org/onlinepubs/9699919799/functions/dup2.html>.  */
-# if 0
+# if 1
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
 #   define dup2 rpl_dup2
 #  endif
@@ -713,6 +713,12 @@ _GL_WARN_ON_USE (dup3, "dup3 is unportable - "
 /* Set of environment variables and values.  An array of strings of the form
    "VARIABLE=VALUE", terminated with a NULL.  */
 #  if defined __APPLE__ && defined __MACH__
+#   include <TargetConditionals.h>
+#   if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#    define _GL_USE_CRT_EXTERNS
+#   endif
+#  endif
+#  ifdef _GL_USE_CRT_EXTERNS
 #   include <crt_externs.h>
 #   define environ (*_NSGetEnviron ())
 #  else
@@ -1599,13 +1605,24 @@ _GL_WARN_ON_USE (readlink, "readlink is unportable - "
 
 
 #if 0
-# if !1
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   define readlinkat rpl_readlinkat
+#  endif
+_GL_FUNCDECL_RPL (readlinkat, ssize_t,
+                  (int fd, char const *file, char *buf, size_t len)
+                  _GL_ARG_NONNULL ((2, 3)));
+_GL_CXXALIAS_RPL (readlinkat, ssize_t,
+                  (int fd, char const *file, char *buf, size_t len));
+# else
+#  if !1
 _GL_FUNCDECL_SYS (readlinkat, ssize_t,
                   (int fd, char const *file, char *buf, size_t len)
                   _GL_ARG_NONNULL ((2, 3)));
-# endif
+#  endif
 _GL_CXXALIAS_SYS (readlinkat, ssize_t,
                   (int fd, char const *file, char *buf, size_t len));
+# endif
 _GL_CXXALIASWARN (readlinkat);
 #elif defined GNULIB_POSIXCHECK
 # undef readlinkat
@@ -1719,13 +1736,25 @@ _GL_WARN_ON_USE (symlink, "symlink is not portable - "
 
 
 #if 0
-# if !1
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef symlinkat
+#   define symlinkat rpl_symlinkat
+#  endif
+_GL_FUNCDECL_RPL (symlinkat, int,
+                  (char const *contents, int fd, char const *file)
+                  _GL_ARG_NONNULL ((1, 3)));
+_GL_CXXALIAS_RPL (symlinkat, int,
+                  (char const *contents, int fd, char const *file));
+# else
+#  if !1
 _GL_FUNCDECL_SYS (symlinkat, int,
                   (char const *contents, int fd, char const *file)
                   _GL_ARG_NONNULL ((1, 3)));
-# endif
+#  endif
 _GL_CXXALIAS_SYS (symlinkat, int,
                   (char const *contents, int fd, char const *file));
+# endif
 _GL_CXXALIASWARN (symlinkat);
 #elif defined GNULIB_POSIXCHECK
 # undef symlinkat
