@@ -255,17 +255,17 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 		/*
 		 * Loop through to individual operations
 		 */
-		blkno = bp->b_bio1.bio_offset / DEV_BSIZE;
+		blkno = bio->bio_offset / DEV_BSIZE;
 		blkoff = 0;
 		num_blks = bp->b_resid / DEV_BSIZE;
 		nestiobuf_init(bio);
 
 		while (num_blks > 0) {
-			/* blockno to strip piece nr */
+			/* blockno to stripe piece nr */
 			stripe = blkno / tsc->stripe_chunksize;
 			stripe_off = blkno % tsc->stripe_chunksize;
 
-			/* where we are inside the strip */
+			/* where we are inside the stripe */
 			devnr = stripe % tsc->stripe_num;
 			blknr = stripe / tsc->stripe_num;
 
@@ -355,11 +355,11 @@ dm_target_stripe_dump(dm_table_entry_t *table_en, void *data, size_t length, off
 	}
 
 	while (num_blks > 0) {
-		/* blockno to strip piece nr */
+		/* blockno to stripe piece nr */
 		stripe = blkno / tsc->stripe_chunksize;
 		stripe_off = blkno % tsc->stripe_chunksize;
 
-		/* where we are inside the strip */
+		/* where we are inside the stripe */
 		devnr = stripe % tsc->stripe_num;
 		blknr = stripe / tsc->stripe_num;
 
