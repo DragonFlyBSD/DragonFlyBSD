@@ -286,7 +286,7 @@
 #define PACKAGE_NAME "bfd"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "bfd 2.25"
+#define PACKAGE_STRING "bfd 2.25.1"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "bfd"
@@ -295,7 +295,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.25"
+#define PACKAGE_VERSION "2.25.1"
 
 /* The size of `char', as computed by sizeof. */
 /* #undef SIZEOF_CHAR */
@@ -368,7 +368,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.25"
+#define VERSION "2.25.1"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

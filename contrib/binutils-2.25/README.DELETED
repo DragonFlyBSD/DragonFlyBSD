@@ -752,6 +752,7 @@ gas/config/tc-z80.h
 gas/config/tc-z8k.c
 gas/config/tc-z8k.h
 gas/config/te-386bsd.h
+gas/config/te-aix.h
 gas/config/te-aix5.h
 gas/config/te-armeabi.h
 gas/config/te-armfbsdeabi.h

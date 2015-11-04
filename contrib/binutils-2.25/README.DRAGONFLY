@@ -3,10 +3,10 @@ GNU BINUTILS
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/binutils
 
-file = binutils-2.25.tar.bz2
-date = 23 December 2014
-size = 24049133
-sha1 = b46cc90ebaba7ffcf6c6d996d60738881b14e50d
+file = binutils-2.25.1.tar.bz2
+date = 21 July 2015
+size = 24163561
+sha1 = 1d597ae063e3947a5f61e23ceda8aebf78405fcd
 
 A list of files and directories removed is in README.DELETED
 

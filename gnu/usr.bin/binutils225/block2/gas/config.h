@@ -253,7 +253,7 @@
 #define PACKAGE_NAME "gas"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "gas 2.25"
+#define PACKAGE_STRING "gas 2.25.1"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "gas"
@@ -262,7 +262,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.25"
+#define PACKAGE_VERSION "2.25.1"
 
 /* Define if defaulting to ELF on SCO 5. */
 /* #undef SCO_ELF */
@@ -343,7 +343,7 @@
 /* #undef USING_CGEN */
 
 /* Version number of package */
-#define VERSION "2.25"
+#define VERSION "2.25.1"
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
