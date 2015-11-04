@@ -18,7 +18,7 @@
 @copying
 This manual is for @command{grep}, a pattern matching engine.
 
-Copyright @copyright{} 1999--2002, 2005, 2008--2014 Free Software Foundation,
+Copyright @copyright{} 1999-2002, 2005, 2008-2015 Free Software Foundation,
 Inc.
 
 @quotation
@@ -468,7 +468,7 @@ to be printed in a minimum-size field width.
 Report Unix-style byte offsets.
 This option causes @command{grep} to report byte offsets
 as if the file were a Unix-style text file,
-i.e., the byte offsets ignore the @code{CR} characters that were stripped.
+i.e., the byte offsets ignore carriage returns that were stripped.
 This will produce results identical
 to running @command{grep} on a Unix machine.
 This option has no effect unless the @option{-b} option is also used;
@@ -479,7 +479,7 @@ it has no effect on platforms other than MS-DOS and MS-Windows.
 @opindex -Z
 @opindex --null
 @cindex zero-terminated file names
-Output a zero byte (the ASCII @code{NUL} character)
+Output a zero byte (the ASCII NUL character)
 instead of the character that normally follows a file name.
 For example,
 @samp{grep -lZ} outputs a zero byte after each file name
@@ -592,13 +592,23 @@ this is equivalent to the @samp{--binary-files=text} option.
 @item --binary-files=@var{type}
 @opindex --binary-files
 @cindex binary files
-If a file's allocation metadata or its first few bytes
+If a file's allocation metadata,
+or if its data read before a line is selected for output,
 indicate that the file contains binary data,
 assume that the file is of type @var{type}.
+Non-text bytes indicate binary data; these are either data bytes
+improperly encoded for the current locale, or null bytes when the
+@option{-z} (@option{--null-data}) option is not given (@pxref{Other
+Options}).
+
 By default, @var{type} is @samp{binary},
 and @command{grep} normally outputs either
 a one-line message saying that a binary file matches,
 or no message if there is no match.
+When processing binary data, @command{grep} may treat non-text bytes
+as line terminators; for example, the pattern @samp{.} (period) might
+not match a null byte, as the null byte might be treated as a line
+terminator even without the @option{-z} (@option{--null-data}) option.
 
 If @var{type} is @samp{without-match},
 @command{grep} assumes that a binary file does not match;
@@ -651,9 +661,10 @@ this is equivalent to the @option{-r} option.
 @opindex --exclude
 @cindex exclude files
 @cindex searching directory trees
-Skip files whose base name matches @var{glob}
-(using wildcard matching).
-A file-name glob can use
+Skip files whose name matches the pattern @var{glob}, using wildcard
+matching.  When searching recursively, skip any subfile whose base
+name matches @var{glob}; the base name is the part after the last
+@samp{/}.  A pattern can use
 @samp{*}, @samp{?}, and @samp{[}...@samp{]} as wildcards,
 and @code{\} to quote a wildcard or backslash character literally.
 
@@ -661,15 +672,16 @@ and @code{\} to quote a wildcard or backslash character literally.
 @opindex --exclude-from
 @cindex exclude files
 @cindex searching directory trees
-Skip files whose base name matches any of the file-name globs
+Skip files whose name matches any of the patterns
 read from @var{file} (using wildcard matching as described
 under @option{--exclude}).
 
-@item --exclude-dir=@var{dir}
+@item --exclude-dir=@var{glob}
 @opindex --exclude-dir
 @cindex exclude directories
-Skip any directory whose name matches the pattern @var{dir}, ignoring
-any redundant trailing slashes in @var{dir}.
+Skip any directory whose name matches the pattern @var{glob}.  When
+searching recursively, skip any subdirectory whose base name matches
+@var{glob}.  Ignore any redundant trailing slashes in @var{glob}.
 
 @item -I
 Process a binary file as if it did not contain matching data;
@@ -679,8 +691,8 @@ this is equivalent to the @samp{--binary-files=without-match} option.
 @opindex --include
 @cindex include files
 @cindex searching directory trees
-Search only files whose base name matches @var{glob}
-(using wildcard matching as described under @option{--exclude}).
+Search only files whose name matches @var{glob},
+using wildcard matching as described under @option{--exclude}.
 
 @item -r
 @itemx --recursive
@@ -693,6 +705,7 @@ For each directory operand,
 read and process all files in that directory, recursively.
 Follow symbolic links on the command line, but skip symlinks
 that are encountered recursively.
+Note that if no file operand is given, grep searches the working directory.
 This is the same as the @samp{--directories=recurse} option.
 
 @item -R
@@ -729,7 +742,7 @@ By default, under MS-DOS and MS-Windows,
 @command{grep} guesses whether a file is text or binary
 as described for the @option{--binary-files} option.
 If @command{grep} decides the file is a text file,
-it strips the @code{CR} characters from the original file contents
+it strips carriage returns from the original file contents
 (to make regular expressions with @code{^} and @code{$} work correctly).
 Specifying @option{-U} overrules this guesswork,
 causing all files to be read and passed to the matching mechanism verbatim;
@@ -744,7 +757,7 @@ on platforms other than MS-DOS and MS-Windows.
 @opindex --null-data
 @cindex zero-terminated lines
 Treat the input as a set of lines, each terminated by a zero byte (the
-ASCII @code{NUL} character) instead of a newline.
+ASCII NUL character) instead of a newline.
 Like the @option{-Z} or @option{--null} option,
 this option can be used with commands like
 @samp{sort -z} to process arbitrary file names.
@@ -757,15 +770,23 @@ this option can be used with commands like
 The behavior of @command{grep} is affected
 by the following environment variables.
 
+@vindex LANGUAGE @r{environment variable}
+@vindex LC_ALL @r{environment variable}
+@vindex LC_MESSAGES @r{environment variable}
+@vindex LANG @r{environment variable}
 The locale for category @w{@code{LC_@var{foo}}}
 is specified by examining the three environment variables
 @env{LC_ALL}, @w{@env{LC_@var{foo}}}, and @env{LANG},
 in that order.
 The first of these variables that is set specifies the locale.
 For example, if @env{LC_ALL} is not set,
-but @env{LC_MESSAGES} is set to @samp{pt_BR},
+but @env{LC_COLLATE} is set to @samp{pt_BR},
 then the Brazilian Portuguese locale is used
-for the @code{LC_MESSAGES} category.
+for the @env{LC_COLLATE} category.
+As a special case for @env{LC_MESSAGES} only, the environment variable
+@env{LANGUAGE} can contain a colon-separated list of languages that
+overrides the three environment variables that ordinarily specify
+the @env{LC_MESSAGES} category.
 The @samp{C} locale is used if none of these environment variables are set,
 if the locale catalog is not installed,
 or if @command{grep} was not compiled
@@ -814,22 +835,18 @@ the @code{terminfo} library.
 @cindex default options environment variable
 This variable specifies default options to be placed in front of any
 explicit options.
-For example, if @code{GREP_OPTIONS} is
-@samp{--binary-files=without-match --directories=skip}, @command{grep}
-behaves as if the two options @samp{--binary-files=without-match} and
-@samp{--directories=skip} had been specified before
-any explicit options.
-Option specifications are separated by
-whitespace.
-A backslash escapes the next character, so it can be used to
-specify an option containing whitespace or a backslash.
+As this causes problems when writing portable scripts, this feature
+will be removed in a future release of @command{grep}, and @command{grep}
+warns if it is used.  Please use an alias or script instead.
+For example, if @command{grep} is in the directory @samp{/usr/bin} you
+can prepend @file{$HOME/bin} to your @env{PATH} and create an
+executable script @file{$HOME/bin/grep} containing the following:
 
-The @code{GREP_OPTIONS} value does not affect whether @command{grep}
-without file operands searches standard input or the working
-directory; that is affected only by command-line options.  For
-example, the command @samp{grep PAT} searches standard input and the
-command @samp{grep -r PAT} searches the working directory, regardless
-of whether @code{GREP_OPTIONS} contains @option{-r}.
+@example
+#! /bin/sh
+export PATH=/usr/bin
+exec grep --color=auto --devices=skip "$@@"
+@end example
 
 @item GREP_COLOR
 @vindex GREP_COLOR @r{environment variable}
@@ -962,7 +979,7 @@ They are omitted (i.e., false) by default and become true when specified.
 @cindex character type
 @cindex national language support
 @cindex NLS
-These variables specify the locale for the @code{LC_COLLATE} category,
+These variables specify the locale for the @env{LC_COLLATE} category,
 which might affect how range expressions like @samp{[a-z]} are
 interpreted.
 
@@ -972,13 +989,15 @@ interpreted.
 @vindex LC_ALL @r{environment variable}
 @vindex LC_CTYPE @r{environment variable}
 @vindex LANG @r{environment variable}
-These variables specify the locale for the @code{LC_CTYPE} category,
+These variables specify the locale for the @env{LC_CTYPE} category,
 which determines the type of characters,
 e.g., which characters are whitespace.
 
-@item LC_ALL
+@item LANGUAGE
+@itemx LC_ALL
 @itemx LC_MESSAGES
 @itemx LANG
+@vindex LANGUAGE @r{environment variable}
 @vindex LC_ALL @r{environment variable}
 @vindex LC_MESSAGES @r{environment variable}
 @vindex LANG @r{environment variable}
@@ -986,7 +1005,7 @@ e.g., which characters are whitespace.
 @cindex message language
 @cindex national language support
 @cindex translation of message language
-These variables specify the locale for the @code{LC_MESSAGES} category,
+These variables specify the locale for the @env{LC_MESSAGES} category,
 which determines the language that @command{grep} uses for messages.
 The default @samp{C} locale uses American English messages.
 
@@ -1000,7 +1019,7 @@ follow file names must be treated as file names;
 by default,
 such options are permuted to the front of the operand list
 and are treated as options.
-Also, @code{POSIXLY_CORRECT} disables special handling of an
+Also, @env{POSIXLY_CORRECT} disables special handling of an
 invalid bracket expression.  @xref{invalid-bracket-expr}.
 
 @item _@var{N}_GNU_nonoption_argv_flags_
@@ -1013,7 +1032,7 @@ A shell can put this variable in the environment for each command it runs,
 specifying which operands are the results of file name wildcard expansion
 and therefore should not be treated as options.
 This behavior is available only with the GNU C library,
-and only when @code{POSIXLY_CORRECT} is not set.
+and only when @env{POSIXLY_CORRECT} is not set.
 
 @end table
 
@@ -1023,17 +1042,12 @@ and only when @code{POSIXLY_CORRECT} is not set.
 @cindex exit status
 @cindex return status
 
-Normally, the exit status is 0 if selected lines are found and 1 otherwise.
-But the exit status is 2 if an error occurred, unless the @option{-q} or
-@option{--quiet} or @option{--silent} option is used and a selected line
-is found.
-Note, however, that POSIX only mandates,
-for programs such as @command{grep}, @command{cmp}, and @command{diff},
-that the exit status in case of error be greater than 1;
-it is therefore advisable, for the sake of portability,
-to use logic that tests for this general condition
-instead of strict equality with@ 2.
-
+Normally the exit status is 0 if a line is selected, 1 if no lines
+were selected, and 2 if an error occurred.  However, if the
+@option{-q} or @option{--quiet} or @option{--silent} option is used
+and a line is selected, the exit status is 0 even if an error
+occurred.  Other @command{grep} implementations may exit with status
+greater than 2 on error.
 
 @node grep Programs
 @section @command{grep} Programs
@@ -1208,6 +1222,7 @@ Repetition takes precedence over concatenation,
 which in turn takes precedence over alternation.
 A whole expression may be enclosed in parentheses
 to override these precedence rules and form a subexpression.
+An unmatched @samp{)} matches just itself.
 
 @node Character Classes and Bracket Expressions
 @section Character Classes and Bracket Expressions
@@ -1239,7 +1254,7 @@ of bracket expressions, you can use the @samp{C} locale by setting the
 
 Finally, certain named classes of characters are predefined within
 bracket expressions, as follows.
-Their interpretation depends on the @code{LC_CTYPE} locale;
+Their interpretation depends on the @env{LC_CTYPE} locale;
 for example, @samp{[[:alnum:]]} means the character class of numbers and letters
 in the current locale.
 
@@ -1251,13 +1266,15 @@ in the current locale.
 @opindex alnum @r{character class}
 @cindex alphanumeric characters
 Alphanumeric characters:
-@samp{[:alpha:]} and @samp{[:digit:]}; in the @samp{C} locale and ASCII character encoding, this is the same as @samp{[0-9A-Za-z]}.
+@samp{[:alpha:]} and @samp{[:digit:]}; in the @samp{C} locale and ASCII
+character encoding, this is the same as @samp{[0-9A-Za-z]}.
 
 @item [:alpha:]
 @opindex alpha @r{character class}
 @cindex alphabetic characters
 Alphabetic characters:
-@samp{[:lower:]} and @samp{[:upper:]}; in the @samp{C} locale and ASCII character encoding, this is the same as @samp{[A-Za-z]}.
+@samp{[:lower:]} and @samp{[:upper:]}; in the @samp{C} locale and ASCII
+character encoding, this is the same as @samp{[A-Za-z]}.
 
 @item [:blank:]
 @opindex blank @r{character class}
@@ -1270,7 +1287,7 @@ space and tab.
 @cindex control characters
 Control characters.
 In ASCII, these characters have octal codes 000
-through 037, and 177 (@code{DEL}).
+through 037, and 177 (DEL).
 In other character sets, these are
 the equivalent characters, if any.
 
@@ -1338,7 +1355,7 @@ If you mistakenly omit the outer brackets, and search for say, @samp{[:upper:]},
 GNU @command{grep} prints a diagnostic and exits with status 2, on
 the assumption that you did not intend to search for the nominally
 equivalent regular expression: @samp{[:epru]}.
-Set the @code{POSIXLY_CORRECT} environment variable to disable this feature.
+Set the @env{POSIXLY_CORRECT} environment variable to disable this feature.
 
 Most meta-characters lose their special meaning inside bracket expressions.
 
@@ -1361,7 +1378,8 @@ represents the open equivalence class.
 represents the close equivalence class.
 
 @item [:
-represents the open character class symbol, and should be followed by a valid character class name.
+represents the open character class symbol, and should be followed by a
+valid character class name.
 
 @item :]
 represents the close character class symbol.
@@ -1719,8 +1737,8 @@ Standard grep cannot do this, as it is fundamentally line-based.
 Therefore, merely using the @code{[:space:]} character class does not
 match newlines in the way you might expect.
 
-With the GNU @command{grep} option @code{-z} (@pxref{File and
-Directory Selection}), the input is terminated by null bytes.  Thus,
+With the GNU @command{grep} option @option{-z} (@option{--null-data}), each
+input ``line'' is terminated by a null byte; @pxref{Other Options}.  Thus,
 you can match newlines in the input, but typically if there is a match
 the entire input is output, so this usage is often combined with
 output-suppressing options like @option{-q}, e.g.:
@@ -1757,11 +1775,11 @@ g/re/p
 @chapter Reporting bugs
 
 @cindex bugs, reporting
-Email bug reports to @email{bug-grep@@gnu.org},
-a mailing list whose web page is
-@url{http://lists.gnu.org/mailman/listinfo/bug-grep}.
-The Savannah bug tracker for @command{grep} is located at
-@url{http://savannah.gnu.org/bugs/?group=grep}.
+Bug reports can be found at the
+@url{http://debbugs.gnu.org/cgi/pkgreport.cgi?package=grep,
+GNU bug report logs for @command{grep}}.
+If you find a bug not listed there, please email it to
+@email{bug-grep@@gnu.org} to create a new bug report.
 
 @section Known Bugs
 @cindex Bugs, known

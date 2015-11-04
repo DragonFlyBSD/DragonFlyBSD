@@ -1,11 +1,2 @@
 #!@SHELL@
-grep=grep
-case $0 in
-  */*)
-    dir=${0%/*}
-    if test -x "$dir/@grep@"; then
-      PATH=$dir:$PATH
-      grep=@grep@
-    fi;;
-esac
-exec $grep @option@ "$@"
+exec @grep@ @option@ "$@"

@@ -1,5 +1,5 @@
 /* dfasearch.c - searching subroutines using dfa and regex for grep.
-   Copyright 1992, 1998, 2000, 2007, 2009-2014 Free Software Foundation, Inc.
+   Copyright 1992, 1998, 2000, 2007, 2009-2015 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -86,41 +86,37 @@ dfawarn (char const *mesg)
 static void
 kwsmusts (void)
 {
-  struct dfamust const *dm = dfamusts (dfa);
-  if (dm)
+  struct dfamust *dm = dfamust (dfa);
+  if (!dm)
+    return;
+  kwsinit (&kwset);
+  if (dm->exact)
     {
-      kwsinit (&kwset);
-      /* First, we compile in the substrings known to be exact
-         matches.  The kwset matcher will return the index
-         of the matching string that it chooses. */
-      for (; dm; dm = dm->next)
-        {
-          if (!dm->exact)
-            continue;
-          ++kwset_exact_matches;
-          size_t old_len = strlen (dm->must);
-          size_t new_len = old_len + dm->begline + dm->endline;
-          char *must = xmalloc (new_len);
-          char *mp = must;
-          *mp = eolbyte;
-          mp += dm->begline;
-          begline |= dm->begline;
-          memcpy (mp, dm->must, old_len);
-          if (dm->endline)
-            mp[old_len] = eolbyte;
-          kwsincr (kwset, must, new_len);
-          free (must);
-        }
-      /* Now, we compile the substrings that will require
-         the use of the regexp matcher.  */
-      for (dm = dfamusts (dfa); dm; dm = dm->next)
-        {
-          if (dm->exact)
-            continue;
-          kwsincr (kwset, dm->must, strlen (dm->must));
-        }
-      kwsprep (kwset);
+      /* Prepare a substring whose presence implies a match.
+         The kwset matcher will return the index of the matching
+         string that it chooses. */
+      ++kwset_exact_matches;
+      size_t old_len = strlen (dm->must);
+      size_t new_len = old_len + dm->begline + dm->endline;
+      char *must = xmalloc (new_len);
+      char *mp = must;
+      *mp = eolbyte;
+      mp += dm->begline;
+      begline |= dm->begline;
+      memcpy (mp, dm->must, old_len);
+      if (dm->endline)
+        mp[old_len] = eolbyte;
+      kwsincr (kwset, must, new_len);
+      free (must);
     }
+  else
+    {
+      /* Otherwise, filtering with this substring should help reduce the
+         search space, but we'll still have to use the regexp matcher.  */
+      kwsincr (kwset, dm->must, strlen (dm->must));
+    }
+  kwsprep (kwset);
+  dfamustfree (dm);
 }
 
 void
@@ -211,7 +207,6 @@ EGexecute (char const *buf, size_t size, size_t *match_size,
 {
   char const *buflim, *beg, *end, *ptr, *match, *best_match, *mb_start;
   char eol = eolbyte;
-  int backref;
   regoff_t start;
   size_t len, best_len;
   struct kwsmatch kwsm;
@@ -231,6 +226,7 @@ EGexecute (char const *buf, size_t size, size_t *match_size,
           char const *next_beg, *dfa_beg = beg;
           size_t count = 0;
           bool exact_kwset_match = false;
+          int backref = 0;
 
           /* Try matching with KWset, if it's defined.  */
           if (kwset)

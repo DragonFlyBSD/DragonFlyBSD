@@ -1,5 +1,5 @@
 /* dfa.h - declarations for GNU deterministic regexp compiler
-   Copyright (C) 1988, 1998, 2007, 2009-2014 Free Software Foundation, Inc.
+   Copyright (C) 1988, 1998, 2007, 2009-2015 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "xalloc.h" /* for _GL_ATTRIBUTE_MALLOC */
+
 /* Element of a list of strings, at least one of which is known to
    appear in any R.E. matching the DFA. */
 struct dfamust
@@ -30,7 +32,6 @@ struct dfamust
   bool begline;
   bool endline;
   char *must;
-  struct dfamust *next;
 };
 
 /* The dfa structure. It is completely opaque. */
@@ -41,10 +42,13 @@ struct dfa;
 /* Allocate a struct dfa.  The struct dfa is completely opaque.
    The returned pointer should be passed directly to free() after
    calling dfafree() on it. */
-extern struct dfa *dfaalloc (void);
+extern struct dfa *dfaalloc (void) _GL_ATTRIBUTE_MALLOC;
 
-/* Return the dfamusts associated with a dfa. */
-extern struct dfamust *dfamusts (struct dfa const *);
+/* Build and return the struct dfamust from the given struct dfa. */
+extern struct dfamust *dfamust (struct dfa const *);
+
+/* Free the storage held by the components of a struct dfamust. */
+extern void dfamustfree (struct dfamust *);
 
 /* dfasyntax() takes three arguments; the first sets the syntax bits described
    earlier in this file, the second sets the case-folding flag, and the

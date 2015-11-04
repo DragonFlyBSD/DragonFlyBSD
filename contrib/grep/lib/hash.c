@@ -1,6 +1,6 @@
 /* hash - hashing table processing.
 
-   Copyright (C) 1998-2004, 2006-2007, 2009-2014 Free Software Foundation, Inc.
+   Copyright (C) 1998-2004, 2006-2007, 2009-2015 Free Software Foundation, Inc.
 
    Written by Jim Meyering, 1992.
 
@@ -1114,14 +1114,6 @@ hash_insert_if_absent (Hash_table *table, void const *entry,
   table->n_buckets_used++;
 
   return 1;
-}
-
-/* hash_insert0 is the deprecated name for hash_insert_if_absent.
-   .  */
-int
-hash_insert0 (Hash_table *table, void const *entry, void const **matched_ent)
-{
-  return hash_insert_if_absent (table, entry, matched_ent);
 }
 
 /* If ENTRY matches an entry already in the hash table, return the pointer
