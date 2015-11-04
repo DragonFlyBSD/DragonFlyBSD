@@ -1591,8 +1591,7 @@ void
 ftp_sl_add(StringList *sl, char *i)
 {
 
-	if (sl_add(sl, i) == -1)
-		err(1, "Unable to add `%s' to stringlist", i);
+	sl_add(sl, i);
 }
 
 /*

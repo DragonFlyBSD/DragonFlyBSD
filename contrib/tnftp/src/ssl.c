@@ -163,7 +163,7 @@ fetch_write(struct fetch_connect *conn, const char *str, size_t len)
 {
 	struct iovec iov[1];
 
-	iov[0].iov_base = (char *)__UNCONST(str);
+	iov[0].iov_base = __DECONST(char *, str);
 	iov[0].iov_len = len;
 	return fetch_writev(conn, iov, 1);
 }

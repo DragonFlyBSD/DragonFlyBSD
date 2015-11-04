@@ -1169,6 +1169,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 		if (strcmp(savefile, "-") == 0) {
 			fout = stdout;
 		} else if (*savefile == '|') {
+#if 0
 			oldpipe = xsignal(SIGPIPE, SIG_IGN);
 			fout = popen(savefile + 1, "w");
 			if (fout == NULL) {
@@ -1176,6 +1177,7 @@ fetch_url(const char *url, const char *proxyenv, char *proxyauth, char *wwwauth)
 				goto cleanup_fetch_url;
 			}
 			closefunc = pclose;
+#endif
 		}
 	}
 	if (fout == NULL) {
