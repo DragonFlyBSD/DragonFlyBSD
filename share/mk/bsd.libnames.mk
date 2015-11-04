@@ -32,6 +32,7 @@ LIBDM?=		${DESTDIR}${LIBDIR}/libdm.a
 #LIBDMSG?=	${DESTDIR}${LIBDIR}/libdmsg.a
 LIBEDIT?=	${DESTDIR}${LIBDIR}/libedit.a
 LIBEVTR?=	${DESTDIR}${LIBDIR}/libevtr.a
+LIBEXECINFO?=	${DESTDIR}${LIBDIR}/libexecinfo.a
 LIBFETCH?=	${DESTDIR}${LIBDIR}/libfetch.a
 LIBFL?=		"don't use LIBFL, use LIBL"
 LIBFORM?=	${DESTDIR}${LIBDIR}/libform.a
