@@ -64,6 +64,9 @@
 #define UNP_DROPPED		UNP_PRIVATE3
 #define UNP_MARKER		UNP_PRIVATE4
 
+/* For unp_internalize() and unp_externalize() */
+CTASSERT(sizeof(struct file *) >= sizeof(int));
+
 #define UNP_ISATTACHED(unp)	\
     ((unp) != NULL && ((unp)->unp_flags & UNP_DETACHED) == 0)
 
@@ -1455,63 +1458,44 @@ unp_externalize(struct mbuf *rights, int flags)
 	 * now change each pointer to an fd in the global table to 
 	 * an integer that is the index to the local fd table entry
 	 * that we set up to point to the global one we are transferring.
-	 * If sizeof (struct file *) is bigger than or equal to sizeof int,
-	 * then do it in forward order. In that case, an integer will
-	 * always come in the same place or before its corresponding
-	 * struct file pointer.
-	 * If sizeof (struct file *) is smaller than sizeof int, then
-	 * do it in reverse order.
+	 * Since the sizeof(struct file *) is bigger than or equal to
+	 * the sizeof(int), we do it in forward order.  In that case,
+	 * an integer will always come in the same place or before its
+	 * corresponding struct file pointer.
 	 *
 	 * Hold revoke_token in 'shared' mode, so that we won't miss
 	 * the FREVOKED update on fps being externalized (fsetfd).
 	 */
 	lwkt_gettoken_shared(&revoke_token);
-	if (sizeof(struct file *) >= sizeof(int)) {
-		fdp = (int *)CMSG_DATA(cm);
-		rp = (struct file **)CMSG_DATA(cm);
-		for (i = 0; i < newfds; i++) {
-			if (fdalloc(p, 0, &f)) {
-				int j;
+	fdp = (int *)CMSG_DATA(cm);
+	rp = (struct file **)CMSG_DATA(cm);
+	for (i = 0; i < newfds; i++) {
+		if (fdalloc(p, 0, &f)) {
+			int j;
 
-				/*
-				 * Previous fdavail() can't garantee
-				 * fdalloc() success due to SMP race.
-				 * Just clean up and return the same
-				 * error value as if fdavail() failed.
-				 */
+			/*
+			 * Previous fdavail() can't garantee
+			 * fdalloc() success due to SMP race.
+			 * Just clean up and return the same
+			 * error value as if fdavail() failed.
+			 */
 
-				/* Close externalized files */
-				for (j = 0; j < i; j++)
-					kern_close(fdp[j]);
-				/* Discard the rest of internal files */
-				for (; i < newfds; i++)
-					unp_discard(rp[i], NULL);
-				/* Wipe out the control message */
-				for (i = 0; i < newfds; i++)
-					rp[i] = NULL;
+			/* Close externalized files */
+			for (j = 0; j < i; j++)
+				kern_close(fdp[j]);
+			/* Discard the rest of internal files */
+			for (; i < newfds; i++)
+				unp_discard(rp[i], NULL);
+			/* Wipe out the control message */
+			for (i = 0; i < newfds; i++)
+				rp[i] = NULL;
 
-				lwkt_reltoken(&revoke_token);
-				return (EMSGSIZE);
-			}
-			fp = rp[i];
-			unp_fp_externalize(lp, fp, f, flags);
-			fdp[i] = f;
+			lwkt_reltoken(&revoke_token);
+			return (EMSGSIZE);
 		}
-	} else {
-		/*
-		 * XXX
-		 * Will this ever happen?  I don't think compiler will
-		 * generate code for this code segment -- sephe
-		 */
-		fdp = (int *)CMSG_DATA(cm) + newfds - 1;
-		rp = (struct file **)CMSG_DATA(cm) + newfds - 1;
-		for (i = 0; i < newfds; i++) {
-			if (fdalloc(p, 0, &f))
-				panic("unp_externalize");
-			fp = *rp--;
-			unp_fp_externalize(lp, fp, f, flags);
-			*fdp-- = f;
-		}
+		fp = rp[i];
+		unp_fp_externalize(lp, fp, f, flags);
+		fdp[i] = f;
 	}
 	lwkt_reltoken(&revoke_token);
 
@@ -1679,41 +1663,20 @@ unp_internalize(struct mbuf *control, struct thread *td)
 
 	/*
 	 * Transform the file descriptors into struct file pointers.
-	 * If sizeof (struct file *) is bigger than or equal to sizeof int,
-	 * then do it in reverse order so that the int won't get until
-	 * we're done.
-	 * If sizeof (struct file *) is smaller than sizeof int, then
-	 * do it in forward order.
+	 * Since the sizeof(struct file *) is bigger than or equal to
+	 * the sizeof(int), we do it in reverse order so that the int
+	 * won't get trashed until we're done.
 	 */
-	if (sizeof(struct file *) >= sizeof(int)) {
-		fdp = (int *)CMSG_DATA(cm) + oldfds - 1;
-		rp = (struct file **)CMSG_DATA(cm) + oldfds - 1;
-		for (i = 0; i < oldfds; i++) {
-			fp = fdescp->fd_files[*fdp--].fp;
-			*rp-- = fp;
-			fhold(fp);
-			spin_lock(&unp_spin);
-			fp->f_msgcount++;
-			unp_rights++;
-			spin_unlock(&unp_spin);
-		}
-	} else {
-		/*
-		 * XXX
-		 * Will this ever happen?  I don't think compiler will
-		 * generate code for this code segment -- sephe
-		 */
-		fdp = (int *)CMSG_DATA(cm);
-		rp = (struct file **)CMSG_DATA(cm);
-		for (i = 0; i < oldfds; i++) {
-			fp = fdescp->fd_files[*fdp++].fp;
-			*rp++ = fp;
-			fhold(fp);
-			spin_lock(&unp_spin);
-			fp->f_msgcount++;
-			unp_rights++;
-			spin_unlock(&unp_spin);
-		}
+	fdp = (int *)CMSG_DATA(cm) + oldfds - 1;
+	rp = (struct file **)CMSG_DATA(cm) + oldfds - 1;
+	for (i = 0; i < oldfds; i++) {
+		fp = fdescp->fd_files[*fdp--].fp;
+		*rp-- = fp;
+		fhold(fp);
+		spin_lock(&unp_spin);
+		fp->f_msgcount++;
+		unp_rights++;
+		spin_unlock(&unp_spin);
 	}
 	error = 0;
 done:
