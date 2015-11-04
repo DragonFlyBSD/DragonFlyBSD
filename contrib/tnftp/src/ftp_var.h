@@ -1,4 +1,5 @@
-/*	$NetBSD: ftp_var.h,v 1.82 2012/12/21 18:07:36 christos Exp $	*/
+/*	$NetBSD: ftp_var.h,v 1.12 2015/10/04 04:53:26 lukem Exp $	*/
+/*	from	NetBSD: ftp_var.h,v 1.83 2015/01/12 14:17:08 christos Exp	*/
 
 /*-
  * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
@@ -100,6 +101,8 @@
 #define	NO_PROGRESS
 #endif
 
+#if 0	/* tnftp */
+
 #include <sys/param.h>
 
 #include <netinet/in.h>
@@ -109,6 +112,8 @@
 
 #include <setjmp.h>
 #include <stringlist.h>
+
+#endif	/* tnftp */
 
 #ifndef NO_EDITCOMPLETE
 #include <histedit.h>
@@ -169,7 +174,7 @@ enum {
 /*
  * Global defines
  */
-#define	FTPBUFLEN	MAXPATHLEN + 200
+#define	FTPBUFLEN	(4 * MAXPATHLEN)
 #define	MAX_IN_PORT_T	0xffffU
 
 #define	HASHBYTES	1024	/* default mark for `hash' command */

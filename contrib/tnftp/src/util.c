@@ -1,4 +1,5 @@
-/*	$NetBSD: util.c,v 1.158 2013/02/19 23:29:15 dsl Exp $	*/
+/*	$NetBSD: util.c,v 1.23 2013/05/05 11:51:43 lukem Exp $	*/
+/*	from	NetBSD: util.c,v 1.158 2013/02/19 23:29:15 dsl Exp	*/
 
 /*-
  * Copyright (c) 1997-2009 The NetBSD Foundation, Inc.
@@ -62,9 +63,13 @@
  * SUCH DAMAGE.
  */
 
+#include "tnftp.h"
+
+#if 0	/* tnftp */
+
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: util.c,v 1.158 2013/02/19 23:29:15 dsl Exp $");
+__RCSID(" NetBSD: util.c,v 1.158 2013/02/19 23:29:15 dsl Exp  ");
 #endif /* not lint */
 
 /*
@@ -94,6 +99,8 @@ __RCSID("$NetBSD: util.c,v 1.158 2013/02/19 23:29:15 dsl Exp $");
 #include <time.h>
 #include <tzfile.h>
 #include <unistd.h>
+
+#endif	/* tnftp */
 
 #include "ftp_var.h"
 
@@ -796,11 +803,13 @@ const char *
 parse_rfc2616time(struct tm *parsed, const char *httpdate)
 {
 	const char *t;
+#if defined(HAVE_SETLOCALE)
 	const char *curlocale;
 
 	/* The representation of %a depends on the current locale. */
 	curlocale = setlocale(LC_TIME, NULL);
 	(void)setlocale(LC_TIME, "C");
+#endif
 								/* RFC 1123 */
 	if ((t = strptime(httpdate, "%a, %d %b %Y %H:%M:%S GMT", parsed)) ||
 								/* RFC 850 */
@@ -809,7 +818,9 @@ parse_rfc2616time(struct tm *parsed, const char *httpdate)
 	    (t = strptime(httpdate, "%a, %b %d %H:%M:%S %Y", parsed))) {
 		;			/* do nothing */
 	}
+#if defined(HAVE_SETLOCALE)
 	(void)setlocale(LC_TIME, curlocale);
+#endif
 	return t;
 }
 
@@ -1484,7 +1495,65 @@ ftp_listen(int sock, int backlog)
 int
 ftp_poll(struct pollfd *fds, int nfds, int timeout)
 {
+#if defined(HAVE_POLL)
 	return poll(fds, nfds, timeout);
+
+#elif defined(HAVE_SELECT)
+		/* implement poll(2) using select(2) */
+	fd_set		rset, wset, xset;
+	const int	rsetflags = POLLIN | POLLRDNORM;
+	const int	wsetflags = POLLOUT | POLLWRNORM;
+	const int	xsetflags = POLLRDBAND;
+	struct timeval	tv, *ptv;
+	int		i, max, rv;
+
+	FD_ZERO(&rset);			/* build list of read & write events */
+	FD_ZERO(&wset);
+	FD_ZERO(&xset);
+	max = 0;
+	for (i = 0; i < nfds; i++) {
+		if (fds[i].fd > FD_SETSIZE) {
+			warnx("can't select fd %d", fds[i].fd);
+			errno = EINVAL;
+			return -1;
+		} else if (fds[i].fd > max)
+			max = fds[i].fd;
+		if (fds[i].events & rsetflags)
+			FD_SET(fds[i].fd, &rset);
+		if (fds[i].events & wsetflags)
+			FD_SET(fds[i].fd, &wset);
+		if (fds[i].events & xsetflags)
+			FD_SET(fds[i].fd, &xset);
+	}
+
+	ptv = &tv;			/* determine timeout */
+	if (timeout == -1) {		/* wait forever */
+		ptv = NULL;
+	} else if (timeout == 0) {	/* poll once */
+		ptv->tv_sec = 0;
+		ptv->tv_usec = 0;
+	}
+	else if (timeout != 0) {	/* wait timeout milliseconds */
+		ptv->tv_sec = timeout / 1000;
+		ptv->tv_usec = (timeout % 1000) * 1000;
+	}
+	rv = select(max + 1, &rset, &wset, &xset, ptv);
+	if (rv <= 0)			/* -1 == error, 0 == timeout */
+		return rv;
+
+	for (i = 0; i < nfds; i++) {	/* determine results */
+		if (FD_ISSET(fds[i].fd, &rset))
+			fds[i].revents |= (fds[i].events & rsetflags);
+		if (FD_ISSET(fds[i].fd, &wset))
+			fds[i].revents |= (fds[i].events & wsetflags);
+		if (FD_ISSET(fds[i].fd, &xset))
+			fds[i].revents |= (fds[i].events & xsetflags);
+	}
+	return rv;
+
+#else
+# error no way to implement xpoll
+#endif
 }
 
 /*

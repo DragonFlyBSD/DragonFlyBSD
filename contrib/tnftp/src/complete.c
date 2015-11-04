@@ -1,4 +1,5 @@
-/*	$NetBSD: complete.c,v 1.46 2009/04/12 10:18:52 lukem Exp $	*/
+/*	$NetBSD: complete.c,v 1.10 2009/05/20 12:53:47 lukem Exp $	*/
+/*	from	NetBSD: complete.c,v 1.46 2009/04/12 10:18:52 lukem Exp	*/
 
 /*-
  * Copyright (c) 1997-2009 The NetBSD Foundation, Inc.
@@ -29,9 +30,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "tnftp.h"
+
+#if 0	/* tnftp */
+
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: complete.c,v 1.46 2009/04/12 10:18:52 lukem Exp $");
+__RCSID(" NetBSD: complete.c,v 1.46 2009/04/12 10:18:52 lukem Exp  ");
 #endif /* not lint */
 
 /*
@@ -46,6 +51,8 @@ __RCSID("$NetBSD: complete.c,v 1.46 2009/04/12 10:18:52 lukem Exp $");
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#endif	/* tnftp */
 
 #include "ftp_var.h"
 

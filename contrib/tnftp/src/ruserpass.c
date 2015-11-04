@@ -1,4 +1,5 @@
-/*	$NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $	*/
+/*	$NetBSD: ruserpass.c,v 1.8 2007/08/06 04:33:24 lukem Exp $	*/
+/*	from	NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp	*/
 
 /*
  * Copyright (c) 1985, 1993, 1994
@@ -29,12 +30,16 @@
  * SUCH DAMAGE.
  */
 
+#include "tnftp.h"
+
+#if 0	/* tnftp */
+
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)ruserpass.c	8.4 (Berkeley) 4/27/95";
 #else
-__RCSID("$NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $");
+__RCSID(" NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp  ");
 #endif
 #endif /* not lint */
 
@@ -49,6 +54,8 @@ __RCSID("$NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $");
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#endif	/* tnftp */
 
 #include "ftp_var.h"
 

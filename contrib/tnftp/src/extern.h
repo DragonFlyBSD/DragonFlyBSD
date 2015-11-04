@@ -1,4 +1,5 @@
-/*	$NetBSD: extern.h,v 1.80 2012/07/04 06:09:37 is Exp $	*/
+/*	$NetBSD: extern.h,v 1.13 2013/05/05 11:17:30 lukem Exp $	*/
+/*	from	NetBSD: extern.h,v 1.80 2012/07/04 06:09:37 is Exp	*/
 
 /*-
  * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
@@ -108,7 +109,7 @@ void	cmdabort(int);
 void	cmdtimeout(int);
 void	cmdscanner(void);
 int	command(const char *, ...)
-     __attribute__((__format__(__printf__, 1, 2)));
+     ;
 #ifndef NO_EDITCOMPLETE
 unsigned char complete(EditLine *, int);
 void	controlediting(void);

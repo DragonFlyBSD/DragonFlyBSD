@@ -1,4 +1,5 @@
-/*	$NetBSD: ftp.c,v 1.164 2012/07/04 06:09:37 is Exp $	*/
+/*	$NetBSD: ftp.c,v 1.19 2013/05/05 11:17:31 lukem Exp $	*/
+/*	from	NetBSD: ftp.c,v 1.164 2012/07/04 06:09:37 is Exp	*/
 
 /*-
  * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
@@ -87,12 +88,17 @@
  * SUCH DAMAGE.
  */
 
+#include "tnftp.h"
+#include <arpa/telnet.h>
+
+#if 0	/* tnftp */
+
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)ftp.c	8.6 (Berkeley) 10/27/94";
 #else
-__RCSID("$NetBSD: ftp.c,v 1.164 2012/07/04 06:09:37 is Exp $");
+__RCSID(" NetBSD: ftp.c,v 1.164 2012/07/04 06:09:37 is Exp  ");
 #endif
 #endif /* not lint */
 
@@ -120,6 +126,8 @@ __RCSID("$NetBSD: ftp.c,v 1.164 2012/07/04 06:09:37 is Exp $");
 #include <time.h>
 #include <unistd.h>
 #include <stdarg.h>
+
+#endif	/* tnftp */
 
 #include "ftp_var.h"
 

@@ -1,4 +1,5 @@
-/*	$NetBSD: cmdtab.c,v 1.52 2012/12/22 16:57:09 christos Exp $	*/
+/*	$NetBSD: cmdtab.c,v 1.12 2013/05/05 11:17:30 lukem Exp $	*/
+/*	from	NetBSD: cmdtab.c,v 1.52 2012/12/22 16:57:09 christos Exp	*/
 
 /*-
  * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
@@ -58,16 +59,23 @@
  * SUCH DAMAGE.
  */
 
+#include "tnftp.h"
+
+#if 0	/* tnftp */
+
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)cmdtab.c	8.4 (Berkeley) 10/9/94";
 #else
-__RCSID("$NetBSD: cmdtab.c,v 1.52 2012/12/22 16:57:09 christos Exp $");
+__RCSID(" NetBSD: cmdtab.c,v 1.52 2012/12/22 16:57:09 christos Exp  ");
 #endif
 #endif /* not lint */
 
 #include <stdio.h>
+
+#endif	/* tnftp */
+
 #include "ftp_var.h"
 
 /*

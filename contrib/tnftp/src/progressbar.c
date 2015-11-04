@@ -1,4 +1,5 @@
-/*	$NetBSD: progressbar.c,v 1.22 2012/06/27 22:07:36 riastradh Exp $	*/
+/*	$NetBSD: progressbar.c,v 1.15 2013/05/05 11:17:31 lukem Exp $	*/
+/*	from	NetBSD: progressbar.c,v 1.22 2012/06/27 22:07:36 riastradh Exp	*/
 
 /*-
  * Copyright (c) 1997-2009 The NetBSD Foundation, Inc.
@@ -29,9 +30,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "tnftp.h"
+
+#if 0	/* tnftp */
+
 #include <sys/cdefs.h>
 #ifndef lint
-__RCSID("$NetBSD: progressbar.c,v 1.22 2012/06/27 22:07:36 riastradh Exp $");
+__RCSID(" NetBSD: progressbar.c,v 1.22 2012/06/27 22:07:36 riastradh Exp  ");
 #endif /* not lint */
 
 /*
@@ -51,6 +56,8 @@ __RCSID("$NetBSD: progressbar.c,v 1.22 2012/06/27 22:07:36 riastradh Exp $");
 #include <tzfile.h>
 #include <unistd.h>
 
+#endif	/* tnftp */
+
 #include "progressbar.h"
 
 #if !defined(NO_PROGRESS)
@@ -63,7 +70,11 @@ foregroundproc(void)
 	static pid_t pgrp = -1;
 
 	if (pgrp == -1)
+#if GETPGRP_VOID
 		pgrp = getpgrp();
+#else /* ! GETPGRP_VOID */
+		pgrp = getpgrp(0);
+#endif /* ! GETPGRP_VOID */
 
 	return (tcgetpgrp(fileno(ttyout)) == pgrp);
 }
@@ -408,6 +419,16 @@ alarmtimer(int wait)
 sigfunc
 xsignal_restart(int sig, sigfunc func, int restartable)
 {
+#ifdef ultrix	/* XXX: this is lame - how do we test sigvec vs. sigaction? */
+	struct sigvec vec, ovec;
+
+	vec.sv_handler = func;
+	sigemptyset(&vec.sv_mask);
+	vec.sv_flags = 0;
+	if (sigvec(sig, &vec, &ovec) < 0)
+		return (SIG_ERR);
+	return (ovec.sv_handler);
+#else	/* ! ultrix */
 	struct sigaction act, oact;
 	act.sa_handler = func;
 
@@ -422,6 +443,7 @@ xsignal_restart(int sig, sigfunc func, int restartable)
 	if (sigaction(sig, &act, &oact) < 0)
 		return (SIG_ERR);
 	return (oact.sa_handler);
+#endif	/* ! ultrix */
 }
 
 /*

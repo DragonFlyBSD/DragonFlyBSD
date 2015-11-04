@@ -1,4 +1,5 @@
-/*	$NetBSD: cmds.c,v 1.135 2012/12/22 16:57:09 christos Exp $	*/
+/*	$NetBSD: cmds.c,v 1.18 2013/05/05 11:17:30 lukem Exp $	*/
+/*	from	NetBSD: cmds.c,v 1.135 2012/12/22 16:57:09 christos Exp	*/
 
 /*-
  * Copyright (c) 1996-2009 The NetBSD Foundation, Inc.
@@ -91,12 +92,16 @@
  * SUCH DAMAGE.
  */
 
+#include "tnftp.h"
+
+#if 0	/* tnftp */
+
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)cmds.c	8.6 (Berkeley) 10/9/94";
 #else
-__RCSID("$NetBSD: cmds.c,v 1.135 2012/12/22 16:57:09 christos Exp $");
+__RCSID(" NetBSD: cmds.c,v 1.135 2012/12/22 16:57:09 christos Exp  ");
 #endif
 #endif /* not lint */
 
@@ -122,6 +127,8 @@ __RCSID("$NetBSD: cmds.c,v 1.135 2012/12/22 16:57:09 christos Exp $");
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#endif	/* tnftp */
 
 #include "ftp_var.h"
 #include "version.h"
