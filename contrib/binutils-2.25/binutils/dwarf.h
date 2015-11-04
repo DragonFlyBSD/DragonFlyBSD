@@ -25,22 +25,9 @@ typedef unsigned HOST_WIDEST_INT  dwarf_size_type;
 /* Structure found in the .debug_line section.  */
 typedef struct
 {
-  unsigned char li_length          [4];
-  unsigned char li_version         [2];
-  unsigned char li_prologue_length [4];
-  unsigned char li_min_insn_length [1];
-  unsigned char li_default_is_stmt [1];
-  unsigned char li_line_base       [1];
-  unsigned char li_line_range      [1];
-  unsigned char li_opcode_base     [1];
-}
-DWARF2_External_LineInfo;
-
-typedef struct
-{
   dwarf_vma	 li_length;
   unsigned short li_version;
-  unsigned int   li_prologue_length;
+  dwarf_vma      li_prologue_length;
   unsigned char  li_min_insn_length;
   unsigned char  li_max_ops_per_insn;
   unsigned char  li_default_is_stmt;
@@ -53,15 +40,6 @@ DWARF2_Internal_LineInfo;
 /* Structure found in .debug_pubnames section.  */
 typedef struct
 {
-  unsigned char pn_length  [4];
-  unsigned char pn_version [2];
-  unsigned char pn_offset  [4];
-  unsigned char pn_size    [4];
-}
-DWARF2_External_PubNames;
-
-typedef struct
-{
   dwarf_vma	 pn_length;
   unsigned short pn_version;
   dwarf_vma	 pn_offset;
@@ -72,15 +50,6 @@ DWARF2_Internal_PubNames;
 /* Structure found in .debug_info section.  */
 typedef struct
 {
-  unsigned char  cu_length        [4];
-  unsigned char  cu_version       [2];
-  unsigned char  cu_abbrev_offset [4];
-  unsigned char  cu_pointer_size  [1];
-}
-DWARF2_External_CompUnit;
-
-typedef struct
-{
   dwarf_vma	 cu_length;
   unsigned short cu_version;
   dwarf_vma	 cu_abbrev_offset;
@@ -88,16 +57,7 @@ typedef struct
 }
 DWARF2_Internal_CompUnit;
 
-typedef struct
-{
-  unsigned char  ar_length       [4];
-  unsigned char  ar_version      [2];
-  unsigned char  ar_info_offset  [4];
-  unsigned char  ar_pointer_size [1];
-  unsigned char  ar_segment_size [1];
-}
-DWARF2_External_ARange;
-
+/* Structure found in .debug_aranges section.  */
 typedef struct
 {
   dwarf_vma	 ar_length;
@@ -164,6 +124,8 @@ struct dwarf_section
   dwarf_vma address;
   dwarf_size_type size;
   enum dwarf_section_display_enum abbrev_sec;
+  /* A spare field for random use.  */
+  void *user_data;
 };
 
 /* A structure containing the name of a debug section
@@ -205,7 +167,7 @@ typedef struct
 }
 debug_info;
 
-extern int eh_addr_size;
+extern unsigned int eh_addr_size;
 
 extern int do_debug_info;
 extern int do_debug_abbrevs;
@@ -246,10 +208,11 @@ extern void dwarf_select_sections_by_names (const char *);
 extern void dwarf_select_sections_by_letters (const char *);
 extern void dwarf_select_sections_all (void);
 
-unsigned int * find_cu_tu_set (void *, unsigned int);
+extern unsigned int * find_cu_tu_set (void *, unsigned int);
 
-void * cmalloc (size_t, size_t);
-void * xcmalloc (size_t, size_t);
-void * xcrealloc (void *, size_t, size_t);
+extern void * cmalloc (size_t, size_t);
+extern void * xcalloc2 (size_t, size_t);
+extern void * xcmalloc (size_t, size_t);
+extern void * xcrealloc (void *, size_t, size_t);
 
 extern dwarf_vma read_leb128 (unsigned char *, unsigned int *, bfd_boolean, const unsigned char * const);

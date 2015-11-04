@@ -1129,85 +1129,9 @@ i386_align_code (fragS *fragP, int count)
   /* nopw %cs:0L(%[re]ax,%[re]ax,1) */
   static const char alt_10[] =
     {0x66,0x2e,0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00};
-  /* data16
-     nopw %cs:0L(%[re]ax,%[re]ax,1) */
-  static const char alt_long_11[] =
-    {0x66,
-     0x66,0x2e,0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00};
-  /* data16
-     data16
-     nopw %cs:0L(%[re]ax,%[re]ax,1) */
-  static const char alt_long_12[] =
-    {0x66,
-     0x66,
-     0x66,0x2e,0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00};
-  /* data16
-     data16
-     data16
-     nopw %cs:0L(%[re]ax,%[re]ax,1) */
-  static const char alt_long_13[] =
-    {0x66,
-     0x66,
-     0x66,
-     0x66,0x2e,0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00};
-  /* data16
-     data16
-     data16
-     data16
-     nopw %cs:0L(%[re]ax,%[re]ax,1) */
-  static const char alt_long_14[] =
-    {0x66,
-     0x66,
-     0x66,
-     0x66,
-     0x66,0x2e,0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00};
-  /* data16
-     data16
-     data16
-     data16
-     data16
-     nopw %cs:0L(%[re]ax,%[re]ax,1) */
-  static const char alt_long_15[] =
-    {0x66,
-     0x66,
-     0x66,
-     0x66,
-     0x66,
-     0x66,0x2e,0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00};
-  /* nopl 0(%[re]ax,%[re]ax,1)
-     nopw 0(%[re]ax,%[re]ax,1) */
-  static const char alt_short_11[] =
-    {0x0f,0x1f,0x44,0x00,0x00,
-     0x66,0x0f,0x1f,0x44,0x00,0x00};
-  /* nopw 0(%[re]ax,%[re]ax,1)
-     nopw 0(%[re]ax,%[re]ax,1) */
-  static const char alt_short_12[] =
-    {0x66,0x0f,0x1f,0x44,0x00,0x00,
-     0x66,0x0f,0x1f,0x44,0x00,0x00};
-  /* nopw 0(%[re]ax,%[re]ax,1)
-     nopl 0L(%[re]ax) */
-  static const char alt_short_13[] =
-    {0x66,0x0f,0x1f,0x44,0x00,0x00,
-     0x0f,0x1f,0x80,0x00,0x00,0x00,0x00};
-  /* nopl 0L(%[re]ax)
-     nopl 0L(%[re]ax) */
-  static const char alt_short_14[] =
-    {0x0f,0x1f,0x80,0x00,0x00,0x00,0x00,
-     0x0f,0x1f,0x80,0x00,0x00,0x00,0x00};
-  /* nopl 0L(%[re]ax)
-     nopl 0L(%[re]ax,%[re]ax,1) */
-  static const char alt_short_15[] =
-    {0x0f,0x1f,0x80,0x00,0x00,0x00,0x00,
-     0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00};
-  static const char *const alt_short_patt[] = {
+  static const char *const alt_patt[] = {
     f32_1, f32_2, alt_3, alt_4, alt_5, alt_6, alt_7, alt_8,
-    alt_9, alt_10, alt_short_11, alt_short_12, alt_short_13,
-    alt_short_14, alt_short_15
-  };
-  static const char *const alt_long_patt[] = {
-    f32_1, f32_2, alt_3, alt_4, alt_5, alt_6, alt_7, alt_8,
-    alt_9, alt_10, alt_long_11, alt_long_12, alt_long_13,
-    alt_long_14, alt_long_15
+    alt_9, alt_10
   };
 
   /* Only align for at least a positive non-zero boundary. */
@@ -1219,14 +1143,9 @@ i386_align_code (fragS *fragP, int count)
 
      1. For PROCESSOR_I386, PROCESSOR_I486, PROCESSOR_PENTIUM and
      PROCESSOR_GENERIC32, f32_patt will be used.
-     2. For PROCESSOR_PENTIUMPRO, PROCESSOR_PENTIUM4, PROCESSOR_NOCONA,
-     PROCESSOR_CORE, PROCESSOR_CORE2, PROCESSOR_COREI7, and
-     PROCESSOR_GENERIC64, alt_long_patt will be used.
-     3. For PROCESSOR_ATHLON, PROCESSOR_K6, PROCESSOR_K8 and
-     PROCESSOR_AMDFAM10, PROCESSOR_BD and PROCESSOR_BT, alt_short_patt
-     will be used.
+     2. For the rest, alt_patt will be used.
 
-     When -mtune= isn't used, alt_long_patt will be used if
+     When -mtune= isn't used, alt_patt will be used if
      cpu_arch_isa_flags has CpuNop.  Otherwise, f32_patt will
      be used.
 
@@ -1259,7 +1178,7 @@ i386_align_code (fragS *fragP, int count)
 	      /* We use cpu_arch_isa_flags to check if we SHOULD
 		 optimize with nops.  */
 	      if (fragP->tc_frag_data.isa_flags.bitfield.cpunop)
-		patt = alt_long_patt;
+		patt = alt_patt;
 	      else
 		patt = f32_patt;
 	      break;
@@ -1271,15 +1190,13 @@ i386_align_code (fragS *fragP, int count)
 	    case PROCESSOR_L1OM:
 	    case PROCESSOR_K1OM:
 	    case PROCESSOR_GENERIC64:
-	      patt = alt_long_patt;
-	      break;
 	    case PROCESSOR_K6:
 	    case PROCESSOR_ATHLON:
 	    case PROCESSOR_K8:
 	    case PROCESSOR_AMDFAM10:
 	    case PROCESSOR_BD:
 	    case PROCESSOR_BT:
-	      patt = alt_short_patt;
+	      patt = alt_patt;
 	      break;
 	    case PROCESSOR_I386:
 	    case PROCESSOR_I486:
@@ -1313,7 +1230,7 @@ i386_align_code (fragS *fragP, int count)
 	      /* We use cpu_arch_isa_flags to check if we CAN optimize
 		 with nops.  */
 	      if (fragP->tc_frag_data.isa_flags.bitfield.cpunop)
-		patt = alt_short_patt;
+		patt = alt_patt;
 	      else
 		patt = f32_patt;
 	      break;
@@ -1326,12 +1243,12 @@ i386_align_code (fragS *fragP, int count)
 	    case PROCESSOR_L1OM:
 	    case PROCESSOR_K1OM:
 	      if (fragP->tc_frag_data.isa_flags.bitfield.cpunop)
-		patt = alt_long_patt;
+		patt = alt_patt;
 	      else
 		patt = f32_patt;
 	      break;
 	    case PROCESSOR_GENERIC64:
-	      patt = alt_long_patt;
+	      patt = alt_patt;
 	      break;
 	    }
 	}
@@ -1362,15 +1279,15 @@ i386_align_code (fragS *fragP, int count)
 	}
       else
 	{
-	  /* Maximum length of an instruction is 15 byte.  If the
-	     padding is greater than 15 bytes and we don't use jump,
+	  /* Maximum length of an instruction is 10 byte.  If the
+	     padding is greater than 10 bytes and we don't use jump,
 	     we have to break it into smaller pieces.  */
 	  int padding = count;
-	  while (padding > 15)
+	  while (padding > 10)
 	    {
-	      padding -= 15;
+	      padding -= 10;
 	      memcpy (fragP->fr_literal + fragP->fr_fix + padding,
-		      patt [14], 15);
+		      patt [9], 10);
 	    }
 
 	  if (padding)

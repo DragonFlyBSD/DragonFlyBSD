@@ -133,6 +133,7 @@ main (int argc, char **argv)
 
   program_name = *argv;
   xmalloc_set_program_name (program_name);
+  bfd_set_error_program_name (program_name);
 
   expandargv (&argc, &argv);
 
@@ -365,7 +366,14 @@ display_archive (bfd *file)
       display_bfd (arfile);
 
       if (last_arfile != NULL)
-	bfd_close (last_arfile);
+	{
+	  bfd_close (last_arfile);
+
+	  /* PR 17512: file: a244edbc.  */
+	  if (last_arfile == arfile)
+	    return;
+	}
+
       last_arfile = arfile;
     }
 

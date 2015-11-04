@@ -75,6 +75,9 @@ Generate code for PowerPC 7400/7410/7450/7455.
 @item -m750cl
 Generate code for PowerPC 750CL.
 
+@item -m821, -m850, -m860
+Generate code for PowerPC 821/850/860.
+
 @item -mppc64, -m620
 Generate code for PowerPC 620/625/630.
 

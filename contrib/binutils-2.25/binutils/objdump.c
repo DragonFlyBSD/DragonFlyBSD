@@ -2265,6 +2265,7 @@ load_specific_debug_section (enum dwarf_section_display_enum debug,
   section->address = bfd_get_section_vma (abfd, sec);
   section->size = bfd_get_section_size (sec);
   section->start = NULL;
+  section->user_data = sec;
   ret = bfd_get_full_section_contents (abfd, sec, &section->start);
 
   if (! ret)
@@ -2330,6 +2331,23 @@ free_debug_section (enum dwarf_section_display_enum debug)
 
   if (section->start == NULL)
     return;
+
+  /* PR 17512: file: 0f67f69d.  */
+  if (section->user_data != NULL)
+    {
+      asection * sec = (asection *) section->user_data;
+
+      /* If we are freeing contents that are also pointed to by the BFD
+	 library's section structure then make sure to update those pointers
+	 too.  Otherwise, the next time we try to load data for this section
+	 we can end up using a stale pointer.  */
+      if (section->start == sec->contents)
+	{
+	  sec->contents = NULL;
+	  sec->flags &= ~ SEC_IN_MEMORY;
+	  sec->compress_status = COMPRESS_SECTION_NONE;
+	}
+    }
 
   free ((char *) section->start);
   section->start = NULL;
@@ -2766,7 +2784,8 @@ dump_section (bfd *abfd, asection *section, void *dummy ATTRIBUTE_UNUSED)
 
   if (!bfd_get_full_section_contents (abfd, section, &data))
     {
-      non_fatal (_("Reading section failed"));
+      non_fatal (_("Reading section %s failed because: %s"),
+		 section->name, bfd_errmsg (bfd_get_error ()));
       return;
     }
 
@@ -3375,6 +3394,13 @@ display_any_bfd (bfd *file, int level)
 
       if (level == 0)
         printf (_("In archive %s:\n"), bfd_get_filename (file));
+      else if (level > 100)
+	{
+	  /* Prevent corrupted files from spinning us into an
+	     infinite loop.  100 is an arbitrary heuristic.  */
+	  fatal (_("Archive nesting is too deep"));
+	  return;
+	}
       else
         printf (_("In nested archive %s:\n"), bfd_get_filename (file));
 
@@ -3393,7 +3419,15 @@ display_any_bfd (bfd *file, int level)
 	  display_any_bfd (arfile, level + 1);
 
 	  if (last_arfile != NULL)
-	    bfd_close (last_arfile);
+	    {
+	      bfd_close (last_arfile);
+	      /* PR 17512: file: ac585d01.  */
+	      if (arfile == last_arfile)
+		{
+		  last_arfile = NULL;
+		  break;
+		}
+	    }
 	  last_arfile = arfile;
 	}
 
@@ -3446,6 +3480,7 @@ main (int argc, char **argv)
 
   program_name = *argv;
   xmalloc_set_program_name (program_name);
+  bfd_set_error_program_name (program_name);
 
   START_PROGRESS (program_name, 0);
 

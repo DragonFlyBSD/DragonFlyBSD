@@ -311,8 +311,7 @@ _bfd_look_for_bfd_in_cache (bfd *arch_bfd, file_ptr filepos)
       struct ar_cache *entry = (struct ar_cache *) htab_find (hash_table, &m);
       if (!entry)
 	return NULL;
-      else
-	return entry->arbfd;
+      return entry->arbfd;
     }
   else
     return NULL;
@@ -902,6 +901,10 @@ do_slurp_bsd_armap (bfd *abfd)
     return FALSE;
   parsed_size = mapdata->parsed_size;
   free (mapdata);
+  /* PR 17512: file: 883ff754.  */
+  /* PR 17512: file: 0458885f.  */
+  if (parsed_size < 4)
+    return FALSE;
 
   raw_armap = (bfd_byte *) bfd_zalloc (abfd, parsed_size);
   if (raw_armap == NULL)
@@ -1038,12 +1041,19 @@ do_slurp_coff_armap (bfd *abfd)
     }
 
   /* OK, build the carsyms.  */
-  for (i = 0; i < nsymz; i++)
+  for (i = 0; i < nsymz && stringsize > 0; i++)
     {
+      bfd_size_type len;
+
       rawptr = raw_armap + i;
       carsyms->file_offset = swap ((bfd_byte *) rawptr);
       carsyms->name = stringbase;
-      stringbase += strlen (stringbase) + 1;
+      /* PR 17512: file: 4a1d50c1.  */
+      len = strnlen (stringbase, stringsize);
+      if (len < stringsize)
+	len ++;
+      stringbase += len;
+      stringsize -= len;
       carsyms++;
     }
   *stringbase = 0;
@@ -1131,6 +1141,7 @@ bfd_slurp_armap (bfd *abfd)
 	return FALSE;
       if (bfd_seek (abfd, -(file_ptr) (sizeof (hdr) + 20), SEEK_CUR) != 0)
 	return FALSE;
+      extname[20] = 0;
       if (CONST_STRNEQ (extname, "__.SYMDEF SORTED")
 	  || CONST_STRNEQ (extname, "__.SYMDEF"))
 	return do_slurp_bsd_armap (abfd);
@@ -1964,6 +1975,9 @@ bfd_generic_stat_arch_elt (bfd *abfd, struct stat *buf)
     }
 
   hdr = arch_hdr (abfd);
+  /* PR 17512: file: 3d9e9fe9.  */
+  if (hdr == NULL)
+    return -1;
 
 #define foo(arelt, stelt, size)				\
   buf->stelt = strtol (hdr->arelt, &aloser, size);	\

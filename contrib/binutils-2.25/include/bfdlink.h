@@ -91,7 +91,13 @@ struct bfd_link_hash_entry
   /* Type of this entry.  */
   ENUM_BITFIELD (bfd_link_hash_type) type : 8;
 
+  /* Symbol is referenced in a normal object file, as distict from a LTO
+     IR object file.  */
   unsigned int non_ir_ref : 1;
+
+  /* Symbol is a built-in define.  These will be overridden by PROVIDE
+     in a linker script.  */
+  unsigned int linker_def : 1;
 
   /* A union of information depending upon the type.  */
   union

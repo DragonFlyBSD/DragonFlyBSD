@@ -1560,6 +1560,7 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	      h->type = bfd_link_hash_defined;
 	    h->u.def.section = section;
 	    h->u.def.value = value;
+	    h->linker_def = 0;
 
 	    /* If we have been asked to, we act like collect2 and
 	       identify all functions that might be global
@@ -1659,6 +1660,7 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	    }
 	  else
 	    h->u.c.p->section = section;
+	  h->linker_def = 0;
 	  break;
 
 	case REF:
@@ -2432,7 +2434,7 @@ _bfd_generic_reloc_link_order (bfd *abfd,
 
       size = bfd_get_reloc_size (r->howto);
       buf = (bfd_byte *) bfd_zmalloc (size);
-      if (buf == NULL)
+      if (buf == NULL && size != 0)
 	return FALSE;
       rstat = _bfd_relocate_contents (r->howto, abfd,
 				      (bfd_vma) link_order->u.reloc.p->addend,

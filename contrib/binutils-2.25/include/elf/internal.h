@@ -317,6 +317,13 @@ struct elf_segment_map
     || (((sec_hdr)->sh_flags & SHF_TLS) == 0				\
 	&& (segment)->p_type != PT_TLS					\
 	&& (segment)->p_type != PT_PHDR))				\
+   /* PT_LOAD and similar segments only have SHF_ALLOC sections.  */	\
+   && !(((sec_hdr)->sh_flags & SHF_ALLOC) == 0				\
+	&& ((segment)->p_type == PT_LOAD				\
+	    || (segment)->p_type == PT_DYNAMIC				\
+	    || (segment)->p_type == PT_GNU_EH_FRAME			\
+	    || (segment)->p_type == PT_GNU_RELRO			\
+	    || (segment)->p_type == PT_GNU_STACK))			\
    /* Any section besides one of type SHT_NOBITS must have file		\
       offsets within the segment.  */					\
    && ((sec_hdr)->sh_type == SHT_NOBITS					\

@@ -1191,6 +1191,8 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
 		{
 		  nul_fun = stab;
 		  nul_str = str;
+		  if (file_name >= (char *) info->strs + strsize || file_name < (char *) str)
+		    file_name = NULL;
 		  if (stab + STABSIZE + TYPEOFF < info->stabs + stabsize
 		      && *(stab + STABSIZE + TYPEOFF) == (bfd_byte) N_SO)
 		    {
@@ -1200,6 +1202,8 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
 		      directory_name = file_name;
 		      file_name = ((char *) str
 				   + bfd_get_32 (abfd, stab + STRDXOFF));
+		      if (file_name >= (char *) info->strs + strsize || file_name < (char *) str)
+			file_name = NULL;
 		    }
 		}
 	      break;
@@ -1207,6 +1211,10 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
 	    case N_SOL:
 	      /* The name of an include file.  */
 	      file_name = (char *) str + bfd_get_32 (abfd, stab + STRDXOFF);
+	      /* PR 17512: file: 0c680a1f.  */
+	      /* PR 17512: file: 5da8aec4.  */
+	      if (file_name >= (char *) info->strs + strsize || file_name < (char *) str)
+		file_name = NULL;
 	      break;
 
 	    case N_FUN:
@@ -1214,6 +1222,8 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
 	      function_name = (char *) str + bfd_get_32 (abfd, stab + STRDXOFF);
 	      if (function_name == (char *) str)
 		continue;
+	      if (function_name >= (char *) info->strs + strsize)
+		function_name = NULL;
 
 	      nul_fun = NULL;
 	      info->indextable[i].val = bfd_get_32 (abfd, stab + VALOFF);
@@ -1321,6 +1331,8 @@ _bfd_stab_section_find_nearest_line (bfd *abfd,
 	  if (val <= offset)
 	    {
 	      file_name = (char *) str + bfd_get_32 (abfd, stab + STRDXOFF);
+	      if (file_name >= (char *) info->strs + strsize || file_name < (char *) str)
+		file_name = NULL;
 	      *pline = 0;
 	    }
 	  break;

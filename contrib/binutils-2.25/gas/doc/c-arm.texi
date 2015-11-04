@@ -129,6 +129,7 @@ recognized:
 @code{cortex-m0},
 @code{cortex-m0plus},
 @code{ep9312} (ARM920 with Cirrus Maverick coprocessor),
+@code{exynos-m1},
 @code{i80200} (Intel XScale processor)
 @code{iwmmxt} (Intel(r) XScale processor with Wireless MMX(tm) technology coprocessor)
 and

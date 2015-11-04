@@ -291,7 +291,8 @@ static const struct debug_write_fns tg_fns =
 
 bfd_boolean
 print_debugging_info (FILE *f, void *dhandle, bfd *abfd, asymbol **syms,
-		      void *demangler, bfd_boolean as_tags)
+		      char * (*demangler) (struct bfd *, const char *, int),
+		      bfd_boolean as_tags)
 {
   struct pr_handle info;
 
@@ -302,7 +303,7 @@ print_debugging_info (FILE *f, void *dhandle, bfd *abfd, asymbol **syms,
   info.filename = NULL;
   info.abfd = abfd;
   info.syms = syms;
-  info.demangler = (char * (*)(struct bfd *, const char *, int)) demangler;
+  info.demangler = demangler;
 
   if (as_tags)
     {

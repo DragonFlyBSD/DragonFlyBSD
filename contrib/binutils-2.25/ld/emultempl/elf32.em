@@ -1015,7 +1015,8 @@ gld${EMULATION_NAME}_after_open (void)
       /* Find an ELF input.  */
       for (abfd = link_info.input_bfds;
 	   abfd != (bfd *) NULL; abfd = abfd->link.next)
-	if (bfd_get_flavour (abfd) == bfd_target_elf_flavour)
+	if (bfd_get_flavour (abfd) == bfd_target_elf_flavour
+	    && bfd_count_sections (abfd) != 0)
 	  break;
 
       /* PR 10555: If there are no ELF input files do not try to
@@ -1053,6 +1054,8 @@ gld${EMULATION_NAME}_after_open (void)
 
       for (abfd = link_info.input_bfds; abfd; abfd = abfd->link.next)
 	{
+	  if (bfd_count_sections (abfd) == 0)
+	    continue;
 	  if (bfd_get_flavour (abfd) == bfd_target_elf_flavour)
 	    elfbfd = abfd;
 	  if (!warn_eh_frame)
