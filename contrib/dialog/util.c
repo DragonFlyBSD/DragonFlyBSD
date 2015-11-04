@@ -1,9 +1,9 @@
 /*
- *  $Id: util.c,v 1.253 2012/12/23 19:52:54 tom Exp $
+ *  $Id: util.c,v 1.260 2014/09/01 17:01:01 tom Exp $
  *
  *  util.c -- miscellaneous utilities for dialog
  *
- *  Copyright 2000-2011,2012	Thomas E. Dickey
+ *  Copyright 2000-2013,2014	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -271,6 +271,18 @@ open_terminal(char **result, int mode)
     return open(device, mode);
 }
 
+#ifdef NCURSES_VERSION
+static int
+my_putc(int ch)
+{
+    char buffer[2];
+    int fd = fileno(dialog_state.screen_output);
+
+    buffer[0] = (char) ch;
+    return (int) write(fd, buffer, (size_t) 1);
+}
+#endif
+
 /*
  * Do some initialization for dialog.
  *
@@ -377,19 +389,20 @@ init_dialog(FILE *input, FILE *output)
      * Cancel xterm's alternate-screen mode.
      */
     if (!dialog_vars.keep_tite
-	&& (dialog_state.screen_output != stdout
+	&& (fileno(dialog_state.screen_output) != fileno(stdout)
 	    || isatty(fileno(dialog_state.screen_output)))
 	&& key_mouse != 0	/* xterm and kindred */
 	&& isprivate(enter_ca_mode)
 	&& isprivate(exit_ca_mode)) {
 	/*
-	 * initscr() or newterm() already did putp(enter_ca_mode) as a side
+	 * initscr() or newterm() already wrote enter_ca_mode as a side
 	 * effect of initializing the screen.  It would be nice to not even
 	 * do that, but we do not really have access to the correct copy of
 	 * the terminfo description until those functions have been invoked.
 	 */
-	(void) putp(exit_ca_mode);
-	(void) putp(clear_screen);
+	(void) refresh();
+	(void) tputs(exit_ca_mode, 0, my_putc);
+	(void) tputs(clear_screen, 0, my_putc);
 	/*
 	 * Prevent ncurses from switching "back" to the normal screen when
 	 * exiting from dialog.  That would move the cursor to the original
@@ -576,18 +589,21 @@ end_dialog(void)
 int
 dlg_count_real_columns(const char *text)
 {
-    int result = dlg_count_columns(text);
-    if (result && dialog_vars.colors) {
-	int hidden = 0;
-	while (*text) {
-	    if (dialog_vars.colors && isOurEscape(text)) {
-		hidden += ESCAPE_LEN;
-		text += ESCAPE_LEN;
-	    } else {
-		++text;
+    int result = 0;
+    if (*text) {
+	result = dlg_count_columns(text);
+	if (result && dialog_vars.colors) {
+	    int hidden = 0;
+	    while (*text) {
+		if (dialog_vars.colors && isOurEscape(text)) {
+		    hidden += ESCAPE_LEN;
+		    text += ESCAPE_LEN;
+		} else {
+		    ++text;
+		}
 	    }
+	    result -= hidden;
 	}
-	result -= hidden;
     }
     return result;
 }
@@ -646,10 +662,13 @@ dlg_print_listitem(WINDOW *win,
     chtype attr = A_NORMAL;
     int limit;
     const int *cols;
-    const int *indx = dlg_index_wchars(text);
     chtype attrs[4];
 
+    if (text == 0)
+	text = "";
+
     if (first) {
+	const int *indx = dlg_index_wchars(text);
 	attrs[3] = tag_key_selected_attr;
 	attrs[2] = tag_key_attr;
 	attrs[1] = tag_selected_attr;
@@ -908,6 +927,7 @@ dlg_print_line(WINDOW *win,
 	test_ptr++;
     if (*test_ptr == '\n')
 	test_ptr++;
+    dlg_finish_string(prompt);
     return (test_ptr);
 }
 
@@ -1884,9 +1904,12 @@ dlg_strempty(void)
 char *
 dlg_strclone(const char *cprompt)
 {
-    char *prompt = dlg_malloc(char, strlen(cprompt) + 1);
-    assert_ptr(prompt, "dlg_strclone");
-    strcpy(prompt, cprompt);
+    char *prompt = 0;
+    if (cprompt != 0) {
+	prompt = dlg_malloc(char, strlen(cprompt) + 1);
+	assert_ptr(prompt, "dlg_strclone");
+	strcpy(prompt, cprompt);
+    }
     return prompt;
 }
 
@@ -1973,6 +1996,7 @@ dlg_draw_title(WINDOW *win, const char *title)
 	wmove(win, 0, x);
 	dlg_print_text(win, title, getmaxx(win) - x, &attr);
 	(void) wattrset(win, save);
+	dlg_finish_string(title);
     }
 }
 
@@ -2489,7 +2513,7 @@ dlg_add_quoted(char *string)
 	dlg_add_result(my_quote);
 	while (*string != '\0') {
 	    temp[0] = *string++;
-	    if (strchr(my_quote, *temp) || strchr(must_fix, *temp))
+	    if ((strchr) (my_quote, *temp) || (strchr) (must_fix, *temp))
 		dlg_add_result("\\");
 	    dlg_add_result(temp);
 	}
@@ -2534,6 +2558,32 @@ dlg_add_separator(void)
 	separator = dialog_vars.output_separator;
 
     dlg_add_result(separator);
+}
+
+#define HELP_PREFIX		"HELP "
+
+void
+dlg_add_help_listitem(int *result, char **tag, DIALOG_LISTITEM * item)
+{
+    dlg_add_result(HELP_PREFIX);
+    if (USE_ITEM_HELP(item->help)) {
+	*tag = dialog_vars.help_tags ? item->name : item->help;
+	*result = DLG_EXIT_ITEM_HELP;
+    } else {
+	*tag = item->name;
+    }
+}
+
+void
+dlg_add_help_formitem(int *result, char **tag, DIALOG_FORMITEM * item)
+{
+    dlg_add_result(HELP_PREFIX);
+    if (USE_ITEM_HELP(item->help)) {
+	*tag = dialog_vars.help_tags ? item->name : item->help;
+	*result = DLG_EXIT_ITEM_HELP;
+    } else {
+	*tag = item->name;
+    }
 }
 
 /*

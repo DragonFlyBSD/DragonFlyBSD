@@ -1,9 +1,9 @@
 /*
- *  $Id: checklist.c,v 1.148 2012/12/24 02:08:58 tom Exp $
+ *  $Id: checklist.c,v 1.154 2015/01/25 23:53:06 tom Exp $
  *
  *  checklist.c -- implements the checklist box
  *
- *  Copyright 2000-2011,2012	Thomas E. Dickey
+ *  Copyright 2000-2013,2015	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -205,6 +205,8 @@ dlg_checklist(const char *title,
     const char **buttons = dlg_ok_labels();
     const char *widget_name;
 
+    dialog_state.plain_buttons = TRUE;
+
     memset(&all, 0, sizeof(all));
     all.items = items;
     all.item_no = item_no;
@@ -293,6 +295,7 @@ dlg_checklist(const char *title,
 	all.use_height = 1;
 
     max_choice = MIN(all.use_height, item_no);
+    max_choice = MAX(max_choice, 1);
 
     /* create new window for the list */
     all.list = dlg_sub_window(dialog, all.use_height, all.use_width,
@@ -346,8 +349,9 @@ dlg_checklist(const char *title,
 		  + all.check_x + 4);
 
     /* ensure we are scrolled to show the current choice */
-    if (choice >= (max_choice + scrollamt)) {
-	scrollamt = choice - max_choice + 1;
+    scrollamt = MIN(scrollamt, max_choice + item_no - 1);
+    if (choice >= (max_choice + scrollamt - 1)) {
+	scrollamt = MAX(0, choice - max_choice + 1);
 	choice = max_choice - 1;
     }
     print_list(&all, choice, scrollamt, max_choice);
@@ -605,6 +609,7 @@ dialog_checklist(const char *title,
 			    && (dialog_vars.separate_output));
     bool show_status = FALSE;
     int current = 0;
+    char *help_result;
 
     listitems = dlg_calloc(DIALOG_LISTITEM, (size_t) item_no + 1);
     assert_ptr(listitems, "dialog_checklist");
@@ -638,31 +643,16 @@ dialog_checklist(const char *title,
 	show_status = TRUE;
 	break;
     case DLG_EXIT_HELP:
-	dlg_add_result("HELP ");
-	show_status = dialog_vars.help_status;
-	if (USE_ITEM_HELP(listitems[current].help)) {
-	    if (show_status) {
-		if (separate_output) {
-		    dlg_add_string(listitems[current].help);
-		    dlg_add_separator();
-		} else {
-		    dlg_add_quoted(listitems[current].help);
-		}
+	dlg_add_help_listitem(&result, &help_result, &listitems[current]);
+	if ((show_status = dialog_vars.help_status)) {
+	    if (separate_output) {
+		dlg_add_string(help_result);
+		dlg_add_separator();
 	    } else {
-		dlg_add_string(listitems[current].help);
+		dlg_add_quoted(help_result);
 	    }
-	    result = DLG_EXIT_ITEM_HELP;
 	} else {
-	    if (show_status) {
-		if (separate_output) {
-		    dlg_add_string(listitems[current].name);
-		    dlg_add_separator();
-		} else {
-		    dlg_add_quoted(listitems[current].name);
-		}
-	    } else {
-		dlg_add_string(listitems[current].name);
-	    }
+	    dlg_add_string(help_result);
 	}
 	break;
     }
@@ -683,6 +673,7 @@ dialog_checklist(const char *title,
 		}
 	    }
 	}
+	dlg_add_last_key(separate_output);
     }
 
     dlg_free_columns(&listitems[0].text, (int) sizeof(DIALOG_LISTITEM), item_no);

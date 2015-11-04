@@ -1,9 +1,9 @@
 /*
- *  $Id: rangebox.c,v 1.16 2012/12/19 21:38:00 tom Exp $
+ *  $Id: rangebox.c,v 1.17 2013/03/17 16:02:00 tom Exp $
  *
  *  rangebox.c -- implements the rangebox dialog
  *
- *  Copyright 2012	Thomas E. Dickey
+ *  Copyright 2012,2013	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -409,6 +409,7 @@ dialog_rangebox(const char *title,
     sprintf(buffer, "%d", cur_value);
     dlg_add_result(buffer);
     dlg_add_separator();
+    dlg_add_last_key(-1);
 
     dlg_del_window(dialog);
     dlg_mouse_free_regions();

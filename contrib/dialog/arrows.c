@@ -1,9 +1,9 @@
 /*
- *  $Id: arrows.c,v 1.49 2012/12/30 22:33:28 tom Exp $
+ *  $Id: arrows.c,v 1.51 2013/09/02 15:10:09 tom Exp $
  *
  *  arrows.c -- draw arrows to indicate end-of-range for lists
  *
- *  Copyright 2000-2011,2012	Thomas E. Dickey
+ *  Copyright 2000-2012,2013	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -74,9 +74,10 @@ dlg_draw_helpline(WINDOW *win, bool decorations)
     int bottom;
 
     if (dialog_vars.help_line != 0
+	&& dialog_vars.help_line[0] != 0
 	&& (bottom = getmaxy(win) - 1) > 0) {
 	chtype attr = A_NORMAL;
-	const int *cols = dlg_index_columns(dialog_vars.help_line);
+	int cols = dlg_count_columns(dialog_vars.help_line);
 	int other = decorations ? (ON_LEFT + ON_RIGHT) : 0;
 	int avail = (getmaxx(win) - other - 2);
 	int limit = dlg_count_real_columns(dialog_vars.help_line) + 2;
@@ -86,7 +87,7 @@ dlg_draw_helpline(WINDOW *win, bool decorations)
 	    other = decorations ? ON_LEFT : 0;
 	    (void) wmove(win, bottom, other + (avail - limit) / 2);
 	    waddch(win, '[');
-	    dlg_print_text(win, dialog_vars.help_line, cols[limit], &attr);
+	    dlg_print_text(win, dialog_vars.help_line, cols, &attr);
 	    waddch(win, ']');
 	    wmove(win, cur_y, cur_x);
 	}
@@ -233,7 +234,7 @@ dlg_draw_scrollbar(WINDOW *win,
 
 		(void) wattrset(win, position_indicator_attr);
 		wattron(win, A_REVERSE);
-#if defined(WACS_BLOCK) && defined(NCURSES_VERSION)
+#if defined(WACS_BLOCK) && defined(NCURSES_VERSION) && defined(USE_WIDE_CURSES)
 		wvline_set(win, WACS_BLOCK, bar_last - bar_y);
 #else
 		wvline(win, ACS_BLOCK, bar_last - bar_y);

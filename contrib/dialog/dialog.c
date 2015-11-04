@@ -1,9 +1,9 @@
 /*
- * $Id: dialog.c,v 1.228 2012/12/30 21:59:39 tom Exp $
+ * $Id: dialog.c,v 1.240 2015/09/20 23:48:54 tom Exp $
  *
  *  cdialog - Display simple dialog boxes from shell scripts
  *
- *  Copyright 2000-2011,2012	Thomas E. Dickey
+ *  Copyright 2000-2014,2015	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -71,6 +71,7 @@ typedef enum {
     ,o_help_label
     ,o_help_line
     ,o_help_status
+    ,o_help_tags
     ,o_icon
     ,o_ignore
     ,o_infobox
@@ -82,6 +83,7 @@ typedef enum {
     ,o_keep_colors
     ,o_keep_tite
     ,o_keep_window
+    ,o_last_key
     ,o_max_input
     ,o_menu
     ,o_mixedform
@@ -228,6 +230,7 @@ static const Options options[] = {
     { "help-button",	o_help_button,		1, "" },
     { "help-label",	o_help_label,		1, "<str>" },
     { "help-status",	o_help_status,		1, "" },
+    { "help-tags",	o_help_tags,		1, "" },
     { "hfile",		o_help_file,		1, "<str>" },
     { "hline",		o_help_line,		1, "<str>" },
     { "icon",		o_icon,			1, NULL },
@@ -241,6 +244,7 @@ static const Options options[] = {
     { "keep-colors",	o_keep_colors,		1, NULL },
     { "keep-tite",	o_keep_tite,		1, "" },
     { "keep-window",	o_keep_window,		1, "" },
+    { "last-key",	o_last_key,		1, "" },
     { "max-input",	o_max_input,		1, "<n>" },
     { "menu",		o_menu,			2, "<text> <height> <width> <menu height> <tag1> <item1>..." },
     { "mixedform",	o_mixedform,		2, "<text> <height> <width> <form height> <label1> <l_y1> <l_x1> <item1> <i_y1> <i_x1> <flen1> <ilen1> <itype>..." },
@@ -371,6 +375,7 @@ unescape_argv(int *argcp, char ***argvp)
 		fprintf(stderr, " arg%d:%s\n", k, (*argvp)[k]);
 	    }
 	    changed = dlg_eat_argv(argcp, argvp, j, 1);
+	    --j;
 	} else if (!strcmp((*argvp)[j], "--file")) {
 	    if (++count_includes > limit_includes)
 		dlg_exiterr("Too many --file options");
@@ -409,41 +414,58 @@ unescape_argv(int *argcp, char ***argvp)
 		    blob[length] = '\0';
 
 		    list = dlg_string_to_argv(blob);
-		    if ((added = dlg_count_argv(list)) != 0) {
-			if (added > 2) {
-			    size_t need = (size_t) (*argcp + added + 1);
-			    if (doalloc) {
-				*argvp = dlg_realloc(char *, need, *argvp);
-				assert_ptr(*argvp, "unescape_argv");
-			    } else {
-				char **newp = dlg_malloc(char *, need);
-				assert_ptr(newp, "unescape_argv");
-				for (n = 0; n < *argcp; ++n) {
-				    newp[n] = (*argvp)[n];
-				}
-				*argvp = newp;
-				doalloc = TRUE;
+		    added = dlg_count_argv(list);
+		    if (added > 2) {
+			/* *argcp arguments before the expansion of --file
+			   - 2 for the removal of '--file <filepath>'
+			   + added for the arguments contained in <filepath>
+			   + 1 for the terminating NULL pointer */
+			size_t need = (size_t) (*argcp + added - 1);
+			if (doalloc) {
+			    *argvp = dlg_realloc(char *, need, *argvp);
+			    assert_ptr(*argvp, "unescape_argv");
+			} else {
+			    char **newp = dlg_malloc(char *, need);
+			    assert_ptr(newp, "unescape_argv");
+			    for (n = 0; n < *argcp; ++n) {
+				newp[n] = (*argvp)[n];
 			    }
-			    dialog_opts = dlg_realloc(bool, need, dialog_opts);
-			    assert_ptr(dialog_opts, "unescape_argv");
+			    /* The new array is not NULL-terminated yet. */
+			    *argvp = newp;
+			    doalloc = TRUE;
 			}
-			for (n = *argcp; n >= j + 2; --n) {
+			dialog_opts = dlg_realloc(bool, need, dialog_opts);
+			assert_ptr(dialog_opts, "unescape_argv");
+
+			/* Shift the arguments after '--file <filepath>'
+			   right by (added - 2) positions */
+			for (n = *argcp - 1; n >= j + 2; --n) {
 			    (*argvp)[n + added - 2] = (*argvp)[n];
 			    dialog_opts[n + added - 2] = dialog_opts[n];
 			}
-			for (n = 0; n < added; ++n) {
-			    (*argvp)[n + j] = list[n];
-			    dialog_opts[n + j] = FALSE;
+		    } else if (added < 2) {
+			/* 0 or 1 argument read from the included file
+			   -> shift the arguments after '--file <filepath>'
+			   left by (2 - added) positions */
+			for (n = j + added; n + 2 - added < *argcp; ++n) {
+			    (*argvp)[n] = (*argvp)[n + 2 - added];
+			    dialog_opts[n] = dialog_opts[n + 2 - added];
 			}
-			*argcp += added - 2;
-			free(list);
 		    }
+		    /* Copy the inserted arguments to *argvp */
+		    for (n = 0; n < added; ++n) {
+			(*argvp)[n + j] = list[n];
+			dialog_opts[n + j] = FALSE;
+		    }
+		    *argcp += added - 2;
+		    (*argvp)[*argcp] = 0;	/* Write the NULL terminator */
+		    free(list);	/* No-op if 'list' is NULL */
+		    /* Force rescan starting from the first inserted argument */
+		    --j;
+		    continue;
 		} else {
 		    dlg_exiterr("Cannot open --file %s", filename);
 		}
-		(*argvp)[*argcp] = 0;
-		++j;
-		continue;
 	    } else {
 		dlg_exiterr("No value given for --file");
 	    }
@@ -490,7 +512,7 @@ isOption(const char *arg)
 		}
 	    }
 	} else if (!strncmp(arg, "--", (size_t) 2) && isalpha(UCH(arg[2]))) {
-	    if (strlen(arg) == strspn(arg, OptionChars)) {
+	    if (strlen(arg) == (strspn) (arg, OptionChars)) {
 		result = TRUE;
 	    } else {
 		dlg_exiterr("Invalid option \"%s\"", arg);
@@ -1095,10 +1117,10 @@ static const Mode modes[] =
     {o_msgbox,          4, 4, call_msgbox},
     {o_infobox,         4, 4, call_infobox},
     {o_textbox,         4, 4, call_textbox},
-    {o_menu,            7, 0, call_menu},
-    {o_inputmenu,       7, 0, call_inputmenu},
-    {o_checklist,       8, 0, call_checklist},
-    {o_radiolist,       8, 0, call_radiolist},
+    {o_menu,            6, 0, call_menu},
+    {o_inputmenu,       6, 0, call_inputmenu},
+    {o_checklist,       7, 0, call_checklist},
+    {o_radiolist,       7, 0, call_radiolist},
     {o_inputbox,        4, 5, call_inputbox},
     {o_passwordbox,     4, 5, call_passwordbox},
 #ifdef HAVE_DLG_GAUGE
@@ -1272,7 +1294,7 @@ Help(void)
     static const char *const tbl_1[] =
     {
 	"cdialog (ComeOn Dialog!) version %s",
-	"Copyright 2000-2011,2012 Thomas E. Dickey",
+	"Copyright 2000-2014,2015 Thomas E. Dickey",
 	"This is free software; see the source for copying conditions.  There is NO",
 	"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
 	"",
@@ -1460,6 +1482,9 @@ process_common_options(int argc, char **argv, int offset, bool output)
 	case o_help_status:
 	    dialog_vars.help_status = TRUE;
 	    break;
+	case o_help_tags:
+	    dialog_vars.help_tags = TRUE;
+	    break;
 	case o_extra_button:
 	    dialog_vars.extra_button = TRUE;
 	    break;
@@ -1468,6 +1493,9 @@ process_common_options(int argc, char **argv, int offset, bool output)
 	    break;
 	case o_keep_window:
 	    dialog_vars.keep_window = TRUE;
+	    break;
+	case o_last_key:
+	    dialog_vars.last_key = TRUE;
 	    break;
 	case o_no_shadow:
 	    dialog_state.use_shadow = FALSE;
@@ -1844,10 +1872,20 @@ main(int argc, char *argv[])
 	    Usage("Expected a box option");
 	}
 
-	if (lookupOption(argv[offset], 2) != o_checklist
-	    && dialog_vars.separate_output) {
-	    sprintf(temp, "Expected --checklist, not %.20s", argv[offset]);
-	    Usage(temp);
+	if (dialog_vars.separate_output) {
+	    switch (lookupOption(argv[offset], 2)) {
+#ifdef HAVE_XDIALOG2
+	    case o_buildlist:
+	    case o_treeview:
+#endif
+	    case o_checklist:
+		break;
+	    default:
+		sprintf(temp,
+			"Unexpected widget with --separate-output %.20s",
+			argv[offset]);
+		Usage(temp);
+	    }
 	}
 
 	if (dialog_state.aspect_ratio == 0)

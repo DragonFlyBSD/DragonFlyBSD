@@ -1,9 +1,9 @@
 /*
- *  $Id: trace.c,v 1.20 2011/10/18 10:47:26 tom Exp $
+ *  $Id: trace.c,v 1.21 2015/05/29 00:17:11 Matthias.Scheler Exp $
  *
  *  trace.c -- implements screen-dump and keystroke-logging
  *
- *  Copyright 2007-2010,2011	Thomas E. Dickey
+ *  Copyright 2007-2011,2015	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -93,7 +93,7 @@ dlg_trace_win(WINDOW *win)
 			wchar_t *uc;
 
 			if (win_wch(win, &cch) == ERR
-			    || (uc = wunctrl(&cch)) == 0
+			    || (uc = wunctrl((&cch))) == 0
 			    || uc[1] != 0
 			    || wcwidth(uc[0]) <= 0) {
 			    buffer[0] = '.';

@@ -1,9 +1,9 @@
 /*
- *  $Id: dlg_keys.c,v 1.34 2011/10/14 00:41:08 tom Exp $
+ *  $Id: dlg_keys.c,v 1.35 2014/01/12 18:21:52 tom Exp $
  *
  *  dlg_keys.c -- runtime binding support for dialog
  *
- *  Copyright 2006-2009,2011 Thomas E. Dickey
+ *  Copyright 2006-2011,2014 Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -230,7 +230,9 @@ dlg_lookup_key(WINDOW *win, int curses_key, int *fkey)
 	    }
 	}
 	for (p = all_bindings; p != 0; p = p->link) {
-	    if (p->win == win || (p->win == 0 && !strcmp(p->name, name))) {
+	    if (p->win == win ||
+		(p->win == 0 &&
+		 (!strcmp(p->name, name) || !strcmp(p->name, WILDNAME)))) {
 		int function_key = (*fkey != 0);
 		for (q = p->binding; q->is_function_key >= 0; ++q) {
 		    if (p->buttons

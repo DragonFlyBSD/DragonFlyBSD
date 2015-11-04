@@ -1,9 +1,9 @@
 /*
- *  $Id: buildlist.c,v 1.56 2012/12/31 00:38:57 tom Exp $
+ *  $Id: buildlist.c,v 1.61 2015/01/25 23:52:45 tom Exp $
  *
  *  buildlist.c -- implements the buildlist dialog
  *
- *  Copyright 2012	Thomas E. Dickey
+ *  Copyright 2012-2014,2015	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -118,7 +118,9 @@ print_1_list(ALL_DATA * data,
 
     for (i = j = 0; j < max_rows; i++) {
 	int ii = i + moi->top_index;
-	if (ii >= data->item_no) {
+	if (ii < 0) {
+	    continue;
+	} else if (ii >= data->item_no) {
 	    break;
 	} else if (!(selected ^ (data->items[ii].state != 0))) {
 	    print_item(data,
@@ -471,6 +473,8 @@ dlg_buildlist(const char *title,
     const char *widget_name = "buildlist";
 
     (void) order_mode;
+
+    dialog_state.plain_buttons = TRUE;
 
     /*
      * Unlike other uses of --visit-items, we have two windows to visit.
@@ -1027,6 +1031,7 @@ dialog_buildlist(const char *title,
     bool separate_output = dialog_vars.separate_output;
     bool show_status = FALSE;
     int current = 0;
+    char *help_result;
 
     listitems = dlg_calloc(DIALOG_LISTITEM, (size_t) item_no + 1);
     assert_ptr(listitems, "dialog_buildlist");
@@ -1060,31 +1065,16 @@ dialog_buildlist(const char *title,
 	show_status = TRUE;
 	break;
     case DLG_EXIT_HELP:
-	dlg_add_result("HELP ");
-	show_status = dialog_vars.help_status;
-	if (USE_ITEM_HELP(listitems[current].help)) {
-	    if (show_status) {
-		if (separate_output) {
-		    dlg_add_string(listitems[current].help);
-		    dlg_add_separator();
-		} else {
-		    dlg_add_quoted(listitems[current].help);
-		}
+	dlg_add_help_listitem(&result, &help_result, &listitems[current]);
+	if ((show_status = dialog_vars.help_status)) {
+	    if (separate_output) {
+		dlg_add_string(help_result);
+		dlg_add_separator();
 	    } else {
-		dlg_add_string(listitems[current].help);
+		dlg_add_quoted(help_result);
 	    }
-	    result = DLG_EXIT_ITEM_HELP;
 	} else {
-	    if (show_status) {
-		if (separate_output) {
-		    dlg_add_string(listitems[current].name);
-		    dlg_add_separator();
-		} else {
-		    dlg_add_quoted(listitems[current].name);
-		}
-	    } else {
-		dlg_add_string(listitems[current].name);
-	    }
+	    dlg_add_string(help_result);
 	}
 	break;
     }
@@ -1102,6 +1092,7 @@ dialog_buildlist(const char *title,
 		}
 	    }
 	}
+	dlg_add_last_key(-1);
     }
 
     dlg_free_columns(&listitems[0].text, (int) sizeof(DIALOG_LISTITEM), item_no);

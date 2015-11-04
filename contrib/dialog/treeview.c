@@ -1,9 +1,9 @@
 /*
- *  $Id: treeview.c,v 1.20 2012/12/24 02:10:05 tom Exp $
+ *  $Id: treeview.c,v 1.25 2015/01/25 23:54:02 tom Exp $
  *
  *  treeview.c -- implements the treeview dialog
  *
- *  Copyright 2012	Thomas E. Dickey
+ *  Copyright 2012-2013,2015	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -194,7 +194,7 @@ dlg_treeview(const char *title,
     int old_width = width;
 #endif
     ALL_DATA all;
-    int i, j, key2, found, x, y, cur_x, cur_y, box_x, box_y;
+    int i, j, key2, found, x, y, cur_y, box_x, box_y;
     int key = 0, fkey;
     int button = dialog_state.visit_items ? -1 : dlg_default_button();
     int choice = dlg_default_listitem(items);
@@ -214,6 +214,8 @@ dlg_treeview(const char *title,
     if (states == 0 || strlen(states) < 2)
 	states = " *";
     num_states = (int) strlen(states);
+
+    dialog_state.plain_buttons = TRUE;
 
     memset(&all, 0, sizeof(all));
     all.items = items;
@@ -280,7 +282,7 @@ dlg_treeview(const char *title,
     dlg_print_autowrap(dialog, prompt, height, width);
 
     all.use_width = width - 4;
-    getyx(dialog, cur_y, cur_x);
+    cur_y = getcury(dialog);
     box_y = cur_y + 1;
     box_x = (width - all.use_width) / 2 - 1;
 
@@ -579,6 +581,7 @@ dialog_treeview(const char *title,
     int *depths;
     bool show_status = FALSE;
     int current = 0;
+    char *help_result;
 
     listitems = dlg_calloc(DIALOG_LISTITEM, (size_t) item_no + 1);
     assert_ptr(listitems, "dialog_treeview");
@@ -617,31 +620,16 @@ dialog_treeview(const char *title,
 	show_status = TRUE;
 	break;
     case DLG_EXIT_HELP:
-	dlg_add_result("HELP ");
-	show_status = dialog_vars.help_status;
-	if (USE_ITEM_HELP(listitems[current].help)) {
-	    if (show_status) {
-		if (dialog_vars.separate_output) {
-		    dlg_add_string(listitems[current].help);
-		    dlg_add_separator();
-		} else {
-		    dlg_add_quoted(listitems[current].help);
-		}
+	dlg_add_help_listitem(&result, &help_result, &listitems[current]);
+	if ((show_status = dialog_vars.help_status)) {
+	    if (dialog_vars.separate_output) {
+		dlg_add_string(help_result);
+		dlg_add_separator();
 	    } else {
-		dlg_add_string(listitems[current].help);
+		dlg_add_quoted(help_result);
 	    }
-	    result = DLG_EXIT_ITEM_HELP;
 	} else {
-	    if (show_status) {
-		if (dialog_vars.separate_output) {
-		    dlg_add_string(listitems[current].name);
-		    dlg_add_separator();
-		} else {
-		    dlg_add_quoted(listitems[current].name);
-		}
-	    } else {
-		dlg_add_string(listitems[current].name);
-	    }
+	    dlg_add_string(help_result);
 	}
 	break;
     }
@@ -662,6 +650,7 @@ dialog_treeview(const char *title,
 		}
 	    }
 	}
+	dlg_add_last_key(-1);
     }
 
     dlg_free_columns(&listitems[0].text, (int) sizeof(DIALOG_LISTITEM), item_no);

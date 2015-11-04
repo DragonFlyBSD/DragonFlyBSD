@@ -1,8 +1,185 @@
--- $Id: CHANGES,v 1.451 2012/12/30 15:43:24 tom Exp $
+-- $Id: CHANGES,v 1.521 2015/09/20 23:48:54 tom Exp $
 -- Thomas E. Dickey <dickey@invisible-island.net>
 
 This version of dialog was originally from a Debian snapshot.  I've done this
 to it:
+
+2015/09/20
+	+ decrease table value for minimum number of arguments for the widgets
+	  which use --no-items option (report by Raven Singularity).
+	+ update configure macros:
+	  + use $SHELL consistently, deprecate non-POSIX shell
+	  + PKG_CONFIG may simply be unset - fix
+	  + add option to allow changing ABI version, from ncurses6.
+
+2015/05/28
+	+ fixes for two autoconf macros, CF_ADD_INCDIR and CF_NCURSES_CONFIG
+	  from work on ncurses.
+	+ build-fix for NetBSD curses (patch by Matthias Scheler).
+
+2015/05/13
+	+ add configure option --with-install-prefix, like ncurses.
+	+ add --with-screen and related configure options from ncurses-examples
+	  to allow building with ncurses6 test-packages.
+	+ update configure macros for improved coding style from lynx changes.
+	+ updated ro.po from
+		http://translationproject.org/latest/dialog/
+	+ update config.guess, config.sub
+	> patches by Florent Rougon:
+	+ fix two bugs in the "--file" option.
+	  + When the number of arguments read from the included file is 0, the
+	    code used to just skip over '--file' and its argument instead of
+	    removing them from the argument list, causing "Error:  Unknown
+	    option --file" later on.
+	  + In the alternative case (at least one argument read from the file),
+	    the previous code used to do '--j;' in order to "force rescan" of
+	    the inserted arguments.  However, control then flowed to outer
+	    blocks where a '++j;' counteracted this measure, causing "Error: 
+	    Unknown option --msgbox" (for instance) later on.
+	+ modify escaping in argv.c to be more uniform, whether or not the
+	  backslash is found within a parameter.
+
+2015/02/25
+	+ modify gauge widget to keep from erasing a second gauge widget, e.g.,
+	  via the "--and-widget" option.  This is a cosmetic change to match
+	  behavior of dialog 1.0 (report by Jason Orendorf).
+	+ add configure option "--with-man2html"
+	+ add configure options for versioned symbols, from ongoing work on
+	  ncurses.
+	+ update configure macros, e.g., for shared libraries
+
+2015/01/25
+	+ suppress highlighting of character which denotes an abbreviation or
+	  shortcut for the OK/Cancel and other buttons for these widgets, which
+	  use abbreviations for the list shown on the screen:  buildlist,
+	  checklist/radiobox, menubox, treeview (Debian #775295).
+	+ add grid up/left and down/right bindings in editbox.c as synonyms for
+	  field prev and next, respectively when handling the OK/Cancel buttons
+	  (Debian #775294).
+
+2014/09/11
+	+ correct malloc-size for change to prgbox.
+
+2014/09/10
+	+ fixes to make "-c" option work when passing command to shell for the
+	  prgbox widget, for example in samples/prgbox2 (report by Korantin
+	  Auguste).
+
+2014/09/08
+	+ fix an out-of-bounds array index in buildlist widget (report by
+	  Cade Foster).
+
+2014/09/01
+	+ add configure check for groff, needed for html/ps/pdf output.
+	+ update configure-script macros:
+	  + CF_ACVERSION_CHECK - work around another gratuitous incompatibility
+	    introduced in 2.69
+	  + CF_ADD_CFLAGS - workaround for ash-shell, e.g., with Minix
+	  + CF_ADD_LIBS - filter out duplicates
+	  + CF_CURSES_FUNCS - improve workaround for weak-linkage, seems to fix
+	    tests with NetBSD 6.1
+	  + CF_INTEL_COMPILER - clean up the -no-gcc option which was leftover
+	    from testing.
+	  + CF_LIB_SUFFIX - change suffix for AIX shared libraries to ".so".
+	  + CF_MAKEFLAGS - workaround for GNU make 4.0 incompatibility with
+	    previous releases.
+	  + CF_XOPEN_SOURCE - add cases for Minix, UnixWare and improve the
+	    workaround for Solaris.
+	+ improve comparison in compare_cache() function, in case difference
+	  between pointers does not fit in int's.
+	+ updated de.po, es.po, hu.po, lv.po from
+		http://translationproject.org/latest/dialog/
+	+ update config.guess, config.sub
+
+2014/02/19
+	+ cleanup of manpages prompted by Gislason's comments.
+	+ several changes to manpages to improve presentation (patches by
+	  Bjarni I. Gislason, Debian #739180, Debian #739181)
+	  + use "\/" when transitioning from italic to normal font
+	  + correct an instance of "e.g,."
+	  + use "\e" rather than "\\" to present a literal "\"
+	  + improve formatting of table header
+	  + remove some excess space-characters
+	  + change a reference 0-9 to use "through" as the connector
+	  + use "\&" to separate "." from a space to make the space shorter
+	  + change a list's TP macro parameters to make the hanging text align
+	    better with the adjacent paragraph
+	  + add comma in a few places before "and" in a list
+	  + separate units from numbers with a nonfillable space
+	  + replace "-" with en-dash in a few places
+	+ corrected argument indices after "--args" and "--file" to rescan the
+	  argument list after removing/substituting those options.
+	+ fix loops for "--file" option to handle cases with zero or no tokens at
+	  all substituted (Redhat #1066168).
+	+ add gd.po from
+		http://translationproject.org/latest/dialog/
+
+2014/01/12
+	+ improve calculation for amount to scroll in programbox when an "Ok"
+	  button might obscure part of the data (report by Florent Rougon).
+	+ modify program to permit --separate-output to be used with buildlist
+	  and treeview widgets (report by Florent Rougon).
+	+ add list-height parameter to manpage description of --buildlist
+	  (report by Florent Rougon).
+	+ minor fixes to dialog.1 manpage; the reported problem was actually
+	  fixed in 20120703 (Debian #726233, patch by Bjarni Ingi Gislason).
+	+ add a "Hello World" example to dialog.3 manpage (prompted by
+	  discussions with Dustin Oprea, Kevin Ingwersen).
+	+ correct comparison in dlg_lookup_key() so that using "bindkey" with
+	  a "*" wildcard parameter works as documented (report by Stewart
+	  Benedict).
+	+ updated configure macros, fixes for clang and mingw.
+	+ update config.guess, config.sub
+
+2013/09/28
+	+ fix a regression in gauge widget from 2013/09/28 changes;
+	  dlg_reallocate_gauge() failed when no --title option was given
+	  (report by Tritonas Insomnia).
+
+2013/09/23
+	+ fix samples/inputbox6-utf8, which had depended unnecessarily on bash.
+	+ improve memory caching for wide-character manipulation in gauge
+	  widget (report by Devin Teske).
+	+ add dlg_reallocate_gauge (discussion with Devin Teske).
+	+ updated configure macros to use msys changes from ncurses.
+	+ update config.guess, config.sub
+
+2013/09/02
+	+ modify makefile rule to make the ".png" filenames created by groff
+	  predictable.
+	+ add option --help-tags to allow scripts to get the item's tag field
+	  consistently from help- and help-item button results rather than
+	  getting the item's text for the latter (discussion with Florent
+	  Rougon).
+	+ correct manpage discussion of DIALOG_ITEM_HELP versus --item-help,
+	  as well as --help-button return status (report by Florent Rougon).
+	+ correct limit used for --hline option (report by Devin Teske,
+	  cf: 2011/06/30).
+	+ do not print empty "[]" if a --hline option was given with an empty
+	  value (report by Devin Teske).
+	+ miscellaneous configure script fixes/updates.  In particular, add
+	  option --with-shared which builds shared libraries without a libtool
+	  dependency.
+	+ add FreeBSD port-files for test-builds.
+	+ update lt.po, add fa.po from
+		http://translationproject.org/latest/dialog/
+	+ update config.guess, config.sub
+
+2013/05/23
+	+ modify ifdef in arrows.c to work around packages which use the
+	  wide-character ncursesw headers with the ncurses library (report
+	  by Aleksey Cheusov).
+	+ correct workaround for xterm alternate-screen to work with/without
+	  the fix made in ncurses that makes putp() always write to the
+	  standard output (Debian #708829).
+	+ improve limit-checks for checklist, in case the dialog is resized
+	  (report by Ilya A Arkhipov).
+	+ add --last-key option (adapted from patch by Jordi Pujol, Debian
+	  #697607).
+
+2013/03/15
+	+ update zh_TW.po, add an.po from
+		http://translationproject.org/latest/dialog/
 
 2012/12/30 - release 1.2
 	+ improve some older changelog entries to help with HTML'izing content.
@@ -282,7 +459,7 @@ to it:
 	    separate ncurses' header files.
 	  + CF_DISABLE_RPATH_HACK, fix garbled message
 	  + CF_LD_RPATH_OPT, add mirbsd
-	  + CF_MAKEFLAGS, filter out GNU make's entering/leaving messages. 
+	  + CF_MAKEFLAGS, filter out GNU make's entering/leaving messages.
 	    This only appeared when using the macro in a dpkg script, though it
 	    should have in other cases.
 	  + CF_RPATH_HACK, add a check for libraries not found, e.g., from

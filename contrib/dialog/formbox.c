@@ -1,9 +1,9 @@
 /*
- *  $Id: formbox.c,v 1.84 2012/12/30 20:31:53 tom Exp $
+ *  $Id: formbox.c,v 1.87 2013/09/02 17:02:05 tom Exp $
  *
  *  formbox.c -- implements the form (i.e, some pairs label/editbox)
  *
- *  Copyright 2003-2011,2012	Thomas E. Dickey
+ *  Copyright 2003-2012,2013	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -915,6 +915,7 @@ dialog_form(const char *title,
     DIALOG_FORMITEM *listitems;
     DIALOG_VARS save_vars;
     bool show_status = FALSE;
+    char *help_result;
 
     dlg_save_vars(&save_vars);
     dialog_vars.separate_output = TRUE;
@@ -954,14 +955,9 @@ dialog_form(const char *title,
 	show_status = TRUE;
 	break;
     case DLG_EXIT_HELP:
-	dlg_add_result("HELP ");
+	dlg_add_help_formitem(&result, &help_result, &listitems[choice]);
 	show_status = dialog_vars.help_status;
-	if (USE_ITEM_HELP(listitems[choice].help)) {
-	    dlg_add_string(listitems[choice].help);
-	    result = DLG_EXIT_ITEM_HELP;
-	} else {
-	    dlg_add_string(listitems[choice].name);
-	}
+	dlg_add_string(help_result);
 	if (show_status)
 	    dlg_add_separator();
 	break;
@@ -973,6 +969,7 @@ dialog_form(const char *title,
 		dlg_add_separator();
 	    }
 	}
+	dlg_add_last_key(-1);
     }
 
     dlg_free_formitems(listitems);

@@ -1,9 +1,9 @@
 /*
- *  $Id: dialog.h,v 1.259 2012/12/30 22:37:17 tom Exp $
+ *  $Id: dialog.h,v 1.268 2015/01/25 23:53:19 tom Exp $
  *
  *  dialog.h -- common declarations for all dialog modules
  *
- *  Copyright 2000-2011,2012	Thomas E. Dickey
+ *  Copyright 2000-2013,2015	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -445,6 +445,10 @@ typedef struct {
     /* 1.1-20110106 */
     bool no_mouse;		/* option "--no-mouse" */
     int visit_cols;		/* option "--visit-items" */
+    /* 1.2-20130922 */
+    bool finish_string;		/* caching optimization for gauge */
+    /* 1.2-20150125 */
+    bool plain_buttons;		/* true to suppress button-label highlight */
 } DIALOG_STATE;
 
 extern DIALOG_STATE dialog_state;
@@ -520,6 +524,10 @@ typedef struct {
     /* 1.1-20121218 */
     bool no_tags;		/* option "--no-tags" */
     bool no_items;		/* option "--no-items" */
+    /* 1.2-20130315 */
+    bool last_key;		/* option "--last-key" */
+    /* 1.2-20130902 */
+    bool help_tags;		/* option "--help-tags" */
 } DIALOG_VARS;
 
 #define USE_ITEM_HELP(s)        (dialog_vars.item_help && (s) != 0)
@@ -685,6 +693,7 @@ extern void dlg_free_formitems(DIALOG_FORMITEM * /*items*/);
 
 /* guage.c */
 extern void * dlg_allocate_gauge(const char * /* title */, const char * /* cprompt */, int /* height */, int /* width */, int /* percent */);
+extern void * dlg_reallocate_gauge(void * /* objptr */, const char * /* title */, const char * /* cprompt */, int /* height */, int /* width */, int /* percent */);
 extern void dlg_free_gauge(void * /* objptr */);
 extern void dlg_update_gauge(void * /* objptr */, int /* percent */);
 
@@ -697,6 +706,7 @@ extern int dlg_count_wchars(const char * /*string*/);
 extern int dlg_edit_offset(char * /*string*/, int /*offset*/, int /*x_last*/);
 extern int dlg_find_index(const int * /*list*/, int  /*limit*/, int /*to_find*/);
 extern int dlg_limit_columns(const char * /*string*/, int /*limit*/, int /*offset*/);
+extern void dlg_finish_string(const char * /* string */);
 extern void dlg_show_string(WINDOW * /*win*/, const char * /*string*/, int /*offset*/, chtype /*attr*/, int /*y_base*/, int /*x_base*/, int /*x_last*/, bool /*hidden*/, bool /*force*/);
 
 /* menubox.c */
@@ -716,6 +726,7 @@ extern int dlg_treeview(const char * /*title*/, const char * /*cprompt*/, int /*
 extern int dlg_getc(WINDOW * /*win*/, int * /*fkey*/);
 extern int dlg_getc_callbacks(int /*ch*/, int /*fkey*/, int * /*result*/);
 extern int dlg_last_getc(void);
+extern void dlg_add_last_key(int /*mode*/);
 extern void dlg_add_callback(DIALOG_CALLBACK * /*p*/);
 extern void dlg_add_callback_ref(DIALOG_CALLBACK ** /*p*/, DIALOG_FREEBACK /* cleanup */);
 extern void dlg_flush_getc(void);
@@ -746,6 +757,8 @@ extern int dlg_defaultno_button(void);
 extern int dlg_default_button(void);
 extern int dlg_max_input(int /*max_len*/);
 extern int dlg_print_scrolled(WINDOW * /* win */, const char * /* prompt */, int /* offset */, int /* height */, int /* width */, int /* pauseopt */);
+extern void dlg_add_help_formitem(int * /* result */, char ** /* tag */, DIALOG_FORMITEM * /* item */);
+extern void dlg_add_help_listitem(int * /* result */, char ** /* tag */, DIALOG_LISTITEM * /* item */);
 extern void dlg_add_quoted(char * /*string*/);
 extern void dlg_add_result(const char * /*string*/);
 extern void dlg_add_separator(void);

@@ -1,6 +1,6 @@
 '\" t
-.\" $Id: dialog.3,v 1.90 2012/12/23 22:16:50 tom Exp $
-.\" Copyright 2005-2011,2012  Thomas E. Dickey
+.\" $Id: dialog.3,v 1.101 2014/09/01 16:05:44 tom Exp $
+.\" Copyright 2005-2013,2014  Thomas E. Dickey
 .\"
 .\" This program is free software; you can redistribute it and/or modify
 .\" it under the terms of the GNU Lesser General Public License, version 2.1
@@ -39,7 +39,7 @@
 .de bP
 .IP \(bu 4
 ..
-.TH \*D 3 "" "$Date: 2012/12/23 22:16:50 $"
+.TH \*D 3 "" "$Date: 2014/09/01 16:05:44 $"
 .SH NAME
 dialog \- widgets and utilities for the \*p program
 .SH SYNOPSIS
@@ -47,12 +47,12 @@ dialog \- widgets and utilities for the \*p program
 .br
 \ \ \ or
 .br
-.B cc `\*p-config --cflags` file ... `\*p-config --libs` ]
+.B cc $(\*p-config --cflags) file ... $(\*p-config --libs) ]
 .sp
 .B #include <\*l.h>
 .PP
 \fB\*L\fP
-is a program that will let you to present a variety of questions or
+is a program that will let you present a variety of questions or
 display messages using dialog boxes from a shell script.
 It is built from the \fB\*l\fP library,
 which consists of several widgets
@@ -63,12 +63,29 @@ or the main program.
 This manpage documents the features from \fI<\*l.h>\fP which
 are likely to be important to developers using the widgets directly.
 Some hints are also given for developing new widgets.
+.PP
+Here is a \fB\*l\fP version of \fIHello World\/\fP:
+.RS
+.nf
+int main(void)
+{
+	int status;
+	init_dialog(stdin, stdout);
+	status = dialog_yesno(
+			"Hello, in dialog-format",
+			"Hello World!",
+			0, 0);
+	end_dialog();
+	return status;
+}
+.fi
+.RE
 .
 .\" ************************************************************************
 .SH DEFINITIONS
 Exit codes (passed back to the main program for its use)
 are defined with a "\fIDLG_EXIT_\fP prefix.
-The defined constants can be mapped using environment variables
+The efined constants can be mapped using environment variables
 as described in \fB\*p\fP(1),
 e.g., \fIDLG_EXIT_OK\fP corresponds to \fI$DIALOG_OK\fP.
 .PP
@@ -78,12 +95,13 @@ are named with the "\fICHR_\fP" prefix, e.g.,
 .PP
 Colors and video attributes are categorized and associated with
 settings in the configuration file
-(see the discussion of \fI$DIALOGRC\fP in \fB\*p\fP(1)).
+(see the discussion of \fI$DIALOGRC\fP in \fB\*p\/\fP(1)).
 The \fIDIALOG_ATR(n)\fP macro is used for defining the references
 to the combined color and attribute table \fBdlg_color_table[]\fP.
 .PP
 The \fB\*p\fP application passes its command-line parameters
-to the widget functions.  Some of those parameters are single values,
+to the widget functions.
+Some of those parameters are single values,
 but some of the widgets accept data as an array of values.
 Those include checklist/radiobox, menubox and formbox.
 When the \fB--item-help\fP option is given, an extra column
@@ -94,7 +112,7 @@ macros are used to hide this difference from the calling application.
 Most of the other definitions found in \fI<\*l.h>\fP
 are used for convenience in building the library or main program.
 These include definitions based on the generated \fI<dlg_config.h>\fP header.
-
+.
 .\" ************************************************************************
 .SH DATA STRUCTURES
 All of the global data for the \fB\*l\fP library is stored in
@@ -127,9 +145,15 @@ sizing (specifying 0 for height and width).
 It represents width / height.
 The default is 9, which means 9 characters wide to every 1 line high.
 .\" ---------------------------------------------------------------------------
+.IP \fIDIALOG_STATE.finish_string
+When set to true, this allows calls to \fBdlg_finish_string\fP to discard the
+corresponding data which is created to speed up layout computations for the
+given string parameter.
+The \fBgauge\fP widget uses this feature.
+.\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_STATE.getc_callbacks
 This is setup in \fIui_getc.c\fP to record windows which must be polled
-for input, e.g,. to handle the background tailbox widget.
+for input, e.g., to handle the background tailbox widget.
 One window is designated as the foreground or control window.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_STATE.getc_redirect
@@ -196,14 +220,14 @@ If this option is not given,
 the default separator string is a tab character.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_STATE.tab_len
-This corresponds to the command-line option "\fB--tab-len\fP \fInumber\fP".
+This corresponds to the command-line option "\fB--tab-len\fP \fInumber\/\fP".
 Specify the number of spaces that a tab character occupies if the
 "\fB--tab-correct\fP"
 option is given.
 The default is 8.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_STATE.trace_output
-This corresponds to the command-line option "\fB--trace\fP \fIfile\fP".
+This corresponds to the command-line option "\fB--trace\fP \fIfile\/\fP".
 It is the file pointer to which trace messages are written.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_STATE.use_colors
@@ -235,7 +259,7 @@ It causes line-drawing to be done with ASCII characters, e.g., "+" and "-".
 See \fIDIALOG_VARS.no_lines\fP.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.backtitle
-This corresponds to the command-line option "\fB--backtitle\fP \fIbacktitle\fP".
+This corresponds to the command-line option "\fB--backtitle\fP \fIbacktitle\/\fP".
 It specifies a
 \fIbacktitle\fP
 string to be displayed on the backdrop, at the top of the screen.
@@ -249,19 +273,19 @@ This corresponds to the command-line option "\fB--beep\fP".
 It is obsolete.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.begin_set
-This is true if the command-line option "\fB--begin y x\fP" was used.
+This is true if the command-line option "\fB--begin\fP \fIy x\/\fP" was used.
 It specifies the position of the upper left corner of a dialog box on the screen.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.begin_x
 This corresponds to the \fIx\fP value from
-the command-line option "\fB--begin\fP \fIy x\fP" (second value).
+the command-line option "\fB--begin\fP \fIy x\/\fP" (second value).
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.begin_y
 This corresponds to the \fIy\fP value from
-the command-line option "\fB--begin\fP \fIy x\fP" (first value).
+the command-line option "\fB--begin\fP \fIy x\/\fP" (first value).
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.cancel_label
-This corresponds to the command-line option "\fB--cancel-label\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--cancel-label\fP \fIstring\/\fP".
 The given \fIstring\fP overrides the label used for "Cancel" buttons.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.cant_kill
@@ -276,7 +300,7 @@ SIGHUP is disabled for the background process.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.colors
 This corresponds to the command-line option "\fB--colors\fP".
-If true, interpret embedded "\\Z" sequences in the dialog text
+If true, interpret embedded "\eZ" sequences in the dialog text
 by the following character,
 which tells \fB\*p\fP to set colors or video attributes:
 0 through 7 are the ANSI codes used in curses:
@@ -291,9 +315,9 @@ white respectively.
 Bold is set by 'b', reset by 'B'.
 Reverse is set by 'r', reset by 'R'.
 Underline is set by 'u', reset by 'U'.
-The settings are cumulative, e.g., "\\Zb\\Z1" makes the following text
+The settings are cumulative, e.g., "\eZb\eZ1" makes the following text
 bright red.
-Restore normal settings with "\\Zn".
+Restore normal settings with "\eZn".
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.column_separator
 This corresponds to the command-line option "\fB--column-separator\fP".
@@ -312,7 +336,7 @@ in the source code of your script without affecting the way it will
 look in the dialog.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.date_format
-This corresponds to the command-line option "\fB--date-format\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--date-format\fP \fIstring\/\fP".
 If the host provides \fBstrftime\fP, and the value is nonnull,
 the calendar widget uses this to format its output.
 .\" ---------------------------------------------------------------------------
@@ -321,7 +345,7 @@ This is set by the command-line option "\fB--default-button\fP.
 It is used by \fBdlg_default_button\fP.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.default_item
-This corresponds to the command-line option "\fB--default-item\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--default-item\fP \fIstring\/\fP".
 The given string is used as
 the default item in a checklist, form or menu box.
 Normally the first item in the box is the default.
@@ -355,7 +379,7 @@ If true, some widgets show an extra button,
 between "OK" and "Cancel" buttons.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.extra_label
-This corresponds to the command-line option "\fB--extra-label\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--extra-label\fP \fIstring\/\fP".
 The given string overrides the label used for "Extra" buttons.
 Note: for inputmenu widgets, this defaults to "Rename".
 .\" ---------------------------------------------------------------------------
@@ -375,16 +399,16 @@ Otherwise, the return status will indicate that the Help button was pressed,
 and no message printed.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.help_file
-This corresponds to the command-line option "\fB--hfile\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--hfile\fP \fIstring\/\fP".
 The given filename is passed to \fBdialog_helpfile\fP when the user
 presses F1.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.help_label
-This corresponds to the command-line option "\fB--help-label\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--help-label\fP \fIstring\/\fP".
 The given string overrides the label used for "Help" buttons.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.help_line
-This corresponds to the command-line option "\fB--hline\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--hline\fP \fIstring\/\fP".
 The given string is displayed in the bottom of dialog windows,
 like a subtitle.
 .\" ---------------------------------------------------------------------------
@@ -395,6 +419,14 @@ writes the checklist or radiolist information
 after the item-help "HELP" information.
 This can be used to reconstruct the state of a checklist after processing
 the help request.
+.\" ---------------------------------------------------------------------------
+.IP \fIDIALOG_VARS.help_tags
+This corresponds to the command-line option "\fB--help-tags\fP".
+If true,
+\fBdlg_add_help_formitem\fP and
+\fBdlg_add_help_listitem\fP use the item's tag value consistently
+rather than using the tag's help-text value
+when \fIDIALOG_VARS.item_help\fP is set.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.input_length
 This is nonzero if \fIDIALOG_VARS.input_result\fP is allocated,
@@ -407,7 +439,7 @@ implements a menu versus a inputmenu widget.
 .IP \fIDIALOG_VARS.input_result
 This may be either a user-supplied buffer,
 or a buffer dynamically allocated by the library,
-depending on \fIDIALOG_VARS.input_length\fP:
+depending on \fIDIALOG_VARS.input_length\/\fP:
 .RS
 .bP
 If \fIDIALOG_VARS.input_length\fP is zero,
@@ -445,7 +477,7 @@ screen, for the currently selected item.
 .IP \fIDIALOG_VARS.keep_tite
 This is set by the command-line option "\fB--keep-tite\fP"
 to tell \fB\*p\fP to not attempt to cancel the terminal initialization
-(termcap \fIti\fP/\fIte\fP) sequences which correspond to xterm's alternate-screen
+(termcap \fIti\/\fP/\,\fIte\/\fP) sequences which correspond to xterm's alternate-screen
 switching.
 Normally \fB\*p\fP does this to avoid flickering when run several times
 in a script.
@@ -457,8 +489,11 @@ This is useful for keeping the window contents visible when several
 widgets are run in the same process.
 Note that curses will clear the screen when starting a new process.
 .\" ---------------------------------------------------------------------------
+.IP \fIDIALOG_VARS.last_key
+This corresponds to the command-line option "\fB--last-key\fP".
+.\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.max_input
-This corresponds to the command-line option "\fB--max-input\fP \fIsize\fP".
+This corresponds to the command-line option "\fB--max-input\fP \fIsize\/\fP".
 Limit input strings to the given size.
 If not specified, the limit is 2048.
 .\" ---------------------------------------------------------------------------
@@ -470,7 +505,7 @@ This tells \fB\*p\fP to read shorter rows from data,
 omitting the "list".
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.no_label
-This corresponds to the command-line option "\fB--no-label\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--no-label\fP \fIstring\/\fP".
 The given string overrides the label used for "No" buttons.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.no_lines
@@ -480,7 +515,7 @@ See \fIDIALOG_VARS.ascii_lines\fP.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.no_nl_expand
 This corresponds to the command-line option "\fB--no-nl-expand\fP".
-If false, \fBdlg_trim_string\fP converts literal "\\n" substrings
+If false, \fBdlg_trim_string\fP converts literal "\en" substrings
 in a message into newlines.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.no_tags
@@ -501,9 +536,9 @@ Here is a table showing how the no_tags and no_items values interact:
 .TS
 tab(/);
 l l l l l
-_ _ _ _ _
-l l l c c.
+l l l n n.
 Widget/Fields Shown/Fields Read/.no_items/.no_tags
+_
 buildlist/item/tag,item/0/0*
 buildlist/item/tag,item/0/1
 buildlist/tag/tag/1/0*
@@ -559,7 +594,7 @@ This corresponds to the command-line option "\fB--nook\fP.
 \fB\*L\fP will suppress the "ok" (or "yes") button from the widget.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.ok_label
-This corresponds to the command-line option "\fB--ok-label\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--ok-label\fP \fIstring\/\fP".
 The given string overrides the label used for "OK" buttons.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.print_siz
@@ -579,7 +614,7 @@ This facilitates parsing by another program.
 .IP \fIDIALOG_VARS.single_quoted
 This corresponds to the command-line option "\fB--single-quoted\fP".
 If true,
-Use single-quoting as needed (and no quotes if unneeded) for the
+use single-quoting as needed (and no quotes if unneeded) for the
 output of checklist's as well as the item-help text.
 If this option is not set, \fB\*p\fP uses double quotes around each item.
 The latter requires occasional use of backslashes to make the output useful in
@@ -593,7 +628,7 @@ printing the resulting size if it is larger than the screen.
 (This option is obsolete, since all new-window calls are checked).
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.sleep_secs
-This corresponds to the command-line option "\fB--sleep\fP \fIsecs\fP".
+This corresponds to the command-line option "\fB--sleep\fP \fIsecs\/\fP".
 This option is implemented in the main program, not the library.
 If nonzero, this is the number of seconds after to delay after processing a dialog box.
 .\" ---------------------------------------------------------------------------
@@ -603,17 +638,17 @@ If true, convert each tab character of the text to one or more spaces.
 Otherwise, tabs are rendered according to the curses library's interpretation.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.time_format
-This corresponds to the command-line option "\fB--time-format\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--time-format\fP \fIstring\/\fP".
 If the host provides \fBstrftime\fP, and the value is nonnull,
 the timebox widget uses this to format its output.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.timeout_secs
-This corresponds to the command-line option "\fB--timeout\fP \fIsecs\fP".
+This corresponds to the command-line option "\fB--timeout\fP \fIsecs\/\fP".
 If nonzero, timeout input requests (exit with error code)
 if no user response within the given number of seconds.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.title
-This corresponds to the command-line option "\fB--title\fP \fItitle\fP".
+This corresponds to the command-line option "\fB--title\fP \fItitle\/\fP".
 Specifies a
 \fItitle\fP
 string to be displayed at the top of the dialog box.
@@ -632,7 +667,7 @@ This is useful as a visual aid,
 i.e., the cursor position helps some users.
 .\" ---------------------------------------------------------------------------
 .IP \fIDIALOG_VARS.yes_label
-This corresponds to the command-line option "\fB--yes-label\fP \fIstring\fP".
+This corresponds to the command-line option "\fB--yes-label\fP \fIstring\/\fP".
 The given string overrides the label used for "Yes" buttons.
 .
 .\" ************************************************************************
@@ -640,7 +675,7 @@ The given string overrides the label used for "Yes" buttons.
 .SH WIDGETS
 Functions that implement major functionality for the command-line \fB\*p\fP
 program, e.g., widgets, have names beginning "\fIdialog_\fP".
-
+.PP
 All dialog boxes have at least three parameters:
 .TP 5
 \fItitle\fP
@@ -683,7 +718,7 @@ is the number of rows in \fIitems\fP.
 .B char ** \fIitems
 is an array of strings which is viewed either as a list of rows
 .RS
-\fItag item status \fR
+\fItag item status\fR
 .RE
 .IP
 or
@@ -759,7 +794,7 @@ is the number of rows in \fIitems\fP.
 .B int \fIitems
 is an array of strings which is viewed either as a list of rows
 .RS
-\fItag item status \fR
+\fItag item status\fR
 .RE
 .IP
 or
@@ -876,6 +911,7 @@ implements the "\fB--gauge\fP" option.
 Alternatively, a simpler or customized gauge widget can be
 setup using
 \fBdlg_allocate_gauge\fP,
+\fBdlg_reallocate_gauge\fP,
 \fBdlg_update_gauge\fP and
 \fBdlg_free_gauge\fP.
 .RS
@@ -1056,7 +1092,7 @@ is an array of strings which is viewed as a list of \fItag\fP and \fIitem\fP val
 The \fItag\fP values are listed, one per row, in the list at the top of
 the widget.
 .IP
-The \fIitem\fP values are decoded: digits 0-9 are the following strings
+The \fIitem\fP values are decoded: digits 0 through 9 are the following strings
 .RS
 .IP 0
 Succeeded
@@ -1380,6 +1416,63 @@ zeroed when input ends.
 .TP 5
 .B DIALOG_FREEBACK \fIfunc\fP
 function to call when input ends, e.g., to free caller's additional data.
+.RE
+.\" ---------------------------------------------------------------------------
+.TP 5
+.B dlg_add_help_formitem
+This is a utility function used enforce consistent behavior for
+the \fIDIALOG_VARS.help_tags\fP and \fIDIALOG_VARS.item_help\fP variables.
+.RS
+.TP 5
+.B int *\fIresult\fP
+this is updated to DLG_EXIT_ITEM_HELP if \fIDIALOG_VARS.item_help\fP is set.
+.TP 5
+.B char **\fItag\fP
+the tag- or help-text is stored here.
+.TP 5
+.B DIALOG_FORMITEM *\fIitem\fP
+contains the list item to use for tag- or help-text.
+.RE
+.\" ---------------------------------------------------------------------------
+.TP 5
+.B dlg_add_help_listitem
+This is a utility function used enforce consistent behavior for
+the \fIDIALOG_VARS.help_tags\fP and \fIDIALOG_VARS.item_help\fP variables.
+.RS
+.TP 5
+.B int *\fIresult\fP
+this is updated to DLG_EXIT_ITEM_HELP if \fIDIALOG_VARS.item_help\fP is set.
+.TP 5
+.B char **\fItag\fP
+the tag- or help-text is stored here.
+.TP 5
+.B DIALOG_LISTITEM *\fIitem\fP
+contains the list item to use for tag- or help-text.
+.RE
+.\" ---------------------------------------------------------------------------
+.TP 5
+.B dlg_add_last_key
+Report the last key entered by the user.
+This implements the \fB--last-key\fP command-line option,
+using \fBdialog_vars.last_key\fP.
+.RS
+.TP 5
+.B int \fImode
+controls the way the last key report is separated from other results:
+.RS
+.TP 5
+-2
+(no separator)
+.TP 5
+-1
+(separator after the key name)
+.TP 5
+0
+(separator is optionally before the key name)
+.TP 5
+1
+(same as -1)
+.RE
 .RE
 .\" ---------------------------------------------------------------------------
 .TP 5
@@ -1808,7 +1901,7 @@ is a list of (pointers to) button labels terminated by a null pointer.
 .\" ---------------------------------------------------------------------------
 .TP 5
 .B dlg_checklist
-This entrypoint provides the \fB--checklist\fP or \fP--radiolist\fP
+This entrypoint provides the \fB--checklist\fP or \fB--radiolist\fP
 functionality without the limitations of \fB\*p\fP's command-line syntax
 (compare to \fBdialog_checklist\fP).
 .RS
@@ -1945,7 +2038,7 @@ is the string to measure.
 .TP 5
 .B dlg_count_real_columns
 Returns the number of columns used for a string,
-accounting for "\\Z" sequences which can be used for
+accounting for "\eZ" sequences which can be used for
 coloring the text if \fBdialog_vars.colors\fP is set.
 This is not necessarily the number of bytes in a string.
 .RS
@@ -2128,11 +2221,14 @@ on the top corners of this box.
 .TP 5
 .B WINDOW * \fIwin
 is the window to update.
+.TP 5
 .B chtype \fIon_left
 is used to color the upper/left edges of the box, i.e., the tee-element and
 horizontal line
+.TP 5
 .B chtype \fIon_right
 is used to color the right edge of the box, i.e., the tee-element
+.TP 5
 .B chtype \fIon_inside
 is used to fill-color the inside of the box
 .RE
@@ -2219,7 +2315,7 @@ is the index within the list of the selected button.
 is true if the buttons are arranged in a column rather than a row.
 .TP 5
 .B int \fIlimit
-is the number of columns (or rows if \fIvertical\fP) allowed for the display.
+is the number of columns (or rows if \fIvertical\/\fP) allowed for the display.
 .RE
 .\" ---------------------------------------------------------------------------
 .TP 5
@@ -2370,13 +2466,13 @@ If it is null, then only built-in bindings are dumped.
 Remove one or more items from an argument vector.
 .RS
 .TP 5
-.B int *argcp
+.B int * \fIargcp
 in/out parameter giving the length of the argument vector.
-.B char ***argvp
+.B char *** \fIargvp
 in/out parameter pointing to the argument vector.
-.B int start
+.B int \fIstart
 starting index.
-.B int count
+.B int \fIcount
 number of arguments to remove.
 .RE
 .\" ---------------------------------------------------------------------------
@@ -2490,10 +2586,23 @@ is the character-offset to find.
 .RE
 .\" ---------------------------------------------------------------------------
 .TP 5
+.B dlg_finish_string
+If \fIDIALOG_STATE.finish_string\fP is true,
+this function discards data used to speed up layout computations.
+.RS
+.TP 5
+.B const char * \fIstring
+is the address of the string whose data should be discarded.
+The address rather than contents is used as the unique identifier because
+some of the caching is used for editable input-fields.
+.RE
+.\" ---------------------------------------------------------------------------
+.TP 5
 .B dlg_flush_getc
 Cancel the local data saved by \fBdlg_last_getc\fP.
 .\" ---------------------------------------------------------------------------
-.IP dlg_editbox
+.TP 5
+.B dlg_editbox
 This entrypoint provides the \fB--editbox\fP
 functionality without the limitations of \fB\*p\fP's command-line syntax
 (compare to \fBdialog_editbox\fP).
@@ -2825,7 +2934,7 @@ Free the memory associated with mouse regions.
 .\" ---------------------------------------------------------------------------
 .TP 5
 .B dlg_mouse_mkbigregion
-Creates a region on which the mouse-clicks will return a specifed code.
+Creates a region on which the mouse-clicks will return a specified code.
 .RS
 .TP 5
 .B int \fIy
@@ -3056,8 +3165,8 @@ a curses-ordinate from a dialog-ordinate.
 .\" ---------------------------------------------------------------------------
 .TP 5
 .B dlg_parse_bindkey
-Parse the parameters of the "bindkeys" configuration-file entry.  This
-expects widget name which may be "*", followed by curses key definition and
+Parse the parameters of the "bindkeys" configuration-file entry.
+This expects widget name which may be "*", followed by curses key definition and
 then \fB\*p\fP key definition.
 .RS
 .TP 5
@@ -3272,6 +3381,38 @@ is the file pointer, which may be a pipe or a regular file.
 .B dlg_put_backtitle
 Display the background title if \fBdialog_vars.backtitle\fP is non-null.
 The background title is shown at the top of the screen.
+.\" ---------------------------------------------------------------------------
+.TP 5
+.B dlg_reallocate_gauge
+Allocates or reallocates a gauge widget (see \fBdlg_allocate_gauge\fP).
+Use \fBdlg_update_gauge\fP to display the result.
+.RS
+.TP 5
+.B void ** \fIobjptr
+If the pointer referenced by this parameter is null, the function creates
+a new gauge widget using \fBdlg_allocate_gauge\fP.
+Otherwise, it updates the title and cprompt values, reusing the window
+from the previous call on this function.
+As a side-effect, the function stores the updated object-pointer via
+the \fIobjptr\fP parameter.
+.TP 5
+.B const char * \fItitle
+is the title string to display at the top of the widget.
+.TP 5
+.B const char * \fIcprompt
+is the prompt text shown within the widget.
+.TP 5
+.B int \fIheight
+is the desired height of the box.
+If zero, the height is adjusted to use the available screen size.
+.TP 5
+.B int \fIwidth
+is the desired width of the box.
+If zero, the height is adjusted to use the available screen size.
+.TP 5
+.B int \fIpercent
+is the percentage to show in the progress bar.
+.RE
 .\" ---------------------------------------------------------------------------
 .TP 5
 .B dlg_register_buttons
@@ -3513,10 +3654,10 @@ translate the parameters into a printable representation,
 log it on a "chr" line.
 .RS
 .TP 5
-.B int ch
+.B int \fIch
 is the nominal keycode value.
 .TP 5
-.B int fkey
+.B int \fIfkey
 is nonzero if the value is really a function key.
 Some of these may be values declared in the DLG_KEYS_ENUM.
 .RE
@@ -3540,7 +3681,7 @@ It uses an extra level of parentheses to work with a variable number of
 parameters, e.g.,
 .ES
 .EX
-DLG_TRACE(("this is dialog version %s\\n", dialog_version()));
+DLG_TRACE(("this is dialog version %s\en", dialog_version()));
 .EE
 .\" ---------------------------------------------------------------------------
 .TP 5
@@ -3608,8 +3749,8 @@ item (cursor) when it returns.
 .B dlg_trim_string
 The \fBdialog\fP program uses this in each widget to adjust the
 message string,
-which may contain the newline character (referred to as '\\n')
-and/or the special substring "\\n"
+which may contain the newline character (referred to as '\en')
+and/or the special substring "\en"
 (which can be translated into a newline character).
 .IP
 There are several optional features:
@@ -3618,21 +3759,21 @@ There are several optional features:
 Unless \fBdialog_vars.no_nl_expand\fP is set,
 .RS
 .bP
-If it has "\\n" substrings,
+If it has "\en" substrings,
 the function preserves extra spaces.
 For instance, spaces following a newline (substring or character)
 are preserved to use as an indentation.
 .bP
-The function changes embedded "\\n" substrings to '\\n' characters.
+The function changes embedded "\en" substrings to '\en' characters.
 .RE
 .bP
 If \fBdialog_vars.no_nl_expand\fP is not set,
-or if there are no "\\n" substrings,
+or if there are no "\en" substrings,
 this function strips all extra spaces to simplify justification.
 .bP
 If \fBdialog_vars.cr_wrap\fP is set,
-the function preserves '\\n' newline characters.
-Otherwise, each '\\n' newline character is converted to a space.
+the function preserves '\en' newline characters.
+Otherwise, each '\en' newline character is converted to a space.
 .bP
 Unless \fBdialog_vars.nocollapse\fP is set,
 each tab character is converted to a space,
@@ -3684,4 +3825,4 @@ Return a list of buttons for Yes/No labels.
 .
 .\" ************************************************************************
 .SH AUTHOR
-Thomas E. Dickey
+Thomas E.\& Dickey

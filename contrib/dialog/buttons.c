@@ -1,9 +1,9 @@
 /*
- *  $Id: buttons.c,v 1.94 2012/12/30 20:51:01 tom Exp $
+ *  $Id: buttons.c,v 1.96 2015/01/25 23:52:54 tom Exp $
  *
  *  buttons.c -- draw buttons, e.g., OK/Cancel
  *
- *  Copyright 2000-2011,2012	Thomas E. Dickey
+ *  Copyright 2000-2014,2015	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License, version 2.1
@@ -29,6 +29,7 @@
 #endif
 
 #define MIN_BUTTON (-dialog_state.visit_cols)
+#define CHR_BUTTON (!dialog_state.plain_buttons)
 
 static void
 center_label(char *buffer, int longest, const char *label)
@@ -213,7 +214,7 @@ print_button(WINDOW *win, char *label, int hotkey, int y, int x, int selected)
 		    ? button_active_attr
 		    : button_inactive_attr);
     (void) waddstr(win, ">");
-    (void) wmove(win, y, x + ((int) strspn(label, " ")) + 1);
+    (void) wmove(win, y, x + ((int) (strspn) (label, " ")) + 1);
 }
 
 /*
@@ -374,7 +375,9 @@ dlg_draw_buttons(WINDOW *win,
 	for (n = 0; labels[n] != 0; n++) {
 	    center_label(buffer, longest, labels[n]);
 	    mouse_mkbutton(y, x, dlg_count_columns(buffer), n);
-	    print_button(win, buffer, hotkeys[n], y, x,
+	    print_button(win, buffer,
+	    		 CHR_BUTTON ? hotkeys[n] : -1,
+	    		 y, x,
 			 (selected == n) || (n == 0 && selected < 0));
 	    if (selected == n)
 		getyx(win, final_y, final_x);

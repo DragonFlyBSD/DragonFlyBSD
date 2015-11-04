@@ -1,10 +1,10 @@
 /*
- *  $Id: progressbox.c,v 1.23 2012/12/21 10:00:05 tom Exp $
+ *  $Id: progressbox.c,v 1.24 2014/01/12 20:53:44 tom Exp $
  *
  *  progressbox.c -- implements the progress box
  *
- *  Copyright 2005	Valery Reznic
- *  Copyright 2006-2012	Thomas E. Dickey
+ *  Copyright 2005		Valery Reznic
+ *  Copyright 2006-2012,2014	Thomas E. Dickey
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as
@@ -272,8 +272,17 @@ dlg_progressbox(const char *title,
     }
 
     if (pauseopt) {
-	scrollok(text, TRUE);
-	wscrl(text, 1 + MARGIN);
+	int need = 1 + MARGIN;
+	int base = thigh - need;
+	if (i >= base) {
+	    i -= base;
+	    if (i > need)
+		i = need;
+	    if (i > 0) {
+		scrollok(text, TRUE);
+	    }
+	    wscrl(text, i);
+	}
 	(void) wrefresh(text);
 	result = pause_for_ok(dialog, height, width);
     } else {
