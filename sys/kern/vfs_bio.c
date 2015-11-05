@@ -3727,9 +3727,9 @@ bpdone(struct buf *bp, int elseit)
 	buf_cmd_t cmd;
 
 	KASSERT(BUF_REFCNTNB(bp) > 0, 
-		("biodone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
+		("bpdone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
 	KASSERT(bp->b_cmd != BUF_CMD_DONE, 
-		("biodone: bp %p already done!", bp));
+		("bpdone: bp %p already done!", bp));
 
 	/*
 	 * No more BIOs are left.  All completion functions have been dealt
@@ -3794,18 +3794,18 @@ bpdone(struct buf *bp, int elseit)
 
 #if defined(VFS_BIO_DEBUG)
 		if (vp->v_auxrefs == 0)
-			panic("biodone: zero vnode hold count");
+			panic("bpdone: zero vnode hold count");
 		if ((vp->v_flag & VOBJBUF) == 0)
-			panic("biodone: vnode is not setup for merged cache");
+			panic("bpdone: vnode is not setup for merged cache");
 #endif
 
 		foff = bp->b_loffset;
-		KASSERT(foff != NOOFFSET, ("biodone: no buffer offset"));
-		KASSERT(obj != NULL, ("biodone: missing VM object"));
+		KASSERT(foff != NOOFFSET, ("bpdone: no buffer offset"));
+		KASSERT(obj != NULL, ("bpdone: missing VM object"));
 
 #if defined(VFS_BIO_DEBUG)
 		if (obj->paging_in_progress < bp->b_xio.xio_npages) {
-			kprintf("biodone: paging in progress(%d) < "
+			kprintf("bpdone: paging in progress(%d) < "
 				"bp->b_xio.xio_npages(%d)\n",
 				obj->paging_in_progress,
 				bp->b_xio.xio_npages);
@@ -3843,14 +3843,14 @@ bpdone(struct buf *bp, int elseit)
 				bogusflag = 1;
 				m = vm_page_lookup(obj, OFF_TO_IDX(foff));
 				if (m == NULL)
-					panic("biodone: page disappeared");
+					panic("bpdone: page disappeared");
 				bp->b_xio.xio_pages[i] = m;
 				pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
 					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 			}
 #if defined(VFS_BIO_DEBUG)
 			if (OFF_TO_IDX(foff) != m->pindex) {
-				kprintf("biodone: foff(%lu)/m->pindex(%ld) "
+				kprintf("bpdone: foff(%lu)/m->pindex(%ld) "
 					"mismatch\n",
 					(unsigned long)foff, (long)m->pindex);
 			}
@@ -3874,7 +3874,7 @@ bpdone(struct buf *bp, int elseit)
 			 * busy flag correctly!!!
 			 */
 			if (m->busy == 0) {
-				kprintf("biodone: page busy < 0, "
+				kprintf("bpdone: page busy < 0, "
 				    "pindex: %d, foff: 0x(%x,%x), "
 				    "resid: %d, index: %d\n",
 				    (int) m->pindex, (int)(foff >> 32),
@@ -3893,7 +3893,7 @@ bpdone(struct buf *bp, int elseit)
 					"wired: %d\n",
 					m->valid, m->dirty,
 					m->wire_count);
-				panic("biodone: page busy < 0");
+				panic("bpdone: page busy < 0");
 			}
 			vm_page_io_finish(m);
 			vm_page_wakeup(m);
