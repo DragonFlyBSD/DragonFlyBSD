@@ -90,6 +90,7 @@ static void	corepower_sens_init(struct corepower_sensor *sens,
 				    char *desc, u_int msr, int cpu);
 static void	corepower_sens_update(struct corepower_softc *sc,
 				      struct corepower_sensor *sens);
+static int	corepower_try(u_int msr, char *name);
 
 static device_method_t corepower_methods[] = {
 	/* Device interface */
@@ -192,6 +193,9 @@ corepower_probe(device_t dev)
 		}
 	}
 
+	if (corepower_try(MSR_RAPL_POWER_UNIT, "MSR_RAPL_POWER_UNIT") == 0)
+		return (ENXIO);
+
 	device_set_desc(dev, "CPU On-Die Power Usage Estimation");
 
 	return (BUS_PROBE_GENERIC);
@@ -274,26 +278,41 @@ corepower_attach(device_t dev)
 	cpu = device_get_unit(device_get_parent(dev));
 	ksnprintf(sc->sc_sensordev.xname, sizeof(sc->sc_sensordev.xname),
 	    "cpu_node%d", get_chip_ID(cpu));
-	if (sc->sc_have_sens & 1) {
+	if ((sc->sc_have_sens & 1) &&
+	    corepower_try(MSR_PKG_ENERGY_STATUS, "MSR_PKG_ENERGY_STATUS")) {
 		corepower_sens_init(&sc->sc_pkg_sens, "Package Power",
 		    MSR_PKG_ENERGY_STATUS, cpu);
 		sensor_attach(&sc->sc_sensordev, &sc->sc_pkg_sens.sensor);
+	} else {
+		sc->sc_have_sens &= ~1;
 	}
-	if (sc->sc_have_sens & 2) {
+	if ((sc->sc_have_sens & 2) &&
+	    corepower_try(MSR_DRAM_ENERGY_STATUS, "MSR_DRAM_ENERGY_STATUS")) {
 		corepower_sens_init(&sc->sc_dram_sens, "DRAM Power",
 		    MSR_DRAM_ENERGY_STATUS, cpu);
 		sensor_attach(&sc->sc_sensordev, &sc->sc_dram_sens.sensor);
+	} else {
+		sc->sc_have_sens &= ~2;
 	}
-	if (sc->sc_have_sens & 4) {
+	if ((sc->sc_have_sens & 4) &&
+	    corepower_try(MSR_PP0_ENERGY_STATUS, "MSR_PP0_ENERGY_STATUS")) {
 		corepower_sens_init(&sc->sc_pp0_sens, "Cores Power",
 		    MSR_PP0_ENERGY_STATUS, cpu);
 		sensor_attach(&sc->sc_sensordev, &sc->sc_pp0_sens.sensor);
+	} else {
+		sc->sc_have_sens &= ~4;
 	}
-	if (sc->sc_have_sens & 8) {
+	if ((sc->sc_have_sens & 8) &&
+	    corepower_try(MSR_PP1_ENERGY_STATUS, "MSR_PP1_ENERGY_STATUS")) {
 		corepower_sens_init(&sc->sc_pp1_sens, "Graphics Power",
 		    MSR_PP1_ENERGY_STATUS, cpu);
 		sensor_attach(&sc->sc_sensordev, &sc->sc_pp1_sens.sensor);
+	} else {
+		sc->sc_have_sens &= ~8;
 	}
+
+	if (sc->sc_have_sens == 0)
+		return (ENXIO);
 
 	sc->sc_senstask = sensor_task_register2(sc, corepower_refresh, 1, cpu);
 
@@ -369,4 +388,16 @@ corepower_sens_update(struct corepower_softc *sc,
 	}
 	sens->energy = a;
 	sens->sensor.value = corepower_energy_to_uwatts(sc, res, 1);
+}
+
+static int
+corepower_try(u_int msr, char *name)
+{
+	uint64_t val;
+
+	if (rdmsr_safe(msr, &val) != 0) {
+		kprintf("msr %s (0x%08x) not available\n", name, msr);
+		return 0;
+	}
+	return 1;
 }
