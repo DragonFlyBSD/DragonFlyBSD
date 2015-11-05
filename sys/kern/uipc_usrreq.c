@@ -236,9 +236,7 @@ uipc_abort(netmsg_t msg)
 	unp = unp_getsocktoken(msg->base.nm_so);
 
 	if (UNP_ISATTACHED(unp)) {
-		unp_setflags(unp, UNP_DETACHED);
 		unp_drop(unp, ECONNABORTED);
-		unp_free(unp);
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -351,9 +349,7 @@ uipc_detach(netmsg_t msg)
 	unp = unp_getsocktoken(msg->base.nm_so);
 
 	if (UNP_ISATTACHED(unp)) {
-		unp_setflags(unp, UNP_DETACHED);
 		unp_drop(unp, 0);
-		unp_free(unp);
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -965,18 +961,12 @@ failed:
 static void
 unp_detach(struct unpcb *unp)
 {
-	struct unp_global_head *head;
 	struct socket *so;
 
 	lwkt_gettoken(&unp_token);
 	lwkt_getpooltoken(unp);
 
 	so = unp->unp_socket;
-
-	head = unp_globalhead(so->so_type);
-	KASSERT(head->count > 0, ("invalid unp count"));
-	TAILQ_REMOVE(&head->list, unp, unp_link);
-	head->count--;
 
 	unp->unp_gencnt = ++unp_gencnt;
 	if (unp->unp_vnode) {
@@ -2149,20 +2139,35 @@ unp_connect_pair(struct unpcb *unp, struct unpcb *unp2)
 static void
 unp_drop(struct unpcb *unp, int error)
 {
+	struct unp_global_head *head;
 	struct unpcb *unp2;
 
 	ASSERT_LWKT_TOKEN_HELD(&unp_token);
 	UNP_ASSERT_TOKEN_HELD(unp);
-	KASSERT(unp->unp_flags & UNP_DETACHED, ("unp is not detached"));
 
+	KASSERT((unp->unp_flags & (UNP_DETACHED | UNP_DROPPED)) == 0,
+	    ("unp is dropped"));
+
+	/* Mark this unp as detached. */
+	unp_setflags(unp, UNP_DETACHED);
+
+	/* Remove this unp from the global unp list. */
+	head = unp_globalhead(unp->unp_socket->so_type);
+	KASSERT(head->count > 0, ("invalid unp count"));
+	TAILQ_REMOVE(&head->list, unp, unp_link);
+	head->count--;
+
+	/* Disconnect all. */
 	unp_disconnect(unp, error);
-
 	while ((unp2 = LIST_FIRST(&unp->unp_refs)) != NULL) {
 		lwkt_getpooltoken(unp2);
 		unp_disconnect(unp2, ECONNRESET);
 		lwkt_relpooltoken(unp2);
 	}
 	unp_setflags(unp, UNP_DROPPED);
+
+	/* Try freeing this unp. */
+	unp_free(unp);
 }
 
 static void
