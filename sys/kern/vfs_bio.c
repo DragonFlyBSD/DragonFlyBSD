@@ -1061,7 +1061,7 @@ bawrite(struct buf *bp)
 		return;
 	}
 	if (BUF_REFCNTNB(bp) == 0)
-		panic("bwrite: buffer is not busy???");
+		panic("bawrite: buffer is not busy???");
 
 	/*
 	 * NOTE: We no longer mark the buffer clear prior to the vn_strategy()
