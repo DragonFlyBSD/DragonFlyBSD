@@ -24,7 +24,8 @@
  * Significant help during the development and debugging phases
  * had been provided by David Greenman, also of the FreeBSD core team.
  *
- * see man buf(9) for more info.
+ * see man buf(9) for more info.  Note that man buf(9) doesn't reflect
+ * the actual buf/bio implementation in DragonFly.
  */
 
 #include <sys/param.h>
