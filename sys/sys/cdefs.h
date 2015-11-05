@@ -61,10 +61,10 @@
  * Macro to test if we are using a specific version of gcc or later.
  */
 #if defined(__GNUC__) && !defined(__INTEL_COMPILER)
-#define __GNUC_PREREQ__(ma, mi)	\
+#define	__GNUC_PREREQ__(ma, mi)	\
         (__GNUC__ > (ma) || __GNUC__ == (ma) && __GNUC_MINOR__ >= (mi))
 #else
-#define __GNUC_PREREQ__(ma, mi) 0
+#define	__GNUC_PREREQ__(ma, mi) 0
 #endif
 
 #if defined(__cplusplus)
@@ -93,7 +93,7 @@
  * header, but currently, we do need such a hierarchy.
  */
 #define	__VM_CACHELINE_SIZE	64
-#define __VM_CACHELINE_MASK	(__VM_CACHELINE_SIZE - 1)
+#define	__VM_CACHELINE_MASK	(__VM_CACHELINE_SIZE - 1)
 #define	__VM_CACHELINE_ALIGN(n)	\
 	(((n) + __VM_CACHELINE_MASK) & ~__VM_CACHELINE_MASK)
 
@@ -163,33 +163,33 @@
  */
 #ifdef lint
 
-#define __dead2
+#define	__dead2
 #define	__pure
-#define __pure2
-#define __unused
-#define __packed
-#define __aligned(x)
-#define __section(x)
-#define __always_inline
-#define __nonnull(x)
-#define __heedresult
-#define __returns_twice
+#define	__pure2
+#define	__unused
+#define	__packed
+#define	__aligned(x)
+#define	__section(x)
+#define	__always_inline
+#define	__nonnull(x)
+#define	__heedresult
+#define	__returns_twice
 
 #else
 
 #if !__GNUC_PREREQ__(2, 7)
-#define __dead2
-#define __pure2
-#define __unused
+#define	__dead2
+#define	__pure2
+#define	__unused
 #endif
 
 #if __GNUC_PREREQ__(2, 7)
-#define __dead2		__attribute__((__noreturn__))
-#define __pure2		__attribute__((__const__))
-#define __unused	__attribute__((__unused__))
-#define __packed        __attribute__((__packed__))
-#define __aligned(x)    __attribute__((__aligned__(x)))
-#define __section(x)    __attribute__((__section__(x)))
+#define	__dead2		__attribute__((__noreturn__))
+#define	__pure2		__attribute__((__const__))
+#define	__unused	__attribute__((__unused__))
+#define	__packed        __attribute__((__packed__))
+#define	__aligned(x)    __attribute__((__aligned__(x)))
+#define	__section(x)    __attribute__((__section__(x)))
 #endif
 
 #if __GNUC_PREREQ__(2, 96)
@@ -199,33 +199,33 @@
 #endif
 
 #if __GNUC_PREREQ__(3, 1)
-#define __always_inline __attribute__((__always_inline__))
+#define	__always_inline __attribute__((__always_inline__))
 #define	__noinline	__attribute__((__noinline__))
 #else
-#define __always_inline
+#define	__always_inline
 #define	__noinline
 #endif
 
 #if __GNUC_PREREQ__(3, 3)
-#define __heedresult	__attribute__((__warn_unused_result__))
-#define __nonnull(x)    __attribute__((__nonnull__(x)))
+#define	__heedresult	__attribute__((__warn_unused_result__))
+#define	__nonnull(x)    __attribute__((__nonnull__(x)))
 #define	__used		__attribute__((__used__))
 #else
-#define __heedresult
-#define __nonnull(x)
-#define __used		__unused
+#define	__heedresult
+#define	__nonnull(x)
+#define	__used		__unused
 #endif
 
 #if __GNUC_PREREQ__(4, 1)
-#define __returns_twice __attribute__((__returns_twice__))
+#define	__returns_twice __attribute__((__returns_twice__))
 #else
-#define __returns_twice
+#define	__returns_twice
 #endif
 
 #endif	/* LINT */
 
 #if !__GNUC_PREREQ__(2, 7) && __STDC_VERSION < 199901
-#define __func__        NULL
+#define	__func__        NULL
 #endif
 
 #if (__GNUC_PREREQ__(2, 0) && !defined(__STRICT_ANSI__)) || \
@@ -273,11 +273,11 @@
  *	  larger code.
  */
 #if __GNUC_PREREQ__(2, 96)
-#define __predict_true(exp)     __builtin_expect((exp), 1)
-#define __predict_false(exp)    __builtin_expect((exp), 0)
+#define	__predict_true(exp)     __builtin_expect((exp), 1)
+#define	__predict_false(exp)    __builtin_expect((exp), 0)
 #else
-#define __predict_true(exp)     (exp)
-#define __predict_false(exp)    (exp)
+#define	__predict_true(exp)     (exp)
+#define	__predict_false(exp)    (exp)
 #endif
 
 /*
@@ -342,17 +342,17 @@
 #endif
 
 #if !__GNUC_PREREQ__(3, 0)
-#define __ARRAY_ZERO	0
+#define	__ARRAY_ZERO	0
 #else
-#define __ARRAY_ZERO
+#define	__ARRAY_ZERO
 #endif
 
 #if __GNUC_PREREQ__(4, 0)
-#define __dso_public	__attribute__((__visibility__("default")))
-#define __dso_hidden	__attribute__((__visibility__("hidden")))
+#define	__dso_public	__attribute__((__visibility__("default")))
+#define	__dso_hidden	__attribute__((__visibility__("hidden")))
 #else
-#define __dso_public
-#define __dso_hidden
+#define	__dso_public
+#define	__dso_hidden
 #endif
 
 /*
@@ -403,7 +403,7 @@
 #endif
 
 #ifdef __GNUC__
-#define __strong_reference(sym,aliassym)	\
+#define	__strong_reference(sym,aliassym)	\
 	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)));
 #define	__weak_reference(sym,alias)	\
 	__asm__(".weak " #alias);	\
@@ -541,9 +541,9 @@
 #if (!defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE) && \
     !defined(_ANSI_SOURCE) && !defined(_C99_SOURCE)) || \
     defined(_DRAGONFLY_SOURCE) || defined(_NETBSD_SOURCE)
-#define __DF_VISIBLE	1
+#define	__DF_VISIBLE	1
 #else
-#define __DF_VISIBLE	0
+#define	__DF_VISIBLE	0
 #endif
 
 /* Deal with IEEE Std. 1003.1-1990, in which _POSIX_C_SOURCE == 1. */
@@ -654,23 +654,23 @@
  */
 
 #ifndef __FBSDID
-#define __FBSDID(s)	struct __hack
+#define	__FBSDID(s)	struct __hack
 #endif
 
 #ifndef __RCSID
-#define __RCSID(s)	struct __hack
+#define	__RCSID(s)	struct __hack
 #endif
 
 #ifndef __RCSID_SOURCE
-#define __RCSID_SOURCE(s)	struct __hack
+#define	__RCSID_SOURCE(s)	struct __hack
 #endif
 
 #ifndef __SCCSID
-#define __SCCSID(s)	struct __hack
+#define	__SCCSID(s)	struct __hack
 #endif
 
 #ifndef __COPYRIGHT
-#define __COPYRIGHT(s)  struct __hack
+#define	__COPYRIGHT(s)  struct __hack
 #endif
 
 #endif /* !_SYS_CDEFS_H_ */
