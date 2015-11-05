@@ -47,6 +47,7 @@
 MALLOC_DEFINE(M_DMSTRIPE, "dm_striped", "Device Mapper Target Striped");
 
 #define MAX_STRIPES 32
+/* #define USE_NUM_ERROR */
 
 struct target_stripe_dev {
 	dm_pdev_t *pdev;
@@ -227,6 +228,7 @@ dm_target_stripe_table(void *target_config)
 	return params;
 }
 
+#ifdef USE_NUM_ERROR
 static void
 dm_target_stripe_iodone(struct bio *bio)
 {
@@ -254,6 +256,25 @@ dm_target_stripe_iodone(struct bio *bio)
 	obio = pop_bio(bio);
 	biodone(obio);
 }
+
+static __inline
+struct bio *get_stripe_bio(struct bio *bio, void *priv)
+{
+	struct bio *nbio;
+
+	nbio = push_bio(bio);
+	nbio->bio_caller_info1.ptr = priv;
+	nbio->bio_done = dm_target_stripe_iodone;
+
+	return nbio;
+}
+#else
+static __inline
+struct bio *get_stripe_bio(struct bio *bio, void *priv __unused)
+{
+	return bio;
+}
+#endif
 
 /*
  * Strategy routine called from dm_strategy.
@@ -311,14 +332,11 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 			nestiobuf_add(bio, nestbuf, blkoff,
 					issue_blks * DEV_BSIZE, NULL);
 
-			/* push bio for striped iodone callback */
-			nbio = push_bio(&nestbuf->b_bio1);
+			nbio = get_stripe_bio(&nestbuf->b_bio1, tsc);
 			nbio->bio_offset = blknr * tsc->stripe_chunksize;
 			nbio->bio_offset += stripe_off;
 			nbio->bio_offset += dev->offset;
 			nbio->bio_offset *= DEV_BSIZE;
-			nbio->bio_caller_info1.ptr = tsc;
-			nbio->bio_done = dm_target_stripe_iodone;
 
 			vn_strategy(dev->pdev->pdev_vnode, nbio);
 
@@ -337,11 +355,8 @@ dm_target_stripe_strategy(dm_table_entry_t *table_en, struct buf *bp)
 
 			nestiobuf_add(bio, nestbuf, 0, 0, NULL);
 
-			/* push bio for striped iodone callback */
-			nbio = push_bio(&nestbuf->b_bio1);
+			nbio = get_stripe_bio(&nestbuf->b_bio1, tsc);
 			nbio->bio_offset = 0;
-			nbio->bio_caller_info1.ptr = tsc;
-			nbio->bio_done = dm_target_stripe_iodone;
 
 			vn_strategy(dev->pdev->pdev_vnode, nbio);
 		}
