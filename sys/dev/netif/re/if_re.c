@@ -265,6 +265,10 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
+	{ RE_HWREV_8168H,	ETHERMTU,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
 	{ RE_HWREV_8411B,	ETHERMTU,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
@@ -1077,6 +1081,7 @@ ee_eaddr0:
 
 			case RE_HWREV_8411:
 			case RE_HWREV_8168EP:
+			case RE_HWREV_8168H:
 			case RE_HWREV_8411B:
 ee_eaddr1:
 				sc->re_caps |= RE_C_EE_EADDR;
