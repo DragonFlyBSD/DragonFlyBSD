@@ -141,7 +141,8 @@ static void    unp_drop(struct unpcb *unp, int error);
 static void    unp_defdiscard_taskfunc(void *, int);
 
 static int	unp_rights;			/* file descriptors in flight */
-static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin, "unp_spin");
+static struct lwkt_token unp_rights_token =
+    LWKT_TOKEN_INITIALIZER(unp_rights_token);
 
 SYSCTL_DECL(_net_local);
 SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
@@ -232,19 +233,17 @@ unp_globalhead(short type)
 static __inline void
 unp_add_right(struct file *fp)
 {
-	spin_lock(&unp_spin);
+	ASSERT_LWKT_TOKEN_HELD(&unp_rights_token);
 	fp->f_msgcount++;
 	unp_rights++;
-	spin_unlock(&unp_spin);
 }
 
 static __inline void
 unp_del_right(struct file *fp)
 {
-	spin_lock(&unp_spin);
+	ASSERT_LWKT_TOKEN_HELD(&unp_rights_token);
 	fp->f_msgcount--;
 	unp_rights--;
-	spin_unlock(&unp_spin);
 }
 
 /*
@@ -1445,6 +1444,8 @@ unp_externalize(struct mbuf *rights, int flags)
 		/ sizeof(struct file *);
 	int f;
 
+	lwkt_gettoken(&unp_rights_token);
+
 	/*
 	 * if the new FD's will not fit, then we free them all
 	 */
@@ -1459,6 +1460,7 @@ unp_externalize(struct mbuf *rights, int flags)
 			*rp++ = NULL;
 			unp_discard(fp, NULL);
 		}
+		lwkt_reltoken(&unp_rights_token);
 		return (EMSGSIZE);
 	}
 
@@ -1487,6 +1489,7 @@ unp_externalize(struct mbuf *rights, int flags)
 			 * Just clean up and return the same
 			 * error value as if fdavail() failed.
 			 */
+			lwkt_reltoken(&revoke_token);
 
 			/* Close externalized files */
 			for (j = 0; j < i; j++)
@@ -1498,7 +1501,7 @@ unp_externalize(struct mbuf *rights, int flags)
 			for (i = 0; i < newfds; i++)
 				rp[i] = NULL;
 
-			lwkt_reltoken(&revoke_token);
+			lwkt_reltoken(&unp_rights_token);
 			return (EMSGSIZE);
 		}
 		fp = rp[i];
@@ -1506,6 +1509,8 @@ unp_externalize(struct mbuf *rights, int flags)
 		fdp[i] = f;
 	}
 	lwkt_reltoken(&revoke_token);
+
+	lwkt_reltoken(&unp_rights_token);
 
 	/*
 	 * Adjust length, in case sizeof(struct file *) and sizeof(int)
@@ -1554,8 +1559,6 @@ unp_init(void)
 	TAILQ_INIT(&unp_stream_head.list);
 	TAILQ_INIT(&unp_dgram_head.list);
 	TAILQ_INIT(&unp_seqpkt_head.list);
-
-	spin_init(&unp_spin, "unpinit");
 
 	SLIST_INIT(&unp_defdiscard_head);
 	spin_init(&unp_defdiscard_spin, "unpdisc");
@@ -1638,6 +1641,8 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		cm = mtod(control, struct cmsghdr *);
 	}
 
+	lwkt_gettoken(&unp_rights_token);
+
 	fdescp = p->p_fd;
 	spin_lock_shared(&fdescp->fd_spin);
 
@@ -1683,6 +1688,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	error = 0;
 done:
 	spin_unlock_shared(&fdescp->fd_spin);
+	lwkt_reltoken(&unp_rights_token);
 	return error;
 }
 
@@ -1713,15 +1719,12 @@ unp_gc(void)
 	/*
 	 * Only one gc can be in-progress at any given moment
 	 */
-	spin_lock(&unp_spin);
+	lwkt_gettoken(&unp_rights_token);
 	if (unp_gcing) {
-		spin_unlock(&unp_spin);
+		lwkt_reltoken(&unp_rights_token);
 		return;
 	}
 	unp_gcing = TRUE;
-	spin_unlock(&unp_spin);
-
-	lwkt_gettoken(&unp_token);
 
 	/* 
 	 * Before going through all this, set all FDs to be NOT defered
@@ -1802,10 +1805,10 @@ unp_gc(void)
 			fdrop(*fpp);
 	} while (info.index == info.maxindex);
 
-	lwkt_reltoken(&unp_token);
-
 	kfree((caddr_t)info.extra_ref, M_FILE);
 	unp_gcing = FALSE;
+
+	lwkt_reltoken(&unp_rights_token);
 }
 
 /*
@@ -1935,8 +1938,10 @@ unp_gc_checkmarks(struct file *fp, void *data)
 void
 unp_dispose(struct mbuf *m)
 {
+	lwkt_gettoken(&unp_rights_token);
 	if (m)
 		unp_scan(m, unp_discard, NULL);
+	lwkt_reltoken(&unp_rights_token);
 }
 
 static int
