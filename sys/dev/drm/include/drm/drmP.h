@@ -1036,7 +1036,6 @@ struct drm_device {
 
 				/* Sysctl support */
 	struct drm_sysctl_info *sysctl;
-	int		  sysctl_node_idx;
 
 
 	drm_sg_mem_t      *sg;  /* Scatter gather memory */

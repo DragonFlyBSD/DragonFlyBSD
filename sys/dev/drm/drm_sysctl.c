@@ -65,25 +65,19 @@ int drm_sysctl_init(struct drm_device *dev)
 	struct drm_sysctl_info *info;
 	struct sysctl_oid *oid;
 	struct sysctl_oid *top;
-	int		  i;
+	int i, unit;
 
 	info = kmalloc(sizeof *info, M_DRM, M_WAITOK | M_ZERO);
 	if ( !info )
 		return 1;
 	dev->sysctl = info;
 
-	/* Find the next free slot under hw.dri */
-	i = 0;
-	SLIST_FOREACH(oid, &SYSCTL_NODE_CHILDREN(_hw, dri), oid_link) {
-		if (i <= oid->oid_arg2)
-			i = oid->oid_arg2 + 1;
-	}
-	if (i>9)
+	unit = device_get_unit(dev->dev);
+	if (unit > 9)
 		return 1;
-	
-	dev->sysctl_node_idx = i;
+
 	/* Add the hw.dri.x for our device */
-	info->name[0] = '0' + i;
+	info->name[0] = '0' + unit;
 	info->name[1] = 0;
 	top = SYSCTL_ADD_NODE(&info->ctx, &SYSCTL_NODE_CHILDREN(_hw, dri),
 	    OID_AUTO, info->name, CTLFLAG_RW, NULL, NULL);
