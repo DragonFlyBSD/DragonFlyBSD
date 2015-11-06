@@ -140,6 +140,13 @@ static int     unp_connect_pair(struct unpcb *unp, struct unpcb *unp2);
 static void    unp_drop(struct unpcb *unp, int error);
 static void    unp_defdiscard_taskfunc(void *, int);
 
+static int	unp_rights;			/* file descriptors in flight */
+static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin, "unp_spin");
+
+SYSCTL_DECL(_net_local);
+SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
+   "File descriptors in flight");
+
 /*
  * SMP Considerations:
  *
@@ -220,6 +227,24 @@ unp_globalhead(short type)
 	default:
 		panic("unknown socket type %d", type);
 	}
+}
+
+static __inline void
+unp_add_right(struct file *fp)
+{
+	spin_lock(&unp_spin);
+	fp->f_msgcount++;
+	unp_rights++;
+	spin_unlock(&unp_spin);
+}
+
+static __inline void
+unp_del_right(struct file *fp)
+{
+	spin_lock(&unp_spin);
+	fp->f_msgcount--;
+	unp_rights--;
+	spin_unlock(&unp_spin);
 }
 
 /*
@@ -877,9 +902,6 @@ static u_long	unpst_recvspace = PIPSIZ;
 static u_long	unpdg_sendspace = 2*1024;	/* really max datagram size */
 static u_long	unpdg_recvspace = 4*1024;
 
-static int	unp_rights;			/* file descriptors in flight */
-static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin, "unp_spin");
-
 SYSCTL_DECL(_net_local_seqpacket);
 SYSCTL_DECL(_net_local_stream);
 SYSCTL_INT(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW, 
@@ -892,10 +914,6 @@ SYSCTL_INT(_net_local_dgram, OID_AUTO, maxdgram, CTLFLAG_RW,
     &unpdg_sendspace, 0, "Max datagram socket size");
 SYSCTL_INT(_net_local_dgram, OID_AUTO, recvspace, CTLFLAG_RW,
     &unpdg_recvspace, 0, "Size of datagram socket receive buffer");
-
-SYSCTL_DECL(_net_local);
-SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
-   "File descriptors in flight");
 
 static int
 unp_attach(struct socket *so, struct pru_attach_info *ai)
@@ -1526,10 +1544,7 @@ unp_fp_externalize(struct lwp *lp, struct file *fp, int fd, int flags)
 			fsetfd(fdp, fp, fd);
 		}
 	}
-	spin_lock(&unp_spin);
-	fp->f_msgcount--;
-	unp_rights--;
-	spin_unlock(&unp_spin);
+	unp_del_right(fp);
 	fdrop(fp);
 }
 
@@ -1663,10 +1678,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		fp = fdescp->fd_files[*fdp--].fp;
 		*rp-- = fp;
 		fhold(fp);
-		spin_lock(&unp_spin);
-		fp->f_msgcount++;
-		unp_rights++;
-		spin_unlock(&unp_spin);
+		unp_add_right(fp);
 	}
 	error = 0;
 done:
@@ -1998,10 +2010,7 @@ unp_discard(struct file *fp, void *data __unused)
 {
 	struct unp_defdiscard *d;
 
-	spin_lock(&unp_spin);
-	fp->f_msgcount--;
-	unp_rights--;
-	spin_unlock(&unp_spin);
+	unp_del_right(fp);
 
 	d = kmalloc(sizeof(*d), M_UNPCB, M_WAITOK);
 	d->fp = fp;
