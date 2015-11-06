@@ -70,20 +70,22 @@ typedef	u_quad_t	unp_gen_t;
 LIST_HEAD(unp_head, unpcb);
 
 struct	unpcb {
-	TAILQ_ENTRY(unpcb) unp_link; 	/* glue on list of all PCBs */
-	struct	socket *unp_socket;	/* pointer back to socket */
-	struct	vnode *unp_vnode;	/* if associated with file */
-	struct	vnode *unp_rvnode;	/* root vp for creating process */
-	ino_t	unp_ino;		/* fake inode number */
-	struct	unpcb *unp_conn;	/* control block of connected socket */
-	struct	unp_head unp_refs;	/* referencing socket linked list */
+	struct socket	*unp_socket;	/* pointer back to socket */
+	struct unpcb	*unp_conn;	/* control block of connected socket */
+	int		unp_flags;	/* flags */
+	int		unp_refcnt;	/* referece count */
+	struct unp_head	unp_refs;	/* referencing socket linked list */
 	LIST_ENTRY(unpcb) unp_reflink;	/* link in unp_refs list */
-	struct	sockaddr_un *unp_addr;	/* bound address of socket */
-	int	unp_refcnt;		/* referece count */
-	int	unused02;
-	unp_gen_t unp_gencnt;		/* generation count of this instance */
-	int	unp_flags;		/* flags */
-	struct	xucred unp_peercred;	/* peer credentials, if applicable */
+	struct sockaddr_un *unp_addr;	/* bound address of socket */
+	struct xucred	unp_peercred;	/* peer credentials, if applicable */
+	int		unp_msgcount;	/* # of cmsgs this unp are in */
+	int		unp_gcflags;	/* flags reserved for unp GC to use */
+	struct file	*unp_fp;	/* cooresponding fp if unp is in cmsg */
+	ino_t		unp_ino;	/* fake inode number */
+	struct vnode	*unp_vnode;	/* if associated with file */
+	struct vnode	*unp_rvnode;	/* root vp for creating process */
+	TAILQ_ENTRY(unpcb) unp_link; 	/* glue on list of all PCBs */
+	unp_gen_t	unp_gencnt;	/* generation count of this instance */
 };
 
 /*

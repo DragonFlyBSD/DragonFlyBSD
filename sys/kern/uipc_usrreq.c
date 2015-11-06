@@ -59,10 +59,47 @@
 #include <sys/socketvar2.h>
 #include <sys/msgport2.h>
 
+/*
+ * Unix communications domain.
+ *
+ * TODO:
+ *	RDM
+ *	rethink name space problems
+ *	need a proper out-of-band
+ *	lock pushdown
+ *
+ *
+ * Unix domain sockets GC.
+ *
+ * It was originally designed to address following three cases:
+ * 1) Receiving unix domain socket can not accept the rights, e.g.
+ *    when the so_rcv is full.
+ * 2) Caller of recvmsg(2) does not pass buffer to receive rights.
+ * 3) Unix domain sockets loop reference, e.g. s1 is on s2.so_rcv,
+ *    while s2 on s1.so_rcv.
+ *
+ * Code under UNP_GC_ALLFILES is intended to address all above three
+ * cases.  However, 1) was addressed a long time ago in uipc_send()
+ * (we inheritted the fix from FreeBSD when DragonFly forked).  2)
+ * was addressed in soreceive() by git-e62cfe62.  3) is the only
+ * case that needs GC.  The new code (!UNP_GC_ALLFILES) addresses
+ * case 3) in the following way:
+ * - Record the struct file in unpcb, if the Unix domain socket is
+ *   passed as one of the rights.
+ * - At GC time, only unpcbs are scanned, and only Unix domain sockets
+ *   that are still used as rights are potential GC targets.
+ */
+
 #define UNP_DETACHED		UNP_PRIVATE1
 #define UNP_CONNECTING		UNP_PRIVATE2
 #define UNP_DROPPED		UNP_PRIVATE3
 #define UNP_MARKER		UNP_PRIVATE4
+
+#define UNPGC_REF		0x1	/* unpcb has external ref. */
+#define UNPGC_DEAD		0x2	/* unpcb might be dead. */
+#define UNPGC_SCANNED		0x4	/* Has been scanned. */
+
+#define UNP_GCFILE_MAX		256
 
 /* For unp_internalize() and unp_externalize() */
 CTASSERT(sizeof(struct file *) >= sizeof(int));
@@ -96,6 +133,9 @@ static struct unp_global_head unp_stream_head;
 static struct unp_global_head unp_dgram_head;
 static struct unp_global_head unp_seqpkt_head;
 
+static struct unp_global_head * const unp_heads[] =
+    { &unp_stream_head, &unp_dgram_head, &unp_seqpkt_head, NULL };
+
 static struct lwkt_token unp_token = LWKT_TOKEN_INITIALIZER(unp_token);
 static struct taskqueue *unp_taskqueue;
 
@@ -103,15 +143,6 @@ static struct unp_defdiscard_list unp_defdiscard_head;
 static struct spinlock unp_defdiscard_spin;
 static struct task unp_defdiscard_task;
 
-/*
- * Unix communications domain.
- *
- * TODO:
- *	RDM
- *	rethink name space problems
- *	need a proper out-of-band
- *	lock pushdown
- */
 static struct	sockaddr sun_noname = { sizeof(sun_noname), AF_LOCAL };
 static ino_t	unp_ino = 1;		/* prototype for fake inode numbers */
 
@@ -123,12 +154,14 @@ static int     unp_connect (struct socket *,struct sockaddr *,
 static void    unp_disconnect(struct unpcb *, int);
 static void    unp_shutdown (struct unpcb *);
 static void    unp_gc(void *, int);
+#ifdef UNP_GC_ALLFILES
 static int     unp_gc_clearmarks(struct file *, void *);
 static int     unp_gc_checkmarks(struct file *, void *);
 static int     unp_gc_checkrefs(struct file *, void *);
+static void    unp_mark(struct file *, void *data);
+#endif
 static void    unp_scan (struct mbuf *, void (*)(struct file *, void *),
 				void *data);
-static void    unp_mark (struct file *, void *data);
 static void    unp_discard (struct file *, void *);
 static int     unp_internalize (struct mbuf *, struct thread *);
 static int     unp_listen (struct unpcb *, struct thread *);
@@ -144,6 +177,7 @@ static int	unp_rights;			/* file descriptors in flight */
 static struct lwkt_token unp_rights_token =
     LWKT_TOKEN_INITIALIZER(unp_rights_token);
 static struct task unp_gc_task;
+static struct unpcb *unp_gc_marker;
 
 SYSCTL_DECL(_net_local);
 SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
@@ -231,10 +265,37 @@ unp_globalhead(short type)
 	}
 }
 
+static __inline struct unpcb *
+unp_fp2unpcb(struct file *fp)
+{
+	struct socket *so;
+
+	if (fp->f_type != DTYPE_SOCKET)
+		return NULL;
+
+	so = fp->f_data;
+	if (so == NULL)
+		return NULL;
+
+	if (so->so_proto->pr_domain != &localdomain)
+		return NULL;
+
+	return so->so_pcb;
+}
+
 static __inline void
 unp_add_right(struct file *fp)
 {
+	struct unpcb *unp;
+
 	ASSERT_LWKT_TOKEN_HELD(&unp_rights_token);
+	KASSERT(fp->f_count > 0, ("invalid f_count %d", fp->f_count));
+
+	unp = unp_fp2unpcb(fp);
+	if (unp != NULL) {
+		unp->unp_fp = fp;
+		unp->unp_msgcount++;
+	}
 	fp->f_msgcount++;
 	unp_rights++;
 }
@@ -242,7 +303,19 @@ unp_add_right(struct file *fp)
 static __inline void
 unp_del_right(struct file *fp)
 {
+	struct unpcb *unp;
+
 	ASSERT_LWKT_TOKEN_HELD(&unp_rights_token);
+	KASSERT(fp->f_count > 0, ("invalid f_count %d", fp->f_count));
+
+	unp = unp_fp2unpcb(fp);
+	if (unp != NULL) {
+		KASSERT(unp->unp_msgcount > 0,
+		    ("invalid unp msgcount %d", unp->unp_msgcount));
+		unp->unp_msgcount--;
+		if (unp->unp_msgcount == 0)
+			unp->unp_fp = NULL;
+	}
 	fp->f_msgcount--;
 	unp_rights--;
 }
@@ -1565,6 +1638,10 @@ unp_init(void)
 	 */
 	TASK_INIT(&unp_gc_task, 0, unp_gc, NULL);
 
+	unp_gc_marker = kmalloc(sizeof(*unp_gc_marker), M_UNPCB,
+	    M_WAITOK | M_ZERO);
+	unp_gc_marker->unp_flags |= UNP_MARKER;
+
 	/*
 	 * Create taskqueue for defered discard, and stick it to
 	 * the last CPU.
@@ -1692,6 +1769,8 @@ done:
 	lwkt_reltoken(&unp_rights_token);
 	return error;
 }
+
+#ifdef UNP_GC_ALLFILES
 
 /*
  * Garbage collect in-transit file descriptors that get lost due to
@@ -1920,6 +1999,250 @@ unp_gc_checkmarks(struct file *fp, void *data)
 }
 
 /*
+ * Mark visibility.  info->defer is recalculated on every pass.
+ */
+static void
+unp_mark(struct file *fp, void *data)
+{
+	struct unp_gc_info *info = data;
+
+	if ((fp->f_flag & FMARK) == 0) {
+		++info->defer;
+		atomic_set_int(&fp->f_flag, FMARK | FDEFER);
+	} else if (fp->f_flag & FDEFER) {
+		++info->defer;
+	}
+}
+
+#else	/* !UNP_GC_ALLFILES */
+
+/*
+ * They are thread local and do not require explicit synchronization.
+ */
+static int	unp_marked;
+static int	unp_unreachable;
+
+static void
+unp_accessable(struct file *fp, void *data __unused)
+{
+	struct unpcb *unp;
+
+	if ((unp = unp_fp2unpcb(fp)) == NULL)
+		return;
+	if (unp->unp_gcflags & UNPGC_REF)
+		return;
+	unp->unp_gcflags &= ~UNPGC_DEAD;
+	unp->unp_gcflags |= UNPGC_REF;
+	unp_marked++;
+}
+
+static void
+unp_gc_process(struct unpcb *unp)
+{
+	struct file *fp;
+
+	/* Already processed. */
+	if (unp->unp_gcflags & UNPGC_SCANNED)
+		return;
+	fp = unp->unp_fp;
+
+	/*
+	 * Check for a socket potentially in a cycle.  It must be in a
+	 * queue as indicated by msgcount, and this must equal the file
+	 * reference count.  Note that when msgcount is 0 the file is NULL.
+	 */
+	if ((unp->unp_gcflags & UNPGC_REF) == 0 && fp &&
+	    unp->unp_msgcount != 0 && fp->f_count == unp->unp_msgcount) {
+		unp->unp_gcflags |= UNPGC_DEAD;
+		unp_unreachable++;
+		return;
+	}
+
+	/*
+	 * Mark all sockets we reference with RIGHTS.
+	 */
+	if (UNP_ISATTACHED(unp)) {
+		struct signalsockbuf *ssb = &unp->unp_socket->so_rcv;
+
+		unp_reference(unp);
+		lwkt_gettoken(&ssb->ssb_token);
+		/*
+		 * unp_token would be temporarily dropped, if getting
+		 * so_rcv token blocks, so we need to check unp state
+		 * here again.
+		 */
+		if (UNP_ISATTACHED(unp))
+			unp_scan(ssb->ssb_mb, unp_accessable, NULL);
+		lwkt_reltoken(&ssb->ssb_token);
+		unp->unp_gcflags |= UNPGC_SCANNED;
+		unp_free(unp);
+	} else {
+		unp->unp_gcflags |= UNPGC_SCANNED;
+	}
+}
+
+static void
+unp_gc(void *arg __unused, int pending __unused)
+{
+	struct unp_global_head *head;
+	int h, filemax, fileidx, filetot;
+	struct file **unref;
+	struct unpcb *unp;
+
+	lwkt_gettoken(&unp_rights_token);
+	lwkt_gettoken(&unp_token);
+
+	/*
+	 * First clear all gc flags from previous runs.
+	 */
+	for (h = 0; unp_heads[h] != NULL; ++h) {
+		/* 
+		 * NOTE: This loop does not block, so it is safe
+		 * to use TAILQ_FOREACH here.
+		 */
+		head = unp_heads[h];
+		TAILQ_FOREACH(unp, &head->list, unp_link)
+			unp->unp_gcflags = 0;
+	}
+
+	/*
+	 * Scan marking all reachable sockets with UNPGC_REF.  Once a socket
+	 * is reachable all of the sockets it references are reachable.
+	 * Stop the scan once we do a complete loop without discovering
+	 * a new reachable socket.
+	 */
+	do {
+		unp_unreachable = 0;
+		unp_marked = 0;
+		for (h = 0; unp_heads[h] != NULL; ++h) {
+			head = unp_heads[h];
+			TAILQ_INSERT_HEAD(&head->list, unp_gc_marker, unp_link);
+			while ((unp = TAILQ_NEXT(unp_gc_marker, unp_link))
+			    != NULL) {
+				TAILQ_REMOVE(&head->list, unp_gc_marker,
+				    unp_link);
+				TAILQ_INSERT_AFTER(&head->list, unp,
+				    unp_gc_marker, unp_link);
+
+				if (unp->unp_flags & UNP_MARKER)
+					continue;
+				unp_gc_process(unp);
+			}
+			TAILQ_REMOVE(&head->list, unp_gc_marker, unp_link);
+		}
+	} while (unp_marked);
+
+	if (unp_unreachable == 0)
+		goto done;
+
+	/*
+	 * We grab an extra reference to each of the file table entries
+	 * that are not otherwise accessible and then free the rights
+	 * that are stored in messages on them.
+	 *
+	 * The bug in the orginal code is a little tricky, so I'll describe
+	 * what's wrong with it here.
+	 *
+	 * It is incorrect to simply unp_discard each entry for f_msgcount
+	 * times -- consider the case of sockets A and B that contain
+	 * references to each other.  On a last close of some other socket,
+	 * we trigger a gc since the number of outstanding rights (unp_rights)
+	 * is non-zero.  If during the sweep phase the gc code unp_discards,
+	 * we end up doing a (full) fdrop on the descriptor.  A fdrop on A
+	 * results in the following chain.  Closef calls soo_close, which
+	 * calls soclose.   Soclose calls first (through the switch
+	 * uipc_usrreq) unp_detach, which re-invokes unp_gc.  Unp_gc simply
+	 * returns because the previous instance had set unp_gcing, and
+	 * we return all the way back to soclose, which marks the socket
+	 * with SS_NOFDREF, and then calls sofree.  Sofree calls sorflush
+	 * to free up the rights that are queued in messages on the socket A,
+	 * i.e., the reference on B.  The sorflush calls via the dom_dispose
+	 * switch unp_dispose, which unp_scans with unp_discard.  This second
+	 * instance of unp_discard just calls fdrop on B.
+	 *
+	 * Well, a similar chain occurs on B, resulting in a sorflush on B,
+	 * which results in another fdrop on A.  Unfortunately, A is already
+	 * being closed, and the descriptor has already been marked with
+	 * SS_NOFDREF, and soclose panics at this point.
+	 *
+	 * Here, we first take an extra reference to each inaccessible
+	 * descriptor.  Then, we call sorflush ourself, since we know
+	 * it is a Unix domain socket anyhow.  After we destroy all the
+	 * rights carried in messages, we do a last fdrop to get rid
+	 * of our extra reference.  This is the last close, and the
+	 * unp_detach etc will shut down the socket.
+	 *
+	 * 91/09/19, bsy@cs.cmu.edu
+	 */
+
+	filemax = unp_unreachable;
+	if (filemax > UNP_GCFILE_MAX)
+		filemax = UNP_GCFILE_MAX;
+	unref = kmalloc(filemax * sizeof(struct file *), M_TEMP, M_WAITOK);
+
+	filetot = 0;
+	do {
+		int i;
+
+		/*
+		 * Iterate looking for sockets which have been specifically
+		 * marked as as unreachable and store them locally.
+		 */
+		fileidx = 0;
+		for (h = 0; unp_heads[h] != NULL; ++h) {
+			/*
+			 * NOTE: This loop does not block, so it is safe
+			 * to use TAILQ_FOREACH here.
+			 */
+			head = unp_heads[h];
+			TAILQ_FOREACH(unp, &head->list, unp_link) {
+				struct file *fp;
+
+				if ((unp->unp_gcflags & UNPGC_DEAD) == 0)
+					continue;
+				unp->unp_gcflags &= ~UNPGC_DEAD;
+
+				fp = unp->unp_fp;
+				if (unp->unp_msgcount == 0 || fp == NULL ||
+				    fp->f_count != unp->unp_msgcount)
+					continue;
+				fhold(fp);
+
+				KASSERT(fileidx < filemax,
+				    ("invalid fileidx %d, filemax %d",
+				     fileidx, filemax));
+				unref[fileidx++] = fp;
+
+				KASSERT(filetot < unp_unreachable,
+				    ("invalid filetot %d and "
+				     "unp_unreachable %d",
+				     filetot, unp_unreachable));
+				++filetot;
+
+				if (fileidx == filemax ||
+				    filetot == unp_unreachable)
+					goto dogc;
+			}
+		}
+dogc:
+		/*
+		 * For each Unix domain socket on our hit list, do the
+		 * following two things.
+		 */
+		for (i = 0; i < fileidx; ++i)
+			sorflush(unref[i]->f_data);
+		for (i = 0; i < fileidx; ++i)
+			fdrop(unref[i]);
+	} while (fileidx == filemax && filetot < unp_unreachable);
+	kfree(unref, M_TEMP);
+done:
+	lwkt_reltoken(&unp_token);
+	lwkt_reltoken(&unp_rights_token);
+}
+
+#endif	/* UNP_GC_ALLFILES */
+
+/*
  * Dispose of the fp's stored in a mbuf.
  *
  * The dds loop can cause additional fps to be entered onto the
@@ -1979,43 +2302,37 @@ unp_scan(struct mbuf *m0, void (*op)(struct file *, void *), void *data)
 }
 
 /*
- * Mark visibility.  info->defer is recalculated on every pass.
- */
-static void
-unp_mark(struct file *fp, void *data)
-{
-	struct unp_gc_info *info = data;
-
-	if ((fp->f_flag & FMARK) == 0) {
-		++info->defer;
-		atomic_set_int(&fp->f_flag, FMARK | FDEFER);
-	} else if (fp->f_flag & FDEFER) {
-		++info->defer;
-	}
-}
-
-/*
  * Discard a fp previously held in a unix domain socket mbuf.  To
  * avoid blowing out the kernel stack due to contrived chain-reactions
- * we may have to defer the operation to a higher procedural level.
+ * we may have to defer the operation to a dedicated taskqueue.
  *
- * Caller holds unp_token
+ * Caller holds unp_rights_token.
  */
 static void
 unp_discard(struct file *fp, void *data __unused)
 {
-	struct unp_defdiscard *d;
-
 	unp_del_right(fp);
+	if (unp_fp2unpcb(fp) != NULL) {
+		struct unp_defdiscard *d;
 
-	d = kmalloc(sizeof(*d), M_UNPCB, M_WAITOK);
-	d->fp = fp;
+		/*
+		 * This fp is a Unix domain socket itself and fdrop()
+		 * it here directly may cause deep unp_discard()
+		 * recursion, so the fdrop() is defered to the
+		 * dedicated taskqueue.
+		 */
+		d = kmalloc(sizeof(*d), M_UNPCB, M_WAITOK);
+		d->fp = fp;
 
-	spin_lock(&unp_defdiscard_spin);
-	SLIST_INSERT_HEAD(&unp_defdiscard_head, d, next);
-	spin_unlock(&unp_defdiscard_spin);
+		spin_lock(&unp_defdiscard_spin);
+		SLIST_INSERT_HEAD(&unp_defdiscard_head, d, next);
+		spin_unlock(&unp_defdiscard_spin);
 
-	taskqueue_enqueue(unp_taskqueue, &unp_defdiscard_task);
+		taskqueue_enqueue(unp_taskqueue, &unp_defdiscard_task);
+	} else {
+		/* This fp is not a Unix domain socket */
+		fdrop(fp);
+	}
 }
 
 /*
@@ -2025,8 +2342,8 @@ unp_discard(struct file *fp, void *data __unused)
  * the unp_detach().
  *
  * NOTE:
- * For anyone caring about unconnected unix socket sending performance,
- * other approach could be taken...
+ * For anyone caring about unconnected Unix domain socket sending
+ * performance, other approach could be taken...
  */
 static int
 unp_find_lockref(struct sockaddr *nam, struct thread *td, short type,
