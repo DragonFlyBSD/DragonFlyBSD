@@ -112,37 +112,39 @@ dm_table_status(dm_table_entry_t *, prop_dictionary_t, int);
 static int
 dm_dbg_print_flags(int flags)
 {
-	aprint_debug("dbg_print --- %d\n", flags);
+	if (dm_debug_level == 0)
+		return 1;
+
+	kprintf("%s --- flags=%08X\n", __func__, flags);
 
 	if (flags & DM_READONLY_FLAG)
-		aprint_debug("dbg_flags: DM_READONLY_FLAG set In/Out\n");
-
+		kprintf("  DM_READONLY_FLAG\n");
 	if (flags & DM_SUSPEND_FLAG)
-		aprint_debug("dbg_flags: DM_SUSPEND_FLAG set In/Out\n");
-
+		kprintf("  DM_SUSPEND_FLAG\n");
+	if (flags & DM_EXISTS_FLAG)
+		kprintf("  DM_EXISTS_FLAG\n");
 	if (flags & DM_PERSISTENT_DEV_FLAG)
-		aprint_debug("dbg_flags: DM_PERSISTENT_DEV_FLAG set In\n");
-
+		kprintf("  DM_PERSISTENT_DEV_FLAG\n");
 	if (flags & DM_STATUS_TABLE_FLAG)
-		aprint_debug("dbg_flags: DM_STATUS_TABLE_FLAG set In\n");
-
+		kprintf("  DM_STATUS_TABLE_FLAG\n");
 	if (flags & DM_ACTIVE_PRESENT_FLAG)
-		aprint_debug("dbg_flags: DM_ACTIVE_PRESENT_FLAG set Out\n");
-
+		kprintf("  DM_ACTIVE_PRESENT_FLAG\n");
 	if (flags & DM_INACTIVE_PRESENT_FLAG)
-		aprint_debug("dbg_flags: DM_INACTIVE_PRESENT_FLAG set Out\n");
-
+		kprintf("  DM_INACTIVE_PRESENT_FLAG\n");
 	if (flags & DM_BUFFER_FULL_FLAG)
-		aprint_debug("dbg_flags: DM_BUFFER_FULL_FLAG set Out\n");
-
+		kprintf("  DM_BUFFER_FULL_FLAG\n");
 	if (flags & DM_SKIP_BDGET_FLAG)
-		aprint_debug("dbg_flags: DM_SKIP_BDGET_FLAG set In\n");
-
+		kprintf("  DM_SKIP_BDGET_FLAG\n");
 	if (flags & DM_SKIP_LOCKFS_FLAG)
-		aprint_debug("dbg_flags: DM_SKIP_LOCKFS_FLAG set In\n");
-
+		kprintf("  DM_SKIP_LOCKFS_FLAG\n");
 	if (flags & DM_NOFLUSH_FLAG)
-		aprint_debug("dbg_flags: DM_NOFLUSH_FLAG set In\n");
+		kprintf("  DM_NOFLUSH_FLAG\n");
+	if (flags & DM_QUERY_INACTIVE_TABLE_FLAG)
+		kprintf("  DM_QUERY_INACTIVE_TABLE_FLAG\n");
+	if (flags & DM_UUID_FLAG)
+		kprintf("  DM_UUID_FLAG\n");
+	if (flags & DM_SECURE_DATA_FLAG)
+		kprintf("  DM_SECURE_DATA_FLAG\n");
 
 	return 0;
 }
