@@ -85,6 +85,7 @@
 #include <sys/signalvar.h>
 
 #include <sys/wdog.h>
+#include <dev/acpica/acpi_pvpanic/panic_notifier.h>
 #include <dev/misc/gpio/gpio.h>
 
 #ifndef PANIC_REBOOT_WAIT_TIME
@@ -689,6 +690,21 @@ sysctl_kern_dumpdev(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, KERN_DUMPDEV, dumpdev, CTLTYPE_OPAQUE|CTLFLAG_RW,
 	0, sizeof dumpdev, sysctl_kern_dumpdev, "T,udev_t", "");
 
+static struct panicerinfo *panic_notifier;
+
+int
+set_panic_notifier(struct panicerinfo *info)
+{
+	if (info == NULL)
+		panic_notifier = NULL;
+	else if (panic_notifier != NULL)
+		return 1;
+	else
+		panic_notifier = info;
+
+	return 0;
+}
+
 /*
  * Panic is called on unresolvable fatal errors.  It prints "panic: mesg",
  * and then reboots.  If we are called twice, then we avoid trying to sync
@@ -792,6 +808,8 @@ panic(const char *fmt, ...)
 	if (panicstr == fmt)
 		panicstr = buf;
 	__va_end(ap);
+	if (panic_notifier != NULL)
+		panic_notifier->notifier(panic_notifier->arg);
 	kprintf("panic: %s\n", buf);
 	/* two separate prints in case of an unmapped page and trap */
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);

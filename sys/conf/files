@@ -2225,6 +2225,7 @@ ${OSACPI_MI_DIR}/acpi_dock/acpi_dock.c		optional acpi_dock acpi
 ${OSACPI_MI_DIR}/acpi_fujitsu/acpi_fujitsu.c	optional acpi_fujitsu acpi
 ${OSACPI_MI_DIR}/acpi_hp/acpi_hp.c		optional acpi_hp acpi
 ${OSACPI_MI_DIR}/acpi_panasonic/acpi_panasonic.c optional acpi_panasonic acpi
+${OSACPI_MI_DIR}/acpi_pvpanic/acpi_pvpanic.c	optional acpi_pvpanic acpi
 ${OSACPI_MI_DIR}/acpi_sony/acpi_sony.c		optional acpi_sony acpi
 ${OSACPI_MI_DIR}/acpi_thinkpad/acpi_thinkpad.c	optional acpi_thinkpad acpi
 ${OSACPI_MI_DIR}/acpi_toshiba/acpi_toshiba.c	optional acpi_toshiba acpi

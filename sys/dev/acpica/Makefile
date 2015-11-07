@@ -116,8 +116,8 @@ acpi_wakecode.h: acpi_wakecode.S
 	${MAKE} -f ${SYSDIR}/${OSACPI_MD_DIR}/Makefile \
 		MAKESRCPATH=${SYSDIR}/${OSACPI_MD_DIR}
 
-SUBDIR=	acpi_asus acpi_dock acpi_fujitsu acpi_hp acpi_panasonic acpi_sony
-SUBDIR+=acpi_thinkpad acpi_toshiba acpi_video acpi_wmi aibs
+SUBDIR=	acpi_asus acpi_dock acpi_fujitsu acpi_hp acpi_panasonic acpi_pvpanic
+SUBDIR+=acpi_sony acpi_thinkpad acpi_toshiba acpi_video acpi_wmi aibs
 
 # Empty for concurrent build
 #

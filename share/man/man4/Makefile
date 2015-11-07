@@ -8,6 +8,7 @@ MAN=	aac.4 \
 	acpi_fujitsu.4 \
 	acpi_hp.4 \
 	acpi_panasonic.4 \
+	acpi_pvpanic.4 \
 	acpi_sony.4 \
 	acpi_thermal.4 \
 	acpi_thinkpad.4 \
