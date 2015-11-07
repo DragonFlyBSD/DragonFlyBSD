@@ -974,13 +974,16 @@ dm_table_status(dm_table_entry_t *table_en,
 {
 	void *cfg;
 	char *params;
+	int is_table;
 
 	cfg = table_en->target_config;
 	params = NULL;
 
-	if ((flags & DM_STATUS_TABLE_FLAG) && table_en->target->table) {
+	is_table = (flags & DM_STATUS_TABLE_FLAG) ? 1 : 0;
+
+	if (is_table && table_en->target->table) {
 		params = table_en->target->table(cfg);
-	} else if (table_en->target->info) {
+	} else if (!is_table && table_en->target->info) {
 		params = table_en->target->info(cfg);
 	} else {
 		prop_dictionary_set_cstring(target_dict, DM_TABLE_PARAMS, "");
