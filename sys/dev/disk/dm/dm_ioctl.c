@@ -92,7 +92,7 @@ dm_table_deps(dm_table_entry_t *, prop_array_t);
 static int
 dm_table_init(dm_target_t *, dm_table_entry_t *, char *);
 static int
-dm_table_status(dm_table_entry_t *, prop_dictionary_t, int);
+dm_table_status(dm_table_entry_t *, prop_dictionary_t, uint32_t);
 
 static __inline
 void dm_add_flag(prop_dictionary_t dp, uint32_t *fp, const uint32_t val)
@@ -118,7 +118,7 @@ void dm_remove_flag(prop_dictionary_t dp, uint32_t *fp, const uint32_t val)
  * Print flags sent to the kernel from libevmapper.
  */
 static int
-dm_dbg_print_flags(int flags)
+dm_dbg_print_flags(uint32_t flags)
 {
 	if (dm_debug_level == 0)
 		return 1;
@@ -188,7 +188,8 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 {
 	dm_dev_t *dmv;
 	const char *name, *uuid;
-	int r, flags;
+	int r;
+	uint32_t flags;
 
 	r = 0;
 	flags = 0;
@@ -883,7 +884,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 	uint32_t minor;
 
 	const char *name, *uuid;
-	int flags;
+	uint32_t flags;
 	int table_type;
 
 	dmv = NULL;
@@ -969,7 +970,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 
 static int
 dm_table_status(dm_table_entry_t *table_en,
-	prop_dictionary_t target_dict, int flags)
+	prop_dictionary_t target_dict, uint32_t flags)
 {
 	void *cfg;
 	char *params;
