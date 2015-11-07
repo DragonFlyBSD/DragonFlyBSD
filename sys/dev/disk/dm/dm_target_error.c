@@ -102,7 +102,6 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_error_table;
 		dmt->strategy = &dm_target_error_strategy;
 		dmt->destroy = &dm_target_error_destroy;
-		dmt->dump = NULL;
 
 		err = dm_target_insert(dmt);
 		if (err == 0)

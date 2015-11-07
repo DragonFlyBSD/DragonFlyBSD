@@ -430,7 +430,6 @@ dmtd_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_delay_table;
 		dmt->strategy = &dm_target_delay_strategy;
 		dmt->destroy = &dm_target_delay_destroy;
-		dmt->dump = NULL;
 
 		_objcache_create();
 		err = dm_target_insert(dmt);

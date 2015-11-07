@@ -108,7 +108,6 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_zero_table;
 		dmt->strategy = &dm_target_zero_strategy;
 		dmt->destroy = &dm_target_zero_destroy;
-		dmt->dump = NULL;
 
 		err = dm_target_insert(dmt);
 		if (err == 0)
