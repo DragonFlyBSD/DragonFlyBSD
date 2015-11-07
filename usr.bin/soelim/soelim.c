@@ -1,157 +1,177 @@
-/*
- * Copyright (c) 1980, 1993
- *	The Regents of the University of California.  All rights reserved.
+/*-
+ * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *    notice, this list of conditions and the following disclaimer
+ *    in this position and unchanged.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)soelim.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/soelim/soelim.c,v 1.3.2.2 2001/07/30 10:16:46 dd Exp $
- * $DragonFly: src/usr.bin/soelim/soelim.c,v 1.5 2004/09/30 10:08:46 joerg Exp $
+ * $FreeBSD: head/usr.bin/soelim/soelim.c 283197 2015-05-21 08:26:24Z bapt $
  */
 
+#include <sys/types.h>
+
+#include <ctype.h>
 #include <err.h>
+#include <limits.h>
+#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/*
- * soelim - a filter to process n/troff input eliminating .so's
- *
- * Author: Bill Joy UCB July 8, 1977
- *
- * This program eliminates .so's from a n/troff input stream.
- * It can be used to prepare safe input for submission to the
- * phototypesetter since the software supporting the operator
- * doesn't let him do chdir.
- *
- * This is a kludge and the operator should be given the
- * ability to do chdir.
- *
- * This program is more generally useful, it turns out, because
- * the program tbl doesn't understand ".so" directives.
- */
+#include <stringlist.h>
+#include <unistd.h>
 
-#define	STDIN_NAME	"-"
+#define C_OPTION 0x1
 
-static int	process(const char *);
+static StringList *includes;
 
-int
-main(int argc, const char **argv)
+static void
+usage(void)
 {
-	int errs = 0;
 
-	if (argc == 1) {
-		argv[0] = STDIN_NAME;
-	} else {
-		argv++;
-		argc--;
+	fprintf(stderr, "usage: soelim [-Crtv] [-I dir] [files]\n");
+
+	exit(EXIT_FAILURE);
+}
+
+static FILE *
+soelim_fopen(const char *name)
+{
+	FILE *f;
+	char path[PATH_MAX];
+	size_t i;
+
+	if (strcmp(name, "-") == 0)
+		return (stdin);
+
+	if ((f = fopen(name, "r")) != NULL)
+		return (f);
+
+	if (*name == '/') {
+		warn("can't open '%s'", name);
+		return (NULL);
 	}
 
-	while (--argc >= 0) {
-		errs += process(argv[0]);
-		argv++;
+	for (i = 0; i < includes->sl_cur; i++) {
+		snprintf(path, sizeof(path), "%s/%s", includes->sl_str[i],
+		    name);
+		if ((f = fopen(path, "r")) != NULL)
+			return (f);
 	}
-	exit(errs != 0);
+
+	warn("can't open '%s'", name);
+
+	return (f);
 }
 
 static int
-process(const char *file)
+soelim_file(FILE *f, int flag)
 {
-	char *cp;
-	int c;
-	char fname[BUFSIZ];
-	FILE *soee;
-	int isfile;
+	char *line = NULL;
+	char *walk, *cp;
+	size_t linecap = 0;
+	ssize_t linelen;
 
-	if (!strcmp(file, STDIN_NAME)) {
-		soee = stdin;
-	} else {
-		soee = fopen(file, "r");
-		if (soee == NULL) {
-			warn("%s", file);
-			return(-1);
-		}
-	}
-	for (;;) {
-		c = getc(soee);
-		if (c == EOF)
-			break;
-		if (c != '.')
-			goto simple;
-		c = getc(soee);
-		if (c != 's') {
-			putchar('.');
-			goto simple;
-		}
-		c = getc(soee);
-		if (c != 'o') {
-			printf(".s");
-			goto simple;
-		}
-		do
-			c = getc(soee);
-		while (c == ' ' || c == '\t');
-		cp = fname;
-		isfile = 0;
-		for (;;) {
-			switch (c) {
+	if (f == NULL)
+		return (1);
 
-			case ' ':
-			case '\t':
-			case '\n':
-			case EOF:
-				goto donename;
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		if (strncmp(line, ".so", 3) != 0) {
+			printf("%s", line);
+			continue;
+		}
 
-			default:
-				*cp++ = c;
-				c = getc(soee);
-				isfile++;
-				continue;
-			}
+		walk = line + 3;
+		if (!isspace(*walk) && ((flag & C_OPTION) == 0)) {
+			printf("%s", line);
+			continue;
 		}
-donename:
-		if (cp == fname) {
-			printf(".so");
-			goto simple;
-		}
+
+		while (isspace(*walk))
+			walk++;
+
+		cp = walk;
+		while (*cp != '\0' && !isspace(*cp))
+			cp++;
 		*cp = 0;
-		if (process(fname) < 0)
-			if (isfile)
-				printf(".so %s\n", fname);
-		continue;
-simple:
-		if (c == EOF)
+		if (cp < line + linelen)
+			cp++;
+
+		if (*walk == '\0') {
+			printf("%s", line);
+			continue;
+		}
+		if (soelim_file(soelim_fopen(walk), flag) == 1) {
+			free(line);
+			return (1);
+		}
+		if (*cp != '\0')
+			printf("%s", cp);
+	}
+
+	free(line);
+	fclose(f);
+
+	return (0);
+}
+
+int
+main(int argc, char **argv)
+{
+	int ch, i;
+	int ret = 0;
+	int flags = 0;
+
+	includes = sl_init();
+	if (includes == NULL)
+		err(EXIT_FAILURE, "sl_init()");
+
+	while ((ch = getopt(argc, argv, "CrtvI:")) != -1) {
+		switch (ch) {
+		case 'C':
+			flags |= C_OPTION;
 			break;
-		putchar(c);
-		if (c != '\n') {
-			c = getc(soee);
-			goto simple;
+		case 'r':
+		case 'v':
+		case 't':
+			/* stub compatibility with groff's soelim */
+			break;
+		case 'I':
+			sl_add(includes, optarg);
+			break;
+		default:
+			sl_free(includes, 0);
+			usage();
 		}
 	}
-	if (soee != stdin) {
-		fclose(soee);
-	}
-	return(0);
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc == 0)
+		ret = soelim_file(stdin, flags);
+
+	for (i = 0; i < argc; i++)
+		ret = soelim_file(soelim_fopen(argv[i]), flags);
+
+	sl_free(includes, 0);
+
+	return (ret);
 }
