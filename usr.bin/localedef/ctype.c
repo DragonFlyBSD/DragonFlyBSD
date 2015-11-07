@@ -33,6 +33,8 @@
  * LC_CTYPE database generation routines for localedef.
  */
 
+#include <sys/tree.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -45,11 +47,11 @@
 #include "localedef.h"
 #include "parser.h"
 #include "runefile.h"
-#include "avl.h"
+
 
 /* Needed for bootstrapping, _CTYPE_N not available before 1 Sep 2015 */
 #ifndef _CTYPE_N
-#define _CTYPE_N	0x00400000L
+#define _CTYPE_N       0x00400000L
 #endif
 
 #define _ISUPPER	_CTYPE_U
@@ -69,24 +71,20 @@
 #define	_E4		_CTYPE_N
 #define	_E5		_CTYPE_T
 
-static avl_tree_t	ctypes;
-
 static wchar_t		last_ctype;
+static int ctype_compare(const void *n1, const void *n2);
 
 typedef struct ctype_node {
 	wchar_t wc;
 	int32_t	ctype;
 	int32_t	toupper;
 	int32_t	tolower;
-	avl_node_t avl;
+	RB_ENTRY(ctype_node) entry;
 } ctype_node_t;
 
-typedef struct width_node {
-	wchar_t start;
-	wchar_t end;
-	int8_t width;
-	avl_node_t avl;
-} width_node_t;
+static RB_HEAD(ctypes, ctype_node) ctypes;
+RB_PROTOTYPE_STATIC(ctypes, ctype_node, entry, ctype_compare);
+RB_GENERATE(ctypes, ctype_node, entry, ctype_compare);
 
 static int
 ctype_compare(const void *n1, const void *n2)
@@ -100,8 +98,7 @@ ctype_compare(const void *n1, const void *n2)
 void
 init_ctype(void)
 {
-	avl_create(&ctypes, ctype_compare, sizeof (ctype_node_t),
-	    offsetof(ctype_node_t, avl));
+	RB_INIT(&ctypes);
 }
 
 
@@ -173,17 +170,16 @@ get_ctype(wchar_t wc)
 {
 	ctype_node_t	srch;
 	ctype_node_t	*ctn;
-	avl_index_t	where;
 
 	srch.wc = wc;
-	if ((ctn = avl_find(&ctypes, &srch, &where)) == NULL) {
+	if ((ctn = RB_FIND(ctypes, &ctypes, &srch)) == NULL) {
 		if ((ctn = calloc(1, sizeof (*ctn))) == NULL) {
 			errf("out of memory");
 			return (NULL);
 		}
 		ctn->wc = wc;
 
-		avl_insert(&ctypes, ctn, where);
+		RB_INSERT(ctypes, &ctypes, ctn);
 	}
 	return (ctn);
 }
@@ -202,7 +198,7 @@ add_ctype(int val)
 }
 
 void
-add_ctype_range(int end)
+add_ctype_range(wchar_t end)
 {
 	ctype_node_t	*ctn;
 	wchar_t		cur;
@@ -319,9 +315,8 @@ dump_ctype(void)
 		rl.mapupper[wc] = wc;
 	}
 
-	for (ctn = avl_first(&ctypes); ctn; ctn = AVL_NEXT(&ctypes, ctn)) {
+	RB_FOREACH(ctn, ctypes, &ctypes) {
 		int conflict = 0;
-
 
 		wc = ctn->wc;
 

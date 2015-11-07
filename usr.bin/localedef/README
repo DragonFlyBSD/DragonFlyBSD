@@ -9,7 +9,3 @@ code is part of the Illumos project.
 
 see:
 https://github.com/Nexenta/illumos-nexenta/commit/cf17542a37fc83d0ae093777e30d480423858c29
-
-Note that localedef is bundled with avl from OpenSolaris, which still
-has the CDDL licensing.  It is not used anywhere else on DragonFly
-at the time of this writing.

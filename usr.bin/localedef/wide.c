@@ -35,6 +35,7 @@
  * this approach means that we need a method for each and every encoding.
  */
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <wchar.h>
 #include <string.h>
@@ -207,7 +208,7 @@ towide_utf8(wchar_t *wc, const char *mb, unsigned n)
 {
 	wchar_t	c;
 	int	nb;
-	int	lv;	/* lowest legal value */
+	wchar_t	lv;	/* lowest legal value */
 	int	i;
 	const uint8_t *s = (const uint8_t *)mb;
 
@@ -642,8 +643,8 @@ set_wide_encoding(const char *encoding)
 	_tomb = tomb_none;
 	_nbits = 8;
 
-	strcpy (_encoding_buffer, "NONE:");
-	strncat (_encoding_buffer, encoding, 14);
+	snprintf(_encoding_buffer, sizeof(_encoding_buffer), "NONE:%s",
+	    encoding);
 	for (i = 0; mb_encodings[i].name; i++) {
 		if (strcasecmp(encoding, mb_encodings[i].name) == 0) {
 			_towide = mb_encodings[i].towide;

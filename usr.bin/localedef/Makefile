@@ -11,8 +11,7 @@ SRCS=	charmap.c \
 	parser.y \
 	scanner.c \
 	time.c \
-	wide.c \
-	avl.c
+	wide.c
 
 ${SRCS:M*.c}: parser.h
 parser.h: parser.y

@@ -52,7 +52,7 @@
 #define	TEXT_DOMAIN	"SYS_TEST"
 #endif
 
-int dragonfly = 0;
+static int bsd = 0;
 int verbose = 0;
 int undefok = 0;
 int warnok = 0;
@@ -88,7 +88,7 @@ category_name(void)
 static char *
 category_file(void)
 {
-	if (dragonfly)
+	if (bsd)
 		(void) snprintf(locpath, sizeof (locpath), "%s.%s",
 		    locname, category_name());
 	else
@@ -108,7 +108,7 @@ open_category(void)
 	}
 
 	/* make the parent directory */
-	if (!dragonfly)
+	if (!bsd)
 		(void) mkdir(dirname(category_file()), 0755);
 
 	/*
@@ -174,7 +174,7 @@ copy_category(char *src)
 	}
 
 	/* make the parent directory */
-	if (!dragonfly)
+	if (!bsd)
 		(void) mkdir(dirname(category_file()), 0755);
 
 	if (link(srcpath, category_file()) != 0) {
@@ -227,7 +227,7 @@ usage(void)
 {
 	(void) fprintf(stderr, "Usage: localedef [options] localename\n");
 	(void) fprintf(stderr, "[options] are:\n");
-	(void) fprintf(stderr, "  -D          : DragonFly-style output\n");
+	(void) fprintf(stderr, "  -D          : BSD-style output\n");
 	(void) fprintf(stderr, "  -c          : ignore warnings\n");
 	(void) fprintf(stderr, "  -v          : verbose output\n");
 	(void) fprintf(stderr, "  -U          : ignore undefined symbols\n");
@@ -262,7 +262,7 @@ main(int argc, char **argv)
 	while ((c = getopt(argc, argv, "w:i:cf:u:vUD")) != -1) {
 		switch (c) {
 		case 'D':
-			dragonfly = 1;
+			bsd = 1;
 			break;
 		case 'v':
 			verbose++;
@@ -325,7 +325,7 @@ main(int argc, char **argv)
 	}
 
 	/* make the directory for the locale if not already present */
-	if (!dragonfly) {
+	if (!bsd) {
 		while ((dir = opendir(locname)) == NULL) {
 			if ((errno != ENOENT) ||
 			    (mkdir(locname, 0755) <  0)) {
