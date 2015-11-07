@@ -147,18 +147,13 @@ typedef struct dm_dev {
 
 	dm_table_head_t table_head;
 
-	/* struct dm_dev_head upcalls; */
-
 	struct disk *diskp;
 
 	struct devstat stats;
 
-	/* TAILQ_ENTRY(dm_dev) next_upcall;*/ /* LIST of mirrored, snapshoted devices. */
-
 	TAILQ_ENTRY(dm_dev) next_devlist; /* Major device list. */
 } dm_dev_t;
 
-/* Device types used for upcalls */
 #define DM_ZERO_DEV            (1 << 0)
 #define DM_ERROR_DEV           (1 << 1)
 #define DM_LINEAR_DEV          (1 << 2)
@@ -198,7 +193,6 @@ typedef struct dm_target {
 	char *(*info)(void *);
 	char *(*table)(void *);
 	int (*strategy)(dm_table_entry_t *, struct buf *);
-	int (*upcall)(dm_table_entry_t *, struct buf *);
 	int (*dump)(dm_table_entry_t *, void *data, size_t length, off_t offset);
 
 	uint32_t version[3];

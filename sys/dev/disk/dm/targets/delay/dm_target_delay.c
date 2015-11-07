@@ -348,12 +348,6 @@ _destroy(struct dm_delay_info *di)
 	dm_pdev_decr(di->pdev);
 }
 
-static int
-dm_target_delay_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
-	return 0;
-}
-
 static void
 _timeout(void *arg)
 {
@@ -436,7 +430,6 @@ dmtd_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_delay_table;
 		dmt->strategy = &dm_target_delay_strategy;
 		dmt->destroy = &dm_target_delay_destroy;
-		dmt->upcall = &dm_target_delay_upcall;
 		dmt->dump = NULL;
 
 		_objcache_create();

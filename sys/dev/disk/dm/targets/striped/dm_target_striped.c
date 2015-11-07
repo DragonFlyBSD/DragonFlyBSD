@@ -479,15 +479,6 @@ dm_target_stripe_destroy_config(dm_target_stripe_config_t *tsc)
 	kfree(tsc, M_DMSTRIPE);
 }
 
-/*
- * Unsupported for this target.
- */
-static int
-dm_target_stripe_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
-	return 0;
-}
-
 static int
 dmts_mod_handler(module_t mod, int type, void *unused)
 {
@@ -510,7 +501,6 @@ dmts_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_stripe_table;
 		dmt->strategy = &dm_target_stripe_strategy;
 		dmt->destroy = &dm_target_stripe_destroy;
-		dmt->upcall = &dm_target_stripe_upcall;
 		dmt->dump = &dm_target_stripe_dump;
 		dmt->max_argc = 2 + (MAX_STRIPES * 2);
 

@@ -81,13 +81,6 @@ dm_target_error_destroy(dm_table_entry_t *table_en)
 	return 0;
 }
 
-/* Unsupported for this target. */
-static int
-dm_target_error_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
-	return 0;
-}
-
 static int
 dmte_mod_handler(module_t mod, int type, void *unused)
 {
@@ -109,7 +102,6 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_error_table;
 		dmt->strategy = &dm_target_error_strategy;
 		dmt->destroy = &dm_target_error_destroy;
-		dmt->upcall = &dm_target_error_upcall;
 		dmt->dump = NULL;
 
 		err = dm_target_insert(dmt);

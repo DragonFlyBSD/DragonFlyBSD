@@ -177,17 +177,6 @@ dm_target_linear_destroy(dm_table_entry_t *table_en)
 	return 0;
 }
 
-/*
- * Register upcall device.
- * Linear target doesn't need any upcall devices but other targets like
- * mirror, snapshot, multipath, stripe will use this functionality.
- */
-static int
-dm_target_linear_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
-	return 0;
-}
-
 static int
 dmtl_mod_handler(module_t mod, int type, void *unused)
 {
@@ -209,7 +198,6 @@ dmtl_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_linear_table;
 		dmt->strategy = &dm_target_linear_strategy;
 		dmt->destroy = &dm_target_linear_destroy;
-		dmt->upcall = &dm_target_linear_upcall;
 		dmt->dump = &dm_target_linear_dump;
 
 		err = dm_target_insert(dmt);

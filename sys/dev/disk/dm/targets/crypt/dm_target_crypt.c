@@ -794,13 +794,6 @@ dm_target_crypt_destroy(dm_table_entry_t *table_en)
 	return 0;
 }
 
-/* Unsupported for this target. */
-static int
-dm_target_crypt_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
-	return 0;
-}
-
 /************************************************************************
  *			STRATEGY SUPPORT FUNCTIONS			*
  ************************************************************************
@@ -1441,7 +1434,6 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_crypt_table;
 		dmt->strategy = &dm_target_crypt_strategy;
 		dmt->destroy = &dm_target_crypt_destroy;
-		dmt->upcall = &dm_target_crypt_upcall;
 		dmt->dump = &dm_target_crypt_dump;
 
 		err = dm_target_insert(dmt);

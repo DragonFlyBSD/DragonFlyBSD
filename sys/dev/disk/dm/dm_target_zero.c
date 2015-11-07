@@ -87,13 +87,6 @@ dm_target_zero_destroy(dm_table_entry_t *table_en)
 	return 0;
 }
 
-/* Unsuported for this target. */
-static int
-dm_target_zero_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
-	return 0;
-}
-
 static int
 dmtz_mod_handler(module_t mod, int type, void *unused)
 {
@@ -115,7 +108,6 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		dmt->table = &dm_target_zero_table;
 		dmt->strategy = &dm_target_zero_strategy;
 		dmt->destroy = &dm_target_zero_destroy;
-		dmt->upcall = &dm_target_zero_upcall;
 		dmt->dump = NULL;
 
 		err = dm_target_insert(dmt);

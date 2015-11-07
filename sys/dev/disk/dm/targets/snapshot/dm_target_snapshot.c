@@ -103,13 +103,11 @@ int dm_target_snapshot_init(dm_table_entry_t *, int, char **);
 char *dm_target_snapshot_table(void *);
 int dm_target_snapshot_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_destroy(dm_table_entry_t *);
-int dm_target_snapshot_upcall(dm_table_entry_t *, struct buf *);
 
 int dm_target_snapshot_orig_init(dm_table_entry_t *, int, char **);
 char *dm_target_snapshot_orig_table(void *);
 int dm_target_snapshot_orig_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_snapshot_orig_destroy(dm_table_entry_t *);
-int dm_target_snapshot_orig_upcall(dm_table_entry_t *, struct buf *);
 
 /*
  * Init function called from dm_table_load_ioctl.
@@ -251,18 +249,6 @@ dm_target_snapshot_destroy(dm_table_entry_t *table_en)
 	return 0;
 }
 
-/* Upcall is used to inform other depended devices about IO. */
-int
-dm_target_snapshot_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
-	kprintf("dm_target_snapshot_upcall called\n");
-
-	kprintf("upcall buf flags %s %s\n",
-	    (bp->b_flags & B_WRITE) ? "B_WRITE" : "",
-	    (bp->b_flags & B_READ) ? "B_READ" : "");
-
-	return 0;
-}
 /*
  * dm target snapshot origin routines.
  *
@@ -375,12 +361,5 @@ dm_target_snapshot_orig_destroy(dm_table_entry_t *table_en)
 
 	table_en->target_config = NULL;
 
-	return 0;
-}
-
-/* Unsupported for this target. */
-int
-dm_target_snapshot_orig_upcall(dm_table_entry_t *table_en, struct buf *bp)
-{
 	return 0;
 }

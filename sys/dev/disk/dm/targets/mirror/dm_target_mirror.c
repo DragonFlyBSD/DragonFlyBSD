@@ -56,7 +56,6 @@ char *dm_target_mirror_table(void *);
 int dm_target_mirror_strategy(dm_table_entry_t *, struct buf *);
 int dm_target_mirror_deps(dm_table_entry_t *, prop_array_t);
 int dm_target_mirror_destroy(dm_table_entry_t *);
-int dm_target_mirror_upcall(dm_table_entry_t *, struct buf *);
 
 /*
  * Init function called from dm_table_load_ioctl.
@@ -107,12 +106,6 @@ dm_target_mirror_destroy(dm_table_entry_t *table_en)
 /* Doesn't not need to do anything here. */
 int
 dm_target_mirror_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
-{
-	return 0;
-}
-/* Unsupported for this target. */
-int
-dm_target_mirror_upcall(dm_table_entry_t *table_en, struct buf *bp)
 {
 	return 0;
 }
