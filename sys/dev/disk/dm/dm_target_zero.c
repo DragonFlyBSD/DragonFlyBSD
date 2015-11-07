@@ -54,14 +54,6 @@ dm_target_zero_init(dm_table_entry_t *table_en, int argc, char **argv)
 	return 0;
 }
 
-/* Table routine called to get params string. */
-static char *
-dm_target_zero_table(void *target_config)
-{
-	return NULL;
-}
-
-
 /*
  * This routine does IO operations.
  */
@@ -105,7 +97,6 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "zero", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_zero_init;
-		dmt->table = &dm_target_zero_table;
 		dmt->strategy = &dm_target_zero_strategy;
 		dmt->destroy = &dm_target_zero_destroy;
 

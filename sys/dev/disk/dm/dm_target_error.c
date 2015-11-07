@@ -50,13 +50,6 @@ dm_target_error_init(dm_table_entry_t *table_en, int argc, char **argv)
 	return 0;
 }
 
-/* Table routine called to get params string. */
-static char *
-dm_target_error_table(void *target_config)
-{
-	return NULL;
-}
-
 /* Strategy routine called from dm_strategy. */
 static int
 dm_target_error_strategy(dm_table_entry_t *table_en, struct buf *bp)
@@ -99,7 +92,6 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "error", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_error_init;
-		dmt->table = &dm_target_error_table;
 		dmt->strategy = &dm_target_error_strategy;
 		dmt->destroy = &dm_target_error_destroy;
 

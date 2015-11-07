@@ -941,14 +941,15 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 		prop_dictionary_set_int32(target_dict, DM_TABLE_STAT,
 		    dmv->table_head.cur_active_table);
 
+		params = NULL;
 		if (flags & DM_STATUS_TABLE_FLAG) {
-			params = table_en->target->table
-			    (table_en->target_config);
+			if (table_en->target->table) {
+				params = table_en->target->table
+				    (table_en->target_config);
+			}
 		} else if (table_en->target->info) {
 			params = table_en->target->info
 			    (table_en->target_config);
-		} else {
-			params = NULL;
 		}
 
 		if (params != NULL) {
