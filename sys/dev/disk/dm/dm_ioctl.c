@@ -87,24 +87,32 @@
 
 #include "netbsd-dm.h"
 
-#define DM_REMOVE_FLAG(flag, name) do {					\
-		prop_dictionary_get_uint32(dm_dict,DM_IOCTL_FLAGS,&flag); \
-		flag &= ~name;						\
-		prop_dictionary_set_uint32(dm_dict,DM_IOCTL_FLAGS,flag); \
-} while (/*CONSTCOND*/0)
-
-#define DM_ADD_FLAG(flag, name) do {					\
-		prop_dictionary_get_uint32(dm_dict,DM_IOCTL_FLAGS,&flag); \
-		flag |= name;						\
-		prop_dictionary_set_uint32(dm_dict,DM_IOCTL_FLAGS,flag); \
-} while (/*CONSTCOND*/0)
-
 static int
 dm_table_deps(dm_table_entry_t *, prop_array_t);
 static int
 dm_table_init(dm_target_t *, dm_table_entry_t *, char *);
 static int
 dm_table_status(dm_table_entry_t *, prop_dictionary_t, int);
+
+static __inline
+void dm_add_flag(prop_dictionary_t dp, uint32_t *fp, const uint32_t val)
+{
+	KKASSERT(dp != NULL);
+	prop_dictionary_get_uint32(dp, DM_IOCTL_FLAGS, fp);
+	(*fp) |= val;
+	prop_dictionary_set_uint32(dp, DM_IOCTL_FLAGS, *fp);
+	KKASSERT((*fp) & val);
+}
+
+static __inline
+void dm_remove_flag(prop_dictionary_t dp, uint32_t *fp, const uint32_t val)
+{
+	KKASSERT(dp != NULL);
+	prop_dictionary_get_uint32(dp, DM_IOCTL_FLAGS, fp);
+	(*fp) &= ~val;
+	prop_dictionary_set_uint32(dp, DM_IOCTL_FLAGS, *fp);
+	KKASSERT(!((*fp) & val));
+}
 
 /*
  * Print flags sent to the kernel from libevmapper.
@@ -196,7 +204,7 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 
 	/* Lookup name and uuid if device already exist quit. */
 	if ((dmv = dm_dev_lookup(name, uuid, -1)) != NULL) {
-		DM_ADD_FLAG(flags, DM_EXISTS_FLAG);	/* Device already exists */
+		dm_add_flag(dm_dict, &flags, DM_EXISTS_FLAG);	/* Device already exists */
 		dm_dev_unbusy(dmv);
 		return EEXIST;
 	}
@@ -204,8 +212,8 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 	r = dm_dev_create(&dmv, name, uuid, flags);
 	if (r == 0) {
 		prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
-		DM_ADD_FLAG(flags, DM_EXISTS_FLAG);
-		DM_REMOVE_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
+		dm_add_flag(dm_dict, &flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
 	}
 
 	return r;
@@ -287,7 +295,7 @@ dm_dev_rename_ioctl(prop_dictionary_t dm_dict)
 		return EINVAL;
 
 	if ((dmv = dm_dev_rem(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	/* change device name */
@@ -337,7 +345,7 @@ dm_dev_remove_ioctl(prop_dictionary_t dm_dict)
 	dm_dbg_print_flags(flags);
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 
@@ -393,7 +401,7 @@ dm_dev_status_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_get_uint32(dm_dict, DM_IOCTL_MINOR, &minor);
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	dm_dbg_print_flags(dmv->flags);
@@ -403,23 +411,23 @@ dm_dev_status_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_set_cstring(dm_dict, DM_IOCTL_UUID, dmv->uuid);
 
 	if (dmv->flags & DM_SUSPEND_FLAG)
-		DM_ADD_FLAG(flags, DM_SUSPEND_FLAG);
+		dm_add_flag(dm_dict, &flags, DM_SUSPEND_FLAG);
 
 	/*
 	 * Add status flags for tables I have to check both active and
 	 * inactive tables.
 	 */
 	if ((j = dm_table_get_target_count(&dmv->table_head, DM_TABLE_ACTIVE))) {
-		DM_ADD_FLAG(flags, DM_ACTIVE_PRESENT_FLAG);
+		dm_add_flag(dm_dict, &flags, DM_ACTIVE_PRESENT_FLAG);
 	} else
-		DM_REMOVE_FLAG(flags, DM_ACTIVE_PRESENT_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_ACTIVE_PRESENT_FLAG);
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_TARGET_COUNT, j);
 
 	if (dm_table_get_target_count(&dmv->table_head, DM_TABLE_INACTIVE))
-		DM_ADD_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
+		dm_add_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
 	else
-		DM_REMOVE_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
 
 	dm_dev_unbusy(dmv);
 
@@ -447,7 +455,7 @@ dm_dev_suspend_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_get_uint32(dm_dict, DM_IOCTL_MINOR, &minor);
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	atomic_set_int(&dmv->flags, DM_SUSPEND_FLAG);
@@ -461,7 +469,7 @@ dm_dev_suspend_ioctl(prop_dictionary_t dm_dict)
 	dm_dev_unbusy(dmv);
 
 	/* Add flags to dictionary flag after dmv -> dict copy */
-	DM_ADD_FLAG(flags, DM_EXISTS_FLAG);
+	dm_add_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 
 	return 0;
 }
@@ -492,7 +500,7 @@ dm_dev_resume_ioctl(prop_dictionary_t dm_dict)
 
 	/* Remove device from global device list */
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	atomic_clear_int(&dmv->flags, (DM_SUSPEND_FLAG | DM_INACTIVE_PRESENT_FLAG));
@@ -500,7 +508,7 @@ dm_dev_resume_ioctl(prop_dictionary_t dm_dict)
 
 	dm_table_switch_tables(&dmv->table_head);
 
-	DM_ADD_FLAG(flags, DM_EXISTS_FLAG);
+	dm_add_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 
 	dmsetdiskinfo(dmv->diskp, &dmv->table_head);
 
@@ -548,7 +556,7 @@ dm_table_clear_ioctl(prop_dictionary_t dm_dict)
 	    name, uuid);
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	/* Select unused table */
@@ -594,7 +602,7 @@ dm_table_deps_ioctl(prop_dictionary_t dm_dict)
 	cmd_array = prop_array_create();
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
@@ -702,7 +710,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	dm_dbg_print_flags(flags);
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	aprint_debug("Loading table to device: %s--%d\n", name,
@@ -788,7 +796,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	}
 	prop_object_iterator_release(iter);
 
-	DM_ADD_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
+	dm_add_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
 	atomic_set_int(&dmv->flags, DM_INACTIVE_PRESENT_FLAG);
 
 	dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
@@ -891,7 +899,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 	cmd_array = prop_array_create();
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 	/*
@@ -904,19 +912,19 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 		table_type = DM_TABLE_ACTIVE;
 
 	if (dm_table_get_target_count(&dmv->table_head, DM_TABLE_ACTIVE))
-		DM_ADD_FLAG(flags, DM_ACTIVE_PRESENT_FLAG);
+		dm_add_flag(dm_dict, &flags, DM_ACTIVE_PRESENT_FLAG);
 	else {
-		DM_REMOVE_FLAG(flags, DM_ACTIVE_PRESENT_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_ACTIVE_PRESENT_FLAG);
 
 		if (dm_table_get_target_count(&dmv->table_head, DM_TABLE_INACTIVE))
-			DM_ADD_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
+			dm_add_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
 		else {
-			DM_REMOVE_FLAG(flags, DM_INACTIVE_PRESENT_FLAG);
+			dm_remove_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
 		}
 	}
 
 	if (dmv->flags & DM_SUSPEND_FLAG)
-		DM_ADD_FLAG(flags, DM_SUSPEND_FLAG);
+		dm_add_flag(dm_dict, &flags, DM_SUSPEND_FLAG);
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 
@@ -1014,7 +1022,7 @@ dm_message_ioctl(prop_dictionary_t dm_dict)
 	dm_dbg_print_flags(flags);
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
-		DM_REMOVE_FLAG(flags, DM_EXISTS_FLAG);
+		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
 
