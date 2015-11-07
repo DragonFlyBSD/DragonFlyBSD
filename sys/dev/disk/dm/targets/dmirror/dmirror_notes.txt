@@ -1,4 +1,4 @@
-    Now that Alex has the basic lvm stuff in we need to add soft-raid-1 
+    Now that Alex has the basic lvm stuff in we need to add soft-raid-1
     to it.  I have some ideas on how it could be implemented.
 
     This is not set in stone at all, this is just me rattling off my
@@ -202,7 +202,7 @@
 	  bit is set for that drive and the other drive (where the write
 	  succeeded) is marked as MASTER.
 
-	  However, we can only do this if neither drive is already a MASTER. 
+	  However, we can only do this if neither drive is already a MASTER.
 
 	  If a drive is already marked MASTER we cannot mark the other drive
 	  as MASTER.  The failed write will cause an I/O error to be
@@ -250,7 +250,7 @@
 	  the serial number in the header.
 
 	* If the serial numbers for the header(s) for the two drives
-	  making up the mirror do not match (when both drives are up and 
+	  making up the mirror do not match (when both drives are up and
 	  both header read I/Os succeeded), manual intervention is required.
 
 	* Auto-detection of mirror segments ala Geom... using on-disk headers,
@@ -276,7 +276,7 @@
 	whole 128MB segment) and then clear the UNINITIALIZED flag before
 	allowing the write I/O to proceed.
 
-	We might want to use some of the bits in the descriptor as a 
+	We might want to use some of the bits in the descriptor as a
 	sub-bitmap.  e.g. if we reserve 4 bytes in the 16-byte descriptor
 	to be an 'UNINITIALIZED' sub-bitmap we can break the 128MB
 	segment down into 4MB pieces and only zero-fill/write portions

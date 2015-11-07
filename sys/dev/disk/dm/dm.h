@@ -94,7 +94,7 @@ typedef struct dm_table dm_table_t;
 
 typedef struct dm_table_head {
 	/* Current active table is selected with this. */
-	int cur_active_table; 
+	int cur_active_table;
 	struct dm_table tables[2];
 
 	struct lock   table_mtx;

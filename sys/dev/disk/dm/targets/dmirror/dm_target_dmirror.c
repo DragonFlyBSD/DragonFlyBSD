@@ -94,7 +94,7 @@ typedef struct target_dmirror_config {
 	dmirror_disk_t	disks[4];
 	uint8_t	ndisks;
 	/* XXX: uuid stuff */
-	
+
 } dm_target_dmirror_config_t;
 
 static
@@ -117,7 +117,7 @@ dmirror_clone_bio(struct bio *obio)
 
 	bio = &bp->b_bio1;
 	bio->bio_offset = obio->bio_offset;
-	
+
 	return (bio);
 }
 
@@ -179,7 +179,7 @@ dmirror_write(dm_target_crypt_config_t config, struct bio *bio)
 		dmirror_issue_write(XXX disk1, wbio1);
 		dmirror_issue_write(XXX disk2, wbio2);
 	}
-	
+
 }
 
 static void
@@ -277,13 +277,13 @@ dmirror_read(dm_target_crypt_config_t config, struct bio *bio)
 	} else {
 		/* dispatch read to any disk */
 		/* but try not to send to a READ_DEGRADED drive */
-		m_disk = NULL;		
+		m_disk = NULL;
 		for (i = 0; i < config->ndisks; i++) {
 			disk = &config->disks[i];
 			segdesc = SEGDESC_FROM_OFFSET(disk, bio->bio_offset);
 			if (!(segdesc->flags & MEDIA_READ_DEGRADED)) {
 				m_disk = disk;
-				break;	
+				break;
 			}
 		}
 		/* XXX: do the uninitialized magic here, too */
@@ -299,7 +299,7 @@ dmirror_read(dm_target_crypt_config_t config, struct bio *bio)
 			/* XXX: all disks are read degraded, just sent to any */
 			m_disk = &config->disks[i];
 			dmirror_set_bio_retries(bio, 0);
-			dmirror_issue_read(m_disk, bio);		
+			dmirror_issue_read(m_disk, bio);
 		}
 	}
 }

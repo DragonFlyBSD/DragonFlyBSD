@@ -60,7 +60,7 @@
  *     <string>...</string>
  *
  *     <key>dev</key>
- *     <integer></integer> 
+ *     <integer></integer>
  *
  *     <key>flags</key>
  *     <integer></integer>
@@ -109,7 +109,7 @@
  */
 
 /*
- * DM_DEV_LIST == "names" 
+ * DM_DEV_LIST == "names"
  * Request list of device-mapper created devices from kernel.
  *
  * <array>
@@ -127,7 +127,7 @@
  */
 
  /*
-  * DM_DEV_RENAME == "rename" 
+  * DM_DEV_RENAME == "rename"
   * Rename device to string.
   *
   * <array>
@@ -137,14 +137,14 @@
   */
 
  /*
-  * DM_DEV_STATUS == "info, mknodes" 
+  * DM_DEV_STATUS == "info, mknodes"
   * Will change fields DM_IOCTL_OPEN, DM_IOCTL_DEV in received dictionary,
   * with dm device values with name or uuid from list.
   *
   */
 
  /*
-  * DM_TABLE_STATUS == "status,table" 
+  * DM_TABLE_STATUS == "status,table"
   * Request list of device-mapper created devices from kernel.
   *
   * <array>
@@ -165,10 +165,10 @@
   *
   * params is string which contains {device} {parameters}
   *
-  */ 
+  */
 
  /*
-  * DM_TABLE_DEPS == "deps" 
+  * DM_TABLE_DEPS == "deps"
   * Request list active table device dependiences.
   *
   * This command is also run to get dm-device
@@ -180,7 +180,7 @@
   *   <integer>...</integer>
   * </array>
   *
-  */ 
+  */
 
 
 #define DM_IOCTL_COMMAND      "command"
@@ -218,8 +218,8 @@
 /* IO mode of device */
 #define DM_READONLY_FLAG	(1 << 0) /* In/Out *//* to kernel/from kernel */
 #define DM_SUSPEND_FLAG		(1 << 1) /* In/Out */
-/* XXX. This flag is undocumented. */ 
-#define DM_EXISTS_FLAG          (1 << 2) /* In/Out */ 
+/* XXX. This flag is undocumented. */
+#define DM_EXISTS_FLAG          (1 << 2) /* In/Out */
 /* Minor number is persistent */
 #define DM_PERSISTENT_DEV_FLAG	(1 << 3) /* In */
 

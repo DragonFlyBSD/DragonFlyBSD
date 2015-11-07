@@ -333,7 +333,7 @@ essiv_ivgen_ctor(struct target_crypt_config *priv, char *iv_hash, void **p_ivpri
 	return 0;
 }
 
-static int 
+static int
 essiv_ivgen_dtor(struct target_crypt_config *priv, void *arg)
 {
 	struct essiv_ivgen_priv *ivpriv;
@@ -681,7 +681,7 @@ dm_target_crypt_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	if (ivgens[i].name == NULL) {
 		kprintf("dm_target_crypt: iv_mode='%s' unsupported\n",
-			iv_mode);	
+			iv_mode);
 		goto notsup;
 	}
 

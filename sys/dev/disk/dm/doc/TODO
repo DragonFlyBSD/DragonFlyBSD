@@ -20,4 +20,4 @@ Important unimplemented features in current device-mapper implementation
 
 * Write GPL free libdevmapper and lvm2tools.
   See http://mail-index.netbsd.org/tech-kern/2008/09/24/msg002794.html
-	
+
