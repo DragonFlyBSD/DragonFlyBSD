@@ -129,9 +129,10 @@
  * 400304 - Activate symbol versioning for libc.so (still on version 8)
  * 400305 - Add accept4() system call
  * 400306 - Add libexecinfo to base
+ * 400307 - drm/i915 kernel module renamed to i915.ko
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400306	/* propagated to newvers */
+#define __DragonFly_version 400307	/* propagated to newvers */
 
 #include <sys/_null.h>
 

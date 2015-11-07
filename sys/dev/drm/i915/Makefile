@@ -1,4 +1,4 @@
-KMOD	= i915kms
+KMOD	= i915
 
 # core driver code
 SRCS =	i915_drv.c \
