@@ -77,7 +77,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 	int i, n, siz, chunksize;
 
 	if (argc < 4) {
-		kprintf("Stripe target takes 4 or more args\n");
+		kprintf("Striped target takes 4 or more args\n");
 		return EINVAL;
 	}
 
