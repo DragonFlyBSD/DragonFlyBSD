@@ -24,57 +24,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_KTIME_H_
-#define _LINUX_KTIME_H_
+#ifndef _LINUX_TIMEKEEPING_H_
+#define _LINUX_TIMEKEEPING_H_
 
-#include <linux/time.h>
-#include <linux/jiffies.h>
-
-/* time values in nanoseconds */
-union ktime {
-	int64_t tv64;
-};
-
-typedef union ktime ktime_t;
-
-static inline int64_t ktime_to_ns(ktime_t kt)
-{
-	return kt.tv64;
-}
-
-static inline struct timeval ktime_to_timeval(ktime_t kt)
-{
-	return ns_to_timeval(kt.tv64);
-}
-
-static inline ktime_t ktime_add_ns(ktime_t kt, int64_t ns)
-{
-	ktime_t res;
-
-	res.tv64 = kt.tv64 + ns;
-	return kt;
-}
-
-static inline ktime_t ktime_sub_ns(ktime_t kt, int64_t ns)
-{
-	ktime_t res;
-
-	res.tv64 = kt.tv64 - ns;
-	return kt;
-}
-
-#define NSEC_PER_SEC	1000000000L
-
-static inline ktime_t ktime_get(void)
+static inline u64 ktime_get_raw_ns(void)
 {
 	struct timespec ts;
-	ktime_t kt;
 
 	nanouptime(&ts);
-	kt.tv64 = (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
-	return kt;
+
+	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
 }
 
-#include <linux/timekeeping.h>
-
-#endif	/* _LINUX_KTIME_H_ */
+#endif	/* _LINUX_TIMEKEEPING_H_ */
