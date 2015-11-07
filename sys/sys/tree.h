@@ -455,7 +455,7 @@ struct type *name##_RB_LOOKUP_##ext (struct name *, datatype)		\
 	_RB_GENERATE(name, type, field, cmp, __unused static)
 
 #define _RB_GENERATE(name, type, field, cmp, STORQUAL)			\
-void								\
+STORQUAL void								\
 name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 {									\
 	struct type *parent, *gparent, *tmp;				\
@@ -499,7 +499,7 @@ name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 	RB_COLOR(head->rbh_root, field) = RB_BLACK;			\
 }									\
 									\
-void								\
+STORQUAL void								\
 name##_RB_REMOVE_COLOR(struct name *head, struct type *parent,		\
 			struct type *elm) 				\
 {									\
