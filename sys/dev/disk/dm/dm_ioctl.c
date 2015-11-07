@@ -103,6 +103,8 @@ static int
 dm_table_deps(dm_table_entry_t *, prop_array_t);
 static int
 dm_table_init(dm_target_t *, dm_table_entry_t *, char *);
+static int
+dm_table_status(dm_table_entry_t *, prop_dictionary_t, int);
 
 /*
  * Print flags sent to the kernel from libevmapper.
@@ -871,14 +873,12 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 	uint32_t minor;
 
 	const char *name, *uuid;
-	char *params;
 	int flags;
 	int table_type;
 
 	dmv = NULL;
 	uuid = NULL;
 	name = NULL;
-	params = NULL;
 	flags = 0;
 
 	prop_dictionary_get_cstring_nocopy(dm_dict, DM_IOCTL_NAME, &name);
@@ -941,25 +941,7 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 		prop_dictionary_set_int32(target_dict, DM_TABLE_STAT,
 		    dmv->table_head.cur_active_table);
 
-		params = NULL;
-		if (flags & DM_STATUS_TABLE_FLAG) {
-			if (table_en->target->table) {
-				params = table_en->target->table
-				    (table_en->target_config);
-			}
-		} else if (table_en->target->info) {
-			params = table_en->target->info
-			    (table_en->target_config);
-		}
-
-		if (params != NULL) {
-			prop_dictionary_set_cstring(target_dict,
-			    DM_TABLE_PARAMS, params);
-			kfree(params, M_DM);
-		} else {
-			prop_dictionary_set_cstring(target_dict,
-			    DM_TABLE_PARAMS, "");
-		}
+		dm_table_status(table_en, target_dict, flags);
 
 		prop_array_add(cmd_array, target_dict);
 		prop_object_release(target_dict);
@@ -972,6 +954,35 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_set(dm_dict, DM_IOCTL_CMD_DATA, cmd_array);
 	prop_object_release(cmd_array);
 
+	return 0;
+}
+
+static int
+dm_table_status(dm_table_entry_t *table_en,
+	prop_dictionary_t target_dict, int flags)
+{
+	void *cfg;
+	char *params;
+
+	cfg = table_en->target_config;
+	params = NULL;
+
+	if ((flags & DM_STATUS_TABLE_FLAG) && table_en->target->table) {
+		params = table_en->target->table(cfg);
+	} else if (table_en->target->info) {
+		params = table_en->target->info(cfg);
+	} else {
+		prop_dictionary_set_cstring(target_dict, DM_TABLE_PARAMS, "");
+		return ENOTSUP;
+	}
+
+	if (params == NULL) {
+		prop_dictionary_set_cstring(target_dict, DM_TABLE_PARAMS, "");
+		return ENOMEM;
+	}
+
+	prop_dictionary_set_cstring(target_dict, DM_TABLE_PARAMS, params);
+	kfree(params, M_DM);
 	return 0;
 }
 
