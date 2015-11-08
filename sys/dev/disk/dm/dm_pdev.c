@@ -41,7 +41,7 @@
 
 #include <dev/disk/dm/dm.h>
 
-TAILQ_HEAD(dm_pdevs, dm_pdev) dm_pdev_list;
+static TAILQ_HEAD(, dm_pdev) dm_pdev_list;
 
 static struct lock dm_pdev_mutex;
 

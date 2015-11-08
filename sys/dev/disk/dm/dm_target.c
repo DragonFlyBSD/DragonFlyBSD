@@ -41,10 +41,7 @@
 
 static dm_target_t *dm_target_lookup_name(const char *);
 
-TAILQ_HEAD(dm_target_head, dm_target);
-
-static struct dm_target_head dm_target_list =
-TAILQ_HEAD_INITIALIZER(dm_target_list);
+static TAILQ_HEAD(, dm_target) dm_target_list;
 
 static struct lock dm_target_mutex;
 
@@ -242,6 +239,7 @@ dm_target_prop_list(void)
 int
 dm_target_init(void)
 {
+	TAILQ_INIT(&dm_target_list);	/* initialize global target list */
 	lockinit(&dm_target_mutex, "dmtrgt", 0, LK_CANRECURSE);
 
 	return 0;

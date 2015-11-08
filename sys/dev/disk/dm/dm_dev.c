@@ -54,8 +54,7 @@ static dm_dev_t *dm_dev_lookup_name(const char *);
 static dm_dev_t *dm_dev_lookup_uuid(const char *);
 static dm_dev_t *dm_dev_lookup_minor(int);
 
-static struct dm_dev_head dm_dev_list =
-TAILQ_HEAD_INITIALIZER(dm_dev_list);
+static TAILQ_HEAD(dm_dev_head, dm_dev) dm_dev_list;
 
 static struct lock dm_dev_mutex;
 

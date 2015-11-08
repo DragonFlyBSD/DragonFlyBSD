@@ -126,8 +126,6 @@ typedef struct dm_pdev {
  * This structure is called for every device-mapper device.
  * It points to TAILQ of device tables and mirrored, snapshoted etc. devices.
  */
-TAILQ_HEAD(dm_dev_head, dm_dev);
-
 typedef struct dm_dev {
 	char name[DM_NAME_LEN];
 	char uuid[DM_UUID_LEN];
