@@ -37,4 +37,14 @@ static int init_workqueues(void *arg)
 
 	return 0;
 }
-SYSINIT(linux_workqueue, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, init_workqueues, NULL);
+
+static int destroy_workqueues(void *arg)
+{
+	destroy_workqueue(system_wq);
+	destroy_workqueue(system_long_wq);
+
+	return 0;
+}
+
+SYSINIT(linux_workqueue_init, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, init_workqueues, NULL);
+SYSUNINIT(linux_workqueue_destroy, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, destroy_workqueues, NULL);
