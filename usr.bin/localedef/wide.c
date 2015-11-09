@@ -308,15 +308,12 @@ tomb_utf8(char *mb, wchar_t wc)
  * 0x8000 - 0xffff	- 2 byte encoding
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
 static int
 towide_dbcs(wchar_t *wc, const char *mb, unsigned n)
 {
 	wchar_t	c;
 
-	c = *(uint8_t *)mb;
+	c = *(const uint8_t *)mb;
 
 	if ((c & 0x80) == 0) {
 		/* 7-bit */
@@ -406,7 +403,7 @@ towide_gb18030(wchar_t *wc, const char *mb, unsigned n)
 {
 	wchar_t	c;
 
-	c = *(uint8_t *)mb;
+	c = *(const uint8_t *)mb;
 
 	if ((c & 0x80) == 0) {
 		/* 7-bit */
@@ -449,7 +446,7 @@ towide_mskanji(wchar_t *wc, const char *mb, unsigned n)
 {
 	wchar_t	c;
 
-	c = *(uint8_t *)mb;
+	c = *(const uint8_t *)mb;
 
 	if ((c < 0x80) || ((c > 0xa0) && (c < 0xe0))) {
 		/* 7-bit */
@@ -485,7 +482,7 @@ towide_euc_impl(wchar_t *wc, const char *mb, unsigned n,
 	int width = 2;
 	wchar_t	c;
 
-	c = *(uint8_t *)mb;
+	c = *(const uint8_t *)mb;
 
 	/*
 	 * All variations of EUC encode 7-bit ASCII as one byte, and use
@@ -525,8 +522,6 @@ towide_euc_impl(wchar_t *wc, const char *mb, unsigned n,
 	*wc = c;
 	return (width);
 }
-
-#pragma GCC diagnostic pop
 
 /*
  * EUC-CN encodes as follows:
