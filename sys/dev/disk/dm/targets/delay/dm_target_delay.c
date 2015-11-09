@@ -426,10 +426,10 @@ dmtd_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "delay", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_delay_init;
-		dmt->info = &dm_target_delay_info;
-		dmt->table = &dm_target_delay_table;
-		dmt->strategy = &dm_target_delay_strategy;
 		dmt->destroy = &dm_target_delay_destroy;
+		dmt->strategy = &dm_target_delay_strategy;
+		dmt->table = &dm_target_delay_table;
+		dmt->info = &dm_target_delay_info;
 
 		_objcache_create();
 		err = dm_target_insert(dmt);

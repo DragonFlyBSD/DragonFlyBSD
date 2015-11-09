@@ -497,10 +497,10 @@ dmts_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 3;
 		strlcpy(dmt->name, "striped", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_stripe_init;
-		dmt->info = &dm_target_stripe_info;
-		dmt->table = &dm_target_stripe_table;
-		dmt->strategy = &dm_target_stripe_strategy;
 		dmt->destroy = &dm_target_stripe_destroy;
+		dmt->strategy = &dm_target_stripe_strategy;
+		dmt->table = &dm_target_stripe_table;
+		dmt->info = &dm_target_stripe_info;
 		dmt->dump = &dm_target_stripe_dump;
 		dmt->max_argc = 2 + (MAX_STRIPES * 2);
 

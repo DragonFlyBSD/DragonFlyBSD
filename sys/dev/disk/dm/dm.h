@@ -174,24 +174,21 @@ typedef struct dm_dev {
 /* constant dm_target structures for error, zero, linear, stripes etc. */
 typedef struct dm_target {
 	char name[DM_MAX_TYPE_NAME];
-	/* Initialize target_config area */
-	int (*init)(dm_table_entry_t *, int, char **);
-
-	/* Message interface */
-	int (*message)(dm_table_entry_t *, char *);
-
-	/* Destroy target_config area */
-	int (*destroy)(dm_table_entry_t *);
 
 	/*
-	 * Info and table are called to get params string, which is target
-	 * specific. When dm_table_status_ioctl is called with flag
-	 * DM_STATUS_TABLE_FLAG I have to sent params string back.
+	 * Mandatory handlers
 	 */
-	char *(*info)(void *);
-	char *(*table)(void *);
+	int (*init)(dm_table_entry_t *, int, char **);
+	int (*destroy)(dm_table_entry_t *);
 	int (*strategy)(dm_table_entry_t *, struct buf *);
+
+	/*
+	 * Optional handlers
+	 */
+	char *(*table)(void *);	/* DM_STATUS_TABLE_FLAG */
+	char *(*info)(void *);	/* !DM_STATUS_TABLE_FLAG */
 	int (*dump)(dm_table_entry_t *, void *data, size_t length, off_t offset);
+	int (*message)(dm_table_entry_t *, char *);
 
 	uint32_t version[3];
 	int ref_cnt;

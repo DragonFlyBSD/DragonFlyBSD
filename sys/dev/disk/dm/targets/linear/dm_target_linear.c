@@ -191,9 +191,9 @@ dmtl_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 2;
 		strlcpy(dmt->name, "linear", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_linear_init;
-		dmt->table = &dm_target_linear_table;
-		dmt->strategy = &dm_target_linear_strategy;
 		dmt->destroy = &dm_target_linear_destroy;
+		dmt->strategy = &dm_target_linear_strategy;
+		dmt->table = &dm_target_linear_table;
 		dmt->dump = &dm_target_linear_dump;
 
 		err = dm_target_insert(dmt);

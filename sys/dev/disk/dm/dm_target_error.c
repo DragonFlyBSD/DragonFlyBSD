@@ -92,8 +92,8 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[2] = 0;
 		strlcpy(dmt->name, "error", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_error_init;
-		dmt->strategy = &dm_target_error_strategy;
 		dmt->destroy = &dm_target_error_destroy;
+		dmt->strategy = &dm_target_error_strategy;
 
 		err = dm_target_insert(dmt);
 		if (err == 0)
