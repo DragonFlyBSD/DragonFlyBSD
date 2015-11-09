@@ -190,8 +190,7 @@ dm_target_snapshot_table(void *target_config)
 	/* length of names + count of chars + spaces and null char */
 	prm_len = strlen(tsc->tsc_snap_dev->name) + cow_len + count + 5;
 
-	/* target expects use of M_DM */
-	params = kmalloc(prm_len, M_DM, M_WAITOK);
+	params = dm_alloc_string(prm_len);
 
 	kprintf("%s %s %s %" PRIu64 "\n", tsc->tsc_snap_dev->name,
 	    tsc->tsc_cow_dev->name, tsc->tsc_persistent_dev ? "p" : "n",

@@ -639,6 +639,14 @@ atoi64(const char *s)
 	return n;
 }
 
+char *
+dm_alloc_string(int len)
+{
+	if (len <= 0)
+		len = DM_MAX_PARAMS_SIZE;
+	return kmalloc(len, M_DM, M_WAITOK | M_ZERO);
+}
+
 void
 dm_builtin_init(void *arg)
 {

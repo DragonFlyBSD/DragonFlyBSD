@@ -241,6 +241,8 @@ void dm_target_busy(dm_target_t *);
 /* Generic function used to convert char to string */
 uint64_t atoi64(const char *);
 
+char *dm_alloc_string(int len);
+
 /* dm_table.c  */
 #define DM_TABLE_ACTIVE 0
 #define DM_TABLE_INACTIVE 1

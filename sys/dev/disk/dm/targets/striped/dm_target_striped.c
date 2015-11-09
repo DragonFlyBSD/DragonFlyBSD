@@ -166,7 +166,7 @@ dm_target_stripe_info(void *target_config)
 	tsc = target_config;
 
 	len = DM_MAX_PARAMS_SIZE;
-	params = kmalloc(len, M_DM, M_WAITOK | M_ZERO);
+	params = dm_alloc_string(len);
 	ptr = params;
 
 	ret = ksnprintf(ptr, len, "%d ", tsc->stripe_num);
@@ -208,7 +208,7 @@ dm_target_stripe_table(void *target_config)
 	tsc = target_config;
 
 	len = DM_MAX_PARAMS_SIZE;
-	params = kmalloc(len, M_DM, M_WAITOK | M_ZERO);
+	params = dm_alloc_string(len);
 	ptr = params;
 
 	ret = ksnprintf(ptr, len, "%d %jd",

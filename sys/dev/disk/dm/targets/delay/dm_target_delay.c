@@ -163,7 +163,7 @@ dm_target_delay_info(void *target_config)
 	tdc = target_config;
 	KKASSERT(tdc != NULL);
 
-	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
+	params = dm_alloc_string(DM_MAX_PARAMS_SIZE);
 	ksnprintf(params, DM_MAX_PARAMS_SIZE,
 		"%d %d", tdc->read.count, tdc->write.count);
 
@@ -179,7 +179,7 @@ dm_target_delay_table(void *target_config)
 	tdc = target_config;
 	KKASSERT(tdc != NULL);
 
-	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
+	params = dm_alloc_string(DM_MAX_PARAMS_SIZE);
 	p = params;
 	p += _table(&tdc->read, p);
 	if (tdc->argc == 6) {

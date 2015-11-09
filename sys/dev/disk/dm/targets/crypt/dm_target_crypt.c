@@ -746,8 +746,7 @@ dm_target_crypt_table(void *target_config)
 
 	priv = target_config;
 
-	/* caller expects use of M_DM */
-	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
+	params = dm_alloc_string(DM_MAX_PARAMS_SIZE);
 
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s",
 	    priv->status_str);

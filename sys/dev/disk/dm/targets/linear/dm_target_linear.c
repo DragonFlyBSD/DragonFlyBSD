@@ -101,8 +101,7 @@ dm_target_linear_table(void *target_config)
 
 	aprint_debug("Linear target table function called\n");
 
-	/* target expects use of M_DM */
-	params = kmalloc(DM_MAX_PARAMS_SIZE, M_DM, M_WAITOK);
+	params = dm_alloc_string(DM_MAX_PARAMS_SIZE);
 
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s %" PRIu64,
 	    tlc->pdev->udev_name, tlc->offset);
