@@ -999,17 +999,6 @@ unp_detach(struct unpcb *unp)
 	lwkt_relpooltoken(unp);
 	lwkt_reltoken(&unp_token);
 
-	if (unp_rights) {
-		/*
-		 * Normally the receive buffer is flushed later,
-		 * in sofree, but if our receive buffer holds references
-		 * to descriptors that are now garbage, we will dispose
-		 * of those descriptor references after the garbage collector
-		 * gets them (resulting in a "panic: fdrop: invalid f_count").
-		 */
-		sorflush(so);
-		unp_gc();
-	}
 	sofree(so);
 
 	KASSERT(unp->unp_conn == NULL, ("unp is still connected"));
@@ -1018,6 +1007,9 @@ unp_detach(struct unpcb *unp)
 	if (unp->unp_addr)
 		kfree(unp->unp_addr, M_SONAME);
 	kfree(unp, M_UNPCB);
+
+	if (unp_rights)
+		unp_gc();
 }
 
 static int
