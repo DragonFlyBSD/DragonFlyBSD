@@ -1737,11 +1737,14 @@ int drm_mode_getresources(struct drm_device *dev, void *data,
 
 		list_for_each(lh, &dev->mode_config.encoder_list)
 			encoder_count++;
+#if 0
 	} else {
 
+		mode_group = &file_priv->master->minor->mode_group;
 		crtc_count = mode_group->num_crtcs;
 		connector_count = mode_group->num_connectors;
 		encoder_count = mode_group->num_encoders;
+#endif
 	}
 
 	card_res->max_height = dev->mode_config.max_height;
