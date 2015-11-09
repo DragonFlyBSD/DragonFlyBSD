@@ -122,7 +122,7 @@ static int     unp_connect (struct socket *,struct sockaddr *,
 				struct thread *);
 static void    unp_disconnect(struct unpcb *, int);
 static void    unp_shutdown (struct unpcb *);
-static void    unp_gc (void);
+static void    unp_gc(void *, int);
 static int     unp_gc_clearmarks(struct file *, void *);
 static int     unp_gc_checkmarks(struct file *, void *);
 static int     unp_gc_checkrefs(struct file *, void *);
@@ -143,6 +143,7 @@ static void    unp_defdiscard_taskfunc(void *, int);
 static int	unp_rights;			/* file descriptors in flight */
 static struct lwkt_token unp_rights_token =
     LWKT_TOKEN_INITIALIZER(unp_rights_token);
+static struct task unp_gc_task;
 
 SYSCTL_DECL(_net_local);
 SYSCTL_INT(_net_local, OID_AUTO, inflight, CTLFLAG_RD, &unp_rights, 0,
@@ -1009,7 +1010,7 @@ unp_detach(struct unpcb *unp)
 	kfree(unp, M_UNPCB);
 
 	if (unp_rights)
-		unp_gc();
+		taskqueue_enqueue(unp_taskqueue, &unp_gc_task);
 }
 
 static int
@@ -1557,6 +1558,12 @@ unp_init(void)
 	TASK_INIT(&unp_defdiscard_task, 0, unp_defdiscard_taskfunc, NULL);
 
 	/*
+	 * This implies that only one gc can be in-progress at any
+	 * given moment.
+	 */
+	TASK_INIT(&unp_gc_task, 0, unp_gc, NULL);
+
+	/*
 	 * Create taskqueue for defered discard, and stick it to
 	 * the last CPU.
 	 */
@@ -1701,22 +1708,13 @@ struct unp_gc_info {
 };
 
 static void
-unp_gc(void)
+unp_gc(void *arg __unused, int pending __unused)
 {
 	struct unp_gc_info info;
-	static boolean_t unp_gcing;
 	struct file **fpp;
 	int i;
 
-	/*
-	 * Only one gc can be in-progress at any given moment
-	 */
 	lwkt_gettoken(&unp_rights_token);
-	if (unp_gcing) {
-		lwkt_reltoken(&unp_rights_token);
-		return;
-	}
-	unp_gcing = TRUE;
 
 	/* 
 	 * Before going through all this, set all FDs to be NOT defered
@@ -1798,7 +1796,6 @@ unp_gc(void)
 	} while (info.index == info.maxindex);
 
 	kfree((caddr_t)info.extra_ref, M_FILE);
-	unp_gcing = FALSE;
 
 	lwkt_reltoken(&unp_rights_token);
 }
