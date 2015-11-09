@@ -213,7 +213,7 @@ dmopen(struct dev_open_args *ap)
 	dmv->is_open = 1;
 	dm_dev_unbusy(dmv);
 
-	aprint_debug("dm open routine called %" PRIu32 "\n",
+	dmdebug("dm open routine called %" PRIu32 "\n",
 	    minor(ap->a_head.a_dev));
 	return 0;
 }
@@ -234,7 +234,7 @@ dmclose(struct dev_close_args *ap)
 	dmv->is_open = 0;
 	dm_dev_unbusy(dmv);
 
-	aprint_debug("dm close routine called %" PRIu32 "\n",
+	dmdebug("dm close routine called %" PRIu32 "\n",
 	    minor(ap->a_head.a_dev));
 	return 0;
 }
@@ -253,7 +253,7 @@ dmioctl(struct dev_ioctl_args *ap)
 
 	err = r = 0;
 
-	aprint_debug("dmioctl called\n");
+	dmdebug("dmioctl called\n");
 	KKASSERT(data != NULL);
 
 	if ((r = disk_ioctl_switch(dev, cmd, data)) != ENOTTY)
@@ -300,11 +300,11 @@ dm_cmd_to_fun(prop_dictionary_t dm_dict)
 
 	KKASSERT(p);
 	if (i == size) {
-		aprint_debug("Unknown ioctl\n");
+		dmdebug("Unknown ioctl\n");
 		return EINVAL;
 	}
 
-	aprint_debug("ioctl %s called %p\n", p->cmd, p->fn);
+	dmdebug("ioctl %s called %p\n", p->cmd, p->fn);
 	if (p->fn == NULL)
 		return 0;  /* No handler required */
 
@@ -318,10 +318,10 @@ dm_ioctl_switch(u_long cmd)
 
 	switch(cmd) {
 	case NETBSD_DM_IOCTL:
-		aprint_debug("dm NETBSD_DM_IOCTL called\n");
+		dmdebug("dm NETBSD_DM_IOCTL called\n");
 		break;
 	default:
-		aprint_debug("dm unknown ioctl called\n");
+		dmdebug("dm unknown ioctl called\n");
 		return ENOTTY;
 		break; /* NOT REACHED */
 	}
@@ -363,7 +363,7 @@ disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 		break;
 
 	default:
-		aprint_debug("unknown disk_ioctl called\n");
+		dmdebug("unknown disk_ioctl called\n");
 		return ENOTTY;
 		break; /* NOT REACHED */
 	}

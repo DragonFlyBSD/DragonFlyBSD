@@ -67,7 +67,7 @@ dm_target_linear_init(dm_table_entry_t *table_en, int argc, char **argv)
 		return EINVAL;
 	}
 
-	aprint_debug("Linear target init function called %s--%s!!\n",
+	dmdebug("Linear target init function called %s--%s!!\n",
 	    argv[0], argv[1]);
 
 	/* Insert dmp to global pdev list */
@@ -99,7 +99,7 @@ dm_target_linear_table(void *target_config)
 	char *params;
 	tlc = target_config;
 
-	aprint_debug("Linear target table function called\n");
+	dmdebug("Linear target table function called\n");
 
 	params = dm_alloc_string(DM_MAX_PARAMS_SIZE);
 

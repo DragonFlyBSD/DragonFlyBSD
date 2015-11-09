@@ -91,7 +91,7 @@ dm_target_delay_init(dm_table_entry_t *table_en, int argc, char **argv)
 	dm_target_delay_config_t *tdc;
 	int ret;
 
-	aprint_debug("Delay target init: argc=%d\n", argc);
+	dmdebug("Delay target init: argc=%d\n", argc);
 	if (argc != 3 && argc != 6) {
 		kprintf("Delay target takes 3 or 6 args\n");
 		return EINVAL;
@@ -382,7 +382,7 @@ static __inline
 void
 _debug(struct dm_delay_info *di, const char *msg)
 {
-	aprint_debug("%-8s: %d pdev=%s offset=%ju delay=%d count=%d\n",
+	dmdebug("%-8s: %d pdev=%s offset=%ju delay=%d count=%d\n",
 		msg, di->enabled, di->pdev->name,
 		(uintmax_t)di->offset, di->delay, di->count);
 }

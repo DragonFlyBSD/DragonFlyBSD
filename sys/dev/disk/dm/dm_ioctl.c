@@ -553,7 +553,7 @@ dm_table_clear_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_get_uint32(dm_dict, DM_IOCTL_FLAGS, &flags);
 	prop_dictionary_get_uint32(dm_dict, DM_IOCTL_MINOR, &minor);
 
-	aprint_debug("Clearing inactive table from device: %s--%s\n",
+	dmdebug("Clearing inactive table from device: %s--%s\n",
 	    name, uuid);
 
 	if ((dmv = dm_dev_lookup(name, uuid, minor)) == NULL) {
@@ -610,7 +610,7 @@ dm_table_deps_ioctl(prop_dictionary_t dm_dict)
 	prop_dictionary_set_cstring(dm_dict, DM_IOCTL_NAME, dmv->name);
 	prop_dictionary_set_cstring(dm_dict, DM_IOCTL_UUID, dmv->uuid);
 
-	aprint_debug("Getting table deps for device: %s\n", dmv->name);
+	dmdebug("Getting table deps for device: %s\n", dmv->name);
 
 	/*
 	 * if DM_QUERY_INACTIVE_TABLE_FLAG is passed we need to query
@@ -714,7 +714,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		dm_remove_flag(dm_dict, &flags, DM_EXISTS_FLAG);
 		return ENOENT;
 	}
-	aprint_debug("Loading table to device: %s--%d\n", name,
+	dmdebug("Loading table to device: %s--%d\n", name,
 	    dmv->table_head.cur_active_table);
 
 	/*
@@ -727,7 +727,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	dm_dbg_print_flags(dmv->flags);
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_INACTIVE);
 
-	aprint_debug("dmv->name = %s\n", dmv->name);
+	dmdebug("dmv->name = %s\n", dmv->name);
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 
@@ -756,7 +756,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_LENGTH,
 		    &table_en->length);
 
-		aprint_debug("dm_ioctl.c... table_en->start = %ju, "
+		dmdebug("dm_ioctl.c... table_en->start = %ju, "
 			     "table_en->length = %ju\n",
 			     (uintmax_t)table_en->start,
 			     (uintmax_t)table_en->length);
@@ -783,7 +783,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * therfore I have to pass it to target init
 		 * routine and parse parameters there.
 		 */
-		aprint_debug("DM: str passed in is: \"%s\"\n", str);
+		dmdebug("DM: str passed in is: \"%s\"\n", str);
 
 		if ((ret = dm_table_init(target, table_en, str)) != 0) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);
@@ -820,7 +820,7 @@ dm_table_init(dm_target_t *target, dm_table_entry_t *table_en, char *params)
 
 	n = target->max_argc;
 	if (n) {
-		aprint_debug("Max argc %d for %s target\n", n, target->name);
+		dmdebug("Max argc %d for %s target\n", n, target->name);
 	} else {
 		n = 20;  /* large enough slots for most targets */
 	}
@@ -929,14 +929,14 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 
-	aprint_debug("Status of device tables: %s--%d\n",
+	dmdebug("Status of device tables: %s--%d\n",
 	    name, dmv->table_head.cur_active_table);
 
 	tbl = dm_table_get_entry(&dmv->table_head, table_type);
 
 	TAILQ_FOREACH(table_en, tbl, next) {
 		target_dict = prop_dictionary_create();
-		aprint_debug("%016" PRIu64 ", length %016" PRIu64
+		dmdebug("%016" PRIu64 ", length %016" PRIu64
 		    ", target %s\n", table_en->start, table_en->length,
 		    table_en->target->name);
 
@@ -1087,7 +1087,7 @@ dm_check_version(prop_dictionary_t dm_dict)
 		prop_array_get_uint32(ver, i, &dm_version[i]);
 
 	if (DM_VERSION_MAJOR != dm_version[0] || DM_VERSION_MINOR < dm_version[1]) {
-		aprint_debug("libdevmapper/kernel version mismatch "
+		dmdebug("libdevmapper/kernel version mismatch "
 		    "kernel: %d.%d.%d libdevmapper: %d.%d.%d\n",
 		    DM_VERSION_MAJOR, DM_VERSION_MINOR, DM_VERSION_PATCHLEVEL,
 		    dm_version[0], dm_version[1], dm_version[2]);

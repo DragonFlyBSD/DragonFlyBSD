@@ -133,7 +133,7 @@ dm_pdev_insert(const char *dev_name)
 
 	if (dmp != NULL) {
 		dmp->ref_cnt++;
-		aprint_debug("dmp_pdev_insert pdev %s already in tree\n", dev_name);
+		dmdebug("dmp_pdev_insert pdev %s already in tree\n", dev_name);
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		return dmp;
 	}
@@ -145,7 +145,7 @@ dm_pdev_insert(const char *dev_name)
 
 	error = dm_dk_lookup(dev_name, &dmp->pdev_vnode);
 	if (error) {
-		aprint_debug("dk_lookup on device: %s failed with error %d!\n",
+		dmdebug("dk_lookup on device: %s failed with error %d!\n",
 		    dev_name, error);
 		dm_pdev_rem(dmp);
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
@@ -154,7 +154,7 @@ dm_pdev_insert(const char *dev_name)
 	dmp->ref_cnt = 1;
 
 	if (dm_pdev_get_vattr(dmp, &va) == -1) {
-		aprint_debug("makeudev %s failed\n", dev_name);
+		dmdebug("makeudev %s failed\n", dev_name);
 		dm_pdev_rem(dmp);
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		return NULL;
@@ -172,7 +172,7 @@ dm_pdev_insert(const char *dev_name)
 	    (void *)&dmp->pdev_pinfo, 0, proc0.p_ucred, NULL, NULL);
 	if (!error) {
 		struct partinfo *dpart = &dmp->pdev_pinfo;
-		aprint_debug("dmp_pdev_insert DIOCGPART "
+		dmdebug("dmp_pdev_insert DIOCGPART "
 			"offset=%ju size=%ju blocks=%ju blksize=%d\n",
 			dpart->media_offset,
 			dpart->media_size,
@@ -185,7 +185,7 @@ dm_pdev_insert(const char *dev_name)
 	TAILQ_INSERT_TAIL(&dm_pdev_list, dmp, next_pdev);
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
 
-	aprint_debug("dmp_pdev_insert pdev %s %s 0x%016jx\n",
+	dmdebug("dmp_pdev_insert pdev %s %s 0x%016jx\n",
 		dmp->name, dmp->udev_name, (uintmax_t)dmp->udev);
 
 	return dmp;

@@ -293,7 +293,7 @@ void dm_builtin_uninit(void *);
 extern int dm_debug_level;
 MALLOC_DECLARE(M_DM);
 
-#define aprint_debug(format, ...)	\
+#define dmdebug(format, ...)	\
     do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)
 
 #define DM_TARGET_MODULE(name, evh)				\

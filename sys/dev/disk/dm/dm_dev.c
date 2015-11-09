@@ -258,7 +258,7 @@ dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
 	if (flags & DM_READONLY_FLAG)
 		dmv->flags |= DM_READONLY_FLAG;
 
-	aprint_debug("Creating device dm/%s\n", name);
+	dmdebug("Creating device dm/%s\n", name);
 	ksnprintf(name_buf, sizeof(name_buf), "mapper/%s", dmv->name);
 
 	devstat_add_entry(&dmv->stats, name, 0, DEV_BSIZE,
