@@ -79,9 +79,6 @@ dm_target_linear_init(dm_table_entry_t *table_en, int argc, char **argv)
 		return ENOMEM;
 
 	tlc->pdev = dmp;
-	tlc->offset = 0;	/* default settings */
-
-	/* Check user input if it is not leave offset as 0. */
 	tlc->offset = atoi64(argv[1]);
 
 	dm_table_add_deps(table_en, dmp);
