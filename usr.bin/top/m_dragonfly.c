@@ -456,6 +456,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	int show_system;
 	int show_uid;
 	int show_threads;
+	char *match_command;
 
 	show_threads = sel->threads;
 
@@ -477,6 +478,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	show_system = sel->system;
 	show_uid = sel->uid != -1;
 	show_fullcmd = sel->fullcmd;
+	match_command = sel->command;
 
 	/* count up process states and get pointers to interesting procs */
 	total_procs = 0;
@@ -502,7 +504,9 @@ get_process_info(struct system_info *si, struct process_select *sel,
 				process_states[pstate]++;
 			if ((show_system && (LP(pp, pid) == -1)) ||
 			    (show_idle || (LP(pp, pctcpu) != 0) ||
-			    (lpstate == LSRUN)) &&
+			     (lpstate == LSRUN)) &&
+			    (match_command == NULL ||
+			     strstr(PP(pp, comm), match_command)) &&
 			    (!show_uid || PP(pp, ruid) == (uid_t) sel->uid)) {
 				*prefp++ = pp;
 				active_procs++;
