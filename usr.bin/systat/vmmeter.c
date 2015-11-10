@@ -90,7 +90,7 @@ showvmm(void)
 	n = X_START + CPU_LABEL_W;
 
 #define DTOT(field) \
-	(vmm_totcur.field - vmm_totprev.field) / (u_int)naptime
+	(u_int)((vmm_totcur.field - vmm_totprev.field) / naptime)
 
 	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* timer */
 	DRAW_ROW(n, TOT_START, 8, "%*u", DTOT(v_ipi));
@@ -116,7 +116,7 @@ showvmm(void)
 		n = X_START + CPU_LABEL_W;
 
 #define D(idx, field) \
-	(vmm_cur[idx].field - vmm_prev[idx].field) / (u_int)naptime
+	(u_int)((vmm_cur[idx].field - vmm_prev[idx].field) / naptime)
 
 		DRAW_ROW(n, CPU_START + i, 6, "%*u", D(i, v_timer));
 		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_ipi));
