@@ -27,7 +27,6 @@
 .\"
 .\"     From: @(#)mtree.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/usr.sbin/mtree/mtree.8,v 1.16.2.11 2003/03/11 22:31:29 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mtree/mtree.8,v 1.6 2007/10/20 13:43:00 swildner Exp $
 .\"
 .Dd February 26, 1999
 .Dt MTREE 8
@@ -116,7 +115,7 @@ the specification.
 Don't descend below mount points in the file hierarchy.
 .It Fl f Ar file
 Read the specification from
-.Ar file  ,
+.Ar file ,
 instead of from the standard input.
 .It Fl K Ar keywords
 Add the specified (whitespace or comma separated)
@@ -128,7 +127,7 @@ Use the ``type'' keyword plus the specified (whitespace or comma separated)
 instead of the current set of keywords.
 .It Fl p Ar path
 Use the file hierarchy rooted in
-.Ar path  ,
+.Ar path ,
 instead of the current directory.
 .It Fl s Ar seed
 Display a single checksum to the standard error output that represents all

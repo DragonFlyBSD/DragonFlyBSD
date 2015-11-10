@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)vgrindefs.5	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/vgrind/vgrindefs.5,v 1.5.2.4 2001/08/16 13:17:13 ru Exp $
-.\" $DragonFly: src/usr.bin/vgrind/vgrindefs.5,v 1.4 2008/05/02 02:05:07 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt VGRINDEFS 5
@@ -76,7 +75,7 @@ comments are normally starting with
 while the string
 .Ql $#
 is an operator on an array.
-.Sh REGULAR  EXPRESSIONS
+.Sh REGULAR EXPRESSIONS
 .Nm Vgrindefs
 uses regular expression which are very similar to those of
 .Xr ex 1
@@ -117,7 +116,7 @@ string delimiter in a string by escaping it.
 Unlike other regular expressions in the system,  these match words
 and not characters.  Hence something like "(tramp|steamer)flies?"
 would match "tramp", "steamer", "trampflies", or "steamerflies".
-.Sh KEYWORD  LIST
+.Sh KEYWORD LIST
 The keyword list is just a list of keywords in the language separated
 by spaces.  If the "oc" boolean is specified, indicating that upper
 and lower case are equivalent, then all the keywords should be

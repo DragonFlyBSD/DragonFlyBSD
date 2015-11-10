@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)fts.3	8.5 (Berkeley) 4/16/94
 .\" $FreeBSD: src/lib/libc/gen/fts.3,v 1.24 2008/01/26 17:09:40 yar Exp $
-.\" $DragonFly: src/lib/libc/gen/fts.3,v 1.4 2007/07/30 22:11:32 swildner Exp $
 .\"
 .Dd January 26, 2008
 .Dt FTS 3
@@ -163,7 +162,7 @@ With the exception of directories without errors
 all of these
 entries are terminal, that is, they will not be revisited, nor will any
 of their descendants be visited.
-.Bl  -tag -width FTS_DEFAULT
+.Bl -tag -width FTS_DEFAULT
 .It Dv FTS_D
 A directory being visited in pre-order.
 .It Dv FTS_DC

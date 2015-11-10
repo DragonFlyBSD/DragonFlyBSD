@@ -85,7 +85,7 @@ to use as the input.
 If no names are specified on the command line,
 .Nm
 will update all of the files and directories listed in
-.Ar distfile  .
+.Ar distfile .
 Otherwise, the argument is taken to be the name of a file to be updated
 or the label of a command to execute.
 If label and file names conflict,
@@ -99,7 +99,7 @@ Options specific to the second SYNOPSIS form:
 Forces
 .Nm
 to interpret the remaining arguments as a small
-.Ar distfile  .
+.Ar distfile .
 .Pp
 The equivalent distfile is as follows.
 .Pp
@@ -128,11 +128,11 @@ compatible with
 Define
 .Ar var
 to have
-.Ar value  .
+.Ar value .
 The
 .Fl d
 option is used to define or override variable definitions in the
-.Ar distfile  .
+.Ar distfile .
 .Ar Value
 can be the empty string, one name, or a list of names surrounded by
 parentheses and separated by tabs and/or spaces.
@@ -150,12 +150,12 @@ Limit which machines are to be updated.
 Multiple
 .Fl m
 arguments can be given to limit updates to a subset of the hosts listed in the
-.Ar distfile  .
+.Ar distfile .
 .It Fl n
 Print the commands without executing them.
 This option is
 useful for debugging
-.Ar distfile  .
+.Ar distfile .
 .It Fl q
 Quiet mode.
 Files that are being modified are normally
@@ -190,7 +190,7 @@ Files are normally updated if their
 and
 .Ar size
 (see
-.Xr stat  2  )
+.Xr stat 2 )
 disagree.
 The
 .Fl y
@@ -253,7 +253,7 @@ or
 .Pp
 The shell meta-characters `[', `]', `{', `}', `*', and `?'
 are recognized and expanded (on the local host only) in the same way as
-.Xr csh  1  .
+.Xr csh 1 .
 They can be escaped with a backslash.
 The `~' character is also expanded in the same way as
 .Xr csh 1
@@ -317,7 +317,7 @@ The
 command is used to update all of the files in the source list
 .Ic except
 for the files listed in
-.Ar name list  .
+.Ar name list .
 This is usually used to copy everything in a directory except certain files.
 .Pp
 The
@@ -341,7 +341,7 @@ must be escaped with `\e'.
 The
 .Ic special
 command is used to specify
-.Xr sh  1
+.Xr sh 1
 commands that are to be executed on the
 remote host after the file in
 .Ar name list
@@ -351,7 +351,7 @@ If the
 is omitted then the shell commands will be executed
 for every file updated or installed.  The shell variable `FILE' is set
 to the current filename before executing the commands in
-.Ar string  .
+.Ar string .
 .Ar String
 starts and ends with `"' and can cross multiple lines in
 .Ar distfile .

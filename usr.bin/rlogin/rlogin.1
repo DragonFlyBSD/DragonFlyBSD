@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)rlogin.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/rlogin/rlogin.1,v 1.11.2.7 2002/06/21 15:28:48 charnier Exp $
-.\" $DragonFly: src/usr.bin/rlogin/rlogin.1,v 1.3 2006/02/17 19:39:10 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt RLOGIN 1
@@ -47,7 +46,7 @@
 The
 .Nm
 utility starts a terminal session on a remote host
-.Ar host  .
+.Ar host .
 .Pp
 The
 .Nm
@@ -119,7 +118,7 @@ option requests rlogin to obtain tickets for the remote host
 in realm
 .Ar realm
 instead of the remote host's realm as determined by
-.Xr krb_realmofhost  3  .
+.Xr krb_realmofhost 3 .
 .It Fl l
 The
 .Fl l
@@ -170,7 +169,7 @@ Each user may have a private authorization list in the file
 in their home directory.
 Each line in this file should contain a Kerberos principal name of the
 form
-.Ar principal.instance@realm  .
+.Ar principal.instance@realm .
 If the originating user is authenticated to one of the principals named
 in
 .Pa .klogin ,
@@ -183,7 +182,7 @@ there is no
 file.
 Otherwise a login and password will be prompted for on the remote machine
 as in
-.Xr login  1  .
+.Xr login 1 .
 To avoid certain security problems, the
 .Pa .klogin
 file must be owned by
@@ -234,7 +233,7 @@ IPv6 support was added by WIDE/KAME project.
 The
 .Nm
 utility will be replaced by
-.Xr telnet  1
+.Xr telnet 1
 in the near future.
 .Pp
 More of the environment should be propagated.

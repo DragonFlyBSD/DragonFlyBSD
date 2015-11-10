@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)logger.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/logger/logger.1,v 1.4.2.8 2003/05/25 20:06:57 brueffer Exp $
-.\" $DragonFly: src/usr.bin/logger/logger.1,v 1.3 2006/02/17 19:39:09 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt LOGGER 1
@@ -47,7 +46,7 @@
 The
 .Nm
 utility provides a shell command interface to the
-.Xr syslog  3
+.Xr syslog 3
 system log module.
 .Pp
 The following options are available:
@@ -91,7 +90,7 @@ facility.
 The default is ``user.notice.''
 .It Fl t Ar tag
 Mark every line in the log with the specified
-.Ar tag  .
+.Ar tag .
 .It Ar message
 Write the message to log; if not specified, and the
 .Fl f

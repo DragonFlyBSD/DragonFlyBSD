@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)telnet.1	8.6 (Berkeley) 6/1/94
 .\" $FreeBSD: src/crypto/telnet/telnet/telnet.1,v 1.4.2.9 2002/04/13 10:59:08 markm Exp $
-.\" $DragonFly: src/crypto/telnet/telnet/telnet.1,v 1.2 2003/06/17 04:24:37 dillon Exp $
 .\"
 .Dd August 26, 2009
 .Dt TELNET 1
@@ -276,7 +275,7 @@ toggle is
 .Dv TRUE
 (the default for \*(Lqold line by line\*(Rq; see below),
 the user's
-.Ic quit  ,
+.Ic quit ,
 .Ic intr ,
 and
 .Ic flush
@@ -312,7 +311,7 @@ sequence) and flush previous terminal input
 (in the case of
 .Ic quit
 and
-.Ic intr  ) .
+.Ic intr ) .
 .Pp
 While connected to a remote host,
 .Nm
@@ -326,11 +325,11 @@ The following
 commands are available.
 Only enough of each command to uniquely identify it need be typed
 (this is also true for arguments to the
-.Ic mode  ,
+.Ic mode ,
 .Ic set ,
-.Ic toggle  ,
+.Ic toggle ,
 .Ic unset ,
-.Ic slc  ,
+.Ic slc ,
 .Ic environ ,
 and
 .Ic display
@@ -583,7 +582,7 @@ will attempt to contact a
 .Tn TELNET
 server at the default port.
 The host specification may be either a host name (see
-.Xr hosts  5  ) ,
+.Xr hosts 5 ) ,
 an Internet address specified in the \*(Lqdot notation\*(Rq (see
 .Xr inet 3 ) ,
 or IPv6 host name or IPv6 coloned-hexadecimal address.
@@ -1063,11 +1062,11 @@ mapped to
 commands sequences (like
 .Ic ip
 or
-.Ic quit  )
+.Ic quit )
 or line editing characters (like
 .Ic erase
 and
-.Ic kill  ) .
+.Ic kill ) .
 By default, the local special characters are exported.
 .Bl -tag -width Fl
 .It Ic check
@@ -1130,7 +1129,7 @@ and
 are both
 .Dv TRUE ,
 then when the
-.Ic ao  ,
+.Ic ao ,
 or
 .Ic quit
 characters are recognized (and transformed into
@@ -1152,7 +1151,7 @@ if the terminal user had not
 done an "stty noflsh", otherwise
 .Dv FALSE
 (see
-.Xr stty  1  ) .
+.Xr stty 1 ) .
 .It Ic autodecrypt
 When the
 .Dv TELNET ENCRYPT
@@ -1244,7 +1243,7 @@ The initial value for this toggle is
 .Dv FALSE .
 .It Ic debug
 Toggles socket level debugging (useful only to the
-.Ic super user  ) .
+.Ic super user ) .
 The initial value for this toggle is
 .Dv FALSE .
 .It Ic encdebug
@@ -1253,9 +1252,9 @@ Turns on debugging information for the encryption code.
 If this is
 .Dv TRUE ,
 then the
-.Ic flush  ,
+.Ic flush ,
 .Ic interrupt ,
-.Ic quit  ,
+.Ic quit ,
 .Ic erase ,
 and
 .Ic kill
@@ -1265,12 +1264,12 @@ above) are recognized locally, and transformed into (hopefully) appropriate
 .Tn TELNET
 control sequences
 (respectively
-.Ic ao  ,
+.Ic ao ,
 .Ic ip ,
-.Ic brk  ,
+.Ic brk ,
 .Ic ec ,
 and
-.Ic el  ;
+.Ic el ;
 see
 .Ic send
 above).
@@ -1291,7 +1290,7 @@ If
 has ever been enabled, then
 .Ic quit
 is sent as
-.Ic abort  ,
+.Ic abort ,
 and
 .Ic eof
 and
@@ -1359,7 +1358,7 @@ commands.
 Suspend
 .Nm .
 This command only works when the user is using the
-.Xr csh  1  .
+.Xr csh 1 .
 .It Ic \&! Op Ar command
 Execute a single command in a subshell on the local
 system.  If

@@ -235,7 +235,7 @@ Memory allocated by the driver must be tagged with
 to balance the memory allocation statistics.
 .It Dv ic_node_free
 Reclaim storage of a node allocated by
-.Dv ic_node_alloc  .
+.Dv ic_node_alloc .
 Drivers are expected to
 .Em interpose
 their own method to cleanup private state but must call through

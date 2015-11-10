@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)pipe.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/pipe.2,v 1.13.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/pipe.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt PIPE 2
@@ -81,7 +80,7 @@ By convention, the first descriptor is normally used as the
 .Em read end
 of the pipe,
 and the second is normally the
-.Em write end  ,
+.Em write end ,
 so that data written to
 .Fa fildes[1]
 appears on (i.e., can be read from)

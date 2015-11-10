@@ -51,7 +51,7 @@
 .Ft int
 .Fn libusb20_tr_open_stream "struct libusb20_transfer *xfer" "uint32_t max_buf_size" "uint32_t max_frame_count" "uint8_t ep_no" "uint16_t stream_id"
 .Ft struct libusb20_transfer*
-.Fn libusb20_tr_get_pointer "struct libusb20_device *pdev"  "uint16_t tr_index"
+.Fn libusb20_tr_get_pointer "struct libusb20_device *pdev" "uint16_t tr_index"
 .Ft uint16_t
 .Fn libusb20_tr_get_time_complete "struct libusb20_transfer *xfer"
 .Ft uint32_t
@@ -201,7 +201,7 @@
 .Ft struct libusb20_backend *
 .Fn libusb20_be_alloc_linux "void"
 .Ft struct libusb20_device *
-.Fn libusb20_be_device_foreach  "struct libusb20_backend *pbe" "struct libusb20_device *pdev"
+.Fn libusb20_be_device_foreach "struct libusb20_backend *pbe" "struct libusb20_device *pdev"
 .Ft void
 .Fn libusb20_be_dequeue_device "struct libusb20_backend *pbe" "struct libusb20_device *pdev"
 .Ft void

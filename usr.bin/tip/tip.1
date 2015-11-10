@@ -204,7 +204,7 @@ to find how to reach a particular
 system and to find out how it should operate while talking
 to the system;
 refer to
-.Xr remote  5
+.Xr remote 5
 for a full description.
 Each system has a default baud rate with which to
 establish a connection.  If this value is not suitable, the baud rate
@@ -261,7 +261,7 @@ utility uses the file
 .Pa /etc/modems
 to find out how to operate with a particular
 modem; refer to
-.Xr modems  5
+.Xr modems 5
 for a full description.
 .Ss VARIABLES
 The
@@ -273,9 +273,9 @@ Some of these variables are read-only to normal users (root is allowed
 to change anything of interest).  Variables may be displayed
 and set through the ``s'' escape.  The syntax for variables is patterned
 after
-.Xr vi  1
+.Xr vi 1
 and
-.Xr Mail  1  .
+.Xr Mail 1 .
 Supplying ``all''
 as an argument to the set command displays all variables readable by
 the user.  Alternatively, the user may request display of a particular
@@ -303,32 +303,32 @@ their abbreviations, and their default values.
 .It Ar beautify
 (bool) Discard unprintable characters when a session is being scripted;
 abbreviated
-.Ar be  .
+.Ar be .
 .It Ar baudrate
 (num) The baud rate at which the connection was established;
 abbreviated
-.Ar ba  .
+.Ar ba .
 .It Ar chardelay
 (num) Number of milliseconds to delay after the transmission of
 each character;
 abbreviated
-.Ar cdelay  .
+.Ar cdelay .
 .It Ar dialtimeout
 (num) When dialing a phone number, the time (in seconds)
 to wait for a connection to be established; abbreviated
-.Ar dial  .
+.Ar dial .
 .It Ar echocheck
 (bool) Synchronize with the remote host during file transfer by
 waiting for the echo of the last character transmitted; default is
-.Ar off  .
+.Ar off .
 .It Ar eofread
 (str) The set of characters which signify an end-of-transmission
 during a ~< file transfer command; abbreviated
-.Ar eofr  .
+.Ar eofr .
 .It Ar eofwrite
 (str) The string sent to indicate end-of-transmission during
 a ~> file transfer command; abbreviated
-.Ar eofw  .
+.Ar eofw .
 .It Ar eol
 (str) The set of characters which indicate an end-of-line.
 The
@@ -336,54 +336,54 @@ The
 utility will recognize escape characters only after an end-of-line.
 .It Ar escape
 (char) The command prefix (escape) character; abbreviated
-.Ar es  ;
+.Ar es ;
 default value is `~'.
 .It Ar exceptions
 (str) The set of characters which should not be discarded
 due to the beautification switch; abbreviated
-.Ar ex  ;
+.Ar ex ;
 default value is ``\et\en\ef\eb''.
 .It Ar force
 (char) The character used to force literal data transmission;
 abbreviated
-.Ar fo  ;
+.Ar fo ;
 default value is `^P'.
 .It Ar framesize
 (num) The amount of data (in bytes) to buffer between file system
 writes when receiving files; abbreviated
-.Ar fr  .
+.Ar fr .
 .It Ar host
 (str) The name of the host to which you are connected; abbreviated
-.Ar ho  .
+.Ar ho .
 .It Ar linedelay
 (num) Number of milliseconds to delay after the transmission of
 each line;
 abbreviated
-.Ar ldelay  .
+.Ar ldelay .
 .It Ar login
 (str) Pathname of a login shell script to run once connected; standard input
 and output are redirected to the remote host.
 Leading tildes in the pathname
 are expanded expansion; abbreviated
-.Ar li  .
+.Ar li .
 .It Ar logout
 (str) Pathname of a shell script to run before disconnecting; standard input
 and output are redirected to the remote host.
 Leading tildes in the pathname
 are expanded expansion; abbreviated
-.Ar lo  .
+.Ar lo .
 .It Ar prompt
 (char) The character which indicates an end-of-line on the remote
 host; abbreviated
-.Ar pr  ;
+.Ar pr ;
 default value is `\en'.  This value is used to synchronize during
 data transfers.  The count of lines transferred during a file transfer
 command is based on receipt of this character.
 .It Ar raise
 (bool) Upper case mapping mode; abbreviated
-.Ar ra  ;
+.Ar ra ;
 default value is
-.Ar off  .
+.Ar off .
 When this mode is enabled, all lower case letters will be mapped to
 upper case by
 .Nm
@@ -391,26 +391,26 @@ for transmission to the remote machine.
 .It Ar raisechar
 (char) The input character used to toggle upper case mapping mode;
 abbreviated
-.Ar rc  ;
+.Ar rc ;
 default value is `^A'.
 .It Ar record
 (str) The name of the file in which a session script is recorded;
 abbreviated
-.Ar rec  ;
+.Ar rec ;
 default value is ``tip.record''.
 .It Ar script
 (bool) Session scripting mode; abbreviated
-.Ar sc  ;
+.Ar sc ;
 default is
-.Ar off  .
+.Ar off .
 When
 .Ar script
 is
-.Li true  ,
+.Li true ,
 .Nm
 will record everything transmitted by the remote machine in
 the script record file specified in
-.Ar record  .
+.Ar record .
 If the
 .Ar beautify
 switch is on, only printable
@@ -423,15 +423,15 @@ is used to indicate characters which are an exception to the normal
 beautification rules.
 .It Ar tabexpand
 (bool) Expand tabs to spaces during file transfers; abbreviated
-.Ar tab  ;
+.Ar tab ;
 default value is
-.Ar false  .
+.Ar false .
 Each tab is expanded to 8 spaces.
 .It Ar verbose
 (bool) Verbose mode; abbreviated
-.Ar verb  ;
+.Ar verb ;
 default is
-.Ar true  .
+.Ar true .
 When verbose mode is enabled,
 .Nm
 prints messages while dialing, shows the current number

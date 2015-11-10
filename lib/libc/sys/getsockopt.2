@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)getsockopt.2	8.4 (Berkeley) 5/2/95
 .\" $FreeBSD: src/lib/libc/sys/getsockopt.2,v 1.12.2.11 2002/01/09 17:44:15 yar Exp $
-.\" $DragonFly: src/lib/libc/sys/getsockopt.2,v 1.5 2007/07/14 21:48:15 swildner Exp $
 .\"
 .Dd May 2, 1995
 .Dt GETSOCKOPT 2
@@ -141,7 +140,7 @@ and set with
 .It Dv SO_REUSEPORT Ta "enables duplicate address and port bindings"
 .It Dv SO_KEEPALIVE Ta "enables keep connections alive"
 .It Dv SO_DONTROUTE Ta "enables routing bypass for outgoing messages"
-.It Dv SO_LINGER  Ta "linger on close if data present"
+.It Dv SO_LINGER Ta "linger on close if data present"
 .It Dv SO_BROADCAST Ta "enables permission to transmit broadcast messages"
 .It Dv SO_OOBINLINE Ta "enables reception of out-of-band data in band"
 .It Dv SO_SNDBUF Ta "set buffer size for output"

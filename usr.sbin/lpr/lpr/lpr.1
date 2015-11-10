@@ -27,8 +27,7 @@
 .\"
 .\"     From @(#)lpr.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/lpr/lpr/lpr.1,v 1.11.2.6 2002/06/21 16:40:52 charnier Exp $
-.\" $DragonFly: src/usr.sbin/lpr/lpr/lpr.1,v 1.4 2006/02/17 19:40:17 swildner Exp $
-.\" "
+.\"
 .Dd June 6, 1993
 .Dt LPR 1
 .Os
@@ -134,7 +133,7 @@ Use symbolic links.  Usually files are copied to the spool directory.
 The
 .Fl s
 option will use
-.Xr symlink  2
+.Xr symlink 2
 to link data files rather than trying to copy them so large files can be
 printed.  This means the files should
 not be modified or removed until they have been printed.
@@ -166,7 +165,7 @@ instead.
 Specifies a
 .Ar font
 to be mounted on font position
-.Ar i  .
+.Ar i .
 The daemon
 will construct a
 .Li .railmag
@@ -180,7 +179,7 @@ lpr \-C EECS foo.c
 .Ed
 .Pp
 causes the system name (the name returned by
-.Xr hostname  1  )
+.Xr hostname 1 )
 to be replaced on the burst page by
 .Tn EECS ,
 and the file foo.c to be printed.
