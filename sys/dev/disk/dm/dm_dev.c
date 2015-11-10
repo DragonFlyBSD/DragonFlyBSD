@@ -70,6 +70,7 @@ disable_dev(dm_dev_t *dmv)
 	KKASSERT(lockstatus(&dm_dev_mutex, curthread) == LK_EXCLUSIVE);
 
 	TAILQ_REMOVE(&dm_dev_list, dmv, next_devlist);
+	dm_dev_counter--;
 
 	lockmgr(&dmv->dev_mtx, LK_EXCLUSIVE);
 	while (dmv->ref_cnt != 0)
@@ -188,6 +189,7 @@ dm_dev_insert(dm_dev_t *dev)
 	if ((dmv == NULL) &&
 	    (_dm_dev_lookup(dev->name, NULL, dev->minor) == NULL)) {
 		TAILQ_INSERT_TAIL(&dm_dev_list, dev, next_devlist);
+		dm_dev_counter++;
 	} else {
 		KKASSERT(dmv != NULL);
 		r = EEXIST;
@@ -261,8 +263,6 @@ dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
 	if ((r = dm_dev_insert(dmv)) != 0)
 		dm_dev_destroy(dmv);
 
-	/* Increment device counter After creating device */
-	++dm_dev_counter; /* XXX: was atomic 64 */
 	*dmvp = dmv;
 
 	return r;
@@ -293,9 +293,6 @@ dm_dev_destroy(dm_dev_t *dmv)
 
 	/* Destroy device */
 	dm_dev_free(dmv);
-
-	/* Decrement device counter After removing device */
-	--dm_dev_counter; /* XXX: was atomic 64 */
 
 	return 0;
 }
