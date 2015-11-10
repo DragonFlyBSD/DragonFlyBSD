@@ -231,6 +231,17 @@ static int tcp_inflight_debug = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_debug, CTLFLAG_RW,
     &tcp_inflight_debug, 0, "Debug TCP inflight calculations");
 
+/*
+ * NOTE: tcp_inflight_start is essentially the starting receive window
+ *	 for a connection.  If set too low then fetches over tcp
+ *	 connections will take noticably longer to ramp-up over
+ *	 high-latency connections.  6144 is too low for a default,
+ *	 use something more reasonable.
+ */
+static int tcp_inflight_start = 33792;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_start, CTLFLAG_RW,
+    &tcp_inflight_start, 0, "Start value for TCP inflight window");
+
 static int tcp_inflight_min = 6144;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_min, CTLFLAG_RW,
     &tcp_inflight_min, 0, "Lower bound for TCP inflight window");
@@ -1961,7 +1972,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 		tp->t_bw_rtttime = save_ticks;
 		tp->t_bw_rtseq = ack_seq;
 		if (tp->snd_bandwidth == 0)
-			tp->snd_bandwidth = tcp_inflight_min;
+			tp->snd_bandwidth = tcp_inflight_start;
 		return;
 	}
 
