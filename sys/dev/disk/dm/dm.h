@@ -265,12 +265,10 @@ void dm_dev_busy(dm_dev_t *);
 int dm_dev_create(dm_dev_t **, const char *, const char *, int);
 int dm_dev_remove(dm_dev_t *);
 int dm_dev_remove_all(int);
-int dm_dev_destroy(dm_dev_t *);
 int dm_dev_free(dm_dev_t *);
 int dm_dev_insert(dm_dev_t *);
 dm_dev_t* dm_dev_lookup(const char *, const char *, int);
 prop_array_t dm_dev_prop_list(void);
-dm_dev_t* dm_dev_rem_dev(dm_dev_t *);
 dm_dev_t* dm_dev_rem(const char *, const char *, int);
 void dm_dev_unbusy(dm_dev_t *);
 

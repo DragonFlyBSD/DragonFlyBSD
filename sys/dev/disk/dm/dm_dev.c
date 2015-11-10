@@ -53,6 +53,7 @@ uint64_t dm_dev_counter;
 static dm_dev_t *dm_dev_lookup_name(const char *);
 static dm_dev_t *dm_dev_lookup_uuid(const char *);
 static dm_dev_t *dm_dev_lookup_minor(int);
+static int dm_dev_destroy(dm_dev_t *);
 
 static TAILQ_HEAD(dm_dev_head, dm_dev) dm_dev_list;
 
@@ -190,20 +191,6 @@ dm_dev_insert(dm_dev_t *dev)
 	return r;
 }
 
-dm_dev_t *
-dm_dev_rem_dev(dm_dev_t *dmv)
-{
-	if (dmv == NULL)
-		return NULL;
-
-	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
-	disable_dev(dmv);
-	lockmgr(&dm_dev_mutex, LK_RELEASE);
-
-	KKASSERT(dmv != NULL);
-	return dmv;
-}
-
 /*
  * Remove device selected with dm_dev from global list of devices.
  */
@@ -288,7 +275,7 @@ dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
 	return r;
 }
 
-int
+static int
 dm_dev_destroy(dm_dev_t *dmv)
 {
 	int minor;
@@ -327,7 +314,9 @@ int
 dm_dev_remove(dm_dev_t *dmv)
 {
 	/* Remove device from list and wait for refcnt to drop to zero */
-	dm_dev_rem_dev(dmv);
+	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
+	disable_dev(dmv);
+	lockmgr(&dm_dev_mutex, LK_RELEASE);
 
 	/* Destroy and free the device */
 	dm_dev_destroy(dmv);
