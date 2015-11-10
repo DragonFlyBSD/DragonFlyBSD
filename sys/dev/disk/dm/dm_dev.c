@@ -74,41 +74,46 @@ disable_dev(dm_dev_t *dmv)
 		cv_wait(&dmv->dev_cv, &dmv->dev_mtx);
 	lockmgr(&dmv->dev_mtx, LK_RELEASE);
 }
+
+static dm_dev_t *
+_dm_dev_lookup(const char *name, const char *uuid, int minor)
+{
+	dm_dev_t *dmv;
+
+	if (minor > 0) {
+		if ((dmv = dm_dev_lookup_minor(minor)))
+			return dmv;
+	}
+	if (name != NULL) {
+		if ((dmv = dm_dev_lookup_name(name)))
+			return dmv;
+	}
+	if (uuid != NULL) {
+		if ((dmv = dm_dev_lookup_uuid(uuid)))
+			return dmv;
+	}
+
+	return NULL;
+}
+
 /*
  * Generic function used to lookup dm_dev_t. Calling with dm_dev_name
  * and dm_dev_uuid NULL is allowed.
  */
 dm_dev_t *
-dm_dev_lookup(const char *dm_dev_name, const char *dm_dev_uuid,
-    int dm_dev_minor)
+dm_dev_lookup(const char *name, const char *uuid, int minor)
 {
 	dm_dev_t *dmv;
 
-	dmv = NULL;
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
-	/* KKASSERT(dm_dev_name != NULL && dm_dev_uuid != NULL && dm_dev_minor
-	 * > 0); */
-	if (dm_dev_minor > 0)
-		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL) {
-			dm_dev_busy(dmv);
-			lockmgr(&dm_dev_mutex, LK_RELEASE);
-			return dmv;
-		}
-	if (dm_dev_name != NULL)
-		if ((dmv = dm_dev_lookup_name(dm_dev_name)) != NULL) {
-			dm_dev_busy(dmv);
-			lockmgr(&dm_dev_mutex, LK_RELEASE);
-			return dmv;
-		}
-	if (dm_dev_uuid != NULL)
-		if ((dmv = dm_dev_lookup_uuid(dm_dev_uuid)) != NULL) {
-			dm_dev_busy(dmv);
-			lockmgr(&dm_dev_mutex, LK_RELEASE);
-			return dmv;
-		}
+	dmv = _dm_dev_lookup(name, uuid, minor);
+	if (dmv)
+		dm_dev_busy(dmv);
+
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
-	return NULL;
+
+	return dmv;
 }
 
 
@@ -179,8 +184,7 @@ dm_dev_insert(dm_dev_t *dev)
 		dmv = dm_dev_lookup_uuid(dev->uuid);
 
 	if ((dmv == NULL) &&
-	    ((dmv = dm_dev_lookup_name(dev->name)) == NULL) &&
-	    ((dmv = dm_dev_lookup_minor(dev->minor)) == NULL)) {
+	    (_dm_dev_lookup(dev->name, NULL, dev->minor) == NULL)) {
 		TAILQ_INSERT_TAIL(&dm_dev_list, dev, next_devlist);
 	} else {
 		KKASSERT(dmv != NULL);
@@ -191,31 +195,26 @@ dm_dev_insert(dm_dev_t *dev)
 	return r;
 }
 
+#if 0
 /*
  * Remove device selected with dm_dev from global list of devices.
  */
 dm_dev_t *
-dm_dev_rem(const char *dm_dev_name, const char *dm_dev_uuid, int dm_dev_minor)
+dm_dev_lookup_evict(const char *name, const char *uuid, int minor)
 {
-	dm_dev_t *dmv = NULL;
+	dm_dev_t *dmv;
 
 	lockmgr(&dm_dev_mutex, LK_EXCLUSIVE);
 
-	if (dm_dev_minor > 0) {
-		if ((dmv = dm_dev_lookup_minor(dm_dev_minor)) != NULL)
-			disable_dev(dmv);
-	} else if (dm_dev_name != NULL) {
-		if ((dmv = dm_dev_lookup_name(dm_dev_name)) != NULL)
-			disable_dev(dmv);
-	} else if (dm_dev_uuid != NULL) {
-		if ((dmv = dm_dev_lookup_name(dm_dev_uuid)) != NULL)
-			disable_dev(dmv);
-	}
+	dmv = _dm_dev_lookup(name, uuid, minor);
+	if (dmv)
+		disable_dev(dmv);
 
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
 
 	return dmv;
 }
+#endif
 
 int
 dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
