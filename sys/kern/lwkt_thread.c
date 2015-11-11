@@ -460,7 +460,7 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     } else {
 	lwkt_send_ipiq(gd, lwkt_init_thread_remote, td);
     }
-    dsched_new_thread(td);
+    dsched_enter_thread(td);
 }
 
 void

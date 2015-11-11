@@ -2231,14 +2231,6 @@ ${OSACPI_MI_DIR}/acpi_video/acpi_video.c	optional acpi_video acpi
 ${OSACPI_MI_DIR}/acpi_wmi/acpi_wmi.c		optional acpi_wmi acpi
 ${OSACPI_MI_DIR}/aibs/atk0110.c			optional aibs acpi
 
-# dsched stuff
-kern/dsched/as/as.c			optional dsched_as
-kern/dsched/fq/fq_core.c		optional dsched_fq
-kern/dsched/fq/fq_diskops.c		optional dsched_fq
-kern/dsched/bfq/bfq.c			optional dsched_bfq
-kern/dsched/bfq/wf2q.c			optional dsched_bfq
-kern/dsched/bfq/bfq_helper_thread.c	optional dsched_bfq
-
 # ACPICA code
 ${ACPICA_COMP_DIR}/debugger/dbcmds.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbconvert.c		optional acpi acpi_debug

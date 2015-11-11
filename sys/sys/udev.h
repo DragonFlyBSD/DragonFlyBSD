@@ -81,4 +81,4 @@ struct udev_event {
 	prop_dictionary_t	ev_dict;
 };
 
-#endif /* _SYS_DSCHED_H_ */
+#endif /* _SYS_UDEV_H_ */

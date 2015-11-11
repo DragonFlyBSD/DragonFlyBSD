@@ -166,7 +166,6 @@ struct buf {
 	unsigned char b_act_count;	/* similar to vm_page act_count */
 	unsigned char b_unused01;
 	struct lock b_lock;		/* Buffer lock */
-	void	*b_iosched;		/* I/O scheduler priv data */
 	buf_cmd_t b_cmd;		/* I/O command */
 	int	b_bufsize;		/* Allocated buffer size. */
 	int	b_runningbufspace;	/* when I/O is running, pipelining */

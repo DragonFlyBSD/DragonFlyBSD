@@ -295,7 +295,7 @@ struct	proc {
 
 	struct rusage	p_ru;		/* stats for this proc */
 	struct rusage	p_cru;		/* sum of stats for reaped children */
-	void		*p_dsched_priv1;
+	void		*p_unused01;
 
 /* The following fields are all copied upon creation in fork. */
 #define	p_startcopy	p_comm
@@ -316,9 +316,9 @@ struct	proc {
 	u_short		p_xstat;	/* Exit status or last stop signal */
 
 	int		p_ionice;
-	void		*p_dsched_priv2;
+	void		*p_unused02;
 /* End area that is copied on creation. */
-#define	p_endcopy	p_dsched_priv2
+#define	p_endcopy	p_unused02
 	u_short		p_acflag;	/* Accounting flags. */
 
 	int		p_lock;		/* Prevent proc destruction */

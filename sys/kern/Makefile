@@ -19,6 +19,6 @@ ${.CURDIR}/../sys/sysunion.h: ${.CURDIR}/makesyscalls.sh ${.CURDIR}/syscalls.mas
 	-mv -f ${.CURDIR}/../sys/sysunion.h ${.CURDIR}/../sys/sysunion.h.bak
 	cd ${.CURDIR} && sh makesyscalls.sh syscalls.master
 
-SUBDIR= dsched firmware libmchain
+SUBDIR= firmware libmchain
 
 .include <bsd.subdir.mk>

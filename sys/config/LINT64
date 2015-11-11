@@ -2298,7 +2298,6 @@ options	KTR_VERBOSE=1
 #options KTR_ACPI_EC
 #options KTR_CTXSW
 #options KTR_DMCRYPT
-#options KTR_DSCHED_BFQ
 #options KTR_ETHERNET
 #options KTR_HAMMER
 #options KTR_IFQ
@@ -2333,11 +2332,6 @@ options 	ALTQ_DEBUG	#for debugging
 # you might want to set kernel timer to 1kHz if you use CBQ,
 # especially with 100baseT
 #options 	HZ=1000
-
-# DSCHED stuff
-options		DSCHED_AS
-options		DSCHED_BFQ
-options		DSCHED_FQ
 
 # WATCHDOG
 options		WDOG_DISABLE_ON_PANIC	# Automatically disable watchdogs on panic

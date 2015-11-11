@@ -43,9 +43,10 @@
 #include <sys/tree.h>
 #include <sys/syslink_rpc.h>
 #include <sys/proc.h>
-#include <machine/stdarg.h>
-#include <sys/devfs.h>
 #include <sys/dsched.h>
+#include <sys/devfs.h>
+
+#include <machine/stdarg.h>
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
@@ -379,9 +380,7 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 	    track = &dev->si_track_write;
 	bio_track_ref(track);
 	bio->bio_track = track;
-
-	if (dsched_is_clear_buf_priv(bio->bio_buf))
-		dsched_new_buf(bio->bio_buf);
+	dsched_buf_enter(bio->bio_buf);	/* might stack */
 
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	if (needmplock) {

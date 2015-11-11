@@ -484,16 +484,14 @@ disk_msg_core(void *arg)
 			 * Interlock against struct disk enumerations.
 			 * Wait for enumerations to complete then remove
 			 * the dp from the list before tearing it down.
-			 *
-			 * This avoids races against e.g.
-			 * dsched_thread_io_alloc().
+			 * This avoids numerous races.
 			 */
 			lwkt_gettoken(&disklist_token);
 			while (dp->d_refs)
 				tsleep(&dp->d_refs, 0, "diskdel", hz / 10);
 			LIST_REMOVE(dp, d_list);
 
-			dsched_disk_destroy_callback(dp);
+			dsched_disk_destroy(dp);
 			devfs_destroy_related(dp->d_cdev);
 			destroy_dev(dp->d_cdev);
 			destroy_only_dev(dp->d_rawdev);
@@ -694,9 +692,9 @@ _disk_create_named(const char *name, int unit, struct disk *dp,
 	dp->d_cdev->si_disk = dp;
 
 	if (name)
-		dsched_disk_create_callback(dp, name, unit);
+		dsched_disk_create(dp, name, unit);
 	else
-		dsched_disk_create_callback(dp, raw_ops->head.name, unit);
+		dsched_disk_create(dp, raw_ops->head.name, unit);
 
 	lwkt_gettoken(&disklist_token);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
@@ -758,7 +756,7 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	if (oldserialno)
 		kfree(oldserialno, M_TEMP);
 
-	dsched_disk_update_callback(disk, info);
+	dsched_disk_update(disk, info);
 
 	/*
 	 * The caller may set d_media_size or d_media_blocks and we
@@ -1175,7 +1173,7 @@ diskstrategy(struct dev_strategy_args *ap)
 	 * or error due to being beyond the device size).
 	 */
 	if ((nbio = dscheck(dev, bio, dp->d_slice)) != NULL) {
-		dsched_queue(dp, nbio);
+		dev_dstrategy(dp->d_rawdev, nbio);
 	} else {
 		biodone(bio);
 	}

@@ -552,7 +552,6 @@ KTR_ALL				opt_ktr.h
 KTR_ACPI_EC			opt_ktr.h
 KTR_CTXSW			opt_ktr.h
 KTR_DMCRYPT			opt_ktr.h
-KTR_DSCHED_BFQ			opt_ktr.h
 KTR_ETHERNET			opt_ktr.h
 KTR_HAMMER			opt_ktr.h
 KTR_IFQ				opt_ktr.h
@@ -653,11 +652,6 @@ DCONS_FORCE_GDB		opt_dcons.h
 
 # deprecated drivers and options
 I_WANT_DEPRECATED_STUFF	opt_deprecated.h
-
-# DSCHED stuff
-DSCHED_AS		opt_dsched.h
-DSCHED_BFQ		opt_dsched.h
-DSCHED_FQ		opt_dsched.h
 
 # Receive Side Scaling (now basecode)
 RSS_DEBUG		opt_rss.h

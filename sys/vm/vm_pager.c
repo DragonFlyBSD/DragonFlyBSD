@@ -379,7 +379,6 @@ getpbuf(int *pfreecnt)
 	spin_unlock(&bswspin);
 
 	initpbuf(bp);
-	KKASSERT(dsched_is_clear_buf_priv(bp));
 
 	return (bp);
 }
@@ -412,7 +411,6 @@ getpbuf_kva(int *pfreecnt)
 	spin_unlock(&bswspin);
 
 	initpbuf(bp);
-	KKASSERT(dsched_is_clear_buf_priv(bp));
 
 	return (bp);
 }
@@ -485,7 +483,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	int wake_freecnt = 0;
 
 	KKASSERT(bp->b_flags & B_PAGING);
-	dsched_exit_buf(bp);
+	dsched_buf_exit(bp);
 
 	BUF_UNLOCK(bp);
 

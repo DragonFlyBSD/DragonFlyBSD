@@ -772,7 +772,7 @@ reinitbufbio(struct buf *bp)
 void
 uninitbufbio(struct buf *bp)
 {
-	dsched_exit_buf(bp);
+	dsched_buf_exit(bp);
 	BUF_LOCKFREE(bp);
 }
 
@@ -1127,8 +1127,7 @@ bdwrite(struct buf *bp)
 	}
 	bdirty(bp);
 
-	if (dsched_is_clear_buf_priv(bp))
-		dsched_new_buf(bp);
+	dsched_buf_enter(bp);	/* might stack */
 
 	/*
 	 * Set B_CACHE, indicating that the buffer is fully valid.  This is
@@ -1420,7 +1419,7 @@ brelse(struct buf *bp)
 	 * or B_RELBUF flags.
 	 */
 	bp->b_cmd = BUF_CMD_DONE;
-	dsched_exit_buf(bp);
+	dsched_buf_exit(bp);
 
 	/*
 	 * VMIO buffer rundown.  Make sure the VM page array is restored
@@ -1777,7 +1776,7 @@ bqrelse(struct buf *bp)
 	 * buffer is actively locked.
 	 */
 	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF);
-	dsched_exit_buf(bp);
+	dsched_buf_exit(bp);
 	BUF_UNLOCK(bp);
 }
 
@@ -3103,7 +3102,6 @@ loop:
 
 		allocbuf(bp, size);
 	}
-	KKASSERT(dsched_is_clear_buf_priv(bp));
 	return (bp);
 }
 
@@ -3146,7 +3144,6 @@ geteblk(int size)
 		;
 	allocbuf(bp, size);
 	bp->b_flags |= B_INVAL;	/* b_dep cleared by getnewbuf() */
-	KKASSERT(dsched_is_clear_buf_priv(bp));
 	return (bp);
 }
 
@@ -3540,9 +3537,8 @@ void
 bio_start_transaction(struct bio *bio, struct bio_track *track)
 {
 	bio->bio_track = track;
-	if (dsched_is_clear_buf_priv(bio->bio_buf))
-		dsched_new_buf(bio->bio_buf);
 	bio_track_ref(track);
+	dsched_buf_enter(bio->bio_buf);	/* might stack */
 }
 
 /*
@@ -3602,9 +3598,8 @@ vn_strategy(struct vnode *vp, struct bio *bio)
                 track = &vp->v_track_write;
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	bio->bio_track = track;
-	if (dsched_is_clear_buf_priv(bio->bio_buf))
-		dsched_new_buf(bio->bio_buf);
 	bio_track_ref(track);
+	dsched_buf_enter(bp);	/* might stack */
         vop_strategy(*vp->v_ops, vp, bio);
 }
 

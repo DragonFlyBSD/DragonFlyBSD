@@ -271,7 +271,7 @@ struct thread {
     __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging */
-    void	*td_dsched_priv1;	/* priv data for I/O schedulers */
+    void	*td_unused01;	/* (future I/O scheduler heuristic) */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
     int		td_contended;	/* token contention count */
