@@ -54,6 +54,8 @@ static dm_dev_t *dm_dev_lookup_name(const char *);
 static dm_dev_t *dm_dev_lookup_uuid(const char *);
 static dm_dev_t *dm_dev_lookup_minor(int);
 static int dm_dev_destroy(dm_dev_t *);
+static dm_dev_t *dm_dev_alloc(const char *, const char *);
+static int dm_dev_free(dm_dev_t *);
 
 static TAILQ_HEAD(dm_dev_head, dm_dev) dm_dev_list;
 
@@ -223,16 +225,8 @@ dm_dev_create(dm_dev_t **dmvp, const char *name, const char *uuid, int flags)
 	char name_buf[MAXPATHLEN];
 	int r, dm_minor;
 
-	if ((dmv = dm_dev_alloc()) == NULL)
+	if ((dmv = dm_dev_alloc(name, uuid)) == NULL)
 		return ENOMEM;
-
-	if (uuid)
-		strncpy(dmv->uuid, uuid, DM_UUID_LEN);
-	else
-		dmv->uuid[0] = '\0';
-
-	if (name)
-		strlcpy(dmv->name, name, DM_NAME_LEN);
 
 	dm_minor = devfs_clone_bitmap_get(&dm_minor_bitmap, 0);
 
@@ -355,22 +349,32 @@ dm_dev_remove_all(int gentle)
 /*
  * Allocate new device entry.
  */
-dm_dev_t *
-dm_dev_alloc(void)
+static dm_dev_t *
+dm_dev_alloc(const char *name, const char*uuid)
 {
 	dm_dev_t *dmv;
 
-	dmv = kmalloc(sizeof(dm_dev_t), M_DM, M_WAITOK | M_ZERO);
+	dmv = kmalloc(sizeof(*dmv), M_DM, M_WAITOK | M_ZERO);
+	if (dmv == NULL)
+		return NULL;
 
-	if (dmv != NULL)
-		dmv->diskp = kmalloc(sizeof(struct disk), M_DM, M_WAITOK | M_ZERO);
+	dmv->diskp = kmalloc(sizeof(*dmv->diskp), M_DM, M_WAITOK | M_ZERO);
+	if (dmv->diskp == NULL) {
+		kfree(dmv, M_DM);
+		return NULL;
+	}
+
+	if (name)
+		strlcpy(dmv->name, name, sizeof(dmv->name));
+	if (uuid)
+		strncpy(dmv->uuid, uuid, sizeof(dmv->uuid));
 
 	return dmv;
 }
 /*
  * Freed device entry.
  */
-int
+static int
 dm_dev_free(dm_dev_t *dmv)
 {
 	KKASSERT(dmv != NULL);

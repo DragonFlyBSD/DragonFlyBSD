@@ -46,7 +46,7 @@ static TAILQ_HEAD(, dm_pdev) dm_pdev_list;
 static struct lock dm_pdev_mutex;
 
 static dm_pdev_t *dm_pdev_alloc(const char *);
-static int dm_pdev_rem(dm_pdev_t *);
+static int dm_pdev_free(dm_pdev_t *);
 static dm_pdev_t *dm_pdev_lookup_name(const char *);
 
 /*
@@ -147,7 +147,7 @@ dm_pdev_insert(const char *dev_name)
 	if (error) {
 		dmdebug("dk_lookup on device: %s failed with error %d!\n",
 		    dev_name, error);
-		dm_pdev_rem(dmp);
+		dm_pdev_free(dmp);
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		return NULL;
 	}
@@ -155,7 +155,7 @@ dm_pdev_insert(const char *dev_name)
 
 	if (dm_pdev_get_vattr(dmp, &va) == -1) {
 		dmdebug("makeudev %s failed\n", dev_name);
-		dm_pdev_rem(dmp);
+		dm_pdev_free(dmp);
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
 		return NULL;
 	}
@@ -200,13 +200,12 @@ dm_pdev_alloc(const char *name)
 {
 	dm_pdev_t *dmp;
 
-	if ((dmp = kmalloc(sizeof(dm_pdev_t), M_DM, M_WAITOK | M_ZERO)) == NULL)
+	dmp = kmalloc(sizeof(*dmp), M_DM, M_WAITOK | M_ZERO);
+	if (dmp == NULL)
 		return NULL;
 
-	strlcpy(dmp->name, name, MAX_DEV_NAME);
-
-	dmp->ref_cnt = 0;
-	dmp->pdev_vnode = NULL;
+	if (name)
+		strlcpy(dmp->name, name, MAX_DEV_NAME);
 
 	return dmp;
 }
@@ -214,7 +213,7 @@ dm_pdev_alloc(const char *name)
  * Destroy allocated dm_pdev.
  */
 static int
-dm_pdev_rem(dm_pdev_t *dmp)
+dm_pdev_free(dm_pdev_t *dmp)
 {
 	int err;
 
@@ -222,8 +221,10 @@ dm_pdev_rem(dm_pdev_t *dmp)
 
 	if (dmp->pdev_vnode != NULL) {
 		err = vn_close(dmp->pdev_vnode, FREAD | FWRITE, NULL);
-		if (err != 0)
+		if (err != 0) {
+			kfree(dmp, M_DM);
 			return err;
+		}
 	}
 	kfree(dmp, M_DM);
 
@@ -254,7 +255,7 @@ dm_pdev_decr(dm_pdev_t *dmp)
 	if (--dmp->ref_cnt == 0) {
 		TAILQ_REMOVE(&dm_pdev_list, dmp, next_pdev);
 		lockmgr(&dm_pdev_mutex, LK_RELEASE);
-		dm_pdev_rem(dmp);
+		dm_pdev_free(dmp);
 		return 0;
 	}
 	lockmgr(&dm_pdev_mutex, LK_RELEASE);
@@ -319,7 +320,7 @@ dm_pdev_uninit(void)
 
 	while ((dmp = TAILQ_FIRST(&dm_pdev_list)) != NULL) {
 		TAILQ_REMOVE(&dm_pdev_list, dmp, next_pdev);
-		dm_pdev_rem(dmp);
+		dm_pdev_free(dmp);
 	}
 	KKASSERT(TAILQ_EMPTY(&dm_pdev_list));
 

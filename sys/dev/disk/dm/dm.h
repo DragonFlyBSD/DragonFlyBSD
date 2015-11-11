@@ -260,12 +260,10 @@ void dm_table_free_deps(dm_table_entry_t *table_en);
 /* dm_dev.c */
 int dm_dev_init(void);
 int dm_dev_uninit(void);
-dm_dev_t* dm_dev_alloc(void);
 void dm_dev_busy(dm_dev_t *);
 int dm_dev_create(dm_dev_t **, const char *, const char *, int);
 int dm_dev_remove(dm_dev_t *);
 int dm_dev_remove_all(int);
-int dm_dev_free(dm_dev_t *);
 int dm_dev_insert(dm_dev_t *);
 dm_dev_t* dm_dev_lookup(const char *, const char *, int);
 prop_array_t dm_dev_prop_list(void);
