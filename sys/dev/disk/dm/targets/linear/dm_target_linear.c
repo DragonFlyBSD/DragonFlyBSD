@@ -189,7 +189,6 @@ dmtl_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[0] = 1;
 		dmt->version[1] = 0;
 		dmt->version[2] = 2;
-		strlcpy(dmt->name, "linear", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_linear_init;
 		dmt->destroy = &dm_target_linear_destroy;
 		dmt->strategy = &dm_target_linear_strategy;

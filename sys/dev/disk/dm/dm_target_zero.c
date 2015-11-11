@@ -95,7 +95,6 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[0] = 1;
 		dmt->version[1] = 0;
 		dmt->version[2] = 0;
-		strlcpy(dmt->name, "zero", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_zero_init;
 		dmt->destroy = &dm_target_zero_destroy;
 		dmt->strategy = &dm_target_zero_strategy;

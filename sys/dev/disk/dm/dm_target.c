@@ -208,8 +208,18 @@ dm_target_rem(char *dm_target_name)
 dm_target_t *
 dm_target_alloc(const char *name)
 {
-	return kmalloc(sizeof(dm_target_t), M_DM, M_WAITOK | M_ZERO);
+	dm_target_t *dmt;
+
+	dmt = kmalloc(sizeof(*dmt), M_DM, M_WAITOK | M_ZERO);
+	if (dmt == NULL)
+		return NULL;
+
+	if (name)
+		strlcpy(dmt->name, name, sizeof(dmt->name));
+
+	return dmt;
 }
+
 /*
  * Return prop_array of dm_target dictionaries.
  */

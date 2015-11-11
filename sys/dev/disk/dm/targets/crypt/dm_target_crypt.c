@@ -1428,7 +1428,6 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[0] = 1;
 		dmt->version[1] = 6;
 		dmt->version[2] = 0;
-		strlcpy(dmt->name, "crypt", DM_MAX_TYPE_NAME);
 		dmt->init = &dm_target_crypt_init;
 		dmt->destroy = &dm_target_crypt_destroy;
 		dmt->strategy = &dm_target_crypt_strategy;
