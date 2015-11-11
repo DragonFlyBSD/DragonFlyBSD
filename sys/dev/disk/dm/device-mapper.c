@@ -161,6 +161,7 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 		 */
 		if (dm_dev_counter > 0)
 			return EBUSY;
+		/* race window here */
 
 		error = dmdestroy();
 		if (error)
