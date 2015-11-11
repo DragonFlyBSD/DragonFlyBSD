@@ -100,7 +100,7 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		break;
 
 	case MOD_UNLOAD:
-		err = dm_target_rem("error");
+		err = dm_target_remove("error");
 		if (err == 0)
 			kprintf("dm_target_error: unloaded\n");
 		break;

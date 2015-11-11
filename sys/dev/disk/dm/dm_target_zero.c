@@ -105,7 +105,7 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		break;
 
 	case MOD_UNLOAD:
-		err = dm_target_rem("zero");
+		err = dm_target_remove("zero");
 		if (err == 0)
 			kprintf("dm_target_zero: unloaded\n");
 		break;

@@ -1440,7 +1440,7 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 		break;
 
 	case MOD_UNLOAD:
-		err = dm_target_rem("crypt");
+		err = dm_target_remove("crypt");
 		if (err == 0) {
 			kprintf("dm_target_crypt: unloaded\n");
 		}

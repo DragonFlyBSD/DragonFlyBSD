@@ -175,7 +175,7 @@ dm_target_insert(dm_target_t *dm_target)
  * Remove target from TAIL, target is selected with it's name.
  */
 int
-dm_target_rem(char *dm_target_name)
+dm_target_remove(char *dm_target_name)
 {
 	dm_target_t *dmt;
 

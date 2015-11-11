@@ -437,7 +437,7 @@ dmtd_mod_handler(module_t mod, int type, void *unused)
 		break;
 
 	case MOD_UNLOAD:
-		err = dm_target_rem("delay");
+		err = dm_target_remove("delay");
 		if (err == 0)
 			kprintf("dm_target_delay: unloaded\n");
 		_objcache_destroy();

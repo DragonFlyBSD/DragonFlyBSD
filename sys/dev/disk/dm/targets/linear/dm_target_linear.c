@@ -201,7 +201,7 @@ dmtl_mod_handler(module_t mod, int type, void *unused)
 		break;
 
 	case MOD_UNLOAD:
-		err = dm_target_rem("linear");
+		err = dm_target_remove("linear");
 		if (err == 0)
 			kprintf("dm_target_linear: unloaded\n");
 		break;
