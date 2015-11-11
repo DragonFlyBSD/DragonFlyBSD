@@ -197,7 +197,7 @@ dm_target_rem(char *dm_target_name)
 
 	lockmgr(&dm_target_mutex, LK_RELEASE);
 
-	kfree(dmt, M_DM);
+	dm_target_free(dmt);
 
 	return 0;
 }
@@ -218,6 +218,16 @@ dm_target_alloc(const char *name)
 		strlcpy(dmt->name, name, sizeof(dmt->name));
 
 	return dmt;
+}
+
+int
+dm_target_free(dm_target_t *dmt)
+{
+	KKASSERT(dmt != NULL);
+
+	kfree(dmt, M_DM);
+
+	return 0;
 }
 
 /*
@@ -282,7 +292,7 @@ dm_target_uninit(void)
 
 	while ((dm_target = TAILQ_FIRST(&dm_target_list)) != NULL) {
 		TAILQ_REMOVE(&dm_target_list, dm_target, dm_target_next);
-		kfree(dm_target, M_DM);
+		dm_target_free(dm_target);
 	}
 	KKASSERT(TAILQ_EMPTY(&dm_target_list));
 

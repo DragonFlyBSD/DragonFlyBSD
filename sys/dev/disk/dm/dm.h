@@ -225,6 +225,7 @@ int dm_message_ioctl(prop_dictionary_t);
 int dm_target_init(void);
 int dm_target_uninit(void);
 dm_target_t* dm_target_alloc(const char *);
+int dm_target_free(dm_target_t *);
 dm_target_t* dm_target_autoload(const char *);
 int dm_target_insert(dm_target_t *);
 prop_array_t dm_target_prop_list(void);
