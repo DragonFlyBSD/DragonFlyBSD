@@ -79,4 +79,9 @@ static inline u64 get_jiffies_64(void)
 	return (u64)ticks;
 }
 
+static inline u64 nsecs_to_jiffies(u64 n)
+{
+	return (n * hz) / NSEC_PER_SEC;
+}
+
 #endif	/* _LINUX_JIFFIES_H_ */
