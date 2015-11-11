@@ -762,6 +762,9 @@ sc_update_render(scr_stat *scp)
 	sc_term_sw_t *sw;
 	struct tty *tp;
 	int prev_ysize, new_ysize;
+#ifndef SC_NO_HISTORY
+	int old_xpos, old_ypos;
+#endif
 	int error;
 
 	sw = scp->tsw;
@@ -793,7 +796,12 @@ sc_update_render(scr_stat *scp)
 		}
 		new_ysize = 0;
 #ifndef SC_NO_HISTORY
+		old_xpos = old_ypos = 0;
 		if (scp->history != NULL) {
+			if (scp->xsize > 0) {
+				old_xpos = scp->xpos;
+				old_ypos = scp->ypos;
+			}
 			sc_hist_save(scp);
 			new_ysize = sc_vtb_rows(scp->history);
 		}
@@ -850,6 +858,10 @@ sc_update_render(scr_stat *scp)
 #endif
 #ifndef SC_NO_HISTORY
 		sc_alloc_history_buffer(scp, new_ysize, prev_ysize, FALSE);
+		if (scp->history != NULL) {
+			sc_hist_getback(scp, prev_ysize);
+			sc_move_cursor(scp, old_xpos, old_ypos);
+		}
 #endif
 		crit_exit();
 		scp->status &= ~UNKNOWN_MODE;

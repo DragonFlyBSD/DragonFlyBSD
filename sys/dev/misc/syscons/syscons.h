@@ -537,6 +537,7 @@ void		sc_hist_save(scr_stat *scp);
 		sc_vtb_append(&(scp)->vtb, (from), (scp)->history, (scp)->xsize)
 int		sc_hist_restore(scr_stat *scp);
 void		sc_hist_home(scr_stat *scp);
+void		sc_hist_getback(scr_stat *scp, int old_ysize);
 void		sc_hist_end(scr_stat *scp);
 int		sc_hist_up_line(scr_stat *scp);
 int		sc_hist_down_line(scr_stat *scp);

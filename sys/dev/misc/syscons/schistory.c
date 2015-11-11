@@ -66,6 +66,7 @@ static int		extra_history_size
 /* local functions */
 static void copy_history(sc_vtb_t *from, sc_vtb_t *to);
 static void history_to_screen(scr_stat *scp);
+static void history_to_screen_lines(scr_stat *scp, int cnt);
 
 /* allocate a history buffer */
 int
@@ -220,14 +221,22 @@ sc_hist_restore(scr_stat *scp)
 static void
 history_to_screen(scr_stat *scp)
 {
+	history_to_screen_lines(scp, scp->ysize);
+}
+
+/* copy cnt of saved lines */
+static void
+history_to_screen_lines(scr_stat *scp, int cnt)
+{
 	int pos;
 	int i;
+	int lines = imin(cnt, scp->ysize);
 
 	pos = scp->history_pos;
-	for (i = 1; i <= scp->ysize; ++i) {
+	for (i = 1; i <= lines; ++i) {
 		pos = sc_vtb_pos(scp->history, pos, -scp->xsize);
 		sc_vtb_copy(scp->history, pos,
-			    &scp->vtb, scp->xsize*(scp->ysize - i),
+			    &scp->vtb, scp->xsize*(lines - i),
 			    scp->xsize);
 	}
 	mark_all(scp);
@@ -239,6 +248,14 @@ sc_hist_home(scr_stat *scp)
 {
 	scp->history_pos = sc_vtb_tail(scp->history);
 	history_to_screen(scp);
+}
+
+/* Restore old_ysize lines from the tail of the history buffer */
+void
+sc_hist_getback(scr_stat *scp, int old_ysize)
+{
+	scp->history_pos = sc_vtb_tail(scp->history);
+	history_to_screen_lines(scp, old_ysize);
 }
 
 /* go to the top of the history buffer */
