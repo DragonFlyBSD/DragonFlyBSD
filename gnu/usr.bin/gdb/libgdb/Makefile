@@ -171,9 +171,9 @@ XMLFILES= \
 	traceframe-info.dtd \
 	btrace.dtd
 
-DPADD=	${LIBEDIT} ${LIBKVM} ${LIBTERMCAP} ${LIBM}
+DPADD=	${LIBKVM} ${LIBTERMCAP} ${LIBM}
 DPADD+=	../libbfd/libbfd.a ../libopcodes/libopcodes.a ../libiberty/libiberty.a
-LDADD=	-ledit -ltermcap -lm
+LDADD=	-ltermcap -lm
 LDADD+=	-L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
 
 .include "Makefile.${TARGET_ARCH}"
