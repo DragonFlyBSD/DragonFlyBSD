@@ -576,9 +576,10 @@ uipc_send(netmsg_t msg)
 			lwkt_gettoken(&unp_token);
 			error = unp_find_lockref(msg->send.nm_addr,
 			    msg->send.nm_td, so->so_type, &unp2);
-			lwkt_reltoken(&unp_token);
-			if (error)
+			if (error) {
+				lwkt_reltoken(&unp_token);
 				break;
+			}
 			/*
 			 * NOTE:
 			 * unp2 is locked and referenced.
@@ -587,6 +588,7 @@ uipc_send(netmsg_t msg)
 			 * and referenced.
 			 */
 			unp_reltoken(unp2);
+			lwkt_reltoken(&unp_token);
 		} else {
 			if (unp->unp_conn == NULL) {
 				error = ENOTCONN;
