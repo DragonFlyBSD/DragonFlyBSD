@@ -2230,6 +2230,10 @@ TO_REMOVE+=/usr/include/lzma/lzma.h
 TO_REMOVE+=/usr/share/locale/en_US.ISO-8859-1
 TO_REMOVE+=/usr/share/locale/ja_JP.eucjp
 TO_REMOVE+=/boot/kernel/i915kms.ko
+TO_REMOVE+=/boot/kernel/dsched_as.ko
+TO_REMOVE+=/boot/kernel/dsched_bfq.ko
+TO_REMOVE+=/boot/kernel/dsched_fw.ko
+TO_REMOVE+=/usr/share/man/man4/dsched_bfq.4.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
