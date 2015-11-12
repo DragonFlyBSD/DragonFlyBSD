@@ -455,12 +455,8 @@ dm_target_stripe_dump(dm_table_entry_t *table_en, void *data, size_t length, off
 static int
 dm_target_stripe_destroy(dm_table_entry_t *table_en)
 {
-	dm_target_stripe_config_t *tsc;
-
-	if ((tsc = table_en->target_config) != NULL) {
-		table_en->target_config = NULL;
-		dm_target_stripe_destroy_config(tsc);
-	}
+	if (table_en->target_config != NULL)
+		dm_target_stripe_destroy_config(table_en->target_config);
 
 	return 0;
 }

@@ -74,8 +74,6 @@ dm_target_zero_strategy(dm_table_entry_t *table_en, struct buf *bp)
 static int
 dm_target_zero_destroy(dm_table_entry_t *table_en)
 {
-	table_en->target_config = NULL;
-
 	return 0;
 }
 

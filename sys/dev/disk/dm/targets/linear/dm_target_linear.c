@@ -168,8 +168,6 @@ dm_target_linear_destroy(dm_table_entry_t *table_en)
 
 	kfree(table_en->target_config, M_DMLINEAR);
 
-	table_en->target_config = NULL;
-
 	return 0;
 }
 

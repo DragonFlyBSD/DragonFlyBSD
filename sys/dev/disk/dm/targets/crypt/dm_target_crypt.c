@@ -765,7 +765,6 @@ dm_target_crypt_destroy(dm_table_entry_t *table_en)
 	priv = table_en->target_config;
 	if (priv == NULL)
 		return 0;
-	table_en->target_config = NULL;
 	dm_pdev_decr(priv->pdev);
 
 	/*

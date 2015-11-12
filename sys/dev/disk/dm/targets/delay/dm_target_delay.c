@@ -319,7 +319,6 @@ dm_target_delay_destroy(dm_table_entry_t *table_en)
 	_destroy(&tdc->write);
 
 	kfree(tdc, M_DMDELAY);
-	table_en->target_config = NULL;
 
 	return 0;
 }

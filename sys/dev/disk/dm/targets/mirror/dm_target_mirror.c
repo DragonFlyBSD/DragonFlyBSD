@@ -96,8 +96,6 @@ dm_target_mirror_strategy(dm_table_entry_t *table_en, struct buf *bp)
 int
 dm_target_mirror_destroy(dm_table_entry_t *table_en)
 {
-	table_en->target_config = NULL;
-
 	/* Unbusy target so we can unload it */
 	dm_target_unbusy(table_en->target);
 
