@@ -88,7 +88,6 @@ MAN=	aac.4 \
 	dpt.4 \
 	drm.4 \
 	dsched.4 \
-	dsched_bfq.4 \
 	dummynet.4 \
 	ecc.4 \
 	ehci.4 \
