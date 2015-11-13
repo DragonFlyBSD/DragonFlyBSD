@@ -33,9 +33,7 @@
  * This file implements initial version of device-mapper error target.
  */
 #include <sys/types.h>
-
 #include <sys/buf.h>
-
 #include <dev/disk/dm/dm.h>
 
 /* Init function called from dm_table_load_ioctl. */

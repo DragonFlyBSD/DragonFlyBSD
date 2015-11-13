@@ -32,7 +32,6 @@
 #ifndef _DM_DEV_H_
 #define _DM_DEV_H_
 
-
 #ifdef _KERNEL
 
 #include <sys/errno.h>
@@ -54,16 +53,19 @@
 
 #include <libprop/proplib.h>
 
+#define DM_VERSION_MAJOR	4
+#define DM_VERSION_MINOR	16
+#define DM_VERSION_PATCHLEVEL	0
+
 #define DM_MAX_TYPE_NAME 16
+#define DM_MAX_DEV_NAME 32
+#define DM_MAX_PARAMS_SIZE 1024
+
 #define DM_NAME_LEN 128
 #define DM_UUID_LEN 129
 
-#define DM_VERSION_MAJOR	4
-#define DM_VERSION_MINOR	16
-
-#define DM_VERSION_PATCHLEVEL	0
-
-/*** Internal device-mapper structures ***/
+#define DM_TABLE_ACTIVE 0
+#define DM_TABLE_INACTIVE 1
 
 typedef struct dm_mapping {
 	union {
@@ -102,17 +104,14 @@ typedef struct dm_table_head {
 	int	 io_cnt;
 } dm_table_head_t;
 
-#define MAX_DEV_NAME 32
-
 /*
  * This structure is used to store opened vnodes for disk with name.
  * I need this because devices can be opened only once, but I can
  * have more then one device on one partition.
  */
-
 typedef struct dm_pdev {
-	char name[MAX_DEV_NAME];
-	char udev_name[MAX_DEV_NAME];
+	char name[DM_MAX_DEV_NAME];
+	char udev_name[DM_MAX_DEV_NAME];
 	udev_t udev;
 	struct partinfo pdev_pinfo; /* partinfo of the underlying device */
 
@@ -140,7 +139,7 @@ typedef struct dm_dev {
 	/* uint32_t event_nr; */
 	uint32_t ref_cnt;
 
-	uint32_t dev_type;
+	uint32_t dev_type; /* DM_XXX_DEV, but not used  */
 	uint32_t is_open;
 
 	dm_table_head_t table_head;
@@ -165,10 +164,8 @@ typedef struct dm_dev {
 #define DM_RAID1_DEV           (1 << 10)
 #define DM_DELAY_DEV           (1 << 11)
 
-/* for zero, error : dm_target->target_config == NULL */
-
 /*
- * Target config is initiated with target_init function.
+ * Target config is initiated with dm_target_init function.
  */
 
 /* constant dm_target structures for error, zero, linear, stripes etc. */
@@ -197,61 +194,53 @@ typedef struct dm_target {
 	TAILQ_ENTRY(dm_target) dm_target_next;
 } dm_target_t;
 
-/* Interface structures */
-
-/* device-mapper */
+/* device-mapper.c */
 void dmsetdiskinfo(struct disk *, dm_table_head_t *);
+uint64_t atoi64(const char *);
+char *dm_alloc_string(int len);
+void dm_builtin_init(void *);
+void dm_builtin_uninit(void *);
+MALLOC_DECLARE(M_DM);
+extern int dm_debug_level;
 
 /* dm_ioctl.c */
+int dm_list_versions_ioctl(prop_dictionary_t);
 int dm_dev_create_ioctl(prop_dictionary_t);
 int dm_dev_list_ioctl(prop_dictionary_t);
+int dm_dev_rename_ioctl(prop_dictionary_t);
 int dm_dev_remove_ioctl(prop_dictionary_t);
 int dm_dev_remove_all_ioctl(prop_dictionary_t);
-int dm_dev_rename_ioctl(prop_dictionary_t);
-int dm_dev_resume_ioctl(prop_dictionary_t);
 int dm_dev_status_ioctl(prop_dictionary_t);
 int dm_dev_suspend_ioctl(prop_dictionary_t);
-
-int dm_check_version(prop_dictionary_t);
-int dm_list_versions_ioctl(prop_dictionary_t);
-
+int dm_dev_resume_ioctl(prop_dictionary_t);
 int dm_table_clear_ioctl(prop_dictionary_t);
 int dm_table_deps_ioctl(prop_dictionary_t);
 int dm_table_load_ioctl(prop_dictionary_t);
 int dm_table_status_ioctl(prop_dictionary_t);
 int dm_message_ioctl(prop_dictionary_t);
+int dm_check_version(prop_dictionary_t);
 
 /* dm_target.c */
-int dm_target_init(void);
-int dm_target_uninit(void);
+void dm_target_busy(dm_target_t *);
+void dm_target_unbusy(dm_target_t *);
+dm_target_t* dm_target_autoload(const char *);
+dm_target_t* dm_target_lookup(const char *);
+int dm_target_insert(dm_target_t *);
+int dm_target_remove(char *);
 dm_target_t* dm_target_alloc(const char *);
 int dm_target_free(dm_target_t *);
-dm_target_t* dm_target_autoload(const char *);
-int dm_target_insert(dm_target_t *);
 prop_array_t dm_target_prop_list(void);
-dm_target_t* dm_target_lookup(const char *);
-int dm_target_remove(char *);
-void dm_target_unbusy(dm_target_t *);
-void dm_target_busy(dm_target_t *);
-
-#define DM_MAX_PARAMS_SIZE 1024
-
-/* Generic function used to convert char to string */
-uint64_t atoi64(const char *);
-
-char *dm_alloc_string(int len);
+int dm_target_init(void);
+int dm_target_uninit(void);
 
 /* dm_table.c  */
-#define DM_TABLE_ACTIVE 0
-#define DM_TABLE_INACTIVE 1
-
+dm_table_t *dm_table_get_entry(dm_table_head_t *, uint8_t);
+void dm_table_release(dm_table_head_t *, uint8_t s);
+void dm_table_switch_tables(dm_table_head_t *);
 int dm_table_destroy(dm_table_head_t *, uint8_t);
 uint64_t dm_table_size(dm_table_head_t *);
 uint64_t dm_inactive_table_size(dm_table_head_t *);
-dm_table_t *dm_table_get_entry(dm_table_head_t *, uint8_t);
 int dm_table_get_target_count(dm_table_head_t *, uint8_t);
-void dm_table_release(dm_table_head_t *, uint8_t s);
-void dm_table_switch_tables(dm_table_head_t *);
 void dm_table_head_init(dm_table_head_t *);
 void dm_table_head_destroy(dm_table_head_t *);
 void dm_table_init_target(dm_table_entry_t *table_en, uint32_t type, void *cfg);
@@ -259,35 +248,28 @@ int dm_table_add_deps(dm_table_entry_t *table_en, dm_pdev_t *pdev);
 void dm_table_free_deps(dm_table_entry_t *table_en);
 
 /* dm_dev.c */
-int dm_dev_init(void);
-int dm_dev_uninit(void);
-void dm_dev_busy(dm_dev_t *);
-int dm_dev_create(dm_dev_t **, const char *, const char *, int);
-int dm_dev_remove(dm_dev_t *);
-int dm_dev_remove_all(int);
-int dm_dev_insert(dm_dev_t *);
 dm_dev_t* dm_dev_lookup(const char *, const char *, int);
-prop_array_t dm_dev_prop_list(void);
+int dm_dev_insert(dm_dev_t *);
 #if 0
 dm_dev_t* dm_dev_lookup_evict(const char *, const char *, int);
 #endif
+int dm_dev_create(dm_dev_t **, const char *, const char *, int);
+int dm_dev_remove(dm_dev_t *);
+int dm_dev_remove_all(int);
+void dm_dev_busy(dm_dev_t *);
 void dm_dev_unbusy(dm_dev_t *);
+prop_array_t dm_dev_prop_list(void);
+int dm_dev_init(void);
+int dm_dev_uninit(void);
 
 /* dm_pdev.c */
-int dm_pdev_init(void);
-int dm_pdev_uninit(void);
+off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
+dm_pdev_t* dm_pdev_insert(const char *);
 int dm_pdev_decr(dm_pdev_t *);
 uint64_t dm_pdev_get_udev(dm_pdev_t *);
 int dm_pdev_get_vattr(dm_pdev_t *, struct vattr *);
-dm_pdev_t* dm_pdev_insert(const char *);
-off_t dm_pdev_correct_dump_offset(dm_pdev_t *, off_t);
-
-/* dm builtin magic */
-void dm_builtin_init(void *);
-void dm_builtin_uninit(void *);
-
-extern int dm_debug_level;
-MALLOC_DECLARE(M_DM);
+int dm_pdev_init(void);
+int dm_pdev_uninit(void);
 
 #define dmdebug(format, ...)	\
     do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)

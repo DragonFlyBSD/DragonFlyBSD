@@ -36,7 +36,6 @@
 
 #include <sys/types.h>
 #include <sys/ctype.h>
-
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/device.h>
@@ -70,7 +69,6 @@ static int dm_ioctl_switch(u_long);
 static void dmminphys(struct buf *);
 #endif
 
-/* ***Variable-definitions*** */
 struct dev_ops dm_ops = {
 	{ "dm", 0, D_DISK | D_MPSAFE },
 	.d_open		= dmopen,
@@ -81,7 +79,6 @@ struct dev_ops dm_ops = {
 	.d_strategy	= dmstrategy,
 	.d_psize	= dmsize,
 	.d_dump		= dmdump,
-/* D_DISK */
 };
 
 MALLOC_DEFINE(M_DM, "dm", "Device Mapper allocations");
@@ -137,7 +134,9 @@ static struct cmd_function {
 	{.cmd = "message",    .fn = dm_message_ioctl},
 };
 
-/* New module handle routine */
+/*
+ * New module handle routine
+ */
 static int
 dm_modcmd(module_t mod, int cmd, void *unused)
 {
@@ -185,7 +184,9 @@ dm_doinit(void)
 	dmcdev = make_dev(&dm_ops, 0, UID_ROOT, GID_OPERATOR, 0640, "mapper/control");
 }
 
-/* Destroy routine */
+/*
+ * Destroy routine
+ */
 static int
 dmdestroy(void)
 {
@@ -247,7 +248,7 @@ dmioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	void *data = ap->a_data;
-	struct plistref *pref = (struct plistref *)data;
+	struct plistref *pref;
 
 	int r, err;
 	prop_dictionary_t dm_dict_in;
@@ -263,6 +264,7 @@ dmioctl(struct dev_ioctl_args *ap)
 	if ((r = dm_ioctl_switch(cmd)) != 0)
 		return r;  /* Not NETBSD_DM_IOCTL */
 
+	pref = (struct plistref *)data;  /* data is for libprop */
 	if ((r = prop_dictionary_copyin_ioctl(pref, cmd, &dm_dict_in)) != 0)
 		return r;
 
@@ -312,7 +314,9 @@ dm_cmd_to_fun(prop_dictionary_t dm_dict)
 	return p->fn(dm_dict);
 }
 
-/* Call apropriate ioctl handler function. */
+/*
+ * Call apropriate ioctl handler function.
+ */
 static int
 dm_ioctl_switch(u_long cmd)
 {
@@ -330,10 +334,9 @@ dm_ioctl_switch(u_long cmd)
 	return 0;
 }
 
- /*
-  * Check for disk specific ioctls.
-  */
-
+/*
+ * Check for disk specific ioctls.
+ */
 static int
 disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 {
@@ -384,7 +387,7 @@ dmstrategy(struct dev_strategy_args *ap)
 	int bypass;
 
 	dm_dev_t *dmv;
-	dm_table_t  *tbl;
+	dm_table_t *tbl;
 	dm_table_entry_t *table_en;
 	struct buf *nestbuf;
 
@@ -516,7 +519,6 @@ dmdump(struct dev_dump_args *ap)
 
 	/* Select active table */
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
-
 
 	/*
 	 * Find out what tables I want to select.
@@ -669,4 +671,3 @@ dm_builtin_uninit(void *arg)
 TUNABLE_INT("debug.dm_debug", &dm_debug_level);
 SYSCTL_INT(_debug, OID_AUTO, dm_debug, CTLFLAG_RW, &dm_debug_level,
 	       0, "Enable device mapper debugging");
-

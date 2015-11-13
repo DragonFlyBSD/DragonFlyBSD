@@ -244,7 +244,7 @@
    Table describe how is dm device made. What blocks are mapped with
    what target. In our implementation every table contains pointer to
    target specific config data. These config_data are allocated in
-   DM_TABLE_LOAD function with target_init routine. Every table
+   DM_TABLE_LOAD function with dm_target_init routine. Every table
    contains pointer to used target.
 
    device-mapper targets -> target dm_target.c

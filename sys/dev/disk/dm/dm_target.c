@@ -31,7 +31,6 @@
  */
 
 #include <sys/types.h>
-
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/linker.h>
@@ -45,14 +44,12 @@ static TAILQ_HEAD(, dm_target) dm_target_list;
 
 static struct lock dm_target_mutex;
 
-/*
- * Called indirectly from dm_table_load_ioctl to mark target as used.
- */
 void
 dm_target_busy(dm_target_t *target)
 {
 	atomic_add_int(&target->ref_cnt, 1);
 }
+
 /*
  * Release reference counter on target.
  */
@@ -117,8 +114,9 @@ dm_target_lookup(const char *dm_target_name)
 
 	return dmt;
 }
+
 /*
- * Search for name in TAIL and return apropriate pointer.
+ * Search for name in TAILQ and return apropriate pointer.
  */
 static dm_target_t *
 dm_target_lookup_name(const char *dm_target_name)
@@ -132,10 +130,11 @@ dm_target_lookup_name(const char *dm_target_name)
 
 	return NULL;
 }
+
 /*
- * Insert new target struct into the TAIL.
- * dm_target
- *   contains name, version, function pointer to specifif target functions.
+ * Insert new target struct into the TAILQ.
+ * dm_target contains name, version, function pointer to specific target
+ * functions.
  */
 int
 dm_target_insert(dm_target_t *dm_target)
@@ -170,9 +169,8 @@ dm_target_insert(dm_target_t *dm_target)
 	return 0;
 }
 
-
 /*
- * Remove target from TAIL, target is selected with it's name.
+ * Remove target from TAILQ, target is selected with it's name.
  */
 int
 dm_target_remove(char *dm_target_name)
@@ -192,8 +190,7 @@ dm_target_remove(char *dm_target_name)
 		lockmgr(&dm_target_mutex, LK_RELEASE);
 		return EBUSY;
 	}
-	TAILQ_REMOVE(&dm_target_list,
-	    dmt, dm_target_next);
+	TAILQ_REMOVE(&dm_target_list, dmt, dm_target_next);
 
 	lockmgr(&dm_target_mutex, LK_RELEASE);
 
@@ -268,7 +265,9 @@ dm_target_prop_list(void)
 	return target_array;
 }
 
-/* Initialize dm_target subsystem. */
+/*
+ * Initialize dm_target subsystem.
+ */
 int
 dm_target_init(void)
 {

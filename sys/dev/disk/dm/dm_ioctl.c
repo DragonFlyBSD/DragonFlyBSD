@@ -115,7 +115,7 @@ void dm_remove_flag(prop_dictionary_t dp, uint32_t *fp, const uint32_t val)
 }
 
 /*
- * Print flags sent to the kernel from libevmapper.
+ * Print flags sent to the kernel from libdevmapper.
  */
 static int
 dm_dbg_print_flags(uint32_t flags)
@@ -156,6 +156,7 @@ dm_dbg_print_flags(uint32_t flags)
 
 	return 0;
 }
+
 /*
  * Get list of all available targets from global
  * target list and sent them back to libdevmapper.
@@ -178,10 +179,10 @@ dm_list_versions_ioctl(prop_dictionary_t dm_dict)
 
 	return 0;
 }
+
 /*
  * Create in-kernel entry for device. Device attributes such as name, uuid are
  * taken from proplib dictionary.
- *
  */
 int
 dm_dev_create_ioctl(prop_dictionary_t dm_dict)
@@ -219,8 +220,9 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
 
 	return r;
 }
+
 /*
- * Get list of created device-mapper devices fromglobal list and
+ * Get list of created device-mapper devices from global list and
  * send it to kernel.
  *
  * Output dictionary:
@@ -235,7 +237,6 @@ dm_dev_create_ioctl(prop_dictionary_t dm_dict)
  *    <integer>...</integer>
  *   </dict>
  *  </array>
- *
  */
 int
 dm_dev_list_ioctl(prop_dictionary_t dm_dict)
@@ -257,9 +258,10 @@ dm_dev_list_ioctl(prop_dictionary_t dm_dict)
 
 	return 0;
 }
+
 /*
  * Rename selected devices old name is in struct dm_ioctl.
- * newname is taken from dictionary
+ * new name is taken from dictionary.
  *
  * <key>cmd_data</key>
  *  <array>
@@ -414,9 +416,9 @@ dm_dev_status_ioctl(prop_dictionary_t dm_dict)
 	 * Add status flags for tables I have to check both active and
 	 * inactive tables.
 	 */
-	if ((j = dm_table_get_target_count(&dmv->table_head, DM_TABLE_ACTIVE))) {
+	if ((j = dm_table_get_target_count(&dmv->table_head, DM_TABLE_ACTIVE)))
 		dm_add_flag(dm_dict, &flags, DM_ACTIVE_PRESENT_FLAG);
-	} else
+	else
 		dm_remove_flag(dm_dict, &flags, DM_ACTIVE_PRESENT_FLAG);
 
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_TARGET_COUNT, j);
@@ -430,10 +432,10 @@ dm_dev_status_ioctl(prop_dictionary_t dm_dict)
 
 	return 0;
 }
+
 /*
  * Set only flag to suggest that device is suspended. This call is
  * not supported in NetBSD.
- *
  */
 int
 dm_dev_suspend_ioctl(prop_dictionary_t dm_dict)
@@ -470,6 +472,7 @@ dm_dev_suspend_ioctl(prop_dictionary_t dm_dict)
 
 	return 0;
 }
+
 /*
  * Simulate Linux behaviour better and switch tables here and not in
  * dm_table_load_ioctl.
@@ -520,6 +523,7 @@ dm_dev_resume_ioctl(prop_dictionary_t dm_dict)
 
 	return 0;
 }
+
 /*
  * Table management routines
  * lvm2tools doens't send name/uuid to kernel with table
@@ -529,7 +533,6 @@ dm_dev_resume_ioctl(prop_dictionary_t dm_dict)
 /*
  * Remove inactive table from device. Routines which work's with inactive tables
  * doesn't need to synchronise with dmstrategy. They can synchronise themselves with mutex?.
- *
  */
 int
 dm_table_clear_ioctl(prop_dictionary_t dm_dict)
@@ -565,6 +568,7 @@ dm_table_clear_ioctl(prop_dictionary_t dm_dict)
 
 	return 0;
 }
+
 /*
  * Get list of physical devices for active table.
  * Get dev_t from pdev vnode and insert it into cmd_array.
@@ -665,7 +669,6 @@ dm_table_deps(dm_table_entry_t *table_en, prop_array_t array)
  *
  * Load table to inactive slot table are switched in dm_device_resume_ioctl.
  * This simulates Linux behaviour better there should not be any difference.
- *
  */
 int
 dm_table_load_ioctl(prop_dictionary_t dm_dict)
@@ -865,7 +868,6 @@ dm_table_init(dm_target_t *target, dm_table_entry_t *table_en, char *params)
  *    <string>...</string>
  *   </dict>
  * </array>
- *
  */
 int
 dm_table_status_ioctl(prop_dictionary_t dm_dict)
@@ -915,9 +917,8 @@ dm_table_status_ioctl(prop_dictionary_t dm_dict)
 
 		if (dm_table_get_target_count(&dmv->table_head, DM_TABLE_INACTIVE))
 			dm_add_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
-		else {
+		else
 			dm_remove_flag(dm_dict, &flags, DM_INACTIVE_PRESENT_FLAG);
-		}
 	}
 
 	if (dmv->flags & DM_SUSPEND_FLAG)
@@ -1056,7 +1057,6 @@ dm_message_ioctl(prop_dictionary_t dm_dict)
 	}
 
 	dm_table_release(&dmv->table_head, DM_TABLE_ACTIVE);
-
 
 	kfree(msg, M_TEMP);
 	dm_dev_unbusy(dmv);

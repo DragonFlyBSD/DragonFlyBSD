@@ -87,6 +87,7 @@ dm_target_linear_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	return 0;
 }
+
 /*
  * Table routine is called to get params string, which is target
  * specific. When dm_table_status_ioctl is called with flag
@@ -108,6 +109,7 @@ dm_target_linear_table(void *target_config)
 
 	return params;
 }
+
 /*
  * Do IO operation, called from dmstrategy routine.
  */

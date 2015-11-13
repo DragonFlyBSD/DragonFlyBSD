@@ -31,7 +31,6 @@
  */
 
 #include <sys/types.h>
-
 #include <sys/disk.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
@@ -205,10 +204,11 @@ dm_pdev_alloc(const char *name)
 		return NULL;
 
 	if (name)
-		strlcpy(dmp->name, name, MAX_DEV_NAME);
+		strlcpy(dmp->name, name, DM_MAX_DEV_NAME);
 
 	return dmp;
 }
+
 /*
  * Destroy allocated dm_pdev.
  */
@@ -232,13 +232,12 @@ dm_pdev_free(dm_pdev_t *dmp)
 }
 
 /*
- * This funcion is called from dm_dev_remove_ioctl.
+ * This funcion is called from targets' destroy() handler.
  * When I'm removing device from list, I have to decrement
  * reference counter. If reference counter is 0 I will remove
  * dmp from global list and from device list to. And I will CLOSE
  * dmp vnode too.
  */
-
 /*
  * Decrement pdev reference counter if 0 remove it.
  */

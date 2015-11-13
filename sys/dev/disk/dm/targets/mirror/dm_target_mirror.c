@@ -72,12 +72,14 @@ dm_target_mirror_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	return ENOSYS;
 }
+
 /* Table routine called to get params string. */
 char *
 dm_target_mirror_table(void *target_config)
 {
 	return NULL;
 }
+
 /* Strategy routine called from dm_strategy. */
 int
 dm_target_mirror_strategy(dm_table_entry_t *table_en, struct buf *bp)
@@ -92,6 +94,7 @@ dm_target_mirror_strategy(dm_table_entry_t *table_en, struct buf *bp)
 
 	return 0;
 }
+
 /* Doesn't do anything here. */
 int
 dm_target_mirror_destroy(dm_table_entry_t *table_en)
@@ -101,6 +104,7 @@ dm_target_mirror_destroy(dm_table_entry_t *table_en)
 
 	return 0;
 }
+
 /* Doesn't not need to do anything here. */
 int
 dm_target_mirror_deps(dm_table_entry_t *table_en, prop_array_t prop_array)

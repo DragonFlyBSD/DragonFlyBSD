@@ -29,14 +29,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 /*
  * This file implements initial version of device-mapper zero target.
  */
 #include <sys/types.h>
-
 #include <sys/buf.h>
-
 #include <dev/disk/dm/dm.h>
 
 /*

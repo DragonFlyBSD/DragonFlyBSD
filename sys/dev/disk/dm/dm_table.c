@@ -31,9 +31,7 @@
  */
 
 #include <sys/types.h>
-
 #include <sys/malloc.h>
-
 #include <dev/disk/dm/dm.h>
 
 /*
@@ -74,6 +72,7 @@ dm_table_busy(dm_table_head_t *head, uint8_t table_id)
 
 	return id;
 }
+
 /*
  * Function release table lock and eventually wakeup all waiters.
  */
@@ -86,6 +85,7 @@ dm_table_unbusy(dm_table_head_t *head)
 
 	lockmgr(&head->table_mtx, LK_RELEASE);
 }
+
 /*
  * Return current active table to caller, increment io_cnt reference counter.
  */
@@ -98,6 +98,7 @@ dm_table_get_entry(dm_table_head_t *head, uint8_t table_id)
 
 	return &head->tables[id];
 }
+
 /*
  * Decrement io reference counter and release shared lock.
  */
@@ -106,6 +107,7 @@ dm_table_release(dm_table_head_t *head, uint8_t table_id)
 {
 	dm_table_unbusy(head);
 }
+
 /*
  * Switch table from inactive to active mode. Have to wait until io_cnt is 0.
  */
@@ -118,6 +120,7 @@ dm_table_switch_tables(dm_table_head_t *head)
 
 	lockmgr(&head->table_mtx, LK_RELEASE);
 }
+
 /*
  * Destroy all table data. This function can run when there are no
  * readers on table lists.
@@ -159,6 +162,7 @@ dm_table_destroy(dm_table_head_t *head, uint8_t table_id)
 
 	return 0;
 }
+
 /*
  * Return length of active or inactive table in device.
  */
@@ -203,7 +207,7 @@ dm_inactive_table_size(dm_table_head_t *head)
  * Return > 0 if table is at least one table entry (returns number of entries)
  * and return 0 if there is not. Target count returned from this function
  * doesn't need to be true when userspace user receive it (after return
- * there can be dm_dev_resume_ioctl), therfore this isonly informative.
+ * there can be dm_dev_resume_ioctl), therefore this is only informative.
  */
 int
 dm_table_get_target_count(dm_table_head_t *head, uint8_t table_id)
@@ -224,9 +228,8 @@ dm_table_get_target_count(dm_table_head_t *head, uint8_t table_id)
 	return target_count;
 }
 
-
 /*
- * Initialize table_head structures, I'm trying to keep this structure as
+ * Initialize dm_table_head_t structures, I'm trying to keep this structure as
  * opaque as possible.
  */
 void
@@ -241,6 +244,7 @@ dm_table_head_init(dm_table_head_t *head)
 
 	lockinit(&head->table_mtx, "dmtbl", 0, LK_CANRECURSE);
 }
+
 /*
  * Destroy all variables in table_head
  */
@@ -249,7 +253,7 @@ dm_table_head_destroy(dm_table_head_t *head)
 {
 	KKASSERT(lockcount(&head->table_mtx) == 0);
 
-	/* tables doens't exists when I call this routine, therefore it
+	/* tables don't exist when I call this routine, therefore it
 	 * doesn't make sense to have io_cnt != 0 */
 	KKASSERT(head->io_cnt == 0);
 

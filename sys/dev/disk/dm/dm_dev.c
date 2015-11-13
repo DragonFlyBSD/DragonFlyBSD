@@ -33,7 +33,6 @@
 #include <sys/param.h>
 #include <machine/thread.h>
 #include <sys/thread2.h>
-
 #include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/devicestat.h>
@@ -63,7 +62,9 @@ static struct lock dm_dev_mutex;
 
 static char dummy_uuid[DM_UUID_LEN];
 
-/* dm_dev_mutex must be held by caller before using disable_dev. */
+/*
+ * dm_dev_mutex must be held by caller before using disable_dev.
+ */
 static void
 disable_dev(dm_dev_t *dmv)
 {
@@ -100,8 +101,8 @@ _dm_dev_lookup(const char *name, const char *uuid, int minor)
 }
 
 /*
- * Generic function used to lookup dm_dev_t. Calling with dm_dev_name
- * and dm_dev_uuid NULL is allowed.
+ * Generic function used to lookup dm_dev_t. Calling with name NULL
+ * and uuid NULL is allowed.
  */
 dm_dev_t *
 dm_dev_lookup(const char *name, const char *uuid, int minor)
@@ -135,6 +136,7 @@ dm_dev_lookup_minor(int dm_dev_minor)
 
 	return NULL;
 }
+
 /*
  * Lookup device with it's device name.
  */
@@ -150,6 +152,7 @@ dm_dev_lookup_name(const char *dm_dev_name)
 
 	return NULL;
 }
+
 /*
  * Lookup device with it's device uuid. Used mostly by LVM2tools.
  */
@@ -165,6 +168,7 @@ dm_dev_lookup_uuid(const char *dm_dev_uuid)
 
 	return NULL;
 }
+
 /*
  * Insert new device to the global list of devices.
  */
@@ -368,6 +372,7 @@ dm_dev_alloc(const char *name, const char*uuid)
 
 	return dmv;
 }
+
 /*
  * Freed device entry.
  */
@@ -402,6 +407,7 @@ dm_dev_unbusy(dm_dev_t *dmv)
 		cv_broadcast(&dmv->dev_cv);
 	lockmgr(&dmv->dev_mtx, LK_RELEASE);
 }
+
 /*
  * Return prop_array of dm_targer_list dictionaries.
  */
@@ -429,6 +435,7 @@ dm_dev_prop_list(void)
 	lockmgr(&dm_dev_mutex, LK_RELEASE);
 	return dev_array;
 }
+
 /*
  * Initialize global device mutex.
  */

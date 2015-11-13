@@ -156,6 +156,7 @@ dm_target_snapshot_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	return 0;
 }
+
 /*
  * Table routine is called to get params string, which is target
  * specific. When dm_table_status_ioctl is called with flag
@@ -203,6 +204,7 @@ dm_target_snapshot_table(void *target_config)
 
 	return params;
 }
+
 /* Strategy routine called from dm_strategy. */
 int
 dm_target_snapshot_strategy(dm_table_entry_t *table_en, struct buf *bp)
@@ -217,6 +219,7 @@ dm_target_snapshot_strategy(dm_table_entry_t *table_en, struct buf *bp)
 
 	return 0;
 }
+
 /* Doesn't do anything here. */
 int
 dm_target_snapshot_destroy(dm_table_entry_t *table_en)
@@ -285,6 +288,7 @@ dm_target_snapshot_orig_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	return 0;
 }
+
 /*
  * Table routine is called to get params string, which is target
  * specific. When dm_table_status_ioctl is called with flag
@@ -318,6 +322,7 @@ dm_target_snapshot_orig_table(void *target_config)
 
 	return params;
 }
+
 /* Strategy routine called from dm_strategy. */
 int
 dm_target_snapshot_orig_strategy(dm_table_entry_t *table_en, struct buf *bp)
@@ -332,6 +337,7 @@ dm_target_snapshot_orig_strategy(dm_table_entry_t *table_en, struct buf *bp)
 
 	return 0;
 }
+
 /* Decrement pdev and free allocated space. */
 int
 dm_target_snapshot_orig_destroy(dm_table_entry_t *table_en)
