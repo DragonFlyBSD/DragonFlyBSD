@@ -170,7 +170,7 @@
 #define HAVE_LONG_LONG_INT 1
 
 /* Define to 1 if you have the <malloc.h> header file. */
-#define HAVE_MALLOC_H 1
+/* #undef HAVE_MALLOC_H */
 
 /* Define to 1 if you have the `memchr' function. */
 #define HAVE_MEMCHR 1

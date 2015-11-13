@@ -2234,6 +2234,7 @@ TO_REMOVE+=/boot/kernel/dsched_as.ko
 TO_REMOVE+=/boot/kernel/dsched_bfq.ko
 TO_REMOVE+=/boot/kernel/dsched_fw.ko
 TO_REMOVE+=/usr/share/man/man4/dsched_bfq.4.gz
+TO_REMOVE+=/usr/include/malloc.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

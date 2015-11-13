@@ -44,7 +44,6 @@
 #define HAVE_LIBNCURSESW 1
 #define HAVE_LIMITS_H 1
 #define HAVE_LOCALE_H 1
-#define HAVE_MALLOC_H 1
 #define HAVE_MBLEN 1
 #define HAVE_MBRLEN 1
 #define HAVE_MBRTOWC 1
