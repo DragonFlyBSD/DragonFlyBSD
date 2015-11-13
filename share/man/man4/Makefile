@@ -87,7 +87,6 @@ MAN=	aac.4 \
 	dm_target_delay.4 \
 	dpt.4 \
 	drm.4 \
-	dsched.4 \
 	dummynet.4 \
 	ecc.4 \
 	ehci.4 \
@@ -431,7 +430,6 @@ MLINKS+=cue.4 if_cue.4
 MLINKS+=dc.4 if_dc.4
 MLINKS+=disc.4 if_disc.4
 MLINKS+=dm.4 dm_target_linear.4
-MLINKS+=dsched.4 dsched_fq.4
 MLINKS+=em.4 emx.4 \
 	em.4 if_em.4 \
 	em.4 if_emx.4

@@ -699,3 +699,4 @@ SYSVSEM			opt_dontuse.h
 SYSVSHM			opt_dontuse.h
 P1003_1B		opt_dontuse.h
 _KPOSIX_VERSION		opt_dontuse.h
+DSCHED_FQ		opt_dontuse.h

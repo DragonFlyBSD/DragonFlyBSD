@@ -12,6 +12,13 @@
 +         UPGRADING DRAGONFLY FROM 4.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+DSCHED REMOVED
+--------------
+
+dsched(4) has been removed and one of its kernel options, DSCHED_FQ, was
+in our default kernel config file. So the DSCHED_FQ option has been turned
+into a no-op for now and can be removed from custom configurations.
+
 EST DRIVER REMOVED, COMPILE_ET AND LIBCOM_ERR TOO
 -------------------------------------------------
 
