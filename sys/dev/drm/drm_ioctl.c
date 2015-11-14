@@ -419,13 +419,13 @@ int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		req->value = drm_timestamp_monotonic;
 		break;
 	case DRM_CAP_CURSOR_WIDTH:
-		if (dev->mode_config.cursor_width;
+		if (dev->mode_config.cursor_width)
 			req->value = dev->mode_config.cursor_width;
 		else
 			req->value = 64;
 		break;
 	case DRM_CAP_CURSOR_HEIGHT:
-		if (dev->mode_config.cursor_height;
+		if (dev->mode_config.cursor_height)
 			req->value = dev->mode_config.cursor_height;
 		else
 			req->value = 64;
