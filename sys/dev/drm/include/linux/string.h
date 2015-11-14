@@ -38,6 +38,20 @@
 
 #define strnicmp strncasecmp
 
+#define __UNCONST(a)	((void *)(unsigned long)(const void *)(a))
+
+static inline void *
+memchr_inv(const void *buffer, int c, size_t len)
+{
+	const uint8_t byte = c;	/* XXX lose */
+	const char *p;
+
+	for (p = buffer; len-- > 0; p++)
+		if (*p != byte)
+			return __UNCONST(p);
+
+	return NULL;
+}
 
 static inline void *
 kmemdup(const void *src, size_t len, gfp_t gfp)
