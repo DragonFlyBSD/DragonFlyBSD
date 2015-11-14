@@ -2638,7 +2638,7 @@ ttyinfo(struct tty *tp)
 	else if (pick->p_stat == SIDL)
 		str = "spawning";
 	else if (lp->lwp_wmesg)	/* lwp_thread must not be NULL */
-				str = lp->lwp_wmesg;
+		str = lp->lwp_wmesg;
 	else
 		str = "iowait";
 

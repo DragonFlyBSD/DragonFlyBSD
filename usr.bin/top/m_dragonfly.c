@@ -576,7 +576,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	/*
 	 * Convert the process's runtime from microseconds to seconds.  This
 	 * time includes the interrupt time to be in compliance with ps output.
-	*/
+	 */
 	cputime = (LP(pp, uticks) + LP(pp, sticks) + LP(pp, iticks)) / 1000000;
 	ccputime = cputime + PP(pp, cru).ru_stime.tv_sec + PP(pp, cru).ru_utime.tv_sec;
 	format_time(cputime, cputime_fmt, sizeof(cputime_fmt));
