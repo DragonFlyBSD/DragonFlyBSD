@@ -63,6 +63,8 @@ do {									\
 	callout_init_mp(&(timer)->timer_callout);			\
 } while (0)
 
+#define setup_timer_on_stack(t, f,d)	setup_timer(t, f, d)
+
 #define	init_timer(timer)						\
 do {									\
 	(timer)->function = NULL;					\
@@ -98,7 +100,8 @@ del_timer(struct timer_list *timer)
 	lwkt_token_uninit(&(timer)->timer_token);
 }
 
-#define	del_timer_sync(timer)	callout_drain(&(timer)->timer_callout)
+#define del_timer_sync(timer)			callout_drain(&(timer)->timer_callout)
+#define del_singleshot_timer_sync(timer)	del_timer_sync(timer)
 
 #define	timer_pending(timer)	callout_pending(&(timer)->timer_callout)
 
