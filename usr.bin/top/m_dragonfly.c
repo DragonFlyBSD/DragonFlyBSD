@@ -502,9 +502,9 @@ get_process_info(struct system_info *si, struct process_select *sel,
 				process_states[0]++;
 			if (pstate >= 0 && pstate < MAXPSTATES - 1)
 				process_states[pstate]++;
-			if ((show_system && (LP(pp, pid) == -1)) ||
-			    (show_idle || (LP(pp, pctcpu) != 0) ||
-			     (lpstate == LSRUN)) &&
+			if (((show_system && (LP(pp, pid) == -1)) ||
+			     (show_idle || (LP(pp, pctcpu) != 0) ||
+			      (lpstate == LSRUN))) &&
 			    (match_command == NULL ||
 			     strstr(PP(pp, comm), match_command)) &&
 			    (!show_uid || PP(pp, ruid) == (uid_t) sel->uid)) {
