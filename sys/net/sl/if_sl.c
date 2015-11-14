@@ -80,6 +80,7 @@
 #include <sys/tty.h>
 #include <sys/clist.h>
 #include <sys/kernel.h>
+#include <sys/sysctl.h>
 #include <sys/conf.h>
 #include <sys/thread2.h>
 
@@ -105,6 +106,12 @@
 
 static void slattach (void *);
 PSEUDO_SET(slattach, if_sl);
+
+/* Set to 0xC002 for broadcast instead of p-to-p */
+static int sliffopts = IFF_POINTOPOINT | SC_AUTOCOMP | IFF_MULTICAST;
+SYSCTL_INT(_net, OID_AUTO, sliffopts, CTLFLAG_RW,
+           &sliffopts, 0, "");
+TUNABLE_INT("net.sliffopts", &sliffopts);
 
 /*
  * SLRMAX is a hard limit on input packet size.  To simplify the code
@@ -207,12 +214,7 @@ slattach(void *dummy)
 	for (sc = sl_softc; i < NSL; sc++) {
 		if_initname(&(sc->sc_if), "sl", i++);
 		sc->sc_if.if_mtu = SLMTU;
-		sc->sc_if.if_flags =
-#ifdef SLIP_IFF_OPTS
-		    SLIP_IFF_OPTS;
-#else
-		    IFF_POINTOPOINT | SC_AUTOCOMP | IFF_MULTICAST;
-#endif
+		sc->sc_if.if_flags = sliffopts;
 		sc->sc_if.if_type = IFT_SLIP;
 		sc->sc_if.if_ioctl = slioctl;
 		sc->sc_if.if_output = sloutput;
@@ -271,7 +273,7 @@ slopen(cdev_t dev, struct tty *tp)
 				lwkt_reltoken(&tty_token);
 				return (ENOBUFS);
 			}
-			tp->t_sc = (caddr_t)sc;
+			tp->t_slsc = (caddr_t)sc;
 			sc->sc_ttyp = tp;
 			sc->sc_if.if_baudrate = tp->t_ospeed;
 			ttyflush(tp, FREAD | FWRITE);
@@ -318,7 +320,7 @@ slclose(struct tty *tp, int flag)
 
 	clist_free_cblocks(&tp->t_outq);
 	tp->t_line = 0;
-	sc = (struct sl_softc *)tp->t_sc;
+	sc = (struct sl_softc *)tp->t_slsc;
 	if (sc != NULL) {
 		if (sc->sc_outfill) {
 			sc->sc_outfill = 0;
@@ -331,7 +333,7 @@ slclose(struct tty *tp, int flag)
 		if_down(&sc->sc_if);
 		sc->sc_flags &= SC_STATIC;
 		sc->sc_ttyp = NULL;
-		tp->t_sc = NULL;
+		tp->t_slsc = NULL;
 		if (sc->sc_ep) {
 			kfree(sc->sc_ep, M_DEVBUF);
 			sc->sc_ep = NULL;
@@ -352,7 +354,7 @@ slclose(struct tty *tp, int flag)
 static int
 sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 {
-	struct sl_softc *sc = (struct sl_softc *)tp->t_sc, *nc, *tmpnc;
+	struct sl_softc *sc = (struct sl_softc *)tp->t_slsc, *nc, *tmpnc;
 	int nsl;
 
 	crit_enter();
@@ -385,7 +387,7 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 						if_down(&nc->sc_if);
 					sc->sc_flags &= ~SC_STATIC;
 					sc->sc_flags |= (nc->sc_flags & SC_STATIC);
-					tp->t_sc = sc = nc;
+					tp->t_slsc = sc = nc;
 					clist_alloc_cblocks(&tp->t_outq,
 					    SLIP_HIWAT + 2 * sc->sc_if.if_mtu + 1,
 					    SLIP_HIWAT + 2 * sc->sc_if.if_mtu + 1);
@@ -537,7 +539,7 @@ sloutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 static int
 slstart(struct tty *tp)
 {
-	struct sl_softc *sc = (struct sl_softc *)tp->t_sc;
+	struct sl_softc *sc = (struct sl_softc *)tp->t_slsc;
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&sc->sc_if.if_snd);
 	struct mbuf *m;
 	u_char *cp;
@@ -785,16 +787,28 @@ slinput(int c, struct tty *tp)
 	int len;
 	u_char chdr[CHDR_LEN];
 
+#if 0
+	kprintf(" %02x", (unsigned char)c);
+	if ((unsigned char)c == 0xC0)
+		kprintf("\n");
+#endif
+
 	lwkt_gettoken(&tty_token);
 	tk_nin++;
-	sc = (struct sl_softc *)tp->t_sc;
+	sc = (struct sl_softc *)tp->t_slsc;
 	if (sc == NULL) {
 		lwkt_reltoken(&tty_token);
+#if 0
+		kprintf("X");
+#endif
 		return 0;
 	}
 	if (c & TTY_ERRORMASK || (tp->t_state & TS_CONNECTED) == 0) {
 		sc->sc_flags |= SC_ERROR;
 		lwkt_reltoken(&tty_token);
+#if 0
+		kprintf("Y");
+#endif
 		return 0;
 	}
 	c &= TTY_CHARMASK;

@@ -186,7 +186,7 @@ pppopen(cdev_t dev, struct tty *tp)
     lwkt_gettoken(&tty_token);
 
     if (tp->t_line == PPPDISC) {
-	sc = (struct ppp_softc *) tp->t_sc;
+	sc = (struct ppp_softc *) tp->t_slsc;
 	if (sc != NULL && sc->sc_devp == (void *) tp) {
 	    lwkt_reltoken(&tty_token);
 	    crit_exit();
@@ -220,7 +220,7 @@ pppopen(cdev_t dev, struct tty *tp)
     getmicrotime(&sc->sc_if.if_lastchange);
     sc->sc_if.if_baudrate = tp->t_ospeed;
 
-    tp->t_sc = (caddr_t) sc;
+    tp->t_slsc = (caddr_t) sc;
     ttyflush(tp, FREAD | FWRITE);
 
     /*
@@ -256,9 +256,9 @@ pppclose(struct tty *tp, int flag)
     clist_free_cblocks(&tp->t_canq);
     clist_free_cblocks(&tp->t_outq);
     tp->t_line = 0;
-    sc = (struct ppp_softc *) tp->t_sc;
+    sc = (struct ppp_softc *) tp->t_slsc;
     if (sc != NULL) {
-	tp->t_sc = NULL;
+	tp->t_slsc = NULL;
 	if (tp == (struct tty *) sc->sc_devp) {
 	    pppasyncrelinq(sc);
 	    pppdealloc(sc);
@@ -320,7 +320,7 @@ pppasyncsetmtu(struct ppp_softc *sc)
 static int
 pppread(struct tty *tp, struct uio *uio, int flag)
 {
-    struct ppp_softc *sc = (struct ppp_softc *)tp->t_sc;
+    struct ppp_softc *sc = (struct ppp_softc *)tp->t_slsc;
     struct mbuf *m, *m0;
     int error = 0;
 
@@ -381,7 +381,7 @@ pppread(struct tty *tp, struct uio *uio, int flag)
 static int
 pppwrite(struct tty *tp, struct uio *uio, int flag)
 {
-    struct ppp_softc *sc = (struct ppp_softc *)tp->t_sc;
+    struct ppp_softc *sc = (struct ppp_softc *)tp->t_slsc;
     struct mbuf *m, *m0, **mp;
     struct sockaddr dst;
     int len, error;
@@ -455,7 +455,7 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
 static int
 ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cr)
 {
-    struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
+    struct ppp_softc *sc = (struct ppp_softc *) tp->t_slsc;
     int error;
 
     lwkt_gettoken(&tty_token);
@@ -773,7 +773,7 @@ pppasyncctlp(struct ppp_softc *sc)
 static int
 pppstart(struct tty *tp)
 {
-    struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
+    struct ppp_softc *sc = (struct ppp_softc *) tp->t_slsc;
 
     lwkt_gettoken(&tty_token);
     /*
@@ -869,7 +869,7 @@ pppinput(int c, struct tty *tp)
     int ilen;
 
     lwkt_gettoken(&tty_token);
-    sc = (struct ppp_softc *) tp->t_sc;
+    sc = (struct ppp_softc *) tp->t_slsc;
     if (sc == NULL || tp != (struct tty *) sc->sc_devp) {
 	lwkt_reltoken(&tty_token);
 	return 0;

@@ -105,8 +105,8 @@ struct tty {
 					/* Set hardware state. */
 	int	(*t_param) (struct tty *, struct termios *);
 	void	(*t_unhold) (struct tty *); /* callback to pty after unhold */
-	void	*t_sc;			/* XXX: net/if_sl.c:sl_softc. Also 
-                                                used by u4b ucom */
+	void	*t_sc;			/* generic driver (u4b com) */
+	void	*t_slsc;		/* if_sl.c, ppp_tty.c (disc) */
 	int	t_column;		/* Tty output column. */
 	int	t_rocount, t_rocol;	/* Tty. */
 	int	t_ififosize;		/* Total size of upstream fifos. */
