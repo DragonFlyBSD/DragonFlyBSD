@@ -146,7 +146,12 @@
 /* #undef HAVE_ICONV */
 
 /* Define to 1 if you have the <immintrin.h> header file. */
+/* immintrin.h is a GCC header, but clang masquerades as GCC so it's easier to
+   check for clang rather than GCC.  The building of DF is likely limited to these
+   two compilers as no others are tested, so this approach is valid enough. */
+#ifndef __clang__
 #define HAVE_IMMINTRIN_H 1
+#endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
