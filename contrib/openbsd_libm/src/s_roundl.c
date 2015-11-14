@@ -27,24 +27,28 @@
  */
 
 #include <math.h>
+#include "math_private.h"
 
 long double
 roundl(long double x)
 {
 	long double t;
+	uint16_t hx;
 
-	if (!isfinite(x))
-		return (x);
+	GET_LDOUBLE_EXP(hx, x);
+	if ((hx & 0x7fff) == 0x7fff)
+		return (x + x);
 
-	if (x >= 0.0) {
+
+	if (!(hx & 0x8000)) {
 		t = floorl(x);
-		if (t - x <= -0.5)
-			t += 1.0;
+		if (t - x <= -0.5L)
+			t += 1;
 		return (t);
 	} else {
 		t = floorl(-x);
-		if (t + x <= -0.5)
-			t += 1.0;
+		if (t + x <= -0.5L)
+			t += 1;
 		return (-t);
 	}
 }
