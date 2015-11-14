@@ -31,6 +31,7 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/sched.h>
+#include <sys/signal2.h>
 
 #define	TASK_RUNNING		0
 #define	TASK_INTERRUPTIBLE	1
@@ -56,5 +57,7 @@ schedule_timeout(signed long timeout)
 }
 
 #define TASK_COMM_LEN	MAXCOMLEN
+
+#define signal_pending(lp)	CURSIG(lp)
 
 #endif	/* _LINUX_SCHED_H_ */
