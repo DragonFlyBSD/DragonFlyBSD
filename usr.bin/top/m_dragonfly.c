@@ -44,6 +44,7 @@
 
 /* Swap */
 #include <stdlib.h>
+#include <string.h>
 #include <sys/conf.h>
 
 #include <osreldate.h>		/* for changes in kernel structures */
@@ -154,6 +155,11 @@ static int pref_len;
 static struct kinfo_proc *pbase;
 static struct kinfo_proc **pref;
 
+static uint64_t prev_pbase_time;	/* unit: us */
+static struct kinfo_proc *prev_pbase;
+static int prev_nproc = -1;
+static int fscale;
+
 /* these are for getting the memory statistics */
 
 static int pageshift;		/* log base 2 of the pagesize */
@@ -232,7 +238,7 @@ int
 machine_init(struct statics *statics)
 {
 	int pagesize;
-	size_t modelen;
+	size_t modelen, prmlen;
 	struct passwd *pw;
 	struct timeval boottime;
 
@@ -246,6 +252,10 @@ machine_init(struct statics *statics)
 		/* we have no boottime to report */
 		boottime.tv_sec = -1;
 	}
+
+	prmlen = sizeof(fscale);
+	if (sysctlbyname("kern.fscale", &fscale, &prmlen, NULL, 0) == -1)
+		fscale = 0;
 
 	while ((pw = getpwent()) != NULL) {
 		if ((int)strlen(pw->pw_name) > namelength)
@@ -263,6 +273,8 @@ machine_init(struct statics *statics)
 	pref = NULL;
 	nproc = 0;
 	onproc = -1;
+	prev_pbase = NULL;
+	prev_nproc = -1;
 	/*
 	 * get the page size with "getpagesize" and calculate pageshift from
 	 * it
@@ -441,6 +453,39 @@ get_system_info(struct system_info *si)
 
 static struct handle handle;
 
+static void
+fixup_system_pctcpu(struct kinfo_proc *fixit, uint64_t d)
+{
+	struct kinfo_proc *pp;
+	int i, commlen;
+
+	/* Skip idle threads */
+	if (strncmp(PP(fixit, comm), "idle_", 5) == 0)
+		return;
+
+	commlen = strlen(PP(fixit, comm));
+	for (pp = prev_pbase, i = 0; i < prev_nproc; pp++, i++) {
+		int len;
+
+		if (LP(pp, pid) != -1)
+			continue;
+
+		len = strlen(PP(pp, comm));
+		if (len != commlen)
+			continue;
+		if (strcmp(PP(pp, comm), PP(fixit, comm)) == 0) {
+			uint64_t ticks;
+
+			ticks = LP(fixit, iticks) - LP(pp, iticks);
+			ticks += LP(fixit, sticks) - LP(pp, sticks);
+			if (ticks > d)
+				ticks = d;
+			LP(fixit, pctcpu) = (ticks * (uint64_t)fscale) / d;
+			break;
+		}
+	}
+}
+
 caddr_t 
 get_process_info(struct system_info *si, struct process_select *sel,
     int compare_index)
@@ -512,6 +557,38 @@ get_process_info(struct system_info *si, struct process_select *sel,
 				active_procs++;
 			}
 		}
+	}
+
+	if (show_system && fscale > 0) {
+		struct timespec tv;
+		uint64_t t;
+
+		clock_gettime(CLOCK_MONOTONIC_PRECISE, &tv);
+		t = (tv.tv_sec * 1000000ULL) + (tv.tv_nsec / 1000ULL);
+
+		if (prev_pbase != NULL && prev_nproc > 0 &&
+		    t > prev_pbase_time) {
+			uint64_t d;
+
+			d = t - prev_pbase_time;
+			for (pp = pbase, i = 0; i < nproc; pp++, i++) {
+				if (LP(pp, pid) != -1)
+					continue;
+				fixup_system_pctcpu(pp, d);
+			}
+		}
+
+		if (prev_nproc != nproc) {
+			prev_nproc = nproc;
+			prev_pbase = realloc(prev_pbase,
+			    prev_nproc * sizeof(struct kinfo_proc));
+			if (prev_pbase == NULL) {
+				fprintf(stderr, "top: Out of memory.\n");
+				quit(23);
+			}
+		}
+		prev_pbase_time = t;
+		memcpy(prev_pbase, pbase, nproc * sizeof(struct kinfo_proc));
 	}
 
 	qsort((char *)pref, active_procs, sizeof(struct kinfo_proc *),
