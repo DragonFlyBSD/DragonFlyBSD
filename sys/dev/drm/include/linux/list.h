@@ -114,6 +114,13 @@ static inline void list_replace(struct list_head *old,
 	new->prev->next = new;
 }
 
+static inline void list_replace_init(struct list_head *old,
+				     struct list_head *new)
+{
+	list_replace(old, new);
+	INIT_LIST_HEAD(old);
+}
+
 static inline void
 _list_add(struct list_head *new, struct list_head *prev,
     struct list_head *next)
