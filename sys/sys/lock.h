@@ -156,7 +156,7 @@ struct lock {
 #define LKC_EXREQ	0x80000000	/* waiting for exclusive lock */
 #define LKC_SHREQ	0x40000000	/* waiting for shared lock */
 #define LKC_UPREQ	0x20000000	/* waiting for upgrade */
-#define LKC_EXCL	0x10000000	/* exclusive (else shr or unlcoked) */
+#define LKC_EXCL	0x10000000	/* exclusive (else shr or unlocked) */
 #define LKC_UPGRANT	0x08000000	/* upgrade granted */
 #define LKC_CANCEL	0x04000000	/* cancel in effect */
 #define LKC_MASK	0x03FFFFFF
