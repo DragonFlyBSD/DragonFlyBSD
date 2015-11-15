@@ -1785,6 +1785,7 @@
 /* #undef _NETBSD_SOURCE */
 
 /* The _Noreturn keyword of C11.  */
+#if 0
 #if ! (defined _Noreturn \
        || (defined __STDC_VERSION__ && 201112 <= __STDC_VERSION__))
 # if (3 <= __GNUC__ || (__GNUC__ == 2 && 8 <= __GNUC_MINOR__) \
@@ -1795,6 +1796,7 @@
 # else
 #  define _Noreturn
 # endif
+#endif
 #endif
 
 
