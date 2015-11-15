@@ -142,7 +142,10 @@ struct netmsg_pru_bind {
 	struct netmsg_base	base;
 	struct sockaddr		*nm_nam;
 	struct thread		*nm_td;
+	int			nm_flags;	/* PRUB_ */
 };
+
+#define PRUB_RELINK		0x0001
 
 struct netmsg_pru_connect {
 	struct netmsg_base	base;

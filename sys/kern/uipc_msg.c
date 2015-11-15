@@ -175,6 +175,7 @@ so_pru_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 		    0, so->so_proto->pr_usrreqs->pru_bind);
 	msg.nm_nam = nam;
 	msg.nm_td = td;		/* used only for prison_ip() */
+	msg.nm_flags = 0;
 	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }

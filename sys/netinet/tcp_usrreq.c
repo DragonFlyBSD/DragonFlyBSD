@@ -287,6 +287,12 @@ tcp_usr_detach(netmsg_t msg)
 
 #define COMMON_END(req)		COMMON_END1((req), 0)
 
+static void
+tcp_sosetport(struct lwkt_msg *msg, lwkt_port_t port)
+{
+	sosetport(((struct netmsg_base *)msg)->nm_so, port);
+}
+
 /*
  * Give the socket an address.
  */
@@ -300,6 +306,7 @@ tcp_usr_bind(netmsg_t msg)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
+	lwkt_port_t port0 = netisr_cpuport(0);
 
 	COMMON_START(so, inp, 0);
 
@@ -313,6 +320,61 @@ tcp_usr_bind(netmsg_t msg)
 		error = EAFNOSUPPORT;
 		goto out;
 	}
+
+	/*
+	 * Check "already bound" here (in_pcbbind() does the same check
+	 * though), so we don't forward a connected socket to netisr0,
+	 * which would panic in the following in_pcbunlink().
+	 */
+	if (inp->inp_lport != 0 || inp->inp_laddr.s_addr != INADDR_ANY) {
+		error = EINVAL;	/* already bound */
+		goto out;
+	}
+
+	/*
+	 * Use netisr0 to serialize in_pcbbind(), so that pru_detach and
+	 * pru_bind for different sockets on the same local port could be
+	 * properly ordered.  The original race is illustrated here for
+	 * reference.
+	 *
+	 * s1 = socket();
+	 * bind(s1, *.PORT);
+	 * close(s1);  <----- asynchronous
+	 * s2 = socket();
+	 * bind(s2, *.PORT);
+	 *
+	 * All will expect bind(s2, *.PORT) to succeed.  However, it will
+	 * fail, if following sequence happens due to random socket initial
+	 * msgport and asynchronous close(2):
+	 *
+	 *    netisrN                  netisrM
+	 *       :                        :
+	 *       :                    pru_bind(s2) [*.PORT is used by s1]
+	 *  pru_detach(s1)                :
+	 */
+	if (&curthread->td_msgport != port0) {
+		lwkt_msg_t lmsg = &msg->bind.base.lmsg;
+
+		KASSERT((msg->bind.nm_flags & PRUB_RELINK) == 0,
+		    ("already asked to relink"));
+
+		in_pcbunlink(so->so_pcb, &tcbinfo[mycpuid]);
+		msg->bind.nm_flags |= PRUB_RELINK;
+
+		/* See the related comment in tcp_connect() */
+		lwkt_setmsg_receipt(lmsg, tcp_sosetport);
+		lwkt_forwardmsg(port0, lmsg);
+		/* msg invalid now */
+		return;
+	}
+	KASSERT(so->so_port == port0, ("so_port is not netisr0"));
+
+	if (msg->bind.nm_flags & PRUB_RELINK) {
+		msg->bind.nm_flags &= ~PRUB_RELINK;
+		in_pcblink(so->so_pcb, &tcbinfo[mycpuid]);
+	}
+	KASSERT(inp->inp_pcbinfo == &tcbinfo[0], ("pcbinfo is not tcbinfo0"));
+
 	error = in_pcbbind(inp, nam, td);
 	if (error)
 		goto out;
@@ -370,12 +432,6 @@ in_pcbinswildcardhash_handler(netmsg_t msg)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nm->base.lmsg);
 	else
 		lwkt_replymsg(&nm->base.lmsg, 0);
-}
-
-static void
-tcp_sosetport(struct lwkt_msg *msg, lwkt_port_t port)
-{
-	sosetport(((struct netmsg_base *)msg)->nm_so, port);
 }
 
 /*
