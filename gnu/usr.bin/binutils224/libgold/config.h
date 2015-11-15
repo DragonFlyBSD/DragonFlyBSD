@@ -225,7 +225,7 @@
 #define STDC_HEADERS 1
 
 /* System root for target files */
-#define TARGET_SYSTEM_ROOT ""
+/* #define TARGET_SYSTEM_ROOT "" */
 
 /* Whether the system root can be relocated */
 #define TARGET_SYSTEM_ROOT_RELOCATABLE 0

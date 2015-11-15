@@ -12,5 +12,4 @@ A list of files and directories removed is in README.DELETED
 
 Local modifications applied to following files:
 	bfd/bfdver.h (new)
-	gold/options.cc
 	ld/ldlex.l
