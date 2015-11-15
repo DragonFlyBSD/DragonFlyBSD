@@ -698,6 +698,7 @@ device		dm_target_crypt
 device		dm_target_linear
 device		dm_target_striped
 device		dm_target_delay
+device		dm_target_flakey
 
 # Options for iSCSI
 device	        iscsi_initiator

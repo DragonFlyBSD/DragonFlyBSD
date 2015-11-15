@@ -1,0 +1,125 @@
+.\" Copyright (c) 2015 The DragonFly BSD Project.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly BSD Project
+.\" by Tomohiro Kusumi <kusumi.tomohiro@gmail.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+.\" TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+.\" POSSIBILITY OF SUCH DAMAGE.
+.Dd November 17, 2015
+.Dt DM_TARGET_FLAKEY 4
+.Os
+.Sh NAME
+.Nm dm_target_flakey
+.Nd Device-mapper flakey target
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device dm"
+.Cd "device dm_target_flakey"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+dm_target_flakey_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+target for
+.Xr dm 4
+provides periodic unreliable I/O behavior to simulate failing devices for testing purposes.
+.Dq Nm dmsetup Cm create
+takes the following list of parameters for the
+.Nm
+table.
+.Bd -ragged -offset indent
+.Cd "<device_path> <offset> <up_interval> <down_interval> [<num_feature_parameters> [<feature_parameters>]]"
+.Ed
+.Pp
+The first four parameters are mandatory.
+.Nm
+is similar to
+.Xr dm_target_linear 4
+except that
+.Nm
+has parameters for periodic unreliable I/O behavior.
+.Pp
+<device_path> is a path to the underlying device.
+<offset> is the starting sector within the device.
+<up_interval> is the number of seconds device is available.
+<down_interval> is the number of seconds device returns errors.
+The device has periodic unreliable I/O behavior for <down_interval>
+seconds every other <up_interval> seconds starting from the time
+the table is loaded by
+.Xr dmsetup 8 .
+.Pp
+Optional <feature_parameters> are as follows.
+<num_feature_parameters> takes the number of parameters for <feature_parameters>.
+In other words <num_feature_parameters> is the number of parameters after this.
+If <feature_parameters> are not specified, all write I/Os return error during <down_interval>.
+.Pp
+.Dq Nm drop_writes
+feature takes no additional parameters.
+All write I/Os are silently ignored.
+.Bd -ragged -offset indent
+.Cd "[drop_writes]"
+.Ed
+.Pp
+.Dq Nm corrupt_bio_byte
+feature takes four additional mandatory parameters.
+It replaces <Nth_byte> of the
+.Dq Nm struct Cm buf
+data
+whose direction is <direction> with <value> during <down_interval>.
+.Bd -ragged -offset indent
+.Cd "[corrupt_bio_byte <Nth_byte> <direction> <value> <flags>]"
+.Ed
+.Pp
+<Nth_byte> is the offset of the
+.Dq Nm struct Cm buf
+data to replace. Counting starts at 1 to replace the first byte of the data.
+<direction> is either 'r' for reads or 'w' for writes. Using 'w' is imcompatible with
+.Dq Nm drop_writes
+feature.
+<value> is the value to replace which must be between 0 and 255.
+<flags> makes
+.Nm
+perform the replacement only if
+.Dq Nm b_flags
+field of
+.Dq Nm struct Cm buf
+has all the specified flags set.
+.Sh SEE ALSO
+.Xr dm 4 ,
+.Xr dmsetup 8
+.Sh HISTORY
+The
+.Nm
+.Xr dm 4
+target first appeared in
+.Dx 4.3 .
+.Sh AUTHORS
+.An Tomohiro Kusumi

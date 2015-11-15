@@ -164,6 +164,7 @@ typedef struct dm_dev {
 #define DM_CRYPTO_DEV          (1 << 9)
 #define DM_RAID1_DEV           (1 << 10)
 #define DM_DELAY_DEV           (1 << 11)
+#define DM_FLAKEY_DEV          (1 << 12)
 
 /*
  * Target config is initiated with dm_target_init function.
