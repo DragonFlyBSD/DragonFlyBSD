@@ -54,15 +54,15 @@
 
 namespace std
 {
-  extern "C" void abort(void) throw () _GLIBCXX_NORETURN;
-  extern "C" int atexit(void (*)(void)) throw ();
-  extern "C" void exit(int) throw () _GLIBCXX_NORETURN;
+  extern "C" void abort(void) _GTHROW _GLIBCXX_NORETURN;
+  extern "C" int atexit(void (*)(void)) _GTHROW;
+  extern "C" void exit(int) _GTHROW _GLIBCXX_NORETURN;
 #if __cplusplus >= 201103L
 # ifdef _GLIBCXX_HAVE_AT_QUICK_EXIT
-  extern "C" int at_quick_exit(void (*)(void)) throw ();
+  extern "C" int at_quick_exit(void (*)(void)) _GTHROW;
 # endif
 # ifdef _GLIBCXX_HAVE_QUICK_EXIT
-  extern "C" void quick_exit(int) throw() _GLIBCXX_NORETURN;
+  extern "C" void quick_exit(int) _GTHROW _GLIBCXX_NORETURN;
 # endif
 #endif
 } // namespace std
@@ -214,7 +214,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   using ::lldiv_t;
 #endif
 #if _GLIBCXX_USE_C99_CHECK || _GLIBCXX_USE_C99_DYNAMIC
-  extern "C" void (_Exit)(int) throw () _GLIBCXX_NORETURN;
+  extern "C" void (_Exit)(int) _GTHROW _GLIBCXX_NORETURN;
 #endif
 #if !_GLIBCXX_USE_C99_DYNAMIC
   using ::_Exit;
@@ -231,11 +231,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
 #if _GLIBCXX_USE_C99_LONG_LONG_CHECK || _GLIBCXX_USE_C99_LONG_LONG_DYNAMIC
-  extern "C" long long int (atoll)(const char *) throw ();
+  extern "C" long long int (atoll)(const char *) _GTHROW;
   extern "C" long long int
-    (strtoll)(const char * __restrict, char ** __restrict, int) throw ();
+    (strtoll)(const char * __restrict, char ** __restrict, int) _GTHROW;
   extern "C" unsigned long long int
-    (strtoull)(const char * __restrict, char ** __restrict, int) throw ();
+    (strtoull)(const char * __restrict, char ** __restrict, int) _GTHROW;
 #endif
 #if !_GLIBCXX_USE_C99_LONG_LONG_DYNAMIC
   using ::atoll;

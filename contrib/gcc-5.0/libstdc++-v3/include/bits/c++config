@@ -30,6 +30,12 @@
 #ifndef _GLIBCXX_CXX_CONFIG_H
 #define _GLIBCXX_CXX_CONFIG_H 1
 
+#ifdef __clang__
+#define _GTHROW
+#else
+#define _GTHROW throw()
+#endif
+
 // The current version of the C++ library in compressed ISO date format.
 #define __GLIBCXX__
 

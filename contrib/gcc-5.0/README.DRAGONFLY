@@ -35,3 +35,12 @@ Files added (They will be incorporated upstream)
   libstdc++-v3/config/locale/dragonfly/numeric_members.cc
   libstdc++-v3/config/locale/dragonfly/time_members.cc
   libstdc++-v3/config/locale/dragonfly/time_members.h
+
+To support clang's use of libstdc++
+  libstdc++-v3/include/bits/c++config
+  libstdc++-v3/include/c_global/cstdio
+  libstdc++-v3/include/c_global/cstdlib
+  libstdc++-v3/include/c_global/cwchar
+  libstdc++-v3/include/c_std/cstdio
+  libstdc++-v3/include/c_std/cstdlib
+  libstdc++-v3/include/c_std/cwchar
