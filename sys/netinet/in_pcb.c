@@ -1759,8 +1759,9 @@ in_pcbremporthash(struct inpcb *inp)
 	struct inpcbportinfo *portinfo;
 	struct inpcbport *phd;
 
-	if (inp->inp_lport == 0)
+	if (inp->inp_phd == NULL)
 		return;
+	KASSERT(inp->inp_lport != 0, ("inpcb has no lport"));
 
 	/*
 	 * NOTE:
@@ -1779,7 +1780,7 @@ in_pcbremporthash(struct inpcb *inp)
 
 	REL_PORT_TOKEN(portinfo);
 
-	inp->inp_lport = 0;
+	inp->inp_phd = NULL;
 }
 
 static struct inp_localgroup *
