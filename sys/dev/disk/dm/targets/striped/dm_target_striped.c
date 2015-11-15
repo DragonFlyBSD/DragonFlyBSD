@@ -112,6 +112,8 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 	siz = sizeof(dm_target_stripe_config_t) +
 		n * sizeof(struct target_stripe_dev);
 	tsc = kmalloc(siz, M_DMSTRIPE, M_WAITOK | M_ZERO);
+	if (tsc == NULL)
+		return ENOMEM;
 	tsc->stripe_num = n;
 	tsc->stripe_chunksize = chunksize;
 

@@ -68,15 +68,15 @@ typedef struct target_delay_config {
 	int argc;  /* either 3 or 6 */
 } dm_target_delay_config_t;
 
-static int _init(struct dm_delay_info *di, char **argv, int id);
-static int _table(struct dm_delay_info *di, char *p);
-static void _strategy(struct dm_delay_info *di, struct buf *bp);
-static void _submit(struct dm_delay_info *di, struct buf *bp);
-static void _submit_queue(struct dm_delay_info *di, int submit_all);
-static void _destroy(struct dm_delay_info *di);
-static void _timeout(void *arg);
-static void _thread(void *arg);
-static __inline void _debug(struct dm_delay_info *di, const char *msg);
+static int _init(struct dm_delay_info*, char**, int);
+static int _table(struct dm_delay_info*, char*);
+static void _strategy(struct dm_delay_info*, struct buf*);
+static __inline void _submit(struct dm_delay_info*, struct buf*);
+static void _submit_queue(struct dm_delay_info*, int);
+static void _destroy(struct dm_delay_info*);
+static void _timeout(void*);
+static void _thread(void*);
+static __inline void _debug(struct dm_delay_info*, const char*);
 
 static struct objcache *obj_cache = NULL;
 static struct objcache_malloc_args obj_args = {
@@ -96,6 +96,8 @@ dm_target_delay_init(dm_table_entry_t *table_en, int argc, char **argv)
 	}
 
 	tdc = kmalloc(sizeof(*tdc), M_DMDELAY, M_WAITOK | M_ZERO);
+	if (tdc == NULL)
+		return ENOMEM;
 	tdc->argc = argc;
 
 	ret = _init(&tdc->read, argv, 0);
@@ -254,7 +256,8 @@ _strategy(struct dm_delay_info *di, struct buf *bp)
 	mtx_unlock(&di->cal_mtx);
 }
 
-static void
+static __inline
+void
 _submit(struct dm_delay_info *di, struct buf *bp)
 {
 	_debug(di, "submit");
