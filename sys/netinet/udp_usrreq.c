@@ -195,6 +195,12 @@ static boolean_t udp_inswildcardhash(struct inpcb *inp,
     struct netmsg_base *msg, int error);
 static void udp_remwildcardhash(struct inpcb *inp);
 
+static __inline int
+udp_lportcpu(short lport)
+{
+	return (ntohs(lport) & ncpus2_mask);
+}
+
 void
 udp_init(void)
 {
@@ -1320,8 +1326,7 @@ udp_inswildcardhash_dispatch(netmsg_t msg)
 	boolean_t forwarded;
 
 	KASSERT(inp->inp_lport != 0, ("local port not set yet"));
-	KASSERT((ntohs(inp->inp_lport) & ncpus2_mask) == mycpuid,
-	    ("not target cpu"));
+	KASSERT(udp_lportcpu(inp->inp_lport) == mycpuid, ("not target cpu"));
 
 	in_pcblink(inp, &udbinfo[mycpuid]);
 
@@ -1351,7 +1356,7 @@ udp_inswildcardhash(struct inpcb *inp, struct netmsg_base *msg, int error)
 	in_pcbresetroute(inp);
 
 	KASSERT(inp->inp_lport != 0, ("local port not set yet"));
-	cpu = ntohs(inp->inp_lport) & ncpus2_mask;
+	cpu = udp_lportcpu(inp->inp_lport);
 
 	lmsg->ms_error = error;
 	if (cpu != mycpuid) {
@@ -1385,10 +1390,65 @@ udp_bind(netmsg_t msg)
 	if (inp) {
 		struct sockaddr *nam = msg->bind.nm_nam;
 		struct thread *td = msg->bind.nm_td;
+		struct sockaddr_in *sin;
+		lwkt_port_t port;
+		int cpu;
+
+		/*
+		 * Check "already bound" here (in_pcbbind() does the same
+		 * check though), so we don't forward a connected/bound
+		 * socket randomly which would panic in the following
+		 * in_pcbunlink().
+		 */
+		if (inp->inp_lport != 0 ||
+		    inp->inp_laddr.s_addr != INADDR_ANY) {
+			error = EINVAL;	/* already bound */
+			goto done;
+		}
+
+		if (nam->sa_len != sizeof(*sin)) {
+			error = EINVAL;
+			goto done;
+		}
+		sin = (struct sockaddr_in *)nam;
+
+		cpu = udp_lportcpu(sin->sin_port);
+		port = netisr_cpuport(cpu);
+
+		/*
+		 * See the related comment in tcp_usrreq.c tcp_usr_bind().
+		 * The exception is that we use local port based netisr
+		 * to serialize in_pcbbind().
+		 */
+		if (&curthread->td_msgport != port) {
+			lwkt_msg_t lmsg = &msg->bind.base.lmsg;
+
+			KASSERT((msg->bind.nm_flags & PRUB_RELINK) == 0,
+			    ("already asked to relink"));
+
+			in_pcbunlink(so->so_pcb, &udbinfo[mycpuid]);
+			msg->bind.nm_flags |= PRUB_RELINK;
+
+			/*
+			 * See the related comment in tcp_usrreq.c
+			 * tcp_connect().
+			 */
+			lwkt_setmsg_receipt(lmsg, udp_sosetport);
+			lwkt_forwardmsg(port, lmsg);
+			/* msg invalid now */
+			return;
+		}
+		KASSERT(so->so_port == port, ("so_port is not netisr%d", cpu));
+
+		if (msg->bind.nm_flags & PRUB_RELINK) {
+			msg->bind.nm_flags &= ~PRUB_RELINK;
+			in_pcblink(so->so_pcb, &udbinfo[mycpuid]);
+		}
+		KASSERT(inp->inp_pcbinfo == &udbinfo[cpu],
+		    ("pcbinfo is not udbinfo%d", cpu));
 
 		error = in_pcbbind(inp, nam, td);
 		if (error == 0) {
-			struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 			boolean_t forwarded;
 
 			if (sin->sin_addr.s_addr != INADDR_ANY)
@@ -1407,6 +1467,7 @@ udp_bind(netmsg_t msg)
 	} else {
 		error = EINVAL;
 	}
+done:
 	lwkt_replymsg(&msg->bind.base.lmsg, error);
 }
 
@@ -1709,6 +1770,13 @@ udp_detach(netmsg_t msg)
 	 * no one could find this inpcb from the inpcb list.
 	 */
 	in_pcbofflist(inp);
+
+	/*
+	 * Remove this inpcb from the local port hash directly
+	 * here, so that its bound local port could be recycled
+	 * timely.
+	 */
+	in_pcbremporthash(inp);
 
 	if (inp->inp_flags & INP_DIRECT_DETACH) {
 		/*

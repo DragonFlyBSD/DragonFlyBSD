@@ -1753,6 +1753,35 @@ in_pcbinsporthash_lport(struct inpcb *inp)
 	REL_PORT_TOKEN(portinfo);
 }
 
+void
+in_pcbremporthash(struct inpcb *inp)
+{
+	struct inpcbportinfo *portinfo;
+	struct inpcbport *phd;
+
+	if (inp->inp_lport == 0)
+		return;
+
+	/*
+	 * NOTE:
+	 * inp->inp_portinfo is _not_ necessary same as
+	 * inp->inp_pcbinfo->portinfo.
+	 */
+	portinfo = inp->inp_portinfo;
+	GET_PORT_TOKEN(portinfo);
+
+	phd = inp->inp_phd;
+	LIST_REMOVE(inp, inp_portlist);
+	if (LIST_FIRST(&phd->phd_pcblist) == NULL) {
+		LIST_REMOVE(phd, phd_hash);
+		kfree(phd, M_PCB);
+	}
+
+	REL_PORT_TOKEN(portinfo);
+
+	inp->inp_lport = 0;
+}
+
 static struct inp_localgroup *
 inp_localgroup_alloc(u_char af, uint16_t port,
     const union in_dependaddr *addr, int size)
@@ -2097,27 +2126,7 @@ in_pcbremwildcardhash(struct inpcb *inp)
 void
 in_pcbremlists(struct inpcb *inp)
 {
-	if (inp->inp_lport) {
-		struct inpcbportinfo *portinfo;
-		struct inpcbport *phd;
-
-		/*
-		 * NOTE:
-		 * inp->inp_portinfo is _not_ necessary same as
-		 * inp->inp_pcbinfo->portinfo.
-		 */
-		portinfo = inp->inp_portinfo;
-		GET_PORT_TOKEN(portinfo);
-
-		phd = inp->inp_phd;
-		LIST_REMOVE(inp, inp_portlist);
-		if (LIST_FIRST(&phd->phd_pcblist) == NULL) {
-			LIST_REMOVE(phd, phd_hash);
-			kfree(phd, M_PCB);
-		}
-
-		REL_PORT_TOKEN(portinfo);
-	}
+	in_pcbremporthash(inp);
 	if (inp->inp_flags & INP_WILDCARD) {
 		in_pcbremwildcardhash(inp);
 	} else if (inp->inp_flags & INP_CONNECTED) {
