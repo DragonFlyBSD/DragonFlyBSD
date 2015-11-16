@@ -209,7 +209,8 @@ struct kinfo_proc {
 
 	struct kinfo_lwp kp_lwp;
 
-	int		kp_spare[4];
+	uintptr_t	kp_ktaddr;	/* address of this kernel thread */
+	int		kp_spare[2];
 };
 
 struct proc;

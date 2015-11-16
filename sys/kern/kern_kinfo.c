@@ -246,6 +246,7 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 	kp->kp_comm[sizeof(kp->kp_comm) - 1] = 0;
 	kp->kp_flags = P_SYSTEM;
 	kp->kp_stat = SACTIVE;
+	kp->kp_ktaddr = (uintptr_t)td;
 
 	kp->kp_lwp.kl_pid = -1;
 	kp->kp_lwp.kl_tid = -1;
