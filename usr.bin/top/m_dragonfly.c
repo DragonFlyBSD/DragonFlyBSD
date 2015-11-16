@@ -457,23 +457,17 @@ static void
 fixup_system_pctcpu(struct kinfo_proc *fixit, uint64_t d)
 {
 	struct kinfo_proc *pp;
-	int i, commlen;
+	int i;
 
 	/* Skip idle threads */
 	if (strncmp(PP(fixit, comm), "idle_", 5) == 0)
 		return;
 
-	commlen = strlen(PP(fixit, comm));
 	for (pp = prev_pbase, i = 0; i < prev_nproc; pp++, i++) {
-		int len;
-
 		if (LP(pp, pid) != -1)
 			continue;
 
-		len = strlen(PP(pp, comm));
-		if (len != commlen)
-			continue;
-		if (strcmp(PP(pp, comm), PP(fixit, comm)) == 0) {
+		if (PP(pp, ktaddr) == PP(fixit, ktaddr)) {
 			uint64_t ticks;
 
 			ticks = LP(fixit, iticks) - LP(pp, iticks);
