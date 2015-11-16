@@ -2273,7 +2273,6 @@ options 	SCSI_NCR_MYADDR=7
 options 	SHOW_BUSYBUFS	# List buffers that prevent root unmount
 options 	SI_DEBUG
 options		SLAB_DEBUG
-options 	SLIP_IFF_OPTS
 options 	SOCKBUF_DEBUG
 options		TDMA_BINTVAL_DEFAULT=5
 options		TDMA_SLOTCNT_DEFAULT=2
