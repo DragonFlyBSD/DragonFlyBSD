@@ -212,9 +212,9 @@
 #define	SYS_netbsd_lchown	275
 #define	SYS_lutimes	276
 #define	SYS_netbsd_msync	277
-				/* 278 is obsolete { */
-				/* 279 is obsolete { */
-				/* 280 is obsolete { */
+				/* 278 is obsolete nstat */
+				/* 279 is obsolete nfstat */
+				/* 280 is obsolete nlstat */
 #define	SYS_extpreadv	289
 #define	SYS_extpwritev	290
 #define	SYS_fhstatfs	297
