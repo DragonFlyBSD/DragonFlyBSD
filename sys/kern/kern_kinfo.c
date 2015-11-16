@@ -211,7 +211,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 	kl->kl_sticks = lwp->lwp_thread->td_sticks;
 	kl->kl_iticks = lwp->lwp_thread->td_iticks;
 	kl->kl_cpticks = lwp->lwp_cpticks;
-	kl->kl_pctcpu = lwp->lwp_pctcpu;
+	kl->kl_pctcpu = lwp->lwp_proc->p_stat == SZOMB ? 0 : lwp->lwp_pctcpu;
 	kl->kl_slptime = lwp->lwp_slptime;
 	kl->kl_origcpu = lwp->lwp_usdata.bsd4.batch;
 	kl->kl_estcpu = lwp->lwp_usdata.bsd4.estcpu;
