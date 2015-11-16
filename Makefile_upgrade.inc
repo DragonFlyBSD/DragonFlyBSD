@@ -2257,6 +2257,10 @@ TO_REMOVE+=/usr/share/man/man9/dsched_thread_io_ref.9.gz
 TO_REMOVE+=/usr/share/man/man9/DSCHED_THREAD_IO_UNLOCK.9.gz
 TO_REMOVE+=/usr/share/man/man9/dsched_thread_io_unref.9.gz
 TO_REMOVE+=/usr/share/man/man9/dsched_unregister.9.gz
+TO_REMOVE+=/usr/include/sys/syslink.h
+TO_REMOVE+=/usr/include/sys/syslink_msg.h
+TO_REMOVE+=/usr/include/sys/syslink_msg2.h
+TO_REMOVE+=/usr/include/sys/syslink_vfs.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

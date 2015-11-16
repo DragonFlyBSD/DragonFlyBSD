@@ -18,8 +18,6 @@
 
 #include <sys/sysmsg.h>
 
-#include <sys/syslink.h>
-
 #include <sys/procctl.h>
 
 #define	PAD_(t)	(sizeof(register_t) <= sizeof(t) ? \

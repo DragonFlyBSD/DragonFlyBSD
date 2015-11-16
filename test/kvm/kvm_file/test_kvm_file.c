@@ -36,8 +36,6 @@ typestr(short type)
 		return "kqueue";
 	case DTYPE_CRYPTO:
 		return "crypto";
-	case DTYPE_SYSLINK:
-		return "syslink";
 	case DTYPE_MQUEUE:
 		return "mqueue";
 	default:

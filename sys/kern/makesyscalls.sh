@@ -92,7 +92,6 @@ s/\$//g
 		printf "#include <sys/acl.h>\n\n" > sysarg
 		printf "#include <sys/msgport.h>\n\n" > sysarg
 		printf "#include <sys/sysmsg.h>\n\n" > sysarg
-		printf "#include <sys/syslink.h>\n\n" > sysarg
 		printf "#include <sys/procctl.h>\n\n" > sysarg
 		printf "#define\tPAD_(t)\t(sizeof(register_t) <= sizeof(t) ? \\\n" > sysarg
 		printf "\t\t0 : sizeof(register_t) - sizeof(t))\n\n" > sysarg
