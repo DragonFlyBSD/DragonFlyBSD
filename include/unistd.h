@@ -603,7 +603,6 @@ int	 ttyslot(void);
 int	 umtx_sleep(volatile const int *, int , int);
 int	 umtx_wakeup(volatile const int *, int);
 int	 undelete(const char *);
-int	 unwhiteout(const char *);
 void	*valloc(size_t);			/* obsoleted by malloc() */
 int	 varsym_get(int, const char *, char *, int);
 int	 varsym_list(int, char *, int, int *);
