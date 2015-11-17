@@ -38,8 +38,8 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 
+#include <sys/types.h>
 #include <cpu/inttypes.h>
-#include <cpu/atomic.h>
 #include <sys/condvar.h>
 #include <sys/lock.h>
 #include <sys/queue.h>

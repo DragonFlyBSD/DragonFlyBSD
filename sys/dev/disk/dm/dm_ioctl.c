@@ -79,13 +79,12 @@
  *
  */
 
-#include <sys/types.h>
 #include <sys/device.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
+#include <cpu/atomic.h>
 #include <dev/disk/dm/dm.h>
-
-#include "netbsd-dm.h"
+#include <dev/disk/dm/netbsd-dm.h>
 
 static int
 dm_table_deps(dm_table_entry_t *, prop_array_t);

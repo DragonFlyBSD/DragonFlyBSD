@@ -35,11 +35,7 @@
 /*
  * This file implements initial version of a mirror target
  */
-#include <sys/types.h>
-#include <sys/param.h>
-
 #include <sys/bio.h>
-#include <sys/buf.h>
 #include <sys/malloc.h>
 #include <sys/uuid.h>
 #include <sys/vnode.h>

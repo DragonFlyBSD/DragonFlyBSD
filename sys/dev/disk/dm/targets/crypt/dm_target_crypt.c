@@ -35,11 +35,9 @@
 /*
  * This file implements initial version of device-mapper crypt target.
  */
-#include <sys/types.h>
 #include <sys/endian.h>
 
 #include <sys/bio.h>
-#include <sys/buf.h>
 #include <sys/globaldata.h>
 #include <sys/kerneldump.h>
 #include <sys/malloc.h>
@@ -52,6 +50,7 @@
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/rmd160.h>
 #include <machine/cpufunc.h>
+#include <cpu/atomic.h>
 
 #include <sys/ktr.h>
 

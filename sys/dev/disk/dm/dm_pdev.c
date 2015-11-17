@@ -30,7 +30,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
 #include <sys/disk.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>

@@ -34,9 +34,6 @@
  * This file implements initial version of device-mapper dklinear target.
  */
 
-#include <sys/types.h>
-
-#include <sys/buf.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 

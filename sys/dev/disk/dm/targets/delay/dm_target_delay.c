@@ -32,8 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/buf.h>
 #include <sys/vnode.h>
 #include <sys/mutex2.h>
 #include <sys/objcache.h>

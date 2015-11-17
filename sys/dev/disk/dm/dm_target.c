@@ -30,13 +30,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/linker.h>
+#include <cpu/atomic.h>
 #include <dev/disk/dm/dm.h>
-
-#include "netbsd-dm.h"
+#include <dev/disk/dm/netbsd-dm.h>
 
 static dm_target_t *dm_target_lookup_name(const char *);
 

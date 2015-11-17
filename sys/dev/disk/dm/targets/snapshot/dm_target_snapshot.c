@@ -76,14 +76,10 @@
 /*
  * This file implements initial version of device-mapper snapshot target.
  */
-#include <sys/types.h>
-#include <sys/param.h>
-
-#include <sys/buf.h>
 #include <sys/kmem.h>
 #include <sys/vnode.h>
 
-#include "dm.h"
+#include <dev/disk/dm/dm.h>
 
 typedef struct target_snapshot_config {
 	dm_pdev_t *tsc_snap_dev;

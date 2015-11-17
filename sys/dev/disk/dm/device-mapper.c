@@ -34,9 +34,7 @@
  * I want to say thank you to all people who helped me with this project.
  */
 
-#include <sys/types.h>
 #include <sys/ctype.h>
-#include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/disk.h>
@@ -46,8 +44,7 @@
 #include <sys/module.h>
 #include <sys/sysctl.h>
 #include <dev/disk/dm/dm.h>
-
-#include "netbsd-dm.h"
+#include <dev/disk/dm/netbsd-dm.h>
 
 static	d_ioctl_t	dmioctl;
 static	d_open_t	dmopen;

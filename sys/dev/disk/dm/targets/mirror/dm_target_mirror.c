@@ -32,12 +32,7 @@
 /*
  * This file implements initial version of device-mapper mirror target.
  */
-#include <sys/types.h>
-#include <sys/param.h>
-
-#include <sys/buf.h>
-
-#include "dm.h"
+#include <dev/disk/dm/dm.h>
 
 typedef struct target_mirror_config {
 #define MAX_MIRROR_COPIES 4

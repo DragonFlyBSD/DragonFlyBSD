@@ -30,8 +30,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <machine/thread.h>
 #include <sys/thread2.h>
 #include <sys/disk.h>
 #include <sys/disklabel.h>
@@ -40,9 +38,9 @@
 #include <sys/udev.h>
 #include <sys/devfs.h>
 #include <sys/malloc.h>
+#include <machine/thread.h>
 #include <dev/disk/dm/dm.h>
-
-#include "netbsd-dm.h"
+#include <dev/disk/dm/netbsd-dm.h>
 
 extern struct dev_ops dm_ops;
 
