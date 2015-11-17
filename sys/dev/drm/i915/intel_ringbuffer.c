@@ -1917,12 +1917,10 @@ static int ring_wait_for_space(struct intel_engine_cs *ring, int n)
 
 		msleep(1);
 
-#if 0
-		if (dev_priv->mm.interruptible && signal_pending(current)) {
+		if (dev_priv->mm.interruptible && signal_pending(curthread->td_lwp)) {
 			ret = -ERESTARTSYS;
 			break;
 		}
-#endif
 
 		ret = i915_gem_check_wedge(&dev_priv->gpu_error,
 					   dev_priv->mm.interruptible);
