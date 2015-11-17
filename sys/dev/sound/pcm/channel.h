@@ -254,8 +254,8 @@ struct pcm_channel {
 #include "channel_if.h"
 
 int chn_reinit(struct pcm_channel *c);
-int chn_write(struct pcm_channel *c, struct uio *buf);
-int chn_read(struct pcm_channel *c, struct uio *buf);
+int chn_write(struct pcm_channel *c, struct uio *buf, int ioflags);
+int chn_read(struct pcm_channel *c, struct uio *buf, int ioflags);
 u_int32_t chn_start(struct pcm_channel *c, int force);
 int chn_sync(struct pcm_channel *c, int threshold);
 int chn_flush(struct pcm_channel *c);
@@ -351,7 +351,7 @@ extern int report_soft_matrix;
 #define CHN_F_NOTRIGGER		0x00000010
 #define CHN_F_SLEEPING		0x00000020
 
-#define CHN_F_NBIO              0x00000040  /* do non-blocking i/o */
+#define CHN_F_UNUSED1           0x00000040
 #define CHN_F_MMAP		0x00000080  /* has been mmap()ed */
 
 #define CHN_F_BUSY              0x00000100  /* has been opened 	*/
