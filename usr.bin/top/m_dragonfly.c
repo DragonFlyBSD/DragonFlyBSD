@@ -157,7 +157,8 @@ static struct kinfo_proc **pref;
 
 static uint64_t prev_pbase_time;	/* unit: us */
 static struct kinfo_proc *prev_pbase;
-static int prev_nproc = -1;
+static int prev_pbase_alloc;
+static int prev_nproc;
 static int fscale;
 
 /* these are for getting the memory statistics */
@@ -255,7 +256,7 @@ machine_init(struct statics *statics)
 
 	prmlen = sizeof(fscale);
 	if (sysctlbyname("kern.fscale", &fscale, &prmlen, NULL, 0) == -1)
-		fscale = 0;
+		err(1, "sysctl kern.fscale failed");
 
 	while ((pw = getpwent()) != NULL) {
 		if ((int)strlen(pw->pw_name) > namelength)
@@ -274,7 +275,9 @@ machine_init(struct statics *statics)
 	nproc = 0;
 	onproc = -1;
 	prev_pbase = NULL;
-	prev_nproc = -1;
+	prev_pbase_alloc = 0;
+	prev_pbase_time = 0;
+	prev_nproc = 0;
 	/*
 	 * get the page size with "getpagesize" and calculate pageshift from
 	 * it
@@ -454,36 +457,54 @@ get_system_info(struct system_info *si)
 static struct handle handle;
 
 static void
-fixup_system_pctcpu(struct kinfo_proc *fixit, uint64_t d)
+fixup_pctcpu(struct kinfo_proc *fixit, uint64_t d)
 {
 	struct kinfo_proc *pp;
+	uint64_t ticks;
 	int i;
 
-	/* Skip idle threads */
-	if (PP(fixit, stat) == SIDL)
+	if (prev_nproc == 0 || d == 0)
 		return;
 
-	for (pp = prev_pbase, i = 0; i < prev_nproc; pp++, i++) {
-		if (LP(pp, pid) != -1)
-			continue;
-
-		if (PP(pp, ktaddr) == PP(fixit, ktaddr)) {
-			uint64_t ticks;
-
-			ticks = LP(fixit, iticks) - LP(pp, iticks);
-			ticks += LP(fixit, sticks) - LP(pp, sticks);
-			if (ticks > d)
-				ticks = d;
-			LP(fixit, pctcpu) = (ticks * (uint64_t)fscale) / d;
-			break;
+	if (LP(fixit, pid) == -1) {
+		/* Skip kernel "idle" threads */
+		if (PP(fixit, stat) == SIDL)
+			return;
+		for (pp = prev_pbase, i = 0; i < prev_nproc; pp++, i++) {
+			if (LP(pp, pid) == -1 &&
+			    PP(pp, ktaddr) == PP(fixit, ktaddr))
+				break;
+		}
+	} else {
+		for (pp = prev_pbase, i = 0; i < prev_nproc; pp++, i++) {
+			if (LP(pp, pid) == LP(fixit, pid) &&
+			    LP(pp, tid) == LP(fixit, tid)) {
+				if (PP(pp, paddr) != PP(fixit, paddr)) {
+					/* pid/tid are reused */
+					pp = NULL;
+				}
+				break;
+			}
 		}
 	}
+	if (i == prev_nproc || pp == NULL)
+		return;
+
+	ticks = LP(fixit, iticks) - LP(pp, iticks);
+	ticks += LP(fixit, sticks) - LP(pp, sticks);
+	ticks += LP(fixit, uticks) - LP(pp, uticks);
+	if (ticks > d)
+		ticks = d;
+	LP(fixit, pctcpu) = (ticks * (uint64_t)fscale) / d;
 }
 
 caddr_t 
 get_process_info(struct system_info *si, struct process_select *sel,
     int compare_index)
 {
+	struct timespec tv;
+	uint64_t t, d = 0;
+
 	int i;
 	int total_procs;
 	int active_procs;
@@ -499,7 +520,6 @@ get_process_info(struct system_info *si, struct process_select *sel,
 
 	show_threads = sel->threads;
 
-
 	pbase = kvm_getprocs(kd,
 	    KERN_PROC_ALL | (show_threads ? KERN_PROC_FLAG_LWP : 0), 0, &nproc);
 	if (nproc > onproc)
@@ -509,6 +529,12 @@ get_process_info(struct system_info *si, struct process_select *sel,
 		(void)fprintf(stderr, "top: Out of memory.\n");
 		quit(23);
 	}
+
+	clock_gettime(CLOCK_MONOTONIC_PRECISE, &tv);
+	t = (tv.tv_sec * 1000000ULL) + (tv.tv_nsec / 1000ULL);
+	if (prev_pbase_time > 0 && t > prev_pbase_time)
+		d = t - prev_pbase_time;
+
 	/* get a pointer to the states summary array */
 	si->procstates = process_states;
 
@@ -541,49 +567,52 @@ get_process_info(struct system_info *si, struct process_select *sel,
 				process_states[0]++;
 			if (pstate >= 0 && pstate < MAXPSTATES - 1)
 				process_states[pstate]++;
-			if (((show_system && (LP(pp, pid) == -1)) ||
-			     (show_idle || (LP(pp, pctcpu) != 0) ||
-			      (lpstate == LSRUN))) &&
-			    (match_command == NULL ||
-			     strstr(PP(pp, comm), match_command)) &&
-			    (!show_uid || PP(pp, ruid) == (uid_t) sel->uid)) {
-				*prefp++ = pp;
-				active_procs++;
+
+			if (match_command != NULL &&
+			    strstr(PP(pp, comm), match_command) == NULL) {
+				/* Command does not match */
+				continue;
 			}
+
+			if (show_uid && PP(pp, ruid) != (uid_t)sel->uid) {
+				/* UID does not match */
+				continue;
+			}
+
+			if (!show_system && LP(pp, pid) == -1) {
+				/* Don't show system processes */
+				continue;
+			}
+
+			/* Fix up pctcpu before show_idle test */
+			fixup_pctcpu(pp, d);
+
+			if (!show_idle && LP(pp, pctcpu) == 0 &&
+			    lpstate != LSRUN) {
+				/* Don't show idle processes */
+				continue;
+			}
+
+			*prefp++ = pp;
+			active_procs++;
 		}
 	}
 
-	if (show_system && fscale > 0) {
-		struct timespec tv;
-		uint64_t t;
-
-		clock_gettime(CLOCK_MONOTONIC_PRECISE, &tv);
-		t = (tv.tv_sec * 1000000ULL) + (tv.tv_nsec / 1000ULL);
-
-		if (prev_pbase != NULL && prev_nproc > 0 &&
-		    t > prev_pbase_time) {
-			uint64_t d;
-
-			d = t - prev_pbase_time;
-			for (pp = pbase, i = 0; i < nproc; pp++, i++) {
-				if (LP(pp, pid) != -1)
-					continue;
-				fixup_system_pctcpu(pp, d);
-			}
+	/*
+	 * Save kinfo_procs for later pctcpu fixup.
+	 */
+	if (prev_pbase_alloc < nproc) {
+		prev_pbase_alloc = nproc;
+		prev_pbase = realloc(prev_pbase,
+		    prev_pbase_alloc * sizeof(struct kinfo_proc));
+		if (prev_pbase == NULL) {
+			fprintf(stderr, "top: Out of memory.\n");
+			quit(23);
 		}
-
-		if (prev_nproc != nproc) {
-			prev_nproc = nproc;
-			prev_pbase = realloc(prev_pbase,
-			    prev_nproc * sizeof(struct kinfo_proc));
-			if (prev_pbase == NULL) {
-				fprintf(stderr, "top: Out of memory.\n");
-				quit(23);
-			}
-		}
-		prev_pbase_time = t;
-		memcpy(prev_pbase, pbase, nproc * sizeof(struct kinfo_proc));
 	}
+	prev_nproc = nproc;
+	prev_pbase_time = t;
+	memcpy(prev_pbase, pbase, nproc * sizeof(struct kinfo_proc));
 
 	qsort((char *)pref, active_procs, sizeof(struct kinfo_proc *),
 	    (int (*)(const void *, const void *))proc_compares[compare_index]);
