@@ -460,7 +460,7 @@ fixup_system_pctcpu(struct kinfo_proc *fixit, uint64_t d)
 	int i;
 
 	/* Skip idle threads */
-	if (strncmp(PP(fixit, comm), "idle_", 5) == 0)
+	if (PP(fixit, stat) == SIDL)
 		return;
 
 	for (pp = prev_pbase, i = 0; i < prev_nproc; pp++, i++) {
