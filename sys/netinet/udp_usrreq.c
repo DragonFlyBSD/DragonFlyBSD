@@ -1592,7 +1592,18 @@ out:
 		lwkt_rele(td);
 	if (error && (msg->connect.nm_flags & PRUC_ASYNC)) {
 		so->so_error = error;
-		soclrstate(so, SS_ISCONNECTED);		/* XXX */
+		soclrstate(so, SS_ISCONNECTED);
+		/*
+		 * Wake up callers blocked on this socket to make sure
+		 * that they can see this error.
+		 *
+		 * NOTE:
+		 * sodisconnected() can't be used here, which bricks
+		 * sending and receiving.
+		 */
+		wakeup(&so->so_timeo);
+		sowwakeup(so);
+		sorwakeup(so);
 	}
 	if (error && inp != NULL && inp->inp_lport != 0 &&
 	    (inp->inp_flags & INP_WILDCARD) == 0) {
