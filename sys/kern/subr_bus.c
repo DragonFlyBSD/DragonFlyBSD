@@ -47,6 +47,7 @@
 #include <sys/event.h>
 #include <sys/signalvar.h>
 #include <sys/machintr.h>
+#include <sys/vnode.h>
 
 #include <machine/stdarg.h>	/* for device_printf() */
 
@@ -300,7 +301,6 @@ TAILQ_HEAD(devq, dev_event_info);
 static struct dev_softc
 {
 	int	inuse;
-	int	nonblock;
 	struct lock lock;
 	struct kqinfo kq;
 	struct devq devq;
@@ -322,7 +322,6 @@ devopen(struct dev_open_args *ap)
 		return (EBUSY);
 	/* move to init */
 	devsoftc.inuse = 1;
-	devsoftc.nonblock = 0;
 	devsoftc.async_proc = NULL;
 	return (0);
 }
@@ -355,7 +354,7 @@ devread(struct dev_read_args *ap)
 
 	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
 	while (TAILQ_EMPTY(&devsoftc.devq)) {
-		if (devsoftc.nonblock) {
+		if (ap->a_ioflag & IO_NDELAY) {
 			lockmgr(&devsoftc.lock, LK_RELEASE);
 			return (EAGAIN);
 		}
@@ -386,10 +385,6 @@ devioctl(struct dev_ioctl_args *ap)
 	switch (ap->a_cmd) {
 
 	case FIONBIO:
-		if (*(int*)ap->a_data)
-			devsoftc.nonblock = 1;
-		else
-			devsoftc.nonblock = 0;
 		return (0);
 	case FIOASYNC:
 		if (*(int*)ap->a_data)
