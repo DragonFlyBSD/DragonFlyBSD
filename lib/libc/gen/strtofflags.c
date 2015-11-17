@@ -79,6 +79,11 @@ static struct {
 	{ "noucache",		UF_CACHE,	0 },
 	{ "noscache",		SF_NOCACHE,	1 },
 #endif
+#ifdef UF_XLINK
+	{ "noxlink",		UF_XLINK,	0 },
+	{ "nouxlink",		UF_XLINK,	0 },
+	{ "nosxlink",		SF_XLINK,	0 },
+#endif
 };
 #define longestflaglen	12
 #define nmappings	(sizeof(mapping) / sizeof(mapping[0]))

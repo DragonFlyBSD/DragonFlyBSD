@@ -343,12 +343,16 @@ distribution:
 	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
 
+#
+#
 distrib-dirs:
 	mtree -deU -f ${.CURDIR}/mtree/BSD.root.dist -p ${DESTDIR}/
 	mtree -deU -f ${.CURDIR}/mtree/BSD.var.dist -p ${DESTDIR}/var
 	mtree -deU -f ${.CURDIR}/mtree/BSD.usr.dist -p ${DESTDIR}/usr
 	mtree -deU -f ${.CURDIR}/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
+	-chflags xlink ${DESTDIR}/* ${DESTDIR}/usr/* ${DESTDIR}/var/* \
+			${DESTDIR}/home/*
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
 	cd ${DESTDIR}/usr/share/nls; \
 	set - `grep "^[a-zA-Z]" ${.CURDIR}/nls.alias`; \
