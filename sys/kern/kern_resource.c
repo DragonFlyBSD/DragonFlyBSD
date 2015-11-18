@@ -597,6 +597,11 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 		}
 	}
 
+	/*
+	 * Make sure that this lwp is not ripped if any of the following
+	 * code blocks, e.g. copyout.
+	 */
+	LWPHOLD(lp);
 	switch (uap->function) {
 	case RTP_LOOKUP:
 		error = copyout(&lp->lwp_rtprio, uap->rtp,
@@ -652,6 +657,7 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 		error = EINVAL;
 		break;
 	}
+	LWPRELE(lp);
 
 done:
 	if (p) {
