@@ -820,6 +820,25 @@ static unsigned char sorted_state[] =
 #define ORDERKEY_PRSSIZE \
   if((result = VP(p2, prssize) - VP(p1, prssize)) == 0)
 
+static __inline int
+orderkey_kernidle(const struct kinfo_proc *p1, const struct kinfo_proc *p2)
+{
+	int p1_kidle = 0, p2_kidle = 0;
+
+	if (LP(p1, pid) == -1 && PP(p1, stat) == SIDL)
+		p1_kidle = 1;
+	if (LP(p2, pid) == -1 && PP(p2, stat) == SIDL)
+		p2_kidle = 1;
+
+	if (!p2_kidle && p1_kidle)
+		return 1;
+	if (p2_kidle && !p1_kidle)
+		return -1;
+	return 0;
+}
+
+#define ORDERKEY_KIDLE	if ((result = orderkey_kernidle(p1, p2)) == 0)
+
 /* compare_cpu - the comparison function for sorting by cpu percentage */
 
 int
@@ -834,6 +853,7 @@ proc_compare(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	p1 = *(struct kinfo_proc **) pp1;
 	p2 = *(struct kinfo_proc **) pp2;
 
+	ORDERKEY_KIDLE
 	ORDERKEY_PCTCPU
 	ORDERKEY_CPTICKS
 	ORDERKEY_STATE
@@ -861,6 +881,7 @@ compare_size(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 
 	ORDERKEY_MEM
 	ORDERKEY_RSSIZE
+	ORDERKEY_KIDLE
 	ORDERKEY_PCTCPU
 	ORDERKEY_CPTICKS
 	ORDERKEY_STATE
@@ -886,6 +907,7 @@ compare_res(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 
 	ORDERKEY_RSSIZE
 	ORDERKEY_MEM
+	ORDERKEY_KIDLE
 	ORDERKEY_PCTCPU
 	ORDERKEY_CPTICKS
 	ORDERKEY_STATE
@@ -912,6 +934,7 @@ compare_pres(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	ORDERKEY_PRSSIZE
 	ORDERKEY_RSSIZE
 	ORDERKEY_MEM
+	ORDERKEY_KIDLE
 	ORDERKEY_PCTCPU
 	ORDERKEY_CPTICKS
 	ORDERKEY_STATE
@@ -935,6 +958,7 @@ compare_time(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	p1 = *(struct kinfo_proc **) pp1;
 	p2 = *(struct kinfo_proc **) pp2;
 
+	ORDERKEY_KIDLE
 	ORDERKEY_CPTICKS
 	ORDERKEY_PCTCPU
 	ORDERKEY_KTHREADS
@@ -959,7 +983,8 @@ compare_ctime(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	/* remove one level of indirection */
 	p1 = *(struct kinfo_proc **) pp1;
 	p2 = *(struct kinfo_proc **) pp2;
-	
+
+	ORDERKEY_KIDLE
 	ORDERKEY_CTIME
 	ORDERKEY_PCTCPU
 	ORDERKEY_KTHREADS
@@ -990,6 +1015,7 @@ compare_prio(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	ORDERKEY_KTHREADS
 	ORDERKEY_KTHREADS_PRIO
 	ORDERKEY_PRIO
+	ORDERKEY_KIDLE
 	ORDERKEY_CPTICKS
 	ORDERKEY_PCTCPU
 	ORDERKEY_STATE
@@ -1014,6 +1040,7 @@ compare_thr(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 
 	ORDERKEY_KTHREADS
 	ORDERKEY_KTHREADS_PRIO
+	ORDERKEY_KIDLE
 	ORDERKEY_CPTICKS
 	ORDERKEY_PCTCPU
 	ORDERKEY_STATE
