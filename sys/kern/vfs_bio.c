@@ -788,8 +788,8 @@ push_bio(struct bio *bio)
 	if ((nbio = bio->bio_next) == NULL) {
 		int index = bio - &bio->bio_buf->b_bio_array[0];
 		if (index >= NBUF_BIO - 1) {
-			panic("push_bio: too many layers bp %p",
-				bio->bio_buf);
+			panic("push_bio: too many layers %d for bp %p",
+				index, bio->bio_buf);
 		}
 		nbio = &bio->bio_buf->b_bio_array[index + 1];
 		bio->bio_next = nbio;
