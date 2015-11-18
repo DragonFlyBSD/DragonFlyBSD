@@ -1392,6 +1392,7 @@ static int _status(int argc, char **argv, void *data)
 
 	/* Fetch targets and print 'em */
 	do {
+		params = NULL;
 		next = dm_get_next_target(dmt, next, &start, &length,
 					  &target_type, &params);
 		/* Skip if target type doesn't match */
@@ -1422,8 +1423,14 @@ static int _status(int argc, char **argv, void *data)
 					while (*c && *c != ' ')
 						*c++ = '0';
 				}
-				printf("%" PRIu64 " %" PRIu64 " %s %s",
-				       start, length, target_type, params);
+				if (params && strlen(params) > 0) {
+					printf("%" PRIu64 " %" PRIu64 " %s %s",
+					       start, length, target_type, params);
+				} else {
+					/* Not implemented by targets */
+					printf("%" PRIu64 " %" PRIu64 " %s",
+					       start, length, target_type);
+				}
 			}
 			printf("\n");
 		}
