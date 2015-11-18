@@ -175,6 +175,10 @@ main(int ac, char **av)
 		ecode = cmd_remote_disconnect(sel_path, av[1]);
 	} else if (strcmp(av[0], "hash") == 0) {
 		ecode = cmd_hash(ac - 1, (const char **)(void *)&av[1]);
+	} else if (strcmp(av[0], "info") == 0) {
+		ecode = cmd_info(ac - 1, (const char **)(void *)&av[1]);
+	} else if (strcmp(av[0], "mountall") == 0) {
+		ecode = cmd_mountall(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "status") == 0) {
 		/*
 		 * Get status of PFS and its connections (-a for all PFSs)
@@ -209,11 +213,12 @@ main(int ac, char **av)
 		/*
 		 * List all PFSs
 		 */
-		if (ac > 2) {
-			fprintf(stderr, "pfs-list: too many arguments\n");
-			usage(1);
+		if (ac >= 2) {
+			ecode = cmd_pfs_list(ac - 1,
+					     (const char **)(void *)&av[1]);
+		} else {
+			ecode = cmd_pfs_list(1, &sel_path);
 		}
-		ecode = cmd_pfs_list((ac == 2) ? av[1] : sel_path);
 	} else if (strcmp(av[0], "pfs-create") == 0) {
 		/*
 		 * Create new PFS using pfs_type
@@ -451,9 +456,13 @@ usage(int code)
 			"Del cluster link\n"
 		"    hash filename*               "
 			"Print directory hash\n"
+		"    info [devpath...]            "
+			"Info on all offline or online H2 partitions\n"
+		"    mountall [devpath...]        "
+			"Mount @LOCAL for all H2 partitions\n"
 		"    status [<path>...]           "
-			"Report cluster status\n"
-		"    pfs-list [<path>]            "
+			"Report active cluster status\n"
+		"    pfs-list [<path>...]         "
 			"List PFSs\n"
 		"    pfs-clid <label>             "
 			"Print cluster id for specific PFS\n"

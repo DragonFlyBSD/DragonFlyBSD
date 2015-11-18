@@ -36,74 +36,77 @@
 #include "hammer2.h"
 
 int
-cmd_pfs_list(const char *sel_path)
+cmd_pfs_list(int ac, const char **av)
 {
 	hammer2_ioc_pfs_t pfs;
 	int ecode = 0;
 	int count = 0;
 	int fd;
+	int i;
 	uint32_t status;
 	char *pfs_id_str = NULL;
 
-	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
-		return(1);
-	bzero(&pfs, sizeof(pfs));
+	for (i = 0; i < ac; ++i) {
+		if ((fd = hammer2_ioctl_handle(av[i])) < 0)
+			return(1);
+		bzero(&pfs, sizeof(pfs));
 
-	while ((pfs.name_key = pfs.name_next) != (hammer2_key_t)-1) {
-		if (ioctl(fd, HAMMER2IOC_PFS_GET, &pfs) < 0) {
-			perror("ioctl");
-			ecode = 1;
-			break;
-		}
-		if (count == 0) {
-			printf("Type        "
-			       "ClusterId (pfs_clid)                 "
-			       "Label\n");
-		}
-		switch(pfs.pfs_type) {
-		case HAMMER2_PFSTYPE_NONE:
-			printf("NONE        ");
-			break;
-		case HAMMER2_PFSTYPE_CACHE:
-			printf("CACHE       ");
-			break;
-		case HAMMER2_PFSTYPE_SLAVE:
-			printf("SLAVE       ");
-			break;
-		case HAMMER2_PFSTYPE_SOFT_SLAVE:
-			printf("SOFT_SLAVE  ");
-			break;
-		case HAMMER2_PFSTYPE_SOFT_MASTER:
-			printf("SOFT_MASTER ");
-			break;
-		case HAMMER2_PFSTYPE_MASTER:
-			switch (pfs.pfs_subtype) {
-			case HAMMER2_PFSSUBTYPE_NONE:
-				printf("MASTER      ");
-				break;
-			case HAMMER2_PFSSUBTYPE_SNAPSHOT:
-				printf("SNAPSHOT    ");
-				break;
-			case HAMMER2_PFSSUBTYPE_AUTOSNAP:
-				printf("AUTOSNAP    ");
-				break;
-			default:
-				printf("MASTER(sub?)");
+		while ((pfs.name_key = pfs.name_next) != (hammer2_key_t)-1) {
+			if (ioctl(fd, HAMMER2IOC_PFS_GET, &pfs) < 0) {
+				perror("ioctl");
+				ecode = 1;
 				break;
 			}
-			break;
-		default:
-			printf("%02x          ", pfs.pfs_type);
-			break;
+			if (count == 0) {
+				printf("Type        "
+				       "ClusterId (pfs_clid)                 "
+				       "Label\n");
+			}
+			switch(pfs.pfs_type) {
+			case HAMMER2_PFSTYPE_NONE:
+				printf("NONE        ");
+				break;
+			case HAMMER2_PFSTYPE_CACHE:
+				printf("CACHE       ");
+				break;
+			case HAMMER2_PFSTYPE_SLAVE:
+				printf("SLAVE       ");
+				break;
+			case HAMMER2_PFSTYPE_SOFT_SLAVE:
+				printf("SOFT_SLAVE  ");
+				break;
+			case HAMMER2_PFSTYPE_SOFT_MASTER:
+				printf("SOFT_MASTER ");
+				break;
+			case HAMMER2_PFSTYPE_MASTER:
+				switch (pfs.pfs_subtype) {
+				case HAMMER2_PFSSUBTYPE_NONE:
+					printf("MASTER      ");
+					break;
+				case HAMMER2_PFSSUBTYPE_SNAPSHOT:
+					printf("SNAPSHOT    ");
+					break;
+				case HAMMER2_PFSSUBTYPE_AUTOSNAP:
+					printf("AUTOSNAP    ");
+					break;
+				default:
+					printf("MASTER(sub?)");
+					break;
+				}
+				break;
+			default:
+				printf("%02x          ", pfs.pfs_type);
+				break;
+			}
+			uuid_to_string(&pfs.pfs_clid, &pfs_id_str, &status);
+			printf("%s ", pfs_id_str);
+			free(pfs_id_str);
+			pfs_id_str = NULL;
+			printf("%s\n", pfs.name);
+			++count;
 		}
-		uuid_to_string(&pfs.pfs_clid, &pfs_id_str, &status);
-		printf("%s ", pfs_id_str);
-		free(pfs_id_str);
-		pfs_id_str = NULL;
-		printf("%s\n", pfs.name);
-		++count;
+		close(fd);
 	}
-	close(fd);
 
 	return (ecode);
 }

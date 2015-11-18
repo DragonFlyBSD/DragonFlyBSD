@@ -49,6 +49,7 @@
 #include <sys/sysctl.h>
 #include <sys/udev.h>
 #include <sys/diskslice.h>
+#include <sys/dtype.h>
 #include <dmsg.h>
 #include <dirent.h>
 
@@ -123,7 +124,7 @@ int cmd_remote_disconnect(const char *sel_path, const char *url);
 int cmd_remote_status(const char *sel_path, int all_opt);
 
 int cmd_pfs_getid(const char *sel_path, const char *name, int privateid);
-int cmd_pfs_list(const char *sel_path);
+int cmd_pfs_list(int ac, const char **av);
 int cmd_pfs_create(const char *sel_path, const char *name,
 			uint8_t pfs_type, const char *uuid_str);
 int cmd_pfs_delete(const char *sel_path, const char *name);
@@ -131,6 +132,8 @@ int cmd_pfs_snapshot(const char *sel_path, const char *name, const char *label);
 
 int cmd_service(void);
 int cmd_hash(int ac, const char **av);
+int cmd_info(int ac, const char **av);
+int cmd_mountall(int ac, const char **av);
 int cmd_stat(int ac, const char **av);
 int cmd_leaf(const char *sel_path);
 int cmd_shell(const char *hostname);

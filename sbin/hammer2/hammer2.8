@@ -92,6 +92,21 @@ This feature is not currently used.
 .It Cm disconnect Ar target
 Delete a cluster link entry from the volume header.
 This feature is not currently used.
+.\" ==== info ====
+.It Cm info Op devpath
+Access and print the status and super-root entries for all HAMMER2
+partitions found in /dev/serno or the specified device path(s).
+The partitions do not have to be mounted.
+Note that only mounted partitions will be under active management.
+This is accomplished by mounting at least one PFS within the partition.
+Typically at least the @LOCAL PFS is mounted.
+.\" ==== mountall ====
+.It Cm mountall Op devpath
+This directive mounts the @LOCAL PFS on all HAMMER2 partitions found
+in /dev/serno, or the specified device path(s).
+The partitions are mounted as /var/hammer2/LOCAL.<id>.
+Mounts are executed in the background and this command will wait a
+limited amount of time for the mounts to complete before returning.
 .\" ==== status ====
 .It Cm status Ar path...
 Dump a list of all cluster link entries configured in the volume header.
