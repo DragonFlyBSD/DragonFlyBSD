@@ -479,21 +479,34 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	hammer2_xop_fifo_t *fifo;
 
 	/*
+	 * Early termination (typicaly of xop_readir)
+	 */
+	if (hammer2_xop_active(xop) == 0) {
+		error = EINTR;
+		goto done;
+	}
+
+	/*
 	 * Multi-threaded entry into the XOP collector.  We own the
 	 * fifo->wi for our clindex.
 	 */
 	fifo = &xop->collect[clindex];
 
+	if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO)
+		lwkt_yield();
 	while (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
+		atomic_set_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
 		tsleep_interlock(xop, 0);
 		if (hammer2_xop_active(xop) == 0) {
 			error = EINTR;
 			goto done;
 		}
+		cpu_lfence();
 		if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
 			tsleep(xop, PINTERLOCKED, "h2feed", hz*60);
 		}
 	}
+	atomic_clear_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
 	if (chain) {
 		hammer2_chain_ref(chain);
 		hammer2_chain_push_shared_lock(chain);
@@ -600,8 +613,14 @@ loop:
 				xop->cluster.array[i].flags |=
 							HAMMER2_CITEM_NULL;
 			}
-			if (fifo->wi - fifo->ri < HAMMER2_XOPFIFO / 2)
-				wakeup(xop);	/* XXX optimize */
+			if (fifo->wi - fifo->ri <= HAMMER2_XOPFIFO / 2) {
+				if (fifo->flags & HAMMER2_XOP_FIFO_STALL) {
+					atomic_clear_int(&fifo->flags,
+						    HAMMER2_XOP_FIFO_STALL);
+					wakeup(xop);
+					lwkt_yield();
+				}
+			}
 			--i;		/* loop on same index */
 		} else {
 			/*
@@ -783,6 +802,14 @@ hammer2_xop_dequeue(hammer2_thread_t *thr, hammer2_xop_head_t *xop)
 	atomic_clear_int(&xop->collect[clindex].flags,
 			 HAMMER2_XOP_FIFO_RUN);
 	hammer2_spin_unex(&pmp->xop_spin);
+
+	/*
+	 * We do not necessarily need to wakeup a dependent waiter, we will
+	 * loop up and process any unlocked dependency immediately.  However,
+	 * if there is more than one waking up other threads might improve
+	 * performance.
+	 */
+	/*wakeup_one(thr->xopq);*/
 }
 
 /*

@@ -120,7 +120,9 @@ typedef struct spinlock			hammer2_spin_t;
 
 #define hammer2_mtx_ex			mtx_lock_ex_quick
 #define hammer2_mtx_sh			mtx_lock_sh_quick
+#define hammer2_mtx_sh_again		mtx_lock_sh_again
 #define hammer2_mtx_unlock		mtx_unlock
+#define hammer2_mtx_downgrade		mtx_downgrade
 #define hammer2_mtx_owned		mtx_owned
 #define hammer2_mtx_init		mtx_init
 #define hammer2_mtx_temp_release	mtx_lock_temp_release
@@ -155,19 +157,6 @@ hammer2_mtx_upgrade(hammer2_mtx_t *mtx)
 		wasexclusive = 0;
 	}
 	return wasexclusive;
-}
-
-/*
- * Downgrade an inode lock from exclusive to shared only if the inode
- * lock was previously shared.  If the inode lock was previously exclusive,
- * this is a NOP.
- */
-static __inline
-void
-hammer2_mtx_downgrade(hammer2_mtx_t *mtx, int wasexclusive)
-{
-	if (wasexclusive == 0)
-		mtx_downgrade(mtx);
 }
 
 /*
@@ -849,6 +838,7 @@ struct hammer2_xop_fifo {
 typedef struct hammer2_xop_fifo hammer2_xop_fifo_t;
 
 #define HAMMER2_XOP_FIFO_RUN	0x0001
+#define HAMMER2_XOP_FIFO_STALL	0x0002
 
 struct hammer2_xop_head {
 	hammer2_xop_func_t	func;
@@ -1346,7 +1336,7 @@ int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 			const char *name, size_t name_len,
 			hammer2_key_t lhc);
 hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
-			hammer2_inode_t *tdip);
+			hammer2_inode_t *tdip, int *errorp, int ishardlink);
 void hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
 void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
@@ -1364,6 +1354,7 @@ void hammer2_chain_core_init(hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 void hammer2_chain_lock(hammer2_chain_t *chain, int how);
+void hammer2_chain_lock_downgrade(hammer2_chain_t *chain);
 void hammer2_chain_push_shared_lock(hammer2_chain_t *chain);
 void hammer2_chain_pull_shared_lock(hammer2_chain_t *chain);
 void hammer2_chain_load_data(hammer2_chain_t *chain);

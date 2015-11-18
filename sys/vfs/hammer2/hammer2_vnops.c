@@ -1337,12 +1337,18 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 		nlink_locked = 0;
 	}
 	fdip = ip->pip;
-	cdip = hammer2_inode_common_parent(fdip, tdip);
-	hammer2_inode_lock(cdip, 0);
+	error = 0;
+
+	/*
+	 * Can return NULL and error == EXDEV if the common parent
+	 * crosses a directory with the xlink flag set.
+	 */
+	cdip = hammer2_inode_common_parent(fdip, tdip, &error, 1);
+	if (cdip)
+		hammer2_inode_lock(cdip, 0);
 	hammer2_inode_lock(fdip, 0);
 	hammer2_inode_lock(tdip, 0);
 	hammer2_inode_lock(ip, 0);
-	error = 0;
 
 	/*
 	 * Dispatch xop_nlink unconditionally since we have to update nlinks.
@@ -1358,7 +1364,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 #if 0
 	if (fdip != cdip || (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE))
 #endif
-	{
+	if (error == 0) {
 		xop1 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_setip2(&xop1->head, ip);
 		hammer2_xop_setip3(&xop1->head, cdip);
@@ -1401,8 +1407,10 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
-	hammer2_inode_unlock(cdip);
-	hammer2_inode_drop(cdip);
+	if (cdip) {
+		hammer2_inode_unlock(cdip);
+		hammer2_inode_drop(cdip);
+	}
 
 	if (nlink_locked)
 		lockmgr(&ip->pmp->lock_nlink, LK_RELEASE);
@@ -1784,12 +1792,20 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		nlink_locked = 0;
 	}
 
-	cdip = hammer2_inode_common_parent(ip->pip, tdip);
+	/*
+	 * Can return NULL and error == EXDEV if the common parent
+	 * crosses a directory with the xlink flag set.
+	 */
+	error = 0;
+	cdip = hammer2_inode_common_parent(ip->pip, tdip, &error, 0);
+	if (cdip == NULL) {
+		tnch_error = error;
+		goto done3;
+	}
 	hammer2_inode_lock(cdip, 0);
 	hammer2_inode_lock(fdip, 0);
 	hammer2_inode_lock(tdip, 0);
 	hammer2_inode_ref(ip);		/* extra ref */
-	error = 0;
 
 	/*
 	 * If ip is a hardlink target and fdip != cdip we must shift the
@@ -1950,6 +1966,7 @@ done2:
 	hammer2_inode_unlock(cdip);
 	hammer2_inode_drop(ip);
 	hammer2_inode_drop(cdip);
+done3:
 	hammer2_inode_run_sideq(fdip->pmp);
 
 	if (nlink_locked)

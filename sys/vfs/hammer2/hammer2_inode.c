@@ -1255,16 +1255,22 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 }
 
 /*
- * Find the directory common to both fdip and tdip.
+ * Find the directory common to both fdip and tdip that satisfies the
+ * conditions.  The common directory is not allowed to cross a XLINK
+ * boundary.  If ishardlink is non-zero and we successfully find the
+ * common parent, we will continue to iterate parents until we hit a
+ * XLINK boundary.
  *
  * Returns a held but not locked inode.  Caller typically locks the inode,
  * and when through unlocks AND drops it.
  */
 hammer2_inode_t *
-hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)
+hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip,
+			    int *errorp, int ishardlink)
 {
 	hammer2_inode_t *scan1;
 	hammer2_inode_t *scan2;
+	int state;
 
 	/*
 	 * We used to have a depth field but it complicated matters too
@@ -1273,33 +1279,55 @@ hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)
 	 *
 	 * XXX need a bottom-up topology stability lock
 	 */
-	if (fdip == tdip || fdip == tdip->pip) {
+	if (fdip == tdip) {
 		hammer2_inode_ref(fdip);
 		return(fdip);
-	}
-	if (fdip->pip == tdip) {
-		hammer2_inode_ref(tdip);
-		return(tdip);
 	}
 
 	/*
 	 * XXX not MPSAFE
+	 *
+	 * state: -1	sub-scan failed
+	 *	   0
+	 *	  +1	sub-scan succeeded (find xlink boundary if rename)
 	 */
 	for (scan1 = fdip; scan1->pmp == fdip->pmp; scan1 = scan1->pip) {
 		scan2 = tdip;
+		state = 0;
 		while (scan2->pmp == tdip->pmp) {
-			if (scan1 == scan2) {
-				hammer2_inode_ref(scan1);
-				return(scan1);
+			if (state == 0 && scan1 == scan2) {
+				/*
+				 * Found common parent, stop here on rename,
+				 * continue if creating a hardlink.
+				 */
+				if (ishardlink == 0) {
+					hammer2_inode_ref(scan1);
+					return(scan1);
+				}
+				state = 1;
 			}
+			if (state == 1) {
+				/*
+				 * Search for XLINK boundary when hardlink.
+				 */
+				if ((scan2->meta.uflags &
+				     (SF_XLINK | UF_XLINK)) ||
+				    scan2->pip == NULL ||
+				    scan2->pip->pmp != scan1->pmp) {
+					hammer2_inode_ref(scan2);
+					return(scan2);
+				}
+			}
+			if (scan2->meta.uflags & (SF_XLINK | UF_XLINK))
+				break;
 			scan2 = scan2->pip;
 			if (scan2 == NULL)
 				break;
 		}
+		if (scan1->meta.uflags & (SF_XLINK | UF_XLINK))
+			break;
 	}
-	panic("hammer2_inode_common_parent: no common parent %p %p\n",
-	      fdip, tdip);
-	/* NOT REACHED */
+	*errorp = EXDEV;
 	return(NULL);
 }
 

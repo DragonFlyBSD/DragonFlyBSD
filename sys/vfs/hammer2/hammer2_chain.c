@@ -679,15 +679,30 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 }
 
 /*
+ * Downgrade an exclusive chain lock to a shared chain lock.
+ *
+ * NOTE: There is no upgrade equivalent due to the ease of
+ *	 deadlocks in that direction.
+ */
+void
+hammer2_chain_lock_downgrade(hammer2_chain_t *chain)
+{
+	hammer2_mtx_downgrade(&chain->lock);
+}
+
+/*
  * Obtains a second shared lock on the chain, does not account the second
  * shared lock as being owned by the current thread.
  *
  * Caller must already own a shared lock on this chain.
+ *
+ * The lock function is required to obtain the second shared lock without
+ * blocking on pending exclusive requests.
  */
 void
 hammer2_chain_push_shared_lock(hammer2_chain_t *chain)
 {
-	hammer2_mtx_sh(&chain->lock);
+	hammer2_mtx_sh_again(&chain->lock);
 	atomic_add_int(&chain->lockcnt, 1);
 	/* do not count in td_tracker for this thread */
 }
@@ -4276,7 +4291,8 @@ hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 	rchain = NULL;
 
 	for (;;) {
-		int nloops;
+		int again;
+
 		rchain = hammer2_chain_lookup(parentp, &key_dummy,
 					      lhc, lhc,
 					      &cache_index, flags);
@@ -4287,41 +4303,43 @@ hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 		 * Iterate parents, handle parent rename races by retrying
 		 * the operation.
 		 */
-		nloops = -1;
-		while (nloops) {
-			--nloops;
+		again = 0;
+		for (;;) {
 			parent = *parentp;
-			if (nloops < 0 &&
-			    parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
-				nloops = 1;
+			if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
+				if (again == 1)
+					break;
+				++again;
 			}
 			if (parent->bref.flags & HAMMER2_BREF_FLAG_PFSROOT)
 				goto done;
-			if (parent->parent == NULL)
-				goto done;
-			parent = parent->parent;
-			hammer2_chain_ref(parent);
-			hammer2_chain_unlock(*parentp);
-			hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
+			for (;;) {
+				if (parent->parent == NULL)
+					goto done;
+				parent = parent->parent;
+				hammer2_chain_ref(parent);
+				hammer2_chain_unlock(*parentp);
+				hammer2_chain_lock(parent,
+						   HAMMER2_RESOLVE_ALWAYS |
 						   resolve_flags);
-			if ((*parentp)->parent == parent) {
-				hammer2_chain_drop(*parentp);
-				*parentp = parent;
-			} else {
+				if ((*parentp)->parent == parent) {
+					hammer2_chain_drop(*parentp);
+					*parentp = parent;
+					break;
+				}
 				hammer2_chain_unlock(parent);
 				hammer2_chain_drop(parent);
 				hammer2_chain_lock(*parentp,
 						   HAMMER2_RESOLVE_ALWAYS |
 						   resolve_flags);
-				parent = NULL;	/* safety */
-				/* retry */
+				parent = *parentp;
 			}
 		}
 	}
 done:
 
 	*chainp = rchain;
-	return (rchain ? EINVAL : 0);
+	return (rchain ? 0 : EINVAL);
 }
 
 /*

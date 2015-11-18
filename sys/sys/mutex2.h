@@ -187,6 +187,18 @@ mtx_lock_sh_quick(mtx_t *mtx)
 }
 
 /*
+ * Adds a shared lock reference to a lock already locked shared,
+ * does not block on pending exclusive request.
+ */
+static __inline void
+mtx_lock_sh_again(mtx_t *mtx)
+{
+	KKASSERT((mtx->mtx_lock & MTX_EXCLUSIVE) == 0 &&
+		 (mtx->mtx_lock & MTX_MASK) > 0);
+	atomic_add_int(&mtx->mtx_lock, 1);
+}
+
+/*
  * Short-form exclusive spinlock a mutex.  Must be paired with
  * mtx_spinunlock().
  */

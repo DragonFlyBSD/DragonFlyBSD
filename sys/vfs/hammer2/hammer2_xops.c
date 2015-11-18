@@ -399,11 +399,8 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	/*
 	 * Chains passed to feed are expected to be locked shared.
 	 */
-	if (chain) {
-		hammer2_chain_unlock(chain);
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
-					  HAMMER2_RESOLVE_SHARED);
-	}
+	if (chain)
+		hammer2_chain_lock_downgrade(chain);
 
 	/*
 	 * We always return the hardlink target (the real inode) for
