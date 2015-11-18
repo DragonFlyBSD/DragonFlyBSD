@@ -262,7 +262,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	xop->finished = 0;
 	xop->bio = bio;
 	xop->lbase = lbase;
-	hammer2_mtx_init(&xop->lock, "h2bio");
+	hammer2_mtx_init(&xop->lock, "h2bior");
 	hammer2_xop_start(&xop->head, hammer2_strategy_xop_read);
 	/* asynchronous completion */
 
@@ -478,6 +478,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	xop->finished = 0;
 	xop->bio = bio;
 	xop->lbase = bio->bio_offset;
+	hammer2_mtx_init(&xop->lock, "h2biow");
 	hammer2_xop_start(&xop->head, hammer2_strategy_xop_write);
 	/* asynchronous completion */
 

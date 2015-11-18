@@ -137,8 +137,9 @@ hammer2_primary_sync_thread(void *arg)
 		/*
 		 * Synchronization scan.
 		 */
-		kprintf("sync_slaves pfs %s clindex %d\n",
-			pmp->pfs_names[thr->clindex], thr->clindex);
+		if (hammer2_debug & 0x8000)
+			kprintf("sync_slaves pfs %s clindex %d\n",
+				pmp->pfs_names[thr->clindex], thr->clindex);
 		hammer2_trans_init(pmp, 0);
 
 		hammer2_inode_ref(pmp->iroot);
@@ -197,7 +198,7 @@ hammer2_primary_sync_thread(void *arg)
 		hammer2_inode_drop(pmp->iroot);
 		hammer2_trans_done(pmp);
 
-		if (error)
+		if (error && error != EINPROGRESS)
 			kprintf("hammer2_sync_slaves: error %d\n", error);
 
 		/*

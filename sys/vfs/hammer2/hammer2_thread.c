@@ -168,6 +168,7 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 
 	xop = objcache_get(cache_xops, M_WAITOK);
 	KKASSERT(xop->head.cluster.array[0].chain == NULL);
+
 	xop->head.ip1 = ip;
 	xop->head.func = NULL;
 	xop->head.state = 0;
@@ -280,6 +281,7 @@ void
 hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 			 int notidx)
 {
+	hammer2_inode_t *ip1;
 #if 0
 	hammer2_xop_group_t *xgrp;
 	hammer2_thread_t *thr;
@@ -291,7 +293,8 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	int i;
 	int nchains;
 
-	pmp = xop->ip1->pmp;
+	ip1 = xop->ip1;
+	pmp = ip1->pmp;
 	if (pmp->has_xop_threads == 0)
 		hammer2_xop_helper_create(pmp);
 
@@ -314,9 +317,16 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	 * deallocate it.
 	 */
 	hammer2_spin_ex(&pmp->xop_spin);
-	nchains = xop->ip1->cluster.nchains;
+	nchains = ip1->cluster.nchains;
 	for (i = 0; i < nchains; ++i) {
-		if (i != notidx) {
+		/*
+		 * XXX ip1->cluster.array* not stable here.  This temporary
+		 *     hack fixes basic issues in target XOPs which need to
+		 *     obtain a starting chain from the inode but does not
+		 *     address possible races against inode updates which
+		 *     might NULL-out a chain.
+		 */
+		if (i != notidx && ip1->cluster.array[i].chain) {
 			atomic_set_int(&xop->run_mask, 1U << i);
 			atomic_set_int(&xop->chk_mask, 1U << i);
 			TAILQ_INSERT_TAIL(&pmp->xopq[i], xop, collect[i].entry);
