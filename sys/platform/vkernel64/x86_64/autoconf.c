@@ -115,6 +115,18 @@ cdev_t	rootdev = NULL;
 cdev_t	dumpdev = NULL;
 
 /*
+ * nfsroot.iosize may be set in loader.conf, 32768 is recommended to
+ * be able to max-out a GigE link if the server supports it.  Many servers
+ * do not so the default is 8192.
+ *
+ * nfsroot.rahead defaults to something reasonable, can be overridden.
+ */
+static int nfsroot_iosize = 8192;
+TUNABLE_INT("nfsroot.iosize", &nfsroot_iosize);
+static int nfsroot_rahead = 4;
+TUNABLE_INT("nfsroot.rahead", &nfsroot_rahead);
+
+/*
  *
  */
 static void
@@ -525,10 +537,12 @@ match_done:
 	/* XXX set up swap? */
 
 	/* set up root mount */
-	nd->root_args.rsize = 8192;		/* XXX tunable? */
-	nd->root_args.wsize = 8192;
+	nd->root_args.rsize = nfsroot_iosize;
+	nd->root_args.wsize = nfsroot_iosize;
 	nd->root_args.sotype = SOCK_STREAM;
-	nd->root_args.flags = NFSMNT_WSIZE | NFSMNT_RSIZE | NFSMNT_RESVPORT;
+	nd->root_args.readahead = nfsroot_rahead;
+	nd->root_args.flags = NFSMNT_WSIZE | NFSMNT_RSIZE | NFSMNT_RESVPORT |
+			      NFSMNT_READAHEAD;
 	if (inaddr_to_sockaddr("boot.nfsroot.server", &nd->root_saddr)) {
 		kprintf("PXE: no server\n");
 		return;
