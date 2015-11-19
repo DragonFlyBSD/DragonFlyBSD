@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -33,6 +33,7 @@
  * SUCH DAMAGE.
  */
 #include <sys/types.h>
+#include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -40,30 +41,57 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <dmsg.h>
+#include <mntopts.h>
 
 static int cluster_connect(const char *volume);
+static void usage(const char *ctl, ...);
+
+static struct mntopt mopts[] = {
+	MOPT_STDOPTS,
+	{ "update", 0, MNT_UPDATE, 0 },
+	{ "local", 0, HMNT2_LOCAL, 1 },
+	MOPT_NULL
+};
 
 /*
  * Usage: mount_hammer2 [volume] [mtpt]
  */
 int
-main(int argc, char *argv[])
+main(int ac, char *av[])
 {
 	struct hammer2_mount_info info;
 	struct vfsconf vfc;
 	char *mountpt;
 	char *devpath;
 	int error;
+	int ch;
 	int mount_flags;
+	int init_flags;
 
 	bzero(&info, sizeof(info));
 	mount_flags = 0;
+	init_flags = 0;
 
-	if (argc < 3)
-		exit(1);
+	while ((ch = getopt(ac, av, "o:u")) != -1) {
+		switch(ch) {
+		case 'o':
+			getmntopts(optarg, mopts, &mount_flags, &info.hflags);
+			break;
+		case 'u':
+			init_flags |= MNT_UPDATE;
+			break;
+		default:
+			usage("unknown option: -%c", ch);
+			/* not reached */
+		}
+	}
+	ac -= optind;
+	av += optind;
+	mount_flags |= init_flags;
 
 	error = getvfsbyname("hammer2", &vfc);
 	if (error) {
@@ -71,7 +99,30 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	devpath = strdup(argv[1]);
+	/*
+	 * Only the mount point need be specified in update mode.
+	 */
+	if (init_flags & MNT_UPDATE) {
+		if (ac != 1) {
+			usage("missing parameter (mountpoint)");
+			/* not reached */
+		}
+		mountpt = av[0];
+		if (mount(vfc.vfc_name, mountpt, mount_flags, &info))
+			usage("mount %s: %s", mountpt, strerror(errno));
+		exit(0);
+	}
+
+	/*
+	 * New mount
+	 */
+	if (ac != 2) {
+		usage("missing parameter(s) (dev@LABEL mountpt)");
+		/* not reached */
+	}
+
+	devpath = strdup(av[0]);
+	mountpt = av[1];
 
 	if (strchr(devpath, '@') == NULL) {
 		fprintf(stderr,
@@ -107,8 +158,6 @@ main(int argc, char *argv[])
 		devpath = p2;
 	}
 	info.volume = devpath;
-	info.hflags = 0;
-	mountpt = argv[2];
 
 	error = mount(vfc.vfc_name, mountpt, mount_flags, &info);
 	if (error < 0) {
@@ -171,4 +220,25 @@ cluster_connect(const char *volume __unused)
 	}
 
 	return(fd);
+}
+
+static
+void
+usage(const char *ctl, ...)
+{
+	va_list va;
+
+	va_start(va, ctl);
+	fprintf(stderr, "hammer2_mount: ");
+	vfprintf(stderr, ctl, va);
+	va_end(va);
+	fprintf(stderr, "\n");
+	fprintf(stderr, " hammer2_mount -u [-o opts] mountpt\n");
+	fprintf(stderr, " hammer2_mount [-o opts] dev@LABEL mountpt\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "options:\n"
+			" <standard_mount_opts>\n"
+			" local\t- disable PFS clustering for whole device\n"
+	);
+	exit(1);
 }
