@@ -440,8 +440,8 @@ typedef struct hammer_inode *hammer_inode_t;
  *	 FIFO (even if REDO is turned off some might still be active) and
  *	 still being tracked for this inode.  See hammer_redo.c
  */
-					/* (not including atime/mtime) */
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
+					/* (not including atime/mtime) */
 #define HAMMER_INODE_RSV_INODES	0x0002	/* hmp->rsv_inodes bumped */
 #define HAMMER_INODE_CONN_DOWN	0x0004	/* include in downward recursion */
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
@@ -455,7 +455,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 #define HAMMER_INODE_REFLUSH	0x2000	/* flush on dependancy / reflush */
 #define HAMMER_INODE_RECLAIM	0x4000	/* trying to reclaim */
-#define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
+#define HAMMER_INODE_FLUSHW	0x8000	/* someone waiting for flush */
 
 #define HAMMER_INODE_TRUNCATED	0x00010000
 #define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
