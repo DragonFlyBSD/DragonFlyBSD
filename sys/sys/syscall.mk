@@ -304,4 +304,5 @@ MIASM =  \
 	pipe2.o \
 	utimensat.o \
 	futimens.o \
-	accept4.o
+	accept4.o \
+	lwp_setname.o

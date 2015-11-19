@@ -146,6 +146,7 @@ DF404.0 {
     lwp_gettid;
     lwp_kill;
     lwp_rtprio;
+    lwp_setname;
     madvise;
     mcontrol;
     mincore;
@@ -442,6 +443,7 @@ DFprivate_1.0 {
     __sys_lwp_gettid;
     __sys_lwp_kill;
     __sys_lwp_rtprio;
+    __sys_lwp_setname;
     __sys_madvise;
     __sys_mcontrol;
     __sys_mincore;
@@ -734,6 +736,7 @@ DFprivate_1.0 {
     _lwp_gettid;
     _lwp_kill;
     _lwp_rtprio;
+    _lwp_setname;
     _madvise;
     _mcontrol;
     _mincore;

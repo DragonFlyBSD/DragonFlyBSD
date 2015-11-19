@@ -141,6 +141,8 @@ struct kinfo_lwp {
 #define WMESGLEN 8
 	uintptr_t	kl_wchan;	/* waiting channel */
 	char		kl_wmesg[WMESGLEN+1];	/* waiting message */
+
+	char		kl_comm[MAXCOMLEN+1];	/* lwp name */
 };
 
 /*

@@ -33,6 +33,7 @@
 #include "namespace.h"
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <pthread_np.h>
 #include "un-namespace.h"
@@ -43,31 +44,19 @@ __weak_reference(_pthread_set_name_np, pthread_set_name_np);
 
 /* Set the thread name for debug. */
 void
-_pthread_set_name_np(pthread_t thread __unused, const char *name __unused)
+_pthread_set_name_np(pthread_t thread, const char *name)
 {
-#if 0
-	struct pthread *curthread = _get_curthread();
-	int ret = 0;
+	struct pthread *curthread = tls_get_curthread();
 
 	if (curthread == thread) {
-		if (thr_set_name(thread->tid, name))
-			ret = errno;
+		lwp_setname(thread->tid, name);
 	} else {
 		if (_thr_ref_add(curthread, thread, 0) == 0) {
 			THR_THREAD_LOCK(curthread, thread);
-			if (thread->state != PS_DEAD) {
-				if (thr_set_name(thread->tid, name))
-					ret = errno;
-			}
+			if (thread->state != PS_DEAD)
+				lwp_setname(thread->tid, name);
 			THR_THREAD_UNLOCK(curthread, thread);
 			_thr_ref_delete(curthread, thread);
-		} else {
-			ret = ESRCH;
 		}
 	}
-#if 0
-	/* XXX should return error code. */
-	return (ret);
-#endif
-#endif
 }

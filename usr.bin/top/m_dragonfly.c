@@ -69,6 +69,7 @@ int n_cpus = 0;
 struct handle {
 	struct kinfo_proc **next_proc;	/* points to next valid proc pointer */
 	int remaining;		/* number of pointers remaining */
+	int show_threads;
 };
 
 /* declarations for load_avg */
@@ -624,6 +625,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	/* pass back a handle */
 	handle.next_proc = pref;
 	handle.remaining = active_procs;
+	handle.show_threads = show_threads;
 	return ((caddr_t) & handle);
 }
 
@@ -666,9 +668,16 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	if (PP(pp, flags) & P_SYSTEM) {
 		/* system process */
 		snprintf(cmdfield, sizeof cmdfield, "[%s]", comm);
-	} else if (LP(pp, tid) > 0) {
+	} else if (hp->show_threads && PP(pp, nthreads) > 1) {
 		/* display it as a thread */
-		snprintf(cmdfield, sizeof cmdfield, "%s{%d}", comm, LP(pp, tid));
+		if (strcmp(PP(pp, comm), LP(pp, comm)) == 0) {
+			snprintf(cmdfield, sizeof cmdfield, "%s{%d}", comm,
+			    LP(pp, tid));
+		} else {
+			/* show thread name in addition to tid */
+			snprintf(cmdfield, sizeof cmdfield, "%s{%d/%s}", comm,
+			    LP(pp, tid), LP(pp, comm));
+		}
 	} else {
 		snprintf(cmdfield, sizeof cmdfield, "%s", comm);
 	}

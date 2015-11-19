@@ -557,6 +557,7 @@ int	 issetugid(void);
 long	 lpathconf(const char *, int);
 int	 lwp_create(struct lwp_params *);
 lwpid_t	 lwp_gettid(void);
+int	 lwp_setname(lwpid_t, const char *);
 #ifndef	_MKNOD_DECLARED
 int	 mknod(const char *, mode_t, dev_t);
 #define	_MKNOD_DECLARED

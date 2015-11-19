@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_set_name_np.3,v 1.6 2007/10/22 10:08:01 ru Exp $
 .\"
-.Dd July 10, 2009
+.Dd November 19, 2015
 .Dt PTHREAD_SET_NAME_NP 3
 .Os
 .Sh NAME
@@ -45,12 +45,8 @@ function sets internal name for thread specified by
 argument to string value specified by
 .Fa name
 argument.
-.Pp
-This is a debugging interface and using it on a day-by-day basis makes
-no sense.
 .Sh ERRORS
-Because of the debugging nature of this function, all errors that may
-appear inside are silently ignored.
+All errors that may appear inside are silently ignored.
 .Sh AUTHORS
 This manual page was written by
 .An Alexey Zelkin Aq Mt phantom@FreeBSD.org .

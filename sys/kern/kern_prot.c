@@ -247,6 +247,44 @@ sys_getgroups(struct getgroups_args *uap)
 }
 
 int
+sys_lwp_setname(struct lwp_setname_args *uap)
+{
+	struct proc *p = curproc;
+	char comm0[MAXCOMLEN + 1];
+	const char *comm = NULL;
+	struct lwp *lp;
+	int error;
+
+	if (uap->name != NULL) {
+		error = copyinstr(uap->name, comm0, sizeof(comm0), NULL);
+		if (error) {
+			if (error != ENAMETOOLONG)
+				return error;
+			/* Truncate */
+			comm0[MAXCOMLEN] = '\0';
+		}
+		comm = comm0;
+	} else {
+		/* Restore to the default name, i.e. process name. */
+		comm = p->p_comm;
+	}
+
+	lwkt_gettoken(&p->p_token);
+
+	lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
+	if (lp != NULL) {
+		strlcpy(lp->lwp_thread->td_comm, comm,
+		    sizeof(lp->lwp_thread->td_comm));
+		error = 0;
+	} else {
+		error = ESRCH;
+	}
+
+	lwkt_reltoken(&p->p_token);
+	return error;
+}
+
+int
 sys_setsid(struct setsid_args *uap)
 {
 	struct proc *p = curproc;

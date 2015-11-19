@@ -40,7 +40,7 @@ struct nlist;
 struct var;
 struct varent;
 
-extern int eval, fscale, mempages, nlistread, rawcpu, cflag;
+extern int eval, fscale, mempages, nlistread, rawcpu, cflag, showtid;
 extern int sumrusage, termwidth, totwidth;
 extern int numcpus;
 extern STAILQ_HEAD(varent_head, varent) var_head;

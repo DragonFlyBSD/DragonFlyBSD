@@ -2308,6 +2308,13 @@ struct	accept4_args {
 	int *	anamelen;	char anamelen_[PAD_(int *)];
 	int	flags;	char flags_[PAD_(int)];
 };
+struct	lwp_setname_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	lwpid_t	tid;	char tid_[PAD_(lwpid_t)];
+	const char *	name;	char name_[PAD_(const char *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2855,6 +2862,7 @@ int	sys_pipe2 (struct pipe2_args *);
 int	sys_utimensat (struct utimensat_args *);
 int	sys_futimens (struct futimens_args *);
 int	sys_accept4 (struct accept4_args *);
+int	sys_lwp_setname (struct lwp_setname_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

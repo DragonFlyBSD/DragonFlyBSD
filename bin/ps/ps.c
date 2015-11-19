@@ -74,6 +74,7 @@ int	sumrusage;		/* -S */
 int	termwidth;		/* width of screen (0 == infinity) */
 int	totwidth;		/* calculated width of requested variables */
 int	numcpus;		/* hw.ncpu */
+int	showtid;		/* -H */
 
 static int needuser, needcomm, needenv;
 #if defined(LAZY_PS)
@@ -121,7 +122,7 @@ main(int argc, char **argv)
 	pid_t pid;
 	uid_t *uids;
 	int all, ch, flag, i, fmt, ofmt, lineno, nentries, nocludge, dropgid;
-	int prtheader, wflag, what, xflg, uid, nuids, showtid;
+	int prtheader, wflag, what, xflg, uid, nuids;
 	int chainflg;
 	char errbuf[_POSIX2_LINE_MAX];
 	const char *cp, *nlistf, *memf;

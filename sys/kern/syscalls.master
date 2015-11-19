@@ -745,3 +745,4 @@
 539	STD	{ int utimensat(int fd, const char *path, const struct timespec *ts, int flags); }
 540	STD	{ int futimens(int fd, const struct timespec *ts); }
 541	STD	{ int accept4(int s, caddr_t name, int *anamelen, int flags); }
+542	STD	{ int lwp_setname(lwpid_t tid, const char *name); }

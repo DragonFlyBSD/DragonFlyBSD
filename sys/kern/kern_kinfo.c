@@ -227,6 +227,7 @@ fill_kinfo_lwp(struct lwp *lwp, struct kinfo_lwp *kl)
 		strncpy(kl->kl_wmesg, lwp->lwp_thread->td_wmesg, WMESGLEN);
 		kl->kl_wmesg[WMESGLEN] = 0;
 	}
+	strlcpy(kl->kl_comm, lwp->lwp_thread->td_comm, sizeof(kl->kl_comm));
 }
 
 /*
@@ -279,4 +280,5 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 		strncpy(kp->kp_lwp.kl_wmesg, td->td_wmesg, WMESGLEN);
 		kp->kp_lwp.kl_wmesg[WMESGLEN] = 0;
 	}
+	strlcpy(kp->kp_lwp.kl_comm, td->td_comm, sizeof(kp->kp_lwp.kl_comm));
 }

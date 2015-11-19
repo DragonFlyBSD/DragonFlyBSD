@@ -550,4 +550,5 @@ const char *syscallnames[] = {
 	"utimensat",			/* 539 = utimensat */
 	"futimens",			/* 540 = futimens */
 	"accept4",			/* 541 = accept4 */
+	"lwp_setname",			/* 542 = lwp_setname */
 };

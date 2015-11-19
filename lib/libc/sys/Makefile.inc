@@ -75,7 +75,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	intro.2 ioctl.2 ioprio_get.2 issetugid.2 jail.2 jail_attach.2 kill.2 \
 	kldfind.2 kldfirstmod.2 kldload.2 kldnext.2 kldstat.2 kldsym.2 \
 	kldunload.2 ktrace.2 kqueue.2 link.2 listen.2 lseek.2 \
-	lwp_create.2 lwp_gettid.2 lwp_kill.2 \
+	lwp_create.2 lwp_gettid.2 lwp_kill.2 lwp_setname.2 \
 	madvise.2 mincore.2 minherit.2 mkdir.2 mkfifo.2 mknod.2 mlock.2 \
 	mlockall.2 mmap.2 \
 	modfind.2 modnext.2 modstat.2 \

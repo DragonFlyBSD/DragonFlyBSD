@@ -58,7 +58,11 @@
 #include "ps.h"
 
 static const char *make_printable(const char *str);
+static const char *make_printable2(const char *str);
 static void put64(u_int64_t n, int w, int type);
+
+#define SHOW_THRNAME(k) \
+	(showtid && KI_PROC(k, pid) != -1 && KI_PROC(k, nthreads) > 1)
 
 void
 printheader(void)
@@ -100,11 +104,24 @@ command(const KINFO *k, const struct varent *vent)
 
 	if (cflag) {
 		/* Don't pad the last field. */
-		if (STAILQ_NEXT(vent, link) == NULL)
-			printf("%s", make_printable(KI_PROC(k, comm)));
-		else
-			printf("%-*s", vent->width, 
-				make_printable(KI_PROC(k, comm)));
+		if (STAILQ_NEXT(vent, link) == NULL) {
+			if (SHOW_THRNAME(k)) {
+				printf("%s/%s",
+				    make_printable(KI_PROC(k, comm)),
+				    make_printable2(KI_LWP(k, comm)));
+			} else {
+				printf("%s", make_printable(KI_PROC(k, comm)));
+			}
+		} else {
+			if (SHOW_THRNAME(k)) {
+				printf("%-*s/%s", vent->width,
+				    make_printable(KI_PROC(k, comm)),
+				    make_printable2(KI_LWP(k, comm)));
+			} else {
+				printf("%-*s", vent->width, 
+					make_printable(KI_PROC(k, comm)));
+			}
+		}
 		return;
 	}
 
@@ -163,10 +180,23 @@ void
 ucomm(const KINFO *k, const struct varent *vent)
 {
 	/* Do not pad the last field */
-	if (STAILQ_NEXT(vent, link) == NULL)
-		printf("%s", make_printable(KI_PROC(k, comm)));
-	else
-		printf("%-*s", vent->width, make_printable(KI_PROC(k, comm)));
+	if (STAILQ_NEXT(vent, link) == NULL) {
+		if (SHOW_THRNAME(k)) {
+			printf("%s/%s", make_printable(KI_PROC(k, comm)),
+			    make_printable2(KI_LWP(k, comm)));
+		} else {
+			printf("%s", make_printable(KI_PROC(k, comm)));
+		}
+	} else {
+		if (SHOW_THRNAME(k)) {
+			printf("%-*s/%s", vent->width,
+			    make_printable(KI_PROC(k, comm)),
+			    make_printable2(KI_LWP(k, comm)));
+		} else {
+			printf("%-*s", vent->width,
+			    make_printable(KI_PROC(k, comm)));
+		}
+	}
 }
 
 void
@@ -709,6 +739,21 @@ make_printable(const char *str)
 	err(1, NULL);
     strvis(cpy, str, VIS_TAB | VIS_NL | VIS_NOSLASH);
     return(cpy);
+}
+
+static const char *
+make_printable2(const char *str)
+{
+    static char *cpy2;
+    int len;
+
+    if (cpy2)
+	free(cpy2);
+    len = strlen(str);
+    if ((cpy2 = malloc(len * 4 + 1)) == NULL)
+	err(1, NULL);
+    strvis(cpy2, str, VIS_TAB | VIS_NL | VIS_NOSLASH);
+    return(cpy2);
 }
 
 /*
