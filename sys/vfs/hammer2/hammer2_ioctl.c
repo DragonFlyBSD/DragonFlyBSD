@@ -586,12 +586,13 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	hammer2_inode_data_t *nipdata;
 	hammer2_chain_t *nchain;
 	hammer2_dev_t *hmp;
+	hammer2_dev_t *force_local;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_inode_t *nip;
 	hammer2_tid_t mtid;
 	int error;
 
-	hmp = ip->pmp->pfs_hmps[0];
+	hmp = ip->pmp->pfs_hmps[0];	/* XXX */
 	if (hmp == NULL)
 		return (EINVAL);
 
@@ -640,24 +641,30 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 				HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
 		}
 
-#if 0
-		hammer2_blockref_t bref;
-		/* XXX new PFS needs to be rescanned / added */
-		bref = nchain->bref;
-		kprintf("ADD LOCAL PFS (IOCTL): %s\n", nipdata->filename);
-		hammer2_pfsalloc(nchain, nipdata, bref.modify_tid);
-#endif
-		/* XXX rescan */
-		hammer2_chain_unlock(nchain);
-		hammer2_chain_drop(nchain);
-
 		/*
 		 * Super-root isn't mounted, fsync it
 		 */
+		hammer2_chain_unlock(nchain);
 		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
 		hammer2_inode_chain_sync(nip);
 		hammer2_inode_drop(nip);
+
+		/* 
+		 * We still have a ref on the chain, relock and associate
+		 * with an appropriate PFS.
+		 */
+		force_local = (hmp->hflags & HMNT2_LOCAL) ? hmp : NULL;
+
+		hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS);
+		nipdata = &nchain->data->ipdata;
+		kprintf("ADD LOCAL PFS (IOCTL): %s\n", nipdata->filename);
+		hammer2_pfsalloc(nchain, nipdata,
+				 nchain->bref.modify_tid, force_local);
+
+		hammer2_chain_unlock(nchain);
+		hammer2_chain_drop(nchain);
+
 	}
 	hammer2_trans_done(hmp->spmp);
 

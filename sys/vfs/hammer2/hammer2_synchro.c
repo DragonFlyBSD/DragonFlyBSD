@@ -63,7 +63,7 @@ typedef struct hammer2_deferred_list {
 #define HAMMER2_SYNCHRO_DEBUG 1
 
 static int hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
-				hammer2_deferred_list_t *list);
+				hammer2_deferred_list_t *list, int isroot);
 #if 0
 static void hammer2_update_pfs_status(hammer2_thread_t *thr, uint32_t flags);
 				nerror = hammer2_sync_insert(
@@ -81,7 +81,7 @@ static int hammer2_sync_destroy(hammer2_thread_t *thr,
 static int hammer2_sync_replace(hammer2_thread_t *thr,
 			hammer2_chain_t *parent, hammer2_chain_t *chain,
 			hammer2_tid_t mtid, int idx,
-			hammer2_chain_t *focus);
+			hammer2_chain_t *focus, int isroot);
 
 /****************************************************************************
  *			    HAMMER2 SYNC THREADS 			    *
@@ -147,15 +147,19 @@ hammer2_primary_sync_thread(void *arg)
 		for (;;) {
 			int didbreak = 0;
 			/* XXX lock synchronize pmp->modify_tid */
-			error = hammer2_sync_slaves(thr, pmp->iroot, &list);
+			error = hammer2_sync_slaves(thr, pmp->iroot, &list, 1);
+			if (hammer2_debug & 0x8000) {
+				kprintf("sync_slaves error %d defer %p\n",
+					error, list.base);
+			}
 			if (error != EAGAIN)
 				break;
 			while ((defer = list.base) != NULL) {
 				hammer2_inode_t *nip;
 
 				nip = defer->ip;
-				error = hammer2_sync_slaves(thr, nip, &list);
-				if (error && error != EAGAIN)
+				error = hammer2_sync_slaves(thr, nip, &list, 0);
+				if (error && error != EAGAIN && error != ENOENT)
 					break;
 				if (hammer2_thr_break(thr)) {
 					didbreak = 1;
@@ -164,7 +168,7 @@ hammer2_primary_sync_thread(void *arg)
 
 				/*
 				 * If no additional defers occurred we can
-				 * remove this one, otherwrise keep it on
+				 * remove this one, otherwise keep it on
 				 * the list and retry once the additional
 				 * defers have completed.
 				 */
@@ -308,7 +312,7 @@ dumpcluster(const char *label,
 static
 int
 hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
-		    hammer2_deferred_list_t *list)
+		    hammer2_deferred_list_t *list, int isroot)
 {
 	hammer2_xop_scanall_t *xop;
 	hammer2_chain_t *parent;
@@ -318,7 +322,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	hammer2_tid_t sync_tid;
 	int cache_index = -1;
 	int needrescan;
-	int wantupdate;
+	int want_update;
 	int error;
 	int nerror;
 	int idx;
@@ -327,11 +331,10 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	pmp = ip->pmp;
 	idx = thr->clindex;	/* cluster node we are responsible for */
 	needrescan = 0;
-	wantupdate = 0;
-
-	if (ip->cluster.focus == NULL)
-		return (EINPROGRESS);
-	sync_tid = ip->cluster.focus->bref.modify_tid;
+	want_update = 0;
+	sync_tid = 0;
+	chain = NULL;
+	parent = NULL;
 
 #if 0
 	/*
@@ -347,6 +350,44 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	error = 0;
 
 	/*
+	 * Resolve the root inode of the PFS and determine if synchronization
+	 * is needed by checking modify_tid.
+	 */
+	{
+		hammer2_xop_ipcluster_t *xop2;
+		hammer2_chain_t *focus;
+
+		hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
+		xop2 = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
+		hammer2_xop_start_except(&xop2->head, hammer2_xop_ipcluster,
+					 idx);
+		hammer2_inode_unlock(ip);
+		error = hammer2_xop_collect(&xop2->head, 0);
+		if (error == 0 && (focus = xop2->head.cluster.focus) != NULL) {
+			sync_tid = focus->bref.modify_tid; /* XXX */
+			chain = hammer2_inode_chain_and_parent(ip, idx,
+						    &parent,
+						    HAMMER2_RESOLVE_ALWAYS |
+						    HAMMER2_RESOLVE_SHARED);
+			want_update = (chain->bref.modify_tid != sync_tid);
+			if (chain) {
+				hammer2_chain_unlock(chain);
+				hammer2_chain_drop(chain);
+				chain = NULL;
+			}
+			if (parent) {
+				hammer2_chain_unlock(parent);
+				hammer2_chain_drop(parent);
+				parent = NULL;
+			}
+		}
+		hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
+	}
+
+	if (want_update == 0)
+		return(0);
+
+	/*
 	 * The inode is left unlocked during the scan.  Issue a XOP
 	 * that does *not* include our cluster index to iterate
 	 * properly synchronized elements and resolve our cluster index
@@ -356,13 +397,15 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 	xop->key_beg = HAMMER2_KEY_MIN;
 	xop->key_end = HAMMER2_KEY_MAX;
+	xop->resolve_flags = HAMMER2_RESOLVE_SHARED |
+			     HAMMER2_RESOLVE_ALWAYS;
+	xop->lookup_flags = HAMMER2_LOOKUP_SHARED |
+			    HAMMER2_LOOKUP_NODIRECT |
+			    HAMMER2_LOOKUP_ALWAYS;
 	hammer2_xop_start_except(&xop->head, hammer2_xop_scanall, idx);
 	parent = hammer2_inode_chain(ip, idx,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
-	if (parent->bref.modify_tid != sync_tid)
-		wantupdate = 1;
-
 	hammer2_inode_unlock(ip);
 
 	chain = hammer2_chain_lookup(&parent, &key_next,
@@ -372,8 +415,9 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);
 	error = hammer2_xop_collect(&xop->head, 0);
-	kprintf("XOP_INITIAL xop=%p clindex %d on %s\n", xop, thr->clindex,
-		pmp->pfs_names[thr->clindex]);
+	kprintf("START_SCAN IP=%016jx chain=%p (%016jx)\n",
+		ip->meta.name_key, chain,
+		(chain ? chain->bref.key : -1));
 
 	for (;;) {
 		/*
@@ -385,12 +429,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		int advance_xop = 0;
 		int dodefer = 0;
 		hammer2_chain_t *focus;
-
-		kprintf("loop xop=%p chain[1]=%p lockcnt=%d\n",
-			xop, xop->head.cluster.array[1].chain,
-			(xop->head.cluster.array[1].chain ?
-			    xop->head.cluster.array[1].chain->lockcnt : -1)
-			);
 
 		if (chain == NULL && error == ENOENT)
 			break;
@@ -441,19 +479,27 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			 * update to compatible content first but we do not
 			 * synchronize modify_tid until the entire recursion
 			 * has completed successfully.
+			 *
+			 * NOTE: Do not try to access hardlink pointers as if
+			 *	 they were normal inodes, the inode cache will
+			 *	 get seriously confused.
 			 */
-			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE &&
+			    focus->data->ipdata.meta.type !=
+			    HAMMER2_OBJTYPE_HARDLINK) {
 				nerror = hammer2_sync_replace(
 						thr, parent, chain,
 						0,
-						idx, focus);
+						idx, focus, 0);
 				dodefer = 1;
 			} else {
 				nerror = hammer2_sync_replace(
 						thr, parent, chain,
 						focus->bref.modify_tid,
-						idx, focus);
+						idx, focus, 0);
 			}
+			advance_local = 1;
+			advance_xop = 1;
 		} else if (n == 0) {
 			/*
 			 * 100% match, advance both
@@ -469,8 +515,14 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			 * compatible content first but we do not synchronize
 			 * modify_tid until the entire recursion has
 			 * completed successfully.
+			 *
+			 * NOTE: Do not try to access hardlink pointers as if
+			 *	 they were normal inodes, the inode cache will
+			 *	 get seriously confused.
 			 */
-			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE &&
+			    focus->data->ipdata.meta.type !=
+			    HAMMER2_OBJTYPE_HARDLINK) {
 				nerror = hammer2_sync_insert(
 						thr, &parent, &chain,
 						0,
@@ -564,22 +616,24 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	 * NOTE: In this situation we do not yet want to synchronize our
 	 *	 inode, setting the error code also has that effect.
 	 */
-	if (error == 0 && needrescan)
+	if ((error == 0 || error == ENOENT) && needrescan)
 		error = EAGAIN;
 
 	/*
-	 * If no error occurred and work was performed, synchronize the
-	 * inode meta-data itself.
+	 * If no error occurred we can synchronize the inode meta-data
+	 * and modify_tid.  Only limited changes are made to PFSROOTs.
 	 *
 	 * XXX inode lock was lost
 	 */
-	if (error == 0 && wantupdate) {
+	if (error == 0 || error == ENOENT) {
 		hammer2_xop_ipcluster_t *xop2;
 		hammer2_chain_t *focus;
 
+		hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
 		xop2 = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start_except(&xop2->head, hammer2_xop_ipcluster,
 					 idx);
+		hammer2_inode_unlock(ip);
 		error = hammer2_xop_collect(&xop2->head, 0);
 		if (error == 0) {
 			focus = xop2->head.cluster.focus;
@@ -596,7 +650,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			nerror = hammer2_sync_replace(
 					thr, parent, chain,
 					sync_tid,
-					idx, focus);
+					idx, focus, isroot);
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
 			hammer2_chain_unlock(parent);
@@ -622,6 +676,8 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		    hammer2_tid_t mtid, int idx, hammer2_chain_t *focus)
 {
 	hammer2_chain_t *chain;
+	hammer2_key_t dummy;
+	int cache_index = -1;
 
 #if HAMMER2_SYNCHRO_DEBUG
 	if (hammer2_debug & 1)
@@ -634,15 +690,28 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 #endif
 
 	/*
-	 * Create the missing chain.  Exclusive locks are needed.
-	 *
-	 * Have to be careful to avoid deadlocks.
+	 * Parent requires an exclusive lock for the insertion.
+	 * We must unlock the child to avoid deadlocks while
+	 * relocking the parent.
 	 */
-	if (*chainp)
+	if (*chainp) {
 		hammer2_chain_unlock(*chainp);
+		hammer2_chain_drop(*chainp);
+		*chainp = NULL;
+	}
 	hammer2_chain_unlock(*parentp);
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_ALWAYS);
-	/* reissue lookup? */
+
+	/*
+	 * We must reissue the lookup to properly position (*parentp)
+	 * for the insertion.
+	 */
+	chain = hammer2_chain_lookup(parentp, &dummy,
+				     focus->bref.key, focus->bref.key,
+				     &cache_index,
+				     HAMMER2_LOOKUP_NODIRECT |
+				     HAMMER2_LOOKUP_ALWAYS);
+	KKASSERT(chain == NULL);
 
 	chain = NULL;
 	hammer2_chain_create(parentp, &chain, thr->pmp,
@@ -672,11 +741,12 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	case HAMMER2_BREF_TYPE_INODE:
 		if ((focus->data->ipdata.meta.op_flags &
 		     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
+			/* do not copy block table */
 			bcopy(focus->data, chain->data,
 			      offsetof(hammer2_inode_data_t, u));
 			break;
 		}
-		/* fall through */
+		/* fall through copy whole thing */
 	case HAMMER2_BREF_TYPE_DATA:
 		bcopy(focus->data, chain->data, chain->bytes);
 		hammer2_chain_setcheck(chain, chain->data);
@@ -687,12 +757,10 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	}
 
 	hammer2_chain_unlock(chain);		/* unlock, leave ref */
-	if (*chainp)
-		hammer2_chain_drop(*chainp);
 	*chainp = chain;			/* will be returned locked */
 
 	/*
-	 * Avoid ordering deadlock when relocking.
+	 * Avoid ordering deadlock when relocking shared.
 	 */
 	hammer2_chain_unlock(*parentp);
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_SHARED |
@@ -773,7 +841,7 @@ int
 hammer2_sync_replace(hammer2_thread_t *thr,
 		     hammer2_chain_t *parent, hammer2_chain_t *chain,
 		     hammer2_tid_t mtid, int idx,
-		     hammer2_chain_t *focus)
+		     hammer2_chain_t *focus, int isroot)
 {
 	int nradix;
 	uint8_t otype;
@@ -801,7 +869,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 	chain->bref.keybits = focus->bref.keybits;
 	chain->bref.vradix = focus->bref.vradix;
 	/* mirror_tid updated by flush */
-	KKASSERT(chain->bref.modify_tid == mtid);
+	KKASSERT(mtid == 0 || chain->bref.modify_tid == mtid);
 	chain->bref.flags = focus->bref.flags;
 	/* key already present */
 	/* check code will be recalculated */
@@ -812,6 +880,52 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 	 */
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
+		/*
+		 * Special case PFSROOTs, only limited changes can be made
+		 * since the meta-data contains miscellanious distinguishing
+		 * fields.
+		 */
+		if (isroot) {
+			chain->data->ipdata.meta.uflags =
+				focus->data->ipdata.meta.uflags;
+			chain->data->ipdata.meta.rmajor =
+				focus->data->ipdata.meta.rmajor;
+			chain->data->ipdata.meta.rminor =
+				focus->data->ipdata.meta.rminor;
+			chain->data->ipdata.meta.ctime =
+				focus->data->ipdata.meta.ctime;
+			chain->data->ipdata.meta.mtime =
+				focus->data->ipdata.meta.mtime;
+			chain->data->ipdata.meta.atime =
+				focus->data->ipdata.meta.atime;
+			/* not btime */
+			chain->data->ipdata.meta.uid =
+				focus->data->ipdata.meta.uid;
+			chain->data->ipdata.meta.gid =
+				focus->data->ipdata.meta.gid;
+			chain->data->ipdata.meta.mode =
+				focus->data->ipdata.meta.mode;
+			chain->data->ipdata.meta.ncopies =
+				focus->data->ipdata.meta.ncopies;
+			chain->data->ipdata.meta.comp_algo =
+				focus->data->ipdata.meta.comp_algo;
+			chain->data->ipdata.meta.check_algo =
+				focus->data->ipdata.meta.check_algo;
+			chain->data->ipdata.meta.data_quota =
+				focus->data->ipdata.meta.data_quota;
+			chain->data->ipdata.meta.inode_quota =
+				focus->data->ipdata.meta.inode_quota;
+			chain->data->ipdata.meta.attr_tid =
+				focus->data->ipdata.meta.attr_tid;
+			chain->data->ipdata.meta.dirent_tid =
+				focus->data->ipdata.meta.dirent_tid;
+			hammer2_chain_setcheck(chain, chain->data);
+			break;
+		}
+
+		/*
+		 * Normal replacement.
+		 */
 		if ((focus->data->ipdata.meta.op_flags &
 		     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 			/*

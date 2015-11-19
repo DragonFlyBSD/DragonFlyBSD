@@ -697,6 +697,8 @@ skip4:
  *			  possible if caller waits for more responses.  Caller
  *			  should not iterate key.
  *
+ * NOTE! If the pmp is in HMNT2_LOCAL mode, the cluster check always succeeds.
+ *
  * XXX needs to handle SOFT_MASTER and SOFT_SLAVE
  */
 int
@@ -722,6 +724,14 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	cluster->error = 0;
 	cluster->focus = NULL;
 
+	pmp = cluster->pmp;
+	KKASSERT(pmp != NULL || cluster->nchains == 0);
+
+	/*
+	 * Calculate quorum
+	 */
+	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
+	smpresent = 0;
 	nflags = 0;
 	ttlmasters = 0;
 	ttlslaves = 0;
@@ -730,13 +740,6 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	umasters = 0;
 	nslaves = 0;
 
-	/*
-	 * Calculate quorum
-	 */
-	pmp = cluster->pmp;
-	KKASSERT(pmp != NULL || cluster->nchains == 0);
-	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
-	smpresent = 0;
 
 	/*
 	 * Pass 1

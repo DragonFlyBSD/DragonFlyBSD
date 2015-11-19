@@ -328,7 +328,7 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
  */
 hammer2_pfs_t *
 hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
-		 hammer2_tid_t modify_tid)
+		 hammer2_tid_t modify_tid, hammer2_dev_t *force_local)
 {
 	hammer2_inode_t *iroot;
 	hammer2_pfs_t *pmp;
@@ -339,11 +339,20 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 	/*
 	 * Locate or create the PFS based on the cluster id.  If ripdata
 	 * is NULL this is a spmp which is unique and is always allocated.
+	 *
+	 * If the device is mounted in local mode all PFSs are considered
+	 * independent and not part of any cluster (for debugging only).
 	 */
 	if (ripdata) {
 		TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
-			if (bcmp(&pmp->pfs_clid, &ripdata->meta.pfs_clid,
+			if (force_local != pmp->force_local)
+				continue;
+			if (force_local == NULL &&
+			    bcmp(&pmp->pfs_clid, &ripdata->meta.pfs_clid,
 				 sizeof(pmp->pfs_clid)) == 0) {
+					break;
+			} else if (force_local && pmp->pfs_names[0] &&
+			    strcmp(pmp->pfs_names[0], ripdata->filename) == 0) {
 					break;
 			}
 		}
@@ -353,6 +362,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 
 	if (pmp == NULL) {
 		pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
+		pmp->force_local = force_local;
 		hammer2_trans_manage_init(pmp);
 		kmalloc_create(&pmp->minode, "HAMMER2-inodes");
 		kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
@@ -412,6 +422,8 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 	 * inode, update pmp->pfs_types[], and update the syncronization
 	 * threads.
 	 *
+	 * When forcing local mode, mark the PFS as a MASTER regardless.
+	 *
 	 * At the moment empty spots can develop due to removals or failures.
 	 * Ultimately we want to re-fill these spots but doing so might
 	 * confused running code. XXX
@@ -430,7 +442,10 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		chain->pmp = pmp;
 		hammer2_chain_ref(chain);
 		iroot->cluster.array[j].chain = chain;
-		pmp->pfs_types[j] = ripdata->meta.pfs_type;
+		if (force_local)
+			pmp->pfs_types[j] = HAMMER2_PFSTYPE_MASTER;
+		else
+			pmp->pfs_types[j] = ripdata->meta.pfs_type;
 		pmp->pfs_names[j] = kstrdup(ripdata->filename, M_HAMMER2);
 		pmp->pfs_hmps[j] = chain->hmp;
 
@@ -744,6 +759,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	hammer2_pfs_t *pmp;
 	hammer2_pfs_t *spmp;
 	hammer2_dev_t *hmp;
+	hammer2_dev_t *force_local;
 	hammer2_key_t key_next;
 	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
@@ -818,6 +834,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 *     mountctl.
 		 */
 		pmp = MPTOPMP(mp);
+		pmp->hflags = info.hflags;
 		cluster = &pmp->iroot->cluster;
 		for (i = 0; i < cluster->nchains; ++i) {
 			if (cluster->array[i].chain == NULL)
@@ -906,6 +923,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		ksnprintf(hmp->devrepname, sizeof(hmp->devrepname), "%s", dev);
 		hmp->ronly = ronly;
 		hmp->devvp = devvp;
+		hmp->hflags = info.hflags & HMNT2_DEVFLAGS;
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 		RB_INIT(&hmp->iotree);
@@ -971,7 +989,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * Really important to get these right or flush will get
 		 * confused.
 		 */
-		hmp->spmp = hammer2_pfsalloc(NULL, NULL, 0);
+		hmp->spmp = hammer2_pfsalloc(NULL, NULL, 0, NULL);
 		kprintf("alloc spmp %p tid %016jx\n",
 			hmp->spmp, hmp->voldata.mirror_tid);
 		spmp = hmp->spmp;
@@ -1079,7 +1097,19 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		}
 	} else {
 		spmp = hmp->spmp;
+		if (info.hflags & HMNT2_DEVFLAGS) {
+			kprintf("hammer2: Warning: mount flags pertaining "
+				"to the whole device may only be specified "
+				"on the first mount of the device: %08x\n",
+				info.hflags & HMNT2_DEVFLAGS);
+		}
 	}
+
+	/*
+	 * Force local mount (disassociate all PFSs from their clusters).
+	 * Used primarily for debugging.
+	 */
+	force_local = (hmp->hflags & HMNT2_LOCAL) ? hmp : NULL;
 
 	/*
 	 * Lookup the mount point under the media-localized super-root.
@@ -1133,7 +1163,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	ripdata = &chain->data->ipdata;
 	bref = chain->bref;
-	pmp = hammer2_pfsalloc(NULL, ripdata, bref.modify_tid);
+	pmp = hammer2_pfsalloc(NULL, ripdata, bref.modify_tid, force_local);
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
 
@@ -1151,6 +1181,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
         kprintf("hammer2_mount hmp=%p pmp=%p\n", hmp, pmp);
 
+	pmp->hflags = info.hflags;
         mp->mnt_flag = MNT_LOCAL;
         mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;   /* all entry pts are SMP */
         mp->mnt_kern_flag |= MNTK_THR_SYNC;     /* new vsyncscan semantics */
@@ -1219,10 +1250,17 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_blockref_t bref;
+	hammer2_dev_t *force_local;
 	hammer2_pfs_t *spmp;
 	hammer2_pfs_t *pmp;
 	hammer2_key_t key_next;
 	int cache_index = -1;
+
+	/*
+	 * Force local mount (disassociate all PFSs from their clusters).
+	 * Used primarily for debugging.
+	 */
+	force_local = (hmp->hflags & HMNT2_LOCAL) ? hmp : NULL;
 
 	/*
 	 * Lookup mount point under the media-localized super-root.
@@ -1243,7 +1281,8 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 		bref = chain->bref;
 		kprintf("ADD LOCAL PFS: %s\n", ripdata->filename);
 
-		pmp = hammer2_pfsalloc(chain, ripdata, bref.modify_tid);
+		pmp = hammer2_pfsalloc(chain, ripdata,
+				       bref.modify_tid, force_local);
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,
 					   &cache_index, 0);

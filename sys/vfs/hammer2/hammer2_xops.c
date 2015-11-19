@@ -878,6 +878,11 @@ done:
 
 /*
  * Generic scan
+ *
+ * WARNING! Fed chains must be locked shared so ownership can be transfered
+ *	    and to prevent frontend/backend stalls that would occur with an
+ *	    exclusive lock.  The shared lock also allows chain->data to be
+ *	    retained.
  */
 void
 hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
@@ -890,12 +895,17 @@ hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
 	int error = 0;
 
 	/*
+	 * Assert required flags.
+	 */
+	KKASSERT(xop->resolve_flags & HAMMER2_RESOLVE_SHARED);
+	KKASSERT(xop->lookup_flags & HAMMER2_LOOKUP_SHARED);
+
+	/*
 	 * The inode's chain is the iterator.  If we cannot acquire it our
 	 * contribution ends here.
 	 */
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
-				     HAMMER2_RESOLVE_ALWAYS |
-				     HAMMER2_RESOLVE_SHARED);
+				     xop->resolve_flags);
 	if (parent == NULL) {
 		kprintf("xop_readdir: NULL parent\n");
 		goto done;
@@ -907,17 +917,14 @@ hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->key_beg, xop->key_end,
-				     &cache_index, HAMMER2_LOOKUP_SHARED |
-						   HAMMER2_LOOKUP_NODIRECT);
+				     &cache_index, xop->lookup_flags);
 	while (chain) {
 		error = hammer2_xop_feed(&xop->head, chain, clindex, 0);
 		if (error)
 			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, xop->key_end,
-					   &cache_index,
-					   HAMMER2_LOOKUP_SHARED |
-					   HAMMER2_LOOKUP_NODIRECT);
+					   &cache_index, xop->lookup_flags);
 	}
 	if (chain) {
 		hammer2_chain_unlock(chain);

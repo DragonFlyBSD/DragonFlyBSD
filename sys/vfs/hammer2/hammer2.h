@@ -910,6 +910,8 @@ struct hammer2_xop_scanall {
 	hammer2_xop_head_t	head;
 	hammer2_key_t		key_beg;	/* inclusive */
 	hammer2_key_t		key_end;	/* inclusive */
+	int			resolve_flags;
+	int			lookup_flags;
 };
 
 struct hammer2_xop_lookup {
@@ -1046,6 +1048,7 @@ struct hammer2_dev {
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR_SIZE];
 	hammer2_dedup_t heur_dedup[HAMMER2_DEDUP_HEUR_SIZE];
 	int		volhdrno;	/* last volhdrno written */
+	int		hflags;		/* HMNT2 flags applicable to device */
 	char		devrepname[64];	/* for kprintf */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
@@ -1111,6 +1114,7 @@ struct hammer2_pfs {
 	TAILQ_ENTRY(hammer2_pfs) mntentry;	/* hammer2_pfslist */
 	uuid_t			pfs_clid;
 	hammer2_dev_t		*spmp_hmp;	/* only if super-root pmp */
+	hammer2_dev_t		*force_local;	/* only if 'local' mount */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	uint8_t			pfs_types[HAMMER2_MAXCLUSTER];
@@ -1121,6 +1125,7 @@ struct hammer2_pfs {
 	struct lock		lock_nlink;	/* rename and nlink lock */
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
+	int			hflags;		/* pfs-specific mount flags */
 	struct malloc_type	*minode;
 	struct malloc_type	*mmsg;
 	struct spinlock		inum_spin;	/* inumber lookup */
@@ -1556,7 +1561,8 @@ void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
 hammer2_pfs_t *hammer2_pfsalloc(hammer2_chain_t *chain,
 				const hammer2_inode_data_t *ripdata,
-				hammer2_tid_t modify_tid);
+				hammer2_tid_t modify_tid,
+				hammer2_dev_t *force_local);
 
 void hammer2_lwinprog_ref(hammer2_pfs_t *pmp);
 void hammer2_lwinprog_drop(hammer2_pfs_t *pmp);

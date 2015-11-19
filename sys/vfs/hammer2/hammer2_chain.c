@@ -295,7 +295,8 @@ hammer2_chain_insert(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	 */
 	xchain = RB_INSERT(hammer2_chain_tree, &parent->core.rbtree, chain);
 	KASSERT(xchain == NULL,
-		("hammer2_chain_insert: collision %p %p", chain, xchain));
+		("hammer2_chain_insert: collision %p %p (key=%016jx)",
+		chain, xchain, chain->bref.key));
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 	chain->parent = parent;
 	++parent->core.chain_count;
@@ -2592,6 +2593,13 @@ again:
 
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
+		if ((parent->data->ipdata.meta.op_flags &
+		     HAMMER2_OPFLAG_DIRECTDATA) != 0) {
+			kprintf("hammer2: parent set for direct-data! "
+				"pkey=%016jx ckey=%016jx\n",
+				parent->bref.key,
+				chain->bref.key);
+	        }
 		KKASSERT((parent->data->ipdata.meta.op_flags &
 			  HAMMER2_OPFLAG_DIRECTDATA) == 0);
 		KKASSERT(parent->data != NULL);
