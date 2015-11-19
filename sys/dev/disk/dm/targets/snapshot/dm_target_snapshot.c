@@ -77,7 +77,6 @@
  * This file implements initial version of device-mapper snapshot target.
  */
 #include <sys/kmem.h>
-#include <sys/vnode.h>
 
 #include <dev/disk/dm/dm.h>
 

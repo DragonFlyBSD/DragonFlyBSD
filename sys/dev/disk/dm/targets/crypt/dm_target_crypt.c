@@ -44,7 +44,6 @@
 #include <sys/mpipe.h>
 #include <sys/md5.h>
 #include <sys/mutex2.h>
-#include <sys/vnode.h>
 #include <crypto/sha1.h>
 #include <crypto/sha2/sha2.h>
 #include <opencrypto/cryptodev.h>

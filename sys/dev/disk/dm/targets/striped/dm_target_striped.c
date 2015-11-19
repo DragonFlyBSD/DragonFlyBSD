@@ -38,7 +38,6 @@
  * DragonFly changes: Increase to an unlimited number of stripes
  */
 #include <sys/malloc.h>
-#include <sys/vnode.h>
 
 #include <dev/disk/dm/dm.h>
 MALLOC_DEFINE(M_DMSTRIPE, "dm_striped", "Device Mapper Target Striped");

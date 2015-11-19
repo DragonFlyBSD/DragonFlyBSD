@@ -81,7 +81,6 @@
 
 #include <sys/device.h>
 #include <sys/malloc.h>
-#include <sys/vnode.h>
 #include <cpu/atomic.h>
 #include <dev/disk/dm/dm.h>
 #include <dev/disk/dm/netbsd-dm.h>

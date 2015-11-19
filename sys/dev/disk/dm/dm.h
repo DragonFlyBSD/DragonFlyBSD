@@ -44,6 +44,7 @@
 #include <sys/lock.h>
 #include <sys/queue.h>
 
+#include <sys/vnode.h>
 #include <sys/buf.h>
 #include <sys/device.h>
 #include <sys/devicestat.h>

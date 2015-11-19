@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/vnode.h>
 #include <sys/mutex2.h>
 #include <sys/objcache.h>
 #include <sys/callout.h>
