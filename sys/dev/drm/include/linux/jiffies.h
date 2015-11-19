@@ -84,4 +84,15 @@ static inline u64 nsecs_to_jiffies(u64 n)
 	return (n * hz) / NSEC_PER_SEC;
 }
 
+static inline u64 nsecs_to_jiffies64(u64 n)
+{
+	return nsecs_to_jiffies(n);
+}
+
+static inline
+unsigned int jiffies_to_usecs(const unsigned long j)
+{
+	return j * (USEC_PER_SEC / HZ);
+}
+
 #endif	/* _LINUX_JIFFIES_H_ */
