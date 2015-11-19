@@ -407,7 +407,9 @@ static void radeon_flip_work_func(struct work_struct *__work)
 		r = radeon_fence_wait(work->fence, false);
 		if (r == -EDEADLK) {
 			lockmgr(&rdev->exclusive_lock, LK_RELEASE);
-			r = radeon_gpu_reset(rdev);
+			do {
+				r = radeon_gpu_reset(rdev);
+			} while (r == -EAGAIN);
 			lockmgr(&rdev->exclusive_lock, LK_EXCLUSIVE);
 		}
 		if (r)

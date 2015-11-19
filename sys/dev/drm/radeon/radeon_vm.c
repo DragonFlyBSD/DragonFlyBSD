@@ -134,8 +134,8 @@ struct radeon_cs_reloc *radeon_vm_get_bos(struct radeon_device *rdev,
 	struct radeon_cs_reloc *list;
 	unsigned i, idx;
 
-	list = kmalloc((vm->max_pde_used + 2) * sizeof(struct radeon_cs_reloc),
-			M_DRM, GFP_KERNEL);
+	list = drm_malloc_ab(vm->max_pde_used + 2,
+			     sizeof(struct radeon_cs_reloc));
 	if (!list)
 		return NULL;
 

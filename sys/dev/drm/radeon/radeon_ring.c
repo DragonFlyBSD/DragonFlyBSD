@@ -46,29 +46,6 @@
 static int radeon_debugfs_ring_init(struct radeon_device *rdev, struct radeon_ring *ring);
 #endif /* DUMBBELL_WIP */
 
-#if defined(DRM_DEBUG_CODE) && DRM_DEBUG_CODE != 0
-/**
- * radeon_ring_write - write a value to the ring
- *
- * @ring: radeon_ring structure holding ring information
- * @v: dword (dw) value to write
- *
- * Write a value to the requested ring buffer (all asics).
- */
-void radeon_ring_write(struct radeon_ring *ring, uint32_t v)
-{
-#if DRM_DEBUG_CODE
-	if (ring->count_dw <= 0) {
-		DRM_ERROR("radeon: writing more dwords to the ring than expected!\n");
-	}
-#endif
-	ring->ring[ring->wptr++] = v;
-	ring->wptr &= ring->ptr_mask;
-	ring->count_dw--;
-	ring->ring_free_dw--;
-}
-#endif
-
 /**
  * radeon_ring_supports_scratch_reg - check if the ring supports
  * writing to scratch registers
@@ -339,7 +316,7 @@ unsigned radeon_ring_backup(struct radeon_device *rdev, struct radeon_ring *ring
 	}
 
 	/* and then save the content of the ring */
-	*data = kmalloc(size * sizeof(uint32_t), M_DRM, M_WAITOK);
+	*data = drm_malloc_ab(size, sizeof(uint32_t));
 	if (!*data) {
 		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return 0;
@@ -381,7 +358,7 @@ int radeon_ring_restore(struct radeon_device *rdev, struct radeon_ring *ring,
 	}
 
 	radeon_ring_unlock_commit(rdev, ring, false);
-	kfree(data);
+	drm_free_large(data);
 	return 0;
 }
 

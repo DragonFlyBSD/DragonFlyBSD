@@ -29,11 +29,13 @@
 
 struct workqueue_struct *system_wq;
 struct workqueue_struct *system_long_wq;
+struct workqueue_struct *system_power_efficient_wq;
 
 static int init_workqueues(void *arg)
 {
 	system_wq = alloc_workqueue("system_wq", 0, 1);
 	system_long_wq = alloc_workqueue("system_long_wq", 0, 1);
+	system_power_efficient_wq = alloc_workqueue("system_power_efficient_wq", 0, 1);
 
 	return 0;
 }

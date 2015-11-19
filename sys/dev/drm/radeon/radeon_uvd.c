@@ -39,12 +39,18 @@
 #define UVD_IDLE_TIMEOUT_MS	1000
 
 /* Firmware Names */
+#define FIRMWARE_R600		"radeonkmsfw_R600_uvd"
+#define FIRMWARE_RS780		"radeonkmsfw_RS780_uvd"
+#define FIRMWARE_RV770		"radeonkmsfw_RV770_uvd"
 #define FIRMWARE_RV710		"radeonkmsfw_RV710_uvd"
 #define FIRMWARE_CYPRESS	"radeonkmsfw_CYPRESS_uvd"
 #define FIRMWARE_SUMO		"radeonkmsfw_SUMO_uvd"
 #define FIRMWARE_TAHITI		"radeonkmsfw_TAHITI_uvd"
 #define FIRMWARE_BONAIRE	"radeonkmsfw_BONAIRE_uvd"
 
+MODULE_FIRMWARE(FIRMWARE_R600);
+MODULE_FIRMWARE(FIRMWARE_RS780);
+MODULE_FIRMWARE(FIRMWARE_RV770);
 MODULE_FIRMWARE(FIRMWARE_RV710);
 MODULE_FIRMWARE(FIRMWARE_CYPRESS);
 MODULE_FIRMWARE(FIRMWARE_SUMO);
@@ -62,6 +68,23 @@ int radeon_uvd_init(struct radeon_device *rdev)
 	INIT_DELAYED_WORK(&rdev->uvd.idle_work, radeon_uvd_idle_work_handler);
 
 	switch (rdev->family) {
+	case CHIP_RV610:
+	case CHIP_RV630:
+	case CHIP_RV670:
+	case CHIP_RV620:
+	case CHIP_RV635:
+		fw_name = FIRMWARE_R600;
+		break;
+
+	case CHIP_RS780:
+	case CHIP_RS880:
+		fw_name = FIRMWARE_RS780;
+		break;
+
+	case CHIP_RV770:
+		fw_name = FIRMWARE_RV770;
+		break;
+
 	case CHIP_RV710:
 	case CHIP_RV730:
 	case CHIP_RV740:
@@ -231,10 +254,30 @@ int radeon_uvd_resume(struct radeon_device *rdev)
 	return 0;
 }
 
-void radeon_uvd_force_into_uvd_segment(struct radeon_bo *rbo)
+void radeon_uvd_force_into_uvd_segment(struct radeon_bo *rbo,
+				       uint32_t allowed_domains)
 {
-	rbo->placement.fpfn = 0 >> PAGE_SHIFT;
-	rbo->placement.lpfn = (256 * 1024 * 1024) >> PAGE_SHIFT;
+	int i;
+
+	for (i = 0; i < rbo->placement.num_placement; ++i) {
+		rbo->placements[i].fpfn = 0 >> PAGE_SHIFT;
+		rbo->placements[i].lpfn = (256 * 1024 * 1024) >> PAGE_SHIFT;
+	}
+
+	/* If it must be in VRAM it must be in the first segment as well */
+	if (allowed_domains == RADEON_GEM_DOMAIN_VRAM)
+		return;
+
+	/* abort if we already have more than one placement */
+	if (rbo->placement.num_placement > 1)
+		return;
+
+	/* add another 256MB segment */
+	rbo->placements[1] = rbo->placements[0];
+	rbo->placements[1].fpfn += (256 * 1024 * 1024) >> PAGE_SHIFT;
+	rbo->placements[1].lpfn += (256 * 1024 * 1024) >> PAGE_SHIFT;
+	rbo->placement.num_placement++;
+	rbo->placement.num_busy_placement++;
 }
 
 void radeon_uvd_free_handles(struct radeon_device *rdev, struct drm_file *filp)

@@ -242,5 +242,6 @@ mod_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork,
 /* System-wide workqueues */
 extern struct workqueue_struct *system_wq;
 extern struct workqueue_struct *system_long_wq;
+extern struct workqueue_struct *system_power_efficient_wq;
 
 #endif	/* _LINUX_WORKQUEUE_H_ */

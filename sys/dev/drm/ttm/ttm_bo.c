@@ -46,12 +46,13 @@ static int ttm_bo_setup_vm(struct ttm_buffer_object *bo);
 static int ttm_bo_swapout(struct ttm_mem_shrink *shrink);
 static void ttm_bo_global_kobj_release(struct ttm_bo_global *glob);
 
-static inline int ttm_mem_type_from_flags(uint32_t flags, uint32_t *mem_type)
+static inline int ttm_mem_type_from_place(const struct ttm_place *place,
+					  uint32_t *mem_type)
 {
 	int i;
 
 	for (i = 0; i <= TTM_PL_PRIV5; i++)
-		if (flags & (1 << i)) {
+		if (place->flags & (1 << i)) {
 			*mem_type = i;
 			return 0;
 		}
@@ -82,12 +83,12 @@ static void ttm_bo_mem_space_debug(struct ttm_buffer_object *bo,
 	       bo, bo->mem.num_pages, bo->mem.size >> 10,
 	       bo->mem.size >> 20);
 	for (i = 0; i < placement->num_placement; i++) {
-		ret = ttm_mem_type_from_flags(placement->placement[i],
+		ret = ttm_mem_type_from_place(&placement->placement[i],
 						&mem_type);
 		if (ret)
 			return;
 		kprintf("  placement[%d]=0x%08X (%d)\n",
-		       i, placement->placement[i], mem_type);
+		       i, placement->placement[i].flags, mem_type);
 		ttm_mem_type_debug(bo->bdev, mem_type);
 	}
 }
@@ -872,8 +873,6 @@ static int ttm_bo_evict(struct ttm_buffer_object *bo, bool interruptible,
 	evict_mem.bus.io_reserved_vm = false;
 	evict_mem.bus.io_reserved_count = 0;
 
-	placement.fpfn = 0;
-	placement.lpfn = 0;
 	placement.num_placement = 0;
 	placement.num_busy_placement = 0;
 	bdev->driver->evict_flags(bo, &placement);
@@ -961,7 +960,7 @@ EXPORT_SYMBOL(ttm_bo_mem_put);
  */
 static int ttm_bo_mem_force_space(struct ttm_buffer_object *bo,
 					uint32_t mem_type,
-					struct ttm_placement *placement,
+					const struct ttm_place *place,
 					struct ttm_mem_reg *mem,
 					bool interruptible,
 					bool no_wait_gpu)
@@ -971,7 +970,7 @@ static int ttm_bo_mem_force_space(struct ttm_buffer_object *bo,
 	int ret;
 
 	do {
-		ret = (*man->func->get_node)(man, bo, placement, 0, mem);
+		ret = (*man->func->get_node)(man, bo, place, mem);
 		if (unlikely(ret != 0))
 			return ret;
 		if (mem->mm_node)
@@ -1014,18 +1013,18 @@ static uint32_t ttm_bo_select_caching(struct ttm_mem_type_manager *man,
 
 static bool ttm_bo_mt_compatible(struct ttm_mem_type_manager *man,
 				 uint32_t mem_type,
-				 uint32_t proposed_placement,
+				 const struct ttm_place *place,
 				 uint32_t *masked_placement)
 {
 	uint32_t cur_flags = ttm_bo_type_flags(mem_type);
 
-	if ((cur_flags & proposed_placement & TTM_PL_MASK_MEM) == 0)
+	if ((cur_flags & place->flags & TTM_PL_MASK_MEM) == 0)
 		return false;
 
-	if ((proposed_placement & man->available_caching) == 0)
+	if ((place->flags & man->available_caching) == 0)
 		return false;
 
-	cur_flags |= (proposed_placement & man->available_caching);
+	cur_flags |= (place->flags & man->available_caching);
 
 	*masked_placement = cur_flags;
 	return true;
@@ -1056,15 +1055,14 @@ int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 
 	mem->mm_node = NULL;
 	for (i = 0; i < placement->num_placement; ++i) {
-		ret = ttm_mem_type_from_flags(placement->placement[i],
-						&mem_type);
+		const struct ttm_place *place = &placement->placement[i];
+
+		ret = ttm_mem_type_from_place(place, &mem_type);
 		if (ret)
 			return ret;
 		man = &bdev->man[mem_type];
 
-		type_ok = ttm_bo_mt_compatible(man,
-						mem_type,
-						placement->placement[i],
+		type_ok = ttm_bo_mt_compatible(man, mem_type, place,
 						&cur_flags);
 
 		if (!type_ok)
@@ -1076,7 +1074,7 @@ int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 		 * Use the access and other non-mapping-related flag bits from
 		 * the memory placement flags to the current flags
 		 */
-		ttm_flag_masked(&cur_flags, placement->placement[i],
+		ttm_flag_masked(&cur_flags, place->flags,
 				~TTM_PL_MASK_MEMTYPE);
 
 		if (mem_type == TTM_PL_SYSTEM)
@@ -1084,8 +1082,7 @@ int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 
 		if (man->has_type && man->use_type) {
 			type_found = true;
-			ret = (*man->func->get_node)(man, bo, placement,
-						     cur_flags, mem);
+			ret = (*man->func->get_node)(man, bo, place, mem);
 			if (unlikely(ret))
 				return ret;
 		}
@@ -1103,17 +1100,15 @@ int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 		return -EINVAL;
 
 	for (i = 0; i < placement->num_busy_placement; ++i) {
-		ret = ttm_mem_type_from_flags(placement->busy_placement[i],
-						&mem_type);
+		const struct ttm_place *place = &placement->busy_placement[i];
+
+		ret = ttm_mem_type_from_place(place, &mem_type);
 		if (ret)
 			return ret;
 		man = &bdev->man[mem_type];
 		if (!man->has_type)
 			continue;
-		if (!ttm_bo_mt_compatible(man,
-						mem_type,
-						placement->busy_placement[i],
-						&cur_flags))
+		if (!ttm_bo_mt_compatible(man, mem_type, place, &cur_flags))
 			continue;
 
 		cur_flags = ttm_bo_select_caching(man, bo->mem.placement,
@@ -1122,7 +1117,7 @@ int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 		 * Use the access and other non-mapping-related flag bits from
 		 * the memory placement flags to the current flags
 		 */
-		ttm_flag_masked(&cur_flags, placement->busy_placement[i],
+		ttm_flag_masked(&cur_flags, place->flags,
 				~TTM_PL_MASK_MEMTYPE);
 
 		if (mem_type == TTM_PL_SYSTEM) {
@@ -1132,7 +1127,7 @@ int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 			return 0;
 		}
 
-		ret = ttm_bo_mem_force_space(bo, mem_type, placement, mem,
+		ret = ttm_bo_mem_force_space(bo, mem_type, place, mem,
 						interruptible, no_wait_gpu);
 		if (ret == 0 && mem->mm_node) {
 			mem->placement = cur_flags;
@@ -1193,20 +1188,27 @@ static bool ttm_bo_mem_compat(struct ttm_placement *placement,
 {
 	int i;
 
-	if (mem->mm_node && placement->lpfn != 0 &&
-	    (mem->start < placement->fpfn ||
-	     mem->start + mem->num_pages > placement->lpfn))
-		return false;
-
 	for (i = 0; i < placement->num_placement; i++) {
-		*new_flags = placement->placement[i];
+		const struct ttm_place *heap = &placement->placement[i];
+		if (mem->mm_node &&
+		    (mem->start < heap->fpfn ||
+		     (heap->lpfn != 0 && (mem->start + mem->num_pages) > heap->lpfn)))
+			continue;
+
+		*new_flags = heap->flags;
 		if ((*new_flags & mem->placement & TTM_PL_MASK_CACHING) &&
 		    (*new_flags & mem->placement & TTM_PL_MASK_MEM))
 			return true;
 	}
 
 	for (i = 0; i < placement->num_busy_placement; i++) {
-		*new_flags = placement->busy_placement[i];
+		const struct ttm_place *heap = &placement->busy_placement[i];
+		if (mem->mm_node &&
+		    (mem->start < heap->fpfn ||
+		     (heap->lpfn != 0 && (mem->start + mem->num_pages) > heap->lpfn)))
+			continue;
+
+		*new_flags = heap->flags;
 		if ((*new_flags & mem->placement & TTM_PL_MASK_CACHING) &&
 		    (*new_flags & mem->placement & TTM_PL_MASK_MEM))
 			return true;
@@ -1224,11 +1226,6 @@ int ttm_bo_validate(struct ttm_buffer_object *bo,
 	uint32_t new_flags;
 
 	BUG_ON(!ttm_bo_is_reserved(bo));
-	/* Check that range is valid */
-	if (placement->lpfn || placement->fpfn)
-		if (placement->fpfn > placement->lpfn ||
-			(placement->lpfn - placement->fpfn) < bo->num_pages)
-			return -EINVAL;
 	/*
 	 * Check whether we need to move buffer.
 	 */
@@ -1256,15 +1253,6 @@ int ttm_bo_validate(struct ttm_buffer_object *bo,
 	return 0;
 }
 EXPORT_SYMBOL(ttm_bo_validate);
-
-int ttm_bo_check_placement(struct ttm_buffer_object *bo,
-				struct ttm_placement *placement)
-{
-	BUG_ON((placement->fpfn || placement->lpfn) &&
-	       (bo->mem.num_pages > (placement->lpfn - placement->fpfn)));
-
-	return 0;
-}
 
 int ttm_bo_init(struct ttm_bo_device *bdev,
 		struct ttm_buffer_object *bo,
@@ -1337,10 +1325,6 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	 * Mirror ref from kref_init() for list_kref.
 	 */
 	set_bit(TTM_BO_PRIV_FLAG_ACTIVE, &bo->priv_flags);
-
-	ret = ttm_bo_check_placement(bo, placement);
-	if (unlikely(ret != 0))
-		goto out_err;
 
 	/*
 	 * For ttm_bo_type_device buffers, allocate

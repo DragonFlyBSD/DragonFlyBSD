@@ -67,7 +67,6 @@ SRCS	+=								\
 	rv515.c								\
 	r520.c								\
 	r600.c								\
-	r600_audio.c							\
 	r600_blit_shaders.c						\
 	r600_cs.c							\
 	r600_hdmi.c							\

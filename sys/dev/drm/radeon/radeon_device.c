@@ -947,8 +947,8 @@ int radeon_atombios_init(struct radeon_device *rdev)
 		return -ENOMEM;
 	}
 
-	lockinit(&rdev->mode_info.atom_context->mutex, "rmiacmtx", 0,
-		 LK_CANRECURSE);
+	lockinit(&rdev->mode_info.atom_context->mutex, "rmiacmtx", 0, LK_CANRECURSE);
+	lockinit(&rdev->mode_info.atom_context->scratch_mutex, "rmiacsmtx", 0, LK_CANRECURSE);
 	radeon_atom_initialize_bios_scratch_regs(rdev->ddev);
 	atom_allocate_fb_scratch(rdev->mode_info.atom_context);
 	return 0;
@@ -1129,7 +1129,7 @@ static void radeon_check_arguments(struct radeon_device *rdev)
 	if (radeon_vm_block_size == -1) {
 
 		/* Total bits covered by PD + PTs */
-		unsigned bits = ilog2(radeon_vm_size) + 17;
+		unsigned bits = ilog2(radeon_vm_size) + 18;
 
 		/* Make sure the PD is 4K in size up to 8GB address space.
 		   Above that split equal between PD and PTs */
@@ -1426,10 +1426,6 @@ int radeon_device_init(struct radeon_device *rdev,
 	if (r)
 		goto failed;
 
-	r = radeon_ib_ring_tests(rdev);
-	if (r)
-		DRM_ERROR("ib ring test failed (%d).\n", r);
-
 	r = radeon_gem_debugfs_init(rdev);
 	if (r) {
 		DRM_ERROR("registering gem debugfs failed (%d).\n", r);
@@ -1446,6 +1442,10 @@ int radeon_device_init(struct radeon_device *rdev,
 		if (r)
 			goto failed;
 	}
+
+	r = radeon_ib_ring_tests(rdev);
+	if (r)
+		DRM_ERROR("ib ring test failed (%d).\n", r);
 
 	DRM_INFO("%s: Taking over the fictitious range 0x%jx-0x%jx\n",
 	    __func__, (uintmax_t)rdev->mc.aper_base,
@@ -1760,8 +1760,6 @@ int radeon_gpu_reset(struct radeon_device *rdev)
 		return 0;
 	}
 
-	rdev->needs_reset = false;
-
 	radeon_save_bios_scratch_regs(rdev);
 	/* block TTM */
 	resched = ttm_bo_lock_delayed_workqueue(&rdev->mman.bdev);
@@ -1778,7 +1776,6 @@ int radeon_gpu_reset(struct radeon_device *rdev)
 		}
 	}
 
-retry:
 	r = radeon_asic_reset(rdev);
 	if (!r) {
 		dev_info(rdev->dev, "GPU reset succeeded, trying to resume\n");
@@ -1787,25 +1784,11 @@ retry:
 
 	radeon_restore_bios_scratch_regs(rdev);
 
-	if (!r) {
-		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
+	for (i = 0; i < RADEON_NUM_RINGS; ++i) {
+		if (!r && ring_data[i]) {
 			radeon_ring_restore(rdev, &rdev->ring[i],
 					    ring_sizes[i], ring_data[i]);
-			ring_sizes[i] = 0;
-			ring_data[i] = NULL;
-		}
-
-		r = radeon_ib_ring_tests(rdev);
-		if (r) {
-			dev_err(rdev->dev, "ib ring test failed (%d).\n", r);
-			if (saved) {
-				saved = false;
-				radeon_suspend(rdev);
-				goto retry;
-			}
-		}
-	} else {
-		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
+		} else {
 			radeon_fence_driver_force_completion(rdev, i);
 			kfree(ring_data[i]);
 		}
@@ -1838,17 +1821,32 @@ retry:
 	/* reset hpd state */
 	radeon_hpd_init(rdev);
 
+	ttm_bo_unlock_delayed_workqueue(&rdev->mman.bdev, resched);
+
+	rdev->in_reset = true;
+	rdev->needs_reset = false;
+
+#if 0
+	downgrade_write(&rdev->exclusive_lock);
+#endif
+
 	drm_helper_resume_force_mode(rdev->ddev);
 
 	/* set the power state here in case we are a PX system or headless */
 	if ((rdev->pm.pm_method == PM_METHOD_DPM) && rdev->pm.dpm_enabled)
 		radeon_pm_compute_clocks(rdev);
 
-	ttm_bo_unlock_delayed_workqueue(&rdev->mman.bdev, resched);
-	if (r) {
+	if (!r) {
+		r = radeon_ib_ring_tests(rdev);
+		if (r && saved)
+			r = -EAGAIN;
+	} else {
 		/* bad news, how to tell it to userspace ? */
 		dev_info(rdev->dev, "GPU reset failed\n");
 	}
+
+	rdev->needs_reset = r == -EAGAIN;
+	rdev->in_reset = false;
 
 	lockmgr(&rdev->exclusive_lock, LK_RELEASE);
 	return r;

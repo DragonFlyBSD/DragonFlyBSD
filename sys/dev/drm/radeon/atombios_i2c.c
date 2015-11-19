@@ -50,15 +50,19 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 	int index = GetIndexIntoMasterTable(COMMAND, ProcessI2cChannelTransaction);
 	unsigned char *base;
 	u16 out = cpu_to_le16(0);
+	int r = 0;
 
 	memset(&args, 0, sizeof(args));
+
+	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_EXCLUSIVE);
 
 	base = (unsigned char *)rdev->mode_info.atom_context->scratch;
 
 	if (flags & HW_I2C_WRITE) {
 		if (num > ATOM_MAX_HW_I2C_WRITE) {
 			DRM_ERROR("hw i2c: tried to write too many bytes (%d vs 3)\n", num);
-			return EINVAL;
+			r = -EINVAL;
+			goto done;
 		}
 		if (buf == NULL)
 			args.ucRegIndex = 0;
@@ -72,7 +76,8 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 	} else {
 		if (num > ATOM_MAX_HW_I2C_READ) {
 			DRM_ERROR("hw i2c: tried to read too many bytes (%d vs 255)\n", num);
-			return -EINVAL;
+			r = -EINVAL;
+			goto done;
 		}
 		args.ucRegIndex = 0;
 		args.lpI2CDataOut = 0;
@@ -84,18 +89,22 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 	args.ucSlaveAddr = slave_addr << 1;
 	args.ucLineNumber = chan->rec.i2c_id;
 
-	atom_execute_table(rdev->mode_info.atom_context, index, (uint32_t *)&args);
+	atom_execute_table_scratch_unlocked(rdev->mode_info.atom_context, index, (uint32_t *)&args);
 
 	/* error */
 	if (args.ucStatus != HW_ASSISTED_I2C_STATUS_SUCCESS) {
 		DRM_DEBUG_KMS("hw_i2c error\n");
-		return EIO;
+		r = -EIO;
+		goto done;
 	}
 
 	if (!(flags & HW_I2C_WRITE))
 		radeon_atom_copy_swap(buf, base, num, false);
 
-	return 0;
+done:
+	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_RELEASE);
+
+	return r;
 }
 
 static int

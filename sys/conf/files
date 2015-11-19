@@ -2091,7 +2091,6 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/r420.c			optional radeonkms drm
 #dev/drm/radeon/r520.c			optional radeonkms drm
 #dev/drm/radeon/r600.c			optional radeonkms drm
-#dev/drm/radeon/r600_audio.c		optional radeonkms drm
 ##dev/drm/radeon/r600_blit.c		optional radeonkms drm
 #dev/drm/radeon/r600_blit_shaders.c	optional radeonkms drm
 ##dev/drm/radeon/r600_cp.c		optional radeonkms drm

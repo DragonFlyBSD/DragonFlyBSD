@@ -138,10 +138,13 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 			   + !!r->write_domain;
 
 		/* the first reloc of an UVD job is the msg and that must be in
-		   VRAM, also but everything into VRAM on AGP cards to avoid
-		   image corruptions */
+		   VRAM, also but everything into VRAM on AGP cards and older
+		   IGP chips to avoid image corruptions */
 		if (p->ring == R600_RING_TYPE_UVD_INDEX &&
-		    (i == 0 || p->rdev->flags & RADEON_IS_AGP)) {
+		    (i == 0 || (p->rdev->flags & RADEON_IS_AGP) ||
+		     p->rdev->family == CHIP_RS780 ||
+		     p->rdev->family == CHIP_RS880)) {
+
 			/* TODO: is this still needed for NI+ ? */
 			p->relocs[i].prefered_domains =
 				RADEON_GEM_DOMAIN_VRAM;
@@ -420,7 +423,7 @@ static void radeon_cs_parser_fini(struct radeon_cs_parser *parser, int error, bo
 	kfree(parser->track);
 	kfree(parser->relocs);
 	kfree(parser->relocs_ptr);
-	kfree(parser->vm_bos);
+	drm_free_large(parser->vm_bos);
 	for (i = 0; i < parser->nchunks; i++)
 		drm_free_large(parser->chunks[i].kdata);
 	kfree(parser->chunks);
@@ -630,6 +633,13 @@ int radeon_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	if (!rdev->accel_working) {
 		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
 		return -EBUSY;
+	}
+	if (rdev->in_reset) {
+		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		r = radeon_gpu_reset(rdev);
+		if (!r)
+			r = -EAGAIN;
+		return r;
 	}
 	/* initialize parser */
 	memset(&parser, 0, sizeof(struct radeon_cs_parser));

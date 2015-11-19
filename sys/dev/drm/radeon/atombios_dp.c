@@ -95,8 +95,11 @@ static int radeon_process_aux_ch(struct radeon_i2c_chan *chan,
 	int index = GetIndexIntoMasterTable(COMMAND, ProcessAuxChannelTransaction);
 	unsigned char *base;
 	int recv_bytes;
+	int r = 0;
 
 	memset(&args, 0, sizeof(args));
+
+	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_EXCLUSIVE);
 
 	base = (unsigned char *)(rdev->mode_info.atom_context->scratch + 1);
 
@@ -110,26 +113,29 @@ static int radeon_process_aux_ch(struct radeon_i2c_chan *chan,
 	if (ASIC_IS_DCE4(rdev))
 		args.v2.ucHPD_ID = chan->rec.hpd;
 
-	atom_execute_table(rdev->mode_info.atom_context, index, (uint32_t *)&args);
+	atom_execute_table_scratch_unlocked(rdev->mode_info.atom_context, index, (uint32_t *)&args);
 
 	*ack = args.v1.ucReplyStatus;
 
 	/* timeout */
 	if (args.v1.ucReplyStatus == 1) {
 		DRM_DEBUG_KMS("dp_aux_ch timeout\n");
-		return -ETIMEDOUT;
+		r = -ETIMEDOUT;
+		goto done;
 	}
 
 	/* flags not zero */
 	if (args.v1.ucReplyStatus == 2) {
 		DRM_DEBUG_KMS("dp_aux_ch flags not zero\n");
-		return -EIO;
+		r = -EIO;
+		goto done;
 	}
 
 	/* error */
 	if (args.v1.ucReplyStatus == 3) {
 		DRM_DEBUG_KMS("dp_aux_ch error\n");
-		return -EIO;
+		r = -EIO;
+		goto done;
 	}
 
 	recv_bytes = args.v1.ucDataOutLen;
@@ -139,7 +145,11 @@ static int radeon_process_aux_ch(struct radeon_i2c_chan *chan,
 	if (recv && recv_size)
 		radeon_atom_copy_swap(recv, base + 16, recv_bytes, false);
 
-	return recv_bytes;
+	r = recv_bytes;
+done:
+	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_RELEASE);
+
+	return r;
 }
 
 static int radeon_dp_aux_native_write(struct radeon_connector *radeon_connector,

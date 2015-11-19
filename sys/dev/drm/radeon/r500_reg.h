@@ -126,10 +126,6 @@
 #	define RS690_MC_INDEX_MASK		0x1ff
 #	define RS690_MC_INDEX_WR_EN		(1 << 9)
 #	define RS690_MC_INDEX_WR_ACK		0x7f
-#define RS690_MC_NB_CNTL			0x0
-#	define RS690_HIDE_MMCFG_BAR		(1 << 3)
-#	define RS690_AGPMODE30			(1 << 4)
-#	define RS690_AGP30ENHANCED		(1 << 5)
 #define RS690_MC_DATA				0x7c
 #define RS690_MC_STATUS                         0x90
 #define RS690_MC_STATUS_IDLE                    (1 << 0)

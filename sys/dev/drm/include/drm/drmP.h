@@ -193,9 +193,6 @@ void drm_err(const char *func, const char *format, ...);
 /** \name Begin the DRM... */
 /*@{*/
 
-#define DRM_DEBUG_CODE 2	  /**< Include debugging code if > 1, then
-				     also include looping detection. */
-
 #define DRM_MAGIC_HASH_ORDER  4  /**< Size of key hash table. Must be power of 2. */
 
 /*@}*/
@@ -620,27 +617,6 @@ struct drm_map_list {
 	uint64_t user_token;
 	struct drm_master *master;
 	struct drm_mm_node *file_offset_node;	/**< fake offset */
-};
-
-/* location of GART table */
-#define DRM_ATI_GART_MAIN 1
-#define DRM_ATI_GART_FB   2
-
-#define DRM_ATI_GART_PCI 1
-#define DRM_ATI_GART_PCIE 2
-#define DRM_ATI_GART_IGP 3
-
-struct drm_ati_pcigart_info {
-	int gart_table_location;
-	int gart_reg_if;
-	void *addr;
-	dma_addr_t bus_addr;
-	dma_addr_t table_mask;
-	dma_addr_t member_mask;
-	struct drm_dma_handle *table_handle;
-	drm_local_map_t mapping;
-	int table_size;
-	struct drm_dma_handle *dmah; /* handle for ATI PCIGART table */
 };
 
 /**
@@ -1298,12 +1274,6 @@ extern int drm_modeset_ctl(struct drm_device *dev, void *data,
 /* sysctl support (drm_sysctl.h) */
 extern int		drm_sysctl_init(struct drm_device *dev);
 extern int		drm_sysctl_cleanup(struct drm_device *dev);
-
-/* ATI PCIGART support (ati_pcigart.c) */
-int	drm_ati_pcigart_init(struct drm_device *dev,
-				struct drm_ati_pcigart_info *gart_info);
-int	drm_ati_pcigart_cleanup(struct drm_device *dev,
-				struct drm_ati_pcigart_info *gart_info);
 
 /* Cache management (drm_memory.c) */
 void	drm_clflush_pages(vm_page_t *pages, unsigned long num_pages);
