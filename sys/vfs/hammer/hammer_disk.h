@@ -674,11 +674,9 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
  */
-#define HAMMER_RECTYPE_UNKNOWN		0
-#define HAMMER_RECTYPE_LOWEST		1	/* lowest record type avail */
-#define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
-#define HAMMER_RECTYPE_UNUSED02		2
-#define HAMMER_RECTYPE_UNUSED03		3
+#define HAMMER_RECTYPE_UNKNOWN		0x0000
+#define HAMMER_RECTYPE_LOWEST		0x0001	/* lowest record type avail */
+#define HAMMER_RECTYPE_INODE		0x0001	/* inode in obj_id space */
 #define HAMMER_RECTYPE_DATA		0x0010
 #define HAMMER_RECTYPE_DIRENTRY		0x0011
 #define HAMMER_RECTYPE_DB		0x0012
