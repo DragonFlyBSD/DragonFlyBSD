@@ -146,9 +146,9 @@ In csh or tcsh, these would be
 To remove an alias, you can usually use 'unalias aliasname'.  To list all
 aliases, you can usually type just 'alias'.
 %
-In order to support national characters for european languages in tools like
-less without creating other nationalisation aspects, set the environment
-variable LC_ALL to 'en_US.ISO8859-1'.
+In order to support international characters in tools like less without
+creating other nationalisation aspects, set the environment
+variable LC_ALL to 'en_US.UTF-8'.
 %
 You can search for documentation on a keyword by typing
 
