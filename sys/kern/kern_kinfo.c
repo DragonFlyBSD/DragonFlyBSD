@@ -249,6 +249,7 @@ fill_kinfo_proc_kthread(struct thread *td, struct kinfo_proc *kp)
 		kp->kp_stat = SACTIVE;
 	else
 		kp->kp_stat = SIDL;
+	kp->kp_nthreads = 1;
 	kp->kp_ktaddr = (uintptr_t)td;
 
 	kp->kp_lwp.kl_pid = -1;
