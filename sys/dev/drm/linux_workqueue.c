@@ -44,6 +44,7 @@ static int destroy_workqueues(void *arg)
 {
 	destroy_workqueue(system_wq);
 	destroy_workqueue(system_long_wq);
+	destroy_workqueue(system_power_efficient_wq);
 
 	return 0;
 }
