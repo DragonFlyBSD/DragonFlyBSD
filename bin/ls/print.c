@@ -46,6 +46,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <locale.h>
 #ifdef COLORLS
 #include <ctype.h>
 #include <termcap.h>
@@ -349,16 +350,43 @@ printtime(time_t ftime)
 	char longstring[80];
 	static time_t now;
 	const char *format;
+	static char *lc_time;
+	static int posix_time;
+
+#define	SIXMONTHS	((365 / 2) * 86400)
 
 	if (now == 0)
 		now = time(NULL);
 
-	if (f_sectime)
-		/* ISO 8601 (extended without T): YYYY-DD-MM hh:mm:ss */
-		format = "%F %T ";
-	else
-		/* ISO 8601 (basic with T): YYYYDDMMThh */
+	if (lc_time == NULL) {
+		lc_time = setlocale(LC_TIME, NULL);
+		posix_time = (strcmp(lc_time, "C") == 0);
+	}
+
+	if (f_sectime) {
+		/*
+		 * POSIX: Not covered by standard.  If C/POSIX locale used
+		 *        the old convention of mmm dd hh:mm:ss yyyy is kept.
+		 * Named locales use the extended ISO 8601 format without T:
+		 *        YYYY-DD-MM hh:mm:ss
+		 */
+		format = posix_time ? "%b %e %T %Y " : "%F %T ";
+	} else if (posix_time) {
+		/*
+		 * POSIX: Future or older than 6 months returns equivalent of
+		 *        date "+%b %e  %Y"
+		 *        If file was modified within the past 6 months,
+		 *        return equivalent of: date "+%b %e %H:%M"
+		 */
+		if (ftime + SIXMONTHS > now)
+			format = "%b %e %R ";
+		else
+			format = "%b %e  %Y ";
+	} else {
+		/* Named locales use ISO 8601 (basic with T): YYYYDDMMThh */
 		format = "%Y%m%dT%H ";
+	}
+
 	strftime(longstring, sizeof(longstring), format, localtime(&ftime));
 	fputs(longstring, stdout);
 }

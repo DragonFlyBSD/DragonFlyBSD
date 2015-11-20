@@ -150,8 +150,8 @@ When used with the
 (lowercase letter
 .Dq ell )
 option, display complete time information for the file, including
-month, day, hour, minute, second, and year using the ISO 8601 extended
-format.
+month, day, hour, minute, second, and year (named locales use the
+ISO 8601 extended format).
 .It Fl W
 Display whiteouts when scanning directories.
 .It Fl a
@@ -327,12 +327,16 @@ is displayed for each file:
 file mode,
 number of links, owner name, group name,
 number of bytes in the file,
-last modified time in ISO 8601 basic format reduced to
-hour accuracy, and the pathname.
+last modified time in either per POSIX requirements or per
+ISO 8601 basic format reduced to hour accuracy, and the pathname.
 In addition, for each directory whose contents are displayed, the total
 number of 512-byte blocks used by the files in the directory is displayed
 on a line by itself immediately before the information for the files in the
 directory.
+.Pp
+In the POSIX locale, If the modification time of the file is in the future,
+or more than 6 months in the past, then the year of the last modification
+is displayed in place of the hour and minute fields.
 .Pp
 If the owner or group names are not a known user or group name,
 or the
