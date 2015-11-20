@@ -221,6 +221,13 @@ sys_lwp_create(struct lwp_create_args *uap)
 	return (0);
 
 fail:
+	/*
+	 * Make sure no one is using this lwp, before it is removed from
+	 * the tree.  If we didn't wait it here, lwp tree iteration with
+	 * blocking operation would be broken.
+	 */
+	while (lp->lwp_lock > 0)
+		tsleep(lp, 0, "lwpfail", 1);
 	lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 	--p->p_nthreads;
 	/* lwp_dispose expects an exited lwp, and a held proc */

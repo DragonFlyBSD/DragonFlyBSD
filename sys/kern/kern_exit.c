@@ -838,6 +838,7 @@ lwp_dispose(struct lwp *lp)
 	struct thread *td = lp->lwp_thread;
 
 	KKASSERT(lwkt_preempted_proc() != lp);
+	KKASSERT(lp->lwp_lock == 0);
 	KKASSERT(td->td_refs == 0);
 	KKASSERT((td->td_flags & (TDF_RUNNING |
 				  TDF_RUNQ |
@@ -986,6 +987,14 @@ loop:
 			 * be zero.
 			 */
 			while ((lp = RB_ROOT(&p->p_lwp_tree)) != NULL) {
+				/*
+				 * Make sure no one is using this lwp, before
+				 * it is removed from the tree.  If we didn't
+				 * wait it here, lwp tree iteration with
+				 * blocking operation would be broken.
+				 */
+				while (lp->lwp_lock > 0)
+					tsleep(lp, 0, "zomblwp", 1);
 				lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 				reaplwp(lp);
 			}
