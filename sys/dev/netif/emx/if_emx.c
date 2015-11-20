@@ -245,6 +245,8 @@ static void	emx_update_link_status(struct emx_softc *);
 static void	emx_smartspeed(struct emx_softc *);
 static void	emx_set_itr(struct emx_softc *, uint32_t);
 static void	emx_disable_aspm(struct emx_softc *);
+static enum e1000_fc_mode emx_str2fc(const char *);
+static void	emx_fc2str(enum e1000_fc_mode, char *, int);
 
 static void	emx_print_debug_info(struct emx_softc *);
 static void	emx_print_nvm_info(struct emx_softc *);
@@ -259,6 +261,7 @@ static int	emx_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
+static int	emx_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
 static void	emx_add_sysctl(struct emx_softc *);
 
 static void	emx_serialize_skipmain(struct emx_softc *);
@@ -310,6 +313,8 @@ static int	emx_debug_sbp = 0;
 static int	emx_82573_workaround = 1;
 static int	emx_msi_enable = 1;
 
+static char	emx_flowctrl[16] = "rx_pause";
+
 TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
 TUNABLE_INT("hw.emx.rxr", &emx_rxr);
@@ -319,6 +324,7 @@ TUNABLE_INT("hw.emx.smart_pwr_down", &emx_smart_pwr_down);
 TUNABLE_INT("hw.emx.sbp", &emx_debug_sbp);
 TUNABLE_INT("hw.emx.82573_workaround", &emx_82573_workaround);
 TUNABLE_INT("hw.emx.msi.enable", &emx_msi_enable);
+TUNABLE_STR("hw.emx.flow_ctrl", emx_flowctrl, sizeof(emx_flowctrl));
 
 /* Global used in WOL setup with multiport cards */
 static int	emx_global_quad_port_a = 0;
@@ -824,6 +830,9 @@ emx_attach(device_t dev)
 	sc->tx_npoll_off = offset;
 #endif
 	sc->tx_ring_inuse = emx_get_txring_inuse(sc, FALSE);
+
+	/* Setup flow control.  TODO: per-device tunable */
+	sc->flow_ctrl = emx_str2fc(emx_flowctrl);
 
 	/* Setup OS specific network interface */
 	emx_setup_ifp(sc);
@@ -1970,7 +1979,7 @@ emx_reset(struct emx_softc *sc)
 
 	sc->hw.fc.pause_time = EMX_FC_PAUSE_TIME;
 	sc->hw.fc.send_xon = TRUE;
-	sc->hw.fc.requested_mode = e1000_fc_full;
+	sc->hw.fc.requested_mode = sc->flow_ctrl;
 
 	/*
 	 * Device specific overrides/settings
@@ -3696,6 +3705,11 @@ emx_add_sysctl(struct emx_softc *sc)
 	    OID_AUTO, "tx_ring_inuse", CTLFLAG_RD, &sc->tx_ring_inuse, 0,
 	    "# of TX rings used");
 
+        SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|CTLFLAG_RW, sc, 0,
+	    emx_sysctl_flowctrl, "A",
+	    "flow control: full, rx_pause, tx_pause, none");
+
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
@@ -4323,4 +4337,71 @@ emx_get_txring_inuse(const struct emx_softc *sc, boolean_t polling)
 		return sc->tx_ring_cnt;
 	else
 		return 1;
+}
+
+static enum e1000_fc_mode
+emx_str2fc(const char *str)
+{
+	if (strcmp(str, "none") == 0)
+		return e1000_fc_none;
+	else if (strcmp(str, "rx_pause") == 0)
+		return e1000_fc_rx_pause;
+	else if (strcmp(str, "tx_pause") == 0)
+		return e1000_fc_tx_pause;
+	else
+		return e1000_fc_full;
+}
+
+static void
+emx_fc2str(enum e1000_fc_mode fc, char *str, int len)
+{
+	const char *fc_str = "full";
+
+	switch (fc) {
+	case e1000_fc_none:
+		fc_str = "none";
+		break;
+
+	case e1000_fc_rx_pause:
+		fc_str = "rx_pause";
+		break;
+
+	case e1000_fc_tx_pause:
+		fc_str = "tx_pause";
+		break;
+
+	default:
+		break;
+	}
+	strlcpy(str, fc_str, len);
+}
+
+static int
+emx_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
+{
+	struct emx_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	char flowctrl[16];
+	enum e1000_fc_mode fc;
+	int error;
+
+	emx_fc2str(sc->flow_ctrl, flowctrl, sizeof(flowctrl));
+	error = sysctl_handle_string(oidp, flowctrl, sizeof(flowctrl), req);
+	if (error != 0 || req->newptr == NULL)
+		return error;
+
+	fc = emx_str2fc(flowctrl);
+
+	ifnet_serialize_all(ifp);
+	if (fc == sc->flow_ctrl)
+		goto done;
+
+	sc->flow_ctrl = fc;
+	sc->hw.fc.requested_mode = sc->flow_ctrl;
+	sc->hw.fc.current_mode = sc->flow_ctrl;
+	e1000_force_mac_fc(&sc->hw);
+done:
+	ifnet_deserialize_all(ifp);
+
+	return 0;
 }
