@@ -31,7 +31,6 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.73 2004/06/08 09:27:42 das Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.20 2008/06/24 21:55:48 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -350,23 +349,16 @@ printtime(time_t ftime)
 	char longstring[80];
 	static time_t now;
 	const char *format;
-	static int d_first = -1;
 
-	if (d_first < 0)
-		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
 	if (now == 0)
 		now = time(NULL);
 
-#define	SIXMONTHS	((365 / 2) * 86400)
 	if (f_sectime)
-		/* mmm dd hh:mm:ss yyyy || dd mmm hh:mm:ss yyyy */
-		format = d_first ? "%e %b %T %Y " : "%b %e %T %Y ";
-	else if (ftime + SIXMONTHS > now && ftime < now + SIXMONTHS)
-		/* mmm dd hh:mm || dd mmm hh:mm */
-		format = d_first ? "%e %b %R " : "%b %e %R ";
+		/* ISO 8601 (extended without T): YYYY-DD-MM hh:mm:ss */
+		format = "%F %T ";
 	else
-		/* mmm dd  yyyy || dd mmm  yyyy */
-		format = d_first ? "%e %b  %Y " : "%b %e  %Y ";
+		/* ISO 8601 (basic with T): YYYYDDMMThh */
+		format = "%Y%m%dT%H ";
 	strftime(longstring, sizeof(longstring), format, localtime(&ftime));
 	fputs(longstring, stdout);
 }

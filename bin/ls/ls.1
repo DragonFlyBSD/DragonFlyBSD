@@ -31,7 +31,7 @@
 .\"     @(#)ls.1	8.7 (Berkeley) 7/29/94
 .\" $FreeBSD: src/bin/ls/ls.1,v 1.86 2005/02/13 22:25:09 ru Exp $
 .\"
-.Dd March 4, 2014
+.Dd November 20, 2015
 .Dt LS 1
 .Os
 .Sh NAME
@@ -150,7 +150,8 @@ When used with the
 (lowercase letter
 .Dq ell )
 option, display complete time information for the file, including
-month, day, hour, minute, second, and year.
+month, day, hour, minute, second, and year using the ISO 8601 extended
+format.
 .It Fl W
 Display whiteouts when scanning directories.
 .It Fl a
@@ -325,18 +326,13 @@ option is given, the following information
 is displayed for each file:
 file mode,
 number of links, owner name, group name,
-number of bytes in the file, abbreviated
-month, day-of-month file was last modified,
-hour file last modified, minute file last
-modified, and the pathname.
+number of bytes in the file,
+last modified time in ISO 8601 basic format reduced to
+hour accuracy, and the pathname.
 In addition, for each directory whose contents are displayed, the total
 number of 512-byte blocks used by the files in the directory is displayed
 on a line by itself immediately before the information for the files in the
 directory.
-.Pp
-If the modification time of the file is more than 6 months
-in the past or future, then the year of the last modification
-is displayed in place of the hour and minute fields.
 .Pp
 If the owner or group names are not a known user or group name,
 or the
