@@ -378,10 +378,10 @@ printtime(time_t ftime)
 		 *        If file was modified within the past 6 months,
 		 *        return equivalent of: date "+%b %e %H:%M"
 		 */
-		if (ftime + SIXMONTHS > now)
-			format = "%b %e %R ";
-		else
+		if ((ftime > now) || (ftime < now - SIXMONTHS))
 			format = "%b %e  %Y ";
+		else
+			format = "%b %e %R ";
 	} else {
 		/* Named locales use ISO 8601 (basic with T): YYYYDDMMThh */
 		format = "%Y%m%dT%H ";
