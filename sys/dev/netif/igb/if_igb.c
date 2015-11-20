@@ -72,6 +72,8 @@
 #include <dev/netif/ig_hal/e1000_82575.h>
 #include <dev/netif/igb/if_igb.h>
 
+#define IGB_FLOWCTRL_STRLEN	16
+
 #ifdef IGB_RSS_DEBUG
 #define IGB_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \
@@ -161,6 +163,9 @@ static void	igb_set_timer_cpuid(struct igb_softc *, boolean_t);
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
+static int	igb_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
+static enum e1000_fc_mode igb_str2fc(const char *);
+static void	igb_fc2str(enum e1000_fc_mode, char *, int);
 
 static void	igb_vf_init_stats(struct igb_softc *);
 static void	igb_reset(struct igb_softc *);
@@ -276,7 +281,8 @@ static int	igb_txr = 0;
 static int	igb_msi_enable = 1;
 static int	igb_msix_enable = 1;
 static int	igb_eee_disabled = 1;	/* Energy Efficient Ethernet */
-static int	igb_fc_setting = e1000_fc_full;
+
+static char	igb_flowctrl[IGB_FLOWCTRL_STRLEN] = "rx_pause";
 
 /*
  * DMA Coalescing, only for i350 - default to off,
@@ -290,7 +296,7 @@ TUNABLE_INT("hw.igb.rxr", &igb_rxr);
 TUNABLE_INT("hw.igb.txr", &igb_txr);
 TUNABLE_INT("hw.igb.msi.enable", &igb_msi_enable);
 TUNABLE_INT("hw.igb.msix.enable", &igb_msix_enable);
-TUNABLE_INT("hw.igb.fc_setting", &igb_fc_setting);
+TUNABLE_STR("hw.igb.flow_ctrl", igb_flowctrl, sizeof(igb_flowctrl));
 
 /* i350 specific */
 TUNABLE_INT("hw.igb.eee_disabled", &igb_eee_disabled);
@@ -373,6 +379,7 @@ igb_attach(device_t dev)
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
 	int error = 0, ring_max;
+	char flowctrl[IGB_FLOWCTRL_STRLEN];
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -465,6 +472,11 @@ igb_attach(device_t dev)
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr_debug", sc->tx_ring_cnt);
 #endif
 	sc->tx_ring_inuse = sc->tx_ring_cnt;
+
+	/* Setup flow control. */
+	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
+	    igb_flowctrl);
+	sc->flow_ctrl = igb_str2fc(flowctrl);
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -1458,7 +1470,7 @@ igb_reset(struct igb_softc *sc)
 	}
 	fc->pause_time = IGB_FC_PAUSE_TIME;
 	fc->send_xon = TRUE;
-	fc->requested_mode = e1000_fc_default;
+	fc->requested_mode = sc->flow_ctrl;
 
 	/* Issue a global reset */
 	e1000_reset_hw(hw);
@@ -1678,6 +1690,11 @@ igb_add_sysctl(struct igb_softc *sc)
 	    OID_AUTO, "rx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_rx_wreg_nsegs, "I",
 	    "# of segments received before write to hardware register");
+
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|CTLFLAG_RW, sc, 0,
+	    igb_sysctl_flowctrl, "A",
+	    "flow control: full, rx_pause, tx_pause, none");
 
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
@@ -4933,4 +4950,71 @@ igb_set_timer_cpuid(struct igb_softc *sc, boolean_t polling)
 		sc->timer_cpuid = 0; /* XXX fixed */
 	else
 		sc->timer_cpuid = rman_get_cpuid(sc->intr_res);
+}
+
+static enum e1000_fc_mode
+igb_str2fc(const char *str)
+{
+	if (strcmp(str, "none") == 0)
+		return e1000_fc_none;
+	else if (strcmp(str, "rx_pause") == 0)
+		return e1000_fc_rx_pause;
+	else if (strcmp(str, "tx_pause") == 0)
+		return e1000_fc_tx_pause;
+	else
+		return e1000_fc_full;
+}
+
+static void
+igb_fc2str(enum e1000_fc_mode fc, char *str, int len)
+{
+	const char *fc_str = "full";
+
+	switch (fc) {
+	case e1000_fc_none:
+		fc_str = "none";
+		break;
+
+	case e1000_fc_rx_pause:
+		fc_str = "rx_pause";
+		break;
+
+	case e1000_fc_tx_pause:
+		fc_str = "tx_pause";
+		break;
+
+	default:
+		break;
+	}
+	strlcpy(str, fc_str, len);
+}
+
+static int
+igb_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
+{
+	struct igb_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	char flowctrl[IGB_FLOWCTRL_STRLEN];
+	enum e1000_fc_mode fc;
+	int error;
+
+	igb_fc2str(sc->flow_ctrl, flowctrl, sizeof(flowctrl));
+	error = sysctl_handle_string(oidp, flowctrl, sizeof(flowctrl), req);
+	if (error != 0 || req->newptr == NULL)
+		return error;
+
+	fc = igb_str2fc(flowctrl);
+
+	ifnet_serialize_all(ifp);
+	if (fc == sc->flow_ctrl)
+		goto done;
+
+	sc->flow_ctrl = fc;
+	sc->hw.fc.requested_mode = sc->flow_ctrl;
+	sc->hw.fc.current_mode = sc->flow_ctrl;
+	e1000_force_mac_fc(&sc->hw);
+done:
+	ifnet_deserialize_all(ifp);
+
+	return 0;
 }

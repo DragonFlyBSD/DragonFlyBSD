@@ -383,6 +383,8 @@ struct igb_softc {
 	int			rx_ring_inuse;
 	struct igb_rx_ring	*rx_rings;
 
+	enum e1000_fc_mode	flow_ctrl;
+
 	/* Misc stats maintained by the driver */
 	u_long			dropped_pkts;
 	u_long			mbuf_defrag_failed;
