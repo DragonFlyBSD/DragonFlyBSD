@@ -108,11 +108,10 @@
 
 #include <dev/netif/ig_hal/e1000_api.h>
 #include <dev/netif/ig_hal/e1000_82571.h>
+#include <dev/netif/ig_hal/e1000_dragonfly.h>
 #include <dev/netif/emx/if_emx.h>
 
 #define DEBUG_HW 0
-
-#define EMX_FLOWCTRL_STRLEN	16
 
 #ifdef EMX_RSS_DEBUG
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
@@ -247,8 +246,6 @@ static void	emx_update_link_status(struct emx_softc *);
 static void	emx_smartspeed(struct emx_softc *);
 static void	emx_set_itr(struct emx_softc *, uint32_t);
 static void	emx_disable_aspm(struct emx_softc *);
-static enum e1000_fc_mode emx_str2fc(const char *);
-static void	emx_fc2str(enum e1000_fc_mode, char *, int);
 
 static void	emx_print_debug_info(struct emx_softc *);
 static void	emx_print_nvm_info(struct emx_softc *);
@@ -315,7 +312,7 @@ static int	emx_debug_sbp = 0;
 static int	emx_82573_workaround = 1;
 static int	emx_msi_enable = 1;
 
-static char	emx_flowctrl[EMX_FLOWCTRL_STRLEN] = "rx_pause";
+static char	emx_flowctrl[E1000_FC_STRLEN] = E1000_FC_STR_RX_PAUSE;
 
 TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
@@ -439,7 +436,7 @@ emx_attach(device_t dev)
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
-	char flowctrl[EMX_FLOWCTRL_STRLEN];
+	char flowctrl[E1000_FC_STRLEN];
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -837,7 +834,7 @@ emx_attach(device_t dev)
 	/* Setup flow control. */
 	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
 	    emx_flowctrl);
-	sc->flow_ctrl = emx_str2fc(flowctrl);
+	sc->flow_ctrl = e1000_str2fc(flowctrl);
 
 	/* Setup OS specific network interface */
 	emx_setup_ifp(sc);
@@ -3710,10 +3707,14 @@ emx_add_sysctl(struct emx_softc *sc)
 	    OID_AUTO, "tx_ring_inuse", CTLFLAG_RD, &sc->tx_ring_inuse, 0,
 	    "# of TX rings used");
 
-        SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|CTLFLAG_RW, sc, 0,
 	    emx_sysctl_flowctrl, "A",
-	    "flow control: full, rx_pause, tx_pause, none");
+	    "flow control: "
+	    E1000_FC_STR_FULL ", "
+	    E1000_FC_STR_RX_PAUSE ", "
+	    E1000_FC_STR_TX_PAUSE ", "
+	    E1000_FC_STR_NONE);
 
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
@@ -4344,69 +4345,11 @@ emx_get_txring_inuse(const struct emx_softc *sc, boolean_t polling)
 		return 1;
 }
 
-static enum e1000_fc_mode
-emx_str2fc(const char *str)
-{
-	if (strcmp(str, "none") == 0)
-		return e1000_fc_none;
-	else if (strcmp(str, "rx_pause") == 0)
-		return e1000_fc_rx_pause;
-	else if (strcmp(str, "tx_pause") == 0)
-		return e1000_fc_tx_pause;
-	else
-		return e1000_fc_full;
-}
-
-static void
-emx_fc2str(enum e1000_fc_mode fc, char *str, int len)
-{
-	const char *fc_str = "full";
-
-	switch (fc) {
-	case e1000_fc_none:
-		fc_str = "none";
-		break;
-
-	case e1000_fc_rx_pause:
-		fc_str = "rx_pause";
-		break;
-
-	case e1000_fc_tx_pause:
-		fc_str = "tx_pause";
-		break;
-
-	default:
-		break;
-	}
-	strlcpy(str, fc_str, len);
-}
-
 static int
 emx_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
 {
 	struct emx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	char flowctrl[EMX_FLOWCTRL_STRLEN];
-	enum e1000_fc_mode fc;
-	int error;
 
-	emx_fc2str(sc->flow_ctrl, flowctrl, sizeof(flowctrl));
-	error = sysctl_handle_string(oidp, flowctrl, sizeof(flowctrl), req);
-	if (error != 0 || req->newptr == NULL)
-		return error;
-
-	fc = emx_str2fc(flowctrl);
-
-	ifnet_serialize_all(ifp);
-	if (fc == sc->flow_ctrl)
-		goto done;
-
-	sc->flow_ctrl = fc;
-	sc->hw.fc.requested_mode = sc->flow_ctrl;
-	sc->hw.fc.current_mode = sc->flow_ctrl;
-	e1000_force_mac_fc(&sc->hw);
-done:
-	ifnet_deserialize_all(ifp);
-
-	return 0;
+	return e1000_sysctl_flowctrl(&sc->arpcom.ac_if, &sc->flow_ctrl, &sc->hw,
+	    oidp, req);
 }

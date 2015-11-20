@@ -70,9 +70,8 @@
 
 #include <dev/netif/ig_hal/e1000_api.h>
 #include <dev/netif/ig_hal/e1000_82575.h>
+#include <dev/netif/ig_hal/e1000_dragonfly.h>
 #include <dev/netif/igb/if_igb.h>
-
-#define IGB_FLOWCTRL_STRLEN	16
 
 #ifdef IGB_RSS_DEBUG
 #define IGB_RSS_DPRINTF(sc, lvl, fmt, ...) \
@@ -164,8 +163,6 @@ static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
 static int	igb_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
-static enum e1000_fc_mode igb_str2fc(const char *);
-static void	igb_fc2str(enum e1000_fc_mode, char *, int);
 
 static void	igb_vf_init_stats(struct igb_softc *);
 static void	igb_reset(struct igb_softc *);
@@ -282,7 +279,7 @@ static int	igb_msi_enable = 1;
 static int	igb_msix_enable = 1;
 static int	igb_eee_disabled = 1;	/* Energy Efficient Ethernet */
 
-static char	igb_flowctrl[IGB_FLOWCTRL_STRLEN] = "rx_pause";
+static char	igb_flowctrl[E1000_FC_STRLEN] = E1000_FC_STR_RX_PAUSE;
 
 /*
  * DMA Coalescing, only for i350 - default to off,
@@ -379,7 +376,7 @@ igb_attach(device_t dev)
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
 	int error = 0, ring_max;
-	char flowctrl[IGB_FLOWCTRL_STRLEN];
+	char flowctrl[E1000_FC_STRLEN];
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -476,7 +473,7 @@ igb_attach(device_t dev)
 	/* Setup flow control. */
 	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
 	    igb_flowctrl);
-	sc->flow_ctrl = igb_str2fc(flowctrl);
+	sc->flow_ctrl = e1000_str2fc(flowctrl);
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -1289,33 +1286,18 @@ igb_update_link_status(struct igb_softc *sc)
 		e1000_get_speed_and_duplex(hw, 
 		    &sc->link_speed, &sc->link_duplex);
 		if (bootverbose) {
-			const char *flowctl;
+			char flowctrl[E1000_FC_STRLEN];
 
 			/* Get the flow control for display */
-			switch (hw->fc.current_mode) {
-			case e1000_fc_rx_pause:
-				flowctl = "RX";
-				break;
-
-			case e1000_fc_tx_pause:
-				flowctl = "TX";
-				break;
-
-			case e1000_fc_full:
-				flowctl = "Full";
-				break;
-
-			default:
-				flowctl = "None";
-				break;
-			}
+			e1000_fc2str(hw->fc.current_mode, flowctrl,
+			    sizeof(flowctrl));
 
 			if_printf(ifp, "Link is up %d Mbps %s, "
 			    "Flow control: %s\n",
 			    sc->link_speed,
 			    sc->link_duplex == FULL_DUPLEX ?
 			    "Full Duplex" : "Half Duplex",
-			    flowctl);
+			    flowctrl);
 		}
 		sc->link_active = 1;
 
@@ -1694,7 +1676,11 @@ igb_add_sysctl(struct igb_softc *sc)
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|CTLFLAG_RW, sc, 0,
 	    igb_sysctl_flowctrl, "A",
-	    "flow control: full, rx_pause, tx_pause, none");
+	    "flow control: "
+	    E1000_FC_STR_FULL ", "
+	    E1000_FC_STR_RX_PAUSE ", "
+	    E1000_FC_STR_TX_PAUSE ", "
+	    E1000_FC_STR_NONE);
 
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
@@ -4952,69 +4938,11 @@ igb_set_timer_cpuid(struct igb_softc *sc, boolean_t polling)
 		sc->timer_cpuid = rman_get_cpuid(sc->intr_res);
 }
 
-static enum e1000_fc_mode
-igb_str2fc(const char *str)
-{
-	if (strcmp(str, "none") == 0)
-		return e1000_fc_none;
-	else if (strcmp(str, "rx_pause") == 0)
-		return e1000_fc_rx_pause;
-	else if (strcmp(str, "tx_pause") == 0)
-		return e1000_fc_tx_pause;
-	else
-		return e1000_fc_full;
-}
-
-static void
-igb_fc2str(enum e1000_fc_mode fc, char *str, int len)
-{
-	const char *fc_str = "full";
-
-	switch (fc) {
-	case e1000_fc_none:
-		fc_str = "none";
-		break;
-
-	case e1000_fc_rx_pause:
-		fc_str = "rx_pause";
-		break;
-
-	case e1000_fc_tx_pause:
-		fc_str = "tx_pause";
-		break;
-
-	default:
-		break;
-	}
-	strlcpy(str, fc_str, len);
-}
-
 static int
 igb_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
 {
 	struct igb_softc *sc = arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	char flowctrl[IGB_FLOWCTRL_STRLEN];
-	enum e1000_fc_mode fc;
-	int error;
 
-	igb_fc2str(sc->flow_ctrl, flowctrl, sizeof(flowctrl));
-	error = sysctl_handle_string(oidp, flowctrl, sizeof(flowctrl), req);
-	if (error != 0 || req->newptr == NULL)
-		return error;
-
-	fc = igb_str2fc(flowctrl);
-
-	ifnet_serialize_all(ifp);
-	if (fc == sc->flow_ctrl)
-		goto done;
-
-	sc->flow_ctrl = fc;
-	sc->hw.fc.requested_mode = sc->flow_ctrl;
-	sc->hw.fc.current_mode = sc->flow_ctrl;
-	e1000_force_mac_fc(&sc->hw);
-done:
-	ifnet_deserialize_all(ifp);
-
-	return 0;
+	return e1000_sysctl_flowctrl(&sc->arpcom.ac_if, &sc->flow_ctrl, &sc->hw,
+	    oidp, req);
 }
