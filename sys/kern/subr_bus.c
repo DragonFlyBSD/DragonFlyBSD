@@ -3687,7 +3687,14 @@ device_getenv_int(device_t dev, const char *knob, int def)
 {
 	char env[128];
 
+	/* Deprecated; for compat */
 	ksnprintf(env, sizeof(env), "hw.%s.%s", device_get_nameunit(dev), knob);
 	kgetenv_int(env, &def);
+
+	/* Prefer dev.driver.unit.knob */
+	ksnprintf(env, sizeof(env), "dev.%s.%d.%s",
+	    device_get_name(dev), device_get_unit(dev), knob);
+	kgetenv_int(env, &def);
+
 	return def;
 }
