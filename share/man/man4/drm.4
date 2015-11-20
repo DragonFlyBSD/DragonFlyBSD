@@ -97,6 +97,58 @@ loader tunable.
 A read only
 .Xr sysctl 8
 variable of the same name is provided for obtaining its current value.
+.Sh LOADER TUNABLES
+Tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width "xxxxxx"
+.It Va drm.edid_firmware
+Load external EDID binary monitor data from firmware module.
+Useful if monitor is not sending appropiate EDID block, no video on
+connected monitor or there is a need to enforce custom video modes.
+Optionally, connector name can be specified before firmware name
+followed by colon, for example:
+.Pp
+.Dl drm.edid_firmware="DVI-D-1:edidfw_repaired"
+.Pp
+Notes:
+.Xr drm(4)
+and
+.Xr Xorg(1)
+use different naming conventions for connector names.
+This tunable only applies for KMS drivers.
+.It Va drm.video.<connector>
+Can be used to set framebuffer parameters for drm(4) connector
+in lower case form and without dashes.
+Mode specifier format:
+.Pp
+.Dl <xres>x<yres>[M][R][-<bpp>][@<refresh>][i][m][eDd]
+.Bl -tag -width "<refresh>"
+.It <xres>
+X resolution, e.g. 1920
+.It <yres>
+Y resolution, e.g. 1080
+.It M
+calculate timings using VESA CVT instead of table lookups
+.It R
+reduced blanking on digital monitors
+.It <bpp>
+color depth
+.It <refresh>
+refresh rate
+.It i
+calculate timings for interlaced mode
+.It m
+margins used in calculations
+.It e
+force enable output
+.It D
+same as e option, but force digital output on HDMI/DVI
+.It d
+force disable output
+.El
+.El
 .Sh SYSCTL VARIABLES
 A number of
 .Xr sysctl 8

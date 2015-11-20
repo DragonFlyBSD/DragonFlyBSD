@@ -15,6 +15,7 @@ SRCS	= \
 	drm_dragonfly.c \
 	drm_drv.c \
 	drm_edid.c \
+	drm_edid_load.c \
 	drm_fb_helper.c \
 	drm_fops.c \
 	drm_gem.c \

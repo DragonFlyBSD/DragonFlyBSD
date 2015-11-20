@@ -129,3 +129,6 @@ do {									\
 	if (drm_debug && drm_notyet_flag)				\
 		kprintf("NOTYET: %s at %s:%d\n", __func__, __FILE__, __LINE__); \
 } while (0)
+
+/* include code to override EDID blocks from external firmware modules */
+#define CONFIG_DRM_LOAD_EDID_FIRMWARE
