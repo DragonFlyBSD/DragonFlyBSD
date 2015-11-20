@@ -396,6 +396,8 @@ int	device_shutdown(device_t dev);
 void	device_unbusy(device_t dev);
 void	device_verbose(device_t dev);
 int	device_getenv_int(device_t dev, const char *knob, int def);
+void	device_getenv_string(device_t dev, const char *knob,
+	    char * __restrict data, int dlen, const char * __restrict def);
 
 /*
  * Access functions for devclass.
