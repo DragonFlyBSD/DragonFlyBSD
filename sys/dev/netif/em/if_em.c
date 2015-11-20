@@ -115,6 +115,8 @@
 
 #define DEBUG_HW 0
 
+#define EM_FLOWCTRL_STRLEN	16
+
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
 #define EM_VER	" 7.4.2"
 
@@ -311,6 +313,8 @@ static void	em_update_link_status(struct adapter *);
 static void	em_smartspeed(struct adapter *);
 static void	em_set_itr(struct adapter *, uint32_t);
 static void	em_disable_aspm(struct adapter *);
+static enum e1000_fc_mode em_str2fc(const char *);
+static void	em_fc2str(enum e1000_fc_mode, char *, int);
 
 /* Hardware workarounds */
 static int	em_82547_fifo_workaround(struct adapter *, int);
@@ -328,6 +332,7 @@ static int	em_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
+static int	em_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
 static void	em_add_sysctl(struct adapter *adapter);
 
 /* Management and WOL Support */
@@ -374,6 +379,8 @@ static int	em_debug_sbp = FALSE;
 static int	em_82573_workaround = 1;
 static int	em_msi_enable = 1;
 
+static char	em_flowctrl[EM_FLOWCTRL_STRLEN] = "rx_pause";
+
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 TUNABLE_INT("hw.em.rxd", &em_rxd);
 TUNABLE_INT("hw.em.txd", &em_txd);
@@ -381,6 +388,7 @@ TUNABLE_INT("hw.em.smart_pwr_down", &em_smart_pwr_down);
 TUNABLE_INT("hw.em.sbp", &em_debug_sbp);
 TUNABLE_INT("hw.em.82573_workaround", &em_82573_workaround);
 TUNABLE_INT("hw.em.msi.enable", &em_msi_enable);
+TUNABLE_STR("hw.em.flow_ctrl", em_flowctrl, sizeof(em_flowctrl));
 
 /* Global used in WOL setup with multiport cards */
 static int	em_global_quad_port_a = 0;
@@ -427,6 +435,7 @@ em_attach(device_t dev)
 	int error = 0;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
+	char flowctrl[EM_FLOWCTRL_STRLEN];
 
 	adapter->dev = adapter->osdep.dev = dev;
 
@@ -784,6 +793,15 @@ em_attach(device_t dev)
 
 	/* XXX disable wol */
 	adapter->wol = 0;
+
+	/* Setup flow control. */
+	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
+	    em_flowctrl);
+	adapter->flow_ctrl = em_str2fc(flowctrl);
+	if (adapter->hw.mac.type == e1000_pchlan) {
+		/* Only pause reception is supported */
+		adapter->flow_ctrl = e1000_fc_rx_pause;
+	}
 
 	/* Setup OS specific network interface */
 	em_setup_ifp(adapter);
@@ -2440,7 +2458,7 @@ em_reset(struct adapter *adapter)
 
 	adapter->hw.fc.send_xon = TRUE;
 
-	adapter->hw.fc.requested_mode = e1000_fc_full;
+	adapter->hw.fc.requested_mode = adapter->flow_ctrl;
 
 	/*
 	 * Device specific overrides/settings
@@ -4074,6 +4092,7 @@ em_add_sysctl(struct adapter *adapter)
 {
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
+	int access;
 
 	ctx = device_get_sysctl_ctx(adapter->dev);
 	tree = device_get_sysctl_tree(adapter->dev);
@@ -4108,6 +4127,19 @@ em_add_sysctl(struct adapter *adapter)
 	    OID_AUTO, "wreg_tx_nsegs", CTLFLAG_RW,
 	    &adapter->tx_wreg_nsegs, 0,
 	    "# segments before write to hardware register");
+
+	access = CTLFLAG_RW;
+	if (adapter->hw.mac.type == e1000_pchlan) {
+		/*
+		 * Only pause reception is supported, so make this
+		 * sysctl read-only for PCH.
+		 */
+		access = CTLFLAG_RD;
+	}
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|access, adapter, 0,
+	    em_sysctl_flowctrl, "A",
+	    "flow control: full, rx_pause, tx_pause, none");
 }
 
 static int
@@ -4392,4 +4424,71 @@ em_tso_setup(struct adapter *adapter, struct mbuf *mp,
 
 	adapter->next_avail_tx_desc = curr_txd;
 	return 1;
+}
+
+static enum e1000_fc_mode
+em_str2fc(const char *str)
+{
+	if (strcmp(str, "none") == 0)
+		return e1000_fc_none;
+	else if (strcmp(str, "rx_pause") == 0)
+		return e1000_fc_rx_pause;
+	else if (strcmp(str, "tx_pause") == 0)
+		return e1000_fc_tx_pause;
+	else
+		return e1000_fc_full;
+}
+
+static void
+em_fc2str(enum e1000_fc_mode fc, char *str, int len)
+{
+	const char *fc_str = "full";
+
+	switch (fc) {
+	case e1000_fc_none:
+		fc_str = "none";
+		break;
+
+	case e1000_fc_rx_pause:
+		fc_str = "rx_pause";
+		break;
+
+	case e1000_fc_tx_pause:
+		fc_str = "tx_pause";
+		break;
+
+	default:
+		break;
+	}
+	strlcpy(str, fc_str, len);
+}
+
+static int
+em_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
+{
+	struct adapter *adapter = arg1;
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
+	char flowctrl[EM_FLOWCTRL_STRLEN];
+	enum e1000_fc_mode fc;
+	int error;
+
+	em_fc2str(adapter->flow_ctrl, flowctrl, sizeof(flowctrl));
+	error = sysctl_handle_string(oidp, flowctrl, sizeof(flowctrl), req);
+	if (error != 0 || req->newptr == NULL)
+		return error;
+
+	fc = em_str2fc(flowctrl);
+
+	ifnet_serialize_all(ifp);
+	if (fc == adapter->flow_ctrl)
+		goto done;
+
+	adapter->flow_ctrl = fc;
+	adapter->hw.fc.requested_mode = adapter->flow_ctrl;
+	adapter->hw.fc.current_mode = adapter->flow_ctrl;
+	e1000_force_mac_fc(&adapter->hw);
+done:
+	ifnet_deserialize_all(ifp);
+
+	return 0;
 }
