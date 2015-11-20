@@ -112,6 +112,8 @@
 
 #define DEBUG_HW 0
 
+#define EMX_FLOWCTRL_STRLEN	16
+
 #ifdef EMX_RSS_DEBUG
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \
@@ -313,7 +315,7 @@ static int	emx_debug_sbp = 0;
 static int	emx_82573_workaround = 1;
 static int	emx_msi_enable = 1;
 
-static char	emx_flowctrl[16] = "rx_pause";
+static char	emx_flowctrl[EMX_FLOWCTRL_STRLEN] = "rx_pause";
 
 TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
@@ -437,6 +439,7 @@ emx_attach(device_t dev)
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
+	char flowctrl[EMX_FLOWCTRL_STRLEN];
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -831,8 +834,10 @@ emx_attach(device_t dev)
 #endif
 	sc->tx_ring_inuse = emx_get_txring_inuse(sc, FALSE);
 
-	/* Setup flow control.  TODO: per-device tunable */
-	sc->flow_ctrl = emx_str2fc(emx_flowctrl);
+	/* Setup flow control. */
+	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
+	    emx_flowctrl);
+	sc->flow_ctrl = emx_str2fc(flowctrl);
 
 	/* Setup OS specific network interface */
 	emx_setup_ifp(sc);
@@ -4381,7 +4386,7 @@ emx_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
 {
 	struct emx_softc *sc = arg1;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	char flowctrl[16];
+	char flowctrl[EMX_FLOWCTRL_STRLEN];
 	enum e1000_fc_mode fc;
 	int error;
 
