@@ -895,7 +895,6 @@ struct hammer_mount {
 	int	hflags;
 	int	ronly;
 	int	nvolumes;
-	int	volume_iterator;
 	int	master_id;	/* -1 or 0-15 for mirroring */
 	int	version;	/* hammer filesystem version to use */
 	int	rsv_inodes;	/* reserved space due to dirty inodes */
@@ -903,8 +902,6 @@ struct hammer_mount {
 	int	rsv_recs;	/* reserved space due to dirty records */
 	int	rsv_fromdelay;	/* big-blocks reserved due to flush delay */
 	int	undo_rec_limit;	/* based on size of undo area */
-	int	last_newrecords;
-	int	count_newrecords;
 
 	int	volume_to_remove; /* volume that is currently being removed */
 
@@ -924,7 +921,6 @@ struct hammer_mount {
 	struct hammer_mod_rb_tree lose_root;	/* loose buffers      */
 	long	locked_dirty_space;		/* meta/volu count    */
 	long	io_running_space;		/* io_token */
-	int	unused01;
 	int	objid_cache_count;
 	int	dedup_cache_count;
 	int	error;				/* critical I/O error */

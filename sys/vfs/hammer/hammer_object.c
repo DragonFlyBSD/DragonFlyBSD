@@ -1410,7 +1410,6 @@ hammer_mem_add(hammer_record_t record)
 		hammer_rel_mem_record(record);
 		return (EEXIST);
 	}
-	++hmp->count_newrecords;
 	++hmp->rsv_recs;
 	++record->ip->rsv_recs;
 	record->ip->hmp->rsv_databytes += record->leaf.data_len;
