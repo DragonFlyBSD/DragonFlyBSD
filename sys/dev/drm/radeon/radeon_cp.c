@@ -2184,7 +2184,7 @@ int radeon_driver_firstopen(struct drm_device *dev)
 
 	dev_priv->gart_info.table_size = RADEON_PCIGART_TABLE_SIZE;
 
-	dev_priv->fb_aper_offset = drm_get_resource_start(dev, 0);
+	dev_priv->fb_aper_offset = pci_resource_start(dev->pdev, 0);
 	ret = drm_legacy_addmap(dev, dev_priv->fb_aper_offset,
 				pci_resource_len(dev->pdev, 0),
 				_DRM_FRAME_BUFFER, _DRM_WRITE_COMBINING, &map);

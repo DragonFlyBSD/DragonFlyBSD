@@ -61,7 +61,7 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 		}
 
 	rdev->bios = NULL;
-	vram_base = drm_get_resource_start(rdev->ddev, 0);
+	vram_base = pci_resource_start(rdev->pdev, 0);
 	DRM_INFO("%s: VRAM base address: 0x%jx\n", __func__, (uintmax_t)vram_base);
 
 	bios_map.offset = vram_base;

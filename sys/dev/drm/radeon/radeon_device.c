@@ -308,8 +308,8 @@ void radeon_scratch_free(struct radeon_device *rdev, uint32_t reg)
 static int radeon_doorbell_init(struct radeon_device *rdev)
 {
 	/* doorbell bar mapping */
-	rdev->doorbell.base = drm_get_resource_start(rdev->ddev, 2);
-	rdev->doorbell.size = drm_get_resource_len(rdev->ddev, 2);
+	rdev->doorbell.base = pci_resource_start(rdev->pdev, 2);
+	rdev->doorbell.size = pci_resource_len(rdev->pdev, 2);
 
 	rdev->doorbell.num_doorbells = min_t(u32, rdev->doorbell.size / sizeof(u32), RADEON_MAX_DOORBELLS);
 	if (rdev->doorbell.num_doorbells == 0)
