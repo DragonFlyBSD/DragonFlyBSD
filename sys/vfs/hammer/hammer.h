@@ -86,6 +86,13 @@ MALLOC_DECLARE(M_HAMMER);
  * Misc structures
  */
 struct hammer_mount;
+struct hammer_inode;
+struct hammer_volume;
+struct hammer_buffer;
+struct hammer_node;
+struct hammer_undo;
+struct hammer_reserve;
+struct hammer_io;
 
 /*
  * Key structure used for custom RB tree inode lookups.  This prototypes
@@ -214,12 +221,9 @@ typedef enum hammer_inode_state {
 	HAMMER_FST_FLUSH
 } hammer_inode_state_t;
 
-TAILQ_HEAD(hammer_record_list, hammer_record);
-
 /*
  * Pseudo-filesystem extended data tracking
  */
-struct hammer_pfs_rb_tree;
 struct hammer_pseudofs_inmem;
 RB_HEAD(hammer_pfs_rb_tree, hammer_pseudofs_inmem);
 RB_PROTOTYPE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
@@ -274,12 +278,11 @@ TAILQ_HEAD(hammer_node_cache_list, hammer_node_cache);
 /*
  * Live dedup cache
  */
-struct hammer_dedup_crc_rb_tree;
+struct hammer_dedup_cache;
 RB_HEAD(hammer_dedup_crc_rb_tree, hammer_dedup_cache);
 RB_PROTOTYPE2(hammer_dedup_crc_rb_tree, hammer_dedup_cache, crc_entry,
 		hammer_dedup_crc_rb_compare, hammer_crc_t);
 
-struct hammer_dedup_off_rb_tree;
 RB_HEAD(hammer_dedup_off_rb_tree, hammer_dedup_cache);
 RB_PROTOTYPE2(hammer_dedup_off_rb_tree, hammer_dedup_cache, off_entry,
 		hammer_dedup_off_rb_compare, hammer_off_t);
@@ -305,7 +308,6 @@ typedef struct hammer_dedup_cache {
  * Without this a 'sync' could end up flushing 50,000 inodes in a single
  * transaction.
  */
-struct hammer_fls_rb_tree;
 RB_HEAD(hammer_fls_rb_tree, hammer_inode);
 RB_PROTOTYPE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
 	      hammer_ino_rb_compare);
@@ -340,23 +342,20 @@ TAILQ_HEAD(hammer_flush_group_list, hammer_flush_group);
  *
  * Finally, an inode may cache numerous disk-referencing B-Tree cursors.
  */
-struct hammer_ino_rb_tree;
-struct hammer_inode;
 RB_HEAD(hammer_ino_rb_tree, hammer_inode);
 RB_PROTOTYPEX(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
 	      hammer_ino_rb_compare, hammer_inode_info_t);
 
-struct hammer_redo_rb_tree;
 RB_HEAD(hammer_redo_rb_tree, hammer_inode);
 RB_PROTOTYPE2(hammer_redo_rb_tree, hammer_inode, rb_redonode,
 	      hammer_redo_rb_compare, hammer_off_t);
 
-struct hammer_rec_rb_tree;
 struct hammer_record;
 RB_HEAD(hammer_rec_rb_tree, hammer_record);
 RB_PROTOTYPEX(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
 	      hammer_rec_rb_compare, hammer_btree_leaf_elm_t);
 
+TAILQ_HEAD(hammer_record_list, hammer_record);
 TAILQ_HEAD(hammer_node_list, hammer_node);
 
 struct hammer_inode {
@@ -586,12 +585,6 @@ typedef struct hammer_record *hammer_record_t;
 /*
  * In-memory structures representing on-disk structures.
  */
-struct hammer_volume;
-struct hammer_buffer;
-struct hammer_node;
-struct hammer_undo;
-struct hammer_reserve;
-
 RB_HEAD(hammer_vol_rb_tree, hammer_volume);
 RB_HEAD(hammer_buf_rb_tree, hammer_buffer);
 RB_HEAD(hammer_nod_rb_tree, hammer_node);
@@ -632,9 +625,6 @@ typedef enum hammer_io_type {
 	HAMMER_STRUCTURE_DATA_BUFFER,
 	HAMMER_STRUCTURE_DUMMY
 } hammer_io_type_t;
-
-union hammer_io_structure;
-struct hammer_io;
 
 struct worklist {
 	LIST_ENTRY(worklist) node;
