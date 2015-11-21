@@ -37,6 +37,8 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_tt.c 251452 2013-06-06 06:17:20Z alc $
  */
 
+#define pr_fmt(fmt) "[TTM] " fmt
+
 #include <drm/drmP.h>
 
 #include <linux/export.h>
@@ -186,7 +188,7 @@ int ttm_tt_init(struct ttm_tt *ttm, struct ttm_bo_device *bdev,
 	ttm_tt_alloc_page_directory(ttm);
 	if (!ttm->pages) {
 		ttm_tt_destroy(ttm);
-		kprintf("Failed allocating page table\n");
+		pr_err("Failed allocating page table\n");
 		return -ENOMEM;
 	}
 	return 0;
@@ -219,7 +221,7 @@ int ttm_dma_tt_init(struct ttm_dma_tt *ttm_dma, struct ttm_bo_device *bdev,
 	ttm_dma_tt_alloc_page_directory(ttm_dma);
 	if (!ttm->pages || !ttm_dma->dma_address) {
 		ttm_tt_destroy(ttm);
-		kprintf("Failed allocating page table\n");
+		pr_err("Failed allocating page table\n");
 		return -ENOMEM;
 	}
 	return 0;
@@ -335,7 +337,7 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 		obj = swap_pager_alloc(NULL,
 		    IDX_TO_OFF(ttm->num_pages), VM_PROT_DEFAULT, 0);
 		if (obj == NULL) {
-			kprintf("[TTM] Failed allocating swap storage\n");
+			pr_err("Failed allocating swap storage\n");
 			return (-ENOMEM);
 		}
 	} else

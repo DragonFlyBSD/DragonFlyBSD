@@ -240,8 +240,7 @@ struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 		return NULL;
 
 	if (tfile != base->tfile && !base->shareable) {
-		kprintf("[TTM] Attempted access of non-shareable object %p\n",
-		    base);
+		pr_err("Attempted access of non-shareable object %p\n", base);
 		ttm_base_object_unref(&base);
 		return NULL;
 	}

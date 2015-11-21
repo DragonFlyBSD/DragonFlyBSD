@@ -26,6 +26,8 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_memory.c 248663 2013-03-23 20:46:47Z dumbbell $
  **************************************************************************/
 
+#define pr_fmt(fmt) "[TTM] " fmt
+
 #include <drm/drmP.h>
 #include <drm/ttm/ttm_memory.h>
 #include <drm/ttm/ttm_module.h>
@@ -48,7 +50,7 @@ struct ttm_mem_zone {
 static void ttm_mem_zone_kobj_release(struct ttm_mem_zone *zone)
 {
 
-	kprintf("[TTM] Zone %7s: Used memory at exit: %llu kiB\n",
+	pr_info("Zone %7s: Used memory at exit: %llu kiB\n",
 		zone->name, (unsigned long long)zone->used_mem >> 10);
 	drm_free(zone, M_DRM);
 }
@@ -273,10 +275,10 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	ret = ttm_mem_init_dma32_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
-	kprintf("[TTM] (struct ttm_mem_global *)%p\n", glob);
+	pr_info("(struct ttm_mem_global *)%p\n", glob);
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
-		kprintf("[TTM] Zone %7s: Available graphics memory: %llu kiB\n",
+		pr_info("Zone %7s: Available graphics memory: %llu kiB\n",
 			zone->name, (unsigned long long)zone->max_mem >> 10);
 	}
 	ttm_page_alloc_init(glob, glob->zone_kernel->max_mem/(2*PAGE_SIZE));
