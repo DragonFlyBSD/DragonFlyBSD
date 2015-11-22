@@ -5107,7 +5107,7 @@ ncr_timeout (void *arg)
 	time_t	thistime = time_uptime;
 	ticks_t	step  = np->ticks;
 	u_long	count = 0;
-	long signed   t;
+	long t;
 	nccb_p cp;
 
 	if (np->lasttime != thistime) {
