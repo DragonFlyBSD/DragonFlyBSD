@@ -692,10 +692,7 @@ struct hammer_volume {
 	RB_ENTRY(hammer_volume) rb_node;
 	struct hammer_volume_ondisk *ondisk;
 	int32_t	vol_no;
-	int64_t nblocks;	/* note: special calculation for statfs */
-	int64_t buffer_base;	/* base offset of buffer 0 */
 	hammer_off_t maxbuf_off; /* Maximum buffer offset (zone-2) */
-	hammer_off_t maxraw_off; /* Maximum raw offset for device */
 	char	*vol_name;
 	struct vnode *devvp;
 	int	vol_flags;
