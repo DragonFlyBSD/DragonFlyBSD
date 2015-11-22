@@ -264,7 +264,7 @@ default_capacity(struct storage *s, int mtpt)
 	capacity = slice_get_capacity(storage_get_selected_slice(s));
 	mem = storage_get_memsize(s);
 	swap = 2 * mem;
-	if (mem > (capacity / 2) || capacity < 4096)
+	if (mem > (capacity / 2))
 		swap = mem;
 	if (mem > capacity)
 		swap = capacity / 2;
@@ -277,14 +277,6 @@ default_capacity(struct storage *s, int mtpt)
 		 * can't be done.  Sorry.
 		 */
 		return(-1);
-	} else if (capacity < 4096) {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(320);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(128);
-		case MTPT_TMP:	return(128);
-		case MTPT_USR:	return(1472);
-		}
 	} else if (capacity < 10240) {
 		switch (mtpt) {
 		case MTPT_ROOT:	return(640);
