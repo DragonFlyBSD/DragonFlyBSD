@@ -22,6 +22,7 @@ The following files have been patched (* planned)
   gcc/gcc.c
   gcc/ginclude/stddef.h
 * gcc/tree-inline.c
+  libssp/ssp.c
   libstdc++-v3/config/os/bsd/dragonfly/os_defines.h
   libstdc++-v3/config/locale/dragonfly/c_locale.cc
   libstdc++-v3/config/locale/dragonfly/ctype_members.cc

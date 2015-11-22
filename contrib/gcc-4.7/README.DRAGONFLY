@@ -19,6 +19,7 @@ gcc/config/dragonfly.h
 gcc/config/i386/dragonfly.h
 libgcc/config/i386/dragonfly-unwind.h
 libgcc/enable-execute-stack-freebsd.c
+libssp/ssp.c
 libstdc++-v3/config/locale/dragonfly/c_locale.cc
 libstdc++-v3/config/locale/dragonfly/ctype_members.cc
 libstdc++-v3/config/os/bsd/dragonfly/ctype_base.h
