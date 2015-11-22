@@ -38,6 +38,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #endif
 #ifdef HAVE_MALLOC_H
 # include <malloc.h>
+#else
+# include <stdlib.h>
 #endif
 #ifdef HAVE_STRING_H
 # include <string.h>
