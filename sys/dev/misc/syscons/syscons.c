@@ -530,7 +530,7 @@ scdevtounit(cdev_t dev)
 	return vty/MAXCONS;
 }
 
-int
+static int
 scopen(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
@@ -610,7 +610,7 @@ scopen(struct dev_open_args *ap)
     return error;
 }
 
-int
+static int
 scclose(struct dev_close_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
@@ -660,7 +660,7 @@ scclose(struct dev_close_args *ap)
     return(0);
 }
 
-int
+static int
 scread(struct dev_read_args *ap)
 {
     int ret;
@@ -770,7 +770,7 @@ scparam(struct tty *tp, struct termios *t)
     return 0;
 }
 
-int
+static int
 scioctl(struct dev_ioctl_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
@@ -3711,7 +3711,7 @@ next_code:
     goto next_code;
 }
 
-int
+static int
 scmmap(struct dev_mmap_args *ap)
 {
     scr_stat *scp;
