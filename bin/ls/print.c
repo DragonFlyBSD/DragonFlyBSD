@@ -383,11 +383,15 @@ printtime(time_t ftime)
 		else
 			format = "%b %e %R ";
 	} else {
-		/* Named locales use ISO 8601 (basic with T): YYYYDDMMThh */
-		format = "%Y%m%dT%H ";
+		/*
+		 * Named locales use format DD-MMM-YYYY hh:mm
+		 * Regardless of locale, English is used for month field
+		 */
+		format = "%d-%b-%Y %H:%M ";
 	}
 
-	strftime(longstring, sizeof(longstring), format, localtime(&ftime));
+	strftime_l(longstring, sizeof(longstring), format, localtime(&ftime),
+            NULL);
 	fputs(longstring, stdout);
 }
 
