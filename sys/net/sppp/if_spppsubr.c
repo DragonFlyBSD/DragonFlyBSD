@@ -348,7 +348,6 @@ static const char *sppp_phase_name(enum ppp_phase phase);
 static const char *sppp_proto_name(u_short proto);
 static const char *sppp_state_name(int state);
 static int sppp_params(struct sppp *sp, u_long cmd, void *data);
-static int sppp_strnlen(u_char *p, int max);
 static void sppp_get_ip_addrs(struct sppp *sp, u_long *src, u_long *dst,
 			      u_long *srcmask);
 static void sppp_keepalive(void *dummy);
@@ -3947,7 +3946,7 @@ sppp_chap_input(struct sppp *sp, struct mbuf *m)
 		MD5Init(&ctx);
 		MD5Update(&ctx, &h->ident, 1);
 		MD5Update(&ctx, sp->myauth.secret,
-			  sppp_strnlen(sp->myauth.secret, AUTHKEYLEN));
+			  strnlen(sp->myauth.secret, AUTHKEYLEN));
 		MD5Update(&ctx, value, value_len);
 		MD5Final(digest, &ctx);
 		dsize = sizeof digest;
@@ -3955,7 +3954,7 @@ sppp_chap_input(struct sppp *sp, struct mbuf *m)
 		sppp_auth_send(&chap, sp, CHAP_RESPONSE, h->ident,
 			       sizeof dsize, (const char *)&dsize,
 			       sizeof digest, digest,
-			       (size_t)sppp_strnlen(sp->myauth.name, AUTHNAMELEN),
+			       (size_t)strnlen(sp->myauth.name, AUTHNAMELEN),
 			       sp->myauth.name,
 			       0);
 		break;
@@ -4032,14 +4031,14 @@ sppp_chap_input(struct sppp *sp, struct mbuf *m)
 				    h->ident, sp->confid[IDX_CHAP]);
 			break;
 		}
-		if (name_len != sppp_strnlen(sp->hisauth.name, AUTHNAMELEN)
+		if (name_len != strnlen(sp->hisauth.name, AUTHNAMELEN)
 		    || bcmp(name, sp->hisauth.name, name_len) != 0) {
 			log(LOG_INFO, SPP_FMT "chap response, his name ",
 			    SPP_ARGS(ifp));
 			sppp_print_string(name, name_len);
 			log(-1, " != expected ");
 			sppp_print_string(sp->hisauth.name,
-					  sppp_strnlen(sp->hisauth.name, AUTHNAMELEN));
+					  strnlen(sp->hisauth.name, AUTHNAMELEN));
 			log(-1, "\n");
 		}
 		if (debug) {
@@ -4067,7 +4066,7 @@ sppp_chap_input(struct sppp *sp, struct mbuf *m)
 		MD5Init(&ctx);
 		MD5Update(&ctx, &h->ident, 1);
 		MD5Update(&ctx, sp->hisauth.secret,
-			  sppp_strnlen(sp->hisauth.secret, AUTHKEYLEN));
+			  strnlen(sp->hisauth.secret, AUTHKEYLEN));
 		MD5Update(&ctx, sp->myauth.challenge, AUTHKEYLEN);
 		MD5Final(digest, &ctx);
 
@@ -4274,7 +4273,7 @@ sppp_chap_scr(struct sppp *sp)
 	sppp_auth_send(&chap, sp, CHAP_CHALLENGE, sp->confid[IDX_CHAP],
 		       sizeof clen, (const char *)&clen,
 		       (size_t)AUTHKEYLEN, sp->myauth.challenge,
-		       (size_t)sppp_strnlen(sp->myauth.name, AUTHNAMELEN),
+		       (size_t)strnlen(sp->myauth.name, AUTHNAMELEN),
 		       sp->myauth.name,
 		       0);
 }
@@ -4352,8 +4351,8 @@ sppp_pap_input(struct sppp *sp, struct mbuf *m)
 			sppp_print_string((char*)passwd, passwd_len);
 			log(-1, ">\n");
 		}
-		if (name_len != sppp_strnlen(sp->hisauth.name, AUTHNAMELEN) ||
-		    passwd_len != sppp_strnlen(sp->hisauth.secret, AUTHKEYLEN) ||
+		if (name_len != strnlen(sp->hisauth.name, AUTHNAMELEN) ||
+		    passwd_len != strnlen(sp->hisauth.secret, AUTHKEYLEN) ||
 		    bcmp(name, sp->hisauth.name, name_len) != 0 ||
 		    bcmp(passwd, sp->hisauth.secret, passwd_len) != 0) {
 			/* action scn, tld */
@@ -4591,8 +4590,8 @@ sppp_pap_scr(struct sppp *sp)
 	u_char idlen, pwdlen;
 
 	sp->confid[IDX_PAP] = ++sp->pp_seq[IDX_PAP];
-	pwdlen = sppp_strnlen(sp->myauth.secret, AUTHKEYLEN);
-	idlen = sppp_strnlen(sp->myauth.name, AUTHNAMELEN);
+	pwdlen = strnlen(sp->myauth.secret, AUTHKEYLEN);
+	idlen = strnlen(sp->myauth.name, AUTHNAMELEN);
 
 	sppp_auth_send(&pap, sp, PAP_REQ, sp->confid[IDX_PAP],
 		       sizeof idlen, (const char *)&idlen,
@@ -5318,16 +5317,6 @@ sppp_dotted_quad(u_long addr)
 		(int)((addr >> 8) & 0xff),
 		(int)(addr & 0xff));
 	return s;
-}
-
-static int
-sppp_strnlen(u_char *p, int max)
-{
-	int len;
-
-	for (len = 0; len < max && *p; ++p)
-		++len;
-	return len;
 }
 
 /* a dummy, used to drop uninteresting events */
