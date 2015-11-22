@@ -555,8 +555,4 @@ MLINKS+=wpi.4 if_wpi.4
 MLINKS+=xe.4 if_xe.4
 MLINKS+=xl.4 if_xl.4
 
-.if ${MACHINE_ARCH} == "i386"
-SUBDIR=	 man4.${MACHINE_ARCH}
-.endif
-
 .include <bsd.prog.mk>

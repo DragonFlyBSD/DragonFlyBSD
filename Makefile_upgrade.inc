@@ -2261,6 +2261,9 @@ TO_REMOVE+=/usr/include/sys/syslink.h
 TO_REMOVE+=/usr/include/sys/syslink_msg.h
 TO_REMOVE+=/usr/include/sys/syslink_msg2.h
 TO_REMOVE+=/usr/include/sys/syslink_vfs.h
+TO_REMOVE+=/usr/share/man/man4/i386
+TO_REMOVE+=/usr/share/man/man8/i386
+TO_REMOVE+=/usr/share/man/man9/i386
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
