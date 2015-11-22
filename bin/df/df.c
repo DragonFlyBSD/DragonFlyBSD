@@ -43,7 +43,6 @@
 #include <sys/statvfs.h>
 
 #include <vfs/ufs/dinode.h>
-#include <vfs/ufs/fs.h>
 #include <vfs/ufs/ufsmount.h>
 
 #include <err.h>
@@ -75,7 +74,6 @@ struct maxwidths {
 char	**makevfslist(char *);
 int	  checkvfsname(const char *, char **);
 
-static int	 bread(off_t, void *, int);
 static char	*getmntpt(char *);
 static int	 quadwidth(int64_t);
 static char	*makenetvfslist(void);
@@ -83,7 +81,6 @@ static void	 prthuman(struct statvfs *, int64_t);
 static void	 prthumanval(int64_t);
 static void	 prtstat(struct statfs *, struct statvfs *, struct maxwidths *);
 static long	 regetmntinfo(struct statfs **, struct statvfs **, long, char **);
-static int	 ufs_df(char *, struct maxwidths *);
 static void	 update_maxwidths(struct maxwidths *, struct statfs *, struct statvfs *);
 static void	 usage(void);
 
@@ -220,7 +217,8 @@ main(int argc, char **argv)
 				}
 				if (mount(fstype, mntpt, MNT_RDONLY,
 				    &mdev) != 0) {
-					rv = ufs_df(*argv, &maxwidths) || rv;
+					warn("%s", *argv);
+					rv = 1;
 					rmdir(mntpt);
 					free(mntpath);
 					continue;
@@ -490,81 +488,6 @@ quadwidth(int64_t val)
 		val /= 10;
 	}
 	return (len);
-}
-
-/*
- * This code constitutes the pre-system call Berkeley df code for extracting
- * information from filesystem superblocks.
- */
-
-union {
-	struct fs iu_fs;
-	char dummy[SBSIZE];
-} sb;
-#define sblock sb.iu_fs
-
-int	rfd;
-
-static int
-ufs_df(char *file, struct maxwidths *mwp)
-{
-	struct statfs statfsbuf;
-	struct statvfs statvfsbuf;
-	struct statfs *sfsp;
-	struct statvfs *vsfsp;
-	const char *mntpt;
-	static int synced;
-
-	if (synced++ == 0)
-		sync();
-
-	if ((rfd = open(file, O_RDONLY)) < 0) {
-		warn("%s", file);
-		return (1);
-	}
-	if (bread((off_t)SBOFF, &sblock, SBSIZE) == 0) {
-		close(rfd);
-		return (1);
-	}
-	sfsp = &statfsbuf;
-	vsfsp = &statvfsbuf;
-	sfsp->f_type = 1;
-	strcpy(sfsp->f_fstypename, "ufs");
-	sfsp->f_flags = 0;
-	sfsp->f_bsize = vsfsp->f_bsize = sblock.fs_fsize;
-	sfsp->f_iosize = vsfsp->f_frsize = sblock.fs_bsize;
-	sfsp->f_blocks = vsfsp->f_blocks = sblock.fs_dsize;
-	sfsp->f_bfree = vsfsp->f_bfree =
-		sblock.fs_cstotal.cs_nbfree * sblock.fs_frag +
-		sblock.fs_cstotal.cs_nffree;
-	sfsp->f_bavail = vsfsp->f_bavail = freespace(&sblock, sblock.fs_minfree);
-	sfsp->f_files = vsfsp->f_files = sblock.fs_ncg * sblock.fs_ipg;
-	sfsp->f_ffree = vsfsp->f_ffree = sblock.fs_cstotal.cs_nifree;
-	sfsp->f_fsid.val[0] = 0;
-	sfsp->f_fsid.val[1] = 0;
-	if ((mntpt = getmntpt(file)) == NULL)
-		mntpt = "";
-	memmove(&sfsp->f_mntonname[0], mntpt, (size_t)MNAMELEN);
-	memmove(&sfsp->f_mntfromname[0], file, (size_t)MNAMELEN);
-	prtstat(sfsp, vsfsp, mwp);
-	close(rfd);
-	return (0);
-}
-
-static int
-bread(off_t off, void *buf, int cnt)
-{
-	ssize_t nr;
-
-	lseek(rfd, off, SEEK_SET);
-	if ((nr = read(rfd, buf, (size_t)cnt)) != (ssize_t)cnt) {
-		/* Probably a dismounted disk if errno == EIO. */
-		if (errno != EIO)
-			fprintf(stderr, "\ndf: %lld: %s\n",
-			    (long long)off, strerror(nr > 0 ? EIO : errno));
-		return (0);
-	}
-	return (1);
 }
 
 static void
