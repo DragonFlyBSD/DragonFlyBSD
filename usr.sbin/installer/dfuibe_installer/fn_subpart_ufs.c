@@ -262,22 +262,16 @@ default_capacity(struct storage *s, int mtpt)
 		return(-1);
 
 	capacity = slice_get_capacity(storage_get_selected_slice(s));
+	if (capacity <= 8192 && mtpt == MTPT_ROOT)
+		return(-1);
 	mem = storage_get_memsize(s);
 	swap = 2 * mem;
-	if (mem > (capacity / 2))
-		swap = mem;
-	if (mem > capacity)
-		swap = capacity / 2;
+	while (swap > capacity / 4)
+		swap -= 128;
 	if (swap > SWAP_MAX)
 		swap = SWAP_MAX;
 
-	if (capacity < DISK_MIN) {
-		/*
-		 * For the purposes of this installer:
-		 * can't be done.  Sorry.
-		 */
-		return(-1);
-	} else if (capacity < 10240) {
+	if (capacity < 12800) {
 		switch (mtpt) {
 		case MTPT_ROOT:	return(640);
 		case MTPT_SWAP: return(swap);
@@ -287,7 +281,7 @@ default_capacity(struct storage *s, int mtpt)
 		}
 	} else {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(768);
+		case MTPT_ROOT:	return(1024);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(256);
 		case MTPT_TMP:	return(256);
@@ -578,6 +572,10 @@ warn_subpartition_selections(struct i_fn_args *a)
 	int valid = 0;
 	struct aura_buffer *omit, *consequences;
 
+	/* Skip this check for disks <= 8GB */
+	if (slice_get_capacity(storage_get_selected_slice(a->s)) <= 8192)
+		return 0;
+
 	omit = aura_buffer_new(2048);
 	consequences = aura_buffer_new(2048);
 
@@ -795,9 +793,18 @@ void
 fn_create_subpartitions_ufs(struct i_fn_args *a)
 {
 	struct dfui_form *f;
+	unsigned long capacity;
 	int done = 0;
 
 	a->result = 0;
+	capacity = slice_get_capacity(storage_get_selected_slice(a->s));
+	if (capacity < DISK_MIN) {
+		inform(a->c, _("The selected disk is smaller than the "
+		    "required %dM for the UFS filesystem."), DISK_MIN);
+		return;
+	}
+	if (capacity <= 8192)
+		def_mountpt[2] = NULL; /* XXX adjust each time in a session */
 	while (!done) {
 		f = make_create_subpartitions_form(a);
 		switch (show_create_subpartitions_form(f, a)) {

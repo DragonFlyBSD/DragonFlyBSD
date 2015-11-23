@@ -261,26 +261,23 @@ default_capacity(struct storage *s, const char *mtpt)
 	mem = storage_get_memsize(s);
 
 	/*
-	 * Try to get 768M for /boot, but if space is tight go down to 128M
-	 * in 128M steps.
-	 * For swap, start with 2*mem but take less if space is tight
-	 * (minimum is 384).
-	 * Rest goes to / (which is at least 75% slice size).
+	 * Slice capacity is at least 10G at this point.
+	 * /boot is 1G and root is at least 75% slice size.
+	 * The rest goes to swap, up to twice the memory amount
+	 * or SWAP_MAX.
+	 * The 'root' variable is just for calculation and any
+	 * disk space beyond the above constraints goes to root.
 	 */
 
 	root = capacity / 4 * 3;
 	swap = 2 * mem;
 	if (swap > SWAP_MAX)
 		swap = SWAP_MAX;
-	boot = 768;
-	while (boot + root > capacity - 384)
-		boot -= 128;
+	boot = 1024;
 	if (boot + root + swap > capacity)
 		swap = capacity - boot - root;
 
-	if (capacity < DISK_MIN)
-		return(-1);
-	else if (strcmp(mtpt, "/boot") == 0)
+	if (strcmp(mtpt, "/boot") == 0)
 		return(boot);
 	else if (strcmp(mtpt, "swap") == 0)
 		return(swap);
@@ -331,8 +328,8 @@ check_capacity(struct i_fn_args *a)
 		}
 		if (strcmp(mountpt, "/boot") != 0 &&
 		    strcmp(mountpt, "swap") != 0) {
-			if ((subpart_capacity == -1 && remaining_capacity < HAMMER_MIN) ||
-			    (subpart_capacity != -1 && subpart_capacity < HAMMER_MIN))
+			if ((subpart_capacity == -1 && remaining_capacity < HAMMER_WARN) ||
+			    (subpart_capacity != -1 && subpart_capacity < HAMMER_WARN))
 				warn_smallpart++;
 		}
 	}
@@ -353,9 +350,7 @@ check_capacity(struct i_fn_args *a)
 		    "not recommended!\n"
 		    "You may have to run 'hammer prune-everything' and "
 		    "'hammer reblock'\n"
-		    "quite often, even if using a nohistory mount.\n\n"
-		    "NOTE: HAMMER filesystems smaller than 10GB are "
-		    "unsupported. Use at your own risk.")));
+		    "quite often, even if using a nohistory mount.")));
 
 	return(1);
 }
@@ -739,9 +734,16 @@ void
 fn_create_subpartitions_hammer(struct i_fn_args *a)
 {
 	struct dfui_form *f;
+	unsigned long capacity;
 	int done = 0;
 
 	a->result = 0;
+	capacity = slice_get_capacity(storage_get_selected_slice(a->s));
+	if (capacity < HAMMER_MIN) {
+		inform(a->c, _("The selected disk is smaller than the "
+		    "required %dM for the HAMMER filesystem."), HAMMER_MIN);
+		return;
+	}
 	while (!done) {
 		f = make_create_subpartitions_form(a);
 		switch (show_create_subpartitions_form(f, a)) {

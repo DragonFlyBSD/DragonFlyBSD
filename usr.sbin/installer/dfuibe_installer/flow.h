@@ -40,7 +40,8 @@
 #define __FLOW_H_
 
 #define	DISK_MIN	4096
-#define	HAMMER_MIN	51200
+#define	HAMMER_WARN	51200
+#define	HAMMER_MIN	10240
 #if defined(__x86_64__)
 #define	SWAP_MAX	524288
 #endif
