@@ -164,7 +164,6 @@ uint64_t ifmedia_baudrate(int);
 #define IFM_40G_SR4     28              /* 40GBase-SR4 */
 #define IFM_40G_LR4     29              /* 40GBase-LR4 */
 
-
 #define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
 #define	IFM_ETH_RXPAUSE	0x00000200	/* receive PAUSE frames */
 #define	IFM_ETH_TXPAUSE	0x00000400	/* transmit PAUSE frames */
@@ -374,6 +373,9 @@ struct ifmedia_description {
 }
 
 #define	IFM_SUBTYPE_ETHERNET_OPTION_DESCRIPTIONS {			\
+	{ IFM_ETH_MASTER,	"master" },				\
+	{ IFM_ETH_RXPAUSE,	"rxpause" },				\
+	{ IFM_ETH_TXPAUSE,	"txpause" },				\
 	{ 0, NULL },							\
 }
 
@@ -520,6 +522,7 @@ struct ifmedia_description {
 #define	IFM_SHARED_OPTION_DESCRIPTIONS {				\
 	{ IFM_FDX,	"full-duplex" },				\
 	{ IFM_HDX,	"half-duplex" },				\
+	{ IFM_FLOW,	"flowcontrol" },				\
 	{ IFM_FLAG0,	"flag0" },					\
 	{ IFM_FLAG1,	"flag1" },					\
 	{ IFM_FLAG2,	"flag2" },					\
