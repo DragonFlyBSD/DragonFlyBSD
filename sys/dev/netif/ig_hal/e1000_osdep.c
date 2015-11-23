@@ -34,6 +34,7 @@
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <net/if_var.h>
+#include <net/if_media.h>
 
 #include "e1000_api.h"
 #include "e1000_dragonfly.h"
@@ -165,6 +166,44 @@ done:
 	ifnet_deserialize_all(ifp);
 
 	return 0;
+}
+
+enum e1000_fc_mode
+e1000_ifmedia2fc(int ifm)
+{
+	int fc_opt = ifm & (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE);
+
+	switch (fc_opt) {
+	case (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE):
+		return e1000_fc_full;
+
+	case IFM_ETH_RXPAUSE:
+		return e1000_fc_rx_pause;
+
+	case IFM_ETH_TXPAUSE:
+		return e1000_fc_tx_pause;
+
+	default:
+		return e1000_fc_none;
+	}
+}
+
+int
+e1000_fc2ifmedia(enum e1000_fc_mode fc)
+{
+	switch (fc) {
+	case e1000_fc_full:
+		return (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE);
+
+	case e1000_fc_rx_pause:
+		return IFM_ETH_RXPAUSE;
+
+	case e1000_fc_tx_pause:
+		return IFM_ETH_TXPAUSE;
+
+	default:
+		return 0;
+	}
 }
 
 /* Module glue */

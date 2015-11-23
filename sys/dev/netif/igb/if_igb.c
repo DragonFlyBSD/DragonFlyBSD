@@ -162,7 +162,6 @@ static void	igb_set_timer_cpuid(struct igb_softc *, boolean_t);
 static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
-static int	igb_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
 
 static void	igb_vf_init_stats(struct igb_softc *);
 static void	igb_reset(struct igb_softc *);
@@ -279,7 +278,7 @@ static int	igb_msi_enable = 1;
 static int	igb_msix_enable = 1;
 static int	igb_eee_disabled = 1;	/* Energy Efficient Ethernet */
 
-static char	igb_flowctrl[E1000_FC_STRLEN] = E1000_FC_STR_RX_PAUSE;
+static char	igb_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_RXPAUSE;
 
 /*
  * DMA Coalescing, only for i350 - default to off,
@@ -376,7 +375,7 @@ igb_attach(device_t dev)
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
 	int error = 0, ring_max;
-	char flowctrl[E1000_FC_STRLEN];
+	char flowctrl[IFM_ETH_FC_STRLEN];
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -473,7 +472,7 @@ igb_attach(device_t dev)
 	/* Setup flow control. */
 	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
 	    igb_flowctrl);
-	sc->flow_ctrl = e1000_str2fc(flowctrl);
+	sc->ifm_flowctrl = ifmedia_str2ethfc(flowctrl);
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -1048,10 +1047,14 @@ igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!sc->link_active)
+	if (!sc->link_active) {
+		ifmr->ifm_active |= IFM_NONE;
 		return;
+	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
+	if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
+		ifmr->ifm_active |= IFM_ETH_FORCEPAUSE;
 
 	switch (sc->link_speed) {
 	case 10:
@@ -1063,14 +1066,19 @@ igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 		 * Support for 100Mb SFP - these are Fiber 
 		 * but the media type appears as serdes
 		 */
-		if (sc->hw.phy.media_type == e1000_media_type_internal_serdes)
+		if (sc->hw.phy.media_type == e1000_media_type_fiber ||
+		    sc->hw.phy.media_type == e1000_media_type_internal_serdes)
 			ifmr->ifm_active |= IFM_100_FX;
 		else
 			ifmr->ifm_active |= IFM_100_TX;
 		break;
 
 	case 1000:
-		ifmr->ifm_active |= IFM_1000_T;
+		if (sc->hw.phy.media_type == e1000_media_type_fiber ||
+		    sc->hw.phy.media_type == e1000_media_type_internal_serdes)
+			ifmr->ifm_active |= IFM_1000_SX;
+		else
+			ifmr->ifm_active |= IFM_1000_T;
 		break;
 	}
 
@@ -1078,6 +1086,9 @@ igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 		ifmr->ifm_active |= IFM_FDX;
 	else
 		ifmr->ifm_active |= IFM_HDX;
+
+	if (sc->link_duplex == FULL_DUPLEX)
+		ifmr->ifm_active |= e1000_fc2ifmedia(sc->hw.fc.current_mode);
 }
 
 static int
@@ -1097,7 +1108,6 @@ igb_media_change(struct ifnet *ifp)
 		sc->hw.phy.autoneg_advertised = AUTONEG_ADV_DEFAULT;
 		break;
 
-	case IFM_1000_LX:
 	case IFM_1000_SX:
 	case IFM_1000_T:
 		sc->hw.mac.autoneg = DO_AUTO_NEG;
@@ -1105,29 +1115,52 @@ igb_media_change(struct ifnet *ifp)
 		break;
 
 	case IFM_100_TX:
+		if (IFM_OPTIONS(ifm->ifm_media) & IFM_FDX) {
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_FULL;
+		} else {
+			if (IFM_OPTIONS(ifm->ifm_media) &
+			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
+				if (bootverbose) {
+					if_printf(ifp, "Flow control is not "
+					    "allowed for half-duplex\n");
+				}
+				return EINVAL;
+			}
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_HALF;
+		}
 		sc->hw.mac.autoneg = FALSE;
 		sc->hw.phy.autoneg_advertised = 0;
-		if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX)
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_FULL;
-		else
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_HALF;
 		break;
 
 	case IFM_10_T:
+		if (IFM_OPTIONS(ifm->ifm_media) & IFM_FDX) {
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_FULL;
+		} else {
+			if (IFM_OPTIONS(ifm->ifm_media) &
+			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
+				if (bootverbose) {
+					if_printf(ifp, "Flow control is not "
+					    "allowed for half-duplex\n");
+				}
+				return EINVAL;
+			}
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_HALF;
+		}
 		sc->hw.mac.autoneg = FALSE;
 		sc->hw.phy.autoneg_advertised = 0;
-		if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX)
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_FULL;
-		else
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_HALF;
 		break;
 
 	default:
-		if_printf(ifp, "Unsupported media type\n");
-		break;
+		if (bootverbose) {
+			if_printf(ifp, "Unsupported media type %d\n",
+			    IFM_SUBTYPE(ifm->ifm_media));
+		}
+		return EINVAL;
 	}
+	sc->ifm_flowctrl = ifm->ifm_media & IFM_ETH_FCMASK;
 
-	igb_init(sc);
+	if (ifp->if_flags & IFF_RUNNING)
+		igb_init(sc);
 
 	return 0;
 }
@@ -1286,7 +1319,7 @@ igb_update_link_status(struct igb_softc *sc)
 		e1000_get_speed_and_duplex(hw, 
 		    &sc->link_speed, &sc->link_duplex);
 		if (bootverbose) {
-			char flowctrl[E1000_FC_STRLEN];
+			char flowctrl[IFM_ETH_FC_STRLEN];
 
 			/* Get the flow control for display */
 			e1000_fc2str(hw->fc.current_mode, flowctrl,
@@ -1298,6 +1331,16 @@ igb_update_link_status(struct igb_softc *sc)
 			    sc->link_duplex == FULL_DUPLEX ?
 			    "Full Duplex" : "Half Duplex",
 			    flowctrl);
+		}
+		if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE) {
+			enum e1000_fc_mode fc;
+
+			fc = e1000_ifmedia2fc(sc->ifm_flowctrl);
+			if (hw->fc.current_mode != fc) {
+				hw->fc.requested_mode = fc;
+				hw->fc.current_mode = fc;
+				e1000_force_mac_fc(hw);
+			}
 		}
 		sc->link_active = 1;
 
@@ -1452,7 +1495,7 @@ igb_reset(struct igb_softc *sc)
 	}
 	fc->pause_time = IGB_FC_PAUSE_TIME;
 	fc->send_xon = TRUE;
-	fc->requested_mode = sc->flow_ctrl;
+	fc->requested_mode = e1000_ifmedia2fc(sc->ifm_flowctrl);
 
 	/* Issue a global reset */
 	e1000_reset_hw(hw);
@@ -1591,12 +1634,12 @@ igb_setup_ifp(struct igb_softc *sc)
 	 * Specify the media types supported by this adapter and register
 	 * callbacks to update media and link information
 	 */
-	ifmedia_init(&sc->media, IFM_IMASK, igb_media_change, igb_media_status);
+	ifmedia_init(&sc->media, IFM_IMASK | IFM_ETH_FCMASK,
+	    igb_media_change, igb_media_status);
 	if (sc->hw.phy.media_type == e1000_media_type_fiber ||
 	    sc->hw.phy.media_type == e1000_media_type_internal_serdes) {
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_SX | IFM_FDX,
 		    0, NULL);
-		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_SX, 0, NULL);
 	} else {
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T, 0, NULL);
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T | IFM_FDX,
@@ -1607,12 +1650,10 @@ igb_setup_ifp(struct igb_softc *sc)
 		if (sc->hw.phy.type != e1000_phy_ife) {
 			ifmedia_add(&sc->media,
 			    IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-			ifmedia_add(&sc->media,
-			    IFM_ETHER | IFM_1000_T, 0, NULL);
 		}
 	}
 	ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
-	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
+	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO | sc->ifm_flowctrl);
 }
 
 static void
@@ -1672,15 +1713,6 @@ igb_add_sysctl(struct igb_softc *sc)
 	    OID_AUTO, "rx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_rx_wreg_nsegs, "I",
 	    "# of segments received before write to hardware register");
-
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|CTLFLAG_RW, sc, 0,
-	    igb_sysctl_flowctrl, "A",
-	    "flow control: "
-	    E1000_FC_STR_FULL ", "
-	    E1000_FC_STR_RX_PAUSE ", "
-	    E1000_FC_STR_TX_PAUSE ", "
-	    E1000_FC_STR_NONE);
 
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
@@ -4936,13 +4968,4 @@ igb_set_timer_cpuid(struct igb_softc *sc, boolean_t polling)
 		sc->timer_cpuid = 0; /* XXX fixed */
 	else
 		sc->timer_cpuid = rman_get_cpuid(sc->intr_res);
-}
-
-static int
-igb_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
-{
-	struct igb_softc *sc = arg1;
-
-	return e1000_sysctl_flowctrl(&sc->arpcom.ac_if, &sc->flow_ctrl, &sc->hw,
-	    oidp, req);
 }

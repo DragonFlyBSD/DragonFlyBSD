@@ -51,4 +51,7 @@ int	e1000_sysctl_flowctrl(struct ifnet *ifp, enum e1000_fc_mode *fc0,
 	    struct e1000_hw *hw, struct sysctl_oid *oidp,
 	    struct sysctl_req *req);
 
+enum e1000_fc_mode e1000_ifmedia2fc(int ifm);
+int	e1000_fc2ifmedia(enum e1000_fc_mode fc);
+
 #endif	/* !_E1000_DRAGONFLY_H_ */

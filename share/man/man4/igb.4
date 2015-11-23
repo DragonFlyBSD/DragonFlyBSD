@@ -184,6 +184,26 @@ driver supports the following media options:
 Forces full-duplex operation
 .It Cm half-duplex
 Forces half-duplex operation.
+.It Cm rxpause
+Enable flow control PAUSE reception.
+This is only supported by
+.Cm autoselect
+and
+.Cm full-duplex
+mode.
+.It Cm txpause
+Enable flow control PAUSE transmission.
+This is only supported by
+.Cm autoselect
+and
+.Cm full-duplex
+mode.
+.It Cm forcepause
+Force flow control PAUSE operation as configured by
+.Cm rxpause
+and
+.Cm txpause
+media options.
 .El
 .Pp
 Only use
@@ -343,6 +363,18 @@ reception queue
 processing.
 The value specificed must be aligned to the number of reception queues
 enabled and must be less than the power of 2 number of CPUs.
+.It Va hw.igb.flow_ctrl Va hw.igbX.flow_ctrl
+The default flow control settings.
+Supported values are:
+rxpause (only enable PAUSE reception),
+txpause (only enable PAUSE transmission),
+full (enable PAUSE reception and transmission),
+none (disable flow control PAUSE operation),
+force-rxpause (force PAUSE reception),
+force-txpause (force PAUSE transmission),
+force-full (forcefully enable PAUSE reception and transmission),
+force-none (forcefully disable flow control PAUSE operation).
+Default is rxpause.
 .El
 .Sh MIB Variables
 A number of per-interface variables are implemented in the
