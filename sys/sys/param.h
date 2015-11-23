@@ -132,9 +132,11 @@
  * 400307 - drm/i915 kernel module renamed to i915.ko
  * 400308 - <malloc.h> removal
  * 400309 - Add lwp_setname() system call
+ * 400400 - 4.4 release
+ * 400500 - 4.5 development
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400309	/* propagated to newvers */
+#define __DragonFly_version 400500	/* propagated to newvers */
 
 #include <sys/_null.h>
 
