@@ -667,13 +667,12 @@ struct hammer_io {
 	 */
 	u_int		modified : 1;	/* bp's data was modified */
 	u_int		released : 1;	/* bp released (w/ B_LOCKED set) */
-	u_int		validated : 1;	/* ondisk has been validated */
 	u_int		waitdep : 1;	/* flush waits for dependancies */
 	u_int		recovered : 1;	/* has recovery ref */
 	u_int		waitmod : 1;	/* waiting for modify_refs */
 	u_int		reclaim : 1;	/* reclaim requested */
 	u_int		gencrc : 1;	/* crc needs to be generated */
-	u_int		unusedB : 24;
+	u_int		unusedB : 25;
 };
 
 typedef struct hammer_io *hammer_io_t;
