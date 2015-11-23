@@ -174,7 +174,7 @@ extract_volumes(struct hammer_mount_info *info, char **av, int ac)
 {
 	int idx = 0;
 	int arymax = 32;
-	const char **ary = malloc(sizeof(char *) * arymax);
+	char **ary = malloc(sizeof(char *) * arymax);
 	char *ptr;
 	char *next;
 	char *orig;
@@ -214,7 +214,7 @@ free_volumes(struct hammer_mount_info *info)
 	int i;
 
 	for (i = 0; i < info->nvolumes; i++)
-		; /* free((char*)info->volumes[i]); */
+		free(info->volumes[i]);
 	free(info->volumes);
 }
 

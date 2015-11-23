@@ -49,7 +49,7 @@
  * system call.
  */
 struct hammer_mount_info {
-	const char	**volumes;	/* array of pointers to device names */
+	char		**volumes;	/* array of pointers to device names */
 	int		nvolumes;	/* number of devices */
 	int		hflags;		/* extended hammer mount flags */
 	int		master_id;	/* -1=no-mirror mode, or 0-15 */
