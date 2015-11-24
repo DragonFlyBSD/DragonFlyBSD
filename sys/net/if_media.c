@@ -80,7 +80,7 @@ ifmedia_init(struct ifmedia *ifm, int dontcare_mask,
 
 	LIST_INIT(&ifm->ifm_list);
 	ifm->ifm_cur = NULL;
-	ifm->ifm_media = 0;
+	ifm->ifm_media = IFM_NONE;
 	ifm->ifm_mask = dontcare_mask;		/* IF don't-care bits */
 	ifm->ifm_change = change_callback;
 	ifm->ifm_status = status_callback;
