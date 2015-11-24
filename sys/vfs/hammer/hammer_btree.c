@@ -1498,7 +1498,6 @@ btree_split_internal(hammer_cursor_t cursor)
 		ondisk->count = 1;
 		ondisk->parent = 0;
 		ondisk->mirror_tid = node->ondisk->mirror_tid;
-		ondisk->signature = node->ondisk->signature;
 		ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 		ondisk->elms[0].base = hmp->root_btree_beg;
 		ondisk->elms[0].base.btype = node->ondisk->type;
@@ -1618,7 +1617,6 @@ btree_split_internal(hammer_cursor_t cursor)
 		volume->ondisk->vol0_btree_root = parent->node_offset;
 		hammer_modify_volume_done(volume);
 		node->ondisk->parent = parent->node_offset;
-		/* node->ondisk->signature = 0; */
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
 			hammer_rel_node(cursor->parent);
@@ -1753,7 +1751,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 		ondisk->count = 1;
 		ondisk->parent = 0;
 		ondisk->mirror_tid = leaf->ondisk->mirror_tid;
-		ondisk->signature = leaf->ondisk->signature;
 		ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 		ondisk->elms[0].base = hmp->root_btree_beg;
 		ondisk->elms[0].base.btype = leaf->ondisk->type;
@@ -1862,7 +1859,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 		volume->ondisk->vol0_btree_root = parent->node_offset;
 		hammer_modify_volume_done(volume);
 		leaf->ondisk->parent = parent->node_offset;
-		/* leaf->ondisk->signature = 0; */
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
 			hammer_rel_node(cursor->parent);

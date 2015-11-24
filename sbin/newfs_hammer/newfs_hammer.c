@@ -622,7 +622,6 @@ format_root(const char *label)
 	 * Create the root of the B-Tree.  The root is a leaf node so we
 	 * do not have to worry about boundary elements.
 	 */
-	bnode->signature = HAMMER_BTREE_SIGNATURE_GOOD;
 	bnode->count = 2;
 	bnode->type = HAMMER_BTREE_TYPE_LEAF;
 
