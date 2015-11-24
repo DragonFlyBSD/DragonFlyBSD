@@ -37,8 +37,6 @@
 #ifndef VFS_HAMMER_CURSOR_H_
 #define VFS_HAMMER_CURSOR_H_
 
-struct hammer_cmirror;
-
 /*
  * The hammer_cursor structure is the primary in-memory management structure
  * for B-Tree operations.
