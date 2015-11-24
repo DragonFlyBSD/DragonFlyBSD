@@ -167,6 +167,7 @@ uint64_t ifmedia_baudrate(int);
 #define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
 #define	IFM_ETH_RXPAUSE	0x00000200	/* receive PAUSE frames */
 #define	IFM_ETH_TXPAUSE	0x00000400	/* transmit PAUSE frames */
+#define	IFM_ETH_MANUFLOW	0x00000800 /* manual flow control setting */
 
 /*
  * IEEE 802.11 Wireless
@@ -267,7 +268,8 @@ uint64_t ifmedia_baudrate(int);
 #define	IFM_MSHIFT	16		/* Mode shift */
 #define	IFM_GMASK	0x0ff00000	/* Global options */
 	/* Ethernet flow control mask */
-#define	IFM_ETH_FMASK	(IFM_FLOW | IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)
+#define	IFM_ETH_FCMASK	(IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE | IFM_ETH_MANUFLOW)
+#define	IFM_ETH_FMASK	(IFM_FLOW | IFM_ETH_FCMASK)
 
 #define	IFM_NMIN	IFM_ETHER	/* lowest Network type */
 #define	IFM_NMAX	IFM_NMASK	/* highest Network type */
@@ -376,6 +378,7 @@ struct ifmedia_description {
 	{ IFM_ETH_MASTER,	"master" },				\
 	{ IFM_ETH_RXPAUSE,	"rxpause" },				\
 	{ IFM_ETH_TXPAUSE,	"txpause" },				\
+	{ IFM_ETH_MANUFLOW,	"manuflow" },				\
 	{ 0, NULL },							\
 }
 
