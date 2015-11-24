@@ -167,7 +167,7 @@ uint64_t ifmedia_baudrate(int);
 #define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
 #define	IFM_ETH_RXPAUSE	0x00000200	/* receive PAUSE frames */
 #define	IFM_ETH_TXPAUSE	0x00000400	/* transmit PAUSE frames */
-#define	IFM_ETH_MANUFLOW	0x00000800 /* manual flow control setting */
+#define	IFM_ETH_FORCEPAUSE	0x00000800 /* force flow control settings */
 
 /*
  * IEEE 802.11 Wireless
@@ -268,7 +268,7 @@ uint64_t ifmedia_baudrate(int);
 #define	IFM_MSHIFT	16		/* Mode shift */
 #define	IFM_GMASK	0x0ff00000	/* Global options */
 	/* Ethernet flow control mask */
-#define	IFM_ETH_FCMASK	(IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE | IFM_ETH_MANUFLOW)
+#define	IFM_ETH_FCMASK	(IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE | IFM_ETH_FORCEPAUSE)
 #define	IFM_ETH_FMASK	(IFM_FLOW | IFM_ETH_FCMASK)
 
 #define	IFM_NMIN	IFM_ETHER	/* lowest Network type */
@@ -378,7 +378,7 @@ struct ifmedia_description {
 	{ IFM_ETH_MASTER,	"master" },				\
 	{ IFM_ETH_RXPAUSE,	"rxpause" },				\
 	{ IFM_ETH_TXPAUSE,	"txpause" },				\
-	{ IFM_ETH_MANUFLOW,	"manuflow" },				\
+	{ IFM_ETH_FORCEPAUSE,	"forcepause" },				\
 	{ 0, NULL },							\
 }
 
@@ -592,4 +592,23 @@ struct ifmedia_baudrate {
 									\
 	{ 0, 0 },							\
 }
+
+#ifdef _KERNEL
+
+/* Ethernet flow control strings for tunables */
+#define IFM_ETH_FC_STRLEN		16
+#define IFM_ETH_FC_FULL			"full"
+#define IFM_ETH_FC_RXPAUSE		"rxpause"
+#define IFM_ETH_FC_TXPAUSE		"txpause"
+#define IFM_ETH_FC_NONE			"none"
+#define IFM_ETH_FC_FORCE_FULL		"force-full"
+#define IFM_ETH_FC_FORCE_RXPAUSE	"force-rxpause"
+#define IFM_ETH_FC_FORCE_TXPAUSE	"force-txpause"
+#define IFM_ETH_FC_FORCE_NONE		"force-none"
+
+/* String to flow control media options */
+int	ifmedia_str2ethfc(const char *);
+
+#endif	/* _KERNEL */
+
 #endif	/* _NET_IF_MEDIA_H_ */

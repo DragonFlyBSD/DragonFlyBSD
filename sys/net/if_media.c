@@ -384,6 +384,28 @@ ifmedia_baudrate(int mword)
 	return (0);
 }
 
+int
+ifmedia_str2ethfc(const char *str)
+{
+	if (strcmp(str, IFM_ETH_FC_FULL) == 0)
+		return (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE);
+	if (strcmp(str, IFM_ETH_FC_RXPAUSE) == 0)
+		return IFM_ETH_RXPAUSE;
+	if (strcmp(str, IFM_ETH_FC_TXPAUSE) == 0)
+		return IFM_ETH_TXPAUSE;
+
+	if (strcmp(str, IFM_ETH_FC_FORCE_FULL) == 0)
+		return (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE | IFM_ETH_FORCEPAUSE);
+	if (strcmp(str, IFM_ETH_FC_FORCE_RXPAUSE) == 0)
+		return (IFM_ETH_RXPAUSE | IFM_ETH_FORCEPAUSE);
+	if (strcmp(str, IFM_ETH_FC_FORCE_TXPAUSE) == 0)
+		return (IFM_ETH_TXPAUSE | IFM_ETH_FORCEPAUSE);
+	if (strcmp(str, IFM_ETH_FC_FORCE_NONE) == 0)
+		return IFM_ETH_FORCEPAUSE;
+
+	return 0;
+}
+
 #ifdef IFMEDIA_DEBUG
 struct ifmedia_description ifm_type_descriptions[] =
     IFM_TYPE_DESCRIPTIONS;
