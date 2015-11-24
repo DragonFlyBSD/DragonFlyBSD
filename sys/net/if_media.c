@@ -161,6 +161,7 @@ ifmedia_set(struct ifmedia *ifm, int target)
 		panic("ifmedia_set");
 	}
 	ifm->ifm_cur = match;
+	ifm->ifm_media = target;
 
 #ifdef IFMEDIA_DEBUG
 	if (ifmedia_debug) {
