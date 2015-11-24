@@ -114,7 +114,9 @@ char	*strncpy(char * __restrict, const char * __restrict, size_t);
 #endif
 #if __POSIX_VISIBLE >= 200809
 char	*strndup(const char *, size_t);
+#if !defined(_KERNEL_VIRTUAL)
 size_t	 strnlen(const char *, size_t) __pure;
+#endif
 #endif
 #if __BSD_VISIBLE
 char	*strnstr(const char *, const char *, size_t) __pure;
