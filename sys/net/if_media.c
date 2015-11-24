@@ -258,8 +258,14 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 
 		kptr = NULL;		/* XXX gcc */
 
+		/*
+		 * NOTE:
+		 * ifm_cur may not contain certain media options, e.g.
+		 * flow control options, so ifm_media should be used
+		 * instead.
+		 */
 		ifmr->ifm_active = ifmr->ifm_current = ifm->ifm_cur ?
-		    ifm->ifm_cur->ifm_media : IFM_NONE;
+		    ifm->ifm_media : IFM_NONE;
 		ifmr->ifm_mask = ifm->ifm_mask;
 		ifmr->ifm_status = 0;
 		(*ifm->ifm_status)(ifp, ifmr);
