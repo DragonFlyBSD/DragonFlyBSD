@@ -382,6 +382,11 @@ struct ifmedia_description {
 	{ 0, NULL },							\
 }
 
+#define	IFM_SUBTYPE_ETHERNET_OPTION_ALIAS {				\
+	{ IFM_ETH_TXPAUSE | IFM_ETH_RXPAUSE,	"flowcontrol" },	\
+	{ 0, NULL },							\
+}
+
 #define	IFM_SUBTYPE_IEEE80211_DESCRIPTIONS {				\
 	{ IFM_IEEE80211_FH1, "FH/1Mbps" },				\
 	{ IFM_IEEE80211_FH2, "FH/2Mbps" },				\
@@ -525,7 +530,6 @@ struct ifmedia_description {
 #define	IFM_SHARED_OPTION_DESCRIPTIONS {				\
 	{ IFM_FDX,	"full-duplex" },				\
 	{ IFM_HDX,	"half-duplex" },				\
-	{ IFM_FLOW,	"flowcontrol" },				\
 	{ IFM_FLAG0,	"flag0" },					\
 	{ IFM_FLAG1,	"flag1" },					\
 	{ IFM_FLAG2,	"flag2" },					\

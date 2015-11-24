@@ -344,6 +344,9 @@ static struct ifmedia_description ifm_subtype_ethernet_aliases[] =
 static struct ifmedia_description ifm_subtype_ethernet_option_descriptions[] =
     IFM_SUBTYPE_ETHERNET_OPTION_DESCRIPTIONS;
 
+static struct ifmedia_description ifm_subtype_ethernet_option_alias[] =
+    IFM_SUBTYPE_ETHERNET_OPTION_ALIAS;
+
 static struct ifmedia_description ifm_subtype_ieee80211_descriptions[] =
     IFM_SUBTYPE_IEEE80211_DESCRIPTIONS;
 
@@ -385,7 +388,7 @@ struct ifmedia_type_to_subtype {
 	struct {
 		struct ifmedia_description *desc;
 		int alias;
-	} options[3];
+	} options[4];
 	struct {
 		struct ifmedia_description *desc;
 		int alias;
@@ -405,6 +408,7 @@ static struct ifmedia_type_to_subtype ifmedia_types_to_subtypes[] = {
 		{
 			{ &ifm_shared_option_descriptions[0], 0 },
 			{ &ifm_subtype_ethernet_option_descriptions[0], 0 },
+			{ &ifm_subtype_ethernet_option_alias[0], 1 },
 			{ NULL, 0 },
 		},
 		{
