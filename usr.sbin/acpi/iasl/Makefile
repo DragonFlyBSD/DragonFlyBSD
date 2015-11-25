@@ -203,8 +203,16 @@ CFLAGS+= \
 LFLAGS=	-i -s
 YFLAGS=	-d
 
-aslcompiler.y: aslparser.y
-	m4 -P -I${UTILDIR} ${.ALLSRC} >${.TARGET}
+ASLPARSER_M4INC = \
+	aslcstyle.y \
+	aslresources.y \
+	aslrules.y \
+	aslsupport.y \
+	asltokens.y \
+	asltypes.y
+
+aslcompiler.y: aslparser.y ${ASLPARSER_M4INC}
+	m4 -P -I${UTILDIR} aslparser.y >${.TARGET}
 
 aslcompilerlex.c: aslcompiler.l
 	${LEX} ${LFLAGS} -PAslCompiler -o${.TARGET} ${.ALLSRC}
