@@ -561,7 +561,7 @@ void
 dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 {
 	struct hammer_ioc_version	version;
-	u_int32_t status;
+	uint32_t status;
 	char *str = NULL;
 
 	printf("    sync-beg-tid=0x%016jx\n", (uintmax_t)pfsd->sync_beg_tid);

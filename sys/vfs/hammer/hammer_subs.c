@@ -778,30 +778,30 @@ hammer_sync_unlock(hammer_transaction_t trans)
 /*
  * Misc
  */
-u_int32_t
+uint32_t
 hammer_to_unix_xid(uuid_t *uuid)
 {
-	return(*(u_int32_t *)&uuid->node[2]);
+	return(*(uint32_t *)&uuid->node[2]);
 }
 
 void
-hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid)
+hammer_guid_to_uuid(uuid_t *uuid, uint32_t guid)
 {
 	bzero(uuid, sizeof(*uuid));
-	*(u_int32_t *)&uuid->node[2] = guid;
+	*(uint32_t *)&uuid->node[2] = guid;
 }
 
 void
-hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts)
+hammer_time_to_timespec(uint64_t xtime, struct timespec *ts)
 {
 	ts->tv_sec = (unsigned long)(xtime / 1000000);
 	ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
 }
 
-u_int64_t
+uint64_t
 hammer_timespec_to_time(struct timespec *ts)
 {
-	u_int64_t xtime;
+	uint64_t xtime;
 
 	xtime = (unsigned)(ts->tv_nsec / 1000) +
 		(unsigned long)ts->tv_sec * 1000000ULL;
@@ -813,7 +813,7 @@ hammer_timespec_to_time(struct timespec *ts)
  * Convert a HAMMER filesystem object type to a vnode type
  */
 enum vtype
-hammer_get_vnode_type(u_int8_t obj_type)
+hammer_get_vnode_type(uint8_t obj_type)
 {
 	switch(obj_type) {
 	case HAMMER_OBJTYPE_DIRECTORY:
@@ -839,7 +839,7 @@ hammer_get_vnode_type(u_int8_t obj_type)
 }
 
 int
-hammer_get_dtype(u_int8_t obj_type)
+hammer_get_dtype(uint8_t obj_type)
 {
 	switch(obj_type) {
 	case HAMMER_OBJTYPE_DIRECTORY:
@@ -864,7 +864,7 @@ hammer_get_dtype(u_int8_t obj_type)
 	/* not reached */
 }
 
-u_int8_t
+uint8_t
 hammer_get_obj_type(enum vtype vtype)
 {
 	switch(vtype) {
@@ -942,7 +942,7 @@ hammer_nohistory(hammer_inode_t ip)
  */
 int64_t
 hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
-			 u_int32_t *max_iterationsp)
+			 uint32_t *max_iterationsp)
 {
 	const char *aname = name;
 	int32_t crcx;
@@ -1043,10 +1043,10 @@ hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
  */
 int
 hammer_str_to_tid(const char *str, int *ispfsp,
-		  hammer_tid_t *tidp, u_int32_t *localizationp)
+		  hammer_tid_t *tidp, uint32_t *localizationp)
 {
 	hammer_tid_t tid;
-	u_int32_t localization;
+	uint32_t localization;
 	char *ptr;
 	int ispfs;
 	int n;
@@ -1220,7 +1220,7 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 udev_t
 hammer_fsid_to_udev(uuid_t *uuid)
 {
-	u_int32_t crc;
+	uint32_t crc;
 
 	crc = crc32(uuid, sizeof(*uuid));
 	return((udev_t)crc);

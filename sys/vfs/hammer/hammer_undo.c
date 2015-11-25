@@ -305,7 +305,7 @@ hammer_generate_undo(hammer_transaction_t trans,
  * NOTE: Also used by the REDO code.
  */
 void
-hammer_format_undo(void *base, u_int32_t seqno)
+hammer_format_undo(void *base, uint32_t seqno)
 {
 	hammer_fifo_head_t head;
 	hammer_fifo_tail_t tail;
@@ -351,7 +351,7 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 	hammer_fifo_head_t head;
 	hammer_fifo_tail_t tail;
 	hammer_off_t next_offset;
-	u_int32_t seqno;
+	uint32_t seqno;
 	int error;
 	int bytes;
 

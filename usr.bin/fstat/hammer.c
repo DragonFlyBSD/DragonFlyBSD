@@ -61,8 +61,8 @@ hammer_filestat(struct vnode *vp, struct filestat *fsp)
 		    " at %p for pid %d\n", (void *)ino.pfsm, Pid);
 		return 0;
 	}
-	fsp->fsid = pfsm.fsid_udev ^ (u_int32_t)ino.obj_asof ^
-	    (u_int32_t)(ino.obj_asof >> 32);
+	fsp->fsid = pfsm.fsid_udev ^ (uint32_t)ino.obj_asof ^
+	    (uint32_t)(ino.obj_asof >> 32);
 	fsp->mode = ino.ino_data.mode | mtrans(vp->v_type);
 	fsp->fileid = (long)ino.ino_leaf.base.obj_id;
 	fsp->size = ino.ino_data.size;

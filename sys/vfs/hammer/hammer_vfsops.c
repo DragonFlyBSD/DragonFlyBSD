@@ -976,7 +976,7 @@ hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 	struct hammer_inode *ip;
 	int error;
-	u_int32_t localization;
+	uint32_t localization;
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_simple_transaction(&trans, hmp);
@@ -1158,14 +1158,14 @@ hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	struct hammer_inode *ip;
 	struct hammer_inode_info info;
 	int error;
-	u_int32_t localization;
+	uint32_t localization;
 
 	bcopy(fhp->fid_data + 0, &info.obj_id, sizeof(info.obj_id));
 	bcopy(fhp->fid_data + 8, &info.obj_asof, sizeof(info.obj_asof));
 	if (rootvp)
 		localization = VTOI(rootvp)->obj_localization;
 	else
-		localization = (u_int32_t)fhp->fid_ext << 16;
+		localization = (uint32_t)fhp->fid_ext << 16;
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_simple_transaction(&trans, hmp);

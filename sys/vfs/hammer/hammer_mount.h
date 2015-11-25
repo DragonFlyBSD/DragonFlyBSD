@@ -53,9 +53,9 @@ struct hammer_mount_info {
 	int		nvolumes;	/* number of devices */
 	int		hflags;		/* extended hammer mount flags */
 	int		master_id;	/* -1=no-mirror mode, or 0-15 */
-	u_int64_t	asof;		/* asof - HAMMER_MAX_TID is current */
+	uint64_t	asof;		/* asof - HAMMER_MAX_TID is current */
 	char		reserved1[136];	/* was struct export_args */
-	u_int64_t	reserved2[15];
+	uint64_t	reserved2[15];
 };
 
 #define HMNT_NOHISTORY	0x00000001

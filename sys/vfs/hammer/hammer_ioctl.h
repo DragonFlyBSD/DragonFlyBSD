@@ -155,8 +155,8 @@ struct hammer_ioc_rebalance {
 
 typedef struct hammer_ioc_hist_entry {
 	hammer_tid_t	tid;
-	u_int32_t	time32;
-	u_int32_t	unused;
+	uint32_t	time32;
+	uint32_t	unused;
 } *hammer_ioc_hist_entry_t;
 
 struct hammer_ioc_history {
@@ -184,7 +184,7 @@ struct hammer_ioc_history {
 struct hammer_ioc_reblock {
 	struct hammer_ioc_head head;
 	int32_t		free_level;		/* 0 for maximum compaction */
-	u_int32_t	reserved01;
+	uint32_t	reserved01;
 
 	struct hammer_base_elm key_beg;		/* start forward scan */
 	struct hammer_base_elm key_end;		/* stop forward scan */
@@ -260,9 +260,9 @@ struct hammer_ioc_pfs_iterate {
 struct hammer_ioc_pseudofs_rw {
 	struct hammer_ioc_head	head;
 	int			pfs_id;
-	u_int32_t		bytes;
-	u_int32_t		version;
-	u_int32_t		flags;
+	uint32_t		bytes;
+	uint32_t		version;
+	uint32_t		flags;
 	struct hammer_pseudofs_data *ondisk;
 };
 
@@ -303,10 +303,10 @@ struct hammer_ioc_mirror_rw {
  * data[] array.
  */
 struct hammer_ioc_mrecord_head {
-	u_int32_t		signature;	/* signature for byte order */
-	u_int32_t		rec_crc;
-	u_int32_t		rec_size;
-	u_int32_t		type;
+	uint32_t		signature;	/* signature for byte order */
+	uint32_t		rec_crc;
+	uint32_t		rec_size;
+	uint32_t		type;
 	/* extended */
 };
 
@@ -335,17 +335,17 @@ struct hammer_ioc_mrecord_sync {
 
 struct hammer_ioc_mrecord_pfs {
 	struct hammer_ioc_mrecord_head	head;
-	u_int32_t			version;
-	u_int32_t			reserved01;
+	uint32_t			version;
+	uint32_t			reserved01;
 	struct hammer_pseudofs_data	pfsd;
 };
 
 struct hammer_ioc_version {
 	struct hammer_ioc_head head;
-	u_int32_t		cur_version;
-	u_int32_t		min_version;
-	u_int32_t		wip_version;
-	u_int32_t		max_version;
+	uint32_t		cur_version;
+	uint32_t		min_version;
+	uint32_t		wip_version;
+	uint32_t		max_version;
 	char			description[64];
 };
 
@@ -431,8 +431,8 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 struct hammer_ioc_snapshot {
 	struct hammer_ioc_head	head;
 	int			unused01;
-	u_int32_t		index;
-	u_int32_t		count;
+	uint32_t		index;
+	uint32_t		count;
 	struct hammer_snapshot_data snaps[HAMMER_SNAPS_PER_IOCTL];
 };
 
@@ -448,9 +448,9 @@ struct hammer_ioc_snapshot {
  */
 struct hammer_ioc_config {
 	struct hammer_ioc_head	head;
-	u_int32_t		reserved01;
-	u_int32_t		reserved02;
-	u_int64_t		reserved03[4];
+	uint32_t		reserved01;
+	uint32_t		reserved02;
+	uint64_t		reserved03[4];
 	struct hammer_config_data config;
 };
 

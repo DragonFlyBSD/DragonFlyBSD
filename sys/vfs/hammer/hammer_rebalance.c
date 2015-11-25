@@ -59,7 +59,7 @@ hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_btree_leaf_elm_t elm;
 	int error;
 	int seq;
-	u_int32_t key_end_localization;
+	uint32_t key_end_localization;
 
 	if ((rebal->key_beg.localization | rebal->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -266,7 +266,7 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor,
 	hammer_btree_elm_t elm;
 	hammer_node_t node;
 	hammer_tid_t tid;
-	u_int8_t type1 __debugvar;
+	uint8_t type1 __debugvar;
 	int base_count;
 	int root_count;
 	int avg_elms;
@@ -521,7 +521,7 @@ rebalance_closeout(hammer_node_lock_t base_item, int base_count,
 	hammer_node_lock_t parent;
 	hammer_btree_elm_t base_elm;
 	hammer_btree_elm_t rbound_elm;
-	u_int8_t save;
+	uint8_t save;
 
 	/*
 	 * Update the count.  NOTE:  base_count can be 0 for the

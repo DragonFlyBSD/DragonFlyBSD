@@ -95,10 +95,10 @@ struct hammer_base_elm {
 	hammer_tid_t create_tid; /* 10 transaction id for record creation */
 	hammer_tid_t delete_tid; /* 18 transaction id for record update/del */
 
-	u_int16_t rec_type;	/* 20 _RECTYPE_ */
-	u_int8_t obj_type;	/* 22 _OBJTYPE_ (restricted) */
-	u_int8_t btype;		/* 23 B-Tree element type */
-	u_int32_t localization;	/* 24 B-Tree localization parameter */
+	uint16_t rec_type;	/* 20 _RECTYPE_ */
+	uint8_t obj_type;	/* 22 _OBJTYPE_ (restricted) */
+	uint8_t btype;		/* 23 B-Tree element type */
+	uint32_t localization;	/* 24 B-Tree localization parameter */
 				/* 28 */
 };
 
@@ -153,8 +153,8 @@ typedef struct hammer_btree_internal_elm *hammer_btree_internal_elm_t;
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	u_int32_t	create_ts;
-	u_int32_t	delete_ts;
+	uint32_t	create_ts;
+	uint32_t	delete_ts;
 	hammer_off_t	data_offset;
 	int32_t		data_len;
 	hammer_crc_t	data_crc;
@@ -197,11 +197,11 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 #define HAMMER_BTREE_LEAF_ELMS	63
 #define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
 
-#define HAMMER_BTREE_TYPE_INTERNAL	((u_int8_t)'I')
-#define HAMMER_BTREE_TYPE_LEAF		((u_int8_t)'L')
-#define HAMMER_BTREE_TYPE_RECORD	((u_int8_t)'R')
-#define HAMMER_BTREE_TYPE_DELETED	((u_int8_t)'D')
-#define HAMMER_BTREE_TYPE_NONE		((u_int8_t)0)
+#define HAMMER_BTREE_TYPE_INTERNAL	((uint8_t)'I')
+#define HAMMER_BTREE_TYPE_LEAF		((uint8_t)'L')
+#define HAMMER_BTREE_TYPE_RECORD	((uint8_t)'R')
+#define HAMMER_BTREE_TYPE_DELETED	((uint8_t)'D')
+#define HAMMER_BTREE_TYPE_NONE		((uint8_t)0)
 
 /*
  * Return 1 if elm is a node element of an internal node,
@@ -236,7 +236,7 @@ hammer_is_leaf_node_elm(hammer_btree_elm_t elm)
 
 static __inline
 int
-hammer_node_max_elements(u_int8_t type)
+hammer_node_max_elements(uint8_t type)
 {
 	switch (type) {
 	case HAMMER_BTREE_TYPE_LEAF:
@@ -269,12 +269,12 @@ struct hammer_node_ondisk {
 	 * B-Tree node header (64 bytes)
 	 */
 	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
-	u_int32_t	reserved00;
+	uint32_t	reserved00;
 	hammer_off_t	parent;		/* 0 if at root of B-Tree */
 	int32_t		count;
-	u_int8_t	type;
-	u_int8_t	reserved01;
-	u_int16_t	reserved02;
+	uint8_t		type;
+	uint8_t		reserved01;
+	uint16_t	reserved02;
 	hammer_off_t	reserved03;	/* future link_left */
 	hammer_off_t	reserved04;	/* future link_right */
 	hammer_off_t	reserved05;

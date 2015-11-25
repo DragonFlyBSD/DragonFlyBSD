@@ -42,7 +42,7 @@
 
 typedef struct histogram {
 	hammer_tid_t	tid;
-	u_int64_t	bytes;
+	uint64_t	bytes;
 } *histogram_t;
 
 static int read_mrecords(int fd, char *buf, u_int size,
@@ -53,7 +53,7 @@ static int generate_histogram(int fd, const char *filesystem,
 			 int *repeatp);
 static hammer_ioc_mrecord_any_t read_mrecord(int fdin, int *errorp,
 			 hammer_ioc_mrecord_head_t pickup);
-static void write_mrecord(int fdout, u_int32_t type,
+static void write_mrecord(int fdout, uint32_t type,
 			 hammer_ioc_mrecord_any_t mrec, int bytes);
 static void generate_mrec_header(int fd, int pfs_id,
 			 union hammer_ioc_mrecord_any *mrec_tmp);
@@ -62,7 +62,7 @@ static int validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 			 hammer_tid_t *tid_begp, hammer_tid_t *tid_endp);
 static void update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id);
 static ssize_t writebw(int fd, const void *buf, size_t nbytes,
-			u_int64_t *bwcount, struct timeval *tv1);
+			uint64_t *bwcount, struct timeval *tv1);
 static int getyn(void);
 static void mirror_usage(int code);
 
@@ -102,8 +102,8 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	int64_t total_bytes;
 	time_t base_t = time(NULL);
 	struct timeval bwtv;
-	u_int64_t bwcount;
-	u_int64_t estbytes;
+	uint64_t bwcount;
+	uint64_t estbytes;
 
 	if (ac == 0 || ac > 2)
 		mirror_usage(1);
@@ -509,9 +509,9 @@ generate_histogram(int fd, const char *filesystem,
 	hammer_tid_t tid_end;
 	hammer_tid_t tid;
 	hammer_tid_t tidx;
-	u_int64_t *tid_bytes;
-	u_int64_t total;
-	u_int64_t accum;
+	uint64_t *tid_bytes;
+	uint64_t total;
+	uint64_t accum;
 	int chunkno;
 	int i;
 	int res;
@@ -713,7 +713,7 @@ create_pfs(const char *filesystem, uuid_t *s_uuid)
 		}
 	}
 
-	u_int32_t status;
+	uint32_t status;
 	char *shared_uuid = NULL;
 	uuid_to_string(s_uuid, &shared_uuid, &status);
 
@@ -1475,7 +1475,7 @@ read_mrecord(int fdin, int *errorp, hammer_ioc_mrecord_head_t pickup)
 
 static
 void
-write_mrecord(int fdout, u_int32_t type, hammer_ioc_mrecord_any_t mrec,
+write_mrecord(int fdout, uint32_t type, hammer_ioc_mrecord_any_t mrec,
 	      int bytes)
 {
 	char zbuf[HAMMER_HEAD_ALIGN];
@@ -1650,7 +1650,7 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 static
 ssize_t
 writebw(int fd, const void *buf, size_t nbytes,
-	u_int64_t *bwcount, struct timeval *tv1)
+	uint64_t *bwcount, struct timeval *tv1)
 {
 	struct timeval tv2;
 	size_t n;

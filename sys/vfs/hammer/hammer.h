@@ -101,7 +101,7 @@ struct hammer_io;
 typedef struct hammer_inode_info {
 	int64_t		obj_id;		/* (key) object identifier */
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
-	u_int32_t	obj_localization; /* (key) pseudo-fs */
+	uint32_t	obj_localization; /* (key) pseudo-fs */
 	union {
 		struct hammer_btree_leaf_elm *leaf;
 	} u;
@@ -120,8 +120,8 @@ struct hammer_transaction {
 	hammer_transaction_type_t type;
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
-	u_int64_t	time;
-	u_int32_t	time32;
+	uint64_t	time;
+	uint32_t	time32;
 	int		sync_lock_refs;
 	int		flags;
 	struct hammer_volume *rootvol;
@@ -227,12 +227,12 @@ typedef enum hammer_inode_state {
 struct hammer_pseudofs_inmem;
 RB_HEAD(hammer_pfs_rb_tree, hammer_pseudofs_inmem);
 RB_PROTOTYPE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
-	      hammer_pfs_rb_compare, u_int32_t);
+	      hammer_pfs_rb_compare, uint32_t);
 
 struct hammer_pseudofs_inmem {
 	RB_ENTRY(hammer_pseudofs_inmem)	rb_node;
 	struct hammer_lock	lock;
-	u_int32_t		localization;
+	uint32_t		localization;
 	hammer_tid_t		create_tid;
 	int			flags;
 	udev_t			fsid_udev;
@@ -253,15 +253,15 @@ typedef struct hammer_pseudofs_inmem *hammer_pseudofs_inmem_t;
 #define OBJID_CACHE_BULK_BITS	10		/* 10 bits (1024)	*/
 #define OBJID_CACHE_BULK	(32 * 32)	/* two level (1024)	*/
 #define OBJID_CACHE_BULK_MASK	(OBJID_CACHE_BULK - 1)
-#define OBJID_CACHE_BULK_MASK64	((u_int64_t)(OBJID_CACHE_BULK - 1))
+#define OBJID_CACHE_BULK_MASK64	((uint64_t)(OBJID_CACHE_BULK - 1))
 
 typedef struct hammer_objid_cache {
 	TAILQ_ENTRY(hammer_objid_cache) entry;
 	struct hammer_inode		*dip;
 	hammer_tid_t			base_tid;
 	int				count;
-	u_int32_t			bm0;
-	u_int32_t			bm1[32];
+	uint32_t			bm0;
+	uint32_t			bm1[32];
 } *hammer_objid_cache_t;
 
 /*
@@ -295,7 +295,7 @@ typedef struct hammer_dedup_cache {
 	TAILQ_ENTRY(hammer_dedup_cache) lru_entry;
 	struct hammer_mount *hmp;
 	int64_t obj_id;
-	u_int32_t localization;
+	uint32_t localization;
 	off_t file_offset;
 	int bytes;
 	hammer_off_t data_offset;
@@ -367,7 +367,7 @@ struct hammer_inode {
 	struct hammer_record_list target_list;	/* target of dependant recs */
 	int64_t			obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
-	u_int32_t		obj_localization; /* (key) pseudo-fs */
+	uint32_t		obj_localization; /* (key) pseudo-fs */
 	struct hammer_mount	*hmp;
 	hammer_objid_cache_t	objid_cache;
 	int			flags;
@@ -917,8 +917,8 @@ struct hammer_mount {
 	hammer_tid_t	flush_tid1;		/* flusher tid sequencing */
 	hammer_tid_t	flush_tid2;		/* flusher tid sequencing */
 	int64_t copy_stat_freebigblocks;	/* number of free big-blocks */
-	u_int32_t	undo_seqno;		/* UNDO/REDO FIFO seqno */
-	u_int32_t	recover_stage2_seqno;	/* REDO recovery seqno */
+	uint32_t	undo_seqno;		/* UNDO/REDO FIFO seqno */
+	uint32_t	recover_stage2_seqno;	/* REDO recovery seqno */
 	hammer_off_t	recover_stage2_offset;	/* REDO recovery offset */
 
 	struct netexport export;
@@ -1081,15 +1081,15 @@ int	hammer_vop_reclaim(struct vop_reclaim_args *);
 int	hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
-			hammer_tid_t asof, u_int32_t localization,
+			hammer_tid_t asof, uint32_t localization,
 			int flags, int *errorp);
 struct hammer_inode *hammer_get_dummy_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
-			hammer_tid_t asof, u_int32_t localization,
+			hammer_tid_t asof, uint32_t localization,
 			int flags, int *errorp);
 struct hammer_inode *hammer_find_inode(hammer_transaction_t trans,
 			int64_t obj_id, hammer_tid_t asof,
-			u_int32_t localization);
+			uint32_t localization);
 void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 			hammer_inode_info_t iinfo,
 			int (*callback)(hammer_inode_t ip, void *data),
@@ -1118,7 +1118,7 @@ int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 int	hammer_create_at_cursor(hammer_cursor_t cursor,
 			hammer_btree_leaf_elm_t leaf, void *udata, int mode);
 int	hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
-			hammer_tid_t delete_tid, u_int32_t delete_ts,
+			hammer_tid_t delete_tid, uint32_t delete_ts,
 			int track, int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
@@ -1165,12 +1165,12 @@ void	hammer_sync_lock_sh(hammer_transaction_t trans);
 int	hammer_sync_lock_sh_try(hammer_transaction_t trans);
 void	hammer_sync_unlock(hammer_transaction_t trans);
 
-u_int32_t hammer_to_unix_xid(uuid_t *uuid);
-void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
-void	hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts);
-u_int64_t hammer_timespec_to_time(struct timespec *ts);
+uint32_t hammer_to_unix_xid(uuid_t *uuid);
+void hammer_guid_to_uuid(uuid_t *uuid, uint32_t guid);
+void	hammer_time_to_timespec(uint64_t xtime, struct timespec *ts);
+uint64_t hammer_timespec_to_time(struct timespec *ts);
 int	hammer_str_to_tid(const char *str, int *ispfsp,
-			hammer_tid_t *tidp, u_int32_t *localizationp);
+			hammer_tid_t *tidp, uint32_t *localizationp);
 hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip,
 			int64_t namekey);
 void hammer_clear_objid(hammer_inode_t dip);
@@ -1193,11 +1193,11 @@ int hammer_dedup_validate(hammer_dedup_cache_t dcp, int zone, int bytes,
 int hammer_enter_undo_history(hammer_mount_t hmp, hammer_off_t offset,
 			int bytes);
 void hammer_clear_undo_history(hammer_mount_t hmp);
-enum vtype hammer_get_vnode_type(u_int8_t obj_type);
-int hammer_get_dtype(u_int8_t obj_type);
-u_int8_t hammer_get_obj_type(enum vtype vtype);
+enum vtype hammer_get_vnode_type(uint8_t obj_type);
+int hammer_get_dtype(uint8_t obj_type);
+uint8_t hammer_get_obj_type(enum vtype vtype);
 int64_t hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
-			u_int32_t *max_iterationsp);
+			uint32_t *max_iterationsp);
 int	hammer_nohistory(hammer_inode_t ip);
 
 int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
@@ -1315,20 +1315,20 @@ void hammer_dup_buffer(struct hammer_buffer **bufferp,
 hammer_node_t hammer_alloc_btree(hammer_transaction_t trans,
 			hammer_off_t hint, int *errorp);
 void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
-			u_int16_t rec_type, hammer_off_t *data_offsetp,
+			uint16_t rec_type, hammer_off_t *data_offsetp,
 			struct hammer_buffer **data_bufferp,
 			hammer_off_t hint, int *errorp);
 
 int hammer_generate_undo(hammer_transaction_t trans,
 			hammer_off_t zone_offset, void *base, int len);
 int hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
-			hammer_off_t file_offset, u_int32_t flags,
+			hammer_off_t file_offset, uint32_t flags,
 			void *base, int len);
 void hammer_generate_redo_sync(hammer_transaction_t trans);
 void hammer_redo_fifo_start_flush(hammer_inode_t ip);
 void hammer_redo_fifo_end_flush(hammer_inode_t ip);
 
-void hammer_format_undo(void *base, u_int32_t seqno);
+void hammer_format_undo(void *base, uint32_t seqno);
 int hammer_upgrade_undo_4(hammer_transaction_t trans);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
@@ -1417,12 +1417,12 @@ int  hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t offset, void *data, int bytes);
 int  hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t rec);
 hammer_pseudofs_inmem_t  hammer_load_pseudofs(hammer_transaction_t trans,
-			u_int32_t localization, int *errorp);
+			uint32_t localization, int *errorp);
 int  hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 			hammer_pseudofs_inmem_t pfsm);
 int  hammer_save_pseudofs(hammer_transaction_t trans,
 			hammer_pseudofs_inmem_t pfsm);
-int  hammer_unload_pseudofs(hammer_transaction_t trans, u_int32_t localization);
+int  hammer_unload_pseudofs(hammer_transaction_t trans, uint32_t localization);
 void hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm);
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
@@ -1669,7 +1669,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
  * This greatly improves localization between directory entries and
  * inodes
  */
-static __inline u_int32_t
+static __inline uint32_t
 hammer_dir_localization(hammer_inode_t dip)
 {
 	return(HAMMER_DIR_INODE_LOCALIZATION(&dip->ino_data));

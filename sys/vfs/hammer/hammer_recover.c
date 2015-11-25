@@ -146,8 +146,8 @@ typedef struct hammer_rterm_entry {
 typedef struct hammer_rterm {
 	RB_ENTRY(hammer_rterm)	rb_node;
 	int64_t			redo_objid;
-	u_int32_t		redo_localization;
-	u_int32_t		redo_flags;
+	uint32_t		redo_localization;
+	uint32_t		redo_flags;
 	hammer_off_t		redo_offset;
 	hammer_rterm_entry_t	term_list;
 } *hammer_rterm_t;
@@ -214,7 +214,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 	hammer_fifo_any_t head;
 	hammer_off_t first_offset;
 	hammer_off_t last_offset;
-	u_int32_t seqno;
+	uint32_t seqno;
 	int error;
 	int degenerate_case = 0;
 
@@ -526,7 +526,7 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 	hammer_off_t last_offset;
 	hammer_off_t ext_offset;
 	struct hammer_rterm_rb_tree rterm_root;
-	u_int32_t seqno;
+	uint32_t seqno;
 	int error;
 	int verbose = 0;
 	int dorscan;
@@ -877,7 +877,7 @@ _hammer_check_signature(hammer_fifo_head_t head, hammer_fifo_tail_t tail,
 			hammer_off_t beg_off)
 {
 	hammer_off_t end_off;
-	u_int32_t crc;
+	uint32_t crc;
 	int bytes;
 
 	/*
@@ -1039,7 +1039,7 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 	int error;
 	int vol_no;
 	int bytes;
-	u_int32_t offset;
+	uint32_t offset;
 
 	/*
 	 * Only process UNDO records.  Flag if we find other records to

@@ -1699,7 +1699,7 @@ hammer_alloc_btree(hammer_transaction_t trans, hammer_off_t hint, int *errorp)
  */
 void *
 hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
-		  u_int16_t rec_type, hammer_off_t *data_offsetp,
+		  uint16_t rec_type, hammer_off_t *data_offsetp,
 		  struct hammer_buffer **data_bufferp,
 		  hammer_off_t hint, int *errorp)
 {

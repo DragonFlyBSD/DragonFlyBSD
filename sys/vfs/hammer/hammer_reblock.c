@@ -65,7 +65,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 	int seq;
 	int slop;
-	u_int32_t key_end_localization;
+	uint32_t key_end_localization;
 
 	if ((reblock->key_beg.localization | reblock->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {

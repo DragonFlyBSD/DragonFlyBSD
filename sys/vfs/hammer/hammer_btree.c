@@ -85,7 +85,7 @@ static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_cursor_t cursor, int *ndelete);
 static __inline int btree_node_is_full(hammer_node_ondisk_t node);
-static __inline int btree_max_elements(u_int8_t type);
+static __inline int btree_max_elements(uint8_t type);
 static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,
 			hammer_tid_t mirror_tid);
 static void hammer_make_separator(hammer_base_elm_t key1,
@@ -1124,7 +1124,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			 * left_boundary but to the RIGHT of the parent's left
 			 * boundary.
 			 */
-			u_int8_t save;
+			uint8_t save;
 
 			elm = &node->elms[0];
 
@@ -2945,7 +2945,7 @@ btree_node_is_full(hammer_node_ondisk_t node)
 
 static __inline
 int
-btree_max_elements(u_int8_t type)
+btree_max_elements(uint8_t type)
 {
 	int n;
 

@@ -54,9 +54,9 @@ int RunningIoctl;
 int DidInterrupt;
 int BulkOpt;
 int AllPFS;
-u_int64_t BandwidthOpt;
-u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
-u_int64_t MemoryLimit = 1024LLU * 1024 * 1024;
+uint64_t BandwidthOpt;
+uint64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
+uint64_t MemoryLimit = 1024LLU * 1024 * 1024;
 const char *SplitupOptStr;
 const char *CyclePath;
 const char *RestrictTarget;
@@ -67,7 +67,7 @@ main(int ac, char **av)
 	char *blkdevs = NULL;
 	char *ptr;
 	char *restrictcmd = NULL;
-	u_int32_t status;
+	uint32_t status;
 	int ch;
 	int cacheSize = 0;
 
@@ -295,7 +295,7 @@ main(int ac, char **av)
 		if (aname == NULL)
 			usage(1);
 		len = strlen(aname);
-		key = (u_int32_t)crc32(aname, len) & 0xFFFFFFFEU;
+		key = (uint32_t)crc32(aname, len) & 0xFFFFFFFEU;
 
 		switch(len) {
 		default:

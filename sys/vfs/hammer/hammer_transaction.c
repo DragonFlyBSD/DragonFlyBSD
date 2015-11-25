@@ -34,7 +34,7 @@
 
 #include "hammer.h"
 
-static u_int32_t ocp_allocbit(hammer_objid_cache_t ocp, u_int32_t n);
+static uint32_t ocp_allocbit(hammer_objid_cache_t ocp, uint32_t n);
 
 
 /*
@@ -59,7 +59,7 @@ hammer_start_transaction(struct hammer_transaction *trans,
 
 	getmicrotime(&tv);
 	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
-	trans->time32 = (u_int32_t)tv.tv_sec;
+	trans->time32 = (uint32_t)tv.tv_sec;
 }
 
 /*
@@ -84,7 +84,7 @@ hammer_simple_transaction(struct hammer_transaction *trans,
 
 	getmicrotime(&tv);
 	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
-	trans->time32 = (u_int32_t)tv.tv_sec;
+	trans->time32 = (uint32_t)tv.tv_sec;
 }
 
 /*
@@ -114,7 +114,7 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 
 	getmicrotime(&tv);
 	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
-	trans->time32 = (u_int32_t)tv.tv_sec;
+	trans->time32 = (uint32_t)tv.tv_sec;
 }
 
 /*
@@ -190,7 +190,7 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
 {
 	hammer_objid_cache_t ocp;
 	hammer_tid_t tid;
-	u_int32_t n;
+	uint32_t n;
 
 	while ((ocp = dip->objid_cache) == NULL) {
 		if (hmp->objid_cache_count < OBJID_CACHE_SIZE) {
@@ -265,10 +265,10 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
  * This routine is only ever called if a bit is available somewhere
  * in the bitmap.
  */
-static u_int32_t
-ocp_allocbit(hammer_objid_cache_t ocp, u_int32_t n)
+static uint32_t
+ocp_allocbit(hammer_objid_cache_t ocp, uint32_t n)
 {
-	u_int32_t n0;
+	uint32_t n0;
 
 	n0 = (n >> 5) & 31;
 	n &= 31;

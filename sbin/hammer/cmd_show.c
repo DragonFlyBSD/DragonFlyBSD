@@ -267,7 +267,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 
 static __inline
 int
-is_root_btree_beg(u_int8_t type, int i, hammer_btree_elm_t elm)
+is_root_btree_beg(uint8_t type, int i, hammer_btree_elm_t elm)
 {
 	/*
 	 * elm->base.btype depends on what the original node had
@@ -287,7 +287,7 @@ is_root_btree_beg(u_int8_t type, int i, hammer_btree_elm_t elm)
 
 static __inline
 int
-is_root_btree_end(u_int8_t type, int i, hammer_btree_elm_t elm)
+is_root_btree_end(uint8_t type, int i, hammer_btree_elm_t elm)
 {
 	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		i != 0 &&
@@ -564,7 +564,7 @@ check_data_crc(hammer_btree_elm_t elm)
 	hammer_off_t data_offset;
 	int32_t data_len;
 	int32_t len;
-	u_int32_t crc;
+	uint32_t crc;
 	int error;
 	char *ptr;
 
@@ -645,7 +645,7 @@ print_record(hammer_btree_elm_t elm)
 	hammer_off_t data_offset;
 	int32_t data_len;
 	hammer_data_ondisk_t data;
-	u_int32_t status;
+	uint32_t status;
 	char *str1 = NULL;
 	char *str2 = NULL;
 

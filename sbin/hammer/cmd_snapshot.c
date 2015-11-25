@@ -485,7 +485,7 @@ snapshot_ls(const char *path)
 	struct hammer_snapshot_data *snap;
 	struct tm *tp;
 	time_t t;
-	u_int32_t i;
+	uint32_t i;
 	int fd;
 	char snapts[64];
 	char *mntpoint;

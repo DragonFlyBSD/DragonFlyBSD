@@ -677,7 +677,7 @@ migrate_one_snapshot(int fd, const char *fpath,
 			snap = &snapshot->snaps[snapshot->count];
 			bzero(snap, sizeof(*snap));
 			snap->tid = tid;
-			snap->ts = (u_int64_t)t * 1000000ULL;
+			snap->ts = (uint64_t)t * 1000000ULL;
 			snprintf(snap->label, sizeof(snap->label),
 				 "migrated");
 			++snapshot->count;
@@ -943,7 +943,7 @@ cleanup_softlinks(int fd, int new_config,
 		time_t t;
 		time_t dt;
 		char snapts[32];
-		u_int32_t i;
+		uint32_t i;
 
 		bzero(&snapshot, sizeof(snapshot));
 		bzero(&dsnapshot, sizeof(dsnapshot));

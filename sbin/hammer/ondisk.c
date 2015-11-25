@@ -697,7 +697,7 @@ format_undomap(struct volume_info *root_vol)
 	hammer_off_t scan;
 	int n;
 	int limit_index;
-	u_int32_t seqno;
+	uint32_t seqno;
 
 	/* Only root volume needs formatting */
 	assert(root_vol->vol_no == RootVolNo);

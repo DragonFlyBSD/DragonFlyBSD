@@ -71,11 +71,11 @@
 #define HAMMER_BUFMASK		(HAMMER_BUFSIZE - 1)
 #define HAMMER_XBUFMASK		(HAMMER_XBUFSIZE - 1)
 
-#define HAMMER_BUFSIZE64	((u_int64_t)HAMMER_BUFSIZE)
-#define HAMMER_BUFMASK64	((u_int64_t)HAMMER_BUFMASK)
+#define HAMMER_BUFSIZE64	((uint64_t)HAMMER_BUFSIZE)
+#define HAMMER_BUFMASK64	((uint64_t)HAMMER_BUFMASK)
 
-#define HAMMER_XBUFSIZE64	((u_int64_t)HAMMER_XBUFSIZE)
-#define HAMMER_XBUFMASK64	((u_int64_t)HAMMER_XBUFMASK)
+#define HAMMER_XBUFSIZE64	((uint64_t)HAMMER_XBUFSIZE)
+#define HAMMER_XBUFMASK64	((uint64_t)HAMMER_XBUFMASK)
 
 #define HAMMER_OFF_ZONE_MASK	0xF000000000000000ULL /* zone portion */
 #define HAMMER_OFF_VOL_MASK	0x0FF0000000000000ULL /* volume portion */
@@ -97,9 +97,9 @@
  * and volume number in addition to the offset.  Most offsets are required
  * to be 16 KB aligned.
  */
-typedef u_int64_t hammer_tid_t;
-typedef u_int64_t hammer_off_t;
-typedef u_int32_t hammer_crc_t;
+typedef uint64_t hammer_tid_t;
+typedef uint64_t hammer_off_t;
+typedef uint32_t hammer_crc_t;
 
 #define HAMMER_MIN_TID		0ULL			/* unsigned */
 #define HAMMER_MAX_TID		0xFFFFFFFFFFFFFFFFULL	/* unsigned */
@@ -222,12 +222,12 @@ typedef u_int32_t hammer_crc_t;
  * HINTBLOCK is a heuristic.
  */
 #define HAMMER_HINTBLOCK_SIZE		(HAMMER_BIGBLOCK_SIZE * 4)
-#define HAMMER_HINTBLOCK_MASK64		((u_int64_t)HAMMER_HINTBLOCK_SIZE - 1)
+#define HAMMER_HINTBLOCK_MASK64		((uint64_t)HAMMER_HINTBLOCK_SIZE - 1)
 #define HAMMER_BIGBLOCK_SIZE		(8192 * 1024)
 #define HAMMER_BIGBLOCK_OVERFILL	(6144 * 1024)
-#define HAMMER_BIGBLOCK_SIZE64		((u_int64_t)HAMMER_BIGBLOCK_SIZE)
+#define HAMMER_BIGBLOCK_SIZE64		((uint64_t)HAMMER_BIGBLOCK_SIZE)
 #define HAMMER_BIGBLOCK_MASK		(HAMMER_BIGBLOCK_SIZE - 1)
-#define HAMMER_BIGBLOCK_MASK64		((u_int64_t)HAMMER_BIGBLOCK_SIZE - 1)
+#define HAMMER_BIGBLOCK_MASK64		((uint64_t)HAMMER_BIGBLOCK_SIZE - 1)
 #define HAMMER_BIGBLOCK_BITS		23
 #if (1 << HAMMER_BIGBLOCK_BITS) != HAMMER_BIGBLOCK_SIZE
 #error "HAMMER_BIGBLOCK_BITS BROKEN"
@@ -263,7 +263,7 @@ struct hammer_blockmap {
 	hammer_off_t	first_offset;	/* zone-X logical offset (zone 3) */
 	hammer_off_t	next_offset;	/* zone-X logical offset */
 	hammer_off_t	alloc_offset;	/* zone-X logical offset */
-	u_int32_t	reserved01;
+	uint32_t	reserved01;
 	hammer_crc_t	entry_crc;
 };
 
@@ -311,10 +311,10 @@ typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
  *	 the big-block is completely free.
  */
 struct hammer_blockmap_layer2 {
-	u_int8_t	zone;		/* typed allocation zone */
-	u_int8_t	unused01;
-	u_int16_t	unused02;
-	u_int32_t	append_off;	/* allocatable space index */
+	uint8_t		zone;		/* typed allocation zone */
+	uint8_t		unused01;
+	uint16_t	unused02;
+	uint32_t	append_off;	/* allocatable space index */
 	int32_t		bytes_free;	/* bytes free within this big-block */
 	hammer_crc_t	entry_crc;
 };
@@ -432,24 +432,24 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 	(((bytes) + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK)
 
 #define HAMMER_UNDO_ALIGN		512
-#define HAMMER_UNDO_ALIGN64		((u_int64_t)512)
+#define HAMMER_UNDO_ALIGN64		((uint64_t)512)
 #define HAMMER_UNDO_MASK		(HAMMER_UNDO_ALIGN - 1)
 #define HAMMER_UNDO_MASK64		(HAMMER_UNDO_ALIGN64 - 1)
 
 struct hammer_fifo_head {
-	u_int16_t hdr_signature;
-	u_int16_t hdr_type;
-	u_int32_t hdr_size;	/* Aligned size of the whole mess */
-	u_int32_t hdr_seq;	/* Sequence number */
+	uint16_t hdr_signature;
+	uint16_t hdr_type;
+	uint32_t hdr_size;	/* Aligned size of the whole mess */
+	uint32_t hdr_seq;	/* Sequence number */
 	hammer_crc_t hdr_crc;	/* XOR crc up to field w/ crc after field */
 };
 
 #define HAMMER_FIFO_HEAD_CRCOFF	offsetof(struct hammer_fifo_head, hdr_crc)
 
 struct hammer_fifo_tail {
-	u_int16_t tail_signature;
-	u_int16_t tail_type;
-	u_int32_t tail_size;	/* aligned size of the whole mess */
+	uint16_t tail_signature;
+	uint16_t tail_type;
+	uint32_t tail_size;	/* aligned size of the whole mess */
 };
 
 typedef struct hammer_fifo_head *hammer_fifo_head_t;
@@ -526,10 +526,10 @@ struct hammer_fifo_redo {
 	int64_t			redo_objid;	/* file being written */
 	hammer_off_t		redo_offset;	/* logical offset in file */
 	int32_t			redo_data_bytes;
-	u_int32_t		redo_flags;
-	u_int32_t		redo_localization;
-	u_int32_t		redo_reserved;
-	u_int64_t		redo_mtime;	/* set mtime */
+	uint32_t		redo_flags;
+	uint32_t		redo_localization;
+	uint32_t		redo_reserved;
+	uint64_t		redo_mtime;	/* set mtime */
 };
 
 #define HAMMER_REDO_WRITE	0x00000001
@@ -589,7 +589,7 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
 #define HAMMER_MEM_MAXBYTES		(64LL*1024*1024*1024)
 
 struct hammer_volume_ondisk {
-	u_int64_t vol_signature;/* Signature */
+	uint64_t vol_signature;	/* Signature */
 
 	int64_t vol_bot_beg;	/* byte offset of boot area or 0 */
 	int64_t vol_mem_beg;	/* byte offset of memory log or 0 */
@@ -604,15 +604,15 @@ struct hammer_volume_ondisk {
 	int32_t vol_no;		/* volume number within filesystem */
 	int32_t vol_count;	/* number of volumes making up FS */
 
-	u_int32_t vol_version;	/* version control information */
+	uint32_t vol_version;	/* version control information */
 	hammer_crc_t vol_crc;	/* header crc */
-	u_int32_t vol_flags;	/* volume flags */
-	u_int32_t vol_rootvol;	/* which volume is the root volume? */
+	uint32_t vol_flags;	/* volume flags */
+	uint32_t vol_rootvol;	/* which volume is the root volume? */
 
 	int32_t vol_reserved04;
 	int32_t vol_reserved05;
-	u_int32_t vol_reserved06;
-	u_int32_t vol_reserved07;
+	uint32_t vol_reserved06;
+	uint32_t vol_reserved07;
 
 	int32_t vol_blocksize;		/* for statfs only */
 	int32_t vol_reserved08;
@@ -720,32 +720,32 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
  * which allows us to point to multiple parent directories.
  */
 struct hammer_inode_data {
-	u_int16_t version;	/* inode data version */
-	u_int16_t mode;		/* basic unix permissions */
-	u_int32_t uflags;	/* chflags */
-	u_int32_t rmajor;	/* used by device nodes */
-	u_int32_t rminor;	/* used by device nodes */
-	u_int64_t ctime;
+	uint16_t version;	/* inode data version */
+	uint16_t mode;		/* basic unix permissions */
+	uint32_t uflags;	/* chflags */
+	uint32_t rmajor;	/* used by device nodes */
+	uint32_t rminor;	/* used by device nodes */
+	uint64_t ctime;
 	int64_t parent_obj_id;	/* parent directory obj_id */
 	uuid_t	  uid;
 	uuid_t	  gid;
 
-	u_int8_t  obj_type;
-	u_int8_t  cap_flags;	/* capability support flags (extension) */
-	u_int16_t reserved02;
-	u_int32_t reserved03;	/* RESERVED FOR POSSIBLE FUTURE BIRTHTIME */
-	u_int64_t nlinks;	/* hard links */
-	u_int64_t size;		/* filesystem object size */
+	uint8_t obj_type;
+	uint8_t cap_flags;	/* capability support flags (extension) */
+	uint16_t reserved02;
+	uint32_t reserved03;	/* RESERVED FOR POSSIBLE FUTURE BIRTHTIME */
+	uint64_t nlinks;	/* hard links */
+	uint64_t size;		/* filesystem object size */
 	union {
 		struct {
 			char	reserved06[16];
-			u_int32_t parent_obj_localization;
-			u_int32_t integrity_crc;
+			uint32_t parent_obj_localization;
+			uint32_t integrity_crc;
 		} obj;
 		char	symlink[24];	/* HAMMER_INODE_BASESYMLEN */
 	} ext;
-	u_int64_t mtime;	/* mtime must be second-to-last */
-	u_int64_t atime;	/* atime must be last */
+	uint64_t mtime;	/* mtime must be second-to-last */
+	uint64_t atime;	/* atime must be last */
 };
 
 /*
@@ -753,7 +753,7 @@ struct hammer_inode_data {
  * mtime updates have UNDO, atime updates do not.
  */
 #define HAMMER_ITIMES_BASE(ino_data)	(&(ino_data)->mtime)
-#define HAMMER_ITIMES_BYTES		(sizeof(u_int64_t) * 2)
+#define HAMMER_ITIMES_BYTES		(sizeof(uint64_t) * 2)
 
 #define HAMMER_INODE_CRCSIZE	\
 	offsetof(struct hammer_inode_data, mtime)
@@ -794,8 +794,8 @@ struct hammer_inode_data {
  */
 struct hammer_entry_data {
 	int64_t obj_id;			/* object being referenced */
-	u_int32_t localization;		/* identify pseudo-filesystem */
-	u_int32_t reserved02;
+	uint32_t localization;		/* identify pseudo-filesystem */
+	uint32_t reserved02;
 	char	name[16];		/* name (extended) */
 };
 
@@ -839,8 +839,8 @@ struct hammer_pseudofs_data {
 	hammer_tid_t	sync_low_tid;	/* full history beyond this point */
 	hammer_tid_t	sync_beg_tid;	/* earliest tid w/ full history avail */
 	hammer_tid_t	sync_end_tid;	/* current synchronizatoin point */
-	u_int64_t	sync_beg_ts;	/* real-time of last completed sync */
-	u_int64_t	sync_end_ts;	/* initiation of current sync cycle */
+	uint64_t	sync_beg_ts;	/* real-time of last completed sync */
+	uint64_t	sync_end_ts;	/* initiation of current sync cycle */
 	uuid_t		shared_uuid;	/* shared uuid (match required) */
 	uuid_t		unique_uuid;	/* unique uuid of this master/slave */
 	int32_t		reserved01;	/* reserved for future master_id */
@@ -876,11 +876,11 @@ typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
  */
 struct hammer_snapshot_data {
 	hammer_tid_t	tid;		/* the snapshot TID itself (== key) */
-	u_int64_t	ts;		/* real-time when snapshot was made */
-	u_int64_t	reserved01;
-	u_int64_t	reserved02;
+	uint64_t	ts;		/* real-time when snapshot was made */
+	uint64_t	reserved01;
+	uint64_t	reserved02;
 	char		label[64];	/* user-supplied description */
-	u_int64_t	reserved03[4];
+	uint64_t	reserved03[4];
 };
 
 /*

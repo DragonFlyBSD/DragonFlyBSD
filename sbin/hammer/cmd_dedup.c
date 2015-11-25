@@ -48,8 +48,8 @@ RB_PROTOTYPE2(sim_dedup_entry_rb_tree, sim_dedup_entry, rb_entry,
 
 struct sim_dedup_entry {
 	hammer_crc_t	crc;
-	u_int64_t	ref_blks; /* number of blocks referenced */
-	u_int64_t	ref_size; /* size of data referenced */
+	uint64_t	ref_blks; /* number of blocks referenced */
+	uint64_t	ref_size; /* size of data referenced */
 	RB_ENTRY(sim_dedup_entry) rb_entry;
 };
 
@@ -57,12 +57,12 @@ struct dedup_entry {
 	struct hammer_btree_leaf_elm leaf;
 	union {
 		struct {
-			u_int64_t ref_blks;
-			u_int64_t ref_size;
+			uint64_t ref_blks;
+			uint64_t ref_size;
 		} de;
 		RB_HEAD(sha_dedup_entry_rb_tree, sha_dedup_entry) fict_root;
 	} u;
-	u_int8_t flags;
+	uint8_t flags;
 	RB_ENTRY(dedup_entry) rb_entry;
 };
 
@@ -70,9 +70,9 @@ struct dedup_entry {
 
 struct sha_dedup_entry {
 	struct hammer_btree_leaf_elm	leaf;
-	u_int64_t			ref_blks;
-	u_int64_t			ref_size;
-	u_int8_t			sha_hash[SHA256_DIGEST_LENGTH];
+	uint64_t			ref_blks;
+	uint64_t			ref_size;
+	uint8_t				sha_hash[SHA256_DIGEST_LENGTH];
 	RB_ENTRY(sha_dedup_entry)	fict_entry;
 };
 
@@ -106,9 +106,9 @@ static int SigAlrmFlag;
 static int64_t DedupDataReads;
 static int64_t DedupCurrentRecords;
 static int64_t DedupTotalRecords;
-static u_int32_t DedupCrcStart;
-static u_int32_t DedupCrcEnd;
-static u_int64_t MemoryUse;
+static uint32_t DedupCrcStart;
+static uint32_t DedupCrcEnd;
+static uint64_t MemoryUse;
 
 /* PFS global ids - we deal with just one PFS at a run */
 int glob_fd;
@@ -119,14 +119,14 @@ struct hammer_ioc_pseudofs_rw glob_pfs;
  *
  * Last three don't have to be 64-bit, just to be safe..
  */
-u_int64_t dedup_alloc_size = 0;
-u_int64_t dedup_ref_size = 0;
-u_int64_t dedup_skipped_size = 0;
-u_int64_t dedup_crc_failures = 0;
-u_int64_t dedup_sha_failures = 0;
-u_int64_t dedup_underflows = 0;
-u_int64_t dedup_successes_count = 0;
-u_int64_t dedup_successes_bytes = 0;
+uint64_t dedup_alloc_size = 0;
+uint64_t dedup_ref_size = 0;
+uint64_t dedup_skipped_size = 0;
+uint64_t dedup_crc_failures = 0;
+uint64_t dedup_sha_failures = 0;
+uint64_t dedup_underflows = 0;
+uint64_t dedup_successes_count = 0;
+uint64_t dedup_successes_bytes = 0;
 
 static int rb_sim_dedup_entry_compare(struct sim_dedup_entry *sim_de1,
 				struct sim_dedup_entry *sim_de2);
@@ -139,7 +139,7 @@ static void scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id);
 static int collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags);
 static int count_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags);
 static int process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags);
-static int upgrade_chksum(hammer_btree_leaf_elm_t leaf, u_int8_t *sha_hash);
+static int upgrade_chksum(hammer_btree_leaf_elm_t leaf, uint8_t *sha_hash);
 static void dump_simulated_dedup(void);
 static void dump_real_dedup(void);
 static void dedup_usage(int code);
@@ -404,7 +404,7 @@ collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 	 */
 	if (MemoryUse > MemoryLimit) {
 		DedupCrcEnd = DedupCrcStart +
-			      (u_int32_t)(DedupCrcEnd - DedupCrcStart - 1) / 2;
+			      (uint32_t)(DedupCrcEnd - DedupCrcStart - 1) / 2;
 		if (VerboseOpt) {
 			printf("memory limit  crc-range %08x-%08x\n",
 				DedupCrcStart, DedupCrcEnd);
@@ -517,7 +517,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 	 */
 	while (MemoryUse > MemoryLimit) {
 		DedupCrcEnd = DedupCrcStart +
-			      (u_int32_t)(DedupCrcEnd - DedupCrcStart - 1) / 2;
+			      (uint32_t)(DedupCrcEnd - DedupCrcStart - 1) / 2;
 		if (VerboseOpt) {
 			printf("memory limit  crc-range %08x-%08x\n",
 				DedupCrcStart, DedupCrcEnd);
@@ -806,7 +806,7 @@ terminate_early:
 }
 
 static int
-upgrade_chksum(hammer_btree_leaf_elm_t leaf, u_int8_t *sha_hash)
+upgrade_chksum(hammer_btree_leaf_elm_t leaf, uint8_t *sha_hash)
 {
 	struct hammer_ioc_data data;
 	char *buf = malloc(DEDUP_BUF);

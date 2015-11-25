@@ -77,9 +77,9 @@ extern int DidInterrupt;
 extern int ForceOpt;
 extern int BulkOpt;
 extern int AllPFS;
-extern u_int64_t BandwidthOpt;
-extern u_int64_t SplitupOpt;
-extern u_int64_t MemoryLimit;
+extern uint64_t BandwidthOpt;
+extern uint64_t SplitupOpt;
+extern uint64_t MemoryLimit;
 extern const char *SplitupOptStr;
 extern const char *CyclePath;
 

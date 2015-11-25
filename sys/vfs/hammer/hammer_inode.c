@@ -138,7 +138,7 @@ hammer_inode_info_cmp_all_history(hammer_inode_t ip, void *data)
 static int
 hammer_inode_pfs_cmp(hammer_inode_t ip, void *data)
 {
-	u_int32_t localization = *(u_int32_t *)data;
+	uint32_t localization = *(uint32_t *)data;
 	if (ip->obj_localization > localization)
 		return(1);
 	if (ip->obj_localization < localization)
@@ -164,7 +164,7 @@ RB_GENERATE(hammer_ino_rb_tree, hammer_inode, rb_node, hammer_ino_rb_compare);
 RB_GENERATE_XLOOKUP(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
 		hammer_inode_info_cmp, hammer_inode_info_t);
 RB_GENERATE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
-             hammer_pfs_rb_compare, u_int32_t, localization);
+             hammer_pfs_rb_compare, uint32_t, localization);
 
 /*
  * The kernel is not actively referencing this vnode but is still holding
@@ -284,7 +284,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 	hammer_mount_t hmp;
 	struct vnode *vp;
 	int error = 0;
-	u_int8_t obj_type;
+	uint8_t obj_type;
 
 	hmp = ip->hmp;
 
@@ -417,7 +417,7 @@ hammer_scan_inode_snapshots(hammer_mount_t hmp, hammer_inode_info_t iinfo,
  */
 struct hammer_inode *
 hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
-		 int64_t obj_id, hammer_tid_t asof, u_int32_t localization,
+		 int64_t obj_id, hammer_tid_t asof, uint32_t localization,
 		 int flags, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
@@ -610,7 +610,7 @@ retry:
  */
 struct hammer_inode *
 hammer_get_dummy_inode(hammer_transaction_t trans, hammer_inode_t dip,
-		 int64_t obj_id, hammer_tid_t asof, u_int32_t localization,
+		 int64_t obj_id, hammer_tid_t asof, uint32_t localization,
 		 int flags, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
@@ -722,7 +722,7 @@ loop:
  */
 struct hammer_inode *
 hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
-		  hammer_tid_t asof, u_int32_t localization)
+		  hammer_tid_t asof, uint32_t localization)
 {
 	hammer_mount_t hmp = trans->hmp;
 	struct hammer_inode_info iinfo;
@@ -760,7 +760,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	uid_t xuid;
 	int error;
 	int64_t namekey;
-	u_int32_t dummy;
+	uint32_t dummy;
 
 	hmp = trans->hmp;
 
@@ -977,7 +977,7 @@ hammer_free_inode(hammer_inode_t ip)
  */
 hammer_pseudofs_inmem_t
 hammer_load_pseudofs(hammer_transaction_t trans,
-		     u_int32_t localization, int *errorp)
+		     uint32_t localization, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
 	hammer_inode_t ip;
@@ -1192,7 +1192,7 @@ hammer_unload_pseudofs_callback(hammer_inode_t ip, void *data)
 }
 
 int
-hammer_unload_pseudofs(hammer_transaction_t trans, u_int32_t localization)
+hammer_unload_pseudofs(hammer_transaction_t trans, uint32_t localization)
 {
 	int res;
 	int try;
@@ -2911,7 +2911,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	hammer_record_t depend;
 	hammer_record_t next;
 	int error, tmp_error;
-	u_int64_t nlinks;
+	uint64_t nlinks;
 
 	if ((ip->sync_flags & HAMMER_INODE_MODMASK) == 0)
 		return(0);

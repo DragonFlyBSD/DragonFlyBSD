@@ -46,7 +46,7 @@ static int hammer_cursor_localize_data(hammer_data_ondisk_t data,
 				hammer_btree_leaf_elm_t leaf);
 
 struct rec_trunc_info {
-	u_int16_t	rec_type;
+	uint16_t	rec_type;
 	int64_t		trunc_off;
 };
 
@@ -663,7 +663,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	struct hammer_cursor cursor;
 	hammer_record_t record;
 	int error;
-	u_int32_t max_iterations;
+	uint32_t max_iterations;
 
 	KKASSERT(dip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY);
 
@@ -2450,7 +2450,7 @@ failed:
  */
 int
 hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
-			hammer_tid_t delete_tid, u_int32_t delete_ts,
+			hammer_tid_t delete_tid, uint32_t delete_ts,
 			int track, int64_t *stat_bytes)
 {
 	struct hammer_btree_leaf_elm save_leaf;
@@ -2676,7 +2676,7 @@ int
 hammer_cursor_localize_data(hammer_data_ondisk_t data,
 			    hammer_btree_leaf_elm_t leaf)
 {
-	u_int32_t localization;
+	uint32_t localization;
 
 	if (leaf->base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
 		localization = leaf->base.localization &

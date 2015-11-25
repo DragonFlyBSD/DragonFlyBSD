@@ -43,7 +43,7 @@ static void trim_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label,
 			off_t total_size);
 static hammer_off_t format_root(const char *label);
-static u_int64_t nowtime(void);
+static uint64_t nowtime(void);
 static void usage(void);
 
 static int ForceOpt = 0;
@@ -54,7 +54,7 @@ static int HammerVersion = -1;
 int
 main(int ac, char **av)
 {
-	u_int32_t status;
+	uint32_t status;
 	off_t total;
 	off_t avg_vol_size;
 	int ch;
@@ -408,11 +408,11 @@ createtid(void)
 	return(lasttid++);
 }
 
-static u_int64_t
+static uint64_t
 nowtime(void)
 {
 	struct timeval tv;
-	u_int64_t xtime;
+	uint64_t xtime;
 
 	gettimeofday(&tv, NULL);
 	xtime = tv.tv_sec * 1000000LL + tv.tv_usec;
@@ -582,7 +582,7 @@ format_root(const char *label)
 	struct buffer_info *data_buffer1 = NULL;
 	struct buffer_info *data_buffer2 = NULL;
 	hammer_btree_elm_t elm;
-	u_int64_t xtime;
+	uint64_t xtime;
 
 	/*
 	 * Allocate zero-filled root btree node, inode and pfs
@@ -635,7 +635,7 @@ format_root(const char *label)
 	elm->leaf.base.delete_tid = 0;
 	elm->leaf.base.rec_type = HAMMER_RECTYPE_INODE;
 	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
-	elm->leaf.create_ts = (u_int32_t)time(NULL);
+	elm->leaf.create_ts = (uint32_t)time(NULL);
 
 	elm->leaf.data_offset = data_off;
 	elm->leaf.data_len = sizeof(*idata);
@@ -651,7 +651,7 @@ format_root(const char *label)
 	elm->leaf.base.delete_tid = 0;
 	elm->leaf.base.rec_type = HAMMER_RECTYPE_PFS;
 	elm->leaf.base.obj_type = 0;
-	elm->leaf.create_ts = (u_int32_t)time(NULL);
+	elm->leaf.create_ts = (uint32_t)time(NULL);
 
 	elm->leaf.data_offset = pfsd_off;
 	elm->leaf.data_len = sizeof(*pfsd);

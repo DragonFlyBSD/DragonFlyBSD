@@ -1010,8 +1010,8 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	 */
 	++hammer_stats_file_iopsr;
 	hammer_lock_sh(&ip->lock);
-	vap->va_fsid = ip->pfsm->fsid_udev ^ (u_int32_t)ip->obj_asof ^
-		       (u_int32_t)(ip->obj_asof >> 32);
+	vap->va_fsid = ip->pfsm->fsid_udev ^ (uint32_t)ip->obj_asof ^
+		       (uint32_t)(ip->obj_asof >> 32);
 
 	vap->va_fileid = ip->ino_leaf.base.obj_id;
 	vap->va_mode = ip->ino_data.mode;
@@ -1113,8 +1113,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	int flags;
 	int ispfs;
 	int64_t obj_id;
-	u_int32_t localization;
-	u_int32_t max_iterations;
+	uint32_t localization;
+	uint32_t max_iterations;
 
 	/*
 	 * Misc initialization, plus handle as-of name extensions.  Look for
@@ -1314,7 +1314,7 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	struct hammer_inode *ip;
 	hammer_mount_t hmp;
 	int64_t parent_obj_id;
-	u_int32_t parent_obj_localization;
+	uint32_t parent_obj_localization;
 	hammer_tid_t asof;
 	int error;
 
@@ -1786,7 +1786,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	struct hammer_inode *ip;
 	hammer_mount_t hmp;
 	char buf[32];
-	u_int32_t localization;
+	uint32_t localization;
 	hammer_pseudofs_inmem_t pfsm;
 	int error;
 
@@ -1941,7 +1941,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	hammer_mount_t hmp;
 	struct hammer_cursor cursor;
 	int64_t namekey;
-	u_int32_t max_iterations;
+	uint32_t max_iterations;
 	int nlen, error;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
@@ -2178,7 +2178,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 #if 0
 	int64_t aligned_size;
 #endif
-	u_int32_t flags;
+	uint32_t flags;
 
 	vap = ap->a_vap;
 	ip = ap->a_vp->v_data;
@@ -3375,7 +3375,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 	hammer_mount_t hmp;
 	struct hammer_cursor cursor;
 	int64_t namekey;
-	u_int32_t max_iterations;
+	uint32_t max_iterations;
 	int nlen, error;
 
 	/*

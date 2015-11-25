@@ -45,16 +45,16 @@ static int hammer_mirror_update(hammer_cursor_t cursor,
 static int hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord_rec *mrec,
 				struct hammer_ioc_mirror_rw *mirror,
-				u_int32_t localization,
+				uint32_t localization,
 				char *uptr);
 static int hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord_rec *mrec,
 				struct hammer_ioc_mirror_rw *mirror,
-				u_int32_t localization);
+				uint32_t localization);
 static int hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord_skip *mrec,
 				struct hammer_ioc_mirror_rw *mirror,
-				u_int32_t localization);
+				uint32_t localization);
 static int hammer_mirror_delete_to(hammer_cursor_t cursor,
 			        struct hammer_ioc_mirror_rw *mirror);
 static int hammer_mirror_nomirror(struct hammer_base_elm *base);
@@ -84,10 +84,10 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 	int bytes;
 	int eatdisk;
 	int mrec_flags;
-	u_int32_t localization;
-	u_int32_t rec_crc;
+	uint32_t localization;
+	uint32_t rec_crc;
 
-	localization = (u_int32_t)mirror->pfs_id << 16;
+	localization = (uint32_t)mirror->pfs_id << 16;
 
 	if ((mirror->key_beg.localization | mirror->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -337,14 +337,14 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 {
 	union hammer_ioc_mrecord_any mrec;
 	struct hammer_cursor cursor;
-	u_int32_t localization;
+	uint32_t localization;
 	int checkspace_count = 0;
 	int error;
 	int bytes;
 	char *uptr;
 	int seq;
 
-	localization = (u_int32_t)mirror->pfs_id << 16;
+	localization = (uint32_t)mirror->pfs_id << 16;
 	seq = trans->hmp->flusher.done;
 
 	/*
@@ -516,7 +516,7 @@ static int
 hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 			     struct hammer_ioc_mrecord_skip *mrec,
 			     struct hammer_ioc_mirror_rw *mirror,
-			     u_int32_t localization)
+			     uint32_t localization)
 {
 	int error;
 
@@ -572,7 +572,7 @@ static int
 hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 			    struct hammer_ioc_mrecord_rec *mrec,
 			    struct hammer_ioc_mirror_rw *mirror,
-			    u_int32_t localization,
+			    uint32_t localization,
 			    char *uptr)
 {
 	int error;
@@ -660,7 +660,7 @@ int
 hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 			     struct hammer_ioc_mrecord_rec *mrec,
 			     struct hammer_ioc_mirror_rw *mirror,
-			     u_int32_t localization)
+			     uint32_t localization)
 {
 	int error;
 
@@ -980,7 +980,7 @@ int
 hammer_mirror_localize_data(hammer_data_ondisk_t data,
 			    hammer_btree_leaf_elm_t leaf)
 {
-	u_int32_t localization;
+	uint32_t localization;
 
 	if (leaf->base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
 		localization = leaf->base.localization &

@@ -62,7 +62,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	int elm_array_size;
 	int seq;
 	int64_t bytes;
-	u_int32_t key_beg_localization;
+	uint32_t key_beg_localization;
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);

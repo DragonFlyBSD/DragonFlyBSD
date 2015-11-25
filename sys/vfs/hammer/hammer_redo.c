@@ -58,7 +58,7 @@ RB_GENERATE2(hammer_redo_rb_tree, hammer_inode, rb_redonode,
  */
 int
 hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
-		     hammer_off_t file_off, u_int32_t flags,
+		     hammer_off_t file_off, uint32_t flags,
 		     void *base, int len)
 {
 	hammer_mount_t hmp;
