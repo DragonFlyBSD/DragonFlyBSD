@@ -1508,8 +1508,11 @@ ix_setup_optics(struct ix_softc *sc)
 		return;
 	}
 
-	/* If we get here just set the default */
-	sc->optics = IFM_ETHER | IFM_AUTO;
+	/*
+	 * If we get here just set the default.
+	 * XXX this probably is wrong.
+	 */
+	sc->optics = IFM_AUTO;
 }
 
 static void
@@ -1580,14 +1583,15 @@ ix_setup_ifp(struct ix_softc *sc)
 	 * Specify the media types supported by this adapter and register
 	 * callbacks to update media and link information
 	 */
-	ifmedia_add(&sc->media, IFM_ETHER | sc->optics, 0, NULL);
-	ifmedia_set(&sc->media, IFM_ETHER | sc->optics);
+	ifmedia_add(&sc->media, IFM_ETHER | sc->optics | IFM_FDX, 0, NULL);
 	if (hw->device_id == IXGBE_DEV_ID_82598AT) {
-		ifmedia_add(&sc->media,
-		    IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T, 0, NULL);
+		if (sc->optics != IFM_1000_T) {
+			ifmedia_add(&sc->media,
+			    IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
+		}
 	}
-	ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
+	if (sc->optics != IFM_AUTO)
+		ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
 	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
 }
 
