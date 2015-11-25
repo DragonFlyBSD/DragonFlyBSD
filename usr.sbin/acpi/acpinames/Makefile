@@ -12,6 +12,7 @@ PROG=	acpinames
 MAN=	acpinames.8
 
 SRCS=	\
+	acfileio.c \
 	anmain.c \
 	anstubs.c \
 	antables.c
@@ -83,7 +84,6 @@ SRCS+=	\
 	uterror.c \
 	uteval.c \
 	utexcep.c \
-	utfileio.c \
 	utglobal.c \
 	uthex.c \
 	utids.c \

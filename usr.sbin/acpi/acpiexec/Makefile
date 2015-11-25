@@ -20,6 +20,7 @@ SRCS=	\
 	aetables.c
 
 SRCS+=	\
+	acfileio.c \
 	acgetline.c \
 	ahids.c \
 	ahuuids.c \
@@ -102,6 +103,7 @@ SRCS+=	\
 	exstoren.c \
 	exstorob.c \
 	exsystem.c \
+	extrace.c \
 	exutils.c \
 	getopt.c \
 	hwacpi.c \
@@ -181,7 +183,6 @@ SRCS+=	\
 	uterror.c \
 	uteval.c \
 	utexcep.c \
-	utfileio.o \
 	utglobal.c \
 	uthex.c \
 	utids.c \

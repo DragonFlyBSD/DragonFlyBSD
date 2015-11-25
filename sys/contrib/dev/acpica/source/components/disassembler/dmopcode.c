@@ -821,7 +821,9 @@ AcpiDmDisassembleOneOp (
             }
             else if (Status == AE_AML_NO_RESOURCE_END_TAG)
             {
-                AcpiOsPrintf ("/**** Is ResourceTemplate, but EndTag not at buffer end ****/ ");
+                AcpiOsPrintf (
+                    "/**** Is ResourceTemplate, "
+                    "but EndTag not at buffer end ****/ ");
             }
         }
 
@@ -896,7 +898,8 @@ AcpiDmDisassembleOneOp (
 
         if (Op->Common.AmlOpcode == AML_INT_EXTACCESSFIELD_OP)
         {
-            AcpiOsPrintf (" (0x%2.2X)", (unsigned) ((Op->Common.Value.Integer >> 16) & 0xFF));
+            AcpiOsPrintf (" (0x%2.2X)", (unsigned)
+                ((Op->Common.Value.Integer >> 16) & 0xFF));
         }
 
         AcpiOsPrintf (")");

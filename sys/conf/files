@@ -2312,6 +2312,7 @@ ${ACPICA_COMP_DIR}/executer/exstore.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exstoren.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exstorob.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exsystem.c		optional acpi
+${ACPICA_COMP_DIR}/executer/extrace.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exutils.c		optional acpi
 ${ACPICA_COMP_DIR}/hardware/hwacpi.c		optional acpi
 ${ACPICA_COMP_DIR}/hardware/hwesleep.c		optional acpi

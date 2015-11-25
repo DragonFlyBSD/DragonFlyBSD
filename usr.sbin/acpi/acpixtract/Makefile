@@ -11,7 +11,8 @@ MAN=	acpixtract.8
 
 SRCS=	\
 	acpixtract.c \
-	axmain.c
+	axmain.c \
+	axutils.c
 
 SRCS+=	\
 	getopt.c \

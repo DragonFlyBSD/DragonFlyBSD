@@ -20,6 +20,7 @@ SRCS=	\
 	prparser.y.h \
 	prparserlex.c \
 	prparserparse.c \
+	acfileio.c \
 	adfile.c \
 	adisasm.c \
 	adwalk.c \
@@ -89,6 +90,7 @@ SRCS=	\
 	dmresrcs.c \
 	dmrestag.c \
 	dmtable.c \
+	dmtables.c \
 	dmtbdump.c \
 	dmtbinfo.c \
 	dmutils.c \
@@ -110,6 +112,8 @@ SRCS=	\
 	dtio.c \
 	dtsubtable.c \
 	dttable.c \
+	dttable1.c \
+	dttable2.c \
 	dttemplate.c \
 	dtutils.c \
 	exconvrt.c \
@@ -165,6 +169,7 @@ SRCS=	\
 	tbprint.c \
 	tbutils.c \
 	tbxface.c \
+	tbxfload.c \
 	utaddress.c \
 	utalloc.c \
 	utbuffer.c \
@@ -175,7 +180,6 @@ SRCS=	\
 	utdelete.c \
 	uterror.c \
 	utexcep.c \
-	utfileio.c \
 	utglobal.c \
 	uthex.c \
 	utinit.c \

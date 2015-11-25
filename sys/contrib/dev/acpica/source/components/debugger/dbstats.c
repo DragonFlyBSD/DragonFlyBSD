@@ -340,7 +340,7 @@ AcpiDbClassifyOneObject (
     Op = AcpiPsGetDepthNext (Root, Op);
 
     SizeOfParseTree   = (NumGrammarElements - NumMethodElements) *
-                            (UINT32) sizeof (ACPI_PARSE_OBJECT);
+        (UINT32) sizeof (ACPI_PARSE_OBJECT);
     SizeOfMethodTrees = NumMethodElements * (UINT32) sizeof (ACPI_PARSE_OBJECT);
     SizeOfNodeEntries = NumNodes * (UINT32) sizeof (ACPI_NAMESPACE_NODE);
     SizeOfAcpiObjects = NumNodes * (UINT32) sizeof (ACPI_OPERAND_OBJECT);
@@ -440,6 +440,7 @@ AcpiDbDisplayStatistics (
             AcpiOsPrintf ("%16.16s % 10ld% 10ld\n", AcpiUtGetTypeName (i),
                 AcpiGbl_NodeTypeCount [i], AcpiGbl_ObjTypeCount [i]);
         }
+
         AcpiOsPrintf ("%16.16s % 10ld% 10ld\n", "Misc/Unknown",
             AcpiGbl_NodeTypeCountMisc, AcpiGbl_ObjTypeCountMisc);
 

@@ -45,6 +45,9 @@
 #include "accommon.h"
 #include "acdebug.h"
 
+#ifdef ACPI_APPLICATION
+#include "acapps.h"
+#endif
 
 #ifdef ACPI_DEBUGGER
 
@@ -681,10 +684,7 @@ AcpiDbGetLine (
 
     /* Uppercase the actual command */
 
-    if (AcpiGbl_DbArgs[0])
-    {
-        AcpiUtStrupr (AcpiGbl_DbArgs[0]);
-    }
+    AcpiUtStrupr (AcpiGbl_DbArgs[0]);
 
     Count = i;
     if (Count)
@@ -764,7 +764,7 @@ AcpiDbCommandDispatch (
 
     /* If AcpiTerminate has been called, terminate this thread */
 
-    if (AcpiGbl_DbTerminateThreads)
+    if (AcpiGbl_DbTerminateLoop)
     {
         return (AE_CTRL_TERMINATE);
     }
@@ -944,8 +944,8 @@ AcpiDbCommandDispatch (
         else if (ParamCount == 2)
         {
             Temp = AcpiGbl_DbConsoleDebugLevel;
-            AcpiGbl_DbConsoleDebugLevel = strtoul (AcpiGbl_DbArgs[1],
-                                            NULL, 16);
+            AcpiGbl_DbConsoleDebugLevel =
+                strtoul (AcpiGbl_DbArgs[1], NULL, 16);
             AcpiOsPrintf (
                 "Debug Level for console output was %8.8lX, now %8.8lX\n",
                 Temp, AcpiGbl_DbConsoleDebugLevel);
@@ -1121,8 +1121,16 @@ AcpiDbCommandDispatch (
         break;
 
     case CMD_LOAD:
+        {
+            ACPI_NEW_TABLE_DESC     *ListHead = NULL;
 
-        Status = AcpiDbGetTableFromFile (AcpiGbl_DbArgs[1], NULL, FALSE);
+            Status = AcpiAcGetAllTablesFromFile (AcpiGbl_DbArgs[1],
+                ACPI_GET_ALL_TABLES, &ListHead);
+            if (ACPI_SUCCESS (Status))
+            {
+                AcpiDbLoadTables (ListHead);
+            }
+        }
         break;
 
     case CMD_OPEN:
@@ -1142,6 +1150,7 @@ AcpiDbCommandDispatch (
          * re-creating the semaphores!
          */
 
+        AcpiGbl_DbTerminateLoop = TRUE;
         /*  AcpiInitialize (NULL);  */
         break;
 
@@ -1186,7 +1195,7 @@ AcpiDbCommandDispatch (
 #ifdef ACPI_APPLICATION
         AcpiDbCloseDebugFile ();
 #endif
-        AcpiGbl_DbTerminateThreads = TRUE;
+        AcpiGbl_DbTerminateLoop = TRUE;
         return (AE_CTRL_TERMINATE);
 
     case CMD_NOT_FOUND:
@@ -1226,7 +1235,7 @@ AcpiDbExecuteThread (
     ACPI_STATUS             MStatus;
 
 
-    while (Status != AE_CTRL_TERMINATE)
+    while (Status != AE_CTRL_TERMINATE && !AcpiGbl_DbTerminateLoop)
     {
         AcpiGbl_MethodExecuting = FALSE;
         AcpiGbl_StepToNextCall = FALSE;
@@ -1242,6 +1251,7 @@ AcpiDbExecuteThread (
 
         AcpiOsReleaseMutex (AcpiGbl_DbCommandComplete);
     }
+    AcpiGbl_DbThreadsTerminated = TRUE;
 }
 
 
@@ -1296,7 +1306,7 @@ AcpiDbUserCommands (
 
     /* TBD: [Restructure] Need a separate command line buffer for step mode */
 
-    while (!AcpiGbl_DbTerminateThreads)
+    while (!AcpiGbl_DbTerminateLoop)
     {
         /* Force output to console until a command is entered */
 
@@ -1332,10 +1342,6 @@ AcpiDbUserCommands (
              * and wait for the command to complete.
              */
             AcpiOsReleaseMutex (AcpiGbl_DbCommandReady);
-            if (ACPI_FAILURE (Status))
-            {
-                return (Status);
-            }
 
             Status = AcpiOsAcquireMutex (AcpiGbl_DbCommandComplete,
                 ACPI_WAIT_FOREVER);
@@ -1352,15 +1358,6 @@ AcpiDbUserCommands (
         }
     }
 
-    /* Shut down the debugger */
-
-    AcpiTerminateDebugger ();
-
-    /*
-     * Only this thread (the original thread) should actually terminate the
-     * subsystem, because all the semaphores are deleted during termination
-     */
-    Status = AcpiTerminate ();
     return (Status);
 }
 

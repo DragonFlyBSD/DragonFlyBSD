@@ -96,7 +96,7 @@ AcpiOsSignal(UINT32 Function, void *Info)
 DB_COMMAND(acpidb, db_cmd_acpidb)
 {
     kprintf("Entering ACPICA debugger...\n");
-    while (!AcpiGbl_DbTerminateThreads) {
+    while (!AcpiGbl_DbTerminateLoop) {
 	AcpiDbSetOutputDestination(ACPI_DB_CONSOLE_OUTPUT);
 	if (!AcpiGbl_MethodExecuting)
 	    AcpiOsPrintf("%1c ", ACPI_DEBUGGER_COMMAND_PROMPT);
@@ -105,7 +105,7 @@ DB_COMMAND(acpidb, db_cmd_acpidb)
 	AcpiOsGetLine(AcpiGbl_DbLineBuf, ACPI_DB_LINE_BUFFER_SIZE, NULL);
 	AcpiDbCommandDispatch(AcpiGbl_DbLineBuf, NULL, NULL);
     }
-    AcpiGbl_DbTerminateThreads = FALSE;
+    AcpiGbl_DbTerminateLoop = FALSE;
     kprintf("Leaving ACPICA debugger...\n");
 }
 #endif /* ACPI_DEBUGGER */
