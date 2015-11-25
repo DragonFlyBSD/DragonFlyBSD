@@ -1091,8 +1091,10 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!sc->link_active)
+	if (!sc->link_active) {
+		ifmr->ifm_active |= IFM_NONE;
 		return;
+	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
 
@@ -1105,6 +1107,9 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 		break;
 	case IXGBE_LINK_SPEED_10GB_FULL:
 		ifmr->ifm_active |= sc->optics | IFM_FDX;
+		break;
+	default:
+		ifmr->ifm_active |= IFM_NONE;
 		break;
 	}
 }
