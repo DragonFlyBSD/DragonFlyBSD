@@ -35,12 +35,9 @@
 #ifndef _E1000_DRAGONFLY_H_
 #define _E1000_DRAGONFLY_H_
 
-struct ifnet;
-struct sysctl_oid;
-struct sysctl_req;
-
 void	e1000_fc2str(enum e1000_fc_mode fc, char *str, int len);
 enum e1000_fc_mode e1000_ifmedia2fc(int ifm);
 int	e1000_fc2ifmedia(enum e1000_fc_mode fc);
+void	e1000_force_flowctrl(struct e1000_hw *hw, int ifm);
 
 #endif	/* !_E1000_DRAGONFLY_H_ */

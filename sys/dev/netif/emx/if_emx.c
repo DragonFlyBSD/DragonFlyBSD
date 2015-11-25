@@ -1883,16 +1883,8 @@ emx_update_link_status(struct emx_softc *sc)
 			    "Full Duplex" : "Half Duplex",
 			    flowctrl);
 		}
-		if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE) {
-			enum e1000_fc_mode fc;
-
-			fc = e1000_ifmedia2fc(sc->ifm_flowctrl);
-			if (hw->fc.current_mode != fc) {
-				hw->fc.requested_mode = fc;
-				hw->fc.current_mode = fc;
-				e1000_force_mac_fc(hw);
-			}
-		}
+		if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
+			e1000_force_flowctrl(hw, sc->ifm_flowctrl);
 		sc->link_active = 1;
 		sc->smartspeed = 0;
 		ifp->if_baudrate = sc->link_speed * 1000000;

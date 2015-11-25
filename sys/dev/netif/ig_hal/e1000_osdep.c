@@ -164,6 +164,19 @@ e1000_fc2ifmedia(enum e1000_fc_mode fc)
 	}
 }
 
+void
+e1000_force_flowctrl(struct e1000_hw *hw, int ifm)
+{
+	enum e1000_fc_mode fc;
+
+	fc = e1000_ifmedia2fc(ifm);
+	if (hw->fc.current_mode != fc) {
+		hw->fc.requested_mode = fc;
+		hw->fc.current_mode = fc;
+		e1000_force_mac_fc(hw);
+	}
+}
+
 /* Module glue */
 static moduledata_t ig_hal_mod = { "ig_hal" };
 DECLARE_MODULE(ig_hal, ig_hal_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);

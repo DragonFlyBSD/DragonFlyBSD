@@ -2149,16 +2149,8 @@ em_update_link_status(struct adapter *adapter)
 			    "Full Duplex" : "Half Duplex",
 			    flowctrl);
 		}
-		if (adapter->ifm_flowctrl & IFM_ETH_FORCEPAUSE) {
-			enum e1000_fc_mode fc;
-
-			fc = e1000_ifmedia2fc(adapter->ifm_flowctrl);
-			if (hw->fc.current_mode != fc) {
-				hw->fc.requested_mode = fc;
-				hw->fc.current_mode = fc;
-				e1000_force_mac_fc(hw);
-			}
-		}
+		if (adapter->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
+			e1000_force_flowctrl(hw, adapter->ifm_flowctrl);
 		adapter->link_active = 1;
 		adapter->smartspeed = 0;
 		ifp->if_baudrate = adapter->link_speed * 1000000;
