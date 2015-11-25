@@ -386,12 +386,10 @@ igb_attach(device_t dev)
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
 	    OID_AUTO, "nvm", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 	    igb_sysctl_nvm_info, "I", "NVM Information");
-	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
-	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
-	    OID_AUTO, "flow_control", CTLTYPE_INT|CTLFLAG_RW,
-	    adapter, 0, igb_set_flowcntl, "I", "Flow Control");
 #endif
 
+	ifmedia_init(&sc->media, IFM_IMASK | IFM_ETH_FCMASK,
+	    igb_media_change, igb_media_status);
 	callout_init_mp(&sc->timer);
 	lwkt_serialize_init(&sc->main_serialize);
 
@@ -738,6 +736,8 @@ igb_detach(device_t dev)
 	} else if (sc->mem_res != NULL) {
 		igb_rel_hw_control(sc);
 	}
+
+	ifmedia_removeall(&sc->media);
 	bus_generic_detach(dev);
 
 	igb_free_intr(sc);
@@ -1626,8 +1626,6 @@ igb_setup_ifp(struct igb_softc *sc)
 	 * Specify the media types supported by this adapter and register
 	 * callbacks to update media and link information
 	 */
-	ifmedia_init(&sc->media, IFM_IMASK | IFM_ETH_FCMASK,
-	    igb_media_change, igb_media_status);
 	if (sc->hw.phy.media_type == e1000_media_type_fiber ||
 	    sc->hw.phy.media_type == e1000_media_type_internal_serdes) {
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_SX | IFM_FDX,
