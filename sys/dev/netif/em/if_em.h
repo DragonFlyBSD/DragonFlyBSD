@@ -393,7 +393,7 @@ struct adapter {
 	struct mbuf		*fmp;
 	struct mbuf		*lmp;
 
-	enum e1000_fc_mode	flow_ctrl;
+	int			ifm_flowctrl;
 
 	/* Misc stats maintained by the driver */
 	unsigned long		dropped_pkts;

@@ -329,7 +329,6 @@ static int	em_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
-static int	em_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
 static void	em_add_sysctl(struct adapter *adapter);
 
 /* Management and WOL Support */
@@ -376,7 +375,7 @@ static int	em_debug_sbp = FALSE;
 static int	em_82573_workaround = 1;
 static int	em_msi_enable = 1;
 
-static char	em_flowctrl[E1000_FC_STRLEN] = E1000_FC_STR_RX_PAUSE;
+static char	em_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_RXPAUSE;
 
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 TUNABLE_INT("hw.em.rxd", &em_rxd);
@@ -432,14 +431,14 @@ em_attach(device_t dev)
 	int error = 0;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
-	char flowctrl[E1000_FC_STRLEN];
+	char flowctrl[IFM_ETH_FC_STRLEN];
 
 	adapter->dev = adapter->osdep.dev = dev;
 
 	callout_init_mp(&adapter->timer);
 	callout_init_mp(&adapter->tx_fifo_timer);
 
-	ifmedia_init(&adapter->media, IFM_IMASK,
+	ifmedia_init(&adapter->media, IFM_IMASK | IFM_ETH_FCMASK,
 	    em_media_change, em_media_status);
 
 	/* Determine hardware and mac info */
@@ -794,10 +793,10 @@ em_attach(device_t dev)
 	/* Setup flow control. */
 	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
 	    em_flowctrl);
-	adapter->flow_ctrl = e1000_str2fc(flowctrl);
+	adapter->ifm_flowctrl = ifmedia_str2ethfc(flowctrl);
 	if (adapter->hw.mac.type == e1000_pchlan) {
-		/* Only pause reception is supported */
-		adapter->flow_ctrl = e1000_fc_rx_pause;
+		/* Only PAUSE reception is supported on PCH */
+		adapter->ifm_flowctrl &= ~IFM_ETH_TXPAUSE;
 	}
 
 	/* Setup OS specific network interface */
@@ -1540,10 +1539,14 @@ em_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!adapter->link_active)
+	if (!adapter->link_active) {
+		ifmr->ifm_active |= IFM_NONE;
 		return;
+	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
+	if (adapter->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
+		ifmr->ifm_active |= IFM_ETH_FORCEPAUSE;
 
 	if (adapter->hw.phy.media_type == e1000_media_type_fiber ||
 	    adapter->hw.phy.media_type == e1000_media_type_internal_serdes) {
@@ -1568,6 +1571,10 @@ em_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 		else
 			ifmr->ifm_active |= IFM_HDX;
 	}
+	if (ifmr->ifm_active & IFM_FDX) {
+		ifmr->ifm_active |=
+		    e1000_fc2ifmedia(adapter->hw.fc.current_mode);
+	}
 }
 
 static int
@@ -1580,6 +1587,13 @@ em_media_change(struct ifnet *ifp)
 
 	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
 		return (EINVAL);
+
+	if (adapter->hw.mac.type == e1000_pchlan &&
+	    (IFM_OPTIONS(ifm->ifm_media) & IFM_ETH_TXPAUSE)) {
+		if (bootverbose)
+			if_printf(ifp, "TX PAUSE is not supported on PCH\n");
+		return EINVAL;
+	}
 
 	switch (IFM_SUBTYPE(ifm->ifm_media)) {
 	case IFM_AUTO:
@@ -1595,29 +1609,52 @@ em_media_change(struct ifnet *ifp)
 		break;
 
 	case IFM_100_TX:
+		if (IFM_OPTIONS(ifm->ifm_media) & IFM_FDX) {
+			adapter->hw.mac.forced_speed_duplex = ADVERTISE_100_FULL;
+		} else {
+			if (IFM_OPTIONS(ifm->ifm_media) &
+			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
+				if (bootverbose) {
+					if_printf(ifp, "Flow control is not "
+					    "allowed for half-duplex\n");
+				}
+				return EINVAL;
+			}
+			adapter->hw.mac.forced_speed_duplex = ADVERTISE_100_HALF;
+		}
 		adapter->hw.mac.autoneg = FALSE;
 		adapter->hw.phy.autoneg_advertised = 0;
-		if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX)
-			adapter->hw.mac.forced_speed_duplex = ADVERTISE_100_FULL;
-		else
-			adapter->hw.mac.forced_speed_duplex = ADVERTISE_100_HALF;
 		break;
 
 	case IFM_10_T:
+		if (IFM_OPTIONS(ifm->ifm_media) & IFM_FDX) {
+			adapter->hw.mac.forced_speed_duplex = ADVERTISE_10_FULL;
+		} else {
+			if (IFM_OPTIONS(ifm->ifm_media) &
+			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
+				if (bootverbose) {
+					if_printf(ifp, "Flow control is not "
+					    "allowed for half-duplex\n");
+				}
+				return EINVAL;
+			}
+			adapter->hw.mac.forced_speed_duplex = ADVERTISE_10_HALF;
+		}
 		adapter->hw.mac.autoneg = FALSE;
 		adapter->hw.phy.autoneg_advertised = 0;
-		if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX)
-			adapter->hw.mac.forced_speed_duplex = ADVERTISE_10_FULL;
-		else
-			adapter->hw.mac.forced_speed_duplex = ADVERTISE_10_HALF;
 		break;
 
 	default:
-		if_printf(ifp, "Unsupported media type\n");
-		break;
+		if (bootverbose) {
+			if_printf(ifp, "Unsupported media type %d\n",
+			    IFM_SUBTYPE(ifm->ifm_media));
+		}
+		return EINVAL;
 	}
+	adapter->ifm_flowctrl = ifm->ifm_media & IFM_ETH_FCMASK;
 
-	em_init(adapter);
+	if (ifp->if_flags & IFF_RUNNING)
+		em_init(adapter);
 
 	return (0);
 }
@@ -2101,10 +2138,26 @@ em_update_link_status(struct adapter *adapter)
 			E1000_WRITE_REG(hw, E1000_TARC(0), tarc0);
 		}
 		if (bootverbose) {
-			device_printf(dev, "Link is up %d Mbps %s\n",
+			char flowctrl[IFM_ETH_FC_STRLEN];
+
+			e1000_fc2str(hw->fc.current_mode, flowctrl,
+			    sizeof(flowctrl));
+			device_printf(dev, "Link is up %d Mbps %s, "
+			    "Flow control: %s\n",
 			    adapter->link_speed,
-			    ((adapter->link_duplex == FULL_DUPLEX) ?
-			    "Full Duplex" : "Half Duplex"));
+			    (adapter->link_duplex == FULL_DUPLEX) ?
+			    "Full Duplex" : "Half Duplex",
+			    flowctrl);
+		}
+		if (adapter->ifm_flowctrl & IFM_ETH_FORCEPAUSE) {
+			enum e1000_fc_mode fc;
+
+			fc = e1000_ifmedia2fc(adapter->ifm_flowctrl);
+			if (hw->fc.current_mode != fc) {
+				hw->fc.requested_mode = fc;
+				hw->fc.current_mode = fc;
+				e1000_force_mac_fc(hw);
+			}
 		}
 		adapter->link_active = 1;
 		adapter->smartspeed = 0;
@@ -2455,15 +2508,17 @@ em_reset(struct adapter *adapter)
 
 	adapter->hw.fc.send_xon = TRUE;
 
-	adapter->hw.fc.requested_mode = adapter->flow_ctrl;
+	adapter->hw.fc.requested_mode = e1000_ifmedia2fc(adapter->ifm_flowctrl);
 
 	/*
 	 * Device specific overrides/settings
 	 */
 	switch (adapter->hw.mac.type) {
 	case e1000_pchlan:
-		/* Workaround: no TX flow ctrl for PCH */
-		adapter->hw.fc.requested_mode = e1000_fc_rx_pause;
+		KASSERT(adapter->hw.fc.requested_mode == e1000_fc_rx_pause ||
+		    adapter->hw.fc.requested_mode == e1000_fc_none,
+		    ("unsupported flow control on PCH %d",
+		     adapter->hw.fc.requested_mode));
 		adapter->hw.fc.pause_time = 0xFFFF; /* override */
 		if (adapter->arpcom.ac_if.if_mtu > ETHERMTU) {
 			adapter->hw.fc.high_water = 0x3500;
@@ -2572,7 +2627,6 @@ em_setup_ifp(struct adapter *adapter)
 			fiber_type = IFM_1000_LX;
 		ifmedia_add(&adapter->media, IFM_ETHER | fiber_type | IFM_FDX, 
 			    0, NULL);
-		ifmedia_add(&adapter->media, IFM_ETHER | fiber_type, 0, NULL);
 	} else {
 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_10_T, 0, NULL);
 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_10_T | IFM_FDX,
@@ -2584,12 +2638,11 @@ em_setup_ifp(struct adapter *adapter)
 		if (adapter->hw.phy.type != e1000_phy_ife) {
 			ifmedia_add(&adapter->media,
 				IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-			ifmedia_add(&adapter->media,
-				IFM_ETHER | IFM_1000_T, 0, NULL);
 		}
 	}
 	ifmedia_add(&adapter->media, IFM_ETHER | IFM_AUTO, 0, NULL);
-	ifmedia_set(&adapter->media, IFM_ETHER | IFM_AUTO);
+	ifmedia_set(&adapter->media, IFM_ETHER | IFM_AUTO |
+	    adapter->ifm_flowctrl);
 }
 
 
@@ -4089,7 +4142,6 @@ em_add_sysctl(struct adapter *adapter)
 {
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
-	int access;
 
 	ctx = device_get_sysctl_ctx(adapter->dev);
 	tree = device_get_sysctl_tree(adapter->dev);
@@ -4124,23 +4176,6 @@ em_add_sysctl(struct adapter *adapter)
 	    OID_AUTO, "wreg_tx_nsegs", CTLFLAG_RW,
 	    &adapter->tx_wreg_nsegs, 0,
 	    "# segments before write to hardware register");
-
-	access = CTLFLAG_RW;
-	if (adapter->hw.mac.type == e1000_pchlan) {
-		/*
-		 * Only pause reception is supported, so make this
-		 * sysctl read-only for PCH.
-		 */
-		access = CTLFLAG_RD;
-	}
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|access, adapter, 0,
-	    em_sysctl_flowctrl, "A",
-	    "flow control: "
-	    E1000_FC_STR_FULL ", "
-	    E1000_FC_STR_RX_PAUSE ", "
-	    E1000_FC_STR_TX_PAUSE ", "
-	    E1000_FC_STR_NONE);
 }
 
 static int
@@ -4425,13 +4460,4 @@ em_tso_setup(struct adapter *adapter, struct mbuf *mp,
 
 	adapter->next_avail_tx_desc = curr_txd;
 	return 1;
-}
-
-static int
-em_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
-{
-	struct adapter *adapter = arg1;
-
-	return e1000_sysctl_flowctrl(&adapter->arpcom.ac_if,
-	    &adapter->flow_ctrl, &adapter->hw, oidp, req);
 }

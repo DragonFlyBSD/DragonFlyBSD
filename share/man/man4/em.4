@@ -160,6 +160,26 @@ drivers support the following media options:
 Forces full-duplex operation
 .It Cm half-duplex
 Forces half-duplex operation.
+.It Cm rxpause
+Enable flow control PAUSE reception.
+This is only supported by
+.Cm autoselect
+and
+.Cm full-duplex
+mode.
+.It Cm txpause
+Enable flow control PAUSE transmission.
+This is only supported by
+.Cm autoselect
+and
+.Cm full-duplex
+mode.
+.It Cm forcepause
+Force flow control PAUSE operation as configured by
+.Cm rxpause
+and
+.Cm txpause
+media options.
 .El
 .Pp
 Only use
@@ -333,6 +353,20 @@ the driver assumes the interrupt could be shared.
 Setting this tunable to 1 allows the driver to
 perform certain optimization based on the knowledge
 that the interrupt is not shared.
+These tunables also applies to
+.Nm emx .
+.It Va hw.em.flow_ctrl Va hw.emY.flow_ctrl
+The default flow control settings.
+Supported values are:
+rxpause (only enable PAUSE reception),
+txpause (only enable PAUSE transmission),
+full (enable PAUSE reception and transmission),
+none (disable flow control PAUSE operation),
+force-rxpause (force PAUSE reception),
+force-txpause (force PAUSE transmission),
+force-full (forcefully enable PAUSE reception and transmission),
+force-none (forcefully disable flow control PAUSE operation).
+Default is rxpause.
 These tunables also applies to
 .Nm emx .
 .It Va hw.emx.rxr Va hw.emxY.rxr

@@ -260,7 +260,6 @@ static int	emx_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
-static int	emx_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
 static void	emx_add_sysctl(struct emx_softc *);
 
 static void	emx_serialize_skipmain(struct emx_softc *);
@@ -312,7 +311,7 @@ static int	emx_debug_sbp = 0;
 static int	emx_82573_workaround = 1;
 static int	emx_msi_enable = 1;
 
-static char	emx_flowctrl[E1000_FC_STRLEN] = E1000_FC_STR_RX_PAUSE;
+static char	emx_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_RXPAUSE;
 
 TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
@@ -436,7 +435,7 @@ emx_attach(device_t dev)
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
-	char flowctrl[E1000_FC_STRLEN];
+	char flowctrl[IFM_ETH_FC_STRLEN];
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
@@ -486,7 +485,8 @@ emx_attach(device_t dev)
 
 	KKASSERT(i == EMX_NSERIALIZE);
 
-	ifmedia_init(&sc->media, IFM_IMASK, emx_media_change, emx_media_status);
+	ifmedia_init(&sc->media, IFM_IMASK | IFM_ETH_FCMASK,
+	    emx_media_change, emx_media_status);
 	callout_init_mp(&sc->timer);
 
 	sc->dev = sc->osdep.dev = dev;
@@ -834,7 +834,7 @@ emx_attach(device_t dev)
 	/* Setup flow control. */
 	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
 	    emx_flowctrl);
-	sc->flow_ctrl = e1000_str2fc(flowctrl);
+	sc->ifm_flowctrl = ifmedia_str2ethfc(flowctrl);
 
 	/* Setup OS specific network interface */
 	emx_setup_ifp(sc);
@@ -1483,10 +1483,14 @@ emx_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!sc->link_active)
+	if (!sc->link_active) {
+		ifmr->ifm_active |= IFM_NONE;
 		return;
+	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
+	if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
+		ifmr->ifm_active |= IFM_ETH_FORCEPAUSE;
 
 	if (sc->hw.phy.media_type == e1000_media_type_fiber ||
 	    sc->hw.phy.media_type == e1000_media_type_internal_serdes) {
@@ -1509,6 +1513,8 @@ emx_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 		else
 			ifmr->ifm_active |= IFM_HDX;
 	}
+	if (ifmr->ifm_active & IFM_FDX)
+		ifmr->ifm_active |= e1000_fc2ifmedia(sc->hw.fc.current_mode);
 }
 
 static int
@@ -1528,7 +1534,6 @@ emx_media_change(struct ifnet *ifp)
 		sc->hw.phy.autoneg_advertised = EMX_AUTONEG_ADV_DEFAULT;
 		break;
 
-	case IFM_1000_LX:
 	case IFM_1000_SX:
 	case IFM_1000_T:
 		sc->hw.mac.autoneg = EMX_DO_AUTO_NEG;
@@ -1536,29 +1541,52 @@ emx_media_change(struct ifnet *ifp)
 		break;
 
 	case IFM_100_TX:
+		if (IFM_OPTIONS(ifm->ifm_media) & IFM_FDX) {
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_FULL;
+		} else {
+			if (IFM_OPTIONS(ifm->ifm_media) &
+			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
+				if (bootverbose) {
+					if_printf(ifp, "Flow control is not "
+					    "allowed for half-duplex\n");
+				}
+				return EINVAL;
+			}
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_HALF;
+		}
 		sc->hw.mac.autoneg = FALSE;
 		sc->hw.phy.autoneg_advertised = 0;
-		if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX)
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_FULL;
-		else
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_100_HALF;
 		break;
 
 	case IFM_10_T:
+		if (IFM_OPTIONS(ifm->ifm_media) & IFM_FDX) {
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_FULL;
+		} else {
+			if (IFM_OPTIONS(ifm->ifm_media) &
+			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
+				if (bootverbose) {
+					if_printf(ifp, "Flow control is not "
+					    "allowed for half-duplex\n");
+				}
+				return EINVAL;
+			}
+			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_HALF;
+		}
 		sc->hw.mac.autoneg = FALSE;
 		sc->hw.phy.autoneg_advertised = 0;
-		if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX)
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_FULL;
-		else
-			sc->hw.mac.forced_speed_duplex = ADVERTISE_10_HALF;
 		break;
 
 	default:
-		if_printf(ifp, "Unsupported media type\n");
-		break;
+		if (bootverbose) {
+			if_printf(ifp, "Unsupported media type %d\n",
+			    IFM_SUBTYPE(ifm->ifm_media));
+		}
+		return EINVAL;
 	}
+	sc->ifm_flowctrl = ifm->ifm_media & IFM_ETH_FCMASK;
 
-	emx_init(sc);
+	if (ifp->if_flags & IFF_RUNNING)
+		emx_init(sc);
 
 	return (0);
 }
@@ -1844,10 +1872,26 @@ emx_update_link_status(struct emx_softc *sc)
 			E1000_WRITE_REG(hw, E1000_TARC(0), tarc0);
 		}
 		if (bootverbose) {
-			device_printf(dev, "Link is up %d Mbps %s\n",
+			char flowctrl[IFM_ETH_FC_STRLEN];
+
+			e1000_fc2str(hw->fc.current_mode, flowctrl,
+			    sizeof(flowctrl));
+			device_printf(dev, "Link is up %d Mbps %s, "
+			    "Flow control: %s\n",
 			    sc->link_speed,
-			    ((sc->link_duplex == FULL_DUPLEX) ?
-			    "Full Duplex" : "Half Duplex"));
+			    (sc->link_duplex == FULL_DUPLEX) ?
+			    "Full Duplex" : "Half Duplex",
+			    flowctrl);
+		}
+		if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE) {
+			enum e1000_fc_mode fc;
+
+			fc = e1000_ifmedia2fc(sc->ifm_flowctrl);
+			if (hw->fc.current_mode != fc) {
+				hw->fc.requested_mode = fc;
+				hw->fc.current_mode = fc;
+				e1000_force_mac_fc(hw);
+			}
 		}
 		sc->link_active = 1;
 		sc->smartspeed = 0;
@@ -1981,7 +2025,7 @@ emx_reset(struct emx_softc *sc)
 
 	sc->hw.fc.pause_time = EMX_FC_PAUSE_TIME;
 	sc->hw.fc.send_xon = TRUE;
-	sc->hw.fc.requested_mode = sc->flow_ctrl;
+	sc->hw.fc.requested_mode = e1000_ifmedia2fc(sc->ifm_flowctrl);
 
 	/*
 	 * Device specific overrides/settings
@@ -2085,7 +2129,6 @@ emx_setup_ifp(struct emx_softc *sc)
 	    sc->hw.phy.media_type == e1000_media_type_internal_serdes) {
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_SX | IFM_FDX,
 			    0, NULL);
-		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_SX, 0, NULL);
 	} else {
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T, 0, NULL);
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T | IFM_FDX,
@@ -2096,12 +2139,10 @@ emx_setup_ifp(struct emx_softc *sc)
 		if (sc->hw.phy.type != e1000_phy_ife) {
 			ifmedia_add(&sc->media,
 				IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-			ifmedia_add(&sc->media,
-				IFM_ETHER | IFM_1000_T, 0, NULL);
 		}
 	}
 	ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
-	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
+	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO | sc->ifm_flowctrl);
 }
 
 /*
@@ -3707,15 +3748,6 @@ emx_add_sysctl(struct emx_softc *sc)
 	    OID_AUTO, "tx_ring_inuse", CTLFLAG_RD, &sc->tx_ring_inuse, 0,
 	    "# of TX rings used");
 
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-	    OID_AUTO, "flow_ctrl", CTLTYPE_STRING|CTLFLAG_RW, sc, 0,
-	    emx_sysctl_flowctrl, "A",
-	    "flow control: "
-	    E1000_FC_STR_FULL ", "
-	    E1000_FC_STR_RX_PAUSE ", "
-	    E1000_FC_STR_TX_PAUSE ", "
-	    E1000_FC_STR_NONE);
-
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
@@ -4343,13 +4375,4 @@ emx_get_txring_inuse(const struct emx_softc *sc, boolean_t polling)
 		return sc->tx_ring_cnt;
 	else
 		return 1;
-}
-
-static int
-emx_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
-{
-	struct emx_softc *sc = arg1;
-
-	return e1000_sysctl_flowctrl(&sc->arpcom.ac_if, &sc->flow_ctrl, &sc->hw,
-	    oidp, req);
 }

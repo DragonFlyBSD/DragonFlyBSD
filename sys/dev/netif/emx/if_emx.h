@@ -392,7 +392,7 @@ struct emx_softc {
 	int			rx_ring_cnt;
 	struct emx_rxdata	rx_data[EMX_NRX_RING];
 
-	enum e1000_fc_mode	flow_ctrl;
+	int			ifm_flowctrl;
 
 	/* Misc stats maintained by the driver */
 	unsigned long		rx_overruns;
