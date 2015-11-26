@@ -111,6 +111,30 @@ due to the number of MSI-X vectors is 64,
 at most 16 reception queues and 32 transmission queues will be enabled
 under MSI-X mode.
 .Pp
+The
+.Nm
+driver supports the following media types:
+.Bl -tag -width ".Cm autoselect"
+.It Cm autoselect
+Enables auto-negotiation for speed and duplex.
+.El
+.Pp
+The
+.Nm
+driver supports the following media options:
+.Bl -tag -width ".Cm forcepause"
+.It Cm rxpause
+Enable flow control PAUSE reception.
+.It Cm txpause
+Enable flow control PAUSE transmission.
+.It Cm forcepause
+Force flow control PAUSE operation as configured by
+.Cm rxpause
+and
+.Cm txpause
+media options.
+.El
+.Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
 The
@@ -259,6 +283,18 @@ enabled and must be less than the power of 2 number of CPUs.
 By default,
 this driver does not allow "unsupported" SFP modules.
 This behavior can be changed by setting this tunable to 1.
+.It Va hw.ix.flow_ctrl Va hw.ixY.flow_ctrl
+The default flow control settings.
+Supported values are:
+rxpause (only enable PAUSE reception),
+txpause (only enable PAUSE transmission),
+full (enable PAUSE reception and transmission),
+none (disable flow control PAUSE operation),
+force-rxpause (force PAUSE reception),
+force-txpause (force PAUSE transmission),
+force-full (forcefully enable PAUSE reception and transmission),
+force-none (forcefully disable flow control PAUSE operation).
+Default is full.
 .El
 .Sh MIB Variables
 A number of per-interface variables are implemented in the

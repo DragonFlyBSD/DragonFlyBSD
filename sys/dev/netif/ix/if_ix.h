@@ -303,7 +303,7 @@ struct ix_softc {
 	int			timer_cpuid;
 
 	uint32_t		optics;
-	uint32_t		fc;		/* local flow ctrl setting */
+	int			ifm_flowctrl;	/* IFM_ETH_ */
 	uint32_t		link_speed;
 	bool			link_up;
 	boolean_t		sfp_probe;	/* plyggable optics */

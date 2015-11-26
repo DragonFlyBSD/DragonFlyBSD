@@ -160,7 +160,6 @@ static int	ix_sysctl_rxtx_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_rx_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_tx_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_sts_intr_rate(SYSCTL_HANDLER_ARGS);
-static int	ix_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
 #ifdef foo
 static int	ix_sysctl_advspeed(SYSCTL_HANDLER_ARGS);
 #endif
@@ -185,6 +184,9 @@ static void	ix_set_promisc(struct ix_softc *);
 static void	ix_set_multi(struct ix_softc *);
 static void	ix_set_vlan(struct ix_softc *);
 static uint8_t	*ix_mc_array_itr(struct ixgbe_hw *, uint8_t **, uint32_t *);
+static enum ixgbe_fc_mode ix_ifmedia2fc(int);
+static const char *ix_ifmedia2str(int);
+static const char *ix_fc2str(enum ixgbe_fc_mode);
 
 static int	ix_get_txring_inuse(const struct ix_softc *, boolean_t);
 static void	ix_init_tx_ring(struct ix_tx_ring *);
@@ -277,6 +279,8 @@ static int	ix_txd = IX_PERF_TXD;
 static int	ix_rxd = IX_PERF_RXD;
 static int	ix_unsupported_sfp = 0;
 
+static char	ix_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_FULL;
+
 TUNABLE_INT("hw.ix.msi.enable", &ix_msi_enable);
 TUNABLE_INT("hw.ix.msix.enable", &ix_msix_enable);
 TUNABLE_INT("hw.ix.msix.agg_rxtx", &ix_msix_agg_rxtx);
@@ -285,6 +289,7 @@ TUNABLE_INT("hw.ix.txr", &ix_txr);
 TUNABLE_INT("hw.ix.txd", &ix_txd);
 TUNABLE_INT("hw.ix.rxd", &ix_rxd);
 TUNABLE_INT("hw.ix.unsupported_sfp", &ix_unsupported_sfp);
+TUNABLE_STR("hw.ix.flow_ctrl", ix_flowctrl, sizeof(ix_flowctrl));
 
 /*
  * Smart speed setting, default to on.  This only works
@@ -323,13 +328,14 @@ ix_attach(device_t dev)
 #ifdef IFPOLL_ENABLE
 	int offset, offset_def;
 #endif
+	char flowctrl[IFM_ETH_FC_STRLEN];
 
 	sc->dev = sc->osdep.dev = dev;
 	hw = &sc->hw;
 
 	if_initname(&sc->arpcom.ac_if, device_get_name(dev),
 	    device_get_unit(dev));
-	ifmedia_init(&sc->media, IFM_IMASK,
+	ifmedia_init(&sc->media, IFM_IMASK | IFM_ETH_FCMASK,
 	    ix_media_change, ix_media_status);
 
 	/* Save frame size */
@@ -496,6 +502,11 @@ ix_attach(device_t dev)
 	/* Detect and set physical type */
 	ix_setup_optics(sc);
 
+	/* Get default flow control settings */
+	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
+	    ix_flowctrl);
+	sc->ifm_flowctrl = ifmedia_str2ethfc(flowctrl);
+
 	/* Setup OS specific network interface */
 	ix_setup_ifp(sc);
 
@@ -515,9 +526,6 @@ ix_attach(device_t dev)
 	 * Check PCIE slot type/speed/width
 	 */
 	ix_slot_info(sc);
-
-	/* Set an initial default flow control value */
-	sc->fc = ixgbe_fc_full;
 
 	/* Let hardware know driver is loaded */
 	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
@@ -1006,7 +1014,11 @@ ix_init(void *xsc)
 		tmp = IXGBE_LOW_DV(frame);
 	hw->fc.low_water[0] = IXGBE_BT2KB(tmp);
 
-	hw->fc.requested_mode = sc->fc;
+	hw->fc.requested_mode = ix_ifmedia2fc(sc->ifm_flowctrl);
+	if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
+		hw->fc.disable_fc_autoneg = TRUE;
+	else
+		hw->fc.disable_fc_autoneg = FALSE;
 	hw->fc.pause_time = IX_FC_PAUSE;
 	hw->fc.send_xon = TRUE;
 
@@ -1110,6 +1122,23 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 		break;
 	default:
 		ifmr->ifm_active |= IFM_NONE;
+		return;
+	}
+
+	if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
+		ifmr->ifm_active |= IFM_ETH_FORCEPAUSE;
+
+	switch (sc->hw.fc.current_mode) {
+	case ixgbe_fc_full:
+		ifmr->ifm_active |= IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE;
+		break;
+	case ixgbe_fc_rx_pause:
+		ifmr->ifm_active |= IFM_ETH_RXPAUSE;
+		break;
+	case ixgbe_fc_tx_pause:
+		ifmr->ifm_active |= IFM_ETH_TXPAUSE;
+		break;
+	default:
 		break;
 	}
 }
@@ -1134,6 +1163,10 @@ ix_media_change(struct ifnet *ifp)
 		if_printf(ifp, "Only auto media type\n");
 		return EINVAL;
 	}
+	sc->ifm_flowctrl = ifm->ifm_media & IFM_ETH_FCMASK;
+
+	if (ifp->if_flags & IFF_RUNNING)
+		ix_init(sc);
 	return 0;
 }
 
@@ -1405,10 +1438,30 @@ ix_update_link_status(struct ix_softc *sc)
 				    sc->link_speed == 128 ? 10 : 1,
 				    "Full Duplex");
 			}
-			sc->link_active = TRUE;
 
-			/* Update any Flow Control changes */
+			/*
+			 * Update any Flow Control changes
+			 */
 			ixgbe_fc_enable(&sc->hw);
+			/* MUST after ixgbe_fc_enable() */
+			if (sc->rx_ring_inuse > 1) {
+				switch (sc->hw.fc.current_mode) {
+				case ixgbe_fc_rx_pause:
+				case ixgbe_fc_tx_pause:
+				case ixgbe_fc_full:
+					ix_disable_rx_drop(sc);
+					break;
+
+				case ixgbe_fc_none:
+					ix_enable_rx_drop(sc);
+					break;
+
+				default:
+					break;
+				}
+			}
+
+			sc->link_active = TRUE;
 
 			ifp->if_link_state = LINK_STATE_UP;
 			if_link_state_change(ifp);
@@ -1597,7 +1650,7 @@ ix_setup_ifp(struct ix_softc *sc)
 	}
 	if (sc->optics != IFM_AUTO)
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
-	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
+	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO | sc->ifm_flowctrl);
 }
 
 static boolean_t
@@ -2413,27 +2466,21 @@ ix_init_rx_unit(struct ix_softc *sc)
 		srrctl |= IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
 		if (sc->rx_ring_inuse > 1) {
 			/* See the commend near ix_enable_rx_drop() */
-			switch (sc->fc) {
-			case ixgbe_fc_rx_pause:
-			case ixgbe_fc_tx_pause:
-			case ixgbe_fc_full:
+			if (sc->ifm_flowctrl &
+			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
 				srrctl &= ~IXGBE_SRRCTL_DROP_EN;
 				if (i == 0 && bootverbose) {
-					if_printf(ifp, "flow control %d, "
-					    "disable RX drop\n", sc->fc);
+					if_printf(ifp, "flow control %s, "
+					    "disable RX drop\n",
+					    ix_ifmedia2str(sc->ifm_flowctrl));
 				}
-				break;
-
-			case ixgbe_fc_none:
+			} else {
 				srrctl |= IXGBE_SRRCTL_DROP_EN;
 				if (i == 0 && bootverbose) {
-					if_printf(ifp, "flow control %d, "
-					    "enable RX drop\n", sc->fc);
+					if_printf(ifp, "flow control %s, "
+					    "enable RX drop\n",
+					    ix_ifmedia2str(sc->ifm_flowctrl));
 				}
-				break;
-
-			default:
-				break;
 			}
 		}
 		IXGBE_WRITE_REG(hw, IXGBE_SRRCTL(i), srrctl);
@@ -3453,7 +3500,8 @@ ix_enable_rx_drop(struct ix_softc *sc)
 
 	if (bootverbose) {
 		if_printf(&sc->arpcom.ac_if,
-		    "flow control %d, enable RX drop\n", sc->fc);
+		    "flow control %s, enable RX drop\n",
+		    ix_fc2str(sc->hw.fc.current_mode));
 	}
 
 	for (i = 0; i < sc->rx_ring_inuse; ++i) {
@@ -3472,7 +3520,8 @@ ix_disable_rx_drop(struct ix_softc *sc)
 
 	if (bootverbose) {
 		if_printf(&sc->arpcom.ac_if,
-		    "flow control %d, disable RX drop\n", sc->fc);
+		    "flow control %s, disable RX drop\n",
+		    ix_fc2str(sc->hw.fc.current_mode));
 	}
 
 	for (i = 0; i < sc->rx_ring_inuse; ++i) {
@@ -3481,66 +3530,6 @@ ix_disable_rx_drop(struct ix_softc *sc)
 		srrctl &= ~IXGBE_SRRCTL_DROP_EN;
 		IXGBE_WRITE_REG(hw, IXGBE_SRRCTL(i), srrctl);
 	}
-}
-
-static int
-ix_sysctl_flowctrl(SYSCTL_HANDLER_ARGS)
-{
-	struct ix_softc *sc = (struct ix_softc *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, fc;
-
-	fc = sc->fc;
-	error = sysctl_handle_int(oidp, &fc, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-
-	switch (fc) {
-	case ixgbe_fc_rx_pause:
-	case ixgbe_fc_tx_pause:
-	case ixgbe_fc_full:
-	case ixgbe_fc_none:
-		break;
-	default:
-		return EINVAL;
-	}
-
-	ifnet_serialize_all(ifp);
-
-	/* Don't bother if it's not changed */
-	if (sc->fc == fc)
-		goto done;
-	sc->fc = fc;
-
-	/* Don't do anything, if the interface is not up yet */
-	if ((ifp->if_flags & IFF_RUNNING) == 0)
-		goto done;
-
-	if (sc->rx_ring_inuse > 1) {
-		switch (sc->fc) {
-		case ixgbe_fc_rx_pause:
-		case ixgbe_fc_tx_pause:
-		case ixgbe_fc_full:
-			ix_disable_rx_drop(sc);
-			break;
-
-		case ixgbe_fc_none:
-			ix_enable_rx_drop(sc);
-			break;
-
-		default:
-			panic("leading fc check mismatch");
-		}
-	}
-
-	sc->hw.fc.requested_mode = sc->fc;
-	/* Don't autoneg if forcing a value */
-	sc->hw.fc.disable_fc_autoneg = TRUE;
-	ixgbe_fc_enable(&sc->hw);
-
-done:
-	ifnet_deserialize_all(ifp);
-	return error;
 }
 
 #ifdef foo
@@ -4063,11 +4052,6 @@ do { \
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_pkts, "RXed packets");
 	}
 #endif
-
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-	    OID_AUTO, "flowctrl", CTLTYPE_INT | CTLFLAG_RW,
-	    sc, 0, ix_sysctl_flowctrl, "I",
-	    "flow control, 0 - off, 1 - rx pause, 2 - tx pause, 3 - full");
 
 #ifdef foo
 	/*
@@ -4969,3 +4953,61 @@ ix_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
 }
 
 #endif /* IFPOLL_ENABLE */
+
+static enum ixgbe_fc_mode
+ix_ifmedia2fc(int ifm)
+{
+	int fc_opt = ifm & (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE);
+
+	switch (fc_opt) {
+	case (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE):
+		return ixgbe_fc_full;
+
+	case IFM_ETH_RXPAUSE:
+		return ixgbe_fc_rx_pause;
+
+	case IFM_ETH_TXPAUSE:
+		return ixgbe_fc_tx_pause;
+
+	default:
+		return ixgbe_fc_none;
+	}
+}
+
+static const char *
+ix_ifmedia2str(int ifm)
+{
+	int fc_opt = ifm & (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE);
+
+	switch (fc_opt) {
+	case (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE):
+		return IFM_ETH_FC_FULL;
+
+	case IFM_ETH_RXPAUSE:
+		return IFM_ETH_FC_RXPAUSE;
+
+	case IFM_ETH_TXPAUSE:
+		return IFM_ETH_FC_TXPAUSE;
+
+	default:
+		return IFM_ETH_FC_NONE;
+	}
+}
+
+static const char *
+ix_fc2str(enum ixgbe_fc_mode fc)
+{
+	switch (fc) {
+	case ixgbe_fc_full:
+		return IFM_ETH_FC_FULL;
+
+	case ixgbe_fc_rx_pause:
+		return IFM_ETH_FC_RXPAUSE;
+
+	case ixgbe_fc_tx_pause:
+		return IFM_ETH_FC_TXPAUSE;
+
+	default:
+		return IFM_ETH_FC_NONE;
+	}
+}
