@@ -156,7 +156,6 @@ __ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow, bo
 		 * a count and return -ALREADY.
 		 */
 		else if (lock->owner == curthread) {
-			KKASSERT(lock->ctx == ctx);
 			lock->acquired += 1;
 			err = -EALREADY;
 			break;
