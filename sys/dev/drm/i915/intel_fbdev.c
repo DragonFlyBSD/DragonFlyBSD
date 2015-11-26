@@ -198,13 +198,13 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->par = helper;
 #endif
 
+	fb = &ifbdev->fb->base;
+
 #ifdef __DragonFly__
 	vga_dev = device_get_parent(dev->dev);
-	info = kmalloc(sizeof(struct fb_info), M_DRM, M_WAITOK | M_ZERO);
 	info->width = sizes->fb_width;
 	info->height = sizes->fb_height;
-	info->stride =
-	    ALIGN(sizes->surface_width * ((sizes->surface_bpp + 7) / 8), 64);
+	info->stride = fb->pitches[0];
 	info->depth = sizes->surface_bpp;
 	info->paddr = dev_priv->gtt.mappable_base + i915_gem_obj_ggtt_offset(obj);
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
@@ -213,8 +213,6 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		sizes->surface_height * info->stride,
 		VM_MEMATTR_WRITE_COMBINING);
 #endif
-
-	fb = &ifbdev->fb->base;
 
 	ifbdev->helper.fb = fb;
 	ifbdev->helper.fbdev = info;
