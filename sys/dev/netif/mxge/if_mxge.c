@@ -2432,17 +2432,17 @@ static struct mxge_media_type mxge_xfp_media_types[] = {
 	{IFM_10G_CX4,	0x7f, 		"10GBASE-CX4 (module)"},
 	{IFM_10G_SR, 	(1 << 7),	"10GBASE-SR"},
 	{IFM_10G_LR, 	(1 << 6),	"10GBASE-LR"},
-	{0,		(1 << 5),	"10GBASE-ER"},
+	{IFM_NONE,	(1 << 5),	"10GBASE-ER"},
 	{IFM_10G_LRM,	(1 << 4),	"10GBASE-LRM"},
-	{0,		(1 << 3),	"10GBASE-SW"},
-	{0,		(1 << 2),	"10GBASE-LW"},
-	{0,		(1 << 1),	"10GBASE-EW"},
-	{0,		(1 << 0),	"Reserved"}
+	{IFM_NONE,	(1 << 3),	"10GBASE-SW"},
+	{IFM_NONE,	(1 << 2),	"10GBASE-LW"},
+	{IFM_NONE,	(1 << 1),	"10GBASE-EW"},
+	{IFM_NONE,	(1 << 0),	"Reserved"}
 };
 
 static struct mxge_media_type mxge_sfp_media_types[] = {
 	{IFM_10G_TWINAX,      0,	"10GBASE-Twinax"},
-	{0,		(1 << 7),	"Reserved"},
+	{IFM_NONE,	(1 << 7),	"Reserved"},
 	{IFM_10G_LRM,	(1 << 6),	"10GBASE-LRM"},
 	{IFM_10G_LR, 	(1 << 5),	"10GBASE-LR"},
 	{IFM_10G_SR,	(1 << 4),	"10GBASE-SR"},
@@ -2452,10 +2452,19 @@ static struct mxge_media_type mxge_sfp_media_types[] = {
 static void
 mxge_media_set(mxge_softc_t *sc, int media_type)
 {
+	if (media_type == IFM_NONE)
+		return;
+
 	ifmedia_add(&sc->media, IFM_ETHER | IFM_FDX | media_type, 0, NULL);
 	ifmedia_set(&sc->media, IFM_ETHER | IFM_FDX | media_type);
 	sc->current_media = media_type;
-	sc->media.ifm_media = sc->media.ifm_cur->ifm_media;
+}
+
+static void
+mxge_media_unset(mxge_softc_t *sc)
+{
+	ifmedia_removeall(&sc->media);
+	sc->current_media = IFM_NONE;
 }
 
 static void
@@ -2464,8 +2473,7 @@ mxge_media_init(mxge_softc_t *sc)
 	const char *ptr;
 	int i;
 
-	ifmedia_removeall(&sc->media);
-	mxge_media_set(sc, IFM_AUTO);
+	mxge_media_unset(sc);
 
 	/* 
 	 * Parse the product code to deterimine the interface type
@@ -2498,10 +2506,13 @@ mxge_media_init(mxge_softc_t *sc)
 	} else if (*ptr == 'R') {
 		/* -R is XFP */
 		sc->connector = MXGE_XFP;
+		/* NOTE: ifmedia will be installed later */
 	} else if (*ptr == 'S' || *(ptr +1) == 'S') {
 		/* -S or -2S is SFP+ */
 		sc->connector = MXGE_SFP;
+		/* NOTE: ifmedia will be installed later */
 	} else {
+		sc->connector = MXGE_UNK;
 		if_printf(sc->ifp, "Unknown media type: %c\n", *ptr);
 	}
 }
@@ -2552,12 +2563,16 @@ mxge_media_probe(mxge_softc_t *sc)
 	cmd.data0 = 0;	 /* just fetch 1 byte, not all 256 */
 	cmd.data1 = byte;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_I2C_READ, &cmd);
-	if (err == MXGEFW_CMD_ERROR_I2C_FAILURE)
-		if_printf(sc->ifp, "failed to read XFP\n");
-	if (err == MXGEFW_CMD_ERROR_I2C_ABSENT)
-		if_printf(sc->ifp, "Type R/S with no XFP!?!?\n");
-	if (err != MXGEFW_CMD_OK)
+	if (err != MXGEFW_CMD_OK) {
+		if (err == MXGEFW_CMD_ERROR_I2C_FAILURE)
+			if_printf(sc->ifp, "failed to read XFP\n");
+		else if (err == MXGEFW_CMD_ERROR_I2C_ABSENT)
+			if_printf(sc->ifp, "Type R/S with no XFP!?!?\n");
+		else
+			if_printf(sc->ifp, "I2C read failed, err: %d", err);
+		mxge_media_unset(sc);
 		return;
+	}
 
 	/* Now we wait for the data to be cached */
 	cmd.data0 = byte;
@@ -2570,6 +2585,7 @@ mxge_media_probe(mxge_softc_t *sc)
 	if (err != MXGEFW_CMD_OK) {
 		if_printf(sc->ifp, "failed to read %s (%d, %dms)\n",
 		    cage_type, err, ms);
+		mxge_media_unset(sc);
 		return;
 	}
 
@@ -2579,7 +2595,7 @@ mxge_media_probe(mxge_softc_t *sc)
 			    mxge_media_types[0].name);
 		}
 		if (sc->current_media != mxge_media_types[0].flag) {
-			mxge_media_init(sc);
+			mxge_media_unset(sc);
 			mxge_media_set(sc, mxge_media_types[0].flag);
 		}
 		return;
@@ -2592,12 +2608,13 @@ mxge_media_probe(mxge_softc_t *sc)
 			}
 
 			if (sc->current_media != mxge_media_types[i].flag) {
-				mxge_media_init(sc);
+				mxge_media_unset(sc);
 				mxge_media_set(sc, mxge_media_types[i].flag);
 			}
 			return;
 		}
 	}
+	mxge_media_unset(sc);
 	if (bootverbose) {
 		if_printf(sc->ifp, "%s media 0x%x unknown\n", cage_type,
 		    cmd.data0);
@@ -3770,13 +3787,18 @@ mxge_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	mxge_softc_t *sc = ifp->if_softc;
 	
-
-	if (sc == NULL)
-		return;
 	ifmr->ifm_status = IFM_AVALID;
-	ifmr->ifm_active = IFM_ETHER | IFM_FDX;
-	ifmr->ifm_status |= sc->link_state ? IFM_ACTIVE : 0;
+	ifmr->ifm_active = IFM_ETHER;
+
+	if (!sc->link_state) {
+		ifmr->ifm_active |= IFM_NONE;
+		return;
+	}
+	ifmr->ifm_status |= IFM_ACTIVE;
+
 	ifmr->ifm_active |= sc->current_media;
+	if (sc->current_media != IFM_NONE)
+		ifmr->ifm_active |= IFM_FDX;
 }
 
 static int
@@ -3845,7 +3867,6 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		break;
 
 	case SIOCGIFMEDIA:
-		mxge_media_probe(sc);
 		err = ifmedia_ioctl(ifp, (struct ifreq *)data,
 		    &sc->media, command);
 		break;

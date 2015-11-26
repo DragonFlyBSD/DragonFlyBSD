@@ -205,6 +205,7 @@ struct mxge_softc {
 #define MXGE_XFP 1
 #define MXGE_SFP 2
 #define MXGE_QRF 3
+#define MXGE_UNK 4
 
 #define MXGE_HIGHPART_TO_U32(X) \
 	(sizeof (X) == 8) ? ((uint32_t)((uint64_t)(X) >> 32)) : (0)
