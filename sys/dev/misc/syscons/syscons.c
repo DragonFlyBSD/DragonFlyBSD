@@ -3322,7 +3322,6 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 
 	scp->xsize = scp->xpixel / scp->blk_width;
 	scp->ysize = scp->ypixel / scp->blk_height;
-	scp->xpad = scp->fbi->stride / 4 - scp->xsize * scp->blk_width;
     }
     sc_vtb_init(&scp->vtb, VTB_MEMORY, 0, 0, NULL, FALSE);
     sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, 0, 0, NULL, FALSE);

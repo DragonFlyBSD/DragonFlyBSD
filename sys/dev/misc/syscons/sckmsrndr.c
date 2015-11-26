@@ -226,8 +226,8 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 	if (from + count > scp->xsize * scp->ysize)
 		count = scp->xsize * scp->ysize - from;
 
+	p = draw_pos;
 	for (i = from; count-- > 0; i++) {
-		p = draw_pos;
 		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
 					scp->font_height]);
 
@@ -242,11 +242,10 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 		blit_blk(scp, char_data, scp->font_width, scp->font_height,
 			 p, pixel_size, scp->blk_width, scp->blk_height,
 			 line_width, fg, bg, BLIT_SET);
-		draw_pos += scp->blk_width * pixel_size;
+		p += scp->blk_width * pixel_size;
 		if ((i % scp->xsize) == scp->xsize - 1) {
-			draw_pos +=
-			    (scp->blk_height - 1) * line_width +
-			    scp->xpad * pixel_size;
+			draw_pos += scp->blk_height * line_width;
+			p = draw_pos;
 		}
 	}
 }

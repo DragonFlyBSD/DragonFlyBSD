@@ -844,7 +844,6 @@ sc_update_render(scr_stat *scp)
 		/* scp->xsize = scp->xpixel / scp->blk_width; total possible */
 		scp->xsize = desired_cols;
 		scp->ysize = scp->ypixel / scp->blk_height;
-		scp->xpad = scp->fbi->stride / 4 - scp->xsize * scp->blk_width;
 
 		kprintf("kms console: scale-to %dx%d cols=%d rows=%d\n",
 			scp->blk_width, scp->blk_height,
