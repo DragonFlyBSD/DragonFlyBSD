@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mxge.4,v 1.7.4.2.4.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd November 28, 2014
+.Dd November 26, 2015
 .Dt MXGE 4
 .Os
 .Sh NAME
@@ -76,6 +76,27 @@ All hardware requirements listed apply to use with
 .Dx .
 For further hardware information, see
 .Pa http://www.myricom.com .
+.Pp
+The
+.Nm
+driver supports the following media options:
+.Bl -tag -width ".Cm forcepause"
+.It Cm rxpause
+Enable flow control PAUSE reception.
+Due to hardware limitation,
+this will also enable PAUSE transmission.
+.It Cm txpause
+Enable flow control PAUSE transmission.
+Due to hardware limitation,
+this will also enable PAUSE reception.
+.It Cm forcepause
+Force flow control PAUSE operation as configured by
+.Cm rxpause
+and
+.Cm txpause
+media options.
+This media option can't be turned off.
+.El
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
@@ -147,9 +168,12 @@ The default value is 0.
 This value delays the generation of all interrupts in units of
 1 microsecond.
 The default value is 150.
-.It Va hw.mxge.flow_control_enabled
-Whether or not hardware flow control is enabled on the adapter.
-The default value is 1.
+.It Va hw.mxge.flow_ctrl
+The default flow control settings.
+Supported values are:
+force-full (forcefully enable PAUSE reception and transmission).
+force-none (forcefully disable flow control PAUSE operation).
+Default is force-full.
 .El
 .Sh MIB Variables
 A number of per-interface variables are implemented in the
@@ -157,7 +181,7 @@ A number of per-interface variables are implemented in the
 branch of the
 .Xr sysctl 3
 MIB.
-.Bl -tag -width "flow_control_enabled"
+.Bl -tag -width "firmware_version"
 .It Va firmware_version
 The version string of firmware that is currently loaded by the driver.
 It is read-only.
@@ -168,9 +192,6 @@ Flipping its value will cause chip reinitialization.
 .It Va intr_coal_delay
 See tunable
 .Va hw.mxge.intr_coal_delay .
-.It Va flow_control_enabled
-See tunable
-.Va hw.mxge.flow_control_enabled .
 .El
 .Sh SUPPORT
 For general information and support,

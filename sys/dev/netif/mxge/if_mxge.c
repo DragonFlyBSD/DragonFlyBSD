@@ -85,6 +85,8 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 #include <dev/netif/mxge/mcp_gen_header.h>
 #include <dev/netif/mxge/if_mxge_var.h>
 
+#define MXGE_IFM	(IFM_ETHER | IFM_FDX | IFM_ETH_FORCEPAUSE)
+
 #define MXGE_RX_SMALL_BUFLEN		(MHLEN - MXGEFW_PAD)
 #define MXGE_HWRSS_KEYLEN		16
 
@@ -93,7 +95,6 @@ static int mxge_nvidia_ecrc_enable = 1;
 static int mxge_force_firmware = 0;
 static int mxge_intr_coal_delay = MXGE_INTR_COAL_DELAY;
 static int mxge_deassert_wait = 1;
-static int mxge_flow_control = 1;
 static int mxge_ticks;
 static int mxge_num_slices = 0;
 static int mxge_always_promisc = 0;
@@ -106,13 +107,14 @@ static int mxge_multi_tx = 1;
  */
 static int mxge_use_rss = 0;
 
+static char mxge_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_FORCE_FULL;
+
 static const char *mxge_fw_unaligned = "mxge_ethp_z8e";
 static const char *mxge_fw_aligned = "mxge_eth_z8e";
 static const char *mxge_fw_rss_aligned = "mxge_rss_eth_z8e";
 static const char *mxge_fw_rss_unaligned = "mxge_rss_ethp_z8e";
 
 TUNABLE_INT("hw.mxge.num_slices", &mxge_num_slices);
-TUNABLE_INT("hw.mxge.flow_control_enabled", &mxge_flow_control);
 TUNABLE_INT("hw.mxge.intr_coal_delay", &mxge_intr_coal_delay);	
 TUNABLE_INT("hw.mxge.nvidia_ecrc_enable", &mxge_nvidia_ecrc_enable);	
 TUNABLE_INT("hw.mxge.force_firmware", &mxge_force_firmware);	
@@ -124,6 +126,7 @@ TUNABLE_INT("hw.mxge.multi_tx", &mxge_multi_tx);
 TUNABLE_INT("hw.mxge.use_rss", &mxge_use_rss);
 TUNABLE_INT("hw.mxge.msi.enable", &mxge_msi_enable);
 TUNABLE_INT("hw.mxge.msix.enable", &mxge_msix_enable);
+TUNABLE_STR("hw.mxge.flow_ctrl", mxge_flowctrl, sizeof(mxge_flowctrl));
 
 static int mxge_probe(device_t dev);
 static int mxge_attach(device_t dev);
@@ -1337,29 +1340,6 @@ mxge_change_intr_coal(SYSCTL_HANDLER_ARGS)
 }
 
 static int
-mxge_change_flow_control(SYSCTL_HANDLER_ARGS)
-{
-	mxge_softc_t *sc;
-	unsigned int enabled;
-	int err;
-
-	sc = arg1;
-	enabled = sc->pause;
-	err = sysctl_handle_int(oidp, &enabled, arg2, req);
-	if (err != 0)
-		return err;
-
-	if (enabled == sc->pause)
-		return 0;
-
-	ifnet_serialize_all(sc->ifp);
-	err = mxge_change_pause(sc, enabled);
-	ifnet_deserialize_all(sc->ifp);
-
-	return err;
-}
-
-static int
 mxge_handle_be32(SYSCTL_HANDLER_ARGS)
 {
 	int err;
@@ -1454,10 +1434,6 @@ mxge_add_sysctls(mxge_softc_t *sc)
 	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "throttle",
 	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, mxge_change_throttle, "I",
 	    "Transmit throttling");
-
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "flow_control_enabled",
-	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, mxge_change_flow_control, "I",
-	    "Interrupt coalescing delay in usecs");
 
 	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "use_rss",
 	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, mxge_change_use_rss, "I",
@@ -2452,11 +2428,17 @@ static struct mxge_media_type mxge_sfp_media_types[] = {
 static void
 mxge_media_set(mxge_softc_t *sc, int media_type)
 {
+	int fc_opt = 0;
+
 	if (media_type == IFM_NONE)
 		return;
 
-	ifmedia_add(&sc->media, IFM_ETHER | IFM_FDX | media_type, 0, NULL);
-	ifmedia_set(&sc->media, IFM_ETHER | IFM_FDX | media_type);
+	if (sc->pause)
+		fc_opt = IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE;
+
+	ifmedia_add(&sc->media, MXGE_IFM | media_type, 0, NULL);
+	ifmedia_set(&sc->media, MXGE_IFM | media_type | fc_opt);
+
 	sc->current_media = media_type;
 }
 
@@ -3754,7 +3736,20 @@ mxge_tick(void *arg)
 static int
 mxge_media_change(struct ifnet *ifp)
 {
-	return EINVAL;
+	mxge_softc_t *sc = ifp->if_softc;
+	const struct ifmedia *ifm = &sc->media;
+	int pause;
+
+	if (IFM_OPTIONS(ifm->ifm_media) & (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
+		if (sc->pause)
+			return 0;
+		pause = 1;
+	} else {
+		if (!sc->pause)
+			return 0;
+		pause = 0;
+	}
+	return mxge_change_pause(sc, pause);
 }
 
 static int
@@ -3797,8 +3792,11 @@ mxge_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_status |= IFM_ACTIVE;
 
 	ifmr->ifm_active |= sc->current_media;
-	if (sc->current_media != IFM_NONE)
-		ifmr->ifm_active |= IFM_FDX;
+	if (sc->current_media != IFM_NONE) {
+		ifmr->ifm_active |= MXGE_IFM;
+		if (sc->pause)
+			ifmr->ifm_active |= IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE;
+	}
 }
 
 static int
@@ -3867,6 +3865,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		break;
 
 	case SIOCGIFMEDIA:
+	case SIOCSIFMEDIA:
 		err = ifmedia_ioctl(ifp, (struct ifreq *)data,
 		    &sc->media, command);
 		break;
@@ -3881,6 +3880,8 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 static void
 mxge_fetch_tunables(mxge_softc_t *sc)
 {
+	int ifm;
+
 	sc->intr_coal_delay = mxge_intr_coal_delay;
 	if (sc->intr_coal_delay < 0 || sc->intr_coal_delay > (10 * 1000))
 		sc->intr_coal_delay = MXGE_INTR_COAL_DELAY;
@@ -3889,7 +3890,10 @@ mxge_fetch_tunables(mxge_softc_t *sc)
 	if (mxge_ticks == 0)
 		mxge_ticks = hz / 2;
 
-	sc->pause = mxge_flow_control;
+	ifm = ifmedia_str2ethfc(mxge_flowctrl);
+	if (ifm & (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE))
+		sc->pause = 1;
+
 	sc->use_rss = mxge_use_rss;
 
 	sc->throttle = mxge_throttle;
@@ -4236,7 +4240,10 @@ mxge_attach(device_t dev)
 	sc->ifp = ifp;
 	sc->dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	ifmedia_init(&sc->media, 0, mxge_media_change, mxge_media_status);
+
+	/* IFM_ETH_FORCEPAUSE can't be changed */
+	ifmedia_init(&sc->media, IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE,
+	    mxge_media_change, mxge_media_status);
 
 	lwkt_serialize_init(&sc->main_serialize);
 
