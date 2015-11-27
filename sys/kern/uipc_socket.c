@@ -294,7 +294,14 @@ static void
 sodealloc(struct socket *so)
 {
 	KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
-	/* TODO: assert accept queues are empty, after unix socket is fixed */
+
+#ifdef INVARIANTS
+	if (so->so_options & SO_ACCEPTCONN) {
+		KASSERT(TAILQ_EMPTY(&so->so_comp), ("so_comp is not empty"));
+		KASSERT(TAILQ_EMPTY(&so->so_incomp),
+		    ("so_incomp is not empty"));
+	}
+#endif
 
 	if (so->so_rcv.ssb_hiwat)
 		(void)chgsbsize(so->so_cred->cr_uidinfo,
