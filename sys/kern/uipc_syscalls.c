@@ -124,10 +124,6 @@ kern_socket(int domain, int type, int protocol, int *res)
 		fp->f_data = so;
 		if (oflags & O_CLOEXEC)
 			fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
-		if (fflags & FNONBLOCK) {
-			int tmp = 1;
-			fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
-		}
 		*res = fd;
 		fsetfd(fdp, fp, fd);
 	}
@@ -373,9 +369,7 @@ accepted:
 	nfp->f_flag = fflag;
 	nfp->f_ops = &socketops;
 	nfp->f_data = so;
-	/* Sync socket nonblocking/async state with file flags */
-	tmp = fflag & FNONBLOCK;
-	fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
+	/* Sync socket async state with file flags */
 	tmp = fflag & FASYNC;
 	fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, td->td_ucred, NULL);
 
@@ -710,14 +704,6 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	if (oflags & O_CLOEXEC) {
 		fdp->fd_files[fd1].fileflags |= UF_EXCLOSE;
 		fdp->fd_files[fd2].fileflags |= UF_EXCLOSE;
-	}
-	if (fflags & FNONBLOCK) {
-		int tmp;
-
-		tmp = 1;
-		fo_ioctl(fp1, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
-		tmp = 1;
-		fo_ioctl(fp2, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
 	}
 	fsetfd(fdp, fp1, fd1);
 	fsetfd(fdp, fp2, fd2);

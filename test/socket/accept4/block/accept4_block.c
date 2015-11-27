@@ -42,6 +42,9 @@ connect_client(int port, int ctrl_s)
 	if (connect(s, (const struct sockaddr *)&in, sizeof(in)) < 0)
 		err(1, "connect failed");
 
+	/* Make sure server side compltes the 3-way handshake */
+	sleep(1);
+
 	/* connect is done */
 	write(ctrl_s, &dummy, sizeof(dummy));
 
