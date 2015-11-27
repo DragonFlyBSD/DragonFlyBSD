@@ -3781,16 +3781,17 @@ static void
 mxge_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	mxge_softc_t *sc = ifp->if_softc;
-	
+
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!sc->link_state) {
-		ifmr->ifm_active |= IFM_NONE;
-		return;
-	}
-	ifmr->ifm_status |= IFM_ACTIVE;
+	if (sc->link_state)
+		ifmr->ifm_status |= IFM_ACTIVE;
 
+	/*
+	 * Autoselect is not supported, so the current media
+	 * should be delivered.
+	 */
 	ifmr->ifm_active |= sc->current_media;
 	if (sc->current_media != IFM_NONE) {
 		ifmr->ifm_active |= MXGE_IFM;
