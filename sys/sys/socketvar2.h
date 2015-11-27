@@ -116,6 +116,8 @@ soclrstate(struct socket *so, short state)
 static __inline void
 soreference(struct socket *so)
 {
+	/* 0->1 transition will never work */
+	KASSERT(so->so_refs > 0, ("invalid so_refs %d", so->so_refs));
 	atomic_add_int(&so->so_refs, 1);
 }
 
