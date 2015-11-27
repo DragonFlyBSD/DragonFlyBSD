@@ -1530,7 +1530,6 @@ static void
 em_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct adapter *adapter = ifp->if_softc;
-	u_char fiber_type = IFM_1000_SX;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -1540,16 +1539,21 @@ em_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_active = IFM_ETHER;
 
 	if (!adapter->link_active) {
-		ifmr->ifm_active |= IFM_NONE;
+		if (adapter->hw.mac.autoneg)
+			ifmr->ifm_active |= IFM_NONE;
+		else
+			ifmr->ifm_active = adapter->media.ifm_media;
 		return;
 	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
 	if (adapter->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
-		ifmr->ifm_active |= IFM_ETH_FORCEPAUSE;
+		ifmr->ifm_active |= adapter->ifm_flowctrl;
 
 	if (adapter->hw.phy.media_type == e1000_media_type_fiber ||
 	    adapter->hw.phy.media_type == e1000_media_type_internal_serdes) {
+		u_char fiber_type = IFM_1000_SX;
+
 		if (adapter->hw.mac.type == e1000_82545)
 			fiber_type = IFM_1000_LX;
 		ifmr->ifm_active |= fiber_type | IFM_FDX;

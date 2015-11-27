@@ -1048,13 +1048,16 @@ igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_active = IFM_ETHER;
 
 	if (!sc->link_active) {
-		ifmr->ifm_active |= IFM_NONE;
+		if (sc->hw.mac.autoneg)
+			ifmr->ifm_active |= IFM_NONE;
+		else
+			ifmr->ifm_active |= sc->media.ifm_media;
 		return;
 	}
 
 	ifmr->ifm_status |= IFM_ACTIVE;
 	if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
-		ifmr->ifm_active |= IFM_ETH_FORCEPAUSE;
+		ifmr->ifm_active |= sc->ifm_flowctrl;
 
 	switch (sc->link_speed) {
 	case 10:
