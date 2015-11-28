@@ -129,9 +129,9 @@ static void	filt_usertouch(struct knote *kn, struct kevent *kev,
 				u_long type);
 
 static struct filterops file_filtops =
-	{ FILTEROP_ISFD, filt_fileattach, NULL, NULL };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, filt_fileattach, NULL, NULL };
 static struct filterops kqread_filtops =
-	{ FILTEROP_ISFD, NULL, filt_kqdetach, filt_kqueue };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, filt_kqdetach, filt_kqueue };
 static struct filterops proc_filtops =
 	{ 0, filt_procattach, filt_procdetach, filt_proc };
 static struct filterops timer_filtops =
