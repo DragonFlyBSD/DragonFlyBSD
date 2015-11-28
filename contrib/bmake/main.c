@@ -1043,6 +1043,8 @@ main(int argc, char **argv)
 	    snprintf(tmp, sizeof(tmp), "%u", getppid());
 	    Var_Set(".MAKE.PPID", tmp, VAR_GLOBAL, 0);
 	    Var_Set(".MAKE.BUILT.BY", CCVER, VAR_GLOBAL, 0);
+	    Var_Set(".MAKE.DF.VERSION", DFVER, VAR_GLOBAL, 0);
+	    Var_Set(".MAKE.DF.OSREL", OSREL, VAR_GLOBAL, 0);
 	}
 	if (makelevel > 0) {
 		char pn[1024];

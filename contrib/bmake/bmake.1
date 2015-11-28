@@ -905,6 +905,15 @@ The parent process-id of
 The compiler CCVER that built the
 .Dx
 world.
+.It Va .MAKE.DF.OSREL
+The
+.Dx
+version when the world was built.  It is in the "<major>.<minor>"
+format and it used by DPorts.
+.It Va .MAKE.DF.VERSION
+The value of __DragonFly_version when the
+.Dx
+world was built.  It is used by DPorts.
 .It Va MAKE_PRINT_VAR_ON_ERROR
 When
 .Nm

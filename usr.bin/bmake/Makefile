@@ -28,6 +28,13 @@ DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 DEFAULT_SYS_PATH = /usr/share/mk:.../share/mk
 .endif
 
+# move vital dports information to bmake for performance reasons
+DFLYVERSION!=	awk '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' \
+		< ${.CURDIR}/../../sys/sys/param.h
+OSREL!=		echo ${DFLYVERSION} | \
+		awk '{a=int($$1/100000); b=int(($$1-(a*100000))/100); \
+			print a "." b}'
+
 WARNS?= 	4
 
 CPPFLAGS+=	-DUSE_EMALLOC
@@ -40,6 +47,7 @@ CFLAGS+=	-I${.OBJDIR}
 CFLAGS+=	-I${srcdir}
 CFLAGS+=	-DHAVE_CONFIG_H
 CFLAGS+=	-DCCVER=\"${CCVER}\"
+CFLAGS+=	-DDFVER=\"${DFLYVERSION}\" -DOSREL=\"${OSREL}\"
 CFLAGS+=	${XDEFS}
 CFLAGS+=	${CFLAGS_${.TARGET:T}} 
 CFLAGS+=	${COPTS.${.ALLSRC:M*.c:T}}
