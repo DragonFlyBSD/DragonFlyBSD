@@ -460,12 +460,10 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 /*
  * Fifo header types.
  */
-#define HAMMER_HEAD_TYPE_PAD	(0x0040U|HAMMER_HEAD_FLAG_FREE)
+#define HAMMER_HEAD_TYPE_PAD	(0x0040U | 0x8000U)
 #define HAMMER_HEAD_TYPE_DUMMY	0x0041U		/* dummy entry w/seqno */
 #define HAMMER_HEAD_TYPE_UNDO	0x0043U		/* random UNDO information */
 #define HAMMER_HEAD_TYPE_REDO	0x0044U		/* data REDO / fast fsync */
-
-#define HAMMER_HEAD_FLAG_FREE	0x8000U		/* Indicates object freed */
 
 #define HAMMER_HEAD_SIGNATURE	0xC84EU
 #define HAMMER_TAIL_SIGNATURE	0xC74FU
