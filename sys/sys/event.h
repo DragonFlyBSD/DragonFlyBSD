@@ -205,7 +205,7 @@ struct knote {
 	SLIST_ENTRY(knote)	kn_link;	/* for fd */
 	TAILQ_ENTRY(knote)	kn_kqlink;	/* for kq_knlist */
 	SLIST_ENTRY(knote)	kn_next;	/* for struct kqinfo */
-	TAILQ_ENTRY(knote)	kn_tqe;		/* for kq_head */
+	TAILQ_ENTRY(knote)	kn_tqe;		/* for kq_knpend */
 	struct			kqueue *kn_kq;	/* which queue we are on */
 	struct 			kevent kn_kevent;
 	int			kn_status;
