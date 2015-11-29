@@ -728,15 +728,15 @@ struct hammer_inode_data {
 
 	uint8_t obj_type;
 	uint8_t cap_flags;	/* capability support flags (extension) */
-	uint16_t reserved02;
-	uint32_t reserved03;	/* RESERVED FOR POSSIBLE FUTURE BIRTHTIME */
+	uint16_t reserved01;
+	uint32_t reserved02;	/* RESERVED FOR POSSIBLE FUTURE BIRTHTIME */
 	uint64_t nlinks;	/* hard links */
 	uint64_t size;		/* filesystem object size */
 	union {
 		struct {
-			char	reserved06[16];
+			uint32_t reserved03[4];
 			uint32_t parent_obj_localization;
-			uint32_t integrity_crc;
+			uint32_t reserved04;
 		} obj;
 		char	symlink[24];	/* HAMMER_INODE_BASESYMLEN */
 	} ext;
