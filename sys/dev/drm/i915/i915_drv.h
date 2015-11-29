@@ -51,7 +51,11 @@
 #include <linux/seq_file.h>
 #include <linux/delay.h>
 
-#define CONFIG_ACPI 1
+#define CONFIG_DRM_I915_FBDEV			1
+#define CONFIG_DRM_I915_KMS			1
+#define CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT	1
+#define CONFIG_ACPI				1
+#define CONFIG_X86				1
 
 /* General customization:
  */

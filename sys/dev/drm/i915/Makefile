@@ -71,13 +71,7 @@ SRCS += \
 SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h iicbus_if.h iicbb_if.h \
 	  opt_acpi.h opt_drm.h opt_ktr.h
 
-CFLAGS+= -DCONFIG_X86
-CFLAGS+= -DCONFIG_ACPI
 CFLAGS+= -I${SYSDIR}/dev/drm/include
 CFLAGS+= -I${.CURDIR}/../../../contrib/dev/acpica/source/include
-
-CFLAGS+= -DCONFIG_DRM_I915_FBDEV
-CFLAGS+= -DCONFIG_DRM_I915_KMS
-CFLAGS+= -DCONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT=1
 
 .include <bsd.kmod.mk>

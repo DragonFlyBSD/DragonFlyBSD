@@ -154,8 +154,6 @@ SRCS	+=								\
 	iicbus_if.h							\
 	pci_if.h
 
-CFLAGS+= -DCONFIG_ACPI
-
 CFLAGS+= -I${.CURDIR}/../../../dev/drm/radeon
 CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 
