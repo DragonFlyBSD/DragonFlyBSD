@@ -1416,7 +1416,9 @@ drm_calloc(size_t nmemb, size_t size, struct malloc_type *area)
 static __inline__ void
 drm_free(void *pt, struct malloc_type *area)
 {
-	kfree(pt);
+	/* kfree is special!!! */
+	if (pt != NULL)
+		(kfree)(pt, area);
 }
 
 static __inline__ void
