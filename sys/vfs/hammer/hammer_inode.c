@@ -1440,8 +1440,9 @@ retry:
 			 */
 			hammer_sync_lock_sh(trans);
 			hammer_modify_buffer(trans, cursor->data_buffer,
-				     HAMMER_ITIMES_BASE(&cursor->data->inode),
-				     HAMMER_ITIMES_BYTES);
+				&cursor->data->inode.mtime,
+				sizeof(cursor->data->inode.atime) +
+				sizeof(cursor->data->inode.mtime));
 			cursor->data->inode.atime = ip->sync_ino_data.atime;
 			cursor->data->inode.mtime = ip->sync_ino_data.mtime;
 			hammer_modify_buffer_done(cursor->data_buffer);
@@ -3206,8 +3207,6 @@ defer_buffer_flush:
 	 *
 	 * If DELETED is set hammer_update_inode() will delete the existing
 	 * record without writing out a new one.
-	 *
-	 * If *ONLY* the ITIMES flag is set we can update the record in-place.
 	 */
 	if (ip->flags & HAMMER_INODE_DELETED) {
 		error = hammer_update_inode(&cursor, ip);

@@ -748,9 +748,6 @@ struct hammer_inode_data {
  * Neither mtime nor atime upates are CRCd by the B-Tree element.
  * mtime updates have UNDO, atime updates do not.
  */
-#define HAMMER_ITIMES_BASE(ino_data)	(&(ino_data)->mtime)
-#define HAMMER_ITIMES_BYTES		(sizeof(uint64_t) * 2)
-
 #define HAMMER_INODE_CRCSIZE	\
 	offsetof(struct hammer_inode_data, mtime)
 
