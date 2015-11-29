@@ -18,7 +18,7 @@ WARNS?=		2
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding
 
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 .if ${CCVER:Mgcc*}
 CFLAGS+=	-mpreferred-stack-boundary=2
 .endif
@@ -40,7 +40,7 @@ SRCS+=	strcasecmp.c
 
 # string functions from libc
 .PATH:	${.CURDIR}/../libc/string
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
@@ -50,7 +50,7 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 SRCS+=  icrc32.c
 
 # _setjmp/_longjmp
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 .PATH:	${.CURDIR}/i386
 .else
 .endif
@@ -96,23 +96,5 @@ SRCS+=	hammer2.c
 .include <bsd.lib.mk>
 
 .if ${MACHINE_ARCH} == "x86_64"
-CFLAGS+= -I${.OBJDIR}
-
-.PATH: ${.OBJDIR}/machine
-
-in_cksum.c: endian.h stdint.h
-stand.h:    stdarg.h
-_setjmp.S:  asm.h
-
-endian.h stdint.h asm.h stdarg.h:
-	mkdir -p machine
-	${LN} -fs ${.CURDIR}/../../sys/cpu/i386/include/${.TARGET:T} \
-		machine/${.TARGET:T}
-
-cpu:
-	mkdir -p ${.TARGET}
-
-beforedepend: cpu
-
-CLEANDIRS+=	machine cpu
+CFLAGS+= -I${.CURDIR}
 .endif

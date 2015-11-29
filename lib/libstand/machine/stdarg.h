@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1992, 1993
+ * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,14 +30,55 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)exec.h	8.1 (Berkeley) 6/11/93
- * $FreeBSD: src/sys/i386/include/exec.h,v 1.8 1999/08/28 00:44:11 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/exec.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ *	@(#)stdarg.h	8.1 (Berkeley) 6/10/93
+ * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
  */
 
-#ifndef	_EXEC_H_
-#define	_EXEC_H_
+#ifndef _CPU_STDARG_H_
+#define	_CPU_STDARG_H_
 
-#define __LDPGSZ	4096
+/*
+ * GNUC mess
+ */
+#if defined(__GNUC__)
+typedef __builtin_va_list	__va_list;	/* internally known to gcc */
+#else
+typedef	char *			__va_list;
+#endif /* post GCC 2.95 */
+#if defined __GNUC__ && !defined(__GNUC_VA_LIST) && !defined(__NO_GNUC_VA_LIST)
+#define __GNUC_VA_LIST
+typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
+#endif
 
-#endif /* !_EXEC_H_ */
+/*
+ * Standard va types and macros
+ */
+#define	__va_size(type) \
+	(((sizeof(type) + sizeof(int) - 1) / sizeof(int)) * sizeof(int))
+
+#ifdef __GNUC__
+
+#define __va_start(ap, last) \
+	__builtin_va_start(ap, last)
+#define __va_arg(ap, type) \
+	__builtin_va_arg((ap), type)
+#define __va_copy(dest, src) \
+	__builtin_va_copy((dest), (src))
+#define __va_end(ap) \
+	__builtin_va_end(ap)
+
+#else /* !__GNUC__ */
+
+/* Provide a free-standing implementation */
+#define __va_start(ap, last) \
+	((ap) = (__va_list)&(last) + __va_size(last))
+#define __va_arg(ap, type) \
+	(*(type *)((ap) += __va_size(type), (ap) - __va_size(type)))
+/* This assumes a typical stack machine */
+#define __va_copy(dest, src) \
+	((void)((dest) = (src)))
+#define __va_end(ap)
+
+#endif /* __GNUC__ */
+
+#endif /* !_CPU_STDARG_H_ */

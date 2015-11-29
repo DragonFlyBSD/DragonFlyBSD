@@ -31,7 +31,6 @@
  *
  *	from: @(#)DEFS.h	5.1 (Berkeley) 4/23/90
  * $FreeBSD: src/sys/i386/include/asm.h,v 1.7 2000/01/25 09:01:55 bde Exp $
- * $DragonFly: src/sys/cpu/i386/include/asm.h,v 1.4 2006/11/07 06:43:22 dillon Exp $
  */
 
 #ifndef _CPU_ASM_H_
