@@ -2635,10 +2635,10 @@ init_locks(void)
 	 */
 	cpu_get_initial_mplock();
 	/* DEPRECATED */
-	spin_lock_init(&mcount_spinlock);
-	spin_lock_init(&imen_spinlock);
-	spin_lock_init(&com_spinlock);
-	spin_lock_init(&clock_spinlock);
+	spin_init_deprecated(&mcount_spinlock);
+	spin_init_deprecated(&imen_spinlock);
+	spin_init_deprecated(&com_spinlock);
+	spin_init_deprecated(&clock_spinlock);
 
 	/* our token pool needs to work early */
 	lwkt_token_pool_init();

@@ -443,8 +443,8 @@ struct drm_waitlist {
 	struct drm_buf **rp;			/**< Read pointer */
 	struct drm_buf **wp;			/**< Write pointer */
 	struct drm_buf **end;		/**< End pointer */
-	spinlock_t read_lock;
-	spinlock_t write_lock;
+	struct spinlock *read_lock;
+	struct spinlock *write_lock;
 };
 
 typedef struct drm_dma_handle {

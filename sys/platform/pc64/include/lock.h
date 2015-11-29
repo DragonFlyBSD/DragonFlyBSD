@@ -110,8 +110,6 @@ struct spinlock_deprecated {
 	volatile long	opaque;
 };
 
-typedef struct spinlock_deprecated *spinlock_t;
-
 void	com_lock(void);		/* disables int / spinlock combo */
 void	com_unlock(void);
 void	imen_lock(void);	/* disables int / spinlock combo */
@@ -119,15 +117,15 @@ void	imen_unlock(void);
 void	clock_lock(void);	/* disables int / spinlock combo */
 void	clock_unlock(void);
 
-void	spin_lock_deprecated(spinlock_t lock);
-void	spin_unlock_deprecated(spinlock_t lock);
+void	spin_lock_deprecated(struct spinlock_deprecated *lock);
+void	spin_unlock_deprecated(struct spinlock_deprecated *lock);
 
 /*
  * Inline version of spinlock routines -- overrides assembly.  Only unlock
  * and init here please.
  */
 static __inline void
-spin_lock_init(spinlock_t lock)
+spin_init_deprecated(struct spinlock_deprecated *lock)
 {
 	lock->opaque = 0;
 }
