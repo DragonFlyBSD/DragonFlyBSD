@@ -1831,12 +1831,6 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 					ksnprintf(buf, sizeof(buf),
 						  "@@-1:%05d",
 						  localization >> 16);
-#if 0
-					ksnprintf(buf, sizeof(buf),
-						  "@@0x%016llx:%05d",
-						  (long long)HAMMER_MAX_TID,
-						  localization >> 16);
-#endif
 				}
 				ptr = buf;
 				bytes = strlen(buf);
