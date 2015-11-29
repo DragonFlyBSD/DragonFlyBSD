@@ -114,7 +114,7 @@ typedef uint32_t hammer_crc_t;
 
 /*
  * hammer_off_t has several different encodings.  Note that not all zones
- * encode a vol_no.
+ * encode a vol_no.  Zone bits are not a part of filesystem capacity.
  *
  * zone 0:		reserved for sanity
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
@@ -130,6 +130,11 @@ typedef uint32_t hammer_crc_t;
  * layer1/layer2 direct map:
  *	zzzzvvvvvvvvoooo oooooooooooooooo oooooooooooooooo oooooooooooooooo
  *	----111111111111 1111112222222222 222222222ooooooo oooooooooooooooo
+ *	    <-----------------><------------------><---------------------->
+ *	     18bits             19bits              23bits
+ *	    <------------------------------------------------------------->
+ *	     Maximum HAMMER filesystem capacity
+ *	     2^18(layer1) * 2^19(layer2) * 2^23(big-block) = 2^60 = 1EB
  */
 
 #define HAMMER_ZONE_RAW_VOLUME		0x1000000000000000ULL
@@ -290,6 +295,12 @@ typedef struct hammer_blockmap *hammer_blockmap_t;
  *
  * zone-X blockmap offset: [zone:4][layer1:18][layer2:19][big-block:23]
  */
+
+/*
+ * 32 bytes layer1 entry for 8MB big-block.
+ * A big-block can hold 2^23 / 2^5 = 2^18 layer1 entries,
+ * which equals bits assigned for layer1 in zone-2 address.
+ */
 struct hammer_blockmap_layer1 {
 	hammer_off_t	blocks_free;	/* big-blocks free */
 	hammer_off_t	phys_offset;	/* UNAVAIL or zone-2 */
@@ -305,7 +316,9 @@ typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
 	offsetof(struct hammer_blockmap_layer1, layer1_crc)
 
 /*
- * layer2 entry for 8MB big-block.
+ * 16 bytes layer2 entry for 8MB big-blocks.
+ * A big-block can hold 2^23 / 2^4 = 2^19 layer2 entries,
+ * which equals bits assigned for layer2 in zone-2 address.
  *
  * NOTE: bytes_free is signed and can legally go negative if/when data
  *	 de-dup occurs.  This field will never go higher than
@@ -328,9 +341,9 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 
 #define HAMMER_BLOCKMAP_UNAVAIL	((hammer_off_t)-1LL)
 
-#define HAMMER_BLOCKMAP_RADIX1	/* 262144 (18) */	\
+#define HAMMER_BLOCKMAP_RADIX1	/* 2^18 = 262144 */	\
 	(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer1))
-#define HAMMER_BLOCKMAP_RADIX2	/* 524288 (19) */	\
+#define HAMMER_BLOCKMAP_RADIX2	/* 2^19 = 524288 */	\
 	(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer2))
 
 #define HAMMER_BLOCKMAP_RADIX1_PERBUFFER	\
@@ -338,9 +351,9 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_BLOCKMAP_RADIX2_PERBUFFER	\
 	(HAMMER_BLOCKMAP_RADIX2 / HAMMER_BUFFERS_PER_BIGBLOCK)
 
-#define HAMMER_BLOCKMAP_LAYER1	/* 18+19+23 - 1EB */		\
+#define HAMMER_BLOCKMAP_LAYER1	/* 2^(18+19+23) = 1EB */	\
 	(HAMMER_BLOCKMAP_RADIX1 * HAMMER_BLOCKMAP_LAYER2)
-#define HAMMER_BLOCKMAP_LAYER2	/* 19+23 - 4TB */		\
+#define HAMMER_BLOCKMAP_LAYER2	/* 2^(19+23) = 4TB */		\
 	(HAMMER_BLOCKMAP_RADIX2 * HAMMER_BIGBLOCK_SIZE64)
 
 #define HAMMER_BLOCKMAP_LAYER1_MASK	(HAMMER_BLOCKMAP_LAYER1 - 1)
@@ -459,6 +472,10 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 
 /*
  * Fifo header types.
+ *
+ * NOTE: 0x8000U part of HAMMER_HEAD_TYPE_PAD can be removed if the HAMMER
+ * version ever gets bumped again. It exists only to keep compatibility with
+ * older versions.
  */
 #define HAMMER_HEAD_TYPE_PAD	(0x0040U | 0x8000U)
 #define HAMMER_HEAD_TYPE_DUMMY	0x0041U		/* dummy entry w/seqno */
@@ -555,15 +572,15 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
 /*
  * HAMMER Volume header
  *
- * A HAMMER filesystem is built from any number of block devices,  Each block
+ * A HAMMER filesystem can be built from 1-256 block devices, each block
  * device contains a volume header followed by however many buffers fit
  * into the volume.
  *
- * One of the volumes making up a HAMMER filesystem is the master, the
- * rest are slaves.  It does not have to be volume #0.
- *
- * The volume header takes up an entire 16K filesystem buffer and may
- * represent up to 64KTB (65536 TB) of space.
+ * One of the volumes making up a HAMMER filesystem is the root volume.
+ * The root volume is always volume #0 which is the first block device path
+ * specified by newfs_hammer(8).  All HAMMER volumes have a volume header,
+ * however the root volume may be the only volume that has valid values for
+ * some fields in the header.
  *
  * Special field notes:
  *
@@ -578,6 +595,10 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
  *	area.  This allows the kernel to immediately return success.
  */
 
+/*
+ * These macros are only used by userspace when userspace commands either
+ * initialize or add a new HAMMER volume.
+ */
 #define HAMMER_BOOT_MINBYTES		(32*1024)
 #define HAMMER_BOOT_NOMBYTES		(64LL*1024*1024)
 #define HAMMER_BOOT_MAXBYTES		(256LL*1024*1024)
@@ -618,10 +639,10 @@ struct hammer_volume_ondisk {
 
 	/*
 	 * These fields are initialized and space is reserved in every
-	 * volume making up a HAMMER filesytem, but only the master volume
+	 * volume making up a HAMMER filesytem, but only the root volume
 	 * contains valid data.  Note that vol0_stat_bigblocks does not
 	 * include big-blocks for freemap and undomap initially allocated
-	 * by newfs_hammer.
+	 * by newfs_hammer(8).
 	 */
 	int64_t vol0_stat_bigblocks;	/* total big-blocks when fs is empty */
 	int64_t vol0_stat_freebigblocks;/* number of free big-blocks */
