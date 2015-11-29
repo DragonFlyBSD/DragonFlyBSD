@@ -585,7 +585,7 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 
 	/*
 	 * Re-localize for target.  relocalization of data is handled
-	 * by hammer_mirror_write().
+	 * by hammer_create_at_cursor().
 	 */
 	mrec->leaf.base.localization &= HAMMER_LOCALIZE_MASK;
 	mrec->leaf.base.localization += localization;
@@ -666,7 +666,7 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 
 	/*
 	 * Re-localize for target.  Relocalization of data is handled
-	 * by hammer_mirror_write().
+	 * by hammer_create_at_cursor().
 	 */
 	mrec->leaf.base.localization &= HAMMER_LOCALIZE_MASK;
 	mrec->leaf.base.localization += localization;
@@ -837,160 +837,3 @@ hammer_mirror_update(hammer_cursor_t cursor,
 	cursor->flags |= HAMMER_CURSOR_ATEDISK;
 	return(error);
 }
-
-#if 0
-/*
- * MOVED TO HAMMER_OBJECT.C: hammer_create_at_cursor()
- */
-
-static int hammer_mirror_localize_data(hammer_data_ondisk_t data,
-				hammer_btree_leaf_elm_t leaf);
-
-/*
- * Write out a new record.
- */
-static
-int
-hammer_mirror_write(hammer_cursor_t cursor,
-		    struct hammer_ioc_mrecord_rec *mrec,
-		    char *udata)
-{
-	hammer_transaction_t trans;
-	hammer_buffer_t data_buffer;
-	hammer_off_t ndata_offset;
-	hammer_tid_t high_tid;
-	void *ndata;
-	int error;
-	int doprop;
-
-	trans = cursor->trans;
-	data_buffer = NULL;
-
-	/*
-	 * Get the sync lock so the whole mess is atomic
-	 */
-	hammer_sync_lock_sh(trans);
-
-	/*
-	 * Allocate and adjust data
-	 */
-	if (mrec->leaf.data_len && mrec->leaf.data_offset) {
-		ndata = hammer_alloc_data(trans, mrec->leaf.data_len,
-					  mrec->leaf.base.rec_type,
-					  &ndata_offset, &data_buffer,
-					  0, &error);
-		if (ndata == NULL)
-			return(error);
-		mrec->leaf.data_offset = ndata_offset;
-		hammer_modify_buffer_noundo(trans, data_buffer);
-		error = copyin(udata, ndata, mrec->leaf.data_len);
-		if (error == 0) {
-			if (hammer_crc_test_leaf(ndata, &mrec->leaf) == 0) {
-				hdkprintf("CRC DATA @ %016llx/%d MISMATCH ON PIPE\n",
-					(long long)ndata_offset,
-					mrec->leaf.data_len);
-				error = EINVAL;
-			} else {
-				error = hammer_mirror_localize_data(
-							ndata, &mrec->leaf);
-			}
-		}
-		hammer_modify_buffer_done(data_buffer);
-	} else {
-		mrec->leaf.data_offset = 0;
-		error = 0;
-		ndata = NULL;
-	}
-	if (error)
-		goto failed;
-
-	/*
-	 * Do the insertion.  This can fail with a EDEADLK or EALREADY
-	 */
-	cursor->flags |= HAMMER_CURSOR_INSERT;
-	error = hammer_btree_lookup(cursor);
-	if (error != ENOENT) {
-		if (error == 0)
-			error = EALREADY;
-		goto failed;
-	}
-
-	error = hammer_btree_insert(cursor, &mrec->leaf, &doprop);
-
-	/*
-	 * Cursor is left on the current element, we want to skip it now.
-	 */
-	cursor->flags |= HAMMER_CURSOR_ATEDISK;
-	cursor->flags &= ~HAMMER_CURSOR_INSERT;
-
-	/*
-	 * Track a count of active inodes.
-	 */
-	if (error == 0 &&
-	    mrec->leaf.base.rec_type == HAMMER_RECTYPE_INODE &&
-	    mrec->leaf.base.delete_tid == 0) {
-		hammer_modify_volume_field(trans,
-					   trans->rootvol,
-					   vol0_stat_inodes);
-		++trans->hmp->rootvol->ondisk->vol0_stat_inodes;
-		hammer_modify_volume_done(trans->rootvol);
-	}
-
-	/*
-	 * vol0_next_tid must track the highest TID stored in the filesystem.
-	 * We do not need to generate undo for this update.
-	 */
-	high_tid = mrec->leaf.base.create_tid;
-	if (high_tid < mrec->leaf.base.delete_tid)
-		high_tid = mrec->leaf.base.delete_tid;
-	if (trans->rootvol->ondisk->vol0_next_tid < high_tid) {
-		hammer_modify_volume_noundo(trans, trans->rootvol);
-		trans->rootvol->ondisk->vol0_next_tid = high_tid;
-		hammer_modify_volume_done(trans->rootvol);
-	}
-
-	/*
-	 * WARNING!  cursor's leaf pointer may have changed after
-	 *	     do_propagation returns.
-	 */
-	if (error == 0 && doprop)
-		hammer_btree_do_propagation(cursor, NULL, &mrec->leaf);
-
-failed:
-	/*
-	 * Cleanup
-	 */
-	if (error && mrec->leaf.data_offset) {
-		hammer_blockmap_free(cursor->trans,
-				     mrec->leaf.data_offset,
-				     mrec->leaf.data_len);
-	}
-	hammer_sync_unlock(trans);
-	if (data_buffer)
-		hammer_rel_buffer(data_buffer, 0);
-	return(error);
-}
-
-/*
- * Localize the data payload.  Directory entries may need their
- * localization adjusted.
- */
-static
-int
-hammer_mirror_localize_data(hammer_data_ondisk_t data,
-			    hammer_btree_leaf_elm_t leaf)
-{
-	uint32_t localization;
-
-	if (leaf->base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
-		localization = leaf->base.localization &
-			       HAMMER_LOCALIZE_PSEUDOFS_MASK;
-		if (data->entry.localization != localization) {
-			data->entry.localization = localization;
-			hammer_crc_set_leaf(data, leaf);
-		}
-	}
-	return(0);
-}
-
-#endif
