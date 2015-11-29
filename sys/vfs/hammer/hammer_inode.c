@@ -1453,8 +1453,7 @@ retry:
 			 * no UNDO.
 			 */
 			hammer_sync_lock_sh(trans);
-			hammer_modify_buffer(trans, cursor->data_buffer,
-					     NULL, 0);
+			hammer_modify_buffer_noundo(trans, cursor->data_buffer);
 			cursor->data->inode.atime = ip->sync_ino_data.atime;
 			hammer_modify_buffer_done(cursor->data_buffer);
 			hammer_sync_unlock(trans);
