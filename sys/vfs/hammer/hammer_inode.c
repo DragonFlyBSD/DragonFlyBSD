@@ -52,10 +52,6 @@ static void	hammer_inode_wakereclaims(hammer_inode_t ip);
 static struct hammer_inostats *hammer_inode_inostats(hammer_mount_t hmp,
 					pid_t pid);
 
-#ifdef DEBUG_TRUNCATE
-extern struct hammer_inode *HammerTruncIp;
-#endif
-
 struct krate hammer_gen_krate = { 1 };
 
 /*
@@ -2227,10 +2223,6 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	ip->sync_ino_leaf = ip->ino_leaf;
 	ip->sync_ino_data = ip->ino_data;
 	ip->flags &= ~HAMMER_INODE_MODMASK | HAMMER_INODE_TRUNCATED;
-#ifdef DEBUG_TRUNCATE
-	if ((ip->sync_flags & HAMMER_INODE_TRUNCATED) && ip == HammerTruncIp)
-		hdkprintf("truncate %016llx\n", ip->sync_trunc_off);
-#endif
 
 	/*
 	 * The flusher list inherits our inode and reference.

@@ -152,10 +152,6 @@ hammer_knote(struct vnode *vp, int flags)
 		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
 }
 
-#ifdef DEBUG_TRUNCATE
-struct hammer_inode *HammerTruncIp;
-#endif
-
 static int hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 			   struct vnode *dvp, struct ucred *cred,
 			   int flags, int isdir);
@@ -2311,32 +2307,12 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 */
 			if (truncating) {
 				hammer_ip_frontend_trunc(ip, vap->va_size);
-#ifdef DEBUG_TRUNCATE
-				if (HammerTruncIp == NULL)
-					HammerTruncIp = ip;
-#endif
 				if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
 					ip->flags |= HAMMER_INODE_TRUNCATED;
 					ip->trunc_off = vap->va_size;
 					hammer_inode_dirty(ip);
-#ifdef DEBUG_TRUNCATE
-					if (ip == HammerTruncIp)
-						hdkprintf("truncate1 %016llx\n",
-							(long long)ip->trunc_off);
-#endif
 				} else if (ip->trunc_off > vap->va_size) {
 					ip->trunc_off = vap->va_size;
-#ifdef DEBUG_TRUNCATE
-					if (ip == HammerTruncIp)
-						hdkprintf("truncate2 %016llx\n",
-							(long long)ip->trunc_off);
-#endif
-				} else {
-#ifdef DEBUG_TRUNCATE
-					if (ip == HammerTruncIp)
-						hdkprintf("truncate3 %016llx (ignored)\n",
-							(long long)vap->va_size);
-#endif
 				}
 			}
 
