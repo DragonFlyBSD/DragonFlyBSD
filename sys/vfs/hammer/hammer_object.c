@@ -1260,12 +1260,6 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			Debugger("duplicate record1");
 		error = EIO;
 	}
-#if 0
-	if (record->type == HAMMER_MEM_RECORD_DATA)
-		hdkprintf("%016llx ---------------- %016llx %d\n",
-			record->leaf.base.key - record->leaf.data_len,
-			record->leaf.data_offset, error);
-#endif
 
 	if (error != ENOENT)
 		goto done_unlock;
@@ -1954,10 +1948,6 @@ hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 	int error;
 	int64_t off;
 	int64_t tmp64;
-
-#if 0
-	hdkprintf("%p %016llx-%016llx\n", ip, ran_beg, ran_end);
-#endif
 
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:

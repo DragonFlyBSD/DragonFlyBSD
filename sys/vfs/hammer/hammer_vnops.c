@@ -3030,10 +3030,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	 */
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_simple_transaction(&trans, hmp);
-#if 0
-	hkprintf("bmap_beg %016llx ip->cache %p\n",
-		(long long)ap->a_loffset, ip->cache[1]);
-#endif
+
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 
 	/*
@@ -3139,23 +3136,9 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 		error = hammer_ip_next(&cursor);
 	}
 
-#if 0
-	hkprintf("BMAP %016llx:  %016llx - %016llx\n",
-		(long long)ap->a_loffset,
-		(long long)base_offset,
-		(long long)last_offset);
-	hkprintf("BMAP %16s:  %016llx - %016llx\n", "",
-		(long long)base_disk_offset,
-		(long long)last_disk_offset);
-#endif
-
-	if (cursor.node) {
+	if (cursor.node)
 		hammer_cache_node(&ip->cache[1], cursor.node);
-#if 0
-		hkprintf("bmap_end2 %016llx ip->cache %p\n",
-			(long long)ap->a_loffset, ip->cache[1]);
-#endif
-	}
+
 	hammer_done_cursor(&cursor);
 	hammer_done_transaction(&trans);
 	lwkt_reltoken(&hmp->fs_token);
