@@ -112,8 +112,6 @@ struct spinlock_deprecated {
 
 typedef struct spinlock_deprecated *spinlock_t;
 
-void	mpintr_lock(void);	/* disables int / spinlock combo */
-void	mpintr_unlock(void);
 void	com_lock(void);		/* disables int / spinlock combo */
 void	com_unlock(void);
 void	imen_lock(void);	/* disables int / spinlock combo */

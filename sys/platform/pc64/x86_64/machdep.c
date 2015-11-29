@@ -2617,12 +2617,6 @@ outb(u_int port, u_char data)
 /* critical region when masking or unmasking interupts */
 struct spinlock_deprecated imen_spinlock;
 
-/* critical region for old style disable_intr/enable_intr */
-struct spinlock_deprecated mpintr_spinlock;
-
-/* critical region around INTR() routines */
-struct spinlock_deprecated intr_spinlock;
-
 /* lock region used by kernel profiling */
 struct spinlock_deprecated mcount_spinlock;
 
@@ -2642,8 +2636,6 @@ init_locks(void)
 	cpu_get_initial_mplock();
 	/* DEPRECATED */
 	spin_lock_init(&mcount_spinlock);
-	spin_lock_init(&intr_spinlock);
-	spin_lock_init(&mpintr_spinlock);
 	spin_lock_init(&imen_spinlock);
 	spin_lock_init(&com_spinlock);
 	spin_lock_init(&clock_spinlock);

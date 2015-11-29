@@ -69,22 +69,6 @@ NON_GPROF_ENTRY(imen_unlock)
 	SPIN_UNLOCK(imen_spinlock)
 	NON_GPROF_RET
 
-NON_GPROF_ENTRY(intr_lock)
-	SPIN_LOCK(intr_spinlock)
-	NON_GPROF_RET
-
-NON_GPROF_ENTRY(intr_unlock)
-	SPIN_UNLOCK(intr_spinlock)
-	NON_GPROF_RET
-
-NON_GPROF_ENTRY(mpintr_lock)
-	SPIN_LOCK(mpintr_spinlock)
-	NON_GPROF_RET
-
-NON_GPROF_ENTRY(mpintr_unlock)
-	SPIN_UNLOCK(mpintr_spinlock)
-	NON_GPROF_RET
-
 NON_GPROF_ENTRY(clock_lock)
 	SPIN_LOCK(clock_spinlock)
 	NON_GPROF_RET
@@ -100,4 +84,3 @@ NON_GPROF_ENTRY(com_lock)
 NON_GPROF_ENTRY(com_unlock)
 	SPIN_UNLOCK(com_spinlock)
 	NON_GPROF_RET
-
