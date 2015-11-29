@@ -843,11 +843,9 @@ struct hammer_pseudofs_data {
 	int32_t		mirror_flags;	/* misc flags */
 	char		label[64];	/* filesystem space label */
 	char		snapshots[64];	/* softlink dir for pruning */
-	int16_t		prune_time;	/* how long to spend pruning */
-	int16_t		prune_freq;	/* how often we prune */
-	int16_t		reblock_time;	/* how long to spend reblocking */
-	int16_t		reblock_freq;	/* how often we reblock */
-	int32_t		snapshot_freq;	/* how often we create a snapshot */
+	int32_t		reserved02;	/* was prune_{time,freq} */
+	int32_t		reserved03;	/* was reblock_{time,freq} */
+	int32_t		reserved04;	/* was snapshot_freq */
 	int32_t		prune_min;	/* do not prune recent history */
 	int32_t		prune_max;	/* do not retain history beyond here */
 	int32_t		reserved[16];
