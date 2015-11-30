@@ -74,7 +74,6 @@ struct kevent_copyin_args {
 	int			pchanges;
 };
 
-static int	kqueue_sleep(struct kqueue *kq, struct timespec *tsp);
 static int	kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		    struct knote *marker);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
@@ -709,7 +708,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	    struct timespec *tsp_in)
 {
 	struct kevent *kevp;
-	struct timespec *tsp;
+	struct timespec *tsp, ats;
 	int i, n, total, error, nerrors = 0;
 	int lres;
 	int limit = kq_checkloop;
@@ -723,13 +722,11 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	tsp = tsp_in;
 	*res = 0;
 
-	tok = lwkt_token_pool_lookup(kq);
-	lwkt_gettoken(tok);
-	for ( ;; ) {
+	for (;;) {
 		n = 0;
 		error = kevent_copyinfn(uap, kev, KQ_NEVENTS, &n);
 		if (error)
-			goto done;
+			return error;
 		if (n == 0)
 			break;
 		for (i = 0; i < n; i++) {
@@ -754,7 +751,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 				lres = *res;
 				kevent_copyoutfn(uap, kevp, 1, res);
 				if (*res < 0) {
-					goto done;
+					return error;
 				} else if (lres != *res) {
 					nevents--;
 					nerrors++;
@@ -762,17 +759,13 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			}
 		}
 	}
-	if (nerrors) {
-		error = 0;
-		goto done;
-	}
+	if (nerrors)
+		return 0;
 
 	/*
 	 * Acquire/wait for events - setup timeout
 	 */
 	if (tsp != NULL) {
-		struct timespec ats;
-
 		if (tsp->tv_sec || tsp->tv_nsec) {
 			getnanouptime(&ats);
 			timespecadd(tsp, &ats);		/* tsp = target time */
@@ -798,7 +791,10 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	error = 0;
 	marker.kn_filter = EVFILT_MARKER;
 	marker.kn_status = KN_PROCESSING;
+	tok = lwkt_token_pool_lookup(kq);
+	lwkt_gettoken(tok);
 	TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
+	lwkt_reltoken(tok);
 	while ((n = nevents - total) > 0) {
 		if (n > KQ_NEVENTS)
 			n = KQ_NEVENTS;
@@ -812,12 +808,46 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 * to our scan.
 		 */
 		if (kq->kq_count == 0 && *res == 0) {
-			error = kqueue_sleep(kq, tsp);
-			if (error)
-				break;
+			int timeout;
 
-			TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
-			TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
+			if (tsp == NULL) {
+				timeout = 0;
+			} else if (tsp->tv_sec == 0 && tsp->tv_nsec == 0) {
+				error = EWOULDBLOCK;
+				break;
+			} else {
+				struct timespec atx = *tsp;
+
+				getnanouptime(&ats);
+				timespecsub(&atx, &ats);
+				if (atx.tv_sec < 0) {
+					error = EWOULDBLOCK;
+					break;
+				} else {
+					timeout = atx.tv_sec > 24 * 60 * 60 ?
+					    24 * 60 * 60 * hz :
+					    tstohz_high(&atx);
+				}
+			}
+
+			lwkt_gettoken(tok);
+			if (kq->kq_count == 0) {
+				kq->kq_state |= KQ_SLEEP;
+				error = tsleep(kq, PCATCH, "kqread", timeout);
+
+				/* don't restart after signals... */
+				if (error == ERESTART)
+					error = EINTR;
+				if (error) {
+					lwkt_reltoken(tok);
+					break;
+				}
+
+				TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
+				TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker,
+				    kn_tqe);
+			}
+			lwkt_reltoken(tok);
 		}
 
 		/*
@@ -858,19 +888,20 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 *	 same event.
 		 */
 		if (i == 0) {
+			lwkt_gettoken(tok);
 			TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
+			lwkt_reltoken(tok);
 		}
 	}
+	lwkt_gettoken(tok);
 	TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
+	lwkt_reltoken(tok);
 
 	/* Timeouts do not return EWOULDBLOCK. */
 	if (error == EWOULDBLOCK)
 		error = 0;
-
-done:
-	lwkt_reltoken(tok);
-	return (error);
+	return error;
 }
 
 /*
@@ -1135,54 +1166,11 @@ done:
 }
 
 /*
- * Block as necessary until the target time is reached.
- * If tsp is NULL we block indefinitely.  If tsp->ts_secs/nsecs are both
- * 0 we do not block at all.
- *
- * Caller must be holding the kq token.
- */
-static int
-kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
-{
-	int error = 0;
-
-	if (tsp == NULL) {
-		kq->kq_state |= KQ_SLEEP;
-		error = tsleep(kq, PCATCH, "kqread", 0);
-	} else if (tsp->tv_sec == 0 && tsp->tv_nsec == 0) {
-		error = EWOULDBLOCK;
-	} else {
-		struct timespec ats;
-		struct timespec atx = *tsp;
-		int timeout;
-
-		getnanouptime(&ats);
-		timespecsub(&atx, &ats);
-		if (ats.tv_sec < 0) {
-			error = EWOULDBLOCK;
-		} else {
-			timeout = atx.tv_sec > 24 * 60 * 60 ?
-				24 * 60 * 60 * hz : tstohz_high(&atx);
-			kq->kq_state |= KQ_SLEEP;
-			error = tsleep(kq, PCATCH, "kqread", timeout);
-		}
-	}
-
-	/* don't restart after signals... */
-	if (error == ERESTART)
-		return (EINTR);
-
-	return (error);
-}
-
-/*
  * Scan the kqueue, return the number of active events placed in kevp up
  * to count.
  *
  * Continuous mode events may get recycled, do not continue scanning past
  * marker unless no events have been collected.
- *
- * Caller must be holding the kq token
  */
 static int
 kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
@@ -1191,9 +1179,11 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
         struct knote *kn, local_marker;
         int total;
 
-        total = 0;
+	total = 0;
 	local_marker.kn_filter = EVFILT_MARKER;
 	local_marker.kn_status = KN_PROCESSING;
+
+	lwkt_getpooltoken(kq);
 
 	/*
 	 * Collect events.
@@ -1302,6 +1292,7 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 	}
 	TAILQ_REMOVE(&kq->kq_knpend, &local_marker, kn_tqe);
 
+	lwkt_relpooltoken(kq);
 	return (total);
 }
 
