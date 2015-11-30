@@ -108,6 +108,9 @@ int hammer_fsync_mode = 3;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 
+int hammer_noatime = 1;
+TUNABLE_INT("vfs.hammer.noatime", &hammer_noatime);
+
 /*
  * Live dedup debug counters (sysctls are writable so that counters
  * can be reset from userspace).
@@ -382,6 +385,11 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	int master_id;
 	int nvolumes;
 	char *next_volume_ptr = NULL;
+
+	if (hammer_noatime) {
+		/* Force noatime */
+		mp->mnt_flag |= MNT_NOATIME;
+	}
 
 	/*
 	 * Accept hammer_mount_info.  mntpt is NULL for root mounts at boot.
