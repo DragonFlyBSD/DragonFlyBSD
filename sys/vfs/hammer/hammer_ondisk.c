@@ -1707,7 +1707,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 	int zone;
 
 	/*
-	 * Allocate data
+	 * Allocate data directly from blockmap.
 	 */
 	if (data_len) {
 		switch(rec_type) {
@@ -1724,6 +1724,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 		case HAMMER_RECTYPE_DB:
 			/*
 			 * Only mirror-write comes here.
+			 * Regular allocation path uses blockmap reservation.
 			 */
 			zone = hammer_data_zone_index(data_len);
 			if (zone == HAMMER_ZONE_LARGE_DATA_INDEX) {
@@ -1734,7 +1735,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			break;
 		default:
 			hpanic("rec_type %04x unknown", rec_type);
-			zone = 0;	/* NOT REACHED */
+			zone = HAMMER_ZONE_UNAVAIL_INDEX; /* NOT REACHED */
 			break;
 		}
 		*data_offsetp = hammer_blockmap_alloc(trans, zone, data_len,
@@ -1742,16 +1743,11 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 	} else {
 		*data_offsetp = 0;
 	}
-	if (*errorp == 0 && data_bufferp) {
-		if (data_len) {
-			data = hammer_bread_ext(trans->hmp, *data_offsetp,
-						data_len, errorp, data_bufferp);
-		} else {
-			data = NULL;
-		}
-	} else {
-		data = NULL;
-	}
+
+	data = NULL;
+	if (*errorp == 0 && data_bufferp && data_len)
+		data = hammer_bread_ext(trans->hmp, *data_offsetp, data_len,
+					errorp, data_bufferp);
 	return(data);
 }
 
