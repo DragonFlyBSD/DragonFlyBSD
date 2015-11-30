@@ -1162,7 +1162,7 @@ kqueue_sleep(struct kqueue *kq, struct timespec *tsp)
 
 		getnanouptime(&ats);
 		timespecsub(&atx, &ats);
-		if (ats.tv_sec < 0) {
+		if (atx.tv_sec < 0) {
 			error = EWOULDBLOCK;
 		} else {
 			timeout = atx.tv_sec > 24 * 60 * 60 ?
