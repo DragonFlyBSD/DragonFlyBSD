@@ -116,7 +116,7 @@ typedef uint32_t hammer_crc_t;
  * hammer_off_t has several different encodings.  Note that not all zones
  * encode a vol_no.  Zone bits are not a part of filesystem capacity.
  *
- * zone 0:		reserved for sanity
+ * zone 0:		available, a big-block that contains the offset is unused
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
  * zone 2 (z,v,o):	raw buffer relative (offset 0 is the first buffer)
  * zone 3 (z,o):	undo fifo	- actually zone-2 address, fixed phys array in vol hdr
@@ -125,7 +125,7 @@ typedef uint32_t hammer_crc_t;
  * zone 9 (z,v,o):	meta		- actually zone-2 address
  * zone 10 (z,v,o):	large-data	- actually zone-2 address
  * zone 11 (z,v,o):	small-data	- actually zone-2 address
- * zone 15:		reserved for sanity
+ * zone 15:		unavailable, usually the offset is beyond volume size
  *
  * layer1/layer2 direct map:
  *	zzzzvvvvvvvvoooo oooooooooooooooo oooooooooooooooo oooooooooooooooo
@@ -141,16 +141,16 @@ typedef uint32_t hammer_crc_t;
 #define HAMMER_ZONE_RAW_BUFFER		0x2000000000000000ULL
 #define HAMMER_ZONE_UNDO		0x3000000000000000ULL
 #define HAMMER_ZONE_FREEMAP		0x4000000000000000ULL
-#define HAMMER_ZONE_RESERVED05		0x5000000000000000ULL
-#define HAMMER_ZONE_RESERVED06		0x6000000000000000ULL
-#define HAMMER_ZONE_RESERVED07		0x7000000000000000ULL
+#define HAMMER_ZONE_RESERVED05		0x5000000000000000ULL  /* not used */
+#define HAMMER_ZONE_RESERVED06		0x6000000000000000ULL  /* not used */
+#define HAMMER_ZONE_RESERVED07		0x7000000000000000ULL  /* not used */
 #define HAMMER_ZONE_BTREE		0x8000000000000000ULL
 #define HAMMER_ZONE_META		0x9000000000000000ULL
 #define HAMMER_ZONE_LARGE_DATA		0xA000000000000000ULL
 #define HAMMER_ZONE_SMALL_DATA		0xB000000000000000ULL
-#define HAMMER_ZONE_RESERVED0C		0xC000000000000000ULL
-#define HAMMER_ZONE_RESERVED0D		0xD000000000000000ULL
-#define HAMMER_ZONE_RESERVED0E		0xE000000000000000ULL
+#define HAMMER_ZONE_RESERVED0C		0xC000000000000000ULL  /* not used */
+#define HAMMER_ZONE_RESERVED0D		0xD000000000000000ULL  /* not used */
+#define HAMMER_ZONE_RESERVED0E		0xE000000000000000ULL  /* not used */
 #define HAMMER_ZONE_UNAVAIL		0xF000000000000000ULL
 
 #define HAMMER_ZONE_RAW_VOLUME_INDEX	1
@@ -161,7 +161,7 @@ typedef uint32_t hammer_crc_t;
 #define HAMMER_ZONE_META_INDEX		9
 #define HAMMER_ZONE_LARGE_DATA_INDEX	10
 #define HAMMER_ZONE_SMALL_DATA_INDEX	11
-#define HAMMER_ZONE_UNAVAIL_INDEX	15	/* unavailable */
+#define HAMMER_ZONE_UNAVAIL_INDEX	15
 
 #define HAMMER_MAX_ZONES		16
 
