@@ -720,7 +720,6 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	if (tsp_in == NULL || tsp_in->tv_sec || tsp_in->tv_nsec)
 		atomic_set_int(&curthread->td_mpflags, TDF_MP_BATCH_DEMARC);
 
-
 	tsp = tsp_in;
 	*res = 0;
 
@@ -918,9 +917,6 @@ sys_kevent(struct kevent_args *uap)
 	return (error);
 }
 
-/*
- * Caller must be holding the kq token
- */
 int
 kqueue_register(struct kqueue *kq, struct kevent *kev)
 {
@@ -1534,7 +1530,7 @@ restart:
 		/*
 		 * Become the reprocessing master ourselves.
 		 *
-		 * If hint is non-zer running the event is mandatory
+		 * If hint is non-zero running the event is mandatory
 		 * when not deleting so do it whether reprocessing is
 		 * set or not.
 		 */
