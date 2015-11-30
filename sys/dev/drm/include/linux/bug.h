@@ -36,4 +36,6 @@
 
 #define BUILD_BUG()	BUILD_BUG_ON(1)
 
+#define BUILD_BUG_ON_MSG(cond, msg)
+
 #endif /* LINUX_BUG_H */
