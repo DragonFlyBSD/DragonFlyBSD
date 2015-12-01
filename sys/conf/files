@@ -386,6 +386,7 @@ dev/netif/ix/ixgbe_mbx.c	optional ix
 dev/netif/ix/ixgbe_phy.c	optional ix
 dev/netif/ix/ixgbe_vf.c		optional ix
 dev/netif/ix/ixgbe_x540.c	optional ix
+dev/netif/ix/ixgbe_x550.c	optional ix
 dev/netif/ig_hal/e1000_80003es2lan.c	optional ig_hal
 dev/netif/ig_hal/e1000_82540.c	optional ig_hal
 dev/netif/ig_hal/e1000_82541.c	optional ig_hal

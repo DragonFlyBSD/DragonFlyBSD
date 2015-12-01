@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2013, Intel Corporation 
+ * Copyright (c) 2001-2014, Intel Corporation 
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
@@ -71,6 +71,8 @@
 #include <dev/netif/ix/ixgbe_api.h>
 #include <dev/netif/ix/if_ix.h>
 
+#define IX_IFM_DEFAULT		(IFM_ETHER | IFM_AUTO)
+
 #ifdef IX_RSS_DEBUG
 #define IX_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \
@@ -83,7 +85,7 @@ do { \
 
 #define IX_NAME			"Intel(R) PRO/10GbE "
 #define IX_DEVICE(id) \
-	{ IXGBE_VENDOR_ID, IXGBE_DEV_ID_##id, IX_NAME #id }
+	{ IXGBE_INTEL_VENDOR_ID, IXGBE_DEV_ID_##id, IX_NAME #id }
 #define IX_DEVICE_NULL		{ 0, 0, NULL }
 
 static struct ix_device {
@@ -114,7 +116,13 @@ static struct ix_device {
 	IX_DEVICE(82599_SFP_FCOE),
 	IX_DEVICE(82599EN_SFP),
 	IX_DEVICE(82599_SFP_SF_QP),
+	IX_DEVICE(82599_QSFP_SF_QP),
 	IX_DEVICE(X540T),
+	IX_DEVICE(X540T1),
+	IX_DEVICE(X550T),
+	IX_DEVICE(X550EM_X_KR),
+	IX_DEVICE(X550EM_X_KX4),
+	IX_DEVICE(X550EM_X_10G_T),
 
 	/* required last entry */
 	IX_DEVICE_NULL
@@ -160,9 +168,6 @@ static int	ix_sysctl_rxtx_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_rx_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_tx_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_sts_intr_rate(SYSCTL_HANDLER_ARGS);
-#ifdef foo
-static int	ix_sysctl_advspeed(SYSCTL_HANDLER_ARGS);
-#endif
 #if 0
 static void     ix_add_hw_stats(struct ix_softc *);
 #endif
@@ -241,13 +246,17 @@ static void	ix_msix_status(void *);
 static void	ix_config_link(struct ix_softc *);
 static boolean_t ix_sfp_probe(struct ix_softc *);
 static boolean_t ix_is_sfp(const struct ixgbe_hw *);
-static void	ix_setup_optics(struct ix_softc *);
 static void	ix_update_link_status(struct ix_softc *);
 static void	ix_handle_link(struct ix_softc *);
 static void	ix_handle_mod(struct ix_softc *);
 static void	ix_handle_msf(struct ix_softc *);
+static void	ix_handle_phy(struct ix_softc *);
+static int	ix_powerdown(struct ix_softc *);
+static void	ix_config_flowctrl(struct ix_softc *);
+static void	ix_config_dmac(struct ix_softc *);
+static void	ix_init_media(struct ix_softc *);
 
-/* XXX Shared code structure requires this for the moment */
+/* XXX Missing shared code prototype */
 extern void ixgbe_stop_mac_link_on_d3_82599(struct ixgbe_hw *);
 
 static device_method_t ix_methods[] = {
@@ -355,7 +364,7 @@ ix_attach(device_t dev)
 
 	ixgbe_set_mac_type(hw);
 
-	/* Pick up the 82599 and VF settings */
+	/* Pick up the 82599 */
 	if (hw->mac.type != ixgbe_mac_82598EB)
 		hw->phy.smart_speed = ix_smart_speed;
 
@@ -499,13 +508,12 @@ ix_attach(device_t dev)
 		device_printf(dev, "No SFP+ Module found\n");
 	}
 
-	/* Detect and set physical type */
-	ix_setup_optics(sc);
-
+	sc->ifm_media = IX_IFM_DEFAULT;
 	/* Get default flow control settings */
 	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
 	    ix_flowctrl);
-	sc->ifm_flowctrl = ifmedia_str2ethfc(flowctrl);
+	sc->ifm_media |= ifmedia_str2ethfc(flowctrl);
+	sc->advspeed = IXGBE_LINK_SPEED_UNKNOWN;
 
 	/* Setup OS specific network interface */
 	ix_setup_ifp(sc);
@@ -522,10 +530,11 @@ ix_attach(device_t dev)
 	/* Initialize statistics */
 	ix_update_stats(sc);
 
-	/*
-	 * Check PCIE slot type/speed/width
-	 */
+	/* Check PCIE slot type/speed/width */
 	ix_slot_info(sc);
+
+	/* Save initial wake up filter configuration */
+	sc->wufc = IXGBE_READ_REG(hw, IXGBE_WUFC);
 
 	/* Let hardware know driver is loaded */
 	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
@@ -549,7 +558,7 @@ ix_detach(device_t dev)
 
 		ifnet_serialize_all(ifp);
 
-		ix_stop(sc);
+		ix_powerdown(sc);
 		ix_teardown_intr(sc, sc->intr_cnt);
 
 		ifnet_deserialize_all(ifp);
@@ -594,7 +603,7 @@ ix_shutdown(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	ifnet_serialize_all(ifp);
-	ix_stop(sc);
+	ix_powerdown(sc);
 	ifnet_deserialize_all(ifp);
 
 	return 0;
@@ -668,12 +677,11 @@ ix_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 	switch (command) {
 	case SIOCSIFMTU:
-		if (ifr->ifr_mtu > IX_MAX_FRAME_SIZE - ETHER_HDR_LEN) {
+		if (ifr->ifr_mtu > IX_MAX_MTU) {
 			error = EINVAL;
 		} else {
 			ifp->if_mtu = ifr->ifr_mtu;
-			sc->max_frame_size =
-			    ifp->if_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+			sc->max_frame_size = ifp->if_mtu + IX_MTU_HDR;
 			ix_init(sc);
 		}
 		break;
@@ -774,7 +782,6 @@ ix_init(void *xsc)
 	struct ix_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ixgbe_hw *hw = &sc->hw;
-	uint32_t rxpb, frame, size, tmp;
 	uint32_t gpie, rxctrl;
 	int i, error;
 	boolean_t polling;
@@ -824,15 +831,20 @@ ix_init(void *xsc)
 	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
 
 	/* Enable Fan Failure Interrupt */
-	gpie |= IXGBE_SDP1_GPIEN;
+	gpie |= IXGBE_SDP1_GPIEN_BY_MAC(hw);
 
 	/* Add for Module detection */
 	if (hw->mac.type == ixgbe_mac_82599EB)
 		gpie |= IXGBE_SDP2_GPIEN;
 
-	/* Thermal Failure Detection */
-	if (hw->mac.type == ixgbe_mac_X540)
-		gpie |= IXGBE_SDP0_GPIEN;
+	/*
+	 * Thermal Failure Detection (X540)
+	 * Link Detection (X552)
+	 */
+	if (hw->mac.type == ixgbe_mac_X540 ||
+	    hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP ||
+	    hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T)
+		gpie |= IXGBE_SDP0_GPIEN_X540;
 
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
 		/* Enable Enhanced MSIX mode */
@@ -846,6 +858,7 @@ ix_init(void *xsc)
 	if (ifp->if_mtu > ETHERMTU) {
 		uint32_t mhadd;
 
+		/* aka IXGBE_MAXFRS on 82599 and newer */
 		mhadd = IXGBE_READ_REG(hw, IXGBE_MHADD);
 		mhadd &= ~IXGBE_MHADD_MFS_MASK;
 		mhadd |= sc->max_frame_size << IXGBE_MHADD_MFS_SHIFT;
@@ -907,9 +920,6 @@ ix_init(void *xsc)
 		IXGBE_WRITE_REG(hw, IXGBE_RDT(i),
 		    sc->rx_rings[0].rx_ndesc - 1);
 	}
-
-	/* Set up VLAN support and filter */
-	ix_set_vlan(sc);
 
 	/* Enable Receive engine */
 	rxctrl = IXGBE_READ_REG(hw, IXGBE_RXCTRL);
@@ -993,37 +1003,17 @@ ix_init(void *xsc)
 	/* Config/Enable Link */
 	ix_config_link(sc);
 
-	/*
-	 * Hardware Packet Buffer & Flow Control setup
-	 */
-	frame = sc->max_frame_size;
-
-	/* Calculate High Water */
-	if (hw->mac.type == ixgbe_mac_X540)
-		tmp = IXGBE_DV_X540(frame, frame);
-	else
-		tmp = IXGBE_DV(frame, frame);
-	size = IXGBE_BT2KB(tmp);
-	rxpb = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(0)) >> 10;
-	hw->fc.high_water[0] = rxpb - size;
-
-	/* Now calculate Low Water */
-	if (hw->mac.type == ixgbe_mac_X540)
-		tmp = IXGBE_LOW_DV_X540(frame);
-	else
-		tmp = IXGBE_LOW_DV(frame);
-	hw->fc.low_water[0] = IXGBE_BT2KB(tmp);
-
-	hw->fc.requested_mode = ix_ifmedia2fc(sc->ifm_flowctrl);
-	if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
-		hw->fc.disable_fc_autoneg = TRUE;
-	else
-		hw->fc.disable_fc_autoneg = FALSE;
-	hw->fc.pause_time = IX_FC_PAUSE;
-	hw->fc.send_xon = TRUE;
+	/* Hardware Packet Buffer & Flow Control setup */
+	ix_config_flowctrl(sc);
 
 	/* Initialize the FC settings */
 	ixgbe_start_hw(hw);
+
+	/* Set up VLAN support and filter */
+	ix_set_vlan(sc);
+
+	/* Setup DMA Coalescing */
+	ix_config_dmac(sc);
 
 	/*
 	 * Only enable interrupts if we are not polling, make sure
@@ -1097,6 +1087,8 @@ static void
 ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct ix_softc *sc = ifp->if_softc;
+	struct ifmedia *ifm = &sc->media;
+	int layer;
 
 	ix_update_link_status(sc);
 
@@ -1104,29 +1096,112 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_active = IFM_ETHER;
 
 	if (!sc->link_active) {
-		ifmr->ifm_active |= IFM_NONE;
+		if (IFM_SUBTYPE(ifm->ifm_media) != IFM_AUTO)
+			ifmr->ifm_active |= ifm->ifm_media;
+		else
+			ifmr->ifm_active |= IFM_NONE;
 		return;
 	}
-
 	ifmr->ifm_status |= IFM_ACTIVE;
 
-	switch (sc->link_speed) {
-	case IXGBE_LINK_SPEED_100_FULL:
-		ifmr->ifm_active |= IFM_100_TX | IFM_FDX;
-		break;
-	case IXGBE_LINK_SPEED_1GB_FULL:
-		ifmr->ifm_active |= IFM_1000_SX | IFM_FDX;
-		break;
-	case IXGBE_LINK_SPEED_10GB_FULL:
-		ifmr->ifm_active |= sc->optics | IFM_FDX;
-		break;
-	default:
-		ifmr->ifm_active |= IFM_NONE;
-		return;
+	layer = ixgbe_get_supported_physical_layer(&sc->hw);
+
+	if ((layer & IXGBE_PHYSICAL_LAYER_10GBASE_T) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_1000BASE_T) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_100BASE_TX)) {
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_T | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_1GB_FULL:
+			ifmr->ifm_active |= IFM_1000_T | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_100_FULL:
+			ifmr->ifm_active |= IFM_100_TX | IFM_FDX;
+			break;
+		}
+	} else if ((layer & IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_SFP_ACTIVE_DA)) {
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_TWINAX | IFM_FDX;
+			break;
+		}
+	} else if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LR) {
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_LR | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_1GB_FULL:
+			ifmr->ifm_active |= IFM_1000_LX | IFM_FDX;
+			break;
+		}
+	} else if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LRM) {
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_LRM | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_1GB_FULL:
+			ifmr->ifm_active |= IFM_1000_LX | IFM_FDX;
+			break;
+		}
+	} else if ((layer & IXGBE_PHYSICAL_LAYER_10GBASE_SR) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_1000BASE_SX)) {
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_SR | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_1GB_FULL:
+			ifmr->ifm_active |= IFM_1000_SX | IFM_FDX;
+			break;
+		}
+	} else if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_CX4) {
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_CX4 | IFM_FDX;
+			break;
+		}
+	} else if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_KR) {
+		/*
+		 * XXX: These need to use the proper media types once
+		 * they're added.
+		 */
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_SR | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_2_5GB_FULL:
+			ifmr->ifm_active |= IFM_2500_SX | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_1GB_FULL:
+			ifmr->ifm_active |= IFM_1000_CX | IFM_FDX;
+			break;
+		}
+	} else if ((layer & IXGBE_PHYSICAL_LAYER_10GBASE_KX4) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_1000BASE_KX)) {
+		/*
+		 * XXX: These need to use the proper media types once
+		 * they're added.
+		 */
+		switch (sc->link_speed) {
+		case IXGBE_LINK_SPEED_10GB_FULL:
+			ifmr->ifm_active |= IFM_10G_CX4 | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_2_5GB_FULL:
+			ifmr->ifm_active |= IFM_2500_SX | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_1GB_FULL:
+			ifmr->ifm_active |= IFM_1000_CX | IFM_FDX;
+			break;
+		}
 	}
 
-	if (sc->ifm_flowctrl & IFM_ETH_FORCEPAUSE)
-		ifmr->ifm_active |= IFM_ETH_FORCEPAUSE;
+	/* If nothing is recognized... */
+	if (IFM_SUBTYPE(ifmr->ifm_active) == 0)
+		ifmr->ifm_active |= IFM_NONE;
+
+	if (sc->ifm_media & IFM_ETH_FORCEPAUSE)
+		ifmr->ifm_active |= (sc->ifm_media & IFM_ETH_FCMASK);
 
 	switch (sc->hw.fc.current_mode) {
 	case ixgbe_fc_full:
@@ -1148,25 +1223,62 @@ ix_media_change(struct ifnet *ifp)
 {
 	struct ix_softc *sc = ifp->if_softc;
 	struct ifmedia *ifm = &sc->media;
+	struct ixgbe_hw *hw = &sc->hw;
 
 	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
-		return EINVAL;
+		return (EINVAL);
+
+	if (hw->phy.media_type == ixgbe_media_type_backplane ||
+	    hw->mac.ops.setup_link == NULL) {
+		if ((ifm->ifm_media ^ sc->ifm_media) & IFM_ETH_FCMASK) {
+			/* Only flow control setting changes are allowed */
+			return (EOPNOTSUPP);
+		}
+	}
 
 	switch (IFM_SUBTYPE(ifm->ifm_media)) {
 	case IFM_AUTO:
-		sc->hw.phy.autoneg_advertised =
-		    IXGBE_LINK_SPEED_100_FULL |
-		    IXGBE_LINK_SPEED_1GB_FULL |
-		    IXGBE_LINK_SPEED_10GB_FULL;
+		sc->advspeed = IXGBE_LINK_SPEED_UNKNOWN;
 		break;
+
+	case IFM_10G_T:
+	case IFM_10G_LRM:
+	case IFM_10G_SR:	/* XXX also KR */
+	case IFM_10G_LR:
+	case IFM_10G_CX4:	/* XXX also KX4 */
+	case IFM_10G_TWINAX:
+		sc->advspeed = IXGBE_LINK_SPEED_10GB_FULL;
+		break;
+
+	case IFM_1000_T:
+	case IFM_1000_LX:
+	case IFM_1000_SX:
+	case IFM_1000_CX:	/* XXX is KX */
+		sc->advspeed = IXGBE_LINK_SPEED_1GB_FULL;
+		break;
+
+	case IFM_100_TX:
+		sc->advspeed = IXGBE_LINK_SPEED_100_FULL;
+		break;
+
 	default:
-		if_printf(ifp, "Only auto media type\n");
+		if (bootverbose) {
+			if_printf(ifp, "Invalid media type %d!\n",
+			    ifm->ifm_media);
+		}
 		return EINVAL;
 	}
-	sc->ifm_flowctrl = ifm->ifm_media & IFM_ETH_FCMASK;
+	sc->ifm_media = ifm->ifm_media;
 
+#if 0
+	if (hw->mac.ops.setup_link != NULL) {
+		hw->mac.autotry_restart = TRUE;
+		hw->mac.ops.setup_link(hw, sc->advspeed, TRUE);
+	}
+#else
 	if (ifp->if_flags & IFF_RUNNING)
 		ix_init(sc);
+#endif
 	return 0;
 }
 
@@ -1461,6 +1573,9 @@ ix_update_link_status(struct ix_softc *sc)
 				}
 			}
 
+			/* Update DMA coalescing config */
+			ix_config_dmac(sc);
+
 			sc->link_active = TRUE;
 
 			ifp->if_link_state = LINK_STATE_UP;
@@ -1519,58 +1634,6 @@ ix_stop(struct ix_softc *sc)
 
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		ix_free_rx_ring(&sc->rx_rings[i]);
-}
-
-static void
-ix_setup_optics(struct ix_softc *sc)
-{
-	struct ixgbe_hw *hw = &sc->hw;
-	int layer;
-
-	layer = ixgbe_get_supported_physical_layer(hw);
-
-	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_T) {
-		sc->optics = IFM_10G_T;
-		return;
-	}
-
-	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_T) {
-		sc->optics = IFM_1000_T;
-		return;
-	}
-
-	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_SX) {
-		sc->optics = IFM_1000_SX;
-		return;
-	}
-
-	if (layer & (IXGBE_PHYSICAL_LAYER_10GBASE_LR |
-	    IXGBE_PHYSICAL_LAYER_10GBASE_LRM)) {
-		sc->optics = IFM_10G_LR;
-		return;
-	}
-
-	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_SR) {
-		sc->optics = IFM_10G_SR;
-		return;
-	}
-
-	if (layer & IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU) {
-		sc->optics = IFM_10G_TWINAX;
-		return;
-	}
-
-	if (layer & (IXGBE_PHYSICAL_LAYER_10GBASE_KX4 |
-	    IXGBE_PHYSICAL_LAYER_10GBASE_CX4)) {
-		sc->optics = IFM_10G_CX4;
-		return;
-	}
-
-	/*
-	 * If we get here just set the default.
-	 * XXX this probably is wrong.
-	 */
-	sc->optics = IFM_AUTO;
 }
 
 static void
@@ -1637,20 +1700,8 @@ ix_setup_ifp(struct ix_softc *sc)
 		ifsq_watchdog_init(&txr->tx_watchdog, ifsq, ix_watchdog);
 	}
 
-	/*
-	 * Specify the media types supported by this adapter and register
-	 * callbacks to update media and link information
-	 */
-	ifmedia_add(&sc->media, IFM_ETHER | sc->optics | IFM_FDX, 0, NULL);
-	if (hw->device_id == IXGBE_DEV_ID_82598AT) {
-		if (sc->optics != IFM_1000_T) {
-			ifmedia_add(&sc->media,
-			    IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-		}
-	}
-	if (sc->optics != IFM_AUTO)
-		ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
-	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO | sc->ifm_flowctrl);
+	/* Specify the media types supported by this adapter */
+	ix_init_media(sc);
 }
 
 static boolean_t
@@ -1663,6 +1714,10 @@ ix_is_sfp(const struct ixgbe_hw *hw)
 	case ixgbe_phy_sfp_unknown:
 	case ixgbe_phy_sfp_passive_tyco:
 	case ixgbe_phy_sfp_passive_unknown:
+	case ixgbe_phy_qsfp_passive_unknown:
+	case ixgbe_phy_qsfp_active_unknown:
+	case ixgbe_phy_qsfp_intel:
+	case ixgbe_phy_qsfp_unknown:
 		return TRUE;
 	default:
 		return FALSE;
@@ -1694,7 +1749,10 @@ ix_config_link(struct ix_softc *sc)
 				return;
 		}
 
-		autoneg = hw->phy.autoneg_advertised;
+		if (sc->advspeed != IXGBE_LINK_SPEED_UNKNOWN)
+			autoneg = sc->advspeed;
+		else
+			autoneg = hw->phy.autoneg_advertised;
 		if (!autoneg && hw->mac.ops.get_link_capabilities != NULL) {
 			bool negotiate;
 
@@ -2416,20 +2474,21 @@ ix_init_rx_unit(struct ix_softc *sc)
 {
 	struct ixgbe_hw	*hw = &sc->hw;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint32_t bufsz, rxctrl, fctrl, rxcsum, hlreg;
+	uint32_t bufsz, fctrl, rxcsum, hlreg;
 	int i;
 
 	/*
 	 * Make sure receives are disabled while setting up the descriptor ring
 	 */
-	rxctrl = IXGBE_READ_REG(hw, IXGBE_RXCTRL);
-	IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, rxctrl & ~IXGBE_RXCTRL_RXEN);
+	ixgbe_disable_rx(hw);
 
 	/* Enable broadcasts */
 	fctrl = IXGBE_READ_REG(hw, IXGBE_FCTRL);
 	fctrl |= IXGBE_FCTRL_BAM;
-	fctrl |= IXGBE_FCTRL_DPF;
-	fctrl |= IXGBE_FCTRL_PMCF;
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		fctrl |= IXGBE_FCTRL_DPF;
+		fctrl |= IXGBE_FCTRL_PMCF;
+	}
 	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
 
 	/* Set for Jumbo Frames? */
@@ -2466,20 +2525,20 @@ ix_init_rx_unit(struct ix_softc *sc)
 		srrctl |= IXGBE_SRRCTL_DESCTYPE_ADV_ONEBUF;
 		if (sc->rx_ring_inuse > 1) {
 			/* See the commend near ix_enable_rx_drop() */
-			if (sc->ifm_flowctrl &
+			if (sc->ifm_media &
 			    (IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)) {
 				srrctl &= ~IXGBE_SRRCTL_DROP_EN;
 				if (i == 0 && bootverbose) {
 					if_printf(ifp, "flow control %s, "
 					    "disable RX drop\n",
-					    ix_ifmedia2str(sc->ifm_flowctrl));
+					    ix_ifmedia2str(sc->ifm_media));
 				}
 			} else {
 				srrctl |= IXGBE_SRRCTL_DROP_EN;
 				if (i == 0 && bootverbose) {
 					if_printf(ifp, "flow control %s, "
 					    "enable RX drop\n",
-					    ix_ifmedia2str(sc->ifm_flowctrl));
+					    ix_ifmedia2str(sc->ifm_media));
 				}
 			}
 		}
@@ -2500,7 +2559,7 @@ ix_init_rx_unit(struct ix_softc *sc)
 	 */
 	if (IX_ENABLE_HWRSS(sc)) {
 		uint8_t key[IX_NRSSRK * IX_RSSRK_SIZE];
-		int j, r;
+		int j, r, nreta;
 
 		/*
 		 * NOTE:
@@ -2523,12 +2582,24 @@ ix_init_rx_unit(struct ix_softc *sc)
 			IXGBE_WRITE_REG(hw, IXGBE_RSSRK(i), rssrk);
 		}
 
+		/* Table size will differ based on MAC */
+		switch (hw->mac.type) {
+		case ixgbe_mac_X550:
+		case ixgbe_mac_X550EM_x:
+		case ixgbe_mac_X550EM_a:
+			nreta = IX_NRETA_X550;
+			break;
+		default:
+			nreta = IX_NRETA;
+			break;
+		}
+
 		/*
 		 * Configure RSS redirect table in following fashion:
 		 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
 		 */
 		r = 0;
-		for (j = 0; j < IX_NRETA; ++j) {
+		for (j = 0; j < nreta; ++j) {
 			uint32_t reta = 0;
 
 			for (i = 0; i < IX_RETA_SIZE; ++i) {
@@ -2539,7 +2610,12 @@ ix_init_rx_unit(struct ix_softc *sc)
 				++r;
 			}
 			IX_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
-			IXGBE_WRITE_REG(hw, IXGBE_RETA(j), reta);
+			if (j < IX_NRETA) {
+				IXGBE_WRITE_REG(hw, IXGBE_RETA(j), reta);
+			} else {
+				IXGBE_WRITE_REG(hw, IXGBE_ERETA(j - IX_NRETA),
+				    reta);
+			}
 		}
 
 		/*
@@ -2857,10 +2933,12 @@ ix_enable_intr(struct ix_softc *sc)
 	if (hw->device_id == IXGBE_DEV_ID_82598AT)
 		sc->intr_mask |= IXGBE_EIMS_GPI_SDP1;
 
-	switch (sc->hw.mac.type) {
+	switch (hw->mac.type) {
 	case ixgbe_mac_82599EB:
 		sc->intr_mask |= IXGBE_EIMS_ECC;
+		/* Temperature sensor on some adapters */
 		sc->intr_mask |= IXGBE_EIMS_GPI_SDP0;
+		/* SFP+ (RX_LOS_N & MOD_ABS_N) */
 		sc->intr_mask |= IXGBE_EIMS_GPI_SDP1;
 		sc->intr_mask |= IXGBE_EIMS_GPI_SDP2;
 		break;
@@ -2871,6 +2949,18 @@ ix_enable_intr(struct ix_softc *sc)
 		fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM);
 		if (fwsm & IXGBE_FWSM_TS_ENABLED)
 			sc->intr_mask |= IXGBE_EIMS_TS;
+		break;
+
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_X550EM_x:
+		sc->intr_mask |= IXGBE_EIMS_ECC;
+		/* MAC thermal sensor is automatically enabled */
+		sc->intr_mask |= IXGBE_EIMS_TS;
+		/* Some devices use SDP0 for important information */
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP ||
+		    hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T)
+			sc->intr_mask |= IXGBE_EIMS_GPI_SDP0_BY_MAC(hw);
 		/* FALL THROUGH */
 	default:
 		break;
@@ -2966,6 +3056,10 @@ ix_slot_info(struct ix_softc *sc)
 	/* For most devices simply call the shared code routine */
 	if (hw->device_id != IXGBE_DEV_ID_82599_SFP_SF_QP) {
 		ixgbe_get_bus_info(hw);
+		/* These devices don't use PCI-E */
+		if (hw->mac.type == ixgbe_mac_X550EM_x ||
+		    hw->mac.type == ixgbe_mac_X550EM_a)
+			return;
 		goto display;
 	}
 
@@ -3077,6 +3171,9 @@ ix_set_ivar(struct ix_softc *sc, uint8_t entry, uint8_t vector,
 
 	case ixgbe_mac_82599EB:
 	case ixgbe_mac_X540:
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_X550EM_x:
 		if (type == -1) { /* MISC IVAR */
 			index = (entry & 1) * 8;
 			ivar = IXGBE_READ_REG(hw, IXGBE_IVAR_MISC);
@@ -3090,7 +3187,7 @@ ix_set_ivar(struct ix_softc *sc, uint8_t entry, uint8_t vector,
 			ivar |= (vector << index);
 			IXGBE_WRITE_REG(hw, IXGBE_IVAR(entry >> 1), ivar);
 		}
-
+		/* FALL THROUGH */
 	default:
 		break;
 	}
@@ -3121,8 +3218,6 @@ ix_sfp_probe(struct ix_softc *sc)
 
 		/* We now have supported optics */
 		sc->sfp_probe = FALSE;
-		/* Set the optics type so system reports correctly */
-		ix_setup_optics(sc);
 
 		return TRUE;
 	}
@@ -3169,7 +3264,13 @@ ix_handle_msf(struct ix_softc *sc)
 	struct ixgbe_hw *hw = &sc->hw;
 	uint32_t autoneg;
 
-	autoneg = hw->phy.autoneg_advertised;
+	hw->phy.ops.identify_sfp(hw);
+	ix_init_media(sc);
+
+	if (sc->advspeed != IXGBE_LINK_SPEED_UNKNOWN)
+		autoneg = sc->advspeed;
+	else
+		autoneg = hw->phy.autoneg_advertised;
 	if (!autoneg && hw->mac.ops.get_link_capabilities != NULL) {
 		bool negotiate;
 
@@ -3177,6 +3278,23 @@ ix_handle_msf(struct ix_softc *sc)
 	}
 	if (hw->mac.ops.setup_link != NULL)
 		hw->mac.ops.setup_link(hw, autoneg, TRUE);
+}
+
+static void
+ix_handle_phy(struct ix_softc *sc)
+{
+	struct ixgbe_hw *hw = &sc->hw;
+	int error;
+
+	error = hw->phy.ops.handle_lasi(hw);
+	if (error == IXGBE_ERR_OVERTEMP) {
+		if_printf(&sc->arpcom.ac_if,
+		    "CRITICAL: EXTERNAL PHY OVER TEMP!!  "
+		    "PHY will downshift to lower power state!\n");
+	} else if (error) {
+		if_printf(&sc->arpcom.ac_if,
+		    "Error handling LASI interrupt: %d\n", error);
+	}
 }
 
 static void
@@ -3193,39 +3311,6 @@ ix_update_stats(struct ix_softc *sc)
 	sc->stats.errbc += IXGBE_READ_REG(hw, IXGBE_ERRBC);
 	sc->stats.mspdc += IXGBE_READ_REG(hw, IXGBE_MSPDC);
 
-	/*
-	 * Note: These are for the 8 possible traffic classes, which
-	 * in current implementation is unused, therefore only 0 should
-	 * read real data.
-	 */
-	for (i = 0; i < 8; i++) {
-		uint32_t mp;
-
-		mp = IXGBE_READ_REG(hw, IXGBE_MPC(i));
-		/* missed_rx tallies misses for the gprc workaround */
-		missed_rx += mp;
-		/* global total per queue */
-		sc->stats.mpc[i] += mp;
-
-		/* Running comprehensive total for stats display */
-		total_missed_rx += sc->stats.mpc[i];
-
-		if (hw->mac.type == ixgbe_mac_82598EB) {
-			sc->stats.rnbc[i] += IXGBE_READ_REG(hw, IXGBE_RNBC(i));
-			sc->stats.qbtc[i] += IXGBE_READ_REG(hw, IXGBE_QBTC(i));
-			sc->stats.qbrc[i] += IXGBE_READ_REG(hw, IXGBE_QBRC(i));
-			sc->stats.pxonrxc[i] +=
-			    IXGBE_READ_REG(hw, IXGBE_PXONRXC(i));
-		} else {
-			sc->stats.pxonrxc[i] +=
-			    IXGBE_READ_REG(hw, IXGBE_PXONRXCNT(i));
-		}
-		sc->stats.pxontxc[i] += IXGBE_READ_REG(hw, IXGBE_PXONTXC(i));
-		sc->stats.pxofftxc[i] += IXGBE_READ_REG(hw, IXGBE_PXOFFTXC(i));
-		sc->stats.pxoffrxc[i] += IXGBE_READ_REG(hw, IXGBE_PXOFFRXC(i));
-		sc->stats.pxon2offc[i] +=
-		    IXGBE_READ_REG(hw, IXGBE_PXON2OFFCNT(i));
-	}
 	for (i = 0; i < 16; i++) {
 		sc->stats.qprc[i] += IXGBE_READ_REG(hw, IXGBE_QPRC(i));
 		sc->stats.qptc[i] += IXGBE_READ_REG(hw, IXGBE_QPTC(i));
@@ -3531,80 +3616,6 @@ ix_disable_rx_drop(struct ix_softc *sc)
 		IXGBE_WRITE_REG(hw, IXGBE_SRRCTL(i), srrctl);
 	}
 }
-
-#ifdef foo
-/* XXX not working properly w/ 82599 connected w/ DAC */
-/* XXX only work after the interface is up */
-static int
-ix_sysctl_advspeed(SYSCTL_HANDLER_ARGS)
-{
-	struct ix_softc *sc = (struct ix_softc *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct ixgbe_hw *hw = &sc->hw;
-	ixgbe_link_speed speed;
-	int error, advspeed;
-
-	advspeed = sc->advspeed;
-	error = sysctl_handle_int(oidp, &advspeed, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-
-	if (!(hw->phy.media_type == ixgbe_media_type_copper ||
-	    hw->phy.multispeed_fiber))
-		return EOPNOTSUPP;
-	if (hw->mac.ops.setup_link == NULL)
-		return EOPNOTSUPP;
-
-	switch (advspeed) {
-	case 0:	/* auto */
-		speed = IXGBE_LINK_SPEED_UNKNOWN;
-		break;
-
-	case 1:	/* 1Gb */
-		speed = IXGBE_LINK_SPEED_1GB_FULL;
-		break;
-
-	case 2:	/* 100Mb */
-		speed = IXGBE_LINK_SPEED_100_FULL;
-		break;
-
-	case 3:	/* 1Gb/10Gb */
-		speed = IXGBE_LINK_SPEED_1GB_FULL |
-		    IXGBE_LINK_SPEED_10GB_FULL;
-		break;
-
-	default:
-		return EINVAL;
-	}
-
-	ifnet_serialize_all(ifp);
-
-	if (sc->advspeed == advspeed) /* no change */
-		goto done;
-
-	if ((speed & IXGBE_LINK_SPEED_100_FULL) &&
-	    hw->mac.type != ixgbe_mac_X540) {
-		error = EOPNOTSUPP;
-		goto done;
-	}
-
-	sc->advspeed = advspeed;
-
-	if ((ifp->if_flags & IFF_RUNNING) == 0)
-		goto done;
-
-	if (speed == IXGBE_LINK_SPEED_UNKNOWN) {
-		ix_config_link(sc);
-	} else {
-		hw->mac.autotry_restart = TRUE;
-		hw->mac.ops.setup_link(hw, speed, sc->link_up);
-	}
-
-done:
-	ifnet_deserialize_all(ifp);
-	return error;
-}
-#endif
 
 static void
 ix_setup_serialize(struct ix_softc *sc)
@@ -4051,19 +4062,6 @@ do { \
 		    SYSCTL_CHILDREN(tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_pkts, "RXed packets");
 	}
-#endif
-
-#ifdef foo
-	/*
-	 * Allow a kind of speed control by forcing the autoneg
-	 * advertised speed list to only a certain value, this
-	 * supports 1G on 82599 devices, and 100Mb on X540.
-	 */
-	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-	    OID_AUTO, "advspeed", CTLTYPE_INT | CTLFLAG_RW,
-	    sc, 0, ix_sysctl_advspeed, "I",
-	    "advertised link speed, "
-	    "0 - auto, 1 - 1Gb, 2 - 100Mb, 3 - 1Gb/10Gb");
 #endif
 
 #if 0
@@ -4737,22 +4735,37 @@ ix_intr_status(struct ix_softc *sc, uint32_t eicr)
 	if (hw->mac.type != ixgbe_mac_82598EB) {
 		if (eicr & IXGBE_EICR_ECC)
 			if_printf(&sc->arpcom.ac_if, "ECC ERROR!!  Reboot!!\n");
-		else if (eicr & IXGBE_EICR_GPI_SDP1)
+
+		/* Check for over temp condition */
+		if (eicr & IXGBE_EICR_TS) {
+			if_printf(&sc->arpcom.ac_if, "CRITICAL: OVER TEMP!!  "
+			    "PHY IS SHUT DOWN!!  Shutdown!!\n");
+		}
+	}
+
+	if (ix_is_sfp(hw)) {
+		uint32_t mod_mask;
+
+		/* Pluggable optics-related interrupt */
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP)
+			mod_mask = IXGBE_EICR_GPI_SDP0_X540;
+		else
+			mod_mask = IXGBE_EICR_GPI_SDP2_BY_MAC(hw);
+		if (eicr & IXGBE_EICR_GPI_SDP1_BY_MAC(hw))
 			ix_handle_msf(sc);
-		else if (eicr & IXGBE_EICR_GPI_SDP2)
+		else if (eicr & mod_mask)
 			ix_handle_mod(sc);
-	} 
+	}
 
 	/* Check for fan failure */
 	if (hw->device_id == IXGBE_DEV_ID_82598AT &&
 	    (eicr & IXGBE_EICR_GPI_SDP1))
 		if_printf(&sc->arpcom.ac_if, "FAN FAILURE!!  Replace!!\n");
 
-	/* Check for over temp condition */
-	if (hw->mac.type == ixgbe_mac_X540 && (eicr & IXGBE_EICR_TS)) {
-		if_printf(&sc->arpcom.ac_if, "OVER TEMP!!  "
-		    "PHY IS SHUT DOWN!!  Reboot\n");
-	}
+	/* External PHY interrupt */
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T &&
+	    (eicr & IXGBE_EICR_GPI_SDP0_X540))
+	    	ix_handle_phy(sc);
 }
 
 static void
@@ -5009,5 +5022,239 @@ ix_fc2str(enum ixgbe_fc_mode fc)
 
 	default:
 		return IFM_ETH_FC_NONE;
+	}
+}
+
+static int
+ix_powerdown(struct ix_softc *sc)
+{
+	struct ixgbe_hw *hw = &sc->hw;
+	int error = 0;
+
+	/* Limit power managment flow to X550EM baseT */
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T &&
+	    hw->phy.ops.enter_lplu) {
+		/* Turn off support for APM wakeup. (Using ACPI instead) */
+		IXGBE_WRITE_REG(hw, IXGBE_GRC,
+		    IXGBE_READ_REG(hw, IXGBE_GRC) & ~(uint32_t)2);
+
+		/*
+		 * Clear Wake Up Status register to prevent any previous wakeup
+		 * events from waking us up immediately after we suspend.
+		 */
+		IXGBE_WRITE_REG(hw, IXGBE_WUS, 0xffffffff);
+
+		/*
+		 * Program the Wakeup Filter Control register with user filter
+		 * settings
+		 */
+		IXGBE_WRITE_REG(hw, IXGBE_WUFC, sc->wufc);
+
+		/* Enable wakeups and power management in Wakeup Control */
+		IXGBE_WRITE_REG(hw, IXGBE_WUC,
+		    IXGBE_WUC_WKEN | IXGBE_WUC_PME_EN);
+
+		/* X550EM baseT adapters need a special LPLU flow */
+		hw->phy.reset_disable = true;
+		ix_stop(sc);
+		error = hw->phy.ops.enter_lplu(hw);
+		if (error) {
+			if_printf(&sc->arpcom.ac_if,
+			    "Error entering LPLU: %d\n", error);
+		}
+		hw->phy.reset_disable = false;
+	} else {
+		/* Just stop for other adapters */
+		ix_stop(sc);
+	}
+	return error;
+}
+
+static void
+ix_config_flowctrl(struct ix_softc *sc)
+{
+	struct ixgbe_hw *hw = &sc->hw;
+	uint32_t rxpb, frame, size, tmp;
+
+	frame = sc->max_frame_size;
+
+	/* Calculate High Water */
+	switch (hw->mac.type) {
+	case ixgbe_mac_X540:
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_X550EM_x:
+		tmp = IXGBE_DV_X540(frame, frame);
+		break;
+	default:
+		tmp = IXGBE_DV(frame, frame);
+		break;
+	}
+	size = IXGBE_BT2KB(tmp);
+	rxpb = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(0)) >> 10;
+	hw->fc.high_water[0] = rxpb - size;
+
+	/* Now calculate Low Water */
+	switch (hw->mac.type) {
+	case ixgbe_mac_X540:
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_X550EM_x:
+		tmp = IXGBE_LOW_DV_X540(frame);
+		break;
+	default:
+		tmp = IXGBE_LOW_DV(frame);
+		break;
+	}
+	hw->fc.low_water[0] = IXGBE_BT2KB(tmp);
+
+	hw->fc.requested_mode = ix_ifmedia2fc(sc->ifm_media);
+	if (sc->ifm_media & IFM_ETH_FORCEPAUSE)
+		hw->fc.disable_fc_autoneg = TRUE;
+	else
+		hw->fc.disable_fc_autoneg = FALSE;
+	hw->fc.pause_time = IX_FC_PAUSE;
+	hw->fc.send_xon = TRUE;
+}
+
+static void
+ix_config_dmac(struct ix_softc *sc)
+{
+	struct ixgbe_hw *hw = &sc->hw;
+	struct ixgbe_dmac_config *dcfg = &hw->mac.dmac_config;
+
+	if (hw->mac.type < ixgbe_mac_X550 || !hw->mac.ops.dmac_config)
+		return;
+
+	if ((dcfg->watchdog_timer ^ sc->dmac) ||
+	    (dcfg->link_speed ^ sc->link_speed)) {
+		dcfg->watchdog_timer = sc->dmac;
+		dcfg->fcoe_en = false;
+		dcfg->link_speed = sc->link_speed;
+		dcfg->num_tcs = 1;
+
+		if (bootverbose) {
+			if_printf(&sc->arpcom.ac_if, "dmac settings: "
+			    "watchdog %d, link speed %d\n",
+			    dcfg->watchdog_timer, dcfg->link_speed);
+		}
+
+		hw->mac.ops.dmac_config(hw);
+	}
+}
+
+static void
+ix_init_media(struct ix_softc *sc)
+{
+	struct ixgbe_hw *hw = &sc->hw;
+	int layer, msf_ifm = IFM_NONE;
+
+	ifmedia_removeall(&sc->media);
+
+	layer = ixgbe_get_supported_physical_layer(hw);
+
+	/*
+	 * Media types with matching DragonFlyBSD media defines
+	 */
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_T) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_T | IFM_FDX,
+		    0, NULL);
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_T) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_1000_T | IFM_FDX,
+		    0, NULL);
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_100BASE_TX) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_100_TX | IFM_FDX,
+		    0, NULL);
+		/* No half-duplex support */
+	}
+
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LR) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_LR | IFM_FDX,
+		    0, NULL);
+		msf_ifm = IFM_1000_LX;
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LRM) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_LRM | IFM_FDX,
+		    0, NULL);
+		msf_ifm = IFM_1000_LX;
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_SR) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_SR | IFM_FDX,
+		    0, NULL);
+		msf_ifm = IFM_1000_SX;
+	}
+
+	/* Add media for multispeed fiber */
+	if (ix_is_sfp(hw) && hw->phy.multispeed_fiber && msf_ifm != IFM_NONE) {
+		uint32_t linkcap;
+		bool autoneg;
+
+		hw->mac.ops.get_link_capabilities(hw, &linkcap, &autoneg);
+		if (linkcap & IXGBE_LINK_SPEED_1GB_FULL)
+			ifmedia_add_nodup(&sc->media,
+			    IFM_ETHER | msf_ifm | IFM_FDX, 0, NULL);
+	}
+
+	if ((layer & IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_SFP_ACTIVE_DA)) {
+		ifmedia_add_nodup(&sc->media,
+		    IFM_ETHER | IFM_10G_TWINAX | IFM_FDX, 0, NULL);
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_CX4) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_CX4 | IFM_FDX,
+		    0, NULL);
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_SX) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_1000_SX | IFM_FDX,
+		    0, NULL);
+	}
+
+	/*
+	 * XXX Other (no matching DragonFlyBSD media type):
+	 * To workaround this, we'll assign these completely
+	 * inappropriate media types.
+	 */
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_KR) {
+		if_printf(&sc->arpcom.ac_if, "Media supported: 10GbaseKR\n");
+		if_printf(&sc->arpcom.ac_if, "10GbaseKR mapped to 10GbaseSR\n");
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_SR | IFM_FDX,
+		    0, NULL);
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_KX4) {
+		if_printf(&sc->arpcom.ac_if, "Media supported: 10GbaseKX4\n");
+		if_printf(&sc->arpcom.ac_if,
+		    "10GbaseKX4 mapped to 10GbaseCX4\n");
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_CX4 | IFM_FDX,
+		    0, NULL);
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_KX) {
+		if_printf(&sc->arpcom.ac_if, "Media supported: 1000baseKX\n");
+		if_printf(&sc->arpcom.ac_if,
+		    "1000baseKX mapped to 1000baseCX\n");
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_1000_CX | IFM_FDX,
+		    0, NULL);
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_BX) {
+		/* Someday, someone will care about you... */
+		if_printf(&sc->arpcom.ac_if,
+		    "Media supported: 1000baseBX, ignored\n");
+	}
+
+	/* XXX we probably don't need this */
+	if (hw->device_id == IXGBE_DEV_ID_82598AT) {
+		ifmedia_add_nodup(&sc->media,
+		    IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
+	}
+
+	ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
+
+	if (ifmedia_tryset(&sc->media, sc->ifm_media)) {
+		int flowctrl = (sc->ifm_media & IFM_ETH_FCMASK);
+
+		sc->advspeed = IXGBE_LINK_SPEED_UNKNOWN;
+		sc->ifm_media = IX_IFM_DEFAULT | flowctrl;
+		ifmedia_set(&sc->media, sc->ifm_media);
 	}
 }

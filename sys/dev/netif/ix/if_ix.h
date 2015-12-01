@@ -93,7 +93,10 @@
 /* Alignment for rings */
 #define IX_DBA_ALIGN		128
 
-#define IX_MAX_FRAME_SIZE	0x3F00
+#define IX_MAX_FRAME_SIZE	9728
+#define IX_MTU_HDR		(ETHER_HDR_LEN + ETHER_CRC_LEN + EVL_ENCAPLEN)
+#define IX_MAX_MTU		(IX_MAX_FRAME_SIZE - IX_MTU_HDR)
+
 
 /* Flow control constants */
 #define IX_FC_PAUSE		0xFFFF
@@ -110,6 +113,7 @@
 				 key[(i) * IX_RSSRK_SIZE + 2] << 16 | \
 				 key[(i) * IX_RSSRK_SIZE + 3] << 24)
 #define IX_NRETA		32
+#define IX_NRETA_X550		128
 #define IX_RETA_SIZE		4
 
 /*
@@ -302,8 +306,7 @@ struct ix_softc {
 	struct callout		timer;
 	int			timer_cpuid;
 
-	uint32_t		optics;
-	int			ifm_flowctrl;	/* IFM_ETH_ */
+	int			ifm_media;	/* IFM_ */
 	uint32_t		link_speed;
 	bool			link_up;
 	boolean_t		sfp_probe;	/* plyggable optics */
@@ -337,6 +340,8 @@ struct ix_softc {
 
 	int			if_flags;
 	int			advspeed;	/* advertised link speeds */
+	uint32_t		wufc;		/* power management */
+	uint16_t		dmac;		/* DMA coalescing */
 	uint16_t		max_frame_size;
 	int16_t			sts_msix_vec;	/* status MSI-X vector */
 

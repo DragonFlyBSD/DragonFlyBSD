@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2013, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -31,6 +31,7 @@
 
 ******************************************************************************/
 /*$FreeBSD$*/
+
 
 #ifndef _IXGBE_OS_H_
 #define _IXGBE_OS_H_
@@ -97,7 +98,7 @@
 #define PCI_COMMAND_REGISTER            PCIR_COMMAND
 
 /* Shared code dropped this define.. */
-#define IXGBE_VENDOR_ID			0x8086
+#define IXGBE_INTEL_VENDOR_ID		0x8086
 
 /* Bunch of defines for shared code bogosity */
 #define UNREFERENCED_PARAMETER(_p)
@@ -106,13 +107,14 @@
 #define UNREFERENCED_3PARAMETER(_p, _q, _r)
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s)
 
-
 #define IXGBE_NTOHL(_i)	ntohl(_i)
 #define IXGBE_NTOHS(_i)	ntohs(_i)
 
 /* XXX these need to be revisited */
-#define IXGBE_CPU_TO_LE32 le32toh
-#define IXGBE_LE32_TO_CPUS le32dec
+#define IXGBE_CPU_TO_LE32 htole32
+#define IXGBE_LE32_TO_CPUS(x)
+#define IXGBE_CPU_TO_BE16 htobe16
+#define IXGBE_CPU_TO_BE32 htobe32
 
 typedef uint8_t		u8;
 typedef int8_t		s8;
@@ -121,7 +123,9 @@ typedef int16_t		s16;
 typedef uint32_t	u32;
 typedef int32_t		s32;
 typedef uint64_t	u64;
+#ifndef __bool_true_false_are_defined
 typedef boolean_t	bool;
+#endif
 
 /* shared code requires this */
 #define __le16  u16
@@ -172,10 +176,11 @@ ixgbe_bcopy(void *_src, void *_dst, int l)
 	return (0);
 }
 
-struct ixgbe_osdep {
-	bus_space_tag_t		mem_bus_space_tag;
-	bus_space_handle_t	mem_bus_space_handle;
-	device_t		dev;
+struct ixgbe_osdep
+{
+	bus_space_tag_t    mem_bus_space_tag;
+	bus_space_handle_t mem_bus_space_handle;
+	struct device     *dev;
 };
 
 /* These routines are needed by the shared code */
@@ -186,12 +191,27 @@ extern u16 ixgbe_read_pci_cfg(struct ixgbe_hw *, u32);
 extern void ixgbe_write_pci_cfg(struct ixgbe_hw *, u32, u16);
 #define IXGBE_WRITE_PCIE_WORD ixgbe_write_pci_cfg
 
-#define IXGBE_WRITE_FLUSH(a) IXGBE_READ_REG(a, IXGBE_STATUS)
+static __inline uint32_t
+ixgbe_read_reg_osdep(struct ixgbe_osdep *osdep, uint32_t reg)
+{
+	uint32_t value;
+	int count = 0;
 
-#define IXGBE_READ_REG(a, reg) (\
-   bus_space_read_4( ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_tag, \
-                     ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_handle, \
-                     reg))
+	do {
+		value = bus_space_read_4(osdep->mem_bus_space_tag,
+		    osdep->mem_bus_space_handle, reg);
+	} while (value == 0xdeadbeef && ++count < 10);
+
+	if (count > 1)
+		device_printf(osdep->dev, "%d register reads @ 0x%8x\n",
+		    count, reg);
+
+	return value;
+}
+
+#define IXGBE_READ_REG(a, reg) ixgbe_read_reg_osdep((a)->back, reg)
+
+#define IXGBE_WRITE_FLUSH(a) IXGBE_READ_REG(a, IXGBE_STATUS)
 
 #define IXGBE_WRITE_REG(a, reg, value) (\
    bus_space_write_4( ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_tag, \
@@ -208,5 +228,6 @@ extern void ixgbe_write_pci_cfg(struct ixgbe_hw *, u32, u16);
       bus_space_write_4( ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_tag, \
                       ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_handle, \
                       (reg + ((offset) << 2)), value))
+
 
 #endif /* _IXGBE_OS_H_ */
