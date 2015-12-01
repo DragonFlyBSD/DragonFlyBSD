@@ -344,8 +344,8 @@ hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
 	vol = HAMMER_VOL_DECODE(offset);
 
 	offset &= HAMMER_OFF_SHORT_MASK;  /* cut off volume bits from layer1 */
-	i = (int)HAMMER_BLOCKMAP_LAYER1_INDEX(offset);
-	j = (int)HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
+	i = HAMMER_BLOCKMAP_LAYER1_INDEX(offset);
+	j = HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
 
 	if (i > l1_max[vol]) {
 		assert(i < 1024);  /* XXX hardcoded */

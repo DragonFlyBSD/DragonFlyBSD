@@ -359,12 +359,12 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
  * a zone-2 physical offset.
  */
 #define HAMMER_BLOCKMAP_LAYER1_INDEX(zone2_offset)		\
-	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER1_MASK) /	\
-	 HAMMER_BLOCKMAP_LAYER2)
+	((int)(((zone2_offset) & HAMMER_BLOCKMAP_LAYER1_MASK) /	\
+	 HAMMER_BLOCKMAP_LAYER2))
 
 #define HAMMER_BLOCKMAP_LAYER2_INDEX(zone2_offset)		\
-	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER2_MASK) /	\
-	HAMMER_BIGBLOCK_SIZE64)
+	((int)(((zone2_offset) & HAMMER_BLOCKMAP_LAYER2_MASK) /	\
+	HAMMER_BIGBLOCK_SIZE64))
 
 /*
  * Byte offset within layer1 or layer2 big-block for the entry representing

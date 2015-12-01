@@ -534,7 +534,7 @@ print_bigblock_fill(hammer_off_t offset)
 	int error;
 
 	blockmap_lookup(offset, &layer1, &layer2, &error);
-	printf("z%d:v%d:%lu:%lu:%lu=",
+	printf("z%d:v%d:%d:%d:%lu=",
 		HAMMER_ZONE_DECODE(offset),
 		HAMMER_VOL_DECODE(offset),
 		HAMMER_BLOCKMAP_LAYER1_INDEX(offset),
