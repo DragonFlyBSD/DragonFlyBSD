@@ -515,15 +515,15 @@ format_freemap(struct volume_info *root_vol)
 	assert(root_vol->vol_no == RootVolNo);
 
 	layer1_offset = alloc_bigblock(root_vol, HAMMER_ZONE_FREEMAP_INDEX);
-	for (i = 0; i < (int)HAMMER_BLOCKMAP_RADIX1; ++i) {
-		isnew = ((i % HAMMER_BLOCKMAP_RADIX1_PERBUFFER) == 0);
-		layer1 = get_buffer_data(layer1_offset + i * sizeof(*layer1),
-					 &buffer, isnew);
+	for (i = 0; i < HAMMER_BIGBLOCK_SIZE; i += sizeof(*layer1)) {
+		isnew = ((i % HAMMER_BUFSIZE) == 0);
+		layer1 = get_buffer_data(layer1_offset + i, &buffer, isnew);
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
 		layer1->blocks_free = 0;
 		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	}
+	assert(i == HAMMER_BIGBLOCK_SIZE);
 	rel_buffer(buffer);
 
 	blockmap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
