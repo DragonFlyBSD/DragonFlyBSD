@@ -625,7 +625,7 @@ int radeon_vce_cs_parse(struct radeon_cs_parser *p)
 	if (destroyed) {
 		/* IB contains a destroy msg, free the handle */
 		for (i = 0; i < RADEON_MAX_VCE_HANDLES; ++i)
-			atomic_cmpset(&p->rdev->vce.handles[i], handle, 0);
+			atomic_cmpxchg(&p->rdev->vce.handles[i], handle, 0);
 	}
 
 	return 0;

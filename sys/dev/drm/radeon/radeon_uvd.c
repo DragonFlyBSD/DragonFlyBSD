@@ -444,7 +444,7 @@ static int radeon_uvd_cs_msg(struct radeon_cs_parser *p, struct radeon_bo *bo,
 	} else if (msg_type == 2) {
 		/* it's a destroy msg, free the handle */
 		for (i = 0; i < RADEON_MAX_UVD_HANDLES; ++i)
-			atomic_cmpset(&p->rdev->uvd.handles[i], handle, 0);
+			atomic_cmpxchg(&p->rdev->uvd.handles[i], handle, 0);
 		radeon_bo_kunmap(bo);
 		return 0;
 	} else {
