@@ -279,7 +279,7 @@ check_freemap(hammer_blockmap_t freemap)
 
 	collect_freemap_layer1(freemap);
 
-	for (i = 0; i < (int)HAMMER_BLOCKMAP_RADIX1; ++i) {
+	for (i = 0; i < HAMMER_BLOCKMAP_RADIX1; ++i) {
 		offset = freemap->phys_offset + i * sizeof(*layer1);
 		layer1 = get_buffer_data(offset, &buffer1, 0);
 		if (layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL)
@@ -586,8 +586,7 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 	struct hammer_blockmap_layer2 *track2;
 	struct hammer_blockmap_layer2 *layer2;
 	hammer_off_t offset;
-	size_t i;
-	int zone;
+	int i, zone;
 
 	for (i = 0; i < HAMMER_BLOCKMAP_RADIX2; ++i) {
 		track2 = &collect->track2[i];

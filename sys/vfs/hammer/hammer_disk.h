@@ -342,9 +342,9 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_BLOCKMAP_UNAVAIL	((hammer_off_t)-1LL)
 
 #define HAMMER_BLOCKMAP_RADIX1	/* 2^18 = 262144 */	\
-	(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer1))
+	((int)(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer1)))
 #define HAMMER_BLOCKMAP_RADIX2	/* 2^19 = 524288 */	\
-	(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer2))
+	((int)(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer2)))
 
 #define HAMMER_BLOCKMAP_LAYER1	/* 2^(18+19+23) = 1EB */	\
 	(HAMMER_BLOCKMAP_RADIX1 * HAMMER_BLOCKMAP_LAYER2)
