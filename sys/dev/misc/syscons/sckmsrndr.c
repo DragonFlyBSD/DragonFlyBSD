@@ -220,13 +220,12 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 	pixel_size = 4;
 
 	draw_pos = sc->fbi->vaddr +
-	    scp->blk_width * pixel_size * (from % scp->xsize) +
 	    scp->blk_height * line_width * (from / scp->xsize);
 
 	if (from + count > scp->xsize * scp->ysize)
 		count = scp->xsize * scp->ysize - from;
 
-	p = draw_pos;
+	p = draw_pos + scp->blk_width * pixel_size * (from % scp->xsize);
 	for (i = from; count-- > 0; i++) {
 		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
 					scp->font_height]);
