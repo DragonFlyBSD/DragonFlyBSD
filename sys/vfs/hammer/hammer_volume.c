@@ -533,7 +533,7 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 			return 0;
 		}
 
-		KKASSERT((int)HAMMER_VOL_DECODE(layer1->phys_offset) ==
+		KKASSERT(HAMMER_VOL_DECODE(layer1->phys_offset) ==
 			trans->hmp->volume_to_remove);
 
 		/*

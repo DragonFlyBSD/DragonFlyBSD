@@ -206,8 +206,7 @@ again:
 	 * file-system. This is used by the volume-del code together with
 	 * the reblocker to free up a volume.
 	 */
-	if ((int)HAMMER_VOL_DECODE(layer1->phys_offset) ==
-	    hmp->volume_to_remove) {
+	if (HAMMER_VOL_DECODE(layer1->phys_offset) == hmp->volume_to_remove) {
 		hammer_skip_volume(&next_offset);
 		goto again;
 	}
