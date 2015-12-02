@@ -193,12 +193,22 @@ dump_blockmap(const char *label, int zone)
 			printf("app=%-7d free=%-7d",
 				layer2->append_off,
 				layer2->bytes_free);
-			if (VerboseOpt)
-				printf(" crc=%08x-%08x\n",
+			if (VerboseOpt) {
+				double bytes_used;
+				if (layer2->zone != HAMMER_ZONE_UNAVAIL_INDEX) {
+					bytes_used = HAMMER_BIGBLOCK_SIZE -
+						layer2->bytes_free;
+				} else {
+					/* UNAVAIL zone has 0 for bytes_free */
+					bytes_used = 0;
+				}
+				printf(" fill=%-5.1lf crc=%08x-%08x\n",
+					bytes_used * 100 / HAMMER_BIGBLOCK_SIZE,
 					layer1->layer1_crc,
 					layer2->entry_crc);
-			else
+			} else {
 				printf("\n");
+			}
 
 			if (VerboseOpt)
 				hammer_add_zone_stat_layer2(stats, layer2);
