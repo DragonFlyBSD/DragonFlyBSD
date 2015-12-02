@@ -90,7 +90,7 @@ static	d_read_t	ptcread;
 static	d_write_t	ptcwrite;
 static	d_kqfilter_t	ptckqfilter;
 
-DEVFS_DECLARE_CLONE_BITMAP(pty);
+DEVFS_DEFINE_CLONE_BITMAP(pty);
 
 static	d_clone_t 	ptyclone;
 

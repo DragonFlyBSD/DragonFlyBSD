@@ -42,7 +42,7 @@ static	d_write_t	snpwrite;
 static	d_ioctl_t	snpioctl;
 static	d_kqfilter_t	snpkqfilter;
 static d_clone_t	snpclone;
-DEVFS_DECLARE_CLONE_BITMAP(snp);
+DEVFS_DEFINE_CLONE_BITMAP(snp);
 
 static void snpfilter_detach(struct knote *);
 static int snpfilter_rd(struct knote *, long);

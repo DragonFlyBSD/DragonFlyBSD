@@ -87,7 +87,7 @@ static	d_ioctl_t	tunioctl;
 static	d_kqfilter_t	tunkqfilter;
 
 static d_clone_t tunclone;
-DEVFS_DECLARE_CLONE_BITMAP(tun);
+DEVFS_DEFINE_CLONE_BITMAP(tun);
 
 #if NTUN <= 1
 #define TUN_PREALLOCATED_UNITS	4

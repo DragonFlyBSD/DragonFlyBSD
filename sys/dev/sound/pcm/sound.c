@@ -1012,8 +1012,6 @@ SYSCTL_PROC(_hw_snd, OID_AUTO, clone_gc, CTLTYPE_INT | CTLFLAG_RW,
     "global clone garbage collector");
 #endif
 
-extern struct devfs_bitmap devfs_dsp_clone_bitmap;
-
 int
 pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 {

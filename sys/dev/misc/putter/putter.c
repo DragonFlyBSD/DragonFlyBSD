@@ -65,7 +65,7 @@ static d_ioctl_t putter_fop_ioctl;
 static d_close_t putter_fop_close;
 static d_kqfilter_t putter_fop_kqfilter;
 
-DEVFS_DECLARE_CLONE_BITMAP(putter);
+DEVFS_DEFINE_CLONE_BITMAP(putter);
 
 /* dev */
 static struct dev_ops putter_ops = {

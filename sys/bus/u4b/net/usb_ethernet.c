@@ -68,7 +68,7 @@ MODULE_DEPEND(uether, miibus, 1, 1, 1);
 /*
 static struct unrhdr *ueunit;
 */
-DEVFS_DECLARE_CLONE_BITMAP(ue);
+DEVFS_DEFINE_CLONE_BITMAP(ue);
 
 static usb_proc_callback_t ue_attach_post_task;
 static usb_proc_callback_t ue_promisc_task;

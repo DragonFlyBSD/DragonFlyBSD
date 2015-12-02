@@ -610,7 +610,8 @@ MLINKS+=make_autoclone_dev.9 destroy_autoclone_dev.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_put.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_set.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_uninit.9 \
-	make_autoclone_dev.9 DEVFS_DECLARE_CLONE_BITMAP.9
+	make_autoclone_dev.9 DEVFS_DECLARE_CLONE_BITMAP.9 \
+	make_autoclone_dev.9 DEVFS_DEFINE_CLONE_BITMAP.9
 MLINKS+=make_dev.9 destroy_dev.9 \
 	make_dev.9 destroy_only_dev.9 \
 	make_dev.9 devfs_scan_callback.9 \

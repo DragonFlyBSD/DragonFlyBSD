@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 13, 2010
+.Dd December 2, 2012
 .Dt MAKE_AUTOCLONE_DEV 9
 .Os
 .Sh NAME
@@ -43,6 +43,7 @@
 .Nm devfs_clone_bitmap_get ,
 .Nm devfs_clone_bitmap_put ,
 .Nm DEVFS_DECLARE_CLONE_BITMAP ,
+.Nm DEVFS_DEFINE_CLONE_BITMAP ,
 .Nm DEVFS_CLONE_BITMAP
 .Nd device clone functions
 .Sh SYNOPSIS
@@ -68,6 +69,7 @@
 .Ft void
 .Fn devfs_clone_bitmap_put "struct devfs_bitmap *bitmap" "int unit"
 .Fn DEVFS_DECLARE_CLONE_BITMAP "name"
+.Fn DEVFS_DEFINE_CLONE_BITMAP "name"
 .Fn DEVFS_CLONE_BITMAP "name"
 .Sh DESCRIPTION
 .Fn make_autoclone_dev
@@ -220,11 +222,14 @@ and
 It will return the first unused unit number and also mark it as used.
 .Pp
 The
-.Fn DEVFS_DECLARE_CLONE_BITMAP
-macro declares a clone bitmap with the specified
+.Fn DEVFS_DEFINE_CLONE_BITMAP
+macro defines a clone bitmap with the specified
 .Fa name .
-As long as the name specified is unique, this macro can be used to declare
+As long as the name specified is unique, this macro can be used to define
 global variables.
+Similarly,
+.Fn DEVFS_DECLARE_CLONE_BITMAP
+declares a clone bitmap.
 .Pp
 The
 .Fn DEVFS_CLONE_BITMAP
@@ -232,6 +237,8 @@ is a macro which expands the specified
 .Fa name
 to the full name of a clone bitmap.
 It is used in conjunction with
+.Fn DEVFS_DEFINE_CLONE_BITMAP
+and
 .Fn DEVFS_DECLARE_CLONE_BITMAP ,
 as it uses the same name.
 .Sh HISTORY

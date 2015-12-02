@@ -91,7 +91,7 @@
 #define VMNET		"vmnet"
 #define VMNET_DEV_MASK	0x00010000
 
-DEVFS_DECLARE_CLONE_BITMAP(tap);
+DEVFS_DEFINE_CLONE_BITMAP(tap);
 
 /* module */
 static int 		tapmodevent	(module_t, int, void *);

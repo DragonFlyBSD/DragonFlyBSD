@@ -53,7 +53,7 @@
 #include <sys/sysref2.h>
 
 MALLOC_DEFINE(M_DEVFS, "devfs", "Device File System (devfs) allocations");
-DEVFS_DECLARE_CLONE_BITMAP(ops_id);
+DEVFS_DEFINE_CLONE_BITMAP(ops_id);
 /*
  * SYSREF Integration - reference counting, allocation,
  * sysid and syslink integration.

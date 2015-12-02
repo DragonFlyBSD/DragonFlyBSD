@@ -98,7 +98,7 @@ static d_write_t	targwrite;
 static d_ioctl_t	targioctl;
 static d_kqfilter_t	targkqfilter;
 static d_clone_t	targclone;
-DEVFS_DECLARE_CLONE_BITMAP(targ);
+DEVFS_DEFINE_CLONE_BITMAP(targ);
 
 static void		targfiltdetach(struct knote *kn);
 static int		targreadfilt(struct knote *kn, long hint);

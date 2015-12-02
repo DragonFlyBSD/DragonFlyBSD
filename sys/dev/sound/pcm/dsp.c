@@ -82,7 +82,7 @@ static void dsp_filter_detach(struct knote *);
 static int dsp_filter_read(struct knote *, long);
 static int dsp_filter_write(struct knote *, long);
 
-DEVFS_DECLARE_CLONE_BITMAP(dsp);
+DEVFS_DEFINE_CLONE_BITMAP(dsp);
 
 struct dev_ops dsp_ops = {
 	{ "sound", 0, D_MPSAFE },

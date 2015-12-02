@@ -76,7 +76,7 @@ struct gpio_driver {
 
 static LIST_HEAD(, gpio_consumer) gpio_conslist = LIST_HEAD_INITIALIZER(&gpio_conslist);
 static LIST_HEAD(, gpio_driver) gpio_driverlist = LIST_HEAD_INITIALIZER(&gpio_driverlist);
-DEVFS_DECLARE_CLONE_BITMAP(gpio);
+DEVFS_DEFINE_CLONE_BITMAP(gpio);
 static struct lock gpio_lock;
 
 void

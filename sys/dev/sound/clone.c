@@ -41,7 +41,7 @@
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/clone.h>
 
-extern struct devfs_bitmap devfs_dsp_clone_bitmap;
+DEVFS_DECLARE_CLONE_BITMAP(dsp);
 
 /*
  * So here we go again, another clonedevs manager. Unlike default clonedevs,

@@ -93,7 +93,7 @@ static	d_strategy_t	vnstrategy;
 static	d_clone_t	vnclone;
 
 MALLOC_DEFINE(M_VN, "vn_softc", "vn driver structures");
-DEVFS_DECLARE_CLONE_BITMAP(vn);
+DEVFS_DEFINE_CLONE_BITMAP(vn);
 
 #if NVN <= 1
 #define VN_PREALLOCATED_UNITS	4

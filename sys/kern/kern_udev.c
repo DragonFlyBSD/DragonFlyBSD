@@ -119,7 +119,7 @@ static struct cmd_function cmd_fn[] = {
 		{NULL, NULL}
 };
 
-DEVFS_DECLARE_CLONE_BITMAP(udev);
+DEVFS_DEFINE_CLONE_BITMAP(udev);
 
 static TAILQ_HEAD(, udev_softc) udevq;
 static TAILQ_HEAD(, udev_event_kernel) udev_evq;

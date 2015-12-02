@@ -57,7 +57,7 @@ struct ledsc {
 	struct gpio_mapping *gp_map;
 };
 
-DEVFS_DECLARE_CLONE_BITMAP(nled);
+DEVFS_DEFINE_CLONE_BITMAP(nled);
 static struct lock led_lock;
 static LIST_HEAD(, ledsc) led_list = LIST_HEAD_INITIALIZER(&led_list);
 static MALLOC_DEFINE(M_LED, "LED", "LED driver");
