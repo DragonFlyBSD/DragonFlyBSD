@@ -128,13 +128,18 @@ typedef uint32_t hammer_crc_t;
  * zone 15:		unavailable, usually the offset is beyond volume size
  *
  * layer1/layer2 direct map:
+ *	     Maximum HAMMER filesystem capacity from volume aspect
+ *	     2^8(max volumes) * 2^52(max volume size) = 2^60 = 1EB
+ *	    <------------------------------------------------------------->
+ *	     8bits   52bits
+ *	    <------><----------------------------------------------------->
  *	zzzzvvvvvvvvoooo oooooooooooooooo oooooooooooooooo oooooooooooooooo
  *	----111111111111 1111112222222222 222222222ooooooo oooooooooooooooo
  *	    <-----------------><------------------><---------------------->
  *	     18bits             19bits              23bits
  *	    <------------------------------------------------------------->
- *	     Maximum HAMMER filesystem capacity
  *	     2^18(layer1) * 2^19(layer2) * 2^23(big-block) = 2^60 = 1EB
+ *	     Maximum HAMMER filesystem capacity from blockmap aspect
  */
 
 #define HAMMER_ZONE_RAW_VOLUME		0x1000000000000000ULL
@@ -580,14 +585,21 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
  * Special field notes:
  *
  *	vol_bot_beg - offset of boot area (mem_beg - bot_beg bytes)
- *	vol_mem_beg - offset of memory log (clu_beg - mem_beg bytes)
- *	vol_buf_beg - offset of the first buffer.
+ *	vol_mem_beg - offset of memory log (buf_beg - mem_beg bytes)
+ *	vol_buf_beg - offset of the first buffer in volume
+ *	vol_buf_end - offset of volume EOF (on buffer boundary)
  *
  *	The memory log area allows a kernel to cache new records and data
  *	in memory without allocating space in the actual filesystem to hold
  *	the records and data.  In the event that a filesystem becomes full,
  *	any records remaining in memory can be flushed to the memory log
  *	area.  This allows the kernel to immediately return success.
+ *
+ *	The buffer offset is a physical offset of zone-2 offset. The lower
+ *	52 bits of the zone-2 offset is added to the buffer offset of each
+ *	volume to generate an actual I/O offset within the block device.
+ *
+ *	NOTE: boot area and memory log are currently not used.
  */
 
 /*
@@ -603,17 +615,17 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
 #define HAMMER_MEM_MAXBYTES		(64LL*1024*1024*1024)
 
 struct hammer_volume_ondisk {
-	uint64_t vol_signature;	/* Signature */
+	uint64_t vol_signature;	/* HAMMER_FSBUF_VOLUME for a valid header */
 
-	int64_t vol_bot_beg;	/* byte offset of boot area or 0 */
-	int64_t vol_mem_beg;	/* byte offset of memory log or 0 */
-	int64_t vol_buf_beg;	/* byte offset of first buffer in volume */
-	int64_t vol_buf_end;	/* byte offset of volume EOF (on buf bndry) */
+	int64_t vol_bot_beg;	/* offset of boot area */
+	int64_t vol_mem_beg;	/* offset of memory log */
+	int64_t vol_buf_beg;	/* offset of the first buffer in volume */
+	int64_t vol_buf_end;	/* offset of volume EOF (on buffer boundary) */
 	int64_t vol_locked;	/* not used */
 
 	uuid_t    vol_fsid;	/* identify filesystem */
 	uuid_t    vol_fstype;	/* identify filesystem type */
-	char	  vol_name[64];	/* filesystem label */
+	char	  vol_name[64];	/* filesystem label, not a block device path */
 
 	int32_t vol_no;		/* volume number within filesystem */
 	int32_t vol_count;	/* number of volumes making up FS */
