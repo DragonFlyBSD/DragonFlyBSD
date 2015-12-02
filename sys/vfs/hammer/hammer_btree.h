@@ -78,9 +78,16 @@
 /*
  * Common base for all B-Tree element types (40 bytes)
  *
- * The following fields are keys used by hammer_btree_cmp()
- * to compare B-Tree elements listed from higher priority
- * to lower priority on comparison.
+ * btype field represents a type of B-Tree ondisk structure that this
+ * B-Tree element points to, but not a type of B-Tree node that this
+ * B-Tree element is a part of.  btype could be HAMMER_BTREE_TYPE_RECORD
+ * as well as HAMMER_BTREE_TYPE_INTERNAL and HAMMER_BTREE_TYPE_LEAF,
+ * while B-Tree node type is never HAMMER_BTREE_TYPE_RECORD.
+ *
+ * The following fields are keys used by hammer_btree_cmp() to compare
+ * B-Tree elements listed from higher to lower priority on comparison.
+ * B-Tree elements are first grouped by localization value, and then
+ * obj_id within a subtree of the same localization value, and so on.
  *
  * 1. localization
  * 2. obj_id
@@ -95,8 +102,8 @@ struct hammer_base_elm {
 	hammer_tid_t create_tid; /* 10 transaction id for record creation */
 	hammer_tid_t delete_tid; /* 18 transaction id for record update/del */
 
-	uint16_t rec_type;	/* 20 _RECTYPE_ */
-	uint8_t obj_type;	/* 22 _OBJTYPE_ (restricted) */
+	uint16_t rec_type;	/* 20 HAMMER_RECTYPE_ */
+	uint8_t obj_type;	/* 22 HAMMER_OBJTYPE_ */
 	uint8_t btype;		/* 23 B-Tree element type */
 	uint32_t localization;	/* 24 B-Tree localization parameter */
 				/* 28 */
@@ -118,10 +125,8 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
  * HAMMER_DEF_LOCALIZATION for its incore ip->obj_localization.
  * HAMMER_DEF_LOCALIZATION implies PFS 0 and no localization type.
  */
-#define HAMMER_LOCALIZE_RESERVED00	0x00000000
 #define HAMMER_LOCALIZE_INODE		0x00000001
-#define HAMMER_LOCALIZE_MISC		0x00000002
-#define HAMMER_LOCALIZE_RESERVED03	0x00000003
+#define HAMMER_LOCALIZE_MISC		0x00000002  /* not inode */
 #define HAMMER_LOCALIZE_MASK		0x0000FFFF
 #define HAMMER_LOCALIZE_PSEUDOFS_MASK	0xFFFF0000
 
@@ -194,14 +199,48 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  * reserved for left/right leaf linkage fields, flags, and other future
  * features.
  */
-#define HAMMER_BTREE_LEAF_ELMS	63
-#define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
-
 #define HAMMER_BTREE_TYPE_INTERNAL	((uint8_t)'I')
 #define HAMMER_BTREE_TYPE_LEAF		((uint8_t)'L')
 #define HAMMER_BTREE_TYPE_RECORD	((uint8_t)'R')
 #define HAMMER_BTREE_TYPE_DELETED	((uint8_t)'D')
 #define HAMMER_BTREE_TYPE_NONE		((uint8_t)0)
+
+#define HAMMER_BTREE_LEAF_ELMS	63
+#define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
+
+struct hammer_node_ondisk {
+	/*
+	 * B-Tree node header (64 bytes)
+	 */
+	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
+	uint32_t	reserved00;
+	hammer_off_t	parent;		/* 0 if at root of B-Tree */
+	int32_t		count;		/* maximum 62 for INTERNAL, 63 for LEAF */
+	uint8_t		type;		/* B-Tree node type (INTERNAL or LEAF) */
+	uint8_t		reserved01;
+	uint16_t	reserved02;
+	hammer_off_t	reserved03;
+	hammer_off_t	reserved04;
+	hammer_off_t	reserved05;
+	hammer_off_t	reserved06;
+	hammer_tid_t	mirror_tid;	/* mirroring support (aggregator) */
+
+	/*
+	 * B-Tree node element array (64x63 bytes)
+	 *
+	 * Internal nodes have one less logical element
+	 * (meaning: the same number of physical elements) in order to
+	 * accomodate the right-hand boundary.  The left-hand boundary
+	 * is integrated into the first element.  Leaf nodes have no
+	 * boundary elements.
+	 */
+	union hammer_btree_elm elms[HAMMER_BTREE_LEAF_ELMS];
+};
+
+typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
+
+#define HAMMER_BTREE_CRCSIZE	\
+	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))
 
 /*
  * Return 1 if elm is a node element of an internal node,
@@ -263,37 +302,5 @@ hammer_elm_btype(hammer_btree_elm_t elm)
 		return('?');
 	}
 }
-
-struct hammer_node_ondisk {
-	/*
-	 * B-Tree node header (64 bytes)
-	 */
-	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
-	uint32_t	reserved00;
-	hammer_off_t	parent;		/* 0 if at root of B-Tree */
-	int32_t		count;
-	uint8_t		type;
-	uint8_t		reserved01;
-	uint16_t	reserved02;
-	hammer_off_t	reserved03;	/* future link_left */
-	hammer_off_t	reserved04;	/* future link_right */
-	hammer_off_t	reserved05;
-	hammer_off_t	reserved06;
-	hammer_tid_t	mirror_tid;	/* mirroring support (aggregator) */
-
-	/*
-	 * Element array.  Internal nodes have one less logical element
-	 * (meaning: the same number of physical elements) in order to
-	 * accomodate the right-hand boundary.  The left-hand boundary
-	 * is integrated into the first element.  Leaf nodes have no
-	 * boundary elements.
-	 */
-	union hammer_btree_elm elms[HAMMER_BTREE_LEAF_ELMS];
-};
-
-#define HAMMER_BTREE_CRCSIZE	\
-	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))
-
-typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
 
 #endif /* !VFS_HAMMER_BTREE_H_ */
