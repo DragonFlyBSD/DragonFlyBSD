@@ -194,7 +194,7 @@ dump_blockmap(const char *label, int zone)
 				layer2->append_off,
 				layer2->bytes_free);
 			if (VerboseOpt)
-				printf(" crc=%04x-%04x\n",
+				printf(" crc=%08x-%08x\n",
 					layer1->layer1_crc,
 					layer2->entry_crc);
 			else

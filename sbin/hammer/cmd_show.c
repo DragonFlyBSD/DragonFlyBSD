@@ -385,7 +385,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			       (uintmax_t)elm->leaf.data_offset,
 			       elm->leaf.data_len);
 			if (QuietOpt < 3) {
-				printf(" crc=%04x", elm->leaf.data_crc);
+				printf(" crc=%08x", elm->leaf.data_crc);
 				printf("\n\t         fill=");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
