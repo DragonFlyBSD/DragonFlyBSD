@@ -36,36 +36,24 @@ int
 fb_get_options(const char *connector_name, char **option)
 {
 	char buf[128], str[1024];
-	int i;
 
 	/*
-	 * This hack allows us to use drm.video.lvds1="<video-mode>"
-	 * in loader.conf, where linux would use video=LVDS-1:<video-mode>.
-	 * e.g. drm.video.lvds1=1024x768 sets the LVDS-1 connector to
+	 * Where on linux one would use the command line option
+	 * video=LVDS-1:<video-mode>, the corresponding tunable is
+	 * drm.video.LVDS-1=<video-mode>.
+	 * e.g. drm.video.LVDS-1=1024x768 sets the LVDS-1 connector to
 	 * a 1024x768 video mode in the syscons framebuffer console.
 	 * See https://wiki.archlinux.org/index.php/Kernel_mode_setting
 	 * for an explanation of the video mode command line option.
-	 * (This corresponds to the video= Linux kernel command-line
-	 * option)
 	 */
 	memset(str, 0, sizeof(str));
 	ksnprintf(buf, sizeof(buf), "drm.video.%s", connector_name);
-	i = 0;
-	while (i < strlen(buf)) {
-		buf[i] = tolower(buf[i]);
-		if (buf[i] == '-') {
-			memmove(&buf[i], &buf[i+1], strlen(buf)-i);
-		} else {
-			i++;
-		}
-	}
-	kprintf("looking up kenv for \"%s\"\n", buf);
 	if (kgetenv_string(buf, str, sizeof(str)-1)) {
 		kprintf("found kenv %s=%s\n", buf, str);
 		*option = kstrdup(str, M_DRM);
 		return (0);
 	} else {
-		kprintf("didn't find value for kenv %s\n", buf);
+		kprintf("tunable %s is not set\n", buf);
 		return (1);
 	}
 }
