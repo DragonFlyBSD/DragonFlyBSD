@@ -102,6 +102,7 @@ void	ifmedia_removeall( struct ifmedia *ifm);
 
 /* Add one supported medium to a struct ifmedia. */
 void	ifmedia_add(struct ifmedia *ifm, int mword, int data, void *aux);
+int	ifmedia_add_nodup(struct ifmedia *ifm, int mword, int data, void *aux);
 
 /* Add an array (of ifmedia_entry) media to a struct ifmedia. */
 void	ifmedia_list_add(struct ifmedia *mp, struct ifmedia_entry *lp,
@@ -109,6 +110,7 @@ void	ifmedia_list_add(struct ifmedia *mp, struct ifmedia_entry *lp,
 
 /* Set default media type on initialization. */
 void	ifmedia_set(struct ifmedia *ifm, int mword);
+int	ifmedia_tryset(struct ifmedia *ifm, int mword);
 
 /* Common ioctl function for getting/setting media, called by driver. */
 int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,

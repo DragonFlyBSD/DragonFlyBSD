@@ -62,7 +62,7 @@
  *	Useful for debugging newly-ported  drivers.
  */
 
-static struct ifmedia_entry *ifmedia_match (struct ifmedia *ifm,
+static struct ifmedia_entry *ifmedia_match(struct ifmedia *ifm,
     int flags, int mask);
 
 #ifdef IFMEDIA_DEBUG
@@ -127,6 +127,18 @@ ifmedia_add(struct ifmedia *ifm, int mword, int data, void *aux)
 	LIST_INSERT_HEAD(&ifm->ifm_list, entry, ifm_list);
 }
 
+int
+ifmedia_add_nodup(struct ifmedia *ifm, int mword, int data, void *aux)
+{
+	struct ifmedia_entry *match;
+
+	match = ifmedia_match(ifm, mword, ifm->ifm_mask);
+	if (match != NULL)
+		return EEXIST;
+	ifmedia_add(ifm, mword, data, aux);
+	return 0;
+}
+
 /*
  * Add an array of media configurations to the list of
  * supported media for a specific interface instance.
@@ -155,7 +167,6 @@ ifmedia_set(struct ifmedia *ifm, int target)
 	struct ifmedia_entry *match;
 
 	match = ifmedia_match(ifm, target, ifm->ifm_mask);
-
 	if (match == NULL) {
 		kprintf("ifmedia_set: no match for 0x%x/0x%x\n",
 		    target, ~ifm->ifm_mask);
@@ -172,6 +183,18 @@ ifmedia_set(struct ifmedia *ifm, int target)
 		ifmedia_printword(ifm->ifm_cur->ifm_media);
 	}
 #endif
+}
+
+int
+ifmedia_tryset(struct ifmedia *ifm, int target)
+{
+	struct ifmedia_entry *match;
+
+	match = ifmedia_match(ifm, target, ifm->ifm_mask);
+	if (match == NULL)
+		return ENOENT;
+	ifmedia_set(ifm, target);
+	return 0;
 }
 
 /*
