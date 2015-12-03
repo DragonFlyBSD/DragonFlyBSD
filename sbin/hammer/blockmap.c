@@ -133,7 +133,7 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	 */
 	bytes = (bytes + 15) & ~15;
 	assert(bytes > 0 && bytes <= HAMMER_BUFSIZE);  /* not HAMMER_XBUFSIZE */
-	assert(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
+	assert(hammer_is_zone2_mapped_index(zone));
 
 again:
 	assert(blockmap->next_offset != HAMMER_ZONE_ENCODE(zone + 1, 0));

@@ -256,8 +256,6 @@ hammer_cmd_checkmap(void)
 	}
 	rel_volume(volume);
 
-	assert(HAMMER_ZONE_UNDO_INDEX < HAMMER_ZONE2_MAPPED_INDEX);
-	assert(HAMMER_ZONE2_MAPPED_INDEX < HAMMER_MAX_ZONES);
 	AssertOnFailure = (DebugOpt != 0);
 
 	printf("Collecting allocation info from freemap: ");
@@ -614,8 +612,7 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 		if (AssertOnFailure) {
 			assert((zone == HAMMER_ZONE_UNDO_INDEX) ||
 				(zone == HAMMER_ZONE_FREEMAP_INDEX) ||
-				(zone >= HAMMER_ZONE2_MAPPED_INDEX &&
-				 zone < HAMMER_MAX_ZONES));
+				hammer_is_zone2_mapped_index(zone));
 		}
 		if (VerboseOpt)
 			hammer_add_zone_stat_layer2(stats, layer2);

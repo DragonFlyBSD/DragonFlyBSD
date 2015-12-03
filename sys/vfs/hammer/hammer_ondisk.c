@@ -586,18 +586,9 @@ hammer_get_installed_volumes(hammer_mount_t hmp)
 static __inline int
 hammer_direct_zone(hammer_off_t buf_offset)
 {
-	switch(HAMMER_ZONE_DECODE(buf_offset)) {
-	case HAMMER_ZONE_RAW_BUFFER_INDEX:
-	case HAMMER_ZONE_FREEMAP_INDEX:
-	case HAMMER_ZONE_BTREE_INDEX:
-	case HAMMER_ZONE_META_INDEX:
-	case HAMMER_ZONE_LARGE_DATA_INDEX:
-	case HAMMER_ZONE_SMALL_DATA_INDEX:
-		return(1);
-	default:
-		return(0);
-	}
-	/* NOT REACHED */
+	int zone = HAMMER_ZONE_DECODE(buf_offset);
+
+	return(hammer_is_direct_mapped_index(zone));
 }
 
 hammer_buffer_t
@@ -714,11 +705,12 @@ found_aliased:
 	/*
 	 * Handle blockmap offset translations
 	 */
-	if (zone >= HAMMER_ZONE2_MAPPED_INDEX) {
+	if (hammer_is_zone2_mapped_index(zone)) {
 		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
 		zone2_offset = hammer_undo_lookup(hmp, buf_offset, errorp);
 	} else {
+		/* Must be zone-2 (not 1 or 4 or 15) */
 		KKASSERT(zone == HAMMER_ZONE_RAW_BUFFER_INDEX);
 		zone2_offset = buf_offset;
 		*errorp = 0;

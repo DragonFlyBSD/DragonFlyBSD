@@ -171,10 +171,19 @@ typedef uint32_t hammer_crc_t;
 #define HAMMER_MAX_ZONES		16
 
 /*
- * Backend zones that are mapped to zone-2 (except for zone-3)
- * starts from this index which is 8.
+ * Test if the zone is directly mapped to zone-2 offset via freemap.
  */
-#define HAMMER_ZONE2_MAPPED_INDEX	HAMMER_ZONE_BTREE_INDEX
+#define hammer_is_zone2_mapped_index(zone)		\
+	((zone) >= HAMMER_ZONE_BTREE_INDEX &&		\
+	 (zone) < HAMMER_MAX_ZONES)
+/*
+ * Test if the zone is directly mapped to zone-2 offset. The word
+ * directly here means the zone is neither RAW_VOLUME nor UNDO zone.
+ */
+#define hammer_is_direct_mapped_index(zone)		\
+	(((zone) == HAMMER_ZONE_RAW_BUFFER_INDEX) ||	\
+	 ((zone) == HAMMER_ZONE_FREEMAP_INDEX) ||	\
+	 hammer_is_zone2_mapped_index(zone))
 
 #define HAMMER_ZONE_ENCODE(zone, ham_off)		\
 	(((hammer_off_t)(zone) << 60) | (ham_off))
