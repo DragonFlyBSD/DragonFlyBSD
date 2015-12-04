@@ -6632,12 +6632,12 @@ shift_amt_for_vec_perm_mask (rtx sel)
     return NULL_RTX;
 
   first = INTVAL (CONST_VECTOR_ELT (sel, 0));
-  if (first >= 2*nelt)
+  if (first >= nelt)
     return NULL_RTX;
   for (i = 1; i < nelt; i++)
     {
       int idx = INTVAL (CONST_VECTOR_ELT (sel, i));
-      unsigned int expected = (i + first) & (2 * nelt - 1);
+      unsigned int expected = i + first;
       /* Indices into the second vector are all equivalent.  */
       if (idx < 0 || (MIN (nelt, (unsigned) idx) != MIN (nelt, expected)))
 	return NULL_RTX;
@@ -6674,17 +6674,6 @@ expand_vec_perm_1 (enum insn_code icode, rtx target,
   else
     {
       create_input_operand (&ops[1], v0, tmode);
-      /* See if this can be handled with a vec_shr.  We only do this if the
-         second vector is all zeroes.  */
-      enum insn_code shift_code = optab_handler (vec_shr_optab, GET_MODE (v0));
-      if (v1 == CONST0_RTX (GET_MODE (v1)) && shift_code)
-	if (rtx shift_amt = shift_amt_for_vec_perm_mask (sel))
-	  {
-	    create_convert_operand_from_type (&ops[2], shift_amt,
-					      sizetype_tab[(int) stk_sizetype]);
-	    if (maybe_expand_insn (shift_code, 3, ops))
-	      return ops[0].value;
-	  }
       create_input_operand (&ops[2], v1, tmode);
     }
 
@@ -6726,6 +6715,44 @@ expand_vec_perm (machine_mode mode, rtx v0, rtx v1, rtx sel, rtx target)
   gcc_assert (GET_MODE_CLASS (GET_MODE (sel)) == MODE_VECTOR_INT);
   if (GET_CODE (sel) == CONST_VECTOR)
     {
+      /* See if this can be handled with a vec_shr.  We only do this if the
+	 second vector is all zeroes.  */
+      enum insn_code shift_code = optab_handler (vec_shr_optab, mode);
+      enum insn_code shift_code_qi = ((qimode != VOIDmode && qimode != mode)
+				      ? optab_handler (vec_shr_optab, qimode)
+				      : CODE_FOR_nothing);
+      rtx shift_amt = NULL_RTX;
+      if (v1 == CONST0_RTX (GET_MODE (v1))
+	  && (shift_code != CODE_FOR_nothing
+	      || shift_code_qi != CODE_FOR_nothing))
+	{
+	  shift_amt = shift_amt_for_vec_perm_mask (sel);
+	  if (shift_amt)
+	    {
+	      struct expand_operand ops[3];
+	      if (shift_code != CODE_FOR_nothing)
+		{
+		  create_output_operand (&ops[0], target, mode);
+		  create_input_operand (&ops[1], v0, mode);
+		  create_convert_operand_from_type (&ops[2], shift_amt,
+						    sizetype);
+		  if (maybe_expand_insn (shift_code, 3, ops))
+		    return ops[0].value;
+		}
+	      if (shift_code_qi != CODE_FOR_nothing)
+		{
+		  tmp = gen_reg_rtx (qimode);
+		  create_output_operand (&ops[0], tmp, qimode);
+		  create_input_operand (&ops[1], gen_lowpart (qimode, v0),
+					qimode);
+		  create_convert_operand_from_type (&ops[2], shift_amt,
+						    sizetype);
+		  if (maybe_expand_insn (shift_code_qi, 3, ops))
+		    return gen_lowpart (mode, ops[0].value);
+		}
+	    }
+	}
+
       icode = direct_optab_handler (vec_perm_const_optab, mode);
       if (icode != CODE_FOR_nothing)
 	{
@@ -7178,7 +7205,7 @@ expand_compare_and_swap_loop (rtx mem, rtx old_reg, rtx new_reg, rtx seq)
   success = NULL_RTX;
   oldval = cmp_reg;
   if (!expand_atomic_compare_and_swap (&success, &oldval, mem, old_reg,
-				       new_reg, false, MEMMODEL_SEQ_CST,
+				       new_reg, false, MEMMODEL_SYNC_SEQ_CST,
 				       MEMMODEL_RELAXED))
     return false;
 
@@ -7239,9 +7266,7 @@ maybe_emit_sync_lock_test_and_set (rtx target, rtx mem, rtx val,
      exists, and the memory model is stronger than acquire, add a release 
      barrier before the instruction.  */
 
-  if ((model & MEMMODEL_MASK) == MEMMODEL_SEQ_CST
-      || (model & MEMMODEL_MASK) == MEMMODEL_RELEASE
-      || (model & MEMMODEL_MASK) == MEMMODEL_ACQ_REL)
+  if (is_mm_seq_cst (model) || is_mm_release (model) || is_mm_acq_rel (model))
     expand_mem_thread_fence (model);
 
   if (icode != CODE_FOR_nothing)
@@ -7348,11 +7373,12 @@ expand_sync_lock_test_and_set (rtx target, rtx mem, rtx val)
   rtx ret;
 
   /* Try an atomic_exchange first.  */
-  ret = maybe_emit_atomic_exchange (target, mem, val, MEMMODEL_ACQUIRE);
+  ret = maybe_emit_atomic_exchange (target, mem, val, MEMMODEL_SYNC_ACQUIRE);
   if (ret)
     return ret;
 
-  ret = maybe_emit_sync_lock_test_and_set (target, mem, val, MEMMODEL_ACQUIRE);
+  ret = maybe_emit_sync_lock_test_and_set (target, mem, val,
+					   MEMMODEL_SYNC_ACQUIRE);
   if (ret)
     return ret;
 
@@ -7363,7 +7389,7 @@ expand_sync_lock_test_and_set (rtx target, rtx mem, rtx val)
   /* If there are no other options, try atomic_test_and_set if the value
      being stored is 1.  */
   if (val == const1_rtx)
-    ret = maybe_emit_atomic_test_and_set (target, mem, MEMMODEL_ACQUIRE);
+    ret = maybe_emit_atomic_test_and_set (target, mem, MEMMODEL_SYNC_ACQUIRE);
 
   return ret;
 }
@@ -7458,9 +7484,9 @@ expand_atomic_exchange (rtx target, rtx mem, rtx val, enum memmodel model)
 
    *PTARGET_BOOL is an optional place to store the boolean success/failure.
    *PTARGET_OVAL is an optional place to store the old value from memory.
-   Both target parameters may be NULL to indicate that we do not care about
-   that return value.  Both target parameters are updated on success to
-   the actual location of the corresponding result.
+   Both target parameters may be NULL or const0_rtx to indicate that we do
+   not care about that return value.  Both target parameters are updated on
+   success to the actual location of the corresponding result.
 
    MEMMODEL is the memory model variant to use.
 
@@ -7485,6 +7511,9 @@ expand_atomic_compare_and_swap (rtx *ptarget_bool, rtx *ptarget_oval,
   /* Make sure we always have some place to put the return oldval.
      Further, make sure that place is distinct from the input expected,
      just in case we need that path down below.  */
+  if (ptarget_oval && *ptarget_oval == const0_rtx)
+    ptarget_oval = NULL;
+
   if (ptarget_oval == NULL
       || (target_oval = *ptarget_oval) == NULL
       || reg_overlap_mentioned_p (expected, target_oval))
@@ -7494,6 +7523,9 @@ expand_atomic_compare_and_swap (rtx *ptarget_bool, rtx *ptarget_oval,
   if (icode != CODE_FOR_nothing)
     {
       machine_mode bool_mode = insn_data[icode].operand[0].mode;
+
+      if (ptarget_bool && *ptarget_bool == const0_rtx)
+	ptarget_bool = NULL;
 
       /* Make sure we always have a place for the bool operand.  */
       if (ptarget_bool == NULL
@@ -7558,9 +7590,10 @@ expand_atomic_compare_and_swap (rtx *ptarget_bool, rtx *ptarget_oval,
   if (libfunc != NULL)
     {
       rtx addr = convert_memory_address (ptr_mode, XEXP (mem, 0));
-      target_oval = emit_library_call_value (libfunc, NULL_RTX, LCT_NORMAL,
-					     mode, 3, addr, ptr_mode,
-					     expected, mode, desired, mode);
+      rtx target = emit_library_call_value (libfunc, NULL_RTX, LCT_NORMAL,
+					    mode, 3, addr, ptr_mode,
+					    expected, mode, desired, mode);
+      emit_move_insn (target_oval, target);
 
       /* Compute the boolean return value only if requested.  */
       if (ptarget_bool)
@@ -7620,7 +7653,7 @@ expand_mem_thread_fence (enum memmodel model)
 {
   if (HAVE_mem_thread_fence)
     emit_insn (gen_mem_thread_fence (GEN_INT (model)));
-  else if ((model & MEMMODEL_MASK) != MEMMODEL_RELAXED)
+  else if (!is_mm_relaxed (model))
     {
       if (HAVE_memory_barrier)
 	emit_insn (gen_memory_barrier ());
@@ -7644,7 +7677,7 @@ expand_mem_signal_fence (enum memmodel model)
 {
   if (HAVE_mem_signal_fence)
     emit_insn (gen_mem_signal_fence (GEN_INT (model)));
-  else if ((model & MEMMODEL_MASK) != MEMMODEL_RELAXED)
+  else if (!is_mm_relaxed (model))
     {
       /* By default targets are coherent between a thread and the signal
 	 handler running on the same thread.  Thus this really becomes a
@@ -7699,7 +7732,7 @@ expand_atomic_load (rtx target, rtx mem, enum memmodel model)
     target = gen_reg_rtx (mode);
 
   /* For SEQ_CST, emit a barrier before the load.  */
-  if ((model & MEMMODEL_MASK) == MEMMODEL_SEQ_CST)
+  if (is_mm_seq_cst (model))
     expand_mem_thread_fence (model);
 
   emit_move_insn (target, mem);
@@ -7745,7 +7778,7 @@ expand_atomic_store (rtx mem, rtx val, enum memmodel model, bool use_release)
 	  if (maybe_expand_insn (icode, 2, ops))
 	    {
 	      /* lock_release is only a release barrier.  */
-	      if ((model & MEMMODEL_MASK) == MEMMODEL_SEQ_CST)
+	      if (is_mm_seq_cst (model))
 		expand_mem_thread_fence (model);
 	      return const0_rtx;
 	    }
@@ -7772,7 +7805,7 @@ expand_atomic_store (rtx mem, rtx val, enum memmodel model, bool use_release)
   emit_move_insn (mem, val);
 
   /* For SEQ_CST, also emit a barrier after the store.  */
-  if ((model & MEMMODEL_MASK) == MEMMODEL_SEQ_CST)
+  if (is_mm_seq_cst (model))
     expand_mem_thread_fence (model);
 
   return const0_rtx;

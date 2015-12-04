@@ -4055,11 +4055,11 @@ ix86_option_override_internal (bool main_args_p,
   if (opts_set->x_ix86_incoming_stack_boundary_arg)
     {
       if (opts->x_ix86_incoming_stack_boundary_arg
-	  < (TARGET_64BIT_P (opts->x_ix86_isa_flags) ? 4 : 2)
+	  < (TARGET_64BIT_P (opts->x_ix86_isa_flags) ? 3 : 2)
 	  || opts->x_ix86_incoming_stack_boundary_arg > 12)
 	error ("-mincoming-stack-boundary=%d is not between %d and 12",
 	       opts->x_ix86_incoming_stack_boundary_arg,
-	       TARGET_64BIT_P (opts->x_ix86_isa_flags) ? 4 : 2);
+	       TARGET_64BIT_P (opts->x_ix86_isa_flags) ? 3 : 2);
       else
 	{
 	  ix86_user_incoming_stack_boundary
@@ -5201,6 +5201,14 @@ ix86_set_current_function (tree fndecl)
 	TREE_TARGET_GLOBALS (new_tree) = save_target_globals_default_opts ();
     }
   ix86_previous_fndecl = fndecl;
+
+  /* 64-bit MS and SYSV ABI have different set of call used registers.
+     Avoid expensive re-initialization of init_regs each time we switch
+     function context.  */
+  if (TARGET_64BIT
+      && (call_used_regs[SI_REG]
+	  == (cfun->machine->call_abi == MS_ABI)))
+    reinit_regs ();
 }
 
 
@@ -6342,17 +6350,6 @@ ix86_call_abi_override (const_tree fndecl)
     cfun->machine->call_abi = ix86_abi;
   else
     cfun->machine->call_abi = ix86_function_type_abi (TREE_TYPE (fndecl));
-}
-
-/* 64-bit MS and SYSV ABI have different set of call used registers.  Avoid
-   expensive re-initialization of init_regs each time we switch function context
-   since this is needed only during RTL expansion.  */
-static void
-ix86_maybe_switch_abi (void)
-{
-  if (TARGET_64BIT &&
-      call_used_regs[SI_REG] == (cfun->machine->call_abi == MS_ABI))
-    reinit_regs ();
 }
 
 /* Return 1 if pseudo register should be created and used to hold
@@ -8211,7 +8208,8 @@ ix86_function_value_regno_p (const unsigned int regno)
     case SI_REG:
       return TARGET_64BIT && ix86_cfun_abi () != MS_ABI;
 
-    case FIRST_BND_REG:
+    case BND0_REG:
+    case BND1_REG:
       return chkp_function_instrumented_p (current_function_decl);
 
       /* Complex values are returned in %st(0)/%st(1) pair.  */
@@ -10104,11 +10102,14 @@ ix86_compute_frame_layout (struct ix86_frame *frame)
   frame->nregs = ix86_nsaved_regs ();
   frame->nsseregs = ix86_nsaved_sseregs ();
 
-  /* 64-bit MS ABI seem to require stack alignment to be always 16 except for
-     function prologues and leaf.  */
+  /* 64-bit MS ABI seem to require stack alignment to be always 16,
+     except for function prologues, leaf functions and when the defult
+     incoming stack boundary is overriden at command line or via
+     force_align_arg_pointer attribute.  */
   if ((TARGET_64BIT_MS_ABI && crtl->preferred_stack_boundary < 128)
       && (!crtl->is_leaf || cfun->calls_alloca != 0
-          || ix86_current_function_calls_tls_descriptor))
+	  || ix86_current_function_calls_tls_descriptor
+	  || ix86_incoming_stack_boundary < 128))
     {
       crtl->preferred_stack_boundary = 128;
       crtl->stack_alignment_needed = 128;
@@ -10207,10 +10208,14 @@ ix86_compute_frame_layout (struct ix86_frame *frame)
   if (frame->nsseregs)
     {
       /* The only ABI that has saved SSE registers (Win64) also has a
-         16-byte aligned default stack, and thus we don't need to be
-	 within the re-aligned local stack frame to save them.  */
-      gcc_assert (INCOMING_STACK_BOUNDARY >= 128);
-      offset = (offset + 16 - 1) & -16;
+	 16-byte aligned default stack, and thus we don't need to be
+	 within the re-aligned local stack frame to save them.  In case
+	 incoming stack boundary is aligned to less than 16 bytes,
+	 unaligned move of SSE register will be emitted, so there is
+	 no point to round up the SSE register save area outside the
+	 re-aligned local stack frame to 16 bytes.  */
+      if (ix86_incoming_stack_boundary >= 128)
+	offset = (offset + 16 - 1) & -16;
       offset += frame->nsseregs * 16;
     }
   frame->sse_reg_save_offset = offset;
@@ -10220,7 +10225,7 @@ ix86_compute_frame_layout (struct ix86_frame *frame)
      sure that no value happens to be the same before and after, force
      the alignment computation below to add a non-zero value.  */
   if (stack_realign_fp)
-    offset = (offset + stack_alignment_needed) & -stack_alignment_needed;
+    offset = (offset + stack_alignment_needed - 1) & -stack_alignment_needed;
 
   /* Va-arg area */
   frame->va_arg_size = ix86_varargs_gpr_size + ix86_varargs_fpr_size;
@@ -10433,15 +10438,24 @@ ix86_emit_save_reg_using_mov (machine_mode mode, unsigned int regno,
 {
   struct machine_function *m = cfun->machine;
   rtx reg = gen_rtx_REG (mode, regno);
+  rtx unspec = NULL_RTX;
   rtx mem, addr, base, insn;
+  unsigned int align;
 
   addr = choose_baseaddr (cfa_offset);
   mem = gen_frame_mem (mode, addr);
 
-  /* For SSE saves, we need to indicate the 128-bit alignment.  */
-  set_mem_align (mem, GET_MODE_ALIGNMENT (mode));
+  /* The location is aligned up to INCOMING_STACK_BOUNDARY.  */
+  align = MIN (GET_MODE_ALIGNMENT (mode), INCOMING_STACK_BOUNDARY);
+  set_mem_align (mem, align);
 
-  insn = emit_move_insn (mem, reg);
+  /* SSE saves are not within re-aligned local stack frame.
+     In case INCOMING_STACK_BOUNDARY is misaligned, we have
+     to emit unaligned store.  */
+  if (mode == V4SFmode && align < 128)
+    unspec = gen_rtx_UNSPEC (mode, gen_rtvec (1, reg), UNSPEC_STOREU);
+
+  insn = emit_insn (gen_rtx_SET (VOIDmode, mem, unspec ? unspec : reg));
   RTX_FRAME_RELATED_P (insn) = 1;
 
   base = addr;
@@ -10489,6 +10503,9 @@ ix86_emit_save_reg_using_mov (machine_mode mode, unsigned int regno,
       mem = gen_rtx_MEM (mode, addr);
       add_reg_note (insn, REG_CFA_OFFSET, gen_rtx_SET (VOIDmode, mem, reg));
     }
+  else if (unspec)
+    add_reg_note (insn, REG_CFA_EXPRESSION,
+		  gen_rtx_SET (VOIDmode, mem, reg));
 }
 
 /* Emit code to save registers using MOV insns.
@@ -10705,6 +10722,25 @@ find_drap_reg (void)
     }
 }
 
+/* Handle a "force_align_arg_pointer" attribute.  */
+
+static tree
+ix86_handle_force_align_arg_pointer_attribute (tree *node, tree name,
+					       tree, int, bool *no_add_attrs)
+{
+  if (TREE_CODE (*node) != FUNCTION_TYPE
+      && TREE_CODE (*node) != METHOD_TYPE
+      && TREE_CODE (*node) != FIELD_DECL
+      && TREE_CODE (*node) != TYPE_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute only applies to functions",
+	       name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
 /* Return minimum incoming stack alignment.  */
 
 static unsigned int
@@ -10719,7 +10755,6 @@ ix86_minimum_incoming_stack_boundary (bool sibcall)
      if -mstackrealign is used, it isn't used for sibcall check and
      estimated stack alignment is 128bit.  */
   else if (!sibcall
-	   && !TARGET_64BIT
 	   && ix86_force_align_arg_pointer
 	   && crtl->stack_alignment_estimated == 128)
     incoming_stack_boundary = MIN_STACK_BOUNDARY;
@@ -11026,8 +11061,6 @@ ix86_adjust_stack_and_probe (const HOST_WIDE_INT size)
       release_scratch_register_on_entry (&sr);
     }
 
-  gcc_assert (cfun->machine->fs.cfa_reg != stack_pointer_rtx);
-
   /* Even if the stack pointer isn't the CFA register, we need to correctly
      describe the adjustments made to it, in particular differentiate the
      frame-related ones from the frame-unrelated ones.  */
@@ -11251,7 +11284,11 @@ ix86_finalize_stack_realign_flags (void)
       && !crtl->accesses_prior_frames
       && !cfun->calls_alloca
       && !crtl->calls_eh_return
-      && !(flag_stack_check && STACK_CHECK_MOVING_SP)
+      /* See ira_setup_eliminable_regset for the rationale.  */
+      && !(STACK_CHECK_MOVING_SP
+	   && flag_stack_check
+	   && flag_exceptions
+	   && cfun->can_throw_non_call_exceptions)
       && !ix86_frame_pointer_required ()
       && get_frame_size () == 0
       && ix86_nsaved_sseregs () == 0
@@ -11578,7 +11615,7 @@ ix86_expand_prologue (void)
          pointer is no longer valid.  As for the value of sp_offset,
 	 see ix86_compute_frame_layout, which we need to match in order
 	 to pass verification of stack_pointer_offset at the end.  */
-      m->fs.sp_offset = (m->fs.sp_offset + align_bytes) & -align_bytes;
+      m->fs.sp_offset = (m->fs.sp_offset + align_bytes - 1) & -align_bytes;
       m->fs.sp_valid = false;
     }
 
@@ -11991,11 +12028,26 @@ ix86_emit_restore_sse_regs_using_mov (HOST_WIDE_INT cfa_offset,
       {
 	rtx reg = gen_rtx_REG (V4SFmode, regno);
 	rtx mem;
+ 	unsigned int align;
 
 	mem = choose_baseaddr (cfa_offset);
 	mem = gen_rtx_MEM (V4SFmode, mem);
-	set_mem_align (mem, 128);
-	emit_move_insn (reg, mem);
+
+ 	/* The location is aligned up to INCOMING_STACK_BOUNDARY.  */
+	align = MIN (GET_MODE_ALIGNMENT (V4SFmode), INCOMING_STACK_BOUNDARY);
+ 	set_mem_align (mem, align);
+
+ 	/* SSE saves are not within re-aligned local stack frame.
+ 	   In case INCOMING_STACK_BOUNDARY is misaligned, we have
+ 	   to emit unaligned load.  */
+ 	if (align < 128)
+ 	  {
+ 	    rtx unspec = gen_rtx_UNSPEC (V4SFmode, gen_rtvec (1, mem),
+ 					 UNSPEC_LOADU);
+ 	    emit_insn (gen_rtx_SET (VOIDmode, reg, unspec));
+ 	  }
+ 	else
+ 	  emit_insn (gen_rtx_SET (VOIDmode, reg, mem));
 
 	ix86_add_cfa_restore_note (NULL_RTX, reg, cfa_offset);
 
@@ -25140,7 +25192,8 @@ ix86_expand_set_or_movmem (rtx dst, rtx src, rtx count_exp, rtx val_exp,
       dst = change_address (dst, BLKmode, destreg);
       set_mem_align (dst, desired_align * BITS_PER_UNIT);
       epilogue_size_needed = 0;
-      if (need_zero_guard && !min_size)
+      if (need_zero_guard
+	  && min_size < (unsigned HOST_WIDE_INT) size_needed)
 	{
 	  /* It is possible that we copied enough so the main loop will not
 	     execute.  */
@@ -25272,7 +25325,7 @@ ix86_expand_set_or_movmem (rtx dst, rtx src, rtx count_exp, rtx val_exp,
 	  max_size -= align_bytes;
 	}
       if (need_zero_guard
-	  && !min_size
+	  && min_size < (unsigned HOST_WIDE_INT) size_needed
 	  && (count < (unsigned HOST_WIDE_INT) size_needed
 	      || (align_bytes == 0
 		  && count < ((unsigned HOST_WIDE_INT) size_needed
@@ -25557,7 +25610,7 @@ ix86_expand_strlensi_unroll_1 (rtx out, rtx src, rtx align_rtx)
 
   /* Avoid branch in fixing the byte.  */
   tmpreg = gen_lowpart (QImode, tmpreg);
-  emit_insn (gen_addqi3_cc (tmpreg, tmpreg, tmpreg));
+  emit_insn (gen_addqi3_cconly_overflow (tmpreg, tmpreg));
   tmp = gen_rtx_REG (CCmode, FLAGS_REG);
   cmp = gen_rtx_LTU (VOIDmode, tmp, const0_rtx);
   emit_insn (ix86_gen_sub3_carry (out, out, GEN_INT (3), tmp, cmp));
@@ -39522,60 +39575,57 @@ rdseed_step:
       return target;
 
     case IX86_BUILTIN_SBB32:
-      icode = CODE_FOR_subsi3_carry;
+      icode = CODE_FOR_subborrowsi;
       mode0 = SImode;
-      goto addcarryx;
+      goto handlecarry;
 
     case IX86_BUILTIN_SBB64:
-      icode = CODE_FOR_subdi3_carry;
+      icode = CODE_FOR_subborrowdi;
       mode0 = DImode;
-      goto addcarryx;
+      goto handlecarry;
 
     case IX86_BUILTIN_ADDCARRYX32:
-      icode = TARGET_ADX ? CODE_FOR_adcxsi3 : CODE_FOR_addsi3_carry;
+      icode = CODE_FOR_addcarrysi;
       mode0 = SImode;
-      goto addcarryx;
+      goto handlecarry;
 
     case IX86_BUILTIN_ADDCARRYX64:
-      icode = TARGET_ADX ? CODE_FOR_adcxdi3 : CODE_FOR_adddi3_carry;
+      icode = CODE_FOR_addcarrydi;
       mode0 = DImode;
 
-addcarryx:
+    handlecarry:
       arg0 = CALL_EXPR_ARG (exp, 0); /* unsigned char c_in.  */
       arg1 = CALL_EXPR_ARG (exp, 1); /* unsigned int src1.  */
       arg2 = CALL_EXPR_ARG (exp, 2); /* unsigned int src2.  */
       arg3 = CALL_EXPR_ARG (exp, 3); /* unsigned int *sum_out.  */
 
-      op0 = gen_reg_rtx (QImode);
-
-      /* Generate CF from input operand.  */
       op1 = expand_normal (arg0);
       op1 = copy_to_mode_reg (QImode, convert_to_mode (QImode, op1, 1));
-      emit_insn (gen_addqi3_cc (op0, op1, constm1_rtx));
 
-      /* Gen ADCX instruction to compute X+Y+CF.  */
       op2 = expand_normal (arg1);
-      op3 = expand_normal (arg2);
-
-      if (!REG_P (op2))
+      if (!register_operand (op2, mode0))
 	op2 = copy_to_mode_reg (mode0, op2);
-      if (!REG_P (op3))
+
+      op3 = expand_normal (arg2);
+      if (!register_operand (op3, mode0))
 	op3 = copy_to_mode_reg (mode0, op3);
 
-      op0 = gen_reg_rtx (mode0);
-
-      op4 = gen_rtx_REG (CCCmode, FLAGS_REG);
-      pat = gen_rtx_LTU (VOIDmode, op4, const0_rtx);
-      emit_insn (GEN_FCN (icode) (op0, op2, op3, op4, pat));
-
-      /* Store the result.  */
       op4 = expand_normal (arg3);
       if (!address_operand (op4, VOIDmode))
 	{
 	  op4 = convert_memory_address (Pmode, op4);
 	  op4 = copy_addr_to_reg (op4);
 	}
-      emit_move_insn (gen_rtx_MEM (mode0, op4), op0);
+
+      /* Generate CF from input operand.  */
+      emit_insn (gen_addqi3_cconly_overflow (op1, constm1_rtx));
+
+      /* Generate instruction that consumes CF.  */
+      op0 = gen_reg_rtx (mode0);
+
+      op1 = gen_rtx_REG (CCCmode, FLAGS_REG);
+      pat = gen_rtx_LTU (mode0, op1, const0_rtx);
+      emit_insn (GEN_FCN (icode) (op0, op2, op3, op1, pat));
 
       /* Return current CF value.  */
       if (target == 0)
@@ -39583,6 +39633,10 @@ addcarryx:
 
       PUT_MODE (pat, QImode);
       emit_insn (gen_rtx_SET (VOIDmode, target, pat));
+
+      /* Store the result.  */
+      emit_move_insn (gen_rtx_MEM (mode0, op4), op0);
+
       return target;
 
     case IX86_BUILTIN_READ_FLAGS:
@@ -41758,11 +41812,24 @@ ix86_cannot_change_mode_class (machine_mode from, machine_mode to,
 
   if (MAYBE_SSE_CLASS_P (regclass) || MAYBE_MMX_CLASS_P (regclass))
     {
+      int from_size = GET_MODE_SIZE (from);
+      int to_size = GET_MODE_SIZE (to);
+
       /* Vector registers do not support QI or HImode loads.  If we don't
 	 disallow a change to these modes, reload will assume it's ok to
 	 drop the subreg from (subreg:SI (reg:HI 100) 0).  This affects
 	 the vec_dupv4hi pattern.  */
-      if (GET_MODE_SIZE (from) < 4)
+      if (from_size < 4)
+	return true;
+
+      /* Further, we cannot allow word_mode subregs of full vector modes.
+         Otherwise the middle-end will assume it's ok to store to
+         (subreg:DI (reg:TI 100) 0) in order to modify only the low 64 bits
+         of the 128-bit register.  However, after reload the subreg will
+         be dropped leaving a plain DImode store.  This is indistinguishable
+         from a "normal" DImode move, and so we're justified to use movsd,
+         which modifies the entire 128-bit register.  */
+      if (to_size == UNITS_PER_WORD && from_size > UNITS_PER_WORD)
 	return true;
     }
 
@@ -46836,7 +46903,7 @@ static const struct attribute_spec ix86_attribute_table[] =
     true },
   /* force_align_arg_pointer says this function realigns the stack at entry.  */
   { (const char *)&ix86_force_align_arg_pointer_string, 0, 0,
-    false, true,  true, ix86_handle_cconv_attribute, false },
+    false, true,  true, ix86_handle_force_align_arg_pointer_attribute, false },
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
   { "dllimport", 0, 0, false, false, false, handle_dll_attribute, false },
   { "dllexport", 0, 0, false, false, false, handle_dll_attribute, false },
@@ -48957,6 +49024,62 @@ expand_vec_perm_even_odd_pack (struct expand_vec_perm_d *d)
   return true;
 }
 
+/* A subroutine of expand_vec_perm_even_odd_1.  Implement extract-even
+   and extract-odd permutations of two V64QI operands
+   with two "shifts", two "truncs" and one "concat" insns for "odd"
+   and two "truncs" and one concat insn for "even."
+   Have already failed all two instruction sequences.  */
+
+static bool
+expand_vec_perm_even_odd_trunc (struct expand_vec_perm_d *d)
+{
+  rtx t1, t2, t3, t4;
+  unsigned i, odd, nelt = d->nelt;
+
+  if (!TARGET_AVX512BW
+      || d->one_operand_p
+      || d->vmode != V64QImode)
+    return false;
+
+  /* Check that permutation is even or odd.  */
+  odd = d->perm[0];
+  if (odd > 1)
+    return false;
+
+  for (i = 1; i < nelt; ++i)
+    if (d->perm[i] != 2 * i + odd)
+      return false;
+
+  if (d->testing_p)
+    return true;
+
+
+  if (odd)
+    {
+      t1 = gen_reg_rtx (V32HImode);
+      t2 = gen_reg_rtx (V32HImode);
+      emit_insn (gen_lshrv32hi3 (t1,
+				 gen_lowpart (V32HImode, d->op0),
+				 GEN_INT (8)));
+      emit_insn (gen_lshrv32hi3 (t2,
+				 gen_lowpart (V32HImode, d->op1),
+				 GEN_INT (8)));
+    }
+  else
+    {
+      t1 = gen_lowpart (V32HImode, d->op0);
+      t2 = gen_lowpart (V32HImode, d->op1);
+    }
+
+  t3 = gen_reg_rtx (V32QImode);
+  t4 = gen_reg_rtx (V32QImode);
+  emit_insn (gen_avx512bw_truncatev32hiv32qi2 (t3, t1));
+  emit_insn (gen_avx512bw_truncatev32hiv32qi2 (t4, t2));
+  emit_insn (gen_avx_vec_concatv64qi (d->target, t3, t4));
+
+  return true;
+}
+
 /* A subroutine of ix86_expand_vec_perm_builtin_1.  Implement extract-even
    and extract-odd permutations.  */
 
@@ -49058,6 +49181,9 @@ expand_vec_perm_even_odd_1 (struct expand_vec_perm_d *d, unsigned odd)
     case V16HImode:
     case V32QImode:
       return expand_vec_perm_even_odd_pack (d);
+
+    case V64QImode:
+      return expand_vec_perm_even_odd_trunc (d);
 
     case V4DImode:
       if (!TARGET_AVX2)
@@ -49520,6 +49646,8 @@ ix86_expand_vec_perm_const_1 (struct expand_vec_perm_d *d)
 
   /* Try sequences of four instructions.  */
 
+  if (expand_vec_perm_even_odd_trunc (d))
+    return true;
   if (expand_vec_perm_vpshufb2_vpermq (d))
     return true;
 
@@ -50395,6 +50523,10 @@ ix86_expand_pinsr (rtx *operands)
 	  default:
 	    return false;
 	  }
+
+	/* Reject insertions to misaligned positions.  */
+	if (pos & (size-1))
+	  return false;
 
 	rtx d = dst;
 	if (GET_MODE (dst) != dstmode)
@@ -51521,7 +51653,7 @@ ix86_destroy_cost_data (void *data)
 static unsigned HOST_WIDE_INT
 ix86_memmodel_check (unsigned HOST_WIDE_INT val)
 {
-  unsigned HOST_WIDE_INT model = val & MEMMODEL_MASK;
+  enum memmodel model = memmodel_from_int (val);
   bool strong;
 
   if (val & ~(unsigned HOST_WIDE_INT)(IX86_HLE_ACQUIRE|IX86_HLE_RELEASE
@@ -51532,14 +51664,14 @@ ix86_memmodel_check (unsigned HOST_WIDE_INT val)
 	       "Unknown architecture specific memory model");
       return MEMMODEL_SEQ_CST;
     }
-  strong = (model == MEMMODEL_ACQ_REL || model == MEMMODEL_SEQ_CST);
-  if (val & IX86_HLE_ACQUIRE && !(model == MEMMODEL_ACQUIRE || strong))
+  strong = (is_mm_acq_rel (model) || is_mm_seq_cst (model));
+  if (val & IX86_HLE_ACQUIRE && !(is_mm_acquire (model) || strong))
     {
       warning (OPT_Winvalid_memory_model,
               "HLE_ACQUIRE not used with ACQUIRE or stronger memory model");
       return MEMMODEL_SEQ_CST | IX86_HLE_ACQUIRE;
     }
-   if (val & IX86_HLE_RELEASE && !(model == MEMMODEL_RELEASE || strong))
+  if (val & IX86_HLE_RELEASE && !(is_mm_release (model) || strong))
     {
       warning (OPT_Winvalid_memory_model,
               "HLE_RELEASE not used with RELEASE or stronger memory model");
@@ -52311,9 +52443,6 @@ ix86_binds_local_p (const_tree exp)
 
 #undef TARGET_CAN_INLINE_P
 #define TARGET_CAN_INLINE_P ix86_can_inline_p
-
-#undef TARGET_EXPAND_TO_RTL_HOOK
-#define TARGET_EXPAND_TO_RTL_HOOK ix86_maybe_switch_abi
 
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P ix86_legitimate_address_p
