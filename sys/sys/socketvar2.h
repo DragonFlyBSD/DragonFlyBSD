@@ -116,8 +116,13 @@ soclrstate(struct socket *so, short state)
 static __inline void
 soreference(struct socket *so)
 {
-	/* 0->1 transition will never work */
-	KASSERT(so->so_refs > 0, ("invalid so_refs %d", so->so_refs));
+	/*
+	 * 0 -> 1 transition will happen on an aborted
+	 * socket, which is left on the so_comp queue,
+	 * e.g. accept(2) the aborted socket, or when
+	 * the listen(2) socket owning the so_comp queue
+	 * is closed.
+	 */
 	atomic_add_int(&so->so_refs, 1);
 }
 
