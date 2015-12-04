@@ -80,6 +80,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "pass_manager.h"
 #include "ipa-utils.h"
 #include "omp-low.h"
+#include "ipa-chkp.h"
 
 /* True when asm nodes has been output.  */
 bool asm_nodes_output = false;
@@ -918,14 +919,6 @@ compute_ltrans_boundary (lto_symtab_encoder_t in_encoder)
       add_node_to (encoder, node, true);
       lto_set_symtab_encoder_in_partition (encoder, node);
       create_references (encoder, node);
-      /* For proper debug info, we need to ship the origins, too.  */
-      if (DECL_ABSTRACT_ORIGIN (node->decl))
-	{
-	  struct cgraph_node *origin_node
-	  = cgraph_node::get_create (DECL_ABSTRACT_ORIGIN (node->decl));
-	  origin_node->used_as_abstract_origin = true;
-	  add_node_to (encoder, origin_node, true);
-	}
     }
   for (lsei = lsei_start_variable_in_partition (in_encoder);
        !lsei_end_p (lsei); lsei_next_variable_in_partition (&lsei))
@@ -937,13 +930,6 @@ compute_ltrans_boundary (lto_symtab_encoder_t in_encoder)
       lto_set_symtab_encoder_in_partition (encoder, vnode);
       lto_set_symtab_encoder_encode_initializer (encoder, vnode);
       create_references (encoder, vnode);
-      /* For proper debug info, we need to ship the origins, too.  */
-      if (DECL_ABSTRACT_ORIGIN (vnode->decl))
-	{
-	  varpool_node *origin_node
-	    = varpool_node::get (DECL_ABSTRACT_ORIGIN (vnode->decl));
-	  lto_set_symtab_encoder_in_partition (encoder, origin_node);
-	}
     }
   /* Pickle in also the initializer of all referenced readonly variables
      to help folding.  Constant pool variables are not shared, so we must
@@ -1641,10 +1627,13 @@ input_cgraph_1 (struct lto_file_decl_data *file_data,
 		    cnode->instrumented_version->instrumented_version = cnode;
 		}
 
-	      /* Restore decl names reference.  */
-	      IDENTIFIER_TRANSPARENT_ALIAS (DECL_ASSEMBLER_NAME (cnode->decl)) = 1;
-	      TREE_CHAIN (DECL_ASSEMBLER_NAME (cnode->decl))
-		  = DECL_ASSEMBLER_NAME (cnode->orig_decl);
+	      /* Restore decl names reference except for wrapper functions.  */
+	      if (!chkp_wrap_function (cnode->orig_decl))
+		{
+		  tree name = DECL_ASSEMBLER_NAME (cnode->decl);
+		  IDENTIFIER_TRANSPARENT_ALIAS (name) = 1;
+		  TREE_CHAIN (name) = DECL_ASSEMBLER_NAME (cnode->orig_decl);
+		}
 	    }
 	}
 

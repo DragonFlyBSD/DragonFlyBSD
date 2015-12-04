@@ -3222,6 +3222,13 @@ find_parameter_packs_r (tree *tp, int *walk_subtrees, void* data)
 			ppd, ppd->visited);
 	  *walk_subtrees = 0;
 	}
+      else if (variable_template_specialization_p (t))
+	{
+	  cp_walk_tree (&DECL_TI_ARGS (t),
+			find_parameter_packs_r,
+			ppd, ppd->visited);
+	  *walk_subtrees = 0;
+	}
       break;
 
     case BASES:
@@ -5321,6 +5328,17 @@ tree
 instantiate_non_dependent_expr (tree expr)
 {
   return instantiate_non_dependent_expr_sfinae (expr, tf_error);
+}
+
+/* True iff T is a specialization of a variable template.  */
+
+bool
+variable_template_specialization_p (tree t)
+{
+  if (!VAR_P (t) || !DECL_LANG_SPECIFIC (t) || !DECL_TEMPLATE_INFO (t))
+    return false;
+  tree tmpl = DECL_TI_TEMPLATE (t);
+  return variable_template_p (tmpl);
 }
 
 /* Return TRUE iff T is a type alias, a TEMPLATE_DECL for an alias
@@ -8161,14 +8179,14 @@ lookup_template_class (tree d1, tree arglist, tree in_decl, tree context,
 tree
 lookup_template_variable (tree templ, tree arglist)
 {
-  tree type = unknown_type_node;
+  tree type = NULL_TREE;
   return build2 (TEMPLATE_ID_EXPR, type, templ, arglist);
 }
 
 /* Instantiate a variable declaration from a TEMPLATE_ID_EXPR for use. */
 
 tree
-finish_template_variable (tree var)
+finish_template_variable (tree var, tsubst_flags_t complain)
 {
   tree templ = TREE_OPERAND (var, 0);
 
@@ -8177,7 +8195,6 @@ finish_template_variable (tree var)
   arglist = add_outermost_template_args (tmpl_args, arglist);
 
   tree parms = DECL_TEMPLATE_PARMS (templ);
-  tsubst_flags_t complain = tf_warning_or_error;
   arglist = coerce_innermost_template_parms (parms, arglist, templ, complain,
 					     /*req_all*/true,
 					     /*use_default*/true);
@@ -10159,12 +10176,17 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
 	}
     }
 
-  /* If the expansion is just T..., return the matching argument pack.  */
+  /* If the expansion is just T..., return the matching argument pack, unless
+     we need to call convert_from_reference on all the elements.  This is an
+     important optimization; see c++/68422.  */
   if (!unsubstituted_packs
       && TREE_PURPOSE (packs) == pattern)
     {
       tree args = ARGUMENT_PACK_ARGS (TREE_VALUE (packs));
+      /* Types need no adjustment, nor does sizeof..., and if we still have
+	 some pack expansion args we won't do anything yet.  */
       if (TREE_CODE (t) == TYPE_PACK_EXPANSION
+	  || PACK_EXPANSION_SIZEOF_P (t)
 	  || pack_expansion_args_count (args))
 	return args;
       /* Otherwise use the normal path so we get convert_from_reference.  */
@@ -11547,6 +11569,10 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
 	  {
 	    DECL_ORIGINAL_TYPE (r) = NULL_TREE;
 	    set_underlying_type (r);
+	    if (TYPE_DECL_ALIAS_P (r) && type != error_mark_node)
+	      /* An alias template specialization can be dependent
+		 even if its underlying type is not.  */
+	      TYPE_DEPENDENT_P_VALID (TREE_TYPE (r)) = false;
 	  }
 
 	layout_decl (r, 0);
@@ -13089,8 +13115,9 @@ tsubst_copy (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	      if (r)
 		{
 		  /* Make sure that the one we found is the one we want.  */
-		  tree ctx = tsubst (DECL_CONTEXT (t), args,
-				     complain, in_decl);
+		  tree ctx = DECL_CONTEXT (t);
+		  if (DECL_LANG_SPECIFIC (ctx) && DECL_TEMPLATE_INFO (ctx))
+		    ctx = tsubst (ctx, args, complain, in_decl);
 		  if (ctx != DECL_CONTEXT (r))
 		    r = NULL_TREE;
 		}
@@ -13138,7 +13165,8 @@ tsubst_copy (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	}
       else
 	r = t;
-      mark_used (r);
+      if (!mark_used (r, complain) && !(complain & tf_error))
+	return error_mark_node;
       return r;
 
     case NAMESPACE_DECL:
@@ -13203,7 +13231,6 @@ tsubst_copy (tree t, tree args, tsubst_flags_t complain, tree in_decl)
     case SIZEOF_EXPR:
       if (PACK_EXPANSION_P (TREE_OPERAND (t, 0)))
         {
-
           tree expanded, op = TREE_OPERAND (t, 0);
 	  int len = 0;
 
@@ -13229,6 +13256,8 @@ tsubst_copy (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	    {
 	      if (TREE_CODE (expanded) == TREE_VEC)
 		expanded = TREE_VEC_ELT (expanded, len - 1);
+	      else
+		PACK_EXPANSION_SIZEOF_P (expanded) = true;
 
 	      if (TYPE_P (expanded))
 		return cxx_sizeof_or_alignof_type (expanded, SIZEOF_EXPR, 
@@ -14714,6 +14743,19 @@ tsubst_copy_and_build (tree t,
 
 	if (targs)
 	  targs = tsubst_template_args (targs, args, complain, in_decl);
+	if (targs == error_mark_node)
+	  return error_mark_node;
+
+	if (variable_template_p (templ))
+	  {
+	    templ = lookup_template_variable (templ, targs);
+	    if (!any_dependent_template_arguments_p (targs))
+	      {
+		templ = finish_template_variable (templ, complain);
+		mark_used (templ);
+	      }
+	    RETURN (convert_from_reference (templ));
+	  }
 
 	if (TREE_CODE (templ) == COMPONENT_REF)
 	  {
@@ -15826,6 +15868,8 @@ tsubst_copy_and_build (tree t,
 
 	LAMBDA_EXPR_THIS_CAPTURE (r) = NULL_TREE;
 
+	insert_pending_capture_proxies ();
+
 	RETURN (build_lambda_object (r));
       }
 
@@ -16112,6 +16156,8 @@ instantiate_template_1 (tree tmpl, tree orig_args, tsubst_flags_t complain)
   /* The DECL_TI_TEMPLATE should always be the immediate parent
      template, not the most general template.  */
   DECL_TI_TEMPLATE (fndecl) = tmpl;
+  if (VAR_P (fndecl))
+    DECL_TI_ARGS (fndecl) = targ_ptr;
 
   /* Now we know the specialization, compute access previously
      deferred.  */

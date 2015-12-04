@@ -44,6 +44,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "is-a.h"
 #include "gimple.h"
 #include "gimple-ssa.h"
+#include "gimple-iterator.h"
 #include "tree-phinodes.h"
 #include "ssa-iterators.h"
 #include "stringpool.h"
@@ -502,7 +503,6 @@ duplicate_ssa_name_range_info (tree name, enum value_range_type range_type,
 
   gcc_assert (!POINTER_TYPE_P (TREE_TYPE (name)));
   gcc_assert (!SSA_NAME_RANGE_INFO (name));
-  gcc_assert (!SSA_NAME_ANTI_RANGE_P (name));
 
   if (!range_info)
     return;
@@ -546,6 +546,46 @@ duplicate_ssa_name_fn (struct function *fn, tree name, gimple stmt)
   return new_name;
 }
 
+
+/* Reset all flow sensitive data on NAME such as range-info, nonzero
+   bits and alignment.  */
+
+void
+reset_flow_sensitive_info (tree name)
+{
+  if (POINTER_TYPE_P (TREE_TYPE (name)))
+    {
+      /* points-to info is not flow-sensitive.  */
+      if (SSA_NAME_PTR_INFO (name))
+	mark_ptr_info_alignment_unknown (SSA_NAME_PTR_INFO (name));
+    }
+  else
+    SSA_NAME_RANGE_INFO (name) = NULL;
+}
+
+/* Clear all flow sensitive data from all statements and PHI definitions
+   in BB.  */
+
+void
+reset_flow_sensitive_info_in_bb (basic_block bb)
+{
+  for (gimple_stmt_iterator gsi = gsi_start_bb (bb); !gsi_end_p (gsi);
+       gsi_next (&gsi))
+    {
+      gimple stmt = gsi_stmt (gsi);
+      ssa_op_iter i;
+      tree op;
+      FOR_EACH_SSA_TREE_OPERAND (op, stmt, i, SSA_OP_DEF)
+	reset_flow_sensitive_info (op);
+    }
+
+  for (gphi_iterator gsi = gsi_start_phis (bb); !gsi_end_p (gsi);
+       gsi_next (&gsi))
+    {
+      tree phi_def = gimple_phi_result (gsi.phi ());
+      reset_flow_sensitive_info (phi_def);
+    }
+}
 
 /* Release all the SSA_NAMEs created by STMT.  */
 

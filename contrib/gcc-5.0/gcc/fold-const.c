@@ -463,7 +463,9 @@ negate_expr_p (tree t)
 
     case PLUS_EXPR:
       if (HONOR_SIGN_DEPENDENT_ROUNDING (element_mode (type))
-	  || HONOR_SIGNED_ZEROS (element_mode (type)))
+	  || HONOR_SIGNED_ZEROS (element_mode (type))
+	  || (INTEGRAL_TYPE_P (type)
+	      && ! TYPE_OVERFLOW_WRAPS (type)))
 	return false;
       /* -(A + B) -> (-B) - A.  */
       if (negate_expr_p (TREE_OPERAND (t, 1))
@@ -477,12 +479,23 @@ negate_expr_p (tree t)
       /* We can't turn -(A-B) into B-A when we honor signed zeros.  */
       return !HONOR_SIGN_DEPENDENT_ROUNDING (element_mode (type))
 	     && !HONOR_SIGNED_ZEROS (element_mode (type))
+	     && (! INTEGRAL_TYPE_P (type)
+		 || TYPE_OVERFLOW_WRAPS (type))
 	     && reorder_operands_p (TREE_OPERAND (t, 0),
 				    TREE_OPERAND (t, 1));
 
     case MULT_EXPR:
-      if (TYPE_UNSIGNED (TREE_TYPE (t)))
-        break;
+      if (TYPE_UNSIGNED (type))
+	break;
+      /* INT_MIN/n * n doesn't overflow while negating one operand it does
+         if n is a power of two.  */
+      if (INTEGRAL_TYPE_P (TREE_TYPE (t))
+	  && ! TYPE_OVERFLOW_WRAPS (TREE_TYPE (t))
+	  && ! ((TREE_CODE (TREE_OPERAND (t, 0)) == INTEGER_CST
+		 && ! integer_pow2p (TREE_OPERAND (t, 0)))
+		|| (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST
+		    && ! integer_pow2p (TREE_OPERAND (t, 1)))))
+	break;
 
       /* Fall through.  */
 
@@ -4925,8 +4938,7 @@ fold_cond_expr_with_comparison (location_t loc, tree type,
       case GE_EXPR:
       case GT_EXPR:
 	if (TYPE_UNSIGNED (TREE_TYPE (arg1)))
-	  arg1 = fold_convert_loc (loc, signed_type_for
-			       (TREE_TYPE (arg1)), arg1);
+	  break;
 	tem = fold_build1_loc (loc, ABS_EXPR, TREE_TYPE (arg1), arg1);
 	return pedantic_non_lvalue_loc (loc, fold_convert_loc (loc, type, tem));
       case UNLE_EXPR:
@@ -4936,8 +4948,7 @@ fold_cond_expr_with_comparison (location_t loc, tree type,
       case LE_EXPR:
       case LT_EXPR:
 	if (TYPE_UNSIGNED (TREE_TYPE (arg1)))
-	  arg1 = fold_convert_loc (loc, signed_type_for
-			       (TREE_TYPE (arg1)), arg1);
+	  break;
 	tem = fold_build1_loc (loc, ABS_EXPR, TREE_TYPE (arg1), arg1);
 	return negate_expr (fold_convert_loc (loc, type, tem));
       default:
@@ -6236,8 +6247,12 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
 	      && ((sign == UNSIGNED && tcode != MULT_EXPR) || sign == SIGNED))
 	    overflow_p = true;
 	  if (!overflow_p)
-	    return fold_build2 (tcode, ctype, fold_convert (ctype, op0),
-				wide_int_to_tree (ctype, mul));
+	    {
+	      mul = wide_int::from (mul, TYPE_PRECISION (ctype),
+				    TYPE_SIGN (TREE_TYPE (op1)));
+	      return fold_build2 (tcode, ctype, fold_convert (ctype, op0),
+				  wide_int_to_tree (ctype, mul));
+	    }
 	}
 
       /* If these operations "cancel" each other, we have the main
@@ -7519,6 +7534,10 @@ native_encode_string (const_tree expr, unsigned char *ptr, int len, int off)
 int
 native_encode_expr (const_tree expr, unsigned char *ptr, int len, int off)
 {
+  /* We don't support starting at negative offset and -1 is special.  */
+  if (off < -1)
+    return 0;
+
   switch (TREE_CODE (expr))
     {
     case INTEGER_CST:
@@ -10376,25 +10395,32 @@ fold_binary_loc (location_t loc,
 		{
 		  tree tmp0 = var0;
 		  tree tmp1 = var1;
+		  bool one_neg = false;
 
 		  if (TREE_CODE (tmp0) == NEGATE_EXPR)
-		    tmp0 = TREE_OPERAND (tmp0, 0);
+		    {
+		      tmp0 = TREE_OPERAND (tmp0, 0);
+		      one_neg = !one_neg;
+		    }
 		  if (CONVERT_EXPR_P (tmp0)
 		      && INTEGRAL_TYPE_P (TREE_TYPE (TREE_OPERAND (tmp0, 0)))
 		      && (TYPE_PRECISION (TREE_TYPE (TREE_OPERAND (tmp0, 0)))
 			  <= TYPE_PRECISION (atype)))
 		    tmp0 = TREE_OPERAND (tmp0, 0);
 		  if (TREE_CODE (tmp1) == NEGATE_EXPR)
-		    tmp1 = TREE_OPERAND (tmp1, 0);
+		    {
+		      tmp1 = TREE_OPERAND (tmp1, 0);
+		      one_neg = !one_neg;
+		    }
 		  if (CONVERT_EXPR_P (tmp1)
 		      && INTEGRAL_TYPE_P (TREE_TYPE (TREE_OPERAND (tmp1, 0)))
 		      && (TYPE_PRECISION (TREE_TYPE (TREE_OPERAND (tmp1, 0)))
 			  <= TYPE_PRECISION (atype)))
 		    tmp1 = TREE_OPERAND (tmp1, 0);
 		  /* The only case we can still associate with two variables
-		     is if they are the same, modulo negation and bit-pattern
-		     preserving conversions.  */
-		  if (!operand_equal_p (tmp0, tmp1, 0))
+		     is if they cancel out.  */
+		  if (!one_neg
+		      || !operand_equal_p (tmp0, tmp1, 0))
 		    ok = false;
 		}
 	    }

@@ -60,6 +60,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-phinodes.h"
 #include "ssa-iterators.h"
 #include "tree-pass.h"
+#include "stringpool.h"
+#include "tree-ssanames.h"
 
 #ifndef LOGICAL_OP_NON_SHORT_CIRCUIT
 #define LOGICAL_OP_NON_SHORT_CIRCUIT \
@@ -800,7 +802,13 @@ pass_tree_ifcombine::execute (function *fun)
 
       if (stmt
 	  && gimple_code (stmt) == GIMPLE_COND)
-	cfg_changed |= tree_ssa_ifcombine_bb (bb);
+	if (tree_ssa_ifcombine_bb (bb))
+	  {
+	    /* Clear range info from all stmts in BB which is now executed
+	       conditional on a always true/false condition.  */
+	    reset_flow_sensitive_info_in_bb (bb);
+	    cfg_changed |= true;
+	  }
     }
 
   free (bbs);

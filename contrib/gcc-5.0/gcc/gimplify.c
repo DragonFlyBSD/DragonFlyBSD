@@ -6195,9 +6195,12 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 		    }
 		  else
 		    break;
-		  gcc_checking_assert (splay_tree_lookup (octx->variables,
-							  (splay_tree_key)
-							  decl) == NULL);
+		  if (splay_tree_lookup (octx->variables,
+					 (splay_tree_key) decl) != NULL)
+		    {
+		      octx = NULL;
+		      break;
+		    }
 		  flags = GOVD_SEEN;
 		  if (!OMP_CLAUSE_LINEAR_NO_COPYIN (c))
 		    flags |= GOVD_FIRSTPRIVATE;
@@ -6979,7 +6982,7 @@ find_combined_omp_for (tree *tp, int *walk_subtrees, void *)
 static enum gimplify_status
 gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 {
-  tree for_stmt, orig_for_stmt, decl, var, t;
+  tree for_stmt, orig_for_stmt, inner_for_stmt = NULL_TREE, decl, var, t;
   enum gimplify_status ret = GS_ALL_DONE;
   enum gimplify_status tret;
   gomp_for *gfor;
@@ -7022,6 +7025,19 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 	  }
     }
 
+  if (OMP_FOR_INIT (for_stmt) == NULL_TREE)
+    {
+      gcc_assert (TREE_CODE (for_stmt) != OACC_LOOP);
+      inner_for_stmt = walk_tree (&OMP_FOR_BODY (for_stmt),
+				  find_combined_omp_for, NULL, NULL);
+      if (inner_for_stmt == NULL_TREE)
+	{
+	  gcc_assert (seen_error ());
+	  *expr_p = NULL_TREE;
+	  return GS_ERROR;
+	}
+    }
+
   gimplify_scan_omp_clauses (&OMP_FOR_CLAUSES (for_stmt), pre_p,
 			     simd ? ORT_SIMD : ORT_WORKSHARE);
   if (TREE_CODE (for_stmt) == OMP_DISTRIBUTE)
@@ -7057,10 +7073,7 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 
   if (OMP_FOR_INIT (for_stmt) == NULL_TREE)
     {
-      gcc_assert (TREE_CODE (for_stmt) != OACC_LOOP);
-      for_stmt = walk_tree (&OMP_FOR_BODY (for_stmt), find_combined_omp_for,
-			    NULL, NULL);
-      gcc_assert (for_stmt != NULL_TREE);
+      for_stmt = inner_for_stmt;
       gimplify_omp_ctxp->combined_loop = true;
     }
 
@@ -7104,13 +7117,27 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 		  OMP_CLAUSE_LINEAR_NO_COPYOUT (c) = 1;
 		  flags |= GOVD_LINEAR_LASTPRIVATE_NO_OUTER;
 		}
+	      struct gimplify_omp_ctx *outer
+		= gimplify_omp_ctxp->outer_context;
+	      if (outer && !OMP_CLAUSE_LINEAR_NO_COPYOUT (c))
+		{
+		  if (outer->region_type == ORT_WORKSHARE
+		      && outer->combined_loop)
+		    {
+		      n = splay_tree_lookup (outer->variables,
+					     (splay_tree_key)decl);
+		      if (n != NULL && (n->value & GOVD_LOCAL) != 0)
+			{
+			  OMP_CLAUSE_LINEAR_NO_COPYOUT (c) = 1;
+			  flags |= GOVD_LINEAR_LASTPRIVATE_NO_OUTER;
+			}
+		    }
+		}
+
 	      OMP_CLAUSE_DECL (c) = decl;
 	      OMP_CLAUSE_CHAIN (c) = OMP_FOR_CLAUSES (for_stmt);
 	      OMP_FOR_CLAUSES (for_stmt) = c;
-	      
 	      omp_add_variable (gimplify_omp_ctxp, decl, flags);
-	      struct gimplify_omp_ctx *outer
-		= gimplify_omp_ctxp->outer_context;
 	      if (outer && !OMP_CLAUSE_LINEAR_NO_COPYOUT (c))
 		{
 		  if (outer->region_type == ORT_WORKSHARE
@@ -7127,10 +7154,16 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 		    outer = NULL;
 		  if (outer)
 		    {
-		      omp_add_variable (outer, decl,
-					GOVD_LASTPRIVATE | GOVD_SEEN);
-		      if (outer->outer_context)
-			omp_notice_variable (outer->outer_context, decl, true);
+		      n = splay_tree_lookup (outer->variables,
+					     (splay_tree_key)decl);
+		      if (n == NULL || (n->value & GOVD_DATA_SHARE_CLASS) == 0)
+			{
+			  omp_add_variable (outer, decl,
+					    GOVD_LASTPRIVATE | GOVD_SEEN);
+			  if (outer->outer_context)
+			    omp_notice_variable (outer->outer_context, decl,
+						 true);
+			}
 		    }
 		}
 	    }
@@ -7147,9 +7180,16 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 		  if (outer->region_type == ORT_WORKSHARE
 		      && outer->combined_loop)
 		    {
-		      if (outer->outer_context
-			  && (outer->outer_context->region_type
-			      == ORT_COMBINED_PARALLEL))
+		      n = splay_tree_lookup (outer->variables,
+					     (splay_tree_key)decl);
+		      if (n != NULL && (n->value & GOVD_LOCAL) != 0)
+			{
+			  lastprivate = false;
+			  outer = NULL;
+			}
+		      else if (outer->outer_context
+			       && (outer->outer_context->region_type
+				   == ORT_COMBINED_PARALLEL))
 			outer = outer->outer_context;
 		      else if (omp_check_private (outer, decl, false))
 			outer = NULL;
@@ -7158,10 +7198,16 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 		    outer = NULL;
 		  if (outer)
 		    {
-		      omp_add_variable (outer, decl,
-					GOVD_LASTPRIVATE | GOVD_SEEN);
-		      if (outer->outer_context)
-			omp_notice_variable (outer->outer_context, decl, true);
+		      n = splay_tree_lookup (outer->variables,
+					     (splay_tree_key)decl);
+		      if (n == NULL || (n->value & GOVD_DATA_SHARE_CLASS) == 0)
+			{
+			  omp_add_variable (outer, decl,
+					    GOVD_LASTPRIVATE | GOVD_SEEN);
+			  if (outer->outer_context)
+			    omp_notice_variable (outer->outer_context, decl,
+						 true);
+			}
 		    }
 		}
 
