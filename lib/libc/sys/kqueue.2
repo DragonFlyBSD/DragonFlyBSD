@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/sys/kqueue.2,v 1.1.2.16 2002/07/02 21:05:08 mp Exp $
 .\"
-.Dd February 26, 2013
+.Dd December 4, 2015
 .Dt KQUEUE 2
 .Os
 .Sh NAME
@@ -160,7 +160,7 @@ Opaque user-defined value passed through the kernel unchanged.
 The
 .Va flags
 field can contain the following values:
-.Bl -tag -width ".Dv EV_ONESHOT"
+.Bl -tag -width ".Dv EV_DISPATCH"
 .It Dv EV_ADD
 Adds the event to the kqueue.
 Re-adding an existing event will modify the parameters of the original
@@ -177,7 +177,7 @@ Disable the event so
 .Fn kevent
 will not return it.
 The filter itself is not disabled.
-.It EV_DISPATCH
+.It Dv EV_DISPATCH
 Disable the event source immediately after delivery of an event.
 See
 .Dv EV_DISABLE
@@ -186,7 +186,7 @@ above.
 Removes the event from the kqueue.
 Events which are attached to file descriptors are automatically
 deleted on the last close of the descriptor.
-.It EV_RECEIPT
+.It Dv EV_RECEIPT
 This flag is useful for making bulk changes to a kqueue without draining
 any pending events.
 When passed as input, it forces
