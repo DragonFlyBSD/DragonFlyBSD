@@ -489,6 +489,8 @@ struct xinpcb;
 
 typedef	void	(*inp_notify_t)(struct inpcb *, int);
 
+u_short	in_pcblastport_down(volatile u_short *, u_short, u_short, u_short);
+u_short	in_pcblastport_up(volatile u_short *, u_short, u_short, u_short);
 void	in_pcbportrange(u_short *, u_short *, u_short, u_short);
 void	in_pcbpurgeif0 (struct inpcbinfo *, struct ifnet *);
 void	in_losing (struct inpcb *);

@@ -359,6 +359,28 @@ in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	return in_pcblink_flags(inp, pcbinfo, INP_WILDCARD);
 }
 
+static boolean_t
+in_pcbporthash_update(struct inpcbportinfo *portinfo,
+    struct inpcb *inp, u_short lport, struct ucred *cred, int wild)
+{
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads, e.g. tcp and udp, then the token must be held.
+	 */
+	GET_PORT_TOKEN(portinfo);
+
+	if (in_pcblookup_local(portinfo, inp->inp_laddr, lport,
+	    wild, cred) != NULL) {
+		REL_PORT_TOKEN(portinfo);
+		return FALSE;
+	}
+	inp->inp_lport = lport;
+	in_pcbinsporthash(portinfo, inp);
+
+	REL_PORT_TOKEN(portinfo);
+	return TRUE;
+}
+
 static int
 in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 {
@@ -398,12 +420,6 @@ loop:
 	}
 
 	/*
-	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token must be held.
-	 */
-	GET_PORT_TOKEN(portinfo);
-
-	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
 	 *
@@ -417,19 +433,23 @@ loop:
 		in_pcbportrange(&first, &last, portinfo->offset, step);
 		count = (first - last) / step;
 
-		do {
+		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EADDRNOTAVAIL;
-				goto done;
+				break;
 			}
-			*lastport -= step;
-			if (*lastport > first || *lastport < last)
-				*lastport = first;
-			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			lport = in_pcblastport_down(lastport,
+			    first, last, step);
+			KKASSERT((lport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
-			lport = htons(*lastport);
-		} while (in_pcblookup_local(portinfo, inp->inp_laddr, lport,
-		    wild, cred));
+			lport = htons(lport);
+
+			if (in_pcbporthash_update(portinfo, inp, lport,
+			    cred, wild)) {
+				error = 0;
+				break;
+			}
+		}
 	} else {
 		/*
 		 * counting up
@@ -437,25 +457,23 @@ loop:
 		in_pcbportrange(&last, &first, portinfo->offset, step);
 		count = (last - first) / step;
 
-		do {
+		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EADDRNOTAVAIL;
-				goto done;
+				break;
 			}
-			*lastport += step;
-			if (*lastport < first || *lastport > last)
-				*lastport = first;
-			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			lport = in_pcblastport_up(lastport, first, last, step);
+			KKASSERT((lport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
-			lport = htons(*lastport);
-		} while (in_pcblookup_local(portinfo, inp->inp_laddr, lport,
-		    wild, cred));
+			lport = htons(lport);
+
+			if (in_pcbporthash_update(portinfo, inp, lport,
+			    cred, wild)) {
+				error = 0;
+				break;
+			}
+		}
 	}
-	inp->inp_lport = lport;
-	in_pcbinsporthash(portinfo, inp);
-	error = 0;
-done:
-	REL_PORT_TOKEN(portinfo);
 
 	if (error) {
 		/* Try next portinfo */
@@ -664,19 +682,42 @@ in_pcblookup_localremote(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	return (match);
 }
 
+static boolean_t
+in_pcbporthash_update4(struct inpcbportinfo *portinfo,
+    struct inpcb *inp, u_short lport, const struct sockaddr_in *sin,
+    struct ucred *cred)
+{
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads, e.g. tcp and udp, then the token must be held.
+	 */
+	GET_PORT_TOKEN(portinfo);
+
+	if (in_pcblookup_localremote(portinfo, inp->inp_laddr,
+	    lport, sin->sin_addr, sin->sin_port, cred) != NULL) {
+		REL_PORT_TOKEN(portinfo);
+		return FALSE;
+	}
+	inp->inp_lport = lport;
+	in_pcbinsporthash(portinfo, inp);
+
+	REL_PORT_TOKEN(portinfo);
+	return TRUE;
+}
+
 int
 in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
     struct thread *td)
 {
 	struct proc *p = td->td_proc;
-	unsigned short *lastport;
+	u_short *lastport;
 	const struct sockaddr_in *sin = (const struct sockaddr_in *)remote;
 	struct sockaddr_in jsin;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct inpcbportinfo *portinfo;
 	struct ucred *cred = NULL;
 	u_short first, last, lport, step;
-	int count, error, dup;
+	int count, error, selfconn;
 	int portinfo_first, portinfo_idx;
 	int hash_cpu, hash_count, hash_count0;
 	uint32_t hash_base = 0, hash;
@@ -716,7 +757,7 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 loop:
 	hash_cpu = portinfo_idx & ncpus2_mask;
 	portinfo = &pcbinfo->portinfo[portinfo_idx];
-	dup = 0;
+	selfconn = 0;
 
 	if (inp->inp_flags & INP_HIGHPORT) {
 		first = ipport_hifirstauto;	/* sysctl */
@@ -738,13 +779,11 @@ loop:
 		lastport = &portinfo->lastport;
 	}
 
-	/*
-	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token must be held.
-	 */
-	GET_PORT_TOKEN(portinfo);
+	/* This could happen on loopback interface */
+#define IS_SELFCONNECT(inp, lport, sin)			\
+	(__predict_false((sin)->sin_port == (lport) &&	\
+	 (sin)->sin_addr.s_addr == (inp)->inp_laddr.s_addr))
 
-again:
 	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
@@ -763,14 +802,21 @@ again:
 		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EADDRNOTAVAIL;
-				goto done;
+				break;
 			}
-			*lastport -= step;
-			if (*lastport > first || *lastport < last)
-				*lastport = first;
-			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+
+			lport = in_pcblastport_down(lastport, first, last,
+			    step);
+			KKASSERT((lport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
-			lport = htons(*lastport);
+			lport = htons(lport);
+			if (IS_SELFCONNECT(inp, lport, sin)) {
+				if (!selfconn) {
+					++count; /* don't count this try */
+					selfconn = 1;
+				}
+				continue;
+			}
 
 			if (hash_count) {
 				--hash_count;
@@ -780,9 +826,11 @@ again:
 					continue;
 			}
 
-			if (in_pcblookup_localremote(portinfo, inp->inp_laddr,
-			    lport, sin->sin_addr, sin->sin_port, cred) == NULL)
+			if (in_pcbporthash_update4(portinfo,
+			    inp, lport, sin, cred)) {
+				error = 0;
 				break;
+			}
 		}
 	} else {
 		/*
@@ -794,14 +842,20 @@ again:
 		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EADDRNOTAVAIL;
-				goto done;
+				break;
 			}
-			*lastport += step;
-			if (*lastport < first || *lastport > last)
-				*lastport = first;
-			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+
+			lport = in_pcblastport_up(lastport, first, last, step);
+			KKASSERT((lport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
-			lport = htons(*lastport);
+			lport = htons(lport);
+			if (IS_SELFCONNECT(inp, lport, sin)) {
+				if (!selfconn) {
+					++count; /* don't count this try */
+					selfconn = 1;
+				}
+				continue;
+			}
 
 			if (hash_count) {
 				--hash_count;
@@ -811,30 +865,15 @@ again:
 					continue;
 			}
 
-			if (in_pcblookup_localremote(portinfo, inp->inp_laddr,
-			    lport, sin->sin_addr, sin->sin_port, cred) == NULL)
+			if (in_pcbporthash_update4(portinfo,
+			    inp, lport, sin, cred)) {
+				error = 0;
 				break;
+			}
 		}
 	}
 
-	/* This could happen on loopback interface */
-	if (sin->sin_port == lport &&
-	    sin->sin_addr.s_addr == inp->inp_laddr.s_addr) {
-		if (dup) {
-			/*
-			 * Duplicate again; give up
-			 */
-			error = EADDRNOTAVAIL;
-			goto done;
-		}
-		dup = 1;
-		goto again;
-	}
-	inp->inp_lport = lport;
-	in_pcbinsporthash(portinfo, inp);
-	error = 0;
-done:
-	REL_PORT_TOKEN(portinfo);
+#undef IS_SELFCONNECT
 
 	if (error) {
 		/* Try next portinfo */
@@ -2358,4 +2397,42 @@ in_pcbresetroute(struct inpcb *inp)
 	if (ro->ro_rt != NULL)
 		RTFREE(ro->ro_rt);
 	bzero(ro, sizeof(*ro));
+}
+
+u_short
+in_pcblastport_down(volatile u_short *lastport, u_short first, u_short last,
+    u_short step)
+{
+	u_short lport;
+
+	for (;;) {
+		u_short olport;
+
+		olport = *lastport;
+		lport = olport - step;
+		if (__predict_false(lport > first || lport < last))
+			lport = first;
+		if (atomic_cmpset_short(lastport, olport, lport))
+			break;
+	}
+	return lport;
+}
+
+u_short
+in_pcblastport_up(volatile u_short *lastport, u_short first, u_short last,
+    u_short step)
+{
+	u_short lport;
+
+	for (;;) {
+		u_short olport;
+
+		olport = *lastport;
+		lport = olport + step;
+		if (__predict_false(lport < first || lport > last))
+			lport = first;
+		if (atomic_cmpset_short(lastport, olport, lport))
+			break;
+	}
+	return lport;
 }

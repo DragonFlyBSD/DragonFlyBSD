@@ -376,6 +376,28 @@ in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
 	return (hlim);
 }
 
+static boolean_t
+in6_pcbporthash_update(struct inpcbportinfo *portinfo,
+    struct inpcb *inp, u_short lport, struct ucred *cred, int wild)
+{
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads, e.g. tcp and udp, then the token must be held.
+	 */
+	GET_PORT_TOKEN(portinfo);
+
+	if (in6_pcblookup_local(portinfo, &inp->in6p_laddr, lport,
+	    wild, cred) != NULL) {
+		REL_PORT_TOKEN(portinfo);
+		return FALSE;
+	}
+	inp->inp_lport = lport;
+	in_pcbinsporthash(portinfo, inp);
+
+	REL_PORT_TOKEN(portinfo);
+	return TRUE;
+}
+
 /*
  * XXX: this is borrowed from in6_pcbbind(). If possible, we should
  * share this function by all *bsd*...
@@ -422,12 +444,6 @@ loop:
 	}
 
 	/*
-	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token must be held.
-	 */
-	GET_PORT_TOKEN(portinfo);
-
-	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
 	 *
@@ -441,19 +457,23 @@ loop:
 		in_pcbportrange(&first, &last, portinfo->offset, step);
 		count = (first - last) / step;
 
-		do {
+		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EAGAIN;
-				goto done;
+				break;
 			}
-			*lastport -= step;
-			if (*lastport > first || *lastport < last)
-				*lastport = first;
-			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			lport = in_pcblastport_down(lastport, first, last,
+			    step);
+			KKASSERT((lport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
-			lport = htons(*lastport);
-		} while (in6_pcblookup_local(portinfo, &inp->in6p_laddr,
-			 lport, wild, cred));
+			lport = htons(lport);
+
+			if (in6_pcbporthash_update(portinfo, inp, lport,
+			    cred, wild)) {
+				error = 0;
+				break;
+			}
+		}
 	} else {
 		/*
 		 * counting up
@@ -461,26 +481,23 @@ loop:
 		in_pcbportrange(&last, &first, portinfo->offset, step);
 		count = (last - first) / step;
 
-		do {
+		for (;;) {
 			if (count-- < 0) {	/* completely used? */
 				error = EAGAIN;
-				goto done;
+				break;
 			}
-			*lastport += step;
-			if (*lastport < first || *lastport > last)
-				*lastport = first;
-			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			lport = in_pcblastport_up(lastport, first, last, step);
+			KKASSERT((lport & pcbinfo->portinfo_mask) ==
 			    portinfo->offset);
-			lport = htons(*lastport);
-		} while (in6_pcblookup_local(portinfo, &inp->in6p_laddr,
-			 lport, wild, cred));
-	}
+			lport = htons(lport);
 
-	inp->inp_lport = lport;
-	in_pcbinsporthash(portinfo, inp);
-	error = 0;
-done:
-	REL_PORT_TOKEN(portinfo);
+			if (in6_pcbporthash_update(portinfo, inp, lport,
+			    cred, wild)) {
+				error = 0;
+				break;
+			}
+		}
+	}
 
 	if (error) {
 		/* Try next portinfo */
