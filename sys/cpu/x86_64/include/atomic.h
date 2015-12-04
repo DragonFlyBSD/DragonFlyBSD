@@ -421,7 +421,7 @@ extern int atomic_cmpxchg_int(volatile u_int *_dst, u_int _old, u_int _new);
 extern int atomic_cmpset_short(volatile u_short *_dst,
 	u_short _old, u_short _new);
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
-extern long atomic_cmpset_long(volatile u_long *_dst, u_long _exp, u_long _src);
+extern int atomic_cmpset_long(volatile u_long *_dst, u_long _exp, u_long _src);
 extern u_int atomic_fetchadd_int(volatile u_int *_p, u_int _v);
 extern u_long atomic_fetchadd_long(volatile u_long *_p, u_long _v);
 
@@ -463,7 +463,7 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 	return (res == _old);
 }
 
-static __inline long
+static __inline int
 atomic_cmpset_long(volatile u_long *_dst, u_long _old, u_long _new)
 {
 	u_long res = _old;
