@@ -21,6 +21,10 @@ DF402.0 {
 DF404.0 {
 } DF402.0;
 
+# version for DragonFly 4.5
+DF406.0 {
+} DF404.0;
+
 # This is our private namespace.  Any global interfaces that are
 # strictly for use only by other DragonFly applications and libraries
 # are listed here.  We use a separate namespace so we can write
@@ -28,4 +32,4 @@ DF404.0 {
 #
 # Please do NOT increment the version of this namespace.
 DFprivate_1.0 {
-} DF404.0;
+} DF406.0;
