@@ -134,7 +134,7 @@ static struct filterops kqread_filtops =
 static struct filterops proc_filtops =
 	{ 0, filt_procattach, filt_procdetach, filt_proc };
 static struct filterops timer_filtops =
-	{ 0, filt_timerattach, filt_timerdetach, filt_timer };
+	{ FILTEROP_MPSAFE, filt_timerattach, filt_timerdetach, filt_timer };
 static struct filterops user_filtops =
 	{ 0, filt_userattach, filt_userdetach, filt_user };
 
@@ -382,12 +382,14 @@ filt_timerattach(struct knote *kn)
 	struct callout *calloutp;
 	struct timeval tv;
 	int tticks;
+	int prev_ncallouts;
 
-	if (kq_ncallouts >= kq_calloutmax) {
+	prev_ncallouts = atomic_fetchadd_int(&kq_ncallouts, 1);
+	if (prev_ncallouts >= kq_calloutmax) {
+		atomic_subtract_int(&kq_ncallouts, 1);
 		kn->kn_hook = NULL;
 		return (ENOMEM);
 	}
-	kq_ncallouts++;
 
 	tv.tv_sec = kn->kn_sdata / 1000;
 	tv.tv_usec = (kn->kn_sdata % 1000) * 1000;
@@ -395,7 +397,7 @@ filt_timerattach(struct knote *kn)
 
 	kn->kn_flags |= EV_CLEAR;		/* automatically set */
 	calloutp = kmalloc(sizeof(*calloutp), M_KQUEUE, M_WAITOK);
-	callout_init(calloutp);
+	callout_init_mp(calloutp);
 	kn->kn_hook = (caddr_t)calloutp;
 	callout_reset(calloutp, tticks, filt_timerexpire, kn);
 
@@ -416,7 +418,7 @@ filt_timerdetach(struct knote *kn)
 	calloutp = (struct callout *)kn->kn_hook;
 	callout_terminate(calloutp);
 	kfree(calloutp, M_KQUEUE);
-	kq_ncallouts--;
+	atomic_subtract_int(&kq_ncallouts, 1);
 }
 
 static int
