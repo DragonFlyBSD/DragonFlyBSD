@@ -745,7 +745,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			 * to post the error (see sys_poll()), then we
 			 * ignore it too.
 			 */
-			if (error) {
+			if (error || (kevp->flags & EV_RECEIPT)) {
 				kevp->flags = EV_ERROR;
 				kevp->data = error;
 				lres = *res;
@@ -1273,9 +1273,14 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 				kn->kn_status &= ~KN_QUEUED;
 				kn->kn_status |= KN_DELETING | KN_REPROCESS;
 			} else {
-				if (kn->kn_flags & EV_CLEAR) {
-					kn->kn_data = 0;
-					kn->kn_fflags = 0;
+				if (kn->kn_flags & (EV_CLEAR | EV_DISPATCH)) {
+					if (kn->kn_flags & EV_CLEAR) {
+						kn->kn_data = 0;
+						kn->kn_fflags = 0;
+					}
+					if (kn->kn_flags & EV_DISPATCH) {
+						kn->kn_status |= KN_DISABLED;
+					}
 					kn->kn_status &= ~(KN_QUEUED |
 							   KN_ACTIVE);
 				} else {
