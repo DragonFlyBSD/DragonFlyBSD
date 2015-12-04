@@ -1,5 +1,4 @@
 .dir-locals.el
-.gitignore
 ABOUT-NLS
 ChangeLog
 ChangeLog.jit
@@ -431,7 +430,6 @@ libcpp/configure
 libcpp/configure.ac
 libcpp/po/
 libcpp/ucnid.tab
-libdecnumber/.gitignore
 libdecnumber/ChangeLog
 libdecnumber/ChangeLog.jit
 libdecnumber/Makefile.in
@@ -539,6 +537,7 @@ libgcc/config/rx/
 libgcc/config/s390/
 libgcc/config/score/
 libgcc/config/sh/
+libgcc/config/sol2/
 libgcc/config/sparc/
 libgcc/config/spu/
 libgcc/config/stormy16/
@@ -565,7 +564,6 @@ libgcc/config/t-slibgcc-vms
 libgcc/config/t-softfp-excl
 libgcc/config/t-softfp-sfdf
 libgcc/config/t-softfp-tf
-libgcc/config/t-sol2
 libgcc/config/t-stack
 libgcc/config/t-tls
 libgcc/config/t-vxworks
@@ -598,12 +596,10 @@ libgomp/config/mingw32/
 libgomp/configure
 libgomp/configure.ac
 libgomp/configure.tgt
-libgomp/libgomp.info
 libgomp/libgomp.spec.in
 libgomp/libgomp.texi
 libgomp/omp_lib.f90.in
 libgomp/testsuite/
-libiberty/.gitignore
 libiberty/COPYING.LIB
 libiberty/ChangeLog
 libiberty/ChangeLog.jit
@@ -745,6 +741,7 @@ libstdc++-v3/config/allocator/bitmap_allocator_base.h
 libstdc++-v3/config/allocator/malloc_allocator_base.h
 libstdc++-v3/config/allocator/mt_allocator_base.h
 libstdc++-v3/config/allocator/pool_allocator_base.h
+libstdc++-v3/config/cpu/aarch64/
 libstdc++-v3/config/cpu/alpha/
 libstdc++-v3/config/cpu/arm/
 libstdc++-v3/config/cpu/cris/
@@ -811,6 +808,7 @@ libstdc++-v3/src/c++11/Makefile.am
 libstdc++-v3/src/c++11/Makefile.in
 libstdc++-v3/src/c++98/Makefile.am
 libstdc++-v3/src/c++98/Makefile.in
+libstdc++-v3/src/filesystem/
 libstdc++-v3/testsuite/
 libtool-ldflags
 libtool.m4
