@@ -795,7 +795,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	/*
 	 * Locate the root directory with an obj_id of 1.
 	 */
-	error = hammer_vfs_vget(mp, NULL, HAMMER_OBJID_ROOT, &rootvp);
+	error = hammer_vfs_root(mp, &rootvp);
 	if (error)
 		goto done;
 	vput(rootvp);
