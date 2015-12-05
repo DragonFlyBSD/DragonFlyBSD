@@ -340,7 +340,10 @@ do_cleanup(const char *path)
 	if (new_config && snapshots_from_pfs == 0) {
 		char *npath;
 
-		assert(path[0] == '/');
+		if (path[0] != '/') {
+			printf(" path must start with '/'\n");
+			return;
+		}
 		if (strcmp(path, "/") == 0)
 			asprintf(&npath, "%s/root", SNAPSHOTS_BASE);
 		else
