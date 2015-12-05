@@ -23,9 +23,7 @@ SONAME?=	${SHLIB_NAME}
 
 .if defined(DEBUG_FLAGS)
 CFLAGS+= ${DEBUG_FLAGS}
-.endif
-
-.if !defined(DEBUG_FLAGS)
+.else
 STRIP?=	-s
 .endif
 
