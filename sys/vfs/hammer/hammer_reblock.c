@@ -100,7 +100,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	if (reblock->allpfs == 0)
 		key_end_localization |= ip->obj_localization;
 	else
-		key_end_localization |= ((HAMMER_MAX_PFS - 1) << 16);
+		key_end_localization |= (HAMMER_MAX_PFSID << 16);
 
 	checkspace_count = 0;
 	seq = trans->hmp->flusher.done;

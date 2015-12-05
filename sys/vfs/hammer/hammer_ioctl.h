@@ -276,8 +276,6 @@ struct hammer_ioc_pseudofs_rw {
 #define HAMMER_IOC_PFS_MIRROR_FLAGS	0x0020
 #define HAMMER_IOC_PFS_LABEL		0x0040
 
-#define HAMMER_MAX_PFS			65536
-
 /*
  * HAMMERIOC_MIRROR_READ/WRITE
  */
