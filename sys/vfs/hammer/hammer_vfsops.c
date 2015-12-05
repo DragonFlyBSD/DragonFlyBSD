@@ -48,7 +48,6 @@ int hammer_debug_locks;
 int hammer_debug_btree;
 int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
-int hammer_debug_recover_faults;
 int hammer_debug_critical;		/* non-zero enter debugger on error */
 int hammer_cluster_enable = 1;		/* enable read clustering by default */
 int hammer_live_dedup = 0;
@@ -97,16 +96,13 @@ int hammer_limit_reclaims;
 int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */
 int hammer_autoflush = 500;		/* auto flush (typ on reclaim) */
-int hammer_bio_count;
 int hammer_verify_zone;
 int hammer_verify_data = 1;
-int hammer_write_mode;
 int hammer_double_buffer;
 int hammer_btree_full_undo = 1;
 int hammer_yield_check = 16;
 int hammer_fsync_mode = 3;
 int64_t hammer_contention_count;
-int64_t hammer_zone_limit;
 
 int hammer_noatime = 1;
 TUNABLE_INT("vfs.hammer.noatime", &hammer_noatime);
@@ -139,8 +135,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_tid, CTLFLAG_RW,
 	   &hammer_debug_tid, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover, CTLFLAG_RW,
 	   &hammer_debug_recover, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
-	   &hammer_debug_recover_faults, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_critical, CTLFLAG_RW,
 	   &hammer_debug_critical, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
@@ -258,8 +252,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_io_locked, CTLFLAG_RD,
 	   &hammer_count_io_locked, 0, "");
 SYSCTL_LONG(_vfs_hammer, OID_AUTO, count_io_running_write, CTLFLAG_RD,
 	   &hammer_count_io_running_write, 0, "");
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
-	   &hammer_zone_limit, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
 	   &hammer_contention_count, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, autoflush, CTLFLAG_RW,
@@ -268,8 +260,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_zone, CTLFLAG_RW,
 	   &hammer_verify_zone, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_data, CTLFLAG_RW,
 	   &hammer_verify_data, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
-	   &hammer_write_mode, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, double_buffer, CTLFLAG_RW,
 	   &hammer_double_buffer, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, btree_full_undo, CTLFLAG_RW,
