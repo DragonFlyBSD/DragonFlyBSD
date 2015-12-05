@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 27, 2009
+.Dd December 31, 2015
 .Dt MOUNT_HAMMER 8
 .Os
 .Sh NAME
@@ -123,6 +123,15 @@ file system made up of two volumes onto
 .Pa /mnt :
 .Bd -literal -offset indent
 mount_hammer -o ro,noatime /dev/ad0s1d /dev/ad1s1d /mnt
+.Ed
+.Pp
+Above is equivalent to below using blkdevs format for
+.Nm HAMMER
+volumes as
+.Nm
+supports both formats.
+.Bd -literal -offset indent
+mount_hammer -o ro,noatime /dev/ad0s1d:/dev/ad1s1d /mnt
 .Ed
 .Pp
 A corresponding
