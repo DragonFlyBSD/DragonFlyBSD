@@ -1205,7 +1205,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 					   &max_iterations);
 
 	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
-	cursor.key_beg.localization = dip->obj_localization +
+	cursor.key_beg.localization = dip->obj_localization |
 				      hammer_dir_localization(dip);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
@@ -1696,7 +1696,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	 * directly translate to a 64 bit 'seek' position.
 	 */
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
-	cursor.key_beg.localization = ip->obj_localization +
+	cursor.key_beg.localization = ip->obj_localization |
 				      hammer_dir_localization(ip);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
@@ -1855,7 +1855,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	 * Key range (begin and end inclusive) to scan.  Directory keys
 	 * directly translate to a 64 bit 'seek' position.
 	 */
-	cursor.key_beg.localization = ip->obj_localization +
+	cursor.key_beg.localization = ip->obj_localization |
 				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
@@ -2001,7 +2001,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 					   &max_iterations);
 retry:
 	hammer_init_cursor(&trans, &cursor, &fdip->cache[1], fdip);
-	cursor.key_beg.localization = fdip->obj_localization +
+	cursor.key_beg.localization = fdip->obj_localization |
 				      hammer_dir_localization(fdip);
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
@@ -2440,7 +2440,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 			record = hammer_alloc_mem_record(nip, bytes);
 			record->type = HAMMER_MEM_RECORD_GENERAL;
 
-			record->leaf.base.localization = nip->obj_localization +
+			record->leaf.base.localization = nip->obj_localization |
 							 HAMMER_LOCALIZE_MISC;
 			record->leaf.base.key = HAMMER_FIXKEY_SYMLINK;
 			record->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
@@ -2716,7 +2716,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * stored in the actual records represent BASE+LEN, not BASE.  The
 	 * first record containing bio_offset will have a key > bio_offset.
 	 */
-	cursor.key_beg.localization = ip->obj_localization +
+	cursor.key_beg.localization = ip->obj_localization |
 				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
@@ -3032,7 +3032,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	 * stored in the actual records represent BASE+LEN, not BASE.  The
 	 * first record containing bio_offset will have a key > bio_offset.
 	 */
-	cursor.key_beg.localization = ip->obj_localization +
+	cursor.key_beg.localization = ip->obj_localization |
 				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
@@ -3349,7 +3349,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 					   &max_iterations);
 retry:
 	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
-	cursor.key_beg.localization = dip->obj_localization +
+	cursor.key_beg.localization = dip->obj_localization |
 				      hammer_dir_localization(dip);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;

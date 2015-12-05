@@ -312,9 +312,9 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		cursor.key_beg.key = hist->key;
 		cursor.key_end.key = HAMMER_MAX_KEY;
-		cursor.key_beg.localization = ip->obj_localization +
+		cursor.key_beg.localization = ip->obj_localization |
 					      HAMMER_LOCALIZE_MISC;
-		cursor.key_end.localization = ip->obj_localization +
+		cursor.key_end.localization = ip->obj_localization |
 					      HAMMER_LOCALIZE_MISC;
 
 		switch(ip->ino_data.obj_type) {
@@ -324,9 +324,9 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 			break;
 		case HAMMER_OBJTYPE_DIRECTORY:
 			cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
-			cursor.key_beg.localization = ip->obj_localization +
+			cursor.key_beg.localization = ip->obj_localization |
 						hammer_dir_localization(ip);
-			cursor.key_end.localization = ip->obj_localization +
+			cursor.key_end.localization = ip->obj_localization |
 						hammer_dir_localization(ip);
 			break;
 		case HAMMER_OBJTYPE_DBFILE:
@@ -345,9 +345,9 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		cursor.key_end.key = 0;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_INODE;
-		cursor.key_beg.localization = ip->obj_localization +
+		cursor.key_beg.localization = ip->obj_localization |
 					      HAMMER_LOCALIZE_INODE;
-		cursor.key_end.localization = ip->obj_localization +
+		cursor.key_end.localization = ip->obj_localization |
 					      HAMMER_LOCALIZE_INODE;
 	}
 
@@ -707,7 +707,7 @@ again:
 	leaf.base.rec_type = HAMMER_RECTYPE_SNAPSHOT;
 	leaf.base.create_tid = hammer_alloc_tid(hmp, 1);
 	leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	leaf.base.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	leaf.base.localization = ip->obj_localization | HAMMER_LOCALIZE_INODE;
 	leaf.data_len = sizeof(struct hammer_snapshot_data);
 
 	while (snap->index < snap->count) {
@@ -781,7 +781,7 @@ again:
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_SNAPSHOT;
-	cursor.key_beg.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	cursor.key_beg.localization = ip->obj_localization | HAMMER_LOCALIZE_INODE;
 	cursor.asof = HAMMER_MAX_TID;
 	cursor.flags |= HAMMER_CURSOR_ASOF;
 
@@ -850,7 +850,7 @@ hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_SNAPSHOT;
-	cursor.key_beg.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	cursor.key_beg.localization = ip->obj_localization | HAMMER_LOCALIZE_INODE;
 	if (snap->count == 0)
 		cursor.key_beg.key = HAMMER_MIN_KEY;
 	else
@@ -932,7 +932,7 @@ hammer_ioc_get_config(hammer_transaction_t trans, hammer_inode_t ip,
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_CONFIG;
-	cursor.key_beg.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	cursor.key_beg.localization = ip->obj_localization | HAMMER_LOCALIZE_INODE;
 	cursor.key_beg.key = 0;		/* config space page 0 */
 
 	cursor.asof = HAMMER_MAX_TID;
@@ -979,7 +979,7 @@ again:
 	leaf.base.rec_type = HAMMER_RECTYPE_CONFIG;
 	leaf.base.create_tid = hammer_alloc_tid(hmp, 1);
 	leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	leaf.base.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	leaf.base.localization = ip->obj_localization | HAMMER_LOCALIZE_INODE;
 	leaf.base.key = 0;	/* page 0 */
 	leaf.data_len = sizeof(struct hammer_config_data);
 

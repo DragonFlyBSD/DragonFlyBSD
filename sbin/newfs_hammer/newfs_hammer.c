@@ -628,7 +628,7 @@ format_root(const char *label)
 
 	elm = &bnode->elms[0];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION +
+	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION |
 				      HAMMER_LOCALIZE_INODE;
 	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
 	elm->leaf.base.key = 0;
@@ -644,7 +644,7 @@ format_root(const char *label)
 
 	elm = &bnode->elms[1];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION +
+	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION |
 				      HAMMER_LOCALIZE_MISC;
 	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
 	elm->leaf.base.key = 0;

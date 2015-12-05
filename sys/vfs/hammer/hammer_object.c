@@ -670,7 +670,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	record = hammer_alloc_mem_record(dip, HAMMER_ENTRY_SIZE(bytes));
 
 	record->type = HAMMER_MEM_RECORD_ADD;
-	record->leaf.base.localization = dip->obj_localization +
+	record->leaf.base.localization = dip->obj_localization |
 					 hammer_dir_localization(dip);
 	record->leaf.base.obj_id = dip->obj_id;
 	record->leaf.base.key = hammer_directory_namekey(dip, name, bytes,
@@ -1006,7 +1006,7 @@ nodedup:
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
 	record->leaf.base.obj_id = ip->obj_id;
 	record->leaf.base.key = file_offset + bytes;
-	record->leaf.base.localization = ip->obj_localization +
+	record->leaf.base.localization = ip->obj_localization |
 					 HAMMER_LOCALIZE_MISC;
 	record->leaf.data_len = bytes;
 	record->leaf.data_crc = crc;
@@ -1952,7 +1952,7 @@ hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = ip->obj_localization +
+	cursor->key_beg.localization = ip->obj_localization |
 				       HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.create_tid = 0;
@@ -2143,7 +2143,7 @@ hammer_ip_delete_clean(hammer_cursor_t cursor, hammer_inode_t ip, int *countp)
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = ip->obj_localization +
+	cursor->key_beg.localization = ip->obj_localization |
 				       HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.create_tid = 0;
@@ -2632,7 +2632,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	 */
 	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 
-	cursor.key_beg.localization = ip->obj_localization +
+	cursor.key_beg.localization = ip->obj_localization |
 				      hammer_dir_localization(ip);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;

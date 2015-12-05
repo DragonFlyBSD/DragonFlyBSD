@@ -353,7 +353,7 @@ hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	if (error)
 		goto out;
 
-	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION +
+	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION |
 				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
 	cursor.key_beg.create_tid = 0;
@@ -431,7 +431,7 @@ hammer_pfs_rollback(hammer_transaction_t trans,
 
 	bzero(&cmirror, sizeof(cmirror));
 	bzero(&key_cur, sizeof(key_cur));
-	key_cur.localization = HAMMER_MIN_LOCALIZATION + pfsm->localization;
+	key_cur.localization = HAMMER_MIN_LOCALIZATION | pfsm->localization;
 	key_cur.obj_id = HAMMER_MIN_OBJID;
 	key_cur.key = HAMMER_MIN_KEY;
 	key_cur.create_tid = 1;
@@ -446,7 +446,7 @@ retry:
 		goto failed;
 	}
 	cursor.key_beg = key_cur;
-	cursor.key_end.localization = HAMMER_MAX_LOCALIZATION +
+	cursor.key_end.localization = HAMMER_MAX_LOCALIZATION |
 				      pfsm->localization;
 	cursor.key_end.obj_id = HAMMER_MAX_OBJID;
 	cursor.key_end.key = HAMMER_MAX_KEY;

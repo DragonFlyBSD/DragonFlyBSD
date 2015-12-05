@@ -995,7 +995,7 @@ hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
 	 * inodes in the root PFS.
 	 */
 	if (dvp) {
-		localization = HAMMER_DEF_LOCALIZATION +
+		localization = HAMMER_DEF_LOCALIZATION |
 				VTOI(dvp)->obj_localization;
 	} else {
 		localization = HAMMER_DEF_LOCALIZATION;

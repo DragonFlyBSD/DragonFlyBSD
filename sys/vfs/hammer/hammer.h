@@ -101,7 +101,7 @@ struct hammer_io;
 typedef struct hammer_inode_info {
 	int64_t		obj_id;		/* (key) object identifier */
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
-	uint32_t	obj_localization; /* (key) pseudo-fs */
+	uint32_t	obj_localization; /* (key) pseudo-fs id for upper 16 bits */
 	union {
 		struct hammer_btree_leaf_elm *leaf;
 	} u;
@@ -367,7 +367,7 @@ struct hammer_inode {
 	struct hammer_record_list target_list;	/* target of dependant recs */
 	int64_t			obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
-	uint32_t		obj_localization; /* (key) pseudo-fs */
+	uint32_t		obj_localization; /* (key) pseudo-fs id for upper 16 bits */
 	struct hammer_mount	*hmp;
 	hammer_objid_cache_t	objid_cache;
 	int			flags;

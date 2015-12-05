@@ -86,11 +86,11 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	key_beg_localization = prune->key_beg.localization;
 	key_beg_localization &= HAMMER_LOCALIZE_MASK;
-	key_beg_localization += ip->obj_localization;
+	key_beg_localization |= ip->obj_localization;
 
 	prune->key_cur.localization = prune->key_end.localization;
 	prune->key_cur.localization &= HAMMER_LOCALIZE_MASK;
-	prune->key_cur.localization += ip->obj_localization;
+	prune->key_cur.localization |= ip->obj_localization;
 
 	prune->key_cur.obj_id = prune->key_end.obj_id;
 	prune->key_cur.key = HAMMER_MAX_KEY;

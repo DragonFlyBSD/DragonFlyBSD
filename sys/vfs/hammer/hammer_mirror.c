@@ -98,7 +98,7 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 
 	mirror->key_cur = mirror->key_beg;
 	mirror->key_cur.localization &= HAMMER_LOCALIZE_MASK;
-	mirror->key_cur.localization += localization;
+	mirror->key_cur.localization |= localization;
 	bzero(&mrec, sizeof(mrec));
 	bzero(&cmirror, sizeof(cmirror));
 
@@ -117,7 +117,7 @@ retry:
 	cursor.key_beg = mirror->key_cur;
 	cursor.key_end = mirror->key_end;
 	cursor.key_end.localization &= HAMMER_LOCALIZE_MASK;
-	cursor.key_end.localization += localization;
+	cursor.key_end.localization |= localization;
 
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
@@ -353,11 +353,11 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	if (mirror->size < 0 || mirror->size > 0x70000000)
 		return(EINVAL);
 	mirror->key_beg.localization &= HAMMER_LOCALIZE_MASK;
-	mirror->key_beg.localization += localization;
+	mirror->key_beg.localization |= localization;
 	mirror->key_end.localization &= HAMMER_LOCALIZE_MASK;
-	mirror->key_end.localization += localization;
+	mirror->key_end.localization |= localization;
 	mirror->key_cur.localization &= HAMMER_LOCALIZE_MASK;
-	mirror->key_cur.localization += localization;
+	mirror->key_cur.localization |= localization;
 
 	/*
 	 * Set up our tracking cursor for the loop.  The tracking cursor
@@ -524,9 +524,9 @@ hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 	 * Relocalize the skip range
 	 */
 	mrec->skip_beg.localization &= HAMMER_LOCALIZE_MASK;
-	mrec->skip_beg.localization += localization;
+	mrec->skip_beg.localization |= localization;
 	mrec->skip_end.localization &= HAMMER_LOCALIZE_MASK;
-	mrec->skip_end.localization += localization;
+	mrec->skip_end.localization |= localization;
 
 	/*
 	 * Iterate from current position to skip_beg, deleting any records
@@ -588,7 +588,7 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	 * by hammer_create_at_cursor().
 	 */
 	mrec->leaf.base.localization &= HAMMER_LOCALIZE_MASK;
-	mrec->leaf.base.localization += localization;
+	mrec->leaf.base.localization |= localization;
 
 	/*
 	 * Delete records through until we reach (non-inclusively) the
@@ -669,7 +669,7 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 	 * by hammer_create_at_cursor().
 	 */
 	mrec->leaf.base.localization &= HAMMER_LOCALIZE_MASK;
-	mrec->leaf.base.localization += localization;
+	mrec->leaf.base.localization |= localization;
 
 	/*
 	 * Delete records through until we reach (non-inclusively) the

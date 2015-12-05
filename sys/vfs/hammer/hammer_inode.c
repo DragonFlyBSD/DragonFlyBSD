@@ -496,7 +496,7 @@ retry:
 			cachep = &dip->cache[0];
 	}
 	hammer_init_cursor(trans, &cursor, cachep, NULL);
-	cursor.key_beg.localization = localization + HAMMER_LOCALIZE_INODE;
+	cursor.key_beg.localization = localization | HAMMER_LOCALIZE_INODE;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
 	cursor.key_beg.create_tid = 0;
@@ -821,7 +821,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	}
 
 	ip->ino_leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	ip->ino_leaf.base.localization = ip->obj_localization +
+	ip->ino_leaf.base.localization = ip->obj_localization |
 					 HAMMER_LOCALIZE_INODE;
 	ip->ino_leaf.base.obj_id = ip->obj_id;
 	ip->ino_leaf.base.key = 0;
@@ -1008,7 +1008,7 @@ retry:
 	pfsm->pfsd.shared_uuid = pfsm->pfsd.unique_uuid;
 
 	hammer_init_cursor(trans, &cursor, (ip ? &ip->cache[1] : NULL), ip);
-	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION +
+	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION |
 				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
 	cursor.key_beg.create_tid = 0;
@@ -1071,7 +1071,7 @@ hammer_save_pseudofs(hammer_transaction_t trans, hammer_pseudofs_inmem_t pfsm)
 retry:
 	pfsm->fsid_udev = hammer_fsid_to_udev(&pfsm->pfsd.shared_uuid);
 	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
-	cursor.key_beg.localization = ip->obj_localization +
+	cursor.key_beg.localization = ip->obj_localization |
 				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
 	cursor.key_beg.create_tid = 0;
@@ -1107,7 +1107,7 @@ retry:
 		record = hammer_alloc_mem_record(ip, sizeof(pfsm->pfsd));
 		record->type = HAMMER_MEM_RECORD_GENERAL;
 
-		record->leaf.base.localization = ip->obj_localization +
+		record->leaf.base.localization = ip->obj_localization |
 						 HAMMER_LOCALIZE_MISC;
 		record->leaf.base.rec_type = HAMMER_RECTYPE_PFS;
 		record->leaf.base.key = pfsm->localization;
@@ -1245,7 +1245,7 @@ retry:
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
 		hammer_normalize_cursor(cursor);
-		cursor->key_beg.localization = ip->obj_localization +
+		cursor->key_beg.localization = ip->obj_localization |
 					       HAMMER_LOCALIZE_INODE;
 		cursor->key_beg.obj_id = ip->obj_id;
 		cursor->key_beg.key = 0;
@@ -1415,7 +1415,7 @@ retry:
 	}
 
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = ip->obj_localization +
+	cursor->key_beg.localization = ip->obj_localization |
 				       HAMMER_LOCALIZE_INODE;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.key = 0;

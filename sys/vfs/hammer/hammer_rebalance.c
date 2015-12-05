@@ -84,14 +84,14 @@ hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
 	rebal->key_cur = rebal->key_beg;
 	rebal->key_cur.localization &= HAMMER_LOCALIZE_MASK;
 	if (rebal->allpfs == 0)
-		rebal->key_cur.localization += ip->obj_localization;
+		rebal->key_cur.localization |= ip->obj_localization;
 
 	key_end_localization = rebal->key_end.localization;
 	key_end_localization &= HAMMER_LOCALIZE_MASK;
 	if (rebal->allpfs == 0)
-		key_end_localization += ip->obj_localization;
+		key_end_localization |= ip->obj_localization;
 	else
-		key_end_localization += ((HAMMER_MAX_PFS - 1) << 16);
+		key_end_localization |= ((HAMMER_MAX_PFS - 1) << 16);
 
 	hammer_btree_lcache_init(trans->hmp, &lcache, 2);
 
