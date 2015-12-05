@@ -172,12 +172,14 @@ bits_headers = \
 	${bits_srcdir}/mask_array.h \
 	${bits_srcdir}/memoryfwd.h \
 	${bits_srcdir}/move.h \
+	${bits_srcdir}/mutex.h \
 	${bits_srcdir}/ostream.tcc \
 	${bits_srcdir}/ostream_insert.h \
 	${bits_srcdir}/parse_numbers.h \
 	${bits_srcdir}/postypes.h \
 	${bits_srcdir}/predefined_ops.h \
 	${bits_srcdir}/ptr_traits.h \
+	${bits_srcdir}/quoted_string.h \
 	${bits_srcdir}/random.h \
 	${bits_srcdir}/random.tcc \
 	${bits_srcdir}/range_access.h \
