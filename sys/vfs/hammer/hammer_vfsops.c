@@ -1134,7 +1134,7 @@ hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 	KKASSERT(MAXFIDSZ >= 16);
 	ip = VTOI(vp);
 	fhp->fid_len = offsetof(struct fid, fid_data[16]);
-	fhp->fid_ext = ip->obj_localization >> 16;
+	fhp->fid_ext = lo_to_pfs(ip->obj_localization);
 	bcopy(&ip->obj_id, fhp->fid_data + 0, sizeof(ip->obj_id));
 	bcopy(&ip->obj_asof, fhp->fid_data + 8, sizeof(ip->obj_asof));
 	return(0);
@@ -1163,7 +1163,7 @@ hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	if (rootvp)
 		localization = VTOI(rootvp)->obj_localization;
 	else
-		localization = (uint32_t)fhp->fid_ext << 16;
+		localization = pfs_to_lo(fhp->fid_ext);
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_simple_transaction(&trans, hmp);

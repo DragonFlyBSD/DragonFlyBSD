@@ -174,7 +174,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 	if (len < 0 || len > HAMMER_XBUFSIZE || len > chunk)
 		goto done;
 
-	llid = leaf->base.localization >> 16;
+	llid = lo_to_pfs(leaf->base.localization);
 
 	dict = get_dict(leaf->base.obj_id, llid);
 

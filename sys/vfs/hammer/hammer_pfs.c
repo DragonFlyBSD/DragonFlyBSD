@@ -61,7 +61,7 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
 		return(error);
-	localization = (uint32_t)pfs->pfs_id << 16;
+	localization = pfs_to_lo(pfs->pfs_id);
 	pfs->bytes = sizeof(struct hammer_pseudofs_data);
 	pfs->version = HAMMER_IOC_PSEUDOFS_VERSION;
 
@@ -109,7 +109,7 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
 		return(error);
-	localization = (uint32_t)pfs->pfs_id << 16;
+	localization = pfs_to_lo(pfs->pfs_id);
 	if (pfs->version != HAMMER_IOC_PSEUDOFS_VERSION)
 		error = EINVAL;
 
@@ -164,7 +164,7 @@ hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
 		return(error);
-	localization = (uint32_t)pfs->pfs_id << 16;
+	localization = pfs_to_lo(pfs->pfs_id);
 	if ((error = hammer_unload_pseudofs(trans, localization)) != 0)
 		return(error);
 
@@ -214,7 +214,7 @@ hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
 		return(error);
-	localization = (uint32_t)pfs->pfs_id << 16;
+	localization = pfs_to_lo(pfs->pfs_id);
 	if ((error = hammer_unload_pseudofs(trans, localization)) != 0)
 		return(error);
 
@@ -251,7 +251,7 @@ hammer_ioc_destroy_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
 		return(error);
-	localization = (uint32_t)pfs->pfs_id << 16;
+	localization = pfs_to_lo(pfs->pfs_id);
 
 	if ((error = hammer_unload_pseudofs(trans, localization)) != 0)
 		return(error);
@@ -288,7 +288,7 @@ hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
 		return(error);
-	localization = (uint32_t)pfs->pfs_id << 16;
+	localization = pfs_to_lo(pfs->pfs_id);
 
 	if ((error = copyin(pfs->ondisk, &pfsd, sizeof(pfsd))) != 0)
 		return(error);
@@ -343,7 +343,7 @@ hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	if ((error = hammer_pfs_autodetect(&pfs, ip)) != 0)
 		return(error);
 	pi->pos = pfs.pfs_id;
-	localization = (uint32_t)pi->pos << 16;
+	localization = pfs_to_lo(pi->pos);
 
 	dip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
 		HAMMER_DEF_LOCALIZATION, 0, &error);
@@ -371,7 +371,7 @@ hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 			if (pi->ondisk)
 				copyout(cursor.data, pi->ondisk, cursor.leaf->data_len);
 			localization = cursor.leaf->base.key;
-			pi->pos = localization >> 16;
+			pi->pos = lo_to_pfs(localization);
 			/*
 			 * Caller needs to increment pi->pos each time calling
 			 * this ioctl. This ioctl only restores current PFS id.
@@ -395,7 +395,7 @@ hammer_pfs_autodetect(struct hammer_ioc_pseudofs_rw *pfs, hammer_inode_t ip)
 	int error = 0;
 
 	if (pfs->pfs_id == -1)
-		pfs->pfs_id = (int)(ip->obj_localization >> 16);
+		pfs->pfs_id = lo_to_pfs(ip->obj_localization);
 	if (pfs->pfs_id < 0 || pfs->pfs_id >= HAMMER_MAX_PFS)
 		error = EINVAL;
 	if (pfs->bytes < sizeof(struct hammer_pseudofs_data))

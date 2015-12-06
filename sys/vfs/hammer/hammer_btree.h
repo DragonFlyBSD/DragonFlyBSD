@@ -139,6 +139,11 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
 #define HAMMER_MAX_LOCALIZATION		0x0000FFFFU
 #define HAMMER_DEF_LOCALIZATION		0x00000000U
 
+#define lo_to_pfs(lo)					\
+	((int)(((lo) & HAMMER_LOCALIZE_PSEUDOFS_MASK) >> 16))
+#define pfs_to_lo(pfs)					\
+	((((uint32_t)(pfs)) << 16) & HAMMER_LOCALIZE_PSEUDOFS_MASK)
+
 /*
  * Internal element (40 + 24 = 64 bytes).
  *

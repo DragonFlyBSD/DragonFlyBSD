@@ -87,7 +87,7 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 	uint32_t localization;
 	uint32_t rec_crc;
 
-	localization = (uint32_t)mirror->pfs_id << 16;
+	localization = pfs_to_lo(mirror->pfs_id);
 
 	if ((mirror->key_beg.localization | mirror->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -344,7 +344,7 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	char *uptr;
 	int seq;
 
-	localization = (uint32_t)mirror->pfs_id << 16;
+	localization = pfs_to_lo(mirror->pfs_id);
 	seq = trans->hmp->flusher.done;
 
 	/*

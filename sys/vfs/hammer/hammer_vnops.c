@@ -1815,7 +1815,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 			hammer_simple_transaction(&trans, hmp);
 			bcopy(ptr + 5, buf, 5);
 			buf[5] = 0;
-			localization = strtoul(buf, NULL, 10) << 16;
+			localization = pfs_to_lo(strtoul(buf, NULL, 10));
 			pfsm = hammer_load_pseudofs(&trans, localization,
 						    &error);
 			if (error == 0) {
@@ -1825,12 +1825,12 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",
 						  (long long)pfsm->pfsd.sync_end_tid,
-						  localization >> 16);
+						  lo_to_pfs(localization));
 				} else {
 					/* vap->va_size == 10 */
 					ksnprintf(buf, sizeof(buf),
 						  "@@-1:%05d",
-						  localization >> 16);
+						  lo_to_pfs(localization));
 				}
 				ptr = buf;
 				bytes = strlen(buf);

@@ -1070,7 +1070,7 @@ hammer_str_to_tid(const char *str, int *ispfsp,
 	 */
 	str = ptr;
 	if (*str == ':') {
-		localization = strtoul(str + 1, &ptr, 10) << 16;
+		localization = pfs_to_lo(strtoul(str + 1, &ptr, 10));
 		if (ptr - str != 6)
 			return(EINVAL);
 		str = ptr;
