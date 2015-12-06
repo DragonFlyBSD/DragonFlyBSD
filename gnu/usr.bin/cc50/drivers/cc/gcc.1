@@ -132,7 +132,7 @@
 .\" ========================================================================
 .\"
 .IX Title "GCC 1"
-.TH GCC 1 "2015-07-16" "gcc-5.2.0" "GNU"
+.TH GCC 1 "2015-12-04" "gcc-5.3.0" "GNU"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -5103,23 +5103,24 @@ many times it is given.  This is mainly intended to be used with
 Enable AddressSanitizer, a fast memory error detector.
 Memory access instructions are instrumented to detect
 out-of-bounds and use-after-free bugs.
-See <\fBhttp://code.google.com/p/address\-sanitizer/\fR> for
+See <\fBhttps://github.com/google/sanitizers/wiki/AddressSanitizer\fR> for
 more details.  The run-time behavior can be influenced using the
-\&\fB\s-1ASAN_OPTIONS\s0\fR environment variable; see
-<\fBhttps://code.google.com/p/address\-sanitizer/wiki/Flags#Run\-time_flags\fR> for
-a list of supported options.
+\&\fB\s-1ASAN_OPTIONS\s0\fR environment variable.  When set to \f(CW\*(C`help=1\*(C'\fR,
+the available options are shown at startup of the instrumended program.  See
+<\fBhttps://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run\-time\-flags\fR>
+for a list of supported options.
 .IP "\fB\-fsanitize=kernel\-address\fR" 4
 .IX Item "-fsanitize=kernel-address"
 Enable AddressSanitizer for Linux kernel.
-See <\fBhttp://code.google.com/p/address\-sanitizer/wiki/AddressSanitizerForKernel\fR> for more details.
+See <\fBhttps://github.com/google/kasan/wiki\fR> for more details.
 .IP "\fB\-fsanitize=thread\fR" 4
 .IX Item "-fsanitize=thread"
 Enable ThreadSanitizer, a fast data race detector.
 Memory access instructions are instrumented to detect
-data race bugs.  See <\fBhttp://code.google.com/p/thread\-sanitizer/\fR> for more
+data race bugs.  See <\fBhttps://github.com/google/sanitizers/wiki#threadsanitizer\fR> for more
 details. The run-time behavior can be influenced using the \fB\s-1TSAN_OPTIONS\s0\fR
 environment variable; see
-<\fBhttps://code.google.com/p/thread\-sanitizer/wiki/Flags\fR> for a list of
+<\fBhttps://github.com/google/sanitizers/wiki/ThreadSanitizerFlags\fR> for a list of
 supported options.
 .IP "\fB\-fsanitize=leak\fR" 4
 .IX Item "-fsanitize=leak"
@@ -5128,7 +5129,7 @@ This option only matters for linking of executables and if neither
 \&\fB\-fsanitize=address\fR nor \fB\-fsanitize=thread\fR is used.  In that
 case the executable is linked against a library that overrides \f(CW\*(C`malloc\*(C'\fR
 and other allocator functions.  See
-<\fBhttps://code.google.com/p/address\-sanitizer/wiki/LeakSanitizer\fR> for more
+<\fBhttps://github.com/google/sanitizers/wiki/AddressSanitizerLeakSanitizer\fR> for more
 details.  The run-time behavior can be influenced using the
 \&\fB\s-1LSAN_OPTIONS\s0\fR environment variable.
 .IP "\fB\-fsanitize=undefined\fR" 4
@@ -19711,8 +19712,8 @@ in a performance loss, especially for floating-point code.
 .IX Item "-mno-user-mode"
 .PD
 Do not generate code that can only run in supervisor mode.  This is relevant
-only for the \f(CW\*(C`casa\*(C'\fR instruction emitted for the \s-1LEON3\s0 processor.  The
-default is \fB\-mno\-user\-mode\fR.
+only for the \f(CW\*(C`casa\*(C'\fR instruction emitted for the \s-1LEON3\s0 processor.  This
+is the default.
 .IP "\fB\-mno\-faster\-structs\fR" 4
 .IX Item "-mno-faster-structs"
 .PD 0
