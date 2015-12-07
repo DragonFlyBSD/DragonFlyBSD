@@ -1532,7 +1532,7 @@ igb_reset(struct igb_softc *sc)
 			dmac = pba - 10;
 		reg = E1000_READ_REG(hw, E1000_DMACR);
 		reg &= ~E1000_DMACR_DMACTHR_MASK;
-		reg = ((dmac << E1000_DMACR_DMACTHR_SHIFT)
+		reg |= ((dmac << E1000_DMACR_DMACTHR_SHIFT)
 		    & E1000_DMACR_DMACTHR_MASK);
 		/* Transition to L0x or L1 if available.. */
 		reg |= (E1000_DMACR_DMAC_EN | E1000_DMACR_DMAC_LX_MASK);
