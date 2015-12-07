@@ -114,15 +114,15 @@ hammer_io_init(hammer_io_t io, hammer_volume_t volume, enum hammer_io_type type)
  * references.
  */
 static void
-hammer_io_disassociate(hammer_io_structure_t iou)
+hammer_io_disassociate(hammer_io_t io)
 {
-	struct buf *bp = iou->io.bp;
+	struct buf *bp = io->bp;
 
-	KKASSERT(iou->io.released);
-	KKASSERT(iou->io.modified == 0);
-	KKASSERT(LIST_FIRST(&bp->b_dep) == (void *)iou);
+	KKASSERT(io->released);
+	KKASSERT(io->modified == 0);
+	KKASSERT(LIST_FIRST(&bp->b_dep) == (void *)io);
 	buf_dep_init(bp);
-	iou->io.bp = NULL;
+	io->bp = NULL;
 
 	/*
 	 * If the buffer was locked someone wanted to get rid of it.
@@ -131,19 +131,19 @@ hammer_io_disassociate(hammer_io_structure_t iou)
 		atomic_add_int(&hammer_count_io_locked, -1);
 		bp->b_flags &= ~B_LOCKED;
 	}
-	if (iou->io.reclaim) {
+	if (io->reclaim) {
 		bp->b_flags |= B_NOCACHE|B_RELBUF;
-		iou->io.reclaim = 0;
+		io->reclaim = 0;
 	}
 
-	switch(iou->io.type) {
+	switch(io->type) {
 	case HAMMER_STRUCTURE_VOLUME:
-		iou->volume.ondisk = NULL;
+		HAMMER_ITOV(io)->ondisk = NULL;
 		break;
 	case HAMMER_STRUCTURE_DATA_BUFFER:
 	case HAMMER_STRUCTURE_META_BUFFER:
 	case HAMMER_STRUCTURE_UNDO_BUFFER:
-		iou->buffer.ondisk = NULL;
+		HAMMER_ITOB(io)->ondisk = NULL;
 		break;
 	case HAMMER_STRUCTURE_DUMMY:
 		hpanic("bad io type");
@@ -441,7 +441,7 @@ hammer_io_advance(struct hammer_io *io)
 int
 hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 {
-	hammer_io_structure_t iou;
+	hammer_io_t io;
 	hammer_mount_t hmp;
 	hammer_off_t phys_offset;
 	struct buf *bp;
@@ -462,17 +462,17 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	else
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
 
-	if ((iou = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
+	if ((io = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
 #if 0
-		hammer_ref(&iou->io.lock);
-		hammer_io_clear_modify(&iou->io, 1);
+		hammer_ref(&io->lock);
+		hammer_io_clear_modify(io, 1);
 		bundirty(bp);
-		iou->io.released = 0;
+		io->released = 0;
 		BUF_KERNPROC(bp);
-		iou->io.reclaim = 1;
-		iou->io.waitdep = 1;	/* XXX this is a fs_token field */
-		KKASSERT(hammer_isactive(&iou->io.lock) == 1);
-		hammer_rel_buffer(&iou->buffer, 0);
+		io->reclaim = 1;
+		io->waitdep = 1;	/* XXX this is a fs_token field */
+		KKASSERT(hammer_isactive(&io->lock) == 1);
+		hammer_rel_buffer(HAMMER_ITOB(io), 0);
 		/*hammer_io_deallocate(bp);*/
 #endif
 		bqrelse(bp);
@@ -511,7 +511,6 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 struct buf *
 hammer_io_release(struct hammer_io *io, int flush)
 {
-	union hammer_io_structure *iou = (void *)io;
 	struct buf *bp;
 
 	if ((bp = io->bp) == NULL)
@@ -568,7 +567,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 		} else {
 			io->released = 1;
 		}
-		hammer_io_disassociate((hammer_io_structure_t)io);
+		hammer_io_disassociate(io);
 		/* return the bp */
 	} else if (io->modified) {
 		/*
@@ -602,11 +601,11 @@ hammer_io_release(struct hammer_io *io, int flush)
 		 */
 		io->released = 1;
 		if (bp->b_flags & B_LOCKED) {
-			hammer_io_disassociate(iou);
+			hammer_io_disassociate(io);
 			/* return the bp */
 		} else {
 			if (io->reclaim) {
-				hammer_io_disassociate(iou);
+				hammer_io_disassociate(io);
 				/* return the bp */
 			} else {
 				/* return the bp (bp passively associated) */
@@ -631,7 +630,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 		if (io->running == 0) {
 			regetblk(bp);
 			if ((bp->b_flags & B_LOCKED) || io->reclaim) {
-				hammer_io_disassociate(iou);
+				hammer_io_disassociate(io);
 				/* return the bp */
 			} else {
 				/* return the bp (bp passively associated) */
@@ -1069,18 +1068,18 @@ hammer_io_start(struct buf *bp)
 static void
 hammer_io_complete(struct buf *bp)
 {
-	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
-	struct hammer_mount *hmp = iou->io.hmp;
+	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
+	struct hammer_mount *hmp = io->hmp;
 	struct hammer_io *ionext;
 
 	lwkt_gettoken(&hmp->io_token);
 
-	KKASSERT(iou->io.released == 1);
+	KKASSERT(io->released == 1);
 
 	/*
 	 * Deal with people waiting for I/O to drain
 	 */
-	if (iou->io.running) {
+	if (io->running) {
 		/*
 		 * Deal with critical write errors.  Once a critical error
 		 * has been flagged in hmp the UNDO FIFO will not be updated.
@@ -1100,45 +1099,45 @@ hammer_io_complete(struct buf *bp)
 					      "while flushing meta-data");
 			lwkt_reltoken(&hmp->fs_token);
 
-			switch(iou->io.type) {
+			switch(io->type) {
 			case HAMMER_STRUCTURE_UNDO_BUFFER:
 				break;
 			default:
-				if (iou->io.ioerror == 0) {
-					iou->io.ioerror = 1;
-					hammer_ref(&iou->io.lock);
+				if (io->ioerror == 0) {
+					io->ioerror = 1;
+					hammer_ref(&io->lock);
 				}
 				break;
 			}
 			bp->b_flags &= ~B_ERROR;
 			bundirty(bp);
 #if 0
-			hammer_io_set_modlist(&iou->io);
-			iou->io.modified = 1;
+			hammer_io_set_modlist(io);
+			io->modified = 1;
 #endif
 		}
-		hammer_stats_disk_write += iou->io.bytes;
-		atomic_add_long(&hammer_count_io_running_write, -iou->io.bytes);
-		atomic_add_long(&hmp->io_running_space, -iou->io.bytes);
+		hammer_stats_disk_write += io->bytes;
+		atomic_add_long(&hammer_count_io_running_write, -io->bytes);
+		atomic_add_long(&hmp->io_running_space, -io->bytes);
 		KKASSERT(hmp->io_running_space >= 0);
-		iou->io.running = 0;
+		io->running = 0;
 
 		/*
 		 * Remove from iorun list and wakeup any multi-io waiter(s).
 		 */
-		if (TAILQ_FIRST(&hmp->iorun_list) == &iou->io) {
-			ionext = TAILQ_NEXT(&iou->io, iorun_entry);
+		if (TAILQ_FIRST(&hmp->iorun_list) == io) {
+			ionext = TAILQ_NEXT(io, iorun_entry);
 			if (ionext && ionext->type == HAMMER_STRUCTURE_DUMMY)
 				wakeup(ionext);
 		}
-		TAILQ_REMOVE(&hmp->iorun_list, &iou->io, iorun_entry);
+		TAILQ_REMOVE(&hmp->iorun_list, io, iorun_entry);
 	} else {
-		hammer_stats_disk_read += iou->io.bytes;
+		hammer_stats_disk_read += io->bytes;
 	}
 
-	if (iou->io.waiting) {
-		iou->io.waiting = 0;
-		wakeup(iou);
+	if (io->waiting) {
+		io->waiting = 0;
+		wakeup(io);
 	}
 
 	/*
@@ -1176,29 +1175,29 @@ hammer_io_complete(struct buf *bp)
 static void
 hammer_io_deallocate(struct buf *bp)
 {
-	hammer_io_structure_t iou = (void *)LIST_FIRST(&bp->b_dep);
+	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
 	hammer_mount_t hmp;
 
-	hmp = iou->io.hmp;
+	hmp = io->hmp;
 
 	lwkt_gettoken(&hmp->io_token);
 
-	KKASSERT((bp->b_flags & B_LOCKED) == 0 && iou->io.running == 0);
-	if (hammer_try_interlock_norefs(&iou->io.lock) == 0) {
+	KKASSERT((bp->b_flags & B_LOCKED) == 0 && io->running == 0);
+	if (hammer_try_interlock_norefs(&io->lock) == 0) {
 		/*
 		 * We cannot safely disassociate a bp from a referenced
 		 * or interlocked HAMMER structure.
 		 */
 		bp->b_flags |= B_LOCKED;
 		atomic_add_int(&hammer_count_io_locked, 1);
-	} else if (iou->io.modified) {
+	} else if (io->modified) {
 		/*
 		 * It is not legal to disassociate a modified buffer.  This
 		 * case really shouldn't ever occur.
 		 */
 		bp->b_flags |= B_LOCKED;
 		atomic_add_int(&hammer_count_io_locked, 1);
-		hammer_put_interlock(&iou->io.lock, 0);
+		hammer_put_interlock(&io->lock, 0);
 	} else {
 		/*
 		 * Disassociate the BP.  If the io has no refs left we
@@ -1206,17 +1205,15 @@ hammer_io_deallocate(struct buf *bp)
 		 * locked the buffer and therefore our io must be
 		 * in a released state.
 		 */
-		hammer_io_disassociate(iou);
-		if (iou->io.type != HAMMER_STRUCTURE_VOLUME) {
-			KKASSERT(iou->io.bp == NULL);
-			KKASSERT(iou->io.mod_root == NULL);
-			iou->io.mod_root = &hmp->lose_root;
-			if (RB_INSERT(hammer_mod_rb_tree, iou->io.mod_root,
-				      &iou->io)) {
+		hammer_io_disassociate(io);
+		if (io->type != HAMMER_STRUCTURE_VOLUME) {
+			KKASSERT(io->bp == NULL);
+			KKASSERT(io->mod_root == NULL);
+			io->mod_root = &hmp->lose_root;
+			if (RB_INSERT(hammer_mod_rb_tree, io->mod_root, io))
 				hpanic("duplicate entry");
-			}
 		}
-		hammer_put_interlock(&iou->io.lock, 1);
+		hammer_put_interlock(&io->lock, 1);
 	}
 	lwkt_reltoken(&hmp->io_token);
 }

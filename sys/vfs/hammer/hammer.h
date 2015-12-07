@@ -687,7 +687,7 @@ typedef struct hammer_io *hammer_io_t;
  * In-memory volume representing on-disk buffer
  */
 struct hammer_volume {
-	struct hammer_io io;
+	struct hammer_io io; /* must be at offset 0 */
 	RB_ENTRY(hammer_volume) rb_node;
 	struct hammer_volume_ondisk *ondisk;
 	int32_t	vol_no;
@@ -699,11 +699,13 @@ struct hammer_volume {
 
 typedef struct hammer_volume *hammer_volume_t;
 
+#define HAMMER_ITOV(iop) ((hammer_volume_t)(iop))
+
 /*
  * In-memory buffer representing an on-disk buffer.
  */
 struct hammer_buffer {
-	struct hammer_io io;
+	struct hammer_io io; /* must be at offset 0 */
 	RB_ENTRY(hammer_buffer) rb_node;
 	void *ondisk;
 	hammer_off_t zoneX_offset;
@@ -773,18 +775,6 @@ typedef struct hammer_node_lock *hammer_node_lock_t;
 
 #define HAMMER_NODE_LOCK_UPDATED	0x0001
 #define HAMMER_NODE_LOCK_LCACHE		0x0002
-
-/*
- * Common I/O management structure - embedded in in-memory structures
- * which are backed by filesystem buffers.
- */
-union hammer_io_structure {
-	struct hammer_io	io;
-	struct hammer_volume	volume;
-	struct hammer_buffer	buffer;
-};
-
-typedef union hammer_io_structure *hammer_io_structure_t;
 
 /*
  * The reserve structure prevents the blockmap from allocating
