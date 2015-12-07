@@ -626,6 +626,11 @@ typedef enum hammer_io_type {
 	HAMMER_STRUCTURE_DUMMY
 } hammer_io_type_t;
 
+/*
+ * XXX: struct hammer_io can't directly embed LIST_ENTRY() at offset 0,
+ * since a list head in struct buf expects a struct called worklist for
+ * list entries.  HAMMER needs to define and use struct worklist.
+ */
 struct worklist {
 	LIST_ENTRY(worklist) node;
 };
@@ -634,7 +639,7 @@ TAILQ_HEAD(hammer_io_list, hammer_io);
 typedef struct hammer_io_list *hammer_io_list_t;
 
 struct hammer_io {
-	struct worklist		worklist;
+	struct worklist		worklist; /* must be at offset 0 */
 	struct hammer_lock	lock;
 	enum hammer_io_type	type;
 	struct hammer_mount	*hmp;
