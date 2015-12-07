@@ -120,7 +120,7 @@ hammer_io_disassociate(hammer_io_t io)
 
 	KKASSERT(io->released);
 	KKASSERT(io->modified == 0);
-	KKASSERT(LIST_FIRST(&bp->b_dep) == (void *)io);
+	KKASSERT(hammer_buf_peek_io(bp) == io);
 	buf_dep_init(bp);
 	io->bp = NULL;
 
@@ -356,10 +356,8 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 		}
 		bp->b_flags &= ~B_IODEBUG;
 		bp->b_ops = &hammer_bioops;
-		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 
-		/* io->worklist is locked by the io lock */
-		LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
+		hammer_buf_attach_io(bp, io); /* locked by the io lock */
 		BUF_KERNPROC(bp);
 		KKASSERT(io->modified == 0);
 		KKASSERT(io->running == 0);
@@ -393,10 +391,8 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 		io->bp = getblk(devvp, io->offset, io->bytes, 0, 0);
 		bp = io->bp;
 		bp->b_ops = &hammer_bioops;
-		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 
-		/* io->worklist is locked by the io lock */
-		LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
+		hammer_buf_attach_io(bp, io); /* locked by the io lock */
 		io->released = 0;
 		KKASSERT(io->running == 0);
 		io->waiting = 0;
@@ -462,7 +458,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	else
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
 
-	if ((io = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
+	if ((io = hammer_buf_peek_io(bp)) != NULL) {
 #if 0
 		hammer_ref(&io->lock);
 		hammer_io_clear_modify(io, 1);
@@ -1068,7 +1064,7 @@ hammer_io_start(struct buf *bp)
 static void
 hammer_io_complete(struct buf *bp)
 {
-	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
+	hammer_io_t io = hammer_buf_peek_io(bp);
 	struct hammer_mount *hmp = io->hmp;
 	struct hammer_io *ionext;
 
@@ -1175,7 +1171,7 @@ hammer_io_complete(struct buf *bp)
 static void
 hammer_io_deallocate(struct buf *bp)
 {
-	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
+	hammer_io_t io = hammer_buf_peek_io(bp);
 	hammer_mount_t hmp;
 
 	hmp = io->hmp;
@@ -1281,7 +1277,7 @@ hammer_io_checkread(struct buf *bp)
 static int
 hammer_io_checkwrite(struct buf *bp)
 {
-	hammer_io_t io = (void *)LIST_FIRST(&bp->b_dep);
+	hammer_io_t io = hammer_buf_peek_io(bp);
 	hammer_mount_t hmp = io->hmp;
 
 	/*

@@ -682,6 +682,22 @@ struct hammer_io {
 
 typedef struct hammer_io *hammer_io_t;
 
+static __inline
+hammer_io_t
+hammer_buf_peek_io(struct buf *bp)
+{
+	return((hammer_io_t)LIST_FIRST(&bp->b_dep));
+}
+
+static __inline
+void
+hammer_buf_attach_io(struct buf *bp, hammer_io_t io)
+{
+	/* struct buf and struct hammer_io are 1:1 */
+	KKASSERT(hammer_buf_peek_io(bp) == NULL);
+	LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
+}
+
 #define HAMMER_CLUSTER_SIZE	(64 * 1024)
 #if HAMMER_CLUSTER_SIZE > MAXBSIZE
 #undef  HAMMER_CLUSTER_SIZE
