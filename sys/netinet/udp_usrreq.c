@@ -221,7 +221,7 @@ udp_init(void)
 		in_pcbinfo_init(uicb, cpu, TRUE);
 		uicb->hashbase = hashinit(UDBHASHSIZE, M_PCB, &uicb->hashmask);
 
-		in_pcbportinfo_init(&portinfo[cpu], UDBHASHSIZE, TRUE, cpu);
+		in_pcbportinfo_init(&portinfo[cpu], UDBHASHSIZE, cpu);
 		uicb->portinfo = portinfo;
 		uicb->portinfo_mask = ncpus2_mask;
 

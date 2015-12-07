@@ -238,7 +238,7 @@ struct inpcb {
 		u_int8_t	inp6_hlim;
 	} inp_depend6;
 	LIST_ENTRY(inpcb) inp_portlist;
-	struct	inpcbportinfo *inp_portinfo;
+	struct	inpcbporthead *inp_porthash;
 	struct	inpcbport *inp_phd;	/* head of this list */
 	inp_gen_t	inp_gencnt;	/* generation count of this instance */
 #define	in6p_faddr	inp_inc.inc6_faddr
@@ -292,7 +292,6 @@ struct inpcbport {
 struct lwkt_token;
 
 struct inpcbportinfo {
-	struct  lwkt_token *porttoken;	/* if this inpcbportinfo is shared */
 	struct	inpcbporthead *porthashbase;
 	u_long	porthashmask;
 	u_short	offset;
@@ -421,27 +420,29 @@ struct baddynamicports {
 
 #ifdef _KERNEL
 
-#define GET_PORT_TOKEN(portinfo) \
+static __inline struct inpcbporthead *
+in_pcbporthash_head(struct inpcbportinfo *portinfo, u_short lport)
+{
+	return &portinfo->porthashbase[
+	    INP_PCBPORTHASH(lport, portinfo->porthashmask)];
+}
+
+#define GET_PORTHASH_TOKEN(porthashhead) \
 do { \
-	if ((portinfo)->porttoken) \
-		lwkt_gettoken((portinfo)->porttoken); \
+	lwkt_getpooltoken((porthashhead)); \
 } while (0)
 
-#define REL_PORT_TOKEN(portinfo) \
+#define REL_PORTHASH_TOKEN(porthashhead) \
 do { \
-	if ((portinfo)->porttoken) \
-		lwkt_reltoken((portinfo)->porttoken); \
+	lwkt_relpooltoken((porthashhead)); \
 } while (0)
 
 #ifdef INVARIANTS
-#define ASSERT_PORT_TOKEN_HELD(portinfo) \
-do { \
-	if ((portinfo)->porttoken) \
-		ASSERT_LWKT_TOKEN_HELD((portinfo)->porttoken); \
-} while (0)
-#else	/* !INVARIANTS */
-#define ASSERT_PORT_TOKEN_HELD(portinfo)
-#endif	/* INVARIANTS */
+#define ASSERT_PORTHASH_TOKEN_HELD(pcbhashhead) \
+	ASSERT_LWKT_TOKEN_HELD(lwkt_token_pool_lookup((pcbhashhead)))
+#else
+#define ASSERT_PORTHASH_TOKEN_HELD(pcbhashhead)
+#endif
 
 #define GET_PCBINFO_TOKEN(pcbinfo) \
 do { \
@@ -496,7 +497,7 @@ void	in_pcbpurgeif0 (struct inpcbinfo *, struct ifnet *);
 void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
 void	in_pcbinfo_init (struct inpcbinfo *, int, boolean_t);
-void	in_pcbportinfo_init (struct inpcbportinfo *, int, boolean_t, u_short);
+void	in_pcbportinfo_init (struct inpcbportinfo *, int, u_short);
 int	in_pcballoc (struct socket *, struct inpcbinfo *);
 void	in_pcbunlink (struct inpcb *, struct inpcbinfo *);
 void	in_pcbunlink_flags (struct inpcb *, struct inpcbinfo *, int);
@@ -513,16 +514,13 @@ void	in_pcbdisconnect (struct inpcb *);
 void	in_pcbinswildcardhash(struct inpcb *inp);
 void	in_pcbinswildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbinsconnhash(struct inpcb *inp);
-void	in_pcbinsporthash (struct inpcbportinfo *, struct inpcb *);
+void	in_pcbinsporthash(struct inpcbporthead *, struct inpcb *);
 void	in_pcbinsporthash_lport (struct inpcb *);
 void	in_pcbremporthash (struct inpcb *);
 int	in_pcbladdr (struct inpcb *, struct sockaddr *,
 	    struct sockaddr_in **, struct thread *);
 int	in_pcbladdr_find (struct inpcb *, struct sockaddr *,
 	    struct sockaddr_in **, struct thread *, int);
-struct inpcb *
-	in_pcblookup_local (struct inpcbportinfo *, struct in_addr, u_int, int,
-			    struct ucred *);
 struct inpcb *
 	in_pcblookup_hash (struct inpcbinfo *,
 			       struct in_addr, u_int, struct in_addr, u_int,

@@ -380,21 +380,24 @@ static boolean_t
 in6_pcbporthash_update(struct inpcbportinfo *portinfo,
     struct inpcb *inp, u_short lport, struct ucred *cred, int wild)
 {
+	struct inpcbporthead *porthash;
+
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
 	 * protocol threads, e.g. tcp and udp, then the token must be held.
 	 */
-	GET_PORT_TOKEN(portinfo);
+	porthash = in_pcbporthash_head(portinfo, lport);
+	GET_PORTHASH_TOKEN(porthash);
 
-	if (in6_pcblookup_local(portinfo, &inp->in6p_laddr, lport,
+	if (in6_pcblookup_local(porthash, &inp->in6p_laddr, lport,
 	    wild, cred) != NULL) {
-		REL_PORT_TOKEN(portinfo);
+		REL_PORTHASH_TOKEN(porthash);
 		return FALSE;
 	}
 	inp->inp_lport = lport;
-	in_pcbinsporthash(portinfo, inp);
+	in_pcbinsporthash(porthash, inp);
 
-	REL_PORT_TOKEN(portinfo);
+	REL_PORTHASH_TOKEN(porthash);
 	return TRUE;
 }
 

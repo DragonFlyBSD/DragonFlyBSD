@@ -393,7 +393,7 @@ tcp_init(void)
 		in_pcbinfo_init(ticb, cpu, FALSE);
 		ticb->hashbase = hashinit(hashsize, M_PCB,
 					  &ticb->hashmask);
-		in_pcbportinfo_init(&portinfo[cpu], hashsize, TRUE, cpu);
+		in_pcbportinfo_init(&portinfo[cpu], hashsize, cpu);
 		ticb->portinfo = portinfo;
 		ticb->portinfo_mask = ncpus2_mask;
 		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,

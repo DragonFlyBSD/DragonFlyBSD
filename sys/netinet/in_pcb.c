@@ -120,6 +120,10 @@
 #define INP_LOCALGROUP_SIZMIN	8
 #define INP_LOCALGROUP_SIZMAX	256
 
+static struct inpcb *in_pcblookup_local(struct inpcbporthead *porthash,
+		struct in_addr laddr, u_int lport_arg, int wild_okay,
+		struct ucred *cred);
+
 struct in_addr zeroin_addr;
 
 /*
@@ -363,21 +367,24 @@ static boolean_t
 in_pcbporthash_update(struct inpcbportinfo *portinfo,
     struct inpcb *inp, u_short lport, struct ucred *cred, int wild)
 {
+	struct inpcbporthead *porthash;
+
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
 	 * protocol threads, e.g. tcp and udp, then the token must be held.
 	 */
-	GET_PORT_TOKEN(portinfo);
+	porthash = in_pcbporthash_head(portinfo, lport);
+	GET_PORTHASH_TOKEN(porthash);
 
-	if (in_pcblookup_local(portinfo, inp->inp_laddr, lport,
+	if (in_pcblookup_local(porthash, inp->inp_laddr, lport,
 	    wild, cred) != NULL) {
-		REL_PORT_TOKEN(portinfo);
+		REL_PORTHASH_TOKEN(porthash);
 		return FALSE;
 	}
 	inp->inp_lport = lport;
-	in_pcbinsporthash(portinfo, inp);
+	in_pcbinsporthash(porthash, inp);
 
-	REL_PORT_TOKEN(portinfo);
+	REL_PORTHASH_TOKEN(porthash);
 	return TRUE;
 }
 
@@ -508,6 +515,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 		struct inpcbinfo *pcbinfo;
 		struct inpcbportinfo *portinfo;
+		struct inpcbporthead *porthash;
 		struct inpcb *t;
 		u_short lport, lport_ho;
 		int reuseport = (so->so_options & SO_REUSEPORT);
@@ -579,14 +587,15 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 		/*
 		 * This has to be atomic.  If the porthash is shared across
-		 * multiple protocol threads (aka tcp) then the token must
-		 * be held.
+		 * multiple protocol threads, e.g. tcp and udp then the token
+		 * must be held.
 		 */
-		GET_PORT_TOKEN(portinfo);
+		porthash = in_pcbporthash_head(portinfo, lport);
+		GET_PORTHASH_TOKEN(porthash);
 
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
-			t = in_pcblookup_local(portinfo, sin->sin_addr, lport,
+			t = in_pcblookup_local(porthash, sin->sin_addr, lport,
 			    INPLOOKUP_WILDCARD, cred);
 			if (t &&
 			    (so->so_cred->cr_uid !=
@@ -601,7 +610,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			error = EADDRNOTAVAIL;
 			goto done;
 		}
-		t = in_pcblookup_local(portinfo, sin->sin_addr, lport,
+		t = in_pcblookup_local(porthash, sin->sin_addr, lport,
 		    wild, cred);
 		if (t && !(reuseport & t->inp_socket->so_options)) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
@@ -609,10 +618,10 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			goto done;
 		}
 		inp->inp_lport = lport;
-		in_pcbinsporthash(portinfo, inp);
+		in_pcbinsporthash(porthash, inp);
 		error = 0;
 done:
-		REL_PORT_TOKEN(portinfo);
+		REL_PORTHASH_TOKEN(porthash);
 		return (error);
 	} else {
 		jsin.sin_family = AF_INET;
@@ -628,11 +637,10 @@ done:
 }
 
 static struct inpcb *
-in_pcblookup_localremote(struct inpcbportinfo *portinfo, struct in_addr laddr,
+in_pcblookup_localremote(struct inpcbporthead *porthash, struct in_addr laddr,
     u_short lport, struct in_addr faddr, u_short fport, struct ucred *cred)
 {
 	struct inpcb *inp;
-	struct inpcbporthead *porthash;
 	struct inpcbport *phd;
 	struct inpcb *match = NULL;
 
@@ -640,7 +648,7 @@ in_pcblookup_localremote(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	ASSERT_PORT_TOKEN_HELD(portinfo);
+	ASSERT_PORTHASH_TOKEN_HELD(porthash);
 
 	/*
 	 * Best fit PCB lookup.
@@ -648,8 +656,6 @@ in_pcblookup_localremote(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	 * First see if this local port is in use by looking on the
 	 * port hash list.
 	 */
-	porthash = &portinfo->porthashbase[
-			INP_PCBPORTHASH(lport, portinfo->porthashmask)];
 	LIST_FOREACH(phd, porthash, phd_hash) {
 		if (phd->phd_port == lport)
 			break;
@@ -687,21 +693,24 @@ in_pcbporthash_update4(struct inpcbportinfo *portinfo,
     struct inpcb *inp, u_short lport, const struct sockaddr_in *sin,
     struct ucred *cred)
 {
+	struct inpcbporthead *porthash;
+
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
 	 * protocol threads, e.g. tcp and udp, then the token must be held.
 	 */
-	GET_PORT_TOKEN(portinfo);
+	porthash = in_pcbporthash_head(portinfo, lport);
+	GET_PORTHASH_TOKEN(porthash);
 
-	if (in_pcblookup_localremote(portinfo, inp->inp_laddr,
+	if (in_pcblookup_localremote(porthash, inp->inp_laddr,
 	    lport, sin->sin_addr, sin->sin_port, cred) != NULL) {
-		REL_PORT_TOKEN(portinfo);
+		REL_PORTHASH_TOKEN(porthash);
 		return FALSE;
 	}
 	inp->inp_lport = lport;
-	in_pcbinsporthash(portinfo, inp);
+	in_pcbinsporthash(porthash, inp);
 
-	REL_PORT_TOKEN(portinfo);
+	REL_PORTHASH_TOKEN(porthash);
 	return TRUE;
 }
 
@@ -1372,14 +1381,13 @@ in_rtchange(struct inpcb *inp, int err)
 /*
  * Lookup a PCB based on the local address and port.
  */
-struct inpcb *
-in_pcblookup_local(struct inpcbportinfo *portinfo, struct in_addr laddr,
+static struct inpcb *
+in_pcblookup_local(struct inpcbporthead *porthash, struct in_addr laddr,
 		   u_int lport_arg, int wild_okay, struct ucred *cred)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
-	struct inpcbporthead *porthash;
 	struct inpcbport *phd;
 	struct inpcb *match = NULL;
 
@@ -1387,7 +1395,7 @@ in_pcblookup_local(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	ASSERT_PORT_TOKEN_HELD(portinfo);
+	ASSERT_PORTHASH_TOKEN_HELD(porthash);
 
 	/*
 	 * Best fit PCB lookup.
@@ -1395,8 +1403,6 @@ in_pcblookup_local(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	 * First see if this local port is in use by looking on the
 	 * port hash list.
 	 */
-	porthash = &portinfo->porthashbase[
-			INP_PCBPORTHASH(lport, portinfo->porthashmask)];
 	LIST_FOREACH(phd, porthash, phd_hash) {
 		if (phd->phd_port == lport)
 			break;
@@ -1725,23 +1731,20 @@ in_pcbremconnhash(struct inpcb *inp)
  * Insert PCB into port hash table.
  */
 void
-in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
+in_pcbinsporthash(struct inpcbporthead *pcbporthash, struct inpcb *inp)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
-	struct inpcbporthead *pcbporthash;
 	struct inpcbport *phd;
 
 	/*
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	ASSERT_PORT_TOKEN_HELD(portinfo);
+	ASSERT_PORTHASH_TOKEN_HELD(pcbporthash);
 
 	/*
 	 * Insert into the port hash table.
 	 */
-	pcbporthash = &portinfo->porthashbase[
-	    INP_PCBPORTHASH(inp->inp_lport, portinfo->porthashmask)];
 
 	/* Go through port list and look for a head for this lport. */
 	LIST_FOREACH(phd, pcbporthash, phd_hash) {
@@ -1759,7 +1762,7 @@ in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
 		LIST_INSERT_HEAD(pcbporthash, phd, phd_hash);
 	}
 
-	inp->inp_portinfo = portinfo;
+	inp->inp_porthash = pcbporthash;
 	inp->inp_phd = phd;
 	LIST_INSERT_HEAD(&phd->phd_pcblist, inp, inp_portlist);
 
@@ -1780,6 +1783,7 @@ in_pcbinsporthash_lport(struct inpcb *inp)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct inpcbportinfo *portinfo;
+	struct inpcbporthead *porthash;
 	u_short lport_ho;
 
 	/* Locate the proper portinfo based on lport */
@@ -1787,28 +1791,24 @@ in_pcbinsporthash_lport(struct inpcb *inp)
 	portinfo = &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
 	KKASSERT((lport_ho & pcbinfo->portinfo_mask) == portinfo->offset);
 
-	GET_PORT_TOKEN(portinfo);
-	in_pcbinsporthash(portinfo, inp);
-	REL_PORT_TOKEN(portinfo);
+	porthash = in_pcbporthash_head(portinfo, inp->inp_lport);
+	GET_PORTHASH_TOKEN(porthash);
+	in_pcbinsporthash(porthash, inp);
+	REL_PORTHASH_TOKEN(porthash);
 }
 
 void
 in_pcbremporthash(struct inpcb *inp)
 {
-	struct inpcbportinfo *portinfo;
+	struct inpcbporthead *porthash;
 	struct inpcbport *phd;
 
 	if (inp->inp_phd == NULL)
 		return;
 	KASSERT(inp->inp_lport != 0, ("inpcb has no lport"));
 
-	/*
-	 * NOTE:
-	 * inp->inp_portinfo is _not_ necessary same as
-	 * inp->inp_pcbinfo->portinfo.
-	 */
-	portinfo = inp->inp_portinfo;
-	GET_PORT_TOKEN(portinfo);
+	porthash = inp->inp_porthash;
+	GET_PORTHASH_TOKEN(porthash);
 
 	phd = inp->inp_phd;
 	LIST_REMOVE(inp, inp_portlist);
@@ -1817,9 +1817,10 @@ in_pcbremporthash(struct inpcb *inp)
 		kfree(phd, M_PCB);
 	}
 
-	REL_PORT_TOKEN(portinfo);
+	REL_PORTHASH_TOKEN(porthash);
 
 	inp->inp_phd = NULL;
+	/* NOTE: Don't whack inp_lport, which may be used later */
 }
 
 static struct inp_localgroup *
@@ -2308,7 +2309,7 @@ in_savefaddr(struct socket *so, const struct sockaddr *faddr)
 
 void
 in_pcbportinfo_init(struct inpcbportinfo *portinfo, int hashsize,
-    boolean_t shared, u_short offset)
+    u_short offset)
 {
 	memset(portinfo, 0, sizeof(*portinfo));
 
@@ -2319,12 +2320,6 @@ in_pcbportinfo_init(struct inpcbportinfo *portinfo, int hashsize,
 
 	portinfo->porthashbase = hashinit(hashsize, M_PCB,
 	    &portinfo->porthashmask);
-
-	if (shared) {
-		portinfo->porttoken = kmalloc(sizeof(struct lwkt_token),
-		    M_PCB, M_WAITOK);
-		lwkt_token_init(portinfo->porttoken, "porttoken");
-	}
 }
 
 void

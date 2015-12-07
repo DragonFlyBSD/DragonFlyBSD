@@ -138,6 +138,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 		struct inpcbinfo *pcbinfo;
 		struct inpcbportinfo *portinfo;
+		struct inpcbporthead *porthash;
 		int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
 		struct ucred *cred = NULL;
 		struct inpcb *t;
@@ -230,11 +231,12 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		 * multiple protocol threads (aka tcp) then the token must
 		 * be held.
 		 */
-		GET_PORT_TOKEN(portinfo);
+		porthash = in_pcbporthash_head(portinfo, lport);
+		GET_PORTHASH_TOKEN(porthash);
 
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
-			t = in6_pcblookup_local(portinfo,
+			t = in6_pcblookup_local(porthash,
 			    &sin6->sin6_addr, lport, INPLOOKUP_WILDCARD, cred);
 			if (t &&
 			    (so->so_cred->cr_uid !=
@@ -250,7 +252,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			error = EADDRNOTAVAIL;
 			goto done;
 		}
-		t = in6_pcblookup_local(portinfo, &sin6->sin6_addr, lport,
+		t = in6_pcblookup_local(porthash, &sin6->sin6_addr, lport,
 		    wild, cred);
 		if (t && (reuseport & t->inp_socket->so_options) == 0) {
 			inp->in6p_laddr = kin6addr_any;
@@ -259,10 +261,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 
 		inp->inp_lport = lport;
-		in_pcbinsporthash(portinfo, inp);
+		in_pcbinsporthash(porthash, inp);
 		error = 0;
 done:
-		REL_PORT_TOKEN(portinfo);
+		REL_PORTHASH_TOKEN(porthash);
 		return (error);
 	} else {
 auto_select:
@@ -634,14 +636,13 @@ do_notify:
  * Lookup a PCB based on the local address and port.
  */
 struct inpcb *
-in6_pcblookup_local(struct inpcbportinfo *portinfo,
+in6_pcblookup_local(struct inpcbporthead *porthash,
     const struct in6_addr *laddr, u_int lport_arg, int wild_okay,
     struct ucred *cred)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
-	struct inpcbporthead *porthash;
 	struct inpcbport *phd;
 	struct inpcb *match = NULL;
 
@@ -649,7 +650,7 @@ in6_pcblookup_local(struct inpcbportinfo *portinfo,
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	ASSERT_PORT_TOKEN_HELD(portinfo);
+	ASSERT_PORTHASH_TOKEN_HELD(porthash);
 
 	/*
 	 * Best fit PCB lookup.
@@ -657,8 +658,6 @@ in6_pcblookup_local(struct inpcbportinfo *portinfo,
 	 * First see if this local port is in use by looking on the
 	 * port hash list.
 	 */
-	porthash = &portinfo->porthashbase[
-				INP_PCBPORTHASH(lport, portinfo->porthashmask)];
 	LIST_FOREACH(phd, porthash, phd_hash) {
 		if (phd->phd_port == lport)
 			break;
