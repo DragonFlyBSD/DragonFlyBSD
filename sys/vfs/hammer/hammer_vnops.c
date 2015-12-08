@@ -424,7 +424,7 @@ hammer_vop_read(struct vop_read_args *ap)
 		}
 skip:
 		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IODEBUG)) {
-			hdkprintf("doff %016jx read file %016jx@%016jx\n",
+			hdkprintf("zone2_offset %016jx read file %016jx@%016jx\n",
 				(intmax_t)bp->b_bio2.bio_offset,
 				(intmax_t)ip->obj_id,
 				(intmax_t)bp->b_loffset);

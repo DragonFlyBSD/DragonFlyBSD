@@ -353,7 +353,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 				metatype = "unknown";
 				break;
 			}
-			hdkprintf("doff %016jx %s\n",
+			hdkprintf("zone2_offset %016jx %s\n",
 				(intmax_t)bp->b_bio2.bio_offset,
 				metatype);
 		}
@@ -1445,7 +1445,7 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 
 	if (error == 0) {
 		/*
-		 * 3rd level bio
+		 * 3rd level bio (the caller has already pushed once)
 		 */
 		nbio = push_bio(bio);
 		nbio->bio_offset = volume->ondisk->vol_buf_beg +
