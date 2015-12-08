@@ -58,7 +58,7 @@ static void hammer_indirect_callback(struct bio *bio);
 static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 static void hammer_io_set_modlist(struct hammer_io *io);
-static void hammer_io_flush_mark(hammer_volume_t volume);
+static __inline void hammer_io_flush_mark(hammer_volume_t volume);
 static struct bio_ops hammer_bioops;
 
 static int
@@ -1897,7 +1897,7 @@ hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data)
  * This function is called when writes may have occured on the volume,
  * indicating that the device may be holding cached writes.
  */
-static void
+static __inline void
 hammer_io_flush_mark(hammer_volume_t volume)
 {
 	atomic_set_int(&volume->vol_flags, HAMMER_VOLF_NEEDFLUSH);
