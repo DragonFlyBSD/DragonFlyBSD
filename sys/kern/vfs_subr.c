@@ -1993,9 +1993,11 @@ vfs_free_netcred(struct radix_node *rn, void *w)
 static struct radix_node_head *
 vfs_create_addrlist_af(int af, struct netexport *nep)
 {
-	int off;
 	struct radix_node_head *rnh = NULL;
+#if defined(INET) || defined(INET6)
 	struct radix_node_head *maskhead = nep->ne_maskhead;
+	int off;
+#endif
 
 	NE_ASSERT_LOCKED(nep);
 	KKASSERT(maskhead != NULL);
