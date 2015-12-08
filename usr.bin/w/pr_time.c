@@ -73,7 +73,7 @@ pr_attime(time_t *started, time_t *now)
 		(void)strcpy(fmt, use_ampm ? "%l:%M%p" : "%k:%M");
 	}
 
-	(void)strftime(buf, sizeof(buf), fmt, &tp);
+	(void)strftime_l(buf, sizeof(buf), fmt, &tp, NULL);
 	(void)printf("%-7.7s", buf);
 }
 
