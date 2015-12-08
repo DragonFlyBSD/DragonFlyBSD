@@ -648,7 +648,7 @@ struct hammer_io {
 	TAILQ_ENTRY(hammer_io)	iorun_entry; /* iorun_list */
 	struct hammer_mod_rb_tree *mod_root;
 	struct buf		*bp;
-	int64_t			offset;	   /* zone-2 offset */
+	int64_t			offset;	   /* volume offset */
 	int			bytes;	   /* buffer cache buffer size */
 	int			modify_refs;
 
