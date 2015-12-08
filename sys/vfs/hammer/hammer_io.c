@@ -59,6 +59,7 @@ static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 static void hammer_io_set_modlist(struct hammer_io *io);
 static void hammer_io_flush_mark(hammer_volume_t volume);
+static struct bio_ops hammer_bioops;
 
 static int
 hammer_mod_rb_compare(hammer_io_t io1, hammer_io_t io2)
@@ -1362,7 +1363,7 @@ hammer_io_countdeps(struct buf *bp, int n)
 	return(0);
 }
 
-struct bio_ops hammer_bioops = {
+static struct bio_ops hammer_bioops = {
 	.io_start	= hammer_io_start,
 	.io_complete	= hammer_io_complete,
 	.io_deallocate	= hammer_io_deallocate,
