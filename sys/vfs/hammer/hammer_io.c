@@ -67,10 +67,12 @@ hammer_mod_rb_compare(hammer_io_t io1, hammer_io_t io2)
 	hammer_off_t io1_offset;
 	hammer_off_t io2_offset;
 
-	io1_offset = ((io1->offset & HAMMER_OFF_SHORT_MASK) << 8) |
-		     io1->volume->vol_no;
-	io2_offset = ((io2->offset & HAMMER_OFF_SHORT_MASK) << 8) |
-		     io2->volume->vol_no;
+	/*
+	 * Encoded offsets are neither valid block device offsets
+	 * nor valid zone-X offsets.
+	 */
+	io1_offset = HAMMER_ENCODE(0, io1->volume->vol_no, io1->offset);
+	io2_offset = HAMMER_ENCODE(0, io2->volume->vol_no, io2->offset);
 
 	if (io1_offset < io2_offset)
 		return(-1);
@@ -1029,7 +1031,8 @@ hammer_io_set_modlist(struct hammer_io *io)
 		break; /* NOT REACHED */
 	}
 	if (RB_INSERT(hammer_mod_rb_tree, io->mod_root, io)) {
-		hpanic("duplicate entry");
+		hpanic("duplicate entry @ %d:%015jx",
+			io->volume->vol_no, io->offset);
 		/* NOT REACHED */
 	}
 	lwkt_reltoken(&hmp->io_token);
@@ -1207,8 +1210,11 @@ hammer_io_deallocate(struct buf *bp)
 			KKASSERT(io->bp == NULL);
 			KKASSERT(io->mod_root == NULL);
 			io->mod_root = &hmp->lose_root;
-			if (RB_INSERT(hammer_mod_rb_tree, io->mod_root, io))
-				hpanic("duplicate entry");
+			if (RB_INSERT(hammer_mod_rb_tree, io->mod_root, io)) {
+				hpanic("duplicate entry @ %d:%015jx",
+					io->volume->vol_no, io->offset);
+				/* NOT REACHED */
+			}
 		}
 		hammer_put_interlock(&io->lock, 1);
 	}
