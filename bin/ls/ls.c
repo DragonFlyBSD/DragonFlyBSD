@@ -113,7 +113,7 @@ static int f_reversesort;	/* reverse whatever sort is used */
 static int f_singlecol;		/* use single column output */
        int f_size;		/* list size in short listing */
        int f_slash;		/* similar to f_type, but only for dirs */
-       int f_sortsize;		/* Sort by size */
+       int f_sizesort;		/* Sort by size */
        int f_sortacross;	/* sort across rows, not down columns */ 
        int f_statustime;	/* use time of last mode change */
 static int f_stream;		/* stream the output, separate with commas */
@@ -241,8 +241,14 @@ main(int argc, char *argv[])
 		case 'R':
 			f_recursive = 1;
 			break;
+		/* The -t and -S options override each other. */
 		case 'S':
-			f_sortsize = 1;
+			f_sizesort = 1;
+			f_timesort = 0;
+			break;
+		case 't':
+			f_timesort = 1;
+			f_sizesort = 0;
 			break;
 		case 'f':
 			f_nosort = 1;
@@ -298,9 +304,6 @@ main(int argc, char *argv[])
 			break;
 		case 'T':
 			f_sectime = 1;
-			break;
-		case 't':
-			f_timesort = 1;
 			break;
 		case 'W':
 			f_whiteout = 1;
@@ -361,12 +364,12 @@ main(int argc, char *argv[])
 #endif
 
 	/*
-	 * If not -F, -i, -l, -s, -S  or -t options, don't require stat
+	 * If not -F, -i, -l, -s, -S or -t options, don't require stat
 	 * information, unless in color mode in which case we do
 	 * need this to determine which colors to display.
 	 */
-	if (!f_inode && !f_longform && !f_size && !f_sortsize && !f_timesort
-	    && !f_type
+	if (!f_inode && !f_longform && !f_size && !f_timesort &&
+	    !f_sizesort && !f_type
 #ifdef COLORLS
 	    && !f_color
 #endif
@@ -399,23 +402,23 @@ main(int argc, char *argv[])
 	}
 	/* Select a sort function. */
 	if (f_reversesort) {
-		if (!f_timesort)
+		if (!f_timesort && !f_sizesort)
 			sortfcn = revnamecmp;
+		else if (f_sizesort)
+			sortfcn = revsizecmp;
 		else if (f_accesstime)
 			sortfcn = revacccmp;
-		else if (f_sortsize)
-			sortfcn = revsizecmp;
 		else if (f_statustime)
 			sortfcn = revstatcmp;
 		else		/* Use modification time. */
 			sortfcn = revmodcmp;
 	} else {
-		if (!f_timesort)
+		if (!f_timesort && !f_sizesort)
 			sortfcn = namecmp;
+		else if (f_sizesort)
+			sortfcn = sizecmp;
 		else if (f_accesstime)
 			sortfcn = acccmp;
-		else if (f_sortsize)
-			sortfcn = sizecmp;
 		else if (f_statustime)
 			sortfcn = statcmp;
 		else		/* Use modification time. */

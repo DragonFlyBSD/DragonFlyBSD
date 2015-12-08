@@ -31,7 +31,7 @@
 .\"     @(#)ls.1	8.7 (Berkeley) 7/29/94
 .\" $FreeBSD: src/bin/ls/ls.1,v 1.86 2005/02/13 22:25:09 ru Exp $
 .\"
-.Dd November 20, 2015
+.Dd December 8, 2015
 .Dt LS 1
 .Os
 .Sh NAME
@@ -142,8 +142,8 @@ options.
 .It Fl R
 Recursively list subdirectories encountered.
 .It Fl S
-Use the size of a file for sorting
-.Pq Fl t .
+Sort by size (largest file first) before sorting the operands in
+lexicographical order.
 .It Fl T
 When used with the
 .Fl l
@@ -288,6 +288,13 @@ and
 .Fl u
 options override each other; the last one specified determines
 the file time used.
+.Pp
+The
+.Fl S
+and
+.Fl t
+options override each other; the last one specified determines
+the sort order used.
 .Pp
 The
 .Fl B , b , w ,
