@@ -1142,7 +1142,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int locked)
 static __inline
 void *
 _hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
-	     int *errorp, struct hammer_buffer **bufferp)
+	     int isnew, int *errorp, struct hammer_buffer **bufferp)
 {
 	hammer_buffer_t buffer;
 	int32_t xoff = (int32_t)buf_offset & HAMMER_BUFMASK;
@@ -1155,7 +1155,7 @@ _hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
 			       buffer->zoneX_offset != buf_offset)) {
 		if (buffer)
 			hammer_rel_buffer(buffer, 0);
-		buffer = hammer_get_buffer(hmp, buf_offset, bytes, 0, errorp);
+		buffer = hammer_get_buffer(hmp, buf_offset, bytes, isnew, errorp);
 		*bufferp = buffer;
 	} else {
 		*errorp = 0;
@@ -1174,7 +1174,7 @@ void *
 hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset,
 	     int *errorp, struct hammer_buffer **bufferp)
 {
-	return(_hammer_bread(hmp, buf_offset, HAMMER_BUFSIZE, errorp, bufferp));
+	return(_hammer_bread(hmp, buf_offset, HAMMER_BUFSIZE, 0, errorp, bufferp));
 }
 
 void *
@@ -1182,7 +1182,7 @@ hammer_bread_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
 	         int *errorp, struct hammer_buffer **bufferp)
 {
 	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
-	return(_hammer_bread(hmp, buf_offset, bytes, errorp, bufferp));
+	return(_hammer_bread(hmp, buf_offset, bytes, 0, errorp, bufferp));
 }
 
 /*
@@ -1195,42 +1195,11 @@ hammer_bread_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
  * This function marks the buffer dirty but does not increment its
  * modify_refs count.
  */
-static __inline
-void *
-_hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
-	     int *errorp, struct hammer_buffer **bufferp)
-{
-	hammer_buffer_t buffer;
-	int32_t xoff = (int32_t)buf_offset & HAMMER_BUFMASK;
-
-	buf_offset &= ~HAMMER_BUFMASK64;
-	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) != 0);
-
-	buffer = *bufferp;
-	if (buffer == NULL || (buffer->zone2_offset != buf_offset &&
-			       buffer->zoneX_offset != buf_offset)) {
-		if (buffer)
-			hammer_rel_buffer(buffer, 0);
-		buffer = hammer_get_buffer(hmp, buf_offset, bytes, 1, errorp);
-		*bufferp = buffer;
-	} else {
-		*errorp = 0;
-	}
-
-	/*
-	 * Return a pointer to the buffer data.
-	 */
-	if (buffer == NULL)
-		return(NULL);
-	else
-		return((char *)buffer->ondisk + xoff);
-}
-
 void *
 hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset,
 	     int *errorp, struct hammer_buffer **bufferp)
 {
-	return(_hammer_bnew(hmp, buf_offset, HAMMER_BUFSIZE, errorp, bufferp));
+	return(_hammer_bread(hmp, buf_offset, HAMMER_BUFSIZE, 1, errorp, bufferp));
 }
 
 void *
@@ -1238,7 +1207,7 @@ hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
 		int *errorp, struct hammer_buffer **bufferp)
 {
 	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
-	return(_hammer_bnew(hmp, buf_offset, bytes, errorp, bufferp));
+	return(_hammer_bread(hmp, buf_offset, bytes, 1, errorp, bufferp));
 }
 
 /************************************************************************
