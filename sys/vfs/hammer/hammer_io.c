@@ -1628,7 +1628,8 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 
 	buf_offset = leaf->data_offset;
 
-	KKASSERT(buf_offset > HAMMER_ZONE_BTREE);
+	KKASSERT(hammer_is_zone2_mapped_index(
+		HAMMER_ZONE_DECODE(buf_offset)));
 	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_WRITE);
 
 	/*
