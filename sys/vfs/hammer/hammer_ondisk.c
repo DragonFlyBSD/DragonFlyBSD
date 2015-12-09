@@ -741,8 +741,7 @@ found_aliased:
 	buffer->zoneX_offset = buf_offset;
 
 	hammer_io_init(&buffer->io, volume, iotype);
-	buffer->io.offset = volume->ondisk->vol_buf_beg +
-			    (zone2_offset & HAMMER_OFF_SHORT_MASK);
+	buffer->io.offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
 	buffer->io.bytes = bytes;
 	TAILQ_INIT(&buffer->clist);
 	hammer_ref_interlock_true(&buffer->io.lock);

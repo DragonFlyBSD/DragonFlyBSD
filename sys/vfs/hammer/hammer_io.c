@@ -454,8 +454,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	 * offset use that, otherwise instantiate a buffer to cover any
 	 * related VM pages, set BNOCACHE, and brelse().
 	 */
-	phys_offset = volume->ondisk->vol_buf_beg +
-		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
+	phys_offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
 	if ((bp = findblk(volume->devvp, phys_offset, 0)) != NULL)
 		bremfree(bp);
 	else
@@ -1448,8 +1447,8 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 		 * 3rd level bio (the caller has already pushed once)
 		 */
 		nbio = push_bio(bio);
-		nbio->bio_offset = volume->ondisk->vol_buf_beg +
-				   (zone2_offset & HAMMER_OFF_SHORT_MASK);
+		nbio->bio_offset = hammer_xlate_to_phys(volume->ondisk,
+							zone2_offset);
 		hammer_stats_disk_read += bp->b_bufsize;
 		vn_strategy(volume->devvp, nbio);
 	}
@@ -1524,8 +1523,7 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 		 * Convert to the raw volume->devvp offset and acquire
 		 * the buf, issuing async I/O if necessary.
 		 */
-		buf_offset = volume->ondisk->vol_buf_beg +
-			     (zone2_offset & HAMMER_OFF_SHORT_MASK);
+		buf_offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
 
 		if (leaf && hammer_verify_data) {
 			bio->bio_caller_info1.uvalue32 = leaf->data_crc;
@@ -1676,10 +1674,9 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 			 * Third level bio - raw offset specific to the
 			 * correct volume.
 			 */
-			zone2_offset &= HAMMER_OFF_SHORT_MASK;
 			nbio = push_bio(nbio);
-			nbio->bio_offset = volume->ondisk->vol_buf_beg +
-					   zone2_offset;
+			nbio->bio_offset = hammer_xlate_to_phys(volume->ondisk,
+								zone2_offset);
 			hammer_stats_disk_write += bp->b_bufsize;
 			hammer_ip_replace_bulk(hmp, record);
 			vn_strategy(volume->devvp, nbio);

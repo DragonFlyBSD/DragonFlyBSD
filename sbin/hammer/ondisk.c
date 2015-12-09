@@ -291,8 +291,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 				buf);
 		}
 		buf->buf_offset = buf_offset;
-		buf->raw_offset = volume->ondisk->vol_buf_beg +
-				  (buf_offset & HAMMER_OFF_SHORT_MASK);
+		buf->raw_offset = hammer_xlate_to_phys(volume->ondisk,
+							buf_offset);
 		buf->volume = volume;
 		hi = buffer_hash(buf_offset);
 		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);

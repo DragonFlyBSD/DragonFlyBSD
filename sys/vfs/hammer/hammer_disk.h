@@ -704,6 +704,13 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_VOL_VERSION_SIX		6	/* DIRHASH_ALG1 */
 
 /*
+ * Translate a zone-2 address to physical address
+ */
+#define hammer_xlate_to_phys(volume, zone2_offset)	\
+	((volume)->vol_buf_beg +			\
+	 ((zone2_offset) & HAMMER_OFF_SHORT_MASK))
+
+/*
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
  */
