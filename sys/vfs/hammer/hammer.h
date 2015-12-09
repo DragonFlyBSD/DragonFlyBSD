@@ -918,7 +918,6 @@ struct hammer_mount {
 
 	struct netexport export;
 	struct hammer_lock sync_lock;
-	struct hammer_lock free_lock;
 	struct hammer_lock undo_lock;
 	struct hammer_lock blkmap_lock;
 	struct hammer_lock snapshot_lock;

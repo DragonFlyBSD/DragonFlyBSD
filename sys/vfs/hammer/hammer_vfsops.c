@@ -479,7 +479,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->kdiag.count = -16;	/* initial burst */
 
 		hmp->sync_lock.refs = 1;
-		hmp->free_lock.refs = 1;
 		hmp->undo_lock.refs = 1;
 		hmp->blkmap_lock.refs = 1;
 		hmp->snapshot_lock.refs = 1;
