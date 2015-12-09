@@ -1753,7 +1753,6 @@ static int hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 struct hammer_sync_info {
 	int error;
-	int waitfor;
 };
 
 int
@@ -1762,7 +1761,6 @@ hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
 	struct hammer_sync_info info;
 
 	info.error = 0;
-	info.waitfor = waitfor;
 	if (waitfor == MNT_WAIT) {
 		vsyncscan(hmp->mp, VMSC_GETVP | VMSC_ONEPASS,
 			  hammer_sync_scan2, &info);
@@ -1793,11 +1791,9 @@ hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 		flags |= VMSC_ONEPASS;
 
 	info.error = 0;
-	info.waitfor = MNT_NOWAIT;
 	vsyncscan(hmp->mp, flags | VMSC_NOWAIT, hammer_sync_scan2, &info);
 
 	if (info.error == 0 && (waitfor & MNT_WAIT)) {
-		info.waitfor = waitfor;
 		vsyncscan(hmp->mp, flags, hammer_sync_scan2, &info);
 	}
         if (waitfor == MNT_WAIT) {
