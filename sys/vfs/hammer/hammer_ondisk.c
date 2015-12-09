@@ -1751,6 +1751,11 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
  */
 static int hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
+struct hammer_sync_info {
+	int error;
+	int waitfor;
+};
+
 int
 hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
 {

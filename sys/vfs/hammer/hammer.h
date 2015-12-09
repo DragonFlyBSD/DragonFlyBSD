@@ -967,11 +967,6 @@ typedef struct hammer_mount	*hammer_mount_t;
 	for (n = 0; n < HAMMER_MAX_VOLUMES; n++)		\
 		if (HAMMER_VOLUME_NUMBER_IS_SET(hmp, n))
 
-struct hammer_sync_info {
-	int error;
-	int waitfor;
-};
-
 /*
  * Minium buffer cache bufs required to rebalance the B-Tree.
  * This is because we must hold the children and the children's children
