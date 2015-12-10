@@ -341,7 +341,7 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		    name[0] == '/' || strchr(name, '.'))
 			name = NULL;
 	if (name == NULL && (name = TZDEFAULT) == NULL)
-		return -1;
+		goto out;
 	{
 		int	doaccess;
 		struct stat	stab;
@@ -364,11 +364,11 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		if (!doaccess) {
 			if ((p = TZDIR) == NULL) {
 				free(fullname);
-				return -1;
+				goto out;
 			}
 			if (strlen(p) + 1 + strlen(name) >= FILENAME_MAX) {
 				free(fullname);
-				return -1;
+				goto out;
 			}
 			strcpy(fullname, p);
 			strcat(fullname, "/");
@@ -382,16 +382,16 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		}
 		if (doaccess && access(name, R_OK) != 0) {
 			free(fullname);
-			return -1;
+			goto out;
 		}
 		if ((fid = _open(name, O_RDONLY)) == -1) {
 			free(fullname);
-			return -1;
+			goto out;
 		}
 		if ((_fstat(fid, &stab) < 0) || !S_ISREG(stab.st_mode)) {
 			free(fullname);
 			_close(fid);
-			return -1;
+			goto out;
 		}
 		free(fullname);
 	}
@@ -618,7 +618,8 @@ tzload(const char *name, struct state * const sp, const int doextend)
 	sp->defaulttype = i;
 	res = 0;
 out:
-	free(u);
+	if (u != NULL)
+		free(u);
 	return (res);
 }
 
