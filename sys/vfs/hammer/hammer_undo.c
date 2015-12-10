@@ -38,7 +38,15 @@
 
 #include "hammer.h"
 
-static int hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2);
+static int
+hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2)
+{
+        if (node1->offset < node2->offset)
+                return(-1);
+        if (node1->offset > node2->offset)
+                return(1);
+        return(0);
+}
 
 RB_GENERATE2(hammer_und_rb_tree, hammer_undo, rb_node,
              hammer_und_rb_compare, hammer_off_t, offset);
@@ -545,14 +553,3 @@ hammer_undo_reclaim(hammer_io_t io)
 		return(0);
 	return(1);
 }
-
-static int
-hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2)
-{
-        if (node1->offset < node2->offset)
-                return(-1);
-        if (node1->offset > node2->offset)
-                return(1);
-        return(0);
-}
-
