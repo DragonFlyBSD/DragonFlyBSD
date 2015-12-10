@@ -55,7 +55,7 @@
 #define BDA_SCR		0x449		/* Video mode		*/
 #define BDA_POS		0x450		/* Cursor position	*/
 #define BDA_BOOT	0x472		/* Boot howto flag	*/
-#define BDA_NHRDRV	0x475
+#define BDA_NHRDRV	0x475		/* Number of drivers found by BIOS */
 #define BDA_KEYBOARD	0x496		/* BDA byte with keyboard bit */
 
 /*

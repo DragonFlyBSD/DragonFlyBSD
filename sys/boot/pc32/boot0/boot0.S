@@ -46,7 +46,6 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.26 2003/06/01 20:41:04 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot0/boot0.S,v 1.9 2008/07/06 17:17:01 mneumann Exp $
  */
 
 #include "../bootasm.h"
@@ -91,6 +90,12 @@
 		.set _FAKE,0x0			# Fake partition entry
 		.set _MNUOPT,0xc		# Menu options
 
+		.set _SECTOR_FIELD_OFF,-0xe	# Offset to Sector field
+						# in the fake partition
+		.set _DATA_OFF,PRT_OFF+_SECTOR_FIELD_OFF
+						# Offset to boot0 variables
+						# from partition table
+
 		.globl start			# Entry point
 		.code16				# This runs in real mode
 
@@ -107,7 +112,8 @@ start:		cld				# String ops inc
 		movw $MEM_BIOS_LADDR,%sp	#  stack
 	
 		/*
-		 * Copy this code to the address it was linked for
+		 * Copy this code to the address it was linked for.
+		 * Base address after relocation is - 0x600.
 		 */
 		movw %sp,%si			# Source
 		movw $start,%di			# Destination
@@ -126,11 +132,11 @@ start:		cld				# String ops inc
 		stosw				#  them
 
 		/*
-		 * Relocate to the new copy of the code.  Do not make
-		 * assumptions with regard to a relative-PC near jump
-		 * capability.
+		 * Set C:H:S to 0:0:1 and relocate to the new copy of
+		 * the code.  Do not make assumptions with regard to
+		 * a relative-PC near jump capability.
 		 */
-		incb -0xe(%di)			# Sector number
+		incb _SECTOR_FIELD_OFF(%di)	# Sector number
 		pushw $main			# Jump to relocated code
 		retw
 
@@ -171,12 +177,13 @@ main.2: 	movb %dl,_FAKE(%bp)		# Save drive number
 		 * that the table starts 2 bytes earlier than you would
 		 * expect as the bootable flag is after it in the block)
 		 */
-		movw $(partbl+0x4),%bx		# Partition table (+4)
-		xorw %dx,%dx			# Item number
+		movw $(partbl+0x4),%bx		# Partition table (+4 - type)
+		xorw %dx,%dx			# Partition entry item number
 
 		/*
 		 * Loop around on the partition table, printing values until
-		 * we pass a 256 byte boundary. The end of loop test is at
+		 * we pass a 256 (4x 64 byte partitions) byte boundary. The
+		 * end of loop test is at
 		 * main.5.
 		 */
 main.3: 	movb %ch,-0x4(%bx)		# Zero active flag (ch == 0)
@@ -375,8 +382,8 @@ main.13:	pushw %bx			# Save
 		movw $start,%bx			# Data to write
 		movb $0x3,%ah			# Write sector
 		callw intx13			#  to disk
-main.14:	popw %si			# Restore
-		popf				# Restore
+main.14:	popw %si			# Restore partition
+		popf				# Restore eflags
 
 		/*
 		 * If going to next drive, replace drive with selected one.
@@ -448,10 +455,10 @@ putchr:
 putchr: 	
 		movb $0x01,%ah			# BIOS: Send
 bioscom:
-		pusha				# Save
+		pusha				# Save (preserve driver number)
 		xorw %dx,%dx			# Use COM1
 		int $0x14			#  Character
-		popa				# Restore
+		popa				# Restore (restore driver number)
 		retw				# To caller
 #endif
 		
@@ -540,7 +547,7 @@ os_linux:	.ascii "Linu"; .byte 'x'|0x80
 os_dfbsd:	.ascii "DF/F"
 os_bsd: 	.ascii "BS";   .byte 'D'|0x80
 
-		.org PRT_OFF-0xe,0x90
+		.org _DATA_OFF,0x90
 
 		.word B0MAGIC			# Magic number
 
