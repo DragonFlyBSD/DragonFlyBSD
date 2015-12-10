@@ -52,6 +52,9 @@
 #include <err.h>
 #include <stdlib.h>
 
+#define	SA_LEN(addr)		((addr)->sa_len)
+#define	__set_errno(val)	errno = (val)
+
 int	rexecoptions;
 char	*getpass(), *getlogin();
 
@@ -186,7 +189,7 @@ next:
 		while ((t = token()) && t != MACH && t != DEFAULT) switch(t) {
 
 		case LOGIN:
-			if (token())
+			if (token()) {
 				if (*aname == NULL) {
 					char *tmp;
 					tmp = malloc(strlen(tokval) + 1);
@@ -196,6 +199,7 @@ next:
 					if (strcmp(*aname, tokval))
 						goto next;
 				}
+			}
 			break;
 		case PASSWD:
 			if ((*aname == NULL || strcmp(*aname, "anonymous")) &&

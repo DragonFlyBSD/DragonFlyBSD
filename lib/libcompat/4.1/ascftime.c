@@ -32,7 +32,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.1/ascftime.c,v 1.4 1999/08/28 00:04:10 peter Exp $
- * $DragonFly: src/lib/libcompat/4.1/ascftime.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include <time.h>
@@ -40,14 +39,7 @@
 #define MAXLEN 1000		/* just a guess, only the user knows... */
 
 int
-#if __STDC__
 ascftime(char *s, const char *format, const struct tm *tmptr)
-#else
-ascftime(s, format, tmptr)
-     char *s;
-     char *format;
-     struct tm *tmptr;
-#endif
 {
 	return strftime(s, MAXLEN, format? format: "%C", tmptr);
 }

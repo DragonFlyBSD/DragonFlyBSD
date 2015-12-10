@@ -2,10 +2,8 @@
 # $FreeBSD: src/lib/libcompat/Makefile,v 1.19.2.1 2001/04/25 10:04:23 ru Exp $
 
 LIB=compat
-CFLAGS+=-I${.CURDIR}/../libc/locale
-CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
 NOPIC=
-WARNS?=	0
+WARNS?=	2
 
 .PATH:	${.CURDIR}/4.1 ${.CURDIR}/4.3 ${.CURDIR}/4.4
 
