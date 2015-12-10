@@ -241,7 +241,7 @@ btxld(const char *iname)
     }
     btx.btx_pgctl -= cwr;
     btx.btx_entry = Eflag ? centry : ihdr.entry;
-    if (snprintf(name, sizeof(name), "%s.tmp", oname) >= sizeof(name))
+    if ((size_t)snprintf(name, sizeof(name), "%s.tmp", oname) >= sizeof(name))
 	errx(2, "%s: Filename too long", oname);
     if ((fdo = open(name, O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1)
 	err(2, "%s", name);
@@ -461,7 +461,7 @@ writex(int fd, const void *buf, size_t nbyte)
 
     if ((n = write(fd, buf, nbyte)) == -1)
 	err(2, "%s", tname);
-    if (n != nbyte)
+    if ((size_t)n != nbyte)
 	errx(2, "%s: Short write", tname);
 }
 
