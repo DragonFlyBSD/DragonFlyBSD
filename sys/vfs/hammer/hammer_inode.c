@@ -868,18 +868,6 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 */
 	if (dip)
 		ip->ino_data.parent_obj_id = dip->ino_leaf.base.obj_id;
-#if 0
-	/*
-	 * The parent_obj_localization field only applies to pseudo-fs roots.
-	 * XXX this is no longer applicable, PFSs are no longer directly
-	 * tied into the parent's directory structure.
-	 */
-	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY &&
-	    ip->obj_id == HAMMER_OBJID_ROOT) {
-		ip->ino_data.ext.obj.parent_obj_localization =
-						dip->obj_localization;
-	}
-#endif
 
 	switch(ip->ino_leaf.base.obj_type) {
 	case HAMMER_OBJTYPE_CDEV:

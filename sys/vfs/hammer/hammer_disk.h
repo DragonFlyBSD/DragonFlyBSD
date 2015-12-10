@@ -777,11 +777,6 @@ struct hammer_inode_data {
 	uint64_t nlinks;	/* hard links */
 	uint64_t size;		/* filesystem object size */
 	union {
-		struct {
-			uint32_t reserved03[4];
-			uint32_t parent_obj_localization;
-			uint32_t reserved04;
-		} obj;
 		char	symlink[24];	/* HAMMER_INODE_BASESYMLEN */
 	} ext;
 	uint64_t mtime;	/* mtime must be second-to-last */

@@ -1325,7 +1325,7 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	lwkt_gettoken(&hmp->fs_token);
 	parent_obj_id = dip->ino_data.parent_obj_id;
 	if (dip->obj_id == HAMMER_OBJID_ROOT)
-		parent_obj_localization = dip->ino_data.ext.obj.parent_obj_localization;
+		parent_obj_localization = HAMMER_DEF_LOCALIZATION;
 	else
 		parent_obj_localization = dip->obj_localization;
 
