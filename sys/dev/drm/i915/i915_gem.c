@@ -1634,7 +1634,6 @@ retry:
 		oldm = NULL;
 	}
 
-	VM_OBJECT_UNLOCK(vm_obj);
 	ret = 0;
 	m = NULL;
 
@@ -1643,7 +1642,6 @@ retry:
 	 * faulted on the same GTT address and instantiated the mapping.
 	 * Recheck.
 	 */
-	VM_OBJECT_LOCK(vm_obj);
 	m = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
 	if (m != NULL) {
 		/*
@@ -1660,19 +1658,8 @@ retry:
 	 * END FREEBSD MAGIC
 	 */
 
-	/*
-	 * Object must be unlocked here to avoid deadlock during
-	 * other GEM calls.  All goto targets expect the object to
-	 * be locked.
-	 */
-	VM_OBJECT_UNLOCK(vm_obj);
-
 	obj->fault_mappable = true;
 
-	/*
-	 * Relock object for insertion, leave locked for return.
-	 */
-	VM_OBJECT_LOCK(vm_obj);
 	m = vm_phys_fictitious_to_vm_page(dev_priv->gtt.mappable_base +
 					  i915_gem_obj_ggtt_offset(obj) +
 					  offset);
