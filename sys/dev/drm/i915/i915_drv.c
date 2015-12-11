@@ -896,6 +896,8 @@ static int i915_pci_probe(device_t kdev)
 
 	device = pci_get_device(kdev);
 
+	driver.driver_features &= ~(DRIVER_USE_AGP);
+
 	for (i = 0; pciidlist[i].device != 0; i++) {
 		if (pciidlist[i].device == device) {
 			i915_attach_list[0].device = device;
@@ -1608,9 +1610,9 @@ static struct drm_driver driver = {
 	 * deal with them for Intel hardware.
 	 */
 	.driver_features =
-	    DRIVER_USE_AGP | DRIVER_REQUIRE_AGP |
-	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM,
-
+	    DRIVER_USE_AGP |
+	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM |
+	    DRIVER_RENDER,
 	.load = i915_driver_load,
 	.unload = i915_driver_unload,
 	.open = i915_driver_open,
@@ -1706,7 +1708,6 @@ static int __init i915_init(void)
 
 DRIVER_MODULE_ORDERED(i915, vgapci, i915_driver, drm_devclass, NULL, NULL, SI_ORDER_ANY);
 MODULE_DEPEND(i915, drm, 1, 1, 1);
-MODULE_DEPEND(i915, agp, 1, 1, 1);
 MODULE_DEPEND(i915, iicbus, 1, 1, 1);
 MODULE_DEPEND(i915, iic, 1, 1, 1);
 MODULE_DEPEND(i915, iicbb, 1, 1, 1);

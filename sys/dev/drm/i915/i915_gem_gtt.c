@@ -1721,7 +1721,6 @@ int i915_gem_setup_global_gtt(struct drm_device *dev,
 	}
 
 #ifdef __DragonFly__
-	intel_gtt_clear_range(start / PAGE_SIZE, (end-start) / PAGE_SIZE);
 	device_printf(dev->dev,
 	    "taking over the fictitious range 0x%lx-0x%lx\n",
 	    dev_priv->gtt.mappable_base + start, dev_priv->gtt.mappable_base + start + mappable);
