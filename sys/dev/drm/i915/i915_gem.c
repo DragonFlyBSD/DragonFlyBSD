@@ -1651,12 +1651,8 @@ retry:
 		 */
 		if (vm_page_busy_try(m, false)) {
 			kprintf("i915_gem_fault: PG_BUSY\n");
-			VM_OBJECT_UNLOCK(vm_obj);
-			mutex_unlock(&dev->struct_mutex);
-			int dummy;
-			tsleep(&dummy, 0, "delay", 1); /* XXX */
-			VM_OBJECT_LOCK(vm_obj);
-			goto retry;
+			ret = -EINTR;
+			goto unlock;
 		}
 		goto have_page;
 	}
