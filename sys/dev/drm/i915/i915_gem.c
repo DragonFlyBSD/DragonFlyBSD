@@ -1714,11 +1714,8 @@ have_page:
 
 	i915_gem_object_ggtt_unpin(obj);
 	mutex_unlock(&dev->struct_mutex);
-	if (oldm != NULL)
-		vm_page_free(oldm);
-	if (didpip)
-		vm_object_pip_wakeup(vm_obj);
-	return (VM_PAGER_OK);
+	ret = VM_PAGER_OK;
+	goto done;
 
 	/*
 	 * ALTERNATIVE ERROR RETURN.
@@ -1763,18 +1760,13 @@ out:
 		break;
 	}
 
-	intel_runtime_pm_put(dev_priv);
-
-	/*
-	 * Error return.  We already NULL'd out *mres so we should be able
-	 * to free (oldm) here even though we are returning an error and the
-	 * caller usually handles the freeing.
-	 */
+done:
 	if (oldm != NULL)
 		vm_page_free(oldm);
 	if (didpip)
 		vm_object_pip_wakeup(vm_obj);
 
+	intel_runtime_pm_put(dev_priv);
 	return ret;
 }
 
