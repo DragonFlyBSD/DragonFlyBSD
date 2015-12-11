@@ -1691,15 +1691,9 @@ retry:
 	 * Try to busy the page.  Fails on non-zero return.
 	 */
 	if (vm_page_busy_try(m, false)) {
-		VM_OBJECT_UNLOCK(vm_obj);
-		i915_gem_object_ggtt_unpin(obj);
 		kprintf("i915_gem_fault: PG_BUSY(2)\n");
-		i915_gem_object_ggtt_unpin(obj);
-		mutex_unlock(&dev->struct_mutex);
-		int dummy;
-		tsleep(&dummy, 0, "delay", 1); /* XXX */
-		VM_OBJECT_LOCK(vm_obj);
-		goto retry;
+		ret = -EINTR;
+		goto unpin;
 	}
 	m->valid = VM_PAGE_BITS_ALL;
 
