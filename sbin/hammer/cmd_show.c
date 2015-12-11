@@ -673,10 +673,15 @@ print_record(hammer_btree_elm_t elm)
 				data->inode.mode,
 				data->inode.uflags);
 			printf("%17s", "");
-			printf("ctime=%016jx pobjid=%016jx ot=%02x\n",
+			printf("ctime=%016jx pobjid=%016jx ot=%02x",
 				(uintmax_t)data->inode.ctime,
 				(uintmax_t)data->inode.parent_obj_id,
 				data->inode.obj_type);
+			if (data->inode.ext.symlink[0])
+				printf(" symlink=\"%s\"\n",
+					data->inode.ext.symlink);
+			else
+				printf("\n");
 			printf("%17s", "");
 			printf("mtime=%016jx caps=%02x",
 				(uintmax_t)data->inode.mtime,
