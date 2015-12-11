@@ -1258,6 +1258,21 @@ if_rtdel(struct radix_node *rn, void *arg)
 	return (0);
 }
 
+static __inline boolean_t
+ifa_prefer(const struct ifaddr *cur_ifa, const struct ifaddr *old_ifa)
+{
+	if (old_ifa == NULL)
+		return TRUE;
+
+	if ((old_ifa->ifa_ifp->if_flags & IFF_UP) == 0 &&
+	    (cur_ifa->ifa_ifp->if_flags & IFF_UP))
+		return TRUE;
+	if ((old_ifa->ifa_flags & IFA_ROUTE) == 0 &&
+	    (cur_ifa->ifa_flags & IFA_ROUTE))
+		return TRUE;
+	return FALSE;
+}
+
 /*
  * Locate an interface based on a complete address.
  */
@@ -1289,6 +1304,7 @@ ifa_ifwithaddr(struct sockaddr *addr)
 	}
 	return (NULL);
 }
+
 /*
  * Locate the point to point interface with a given destination address.
  */
@@ -1404,12 +1420,17 @@ next:				continue;
 				 * If the netmask of what we just found
 				 * is more specific than what we had before
 				 * (if we had one) then remember the new one
-				 * before continuing to search
-				 * for an even better one.
+				 * before continuing to search for an even
+				 * better one.  If the netmasks are equal,
+				 * we prefer the this ifa based on the result
+				 * of ifa_prefer().
 				 */
 				if (ifa_maybe == NULL ||
 				    rn_refines((char *)ifa->ifa_netmask,
-					       (char *)ifa_maybe->ifa_netmask))
+				        (char *)ifa_maybe->ifa_netmask) ||
+				    (sa_equal(ifa_maybe->ifa_netmask,
+				        ifa->ifa_netmask) &&
+				     ifa_prefer(ifa, ifa_maybe)))
 					ifa_maybe = ifa;
 			}
 		}
