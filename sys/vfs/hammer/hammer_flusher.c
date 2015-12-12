@@ -58,7 +58,6 @@ struct hammer_flusher_info {
 	struct hammer_mount *hmp;
 	thread_t	td;
 	int		runstate;
-	int		count;
 	hammer_flush_group_t flg;
 	struct hammer_transaction trans;        /* per-slave transaction */
 };
@@ -481,7 +480,6 @@ hammer_flusher_slave_thread(void *arg)
 		RB_SCAN(hammer_fls_rb_tree, &flg->flush_tree, NULL,
 			hammer_flusher_flush_inode, info);
 
-		info->count = 0;
 		info->runstate = 0;
 		info->flg = NULL;
 		TAILQ_REMOVE(&hmp->flusher.run_list, info, entry);
