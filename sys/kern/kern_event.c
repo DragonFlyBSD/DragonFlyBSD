@@ -108,6 +108,11 @@ static void 	knote_dequeue(struct knote *kn);
 static struct 	knote *knote_alloc(void);
 static void 	knote_free(struct knote *kn);
 
+static void	precise_sleep_intr(systimer_t info, int in_ipi,
+				   struct intrframe *frame);
+static int	precise_sleep(void *ident, int flags, const char *wmesg,
+			      int us);
+
 static void	filt_kqdetach(struct knote *kn);
 static int	filt_kqueue(struct knote *kn, long hint);
 static int	filt_procattach(struct knote *kn);
@@ -147,6 +152,9 @@ SYSCTL_INT(_kern, OID_AUTO, kq_calloutmax, CTLFLAG_RW,
 static int		kq_checkloop = 1000000;
 SYSCTL_INT(_kern, OID_AUTO, kq_checkloop, CTLFLAG_RW,
     &kq_checkloop, 0, "Maximum number of loops for kqueue scan");
+static int		kq_sleep_threshold = 20000;
+SYSCTL_INT(_kern, OID_AUTO, kq_sleep_threshold, CTLFLAG_RW,
+    &kq_sleep_threshold, 0, "Minimum sleep duration without busy-looping");
 
 #define KNOTE_ACTIVATE(kn) do { 					\
 	kn->kn_status |= KN_ACTIVE;					\
@@ -748,7 +756,7 @@ kevent_copyin(void *arg, struct kevent *kevp, int max, int *events)
 int
 kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	    k_copyin_fn kevent_copyinfn, k_copyout_fn kevent_copyoutfn,
-	    struct timespec *tsp_in)
+	    struct timespec *tsp_in, int flags)
 {
 	struct kevent *kevp;
 	struct timespec *tsp, ats;
@@ -851,7 +859,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 * to our scan.
 		 */
 		if (kq->kq_count == 0 && *res == 0) {
-			int timeout;
+			int timeout, ustimeout = 0;
 
 			if (tsp == NULL) {
 				timeout = 0;
@@ -871,6 +879,20 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 					    24 * 60 * 60 * hz :
 					    tstohz_high(&atx);
 				}
+				if (flags & KEVENT_TIMEOUT_PRECISE &&
+				    timeout != 0) {
+					if (atx.tv_sec == 0 &&
+					    atx.tv_nsec < kq_sleep_threshold) {
+						DELAY(atx.tv_nsec / 1000);
+						error = EWOULDBLOCK;
+						break;
+					} else if (atx.tv_sec < 2000) {
+						ustimeout = atx.tv_sec *
+						    1000000 + atx.tv_nsec/1000;
+					} else {
+						ustimeout = 2000000000;
+					}
+				}
 			}
 
 			lwkt_gettoken(tok);
@@ -884,7 +906,14 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 					 */
 					kq->kq_sleep_cnt = 2;
 				}
-				error = tsleep(kq, PCATCH, "kqread", timeout);
+				if ((flags & KEVENT_TIMEOUT_PRECISE) &&
+				    timeout != 0) {
+					error = precise_sleep(kq, PCATCH,
+					    "kqread", ustimeout);
+				} else {
+					error = tsleep(kq, PCATCH, "kqread",
+					    timeout);
+				}
 
 				/* don't restart after signals... */
 				if (error == ERESTART)
@@ -992,7 +1021,7 @@ sys_kevent(struct kevent_args *uap)
 	kap->pchanges = 0;
 
 	error = kern_kevent(kq, uap->nevents, &uap->sysmsg_result, kap,
-			    kevent_copyin, kevent_copyout, tsp);
+			    kevent_copyin, kevent_copyout, tsp, 0);
 
 	fdrop(fp);
 
@@ -1844,4 +1873,40 @@ knote_free(struct knote *kn)
 		return;
 	}
 	kfree(kn, M_KQUEUE);
+}
+
+struct sleepinfo {
+	void *ident;
+	int timedout;
+};
+
+static void
+precise_sleep_intr(systimer_t info, int in_ipi, struct intrframe *frame)
+{
+	struct sleepinfo *si;
+
+	si = info->data;
+	si->timedout = 1;
+	wakeup(si->ident);
+}
+
+static int
+precise_sleep(void *ident, int flags, const char *wmesg, int us)
+{
+	struct systimer info;
+	struct sleepinfo si = {
+		.ident = ident,
+		.timedout = 0,
+	};
+	int r;
+
+	tsleep_interlock(ident, flags);
+	systimer_init_oneshot(&info, precise_sleep_intr, &si,
+	    us == 0 ? 1 : us);
+	r = tsleep(ident, flags | PINTERLOCKED, wmesg, 0);
+	systimer_del(&info);
+	if (si.timedout)
+		r = EWOULDBLOCK;
+
+	return r;
 }

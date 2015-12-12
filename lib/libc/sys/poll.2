@@ -41,10 +41,23 @@
 .In sys/types.h
 .In poll.h
 .Ft int
-.Fn poll "struct pollfd *fds" "nfds_t nfds" "int timeout"
+.Fo poll
+.Fa "struct pollfd *fds"
+.Fa "nfds_t nfds"
+.Fa "int timeout"
+.Fc
+.Ft int
+.Fo ppoll
+.Fa "struct pollfd *fds"
+.Fa "nfds_t nfds"
+.Fa "const struct timespec *timeout"
+.Fa "const sigset_t *newsigmask"
+.Fc
 .Sh DESCRIPTION
 .Fn Poll
-examines a set of file descriptors to see if some of them are ready for
+and
+.Fn ppoll
+examine a set of file descriptors to see if some of them are ready for
 I/O.
 The
 .Fa fds

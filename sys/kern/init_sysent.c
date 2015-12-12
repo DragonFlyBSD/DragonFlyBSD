@@ -568,4 +568,5 @@ struct sysent sysent[] = {
 	{ AS(futimens_args), (sy_call_t *)sys_futimens },	/* 540 = futimens */
 	{ AS(accept4_args), (sy_call_t *)sys_accept4 },	/* 541 = accept4 */
 	{ AS(lwp_setname_args), (sy_call_t *)sys_lwp_setname },	/* 542 = lwp_setname */
+	{ AS(ppoll_args), (sy_call_t *)sys_ppoll },	/* 543 = ppoll */
 };

@@ -2324,6 +2324,15 @@ struct	lwp_setname_args {
 	lwpid_t	tid;	char tid_[PAD_(lwpid_t)];
 	const char *	name;	char name_[PAD_(const char *)];
 };
+struct	ppoll_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	struct pollfd *	fds;	char fds_[PAD_(struct pollfd *)];
+	u_int	nfds;	char nfds_[PAD_(u_int)];
+	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
+	const sigset_t *	sigmask;	char sigmask_[PAD_(const sigset_t *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2873,6 +2882,7 @@ int	sys_utimensat (struct utimensat_args *);
 int	sys_futimens (struct futimens_args *);
 int	sys_accept4 (struct accept4_args *);
 int	sys_lwp_setname (struct lwp_setname_args *);
+int	sys_ppoll (struct ppoll_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

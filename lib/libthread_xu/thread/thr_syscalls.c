@@ -110,6 +110,8 @@ extern int	__sys_connect(int, const struct sockaddr *, socklen_t);
 extern int	__sys_fsync(int);
 extern int	__sys_msync(void *, size_t, int);
 extern int	__sys_poll(struct pollfd *, unsigned, int);
+extern int	__sys_ppoll(struct pollfd *, unsigned, const struct timespec *,
+			const sigset_t *);
 extern ssize_t	__sys_recv(int, void *, size_t, int);
 extern ssize_t	__sys_recvfrom(int, void *, size_t, int, struct sockaddr *, socklen_t *);
 extern ssize_t	__sys_recvmsg(int, struct msghdr *, int);
@@ -134,6 +136,8 @@ int	__nanosleep(const struct timespec *, struct timespec *);
 int	__open(const char *, int,...);
 int	__openat(int fd, const char *, int,...);
 int	__poll(struct pollfd *, unsigned int, int);
+int	__ppoll(struct pollfd *, unsigned int, const struct timespec *,
+		const sigset_t *);
 ssize_t	__read(int, void *buf, size_t);
 ssize_t	__readv(int, const struct iovec *, int);
 ssize_t	__recvfrom(int, void *, size_t, int f, struct sockaddr *, socklen_t *);
@@ -411,6 +415,23 @@ __poll(struct pollfd *fds, unsigned int nfds, int timeout)
 }
 
 __strong_reference(__poll, poll);
+
+int
+__ppoll(struct pollfd *fds, unsigned int nfds, const struct timespec *ts,
+	const sigset_t *mask)
+{
+	struct pthread *curthread = tls_get_curthread();
+	int oldcancel;
+	int ret;
+
+	oldcancel = _thr_cancel_enter(curthread);
+	ret = __sys_ppoll(fds, nfds, ts, mask);
+	_thr_cancel_leave(curthread, oldcancel);
+
+	return ret;
+}
+
+__strong_reference(__ppoll, ppoll);
 
 int 
 __pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds,

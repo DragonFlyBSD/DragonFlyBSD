@@ -235,13 +235,15 @@ struct thread;
 struct filedesc;
 struct kevent_args;
 
+#define KEVENT_TIMEOUT_PRECISE	0x01
+
 typedef int	(*k_copyout_fn)(void *arg, struct kevent *kevp, int count,
     int *res);
 typedef int	(*k_copyin_fn)(void *arg, struct kevent *kevp, int max,
     int *events);
 int kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
     k_copyin_fn kevent_copyin, k_copyout_fn kevent_copyout,
-    struct timespec *tsp);
+    struct timespec *tsp, int flags);
 
 extern void	knote(struct klist *list, long hint);
 extern void	knote_insert(struct klist *klist, struct knote *kn);

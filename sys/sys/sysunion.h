@@ -396,4 +396,5 @@ union sysunion {
 	struct	futimens_args futimens;
 	struct	accept4_args accept4;
 	struct	lwp_setname_args lwp_setname;
+	struct	ppoll_args ppoll;
 };

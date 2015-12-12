@@ -377,4 +377,5 @@
 #define	SYS_futimens	540
 #define	SYS_accept4	541
 #define	SYS_lwp_setname	542
-#define	SYS_MAXSYSCALL	543
+#define	SYS_ppoll	543
+#define	SYS_MAXSYSCALL	544

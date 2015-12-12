@@ -305,6 +305,7 @@ DF404.0 {
 
 DF406.0 {
     kenv;
+    ppoll;
 };
 
 DFprivate_1.0 {
@@ -497,6 +498,7 @@ DFprivate_1.0 {
     __sys_pipe;
     __sys_pipe2;
     __sys_poll;
+    __sys_ppoll;
     __sys_procctl;
     __sys_profil;
     __sys_pselect;
@@ -791,6 +793,7 @@ DFprivate_1.0 {
     _pipe;
     _pipe2;
     _poll;
+    _ppoll;
     _procctl;
     _profil;
     _pselect;

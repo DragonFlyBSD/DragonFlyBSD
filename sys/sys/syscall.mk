@@ -306,4 +306,5 @@ MIASM =  \
 	utimensat.o \
 	futimens.o \
 	accept4.o \
-	lwp_setname.o
+	lwp_setname.o \
+	ppoll.o

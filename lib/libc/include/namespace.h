@@ -74,6 +74,7 @@
 #define		nanosleep			_nanosleep
 #define		open				_open
 #define		poll				_poll
+#define		ppoll				_ppoll
 #define		pthread_atfork			_pthread_atfork
 #define		pthread_attr_destroy		_pthread_attr_destroy
 #define		pthread_attr_get_np		_pthread_attr_get_np

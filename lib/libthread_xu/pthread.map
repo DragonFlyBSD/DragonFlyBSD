@@ -12,6 +12,7 @@ global:
 	__nanosleep;
 	__open;
 	__poll;
+	__ppoll;
 	__pthread_cond_timedwait;
 	__pthread_cond_wait;
 	__pthread_cxa_finalize;
@@ -376,4 +377,9 @@ global:
 	_thread_state_zoombie;
 local:
 	*;
+};
+
+LIBTHREAD_1_1 {
+global:
+	ppoll;
 };

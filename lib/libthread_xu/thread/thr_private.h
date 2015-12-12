@@ -770,6 +770,8 @@ int	__sys_sigwaitinfo(const sigset_t *set, siginfo_t *info);
 /* #include <poll.h> */
 #ifdef _SYS_POLL_H_
 int 	__sys_poll(struct pollfd *, unsigned, int);
+int 	__sys_ppoll(struct pollfd *, unsigned, const struct timespec *,
+		const sigset_t *);
 #endif
 
 /* #include <sys/mman.h> */

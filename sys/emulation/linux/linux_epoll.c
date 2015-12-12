@@ -223,7 +223,7 @@ sys_linux_epoll_ctl(struct linux_epoll_ctl_args *args)
 	kq = (struct kqueue *)fp->f_data;
 
 	error = kern_kevent(kq, 0, &k_args.sysmsg_result, &k_args,
-	    linux_kev_copyin, linux_kev_copyout, NULL);
+	    linux_kev_copyin, linux_kev_copyout, NULL, 0);
         /* Check if there was an error during registration. */
         if (error == 0 && k_args.sysmsg_result != 0) {
                 /* The copyout callback stored the error there. */
@@ -274,7 +274,7 @@ sys_linux_epoll_wait(struct linux_epoll_wait_args *args)
 	kq = (struct kqueue *)fp->f_data;
 
 	error = kern_kevent(kq, args->maxevents, &args->sysmsg_result,
-	    &k_args, linux_kev_copyin, linux_kev_copyout, &ts);
+	    &k_args, linux_kev_copyin, linux_kev_copyout, &ts, 0);
 
 	fdrop(fp);
         /* translation? */

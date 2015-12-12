@@ -551,4 +551,5 @@ const char *syscallnames[] = {
 	"futimens",			/* 540 = futimens */
 	"accept4",			/* 541 = accept4 */
 	"lwp_setname",			/* 542 = lwp_setname */
+	"ppoll",			/* 543 = ppoll */
 };

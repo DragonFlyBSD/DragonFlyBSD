@@ -108,7 +108,7 @@ static struct lwkt_token mioctl_token = LWKT_TOKEN_INITIALIZER(mioctl_token);
 static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
 			 struct timespec *ts, int *res);
 static int	dopoll(int nfds, struct pollfd *fds, struct timespec *ts,
-		       int *res);
+		       int *res, int flags);
 static int	dofileread(int, struct file *, struct uio *, int, size_t *);
 static int	dofilewrite(int, struct file *, struct uio *, int, size_t *);
 
@@ -1180,7 +1180,7 @@ doselect(int nd, fd_set *read, fd_set *write, fd_set *except,
 	 *	 loaded in.
 	 */
 	error = kern_kevent(&kap->lwp->lwp_kqueue, 0x7FFFFFFF, res, kap,
-			    select_copyin, select_copyout, ts);
+			    select_copyin, select_copyout, ts, 0);
 	if (error == 0)
 		error = putbits(bytes, kap->read_set, read);
 	if (error == 0)
@@ -1232,7 +1232,74 @@ sys_poll(struct poll_args *uap)
 		tsp = NULL;
 	}
 
-	error = dopoll(uap->nfds, uap->fds, tsp, &uap->sysmsg_result);
+	error = dopoll(uap->nfds, uap->fds, tsp, &uap->sysmsg_result, 0);
+
+	return (error);
+}
+
+/*
+ * Ppoll system call.
+ *
+ * MPSAFE
+ */
+int
+sys_ppoll(struct ppoll_args *uap)
+{
+	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
+	struct timespec *ktsp, kts;
+	sigset_t sigmask;
+	int error;
+
+	/*
+	 * Get timeout if any.
+	 */
+	if (uap->ts != NULL) {
+		error = copyin(uap->ts, &kts, sizeof (kts));
+		if (error)
+			return (error);
+		ktsp = &kts;
+	} else {
+		ktsp = NULL;
+	}
+
+	/*
+	 * Install temporary signal mask if any provided.
+	 */
+	if (uap->sigmask != NULL) {
+		error = copyin(uap->sigmask, &sigmask, sizeof(sigmask));
+		if (error)
+			return (error);
+		lwkt_gettoken(&lp->lwp_proc->p_token);
+		lp->lwp_oldsigmask = lp->lwp_sigmask;
+		SIG_CANTMASK(sigmask);
+		lp->lwp_sigmask = sigmask;
+		lwkt_reltoken(&lp->lwp_proc->p_token);
+	}
+
+	error = dopoll(uap->nfds, uap->fds, ktsp, &uap->sysmsg_result,
+	    ktsp != NULL ? KEVENT_TIMEOUT_PRECISE : 0);
+
+	if (uap->sigmask != NULL) {
+		lwkt_gettoken(&lp->lwp_proc->p_token);
+		/* dopoll() responsible for turning ERESTART into EINTR */
+		KKASSERT(error != ERESTART);
+		if (error == EINTR) {
+			/*
+			 * We can't restore the previous signal mask now
+			 * because it could block the signal that interrupted
+			 * us.  So make a note to restore it after executing
+			 * the handler.
+			 */
+			lp->lwp_flags |= LWP_OLDMASK;
+		} else {
+			/*
+			 * No handler to run. Restore previous mask immediately.
+			 */
+			lp->lwp_sigmask = lp->lwp_oldsigmask;
+		}
+		lwkt_reltoken(&lp->lwp_proc->p_token);
+	}
 
 	return (error);
 }
@@ -1461,7 +1528,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 }
 
 static int
-dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
+dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res, int flags)
 {
 	struct poll_kevent_copyin_args ka;
 	struct pollfd sfds[64];
@@ -1495,7 +1562,7 @@ dopoll(int nfds, struct pollfd *fds, struct timespec *ts, int *res)
 	error = copyin(fds, ka.fds, bytes);
 	if (error == 0)
 		error = kern_kevent(&ka.lwp->lwp_kqueue, 0x7FFFFFFF, res, &ka,
-				    poll_copyin, poll_copyout, ts);
+				    poll_copyin, poll_copyout, ts, flags);
 
 	if (error == 0)
 		error = copyout(ka.fds, fds, bytes);
@@ -1553,7 +1620,7 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 	}
 
 	error = kern_kevent(&kq, 1, res, NULL, socket_wait_copyin,
-			    socket_wait_copyout, ts);
+			    socket_wait_copyout, ts, 0);
 
 	EV_SET(&kev, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 	kqueue_register(&kq, &kev);

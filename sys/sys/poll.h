@@ -86,6 +86,13 @@ struct pollfd {
 
 #include <sys/cdefs.h>
 
+#ifndef _SYS_SIGNAL_H_
+#include <sys/signal.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
+
 __BEGIN_DECLS
 /*
  * XXX logically, poll() should be declared in <poll.h>, but SVR4 at
@@ -93,6 +100,10 @@ __BEGIN_DECLS
  */
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 int	poll (struct pollfd *, nfds_t, int);
+#endif
+#if __BSD_VISIBLE
+int	ppoll (struct pollfd *, nfds_t, const struct timespec *,
+	       const sigset_t *);
 #endif
 __END_DECLS
 

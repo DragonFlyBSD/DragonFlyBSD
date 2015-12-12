@@ -55,6 +55,7 @@
 #undef		nanosleep
 #undef		open
 #undef		poll
+#undef		ppoll
 #undef		pthread_atfork
 #undef		pthread_attr_destroy
 #undef		pthread_attr_get_np
