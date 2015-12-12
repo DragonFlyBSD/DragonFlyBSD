@@ -1025,10 +1025,9 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 			struct ifnet *ifp;
 
 			imo = inp->inp_moptions;
-			if (imo->imo_multicast_ifp != NULL) {
+			if ((ifp = imo->imo_multicast_ifp) != NULL) {
 				struct in_ifaddr_container *iac;
 
-				ifp = imo->imo_multicast_ifp;
 				ia = NULL;
 				TAILQ_FOREACH(iac,
 				&in_ifaddrheads[mycpuid], ia_link) {

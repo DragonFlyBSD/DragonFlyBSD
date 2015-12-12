@@ -1800,13 +1800,15 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 */
 		imo = kmalloc(sizeof *imo, M_IPMOPTS, M_WAITOK);
 
-		*imop = imo;
 		imo->imo_multicast_ifp = NULL;
 		imo->imo_multicast_addr.s_addr = INADDR_ANY;
 		imo->imo_multicast_vif = -1;
 		imo->imo_multicast_ttl = IP_DEFAULT_MULTICAST_TTL;
 		imo->imo_multicast_loop = IP_DEFAULT_MULTICAST_LOOP;
 		imo->imo_num_memberships = 0;
+		/* Assign imo to imop after all fields are setup */
+		cpu_sfence();
+		*imop = imo;
 	}
 	switch (sopt->sopt_name) {
 	/* store an index number for the vif you wanna use in the send */
@@ -2054,18 +2056,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 	default:
 		error = EOPNOTSUPP;
 		break;
-	}
-
-	/*
-	 * If all options have default values, no need to keep the mbuf.
-	 */
-	if (imo->imo_multicast_ifp == NULL &&
-	    imo->imo_multicast_vif == -1 &&
-	    imo->imo_multicast_ttl == IP_DEFAULT_MULTICAST_TTL &&
-	    imo->imo_multicast_loop == IP_DEFAULT_MULTICAST_LOOP &&
-	    imo->imo_num_memberships == 0) {
-		kfree(*imop, M_IPMOPTS);
-		*imop = NULL;
 	}
 
 	return (error);
