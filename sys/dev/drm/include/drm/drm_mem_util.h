@@ -30,6 +30,8 @@
 #include <sys/types.h>
 #include <sys/malloc.h>
 
+#include <linux/vmalloc.h>
+
 static __inline__ void *drm_calloc_large(size_t nmemb, size_t size)
 {
 	if (size != 0 && nmemb > SIZE_MAX / size)

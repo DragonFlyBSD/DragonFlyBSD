@@ -112,6 +112,7 @@ MALLOC_DECLARE(M_DRM);
 #include <asm/io.h>
 #include <linux/seq_file.h>
 #include <linux/types.h>
+#include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
 
