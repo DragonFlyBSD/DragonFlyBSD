@@ -310,7 +310,12 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	if (pfs_id == HAMMER_MAX_PFS) {
 		fprintf(stderr, "Cannot create %s, all PFSs in use\n", path);
 		exit(1);
+	} else if (pfs_id == HAMMER_ROOT_PFSID) {
+		fprintf(stderr, "Fatal error: PFS#%d must exist\n",
+			HAMMER_ROOT_PFSID);
+		exit(1);
 	}
+
 	if (error != ENOENT) {
 		fprintf(stderr, "Cannot create %s, got %s during scan\n",
 			path, strerror(error));
