@@ -5130,6 +5130,7 @@ iwm_attach(device_t dev)
 	sc->sc_max_rssi = IWM_MAX_DBM - IWM_MIN_DBM;
 	sc->sc_preinit_hook.ich_func = iwm_preinit;
 	sc->sc_preinit_hook.ich_arg = sc;
+	sc->sc_preinit_hook.ich_desc = "iwm";
 	if (config_intrhook_establish(&sc->sc_preinit_hook) != 0) {
 		device_printf(dev, "config_intrhook_establish failed\n");
 		goto fail;
