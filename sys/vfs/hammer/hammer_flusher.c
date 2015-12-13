@@ -447,7 +447,7 @@ hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 	 * it can no longer be reused.
 	 */
 	while ((resv = TAILQ_FIRST(&hmp->delay_list)) != NULL) {
-		if (resv->flush_group - seq > 0)
+		if (resv->flg_no - seq > 0)
 			break;
 		hammer_reserve_clrdelay(hmp, resv);
 	}

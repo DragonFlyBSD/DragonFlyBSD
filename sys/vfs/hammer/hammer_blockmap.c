@@ -911,13 +911,13 @@ hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv)
 {
 	if (resv->flags & HAMMER_RESF_ONDELAY) {
 		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
-		resv->flush_group = hmp->flusher.next + 1;
+		resv->flg_no = hmp->flusher.next + 1;
 		TAILQ_INSERT_TAIL(&hmp->delay_list, resv, delay_entry);
 	} else {
 		++resv->refs;
 		++hmp->rsv_fromdelay;
 		resv->flags |= HAMMER_RESF_ONDELAY;
-		resv->flush_group = hmp->flusher.next + 1;
+		resv->flg_no = hmp->flusher.next + 1;
 		TAILQ_INSERT_TAIL(&hmp->delay_list, resv, delay_entry);
 	}
 }

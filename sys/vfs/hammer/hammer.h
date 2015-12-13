@@ -793,7 +793,7 @@ typedef struct hammer_node_lock *hammer_node_lock_t;
 struct hammer_reserve {
 	RB_ENTRY(hammer_reserve) rb_node;
 	TAILQ_ENTRY(hammer_reserve) delay_entry;
-	int		flush_group;
+	int		flg_no;
 	int		flags;
 	int		refs;
 	int		zone;
