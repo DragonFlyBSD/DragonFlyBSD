@@ -113,6 +113,15 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	if (pfs->version != HAMMER_IOC_PSEUDOFS_VERSION)
 		error = EINVAL;
 
+	/*
+	 * Make sure a caller isn't creating a PFS from non-root PFS.
+	 */
+	if (lo_to_pfs(ip->obj_localization) != 0) {
+		hmkprintf(trans->hmp,
+			"Creating a PFS from non-root PFS is not allowed\n");
+		return(EINVAL);
+	}
+
 	if (error == 0 && pfs->ondisk) {
 		/*
 		 * Load the PFS so we can modify our in-core copy.  Ignore
