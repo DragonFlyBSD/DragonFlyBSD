@@ -894,6 +894,7 @@ typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
 
 #define HAMMER_MAX_PFS		65536
 #define HAMMER_MAX_PFSID	(HAMMER_MAX_PFS - 1)
+#define HAMMER_ROOT_PFSID	0
 
 /*
  * Snapshot meta-data { Objid = HAMMER_OBJID_ROOT, Key = tid, rectype = SNAPSHOT }.

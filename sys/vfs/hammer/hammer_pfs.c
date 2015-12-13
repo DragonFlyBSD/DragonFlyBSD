@@ -116,7 +116,7 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Make sure a caller isn't creating a PFS from non-root PFS.
 	 */
-	if (lo_to_pfs(ip->obj_localization) != 0) {
+	if (lo_to_pfs(ip->obj_localization) != HAMMER_ROOT_PFSID) {
 		hmkprintf(trans->hmp,
 			"Creating a PFS from non-root PFS is not allowed\n");
 		return(EINVAL);

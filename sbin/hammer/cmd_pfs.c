@@ -284,7 +284,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	pfs.bytes = sizeof(pfsd);
 
 	ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs);
-	if (pfs.pfs_id != 0) {
+	if (pfs.pfs_id != HAMMER_ROOT_PFSID) {
 		fprintf(stderr,
 			"You are attempting to access a PFS softlink "
 			"from a PFS.  It may not represent the PFS\n"
@@ -357,7 +357,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		pseudofs_usage(1);
 	fd = getpfs(&pfs, av[0]);
 
-	if (pfs.pfs_id == 0) {
+	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
 		fprintf(stderr, "You cannot destroy PFS#0\n");
 		exit(1);
 	}
@@ -453,7 +453,7 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 		pseudofs_usage(1);
 	fd = getpfs(&pfs, av[0]);
 
-	if (pfs.pfs_id == 0) {
+	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
 		fprintf(stderr, "You cannot upgrade PFS#0"
 				" (It should already be a master)\n");
 		exit(1);
@@ -482,7 +482,7 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 		pseudofs_usage(1);
 	fd = getpfs(&pfs, av[0]);
 
-	if (pfs.pfs_id == 0) {
+	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
 		fprintf(stderr, "You cannot downgrade PFS#0\n");
 		exit(1);
 	} else if (pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) {
@@ -516,7 +516,7 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 		parse_pfsd_options(av + 1, ac - 1, pfs.ondisk);
 		if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) &&
-		    pfs.pfs_id == 0) {
+		    pfs.pfs_id == HAMMER_ROOT_PFSID) {
 			printf("The real mount point cannot be made a PFS "
 			       "slave, only PFS sub-directories can be made "
 			       "slaves\n");
