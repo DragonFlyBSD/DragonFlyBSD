@@ -50,7 +50,7 @@
 #include "virtio_if.h"
 
 struct vtblk_request {
-	struct virtio_blk_outhdr	 vbr_hdr;
+	struct virtio_blk_outhdr	 vbr_hdr __aligned(16);
 	struct bio			*vbr_bp;
 	uint8_t				 vbr_ack;
 	uint8_t				 vbr_barrier;
@@ -1055,8 +1055,10 @@ vtblk_alloc_requests(struct vtblk_softc *sc)
 	nreqs /= VTBLK_MIN_SEGMENTS;
 
 	for (i = 0; i < nreqs; i++) {
-		/* rely on at least 8 byte alignment by kmalloc */
-		req = kmalloc(sizeof(struct vtblk_request), M_DEVBUF, M_WAITOK);
+		req = contigmalloc(sizeof(struct vtblk_request), M_DEVBUF,
+		    M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
+		if (req == NULL)
+			return (ENOMEM);
 
 		sc->vtblk_request_count++;
 		vtblk_enqueue_request(sc, req);
@@ -1072,7 +1074,7 @@ vtblk_free_requests(struct vtblk_softc *sc)
 
 	while ((req = vtblk_dequeue_request(sc)) != NULL) {
 		sc->vtblk_request_count--;
-		kfree(req, M_DEVBUF);
+		contigfree(req, sizeof(struct vtblk_request), M_DEVBUF);
 	}
 
 	KASSERT(sc->vtblk_request_count == 0, ("leaked requests"));
