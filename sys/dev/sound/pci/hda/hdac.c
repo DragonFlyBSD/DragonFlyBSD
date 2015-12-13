@@ -1275,6 +1275,7 @@ hdac_attach(device_t dev)
 	/* Defer remaining of initialization until interrupts are enabled */
 	sc->intrhook.ich_func = hdac_attach2;
 	sc->intrhook.ich_arg = (void *)sc;
+	sc->intrhook.ich_desc = "snd_hda";
 	if (cold == 0 || config_intrhook_establish(&sc->intrhook) != 0) {
 		sc->intrhook.ich_func = NULL;
 		hdac_attach2((void *)sc);
