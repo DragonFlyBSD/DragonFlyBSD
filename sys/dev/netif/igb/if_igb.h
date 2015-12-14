@@ -247,7 +247,7 @@ struct igb_tx_ring {
 	int			oact_hi_desc;
 	int			intr_nsegs;
 	int			wreg_nsegs;
-	int			tx_intr_bit;
+	int			tx_intr_vec;
 	uint32_t		tx_intr_mask;
 	struct ifsubq_watchdog	tx_watchdog;
 
@@ -275,7 +275,7 @@ struct igb_rx_ring {
 	struct igb_rx_buf	*rx_buf;
 	bus_dma_tag_t		rx_tag;
 	bus_dmamap_t		rx_sparemap;
-	int			rx_intr_bit;
+	int			rx_intr_vec;
 	uint32_t		rx_intr_mask;
 
 	/*
@@ -286,32 +286,31 @@ struct igb_rx_ring {
 	struct mbuf		*lmp;
 	int			wreg_nsegs;
 
+	struct igb_tx_ring	*rx_txr;	/* piggybacked TX ring */
+
 	/* Soft stats */
 	u_long			rx_packets;
 
 	struct igb_dma		rxdma;
 } __cachealign;
 
-struct igb_msix_data {
-	struct lwkt_serialize	*msix_serialize;
-	struct lwkt_serialize	msix_serialize0;
-	struct igb_softc	*msix_sc;
-	uint32_t		msix_mask;
-	struct igb_rx_ring	*msix_rx;
-	struct igb_tx_ring	*msix_tx;
-
-	driver_intr_t		*msix_func;
-	void			*msix_arg;
-
-	int			msix_cpuid;
-	char			msix_desc[32];
-	int			msix_rid;
-	struct resource		*msix_res;
-	void			*msix_handle;
-	u_int			msix_vector;
-	int			msix_rate;
-	char			msix_rate_desc[32];
-} __cachealign;
+struct igb_intr_data {
+	struct lwkt_serialize	*intr_serialize;
+	driver_intr_t		*intr_func;
+	void			*intr_hand;
+	struct resource		*intr_res;
+	void			*intr_funcarg;
+	int			intr_rid;
+	int			intr_cpuid;
+	int			intr_rate;
+	int			intr_use;
+#define IGB_INTR_USE_RXTX	0
+#define IGB_INTR_USE_STATUS	1
+#define IGB_INTR_USE_RX		2
+#define IGB_INTR_USE_TX		3
+	const char		*intr_desc;
+	char			intr_desc0[64];
+};
 
 struct igb_softc {
 	struct arpcom		arpcom;
@@ -331,11 +330,6 @@ struct igb_softc {
 	struct ifmedia		media;
 	struct callout		timer;
 	int			timer_cpuid;
-
-	int			intr_type;
-	int			intr_rid;
-	struct resource		*intr_res;
-	void			*intr_tag;
 
 	int			if_flags;
 	int			max_frame_size;
@@ -361,9 +355,9 @@ struct igb_softc {
 	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
 
-	int			intr_rate;
+	int			intr_type;
 	uint32_t		intr_mask;
-	int			sts_intr_bit;
+	int			sts_msix_vec;
 	uint32_t		sts_intr_mask;
 
 	/*
@@ -402,8 +396,9 @@ struct igb_softc {
 
 	int			msix_mem_rid;
 	struct resource 	*msix_mem_res;
-	int			msix_cnt;
-	struct igb_msix_data	*msix_data;
+
+	int			intr_cnt;
+	struct igb_intr_data	*intr_data;
 };
 
 #define IGB_ENABLE_HWRSS(sc)	((sc)->rx_ring_cnt > 1)
