@@ -42,16 +42,11 @@
 #define	DISK_MIN	4096
 #define	HAMMER_WARN	51200
 #define	HAMMER_MIN	10240
-#if defined(__x86_64__)
-#define	SWAP_MAX	524288
-#endif
 
-#define	MTPT_ROOT	0
-#define	MTPT_SWAP	1
-#define	MTPT_VAR	2
-#define	MTPT_TMP	3
-#define	MTPT_USR	4
-#define	MTPT_HOME	5
+#define	SWAP_MIN	256	/* suggested minimum */
+#define	SWAP_MAX	524288
+#define BUILD_MIN	10240	/* suggested */
+#define BUILD_MAX	20480	/* suggested */
 
 struct i_fn_args;
 int use_hammer;

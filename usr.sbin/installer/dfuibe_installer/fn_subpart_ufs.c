@@ -1,5 +1,5 @@
 /*
- * Copyright (c)2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c)2004,2015 The DragonFly Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,18 +66,23 @@
 #include "flow.h"
 #include "pathnames.h"
 
+#define MTPT_BOOT	0
+#define MTPT_SWAP	1
+#define MTPT_ROOT	2
+#define MTPT_BUILD	3
+
 static int	create_subpartitions(struct i_fn_args *);
-static long	default_capacity(struct storage *, int);
+static long	default_capacity(struct storage *, const char *);
 static int	check_capacity(struct i_fn_args *);
 static int	check_subpartition_selections(struct dfui_response *, struct i_fn_args *);
 static void	save_subpartition_selections(struct dfui_response *, struct i_fn_args *);
 static void	populate_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 static int	warn_subpartition_selections(struct i_fn_args *);
-static int	warn_encrypted_root(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
-static const char *def_mountpt[]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
+static const char *def_mountpt[]  = {"/boot", "swap", "/", "/build", NULL};
+static long min_capacity[] = { 128, 0, DISK_MIN - 128, BUILD_MIN };
 static int expert = 0;
 
 /*
@@ -219,8 +224,7 @@ create_subpartitions(struct i_fn_args *a)
 			continue;
 		}
 
-		if (subpartition_is_encrypted(sp) &&
-		    strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
+		if (subpartition_is_encrypted(sp)) {
 			command_add(cmds,
 			    "%s%s -d /tmp/t1 luksFormat /dev/%s",
 			    a->os_root, cmd_name(a, "CRYPTSETUP"),
@@ -229,13 +233,13 @@ create_subpartitions(struct i_fn_args *a)
 			    "%s%s -d /tmp/t1 luksOpen /dev/%s %s",
 			    a->os_root, cmd_name(a, "CRYPTSETUP"),
 			    subpartition_get_device_name(sp),
-			    subpartition_get_mountpoint(sp) + 1);
+			    fn_mapper_name(subpartition_get_device_name(sp), -1));
 			command_add(cmds, "%s%s%s -b %ld -f %ld /dev/mapper/%s",
 			    a->os_root, cmd_name(a, "NEWFS"),
 			    subpartition_is_softupdated(sp) ? " -U" : "",
 			    subpartition_get_bsize(sp),
 			    subpartition_get_fsize(sp),
-			    subpartition_get_mountpoint(sp) + 1);
+			    fn_mapper_name(subpartition_get_device_name(sp), -1));
 		} else {
 			command_add(cmds, "%s%s%s -b %ld -f %ld /dev/%s",
 			    a->os_root, cmd_name(a, "NEWFS"),
@@ -251,43 +255,84 @@ create_subpartitions(struct i_fn_args *a)
 	return(result);
 }
 
+/*
+ * Return default capacity field filler.  Return 0 for /build if drive
+ * space minus swap is < 40GB (causes installer to use PFS's on the root
+ * partition instead).
+ */
 static long
-default_capacity(struct storage *s, int mtpt)
+default_capacity(struct storage *s, const char *mtpt)
 {
-	unsigned long swap;
+	unsigned long boot, root, swap, build;
 	unsigned long capacity;
 	unsigned long mem;
 
-	if (mtpt == MTPT_HOME)
-		return(-1);
-
-	capacity = slice_get_capacity(storage_get_selected_slice(s));
-	if (capacity <= 8192 && mtpt == MTPT_ROOT)
-		return(-1);
+	capacity = slice_get_capacity(storage_get_selected_slice(s)); /* MB */
 	mem = storage_get_memsize(s);
+
+	/*
+	 * Slice capacity is at least 10G at this point.  Calculate basic
+	 * defaults.
+	 */
 	swap = 2 * mem;
-	while (swap > capacity / 4)
-		swap -= 128;
-	if (swap > SWAP_MAX)
+	if (swap > capacity / 10)	/* max 1/10 capacity */
+		swap = capacity / 10;
+	if (swap < SWAP_MIN)		/* having a little is nice */
+		swap = SWAP_MIN;
+	if (swap > SWAP_MAX)		/* installer cap */
 		swap = SWAP_MAX;
 
-	if (capacity < 12800) {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(640);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(256);
-		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(2688);
+	boot = 1024;
+
+	build = (capacity - swap - boot) / 3;
+	if (build > BUILD_MAX)
+		build = BUILD_MAX;
+
+	for (;;) {
+		root = (capacity - swap - boot - build);
+
+		/*
+		 * Adjust until the defaults look sane
+		 *
+		 * root should be at least twice as large as build
+		 */
+		if (build && root < build * 2) {
+			--build;
+			continue;
 		}
-	} else {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(1024);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(256);
-		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(7680);
+
+		/*
+		 * root should be at least 1/2 capacity
+		 */
+		if (build && root < capacity / 2) {
+			--build;
+			continue;
 		}
+		break;
 	}
+
+	/*
+	 * Finalize.  If build is too small do not supply a /build,
+	 * and if swap is too small do not supply swap.
+	 */
+	if (build < BUILD_MIN)
+		build = 0;
+	if (swap < SWAP_MIN)
+		swap = 0;
+	if (build == 0)
+		root = -1;	/* no /build, root is the last part */
+	else
+		build = -1;	/* last partition just use remaining space */
+
+	if (strcmp(mtpt, "/boot") == 0)
+		return(boot);
+	else if (strcmp(mtpt, "/build") == 0)
+		return(build);
+	else if (strcmp(mtpt, "swap") == 0)
+		return(swap);
+	else if (strcmp(mtpt, "/") == 0)
+		return(root);
+
 	/* shouldn't ever happen */
 	return(-1);
 }
@@ -296,12 +341,8 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	long min_capacity[] = {320, 0, 16, 0, 1472, 0, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
-
-	if (subpartition_find(storage_get_selected_slice(a->s), "/usr") == NULL)
-		min_capacity[MTPT_ROOT] += min_capacity[MTPT_USR];
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
@@ -544,7 +585,9 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 		 * total physical memory (for swap.)
 		 */
 		for (mtpt = 0; def_mountpt[mtpt] != NULL; mtpt++) {
-			capacity = default_capacity(a->s, mtpt);
+			capacity = default_capacity(a->s, def_mountpt[mtpt]);
+			if (capacity == 0)
+				continue;
 			ds = dfui_dataset_new();
 			dfui_dataset_celldata_add(ds, "mountpoint",
 			    def_mountpt[mtpt]);
@@ -570,85 +613,12 @@ static int
 warn_subpartition_selections(struct i_fn_args *a)
 {
 	int valid = 0;
-	struct aura_buffer *omit, *consequences;
 
 	/* Skip this check for disks <= 8GB */
 	if (slice_get_capacity(storage_get_selected_slice(a->s)) <= 8192)
 		return 0;
 
-	omit = aura_buffer_new(2048);
-	consequences = aura_buffer_new(2048);
-
 	valid = check_capacity(a);
-	if (subpartition_find(storage_get_selected_slice(a->s), "/var") == NULL) {
-		aura_buffer_cat(omit, "/var ");
-		aura_buffer_cat(consequences, _("/var will be a plain dir in /\n"));
-	}
-	if (subpartition_find(storage_get_selected_slice(a->s), "/usr") == NULL) {
-		aura_buffer_cat(omit, "/usr ");
-		aura_buffer_cat(consequences, _("/usr will be a plain dir in /\n"));
-	}
-        if (subpartition_find(storage_get_selected_slice(a->s), "/tmp") == NULL) {
-                aura_buffer_cat(omit, "/tmp ");
-		aura_buffer_cat(consequences, _("/tmp will be symlinked to /var/tmp\n"));
-	}
-        if (subpartition_find(storage_get_selected_slice(a->s), "/home") == NULL) {
-                aura_buffer_cat(omit, "/home ");
-		aura_buffer_cat(consequences, _("/home will be symlinked to /usr/home\n"));
-	}
-
-	if (valid && aura_buffer_len(omit) > 0) {
-		switch (dfui_be_present_dialog(a->c, _("Really omit?"),
-		    _("Omit Subpartition(s)|Return to Create Subpartitions"),
-		    _("You have elected to not have the following "
-		    "subpartition(s):\n\n%s\n\n"
-		    "The ramifications of these subpartition(s) being "
-		    "missing will be:\n\n%s\n"
-		    "Is this really what you want to do?"),
-		    aura_buffer_buf(omit), aura_buffer_buf(consequences))) {
-		case 1:
-			valid = 1;
-			break;
-		case 2:
-			valid = 0;
-			break;
-		default:
-			abort_backend();
-		}
-	}
-
-	aura_buffer_free(omit);
-	aura_buffer_free(consequences);
-
-	return(!valid);
-}
-
-static int
-warn_encrypted_root(struct i_fn_args *a)
-{
-	int valid = 1;
-	struct subpartition *sp;
-
-	sp = subpartition_find(storage_get_selected_slice(a->s), "/");
-	if (sp == NULL)
-		return(!valid);
-
-	if (subpartition_is_encrypted(sp)) {
-		switch (dfui_be_present_dialog(a->c, _("root cannot be encrypted"),
-		    _("Leave root unencrypted|Return to Create Subpartitions"),
-		    _("You have selected encryption for the root partition which "
-		    "is not supported."))) {
-		case 1:
-			subpartition_clr_encrypted(sp);
-			valid = 1;
-			break;
-		case 2:
-			valid = 0;
-			break;
-		default:
-			abort_backend();
-		}
-	}
 
 	return(!valid);
 }
@@ -761,8 +731,7 @@ show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 		} else {
 			if (check_subpartition_selections(r, a)) {
 				save_subpartition_selections(r, a);
-				if (!warn_subpartition_selections(a) &&
-				    !warn_encrypted_root(a)) {
+				if (!warn_subpartition_selections(a)) {
 					if (!create_subpartitions(a)) {
 						inform(a->c, _("The subpartitions you chose were "
 							"not correctly created, and the "
@@ -803,8 +772,10 @@ fn_create_subpartitions_ufs(struct i_fn_args *a)
 		    "required %dM for the UFS filesystem."), DISK_MIN);
 		return;
 	}
+#if 0
 	if (capacity <= 8192)
 		def_mountpt[2] = NULL; /* XXX adjust each time in a session */
+#endif
 	while (!done) {
 		f = make_create_subpartitions_form(a);
 		switch (show_create_subpartitions_form(f, a)) {

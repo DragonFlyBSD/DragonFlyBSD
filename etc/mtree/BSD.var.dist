@@ -18,6 +18,8 @@
 /set mode=0750
     backups
     ..
+    cache		mode=0755
+    ..
     crash
     ..
     cron

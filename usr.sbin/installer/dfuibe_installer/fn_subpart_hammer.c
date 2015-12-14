@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -68,15 +69,21 @@
 static int	create_subpartitions(struct i_fn_args *);
 static long	default_capacity(struct storage *, const char *);
 static int	check_capacity(struct i_fn_args *);
-static int	check_subpartition_selections(struct dfui_response *, struct i_fn_args *);
-static void	save_subpartition_selections(struct dfui_response *, struct i_fn_args *);
-static void	populate_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
+static int	check_subpartition_selections(struct dfui_response *,
+			struct i_fn_args *);
+static void	save_subpartition_selections(struct dfui_response *,
+			struct i_fn_args *);
+static void	populate_create_subpartitions_form(struct dfui_form *,
+			struct i_fn_args *);
 static int	warn_subpartition_selections(struct i_fn_args *);
 static int	warn_encrypted_boot(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
-static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
+static int	show_create_subpartitions_form(struct dfui_form *,
+			struct i_fn_args *);
+static char	*construct_lname(const char *mtpt);
 
-static const char *def_mountpt[]  = {"/boot", "swap", "/", NULL};
+static const char *def_mountpt[]  = {"/boot", "swap", "/", "/build", NULL};
+static long min_capacity[] = { 128, 0, DISK_MIN - 128, BUILD_MIN };
 static int expert = 0;
 
 /*
@@ -117,7 +124,10 @@ create_subpartitions(struct i_fn_args *a)
 	 * '16 partitions' line.
 	 */
 	num_partitions = 16;
-	command_add(cmds, "%s%s '$2==\"partitions:\" || cut { cut = 1 } !cut { print $0 }' <%sinstall.disklabel.%s >%sinstall.disklabel",
+	command_add(cmds,
+	    "%s%s '$2==\"partitions:\" || "
+	    "cut { cut = 1 } !cut { print $0 }' "
+	    "<%sinstall.disklabel.%s >%sinstall.disklabel",
 	    a->os_root, cmd_name(a, "AWK"),
 	    a->tmp,
 	    slice_get_device_name(storage_get_selected_slice(a->s)),
@@ -155,19 +165,25 @@ create_subpartitions(struct i_fn_args *a)
 			continue;
 		}
 		if (subpartition_is_swap(sp)) {
-			command_add(cmds, "%s%s '  %c:\t%s\t*\tswap' >>%sinstall.disklabel",
+			command_add(cmds,
+			    "%s%s '  %c:\t%s\t*\tswap' "
+			    ">>%sinstall.disklabel",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_letter(sp),
 			    capacity_to_string(subpartition_get_capacity(sp)),
 			    a->tmp);
 		} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
-			command_add(cmds, "%s%s '  %c:\t%s\t0\t4.2BSD' >>%sinstall.disklabel",
+			command_add(cmds,
+			    "%s%s '  %c:\t%s\t0\t4.2BSD' "
+			    ">>%sinstall.disklabel",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_letter(sp),
 			    capacity_to_string(subpartition_get_capacity(sp)),
 			    a->tmp);
 		} else {
-			command_add(cmds, "%s%s '  %c:\t%s\t*\tHAMMER' >>%sinstall.disklabel",
+			command_add(cmds,
+			    "%s%s '  %c:\t%s\t*\tHAMMER' "
+			    ">>%sinstall.disklabel",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_letter(sp),
 			    capacity_to_string(subpartition_get_capacity(sp)),
@@ -208,7 +224,8 @@ create_subpartitions(struct i_fn_args *a)
 	 */
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp)) {
+		if (subpartition_is_swap(sp) ||
+		    subpartition_is_tmpfsbacked(sp)) {
 			if (subpartition_is_swap(sp) &&
 			    subpartition_is_encrypted(sp)) {
 				command_add(cmds,
@@ -228,20 +245,25 @@ create_subpartitions(struct i_fn_args *a)
 			    a->os_root, cmd_name(a, "NEWFS"),
 			    subpartition_get_device_name(sp));
 		} else {
+			char *ham_name;
 			if (subpartition_is_encrypted(sp)) {
 				command_add(cmds,
 				    "%s%s -d /tmp/t1 luksFormat /dev/%s",
 				    a->os_root, cmd_name(a, "CRYPTSETUP"),
 				    subpartition_get_device_name(sp));
 				command_add(cmds,
-				    "%s%s -d /tmp/t1 luksOpen /dev/%s root",
+				    "%s%s -d /tmp/t1 luksOpen /dev/%s %s",
 				    a->os_root, cmd_name(a, "CRYPTSETUP"),
-				    subpartition_get_device_name(sp));
+				    subpartition_get_device_name(sp),
+				    fn_mapper_name(subpartition_get_device_name(sp), -1));
 			}
-			command_add(cmds, "%s%s -f -L ROOT /dev/%s",
+			ham_name = construct_lname(subpartition_get_mountpoint(sp));
+			command_add(cmds, "%s%s -f -L %s /dev/%s",
 			    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
+			    ham_name,
 			    subpartition_is_encrypted(sp) ?
-			    "mapper/root" : subpartition_get_device_name(sp));
+			    fn_mapper_name(subpartition_get_device_name(sp), 0) : subpartition_get_device_name(sp));
+			free(ham_name);
 		}
 	}
 
@@ -250,39 +272,83 @@ create_subpartitions(struct i_fn_args *a)
 	return(result);
 }
 
+/*
+ * Return default capacity field filler.  Return 0 for /build if drive
+ * space minus swap is < 40GB (causes installer to use PFS's on the root
+ * partition instead).
+ */
 static long
 default_capacity(struct storage *s, const char *mtpt)
 {
-	unsigned long boot, root, swap;
+	unsigned long boot, root, swap, build;
 	unsigned long capacity;
 	unsigned long mem;
 
-	capacity = slice_get_capacity(storage_get_selected_slice(s));
+	capacity = slice_get_capacity(storage_get_selected_slice(s)); /* MB */
 	mem = storage_get_memsize(s);
 
 	/*
-	 * Slice capacity is at least 10G at this point.
-	 * /boot is 1G and root is at least 75% slice size.
-	 * The rest goes to swap, up to twice the memory amount
-	 * or SWAP_MAX.
-	 * The 'root' variable is just for calculation and any
-	 * disk space beyond the above constraints goes to root.
+	 * Slice capacity is at least 10G at this point.  Calculate basic
+	 * defaults.
 	 */
-
-	root = capacity / 4 * 3;
 	swap = 2 * mem;
-	if (swap > SWAP_MAX)
+	if (swap > capacity / 10)	/* max 1/10 capacity */
+		swap = capacity / 10;
+	if (swap < SWAP_MIN)		/* having a little is nice */
+		swap = SWAP_MIN;
+	if (swap > SWAP_MAX)		/* installer cap */
 		swap = SWAP_MAX;
+
 	boot = 1024;
-	if (boot + root + swap > capacity)
-		swap = capacity - boot - root;
+
+	build = (capacity - swap - boot) / 3;
+	if (build > BUILD_MAX)
+		build = BUILD_MAX;
+
+	for (;;) {
+		root = (capacity - swap - boot - build);
+
+		/*
+		 * Adjust until the defaults look sane
+		 *
+		 * root should be at least twice as large as build
+		 */
+		if (build && root < build * 2) {
+			--build;
+			continue;
+		}
+
+		/*
+		 * root should be at least 1/2 capacity
+		 */
+		if (build && root < capacity / 2) {
+			--build;
+			continue;
+		}
+		break;
+	}
+
+	/*
+	 * Finalize.  If build is too small do not supply a /build,
+	 * and if swap is too small do not supply swap.
+	 */
+	if (build < BUILD_MIN)
+		build = 0;
+	if (swap < SWAP_MIN)
+		swap = 0;
+	if (build == 0)
+		root = -1;	/* root is the last part */
+	else
+		build = -1;	/* last partition just use remaining space */
 
 	if (strcmp(mtpt, "/boot") == 0)
 		return(boot);
+	else if (strcmp(mtpt, "/build") == 0)
+		return(build);
 	else if (strcmp(mtpt, "swap") == 0)
 		return(swap);
 	else if (strcmp(mtpt, "/") == 0)
-		return(-1);
+		return(root);
 
 	/* shouldn't ever happen */
 	return(-1);
@@ -292,12 +358,13 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	long min_capacity[] = {128, 0, DISK_MIN - 128, 0};
 	unsigned long total_capacity = 0;
 	unsigned long remaining_capacity;
 	int mtpt, warn_smallpart = 0;
+	int good;
 
-	remaining_capacity = slice_get_capacity(storage_get_selected_slice(a->s));
+	remaining_capacity = slice_get_capacity(
+					storage_get_selected_slice(a->s));
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (subpartition_get_capacity(sp) != -1)
@@ -317,20 +384,24 @@ check_capacity(struct i_fn_args *a)
 			if (strcmp(mountpt, def_mountpt[mtpt]) == 0 &&
 			    subpart_capacity < min_capacity[mtpt] &&
 			    subpart_capacity != -1) {
-				inform(a->c, _("WARNING: The size (%ldM) specified for "
+				inform(a->c,
+				  _("WARNING: The size (%ldM) specified for "
 				    "the %s subpartition is too small. It "
 				    "should be at least %ldM or you will "
 				    "risk running out of space during "
-				    "the installation."),
+				    "installation or operation."),
 				    subpart_capacity, mountpt,
 				    min_capacity[mtpt]);
 			}
 		}
 		if (strcmp(mountpt, "/boot") != 0 &&
 		    strcmp(mountpt, "swap") != 0) {
-			if ((subpart_capacity == -1 && remaining_capacity < HAMMER_WARN) ||
-			    (subpart_capacity != -1 && subpart_capacity < HAMMER_WARN))
+			if ((subpart_capacity == -1 &&
+			     remaining_capacity < HAMMER_WARN) ||
+			    (subpart_capacity != -1 &&
+			     subpart_capacity < HAMMER_WARN)) {
 				warn_smallpart++;
+			}
 		}
 	}
 
@@ -340,19 +411,24 @@ check_capacity(struct i_fn_args *a)
 		    "capacity of the selected primary partition "
 		    "(%luM). Remove some subpartitions or choose "
 		    "a smaller size for them and try again."),
-		    total_capacity, slice_get_capacity(storage_get_selected_slice(a->s)));
+		    total_capacity,
+		    slice_get_capacity(storage_get_selected_slice(a->s)));
 		return(0);
 	}
 
-	if (warn_smallpart)
-		return (confirm_dangerous_action(a->c,
-		    _("WARNING: HAMMER filesystems less than 50GB are "
-		    "not recommended!\n"
-		    "You may have to run 'hammer prune-everything' and "
-		    "'hammer reblock'\n"
-		    "quite often, even if using a nohistory mount.")));
+	if (warn_smallpart) {
+		good = confirm_dangerous_action(a->c,
+			_("WARNING: Small HAMMER filesystems can fill up "
+			  "very quickly!\n"
+			  "You may have to run 'hammer prune-everything' and "
+			  "'hammer reblock'\n"
+			  "manually or often via a cron job, even if using a "
+			  "nohistory mount."));
+	} else {
+		good = 1;
+	}
 
-	return(1);
+	return (good);
 }
 
 static int
@@ -520,6 +596,8 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 		 */
 		for (i = 0; def_mountpt[i] != NULL; i++) {
 			capacity = default_capacity(a->s, def_mountpt[i]);
+			if (capacity == 0)	/* used to disable /build */
+				continue;
 			ds = dfui_dataset_new();
 			dfui_dataset_celldata_add(ds, "mountpoint",
 			    def_mountpt[i]);
@@ -538,16 +616,10 @@ warn_subpartition_selections(struct i_fn_args *a)
 
 	if (subpartition_find(storage_get_selected_slice(a->s), "/boot") == NULL) {
 		inform(a->c, _("The /boot partition must not be omitted."));
-	} else if (subpartition_find(storage_get_selected_slice(a->s), "/home") != NULL ||
-	    subpartition_find(storage_get_selected_slice(a->s), "/tmp") != NULL ||
-	    subpartition_find(storage_get_selected_slice(a->s), "/usr") != NULL ||
-	    subpartition_find(storage_get_selected_slice(a->s), "/usr/obj") != NULL ||
-	    subpartition_find(storage_get_selected_slice(a->s), "/var") != NULL ||
-	    subpartition_find(storage_get_selected_slice(a->s), "/var/crash") != NULL ||
-	    subpartition_find(storage_get_selected_slice(a->s), "/var/tmp") != NULL) {
-		inform(a->c, _("Pseudo filesystems will automatically be created "
-			"for /home, /tmp, /usr, /usr/obj, /var, /var/crash "
-			"and /var/tmp and must not be specified."));
+	} else if (subpartition_find(storage_get_selected_slice(a->s), "/build") == NULL) {
+		inform(a->c, _("Without a /build, things like /usr/obj and "
+			       "/var/crash will just be on the root mount."));
+		valid = check_capacity(a);
 	} else {
 		valid = check_capacity(a);
 	}
@@ -605,10 +677,13 @@ make_create_subpartitions_form(struct i_fn_args *a)
 	f = dfui_form_create(
 	    "create_subpartitions",
 	    _("Create Subpartitions"),
-	    _("Set up the subpartitions (also known as just `partitions' "
-	    "in BSD tradition) you want to have on this primary "
+	    _("Set up the subpartitions you want to have on this primary "
 	    "partition. In most cases you should be fine with "
-	    "the default settings.\n\n"
+	    "the default settings."
+	    " Note that /build will hold /usr/obj, /var/crash, and other"
+	    " elements of the topology that do not need to be backed up."
+	    " If no /build is specified, these dirs will be on the root."
+	    "\n\n"
 	    "For Capacity, use 'M' to indicate megabytes, 'G' to "
 	    "indicate gigabytes, and so on (up to 'E'.) A single '*' "
 	    "indicates 'use the remaining space on the primary partition'."),
@@ -761,4 +836,26 @@ fn_create_subpartitions_hammer(struct i_fn_args *a)
 		}
 		dfui_form_free(f);
 	}
+}
+
+static
+char *
+construct_lname(const char *mtpt)
+{
+	char *res;
+	int i;
+
+	if (strcmp(mtpt, "/") == 0) {
+		res = strdup("ROOT");
+	} else {
+		if (strrchr(mtpt, '/'))
+			mtpt = strrchr(mtpt, '/') + 1;
+		if (*mtpt == 0)
+			mtpt = "unknown";
+		res = malloc(strlen(mtpt) + 1);
+		for (i = 0; mtpt[i]; ++i)
+			res[i] = toupper(mtpt[i]);
+		res[i] = 0;
+	}
+	return res;
 }

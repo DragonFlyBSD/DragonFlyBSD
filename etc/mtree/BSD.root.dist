@@ -13,6 +13,8 @@
         kernel
         ..
     ..
+    build
+    ..
     compat
         ndis
         ..

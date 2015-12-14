@@ -1,5 +1,5 @@
 /*
- * Copyright (c)2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c)2004,2015 The DragonFly Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,54 +66,96 @@
 #include "pathnames.h"
 #include "fn.h"
 
-static const char *pfs_mountpt[] = {"/var", "/tmp", "/home",
-	"/usr/obj", "/var/crash", "/var/tmp", NULL};
-
-static const int pfs_nohistory[] = {0, 1, 0, 1, 1, 1};
+/*
+ * NOTE: Even though /var/run doesn't need to be backedup, nearly all
+ *	 services depend on it so it is best to leave it on the root.
+ */
+static const char *nullfs_mountpt[] = {
+	"/usr/obj", "/var/crash", "/var/cache",
+	"/var/spool", "/var/log", "/var/tmp",
+	NULL };
+static const char *nullfs_mountname[] = {
+	"/build/usr.obj", "/build/var.crash", "/build/var.cache",
+	"/build/var.spool", "/build/var.log", "/build/var.tmp",
+	NULL };
 
 static void
-handle_pfs(struct i_fn_args *a, struct commands *cmds)
+handle_altfs(struct i_fn_args *a, struct commands *cmds)
 {
-	int j;
+	int i;
 
 	/*
-	 * Create PFS root directory.
+	 * Create directories for null mounts if not specified as a partition.
+	 * (null mounts are from /build)
 	 */
-	command_add(cmds, "%s%s -p %smnt/pfs",
-	    a->os_root, cmd_name(a, "MKDIR"),
-	    a->os_root);
+	for (i = 0; nullfs_mountpt[i]; ++i) {
+		if (subpartition_find(storage_get_selected_slice(a->s), "%s", nullfs_mountpt[i]) != NULL)
+			continue;
 
-	for (j = 0; pfs_mountpt[j] != NULL; j++) {
 		/*
-		 * We have a PFS for a subdirectory, e.g. /var/crash, so we
-		 * need to create /pfs/var.crash
+		 * Create directory infrastructure for null-mount if
+		 * necessary, then issue the null mount(s).
 		 */
-		if (rindex(pfs_mountpt[j]+1, '/') != NULL) {
-			command_add(cmds, "%s%s pfs-master %smnt/pfs%s.%s",
-			    a->os_root, cmd_name(a, "HAMMER"),
-			    a->os_root, dirname(pfs_mountpt[j]),
-			    basename(pfs_mountpt[j]));
-			command_add(cmds, "%s%s -p %smnt%s",
+		command_add(cmds, "%s%s -p %smnt%s",
 			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root, pfs_mountpt[j]);
-			command_add(cmds, "%s%s %smnt/pfs%s.%s %smnt%s",
-			    a->os_root, cmd_name(a, "MOUNT_NULL"),
-			    a->os_root, dirname(pfs_mountpt[j]),
-			    basename(pfs_mountpt[j]),
-			    a->os_root, pfs_mountpt[j]);
-		} else {
-			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
-			    a->os_root, cmd_name(a, "HAMMER"),
-			    a->os_root, pfs_mountpt[j]);
-			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, nullfs_mountname[i]);
+		command_add(cmds, "%s%s -p %smnt%s",
 			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root, pfs_mountpt[j]);
-			command_add(cmds, "%s%s %smnt/pfs%s %smnt%s",
-			    a->os_root, cmd_name(a, "MOUNT_NULL"),
-			    a->os_root, pfs_mountpt[j],
-			    a->os_root, pfs_mountpt[j]);
-		}
+			    a->os_root, nullfs_mountpt[i]);
+		command_add(cmds, "%s%s %smnt%s %smnt%s",
+		    a->os_root, cmd_name(a, "MOUNT_NULL"),
+		    a->os_root, nullfs_mountname[i],
+		    a->os_root, nullfs_mountpt[i]);
 	}
+
+	/*
+	 * Create directory for /tmp and tmpfs mount if not specified as
+	 * a partition.
+	 */
+	if (subpartition_find(storage_get_selected_slice(a->s), "%s", "/tmp") == NULL) {
+		command_add(cmds, "%s%s -p %smnt/tmp",
+			    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
+		command_add(cmds, "%s%s 1777 %smnt/tmp",
+			    a->os_root, cmd_name(a, "CHMOD"), a->os_root);
+		command_add(cmds, "%s%s dummy %smnt/tmp",
+			    a->os_root, cmd_name(a, "MOUNT_TMPFS"), a->os_root);
+	}
+}
+
+static void
+unmount_altfs(struct i_fn_args *a __unused, struct commands *cmds __unused)
+{
+	return;
+#if 0
+	int i;
+
+	/*
+	 * Unmount null mounts
+	 */
+	i = sizeof(nullfs_mountpt) / sizeof(nullfs_mountpt[0]) - 1;
+	while (i >= 0) {
+		if (subpartition_find(storage_get_selected_slice(a->s), "%s", nullfs_mountpt[i]) != NULL)
+			continue;
+
+		/*
+		 * Create directory infrastructure for null-mount if
+		 * necessary, then issue the null mount(s).
+		 */
+		command_add(cmds, "%s%s %smnt%s",
+			    a->os_root, cmd_name(a, "UMOUNT"),
+			    a->os_root, nullfs_mountpt[i]);
+		--i;
+	}
+
+	/*
+	 * Unmount tmpfs mounts
+	 */
+	if (subpartition_find(storage_get_selected_slice(a->s), "%s", "/tmp") == NULL) {
+		command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "UMOUNT"),
+			    a->os_root, "/tmp");
+	}
+#endif
 }
 
 /*
@@ -122,7 +164,7 @@ handle_pfs(struct i_fn_args *a, struct commands *cmds)
 void
 fn_install_os(struct i_fn_args *a)
 {
-	struct subpartition *sp;
+	struct subpartition *sp, *spnext;
 	struct commands *cmds;
 	struct command *cmd;
 	int i, seen_it, prefix, j, needcrypt;
@@ -132,6 +174,7 @@ fn_install_os(struct i_fn_args *a)
 	char file_path[256];
 	char *string;
 	int lines = 0;
+	int nfsidx;
 
 	/*
 	 * Read SOURCES_CONF_FILE and populate our copy sources.
@@ -171,6 +214,7 @@ fn_install_os(struct i_fn_args *a)
 	/*
 	 * Unmount anything already mounted on /mnt.
 	 */
+	unmount_altfs(a, cmds);
 	unmount_all_under(a, cmds, "%smnt", a->os_root);
 
 	/* Check if crypto support is needed */
@@ -185,18 +229,25 @@ fn_install_os(struct i_fn_args *a)
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
+		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0 ||
+		    strcmp(subpartition_get_mountpoint(sp), "/build") == 0) {
+			/* make sure mountpoint directory exists */
+			command_add(cmds, "%s%s -p %smnt%s",
+				    a->os_root, cmd_name(a, "MKDIR"),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
 			if (use_hammer == 1) {
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
-				    subpartition_is_encrypted(sp) ?
-				    "mapper/root" : subpartition_get_device_name(sp),
+				    (subpartition_is_encrypted(sp) ?
+				     fn_mapper_name(subpartition_get_device_name(sp), 0) : subpartition_get_device_name(sp)),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			} else {
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
-				    subpartition_get_device_name(sp),
+				    subpartition_is_encrypted(sp) ?
+				     fn_mapper_name(subpartition_get_device_name(sp), 0) : subpartition_get_device_name(sp),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			}
@@ -225,53 +276,48 @@ fn_install_os(struct i_fn_args *a)
 			continue;
 		}
 
-		if (use_hammer == 0) {
-			/* / is already mounted */
-			if (strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
-				command_add(cmds, "%s%s -p %smnt%s",
-				    a->os_root, cmd_name(a, "MKDIR"),
-				    a->os_root,
-				    subpartition_get_mountpoint(sp));
-				/* Don't mount it if it's TMPFS-backed. */
-				if (subpartition_is_tmpfsbacked(sp))
-					continue;
-				if (subpartition_is_encrypted(sp)) {
-					command_add(cmds, "%s%s /dev/mapper/%s %smnt%s",
-					    a->os_root, cmd_name(a, "MOUNT"),
-					    subpartition_get_mountpoint(sp) + 1,
-					    a->os_root,
-					    subpartition_get_mountpoint(sp));
-				} else {
-					command_add(cmds, "%s%s /dev/%s %smnt%s",
-					    a->os_root, cmd_name(a, "MOUNT"),
-					    subpartition_get_device_name(sp),
-					    a->os_root,
-					    subpartition_get_mountpoint(sp));
-				}
-			}
-		} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
+		/*
+		 * mount everything except / and /build (which have already
+		 * been mounted).  This should also get /boot.
+		 */
+		if (strcmp(subpartition_get_mountpoint(sp), "/") != 0 &&
+		    strcmp(subpartition_get_mountpoint(sp), "/build") != 0) {
+			const char *mapper_name;
+
+			mapper_name = fn_mapper_name(subpartition_get_device_name(sp), 0);
+
+			/* make sure mountpoint directory exists */
 			command_add(cmds, "%s%s -p %smnt%s",
 			    a->os_root, cmd_name(a, "MKDIR"),
 			    a->os_root,
 			    subpartition_get_mountpoint(sp));
-			command_add(cmds, "%s%s /dev/%s %smnt%s",
-			    a->os_root, cmd_name(a, "MOUNT"),
-			    subpartition_get_device_name(sp),
-			    a->os_root,
-			    subpartition_get_mountpoint(sp));
+			/* Don't mount it if it's TMPFS-backed. */
+			if (subpartition_is_tmpfsbacked(sp))
+				continue;
+			if (subpartition_is_encrypted(sp)) {
+				command_add(cmds, "%s%s /dev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT"),
+				    mapper_name,
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			} else {
+				command_add(cmds, "%s%s /dev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT"),
+				    subpartition_get_device_name(sp),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			}
 		}
 	}
 
 	/*
-	 * Take care of HAMMER PFS.
+	 * Take care of tmpfs and null-mounts from /build
 	 */
-	if (use_hammer == 1)
-		handle_pfs(a, cmds);
+	handle_altfs(a, cmds);
 
 	/*
 	 * Actually copy files now.
 	 */
-
 	for (i = 0; cp_src[i] != NULL && cp_src[i][0] != '\0'; i++) {
 		char *src, *dest, *dn, *tmp_dest;
 
@@ -312,11 +358,12 @@ fn_install_os(struct i_fn_args *a)
 		else
 			asprintf(&src, "%s", &dest[1]);
 
-		if (is_dir("%s%s", a->os_root, src) || is_file("%s%s", a->os_root, src)) {
-			/*
-			 * Cpdup the chosen file or directory onto the HDD.
-			 * if it exists on the source.
-			 */
+		/*
+		 * Cpdup the chosen file or directory onto the HDD.
+		 * if it exists on the source.
+		 */
+		if (is_dir("%s%s", a->os_root, src) ||
+		    is_file("%s%s", a->os_root, src)) {
 			cmd = command_add(cmds, "%s%s %s%s %smnt%s",
 			    a->os_root, cmd_name(a, "CPDUP"),
 			    a->os_root, src,
@@ -330,22 +377,45 @@ fn_install_os(struct i_fn_args *a)
 	 * we must copy anything that the user might've made a
 	 * seperate mount point for (e.g. /usr/libdata/lint.)
 	 */
-	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
-	     sp != NULL; sp = subpartition_next(sp)) {
+	nfsidx = 0;
+	sp = NULL;
+	spnext = slice_subpartition_first(storage_get_selected_slice(a->s));
+
+	for (;;) {
+		const char *mountpt;
+
+		/*
+		 * Iterate nullfs mounts and then partitions
+		 */
+		if (nullfs_mountpt[nfsidx]) {
+			mountpt = nullfs_mountpt[nfsidx];
+			++nfsidx;
+		} else {
+			sp = spnext;
+			if (sp == NULL)
+				break;
+			spnext = subpartition_next(sp);
+			mountpt = subpartition_get_mountpoint(sp);
+		}
+
 		/*
 		 * If the subpartition is a swap subpartition or an
 		 * TMPFS-backed mountpoint, don't try to copy anything
 		 * into it.
 		 */
-		if (subpartition_is_swap(sp) || subpartition_is_tmpfsbacked(sp))
-			continue;
+		if (sp) {
+			if (subpartition_is_swap(sp) ||
+			    subpartition_is_tmpfsbacked(sp)) {
+				continue;
+			}
+		}
 
 		/*
 		 * If the mountpoint doesn't even exist on the installation
 		 * medium, don't try to copy anything from it!  We assume
 		 * it's an empty subpartition for the user's needs.
 		 */
-		if (!is_dir("%s%s", a->os_root, &subpartition_get_mountpoint(sp)[1]))
+		if (!is_dir("%s%s", a->os_root, mountpt + 1))
 			continue;
 
 		/*
@@ -358,13 +428,12 @@ fn_install_os(struct i_fn_args *a)
 		seen_it = 0;
 		prefix = 0;
 		for (i = 0; cp_src[i] != NULL && cp_src[i][0] != '\0'; i++) {
-			if (strncmp(subpartition_get_mountpoint(sp), cp_src[i],
-			    strlen(subpartition_get_mountpoint(sp))) == 0) {
+			if (strncmp(mountpt, cp_src[i],
+			    strlen(mountpt)) == 0) {
 				seen_it = 1;
 				break;
 			}
-			if (strncmp(cp_src[i], subpartition_get_mountpoint(sp),
-			    strlen(cp_src[i])) == 0) {
+			if (strncmp(cp_src[i], mountpt, strlen(cp_src[i])) == 0) {
 				prefix = 1;
 			}
 		}
@@ -380,9 +449,9 @@ fn_install_os(struct i_fn_args *a)
 		 * that this part of the code is meant to handle.
 		 */
 		cmd = command_add(cmds, "%s%s %s%s %smnt%s",
-		    a->os_root, cmd_name(a, "CPDUP"),
-		    a->os_root, &subpartition_get_mountpoint(sp)[1],
-		    a->os_root, subpartition_get_mountpoint(sp));
+			a->os_root, cmd_name(a, "CPDUP"),
+			a->os_root, mountpt + 1,
+			a->os_root, mountpt);
 		command_set_log_mode(cmd, COMMAND_LOG_QUIET);
 	}
 
@@ -395,44 +464,10 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root, cmd_name(a, "LN"), a->os_root);
 
 	/*
-	 * If the user has both /var and /tmp subpartitions,
-	 * symlink /var/tmp to /tmp.
+	 * Make sure /home exists (goes on root mount otherwise).
 	 */
-	if (subpartition_find(storage_get_selected_slice(a->s), "/tmp") != NULL &&
-	    subpartition_find(storage_get_selected_slice(a->s), "/var") != NULL) {
-		command_add(cmds, "%s%s 1777 %smnt/tmp",
-		    a->os_root, cmd_name(a, "CHMOD"), a->os_root);
-		command_add(cmds, "%s%s -rf %smnt/var/tmp",
-		    a->os_root, cmd_name(a, "RM"), a->os_root);
-		command_add(cmds, "%s%s -s /tmp %smnt/var/tmp",
-		    a->os_root, cmd_name(a, "LN"), a->os_root);
-	}
-
-	/*
-	 * If the user has /var, but no /tmp,
-	 * symlink /tmp to /var/tmp.
-	 */
-	if (subpartition_find(storage_get_selected_slice(a->s), "/tmp") == NULL &&
-	    subpartition_find(storage_get_selected_slice(a->s), "/var") != NULL) {
-		command_add(cmds, "%s%s -rf %smnt/tmp",
-		    a->os_root, cmd_name(a, "RM"), a->os_root);
-		command_add(cmds, "%s%s -s /var/tmp %smnt/tmp",
-		    a->os_root, cmd_name(a, "LN"), a->os_root);
-	}
-
-	/*
-	 * If the user has /usr, but no /home,
-	 * symlink /home to /usr/home.
-	 */
-	if (subpartition_find(storage_get_selected_slice(a->s), "/home") == NULL &&
-	    subpartition_find(storage_get_selected_slice(a->s), "/usr") != NULL) {
-		command_add(cmds, "%s%s -rf %smnt/home",
-		    a->os_root, cmd_name(a, "RM"), a->os_root);
-		command_add(cmds, "%s%s %smnt/usr/home",
+	command_add(cmds, "%s%s -p %smnt/home",
 		    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
-		command_add(cmds, "%s%s -s /usr/home %smnt/home",
-		    a->os_root, cmd_name(a, "LN"), a->os_root);
-	}
 
 	/*
 	 * XXX check for other possible combinations too?
@@ -539,92 +574,112 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    a->os_root);
 			}
-		} else if (use_hammer == 0) {
-			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
-				    subpartition_get_mountpoint(sp),
-				    a->os_root);
-			} else if (subpartition_is_tmpfsbacked(sp)) {
-				command_add(cmds, "%s%s 'tmpfs\t\t\t%s\t\ttmpfs\trw,-s%luM\t1\t1' >>%smnt/etc/fstab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_mountpoint(sp),
-				    subpartition_get_capacity(sp),
-				    a->os_root);
-			} else if (subpartition_is_encrypted(sp)) {
-				command_add(cmds, "%s%s '%s\t/dev/%s\tnone\tnone' >>%smnt/etc/crypttab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_mountpoint(sp) + 1,
-				    subpartition_get_device_name(sp),
-				    a->os_root);
-				command_add(cmds, "%s%s '/dev/mapper/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_mountpoint(sp) + 1,
-				    subpartition_get_mountpoint(sp),
-				    a->os_root);
-			} else {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
-				    subpartition_get_mountpoint(sp),
-				    a->os_root);
-			}
 		} else {
+			const char *fsname;
+			int order;
+
+			/*
+			 * fs type (/boot is always ufs)
+			 */
+			if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0)
+				fsname = "ufs";
+			else if (use_hammer)
+				fsname = "hammer";
+			else
+				fsname = "ufs";
+
+			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0)
+				order = 1;
+			else
+				order = 2;
+
+			/*
+			 * Adjust loader.conf for root partition
+			 */
 			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\thammer\trw\t\t1\t1' >>%smnt/etc/fstab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
-				    subpartition_get_mountpoint(sp),
-				    a->os_root);
 				if (subpartition_is_encrypted(sp)) {
 					command_add(cmds,
 					    "%s%s 'vfs.root.mountfrom=\"ufs:md0s0\"' >>%smnt/boot/loader.conf",
 					    a->os_root, cmd_name(a, "ECHO"),
 					    a->os_root);
 					command_add(cmds,
-					    "%s%s 'vfs.root.realroot=\"crypt:hammer:%s:root\"' >>%smnt/boot/loader.conf",
+					    "%s%s 'vfs.root.realroot=\"crypt:%s:%s:%s\"' >>%smnt/boot/loader.conf",
 					    a->os_root, cmd_name(a, "ECHO"),
+					    fsname,
 					    subpartition_get_device_name(sp),
+					    fn_mapper_name(subpartition_get_device_name(sp), -1),
 					    a->os_root);
 				} else {
 					command_add(cmds,
-					    "%s%s 'vfs.root.mountfrom=\"hammer:%s\"' >>%smnt/boot/loader.conf",
+					    "%s%s 'vfs.root.mountfrom=\"%s:%s\"' >>%smnt/boot/loader.conf",
 					    a->os_root, cmd_name(a, "ECHO"),
+					    fsname,
 					    subpartition_get_device_name(sp),
 					    a->os_root);
 				}
-			} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
+			}
+			if (subpartition_is_tmpfsbacked(sp)) {
+				command_add(cmds, "%s%s 'tmpfs\t\t\t%s\t\ttmpfs\trw,-s%luM\t1\t1' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_mountpoint(sp),
+				    subpartition_get_capacity(sp),
+				    a->os_root);
+			} else if (subpartition_is_encrypted(sp)) {
+				const char *mapper_name;
+
+				mapper_name = fn_mapper_name(subpartition_get_device_name(sp), 0);
+				command_add(cmds, "%s%s '%s\t/dev/%s\tnone\tnone' >>%smnt/etc/crypttab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    fn_mapper_name( subpartition_get_device_name(sp), -1),
+				    subpartition_get_device_name(sp),
+				    a->os_root);
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\t%s\trw\t\t2\t2' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    mapper_name,
+				    subpartition_get_mountpoint(sp),
+				    fsname,
+				    a->os_root);
+			} else {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\t%s\trw\t\t%d\t%d' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
+				    fsname,
+				    order, order,
 				    a->os_root);
 			}
 		}
 	}
 
 	/*
-	 * Take care of HAMMER PFS null mounts.
+	 * Take care of NULL mounts from /build for things like /var/crash
+	 * and /usr/obj if not specified as a discrete partition.
 	 */
-	if (use_hammer == 1) {
-		for (j = 0; pfs_mountpt[j] != NULL; j++) {
-			if (rindex(pfs_mountpt[j]+1, '/') != NULL)
-				command_add(cmds, "%s%s '/pfs%s.%s\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    dirname(pfs_mountpt[j]),
-				    basename(pfs_mountpt[j]),
-				    pfs_mountpt[j],
-				    a->os_root);
-			else
-				command_add(cmds, "%s%s '/pfs%s\t\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    pfs_mountpt[j],
-				    pfs_mountpt[j],
-				    a->os_root);
+	for (j = 0; nullfs_mountpt[j] != NULL; j++) {
+		if (subpartition_find(storage_get_selected_slice(a->s),
+				      "%s", nullfs_mountpt[i]) != NULL) {
+			continue;
 		}
+		command_add(cmds,
+		    "%s%s '%s\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
+		    a->os_root, cmd_name(a, "ECHO"),
+		    nullfs_mountname[j],
+		    nullfs_mountpt[j],
+		    a->os_root);
 	}
 
+	/*
+	 * Take care of /tmp as a tmpfs filesystem
+	 */
+	if (subpartition_find(storage_get_selected_slice(a->s), "/tmp") == NULL) {
+		command_add(cmds,
+		    "%s%s 'tmpfs\t/tmp\t\ttmpfs\trw\t\t0\t0' >>%smnt/etc/fstab",
+		    a->os_root, cmd_name(a, "ECHO"), a->os_root);
+	}
+
+	/*
+	 * Take care of /proc
+	 */
 	command_add(cmds, "%s%s '%s' >>%smnt/etc/fstab",
 	    a->os_root, cmd_name(a, "ECHO"),
 	    "proc\t\t\t/proc\t\tprocfs\trw\t\t0\t0",
@@ -637,12 +692,14 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root,
 	    slice_get_device_name(storage_get_selected_slice(a->s)));
 
+#if 0
 	/* 'chflags nohistory' as needed */
 	for (j = 0; pfs_mountpt[j] != NULL; j++)
 		if (pfs_nohistory[j] == 1)
 			command_add(cmds, "%s%s -R nohistory %smnt%s",
 			    a->os_root, cmd_name(a, "CHFLAGS"),
 			    a->os_root, pfs_mountpt[j]);
+#endif
 
 	/* Do some preparation if encrypted partitions were configured */
 	if (needcrypt) {
@@ -704,6 +761,7 @@ fn_install_os(struct i_fn_args *a)
 	 * command chain, so that partitions are unmounted, even if an error
 	 * occurs in one of the preceding commands, or it is cancelled.
 	 */
+	unmount_altfs(a, cmds);
 	unmount_all_under(a, cmds, "%smnt", a->os_root);
 
 	/*
@@ -727,4 +785,38 @@ fn_install_os(struct i_fn_args *a)
 		inform(a->c, _("Warning: swap could not be turned off."));
 	if (remove_all_mappings(a) == NULL)
 		inform(a->c, _("Warning: mappings could not be removed."));
+}
+
+/*
+ * /dev/mapper/
+ *
+ * (result is persistant until next call)
+ */
+const char *
+fn_mapper_name(const char *mountpt, int withdev)
+{
+	const char *src;
+	static char *save;
+
+	src = strrchr(mountpt, '/');
+	if (src == NULL || src[1] == 0)
+		src = "root";
+	else
+		++src;
+
+	if (save)
+		free(save);
+	switch(withdev) {
+	case -1:
+		asprintf(&save, "%s", src);
+		break;
+	case 0:
+		asprintf(&save, "mapper/%s", src);
+		break;
+	case 1:
+	default:
+		asprintf(&save, "/dev/mapper/%s", src);
+		break;
+	}
+	return save;
 }

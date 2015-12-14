@@ -1,5 +1,5 @@
 /*
- * Copyright (c)2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c)2004,2015 The DragonFly Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -505,12 +505,12 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity,
     int encrypted)
 {
 	struct subpartition *sp;
+	struct subpartition *last = s->subpartition_tail;
 
 	AURA_MALLOC(sp, subpartition);
 
 	sp->parent = s;
 
-	struct subpartition *last = s->subpartition_tail;
 	if (last == NULL) {
 		sp->letter = 'a';
 	} else if (last->letter == 'b') {
@@ -518,6 +518,8 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity,
 	} else {
 		sp->letter = (char)(last->letter + 1);
 	}
+	if (sp->letter == 'b' && strcmp(mountpoint, "swap") != 0)
+		sp->letter = 'd';
 
 	sp->mountpoint = aura_strdup(mountpoint);
 	sp->capacity = capacity;
@@ -538,12 +540,16 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity,
 		sp->bsize = 16384;
 
 	sp->is_swap = 0;
+#if 0
 	sp->pfs = 0;
+#endif
 	if (strcasecmp(mountpoint, "swap") == 0)
 		sp->is_swap = 1;
+#if 0
 	if (strcmp(mountpoint, "/") != 0 && strcmp(mountpoint, "/boot") != 0 &&
 	    strcmp(mountpoint, "swap") != 0)
 		sp->pfs = 1;
+#endif
 
 	sp->next = NULL;
 	if (s->subpartition_head == NULL)
@@ -567,10 +573,26 @@ struct subpartition *
 subpartition_new_ufs(struct slice *s, const char *mountpoint, long capacity,
     int encrypted, int softupdates, long fsize, long bsize, int tmpfsbacked)
 {
-	struct subpartition *sp, *sptmp;
-	int letter='d';
+	struct subpartition *sp;
+	struct subpartition *last = s->subpartition_tail;
 
 	AURA_MALLOC(sp, subpartition);
+
+	if (tmpfsbacked) {
+		sp->letter = '@';
+	} else {
+		while (last && last->letter == '@')
+			last = last->prev;
+		if (last == NULL) {
+			sp->letter = 'a';
+		} else if (last->letter == 'b') {
+			sp->letter = 'd';
+		} else {
+			sp->letter = (char)(last->letter + 1);
+		}
+		if (sp->letter == 'b' && strcmp(mountpoint, "swap") != 0)
+			sp->letter = 'd';
+	}
 
 	sp->parent = s;
 
@@ -612,29 +634,19 @@ subpartition_new_ufs(struct slice *s, const char *mountpoint, long capacity,
 	if (strcasecmp(mountpoint, "swap") == 0)
 		sp->is_swap = 1;
 
-	if (s->subpartition_head == NULL) {
+	/*
+	 * install
+	 */
+	sp->next = NULL;
+	if (s->subpartition_head == NULL)
 		s->subpartition_head = sp;
-		s->subpartition_tail = sp;
-	} else {
-		for (sptmp = s->subpartition_head; sptmp != NULL;
-		     sptmp = sptmp->next) {
-			if (strcmp(sptmp->mountpoint, sp->mountpoint) > 0)
-				break;
-		}
-		if (sptmp != NULL) {
-			if (s->subpartition_head == sptmp)
-				s->subpartition_head = sp;
-			else
-				sptmp->prev->next = sp;
-			sp->next = sptmp;
-			sp->prev = sptmp->prev;
-			sptmp->prev = sp;
-		} else {
-			sp->prev = s->subpartition_tail;
-			s->subpartition_tail->next = sp;
-			s->subpartition_tail = sp;
-		}
-	}
+	else
+		s->subpartition_tail->next = sp;
+
+	sp->prev = s->subpartition_tail;
+	s->subpartition_tail = sp;
+
+#if 0
 
 	for (sptmp = s->subpartition_head; sptmp != NULL;
 	     sptmp = sptmp->next) {
@@ -648,6 +660,7 @@ subpartition_new_ufs(struct slice *s, const char *mountpoint, long capacity,
 		else
 			sptmp->letter = letter++;
 	}
+#endif
 
 	return(sp);
 }

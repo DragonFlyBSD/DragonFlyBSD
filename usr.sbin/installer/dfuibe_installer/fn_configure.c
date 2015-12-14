@@ -1,5 +1,5 @@
 /*
- * Copyright (c)2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c)2004,2015 The DragonFly Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -79,7 +79,6 @@
 #include "pathnames.h"
 
 static const char	*yes_to_y(const char *);
-static char		*convert_tmpfs_options(char *);
 
 /** CONFIGURE FUNCTIONS **/
 
@@ -1132,12 +1131,18 @@ fn_assign_ip(struct i_fn_args *a)
 		if (strcmp(dfui_response_get_action_id(r), "ok") == 0) {
 			new_ds = dfui_response_dataset_get_first(r);
 
-			interface_ip = dfui_dataset_get_value(new_ds, "interface_ip");
-			interface_netmask = dfui_dataset_get_value(new_ds, "interface_netmask");
-			defaultrouter = dfui_dataset_get_value(new_ds, "defaultrouter");
-			dns_resolver = dfui_dataset_get_value(new_ds, "dns_resolver");
-			hostname = dfui_dataset_get_value(new_ds, "hostname");
-			domain = dfui_dataset_get_value(new_ds, "domain");
+			interface_ip = dfui_dataset_get_value(
+						new_ds, "interface_ip");
+			interface_netmask = dfui_dataset_get_value(
+						new_ds, "interface_netmask");
+			defaultrouter = dfui_dataset_get_value(
+						new_ds, "defaultrouter");
+			dns_resolver = dfui_dataset_get_value(
+						new_ds, "dns_resolver");
+			hostname = dfui_dataset_get_value(
+						new_ds, "hostname");
+			domain = dfui_dataset_get_value(
+						new_ds, "domain");
 
 			asprintf(&string, "ifconfig_%s", interface);
 			asprintf(&string1, "inet %s netmask %s",
@@ -1231,7 +1236,8 @@ fn_select_services(struct i_fn_args *a)
 	f = dfui_form_create(
 	    "select_services",
 	    _("Select Services"),
-	    _("Please select which services you would like started at boot time."),
+	    _("Please select which services you would like "
+	      "started at boot time."),
 	    "",
 
 	    "f", "syslogd", "syslogd",
@@ -1288,40 +1294,10 @@ fn_select_services(struct i_fn_args *a)
 /*** NON-fn_ FUNCTIONS ***/
 
 /*
- * Caller is responsible for deallocation.
- */
-static char *
-convert_tmpfs_options(char *line)
-{
-	char *result, *word;
-	int i;
-
-	result = malloc(256);
-	result[0] = '\0';
-
-	for (; (word = strsep(&line, ",")) != NULL; ) {
-		if (word[0] == '-') {
-			/*
-			 * Don't bother trying to honour the -C
-			 * option, since we can't copy files from
-			 * the right place anyway.
-			 */
-			if (strcmp(word, "-C") != 0) {
-				for (i = 0; word[i] != '\0'; i++) {
-					if (word[i] == '=')
-						word[i] = ' ';
-				}
-				strlcat(result, word, 256);
-				strlcat(result, " ", 256);
-			}
-		}
-	}
-
-	return(result);
-}
-
-/*
  * Uses ss->selected_{disk,slice} as the target system.
+ *
+ * XXX We now assume that the root mount has enough of the topology
+ *     to handle any configuration actions.
  */
 int
 mount_target_system(struct i_fn_args *a)
@@ -1330,11 +1306,10 @@ mount_target_system(struct i_fn_args *a)
 	struct commands *cmds;
 	struct command *cmd;
 	struct subpartition *a_subpart;
-	char name[256], device[256], mtpt[256], fstype[256], options[256];
+	struct subpartition *d_subpart;
+	char name[256], device[256];
 	char *filename, line[256];
-	const char *try_mtpt[5]  = {"/var", "/tmp", "/usr", "/home", NULL};
-	char *word, *cvtoptions;
-	int i;
+	char *word;
 
 	/*
 	 * Mount subpartitions from this installation if they are
@@ -1358,17 +1333,23 @@ mount_target_system(struct i_fn_args *a)
 	 * Create a temporary dummy subpartition - that we
 	 * assume exists
 	 */
-
 	a_subpart = subpartition_new_ufs(storage_get_selected_slice(a->s),
-	    "/dummy", 0, 0, 0, 0, 0, 0);
+					 "/dummy", 0, 0, 0, 0, 0, 0);
+	subpartition_new_ufs(storage_get_selected_slice(a->s),
+					 "swap", 0, 0, 0, 0, 0, 0);
+	d_subpart = subpartition_new_ufs(storage_get_selected_slice(a->s),
+					 "/dummy", 0, 0, 0, 0, 0, 0);
 
 	/*
 	 * Mount the target's / and read its /etc/fstab.
+	 *
+	 * XXX NEEDS TO BE REWRITTEN XXX
 	 */
+#if 0
 	if (use_hammer == 0) {
 		command_add(cmds, "%s%s /dev/%s %s%s",
 		    a->os_root, cmd_name(a, "MOUNT"),
-		    subpartition_get_device_name(a_subpart),
+		    subpartition_get_device_name(d_subpart),
 		    a->os_root, a->cfg_root);
 		cmd = command_add(cmds,
 		    "%s%s -f %st2;"
@@ -1377,7 +1358,9 @@ mount_target_system(struct i_fn_args *a)
 		    a->os_root, cmd_name(a, "GREP"),
 		    a->os_root, a->cfg_root, a->tmp);
 		command_set_failure_mode(cmd, COMMAND_FAILURE_IGNORE);
-	} else {
+	} else
+#endif
+	{
 		command_add(cmds, "%s%s /dev/%s %sboot",
 		    a->os_root, cmd_name(a, "MOUNT"),
 		    subpartition_get_device_name(a_subpart),
@@ -1397,8 +1380,13 @@ mount_target_system(struct i_fn_args *a)
 	commands_free(cmds);
 	cmds = commands_new();
 
-	if (use_hammer) {
+	/*
+	 * XXX NEEDS TO BE REWRITTEN XXX
+	 */
+	{
 		struct stat sb = { .st_size = 0 };
+		const char *fsname = use_hammer ? "hammer" : "ufs";
+
 		stat("/tmp/t2", &sb);
 		if (sb.st_size > 0) {
 			command_add(cmds, "%s%s %sboot",
@@ -1407,26 +1395,35 @@ mount_target_system(struct i_fn_args *a)
 			fn_get_passphrase(a);
 			command_add(cmds,
 			    "%s%s -d /tmp/t1 luksOpen /dev/`%s%s \"^vfs\\.root\\.realroot=\" %st2 |"
-			    "%s%s -Fhammer: '{print $2;}' |"
-			    "%s%s -F: '{print $1;}'` root",
+			    "%s%s -F%s: '{print $2;}' |"
+			    "%s%s -F: '{print $1;}'` %s",
 			    a->os_root, cmd_name(a, "CRYPTSETUP"),
 			    a->os_root, cmd_name(a, "GREP"),
 			    a->tmp,
 			    a->os_root, cmd_name(a, "AWK"),
-			    a->os_root, cmd_name(a, "AWK"));
+			    fsname,
+			    a->os_root, cmd_name(a, "AWK"),
+			    fn_mapper_name(subpartition_get_device_name(d_subpart), -1)
+			    );
 			command_add(cmds,
-			    "%s%s /dev/mapper/root %s%s",
-			    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+			    "%s%s %s %s%s",
+			    a->os_root,
+			     (use_hammer ? cmd_name(a, "MOUNT_HAMMER") :
+					   cmd_name(a, "MOUNT")),
+			    fn_mapper_name(subpartition_get_device_name(d_subpart), 1),
 			    a->os_root, a->cfg_root);
 		} else {
 			command_add(cmds,
 			    "%s%s /dev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
-			    "%s%s -Fhammer: '{print $2;}' |"
+			    "%s%s -F%s: '{print $2;}' |"
 			    "%s%s 's/\"//'` %s%s",
-			    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+			    a->os_root,
+			     (use_hammer ? cmd_name(a, "MOUNT_HAMMER") :
+					   cmd_name(a, "MOUNT")),
 			    a->os_root, cmd_name(a, "GREP"),
 			    a->os_root,
 			    a->os_root, cmd_name(a, "AWK"),
+			    fsname,
 			    a->os_root, cmd_name(a, "SED"),
 			    a->os_root, a->cfg_root);
 			command_add(cmds, "%s%s %sboot",
@@ -1448,13 +1445,16 @@ mount_target_system(struct i_fn_args *a)
 
 	/*
 	 * See if an /etc/crypttab exists.
+	 *
+	 * Scan and open the related mappings (currently not used since
+	 * we removed the additional mounts from the fstab scan, but we
+	 * might put those back in at a future date so leave this in for
+	 * now).
 	 */
 	asprintf(&filename, "%s%s/etc/crypttab", a->os_root, a->cfg_root);
 	crypttab = fopen(filename, "r");
 	free(filename);
 	if (crypttab != NULL) {
-		if (!use_hammer)
-			fn_get_passphrase(a);
 		while (fgets(line, 256, crypttab) != NULL) {
 			/*
 			 * Parse the crypttab line.
@@ -1464,8 +1464,14 @@ mount_target_system(struct i_fn_args *a)
 			if ((word = strtok(line, " \t")) == NULL)
 				continue;
 			strlcpy(name, word, 256);
+
+			/* don't mount encrypted swap */
 			if (strcmp(name, "swap") == 0)
 				continue;
+			/* encrypted root already mounted */
+			if (strcmp(name, fn_mapper_name(subpartition_get_device_name(d_subpart), -1)) == 0)
+				continue;
+
 			if ((word = strtok(NULL, " \t")) == NULL)
 				continue;
 			strlcpy(device, word, 256);
@@ -1485,6 +1491,10 @@ mount_target_system(struct i_fn_args *a)
 	}
 	commands_free(cmds);
 
+	/*
+	 * (current we do not mount the other partitions, everything needed
+	 *  for system configuration should be on the already-mounted root).
+	 */
 	asprintf(&filename, "%s%s/etc/fstab", a->os_root, a->cfg_root);
 	fstab = fopen(filename, "r");
 	free(filename);
@@ -1500,86 +1510,7 @@ mount_target_system(struct i_fn_args *a)
 		commands_free(cmds);
 		return(0);
 	}
-
-	cmds = commands_new();
-
-	while (fgets(line, 256, fstab) != NULL) {
-		/*
-		 * Parse the fstab line.
-		 */
-		if (first_non_space_char_is(line, '#'))
-			continue;
-		if ((word = strtok(line, " \t")) == NULL)
-			continue;
-		strlcpy(device, word, 256);
-		if ((word = strtok(NULL, " \t")) == NULL)
-			continue;
-		strlcpy(mtpt, word, 256);
-		if ((word = strtok(NULL, " \t")) == NULL)
-			continue;
-		strlcpy(fstype, word, 256);
-		if ((word = strtok(NULL, " \t")) == NULL)
-			continue;
-		strlcpy(options, word, 256);
-
-		/*
-		 * Now, if the mountpoint has /usr, /var, /tmp, or /home
-		 * as a prefix, mount it under a->cfg_root.
-		 */
-		for (i = 0; try_mtpt[i] != NULL; i++) {
-			if (strstr(mtpt, try_mtpt[i]) == mtpt) {
-				/*
-				 * Don't mount it if it's optional.
-				 */
-				if (strstr(options, "noauto") != NULL)
-					continue;
-
-				/*
-				 * Don't mount it if device doesn't start
-				 * with /dev/ or /pfs and it isn't 'tmpfs'.
-				 */
-				if (strstr(device, "/dev/") != NULL &&
-				     strstr(device, "/pfs/") != NULL &&
-				     strcmp(device, "tmpfs") != 0)
-					continue;
-
-				/*
-				 * If the device is 'tmpfs', mount_tmpfs it instead.
-				 */
-				if (strcmp(device, "tmpfs") == 0) {
-					cvtoptions = convert_tmpfs_options(options);
-					command_add(cmds,
-					    "%s%s %s tmpfs %s%s%s",
-					    a->os_root, cmd_name(a, "MOUNT_TMPFS"),
-					    cvtoptions, a->os_root, a->cfg_root, mtpt);
-					free(cvtoptions);
-				} else {
-					if (use_hammer == 0) {
-						command_add(cmds,
-						    "%s%s -o %s %s%s %s%s%s",
-						    a->os_root, cmd_name(a, "MOUNT"),
-						    options,
-						    a->os_root, device, a->os_root,
-						    a->cfg_root, mtpt);
-					} else {
-						command_add(cmds,
-						    "%s%s -o %s %s%s%s %s%s%s",
-						    a->os_root, cmd_name(a, "MOUNT_NULL"),
-						    options,
-						    a->os_root, a->cfg_root, device,
-						    a->os_root, a->cfg_root, mtpt);
-					}
-				}
-			}
-		}
-	}
 	fclose(fstab);
 
-	if (!commands_execute(a, cmds)) {
-		commands_free(cmds);
-		return(0);
-	}
-	commands_free(cmds);
-
-	return(1);
+	return 1;
 }
