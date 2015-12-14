@@ -282,10 +282,6 @@ fn_install_os(struct i_fn_args *a)
 		 */
 		if (strcmp(subpartition_get_mountpoint(sp), "/") != 0 &&
 		    strcmp(subpartition_get_mountpoint(sp), "/build") != 0) {
-			const char *mapper_name;
-
-			mapper_name = fn_mapper_name(subpartition_get_device_name(sp), 0);
-
 			/* make sure mountpoint directory exists */
 			command_add(cmds, "%s%s -p %smnt%s",
 			    a->os_root, cmd_name(a, "MKDIR"),
@@ -297,7 +293,7 @@ fn_install_os(struct i_fn_args *a)
 			if (subpartition_is_encrypted(sp)) {
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
-				    mapper_name,
+				    fn_mapper_name(subpartition_get_device_name(sp), 0),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			} else {
@@ -547,8 +543,12 @@ fn_install_os(struct i_fn_args *a)
 	command_add(cmds, "%s%s -p -d %smnt/etc %smnt/etc/master.passwd",
 	    a->os_root, cmd_name(a, "PWD_MKDB"), a->os_root, a->os_root);
 
-	/* Create missing directories. */
+	/*
+	 * Create missing directories for special mounts.
+	 */
 	command_add(cmds, "%s%s %smnt/proc",
+	    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
+	command_add(cmds, "%s%s %smnt/dev",
 	    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
 	command_add(cmds, "%s%s %smnt/mnt",
 	    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
@@ -625,17 +625,14 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_capacity(sp),
 				    a->os_root);
 			} else if (subpartition_is_encrypted(sp)) {
-				const char *mapper_name;
-
-				mapper_name = fn_mapper_name(subpartition_get_device_name(sp), 0);
 				command_add(cmds, "%s%s '%s\t/dev/%s\tnone\tnone' >>%smnt/etc/crypttab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    fn_mapper_name( subpartition_get_device_name(sp), -1),
+				    fn_mapper_name(subpartition_get_device_name(sp), -1),
 				    subpartition_get_device_name(sp),
 				    a->os_root);
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\t%s\trw\t\t2\t2' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    mapper_name,
+				    fn_mapper_name(subpartition_get_device_name(sp), 0),
 				    subpartition_get_mountpoint(sp),
 				    fsname,
 				    a->os_root);
@@ -711,16 +708,14 @@ fn_install_os(struct i_fn_args *a)
 		    "%s%s 'dm_target_crypt_load=\"yes\"' >>%smnt/boot/loader.conf",
 		    a->os_root, cmd_name(a, "ECHO"),
 		    a->os_root);
-		if (use_hammer) {
-			command_add(cmds,
-			    "%s%s 'initrd.img_load=\"YES\"' >>%smnt/boot/loader.conf",
-			    a->os_root, cmd_name(a, "ECHO"),
-			    a->os_root);
-			command_add(cmds,
-			    "%s%s 'initrd.img_type=\"md_image\"' >>%smnt/boot/loader.conf",
-			    a->os_root, cmd_name(a, "ECHO"),
-			    a->os_root);
-		}
+		command_add(cmds,
+		    "%s%s 'initrd.img_load=\"YES\"' >>%smnt/boot/loader.conf",
+		    a->os_root, cmd_name(a, "ECHO"),
+		    a->os_root);
+		command_add(cmds,
+		    "%s%s 'initrd.img_type=\"md_image\"' >>%smnt/boot/loader.conf",
+		    a->os_root, cmd_name(a, "ECHO"),
+		    a->os_root);
 	}
 
 	/* Customize stuff here */
