@@ -1030,7 +1030,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_SOFTLINK &&
 	    ip->ino_data.size == 10 &&
 	    ip->obj_asof == HAMMER_MAX_TID &&
-	    ip->obj_localization == 0 &&
+	    ip->obj_localization == HAMMER_DEF_LOCALIZATION &&
 	    strncmp(ip->ino_data.ext.symlink, "@@PFS", 5) == 0) {
 		    if (ip->pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE)
 			    vap->va_size = 26;
@@ -1810,7 +1810,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 		bytes = (int)ip->ino_data.size;
 		if (bytes == 10 &&
 		    ip->obj_asof == HAMMER_MAX_TID &&
-		    ip->obj_localization == 0 &&
+		    ip->obj_localization == HAMMER_DEF_LOCALIZATION &&
 		    strncmp(ptr, "@@PFS", 5) == 0) {
 			hammer_simple_transaction(&trans, hmp);
 			bcopy(ptr + 5, buf, 5);

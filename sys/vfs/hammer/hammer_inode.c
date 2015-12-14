@@ -337,7 +337,8 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			 */
 			if (ip->obj_id == HAMMER_OBJID_ROOT) {
 				if (ip->obj_asof == hmp->asof) {
-					if (ip->obj_localization == 0)
+					if (ip->obj_localization ==
+						HAMMER_DEF_LOCALIZATION)
 						vsetflags(vp, VROOT);
 					else
 						vsetflags(vp, VPFSROOT);
@@ -752,7 +753,7 @@ __hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
  * returned inode will be referenced.  The inode is created in-memory.
  *
  * If pfsm is non-NULL the caller wishes to create the root inode for
- * a master PFS.
+ * a non-root PFS.
  */
 int
 hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
@@ -788,7 +789,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	trans->flags |= HAMMER_TRANSF_NEWINODE;
 
 	if (pfsm) {
-		KKASSERT(pfsm->localization != 0);
+		KKASSERT(pfsm->localization != HAMMER_DEF_LOCALIZATION);
 		ip->obj_id = HAMMER_OBJID_ROOT;
 		ip->obj_localization = pfsm->localization;
 	} else {
