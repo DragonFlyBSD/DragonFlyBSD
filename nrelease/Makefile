@@ -15,7 +15,7 @@ gui installer img nopkgs:
 #########################################################################
 
 DPORTS_PATH?=	/usr/dports
-ISODIR?=	/usr/release
+ISODIR?=	/usr/obj/release
 ISOROOT?=	${ISODIR}/root
 OBJSYS=		${.OBJDIR}/../sys
 GITHOST?=	git.dragonflybsd.org

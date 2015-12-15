@@ -127,10 +127,10 @@ Default prefix of
 and
 .Va ISOROOT
 (default is
-.Pa /usr/release ) .
+.Pa /usr/obj/release ) .
 .It Va ISOFILE
 Name of the ISO image to generate (default is
-.Pa /usr/release/dfly.iso ) .
+.Pa /usr/obj/release/dfly.iso ) .
 .It Va ISOROOT
 Location where the image contents are installed to before the ISO is prepared.
 .It Va KERNCONF
@@ -154,10 +154,10 @@ If set, this variable will prevent source code from being copied to
 the ISO image.
 .It Va IMGFILE
 The name of the image file (default is
-.Pa /usr/release/dfly.img ) .
+.Pa /usr/obj/release/dfly.img ) .
 .It Va IMGMNT
 The mount point for the image (default is
-.Pa /usr/release/mnt ) .
+.Pa /usr/obj/release/mnt ) .
 .It Va IMGUSBDEV
 The disk device to use in the image's
 .Xr fstab 5
@@ -186,7 +186,7 @@ make release
 .Ed
 .Pp
 After running these commands, the image will be available in the
-.Pa /usr/release
+.Pa /usr/obj/release
 directory.
 .\".Pp
 .\"The steps required for engineering a release are documented in (CVS)

@@ -83,9 +83,9 @@ mkdir -p $snapshots/$arch/images
 mkdir -p $snapshots/$arch/kernels
 set filepath = $snapshots/$arch
 umask 077
-bzip2 < $build/root/usr/release/dfly.iso > $filepath/images/$basename.iso.bz2
-bzip2 < $build/root/usr/release/dfly.img > $filepath/images/$basename.img.bz2
-(cd $build/root/usr/release/root; tar cf - boot | bzip2 > $filepath/kernels/$basename.boot.tar.bz2)
+bzip2 < $build/root/usr/obj/release/dfly.iso > $filepath/images/$basename.iso.bz2
+bzip2 < $build/root/usr/obj/release/dfly.img > $filepath/images/$basename.img.bz2
+(cd $build/root/usr/obj/release/root; tar cf - boot | bzip2 > $filepath/kernels/$basename.boot.tar.bz2)
 chmod 644 $filepath/images/$basename.iso.bz2
 chmod 644 $filepath/images/$basename.img.bz2
 chmod 644 $filepath/kernels/$basename.boot.tar.bz2
