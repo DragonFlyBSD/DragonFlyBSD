@@ -448,8 +448,11 @@ trap(struct trapframe *frame)
 			 * multiple fault in user mode.
 			 */
 			MAKEMPSAFE(have_mplock);
-			kprintf("kernel trap %d with interrupts disabled\n",
-			    type);
+			kprintf("kernel trap %d (%s @ 0x%016jx) with "
+				"interrupts disabled\n",
+				type,
+				td->td_comm,
+				frame->tf_rip);
 		}
 		cpu_enable_intr();
 	}
