@@ -210,8 +210,8 @@ shutdown_nice(int howto)
 	return;
 }
 static int	waittime = -1;
-struct pcb dumppcb;
-struct thread *dumpthread;
+struct pcb	dumppcb;
+struct thread	*dumpthread;
 
 static void
 print_uptime(void)
@@ -823,6 +823,13 @@ panic(const char *fmt, ...)
 #endif
 
 	/*
+	 * Make sure kgdb knows who we are, there won't be a stoppcbs[]
+	 * entry since our cpu wasn't stopped.
+	 */
+	savectx(&dumppcb);
+	dumpthread = curthread;
+
+	/*
 	 * Enter the debugger or fall through & dump.  Entering the
 	 * debugger will stop cpus.  If not entering the debugger stop
 	 * cpus here.
@@ -830,6 +837,7 @@ panic(const char *fmt, ...)
 	 * Limit the trace history to leave more panic data on a
 	 * potentially row-limited console.
 	 */
+
 #if defined(DDB)
 	if (newpanic && trace_on_panic)
 		print_backtrace(6);

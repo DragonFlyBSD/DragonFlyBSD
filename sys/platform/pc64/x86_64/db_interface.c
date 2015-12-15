@@ -65,6 +65,7 @@
 #include <sys/reboot.h>
 #include <sys/cons.h>
 #include <sys/thread.h>
+#include <sys/kerneldump.h>
 
 #include <machine/cpu.h>
 #include <machine/smp.h>
@@ -356,7 +357,23 @@ Debugger(const char *msg)
 	if (!in_Debugger) {
 	    in_Debugger = 1;
 	    db_printf("Debugger(\"%s\")\n", msg);
+
+	    /*
+	     * Save the pcb just in case the sysop entered the debugger
+	     * manually and called dumpsys,
+	     */
+	    if (dumpthread == NULL) {
+		    savectx(&dumppcb);
+		    dumpthread = curthread;
+	    }
+
 	    breakpoint();
 	    in_Debugger = 0;
+
+	    /*
+	     * Clear before returning from the debugger so a later panic
+	     * saves the correct context.
+	     */
+	    dumpthread = NULL;
 	}
 }

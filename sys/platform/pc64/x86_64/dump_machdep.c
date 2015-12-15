@@ -267,8 +267,13 @@ md_dumpsys(struct dumperinfo *di)
 	size_t hdrsz;
 	int error;
 
-	savectx(&dumppcb);
-	dumpthread = curthread;
+	/*
+	 * Save context if dump called without panic.
+	 */
+	if (dumpthread == NULL) {
+		savectx(&dumppcb);
+		dumpthread = curthread;
+	}
 
 	if (do_minidump) {
 		minidumpsys(di);

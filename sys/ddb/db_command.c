@@ -484,6 +484,26 @@ db_error(char *s)
  * Call random function:
  * !expr(arg,arg,arg)
  */
+typedef union {
+	db_expr_t	(*a0)(void);
+	db_expr_t	(*a1)(db_expr_t);
+	db_expr_t	(*a2)(db_expr_t, db_expr_t);
+	db_expr_t	(*a3)(db_expr_t, db_expr_t, db_expr_t);
+	db_expr_t	(*a4)(db_expr_t, db_expr_t, db_expr_t, db_expr_t);
+	db_expr_t	(*a5)(db_expr_t, db_expr_t, db_expr_t, db_expr_t, db_expr_t);
+	db_expr_t	(*a6)(db_expr_t, db_expr_t, db_expr_t, db_expr_t, db_expr_t,
+			   db_expr_t);
+	db_expr_t	(*a7)(db_expr_t, db_expr_t, db_expr_t, db_expr_t, db_expr_t,
+			   db_expr_t, db_expr_t);
+	db_expr_t	(*a8)(db_expr_t, db_expr_t, db_expr_t, db_expr_t, db_expr_t,
+			   db_expr_t, db_expr_t, db_expr_t);
+	db_expr_t	(*a9)(db_expr_t, db_expr_t, db_expr_t, db_expr_t, db_expr_t,
+			   db_expr_t, db_expr_t, db_expr_t, db_expr_t);
+	db_expr_t	(*a10)(db_expr_t, db_expr_t, db_expr_t, db_expr_t, db_expr_t,
+			   db_expr_t, db_expr_t, db_expr_t, db_expr_t, db_expr_t);
+} fcn_multiargs_t;
+
+
 static void
 db_fncall(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 {
@@ -492,11 +512,7 @@ db_fncall(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	db_expr_t	args[MAXARGS];
 	int		nargs = 0;
 	db_expr_t	retval;
-	typedef db_expr_t fcn_10args_t (db_expr_t, db_expr_t, db_expr_t,
-					    db_expr_t, db_expr_t, db_expr_t,
-					    db_expr_t, db_expr_t, db_expr_t,
-					    db_expr_t);
-	fcn_10args_t	*func;
+	fcn_multiargs_t	func;
 	int		t;
 
 	if (!db_expression(&fn_addr)) {
@@ -504,7 +520,7 @@ db_fncall(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	    db_flush_lex();
 	    return;
 	}
-	func = (fcn_10args_t *)fn_addr;	/* XXX */
+	func.a0 = (void *)fn_addr;
 
 	t = db_read_token();
 	if (t == tLPAREN) {
@@ -533,12 +549,54 @@ db_fncall(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	}
 	db_skip_to_eol();
 
-	while (nargs < MAXARGS) {
-	    args[nargs++] = 0;
+	/*
+	 * This is mainly so kgdb doesn't get confused if ddb> call is
+	 * in its backtrace.
+	 */
+	switch(nargs) {
+	case 0:
+		retval = (*func.a0)();
+		break;
+	case 1:
+		retval = (*func.a1)(args[0]);
+		break;
+	case 2:
+		retval = (*func.a2)(args[0], args[1]);
+		break;
+	case 3:
+		retval = (*func.a3)(args[0], args[1], args[2]);
+		break;
+	case 4:
+		retval = (*func.a4)(args[0], args[1], args[2], args[3]);
+		break;
+	case 5:
+		retval = (*func.a5)(args[0], args[1], args[2], args[3], args[4]);
+		break;
+	case 6:
+		retval = (*func.a6)(args[0], args[1], args[2], args[3], args[4],
+				    args[5]);
+		break;
+	case 7:
+		retval = (*func.a7)(args[0], args[1], args[2], args[3], args[4],
+				    args[5], args[6]);
+		break;
+	case 8:
+		retval = (*func.a8)(args[0], args[1], args[2], args[3], args[4],
+				    args[5], args[6], args[7]);
+		break;
+	case 9:
+		retval = (*func.a9)(args[0], args[1], args[2], args[3], args[4],
+				    args[5], args[6], args[7], args[8]);
+		break;
+	case 10:
+		retval = (*func.a10)(args[0], args[1], args[2], args[3], args[4],
+				     args[5], args[6], args[7], args[8], args[9]);
+		break;
+	default:
+		db_printf("too many arguments\n");
+		retval = 0;
+		break;
 	}
-
-	retval = (*func)(args[0], args[1], args[2], args[3], args[4],
-			 args[5], args[6], args[7], args[8], args[9] );
 	db_printf("%#lr\n", (long)retval);
 }
 
