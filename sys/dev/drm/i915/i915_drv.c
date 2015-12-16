@@ -1642,11 +1642,21 @@ static int
 i915_attach(device_t kdev)
 {
 	struct drm_device *dev = device_get_softc(kdev);
+	int error;
+	int dummy;
 
 	i915_init();
 
 	dev->driver = &driver;
-	return (drm_attach(kdev, i915_attach_list));
+	error = drm_attach(kdev, i915_attach_list);
+
+	/*
+	 * XXX hack - give the kvm_console time to come up before X starts
+	 * messing with everything, avoiding at least one deadlock.
+	 */
+	tsleep(&dummy, 0, "i915_attach", hz*2);
+
+	return error;
 }
 
 static device_method_t i915_methods[] = {
