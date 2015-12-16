@@ -3,4 +3,4 @@
 # modify to taste
 BINDIR?= /usr/bin
 
-WARNS?=	2
+WARNS?=	3
