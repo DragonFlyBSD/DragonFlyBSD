@@ -168,6 +168,11 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
+	if (hmp->nvolumes <= 1) {
+		hmkprintf(hmp, "No HAMMER volume to delete\n");
+		return (EINVAL);
+	}
+
 	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
 		hmkprintf(hmp, "Another volume operation is in progress!\n");
 		return (EAGAIN);
