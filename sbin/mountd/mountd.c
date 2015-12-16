@@ -1325,11 +1325,10 @@ get_exportlist(void)
 	struct statfs *fsp, *mntbufp;
 	struct vfsconf vfc;
 	char *dirp;
-	int dirplen, num, i;
+	int num, i;
 	int done;
 
 	dirp = NULL;
-	dirplen = 0;
 
 	/*
 	 * First, get rid of the old list

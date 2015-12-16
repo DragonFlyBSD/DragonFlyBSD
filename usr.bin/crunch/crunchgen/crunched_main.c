@@ -88,8 +88,7 @@ int
 crunched_main(int argc, char **argv, char **envp)
 {
     char *slash;
-    struct stub *ep;
-    int columns, len;
+    int len;
 
     if(argc <= 1)
 	crunched_usage();
