@@ -3,6 +3,7 @@
 
 KMOD=	ipfw3
 SRCS=	ip_fw3.c
+SRCS+=	ip_fw3_log.c ip_fw3_log.h
 SRCS+=  ip_fw3_table.c ip_fw3_table.h
 SRCS+=	opt_ipfw.h opt_inet.h
 
@@ -17,7 +18,6 @@ opt_ipfw.h:
 	#
 	# If you want it verbose
 	#echo '#define IPFIREWALL_VERBOSE 1' >> ${.OBJDIR}/${.TARGET}
-	#echo '#define IPFIREWALL_VERBOSE_LIMIT 100' >> ${.OBJDIR}/${.TARGET}
 	#
 	# If you want it to pass all packets by default
 	#echo '#define IPFIREWALL_DEFAULT_TO_ACCEPT 1' >> ${.OBJDIR}/${.TARGET}

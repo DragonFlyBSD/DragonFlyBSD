@@ -81,6 +81,7 @@
 #include <net/netmsg2.h>
 
 #include <net/ipfw3/ip_fw.h>
+#include <net/ipfw3/ip_fw3_log.h>
 #include <net/ipfw3/ip_fw3_table.h>
 #include <net/ipfw3_basic/ip_fw3_basic.h>
 #include <net/ipfw3_nat/ip_fw3_nat.h>
@@ -149,8 +150,7 @@ extern int ip_fw_loaded;
 static uint32_t static_count;	/* # of static rules */
 static uint32_t static_ioc_len;	/* bytes of static rules */
 static int ipfw_flushing;
-static int fw_verbose;
-static int verbose_limit;
+static int fw_verbose = 0;
 static int fw_debug;
 static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
@@ -170,8 +170,6 @@ SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, debug, CTLFLAG_RW,
 	&fw_debug, 0, "Enable printing of debug ip_fw statements");
 SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, verbose, CTLFLAG_RW,
 	&fw_verbose, 0, "Log matches to ipfw rules");
-SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, verbose_limit, CTLFLAG_RW,
-	&verbose_limit, 0, "Set upper limit of matches of ipfw rules logged");
 SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, static_count, CTLFLAG_RD,
 	&static_count, 0, "Number of static rules");
 
@@ -272,6 +270,9 @@ check_accept(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 {
 	*cmd_val = IP_FW_PASS;
 	*cmd_ctl = IP_FW_CTL_DONE;
+	if (cmd->arg3) {
+		ipfw_log((*args)->m, (*args)->eh, cmd->arg1);
+	}
 }
 
 void
@@ -280,6 +281,9 @@ check_deny(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 {
 	*cmd_val = IP_FW_DENY;
 	*cmd_ctl = IP_FW_CTL_DONE;
+	if (cmd->arg3) {
+		ipfw_log((*args)->m, (*args)->eh, cmd->arg1);
+	}
 }
 
 void
@@ -2026,16 +2030,8 @@ ipfw_init_dispatch(netmsg_t nmsg)
 #ifdef IPFIREWALL_VERBOSE
 	fw_verbose = 1;
 #endif
-#ifdef IPFIREWALL_VERBOSE_LIMIT
-	verbose_limit = IPFIREWALL_VERBOSE_LIMIT;
-#endif
 	if (fw_verbose == 0) {
 		kprintf("disabled ");
-	} else if (verbose_limit == 0) {
-		kprintf("unlimited ");
-	} else {
-		kprintf("limited to %d packets/entry by default ",
-				verbose_limit);
 	}
 	kprintf("\n");
 	ip_fw3_loaded = 1;
@@ -2051,6 +2047,7 @@ ipfw3_init(void)
 	struct netmsg_base smsg;
 	int error;
 
+	ipfw3_log_modevent(MOD_LOAD);
 	init_module();
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 			0, ipfw_init_dispatch);
@@ -2095,6 +2092,8 @@ static int
 ipfw3_fini(void)
 {
 	struct netmsg_base smsg;
+
+	ipfw3_log_modevent(MOD_UNLOAD);
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 			0, ipfw_fini_dispatch);
 	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);

@@ -287,6 +287,14 @@ parse_accept(ipfw_insn **cmd, int *ac, char **av[])
 	(*cmd)->module = MODULE_BASIC_ID;
 	(*cmd)->len = (*cmd)->len|LEN_OF_IPFWINSN;
 	NEXT_ARG1;
+	if (!strncmp(**av, "log", strlen(**av))) {
+		(*cmd)->arg3 = 1;
+		NEXT_ARG1;
+		if (isdigit(***av)) {
+			(*cmd)->arg1 = strtoul(**av, NULL, 10);
+			NEXT_ARG1;
+		}
+	}
 }
 
 void
@@ -296,18 +304,32 @@ parse_deny(ipfw_insn **cmd, int *ac, char **av[])
 	(*cmd)->module = MODULE_BASIC_ID;
 	(*cmd)->len = (*cmd)->len|LEN_OF_IPFWINSN;
 	NEXT_ARG1;
+	if (!strncmp(**av, "log", strlen(**av))) {
+		(*cmd)->arg3 = 1;
+		NEXT_ARG1;
+		if (isdigit(***av)) {
+			(*cmd)->arg1 = strtoul(**av, NULL, 10);
+			NEXT_ARG1;
+		}
+	}
 }
 
 void
 show_accept(ipfw_insn *cmd, int show_or)
 {
 	printf(" allow");
+	if (cmd->arg3) {
+		printf(" log %d", cmd->arg1);
+	}
 }
 
 void
 show_deny(ipfw_insn *cmd, int show_or)
 {
 	printf(" deny");
+	if (cmd->arg3) {
+		printf(" log %d", cmd->arg1);
+	}
 }
 
 static void
