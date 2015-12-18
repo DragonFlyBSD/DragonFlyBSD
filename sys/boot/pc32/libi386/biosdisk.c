@@ -43,6 +43,7 @@
 #include <sys/diskmbr.h>
 #include <sys/dtype.h>
 #include <machine/bootinfo.h>
+#include <machine/psl.h>
 
 #include <stdarg.h>
 
@@ -215,7 +216,7 @@ bd_int13probe(struct bdinfo *bd)
     v86.edx = bd->bd_unit;
     v86int();
     
-    if (!(v86.efl & 0x1) &&				/* carry clear */
+    if (!(v86.efl & PSL_C) &&				/* carry clear */
 	((v86.edx & 0xff) > ((unsigned)bd->bd_unit & 0x7f))) {	/* unit # OK */
 
 	/*
@@ -235,7 +236,7 @@ bd_int13probe(struct bdinfo *bd)
 	v86.edx = bd->bd_unit;
 	v86.ebx = 0x55aa;
 	v86int();
-	if (!(v86.efl & 0x1) &&				/* carry clear */
+	if (!(v86.efl & PSL_C) &&			/* carry clear */
 	    ((v86.ebx & 0xffff) == 0xaa55) &&		/* signature */
 	    (v86.ecx & 0x1)) {				/* packets mode ok */
 	    bd->bd_flags |= BD_MODEEDD1;
@@ -1099,7 +1100,7 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86.ds = VTOPSEG(packet);
 		v86.esi = VTOPOFF(packet);
 		v86int();
-		result = (v86.efl & 0x1);
+		result = (v86.efl & PSL_C);
 		if (result == 0)
 		    break;
 	    } else if (cyl < 1024) {
@@ -1112,7 +1113,7 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86.es = VTOPSEG(xp);
 		v86.ebx = VTOPOFF(xp);
 		v86int();
-		result = (v86.efl & 0x1);
+		result = (v86.efl & PSL_C);
 		if (result == 0)
 		    break;
 	    } else {
@@ -1250,7 +1251,7 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86.ds = VTOPSEG(packet);
 		v86.esi = VTOPOFF(packet);
 		v86int();
-		result = (v86.efl & 0x1);
+		result = (v86.efl & PSL_C);
 		if (result == 0)
 		    break;
 	    } else if (cyl < 1024) {
@@ -1263,7 +1264,7 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86.es = VTOPSEG(xp);
 		v86.ebx = VTOPOFF(xp);
 		v86int();
-		result = (v86.efl & 0x1);
+		result = (v86.efl & PSL_C);
 		if (result == 0)
 		    break;
 	    } else {
@@ -1293,7 +1294,7 @@ bd_getgeom(struct open_disk *od)
     v86.edx = od->od_unit;
     v86int();
 
-    if ((v86.efl & 0x1) ||				/* carry set */
+    if ((v86.efl & PSL_C) ||				/* carry set */
 	((v86.edx & 0xff) <= (unsigned)(od->od_unit & 0x7f)))	/* unit # bad */
 	return(1);
     
@@ -1330,7 +1331,7 @@ bd_getbigeom(int bunit)
     v86.eax = 0x800;
     v86.edx = 0x80 + bunit;
     v86int();
-    if (v86.efl & 0x1)
+    if (v86.efl & PSL_C)
 	return 0x4f010f;
     return ((v86.ecx & 0xc0) << 18) | ((v86.ecx & 0xff00) << 8) |
 	   (v86.edx & 0xff00) | (v86.ecx & 0x3f);

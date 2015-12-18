@@ -33,6 +33,7 @@
 #include <sys/param.h>
 #include <sys/linker.h>
 #include <machine/metadata.h>
+#include <machine/psl.h>
 #include "bootstrap.h"
 #include "libi386.h"
 #include "btxv86.h"
@@ -68,7 +69,7 @@ bios_getsmap(void)
 		v86.es = VTOPSEG(&smap);
 		v86.edi = VTOPOFF(&smap);
 		v86int();
-		if ((v86.efl & 1) || (v86.eax != SMAPSIG))
+		if ((v86.efl & PSL_C) || (v86.eax != SMAPSIG))
 			break;
 		n++;
 	} while (v86.ebx != 0);
@@ -121,7 +122,7 @@ bios_getsmap(void)
 			smapbase[smaplen] = smap;
 			++smaplen;
 		}
-		if ((v86.efl & 1) || (v86.eax != SMAPSIG))
+		if ((v86.efl & PSL_C) || (v86.eax != SMAPSIG))
 			break;
 	} while (v86.ebx != 0 && smaplen < n);
 }

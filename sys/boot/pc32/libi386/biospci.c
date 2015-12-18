@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biospci.c,v 1.4 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biospci.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
  */
 
 /*
@@ -33,6 +32,7 @@
 
 #include <stand.h>
 #include <machine/stdarg.h>
+#include <machine/psl.h>
 #include <bootstrap.h>
 #include <isapnp.h>
 #include <btxv86.h>
@@ -212,7 +212,7 @@ biospci_enumerate(void)
     v86int();
 
     /* Check for OK response */
-    if ((v86.efl & 1) || ((v86.eax & 0xff00) != 0) || (v86.edx != 0x20494350))
+    if ((v86.efl & PSL_C) || ((v86.eax & 0xff00) != 0) || (v86.edx != 0x20494350))
 	return;
 
     biospci_version = v86.ebx & 0xffff;
@@ -240,7 +240,7 @@ biospci_enumerate(void)
 		    v86.esi = device_index;
 		    v86int();
 		    /* error/end of matches */
-		    if ((v86.efl & 1) || (v86.eax & 0xff00))
+		    if ((v86.efl & PSL_C) || (v86.eax & 0xff00))
 			break;
 
 		    /* Got something */
@@ -254,7 +254,7 @@ biospci_enumerate(void)
 		    v86.edi = 0x0;
 		    v86int();
 		    /* error */
-		    if ((v86.efl & 1) || (v86.eax & 0xff00))
+		    if ((v86.efl & PSL_C) || (v86.eax & 0xff00))
 			break;
 		    
 		    /* We have the device ID, create a PnP object and save everything */

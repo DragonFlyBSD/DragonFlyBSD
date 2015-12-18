@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosmem.c,v 1.7 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biosmem.c,v 1.4 2004/06/26 02:26:22 dillon Exp $
  */
 /*
  * Obtain memory configuration information from the BIOS
  */
 #include <stand.h>
+#include <machine/psl.h>
 #include "libi386.h"
 #include "btxv86.h"
 
@@ -74,7 +74,7 @@ bios_getmem(void)
 		(int)(smap.base >> 32), (int)smap.base,
 		(int)(smap.length >> 32), (int)smap.length);
 #endif
-	if ((v86.efl & 1) || (v86.eax != SMAPSIG))
+	if ((v86.efl & PSL_C) || (v86.eax != SMAPSIG))
 	    break;
 	/* look for a low-memory segment that's large enough */
 	if ((smap.type == 1) && (smap.base == 0) && (smap.length >= (512 * 1024))) {
@@ -103,7 +103,7 @@ bios_getmem(void)
 	v86.addr = 0x15;		/* int 0x15 function 0xe801*/
 	v86.eax = 0xe801;
 	v86int();
-	if (!(v86.efl & 1)) {
+	if (!(v86.efl & PSL_C)) {
 	    v = ((v86.ecx & 0xffff) +
 		((int64_t)(v86.edx & 0xffff) * 64)) * 1024;
 	    if (v > 0x40000000)
