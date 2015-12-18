@@ -154,9 +154,7 @@ SRCS	+=								\
 	iicbus_if.h							\
 	pci_if.h
 
-CFLAGS+= -I${.CURDIR}/../../../dev/drm/radeon
-CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
-
 CFLAGS+= -I${SYSDIR}/dev/drm/include
+CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 
 .include <bsd.kmod.mk>
