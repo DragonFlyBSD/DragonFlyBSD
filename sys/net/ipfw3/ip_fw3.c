@@ -150,7 +150,7 @@ extern int ip_fw_loaded;
 static uint32_t static_count;	/* # of static rules */
 static uint32_t static_ioc_len;	/* bytes of static rules */
 static int ipfw_flushing;
-static int fw_verbose = 0;
+int fw_verbose = 0;
 static int fw_debug;
 static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
