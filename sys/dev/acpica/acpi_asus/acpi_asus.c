@@ -1249,6 +1249,9 @@ acpi_asus_lcdd_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 		acpi_asus_sysctl_set(sc, ACPI_ASUS_METHOD_BRN, sc->s_brn+1);
 		ACPI_VPRINT(sc->dev, acpi_sc, "Brightness increased\n");
 		break;
+	default:
+		device_printf(sc->dev, "unknown notify: %#x\n", notify);
+		break;
 	}
 	ACPI_SERIAL_END(asus);
 }

@@ -396,8 +396,7 @@ acpi_video_notify_handler(ACPI_HANDLE handle, UINT32 notify, void *context)
 		ACPI_SERIAL_END(video);
 		break;
 	default:
-		device_printf(sc->device, "unknown notify event 0x%x\n",
-		    notify);
+		device_printf(sc->device, "unknown notify: %#x\n", notify);
 	}
 }
 
@@ -695,8 +694,8 @@ acpi_video_vo_notify_handler(ACPI_HANDLE handle, UINT32 notify, void *context)
 			goto out;
 		break;
 	default:
-		kprintf("unknown notify event 0x%x from %s\n",
-		    notify, acpi_name(handle));
+		kprintf("unknown notify: %#x from %s\n", notify,
+		    acpi_name(handle));
 		goto out;
 	}
 

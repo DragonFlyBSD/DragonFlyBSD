@@ -257,7 +257,7 @@ acpi_button_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_button_notify_wakeup, sc);
 	break;   
     default:
-	device_printf(sc->button_dev, "unknown notify %#x\n", notify);
+	device_printf(sc->button_dev, "unknown notify: %#x\n", notify);
 	break;
     }
 }

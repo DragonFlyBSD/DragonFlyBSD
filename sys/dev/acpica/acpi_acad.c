@@ -139,8 +139,7 @@ acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_acad_get_status, context);
 	break;
     default:
-	if (bootverbose)
-	    device_printf(dev, "unknown notify %#x\n", notify);
+	device_printf(dev, "unknown notify: %#x\n", notify);
 	break;
     }
 }

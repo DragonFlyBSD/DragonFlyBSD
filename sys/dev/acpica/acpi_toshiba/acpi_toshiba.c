@@ -527,8 +527,9 @@ acpi_toshiba_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 			acpi_UserNotify("TOSHIBA", h, (uint8_t)key);
 		}
 		ACPI_SERIAL_END(toshiba);
-	} else
-		device_printf(sc->dev, "unknown notify: 0x%x\n", notify);
+	} else {
+		device_printf(sc->dev, "unknown notify: %#x\n", notify);
+	}
 }
 
 /*

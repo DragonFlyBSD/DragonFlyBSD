@@ -1261,7 +1261,7 @@ acpi_thinkpad_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 	ACPI_FUNCTION_TRACE_U32((char *)(uintptr_t)__func__, notify);
 
 	if (notify != 0x80)
-		device_printf(dev, "Unknown notify\n");
+		device_printf(sc->dev, "unknown notify: %#x\n", notify);
 
 	for (;;) {
 		acpi_GetInteger(acpi_get_handle(dev), THINKPAD_NAME_EVENTS_GET,

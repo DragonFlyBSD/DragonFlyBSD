@@ -911,8 +911,7 @@ acpi_tz_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 	acpi_tz_signal(sc, TZ_FLAG_GETSETTINGS);
 	break;
     default:
-	ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
-		    "unknown Notify event 0x%x\n", notify);
+	device_printf(sc->tz_dev, "unknown notify: %#x\n", notify);
 	break;
     }
 

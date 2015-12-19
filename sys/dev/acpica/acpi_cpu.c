@@ -326,6 +326,9 @@ acpi_cpu_notify(ACPI_HANDLE handler __unused, UINT32 notify, void *xsc)
 	if (sc->cpu_cst_notify != NULL)
 	    sc->cpu_cst_notify(sc->cpu_cst);
 	break;
+    default:
+	device_printf(sc->cpu_cst, "unknown notify: %#x\n", notify);
+	break;
     }
 }
 

@@ -332,7 +332,7 @@ acpi_fujitsu_notify_handler(ACPI_HANDLE h, uint32_t notify, void *context)
 		    acpi_fujitsu_notify_status_changed, sc);
 		break;
 	default:
-		/* unknown notification value */
+		device_printf(sc->dev, "unknown notify: %#x\n", notify);
 		break;
 	}
 }

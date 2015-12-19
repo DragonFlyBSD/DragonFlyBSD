@@ -400,7 +400,7 @@ acpi_dock_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 		acpi_dock_removal(dev);
 		break;
 	default:
-		device_printf(dev, "unknown notify %#x\n", notify);
+		device_printf(dev, "unknown notify: %#x\n", notify);
 		break;
 	}
 	ACPI_SERIAL_END(dock);

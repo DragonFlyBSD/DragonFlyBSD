@@ -200,6 +200,9 @@ acpi_cmbat_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 	 */
 	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_get_bif_task, dev);
 	break;
+    default:
+	device_printf(sc->dev, "unknown notify: %#x\n", notify);
+	break;
     }
 
     acpi_UserNotify("CMBAT", h, notify);
