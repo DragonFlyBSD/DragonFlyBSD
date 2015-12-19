@@ -120,7 +120,6 @@ ext2_di2ei(struct ext2_dinode *di, struct ext2_inode *ei)
         ei->i_atime             = di->di_atime;
         ei->i_mtime             = di->di_mtime;
         ei->i_ctime             = di->di_ctime;
-        ei->i_flags             = di->di_flags;
         ei->i_flags    		= 0;
         ei->i_flags    		|= (di->di_flags & APPEND) ? EXT2_APPEND_FL: 0;
         ei->i_flags    		|= (di->di_flags & IMMUTABLE)
