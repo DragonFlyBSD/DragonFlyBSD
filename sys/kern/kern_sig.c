@@ -1395,7 +1395,10 @@ out:
 static void
 lwp_signotify(struct lwp *lp)
 {
+	thread_t dtd;
+
 	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_proc->p_token);
+	dtd = lp->lwp_thread;
 
 	crit_enter();
 	if (lp == lwkt_preempted_proc()) {
@@ -1408,7 +1411,7 @@ lwp_signotify(struct lwp *lp)
 		/*
 		 * lwp is sitting in tsleep() with PCATCH set
 		 */
-		if (lp->lwp_thread->td_gd == mycpu) {
+		if (dtd->td_gd == mycpu) {
 			setrunnable(lp);
 		} else {
 			/*
@@ -1418,14 +1421,13 @@ lwp_signotify(struct lwp *lp)
 			LWPHOLD(lp);
 			if (lp->lwp_stat == LSSTOP)
 				lp->lwp_stat = LSSLEEP;
-			lwkt_send_ipiq(lp->lwp_thread->td_gd,
-				       lwp_signotify_remote, lp);
+			lwkt_send_ipiq(dtd->td_gd, lwp_signotify_remote, lp);
 		}
-	} else if (lp->lwp_thread->td_flags & TDF_SINTR) {
+	} else if (dtd->td_flags & TDF_SINTR) {
 		/*
 		 * lwp is sitting in lwkt_sleep() with PCATCH set.
 		 */
-		if (lp->lwp_thread->td_gd == mycpu) {
+		if (dtd->td_gd == mycpu) {
 			setrunnable(lp);
 		} else {
 			/*
@@ -1435,15 +1437,25 @@ lwp_signotify(struct lwp *lp)
 			LWPHOLD(lp);
 			if (lp->lwp_stat == LSSTOP)
 				lp->lwp_stat = LSSLEEP;
-			lwkt_send_ipiq(lp->lwp_thread->td_gd,
-				       lwp_signotify_remote, lp);
+			lwkt_send_ipiq(dtd->td_gd, lwp_signotify_remote, lp);
 		}
 	} else {
 		/*
-		 * Otherwise the lwp is either in some uninterruptable state
+		 * Otherwise the lwp is either in some uninterruptible state
 		 * or it is on the userland scheduler's runqueue waiting to
-		 * be scheduled to a cpu.
+		 * be scheduled to a cpu, or it is running in userland.  We
+		 * generally want to send an IPI so a running target gets the
+		 * signal ASAP, otherwise a scheduler-tick worth of latency
+		 * will occur.
+		 *
+		 * Issue an IPI to the remote cpu to knock it into the kernel,
+		 * remote cpu will issue the cpu-local signotify() if the IPI
+		 * preempts the desired thread.
 		 */
+		if (dtd->td_gd != mycpu) {
+			LWPHOLD(lp);
+			lwkt_send_ipiq(dtd->td_gd, lwp_signotify_remote, lp);
+		}
 	}
 	crit_exit();
 }
