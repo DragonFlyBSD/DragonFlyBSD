@@ -144,63 +144,62 @@ AslDetectSourceFileType (
     ASL_FILE_INFO           *Info)
 {
     char                    *FileChar;
-    UINT8                   Type = ASL_INPUT_TYPE_ASCII_DATA; /* default */
+    UINT8                   Type;
     ACPI_STATUS             Status;
 
 
+    /* Check for a valid binary ACPI table */
+
+    Status = FlCheckForAcpiTable (Info->Handle);
+    if (ACPI_SUCCESS (Status))
+    {
+        Type = ASL_INPUT_TYPE_ACPI_TABLE;
+        goto Cleanup;
+    }
+
     /* Check for 100% ASCII source file (comments are ignored) */
 
-    Status = FlIsFileAsciiSource (Info->Filename, FALSE);
-    if (ACPI_SUCCESS (Status))
+    Status = FlCheckForAscii (Info->Filename, TRUE);
+    if (ACPI_FAILURE (Status))
     {
-        /*
-         * File contains ASCII source code. Determine if this is an ASL
-         * file or an ACPI data table file.
-         */
-        while (fgets (Gbl_CurrentLineBuffer, Gbl_LineBufferSize, Info->Handle))
+        printf ("Invalid characters in input file - %s\n", Info->Filename);
+
+        if (!Gbl_IgnoreErrors)
         {
-            /* Uppercase the buffer for caseless compare */
+            Type = ASL_INPUT_TYPE_BINARY;
+            goto Cleanup;
+        }
+    }
 
-            FileChar = Gbl_CurrentLineBuffer;
-            while (*FileChar)
-            {
-                *FileChar = (char) toupper ((int) *FileChar);
-                FileChar++;
-            }
+    /*
+     * File is ASCII. Determine if this is an ASL file or an ACPI data
+     * table file.
+     */
+    while (fgets (Gbl_CurrentLineBuffer, Gbl_LineBufferSize, Info->Handle))
+    {
+        /* Uppercase the buffer for caseless compare */
 
-            /* Presence of "DefinitionBlock" indicates actual ASL code */
-
-            if (strstr (Gbl_CurrentLineBuffer, "DEFINITIONBLOCK"))
-            {
-                /* Appears to be an ASL file */
-
-                Type = ASL_INPUT_TYPE_ASCII_ASL;
-                goto Cleanup;
-            }
+        FileChar = Gbl_CurrentLineBuffer;
+        while (*FileChar)
+        {
+            *FileChar = (char) toupper ((int) *FileChar);
+            FileChar++;
         }
 
-        /* Appears to be an ASCII data table source file */
+        /* Presence of "DefinitionBlock" indicates actual ASL code */
 
-        Type = ASL_INPUT_TYPE_ASCII_DATA;
-        goto Cleanup;
+        if (strstr (Gbl_CurrentLineBuffer, "DEFINITIONBLOCK"))
+        {
+            /* Appears to be an ASL file */
+
+            Type = ASL_INPUT_TYPE_ASCII_ASL;
+            goto Cleanup;
+        }
     }
 
-    /* We have some sort of binary table, check for valid ACPI table */
+    /* Not an ASL source file, default to a data table source file */
 
-    fseek (Info->Handle, 0, SEEK_SET);
-
-    Status = AcValidateTableHeader (Info->Handle, 0);
-    if (ACPI_SUCCESS (Status))
-    {
-        fprintf (stderr,
-            "Binary file appears to be a valid ACPI table, disassembling\n");
-
-        Type = ASL_INPUT_TYPE_BINARY_ACPI_TABLE;
-        goto Cleanup;
-    }
-
-    Type = ASL_INPUT_TYPE_BINARY;
-
+    Type = ASL_INPUT_TYPE_ASCII_DATA;
 
 Cleanup:
 
@@ -249,7 +248,7 @@ AslDoDisassembly (
 
     /* Handle additional output files for disassembler */
 
-    Gbl_FileType = ASL_INPUT_TYPE_BINARY_ACPI_TABLE;
+    Gbl_FileType = ASL_INPUT_TYPE_ACPI_TABLE;
     Status = FlOpenMiscOutputFiles (Gbl_OutputFilenamePrefix);
 
     /* This is where the disassembly happens */
@@ -455,7 +454,7 @@ AslDoOneFile (
     /*
      * Binary ACPI table was auto-detected, disassemble it
      */
-    case ASL_INPUT_TYPE_BINARY_ACPI_TABLE:
+    case ASL_INPUT_TYPE_ACPI_TABLE:
 
         /* We have what appears to be an ACPI table, disassemble it */
 

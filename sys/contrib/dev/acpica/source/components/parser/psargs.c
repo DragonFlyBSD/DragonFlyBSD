@@ -298,7 +298,7 @@ AcpiPsGetNextNamepath (
         PossibleMethodCall &&
         (Node->Type == ACPI_TYPE_METHOD))
     {
-        if (GET_CURRENT_ARG_TYPE (WalkState->ArgTypes) == ARGP_SUPERNAME)
+        if (WalkState->Opcode == AML_UNLOAD_OP)
         {
             /*
              * AcpiPsGetNextNamestring has increased the AML pointer,
@@ -744,7 +744,7 @@ AcpiPsGetNextField (
  *
  * PARAMETERS:  WalkState           - Current state
  *              ParserState         - Current parser state object
- *              ArgType             - The parser argument type (ARGP_*)
+ *              ArgType             - The argument type (AML_*_ARG)
  *              ReturnArg           - Where the next arg is returned
  *
  * RETURN:      Status, and an op object containing the next argument.
@@ -857,7 +857,6 @@ AcpiPsGetNextArg (
     case ARGP_TARGET:
     case ARGP_SUPERNAME:
     case ARGP_SIMPLENAME:
-    case ARGP_NAME_OR_REF:
 
         Subop = AcpiPsPeekOpcode (ParserState);
         if (Subop == 0                  ||
@@ -873,16 +872,15 @@ AcpiPsGetNextArg (
                 return_ACPI_STATUS (AE_NO_MEMORY);
             }
 
-            /* SuperName allows argument to be a method call */
+            /* To support SuperName arg of Unload */
 
-            if (ArgType == ARGP_SUPERNAME)
+            if (WalkState->Opcode == AML_UNLOAD_OP)
             {
-                Status = AcpiPsGetNextNamepath (WalkState, ParserState,
-                    Arg, ACPI_POSSIBLE_METHOD_CALL);
+                Status = AcpiPsGetNextNamepath (WalkState, ParserState, Arg, 1);
 
                 /*
-                 * If the SuperName argument is a method call, we have
-                 * already restored the AML pointer, just free this Arg
+                 * If the SuperName arg of Unload is a method call,
+                 * we have restored the AML pointer, just free this Arg
                  */
                 if (Arg->Common.AmlOpcode == AML_INT_METHODCALL_OP)
                 {
@@ -892,8 +890,7 @@ AcpiPsGetNextArg (
             }
             else
             {
-                Status = AcpiPsGetNextNamepath (WalkState, ParserState,
-                    Arg, ACPI_NOT_METHOD_CALL);
+                Status = AcpiPsGetNextNamepath (WalkState, ParserState, Arg, 0);
             }
         }
         else

@@ -86,8 +86,6 @@ ACPI_GLOBAL (UINT8,                     AcpiGbl_IntegerBitWidth);
 ACPI_GLOBAL (UINT8,                     AcpiGbl_IntegerByteWidth);
 ACPI_GLOBAL (UINT8,                     AcpiGbl_IntegerNybbleWidth);
 
-ACPI_INIT_GLOBAL (UINT8,                AcpiGbl_GroupModuleLevelCode, FALSE);
-
 
 /*****************************************************************************
  *
@@ -150,7 +148,6 @@ ACPI_GLOBAL (ACPI_CACHE_T *,            AcpiGbl_OperandCache);
 
 ACPI_INIT_GLOBAL (UINT32,               AcpiGbl_StartupFlags, 0);
 ACPI_INIT_GLOBAL (BOOLEAN,              AcpiGbl_Shutdown, TRUE);
-ACPI_INIT_GLOBAL (BOOLEAN,              AcpiGbl_EarlyInitialization, TRUE);
 
 /* Global handlers */
 
@@ -170,7 +167,7 @@ ACPI_GLOBAL (UINT8,                     AcpiGbl_NextOwnerIdOffset);
 
 /* Initialization sequencing */
 
-ACPI_INIT_GLOBAL (BOOLEAN,              AcpiGbl_RegMethodsEnabled, FALSE);
+ACPI_GLOBAL (BOOLEAN,                   AcpiGbl_RegMethodsExecuted);
 
 /* Misc */
 

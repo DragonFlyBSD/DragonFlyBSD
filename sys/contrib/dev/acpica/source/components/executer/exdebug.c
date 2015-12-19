@@ -96,20 +96,13 @@ AcpiExDoDebugObject (
         return_VOID;
     }
 
-    /* Null string or newline -- don't emit the line header */
-
-    if (SourceDesc &&
-        (ACPI_GET_DESCRIPTOR_TYPE (SourceDesc) == ACPI_DESC_TYPE_OPERAND) &&
-        (SourceDesc->Common.Type == ACPI_TYPE_STRING))
-    {
-        if ((SourceDesc->String.Length == 0) ||
-                ((SourceDesc->String.Length == 1) &&
-                (*SourceDesc->String.Pointer == '\n')))
-        {
-            AcpiOsPrintf ("\n");
-            return_VOID;
-        }
-    }
+    /*
+     * We will emit the current timer value (in microseconds) with each
+     * debug output. Only need the lower 26 bits. This allows for 67
+     * million microseconds or 67 seconds before rollover.
+     */
+    Timer = ((UINT32) AcpiOsGetTimer () / 10); /* (100 nanoseconds to microseconds) */
+    Timer &= 0x03FFFFFF;
 
     /*
      * Print line header as long as we are not in the middle of an
@@ -117,31 +110,14 @@ AcpiExDoDebugObject (
      */
     if (!((Level > 0) && Index == 0))
     {
-        if (AcpiGbl_DisplayDebugTimer)
-        {
-            /*
-             * We will emit the current timer value (in microseconds) with each
-             * debug output. Only need the lower 26 bits. This allows for 67
-             * million microseconds or 67 seconds before rollover.
-             *
-             * Convert 100 nanosecond units to microseconds
-             */
-            Timer = ((UINT32) AcpiOsGetTimer () / 10);
-            Timer &= 0x03FFFFFF;
-
-            AcpiOsPrintf ("[ACPI Debug T=0x%8.8X] %*s", Timer, Level, " ");
-        }
-        else
-        {
-            AcpiOsPrintf ("[ACPI Debug] %*s", Level, " ");
-        }
+        AcpiOsPrintf ("[ACPI Debug %.8u] %*s", Timer, Level, " ");
     }
 
     /* Display the index for package output only */
 
     if (Index > 0)
     {
-       AcpiOsPrintf ("(%.2u) ", Index - 1);
+       AcpiOsPrintf ("(%.2u) ", Index-1);
     }
 
     if (!SourceDesc)
@@ -152,13 +128,7 @@ AcpiExDoDebugObject (
 
     if (ACPI_GET_DESCRIPTOR_TYPE (SourceDesc) == ACPI_DESC_TYPE_OPERAND)
     {
-        /* No object type prefix needed for integers and strings */
-
-        if ((SourceDesc->Common.Type != ACPI_TYPE_INTEGER) &&
-            (SourceDesc->Common.Type != ACPI_TYPE_STRING))
-        {
-            AcpiOsPrintf ("%s  ", AcpiUtGetObjectTypeName (SourceDesc));
-        }
+        AcpiOsPrintf ("%s ", AcpiUtGetObjectTypeName (SourceDesc));
 
         if (!AcpiUtValidInternalObject (SourceDesc))
         {
@@ -168,7 +138,7 @@ AcpiExDoDebugObject (
     }
     else if (ACPI_GET_DESCRIPTOR_TYPE (SourceDesc) == ACPI_DESC_TYPE_NAMED)
     {
-        AcpiOsPrintf ("%s  (Node %p)\n",
+        AcpiOsPrintf ("%s: %p\n",
             AcpiUtGetTypeName (((ACPI_NAMESPACE_NODE *) SourceDesc)->Type),
                 SourceDesc);
         return_VOID;
@@ -208,12 +178,13 @@ AcpiExDoDebugObject (
 
     case ACPI_TYPE_STRING:
 
-        AcpiOsPrintf ("\"%s\"\n", SourceDesc->String.Pointer);
+        AcpiOsPrintf ("[0x%.2X] \"%s\"\n",
+            SourceDesc->String.Length, SourceDesc->String.Pointer);
         break;
 
     case ACPI_TYPE_PACKAGE:
 
-        AcpiOsPrintf ("(Contains 0x%.2X Elements):\n",
+        AcpiOsPrintf ("[Contains 0x%.2X Elements]\n",
             SourceDesc->Package.Count);
 
         /* Output the entire contents of the package */
@@ -292,10 +263,8 @@ AcpiExDoDebugObject (
             if (ACPI_GET_DESCRIPTOR_TYPE (SourceDesc->Reference.Object) ==
                 ACPI_DESC_TYPE_NAMED)
             {
-                /* Reference object is a namespace node */
-
-                AcpiExDoDebugObject (ACPI_CAST_PTR (ACPI_OPERAND_OBJECT,
-                    SourceDesc->Reference.Object),
+                AcpiExDoDebugObject (((ACPI_NAMESPACE_NODE *)
+                    SourceDesc->Reference.Object)->Object,
                     Level + 4, 0);
             }
             else
@@ -321,15 +290,8 @@ AcpiExDoDebugObject (
                 case ACPI_TYPE_PACKAGE:
 
                     AcpiOsPrintf ("Package[%u] = ", Value);
-                    if (!(*SourceDesc->Reference.Where))
-                    {
-                        AcpiOsPrintf ("[Uninitialized Package Element]\n");
-                    }
-                    else
-                    {
-                        AcpiExDoDebugObject (*SourceDesc->Reference.Where,
-                            Level+4, 0);
-                    }
+                    AcpiExDoDebugObject (*SourceDesc->Reference.Where,
+                        Level+4, 0);
                     break;
 
                 default:
@@ -344,7 +306,7 @@ AcpiExDoDebugObject (
 
     default:
 
-        AcpiOsPrintf ("(Descriptor %p)\n", SourceDesc);
+        AcpiOsPrintf ("%p\n", SourceDesc);
         break;
     }
 

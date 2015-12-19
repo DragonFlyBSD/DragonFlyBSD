@@ -336,7 +336,6 @@ FlOpenIncludeWithPrefix (
      */
     Gbl_CurrentLineNumber--;
     OriginalLineNumber = Gbl_CurrentLineNumber;
-
     while (DtGetNextLine (IncludeFile, DT_ALLOW_MULTILINE_QUOTES) != ASL_EOF)
     {
         if (Gbl_CurrentLineBuffer[0] == '#')
@@ -345,7 +344,6 @@ FlOpenIncludeWithPrefix (
                 Op, "use #include instead");
         }
     }
-
     Gbl_CurrentLineNumber = OriginalLineNumber;
 
     /* Must seek back to the start of the file */
@@ -572,7 +570,7 @@ FlOpenMiscOutputFiles (
 
     /* All done for disassembler */
 
-    if (Gbl_FileType == ASL_INPUT_TYPE_BINARY_ACPI_TABLE)
+    if (Gbl_FileType == ASL_INPUT_TYPE_ACPI_TABLE)
     {
         return (AE_OK);
     }

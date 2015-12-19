@@ -1124,7 +1124,7 @@ AcpiDbCommandDispatch (
         {
             ACPI_NEW_TABLE_DESC     *ListHead = NULL;
 
-            Status = AcGetAllTablesFromFile (AcpiGbl_DbArgs[1],
+            Status = AcpiAcGetAllTablesFromFile (AcpiGbl_DbArgs[1],
                 ACPI_GET_ALL_TABLES, &ListHead);
             if (ACPI_SUCCESS (Status))
             {

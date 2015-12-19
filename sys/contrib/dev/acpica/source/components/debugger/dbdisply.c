@@ -48,7 +48,6 @@
 #include "acnamesp.h"
 #include "acparser.h"
 #include "acinterp.h"
-#include "acevents.h"
 #include "acdebug.h"
 
 
@@ -1037,21 +1036,26 @@ AcpiDbDisplayHandlers (
         for (i = 0; i < ACPI_ARRAY_LENGTH (AcpiGbl_SpaceIdList); i++)
         {
             SpaceId = AcpiGbl_SpaceIdList[i];
+            HandlerObj = ObjDesc->Device.Handler;
 
             AcpiOsPrintf (ACPI_PREDEFINED_PREFIX,
                 AcpiUtGetRegionName ((UINT8) SpaceId), SpaceId);
 
-            HandlerObj = AcpiEvFindRegionHandler (
-                SpaceId, ObjDesc->CommonNotify.Handler);
-            if (HandlerObj)
+            while (HandlerObj)
             {
-                AcpiOsPrintf (ACPI_HANDLER_PRESENT_STRING,
-                    (HandlerObj->AddressSpace.HandlerFlags &
-                        ACPI_ADDR_HANDLER_DEFAULT_INSTALLED) ?
-                        "Default" : "User",
-                    HandlerObj->AddressSpace.Handler);
+                if (AcpiGbl_SpaceIdList[i] ==
+                    HandlerObj->AddressSpace.SpaceId)
+                {
+                    AcpiOsPrintf (ACPI_HANDLER_PRESENT_STRING,
+                        (HandlerObj->AddressSpace.HandlerFlags &
+                            ACPI_ADDR_HANDLER_DEFAULT_INSTALLED) ?
+                            "Default" : "User",
+                        HandlerObj->AddressSpace.Handler);
 
-                goto FoundHandler;
+                    goto FoundHandler;
+                }
+
+                HandlerObj = HandlerObj->AddressSpace.Next;
             }
 
             /* There is no handler for this SpaceId */
@@ -1063,7 +1067,7 @@ AcpiDbDisplayHandlers (
 
         /* Find all handlers for user-defined SpaceIDs */
 
-        HandlerObj = ObjDesc->CommonNotify.Handler;
+        HandlerObj = ObjDesc->Device.Handler;
         while (HandlerObj)
         {
             if (HandlerObj->AddressSpace.SpaceId >= ACPI_USER_REGION_BEGIN)
@@ -1174,7 +1178,7 @@ AcpiDbDisplayNonRootHandlers (
 
     /* Display all handlers associated with this device */
 
-    HandlerObj = ObjDesc->CommonNotify.Handler;
+    HandlerObj = ObjDesc->Device.Handler;
     while (HandlerObj)
     {
         AcpiOsPrintf (ACPI_PREDEFINED_PREFIX,

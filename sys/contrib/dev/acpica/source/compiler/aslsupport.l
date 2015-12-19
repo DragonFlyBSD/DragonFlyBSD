@@ -196,13 +196,9 @@ AslPopInputFileStack (
     ASL_FILE_NODE           *Fnode;
 
 
-    Gbl_PreviousIncludeFilename = Gbl_Files[ASL_FILE_INPUT].Filename;
     Fnode = Gbl_IncludeFileStack;
     DbgPrint (ASL_PARSE_OUTPUT,
-        "\nPop InputFile Stack, Fnode %p\n", Fnode);
-
-    DbgPrint (ASL_PARSE_OUTPUT,
-        "Include: Closing \"%s\"\n\n", Gbl_Files[ASL_FILE_INPUT].Filename);
+        "\nPop InputFile Stack, Fnode %p\n\n", Fnode);
 
     if (!Fnode)
     {

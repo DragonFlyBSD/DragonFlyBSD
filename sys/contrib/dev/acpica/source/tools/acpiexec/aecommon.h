@@ -113,10 +113,6 @@ ACPI_STATUS
 AeInstallTables (
     void);
 
-ACPI_STATUS
-AeLoadTables (
-    void);
-
 void
 AeDumpNamespace (
     void);
