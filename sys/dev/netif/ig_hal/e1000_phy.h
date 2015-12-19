@@ -117,7 +117,8 @@ s32  e1000_get_cable_length_82577(struct e1000_hw *hw);
 s32  e1000_write_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data);
 s32 e1000_read_phy_reg_mphy(struct e1000_hw *hw, u32 address, u32 *data);
-s32 e1000_write_phy_reg_mphy(struct e1000_hw *hw, u32 address, u32 data);
+s32 e1000_write_phy_reg_mphy(struct e1000_hw *hw, u32 address, u32 data,
+			     bool line_override);
 bool e1000_is_mphy_ready(struct e1000_hw *hw);
 
 #define E1000_MAX_PHY_ADDR		8
@@ -223,10 +224,11 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 
 #define E1000_82580_PM_GO_LINKD		0x0020 /* Go Link Disconnect */
 
-#define E1000_MPHY_DIS_ACCESS	0x80000000 /* disable_access bit */
-#define E1000_MPHY_ENA_ACCESS	0x40000000 /* enable_access bit */
-#define E1000_MPHY_BUSY		0x00010000 /* busy bit */
-#define E1000_MPHY_ADDRESS_MASK	0x0000FFFF /* address bit mask */
+#define E1000_MPHY_DIS_ACCESS		0x80000000 /* disable_access bit */
+#define E1000_MPHY_ENA_ACCESS		0x40000000 /* enable_access bit */
+#define E1000_MPHY_BUSY			0x00010000 /* busy bit */
+#define E1000_MPHY_ADDRESS_FNC_OVERRIDE	0x20000000 /* fnc_override bit */
+#define E1000_MPHY_ADDRESS_MASK		0x0000FFFF /* address mask */
 
 #define IGP01E1000_PHY_PCS_INIT_REG	0x00B4
 #define IGP01E1000_PHY_POLARITY_MASK	0x0078
@@ -275,6 +277,17 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define E1000_KMRNCTRLSTA_K1_CONFIG	0x7
 #define E1000_KMRNCTRLSTA_K1_ENABLE	0x0002 /* enable K1 */
 #define E1000_KMRNCTRLSTA_HD_CTRL	0x10   /* Kumeran HD Control */
+#if !defined(EXTERNAL_RELEASE) || defined(ULP_IN_D0_SUPPORT)
+#define E1000_KMRNCTRLSTA_K0S_CTRL	0x1E	/* Kumeran K0s Control */
+#define E1000_KMRNCTRLSTA_K0S_CTRL_ENTRY_LTNCY_SHIFT	0
+#define E1000_KMRNCTRLSTA_K0S_CTRL_MIN_TIME_SHIFT	4
+#define E1000_KMRNCTRLSTA_K0S_CTRL_ENTRY_LTNCY_MASK	\
+	(3 << E1000_KMRNCTRLSTA_K0S_CTRL_ENTRY_LTNCY_SHIFT)
+#define E1000_KMRNCTRLSTA_K0S_CTRL_MIN_TIME_MASK \
+	(7 << E1000_KMRNCTRLSTA_K0S_CTRL_MIN_TIME_SHIFT)
+#define E1000_KMRNCTRLSTA_OP_MODES	0x1F   /* Kumeran Modes of Operation */
+#define E1000_KMRNCTRLSTA_OP_MODES_LSC2CSC	0x0002 /* change LSC to CSC */
+#endif /* !EXTERNAL_RELEASE || ULP_IN_D0_SUPPORT */
 
 #define IFE_PHY_EXTENDED_STATUS_CONTROL	0x10
 #define IFE_PHY_SPECIAL_CONTROL		0x11 /* 100BaseTx PHY Special Ctrl */

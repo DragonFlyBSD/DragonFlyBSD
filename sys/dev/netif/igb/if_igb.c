@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2011, Intel Corporation 
+ * Copyright (c) 2001-2013, Intel Corporation 
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without 
@@ -130,6 +130,7 @@ static struct igb_device {
 	IGB_DEVICE(I210_SGMII),
 	IGB_DEVICE(I211_COPPER),
 	IGB_DEVICE(I354_BACKPLANE_1GBPS),
+	IGB_DEVICE(I354_BACKPLANE_2_5GBPS),
 	IGB_DEVICE(I354_SGMII),
 
 	/* required last entry */
@@ -165,12 +166,13 @@ static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
 
 static void	igb_vf_init_stats(struct igb_softc *);
-static void	igb_reset(struct igb_softc *);
+static void	igb_reset(struct igb_softc *, boolean_t);
 static void	igb_update_stats_counters(struct igb_softc *);
 static void	igb_update_vf_stats_counters(struct igb_softc *);
 static void	igb_update_link_status(struct igb_softc *);
 static void	igb_init_tx_unit(struct igb_softc *);
 static void	igb_init_rx_unit(struct igb_softc *);
+static void	igb_init_dmac(struct igb_softc *, uint32_t);
 
 static void	igb_set_vlan(struct igb_softc *);
 static void	igb_set_multi(struct igb_softc *);
@@ -398,6 +400,9 @@ igb_attach(device_t dev)
 	    device_get_unit(dev));
 	sc->dev = sc->osdep.dev = dev;
 
+	/* Enable bus mastering */
+	pci_enable_busmaster(dev);
+
 	/*
 	 * Determine hardware and mac type
 	 */
@@ -472,9 +477,6 @@ igb_attach(device_t dev)
 	device_getenv_string(dev, "flow_ctrl", flowctrl, sizeof(flowctrl),
 	    igb_flowctrl);
 	sc->ifm_flowctrl = ifmedia_str2ethfc(flowctrl);
-
-	/* Enable bus mastering */
-	pci_enable_busmaster(dev);
 
 	/*
 	 * Allocate IO memory
@@ -598,9 +600,9 @@ igb_attach(device_t dev)
 #endif
 		if (sc->hw.phy.media_type == e1000_media_type_copper) {
                         if (sc->hw.mac.type == e1000_i354)
-				e1000_set_eee_i354(&sc->hw);
+				e1000_set_eee_i354(&sc->hw, TRUE, TRUE);
 			else
-				e1000_set_eee_i350(&sc->hw);
+				e1000_set_eee_i350(&sc->hw, TRUE, TRUE);
 		}
 	}
 
@@ -646,7 +648,7 @@ igb_attach(device_t dev)
 	igb_add_sysctl(sc);
 
 	/* Now get a good starting state */
-	igb_reset(sc);
+	igb_reset(sc, FALSE);
 
 	/* Initialize statistics */
 	igb_update_stats_counters(sc);
@@ -939,7 +941,7 @@ igb_init(void *xsc)
 	/* Put the address into the Receive Address Array */
 	e1000_rar_set(&sc->hw, sc->hw.mac.addr, 0);
 
-	igb_reset(sc);
+	igb_reset(sc, FALSE);
 	igb_update_link_status(sc);
 
 	E1000_WRITE_REG(&sc->hw, E1000_VET, ETHERTYPE_VLAN);
@@ -1028,9 +1030,9 @@ igb_init(void *xsc)
 	/* Set Energy Efficient Ethernet */
 	if (sc->hw.phy.media_type == e1000_media_type_copper) {
 		if (sc->hw.mac.type == e1000_i354)
-			e1000_set_eee_i354(&sc->hw);
+			e1000_set_eee_i354(&sc->hw, TRUE, TRUE);
 		else
-			e1000_set_eee_i350(&sc->hw);
+			e1000_set_eee_i350(&sc->hw, TRUE, TRUE);
 	}
 }
 
@@ -1083,6 +1085,10 @@ igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 			ifmr->ifm_active |= IFM_1000_SX;
 		else
 			ifmr->ifm_active |= IFM_1000_T;
+		break;
+
+	case 2500:
+		ifmr->ifm_active |= IFM_2500_SX;
 		break;
 	}
 
@@ -1349,6 +1355,14 @@ igb_update_link_status(struct igb_softc *sc)
 		     hw->mac.type == e1000_i211) &&
 		    hw->phy.id == I210_I_PHY_ID)
 			msec_delay(IGB_I210_LINK_DELAY);
+		/*
+		 * Reset if the media type changed.
+		 * Support AutoMediaDetect for Marvell M88 PHY in i354.
+		 */
+		if (hw->dev_spec._82575.media_changed) {
+			hw->dev_spec._82575.media_changed = FALSE;
+			igb_reset(sc, TRUE);
+		}
 		/* This can sleep */
 		ifp->if_link_state = LINK_STATE_UP;
 		if_link_state_change(ifp);
@@ -1399,7 +1413,7 @@ igb_stop(struct igb_softc *sc)
 }
 
 static void
-igb_reset(struct igb_softc *sc)
+igb_reset(struct igb_softc *sc, boolean_t media_reset)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct e1000_hw *hw = &sc->hw;
@@ -1497,73 +1511,18 @@ igb_reset(struct igb_softc *sc)
 	e1000_reset_hw(hw);
 	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
+	/* Reset for AutoMediaDetect */
+	if (media_reset) {
+		e1000_setup_init_funcs(hw, TRUE);
+		e1000_get_bus_info(hw);
+	}
+
 	if (e1000_init_hw(hw) < 0)
 		if_printf(ifp, "Hardware Initialization Failed\n");
 
 	/* Setup DMA Coalescing */
-	if (hw->mac.type > e1000_82580 && hw->mac.type != e1000_i211) {
-		uint32_t dmac;
-		uint32_t reg;
+	igb_init_dmac(sc, pba);
 
-		if (sc->dma_coalesce == 0) {
-			/*
-			 * Disabled
-			 */
-			reg = E1000_READ_REG(hw, E1000_DMACR);
-			reg &= ~E1000_DMACR_DMAC_EN;
-			E1000_WRITE_REG(hw, E1000_DMACR, reg);
-			goto reset_out;
-		}
-
-		/* Set starting thresholds */
-		E1000_WRITE_REG(hw, E1000_DMCTXTH, 0);
-		E1000_WRITE_REG(hw, E1000_DMCRTRH, 0);
-
-		hwm = 64 * pba - sc->max_frame_size / 16;
-		if (hwm < 64 * (pba - 6))
-			hwm = 64 * (pba - 6);
-		reg = E1000_READ_REG(hw, E1000_FCRTC);
-		reg &= ~E1000_FCRTC_RTH_COAL_MASK;
-		reg |= ((hwm << E1000_FCRTC_RTH_COAL_SHIFT)
-		    & E1000_FCRTC_RTH_COAL_MASK);
-		E1000_WRITE_REG(hw, E1000_FCRTC, reg);
-
-		dmac = pba - sc->max_frame_size / 512;
-		if (dmac < pba - 10)
-			dmac = pba - 10;
-		reg = E1000_READ_REG(hw, E1000_DMACR);
-		reg &= ~E1000_DMACR_DMACTHR_MASK;
-		reg |= ((dmac << E1000_DMACR_DMACTHR_SHIFT)
-		    & E1000_DMACR_DMACTHR_MASK);
-		/* Transition to L0x or L1 if available.. */
-		reg |= (E1000_DMACR_DMAC_EN | E1000_DMACR_DMAC_LX_MASK);
-		/* timer = value in sc->dma_coalesce in 32usec intervals */
-		reg |= (sc->dma_coalesce >> 5);
-		E1000_WRITE_REG(hw, E1000_DMACR, reg);
-
-		/* Set the interval before transition */
-		reg = E1000_READ_REG(hw, E1000_DMCTLX);
-		reg |= 0x80000004;
-		E1000_WRITE_REG(hw, E1000_DMCTLX, reg);
-
-		/* Free space in tx packet buffer to wake from DMA coal */
-		E1000_WRITE_REG(hw, E1000_DMCTXTH,
-		    (20480 - (2 * sc->max_frame_size)) >> 6);
-
-		/* Make low power state decision controlled by DMA coal */
-		reg = E1000_READ_REG(hw, E1000_PCIEMISC);
-		reg &= ~E1000_PCIEMISC_LX_DECISION;
-		E1000_WRITE_REG(hw, E1000_PCIEMISC, reg);
-		if_printf(ifp, "DMA Coalescing enabled\n");
-	} else if (hw->mac.type == e1000_82580) {
-		uint32_t reg = E1000_READ_REG(hw, E1000_PCIEMISC);
-
-		E1000_WRITE_REG(hw, E1000_DMACR, 0);
-		E1000_WRITE_REG(hw, E1000_PCIEMISC,
-		    reg & ~E1000_PCIEMISC_LX_DECISION);
-	}
-
-reset_out:
 	E1000_WRITE_REG(&sc->hw, E1000_VET, ETHERTYPE_VLAN);
 	e1000_get_phy_info(hw);
 	e1000_check_for_link(hw);
@@ -4900,4 +4859,109 @@ igb_set_timer_cpuid(struct igb_softc *sc, boolean_t polling)
 		sc->timer_cpuid = 0; /* XXX fixed */
 	else
 		sc->timer_cpuid = rman_get_cpuid(sc->intr_data[0].intr_res);
+}
+
+static void
+igb_init_dmac(struct igb_softc *sc, uint32_t pba)
+{
+	struct e1000_hw *hw = &sc->hw;
+	uint32_t reg;
+
+	if (hw->mac.type == e1000_i211)
+		return;
+
+	if (hw->mac.type > e1000_82580) {
+		uint32_t dmac;
+		uint16_t hwm;
+
+		if (sc->dma_coalesce == 0) { /* Disabling it */
+			reg = ~E1000_DMACR_DMAC_EN;
+			E1000_WRITE_REG(hw, E1000_DMACR, reg);
+			return;
+		} else {
+			if_printf(&sc->arpcom.ac_if,
+			    "DMA Coalescing enabled\n");
+		}
+
+		/* Set starting threshold */
+		E1000_WRITE_REG(hw, E1000_DMCTXTH, 0);
+
+		hwm = 64 * pba - sc->max_frame_size / 16;
+		if (hwm < 64 * (pba - 6))
+			hwm = 64 * (pba - 6);
+		reg = E1000_READ_REG(hw, E1000_FCRTC);
+		reg &= ~E1000_FCRTC_RTH_COAL_MASK;
+		reg |= ((hwm << E1000_FCRTC_RTH_COAL_SHIFT)
+		    & E1000_FCRTC_RTH_COAL_MASK);
+		E1000_WRITE_REG(hw, E1000_FCRTC, reg);
+
+		dmac = pba - sc->max_frame_size / 512;
+		if (dmac < pba - 10)
+			dmac = pba - 10;
+		reg = E1000_READ_REG(hw, E1000_DMACR);
+		reg &= ~E1000_DMACR_DMACTHR_MASK;
+		reg |= ((dmac << E1000_DMACR_DMACTHR_SHIFT)
+		    & E1000_DMACR_DMACTHR_MASK);
+
+		/* transition to L0x or L1 if available..*/
+		reg |= (E1000_DMACR_DMAC_EN | E1000_DMACR_DMAC_LX_MASK);
+
+		/*
+		 * Check if status is 2.5Gb backplane connection
+		 * before configuration of watchdog timer, which
+		 * is in msec values in 12.8usec intervals watchdog
+		 * timer = msec values in 32usec intervals for non
+		 * 2.5Gb connection.
+		 */
+		if (hw->mac.type == e1000_i354) {
+			int status = E1000_READ_REG(hw, E1000_STATUS);
+
+			if ((status & E1000_STATUS_2P5_SKU) &&
+			    !(status & E1000_STATUS_2P5_SKU_OVER))
+				reg |= ((sc->dma_coalesce * 5) >> 6);
+			else
+				reg |= (sc->dma_coalesce >> 5);
+		} else {
+			reg |= (sc->dma_coalesce >> 5);
+		}
+
+		E1000_WRITE_REG(hw, E1000_DMACR, reg);
+
+		E1000_WRITE_REG(hw, E1000_DMCRTRH, 0);
+
+		/* Set the interval before transition */
+		reg = E1000_READ_REG(hw, E1000_DMCTLX);
+		if (hw->mac.type == e1000_i350)
+			reg |= IGB_DMCTLX_DCFLUSH_DIS;
+		/*
+		 * In 2.5Gb connection, TTLX unit is 0.4 usec, which
+		 * is 0x4*2 = 0xA.  But delay is still 4 usec.
+		 */
+		if (hw->mac.type == e1000_i354) {
+			int status = E1000_READ_REG(hw, E1000_STATUS);
+
+			if ((status & E1000_STATUS_2P5_SKU) &&
+			    !(status & E1000_STATUS_2P5_SKU_OVER))
+				reg |= 0xA;
+			else
+				reg |= 0x4;
+		} else {
+			reg |= 0x4;
+		}
+		E1000_WRITE_REG(hw, E1000_DMCTLX, reg);
+
+		/* Free space in tx packet buffer to wake from DMA coal */
+		E1000_WRITE_REG(hw, E1000_DMCTXTH,
+		    (IGB_TXPBSIZE - (2 * sc->max_frame_size)) >> 6);
+
+		/* Make low power state decision controlled by DMA coal */
+		reg = E1000_READ_REG(hw, E1000_PCIEMISC);
+		reg &= ~E1000_PCIEMISC_LX_DECISION;
+		E1000_WRITE_REG(hw, E1000_PCIEMISC, reg);
+	} else if (hw->mac.type == e1000_82580) {
+		reg = E1000_READ_REG(hw, E1000_PCIEMISC);
+		E1000_WRITE_REG(hw, E1000_PCIEMISC,
+		    reg & ~E1000_PCIEMISC_LX_DECISION);
+		E1000_WRITE_REG(hw, E1000_DMACR, 0);
+	}
 }

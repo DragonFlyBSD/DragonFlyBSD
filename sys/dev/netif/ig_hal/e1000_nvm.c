@@ -779,6 +779,12 @@ s32 e1000_read_pba_string_generic(struct e1000_hw *hw, u8 *pba_num,
 
 	DEBUGFUNC("e1000_read_pba_string_generic");
 
+	if ((hw->mac.type >= e1000_i210) &&
+	    !e1000_get_flash_presence_i210(hw)) {
+		DEBUGOUT("Flashless no PBA string\n");
+		return -E1000_ERR_NVM_PBA_SECTION;
+	}
+
 	if (pba_num == NULL) {
 		DEBUGOUT("PBA string buffer was null\n");
 		return -E1000_ERR_INVALID_ARGUMENT;
@@ -1282,7 +1288,6 @@ void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 	/* basic eeprom version numbers, bits used vary by part and by tool
 	 * used to create the nvm images */
 	/* Check which data format we have */
-	hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
 	switch (hw->mac.type) {
 	case e1000_i211:
 		e1000_read_invm_version(hw, fw_vers);
@@ -1290,6 +1295,7 @@ void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 	case e1000_82575:
 	case e1000_82576:
 	case e1000_82580:
+		hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
 		/* Use this format, unless EETRACK ID exists,
 		 * then use alternate format
 		 */
@@ -1304,7 +1310,13 @@ void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 		}
 		break;
 	case e1000_i210:
+		if (!(e1000_get_flash_presence_i210(hw))) {
+			e1000_read_invm_version(hw, fw_vers);
+			return;
+		}
+		/* fall through */
 	case e1000_i350:
+		hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
 		/* find combo image version */
 		hw->nvm.ops.read(hw, NVM_COMB_VER_PTR, 1, &comb_offset);
 		if ((comb_offset != 0x0) &&
@@ -1332,6 +1344,7 @@ void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 		}
 		break;
 	default:
+		hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
 		return;
 	}
 	hw->nvm.ops.read(hw, NVM_VERSION, 1, &fw_version);
@@ -1360,8 +1373,12 @@ etrack_id:
 		hw->nvm.ops.read(hw, (NVM_ETRACK_WORD + 1), 1, &eeprom_verh);
 		fw_vers->etrack_id = (eeprom_verh << NVM_ETRACK_SHIFT)
 			| eeprom_verl;
+	} else if ((etrack_test & NVM_ETRACK_VALID) == 0) {
+		hw->nvm.ops.read(hw, NVM_ETRACK_WORD, 1, &eeprom_verh);
+		hw->nvm.ops.read(hw, (NVM_ETRACK_WORD + 1), 1, &eeprom_verl);
+		fw_vers->etrack_id = (eeprom_verh << NVM_ETRACK_SHIFT) |
+				     eeprom_verl;
 	}
-	return;
 }
 
 

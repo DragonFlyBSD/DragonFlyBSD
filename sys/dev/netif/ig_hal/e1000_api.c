@@ -360,6 +360,7 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 
 	case E1000_DEV_ID_I354_BACKPLANE_1GBPS:
 	case E1000_DEV_ID_I354_SGMII:
+	case E1000_DEV_ID_I354_BACKPLANE_2_5GBPS:
 		mac->type = e1000_i354;
 		break;
 	default:

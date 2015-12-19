@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2011, Intel Corporation 
+  Copyright (c) 2001-2013, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -49,7 +49,7 @@ static s32 e1000_get_link_up_info_vf(struct e1000_hw *hw, u16 *speed,
 static s32 e1000_init_hw_vf(struct e1000_hw *hw);
 static s32 e1000_reset_hw_vf(struct e1000_hw *hw);
 static void e1000_update_mc_addr_list_vf(struct e1000_hw *hw, u8 *, u32);
-static int e1000_rar_set_vf(struct e1000_hw *, u8 *, u32);
+static int  e1000_rar_set_vf(struct e1000_hw *, u8 *, u32);
 static s32 e1000_read_mac_addr_vf(struct e1000_hw *);
 
 /**
@@ -321,7 +321,7 @@ static s32 e1000_init_hw_vf(struct e1000_hw *hw)
  *  @index receive address array register
  **/
 static int e1000_rar_set_vf(struct e1000_hw *hw, u8 *addr,
-			    u32 E1000_UNUSEDARG index)
+			     u32 E1000_UNUSEDARG index)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[3];

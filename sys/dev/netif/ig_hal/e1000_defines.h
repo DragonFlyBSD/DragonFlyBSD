@@ -175,6 +175,7 @@
 #define E1000_CTRL_EXT_IPS	0x00004000 /* Invert Power State */
 /* Physical Func Reset Done Indication */
 #define E1000_CTRL_EXT_PFRSTD	0x00004000
+#define E1000_CTRL_EXT_SDLPE	0X00040000  /* SerDes Low Power Enable */
 #define E1000_CTRL_EXT_SPD_BYPS	0x00008000 /* Speed Select Bypass */
 #define E1000_CTRL_EXT_RO_DIS	0x00020000 /* Relaxed Ordering disable */
 #define E1000_CTRL_EXT_DMA_DYN_CLK_EN	0x00080000 /* DMA Dynamic Clk Gating */
@@ -365,6 +366,7 @@
 #define E1000_RCTL_RDMTS_HALF	0x00000000 /* Rx desc min thresh size */
 #define E1000_RCTL_RDMTS_QUAT	0x00000100 /* Rx desc min thresh size */
 #define E1000_RCTL_RDMTS_EIGTH	0x00000200 /* Rx desc min thresh size */
+#define E1000_RCTL_RDMTS_HEX	0x00010000
 #define E1000_RCTL_MO_SHIFT	12 /* multicast offset shift */
 #define E1000_RCTL_MO_0		0x00000000 /* multicast offset 11:0 */
 #define E1000_RCTL_MO_1		0x00001000 /* multicast offset 12:1 */
@@ -490,7 +492,10 @@
 
 #define E1000_CONNSW_ENRGSRC		0x4
 #define E1000_CONNSW_PHYSD		0x400
+#define E1000_CONNSW_PHY_PDN		0x800
 #define E1000_CONNSW_SERDESD		0x200
+#define E1000_CONNSW_AUTOSENSE_CONF	0x2
+#define E1000_CONNSW_AUTOSENSE_EN	0x1
 #define E1000_PCS_CFG_PCS_EN		8
 #define E1000_PCS_LCTL_FLV_LINK_UP	1
 #define E1000_PCS_LCTL_FSV_10		0
@@ -545,6 +550,8 @@
 #define E1000_STATUS_MTXCKOK		0x00000400 /* MTX clock running OK */
 #define E1000_STATUS_PCI66		0x00000800 /* In 66Mhz slot */
 #define E1000_STATUS_BUS64		0x00001000 /* In 64 bit slot */
+#define E1000_STATUS_2P5_SKU		0x00001000 /* Val of 2.5GBE SKU strap */
+#define E1000_STATUS_2P5_SKU_OVER	0x00002000 /* Val of 2.5GBE SKU Over */
 #define E1000_STATUS_PCIX_MODE		0x00002000 /* PCI-X mode */
 #define E1000_STATUS_PCIX_SPEED		0x0000C000 /* PCI-X bus speed */
 #define E1000_STATUS_BMC_SKU_0		0x00100000 /* BMC USB redirect disbld */
@@ -567,6 +574,7 @@
 #define SPEED_10	10
 #define SPEED_100	100
 #define SPEED_1000	1000
+#define SPEED_2500	2500
 #define HALF_DUPLEX	1
 #define FULL_DUPLEX	2
 
@@ -836,6 +844,7 @@
 #define E1000_ICR_ACK		0x00020000 /* Receive Ack frame */
 #define E1000_ICR_MNG		0x00040000 /* Manageability event */
 #define E1000_ICR_DOCK		0x00080000 /* Dock/Undock */
+#define E1000_ICR_ECCER		0x00400000 /* Uncorrectable ECC Error */
 #define E1000_ICR_TS		0x00080000 /* Time Sync Interrupt */
 #define E1000_ICR_DRSTA		0x40000000 /* Device Reset Asserted */
 #define E1000_ICR_ECCER		0x00400000 /* Uncorrectable ECC Error */
@@ -936,6 +945,7 @@
 #define E1000_IMS_ACK		E1000_ICR_ACK     /* Receive Ack frame */
 #define E1000_IMS_MNG		E1000_ICR_MNG     /* Manageability event */
 #define E1000_IMS_DOCK		E1000_ICR_DOCK    /* Dock/Undock */
+#define E1000_IMS_ECCER		E1000_ICR_ECCER   /* Uncorrectable ECC Error */
 #define E1000_IMS_TS		E1000_ICR_TS      /* Time Sync Interrupt */
 #define E1000_IMS_DRSTA		E1000_ICR_DRSTA   /* Device Reset Asserted */
 /* Q0 Rx desc FIFO parity error */
@@ -1028,6 +1038,7 @@
 #define E1000_EITR_ITR_INT_MASK	0x0000FFFF
 /* E1000_EITR_CNT_IGNR is only for 82576 and newer */
 #define E1000_EITR_CNT_IGNR	0x80000000 /* Don't reset counters on write */
+#define E1000_EITR_INTERVAL 0x00007FFC
 
 /* Transmit Descriptor Control */
 #define E1000_TXDCTL_PTHRESH	0x0000003F /* TXDCTL Prefetch Threshold */
@@ -1194,14 +1205,17 @@
 #define E1000_MDICNFG_COM_MDIO		0x40000000 /* MDI shared w/ lan 0 */
 #define E1000_MDICNFG_PHY_MASK		0x03E00000
 #define E1000_MDICNFG_PHY_SHIFT		21
-#define E1000_MEDIA_PORT_COPPER		1
-#define E1000_MEDIA_PORT_OTHER		2
-#define E1000_M88E1112_AUTO_A		0x010 /* Auto Copper/SGMII Mode */
-#define E1000_M88E1112_AUTO_B		0x011 /* Auto Copper/1000 Base X Mode */
-#define E1000_M88E1112_STATUS_LINK	0x0004 /* Interface Link Bit */
-#define E1000_M88E1112_MAC_CTRL_1	0x10 /* MAC Specific Control 1 */
-#define E1000_M88E1112_PAGE_ADDR	0x16
-#define E1000_M88E1112_STATUS		0x01
+
+#define E1000_MEDIA_PORT_COPPER			1
+#define E1000_MEDIA_PORT_OTHER			2
+#define E1000_M88E1112_AUTO_COPPER_SGMII	0x2
+#define E1000_M88E1112_AUTO_COPPER_BASEX	0x3
+#define E1000_M88E1112_STATUS_LINK		0x0004 /* Interface Link Bit */
+#define E1000_M88E1112_MAC_CTRL_1		0x10
+#define E1000_M88E1112_MAC_CTRL_1_MODE_MASK	0x0380 /* Mode Select */
+#define E1000_M88E1112_MAC_CTRL_1_MODE_SHIFT	7
+#define E1000_M88E1112_PAGE_ADDR		0x16
+#define E1000_M88E1112_STATUS			0x01
 
 #define E1000_THSTAT_LOW_EVENT		0x20000000 /* Low thermal threshold */
 #define E1000_THSTAT_MID_EVENT		0x00200000 /* Mid thermal threshold */
@@ -1220,9 +1234,9 @@
 #define E1000_EEER_RX_LPI_STATUS	0x40000000 /* Rx in LPI state */
 #define E1000_EEER_TX_LPI_STATUS	0x80000000 /* Tx in LPI state */
 #define E1000_EEE_LP_ADV_ADDR_I350	0x040F     /* EEE LP Advertisement */
-#define E1000_M88E1545_PAGE_ADDR	0x16       /* Page Offset Register */
-#define E1000_M88E1545_EEE_CTRL_1	0x0
-#define E1000_M88E1545_EEE_CTRL_1_MS	0x0001     /* EEE Master/Slave */
+#define E1000_M88E1543_PAGE_ADDR	0x16       /* Page Offset Register */
+#define E1000_M88E1543_EEE_CTRL_1	0x0
+#define E1000_M88E1543_EEE_CTRL_1_MS	0x0001     /* EEE Master/Slave */
 #define E1000_EEE_ADV_DEV_I354		7
 #define E1000_EEE_ADV_ADDR_I354		60
 #define E1000_EEE_ADV_100_SUPPORTED	(1 << 1)   /* 100BaseTx EEE Supported */
@@ -1232,6 +1246,10 @@
 #define E1000_PCS_STATUS_TX_LPI_IND	0x0200     /* Tx in LPI state */
 #define E1000_PCS_STATUS_RX_LPI_RCVD	0x0400
 #define E1000_PCS_STATUS_TX_LPI_RCVD	0x0800
+#define E1000_M88E1512_CFG_REG_1	0x0010
+#define E1000_M88E1512_CFG_REG_2	0x0011
+#define E1000_M88E1512_CFG_REG_3	0x0007
+#define E1000_M88E1512_MODE		0x0014
 #define E1000_EEE_SU_LPI_CLK_STP	0x00800000 /* EEE LPI Clock Stop */
 #define E1000_EEE_LP_ADV_DEV_I210	7          /* EEE LP Adv Device */
 #define E1000_EEE_LP_ADV_ADDR_I210	61         /* EEE LP Adv Register */
@@ -1643,7 +1661,8 @@
 #define IGP01E1000_I_PHY_ID	0x02A80380
 #define M88E1011_I_REV_4	0x04
 #define M88E1111_I_PHY_ID	0x01410CC0
-#define M88E1545_E_PHY_ID	0x01410EA0
+#define M88E1543_E_PHY_ID	0x01410EA0
+#define M88E1512_E_PHY_ID	0x01410DD0
 #define M88E1112_E_PHY_ID	0x01410C90
 #define I347AT4_E_PHY_ID	0x01410DC0
 #define M88E1340M_E_PHY_ID	0x01410DF0
@@ -1944,6 +1963,9 @@
 #define E1000_RXPBS_CFG_TS_EN		0x80000000 /* Timestamp in Rx buffer */
 #define E1000_RXPBS_SIZE_I210_MASK	0x0000003F /* Rx packet buffer size */
 #define E1000_TXPB0S_SIZE_I210_MASK	0x0000003F /* Tx packet buffer 0 size */
+#define I210_RXPBSIZE_DEFAULT		0x000000A2 /* RXPBSIZE default */
+#define I210_TXPBSIZE_DEFAULT		0x04000014 /* TXPBSIZE default */
+
 
 /* Proxy Filter Control */
 #define E1000_PROXYFC_D0		0x00000001 /* Enable offload in D0 */
@@ -1967,6 +1989,10 @@
 /* Lan ID bit field offset in status register */
 #define E1000_STATUS_LAN_ID_OFFSET	2
 #define E1000_VFTA_ENTRIES		128
+#ifndef E1000_UNUSEDARG
 #define E1000_UNUSEDARG
+#endif /* E1000_UNUSEDARG */
+#ifndef ERROR_REPORT
 #define ERROR_REPORT(fmt)	do { } while (0)
+#endif /* ERROR_REPORT */
 #endif /* _E1000_DEFINES_H_ */

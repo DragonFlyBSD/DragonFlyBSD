@@ -110,6 +110,7 @@
 #define E1000_EEMNGCTL	0x01010  /* MNG EEprom Control */
 #define E1000_EEARBC	0x01024  /* EEPROM Auto Read Bus Control */
 #define E1000_FLASHT	0x01028  /* FLASH Timer Register */
+#define E1000_EEARBC_I210	0x12024 /* EEPROM Auto Read Bus Control */
 #define E1000_EEWR	0x0102C  /* EEPROM Write Register - RW */
 #define E1000_FLSWCTL	0x01030  /* FLASH control register */
 #define E1000_FLSWDATA	0x01034  /* FLASH data register */
@@ -201,7 +202,7 @@
 /* Queues fetch arbitration priority control register */
 #define E1000_I210_TQAVARBCTRL			0x3574
 /* Queues priority masks where _n and _p can be 0-3. */
-#define E1000_TQAVARBCTRL_QUEUE_PRI(_n, _p)	((_p) << (2 * _n))
+#define E1000_TQAVARBCTRL_QUEUE_PRI(_n, _p)	((_p) << (2 * (_n)))
 /* QAV Tx mode control registers where _n can be 0 or 1. */
 #define E1000_I210_TQAVCC(_n)			(0x3004 + 0x40 * (_n))
 
@@ -214,7 +215,7 @@
 #define E1000_PQGPTC(_n)		(0x010014 + (0x100 * (_n)))
 
 /* Queues packet buffer size masks where _n can be 0-3 and _s 0-63 [kB] */
-#define E1000_I210_TXPBS_SIZE(_n, _s)	((_s) << (6 * _n))
+#define E1000_I210_TXPBS_SIZE(_n, _s)	((_s) << (6 * (_n)))
 
 #define E1000_MMDAC			13 /* MMD Access Control */
 #define E1000_MMDAAD			14 /* MMD Access Address/Data */

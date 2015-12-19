@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2011, Intel Corporation 
+ * Copyright (c) 2001-2013, Intel Corporation 
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without 
@@ -152,11 +152,13 @@
 #define IGB_SMARTSPEED_MAX		15
 #define IGB_MAX_LOOP			10
 
-#define IGB_RX_PTHRESH			(hw->mac.type <= e1000_82576 ? 16 : 8)
+#define IGB_RX_PTHRESH			((hw->mac.type == e1000_i354) ? 12 : \
+					  ((hw->mac.type <= e1000_82576) ? 16 : 8))
 #define IGB_RX_HTHRESH			8
-#define IGB_RX_WTHRESH			1
+#define IGB_RX_WTHRESH			((hw->mac.type == e1000_82576 && \
+					  sc->msix_mem_res) ? 1 : 4)
 
-#define IGB_TX_PTHRESH			8
+#define IGB_TX_PTHRESH			((hw->mac.type == e1000_i354) ? 20 : 8)
 #define IGB_TX_HTHRESH			1
 #define IGB_TX_WTHRESH			16
 
@@ -182,6 +184,7 @@
 #define IGB_TSO_SIZE			(IP_MAXPACKET + \
 					 sizeof(struct ether_vlan_header))
 #define IGB_HDR_BUF			128
+#define IGB_TXPBSIZE			20408
 #define IGB_PKTTYPE_MASK		0x0000FFF0
 
 #define IGB_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
@@ -206,6 +209,9 @@
 
 #define IGB_EITR_INTVL_MASK		0x7ffc
 #define IGB_EITR_INTVL_SHIFT		2
+
+/* Disable DMA Coalesce Flush */
+#define IGB_DMCTLX_DCFLUSH_DIS		0x80000000
 
 struct igb_softc;
 

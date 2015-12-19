@@ -180,6 +180,7 @@ struct e1000_hw;
 #define E1000_DEV_ID_I211_COPPER		0x1539
 #define E1000_DEV_ID_I354_BACKPLANE_1GBPS	0x1F40
 #define E1000_DEV_ID_I354_SGMII			0x1F41
+#define E1000_DEV_ID_I354_BACKPLANE_2_5GBPS	0x1F45
 #define E1000_DEV_ID_DH89XXCC_SGMII		0x0438
 #define E1000_DEV_ID_DH89XXCC_SERDES		0x043A
 #define E1000_DEV_ID_DH89XXCC_BACKPLANE		0x043C
@@ -794,7 +795,7 @@ struct e1000_mac_info {
 	u16 uta_reg_count;
 
 	/* Maximum size of the MTA register table in all supported adapters */
-	#define MAX_MTA_REG 128
+#define MAX_MTA_REG 128
 	u32 mta_shadow[MAX_MTA_REG];
 	u16 rar_entry_count;
 
