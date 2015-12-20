@@ -575,11 +575,10 @@ knote_release(struct knote *kn)
 		if (filter_event(kn, 0))
 			KNOTE_ACTIVATE(kn);
 	}
+	kn->kn_status &= ~KN_PROCESSING;
 	if (kn->kn_status & KN_DETACHED) {
-		kn->kn_status &= ~KN_PROCESSING;
 		return(1);
 	} else {
-		kn->kn_status &= ~KN_PROCESSING;
 		return(0);
 	}
 }
