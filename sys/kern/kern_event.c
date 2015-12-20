@@ -1212,10 +1212,6 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 *	     event from being KNOTE_ACTIVATE()d while
 		 *	     the queue state is in limbo, in case we
 		 *	     block.
-		 *
-		 * WARNING!  We must set KN_PROCESSING to avoid races
-		 *	     against deletion or another thread's
-		 *	     processing.
 		 */
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		kq->kq_count--;
