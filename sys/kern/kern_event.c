@@ -1029,10 +1029,6 @@ again2:
 	if (kev->flags & EV_ADD) {
 		if (kn == NULL) {
 			kn = knote_alloc();
-			if (kn == NULL) {
-				error = ENOMEM;
-				goto done;
-			}
 			kn->kn_fp = fp;
 			kn->kn_kq = kq;
 			kn->kn_fop = fops;
