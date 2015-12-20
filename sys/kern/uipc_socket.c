@@ -2487,7 +2487,14 @@ sohasoutofband(struct socket *so)
 {
 	if (so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGURG, 0);
-	KNOTE(&so->so_rcv.ssb_kq.ki_note, NOTE_OOB);
+	/*
+	 * NOTE:
+	 * There is no need to use NOTE_OOB as KNOTE hint here:
+	 * soread filter depends on so_oobmark and SS_RCVATMARK
+	 * so_state.  NOTE_OOB would cause unnecessary penalty
+	 * in KNOTE, if there was knote processing contention.
+	 */
+	KNOTE(&so->so_rcv.ssb_kq.ki_note, 0);
 }
 
 int
