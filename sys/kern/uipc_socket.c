@@ -2533,7 +2533,7 @@ filt_sordetach(struct knote *kn)
 
 /*ARGSUSED*/
 static int
-filt_soread(struct knote *kn, long hint)
+filt_soread(struct knote *kn, long hint __unused)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
@@ -2576,7 +2576,7 @@ filt_sowdetach(struct knote *kn)
 
 /*ARGSUSED*/
 static int
-filt_sowrite(struct knote *kn, long hint)
+filt_sowrite(struct knote *kn, long hint __unused)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
@@ -2598,7 +2598,7 @@ filt_sowrite(struct knote *kn, long hint)
 
 /*ARGSUSED*/
 static int
-filt_solisten(struct knote *kn, long hint)
+filt_solisten(struct knote *kn, long hint __unused)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
