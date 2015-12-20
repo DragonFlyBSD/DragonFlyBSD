@@ -29,7 +29,6 @@
  */
 
 #include "opt_acpi.h"
-#include "opt_compat_oldpci.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -496,17 +495,11 @@ pci_hdrtypedata(device_t pcib, int b, int s, int f, pcicfgregs *cfg)
 		break;
 	case 1:
 		cfg->nummaps	    = PCI_MAXMAPS_1;
-#ifdef COMPAT_OLDPCI
-		cfg->secondarybus   = REG(PCIR_SECBUS_1, 1);
-#endif
 		break;
 	case 2:
 		cfg->subvendor      = REG(PCIR_SUBVEND_2, 2);
 		cfg->subdevice      = REG(PCIR_SUBDEV_2, 2);
 		cfg->nummaps	    = PCI_MAXMAPS_2;
-#ifdef COMPAT_OLDPCI
-		cfg->secondarybus   = REG(PCIR_SECBUS_2, 1);
-#endif
 		break;
 	}
 #undef REG
@@ -4311,55 +4304,6 @@ pci_cfg_save(device_t dev, struct pci_devinfo *dinfo, int setstate)
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D3)
 		pci_set_powerstate(dev, PCI_POWERSTATE_D3);
 }
-
-#ifdef COMPAT_OLDPCI
-
-/*
- * Locate the parent of a PCI device by scanning the PCI devlist
- * and return the entry for the parent.
- * For devices on PCI Bus 0 (the host bus), this is the PCI Host.
- * For devices on secondary PCI busses, this is that bus' PCI-PCI Bridge.
- */
-pcicfgregs *
-pci_devlist_get_parent(pcicfgregs *cfg)
-{
-	struct devlist *devlist_head;
-	struct pci_devinfo *dinfo;
-	pcicfgregs *bridge_cfg;
-	int i;
-
-	dinfo = STAILQ_FIRST(devlist_head = &pci_devq);
-
-	/* If the device is on PCI bus 0, look for the host */
-	if (cfg->bus == 0) {
-		for (i = 0; (dinfo != NULL) && (i < pci_numdevs);
-		dinfo = STAILQ_NEXT(dinfo, pci_links), i++) {
-			bridge_cfg = &dinfo->cfg;
-			if (bridge_cfg->baseclass == PCIC_BRIDGE
-				&& bridge_cfg->subclass == PCIS_BRIDGE_HOST
-		    		&& bridge_cfg->bus == cfg->bus) {
-				return bridge_cfg;
-			}
-		}
-	}
-
-	/* If the device is not on PCI bus 0, look for the PCI-PCI bridge */
-	if (cfg->bus > 0) {
-		for (i = 0; (dinfo != NULL) && (i < pci_numdevs);
-		dinfo = STAILQ_NEXT(dinfo, pci_links), i++) {
-			bridge_cfg = &dinfo->cfg;
-			if (bridge_cfg->baseclass == PCIC_BRIDGE
-				&& bridge_cfg->subclass == PCIS_BRIDGE_PCI
-				&& bridge_cfg->secondarybus == cfg->bus) {
-				return bridge_cfg;
-			}
-		}
-	}
-
-	return NULL; 
-}
-
-#endif	/* COMPAT_OLDPCI */
 
 int
 pci_alloc_1intr(device_t dev, int msi_enable, int *rid0, u_int *flags0)

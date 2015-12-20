@@ -168,11 +168,7 @@ typedef struct pcicfg {
     uint8_t	slot;		/* config space slot address */
     uint8_t	func;		/* config space function number */
 
-#ifdef COMPAT_OLDPCI
-    uint8_t	secondarybus;	/* bus on secondary side of bridge, if any */
-#else
     uint8_t	dummy;
-#endif
 
     struct pcicfg_pp pp;	/* pci power management */
     struct pcicfg_vpd vpd;	/* pci vital product data */
@@ -539,61 +535,6 @@ STAILQ_HEAD(devlist, pci_devinfo);
 
 extern struct devlist	pci_devq;
 extern uint32_t	pci_generation;
-
-/* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
-
-#if defined(_KERNEL) && !defined(KLD_MODULE)
-#include "opt_compat_oldpci.h"
-#endif
-
-#ifdef COMPAT_OLDPCI
-/* all this is going some day */
-
-typedef pcicfgregs *pcici_t;
-typedef unsigned pcidi_t;
-typedef void pci_inthand_t(void *arg);
-
-#define pci_max_burst_len (3)
-
-/* just copied from old PCI code for now ... */
-
-struct pci_device {
-    char*    pd_name;
-    const char*  (*pd_probe ) (pcici_t tag, pcidi_t type);
-    void   (*pd_attach) (pcici_t tag, int     unit);
-    u_long  *pd_count;
-    int    (*pd_shutdown) (int, int);
-};
-
-typedef u_int pci_port_t;
-
-u_long pci_conf_read (pcici_t tag, u_long reg);
-void pci_conf_write (pcici_t tag, u_long reg, u_long data);
-int pci_map_port (pcici_t tag, u_long reg, pci_port_t* pa);
-int pci_map_mem (pcici_t tag, u_long reg, vm_offset_t* va, vm_offset_t* pa);
-int pci_map_int (pcici_t tag, pci_inthand_t *handler, void *arg);
-int pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg,
-		      u_int flags);
-int pci_unmap_int (pcici_t tag);
-
-void pci_cfgwrite (pcicfgregs *cfg, int reg, int data, int bytes);
-
-pcici_t pci_get_parent_from_tag(pcici_t tag);
-int     pci_get_bus_from_tag(pcici_t tag);
-
-pcicfgregs *pci_devlist_get_parent(pcicfgregs *cfg);
-
-struct module;
-int compat_pci_handler (struct module *, int, void *);
-#define COMPAT_PCI_DRIVER(name, pcidata)				\
-static moduledata_t name##_mod = {					\
-	#name,								\
-	compat_pci_handler,						\
-	&pcidata							\
-};									\
-DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_ANY)
-
-#endif /* COMPAT_OLDPCI */
 
 #define	VGA_PCI_BIOS_SHADOW_ADDR	0xC0000
 #define	VGA_PCI_BIOS_SHADOW_SIZE	131072

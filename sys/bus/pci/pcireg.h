@@ -838,33 +838,4 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIR_SERIAL_LOW		0x04
 #define	PCIR_SERIAL_HIGH	0x08
 
-/* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
-
-#if defined(_KERNEL) && !defined(KLD_MODULE)
-#include "opt_compat_oldpci.h"
-#endif
-
-#ifdef COMPAT_OLDPCI
-
-#define PCI_ID_REG		0x00
-#define PCI_COMMAND_STATUS_REG	0x04
-#define	PCI_COMMAND_IO_ENABLE		0x00000001
-#define	PCI_COMMAND_MEM_ENABLE		0x00000002
-#define PCI_CLASS_REG		0x08
-#define PCI_CLASS_MASK			0xff000000
-#define PCI_SUBCLASS_MASK		0x00ff0000
-#define	PCI_REVISION_MASK		0x000000ff
-#define PCI_CLASS_PREHISTORIC		0x00000000
-#define PCI_SUBCLASS_PREHISTORIC_VGA		0x00010000
-#define PCI_CLASS_MASS_STORAGE		0x01000000
-#define PCI_CLASS_DISPLAY		0x03000000
-#define PCI_SUBCLASS_DISPLAY_VGA		0x00000000
-#define PCI_CLASS_BRIDGE		0x06000000
-#define PCI_MAP_REG_START	0x10
-#define	PCI_MAP_REG_END		0x28
-#define	PCI_MAP_IO			0x00000001
-#define	PCI_INTERRUPT_REG	0x3c
-
-#endif /* COMPAT_OLDPCI */
-
 #endif	/* _PCIREG_H_ */

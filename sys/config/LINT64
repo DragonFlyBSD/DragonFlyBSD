@@ -1322,10 +1322,6 @@ options 	ADW_ALLOW_MEMIO
 
 device		pci
 
-# PCI options
-#
-options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
-
 # AGP GART support
 #
 device		agp
