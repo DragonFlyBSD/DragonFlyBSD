@@ -535,8 +535,7 @@ filt_usertouch(struct knote *kn, struct kevent *kev, u_long type)
  *
  * Related kq token must be held.
  */
-static __inline
-int
+static __inline int
 knote_acquire(struct knote *kn)
 {
 	if (kn->kn_status & KN_PROCESSING) {
@@ -557,8 +556,7 @@ knote_acquire(struct knote *kn)
  *
  * Non-zero is returned if the knote is destroyed or detached.
  */
-static __inline
-int
+static __inline int
 knote_release(struct knote *kn)
 {
 	while (kn->kn_status & KN_REPROCESS) {
@@ -576,11 +574,10 @@ knote_release(struct knote *kn)
 			KNOTE_ACTIVATE(kn);
 	}
 	kn->kn_status &= ~KN_PROCESSING;
-	if (kn->kn_status & KN_DETACHED) {
+	if (kn->kn_status & KN_DETACHED)
 		return(1);
-	} else {
+	else
 		return(0);
-	}
 }
 
 /*
