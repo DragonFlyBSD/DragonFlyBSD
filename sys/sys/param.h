@@ -134,9 +134,10 @@
  * 400309 - Add lwp_setname() system call
  * 400400 - 4.4 release
  * 400500 - 4.5 development
+ * 400501 - unionfs removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400500	/* propagated to newvers */
+#define __DragonFly_version 400501	/* propagated to newvers */
 
 #include <sys/_null.h>
 
