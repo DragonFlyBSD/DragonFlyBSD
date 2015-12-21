@@ -217,7 +217,7 @@ static void	igb_serialize_assert(struct ifnet *, enum ifnet_serialize,
 static void	igb_intr(void *);
 static void	igb_intr_shared(void *);
 static void	igb_rxeof(struct igb_rx_ring *, int);
-static void	igb_txeof(struct igb_tx_ring *);
+static void	igb_txeof(struct igb_tx_ring *, int);
 static void	igb_set_eitr(struct igb_softc *, int, int);
 static void	igb_enable_intr(struct igb_softc *);
 static void	igb_disable_intr(struct igb_softc *);
@@ -1910,15 +1910,8 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	/*
 	 * Initialize various watermark
 	 */
-	txr->spare_desc = IGB_TX_SPARE;
 	txr->intr_nsegs = txr->num_tx_desc / 16;
 	txr->wreg_nsegs = IGB_DEF_TXWREG_NSEGS;
-	txr->oact_hi_desc = txr->num_tx_desc / 2;
-	txr->oact_lo_desc = txr->num_tx_desc / 8;
-	if (txr->oact_lo_desc > IGB_TX_OACTIVE_MAX)
-		txr->oact_lo_desc = IGB_TX_OACTIVE_MAX;
-	if (txr->oact_lo_desc < txr->spare_desc + IGB_TX_RESERVED)
-		txr->oact_lo_desc = txr->spare_desc + IGB_TX_RESERVED;
 
 	return 0;
 }
@@ -2136,16 +2129,14 @@ igb_txcsum_ctx(struct igb_tx_ring *txr, struct mbuf *mp)
 }
 
 static void
-igb_txeof(struct igb_tx_ring *txr)
+igb_txeof(struct igb_tx_ring *txr, int hdr)
 {
-	int first, hdr, avail;
+	int first, avail;
 
 	if (txr->tx_avail == txr->num_tx_desc)
 		return;
 
 	first = txr->next_to_clean;
-	hdr = *(txr->tx_hdr);
-
 	if (first == hdr)
 		return;
 
@@ -2169,7 +2160,7 @@ igb_txeof(struct igb_tx_ring *txr)
 	 * If we have a minimum free, clear OACTIVE
 	 * to tell the stack that it is OK to send packets.
 	 */
-	if (IGB_IS_NOT_OACTIVE(txr)) {
+	if (txr->tx_avail > IGB_MAX_SCATTER + IGB_TX_RESERVED) {
 		ifsq_clr_oactive(txr->ifsq);
 
 		/*
@@ -3154,7 +3145,7 @@ igb_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	igb_txeof(txr);
+	igb_txeof(txr, *(txr->tx_hdr));
 	if (!ifsq_is_empty(txr->ifsq))
 		ifsq_devstart(txr->ifsq);
 }
@@ -3271,7 +3262,7 @@ igb_intr(void *xsc)
 
 		if (eicr & txr->tx_intr_mask) {
 			lwkt_serialize_enter(&txr->tx_serialize);
-			igb_txeof(txr);
+			igb_txeof(txr, *(txr->tx_hdr));
 			if (!ifsq_is_empty(txr->ifsq))
 				ifsq_devstart(txr->ifsq);
 			lwkt_serialize_exit(&txr->tx_serialize);
@@ -3335,7 +3326,7 @@ igb_intr_shared(void *xsc)
 			struct igb_tx_ring *txr = &sc->tx_rings[0];
 
 			lwkt_serialize_enter(&txr->tx_serialize);
-			igb_txeof(txr);
+			igb_txeof(txr, *(txr->tx_hdr));
 			if (!ifsq_is_empty(txr->ifsq))
 				ifsq_devstart(txr->ifsq);
 			lwkt_serialize_exit(&txr->tx_serialize);
@@ -3386,7 +3377,6 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	map = tx_buf->map;
 
 	maxsegs = txr->tx_avail - IGB_TX_RESERVED;
-	KASSERT(maxsegs >= txr->spare_desc, ("not enough spare TX desc\n"));
 	if (maxsegs > IGB_MAX_SCATTER)
 		maxsegs = IGB_MAX_SCATTER;
 
@@ -3514,11 +3504,8 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		return;
 	}
 
-	if (!IGB_IS_NOT_OACTIVE(txr))
-		igb_txeof(txr);
-
 	while (!ifsq_is_empty(ifsq)) {
-		if (IGB_IS_OACTIVE(txr)) {
+		if (txr->tx_avail <= IGB_MAX_SCATTER + IGB_TX_RESERVED) {
 			ifsq_set_oactive(ifsq);
 			/* Set watchdog on */
 			txr->tx_watchdog.wd_timer = 5;
@@ -3698,8 +3685,7 @@ igb_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS)
 
 	ifnet_serialize_all(ifp);
 
-	if (nsegs >= txr->num_tx_desc - txr->oact_lo_desc ||
-	    nsegs >= txr->oact_hi_desc - IGB_MAX_SCATTER) {
+	if (nsegs >= txr->num_tx_desc - IGB_MAX_SCATTER - IGB_TX_RESERVED) {
 		error = EINVAL;
 	} else {
 		int i;
@@ -3728,7 +3714,7 @@ igb_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
 
 	ifnet_serialize_all(ifp);
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
-		sc->rx_rings[i].wreg_nsegs =nsegs;
+		sc->rx_rings[i].wreg_nsegs = nsegs;
 	ifnet_deserialize_all(ifp);
 
 	return 0;
@@ -3748,7 +3734,7 @@ igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
 
 	ifnet_serialize_all(ifp);
 	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		sc->tx_rings[i].wreg_nsegs =nsegs;
+		sc->tx_rings[i].wreg_nsegs = nsegs;
 	ifnet_deserialize_all(ifp);
 
 	return 0;
@@ -4628,7 +4614,7 @@ igb_msix_tx(void *arg)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	igb_txeof(txr);
+	igb_txeof(txr, *(txr->tx_hdr));
 	if (!ifsq_is_empty(txr->ifsq))
 		ifsq_devstart(txr->ifsq);
 
@@ -4882,18 +4868,27 @@ igb_msix_rxtx(void *arg)
 {
 	struct igb_rx_ring *rxr = arg;
 	struct igb_tx_ring *txr;
+	int hdr;
 
 	ASSERT_SERIALIZED(&rxr->rx_serialize);
 
 	igb_rxeof(rxr, -1);
 
+	/*
+	 * NOTE:
+	 * Since next_to_clean is only changed by igb_txeof(),
+	 * which is called only in interrupt handler, the
+	 * check w/o holding tx serializer is MPSAFE.
+	 */
 	txr = rxr->rx_txr;
-	/* TODO optimize this */
-	lwkt_serialize_enter(&txr->tx_serialize);
-	igb_txeof(txr);
-	if (!ifsq_is_empty(txr->ifsq))
-		ifsq_devstart(txr->ifsq);
-	lwkt_serialize_exit(&txr->tx_serialize);
+	hdr = *(txr->tx_hdr);
+	if (hdr != txr->next_to_clean) {
+		lwkt_serialize_enter(&txr->tx_serialize);
+		igb_txeof(txr, hdr);
+		if (!ifsq_is_empty(txr->ifsq))
+			ifsq_devstart(txr->ifsq);
+		lwkt_serialize_exit(&txr->tx_serialize);
+	}
 
 	E1000_WRITE_REG(&rxr->sc->hw, E1000_EIMS, rxr->rx_intr_mask);
 }

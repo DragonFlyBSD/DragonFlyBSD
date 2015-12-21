@@ -178,7 +178,6 @@
 #define IGB_MSIX_BAR			3
 #define IGB_MSIX_BAR_ALT		4
 
-#define IGB_MAX_SCATTER			64
 #define IGB_VFTA_SIZE			128
 #define IGB_TSO_SIZE			(IP_MAXPACKET + \
 					 sizeof(struct ether_vlan_header))
@@ -191,9 +190,7 @@
 #define IGB_TX_RESERVED			3
 
 /* Large enough for 64K TSO */
-#define IGB_TX_SPARE			33
-
-#define IGB_TX_OACTIVE_MAX		64
+#define IGB_MAX_SCATTER			33
 
 #define IGB_NRSSRK			10
 #define IGB_RSSRK_SIZE			4
@@ -242,9 +239,6 @@ struct igb_tx_ring {
 	struct igb_tx_buf	*tx_buf;
 	bus_dma_tag_t		tx_tag;
 	int			tx_nsegs;
-	int			spare_desc;
-	int			oact_lo_desc;
-	int			oact_hi_desc;
 	int			intr_nsegs;
 	int			wreg_nsegs;
 	int			tx_intr_vec;
@@ -424,9 +418,6 @@ struct igb_rx_buf {
 	cur &= 0xFFFFFFFF00000000LL;		\
 	cur |= new;				\
 }
-
-#define IGB_IS_OACTIVE(txr)	((txr)->tx_avail < (txr)->oact_lo_desc)
-#define IGB_IS_NOT_OACTIVE(txr)	((txr)->tx_avail >= (txr)->oact_hi_desc)
 
 #define IGB_I210_LINK_DELAY	1000	/* unit: ms */
 
