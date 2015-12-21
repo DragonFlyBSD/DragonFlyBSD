@@ -462,14 +462,12 @@ drmfilt_detach(struct knote *kn)
 	file_priv = (struct drm_file *)kn->kn_hook;
 	dev = file_priv->dev;
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	klist = &file_priv->dkq.ki_note;
 	knote_remove(klist, kn);
-	lockmgr(&dev->event_lock, LK_RELEASE);
 }
 
 static struct filterops drmfiltops =
-        { FILTEROP_ISFD, NULL, drmfilt_detach, drmfilt };
+        { FILTEROP_MPSAFE | FILTEROP_ISFD, NULL, drmfilt_detach, drmfilt };
 
 int
 drm_kqfilter(struct dev_kqfilter_args *ap)
@@ -501,10 +499,8 @@ drm_kqfilter(struct dev_kqfilter_args *ap)
 		return (0);
 	}
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	klist = &file_priv->dkq.ki_note;
 	knote_insert(klist, kn);
-	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	return (0);
 }
