@@ -96,7 +96,6 @@ struct volume_info {
 	struct cache_info	cache;
 	TAILQ_ENTRY(volume_info) entry;
 	int			vol_no;
-	hammer_off_t		vol_alloc;	/* volume-relative offset */
 	hammer_off_t		vol_free_off;	/* zone-2 offset */
 	hammer_off_t		vol_free_end;	/* zone-2 offset */
 

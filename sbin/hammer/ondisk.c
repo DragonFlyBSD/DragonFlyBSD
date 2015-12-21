@@ -209,12 +209,6 @@ check_volume(struct volume_info *vol)
 		vol->device_offset = pinfo.media_offset;
 		vol->type = "DEVICE";
 	}
-
-	/*
-	 * Reserve space for (future) header junk, setup our poor-man's
-	 * big-block allocator.
-	 */
-	vol->vol_alloc = HAMMER_BUFSIZE * 16;
 }
 
 struct volume_info *

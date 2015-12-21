@@ -456,6 +456,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	struct hammer_volume_ondisk *ondisk;
 	int64_t freeblks;
 	int64_t freebytes;
+	hammer_off_t vol_alloc;
 	int i;
 
 	/*
@@ -470,15 +471,21 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_count = nvols;
 	ondisk->vol_version = HammerVersion;
 
-	ondisk->vol_bot_beg = vol->vol_alloc;
-	vol->vol_alloc += BootAreaSize;
-	ondisk->vol_mem_beg = vol->vol_alloc;
-	vol->vol_alloc += MemAreaSize;
+	/*
+	 * Reserve space for (future) header junk, setup our poor-man's
+	 * big-block allocator.
+	 */
+	vol_alloc = HAMMER_BUFSIZE * 16;  /* 262144 */
+
+	ondisk->vol_bot_beg = vol_alloc;
+	vol_alloc += BootAreaSize;
+	ondisk->vol_mem_beg = vol_alloc;
+	vol_alloc += MemAreaSize;
 
 	/*
 	 * The remaining area is the zone 2 buffer allocation area.
 	 */
-	ondisk->vol_buf_beg = vol->vol_alloc;
+	ondisk->vol_buf_beg = vol_alloc;
 	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;
 
 	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
