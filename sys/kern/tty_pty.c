@@ -848,7 +848,6 @@ ptckqfilter(struct dev_kqfilter_args *ap)
 	struct tty *tp = dev->si_tty;
 	struct klist *klist;
 
-	lwkt_gettoken(&tty_token);
 	ap->a_result = 0;
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -861,13 +860,11 @@ ptckqfilter(struct dev_kqfilter_args *ap)
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
-		lwkt_reltoken(&tty_token);
 		return (0);
 	}
 
 	kn->kn_hook = (caddr_t)dev;
 	knote_insert(klist, kn);
-	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -879,8 +876,8 @@ filt_ptcread (struct knote *kn, long hint)
 
 	lwkt_gettoken(&tty_token);
 	if ((tp->t_state & TS_ZOMBIE) || (pti->pt_flags & PF_SCLOSED)) {
-		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		lwkt_reltoken(&tty_token);
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
 
@@ -905,8 +902,8 @@ filt_ptcwrite (struct knote *kn, long hint)
 
 	lwkt_gettoken(&tty_token);
 	if (tp->t_state & TS_ZOMBIE) {
-		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		lwkt_reltoken(&tty_token);
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
 
