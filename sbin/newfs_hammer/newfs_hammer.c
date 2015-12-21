@@ -40,8 +40,7 @@
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
 static void trim_volume(struct volume_info *vol);
-static void format_volume(struct volume_info *vol, int nvols,const char *label,
-			off_t total_size);
+static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root(const char *label);
 static uint64_t nowtime(void);
 static void usage(void);
@@ -247,10 +246,10 @@ main(int ac, char **av)
 	 * Format the volumes.  Format the root volume first so we can
 	 * bootstrap the freemap.
 	 */
-	format_volume(get_volume(RootVolNo), nvols, label, total);
+	format_volume(get_volume(RootVolNo), nvols, label);
 	for (i = 0; i < nvols; ++i) {
 		if (i != RootVolNo)
-			format_volume(get_volume(i), nvols, label, total);
+			format_volume(get_volume(i), nvols, label);
 	}
 
 	/*
@@ -451,8 +450,7 @@ trim_volume(struct volume_info *vol)
  */
 static
 void
-format_volume(struct volume_info *vol, int nvols, const char *label,
-	      off_t total_size __unused)
+format_volume(struct volume_info *vol, int nvols, const char *label)
 {
 	struct volume_info *root_vol;
 	struct hammer_volume_ondisk *ondisk;
