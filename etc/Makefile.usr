@@ -62,7 +62,7 @@ help all:
 src-create-repo:
 .if empty(THISGIT)
 	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/src)
+.elif exists (${.CURDIR}/src/.git)
 	@echo ${ERRSR}
 .else
 	@echo "If problems occur you may have to rm -rf src and try again."
@@ -78,7 +78,7 @@ src-create-repo:
 src-create: src-create-repo
 .if empty(THISGIT)
 	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/src)
+.elif exists (${.CURDIR}/src/.git)
 	@echo ${ERRSR}
 .else
 	cd ${.CURDIR}/src && git checkout master
@@ -88,7 +88,7 @@ src-create: src-create-repo
 src-create-shallow:
 .if empty(THISGIT)
 	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/src)
+.elif exists (${.CURDIR}/src/.git)
 	@echo ${ERRSR}
 .else
 	@echo "If problems occur you may have to rm -rf src and try again."
@@ -106,7 +106,7 @@ src-create-shallow:
 src-checkout:
 .if empty(THISGIT)
 	@echo ${GITNFMSG}
-.elif !exists (${.CURDIR}/src)
+.elif !exists (${.CURDIR}/src/.git)
 	@echo ${ERRNSR}
 .else
 	cd ${.CURDIR}/src && git checkout master
@@ -115,7 +115,7 @@ src-checkout:
 src-update:
 .if empty(THISGIT)
 	@echo ${GITNFMSG}
-.elif !exists (${.CURDIR}/src)
+.elif !exists (${.CURDIR}/src/.git)
 	@echo ${ERRNSR}
 .else
 	cd ${.CURDIR}/src && git pull
