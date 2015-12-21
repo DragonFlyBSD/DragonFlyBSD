@@ -1224,9 +1224,6 @@ vfs/procfs/procfs_type.c	optional procfs
 vfs/procfs/procfs_vfsops.c	optional procfs
 vfs/procfs/procfs_vnops.c	optional procfs
 vfs/procfs/procfs_rlimit.c	optional procfs
-vfs/union/union_subr.c		optional union
-vfs/union/union_vfsops.c	optional union
-vfs/union/union_vnops.c		optional union
 vfs/hpfs/hpfs_alsubr.c		optional hpfs
 vfs/hpfs/hpfs_hash.c		optional hpfs
 vfs/hpfs/hpfs_lookup.c		optional hpfs

@@ -76,8 +76,6 @@
 #include <machine/limits.h>
 #include <machine/stdarg.h>
 
-#include <vfs/union/union.h>
-
 static void mount_warning(struct mount *mp, const char *ctl, ...)
 		__printflike(2, 3);
 static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
@@ -93,8 +91,6 @@ static int setfflags (struct vnode *, int);
 static int setutimes (struct vnode *, struct vattr *,
 			const struct timespec *, int);
 static int	usermount = 0;	/* if 1, non-root can mount fs. */
-
-int (*union_dircheckp) (struct thread *, struct vnode **, struct file *);
 
 SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0,
     "Allow non-root users to mount filesystems");
@@ -358,11 +354,11 @@ update:
 	else if (mp->mnt_flag & MNT_RDONLY)
 		mp->mnt_kern_flag |= MNTK_WANTRDWR;
 	mp->mnt_flag &=~ (MNT_NOSUID | MNT_NOEXEC | MNT_NODEV |
-	    MNT_SYNCHRONOUS | MNT_UNION | MNT_ASYNC | MNT_NOATIME |
+	    MNT_SYNCHRONOUS | MNT_ASYNC | MNT_NOATIME |
 	    MNT_NOSYMFOLLOW | MNT_IGNORE | MNT_TRIM |
 	    MNT_NOCLUSTERR | MNT_NOCLUSTERW | MNT_SUIDDIR);
 	mp->mnt_flag |= uap->flags & (MNT_NOSUID | MNT_NOEXEC |
-	    MNT_NODEV | MNT_SYNCHRONOUS | MNT_UNION | MNT_ASYNC | MNT_FORCE |
+	    MNT_NODEV | MNT_SYNCHRONOUS | MNT_ASYNC | MNT_FORCE |
 	    MNT_NOSYMFOLLOW | MNT_IGNORE | MNT_TRIM |
 	    MNT_NOATIME | MNT_NOCLUSTERR | MNT_NOCLUSTERW | MNT_SUIDDIR);
 	/*
@@ -4243,7 +4239,6 @@ kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 		goto done;
 	}
 	vp = (struct vnode *)fp->f_data;
-unionread:
 	if (vp->v_type != VDIR) {
 		error = EINVAL;
 		goto done;
@@ -4261,27 +4256,6 @@ unionread:
 	fp->f_offset = auio.uio_offset;
 	if (error)
 		goto done;
-	if (count == auio.uio_resid) {
-		if (union_dircheckp) {
-			error = union_dircheckp(td, &vp, fp);
-			if (error == -1)
-				goto unionread;
-			if (error)
-				goto done;
-		}
-#if 0
-		if ((vp->v_flag & VROOT) &&
-		    (vp->v_mount->mnt_flag & MNT_UNION)) {
-			struct vnode *tvp = vp;
-			vp = vp->v_mount->mnt_vnodecovered;
-			vref(vp);
-			fp->f_data = vp;
-			fp->f_offset = 0;
-			vrele(tvp);
-			goto unionread;
-		}
-#endif
-	}
 
 	/*
 	 * WARNING!  *basep may not be wide enough to accomodate the

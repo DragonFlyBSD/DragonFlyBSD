@@ -2264,6 +2264,9 @@ TO_REMOVE+=/usr/include/sys/syslink_vfs.h
 TO_REMOVE+=/usr/share/man/man4/i386
 TO_REMOVE+=/usr/share/man/man8/i386
 TO_REMOVE+=/usr/share/man/man9/i386
+TO_REMOVE+=/boot/kernel/union.ko
+TO_REMOVE+=/sbin/mount_union
+TO_REMOVE+=/usr/share/man/man8/mount_union.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

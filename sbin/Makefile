@@ -64,7 +64,6 @@ SUBDIR=	adjkerntz \
 	mount_std \
 	mount_tmpfs \
 	mount_udf \
-	mount_union \
 	mountd \
 	natacontrol \
 	natd \

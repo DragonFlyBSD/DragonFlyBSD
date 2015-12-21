@@ -33,9 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.11 2006/09/05 00:55:44 dillon Exp $
- * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
- *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
  * to use the new split syscalls.
  */
@@ -60,8 +57,6 @@
 #include <sys/vnode.h>
 
 #include <sys/mplock2.h>
-
-#include <vfs/union/union.h>
 
 /*
  * MPALMOSTSAFE

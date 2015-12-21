@@ -267,7 +267,6 @@ struct mount {
 #define	MNT_NOEXEC	0x00000004	/* can't exec from filesystem */
 #define	MNT_NOSUID	0x00000008	/* don't honor setuid bits on fs */
 #define	MNT_NODEV	0x00000010	/* don't interpret special files */
-#define	MNT_UNION	0x00000020	/* union with underlying filesystem */
 #define	MNT_ASYNC	0x00000040	/* file system written asynchronously */
 #define	MNT_SUIDDIR	0x00100000	/* special handling of SUID on dirs */
 #define	MNT_SOFTDEP	0x00200000	/* soft updates being done */
@@ -304,7 +303,7 @@ struct mount {
  * but the 'mount' program may need changing to handle this.
  */
 #define	MNT_VISFLAGMASK	(MNT_RDONLY	| MNT_SYNCHRONOUS | MNT_NOEXEC	| \
-			MNT_NOSUID	| MNT_NODEV	| MNT_UNION	| \
+			MNT_NOSUID	| MNT_NODEV			| \
 			MNT_ASYNC	| MNT_EXRDONLY	| MNT_EXPORTED	| \
 			MNT_DEFEXPORTED	| MNT_EXPORTANON| MNT_EXKERB	| \
 			MNT_LOCAL	| MNT_USER	| MNT_QUOTA	| \

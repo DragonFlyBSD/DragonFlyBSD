@@ -43,7 +43,6 @@
 #include <sys/mount.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
-#include <vfs/union/union.h>
 #include <sys/stat.h>
 #include <nfs/rpcv2.h>
 #include <nfs/nfsproto.h>
@@ -117,7 +116,6 @@ struct {
 	{ MNT_NOEXEC, "noexec" },
 	{ MNT_NOSUID, "nosuid" },
 	{ MNT_NODEV, "nodev" },
-	{ MNT_UNION, "union" },
 	{ MNT_ASYNC, "async" },
 	{ MNT_SUIDDIR, "suiddir" },
 	{ MNT_SOFTDEP, "softdep" },
@@ -181,8 +179,6 @@ void	ttyprt(struct tty *, int);
 void	ttytype(struct tty *, const char *, int, int, int);
 void	ufs_header(void);
 int	ufs_print(struct vnode *);
-void	union_header(void);
-int	union_print(struct vnode *);
 static void usage(void);
 void	vnode_header(void);
 void	vnode_print(struct vnode *, struct vnode *);
@@ -349,8 +345,6 @@ vnodemode(void)
 				ufs_header();
 			else if (!strcmp(ST.f_fstypename, "nfs"))
 				nfs_header();
-			else if (!strcmp(ST.f_fstypename, "union"))
-				union_header();
 			printf("\n");
 		}
 		vnode_print(evp->avnode, vp);
@@ -359,8 +353,6 @@ vnodemode(void)
 			ufs_print(vp);
 		else if (!strcmp(ST.f_fstypename, "nfs"))
 			nfs_print(vp);
-		else if (!strcmp(ST.f_fstypename, "union"))
-			union_print(vp);
 		printf("\n");
 	}
 	free(e_vnodebase);
@@ -563,24 +555,6 @@ nfs_print(struct vnode *vp)
 	return (0);
 }
 
-void
-union_header(void)
-{
-	printf("    UPPER    LOWER");
-}
-
-int
-union_print(struct vnode *vp)
-{
-	struct union_node unode, *up = &unode;
-
-	KGETRET(VTOUNION(vp), &unode, sizeof(unode), "vnode's unode");
-
-	printf(" %8lx %8lx", (u_long)(void *)up->un_uppervp,
-	    (u_long)(void *)up->un_lowervp);
-	return (0);
-}
-	
 /*
  * Given a pointer to a mount structure in kernel space,
  * read it in and return a usable pointer to it.

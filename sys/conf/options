@@ -169,10 +169,6 @@ UFS_DIRHASH	opt_ufs.h
 FFS_ROOT	opt_ffs.h
 NFS_ROOT	opt_nfsroot.h
 
-# The union static file system has bogus static dependencies, so it isn't
-# hidden yet.
-UNION
-
 # Options used only in subr_param.c.
 HZ		opt_param.h
 MAXFILES	opt_param.h

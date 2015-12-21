@@ -115,9 +115,6 @@
 # umountf2.sh			N	Waiting for commit of fix
 # umountf3.sh			N	Deadlock. Waiting for commit of fix		20081212
 # umountf4.sh			Y	Page fault in ufs/ufs/ufs_dirhash.c:204		20081003
-# unionfs.sh			N 	Page fault					20070503
-# unionfs2.sh			N	Reported as cons224				20070504
-# unionfs3.sh			N	Page fault in vfs_statfs			20070504
 
 # End of list
 

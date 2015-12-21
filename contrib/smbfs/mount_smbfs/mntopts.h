@@ -54,7 +54,6 @@ struct mntopt {
 #endif
 #define MOPT_RDONLY		{ "rdonly",	0, MNT_RDONLY, 0 }
 #define MOPT_SYNC		{ "sync",	0, MNT_SYNCHRONOUS, 0 }
-#define MOPT_UNION		{ "union",	0, MNT_UNION, 0 }
 #define MOPT_USERQUOTA		{ "userquota",	0, 0, 0 }
 #define MOPT_GROUPQUOTA		{ "groupquota",	0, 0, 0 }
 #ifndef APPLE
@@ -100,7 +99,6 @@ struct mntopt {
 	MOPT_NOSUID,							\
 	MOPT_NOSYMFOLLOW,						\
 	MOPT_RDONLY,							\
-	MOPT_UNION,							\
 	MOPT_NOCLUSTERR,						\
 	MOPT_NOCLUSTERW
 #endif /* APPLE */

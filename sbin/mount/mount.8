@@ -220,13 +220,6 @@ for more information.
 The same as
 .Fl u ;
 indicate that the status of an already mounted file system should be changed.
-.It Cm union
-Causes the namespace at the mount point to appear as the union
-of the mounted filesystem root and the existing directory.
-Lookups will be done in the mounted filesystem first.
-If those operations fail due to a non-existent file the underlying
-directory is then accessed.
-All creates are done in the mounted filesystem.
 .It Cm ignore
 Will be ignored by
 .Xr df 1 .
@@ -421,7 +414,6 @@ have permission to load the module.
 .Xr mount_std 8 ,
 .Xr mount_tmpfs 8 ,
 .Xr mount_udf 8 ,
-.Xr mount_union 8 ,
 .Xr sysctl 8 ,
 .Xr umount 8
 .Sh HISTORY

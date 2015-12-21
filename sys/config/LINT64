@@ -494,10 +494,10 @@ options		IFPOLL_ENABLE
 # cannot currently be demand-loaded.)  Some people still prefer
 # to statically compile other filesystems as well.
 #
-# NB: The PORTAL and UNION filesystems are known to be
+# NB: The PORTAL filesystem is known to be
 # buggy, and WILL panic your system if you attempt to do anything with
-# them.  They are included here as an incentive for some enterprising
-# soul to sit down and fix them.
+# it.  It is included here as an incentive for some enterprising
+# soul to sit down and fix it.
 #
 
 # One of these is mandatory:
@@ -520,8 +520,6 @@ options 	SMBFS			#SMB/CIFS filesystem
 options 	TMPFS			#Temporary filesystem
 options		UDF			#UDF filesystem
 
-# YYY-DR Till we rework the VOP methods for this filesystem
-#options 	UNION			#Union filesystem
 # The xFS_ROOT options REQUIRE the associated ``options xFS''
 options 	FFS_ROOT		#FFS usable as root device
 options 	NFS_ROOT		#NFS usable as root device
