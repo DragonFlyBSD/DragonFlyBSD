@@ -27,6 +27,7 @@
  */
 
 #include <machine/asm.h>
+#include <cpu/specialreg.h>
 #include <asmcontext.h>
 
 	/*
@@ -37,7 +38,7 @@
         .weak   get_mcontext
         .set    get_mcontext,_get_mcontext
 ENTRY(_get_mcontext)
-	/*	MC_ONSTACK(%rdi)	*/
+	movq	$0,MC_ONSTACK(%rdi) /*	MC_ONSTACK(%rdi)	*/
 	movq	%rdi,MC_RDI(%rdi)
 	movq	%rsi,MC_RSI(%rdi)
 	movq	%rdx,MC_RDX(%rdi)
@@ -45,6 +46,7 @@ ENTRY(_get_mcontext)
 	movq	%r9,MC_R9(%rdi)
 	/* movq	%rax,MC_RAX(%rdi) - not needed, replaced below */
 	movq	%rbx,MC_RBX(%rdi)
+	/* movq %rcx,MC_RCX(%rdi) - not needed, scratch */
 	movq	%rbp,MC_RBP(%rdi)
 	movq	%r10,MC_R10(%rdi)
 	movq	%r11,MC_R11(%rdi)
@@ -58,9 +60,29 @@ ENTRY(_get_mcontext)
 	/*	MC_ERR(%rdi)	*/
 	/*	MC_RIP(%rdi)	- see below */
 	/*	MC_CS(%rdi)	*/
-	/*	MC_RFLAGS(%rdi)	*/
+	movq	$KUCSEL,MC_CS(%rdi)
+
+	pushfq
+	popq	MC_RFLAGS(%rdi)
 	/*	MC_RSP(%rdi)	- see below */
 	/*	MC_SS(%rdi)	*/
+
+	/*
+	 * FP registers are scratch, do not save or restore, but make
+	 * sure the context can be restored by a signal handler (where
+	 * they might not be) by properly initializing the FP control
+	 * fields.
+	 */
+	movl	$_MC_FPOWNED_NONE,MC_OWNEDFP(%rdi)
+	movl	$_MC_FPFMT_NODEV,MC_FPFORMAT(%rdi)
+	/*
+	movl	$_MC_FPFMT_YMM,MC_FPFORMAT(%rdi)
+	*/
+	movq	%rdi,%rsi
+	movq	$CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM,%rax
+	movq	$0,%rdx
+	xsave	MC_FPREGS(%rsi)
+	movq	%rsi,%rdi
 
 	/*
 	 * Saved stack pointer as if we had returned from this
@@ -108,6 +130,19 @@ END(_get_mcontext)
         .weak   set_mcontext
         .set    set_mcontext,_set_mcontext
 ENTRY(_set_mcontext)
+	/*
+	 * Restore FP regs (might be needed if the context was
+	 * taken out of a signal context).
+	 */
+	cmpl	$_MC_FPFMT_NODEV,MC_FPFORMAT(%rdi)
+	je	1f
+	movq	%rdi,%rsi
+	movq	$CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM,%rax
+	movq	$0,%rdx
+	xrstor	MC_FPREGS(%rsi)	/* hack assumes cpu supports this */
+	movq	%rsi,%rdi
+1:
+
 	/*	MC_ONSTACK(%rdi)	*/
 	/*	MC_RDI(%rdi)	- see below */
 	movq	MC_RSI(%rdi),%rsi
@@ -116,6 +151,7 @@ ENTRY(_set_mcontext)
 	movq	MC_R9(%rdi),%r9
 	/*	MC_RAX(%rdi)	- see below */
 	movq	MC_RBX(%rdi),%rbx
+	movq	MC_RCX(%rdi),%rcx
 	movq	MC_RBP(%rdi),%rbp
 	movq	MC_R10(%rdi),%r10
 	movq	MC_R11(%rdi),%r11
@@ -125,11 +161,11 @@ ENTRY(_set_mcontext)
 	movq	MC_R15(%rdi),%r15
 	/*	MC_TRAPNO(%rdi)	*/
 	/*	MC_ADDR(%rdi)	*/
-	/*	MC_FLAGS(%rdi)	*/
+	/*	MC_FLAGS(%rdi)  */
 	/*	MC_ERR(%rdi)	*/
 	/*	MC_RIP(%rdi)	- see below */
 	/*	MC_CS(%rdi)	*/
-	/*	MC_RFLAGS(%rdi)	*/
+	/*	MC_RFLAGS(%rdi)	- see below */
 	/*	MC_RSP(%rdi)	- see below */
 	/*	MC_SS(%rdi)	*/
 
@@ -139,20 +175,24 @@ ENTRY(_set_mcontext)
 	movq	MC_RSP(%rdi),%rsp
 
 	/*
-	 * Restore the flags
-	 * XXX
-	 */
-
-	/*
 	 * Push the return pc so we can 'ret' to it.
+	 *
+	 * Push the flags so we can restore them just prior to the retq
+	 * (in case setcontext is called
+	 *
+	 *
+	 * XXX this can cream stuff under the stack pointer, which should
+	 * normally be ok but its a side effect I'd rather not have.
 	 */
 	pushq	MC_RIP(%rdi)
+	pushq	MC_RFLAGS(%rdi)
 
 	/*
 	 * Finally rax and rdi
 	 */
 	movq	MC_RAX(%rdi),%rax
 	movq	MC_RDI(%rdi),%rdi
+	popfq
 	retq
 END(_set_mcontext)
 

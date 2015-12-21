@@ -30,7 +30,13 @@
 #include <sys/signal.h>
 #include <sys/ucontext.h>
 
+#include <machine/frame.h>
+#include <machine/tss.h>
+#include <machine/segments.h>
+
+#include <signal.h>
 #include <errno.h>
+#include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -89,7 +95,7 @@ _makecontext(ucontext_t *ucp, void (*start)(void), int argc, ...)
 		}
 		va_end(ap);
 		/* The first six arguments are passed via registers. */
-		for(i = argc; i < 6; i++) {
+		for (i = argc; i < 6; i++) {
 			argp[i] = 0;
 		}
 
@@ -109,6 +115,12 @@ _makecontext(ucontext_t *ucp, void (*start)(void), int argc, ...)
             	ucp->uc_mcontext.mc_rbx = (register_t)stack_top;
 		ucp->uc_mcontext.mc_rsp = (register_t)stack_top;
 		ucp->uc_mcontext.mc_rip = (register_t)makectx_wrapper;
+		ucp->uc_mcontext.mc_ownedfp = _MC_FPOWNED_NONE;
+		ucp->uc_mcontext.mc_fpformat = _MC_FPFMT_NODEV;
+		ucp->uc_mcontext.mc_cs = GSEL(GUCODE_SEL, SEL_UPL);
+		ucp->uc_mcontext.mc_ss = GSEL(GUDATA_SEL, SEL_UPL);
+		ucp->uc_mcontext.mc_onstack = 0;
+		ucp->uc_mcontext.mc_err = 0;
 	}
 }
 
@@ -117,7 +129,7 @@ static void
 makectx_wrapper(ucontext_t *ucp, func_t func, uint64_t *args)
 {
 	(*func)(args[0], args[1], args[2], args[3], args[4], args[5]);
-	if(ucp->uc_link == NULL)
+	if (ucp->uc_link == NULL)
 		exit(0);
 
 	setcontext((const ucontext_t *)ucp->uc_link);

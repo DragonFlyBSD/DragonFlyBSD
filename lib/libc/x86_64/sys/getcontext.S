@@ -34,6 +34,7 @@
  */
 
 #include <machine/asm.h>
+#include <cpu/specialreg.h>
 #include <asmcontext.h>
 
 	/*
@@ -57,25 +58,93 @@ ENTRY(_getcontext)
 	 * Save what we need because our stack context is going stale.
 	 */
 	popq	%rdi
-	movq	%rdi,%r9
-	movq	(%rsp),%r8		/* save return PC in %r9 */
+	movq	$0,UC_LINK(%rdi)	/* make sure UC_LINK is clear */
+	movq	%rdi,%r9		/* save ucontext in %r9 */
+	movq	(%rsp),%r8		/* save return PC in %r8 */
 	addq	$UC_MCONTEXT,%rdi
-	call	PIC_PLT(CNAME(get_mcontext))	/* returns non-zero on resume */
-	cmpl	$0,%eax				/* return type is int */
-	je	2f
+
+	movq	$0,MC_ONSTACK(%rdi)	/*	MC_ONSTACK(%rdi)	*/
+	movq	%rdi,MC_RDI(%rdi)
+	movq	%rsi,MC_RSI(%rdi)
+	movq	%rdx,MC_RDX(%rdi)
+	movq	%r8,MC_R8(%rdi)
+	movq	%r9,MC_R9(%rdi)
+	/* movq	%rax,MC_RAX(%rdi) - not needed, replaced below */
+	movq	%rbx,MC_RBX(%rdi)
+	/* movq %rcx,MC_RCX(%rdi) - not needed, scratch */
+	movq	%rbp,MC_RBP(%rdi)
+	movq	%r10,MC_R10(%rdi)
+	movq	%r11,MC_R11(%rdi)
+	movq	%r12,MC_R12(%rdi)
+	movq	%r13,MC_R13(%rdi)
+	movq	%r14,MC_R14(%rdi)
+	movq	%r15,MC_R15(%rdi)
+	/*	MC_TRAPNO(%rdi)	*/
+	/*	MC_ADDR(%rdi)	*/
+	/*	MC_FLAGS(%rdi)	*/
+	/*	MC_ERR(%rdi)	*/
+	/*	MC_RIP(%rdi)	- see below */
+	/*	MC_CS(%rdi)	*/
+	movq	$KUCSEL,MC_CS(%rdi)
+
+	pushfq
+	popq	MC_RFLAGS(%rdi)
+	/*	MC_RSP(%rdi)	- see below */
+	movq	$KUDSEL,MC_SS(%rdi)
+
 	/*
-	 * On resume, resave the stale return pc and restore the signal
-	 * mask (signals are blocked right now from the setcontext call).
+	 * FP registers are scratch, do not save or restore, but make
+	 * sure the context can be restored by a signal handler (where
+	 * they might not be) by properly initializing the FP control
+	 * fields.
 	 */
-	movq	%r8,(%rsp)		/* re-save the return PC */
-	movq	%r9,%rsi 
-	addq	$UC_SIGMASK,%rsi
-        movq    $0,%rdx
-	movq	$SIG_SETMASK,%rdi
-	call	PIC_PLT(CNAME(_sigprocmask))	/* retrieve & save signal mask */
-2:
-	movl	$0,%eax			/* return success */
+	movl	$_MC_FPOWNED_NONE,MC_OWNEDFP(%rdi)
+	movl	$_MC_FPFMT_NODEV,MC_FPFORMAT(%rdi)
+	/*
+	movl	$_MC_FPFMT_YMM,MC_FPFORMAT(%rdi)
+	*/
+	movq	%rdi,%rsi
+	movq	$CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM,%rax
+	movq	$0,%rdx
+	xsave	MC_FPREGS(%rsi)
+	movq	%rsi,%rdi
+
+	/*
+	 * Saved stack pointer as if we had returned from this
+	 * procedure.
+	 */
+	movq	%rsp,MC_RSP(%rdi)
+	addq	$8,MC_RSP(%rdi)
+
+	/*
+	 * Save rflags
+	 * XXX
+	 */
+
+	/*
+	 * Saved instruction pointer as if we had returned from
+	 * this procedure.
+	 */
+	movq	(%rsp),%rdx
+	movq	%rdx,MC_RIP(%rdi)
+
+	/*
+	 * On restore as if procedure returned the value 1
+	 */
+	movq	$1,MC_RAX(%rdi)
+
+	/*
+	 * Set MC_LEN
+	 */
+	movl    $SIZEOF_MCONTEXT_T,MC_LEN(%rdi)
+
+	/*
+	 * Return 0
+	 */
+	subq	%rax,%rax
 	ret
+
+#if 0
 1:
 	pushq	%rsi
 #ifdef PIC
@@ -83,6 +152,7 @@ ENTRY(_getcontext)
 	jmp	*%rdx
 #else
 	jmp	HIDENAME(cerror)
+#endif
 #endif
 END(_getcontext)
 
