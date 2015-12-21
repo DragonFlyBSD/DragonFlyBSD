@@ -40,9 +40,6 @@
 __weak_reference(_swapcontext, swapcontext);
 __weak_reference(_setcontext, setcontext);
 
-int get_mcontext(mcontext_t *);
-int set_mcontext(const mcontext_t *);
-
 /*
  * We need to block most signals during a context switch so we do not
  * dispatch a signal vector during a context switch.
@@ -64,14 +61,6 @@ __sigset_block_all_setup(void)
 
 /*
  * Save the calling context in (oucp) then switch to (ucp).
- *
- * Block all signals while switching contexts.  get_mcontext() returns zero
- * when retrieving a context.
- *
- * When some other thread calls set_mcontext() to resume our thread, 
- * the resume point causes get_mcontext() to return non-zero to us.
- * Signals will be blocked and we must restore the signal mask before
- * returning.
  */
 int
 _swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
@@ -101,10 +90,6 @@ _setcontext(ucontext_t *ucp)
 	int ret;
 
 	ret = sigreturn(ucp);
-#if 0
-	ret = _sigprocmask(SIG_BLOCK, &sigset_block_all, &ucp->uc_sigmask);
-	if (ret == 0)
-		ret = set_mcontext(&ucp->uc_mcontext);
-#endif
+
 	return(ret);
 }

@@ -3,6 +3,7 @@
 
 SRCS+=	_setjmp.S rfork_thread.S setjmp.S sigsetjmp.S \
 	mcontext.S makecontext.c nan.c \
+	qcontext.S quickcontext.c \
 	fabs.S flt_rounds.c fpgetmask.c fpgetprec.c fpgetround.c \
 	fpgetsticky.c fpsetmask.c fpsetprec.c fpsetround.c infinity.c
 

@@ -68,7 +68,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
 	glob.3 initgroups.3 \
 	isgreater.3 \
-	ldexp.3 lockf.3 makecontext.3 modf.3 \
+	ldexp.3 lockf.3 makecontext.3 makecontext_quick.3 modf.3 \
 	nice.3 nlist.3 pause.3 popen.3 posix_spawn.3 \
 	posix_spawn_file_actions_addopen.3 posix_spawn_file_actions_init.3 \
 	posix_spawnattr_getflags.3 posix_spawnattr_getpgroup.3 \
@@ -154,6 +154,8 @@ MLINKS+=isgreater.3 isgreaterequal.3 \
 MLINKS+=ldexp.3 ldexpf.3 \
 	ldexp.3 ldexpl.3
 MLINKS+=makecontext.3 swapcontext.3
+MLINKS+=makecontext_quick.3 swapcontext_quick.3
+MLINKS+=makecontext_quick.3 setcontext_quick.3
 MLINKS+=modf.3 modff.3 \
 	modf.3 modfl.3
 MLINKS+=popen.3 pclose.3

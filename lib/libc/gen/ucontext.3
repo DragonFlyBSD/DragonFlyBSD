@@ -101,9 +101,21 @@ structures:
 .It
 .Ft int
 .Fn swapcontext "ucontext_t *" "const ucontext_t *" ;
+.It
+.Ft void
+.Fn makecontext_quick "ucontext_t *" ;
+.It
+.Ft void
+.Fn setcontext_quick "ucontext_t *" ;
+.It
+.Ft void
+.Fn swapcontext_quick "ucontext_t *" "ucontex_t *" ;
 .El
 .Sh SEE ALSO
 .Xr sigaltstack 2 ,
 .Xr getcontext 3 ,
 .Xr makecontext 3 ,
-.Xr setcontext 3
+.Xr setcontext 3 ,
+.Xr makecontext_quick 3 ,
+.Xr setcontext_quick 3 ,
+.Xr swapcontext_quick 3

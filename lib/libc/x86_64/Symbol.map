@@ -2,7 +2,6 @@ DF404.0 {
 	_setjmp;
 	_longjmp;
 	.mcount;
-	get_mcontext;
 	getcontext;
 	fabs;
 	fpgetmask;
@@ -13,10 +12,12 @@ DF404.0 {
 	fpsetprec;
 	fpsetround;
 	makecontext;
+	makecontext_quick;
+	setcontext_quick;
+	swapcontext_quick;
 	rfork_thread;
 	setjmp;
 	longjmp;
-	set_mcontext;
 	sigsetjmp;
 	siglongjmp;
 	amd64_get_fsbase;
@@ -42,10 +43,11 @@ DFprivate_1.0 {
 	_DYNAMIC;
 	_brk;
 	_end;
-	_get_mcontext;
 	_getcontext;
 	_makecontext;
-	_set_mcontext;
+	_makecontext_quick;
+	_setcontext_quick;
+	_swapcontext_quick;
 	.curbrk;
 	.minbrk;
 	.cerror;
