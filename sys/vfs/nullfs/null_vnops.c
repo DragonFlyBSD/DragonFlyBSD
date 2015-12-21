@@ -90,7 +90,7 @@
  *
  * Unlike the old code, this implementation is not a general skeleton overlay
  * filesystem: to get more comprehensive overlaying, we will need vnode
- * operation dispatch. Other overlay filesystems, like unionfs might be
+ * operation dispatch. Other overlay filesystems might be
  * able to get on with a hybrid solution: overlay some vnodes, and rely
  * on namecache API for the rest.
  */

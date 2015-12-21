@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.32 2008/06/19 23:27:36 dillon Exp $
  */
 
 /*
@@ -847,7 +845,7 @@ int vop_nrename(struct vop_ops *ops,
 
 /*
  * Kernel VOP forwarding wrappers.  These are called when a VFS such as
- * nullfs or unionfs needs to push down into another VFS, changing the 
+ * nullfs needs to push down into another VFS, changing the 
  * a_ops pointer and consequentially necessitating additional 
  * cache management.
  *

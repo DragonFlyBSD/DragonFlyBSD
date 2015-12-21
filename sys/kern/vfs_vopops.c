@@ -1612,7 +1612,7 @@ vop_nrename(struct vop_ops *ops,
  *		PRIMARY VNODE OPERATIONS FORWARDING CALLS		*
  ************************************************************************
  *
- * These procedures are called from VFSs such as unionfs and nullfs
+ * These procedures are called from VFSs such as nullfs
  * when they wish to forward an operation on one VFS to another.  The
  * argument structure/message is modified and then directly passed to the
  * appropriate routine.  This routines may also be called by initiators
