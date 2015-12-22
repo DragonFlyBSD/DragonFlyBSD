@@ -138,10 +138,7 @@ to complete the operation.
 .Sh EXAMPLE
 .Bd -literal
 /*
- * Example quick context test program.
- *
- * This program does 300M context switches.  200M using coroutine fall
- * through and 100M using swapcontext_quick().
+ * quick context test program
  */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -151,6 +148,9 @@ to complete the operation.
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
+
+#define LOOPS	100000000L
 
 static void test1(ucontext_t *ucp, void *arg);
 static void test2(ucontext_t *ucp, void *arg);
@@ -166,16 +166,19 @@ main(int ac, char **av)
 	ucp1.uc_stack.ss_sp = malloc(32768);
 	ucp1.uc_stack.ss_size = 32768;
 	ucp1.uc_cofunc = test1;
+	ucp1.uc_arg = (void *)(intptr_t)1;
 	makecontext_quick(&ucp1);
 
 	ucp2.uc_stack.ss_sp = malloc(32768);
 	ucp2.uc_stack.ss_size = 32768;
 	ucp2.uc_cofunc = test2;
+	ucp2.uc_arg = (void *)(intptr_t)2;
 	makecontext_quick(&ucp2);
 
 	ucp3.uc_stack.ss_sp = malloc(32768);
 	ucp3.uc_stack.ss_size = 32768;
 	ucp3.uc_cofunc = test3;
+	ucp3.uc_arg = (void *)(intptr_t)3;
 	makecontext_quick(&ucp3);
 
 	ucp1.uc_link = &ucp2;
@@ -184,30 +187,43 @@ main(int ac, char **av)
 	setcontext_quick(&ucp1);
 }
 
-int global_counter;
+long global_counter;
 
 static void
 test1(ucontext_t *ucp, void *arg)
 {
+	if ((intptr_t)ucp->uc_arg == 1) {
+		printf("test1 entered for first time\n");
+		ucp->uc_arg = (void *)(intptr_t)0;
+	}
 }
 
 static void
 test2(ucontext_t *ucp, void *arg)
 {
+	if ((intptr_t)ucp->uc_arg == 2) {
+		printf("test2 entered for first time\n");
+		ucp->uc_arg = (void *)(intptr_t)0;
+	}
 	++global_counter;
-	if (global_counter > 100000000)
-		exit(1);
+	if (global_counter > LOOPS)
+		ucp->uc_link = NULL;	/* demonstrate documented exit(0) */
 }
 
 static void
 test3(ucontext_t *ucp, void *arg)
 {
+	/* entered only once */
+	assert((intptr_t)ucp->uc_arg == 3);
+	printf("test3 entered for first time\n");
+	printf("cycle through test1, test2, test3 %d times\n", LOOPS);
+	ucp->uc_arg = (void *)(intptr_t)0;
+
 	for (;;) {
 		swapcontext_quick(ucp, ucp->uc_link);
 	}
 }
 .Ed
-
 .Sh SEE ALSO
 .Xr getcontext 3 ,
 .Xr setcontext 3 ,
