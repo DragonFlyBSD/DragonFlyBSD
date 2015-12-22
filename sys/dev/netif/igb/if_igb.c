@@ -1614,6 +1614,10 @@ igb_add_sysctl(struct igb_softc *sc)
 {
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
+#if defined(IGB_RSS_DEBUG) || defined(IGB_TSS_DEBUG)
+	char node[32];
+	int i;
+#endif
 
 	ctx = device_get_sysctl_ctx(sc->dev);
 	tree = device_get_sysctl_tree(sc->dev);
