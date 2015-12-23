@@ -51,7 +51,6 @@ uuid_t Hammer_FSId;
 int64_t BootAreaSize;
 int64_t MemAreaSize;
 int64_t UndoBufferSize;
-int     NumVolumes;
 int	RootVolNo = -1;
 int	UseReadBehind = -4;
 int	UseReadAhead = 4;

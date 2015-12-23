@@ -59,6 +59,7 @@ main(int ac, char **av)
 	off_t avg_vol_size;
 	int ch;
 	int i;
+	int nvols;
 	int eflag = 0;
 	const char *label = NULL;
 	struct volume_info *vol;
@@ -171,17 +172,17 @@ main(int ac, char **av)
 	 */
 	ac -= optind;
 	av += optind;
-	NumVolumes = ac;
+	nvols = ac;
 	RootVolNo = 0;
 
-	if (NumVolumes == 0) {
+	if (nvols == 0) {
 		fprintf(stderr,
 			"newfs_hammer: You must specify at least one "
 			"special file (volume)\n");
 		exit(1);
 	}
 
-	if (NumVolumes > HAMMER_MAX_VOLUMES) {
+	if (nvols > HAMMER_MAX_VOLUMES) {
 		fprintf(stderr,
 			"newfs_hammer: The maximum number of volumes is %d\n",
 			HAMMER_MAX_VOLUMES);
@@ -189,7 +190,7 @@ main(int ac, char **av)
 	}
 
 	total = 0;
-	for (i = 0; i < NumVolumes; ++i) {
+	for (i = 0; i < nvols; ++i) {
 		vol = setup_volume(i, av[i], 1, O_RDWR);
 
 		/*
@@ -238,7 +239,7 @@ main(int ac, char **av)
 	/*
 	 * Calculate defaults for the boot and memory area sizes.
 	 */
-	avg_vol_size = total / NumVolumes;
+	avg_vol_size = total / nvols;
 	BootAreaSize = init_boot_area_size(BootAreaSize, avg_vol_size);
 	MemAreaSize = init_mem_area_size(MemAreaSize, avg_vol_size);
 
@@ -246,10 +247,10 @@ main(int ac, char **av)
 	 * Format the volumes.  Format the root volume first so we can
 	 * bootstrap the freemap.
 	 */
-	format_volume(get_volume(RootVolNo), NumVolumes, label, total);
-	for (i = 0; i < NumVolumes; ++i) {
+	format_volume(get_volume(RootVolNo), nvols, label, total);
+	for (i = 0; i < nvols; ++i) {
 		if (i != RootVolNo)
-			format_volume(get_volume(i), NumVolumes, label, total);
+			format_volume(get_volume(i), nvols, label, total);
 	}
 
 	/*
@@ -264,7 +265,7 @@ main(int ac, char **av)
 
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s version %d\n",
-		NumVolumes, (NumVolumes == 1 ? "" : "s"),
+		nvols, (nvols == 1 ? "" : "s"),
 		sizetostr(total), HammerVersion);
 	printf("root-volume:         %s\n", vol->name);
 	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
