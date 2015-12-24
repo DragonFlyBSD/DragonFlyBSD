@@ -890,8 +890,10 @@ moused(void)
     mousestatus_t action2;		/* mapped action */
     struct timeval timeout;
     fd_set fds;
-    u_char b;
+    u_char buf[16];
     FILE *fp;
+    int fill = 0;
+    int pos = 0;
     int flags;
     int c;
     int i;
@@ -937,6 +939,9 @@ moused(void)
     timeout.tv_sec = 0;
     timeout.tv_usec = 20000;		/* 20 msec */
     for (;;) {
+	if (fill > pos)
+	    goto more;
+	fill = 0;
 
 	FD_ZERO(&fds);
 	FD_SET(rodent.mfd, &fds);
@@ -974,13 +979,15 @@ moused(void)
 		continue;
 	    }
 	    /* mouse movement */
-	    if (read(rodent.mfd, &b, 1) == -1) {
+	    if ((fill = read(rodent.mfd, buf, sizeof(buf))) == -1) {
 		if (errno == EWOULDBLOCK)
 		    continue;
 		else
 		    return;
 	    }
-	    if ((flags = r_protocol(b, &action0)) == 0)
+	    pos = 0;
+more:
+	    if ((flags = r_protocol(buf[pos++], &action0)) == 0)
 		continue;
 
 	    if (rodent.flags & VirtualScroll) {
