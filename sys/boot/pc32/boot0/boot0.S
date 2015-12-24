@@ -144,7 +144,7 @@ main:
 #if defined(SIO) && COMSPEED != 0
 		/*
 		 * Initialize the serial port.
-		 * bioscom preserves the driver number in DX.
+		 * bioscom preserves the drive number in DX.
 		 */
 		movw $COMSPEED,%ax		# defined by Makefile
 		callw bioscom
@@ -455,10 +455,10 @@ putchr:
 putchr: 	
 		movb $0x01,%ah			# BIOS: Send
 bioscom:
-		pusha				# Save (preserve driver number)
+		pusha				# Save drive number
 		xorw %dx,%dx			# Use COM1
 		int $0x14			#  Character
-		popa				# Restore (restore driver number)
+		popa				# Restore drive number
 		retw				# To caller
 #endif
 		
