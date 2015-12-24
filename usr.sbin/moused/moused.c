@@ -2327,10 +2327,8 @@ r_timestamp(mousestatus_t *act)
     int i;
 
     mask = act->flags & MOUSE_BUTTONS;
-#if 0
     if (mask == 0)
 	return;
-#endif
 
     gettimeofday(&tv1, NULL);
 
