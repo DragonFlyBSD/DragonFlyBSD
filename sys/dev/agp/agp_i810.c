@@ -103,7 +103,6 @@ static int agp_gen8_get_gtt_total_entries(device_t dev);
 
 static int agp_i830_install_gatt(device_t dev);
 static int agp_sb_install_gatt(device_t dev);
-static int agp_vlv_install_gatt(device_t dev);
 
 static void agp_i830_deinstall_gatt(device_t dev);
 static void agp_sb_deinstall_gatt(device_t dev);
@@ -115,8 +114,6 @@ static void agp_i965_install_gtt_pte(device_t dev, u_int index,
 static void agp_g4x_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
 static void agp_sb_install_gtt_pte(device_t dev, u_int index,
-    vm_offset_t physical, int flags);
-static void agp_vlv_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
 static void agp_gen8_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
@@ -358,28 +355,6 @@ static const struct agp_i810_driver agp_i810_sb_driver = {
 	.chipset_flush = agp_i810_chipset_flush,
 };
 
-static const struct agp_i810_driver valleyview_gtt_driver = {
-	.chiptype = CHIP_SB,
-	.gen = 7,
-	.busdma_addr_mask_sz = 40,
-	.res_spec = agp_g4x_res_spec,
-	.check_active = NULL,
-	.set_desc = agp_i810_set_desc,
-	.dump_regs = agp_sb_dump_regs,
-	.get_stolen_size = agp_sb_get_stolen_size,
-	.get_gtt_mappable_entries = agp_i915_get_gtt_mappable_entries,
-	.get_gtt_total_entries = agp_sb_get_gtt_total_entries,
-	.install_gatt = agp_vlv_install_gatt,
-	.deinstall_gatt = agp_sb_deinstall_gatt,
-	.write_gtt = agp_sb_write_gtt,
-	.install_gtt_pte = agp_vlv_install_gtt_pte,
-	.sync_gtt_pte = agp_g4x_sync_gtt_pte,
-	.set_aperture = agp_i915_set_aperture,
-	.chipset_flush_setup = agp_i810_chipset_flush_setup,
-	.chipset_flush_teardown = agp_i810_chipset_flush_teardown,
-	.chipset_flush = agp_i810_chipset_flush,
-};
-
 static const struct agp_i810_driver broadwell_gtt_driver = {
 	.chiptype = CHIP_SB,
 	.gen = 8,
@@ -597,14 +572,6 @@ static const struct agp_i810_match {
 		.name = "IvyBridge server GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
-
-	{	0x0f30, "ValleyView/Baytrail", &valleyview_gtt_driver },
-	{	0x0f31, "ValleyView/Baytrail", &valleyview_gtt_driver },
-	{	0x0f32, "ValleyView/Baytrail", &valleyview_gtt_driver },
-	{	0x0f33, "ValleyView/Baytrail", &valleyview_gtt_driver },
-	{	0x0155, "ValleyView/Baytrail", &valleyview_gtt_driver },
-	{	0x0157, "ValleyView/Baytrail", &valleyview_gtt_driver },
-
 	{
 		.devid = 0x0402,
 		.name = "Haswell desktop GT1 IG",
@@ -1246,30 +1213,6 @@ agp_sb_install_gatt(device_t dev)
 }
 
 static int
-agp_vlv_install_gatt(device_t dev)
-{
-	void *pg = contigmalloc(4096, M_AGP, M_WAITOK | M_ZERO,
-			        0x10000, 0xFFFFFFFFU,
-				PAGE_SIZE, PAGE_SIZE);
-	struct agp_i810_softc *sc;
-	uint32_t pte;
-	int i;
-
-	/*
-	 * Make the entire aperture valid by pointing to a page of junk
-	 * memory.
-	 *
-	 * NOTE: valleyview has not PGTBL_CTL
-	 */
-	sc = device_get_softc(dev);
-	pte = vtophys(pg) | 0x03;
-	for (i = 0; i < 2 * 1024 * 1024; i += 4)
-		bus_write_4(sc->sc_res[0], i + (2 * 1024 * 1024), pte);
-
-	return 0;
-}
-
-static int
 agp_i810_attach(device_t dev)
 {
 	struct agp_i810_softc *sc;
@@ -1523,31 +1466,6 @@ agp_sb_install_gtt_pte(device_t dev, u_int index,
 		pte |= GEN6_PTE_LLC | gfdt;
 
 	pte |= (physical & 0x000000ff00000000ull) >> 28;
-	agp_sb_write_gtt(dev, index, pte);
-}
-
-#define GEN6_PTE_VALID			(1 << 0)
-#define BYT_PTE_WRITEABLE		(1 << 1)
-#define BYT_PTE_SNOOPED_BY_CPU_CACHES	(1 << 2)
-#define GEN6_PTE_ADDR_ENCODE(addr)	GEN6_GTT_ADDR_ENCODE(addr)
-#define GEN6_GTT_ADDR_ENCODE(addr)	((addr) | (((addr) >> 28) & 0xff0))
-
-static void
-agp_vlv_install_gtt_pte(device_t dev, u_int index,
-			vm_offset_t physical, int flags)
-{
-	int type_mask;
-	uint32_t pte;
-
-	pte = GEN6_PTE_ADDR_ENCODE(physical) | GEN6_PTE_VALID;
-	pte |= BYT_PTE_WRITEABLE;
-
-	type_mask = flags & ~AGP_USER_CACHED_MEMORY_GFDT;
-	if (type_mask != AGP_USER_MEMORY) {
-		 pte |= BYT_PTE_SNOOPED_BY_CPU_CACHES;
-		 if (flags & AGP_USER_CACHED_MEMORY_GFDT)
-			pte |= GEN6_PTE_GFDT;
-	}
 	agp_sb_write_gtt(dev, index, pte);
 }
 

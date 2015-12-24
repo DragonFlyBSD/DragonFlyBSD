@@ -335,7 +335,7 @@
 #define	AGP_I965_IFPADDR		0x70
 
 /*
- * G33 registers (also valleyview)
+ * G33 registers
  */
 #define AGP_G33_MGGC_GGMS_MASK		(3 << 8)
 #define AGP_G33_MGGC_GGMS_SIZE_1M	(1 << 8)
@@ -357,7 +357,7 @@
 /*
  * SandyBridge/IvyBridge registers
  */
-#define AGP_SNB_GCC1			0x50	/* also valleyview */
+#define AGP_SNB_GCC1			0x50
 #define AGP_SNB_GMCH_GMS_STOLEN_MASK	0xF8
 #define AGP_SNB_GMCH_GMS_STOLEN_32M	(1 << 3)
 #define AGP_SNB_GMCH_GMS_STOLEN_64M	(2 << 3)
@@ -381,12 +381,6 @@
 #define AGP_SNB_GTT_SIZE_MASK		(3 << 8)
 
 #define AGP_SNB_GFX_MODE		0x02520
-
-/*
- * ValleyView
- */
-#define AGP_VLV_BDSM			0x5C	/* stolen memory base */
-#define AGP_VLV_BGSM			0x70	/* base of gtt in memory */
 
 /*
  * NVIDIA nForce/nForce2 registers
