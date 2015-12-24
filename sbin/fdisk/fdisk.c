@@ -42,12 +42,8 @@
 #include <string.h>
 #include <unistd.h>
 
-int iotest;
-
 #define LBUF 100
 static char lbuf[LBUF];
-
-#define MBRSIGOFF	510
 
 /*
  *
@@ -59,23 +55,22 @@ static char lbuf[LBUF];
  */
 
 #define Decimal(str, ans, tmp) if (decimal(str, &tmp, ans)) ans = tmp
-#define Hex(str, ans, tmp) if (hex(str, &tmp, ans)) ans = tmp
-#define String(str, ans, len) {char *z = ans; char **dflt = &z; if (string(str, dflt)) strncpy(ans, *dflt, len); }
+#define MAX_SEC_SIZE 2048		/* maximum section size that is supported */
+#define MIN_SEC_SIZE 512		/* the sector size to start sensing at */
+#define MAX_SECTORS_PER_TRACK 0x3f	/* maximum number of sectors per track */
+#define MIN_SECTORS_PER_TRACK 0x1	/* minimum number of sectors per track */
+#define MAX_HEADS 0xff			/* maximum number of head */
+static int secsize = 0;		/* the sensed sector size */
 
-#define RoundCyl(x) roundup(x, cylsecs)
-
-#define MAX_SEC_SIZE 2048	/* maximum section size that is supported */
-#define MIN_SEC_SIZE 512	/* the sector size to start sensing at */
-int secsize = 0;		/* the sensed sector size */
-
-const char *disk;
-const char *disks[] =
+static int fd;				/* file descriptor of the given disk */
+static const char *disk;
+static const char *disks[] =
 {
   "/dev/ad0", "/dev/da0", "/dev/vkd0", 0
 };
 
-int cyls, sectors, heads, cylsecs;
-int64_t disksecs;
+static int cyls, sectors, heads, cylsecs;
+static int64_t disksecs;
 
 struct mboot
 {
@@ -84,7 +79,7 @@ struct mboot
 	off_t bootinst_size;
 	struct	dos_partition parts[4];
 };
-struct mboot mboot;
+static struct mboot mboot;
 
 #define ACTIVE 0x80
 #define BOOT_MAGIC 0xAA55
@@ -94,20 +89,17 @@ int dos_heads;
 int dos_sectors;
 int dos_cylsecs;
 
-#define DOSSECT(s,c) ((s & 0x3f) | ((c >> 2) & 0xc0))
+#define DOSSECT(s,c) ((s & MAX_SECTORS_PER_TRACK) | ((c >> 2) & 0xc0))
 #define DOSCYL(c)	(c & 0xff)
 #define MAXCYL		1023
 static int partition = -1;
 
-
 #define MAX_ARGS	10
-
 static int	current_line_number;
 
 static int	geom_processed = 0;
 static int	part_processed = 0;
 static int	active_processed = 0;
-
 
 typedef struct cmd {
     char		cmd;
@@ -117,7 +109,6 @@ typedef struct cmd {
 	long long arg_val;
     }			args[MAX_ARGS];
 } CMD;
-
 
 static int B_flag  = 0;		/* replace boot code */
 static int C_flag  = 0;		/* use wrapped values for CHS */
@@ -250,11 +241,6 @@ static int read_config(char *config_file);
 static void reset_boot(void);
 static int sanitize_partition(struct dos_partition *);
 static void usage(void);
-#if 0
-static int hex(char *str, int *num, int deflt);
-static int string(char *str, char **ans);
-#endif
-
 
 int
 main(int argc, char *argv[])
@@ -330,9 +316,9 @@ main(int argc, char *argv[])
 		{
 			disk = disks[i];
 			rv = open_disk();
-			if(rv != -2) break;
+			if (rv != -2) break;
 		}
-		if(rv < 0)
+		if (rv < 0)
 			err(1, "cannot open any disk");
 	} else {
 		if (open_disk() < 0)
@@ -422,7 +408,7 @@ main(int argc, char *argv[])
 	}
 	else
 	{
-	    if(u_flag)
+	    if (u_flag)
 	    {
 		get_params_to_use();
 	    }
@@ -545,12 +531,12 @@ static void
 init_boot(void)
 {
 	const char *fname;
-	int fd, n;
+	int boot_fd, n;
 	struct stat sb;
 
 	fname = b_flag ? b_flag : "/boot/mbr";
-	if ((fd = open(fname, O_RDONLY)) == -1 ||
-	    fstat(fd, &sb) == -1)
+	if ((boot_fd = open(fname, O_RDONLY)) == -1 ||
+	    fstat(boot_fd, &sb) == -1)
 		err(1, "%s", fname);
 	if ((mboot.bootinst_size = sb.st_size) % secsize != 0)
 		errx(1, "%s: length must be a multiple of sector size", fname);
@@ -558,8 +544,8 @@ init_boot(void)
 		free(mboot.bootinst);
 	if ((mboot.bootinst = malloc(mboot.bootinst_size = sb.st_size)) == NULL)
 		errx(1, "%s: unable to allocate read buffer", fname);
-	if ((n = read(fd, mboot.bootinst, mboot.bootinst_size)) == -1 ||
-	    close(fd))
+	if ((n = read(boot_fd, mboot.bootinst, mboot.bootinst_size)) == -1 ||
+	    close(boot_fd))
 		err(1, "%s", fname);
 	if (n != mboot.bootinst_size)
 		errx(1, "%s: short read", fname);
@@ -576,7 +562,7 @@ struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
 	partp->dp_typ = DOSPTYP_386BSD;
 	partp->dp_flag = ACTIVE;
 	start = roundup(start, dos_sectors);
-	if(start == 0)
+	if (start == 0)
 		start = dos_sectors;
 	partp->dp_start = start;
 	if (disksecs - start > 0xFFFFFFFFU) {
@@ -668,7 +654,7 @@ print_params(void)
 	printf("parameters extracted from device are:\n");
 	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n"
 			,cyls,heads,sectors,cylsecs);
-	if((dos_sectors > 63) || (dos_cyls > 1023) || (dos_heads > 255))
+	if ((dos_sectors > MAX_SECTORS_PER_TRACK) || (dos_cyls > MAXCYL) || (dos_heads > MAX_HEADS))
 		printf("Figures below won't work with BIOS for partitions not in cyl 1\n");
 	printf("parameters to be used for BIOS calculations are:\n");
 	printf("cylinders=%d heads=%d sectors/track=%d (%d blks/cyl)\n\n"
@@ -784,8 +770,6 @@ dos(struct dos_partition *partp)
 	}
 }
 
-int fd;
-
 static void
 erase_partition(int i)
 {
@@ -800,11 +784,11 @@ erase_partition(int i)
 	dev_name = strtok(dev_name + strlen("/dev/da"),"s");
 	sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
 	sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
-	if(errno == ENOENT) {
+	if (errno == ENOENT) {
 		printf("Device:%s does not support the TRIM command\n", disk);
 		usage();
 	}
-	if(!trim_enabled) {
+	if (!trim_enabled) {
 		printf("Erase device option selected, but sysctl (%s) "
 		    "is not enabled\n",sysctl_name);
 		usage();
@@ -839,11 +823,11 @@ open_disk(void)
 		warnx("can't get file status of %s", disk);
 		return -1;
 	}
-	if ( !(st.st_mode & S_IFCHR) && p_flag == 0 )
+	if (!(st.st_mode & S_IFCHR) && p_flag == 0)
 		warnx("device %s is not character special", disk);
 	if ((fd = open(disk,
 	    a_flag || I_flag || B_flag || u_flag ? O_RDWR : O_RDONLY)) == -1) {
-		if(errno == ENXIO)
+		if (errno == ENXIO)
 			return -2;
 		warnx("can't open device %s", disk);
 		return -1;
@@ -859,17 +843,17 @@ static ssize_t
 read_disk(off_t sector, void *buf)
 {
 	lseek(fd,(sector * 512), 0);
-	if( secsize == 0 )
-		for( secsize = MIN_SEC_SIZE; secsize <= MAX_SEC_SIZE; secsize *= 2 )
+	if (secsize == 0)
+		for(secsize = MIN_SEC_SIZE; secsize <= MAX_SEC_SIZE; secsize *= 2)
 			{
 			/* try the read */
 			int size = read(fd, buf, secsize);
-			if( size == secsize )
+			if (size == secsize)
 				/* it worked so return */
 				return secsize;
 			}
 	else
-		return read( fd, buf, secsize );
+		return read(fd, buf, secsize);
 
 	/* we failed to read at any of the sizes */
 	return -1;
@@ -898,8 +882,8 @@ get_params(void)
      */
     if (ioctl(fd, DIOCGPART, &partinfo) == -1) {
 	if (p_flag && fstat(fd, &st) == 0 && st.st_size) {
-	    sectors = 63;
-	    heads = 255;
+	    sectors = MAX_SECTORS_PER_TRACK;
+	    heads = MAX_HEADS;
 	    cylsecs = heads * sectors;
 	    cyls = st.st_size / 512 / cylsecs;
 	} else {
@@ -939,7 +923,7 @@ read_s0(void)
 		warnx("can't read fdisk partition table");
 		return -1;
 	}
-	if (*(uint16_t *)&mboot.bootinst[MBRSIGOFF] != BOOT_MAGIC) {
+	if (*(uint16_t *)&mboot.bootinst[DOSMAGICOFFSET] != BOOT_MAGIC) {
 		warnx("invalid fdisk partition table found");
 		/* So should we initialize things */
 		return -1;
@@ -952,14 +936,10 @@ static int
 write_s0(void)
 {
 #ifdef NOT_NOW
-	int	flag;
+	int	flag = 1;
 #endif
 	int	sector;
 
-	if (iotest) {
-		print_s0(-1);
-		return 0;
-	}
 	memcpy(&mboot.bootinst[DOSPARTOFF], mboot.parts, sizeof(mboot.parts));
 	/*
 	 * write enable label sector before write (if necessary),
@@ -968,7 +948,6 @@ write_s0(void)
 	 * sector 0. (e.g. empty disk)
 	 */
 #ifdef NOT_NOW
-	flag = 1;
 	if (ioctl(fd, DIOCWLABEL, &flag) < 0)
 		warn("ioctl DIOCWLABEL");
 #endif
@@ -976,11 +955,11 @@ write_s0(void)
 		if (write_disk(sector,
 			       &mboot.bootinst[sector * secsize]) == -1) {
 			warn("can't write fdisk partition table");
-			return -1;
 #ifdef NOT_NOW
 			flag = 0;
 			ioctl(fd, DIOCWLABEL, &flag);
 #endif
+			return -1;
 		}
 #ifdef NOT_NOW
 	flag = 0;
@@ -1010,8 +989,8 @@ ok(const char *str)
 static int
 decimal(const char *str, int *num, int deflt)
 {
-int acc = 0, c;
-char *cp;
+	int acc = 0, c;
+	char *cp;
 
 	while (1) {
 		printf("Supply a decimal value for \"%s\" [%d] ", str, deflt);
@@ -1045,78 +1024,6 @@ char *cp;
 
 }
 
-#if 0
-static int
-hex(char *str, int *num, int deflt)
-{
-int acc = 0, c;
-char *cp;
-
-	while (1) {
-		printf("Supply a hex value for \"%s\" [%x] ", str, deflt);
-		fgets(lbuf, LBUF, stdin);
-		lbuf[strlen(lbuf)-1] = 0;
-
-		if (!*lbuf)
-			return 0;
-
-		cp = lbuf;
-		while ((c = *cp) && (c == ' ' || c == '\t')) cp++;
-		if (!c)
-			return 0;
-		while ((c = *cp++)) {
-			if (c <= '9' && c >= '0')
-				acc = (acc << 4) + c - '0';
-			else if (c <= 'f' && c >= 'a')
-				acc = (acc << 4) + c - 'a' + 10;
-			else if (c <= 'F' && c >= 'A')
-				acc = (acc << 4) + c - 'A' + 10;
-			else
-				break;
-		}
-		if (c == ' ' || c == '\t')
-			while ((c = *cp) && (c == ' ' || c == '\t')) cp++;
-		if (!c) {
-			*num = acc;
-			return 1;
-		} else
-			printf("%s is an invalid hex number.  Try again.\n",
-				lbuf);
-	}
-
-}
-
-static int
-string(char *str, char **ans)
-{
-int c;
-char *cp = lbuf;
-
-	while (1) {
-		printf("Supply a string value for \"%s\" [%s] ", str, *ans);
-		fgets(lbuf, LBUF, stdin);
-		lbuf[strlen(lbuf)-1] = 0;
-
-		if (!*lbuf)
-			return 0;
-
-		while ((c = *cp) && (c == ' ' || c == '\t')) cp++;
-		if (c == '"') {
-			c = *++cp;
-			*ans = cp;
-			while ((c = *cp) && c != '"') cp++;
-		} else {
-			*ans = cp;
-			while ((c = *cp) && c != ' ' && c != '\t') cp++;
-		}
-
-		if (c)
-			*cp = 0;
-		return 1;
-	}
-}
-#endif
-
 static const char *
 get_type(int type)
 {
@@ -1127,7 +1034,7 @@ get_type(int type)
 
 	while(counter < numentries)
 	{
-		if(ptr->type == type)
+		if (ptr->type == type)
 		{
 			return(ptr->name);
 		}
@@ -1281,7 +1188,7 @@ process_geometry(CMD *command)
 		    current_line_number);
 	    status = 0;
 	}
-	else if (dos_sectors < 1 || dos_sectors > 63)
+	else if (dos_sectors < MIN_SECTORS_PER_TRACK || dos_sectors > MAX_SECTORS_PER_TRACK)
 	{
 	    warnx("ERROR line %d: number of sectors must be within (1-63)",
 		    current_line_number);
