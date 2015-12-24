@@ -50,7 +50,7 @@ struct drm_modeset_acquire_ctx {
 	struct drm_modeset_lock *contended;
 
 	/**
-	 * list of held locks (drm_modeset_lock)
+	 * list of held locks (drm_modeset_lock_info)
 	 */
 	struct list_head locked;
 
@@ -58,6 +58,16 @@ struct drm_modeset_acquire_ctx {
 	 * Trylock mode, use only for panic handlers!
 	 */
 	bool trylock_only;
+};
+
+/*
+ * Keep track of extra locks.
+ */
+struct drm_modeset_lock_info {
+	struct list_head ctx_entry;
+	struct list_head lock_entry;
+	struct drm_modeset_lock *lock;
+	struct drm_modeset_acquire_ctx *ctx;
 };
 
 /**
@@ -78,7 +88,7 @@ struct drm_modeset_lock {
 	 * Resources that are locked as part of an atomic update are added
 	 * to a list (so we know what to unlock at the end).
 	 */
-	struct list_head head;
+	struct list_head locked;
 };
 
 extern struct ww_class crtc_ww_class;
@@ -97,7 +107,7 @@ int drm_modeset_backoff_interruptible(struct drm_modeset_acquire_ctx *ctx);
 static inline void drm_modeset_lock_init(struct drm_modeset_lock *lock)
 {
 	ww_mutex_init(&lock->mutex, &crtc_ww_class);
-	INIT_LIST_HEAD(&lock->head);
+	INIT_LIST_HEAD(&lock->locked);
 }
 
 /**
@@ -106,7 +116,7 @@ static inline void drm_modeset_lock_init(struct drm_modeset_lock *lock)
  */
 static inline void drm_modeset_lock_fini(struct drm_modeset_lock *lock)
 {
-	WARN_ON(!list_empty(&lock->head));
+	WARN_ON(!list_empty(&lock->locked));
 }
 
 /**
