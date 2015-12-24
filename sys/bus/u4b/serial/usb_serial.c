@@ -468,27 +468,27 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 		/* Use default TTY name */
 		if (ssc->sc_subunits > 1) {
 			/* multiple modems in one */
-			ksnprintf(buf, sizeof(buf), UCOM_TTY_PREFIX "%u.%u",
+			ksnprintf(buf, sizeof(buf), "%u.%u",
 			    ssc->sc_unit, sc->sc_subunit);
 		} else {
 			/* single modem */
-			ksnprintf(buf, sizeof(buf), UCOM_TTY_PREFIX "%u",
+			ksnprintf(buf, sizeof(buf), "%u",
 			    ssc->sc_unit);
 		}
 	}
 
 	sc->sc_cdev = make_dev(&ucom_ops, ssc->sc_unit,
-			UID_ROOT, GID_WHEEL, 0600, "ttyU%r", ssc->sc_unit);
+			UID_ROOT, GID_WHEEL, 0600, "ttyU%s", buf);
 	sc->sc_cdev_init = make_dev(&ucom_ops, ssc->sc_unit | CONTROL_INIT_STATE,
-			UID_ROOT, GID_WHEEL, 0600, "ttyiU%r", ssc->sc_unit);
+			UID_ROOT, GID_WHEEL, 0600, "ttyiU%s", buf);
 	sc->sc_cdev_lock = make_dev(&ucom_ops, ssc->sc_unit | CONTROL_LOCK_STATE,
-			UID_ROOT, GID_WHEEL, 0600, "ttylU%r", ssc->sc_unit);
+			UID_ROOT, GID_WHEEL, 0600, "ttylU%s", buf);
 	sc->sc_cdev2 = make_dev(&ucom_ops, ssc->sc_unit | CALLOUT_MASK,
-			UID_UUCP, GID_DIALER, 0660, "cuaU%r", ssc->sc_unit);
+			UID_UUCP, GID_DIALER, 0660, "cuaU%s", buf);
 	sc->sc_cdev2_init = make_dev(&ucom_ops, ssc->sc_unit | CALLOUT_MASK | CONTROL_INIT_STATE,
-			UID_UUCP, GID_DIALER, 0660, "cuaiU%r", ssc->sc_unit);
+			UID_UUCP, GID_DIALER, 0660, "cuaiU%s", buf);
 	sc->sc_cdev2_lock = make_dev(&ucom_ops, ssc->sc_unit | CALLOUT_MASK | CONTROL_LOCK_STATE,
-			UID_UUCP, GID_DIALER, 0660, "cualU%r", ssc->sc_unit);
+			UID_UUCP, GID_DIALER, 0660, "cualU%s", buf);
 
 	sc->sc_cdev->si_tty = tp;
 	sc->sc_cdev_init->si_tty = tp;
