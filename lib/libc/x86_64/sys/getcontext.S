@@ -100,14 +100,14 @@ ENTRY(_getcontext)
 	 */
 	movl	$_MC_FPOWNED_NONE,MC_OWNEDFP(%rdi)
 	movl	$_MC_FPFMT_NODEV,MC_FPFORMAT(%rdi)
-	/*
+#if 0
 	movl	$_MC_FPFMT_YMM,MC_FPFORMAT(%rdi)
-	*/
 	movq	%rdi,%rsi
 	movq	$CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM,%rax
 	movq	$0,%rdx
 	xsave	MC_FPREGS(%rsi)
 	movq	%rsi,%rdi
+#endif
 
 	/*
 	 * Saved stack pointer as if we had returned from this
