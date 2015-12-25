@@ -8,6 +8,7 @@ UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/compiler
 
 PROG=	iasl
 MAN=	iasl.8
+WARNS?=	2
 
 SRCS=	\
 	aslcompiler.y.h \
