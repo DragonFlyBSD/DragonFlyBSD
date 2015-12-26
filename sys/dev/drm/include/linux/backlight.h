@@ -32,14 +32,27 @@
 #include <linux/mutex.h>
 #include <linux/notifier.h>
 
+enum backlight_type {
+	BACKLIGHT_RAW = 1,
+	BACKLIGHT_PLATFORM,
+	BACKLIGHT_FIRMWARE,
+	BACKLIGHT_TYPE_MAX,
+};
+
 struct backlight_properties {
 	int brightness;
 	int max_brightness;
 	int power;
+	enum backlight_type type;
 };
 
 struct backlight_device {
 	struct backlight_properties props;
+};
+
+struct backlight_ops {
+	int (*update_status)(struct backlight_device *);
+	int (*get_brightness)(struct backlight_device *);
 };
 
 #endif	/* _LINUX_BACKLIGHT_H_ */

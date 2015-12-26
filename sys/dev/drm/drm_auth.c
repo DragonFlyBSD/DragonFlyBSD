@@ -1,4 +1,14 @@
-/*-
+/**
+ * \file drm_auth.c
+ * IOCTLs for authentication
+ *
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ */
+
+/*
+ * Created: Tue Feb  2 08:37:54 1999 by faith@valinux.com
+ *
  * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -21,20 +31,10 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
- * $FreeBSD: src/sys/dev/drm2/drm_auth.c,v 1.1 2012/05/22 11:07:44 kib Exp $
- */
-
-/** @file drm_auth.c
- * Implementation of the get/authmagic ioctls implementing the authentication
- * scheme between the master and clients.
  */
 
 #include <drm/drmP.h>
+#include "drm_internal.h"
 
 /**
  * Find the file with the given magic number.
@@ -89,7 +89,7 @@ static int drm_add_magic(struct drm_device *dev, struct drm_file *priv,
  * Removes the given magic number from the hash table of used magic number
  * lists.
  */
-static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
+int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 {
 	struct drm_magic_entry *pt;
 	struct drm_hash_item *hash;

@@ -68,7 +68,7 @@ struct class *drm_class;
 static struct dentry *drm_debugfs_root;
 #endif
 
-void drm_err(const char *func, const char *format, ...)
+void drm_err(const char *format, ...)
 {
 #if 0
 	struct va_format vaf;
@@ -80,7 +80,8 @@ void drm_err(const char *func, const char *format, ...)
 	vaf.fmt = format;
 	vaf.va = &args;
 
-	r = printk(KERN_ERR "[" DRM_NAME ":%s] *ERROR* %pV", func, &vaf);
+	printk(KERN_ERR "[" DRM_NAME ":%pf] *ERROR* %pV",
+	       __builtin_return_address(0), &vaf);
 
 	va_end(args);
 
@@ -516,6 +517,8 @@ static void drm_fs_inode_free(struct inode *inode)
  *
  * The initial ref-count of the object is 1. Use drm_dev_ref() and
  * drm_dev_unref() to take and drop further ref-counts.
+ *
+ * Note that for purely virtual devices @parent can be NULL.
  *
  * RETURNS:
  * Pointer to new DRM device, or NULL if out of memory.

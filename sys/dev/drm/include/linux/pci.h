@@ -62,6 +62,8 @@ struct pci_dev {
 	unsigned short device;		/* device ID */
 	unsigned short subsystem_vendor;
 	unsigned short subsystem_device;
+
+	unsigned int irq;
 };
 
 struct pci_bus {
@@ -69,7 +71,6 @@ struct pci_bus {
 	struct device *dev;		/* handle to dev */
 
 	unsigned char number;		/* bus addr number */
-//	unsigned char max_bus_speed;	/* max bus speed */
 };
 
 #define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))

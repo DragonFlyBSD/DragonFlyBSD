@@ -26,10 +26,12 @@
  **************************************************************************/
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
- * $FreeBSD: head/sys/dev/drm2/drm_global.c 248060 2013-03-08 18:11:02Z dumbbell $
  */
 
 #include <drm/drmP.h>
+#include <linux/mutex.h>
+#include <linux/slab.h>
+#include <linux/module.h>
 #include <drm/drm_global.h>
 
 struct drm_global_item {
@@ -57,9 +59,8 @@ void drm_global_release(void)
 	int i;
 	for (i = 0; i < DRM_GLOBAL_NUM; ++i) {
 		struct drm_global_item *item = &glob[i];
-		KKASSERT(item->object == NULL);
-		KKASSERT(item->refcount == 0);
-		lockuninit(&item->mutex);
+		BUG_ON(item->object != NULL);
+		BUG_ON(item->refcount != 0);
 	}
 }
 
@@ -67,12 +68,14 @@ int drm_global_item_ref(struct drm_global_reference *ref)
 {
 	int ret;
 	struct drm_global_item *item = &glob[ref->global_type];
-	void *object;
 
-	lockmgr(&item->mutex, LK_EXCLUSIVE);
+	mutex_lock(&item->mutex);
 	if (item->refcount == 0) {
-		item->object = kmalloc(ref->size, M_DRM,
-		    M_WAITOK | M_ZERO);
+		item->object = kzalloc(ref->size, GFP_KERNEL);
+		if (unlikely(item->object == NULL)) {
+			ret = -ENOMEM;
+			goto out_err;
+		}
 
 		ref->object = item->object;
 		ret = ref->init(ref);
@@ -82,26 +85,27 @@ int drm_global_item_ref(struct drm_global_reference *ref)
 	}
 	++item->refcount;
 	ref->object = item->object;
-	object = item->object;
-	lockmgr(&item->mutex, LK_RELEASE);
+	mutex_unlock(&item->mutex);
 	return 0;
 out_err:
-	lockmgr(&item->mutex, LK_RELEASE);
+	mutex_unlock(&item->mutex);
 	item->object = NULL;
 	return ret;
 }
+EXPORT_SYMBOL(drm_global_item_ref);
 
 void drm_global_item_unref(struct drm_global_reference *ref)
 {
 	struct drm_global_item *item = &glob[ref->global_type];
 
-	lockmgr(&item->mutex, LK_EXCLUSIVE);
-	KKASSERT(item->refcount != 0);
-	KKASSERT(ref->object == item->object);
+	mutex_lock(&item->mutex);
+	BUG_ON(item->refcount == 0);
+	BUG_ON(ref->object != item->object);
 	if (--item->refcount == 0) {
 		ref->release(ref);
-		drm_free(item->object, M_DRM);
 		item->object = NULL;
 	}
-	lockmgr(&item->mutex, LK_RELEASE);
+	mutex_unlock(&item->mutex);
 }
+EXPORT_SYMBOL(drm_global_item_unref);
+

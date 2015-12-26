@@ -94,13 +94,18 @@ struct drm_gem_object {
 	uint32_t pending_read_domains;
 	uint32_t pending_write_domain;
 
-#ifdef DUMBBELL_WIP
 	/* dma buf exported from this GEM object */
 	struct dma_buf *export_dma_buf;
 
 	/* dma buf attachment backing this object */
 	struct dma_buf_attachment *import_attach;
-#endif /* DUMBBELL_WIP */
+
+	/**
+	 * dumb - created as dumb buffer
+	 * Whether the gem object was created using the dumb buffer interface
+	 * as such it may not be used for GPU rendering.
+	 */
+	bool dumb;
 };
 
 void drm_gem_object_release(struct drm_gem_object *obj);

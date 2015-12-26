@@ -68,8 +68,8 @@ struct drm_mm_node {
 	unsigned scanned_preceeds_hole : 1;
 	unsigned allocated : 1;
 	unsigned long color;
-	unsigned long start;
-	unsigned long size;
+	u64 start;
+	u64 size;
 	struct drm_mm *mm;
 };
 
@@ -127,7 +127,7 @@ static inline bool drm_mm_initialized(struct drm_mm *mm)
 	return mm->hole_stack.next;
 }
 
-static inline unsigned long __drm_mm_hole_node_start(struct drm_mm_node *hole_node)
+static inline u64 __drm_mm_hole_node_start(struct drm_mm_node *hole_node)
 {
 	return hole_node->start + hole_node->size;
 }
@@ -143,7 +143,7 @@ static inline unsigned long __drm_mm_hole_node_start(struct drm_mm_node *hole_no
  * Returns:
  * Start of the subsequent hole.
  */
-static inline unsigned long drm_mm_hole_node_start(struct drm_mm_node *hole_node)
+static inline u64 drm_mm_hole_node_start(struct drm_mm_node *hole_node)
 {
 	BUG_ON(!hole_node->hole_follows);
 	return __drm_mm_hole_node_start(hole_node);

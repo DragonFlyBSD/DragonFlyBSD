@@ -23,7 +23,8 @@
  */
 
 #include <drm/drmP.h>
-#include <drm/drm_legacy.h>
+#include "drm_legacy.h"
+#include "drm_internal.h"
 
 /**********************************************************************/
 /** \name PCI memory */

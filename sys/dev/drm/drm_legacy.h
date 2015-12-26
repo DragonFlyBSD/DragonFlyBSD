@@ -32,7 +32,6 @@
 #include <drm/drm_legacy.h>
 
 struct agp_memory;
-
 struct drm_device;
 struct drm_file;
 
@@ -73,13 +72,21 @@ int drm_legacy_freebufs(struct drm_device *d, void *v, struct drm_file *f);
 int drm_legacy_mapbufs(struct drm_device *d, void *v, struct drm_file *f);
 int drm_legacy_dma_ioctl(struct drm_device *d, void *v, struct drm_file *f);
 
+void drm_legacy_vma_flush(struct drm_device *d);
+
 /*
  * AGP Support
  */
 
+
 /*
  * Generic Userspace Locking-API
  */
+
+int drm_legacy_i_have_hw_lock(struct drm_device *d, struct drm_file *f);
+int drm_legacy_lock(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_unlock(struct drm_device *d, void *v, struct drm_file *f);
+int drm_legacy_lock_free(struct drm_lock_data *lock, unsigned int ctx);
 
 /* DMA support */
 int drm_legacy_dma_setup(struct drm_device *dev);

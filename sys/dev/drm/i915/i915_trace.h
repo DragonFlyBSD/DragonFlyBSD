@@ -49,15 +49,16 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 #define trace_i915_gem_object_pread(obj, offset, size)
 #define trace_i915_gem_object_pwrite(obj, offset, size)
 
-#define trace_i915_gem_request_add(ring, seqno)
+#define trace_i915_gem_request_add(req)
 #define trace_i915_gem_request_complete(ring)
-#define trace_i915_gem_request_retire(ring, seqno)
-#define trace_i915_gem_request_wait_begin(ring, seqno)
-#define trace_i915_gem_request_wait_end(ring, seqno)
+#define trace_i915_gem_request_notify(ring)
+#define trace_i915_gem_request_retire(req)
+#define trace_i915_gem_request_wait_begin(req)
+#define trace_i915_gem_request_wait_end(req)
 
 #define trace_i915_ring_wait_begin(a)
 #define trace_i915_ring_wait_end(a)
-#define trace_i915_gem_ring_dispatch(a,b,c)
+#define trace_i915_gem_ring_dispatch(a,b)
 #define trace_i915_gem_ring_flush(a,b,c)
 #define trace_i915_gem_ring_sync_to(from, to, seqno)
 
@@ -73,5 +74,13 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 #define trace_i915_pipe_update_start(crtc, min, max)
 #define trace_i915_pipe_update_vblank_evaded(crtc, min, max, start_vbl_count)
 #define trace_i915_pipe_update_end(crtc, end_vbl_count)
+
+#define trace_i915_context_create(ctx)
+#define trace_i915_context_free(ctx)
+
+#define trace_switch_mm(ring, to)
+
+#define trace_i915_ppgtt_create(base)
+#define trace_i915_ppgtt_release(base)
 
 #endif /* _I915_TRACE_H_ */

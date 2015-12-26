@@ -352,37 +352,51 @@ int drm_gem_dumb_destroy(struct drm_file *file,
 EXPORT_SYMBOL(drm_gem_dumb_destroy);
 
 /**
- * Create a handle for this object. This adds a handle reference
- * to the object, which includes a regular reference count. Callers
- * will likely want to dereference the object afterwards.
+ * drm_gem_handle_create_tail - internal functions to create a handle
+ * @file_priv: drm file-private structure to register the handle for
+ * @obj: object to register
+ * @handlep: pointer to return the created handle to the caller
+ * 
+ * This expects the dev->object_name_lock to be held already and will drop it
+ * before returning. Used to avoid races in establishing new handles when
+ * importing an object from either an flink name or a dma-buf.
  */
 int
-drm_gem_handle_create(struct drm_file *file_priv,
-		       struct drm_gem_object *obj,
-		       u32 *handlep)
+drm_gem_handle_create_tail(struct drm_file *file_priv,
+			   struct drm_gem_object *obj,
+			   u32 *handlep)
 {
 	struct drm_device *dev = obj->dev;
 	int ret;
 
+	WARN_ON(!mutex_is_locked(&dev->object_name_lock));
+
 	/*
-	 * Get the user-visible handle using idr.
+	 * Get the user-visible handle using idr.  Preload and perform
+	 * allocation under our spinlock.
 	 */
 	idr_preload(GFP_KERNEL);
-	lockmgr(&dev->object_name_lock, LK_EXCLUSIVE);
 	lockmgr(&file_priv->table_lock, LK_EXCLUSIVE);
 
 	ret = idr_alloc(&file_priv->object_idr, obj, 1, 0, GFP_NOWAIT);
 	drm_gem_object_reference(obj);
 	obj->handle_count++;
 	lockmgr(&file_priv->table_lock, LK_RELEASE);
-	lockmgr(&dev->object_name_lock, LK_RELEASE);
 	idr_preload_end();
+	mutex_unlock(&dev->object_name_lock);
 	if (ret < 0) {
 		drm_gem_object_handle_unreference_unlocked(obj);
 		return ret;
 	}
 	*handlep = ret;
 
+#if 0
+	ret = drm_vma_node_allow(&obj->vma_node, file_priv->filp);
+	if (ret) {
+		drm_gem_handle_delete(file_priv, *handlep);
+		return ret;
+	}
+#endif
 
 	if (dev->driver->gem_open_object) {
 		ret = dev->driver->gem_open_object(obj, file_priv);
@@ -394,8 +408,26 @@ drm_gem_handle_create(struct drm_file *file_priv,
 
 	return 0;
 }
-EXPORT_SYMBOL(drm_gem_handle_create);
 
+/**
+ * drm_gem_handle_create - create a gem handle for an object
+ * @file_priv: drm file-private structure to register the handle for
+ * @obj: object to register
+ * @handlep: pionter to return the created handle to the caller
+ *
+ * Create a handle for this object. This adds a handle reference
+ * to the object, which includes a regular reference count. Callers
+ * will likely want to dereference the object afterwards.
+ */
+int drm_gem_handle_create(struct drm_file *file_priv,
+			  struct drm_gem_object *obj,
+			  u32 *handlep)
+{
+	mutex_lock(&obj->dev->object_name_lock);
+
+	return drm_gem_handle_create_tail(file_priv, obj, handlep);
+}
+EXPORT_SYMBOL(drm_gem_handle_create);
 
 /**
  * drm_gem_free_mmap_offset - release a fake mmap offset for an object

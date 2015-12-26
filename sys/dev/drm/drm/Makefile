@@ -25,9 +25,13 @@ SRCS	= \
 	drm_irq.c \
 	drm_lock.c \
 	drm_memory.c \
+	drm_mipi_dsi.c \
 	drm_mm.c \
 	drm_modes.c \
 	drm_modeset_lock.c \
+	drm_atomic.c \
+	drm_atomic_helper.c \
+	drm_panel.c \
 	drm_pci.c \
 	drm_plane_helper.c \
 	drm_probe_helper.c \

@@ -117,25 +117,25 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 		goto out;
 	}
 
-	/* Flush everything out, we'll be doing GTT only from now on */
-	ret = intel_pin_and_fence_fb_obj(dev, obj, NULL);
-	if (ret) {
-		DRM_ERROR("failed to pin obj: %d\n", ret);
-		goto out_unref;
-	}
-
 	fb = __intel_framebuffer_create(dev, &mode_cmd, obj);
 	if (IS_ERR(fb)) {
 		ret = PTR_ERR(fb);
-		goto out_unpin;
+		goto out_unref;
+	}
+
+	/* Flush everything out, we'll be doing GTT only from now on */
+	ret = intel_pin_and_fence_fb_obj(NULL, fb, NULL);
+	if (ret) {
+		DRM_ERROR("failed to pin obj: %d\n", ret);
+		goto out_fb;
 	}
 
 	ifbdev->fb = to_intel_framebuffer(fb);
 
 	return 0;
 
-out_unpin:
-	i915_gem_object_ggtt_unpin(obj);
+out_fb:
+	drm_framebuffer_remove(fb);
 out_unref:
 	drm_gem_object_unreference(&obj->base);
 out:
@@ -194,6 +194,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		ret = -ENOMEM;
 		goto out_unpin;
 	}
+
 #if 0
 	info->par = helper;
 #endif
@@ -346,6 +347,7 @@ intel_fb_helper_crtc(struct drm_fb_helper *fb_helper, struct drm_crtc *crtc)
 static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 				    struct drm_fb_helper_crtc **crtcs,
 				    struct drm_display_mode **modes,
+				    struct drm_fb_offset *offsets,
 				    bool *enabled, int width, int height)
 {
 	struct drm_device *dev = fb_helper->dev;
@@ -354,6 +356,8 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 	bool fallback = true;
 	int num_connectors_enabled = 0;
 	int num_connectors_detected = 0;
+	uint64_t conn_configured = 0, mask;
+	int pass = 0;
 
 	save_enabled = kcalloc(dev->mode_config.num_connector, sizeof(bool),
 			       GFP_KERNEL);
@@ -361,7 +365,8 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 		return false;
 
 	memcpy(save_enabled, enabled, dev->mode_config.num_connector);
-
+	mask = (1 << fb_helper->connector_count) - 1;
+retry:
 	for (i = 0; i < fb_helper->connector_count; i++) {
 		struct drm_fb_helper_connector *fb_conn;
 		struct drm_connector *connector;
@@ -371,12 +376,19 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 		fb_conn = fb_helper->connector_info[i];
 		connector = fb_conn->connector;
 
+		if (conn_configured & (1 << i))
+			continue;
+
+		if (pass == 0 && !connector->has_tile)
+			continue;
+
 		if (connector->status == connector_status_connected)
 			num_connectors_detected++;
 
 		if (!enabled[i]) {
 			DRM_DEBUG_KMS("connector %s not enabled, skipping\n",
 				      connector->name);
+			conn_configured |= (1 << i);
 			continue;
 		}
 
@@ -395,6 +407,7 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 			DRM_DEBUG_KMS("connector %s has no encoder or crtc, skipping\n",
 				      connector->name);
 			enabled[i] = false;
+			conn_configured |= (1 << i);
 			continue;
 		}
 
@@ -422,8 +435,8 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 
 		/* try for preferred next */
 		if (!modes[i]) {
-			DRM_DEBUG_KMS("looking for preferred mode on connector %s\n",
-				      connector->name);
+			DRM_DEBUG_KMS("looking for preferred mode on connector %s %d\n",
+				      connector->name, connector->has_tile);
 			modes[i] = drm_has_preferred_mode(fb_conn, width,
 							  height);
 		}
@@ -453,7 +466,7 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 			DRM_DEBUG_KMS("looking for current mode on connector %s\n",
 				      connector->name);
 			intel_mode_from_pipe_config(&encoder->crtc->hwmode,
-						    &to_intel_crtc(encoder->crtc)->config);
+						    to_intel_crtc(encoder->crtc)->config);
 			modes[i] = &encoder->crtc->hwmode;
 		}
 		crtcs[i] = new_crtc;
@@ -466,6 +479,12 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 			      modes[i]->flags & DRM_MODE_FLAG_INTERLACE ? "i" :"");
 
 		fallback = false;
+		conn_configured |= (1 << i);
+	}
+
+	if ((conn_configured & mask) != mask) {
+		pass++;
+		goto retry;
 	}
 
 	/*
@@ -519,7 +538,7 @@ static void intel_fbdev_destroy(struct drm_device *dev,
 	drm_fb_helper_fini(&ifbdev->helper);
 
 	drm_framebuffer_unregister_private(&ifbdev->fb->base);
-	drm_framebuffer_unreference(&ifbdev->fb->base);
+	drm_framebuffer_remove(&ifbdev->fb->base);
 }
 
 /*
@@ -537,7 +556,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 	struct intel_framebuffer *fb = NULL;
 	struct drm_crtc *crtc;
 	struct intel_crtc *intel_crtc;
-	struct intel_plane_config *plane_config = NULL;
+	struct intel_initial_plane_config *plane_config = NULL;
 	unsigned int max_size = 0;
 
 	if (!i915.fastboot)
@@ -587,7 +606,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 		 * pipe.  Note we need to use the selected fb's pitch and bpp
 		 * rather than the current pipe's, since they differ.
 		 */
-		cur_size = intel_crtc->config.adjusted_mode.crtc_hdisplay;
+		cur_size = intel_crtc->config->base.adjusted_mode.crtc_hdisplay;
 		cur_size = cur_size * fb->base.bits_per_pixel / 8;
 		if (fb->base.pitches[0] < cur_size) {
 			DRM_DEBUG_KMS("fb not wide enough for plane %c (%d vs %d)\n",
@@ -598,13 +617,14 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 			break;
 		}
 
-		cur_size = intel_crtc->config.adjusted_mode.crtc_vdisplay;
-		cur_size = ALIGN(cur_size, plane_config->tiled ? (IS_GEN2(dev) ? 16 : 8) : 1);
+		cur_size = intel_crtc->config->base.adjusted_mode.crtc_vdisplay;
+		cur_size = intel_fb_align_height(dev, cur_size,
+						 plane_config->tiling);
 		cur_size *= fb->base.pitches[0];
 		DRM_DEBUG_KMS("pipe %c area: %dx%d, bpp: %d, size: %d\n",
 			      pipe_name(intel_crtc->pipe),
-			      intel_crtc->config.adjusted_mode.crtc_hdisplay,
-			      intel_crtc->config.adjusted_mode.crtc_vdisplay,
+			      intel_crtc->config->base.adjusted_mode.crtc_hdisplay,
+			      intel_crtc->config->base.adjusted_mode.crtc_vdisplay,
 			      fb->base.bits_per_pixel,
 			      cur_size);
 
@@ -698,9 +718,10 @@ int intel_fbdev_init(struct drm_device *dev)
 void intel_fbdev_initial_config(void *data, async_cookie_t cookie)
 {
 	struct drm_i915_private *dev_priv = data;
+	struct intel_fbdev *ifbdev = dev_priv->fbdev;
 
 	/* Due to peculiar init order wrt to hpd handling this is separate. */
-	drm_fb_helper_initial_config(&dev_priv->fbdev->helper, 32);
+	drm_fb_helper_initial_config(&ifbdev->helper, ifbdev->preferred_bpp);
 }
 
 void intel_fbdev_fini(struct drm_device *dev)
@@ -773,7 +794,8 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
 void intel_fbdev_output_poll_changed(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	drm_fb_helper_hotplug_event(&dev_priv->fbdev->helper);
+	if (dev_priv->fbdev)
+		drm_fb_helper_hotplug_event(&dev_priv->fbdev->helper);
 }
 
 void intel_fbdev_restore_mode(struct drm_device *dev)
@@ -781,7 +803,7 @@ void intel_fbdev_restore_mode(struct drm_device *dev)
 	int ret;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	if (INTEL_INFO(dev)->num_pipes == 0)
+	if (!dev_priv->fbdev)
 		return;
 
 	ret = drm_fb_helper_restore_fbdev_mode_unlocked(&dev_priv->fbdev->helper);

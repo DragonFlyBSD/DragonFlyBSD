@@ -92,19 +92,22 @@ static void *invalidate_range__linear(struct i915_mmu_notifier *mn,
 				      unsigned long start,
 				      unsigned long end)
 {
-	struct i915_mmu_object *mmu;
+	struct i915_mmu_object *mo;
 	unsigned long serial;
 
 restart:
 	serial = mn->serial;
-	list_for_each_entry(mmu, &mn->linear, link) {
+	list_for_each_entry(mo, &mn->linear, link) {
 		struct drm_i915_gem_object *obj;
 
-		if (mmu->it.last < start || mmu->it.start > end)
+		if (mo->it.last < start || mo->it.start > end)
 			continue;
 
-		obj = mmu->obj;
-		drm_gem_object_reference(&obj->base);
+		obj = mo->obj;
+
+		if (!kref_get_unless_zero(&obj->base.refcount))
+			continue;
+
 		spin_unlock(&mn->lock);
 
 		cancel_userptr(obj);
@@ -140,7 +143,20 @@ static void i915_gem_userptr_mn_invalidate_range_start(struct mmu_notifier *_mn,
 			it = interval_tree_iter_first(&mn->objects, start, end);
 		if (it != NULL) {
 			obj = container_of(it, struct i915_mmu_object, it)->obj;
-			drm_gem_object_reference(&obj->base);
+
+			/* The mmu_object is released late when destroying the
+			 * GEM object so it is entirely possible to gain a
+			 * reference on an object in the process of being freed
+			 * since our serialisation is via the spinlock and not
+			 * the struct_mutex - and consequently use it after it
+			 * is freed and then double free it.
+			 */
+			if (!kref_get_unless_zero(&obj->base.refcount)) {
+				spin_unlock(&mn->lock);
+				serial = 0;
+				continue;
+			}
+
 			serial = mn->serial;
 		}
 		spin_unlock(&mn->lock);

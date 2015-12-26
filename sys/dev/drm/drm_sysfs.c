@@ -23,6 +23,7 @@
  */
 
 #include <drm/drmP.h>
+#include "drm_internal.h"
 
 int drm_sysfs_connector_add(struct drm_connector *connector)
 {

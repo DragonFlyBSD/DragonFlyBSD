@@ -303,7 +303,8 @@
 #define DP_TEST_CRC_B_CB		    0x244
 
 #define DP_TEST_SINK_MISC		    0x246
-#define DP_TEST_CRC_SUPPORTED		    (1 << 5)
+# define DP_TEST_CRC_SUPPORTED		    (1 << 5)
+# define DP_TEST_COUNT_MASK		    0x7
 
 #define DP_TEST_RESPONSE		    0x260
 # define DP_TEST_ACK			    (1 << 0)
@@ -313,7 +314,7 @@
 #define DP_TEST_EDID_CHECKSUM		    0x261
 
 #define DP_TEST_SINK			    0x270
-#define DP_TEST_SINK_START	    (1 << 0)
+# define DP_TEST_SINK_START		    (1 << 0)
 
 #define DP_PAYLOAD_TABLE_UPDATE_STATUS      0x2c0   /* 1.2 MST */
 # define DP_PAYLOAD_TABLE_UPDATED           (1 << 0)
@@ -425,7 +426,6 @@ struct i2c_algo_dp_aux_data {
 int iic_dp_aux_add_bus(device_t dev, const char *name,
     int (*ch)(device_t idev, int mode, uint8_t write_byte, uint8_t *read_byte),
     void *priv, device_t *bus, device_t *adapter);
-
 
 #define DP_LINK_STATUS_SIZE	   6
 bool drm_dp_channel_eq_ok(const u8 link_status[DP_LINK_STATUS_SIZE],
@@ -553,6 +553,7 @@ struct drm_dp_aux {
 	struct lock hw_mutex;
 	ssize_t (*transfer)(struct drm_dp_aux *aux,
 			    struct drm_dp_aux_msg *msg);
+	unsigned i2c_nack_count, i2c_defer_count;
 };
 
 ssize_t drm_dp_dpcd_read(struct drm_dp_aux *aux, unsigned int offset,
@@ -607,6 +608,7 @@ struct drm_dp_link {
 
 int drm_dp_link_probe(struct drm_dp_aux *aux, struct drm_dp_link *link);
 int drm_dp_link_power_up(struct drm_dp_aux *aux, struct drm_dp_link *link);
+int drm_dp_link_power_down(struct drm_dp_aux *aux, struct drm_dp_link *link);
 int drm_dp_link_configure(struct drm_dp_aux *aux, struct drm_dp_link *link);
 
 int drm_dp_aux_register(struct drm_dp_aux *aux);
