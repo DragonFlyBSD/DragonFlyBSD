@@ -110,6 +110,8 @@ preupgrade:
 		pw -V ${DESTDIR}/etc useradd _dhcp -u 77 \
 		   -c "DHCP programs" \
 		   -d /var/empty -s /sbin/nologin
+	(pw -V ${DESTDIR}/etc groupshow video -q > /dev/null) || \
+		pw -V ${DESTDIR}/etc groupadd video -g 44
 	(pw -V ${DESTDIR}/etc groupshow authpf -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd authpf -g 63
 	(pw -V ${DESTDIR}/etc groupshow _pflogd -q > /dev/null) || \

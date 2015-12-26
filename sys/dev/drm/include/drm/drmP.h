@@ -228,9 +228,9 @@ SYSCTL_DECL(_hw_drm);
 
 #define __OS_HAS_AGP	1
 
-#define DRM_DEV_MODE	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
-#define DRM_DEV_UID	0
-#define DRM_DEV_GID	0
+#define DRM_DEV_MODE	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
+#define DRM_DEV_UID	UID_ROOT
+#define DRM_DEV_GID	GID_ROOT
 
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread

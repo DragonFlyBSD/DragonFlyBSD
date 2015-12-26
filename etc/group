@@ -17,6 +17,7 @@ sshd:*:22:
 smmsp:*:25:
 mailnull:*:26:
 guest:*:31:root
+video:*:44:
 bind:*:53:
 proxy:*:62:
 authpf:*:63:

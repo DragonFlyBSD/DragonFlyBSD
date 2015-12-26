@@ -9,6 +9,19 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 4.4 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+2015-12-26
+
+	The default group assigned to /dev/dri entries has been changed
+	from 'wheel' to 'video' with the id of '44'. If you want to have
+	access to the dri devices please add yourself to the video group
+	with:
+
+	# pw groupmod video -m $USER
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 4.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
