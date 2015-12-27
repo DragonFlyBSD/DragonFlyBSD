@@ -276,7 +276,6 @@ do {									\
 /* Returns -errno to shared code */
 #define DRM_WAIT_ON( ret, queue, timeout, condition )		\
 for ( ret = 0 ; !ret && !(condition) ; ) {			\
-	DRM_UNLOCK(dev);					\
 	lwkt_serialize_enter(&dev->irq_lock);			\
 	if (!(condition)) {					\
             tsleep_interlock(&(queue), PCATCH);			\
@@ -286,7 +285,6 @@ for ( ret = 0 ; !ret && !(condition) ; ) {			\
         } else {                                                \
                 lwkt_serialize_exit(&dev->irq_lock);            \
         }                                                 	\
-	DRM_LOCK(dev);						\
 }
 
 int vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
