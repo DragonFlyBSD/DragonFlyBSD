@@ -516,36 +516,6 @@ static const struct agp_i810_match {
 		.name = "SandyBridge server IG",
 		.driver = &agp_i810_sb_driver
 	},
-	{
-		.devid = 0x0152,
-		.name = "IvyBridge desktop GT1 IG",
-		.driver = &agp_i810_sb_driver
-	},
-	{
-		.devid = 0x0162,
-		.name = "IvyBridge desktop GT2 IG",
-		.driver = &agp_i810_sb_driver
-	},
-	{
-		.devid = 0x0156,
-		.name = "IvyBridge mobile GT1 IG",
-		.driver = &agp_i810_sb_driver
-	},
-	{
-		.devid = 0x0166,
-		.name = "IvyBridge mobile GT2 IG",
-		.driver = &agp_i810_sb_driver
-	},
-	{
-		.devid = 0x015a,
-		.name = "IvyBridge server GT1 IG",
-		.driver = &agp_i810_sb_driver
-	},
-	{
-		.devid = 0x016a,
-		.name = "IvyBridge server GT2 IG",
-		.driver = &agp_i810_sb_driver
-	},
 
 	{
 		.devid = 0,
