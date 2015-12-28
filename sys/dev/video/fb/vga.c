@@ -1115,7 +1115,6 @@ setup_grmode:
     lwkt_reltoken(&tty_token);
     return 0;
 #else /* VGA_NO_MODE_CHANGE */
-    lwkt_reltoken(&tty_token);
     return ENODEV;
 #endif /* VGA_NO_MODE_CHANGE */
 }
