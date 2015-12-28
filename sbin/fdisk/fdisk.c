@@ -313,6 +313,8 @@ main(int argc, char *argv[])
 
 	if (argc > 0) {
 		disk = getdevpath(argv[0], 0);
+		if (!disk)
+			err(1, "cannot open disk %s", disk);
 		if (open_disk() < 0)
 			err(1, "cannot open disk %s", disk);
 	} else if (disk == NULL) {
