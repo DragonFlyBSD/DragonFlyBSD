@@ -103,6 +103,10 @@ is also sometimes specified and allows the
 interrupt handler to be directly called from the context of the thread
 being interrupted, but is not recommended for most drivers.
 Other interrupt flags exist for special purposes.
+If
+.Dv INTR_NOPOLL
+is specified, the interrupt handler is not executed by the emergency
+interrupt polling code.
 .Pp
 If
 .Fa serializer
