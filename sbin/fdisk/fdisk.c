@@ -396,7 +396,8 @@ main(int argc, char *argv[])
 		}
 
 		if (!t_flag)
-			write_s0();
+			if (write_s0() == -1)
+				err(1, "can't write fdisk partition table");
 		exit(0);
 	}
 	if (f_flag)
@@ -418,7 +419,8 @@ main(int argc, char *argv[])
 	    }
 	    if (!t_flag)
 	    {
-		write_s0();
+		    if (write_s0() == -1)
+			    err(1, "can't write fdisk partition table");
 	    }
 	}
 	else
@@ -472,7 +474,8 @@ main(int argc, char *argv[])
 				else
 			            erase_partition(partition);
 			}
-			write_s0();
+			if (write_s0() == -1)
+				err(1, "can't write fdisk partition table");
 		    }
 		}
 		else
