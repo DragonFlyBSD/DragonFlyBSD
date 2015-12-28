@@ -42,6 +42,7 @@
 #include "acpi_cpu.h"
 #include "cpu_if.h"
 
+#define ACPI_NOTIFY_PX_STATES	0x80	/* _PPC/_PDL changed. */
 #define ACPI_NOTIFY_CX_STATES	0x81	/* _CST changed. */
 
 static int	acpi_cpu_probe(device_t dev);
@@ -159,6 +160,8 @@ acpi_cpu_attach(device_t dev)
     int cpu_id, cpu_features;
     struct acpi_softc *acpi_sc;
 
+    sc->cpu_dev = dev;
+
     handle = acpi_get_handle(dev);
     cpu_id = acpi_get_magic(dev);
 
@@ -240,6 +243,7 @@ acpi_cpu_attach(device_t dev)
 	return ENXIO;
     acpi_set_handle(child, handle);
     acpi_set_magic(child, cpu_id);
+    sc->cpu_pst = child;
 
     bus_generic_probe(dev);
     bus_generic_attach(dev);
@@ -326,8 +330,12 @@ acpi_cpu_notify(ACPI_HANDLE handler __unused, UINT32 notify, void *xsc)
 	if (sc->cpu_cst_notify != NULL)
 	    sc->cpu_cst_notify(sc->cpu_cst);
 	break;
+    case ACPI_NOTIFY_PX_STATES:
+	if (sc->cpu_pst_notify != NULL)
+	    sc->cpu_pst_notify(sc->cpu_pst);
+	break;
     default:
-	device_printf(sc->cpu_cst, "unknown notify: %#x\n", notify);
+	device_printf(sc->cpu_dev, "unknown notify: %#x\n", notify);
 	break;
     }
 }

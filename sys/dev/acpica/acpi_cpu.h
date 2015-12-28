@@ -33,8 +33,13 @@
 #include <sys/sensors.h>
 
 struct acpi_cpu_softc {
+	device_t		cpu_dev;
+
 	device_t		cpu_cst;
 	void			(*cpu_cst_notify)(device_t);
+
+	device_t		cpu_pst;
+	void			(*cpu_pst_notify)(device_t);
 
 	int			cpu_next_rid;
 

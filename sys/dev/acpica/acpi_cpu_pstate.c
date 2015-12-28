@@ -82,6 +82,8 @@ struct acpi_pst_domain {
 
 	uint32_t		pd_flags;
 
+	struct lwkt_serialize	pd_serialize;
+
 	int			pd_state;
 	struct acpi_pst_list	pd_pstlist;
 
@@ -104,13 +106,19 @@ struct acpi_pst_softc {
 	int			pst_state;
 	int			pst_cpuid;
 
+	uint32_t		pst_flags;
+
 	ACPI_HANDLE		pst_handle;
 
 	LIST_ENTRY(acpi_pst_softc) pst_link;
 };
 
+#define ACPI_PST_FLAG_PPC	0x1
+#define ACPI_PST_FLAG_PDL	0x2
+
 static int	acpi_pst_probe(device_t dev);
 static int	acpi_pst_attach(device_t dev);
+static void	acpi_pst_notify(device_t dev);
 
 static void	acpi_pst_postattach(void *);
 static struct acpi_pst_domain *
@@ -121,9 +129,13 @@ static struct acpi_pst_domain *
 		acpi_pst_domain_find(uint32_t);
 static struct acpi_pst_domain *
 		acpi_pst_domain_alloc(uint32_t, uint32_t, uint32_t);
-static int	acpi_pst_domain_set_pstate(struct acpi_pst_domain *, int);
+static void	acpi_pst_domain_set_pstate_locked(struct acpi_pst_domain *,
+		    int, int *);
+static void	acpi_pst_domain_set_pstate(struct acpi_pst_domain *, int,
+		    int *);
 static void	acpi_pst_domain_check_nproc(device_t, struct acpi_pst_domain *);
-static int	acpi_pst_global_set_pstate(int);
+static void	acpi_pst_global_set_pstate(int);
+static void	acpi_pst_global_fixup_pstate(void);
 
 static int	acpi_pst_check_csr(struct acpi_pst_softc *);
 static int	acpi_pst_check_pstates(struct acpi_pst_softc *);
@@ -643,11 +655,10 @@ fetch_ppc:
 	 * if there is _PPC object.
 	 */
 	error = acpi_pst_eval_ppc(sc, &sstart);
-	if (error && error != ENOENT) {
+	if (error && error != ENOENT)
 		return error;
-	} else if (!error) {
-		/* TODO: Install notifiy handler */
-	}
+	else if (!error)
+		sc->pst_flags |= ACPI_PST_FLAG_PPC;
 	if (acpi_pstate_start < 0) {
 		acpi_pstate_start = sstart;
 	} else if (acpi_pstate_start != sstart) {
@@ -689,11 +700,10 @@ fetch_ppc:
 	 * if there is _PDL object.
 	 */
 	error = acpi_pst_eval_pdl(sc, &scount);
-	if (error && error != ENOENT) {
+	if (error && error != ENOENT)
 		return error;
-	} else if (!error) {
-		/* TODO: Install notifiy handler */
-	}
+	else if (!error)
+		sc->pst_flags |= ACPI_PST_FLAG_PDL;
 proc_pdl:
 	if (acpi_pstate_count == 0) {
 		acpi_pstate_count = scount;
@@ -763,6 +773,9 @@ proc_pdl:
 
 	if (device_get_unit(dev) == 0)
 		AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_pst_postattach, NULL);
+
+	if (sc->pst_flags & (ACPI_PST_FLAG_PPC | ACPI_PST_FLAG_PDL))
+		sc->pst_parent->cpu_pst_notify = acpi_pst_notify;
 
 	return 0;
 }
@@ -904,18 +917,21 @@ acpi_pst_domain_alloc(uint32_t domain, uint32_t coord, uint32_t nproc)
 	dom->pd_coord = coord;
 	dom->pd_nproc = nproc;
 	LIST_INIT(&dom->pd_pstlist);
+	lwkt_serialize_init(&dom->pd_serialize);
 
 	LIST_INSERT_HEAD(&acpi_pst_domains, dom, pd_link);
 
 	return dom;
 }
 
-static int
-acpi_pst_domain_set_pstate(struct acpi_pst_domain *dom, int i)
+static void
+acpi_pst_domain_set_pstate_locked(struct acpi_pst_domain *dom, int i, int *global)
 {
 	const struct acpi_pstate *pstate;
 	struct acpi_pst_softc *sc;
 	int done, error;
+
+	ASSERT_SERIALIZED(&dom->pd_serialize);
 
 	KKASSERT(i >= 0 && i < acpi_npstates);
 	pstate = &acpi_pstates[i];
@@ -936,23 +952,68 @@ acpi_pst_domain_set_pstate(struct acpi_pst_domain *dom, int i)
 	}
 	dom->pd_state = i;
 
-	return 0;
+	if (global != NULL)
+		*global = i;
 }
 
-static int
+static void
+acpi_pst_domain_set_pstate(struct acpi_pst_domain *dom, int i, int *global)
+{
+	lwkt_serialize_enter(&dom->pd_serialize);
+	acpi_pst_domain_set_pstate_locked(dom, i, global);
+	lwkt_serialize_exit(&dom->pd_serialize);
+}
+
+static void
 acpi_pst_global_set_pstate(int i)
 {
 	struct acpi_pst_domain *dom;
+	int *global = &acpi_pst_global_state;
 
 	LIST_FOREACH(dom, &acpi_pst_domains, pd_link) {
 		/* Skip dead domain */
 		if (dom->pd_flags & ACPI_PSTDOM_FLAG_DEAD)
 			continue;
-		acpi_pst_domain_set_pstate(dom, i);
+		acpi_pst_domain_set_pstate(dom, i, global);
+		global = NULL;
 	}
-	acpi_pst_global_state = i;
+}
 
-	return 0;
+static void
+acpi_pst_global_fixup_pstate(void)
+{
+	struct acpi_pst_domain *dom;
+	int *global = &acpi_pst_global_state;
+	int sstart, scount;
+
+	sstart = acpi_pstate_start;
+	scount = acpi_pstate_count;
+
+	LIST_FOREACH(dom, &acpi_pst_domains, pd_link) {
+		int i = -1;
+
+		/* Skip dead domain */
+		if (dom->pd_flags & ACPI_PSTDOM_FLAG_DEAD)
+			continue;
+
+		lwkt_serialize_enter(&dom->pd_serialize);
+
+		if (global != NULL) {
+			if (*global < sstart)
+				*global = sstart;
+			else if (*global >= scount)
+				*global = scount - 1;
+			global = NULL;
+		}
+		if (dom->pd_state < sstart)
+			i = sstart;
+		else if (dom->pd_state >= scount)
+			i = scount - 1;
+		if (i >= 0)
+			acpi_pst_domain_set_pstate_locked(dom, i, NULL);
+
+		lwkt_serialize_exit(&dom->pd_serialize);
+	}
 }
 
 static void
@@ -1126,9 +1187,11 @@ acpi_pst_postattach(void *arg __unused)
 static int
 acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS)
 {
-	int i, error;
+	int i, error, sstart, scount;
 
 	error = 0;
+	sstart = acpi_pstate_start;
+	scount = acpi_pstate_count;
 	for (i = 0; i < acpi_npstates; ++i) {
 		if (error == 0 && i)
 			error = SYSCTL_OUT(req, " ", 1);
@@ -1136,7 +1199,7 @@ acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS)
 			const char *pat;
 			char buf[32];
 
-			if (i < acpi_pstate_start || i >= acpi_pstate_count)
+			if (i < sstart || i >= scount)
 				pat = "(%u)";
 			else
 				pat = "%u";
@@ -1153,11 +1216,14 @@ static int
 acpi_pst_sysctl_freqs_bin(SYSCTL_HANDLER_ARGS)
 {
 	uint32_t freqs[ACPI_NPSTATE_MAX];
-	int cnt, i;
+	int cnt, i, sstart, scount;
 
-	cnt = acpi_pstate_count - acpi_pstate_start;
+	sstart = acpi_pstate_start;
+	scount = acpi_pstate_count;
+
+	cnt = scount - sstart;
 	for (i = 0; i < cnt; ++i)
-		freqs[i] = acpi_pstates[acpi_pstate_start + i].st_freq;
+		freqs[i] = acpi_pstates[sstart + i].st_freq;
 
 	return sysctl_handle_opaque(oidp, freqs, cnt * sizeof(freqs[0]), req);
 }
@@ -1166,11 +1232,14 @@ static int
 acpi_pst_sysctl_power(SYSCTL_HANDLER_ARGS)
 {
 	uint32_t power[ACPI_NPSTATE_MAX];
-	int cnt, i;
+	int cnt, i, sstart, scount;
 
-	cnt = acpi_pstate_count - acpi_pstate_start;
+	sstart = acpi_pstate_start;
+	scount = acpi_pstate_count;
+
+	cnt = scount - sstart;
 	for (i = 0; i < cnt; ++i)
-		power[i] = acpi_pstates[acpi_pstate_start + i].st_power;
+		power[i] = acpi_pstates[sstart + i].st_power;
 
 	return sysctl_handle_opaque(oidp, power, cnt * sizeof(power[0]), req);
 }
@@ -1230,7 +1299,7 @@ acpi_pst_sysctl_select(SYSCTL_HANDLER_ARGS)
 	if (i < 0)
 		return EINVAL;
 
-	acpi_pst_domain_set_pstate(dom, i);
+	acpi_pst_domain_set_pstate(dom, i, NULL);
 	return 0;
 }
 
@@ -1529,4 +1598,42 @@ acpi_pst_eval_pdl(struct acpi_pst_softc *sc, int *scount)
 		return 0;
 	}
 	return ENOENT;
+}
+
+/*
+ * Notify is serialized by acpi task thread.
+ */
+static void
+acpi_pst_notify(device_t dev)
+{
+	struct acpi_pst_softc *sc = device_get_softc(dev);
+	boolean_t fixup = FALSE;
+
+	/*
+	 * NOTE:
+	 * _PPC and _PDL evaluation order is critical.  _PDL
+	 * evaluation depends on _PPC evaluation.
+	 */
+	if (sc->pst_flags & ACPI_PST_FLAG_PPC) {
+		int sstart = acpi_pstate_start;
+
+		acpi_pst_eval_ppc(sc, &sstart);
+		if (acpi_pstate_start != sstart && sc->pst_cpuid == 0) {
+			acpi_pstate_start = sstart;
+			fixup = TRUE;
+		}
+	}
+	if (sc->pst_flags & ACPI_PST_FLAG_PDL) {
+		int scount = acpi_pstate_count;
+
+		acpi_pst_eval_pdl(sc, &scount);
+		if (acpi_pstate_count != scount && sc->pst_cpuid == 0) {
+			acpi_pstate_count = scount;
+			fixup = TRUE;
+		}
+	}
+
+	if (fixup && acpi_pst_md != NULL &&
+	    acpi_pst_md->pmd_set_pstate != NULL)
+		acpi_pst_global_fixup_pstate();
 }
