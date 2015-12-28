@@ -5,62 +5,18 @@ TARGETS+= wildcardinfo kmapinfo kwrite kshowprocs mbufinfo ncptrace
 TARGETS+= ttyinfo vnodeinfo zallocinfo evfilt_user bufqueues testvblank
 
 CFLAGS= -O0 -Wall -g -I../../sys -I../../sys/dev/drm/include
+LDFLAGS= -lkvm -lpthread
 
 all: ${TARGETS}
 
-bufqueues:
-	$(CC) $(CFLAGS) bufqueues.c -lkvm -o ${.TARGET}
+.for EACH in ${TARGETS}
 
-buserr:
-	$(CC) $(CFLAGS) buserr.c -o ${.TARGET}
+${EACH}:
+	${CC} ${CFLAGS} ${EACH}.c ${LDFLAGS} -o /tmp/${EACH}
 
-evfilt_user:
-	$(CC) $(CFLAGS) evfilt_user.c -lpthread -o ${.TARGET}
-
-fdpassing:
-	$(CC) $(CFLAGS) fdpassing.c -o ${.TARGET}
-
-kmapinfo:
-	$(CC) $(CFLAGS) kmapinfo.c -lkvm -o ${.TARGET}
-
-kshowprocs:
-	$(CC) $(CFLAGS) kshowprocs.c -lkvm -o ${.TARGET}
-
-kwrite:
-	$(CC) $(CFLAGS) kwrite.c -lkvm -o ${.TARGET}
-
-mbufinfo:
-	$(CC) $(CFLAGS) mbufinfo.c -lkvm -o ${.TARGET}
-
-ncptrace:
-	$(CC) $(CFLAGS) ncptrace.c -lkvm -o ${.TARGET}
-
-posixlock:
-	$(CC) $(CFLAGS) posixlock.c -o ${.TARGET}
-
-revoke:
-	$(CC) $(CFLAGS) revoke.c -o ${.TARGET}
-
-seekbench:
-	$(CC) $(CFLAGS) seekbench.c -o ${.TARGET}
-
-ttyinfo:
-	$(CC) $(CFLAGS) ttyinfo.c -lkvm -o ${.TARGET}
-
-umtx:
-	$(CC) $(CFLAGS) umtx.c -o ${.TARGET}
-
-vmpageinfo:
-	$(CC) $(CFLAGS) vmpageinfo.c -lkvm -o ${.TARGET}
-
-vnodeinfo:
-	$(CC) $(CFLAGS) vnodeinfo.c -lkvm -o ${.TARGET}
-
-wildcardinfo:
-	$(CC) $(CFLAGS) wildcardinfo.c -lkvm -o ${.TARGET}
-
-zallocinfo:
-	$(CC) $(CFLAGS) zallocinfo.c -lkvm -o ${.TARGET}
+.endfor
 
 clean:
-	rm -f $(TARGETS)
+.for EACH in ${TARGETS}
+	rm -f /tmp/${EACH}
+.endfor
