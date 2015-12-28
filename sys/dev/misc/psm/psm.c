@@ -295,7 +295,6 @@ struct psm_softc {		/* Driver status information */
 	struct cdev	*bdev;
 	int		lasterr;
 	int		cmdcount;
-	struct sigio	*async;		/* Processes waiting for SIGIO */
 };
 static devclass_t psm_devclass;
 #define PSM_SOFTC(unit)	 ((struct psm_softc*)devclass_get_softc(psm_devclass, unit))
@@ -1511,7 +1510,6 @@ psmopen(struct dev_open_args *ap)
 	sc->mode.level = sc->dflt_mode.level;
 	sc->mode.protocol = sc->dflt_mode.protocol;
 	sc->watchdog = FALSE;
-	sc->async = NULL;
 
 	/* flush the event queue */
 	sc->queue.count = 0;
