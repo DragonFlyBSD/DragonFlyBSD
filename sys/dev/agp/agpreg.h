@@ -55,7 +55,6 @@
 #define AGP_STATUS_CAL_MASK	0x1c00
 #define AGP_COMMAND_CAL_MASK	0x1c00
 #define AGP_STATUS_ISOCH	0x10000
-#define AGP_STATUS_SBA		0x0200
 #define AGP_STATUS_ITA_COH	0x0100
 #define AGP_STATUS_GART64	0x0080
 #define AGP_STATUS_HTRANS	0x0040
@@ -64,7 +63,6 @@
 #define AGP_COMMAND_RQ_MASK 	0xff000000
 #define AGP_COMMAND_ARQSZ_MASK	0xe000
 #define AGP_COMMAND_CAL_MASK	0x1c00
-#define AGP_COMMAND_SBA		0x0200
 #define AGP_COMMAND_AGP		0x0100
 #define AGP_COMMAND_GART64	0x0080
 #define AGP_COMMAND_64BIT	0x0020
@@ -195,17 +193,6 @@
 #define	I830_PTE_SYSTEM_CACHED  0x00000006	/* Snooped main phys memory */
 
 /*
- * Sandybridge
- * LLC - Last Level Cache
- * MMC - Mid Level Cache
- */
-#define	GEN6_PTE_RESERVED	0x00000000
-#define	GEN6_PTE_UNCACHED	0x00000002	/* Do not cache */
-#define	GEN6_PTE_LLC		0x00000004	/* Cache in LLC */
-#define	GEN6_PTE_LLC_MLC	0x00000006	/* Cache in LLC and MLC */
-#define	GEN6_PTE_GFDT		0x00000008	/* Graphics Data Type */
-
-/*
  * Memory mapped register offsets for i810 chipset.
  */
 #define AGP_I810_PGTBL_CTL	0x2020
@@ -290,9 +277,6 @@
 #define AGP_I915_GCC1_GMS_STOLEN_48M	0x60
 #define AGP_I915_GCC1_GMS_STOLEN_64M	0x70
 #define AGP_I915_DEVEN			0x54
-#define	AGP_SB_DEVEN_D2EN		0x10	/* SB+ has IGD enabled bit */
-#define	AGP_SB_DEVEN_D2EN_ENABLED	0x10	/* in different place */
-#define	AGP_SB_DEVEN_D2EN_DISABLED	0x00
 #define AGP_I915_DEVEN_D2F0		0x08
 #define AGP_I915_DEVEN_D2F0_ENABLED	0x08
 #define AGP_I915_DEVEN_D2F0_DISABLED	0x00
@@ -335,34 +319,6 @@
 #define AGP_G4X_GCC1_GMS_STOLEN_160M	0xb0
 #define AGP_G4X_GCC1_GMS_STOLEN_224M	0xc0
 #define AGP_G4X_GCC1_GMS_STOLEN_352M	0xd0
-
-/*
- * SandyBridge/IvyBridge registers
- */
-#define AGP_SNB_GCC1			0x50
-#define AGP_SNB_GMCH_GMS_STOLEN_MASK	0xF8
-#define AGP_SNB_GMCH_GMS_STOLEN_32M	(1 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_64M	(2 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_96M	(3 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_128M	(4 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_160M	(5 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_192M	(6 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_224M	(7 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_256M	(8 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_288M	(9 << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_320M	(0xa << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_352M	(0xb << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_384M	(0xc << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_416M	(0xd << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_448M	(0xe << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_480M	(0xf << 3)
-#define AGP_SNB_GMCH_GMS_STOLEN_512M	(0x10 << 3)
-#define AGP_SNB_GTT_SIZE_0M		(0 << 8)
-#define AGP_SNB_GTT_SIZE_1M		(1 << 8)
-#define AGP_SNB_GTT_SIZE_2M		(2 << 8)
-#define AGP_SNB_GTT_SIZE_MASK		(3 << 8)
-
-#define AGP_SNB_GFX_MODE		0x02520
 
 /*
  * NVIDIA nForce/nForce2 registers
