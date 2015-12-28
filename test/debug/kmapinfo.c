@@ -83,15 +83,8 @@ main(int ac, char **av)
 {
     const char *corefile = NULL;
     const char *sysfile = NULL;
-    vm_page_t mptr;
-    struct vm_page m;
-    struct vm_object obj;
     kvm_t *kd;
     int ch;
-    int hv;
-    int i;
-    const char *qstr;
-    const char *ostr;
     vm_offset_t last;
 
     while ((ch = getopt(ac, av, "M:N:dv")) != -1) {
@@ -163,7 +156,7 @@ mapscan(kvm_t *kd, vm_map_entry_t entryp, vm_offset_t *lastp)
 	entry.start, entry.end,
 	(entry.end - entry.start) / 1024,
 	entry.maptype,
-	entry.object);
+	entry.object.map_object);
     total_used += entry.end - entry.start;
     *lastp = entry.end;
     mapscan(kd, entry.rb_entry.rbe_right, lastp);

@@ -63,7 +63,7 @@ main(int ac, char **av)
     while (fgets(buf, sizeof(buf), stdin) != NULL) {
 	bzero(&lk, sizeof(lk));
 	c = '#';
-	sscanf(buf, "%c %lld %lld", &c, &lk.l_start, &lk.l_len);
+	sscanf(buf, "%c %ld %ld", &c, &lk.l_start, &lk.l_len);
 
 	save_start = lk.l_start;
 	save_len = lk.l_len;
@@ -72,11 +72,11 @@ main(int ac, char **av)
 	case 'l':
 	    lk.l_type = F_WRLCK;
 	    while ((r = fcntl(fd, F_GETLK, &lk)) == 0) {
-		printf("%5d %c %lld %lld\n",
+		printf("%5d %c %jd %jd\n",
 			(int)lk.l_pid,
-			(lk.l_type == F_WRLCK) ? 'x' :
-			(lk.l_type == F_RDLCK) ? 'r' :
-			(lk.l_type == F_UNLCK) ? 'u' : '?',
+			((lk.l_type == F_WRLCK) ? 'x' :
+			 (lk.l_type == F_RDLCK) ? 'r' :
+			 (lk.l_type == F_UNLCK) ? 'u' : '?'),
 			lk.l_start,
 			lk.l_len
 		);

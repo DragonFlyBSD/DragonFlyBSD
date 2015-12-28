@@ -1,10 +1,10 @@
 # Debug programs Makefile
 
-TARGETS=  buserr revoke fdpassing posixlock seekbench umtx vmpageinfo wildcardinfo
-TARGETS+= kmapinfo kwrite kshowprocs mbufinfo ncptrace ttyinfo vnodeinfo zallocinfo
-TARGETS+= evfilt_user bufqueues
+TARGETS=  buserr revoke fdpassing posixlock seekbench umtx vmpageinfo
+TARGETS+= wildcardinfo kmapinfo kwrite kshowprocs mbufinfo ncptrace
+TARGETS+= ttyinfo vnodeinfo zallocinfo evfilt_user bufqueues
 
-CFLAGS= -O0 -g -I ../../sys
+CFLAGS= -O0 -Wall -g -I ../../sys
 
 all: ${TARGETS}
 

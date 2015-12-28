@@ -91,7 +91,9 @@ void checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj);
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static int kkread_err(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
+#if 0
 static void addsltrack(vm_page_t m);
+#endif
 static void dumpsltrack(kvm_t *kd);
 
 int
@@ -99,12 +101,14 @@ main(int ac, char **av)
 {
     const char *corefile = NULL;
     const char *sysfile = NULL;
-    vm_page_t mptr;
     struct vm_page m;
     struct vm_object obj;
     kvm_t *kd;
     int ch;
+#if 0
+    vm_page_t mptr;
     int hv;
+#endif
     int i;
     const char *qstr;
     const char *ostr;
@@ -354,6 +358,7 @@ struct SLTrack {
 
 struct SLTrack *SLHash[SLHSIZE];
 
+#if 0
 static
 void
 addsltrack(vm_page_t m)
@@ -378,6 +383,7 @@ addsltrack(vm_page_t m)
 		SLHash[i] = slt;
 	}
 }
+#endif
 
 static
 void

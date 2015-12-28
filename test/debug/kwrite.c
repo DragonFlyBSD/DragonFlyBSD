@@ -64,7 +64,8 @@ main(int argc, char **argv)
 
 			if (kvm_read(kvm, addr + i, &b, 1) != 1)
 				errx(1, "%s", kvm_geterr(kvm));
-			printf("%#0*lx %02x\n", sizeof(addr) * 2, addr + i, b);
+			printf("%#0*lx %02x\n",
+				(int)sizeof(addr) * 2, addr + i, b);
 		}
 	} else {
 		if (argc < width + 2)
@@ -86,7 +87,8 @@ main(int argc, char **argv)
 
 			if (kvm_read(kvm, addr + i, &bo, 1) != 1)
 				errx(1, "%s", kvm_geterr(kvm));
-			printf("%#0*lx %02x -> %02x\n", sizeof(addr) * 2, addr + i, bo, b);
+			printf("%#0*lx %02x -> %02x\n",
+			       (int)sizeof(addr) * 2, addr + i, bo, b);
 			if (kvm_write(kvm, addr + i, &b, 1) != 1)
 				errx(1, "%s", kvm_geterr(kvm));
 		}

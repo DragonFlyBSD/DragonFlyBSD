@@ -228,7 +228,6 @@ char *
 getncppath(kvm_t *kd, struct nchandle *nch, char *base, int bytes)
 {
     struct mount mntinfo;
-    struct mount *mntptr;
     struct namecache ncp;
     struct namecache *ncpptr;
 

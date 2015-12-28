@@ -85,10 +85,8 @@ main(int ac, char **av)
     const char *corefile = NULL;
     const char *sysfile = NULL;
     struct SLGlobalData slab;
-    struct mdglobaldata gd;
     u_long baseptr;
     kvm_t *kd;
-    int offset;
     int ncpus;
     int ch;
     int cpu;

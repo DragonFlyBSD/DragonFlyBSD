@@ -5,6 +5,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -15,6 +16,8 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <signal.h>
+
+int cmp_and_exg(volatile int *lockp, int old, int new);
 
 struct umtx {
     volatile int lock;
@@ -38,11 +41,8 @@ main(int ac, char **av)
 {
     char *path;
     char *str;
-    char **newav;
     off_t off = 0;
     pid_t pid;
-    int i;
-    int j;
     int ch;
     int fd;
     int pgsize;
@@ -97,11 +97,11 @@ main(int ac, char **av)
 		fd, off & ~(off_t)pgmask);
     mtx = (struct umtx *)(str + ((int)off & pgmask));
     if (userland_get_mutex(mtx, timo) < 0) {
-	fprintf(stderr, "Mutex at %s:%lld timed out\n", path, off);
+	fprintf(stderr, "Mutex at %s:%ld timed out\n", path, off);
 	exit(1);
     }
     if (verbose_opt)
-	fprintf(stderr, "Obtained mutex at %s:%lld\n", path, off);
+	fprintf(stderr, "Obtained mutex at %s:%ld\n", path, off);
     if ((pid = fork()) == 0) {
 	execvp(av[1], av + 1);
 	_exit(0);

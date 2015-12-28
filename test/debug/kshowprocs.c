@@ -44,6 +44,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <kvm.h>
+#include <err.h>
 #include <nlist.h>
 #include <getopt.h>
 
@@ -61,7 +62,6 @@ main(int ac, char **av)
     struct kinfo_proc *kp;
     kvm_t *kd;
     int ch;
-    int hv;
     int i;
     int nprocs;
 

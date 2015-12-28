@@ -124,7 +124,6 @@ dumptcb(kvm_t *kd, intptr_t tcbaddr)
 {
     struct inpcbinfo info;
     struct inpcbportinfo pinfo;
-    intptr_t pinfoaddr;
     int i;
 
     kkread(kd, tcbaddr, &info, sizeof(info));

@@ -113,7 +113,6 @@ main(int ac, char **av)
     int ncpus;
     int ch;
     int cpu;
-    int q;
 
     while ((ch = getopt(ac, av, "M:N:v")) != -1) {
 	switch(ch) {

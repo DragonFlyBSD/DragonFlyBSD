@@ -76,6 +76,7 @@ struct nlist Nl[] = {
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static int scanfree(kvm_t *kd, struct cblock *cfree);
 
+int
 main(int ac, char **av)
 {
     struct cblock *cfree;
@@ -115,7 +116,7 @@ main(int ac, char **av)
     kkread(kd, Nl[2].n_value, &slush, sizeof(slush));
     kkread(kd, Nl[3].n_value, &totalcnt, sizeof(totalcnt));
     count = scanfree(kd, cfree);
-    printf("blksize %d, freespc %d bytes, %d blks (%d total), %d slush",
+    printf("blksize %zd, freespc %d bytes, %zd blks (%d total), %d slush",
 	CBSIZE, cbytes, cbytes / CBSIZE, totalcnt, slush);
     if (cbytes % CBSIZE)
 	printf(" [unaligned]\n");

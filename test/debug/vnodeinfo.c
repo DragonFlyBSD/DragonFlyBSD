@@ -107,7 +107,6 @@ main(int ac, char **av)
     struct mount *mp;
     struct vnode *vp;
     kvm_t *kd;
-    int i;
     int ch;
     const char *corefile = NULL;
     const char *sysfile = NULL;
@@ -265,9 +264,10 @@ void dump_dirfs_node(kvm_t *kd, void *arg)
 		sprintf(strfd, "%d", dn.dn_fd);
 
 	printf("\n\t\tuid=%u gid=%u objtype=%s nlinks=%d dn_fd=%s\n", dn.dn_uid,
-	    dn.dn_gid, vtype(dn.dn_type), dn.dn_links, strfd);
-	printf("\t\tsize=%jd ctime=%ju atime=%ju mtime=%ju\n\n", dn.dn_size,
-	    dn.dn_ctime, dn.dn_atime, dn.dn_mtime);
+	       dn.dn_gid, vtype(dn.dn_type), dn.dn_links, strfd);
+	printf("\t\tsize=%jd ctime=%ju atime=%ju mtime=%ju\n\n",
+	       dn.dn_size, (intmax_t)dn.dn_ctime,
+	       (uintmax_t)dn.dn_atime, (uintmax_t)dn.dn_mtime);
 
 	if (dn.dn_name)
 		free(dn.dn_name);
@@ -417,7 +417,7 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 	struct buf buf;
 
 	kkread(kd, (u_long)bufp, &buf, sizeof(buf));
-	printf("\t    %-8s %p loffset %012llx/%05x foffset %08llx",
+	printf("\t    %-8s %p loffset %012lx/%05x foffset %08lx",
 		id, bufp,
 		buf.b_bio1.bio_offset,
 		buf.b_bufsize,
@@ -470,7 +470,7 @@ dumplockinfo(kvm_t *kd, struct lockf_range *item)
 		ownerpid = -1;
 	}
 
-	printf("\t    ty=%d flgs=%04x %lld-%lld owner=%d\n",
+	printf("\t    ty=%d flgs=%04x %ld-%ld owner=%d\n",
 		item->lf_type, item->lf_flags,
 		item->lf_start, item->lf_end,
 		ownerpid

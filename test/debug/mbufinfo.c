@@ -68,6 +68,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <kvm.h>
+#include <ctype.h>
 #include <nlist.h>
 #include <getopt.h>
 
