@@ -134,6 +134,8 @@ static const struct acpi_pstate *
 		acpi_pst_get_pstate(struct acpi_pst_softc *);
 static int	acpi_pst_alloc_resource(device_t, ACPI_OBJECT *, int,
 		    struct acpi_pst_res *);
+static int	acpi_pst_eval_ppc(struct acpi_pst_softc *, int *);
+static int	acpi_pst_eval_pdl(struct acpi_pst_softc *, int *);
 
 static void	acpi_pst_check_csr_handler(netmsg_t);
 static void	acpi_pst_check_pstates_handler(netmsg_t);
@@ -640,42 +642,11 @@ fetch_ppc:
 	 * Adjust the usable first entry of P-State table,
 	 * if there is _PPC object.
 	 */
-	buf.Pointer = NULL;
-	buf.Length = ACPI_ALLOCATE_BUFFER;
-	status = AcpiEvaluateObject(sc->pst_handle, "_PPC", NULL, &buf);
-	if (!ACPI_FAILURE(status)) {
-		ACPI_OBJECT_LIST arglist;
-		ACPI_OBJECT arg[2];
-
-		obj = (ACPI_OBJECT *)buf.Pointer;
-		if (obj->Type == ACPI_TYPE_INTEGER) {
-			if (obj->Integer.Value >= acpi_npstates) {
-				device_printf(dev, "Invalid _PPC value\n");
-				AcpiOsFree(obj);
-				return ENXIO;
-			}
-			sstart = obj->Integer.Value;
-			if (bootverbose)
-				device_printf(dev, "_PPC %d\n", sstart);
-
-			/* TODO: Install notifiy handler */
-		} else {
-			device_printf(dev, "Invalid _PPC object\n");
-			AcpiOsFree(obj);
-			return ENXIO;
-		}
-
-		/* Free _PPC */
-		AcpiOsFree(obj);
-
-		/* _PPC has been successfully processed */
-		arglist.Pointer = arg;
-		arglist.Count = 2;
-		arg[0].Type = ACPI_TYPE_INTEGER;
-		arg[0].Integer.Value = 0x80;
-		arg[1].Type = ACPI_TYPE_INTEGER;
-		arg[1].Integer.Value = 0;
-		AcpiEvaluateObject(sc->pst_handle, "_OST", &arglist, NULL);
+	error = acpi_pst_eval_ppc(sc, &sstart);
+	if (error && error != ENOENT) {
+		return error;
+	} else if (!error) {
+		/* TODO: Install notifiy handler */
 	}
 	if (acpi_pstate_start < 0) {
 		acpi_pstate_start = sstart;
@@ -717,38 +688,11 @@ fetch_ppc:
 	 * Adjust the number of usable entries in P-State table,
 	 * if there is _PDL object.
 	 */
-	buf.Pointer = NULL;
-	buf.Length = ACPI_ALLOCATE_BUFFER;
-	status = AcpiEvaluateObject(sc->pst_handle, "_PDL", NULL, &buf);
-	if (!ACPI_FAILURE(status)) {
-		obj = (ACPI_OBJECT *)buf.Pointer;
-		if (obj->Type == ACPI_TYPE_INTEGER) {
-			if (obj->Integer.Value >= acpi_npstates) {
-				device_printf(dev, "Invalid _PDL value\n");
-				AcpiOsFree(obj);
-				return ENXIO;
-			}
-			if (obj->Integer.Value >= acpi_pstate_start) {
-				scount = obj->Integer.Value + 1;
-				if (bootverbose)
-					device_printf(dev, "_PDL %d\n", scount);
-			} else {
-				/* Prefer _PPC as stated in ACPI 5.1 8.4.4.6 */
-				device_printf(dev, "conflict _PDL %ju and "
-				    "_PPC %d, ignore\n",
-				    (uintmax_t)obj->Integer.Value,
-				    acpi_pstate_start);
-			}
-
-			/* TODO: Install notifiy handler */
-		} else {
-			device_printf(dev, "Invalid _PDL object\n");
-			AcpiOsFree(obj);
-			return ENXIO;
-		}
-
-		/* Free _PDL */
-		AcpiOsFree(obj);
+	error = acpi_pst_eval_pdl(sc, &scount);
+	if (error && error != ENOENT) {
+		return error;
+	} else if (!error) {
+		/* TODO: Install notifiy handler */
 	}
 proc_pdl:
 	if (acpi_pstate_count == 0) {
@@ -1489,4 +1433,100 @@ acpi_pst_domain_check_nproc(device_t dev, struct acpi_pst_domain *dom)
 		dom->pd_nproc++;
 	}
 	KKASSERT(i < dom->pd_nproc);
+}
+
+static int
+acpi_pst_eval_ppc(struct acpi_pst_softc *sc, int *sstart)
+{
+	ACPI_BUFFER buf;
+	ACPI_STATUS status;
+	ACPI_OBJECT *obj;
+
+	buf.Pointer = NULL;
+	buf.Length = ACPI_ALLOCATE_BUFFER;
+	status = AcpiEvaluateObject(sc->pst_handle, "_PPC", NULL, &buf);
+	if (!ACPI_FAILURE(status)) {
+		ACPI_OBJECT_LIST arglist;
+		ACPI_OBJECT arg[2];
+
+		obj = (ACPI_OBJECT *)buf.Pointer;
+		if (obj->Type == ACPI_TYPE_INTEGER) {
+			if (obj->Integer.Value >= acpi_npstates) {
+				device_printf(sc->pst_dev,
+				    "Invalid _PPC value\n");
+				AcpiOsFree(obj);
+				return ENXIO;
+			}
+			*sstart = obj->Integer.Value;
+			if (bootverbose) {
+				device_printf(sc->pst_dev, "_PPC %d\n",
+				    *sstart);
+			}
+		} else {
+			device_printf(sc->pst_dev, "Invalid _PPC object\n");
+			AcpiOsFree(obj);
+			return ENXIO;
+		}
+
+		/* Free _PPC */
+		AcpiOsFree(obj);
+
+		/* _PPC has been successfully processed */
+		arglist.Pointer = arg;
+		arglist.Count = 2;
+		arg[0].Type = ACPI_TYPE_INTEGER;
+		arg[0].Integer.Value = 0x80;
+		arg[1].Type = ACPI_TYPE_INTEGER;
+		arg[1].Integer.Value = 0;
+		AcpiEvaluateObject(sc->pst_handle, "_OST", &arglist, NULL);
+
+		return 0;
+	}
+	return ENOENT;
+}
+
+static int
+acpi_pst_eval_pdl(struct acpi_pst_softc *sc, int *scount)
+{
+	ACPI_BUFFER buf;
+	ACPI_STATUS status;
+	ACPI_OBJECT *obj;
+
+	buf.Pointer = NULL;
+	buf.Length = ACPI_ALLOCATE_BUFFER;
+	status = AcpiEvaluateObject(sc->pst_handle, "_PDL", NULL, &buf);
+	if (!ACPI_FAILURE(status)) {
+		obj = (ACPI_OBJECT *)buf.Pointer;
+		if (obj->Type == ACPI_TYPE_INTEGER) {
+			if (obj->Integer.Value >= acpi_npstates) {
+				device_printf(sc->pst_dev,
+				    "Invalid _PDL value\n");
+				AcpiOsFree(obj);
+				return ENXIO;
+			}
+			if (obj->Integer.Value >= acpi_pstate_start) {
+				*scount = obj->Integer.Value + 1;
+				if (bootverbose) {
+					device_printf(sc->pst_dev, "_PDL %d\n",
+					    *scount);
+				}
+			} else {
+				/* Prefer _PPC as stated in ACPI 5.1 8.4.4.6 */
+				device_printf(sc->pst_dev, "conflict _PDL %ju "
+				    "and _PPC %d, ignore\n",
+				    (uintmax_t)obj->Integer.Value,
+				    acpi_pstate_start);
+			}
+		} else {
+			device_printf(sc->pst_dev, "Invalid _PDL object\n");
+			AcpiOsFree(obj);
+			return ENXIO;
+		}
+
+		/* Free _PDL */
+		AcpiOsFree(obj);
+
+		return 0;
+	}
+	return ENOENT;
 }
