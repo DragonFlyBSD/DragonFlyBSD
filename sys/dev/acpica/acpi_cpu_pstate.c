@@ -184,6 +184,9 @@ TUNABLE_INT("hw.acpi.cpu.pst.ht_reuse_domain", &acpi_pst_ht_reuse_domain);
 static int			acpi_pst_force_pkg_domain = 0;
 TUNABLE_INT("hw.acpi.cpu.pst.force_pkg_domain", &acpi_pst_force_pkg_domain);
 
+static int			acpi_pst_handle_notify = 1;
+TUNABLE_INT("hw.acpi.cpu.pst.handle_notify", &acpi_pst_handle_notify);
+
 /*
  * Force CPU package power domain for Intel CPUs.
  *
@@ -1179,6 +1182,11 @@ acpi_pst_postattach(void *arg __unused)
 				CTLTYPE_UINT | CTLFLAG_RW,
 				NULL, 0, acpi_pst_sysctl_global,
 				"IU", "select freq for all domains");
+		SYSCTL_ADD_INT(&cpu->glob_sysctl_ctx,
+			       SYSCTL_CHILDREN(cpu->glob_sysctl_tree),
+			       OID_AUTO, "px_handle_notify", CTLFLAG_RW,
+			       &acpi_pst_handle_notify, 0,
+			       "handle type 0x80 notify");
 
 		acpi_pst_global_set_pstate(acpi_pstate_start);
 	}
@@ -1608,6 +1616,9 @@ acpi_pst_notify(device_t dev)
 {
 	struct acpi_pst_softc *sc = device_get_softc(dev);
 	boolean_t fixup = FALSE;
+
+	if (!acpi_pst_handle_notify)
+		return;
 
 	/*
 	 * NOTE:
