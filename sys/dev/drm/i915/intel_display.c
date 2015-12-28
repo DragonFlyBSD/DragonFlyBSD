@@ -12090,108 +12090,6 @@ static void intel_finish_crtc_commit(struct drm_crtc *crtc)
 	memset(&intel_crtc->atomic, 0, sizeof(intel_crtc->atomic));
 }
 
-int
-intel_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
-		   struct drm_framebuffer *fb, int crtc_x, int crtc_y,
-		   unsigned int crtc_w, unsigned int crtc_h,
-		   uint32_t src_x, uint32_t src_y,
-		   uint32_t src_w, uint32_t src_h)
-{
-	struct drm_device *dev = plane->dev;
-	struct drm_framebuffer *old_fb = plane->fb;
-	struct intel_plane_state state = {{ 0 }};
-	struct intel_plane *intel_plane = to_intel_plane(plane);
-	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
-	int ret;
-
-	state.base.crtc = crtc ? crtc : plane->crtc;
-	state.base.fb = fb;
-
-	/* sample coordinates in 16.16 fixed point */
-	state.src.x1 = src_x;
-	state.src.x2 = src_x + src_w;
-	state.src.y1 = src_y;
-	state.src.y2 = src_y + src_h;
-
-	/* integer pixels */
-	state.dst.x1 = crtc_x;
-	state.dst.x2 = crtc_x + crtc_w;
-	state.dst.y1 = crtc_y;
-	state.dst.y2 = crtc_y + crtc_h;
-
-	state.clip.x1 = 0;
-	state.clip.y1 = 0;
-	state.clip.x2 = intel_crtc->active ? intel_crtc->config->pipe_src_w : 0;
-	state.clip.y2 = intel_crtc->active ? intel_crtc->config->pipe_src_h : 0;
-
-	ret = intel_plane->check_plane(plane, &state);
-	if (ret)
-		return ret;
-
-	if (fb != old_fb && fb) {
-		ret = intel_prepare_plane_fb(plane, fb);
-		if (ret)
-			return ret;
-	}
-
-	if (!state.base.fb) {
-		unsigned fb_bits = 0;
-
-		switch (plane->type) {
-		case DRM_PLANE_TYPE_PRIMARY:
-			fb_bits = INTEL_FRONTBUFFER_PRIMARY(intel_plane->pipe);
-			break;
-		case DRM_PLANE_TYPE_CURSOR:
-			fb_bits = INTEL_FRONTBUFFER_CURSOR(intel_plane->pipe);
-			break;
-		case DRM_PLANE_TYPE_OVERLAY:
-			fb_bits = INTEL_FRONTBUFFER_SPRITE(intel_plane->pipe);
-			break;
-		}
-
-		/*
-		 * 'prepare' is never called when plane is being disabled, so
-		 * we need to handle frontbuffer tracking here
-		 */
-		mutex_lock(&dev->struct_mutex);
-		i915_gem_track_fb(intel_fb_obj(plane->fb), NULL, fb_bits);
-		mutex_unlock(&dev->struct_mutex);
-	}
-
-	intel_begin_crtc_commit(crtc);
-	intel_plane->commit_plane(plane, &state);
-	intel_finish_crtc_commit(crtc);
-
-	if (fb != old_fb && old_fb) {
-		if (intel_crtc->active)
-			intel_wait_for_vblank(dev, intel_crtc->pipe);
-		intel_cleanup_plane_fb(plane, old_fb);
-	}
-
-	plane->fb = fb;
-
-	return 0;
-}
-
-/**
- * intel_disable_plane - disable a plane
- * @plane: plane to disable
- *
- * General disable handler for all plane types.
- */
-int
-intel_disable_plane(struct drm_plane *plane)
-{
-	if (!plane->fb)
-		return 0;
-
-	if (WARN_ON(!plane->crtc))
-		return -EINVAL;
-
-	return plane->funcs->update_plane(plane, plane->crtc, NULL,
-					  0, 0, 0, 0, 0, 0, 0, 0);
-}
-
 /**
  * intel_plane_destroy - destroy a plane
  * @plane: plane to destroy
@@ -12207,8 +12105,8 @@ void intel_plane_destroy(struct drm_plane *plane)
 }
 
 const struct drm_plane_funcs intel_plane_funcs = {
-	.update_plane = intel_update_plane,
-	.disable_plane = intel_disable_plane,
+	.update_plane = drm_plane_helper_update,
+	.disable_plane = drm_plane_helper_disable,
 	.destroy = intel_plane_destroy,
 	.set_property = intel_plane_set_property,
 	.atomic_get_property = intel_plane_atomic_get_property,
