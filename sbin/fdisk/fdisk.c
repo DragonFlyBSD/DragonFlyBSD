@@ -78,12 +78,11 @@ struct mboot
 	unsigned char padding[2]; /* force the longs to be long aligned */
 	unsigned char *bootinst;  /* boot code */
 	off_t bootinst_size;
-	struct	dos_partition parts[4];
+	struct	dos_partition parts[NDOSPART];
 };
 static struct mboot mboot;
 
 #define ACTIVE 0x80
-#define BOOT_MAGIC 0xAA55
 
 int dos_cyls;
 int dos_heads;
@@ -752,7 +751,7 @@ setactive:
 	do {
 		new = active;
 		Decimal("active partition", new, tmp);
-		if (new < 1 || new > 4) {
+		if (new < 1 || new > NDOSPART) {
 			printf("Active partition number must be in range 1-4."
 					"  Try again.\n");
 			goto setactive;
@@ -992,7 +991,7 @@ read_s0(void)
 		warnx("can't read fdisk partition table");
 		return -1;
 	}
-	if (*(uint16_t *)&mboot.bootinst[DOSMAGICOFFSET] != BOOT_MAGIC) {
+	if (*(uint16_t *)&mboot.bootinst[DOSMAGICOFFSET] != DOSMAGIC) {
 		warnx("invalid fdisk partition table found");
 		/* So should we initialize things */
 		return -1;
@@ -1288,7 +1287,7 @@ process_partition(CMD *command)
 	    break;
 	}
 	part = command->args[0].arg_val;
-	if (part < 1 || part > 4)
+	if (part < 1 || part > NDOSPART)
 	{
 	    warnx("ERROR line %d: invalid partition number %d",
 		    current_line_number, part);
@@ -1395,7 +1394,7 @@ process_active(CMD *command)
 	    break;
 	}
 	part = command->args[0].arg_val;
-	if (part < 1 || part > 4)
+	if (part < 1 || part > NDOSPART)
 	{
 	    warnx("ERROR line %d: invalid partition number %d",
 		    current_line_number, part);
@@ -1513,7 +1512,7 @@ reset_boot(void)
     struct dos_partition	*partp;
 
     init_boot();
-    for (i = 0; i < 4; ++i)
+    for (i = 0; i < NDOSPART; ++i)
     {
 	partp = ((struct dos_partition *) &mboot.parts) + i;
 	bzero((char *)partp, sizeof (struct dos_partition));
