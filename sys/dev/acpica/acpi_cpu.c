@@ -321,7 +321,7 @@ acpi_cpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
 }
 
 static void
-acpi_cpu_notify(ACPI_HANDLE handler __unused, UINT32 notify, void *xsc)
+acpi_cpu_notify(ACPI_HANDLE handle __unused, UINT32 notify, void *xsc)
 {
     struct acpi_cpu_softc *sc = xsc;
 
