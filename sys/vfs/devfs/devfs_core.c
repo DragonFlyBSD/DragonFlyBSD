@@ -273,8 +273,11 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 		++mp->mnt_namecache_gen;
 	}
 
-	/* Apply rules */
-	devfs_rule_check_apply(node, NULL);
+	/*
+	 * Apply rules (requires root node, skip if we are creating the root node)
+	 */
+	if (DEVFS_MNTDATA(mp)->root_node)
+		devfs_rule_check_apply(node, NULL);
 
 	atomic_add_long(&DEVFS_MNTDATA(mp)->file_count, 1);
 
