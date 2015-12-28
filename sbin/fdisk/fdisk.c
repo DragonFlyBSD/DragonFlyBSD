@@ -611,16 +611,25 @@ init_boot(void)
 	    fstat(boot_fd, &sb) == -1)
 		err(1, "%s", fname);
 	if ((mboot.bootinst_size = sb.st_size) % secsize != 0)
+	{
+		close(boot_fd);
 		errx(1, "%s: length must be a multiple of sector size", fname);
+	}
 	if (mboot.bootinst != NULL)
 		free(mboot.bootinst);
 	if ((mboot.bootinst = malloc(mboot.bootinst_size = sb.st_size)) == NULL)
+	{
+		close(boot_fd);
 		errx(1, "%s: unable to allocate read buffer", fname);
+	}
 	if ((n = read(boot_fd, mboot.bootinst, mboot.bootinst_size)) == -1 ||
 	    close(boot_fd))
 		err(1, "%s", fname);
 	if (n != mboot.bootinst_size)
+	{
+		close(boot_fd);
 		errx(1, "%s: short read", fname);
+	}
 }
 
 
