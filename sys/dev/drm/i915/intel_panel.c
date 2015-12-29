@@ -1339,21 +1339,21 @@ sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_panel *panel = &connector->panel;
 	int err, val;
-	u32 max_brightness;
-
-	val = panel->backlight.level;
+	u32 user_level, max_brightness;
 
 	mutex_lock(&dev_priv->backlight_lock);
 	max_brightness = panel->backlight.max;
+	user_level = scale_hw_to_user(connector, panel->backlight.level,
+	    max_brightness);
 	mutex_unlock(&dev_priv->backlight_lock);
 
+	val = user_level;
 	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (err != 0 || req->newptr == NULL) {
 		return(err);
 	}
 
-	if (val != panel->backlight.level && val >=0 &&
-			val <= max_brightness) {
+	if (val != user_level && val >= 0 && val <= max_brightness) {
 		drm_modeset_lock(&dev->mode_config.connection_mutex, NULL);
 		intel_panel_set_backlight(arg1, val, max_brightness);
 		drm_modeset_unlock(&dev->mode_config.connection_mutex);
