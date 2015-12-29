@@ -615,12 +615,10 @@ so_pr_ctlinput_direct(struct protosw *pr, int cmd, struct sockaddr *arg,
 void
 netmsg_so_notify(netmsg_t msg)
 {
-	struct lwkt_token *tok;
+	struct socket *so = msg->base.nm_so;
 	struct signalsockbuf *ssb;
 
-	ssb = (msg->notify.nm_etype & NM_REVENT) ?
-			&msg->base.nm_so->so_rcv :
-			&msg->base.nm_so->so_snd;
+	ssb = (msg->notify.nm_etype & NM_REVENT) ? &so->so_rcv : &so->so_snd;
 
 	/*
 	 * Reply immediately if the event has occured, otherwise queue the
@@ -629,13 +627,12 @@ netmsg_so_notify(netmsg_t msg)
 	 * NOTE: Socket can change if this is an accept predicate so cache
 	 *	 the token.
 	 */
-	tok = lwkt_token_pool_lookup(msg->base.nm_so);
-	lwkt_gettoken(tok);
+	lwkt_getpooltoken(so);
 	atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
 	if (msg->notify.nm_predicate(&msg->notify)) {
 		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
 			atomic_clear_int(&ssb->ssb_flags, SSB_MEVENT);
-		lwkt_reltoken(tok);
+		lwkt_relpooltoken(so);
 		lwkt_replymsg(&msg->base.lmsg,
 			      msg->base.lmsg.ms_error);
 	} else {
@@ -648,7 +645,7 @@ netmsg_so_notify(netmsg_t msg)
 		 * SSB_MEVENT again, after the notify has been queued.
 		 */
 		atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
-		lwkt_reltoken(tok);
+		lwkt_relpooltoken(so);
 	}
 }
 
