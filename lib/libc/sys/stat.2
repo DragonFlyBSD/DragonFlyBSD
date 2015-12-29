@@ -130,10 +130,11 @@ as defined by
 and into which information is placed concerning the file.
 .Bd -literal
 struct stat {
-    dev_t     st_dev;               /* inode's device */
     ino_t     st_ino;               /* inode's number */
-    mode_t    st_mode;              /* inode protection mode */
     nlink_t   st_nlink;             /* number of hard links */
+    dev_t     st_dev;               /* inode's device */
+    mode_t    st_mode;              /* inode protection mode */
+    uint16_t  st_padding1;
     uid_t     st_uid;               /* user ID of the file's owner */
     gid_t     st_gid;               /* group ID of the file's group */
     dev_t     st_rdev;              /* device type */
@@ -154,6 +155,9 @@ struct stat {
     u_int32_t st_blksize;           /* optimal blocksize for I/O */
     u_int32_t st_flags;             /* user defined flags for file */
     u_int32_t st_gen;               /* file generation number */
+    int32_t   st_lspare;
+    int64_t   st_qspare1;           /* was recursive change detect */
+    int64_t   st_qspare2;
 };
 .Ed
 .Pp
