@@ -28,7 +28,7 @@
 .\"     @(#)intro.2	8.5 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/sys/intro.2,v 1.48 2007/01/09 00:28:14 imp Exp $
 .\"
-.Dd February 27, 1995
+.Dd December 29, 2015
 .Dt INTRO 2
 .Os
 .Sh NAME
@@ -465,6 +465,16 @@ The specified extended attribute does not exist.
 .It Er 88 EDOOFUS Em "Programming error" .
 A function or API is being abused in a way which could only be detected
 at run-time.
+.It Er 89 EBADMSG Em "Bad message" .
+A corrupted message was detected.
+.It Er 90 EMULTIHOP Em "Multihop attempted" .
+This error code is unused, but present for compatibility with other systems.
+.It Er 91 ENOLINK Em "Link has been severed" .
+This error code is unused, but present for compatibility with other systems.
+.It Er 92 EPROTO Em "Protocol error" .
+A device or socket encountered an unrecoverable protocol error.
+.It Er 93 ENOMEDIUM Em "No medium found" .
+This error code is unused, but present for compatibility with other systems.
 .El
 .Sh DEFINITIONS
 .Bl -tag -width Ds
