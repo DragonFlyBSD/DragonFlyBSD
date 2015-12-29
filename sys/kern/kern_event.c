@@ -442,12 +442,6 @@ filt_userattach(struct knote *kn)
 	return 0;
 }
 
-/*
- * This function is called with the knote flagged locked but it is
- * still possible to race a callout event due to the callback blocking.
- * We must call callout_terminate() instead of callout_stop() to deal
- * with the race.
- */
 static void
 filt_userdetach(struct knote *kn)
 {
