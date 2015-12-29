@@ -177,7 +177,7 @@ extern struct lwkt_token kq_token;
 MALLOC_DECLARE(M_KQUEUE);
 #endif
 
-#define KNOTE(list, hint)	if ((list) != NULL) knote(list, hint)
+#define KNOTE(list, hint)	if (!SLIST_EMPTY((list))) knote(list, hint)
 
 /*
  * Flag indicating hint is a signal.  Used by EVFILT_SIGNAL, and also
