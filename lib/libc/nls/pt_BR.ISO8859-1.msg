@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protocolo não suportado
 $ ESOCKTNOSUPPORT
 44 Tipo de socket não suportado
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operação não permitida
 $ EPFNOSUPPORT
 46 Família de protocolo não suportada
@@ -195,7 +195,7 @@ $ SIGILL
 4 Instrução ilegal
 $ SIGTRAP
 5 Trap de Trace/BPT
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abortar trap
 $ SIGEMT
 7 EMT trap

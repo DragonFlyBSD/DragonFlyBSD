@@ -95,7 +95,7 @@ $ EPROTONOSUPPORT
 43 Протокол не поддерживается
 $ ESOCKTNOSUPPORT
 44 Этот тип сокета не поддерживается
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Операция не поддерживается
 $ EPFNOSUPPORT
 46 Семейство протоколов не поддерживается
@@ -191,8 +191,6 @@ $ ENOLINK
 91 Канал разорван
 $ EPROTO
 92 Ошибка протокола
-$ ENOTCAPABLE
-93 Недостаточно возможностей
 $
 $ strsignal() support catalog
 $
@@ -208,7 +206,7 @@ $ SIGILL
 4 Недопустимая инструкция
 $ SIGTRAP
 5 Ловушка трассировки/точки останова
-$ SIGABRT
+$ SIGABRT, SIGIOT
 $ XXX: Аварийное завершение
 6 Ловушка аварийного прекращения
 $ SIGEMT

@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protokollaa ei tueta
 $ ESOCKTNOSUPPORT
 44 Socket-tyyppi‰ ei tueta
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Toimintoa ei tueta
 $ EPFNOSUPPORT
 46 Protokollaperhett‰ ei tueta
@@ -177,7 +177,7 @@ $ SIGILL
 4 Laiton k‰sky
 $ SIGTRAP
 5 J‰ljitys/BPT ansa
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Poistumisansa
 $ SIGEMT
 7 EMT-ansa
@@ -229,5 +229,3 @@ $ SIGUSR1
 30 K‰ytt‰j‰n m‰‰ritelt‰v‰ signaali 1
 $ SIGUSR2
 31 K‰ytt‰j‰n m‰‰ritelt‰v‰ signaali 2
-$ SIGPWR
-32 Virransaannin tilassa muutos

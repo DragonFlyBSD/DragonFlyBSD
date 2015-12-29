@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Το πρωτόκολλο δεν υποστηρίζεται
 $ ESOCKTNOSUPPORT
 44 Ο τύπος της υποδοχής δεν υπστηρίζεται
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Η λειτουργία δεν υποστηρίζεται
 $ EPFNOSUPPORT
 46 Δεν υποστηρίζεται η οικογένεια πρωτοκόλλων
@@ -195,7 +195,7 @@ $ SIGILL
 4 Μη-έγκυρη εντολή
 $ SIGTRAP
 5 Παγίδα Trace/BPT
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Παγίδα ακύρωσης
 $ SIGEMT
 7 Παγίδα EMT

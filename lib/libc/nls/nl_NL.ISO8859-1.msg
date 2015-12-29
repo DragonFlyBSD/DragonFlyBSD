@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protocol is niet ondersteund
 $ ESOCKTNOSUPPORT
 44 Dit soort contactpunt is niet ondersteund
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Bewerking niet ondersteund
 $ EPFNOSUPPORT
 46 Protocolfamilie niet ondersteund
@@ -189,8 +189,6 @@ $ ENOLINK
 91 Verbinding werd verstoord
 $ EPROTO
 92 Protocolfout
-$ ENOTCAPABLE
-93 Onvoldoende mogelijkheden
 $
 $ strsignal() support catalog
 $
@@ -205,7 +203,7 @@ $ SIGILL
 4 Verboden instructie
 $ SIGTRAP
 5 Spoor/BPT-val
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abort-val
 $ SIGEMT
 7 EMT-val

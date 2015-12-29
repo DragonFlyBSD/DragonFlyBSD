@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Протокол не підтримується
 $ ESOCKTNOSUPPORT
 44 Цей тип сокету не підтримується
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Операція не підтримується
 $ EPFNOSUPPORT
 46 Родина протоколів не підтримується
@@ -189,8 +189,6 @@ $ ENOLINK
 91 Мережовий канал розірвано
 $ EPROTO
 92 Помилка протоколу
-$ ENOTCAPABLE
-93 Можливості недостатні
 $
 $ strsignal() support catalog
 $
@@ -205,7 +203,7 @@ $ SIGILL
 4 Неприпустима інструкція
 $ SIGTRAP
 5 Пастка трасування
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Аварійне завершення
 $ SIGEMT
 7 Перехоплення емульованої інструкції

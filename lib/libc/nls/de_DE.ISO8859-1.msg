@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protokoll nicht unterstützt
 $ ESOCKTNOSUPPORT
 44 Sockettyp nicht unterstützt
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operation nicht unterstützt
 $ EPFNOSUPPORT
 46 Protokollfamilie nicht unterstützt
@@ -195,7 +195,7 @@ $ SIGILL
 4 Ungültiger Maschinenbefehl
 $ SIGTRAP
 5 Trace/BPT trap
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abort trap
 $ SIGEMT
 7 EMT trap

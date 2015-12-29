@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Nieobs³ugiwany protokó³
 $ ESOCKTNOSUPPORT
 44 Nieobs³ugiwany typ gniazda
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Nieobs³ugiwana operacja
 $ EPFNOSUPPORT
 46 Nieobs³ugiwana rodzina protoko³ów
@@ -195,7 +195,7 @@ $ SIGILL
 4 Nieznana instrukcja
 $ SIGTRAP
 5 Pu³apka debuggera/BPT
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Przerwana pu³apka
 $ SIGEMT
 7 Pu³apka EMT

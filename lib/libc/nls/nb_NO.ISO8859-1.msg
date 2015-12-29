@@ -91,7 +91,7 @@ $ EPROTONOSUPPORT
 43 Protokollen er ikke støttet
 $ ESOCKTNOSUPPORT
 44 Socket-typen er ikke støttet
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operasjonen er ikke støttet
 $ EPFNOSUPPORT
 46 Protokollfamilien er ikke støttet
@@ -175,7 +175,7 @@ $ SIGILL
 4 Ugyldig instruksjon
 $ SIGTRAP
 5 Trace/BPT trap
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abort trap
 $ SIGEMT
 7 EMT trap
