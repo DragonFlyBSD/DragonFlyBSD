@@ -136,7 +136,7 @@ static struct filterops proc_filtops =
 static struct filterops timer_filtops =
 	{ FILTEROP_MPSAFE, filt_timerattach, filt_timerdetach, filt_timer };
 static struct filterops user_filtops =
-	{ 0, filt_userattach, filt_userdetach, filt_user };
+	{ FILTEROP_MPSAFE, filt_userattach, filt_userdetach, filt_user };
 
 static int 		kq_ncallouts = 0;
 static int 		kq_calloutmax = (4 * 1024);
