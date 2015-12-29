@@ -32,12 +32,21 @@
 ******************************************************************************/
 
 #include <sys/param.h>
+#include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <net/if_var.h>
 #include <net/if_media.h>
 
 #include "e1000_api.h"
 #include "e1000_dragonfly.h"
+
+SYSCTL_NODE(_hw, OID_AUTO, ig_hal, CTLFLAG_RW, 0, "Intel 1Ge HAL");
+
+int	e1000_debug;
+
+TUNABLE_INT("hw.ig_hal.debug", &e1000_debug);
+SYSCTL_INT(_hw_ig_hal, OID_AUTO, debug, CTLFLAG_RW, &e1000_debug, 0,
+    "Enable Intel 1Ge HAL debug");
 
 /*
  * NOTE: the following routines using the e1000 

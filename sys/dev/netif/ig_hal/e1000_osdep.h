@@ -48,12 +48,19 @@
 /* TODO: Should we be paranoid about delaying in interrupt context? */
 #define msec_delay_irq(x)	DELAY(1000*(x))
 
+extern int e1000_debug;
+
+#define DEBUGPRINT(S, args...)		\
+do {					\
+	if (e1000_debug)		\
+		kprintf(S, ##args);	\
+} while (0)
 #define DEBUGFUNC(F)		DEBUGOUT(F)
-#define DEBUGOUT(S)
-#define DEBUGOUT1(S,A)
-#define DEBUGOUT2(S,A,B)
-#define DEBUGOUT3(S,A,B,C)
-#define DEBUGOUT7(S,A,B,C,D,E,F,G)
+#define DEBUGOUT(S)		DEBUGPRINT(S)
+#define DEBUGOUT1(S,A)		DEBUGPRINT(S, A)
+#define DEBUGOUT2(S,A,B)	DEBUGPRINT(S, A, B)
+#define DEBUGOUT3(S,A,B,C)	DEBUGPRINT(S, A, B, C)
+#define DEBUGOUT7(S,A,B,C,D,E,F,G) DEBUGPRINT(S, A, B, C, D, E, F, G)
 
 #define CMD_MEM_WRT_INVALIDATE	0x0010  /* BIT_4 */
 #define PCI_COMMAND_REGISTER	PCIR_COMMAND
