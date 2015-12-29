@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protocol not supported
 $ ESOCKTNOSUPPORT
 44 Socket type not supported
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operation not supported
 $ EPFNOSUPPORT
 46 Protocol family not supported
@@ -189,14 +189,8 @@ $ ENOLINK
 91 Link has been severed
 $ EPROTO
 92 Protocol error
-$ ENOTCAPABLE
-93 Capabilities insufficient
-$ ECAPMODE
-94 Not permitted in capability mode
-$ ENOTRECOVERABLE
-95 State not recoverable
-$ EOWNERDEAD
-96 Previous owner died
+$ ENOMEDIUM
+93 No medium found
 $
 $ strsignal() support catalog
 $
@@ -211,7 +205,7 @@ $ SIGILL
 4 Illegal instruction
 $ SIGTRAP
 5 Trace/BPT trap
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abort trap
 $ SIGEMT
 7 EMT trap
@@ -263,6 +257,12 @@ $ SIGUSR1
 30 User defined signal 1
 $ SIGUSR2
 31 User defined signal 2
+$ SIGTHR
+32 Thread interrupt (reserved)
+$ SIGCKPT
+33 Checkpoint and continue
+$ SIGCKPTEXIT
+34 Checkpoint and exit
 $
 $ gai_strerror() support catalog
 $

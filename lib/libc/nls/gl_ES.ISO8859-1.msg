@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protocolo non contemplado
 $ ESOCKTNOSUPPORT
 44 Tipo de socket non contemplado
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operación non contemplada
 $ EPFNOSUPPORT
 46 Familia de protocolos non contemplada
@@ -189,8 +189,6 @@ $ ENOLINK
 91 Enlace fortaleceuse
 $ EPROTO
 92 Erro de protocolo
-$ ENOTCAPABLE
-93 Habilidades non suficientes
 $
 $ strsignal() support catalog
 $
@@ -205,7 +203,7 @@ $ SIGILL
 4 Instrucción inválida
 $ SIGTRAP
 5 Trace/BPT trap
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abort trap
 $ SIGEMT
 7 EMT trap

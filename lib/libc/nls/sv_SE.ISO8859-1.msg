@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protokollet är ej understött
 $ ESOCKTNOSUPPORT
 44 Sockeltypen är ej understödd
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operationen är ej understödd
 $ EPFNOSUPPORT
 46 Protokollfamiljen är ej understödd
@@ -177,7 +177,7 @@ $ SIGILL
 4 Olaglig instruktion
 $ SIGTRAP
 5 Spår- eller brytpunktsfälla
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Avslutsfälla
 $ SIGEMT
 7 Emuleringsfälla
@@ -229,5 +229,3 @@ $ SIGUSR1
 30 Användardefinierad signal 1
 $ SIGUSR2
 31 Användardefinierad signal 2
-$ SIGPWR
-32 Kraftbortfall/omstart

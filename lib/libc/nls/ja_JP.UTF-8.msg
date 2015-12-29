@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 対応していないプロトコルです
 $ ESOCKTNOSUPPORT
 44 対応していないソケットタイプです
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 対応していない操作です
 $ EPFNOSUPPORT
 46 対応していないプロトコルファミリです
@@ -189,8 +189,6 @@ $ ENOLINK
 91 リンクが切断されています
 $ EPROTO
 92 プロトコルエラーです
-$ ENOTCAPABLE
-93 ケーパビリティが不足です
 $
 $ strsignal() support catalog
 $
@@ -205,7 +203,7 @@ $ SIGILL
 4 不正命令
 $ SIGTRAP
 5 トレース/BPT トラップ
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 アボートトラップ
 $ SIGEMT
 7 EMT トラップ

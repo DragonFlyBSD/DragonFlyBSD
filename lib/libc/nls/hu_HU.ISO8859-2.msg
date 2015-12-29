@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protokoll nem támogatott
 $ ESOCKTNOSUPPORT
 44 Sockettípus nem támogatott
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Mûvelet nem támogatott
 $ EPFNOSUPPORT
 46 Protokollcsalád nem támogatott
@@ -189,8 +189,6 @@ $ ENOLINK
 91 A kapcsolat szigorítva lett
 $ EPROTO
 92 Protokol hiba
-$ ENOTCAPABLE
-93 Elégtelen képességek
 $
 $ strsignal() support catalog
 $
@@ -205,7 +203,7 @@ $ SIGILL
 4 Érvénytelen mûvelet
 $ SIGTRAP
 5 Trace/BPT csapda
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abort csapda
 $ SIGEMT
 7 EMT csapda

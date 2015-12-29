@@ -89,7 +89,7 @@ $ EPROTONOSUPPORT
 43 不支持的协议
 $ ESOCKTNOSUPPORT
 44 不支持的 socket 类型
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 不支持的操作
 $ EPFNOSUPPORT
 46 不支持的协议族
@@ -185,8 +185,6 @@ $ ENOLINK
 91 Link has been severed
 $ EPROTO
 92 协议错误
-$ ENOTCAPABLE
-93 权能不足
 $
 $ strsignal() support catalog
 $
@@ -201,7 +199,7 @@ $ SIGILL
 4 无效指令
 $ SIGTRAP
 5 跟踪/BPT 陷阱
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 终止陷阱
 $ SIGEMT
 7 EMT 陷阱

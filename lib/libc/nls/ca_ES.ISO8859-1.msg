@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protocol no suportat
 $ ESOCKTNOSUPPORT
 44 Tipus de socket no suportat
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operació no suportada
 $ EPFNOSUPPORT
 46 Família de protocols no suportada
@@ -173,30 +173,20 @@ $ ENOMSG
 83 No hi ha missatges del tipus desitjat
 $ EOVERFLOW
 84 Valor massa gran per a ésser emmagatzemat en el tipus de dades
-$ EILSEQ
-85 Seqüència de bytes il·legal
-$ ENOTSUP
-86 No suportat
 $ ECANCELED
-87 Operació cancel·lada
-$ EBADMSG
-88 Missatje incorrecte o corrupte
-$ ENODATA
-89 No hi ha missatges disponibles
-$ ENOSR
-90 No hi ha recursos de tipus STREAM
-$ ENOSTR
-91 No és un STREAM
-$ ETIME
-92 Temps d'espera esgotat en el ioctl STREAM
+85 Operació cancel·lada
+$ EILSEQ
+86 Seqüència de bytes il·legal
 $ ENOATTR
-93 Atribut inexistent
+87 Atribut inexistent
+$ EBADMSG
+89 Missatje incorrecte o corrupte
 $ EMULTIHOP
-94 S'ha intentat un multisalt
+90 S'ha intentat un multisalt
 $ ENOLINK
-95 L'enllaç s'ha servit
+91 L'enllaç s'ha servit
 $ EPROTO
-96 Error de protocol
+92 Error de protocol
 $
 $ strsignal() support catalog
 $
@@ -211,7 +201,7 @@ $ SIGILL
 4 Instrucció il·legal
 $ SIGTRAP
 5 Depuració (Trace/BPT)
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Crida d'avort
 $ SIGEMT
 7 Captura d'EMT
@@ -263,5 +253,3 @@ $ SIGUSR1
 30 Senyal 1 definida per l'usuari
 $ SIGUSR2
 31 Senyal 2 definida per l'usuari
-$ SIGPWR
-32 Fallada/reinicialització de l'alimentació

@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Пратакол не падтрымліваецца
 $ ESOCKTNOSUPPORT
 44 Тып сокету не падтрымліваецца
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Аперацыя не падтрымліваецца
 $ EPFNOSUPPORT
 46 Сямейства пратаколаў не падтрымліваецца
@@ -195,7 +195,7 @@ $ SIGILL
 4 Недапушчальная інструкцыя
 $ SIGTRAP
 5 Пастка трасіроўкі/кропкі спынення
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Пастка аварыйнага завяршэння
 $ SIGEMT
 7 Пастка EMT

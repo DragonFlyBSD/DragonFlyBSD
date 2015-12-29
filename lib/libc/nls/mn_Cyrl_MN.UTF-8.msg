@@ -91,7 +91,7 @@ $ EPROTONOSUPPORT
 43 Протокол дэмжигдээгүй
 $ ESOCKTNOSUPPORT
 44 Сокетийн төрөл дэмжигдээгүй
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Үйлдэл дэмжигдээгүй
 $ EPFNOSUPPORT
 46 Протоколын гэр бүл дэмжигдээгүй
@@ -146,7 +146,7 @@ $ ESTALE
 $ EREMOTE
 71 Зам хэтэрхий алслагдсан түвшинтэй байна
 $ EBADRPC
-2 RPC бүтэц буруу
+72 RPC бүтэц буруу
 $ ERPCMISMATCH
 73 RPC-ийн хувилбар буруу
 $ EPROGUNAVAIL
@@ -193,7 +193,7 @@ $ SIGILL
 4 Буруу заавар
 $ SIGTRAP
 5 Мөр/BPT занга
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Таслан зогсоох занга
 $ SIGEMT
 7 EMT занга

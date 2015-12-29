@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 Protokol nie je podporovaný
 $ ESOCKTNOSUPPORT
 44 Typ socketu nie je podporovaný
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 Operácia nie je podporovaná
 $ EPFNOSUPPORT
 46 Rodina protokolov nie je podporovaná
@@ -173,30 +173,20 @@ $ ENOMSG
 83 Neexistuje správa ¾elaného typu
 $ EOVERFLOW
 84 Hodnota je pre daný dátový typ priveµká
-$ EILSEQ
-85 Neprípustná postupnos» bajtov
-$ ENOTSUP
-86 Nie je podporované
 $ ECANCELED
-87 Operácia zru¹ená
-$ EBADMSG
-88 Chybná alebo poru¹ená správa
-$ ENODATA
-89 ®iadna správa nie je k dispozícii
-$ ENOSR
-90 ®iadne STREAM zdroje
-$ ENOSTR
-91 Nie je STREAM
-$ ETIME
-92 Èasový limit pre STREAM ioctl vypr¹al
+85 Operácia zru¹ená
+$ EILSEQ
+86 Neprípustná postupnos» bajtov
 $ ENOATTR
-93 Atribút nenájdený
+87 Atribút nenájdený
+$ EBADMSG
+89 Chybná alebo poru¹ená správa
 $ EMULTIHOP
-94 Pokus o spojenie cez viacero uzlov
+90 Pokus o spojenie cez viacero uzlov
 $ ENOLINK
-95 Odkaz bol pretrhnutý
+91 Odkaz bol pretrhnutý
 $ EPROTO
-96 Chyba protokolu
+92 Chyba protokolu
 $
 $ strsignal() support catalog
 $
@@ -211,7 +201,7 @@ $ SIGILL
 4 Chybná in¹trukcia
 $ SIGTRAP
 5 Trasovacia/ladiaca in¹trukcia
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Násilné ukonèenie
 $ SIGEMT
 7 Emulovaná in¹trukcia
@@ -263,5 +253,3 @@ $ SIGUSR1
 30 Pou¾ívateµom definovaný signál 1
 $ SIGUSR2
 31 Pou¾ívateµom definovaný signál 2
-$ SIGPWR
-32 Zlyhanie/opakované spustenie napájania

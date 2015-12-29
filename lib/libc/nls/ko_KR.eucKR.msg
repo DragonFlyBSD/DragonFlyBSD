@@ -93,7 +93,7 @@ $ EPROTONOSUPPORT
 43 지원하지 않는 프로토콜입니다
 $ ESOCKTNOSUPPORT
 44 지원하지 않는 종류의 소켓입니다
-$ EOPNOTSUPP
+$ EOPNOTSUPP, ENOTSUP
 45 지원되지 않는 명령입니다
 $ EPFNOSUPPORT
 46 지원되지 않는 프로토콜군입니다
@@ -189,8 +189,6 @@ $ ENOLINK
 91 연결이 끊겼습니다
 $ EPROTO
 92 프로토콜이 잘못되었습니다
-$ ENOTCAPABLE
-93 접근 능력이 충분치 않습니다
 $
 $ strsignal() support catalog
 $
@@ -205,7 +203,7 @@ $ SIGILL
 4 잘못된 명령
 $ SIGTRAP
 5 Trace/BPT 트랩
-$ SIGABRT
+$ SIGABRT, SIGIOT
 6 Abort 트랩
 $ SIGEMT
 7 EMT 트랩
