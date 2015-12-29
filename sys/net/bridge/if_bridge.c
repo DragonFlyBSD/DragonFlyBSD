@@ -665,12 +665,12 @@ bridge_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	/* Initialize our routing table. */
 	bridge_rtable_init(sc);
 
-	callout_init(&sc->sc_brcallout);
+	callout_init_mp(&sc->sc_brcallout);
 	netmsg_init(&sc->sc_brtimemsg, NULL, &netisr_adone_rport,
 		    MSGF_DROPABLE, bridge_timer_handler);
 	sc->sc_brtimemsg.lmsg.u.ms_resultp = sc;
 
-	callout_init(&sc->sc_bstpcallout);
+	callout_init_mp(&sc->sc_bstpcallout);
 	netmsg_init(&sc->sc_bstptimemsg, NULL, &netisr_adone_rport,
 		    MSGF_DROPABLE, bstp_tick_handler);
 	sc->sc_bstptimemsg.lmsg.u.ms_resultp = sc;
