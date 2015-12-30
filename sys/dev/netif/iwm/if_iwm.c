@@ -1,4 +1,4 @@
-/*	$OpenBSD: if_iwm.c,v 1.39 2015/03/23 00:35:19 jsg Exp $	*/
+/*	$OpenBSD: if_iwm.c,v 1.42 2015/05/30 02:49:23 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2014 genua mbh <info@genua.de>
@@ -1066,7 +1066,7 @@ iwm_alloc_tx_ring(struct iwm_softc *sc, struct iwm_tx_ring *ring, int qid)
 				   BUS_SPACE_MAXADDR_32BIT,
 				   BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MCLBYTES, IWM_MAX_SCATTER - 1, MCLBYTES,
+				   MCLBYTES, IWM_MAX_SCATTER - 2, MCLBYTES,
 				   BUS_DMA_NOWAIT, &ring->data_dmat);
 #else
 	error = bus_dma_tag_create(sc->sc_dmat, 1, 0,
@@ -2847,7 +2847,6 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	struct iwm_tx_cmd *tx;
 	struct ieee80211_frame *wh;
 	struct ieee80211_key *k = NULL;
-	struct mbuf *m1;
 	const struct iwm_rate *rinfo;
 	uint32_t flags;
 	u_int hdrlen;
@@ -2964,46 +2963,32 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	m_adj(m, hdrlen);
 #if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map, m,
-					    segs, IWM_MAX_SCATTER - 1,
+					    segs, IWM_MAX_SCATTER - 2,
 					    &nsegs, BUS_DMA_NOWAIT);
 #else
 	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m,
 	    segs, &nsegs, BUS_DMA_NOWAIT);
 #endif
-	if (error != 0) {
-		if (error != EFBIG) {
-			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
-			    error);
-			m_freem(m);
-			return error;
-		}
+	if (error && error != EFBIG) {
+		device_printf(sc->sc_dev, "can't map mbuf (error %d)\n", error);
+		m_freem(m);
+		return error;
+	}
+	if (error) {
 		/* Too many DMA segments, linearize mbuf. */
-		MGETHDR(m1, M_NOWAIT, MT_DATA);
-		if (m1 == NULL) {
+		if (m_defrag(m, M_NOWAIT)) {
 			m_freem(m);
 			return ENOBUFS;
 		}
-		if (m->m_pkthdr.len > MHLEN) {
-			MCLGET(m1, M_NOWAIT);
-			if (!(m1->m_flags & M_EXT)) {
-				m_freem(m);
-				m_freem(m1);
-				return ENOBUFS;
-			}
-		}
-		m_copydata(m, 0, m->m_pkthdr.len, mtod(m1, void *));
-		m1->m_pkthdr.len = m1->m_len = m->m_pkthdr.len;
-		m_freem(m);
-		m = m1;
 #if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map, m,
-						    segs, IWM_MAX_SCATTER - 1,
+						    segs, IWM_MAX_SCATTER - 2,
 						    &nsegs, BUS_DMA_NOWAIT);
 #else
 		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m,
 		    segs, &nsegs, BUS_DMA_NOWAIT);
 #endif
-		if (error != 0) {
+		if (error) {
 			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 			    error);
 			m_freem(m);
@@ -5187,7 +5172,7 @@ iwm_preinit(void *arg)
 		goto fail;
 	}
 	device_printf(dev,
-	    "revision: 0x%x, firmware %d.%d (API ver. %d)\n",
+	    "revision 0x%x, firmware %d.%d (API ver. %d)\n",
 	    sc->sc_hw_rev & IWM_CSR_HW_REV_TYPE_MSK,
 	    IWM_UCODE_MAJOR(sc->sc_fwver),
 	    IWM_UCODE_MINOR(sc->sc_fwver),
