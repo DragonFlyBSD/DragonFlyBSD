@@ -145,6 +145,9 @@ SYSCTL_INT(_kern, OID_AUTO, kq_calloutmax, CTLFLAG_RW,
 static int		kq_checkloop = 1000000;
 SYSCTL_INT(_kern, OID_AUTO, kq_checkloop, CTLFLAG_RW,
     &kq_checkloop, 0, "Maximum number of loops for kqueue scan");
+static int		kq_wakeup_one = 1;
+SYSCTL_INT(_kern, OID_AUTO, kq_wakeup_one, CTLFLAG_RW,
+    &kq_wakeup_one, 0, "Wakeup only one kqueue scanner");
 
 #define KNOTE_ACTIVATE(kn) do { 					\
 	kn->kn_status |= KN_ACTIVE;					\
@@ -1378,7 +1381,10 @@ kqueue_wakeup(struct kqueue *kq)
 {
 	if (kq->kq_state & KQ_SLEEP) {
 		kq->kq_state &= ~KQ_SLEEP;
-		wakeup(kq);
+		if (kq_wakeup_one)
+			wakeup_one(kq);
+		else
+			wakeup(kq);
 	}
 	KNOTE(&kq->kq_kqinfo.ki_note, 0);
 }
