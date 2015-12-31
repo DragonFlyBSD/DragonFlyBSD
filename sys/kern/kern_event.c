@@ -610,12 +610,13 @@ kqueue_terminate(struct kqueue *kq)
 		if (knote_acquire(kn))
 			knote_detach_and_drop(kn);
 	}
+	lwkt_reltoken(tok);
+
 	if (kq->kq_knhash) {
 		hashdestroy(kq->kq_knhash, M_KQUEUE, kq->kq_knhashmask);
 		kq->kq_knhash = NULL;
 		kq->kq_knhashmask = 0;
 	}
-	lwkt_reltoken(tok);
 }
 
 /*
@@ -1667,8 +1668,8 @@ knote_attach(struct knote *kn)
 	}
 	lwkt_getpooltoken(list);
 	SLIST_INSERT_HEAD(list, kn, kn_link);
-	TAILQ_INSERT_HEAD(&kq->kq_knlist, kn, kn_kqlink);
 	lwkt_relpooltoken(list);
+	TAILQ_INSERT_HEAD(&kq->kq_knlist, kn, kn_kqlink);
 }
 
 /*
@@ -1692,6 +1693,7 @@ knote_drop(struct knote *kn)
 
 	lwkt_getpooltoken(list);
 	SLIST_REMOVE(list, kn, knote, kn_link);
+	lwkt_relpooltoken(list);
 	TAILQ_REMOVE(&kq->kq_knlist, kn, kn_kqlink);
 	if (kn->kn_status & KN_QUEUED)
 		knote_dequeue(kn);
@@ -1700,7 +1702,6 @@ knote_drop(struct knote *kn)
 		kn->kn_fp = NULL;
 	}
 	knote_free(kn);
-	lwkt_relpooltoken(list);
 }
 
 /*
