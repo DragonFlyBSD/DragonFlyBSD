@@ -195,6 +195,7 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_power.h"
 #include "if_iwm_scan.h"
 #include "if_iwm_pcie_trans.h"
+#include "if_iwm_led.h"
 
 const uint8_t iwm_nvm_channels[] = {
 	/* 2.4 GHz */
@@ -3693,6 +3694,10 @@ iwm_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	    ieee80211_state_name[nstate]);
 	IEEE80211_UNLOCK(ic);
 	IWM_LOCK(sc);
+
+	if (vap->iv_state == IEEE80211_S_SCAN && nstate != vap->iv_state)
+		iwm_led_blink_stop(sc);
+
 	/* disable beacon filtering if we're hopping out of RUN */
 	if (vap->iv_state == IEEE80211_S_RUN && nstate != vap->iv_state) {
 		iwm_mvm_disable_beacon_filter(sc);
@@ -3785,6 +3790,7 @@ iwm_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			    "%s: IWM_LQ_CMD failed\n", __func__);
 		}
 
+		iwm_mvm_led_enable(sc);
 		break;
 	}
 
@@ -4080,6 +4086,7 @@ iwm_stop_locked(struct ifnet *ifp)
 #else
 	ifp->if_drv_flags &= ~(IFF_DRV_RUNNING | IFF_DRV_OACTIVE);
 #endif
+	iwm_led_blink_stop(sc);
 	sc->sc_tx_timer = 0;
 	iwm_stop_device(sc);
 }
@@ -4947,6 +4954,7 @@ iwm_attach(device_t dev)
 	mtx_init(&sc->sc_mtx, "iwm_mtx", MTX_DEF, 0);
 	callout_init_mtx(&sc->sc_watchdog_to, &sc->sc_mtx, 0);
 #endif
+	callout_init(&sc->sc_led_blink_to);
 	TASK_INIT(&sc->sc_es_task, 0, iwm_endscan_cb, sc);
 	sc->sc_tq = taskqueue_create("iwm_taskq", M_WAITOK,
             taskqueue_thread_enqueue, &sc->sc_tq);
@@ -5264,8 +5272,10 @@ iwm_scan_start(struct ieee80211com *ic)
 		wlan_serialize_enter();
 		ieee80211_cancel_scan(vap);
 		wlan_serialize_exit();
-	} else
+	} else {
+		iwm_led_blink_start(sc);
 		IWM_UNLOCK(sc);
+	}
 }
 
 static void
@@ -5386,6 +5396,7 @@ iwm_detach_local(struct iwm_softc *sc, int do_net80211)
 		sc->sc_ifp = NULL;
 #endif
 	}
+	callout_drain(&sc->sc_led_blink_to);
 
 	/* Free descriptor rings */
 	for (i = 0; i < nitems(sc->txq); i++)
