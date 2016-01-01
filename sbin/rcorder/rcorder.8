@@ -145,11 +145,13 @@ There must be at least one file with no dependencies in the set of
 arguments passed to
 .Nm
 in order for it to find a starting place in the dependency ordering.
+.Sh EXIT STATUS
+.Ex -std
 .Sh DIAGNOSTICS
 The
 .Nm
-utility may print one of the following error messages and exit with a non-zero
-status if it encounters an error while processing the file list.
+utility may print one of the following error messages
+if it encounters an error while processing the file list.
 .Bl -diag
 .It "Requirement %s has no providers, aborting."
 No file has a

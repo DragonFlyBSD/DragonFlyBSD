@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)time.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/time/time.1,v 1.13.2.5 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/time/time.1,v 1.3 2004/07/16 19:04:57 hmp Exp $
 .\"
 .Dd June 6, 1993
 .Dt TIME 1
@@ -96,13 +95,10 @@ command which is similar or identical to this utility.
 Consult the
 .Xr builtin 1
 manual page.
-.Sh DIAGNOSTICS
+.Sh EXIT STATUS
 If
 .Ar utility
 could be timed successfully, its exit status is returned.
-If
-.Ar utility
-terminated abnormally, a warning message is output to stderr.
 If the
 .Ar utility
 was found but could not be run, the exit status is 126.
@@ -113,6 +109,10 @@ If
 .Nm
 encounters any other error, the exit status is between 1 and 125
 included.
+.Sh DIAGNOSTICS
+If
+.Ar utility
+terminated abnormally, a warning message is output to stderr.
 .Sh SEE ALSO
 .Xr builtin 1 ,
 .Xr csh 1 ,

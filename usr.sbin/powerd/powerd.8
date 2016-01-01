@@ -124,6 +124,11 @@ Longer times will ratchet down more slowly.
 For example,
 a workstation might want to use a value of 30.0.
 .El
+.Sh EXIT STATUS
+The
+.Nm
+utility will exit with a non-zero code if the required sysctls are not
+present.
 .Sh EXAMPLES
 The defaults work well for servers but a workstation user might want
 to use something like the following in their
@@ -134,11 +139,6 @@ to ratchet up the machine more quickly in response to spike loads
 .Li powerd_enable="YES"
 .Pp
 .Li powerd_flags="-u 7 -r 0.2 -T 60"
-.Sh DIAGNOSTICS
-The
-.Nm
-utility will exit with a non-zero code if the required sysctls are not
-present.
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr perfbias 4

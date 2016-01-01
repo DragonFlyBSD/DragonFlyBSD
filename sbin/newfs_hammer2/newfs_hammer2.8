@@ -212,6 +212,8 @@ meaning kilobyte, megabyte, gigabyte and terabyte.
 Lower case can also be used for suffix.
 These options create reserved blocks of space on the target volume
 but are not currently used by the filesystem for anything.
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 .Bd -literal -offset indent
 newfs_hammer2 -L SATURN-HOME /dev/ad0s1d
@@ -221,8 +223,6 @@ Create a file system named
 .Sq SATURN-HOME
 on
 .Pa /dev/ad0s1d .
-.Sh DIAGNOSTICS
-Exit status is 0 on success and 1 on error.
 .Sh SEE ALSO
 .Xr disklabel32 5 ,
 .Xr disklabel64 5 ,

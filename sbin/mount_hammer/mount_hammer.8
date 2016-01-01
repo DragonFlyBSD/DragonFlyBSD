@@ -116,6 +116,8 @@ read-write or downgrade it to read-only.
 Note that issuing a read-only mount which requires UNDOs to be run will
 still run the UNDOs, but will not flush the buffer cache buffers until/if
 the mount is updated to read-write.
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 Mount a
 .Nm HAMMER
@@ -140,8 +142,6 @@ entry is:
 .Bd -literal -offset indent
 /dev/ad0s1d:/dev/ad1s1d /mnt hammer ro,noatime
 .Ed
-.Sh DIAGNOSTICS
-Exit status is 0 on success and 1 on error.
 .Sh SEE ALSO
 .Xr mount 2 ,
 .Xr unmount 2 ,

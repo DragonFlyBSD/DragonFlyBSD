@@ -279,6 +279,16 @@ the traffic will be denied.
 With inetd mode,
 traffic may be filtered by using access control functionality in
 .Xr inetd 8 .
+.Sh EXIT STATUS
+The
+.Nm
+utility exits with
+.Dv EXIT_SUCCESS
+.Pq 0
+on success, and
+.Dv EXIT_FAILURE
+.Pq 1
+on error.
 .Sh EXAMPLES
 Before invoking
 .Nm ,
@@ -369,16 +379,6 @@ setting.
 2001:db8:ffff::/48 deny 127.0.0.0/8
 2001:db8:ffff::/48 permit 0.0.0.0/0
 .Ed
-.Sh DIAGNOSTICS
-The
-.Nm
-utility exits with
-.Dv EXIT_SUCCESS
-.Pq 0
-on success, and
-.Dv EXIT_FAILURE
-.Pq 1
-on error.
 .Sh SEE ALSO
 .Xr faith 4 ,
 .Xr route 8 ,

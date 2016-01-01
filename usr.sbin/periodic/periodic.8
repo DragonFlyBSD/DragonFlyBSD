@@ -179,6 +179,8 @@ this file contains local overrides for the default
 .Nm
 configuration
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 The system crontab should have entries for
 .Nm
@@ -217,8 +219,9 @@ daily_show_info=NO
 daily_show_badconfig=NO
 .Ed
 .Sh DIAGNOSTICS
-Exit status is 0 on success and 1 if the command
-fails for one of the following reasons:
+The
+.Nm
+command may fail for one of the following reasons:
 .Bl -diag
 .It usage: periodic <directory of files to execute>
 No directory path argument was passed to

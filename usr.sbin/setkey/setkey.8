@@ -585,6 +585,9 @@ deflate		rfc2394
 lzs		rfc2395
 .Ed
 .\"
+.Sh EXIT STATUS
+.Ex -std
+.\"
 .Sh EXAMPLES
 .Bd -literal
 add	2001:db8:4819::1 2001:db8:481d::1 esp 123457
@@ -609,9 +612,6 @@ spdadd	10.0.11.41/32[21] 10.0.11.33/32[any] any
 add 10.1.10.34 10.1.10.36 tcp 0x1000 -A tcp-md5 "TCP-MD5 BGP secret" ;
 
 .Ed
-.\"
-.Sh DIAGNOSTICS
-The command exits with 0 on success, and non-zero on errors.
 .\"
 .Sh SEE ALSO
 .Xr ipsec_set_policy 3 ,

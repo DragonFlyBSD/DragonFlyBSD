@@ -112,6 +112,13 @@ highest priority
 of 0 means "the current process".
 .Pp
 Only root is allowed to set realtime or idle priority for a process.
+.Sh EXIT STATUS
+If
+.Nm
+execute a command, the exit value is that of the command executed.
+In all other cases,
+.Nm
+exits 0 on success, and 1 for all other errors.
 .Sh EXAMPLES
 To see which realtime priority the current process is at:
 .Bd -literal -offset indent -compact
@@ -159,13 +166,6 @@ To make depend while not disturbing other machine usage:
 .Bd -literal -offset indent -compact
 .Sy "idprio 31 make depend"
 .Ed
-.Sh DIAGNOSTICS
-If
-.Nm
-execute a command, the exit value is that of the command executed.
-In all other cases,
-.Nm
-exits 0 on success, and 1 for all other errors.
 .Sh SEE ALSO
 .Xr nice 1 ,
 .Xr ps 1 ,

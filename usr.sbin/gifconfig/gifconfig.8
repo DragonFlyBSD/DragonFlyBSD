@@ -104,6 +104,8 @@ command or using the
 .Va gifconfig_ Ns Aq Ar interface
 variable in
 .Xr rc.conf 5 .
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 If you would like to configure IPv6 over IPv4
 (aka IPv6 in IPv4)
@@ -147,8 +149,6 @@ This is also possible to use IPv6 as outer proto, by replacing
 to
 .Li inet6 ,
 and IPv4 addresses to some appropriate IPv6 addresses in above example.
-.Sh DIAGNOSTICS
-The command exits with exit status of 1 on errors, 0 on success.
 .Sh SEE ALSO
 .Xr gif 4 ,
 .Xr ifconfig 8

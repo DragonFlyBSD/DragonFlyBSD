@@ -51,12 +51,7 @@ and group members.
 .It Pa /etc/group
 group database file
 .El
-.Sh DIAGNOSTICS
-For each error found,
-.Nm
-will print an error message containing the name of the file being
-scanned and the line number on which the error was found.
-.Pp
+.Sh EXIT STATUS
 The
 .Nm
 utility returns
@@ -65,6 +60,11 @@ if errors were found in the group file,
 and
 .Dv EX_OK
 otherwise.
+.Sh DIAGNOSTICS
+For each error found,
+.Nm
+will print an error message containing the name of the file being
+scanned and the line number on which the error was found.
 .Sh SEE ALSO
 .Xr getgrent 3 ,
 .Xr group 5

@@ -1,5 +1,4 @@
 .\" $FreeBSD: src/usr.bin/getopt/getopt.1,v 1.10.2.5 2002/12/29 16:35:39 schweikh Exp $
-.\" $DragonFly: src/usr.bin/getopt/getopt.1,v 1.5 2008/05/02 02:05:07 swildner Exp $
 .\"
 .Dd October 7, 2009
 .Dt GETOPT 1
@@ -45,6 +44,8 @@ preceded by a
 .Ql \-
 and in its own shell argument;
 each option argument is also in its own shell argument.
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 The following code fragment shows how one might process the arguments
 for a command that can take the options
@@ -95,8 +96,8 @@ cmd \-a \-oarg \-\- file file
 .Sh DIAGNOSTICS
 The
 .Nm
-utility prints an error message on the standard error output and exits with
-status > 0 when it encounters an option letter not included in
+utility prints an error message on the standard error output
+when it encounters an option letter not included in
 .Ar optstring .
 .Sh SEE ALSO
 .Xr sh 1 ,

@@ -316,6 +316,17 @@ with all values commented out:
 #MM_PRE_COMPARE_SCRIPT=
 #MM_EXIT_SCRIPT=
 .Ed
+.Sh EXIT STATUS
+Exit status is 0 on successful completion, or if the user bails out
+manually at some point during execution.
+.Pp
+Exit status is 1 if it fails for one of the following reasons:
+.Pp
+Invalid command line option
+.Pp
+Failure to create the temporary root environment
+.Pp
+Failure to populate the temporary root
 .Sh EXAMPLES
 Typically all you will need to do is type
 .Nm
@@ -339,17 +350,6 @@ To specify a 110 column screen with a strict
 comparison, use:
 .Pp
 .Dl # mergemaster -sw 110
-.Sh DIAGNOSTICS
-Exit status is 0 on successful completion, or if the user bails out
-manually at some point during execution.
-.Pp
-Exit status is 1 if it fails for one of the following reasons:
-.Pp
-Invalid command line option
-.Pp
-Failure to create the temporary root environment
-.Pp
-Failure to populate the temporary root
 .Sh SEE ALSO
 .Xr cvs 1 ,
 .Xr diff 1 ,

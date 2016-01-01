@@ -132,6 +132,12 @@ file system, or
 for an
 .Em MS-DOS (FAT)
 file system.
+.Sh EXIT STATUS
+An exit status of 0 is returned upon successful operation.
+Exit status
+1 is returned on any errors during floppy formatting, and an exit status
+of 2 reflects invalid arguments given to the program (along with an
+appropriate information written to diagnostic output).
 .Sh DIAGNOSTICS
 Unless
 .Fl q
@@ -146,12 +152,6 @@ will finally change to
 .Sq Em E .
 Detailed status information (cylinder, head and sector number, and the
 exact cause of the error) will then be printed for up to 10 errors.
-.Pp
-An exit status of 0 is returned upon successful operation.
-Exit status
-1 is returned on any errors during floppy formatting, and an exit status
-of 2 reflects invalid arguments given to the program (along with an
-appropriate information written to diagnostic output).
 .Sh SEE ALSO
 .Xr fdc 4 ,
 .Xr newfs 8 ,

@@ -23,8 +23,6 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.bin/shlock/shlock.1,v 1.6 2008/05/02 02:05:07 swildner Exp $
-.\"
 .Dd July 24, 2005
 .Dt SHLOCK 1
 .Os
@@ -57,14 +55,12 @@ The process id that will be written to file.
 .It Fl u
 Use UUCP style lock file format.
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 A typical use could be (from within a script):
 .Pp
 .Dl "shlock -f script.lock -p $$"
-.Sh DIAGNOSTICS
-The
-.Nm
-command exists with 0 on success or with >0 if there was a problem.
 .Sh HISTORY
 The
 .Nm

@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)ctags.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/ctags/ctags.1,v 1.5.2.6 2002/07/30 01:06:31 tjr Exp $
-.\" $DragonFly: src/usr.bin/ctags/ctags.1,v 1.2 2003/06/17 04:29:25 dillon Exp $
 .\"
 .Dd June 6, 1993
 .Dt CTAGS 1
@@ -192,10 +191,8 @@ file.
 .It Pa tags
 default output tags file
 .El
-.Sh DIAGNOSTICS
-The
-.Nm
-utility exits with a value of 1 if an error occurred, 0 otherwise.
+.Sh EXIT STATUS
+.Ex -std
 Duplicate objects are not considered errors.
 .Sh SEE ALSO
 .Xr ex 1 ,

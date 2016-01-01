@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)nice.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/nice/nice.1,v 1.12.2.7 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/nice/nice.1,v 1.3 2006/02/17 19:39:09 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt NICE 1
@@ -61,6 +60,20 @@ command which is similar or identical to this utility.
 Consult the
 .Xr builtin 1
 manual page.
+.Sh EXIT STATUS
+If
+.Ar utility
+is invoked, the exit status of
+.Nm
+is the exit status of
+.Ar utility .
+.Pp
+An exit status of 126 indicates
+.Ar utility
+was found, but could not be executed.
+An exit status of 127 indicates
+.Ar utility
+could not be found.
 .Sh EXAMPLES
 $ nice -n 5 date
 .Pp
@@ -75,20 +88,6 @@ Execute utility
 .Sq date
 at priority -19 assuming the priority of the
 shell is 0 and you are the super-user.
-.Sh DIAGNOSTICS
-If
-.Ar utility
-is invoked, the exit status of
-.Nm
-is the exit status of
-.Ar utility .
-.Pp
-An exit status of 126 indicates
-.Ar utility
-was found, but could not be executed.
-An exit status of 127 indicates
-.Ar utility
-could not be found.
 .Sh COMPATIBILITY
 The traditional
 .Fl Ns Ar increment

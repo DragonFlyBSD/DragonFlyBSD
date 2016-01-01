@@ -175,13 +175,14 @@ Empty file.
 Its presence indicates that the machine's CMOS clock is set to local
 time, while its absence indicates a UTC CMOS clock.
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh DIAGNOSTICS
 No diagnostics.
 If an error occurs,
 .Nm
 logs an error message via
-.Xr syslog 3
-and exits with a nonzero return code.
+.Xr syslog 3 .
 .Sh SEE ALSO
 .Xr tzset 3 ,
 .Xr crontab 5 ,
