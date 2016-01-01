@@ -154,9 +154,6 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_phy_db.h"
 
 /*
- * BEGIN iwl-phy-db.c
- */
-/*
  * get phy db section: returns a pointer to a phy db section specified by
  * type and channel group id.
  */

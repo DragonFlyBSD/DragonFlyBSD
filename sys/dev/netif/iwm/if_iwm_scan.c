@@ -153,10 +153,6 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_util.h"
 #include "if_iwm_scan.h"
 
-/*
- * BEGIN mvm/scan.c
- */
-
 #define IWM_PLCP_QUIET_THRESH 1
 #define IWM_ACTIVE_QUIET_TIME 10
 #define LONG_OUT_TIME_PERIOD (600 * IEEE80211_DUR_TU)

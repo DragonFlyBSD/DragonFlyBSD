@@ -467,7 +467,6 @@ iwm_firmware_store_section(struct iwm_softc *sc,
 	return 0;
 }
 
-/* iwlwifi: iwl-drv.c */
 struct iwm_tlv_calib_data {
 	uint32_t ucode_type;
 	struct iwm_tlv_calib_ctrl calib;
@@ -1206,8 +1205,6 @@ iwm_ict_reset(struct iwm_softc *sc)
 	iwm_enable_interrupts(sc);
 }
 
-/* iwlwifi pcie/trans.c */
-
 /*
  * Since this .. hard-resets things, it's time to actually
  * mark the first vap (if any) as having no mac context.
@@ -1296,7 +1293,6 @@ iwm_stop_device(struct iwm_softc *sc)
 	iwm_check_rfkill(sc);
 }
 
-/* iwlwifi: mvm/ops.c */
 static void
 iwm_mvm_nic_config(struct iwm_softc *sc)
 {
@@ -1713,8 +1709,6 @@ iwm_nvm_read_section(struct iwm_softc *sc,
  * BEGIN IWM_NVM_PARSE
  */
 
-/* iwlwifi/iwl-nvm-parse.c */
-
 /* NVM offsets (in words) definitions */
 enum wkp_nvm_offsets {
 	/* NVM HW-Section offset (in words) definitions */
@@ -2095,7 +2089,6 @@ iwm_load_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 	return error;
 }
 
-/* iwlwifi: pcie/trans.c */
 static int
 iwm_start_fw(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 {
@@ -2143,7 +2136,6 @@ iwm_send_tx_ant_cfg(struct iwm_softc *sc, uint8_t valid_tx_ant)
 	    IWM_CMD_SYNC, sizeof(tx_ant_cmd), &tx_ant_cmd);
 }
 
-/* iwlwifi: mvm/fw.c */
 static int
 iwm_send_phy_cfg_cmd(struct iwm_softc *sc)
 {
@@ -2195,9 +2187,6 @@ iwm_mvm_load_ucode_wait_alive(struct iwm_softc *sc,
  * mvm misc bits
  */
 
-/*
- * follows iwlwifi/fw.c
- */
 static int
 iwm_run_init_mvm_ucode(struct iwm_softc *sc, int justnvm)
 {
@@ -2328,7 +2317,6 @@ fail:
 	return error;
 }
 
-/* iwlwifi: mvm/rx.c */
 #define IWM_RSSI_OFFSET 50
 static int
 iwm_mvm_calc_rssi(struct iwm_softc *sc, struct iwm_rx_phy_info *phy_info)
@@ -2360,7 +2348,6 @@ iwm_mvm_calc_rssi(struct iwm_softc *sc, struct iwm_rx_phy_info *phy_info)
 	return max_rssi_dbm;
 }
 
-/* iwlwifi: mvm/rx.c */
 /*
  * iwm_mvm_get_signal_strength - use new rx PHY INFO API
  * values are reported by the fw as positive values - need to negate
@@ -3126,10 +3113,6 @@ iwm_mvm_flush_tx_path(struct iwm_softc *sc, int tfd_msk, int sync)
 }
 #endif
 
-/*
- * BEGIN mvm/sta.c
- */
-
 static void
 iwm_mvm_add_sta_cmd_v6_to_v5(struct iwm_mvm_add_sta_cmd_v6 *cmd_v6,
 	struct iwm_mvm_add_sta_cmd_v5 *cmd_v5)
@@ -3280,14 +3263,6 @@ iwm_mvm_add_aux_sta(struct iwm_softc *sc)
 	return ret;
 }
 
-/*
- * END mvm/sta.c
- */
-
-/*
- * BEGIN mvm/quota.c
- */
-
 static int
 iwm_mvm_update_quotas(struct iwm_softc *sc, struct iwm_node *in)
 {
@@ -3354,10 +3329,6 @@ iwm_mvm_update_quotas(struct iwm_softc *sc, struct iwm_node *in)
 		    "%s: Failed to send quota: %d\n", __func__, ret);
 	return ret;
 }
-
-/*
- * END mvm/quota.c
- */
 
 /*
  * ieee80211 routines

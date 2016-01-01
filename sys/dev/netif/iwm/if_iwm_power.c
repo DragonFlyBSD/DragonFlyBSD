@@ -137,10 +137,6 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_util.h"
 #include "if_iwm_power.h"
 
-/*
- * BEGIN mvm/power.c
- */
-
 #define IWM_POWER_KEEP_ALIVE_PERIOD_SEC    25
 
 static int

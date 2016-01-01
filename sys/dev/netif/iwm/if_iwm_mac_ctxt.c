@@ -153,10 +153,6 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_util.h"
 #include "if_iwm_mac_ctxt.h"
 
-/*
- * BEGIN mvm/mac-ctxt.c
- */
-
 static void
 iwm_mvm_ack_rates(struct iwm_softc *sc, int is2ghz,
 	int *cck_rates, int *ofdm_rates)
