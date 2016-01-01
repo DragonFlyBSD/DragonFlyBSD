@@ -336,7 +336,6 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	return error;
 }
 
-/* iwlwifi: mvm/utils.c */
 int
 iwm_mvm_send_cmd_pdu(struct iwm_softc *sc, uint8_t id,
 	uint32_t flags, uint16_t len, const void *data)
@@ -351,7 +350,6 @@ iwm_mvm_send_cmd_pdu(struct iwm_softc *sc, uint8_t id,
 	return iwm_send_cmd(sc, &cmd);
 }
 
-/* iwlwifi: mvm/utils.c */
 int
 iwm_mvm_send_cmd_status(struct iwm_softc *sc,
 	struct iwm_host_cmd *cmd, uint32_t *status)
@@ -392,7 +390,6 @@ iwm_mvm_send_cmd_status(struct iwm_softc *sc,
 	return error;
 }
 
-/* iwlwifi/mvm/utils.c */
 int
 iwm_mvm_send_cmd_pdu_status(struct iwm_softc *sc, uint8_t id,
 	uint16_t len, const void *data, uint32_t *status)

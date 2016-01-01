@@ -181,7 +181,6 @@ iwm_write_prph(struct iwm_softc *sc, uint32_t addr, uint32_t val)
 }
 
 #ifdef IWM_DEBUG
-/* iwlwifi: pcie/trans.c */
 int
 iwm_read_mem(struct iwm_softc *sc, uint32_t addr, void *buf, int dwords)
 {
@@ -200,7 +199,6 @@ iwm_read_mem(struct iwm_softc *sc, uint32_t addr, void *buf, int dwords)
 }
 #endif
 
-/* iwlwifi: pcie/trans.c */
 int
 iwm_write_mem(struct iwm_softc *sc, uint32_t addr, const void *buf, int dwords)
 {
@@ -509,7 +507,6 @@ iwm_apm_init(struct iwm_softc *sc)
 	return error;
 }
 
-/* iwlwifi/pcie/trans.c */
 void
 iwm_apm_stop(struct iwm_softc *sc)
 {
@@ -523,7 +520,6 @@ iwm_apm_stop(struct iwm_softc *sc)
 	IWM_DPRINTF(sc, IWM_DEBUG_TRANS, "%s: iwm apm stop\n", __func__);
 }
 
-/* iwlwifi pcie/trans.c */
 int
 iwm_start_hw(struct iwm_softc *sc)
 {
@@ -547,7 +543,6 @@ iwm_start_hw(struct iwm_softc *sc)
 	return 0;
 }
 
-/* iwlwifi pcie/trans.c (always main power) */
 void
 iwm_set_pwr(struct iwm_softc *sc)
 {
@@ -555,7 +550,6 @@ iwm_set_pwr(struct iwm_softc *sc)
 	    IWM_APMG_PS_CTRL_VAL_PWR_SRC_VMAIN, ~IWM_APMG_PS_CTRL_MSK_PWR_SRC);
 }
 
-/* iwlwifi pcie/rx.c */
 int
 iwm_pcie_rx_stop(struct iwm_softc *sc)
 {

@@ -153,10 +153,6 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_util.h"
 #include "if_iwm_binding.h"
 
-/*
- * BEGIN iwlwifi/mvm/binding.c
- */
-
 int
 iwm_mvm_binding_cmd(struct iwm_softc *sc, struct iwm_node *in, uint32_t action)
 {

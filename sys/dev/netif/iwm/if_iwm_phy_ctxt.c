@@ -154,10 +154,6 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_phy_ctxt.h"
 
 /*
- * BEGIN iwlwifi/mvm/phy-ctxt.c
- */
-
-/*
  * Construct the generic fields of the PHY context command
  */
 static void
@@ -298,7 +294,3 @@ iwm_mvm_phy_ctxt_changed(struct iwm_softc *sc,
 	return iwm_mvm_phy_ctxt_apply(sc, ctxt,
 	    chains_static, chains_dynamic, IWM_FW_CTXT_ACTION_MODIFY, 0);
 }
-
-/*
- * END iwlwifi/mvm/phy-ctxt.c
- */
