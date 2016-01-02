@@ -52,8 +52,8 @@ int	 ffsll(long long) __pure2;
 int	 ffsl(long) __pure2;
 int	 fls(int) __pure2;
 int	 flsl(long) __pure2;
-#endif
 int	 flsll(long long) __pure2;
+#endif
 #endif
 #if !defined(_KERNEL_VIRTUAL)
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE <= 600)
