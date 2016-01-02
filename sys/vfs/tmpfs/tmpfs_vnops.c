@@ -1707,9 +1707,10 @@ tmpfs_print(struct vop_print_args *v)
 static int
 tmpfs_pathconf(struct vop_pathconf_args *v)
 {
+	struct vnode *vp = v->a_vp;
 	int name = v->a_name;
 	register_t *retval = v->a_retval;
-
+	struct tmpfs_mount *tmp;
 	int error;
 
 	error = 0;
@@ -1720,7 +1721,8 @@ tmpfs_pathconf(struct vop_pathconf_args *v)
 		break;
 
 	case _PC_FILESIZEBITS:
-		*retval = 0; /* XXX Don't know which value should I return. */
+		tmp = VFS_TO_TMPFS(vp->v_mount);
+		*retval = max(32, flsll(tmp->tm_pages_max * PAGE_SIZE) + 1);
 		break;
 
 	case _PC_LINK_MAX:
