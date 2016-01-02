@@ -1715,12 +1715,24 @@ tmpfs_pathconf(struct vop_pathconf_args *v)
 	error = 0;
 
 	switch (name) {
+	case _PC_CHOWN_RESTRICTED:
+		*retval = 1;
+		break;
+
+	case _PC_FILESIZEBITS:
+		*retval = 0; /* XXX Don't know which value should I return. */
+		break;
+
 	case _PC_LINK_MAX:
 		*retval = LINK_MAX;
 		break;
 
 	case _PC_NAME_MAX:
 		*retval = NAME_MAX;
+		break;
+
+	case _PC_NO_TRUNC:
+		*retval = 1;
 		break;
 
 	case _PC_PATH_MAX:
@@ -1731,20 +1743,8 @@ tmpfs_pathconf(struct vop_pathconf_args *v)
 		*retval = PIPE_BUF;
 		break;
 
-	case _PC_CHOWN_RESTRICTED:
-		*retval = 1;
-		break;
-
-	case _PC_NO_TRUNC:
-		*retval = 1;
-		break;
-
 	case _PC_SYNC_IO:
 		*retval = 1;
-		break;
-
-	case _PC_FILESIZEBITS:
-		*retval = 0; /* XXX Don't know which value should I return. */
 		break;
 
 	default:
