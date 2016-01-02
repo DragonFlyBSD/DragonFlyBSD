@@ -301,6 +301,14 @@ flsl(long mask)
 	return (mask == 0 ? mask : (int)bsrq((u_long)mask) + 1);
 }
 
+#define	HAVE_INLINE_FLSLL
+
+static __inline int
+flsll(long long mask)
+{
+	return (flsl((long)mask));
+}
+
 #endif /* _KERNEL */
 
 static __inline void
