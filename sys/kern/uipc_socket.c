@@ -178,8 +178,8 @@ soalloc(int waitok, struct protosw *pr)
 		/* XXX race condition for reentrant kernel */
 		so->so_proto = pr;
 		TAILQ_INIT(&so->so_aiojobq);
-		TAILQ_INIT(&so->so_rcv.ssb_kq.ki_mlist);
-		TAILQ_INIT(&so->so_snd.ssb_kq.ki_mlist);
+		TAILQ_INIT(&so->so_rcv.ssb_mlist);
+		TAILQ_INIT(&so->so_snd.ssb_mlist);
 		lwkt_token_init(&so->so_rcv.ssb_token, "rcvtok");
 		lwkt_token_init(&so->so_snd.ssb_token, "sndtok");
 		spin_init(&so->so_rcvd_spin, "soalloc");

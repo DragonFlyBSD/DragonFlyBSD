@@ -630,13 +630,13 @@ netmsg_so_notify(netmsg_t msg)
 	lwkt_getpooltoken(so);
 	atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
 	if (msg->notify.nm_predicate(&msg->notify)) {
-		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
+		if (TAILQ_EMPTY(&ssb->ssb_mlist))
 			atomic_clear_int(&ssb->ssb_flags, SSB_MEVENT);
 		lwkt_relpooltoken(so);
 		lwkt_replymsg(&msg->base.lmsg,
 			      msg->base.lmsg.ms_error);
 	} else {
-		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, &msg->notify, nm_list);
+		TAILQ_INSERT_TAIL(&ssb->ssb_mlist, &msg->notify, nm_list);
 		/*
 		 * NOTE:
 		 * If predict ever blocks, 'tok' will be released, so
@@ -710,7 +710,7 @@ netmsg_so_notify_abort(netmsg_t msg)
 		ssb = (nmsg->nm_etype & NM_REVENT) ?
 				&nmsg->base.nm_so->so_rcv :
 				&nmsg->base.nm_so->so_snd;
-		TAILQ_REMOVE(&ssb->ssb_kq.ki_mlist, nmsg, nm_list);
+		TAILQ_REMOVE(&ssb->ssb_mlist, nmsg, nm_list);
 		lwkt_relpooltoken(nmsg->base.nm_so);
 		lwkt_replymsg(&nmsg->base.lmsg, EINTR);
 	} else {

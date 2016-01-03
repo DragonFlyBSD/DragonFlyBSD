@@ -66,6 +66,7 @@ struct	sockaddr_un {
 struct mbuf;
 struct socket;
 struct sockopt;
+union netmsg;
 
 int	uipc_usrreq (struct socket *so, int req, struct mbuf *m,
 		struct mbuf *nam, struct mbuf *control);

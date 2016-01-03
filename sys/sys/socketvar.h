@@ -76,6 +76,7 @@ struct accept_filter;
 struct signalsockbuf {
 	struct sockbuf sb;
 	struct kqinfo ssb_kq;	/* process selecting read/write */
+	struct notifymsglist ssb_mlist;	/* list of pending predicate messages */
 	uint32_t ssb_flags;	/* flags, see below (use atomic ops) */
 	u_int	ssb_timeo;	/* timeout for read/write */
 	long	ssb_lowat;	/* low water mark */

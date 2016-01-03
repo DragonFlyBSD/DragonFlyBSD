@@ -33,9 +33,6 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _NET_NETISR_H_
-#include <net/netisr.h>			/* struct notifymsglist */
-#endif
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/queue.h>
 #endif
@@ -161,7 +158,6 @@ SLIST_HEAD(klist, knote);
  */
 struct kqinfo {
 	struct	klist ki_note;		/* kernel note list */
-	struct	notifymsglist ki_mlist;	/* list of pending predicate messages */
 };
 
 #endif
