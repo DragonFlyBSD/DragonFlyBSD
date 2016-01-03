@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 21, 2015
+.Dd January 3, 2016
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -1592,6 +1592,15 @@ The
 directive requires that the target be configured as a slave and that the
 .Cm shared-uuid
 field of the mirroring source and target match.
+The
+.Cm pfs-master
+and
+.Cm pfs-slave
+directives require that the PFS softlink be created under the main
+.Nm
+filesystem mount. You may only access PFS softlinks via the main
+.Nm
+filesystem mount.
 .Sh DOUBLE_BUFFER MODE
 There is a limit to the number of vnodes the kernel can cache, and because
 file buffers are associated with a vnode the related data cache can get
