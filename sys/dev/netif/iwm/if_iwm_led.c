@@ -180,6 +180,6 @@ iwm_led_blink_start(struct iwm_softc *sc)
 void
 iwm_led_blink_stop(struct iwm_softc *sc)
 {
-	callout_stop_sync(&sc->sc_led_blink_to);
+	callout_drain(&sc->sc_led_blink_to);
 	iwm_mvm_led_disable(sc);
 }

@@ -5281,6 +5281,14 @@ iwm_scan_start(struct ieee80211com *ic)
 static void
 iwm_scan_end(struct ieee80211com *ic)
 {
+	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
+	struct iwm_softc *sc = ic->ic_ifp->if_softc;
+
+	IWM_LOCK(sc);
+	iwm_led_blink_stop(sc);
+	if (vap->iv_state == IEEE80211_S_RUN)
+		iwm_mvm_led_enable(sc);
+	IWM_UNLOCK(sc);
 }
 
 static void
