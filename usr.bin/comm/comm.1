@@ -29,9 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     From: @(#)comm.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/comm/comm.1,v 1.4.2.5 2002/07/11 00:43:37 tjr Exp $
+.\" $FreeBSD: head/usr.bin/comm/comm.1 233648 2012-03-29 05:02:12Z eadler $
 .\"
-.Dd June 6, 1993
+.Dd January 3, 2016
 .Dt COMM 1
 .Os
 .Sh NAME
@@ -61,11 +61,13 @@ The filename ``-'' means the standard input.
 The following options are available:
 .Bl -tag -width indent
 .It Fl 1
-Suppress printing of column 1.
+Suppress printing of column 1, lines only in
+.Ar file1 .
 .It Fl 2
-Suppress printing of column 2.
+Suppress printing of column 2, lines only in
+.Ar file2 .
 .It Fl 3
-Suppress printing of column 3.
+Suppress printing of column 3, lines common to both.
 .It Fl i
 Case insensitive comparison of lines.
 .El
@@ -80,6 +82,17 @@ The
 .Nm
 utility assumes that the files are lexically sorted; all characters
 participate in line comparisons.
+.Sh ENVIRONMENT
+The
+.Ev LANG ,
+.Ev LC_ALL ,
+.Ev LC_COLLATE ,
+and
+.Ev LC_CTYPE
+environment variables affect the execution of
+.Nm
+as described in
+.Xr environ 7 .
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
@@ -92,6 +105,12 @@ The
 .Nm
 utility conforms to
 .St -p1003.2-92 .
+.Pp
+The
+.Fl i
+option is an extension to the
+.Tn POSIX
+standard.
 .Sh HISTORY
 A
 .Nm

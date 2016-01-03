@@ -31,42 +31,45 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)comm.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: src/usr.bin/comm/comm.c,v 1.11.2.3 2002/07/11 00:46:37 tjr Exp $
- * $DragonFly: src/usr.bin/comm/comm.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $FreeBSD: head/usr.bin/comm/comm.c 227235 2011-11-06 18:49:10Z ed $
  */
 
-#include <ctype.h>
 #include <err.h>
 #include <limits.h>
 #include <locale.h>
+#include <stdint.h>
+#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
+#include <wctype.h>
 
-#define	MAXLINELEN	(LINE_MAX + 1)
+static int iflag;
+static const char *tabs[] = { "", "\t", "\t\t" };
 
-const char *tabs[] = { "", "\t", "\t\t" };
-
-FILE   *file(char *);
-void	show(FILE *, const char *, char *);
-int     stricoll(char *, char *);
+static FILE	*file(const char *);
+static wchar_t	*convert(const char *);
+static void	show(FILE *, const char *, const char *, char **, size_t *);
 static void	usage(void);
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-	int comp, file1done = 0, file2done = 0, read1, read2;
-	int ch, flag1, flag2, flag3, iflag;
+	int comp, read1, read2;
+	int ch, flag1, flag2, flag3;
 	FILE *fp1, *fp2;
 	const char *col1, *col2, *col3;
-	char line1[MAXLINELEN], line2[MAXLINELEN];
+	size_t line1len, line2len;
+	char *line1, *line2;
+	ssize_t n1, n2;
+	wchar_t *tline1, *tline2;
 	const char **p;
 
-	flag1 = flag2 = flag3 = 1;
-	iflag = 0;
-
 	(void) setlocale(LC_ALL, "");
+
+	flag1 = flag2 = flag3 = 1;
 
 	while ((ch = getopt(argc, argv, "123i")) != -1)
 		switch(ch) {
@@ -105,35 +108,57 @@ main(int argc, char **argv)
 	if (flag3)
 		col3 = *p;
 
+	line1len = line2len = 0;
+	line1 = line2 = NULL;
+	n1 = n2 = -1;
+
 	for (read1 = read2 = 1;;) {
 		/* read next line, check for EOF */
-		if (read1)
-			file1done = !fgets(line1, MAXLINELEN, fp1);
-		if (read2)
-			file2done = !fgets(line2, MAXLINELEN, fp2);
+		if (read1) {
+			n1 = getline(&line1, &line1len, fp1);
+			if (n1 < 0 && ferror(fp1))
+				err(1, "%s", argv[0]);
+			if (n1 > 0 && line1[n1 - 1] == '\n')
+				line1[n1 - 1] = '\0';
+
+		}
+		if (read2) {
+			n2 = getline(&line2, &line2len, fp2);
+			if (n2 < 0 && ferror(fp2))
+				err(1, "%s", argv[1]);
+			if (n2 > 0 && line2[n2 - 1] == '\n')
+				line2[n2 - 1] = '\0';
+		}
 
 		/* if one file done, display the rest of the other file */
-		if (file1done) {
-			if (!file2done && col2)
-				show(fp2, col2, line2);
+		if (n1 < 0) {
+			if (n2 >= 0 && col2 != NULL)
+				show(fp2, argv[1], col2, &line2, &line2len);
 			break;
 		}
-		if (file2done) {
-			if (!file1done && col1)
-				show(fp1, col1, line1);
+		if (n2 < 0) {
+			if (n1 >= 0 && col1 != NULL)
+				show(fp1, argv[0], col1, &line1, &line1len);
 			break;
 		}
+
+		tline2 = NULL;
+		if ((tline1 = convert(line1)) != NULL)
+			tline2 = convert(line2);
+		if (tline1 == NULL || tline2 == NULL)
+			comp = strcmp(line1, line2);
+		else
+			comp = wcscoll(tline1, tline2);
+		if (tline1 != NULL)
+			free(tline1);
+		if (tline2 != NULL)
+			free(tline2);
 
 		/* lines are the same */
-		if(iflag)
-			comp = stricoll(line1, line2);
-		else
-			comp = strcoll(line1, line2);
-
 		if (!comp) {
 			read1 = read2 = 1;
-			if (col3)
-				(void)printf("%s%s", col3, line1);
+			if (col3 != NULL)
+				(void)printf("%s%s\n", col3, line1);
 			continue;
 		}
 
@@ -141,29 +166,59 @@ main(int argc, char **argv)
 		if (comp < 0) {
 			read1 = 1;
 			read2 = 0;
-			if (col1)
-				(void)printf("%s%s", col1, line1);
+			if (col1 != NULL)
+				(void)printf("%s%s\n", col1, line1);
 		} else {
 			read1 = 0;
 			read2 = 1;
-			if (col2)
-				(void)printf("%s%s", col2, line2);
+			if (col2 != NULL)
+				(void)printf("%s%s\n", col2, line2);
 		}
 	}
 	exit(0);
 }
 
-void
-show(FILE *fp, const char *offset, char *buf)
+static wchar_t *
+convert(const char *str)
 {
+	size_t n;
+	wchar_t *buf, *p;
 
-	do {
-		(void)printf("%s%s", offset, buf);
-	} while (fgets(buf, MAXLINELEN, fp));
+	if ((n = mbstowcs(NULL, str, 0)) == (size_t)-1)
+		return (NULL);
+	if (SIZE_MAX / sizeof(*buf) < n + 1)
+		errx(1, "conversion buffer length overflow");
+	if ((buf = malloc((n + 1) * sizeof(*buf))) == NULL)
+		err(1, "malloc");
+	if (mbstowcs(buf, str, n + 1) != n)
+		errx(1, "internal mbstowcs() error");
+
+	if (iflag) {
+		for (p = buf; *p != L'\0'; p++)
+			*p = towlower(*p);
+	}
+
+	return (buf);
 }
 
-FILE *
-file(char *name)
+static void
+show(FILE *fp, const char *fn, const char *offset, char **bufp, size_t *buflenp)
+{
+	ssize_t n;
+
+	do {
+		(void)printf("%s%s\n", offset, *bufp);
+		if ((n = getline(bufp, buflenp, fp)) < 0)
+			break;
+		if (n > 0 && (*bufp)[n - 1] == '\n')
+			(*bufp)[n - 1] = '\0';
+	} while (1);
+	if (ferror(fp))
+		err(1, "%s", fn);
+}
+
+static FILE *
+file(const char *name)
 {
 	FILE *fp;
 
@@ -180,18 +235,4 @@ usage(void)
 {
 	(void)fprintf(stderr, "usage: comm [-123i] file1 file2\n");
 	exit(1);
-}
-
-int
-stricoll(char *s1, char *s2)
-{
-	char *p, line1[MAXLINELEN], line2[MAXLINELEN];
-
-	for (p = line1; *s1; s1++)
-		*p++ = tolower((unsigned char)*s1);
-	*p = '\0';
-	for (p = line2; *s2; s2++)
-		*p++ = tolower((unsigned char)*s2);
-	*p = '\0';
-	return strcoll(line1, line2);
 }
