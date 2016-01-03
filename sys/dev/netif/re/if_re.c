@@ -328,6 +328,7 @@ static int	re_tx_collect(struct re_softc *);
 static void	re_intr(void *);
 static void	re_tick(void *);
 static void	re_tick_serialized(void *);
+static void	re_disable_aspm(device_t);
 
 static void	re_start(struct ifnet *, struct ifaltq_subque *);
 static int	re_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -1481,6 +1482,9 @@ re_attach(device_t dev)
 		error = ENXIO;
 		goto fail;
 	}
+
+	/* Disable ASPM */
+	re_disable_aspm(dev);
 
 	/* Reset the adapter. */
 	re_reset(sc, 0);
@@ -3437,4 +3441,27 @@ re_jbuf_ref(void *arg)
 		      sc->arpcom.ac_if.if_xname);
 	}
 	atomic_add_int(&jbuf->re_inuse, 1);
+}
+
+static void
+re_disable_aspm(device_t dev)
+{
+	uint16_t link_cap, link_ctrl;
+	uint8_t pcie_ptr, reg;
+
+	pcie_ptr = pci_get_pciecap_ptr(dev);
+	if (pcie_ptr == 0)
+		return;
+
+	link_cap = pci_read_config(dev, pcie_ptr + PCIER_LINKCAP, 2);
+	if ((link_cap & PCIEM_LNKCAP_ASPM_MASK) == 0)
+		return;
+
+	if (bootverbose)
+		device_printf(dev, "disable ASPM\n");
+
+	reg = pcie_ptr + PCIER_LINKCTRL;
+	link_ctrl = pci_read_config(dev, reg, 2);
+	link_ctrl &= ~(PCIEM_LNKCTL_ASPM_L0S | PCIEM_LNKCTL_ASPM_L1);
+	pci_write_config(dev, reg, link_ctrl, 2);
 }
