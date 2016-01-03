@@ -231,7 +231,7 @@ static const struct re_hwrev re_hwrevs[] = {
 
 	{ RE_HWREV_8168D,	RE_MTU_9K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX | RE_C_PHYPMCH },
 
 	{ RE_HWREV_8168DP,	RE_MTU_9K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
@@ -239,7 +239,7 @@ static const struct re_hwrev re_hwrevs[] = {
 
 	{ RE_HWREV_8168E,	RE_MTU_9K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX | RE_C_PHYPMCH },
 
 	{ RE_HWREV_8168F,	RE_MTU_9K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
@@ -289,19 +289,19 @@ static const struct re_hwrev re_hwrevs[] = {
 
 	{ RE_HWREV_8105E,	ETHERMTU,
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE },
+	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
 
 	{ RE_HWREV_8401E,	ETHERMTU,
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE },
+	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
 
 	{ RE_HWREV_8402,	ETHERMTU,
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE },
+	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
 
 	{ RE_HWREV_8106E,	ETHERMTU,
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE },
+	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
 
 	{ RE_HWREV_NULL, 0, 0 }
 };
@@ -1050,7 +1050,8 @@ re_probe(device_t dev)
 					/* 8105E */
 					sc->re_caps = RE_C_HWCSUM | RE_C_MAC2 |
 					    RE_C_PHYPMGT | RE_C_AUTOPAD |
-					    RE_C_STOP_RXTX | RE_C_FASTE;
+					    RE_C_STOP_RXTX | RE_C_FASTE |
+					    RE_C_PHYPMCH;
 					sc->re_maxmtu = ETHERMTU;
 					device_printf(dev, "8105E fixup\n");
 					goto ee_eaddr0;
@@ -1573,9 +1574,10 @@ re_attach(device_t dev)
 	/*
 	 * Apply some PHY fixup from Realtek ...
 	 */
-	if (sc->re_hwrev == RE_HWREV_8110S) {
-		CSR_WRITE_1(sc, 0x82, 1);
-		re_miibus_writereg(dev, 1, 0xb, 0);
+	if (sc->re_caps & RE_C_PHYPMCH) {
+		CSR_WRITE_1(sc, RE_PMCH, CSR_READ_1(sc, RE_PMCH) | 0x80);
+		if (sc->re_hwrev == RE_HWREV_8401E)
+			CSR_WRITE_1(sc, 0xD1, CSR_READ_1(sc, 0xD1) & ~0x08);
 	}
 	if (sc->re_caps & RE_C_PHYPMGT) {
 		/* Power up PHY */

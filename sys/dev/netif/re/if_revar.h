@@ -182,6 +182,7 @@ struct re_softc {
 #define RE_C_PCI64		0x2	/* PCI64 */
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
 #define RE_C_HWCSUM		0x8	/* hardware csum offload */
+#define RE_C_PHYPMCH		0x10	/* XXX PHY needs power change? */
 #define RE_C_8139CP		0x20	/* is 8139C+ */
 #define RE_C_MAC2		0x40	/* MAC style 2 */
 #define RE_C_PHYPMGT		0x80	/* PHY supports power mgmt */

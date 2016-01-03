@@ -122,6 +122,7 @@
 #define RE_TBI_ANAR		0x0068
 #define RE_TBI_LPAR		0x006A
 #define RE_GMEDIASTAT		0x006C	/* 8 bits */
+#define RE_PMCH			0x006F	/* 8 bits */
 #define RE_MAXRXPKTLEN		0x00DA	/* 16 bits, chip multiplies by 8 */
 #define RE_GTXSTART		0x0038	/* 16 bits */
 
