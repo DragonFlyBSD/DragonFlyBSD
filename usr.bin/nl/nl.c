@@ -13,13 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -34,9 +27,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * @(#) Copyright (c) 1999 The NetBSD Foundation, Inc.  All rights reserved.
- * $FreeBSD: src/usr.bin/nl/nl.c,v 1.2.2.2 2002/07/15 06:18:43 tjr Exp $
+ * $FreeBSD: head/usr.bin/nl/nl.c 265319 2014-05-04 12:20:40Z pluknet $
  */
 
+#define	_WITH_GETLINE
 #include <sys/types.h>
 
 #include <err.h>
@@ -48,6 +42,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
 
 typedef enum {
 	number_all,		/* number all lines */
@@ -92,21 +87,17 @@ static void	parse_numbering(const char *, int);
 static void	usage(void);
 
 /*
- * Pointer to dynamically allocated input line buffer, and its size.
- */
-static char *buffer;
-static size_t buffersize;
-
-/*
  * Dynamically allocated buffer suitable for string representation of ints.
  */
 static char *intbuffer;
 
+/* delimiter characters that indicate the start of a logical page section */
+static char delim[2 * MB_LEN_MAX];
+static int delimlen;
+
 /*
  * Configurable parameters.
  */
-/* delimiter characters that indicate the start of a logical page section */
-static char delim[2] = { '\\', ':' };
 
 /* line numbering format */
 static const char *format = FORMAT_RN;
@@ -138,7 +129,9 @@ main(int argc, char **argv)
 	long val;
 	unsigned long uval;
 	char *ep;
-	size_t intbuffersize;
+	size_t intbuffersize, clen;
+	char delim1[MB_LEN_MAX] = { '\\' }, delim2[MB_LEN_MAX] = { ':' };
+	size_t delim1len = 1, delim2len = 1;
 
 	(void)setlocale(LC_ALL, "");
 
@@ -151,16 +144,24 @@ main(int argc, char **argv)
 			parse_numbering(optarg, BODY);
 			break;
 		case 'd':
-			if (optarg[0] != '\0')
-				delim[0] = optarg[0];
-			if (optarg[1] != '\0')
-				delim[1] = optarg[1];
-			/* at most two delimiter characters */
-			if (optarg[2] != '\0') {
-				errx(EXIT_FAILURE,
-				    "invalid delim argument -- %s",
-				    optarg);
-				/* NOTREACHED */
+			clen = mbrlen(optarg, MB_CUR_MAX, NULL);
+			if (clen == (size_t)-1 || clen == (size_t)-2)
+				errc(EXIT_FAILURE, EILSEQ, NULL);
+			if (clen != 0) {
+				memcpy(delim1, optarg, delim1len = clen);
+				clen = mbrlen(optarg + delim1len,
+				    MB_CUR_MAX, NULL);
+				if (clen == (size_t)-1 ||
+				    clen == (size_t)-2)
+					errc(EXIT_FAILURE, EILSEQ, NULL);
+				if (clen != 0) {
+					memcpy(delim2, optarg + delim1len,
+					    delim2len = clen);
+				if (optarg[delim1len + clen] != '\0')
+					errx(EXIT_FAILURE,
+					    "invalid delim argument -- %s",
+					    optarg);
+				}
 			}
 			break;
 		case 'f':
@@ -236,7 +237,8 @@ main(int argc, char **argv)
 	case 0:
 		break;
 	case 1:
-		if (freopen(argv[0], "r", stdin) == NULL)
+		if (strcmp(argv[0], "-") != 0 &&
+		    freopen(argv[0], "r", stdin) == NULL)
 			err(EXIT_FAILURE, "%s", argv[0]);
 		break;
 	default:
@@ -244,16 +246,13 @@ main(int argc, char **argv)
 		/* NOTREACHED */
 	}
 
-	/* Determine the maximum input line length to operate on. */
-	if ((val = sysconf(_SC_LINE_MAX)) == -1) /* ignore errno */
-		val = LINE_MAX;
-	/* Allocate sufficient buffer space (including the terminating NUL). */
-	buffersize = (size_t)val + 1;
-	if ((buffer = malloc(buffersize)) == NULL)
-		err(EXIT_FAILURE, "cannot allocate input line buffer");
+	/* Generate the delimiter sequence */
+	memcpy(delim, delim1, delim1len);
+	memcpy(delim + delim1len, delim2, delim2len);
+	delimlen = delim1len + delim2len;
 
 	/* Allocate a buffer suitable for preformatting line number. */
-	intbuffersize = max(INT_STRLEN_MAXIMUM, width) + 1;	/* NUL */
+	intbuffersize = max(INT_STRLEN_MAXIMUM, width) + 1; /* NUL */
 	if ((intbuffer = malloc(intbuffersize)) == NULL)
 		err(EXIT_FAILURE, "cannot allocate preformatting buffer");
 
@@ -267,6 +266,9 @@ main(int argc, char **argv)
 static void
 filter(void)
 {
+	char *buffer;
+	size_t buffersize;
+	ssize_t linelen;
 	int line;		/* logical line number */
 	int section;		/* logical page section */
 	unsigned int adjblank;	/* adjacent blank lines */
@@ -277,21 +279,23 @@ filter(void)
 	line = startnum;
 	section = BODY;
 
-	while (fgets(buffer, (int)buffersize, stdin) != NULL) {
+	buffer = NULL;
+	buffersize = 0;
+	while ((linelen = getline(&buffer, &buffersize, stdin)) > 0) {
 		for (idx = FOOTER; idx <= NP_LAST; idx++) {
 			/* Does it look like a delimiter? */
-			if (buffer[2 * idx + 0] == delim[0] &&
-			    buffer[2 * idx + 1] == delim[1]) {
-				/* Was this the whole line? */
-				if (buffer[2 * idx + 2] == '\n') {
-					section = idx;
-					adjblank = 0;
-					if (restart)
-						line = startnum;
-					goto nextline;
-				}
-			} else {
+			if (delimlen * (idx + 1) > linelen)
 				break;
+			if (memcmp(buffer + delimlen * idx, delim,
+			    delimlen) != 0)
+				break;
+			/* Was this the whole line? */
+			if (buffer[delimlen * (idx + 1)] == '\n') {
+				section = idx;
+				adjblank = 0;
+				if (restart)
+					line = startnum;
+				goto nextline;
 			}
 		}
 
@@ -329,7 +333,8 @@ filter(void)
 		} else {
 			(void)printf("%*s", width, "");
 		}
-		(void)printf("%s%s", sep, buffer);
+		(void)fputs(sep, stdout);
+		(void)fwrite(buffer, linelen, 1, stdout);
 
 		if (ferror(stdout))
 			err(EXIT_FAILURE, "output error");
@@ -339,6 +344,8 @@ nextline:
 
 	if (ferror(stdin))
 		err(EXIT_FAILURE, "input error");
+
+	free(buffer);
 }
 
 /*
@@ -391,8 +398,8 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "usage: nl [-p] [-b type] [-d delim] [-f type] \
-[-h type] [-i incr] [-l num]\n\t[-n format] [-s sep] [-v startnum] [-w width] \
-[file]\n");
+	(void)fprintf(stderr,
+"usage: nl [-p] [-b type] [-d delim] [-f type] [-h type] [-i incr] [-l num]\n"
+"	   [-n format] [-s sep] [-v startnum] [-w width] [file]\n");
 	exit(EXIT_FAILURE);
 }

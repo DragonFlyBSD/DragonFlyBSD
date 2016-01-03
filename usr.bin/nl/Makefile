@@ -1,5 +1,4 @@
-# $FreeBSD: src/usr.bin/nl/Makefile,v 1.1.2.1 2001/09/27 17:51:06 wollman Exp $
-# $DragonFly: src/usr.bin/nl/Makefile,v 1.3 2007/08/27 16:50:57 pavalos Exp $
+# $FreeBSD: head/usr.bin/nl/Makefile 226362 2011-10-14 07:28:39Z ed $
 
 PROG=	nl
 

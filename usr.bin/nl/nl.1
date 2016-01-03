@@ -1,5 +1,4 @@
-.\" $FreeBSD: src/usr.bin/nl/nl.1,v 1.8.2.3 2002/07/15 06:18:43 tjr Exp $
-.\" $DragonFly: src/usr.bin/nl/nl.1,v 1.4 2008/05/02 02:05:07 swildner Exp $
+.\" $FreeBSD: head/usr.bin/nl/nl.1 265319 2014-05-04 12:20:40Z pluknet $
 .\"
 .\" Copyright (c) 1999 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -15,13 +14,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"        This product includes software developed by the NetBSD
-.\"        Foundation, Inc. and its contributors.
-.\" 4. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -35,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd September 20, 2001
+.Dd January 3, 2016
 .Dt NL 1
 .Os
 .Sh NAME
@@ -79,28 +71,34 @@
 The
 .Nm
 utility reads lines from the named
+.Ar file ,
+applies a configurable line numbering filter operation,
+and writes the result to the standard output.
+If
 .Ar file
-or the standard input if the
-.Ar file
-argument is omitted,
-applies a configurable line numbering filter operation and writes the result
-to the standard output.
+is a single dash
+.Pq Sq Fl
+or absent,
+.Nm
+reads from the standard input.
 .Pp
 The
 .Nm
 utility treats the text it reads in terms of logical pages.
 Unless specified otherwise, line numbering is reset at the start of each
-logical page.  A logical page consists of a header, a body and a footer
-section; empty sections are valid.  Different line numbering options are
+logical page.
+A logical page consists of a header, a body and a footer
+section; empty sections are valid.
+Different line numbering options are
 independently available for header, body and footer sections.
 .Pp
 The starts of logical page sections are signalled by input lines containing
 nothing but one of the following sequences of delimiter characters:
 .Bl -column "\e:\e:\e:" "Start of" -offset indent
-.It Em "Line" Ta Em "Start of"
-.It "\e:\e:\e:" Ta "header"
-.It "\e:\e:" Ta "body"
-.It "\e:" Ta "footer"
+.Em "Line	Start of"
+.It "\e:\e:\e:	header"
+.It "\e:\e:	body"
+.It "\e:	footer"
 .El
 .Pp
 If the input does not contain any logical page section signalling directives,
@@ -132,7 +130,8 @@ for logical page body lines is
 .Cm t .
 .It Fl d Ar delim
 Specify the delimiter characters used to indicate the start of a logical
-page section in the input file.  At most two characters may be specified;
+page section in the input file.
+At most two characters may be specified;
 if only one character is specified, the first character is replaced and the
 second character remains unchanged.
 The default
@@ -220,6 +219,15 @@ The default
 .Ar width
 is 6.
 .El
+.Sh ENVIRONMENT
+The
+.Ev LANG , LC_ALL , LC_CTYPE
+and
+.Ev LC_COLLATE
+environment variables affect the execution of
+.Nm
+as described in
+.Xr environ 7 .
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
@@ -235,3 +243,7 @@ The
 .Nm
 utility first appeared in
 .At V.2 .
+.Sh BUGS
+Input lines are limited to
+.Dv LINE_MAX
+(2048) bytes in length.
