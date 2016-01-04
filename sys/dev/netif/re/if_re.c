@@ -1345,8 +1345,8 @@ re_attach(device_t dev)
 	struct ifnet *ifp;
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
-	uint8_t eaddr[ETHER_ADDR_LEN];
-	int error = 0, qlen, msi_enable;
+	uint8_t eaddr[ETHER_ADDR_LEN], cfg;
+	int error = 0, qlen, msi_enable, cfg5_reg;
 	u_int irq_flags;
 
 	callout_init_mp(&sc->re_timer);
@@ -1519,11 +1519,20 @@ re_attach(device_t dev)
 		      sc->re_bus_speed);
 
 	/*
-	 * NOTE:
-	 * DO NOT try to adjust config1 and config5 which was spotted in
-	 * Realtek's Linux drivers.  It will _permanently_ damage certain
-	 * cards EEPROM, e.g. one of my 8168B (0x38000000) card ...
+	 * Enable PME.
 	 */
+	if (RE_IS_8139CP(sc))
+		cfg5_reg = RE_CFG5_8139CP;
+	else
+		cfg5_reg = RE_CFG5;
+	CSR_WRITE_1(sc, RE_EECMD, RE_EE_MODE);
+	cfg = CSR_READ_1(sc, RE_CFG1);
+	cfg |= RE_CFG1_PME;
+	CSR_WRITE_1(sc, RE_CFG1, cfg);
+	cfg = CSR_READ_1(sc, cfg5_reg);
+	cfg &= RE_CFG5_PME_STS;
+	CSR_WRITE_1(sc, cfg5_reg, cfg);
+	CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_OFF);
 
 	re_get_eaddr(sc, eaddr);
 

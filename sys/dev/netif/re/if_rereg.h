@@ -70,7 +70,9 @@
 #define RE_CFG0		0x0051		/* config register #0 */
 #define RE_CFG1		0x0052		/* config register #1 */
 #define RE_CFG2		0x0053		/* config register #2 */
-                                        /* 0054-0057 reserved */   
+                                        /* 0054-0055 reserved */   
+#define RE_CFG5		0x0056		/* config register #5 */
+					/* 0057 reserved */
 #define RE_MEDIASTAT	0x0058		/* media status register (8139) */
 					/* 0059-005A reserved */
 #define RE_MII		0x005A		/* 8129 chip only */
@@ -92,6 +94,7 @@
 #define RE_NWAYTST	0x0070		/* NWAY test register */
 #define RE_RX_ER	0x0072		/* RX_ER counter */
 #define RE_CSCFG	0x0074		/* CS configuration register */
+#define RE_CFG5_8139CP	0x00D8		/* config reg5 for 8139C+ */
 
 /*
  * When operating in special C+ mode, some of the registers in an
@@ -104,7 +107,6 @@
 #define RE_TXLIST_ADDR_HI	0x0024	/* 64 bits, 256 byte alignment */
 #define RE_TXLIST_ADDR_HPRIO_LO	0x0028	/* 64 bits, 256 byte alignment */
 #define RE_TXLIST_ADDR_HPRIO_HI	0x002C	/* 64 bits, 256 byte alignment */
-#define RE_CFG2			0x0053
 #define RE_TIMERINT		0x0054	/* interrupt on timer expire */
 #define RE_TXSTART		0x00D9	/* 8 bits */
 #define RE_CPLUS_CMD		0x00E0	/* 16 bits */
@@ -354,6 +356,7 @@
  * Config 1 register
  */
 #define RE_CFG1_PWRDWN		0x01
+#define RE_CFG1_PME		0x01
 #define RE_CFG1_SLEEP		0x02
 #define RE_CFG1_IOMAP		0x04
 #define RE_CFG1_MEMMAP		0x08
@@ -383,6 +386,11 @@
 #define RE_CFG2_BUSFREQ		0x07
 #define RE_CFG2_BUSWIDTH	0x08
 #define RE_CFG2_AUXPWRSTS	0x10
+
+/*
+ * Config 5 register
+ */
+#define RE_CFG5_PME_STS		0x01
 
 #define RE_BUSFREQ_33MHZ	0x00
 #define RE_BUSFREQ_66MHZ	0x01
