@@ -28,7 +28,6 @@ SUBDIR= adventure \
 	morse \
 	number \
 	phantasia \
-	piano \
 	pig \
 	pom \
 	ppt \
