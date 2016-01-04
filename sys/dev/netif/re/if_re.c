@@ -1352,6 +1352,7 @@ static int
 re_attach(device_t dev)
 {
 	struct re_softc	*sc = device_get_softc(dev);
+	struct mii_probe_args mii_args;
 	struct ifnet *ifp;
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
@@ -1609,8 +1610,11 @@ re_attach(device_t dev)
 	}
 
 	/* Do MII setup */
-	if (mii_phy_probe(dev, &sc->re_miibus,
-	    re_ifmedia_upd, re_ifmedia_sts)) {
+	mii_probe_args_init(&mii_args, re_ifmedia_upd, re_ifmedia_sts);
+	mii_args.mii_probemask = 1 << 0;
+	if (!RE_IS_8139CP(sc))
+		mii_args.mii_probemask = 1 << 1;
+	if (mii_probe(dev, &sc->re_miibus, &mii_args)) {
 		device_printf(dev, "MII without any phy!\n");
 		error = ENXIO;
 		goto fail;
