@@ -13,12 +13,14 @@ SUBDIR= adventure \
 	caesar \
 	canfield \
 	cribbage \
+	colorbars \
 	dm \
 	factor \
 	fish \
 	fortune \
 	grdc \
 	hack \
+	hals_end \
 	hangman \
 	hunt \
 	larn \
