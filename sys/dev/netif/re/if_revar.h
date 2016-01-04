@@ -74,6 +74,7 @@
 #define RE_JBUF_SIZE		roundup2(RE_FRAMELEN_MAX, RE_RXBUF_ALIGN)
 
 #define	RE_TIMEOUT		1000
+#define	RE_PHY_TIMEOUT		2000
 
 struct re_hwrev {
 	uint32_t		re_hwrev;

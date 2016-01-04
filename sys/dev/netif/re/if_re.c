@@ -545,19 +545,23 @@ re_gmii_readreg(device_t dev, int phy, int reg)
 		return(CSR_READ_1(sc, RE_GMEDIASTAT));
 
 	CSR_WRITE_4(sc, RE_PHYAR, reg << 16);
-	DELAY(1000);
 
-	for (i = 0; i < RE_TIMEOUT; i++) {
+	for (i = 0; i < RE_PHY_TIMEOUT; i++) {
 		rval = CSR_READ_4(sc, RE_PHYAR);
 		if (rval & RE_PHYAR_BUSY)
 			break;
-		DELAY(100);
+		DELAY(25);
 	}
 
-	if (i == RE_TIMEOUT) {
+	if (i == RE_PHY_TIMEOUT) {
 		device_printf(dev, "PHY read failed\n");
 		return(0);
 	}
+
+	/*
+	 * Controller requires a 20us delay to process next MDIO request.
+	 */
+	DELAY(20);
 
 	return(rval & RE_PHYAR_PHYDATA);
 }
@@ -571,17 +575,23 @@ re_gmii_writereg(device_t dev, int phy, int reg, int data)
 
 	CSR_WRITE_4(sc, RE_PHYAR,
 		    (reg << 16) | (data & RE_PHYAR_PHYDATA) | RE_PHYAR_BUSY);
-	DELAY(1000);
 
-	for (i = 0; i < RE_TIMEOUT; i++) {
+	for (i = 0; i < RE_PHY_TIMEOUT; i++) {
 		rval = CSR_READ_4(sc, RE_PHYAR);
 		if ((rval & RE_PHYAR_BUSY) == 0)
 			break;
-		DELAY(100);
+		DELAY(25);
 	}
 
-	if (i == RE_TIMEOUT)
+	if (i == RE_PHY_TIMEOUT) {
 		device_printf(dev, "PHY write failed\n");
+		return(0);
+	}
+
+	/*
+	 * Controller requires a 20us delay to process next MDIO request.
+	 */
+	DELAY(20);
 
 	return(0);
 }
