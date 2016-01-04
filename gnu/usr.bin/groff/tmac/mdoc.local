@@ -112,6 +112,7 @@
 .\" NetBSD releases not found in doc-common.
 .ds doc-operating-system-NetBSD-5.0   5.0
 .ds doc-operating-system-NetBSD-6.0   6.0
+.ds doc-operating-system-NetBSD-7.0   7.0
 .
 .\" Definitions not (yet) in doc-syms
 .ds doc-str-St--xsh4.2         \*[doc-Tn-font-size]X/Open\*[doc-str-St] System Interfaces and Headers Issue\~4, Version\~2
