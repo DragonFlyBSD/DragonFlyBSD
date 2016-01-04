@@ -38,6 +38,8 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/socket.h>
 
+#include <machine/stdarg.h>
+
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_dl.h>
@@ -229,15 +231,15 @@ ieee80211_chan_init(struct ieee80211com *ic)
 }
 
 static void
-null_update_mcast(struct ifnet *ifp)
+null_update_mcast(struct ieee80211com *ic)
 {
-	if_printf(ifp, "need multicast update callback\n");
+	ic_printf(ic, "need multicast update callback\n");
 }
 
 static void
-null_update_promisc(struct ifnet *ifp)
+null_update_promisc(struct ieee80211com *ic)
 {
-	if_printf(ifp, "need promiscuous mode update callback\n");
+	ic_printf(ic, "need promiscuous mode update callback\n");
 }
 
 static int
@@ -287,7 +289,20 @@ static void
 null_update_chw(struct ieee80211com *ic)
 {
 
-	if_printf(ic->ic_ifp, "%s: need callback\n", __func__);
+	ic_printf(ic, "%s: need callback\n", __func__);
+}
+
+int
+ic_printf(struct ieee80211com *ic, const char * fmt, ...)
+{
+	osdep_va_list ap;
+	int retval;
+
+	retval = kprintf("%s: ", ic->ic_name);
+	osdep_va_start(ap, fmt);
+	retval += kvprintf(fmt, ap);
+	osdep_va_end(ap);
+	return (retval);
 }
 
 /*
@@ -304,8 +319,8 @@ ieee80211_ifattach(struct ieee80211com *ic,
 
 	KASSERT(ifp->if_type == IFT_IEEE80211, ("if_type %d", ifp->if_type));
 
-	IEEE80211_LOCK_INIT(ic, ifp->if_xname);
-	IEEE80211_TX_LOCK_INIT(ic, ifp->if_xname);
+	IEEE80211_LOCK_INIT(ic, ic->ic_name);
+	IEEE80211_TX_LOCK_INIT(ic, ic->ic_name);
 	TAILQ_INIT(&ic->ic_vaps);
 
 	/* Create a taskqueue for all state changes */
@@ -313,10 +328,10 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	    taskqueue_thread_enqueue, &ic->ic_tq);
 #if defined(__DragonFly__)
 	taskqueue_start_threads(&ic->ic_tq, 1, TDPRI_KERN_DAEMON, -1,
-				"%s net80211 taskq", ifp->if_xname);
+				"%s net80211 taskq", ic->ic_name);
 #else
 	taskqueue_start_threads(&ic->ic_tq, 1, PI_NET, "%s net80211 taskq",
-	    ifp->if_xname);
+	    ic->ic_name);
 #endif
 	/*
 	 * Fill in 802.11 available channel set, mark all
@@ -500,7 +515,7 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 
 	ifp = if_alloc(IFT_ETHER);
 	if (ifp == NULL) {
-		if_printf(ic->ic_ifp, "%s: unable to allocate ifnet\n",
+		ic_printf(ic, "%s: unable to allocate ifnet\n",
 		    __func__);
 		return ENOMEM;
 	}
@@ -639,7 +654,7 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE,
 	    "%s: %s parent %s flags 0x%x flags_ext 0x%x\n",
 	    __func__, ieee80211_opmode_name[vap->iv_opmode],
-	    ic->ic_ifp->if_xname, vap->iv_flags, vap->iv_flags_ext);
+	    ic->ic_name, vap->iv_flags, vap->iv_flags_ext);
 
 	/*
 	 * Do late attach work that cannot happen until after
@@ -705,8 +720,7 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	CURVNET_SET(ifp->if_vnet);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s parent %s\n",
-	    __func__, ieee80211_opmode_name[vap->iv_opmode],
-	    ic->ic_ifp->if_xname);
+	    __func__, ieee80211_opmode_name[vap->iv_opmode], ic->ic_name);
 
 	/* NB: bpfdetach is called by ether_ifdetach and claims all taps */
 	ether_ifdetach(ifp);
@@ -1000,7 +1014,7 @@ int
 ieee80211_chan2ieee(struct ieee80211com *ic, const struct ieee80211_channel *c)
 {
 	if (c == NULL) {
-		if_printf(ic->ic_ifp, "invalid channel (NULL)\n");
+		ic_printf(ic, "invalid channel (NULL)\n");
 		return 0;		/* XXX */
 	}
 	return (c == IEEE80211_CHAN_ANYC ?  IEEE80211_CHAN_ANY : c->ic_ieee);
@@ -1089,6 +1103,75 @@ ieee80211_find_channel_byieee(struct ieee80211com *ic, int ieee, int flags)
 			return c;
 	}
 	return NULL;
+}
+
+/*
+ * Lookup a channel suitable for the given rx status.
+ *
+ * This is used to find a channel for a frame (eg beacon, probe
+ * response) based purely on the received PHY information.
+ *
+ * For now it tries to do it based on R_FREQ / R_IEEE.
+ * This is enough for 11bg and 11a (and thus 11ng/11na)
+ * but it will not be enough for GSM, PSB channels and the
+ * like.  It also doesn't know about legacy-turbog and
+ * legacy-turbo modes, which some offload NICs actually
+ * support in weird ways.
+ *
+ * Takes the ic and rxstatus; returns the channel or NULL
+ * if not found.
+ *
+ * XXX TODO: Add support for that when the need arises.
+ */
+struct ieee80211_channel *
+ieee80211_lookup_channel_rxstatus(struct ieee80211vap *vap,
+    const struct ieee80211_rx_stats *rxs)
+{
+	struct ieee80211com *ic = vap->iv_ic;
+	uint32_t flags;
+	struct ieee80211_channel *c;
+
+	if (rxs == NULL)
+		return (NULL);
+
+	/*
+	 * Strictly speaking we only use freq for now,
+	 * however later on we may wish to just store
+	 * the ieee for verification.
+	 */
+	if ((rxs->r_flags & IEEE80211_R_FREQ) == 0)
+		return (NULL);
+	if ((rxs->r_flags & IEEE80211_R_IEEE) == 0)
+		return (NULL);
+
+	/*
+	 * If the rx status contains a valid ieee/freq, then
+	 * ensure we populate the correct channel information
+	 * in rxchan before passing it up to the scan infrastructure.
+	 * Offload NICs will pass up beacons from all channels
+	 * during background scans.
+	 */
+
+	/* Determine a band */
+	/* XXX should be done by the driver? */
+	if (rxs->c_freq < 3000) {
+		flags = IEEE80211_CHAN_G;
+	} else {
+		flags = IEEE80211_CHAN_A;
+	}
+
+	/* Channel lookup */
+	c = ieee80211_find_channel(ic, rxs->c_freq, flags);
+
+	IEEE80211_DPRINTF(vap, IEEE80211_MSG_INPUT,
+	    "%s: freq=%d, ieee=%d, flags=0x%08x; c=%p\n",
+	    __func__,
+	    (int) rxs->c_freq,
+	    (int) rxs->c_ieee,
+	    flags,
+	    c);
+
+	return (c);
 }
 
 static void
@@ -1269,7 +1352,6 @@ ieee80211_get_suprates(struct ieee80211com *ic, const struct ieee80211_channel *
 void
 ieee80211_announce(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
 	int i, rate, mword;
 	enum ieee80211_phymode mode;
 	const struct ieee80211_rateset *rs;
@@ -1278,7 +1360,7 @@ ieee80211_announce(struct ieee80211com *ic)
 	for (mode = IEEE80211_MODE_AUTO+1; mode < IEEE80211_MODE_11NA; mode++) {
 		if (isclr(ic->ic_modecaps, mode))
 			continue;
-		if_printf(ifp, "%s rates: ", ieee80211_phymode_name[mode]);
+		ic_printf(ic, "%s rates: ", ieee80211_phymode_name[mode]);
 		rs = &ic->ic_sup_rates[mode];
 		for (i = 0; i < rs->rs_nrates; i++) {
 			mword = ieee80211_rate2media(ic, rs->rs_rates[i], mode);
@@ -1847,3 +1929,23 @@ ieee80211_mac_hash(const struct ieee80211com *ic,
 	return c;
 }
 #undef mix
+
+char
+ieee80211_channel_type_char(const struct ieee80211_channel *c)
+{
+	if (IEEE80211_IS_CHAN_ST(c))
+		return 'S';
+	if (IEEE80211_IS_CHAN_108A(c))
+		return 'T';
+	if (IEEE80211_IS_CHAN_108G(c))
+		return 'G';
+	if (IEEE80211_IS_CHAN_HT(c))
+		return 'n';
+	if (IEEE80211_IS_CHAN_A(c))
+		return 'a';
+	if (IEEE80211_IS_CHAN_ANYG(c))
+		return 'g';
+	if (IEEE80211_IS_CHAN_B(c))
+		return 'b';
+	return 'f';
+}

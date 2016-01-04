@@ -1358,6 +1358,7 @@ netproto/802_11/wlan/ieee80211_regdomain.c  optional wlan
 netproto/802_11/wlan/ieee80211_rssadapt.c   optional wlan_rssadapt
 netproto/802_11/wlan/ieee80211_scan.c       optional wlan
 netproto/802_11/wlan/ieee80211_scan_sta.c   optional wlan
+netproto/802_11/wlan/ieee80211_scan_sw.c    optional wlan
 netproto/802_11/wlan/ieee80211_sta.c        optional wlan
 netproto/802_11/wlan/ieee80211_superg.c     optional wlan ieee80211_support_superg
 netproto/802_11/wlan/ieee80211_tdma.c       optional wlan ieee80211_support_tdma

@@ -9,8 +9,9 @@ SRCS	+= ieee80211_output.c ieee80211_phy.c ieee80211_power.c
 SRCS	+= ieee80211_proto.c ieee80211_radiotap.c
 SRCS	+= ieee80211_ratectl.c ieee80211_ratectl_none.c
 SRCS	+= ieee80211_regdomain.c ieee80211_rssadapt.c
-SRCS	+= ieee80211_scan.c ieee80211_scan_sta.c ieee80211_sta.c
-SRCS	+= ieee80211_superg.c ieee80211_tdma.c ieee80211_wds.c
+SRCS	+= ieee80211_scan.c ieee80211_scan_sta.c  ieee80211_scan_sw.c
+SRCS	+= ieee80211_sta.c ieee80211_superg.c ieee80211_tdma.c
+SRCS	+= ieee80211_wds.c
 SRCS	+= bus_if.h device_if.h opt_inet.h opt_inet6.h opt_wlan.h
 SRCS	+= opt_tdma.h opt_ddb.h
 

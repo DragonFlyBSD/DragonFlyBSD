@@ -157,8 +157,8 @@ static void ndis_tick		(void *);
 static void ndis_ticktask	(device_object *, void *);
 static int ndis_raw_xmit	(struct ieee80211_node *, struct mbuf *,
 	const struct ieee80211_bpf_params *);
-static void ndis_update_mcast	(struct ifnet *ifp);
-static void ndis_update_promisc	(struct ifnet *ifp);
+static void ndis_update_mcast	(struct ieee80211com *ic);
+static void ndis_update_promisc	(struct ieee80211com *ic);
 static void ndis_start		(struct ifnet *, struct ifaltq_subque *);
 static void ndis_starttask	(device_object *, void *);
 static void ndis_resettask	(device_object *, void *);
@@ -739,6 +739,7 @@ ndis_attach(device_t dev)
 
 		ifp->if_ioctl = ndis_ioctl_80211;
 		ic->ic_ifp = ifp;
+		ic->ic_name = device_get_nameunit(dev);
 		ic->ic_opmode = IEEE80211_M_STA;
 	        ic->ic_phytype = IEEE80211_T_DS;
 		ic->ic_caps = IEEE80211_C_8023ENCAP |
@@ -1730,15 +1731,15 @@ ndis_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 }
 
 static void
-ndis_update_mcast(struct ifnet *ifp)
+ndis_update_mcast(struct ieee80211com *ic)
 {
-       struct ndis_softc       *sc = ifp->if_softc;
+       struct ndis_softc       *sc = ic->ic_softc;
 
        ndis_setmulti(sc);
 }
 
 static void
-ndis_update_promisc(struct ifnet *ifp)
+ndis_update_promisc(struct ieee80211com *ic)
 {
        /* not supported */
 }
@@ -3255,7 +3256,7 @@ done:
 		DPRINTF(("scan: bssid %s chan %dMHz (%d/%d) rssi %d\n",
 		    kether_ntoa(wb->nwbx_macaddr, ethstr), freq, sp.bchan, chanflag,
 		    rssi));
-		ieee80211_add_scan(vap, &sp, &wh, 0, rssi, noise);
+		ieee80211_add_scan(vap, ic->ic_curchan, &sp, &wh, 0, rssi, noise);
 		wb = (ndis_wlan_bssid_ex *)((char *)wb + wb->nwbx_len);
 	}
 	kfree(bl, M_DEVBUF);

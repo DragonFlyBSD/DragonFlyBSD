@@ -206,6 +206,9 @@ int	ieee80211_add_callback(struct mbuf *m,
 		void (*func)(struct ieee80211_node *, void *, int), void *arg);
 void	ieee80211_process_callback(struct ieee80211_node *, struct mbuf *, int);
 
+#define	NET80211_TAG_XMIT_PARAMS	1
+/* See below; this is after the bpf_params definition */
+
 void	get_random_bytes(void *, size_t);
 
 struct ieee80211com;
@@ -245,7 +248,7 @@ wlan_##name##_modevent(module_t mod, int type, void *unused)		\
 	case MOD_UNLOAD:						\
 		error = 0;						\
 		if (nrefs) {						\
-			kprintf("wlan_##name: still in use (%u "	\
+			kprintf("wlan_" #name ": still in use (%u "	\
 				"dynamic refs)\n",			\
 				nrefs);					\
 			error = EBUSY;					\
@@ -495,6 +498,16 @@ struct ieee80211_bpf_params {
 	uint8_t		ibp_try3;	/* series 4 try count */
 	uint8_t		ibp_rate3;	/* series 4 IEEE tx rate */
 };
+
+#ifdef _KERNEL
+struct ieee80211_tx_params {
+	struct ieee80211_bpf_params params;
+};
+int	ieee80211_add_xmit_params(struct mbuf *m,
+	    const struct ieee80211_bpf_params *);
+int	ieee80211_get_xmit_params(struct mbuf *m,
+	    struct ieee80211_bpf_params *);
+#endif /* _KERNEL */
 
 /*
  * FreeBSD overrides

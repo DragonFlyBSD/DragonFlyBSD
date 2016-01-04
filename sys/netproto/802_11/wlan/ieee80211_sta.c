@@ -70,9 +70,10 @@ __FBSDID("$FreeBSD$");
 static	void sta_vattach(struct ieee80211vap *);
 static	void sta_beacon_miss(struct ieee80211vap *);
 static	int sta_newstate(struct ieee80211vap *, enum ieee80211_state, int);
-static	int sta_input(struct ieee80211_node *, struct mbuf *, int, int);
+static	int sta_input(struct ieee80211_node *, struct mbuf *,
+	    const struct ieee80211_rx_stats *, int, int);
 static void sta_recv_mgmt(struct ieee80211_node *, struct mbuf *,
-	    int subtype, int rssi, int nf);
+	    int subtype, const struct ieee80211_rx_stats *, int rssi, int nf);
 static void sta_recv_ctl(struct ieee80211_node *, struct mbuf *, int subtype);
 
 void
@@ -525,9 +526,9 @@ doprint(struct ieee80211vap *vap, int subtype)
  * by the 802.11 layer.
  */
 static int
-sta_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
+sta_input(struct ieee80211_node *ni, struct mbuf *m,
+    const struct ieee80211_rx_stats *rxs, int rssi, int nf)
 {
-#define	HAS_SEQ(type)	((type & 0x4) == 0)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = vap->iv_ifp;
@@ -624,7 +625,8 @@ sta_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 
 		IEEE80211_RSSI_LPF(ni->ni_avgrssi, rssi);
 		ni->ni_noise = nf;
-		if (HAS_SEQ(type) && !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
+		if ( IEEE80211_HAS_SEQ(type, subtype) &&
+		    !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
 			uint8_t tid = ieee80211_gettid(wh);
 			if (IEEE80211_QOS_HAS_SEQ(wh) &&
 			    TID_TO_WME_AC(tid) >= WME_AC_VI)
@@ -923,7 +925,7 @@ sta_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 			wh = mtod(m, struct ieee80211_frame *);
 			wh->i_fc[1] &= ~IEEE80211_FC1_PROTECTED;
 		}
-		vap->iv_recv_mgmt(ni, m, subtype, rssi, nf);
+		vap->iv_recv_mgmt(ni, m, subtype, rxs, rssi, nf);
 		goto out;
 
 	case IEEE80211_FC0_TYPE_CTL:
@@ -1286,13 +1288,15 @@ startbgscan(struct ieee80211vap *vap)
 }
 
 static void
-sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
-	int subtype, int rssi, int nf)
+sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0, int subtype,
+    const struct ieee80211_rx_stats *rxs,
+    int rssi, int nf)
 {
 #define	ISPROBE(_st)	((_st) == IEEE80211_FC0_SUBTYPE_PROBE_RESP)
 #define	ISREASSOC(_st)	((_st) == IEEE80211_FC0_SUBTYPE_REASSOC_RESP)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = ni->ni_ic;
+	struct ieee80211_channel *rxchan = ic->ic_curchan;
 	struct ieee80211_frame *wh;
 	uint8_t *frm, *efrm;
 	uint8_t *rates, *xrates, *wme, *htcap, *htinfo;
@@ -1306,6 +1310,7 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 	case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
 	case IEEE80211_FC0_SUBTYPE_BEACON: {
 		struct ieee80211_scanparams scan;
+		struct ieee80211_channel *c;
 		/*
 		 * We process beacon/probe response frames:
 		 *    o when scanning, or
@@ -1317,8 +1322,14 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 			vap->iv_stats.is_rx_mgtdiscard++;
 			return;
 		}
+		/* Override RX channel as appropriate */
+		if (rxs != NULL) {
+			c = ieee80211_lookup_channel_rxstatus(vap, rxs);
+			if (c != NULL)
+				rxchan = c;
+		}
 		/* XXX probe response in sta mode when !scanning? */
-		if (ieee80211_parse_beacon(ni, m0, &scan) != 0) {
+		if (ieee80211_parse_beacon(ni, m0, rxchan, &scan) != 0) {
 			if (! (ic->ic_flags & IEEE80211_F_SCAN))
 				vap->iv_stats.is_beacon_bad++;
 			return;
@@ -1406,6 +1417,7 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 				int ix = aid / NBBY;
 				int min = tim->tim_bitctl &~ 1;
 				int max = tim->tim_len + min - 4;
+				int tim_ucast = 0, tim_mcast = 0;
 
 				/*
 				 * Only do this for unicast traffic in the TIM
@@ -1415,20 +1427,42 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 				 */
 				if (min <= ix && ix <= max &&
 				     isset(tim->tim_bitmap - min, aid)) {
-					ieee80211_sta_tim_notify(vap, 1);
-					ic->ic_lastdata = ticks;
+					tim_ucast = 1;
 				}
 
 				/*
-				 * XXX TODO: do a separate notification
+				 * Do a separate notification
 				 * for the multicast bit being set.
 				 */
-#if 0
 				if (tim->tim_bitctl & 1) {
+					tim_mcast = 1;
+				}
+
+				/*
+				 * If the TIM indicates there's traffic for
+				 * us then get us out of STA mode powersave.
+				 */
+				if (tim_ucast == 1) {
+
+					/*
+					 * Wake us out of SLEEP state if we're
+					 * in it; and if we're doing bgscan
+					 * then wake us out of STA powersave.
+					 */
 					ieee80211_sta_tim_notify(vap, 1);
+
+					/*
+					 * This is preventing us from
+					 * continuing a bgscan; because it
+					 * tricks the contbgscan()
+					 * routine to think there's always
+					 * traffic for us.
+					 *
+					 * I think we need both an RX and
+					 * TX ic_lastdata field.
+					 */
 					ic->ic_lastdata = ticks;
 				}
-#endif
 
 				ni->ni_dtim_count = tim->tim_count;
 				ni->ni_dtim_period = tim->tim_period;
@@ -1462,8 +1496,8 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 			 * our ap.
 			 */
 			if (ic->ic_flags & IEEE80211_F_SCAN) {
-				ieee80211_add_scan(vap, &scan, wh,
-					subtype, rssi, nf);
+				ieee80211_add_scan(vap, rxchan,
+				    &scan, wh, subtype, rssi, nf);
 			} else if (contbgscan(vap)) {
 				ieee80211_bg_scan(vap, 0);
 			} else if (startbgscan(vap)) {
@@ -1507,7 +1541,8 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 				ieee80211_probe_curchan(vap, 1);
 				ic->ic_flags_ext &= ~IEEE80211_FEXT_PROBECHAN;
 			}
-			ieee80211_add_scan(vap, &scan, wh, subtype, rssi, nf);
+			ieee80211_add_scan(vap, rxchan, &scan, wh,
+			    subtype, rssi, nf);
 			return;
 		}
 		break;

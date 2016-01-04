@@ -372,7 +372,7 @@ static int
 ieee80211_sysctl_parent(SYSCTL_HANDLER_ARGS)
 {
 	struct ieee80211com *ic = arg1;
-	const char *name = ic->ic_ifp->if_xname;
+	const char *name = ic->ic_name;
 
 	return SYSCTL_OUT(req, name, strlen(name));
 }
@@ -669,6 +669,40 @@ ieee80211_add_callback(struct mbuf *m,
 	return 1;
 }
 
+int
+ieee80211_add_xmit_params(struct mbuf *m,
+    const struct ieee80211_bpf_params *params)
+{
+	struct m_tag *mtag;
+	struct ieee80211_tx_params *tx;
+
+	mtag = m_tag_alloc(MTAG_ABI_NET80211, NET80211_TAG_XMIT_PARAMS,
+	    sizeof(struct ieee80211_tx_params), M_NOWAIT);
+	if (mtag == NULL)
+		return (0);
+
+	tx = (struct ieee80211_tx_params *)(mtag+1);
+	memcpy(&tx->params, params, sizeof(struct ieee80211_bpf_params));
+	m_tag_prepend(m, mtag);
+	return (1);
+}
+
+int
+ieee80211_get_xmit_params(struct mbuf *m,
+    struct ieee80211_bpf_params *params)
+{
+	struct m_tag *mtag;
+	struct ieee80211_tx_params *tx;
+
+	mtag = m_tag_locate(m, MTAG_ABI_NET80211, NET80211_TAG_XMIT_PARAMS,
+	    NULL);
+	if (mtag == NULL)
+		return (-1);
+	tx = (struct ieee80211_tx_params *)(mtag + 1);
+	memcpy(params, &tx->params, sizeof(struct ieee80211_bpf_params));
+	return (0);
+}
+
 void
 ieee80211_process_callback(struct ieee80211_node *ni,
 	struct mbuf *m, int status)
@@ -821,7 +855,8 @@ void
 ieee80211_notify_csa(struct ieee80211com *ic,
 	const struct ieee80211_channel *c, int mode, int count)
 {
-	struct ifnet *ifp = ic->ic_ifp;
+	struct ieee80211vap *vap;
+	struct ifnet *ifp;
 	struct ieee80211_csa_event iev;
 
 	memset(&iev, 0, sizeof(iev));
@@ -830,36 +865,47 @@ ieee80211_notify_csa(struct ieee80211com *ic,
 	iev.iev_ieee = c->ic_ieee;
 	iev.iev_mode = mode;
 	iev.iev_count = count;
-	rt_ieee80211msg(ifp, RTM_IEEE80211_CSA, &iev, sizeof(iev));
+	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
+		ifp = vap->iv_ifp;
+		rt_ieee80211msg(ifp, RTM_IEEE80211_CSA, &iev, sizeof(iev));
+	}
 }
 
 void
 ieee80211_notify_radar(struct ieee80211com *ic,
 	const struct ieee80211_channel *c)
 {
-	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211_radar_event iev;
+	struct ieee80211vap *vap;
+	struct ifnet *ifp;
 
 	memset(&iev, 0, sizeof(iev));
 	iev.iev_flags = c->ic_flags;
 	iev.iev_freq = c->ic_freq;
 	iev.iev_ieee = c->ic_ieee;
-	rt_ieee80211msg(ifp, RTM_IEEE80211_RADAR, &iev, sizeof(iev));
+	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
+		ifp = vap->iv_ifp;
+		rt_ieee80211msg(ifp, RTM_IEEE80211_RADAR, &iev, sizeof(iev));
+	}
 }
 
 void
 ieee80211_notify_cac(struct ieee80211com *ic,
 	const struct ieee80211_channel *c, enum ieee80211_notify_cac_event type)
 {
-	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211_cac_event iev;
+	struct ieee80211vap *vap;
+	struct ifnet *ifp;
 
 	memset(&iev, 0, sizeof(iev));
 	iev.iev_flags = c->ic_flags;
 	iev.iev_freq = c->ic_freq;
 	iev.iev_ieee = c->ic_ieee;
 	iev.iev_type = type;
-	rt_ieee80211msg(ifp, RTM_IEEE80211_CAC, &iev, sizeof(iev));
+	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
+		ifp = vap->iv_ifp;
+		rt_ieee80211msg(ifp, RTM_IEEE80211_CAC, &iev, sizeof(iev));
+	}
 }
 
 void
@@ -901,12 +947,16 @@ ieee80211_notify_country(struct ieee80211vap *vap,
 void
 ieee80211_notify_radio(struct ieee80211com *ic, int state)
 {
-	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211_radio_event iev;
+	struct ieee80211vap *vap;
+	struct ifnet *ifp;
 
 	memset(&iev, 0, sizeof(iev));
 	iev.iev_state = state;
-	rt_ieee80211msg(ifp, RTM_IEEE80211_RADIO, &iev, sizeof(iev));
+	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
+		ifp = vap->iv_ifp;
+		rt_ieee80211msg(ifp, RTM_IEEE80211_RADIO, &iev, sizeof(iev));
+	}
 }
 
 /* IEEE Std 802.11a-1999, page 9, table 79 */
@@ -1081,18 +1131,9 @@ wlan_modevent(module_t mod, int type, void *unused)
 		wlan_bpfevent = EVENTHANDLER_REGISTER(bpf_track,
 					bpf_track_event, 0,
 					EVENTHANDLER_PRI_ANY);
-		if (wlan_bpfevent == NULL) {
-			error = ENOMEM;
-			break;
-		}
 		wlan_ifllevent = EVENTHANDLER_REGISTER(iflladdr_event,
 					wlan_iflladdr_event, NULL,
 					EVENTHANDLER_PRI_ANY);
-		if (wlan_ifllevent == NULL) {
-			EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
-			error = ENOMEM;
-			break;
-		}
 		if_clone_attach(&wlan_cloner);
 		if_register_com_alloc(IFT_IEEE80211, wlan_alloc, wlan_free);
 		error = 0;

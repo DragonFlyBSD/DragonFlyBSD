@@ -384,7 +384,7 @@ static struct ieee80211vap *
 static void	iwm_vap_delete(struct ieee80211vap *);
 static void	iwm_scan_start(struct ieee80211com *);
 static void	iwm_scan_end(struct ieee80211com *);
-static void	iwm_update_mcast(struct ifnet *);
+static void	iwm_update_mcast(struct ieee80211com *);
 static void	iwm_set_channel(struct ieee80211com *);
 static void	iwm_scan_curchan(struct ieee80211_scan_state *, unsigned long);
 static void	iwm_scan_mindwell(struct ieee80211_scan_state *);
@@ -5303,7 +5303,7 @@ iwm_scan_end(struct ieee80211com *ic)
 }
 
 static void
-iwm_update_mcast(struct ifnet *ifp)
+iwm_update_mcast(struct ieee80211com *ic)
 {
 }
 

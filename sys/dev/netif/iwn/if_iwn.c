@@ -255,7 +255,7 @@ static int	iwn_set_link_quality(struct iwn_softc *,
 		    struct ieee80211_node *);
 static int	iwn_add_broadcast_node(struct iwn_softc *, int);
 static int	iwn_updateedca(struct ieee80211com *);
-static void	iwn_update_mcast(struct ifnet *);
+static void	iwn_update_mcast(struct ieee80211com *);
 static void	iwn_set_led(struct iwn_softc *, uint8_t, uint8_t, uint8_t);
 static int	iwn_set_critical_temp(struct iwn_softc *);
 static int	iwn_set_timing(struct iwn_softc *, struct ieee80211_node *);
@@ -577,6 +577,7 @@ iwn_attach(device_t dev)
 
 	ic = ifp->if_l2com;
 	ic->ic_ifp = ifp;
+	ic->ic_name = device_get_nameunit(dev);
 	ic->ic_phytype = IEEE80211_T_OFDM;	/* not only, but not used */
 	ic->ic_opmode = IEEE80211_M_STA;	/* default to BSS mode */
 
@@ -5490,7 +5491,7 @@ iwn_updateedca(struct ieee80211com *ic)
 }
 
 static void
-iwn_update_mcast(struct ifnet *ifp)
+iwn_update_mcast(struct ieee80211com *ic)
 {
 	/* Ignore */
 }
