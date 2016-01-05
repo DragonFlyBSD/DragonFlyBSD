@@ -112,6 +112,8 @@ typedef	__uid_t		uid_t;
 #define	_POSIX_THREAD_PRIO_PROTECT	200112L	/* [TPP] */
 #define	_POSIX_THREAD_PRIORITY_SCHEDULING 200112L
 #define	_POSIX_THREAD_PROCESS_SHARED	-1
+#define	_POSIX_THREAD_ROBUST_PRIO_INHERIT -1	/* [RPI] */
+#define	_POSIX_THREAD_ROBUST_PRIO_PROTECT -1	/* [RPP] */
 #define	_POSIX_THREAD_SAFE_FUNCTIONS	-1
 #define	_POSIX_THREAD_SPORADIC_SERVER	-1
 #define	_POSIX_THREADS			200112L
@@ -305,6 +307,8 @@ typedef	__uid_t		uid_t;
 #define	_SC_V7_ILP32_OFFBIG	123 /* user */
 #define	_SC_V7_LP64_OFF64	124 /* user */
 #define	_SC_V7_LPBIG_OFFBIG	125 /* user */
+#define	_SC_THREAD_ROBUST_PRIO_INHERIT 126 /* user */
+#define	_SC_THREAD_ROBUST_PRIO_PROTECT 127 /* user */
 #endif
 
 /* Keys for the confstr(3) function. */
