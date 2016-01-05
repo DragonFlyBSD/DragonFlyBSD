@@ -2488,28 +2488,14 @@ iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc,
 	 * Populate an RX state struct with the provided information.
 	 */
 	bzero(&rxs, sizeof(rxs));
-#if !defined(__DragonFly__)
-	/* requires new fbsd stack */
 	rxs.r_flags |= IEEE80211_R_IEEE | IEEE80211_R_FREQ;
-#endif
 	rxs.r_flags |= IEEE80211_R_NF | IEEE80211_R_RSSI;
-#if defined(__DragonFly__)
-	uint16_t c_freq;
-	uint8_t c_ieee;
-	c_ieee = le16toh(phy_info->channel);
-	if (le16toh(phy_info->phy_flags & IWM_RX_RES_PHY_FLAGS_BAND_24)) {
-		c_freq = ieee80211_ieee2mhz(c_ieee, IEEE80211_CHAN_2GHZ);
-	} else {
-		c_freq = ieee80211_ieee2mhz(c_ieee, IEEE80211_CHAN_5GHZ);
-	}
-#else
 	rxs.c_ieee = le16toh(phy_info->channel);
 	if (le16toh(phy_info->phy_flags & IWM_RX_RES_PHY_FLAGS_BAND_24)) {
 		rxs.c_freq = ieee80211_ieee2mhz(rxs.c_ieee, IEEE80211_CHAN_2GHZ);
 	} else {
 		rxs.c_freq = ieee80211_ieee2mhz(rxs.c_ieee, IEEE80211_CHAN_5GHZ);
 	}
-#endif
 	rxs.rssi = rssi - sc->sc_noise;
 	rxs.nf = sc->sc_noise;
 
@@ -2519,11 +2505,7 @@ iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc,
 		tap->wr_flags = 0;
 		if (phy_info->phy_flags & htole16(IWM_PHY_INFO_FLAG_SHPREAMBLE))
 			tap->wr_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
-#if defined(__DragonFly__)
-		tap->wr_chan_freq = htole16(c_freq);
-#else
 		tap->wr_chan_freq = htole16(rxs.c_freq);
-#endif
 		/* XXX only if ic->ic_curchan->ic_ieee == rxs.c_ieee */
 		tap->wr_chan_flags = htole16(ic->ic_curchan->ic_flags);
 		tap->wr_dbm_antsignal = (int8_t)rssi;
