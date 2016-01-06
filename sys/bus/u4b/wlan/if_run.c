@@ -2233,9 +2233,11 @@ run_wme_update(struct ieee80211com *ic)
 {
 	struct run_softc *sc = ic->ic_ifp->if_softc;
 
-#if 0 /* XXX swildner */
-	/* sometime called without lock */
+#if defined(__DragonFly__)
+	if (lockstatus(&ic->ic_comlock, curthread) == LK_EXCLUSIVE) {
+#else
 	if (mtx_owned(&ic->ic_comlock.mtx)) {
+#endif
 		uint32_t i = RUN_CMDQ_GET(&sc->cmdq_store);
 		DPRINTF("cmdq_store=%d\n", i);
 		sc->cmdq[i].func = run_wme_update_cb;
@@ -2243,7 +2245,6 @@ run_wme_update(struct ieee80211com *ic)
 		ieee80211_runtask(ic, &sc->cmdq_task);
 		return (0);
 	}
-#endif
 
 	RUN_LOCK(sc);
 	run_wme_update_cb(ic);
