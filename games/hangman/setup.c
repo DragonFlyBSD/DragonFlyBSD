@@ -1,3 +1,6 @@
+/*	$OpenBSD: setup.c,v 1.12 2015/02/07 01:37:30 miod Exp $	*/
+/*	$NetBSD: setup.c,v 1.3 1995/03/23 08:32:59 cgd Exp $	*/
+
 /*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -25,13 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)setup.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/setup.c,v 1.6 1999/12/10 03:23:01 billf Exp $
- * $DragonFly: src/games/hangman/setup.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
-#include <stdlib.h>
+#include <time.h>
 #include "hangman.h"
 
 /*
@@ -41,7 +40,7 @@
 void
 setup(void)
 {
-	const char **sp;
+	const char *const *sp;
 	static struct stat sbuf;
 
 	noecho();
@@ -59,12 +58,21 @@ setup(void)
 		addstr(*sp);
 	}
 
-	srandomdev();
-	if ((Dict = fopen(_PATH_DICT, "r")) == NULL) {
-		perror(_PATH_DICT);
-		endwin();
-		exit(1);
+	/* always check for an ELF file */
+	if (sym_setup() != 0) {
+		if (syms) {
+			endwin();
+			err(1, "open %s", Dict_name);
+		}
+	} else
+		syms = 1;
+
+	if (!syms) {
+		if ((Dict = fopen(Dict_name, "r")) == NULL) {
+			endwin();
+			err(1, "fopen %s", Dict_name);
+		}
+		fstat(fileno(Dict), &sbuf);
+		Dict_size = sbuf.st_size;
 	}
-	fstat(fileno(Dict), &sbuf);
-	Dict_size = sbuf.st_size;
 }

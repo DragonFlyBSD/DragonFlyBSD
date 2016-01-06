@@ -1,4 +1,7 @@
-/*-
+/*	$OpenBSD: main.c,v 1.12 2015/02/07 01:37:30 miod Exp $	*/
+/*	$NetBSD: main.c,v 1.3 1995/03/23 08:32:50 cgd Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,25 +28,48 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)main.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/main.c,v 1.5 1999/12/10 03:22:59 billf Exp $
- * $DragonFly: src/games/hangman/main.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include "hangman.h"
+#include <paths.h>
+
+void usage(void);
 
 /*
  * This game written by Ken Arnold.
  */
 int
-main(int argc __unused, char *argv[] __unused)
+main(int argc, char *argv[])
 {
+	int ch;
+
 	/* Revoke setgid privileges */
 	setgid(getgid());
 
+	while ((ch = getopt(argc, argv, "d:hk")) != -1) {
+		switch (ch) {
+		case 'd':
+			if (syms)
+				usage();
+			else
+				Dict_name = optarg;
+			break;
+		case 'k':
+			syms = 1;
+			Dict_name = getbootfile();
+			break;
+		case 'h':
+		case '?':
+		default:
+			usage();
+		}
+	}
+
 	initscr();
+	if (COLS < 50 || LINES < 14) {
+		endwin();
+		errx(1, "screen too small (must be at least 50x14)");
+	}
 	signal(SIGINT, die);
 	setup();
 	for (;;) {
@@ -65,4 +91,11 @@ die(int sig __unused)
 	endwin();
 	putchar('\n');
 	exit(0);
+}
+
+__dead2 void
+usage(void)
+{
+	(void)fprintf(stderr, "usage: hangman [-k] [-d wordlist]\n");
+	exit(1);
 }

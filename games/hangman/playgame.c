@@ -1,3 +1,6 @@
+/*	$OpenBSD: playgame.c,v 1.10 2015/02/07 03:26:20 tedu Exp $	*/
+/*	$NetBSD: playgame.c,v 1.3 1995/03/23 08:32:53 cgd Exp $	*/
+
 /*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)playgame.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/playgame.c,v 1.5 1999/12/10 03:23:00 billf Exp $
- * $DragonFly: src/games/hangman/playgame.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include "hangman.h"
@@ -40,14 +39,16 @@
 void
 playgame(void)
 {
-	bool *bp;
+	int i;
 
-	getword();
+	if (syms)
+		sym_getword();
+	else
+		getword();
 	Errors = 0;
-	bp = Guessed;
-	while (bp < &Guessed[26])
-		*bp++ = FALSE;
-	while (Errors < MAXERRS && index(Known, '-') != NULL) {
+	for (i = 0; i < 26 + 10; i++)
+		Guessed[i] = FALSE;
+	while (Errors < MAXERRS && strchr(Known, '-') != NULL) {
 		prword();
 		prdata();
 		prman();

@@ -1,3 +1,6 @@
+/*	$OpenBSD: prman.c,v 1.6 2009/10/27 23:59:25 deraadt Exp $	*/
+/*	$NetBSD: prman.c,v 1.3 1995/03/23 08:32:56 cgd Exp $	*/
+
 /*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)prman.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/prman.c,v 1.5 1999/12/10 03:23:00 billf Exp $
- * $DragonFly: src/games/hangman/prman.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include "hangman.h"

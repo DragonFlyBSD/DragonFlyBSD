@@ -1,3 +1,6 @@
+/*	$OpenBSD: prword.c,v 1.5 2009/10/27 23:59:25 deraadt Exp $	*/
+/*	$NetBSD: prword.c,v 1.3 1995/03/23 08:32:58 cgd Exp $	*/
+
 /*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)prword.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/prword.c,v 1.3 1999/12/10 03:23:00 billf Exp $
- * $DragonFly: src/games/hangman/prword.c,v 1.4 2007/04/18 18:32:12 swildner Exp $
  */
 
 #include "hangman.h"

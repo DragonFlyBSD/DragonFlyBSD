@@ -1,4 +1,7 @@
-/*-
+/*	$OpenBSD: endgame.c,v 1.7 2015/02/07 03:32:05 tedu Exp $	*/
+/*	$NetBSD: endgame.c,v 1.3 1995/03/23 08:32:40 cgd Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,12 +28,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)endgame.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/endgame.c,v 1.5 1999/12/10 03:22:59 billf Exp $
- * $DragonFly: src/games/hangman/endgame.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
+#include <sys/ttydefaults.h>
 #include "hangman.h"
 
 /*
@@ -57,7 +57,7 @@ endgame(void)
 		mvaddstr(MESGY + 1, MESGX, "Another word? ");
 		leaveok(stdscr, FALSE);
 		refresh();
-		if ((ch = readch()) == 'n')
+		if ((ch = readch()) == 'n' || ch == CTRL('D'))
 			die(0);
 		else if (ch == 'y')
 			break;

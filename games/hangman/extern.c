@@ -1,4 +1,7 @@
-/*-
+/*	$OpenBSD: extern.c,v 1.8 2015/02/07 03:26:20 tedu Exp $	*/
+/*	$NetBSD: extern.c,v 1.3 1995/03/23 08:32:41 cgd Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,18 +28,14 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)extern.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/extern.c,v 1.2 1999/11/30 03:48:54 billf Exp $
- * $DragonFly: src/games/hangman/extern.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include "hangman.h"
 
-bool	Guessed[26];
+bool	Guessed[26 + 10];
 
 char	Word[BUFSIZ], Known[BUFSIZ];
-const char *Noose_pict[] = {
+const char *const Noose_pict[] = {
 	"     ______",
 	"     |    |",
 	"     |",
@@ -53,7 +52,7 @@ int	Errors, Wordnum = 0;
 
 double	Average = 0.0;
 
-ERR_POS	Err_pos[MAXERRS] = {
+const ERR_POS	Err_pos[MAXERRS] = {
 	{ 2, 10, 'O' },
 	{ 3, 10, '|' },
 	{ 4, 10, '|' },
@@ -63,6 +62,12 @@ ERR_POS	Err_pos[MAXERRS] = {
 	{ 5, 11, '\\'}
 };
 
+const char *Dict_name = _PATH_DICT;
+
 FILE	*Dict = NULL;
 
 off_t	Dict_size;
+
+int	syms;
+int	symfd = -1;
+off_t	symoffs, symsize;

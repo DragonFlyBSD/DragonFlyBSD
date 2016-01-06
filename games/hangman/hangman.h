@@ -1,4 +1,7 @@
-/*-
+/*	$OpenBSD: hangman.h,v 1.9 2015/02/07 03:30:08 tedu Exp $	*/
+/*	$NetBSD: hangman.h,v 1.5 1995/04/24 12:23:44 cgd Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -27,8 +30,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)hangman.h	8.1 (Berkeley) 5/31/93
- *	$FreeBSD: src/games/hangman/hangman.h,v 1.3 1999/12/10 03:22:59 billf Exp $
- *	$DragonFly: src/games/hangman/hangman.h,v 1.4 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -36,6 +37,7 @@
 
 #include <ctype.h>
 #include <curses.h>
+#include <err.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +45,10 @@
 
 #include "pathnames.h"
 
+#define	MAXBADWORDS	100
+
 #define	MINLEN	6
+#define	MAXLEN	60
 #define	MAXERRS	7
 
 #define	MESGY	12
@@ -53,11 +58,11 @@
 #define	KNOWNY	10
 #define	KNOWNX	1
 #define	NUMBERY	4
-#define	NUMBERX	(COLS - 1 - 26)
+#define	NUMBERX	(COLS - 11 - 26)
 #define	AVGY	5
-#define	AVGX	(COLS - 1 - 26)
+#define	AVGX	(COLS - 11 - 26)
 #define	GUESSY	2
-#define	GUESSX	(COLS - 1 - 26)
+#define	GUESSX	(COLS - 11 - 26)
 
 
 typedef struct {
@@ -67,26 +72,34 @@ typedef struct {
 
 extern bool Guessed[];
 
-extern char Word[], Known[];
-extern const char *Noose_pict[];
+extern char Word[BUFSIZ], Known[BUFSIZ];
+extern const char *const Noose_pict[];
 
 extern int Errors, Wordnum;
 
 extern double Average;
 
-extern ERR_POS Err_pos[];
+extern const ERR_POS Err_pos[];
+
+extern const char *Dict_name;
 
 extern FILE *Dict;
 
 extern off_t Dict_size;
 
+extern int syms;
+extern int symfd;
+extern off_t symoffs, symsize;
+
 void	die(int);
 void	endgame(void);
 void	getguess(void);
 void	getword(void);
+void	sym_getword(void);
+int	sym_setup(void);
 void	playgame(void);
 void	prdata(void);
 void	prman(void);
 void	prword(void);
-char	readch(void);
+unsigned char	readch(void);
 void	setup(void);

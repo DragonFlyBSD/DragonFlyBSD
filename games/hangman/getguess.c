@@ -1,4 +1,7 @@
-/*-
+/*	$OpenBSD: getguess.c,v 1.13 2015/02/07 03:30:08 tedu Exp $	*/
+/*	$NetBSD: getguess.c,v 1.5 1995/03/23 08:32:43 cgd Exp $	*/
+
+/*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)getguess.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/getguess.c,v 1.6 1999/12/10 03:22:59 billf Exp $
- * $DragonFly: src/games/hangman/getguess.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include <sys/ttydefaults.h>
@@ -42,7 +41,7 @@ void
 getguess(void)
 {
 	int i;
-	int ch, uch;
+	unsigned char ch, uch;
 	bool correct;
 
 	leaveok(stdscr, FALSE);
@@ -53,22 +52,39 @@ getguess(void)
 		if (isalpha(ch)) {
 			if (isupper(ch))
 				ch = tolower(ch);
-			if (Guessed[ch - 'a'])
-				mvprintw(MESGY, MESGX, "Already guessed '%c'", ch);
-			else
+			if (Guessed[ch - 'a']) {
+				move(MESGY, MESGX);
+				clrtoeol();
+				mvprintw(MESGY, MESGX, "Already guessed '%c'",
+				    ch);
+			} else
 				break;
-		}
-		else if (ch == CTRL('D'))
-			die(0);
-		else
-			mvprintw(MESGY, MESGX, "Not a valid guess: '%s'",
-				unctrl(ch));
+		} else if (isdigit(ch)) {
+			if (Guessed[ch - '0' + 26]) {
+				move(MESGY, MESGX);
+				clrtoeol();
+				mvprintw(MESGY, MESGX, "Already guessed '%c'",
+				    ch);
+			} else
+				break;
+		} else
+			if (ch == CTRL('D'))
+				die(0);
+			else {
+				move(MESGY, MESGX);
+				clrtoeol();
+				mvprintw(MESGY, MESGX,
+				    "Not a valid guess: '%s'", unctrl(ch));
+			}
 	}
 	leaveok(stdscr, TRUE);
 	move(MESGY, MESGX);
 	clrtoeol();
 
-	Guessed[ch - 'a'] = TRUE;
+	if (isalpha(ch))
+		Guessed[ch - 'a'] = TRUE;
+	else
+		Guessed[ch - '0' + 26] = TRUE;
 	correct = FALSE;
 	uch = toupper(ch);
 	for (i = 0; Word[i] != '\0'; i++) {
@@ -88,23 +104,22 @@ getguess(void)
  * readch;
  *	Read a character from the input
  */
-char
+unsigned char
 readch(void)
 {
 	int cnt;
 	char ch;
-	int x, y;
 
 	cnt = 0;
 	for (;;) {
 		if (read(STDIN_FILENO, &ch, sizeof(ch)) <= 0) {
 			if (++cnt > 100)
 				die(0);
-		} else if (ch == CTRL('L')) {
-			wrefresh(curscr);
-			getyx(curscr, y, x);
-			mvcur(0, 0, y, x);
 		} else
-			return ch;
+			if (ch == CTRL('L')) {
+				wrefresh(curscr);
+				mvcur(0, 0, curscr->_cury, curscr->_curx);
+			} else
+				return ch;
 	}
 }

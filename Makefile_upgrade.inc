@@ -2269,6 +2269,7 @@ TO_REMOVE+=/sbin/mount_union
 TO_REMOVE+=/usr/share/man/man8/mount_union.8.gz
 TO_REMOVE+=/usr/games/piano
 TO_REMOVE+=/usr/share/man/man6/piano.6.gz
+TO_REMOVE+=/usr/games/hide/hangman
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

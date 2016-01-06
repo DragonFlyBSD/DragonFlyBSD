@@ -1,3 +1,6 @@
+/*	$OpenBSD: prdata.c,v 1.7 2015/02/07 03:26:20 tedu Exp $	*/
+/*	$NetBSD: prdata.c,v 1.3 1995/03/23 08:32:54 cgd Exp $	*/
+
 /*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -25,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)prdata.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/hangman/prdata.c,v 1.5 1999/12/10 03:23:00 billf Exp $
- * $DragonFly: src/games/hangman/prdata.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include "hangman.h"
@@ -40,18 +39,18 @@
 void
 prdata(void)
 {
-	bool *bp;
+	int i;
 
-	move(GUESSY, GUESSX + sizeof("Guessed: "));
-	bp = Guessed;
-	while (bp < &Guessed[26])
-		if (*bp++ != '\0')
-			addch((bp - Guessed) + 'a' - 1);
+	move(GUESSY, GUESSX + sizeof "Guessed: ");
+	for (i = 0; i < 26; i++)
+		if (Guessed[i])
+			addch(i + 'a');
+	for (i = 0; i < 10; i++)
+		if (Guessed[i + 26])
+			addch(i + '0');
 	clrtoeol();
-	mvprintw(NUMBERY, NUMBERX + sizeof("Word #:          "),
-		 "%d", Wordnum);
-	mvprintw(AVGY, AVGX +       sizeof("Current Average: "),
-		 "%.3f", (Average * (Wordnum - 1) + Errors) / Wordnum);
-	mvprintw(AVGY + 1, AVGX +   sizeof("Overall Average: "),
-		 "%.3f", Average);
+	mvprintw(NUMBERY, NUMBERX + sizeof("Word #:          "), "%d", Wordnum);
+	mvprintw(AVGY, AVGX +       sizeof("Current Average: "), "%.3f",
+				(Average * (Wordnum - 1) + Errors) / Wordnum);
+	mvprintw(AVGY + 1, AVGX +   sizeof("Overall Average: "), "%.3f", Average);
 }
