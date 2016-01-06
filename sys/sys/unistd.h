@@ -150,6 +150,10 @@
 #define	_PC_SYMLINK_MAX		18
 #endif
 
+#if __POSIX_VISIBLE >= 200809
+#define	_PC_2_SYMLINKS		22
+#endif
+
 #if __BSD_VISIBLE
 #define	_PC_ACL_EXTENDED	59
 #define	_PC_ACL_PATH_MAX	60

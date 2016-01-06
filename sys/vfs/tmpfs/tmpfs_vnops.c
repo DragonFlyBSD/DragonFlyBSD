@@ -1749,6 +1749,10 @@ tmpfs_pathconf(struct vop_pathconf_args *v)
 		*retval = 1;
 		break;
 
+	case _PC_2_SYMLINKS:
+		*retval = 1;
+		break;
+
 	default:
 		error = EINVAL;
 	}
