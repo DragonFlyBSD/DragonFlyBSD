@@ -117,7 +117,7 @@ usage(const char *cp)
 {
 	if (cp != NULL)
 		warnx("bad keyword: %s", cp);
-	fprintf(stderr, "usage: route [-dnqtv] command [[modifiers] args]\n");
+	fprintf(stderr, "usage: route [-dnqtvw] [-c cpu] command [[modifiers] args]\n");
 	exit(EX_USAGE);
 	/* NOTREACHED */
 }
@@ -1158,7 +1158,7 @@ prefixlen(const char *len_str)
 	int max;
 	char *p;
 
-	rtm_addrs |= RTA_NETMASK;	
+	rtm_addrs |= RTA_NETMASK;
 	switch (af) {
 #ifdef INET6
 	case AF_INET6:
@@ -1180,7 +1180,7 @@ prefixlen(const char *len_str)
 		fprintf(stderr, "%s: bad value\n", len_str);
 		exit(1);
 	}
-	
+
 	q = len >> 3;
 	r = len & 7;
 	so_mask.sa.sa_family = af;
