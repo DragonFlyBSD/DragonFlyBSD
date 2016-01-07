@@ -1471,7 +1471,6 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
 				    NULL, &nip);
 	if (error) {
-		hkprintf("hammer_mkdir error %d\n", error);
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
 		lwkt_reltoken(&hmp->fs_token);
