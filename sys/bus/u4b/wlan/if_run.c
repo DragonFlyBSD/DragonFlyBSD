@@ -16,7 +16,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/usb/wlan/if_run.c 262795 2014-03-05 18:39:27Z hselasky $
+ * $FreeBSD: head/sys/dev/usb/wlan/if_run.c 270643 2014-08-26 02:20:37Z kevlo $
  */
 
 /*-
@@ -177,6 +177,7 @@ static const STRUCT_USB_HOST_ID run_devs[] = {
     RUN_DEV(DLINK,		DWA127),
     RUN_DEV(DLINK,		DWA140B3),
     RUN_DEV(DLINK,		DWA160B2),
+    RUN_DEV(DLINK,		DWA140D1),
     RUN_DEV(DLINK,		DWA162),
     RUN_DEV(DLINK2,		DWA130),
     RUN_DEV(DLINK2,		RT2870_1),
@@ -312,6 +313,7 @@ static const STRUCT_USB_HOST_ID run_devs[] = {
     RUN_DEV(ZINWELL,		RT3072_2),
     RUN_DEV(ZYXEL,		RT2870_1),
     RUN_DEV(ZYXEL,		RT2870_2),
+    RUN_DEV(ZYXEL,		RT3070),
     RUN_DEV_EJECT(ZYXEL,	NWD2705),
     RUN_DEV_EJECT(RALINK,	RT_STOR),
 #undef RUN_DEV_EJECT
@@ -3259,12 +3261,12 @@ run_set_tx_desc(struct run_softc *sc, struct run_tx_data *data)
 	txwi = (struct rt2860_txwi *)(txd + 1);
 	txwi->len = htole16(m->m_pkthdr.len - pad);
 	if (rt2860_rates[ridx].phy == IEEE80211_T_DS) {
-		txwi->phy = htole16(RT2860_PHY_CCK);
+		mcs |= RT2860_PHY_CCK;
 		if (ridx != RT2860_RIDX_CCK1 &&
 		    (ic->ic_flags & IEEE80211_F_SHPREAMBLE))
 			mcs |= RT2860_PHY_SHPRE;
 	} else
-		txwi->phy = htole16(RT2860_PHY_OFDM);
+		mcs |= RT2860_PHY_OFDM;
 	txwi->phy |= htole16(mcs);
 
 	/* check if RTS/CTS or CTS-to-self protection is required */
@@ -3344,7 +3346,7 @@ run_tx(struct run_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 
 	/* pickup a rate index */
 	if (IEEE80211_IS_MULTICAST(wh->i_addr1) ||
-	    type != IEEE80211_FC0_TYPE_DATA) {
+	    type != IEEE80211_FC0_TYPE_DATA || m->m_flags & M_EAPOL) {
 		ridx = (ic->ic_curmode == IEEE80211_MODE_11A) ?
 		    RT2860_RIDX_OFDM6 : RT2860_RIDX_CCK1;
 		ctl_ridx = rt2860_rates[ridx].ctl_ridx;
@@ -5005,7 +5007,7 @@ run_updateprot_cb(void *arg)
 	tmp = RT2860_RTSTH_EN | RT2860_PROT_NAV_SHORT | RT2860_TXOP_ALLOW_ALL;
 	/* setup protection frame rate (MCS code) */
 	tmp |= (ic->ic_curmode == IEEE80211_MODE_11A) ?
-	    rt2860_rates[RT2860_RIDX_OFDM6].mcs :
+	    rt2860_rates[RT2860_RIDX_OFDM6].mcs | RT2860_PHY_OFDM :
 	    rt2860_rates[RT2860_RIDX_CCK11].mcs;
 
 	/* CCK frames don't require protection */
@@ -5497,7 +5499,7 @@ run_rt3070_rf_init(struct run_softc *sc)
 		run_rt3070_rf_write(sc, 17, rf);
 	}
 
-	if (sc->mac_rev == 0x3071) {
+	if (sc->mac_ver == 0x3071) {
 		run_rt3070_rf_read(sc, 1, &rf);
 		rf &= ~(RT3070_RX0_PD | RT3070_TX0_PD);
 		rf |= RT3070_RF_BLOCK | RT3070_RX1_PD | RT3070_TX1_PD;
