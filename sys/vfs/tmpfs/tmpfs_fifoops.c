@@ -73,14 +73,14 @@ tmpfs_fifo_kqfilter(struct vop_kqfilter_args *ap)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_fifo_close(struct vop_close_args *v)
+tmpfs_fifo_close(struct vop_close_args *ap)
 {
 	struct tmpfs_node *node;
-	node = VP_TO_TMPFS_NODE(v->a_vp);
+	node = VP_TO_TMPFS_NODE(ap->a_vp);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 
-	tmpfs_update(v->a_vp);
-	return fifo_vnode_vops.vop_close(v);
+	tmpfs_update(ap->a_vp);
+	return fifo_vnode_vops.vop_close(ap);
 }
 
 /*

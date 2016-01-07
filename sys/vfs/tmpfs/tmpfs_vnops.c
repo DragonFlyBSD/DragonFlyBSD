@@ -79,11 +79,11 @@ tmpfs_knote(struct vnode *vp, int flags)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nresolve(struct vop_nresolve_args *v)
+tmpfs_nresolve(struct vop_nresolve_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
+	struct vnode *dvp = ap->a_dvp;
 	struct vnode *vp = NULL;
-	struct namecache *ncp = v->a_nch->ncp;
+	struct namecache *ncp = ap->a_nch->ncp;
 	struct tmpfs_node *tnode;
 	struct mount *mp;
 	struct tmpfs_dirent *de;
@@ -126,21 +126,21 @@ out:
 	 */
 	if (vp) {
 		vn_unlock(vp);
-		cache_setvp(v->a_nch, vp);
+		cache_setvp(ap->a_nch, vp);
 		vrele(vp);
 	} else if (error == ENOENT) {
-		cache_setvp(v->a_nch, NULL);
+		cache_setvp(ap->a_nch, NULL);
 	}
 	return (error);
 }
 
 static int
-tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *v)
+tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct vnode **vpp = v->a_vpp;
+	struct vnode *dvp = ap->a_dvp;
+	struct vnode **vpp = ap->a_vpp;
 	struct tmpfs_node *dnode = VP_TO_TMPFS_NODE(dvp);
-	struct ucred *cred = v->a_cred;
+	struct ucred *cred = ap->a_cred;
 	struct mount *mp;
 	int error;
 
@@ -167,13 +167,13 @@ tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_ncreate(struct vop_ncreate_args *v)
+tmpfs_ncreate(struct vop_ncreate_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct vnode **vpp = v->a_vpp;
-	struct namecache *ncp = v->a_nch->ncp;
-	struct vattr *vap = v->a_vap;
-	struct ucred *cred = v->a_cred;
+	struct vnode *dvp = ap->a_dvp;
+	struct vnode **vpp = ap->a_vpp;
+	struct namecache *ncp = ap->a_nch->ncp;
+	struct vattr *vap = ap->a_vap;
+	struct ucred *cred = ap->a_cred;
 	struct mount *mp;
 	int error;
 
@@ -183,8 +183,8 @@ tmpfs_ncreate(struct vop_ncreate_args *v)
 
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, NULL);
 	if (error == 0) {
-		cache_setunresolved(v->a_nch);
-		cache_setvp(v->a_nch, *vpp);
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE);
 	}
 	return (error);
@@ -192,13 +192,13 @@ tmpfs_ncreate(struct vop_ncreate_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nmknod(struct vop_nmknod_args *v)
+tmpfs_nmknod(struct vop_nmknod_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct vnode **vpp = v->a_vpp;
-	struct namecache *ncp = v->a_nch->ncp;
-	struct vattr *vap = v->a_vap;
-	struct ucred *cred = v->a_cred;
+	struct vnode *dvp = ap->a_dvp;
+	struct vnode **vpp = ap->a_vpp;
+	struct namecache *ncp = ap->a_nch->ncp;
+	struct vattr *vap = ap->a_vap;
+	struct ucred *cred = ap->a_cred;
 	int error;
 
 	if (vap->va_type != VBLK && vap->va_type != VCHR &&
@@ -208,8 +208,8 @@ tmpfs_nmknod(struct vop_nmknod_args *v)
 
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, NULL);
 	if (error == 0) {
-		cache_setunresolved(v->a_nch);
-		cache_setvp(v->a_nch, *vpp);
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE);
 	}
 	return error;
@@ -218,10 +218,10 @@ tmpfs_nmknod(struct vop_nmknod_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_open(struct vop_open_args *v)
+tmpfs_open(struct vop_open_args *ap)
 {
-	struct vnode *vp = v->a_vp;
-	int mode = v->a_mode;
+	struct vnode *vp = ap->a_vp;
+	int mode = ap->a_mode;
 	struct tmpfs_node *node;
 	int error;
 
@@ -240,7 +240,7 @@ tmpfs_open(struct vop_open_args *v)
 	    (mode & (FWRITE | O_APPEND)) == FWRITE) {
 		error = EPERM;
 	} else {
-		error = (vop_stdopen(v));
+		error = (vop_stdopen(ap));
 	}
 
 	return (error);
@@ -249,9 +249,9 @@ tmpfs_open(struct vop_open_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_close(struct vop_close_args *v)
+tmpfs_close(struct vop_close_args *ap)
 {
-	struct vnode *vp = v->a_vp;
+	struct vnode *vp = ap->a_vp;
 	struct tmpfs_node *node;
 	int error;
 
@@ -265,7 +265,7 @@ tmpfs_close(struct vop_close_args *v)
 		tmpfs_update(vp);
 	}
 
-	error = vop_stdclose(v);
+	error = vop_stdclose(ap);
 
 	return (error);
 }
@@ -273,9 +273,9 @@ tmpfs_close(struct vop_close_args *v)
 /* --------------------------------------------------------------------- */
 
 int
-tmpfs_access(struct vop_access_args *v)
+tmpfs_access(struct vop_access_args *ap)
 {
-	struct vnode *vp = v->a_vp;
+	struct vnode *vp = ap->a_vp;
 	int error;
 	struct tmpfs_node *node;
 
@@ -287,7 +287,7 @@ tmpfs_access(struct vop_access_args *v)
 	case VLNK:
 		/* FALLTHROUGH */
 	case VREG:
-		if ((v->a_mode & VWRITE) &&
+		if ((ap->a_mode & VWRITE) &&
 	            (vp->v_mount->mnt_flag & MNT_RDONLY)) {
 			error = EROFS;
 			goto out;
@@ -308,12 +308,12 @@ tmpfs_access(struct vop_access_args *v)
 		goto out;
 	}
 
-	if ((v->a_mode & VWRITE) && (node->tn_flags & IMMUTABLE)) {
+	if ((ap->a_mode & VWRITE) && (node->tn_flags & IMMUTABLE)) {
 		error = EPERM;
 		goto out;
 	}
 
-	error = vop_helper_access(v, node->tn_uid, node->tn_gid,
+	error = vop_helper_access(ap, node->tn_uid, node->tn_gid,
 			          node->tn_mode, 0);
 out:
 	return error;
@@ -322,10 +322,10 @@ out:
 /* --------------------------------------------------------------------- */
 
 int
-tmpfs_getattr(struct vop_getattr_args *v)
+tmpfs_getattr(struct vop_getattr_args *ap)
 {
-	struct vnode *vp = v->a_vp;
-	struct vattr *vap = v->a_vap;
+	struct vnode *vp = ap->a_vp;
+	struct vattr *vap = ap->a_vap;
 	struct tmpfs_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
@@ -364,11 +364,11 @@ tmpfs_getattr(struct vop_getattr_args *v)
 /* --------------------------------------------------------------------- */
 
 int
-tmpfs_setattr(struct vop_setattr_args *v)
+tmpfs_setattr(struct vop_setattr_args *ap)
 {
-	struct vnode *vp = v->a_vp;
-	struct vattr *vap = v->a_vap;
-	struct ucred *cred = v->a_cred;
+	struct vnode *vp = ap->a_vp;
+	struct vattr *vap = ap->a_vap;
+	struct ucred *cred = ap->a_cred;
 	struct tmpfs_node *node = VP_TO_TMPFS_NODE(vp);
 	int error = 0;
 	int kflags = 0;
@@ -426,10 +426,10 @@ tmpfs_setattr(struct vop_setattr_args *v)
  * when recycling.
  */
 static int
-tmpfs_fsync(struct vop_fsync_args *v)
+tmpfs_fsync(struct vop_fsync_args *ap)
 {
 	struct tmpfs_node *node;
-	struct vnode *vp = v->a_vp;
+	struct vnode *vp = ap->a_vp;
 
 	node = VP_TO_TMPFS_NODE(vp);
 
@@ -439,7 +439,7 @@ tmpfs_fsync(struct vop_fsync_args *v)
 			if (node->tn_links == 0)
 				tmpfs_truncate(vp, 0);
 			else
-				vfsync(v->a_vp, v->a_waitfor, 1, NULL, NULL);
+				vfsync(ap->a_vp, ap->a_waitfor, 1, NULL, NULL);
 		}
 	}
 	return 0;
@@ -448,7 +448,7 @@ tmpfs_fsync(struct vop_fsync_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_read (struct vop_read_args *ap)
+tmpfs_read(struct vop_read_args *ap)
 {
 	struct buf *bp;
 	struct vnode *vp = ap->a_vp;
@@ -543,7 +543,7 @@ finished:
 }
 
 static int
-tmpfs_write (struct vop_write_args *ap)
+tmpfs_write(struct vop_write_args *ap)
 {
 	struct buf *bp;
 	struct vnode *vp = ap->a_vp;
@@ -766,7 +766,7 @@ done:
 }
 
 static int
-tmpfs_advlock (struct vop_advlock_args *ap)
+tmpfs_advlock(struct vop_advlock_args *ap)
 {
 	struct tmpfs_node *node;
 	struct vnode *vp = ap->a_vp;
@@ -877,10 +877,10 @@ tmpfs_bmap(struct vop_bmap_args *ap)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nremove(struct vop_nremove_args *v)
+tmpfs_nremove(struct vop_nremove_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct namecache *ncp = v->a_nch->ncp;
+	struct vnode *dvp = ap->a_dvp;
+	struct namecache *ncp = ap->a_nch->ncp;
 	struct vnode *vp;
 	int error;
 	struct tmpfs_dirent *de;
@@ -892,7 +892,7 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	mp = dvp->v_mount;
 
 	/*
-	 * We have to acquire the vp from v->a_nch because we will likely
+	 * We have to acquire the vp from ap->a_nch because we will likely
 	 * unresolve the namecache entry, and a vrele/vput is needed to
 	 * trigger the tmpfs_inactive/tmpfs_reclaim sequence.
 	 *
@@ -900,7 +900,7 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	 * otherwise the vnode may remain inactive and thus tmpfs_inactive
 	 * will not get called when we release it.
 	 */
-	error = cache_vget(v->a_nch, v->a_cred, LK_SHARED, &vp);
+	error = cache_vget(ap->a_nch, ap->a_cred, LK_SHARED, &vp);
 	KKASSERT(vp->v_mount == dvp->v_mount);
 	KKASSERT(error == 0);
 	vn_unlock(vp);
@@ -944,7 +944,7 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	        TMPFS_NODE_UNLOCK(node);
 	}
 
-	cache_unlink(v->a_nch);
+	cache_unlink(ap->a_nch);
 	tmpfs_knote(vp, NOTE_DELETE);
 	error = 0;
 
@@ -961,11 +961,11 @@ out2:
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nlink(struct vop_nlink_args *v)
+tmpfs_nlink(struct vop_nlink_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct vnode *vp = v->a_vp;
-	struct namecache *ncp = v->a_nch->ncp;
+	struct vnode *dvp = ap->a_dvp;
+	struct vnode *vp = ap->a_vp;
+	struct namecache *ncp = ap->a_nch->ncp;
 	struct tmpfs_dirent *de;
 	struct tmpfs_node *node;
 	struct tmpfs_node *dnode;
@@ -1025,8 +1025,8 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	tmpfs_update(vp);
 
 	tmpfs_knote(vp, NOTE_LINK);
-	cache_setunresolved(v->a_nch);
-	cache_setvp(v->a_nch, vp);
+	cache_setunresolved(ap->a_nch);
+	cache_setvp(ap->a_nch, vp);
 	error = 0;
 
 out:
@@ -1039,13 +1039,13 @@ out:
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nrename(struct vop_nrename_args *v)
+tmpfs_nrename(struct vop_nrename_args *ap)
 {
-	struct vnode *fdvp = v->a_fdvp;
-	struct namecache *fncp = v->a_fnch->ncp;
+	struct vnode *fdvp = ap->a_fdvp;
+	struct namecache *fncp = ap->a_fnch->ncp;
 	struct vnode *fvp = fncp->nc_vp;
-	struct vnode *tdvp = v->a_tdvp;
-	struct namecache *tncp = v->a_tnch->ncp;
+	struct vnode *tdvp = ap->a_tdvp;
+	struct namecache *tncp = ap->a_tnch->ncp;
 	struct vnode *tvp;
 	struct tmpfs_dirent *de, *tde;
 	struct tmpfs_mount *tmp;
@@ -1066,7 +1066,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 * just vref or use it, otherwise it's VINACTIVE flag may not get
 	 * cleared and the node won't get destroyed.
 	 */
-	error = cache_vget(v->a_tnch, v->a_cred, LK_SHARED, &tvp);
+	error = cache_vget(ap->a_tnch, ap->a_cred, LK_SHARED, &tvp);
 	if (error == 0) {
 		tnode = VP_TO_TMPFS_NODE(tvp);
 		vn_unlock(tvp);
@@ -1241,9 +1241,9 @@ tmpfs_nrename(struct vop_nrename_args *v)
 		kfree(newname, tmp->tm_name_zone);
 		newname = NULL;
 	}
-	cache_rename(v->a_fnch, v->a_tnch);
-	tmpfs_knote(v->a_fdvp, NOTE_WRITE);
-	tmpfs_knote(v->a_tdvp, NOTE_WRITE);
+	cache_rename(ap->a_fnch, ap->a_tnch);
+	tmpfs_knote(ap->a_fdvp, NOTE_WRITE);
+	tmpfs_knote(ap->a_tdvp, NOTE_WRITE);
 	if (fnode->tn_vnode)
 		tmpfs_knote(fnode->tn_vnode, NOTE_RENAME);
 	error = 0;
@@ -1259,13 +1259,13 @@ out:
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nmkdir(struct vop_nmkdir_args *v)
+tmpfs_nmkdir(struct vop_nmkdir_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct vnode **vpp = v->a_vpp;
-	struct namecache *ncp = v->a_nch->ncp;
-	struct vattr *vap = v->a_vap;
-	struct ucred *cred = v->a_cred;
+	struct vnode *dvp = ap->a_dvp;
+	struct vnode **vpp = ap->a_vpp;
+	struct namecache *ncp = ap->a_nch->ncp;
+	struct vattr *vap = ap->a_vap;
+	struct ucred *cred = ap->a_cred;
 	struct mount *mp;
 	int error;
 
@@ -1275,8 +1275,8 @@ tmpfs_nmkdir(struct vop_nmkdir_args *v)
 
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, NULL);
 	if (error == 0) {
-		cache_setunresolved(v->a_nch);
-		cache_setvp(v->a_nch, *vpp);
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	}
 	return error;
@@ -1285,10 +1285,10 @@ tmpfs_nmkdir(struct vop_nmkdir_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nrmdir(struct vop_nrmdir_args *v)
+tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct namecache *ncp = v->a_nch->ncp;
+	struct vnode *dvp = ap->a_dvp;
+	struct namecache *ncp = ap->a_nch->ncp;
 	struct vnode *vp;
 	struct tmpfs_dirent *de;
 	struct tmpfs_mount *tmp;
@@ -1300,7 +1300,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	mp = dvp->v_mount;
 
 	/*
-	 * We have to acquire the vp from v->a_nch because we will likely
+	 * We have to acquire the vp from ap->a_nch because we will likely
 	 * unresolve the namecache entry, and a vrele/vput is needed to
 	 * trigger the tmpfs_inactive/tmpfs_reclaim sequence.
 	 *
@@ -1308,7 +1308,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	 * otherwise the vnode may remain inactive and thus tmpfs_inactive
 	 * will not get called when we release it.
 	 */
-	error = cache_vget(v->a_nch, v->a_cred, LK_SHARED, &vp);
+	error = cache_vget(ap->a_nch, ap->a_cred, LK_SHARED, &vp);
 	KKASSERT(error == 0);
 	vn_unlock(vp);
 
@@ -1397,7 +1397,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	TMPFS_NODE_UNLOCK(dnode);
 	tmpfs_update(dvp);
 
-	cache_unlink(v->a_nch);
+	cache_unlink(ap->a_nch);
 	tmpfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	error = 0;
 
@@ -1410,22 +1410,22 @@ out:
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_nsymlink(struct vop_nsymlink_args *v)
+tmpfs_nsymlink(struct vop_nsymlink_args *ap)
 {
-	struct vnode *dvp = v->a_dvp;
-	struct vnode **vpp = v->a_vpp;
-	struct namecache *ncp = v->a_nch->ncp;
-	struct vattr *vap = v->a_vap;
-	struct ucred *cred = v->a_cred;
-	char *target = v->a_target;
+	struct vnode *dvp = ap->a_dvp;
+	struct vnode **vpp = ap->a_vpp;
+	struct namecache *ncp = ap->a_nch->ncp;
+	struct vattr *vap = ap->a_vap;
+	struct ucred *cred = ap->a_cred;
+	char *target = ap->a_target;
 	int error;
 
 	vap->va_type = VLNK;
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, target);
 	if (error == 0) {
 		tmpfs_knote(*vpp, NOTE_WRITE);
-		cache_setunresolved(v->a_nch);
-		cache_setvp(v->a_nch, *vpp);
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *vpp);
 	}
 	return error;
 }
@@ -1433,13 +1433,13 @@ tmpfs_nsymlink(struct vop_nsymlink_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_readdir(struct vop_readdir_args *v)
+tmpfs_readdir(struct vop_readdir_args *ap)
 {
-	struct vnode *vp = v->a_vp;
-	struct uio *uio = v->a_uio;
-	int *eofflag = v->a_eofflag;
-	off_t **cookies = v->a_cookies;
-	int *ncookies = v->a_ncookies;
+	struct vnode *vp = ap->a_vp;
+	struct uio *uio = ap->a_uio;
+	int *eofflag = ap->a_eofflag;
+	off_t **cookies = ap->a_cookies;
+	int *ncookies = ap->a_ncookies;
 	struct tmpfs_mount *tmp;
 	int error;
 	off_t startoff;
@@ -1536,10 +1536,10 @@ outok:
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_readlink(struct vop_readlink_args *v)
+tmpfs_readlink(struct vop_readlink_args *ap)
 {
-	struct vnode *vp = v->a_vp;
-	struct uio *uio = v->a_uio;
+	struct vnode *vp = ap->a_vp;
+	struct uio *uio = ap->a_uio;
 	int error;
 	struct tmpfs_node *node;
 
@@ -1562,9 +1562,9 @@ tmpfs_readlink(struct vop_readlink_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_inactive(struct vop_inactive_args *v)
+tmpfs_inactive(struct vop_inactive_args *ap)
 {
-	struct vnode *vp = v->a_vp;
+	struct vnode *vp = ap->a_vp;
 	struct tmpfs_node *node;
 	struct mount *mp;
 
@@ -1608,9 +1608,9 @@ tmpfs_inactive(struct vop_inactive_args *v)
 /* --------------------------------------------------------------------- */
 
 int
-tmpfs_reclaim(struct vop_reclaim_args *v)
+tmpfs_reclaim(struct vop_reclaim_args *ap)
 {
-	struct vnode *vp = v->a_vp;
+	struct vnode *vp = ap->a_vp;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 	struct mount *mp;
@@ -1680,9 +1680,9 @@ tmpfs_mountctl(struct vop_mountctl_args *ap)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_print(struct vop_print_args *v)
+tmpfs_print(struct vop_print_args *ap)
 {
-	struct vnode *vp = v->a_vp;
+	struct vnode *vp = ap->a_vp;
 
 	struct tmpfs_node *node;
 
@@ -1705,11 +1705,11 @@ tmpfs_print(struct vop_print_args *v)
 /* --------------------------------------------------------------------- */
 
 static int
-tmpfs_pathconf(struct vop_pathconf_args *v)
+tmpfs_pathconf(struct vop_pathconf_args *ap)
 {
-	struct vnode *vp = v->a_vp;
-	int name = v->a_name;
-	register_t *retval = v->a_retval;
+	struct vnode *vp = ap->a_vp;
+	int name = ap->a_name;
+	register_t *retval = ap->a_retval;
 	struct tmpfs_mount *tmp;
 	int error;
 
