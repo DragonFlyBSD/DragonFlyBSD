@@ -6,7 +6,7 @@ NoEcho('
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -427,6 +427,7 @@ String
 
 CompilerDirective
     : IncludeTerm                   {}
+    | IncludeEndTerm                {}
     | ExternalTerm                  {}
     ;
 
@@ -1033,14 +1034,13 @@ IfTerm
     ;
 
 IncludeTerm
-    : PARSEOP_INCLUDE '('           {$<n>$ = TrCreateLeafNode (PARSEOP_INCLUDE);}
-        String  ')'                 {TrLinkChildren ($<n>3,1,$4);FlOpenIncludeFile ($4);}
-        TermList
-        IncludeEndTerm              {$$ = TrLinkPeerNodes (3,$<n>3,$7,$8);}
+    : PARSEOP_INCLUDE '('
+        String  ')'                 {$$ = TrUpdateNode (PARSEOP_INCLUDE, $3);
+                                        FlOpenIncludeFile ($3);}
     ;
 
 IncludeEndTerm
-    : PARSEOP_INCLUDE_END           {$$ = TrCreateLeafNode (PARSEOP_INCLUDE_END);}
+    : PARSEOP_INCLUDE_END           {$<n>$ = TrCreateLeafNode (PARSEOP_INCLUDE_END); TrSetCurrentFilename ($$);}
     ;
 
 IncTerm

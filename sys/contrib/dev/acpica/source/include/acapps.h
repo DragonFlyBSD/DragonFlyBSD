@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,7 @@
 /* Common info for tool signons */
 
 #define ACPICA_NAME                 "Intel ACPI Component Architecture"
-#define ACPICA_COPYRIGHT            "Copyright (c) 2000 - 2015 Intel Corporation"
+#define ACPICA_COPYRIGHT            "Copyright (c) 2000 - 2016 Intel Corporation"
 
 #if ACPI_MACHINE_WIDTH == 64
 #define ACPI_WIDTH          "-64"
@@ -91,7 +91,7 @@
     AcpiOsPrintf (Description);
 
 #define ACPI_OPTION(Name, Description) \
-    AcpiOsPrintf ("  %-18s%s\n", Name, Description);
+    AcpiOsPrintf ("  %-20s%s\n", Name, Description);
 
 
 /* Check for unexpected exceptions */
@@ -115,10 +115,20 @@
 /* acfileio */
 
 ACPI_STATUS
-AcpiAcGetAllTablesFromFile (
+AcGetAllTablesFromFile (
     char                    *Filename,
     UINT8                   GetOnlyAmlTables,
     ACPI_NEW_TABLE_DESC     **ReturnListHead);
+
+BOOLEAN
+AcIsFileBinary (
+    FILE                    *File);
+
+ACPI_STATUS
+AcValidateTableHeader (
+    FILE                    *File,
+    long                    TableOffset);
+
 
 /* Values for GetOnlyAmlTables */
 

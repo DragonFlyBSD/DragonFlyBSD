@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -120,8 +120,8 @@ AcpiPsGetArguments (
 
     case AML_INT_NAMEPATH_OP:   /* AML_NAMESTRING_ARG */
 
-        Status = AcpiPsGetNextNamepath (
-            WalkState, &(WalkState->ParserState), Op, 1);
+        Status = AcpiPsGetNextNamepath (WalkState,
+            &(WalkState->ParserState), Op, ACPI_POSSIBLE_METHOD_CALL);
         if (ACPI_FAILURE (Status))
         {
             return_ACPI_STATUS (Status);

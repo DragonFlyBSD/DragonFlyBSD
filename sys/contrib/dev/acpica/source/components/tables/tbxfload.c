@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -228,7 +228,7 @@ AcpiTbLoadNamespace (
     if (!TablesFailed)
     {
         ACPI_INFO ((AE_INFO,
-            "%u ACPI AML tables successfully acquired and loaded\n",
+            "%u ACPI AML tables successfully acquired and loaded",
             TablesLoaded));
     }
     else

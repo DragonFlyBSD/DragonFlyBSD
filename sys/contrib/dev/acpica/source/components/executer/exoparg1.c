@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -724,7 +724,7 @@ AcpiExOpcode_1A_0T_1R (
         Status = AcpiExStore (ReturnDesc, Operand[0], WalkState);
         break;
 
-    case AML_TYPE_OP:               /* ObjectType (SourceObject) */
+    case AML_OBJECT_TYPE_OP:            /* ObjectType (SourceObject) */
         /*
          * Note: The operand is not resolved at this point because we want to
          * get the associated object, not its value. For example, we don't

@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,6 +48,7 @@
 #include "acnamesp.h"
 #include "acparser.h"
 #include "acinterp.h"
+#include "acevents.h"
 #include "acdebug.h"
 
 
@@ -670,13 +671,15 @@ void
 AcpiDbDisplayObjectType (
     char                    *ObjectArg)
 {
+    ACPI_SIZE               Arg;
     ACPI_HANDLE             Handle;
     ACPI_DEVICE_INFO        *Info;
     ACPI_STATUS             Status;
     UINT32                  i;
 
 
-    Handle = ACPI_TO_POINTER (strtoul (ObjectArg, NULL, 16));
+    Arg = strtoul (ObjectArg, NULL, 16);
+    Handle = ACPI_TO_POINTER (Arg);
 
     Status = AcpiGetObjectInfo (Handle, &Info);
     if (ACPI_FAILURE (Status))
@@ -1036,26 +1039,21 @@ AcpiDbDisplayHandlers (
         for (i = 0; i < ACPI_ARRAY_LENGTH (AcpiGbl_SpaceIdList); i++)
         {
             SpaceId = AcpiGbl_SpaceIdList[i];
-            HandlerObj = ObjDesc->Device.Handler;
 
             AcpiOsPrintf (ACPI_PREDEFINED_PREFIX,
                 AcpiUtGetRegionName ((UINT8) SpaceId), SpaceId);
 
-            while (HandlerObj)
+            HandlerObj = AcpiEvFindRegionHandler (
+                SpaceId, ObjDesc->CommonNotify.Handler);
+            if (HandlerObj)
             {
-                if (AcpiGbl_SpaceIdList[i] ==
-                    HandlerObj->AddressSpace.SpaceId)
-                {
-                    AcpiOsPrintf (ACPI_HANDLER_PRESENT_STRING,
-                        (HandlerObj->AddressSpace.HandlerFlags &
-                            ACPI_ADDR_HANDLER_DEFAULT_INSTALLED) ?
-                            "Default" : "User",
-                        HandlerObj->AddressSpace.Handler);
+                AcpiOsPrintf (ACPI_HANDLER_PRESENT_STRING,
+                    (HandlerObj->AddressSpace.HandlerFlags &
+                        ACPI_ADDR_HANDLER_DEFAULT_INSTALLED) ?
+                        "Default" : "User",
+                    HandlerObj->AddressSpace.Handler);
 
-                    goto FoundHandler;
-                }
-
-                HandlerObj = HandlerObj->AddressSpace.Next;
+                goto FoundHandler;
             }
 
             /* There is no handler for this SpaceId */
@@ -1067,7 +1065,7 @@ AcpiDbDisplayHandlers (
 
         /* Find all handlers for user-defined SpaceIDs */
 
-        HandlerObj = ObjDesc->Device.Handler;
+        HandlerObj = ObjDesc->CommonNotify.Handler;
         while (HandlerObj)
         {
             if (HandlerObj->AddressSpace.SpaceId >= ACPI_USER_REGION_BEGIN)
@@ -1178,7 +1176,7 @@ AcpiDbDisplayNonRootHandlers (
 
     /* Display all handlers associated with this device */
 
-    HandlerObj = ObjDesc->Device.Handler;
+    HandlerObj = ObjDesc->CommonNotify.Handler;
     while (HandlerObj)
     {
         AcpiOsPrintf (ACPI_PREDEFINED_PREFIX,

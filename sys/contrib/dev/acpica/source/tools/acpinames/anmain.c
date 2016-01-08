@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -175,7 +175,7 @@ main (
     {
         /* Get all ACPI AML tables in this file */
 
-        Status = AcpiAcGetAllTablesFromFile (argv[AcpiGbl_Optind],
+        Status = AcGetAllTablesFromFile (argv[AcpiGbl_Optind],
             ACPI_GET_ONLY_AML_TABLES, &ListHead);
         if (ACPI_FAILURE (Status))
         {

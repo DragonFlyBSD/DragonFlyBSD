@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -440,8 +440,8 @@ AcpiNsExecModuleCode (
      * Get the parent node. We cheat by using the NextObject field
      * of the method object descriptor.
      */
-    ParentNode = ACPI_CAST_PTR (ACPI_NAMESPACE_NODE,
-        MethodObj->Method.NextObject);
+    ParentNode = ACPI_CAST_PTR (
+        ACPI_NAMESPACE_NODE, MethodObj->Method.NextObject);
     Type = AcpiNsGetType (ParentNode);
 
     /*
@@ -467,9 +467,9 @@ AcpiNsExecModuleCode (
     Info->PrefixNode = ParentNode;
 
     /*
-     * Get the currently attached parent object. Add a reference, because the
-     * ref count will be decreased when the method object is installed to
-     * the parent node.
+     * Get the currently attached parent object. Add a reference,
+     * because the ref count will be decreased when the method object
+     * is installed to the parent node.
      */
     ParentObj = AcpiNsGetAttachedObject (ParentNode);
     if (ParentObj)
@@ -479,8 +479,7 @@ AcpiNsExecModuleCode (
 
     /* Install the method (module-level code) in the parent node */
 
-    Status = AcpiNsAttachObject (ParentNode, MethodObj,
-        ACPI_TYPE_METHOD);
+    Status = AcpiNsAttachObject (ParentNode, MethodObj, ACPI_TYPE_METHOD);
     if (ACPI_FAILURE (Status))
     {
         goto Exit;

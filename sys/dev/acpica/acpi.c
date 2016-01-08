@@ -285,6 +285,12 @@ SYSCTL_INT(_debug_acpi, OID_AUTO, facs_addr32, CTLFLAG_RD,
     &acpi_facs_addr32, 1,
     "Prefer 32-bit FACS table addresses over 64-bit ones.");
 
+static int acpi_group_module_level_code;
+TUNABLE_INT("debug.acpi.group_module_level_code", &acpi_group_module_level_code);
+SYSCTL_INT(_debug_acpi, OID_AUTO, group_module_level_code, CTLFLAG_RD,
+    &acpi_group_module_level_code, 1,
+    "Group module-level code.");
+
 /* Power devices off and on in suspend and resume.  XXX Remove once tested. */
 static int acpi_do_powerstate = 1;
 TUNABLE_INT("debug.acpi.do_powerstate", &acpi_do_powerstate);
@@ -501,6 +507,7 @@ acpi_attach(device_t dev)
     AcpiGbl_DoNotUseXsdt = acpi_ignore_xsdt ? TRUE : FALSE;
     AcpiGbl_EnableAmlDebugObject = acpi_debug_objects ? TRUE : FALSE;
     AcpiGbl_EnableInterpreterSlack = acpi_interpreter_slack ? TRUE : FALSE;
+    AcpiGbl_GroupModuleLevelCode = acpi_group_module_level_code ? TRUE : FALSE;
     AcpiGbl_Use32BitFadtAddresses = acpi_fadt_addr32 ? TRUE : FALSE;
     AcpiGbl_Use32BitFacsAddresses = acpi_facs_addr32 ? TRUE : FALSE;
 
