@@ -350,12 +350,6 @@ typedef struct drm_pci_id_list
 	char *name;
 } drm_pci_id_list_t;
 
-struct drm_msi_blacklist_entry
-{
-	int vendor;
-	int device;
-};
-
 /**
  * Ioctl function type.
  *

@@ -954,46 +954,9 @@ static struct dev_ops drm_cdevsw = {
 	.d_mmap_single = drm_mmap_single,
 };
 
-static int drm_msi = 0;	/* Disable by default. This is because there are issues with
-			   freezes using MSI and i915 
-			 */
-TUNABLE_INT("hw.drm.msi.enable", &drm_msi);
 SYSCTL_NODE(_hw, OID_AUTO, drm, CTLFLAG_RW, NULL, "DRM device");
-SYSCTL_NODE(_hw_drm, OID_AUTO, msi, CTLFLAG_RW, NULL, "DRM device msi");
-SYSCTL_INT(_hw_drm_msi, OID_AUTO, enable, CTLFLAG_RD, &drm_msi, 0,
-    "Enable MSI interrupts for drm devices");
 SYSCTL_INT(_hw_drm, OID_AUTO, debug, CTLFLAG_RW, &drm_debug, 0,
     "DRM debugging");
-
-static struct drm_msi_blacklist_entry drm_msi_blacklist[] = {
-	{0x8086, 0x2772}, /* Intel i945G	*/ \
-	{0x8086, 0x27A2}, /* Intel i945GM	*/ \
-	{0x8086, 0x27AE}, /* Intel i945GME	*/ \
-	{0, 0}
-};
-
-static int drm_msi_is_blacklisted(struct drm_device *dev, unsigned long flags)
-{
-	int i = 0;
-
-	if (dev->driver->use_msi != NULL) {
-		int use_msi;
-
-		use_msi = dev->driver->use_msi(dev, flags);
-
-		return (!use_msi);
-	}
-
-	/* TODO: Maybe move this to a callback in i915? */
-	for (i = 0; drm_msi_blacklist[i].vendor != 0; i++) {
-		if ((drm_msi_blacklist[i].vendor == dev->pci_vendor) &&
-		    (drm_msi_blacklist[i].device == dev->pci_device)) {
-			return 1;
-		}
-	}
-
-	return 0;
-}
 
 int drm_probe(device_t kdev, drm_pci_id_list_t *idlist)
 {
@@ -1049,11 +1012,7 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	dev->id_entry = id_entry;
 
 	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {
-		msi_enable = drm_msi;
-
-		if (drm_msi_is_blacklisted(dev, dev->id_entry->driver_private)) {
-			msi_enable = 0;
-		}
+		msi_enable = 1;
 
 		dev->irq_type = pci_alloc_1intr(dev->dev, msi_enable,
 		    &dev->irqrid, &irq_flags);
