@@ -28,15 +28,16 @@
  *
  * @(#)foldit.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vis/foldit.c,v 1.4 1999/08/28 01:07:25 peter Exp $
- * $DragonFly: src/usr.bin/vis/foldit.c,v 1.4 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <stdio.h>
 
+#include "extern.h"
+
 int
-foldit(char *chunk, int col, int max)
+foldit(const char *chunk, int col, int max)
 {
-	char *cp;
+	const char *cp;
 
 	/*
 	 * Keep track of column position. Insert hidden newline
@@ -51,7 +52,7 @@ again:
 			col = 0;
 			break;
 		case '\t':
-			col = col + 8 &~ 07;
+			col = (col + 8) &~ 07;
 			break;
 		case '\b':
 			col = col ? col - 1 : 0;

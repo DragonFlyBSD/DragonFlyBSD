@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vis.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vis/vis.c,v 1.6 1999/08/28 01:07:25 peter Exp $
- * $DragonFly: src/usr.bin/vis/vis.c,v 1.4 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <err.h>
@@ -39,11 +38,12 @@
 #include <unistd.h>
 #include <vis.h>
 
+#include "extern.h"
+
 int eflags, fold, foldwidth=80, none, markeol, debug;
 
-void process(FILE *, char *filename);
+void process(FILE *);
 static void usage(void);
-extern int foldit(char *, int, int);
 
 int
 main(int argc, char **argv)
@@ -101,13 +101,13 @@ main(int argc, char **argv)
 	if (*argv)
 		while (*argv) {
 			if ((fp=fopen(*argv, "r")) != NULL)
-				process(fp, *argv);
+				process(fp);
 			else
 				warn("%s", *argv);
 			argv++;
 		}
 	else
-		process(stdin, "<stdin>");
+		process(stdin);
 	exit(0);
 }
 
@@ -124,10 +124,11 @@ usage(void)
 }
 
 void
-process(FILE *fp, char *filename)
+process(FILE *fp)
 {
 	static int col = 0;
-	char *cp = "\0"+1;		/* so *(cp-1) starts out != '\n' */
+	static char nul[] = "\0";
+	char *cp = nul + 1;		/* so *(cp-1) starts out != '\n' */
 	int c, rachar;
 	char buff[5];
 
