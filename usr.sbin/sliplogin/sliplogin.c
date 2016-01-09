@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)sliplogin.c        8.2 (Berkeley) 2/1/94
  * $FreeBSD: src/usr.sbin/sliplogin/sliplogin.c,v 1.9.6.2 2001/07/19 05:21:28 kris Exp $
- * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.5 2008/09/14 22:04:36 swildner Exp $
  */
 
 /*
@@ -87,54 +86,54 @@ static char *restricted_environ[] = {
 	NULL
 };
 
-int	unit;
-int	slip_mode;
-speed_t speed;
-int	uid;
-int     keepal;
-int     outfill;
-int     slunit;
-char	loginargs[BUFSIZ];
-char	loginfile[MAXPATHLEN];
-char	loginname[BUFSIZ];
-static char raddr[32];			/* remote address */
-char ifname[IFNAMSIZ];          	/* interface name */
-static 	char pidfilename[MAXPATHLEN];   /* name of pid file */
-static 	char iffilename[MAXPATHLEN];    /* name of if file */
-static	pid_t	pid;			/* our pid */
+static int	unit;
+static int	slip_mode;
+static speed_t	speed;
+static int	uid;
+static int	keepal;
+static int	outfill;
+static int	slunit;
+static char	loginargs[BUFSIZ];
+static char	loginfile[MAXPATHLEN];
+static char	loginname[BUFSIZ];
+static char	raddr[32];			/* remote address */
+static char	ifname[IFNAMSIZ];		/* interface name */
+static char	pidfilename[MAXPATHLEN];	/* name of pid file */
+static char	iffilename[MAXPATHLEN];		/* name of if file */
+static pid_t	pid;				/* our pid */
 
-char *
+static char *
 make_ipaddr(void)
 {
-static char address[20] ="";
-struct hostent *he;
-unsigned long ipaddr;
+	static char address[20] ="";
+	struct hostent *he;
+	unsigned long ipaddr;
 
-address[0] = '\0';
-if ((he = gethostbyname(raddr)) != NULL) {
-	ipaddr = ntohl(*(long *)he->h_addr_list[0]);
-	sprintf(address, "%lu.%lu.%lu.%lu",
-		ipaddr >> 24,
-		(ipaddr & 0x00ff0000) >> 16,
-		(ipaddr & 0x0000ff00) >> 8,
-		(ipaddr & 0x000000ff));
+	address[0] = '\0';
+	if ((he = gethostbyname(raddr)) != NULL) {
+		ipaddr = ntohl(*(long *)he->h_addr_list[0]);
+		sprintf(address, "%lu.%lu.%lu.%lu",
+		    ipaddr >> 24,
+		    (ipaddr & 0x00ff0000) >> 16,
+		    (ipaddr & 0x0000ff00) >> 8,
+		    (ipaddr & 0x000000ff));
 	}
 
-return address;
+	return address;
 }
 
-struct slip_modes {
-	char	*sm_name;
-	int	sm_or_flag;
-	int	sm_and_flag;
-}	 modes[] = {
-	"normal",	0        , 0        ,
-	"compress",	IFF_LINK0, IFF_LINK2,
-	"noicmp",	IFF_LINK1, 0        ,
-	"autocomp",	IFF_LINK2, IFF_LINK0,
+static struct slip_modes {
+	const char	*sm_name;
+	int		sm_or_flag;
+	int		sm_and_flag;
+} modes[] = {
+	{ "normal",	0,		0	  },
+	{ "compress",	IFF_LINK0,	IFF_LINK2 },
+	{ "noicmp",	IFF_LINK1,	0	  },
+	{ "autocomp",	IFF_LINK2,	IFF_LINK0 }
 };
 
-void
+static void
 findid(char *name)
 {
 	FILE *fp;
@@ -175,8 +174,7 @@ findid(char *name)
 
 		slip_mode = 0;
 		for (i = 0; i < n - 4; i++) {
-			for (j = 0; j < sizeof(modes)/sizeof(struct slip_modes);
-				j++) {
+			for (j = 0; NELEM(modes); j++) {
 				if (strcmp(modes[j].sm_name, slopt[i]) == 0) {
 					slip_mode |= (modes[j].sm_or_flag);
 					slip_mode &= ~(modes[j].sm_and_flag);
@@ -243,7 +241,7 @@ findid(char *name)
 	/* NOTREACHED */
 }
 
-char *
+static const char *
 sigstr(int s)
 {
 	static char buf[32];
@@ -287,7 +285,7 @@ sigstr(int s)
 	return(buf);
 }
 
-void
+static void
 hup_handler(int s)
 {
 	char logoutfile[MAXPATHLEN];
@@ -302,7 +300,7 @@ hup_handler(int s)
 	if (access(logoutfile, R_OK|X_OK) == 0) {
 		char logincmd[2*MAXPATHLEN+32];
 
-		snprintf(logincmd, sizeof(logincmd), "%s %d %ld %s", logoutfile, unit, speed, loginargs);
+		snprintf(logincmd, sizeof(logincmd), "%s %d %u %s", logoutfile, unit, speed, loginargs);
 		system(logincmd);
 	}
 	syslog(LOG_INFO, "closed %s slip unit %d (%s)\n", loginname, unit,
@@ -317,8 +315,8 @@ hup_handler(int s)
 
 
 /* Modify the slip line mode and add any compression or no-icmp flags. */
-void
-line_flags(int unit)
+static void
+line_flags(int _unit)
 {
 	struct ifreq ifr;
 	int s;
@@ -329,7 +327,7 @@ line_flags(int unit)
 		syslog(LOG_ERR, "socket: %m");
 		exit(1);
 	}
-	sprintf(ifr.ifr_name, "sl%d", unit);
+	sprintf(ifr.ifr_name, "sl%d", _unit);
 
 	/* get the flags for the interface */
 	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&ifr) < 0) {
@@ -353,9 +351,8 @@ main(int argc, char *argv[])
 {
 	int fd, s, ldisc;
 	char *name;
-	struct termios tios, otios;
+	struct termios tios;
 	char logincmd[2*BUFSIZ+32];
-	extern uid_t getuid();
 
 	FILE *pidfile;				/* pid file */
 	FILE *iffile;				/* interfaces file */
@@ -417,7 +414,6 @@ main(int argc, char *argv[])
 		syslog(LOG_ERR, "tcgetattr: %m");
 		exit(1);
 	}
-	otios = tios;
 	cfmakeraw(&tios);
 	if (tcsetattr(0, TCSAFLUSH, &tios) < 0) {
 		syslog(LOG_ERR, "tcsetattr: %m");
@@ -487,7 +483,7 @@ main(int argc, char *argv[])
 
 
 	syslog(LOG_INFO, "attaching slip unit %d for %s\n", unit, loginname);
-	snprintf(logincmd, sizeof(logincmd), "%s %d %ld %s", loginfile, unit, speed,
+	snprintf(logincmd, sizeof(logincmd), "%s %d %u %s", loginfile, unit, speed,
 		 loginargs);
 	/*
 	 * aim stdout and errout at /dev/null so logincmd output won't
@@ -510,7 +506,7 @@ main(int argc, char *argv[])
 	 * to see whether changes are allowed (or just "route get").
 	 */
 	setuid(0);
-	if (s = system(logincmd)) {
+	if ((s = system(logincmd)) == -1) {
 		syslog(LOG_ERR, "%s login failed: exit status %d from %s",
 		       loginname, s, loginfile);
 		exit(6);
