@@ -2,7 +2,6 @@
 
 PROG=	tzsetup
 MAN=	tzsetup.8
-WARNS?=	3
 
 DPADD=	${LIBDIALOG} ${LIBM} ${LIBNCURSESW}
 LDADD=	-ldialog -lm -lncursesw
