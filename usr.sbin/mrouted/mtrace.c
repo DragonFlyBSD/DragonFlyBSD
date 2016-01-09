@@ -1902,11 +1902,12 @@ stat_line(struct tr_resp *r, struct tr_resp *s, int have_next, int *rst)
 	break;
 
       case NEITHER:
-	if (ghave != NEITHER)
+	if (ghave != NEITHER) {
 	    if (tunstats)
 		printf("                         ");
 	    else
 		printf("           ");
+	}
 
 	break;
     }
@@ -1969,7 +1970,7 @@ stat_line(struct tr_resp *r, struct tr_resp *s, int have_next, int *rst)
 	    (long)(ntohl(s->tr_vifout) - ntohl(r->tr_vifout)));
 	printf("pkts: %ld ", (long)(ntohl(s->tr_pktcnt) - ntohl(r->tr_pktcnt)));
 	printf("time: %d\n", timediff);
-	printf("\t\t\t\treset: %x hoptime: %lx\n", *rst, ntohl(s->tr_qarr));
+	printf("\t\t\t\treset: %x hoptime: %x\n", *rst, ntohl(s->tr_qarr));
     }
 }
 
@@ -2079,7 +2080,7 @@ fixup_stats(struct resp_buf *base, struct resp_buf *prev, struct resp_buf *new,
 	if (debug > 2) {
     	    printf("\t\tip=%s, r=%d, res=%d\n", inet_fmt(b->tr_inaddr, s1), *r, res);
 	    if (res)
-		printf("\t\tbase=%ld, prev=%ld, new=%ld\n", ntohl(b->tr_pktcnt),
+		printf("\t\tbase=%u, prev=%u, new=%u\n", ntohl(b->tr_pktcnt),
 			    ntohl(p->tr_pktcnt), ntohl(n->tr_pktcnt));
 	}
 	if (*r & BUG_RESET) {
@@ -2884,7 +2885,7 @@ continuehop:
 
     if (base.rtime == 0) {
 	printf("Timed out receiving responses\n");
-	if (IN_MULTICAST(ntohl(tdst)))
+	if (IN_MULTICAST(ntohl(tdst))){
 	  if (tdst == query_cast)
 	    printf("Perhaps no local router has a route for source %s\n",
 		   inet_fmt(qsrc, s1));
@@ -2894,6 +2895,7 @@ or no router local to it has a route for source %s,\n\
 or multicast at ttl %d doesn't reach its last-hop router for that source\n",
 		   inet_fmt(qdst, s2), inet_fmt(qgrp, s3), inet_fmt(qsrc, s1),
 		   qttl ? qttl : MULTICAST_TTL1);
+	}
 	exit(1);
     }
 

@@ -24,7 +24,6 @@
  * noted when applicable.
  *
  * $FreeBSD: src/usr.sbin/mrouted/rsrr.c,v 1.8.2.1 2001/05/12 09:48:20 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/rsrr.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
  */
 
 /* RSRR code written by Daniel Zappala, USC Information Sciences Institute,
@@ -331,7 +330,7 @@ rsrr_accept_rq(struct rsrr_rq *route_query, int flags, struct gtable *gt_notify)
     }
     
     IF_DEBUG(DEBUG_RSRR)
-    dolog(LOG_DEBUG, 0, "%sSend RSRR Route Reply for src %s dst %s in vif %d out vif %d\n",
+    dolog(LOG_DEBUG, 0, "%sSend RSRR Route Reply for src %s dst %s in vif %d out vif %lu\n",
 	gt_notify ? "Route Change: " : "",
 	inet_fmt(route_reply->source_addr.s_addr,s1),
 	inet_fmt(route_reply->dest_addr.s_addr,s2),

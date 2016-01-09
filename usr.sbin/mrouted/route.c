@@ -736,7 +736,7 @@ age_routes(void)
 	     */
 	    if (!NBRM_SAME(r->rt_subordinates, r->rt_subordadv)) {
 		IF_DEBUG(DEBUG_ROUTE)
-		dolog(LOG_DEBUG, 0, "rt %s sub 0x%08x%08x subadv 0x%08x%08x metric %d",
+		dolog(LOG_DEBUG, 0, "rt %s sub 0x%08lx%08lx subadv 0x%08lx%08lx metric %d",
 			RT_FMT(r, s1),
 			r->rt_subordinates.hi, r->rt_subordinates.lo,
 			r->rt_subordadv.hi, r->rt_subordadv.lo, r->rt_metric);
@@ -826,7 +826,7 @@ accept_probe(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 	} else
 	    IF_DEBUG(DEBUG_PEER)
 	    dolog(LOG_DEBUG, 0,
-		"ignoring probe from non-neighbor %s (%d seconds until next warning)", inet_fmt(src, s1), match->al_ctime + match->al_timer - now);
+		"ignoring probe from non-neighbor %s (%lu seconds until next warning)", inet_fmt(src, s1), match->al_ctime + match->al_timer - now);
 	return;
     }
 
@@ -1008,13 +1008,14 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 	return;
     }
 
-    if (uvifs[vifi].uv_flags & VIFF_BLASTER)
+    if (uvifs[vifi].uv_flags & VIFF_BLASTER) {
 	if (datalen > 0) {
 	    queue_blaster_report(vifi, src, dst, p, datalen, level);
 	    return;
 	} else {
 	    datalen = -datalen;
 	}
+    }
 
     if (!(nbr = update_neighbor(vifi, src, DVMRP_REPORT, NULL, 0, level)))
 	return;

@@ -678,7 +678,7 @@ graph_name(u_int32 addr, char *buf, int len)
 
     if (len < sizeof("255.255.255.255")) {
 	fprintf(stderr, 
-"Buffer too small in graph_name, provided %d bytes, but needed %d.\n", 
+"Buffer too small in graph_name, provided %d bytes, but needed %zd.\n", 
 	    len, sizeof("255.255.255.255"));
 	return NULL;
     }

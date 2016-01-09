@@ -104,7 +104,6 @@ static struct debugname {
 static void final_init(void *);
 static void fasttimer(void *);
 static void timer(void *);
-static void dump(void);
 static void dump_version(FILE *);
 static void fdump(void);
 static void cdump(void);
@@ -727,16 +726,6 @@ handler(int sig)
 	    sighandled |= GOT_SIGUSR2;
 	    break;
     }
-}
-
-/*
- * Dump internal data structures to stderr.
- */
-static void
-dump(void)
-{
-    dump_vifs(stderr);
-    dump_routes(stderr);
 }
 
 static void

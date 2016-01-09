@@ -327,7 +327,7 @@ static void
 send_query(struct uvif *v)
 {
     IF_DEBUG(DEBUG_IGMP)
-    dolog(LOG_DEBUG, 0, "sending %squery on vif %d",
+    dolog(LOG_DEBUG, 0, "sending %squery on vif %ld",
 		(v->uv_flags & VIFF_IGMPV1) ? "v1 " : "",
 		v - uvifs);
     send_igmp(v->uv_lcl_addr, allhosts_group,
@@ -708,7 +708,7 @@ accept_membership_query(u_int32 src, u_int32 dst, u_int32 group, int tmo)
 		g->al_timerid = SetTimer(vifi, g);
 		IF_DEBUG(DEBUG_IGMP)
 		dolog(LOG_DEBUG, 0,
-		    "timer for grp %s on vif %d set to %d",
+		    "timer for grp %s on vif %d set to %lu",
 		    inet_fmt(group, s2), vifi, g->al_timer);
 		break;
 	    }
@@ -820,7 +820,7 @@ accept_leave_message(u_int32 src, u_int32 dst, u_int32 group)
 	if (group == g->al_addr) {
 	    IF_DEBUG(DEBUG_IGMP)
 	    dolog(LOG_DEBUG, 0,
-		"[vif.c, _accept_leave_message] %d %d \n",
+		"[vif.c, _accept_leave_message] %d %lu \n",
 		g->al_old, g->al_query);
 
 	    /* Ignore the leave message if there are old hosts present */
@@ -1257,7 +1257,7 @@ update_neighbor(vifi_t vifi, u_int32 addr, int msgtype, char *p, int datalen,
 	if (i == MAXNBRS) {
 	    /* XXX This is a severe new restriction. */
 	    /* XXX want extensible bitmaps! */
-	    dolog(LOG_ERR, 0, "Can't handle %dth neighbor %s on vif %d!",
+	    dolog(LOG_ERR, 0, "Can't handle %luth neighbor %s on vif %d!",
 		MAXNBRS, inet_fmt(addr, s1), vifi);
 	    /*NOTREACHED*/
 	}
@@ -1709,7 +1709,7 @@ dump_vifs(FILE *fp)
 					    v->uv_prune_lifetime);
 
 	v_req.vifi = vifi;
-	if (did_final_init)
+	if (did_final_init) {
 	    if (ioctl(udp_socket, SIOCGETVIFCNT, (char *)&v_req) < 0) {
 		dolog(LOG_WARNING, errno,
 		    "SIOCGETVIFCNT fails on vif %d", vifi);
@@ -1719,6 +1719,7 @@ dump_vifs(FILE *fp)
 		fprintf(fp, "                   pkts/bytes out: %lu/%lu\n",
 			v_req.ocount, v_req.obytes);
 	    }
+	}
 	fprintf(fp, "\n");
     }
     fprintf(fp, "\n");
