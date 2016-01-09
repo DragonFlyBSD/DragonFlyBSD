@@ -24,6 +24,4 @@ LDADD=	-lutil
 
 CFLAGS+= -DHAVE_ARC4RANDOM
 
-WARNS?=	1
-
 .include <bsd.prog.mk>

@@ -182,7 +182,7 @@ main(int argc, char *argv[])
 	int i, ch;
 	int fflag = 0, logopt;
 	int error;
-	pid_t pid, otherpid;
+	pid_t otherpid;
 
 	/* get command line options and arguments */
 	while ((ch = getopt(argc, argv, "c:C:dDfhM:p:Rs")) != -1) {
@@ -276,7 +276,6 @@ main(int argc, char *argv[])
 	}
 
 	/* record the current PID */
-	pid = getpid();
 	pidfile_write(pfh);
 
 	set[PFD_RAWSOCK].fd = sock.si_fd;
@@ -1642,7 +1641,7 @@ struct ifinfo *
 if_indextoifinfo(int idx)
 {
 	struct ifinfo *ifi;
-	char *name, name0[IFNAMSIZ];
+	char name0[IFNAMSIZ];
 
 	/* Check if the interface has a valid name or not. */
 	if (if_indextoname(idx, name0) == NULL)
