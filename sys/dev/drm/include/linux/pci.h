@@ -45,12 +45,12 @@
 struct pci_bus;
 
 struct pci_device_id {
-	uint32_t class;
-	uint32_t class_mask;
 	uint32_t vendor;
 	uint32_t device;
 	uint32_t subvendor;
 	uint32_t subdevice;
+	uint32_t class;
+	uint32_t class_mask;
 	unsigned long driver_data;
 };
 
@@ -62,6 +62,8 @@ struct pci_dev {
 	unsigned short device;		/* device ID */
 	unsigned short subsystem_vendor;
 	unsigned short subsystem_device;
+
+	u8 revision;
 
 	unsigned int irq;
 };
