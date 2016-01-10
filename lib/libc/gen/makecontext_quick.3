@@ -44,7 +44,7 @@
 .Ft void
 .Fn makecontext_quick "ucontext_t *ucp"
 .Ft void
-.Fn swapcontext_quick "ucontext_t *oucp" "const ucontext_t *ucp"
+.Fn swapcontext_quick "ucontext_t *oucp" "ucontext_t *nucp"
 .Ft void
 .Fn setcontext_quick "ucontext_t *ucp"
 .Sh DESCRIPTION
@@ -114,7 +114,8 @@ This function is designed for synchronous switching only.
 The
 .Fn swapcontext_quick
 function saves the current register state and switches to the target
-context.  This function returns when the old context is resumed.
+context.
+This function returns when the old context is resumed.
 Again, the signal mask is not touched and scratch registers are not saved.
 If you desire to switch to a signal stack ucontext you must use the
 normal
