@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)w.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/w.c,v 1.10 2007/02/18 16:15:24 corecode Exp $
  */
 
 /*
@@ -447,7 +446,8 @@ main(int argc, char **argv)
 		p = *host_buf ? host_buf : "-";
 		if ((x = strchr(p, ':')) != NULL)
 			*x++ = '\0';
-		if (!nflag && isdigit(*p) && (l = inet_addr(p)) != -1 &&
+		if (!nflag && isdigit(*p) &&
+		    (l = inet_addr(p)) != INADDR_NONE &&
 		    (hp = gethostbyaddr(&l, sizeof(l), AF_INET))) {
 			if (domain[0] != '\0') {
 				p = hp->h_name;
