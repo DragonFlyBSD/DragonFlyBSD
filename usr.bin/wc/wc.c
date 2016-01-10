@@ -28,8 +28,7 @@
  *
  * @(#) Copyright (c) 1980, 1987, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wc.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/wc/wc.c,v 1.11.2.1 2002/08/25 02:47:04 tjr Exp $
- * $DragonFly: src/usr.bin/wc/wc.c,v 1.5 2005/02/05 16:07:08 liamfoy Exp $
+ * $FreeBSD: head/usr.bin/wc/wc.c 281617 2015-04-16 21:44:35Z bdrewery $
  */
 
 #include <sys/param.h>
@@ -40,25 +39,46 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
+#include <wctype.h>
 
-uintmax_t tlinect, twordct, tcharct;
-int doline, doword, dochar, domulti;
+static uintmax_t tlinect, twordct, tcharct, tlongline;
+static int doline, doword, dochar, domulti, dolongline;
+static volatile sig_atomic_t siginfo;
 
+static void	show_cnt(const char *file, uintmax_t linect, uintmax_t wordct,
+		    uintmax_t charct, uintmax_t llct);
 static int	cnt(const char *);
 static void	usage(void);
 
+static void
+siginfo_handler(int sig __unused)
+{
+
+	siginfo = 1;
+}
+
+static void
+reset_siginfo(void)
+{
+
+	signal(SIGINFO, SIG_DFL);
+	siginfo = 0;
+}
+
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	int ch, errors, total;
 
 	setlocale(LC_CTYPE, "");
 
-	while ((ch = getopt(argc, argv, "clmw")) != -1) {
+	while ((ch = getopt(argc, argv, "clmwL")) != -1) {
 		switch (ch) {
 		case 'l':
 			doline = 1;
@@ -69,6 +89,9 @@ main(int argc, char **argv)
 		case 'c':
 			dochar = 1;
 			domulti = 0;
+			break;
+		case 'L':
+			dolongline = 1;
 			break;
 		case 'm':
 			domulti = 1;
@@ -82,8 +105,10 @@ main(int argc, char **argv)
 	argv += optind;
 	argc -= optind;
 
+	signal(SIGINFO, siginfo_handler);
+
 	/* Wc's flags are on by default. */
-	if (doline + doword + dochar + domulti == 0)
+	if (doline + doword + dochar + domulti + dolongline == 0)
 		doline = doword = dochar = 1;
 
 	errors = 0;
@@ -91,44 +116,61 @@ main(int argc, char **argv)
 	if (*argv == NULL) {
 		if (cnt(NULL) != 0)
 			++errors;
-		else
-			printf("\n");
+	} else {
+		do {
+			if (cnt(*argv) != 0)
+				++errors;
+			++total;
+		} while(*++argv);
 	}
-	else do {
-		if (cnt(*argv) != 0)
-			++errors;
-		else
-			printf(" %s\n", *argv);
-		++total;
-	} while(*++argv);
 
-	if (total > 1) {
-		if (doline)
-			printf(" %7ju", tlinect);
-		if (doword)
-			printf(" %7ju", twordct);
-		if (dochar || domulti)
-			printf(" %7ju", tcharct);
-		printf(" total\n");
-	}
+	if (total > 1)
+		show_cnt("total", tlinect, twordct, tcharct, tlongline);
 	exit(errors == 0 ? 0 : 1);
+}
+
+static void
+show_cnt(const char *file, uintmax_t linect, uintmax_t wordct,
+    uintmax_t charct, uintmax_t llct)
+{
+	FILE *out;
+
+	if (!siginfo)
+		out = stdout;
+	else {
+		out = stderr;
+		siginfo = 0;
+	}
+
+	if (doline)
+		fprintf(out, " %7ju", linect);
+	if (doword)
+		fprintf(out, " %7ju", wordct);
+	if (dochar || domulti)
+		fprintf(out, " %7ju", charct);
+	if (dolongline)
+		fprintf(out, " %7ju", llct);
+	if (file != NULL)
+		fprintf(out, " %s\n", file);
+	else
+		fprintf(out, "\n");
 }
 
 static int
 cnt(const char *file)
 {
 	struct stat sb;
-	u_quad_t linect, wordct, charct;
-	ssize_t nread;
-	int clen, fd, len, warned;
+	uintmax_t linect, wordct, charct, llct, tmpll;
+	int fd, len, warned;
+	size_t clen;
 	short gotsp;
 	u_char *p;
 	u_char buf[MAXBSIZE];
 	wchar_t wch;
+	mbstate_t mbs;
 
-	linect = wordct = charct = 0;
+	linect = wordct = charct = llct = tmpll = 0;
 	if (file == NULL) {
-		file = "stdin";
 		fd = STDIN_FILENO;
 	} else {
 		if ((fd = open(file, O_RDONLY)) < 0) {
@@ -149,18 +191,30 @@ cnt(const char *file)
 					close(fd);
 					return (1);
 				}
+				if (siginfo) {
+					show_cnt(file, linect, wordct, charct,
+					    llct);
+				}
 				charct += len;
 				for (p = buf; len--; ++p) {
-					if (*p == '\n')
+					if (*p == '\n') {
+						if (tmpll > llct)
+							llct = tmpll;
+						tmpll = 0;
 						++linect;
+					} else
+						tmpll++;
 				}
 			}
+			reset_siginfo();
 			tlinect += linect;
-			printf(" %7ju", linect);
-			if (dochar) {
+			if (dochar)
 				tcharct += charct;
-				printf(" %7ju", charct);
+			if (dolongline) {
+				if (llct > tlongline)
+					tlongline = llct;
 			}
+			show_cnt(file, linect, wordct, charct, llct);
 			close(fd);
 			return (0);
 		}
@@ -175,8 +229,10 @@ cnt(const char *file)
 				return (1);
 			}
 			if (S_ISREG(sb.st_mode)) {
-				printf(" %7lld", (long long)sb.st_size);
-				tcharct += sb.st_size;
+				reset_siginfo();
+				charct = sb.st_size;
+				show_cnt(file, linect, wordct, charct, llct);
+				tcharct += charct;
 				close(fd);
 				return (0);
 			}
@@ -185,40 +241,48 @@ cnt(const char *file)
 
 	/* Do it the hard way... */
 word:	gotsp = 1;
-	len = 0;
 	warned = 0;
-	while ((nread = read(fd, buf + len, MAXBSIZE - len)) != 0) {
-		if (nread == -1) {
-			warn("%s: read", file);
+	memset(&mbs, 0, sizeof(mbs));
+	while ((len = read(fd, buf, MAXBSIZE)) != 0) {
+		if (len == -1) {
+			warn("%s: read", file != NULL ? file : "stdin");
 			close(fd);
 			return (1);
 		}
-		len += nread;
 		p = buf;
 		while (len > 0) {
+			if (siginfo)
+				show_cnt(file, linect, wordct, charct, llct);
 			if (!domulti || MB_CUR_MAX == 1) {
 				clen = 1;
 				wch = (unsigned char)*p;
-			} else if ((clen = mbtowc(&wch, p, len)) <= 0) {
-				if (len > MB_CUR_MAX) {
-					clen = 1;
-					wch = (unsigned char)*p;
-					if (!warned) {
-						errno = EILSEQ;
-						warn("%s", file);
-						warned = 1;
-					}
-				} else {
-					memmove(buf, p, len);
-					break;
+			} else if ((clen = mbrtowc(&wch, p, len, &mbs)) ==
+			    (size_t)-1) {
+				if (!warned) {
+					errno = EILSEQ;
+					warn("%s",
+					    file != NULL ? file : "stdin");
+					warned = 1;
 				}
-			}
+				memset(&mbs, 0, sizeof(mbs));
+				clen = 1;
+				wch = (unsigned char)*p;
+			} else if (clen == (size_t)-2)
+				break;
+			else if (clen == 0)
+				clen = 1;
 			charct++;
+			if (wch != L'\n')
+				tmpll++;
 			len -= clen;
 			p += clen;
-			if (wch == L'\n')
+			if (wch == L'\n') {
+				if (tmpll > llct)
+					llct = tmpll;
+				tmpll = 0;
 				++linect;
-			if (isspace(wch))
+			}
+			if (iswspace(wch))
 				gotsp = 1;
 			else if (gotsp) {
 				gotsp = 0;
@@ -226,18 +290,21 @@ word:	gotsp = 1;
 			}
 		}
 	}
-	if (doline) {
+	reset_siginfo();
+	if (domulti && MB_CUR_MAX > 1)
+		if (mbrtowc(NULL, NULL, 0, &mbs) == (size_t)-1 && !warned)
+			warn("%s", file != NULL ? file : "stdin");
+	if (doline)
 		tlinect += linect;
-		printf(" %7ju", linect);
-	}
-	if (doword) {
+	if (doword)
 		twordct += wordct;
-		printf(" %7ju", wordct);
-	}
-	if (dochar || domulti) {
+	if (dochar || domulti)
 		tcharct += charct;
-		printf(" %7ju", charct);
+	if (dolongline) {
+		if (llct > tlongline)
+			tlongline = llct;
 	}
+	show_cnt(file, linect, wordct, charct, llct);
 	close(fd);
 	return (0);
 }
@@ -245,6 +312,6 @@ word:	gotsp = 1;
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: wc [-clmw] [file ...]\n");
+	fprintf(stderr, "usage: wc [-Lclmw] [file ...]\n");
 	exit(1);
 }

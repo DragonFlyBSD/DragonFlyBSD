@@ -29,10 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)wc.1	8.2 (Berkeley) 4/19/94
-.\" $FreeBSD: src/usr.bin/wc/wc.1,v 1.6.2.4 2002/08/25 02:47:04 tjr Exp $
-.\" $DragonFly: src/usr.bin/wc/wc.1,v 1.3 2006/02/17 19:39:16 swildner Exp $
+.\" $FreeBSD: head/usr.bin/wc/wc.1 291607 2015-12-01 19:18:53Z rodrigc $
 .\"
-.Dd June 13, 2002
+.Dd January 10, 2016
 .Dt WC 1
 .Os
 .Sh NAME
@@ -40,31 +39,49 @@
 .Nd word, line, character, and byte count
 .Sh SYNOPSIS
 .Nm
-.Op Fl clmw
+.Op Fl Lclmw
 .Op Ar
 .Sh DESCRIPTION
 The
 .Nm
 utility displays the number of lines, words, and bytes contained in each
 input
-.Ar file
-(or standard input, by default) to the standard output.
-A line is defined as a string of characters delimited by a <newline>
-character,
-and a word is defined as a string of characters delimited by white space
+.Ar file ,
+or standard input (if no file is specified) to the standard output.
+A line is defined as a string of characters delimited by a
+.Aq newline
+character.
+Characters beyond the final
+.Aq newline
+character will not be included
+in the line count.
+.Pp
+A word is defined as a string of characters delimited by white space
 characters.
 White space characters are the set of characters for which the
-.Xr isspace 3
+.Xr iswspace 3
 function returns true.
 If more than one input file is specified, a line of cumulative counts
 for all the files is displayed on a separate line after the output for
 the last file.
 .Pp
 The following options are available:
-.Bl -tag -width Ds
+.Bl -tag -width indent
+.It Fl L
+The number of characters in the longest input line
+is written to the standard output.
+When more than one
+.Ar file
+argument is specified, the longest input line of
+.Em all
+files is reported as the value of the final
+.Dq total .
 .It Fl c
 The number of bytes in each input file
 is written to the standard output.
+This will cancel out any prior usage of the
+.Fl m
+option.
 .It Fl l
 The number of lines in each input file
 is written to the standard output.
@@ -72,6 +89,9 @@ is written to the standard output.
 The number of characters in each input file is written to the standard output.
 If the current locale does not support multibyte characters, this
 is equivalent to the
+.Fl c
+option.
+This will cancel out any prior usage of the
 .Fl c
 option.
 .It Fl w
@@ -82,19 +102,22 @@ is written to the standard output.
 When an option is specified,
 .Nm
 only reports the information requested by that option.
+The order of output always takes the form of line, word,
+byte, and file name.
 The default action is equivalent to specifying the
-.Fl c ,
-.Fl l
+.Fl c , l
 and
 .Fl w
 options.
 .Pp
 If no files are specified, the standard input is used and no
 file name is displayed.
+The prompt will accept input until receiving EOF, or
+.Bq ^D
+in most environments.
 .Sh ENVIRONMENT
 The
-.Ev LANG ,
-.Ev LC_ALL
+.Ev LANG , LC_ALL
 and
 .Ev LC_CTYPE
 environment variables affect the execution of
@@ -111,25 +134,47 @@ and
 as well as the totals for both:
 .Pp
 .Dl "wc -mlw report1 report2"
+.Pp
+Find the longest line in a list of files:
+.Pp
+.Dl "wc -L file1 file2 file3 | fgrep total"
 .Sh COMPATIBILITY
 Historically, the
 .Nm
-utility was documented to define a word as a ``maximal string of
-characters delimited by <space>, <tab> or <newline> characters''.
-The implementation, however, didn't handle non-printing characters
-correctly so that ``  ^D^E  '' counted as 6 spaces, while ``foo^D^Ebar''
+utility was documented to define a word as a
+.Do
+maximal string of
+characters delimited by <space>, <tab> or <newline> characters
+.Dc .
+The implementation, however, did not handle non-printing characters
+correctly so that
+.Dq Li "\ \ ^D^E\ \ "
+counted as 6 spaces, while
+.Dq Li foo^D^Ebar
 counted as 8 characters.
 .Bx 4
 systems after
 .Bx 4.3
 modified the implementation to be consistent
 with the documentation.
-This implementation defines a ``word'' in terms of the
-.Xr isspace 3
+This implementation defines a
+.Dq word
+in terms of the
+.Xr iswspace 3
 function, as required by
 .St -p1003.2 .
+.Pp
+The
+.Fl L
+option is a non-standard
+.Dx
+extension, compatible with the
+.Fl L
+option of the GNU
+.Nm
+utility.
 .Sh SEE ALSO
-.Xr isspace 3
+.Xr iswspace 3
 .Sh STANDARDS
 The
 .Nm
