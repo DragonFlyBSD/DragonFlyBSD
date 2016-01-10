@@ -127,9 +127,8 @@ static int sanitize_enable_ppgtt(struct drm_device *dev, int enable_ppgtt)
 #endif
 
 	/* Early VLV doesn't have this */
-	int revision = pci_read_config(dev->dev, PCIR_REVID, 1);
 	if (IS_VALLEYVIEW(dev) && !IS_CHERRYVIEW(dev) &&
-	    revision < 0xb) {
+	    dev->pdev->revision < 0xb) {
 		DRM_DEBUG_DRIVER("disabling PPGTT on pre-B3 step VLV\n");
 		return 0;
 	}

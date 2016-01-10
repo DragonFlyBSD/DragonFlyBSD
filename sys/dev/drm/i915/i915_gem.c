@@ -4776,14 +4776,11 @@ void i915_gem_init_swizzling(struct drm_device *dev)
 static bool
 intel_enable_blt(struct drm_device *dev)
 {
-	int revision;
-
 	if (!HAS_BLT(dev))
 		return false;
 
 	/* The blitter was dysfunctional on early prototypes */
-	revision = pci_read_config(dev->dev, PCIR_REVID, 1);
-	if (IS_GEN6(dev) && revision < 8) {
+	if (IS_GEN6(dev) && dev->pdev->revision < 8) {
 		DRM_INFO("BLT not supported on this pre-production hardware;"
 			 " graphics performance will be degraded.\n");
 		return false;

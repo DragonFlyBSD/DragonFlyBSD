@@ -3797,13 +3797,10 @@ void gen6_set_rps(struct drm_device *dev, u8 val)
 */
 static void vlv_set_rps_idle(struct drm_i915_private *dev_priv)
 {
-	int revision;
-
 	struct drm_device *dev = dev_priv->dev;
 
 	/* CHV and latest VLV don't need to force the gfx clock */
-	revision = pci_read_config(dev->dev, PCIR_REVID, 1);
-	if (IS_CHERRYVIEW(dev) || revision >= 0xd) {
+	if (IS_CHERRYVIEW(dev) || dev->pdev->revision >= 0xd) {
 		valleyview_set_rps(dev_priv->dev, dev_priv->rps.min_freq_softlimit);
 		return;
 	}
@@ -4385,8 +4382,7 @@ static int cherryview_rps_max_freq(struct drm_i915_private *dev_priv)
 	struct drm_device *dev = dev_priv->dev;
 	u32 val, rp0;
 
-	int revision = pci_read_config(dev->dev, PCIR_REVID, 1);
-	if (revision >= 0x20) {
+	if (dev->pdev->revision >= 0x20) {
 		val = vlv_punit_read(dev_priv, FB_GFX_FMAX_AT_VMAX_FUSE);
 
 		switch (INTEL_INFO(dev)->eu_total) {
@@ -4430,8 +4426,7 @@ static int cherryview_rps_guar_freq(struct drm_i915_private *dev_priv)
 	struct drm_device *dev = dev_priv->dev;
 	u32 val, rp1;
 
-	int revision = pci_read_config(dev->dev, PCIR_REVID, 1);
-	if (revision >= 0x20) {
+	if (dev->pdev->revision >= 0x20) {
 		val = vlv_punit_read(dev_priv, FB_GFX_FMAX_AT_VMAX_FUSE);
 		rp1 = (val & FB_GFX_FREQ_FUSE_MASK);
 	} else {
@@ -4448,8 +4443,7 @@ static int cherryview_rps_min_freq(struct drm_i915_private *dev_priv)
 	struct drm_device *dev = dev_priv->dev;
 	u32 val, rpn;
 
-	int revision = pci_read_config(dev->dev, PCIR_REVID, 1);
-	if (revision >= 0x20) {
+	if (dev->pdev->revision >= 0x20) {
 		val = vlv_punit_read(dev_priv, FB_GFX_FMIN_AT_VMIN_FUSE);
 		rpn = ((val >> FB_GFX_FMIN_AT_VMIN_FUSE_SHIFT) &
 		       FB_GFX_FREQ_FUSE_MASK);
