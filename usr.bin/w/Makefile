@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/w/Makefile,v 1.6.2.1 2001/04/25 11:29:44 ru Exp $
-# $DragonFly: src/usr.bin/w/Makefile,v 1.3 2007/08/27 16:51:01 pavalos Exp $
 
 PROG=	w
 SRCS=	fmt.c pr_time.c proc_compare.c w.c
@@ -10,7 +9,7 @@ LDADD=	-lkvm
 #BINGRP= kmem
 #BINMODE=2555
 LINKS=	${BINDIR}/w ${BINDIR}/uptime
-WARNS?=	2
+WARNS?=	3
 
 CFLAGS+=	-DSUPPORT_UTMP -DSUPPORT_UTMPX
 .PATH: ${.CURDIR}/../../bin/ps

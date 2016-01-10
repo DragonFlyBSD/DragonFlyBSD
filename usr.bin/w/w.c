@@ -558,11 +558,11 @@ pr_header(time_t *nowp, int nusers)
 	/*
 	 * Print 1, 5, and 15 minute load averages.
 	 */
-	if (getloadavg(avenrun, sizeof(avenrun) / sizeof(avenrun[0])) == -1)
+	if (getloadavg(avenrun, NELEM(avenrun)) == -1)
 		(void)printf(", no load average information available\n");
 	else {
 		(void)printf(", load averages:");
-		for (i = 0; i < (sizeof(avenrun) / sizeof(avenrun[0])); i++) {
+		for (i = 0; i < (int)NELEM(avenrun); i++) {
 			if (use_comma && i > 0)
 				(void)printf(",");
 			(void)printf(" %.2f", avenrun[i]);
