@@ -4423,7 +4423,7 @@ spell_op()	/* check spelling of words in the editor	*/
 void 
 ispell_op()
 {
-	char template[128], *name;
+	char template[128], *name = NULL;
 	char string[256];
 	int fd;
 
