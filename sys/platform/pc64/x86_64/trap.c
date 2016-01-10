@@ -519,8 +519,8 @@ trap(struct trapframe *frame)
 		case T_PAGEFLT:		/* page fault */
 			i = trap_pfault(frame, TRUE);
 			if (frame->tf_rip == 0) {
-				kprintf("T_PAGEFLT: Warning %%rip == 0!\n");
 #ifdef DDB
+				/* used for kernel debugging only */
 				while (freeze_on_seg_fault)
 					tsleep(p, 0, "freeze", hz * 20);
 #endif
