@@ -1001,14 +1001,10 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	dev->pci_bus = pci_get_bus(dev->dev);
 	dev->pci_slot = pci_get_slot(dev->dev);
 	dev->pci_func = pci_get_function(dev->dev);
+	drm_init_pdev(dev->dev, &dev->pdev);
 
-	dev->pci_vendor = pci_get_vendor(dev->dev);
-	dev->pci_device = pci_get_device(dev->dev);
-	dev->pci_subvendor = pci_get_subvendor(dev->dev);
-	dev->pci_subdevice = pci_get_subdevice(dev->dev);
-
-	id_entry = drm_find_description(dev->pci_vendor,
-	    dev->pci_device, idlist);
+	id_entry = drm_find_description(dev->pdev->vendor,
+	    dev->pdev->device, idlist);
 	dev->id_entry = id_entry;
 
 	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {

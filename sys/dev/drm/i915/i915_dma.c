@@ -628,15 +628,9 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	unsigned long base, size;
 	int ret = 0, mmio_bar, mmio_size;
 	uint32_t aperture_size;
-	static struct pci_dev i915_pdev;
-
-	/* XXX: dev->pci_device not present in Linux drm */
-	info = i915_get_device_id(dev->pci_device);
 
 	/* XXX: struct pci_dev */
-	i915_pdev.dev = dev->dev;
-	dev->pdev = &i915_pdev;
-	dev->pdev->device = dev->pci_device;
+	info = i915_get_device_id(dev->pdev->device);
 
 	/* Refuse to load on gen6+ without kms enabled. */
 	if (info->gen >= 6 && !drm_core_check_feature(dev, DRIVER_MODESET)) {

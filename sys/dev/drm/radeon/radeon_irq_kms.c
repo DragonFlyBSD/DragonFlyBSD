@@ -179,7 +179,7 @@ void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
  * Returns true if MSIs should be enabled, false if MSIs
  * should not be enabled.
  */
-int radeon_msi_ok(struct drm_device *dev, unsigned long flags)
+int radeon_msi_ok(struct drm_device *rdev, unsigned long flags)
 {
 	int family;
 
@@ -190,7 +190,7 @@ int radeon_msi_ok(struct drm_device *dev, unsigned long flags)
 		return false;
 
 	/* MSIs don't work on AGP */
-	if (drm_device_is_agp(dev))
+	if (drm_device_is_agp(rdev))
 		return false;
 
 	/* force MSI on */
@@ -201,27 +201,27 @@ int radeon_msi_ok(struct drm_device *dev, unsigned long flags)
 
 	/* Quirks */
 	/* HP RS690 only seems to work with MSIs. */
-	if ((dev->pci_device == 0x791f) &&
-	    (dev->pci_subvendor == 0x103c) &&
-	    (dev->pci_subdevice == 0x30c2))
+	if ((rdev->pdev->device == 0x791f) &&
+	    (rdev->pdev->subsystem_vendor == 0x103c) &&
+	    (rdev->pdev->subsystem_device == 0x30c2))
 		return true;
 
 	/* Dell RS690 only seems to work with MSIs. */
-	if ((dev->pci_device == 0x791f) &&
-	    (dev->pci_subvendor == 0x1028) &&
-	    (dev->pci_subdevice == 0x01fc))
+	if ((rdev->pdev->device == 0x791f) &&
+	    (rdev->pdev->subsystem_vendor == 0x1028) &&
+	    (rdev->pdev->subsystem_device == 0x01fc))
 		return true;
 
 	/* Dell RS690 only seems to work with MSIs. */
-	if ((dev->pci_device == 0x791f) &&
-	    (dev->pci_subvendor == 0x1028) &&
-	    (dev->pci_subdevice == 0x01fd))
+	if ((rdev->pdev->device == 0x791f) &&
+	    (rdev->pdev->subsystem_vendor == 0x1028) &&
+	    (rdev->pdev->subsystem_device == 0x01fd))
 		return true;
 
 	/* Gateway RS690 only seems to work with MSIs. */
-	if ((dev->pci_device == 0x791f) &&
-	    (dev->pci_subvendor == 0x107b) &&
-	    (dev->pci_subdevice == 0x0185))
+	if ((rdev->pdev->device == 0x791f) &&
+	    (rdev->pdev->subsystem_vendor == 0x107b) &&
+	    (rdev->pdev->subsystem_device == 0x0185))
 		return true;
 
 	/* try and enable MSIs by default on all RS690s */

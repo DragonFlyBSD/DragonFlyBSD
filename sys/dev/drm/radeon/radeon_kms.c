@@ -106,9 +106,6 @@ int radeon_driver_load_kms(struct drm_device *dev, unsigned long flags)
 	}
 	dev->dev_private = (void *)rdev;
 
-	/* XXX pending drm update */
-	drm_init_pdev(dev->dev, &dev->pdev);
-
 	/* update BUS flag */
 	if (drm_device_is_agp(dev)) {
 		DRM_INFO("RADEON_IS_AGP\n");

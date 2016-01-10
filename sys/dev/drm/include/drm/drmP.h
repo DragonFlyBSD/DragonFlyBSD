@@ -855,9 +855,6 @@ struct drm_vblank_crtc {
 struct drm_device {
 	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
 
-	uint16_t pci_subdevice;		/* PCI subsystem device id */
-	uint16_t pci_subvendor;		/* PCI subsystem vendor id */
-
 	char		  *unique;	/* Unique identifier: e.g., busid  */
 	int		  unique_len;	/* Length of unique field	   */
 	struct cdev	  *devnode;	/* Device number for mknod	   */
@@ -1004,8 +1001,6 @@ struct drm_device {
 
 	struct device *dev;             /**< Device structure */
 	struct pci_dev *pdev;		/**< PCI device structure */
-	int pci_vendor;			/**< PCI vendor id */
-	int pci_device;			/**< PCI device id */
 
 	struct drm_driver *driver;
 	struct drm_local_map *agp_buffer_map;
