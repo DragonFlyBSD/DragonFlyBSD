@@ -259,6 +259,7 @@ kate_refresh(void *arg)
 	struct kate_softc	*sc = arg;
 	struct ksensor		*s = sc->sc_sensors;
 	uint32_t		t, m;
+	int64_t			temp;
 	int			i, v;
 
 	t = pci_read_config(sc->sc_dev, K_THERMTRIP_STAT_R, 4);
@@ -295,9 +296,10 @@ kate_refresh(void *arg)
 			s[i].flags &= ~SENSOR_FINVALID;
 		else
 			s[i].flags |= SENSOR_FINVALID;
-		s[i].value = v * 250000;
-		s[i].value -= (sc->sc_flags & KATE_FLAG_ALT_OFFSET) != 0 ?
+		temp = v * 250000;
+		temp -= (sc->sc_flags & KATE_FLAG_ALT_OFFSET) != 0 ?
 		    28000000 : 49000000;
-		s[i].value += 273150000;
+		temp += 273150000;
+		s[i].value = temp;
 	}
 }
