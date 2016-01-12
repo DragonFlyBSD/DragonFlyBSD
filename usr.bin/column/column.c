@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/usr.bin/column/column.c 227159 2011-11-06 08:14:34Z ed $
+ * $FreeBSD: head/usr.bin/column/column.c 292864 2015-12-29 11:24:41Z uqs $
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)column.c	8.4 (Berkeley) 5/4/95
@@ -234,7 +234,7 @@ maketbl(void)
 		    p = NULL)
 			if (++coloff == maxcols) {
 				if (!(cols = realloc(cols, ((u_int)maxcols +
-				    DEFCOLS) * sizeof(char *))) ||
+				    DEFCOLS) * sizeof(wchar_t *))) ||
 				    !(lens = realloc(lens,
 				    ((u_int)maxcols + DEFCOLS) * sizeof(int))))
 					err(1, NULL);
