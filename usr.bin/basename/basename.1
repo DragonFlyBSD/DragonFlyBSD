@@ -29,8 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)basename.1	8.2 (Berkeley) 4/18/94
-.\" $FreeBSD: src/usr.bin/basename/basename.1,v 1.17 2006/03/16 17:21:52 jkoshy Exp $
-.\" $DragonFly: src/usr.bin/basename/basename.1,v 1.7 2007/08/28 15:36:44 pavalos Exp $
+.\" $FreeBSD: head/usr.bin/basename/basename.1 216370 2010-12-11 08:32:16Z joel $
 .\"
 .Dd April 18, 1994
 .Dt BASENAME 1
@@ -50,6 +49,7 @@
 .Op Ar ...
 .Nm dirname
 .Ar string
+.Op Ar ...
 .Sh DESCRIPTION
 The
 .Nm
@@ -112,11 +112,3 @@ and
 utilities are expected to be
 .St -p1003.2
 compatible.
-The
-.Nm
-utility does not conform to
-.St -p1003.1-2004 .
-The
-.Nm dirname
-utility conforms to
-.St -p1003.1-2004 .
