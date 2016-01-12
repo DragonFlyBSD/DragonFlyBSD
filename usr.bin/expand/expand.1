@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)expand.1	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/usr.bin/expand/expand.1,v 1.3.2.7 2003/02/25 00:54:13 trhodes Exp $
-.\" $DragonFly: src/usr.bin/expand/expand.1,v 1.2 2003/06/17 04:29:26 dillon Exp $
+.\" $FreeBSD: head/usr.bin/expand/expand.1 284057 2015-06-06 11:58:19Z bapt $
 .\"
-.Dd April 21, 2002
+.Dd January 12, 2016
 .Dt EXPAND 1
 .Os
 .Sh NAME
@@ -46,9 +45,8 @@
 .Oc
 .Op Ar
 .Nm unexpand
-.Op Fl a
 .Oo
-.Fl t
+.Fl a | t
 .Sm off
 .Ar tab1 , tab2 , ... , tabn
 .Sm on
@@ -78,7 +76,8 @@ The following options are available:
 .Nm ( unexpand
 only.)
 By default, only leading blanks and tabs
-are reconverted to maximal strings of tabs.  If the
+are reconverted to maximal strings of tabs.
+If the
 .Fl a
 option is given, then tabs are inserted whenever they would compress the
 resultant file by replacing two or more characters.
@@ -111,5 +110,5 @@ utilities conform to
 .Sh HISTORY
 The
 .Nm
-command appeared in
-.Bx 3.0 .
+utility first appeared in
+.Bx 1 .
