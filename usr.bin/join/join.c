@@ -32,19 +32,20 @@
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)join.c	8.6 (Berkeley) 5/4/95
- * $FreeBSD: src/usr.bin/join/join.c,v 1.10.2.1 2002/06/18 05:14:49 jmallett Exp $
- * $DragonFly: src/usr.bin/join/join.c,v 1.6 2005/01/16 21:40:42 cpressey Exp $
+ * $FreeBSD: head/usr.bin/join/join.c 246319 2013-02-04 10:05:55Z andrew $
  */
 
 #include <sys/param.h>
 
 #include <err.h>
 #include <errno.h>
+#include <limits.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
 
 /*
  * There's a structure per input file which encapsulates the state of the
@@ -64,7 +65,7 @@ typedef struct {
 	FILE *fp;		/* file descriptor */
 	u_long joinf;		/* join field (-1, -2, -j) */
 	int unpair;		/* output unpairable lines (-a) */
-	int number;		/* 1 for file 1, 2 for file 2 */
+	u_long number;		/* 1 for file 1, 2 for file 2 */
 
 	LINE *set;		/* set of lines with same field */
 	int pushbool;		/* if pushback is set */
@@ -72,36 +73,39 @@ typedef struct {
 	u_long setcnt;		/* set count */
 	u_long setalloc;	/* set allocated count */
 } INPUT;
-INPUT input1 = { NULL, 0, 0, 1, NULL, 0, 0, 0, 0 },
-      input2 = { NULL, 0, 0, 2, NULL, 0, 0, 0, 0 };
+static INPUT input1 = { NULL, 0, 0, 1, NULL, 0, 0, 0, 0 },
+    input2 = { NULL, 0, 0, 2, NULL, 0, 0, 0, 0 };
 
 typedef struct {
 	u_long	filenum;	/* file number */
 	u_long	fieldno;	/* field number */
 } OLIST;
-OLIST *olist;			/* output field list */
-u_long olistcnt;		/* output field list count */
-u_long olistalloc;		/* output field allocated count */
+static OLIST *olist;		/* output field list */
+static u_long olistcnt;		/* output field list count */
+static u_long olistalloc;	/* output field allocated count */
 
-int joinout = 1;		/* show lines with matched join fields (-v) */
-int needsep;			/* need separator character */
-int spans = 1;			/* span multiple delimiters (-t) */
-char *empty;			/* empty field replacement string (-e) */
-static char default_tabchar[] = " \t";
-char *tabchar = default_tabchar;/* delimiter characters (-t) */
+static int joinout = 1;		/* show lines with matched join fields (-v) */
+static int needsep;		/* need separator character */
+static int spans = 1;		/* span multiple delimiters (-t) */
+static char *empty;		/* empty field replacement string (-e) */
+static wchar_t default_tabchar[] = L" \t";
+static wchar_t *tabchar = default_tabchar; /* delimiter characters (-t) */
 
-int  cmp(LINE *, u_long, LINE *, u_long);
-void fieldarg(char *);
-void joinlines(INPUT *, INPUT *);
-void obsolete(char **);
-void outfield(LINE *, u_long, int);
-void outoneline(INPUT *, LINE *);
-void outtwoline(INPUT *, LINE *, INPUT *, LINE *);
-void slurp(INPUT *);
-void usage(void);
+static int  cmp(LINE *, u_long, LINE *, u_long);
+static void fieldarg(char *);
+static void joinlines(INPUT *, INPUT *);
+static int  mbscoll(const char *, const char *);
+static char *mbssep(char **, const wchar_t *);
+static void obsolete(char **);
+static void outfield(LINE *, u_long, int);
+static void outoneline(INPUT *, LINE *);
+static void outtwoline(INPUT *, LINE *, INPUT *, LINE *);
+static void slurp(INPUT *);
+static wchar_t *towcs(const char *);
+static void usage(void);
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	INPUT *F1, *F2;
 	int aflag, ch, cval, vflag;
@@ -167,8 +171,10 @@ main(int argc, char **argv)
 			break;
 		case 't':
 			spans = 0;
-			if (strlen(tabchar = optarg) != 1)
+			if (mbrtowc(&tabchar[0], optarg, MB_LEN_MAX, NULL) !=
+			    strlen(optarg))
 				errx(1, "illegal tab character specification");
+			tabchar[1] = L'\0';
 			break;
 		case 'v':
 			vflag = 1;
@@ -254,7 +260,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 slurp(INPUT *F)
 {
 	LINE *lp, *lastlp, tmp;
@@ -322,7 +328,7 @@ slurp(INPUT *F)
 
 		/* Split the line into fields, allocate space as necessary. */
 		lp->fieldcnt = 0;
-		while ((fieldp = strsep(&bp, tabchar)) != NULL) {
+		while ((fieldp = mbssep(&bp, tabchar)) != NULL) {
 			if (spans && *fieldp == '\0')
 				continue;
 			if (lp->fieldcnt == lp->fieldalloc) {
@@ -343,20 +349,79 @@ slurp(INPUT *F)
 	}
 }
 
-int
+static char *
+mbssep(char **stringp, const wchar_t *delim)
+{
+	char *s, *tok;
+	const wchar_t *spanp;
+	wchar_t c, sc;
+	size_t n;
+
+	if ((s = *stringp) == NULL)
+		return (NULL);
+	for (tok = s;;) {
+		n = mbrtowc(&c, s, MB_LEN_MAX, NULL);
+		if (n == (size_t)-1 || n == (size_t)-2)
+			errc(1, EILSEQ, NULL);	/* XXX */
+		s += n;
+		spanp = delim;
+		do {
+			if ((sc = *spanp++) == c) {
+				if (c == 0)
+					s = NULL;
+				else
+					s[-n] = '\0';
+				*stringp = s;
+				return (tok);
+			}
+		} while (sc != 0);
+	}
+}
+
+static int
 cmp(LINE *lp1, u_long fieldno1, LINE *lp2, u_long fieldno2)
 {
 	if (lp1->fieldcnt <= fieldno1)
 		return (lp2->fieldcnt <= fieldno2 ? 0 : 1);
 	if (lp2->fieldcnt <= fieldno2)
 		return (-1);
-	return (strcoll(lp1->fields[fieldno1], lp2->fields[fieldno2]));
+	return (mbscoll(lp1->fields[fieldno1], lp2->fields[fieldno2]));
 }
 
-void
+static int
+mbscoll(const char *s1, const char *s2)
+{
+	wchar_t *w1, *w2;
+	int ret;
+
+	if (MB_CUR_MAX == 1)
+		return (strcoll(s1, s2));
+	if ((w1 = towcs(s1)) == NULL || (w2 = towcs(s2)) == NULL)
+		err(1, NULL);	/* XXX */
+	ret = wcscoll(w1, w2);
+	free(w1);
+	free(w2);
+	return (ret);
+}
+
+static wchar_t *
+towcs(const char *s)
+{
+	wchar_t *wcs;
+	size_t n;
+
+	if ((n = mbsrtowcs(NULL, &s, 0, NULL)) == (size_t)-1)
+		return (NULL);
+	if ((wcs = malloc((n + 1) * sizeof(*wcs))) == NULL)
+		return (NULL);
+	mbsrtowcs(wcs, &s, n + 1, NULL);
+	return (wcs);
+}
+
+static void
 joinlines(INPUT *F1, INPUT *F2)
 {
-	unsigned int cnt1, cnt2;
+	u_long cnt1, cnt2;
 
 	/*
 	 * Output the results of a join comparison.  The output may be from
@@ -373,10 +438,10 @@ joinlines(INPUT *F1, INPUT *F2)
 			outtwoline(F1, &F1->set[cnt1], F2, &F2->set[cnt2]);
 }
 
-void
+static void
 outoneline(INPUT *F, LINE *lp)
 {
-	unsigned int cnt;
+	u_long cnt;
 
 	/*
 	 * Output a single line from one of the files, according to the
@@ -395,16 +460,16 @@ outoneline(INPUT *F, LINE *lp)
 	else
 		for (cnt = 0; cnt < lp->fieldcnt; ++cnt)
 			outfield(lp, cnt, 0);
-	(void)printf("\n");
+	printf("\n");
 	if (ferror(stdout))
 		err(1, "stdout");
 	needsep = 0;
 }
 
-void
+static void
 outtwoline(INPUT *F1, LINE *lp1, INPUT *F2, LINE *lp2)
 {
-	unsigned int cnt;
+	u_long cnt;
 
 	/* Output a pair of lines according to the join list (if any). */
 	if (olist)
@@ -431,25 +496,25 @@ outtwoline(INPUT *F1, LINE *lp1, INPUT *F2, LINE *lp2)
 			if (F2->joinf != cnt)
 				outfield(lp2, cnt, 0);
 	}
-	(void)printf("\n");
+	printf("\n");
 	if (ferror(stdout))
 		err(1, "stdout");
 	needsep = 0;
 }
 
-void
+static void
 outfield(LINE *lp, u_long fieldno, int out_empty)
 {
 	if (needsep++)
-		(void)printf("%c", *tabchar);
+		printf("%lc", (wint_t)*tabchar);
 	if (!ferror(stdout)) {
 		if (lp->fieldcnt <= fieldno || out_empty) {
 			if (empty != NULL)
-				(void)printf("%s", empty);
+				printf("%s", empty);
 		} else {
 			if (*lp->fields[fieldno] == '\0')
 				return;
-			(void)printf("%s", lp->fields[fieldno]);
+			printf("%s", lp->fields[fieldno]);
 		}
 	}
 	if (ferror(stdout))
@@ -460,7 +525,7 @@ outfield(LINE *lp, u_long fieldno, int out_empty)
  * Convert an output list argument "2.1, 1.3, 2.4" into an array of output
  * fields.
  */
-void
+static void
 fieldarg(char *option)
 {
 	u_long fieldno, filenum;
@@ -494,10 +559,10 @@ fieldarg(char *option)
 	}
 }
 
-void
+static void
 obsolete(char **argv)
 {
-	unsigned int len;
+	size_t len;
 	char **p, *ap, *t;
 
 	while ((ap = *++argv) != NULL) {
@@ -560,8 +625,8 @@ jbad:				errx(1, "illegal option -- %s", ap);
 			if (ap[2] != '\0')
 				break;
 			for (p = argv + 2; *p; ++p) {
-				if ((p[0][0] != '1' && p[0][0] != '2') ||
-				    p[0][1] != '.')
+				if (p[0][0] == '0' || ((p[0][0] != '1' &&
+				    p[0][0] != '2') || p[0][1] != '.'))
 					break;
 				len = strlen(*p);
 				if (len - 2 != strspn(*p + 2, "0123456789"))
@@ -579,11 +644,12 @@ jbad:				errx(1, "illegal option -- %s", ap);
 	}
 }
 
-void
+static void
 usage(void)
 {
-	fprintf(stderr, "%s",
-	"usage: join [-a fileno | -v fileno ] [-e string] [-j fileno field]\n"
-	"            [-1 field] [-2 field] [-o list] [-t char] file1 file2\n");
+	fprintf(stderr, "%s %s\n%s\n",
+	    "usage: join [-a fileno | -v fileno ] [-e string] [-1 field]",
+	    "[-2 field]",
+		"            [-o list] [-t char] file1 file2");
 	exit(1);
 }
