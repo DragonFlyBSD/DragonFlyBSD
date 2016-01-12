@@ -1495,7 +1495,7 @@ die(int signo)
 	for (f = Files; f != NULL; f = f->f_next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
-			fprintlog(f, 0, (char *)NULL);
+			fprintlog(f, 0, NULL);
 		if (f->f_type == F_PIPE && f->f_un.f_pipe.f_pid > 0) {
 			(void)close(f->f_file);
 			f->f_un.f_pipe.f_pid = 0;
