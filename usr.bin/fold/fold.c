@@ -31,11 +31,9 @@
  *
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fold.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/fold/fold.c,v 1.4.2.3 2002/07/11 01:01:44 tjr Exp $
- * $DragonFly: src/usr.bin/fold/fold.c,v 1.5 2006/08/13 02:15:07 swildner Exp $
+ * $FreeBSD: head/usr.bin/fold/fold.c 227165 2011-11-06 08:15:23Z ed $
  */
 
-#include <ctype.h>
 #include <err.h>
 #include <limits.h>
 #include <locale.h>
@@ -43,27 +41,29 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
+#include <wctype.h>
 
 #define	DEFLINEWIDTH	80
 
 void fold(int);
-static int newpos(int, int);
+static int newpos(int, wint_t);
 static void usage(void);
 
-int bflag;			/* Count bytes, not columns */
-int sflag;			/* Split on word boundaries */
+static int bflag;		/* Count bytes, not columns */
+static int sflag;		/* Split on word boundaries */
 
 int
 main(int argc, char **argv)
 {
-	int ch;
+	int ch, previous_ch;
 	int rval, width;
-	char *p;
 
 	(void) setlocale(LC_CTYPE, "");
 
 	width = -1;
-	while ((ch = getopt(argc, argv, "0123456789bsw:")) != -1)
+	previous_ch = 0;
+	while ((ch = getopt(argc, argv, "0123456789bsw:")) != -1) {
 		switch (ch) {
 		case 'b':
 			bflag = 1;
@@ -78,17 +78,33 @@ main(int argc, char **argv)
 			break;
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-			if (width == -1) {
-				p = argv[optind - 1];
-				if (p[0] == '-' && p[1] == ch && !p[2])
-					width = atoi(++p);
-				else
-					width = atoi(argv[optind] + 1);
+			/* Accept a width as eg. -30. Note that a width
+			 * specified using the -w option is always used prior
+			 * to this undocumented option. */
+			switch (previous_ch) {
+			case '0': case '1': case '2': case '3': case '4':
+			case '5': case '6': case '7': case '8': case '9':
+				/* The width is a number with multiple digits:
+				 * add the last one. */
+				width = width * 10 + (ch - '0');
+				break;
+			default:
+				/* Set the width, unless it was previously
+				 * set. For instance, the following options
+				 * would all give a width of 5 and not 10:
+				 *   -10 -w5
+				 *   -5b10
+				 *   -5 -10b */
+				if (width == -1)
+					width = ch - '0';
+				break;
 			}
 			break;
 		default:
 			usage();
 		}
+		previous_ch = ch;
+	}
 	argv += optind;
 	argc -= optind;
 
@@ -127,64 +143,66 @@ usage(void)
 void
 fold(int width)
 {
-	static char *buf;
+	static wchar_t *buf;
 	static int buf_max;
-	int ch, col, i, indx, space;
+	int col, i, indx, space;
+	wint_t ch;
 
-	col = indx = space = 0;
-	while ((ch = getchar()) != EOF) {
+	col = indx = 0;
+	while ((ch = getwchar()) != WEOF) {
 		if (ch == '\n') {
-			if (indx != 0)
-				fwrite(buf, 1, indx, stdout);
-			putchar('\n');
+			wprintf(L"%.*ls\n", indx, buf);
 			col = indx = 0;
 			continue;
 		}
 		if ((col = newpos(col, ch)) > width) {
 			if (sflag) {
 				i = indx;
-				while (--i >= 0 && !isblank((unsigned char)buf[i]))
+				while (--i >= 0 && !iswblank(buf[i]))
 					;
 				space = i;
 			}
 			if (sflag && space != -1) {
 				space++;
-				fwrite(buf, 1, space, stdout);
-				memmove(buf, buf + space, indx - space);
+				wprintf(L"%.*ls\n", space, buf);
+				wmemmove(buf, buf + space, indx - space);
 				indx -= space;
 				col = 0;
 				for (i = 0; i < indx; i++)
-					col = newpos(col,
-					    (unsigned char)buf[i]);
+					col = newpos(col, buf[i]);
 			} else {
-				fwrite(buf, 1, indx, stdout);
+				wprintf(L"%.*ls\n", indx, buf);
 				col = indx = 0;
 			}
-			putchar('\n');
 			col = newpos(col, ch);
 		}
 		if (indx + 1 > buf_max) {
 			buf_max += LINE_MAX;
-			if ((buf = realloc(buf, buf_max)) == NULL)
+			buf = realloc(buf, sizeof(*buf) * buf_max);
+			if (buf == NULL)
 				err(1, "realloc()");
 		}
 		buf[indx++] = ch;
 	}
 
 	if (indx != 0)
-		fwrite(buf, 1, indx, stdout);
+		wprintf(L"%.*ls", indx, buf);
 }
 
 /*
  * Update the current column position for a character.
  */
 static int
-newpos(int col, int ch)
+newpos(int col, wint_t ch)
 {
+	char buf[MB_LEN_MAX];
+	size_t len;
+	int w;
 
-	if (bflag)
-		++col;
-	else
+	if (bflag) {
+		len = wcrtomb(buf, ch, NULL);
+		col += len;
+	} else
 		switch (ch) {
 		case '\b':
 			if (col > 0)
@@ -197,8 +215,8 @@ newpos(int col, int ch)
 			col = (col + 8) & ~7;
 			break;
 		default:
-			if (isprint(ch))
-				++col;
+			if ((w = wcwidth(ch)) > 0)
+				col += w;
 			break;
 		}
 
