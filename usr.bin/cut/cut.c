@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cut.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: src/usr.bin/cut/cut.c,v 1.33 2012/06/11 03:02:40 kevlo Exp $
+ * $FreeBSD: head/usr.bin/cut/cut.c 243474 2012-11-24 04:15:25Z andrew $
  */
 
 #include <ctype.h>
@@ -63,7 +63,7 @@ static int	b_n_cut(FILE *, const char *);
 static int	c_cut(FILE *, const char *);
 static int	f_cut(FILE *, const char *);
 static void	get_list(char *);
-static int	is_delim(int);
+static int	is_delim(wchar_t);
 static void	needpos(size_t);
 static void	usage(void);
 
@@ -75,7 +75,7 @@ main(int argc, char *argv[])
 	int ch, rval;
 	size_t n;
 
-	setlocale (LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 	fcn = NULL;
 	dchar = '\t';			/* default delimiter is \t */
@@ -122,7 +122,7 @@ main(int argc, char *argv[])
 		if (bflag || cflag || nflag || (wflag && dflag))
 			usage();
 	} else if (!(bflag || cflag) || dflag || sflag || wflag)
-			usage();
+		usage();
 	else if (!bflag && nflag)
 		usage();
 
@@ -144,9 +144,9 @@ main(int argc, char *argv[])
 					rval = 1;
 					continue;
 				}
-			fcn(fp, *argv);
-			(void)fclose(fp);
-		}
+				fcn(fp, *argv);
+				(void)fclose(fp);
+			}
 		}
 	else
 		rval = fcn(stdin, "stdin");
@@ -299,7 +299,7 @@ b_n_cut(FILE *fp, const char *fname)
 					canwrite &= positions[1 + i];
 				if (canwrite)
 					fwrite(lbuf, 1, clen, stdout);
-	} else {
+			} else {
 				/*
 				 * Print the character if all of it has
 				 * been selected.
@@ -340,7 +340,7 @@ c_cut(FILE *fp, const char *fname)
 				break;
 			if (*pos++)
 				(void)putwchar(ch);
-	}
+		}
 		if (ch != '\n') {
 			if (autostop)
 				while ((ch = getwc(fp)) != WEOF && ch != '\n')
@@ -359,7 +359,7 @@ out:
 }
 
 static int
-is_delim(int ch)
+is_delim(wchar_t ch)
 {
 	if (wflag) {
 		if (ch == ' ' || ch == '\t')
@@ -459,7 +459,7 @@ f_cut(FILE *fp, const char *fname)
 		}
 		(void)putchar('\n');
 	}
-		free(mlbuf);
+	free(mlbuf);
 	return (0);
 }
 
