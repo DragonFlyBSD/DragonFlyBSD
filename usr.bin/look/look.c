@@ -31,8 +31,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)look.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/usr.bin/look/look.c,v 1.11 1999/08/28 01:03:14 peter Exp $
- * $DragonFly: src/usr.bin/look/look.c,v 1.4 2005/01/07 02:43:41 cpressey Exp $
+ * $FreeBSD: head/usr.bin/look/look.c 268242 2014-07-04 04:47:29Z eadler $
  */
 
 /*
@@ -47,59 +46,66 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <limits.h>
 #include <locale.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
+#include <wctype.h>
 
 #include "pathnames.h"
 
-/*
- * FOLD and DICT convert characters to a normal form for comparison,
- * according to the user specified flags.
- *
- * DICT expects integers because it uses a non-character value to
- * indicate a character which should not participate in comparisons.
- */
+static char _path_words[] = _PATH_WORDS;
+
 #define	EQUAL		0
 #define	GREATER		1
 #define	LESS		(-1)
-#define NO_COMPARE	(-2)
 
-#define FOLD(c) (isupper(c) ? tolower(c) : (unsigned char) (c))
-#define DICT(c) (isalnum(c) ? (c) & 0xFF /* int */ : NO_COMPARE)
+static int dflag, fflag;
 
-int dflag, fflag;
-
-char    *binary_search(unsigned char *, unsigned char *, unsigned char *);
-int      compare(unsigned char *, unsigned char *, unsigned char *);
-char    *linear_search(unsigned char *, unsigned char *, unsigned char *);
-int      look(unsigned char *, unsigned char *, unsigned char *);
-void     print_from(unsigned char *, unsigned char *, unsigned char *);
+static char	*binary_search(wchar_t *, unsigned char *, unsigned char *);
+static int	 compare(wchar_t *, unsigned char *, unsigned char *);
+static char	*linear_search(wchar_t *, unsigned char *, unsigned char *);
+static int	 look(wchar_t *, unsigned char *, unsigned char *);
+static wchar_t	*prepkey(const char *, wchar_t);
+static void	 print_from(wchar_t *, unsigned char *, unsigned char *);
 
 static void usage(void);
 
+static struct option longopts[] = {
+	{ "alternative",no_argument,	NULL, 'a' },
+	{ "alphanum",	no_argument,	NULL, 'd' },
+	{ "ignore-case",no_argument,	NULL, 'i' },
+	{ "terminate",	required_argument, NULL, 't'},
+	{ NULL,		0,		NULL, 0 },
+};
+
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	struct stat sb;
-	int ch, fd, termchar, match;
-	unsigned char *back, *front, *string, *p;
-	const unsigned char *file;
-	size_t len;
+	int ch, fd, match;
+	wchar_t termchar;
+	unsigned char *back, *front;
+	unsigned const char *file;
+	wchar_t *key;
 
 	setlocale(LC_CTYPE, "");
 
-	file = _PATH_WORDS;
-	termchar = '\0';
-	while ((ch = getopt(argc, argv, "dft:")) != -1)
+	file = _path_words;
+	termchar = L'\0';
+	while ((ch = getopt_long(argc, argv, "+adft:", longopts, NULL)) != -1)
 		switch(ch) {
+		case 'a':
+			/* COMPATIBILITY */
+			break;
 		case 'd':
 			dflag = 1;
 			break;
@@ -107,7 +113,9 @@ main(int argc, char **argv)
 			fflag = 1;
 			break;
 		case 't':
-			termchar = *optarg;
+			if (mbrtowc(&termchar, optarg, MB_LEN_MAX, NULL) !=
+			    strlen(optarg))
+				errx(2, "invalid termination character");
 			break;
 		case '?':
 		default:
@@ -120,49 +128,65 @@ main(int argc, char **argv)
 		usage();
 	if (argc == 1) 			/* But set -df by default. */
 		dflag = fflag = 1;
-	string = *argv++;
+	key = prepkey(*argv++, termchar);
 	if (argc >= 2)
 		file = *argv++;
 
-	if (termchar != '\0' && (p = strchr(string, termchar)) != NULL)
-		*++p = '\0';
 	match = 1;
 
 	do {
 		if ((fd = open(file, O_RDONLY, 0)) < 0 || fstat(fd, &sb))
 			err(2, "%s", file);
-		len = (size_t)sb.st_size;
-		if ((off_t)len != sb.st_size) {
-			errno = EFBIG;
-			err(2, "%s", file);
+		if ((uintmax_t)sb.st_size > (uintmax_t)SIZE_T_MAX)
+			errx(2, "%s: %s", file, strerror(EFBIG));
+		if (sb.st_size == 0) {
+			close(fd);
+			continue;
 		}
-		if ((front = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, (off_t)0)) == MAP_FAILED)
+		if ((front = mmap(NULL, (size_t)sb.st_size, PROT_READ, MAP_SHARED, fd, (off_t)0)) == MAP_FAILED)
 			err(2, "%s", file);
 		back = front + sb.st_size;
-		match *= (look(string, front, back));
+		match *= (look(key, front, back));
 		close(fd);
 	} while (argc-- > 2 && (file = *argv++));
 
 	exit(match);
 }
 
-int
-look(unsigned char *string, unsigned char *front, unsigned char *back)
+static wchar_t *
+prepkey(const char *string, wchar_t termchar)
 {
-	int ch;
-	unsigned char *readp, *writep;
+	const char *readp;
+	wchar_t *key, *writep;
+	wchar_t ch;
+	size_t clen;
 
-	/* Reformat string string to avoid doing it multiple times later. */
-	for (readp = writep = string; (ch = *readp++) != '\0';) {
+	/*
+	 * Reformat search string and convert to wide character representation
+	 * to avoid doing it multiple times later.
+	 */
+	if ((key = malloc(sizeof(wchar_t) * (strlen(string) + 1))) == NULL)
+		err(2, NULL);
+	readp = string;
+	writep = key;
+	while ((clen = mbrtowc(&ch, readp, MB_LEN_MAX, NULL)) != 0) {
+		if (clen == (size_t)-1 || clen == (size_t)-2)
+			errc(2, EILSEQ, NULL);
 		if (fflag)
-			ch = FOLD(ch);
-		if (dflag)
-			ch = DICT(ch);
-		if (ch != NO_COMPARE)
-			*(writep++) = ch;
+			ch = towlower(ch);
+		if (!dflag || iswalnum(ch))
+			*writep++ = ch;
+		readp += clen;
 	}
-	*writep = '\0';
+	*writep = L'\0';
+	if (termchar != L'\0' && (writep = wcschr(key, termchar)) != NULL)
+		*++writep = L'\0';
+	return (key);
+}
 
+static int
+look(wchar_t *string, unsigned char *front, unsigned char *back)
+{
 	front = binary_search(string, front, back);
 	front = linear_search(string, front, back);
 
@@ -213,9 +237,8 @@ look(unsigned char *string, unsigned char *front, unsigned char *back)
 #define	SKIP_PAST_NEWLINE(p, back) \
 	while (p < back && *p++ != '\n');
 
-char *
-binary_search(unsigned char *string, unsigned char *front,
-              unsigned char *back)
+static char *
+binary_search(wchar_t *string, unsigned char *front, unsigned char *back)
 {
 	unsigned char *p;
 
@@ -248,17 +271,15 @@ binary_search(unsigned char *string, unsigned char *front,
  * 	o front points at the first character in a line.
  *	o front is before or at the first line to be printed.
  */
-char *
-linear_search(unsigned char *string, unsigned char *front, unsigned char *back)
+static char *
+linear_search(wchar_t *string, unsigned char *front, unsigned char *back)
 {
 	while (front < back) {
 		switch (compare(string, front, back)) {
 		case EQUAL:		/* Found it. */
 			return (front);
-			break;
 		case LESS:		/* No such string. */
 			return (NULL);
-			break;
 		case GREATER:		/* Keep going. */
 			break;
 		}
@@ -270,9 +291,8 @@ linear_search(unsigned char *string, unsigned char *front, unsigned char *back)
 /*
  * Print as many lines as match string, starting at front.
  */
-void
-print_from(unsigned char *string, unsigned char *front,
-           unsigned char *back)
+static void
+print_from(wchar_t *string, unsigned char *front, unsigned char *back)
 {
 	for (; front < back && compare(string, front, back) == EQUAL; ++front) {
 		for (; front < back && *front != '\n'; ++front)
@@ -296,25 +316,28 @@ print_from(unsigned char *string, unsigned char *front,
  * The string "s1" is null terminated.  The string s2 is '\n' terminated (or
  * "back" terminated).
  */
-int
-compare(unsigned char *s1, unsigned char *s2,
-        unsigned char *back)
+static int
+compare(wchar_t *s1, unsigned char *s2, unsigned char *back)
 {
-	int ch;
+	wchar_t ch1, ch2;
+	size_t len2;
 
-	for (; *s1 && s2 < back && *s2 != '\n'; ++s1, ++s2) {
-		ch = *s2;
+	for (; *s1 && s2 < back && *s2 != '\n'; ++s1, s2 += len2) {
+		ch1 = *s1;
+		len2 = mbrtowc(&ch2, s2, back - s2, NULL);
+		if (len2 == (size_t)-1 || len2 == (size_t)-2) {
+			ch2 = *s2;
+			len2 = 1;
+		}
 		if (fflag)
-			ch = FOLD(ch);
-		if (dflag)
-			ch = DICT(ch);
-
-		if (ch == NO_COMPARE) {
-			++s2;		/* Ignore character in comparison. */
+			ch2 = towlower(ch2);
+		if (dflag && !iswalnum(ch2)) {
+			/* Ignore character in comparison. */
+			--s1;
 			continue;
 		}
-		if (*s1 != ch)
-			return (*s1 < ch ? LESS : GREATER);
+		if (ch1 != ch2)
+			return (ch1 < ch2 ? LESS : GREATER);
 	}
 	return (*s1 ? GREATER : EQUAL);
 }
