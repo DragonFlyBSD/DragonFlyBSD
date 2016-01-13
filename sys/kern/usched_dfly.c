@@ -983,8 +983,8 @@ dfly_recalculate_estcpu(struct lwp *lp)
  *
  * This routine may be called with any process.
  *
- * This routine is called by fork1() for initial setup with the process
- * of the run queue, and also may be called normally with the process on or
+ * This routine is called by fork1() for initial setup with the process of
+ * the run queue, and also may be called normally with the process on or
  * off the run queue.
  */
 static void
@@ -1074,8 +1074,13 @@ dfly_resetpriority(struct lwp *lp)
 	 *
 	 * Since uload is ~PPQMASK masked, no modifications are necessary if
 	 * we end up in the same run queue.
+	 *
+	 * Reset rrcount if moving to a higher-priority queue, otherwise
+	 * retain rrcount.
 	 */
 	if ((lp->lwp_priority ^ newpriority) & ~PPQMASK) {
+		if (lp->lwp_priority < newpriority)
+			lp->lwp_rrcount = 0;
 		if (lp->lwp_mpflags & LWP_MP_ONRUNQ) {
 			dfly_remrunqueue_locked(rdd, lp);
 			lp->lwp_priority = newpriority;
@@ -1914,8 +1919,8 @@ dfly_remrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 static void
 dfly_setrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 {
-	struct rq *q;
 	u_int32_t *which;
+	struct rq *q;
 	int pri;
 
 	KKASSERT(lp->lwp_qcpu == rdd->cpuid);
@@ -1964,16 +1969,20 @@ dfly_setrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 
 	if (lp->lwp_rrcount >= usched_dfly_rrinterval ||
 	    (lp->lwp_rrcount >= usched_dfly_rrinterval / 2 &&
-	     (lp->lwp_thread->td_mpflags & TDF_MP_BATCH_DEMARC)) ||
-	    !TAILQ_EMPTY(q)
+	     (lp->lwp_thread->td_mpflags & TDF_MP_BATCH_DEMARC))
 	) {
+		/*
+		 * Place on tail
+		 */
 		atomic_clear_int(&lp->lwp_thread->td_mpflags,
 				 TDF_MP_BATCH_DEMARC);
 		lp->lwp_rrcount = 0;
 		TAILQ_INSERT_TAIL(q, lp, lwp_procq);
 	} else {
-		if (TAILQ_EMPTY(q))
-			lp->lwp_rrcount = 0;
+		/*
+		 * Retain rrcount and place on head.  Count is retained
+		 * even if the queue is empty.
+		 */
 		TAILQ_INSERT_HEAD(q, lp, lwp_procq);
 	}
 	*which |= 1 << pri;
