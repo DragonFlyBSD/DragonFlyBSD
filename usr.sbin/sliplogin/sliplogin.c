@@ -174,7 +174,7 @@ findid(char *name)
 
 		slip_mode = 0;
 		for (i = 0; i < n - 4; i++) {
-			for (j = 0; NELEM(modes); j++) {
+			for (j = 0; j < (int)NELEM(modes); j++) {
 				if (strcmp(modes[j].sm_name, slopt[i]) == 0) {
 					slip_mode |= (modes[j].sm_or_flag);
 					slip_mode &= ~(modes[j].sm_and_flag);
