@@ -1,6 +1,5 @@
 #	@(#)POSIX	8.1 (Berkeley) 6/6/93
-# $FreeBSD: src/usr.bin/sed/POSIX,v 1.4 2007/04/06 08:43:30 yar Exp $
-# $DragonFly: src/usr.bin/sed/POSIX,v 1.2 2008/04/08 13:23:38 swildner Exp $
+# $FreeBSD: head/usr.bin/sed/POSIX 168417 2007-04-06 08:43:30Z yar $
 
 Comments on the IEEE P1003.2 Draft 12
      Part 2: Shell and Utilities

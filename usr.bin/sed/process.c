@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)process.c	8.6 (Berkeley) 4/20/94
- * $FreeBSD: src/usr.bin/sed/process.c,v 1.50 2009/05/25 06:45:33 brian Exp $
+ * $FreeBSD: head/usr.bin/sed/process.c 277802 2015-01-27 18:58:24Z pfg $
  */
 
 #include <sys/types.h>
@@ -63,11 +63,11 @@ static SPACE HS, PS, SS, YS;
 #define	hs		HS.space
 #define	hsl		HS.len
 
-static __inline int	 applies(struct s_command *);
+static inline int	 applies(struct s_command *);
 static void		 do_tr(struct s_tr *);
 static void		 flush_appends(void);
 static void		 lputs(char *, size_t);
-static __inline int	 regexec_e(regex_t *, const char *, int, int, size_t);
+static int		 regexec_e(regex_t *, const char *, int, int, size_t);
 static void		 regsub(SPACE *, char *, char *);
 static int		 substitute(struct s_command *);
 
@@ -82,9 +82,9 @@ static regex_t *defpreg;
 size_t maxnsub;
 regmatch_t *match;
 
-#define OUT() do {				\
-	fwrite(ps, 1, psl, outfile);		\
-	if (psanl) fputc('\n', outfile);	\
+#define OUT() do {							\
+	fwrite(ps, 1, psl, outfile);					\
+	if (psanl) fputc('\n', outfile);				\
 } while (0)
 
 void
@@ -284,7 +284,7 @@ new:		if (!nflag && !pd)
  * Return TRUE if the command applies to the current line.  Sets the start
  * line for process ranges.  Interprets the non-select (``!'') flag.
  */
-static __inline int
+static inline int
 applies(struct s_command *cp)
 {
 	int r;
@@ -320,7 +320,7 @@ applies(struct s_command *cp)
 				} else
 					r = 1;
 			}
-		} else if (MATCH(cp->a1)) {
+		} else if (cp->a1 && MATCH(cp->a1)) {
 			/*
 			 * If the second address is a number less than or
 			 * equal to the line number first selected, only
@@ -652,7 +652,7 @@ lputs(char *s, size_t len)
 		errx(1, "%s: %s", outfname, strerror(errno ? errno : EIO));
 }
 
-static __inline int
+static int
 regexec_e(regex_t *preg, const char *string, int eflags, int nomatch,
 	size_t slen)
 {

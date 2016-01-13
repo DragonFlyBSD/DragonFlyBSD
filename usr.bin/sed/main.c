@@ -33,7 +33,7 @@
  *
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.2 (Berkeley) 1/3/94
- * $FreeBSD: src/usr.bin/sed/main.c,v 1.41 2008/02/09 09:12:02 dwmalone Exp $
+ * $FreeBSD: head/usr.bin/sed/main.c 277811 2015-01-27 19:46:19Z pfg $
  */
 
 #include <sys/types.h>
@@ -400,6 +400,8 @@ mf_fgets(SPACE *sp, enum e_spflag spflag)
 			if (len >= (ssize_t)sizeof(tmpfname))
 				errx(1, "%s: name too long", fname);
 			unlink(tmpfname);
+			if (outfile != NULL && outfile != stdout)
+				fclose(outfile);
 			if ((outfile = fopen(tmpfname, "w")) == NULL)
 				err(1, "%s", fname);
 			fchown(fileno(outfile), sb.st_uid, sb.st_gid);

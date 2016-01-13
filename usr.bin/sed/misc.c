@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/sed/misc.c,v 1.10 2004/08/09 15:29:41 dds Exp $
+ * $FreeBSD: head/usr.bin/sed/misc.c 200462 2009-12-13 03:14:06Z delphij $
  */
 
 #include <sys/types.h>

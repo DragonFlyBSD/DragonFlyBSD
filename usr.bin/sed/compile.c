@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)compile.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/sed/compile.c,v 1.34 2009/05/25 06:45:33 brian Exp $
+ * $FreeBSD: head/usr.bin/sed/compile.c 289677 2015-10-21 05:37:09Z eadler $
  */
 
 #include <sys/types.h>
@@ -360,7 +360,7 @@ nonsel:		/* Now parse the command */
 }
 
 /*
- * Get a delimited string.  P points to the delimeter of the string; d points
+ * Get a delimited string.  P points to the delimiter of the string; d points
  * to a buffer area.  Newline and delimiter escapes are processed; other
  * escapes are ignored.
  *
@@ -554,7 +554,7 @@ compile_flags(char *p, struct s_subst *s)
 {
 	int gn;			/* True if we have seen g or n */
 	unsigned long nval;
-	char wfile[_POSIX2_LINE_MAX + 1], *q;
+	char wfile[_POSIX2_LINE_MAX + 1], *q, *eq;
 
 	s->n = 1;				/* Default */
 	s->p = 0;
@@ -607,9 +607,12 @@ compile_flags(char *p, struct s_subst *s)
 #endif
 			EATSPACE();
 			q = wfile;
+			eq = wfile + sizeof(wfile) - 1;
 			while (*p) {
 				if (*p == '\n')
 					break;
+				if (q >= eq)
+					err(1, "wfile too long");
 				*q++ = *p++;
 			}
 			*q = '\0';
