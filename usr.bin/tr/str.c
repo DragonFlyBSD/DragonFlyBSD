@@ -27,32 +27,37 @@
  * SUCH DAMAGE.
  *
  * @(#)str.c	8.2 (Berkeley) 4/28/95
- * $FreeBSD: src/usr.bin/tr/str.c,v 1.10.2.2 2002/07/29 12:59:33 tjr Exp $
+ * $FreeBSD: head/usr.bin/tr/str.c 229403 2012-01-03 18:51:58Z ed $
  */
 
 #include <sys/types.h>
 
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
+#include <wctype.h>
 
 #include "extern.h"
 
-static int	backslash(STR *);
+static int	backslash(STR *, int *);
 static int	bracket(STR *);
-static int	c_class(const void *, const void *);
 static void	genclass(STR *);
 static void	genequiv(STR *);
-static int	genrange(STR *);
+static int	genrange(STR *, int);
 static void	genseq(STR *);
 
-int
+wint_t
 next(STR *s)
 {
-	int ch;
+	int is_octal;
+	wint_t ch;
+	wchar_t wch;
+	size_t clen;
 
 	switch (s->state) {
 	case EOS:
@@ -60,25 +65,30 @@ next(STR *s)
 	case INFINITE:
 		return (1);
 	case NORMAL:
-		switch (ch = (u_char)*s->str) {
+		switch (*s->str) {
 		case '\0':
 			s->state = EOS;
 			return (0);
 		case '\\':
-			s->lastch = backslash(s);
+			s->lastch = backslash(s, &is_octal);
 			break;
 		case '[':
 			if (bracket(s))
 				return (next(s));
 			/* FALLTHROUGH */
 		default:
-			++s->str;
-			s->lastch = ch;
+			clen = mbrtowc(&wch, s->str, MB_LEN_MAX, NULL);
+			if (clen == (size_t)-1 || clen == (size_t)-2 ||
+			    clen == 0)
+				errc(1, EILSEQ, NULL);
+			is_octal = 0;
+			s->lastch = wch;
+			s->str += clen;
 			break;
 		}
 
 		/* We can start a range at any time. */
-		if (s->str[0] == '-' && genrange(s))
+		if (s->str[0] == '-' && genrange(s, is_octal))
 			return (next(s));
 		return (1);
 	case RANGE:
@@ -94,11 +104,23 @@ next(STR *s)
 			return (next(s));
 		}
 		return (1);
-	case SET:
-		if ((s->lastch = s->set[s->cnt++]) == OOBCH) {
+	case CCLASS:
+	case CCLASS_UPPER:
+	case CCLASS_LOWER:
+		s->cnt++;
+		ch = nextwctype(s->lastch, s->cclass);
+		if (ch == -1) {
 			s->state = NORMAL;
 			return (next(s));
 		}
+		s->lastch = ch;
+		return (1);
+	case SET:
+		if ((ch = s->set[s->cnt++]) == OOBCH) {
+			s->state = NORMAL;
+			return (next(s));
+		}
+		s->lastch = ch;
 		return (1);
 	default:
 		return (0);
@@ -123,7 +145,7 @@ bracket(STR *s)
 		s->str = p + 1;
 		return (1);
 	case '=':				/* "[=equiv=]" */
-		if ((p = strchr(s->str + 2, ']')) == NULL)
+		if (s->str[2] == '\0' || (p = strchr(s->str + 3, ']')) == NULL)
 			return (0);
 		if (*(p - 1) != '=' || p - s->str < 4)
 			goto repeat;
@@ -143,68 +165,19 @@ bracket(STR *s)
 	/* NOTREACHED */
 }
 
-typedef struct {
-	const char *name;
-	int (*func)(int);
-	int *set;
-} CLASS;
-
-static CLASS classes[] = {
-#undef isalnum
-	{ "alnum",  isalnum,  NULL },
-#undef isalpha
-	{ "alpha",  isalpha,  NULL },
-#undef isblank
-	{ "blank",  isblank,  NULL },
-#undef iscntrl
-	{ "cntrl",  iscntrl,  NULL },
-#undef isdigit
-	{ "digit",  isdigit,  NULL },
-#undef isgraph
-	{ "graph",  isgraph,  NULL },
-#undef islower
-	{ "lower",  islower,  NULL },
-#undef isprint
-	{ "print",  isprint,  NULL },
-#undef ispunct
-	{ "punct",  ispunct,  NULL },
-#undef isspace
-	{ "space",  isspace,  NULL },
-#undef isupper
-	{ "upper",  isupper,  NULL },
-#undef isxdigit
-	{ "xdigit", isxdigit, NULL },
-};
-
 static void
 genclass(STR *s)
 {
-	int cnt, (*func)(int);
-	CLASS *cp, tmp;
-	int *p;
-
-	tmp.name = s->str;
-	if ((cp = (CLASS *)bsearch(&tmp, classes, sizeof(classes) /
-	    sizeof(CLASS), sizeof(CLASS), c_class)) == NULL)
+	if ((s->cclass = wctype(s->str)) == 0)
 		errx(1, "unknown class %s", s->str);
-
-	if ((cp->set = p = malloc((NCHARS + 1) * sizeof(int))) == NULL)
-		err(1, "malloc");
-	bzero(p, (NCHARS + 1) * sizeof(int));
-	for (cnt = 0, func = cp->func; cnt < NCHARS; ++cnt)
-		if ((func)(cnt))
-			*p++ = cnt;
-	*p = OOBCH;
-
 	s->cnt = 0;
-	s->state = SET;
-	s->set = cp->set;
-}
-
-static int
-c_class(const void *a, const void *b)
-{
-	return (strcmp(((const CLASS *)a)->name, ((const CLASS *)b)->name));
+	s->lastch = -1;		/* incremented before check in next() */
+	if (strcmp(s->str, "upper") == 0)
+		s->state = CCLASS_UPPER;
+	else if (strcmp(s->str, "lower") == 0)
+		s->state = CCLASS_LOWER;
+	else
+		s->state = CCLASS;
 }
 
 static void
@@ -212,17 +185,22 @@ genequiv(STR *s)
 {
 	int i, p, pri;
 	char src[2], dst[3];
+	size_t clen;
+	wchar_t wc;
 
 	if (*s->str == '\\') {
-		s->equiv[0] = backslash(s);
+		s->equiv[0] = backslash(s, NULL);
 		if (*s->str != '=')
 			errx(1, "misplaced equivalence equals sign");
 		s->str += 2;
 	} else {
-		s->equiv[0] = s->str[0];
-		if (s->str[1] != '=')
+		clen = mbrtowc(&wc, s->str, MB_LEN_MAX, NULL);
+		if (clen == (size_t)-1 || clen == (size_t)-2 || clen == 0)
+			errc(1, EILSEQ, NULL);
+		s->equiv[0] = wc;
+		if (s->str[clen] != '=')
 			errx(1, "misplaced equivalence equals sign");
-		s->str += 3;
+		s->str += clen + 2;
 	}
 
 	/*
@@ -232,12 +210,13 @@ genequiv(STR *s)
 	 * XXX Knows too much about how strxfrm() is implemented. Assumes
 	 * it fills the string with primary collation weight bytes. Only one-
 	 * to-one mappings are supported.
+	 * XXX Equivalence classes not supported in multibyte locales.
 	 */
-	src[0] = s->equiv[0];
+	src[0] = (char)s->equiv[0];
 	src[1] = '\0';
-	if (strxfrm(dst, src, sizeof(dst)) == 1) {
+	if (MB_CUR_MAX == 1 && strxfrm(dst, src, sizeof(dst)) == 1) {
 		pri = (unsigned char)*dst;
-		for (p = 1, i = 1; i < NCHARS; i++) {
+		for (p = 1, i = 1; i < NCHARS_SB; i++) {
 			*src = i;
 			if (strxfrm(dst, src, sizeof(dst)) == 1 && pri &&
 			    pri == (unsigned char)*dst)
@@ -252,20 +231,56 @@ genequiv(STR *s)
 }
 
 static int
-genrange(STR *s)
+genrange(STR *s, int was_octal)
 {
-	int stopval;
+	int stopval, octal;
 	char *savestart;
+	int n, cnt, *p;
+	size_t clen;
+	wchar_t wc;
 
+	octal = 0;
 	savestart = s->str;
-	stopval = *++s->str == '\\' ? backslash(s) : (u_char)*s->str++;
-	if (stopval < (u_char)s->lastch) {
+	if (*++s->str == '\\')
+		stopval = backslash(s, &octal);
+	else {
+		clen = mbrtowc(&wc, s->str, MB_LEN_MAX, NULL);
+		if (clen == (size_t)-1 || clen == (size_t)-2)
+			errc(1, EILSEQ, NULL);
+		stopval = wc;
+		s->str += clen;
+	}
+	/*
+	 * XXX Characters are not ordered according to collating sequence in
+	 * multibyte locales.
+	 */
+	if (octal || was_octal || MB_CUR_MAX > 1) {
+		if (stopval < s->lastch) {
+			s->str = savestart;
+			return (0);
+		}
+		s->cnt = stopval - s->lastch + 1;
+		s->state = RANGE;
+		--s->lastch;
+		return (1);
+	}
+	if (charcoll((const void *)&stopval, (const void *)&(s->lastch)) < 0) {
 		s->str = savestart;
 		return (0);
 	}
-	s->cnt = stopval - s->lastch + 1;
-	s->state = RANGE;
-	--s->lastch;
+	if ((s->set = p = malloc((NCHARS_SB + 1) * sizeof(int))) == NULL)
+		err(1, "genrange() malloc");
+	for (cnt = 0; cnt < NCHARS_SB; cnt++)
+		if (charcoll((const void *)&cnt, (const void *)&(s->lastch)) >= 0 &&
+		    charcoll((const void *)&cnt, (const void *)&stopval) <= 0)
+			*p++ = cnt;
+	*p = OOBCH;
+	n = p - s->set;
+
+	s->cnt = 0;
+	s->state = SET;
+	if (n > 1)
+		mergesort(s->set, n, sizeof(*(s->set)), charcoll);
 	return (1);
 }
 
@@ -273,20 +288,27 @@ static void
 genseq(STR *s)
 {
 	char *ep;
+	wchar_t wc;
+	size_t clen;
 
 	if (s->which == STRING1)
 		errx(1, "sequences only valid in string2");
 
 	if (*s->str == '\\')
-		s->lastch = backslash(s);
-	else
-		s->lastch = *s->str++;
+		s->lastch = backslash(s, NULL);
+	else {
+		clen = mbrtowc(&wc, s->str, MB_LEN_MAX, NULL);
+		if (clen == (size_t)-1 || clen == (size_t)-2)
+			errc(1, EILSEQ, NULL);
+		s->lastch = wc;
+		s->str += clen;
+	}
 	if (*s->str != '*')
 		errx(1, "misplaced sequence asterisk");
 
 	switch (*++s->str) {
 	case '\\':
-		s->cnt = backslash(s);
+		s->cnt = backslash(s, NULL);
 		break;
 	case ']':
 		s->cnt = 0;
@@ -312,13 +334,15 @@ genseq(STR *s)
  * an escape code or a literal character.
  */
 static int
-backslash(STR *s)
+backslash(STR *s, int *is_octal)
 {
 	int ch, cnt, val;
 
+	if (is_octal != NULL)
+		*is_octal = 0;
 	for (cnt = val = 0;;) {
 		ch = (u_char)*++s->str;
-		if (!isascii(ch) || !isdigit(ch))
+		if (!isdigit(ch) || ch > '7')
 			break;
 		val = val * 8 + ch - '0';
 		if (++cnt == 3) {
@@ -326,8 +350,11 @@ backslash(STR *s)
 			break;
 		}
 	}
-	if (cnt)
+	if (cnt) {
+		if (is_octal != NULL)
+			*is_octal = 1;
 		return (val);
+	}
 	if (ch != '\0')
 		++s->str;
 	switch (ch) {

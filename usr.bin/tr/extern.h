@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -31,22 +27,25 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/tr/extern.h,v 1.2.6.2 2002/07/29 12:59:33 tjr Exp $
- * $DragonFly: src/usr.bin/tr/extern.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $FreeBSD: head/usr.bin/tr/extern.h 216370 2010-12-11 08:32:16Z joel $
  */
 
 #include <limits.h>
-#define	NCHARS	(UCHAR_MAX + 1)		/* Number of possible characters. */
-#define	OOBCH	(UCHAR_MAX + 1)		/* Out of band character value. */
+
+#define	NCHARS_SB	(UCHAR_MAX + 1)	/* Number of single-byte characters. */
+#define	OOBCH		-1		/* Out of band character value. */
 
 typedef struct {
 	enum { STRING1, STRING2 } which;
-	enum { EOS, INFINITE, NORMAL, RANGE, SEQUENCE, SET } state;
-	int	 cnt;			/* character count */
-	int	 lastch;		/* last character */
-	int	equiv[NCHARS];		/* equivalence set */
-	int	*set;			/* set of characters */
-	char	*str;			/* user's string */
+	enum { EOS, INFINITE, NORMAL, RANGE, SEQUENCE,
+	       CCLASS, CCLASS_UPPER, CCLASS_LOWER, SET } state;
+	int		cnt;		/* character count */
+	wint_t		lastch;		/* last character */
+	wctype_t	cclass;		/* character class from wctype() */
+	wint_t		equiv[NCHARS_SB];	/* equivalence set */
+	wint_t		*set;		/* set of characters */
+	char		*str;		/* user's string */
 } STR;
 
-int	 next(STR *);
+wint_t	 next(STR *);
+int charcoll(const void *, const void *);

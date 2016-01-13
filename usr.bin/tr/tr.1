@@ -29,9 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)tr.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/tr/tr.1,v 1.5.2.7 2002/07/29 12:59:33 tjr Exp $
+.\" $FreeBSD: head/usr.bin/tr/tr.1 233510 2012-03-26 15:18:14Z joel $
 .\"
-.Dd November 25, 2010
+.Dd January 13, 2016
 .Dt TR 1
 .Os
 .Sh NAME
@@ -65,24 +65,22 @@ The following options are available:
 Complement the set of characters in
 .Ar string1 ,
 that is
-.Dq "-C ab"
+.Dq Fl C Li ab
 includes every character except for
-.Dq a
+.Ql a
 and
-.Dq b .
+.Ql b .
 .It Fl c
 Same as
 .Fl C
-but complement the set of byte values in
+but complement the set of values in
 .Ar string1 .
 .It Fl d
-The
-.Fl d
-option causes characters to be deleted from the input.
+Delete characters in
+.Ar string1
+from the input.
 .It Fl s
-The
-.Fl s
-option squeezes multiple occurrences of the characters listed in the last
+Squeeze multiple occurrences of the characters listed in the last
 operand (either
 .Ar string1
 or
@@ -90,9 +88,7 @@ or
 in the input into a single instance of the character.
 This occurs after all deletion and translation is completed.
 .It Fl u
-The
-.Fl u
-option guarantees that any output is unbuffered.
+Guarantee that any output is unbuffered.
 .El
 .Pp
 In the first synopsis form, the characters in
@@ -161,20 +157,40 @@ values.
 .Pp
 A backslash followed by any other character maps to that character.
 .It c-c
-Represents the range of characters between the range endpoints, inclusively.
+For non-octal range endpoints
+represents the range of characters between the range endpoints, inclusive,
+in ascending order,
+as defined by the collation sequence.
+If either or both of the range endpoints are octal sequences, it
+represents the range of specific coded values between the
+range endpoints, inclusive.
+.Pp
+.Bf Em
+See the
+.Sx COMPATIBILITY
+section below for an important note regarding
+differences in the way the current
+implementation interprets range expressions differently from
+previous implementations.
+.Ef
 .It [:class:]
 Represents all characters belonging to the defined character class.
 Class names are:
-.Bl -column "xdigit"
+.Bl -column "phonogram"
 .It "alnum	<alphanumeric characters>"
 .It "alpha	<alphabetic characters>"
+.It "blank	<whitespace characters>"
 .It "cntrl	<control characters>"
 .It "digit	<numeric characters>"
 .It "graph	<graphic characters>"
+.It "ideogram	<ideographic characters>"
 .It "lower	<lower-case alphabetic characters>"
+.It "phonogram	<phonographic characters>"
 .It "print	<printable characters>"
 .It "punct	<punctuation characters>"
+.It "rune	<valid characters>"
 .It "space	<space characters>"
+.It "special	<special characters>"
 .It "upper	<upper-case characters>"
 .It "xdigit	<hexadecimal characters>"
 .El
@@ -194,12 +210,39 @@ Class names are:
 .\" and vice-versa) is specified in the same relative position in
 .\" .Ar string1 .
 .\" .Pp
-With the exception of the ``upper'' and ``lower'' classes, characters
-in the classes are in unspecified order.
-In the ``upper'' and ``lower'' classes, characters are entered in
-ascending order.
+When
+.Dq Li [:lower:]
+appears in
+.Ar string1
+and
+.Dq Li [:upper:]
+appears in the same relative position in
+.Ar string2 ,
+it represents the characters pairs from the
+.Dv toupper
+mapping in the
+.Ev LC_CTYPE
+category of the current locale.
+When
+.Dq Li [:upper:]
+appears in
+.Ar string1
+and
+.Dq Li [:lower:]
+appears in the same relative position in
+.Ar string2 ,
+it represents the characters pairs from the
+.Dv tolower
+mapping in the
+.Ev LC_CTYPE
+category of the current locale.
 .Pp
-For specific information as to which ASCII characters are included
+With the exception of case conversion,
+characters in the classes are in unspecified order.
+.Pp
+For specific information as to which
+.Tn ASCII
+characters are included
 in these classes, see
 .Xr ctype 3
 and related manual pages.
@@ -224,13 +267,11 @@ sequence to the length of
 If
 .Ar n
 has a leading zero, it is interpreted as an octal value, otherwise,
-it's interpreted as a decimal value.
+it is interpreted as a decimal value.
 .El
 .Sh ENVIRONMENT
 The
-.Ev LANG ,
-.Ev LC_ALL ,
-.Ev LC_CTYPE
+.Ev LANG , LC_ALL , LC_CTYPE
 and
 .Ev LC_COLLATE
 environment variables affect the execution of
@@ -251,33 +292,88 @@ Translate the contents of file1 to upper-case.
 .Pp
 .D1 Li "tr \*q[:lower:]\*q \*q[:upper:]\*q < file1"
 .Pp
+(This should be preferred over the traditional
+.Ux
+idiom of
+.Dq Li "tr a-z A-Z" ,
+since it works correctly in all locales.)
+.Pp
 Strip out non-printable characters from file1.
 .Pp
 .D1 Li "tr -cd \*q[:print:]\*q < file1"
 .Pp
 Remove diacritical marks from all accented variants of the letter
-.Sq e :
+.Ql e :
 .Pp
 .Dl "tr \*q[=e=]\*q \*qe\*q"
 .Sh COMPATIBILITY
+Previous
+.Fx
+implementations of
+.Nm
+did not order characters in range expressions according to the current
+locale's collation order, making it possible to convert unaccented Latin
+characters (esp.\& as found in English text) from upper to lower case using
+the traditional
+.Ux
+idiom of
+.Dq Li "tr A-Z a-z" .
+Since
+.Nm
+now obeys the locale's collation order, this idiom may not produce
+correct results when there is not a 1:1 mapping between lower and
+upper case, or when the order of characters within the two cases differs.
+As noted in the
+.Sx EXAMPLES
+section above, the character class expressions
+.Dq Li [:lower:]
+and
+.Dq Li [:upper:]
+should be used instead of explicit character ranges like
+.Dq Li a-z
+and
+.Dq Li A-Z .
+.Pp
 System V has historically implemented character ranges using the syntax
-``[c-c]'' instead of the ``c-c'' used by historic
+.Dq Li [c-c]
+instead of the
+.Dq Li c-c
+used by historic
 .Bx
 implementations and
 standardized by POSIX.
 System V shell scripts should work under this implementation as long as
-the range is intended to map in another range, i.e. the command
-``tr [a-z] [A-Z]'' will work as it will map the ``['' character in
+the range is intended to map in another range, i.e., the command
+.Dq Li "tr [a-z] [A-Z]"
+will work as it will map the
+.Ql \&[
+character in
 .Ar string1
-to the ``['' character in
+to the
+.Ql \&[
+character in
 .Ar string2 .
 However, if the shell script is deleting or squeezing characters as in
-the command ``tr -d [a-z]'', the characters ``['' and ``]'' will be
+the command
+.Dq Li "tr -d [a-z]" ,
+the characters
+.Ql \&[
+and
+.Ql \&]
+will be
 included in the deletion or compression list which would not have happened
-under an historic System V implementation.
-Additionally, any scripts that depended on the sequence ``a-z'' to
-represent the three characters ``a'', ``-'' and ``z'' will have to be
-rewritten as ``a\e-z''.
+under a historic System V implementation.
+Additionally, any scripts that depended on the sequence
+.Dq Li a-z
+to
+represent the three characters
+.Ql a ,
+.Ql \-
+and
+.Ql z
+will have to be
+rewritten as
+.Dq Li a\e-z .
 .Pp
 The
 .Nm
@@ -299,6 +395,13 @@ The
 .Nm
 utility conforms to
 .St -p1003.1-2001 .
+The
+.Dq ideogram ,
+.Dq phonogram ,
+.Dq rune ,
+and
+.Dq special
+character classes are extensions.
 .Pp
 It should be noted that the feature wherein the last character of
 .Ar string2
@@ -308,7 +411,9 @@ has less characters than
 .Ar string1
 is permitted by POSIX but is not required.
 Shell scripts attempting to be portable to other POSIX systems should use
-the ``[#*]'' convention instead of relying on this behavior.
+the
+.Dq Li [#*]
+convention instead of relying on this behavior.
 The
 .Fl u
 option is an extension to the
