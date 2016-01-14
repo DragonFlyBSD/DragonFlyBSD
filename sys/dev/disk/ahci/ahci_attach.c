@@ -207,7 +207,6 @@ ahci_pci_attach(device_t dev)
 	u_int irq_flags;
 	bus_addr_t addr;
 	int i, error, msi_enable, rev, fbs;
-	const char *revision;
 	char revbuf[32];
 
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
@@ -404,7 +403,6 @@ ahci_pci_attach(device_t dev)
 		ksnprintf(revbuf, sizeof(revbuf), "AHCI %d.%d",
 			  (reg >> 16), (uint8_t)(reg >> 8));
 	}
-	revision = kstrdup(revbuf, M_DEVBUF);
 	sc->sc_vers = reg;
 
 	if (reg >= AHCI_REG_VS_1_3) {
@@ -412,7 +410,7 @@ ahci_pci_attach(device_t dev)
 		device_printf(dev,
 			      "%s cap 0x%b cap2 0x%b, %d ports, "
 			      "%d tags/port, gen %s\n",
-			      revision,
+			      revbuf,
 			      cap, AHCI_FMT_CAP,
 			      cap2, AHCI_FMT_CAP2,
 			      AHCI_REG_CAP_NP(cap), sc->sc_ncmds, gen);
@@ -421,7 +419,7 @@ ahci_pci_attach(device_t dev)
 		device_printf(dev,
 			      "%s cap 0x%b, %d ports, "
 			      "%d tags/port, gen %s\n",
-			      revision,
+			      revbuf,
 			      cap, AHCI_FMT_CAP,
 			      AHCI_REG_CAP_NP(cap), sc->sc_ncmds, gen);
 	}
