@@ -112,6 +112,7 @@ MAN=	accept_filter.9 \
 	kobj.9 \
 	kprintf.9 \
 	ksignal.9 \
+	kstrdup.9 \
 	ktr.9 \
 	lock.9 \
         locking.9 \
