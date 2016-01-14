@@ -92,10 +92,13 @@ static s32  e1000_set_d3_lplu_state_ich8lan(struct e1000_hw *hw,
 					    bool active);
 static s32  e1000_read_nvm_ich8lan(struct e1000_hw *hw, u16 offset,
 				   u16 words, u16 *data);
+static s32  e1000_read_nvm_spt(struct e1000_hw *hw, u16 offset,
+				   u16 words, u16 *data);
 static s32  e1000_write_nvm_ich8lan(struct e1000_hw *hw, u16 offset,
 				    u16 words, u16 *data);
 static s32  e1000_validate_nvm_checksum_ich8lan(struct e1000_hw *hw);
 static s32  e1000_update_nvm_checksum_ich8lan(struct e1000_hw *hw);
+static s32  e1000_update_nvm_checksum_spt(struct e1000_hw *hw);
 static s32  e1000_valid_led_default_ich8lan(struct e1000_hw *hw,
 					    u16 *data);
 static s32 e1000_id_led_init_pchlan(struct e1000_hw *hw);
@@ -123,10 +126,16 @@ static s32  e1000_read_flash_byte_ich8lan(struct e1000_hw *hw,
 					  u32 offset, u8 *data);
 static s32  e1000_read_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 					  u8 size, u16 *data);
+static s32  e1000_read_flash_data32_ich8lan(struct e1000_hw *hw, u32 offset,
+					  u32 *data);
 static s32  e1000_read_flash_word_ich8lan(struct e1000_hw *hw,
 					  u32 offset, u16 *data);
+static s32  e1000_read_flash_dword_ich8lan(struct e1000_hw *hw,
+					  u32 offset, u32 *data);
 static s32  e1000_retry_write_flash_byte_ich8lan(struct e1000_hw *hw,
 						 u32 offset, u8 byte);
+static s32  e1000_retry_write_flash_dword_ich8lan(struct e1000_hw *hw,
+						 u32 offset, u32 dword);
 static s32 e1000_get_cfg_done_ich8lan(struct e1000_hw *hw);
 static void e1000_power_down_phy_copper_ich8lan(struct e1000_hw *hw);
 static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw);
@@ -232,7 +241,8 @@ static bool e1000_phy_is_accessible_pchlan(struct e1000_hw *hw)
 	if (ret_val)
 		return FALSE;
 out:
-	if (hw->mac.type == e1000_pch_lpt) {
+	if (hw->mac.type == e1000_pch_lpt ||
+	    hw->mac.type == e1000_pch_spt) {
 		/* Unforce SMBus mode in PHY */
 		hw->phy.ops.read_reg_locked(hw, CV_SMB_CTRL, &phy_reg);
 		phy_reg &= ~CV_SMB_CTRL_FORCE_SMBUS;
@@ -328,6 +338,7 @@ static s32 e1000_init_phy_workarounds_pchlan(struct e1000_hw *hw)
 	 */
 	switch (hw->mac.type) {
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		if (e1000_phy_is_accessible_pchlan(hw))
 			break;
 
@@ -475,6 +486,7 @@ static s32 e1000_init_phy_params_pchlan(struct e1000_hw *hw)
 			/* fall-through */
 		case e1000_pch2lan:
 		case e1000_pch_lpt:
+		case e1000_pch_spt:
 			/* In case the PHY needs to be in mdio slow mode,
 			 * set slow mode and try to get the PHY id again.
 			 */
@@ -617,36 +629,58 @@ static s32 e1000_init_nvm_params_ich8lan(struct e1000_hw *hw)
 	struct e1000_dev_spec_ich8lan *dev_spec = &hw->dev_spec.ich8lan;
 	u32 gfpreg, sector_base_addr, sector_end_addr;
 	u16 i;
+	u32 nvm_size;
 
 	DEBUGFUNC("e1000_init_nvm_params_ich8lan");
 
 	/* Can't read flash registers if the register set isn't mapped. */
 	nvm->type = e1000_nvm_flash_sw;
-	if (!hw->flash_address) {
-		DEBUGOUT("ERROR: Flash registers not mapped\n");
-		return -E1000_ERR_CONFIG;
+
+	/* XXX turn flash_address into flash_reg_off or something more appropriate */
+#define E1000_FLASH_BASE_ADDR	0xE000  /* offset of NVM access regs */
+#define NVM_SIZE_MULTIPLIER	4096
+
+	if (hw->mac.type == e1000_pch_spt) {
+		/*
+		 * In SPT the flash is in the GbE flash region of the
+		 * main hw map.  GFPREG does not exist.  Take NVM size from
+		 * the STRAP register.
+		 */
+		nvm->flash_base_addr = 0;
+		nvm_size = (((E1000_READ_REG(hw, E1000_STRAP) >> 1) & 0x1F) + 1)
+			   * NVM_SIZE_MULTIPLIER;
+		nvm->flash_bank_size = nvm_size / 2;
+		/* Adjust to word count */
+		nvm->flash_bank_size /= sizeof(u16);
+		/* Set the base address for flash register access */
+		hw->flash_address = hw->hw_addr + E1000_FLASH_BASE_ADDR;
+	} else {
+		if (!hw->flash_address) {
+			DEBUGOUT("ERROR: Flash registers not mapped\n");
+			return -E1000_ERR_CONFIG;
+		}
+
+		gfpreg = E1000_READ_FLASH_REG(hw, ICH_FLASH_GFPREG);
+
+		/* sector_X_addr is a "sector"-aligned address (4096 bytes)
+		 * Add 1 to sector_end_addr since this sector is included in
+		 * the overall size.
+		 */
+		sector_base_addr = gfpreg & FLASH_GFPREG_BASE_MASK;
+		sector_end_addr = ((gfpreg >> 16) & FLASH_GFPREG_BASE_MASK) + 1;
+
+		/* flash_base_addr is byte-aligned */
+		nvm->flash_base_addr = sector_base_addr << FLASH_SECTOR_ADDR_SHIFT;
+
+		/* find total size of the NVM, then cut in half since the total
+		 * size represents two separate NVM banks.
+		 */
+		nvm->flash_bank_size = ((sector_end_addr - sector_base_addr)
+					<< FLASH_SECTOR_ADDR_SHIFT);
+		nvm->flash_bank_size /= 2;
+		/* Adjust to word count */
+		nvm->flash_bank_size /= sizeof(u16);
 	}
-
-	gfpreg = E1000_READ_FLASH_REG(hw, ICH_FLASH_GFPREG);
-
-	/* sector_X_addr is a "sector"-aligned address (4096 bytes)
-	 * Add 1 to sector_end_addr since this sector is included in
-	 * the overall size.
-	 */
-	sector_base_addr = gfpreg & FLASH_GFPREG_BASE_MASK;
-	sector_end_addr = ((gfpreg >> 16) & FLASH_GFPREG_BASE_MASK) + 1;
-
-	/* flash_base_addr is byte-aligned */
-	nvm->flash_base_addr = sector_base_addr << FLASH_SECTOR_ADDR_SHIFT;
-
-	/* find total size of the NVM, then cut in half since the total
-	 * size represents two separate NVM banks.
-	 */
-	nvm->flash_bank_size = ((sector_end_addr - sector_base_addr)
-				<< FLASH_SECTOR_ADDR_SHIFT);
-	nvm->flash_bank_size /= 2;
-	/* Adjust to word count */
-	nvm->flash_bank_size /= sizeof(u16);
 
 	nvm->word_size = E1000_SHADOW_RAM_WORDS;
 
@@ -659,8 +693,13 @@ static s32 e1000_init_nvm_params_ich8lan(struct e1000_hw *hw)
 	/* Function Pointers */
 	nvm->ops.acquire	= e1000_acquire_nvm_ich8lan;
 	nvm->ops.release	= e1000_release_nvm_ich8lan;
-	nvm->ops.read		= e1000_read_nvm_ich8lan;
-	nvm->ops.update		= e1000_update_nvm_checksum_ich8lan;
+	if (hw->mac.type == e1000_pch_spt) {
+		nvm->ops.read		= e1000_read_nvm_spt;
+		nvm->ops.update		= e1000_update_nvm_checksum_spt;
+	} else {
+		nvm->ops.read		= e1000_read_nvm_ich8lan;
+		nvm->ops.update		= e1000_update_nvm_checksum_ich8lan;
+	}
 	nvm->ops.valid_led_default = e1000_valid_led_default_ich8lan;
 	nvm->ops.validate	= e1000_validate_nvm_checksum_ich8lan;
 	nvm->ops.write		= e1000_write_nvm_ich8lan;
@@ -747,6 +786,7 @@ static s32 e1000_init_mac_params_ich8lan(struct e1000_hw *hw)
 		mac->ops.rar_set = e1000_rar_set_pch2lan;
 		/* fall-through */
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		/* multicast address update for pch2 */
 		mac->ops.update_mc_addr_list =
 			e1000_update_mc_addr_list_pch2lan;
@@ -770,7 +810,8 @@ static s32 e1000_init_mac_params_ich8lan(struct e1000_hw *hw)
 		break;
 	}
 
-	if (mac->type == e1000_pch_lpt) {
+	if (mac->type == e1000_pch_lpt ||
+	    mac->type == e1000_pch_spt) {
 		mac->rar_entry_count = E1000_PCH_LPT_RAR_ENTRIES;
 		mac->ops.rar_set = e1000_rar_set_pch_lpt;
 		mac->ops.setup_physical_interface = e1000_setup_copper_link_pch_lpt;
@@ -1493,7 +1534,8 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 	 * the IPG and reduce Rx latency in the PHY.
 	 */
 	if (((hw->mac.type == e1000_pch2lan) ||
-	     (hw->mac.type == e1000_pch_lpt)) && link) {
+	     (hw->mac.type == e1000_pch_lpt) ||
+	     (hw->mac.type == e1000_pch_spt)) && link) {
 		u32 reg;
 		reg = E1000_READ_REG(hw, E1000_STATUS);
 		if (!(reg & (E1000_STATUS_FD | E1000_STATUS_SPEED_MASK))) {
@@ -1519,7 +1561,66 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 
 			if (ret_val)
 				return ret_val;
+		} else if (hw->mac.type == e1000_pch_spt &&
+			   (reg & E1000_STATUS_FD) &&
+			   (reg & E1000_STATUS_SPEED_MASK) == E1000_STATUS_SPEED_1000) {
+			reg &= ~E1000_TIPG_IPGT_MASK;
+			reg |= 0x0C;
+			E1000_WRITE_REG(hw, E1000_TIPG, reg);
+
+			ret_val = hw->phy.ops.acquire(hw);
+			if (ret_val)
+				return ret_val;
+
+			ret_val = e1000_write_emi_reg_locked(hw, I217_RX_CONFIG, 1);
+
+			hw->phy.ops.release(hw);
+
+			if (ret_val)
+				return ret_val;
 		}
+
+		/*
+		 * What is this for?
+		 */
+		reg = E1000_READ_REG(hw, E1000_STATUS);
+		if (hw->mac.type == e1000_pch_spt &&
+		   (reg & E1000_STATUS_FD) &&
+		   (reg & E1000_STATUS_SPEED_MASK) == E1000_STATUS_SPEED_1000) {
+			u16 data;
+			u16 ptr_gap;
+
+			ret_val = hw->phy.ops.acquire(hw);
+			if (ret_val)
+				return ret_val;
+			hw->phy.ops.read_reg_locked(hw, PHY_REG(776, 20), &data);
+			ptr_gap = (data & (0x3FF << 2)) >> 2;
+			if (ptr_gap < 0x18) {
+				data &= ~(0x3FF << 2);
+				data |= (0x18 << 2);
+				hw->phy.ops.write_reg_locked(hw,
+						     PHY_REG(776, 20),
+						     data);
+			}
+			hw->phy.ops.release(hw);
+
+			if (ret_val)
+				return ret_val;
+		}
+	}
+
+	/* I217 Packet Loss issue:
+	 * ensure that FEXTNVM4 Beacon Duration is set correctly
+	 * on power up.
+	 * Set the Beacon Duration for I217 to 8 usec
+	 */
+	if ((hw->mac.type == e1000_pch_lpt) || (hw->mac.type == e1000_pch_spt)) {
+		u32 mac_reg;
+
+		mac_reg = E1000_READ_REG(hw, E1000_FEXTNVM4);
+		mac_reg &= ~E1000_FEXTNVM4_BEACON_DURATION_MASK;
+		mac_reg |= E1000_FEXTNVM4_BEACON_DURATION_8USEC;
+		E1000_WRITE_REG(hw, E1000_FEXTNVM4, mac_reg);
 	}
 
 	/* Work-around I218 hang issue */
@@ -1531,7 +1632,9 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 		if (ret_val)
 			return ret_val;
 	}
-	if (hw->mac.type == e1000_pch_lpt) {
+
+	if (hw->mac.type == e1000_pch_lpt ||
+	    hw->mac.type == e1000_pch_spt) {
 		/* Set platform power management values for
 		 * Latency Tolerance Reporting (LTR)
 		 * Optimized Buffer Flush/Fill (OBFF)
@@ -1543,6 +1646,18 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 
 	/* Clear link partner's EEE ability */
 	hw->dev_spec.ich8lan.eee_lp_ability = 0;
+
+	/* FEXTNVM6 K1-off workaround */
+	if (hw->mac.type == e1000_pch_spt) {
+		u32 pcieanacfg = E1000_READ_REG(hw, E1000_PCIEANACFG);
+		u32 fextnvm6 = E1000_READ_REG(hw, E1000_FEXTNVM6);
+
+		if (pcieanacfg & E1000_FEXTNVM6_K1_OFF_ENABLE)
+			fextnvm6 |= E1000_FEXTNVM6_K1_OFF_ENABLE;
+		else
+			fextnvm6 &= ~E1000_FEXTNVM6_K1_OFF_ENABLE;
+		E1000_WRITE_REG(hw, E1000_FEXTNVM6, fextnvm6);
+	}
 
 	if (!link)
 		return E1000_SUCCESS; /* No link detected */
@@ -1637,6 +1752,7 @@ void e1000_init_function_pointers_ich8lan(struct e1000_hw *hw)
 	case e1000_pchlan:
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		hw->phy.ops.init_params = e1000_init_phy_params_pchlan;
 		break;
 	default:
@@ -2086,6 +2202,7 @@ static s32 e1000_sw_lcd_config_ich8lan(struct e1000_hw *hw)
 	case e1000_pchlan:
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		sw_cfg_mask = E1000_FEXTNVM_SW_CONFIG_ICH8M;
 		break;
 	default:
@@ -3202,6 +3319,15 @@ static s32 e1000_valid_nvm_bank_detect_ich8lan(struct e1000_hw *hw, u32 *bank)
 	DEBUGFUNC("e1000_valid_nvm_bank_detect_ich8lan");
 
 	switch (hw->mac.type) {
+	case e1000_pch_spt:
+		*bank = E1000_READ_REG(hw, E1000_CTRL_EXT) & E1000_CTRL_EXT_NVMVS;
+		if (*bank == 0 || *bank == 1) {
+			return -E1000_ERR_NVM;
+		} else {
+			*bank = *bank - 2;
+			return 0;
+		}
+		break;
 	case e1000_ich8lan:
 	case e1000_ich9lan:
 		eecd = E1000_READ_REG(hw, E1000_EECD);
@@ -3246,6 +3372,97 @@ static s32 e1000_valid_nvm_bank_detect_ich8lan(struct e1000_hw *hw, u32 *bank)
 		DEBUGOUT("ERROR: No valid NVM bank present\n");
 		return -E1000_ERR_NVM;
 	}
+}
+
+/**
+ *  e1000_read_nvm_spt - Read word(s) from the NVM
+ *  @hw: pointer to the HW structure
+ *  @offset: The offset (in bytes) of the word(s) to read.
+ *  @words: Size of data to read in words
+ *  @data: Pointer to the word(s) to read at offset.
+ *
+ *  Reads a word(s) from the NVM using the flash access registers.
+ **/
+static s32 e1000_read_nvm_spt(struct e1000_hw *hw, u16 offset, u16 words,
+			      u16 *data)
+{
+	struct e1000_nvm_info *nvm = &hw->nvm;
+	struct e1000_dev_spec_ich8lan *dev_spec = &hw->dev_spec.ich8lan;
+	u32 act_offset;
+	s32 ret_val = E1000_SUCCESS;
+	u32 bank = 0;
+	u32 dword;
+	u16 use_offset;
+	u16 i;
+
+	DEBUGFUNC("e1000_read_nvm_spt");
+
+	if ((offset >= nvm->word_size) || (words > nvm->word_size - offset) ||
+	    (words == 0)) {
+		DEBUGOUT("nvm parameter(s) out of bounds\n");
+		ret_val = -E1000_ERR_NVM;
+		goto out;
+	}
+
+	nvm->ops.acquire(hw);
+
+	ret_val = e1000_valid_nvm_bank_detect_ich8lan(hw, &bank);
+	if (ret_val != E1000_SUCCESS) {
+		DEBUGOUT("Could not detect valid bank, assuming bank 0\n");
+		bank = 0;
+	}
+
+	act_offset = (bank) ? nvm->flash_bank_size : 0;
+	act_offset += offset;
+
+	ret_val = E1000_SUCCESS;
+	for (i = 0; i < words; i += 2) {
+		if (words - i == 1) {
+			if (dev_spec->shadow_ram[offset+i].modified) {
+				data[i] = dev_spec->shadow_ram[offset+i].value;
+			} else {
+				use_offset = act_offset + i -
+					     (act_offset + i) % 2;
+				ret_val = e1000_read_flash_dword_ich8lan(
+							hw,
+							use_offset,
+							&dword);
+				if (ret_val)
+					break;
+				if ((act_offset + i) % 2 == 0)
+					data[i] = (u16)(dword & 0xFFFF);
+				else
+					data[i] = (u16)((dword >> 16) & 0xFFFF);
+			}
+		} else {
+			use_offset = act_offset + i;
+			if (!(dev_spec->shadow_ram[offset + i].modified) ||
+			    !(dev_spec->shadow_ram[offset + i + 1].modified)) {
+				ret_val =
+				 e1000_read_flash_dword_ich8lan(hw,
+					use_offset, &dword);
+				if (ret_val)
+					break;
+			}
+			if (dev_spec->shadow_ram[offset + i].modified)
+				data[i] = dev_spec->shadow_ram[offset + i].value;
+			else
+				data[i] = (u16)(dword & 0xFFFF);
+			if (dev_spec->shadow_ram[offset + i].modified)
+				data[i + 1] =
+				    dev_spec->shadow_ram[offset + i + 1].value;
+			else
+				data[i + 1] = (u16)(dword >> 16 & 0xFFFF);
+		}
+	}
+
+	nvm->ops.release(hw);
+
+out:
+	if (ret_val)
+		DEBUGOUT1("NVM read error: %d\n", ret_val);
+
+	return ret_val;
 }
 
 /**
@@ -3335,7 +3552,10 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 	/* Clear FCERR and DAEL in hw status by writing 1 */
 	hsfsts.hsf_status.flcerr = 1;
 	hsfsts.hsf_status.dael = 1;
-	E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFSTS, hsfsts.regval);
+	if (hw->mac.type == e1000_pch_spt)
+		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS, hsfsts.regval & 0xFFFF);
+	else
+		E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFSTS, hsfsts.regval);
 
 	/* Either we should have a hardware SPI cycle in progress
 	 * bit to check against, in order to start a new cycle or
@@ -3351,7 +3571,10 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 		 * Begin by setting Flash Cycle Done.
 		 */
 		hsfsts.hsf_status.flcdone = 1;
-		E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFSTS, hsfsts.regval);
+		if (hw->mac.type == e1000_pch_spt)
+			E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS, hsfsts.regval & 0xFFFF);
+		else
+			E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFSTS, hsfsts.regval);
 		ret_val = E1000_SUCCESS;
 	} else {
 		s32 i;
@@ -3373,8 +3596,12 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 			 * now set the Flash Cycle Done.
 			 */
 			hsfsts.hsf_status.flcdone = 1;
-			E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFSTS,
-						hsfsts.regval);
+			if (hw->mac.type == e1000_pch_spt)
+				E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS,
+							hsfsts.regval & 0xFFFF);
+			else
+				E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFSTS,
+							hsfsts.regval);
 		} else {
 			DEBUGOUT("Flash controller busy, cannot get access\n");
 		}
@@ -3399,10 +3626,16 @@ static s32 e1000_flash_cycle_ich8lan(struct e1000_hw *hw, u32 timeout)
 	DEBUGFUNC("e1000_flash_cycle_ich8lan");
 
 	/* Start a cycle by writing 1 in Flash Cycle Go in Hw Flash Control */
-	hsflctl.regval = E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFCTL);
+	if (hw->mac.type == e1000_pch_spt)
+		hsflctl.regval = E1000_READ_FLASH_REG(hw, ICH_FLASH_HSFSTS) >> 16;
+	else
+		hsflctl.regval = E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFCTL);
 	hsflctl.hsf_ctrl.flcgo = 1;
 
-	E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL, hsflctl.regval);
+	if (hw->mac.type == e1000_pch_spt)
+		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS, hsflctl.regval << 16);
+	else
+		E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL, hsflctl.regval);
 
 	/* wait till FDONE bit is set to 1 */
 	do {
@@ -3442,6 +3675,29 @@ static s32 e1000_read_flash_word_ich8lan(struct e1000_hw *hw, u32 offset,
 }
 
 /**
+ *  e1000_read_flash_dword_ich8lan - Read dword from flash
+ *  @hw: pointer to the HW structure
+ *  @offset: offset to data location
+ *  @data: pointer to the location for storing the data
+ *
+ *  Reads the flash word at offset into data.  Offset is converted
+ *  to bytes before read.
+ **/
+static s32 e1000_read_flash_dword_ich8lan(struct e1000_hw *hw, u32 offset,
+					 u32 *data)
+{
+	DEBUGFUNC("e1000_read_flash_dword_ich8lan");
+
+	if (!data)
+		return -E1000_ERR_NVM;
+
+	/* Must convert offset into bytes. */
+	offset <<= 1;
+
+	return e1000_read_flash_data32_ich8lan(hw, offset, data);
+}
+
+/**
  *  e1000_read_flash_byte_ich8lan - Read byte from flash
  *  @hw: pointer to the HW structure
  *  @offset: The offset of the byte to read.
@@ -3455,6 +3711,8 @@ static s32 e1000_read_flash_byte_ich8lan(struct e1000_hw *hw, u32 offset,
 	s32 ret_val;
 	u16 word = 0;
 
+	if (hw->mac.type == e1000_pch_spt)
+		return -E1000_ERR_NVM;
 	ret_val = e1000_read_flash_data_ich8lan(hw, offset, 1, &word);
 
 	if (ret_val)
@@ -3541,6 +3799,79 @@ static s32 e1000_read_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 	return ret_val;
 }
 
+/**
+ *  e1000_read_flash_data32_ich8lan - Read dword from NVM
+ *  @hw: pointer to the HW structure
+ *  @offset: The offset (in bytes) of the byte or word to read.
+ *  @size: Size of data to read, 1=byte 2=word
+ *  @data: Pointer to the word to store the value read.
+ *
+ *  Reads a byte or word from the NVM using the flash access registers.
+ **/
+static s32 e1000_read_flash_data32_ich8lan(struct e1000_hw *hw, u32 offset,
+					 u32 *data)
+{
+	union ich8_hws_flash_status hsfsts;
+	union ich8_hws_flash_ctrl hsflctl;
+	u32 flash_linear_addr;
+	s32 ret_val = -E1000_ERR_NVM;
+	u8 count = 0;
+
+	DEBUGFUNC("e1000_read_flash_data32_ich8lan");
+
+	if (offset > ICH_FLASH_LINEAR_ADDR_MASK ||
+	    hw->mac.type != e1000_pch_spt)
+		return -E1000_ERR_NVM;
+
+	flash_linear_addr = ((ICH_FLASH_LINEAR_ADDR_MASK & offset) +
+			     hw->nvm.flash_base_addr);
+
+	do {
+		usec_delay(1);
+		/* Steps */
+		ret_val = e1000_flash_cycle_init_ich8lan(hw);
+		if (ret_val != E1000_SUCCESS)
+			break;
+		hsflctl.regval = E1000_READ_FLASH_REG(hw, ICH_FLASH_HSFSTS) >> 16;
+
+		/* 0b/1b corresponds to 1 or 2 byte size, respectively. */
+		hsflctl.hsf_ctrl.fldbcount = sizeof(int32_t) - 1;
+		hsflctl.hsf_ctrl.flcycle = ICH_CYCLE_READ;
+		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS, hsflctl.regval << 16);
+		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_FADDR, flash_linear_addr);
+
+		ret_val = e1000_flash_cycle_ich8lan(hw,
+						ICH_FLASH_READ_COMMAND_TIMEOUT);
+
+		/* Check if FCERR is set to 1, if set to 1, clear it
+		 * and try the whole sequence a few more times, else
+		 * read in (shift in) the Flash Data0, the order is
+		 * least significant byte first msb to lsb
+		 */
+		if (ret_val == E1000_SUCCESS) {
+			*data = E1000_READ_FLASH_REG(hw, ICH_FLASH_FDATA0);
+			break;
+		} else {
+			/* If we've gotten here, then things are probably
+			 * completely hosed, but if the error condition is
+			 * detected, it won't hurt to give it another try...
+			 * ICH_FLASH_CYCLE_REPEAT_COUNT times.
+			 */
+			hsfsts.regval = E1000_READ_FLASH_REG16(hw,
+							      ICH_FLASH_HSFSTS);
+			if (hsfsts.hsf_status.flcerr) {
+				/* Repeat for some time before giving up. */
+				continue;
+			} else if (!hsfsts.hsf_status.flcdone) {
+				DEBUGOUT("Timeout error - flash cycle did not complete.\n");
+				break;
+			}
+		}
+	} while (count++ < ICH_FLASH_CYCLE_REPEAT_COUNT);
+
+	return ret_val;
+}
+
 
 /**
  *  e1000_write_nvm_ich8lan - Write word(s) to the NVM
@@ -3576,6 +3907,169 @@ static s32 e1000_write_nvm_ich8lan(struct e1000_hw *hw, u16 offset, u16 words,
 	nvm->ops.release(hw);
 
 	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_update_nvm_checksum_spt - Update the checksum for NVM
+ *  @hw: pointer to the HW structure
+ *
+ *  The NVM checksum is updated by calling the generic update_nvm_checksum,
+ *  which writes the checksum to the shadow ram.  The changes in the shadow
+ *  ram are then committed to the EEPROM by processing each bank at a time
+ *  checking for the modified bit and writing only the pending changes.
+ *  After a successful commit, the shadow ram is cleared and is ready for
+ *  future writes.
+ **/
+static s32 e1000_update_nvm_checksum_spt(struct e1000_hw *hw)
+{
+	struct e1000_nvm_info *nvm = &hw->nvm;
+	struct e1000_dev_spec_ich8lan *dev_spec = &hw->dev_spec.ich8lan;
+	u32 i, act_offset, new_bank_offset, old_bank_offset, bank;
+	s32 ret_val;
+	u32 data32 = 0;
+
+	DEBUGFUNC("e1000_update_nvm_checksum_spt");
+
+	ret_val = e1000_update_nvm_checksum_generic(hw);
+	if (ret_val)
+		goto out;
+
+	if (nvm->type != e1000_nvm_flash_sw)
+		goto out;
+
+	nvm->ops.acquire(hw);
+
+	/* We're writing to the opposite bank so if we're on bank 1,
+	 * write to bank 0 etc.  We also need to erase the segment that
+	 * is going to be written
+	 */
+	ret_val =  e1000_valid_nvm_bank_detect_ich8lan(hw, &bank);
+	if (ret_val != E1000_SUCCESS) {
+		DEBUGOUT("Could not detect valid bank, assuming bank 0\n");
+		bank = 0;
+	}
+
+	if (bank == 0) {
+		new_bank_offset = nvm->flash_bank_size;
+		old_bank_offset = 0;
+		ret_val = e1000_erase_flash_bank_ich8lan(hw, 1);
+		if (ret_val)
+			goto release;
+	} else {
+		old_bank_offset = nvm->flash_bank_size;
+		new_bank_offset = 0;
+		ret_val = e1000_erase_flash_bank_ich8lan(hw, 0);
+		if (ret_val)
+			goto release;
+	}
+	for (i = 0; i < E1000_SHADOW_RAM_WORDS; i += 2) {
+		/* Determine whether to write the value stored
+		 * in the other NVM bank or a modified value stored
+		 * in the shadow RAM
+		 */
+		ret_val = e1000_read_flash_dword_ich8lan(hw,
+							 i + old_bank_offset,
+							 &data32);
+		if (dev_spec->shadow_ram[i].modified) {
+			data32 &= 0xFFFF0000;
+			data32 |= dev_spec->shadow_ram[i].value & 0xffff;
+		}
+		if (dev_spec->shadow_ram[i + 1].modified) {
+			data32 &= 0x0000FFFF;
+			data32 |= (dev_spec->shadow_ram[i + 1].value & 0xffff)
+				  << 16;
+		}
+		if (ret_val)
+			break;
+
+		/* If the word is 0x13, then make sure the signature bits
+		 * (15:14) are 11b until the commit has completed.
+		 * This will allow us to write 10b which indicates the
+		 * signature is valid.  We want to do this after the write
+		 * has completed so that we don't mark the segment valid
+		 * while the write is still in progress
+		 */
+		if (i == E1000_ICH_NVM_SIG_WORD - 1)
+			data32 |= E1000_ICH_NVM_SIG_MASK << 16;
+
+		/* Convert offset to bytes. */
+		/*act_offset = (i + new_bank_offset) << 1;*/
+
+		usec_delay(100);
+
+		/* Write the bytes to the new bank. */
+		act_offset = i + new_bank_offset;
+		ret_val = e1000_retry_write_flash_dword_ich8lan(hw,
+							       act_offset,
+							       data32);
+		if (ret_val)
+			break;
+	 }
+
+	/* Don't bother writing the segment valid bits if sector
+	 * programming failed.
+	 */
+	if (ret_val) {
+		DEBUGOUT("Flash commit failed.\n");
+		goto release;
+	}
+
+	/* Finally validate the new segment by setting bit 15:14
+	 * to 10b in word 0x13 , this can be done without an
+	 * erase as well since these bits are 11 to start with
+	 * and we need to change bit 14 to 0b
+	 */
+	act_offset = new_bank_offset + E1000_ICH_NVM_SIG_WORD;
+
+	/*offset in words but we read dword */
+	--act_offset;
+
+	ret_val = e1000_read_flash_dword_ich8lan(hw, act_offset, &data32);
+	if (ret_val)
+		goto release;
+
+	data32 &= 0xBFFFFFFF;
+	ret_val = e1000_retry_write_flash_dword_ich8lan(hw, act_offset * 2 + 1,
+							data32);
+	if (ret_val)
+		goto release;
+
+	/* And invalidate the previously valid segment by setting
+	 * its signature word (0x13) high_byte to 0b. This can be
+	 * done without an erase because flash erase sets all bits
+	 * to 1's. We can write 1's to 0's without an erase
+	 */
+	/*act_offset = (old_bank_offset + E1000_ICH_NVM_SIG_WORD) * 2 + 1;*/
+
+	/* offset in words but we read dwords */
+	act_offset = old_bank_offset + E1000_ICH_NVM_SIG_WORD - 1;
+	ret_val = e1000_read_flash_dword_ich8lan(hw, act_offset, &data32);
+
+	if (ret_val)
+		goto release;
+
+	/* Great!  Everything worked, we can now clear the cached entries. */
+	for (i = 0; i < E1000_SHADOW_RAM_WORDS; i++) {
+		dev_spec->shadow_ram[i].modified = FALSE;
+		dev_spec->shadow_ram[i].value = 0xFFFF;
+	}
+
+release:
+	nvm->ops.release(hw);
+
+	/* Reload the EEPROM, or else modifications will not appear
+	 * until after the next adapter reset.
+	 */
+	if (!ret_val) {
+		nvm->ops.reload(hw);
+		msec_delay(10);
+	}
+
+out:
+	if (ret_val)
+		DEBUGOUT1("NVM update error: %d\n", ret_val);
+
+	return ret_val;
 }
 
 /**
@@ -3755,6 +4249,7 @@ static s32 e1000_validate_nvm_checksum_ich8lan(struct e1000_hw *hw)
 	 */
 	switch (hw->mac.type) {
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		word = NVM_COMPAT;
 		valid_csum_mask = NVM_COMPAT_VALID_CSUM;
 		break;
@@ -3802,8 +4297,13 @@ static s32 e1000_write_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 
 	DEBUGFUNC("e1000_write_ich8_data");
 
-	if (size < 1 || size > 2 || offset > ICH_FLASH_LINEAR_ADDR_MASK)
-		return -E1000_ERR_NVM;
+	if (hw->mac.type == e1000_pch_spt) {
+		if (size != 4 || offset > ICH_FLASH_LINEAR_ADDR_MASK)
+			return -E1000_ERR_NVM;
+	} else {
+		if (size < 1 || size > 2 || offset > ICH_FLASH_LINEAR_ADDR_MASK)
+			return -E1000_ERR_NVM;
+	}
 
 	flash_linear_addr = ((ICH_FLASH_LINEAR_ADDR_MASK & offset) +
 			     hw->nvm.flash_base_addr);
@@ -3814,12 +4314,18 @@ static s32 e1000_write_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 		ret_val = e1000_flash_cycle_init_ich8lan(hw);
 		if (ret_val != E1000_SUCCESS)
 			break;
-		hsflctl.regval = E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFCTL);
+		if (hw->mac.type == e1000_pch_spt)
+			hsflctl.regval = E1000_READ_FLASH_REG(hw, ICH_FLASH_HSFSTS) >> 16;
+		else
+			hsflctl.regval = E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFCTL);
 
 		/* 0b/1b corresponds to 1 or 2 byte size, respectively. */
 		hsflctl.hsf_ctrl.fldbcount = size - 1;
 		hsflctl.hsf_ctrl.flcycle = ICH_CYCLE_WRITE;
-		E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL, hsflctl.regval);
+		if (hw->mac.type == e1000_pch_spt)
+			E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS, hsflctl.regval << 16);
+		else
+			E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL, hsflctl.regval);
 
 		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_FADDR, flash_linear_addr);
 
@@ -3829,6 +4335,89 @@ static s32 e1000_write_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 			flash_data = (u32)data;
 
 		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_FDATA0, flash_data);
+
+		/* check if FCERR is set to 1 , if set to 1, clear it
+		 * and try the whole sequence a few more times else done
+		 */
+		ret_val =
+		    e1000_flash_cycle_ich8lan(hw,
+					      ICH_FLASH_WRITE_COMMAND_TIMEOUT);
+		if (ret_val == E1000_SUCCESS)
+			break;
+
+		/* If we're here, then things are most likely
+		 * completely hosed, but if the error condition
+		 * is detected, it won't hurt to give it another
+		 * try...ICH_FLASH_CYCLE_REPEAT_COUNT times.
+		 */
+		hsfsts.regval = E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFSTS);
+		if (hsfsts.hsf_status.flcerr)
+			/* Repeat for some time before giving up. */
+			continue;
+		if (!hsfsts.hsf_status.flcdone) {
+			DEBUGOUT("Timeout error - flash cycle did not complete.\n");
+			break;
+		}
+	} while (count++ < ICH_FLASH_CYCLE_REPEAT_COUNT);
+
+	return ret_val;
+}
+
+/**
+ *  e1000_write_flash_data32_ich8lan - Writes 32-bit words to the NVM
+ *  @hw: pointer to the HW structure
+ *  @offset: The offset (in bytes) of the 32-bit word to read.
+ *  @data: The byte(s) to write to the NVM.
+ *
+ *  Writes one/two bytes to the NVM using the flash access registers.
+ **/
+static s32 e1000_write_flash_data32_ich8lan(struct e1000_hw *hw, u32 offset,
+					    u32 data)
+{
+	union ich8_hws_flash_status hsfsts;
+	union ich8_hws_flash_ctrl hsflctl;
+	u32 flash_linear_addr;
+	s32 ret_val;
+	u8 count = 0;
+
+	DEBUGFUNC("e1000_write_ich8_data");
+
+	if (hw->mac.type == e1000_pch_spt) {
+		if (offset > ICH_FLASH_LINEAR_ADDR_MASK)
+			return -E1000_ERR_NVM;
+	}
+	flash_linear_addr = ((ICH_FLASH_LINEAR_ADDR_MASK & offset) +
+			     hw->nvm.flash_base_addr);
+
+	do {
+		usec_delay(1);
+		/* Steps */
+		ret_val = e1000_flash_cycle_init_ich8lan(hw);
+		if (ret_val != E1000_SUCCESS)
+			break;
+		if (hw->mac.type == e1000_pch_spt) {
+			hsflctl.regval = E1000_READ_FLASH_REG(hw, ICH_FLASH_HSFSTS) >> 16;
+		} else {
+			hsflctl.regval = E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFCTL);
+		}
+
+		/* 0b/1b corresponds to 1 or 2 byte size, respectively. */
+		hsflctl.hsf_ctrl.fldbcount = sizeof(int32_t) - 1;
+		hsflctl.hsf_ctrl.flcycle = ICH_CYCLE_WRITE;
+
+		/* In SPT, This register is in Lan memory space,
+		 * not flash.  Therefore, only 32 bit access is
+		 * supported
+		 */
+		if (hw->mac.type == e1000_pch_spt) {
+			E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS, hsflctl.regval << 16);
+		} else {
+			E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL, hsflctl.regval);
+		}
+
+		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_FADDR, flash_linear_addr);
+
+		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_FDATA0, data);
 
 		/* check if FCERR is set to 1 , if set to 1, clear it
 		 * and try the whole sequence a few more times else done
@@ -3876,8 +4465,6 @@ static s32 e1000_write_flash_byte_ich8lan(struct e1000_hw *hw, u32 offset,
 	return e1000_write_flash_data_ich8lan(hw, offset, 1, word);
 }
 
-
-
 /**
  *  e1000_retry_write_flash_byte_ich8lan - Writes a single byte to NVM
  *  @hw: pointer to the HW structure
@@ -3903,6 +4490,40 @@ static s32 e1000_retry_write_flash_byte_ich8lan(struct e1000_hw *hw,
 		DEBUGOUT2("Retrying Byte %2.2X at offset %u\n", byte, offset);
 		usec_delay(100);
 		ret_val = e1000_write_flash_byte_ich8lan(hw, offset, byte);
+		if (ret_val == E1000_SUCCESS)
+			break;
+	}
+	if (program_retries == 100)
+		return -E1000_ERR_NVM;
+
+	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_retry_write_flash_dword_ich8lan - Writes a 32-bit word to NVM
+ *  @hw: pointer to the HW structure
+ *  @offset: The offset of the byte to write.
+ *  @dword: The dword to write to the NVM.
+ *
+ *  Writes a single 32-bit word to the NVM using the flash access registers.
+ *  Goes through a retry algorithm before giving up.
+ **/
+static s32 e1000_retry_write_flash_dword_ich8lan(struct e1000_hw *hw,
+						u32 offset, u32 dword)
+{
+	s32 ret_val;
+	u16 program_retries;
+
+	DEBUGFUNC("e1000_retry_write_flash_byte_ich8lan");
+
+	ret_val = e1000_write_flash_data32_ich8lan(hw, offset, dword);
+	if (!ret_val)
+		return ret_val;
+
+	for (program_retries = 0; program_retries < 100; program_retries++) {
+		DEBUGOUT2("Retrying DWord %08X at offset %u\n", dword, offset);
+		usec_delay(100);
+		ret_val = e1000_write_flash_data32_ich8lan(hw, offset, dword);
 		if (ret_val == E1000_SUCCESS)
 			break;
 	}
@@ -3986,12 +4607,20 @@ static s32 e1000_erase_flash_bank_ich8lan(struct e1000_hw *hw, u32 bank)
 			/* Write a value 11 (block Erase) in Flash
 			 * Cycle field in hw flash control
 			 */
-			hsflctl.regval =
-			    E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFCTL);
+			if (hw->mac.type == e1000_pch_spt)
+				hsflctl.regval =
+				    E1000_READ_FLASH_REG(hw, ICH_FLASH_HSFSTS) >> 16;
+			else
+				hsflctl.regval =
+				    E1000_READ_FLASH_REG16(hw, ICH_FLASH_HSFCTL);
 
 			hsflctl.hsf_ctrl.flcycle = ICH_CYCLE_ERASE;
-			E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL,
-						hsflctl.regval);
+			if (hw->mac.type == e1000_pch_spt)
+				E1000_WRITE_FLASH_REG(hw, ICH_FLASH_HSFSTS,
+							hsflctl.regval << 16);
+			else
+				E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL,
+							hsflctl.regval);
 
 			/* Write the last 24 bits of an index within the
 			 * block into Flash Linear address field in Flash
@@ -4421,7 +5050,8 @@ static void e1000_initialize_hw_bits_ich8lan(struct e1000_hw *hw)
 	E1000_WRITE_REG(hw, E1000_RFCTL, reg);
 
 	/* Enable ECC on Lynxpoint */
-	if (hw->mac.type == e1000_pch_lpt) {
+	if (hw->mac.type == e1000_pch_lpt ||
+	    hw->mac.type == e1000_pch_spt) {
 		reg = E1000_READ_REG(hw, E1000_PBECCSTS);
 		reg |= E1000_PBECCSTS_ECC_ENABLE;
 		E1000_WRITE_REG(hw, E1000_PBECCSTS, reg);
@@ -4853,7 +5483,8 @@ void e1000_suspend_workarounds_ich8lan(struct e1000_hw *hw)
 		if ((device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
 		    (device_id == E1000_DEV_ID_PCH_LPTLP_I218_V) ||
 		    (device_id == E1000_DEV_ID_PCH_I218_LM3) ||
-		    (device_id == E1000_DEV_ID_PCH_I218_V3)) {
+		    (device_id == E1000_DEV_ID_PCH_I218_V3) ||
+		    (hw->mac.type == e1000_pch_spt)) {
 			u32 fextnvm6 = E1000_READ_REG(hw, E1000_FEXTNVM6);
 
 			E1000_WRITE_REG(hw, E1000_FEXTNVM6,

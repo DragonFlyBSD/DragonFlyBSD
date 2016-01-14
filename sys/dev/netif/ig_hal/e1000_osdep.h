@@ -115,8 +115,18 @@ struct e1000_osdep {
         ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
         E1000_REGISTER(hw, reg))
 
+#define E1000_READ_REG16(hw, reg) \
+    bus_space_read_2(((struct e1000_osdep *)(hw)->back)->mem_bus_space_tag, \
+        ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
+        E1000_REGISTER(hw, reg))
+
 #define E1000_WRITE_REG(hw, reg, value) \
     bus_space_write_4(((struct e1000_osdep *)(hw)->back)->mem_bus_space_tag, \
+        ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
+        E1000_REGISTER(hw, reg), value)
+
+#define E1000_WRITE_REG16(hw, reg, value) \
+    bus_space_write_2(((struct e1000_osdep *)(hw)->back)->mem_bus_space_tag, \
         ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
         E1000_REGISTER(hw, reg), value)
 
@@ -157,19 +167,23 @@ struct e1000_osdep {
         (hw)->io_base + 4, value); } while (0)
 
 #define E1000_READ_FLASH_REG(hw, reg) \
+    (((hw)->mac.type == e1000_pch_spt) ? E1000_READ_REG(hw, (reg) + 0xE000):   \
     bus_space_read_4(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg)
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg))
 
 #define E1000_READ_FLASH_REG16(hw, reg) \
+    (((hw)->mac.type == e1000_pch_spt) ? E1000_READ_REG16(hw, (reg) + 0xE000): \
     bus_space_read_2(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg)
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg))
 
 #define E1000_WRITE_FLASH_REG(hw, reg, value) \
+    (((hw)->mac.type == e1000_pch_spt) ? E1000_WRITE_REG(hw, (reg) + 0xE000, value):   \
     bus_space_write_4(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value)
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value))
 
 #define E1000_WRITE_FLASH_REG16(hw, reg, value) \
+    (((hw)->mac.type == e1000_pch_spt) ? E1000_WRITE_REG16(hw, (reg) + 0xE000, value):   \
     bus_space_write_2(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value)
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value))
 
 #endif	/* _DRAGONFLY_OS_H_ */

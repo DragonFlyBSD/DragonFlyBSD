@@ -242,6 +242,10 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_EMX_DEVICE(PCH_I218_V2),
 	EM_EMX_DEVICE(PCH_I218_LM3),
 	EM_EMX_DEVICE(PCH_I218_V3),
+	EM_EMX_DEVICE(PCH_SPT_I219_LM),
+	EM_EMX_DEVICE(PCH_SPT_I219_V),
+	EM_EMX_DEVICE(PCH_SPT_I219_LM2),
+	EM_EMX_DEVICE(PCH_SPT_I219_V2),
 
 	/* required last entry */
 	EM_DEVICE_NULL
@@ -458,6 +462,8 @@ em_attach(device_t dev)
 	/*
 	 * For ICH8 and family we need to map the flash memory,
 	 * and this must happen after the MAC is identified.
+	 *
+	 * (SPT does not map the flash with a separate BAR)
 	 */
 	if (adapter->hw.mac.type == e1000_ich8lan ||
 	    adapter->hw.mac.type == e1000_ich9lan ||
@@ -490,12 +496,13 @@ em_attach(device_t dev)
 	case e1000_82571:
 	case e1000_82572:
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		/*
 		 * Pullup extra 4bytes into the first data segment for
 		 * TSO, see:
 		 * 82571/82572 specification update errata #7
 		 *
-		 * Same applies to I217 (and maybe I218).
+		 * Same applies to I217 (and maybe I218 and I219).
 		 *
 		 * NOTE:
 		 * 4bytes instead of 2bytes, which are mentioned in the
@@ -1115,6 +1122,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_ich10lan:
 		case e1000_pch2lan:
 		case e1000_pch_lpt:
+		case e1000_pch_spt:
 		case e1000_82574:
 		case e1000_82583:
 		case e1000_80003es2lan:
@@ -2464,6 +2472,7 @@ em_reset(struct adapter *adapter)
 	case e1000_pchlan:
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		pba = E1000_PBA_26K;
 		break;
 
@@ -2528,6 +2537,7 @@ em_reset(struct adapter *adapter)
 
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
 		adapter->hw.fc.high_water = 0x5C20;
 		adapter->hw.fc.low_water = 0x5048;
 		adapter->hw.fc.pause_time = 0x0650;
