@@ -1100,8 +1100,15 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 	    "int _crunched_%s_stub(int argc, char **argv, char **envp)"
 	    "{return main(argc,argv,envp);}\" >%s_stub.c\n",
 	    p->ident, p->name);
-	fprintf(outmk, "%s.lo: %s_stub.o $(%s_OBJPATHS)",
-	    p->name, p->name, p->ident);
+
+	/*
+	 * Needs dependency to ensure objects are built before .lo.
+	 * the $(%s_OBJPATHS) are dangling (the Makefile does not have
+	 * direct knowledge of what the objs depend on).  So make
+	 * %s.lo depend on %s_make.
+	 */
+	fprintf(outmk, "%s.lo: %s_stub.o %s_make $(%s_OBJPATHS)",
+	    p->name, p->name, p->name, p->ident);
 	if (p->libs)
 		fprintf(outmk, " $(%s_LIBS)", p->ident);
 
