@@ -37,6 +37,8 @@
 #ifndef _SYS_WAIT_H_
 #define	_SYS_WAIT_H_
 
+#include <sys/cdefs.h>
+
 /*
  * This file holds definitions relevant to the wait4 system call
  * and the alternate interfaces that use it (wait, wait3, waitpid).
@@ -46,15 +48,14 @@
  * Macros to test the exit status returned by wait
  * and extract the relevant values.
  */
-#ifdef _POSIX_SOURCE
-#define	_W_INT(i)	(i)
-#else
-#define	_W_INT(w)	(*(int *)&(w))	/* convert union wait to int */
+#if __BSD_VISIBLE
 #define	WCOREFLAG	0200
 #endif
+#define	_W_INT(i)	(i)
 
 #define	_WSTATUS(x)	(_W_INT(x) & 0177)
 #define	_WSTOPPED	0177		/* _WSTATUS if process is stopped */
+#define	WSTOPPED	_WSTOPPED
 #define	WIFSTOPPED(x)	(_WSTATUS(x) == _WSTOPPED)
 #define	WSTOPSIG(x)	(_W_INT(x) >> 8)
 #define	WIFSIGNALED(x)	(_WSTATUS(x) != _WSTOPPED && _WSTATUS(x) != 0)
@@ -62,7 +63,7 @@
 #define	WIFEXITED(x)	(_WSTATUS(x) == 0)
 #define	WEXITSTATUS(x)	(_W_INT(x) >> 8)
 #define	WIFCONTINUED(x)	(x == 19)	/* 19 == SIGCONT */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	WCOREDUMP(x)	(_W_INT(x) & WCOREFLAG)
 
 #define	W_EXITCODE(ret, sig)	((ret) << 8 | (sig))
@@ -81,88 +82,29 @@
 #define	WNOHANG		1	/* don't hang in wait */
 #define	WUNTRACED	2	/* tell about stopped, untraced children */
 #define	WCONTINUED	4	/* Report a job control continued process. */
+#if __BSD_VISIBLE
 #define	WLINUXCLONE	0x80000000 /* wait for kthread spawned from linux_clone */
-
-#ifndef _POSIX_SOURCE
-/* POSIX extensions and 4.2/4.3 compatibility: */
 
 /*
  * Tokens for special values of the "pid" parameter to wait4.
  */
 #define	WAIT_ANY	(-1)	/* any process */
 #define	WAIT_MYPGRP	0	/* any process in my process group */
-
-#include <machine/endian.h>
-
-/*
- * Deprecated:
- * Structure of the information in the status word returned by wait4.
- * If w_stopval==WSTOPPED, then the second structure describes
- * the information returned, else the first.
- */
-union wait {
-	int	w_status;		/* used in syscall */
-	/*
-	 * Terminated process status.
-	 */
-	struct {
-#if _BYTE_ORDER == _LITTLE_ENDIAN
-		unsigned int	w_Termsig:7,	/* termination signal */
-				w_Coredump:1,	/* core dump indicator */
-				w_Retcode:8,	/* exit code if w_termsig==0 */
-				w_Filler:16;	/* upper bits filler */
-#elif _BYTE_ORDER == _BIG_ENDIAN
-		unsigned int	w_Filler:16,	/* upper bits filler */
-				w_Retcode:8,	/* exit code if w_termsig==0 */
-				w_Coredump:1,	/* core dump indicator */
-				w_Termsig:7;	/* termination signal */
-#else
-#error "Byte order not implemented"
-#endif
-	} w_T;
-	/*
-	 * Stopped process status.  Returned
-	 * only for traced children unless requested
-	 * with the WUNTRACED option bit.
-	 */
-	struct {
-#if _BYTE_ORDER == _LITTLE_ENDIAN
-		unsigned int	w_Stopval:8,	/* == W_STOPPED if stopped */
-				w_Stopsig:8,	/* signal that stopped us */
-				w_Filler:16;	/* upper bits filler */
-#elif _BYTE_ORDER == _BIG_ENDIAN
-		unsigned int	w_Filler:16,	/* upper bits filler */
-				w_Stopsig:8,	/* signal that stopped us */
-				w_Stopval:8;	/* == W_STOPPED if stopped */
-#else
-#error "Byte order not implemented"
-#endif
-	} w_S;
-};
-#define	w_termsig	w_T.w_Termsig
-#define	w_coredump	w_T.w_Coredump
-#define	w_retcode	w_T.w_Retcode
-#define	w_stopval	w_S.w_Stopval
-#define	w_stopsig	w_S.w_Stopsig
-
-#define	WSTOPPED	_WSTOPPED
-#endif /* _POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _SYS_CDEFS_H_
-#include <sys/cdefs.h>
-#endif
 
 __BEGIN_DECLS
-struct rusage;	/* forward declaration */
-
 pid_t	wait(int *);
 pid_t	waitpid(pid_t, int *, int);
-#ifndef _POSIX_SOURCE
+#if __XSI_VISIBLE < 600 || __BSD_VISIBLE
+struct rusage;
 pid_t	wait3(int *, int, struct rusage *);
+#endif
+#if __BSD_VISIBLE
 pid_t	wait4(pid_t, int *, int, struct rusage *);
 #endif
 __END_DECLS
