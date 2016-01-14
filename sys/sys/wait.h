@@ -35,7 +35,7 @@
  */
 
 #ifndef _SYS_WAIT_H_
-#define _SYS_WAIT_H_
+#define	_SYS_WAIT_H_
 
 /*
  * This file holds definitions relevant to the wait4 system call
@@ -55,15 +55,15 @@
 
 #define	_WSTATUS(x)	(_W_INT(x) & 0177)
 #define	_WSTOPPED	0177		/* _WSTATUS if process is stopped */
-#define WIFSTOPPED(x)	(_WSTATUS(x) == _WSTOPPED)
-#define WSTOPSIG(x)	(_W_INT(x) >> 8)
-#define WIFSIGNALED(x)	(_WSTATUS(x) != _WSTOPPED && _WSTATUS(x) != 0)
-#define WTERMSIG(x)	(_WSTATUS(x))
-#define WIFEXITED(x)	(_WSTATUS(x) == 0)
-#define WEXITSTATUS(x)	(_W_INT(x) >> 8)
-#define WIFCONTINUED(x)	(x == 19)	/* 19 == SIGCONT */
+#define	WIFSTOPPED(x)	(_WSTATUS(x) == _WSTOPPED)
+#define	WSTOPSIG(x)	(_W_INT(x) >> 8)
+#define	WIFSIGNALED(x)	(_WSTATUS(x) != _WSTOPPED && _WSTATUS(x) != 0)
+#define	WTERMSIG(x)	(_WSTATUS(x))
+#define	WIFEXITED(x)	(_WSTATUS(x) == 0)
+#define	WEXITSTATUS(x)	(_W_INT(x) >> 8)
+#define	WIFCONTINUED(x)	(x == 19)	/* 19 == SIGCONT */
 #ifndef _POSIX_SOURCE
-#define WCOREDUMP(x)	(_W_INT(x) & WCOREFLAG)
+#define	WCOREDUMP(x)	(_W_INT(x) & WCOREFLAG)
 
 #define	W_EXITCODE(ret, sig)	((ret) << 8 | (sig))
 #define	W_STOPCODE(sig)		((sig) << 8 | _WSTOPPED)
@@ -78,10 +78,10 @@
  * this option is done, it is as though they were still running... nothing
  * about them is returned.
  */
-#define WNOHANG		1	/* don't hang in wait */
-#define WUNTRACED	2	/* tell about stopped, untraced children */
-#define WCONTINUED	4	/* Report a job control continued process. */
-#define WLINUXCLONE     0x80000000       /* wait for kthread spawned from linux_clone */
+#define	WNOHANG		1	/* don't hang in wait */
+#define	WUNTRACED	2	/* tell about stopped, untraced children */
+#define	WCONTINUED	4	/* Report a job control continued process. */
+#define	WLINUXCLONE	0x80000000 /* wait for kthread spawned from linux_clone */
 
 #ifndef _POSIX_SOURCE
 /* POSIX extensions and 4.2/4.3 compatibility: */
@@ -140,10 +140,10 @@ union wait {
 	} w_S;
 };
 #define	w_termsig	w_T.w_Termsig
-#define w_coredump	w_T.w_Coredump
-#define w_retcode	w_T.w_Retcode
-#define w_stopval	w_S.w_Stopval
-#define w_stopsig	w_S.w_Stopsig
+#define	w_coredump	w_T.w_Coredump
+#define	w_retcode	w_T.w_Retcode
+#define	w_stopval	w_S.w_Stopval
+#define	w_stopsig	w_S.w_Stopsig
 
 #define	WSTOPPED	_WSTOPPED
 #endif /* _POSIX_SOURCE */
@@ -159,11 +159,11 @@ union wait {
 __BEGIN_DECLS
 struct rusage;	/* forward declaration */
 
-pid_t	wait (int *);
-pid_t	waitpid (pid_t, int *, int);
+pid_t	wait(int *);
+pid_t	waitpid(pid_t, int *, int);
 #ifndef _POSIX_SOURCE
-pid_t	wait3 (int *, int, struct rusage *);
-pid_t	wait4 (pid_t, int *, int, struct rusage *);
+pid_t	wait3(int *, int, struct rusage *);
+pid_t	wait4(pid_t, int *, int, struct rusage *);
 #endif
 __END_DECLS
 #endif
