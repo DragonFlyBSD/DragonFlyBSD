@@ -170,6 +170,10 @@ static const struct emx_device {
 	EMX_DEVICE(PCH_I218_V2),
 	EMX_DEVICE(PCH_I218_LM3),
 	EMX_DEVICE(PCH_I218_V3),
+	EMX_DEVICE(PCH_SPT_I219_LM),
+	EMX_DEVICE(PCH_SPT_I219_V),
+	EMX_DEVICE(PCH_SPT_I219_LM2),
+	EMX_DEVICE(PCH_SPT_I219_V2),
 
 	/* required last entry */
 	EMX_DEVICE_NULL
@@ -668,6 +672,7 @@ emx_attach(device_t dev)
 	    sc->hw.mac.type == e1000_82572 ||
 	    sc->hw.mac.type == e1000_80003es2lan ||
 	    sc->hw.mac.type == e1000_pch_lpt ||
+	    sc->hw.mac.type == e1000_pch_spt ||
 	    sc->hw.mac.type == e1000_82574)
 		tx_ring_max = EMX_NTX_RING;
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr", emx_txr);
@@ -1102,6 +1107,7 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_82572:
 		case e1000_82574:
 		case e1000_pch_lpt:
+		case e1000_pch_spt:
 		case e1000_80003es2lan:
 			max_frame_size = 9234;
 			break;
@@ -1947,6 +1953,7 @@ emx_reset(struct emx_softc *sc)
 		break;
 
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
  		pba = E1000_PBA_26K;
  		break;
 
@@ -1986,7 +1993,8 @@ emx_reset(struct emx_softc *sc)
 	/*
 	 * Device specific overrides/settings
 	 */
-	if (sc->hw.mac.type == e1000_pch_lpt) {
+	if (sc->hw.mac.type == e1000_pch_lpt ||
+	    sc->hw.mac.type == e1000_pch_spt) {
 		sc->hw.fc.high_water = 0x5C20;
 		sc->hw.fc.low_water = 0x5048;
 		sc->hw.fc.pause_time = 0x0650;
@@ -2266,7 +2274,7 @@ emx_create_tx_ring(struct emx_txdata *tdata)
 	 * Pullup extra 4bytes into the first data segment for TSO, see:
 	 * 82571/82572 specification update errata #7
 	 *
-	 * Same applies to I217 (and maybe I218).
+	 * Same applies to I217 (and maybe I218 and I219).
 	 *
 	 * NOTE:
 	 * 4bytes instead of 2bytes, which are mentioned in the errata,
@@ -2274,7 +2282,8 @@ emx_create_tx_ring(struct emx_txdata *tdata)
 	 */
 	if (tdata->sc->hw.mac.type == e1000_82571 ||
 	    tdata->sc->hw.mac.type == e1000_82572 ||
-	    tdata->sc->hw.mac.type == e1000_pch_lpt)
+	    tdata->sc->hw.mac.type == e1000_pch_lpt ||
+	    tdata->sc->hw.mac.type == e1000_pch_spt)
 		tdata->tx_flags |= EMX_TXFLAG_TSO_PULLEX;
 
 	return (0);
