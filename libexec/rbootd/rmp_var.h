@@ -118,8 +118,7 @@ typedef char	restofpkt;
 /*
  * Due to the RMP packet layout, we'll run into alignment problems
  * on machines that can't access (or don't, by default, align) words
- * on half-word boundaries.  If you know that your machine does not suffer
- * from this problem, add it to the vax/tahoe/m68k #define below.
+ * on half-word boundaries.
  *
  * The following macros are used to deal with this problem:
  *	WORDZE(w)	Return True if u_word `w' is zero, False otherwise.
@@ -130,17 +129,6 @@ typedef char	restofpkt;
  *
  * N.B. Endianness is handled by use of ntohl/htonl
  */
-#if defined(__vax__) || defined(__tahoe__) || defined(__m68k__)
-
-typedef	u_int32_t	u_word;
-
-#define	WORDZE(w)	((w) == 0)
-#define	ZEROWORD(w)	(w) = 0
-#define	COPYWORD(w1,w2)	(w2) = (w1)
-#define	GETWORD(w, i)	(i) = ntohl(w)
-#define	PUTWORD(i, w)	(w) = htonl(i)
-
-#else
 
 #define	_WORD_HIGHPART	0
 #define	_WORD_LOWPART	1
@@ -161,8 +149,6 @@ typedef	struct _uword { u_int16_t val[2]; }	u_word;
 	{ (w).val[_WORD_HIGHPART] = htons((u_int16_t) ((i >> 16) & 0xffff)); \
 	  (w).val[_WORD_LOWPART] = htons((u_int16_t) (i & 0xffff)); \
 	}
-
-#endif
 
 /*
  * Packet structures.
