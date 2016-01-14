@@ -115,7 +115,7 @@ MAN=	accept_filter.9 \
 	kstrdup.9 \
 	ktr.9 \
 	lock.9 \
-        locking.9 \
+	locking.9 \
 	lwbuf.9 \
 	make_autoclone_dev.9 \
 	make_dev.9 \
