@@ -39,6 +39,9 @@
 
 #define DP_LINK_CHECK_TIMEOUT	(10 * 1000)
 
+static int disable_aux_irq = 0;
+TUNABLE_INT("drm.i915.disable_aux_irq", &disable_aux_irq);
+
 struct dp_link_dpll {
 	int link_bw;
 	struct dpll dpll;
@@ -807,7 +810,7 @@ intel_dp_aux_ch(struct intel_dp *intel_dp,
 	int i, ret, recv_bytes;
 	uint32_t status;
 	int try, clock = 0;
-	bool has_aux_irq = HAS_AUX_IRQ(dev);
+	bool has_aux_irq = HAS_AUX_IRQ(dev) && !disable_aux_irq;
 	bool vdd;
 
 	pps_lock(intel_dp);
