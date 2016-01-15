@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2015.12.10
-#	Date:    2015-12-10 03:15:02
+#	Version: 2016.01.10
+#	Date:    2016-01-10 03:15:01
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at http://pci-ids.ucw.cz/.
@@ -2780,9 +2780,12 @@
 	6929  Tonga XT GL [FirePro S7150]
 	692b  Tonga PRO GL [FirePro W7100]
 	692f  Tonga XTV GL [FirePro S7150V]
-	6938  Amethyst XT [Radeon R9 M295X Mac Edition / R9 380X]
+	6938  Tonga XT / Amethyst XT [Radeon R9 380X / R9 M295X Mac Edition]
+		174b e308  Radeon R9 380X Nitro 4G D5
 	6939  Tonga PRO [Radeon R9 285/380]
 		148c 9380  Radeon R9 380
+# Make naming scheme consistent
+		174b e308  Radeon R9 380 Nitro 4G D5
 	700f  RS100 AGP Bridge
 	7010  RS200/RS250 AGP Bridge
 	7100  R520 [Radeon X1800 XT]
@@ -3200,6 +3203,8 @@
 	9917  Trinity [Radeon HD 7620G]
 	9918  Trinity [Radeon HD 7600G]
 	9919  Trinity [Radeon HD 7500G]
+	9920  Liverpool Graphics
+	9921  Liverpool HDMI/DP Audio Controller
 	9990  Trinity [Radeon HD 7520G]
 	9991  Trinity [Radeon HD 7540D]
 	9992  Trinity [Radeon HD 7420G]
@@ -3248,6 +3253,9 @@
 	aab0  Cape Verde/Pitcairn HDMI Audio [Radeon HD 7700/7800 Series]
 	aac0  Tobago HDMI Audio [Radeon R7 360 / R9 360 OEM]
 	aac8  Hawaii HDMI Audio
+# I have a Tonga card and this is the HDMI Audio part
+	aad8  Tonga HDMI Audio [Radeon R9 285/380]
+		174b aad8  Radeon R9 285/380 HDMI Audio
 	ac00  Theater 600 Pro
 	ac02  TV Wonder HD 600 PCIe
 	ac12  Theater HD T507 (DVB-T) TV tuner/capture device
@@ -3664,9 +3672,12 @@
 		1014 049a  PCIe3 x16 SAS RAID Internal Adapter 6Gb (57EE)
 		1014 04c7  PCIe3 x 8 Cache SAS RAID Internal Adapter 6GB(2CCA)
 		1014 04c8  PCIe3 x 8 Cache SAS RAID Internal Adapter 6GB(2CD2)
-		1014 0c49  PCIe3 x 8 Cache SAS RAID Internal Adapter 6GB(2CCD)
+		1014 04c9  PCIe3 x 8 Cache SAS RAID Internal Adapter 6GB(2CCD)
 	044b  GenWQE Accelerator Adapter
 	04aa  Flash Adapter 90 (PCIe2 0.9TB)
+	04da  PCI-E IPR SAS+ Adapter (ASIC)
+		1014 04fb  PCIe3 x16 20GB Cache 12Gb Quad SAS RAID+ Adapter(580B)
+		1014 04fc  PCIe3 x8 12Gb Quad SAS RAID+ Adapter(580A)
 	3022  QLA3022 Network Adapter
 	4022  QLA3022 Network Adapter
 	ffff  MPIC-2 interrupt controller
@@ -3781,6 +3792,9 @@
 	1422  Family 15h (Models 30h-3fh) Processor Root Complex
 	1423  Family 15h (Models 30h-3fh) I/O Memory Management Unit
 	1426  Family 15h (Models 30h-3fh) Processor Root Port
+	1436  Liverpool Processor Root Complex
+	1437  Liverpool I/O Memory Management Unit
+	1438  Liverpool Processor Root Port
 	1439  Family 16h Processor Functions 5:1
 	145b  Zeppelin Non-Transparent Bridge
 	1510  Family 14h Processor Root Complex
@@ -5188,6 +5202,7 @@
 	803b  5-in-1 Multimedia Card Reader (SD/MMC/MS/MS PRO/xD)
 		103c 309f  nx9420
 		103c 30a3  Compaq nw8440
+		104d 8212  VAIO VGN-N21E
 		104d 902d  VAIO VGN-NR120E
 	803c  PCIxx12 SDA Standard Compliant SD Host Controller
 		103c 309f  nx9420
@@ -5342,6 +5357,14 @@
 	8056  Rockwell HCF 56K modem
 	808a  Memory Stick Controller
 	81ce  SxS Pro memory card
+	908f  Aeolia ACPI
+	909e  Aeolia Ethernet Controller (Marvell Yukon 2 Family)
+	909f  Aeolia SATA AHCI Controller
+	90a0  Aeolia SD/MMC Host Controller
+	90a1  Aeolia PCI Express Glue and Miscellaneous Devices
+	90a2  Aeolia DMA Controller
+	90a3  Aeolia Memory (DDR3/SPM)
+	90a4  Aeolia USB 3.0 xHCI Host Controller
 104e  Oak Technology, Inc
 	0017  OTI-64017
 	0107  OTI-107 [Spitfire]
@@ -5831,6 +5854,9 @@
 		1077 e4f8  FastLinQ QL45611H 100GbE Adapter (SR-IOV VF)
 	2020  ISP2020A Fast!SCSI Basic Adapter
 	2031  ISP8324-based 16Gb Fibre Channel to PCI Express Adapter
+		103c 17e7  HP SN1000Q 16Gb Single Port Fibre Channel Adapter
+		103c 17e8  HP SN1000Q 16Gb Dual Port Fibre Channel Adapter
+		103c 1939  HP QMH2672 16Gb Dual Port Fibre Channel Adapter
 		103c 8002  3830C 16G Fibre Channel Host Bus Adapter
 	2071  ISP2714-based 16/32Gb Fibre Channel to PCIe Adapter
 	2100  QLA2100 64-bit Fibre Channel Adapter
@@ -5838,6 +5864,8 @@
 	2200  QLA2200 64-bit Fibre Channel Adapter
 		1077 0002  QLA2200
 	2261  ISP2722-based 16/32Gb Fibre Channel to PCIe Adapter
+		1590 00f9  HPE StoreFabric SN1100Q 16Gb Single Port Fibre Channel Host Bus Adapter
+		1590 00fa  HPE StoreFabric SN1100Q 16Gb Dual Port Fibre Channel Host Bus Adapter
 	2300  QLA2300 64-bit Fibre Channel Adapter
 	2312  ISP2312-based 2Gb Fibre Channel to PCI-X HBA
 		103c 0131  2Gb Fibre Channel - Single port [A7538A]
@@ -5851,6 +5879,7 @@
 	2532  ISP2532-based 8Gb Fibre Channel to PCI Express HBA
 		103c 3262  StorageWorks 81Q
 		1077 0167  QME2572 Dual Port FC8 HBA Mezzanine
+		1590 00fc  HPE StoreFabric 84Q 8Gb Quad Port Fibre Channel Host Bus Adapter
 	3022  ISP4022-based Ethernet NIC
 	3032  ISP4032-based Ethernet IPv6 NIC
 	4010  ISP4010-based iSCSI TOE HBA
@@ -6068,6 +6097,7 @@
 1093  National Instruments
 	0160  PCI-DIO-96
 	0162  PCI-MIO-16XE-50
+	0fe1  PXI-8320
 	1150  PCI-6533 (PCI-DIO-32HS)
 	1170  PCI-MIO-16XE-10
 	1180  PCI-MIO-16E-1
@@ -6159,7 +6189,10 @@
 	7004  PXI-6551
 	700b  PXI-5421
 	700c  PCI-5421
+	701a  VXIpc-87xB
+	701b  VXIpc-770
 	7023  PXI-2593
+	7027  PCI-MXI-2 Universal
 	702c  PXI-7831R
 	702d  PCI-7831R
 	702e  PXI-7811R
@@ -6428,6 +6461,7 @@
 	731d  PXI-2536
 	7322  PXIe-6124
 	7327  PXI-6529
+	732c  VXI-8360T
 	7331  PXIe-5602
 	7332  PXIe-5601
 	7333  PXI-5900
@@ -6567,6 +6601,7 @@
 	75e5  PXI-6683
 	75e6  PXI-6683H
 	75ef  PXIe-5632
+	761c  VXI-8360LT
 	761f  PXI-2540
 	7620  PXIe-2540
 	7621  PXI-2541
@@ -6597,6 +6632,7 @@
 	76a3  PXIe-6535B
 	76a4  PXIe-6536B
 	76a5  PXIe-6537B
+	783e  PXI-8368
 	9020  PXI-2501
 	9030  PXI-2503
 	9040  PXI-2527
@@ -6606,6 +6642,7 @@
 	9080  PXI-2580
 	9090  PCI-4021
 	90a0  PXI-4021
+	a001  PCI-MXI-2
 	b001  PCI-1408
 	b011  PXI-1408
 	b021  PCI-1424
@@ -6695,7 +6732,9 @@
 		1093 762b  PXIe-4138
 		1093 762c  PXIe-4144
 		1093 762d  PXIe-4145
+		1093 762e  PXIe-5606
 		1093 7644  PXIe-4841
+		1093 764a  PCIe-8237R-S
 		1093 7658  PXIe-5162 (4CH)
 		1093 76ab  PXIe-4322
 		1093 76ad  PXIe-4112
@@ -6703,14 +6742,25 @@
 		1093 76b5  PXIe-7971R
 		1093 76b6  PXIe-7972R
 		1093 76b7  PXIe-7975R
+		1093 76b8  PXIe-5696
+		1093 76b9  PXIe-5654
 		1093 76c8  PXIe-6614
 		1093 76c9  PXIe-6612
 		1093 76cb  PXIe-5646R
 		1093 76cc  PXIe-5162 (2CH)
+		1093 76ce  CVS-1459
 		1093 76d0  PXIe-5160 (2CH)
 		1093 76d1  PXIe-5160 (4CH)
 		1093 76dc  PXIe-4610
+		1093 76ec  PXIe-2524
+		1093 76ed  PXIe-2525
+		1093 76ee  PXIe-2526
+		1093 76ef  PXIe-2737
+		1093 76f0  PXIe-2738
+		1093 76f1  PXIe-2739
 		1093 76fb  PCIe-1473R-LX110
+		1093 76fc  PXIe-5105
+		1093 76fd  PXIe-5114
 		1093 76fe  PXIe-5644R
 		1093 76ff  PXIe-5644R
 		1093 7700  PXIe-5644R
@@ -6719,24 +6769,49 @@
 		1093 7703  PXIe-5645R
 		1093 770c  PXIe-4139
 		1093 7711  PXIe-4464
+		1093 7712  PXIe-4463
 		1093 7716  PCIe-6612
+		1093 771d  Unconfigured CA4 Switch
 		1093 771e  PXIe-4339
 		1093 7735  cRIO-9033
+		1093 773e  PXIe-5624R
 		1093 774b  cRIO-9031
 		1093 774d  cRIO-9034
 		1093 7755  cRIO-9030
+		1093 7768  PXIe-2747
+		1093 7769  PXIe-2748
+		1093 776a  PXIe-2746
 		1093 7777  PXIe-7976R
 		1093 7782  PXIe-5646R
 		1093 7783  PXIe-5646R
 		1093 7784  PXIe-5646R
+		1093 7790  PXIe-5170R (4CH)
+		1093 7791  PXIe-5170R (8CH)
+		1093 7793  PXIe-5171R (8CH)
 		1093 77a5  PXIe-6345
 		1093 77a6  PXIe-6355
 		1093 77a7  PXIe-6365
 		1093 77a8  PXIe-6375
+		1093 77aa  CVS-1458
+		1093 77ad  IC-3173
 		1093 77b4  PXIe-7820R
 		1093 77b5  PXIe-7821R
 		1093 77b6  PXIe-7822R
 		1093 77b9  cRIO-9038
+		1093 77ba  PXIe-4136
+		1093 77bb  PXIe-4137
+		1093 77c0  PXIe-5624R
+		1093 77c1  PXIe-5624R
+		1093 77c2  PXIe-5624R
+		1093 77ca  PXIe-6738
+		1093 77cb  PXIe-6739
+		1093 77db  cRIO-9035
+		1093 77dc  cRIO-9036
+		1093 77dd  cRIO-9039
+		1093 7802  PXIe-4302
+		1093 7803  PXIe-4303
+		1093 7805  PXIe-4305
+		1093 788e  PXIe-4304
 	c801  PCI-GPIB
 	c811  PCI-GPIB+
 	c821  PXI-GPIB
@@ -6774,6 +6849,13 @@
 	e251  PXI-8460 (2 ports)
 	e261  PCI-CAN/DS
 	e271  PXI-8462
+	f110  VMEpc-650
+	f120  VXIpc-650
+	fe00  VXIpc-87x
+	fe41  VXIpc-860
+	fe51  VXIpc-74x
+	fe61  VXIpc-850
+	fe70  VXIpc-880
 1094  First International Computers [FIC]
 # nee CMD Technology Inc
 1095  Silicon Image, Inc.
@@ -7147,6 +7229,7 @@
 	8747  PEX 8747 48-Lane, 5-Port PCI Express Gen 3 (8.0 GT/s) Switch
 # This is the Non-Transparent-Bridge Virtualized Port as presented by the PLX PEX 8732 chip, the physical bridges show up at 10b5:8732
 	87b0  PEX 8732 32-lane, 8-Port PCI Express Gen 3 (8.0 GT/s) Switch
+		1093 7761  PXIe-8830mc
 	9016  PLX 9016 8-port serial controller
 	9030  PCI9030 32-bit 33MHz PCI <-> IOBus Bridge
 		10b5 2695  Hilscher CIF50-PB/DPS Profibus
@@ -10307,6 +10390,7 @@
 	1344  GM108M [GeForce 845M]
 	1346  GM108M [GeForce 930M]
 	1347  GM108M [GeForce 940M]
+	134d  GM108M [GeForce 940MX]
 	137a  GM108GLM [Quadro K620M]
 	137d  GM108M [GeForce 940A]
 	1380  GM107 [GeForce GTX 750 Ti]
@@ -10356,6 +10440,7 @@
 	1401  GM206 [GeForce GTX 960]
 	1402  GM206 [GeForce GTX 950]
 	1407  GM206 [GeForce GTX 750 v2]
+	1427  GM206M [GeForce GTX 965M]
 	1617  GM204M [GeForce GTX 980M]
 	1618  GM204M [GeForce GTX 970M]
 	1619  GM204M [GeForce GTX 965M]
@@ -17435,6 +17520,8 @@
 	0209  MT27700 Family [ConnectX-4 Flash Recovery]
 	020b  MT27710 Family [ConnectX-4 Lx Flash Recovery]
 	020d  MT28800 Family [ConnectX-5 Flash Recovery]
+	0262  MT27710 [ConnectX-4 Lx Programmable] EN
+	0263  MT27710 [ConnectX-4 Lx Programmable Virtual Function] EN
 	1002  MT25400 Family [ConnectX-2 Virtual Function]
 	1003  MT27500 Family [ConnectX-3]
 		103c 1777  InfiniBand FDR/EN 10/40Gb Dual Port 544FLR-QSFP Adapter (Rev Cx)
@@ -18014,8 +18101,10 @@
 		1a56 2000  Killer Wireless-N 1102 Half-size Mini PCIe Card [AR9382]
 		1a56 2001  Killer Wireless-N 1103 Half-size Mini PCIe Card [AR9380]
 	0032  AR9485 Wireless Network Adapter
+		1028 0208  Wireless 1506 WLAN Half Mini-Card
 		103c 1838  AR9485/HB125 802.11bgn 1×1 Wi-Fi Adapter
 		105b e044  Unex DHXA-225
+		1a3b 1186  AW-NE186H
 	0033  AR9580 Wireless Network Adapter
 	0034  AR9462 Wireless Network Adapter
 		1a56 2003  Killer Wireless-N 1202 Half-size Mini PCIe Card
@@ -19072,6 +19161,7 @@
 	1073  AR8151 v1.0 Gigabit Ethernet
 	1083  AR8151 v2.0 Gigabit Ethernet
 	1090  AR8162 Fast Ethernet
+		1043 108d  VivoBook X202E, X202EV
 	1091  AR8161 Gigabit Ethernet
 		1043 1477  N56VZ
 	10a0  QCA8172 Fast Ethernet
@@ -19681,6 +19771,7 @@
 2a15  3D Vision(???)
 2bd8  ROPEX Industrie-Elektronik GmbH
 3000  Hansol Electronics Inc.
+3112  Satelco Ingenieria S.A.
 3142  Post Impression Systems.
 31ab  Zonet
 	1faa  ZEW1602 802.11b/g Wireless Adapter
@@ -19723,6 +19814,7 @@
 	1140  VR-12-PCI
 # multiport serial board
 	1141  PCI-485(422)
+	1142  PCI-CAN2
 3842  eVga.com. Corp.
 38ef  4Links
 3d3d  3DLabs
@@ -20369,11 +20461,13 @@
 		1025 0806  Aspire E1-470G
 		1025 0813  Aspire R7-571
 		103c 17f6  ProBook 4540s
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 	0155  Xeon E3-1200 v2/3rd Gen Core processor PCI Express Root Port
 		8086 2010  Server Board S1200BTS
 	0156  3rd Gen Core processor Graphics Controller
+		1043 108d  VivoBook X202EV
 	0158  Xeon E3-1200 v2/Ivy Bridge DRAM Controller
 		1043 844d  P8 series motherboard
 		8086 2010  Server Board S1200BTS
@@ -21086,7 +21180,8 @@
 	0f28  Atom Processor Z36xxx/Z37xxx Series LPE Audio Controller
 	0f31  Atom Processor Z36xxx/Z37xxx Series Graphics & Display
 	0f34  Atom Processor Z36xxx/Z37xxx Series USB EHCI
-	0f35  Atom Processor Z36xxx/Z37xxx Series USB xHCI
+	0f35  Atom Processor Z36xxx/Z37xxx, Celeron N2000 Series USB xHCI
+		1025 0936  Aspire ES1
 	0f37  Atom Processor Z36xxx/Z37xxx Series OTG USB Device
 	0f38  Atom Processor Z36xxx/Z37xxx Series Camera ISP
 	0f40  Atom Processor Z36xxx/Z37xxx Series LPIO2 DMA Controller
@@ -21585,14 +21680,14 @@
 		1025 1016  Travelmate 612 TX
 		1043 8027  TUSL2-C Mainboard
 		104d 80df  Vaio PCG-FX403
-		8086 4532  D815EEA2 mainboard
+		8086 4532  Desktop Board D815EEA2/D815EFV
 		8086 4557  D815EGEW Mainboard
 	1131  82815 815 Chipset AGP Bridge
 	1132  82815 Chipset Graphics Controller (CGC)
 		1025 1016  Travelmate 612 TX
 		103c 2001  e-pc 40
 		104d 80df  Vaio PCG-FX403
-		8086 4532  D815EEA2 Mainboard
+		8086 4532  Desktop Board D815EEA2/D815EFV
 		8086 4541  D815EEA Motherboard
 		8086 4557  D815EGEW Mainboard
 	1161  82806AA PCI64 Hub Advanced Programmable Interrupt Controller
@@ -22350,6 +22445,7 @@
 		1043 84ca  P8 series motherboard
 		1849 1e02  Motherboard
 	1e03  7 Series Chipset Family 6-port SATA Controller [AHCI mode]
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 	1e04  7 Series/C210 Series Chipset Family SATA Controller [RAID mode]
@@ -22360,15 +22456,18 @@
 	1e09  7 Series Chipset Family 2-port SATA Controller [IDE mode]
 	1e0e  7 Series/C210 Series Chipset Family SATA Controller [RAID mode]
 	1e10  7 Series/C210 Series Chipset Family PCI Express Root Port 1
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 84ca  P8H77-I Motherboard
 		1849 1e10  Motherboard
 	1e12  7 Series/C210 Series Chipset Family PCI Express Root Port 2
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 	1e14  7 Series/C210 Series Chipset Family PCI Express Root Port 3
 	1e16  7 Series/C210 Series Chipset Family PCI Express Root Port 4
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1849 1618  Z77 Extreme4 motherboard
 	1e18  7 Series/C210 Series Chipset Family PCI Express Root Port 5
@@ -22380,12 +22479,14 @@
 	1e1e  7 Series/C210 Series Chipset Family PCI Express Root Port 8
 		1849 1e1e  Motherboard
 	1e20  7 Series/C210 Series Chipset Family High Definition Audio Controller
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 8415  P8H77-I Motherboard
 		1043 8445  ASUS P8Z77-V LX Motherboard
 		1849 1898  Z77 Extreme4 motherboard
 	1e22  7 Series/C210 Series Chipset Family SMBus Controller
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 84ca  P8 series motherboard
@@ -22394,23 +22495,27 @@
 		1043 1517  Zenbook Prime UX31A
 	1e25  7 Series/C210 Series Chipset Family DMI to PCI Bridge
 	1e26  7 Series/C210 Series Chipset Family USB Enhanced Host Controller #1
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 84ca  P8 series motherboard
 		1849 1e26  Motherboard
 	1e2d  7 Series/C210 Series Chipset Family USB Enhanced Host Controller #2
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 84ca  P8 series motherboard
 		1849 1e2d  Motherboard
 	1e31  7 Series/C210 Series Chipset Family USB xHCI Host Controller
 		103c 17ab  ProBook 6570b
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 84ca  P8 series motherboard
 		1849 1e31  Motherboard
 	1e33  7 Series/C210 Series Chipset Family LAN Controller
 	1e3a  7 Series/C210 Series Chipset Family MEI Controller #1
+		1043 108d  VivoBook X202EV
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 84ca  P8 series motherboard
@@ -22453,6 +22558,7 @@
 	1e5c  7 Series Chipset Family LPC Controller
 	1e5d  HM75 Express Chipset LPC Controller
 	1e5e  7 Series Chipset Family LPC Controller
+		1043 108d  VivoBook X202EV
 	1e5f  7 Series Chipset Family LPC Controller
 	1f00  Atom processor C2000 SoC Transaction Router
 	1f01  Atom processor C2000 SoC Transaction Router
@@ -22626,7 +22732,7 @@
 		104d 80df  Vaio PCG-FX403
 		147b 0505  BL7 motherboard
 		147b 0507  TH7II-RAID
-		8086 4532  D815EEA2 mainboard
+		8086 4532  Desktop Board D815EEA2/D815EFV
 		8086 4557  D815EGEW Mainboard
 		8086 5744  S845WD1-E mainboard
 	2443  82801BA/BAM SMBus Controller
@@ -22641,7 +22747,7 @@
 		147b 0505  BL7 motherboard
 		147b 0507  TH7II-RAID
 		15d9 3280  Supermicro P4SBE Mainboard
-		8086 4532  D815EEA2 mainboard
+		8086 4532  Desktop Board D815EEA2/D815EFV
 		8086 4557  D815EGEW Mainboard
 		8086 5744  S845WD1-E mainboard
 	2444  82801BA/BAM UHCI USB 1.1 Controller #2
@@ -22654,7 +22760,7 @@
 		104d 80df  Vaio PCG-FX403
 		147b 0505  BL7 motherboard
 		147b 0507  TH7II-RAID
-		8086 4532  D815EEA2 mainboard
+		8086 4532  Desktop Board D815EEA2/D815EFV
 		8086 5744  S845WD1-E mainboard
 	2445  82801BA/BAM AC'97 Audio Controller
 		0e11 000b  Compaq Deskpro EN Audio
@@ -22668,6 +22774,7 @@
 		147b 0505  BL7 motherboard
 		147b 0507  TH7II-RAID
 		8086 4557  D815EGEW Mainboard
+		8086 4656  Desktop Board D815EFV
 	2446  82801BA/BAM AC'97 Modem Controller
 		1025 1016  Travelmate 612 TX
 		104d 80df  Vaio PCG-FX403
@@ -22737,7 +22844,7 @@
 		147b 0505  BL7 motherboard
 		147b 0507  TH7II-RAID
 		15d9 3280  Supermicro P4SBE Mainboard
-		8086 4532  D815EEA2 mainboard
+		8086 4532  Desktop Board D815EEA2/D815EFV
 		8086 4557  D815EGEW Mainboard
 		8086 5744  S845WD1-E mainboard
 	244c  82801BAM ISA Bridge (LPC)
@@ -23219,6 +23326,10 @@
 	24f0  Omni-Path HFI Silicon 100 Series [discrete]
 		10a9 802e  Omni-path HFI 100 Series, 1-port
 		10a9 802f  Omni-path HFI 100 Series, 2-port
+		8086 2628  Omni-Path HFI Adapter 100 Series, 1 Port, PCIe x16
+		8086 2629  Omni-Path HFI Adapter 100 Series, 1 Port, PCIe x8
+		8086 262a  Omni-Path HFI Adapter 100 Series, 2 Ports, Split PCIe x16
+		8086 262d  Omni-Path HFI Adapter 100 Series, 1 Port, PCIe x16, IO Module AHWKPTP100HF
 	24f1  Omni-Path HFI Silicon 100 Series [integrated]
 	24f3  Wireless 8260
 # Snow Field Peak AC
