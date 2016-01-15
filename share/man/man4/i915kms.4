@@ -50,6 +50,15 @@ Tunables can be set at the
 prompt before booting the kernel or stored in
 .Xr loader.conf 5 .
 .Bl -tag -width "xxxxxx"
+.It Va drm.i915.disable_aux_irq
+When non-zero, disable interrupt usage for DisplayPort AUX channel.
+This option doesn't affect GPU models older than Generation 5 (Ironlake).
+Can be used as a workaround in cases where DisplayPort panel
+initialization is unreliable, which often leaves a blank screen after the
+.Nm
+module was loaded.
+.br
+1 = don't use AUX IRQ, 0 = auto (default).
 .It Va drm.i915.enable_psr
 Enable PSR (panel self refresh), only relevant for Haswell and Broadwell
 CPUs.
