@@ -514,6 +514,8 @@ typedef struct lock	ieee80211_tx_lock_t;
 typedef struct lock	ieee80211_ageq_lock_t;
 typedef struct lock	ieee80211_scan_table_lock_t;
 typedef struct lock	acl_lock_t;
+typedef struct lock	ieee80211_rte_lock_t;
+typedef struct lock	ieee80211_rt_lock_t;
 
 #define IEEE80211_LOCK_OBJ(ic)			(&(ic)->ic_comlock)
 
@@ -525,6 +527,8 @@ typedef struct lock	acl_lock_t;
 #define IEEE80211_AGEQ_LOCK_INIT(aq, name)	lockinit(&(aq)->aq_lock, name, 0, LK_CANRECURSE)
 #define IEEE80211_PSQ_INIT(psq, name)		lockinit(&(psq)->psq_lock, name, 0, LK_CANRECURSE)
 #define ACL_LOCK_INIT(as, name)		lockinit(&(as)->as_lock, name, 0, LK_CANRECURSE)
+#define MESH_RT_ENTRY_LOCK_INIT(st, name)	lockinit(&(st)->rt_lock, name, 0, LK_CANRECURSE)
+#define MESH_RT_LOCK_INIT(ms, name)	lockinit(&(ms)->ms_rt_lock, name, 0, LK_CANRECURSE)
 
 #define IEEE80211_LOCK_DESTROY(ic)		lockuninit(&(ic)->ic_comlock)
 #define IEEE80211_NODE_LOCK_DESTROY(nt)		lockuninit(&(nt)->nt_nodelock)
@@ -534,6 +538,8 @@ typedef struct lock	acl_lock_t;
 #define IEEE80211_AGEQ_LOCK_DESTROY(aq)		lockuninit(&(aq)->aq_lock)
 #define IEEE80211_PSQ_DESTROY(psq)		lockuninit(&(psq)->psq_lock)
 #define ACL_LOCK_DESTROY(as)			lockuninit(&(as)->as_lock)
+#define MESH_RT_ENTRY_LOCK_DESTROY(rt)		lockuninit(&(rt)->rt_lock)
+#define MESH_RT_LOCK_DESTROY(ms)		lockuninit(&(ms)->ms_rt_lock)
 
 #define IEEE80211_LOCK(ic)			lockmgr(&(ic)->ic_comlock, LK_EXCLUSIVE)
 #define IEEE80211_NODE_LOCK(nt)			lockmgr(&(nt)->nt_nodelock, LK_EXCLUSIVE)
@@ -543,6 +549,8 @@ typedef struct lock	acl_lock_t;
 #define IEEE80211_AGEQ_LOCK(aq)			lockmgr(&(aq)->aq_lock, LK_EXCLUSIVE)
 #define IEEE80211_PSQ_LOCK(psq)			lockmgr(&(psq)->psq_lock, LK_EXCLUSIVE)
 #define ACL_LOCK(as)				lockmgr(&(as)->as_lock, LK_EXCLUSIVE)
+#define MESH_RT_ENTRY_LOCK(rt)			lockmgr(&(rt)->rt_lock, LK_EXCLUSIVE)
+#define MESH_RT_LOCK(ms)			lockmgr(&(ms)->ms_rt_lock, LK_EXCLUSIVE)
 
 #define IEEE80211_UNLOCK(ic)			lockmgr(&(ic)->ic_comlock, LK_RELEASE)
 #define IEEE80211_NODE_UNLOCK(nt)		lockmgr(&(nt)->nt_nodelock, LK_RELEASE)
@@ -552,6 +560,8 @@ typedef struct lock	acl_lock_t;
 #define IEEE80211_AGEQ_UNLOCK(aq)		lockmgr(&(aq)->aq_lock, LK_RELEASE)
 #define IEEE80211_PSQ_UNLOCK(psq)		lockmgr(&(psq)->psq_lock, LK_RELEASE)
 #define ACL_UNLOCK(as)				lockmgr(&(as)->as_lock, LK_RELEASE)
+#define MESH_RT_ENTRY_UNLOCK(rt)		lockmgr(&(rt)->rt_lock, LK_RELEASE)
+#define MESH_RT_UNLOCK(ms)			lockmgr(&(ms)->ms_rt_lock, LK_RELEASE)
 
 #define IEEE80211_LOCK_ASSERT(ic)		\
 				KKASSERT(lockstatus(&(ic)->ic_comlock, curthread) == LK_EXCLUSIVE)
@@ -567,6 +577,10 @@ typedef struct lock	acl_lock_t;
 				KKASSERT(lockstatus(&(aq)->aq_lock, curthread) == LK_EXCLUSIVE)
 #define ACL_LOCK_ASSERT(as)		\
 				KKASSERT(lockstatus(&(as)->as_lock, curthread) == LK_EXCLUSIVE)
+#define MESH_RT_ENTRY_LOCK_ASSERT(rt)		\
+				KKASSERT(lockstatus(&(rt)->rt_lock, curthread) == LK_EXCLUSIVE)
+#define MESH_RT_LOCK_ASSERT(ms)		\
+				KKASSERT(lockstatus(&(ms)->ms_rt_lock, curthread) == LK_EXCLUSIVE)
 
 #define IEEE80211_NODE_IS_LOCKED(nt)		\
 				(lockstatus(&(nt)->nt_nodelock, curthread) == LK_EXCLUSIVE)
