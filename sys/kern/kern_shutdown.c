@@ -620,6 +620,7 @@ setdumpdev(cdev_t dev)
 
 	if (dev == NULL) {
 		disk_dumpconf(NULL, 0/*off*/);
+		dumpdev = NULL;
 		return (0);
 	}
 
@@ -636,6 +637,8 @@ setdumpdev(cdev_t dev)
 			return (error);
 	}
 	error = disk_dumpconf(dev, 1/*on*/);
+	if (error == 0)
+		dumpdev = dev;
 
 	return error;
 }
