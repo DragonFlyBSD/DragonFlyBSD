@@ -252,14 +252,10 @@ null_transmit(struct ifnet *ifp, struct mbuf *m)
 static int
 null_output(struct ifnet *ifp, struct mbuf *m,
 	    struct sockaddr *dst, struct rtentry *ro)
-#elif __FreeBSD_version >= 1000031
-static int
-null_output(struct ifnet *ifp, struct mbuf *m,
-	const struct sockaddr *dst, struct route *ro)
 #else
 static int
 null_output(struct ifnet *ifp, struct mbuf *m,
-	struct sockaddr *dst, struct route *ro)
+	const struct sockaddr *dst, struct route *ro)
 #endif
 {
 	if_printf(ifp, "discard raw packet\n");

@@ -356,11 +356,11 @@ hostap_deliver_data(struct ieee80211vap *vap,
 	struct ifnet *ifp = vap->iv_ifp;
 
 	/* clear driver/net80211 flags before passing up */
-#if __FreeBSD_version >= 1000046
+#if defined(__DragonFly__)
+	m->m_flags &= ~(M_80211_RX | M_MCAST | M_BCAST);
+#else
 	m->m_flags &= ~(M_MCAST | M_BCAST);
 	m_clrprotoflags(m);
-#else
-	m->m_flags &= ~(M_80211_RX | M_MCAST | M_BCAST);
 #endif
 
 	KASSERT(vap->iv_opmode == IEEE80211_M_HOSTAP,

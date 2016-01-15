@@ -252,7 +252,7 @@ ieee80211_deliver_data(struct ieee80211vap *vap,
 
 	/* clear driver/net80211 flags before passing up */
 	m->m_flags &= ~(M_MCAST | M_BCAST);
-#if __FreeBSD_version >= 1000046
+#if !defined(__DragonFly__)
 	m_clrprotoflags(m);
 #endif
 

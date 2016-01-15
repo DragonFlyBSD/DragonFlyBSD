@@ -103,12 +103,9 @@ int	ieee80211_raw_xmit(struct ieee80211_node *, struct mbuf *,
 #if defined(__DragonFly__)
 int	ieee80211_output(struct ifnet *, struct mbuf *,
                struct sockaddr *, struct rtentry *rt);
-#elif __FreeBSD_version >= 1000031
-int	ieee80211_output(struct ifnet *, struct mbuf *,
-               const struct sockaddr *, struct route *ro);
 #else
 int	ieee80211_output(struct ifnet *, struct mbuf *,
-               struct sockaddr *, struct route *ro);
+               const struct sockaddr *, struct route *ro);
 #endif
 int	ieee80211_vap_pkt_send_dest(struct ieee80211vap *, struct mbuf *,
 		struct ieee80211_node *);

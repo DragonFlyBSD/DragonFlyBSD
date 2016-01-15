@@ -501,12 +501,9 @@ struct ieee80211vap {
 #if defined(__DragonFly__)
 	int			(*iv_output)(struct ifnet *, struct mbuf *,
 				    struct sockaddr *, struct rtentry *);
-#elif __FreeBSD_version >= 1000031
-	int			(*iv_output)(struct ifnet *, struct mbuf *,
-				    const struct sockaddr *, struct route *);
 #else
 	int			(*iv_output)(struct ifnet *, struct mbuf *,
-				    struct sockaddr *, struct route *);
+				    const struct sockaddr *, struct route *);
 #endif
 	uint64_t		iv_spare[6];
 };
