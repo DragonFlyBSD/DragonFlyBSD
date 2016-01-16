@@ -40,7 +40,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "tipconf.h"
 #include "tip.h"
 #include "pathnames.h"
 
@@ -126,7 +125,7 @@ getremcap(char *host)
 			DU = 0;
 			if (!BR)
 				BR = DEFBR;
-			FS = DEFFS;
+			FS = BUFSIZ;
 			return;
 		}
 		switch(stat) {
@@ -149,7 +148,7 @@ getremcap(char *host)
 	if (!BR && (cgetnum(bp, "br", &BR) == -1))
 		BR = DEFBR;
 	if (cgetnum(bp, "fs", &FS) == -1)
-		FS = DEFFS;
+		FS = BUFSIZ;
 	if (DU < 0)
 		DU = 0;
 	else

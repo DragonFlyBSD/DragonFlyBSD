@@ -34,11 +34,9 @@
  * $FreeBSD: src/usr.bin/tip/tip/log.c,v 1.4 1999/08/28 01:06:34 peter Exp $
  */
 
-#include "tipconf.h"
 #include "tip.h"
 #include <err.h>
 
-#if ACULOG
 static	FILE *flog = NULL;
 
 /*
@@ -68,13 +66,7 @@ logent(char *group, char *num, char *acu, char *message)
 	timestamp = ctime(&t);
 	timestamp[24] = '\0';
 	fprintf(flog, "%s (%s) <%s, %s, %s> %s\n",
-		user, timestamp, group,
-#if PRISTINE
-		"",
-#else
-		num,
-#endif
-		acu, message);
+		user, timestamp, group, "", acu, message);
 	(void) fflush(flog);
 	(void) flock(fileno(flog), LOCK_UN);
 }
@@ -86,4 +78,3 @@ loginit(void)
 	if (flog == NULL)
 		fprintf(stderr, "can't open log file %s.\r\n", value(LOG));
 }
-#endif

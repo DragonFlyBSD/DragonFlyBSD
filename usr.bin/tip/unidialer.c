@@ -39,7 +39,6 @@
  * Control variables are pulled out of a modem caps-style database to
  * configure the driver for a particular modem.
  */
-#include "tipconf.h"
 #include "tip.h"
 #include "pathnames.h"
 
@@ -98,9 +97,9 @@ static int unidialer_swallow(char *);
 #ifdef DEBUG
 static void unidialer_verbose_read (void);
 #endif
-static void unidialer_modem_cmd(int fd, CONST char *cmd);
-static void unidialer_write(int fd, CONST char *cp, int n);
-static void unidialer_write_str(int fd, CONST char *cp);
+static void unidialer_modem_cmd(int fd, const char *cmd);
+static void unidialer_write(int fd, const char *cp, int n);
+static void unidialer_write_str(int fd, const char *cp);
 static void sigALRM(int);
 static int unidialersync(void);
 
@@ -236,18 +235,13 @@ unidialer_getmodem(const char *modem_name)
 static int
 unidialer_modem_ready(void)
 {
-#ifdef TIOCMGET
 	int state;
 	ioctl (FD, TIOCMGET, &state);
 	return (state & TIOCM_DSR) ? 1 : 0;
-#else
-	return (1);
-#endif
 }
 
 static int unidialer_waitfor_modem_ready (int ms)
 {
-#ifdef TIOCMGET
 	int count;
 	for (count = 0; count < ms; count += 100)
 	{
@@ -261,16 +255,11 @@ static int unidialer_waitfor_modem_ready (int ms)
 		acu_nap (100);
 	}
 	return (count < ms);
-#else
-	acu_nap (250);
-	return (1);
-#endif
 }
 
 static void
 unidialer_tty_clocal(int flag)
 {
-#if HAVE_TERMIOS
 	struct termios t;
 	tcgetattr (FD, &t);
 	if (flag)
@@ -278,19 +267,6 @@ unidialer_tty_clocal(int flag)
 	else
 		t.c_cflag &= ~CLOCAL;
 	tcsetattr (FD, TCSANOW, &t);
-#elif defined(TIOCMSET)
-	int state;
-	/*
-		Don't have CLOCAL so raise CD in software to
-		get the same effect.
-	*/
-	ioctl (FD, TIOCMGET, &state);
-	if (flag)
-		state |= TIOCM_CD;
-	else
-		state &= ~TIOCM_CD;
-	ioctl (FD, TIOCMSET, &state);
-#endif
 }
 
 static int
@@ -409,9 +385,7 @@ unidialer_dialer(char *num, char *acu)
 {
 	char *cp;
 	char dial_string [80];
-#if ACULOG
 	char line [80];
-#endif
 
 #ifdef DEBUG
 	dumpmodemparms (modem_name);
@@ -435,9 +409,7 @@ unidialer_dialer(char *num, char *acu)
 	if (!unidialersync()) {
 badsynch:
 		printf("tip: can't synchronize with %s\n", modem_name);
-#if ACULOG
 		logent(value(HOST), num, modem_name, "can't synch up");
-#endif
 		return (0);
 	}
 
@@ -473,13 +445,11 @@ badsynch:
 		acu_hw_flow_control (hw_flow_control);
 	}
 
-#if ACULOG
 	if (timeout) {
 		sprintf(line, "%d second dial timeout",
 			number(value(DIALTIMEOUT)));
 		logent(value(HOST), num, modem_name, line);
 	}
-#endif
 
 	if (timeout)
 		unidialer_disconnect ();
@@ -540,9 +510,7 @@ unidialer_disconnect(void)
 	}
 	if (!okay)
 	{
-#if ACULOG
 		logent(value(HOST), "", modem_name, "can't hang up modem");
-#endif
 		if (boolean(value(VERBOSE)))
 			printf("hang up failed\n");
 	}

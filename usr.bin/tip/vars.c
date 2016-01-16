@@ -34,7 +34,6 @@
  * $FreeBSD: src/usr.bin/tip/tip/vars.c,v 1.4 1999/08/28 01:06:36 peter Exp $
  */
 
-#include "tipconf.h"
 #include "tip.h"
 #include "pathnames.h"
 

@@ -46,13 +46,9 @@
 #include <sys/time.h>
 #include <limits.h>
 
-#if HAVE_TERMIOS
 #include <sys/ioctl.h>         /* for TIOCHPCL */
 #include <sys/filio.h>    /* for FIONREAD */
 #include <sys/termios.h>
-#else
-#include <sgtty.h>
-#endif
 
 #include <signal.h>
 #include <stdio.h>
@@ -202,13 +198,8 @@ typedef
 extern int	vflag;		/* verbose during reading of .tiprc file */
 extern value_t	vtable[];	/* variable table */
 
-#if !ACULOG
-#define logent(a, b, c, d)
-#define loginit(x)
-#else
 void logent(char *, char *, char *, char*);
 void  loginit(void);
-#endif
 
 /*
  * Definition of indices into variable table so
@@ -255,17 +246,13 @@ void  loginit(void);
 #define LECHO 33
 #define PARITY 34
 
-#if HAVE_TERMIOS
+/*
+	Specify default bit rate for connections
+*/
+#define DEFBR 1200
+
 struct termios otermios;
 struct termios ctermios;
-#else /* HAVE_TERMIOS */
-struct sgttyb	arg;		/* current mode of local terminal */
-struct sgttyb	defarg;		/* initial mode of local terminal */
-struct tchars	tchars;		/* current state of terminal */
-struct tchars	defchars;	/* initial state of terminal */
-struct ltchars	ltchars;	/* current local characters of terminal */
-struct ltchars	deflchars;	/* initial local characters of terminal */
-#endif /* HAVE_TERMIOS */
 
 FILE	*fscript;		/* FILE for scripting */
 

@@ -39,15 +39,13 @@
  * Derived from Hayes driver.
  */
 #include "acucommon.h"
-#include "tipconf.h"
 #include "tip.h"
 
 #include <err.h>
+#include <unistd.h>
 
-#if HAVE_SELECT
 #include <sys/types.h>
 #include <sys/times.h>
-#include <unistd.h>
 
 void
 acu_nap(unsigned int how_long)
@@ -58,63 +56,9 @@ acu_nap(unsigned int how_long)
 	(void) select (0, NULL, NULL, NULL, &t);
 }
 
-#elif HAVE_USLEEP
-void
-acu_nap(unsigned int how_long)
-{
-	(void) usleep (how_long * 1000);
-}
-
-#else
-
-/*
- * Code stolen from /usr/src/lib/libc/gen/sleep.c
- */
-#define mask(s) (1<<((s)-1))
-#define setvec(vec, a) \
-        vec.sv_handler = a; vec.sv_mask = vec.sv_onstack = 0
-
-static int ringring;
-
-static void
-acunap_napx(void)
-{
-	ringring = 1;
-}
-
-void
-acu_nap(unsigned int how_long)
-{
-				int omask;
-        struct itimerval itv, oitv;
-        struct itimerval *itp = &itv;
-        struct sigvec vec, ovec;
-
-        timerclear(&itp->it_interval);
-        timerclear(&itp->it_value);
-        if (setitimer(ITIMER_REAL, itp, &oitv) < 0)
-					return;
-        setvec(ovec, SIG_DFL);
-        omask = sigblock(mask(SIGALRM));
-        itp->it_value.tv_sec = how_long / 1000;
-				itp->it_value.tv_usec = ((how_long % 1000) * 1000);
-        setvec(vec, acunap_napx);
-        ringring = 0;
-        (void) sigvec(SIGALRM, &vec, &ovec);
-        (void) setitimer(ITIMER_REAL, itp, NULL);
-        while (!ringring)
-					sigpause(omask &~ mask(SIGALRM));
-        (void) sigvec(SIGALRM, &ovec, NULL);
-        (void) setitimer(ITIMER_REAL, &oitv, NULL);
-				(void) sigsetmask(omask);
-}
-
-#endif /* HAVE_USLEEP */
-
 void
 acu_hw_flow_control(int hw_flow_control)
 {
-#if HAVE_TERMIOS
 	struct termios t;
 	if (tcgetattr (FD, &t) == 0) {
 		if (hw_flow_control)
@@ -123,79 +67,43 @@ acu_hw_flow_control(int hw_flow_control)
 			t.c_cflag &= ~CRTSCTS;
 		tcsetattr (FD, TCSANOW, &t);
 	}
-#endif /* HAVE_TERMIOS */
 }
 
 int
 acu_flush(void)
 {
-#ifdef TIOCFLUSH
 	int flags = 0;
 	return (ioctl (FD, TIOCFLUSH, &flags) == 0);	/* flush any clutter */
-#elif !HAVE_TERMIOS
-	struct sgttyb buf;
-	return (ioctl (FD, TIOCGETP, &buf) == 0 && ioctl (FD, TIOCSETP, &buf) == 0);
-#endif
 }
 
 int
 acu_getspeed(void)
 {
-#if HAVE_TERMIOS
 	struct termios term;
 	tcgetattr (FD, &term);
 	return (term.c_ospeed);
-#else /* HAVE_TERMIOS */
-	struct sgttyb buf;
-	ioctl (FD, TIOCGETP, &buf);
-	return (buf.sg_ospeed);
-#endif
 }
 
 int
 acu_setspeed(int speed)
 {
 	int rc = 0;
-#if HAVE_TERMIOS
 	struct termios term;
 	if (tcgetattr (FD, &term) == 0) {
-#ifndef _POSIX_SOURCE
 		cfsetspeed (&term, speed);
-#else
-		cfsetispeed (&term, speed);
-		cfsetospeed (&term, speed);
-#endif
 		if (tcsetattr (FD, TCSANOW, &term) == 0)
 			++rc;
 	}
-#else /* HAVE TERMIOS */
-	struct sgttyb sb;
-	if (ioctl(FD, TIOCGETP, &sb) < 0) {
-		warn("TIOCGETP");
-	}
-	else {
-		sb.sg_ispeed = sb.sg_ospeed = speed;
-		if (ioctl(FD, TIOCSETP, &sb) < 0) {
-			warn("TIOCSETP");
-		}
-		else
-			++rc;
-	}
-#endif /* HAVE TERMIOS */
 	return (rc);
 }
 
 void
 acu_hupcl(void)
 {
-#if HAVE_TERMIOS
 	struct termios term;
 	tcgetattr (FD, &term);
 	term.c_cflag |= HUPCL;
 	tcsetattr (FD, TCSANOW, &term);
-#elif defined(TIOCHPCL)
-	ioctl(FD, TIOCHPCL, 0);
-#endif
 }
 
 /* end of acucommon.c */

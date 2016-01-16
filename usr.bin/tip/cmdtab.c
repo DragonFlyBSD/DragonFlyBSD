@@ -34,7 +34,6 @@
  * $FreeBSD: src/usr.bin/tip/tip/cmdtab.c,v 1.3 1999/08/28 01:06:33 peter Exp $
  */
 
-#include "tipconf.h"
 #include "tip.h"
 
 esctable_t etable[] = {
@@ -45,9 +44,7 @@ esctable_t etable[] = {
 	{ 'p',	NORM,	"put file to remote UNIX",	 cu_put },
 	{ '|',	NORM,	"pipe remote file",		 pipefile },
 	{ '$',	NORM,	"pipe local command to remote host", pipeout },
-#if CONNECT
 	{ 'C',  NORM,	"connect program to remote host",consh },
-#endif
 	{ 'c',	NORM,	"change directory",		 chdirectory },
 	{ '.',	NORM,	"exit from tip",		 finish },
 	{CTRL('d'),NORM,"exit from tip",		 finish },

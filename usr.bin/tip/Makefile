@@ -6,7 +6,7 @@
 #	/etc/phones		phone number file, owned by ${OWNER} and
 #				mode 6??
 #	/var/log/aculog		ACU accounting file, owned by ${OWNER} and
-#				mode 6?? {if ACULOG defined}
+#				mode 6??
 
 PROG=	tip
 DPADD=	${LIBUTIL}

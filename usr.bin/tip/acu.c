@@ -34,12 +34,9 @@
  * $FreeBSD: src/usr.bin/tip/tip/acu.c,v 1.5 1999/08/28 01:06:31 peter Exp $
  */
 
-#include "tipconf.h"
 #include "tip.h"
 
-#if UNIDIALER
 acu_t* unidialer_getmodem (const char *modem_name);
-#endif
 
 static acu_t *acu = NULL;
 static int conflag;
@@ -189,9 +186,5 @@ acuabort(int s)
 static acu_t *
 acutype(char *s)
 {
-#if UNIDIALER
 	return unidialer_getmodem (s);
-#else
-	return (NULL);
-#endif
 }

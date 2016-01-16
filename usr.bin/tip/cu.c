@@ -34,11 +34,8 @@
  * $FreeBSD: src/usr.bin/tip/tip/cu.c,v 1.4 1999/08/28 01:06:33 peter Exp $
  */
 
-#include "tipconf.h"
 #include "tip.h"
 #include <libutil.h>
-
-#if INCLUDE_CU_INTERFACE
 
 /*
  * Botch the interface to look like cu's
@@ -132,4 +129,3 @@ cumain(int argc, char *argv[])
 		ttysetup(speed(BR));
 	exit(0);
 }
-#endif /* INCLUDE_CU_INTERFACE */

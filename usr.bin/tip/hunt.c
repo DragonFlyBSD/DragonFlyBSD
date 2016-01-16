@@ -37,7 +37,6 @@
 #include <sys/types.h>
 #include <err.h>
 #include <libutil.h>
-#include "tipconf.h"
 #include "tip.h"
 
 static	jmp_buf deadline;
@@ -89,7 +88,6 @@ hunt(char *name)
 		}
 		if (!deadfl) {
 			ioctl(FD, TIOCEXCL, 0);
-#if HAVE_TERMIOS
 			{
 				struct termios t;
 				if (tcgetattr(FD, &t) == 0) {
@@ -97,11 +95,6 @@ hunt(char *name)
 					(void)tcsetattr(FD, TCSANOW, &t);
 				}
 			}
-#else /* HAVE_TERMIOS */
-#ifdef TIOCHPCL
-			ioctl(FD, TIOCHPCL, 0);
-#endif
-#endif /* HAVE_TERMIOS */
 			signal(SIGALRM, SIG_DFL);
 			return ((long)cp);
 		}
