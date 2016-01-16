@@ -29,7 +29,7 @@
 
 #include <sys/systm.h>
 
-#define hweight8(x)	bitcount16(x & 0xff)
+#define hweight8(x)	bitcount16((x) & 0xff)
 #define hweight16(x)	bitcount16(x)
 #define hweight32(x)	bitcount32(x)
 #define hweight64(x)	bitcount64(x)
