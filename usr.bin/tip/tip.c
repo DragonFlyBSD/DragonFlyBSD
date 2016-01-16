@@ -522,7 +522,7 @@ help(int c)
 			continue;
 		printf("%2s", ctrl(character(value(ESCAPE))));
 		printf("%-2s %c   %s\r\n", ctrl(p->e_char),
-			p->e_flags&EXP ? '*': ' ', p->e_help);
+			(p->e_flags&EXP) ? '*': ' ', p->e_help);
 	}
 }
 

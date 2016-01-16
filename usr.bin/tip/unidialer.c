@@ -286,7 +286,7 @@ unidialer_get_modem_response(char *buf, int bufsz, int response_timeout)
 		signal (SIGALRM, f);
 		*p = '\0';
 #ifdef DEBUG
-		printf ("get_response: timeout buf=%s, state=%d\n", buf, state);
+		printf ("get_response: timeout buf=%s\n", buf);
 #endif
 		return (0);
 	}
