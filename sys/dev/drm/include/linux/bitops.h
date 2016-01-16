@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -490,5 +490,10 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 
 #include <asm/bitops/non-atomic.h>
 #include <asm/bitops/const_hweight.h>
+
+#define for_each_set_bit(bit, addr, size) \
+	for ((bit) = find_first_bit((addr), (size));		\
+	     (bit) < (size);					\
+	     (bit) = find_next_bit((addr), (size), (bit) + 1))
 
 #endif	/* _LINUX_BITOPS_H_ */
