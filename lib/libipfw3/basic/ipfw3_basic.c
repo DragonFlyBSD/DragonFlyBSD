@@ -147,10 +147,11 @@ lookup_host (char *host, struct in_addr *ipaddr)
 
 	if (!inet_aton(host, ipaddr)) {
 		if ((he = gethostbyname(host)) == NULL)
-			return(-1);
+			return -1;
 		*ipaddr = *(struct in_addr *)he->h_addr_list[0];
+		return 0;
 	}
-	return(0);
+	return -1;
 }
 
 /*
@@ -311,7 +312,8 @@ parse_forward(ipfw_insn **cmd, int *ac, char **av[])
 			port = strtoport(str, &end, 0, 0);
 			sa->sin_port = (u_short)port;
 		}
-		lookup_host(tok, &(sa->sin_addr));
+		if (lookup_host(tok, &(sa->sin_addr)) != 0)
+			errx(EX_DATAERR, "forward `%s' invalid dst", tok);
 		tok = strtok (NULL, ",");
 		sa++;
 		count++;
