@@ -37,14 +37,12 @@
 .Nd display system data structures
 .Sh SYNOPSIS
 .Nm
-.Op Fl Tfknst
+.Op Fl Tfhknst
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Pp
 .Nm swapinfo
-.Op Fl g
-.Op Fl k
-.Op Fl m
+.Op Fl ghkm
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Sh DESCRIPTION
@@ -57,7 +55,7 @@ If invoked as
 the
 .Fl s
 option is implied, and only the
-.Fl k , m , g , h , M
+.Fl h , k , m , g , h , M
 and
 .Fl N
 options are legal.
@@ -66,6 +64,8 @@ The following options are available:
 .Bl -tag -width indent
 .It Fl n
 Print devices out by major/minor instead of name.
+.It Fl h
+Print sizes with human-readable scaling.  BLOCKSIZE is ignored.
 .It Fl k
 Print sizes in kilobytes, regardless of the setting of the
 .Ev BLOCKSIZE
