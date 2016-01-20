@@ -786,6 +786,14 @@ bus_dmamap_sync, but it may reduce the cost of performing
 these operations.
 .It Dv BUS_DMA_ZERO
 Causes the allocated memory to be set to all zeros.
+.It Dv BUS_DMA_NOCACHE
+The allocated memory will not be cached in the processor caches.
+All memory accesses appear on the bus and are executed
+without reordering.
+On x86_64, the
+.Dv BUS_DMA_NOCACHE
+flag results in the
+Strong Uncacheable PAT to be set for the allocated virtual address range.
 .El
 .It Fa mapp
 Pointer to storage for the returned DMA map.
