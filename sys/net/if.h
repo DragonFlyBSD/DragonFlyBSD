@@ -136,8 +136,8 @@ struct if_data {
 #define	IFF_POLLING_COMPAT 0x10000	/* was interface is in polling mode */
 #define	IFF_PPROMISC	0x20000		/* user-requested promisc mode */
 #define	IFF_MONITOR	0x40000		/* user-requested monitor mode */
-#define IFF_STATICARP	0x80000		/* static ARP */
-#define IFF_NPOLLING	0x100000	/* interface is in polling mode */
+#define	IFF_STATICARP	0x80000		/* static ARP */
+#define	IFF_NPOLLING	0x100000	/* interface is in polling mode */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
@@ -149,8 +149,8 @@ struct if_data {
 /*
  * User space compat
  */
-#define IFF_OACTIVE	IFF_OACTIVE_COMPAT
-#define IFF_POLLING	IFF_POLLING_COMPAT
+#define	IFF_OACTIVE	IFF_OACTIVE_COMPAT
+#define	IFF_POLLING	IFF_POLLING_COMPAT
 #endif
 
 /*
@@ -162,19 +162,19 @@ struct if_data {
 #define	IF_Gbps(x)	(IF_Mbps((x) * 1000))	/* gigabits/sec. */
 
 /* Capabilities that interfaces can advertise. */
-#define IFCAP_RXCSUM		0x00001 /* can offload checksum on RX */
-#define IFCAP_TXCSUM		0x00002 /* can offload checksum on TX */
-#define IFCAP_NETCONS		0x00004 /* can be a network console */
-#define IFCAP_VLAN_MTU		0x00008	/* VLAN-compatible MTU */
-#define IFCAP_VLAN_HWTAGGING	0x00010	/* hardware VLAN tag support */
-#define IFCAP_JUMBO_MTU		0x00020	/* 9000 byte MTU support */
-#define IFCAP_RSS		0x00040	/* Receive Side Scaling for IPv4 */
-#define IFCAP_VLAN_HWCSUM	0x00080	/* can do IFCAP_HWCSUM on VLANs */
-#define IFCAP_TSO4		0x00100	/* can offload TCP segmentation */
-#define IFCAP_TSO		IFCAP_TSO4
-#define IFCAP_TSO6		0x00200	/* can offload TCP6 segmentation */
+#define	IFCAP_RXCSUM		0x00001 /* can offload checksum on RX */
+#define	IFCAP_TXCSUM		0x00002 /* can offload checksum on TX */
+#define	IFCAP_NETCONS		0x00004 /* can be a network console */
+#define	IFCAP_VLAN_MTU		0x00008	/* VLAN-compatible MTU */
+#define	IFCAP_VLAN_HWTAGGING	0x00010	/* hardware VLAN tag support */
+#define	IFCAP_JUMBO_MTU		0x00020	/* 9000 byte MTU support */
+#define	IFCAP_RSS		0x00040	/* Receive Side Scaling for IPv4 */
+#define	IFCAP_VLAN_HWCSUM	0x00080	/* can do IFCAP_HWCSUM on VLANs */
+#define	IFCAP_TSO4		0x00100	/* can offload TCP segmentation */
+#define	IFCAP_TSO		IFCAP_TSO4
+#define	IFCAP_TSO6		0x00200	/* can offload TCP6 segmentation */
 
-#define IFCAP_HWCSUM	(IFCAP_RXCSUM | IFCAP_TXCSUM)
+#define	IFCAP_HWCSUM	(IFCAP_RXCSUM | IFCAP_TXCSUM)
 
 
 #define	IFQ_MAXLEN	250
@@ -266,14 +266,14 @@ struct	ifreq {
 #define	ifr_flagshigh	ifr_ifru.ifru_flags[1]	/* flags (high 16 bits) */
 #define	ifr_metric	ifr_ifru.ifru_metric	/* metric */
 #define	ifr_mtu		ifr_ifru.ifru_mtu	/* mtu */
-#define ifr_phys	ifr_ifru.ifru_phys	/* physical wire */
-#define ifr_media	ifr_ifru.ifru_media	/* physical media */
+#define	ifr_phys	ifr_ifru.ifru_phys	/* physical wire */
+#define	ifr_media	ifr_ifru.ifru_media	/* physical media */
 #define	ifr_data	ifr_ifru.ifru_data	/* for use by interface */
 #define	ifr_reqcap	ifr_ifru.ifru_cap[0]	/* requested capabilities */
 #define	ifr_curcap	ifr_ifru.ifru_cap[1]	/* current capabilities */
 #define	ifr_index	ifr_ifru.ifru_index	/* interface index */
-#define ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* deprecated */
-#define ifr_tsolen	ifr_ifru.ifru_tsolen	/* max TSO length */
+#define	ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* deprecated */
+#define	ifr_tsolen	ifr_ifru.ifru_tsolen	/* max TSO length */
 };
 
 #define	_SIZEOF_ADDR_IFREQ(ifr) \
@@ -361,8 +361,8 @@ struct ifgroupreq {
 		char	ifgru_group[IFNAMSIZ];
 		struct	ifg_req *ifgru_groups;
 	} ifgr_ifgru;
-#define ifgr_group	ifgr_ifgru.ifgru_group
-#define ifgr_groups	ifgr_ifgru.ifgru_groups
+#define	ifgr_group	ifgr_ifgru.ifgru_group
+#define	ifgr_groups	ifgr_ifgru.ifgru_groups
 };
 
 /*
@@ -384,10 +384,10 @@ struct if_nameindex {
 };
 
 __BEGIN_DECLS
-u_int	 if_nametoindex (const char *);
+u_int	 if_nametoindex(const char *);
 char	*if_indextoname(u_int, char *);
-struct	 if_nameindex *if_nameindex (void);
-void	 if_freenameindex (struct if_nameindex *);
+struct	 if_nameindex *if_nameindex(void);
+void	 if_freenameindex(struct if_nameindex *);
 __END_DECLS
 #endif
 
@@ -395,7 +395,7 @@ __END_DECLS
 struct thread;
 struct ucred;
 
-int	prison_if (struct ucred *cred, struct sockaddr *sa);
+int	prison_if(struct ucred *cred, struct sockaddr *sa);
 
 /* XXX - this should go away soon. */
 #include <net/if_var.h>
