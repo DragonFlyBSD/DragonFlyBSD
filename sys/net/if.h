@@ -37,40 +37,26 @@
 #ifndef _NET_IF_H_
 #define	_NET_IF_H_
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_TIME_H_
+#include <sys/cdefs.h>
+
+#if __BSD_VISIBLE
+/*
+ * <net/if.h> does not depend on <sys/time.h> on most other systems.  This
+ * helps userland compatibility.  (struct timeval ifi_lastchange)
+ */
+#include <sys/socket.h>
+#ifndef _KERNEL
 #include <sys/time.h>
 #endif
-#ifndef _SYS_SOCKET_H_
-#include <sys/socket.h>
 #endif
-
-#ifdef _KERNEL
-
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
-
-#endif
-
-/*
- * Values for if_link_state.
- */
-#define	LINK_STATE_UNKNOWN	0	/* link invalid/unknown */
-#define	LINK_STATE_DOWN		1	/* link is down */
-#define	LINK_STATE_UP		2	/* link is up */
-#define	LINK_STATE_IS_UP(_s)	((_s) >= LINK_STATE_UP)
-
-struct ifnet;
 
 /*
  * Length of interface external name, including terminating '\0'.
  * Note: this is the same size as a generic device's external name.
  */
-#define		IFNAMSIZ	16
-#define		IF_NAMESIZE	IFNAMSIZ
+#define		IF_NAMESIZE	16
+#if __BSD_VISIBLE
+#define		IFNAMSIZ	IF_NAMESIZE
 #define		IF_MAXUNIT	0x7fff		/* if_unit is 15bits */
 
 /*
@@ -152,6 +138,14 @@ struct if_data {
 #define	IFF_OACTIVE	IFF_OACTIVE_COMPAT
 #define	IFF_POLLING	IFF_POLLING_COMPAT
 #endif
+
+/*
+ * Values for if_link_state.
+ */
+#define	LINK_STATE_UNKNOWN	0	/* link invalid/unknown */
+#define	LINK_STATE_DOWN		1	/* link is down */
+#define	LINK_STATE_UP		2	/* link is up */
+#define	LINK_STATE_IS_UP(_s)	((_s) >= LINK_STATE_UP)
 
 /*
  * Some convenience macros used for setting ifi_baudrate.
@@ -376,18 +370,19 @@ struct if_laddrreq {
 	struct	sockaddr_storage addr;   /* in/out */
 	struct	sockaddr_storage dstaddr; /* out */
 };
+#endif /* __BSD_VISIBLE */
 
 #ifndef _KERNEL
 struct if_nameindex {
-	u_int	 if_index;	/* 1, 2, ... */
-	char	*if_name;	/* null terminated name: "lnc0", ... */
+	unsigned int	 if_index;	/* 1, 2, ... */
+	char		*if_name;	/* null terminated name: "lnc0", ... */
 };
 
 __BEGIN_DECLS
-u_int	 if_nametoindex(const char *);
-char	*if_indextoname(u_int, char *);
-struct	 if_nameindex *if_nameindex(void);
-void	 if_freenameindex(struct if_nameindex *);
+unsigned int	 if_nametoindex(const char *);
+char		*if_indextoname(unsigned int, char *);
+struct if_nameindex *if_nameindex(void);
+void		 if_freenameindex(struct if_nameindex *);
 __END_DECLS
 #endif
 
