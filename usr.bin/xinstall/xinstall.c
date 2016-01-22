@@ -73,7 +73,7 @@ static uid_t uid;
 static int dobackup, docompare, dodir, dopreserve, dostrip, nommap, safecopy, verbose;
 static mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 static const char *suffix = BACKUP_SUFFIX;
-static char *destdir;
+static char *destdir, *fflags;
 
 static int file_getgroup(const char *etcdir, const char *group, gid_t *gidret);
 static int file_getowner(const char *etcdir, const char *owner, uid_t *uidret);
@@ -99,7 +99,6 @@ main(int argc, char *argv[])
 	int ch, no_target;
 	int trysys;
 	u_int iflags;
-	char *flags;
 	const char *group, *owner, *to_name;
 	const char *etcdir;
 
@@ -130,10 +129,7 @@ main(int argc, char *argv[])
 			dodir = 1;
 			break;
 		case 'f':
-			flags = optarg;
-			if (strtofflags(&flags, &fset, &fclr))
-				errx(EX_USAGE, "%s: invalid flag", flags);
-			iflags |= SETFLAGS;
+			fflags = optarg;
 			break;
 		case 'g':
 			group = optarg;
@@ -215,6 +211,12 @@ main(int argc, char *argv[])
 		} else {
 			uid = (uid_t)numeric_id(owner, "user");
 		}
+	}
+
+	if (fflags != NULL) {
+		if (strtofflags(&fflags, &fset, &fclr))
+			errx(EX_USAGE, "%s: invalid flag", fflags);
+		iflags |= SETFLAGS;
 	}
 
 	if (dodir) {
