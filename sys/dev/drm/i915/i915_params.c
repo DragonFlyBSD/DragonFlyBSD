@@ -134,6 +134,7 @@ MODULE_PARM_DESC(enable_ppgtt,
 	"(-1=auto [default], 0=disabled, 1=aliasing, 2=full)");
 
 module_param_named(enable_execlists, i915.enable_execlists, int, 0400);
+TUNABLE_INT("drm.i915.enable_execlists", &i915.enable_execlists);
 MODULE_PARM_DESC(enable_execlists,
 	"Override execlists usage. "
 	"(-1=auto [default], 0=disabled, 1=enabled)");

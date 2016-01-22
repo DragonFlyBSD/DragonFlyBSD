@@ -70,6 +70,10 @@ To maximize PSR usage, it can be beneficial to set
 to a sufficiently low value (or
 .Li -1 ) ,
 to minimize vblank interrupt activity.
+.It Va drm.i915.enable_execlists
+Override execlists usage on Broadwell IGPs (no effect on other IGP models).
+Disabling execlists reverts to legacy ringbuffer mode.
+-1 = auto (default), 0 = disable, 1 = enable
 .El
 .Sh SYSCTL VARIABLES
 If display backlight level can be controlled by the GPU (which is often
