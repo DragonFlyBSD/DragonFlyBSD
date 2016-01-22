@@ -66,14 +66,14 @@
 #define	NOCHANGEBITS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #define	BACKUP_SUFFIX	".old"
 
-struct passwd *pp;
-struct group *gp;
-gid_t gid;
-uid_t uid;
-int dobackup, docompare, dodir, dopreserve, dostrip, nommap, safecopy, verbose;
-mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-const char *suffix = BACKUP_SUFFIX;
-char  *destdir;
+static struct passwd *pp;
+static struct group *gp;
+static gid_t gid;
+static uid_t uid;
+static int dobackup, docompare, dodir, dopreserve, dostrip, nommap, safecopy, verbose;
+static mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+static const char *suffix = BACKUP_SUFFIX;
+static char *destdir;
 
 static int file_getgroup(const char *etcdir, const char *group, gid_t *gidret);
 static int file_getowner(const char *etcdir, const char *owner, uid_t *uidret);
@@ -224,7 +224,8 @@ main(int argc, char *argv[])
 		/* NOTREACHED */
 	}
 
-	no_target = stat(to_name = argv[argc - 1], &to_sb);
+	to_name = argv[argc - 1];
+	no_target = stat(to_name, &to_sb);
 	if (!no_target && S_ISDIR(to_sb.st_mode)) {
 		for (; *argv != to_name; ++argv)
 			install(*argv, to_name, fset, fclr, iflags | DIRECTORY);
@@ -740,7 +741,8 @@ copy(int from_fd, const char *from_name, int to_fd,
 {
 	int nr, nw;
 	int serrno;
-	char *p, buf[MAXBSIZE];
+	char *p;
+	char buf[MAXBSIZE];
 	int done_copy;
 
 	/* Rewind file descriptors. */
@@ -767,13 +769,14 @@ copy(int from_fd, const char *from_name, int to_fd,
 		done_copy = 1;
 	}
 	if (!done_copy) {
-		while ((nr = read(from_fd, buf, sizeof(buf))) > 0)
+		while ((nr = read(from_fd, buf, sizeof(buf))) > 0) {
 			if ((nw = write(to_fd, buf, nr)) != nr) {
 				serrno = errno;
 				(void)unlink(to_name);
 				errno = nw > 0 ? EIO : serrno;
 				err(EX_OSERR, "%s", to_name);
 			}
+		}
 		if (nr != 0) {
 			serrno = errno;
 			(void)unlink(to_name);
@@ -861,7 +864,7 @@ install_dir(char *path)
 				errx(EX_OSERR, "%s exists but is not a directory", path);
 			if (!(*p = ch))
 				break;
- 		}
+		}
 
 	if ((gid != (gid_t)-1 || uid != (uid_t)-1) && chown(path, uid, gid))
 		warn("chown %u:%u %s", uid, gid, path);
