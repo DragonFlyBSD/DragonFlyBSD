@@ -32,7 +32,6 @@
  *
  *	@(#)limits.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/include/limits.h,v 1.16 2003/04/29 13:35:58 kan Exp $
- * $DragonFly: src/include/limits.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
  */
 
 #ifndef _LIMITS_H_
@@ -59,6 +58,7 @@
 #define	BC_DIM_MAX		 2048	/* max array elements in bc(1) */
 #define	BC_SCALE_MAX		   99	/* max scale value in bc(1) */
 #define	BC_STRING_MAX		 1000	/* max const string length in bc(1) */
+#define	CHARCLASS_NAME_MAX	   14	/* max character class name size */
 #define	COLL_WEIGHTS_MAX	   10	/* max weights for order keyword */
 #define	EXPR_NEST_MAX		   32	/* max expressions nested in expr(1) */
 #define	LINE_MAX		 2048	/* max bytes in an input line */
