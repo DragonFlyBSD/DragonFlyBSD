@@ -80,12 +80,12 @@ static int
 ua_chan_trigger(kobj_t obj, void *data, int go)
 {
 	if (PCMTRIG_COMMON(go)) {
-	if (go == PCMTRIG_START) {
+		if (go == PCMTRIG_START) {
 			uaudio_chan_start(data);
-	} else {
+		} else {
 			uaudio_chan_stop(data);
+		}
 	}
-}
 	return (0);
 }
 

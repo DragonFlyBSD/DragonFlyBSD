@@ -81,7 +81,7 @@ struct usb_ether {
 	/* NOTE: the arpcom structure must be first, and usb_ether must be
 		 the first member of any usb ethernet driver softc! This is 
 		 due to assumptions made by code in mii and in other
-                 places in the network stack. See also if_var.h --mpf */
+		 places in the network stack. See also if_var.h --mpf */
 	struct arpcom		ue_arpcom;
 	struct lock		*ue_lock;
 	const struct usb_ether_methods *ue_methods;

@@ -44,13 +44,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -159,7 +152,7 @@ enum {
 
 enum {
 	UFOMA_BULK_ENDPT_WRITE,
-	UFOMA_BULK_ENDPT_READ,	
+	UFOMA_BULK_ENDPT_READ,
 	UFOMA_BULK_ENDPT_MAX,
 };
 
@@ -1195,7 +1188,7 @@ static int ufoma_sysctl_support(SYSCTL_HANDLER_ARGS)
 	sbuf_finish(&sb);
 	sysctl_handle_string(oidp, sbuf_data(&sb), sbuf_len(&sb), req);
 	sbuf_delete(&sb);
-	
+
 	return 0;
 }
 static int ufoma_sysctl_current(SYSCTL_HANDLER_ARGS)
@@ -1209,9 +1202,8 @@ static int ufoma_sysctl_current(SYSCTL_HANDLER_ARGS)
 		ksnprintf(subbuf, sizeof(subbuf), "(%02x)", sc->sc_currentmode);
 	}
 	sysctl_handle_string(oidp, mode, strlen(mode), req);
-	
+
 	return 0;
-	
 }
 static int ufoma_sysctl_open(SYSCTL_HANDLER_ARGS)
 {
@@ -1232,18 +1224,18 @@ static int ufoma_sysctl_open(SYSCTL_HANDLER_ARGS)
 	if(error != 0 || req->newptr == NULL){
 		return error;
 	}
-	
+
 	if((newmode = ufoma_str_to_mode(subbuf)) == -1){
 		return EINVAL;
 	}
-	
+
 	for(i = 1 ; i < sc->sc_modetable[0] ; i++){
 		if(sc->sc_modetable[i] == newmode){
 			sc->sc_modetoactivate = newmode;
 			return 0;
 		}
 	}
-	
+
 	return EINVAL;
 }
 

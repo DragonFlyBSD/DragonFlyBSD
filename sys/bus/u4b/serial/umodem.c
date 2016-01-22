@@ -42,13 +42,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -147,7 +140,7 @@ static const STRUCT_USB_HOST_ID umodem_host_devs[] = {
 };
 
 /*
- * As speeds for umodem deivces increase, these numbers will need to
+ * As speeds for umodem devices increase, these numbers will need to
  * be increased. They should be good for G3 speeds and below.
  *
  * TODO: The TTY buffers should be increased!
@@ -182,8 +175,8 @@ struct umodem_softc {
 	uint8_t	sc_cm_over_data;
 	uint8_t	sc_cm_cap;		/* CM capabilities */
 	uint8_t	sc_acm_cap;		/* ACM capabilities */
-	uint8_t sc_line_coding[32];     /* used in USB device mode */
-	uint8_t sc_abstract_state[32];  /* used in USB device mode */
+	uint8_t	sc_line_coding[32];	/* used in USB device mode */
+	uint8_t	sc_abstract_state[32];	/* used in USB device mode */
 };
 
 static device_probe_t umodem_probe;
@@ -465,7 +458,7 @@ umodem_find_data_iface(struct usb_attach_arg *uaa,
 {
 	struct usb_interface_descriptor *id;
 	struct usb_interface *iface;
-	
+
 	iface = usbd_get_iface(uaa->device, iface_index);
 
 	/* check for end of interfaces */

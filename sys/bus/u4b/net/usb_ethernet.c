@@ -230,7 +230,7 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 		if (ue->ue_methods->ue_mii_upd != NULL &&
 		    ue->ue_methods->ue_mii_sts != NULL) {
 			error = mii_phy_probe(ue->ue_dev, &ue->ue_miibus, 
-			  		      ue_ifmedia_upd, ue->ue_methods->ue_mii_sts);
+					      ue_ifmedia_upd, ue->ue_methods->ue_mii_sts);
 		}
 	}
 
@@ -376,7 +376,7 @@ ue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 ||
-            ifq_is_oactive(&ifp->if_snd))
+	    ifq_is_oactive(&ifp->if_snd))
 		return;
 
 	UE_LOCK(ue);
@@ -442,7 +442,7 @@ ue_watchdog(void *arg)
 {
 	struct usb_ether *ue = arg;
 	struct ifnet *ifp = uether_getifp(ue);
-	
+
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
@@ -460,7 +460,7 @@ ue_tick_task(struct usb_proc_msg *_task)
 	    (struct usb_ether_cfg_task *)_task;
 	struct usb_ether *ue = task->ue;
 	struct ifnet *ifp = uether_getifp(ue);
-	
+
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
@@ -530,7 +530,7 @@ uether_modevent(module_t mod, int type, void *data)
 		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(ue));
 
 		attached = 1;
-        break;
+		break;
 	case MOD_UNLOAD:
 		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(ue));
 		break;

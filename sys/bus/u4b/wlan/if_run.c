@@ -862,7 +862,6 @@ run_detach(device_t self)
 	usbd_transfer_unsetup(sc->sc_xfer, RUN_N_XFER);
 
 	RUN_LOCK(sc);
-
 	sc->ratectl_run = RUN_RATECTL_OFF;
 	sc->cmdq_run = sc->cmdq_key_set = RUN_CMDQ_ABORT;
 
@@ -3706,7 +3705,7 @@ run_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 
 	/* prevent management frames from being sent if we're not ready */
 	if (!(ifp->if_flags & IFF_RUNNING)) {
-		error =  ENETDOWN;
+		error = ENETDOWN;
 		goto done;
 	}
 
@@ -4458,7 +4457,7 @@ run_rt3593_set_chan(struct run_softc *sc, u_int chan)
 	else
 		rf |= 0x40;
 	run_rt3070_rf_write(sc, 6, rf);
-		
+
 	run_rt3070_rf_read(sc, 30, &rf);
 	rf = (rf & ~0x18) | 0x10;
 	run_rt3070_rf_write(sc, 30, rf);
@@ -5365,7 +5364,7 @@ run_bbp_init(struct run_softc *sc)
 		run_bbp_write(sc, 86, 0x46);
 		run_bbp_write(sc, 137, 0x0f);
 	}
-		
+
 	/* fix BBP84 for RT2860E */
 	if (sc->mac_ver == 0x2860 && sc->mac_rev != 0x0101)
 		run_bbp_write(sc, 84, 0x19);

@@ -279,6 +279,7 @@ ums_intr_callback(struct usb_xfer *xfer, usb_error_t error)
 
 		if (dx || dy || dz || dt || dw ||
 		    (buttons != sc->sc_status.button)) {
+
 			DPRINTFN(6, "x:%d y:%d z:%d t:%d w:%d buttons:0x%08x\n",
 			    dx, dy, dz, dt, dw, buttons);
 
@@ -658,7 +659,7 @@ ums_attach(device_t dev)
   	    UID_ROOT, GID_OPERATOR, 0644);
 	if (err)
 		goto detach;
-#if 0 
+#if 0
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
 	    OID_AUTO, "parseinfo", CTLTYPE_STRING|CTLFLAG_RD,

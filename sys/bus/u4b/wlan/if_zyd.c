@@ -407,7 +407,6 @@ zyd_attach(device_t dev)
 	ic->ic_scan_start = zyd_scan_start;
 	ic->ic_scan_end = zyd_scan_end;
 	ic->ic_set_channel = zyd_set_channel;
-
 	ic->ic_vap_create = zyd_vap_create;
 	ic->ic_vap_delete = zyd_vap_delete;
 	ic->ic_update_mcast = zyd_update_mcast;
@@ -647,7 +646,7 @@ zyd_intr_read_callback(struct usb_xfer *xfer, usb_error_t error)
 			if (ni != NULL) {
 				int retrycnt =
 				    (int)(le16toh(retry->count) & 0xff);
-				
+
 				ieee80211_ratectl_tx_complete(vap, ni,
 				    IEEE80211_RATECTL_TX_FAILURE,
 				    &retrycnt, NULL);
@@ -1227,7 +1226,7 @@ zyd_al2230_bandedge6(struct zyd_rf *rf, struct ieee80211_channel *c)
 
 	if (chan == 1 || chan == 11)
 		r[0].val = 0x12;
-	
+
 	for (i = 0; i < N(r); i++)
 		zyd_write16_m(sc, r[i].reg, r[i].val);
 fail:

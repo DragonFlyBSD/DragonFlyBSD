@@ -243,19 +243,19 @@ static void		urtwn_edca_init(struct urtwn_softc *);
 static void		urtwn_write_txpower(struct urtwn_softc *, int, 
 			    uint16_t[]);
 static void		urtwn_get_txpower(struct urtwn_softc *, int,
-		      	    struct ieee80211_channel *, 
+			    struct ieee80211_channel *,
 			    struct ieee80211_channel *, uint16_t[]);
 static void		urtwn_r88e_get_txpower(struct urtwn_softc *, int,
-		      	    struct ieee80211_channel *, 
+			    struct ieee80211_channel *,
 			    struct ieee80211_channel *, uint16_t[]);
 static void		urtwn_set_txpower(struct urtwn_softc *,
-		    	    struct ieee80211_channel *, 
+			    struct ieee80211_channel *,
 			    struct ieee80211_channel *);
 static void		urtwn_scan_start(struct ieee80211com *);
 static void		urtwn_scan_end(struct ieee80211com *);
 static void		urtwn_set_channel(struct ieee80211com *);
 static void		urtwn_set_chan(struct urtwn_softc *,
-		    	    struct ieee80211_channel *, 
+			    struct ieee80211_channel *,
 			    struct ieee80211_channel *);
 static void		urtwn_update_mcast(struct ifnet *);
 static void		urtwn_iq_calib(struct urtwn_softc *);
@@ -993,7 +993,6 @@ urtwn_write_1(struct urtwn_softc *sc, uint16_t addr, uint8_t val)
 	urtwn_write_region_1(sc, addr, &val, 1);
 }
 
-
 static void
 urtwn_write_2(struct urtwn_softc *sc, uint16_t addr, uint16_t val)
 {
@@ -1469,7 +1468,7 @@ static void
 urtwn_set_led(struct urtwn_softc *sc, int led, int on)
 {
 	uint8_t reg;
-	
+
 	if (led == URTWN_LED_LINK) {
 		if (sc->chip & URTWN_CHIP_88E) {
 			reg = urtwn_read_1(sc, R92C_LEDCFG2) & 0xf0;
@@ -1825,7 +1824,7 @@ urtwn_tx_start(struct urtwn_softc *sc, struct ieee80211_node *ni,
 		/* in case packet header moved, reset pointer */
 		wh = mtod(m0, struct ieee80211_frame *);
 	}
-	
+
 	switch (type) {
 	case IEEE80211_FC0_TYPE_CTL:
 	case IEEE80211_FC0_TYPE_MGT:
@@ -1837,7 +1836,7 @@ urtwn_tx_start(struct urtwn_softc *sc, struct ieee80211_node *ni,
 		xfer = urtwn_pipes[M_WME_GETAC(m0)];
 		break;
 	}
-			    
+
 	hasqos = 0;
 
 	/* Fill Tx descriptor. */
@@ -1866,7 +1865,7 @@ urtwn_tx_start(struct urtwn_softc *sc, struct ieee80211_node *ni,
 			txd->txdw1 |= htole32(
 			    SM(R92C_TXDW1_MACID, URTWN_MACID_BSS) |
 			    SM(R92C_TXDW1_QSEL, R92C_TXDW1_QSEL_BE) |
-		 	    SM(R92C_TXDW1_RAID, raid) | R92C_TXDW1_AGGBK);
+			    SM(R92C_TXDW1_RAID, raid) | R92C_TXDW1_AGGBK);
 		}
 		if (ic->ic_flags & IEEE80211_F_USEPROT) {
 			if (ic->ic_protmode == IEEE80211_PROT_CTSONLY) {
@@ -2037,7 +2036,7 @@ urtwn_alloc_list(struct urtwn_softc *sc, struct urtwn_data data[],
 static int
 urtwn_alloc_rx_list(struct urtwn_softc *sc)
 {
-        int error, i;
+	int error, i;
 
 	error = urtwn_alloc_list(sc, sc->sc_rx, URTWN_RX_LIST_COUNT,
 	    URTWN_RXBUFSZ);
@@ -2436,7 +2435,6 @@ fail:
 static __inline int
 urtwn_dma_init(struct urtwn_softc *sc)
 {
-            
 	return sc->sc_dma_init(sc);
 }
 
@@ -3200,7 +3198,7 @@ urtwn_set_chan(struct urtwn_softc *sc, struct ieee80211_channel *c,
 			    urtwn_bb_read(sc, R92C_FPGA0_ANAPARAM2) |
 			    R92C_FPGA0_ANAPARAM2_CBW20);
 		}
-			
+
 		/* Select 20MHz bandwidth. */
 		urtwn_rf_write(sc, 0, R92C_RF_CHNLBW,
 		    (sc->rf_chnlbw[0] & ~0xfff) | chan | 
@@ -3278,7 +3276,7 @@ urtwn_init_locked(void *arg)
 	error = urtwn_alloc_rx_list(sc);
 	if (error != 0)
 		goto fail;
-	
+
 	error = urtwn_alloc_tx_list(sc);
 	if (error != 0)
 		goto fail;

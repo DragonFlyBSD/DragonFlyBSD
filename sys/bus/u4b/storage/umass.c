@@ -1079,7 +1079,7 @@ umass_detach(device_t dev)
 
 	/* cancel any leftover CCBs */
 	umass_cancel_ccb(sc);
-	
+
 	umass_cam_detach_sim(sc);
 
 	lockmgr(&sc->sc_lock, LK_RELEASE);
@@ -1145,7 +1145,7 @@ static void
 umass_cancel_ccb(struct umass_softc *sc)
 {
 	union ccb *ccb;
-	
+
 #if 0
 	KKASSERT(lockstatus(&sc->sc_lock, curthread) != 0);
 #endif
@@ -2102,7 +2102,6 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	    0 /* maximum tagged device openings */ ,
 	    devq);
 
-	
 	cam_simq_release(devq);
 
 	if (sc->sc_sim == NULL) {
@@ -2121,7 +2120,6 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	return (0);
 }
 
-
 /*
  * (mp) We need this for DragonflyBSD to realise that there
  * is a new device present
@@ -2131,18 +2129,18 @@ static void
 umass_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
 #ifdef USB_DEBUG
-        if (ccb->ccb_h.status != CAM_REQ_CMP) {
-                kprintf("%s:%d Rescan failed, 0x%04x\n",
-                    periph->periph_name, periph->unit_number, 
-                    ccb->ccb_h.status);
-        } else {
-                kprintf("%s%d: Rescan succeeded\n",
-                    periph->periph_name, periph->unit_number);
-        }
+	if (ccb->ccb_h.status != CAM_REQ_CMP) {
+		kprintf("%s:%d Rescan failed, 0x%04x\n",
+		    periph->periph_name, periph->unit_number,
+		    ccb->ccb_h.status);
+	} else {
+		kprintf("%s%d: Rescan succeeded\n",
+		    periph->periph_name, periph->unit_number);
+	}
 #endif
 
-        xpt_free_path(ccb->ccb_h.path);
-        kfree(ccb, M_USBDEV);
+	xpt_free_path(ccb->ccb_h.path);
+	kfree(ccb, M_USBDEV);
 }
 
 /*
@@ -2152,31 +2150,30 @@ umass_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 static void
 umass_cam_rescan(void *addr)
 {
-        struct umass_softc *sc = (struct umass_softc *) addr;
-        struct cam_path *path;
-        union ccb *ccb;
+	struct umass_softc *sc = (struct umass_softc *) addr;
+	struct cam_path *path;
+	union ccb *ccb;
 
-        ccb = kmalloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
+	ccb = kmalloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
 
-        DPRINTF(sc, UDMASS_SCSI, "scbus%d: scanning for %s:%d:%d:%d\n",
-            cam_sim_path(sc->sc_sim),
-            device_get_nameunit(sc->sc_dev), cam_sim_path(sc->sc_sim),
-            device_get_unit(sc->sc_dev), CAM_LUN_WILDCARD);
+	DPRINTF(sc, UDMASS_SCSI, "scbus%d: scanning for %s:%d:%d:%d\n",
+	    cam_sim_path(sc->sc_sim),
+	    device_get_nameunit(sc->sc_dev), cam_sim_path(sc->sc_sim),
+	    device_get_unit(sc->sc_dev), CAM_LUN_WILDCARD);
 
-        if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->sc_sim),
-                CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP)
-        {
-                kfree(ccb, M_USBDEV);
-                return;
-        }
+	if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->sc_sim),
+	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
+		kfree(ccb, M_USBDEV);
+		return;
+	}
 
-        xpt_setup_ccb(&ccb->ccb_h, path, 5/*priority (low)*/);
-        ccb->ccb_h.func_code = XPT_SCAN_BUS;
-        ccb->ccb_h.cbfcnp = umass_cam_rescan_callback;
-        ccb->crcn.flags = CAM_FLAG_NONE;
-        xpt_action_async(ccb);
+	xpt_setup_ccb(&ccb->ccb_h, path, 5/*priority (low)*/);
+	ccb->ccb_h.func_code = XPT_SCAN_BUS;
+	ccb->ccb_h.cbfcnp = umass_cam_rescan_callback;
+	ccb->crcn.flags = CAM_FLAG_NONE;
+	xpt_action_async(ccb);
 
-        /* The scan is in progress now. */
+	/* The scan is in progress now. */
 } 
 
 static void
@@ -2317,7 +2314,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 					 */
 					if ((sc->sc_quirks & (NO_INQUIRY_EVPD | NO_INQUIRY)) &&
 					    (sc->sc_transfer.cmd_data[1] & SI_EVPD)) {
-		                                struct scsi_sense_data *sense;
+						struct scsi_sense_data *sense;
 
 						sense = &ccb->csio.sense_data;
 						bzero(sense, sizeof(*sense));
@@ -2325,7 +2322,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 						sense->flags = SSD_KEY_ILLEGAL_REQUEST;
 						sense->add_sense_code = 0x24;
 						sense->extra_len = 10;
-	
+
 						ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
 						ccb->ccb_h.status =
 						    CAM_SCSI_STATUS_ERROR |
@@ -2612,17 +2609,14 @@ umass_cam_sense_cb(struct umass_softc *sc, union ccb *ccb, uint32_t residue,
 	switch (status) {
 	case STATUS_CMD_OK:
 	case STATUS_CMD_UNKNOWN:
-	case STATUS_CMD_FAILED:
-	{
+	case STATUS_CMD_FAILED: {
 		int error, key, asc, ascq;
 		uint8_t sense_len;
 
 		ccb->csio.sense_resid = residue;
 		sense_len = ccb->csio.sense_len - ccb->csio.sense_resid;
 		scsi_extract_sense(&ccb->csio.sense_data,
-                                   &error,
-                                   &key,
-                                   &asc, &ascq);
+		    &error, &key, &asc, &ascq);
 		if (ccb->csio.ccb_h.flags & CAM_CDB_POINTER) {
 			cmd = (uint8_t *)(ccb->csio.cdb_io.cdb_ptr);
 		} else {

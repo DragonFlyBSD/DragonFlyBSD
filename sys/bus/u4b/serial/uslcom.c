@@ -65,7 +65,7 @@ SYSCTL_INT(_hw_usb_uslcom, OID_AUTO, debug, CTLFLAG_RW,
 
 /* Request codes */
 #define	USLCOM_UART		0x00
-#define	USLCOM_BAUD_RATE	0x01	
+#define	USLCOM_BAUD_RATE	0x01
 #define	USLCOM_DATA		0x03
 #define	USLCOM_BREAK		0x05
 #define	USLCOM_CTRL		0x07
@@ -78,13 +78,13 @@ SYSCTL_INT(_hw_usb_uslcom, OID_AUTO, debug, CTLFLAG_RW,
 #define	USLCOM_UART_ENABLE	0x01
 
 /* USLCOM_CTRL/USLCOM_RCTRL values */
-#define	USLCOM_CTRL_DTR_ON	0x0001	
+#define	USLCOM_CTRL_DTR_ON	0x0001
 #define	USLCOM_CTRL_DTR_SET	0x0100
 #define	USLCOM_CTRL_RTS_ON	0x0002
 #define	USLCOM_CTRL_RTS_SET	0x0200
 #define	USLCOM_CTRL_CTS		0x0010
 #define	USLCOM_CTRL_DSR		0x0020
-#define	USLCOM_CTRL_RI          0x0040
+#define	USLCOM_CTRL_RI		0x0040
 #define	USLCOM_CTRL_DCD		0x0080
 
 /* USLCOM_BAUD_RATE values */
@@ -517,7 +517,7 @@ uslcom_param(struct ucom_softc *ucom, struct termios *t)
 	USETW(req.wIndex, USLCOM_PORT_NO);
 	USETW(req.wLength, 0);
 
-        if (ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
+	if (ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom,
 	    &req, NULL, 0, 1000)) {
 		DPRINTF("Set baudrate failed (ignored)\n");
 	}
@@ -645,7 +645,7 @@ uslcom_ioctl(struct ucom_softc *ucom, uint32_t cmd, caddr_t data,
 		USETW(req.wValue, USLCOM_WRITE_LATCH);
 		USETW(req.wIndex, (*(int *)data));
 		USETW(req.wLength, 0);
-		
+
 		if (ucom_cfg_do_request(sc->sc_udev, &sc->sc_ucom, 
 		    &req, NULL, 0, 1000)) {
 			DPRINTF("Set LATCH failed\n");

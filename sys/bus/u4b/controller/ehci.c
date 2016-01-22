@@ -1414,7 +1414,7 @@ ehci_check_transfer(struct usb_xfer *xfer)
 			}
 			td = td->obj_next;
 		}
-			ehci_non_isoc_done(xfer);
+		ehci_non_isoc_done(xfer);
 		goto transferred;
 	}
 
@@ -2211,24 +2211,24 @@ ehci_device_done(struct usb_xfer *xfer, usb_error_t error)
 	DPRINTFN(2, "xfer=%p, endpoint=%p, error=%d\n",
 	    xfer, xfer->endpoint, error);
 
-	    if ((methods == &ehci_device_bulk_methods) ||
-		(methods == &ehci_device_ctrl_methods)) {
+	if ((methods == &ehci_device_bulk_methods) ||
+	    (methods == &ehci_device_ctrl_methods)) {
 #ifdef USB_DEBUG
-		    if (ehcidebug > 8) {
-			    DPRINTF("nexttog=%d; data after transfer:\n",
-				xfer->endpoint->toggle_next);
-			    ehci_dump_sqtds(sc,
-				xfer->td_transfer_first);
-		    }
+		if (ehcidebug > 8) {
+			DPRINTF("nexttog=%d; data after transfer:\n",
+			    xfer->endpoint->toggle_next);
+			ehci_dump_sqtds(sc,
+			    xfer->td_transfer_first);
+		}
 #endif
 
 		EHCI_REMOVE_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
-			sc->sc_async_p_last);
-	    }
-	    if (methods == &ehci_device_intr_methods) {
+		    sc->sc_async_p_last);
+	}
+	if (methods == &ehci_device_intr_methods) {
 		EHCI_REMOVE_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
-			sc->sc_intr_p_last[xfer->qh_pos]);
-	    }
+		    sc->sc_intr_p_last[xfer->qh_pos]);
+	}
 	/*
 	 * Only finish isochronous transfers once which will update
 	 * "xfer->frlengths".
@@ -2547,8 +2547,8 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 	 * pre-compute when the isochronous transfer will be finished:
 	 */
 	xfer->isoc_time_complete =
-		usb_isoc_time_expand(&sc->sc_bus, nframes) +
-		buf_offset + xfer->nframes;
+	    usb_isoc_time_expand(&sc->sc_bus, nframes) +
+	    buf_offset + xfer->nframes;
 
 	/* get the real number of frames */
 
@@ -2599,7 +2599,7 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 		sa = usbd_fs_isoc_schedule_alloc_slot(xfer,
 		    xfer->isoc_time_complete - nframes - 1);
 
-		if(sa == 255) {
+		if (sa == 255) {
 			/*
 			 * Schedule is FULL, set length to zero:
 			 */
@@ -2694,7 +2694,7 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 	/* update isoc_next */
 	xfer->endpoint->isoc_next = (pp_last - &sc->sc_isoc_fs_p_last[0]) &
 	    (EHCI_VIRTUAL_FRAMELIST_COUNT - 1);
-	
+
 	/*
 	 * We don't allow cancelling of the SPLIT transaction USB FULL
 	 * speed transfer, because it disturbs the bandwidth

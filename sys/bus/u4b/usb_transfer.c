@@ -498,7 +498,7 @@ usbd_transfer_setup_sub(struct usb_setup_params *parm)
 	 */
 	if (maxp_old != xfer->max_packet_size)
 		xfer->flags_int.maxp_was_clamped = 1;
-	
+
 	/* compute "max_frame_size" */
 
 	usbd_update_max_frame_size(xfer);
@@ -2004,7 +2004,7 @@ usbd_transfer_stop(struct usb_xfer *xfer)
 		 */
 		if (ep->endpoint_q[xfer->stream_id].curr == xfer) {
 			usb_command_wrapper(
-                            &ep->endpoint_q[xfer->stream_id], NULL);
+			    &ep->endpoint_q[xfer->stream_id], NULL);
 		}
 	}
 
@@ -2319,7 +2319,7 @@ usbd_callback_ss_done_defer(struct usb_xfer *xfer)
 	struct usb_xfer_queue *pq = &info->done_q;
 
 	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
-   
+
 	if (pq->curr != xfer) {
 		usbd_transfer_enqueue(pq, xfer);
 	}
@@ -2359,7 +2359,7 @@ usbd_callback_wrapper(struct usb_xfer_queue *pq)
 	USB_BUS_LOCK_ASSERT(info->bus);
 	if (!lockowned(info->xfer_lock)) {
 		/*
-	       	 * Cases that end up here:
+		 * Cases that end up here:
 		 *
 		 * 5) HW interrupt done callback or other source.
 		 */
@@ -2915,8 +2915,8 @@ usbd_callback_wrapper_sub(struct usb_xfer *xfer)
 				(bus->methods->start_dma_delay) (xfer);
 			} else {
 				usbd_transfer_timeout_ms(xfer,
-					(void (*)(void *))&usb_dma_delay_done_cb,
-					temp);
+				    (void (*)(void *))&usb_dma_delay_done_cb,
+				    temp);
 			}
 			USB_BUS_UNLOCK(bus);
 			return (1);	/* wait for new callback */

@@ -318,7 +318,7 @@ axe_miibus_readreg(device_t dev, int phy, int reg)
 	locked = lockowned(&sc->sc_lock);
 	if(!locked)
 		AXE_LOCK(sc);
-	
+
 	if(phy != sc->sc_phyno){
 		if(!locked)
 			AXE_UNLOCK(sc);
@@ -1147,7 +1147,7 @@ axe_rxeof(struct usb_ether *ue, struct usb_page_cache *pc, unsigned int offset,
 			}
 		}
 	}
-	
+
 	IF_ENQUEUE(&ue->ue_rxq, m);
 	return (0);
 }
@@ -1171,9 +1171,7 @@ axe_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 		DPRINTFN(11, "transfer complete\n");
-
 		ifq_clr_oactive(&ifp->if_snd);
-		
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:
@@ -1343,10 +1341,9 @@ axe_init(struct usb_ether *ue)
 
 	AXE_LOCK_ASSERT(sc);
 
-	
 	if ((ifp->if_flags & IFF_RUNNING) != 0)
 		return;
-	
+
 	/* Cancel pending I/O */
 	axe_stop(ue);
 
@@ -1427,9 +1424,7 @@ axe_init(struct usb_ether *ue)
 
 	usbd_xfer_set_stall(sc->sc_xfer[AXE_BULK_DT_WR]);
 
-	
 	ifp->if_flags |= IFF_RUNNING;
-	
 	/* Switch to selected media. */
 	axe_ifmedia_upd(ifp);
 }
@@ -1464,10 +1459,8 @@ axe_stop(struct usb_ether *ue)
 
 	AXE_LOCK_ASSERT(sc);
 
-	
 	ifp->if_flags &= ~IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
-	
 	sc->sc_flags &= ~AXE_FLAG_LINK;
 
 	/*
@@ -1506,9 +1499,9 @@ axe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *uc)
 			ifp->if_capenable ^= IFCAP_RXCSUM;
 			reinit++;
 		}
-		if (reinit > 0 && ifp->if_flags & IFF_RUNNING) 
-			ifp->if_flags &= ~IFF_RUNNING; 
-		else 
+		if (reinit > 0 && ifp->if_flags & IFF_RUNNING)
+			ifp->if_flags &= ~IFF_RUNNING;
+		else
 			reinit = 0;
 		AXE_UNLOCK(sc);
 		if (reinit > 0)

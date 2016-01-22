@@ -899,7 +899,7 @@ atp_match_stroke_component(atp_stroke_component *component,
 	if (abs(delta_mickeys) > atp_max_delta_mickeys)
 		return (FALSE); /* the finger span is too far out; no match */
 
-	component->loc          = pspan->loc;
+	component->loc = pspan->loc;
 
 	/*
 	 * A sudden and significant increase in a pspan's cumulative
@@ -909,7 +909,7 @@ atp_match_stroke_component(atp_stroke_component *component,
 	 * matching stroke component(s). But such a change should
 	 * *not* be interpreted as a movement.
 	 */
-        if (pspan->cum > ((3 * component->cum_pressure) >> 1))
+	if (pspan->cum > ((3 * component->cum_pressure) >> 1))
 		delta_mickeys = 0;
 
 	component->cum_pressure = pspan->cum;
@@ -2049,7 +2049,6 @@ atp_stop_read(struct usb_fifo *fifo)
 
 	usbd_transfer_stop(sc->sc_xfer[ATP_INTR_DT]);
 }
-
 
 static int
 atp_open(struct usb_fifo *fifo, int fflags)

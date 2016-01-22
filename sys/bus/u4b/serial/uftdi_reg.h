@@ -63,13 +63,11 @@ enum uftdi_type {
  *    baud and data format not reset
  *
  * The Purge RX and TX buffer commands affect nothing except the buffers
- *
  */
 /* FTDI_SIO_RESET */
 #define	FTDI_SIO_RESET_SIO 0
 #define	FTDI_SIO_RESET_PURGE_RX 1
 #define	FTDI_SIO_RESET_PURGE_TX 2
-
 
 /*
  * BmRequestType:  0100 0000B
@@ -135,7 +133,6 @@ enum {
 #define	FTDI_SIO_SET_DATA_STOP_BITS_2 (0x2 << 11)
 #define	FTDI_SIO_SET_BREAK (0x1 << 14)
 
-
 /*
  * BmRequestType:   0100 0000B
  * bRequest:        FTDI_SIO_MODEM_CTRL
@@ -172,7 +169,6 @@ enum {
 #define	FTDI_SIO_SET_RTS_HIGH (2 | ( FTDI_SIO_SET_RTS_MASK << 8))
 #define	FTDI_SIO_SET_RTS_LOW (0 | ( FTDI_SIO_SET_RTS_MASK << 8))
 
-
 /*
  *   BmRequestType:  0100 0000b
  *   bRequest:       FTDI_SIO_SET_FLOW_CTRL
@@ -203,7 +199,6 @@ enum {
 #define	FTDI_SIO_DTR_DSR_HS 0x2
 #define	FTDI_SIO_XON_XOFF_HS 0x4
 
-
 /*
  *  BmRequestType:   0100 0000b
  *  bRequest:        FTDI_SIO_SET_EVENT_CHAR
@@ -227,8 +222,6 @@ enum {
  * which is what normally happens.
  */
 
-
-
 /*
  *  BmRequestType:  0100 0000b
  *  bRequest:       FTDI_SIO_SET_ERROR_CHAR
@@ -244,12 +237,10 @@ enum {
  *           1 = enabled
  *  B9..15 Reserved
  *
- *
  * FTDI_SIO_SET_ERROR_CHAR
  * Set the parity error replacement character for the specified communications
  * port.
  */
-
 
 /*
  *   BmRequestType:   1100 0000b
@@ -282,10 +273,7 @@ enum {
 #define	FTDI_SIO_RI_MASK  0x40
 #define	FTDI_SIO_RLSD_MASK 0x80
 
-
-
 /*
- *
  * DATA FORMAT
  *
  * IN Endpoint
@@ -318,7 +306,6 @@ enum {
  * B6	Transmitter Empty (TEMT)
  * B7	Error in RCVR FIFO
  *
- *
  * OUT Endpoint
  *
  * This device reserves the first bytes of data on this endpoint contain the
@@ -330,7 +317,6 @@ enum {
  * Offset	Description
  * B0..1	Port
  * B2..7	Length of message - (not including Byte 0)
- *
  */
 #define	FTDI_PORT_MASK 0x0f
 #define	FTDI_MSR_MASK 0xf0

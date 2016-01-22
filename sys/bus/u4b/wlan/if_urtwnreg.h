@@ -982,11 +982,11 @@ struct r88e_rx_cck {
 	uint8_t		sig_qual;
 	uint8_t		agc_rpt;
 	uint8_t		rpt_b;
-	uint8_t 	reserved1;
+	uint8_t		reserved1;
 	uint8_t		noise_power;
-	uint8_t		path_cfotail[2];        
+	uint8_t		path_cfotail[2];
 	uint8_t		pcts_mask[2];   
-	uint8_t		stream_rxevm[2];        
+	uint8_t		stream_rxevm[2];
 	uint8_t		path_rxsnr[2];
 	uint8_t		noise_power_db_lsb;
 	uint8_t		reserved2[3];
@@ -1225,7 +1225,7 @@ struct urtwn_softc {
 	int8_t				bw20_tx_pwr_diff;
 	int8_t				ofdm_tx_pwr_diff;
 	uint8_t				sc_bssid[IEEE80211_ADDR_LEN];
-		
+
 	struct callout			sc_watchdog_ch;
 	struct lock			sc_lock;
 
@@ -1235,9 +1235,9 @@ struct urtwn_softc {
 	struct urtwn_cmdq		cmdq[URTWN_CMDQ_MAX];
 	struct task			cmdq_task;
 	uint32_t			cmdq_store;
-	uint8_t                         cmdq_exec;
-	uint8_t                         cmdq_run;
-	uint8_t                         cmdq_key_set;
+	uint8_t				cmdq_exec;
+	uint8_t				cmdq_run;
+	uint8_t				cmdq_key_set;
 #define	URTWN_CMDQ_ABORT	0
 #define	URTWN_CMDQ_GO		1
 

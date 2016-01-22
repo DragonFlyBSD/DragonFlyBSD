@@ -953,14 +953,12 @@ urtw_detach(device_t dev)
 static void
 urtw_free_tx_data_list(struct urtw_softc *sc)
 {
-
 	urtw_free_data_list(sc, sc->sc_tx, URTW_TX_DATA_LIST_COUNT, 0);
 }
 
 static void
 urtw_free_rx_data_list(struct urtw_softc *sc)
 {
-
 	urtw_free_data_list(sc, sc->sc_rx, URTW_RX_DATA_LIST_COUNT, 1);
 }
 
@@ -3681,21 +3679,18 @@ urtw_led_mode0(struct urtw_softc *sc, int mode)
 static usb_error_t
 urtw_led_mode1(struct urtw_softc *sc, int mode)
 {
-
 	return (USB_ERR_INVAL);
 }
 
 static usb_error_t
 urtw_led_mode2(struct urtw_softc *sc, int mode)
 {
-
 	return (USB_ERR_INVAL);
 }
 
 static usb_error_t
 urtw_led_mode3(struct urtw_softc *sc, int mode)
 {
-
 	return (USB_ERR_INVAL);
 }
 

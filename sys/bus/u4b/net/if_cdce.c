@@ -1032,7 +1032,6 @@ cdce_intr_write_callback(struct usb_xfer *xfer, usb_error_t error)
 			break;
 		}
 
-
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:

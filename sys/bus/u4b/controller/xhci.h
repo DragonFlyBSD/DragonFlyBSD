@@ -481,13 +481,13 @@ struct xhci_softc {
 	uint32_t		sc_exit_lat_max;
 
 	/* offset to operational registers */
-	uint32_t                sc_oper_off;
+	uint32_t		sc_oper_off;
 	/* offset to capability registers */
-	uint32_t                sc_capa_off;
+	uint32_t		sc_capa_off;
 	/* offset to runtime registers */
-	uint32_t                sc_runt_off;
+	uint32_t		sc_runt_off;
 	/* offset to doorbell registers */
-	uint32_t                sc_door_off;
+	uint32_t		sc_door_off;
 
 	/* chip specific */
 	uint16_t		sc_erst_max;

@@ -473,7 +473,6 @@ uath_attach(device_t dev)
 	ic->ic_scan_start = uath_scan_start;
 	ic->ic_scan_end = uath_scan_end;
 	ic->ic_set_channel = uath_set_channel;
-
 	ic->ic_vap_create = uath_vap_create;
 	ic->ic_vap_delete = uath_vap_delete;
 	ic->ic_update_mcast = uath_update_mcast;

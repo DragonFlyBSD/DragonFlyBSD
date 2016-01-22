@@ -140,7 +140,6 @@ struct ukbd_softc {
 	keyboard_t sc_kbd;
 	keymap_t sc_keymap;
 	accentmap_t sc_accmap;
-
 	fkeytab_t sc_fkeymap[UKBD_NFKEY];
 	struct hid_location sc_loc_apple_eject;
 	struct hid_location sc_loc_apple_fn;
@@ -248,7 +247,7 @@ struct ukbd_softc {
 			 SCAN_PREFIX_CTL | SCAN_PREFIX_SHIFT)
 #define	SCAN_CHAR(c)	((c) & 0x7f)
 
-#define	UKBD_LOCK(sc)	lockmgr(&(sc)->sc_kbd.kb_lock, LK_EXCLUSIVE)	
+#define	UKBD_LOCK(sc)	lockmgr(&(sc)->sc_kbd.kb_lock, LK_EXCLUSIVE)
 #define	UKBD_UNLOCK(sc)	lockmgr(&(sc)->sc_kbd.kb_lock, LK_RELEASE)
 
 #ifdef	INVARIANTS
@@ -1302,7 +1301,6 @@ ukbd_attach(device_t dev)
 	usbd_transfer_start(sc->sc_xfer[UKBD_INTR_DT]);
 	UKBD_UNLOCK(sc);
 
-
 	return (0);			/* success */
 detach:
 	ukbd_detach(dev);
@@ -1337,14 +1335,14 @@ ukbd_detach(device_t dev)
 	}
 
 	ukbd_disable(&sc->sc_kbd);
- 
+
 	/*
 	 * XXX make sure this is in the correct place here,
 	 * it was taken from below the second if()
 	 */
 	usbd_transfer_unsetup(sc->sc_xfer, UKBD_N_TRANSFER);
 	usb_callout_drain(&sc->sc_callout);
-	
+
 #ifdef KBD_INSTALL_CDEV
 	if (sc->sc_flags & UKBD_FLAG_ATTACHED) {
 		error = kbd_detach(&sc->sc_kbd);
@@ -1369,8 +1367,7 @@ ukbd_detach(device_t dev)
 		}
 	}
 	sc->sc_kbd.kb_flags = 0;
-	
-   
+
 	crit_exit();
 
 	DPRINTF("%s: disconnected\n",

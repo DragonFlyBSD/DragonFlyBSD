@@ -784,7 +784,7 @@ usb_config_parse(struct usb_device *udev, uint8_t iface_index, uint8_t cmd)
 			/* set default interface parent */
 			if (iface_index == USB_IFACE_INDEX_ANY) {
 				iface->parent_iface_index =
-					USB_IFACE_INDEX_ANY;
+				    USB_IFACE_INDEX_ANY;
 			}
 		}
 
@@ -2012,6 +2012,7 @@ usb_destroy_dev(struct usb_fs_privdata *pd)
 
 	if (pd == NULL)
 		return;
+
 	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 	bus = devclass_get_softc(usb_devclass_ptr, pd->bus_index);
 	lockmgr(&usb_ref_lock, LK_RELEASE);
@@ -2031,7 +2032,7 @@ usb_destroy_dev(struct usb_fs_privdata *pd)
 	LIST_INSERT_HEAD(&bus->pd_cleanup_list, pd, pd_next);
 	/* get cleanup going */
 	usb_proc_msignal(USB_BUS_EXPLORE_PROC(bus),
-		&bus->cleanup_msg[0], &bus->cleanup_msg[1]);
+	    &bus->cleanup_msg[0], &bus->cleanup_msg[1]);
 	USB_BUS_UNLOCK(bus);
 }
 
@@ -2576,7 +2577,7 @@ usb_notify_addq(const char *type, struct usb_device *udev)
 			break;		/* end of interfaces */
 		if (iface->idesc == NULL)
 			continue;	/* no interface descriptor */
-		
+
 		sb = NULL;
 		sb = sbuf_new(NULL, NULL, 4096, SBUF_AUTOEXTEND);
 		sbuf_printf(sb,
@@ -2740,8 +2741,8 @@ usbd_device_attached(struct usb_device *udev)
 uint8_t
 usbd_enum_lock(struct usb_device *udev)
 {
-        if (lockstatus(&udev->enum_lock, curthread)==LK_EXCLUSIVE)
-                return (0);
+	if (lockstatus(&udev->enum_lock, curthread)==LK_EXCLUSIVE)
+		return (0);
 
 	lockmgr(&udev->enum_lock, LK_EXCLUSIVE);
 	lockmgr(&udev->sr_lock, LK_EXCLUSIVE);

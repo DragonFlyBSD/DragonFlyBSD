@@ -86,7 +86,6 @@ static devclass_t xhci_devclass;
 DRIVER_MODULE(xhci, pci, xhci_driver, xhci_devclass, NULL, NULL);
 MODULE_DEPEND(xhci, usb, 1, 1, 1);
 
-
 static const char *
 xhci_pci_match(device_t self)
 {

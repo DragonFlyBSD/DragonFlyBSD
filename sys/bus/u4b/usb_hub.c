@@ -1684,18 +1684,18 @@ uhub_child_location_string(device_t parent, device_t child,
 		goto done;
 	}
 	ksnprintf(buf, buflen, "bus=%u hubaddr=%u port=%u devaddr=%u"
-		" interface=%u"
+	    " interface=%u"
 #if USB_HAVE_UGEN
-		" ugen=%s"
+	    " ugen=%s"
 #endif
-		, device_get_unit(res.udev->bus->bdev)
-		, (res.udev->parent_hub != NULL) ?
-		res.udev->parent_hub->device_index : 0
-		, res.portno, res.udev->device_index, res.iface_index
+	    , device_get_unit(res.udev->bus->bdev)
+	    , (res.udev->parent_hub != NULL) ?
+	    res.udev->parent_hub->device_index : 0
+	    , res.portno, res.udev->device_index, res.iface_index
 #if USB_HAVE_UGEN
-		, res.udev->ugen_name
+	    , res.udev->ugen_name
 #endif
-		);
+	    );
 done:
 	return (0);
 }
@@ -2004,7 +2004,7 @@ usb_hs_bandwidth_free(struct usb_xfer *xfer)
 		slot = xfer->endpoint->usb_uframe;
 		mask = xfer->endpoint->usb_smask;
 
-		/* free microframe slot(s): */ 	  
+		/* free microframe slot(s): */
 		usb_hs_bandwidth_adjust(udev,
 		    -xfer->max_frame_size, slot, mask >> slot);
 
@@ -2838,7 +2838,7 @@ usbd_set_power_mode(struct usb_device *udev, uint8_t power_mode)
 	    (power_mode != USB_POWER_MODE_OFF))
 		power_mode = USB_POWER_MODE_SAVE;
 
-	power_mode = usbd_filter_power_mode(udev, power_mode);	
+	power_mode = usbd_filter_power_mode(udev, power_mode);
 
 	udev->power_mode = power_mode;	/* update copy of power mode */
 

@@ -660,7 +660,7 @@ hid_get_data_sub(const uint8_t *buf, usb_size_t len, struct hid_location *loc,
 	if (hsize > 32)
 		hsize = 32;
 
-	/* Get data in a safe way */	
+	/* Get data in a safe way */
 	data = 0;
 	rpos = (hpos / 8);
 	n = (hsize + 7) / 8;
@@ -720,7 +720,7 @@ hid_put_data_unsigned(uint8_t *buf, usb_size_t len,
 	if (hsize > 32)
 		hsize = 32;
 
-	/* Put data in a safe way */	
+	/* Put data in a safe way */
 	rpos = (hpos / 8);
 	n = (hsize + 7) / 8;
 	data = ((uint64_t)value) << (hpos % 8);

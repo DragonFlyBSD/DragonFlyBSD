@@ -607,11 +607,11 @@ usb_fifo_free(struct usb_fifo *f)
 		}
 		lockmgr(f->priv_lock, LK_RELEASE);
 		lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
-		
-               /*
-                * Check if the "f->refcount" variable reached zero
-                * during the unlocked time before entering wait:
-                */
+
+		/*
+		 * Check if the "f->refcount" variable reached zero
+		 * during the unlocked time before entering wait:
+		 */
 		if (f->refcount == 0)
 			break;
 
@@ -933,6 +933,7 @@ usb_open(struct dev_open_args *ap)
 		kfree(cpd, M_USBDEV);
 		return(err);
 	}
+
 	return (0);
 }
 
@@ -960,9 +961,9 @@ usb_cdevpriv_dtor(void *cd)
 
 	err = usb_ref_device(cpd, &refs, 2);
 	if (err) {
-                DPRINTFN(0, "Cannot grab USB reference when "
-                    "closing USB file handle\n");
-                goto done;
+		DPRINTFN(0, "Cannot grab USB reference when "
+		    "closing USB file handle\n");
+		goto done;
 	}
 	if (cpd->fflags & FREAD) {
 		usb_fifo_close(refs.rxfifo, cpd->fflags);
@@ -1196,7 +1197,7 @@ usb_kqfilter(struct dev_kqfilter_args *ap)
 		if(fflags & FWRITE) {
 			lockmgr(f->priv_lock, LK_EXCLUSIVE);
 			f->flag_isselect = 1;
-			lockmgr(f->priv_lock, LK_RELEASE);			
+			lockmgr(f->priv_lock, LK_RELEASE);
 			kn->kn_fop = &usb_filtops_write;
 		} else {
 			ap->a_result = EOPNOTSUPP;
@@ -1985,7 +1986,7 @@ usb_fifo_attach(struct usb_device *udev, void *priv_sc,
 	if (priv_lock == NULL) {
 		DPRINTF("null priv_lock set\n");
 	}
-	
+
 	/* search for a free FIFO slot */
 	for (n = 0;; n += 2) {
 
@@ -2194,6 +2195,7 @@ usb_fifo_put_data(struct usb_fifo *f, struct usb_page_cache *pc,
 				m->last_packet = 1;
 			}
 			USB_IF_ENQUEUE(&f->used_q, m);
+
 			usb_fifo_wakeup(f);
 
 			if ((len == 0) || (what == 1)) {
@@ -2231,6 +2233,7 @@ usb_fifo_put_data_linear(struct usb_fifo *f, void *ptr,
 				m->last_packet = 1;
 			}
 			USB_IF_ENQUEUE(&f->used_q, m);
+
 			usb_fifo_wakeup(f);
 
 			if ((len == 0) || (what == 1)) {

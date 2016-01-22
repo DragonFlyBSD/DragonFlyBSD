@@ -360,7 +360,6 @@ upgt_attach(device_t dev)
 	ic->ic_scan_start = upgt_scan_start;
 	ic->ic_scan_end = upgt_scan_end;
 	ic->ic_set_channel = upgt_set_channel;
-
 	ic->ic_vap_create = upgt_vap_create;
 	ic->ic_vap_delete = upgt_vap_delete;
 	ic->ic_update_mcast = upgt_update_mcast;
@@ -964,7 +963,7 @@ upgt_set_chan(struct upgt_softc *sc, struct ieee80211_channel *c)
 		    "%s: invalid channel %x\n", __func__, channel);
 		return;
 	}
-	
+
 	DPRINTF(sc, UPGT_DEBUG_STATE, "%s: channel %d\n", __func__, channel);
 
 	data_cmd = upgt_getbuf(sc);
@@ -1526,7 +1525,7 @@ upgt_rx_rate(struct upgt_softc *sc, const int rate)
 	static const uint8_t cck_upgt2rate[4] = { 2, 4, 11, 22 };
 	static const uint8_t ofdm_upgt2rate[12] =
 	    { 2, 4, 11, 22, 12, 18, 24, 36, 48, 72, 96, 108 };
-	
+
 	if (ic->ic_curmode == IEEE80211_MODE_11B &&
 	    !(rate < 0 || rate > 3))
 		return cck_upgt2rate[rate & 0xf];
@@ -1715,7 +1714,7 @@ static int
 upgt_fw_copy(const uint8_t *src, char *dst, int size)
 {
 	int i, j;
-	
+
 	for (i = 0, j = 0; i < size && j < size; i++) {
 		switch (src[i]) {
 		case 0x7e:
@@ -2377,7 +2376,7 @@ static device_method_t upgt_methods[] = {
         DEVMETHOD(device_probe, upgt_match),
         DEVMETHOD(device_attach, upgt_attach),
         DEVMETHOD(device_detach, upgt_detach),
-	
+
 	DEVMETHOD_END
 };
 

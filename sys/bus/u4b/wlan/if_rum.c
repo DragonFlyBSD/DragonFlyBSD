@@ -2105,7 +2105,6 @@ rum_stop(struct rum_softc *sc)
 	usbd_transfer_drain(sc->sc_xfer[RUM_BULK_RD]);
 
 	RUM_LOCK(sc);
-
 	rum_unsetup_tx_list(sc);
 
 	/* disable Rx */

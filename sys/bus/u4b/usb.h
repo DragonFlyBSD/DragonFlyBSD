@@ -246,7 +246,7 @@ typedef struct usb_device_request usb_device_request_t;
 #define	UHF_PORT_LINK_STATE	5
 #define	UHF_PORT_POWER		8
 #define	UHF_PORT_LOW_SPEED	9
-#define UHF_PORT_L1             10
+#define	UHF_PORT_L1		10
 #define	UHF_C_PORT_CONNECTION	16
 #define	UHF_C_PORT_ENABLE	17
 #define	UHF_C_PORT_SUSPEND	18
@@ -254,7 +254,7 @@ typedef struct usb_device_request usb_device_request_t;
 #define	UHF_C_PORT_RESET	20
 #define	UHF_PORT_TEST		21
 #define	UHF_PORT_INDICATOR	22
-#define UHF_C_PORT_L1           23
+#define	UHF_C_PORT_L1		23
 
 /* SuperSpeed HUB specific features */
 #define	UHF_PORT_U1_TIMEOUT	23
@@ -547,8 +547,8 @@ struct usb_endpoint_ss_comp_descriptor {
 	uByte	bDescriptorType;
 	uByte	bMaxBurst;
 	uByte	bmAttributes;
-#define UE_GET_BULK_STREAMS(x) ((x) & 0x0F)
-#define UE_GET_SS_ISO_MULT(x) ((x) & 0x03)
+#define	UE_GET_BULK_STREAMS(x) ((x) & 0x0F)
+#define	UE_GET_SS_ISO_MULT(x) ((x) & 0x03)
 	uWord	wBytesPerInterval;
 } __packed;
 typedef struct usb_endpoint_ss_comp_descriptor

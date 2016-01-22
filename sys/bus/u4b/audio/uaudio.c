@@ -1230,7 +1230,7 @@ uaudio_configure_msg_sub(struct uaudio_softc *sc,
 		/* FALLTHROUGH */
 	} else if (sc->sc_audio_rev >= UAUDIO_VERSION_20) {
 		unsigned int x;
-	  
+
 		for (x = 0; x != 256; x++) {
 			if (dir == PCMDIR_PLAY) {
 				if (!(sc->sc_mixer_clocks.bit_output[x / 8] &
@@ -2196,15 +2196,15 @@ tr_setup:
 			/* handle free running clock case */
 			if (ch->jitter_curr > 0 &&
 			    (frame_len + sample_size) <= mfl) {
-					DPRINTFN(6, "sending one sample more\n");
+				DPRINTFN(6, "sending one sample more\n");
 				ch->jitter_curr--;
-						frame_len += sample_size;
+				frame_len += sample_size;
 			} else if (ch->jitter_curr < 0 &&
 			    frame_len >= sample_size) {
-					DPRINTFN(6, "sending one sample less\n");
+				DPRINTFN(6, "sending one sample less\n");
 				ch->jitter_curr++;
-						frame_len -= sample_size;
-				}
+				frame_len -= sample_size;
+			}
 			usbd_xfer_set_frame_len(xfer, n, frame_len);
 			total += frame_len;
 		}
@@ -2319,7 +2319,7 @@ uaudio_chan_record_callback(struct usb_xfer *xfer, usb_error_t error)
 
 				if (ch->cur >= ch->end)
 					ch->cur = ch->start;
-				}
+			}
 
 			offset0 += mfl;
 		}
@@ -2340,7 +2340,7 @@ uaudio_chan_record_callback(struct usb_xfer *xfer, usb_error_t error)
 		    actlen, ch->jitter_curr);
 
 		if (ch->running != 0)
-		chn_intr(ch->pcm_ch);
+			chn_intr(ch->pcm_ch);
 
 	case USB_ST_SETUP:
 tr_setup:
@@ -4397,7 +4397,7 @@ uaudio20_mixer_feature_name(const struct uaudio_terminal_node *iot,
 
 	if ((mix->class == UAC_RECORD) && (terminal_type == 0))
 		return (SOUND_MIXER_IMIX);
-	
+
 	for (uat = uaudio_tt_to_feature; uat->terminal_type != 0; uat++) {
 		if (uat->terminal_type == terminal_type)
 			break;

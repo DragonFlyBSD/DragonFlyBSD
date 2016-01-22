@@ -131,7 +131,7 @@
 #define	MOS_TX_LIST_CNT		1
 
 /* Maximum size of a fast ethernet frame plus one byte for the status */
-#define	MOS_BUFSZ	 	(ETHER_MAX_LEN+1)
+#define	MOS_BUFSZ		(ETHER_MAX_LEN+1)
 
 /*
  * USB endpoints.

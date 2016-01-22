@@ -162,7 +162,7 @@ usb_dump_queue(struct usb_endpoint *ep)
 	usb_stream_t x;
 
 	kprintf("usb_dump_queue: endpoint=%p xfer: ", ep);
-	for (x=0; x != USB_MAX_EP_STREAMS; x++) {
+	for (x = 0; x != USB_MAX_EP_STREAMS; x++) {
 		TAILQ_FOREACH(xfer, &ep->endpoint_q[x].head, wait_entry) {
 			kprintf(" %p", xfer);
 		}

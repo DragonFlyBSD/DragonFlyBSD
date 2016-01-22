@@ -133,7 +133,7 @@ struct xhci_std_temp {
 	uint8_t			tbc;
 	uint8_t			tlbpc;
 	uint8_t			step_td;
-	uint8_t                 do_isoc_sync;
+	uint8_t			do_isoc_sync;
 };
 
 static void	xhci_do_poll(struct usb_bus *);
