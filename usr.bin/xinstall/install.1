@@ -28,7 +28,7 @@
 .\"	From: @(#)install.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/xinstall/install.1,v 1.16.2.9 2002/07/01 21:01:23 des Exp $
 .\"
-.Dd September 7, 2011
+.Dd January 22, 2016
 .Dt INSTALL 1
 .Os
 .Sh NAME
@@ -36,31 +36,31 @@
 .Nd install binaries
 .Sh SYNOPSIS
 .Nm
-.Op Fl bCclMpSsv
+.Op Fl bCclMpSsUv
 .Op Fl B Ar suffix
 .Op Fl D Ar destdir
-.Op Fl L Ar etcdir
 .Op Fl f Ar flags
 .Op Fl g Ar group
+.Op Fl L Ar etcdir
 .Op Fl m Ar mode
 .Op Fl o Ar owner
 .Ar file1 file2
 .Nm
-.Op Fl bCclMpSsv
+.Op Fl bCclMpSsUv
 .Op Fl B Ar suffix
 .Op Fl D Ar destdir
-.Op Fl L Ar etcdir
 .Op Fl f Ar flags
 .Op Fl g Ar group
+.Op Fl L Ar etcdir
 .Op Fl m Ar mode
 .Op Fl o Ar owner
 .Ar file1 ... fileN directory
 .Nm
 .Fl d
-.Op Fl vl
+.Op Fl lUv
 .Op Fl D Ar destdir
-.Op Fl L Ar etcdir
 .Op Fl g Ar group
+.Op Fl L Ar etcdir
 .Op Fl m Ar mode
 .Op Fl o Ar owner
 .Ar directory ...
@@ -176,6 +176,11 @@ to strip binaries so that
 .Nm
 can be portable over a large
 number of systems and binary types.
+.It Fl U
+Indicate that
+.Nm
+is running unprivileged, and that it should not try to change
+the owner, the group, or the file flags of the destination.
 .It Fl v
 Cause
 .Nm

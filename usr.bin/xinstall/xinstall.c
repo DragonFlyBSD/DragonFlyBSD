@@ -70,7 +70,8 @@ static struct passwd *pp;
 static struct group *gp;
 static gid_t gid;
 static uid_t uid;
-static int dobackup, docompare, dodir, dopreserve, dostrip, nommap, safecopy, verbose;
+static int dobackup, docompare, dodir, dopreserve, dostrip, dounpriv, nommap,
+    safecopy, verbose;
 static mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 static const char *suffix = BACKUP_SUFFIX;
 static char *destdir, *fflags;
@@ -108,7 +109,7 @@ main(int argc, char *argv[])
 	owner = NULL;
 	etcdir = NULL;
 
-	while ((ch = getopt(argc, argv, "L:B:bCcD:df:g:lMm:o:pSsv")) != -1)
+	while ((ch = getopt(argc, argv, "L:B:bCcD:df:g:lMm:o:pSsUv")) != -1)
 		switch((char)ch) {
 		case 'B':
 			suffix = optarg;
@@ -162,6 +163,9 @@ main(int argc, char *argv[])
 		case 's':
 			dostrip = 1;
 			break;
+		case 'U':
+			dounpriv = 1;
+			break;
 		case 'v':
 			verbose = 1;
 			break;
@@ -193,7 +197,7 @@ main(int argc, char *argv[])
 	gid = (gid_t)-1;
 
 	/* get group and owner id's */
-	if (group != NULL) {
+	if (group != NULL && !dounpriv) {
 		if (etcdir && file_getgroup(etcdir, group, &gid)) {
 			;
 		} else if (trysys && (gp = getgrnam(group)) != NULL) {
@@ -203,7 +207,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (owner != NULL) {
+	if (owner != NULL && !dounpriv) {
 		if (etcdir && file_getowner(etcdir, owner, &uid)) {
 			;
 		} else if (trysys && (pp = getpwnam(owner)) != NULL) {
@@ -213,7 +217,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (fflags != NULL) {
+	if (fflags != NULL && !dounpriv) {
 		if (strtofflags(&fflags, &fset, &fclr))
 			errx(EX_USAGE, "%s: invalid flag", fflags);
 		iflags |= SETFLAGS;
@@ -550,16 +554,17 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	 * Set owner, group, mode for target; do the chown first,
 	 * chown may lose the setuid bits.
 	 */
-	if ((gid != (gid_t)-1 && gid != to_sb.st_gid) ||
+	if (!dounpriv && ((gid != (gid_t)-1 && gid != to_sb.st_gid) ||
 	    (uid != (uid_t)-1 && uid != to_sb.st_uid) ||
-	    (mode != to_sb.st_mode)) {
+	    (mode != to_sb.st_mode))) {
 		/* Try to turn off the immutable bits. */
 		if (to_sb.st_flags & NOCHANGEBITS)
 			(void)fchflags(to_fd, to_sb.st_flags & ~NOCHANGEBITS);
 	}
 
-	if ((gid != (gid_t)-1 && gid != to_sb.st_gid) ||
-	    (uid != (uid_t)-1 && uid != to_sb.st_uid))
+	if (!dounpriv && (
+	    (gid != (gid_t)-1 && gid != to_sb.st_gid) ||
+	    (uid != (uid_t)-1 && uid != to_sb.st_uid)))
 		if (fchown(to_fd, uid, gid) == -1) {
 			serrno = errno;
 			(void)unlink(to_name);
@@ -567,13 +572,15 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 			err(EX_OSERR,"%s: chown/chgrp", to_name);
 		}
 
-	if (mode != to_sb.st_mode)
-		if (fchmod(to_fd, mode)) {
+	if (mode != to_sb.st_mode) {
+		if (fchmod(to_fd,
+		     dounpriv ? mode & (S_IRWXU|S_IRWXG|S_IRWXO) : mode)) {
 			serrno = errno;
 			(void)unlink(to_name);
 			errno = serrno;
 			err(EX_OSERR, "%s: chmod", to_name);
 		}
+	}
 
 	/*
 	 * If provided a set of flags, set them, otherwise, preserve the
@@ -594,7 +601,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	 * trying to turn off UF_NODUMP.  If we're trying to set real flags,
 	 * then warn if the fs doesn't support it, otherwise fail.
 	 */
-	if (!devnull && fchflags(to_fd, nfset)) {
+	if (!dounpriv && !devnull && fchflags(to_fd, nfset)) {
 		if (flags & SETFLAGS) {
 			if (errno == EOPNOTSUPP)
 				warn("%s: chflags", to_name);
@@ -868,10 +875,14 @@ install_dir(char *path)
 				break;
 		}
 
-	if ((gid != (gid_t)-1 || uid != (uid_t)-1) && chown(path, uid, gid))
-		warn("chown %u:%u %s", uid, gid, path);
-	if (chmod(path, mode))
-		warn("chmod %o %s", mode, path);
+	if (!dounpriv) {
+		if ((gid != (gid_t)-1 || uid != (uid_t)-1) &&
+		    chown(path, uid, gid))
+			warn("chown %u:%u %s", uid, gid, path);
+		/* XXXBED: should we do the chmod in the dounpriv case? */
+		if (chmod(path, mode))
+			warn("chmod %o %s", mode, path);
+	}
 }
 
 /*
@@ -881,12 +892,13 @@ install_dir(char *path)
 static void
 usage(void)
 {
-	fprintf(stderr, "\
-usage: install [-bCcpSsv] [-B suffix] [-D dest] [-f flags] [-g group] [-m mode]\n\
-               [-o owner] file1 file2\n\
-       install [-bCcpSsv] [-B suffix] [-D dest] [-f flags] [-g group] [-m mode]\n\
-               [-o owner] file1 ... fileN directory\n\
-       install -d [-v] [-D dest] [-g group] [-m mode] [-o owner] directory ...\n");
+	fprintf(stderr,
+"usage: install [-bCcpSsUv] [-B suffix] [-D dest] [-f flags] [-g group]\n"
+"               [-m mode] [-o owner] file1 file2\n"
+"       install [-bCcpSsUv] [-B suffix] [-D dest] [-f flags] [-g group]\n"
+"               [-m mode] [-o owner] file1 ... fileN directory\n"
+"       install -d [-lUv] [-D dest] [-g group] [-m mode] [-o owner]\n"
+"               directory ...\n");
 	exit(EX_USAGE);
 	/* NOTREACHED */
 }
