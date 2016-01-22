@@ -158,8 +158,9 @@ static struct lock usb_sym_lock;
 
 struct lock usb_ref_lock;
 
-/*static struct kqinfo usb_kqevent;
- */ 
+#if 0
+static struct kqinfo usb_kqevent;
+#endif
 
 /*------------------------------------------------------------------------*
  *	usb_loc_fill
@@ -626,11 +627,11 @@ usb_fifo_free(struct usb_fifo *f)
 	cv_destroy(&f->cv_io);
 	cv_destroy(&f->cv_drain);
 
-	/* XXX mpf
+#if 0 /* XXX mpf */
 	knlist_clear(&f->selinfo.si_note, 0);
 	seldrain(&f->selinfo);
 	knlist_destroy(&f->selinfo.si_note);
-	*/
+#endif
 	kfree(f, M_USBDEV);
 }
 

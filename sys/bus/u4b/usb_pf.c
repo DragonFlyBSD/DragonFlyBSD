@@ -359,10 +359,10 @@ usbpf_xfertap(struct usb_xfer *xfer, int type)
 	/* sanity checks */
 	if (bus->ifp == NULL)
 		return;
-	/* XXX this is not needed on dragonfly 
+#if 0 /* XXX this is not needed on dragonfly */
 	if (!bpf_peers_present(bus->ifp->if_bpf))
 		return;
-	*/
+#endif
 	totlen = usbpf_xfer_precompute_size(xfer, type);
 
 	if (type == USBPF_XFERTAP_SUBMIT)

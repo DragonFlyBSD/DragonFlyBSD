@@ -453,8 +453,9 @@ udav_init(struct usb_ether *ue)
 
 	usbd_xfer_set_stall(sc->sc_xfer[UDAV_BULK_DT_WR]);
 
-/* XXX	ifp->if_drv_flags |= IFF_DRV_RUNNING;
- */
+#if 0 /* XXX */
+	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+#endif
 	udav_start(ue);
 }
 

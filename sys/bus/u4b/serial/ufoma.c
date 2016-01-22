@@ -311,15 +311,15 @@ static driver_t ufoma_driver = {
 	.size = sizeof(struct ufoma_softc),
 };
 
-DRIVER_MODULE(ufoma, uhub, ufoma_driver, ufoma_devclass, NULL, NULL);
-MODULE_DEPEND(ufoma, ucom, 1, 1, 1);
-MODULE_DEPEND(ufoma, usb, 1, 1, 1);
-MODULE_VERSION(ufoma, 1);
-
 static const STRUCT_USB_HOST_ID ufoma_devs[] = {
 	{USB_IFACE_CLASS(UICLASS_CDC),
 	 USB_IFACE_SUBCLASS(UISUBCLASS_MCPC),},
 };
+
+DRIVER_MODULE(ufoma, uhub, ufoma_driver, ufoma_devclass, NULL, NULL);
+MODULE_DEPEND(ufoma, ucom, 1, 1, 1);
+MODULE_DEPEND(ufoma, usb, 1, 1, 1);
+MODULE_VERSION(ufoma, 1);
 
 static int
 ufoma_probe(device_t dev)

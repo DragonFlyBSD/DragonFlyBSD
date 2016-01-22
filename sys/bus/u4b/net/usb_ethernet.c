@@ -65,9 +65,9 @@ static SYSCTL_NODE(_net, OID_AUTO, ue, CTLFLAG_RD, 0,
 MODULE_DEPEND(uether, usb, 1, 1, 1);
 MODULE_DEPEND(uether, miibus, 1, 1, 1);
 
-/*
+#if 0
 static struct unrhdr *ueunit;
-*/
+#endif
 DEVFS_DEFINE_CLONE_BITMAP(ue);
 
 static usb_proc_callback_t ue_attach_post_task;

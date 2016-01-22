@@ -256,8 +256,7 @@ urndis_attach(device_t dev)
 	}
 
 	if ((error != 0) || (i == 32)) {
-		device_printf(dev, "No valid alternate "
-		    "setting found\n");
+		device_printf(dev, "No valid alternate setting found\n");
 		goto detach;
 	}
 	URNDIS_LOCK(sc);
@@ -685,11 +684,10 @@ urndis_ctrl_halt(struct urndis_softc *sc)
 	rval = urndis_ctrl_send(sc, &msg, sizeof(msg));
 
 	if (rval != RNDIS_STATUS_SUCCESS)
-		printf("halt failed\n");
+		DPRINTF("halt failed\n");
 
 	return (rval);
 }
-
 #endif
 
 static uint32_t

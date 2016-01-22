@@ -105,7 +105,7 @@
 
 #include <bus/u4b/serial/usb_serial.h>
 
-//#include "opt_gdb.h"
+/* #include "opt_gdb.h" */
 
 static SYSCTL_NODE(_hw_usb, OID_AUTO, ucom, CTLFLAG_RW, 0, "USB ucom");
 
@@ -521,9 +521,9 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 
 		ucom_cons_softc = sc;
 
-		/* XXXDF
+#if 0 /* XXXDF */
 		tty_init_console(tp, ucom_cons_baud);
-		*/
+#endif
 		tp->t_termios.c_ispeed = ucom_cons_baud;
 		tp->t_termios.c_ospeed = ucom_cons_baud;
 
@@ -1825,9 +1825,10 @@ ucom_stop(struct tty *tp, int flag)
 		if (sc->sc_callback->ucom_start_read) {
 			(sc->sc_callback->ucom_start_read) (sc);
 		}
-/*		ucomstopread(sc);
+#if 0
+		ucomstopread(sc);
 		ucomstartread(sc);
-*/
+#endif
 	}
 
 	if (flag & FWRITE) {
