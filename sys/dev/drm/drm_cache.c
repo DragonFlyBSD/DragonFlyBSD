@@ -30,11 +30,10 @@
 
 #include <linux/export.h>
 #include <drm/drmP.h>
+#include <asm/cpufeature.h>
 
 #include <machine/md_var.h>
 #include <machine/cpufunc.h>
-
-#define cpu_has_clflush	1
 
 void
 drm_clflush_virt_range(void *in_addr, unsigned long length)

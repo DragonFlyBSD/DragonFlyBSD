@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -221,5 +221,8 @@ static inline int64_t abs64(int64_t x)
 /* simplified version of kvasnrprintf() for drm needs. */
 char *drm_vasprintf(int flags, const char *format, __va_list ap) __printflike(2, 0);
 char *drm_asprintf(int flags, const char *format, ...) __printflike(2, 3);
+
+#define DIV_ROUND_CLOSEST_ULL(ll, d)	\
+ ({ unsigned long long _tmp = (ll)+(d)/2; do_div(_tmp, d); _tmp; })
 
 #endif	/* _LINUX_KERNEL_H_ */

@@ -22,9 +22,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <linux/export.h>
 #include <drm/drmP.h>
-#include "drm_legacy.h"
 #include "drm_internal.h"
+#include "drm_legacy.h"
 
 /**********************************************************************/
 /** \name PCI memory */

@@ -2045,12 +2045,14 @@ dev/drm/i915/i915_gem_evict.c		optional i915 drm
 dev/drm/i915/i915_gem_gtt.c		optional i915 drm
 dev/drm/i915/i915_gem_stolen.c		optional i915 drm
 dev/drm/i915/i915_gem_render_state.c	optional i915 drm
+dev/drm/i915/i915_gem_shrinker.c	optional i915 drm
 dev/drm/i915/i915_gem_tiling.c		optional i915 drm
 dev/drm/i915/i915_gem_userptr.c		optional i915 drm
 dev/drm/i915/i915_irq.c			optional i915 drm
 dev/drm/i915/i915_params.c		optional i915 drm
 dev/drm/i915/i915_suspend.c		optional i915 drm
-dev/drm/i915/i915_ums.c			optional i915 drm
+dev/drm/i915/i915_sysfs.c		optional i915 drm
+dev/drm/i915/i915_vgpu.c		optional i915 drm
 dev/drm/i915/intel_acpi.c		optional i915 drm
 dev/drm/i915/intel_atomic.c		optional i915 drm
 dev/drm/i915/intel_atomic_plane.c	optional i915 drm

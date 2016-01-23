@@ -600,6 +600,8 @@ struct drm_gem_open {
 #define  DRM_PRIME_CAP_EXPORT		0x2
 #define DRM_CAP_TIMESTAMP_MONOTONIC	0x6
 #define DRM_CAP_ASYNC_PAGE_FLIP		0x7
+#define DRM_CAP_ADDFB2_MODIFIERS	0x10
+
 /*
  * The CURSOR_WIDTH and CURSOR_HEIGHT capabilities return a valid widthxheight
  * combination for the hardware cursor. The intention is that a hardware

@@ -4,6 +4,7 @@ KMOD	= i915
 SRCS =	i915_drv.c \
 	i915_params.c \
 	i915_suspend.c \
+	i915_sysfs.c \
 	intel_pm.c \
 	intel_runtime_pm.c
 
@@ -16,6 +17,7 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_execbuffer.c \
 	i915_gem_gtt.c \
 	i915_gem.c \
+	i915_gem_shrinker.c \
 	i915_gem_stolen.c \
 	i915_gem_tiling.c \
 	i915_gem_userptr.c \
@@ -72,10 +74,11 @@ SRCS += \
 	intel_sdvo.c \
 	intel_tv.c
 
+# virtual gpu code
+SRCS += i915_vgpu.c
+
 # legacy horrors
-SRCS += \
-	i915_dma.c \
-	i915_ums.c
+SRCS += i915_dma.c
 
 SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h iicbus_if.h iicbb_if.h \
 	  opt_acpi.h opt_drm.h opt_ktr.h

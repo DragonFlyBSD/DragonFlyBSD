@@ -83,4 +83,9 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 #define trace_i915_ppgtt_create(base)
 #define trace_i915_ppgtt_release(base)
 
+#define trace_i915_page_table_entry_alloc(a,b,c,d)
+#define trace_i915_page_table_entry_map(a,b,c,d,e,f)
+
+#define trace_i915_va_alloc(a,b,c,d)
+
 #endif /* _I915_TRACE_H_ */

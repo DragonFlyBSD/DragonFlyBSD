@@ -119,6 +119,10 @@ MALLOC_DECLARE(M_DRM);
 
 #include <drm/drm_vma_manager.h>
 
+#include <drm/drm_os_linux.h>
+#include <drm/drm_hashtab.h>
+#include <drm/drm_mm.h>
+
 struct drm_file;
 struct drm_device;
 struct drm_agp_head;
@@ -126,10 +130,8 @@ struct drm_gem_object;
 
 struct device_node;
 struct videomode;
-
-#include <drm/drm_os_linux.h>
-#include <drm/drm_hashtab.h>
-#include <drm/drm_mm.h>
+struct reservation_object;
+struct dma_buf_attachment;
 
 /*
  * 4 debug categories are defined:
@@ -145,6 +147,9 @@ struct videomode;
  *
  * PRIME: used in the prime code.
  *	  This is the category used by the DRM_DEBUG_PRIME() macro.
+ *
+ * ATOMIC: used in the atomic code.
+ *	  This is the category used by the DRM_DEBUG_ATOMIC() macro.
  *
  * Enabling verbose debug messages is done through the drm.debug parameter,
  * each category being enabled by a bit.
@@ -163,6 +168,7 @@ struct videomode;
 #define DRM_UT_DRIVER		0x02
 #define DRM_UT_KMS		0x04
 #define DRM_UT_PRIME		0x08
+#define DRM_UT_ATOMIC		0x10
 
 void drm_ut_debug_printk(const char *function_name,
 			 const char *format, ...);
@@ -188,13 +194,7 @@ void drm_err(const char *format, ...);
 #define DRIVER_RENDER      0x8000
 #define DRIVER_ATOMIC      0x10000
 
-/***********************************************************************/
-/** \name Begin the DRM... */
-/*@{*/
-
 #define DRM_MAGIC_HASH_ORDER  4  /**< Size of key hash table. Must be power of 2. */
-
-/*@}*/
 
 /***********************************************************************/
 /** \name Macros to make printk easier */
@@ -209,6 +209,66 @@ void drm_err(const char *format, ...);
 #define DRM_ERROR(fmt, ...) \
 	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
 	    DRM_CURRENTPID, __func__ , ##__VA_ARGS__)
+
+/**
+ * Rate limited error output.  Like DRM_ERROR() but won't flood the log.
+ *
+ * \param fmt printf() like format string.
+ * \param arg arguments
+ */
+
+#define DRM_INFO(fmt, ...)  kprintf("info: [" DRM_NAME "] " fmt , ##__VA_ARGS__)
+
+#define DRM_INFO_ONCE(fmt, ...)				\
+	printk_once(KERN_INFO "[" DRM_NAME "] " fmt, ##__VA_ARGS__)
+
+/**
+ * Debug output.
+ *
+ * \param fmt printf() like format string.
+ * \param arg arguments
+ */
+
+#define	DRM_DEBUGBITS_DEBUG		0x1
+#define	DRM_DEBUGBITS_KMS		0x2
+#define	DRM_DEBUGBITS_FAILED_IOCTL	0x4
+#define	DRM_DEBUGBITS_VERBOSE		0x8
+
+#define DRM_DEBUG(fmt, ...) do {					\
+	if ((drm_debug & DRM_DEBUGBITS_DEBUG) != 0)		\
+		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
+			__func__ , ##__VA_ARGS__);			\
+} while (0)
+
+#define DRM_DEBUG_VERBOSE(fmt, ...) do {				\
+	if ((drm_debug & DRM_DEBUGBITS_VERBOSE) != 0)		\
+		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
+			__func__ , ##__VA_ARGS__);			\
+} while (0)
+
+#define DRM_DEBUG_KMS(fmt, ...) do {					\
+	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
+		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
+			__func__ , ##__VA_ARGS__);			\
+} while (0)
+
+#define DRM_DEBUG_DRIVER(fmt, ...) do {					\
+	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
+		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
+			__func__ , ##__VA_ARGS__);			\
+} while (0)
+
+#define DRM_DEBUG_ATOMIC(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_ATOMIC))		\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
+
+/*@}*/
+
+/***********************************************************************/
+/** \name Internal types and structures */
+/*@{*/
 
 #define	DRM_GEM_MAPPING_MASK	(3ULL << 62)
 #define	DRM_GEM_MAPPING_KEY	(2ULL << 62) /* Non-canonical address form */
@@ -292,49 +352,6 @@ int vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
 void vm_phys_fictitious_unreg_range(vm_paddr_t start, vm_paddr_t end);
 vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 
-/***********************************************************************/
-/** \name Macros to make printk easier */
-/*@{*/
-
-
-#define DRM_INFO(fmt, ...)  kprintf("info: [" DRM_NAME "] " fmt , ##__VA_ARGS__)
-
-#define DRM_INFO_ONCE(fmt, ...)				\
-	printk_once(KERN_INFO "[" DRM_NAME "] " fmt, ##__VA_ARGS__)
-
-#define	DRM_DEBUGBITS_DEBUG		0x1
-#define	DRM_DEBUGBITS_KMS		0x2
-#define	DRM_DEBUGBITS_FAILED_IOCTL	0x4
-#define	DRM_DEBUGBITS_VERBOSE		0x8
-
-#define DRM_DEBUG(fmt, ...) do {					\
-	if ((drm_debug & DRM_DEBUGBITS_DEBUG) != 0)		\
-		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
-#define DRM_DEBUG_VERBOSE(fmt, ...) do {				\
-	if ((drm_debug & DRM_DEBUGBITS_VERBOSE) != 0)		\
-		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
-#define DRM_DEBUG_KMS(fmt, ...) do {					\
-	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
-		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
-#define DRM_DEBUG_DRIVER(fmt, ...) do {					\
-	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
-		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
-#define DRM_LOG_KMS(fmt, ...) do {					\
-	kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,	\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
 
 #define	dev_dbg(dev, fmt, ...) do {					\
 	if ((drm_debug& DRM_DEBUGBITS_KMS) != 0) {			\
@@ -1209,6 +1226,7 @@ extern void drm_crtc_wait_one_vblank(struct drm_crtc *crtc);
 extern void drm_vblank_off(struct drm_device *dev, int crtc);
 extern void drm_vblank_on(struct drm_device *dev, int crtc);
 extern void drm_crtc_vblank_off(struct drm_crtc *crtc);
+extern void drm_crtc_vblank_reset(struct drm_crtc *crtc);
 extern void drm_crtc_vblank_on(struct drm_crtc *crtc);
 extern void drm_vblank_cleanup(struct drm_device *dev);
 

@@ -342,7 +342,6 @@ static const struct intel_device_info intel_broadwell_gt3m_info = {
 };
 
 static const struct intel_device_info intel_cherryview_info = {
-	.is_preliminary = 1,
 	.gen = 8, .num_pipes = 3,
 	.need_gfx_hws = 1, .has_hotplug = 1,
 	.ring_mask = RENDER_RING | BSD_RING | BLT_RING | VEBOX_RING,
@@ -358,6 +357,19 @@ static const struct intel_device_info intel_skylake_info = {
 	.gen = 9, .num_pipes = 3,
 	.need_gfx_hws = 1, .has_hotplug = 1,
 	.ring_mask = RENDER_RING | BSD_RING | BLT_RING | VEBOX_RING,
+	.has_llc = 1,
+	.has_ddi = 1,
+	.has_fbc = 1,
+	GEN_DEFAULT_PIPEOFFSETS,
+	IVB_CURSOR_OFFSETS,
+};
+
+static const struct intel_device_info intel_skylake_gt3_info = {
+	.is_preliminary = 1,
+	.is_skylake = 1,
+	.gen = 9, .num_pipes = 3,
+	.need_gfx_hws = 1, .has_hotplug = 1,
+	.ring_mask = RENDER_RING | BSD_RING | BLT_RING | VEBOX_RING | BSD2_RING,
 	.has_llc = 1,
 	.has_ddi = 1,
 	.has_fbc = 1,
@@ -401,7 +413,9 @@ static const struct intel_device_info intel_skylake_info = {
 	INTEL_BDW_GT3M_IDS(&intel_broadwell_gt3m_info),	\
 	INTEL_BDW_GT3D_IDS(&intel_broadwell_gt3d_info), \
 	INTEL_CHV_IDS(&intel_cherryview_info),	\
-	INTEL_SKL_IDS(&intel_skylake_info)
+	INTEL_SKL_GT1_IDS(&intel_skylake_info),	\
+	INTEL_SKL_GT2_IDS(&intel_skylake_info),	\
+	INTEL_SKL_GT3_IDS(&intel_skylake_gt3_info)	\
 
 static const struct pci_device_id pciidlist[] = {		/* aka */
 	INTEL_PCI_IDS,
@@ -556,6 +570,7 @@ static int i915_drm_suspend(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_crtc *crtc;
 	pci_power_t opregion_target_state;
+	int error;
 
 	/* ignore lid events during suspend */
 	mutex_lock(&dev_priv->modeset_restore_lock);
@@ -572,39 +587,34 @@ static int i915_drm_suspend(struct drm_device *dev)
 	pci_save_state(dev->pdev);
 #endif
 
-	/* If KMS is active, we do the leavevt stuff here */
-	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		int error;
+	error = i915_gem_suspend(dev);
+	if (error) {
+		dev_err(dev->pdev->dev,
+			"GEM idle failed, resume might fail\n");
+		return error;
+	}
 
-		error = i915_gem_suspend(dev);
-		if (error) {
-			dev_err(dev->pdev->dev,
-				"GEM idle failed, resume might fail\n");
-			return error;
-		}
+	intel_suspend_gt_powersave(dev);
 
-		intel_suspend_gt_powersave(dev);
-
-		/*
-		 * Disable CRTCs directly since we want to preserve sw state
-		 * for _thaw. Also, power gate the CRTC power wells.
-		 */
-		drm_modeset_lock_all(dev);
-		for_each_crtc(dev, crtc)
-			intel_crtc_control(crtc, false);
-		drm_modeset_unlock_all(dev);
+	/*
+	 * Disable CRTCs directly since we want to preserve sw state
+	 * for _thaw. Also, power gate the CRTC power wells.
+	 */
+	drm_modeset_lock_all(dev);
+	for_each_crtc(dev, crtc)
+		intel_crtc_control(crtc, false);
+	drm_modeset_unlock_all(dev);
 
 #if 0
-		intel_dp_mst_suspend(dev);
+	intel_dp_mst_suspend(dev);
 #endif
 
-		intel_runtime_pm_disable_interrupts(dev_priv);
-		intel_hpd_cancel_work(dev_priv);
+	intel_runtime_pm_disable_interrupts(dev_priv);
+	intel_hpd_cancel_work(dev_priv);
 
-		intel_suspend_encoders(dev_priv);
+	intel_suspend_encoders(dev_priv);
 
-		intel_suspend_hw(dev);
-	}
+	intel_suspend_hw(dev);
 
 	i915_gem_suspend_gtt_mappings(dev);
 
@@ -617,13 +627,11 @@ static int i915_drm_suspend(struct drm_device *dev)
 #endif
 	intel_opregion_notify_adapter(dev, opregion_target_state);
 
-#if 0
 	intel_uncore_forcewake_reset(dev, false);
-#endif
 	intel_opregion_fini(dev);
 
 #if 0
-	intel_fbdev_set_suspend(dev, FBINFO_STATE_SUSPENDED);
+	intel_fbdev_set_suspend(dev, FBINFO_STATE_SUSPENDED, true);
 #endif
 
 	dev_priv->suspend_count++;
@@ -695,53 +703,55 @@ static int i915_drm_resume(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		mutex_lock(&dev->struct_mutex);
-		i915_gem_restore_gtt_mappings(dev);
-		mutex_unlock(&dev->struct_mutex);
-	}
+	mutex_lock(&dev->struct_mutex);
+	i915_gem_restore_gtt_mappings(dev);
+	mutex_unlock(&dev->struct_mutex);
 
 	i915_restore_state(dev);
 	intel_opregion_setup(dev);
 
-	/* KMS EnterVT equivalent */
-	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		intel_init_pch_refclk(dev);
-		drm_mode_config_reset(dev);
+	intel_init_pch_refclk(dev);
+	drm_mode_config_reset(dev);
 
-		mutex_lock(&dev->struct_mutex);
-		if (i915_gem_init_hw(dev)) {
-			DRM_ERROR("failed to re-initialize GPU, declaring wedged!\n");
-			atomic_set_mask(I915_WEDGED, &dev_priv->gpu_error.reset_counter);
-		}
-		mutex_unlock(&dev->struct_mutex);
+	/*
+	 * Interrupts have to be enabled before any batches are run. If not the
+	 * GPU will hang. i915_gem_init_hw() will initiate batches to
+	 * update/restore the context.
+	 *
+	 * Modeset enabling in intel_modeset_init_hw() also needs working
+	 * interrupts.
+	 */
+	intel_runtime_pm_enable_interrupts(dev_priv);
 
-		/* We need working interrupts for modeset enabling ... */
-		intel_runtime_pm_enable_interrupts(dev_priv);
-
-		intel_modeset_init_hw(dev);
-
-		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-		if (dev_priv->display.hpd_irq_setup)
-			dev_priv->display.hpd_irq_setup(dev);
-		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
-
-		drm_modeset_lock_all(dev);
-		intel_modeset_setup_hw_state(dev, true);
-		drm_modeset_unlock_all(dev);
-
-		intel_dp_mst_resume(dev);
-
-		/*
-		 * ... but also need to make sure that hotplug processing
-		 * doesn't cause havoc. Like in the driver load code we don't
-		 * bother with the tiny race here where we might loose hotplug
-		 * notifications.
-		 * */
-		intel_hpd_init(dev_priv);
-		/* Config may have changed between suspend and resume */
-		drm_helper_hpd_irq_event(dev);
+	mutex_lock(&dev->struct_mutex);
+	if (i915_gem_init_hw(dev)) {
+		DRM_ERROR("failed to re-initialize GPU, declaring wedged!\n");
+		atomic_set_mask(I915_WEDGED, &dev_priv->gpu_error.reset_counter);
 	}
+	mutex_unlock(&dev->struct_mutex);
+
+	intel_modeset_init_hw(dev);
+
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	if (dev_priv->display.hpd_irq_setup)
+		dev_priv->display.hpd_irq_setup(dev);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+
+	drm_modeset_lock_all(dev);
+	intel_modeset_setup_hw_state(dev, true);
+	drm_modeset_unlock_all(dev);
+
+	intel_dp_mst_resume(dev);
+
+	/*
+	 * ... but also need to make sure that hotplug processing
+	 * doesn't cause havoc. Like in the driver load code we don't
+	 * bother with the tiny race here where we might loose hotplug
+	 * notifications.
+	 * */
+	intel_hpd_init(dev_priv);
+	/* Config may have changed between suspend and resume */
+	drm_helper_hpd_irq_event(dev);
 
 	intel_opregion_init(dev);
 
@@ -903,37 +913,28 @@ int i915_reset(struct drm_device *dev)
 	 * was running at the time of the reset (i.e. we weren't VT
 	 * switched away).
 	 */
-	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		/* Used to prevent gem_check_wedged returning -EAGAIN during gpu reset */
-		dev_priv->gpu_error.reload_in_reset = true;
 
-		ret = i915_gem_init_hw(dev);
+	/* Used to prevent gem_check_wedged returning -EAGAIN during gpu reset */
+	dev_priv->gpu_error.reload_in_reset = true;
 
-		dev_priv->gpu_error.reload_in_reset = false;
+	ret = i915_gem_init_hw(dev);
 
-		mutex_unlock(&dev->struct_mutex);
-		if (ret) {
-			DRM_ERROR("Failed hw init on reset %d\n", ret);
-			return ret;
-		}
+	dev_priv->gpu_error.reload_in_reset = false;
 
-		/*
-		 * FIXME: This races pretty badly against concurrent holders of
-		 * ring interrupts. This is possible since we've started to drop
-		 * dev->struct_mutex in select places when waiting for the gpu.
-		 */
-
-		/*
-		 * rps/rc6 re-init is necessary to restore state lost after the
-		 * reset and the re-install of gt irqs. Skip for ironlake per
-		 * previous concerns that it doesn't respond well to some forms
-		 * of re-init after reset.
-		 */
-		if (INTEL_INFO(dev)->gen > 5)
-			intel_enable_gt_powersave(dev);
-	} else {
-		mutex_unlock(&dev->struct_mutex);
+	mutex_unlock(&dev->struct_mutex);
+	if (ret) {
+		DRM_ERROR("Failed hw init on reset %d\n", ret);
+		return ret;
 	}
+
+	/*
+	 * rps/rc6 re-init is necessary to restore state lost after the
+	 * reset and the re-install of gt irqs. Skip for ironlake per
+	 * previous concerns that it doesn't respond well to some forms
+	 * of re-init after reset.
+	 */
+	if (INTEL_INFO(dev)->gen > 5)
+		intel_enable_gt_powersave(dev);
 
 	return 0;
 }
@@ -1086,7 +1087,7 @@ static void vlv_save_gunit_s0ix_state(struct drm_i915_private *dev_priv)
 		s->lra_limits[i] = I915_READ(GEN7_LRA_LIMITS_BASE + i * 4);
 
 	s->media_max_req_count	= I915_READ(GEN7_MEDIA_MAX_REQ_COUNT);
-	s->gfx_max_req_count	= I915_READ(GEN7_MEDIA_MAX_REQ_COUNT);
+	s->gfx_max_req_count	= I915_READ(GEN7_GFX_MAX_REQ_COUNT);
 
 	s->render_hwsp		= I915_READ(RENDER_HWS_PGA_GEN7);
 	s->ecochk		= I915_READ(GAM_ECOCHK);
@@ -1168,7 +1169,7 @@ static void vlv_restore_gunit_s0ix_state(struct drm_i915_private *dev_priv)
 		I915_WRITE(GEN7_LRA_LIMITS_BASE + i * 4, s->lra_limits[i]);
 
 	I915_WRITE(GEN7_MEDIA_MAX_REQ_COUNT, s->media_max_req_count);
-	I915_WRITE(GEN7_MEDIA_MAX_REQ_COUNT, s->gfx_max_req_count);
+	I915_WRITE(GEN7_GFX_MAX_REQ_COUNT, s->gfx_max_req_count);
 
 	I915_WRITE(RENDER_HWS_PGA_GEN7,	s->render_hwsp);
 	I915_WRITE(GAM_ECOCHK,		s->ecochk);
@@ -1717,11 +1718,9 @@ static int __init i915_init(void)
 
 	if (!(driver.driver_features & DRIVER_MODESET)) {
 		driver.get_vblank_timestamp = NULL;
-#ifndef CONFIG_DRM_I915_UMS
 		/* Silently fail loading to not upset userspace. */
 		DRM_DEBUG_DRIVER("KMS and UMS disabled.\n");
 		return 0;
-#endif
 	}
 
 	/*
@@ -1738,6 +1737,16 @@ static int __init i915_init(void)
 	return 1;
 #endif
 }
+
+#if 0
+static void __exit i915_exit(void)
+{
+	if (!(driver.driver_features & DRIVER_MODESET))
+		return; /* Never loaded a driver. */
+
+	drm_pci_exit(&driver, &i915_pci_driver);
+}
+#endif
 
 DRIVER_MODULE_ORDERED(i915, vgapci, i915_driver, drm_devclass, NULL, NULL, SI_ORDER_ANY);
 MODULE_DEPEND(i915, drm, 1, 1, 1);
