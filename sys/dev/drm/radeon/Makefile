@@ -51,6 +51,7 @@ SRCS	+=								\
 	radeon_semaphore.c						\
 	radeon_test.c							\
 	radeon_ttm.c							\
+	radeon_ucode.c							\
 	radeon_vm.c							\
 	atom.c								\
 	atombios_crtc.c							\

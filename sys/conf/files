@@ -2161,6 +2161,7 @@ dev/drm/radeon/radeon_sa.c		optional radeon drm
 dev/drm/radeon/radeon_semaphore.c	optional radeon drm
 dev/drm/radeon/radeon_test.c		optional radeon drm
 dev/drm/radeon/radeon_ttm.c		optional radeon drm
+dev/drm/radeon/radeon_ucode.c		optional radeon drm
 dev/drm/radeon/radeon_uvd.c		optional radeon drm
 dev/drm/radeon/radeon_vce.c		optional radeon drm
 dev/drm/radeon/radeon_vm.c		optional radeon drm

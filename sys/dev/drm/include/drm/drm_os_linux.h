@@ -51,6 +51,7 @@
 #define	le16_to_cpu(x)	le16toh(x)
 #define	cpu_to_le32(x)	htole32(x)
 #define	le32_to_cpu(x)	le32toh(x)
+#define	le32_to_cpup(x)	le32toh(*x)
 
 #define	cpu_to_be16(x)	htobe16(x)
 #define	be16_to_cpu(x)	be16toh(x)
