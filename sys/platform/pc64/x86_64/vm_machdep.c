@@ -313,7 +313,7 @@ cpu_reset_real(void)
 {
 	/*
 	 * Attempt to do a CPU reset via the keyboard controller,
-	 * do not turn of the GateA20, as any machine that fails
+	 * do not turn off the GateA20, as any machine that fails
 	 * to do the reset here would then end up in no man's land.
 	 */
 
