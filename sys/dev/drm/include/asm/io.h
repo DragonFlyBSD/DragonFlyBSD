@@ -53,8 +53,8 @@
 
 #include <linux/vmalloc.h>
 
-/* ioremap: map bus memory into CPU space */
-static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
+/* ioremap function family: map bus addresses into CPU space */
+static inline void __iomem *ioremap_nocache(resource_size_t offset, unsigned long size)
 {
 	return pmap_mapdev_uncacheable(offset, size);
 }
@@ -62,6 +62,11 @@ static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
 static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long size)
 {
 	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
+}
+
+static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
+{
+	return ioremap_nocache(offset, size);
 }
 
 static inline void iounmap(void __iomem *ptr, unsigned long size)
