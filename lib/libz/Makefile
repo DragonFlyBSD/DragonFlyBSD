@@ -22,4 +22,8 @@ INCS=		zconf.h zlib.h
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 
+beforeinstall:
+	${INSTALL} -C -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
+		${.CURDIR}/zlib.pc ${DESTDIR}${LIBDATADIR}/pkgconfig
+
 .include <bsd.lib.mk>
