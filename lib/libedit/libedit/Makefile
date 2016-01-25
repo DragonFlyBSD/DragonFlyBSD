@@ -95,7 +95,8 @@ MLINKS+=	editline.3 el_wgets.3 \
 		editline.3 tok_wline.3 \
 		editline.3 tok_wstr.3
 
-CLEANFILES+=	common.h emacs.h fcns.c fcns.h help.c help.h vi.h editline.c
+CLEANFILES+=	common.h emacs.h fcns.c fcns.h help.c help.h
+CLEANFILES+=	historyn.c tokenizern.c vi.h
 AHDR=		vi.h emacs.h common.h
 ASRC=		${SRCDIR}/vi.c ${SRCDIR}/emacs.c ${SRCDIR}/common.c
 
