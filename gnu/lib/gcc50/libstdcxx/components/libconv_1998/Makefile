@@ -21,7 +21,8 @@ SHARED_CXXFLAGS=	-D_GLIBCXX_SHARED
 SRCS=	${libc__98convenience_la_SOURCES}
 COWD=	collate.x monetary.x numeric.x
 COWG=	messages.x
-GENCC=	atomicity.cc basic_file.cc c++locale.cc ${COW:.x=_members_cow.cc}
+GENCC=	atomicity.cc basic_file.cc c++locale.cc
+GENCC+=	${COWD:.x=_members_cow.cc} ${COWG:.x=_members_cow.cc}
 
 FLAGS_GROUPS=		gnu11 cow concept explicit
 gnu11_FLAGS=		-std=gnu++11 -fno-implicit-templates
