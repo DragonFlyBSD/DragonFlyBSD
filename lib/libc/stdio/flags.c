@@ -51,36 +51,76 @@ __sflags(const char *mode, int *optr)
 {
 	int ret, m, o;
 
-	switch (*mode++) {
-
-	case 'r':	/* open for reading */
+	/*
+	 * Base mode
+	 */
+	switch (*mode) {
+	case 'r':
+		/*
+		 * Reading
+		 */
 		ret = __SRD;
 		m = O_RDONLY;
 		o = 0;
 		break;
-
-	case 'w':	/* open for writing */
+	case 'w':
+		/*
+		 * Writing
+		 */
 		ret = __SWR;
 		m = O_WRONLY;
 		o = O_CREAT | O_TRUNC;
 		break;
-
-	case 'a':	/* open for appending */
+	case 'a':
+		/*
+		 * Append
+		 */
 		ret = __SWR;
 		m = O_WRONLY;
 		o = O_CREAT | O_APPEND;
 		break;
-
-	default:	/* illegal mode */
+	default:
+		/*
+		 * Illegal primary mode, fail.
+		 */
 		errno = EINVAL;
 		return (0);
 	}
 
-	/* [rwa]\+ or [rwa]b\+ means read and write */
-	if (*mode == '+' || (*mode == 'b' && mode[1] == '+')) {
-		ret = __SRW;
-		m = O_RDWR;
+	/*
+	 * Parse modifiers
+	 */
+	for (++mode; *mode; ++mode) {
+		switch(*mode) {
+		case '+':
+			/*
+			 * R+W
+			 */
+			ret = __SRW;
+			m = O_RDWR;
+			break;
+		case 'b':
+			/*
+			 * Binary (inherent, no special treatment)
+			 */
+			break;
+		case 'x':
+			/*
+			 * Exclusive.  Only make sense if opening for
+			 * r+w, w, or a, but let open() deal with
+			 * any issues (make behavior the same as glibc).
+			 */
+			o |= O_EXCL;
+			break;
+		case 'e':
+			o |= O_CLOEXEC;
+			break;
+		default:
+			/* ignore unrecognized flag */
+			break;
+		}
 	}
 	*optr = m | o;
+
 	return (ret);
 }
