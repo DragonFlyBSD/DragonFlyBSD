@@ -34,9 +34,9 @@
  * $FreeBSD: src/sys/amd64/include/exec.h,v 1.8 1999/08/28 00:44:11 peter Exp $
  */
 
-#ifndef	_EXEC_H_
-#define	_EXEC_H_
+#ifndef	_CPU_EXEC_H_
+#define	_CPU_EXEC_H_
 
 #define __LDPGSZ	4096
 
-#endif /* !_EXEC_H_ */
+#endif /* !_CPU_EXEC_H_ */
