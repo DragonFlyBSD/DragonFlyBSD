@@ -1,4 +1,4 @@
-LIB=	ssh
+LIB=	private_ssh
 SHLIB_MAJOR= 4
 SRCS=	ssherr.c \
 	sshbuf.c \

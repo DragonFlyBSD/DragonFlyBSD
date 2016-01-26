@@ -4,7 +4,7 @@ LIB=	pam_ssh
 SRCS=	pam_ssh.c
 MAN=	pam_ssh.8
 
-LDADD=	-lssh -lcrypto -lcrypt
+LDADD=	-lprivate_ssh -lcrypto -lcrypt
 DPADD=	${LIBSSH} ${LIBCRYPTO} ${LIBCRYPT}
 
 WARNS?=	4
