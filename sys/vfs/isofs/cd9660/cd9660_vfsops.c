@@ -70,29 +70,29 @@ MALLOC_DEFINE(M_ISOFSNODE, "ISOFS node", "ISOFS vnode private part");
 
 struct iconv_functions *cd9660_iconv = NULL;
 
-static int cd9660_mount (struct mount *, char *, caddr_t, struct ucred *);
-static int cd9660_unmount (struct mount *, int);
-static int cd9660_root (struct mount *, struct vnode **);
-static int cd9660_statfs (struct mount *, struct statfs *, struct ucred *);
-static int cd9660_vget (struct mount *, struct vnode *, ino_t, struct vnode **);
-static int cd9660_fhtovp (struct mount *, struct vnode *rootvp,
-				struct fid *, struct vnode **);
-static int cd9660_checkexp (struct mount *, struct sockaddr *,
-	    int *, struct ucred **);
+static int cd9660_mount(struct mount *, char *, caddr_t, struct ucred *);
+static int cd9660_unmount(struct mount *, int);
+static int cd9660_root(struct mount *, struct vnode **);
+static int cd9660_statfs(struct mount *, struct statfs *, struct ucred *);
+static int cd9660_vget(struct mount *, struct vnode *, ino_t, struct vnode **);
+static int cd9660_fhtovp(struct mount *, struct vnode *rootvp,
+			 struct fid *, struct vnode **);
+static int cd9660_checkexp(struct mount *, struct sockaddr *,
+			   int *, struct ucred **);
 static int cd9660_vptofh (struct vnode *, struct fid *);
 
 static struct vfsops cd9660_vfsops = {
-	.vfs_mount =    	cd9660_mount,
-	.vfs_unmount =  	cd9660_unmount,
-	.vfs_root =      	cd9660_root,
-	.vfs_statfs =   	cd9660_statfs,
-	.vfs_sync =     	vfs_stdsync,
-	.vfs_vget =     	cd9660_vget,
-	.vfs_fhtovp =   	cd9660_fhtovp,
-	.vfs_checkexp =  	cd9660_checkexp,
-	.vfs_vptofh =   	cd9660_vptofh,
-	.vfs_init =     	cd9660_init,
-	.vfs_uninit =    	cd9660_uninit,
+	.vfs_mount =		cd9660_mount,
+	.vfs_unmount =		cd9660_unmount,
+	.vfs_root =		cd9660_root,
+	.vfs_statfs =		cd9660_statfs,
+	.vfs_sync =		vfs_stdsync,
+	.vfs_vget =		cd9660_vget,
+	.vfs_fhtovp =		cd9660_fhtovp,
+	.vfs_checkexp =		cd9660_checkexp,
+	.vfs_vptofh =		cd9660_vptofh,
+	.vfs_init =		cd9660_init,
+	.vfs_uninit =		cd9660_uninit,
 };
 VFS_SET(cd9660_vfsops, cd9660, VFCF_READONLY);
 MODULE_VERSION(cd9660, 1);
@@ -102,9 +102,9 @@ MODULE_VERSION(cd9660, 1);
  * Called by vfs_mountroot when iso is going to be mounted as root.
  */
 
-static int iso_get_ssector (cdev_t dev);
-static int iso_mountfs (struct vnode *devvp, struct mount *mp,
-			    struct iso_args *argp);
+static int iso_get_ssector(cdev_t dev);
+static int iso_mountfs(struct vnode *devvp, struct mount *mp,
+		       struct iso_args *argp);
 
 /*
  * Try to find the start of the last data track on this CD-ROM.  This
@@ -228,14 +228,14 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		return (error);
 	}
 
-	/*       
+	/*
 	 * Verify that user has necessary permissions on the device,
 	 * or has superuser abilities
 	 */
 	accessmode = VREAD;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_EACCESS(devvp, accessmode, cred);
-	if (error) 
+	if (error)
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 	if (error) {
 		vput(devvp);
@@ -329,7 +329,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 		if ((error = bread(devvp, (off_t)iso_blknum * iso_bsize,
 				  iso_bsize, &bp)) != 0)
 			goto out;
-		
+
 		vdp = (struct iso_volume_descriptor *)bp->b_data;
 		if (bcmp (vdp->id, ISO_STANDARD_ID, sizeof vdp->id) != 0) {
 			if (bcmp (vdp->id_sierra, ISO_SIERRA_ID,
@@ -447,19 +447,19 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 
 	dev->si_mountpoint = mp;
 
-	/* Check the Rock Ridge Extention support */
+	/* Check the Rock Ridge Extension support */
 	if (!(argp->flags & ISOFSMNT_NORRIP)) {
 		if ((error = bread(isomp->im_devvp,
 				  lblktooff(isomp, isomp->root_extent + isonum_711(rootp->ext_attr_length)),
 				  isomp->logical_block_size, &bp)) != 0)
-		    goto out;
-		
+			goto out;
+
 		rootp = (struct iso_directory_record *)bp->b_data;
-		
+
 		if ((isomp->rr_skip = cd9660_rrip_offset(rootp,isomp)) < 0) {
-		    argp->flags	 |= ISOFSMNT_NORRIP;
+		    argp->flags |= ISOFSMNT_NORRIP;
 		} else {
-		    argp->flags	 &= ~ISOFSMNT_GENS;
+		    argp->flags &= ~ISOFSMNT_GENS;
 		}
 
 		/*
@@ -473,15 +473,16 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	isomp->im_flags = argp->flags & (ISOFSMNT_NORRIP | ISOFSMNT_GENS |
 					 ISOFSMNT_EXTATT | ISOFSMNT_NOJOLIET |
 					 ISOFSMNT_KICONV);
+
 	if (isomp->im_flags & ISOFSMNT_KICONV && cd9660_iconv) {
-                bcopy(argp->cs_local, cs_local, sizeof(cs_local));
-                bcopy(argp->cs_disk, cs_disk, sizeof(cs_disk));
-                cd9660_iconv->open(cs_local, cs_disk, &isomp->im_d2l);
-                cd9660_iconv->open(cs_disk, cs_local, &isomp->im_l2d);
-        } else {
-                isomp->im_d2l = NULL;
-                isomp->im_l2d = NULL;
-        }
+		bcopy(argp->cs_local, cs_local, sizeof(cs_local));
+		bcopy(argp->cs_disk, cs_disk, sizeof(cs_disk));
+		cd9660_iconv->open(cs_local, cs_disk, &isomp->im_d2l);
+		cd9660_iconv->open(cs_disk, cs_local, &isomp->im_l2d);
+	} else {
+		isomp->im_d2l = NULL;
+		isomp->im_l2d = NULL;
+	}
 
 	if (high_sierra) {
 		/* this effectively ignores all the mount flags */
@@ -567,11 +568,11 @@ cd9660_unmount(struct mount *mp, int mntflags)
 	isomp = VFSTOISOFS(mp);
 
 	if (isomp->im_flags & ISOFSMNT_KICONV && cd9660_iconv) {
-                if (isomp->im_d2l)
-                        cd9660_iconv->close(isomp->im_d2l);
-                if (isomp->im_l2d)
-                        cd9660_iconv->close(isomp->im_l2d);
-        }
+		if (isomp->im_d2l)
+			cd9660_iconv->close(isomp->im_d2l);
+		if (isomp->im_l2d)
+			cd9660_iconv->close(isomp->im_l2d);
+	}
 
 	isomp->im_devvp->v_rdev->si_mountpoint = NULL;
 	vn_lock(isomp->im_devvp, LK_EXCLUSIVE | LK_RETRY);
@@ -594,7 +595,7 @@ cd9660_root(struct mount *mp, struct vnode **vpp)
 	struct iso_directory_record *dp =
 	    (struct iso_directory_record *)imp->root;
 	ino_t ino = isodirino(dp, imp);
-	
+
 	/*
 	 * With RRIP we must use the `.' entry of the root directory.
 	 * Simply tell vget, that it's a relocated directory.
@@ -604,7 +605,7 @@ cd9660_root(struct mount *mp, struct vnode **vpp)
 }
 
 /*
- * Get file system statistics.
+ * Get filesystem statistics.
  */
 int
 cd9660_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
@@ -653,12 +654,12 @@ cd9660_fhtovp(struct mount *mp, struct vnode *rootvp,
 	struct iso_node *ip;
 	struct vnode *nvp;
 	int error;
-	
+
 #ifdef	ISOFS_DBG
 	kprintf("fhtovp: ino %d, start %ld\n",
-	       ifhp->ifid_ino, ifhp->ifid_start);
+	    ifhp->ifid_ino, ifhp->ifid_start);
 #endif
-	
+
 	if ((error = VFS_VGET(mp, NULL, ifhp->ifid_ino, &nvp)) != 0) {
 		*vpp = NULLVP;
 		return (error);
@@ -680,7 +681,7 @@ cd9660_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
 	struct netcred *np;
 	struct iso_mnt *imp;
 
-	imp = VFSTOISOFS(mp);	
+	imp = VFSTOISOFS(mp);
 
 	/*
 	 * Get the export permission structure for this <mp, client> tuple.
@@ -762,7 +763,7 @@ again:
 			kprintf("fhtovp: lbn exceed volume space %d\n", lbn);
 			return (ESTALE);
 		}
-	
+
 		off = blkoff(imp, ino);
 		if (off + ISO_DIRECTORY_RECORD_SIZE > imp->logical_block_size) {
 			vx_put(vp);
@@ -770,7 +771,7 @@ again:
 			       off + ISO_DIRECTORY_RECORD_SIZE);
 			return (ESTALE);
 		}
-	
+
 		error = bread(imp->im_devvp,
 			      lblktooff(imp, lbn),
 			      imp->logical_block_size, &bp);
@@ -792,7 +793,7 @@ again:
 			       isonum_711(isodir->length));
 			return (ESTALE);
 		}
-	
+
 #if 0
 		if (isonum_733(isodir->extent) +
 		    isonum_711(isodir->ext_attr_length) != ifhp->ifid_start) {
@@ -881,7 +882,7 @@ again:
 	default:
 		break;
 	}
-	
+
 	if (ip->iso_extent == imp->root_extent)
 		vsetflags(vp, VROOT);
 

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)ufs_lookup.c	7.33 (Berkeley) 5/19/91
- *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
  */
@@ -54,7 +53,7 @@
 /*
  * Convert a component of a pathname into a pointer to a locked inode.
  * This is a very central and rather complicated routine.
- * If the file system is not maintained in a strict tree hierarchy,
+ * If the filesystem is not maintained in a strict tree hierarchy,
  * this can result in a deadlock situation (see comments in code below).
  *
  * The flag argument is LOOKUP, CREATE, RENAME, or DELETE depending on
@@ -89,9 +88,9 @@
 int
 cd9660_lookup(struct vop_old_lookup_args *ap)
 {
-	struct vnode *vdp;	/* vnode for directory being searched */
-	struct iso_node *dp;	/* inode for directory being searched */
-	struct iso_mnt *imp;	/* file system that directory is in */
+	struct vnode *vdp;		/* vnode for directory being searched */
+	struct iso_node *dp;		/* inode for directory being searched */
+	struct iso_mnt *imp;		/* filesystem that directory is in */
 	struct buf *bp;			/* a buffer of directory entries */
 	struct iso_directory_record *ep = NULL;/* the current directory entry */
 	int entryoffsetinblock;		/* offset of ep in bp's buffer */
@@ -127,9 +126,9 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 	/*
 	 * We now have a segment name to search for, and a directory to search.
 	 */
-
 	len = cnp->cn_namelen;
 	name = cnp->cn_nameptr;
+
 	/*
 	 * A leading `=' means, we are looking for an associated file
 	 */
@@ -164,7 +163,7 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 		numdirpasses = 2;
 	}
 	endsearch = dp->i_size;
-	
+
 searchloop:
 	while (dp->i_offset < endsearch) {
 		/*
@@ -185,7 +184,7 @@ searchloop:
 		 */
 		ep = (struct iso_directory_record *)
 			((char *)bp->b_data + entryoffsetinblock);
-		
+
 		reclen = isonum_711(ep->length);
 		if (reclen == 0) {
 			/* skip to next block, if any */
@@ -201,7 +200,7 @@ searchloop:
 		if (entryoffsetinblock + reclen > imp->logical_block_size)
 			/* entries are not allowed to cross boundaries */
 			break;
-		
+
 		namelen = isonum_711(ep->name_len);
 		isoflags = isonum_711(imp->iso_ftype == ISO_FTYPE_HIGH_SIERRA?
 				      &ep->date[6]: ep->flags);
@@ -209,7 +208,7 @@ searchloop:
 		if (reclen < ISO_DIRECTORY_RECORD_SIZE + namelen)
 			/* illegal entry, stop */
 			break;
-		
+
 		/*
 		 * Check for a name match.
 		 */
@@ -231,17 +230,17 @@ searchloop:
 					if (namelen != 1
 					    || ep->name[0] != 0)
 						goto notfound;
-					} else if (!(res = isofncmp(name, len,
-                                                            ep->name, namelen,
-                                                            imp->joliet_level,
-                                                            imp->im_flags,
-                                                            imp->im_d2l,
-                                                            imp->im_l2d))) {
+				} else if (!(res = isofncmp(name, len,
+							    ep->name, namelen,
+							    imp->joliet_level,
+							    imp->im_flags,
+							    imp->im_d2l,
+							    imp->im_l2d))) {
 					if (isoflags & 2)
 						ino = isodirino(ep, imp);
 					else
-						ino = bp->b_bio1.bio_offset +
-						      entryoffsetinblock;
+						ino = bp->b_bio1.bio_offset
+							+ entryoffsetinblock;
 					saveoffset = dp->i_offset;
 				} else if (ino)
 					goto foundino;
@@ -257,8 +256,7 @@ searchloop:
 			if (isonum_711(ep->flags)&2)
 				ino = isodirino(ep, imp);
 			else
-				ino = bp->b_bio1.bio_offset +
-				      entryoffsetinblock;
+				ino = bp->b_bio1.bio_offset + entryoffsetinblock;
 			dp->i_ino = ino;
 			cd9660_rrip_getname(ep,altname,&namelen,&dp->i_ino,imp);
 			if (namelen == cnp->cn_namelen
@@ -332,10 +330,11 @@ found:
 	 * infrequently since we cannot avoid this race condition without
 	 * implementing a sophisticated deadlock detection algorithm.
 	 * Note also that this simple deadlock detection scheme will not
-	 * work if the file system has any hard links other than ".."
+	 * work if the filesystem has any hard links other than ".."
 	 * that point backwards in the directory structure.
 	 */
 	pdp = vdp;
+
 	/*
 	 * If ino is different from dp->i_ino,
 	 * it's a relocated directory.
@@ -404,7 +403,7 @@ cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	}
 
 	/*
-	 * We must BMAP the buffer because the directory code may use 
+	 * We must BMAP the buffer because the directory code may use
 	 * bio_offset to calculate the inode for certain types of directory
 	 * entries.  We could get away with not doing it before we
 	 * VMIO-backed the directories because the buffers would get freed
@@ -415,16 +414,16 @@ cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	 */
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
 		error = VOP_BMAP(vp, bp->b_bio1.bio_offset,
-			    	 &bp->b_bio2.bio_offset, NULL, NULL,
+				 &bp->b_bio2.bio_offset, NULL, NULL,
 				 BUF_CMD_READ);
 		if (error) {
-                        bp->b_error = error;
-                        bp->b_flags |= B_ERROR;
-                        brelse(bp);
+			bp->b_error = error;
+			bp->b_flags |= B_ERROR;
+			brelse(bp);
 			*bpp = NULL;
-                        return (error);
-                }
-        }
+			return (error);
+		}
+	}
 
 	if (res)
 		*res = (char *)bp->b_data + blkoff(imp, offset);
@@ -476,4 +475,3 @@ cd9660_devblkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	*bpp = bp;
 	return (0);
 }
-

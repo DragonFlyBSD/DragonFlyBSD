@@ -33,7 +33,6 @@
  *
  *	@(#)cd9660_bmap.c	8.3 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_bmap.c,v 1.8 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_bmap.c,v 1.6 2007/08/13 17:31:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +44,7 @@
 #include "cd9660_node.h"
 
 /*
- * Bmap converts a the logical block number of a file to its physical block
+ * Bmap converts the logical block number of a file to its physical block
  * number on the disk. The conversion is done by using the logical block
  * number to index into the data block (extent) for the file.
  *
@@ -92,8 +91,10 @@ cd9660_bmap(struct vop_bmap_args *ap)
 		else
 			*ap->a_runp = (int)nbytes & ~(bsize - 1);
 	}
+
 	if (ap->a_runb) {
 		*ap->a_runb = 0;
 	}
+
 	return 0;
 }

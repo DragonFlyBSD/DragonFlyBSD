@@ -33,7 +33,6 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.21 2007/05/06 19:23:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,8 +60,8 @@ static u_long isohash;
 static struct lwkt_token cd9660_ihash_token;
 #endif
 
-static void cd9660_ihashrem (struct iso_node *);
-static unsigned	cd9660_chars2ui (unsigned char *begin, int len);
+static void cd9660_ihashrem(struct iso_node *);
+static unsigned	cd9660_chars2ui(unsigned char *begin, int len);
 
 /*
  * Initialize hash links for inodes and dnodes.  CDs and DVDs are small
@@ -118,7 +117,7 @@ loop:
 		/*
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
-		 */   
+		 */
 		for (ip = isohashtbl[INOHASH(dev, inum)]; ip; ip = ip->i_next) {
 			if (inum == ip->i_number && dev == ip->i_dev)
 				break;
@@ -267,7 +266,7 @@ cd9660_defattr(struct iso_directory_record *isodir, struct iso_node *inop,
 	}
 	if (bp) {
 		ap = (struct iso_extended_attributes *)bp->b_data;
-		
+
 		if (isonum_711(ap->version) == 1) {
 			if (!(ap->perm[0]&0x40))
 				inop->inode.iso_mode |= VEXEC >> 6;
@@ -316,7 +315,7 @@ cd9660_deftstamp(struct iso_directory_record *isodir, struct iso_node *inop,
 	}
 	if (bp) {
 		ap = (struct iso_extended_attributes *)bp->b_data;
-		
+
 		if (ftype != ISO_FTYPE_HIGH_SIERRA
 		    && isonum_711(ap->version) == 1) {
 			if (!cd9660_tstamp_conv17(ap->ftime,&inop->inode.iso_atime))
@@ -386,7 +385,7 @@ static u_int
 cd9660_chars2ui(u_char *begin, int len)
 {
 	u_int rc;
-	
+
 	for (rc = 0; --len >= 0;) {
 		rc *= 10;
 		rc += *begin++ - '0';
@@ -398,7 +397,7 @@ int
 cd9660_tstamp_conv17(u_char *pi, struct timespec *pu)
 {
 	u_char buf[7];
-	
+
 	/* year:"0001"-"9999" -> -1900  */
 	buf[0] = cd9660_chars2ui(pi,4) - 1900;
 
@@ -428,7 +427,7 @@ isodirino(struct iso_directory_record *isodir, struct iso_mnt *imp)
 {
 	ino_t ino;
 
-	ino = (ino_t)(isonum_733(isodir->extent) + 
+	ino = (ino_t)(isonum_733(isodir->extent) +
 		    isonum_711(isodir->ext_attr_length)) << imp->im_bshift;
 	return (ino);
 }

@@ -33,7 +33,6 @@
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
  * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.8 2006/09/10 01:26:41 dillon Exp $
  */
 
 #define ISODCL(from, to) (to - from + 1)
@@ -102,39 +101,39 @@ struct iso_primary_descriptor {
  */
 
 struct iso_supplementary_descriptor {
-      char type                       [ISODCL (  1,   1)]; /* 711 */
-      char id                         [ISODCL (  2,   6)];
-      char version                    [ISODCL (  7,   7)]; /* 711 */
-      char flags                      [ISODCL (  8,   8)]; /* 711? */
-      char system_id                  [ISODCL (  9,  40)]; /* achars */
-      char volume_id                  [ISODCL ( 41,  72)]; /* dchars */
-      char unused2                    [ISODCL ( 73,  80)];
-      char volume_space_size          [ISODCL ( 81,  88)]; /* 733 */
-      char escape                     [ISODCL ( 89, 120)];
-      char volume_set_size            [ISODCL (121, 124)]; /* 723 */
-      char volume_sequence_number     [ISODCL (125, 128)]; /* 723 */
-      char logical_block_size         [ISODCL (129, 132)]; /* 723 */
-      char path_table_size            [ISODCL (133, 140)]; /* 733 */
-      char type_l_path_table          [ISODCL (141, 144)]; /* 731 */
-      char opt_type_l_path_table      [ISODCL (145, 148)]; /* 731 */
-      char type_m_path_table          [ISODCL (149, 152)]; /* 732 */
-      char opt_type_m_path_table      [ISODCL (153, 156)]; /* 732 */
-      char root_directory_record      [ISODCL (157, 190)]; /* 9.1 */
-      char volume_set_id              [ISODCL (191, 318)]; /* dchars */
-      char publisher_id               [ISODCL (319, 446)]; /* achars */
-      char preparer_id                [ISODCL (447, 574)]; /* achars */
-      char application_id             [ISODCL (575, 702)]; /* achars */
-      char copyright_file_id          [ISODCL (703, 739)]; /* 7.5 dchars */
-      char abstract_file_id           [ISODCL (740, 776)]; /* 7.5 dchars */
-      char bibliographic_file_id      [ISODCL (777, 813)]; /* 7.5 dchars */
-      char creation_date              [ISODCL (814, 830)]; /* 8.4.26.1 */
-      char modification_date          [ISODCL (831, 847)]; /* 8.4.26.1 */
-      char expiration_date            [ISODCL (848, 864)]; /* 8.4.26.1 */
-      char effective_date             [ISODCL (865, 881)]; /* 8.4.26.1 */
-      char file_structure_version     [ISODCL (882, 882)]; /* 711 */
-      char unused4                    [ISODCL (883, 883)];
-      char application_data           [ISODCL (884, 1395)];
-      char unused5                    [ISODCL (1396, 2048)];
+	char type			[ISODCL (  1,   1)]; /* 711 */
+	char id				[ISODCL (  2,   6)];
+	char version			[ISODCL (  7,   7)]; /* 711 */
+	char flags			[ISODCL (  8,   8)]; /* 711? */
+	char system_id			[ISODCL (  9,  40)]; /* achars */
+	char volume_id			[ISODCL ( 41,  72)]; /* dchars */
+	char unused2			[ISODCL ( 73,  80)];
+	char volume_space_size		[ISODCL ( 81,  88)]; /* 733 */
+	char escape			[ISODCL ( 89, 120)];
+	char volume_set_size		[ISODCL (121, 124)]; /* 723 */
+	char volume_sequence_number	[ISODCL (125, 128)]; /* 723 */
+	char logical_block_size		[ISODCL (129, 132)]; /* 723 */
+	char path_table_size		[ISODCL (133, 140)]; /* 733 */
+	char type_l_path_table		[ISODCL (141, 144)]; /* 731 */
+	char opt_type_l_path_table	[ISODCL (145, 148)]; /* 731 */
+	char type_m_path_table		[ISODCL (149, 152)]; /* 732 */
+	char opt_type_m_path_table	[ISODCL (153, 156)]; /* 732 */
+	char root_directory_record	[ISODCL (157, 190)]; /* 9.1 */
+	char volume_set_id		[ISODCL (191, 318)]; /* dchars */
+	char publisher_id		[ISODCL (319, 446)]; /* achars */
+	char preparer_id		[ISODCL (447, 574)]; /* achars */
+	char application_id		[ISODCL (575, 702)]; /* achars */
+	char copyright_file_id		[ISODCL (703, 739)]; /* 7.5 dchars */
+	char abstract_file_id		[ISODCL (740, 776)]; /* 7.5 dchars */
+	char bibliographic_file_id	[ISODCL (777, 813)]; /* 7.5 dchars */
+	char creation_date		[ISODCL (814, 830)]; /* 8.4.26.1 */
+	char modification_date		[ISODCL (831, 847)]; /* 8.4.26.1 */
+	char expiration_date		[ISODCL (848, 864)]; /* 8.4.26.1 */
+	char effective_date		[ISODCL (865, 881)]; /* 8.4.26.1 */
+	char file_structure_version	[ISODCL (882, 882)]; /* 711 */
+	char unused4			[ISODCL (883, 883)];
+	char application_data		[ISODCL (884, 1395)];
+	char unused5			[ISODCL (1396, 2048)];
 };
 
 struct iso_sierra_primary_descriptor {
@@ -244,8 +243,8 @@ struct iso_mnt {
 
 	int joliet_level;
 
-        void *im_d2l;
-        void *im_l2d;
+	void *im_d2l;
+	void *im_l2d;
 };
 
 #define VFSTOISOFS(mp)	((struct iso_mnt *)((mp)->mnt_data))
@@ -256,17 +255,17 @@ struct iso_mnt {
 #define lblkno(imp, loc)	((loc) >> (imp)->im_bshift)
 #define blksize(imp, ip, lbn)	((imp)->logical_block_size)
 
-int cd9660_vget_internal (struct mount *, ino_t, struct vnode **, int,
-			      struct iso_directory_record *);
-int cd9660_init (struct vfsconf *);
-int cd9660_uninit (struct vfsconf *);
-#define cd9660_sysctl ((int (*) (int *, u_int, void *, size_t *, void *, \
-                                    size_t, struct proc *))eopnotsupp)
+int cd9660_vget_internal(struct mount *, ino_t, struct vnode **, int,
+			 struct iso_directory_record *);
+int cd9660_init(struct vfsconf *);
+int cd9660_uninit(struct vfsconf *);
+#define cd9660_sysctl ((int (*)(int *, u_int, void *, size_t *, void *, \
+				size_t, struct proc *))eopnotsupp)
 
 int isochar(u_char *, u_char *, int, u_short *, int *, int, void *);
 int isofncmp(u_char *, int, u_char *, int, int, int, void *, void *);
 void isofntrans(u_char *, int, u_char *, u_short *, int, int, int, int, void *);
-ino_t isodirino (struct iso_directory_record *, struct iso_mnt *);
+ino_t isodirino(struct iso_directory_record *, struct iso_mnt *);
 u_short sgetrune(const char *, size_t, char const **, int, void *);
 
 #endif /* _KERNEL */
@@ -279,13 +278,13 @@ u_short sgetrune(const char *, size_t, char const **, int, void *);
 static __inline uint8_t
 isonum_711(unsigned char *p)
 {
-        return p[0];
+	return (p[0]);
 }
 
 static __inline uint8_t
 isonum_712(unsigned char *p)
 {
-        return p[0];
+	return (p[0]);
 }
 
 #ifndef UNALIGNED_ACCESS
@@ -293,13 +292,13 @@ isonum_712(unsigned char *p)
 static __inline uint16_t
 isonum_723(unsigned char *p)
 {
-        return (p[0] | p[1] << 8);
+	return (p[0] | p[1] << 8);
 }
 
 static __inline uint32_t
 isonum_733(unsigned char *p)
 {
-        return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
+	return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
 }
 
 #else /* UNALIGNED_ACCESS */
