@@ -287,8 +287,6 @@ isonum_712(unsigned char *p)
 	return (p[0]);
 }
 
-#ifndef UNALIGNED_ACCESS
-
 static __inline uint16_t
 isonum_723(unsigned char *p)
 {
@@ -300,42 +298,6 @@ isonum_733(unsigned char *p)
 {
 	return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
 }
-
-#else /* UNALIGNED_ACCESS */
-
-#if BYTE_ORDER == LITTLE_ENDIAN
-
-static __inline int
-isonum_723(u_char *p)
-{
-	return *(u_int16t *)p;
-}
-
-static __inline int
-isonum_733(u_char *p)
-{
-	return *(u_int32t *)p;
-}
-
-#endif
-
-#if BYTE_ORDER == BIG_ENDIAN
-
-static __inline int
-isonum_723(u_char *p)
-{
-	return *(u_int16t *)(p + 2);
-}
-
-static __inline int
-isonum_733(u_char *p)
-{
-	return *(u_int32t *)(p + 4);
-}
-
-#endif
-
-#endif /* UNALIGNED_ACCESS */
 
 /*
  * Associated files have a leading '='.
