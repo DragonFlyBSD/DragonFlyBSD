@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
- * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
+ * $FreeBSD: head/sys/fs/cd9660/iso.h 151447 2005-10-18 13:35:08Z des $
  */
 
 #define ISODCL(from, to) (to - from + 1)
@@ -275,26 +275,62 @@ u_short sgetrune(const char *, size_t, char const **, int, void *);
  * outside the kernel.  Thus we don't hide them here.
  */
 
+/*
+ * 7xy
+ *  x -> 1 = 8 bits, 2 = 16 bits, 3 = 32 bits
+ *   y -> 1 = little-endian, 2 = big-endian, 3 = both (le then be)
+ */
+
 static __inline uint8_t
-isonum_711(unsigned char *p)
+isonum_711(const unsigned char *p)
 {
 	return (p[0]);
 }
 
+static __inline int8_t
+isonum_712(const unsigned char *p)
+{
+	return ((signed char)p[0]);
+}
+
 static __inline uint8_t
-isonum_712(unsigned char *p)
+isonum_713(const unsigned char *p)
 {
 	return (p[0]);
 }
 
 static __inline uint16_t
-isonum_723(unsigned char *p)
+isonum_721(const unsigned char *p)
+{
+	return (p[0] | p[1] << 8);
+}
+
+static __inline uint16_t
+isonum_722(const unsigned char *p)
+{
+	return (p[1] | p[0] << 8);
+}
+
+static __inline uint16_t
+isonum_723(const unsigned char *p)
 {
 	return (p[0] | p[1] << 8);
 }
 
 static __inline uint32_t
-isonum_733(unsigned char *p)
+isonum_731(const unsigned char *p)
+{
+	return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
+}
+
+static __inline uint32_t
+isonum_732(const unsigned char *p)
+{
+	return (p[3] | p[2] << 8 | p[1] << 16 | p[0] << 24);
+}
+
+static __inline uint32_t
+isonum_733(const unsigned char *p)
 {
 	return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
 }
