@@ -101,7 +101,11 @@ then
 fi
 
 touch version
-v=`cat version` u=${USER-root} d=`pwd` h=`hostname` t=`date`
+v=`cat version`
+u=${USER:-root}
+d=`pwd`
+h=${HOSTNAME:-`hostname`}
+t=`date`
 if [ "$v" = "" ]; then
     v=1
 fi
