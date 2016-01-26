@@ -7,7 +7,7 @@ WARNS?= 2
 
 .PATH:	${.CURDIR}/../../contrib/ldns/drill
 
-LDADD+=	-lldns -lcrypto
+LDADD+=	-lprivate_ldns -lcrypto
 DPADD+=	${LIBLDNS} ${LIBCRYPTO}
 CFLAGS+=-I${.CURDIR} -I${LDNS} -I${LDNS}/drill -I${LDNSBASE}
 

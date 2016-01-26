@@ -2271,6 +2271,7 @@ TO_REMOVE+=/usr/games/piano
 TO_REMOVE+=/usr/share/man/man6/piano.6.gz
 TO_REMOVE+=/usr/games/hide/hangman
 TO_REMOVE+=/usr/lib/kgzldr.o
+TO_REMOVE+=/usr/lib/libldns.*
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -2,7 +2,7 @@
 
 LDNS=		${.CURDIR}/../../contrib/ldns
 
-LIB=		ldns
+LIB=		private_ldns
 SHLIB_MAJOR=	1
 
 SRCS  =		rdata.c util.c rr.c packet.c wire2host.c \
