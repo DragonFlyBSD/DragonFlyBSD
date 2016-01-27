@@ -1,11 +1,9 @@
 #	@(#)Makefile	8.1 (Berkeley) 8/14/93
-# $FreeBSD: src/share/doc/usd/04.csh/Makefile,v 1.5 1999/08/28 00:18:47 peter Exp $
-# $DragonFly: src/share/doc/usd/04.csh/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $FreeBSD: head/share/doc/usd/04.csh/Makefile 216178 2010-12-04 10:11:20Z uqs $
 
-VOLUME=	usd/04.csh
-SRCS=	tabs csh.1 csh.2 csh.3 csh.4 csh.a csh.g
-MACROS= -ms
-SRCDIR=	${.CURDIR}/../../../../bin/csh/USD.doc
-USE_SOELIM=	yes
+VOLUME=		usd/04.csh
+SRCS=		tabs csh.1 csh.2 csh.3 csh.4 csh.a csh.g
+MACROS=		-ms
+USE_SOELIM=
 
 .include <bsd.doc.mk>

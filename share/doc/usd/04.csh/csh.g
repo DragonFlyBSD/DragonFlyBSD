@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 1980, 1993
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -26,8 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)csh.g	8.1 (Berkeley) 6/8/93
-.\" $FreeBSD: src/bin/csh/USD.doc/csh.g,v 1.5.2.2 2003/01/24 02:08:54 keramida Exp $
-.\" $DragonFly: src/bin/csh/USD.doc/csh.g,v 1.2 2003/06/17 04:22:49 dillon Exp $
+.\" $FreeBSD: head/share/doc/usd/04.csh/csh.g 216178 2010-12-04 10:11:20Z uqs $
 .\"
 .SH
 Glossary
