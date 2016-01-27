@@ -47,7 +47,7 @@ West Lafayette, IN 47906
 .FS
 This work was sponsored by the Defense Advanced Research Projects Agency
 (DoD), monitored by the Naval Electronics Systems
-Command under contract No. N00039-84-C-0089, and by the CSELT 
+Command under contract No. N00039-84-C-0089, and by the CSELT
 Corporation of Italy.
 The views and conclusions contained in this document are those of the
 authors and should not be interpreted as representing official policies,
@@ -57,60 +57,60 @@ of the US Government, or of CSELT.
 .LP
 .EH 'SMM:11-%''Timed Installation and Operation'
 .OH 'Timed Installation and Operation''SMM:11-%'
-.SH 
+.SH
 Introduction
 .PP
-The clock synchronization service for 
+The clock synchronization service for
 the UNIX 4.3BSD operating system is composed of a collection of
 time daemons (\fItimed\fP) running on the machines in a local
 area network.
 The algorithms implemented by the service is based on a master-slave scheme.
-The time daemons communicate with each other using the 
+The time daemons communicate with each other using the
 \fITime Synchronization Protocol\fP (TSP) which
 is built on the DARPA UDP protocol and described in detail in [4].
 .PP
 A time daemon has a twofold function.
-First, it supports the synchronization of the clocks 
+First, it supports the synchronization of the clocks
 of the various hosts in a local area network.
 Second, it starts (or takes part in) the election that occurs
 among slave time daemons when, for any reason, the master disappears.
-The synchronization mechanism and the election procedure 
-employed by the program \fItimed\fP are described 
+The synchronization mechanism and the election procedure
+employed by the program \fItimed\fP are described
 in other documents [1,2,3].
 The next paragraphs are a brief overview of how the time daemon works.
 This document is mainly concerned with the administrative and technical
 issues of running \fItimed\fP at a particular site.
 .PP
 A \fImaster time daemon\fP measures the time
-differences between the clock of the machine on which it 
+differences between the clock of the machine on which it
 is running and those of all other machines.
-The master computes the \fInetwork time\fP as the average of the 
+The master computes the \fInetwork time\fP as the average of the
 times provided by nonfaulty clocks.\**
 .FS
-A clock is considered to be faulty when its value 
+A clock is considered to be faulty when its value
 is more than a small specified
-interval apart from the majority of the clocks 
+interval apart from the majority of the clocks
 of the other machines [1,2].
 .FE
 It then sends to each \fIslave time daemon\fP the
 correction that should be performed on the clock of its machine.
 This process is repeated periodically.
-Since the correction is expressed as a time difference rather than an 
-absolute time, transmission delays do not interfere with 
+Since the correction is expressed as a time difference rather than an
+absolute time, transmission delays do not interfere with
 the accuracy of the synchronization.
 When a machine comes up and joins the network,
 it starts a slave time daemon which
 will ask the master for the correct time and will reset the machine's clock
 before any user activity can begin.
-The time daemons are able to maintain a single network time in spite of 
-the drift of clocks away from each other. 
-The present implementation keeps processor clocks synchronized 
+The time daemons are able to maintain a single network time in spite of
+the drift of clocks away from each other.
+The present implementation keeps processor clocks synchronized
 within 20 milliseconds.
 .PP
 To ensure that the service provided is continuous and reliable,
 it is necessary to implement an election algorithm to elect a
 new master should the machine running the current master crash, the master
-terminate (for example, because of a run-time error), or 
+terminate (for example, because of a run-time error), or
 the network be partitioned.
 Under our algorithm, slaves are able to realize when the master has
 stopped functioning and to elect a new master from among themselves.
@@ -145,13 +145,13 @@ augmented with point-to-point links.
 Machines that are only connected to point-to-point,
 non-broadcast networks may not use the time daemon.
 .PP
-If we exclude submasters, there will normally be, at most, one master time 
+If we exclude submasters, there will normally be, at most, one master time
 daemon in a local area internetwork.
 During an election, only one of the slave time daemons
 will become the new master.
 However, because of the characteristics of its machine,
 a slave can be prevented from becoming the master.
-Therefore, a subset of machines must be designated as potential 
+Therefore, a subset of machines must be designated as potential
 master time daemons.
 A master time daemon will require CPU resources
 proportional to the number of slaves, in general, more than
@@ -183,13 +183,13 @@ In addition, there is a \fIpathological situation\fP to
 be avoided at all costs, that might occur when
 time daemons run on multiply-connected local area networks.
 In this case, as we have seen, time daemons running on gateway machines
-will be submasters and they will act on some of those 
+will be submasters and they will act on some of those
 networks as master time daemons.
 Consider machines A and B that are both gateways between
 networks X and Y.
 If time daemons were started on both A and B without constraints, it would be
 possible for submaster time daemon A to be a slave on network X
-and the master on network Y, while submaster time daemon B is a slave on 
+and the master on network Y, while submaster time daemon B is a slave on
 network Y and the master on network X.
 This \fIloop\fP of master time daemons will not function properly
 or guarantee a unique time on both networks, and will cause
@@ -214,7 +214,7 @@ fi
 .in -1i
 .sp
 .LP
-In any case, they must appear after the network 
+In any case, they must appear after the network
 is configured via ifconfig(8).
 .PP
 Also, the file \fI/etc/services\fP should contain the following
@@ -259,14 +259,14 @@ can be given to date(1).
 .SH
 References
 .IP 1.
-R. Gusella and S. Zatti, 
+R. Gusella and S. Zatti,
 \fITEMPO: A Network Time Controller for Distributed Berkeley UNIX System\fP,
 USENIX Summer Conference Proceedings, Salt Lake City, June 1984.
 .IP 2.
 R. Gusella and S. Zatti, \fIClock Synchronization in a Local Area Network\fP,
 University of California, Berkeley, Technical Report, \fIto appear\fP.
 .IP 3.
-R. Gusella and S. Zatti, 
+R. Gusella and S. Zatti,
 \fIAn Election Algorithm for a Distributed Clock Synchronization Program\fP,
 University of California, Berkeley, CS Technical Report #275, Dec. 1985.
 .IP 4.
