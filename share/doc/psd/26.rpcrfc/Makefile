@@ -1,11 +1,8 @@
-# $FreeBSD: src/share/doc/psd/26.rpcrfc/Makefile,v 1.4 1999/08/28 00:18:30 peter Exp $
-# $DragonFly: src/share/doc/psd/26.rpcrfc/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $FreeBSD: head/share/doc/psd/26.rpcrfc/Makefile 216178 2010-12-04 10:11:20Z uqs $
 
-VOLUME=	psd/26.rpcrfc
-SRCS=	rpc.rfc.ms
-MACROS=	-ms
-SRCDIR=	${.CURDIR}/../../../../lib/libc/rpc/PSD.doc
-
-USE_TBL=	yes
+VOLUME=		psd/26.rpcrfc
+SRCS=		stubs rpc.rfc.ms
+MACROS=		-ms
+USE_TBL=
 
 .include <bsd.doc.mk>

@@ -3,7 +3,6 @@
 .\"
 .\" @(#)rpcgen.ms	2.2 88/08/04 4.0 RPCSRC
 .\" $FreeBSD: src/lib/libc/rpc/PSD.doc/rpcgen.ms,v 1.1.14.1 2000/11/24 09:36:30 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/PSD.doc/rpcgen.ms,v 1.2 2003/06/17 04:26:45 dillon Exp $
 .\"
 .so stubs
 .de BT
@@ -22,20 +21,20 @@
 .IX rpcgen "" \fIrpcgen\fP "" PAGE MAJOR
 .LP
 .IX RPC "" "" \fIrpcgen\fP
-The details of programming applications to use Remote Procedure Calls 
-can be overwhelming.  Perhaps most daunting is the writing of the XDR 
-routines necessary to convert procedure arguments and results into 
-their network format and vice-versa.  
+The details of programming applications to use Remote Procedure Calls
+can be overwhelming.  Perhaps most daunting is the writing of the XDR
+routines necessary to convert procedure arguments and results into
+their network format and vice-versa.
 .LP
-Fortunately, 
-.I rpcgen(1) 
+Fortunately,
+.I rpcgen(1)
 exists to help programmers write RPC applications simply and directly.
-.I rpcgen 
-does most of the dirty work, allowing programmers to debug 
+.I rpcgen
+does most of the dirty work, allowing programmers to debug
 the  main  features of their application, instead of requiring them to
 spend most of their time debugging their network interface code.
 .LP
-.I rpcgen 
+.I rpcgen
 is a  compiler.  It accepts a remote program interface definition written
 in a language, called RPC Language, which is similar to C.  It produces a C
 language output which includes stub versions of the client routines, a
@@ -48,34 +47,34 @@ are to be invoked by remote clients.
 output files can be compiled and linked in the usual way.  The developer
 writes server procedures\(emin any language that observes Sun calling
 conventions\(emand links them with the server skeleton produced by
-.I rpcgen 
+.I rpcgen
 to get an executable server program.  To use a remote program, a programmer
-writes an ordinary main program that makes local procedure calls to the 
+writes an ordinary main program that makes local procedure calls to the
 client stubs produced by
 .I rpcgen .
-Linking this program with 
+Linking this program with
 .I rpcgen 's
-stubs creates an executable program.  (At present the main program must be 
+stubs creates an executable program.  (At present the main program must be
 written in C).
-.I rpcgen 
+.I rpcgen
 options can be used to suppress stub generation and to specify the transport
 to be used by the server stub.
 .LP
-Like all compilers, 
-.I rpcgen 
+Like all compilers,
+.I rpcgen
 reduces development time
 that would otherwise be spent coding and debugging low-level routines.
-All compilers, including 
+All compilers, including
 .I rpcgen ,
 do this at a small cost in efficiency
 and flexibility.  However,   many compilers allow  escape  hatches for
-programmers to  mix low-level code with  high-level code. 
-.I rpcgen 
-is no exception.  In speed-critical applications, hand-written routines 
-can be linked with the 
-.I rpcgen 
+programmers to  mix low-level code with  high-level code.
+.I rpcgen
+is no exception.  In speed-critical applications, hand-written routines
+can be linked with the
+.I rpcgen
 output without any difficulty.  Also, one may proceed by using
-.I rpcgen 
+.I rpcgen
 output as a starting point, and then rewriting it as necessary.
 (If you need a discussion of RPC programming without
 .I rpcgen ,
@@ -86,9 +85,9 @@ see the
 .IX rpcgen "local procedures" \fIrpcgen\fP
 .IX rpcgen "remote procedures" \fIrpcgen\fP
 .LP
-Assume an application that runs on a single machine, one which we want 
-to convert to run over the network.  Here we will demonstrate such a 
-conversion by way of a simple example\(ema program that prints a 
+Assume an application that runs on a single machine, one which we want
+to convert to run over the network.  Here we will demonstrate such a
+conversion by way of a simple example\(ema program that prints a
 message to the console:
 .ie t .DS
 .el .DS L
@@ -115,7 +114,7 @@ main(argc, argv)
 		fprintf(stderr, "%s: couldn't print your message\en",
 			argv[0]);
 		exit(1);
-	} 
+	}
 	printf("Message Delivered!\en");
 	exit(0);
 }
@@ -150,25 +149,25 @@ Message delivered!
 example%
 .DE
 .LP
-If  
-.I printmessage() 
+If
+.I printmessage()
 was turned into  a remote procedure,
-then it could be  called from anywhere in   the network.  
-Ideally,  one would just  like to stick   a  keyword like  
-.I remote 
+then it could be  called from anywhere in   the network.
+Ideally,  one would just  like to stick   a  keyword like
+.I remote
 in  front  of a
 procedure to turn it into a  remote procedure.  Unfortunately,
-we  have to live  within the  constraints of  the   C language, since 
-it existed   long before  RPC did.  But   even without language 
+we  have to live  within the  constraints of  the   C language, since
+it existed   long before  RPC did.  But   even without language
 support, it's not very difficult to make a procedure remote.
 .LP
 In  general, it's necessary to figure  out  what the types are for
-all procedure inputs and outputs.  In  this case,   we  have a 
+all procedure inputs and outputs.  In  this case,   we  have a
 procedure
-.I printmessage() 
+.I printmessage()
 which takes a  string as input, and returns  an integer
 as output.  Knowing  this, we can write a  protocol specification in RPC
-language that  describes the remote  version of 
+language that  describes the remote  version of
 .I printmessage ().
 Here it is:
 .ie t .DS
@@ -191,7 +190,7 @@ an  entire  remote program  here  which contains  the single procedure
 .I PRINTMESSAGE .
 This procedure was declared to be  in version  1 of the
 remote program.  No null procedure (procedure 0) is necessary because
-.I rpcgen 
+.I rpcgen
 generates it automatically.
 .LP
 Notice that everything is declared with all capital  letters.  This is
@@ -201,7 +200,7 @@ Notice also that the argument type is \*Qstring\*U and not \*Qchar *\*U.  This
 is because a \*Qchar *\*U in C is ambiguous.  Programmers usually intend it
 to mean  a null-terminated string   of characters, but  it  could also
 represent a pointer to a single character or a  pointer to an array of
-characters.  In  RPC language,  a  null-terminated  string is 
+characters.  In  RPC language,  a  null-terminated  string is
 unambiguously called a \*Qstring\*U.
 .LP
 There are  just two more things to  write.  First, there is the remote
@@ -248,9 +247,9 @@ printmessage_1(msg)
 .DE
 .LP
 Notice here that the declaration of the remote procedure
-.I printmessage_1() 
+.I printmessage_1()
 differs from that of the local procedure
-.I printmessage() 
+.I printmessage()
 in three ways:
 .IP  1.
 It takes a pointer to a string instead of a string itself.  This
@@ -262,10 +261,10 @@ also generally true of remote procedures: they always return a pointer
 to their results.
 .IP  3.
 It has an \*Q_1\*U appended to its name.  In general, all remote
-procedures called by 
-.I rpcgen 
-are named by  the following rule: the name in the program  definition  
-(here 
+procedures called by
+.I rpcgen
+are named by  the following rule: the name in the program  definition
+(here
 .I PRINTMESSAGE )
 is converted   to all
 lower-case letters, an underbar (\*Q_\*U) is appended to it, and
@@ -300,7 +299,7 @@ main(argc, argv)
 
 .ft I
 	/*
-	 * Save values of command line arguments 
+	 * Save values of command line arguments
 	 */
 .ft CW
 	server = argv[1];
@@ -334,8 +333,8 @@ main(argc, argv)
 	if (result == NULL) {
 .ft I
 		/*
-		 * An error occurred while calling the server. 
-	 	 * Print error message and die.
+		 * An error occurred while calling the server.
+		 * Print error message and die.
 		 */
 .ft CW
 		clnt_perror(cl, server);
@@ -350,14 +349,14 @@ main(argc, argv)
 	if (*result == 0) {
 .ft I
 		/*
-		 * Server was unable to print our message. 
+		 * Server was unable to print our message.
 		 * Print error message and die.
 		 */
 .ft CW
-		fprintf(stderr, "%s: %s couldn't print your message\en", 
-			argv[0], server);	
+		fprintf(stderr, "%s: %s couldn't print your message\en",
+			argv[0], server);
 		exit(1);
-	} 
+	}
 
 .ft I
 	/*
@@ -375,10 +374,10 @@ First a client \*Qhandle\*U is created using the RPC library routine
 This client handle will be passed  to the stub routines
 which call the remote procedure.
 .IP  2.
-The remote procedure  
-.I printmessage_1() 
-is called exactly  the same way as it is  declared in 
-.I msg_proc.c 
+The remote procedure
+.I printmessage_1()
+is called exactly  the same way as it is  declared in
+.I msg_proc.c
 except for the inserted client handle as the first argument.
 .LP
 Here's how to put all of the pieces together:
@@ -389,51 +388,51 @@ example%  \fBrpcgen msg.x\fP
 example%  \fBcc rprintmsg.c msg_clnt.c -o rprintmsg\fP
 example%  \fBcc msg_proc.c msg_svc.c -o msg_server\fP
 .DE
-Two programs were compiled here: the client program 
-.I rprintmsg 
-and the server  program 
+Two programs were compiled here: the client program
+.I rprintmsg
+and the server  program
 .I msg_server .
-Before doing this  though,  
-.I rpcgen 
-was used to fill in the missing pieces.  
+Before doing this  though,
+.I rpcgen
+was used to fill in the missing pieces.
 .LP
-Here is what 
-.I rpcgen 
-did with the input file 
+Here is what
+.I rpcgen
+did with the input file
 .I msg.x :
 .IP  1.
-It created a header file called 
-.I msg.h 
+It created a header file called
+.I msg.h
 that contained
 .I #define 's
 for
 .I MESSAGEPROG ,
-.I MESSAGEVERS 
-and    
-.I PRINTMESSAGE 
+.I MESSAGEVERS
+and
+.I PRINTMESSAGE
 for use in  the  other modules.
 .IP  2.
 It created client \*Qstub\*U routines in the
-.I msg_clnt.c 
-file.   In this case there is only one, the 
-.I printmessage_1() 
+.I msg_clnt.c
+file.   In this case there is only one, the
+.I printmessage_1()
 that was referred to from the
-.I printmsg 
+.I printmsg
 client program.  The name  of the output file for
 client stub routines is always formed in this way:  if the name of the
-input file is  
+input file is
 .I FOO.x ,
 the   client  stubs   output file is    called
 .I FOO_clnt.c .
 .IP  3.
-It created  the  server   program which calls   
-.I printmessage_1() 
+It created  the  server   program which calls
+.I printmessage_1()
 in
 .I msg_proc.c .
-This server program is named  
+This server program is named
 .I msg_svc.c .
-The rule for naming the server output file is similar  to the 
-previous one:  for an input  file   called  
+The rule for naming the server output file is similar  to the
+previous one:  for an input  file   called
 .I FOO.x ,
 the   output   server   file is  named
 .I FOO_svc.c .
@@ -445,7 +444,7 @@ background, because they never exit.
 .ie t .DS
 .el .DS L
 .ft CW
-moon% \fBmsg_server &\fP	       
+moon% \fBmsg_server &\fP
 .DE
 Then on our local machine (\*Qsun\*U) we can print a message on \*Qmoon\*Us
 console.
@@ -462,8 +461,8 @@ you are able to copy the server to their machine and run it.
 .IX RPC "generating XDR routines"
 .LP
 The previous example  only demonstrated  the  automatic generation of
-client  and server RPC  code. 
-.I rpcgen 
+client  and server RPC  code.
+.I rpcgen
 may also  be used to generate XDR routines, that  is,  the routines
 necessary to  convert   local  data
 structures into network format and vice-versa.  This example presents
@@ -522,21 +521,21 @@ program DIRPROG {
 Note:
 .I
 Types (like
-.I readdir_res 
+.I readdir_res
 in the example above) can be defined using
 the \*Qstruct\*U, \*Qunion\*U and \*Qenum\*U keywords, but those keywords
 should not be used in subsequent declarations of variables of those types.
 For example, if you define a union \*Qfoo\*U, you should declare using
 only \*Qfoo\*U and not \*Qunion foo\*U.  In fact,
-.I rpcgen 
+.I rpcgen
 compiles
 RPC unions into C structures and it is an error to declare them using the
 \*Qunion\*U keyword.
 .LP
-Running 
-.I rpcgen 
-on 
-.I dir.x 
+Running
+.I rpcgen
+on
+.I dir.x
 creates four output files.  Three are the same as before: header file,
 client stub routines and server skeleton.  The fourth are the XDR routines
 necessary for converting the data types we declared into XDR format and
@@ -544,7 +543,7 @@ vice-versa.  These are output in the file
 .I dir_xdr.c .
 .LP
 Here is the implementation of the
-.I READDIR 
+.I READDIR
 procedure.
 .ie t .DS
 .el .DS L
@@ -642,7 +641,7 @@ main(argc, argv)
 
 
 	if (argc != 3) {
-		fprintf(stderr, "usage: %s host directory\en", 
+		fprintf(stderr, "usage: %s host directory\en",
 		  argv[0]);
 		exit(1);
 	}
@@ -683,8 +682,8 @@ main(argc, argv)
 	if (result == NULL) {
 .ft I
 		/*
-		 * An error occurred while calling the server. 
-	 	 * Print error message and die.
+		 * An error occurred while calling the server.
+		 * Print error message and die.
 		 */
 .ft CW
 		clnt_perror(cl, server);
@@ -714,7 +713,7 @@ main(argc, argv)
 	 * Print it out.
 	 */
 .ft CW
-	for (nl = result->readdir_res_u.list; nl != NULL; 
+	for (nl = result->readdir_res_u.list; nl != NULL;
 	  nl = nl->next) {
 		printf("%s\en", nl->name);
 	}
@@ -745,19 +744,19 @@ moon%
 .DE
 .LP
 .IX "debugging with rpcgen" "" "debugging with \fIrpcgen\fP"
-A final note about 
+A final note about
 .I rpcgen :
-The client program and the server procedure can be tested together 
-as a single program by simply linking them with each other rather 
+The client program and the server procedure can be tested together
+as a single program by simply linking them with each other rather
 than with the client and server stubs.  The procedure calls will be
-executed as ordinary local procedure calls and the program can be 
-debugged with a local debugger such as 
+executed as ordinary local procedure calls and the program can be
+debugged with a local debugger such as
 .I dbx .
-When the program is working, the client program can be linked to 
-the client stub produced by 
-.I rpcgen 
+When the program is working, the client program can be linked to
+the client stub produced by
+.I rpcgen
 and the server procedures can be linked to the server stub produced
-by 
+by
 .I rpcgen .
 .SH
 .I NOTE :
@@ -785,8 +784,8 @@ RPC_SVC&for server-skeleton output
 RPC_CLNT&for client stub output
 .TE
 .LP
-Also, 
-.I rpcgen 
+Also,
+.I rpcgen
 does  a little preprocessing   of its own. Any  line that
 begins  with  a percent sign is passed  directly into the output file,
 without any interpretation of the line.  Here is a simple example that
@@ -820,7 +819,7 @@ that the compiler will stick the output where you intended.
 .NH 1
 \&\fBrpcgen\fP Programming Notes
 .IX rpcgen "other operations" \fIrpcgen\fP
-.sp 
+.sp
 .NH 2
 \&Timeout Changes
 .IX rpcgen "timeout changes" \fIrpcgen\fP
@@ -841,7 +840,7 @@ if (cl == NULL) {
 }
 tv.tv_sec = 60;	/* \fIchange timeout to 1 minute\fP */
 tv.tv_usec = 0;
-clnt_control(cl, CLSET_TIMEOUT, &tv);	
+clnt_control(cl, CLSET_TIMEOUT, &tv);
 .DE
 .NH 2
 \&Handling Broadcast on the Server Side
@@ -855,7 +854,7 @@ from getting flooded by useless replies.
 .LP
 To prevent the server from replying, a remote procedure can
 return NULL as its result, and the server code generated by
-.I rpcgen 
+.I rpcgen
 will detect this and not send out a reply.
 .LP
 Here is an example of a procedure that replies only if it
@@ -888,7 +887,7 @@ is important to procedures that want to implement some level of security.
 This extra information is actually supplied to the server procedure as a
 second argument.  Here is an example to demonstrate its use.  What we've
 done here is rewrite the previous
-.I printmessage_1() 
+.I printmessage_1()
 procedure to only allow root users to print a message to the console.
 .ID
 int *
@@ -920,7 +919,7 @@ printmessage_1(msg, rq)
 .LP
 RPC language is an extension of XDR  language.   The sole extension is
 the addition of the
-.I program 
+.I program
 type.  For a complete description of the XDR language syntax, see the
 .I "External Data Representation Standard: Protocol Specification"
 chapter.  For a description of the RPC extensions to the XDR language,
@@ -947,7 +946,7 @@ An RPC language file consists of a series of definitions.
         definition ";" definition-list
 .DE
 .KE
-It recognizes five types of definitions. 
+It recognizes five types of definitions.
 .DS L
 .ft CW
     definition:
@@ -1054,7 +1053,7 @@ XDR enumerations have the same syntax as C enumerations.
         enum-value "," enum-value-list
 
     enum-value:
-        enum-value-ident 
+        enum-value-ident
         enum-value-ident "=" value
 .DE
 Here is a short example of  an XDR enum,  and the C enum that  it gets
@@ -1079,8 +1078,8 @@ XDR typedefs have the same syntax as C typedefs.
     typedef-definition:
         "typedef" declaration
 .DE
-Here  is an example  that defines a  
-.I fname_type 
+Here  is an example  that defines a
+.I fname_type
 used  for declaring
 file name strings that have a maximum length of 255 characters.
 .DS L
@@ -1100,7 +1099,7 @@ integer constant is used, for example, in array size specifications.
         "const" const-ident "=" integer
 .DE
 For example, the following defines a constant
-.I DOZEN 
+.I DOZEN
 equal to 12.
 .DS L
 .ft CW
@@ -1115,9 +1114,9 @@ RPC programs are declared using the following syntax:
 .DS L
 .ft CW
     program-definition:
-        "program" program-ident "{" 
+        "program" program-ident "{"
             version-list
-        "}" "=" value 
+        "}" "=" value
 
     version-list:
         version ";"
@@ -1125,7 +1124,7 @@ RPC programs are declared using the following syntax:
 
     version:
         "version" version-ident "{"
-            procedure-list 
+            procedure-list
         "}" "=" value
 
     procedure-list:
@@ -1149,7 +1148,7 @@ program TIMEPROG {
         unsigned int TIMEGET(void) = 1;
         void TIMESET(unsigned) = 2;
     } = 1;
-} = 44;        
+} = 44;
 .DE
 This file compiles into #defines in the output header file:
 .ie t .DS
@@ -1165,7 +1164,7 @@ Declarations
 \&
 .IX rpcgen declarations \fIrpcgen\fP
 .LP
-In XDR, there are only four kinds of declarations.  
+In XDR, there are only four kinds of declarations.
 .DS L
 .ft CW
     declaration:
@@ -1196,7 +1195,7 @@ Example:
 .ft CW
     colortype palette[8];    --> colortype palette[8];
 .DE
-\fB3) Variable-Length Array Declarations\fP have no explicit syntax 
+\fB3) Variable-Length Array Declarations\fP have no explicit syntax
 in C, so XDR invents its own using angle-brackets.
 .DS L
 .ft CW
@@ -1226,7 +1225,7 @@ component and the pointer to the array is stored in the \*Q_val\*U
 component. The first part of each of these component's names is the
 same as the name of the declared XDR variable.
 .LP
-\fB4) Pointer Declarations\fP are made in 
+\fB4) Pointer Declarations\fP are made in
 XDR  exactly as they  are  in C.  You  can't
 really send pointers over the network,  but  you  can use XDR pointers
 for sending recursive data types such as lists and trees.  The type is
@@ -1249,16 +1248,16 @@ There are a few exceptions to the rules described above.
 .LP
 .B Booleans:
 C has no built-in boolean type. However, the RPC library does  a
-boolean type   called 
-.I bool_t 
-that   is either  
-.I TRUE 
-or  
+boolean type   called
+.I bool_t
+that   is either
+.I TRUE
+or
 .I FALSE .
-Things declared as  type 
-.I bool 
+Things declared as  type
+.I bool
 in  XDR language  are  compiled  into
-.I bool_t 
+.I bool_t
 in the output header file.
 .LP
 Example:
@@ -1272,7 +1271,7 @@ C has  no built-in string  type, but  instead uses the null-terminated
 \*Qstring\*U keyword, and compiled into \*Qchar *\*Us in the output header
 file. The  maximum size contained  in the angle brackets specifies the
 maximum number of characters allowed in the  strings (not counting the
-.I NULL 
+.I NULL
 character). The maximum size may be left off, indicating a string
 of arbitrary length.
 .LP

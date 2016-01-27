@@ -3,7 +3,6 @@
 .\"
 .\" @(#)xdr.rfc.ms	2.2 88/08/05 4.0 RPCSRC
 .\" $FreeBSD: src/lib/libc/rpc/PSD.doc/xdr.rfc.ms,v 1.1.14.1 2000/11/24 09:36:30 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/PSD.doc/xdr.rfc.ms,v 1.2 2003/06/17 04:26:45 dillon Exp $
 .\"
 .so stubs
 .de BT
@@ -26,7 +25,7 @@
 .nr OF 1
 .IX XDR "RFC status"
 .LP
-Note: This chapter specifies a protocol that Sun Microsystems, Inc., and 
+Note: This chapter specifies a protocol that Sun Microsystems, Inc., and
 others are using.  It has been designated RFC1014 by the ARPA Network
 Information Center.
 .NH 1
@@ -105,7 +104,7 @@ terms such as "identifier" and "declaration", refer to
 .I "The XDR Language Specification" ,
 below.
 .LP
-For some data types, more specific examples are included.  
+For some data types, more specific examples are included.
 A more extensive example of a data description is in
 .I "An Example of an XDR Data Description"
 below.
@@ -813,7 +812,7 @@ The characters
 .I ] ,
 .I " ,
 and
-.I * 
+.I *
 are special.
 .IP  2.
 Terminal symbols are  strings of any  characters surrounded by
@@ -828,7 +827,7 @@ Optional items are enclosed in brackets.
 Items are grouped together by enclosing them in parentheses.
 .IP  7.
 A
-.I * 
+.I *
 following an item means  0 or more  occurrences of that item.
 .LP
 For example,  consider  the  following pattern:

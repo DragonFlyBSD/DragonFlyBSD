@@ -3,7 +3,6 @@
 .\"
 .\" @(#)nfs.rfc.ms	2.2 88/08/05 4.0 RPCSRC
 .\" $FreeBSD: src/lib/libc/rpc/PSD.doc/nfs.rfc.ms,v 1.1.14.1 2000/11/24 09:36:30 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/PSD.doc/nfs.rfc.ms,v 1.2 2003/06/17 04:26:45 dillon Exp $
 .\"
 .so stubs
 .de BT
@@ -31,11 +30,11 @@ and others are using.  It specifies it in standard ARPA RFC form.
 \&Introduction
 .IX NFS introduction
 .LP
-The Sun Network Filesystem (NFS) protocol provides transparent remote 
-access to shared filesystems over local area networks.  The NFS 
-protocol is designed to be machine, operating system, network architecture, 
-and transport protocol independent.  This independence is 
-achieved through the use of Remote Procedure Call (RPC) primitives 
+The Sun Network Filesystem (NFS) protocol provides transparent remote
+access to shared filesystems over local area networks.  The NFS
+protocol is designed to be machine, operating system, network architecture,
+and transport protocol independent.  This independence is
+achieved through the use of Remote Procedure Call (RPC) primitives
 built on top of an External Data Representation (XDR).  Implementations
 exist for a variety of machines, from personal computers to
 supercomputers.
@@ -62,12 +61,12 @@ chapter of this manual.
 .IX "External Data Representation"
 .LP
 The External Data Representation (XDR) standard provides a common
-way of representing a set of data types over a network.  
+way of representing a set of data types over a network.
 The NFS
 Protocol Specification is written using the RPC data description
-language.  
+language.
 For more information, see the
-.I " External Data Representation Standard: Protocol Specification."  
+.I " External Data Representation Standard: Protocol Specification."
 Sun provides implementations of XDR and
 RPC,  but NFS does not require their use.  Any software that
 provides equivalent functionality can be used, and if the encoding
@@ -151,17 +150,17 @@ to return each would be just too slow.
 \&RPC Information
 .IX NFS "RPC information"
 .IP \fIAuthentication\fP
-The   NFS  service uses 
+The   NFS  service uses
 .I AUTH_UNIX ,
 .I AUTH_DES ,
-or 
-.I AUTH_SHORT 
+or
+.I AUTH_SHORT
 style
-authentication, except in  the  NULL procedure where   
-.I AUTH_NONE 
+authentication, except in  the  NULL procedure where
+.I AUTH_NONE
 is also allowed.
 .IP "\fITransport Protocols\fP"
-NFS currently is supported on UDP/IP only.  
+NFS currently is supported on UDP/IP only.
 .IP "\fIPort Number\fP"
 The NFS protocol currently uses the UDP port number 2049.  This is
 not an officially assigned port, so  later versions of the protocol
@@ -223,11 +222,11 @@ enum stat {
 .DE
 .KE
 .LP
-The 
-.I stat 
+The
+.I stat
 type  is returned with every  procedure's  results.   A
-value of 
-.I NFS_OK 
+value of
+.I NFS_OK
 indicates that the  call completed successfully and
 the  results are  valid.  The  other  values indicate  some kind of
 error  occurred on the  server  side  during the servicing   of the
@@ -278,7 +277,7 @@ That is, the file referred to by that file handle no longer exists,
 or access to it has been revoked.
 .IP \fBNFSERR_WFLUSH\fP:
 The server's  write cache  used  in the
-.I WRITECACHE 
+.I WRITECACHE
 call got flushed to disk.
 .LP
 .KS
@@ -297,19 +296,19 @@ enum ftype {
 .DE
 .KE
 The enumeration
-.I ftype 
-gives the type of a file.  The type 
-.I NFNON 
+.I ftype
+gives the type of a file.  The type
+.I NFNON
 indicates a non-file,
-.I NFREG 
-is a regular file, 
-.I NFDIR 
+.I NFREG
+is a regular file,
+.I NFDIR
 is a directory,
-.I NFBLK 
-is a block-special device, 
-.I NFCHR 
+.I NFBLK
+is a block-special device,
+.I NFCHR
 is a character-special device, and
-.I NFLNK 
+.I NFLNK
 is a symbolic link.
 .KS
 .NH 3
@@ -320,9 +319,9 @@ typedef opaque fhandle[FHSIZE];
 .DE
 .KE
 The
-.I fhandle 
-is the file handle passed between the server and the client.  
-All file operations are done using file handles to refer to a file or 
+.I fhandle
+is the file handle passed between the server and the client.
+All file operations are done using file handles to refer to a file or
 directory.  The file handle can contain whatever information the server
 needs to distinguish an individual file.
 .KS
@@ -336,10 +335,10 @@ struct timeval {
 };
 .DE
 .KE
-The 
+The
 .I timeval
-structure is the number of seconds and microseconds 
-since midnight January 1, 1970, Greenwich Mean Time.  It is used to 
+structure is the number of seconds and microseconds
+since midnight January 1, 1970, Greenwich Mean Time.  It is used to
 pass time and date information.
 .KS
 .NH 3
@@ -365,7 +364,7 @@ struct fattr {
 .DE
 .KE
 The
-.I fattr 
+.I fattr
 structure contains the attributes of a file; "type" is the type of
 the file; "nlink" is the number of hard links to the file (the number
 of different names for the same file); "uid" is the user
@@ -373,7 +372,7 @@ identification number of the owner of the file; "gid" is the group
 identification number of the group of the file; "size" is the size in
 bytes of the file; "blocksize" is the size in bytes of a block of the
 file; "rdev" is the device number of the file if it is type
-.I NFCHR 
+.I NFCHR
 or
 .I NFBLK ;
 "blocks" is the number of blocks the file takes up on disk; "fsid" is
@@ -397,10 +396,10 @@ lfL l .
 Bit&Description
 _
 0040000&This is a directory; "type" field should be NFDIR.
-0020000&This is a character special file; "type" field should be NFCHR. 
-0060000&This is a block special file; "type" field should be NFBLK. 
+0020000&This is a character special file; "type" field should be NFCHR.
+0060000&This is a block special file; "type" field should be NFBLK.
 0100000&This is a regular file; "type" field should be NFREG.
-0120000&This is a symbolic link file;  "type" field should be NFLNK. 
+0120000&This is a symbolic link file;  "type" field should be NFLNK.
 0140000&This is a named socket; "type" field should be NFNON.
 0004000&Set user id on execution.
 0002000&Set group id on execution.
@@ -417,9 +416,9 @@ _
 .TE
 .KS
 Notes:
-.IP 
+.IP
 The bits are  the same as the mode   bits returned  by  the
-.I stat(2) 
+.I stat(2)
 system call in the UNIX system.  The file  type is  specified  both in
 the mode  bits  and in  the file type.   This   is fixed  in future
 versions.
@@ -444,11 +443,11 @@ struct sattr {
 };
 .DE
 .KE
-The 
+The
 .I sattr
 structure contains the file attributes which can be set
-from the client.  The fields are the same as for  
-.I fattr 
+from the client.  The fields are the same as for
+.I fattr
 above.  A "size" of zero  means the file should be  truncated.
 A value of -1 indicates a field that should be ignored.
 .LP
@@ -461,7 +460,7 @@ typedef string filename<MAXNAMLEN>;
 .DE
 .KE
 The type
-.I filename 
+.I filename
 is used for  passing file names  or  pathname components.
 .LP
 .KS
@@ -473,7 +472,7 @@ typedef string path<MAXPATHLEN>;
 .DE
 .KE
 The type
-.I path 
+.I path
 is a pathname.  The server considers it as a string
 with no internal structure,  but to the client  it is the name of a
 node in a filesystem tree.
@@ -491,8 +490,8 @@ union attrstat switch (stat status) {
 };
 .DE
 .KE
-The 
-.I attrstat 
+The
+.I attrstat
 structure is a common procedure result.  It contains
 a  "status" and,  if  the call   succeeded,   it also contains  the
 attributes of the file on which the operation was done.
@@ -508,8 +507,8 @@ struct diropargs {
 };
 .DE
 .KE
-The  
-.I diropargs 
+The
+.I diropargs
 structure is used  in  directory  operations.  The
 "fhandle" "dir" is the directory in  which to find the file "name".
 A directory operation is one in which the directory is affected.
@@ -530,8 +529,8 @@ union diropres switch (stat status) {
 };
 .DE
 .KE
-The results of a directory operation  are returned  in a 
-.I diropres 
+The results of a directory operation  are returned  in a
+.I diropres
 structure.  If the call succeeded, a new file handle "file" and the
 "attributes" associated with that file are  returned along with the
 "status".
@@ -548,11 +547,11 @@ All of  the procedures  in   the NFS  protocol  are assumed  to  be
 synchronous.   When a procedure  returns to the  client, the client
 can assume that the operation has completed and any data associated
 with the request is  now on stable storage.  For  example, a client
-.I WRITE 
+.I WRITE
 request   may  cause  the   server  to  update  data  blocks,
 filesystem information blocks (such as indirect  blocks),  and file
-attribute  information (size  and  modify  times).  When  the 
-.I WRITE 
+attribute  information (size  and  modify  times).  When  the
+.I WRITE
 returns to the client, it can assume  that the write  is safe, even
 in case of  a server  crash, and  it can discard the  data written.
 This is a very important part  of the statelessness  of the server.
@@ -595,7 +594,7 @@ program NFS_PROGRAM {
 \&Do Nothing
 .IX "NFS server procedures" NFSPROC_NULL() "" \fINFSPROC_NULL()\fP
 .DS
-void 
+void
 NFSPROC_NULL(void) = 0;
 .DE
 .KE
@@ -606,11 +605,11 @@ services to allow server response testing and timing.
 \&Get File Attributes
 .IX "NFS server procedures" NFSPROC_GETATTR() "" \fINFSPROC_GETATTR()\fP
 .DS
-attrstat 
+attrstat
 NFSPROC_GETATTR (fhandle) = 1;
 .DE
 .KE
-If the reply  status is 
+If the reply  status is
 .I NFS_OK ,
 then  the reply attributes contains
 the attributes for the file given by the input fhandle.
@@ -630,7 +629,7 @@ NFSPROC_SETATTR (sattrargs) = 2;
 .KE
 The  "attributes" argument  contains fields which are either  -1 or
 are  the  new value for  the  attributes of  "file".   If the reply
-status is 
+status is
 .I NFS_OK ,
 then the  reply attributes have the attributes of
 the file after the "SETATTR" operation has completed.
@@ -642,7 +641,7 @@ changed in the next version of the protocol.
 \&Get Filesystem Root
 .IX "NFS server procedures" NFSPROC_ROOT "" \fINFSPROC_ROOT\fP
 .DS
-void 
+void
 NFSPROC_ROOT(void) = 3;
 .DE
 .KE
@@ -651,7 +650,7 @@ root file handle of a filesystem requires moving  pathnames between
 client  and server.  To  do  this right we would  have  to define a
 network standard representation of pathnames.  Instead, the
 function  of  looking up  the   root  file handle  is  done  by the
-.I MNTPROC_MNT() 
+.I MNTPROC_MNT()
 procedure.    (See the
 .I "Mount Protocol Definition"
 later in this chapter for details).
@@ -664,7 +663,7 @@ diropres
 NFSPROC_LOOKUP(diropargs) = 4;
 .DE
 .KE
-If  the reply "status"  is 
+If  the reply "status"  is
 .I NFS_OK ,
 then the reply  "file" and reply
 "attributes" are the file handle and attributes for the file "name"
@@ -685,9 +684,9 @@ readlinkres
 NFSPROC_READLINK(fhandle) = 5;
 .DE
 .KE
-If "status" has the value 
+If "status" has the value
 .I NFS_OK ,
-then the reply "data" is the data in 
+then the reply "data" is the data in
 the symbolic link given by the file referred to by the fhandle argument.
 .LP
 Note:  since   NFS always  parses pathnames    on the  client, the
@@ -741,14 +740,14 @@ To be used in the next protocol revision.
 .IX "NFS server procedures" NFSPROC_WRITE() "" \fINFSPROC_WRITE()\fP
 .DS
 struct writeargs {
-	fhandle file;          
-	unsigned beginoffset;  
-	unsigned offset;       
-	unsigned totalcount;   
+	fhandle file;
+	unsigned beginoffset;
+	unsigned offset;
+	unsigned totalcount;
 	opaque data<NFS_MAXDATA>;
 };
 
-attrstat	
+attrstat
 NFSPROC_WRITE(writeargs) = 8;
 .DE
 .KE
@@ -756,8 +755,8 @@ Writes   "data" beginning  "offset"  bytes  from the  beginning  of
 "file".  The first byte  of  the file is at  offset  zero.  If  the
 reply "status" is NFS_OK, then  the reply "attributes" contains the
 attributes  of the file after the  write has  completed.  The write
-operation is atomic.  Data from this  call to 
-.I WRITE 
+operation is atomic.  Data from this  call to
+.I WRITE
 will not be mixed with data from another client's calls.
 .LP
 Note: The arguments "beginoffset" and "totalcount" are ignored and
@@ -804,7 +803,7 @@ Note: possibly non-idempotent operation.
 .IX "NFS server procedures" NFSPROC_RENAME() "" \fINFSPROC_RENAME()\fP
 .DS
 struct renameargs {
-	diropargs from;	
+	diropargs from;
 	diropargs to;
 };
 
@@ -814,10 +813,10 @@ NFSPROC_RENAME(renameargs) = 11;
 .KE
 The existing file "from.name" in  the directory given by "from.dir"
 is renamed to "to.name" in the directory given by "to.dir".  If the
-reply  is 
+reply  is
 .I NFS_OK ,
-the file was  renamed.  The  
-RENAME  
+the file was  renamed.  The
+RENAME
 operation is
 atomic on the server; it cannot be interrupted in the middle.
 .LP
@@ -838,7 +837,7 @@ NFSPROC_LINK(linkargs) = 12;
 .KE
 Creates the  file "to.name"  in the directory  given   by "to.dir",
 which is a hard link to the existing file given  by "from".  If the
-return value is 
+return value is
 .I NFS_OK ,
 a link was created.  Any other return value
 indicates an error, and the link was not created.
@@ -864,12 +863,12 @@ stat
 NFSPROC_SYMLINK(symlinkargs) = 13;
 .DE
 .KE
-Creates the  file "from.name" with  ftype  
-.I NFLNK 
+Creates the  file "from.name" with  ftype
+.I NFLNK
 in  the  directory
 given by "from.dir".   The new file contains  the pathname "to" and
 has initial attributes given by "attributes".  If  the return value
-is 
+is
 .I NFS_OK ,
 a link was created.  Any other return value indicates an
 error, and the link was not created.
@@ -878,8 +877,8 @@ A symbolic  link is  a pointer to another file.   The name given in
 "to" is  not interpreted by  the server, only stored in  the  newly
 created file.  When the client references a file that is a symbolic
 link, the contents of the symbolic  link are normally transparently
-reinterpreted  as a pathname  to substitute.   A 
-.I READLINK 
+reinterpreted  as a pathname  to substitute.   A
+.I READLINK
 operation returns the data to the client for interpretation.
 .LP
 Note:  On UNIX servers the attributes are never used, since
@@ -911,7 +910,7 @@ NFSPROC_RMDIR(diropargs) = 15;
 .DE
 .KE
 The existing empty directory "name" in the directory given by "dir"
-is removed.  If the reply is 
+is removed.  If the reply is
 .I NFS_OK ,
 the directory was removed.
 .LP
@@ -922,9 +921,9 @@ Note: possibly non-idempotent operation.
 .IX "NFS server procedures" NFSPROC_READDIR() "" \fINFSPROC_READDIR()\fP
 .DS
 struct readdirargs {
-	fhandle dir;            
+	fhandle dir;
 	nfscookie cookie;
-	unsigned count;         
+	unsigned count;
 };
 
 struct entry {
@@ -950,24 +949,24 @@ NFSPROC_READDIR (readdirargs) = 16;
 .KE
 Returns a variable number of  directory entries,  with a total size
 of up to "count" bytes, from the directory given  by "dir".  If the
-returned  value of "status"  is 
+returned  value of "status"  is
 .I NFS_OK ,
 then  it  is followed  by a
 variable  number  of "entry"s.    Each "entry" contains  a "fileid"
 which consists of a  unique number  to identify the  file within  a
 filesystem,  the  "name" of the  file, and a "cookie" which   is an
 opaque pointer to the next entry in  the  directory.  The cookie is
-used  in the next  
-.I READDIR 
+used  in the next
+.I READDIR
 call to get more  entries  starting at a
 given point in  the directory.  The  special cookie zero (all  bits
 zero) can be used to get the entries starting  at the  beginning of
 the directory.  The "fileid" field should be the same number as the
-"fileid" in the the  attributes of the  file.  (See the
+"fileid" in the attributes of the file.  (See the
 .I "Basic Data Types"
-section.) 
+section.)
 The "eof" flag has a value of
-.I TRUE 
+.I TRUE
 if there are no more entries in the directory.
 .KS
 .NH 3
@@ -977,10 +976,10 @@ if there are no more entries in the directory.
 union statfsres (stat status) {
 	case NFS_OK:
 		struct {
-			unsigned tsize; 
-			unsigned bsize; 
+			unsigned tsize;
+			unsigned bsize;
 			unsigned blocks;
-			unsigned bfree; 
+			unsigned bfree;
 			unsigned bavail;
 		} info;
 	default:
@@ -991,22 +990,22 @@ statfsres
 NFSPROC_STATFS(fhandle) = 17;
 .DE
 .KE
-If the  reply "status"  is 
+If the  reply "status"  is
 .I NFS_OK ,
 then the  reply "info" gives the
 attributes for the filesystem that contains file referred to by the
 input fhandle.  The attribute fields contain the following values:
-.IP tsize:   
+.IP tsize:
 The optimum transfer size of the server in bytes.  This is
 the number  of bytes the server  would like to have in the
 data part of READ and WRITE requests.
-.IP bsize:   
+.IP bsize:
 The block size in bytes of the filesystem.
-.IP blocks:  
+.IP blocks:
 The total number of "bsize" blocks on the filesystem.
-.IP bfree:   
+.IP bfree:
 The number of free "bsize" blocks on the filesystem.
-.IP bavail:  
+.IP bavail:
 The number of  "bsize" blocks  available to non-privileged users.
 .LP
 Note: This call does not  work well if a  filesystem has  variable
@@ -1069,8 +1068,8 @@ instead.
 .LP
 The NFS protocol, strictly speaking, does not define the permission
 checking used  by servers.  However,  it is  expected that a server
-will do normal operating system permission checking using 
-.I AUTH_UNIX 
+will do normal operating system permission checking using
+.I AUTH_UNIX
 style authentication as the basis of its protection mechanism.  The
 server gets the client's effective "uid", effective "gid", and groups
 on each call and uses them to check permission.  There are various
@@ -1081,7 +1080,7 @@ same "uid" list.  Every server and client pair must have the same
 mapping from user to "uid" and from group to "gid".  Since every
 client can also be a server, this tends to imply that the whole
 network shares the same "uid/gid" space.
-.I AUTH_DES 
+.I AUTH_DES
 (and the  next
 revision of the NFS protocol) uses string names instead of numbers,
 but there are still complex problems to be solved.
@@ -1154,16 +1153,16 @@ down.
 .LP
 Version one of the mount protocol is used with version two of the NFS
 protocol.  The only connecting point is the
-.I fhandle 
+.I fhandle
 structure, which is the same for both protocols.
 .NH 2
 \&RPC Information
 .IX "mount protocol"  "RPC information"
 .IP \fIAuthentication\fP
-The mount service uses 
-.I AUTH_UNIX 
-and 
-.I AUTH_DES 
+The mount service uses
+.I AUTH_UNIX
+and
+.I AUTH_DES
 style authentication only.
 .IP "\fITransport Protocols\fP"
 The mount service is currently supported on UDP/IP only.
@@ -1202,15 +1201,15 @@ In many cases they are similar to the types used in NFS.
 typedef opaque fhandle[FHSIZE];
 .DE
 .KE
-The type 
-.I fhandle 
+The type
+.I fhandle
 is the file handle that the server passes to the
 client.  All file operations are done  using file handles  to refer
 to a  file  or directory.   The  file handle  can  contain whatever
 information the server needs to distinguish an individual file.
 .LP
 This  is the  same as the "fhandle" XDR definition in version 2 of
-the NFS protocol;  see 
+the NFS protocol;  see
 .I "Basic Data Types"
 in the definition of the NFS protocol, above.
 .KS
@@ -1226,8 +1225,8 @@ union fhstatus switch (unsigned status) {
 };
 .DE
 .KE
-The type 
-.I fhstatus 
+The type
+.I fhstatus
 is a union.  If a "status" of zero is returned,
 the  call completed   successfully, and  a  file handle   for   the
 "directory"  follows.  A  non-zero  status indicates  some  sort of
@@ -1240,8 +1239,8 @@ error.  In this case the status is a UNIX error number.
 typedef string dirpath<MNTPATHLEN>;
 .DE
 .KE
-The type 
-.I dirpath 
+The type
+.I dirpath
 is a server pathname of a directory.
 .KS
 .NH 3
@@ -1251,8 +1250,8 @@ is a server pathname of a directory.
 typedef string name<MNTNAMLEN>;
 .DE
 .KE
-The type 
-.I name 
+The type
+.I name
 is an arbitrary string used for various names.
 .NH 2
 \&Server Procedures
@@ -1290,7 +1289,7 @@ program MOUNTPROG {
 \&Do Nothing
 .IX "mount server procedures" MNTPROC_NULL() "" \fIMNTPROC_NULL()\fP
 .DS
-void 
+void
 MNTPROC_NULL(void) = 0;
 .DE
 .KE

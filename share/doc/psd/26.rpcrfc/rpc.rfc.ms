@@ -3,7 +3,6 @@
 .\"
 .\" @(#)rpc.rfc.ms	2.2 88/08/05 4.0 RPCSRC
 .\" $FreeBSD: src/lib/libc/rpc/PSD.doc/rpc.rfc.ms,v 1.1.14.1 2000/11/24 09:36:30 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/PSD.doc/rpc.rfc.ms,v 1.2 2003/06/17 04:26:45 dillon Exp $
 .\"
 .so stubs
 .de BT
@@ -22,7 +21,7 @@
 \&Status of this Memo
 .LP
 Note: This chapter specifies a protocol that Sun Microsystems, Inc.,
-and others are using.  
+and others are using.
 It has been designated RFC1050 by the ARPA Network
 Information Center.
 .LP
@@ -34,7 +33,7 @@ Sun's Remote Procedure Call (RPC) package.  (The message protocol is
 specified with the External Data Representation (XDR) language.
 See the
 .I "External Data Representation Standard: Protocol Specification"
-for the details.  Here, we assume that  the  reader is familiar  
+for the details.  Here, we assume that  the  reader is familiar
 with XDR and do not attempt to justify it or its uses).  The paper
 by Birrell and Nelson [1]  is recommended as an  excellent background
 to  and justification of RPC.
@@ -269,15 +268,15 @@ struct opaque_auth {
 .DE
 .LP
 In simple English, any
-.I opaque_auth 
-structure is an 
-.I auth_flavor 
+.I opaque_auth
+structure is an
+.I auth_flavor
 enumeration followed by bytes which are  opaque to the RPC protocol
 implementation.
 .LP
 The interpretation and semantics  of the data contained  within the
 authentication   fields  is specified  by  individual,  independent
-authentication  protocol specifications.   (See 
+authentication  protocol specifications.   (See
 \fIAuthentication Protocols\fP\,
 below, for definitions of the various authentication protocols.)
 .LP
@@ -287,7 +286,7 @@ contains information stating why they were rejected.
 \&Program Number Assignment
 .LP
 Program numbers are given out in groups of
-.I 0x20000000 
+.I 0x20000000
 (decimal 536870912) according to the following chart:
 .TS
 box tab (&) ;
@@ -414,7 +413,7 @@ enum auth_stat {
 .el .DS L
 .ft I
 /*
-* The  RPC  message: 
+* The  RPC  message:
 * All   messages  start with   a transaction  identifier,  xid,
 * followed  by a  two-armed  discriminated union.   The union's
 * discriminant is a  msg_type which switches to  one of the two
@@ -431,7 +430,7 @@ struct rpc_msg {
 	union switch (msg_type mtype) {
 		case CALL:
 			call_body cbody;
-		case REPLY:  
+		case REPLY:
 			reply_body rbody;
 	} body;
 };
@@ -440,7 +439,7 @@ struct rpc_msg {
 .el .DS L
 .ft I
 /*
-* Body of an RPC request call: 
+* Body of an RPC request call:
 * In version 2 of the  RPC protocol specification, rpcvers must
 * be equal to 2.  The  fields prog,  vers, and proc specify the
 * remote program, its version number, and the  procedure within
@@ -471,9 +470,9 @@ struct call_body {
 */
 .ft CW
 union reply_body switch (reply_stat stat) {
-	case MSG_ACCEPTED:  
+	case MSG_ACCEPTED:
 		accepted_reply areply;
-	case MSG_DENIED:  
+	case MSG_DENIED:
 		rejected_reply rreply;
 } reply;
 .DE
@@ -519,7 +518,7 @@ struct accepted_reply {
 .el .DS L
 .ft I
 /*
-* Reply to an RPC request that was rejected by the server: 
+* Reply to an RPC request that was rejected by the server:
 * The request  can   be rejected for   two reasons:  either the
 * server   is not  running a   compatible  version  of the  RPC
 * protocol    (\fIRPC_MISMATCH\fP), or    the  server   refuses    to
@@ -535,7 +534,7 @@ union rejected_reply switch (reject_stat stat) {
 			unsigned int low;
 			unsigned int high;
 		} mismatch_info;
-	case AUTH_ERROR: 
+	case AUTH_ERROR:
 		auth_stat stat;
 };
 .DE
@@ -563,7 +562,7 @@ It is recommended that the opaque length be zero.
 .LP
 The caller of a remote procedure may wish to identify himself as he
 is identified on a UNIX system.  The  value of the credential's
-discriminant of an RPC call  message is  
+discriminant of an RPC call  message is
 .I AUTH_UNIX .
 The bytes of
 the credential's opaque body encode the following structure:
@@ -577,29 +576,29 @@ struct auth_unix {
 	unsigned int gids<10>;
 };
 .DE
-The 
-.I stamp 
+The
+.I stamp
 is an  arbitrary    ID which the  caller machine   may
-generate.  The 
-.I machinename 
-is the  name of the  caller's machine (like  "krypton").  The 
-.I uid 
-is  the caller's effective user  ID.  The  
-.I gid 
-is  the caller's effective  group  ID.  The 
-.I gids 
+generate.  The
+.I machinename
+is the  name of the  caller's machine (like  "krypton").  The
+.I uid
+is  the caller's effective user  ID.  The
+.I gid
+is  the caller's effective  group  ID.  The
+.I gids
 is  a
 counted array of groups which contain the caller as  a member.  The
-verifier accompanying the  credentials  should  be  of  
+verifier accompanying the  credentials  should  be  of
 .I AUTH_NULL
 (defined above).
 .LP
 The value of the discriminant of  the response verifier received in
-the  reply  message  from  the    server  may   be   
-.I AUTH_NULL 
+the  reply  message  from  the    server  may   be
+.I AUTH_NULL
 or
 .I AUTH_SHORT .
-In  the  case  of 
+In  the  case  of
 .I AUTH_SHORT ,
 the bytes of the response verifier's string encode an opaque
 structure.  This new opaque structure may now be passed to the server
@@ -735,11 +734,11 @@ and window.
 Though they originally were synchronized, the client's and server's
 clocks can get out of sync again.  When this happens the client RPC
 subsystem most likely will get back
-.I RPC_AUTHERROR 
+.I RPC_AUTHERROR
 at which point it should resynchronize.
 .LP
 A client may still get the
-.I RPC_AUTHERROR 
+.I RPC_AUTHERROR
 error even though it is
 synchronized with the server.  The reason is that the server's
 nickname table is a limited size, and it may flush entries whenever
@@ -865,7 +864,7 @@ unsigned int adv_nickname;  /* \fInew nickname for client \fP*/
 \&Diffie-Hellman Encryption
 .LP
 In this scheme, there are two constants,
-.I BASE 
+.I BASE
 and
 .I MODULUS .
 The
@@ -875,7 +874,7 @@ authentication protocol are:
 .el .DS L
 .ft CW
 const BASE = 3;
-const MODULUS = 
+const MODULUS =
         "d4a0ba0250b6fd2ec626e7efd637df76c716e22d0944b88b"; /* \fIhex \fP*/
 .DE
 .ft R
@@ -1001,7 +1000,7 @@ Here is an example of the specification of a simple ping program.
 program PING_PROG {
 	/* \fILatest and greatest version\fP */
 	version PING_VERS_PINGBACK {
-	void 
+	void
 	PINGPROC_NULL(void) = 0;
 
 .ft I
@@ -1012,8 +1011,8 @@ program PING_PROG {
 	*/
 .ft CW
 	int
-	PINGPROC_PINGBACK(void) = 1;        
-} = 2;     
+	PINGPROC_PINGBACK(void) = 1;
+} = 2;
 
 .ft I
 /*
@@ -1021,7 +1020,7 @@ program PING_PROG {
 */
 .ft CW
 version PING_VERS_ORIG {
-	void 
+	void
 	PINGPROC_NULL(void) = 0;
 	} = 1;
 } = 1;
@@ -1033,11 +1032,11 @@ const PING_VERS = 2;      /* \fIlatest version \fP*/
 .LP
 The first version described is
 .I PING_VERS_PINGBACK
-with  two procedures,   
-.I PINGPROC_NULL 
-and 
+with  two procedures,
+.I PINGPROC_NULL
+and
 .I PINGPROC_PINGBACK .
-.I PINGPROC_NULL 
+.I PINGPROC_NULL
 takes no arguments and returns no results, but it is useful for
 computing round-trip times from the client to the server and back
 again.  By convention, procedure 0 of any RPC protocol should have
@@ -1058,13 +1057,13 @@ matures it may be dropped from the protocol entirely.
 .LP
 The  RPC language is identical to  the XDR language, except for the
 added definition of a
-.I program-def 
+.I program-def
 described below.
 .DS
 .ft CW
 program-def:
 	"program" identifier "{"
-		version-def 
+		version-def
 		version-def *
 	"}" "=" constant ";"
 
@@ -1141,7 +1140,7 @@ struct mapping {
 };
 
 .ft I
-/* 
+/*
 * Supported values for the "prot" field
 */
 .ft CW
@@ -1172,7 +1171,7 @@ struct call_args {
 	unsigned int vers;
 	unsigned int proc;
 	opaque args<>;
-};  
+};
 
 .ft I
 /*
@@ -1196,7 +1195,7 @@ struct call_result {
 .ft CW
 program PMAP_PROG {
 	version PMAP_VERS {
-		void 
+		void
 		PMAPPROC_NULL(void)         = 0;
 
 		bool
@@ -1235,8 +1234,8 @@ protocol number "prot", and the port "port" on which it awaits
 service request.  The procedure returns a boolean response whose
 value is
 .I TRUE
-if the procedure successfully established the mapping and 
-.I FALSE 
+if the procedure successfully established the mapping and
+.I FALSE
 otherwise.  The procedure refuses to establish
 a mapping if one already exists for the tuple "(prog, vers, prot)".
 .IP \fBPMAPPROC_UNSET:\fP
