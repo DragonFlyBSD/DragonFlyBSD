@@ -1,5 +1,4 @@
 .\"	$OpenBSD: dc,v 1.2 2003/09/22 19:08:27 otto Exp $
-.\"	$DragonFly: src/usr.bin/dc/USD.doc/dc,v 1.1 2004/09/20 04:20:39 dillon Exp $
 .\"
 .\" Copyright (C) Caldera International Inc.  2001-2002.
 .\" All rights reserved.
@@ -503,7 +502,7 @@ exactly as described.  The quantity returned is the remains of the
 dividend at the end of the divide process.
 Since division truncates toward zero, remainders have the same
 sign as the dividend.
-The scale of the remainder is set to 
+The scale of the remainder is set to
 the maximum of the scale of the dividend and
 the scale of the quotient plus the scale of the divisor.
 .SH
@@ -545,7 +544,7 @@ Input Conversion and Base
 Numbers are converted to the internal representation as they are read
 in.
 The scale stored with a number is simply the number of fractional digits input.
-Negative numbers are indicated by preceding the number with a \fB\_\fP (an 
+Negative numbers are indicated by preceding the number with a \fB\_\fP (an
 underscore).
 The hexadecimal digits A\-F correspond to the numbers 10\-15 regardless of input base.
 The \fBi\fP command can be used to change the base of the input numbers.
@@ -654,9 +653,9 @@ into the array \fIx\fP of the value to be loaded.
 .SH
 Miscellaneous Commands
 .PP
-The command \fB!\fP interprets the rest of the line as a 
-.UX 
-command and passes it to 
+The command \fB!\fP interprets the rest of the line as a
+.UX
+command and passes it to
 .UX
 to execute.
 One other compiler command is \fBQ\fP.
