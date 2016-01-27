@@ -34,7 +34,7 @@
 While typing in a message to be sent to others, it is often
 useful to be able to invoke the text editor on the partial message,
 print the message, execute a shell command, or do some other
-auxiliary function. 
+auxiliary function.
 .i Mail
 provides these capabilities through
 .i "tilde escapes" ,
@@ -59,7 +59,7 @@ it stands, you can invoke the text editor on it using the escape
 .)l
 which causes the message to be copied into a temporary file and an
 instance of the editor to be spawned.  After modifying the message to
-your satisfaction, write it out and quit the editor. 
+your satisfaction, write it out and quit the editor.
 .i Mail
 will respond
 by typing
@@ -100,7 +100,7 @@ file in your message; the escape
 ~r filename
 .)l
 is provided for this purpose, and causes the named file to be appended
-to your current message. 
+to your current message.
 .i Mail
 complains if the file doesn't exist
 or can't be read.  If the read is successful, the number of lines and
@@ -123,7 +123,7 @@ To save the current text of your message on a file you may use the
 .(l
 ~w filename
 .)l
-escape. 
+escape.
 .i Mail
 will print out the number of lines and characters written
 to the file, after which you may continue appending text to your message.
@@ -317,7 +317,7 @@ where
 is the login name of the person you're trying to reach,
 .i host
 is the name of the machine on the Arpanet,
-and 
+and
 .i domain
 is the higher-level scope within which the hostname is known, e.g. EDU (for educational
 institutions), COM (for commercial entities), GOV (for governmental agencies),

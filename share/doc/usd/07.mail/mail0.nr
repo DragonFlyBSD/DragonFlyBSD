@@ -62,6 +62,5 @@ Mark Andrews
 Version 5.5
 
 
-\*(td
 .)l
 .pn 2
