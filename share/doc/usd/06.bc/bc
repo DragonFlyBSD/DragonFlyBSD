@@ -1,5 +1,5 @@
+.\"	$FreeBSD: head/share/doc/usd/06.bc/bc 282235 2015-04-29 16:41:48Z bapt $
 .\"	$OpenBSD: bc,v 1.9 2004/07/09 10:23:05 jmc Exp $
-.\"	$DragonFly: src/usr.bin/bc/USD.doc/bc,v 1.1 2004/09/20 04:20:35 dillon Exp $
 .\"
 .\" Copyright (C) Caldera International Inc.  2001-2002.
 .\" All rights reserved.
@@ -36,12 +36,13 @@
 .\"	@(#)bc	6.2 (Berkeley) 4/17/91
 .\"
 .if n \{\
-.po 5n
-.ll 70n
+.nr PO 5n
+.nr LL 70n
 .\}
 .EH 'USD:6-%''BC \- An Arbitrary Precision Desk-Calculator Language'
 .OH 'BC \- An Arbitrary Precision Desk-Calculator Language''USD:6-%'
 .\".RP
+.ND
 .TL
 BC \- An Arbitrary Precision Desk-Calculator Language
 .AU
@@ -455,7 +456,7 @@ permitted.  The names of arrays are permitted to
 collide with the names of simple variables and function names.
 Any fractional
 part of a subscript is discarded before use.
-Subscripts must be greater than or equal to zero and 
+Subscripts must be greater than or equal to zero and
 less than or equal to 2047.
 .PP
 Subscripted variables may be freely used in expressions, in
@@ -1054,7 +1055,7 @@ Storage classes
 .PP
 There are only two storage classes in BC, global and automatic
 (local).
-Only identifiers that are to be local to a function need be 
+Only identifiers that are to be local to a function need be
 declared with the \fBauto\fP command.
 The arguments to a function
 are local to the function.
@@ -1062,7 +1063,7 @@ All other identifiers are assumed to be global
 and available to all functions.
 All identifiers, global and local, have initial values
 of zero.
-Identifiers declared as \fBauto\fP are allocated on entry to the function 
+Identifiers declared as \fBauto\fP are allocated on entry to the function
 and released on returning from the function.
 They therefore do not retain values between function calls.
 \fBauto\fP arrays are specified by the array name followed by empty square brackets.
@@ -1070,7 +1071,7 @@ They therefore do not retain values between function calls.
 Automatic variables in BC do not work in exactly the same way
 as in either C or PL/I.  On entry to a function, the old values of
 the names that appear as parameters and as automatic
-variables are pushed onto a stack.  
+variables are pushed onto a stack.
 Until return is made from the function, reference to these
 names refers only to the new values.
 .NH 1
@@ -1204,14 +1205,14 @@ value is printed and assigned to the variable `last'.
 No trailing newline is printed.
 The expression may also be a string enclosed in double quotes.
 Within these strings the following escape sequences may be used:
-\ea 
+\ea
 for bell (alert),
 `\eb'
 for backspace,
 `\ef'
 for formfeed,
 `\en'
-for newline,   
+for newline,
 `\er'
 for carriage return,
 `\et'
@@ -1230,7 +1231,7 @@ The \fBquit\fR statement stops execution of a BC program and returns
 control to UNIX when it is first encountered.
 Because it is not treated as an executable statement,
 it cannot be used
-in a function definition or in an 
+in a function definition or in an
 .ft B
 if, for,
 .ft

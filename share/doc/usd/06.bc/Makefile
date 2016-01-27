@@ -1,9 +1,8 @@
-#	$OpenBSD: Makefile,v 1.3 2004/02/01 15:18:01 jmc Exp $
-#	$DragonFly: src/share/doc/usd/06.bc/Makefile,v 1.1 2004/09/20 04:20:32 dillon Exp $
+#	@(#)Makefile	8.1 (Berkeley) 6/8/93
+# $FreeBSD: head/share/doc/usd/06.bc/Makefile 216178 2010-12-04 10:11:20Z uqs $
 
 VOLUME=	usd/06.bc
 SRCS=	bc
 MACROS=	-ms
-SRCDIR=	${.CURDIR}/../../../../usr.bin/bc/USD.doc
 
 .include <bsd.doc.mk>
