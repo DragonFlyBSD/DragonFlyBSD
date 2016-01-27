@@ -131,7 +131,7 @@ MKLINKS+=	lvchange.8 lvchange.1 \
                 vgscan.8 vgscan.1 \
                 vgsplit.8 vgsplit.1
 
-LDADD+=		-llvm -ldevmapper -lprop -ledit -ltermcap -ldevattr
+LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -ltermcap -ldevattr
 DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBTERMCAP}
 DPADD+=		${LIBDEVATTR}
 

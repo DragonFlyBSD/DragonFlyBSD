@@ -22,15 +22,22 @@ WARNS?= 2
 # utilities of the same name are handled with the associated manpage,
 # builtin.1 in share/man/man1/.
 
-DPADD= ${LIBEDIT} ${LIBTERMCAP}
-LDADD= -ledit -ltermcap
-
 CFLAGS+=-DSHELL -I. -I${.CURDIR}
 # for debug:
 # DEBUG_FLAGS+= -g -DDEBUG=2 -fno-inline
 
 .if defined(BOOTSTRAPPING)
 CFLAGS+= -DNO_HISTORY
+.  if exists(/usr/lib/libedit.a)
+DPADD= /usr/lib/libedit.a ${LIBTERMCAP}
+LDADD= -ledit -ltermcap
+.  else
+DPADD= ${LIBEDIT} ${LIBTERMCAP}
+LDADD= -lprivate_edit -ltermcap
+.  endif
+.else
+DPADD= ${LIBEDIT} ${LIBTERMCAP}
+LDADD= -lprivate_edit -ltermcap
 .endif
 
 .PATH:	${.CURDIR}/bltin \

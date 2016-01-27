@@ -3,6 +3,6 @@
 PROG=	tftp
 SRCS=	main.c tftp.c tftpsubs.c
 DPADD=	${LIBEDIT} ${LIBTERMCAP}
-LDADD=	-ledit -ltermcap
+LDADD=	-lprivate_edit -ltermcap
 
 .include <bsd.prog.mk>

@@ -6,7 +6,7 @@ CFLAGS+=	-I. -I${.CURDIR}
 WARNS?=		3
 
 DPADD=		${LIBEDIT} ${LIBTERMCAP}
-LDADD=		-ledit -ltermcap
+LDADD=		-lprivate_edit -ltermcap
 
 SCRIPTS=	bc.library
 SCRIPTSMODE=	444

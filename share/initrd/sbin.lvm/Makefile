@@ -79,7 +79,7 @@ SYMLINKS+=	lvm ${BINDIR}/lvchange \
 		lvm ${BINDIR}/vgscan \
 		lvm ${BINDIR}/vgsplit
 
-LDADD+=		-llvm -ldevmapper -lprop -ledit -ltermcap -ldevattr
+LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -ltermcap -ldevattr
 DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBTERMCAP}
 DPADD+=		${LIBDEVATTR}
 

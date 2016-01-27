@@ -2271,8 +2271,10 @@ TO_REMOVE+=/usr/games/piano
 TO_REMOVE+=/usr/share/man/man6/piano.6.gz
 TO_REMOVE+=/usr/games/hide/hangman
 TO_REMOVE+=/usr/lib/kgzldr.o
+TO_REMOVE+=/usr/lib/libedit.*
 TO_REMOVE+=/usr/lib/libldns.*
 TO_REMOVE+=/usr/lib/libssh.*
+TO_REMOVE+=/usr/lib/profile/libedit.a
 TO_REMOVE+=/usr/lib/profile/libldns.a
 TO_REMOVE+=/usr/lib/profile/libssh.a
 

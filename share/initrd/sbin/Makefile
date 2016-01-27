@@ -67,8 +67,8 @@ CRUNCH_ALIAS_reboot= halt
 CRUNCH_ALIAS_shutdown= poweroff
 CRUNCH_ALIAS_swapon= swapoff swapctl
 
-CRUNCH_LIBS+= -lcam -lsbuf -lutil -lkvm -lm -lmd -lhammer -lkiconv -ledit
-CRUNCH_LIBS+= -ltermcap -ldevstat -lprop -lpthread
+CRUNCH_LIBS+= -lcam -lsbuf -lutil -lkvm -lm -lmd -lhammer -lkiconv
+CRUNCH_LIBS+= -lprivate_edit -ltermcap -ldevstat -lprop -lpthread
 CRUNCH_LIBS+= -lbsdxml -lipsec
 
 CRUNCH_SRCDIRS+= usr.sbin

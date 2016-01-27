@@ -1,7 +1,7 @@
 # NETBSD's libedit (BSD replacement for GNU readline)
 .include	"../Makefile.inc"
 
-LIB=		edit
+LIB=		private_edit
 SHLIB_MAJOR=	5  		# NetBSD designates SHLIB_MAJOR as 3
 SHLIBDIR?=	/lib
 

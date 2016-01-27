@@ -8,7 +8,7 @@ WARNS?=	0
 SRCS+=	fmt_scaled.c
 
 DPADD+=	${LIBEDIT} ${LIBTERMCAP}
-LDADD+=	-ledit -ltermcap
+LDADD+=	-lprivate_edit -ltermcap
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

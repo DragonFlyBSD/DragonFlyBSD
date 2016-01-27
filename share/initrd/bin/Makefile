@@ -39,7 +39,7 @@ CRUNCH_PROGS_bin=	\
 	sync		\
 	test
 
-CRUNCH_LIBS+= -lcrypt -ledit -lkvm -ll -lmd -ltermcap -lutil
+CRUNCH_LIBS+= -lcrypt -lprivate_edit -lkvm -ll -lmd -ltermcap -lutil
 CRUNCH_BUILDTOOLS+= bin/sh
 
 # Additional options for specific programs

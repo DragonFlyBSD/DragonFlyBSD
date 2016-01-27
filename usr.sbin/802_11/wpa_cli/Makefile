@@ -13,7 +13,7 @@ CFLAGS+= -DCONFIG_CTRL_IFACE
 CFLAGS+= -DCONFIG_CTRL_IFACE_UNIX
 CFLAGS+= -DCONFIG_READLINE
 
-LDADD+= -ledit -ltermcap
+LDADD+= -lprivate_edit -ltermcap
 DPADD+= ${LIBEDIT} ${LIBTERMCAP}
 
 .include <bsd.prog.mk>

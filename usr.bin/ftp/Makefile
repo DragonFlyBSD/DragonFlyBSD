@@ -16,7 +16,7 @@ SRCS=	cmds.c cmdtab.c complete.c domacro.c fetch.c ftp.c main.c \
 CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 	-I${.CURDIR}/../../lib/libc/stdtime \
 	-D__dead=__dead2 -DUSE_GLOB_H
-LDADD=	-ledit -ltermcap -lutil
+LDADD=	-lprivate_edit -ltermcap -lutil
 DPADD=	${LIBEDIT} ${LIBTERMCAP} ${LIBUTIL}
 
 .if !defined(NO_OPENSSL)
