@@ -47,16 +47,16 @@ If an inconsistency is discovered,
 corrective action must be taken.
 .I Fsck
 runs in two modes.
-Normally it is run non-interactively by the system after 
+Normally it is run non-interactively by the system after
 a normal boot.
 When running in this mode,
 it will only make changes to the file system that are known
 to always be correct.
 If an unexpected inconsistency is found
 .I fsck
-will exit with a non-zero exit status, 
+will exit with a non-zero exit status,
 leaving the system running single-user.
-Typically the operator then runs 
+Typically the operator then runs
 .I fsck
 interactively.
 When running in this mode,
