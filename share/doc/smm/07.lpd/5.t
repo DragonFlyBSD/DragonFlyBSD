@@ -46,7 +46,7 @@ code if there were no errors, 1 if the job should be reprinted,
 and 2 if the job should be thrown away.
 When \fIlprm\fP
 sends a kill signal to the \fIlpd\fP process controlling
-printing, it sends a SIGINT signal 
+printing, it sends a SIGINT signal
 to all filters and descendents of filters.
 This signal can be trapped by filters that need
 to do cleanup operations such as

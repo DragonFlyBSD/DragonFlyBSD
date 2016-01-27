@@ -56,13 +56,13 @@ specifications, respectively.
 spawns a copy of itself to process the request; the master daemon
 continues to listen for new requests.
 .PP
-Clients communicate with 
+Clients communicate with
 .I lpd
 using a simple transaction oriented protocol.
 Authentication of remote clients is done based
 on the ``privilege port'' scheme employed by
 \fIrshd\fP\|(8C) and \fIrcmd\fP\|(3X).
-The following table shows the requests 
+The following table shows the requests
 understood by
 .IR lpd .
 In each request the first byte indicates the
@@ -102,7 +102,7 @@ program works recursively backwards displaying the queue of the machine with
 the printer and then the queue(s) of the machine(s) that lead to it.
 .I Lpq
 has two forms of output: in the default, short, format it
-gives a single line of output per queued job; in the long 
+gives a single line of output per queued job; in the long
 format it shows the list of files, and their sizes, that
 comprise a job.
 .NH 2
@@ -122,7 +122,7 @@ lpc \- line printer control program
 The
 .IR lpc (8)
 program is used by the system administrator to control the
-operation of the line printer system.  
+operation of the line printer system.
 For each line printer configured in /etc/printcap,
 .I lpc
 may be used to:

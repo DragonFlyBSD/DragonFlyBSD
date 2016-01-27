@@ -30,7 +30,7 @@
 .NH 1
 Setting up
 .PP
-The 4.3BSD release comes with the necessary programs 
+The 4.3BSD release comes with the necessary programs
 installed and with the default line printer queue
 created.  If the system must be modified, the
 makefile in the directory /usr/src/usr.lib/lpr
@@ -44,7 +44,7 @@ in the distribution system.
 .NH 2
 Creating a printcap file
 .PP
-The 
+The
 .I printcap
 database contains one or more entries per printer.
 A printer should have a separate spooling directory;
