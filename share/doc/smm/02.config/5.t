@@ -77,7 +77,7 @@ The first step is to fill in the global configuration parameters.
 The machine is a VAX, so the
 .I "machine type"
 is ``vax''.  We will assume this system will
-run only on this one processor, so the 
+run only on this one processor, so the
 .I "cpu type"
 is ``VAX780''.  The options are empty since this is going to
 be a ``vanilla'' VAX.  The system identifier, as mentioned before,
@@ -261,7 +261,7 @@ configured to use disk quotas or the 4.1BSD compatibility mode.
 To use these optional facilities, and others, we would probably
 clean out our current configuration, reconfigure the system, then
 recompile and relink the system image(s).  This could, of course,
-be avoided by figuring out which relocatable object files are 
+be avoided by figuring out which relocatable object files are
 affected by the reconfiguration, then reconfiguring and recompiling
 only those files affected by the configuration change.  This technique
 should be used carefully.

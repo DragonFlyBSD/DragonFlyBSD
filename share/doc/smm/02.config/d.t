@@ -78,7 +78,7 @@ It is defined as
 .IP \fBninode\fP
 .br
 The maximum number of files in the file system which may be
-active at any time.  This includes files in use by users, as 
+active at any time.  This includes files in use by users, as
 well as directory files being read or written by the system
 and files associated with bound sockets in the UNIX IPC domain.
 It is defined as
@@ -115,10 +115,10 @@ Their number is defined as
 .DE
 .IP \fBnmbclusters\fP
 .br
-The maximum number of pages which may be allocated by the network.  
+The maximum number of pages which may be allocated by the network.
 This is defined as 256 (a quarter megabyte of memory) in /sys/h/mbuf.h.
 In practice, the network rarely uses this much memory.  It starts off
-by allocating 8 kilobytes of memory, then requesting more as 
+by allocating 8 kilobytes of memory, then requesting more as
 required.  This value represents an upper bound.
 .IP \fBnquota\fP
 .br
@@ -150,7 +150,7 @@ This is defined to be
 .DS
 20 + MAXUSERS
 .DE
-pages of page tables. 
+pages of page tables.
 Its definition affects
 the size of many data structures allocated at boot time because
 it constrains the amount of virtual memory which may be addressed

@@ -57,7 +57,7 @@ file system and, possibly, other system devices.
 .NH 2
 Machine type
 .PP
-The 
+The
 .I "machine type"
 indicates if the system is going to operate on a DEC VAX-11\(dg computer,
 .FS
@@ -81,7 +81,7 @@ the cpu designation for compatible machines introduced earlier.)
 Specifying
 more than one cpu type implies that the system should be configured to run
 on any of the cpu's specified.  For some types of machines this is not
-possible and 
+possible and
 .I config
 will print a diagnostic indicating such.
 .NH 2
@@ -97,7 +97,7 @@ pieces of code in the kernel.  For example, Ernie's Varian driver used
 to be special cased because its interrupt vectors were wired together.  The
 code in the driver which understood how to handle this non-standard hardware
 configuration was conditionally compiled in only if the system
-was for Ernie.  
+was for Ernie.
 .PP
 The system identifier ``GENERIC'' is given to a system which
 will run on any cpu of a particular machine type; it should not
@@ -127,7 +127,7 @@ When the system boots it must know the location of
 the root of the file system
 tree.  This location and the part(s) of the disk(s) to be used
 for paging and swapping must be specified in order to create
-a complete configuration description.  
+a complete configuration description.
 .I Config
 uses many rules to calculate default locations for these items;
 these are described in Appendix B.

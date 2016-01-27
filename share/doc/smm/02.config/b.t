@@ -100,7 +100,7 @@ back of the partition.  The dump is placed in the back of the
 partition because the primary swap and dump device are commonly
 the same device and this allows the system to be rebooted without
 immediately overwriting the saved information.  When a dump has
-occurred, the system variable \fIdumpsize\fP 
+occurred, the system variable \fIdumpsize\fP
 is set to a non-zero value indicating the size (in bytes) of
 the dump.  The \fIsavecore\fP\|(8)
 program then copies the information from the dump partition to
@@ -108,21 +108,21 @@ a file in a ``crash'' directory and also makes a copy of the
 system which was running at the time of the crash (usually
 ``/kernel'').  The offset to the system dump is defined in the
 system variable \fIdumplo\fP (a sector offset from
-the front of the dump partition). The 
+the front of the dump partition). The
 .I savecore
 program operates by reading the contents of \fIdumplo\fP, \fIdumpdev\fP,
 and \fIdumpmagic\fP from /dev/kmem, then comparing the value
 of \fIdumpmagic\fP read from /dev/kmem to that located in
 corresponding location in the dump area of the dump partition.
-If a match is found, 
+If a match is found,
 .I savecore
 assumes a crash occurred and reads \fIdumpsize\fP from the dump area
 of the dump partition.  This value is then used in copying the
-system dump.  Refer to 
+system dump.  Refer to
 \fIsavecore\fP\|(8)
 for more information about its operation.
 .PP
-The value \fIdumplo\fP is calculated to be 
+The value \fIdumplo\fP is calculated to be
 .DS
 \fIdumpdev-size\fP \- \fImemsize\fP
 .DE

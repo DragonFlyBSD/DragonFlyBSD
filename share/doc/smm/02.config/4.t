@@ -39,7 +39,7 @@ problems with syntax errors.
 .PP
 A configuration file is broken up into three logical pieces:
 .IP \(bu 3
-configuration parameters global to all system images 
+configuration parameters global to all system images
 specified in the configuration file,
 .IP \(bu 3
 parameters specific to each
@@ -75,7 +75,7 @@ and
 The 8650 is listed as an 8600, the 785 as a 780, and a 725 as a 730.
 .IP "\fBoptions\fP \fIoptionlist\fP"
 .br
-Compile the listed optional code into the system. 
+Compile the listed optional code into the system.
 Options in this list are separated by commas.
 Possible options are listed at the top of the generic makefile.
 A line of the form ``options FUNNY,HAHA'' generates global ``#define''s
@@ -108,7 +108,7 @@ or begin with a dash.
 .IP "\fBtimezone\fP \fInumber\fP [ \fBdst\fP [ \fInumber\fP ] ]"
 .br
 Specifies the timezone used by the system.  This is measured in the
-number of hours your timezone is west of GMT.  
+number of hours your timezone is west of GMT.
 EST is 5 hours west of GMT, PST is 8.  Negative numbers
 indicate hours east of GMT. If you specify
 \fBdst\fP, the system will operate under daylight savings time.
@@ -166,7 +166,7 @@ A configuration clause is one of the following
 \fBargs\fP [ \fBon\fP ] \fIarg-device\fP
 .LP
 (the ``on'' is optional.)  Multiple configuration clauses
-are separated by white space; 
+are separated by white space;
 .I config
 allows specifications to be continued across multiple lines
 by beginning the continuation line with a tab character.
@@ -185,7 +185,7 @@ in which case
 will use builtin rules to select default unit numbers and file
 system partitions.  The defaulting rules are a bit complicated
 as they are dependent on the overall system configuration.
-For example, the swap area need not be specified at all if 
+For example, the swap area need not be specified at all if
 the root device is specified; in this case the swap area is
 placed in the ``b'' partition of the same disk where the root
 file system is located.  Appendix B contains a complete list
@@ -198,7 +198,7 @@ numbers on a per-machine basis.  A file,
 ``/sys/conf/devices.machine'' (where ``machine''
 is the machine type specified in the configuration file),
 is used to map a device name to its major block device number.
-The minor device number is calculated using the standard 
+The minor device number is calculated using the standard
 disk partitioning rules: on unit 0, partition ``a'' is minor device
 0, partition ``b'' is minor device 1, and so on; for units
 other than 0, add 8 times the unit number to get the minor
@@ -251,10 +251,10 @@ The specification of hardware devices in the configuration file
 parallels the interconnection hierarchy of the machine to be
 configured.  On the VAX, this means that a configuration file must
 indicate what MASSBUS and UNIBUS adapters are present, and to
-which \fInexi\fP they might be connected.* 
+which \fInexi\fP they might be connected.*
 .FS
-* While VAX-11/750's and VAX-11/730 do not actually have 
-nexi, the system treats them as having 
+* While VAX-11/750's and VAX-11/730 do not actually have
+nexi, the system treats them as having
 .I "simulated nexi"
 to simplify device configuration.
 .FE
@@ -267,7 +267,7 @@ probe for all the possible values.  The latter allows a single
 device configuration list to match many possible physical
 configurations.  For example, a disk may be indicated as present
 at UNIBUS adapter 0, or at any UNIBUS adapter which the system
-locates at boot time.  The latter scheme, termed 
+locates at boot time.  The latter scheme, termed
 .IR wildcarding ,
 allows more flexibility in the physical configuration of a system;
 if a disk must be moved around for some reason, the system will
@@ -297,7 +297,7 @@ is one of the standard device names, as
 indicated in section 4 of the UNIX Programmers Manual,
 concatenated with the
 .I logical
-unit number to be assigned the device (the 
+unit number to be assigned the device (the
 .I logical
 unit number may be different than the
 .I physical
@@ -372,7 +372,7 @@ device.
 on MASSBUS devices, but not on disks on a UNIBUS controller.
 For controllers, the control status register must be
 given explicitly, as well the number of interrupt vectors used and
-the names of the routines to which they should be bound. 
+the names of the routines to which they should be bound.
 Thus the example lines given above might be completed as:
 .IP
 .ta 1.5i 2.5i 4.0i
@@ -394,7 +394,7 @@ need to know which lines are attached to modem lines so that no one will
 be allowed to use them unless a connection is present.  For this reason,
 one last parameter may be specified to a
 .IR device ,
-a 
+a
 .I flags
 field.  It has the syntax
 .IP

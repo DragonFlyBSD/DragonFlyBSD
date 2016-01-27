@@ -80,7 +80,7 @@ multiple machines.
 .NH 2
 Adding non-standard system facilities
 .PP
-This section considers the work needed to augment 
+This section considers the work needed to augment
 .IR config 's
 data base files for non-standard system facilities.
 .I Config
@@ -98,7 +98,7 @@ The first is common to all systems,
 the second contains files unique to a single machine type,
 and the third is an optional list of modules for use on a specific machine.
 This last file may override specifications in the first two.
-The format of the 
+The format of the
 .I files
 file has grown somewhat complex over time.  Entries are normally of
 the form
@@ -142,7 +142,7 @@ Two other optional keywords modify the usage of the file.
 understands that certain files are used especially for
 kernel profiling.  These files are indicated in the
 .I files
-files with a 
+files with a
 .I profiling-routine
 keyword.  For example, the current profiling subroutines
 are sequestered off in a separate file with the following
@@ -153,11 +153,11 @@ entry:
 \fIsys/subr_mcount.c\fP	\fBoptional\fP	\fBprofiling-routine\fP
 .fi
 .LP
-The 
+The
 .I profiling-routine
 keyword forces
 .I config
-not to compile the source file with the 
+not to compile the source file with the
 .B \-pg
 option.
 .PP
@@ -194,7 +194,7 @@ lw(1.0i) l.
 .TE
 .DE
 .PP
-Existing block and character device drivers for the VAX 
+Existing block and character device drivers for the VAX
 reside in ``/sys/vax'', ``/sys/vaxmba'', and ``/sys/vaxuba''.  Network
 interface drivers reside in ``/sys/vaxif''.  Any new device
 drivers should be placed in the appropriate source code directory
@@ -206,7 +206,7 @@ named ``dhreg.h''.
 .PP
 Once the source for the device driver has been placed in a directory,
 the file ``/sys/conf/files.machine'', and possibly
-``/sys/conf/devices.machine'' should be modified.  The 
+``/sys/conf/devices.machine'' should be modified.  The
 .I files
 files in the conf directory contain a line for each C source or binary-only
 file in the system.  Those files which are machine independent are
@@ -221,7 +221,7 @@ In addition to including the driver in the
 file, it must also be added to the device configuration tables.  These
 are located in ``/sys/vax/conf.c'', or similar for machines other than
 the VAX.  If you don't understand what to add to this file, you should
-study an entry for an existing driver. 
+study an entry for an existing driver.
 Remember that the position in the
 device table specifies the major device number.
 The block major number is needed in the ``devices.machine'' file

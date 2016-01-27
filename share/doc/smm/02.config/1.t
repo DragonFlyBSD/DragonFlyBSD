@@ -43,9 +43,9 @@ to that configuration.
 simplifies system maintenance by isolating system dependencies
 in a single, easy to understand, file.
 .PP
-This document describes the content and 
+This document describes the content and
 format of system configuration
-files and the rules which must be followed when creating 
+files and the rules which must be followed when creating
 these files.  Example configuration files are constructed
 and discussed.
 .PP
