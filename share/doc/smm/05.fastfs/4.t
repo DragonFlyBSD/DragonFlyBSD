@@ -28,7 +28,7 @@
 .\"	@(#)4.t	8.1 (Berkeley) 6/8/93
 .\"
 .ds RH Performance
-.NH 
+.NH
 Performance
 .PP
 Ultimately, the proof of the effectiveness of the
@@ -59,7 +59,7 @@ insure that buffering in the
 operating system does not affect the results.
 They are also run at least three times in succession;
 the first to get the system into a known state
-and the second two to insure that the 
+and the second two to insure that the
 experiment has stabilized and is repeatable.
 The tests used and their results are
 discussed in detail in [Kridle83]\(dg.
@@ -126,7 +126,7 @@ systems are full.
 .PP
 The percentage of bandwidth given in Table 2 is a measure
 of the effective utilization of the disk by the file system.
-An upper bound on the transfer rate from the disk is calculated 
+An upper bound on the transfer rate from the disk is calculated
 by multiplying the number of bytes on a track by the number
 of revolutions of the disk per second.
 The bandwidth is calculated by comparing the data rates
@@ -150,7 +150,7 @@ In the new file system, the reading rate is always at least
 as fast as the writing rate.
 This is to be expected since the kernel must do more work when
 allocating blocks than when simply reading them.
-Note that the write rates are about the same 
+Note that the write rates are about the same
 as the read rates in the 8192 byte block file system;
 the write rates are slower than the read rates in the 4096 byte block
 file system.
@@ -177,14 +177,14 @@ seeks resulting in a lower throughput rate.
 .PP
 In the new system the blocks of a file are more optimally
 ordered on the disk.
-Even though reads are still synchronous, 
+Even though reads are still synchronous,
 the requests are presented to the disk in a much better order.
 Even though the writes are still asynchronous,
 they are already presented to the disk in minimum seek
 order so there is no gain to be had by reordering them.
 Hence the disk seek latencies that limited the old file system
 have little effect in the new file system.
-The cost of allocation is the factor in the new system that 
+The cost of allocation is the factor in the new system that
 causes writes to be slower than reads.
 .PP
 The performance of the new file system is currently
@@ -193,14 +193,14 @@ required to move data from disk buffers in the
 system's address space to data buffers in the user's
 address space.  These copy operations account for
 about 40% of the time spent performing an input/output operation.
-If the buffers in both address spaces were properly aligned, 
+If the buffers in both address spaces were properly aligned,
 this transfer could be performed without copying by
 using the VAX virtual memory management hardware.
 This would be especially desirable when transferring
 large amounts of data.
 We did not implement this because it would change the
 user interface to the file system in two major ways:
-user programs would be required to allocate buffers on page boundaries, 
+user programs would be required to allocate buffers on page boundaries,
 and data would disappear from buffers after being written.
 .PP
 Greater disk throughput could be achieved by rewriting the disk drivers
@@ -219,9 +219,9 @@ then the minimum spacing to the next allocatable
 block on any platter is between a sixth and a half a revolution.
 The implication of this is that the best possible layout without
 contiguous blocks uses only half of the bandwidth of any given track.
-If each track contains an odd number of sectors, 
+If each track contains an odd number of sectors,
 then it is possible to resolve the rotational delay to any number of sectors
-by finding a block that begins at the desired 
+by finding a block that begins at the desired
 rotational position on another track.
 The reason that block chaining has not been implemented is because it
 would require rewriting all the disk drivers in the system,
@@ -238,7 +238,7 @@ overhead of allocating at each write,
 and it can cut down on the number of disk writes needed to
 keep the block pointers on the disk
 synchronized with the block allocation [Powell79].
-This technique was not included because block allocation 
+This technique was not included because block allocation
 currently accounts for less than 10% of the time spent in
 a write system call and, once again, the
 current throughput rates are already limited by the speed

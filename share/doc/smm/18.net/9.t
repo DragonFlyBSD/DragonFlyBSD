@@ -68,7 +68,7 @@ The model employed in the networking system attaches no promises
 of delivery to the packets handed to a network interface, and thus
 corresponds more closely to the Ethernet.  Errors returned by the
 output routine are only those that can be detected immediately,
-and are normally trivial in nature (no buffer space, 
+and are normally trivial in nature (no buffer space,
 address format not handled, etc.).
 No indication is received if errors are detected after the call has returned.
 .NH 2
@@ -82,7 +82,7 @@ modules.  In the PUP model [Boggs78] these protocols are termed Level
 in the ISO model, network layer protocols.  In this system each such
 protocol module has an input packet queue assigned to it.  Incoming
 packets received by a network interface are queued for the protocol
-module, and a VAX software interrupt is posted to initiate processing.  
+module, and a VAX software interrupt is posted to initiate processing.
 .PP
 Three macros are available for queuing and dequeuing packets:
 .IP "IF_ENQUEUE(ifq, m)"
@@ -90,7 +90,7 @@ Three macros are available for queuing and dequeuing packets:
 This places the packet \fIm\fP at the tail of the queue \fIifq\fP.
 .IP "IF_DEQUEUE(ifq, m)"
 .br
-This places a pointer to the packet at the head of queue \fIifq\fP 
+This places a pointer to the packet at the head of queue \fIifq\fP
 in \fIm\fP
 and removes the packet from the queue.
 A zero value will be returned in \fIm\fP if the queue is empty.
@@ -110,7 +110,7 @@ is filled, in which case the macro IF_DROP(ifq) should be used to
 increment the count of the number of packets dropped, and the offending
 packet is dropped.  For example, the following code fragment is commonly
 found in a network interface's input routine,
-.DS 
+.DS
 ._f
 if (IF_QFULL(inq)) {
 	IF_DROP(inq);

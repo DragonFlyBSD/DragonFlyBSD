@@ -106,7 +106,7 @@ after a crash [Kowalski78].
 The file system performance was improved by a factor of more than two by
 changing the basic block size from 512 to 1024 bytes.
 The increase was because of two factors:
-each disk transfer accessed twice as much data, 
+each disk transfer accessed twice as much data,
 and most files could be described without need to access
 indirect blocks since the direct blocks contained twice as much data.
 The file system with these changes will henceforth be referred to as the
@@ -115,7 +115,7 @@ The file system with these changes will henceforth be referred to as the
 This performance improvement gave a strong indication that
 increasing the block size was a good method for improving
 throughput.
-Although the throughput had doubled, 
+Although the throughput had doubled,
 the old file system was still using only about
 four percent of the disk bandwidth.
 The main problem was that although the free list was initially

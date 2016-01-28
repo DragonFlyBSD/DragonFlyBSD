@@ -34,7 +34,7 @@
 .de DT
 .if t .ta .5i 1.25i 2.5i 3.75i
 .\" 3.5i went to 3.8i
-.if n .ta .7i 1.75i 3.8i 
+.if n .ta .7i 1.75i 3.8i
 ..
 .bd S B 3
 .TL

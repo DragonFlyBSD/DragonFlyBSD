@@ -40,7 +40,7 @@ the VAX,
 as modified in the 4.4BSD release.
 The system facilities provide
 a uniform user interface to networking
-within UNIX.  In addition, the implementation 
+within UNIX.  In addition, the implementation
 introduces a structure for network communications which may be
 used by system implementors in adding new networking
 facilities.  The internal structure is not visible

@@ -82,7 +82,7 @@ and incrementing the associated reference counts for the pages).
 Separate data pages are currently used only
 when copying data from a user process into the kernel,
 and when bringing data in at the hardware level.  Routines which
-manipulate mbufs are not normally aware whether data is stored directly in 
+manipulate mbufs are not normally aware whether data is stored directly in
 the mbuf data array, or if it is kept in separate pages.
 .PP
 The following may be used to allocate and free mbufs:
@@ -118,13 +118,13 @@ chains:
 .IP "m = m_copy(m0, off, len);"
 .br
 The \fIm_copy\fP routine create a copy of all, or part, of a
-list of the mbufs in \fIm0\fP.  \fILen\fP bytes of data, starting 
-\fIoff\fP bytes from the front of the chain, are copied. 
+list of the mbufs in \fIm0\fP.  \fILen\fP bytes of data, starting
+\fIoff\fP bytes from the front of the chain, are copied.
 Where possible, reference counts on pages are used instead
 of core to core copies.  The original mbuf chain must have at
 least \fIoff\fP + \fIlen\fP bytes of data.  If \fIlen\fP is
 specified as M_COPYALL, all the data present, offset
-as before, is copied.  
+as before, is copied.
 .IP "m_cat(m, n);"
 .br
 The mbuf chain, \fIn\fP, is appended to the end of \fIm\fP.

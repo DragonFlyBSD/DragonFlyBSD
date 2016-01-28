@@ -66,7 +66,7 @@ Bass, J.
 Onyx Systems Inc, 73 E. Trimble Rd, San Jose, CA 95131
 Jan 1981.
 .IP [Feiertag71] 20
-Feiertag, R. J. and Organick, E. I., 
+Feiertag, R. J. and Organick, E. I.,
 "The Multics Input-Output System",
 Proceedings of the Third Symposium on Operating Systems Principles,
 ACM, Oct 1971. pp 35-41

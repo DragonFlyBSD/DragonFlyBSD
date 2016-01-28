@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)2.t	8.1 (Berkeley) 7/27/93
 .\" $FreeBSD: src/share/doc/smm/01.setup/2.t,v 1.7 1999/08/28 00:18:35 peter Exp $
-.\" $DragonFly: src/share/doc/smm/01.setup/2.t,v 1.2 2003/06/17 04:36:57 dillon Exp $
 .\"
 .ds lq ``
 .ds rq ''
@@ -65,7 +64,7 @@ found in previous BSD distributions.
 Our primary development environment is the HP9000/300 series machines.
 The other architectures are developed and supported by
 people outside the university.
-Consequently, we are not able to directly test or maintain these 
+Consequently, we are not able to directly test or maintain these
 other architectures, so cannot comment on their robustness,
 reliability, or completeness.
 .Sh 2 "Bootstrapping from the tape"
@@ -403,7 +402,7 @@ will be discussed later.
 .PP
 UNIX itself then runs for the first time and begins by printing out a banner
 identifying the release and
-version of the system that is in use and the date that it was compiled. 
+version of the system that is in use and the date that it was compiled.
 .PP
 Next the
 .I mem
@@ -869,7 +868,7 @@ A spare, formatted SCSI disk is also useful.
 This procedure is similar to the HP300.
 If you have an extra disk, the easiest approach is to use \fIdd\fP\|(1)
 under ULTRIX to copy the root filesystem image to the beginning
-of the spare disk. 
+of the spare disk.
 The root filesystem image includes a disklabel and bootblock along with the
 root filesystem.
 An example command to copy the image to the beginning of a disk is:
@@ -921,7 +920,7 @@ The `m' argument tells the kernel to look for a root filesystem in memory.
 Next you should proceed to section 2.4.3 to build a disk-based root filesystem.
 .Sh 4 "Procedure C: bootstrap over the network"
 .PP
-You will need a host machine that is running the \fIbootp\fP server 
+You will need a host machine that is running the \fIbootp\fP server
 with the
 .Pn kernel.net
 file installed in the default directory defined by the
@@ -1578,7 +1577,7 @@ Many of the X11 utilities search using the path
 so be sure that you have a symbolic link that points at
 the location of your X11 binaries (here, X11R5).
 .PP
-Having now completed the extraction of the sources, 
+Having now completed the extraction of the sources,
 you may want to verify that your
 .Pn /usr/src
 filesystem is consistent.

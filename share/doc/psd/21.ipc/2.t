@@ -47,7 +47,7 @@ The basic building block for communication is the \fIsocket\fP.
 A socket is an endpoint of communication to which a name may
 be \fIbound\fP.  Each socket in use has a \fItype\fP
 and one or more associated processes.  Sockets exist within
-\fIcommunication domains\fP.  
+\fIcommunication domains\fP.
 A communication domain is an
 abstraction introduced to bundle common properties of
 processes communicating through sockets.
@@ -85,7 +85,7 @@ Socket types
 .PP
 Sockets are
 typed according to the communication properties visible to a
-user. 
+user.
 Processes are presumed to communicate only between sockets of
 the same type, although there is
 nothing that prevents communication between sockets of different
@@ -104,11 +104,11 @@ as simply a pair of connected stream sockets.
 .FE
 .PP
 A \fIdatagram\fP socket supports bidirectional flow of data which
-is not promised to be sequenced, reliable, or unduplicated. 
+is not promised to be sequenced, reliable, or unduplicated.
 That is, a process
-receiving messages on a datagram socket may find messages duplicated, 
+receiving messages on a datagram socket may find messages duplicated,
 and, possibly,
-in an order different from the order in which it was sent. 
+in an order different from the order in which it was sent.
 An important characteristic of a datagram
 socket is that record boundaries in data are preserved.  Datagram
 sockets closely model the facilities found in many contemporary
@@ -120,13 +120,13 @@ protocols which support socket abstractions.
 These sockets are normally datagram oriented, though their
 exact characteristics are dependent on the interface provided by
 the protocol.  Raw sockets are not intended for the general user; they
-have been provided mainly for those interested in developing new 
+have been provided mainly for those interested in developing new
 communication protocols, or for gaining access to some of the more
 esoteric facilities of an existing protocol.  The use of raw sockets
 is considered in section 5.
 .PP
 A \fIsequenced packet\fP socket is similar to a stream socket,
-with the exception that record boundaries are preserved.  This 
+with the exception that record boundaries are preserved.  This
 interface is provided only as part of the NS socket abstraction,
 and is very important in most serious NS applications.
 Sequenced-packet sockets allow the user to manipulate the
@@ -168,7 +168,7 @@ For the UNIX domain the constant is AF_UNIX*;  for the Internet
 * The manifest constants are named AF_whatever as they indicate
 the ``address format'' to use in interpreting names.
 .FE
-domain AF_INET; and for the NS domain, AF_NS.  
+domain AF_INET; and for the NS domain, AF_NS.
 The socket types are also defined in this file
 and one of SOCK_STREAM, SOCK_DGRAM, SOCK_RAW, or SOCK_SEQPACKET
 must be specified.
@@ -195,7 +195,7 @@ There are several reasons a socket call may fail.  Aside from
 the rare occurrence of lack of memory (ENOBUFS), a socket
 request may fail due to a request for an unknown protocol
 (EPROTONOSUPPORT), or a request for a type of socket for
-which there is no supporting protocol (EPROTOTYPE). 
+which there is no supporting protocol (EPROTOTYPE).
 .NH 2
 Binding local names
 .PP
@@ -204,7 +204,7 @@ to a socket, processes have no way to reference it and, consequently,
 no messages may be received on it.
 Communicating processes are bound
 by an \fIassociation\fP.  In the Internet and NS domains,
-an association 
+an association
 is composed of local and foreign
 addresses, and local and foreign ports,
 while in the UNIX domain, an association is composed of
@@ -291,7 +291,7 @@ bind(s, (struct sockaddr *) &sin, sizeof (sin));
 .DE
 but the selection of what to place in the address \fIsin\fP
 requires some discussion.  We will come back to the problem
-of formulating Internet addresses in section 3 when 
+of formulating Internet addresses in section 3 when
 the library routines used in name resolution are discussed.
 .PP
 Binding an NS address to a socket is even more
@@ -372,7 +372,7 @@ due to a server process
 not being present at the requested name.
 .IP "ENETDOWN or EHOSTDOWN"
 .br
-These operational errors are 
+These operational errors are
 returned based on status information delivered to
 the client host by the underlying communication services.
 .IP "ENETUNREACH or EHOSTUNREACH"
@@ -393,12 +393,12 @@ incoming connection requests:
 listen(s, 5);
 .DE
 The second parameter to the \fIlisten\fP call specifies the maximum
-number of outstanding connections which may be queued awaiting 
+number of outstanding connections which may be queued awaiting
 acceptance by the server process; this number
 may be limited by the system.  Should a connection be
 requested while the queue is full, the connection will not be
 refused, but rather the individual messages which comprise the
-request will be ignored.  This gives a harried server time to 
+request will be ignored.  This gives a harried server time to
 make room in its pending connection queue while the client
 retries the connection request.  Had the connection been returned
 with the ECONNREFUSED error, the client would be unable to tell
@@ -478,7 +478,7 @@ MSG_DONTROUTE	send data without routing packets
 .DE
 Out of band data is a notion specific to stream sockets, and one
 which we will not immediately consider.  The option to have data
-sent without routing applied to the outgoing packets is currently 
+sent without routing applied to the outgoing packets is currently
 used only by the routing table management process, and is
 unlikely to be of interest to the casual user.  The ability
 to preview data is, however, of interest.  When MSG_PEEK
@@ -496,10 +496,10 @@ close(s);
 .DE
 If data is associated with a socket which promises reliable delivery
 (e.g. a stream socket) when a close takes place, the system will
-continue to attempt to transfer the data. 
+continue to attempt to transfer the data.
 However, after a fairly long period of
 time, if the data is still undelivered, it will be discarded.
-Should a user have no use for any pending data, it may 
+Should a user have no use for any pending data, it may
 perform a \fIshutdown\fP on the socket prior to closing it.
 This call is of the form:
 .DS
@@ -530,7 +530,7 @@ To send data, the \fIsendto\fP primitive is used,
 sendto(s, buf, buflen, flags, (struct sockaddr *)&to, tolen);
 .DE
 The \fIs\fP, \fIbuf\fP, \fIbuflen\fP, and \fIflags\fP
-parameters are used as before. 
+parameters are used as before.
 The \fIto\fP and \fItolen\fP
 values are used to indicate the address of the intended recipient of the
 message.  When
@@ -539,7 +539,7 @@ unlikely that any errors will be reported to the sender.  When
 information is present locally to recognize a message that can
 not be delivered (for instance when a network is unreachable),
 the call will return \-1 and the global value \fIerrno\fP will
-contain an error number. 
+contain an error number.
 .PP
 To receive messages on an unconnected datagram socket, the
 \fIrecvfrom\fP primitive is provided:
@@ -624,7 +624,7 @@ the macro FD_ZERO(\fI&mask\fP) has been provided
 to clear the set \fImask\fP.
 The parameter \fInfds\fP in the \fIselect\fP call specifies the range
 of file descriptors  (i.e. one plus the value of the largest
-descriptor) to be examined in a set. 
+descriptor) to be examined in a set.
 .PP
 A timeout value may be specified if the selection
 is not to last more than a predetermined period of time.  If
@@ -653,7 +653,7 @@ tested with the \fIFD_ISSET(fd, &mask)\fP macro, which
 returns a non-zero value if \fIfd\fP is a member of the set
 \fImask\fP, and 0 if it is not.
 .PP
-To determine if there are connections waiting 
+To determine if there are connections waiting
 on a socket to be used with an \fIaccept\fP call,
 \fIselect\fP can be used, followed by
 a \fIFD_ISSET(fd, &mask)\fP macro to check for read

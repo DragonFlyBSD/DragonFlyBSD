@@ -406,7 +406,7 @@ The network is started by running
 .Pn /etc/netstart .
 Once started, you should test connectivity using
 .Xr ping (8).
-You should first test connectivity to yourself, 
+You should first test connectivity to yourself,
 then another host on your Ethernet,
 and finally a host on another Ethernet.
 The
@@ -638,7 +638,7 @@ To install
 .Xr uucp
 on your system,
 start by selecting a site name
-(shorter than 14 characters). 
+(shorter than 14 characters).
 A
 .Xr uucp
 account must be created in the password file and a password set up.

@@ -71,7 +71,7 @@ Line editing
 .PP
 When the terminal is in cooked mode, editing of an input line
 is performed.  Editing facilities allow deletion of the previous
-character or word, or deletion of the current input line. 
+character or word, or deletion of the current input line.
 In addition, a special character may be used to reprint the current
 input line after some number of editing operations have been applied.
 .PP
@@ -118,7 +118,7 @@ struct ttymode {
 	int	tt_oflags;	/* output flags */
 };
 .DE
-and ``special characters'' are specified with the 
+and ``special characters'' are specified with the
 \fIttychars\fP structure,
 .DS
 ._f

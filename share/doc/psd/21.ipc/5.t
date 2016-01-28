@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)5.t	8.1 (Berkeley) 8/14/93
 .\" $FreeBSD: src/share/doc/psd/21.ipc/5.t,v 1.5 1999/08/28 00:18:26 peter Exp $
-.\" $DragonFly: src/share/doc/psd/21.ipc/5.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .\".ds RH "Advanced Topics
 .bp
@@ -50,7 +49,7 @@ of the features which we consider in this section.
 Out of band data
 .PP
 The stream socket abstraction includes the notion of \*(lqout
-of band\*(rq data.  Out of band data is a logically independent 
+of band\*(rq data.  Out of band data is a logically independent
 transmission channel associated with each pair of connected
 stream sockets.  Out of band data is delivered to the user
 independently of normal data.
@@ -96,7 +95,7 @@ the mark in the data stream, the SIOCATMARK ioctl is provided:
 ioctl(s, SIOCATMARK, &yes);
 .DE
 If \fIyes\fP is a 1 on return, the next read will return data
-after the mark.  Otherwise (assuming out of band data has arrived), 
+after the mark.  Otherwise (assuming out of band data has arrived),
 the next read will provide data sent by the client prior
 to transmission of the out of band signal.  The routine used
 in the remote login process to flush output on receipt of an
@@ -255,7 +254,7 @@ but may be redefined at a later time with the F_SETOWN
 \fIfcntl\fP, such as was done in the code above for SIGIO.
 To set the socket's process id for signals, positive arguments
 should be given to the \fIfcntl\fP call.  To set the socket's
-process group for signals, negative arguments should be 
+process group for signals, negative arguments should be
 passed to \fIfcntl\fP.  Note that the process number indicates
 either the associated process id or the associated process
 group; it is impossible to specify both at the same time.
@@ -469,7 +468,7 @@ s = socket(AF_NS, SOCK_RAW, NSPROTO_ERROR);
 .NH 2
 Address binding
 .PP
-As was mentioned in section 2, 
+As was mentioned in section 2,
 binding addresses to sockets in the Internet and NS domains can be
 fairly complex.  As a brief reminder, these associations
 are composed of local and foreign
@@ -494,7 +493,7 @@ to a user.
 To simplify local address binding in the Internet domain the notion of a
 \*(lqwildcard\*(rq address has been provided.  When an address
 is specified as INADDR_ANY (a manifest constant defined in
-<netinet/in.h>), the system interprets the address as 
+<netinet/in.h>), the system interprets the address as
 \*(lqany valid address\*(rq.  For example, to bind a specific
 port number to a socket, but leave the local address unspecified,
 the following code might be used:
@@ -601,7 +600,7 @@ requirement as the system still checks at connect time to
 be sure any other sockets with the same local address and
 port do not have the same foreign address and port.
 If the association already exists, the error EADDRINUSE is returned.
-A related socket option, SO_REUSEPORT, which allows completely 
+A related socket option, SO_REUSEPORT, which allows completely
 duplicate bindings, is described in the IP multicasting section.
 .NH 2
 Socket Options
@@ -685,7 +684,7 @@ be sent to all accessible neighbors.
 Multicasting is an alternative to broadcasting.
 Setting up IP multicast sockets is described in the next section.
 .PP
-To send a broadcast message, a datagram socket 
+To send a broadcast message, a datagram socket
 should be created:
 .DS
 s = socket(AF_INET, SOCK_DGRAM, 0);
@@ -818,7 +817,7 @@ for (n = ifc.ifc_len / sizeof (struct ifreq); --n >= 0; ifr++) {
 		continue;
 .DE
 .PP
-Once the flags have been obtained, the broadcast address 
+Once the flags have been obtained, the broadcast address
 must be obtained.  In the case of broadcast networks this is
 done via the SIOCGIFBRDADDR \fIioctl\fP, while for point-to-point networks
 the address of the destination host is obtained with SIOCGIFDSTADDR.
@@ -895,7 +894,7 @@ SOCK_DGRAM and SOCK_RAW, and only on subnetworks for which the interface
 driver has been modified to support multicasting.
 .PP
 The next subsections describe how to send and receive multicast datagrams.
-.NH 3 
+.NH 3
 Sending IP Multicast Datagrams
 .PP
 To send a multicast datagram, specify an IP multicast address in the range
@@ -1014,7 +1013,7 @@ A multicast datagram sent with an initial TTL greater than 1 may be delivered
 to the sending host on a different interface from that on which it was sent,
 if the host belongs to the destination group on that other interface.  The
 loopback control option has no effect on such delivery.
-.NH 3 
+.NH 3
 Receiving IP Multicast Datagrams
 .PP
 Before a host can receive IP multicast datagrams, it must become a member
@@ -1054,16 +1053,16 @@ datagrams are received on that socket.  Incoming multicast packets are
 accepted by the kernel IP layer if any socket has claimed a membership in the
 destination group of the datagram; however, delivery of a multicast datagram
 to a particular socket is based on the destination port (or protocol type, for
-raw sockets), just as with unicast datagrams.  
+raw sockets), just as with unicast datagrams.
 To receive multicast datagrams
 sent to a particular port, it is necessary to bind to that local port,
 leaving the local address unspecified (i.e., INADDR_ANY).
 To receive multicast datagrams
 sent to a particular group and port, bind to the local port, with
-the local address set to the multicast group address.  
+the local address set to the multicast group address.
 Once bound to a multicast address, the socket cannot be used for sending data.
 .PP
-More than one process may bind to the same SOCK_DGRAM UDP port 
+More than one process may bind to the same SOCK_DGRAM UDP port
 or the same multicast group and port if the
 .I bind
 call is preceded by:
@@ -1073,7 +1072,7 @@ setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
 .DE
 All processes sharing the port must enable this option.
 Every incoming multicast or broadcast UDP datagram destined to
-the shared port is delivered to all sockets bound to the port.  
+the shared port is delivered to all sockets bound to the port.
 For backwards compatibility reasons, this does not apply to incoming
 unicast datagrams.  Unicast
 datagrams are never delivered to more than one socket, regardless of
@@ -1166,7 +1165,7 @@ main(argc)
 		    }
                     perror("recvfrom");
                     exit(1);
-            } 
+            }
             printf("%s: message = \e"%s\e"\en",
                     inet_ntoa(addr.sin_addr), message);
         }
@@ -1320,7 +1319,7 @@ setsockopt(s, NSPROTO_IDP, SO_DEFAULT_HEADERS, (char *) &proto_idp,
 Using SO_HEADERS_ON_OUTPUT is somewhat more difficult.  When
 SO_HEADERS_ON_OUTPUT is turned on for an IDP socket, the socket
 becomes (for all intents and purposes) a raw socket.  In this
-case, all the fields of the prototype header (except the 
+case, all the fields of the prototype header (except the
 length and checksum fields, which are computed by the kernel)
 must be filled in correctly in order for the socket to send and
 receive data in a sensible manner.  To be more specific, the
@@ -1352,7 +1351,7 @@ a zero-length packet with end-of-message set and with
 datastream type 254.  The other side of the connection
 indicates that it is OK to close by sending a zero-length
 packet with end-of-message set and datastream type 255.  Finally,
-the closing process replies with a zero-length packet with 
+the closing process replies with a zero-length packet with
 substream type 255; at this point, the connection is considered
 closed.  The following code fragments are simplified examples
 of how one might handle this three-way handshake at the user
@@ -1491,7 +1490,7 @@ simulate PEX fully is left as an exercise for the reader.
 Inetd
 .PP
 One of the daemons provided with 4.4BSD is \fIinetd\fP, the
-so called ``internet super-server.''  
+so called ``internet super-server.''
 Having one daemon listen for requests for many daemons
 instead of having each daemon listen for its own requests
 reduces the number of idle daemons and simplies their implementation.
@@ -1573,7 +1572,7 @@ The TCPMUX protocol described in RFC-1078 is simple:
 .QP
 ``A TCP client connects to a foreign host on TCP port 1.  It sends the
 service name followed by a carriage-return line-feed <CRLF>.
-The service name is never case sensitive. 
+The service name is never case sensitive.
 The server replies with a
 single character indicating positive ("+") or negative ("\-")
 acknowledgment, immediately followed by an optional message of

@@ -48,12 +48,12 @@ data transport services with minimal addressing
 structure.
 Addressing at this level is normally host to host,
 with implicit or explicit routing optionally supported
-by the communicating agents. 
+by the communicating agents.
 .PP
 At the transport
 layer the notions of reliable transfer, data sequencing,
 flow control, and service addressing are normally
-included.  Reliability is usually managed by 
+included.  Reliability is usually managed by
 explicit acknowledgement of data delivered.  Failure
 to acknowledge a transfer results in retransmission of
 the data.  Sequencing may be handled by tagging

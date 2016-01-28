@@ -121,7 +121,7 @@ as a library routine using the ITIMER_REAL timer.  The process
 profiling facilities of earlier versions of UNIX
 remain because
 it is not always possible to guarantee
-the automatic restart of system calls after 
+the automatic restart of system calls after
 receipt of a signal.
 The \fIprofil\fP call arranges for the kernel to begin gathering
 execution statistics for a process:

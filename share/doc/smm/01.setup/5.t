@@ -56,7 +56,7 @@ Xerox NS support is enabled with the NS option.
 ISO OSI support is enabled with the ISO option.
 In either case, include the pseudo-devices
 ``pty'', and ``loop'' in your machine's configuration
-file. 
+file.
 The ``pty'' pseudo-device forces the pseudo terminal device driver
 to be configured into the system, see
 .Xr pty (4),

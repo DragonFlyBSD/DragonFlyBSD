@@ -75,7 +75,7 @@ File access rates of up to ten times faster than the traditional
 UNIX file system are experienced.
 Long needed enhancements to the programmers'
 interface are discussed.
-These include a mechanism to place advisory locks on files, 
+These include a mechanism to place advisory locks on files,
 extensions of the name space across file systems,
 the ability to use long file names,
 and provisions for administrative control of resource usage.
@@ -114,7 +114,7 @@ General Terms:
 file system,
 measurement,
 performance.
-.bp 
+.bp
 .ce
 .B "TABLE OF CONTENTS"
 .LP

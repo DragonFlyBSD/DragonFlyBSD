@@ -305,7 +305,7 @@ symlink(path1, path2);
 char *path1, *path2;
 .DE
 The \fIunlink\fP primitive may be used to remove
-either type of link. 
+either type of link.
 .PP
 If a file is a symbolic link, the ``value'' of the
 link may be read with the \fIreadlink\fP call,
@@ -450,7 +450,7 @@ where \fIspecial\fP refers to a structured device file where
 a mounted file system exists, and
 \fIfile\fP refers to a disk quota file (residing on the file
 system associated with \fIspecial\fP) from which user quotas
-should be obtained.  The format of the disk quota file is 
+should be obtained.  The format of the disk quota file is
 implementation dependent.
 .PP
 To manipulate disk quotas the \fIquota\fP call is provided:

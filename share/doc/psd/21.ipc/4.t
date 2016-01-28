@@ -53,9 +53,9 @@ The client and server require a well known set of conventions before
 service may be rendered (and accepted).  This set of conventions
 comprises a protocol which must be implemented at both ends of a
 connection.  Depending on the situation, the protocol may be symmetric
-or asymmetric.  In a symmetric protocol, either side may play the 
+or asymmetric.  In a symmetric protocol, either side may play the
 master or slave roles.  In an asymmetric protocol, one side is
-immutably recognized as the master, with the other as the slave.  
+immutably recognized as the master, with the other as the slave.
 An example of a symmetric protocol is the TELNET protocol used in
 the Internet for remote terminal emulation.  An example
 of an asymmetric protocol is the Internet file transfer protocol,
@@ -259,7 +259,7 @@ earlier in Figure 1.
 One can see the separate, asymmetric roles of the client
 and server clearly in the code.  The server is a passive entity,
 listening for client connections, while the client process is
-an active entity, initiating a connection when invoked.  
+an active entity, initiating a connection when invoked.
 .PP
 Let us consider more closely the steps taken
 by the client remote login process.  As in the server process,
@@ -443,7 +443,7 @@ The second task performed by the server is to supply information
 regarding the status of its host.  This involves periodically
 acquiring system status information, packaging it up in a message
 and broadcasting it on the local network for other rwho servers
-to hear.  The supply function is triggered by a timer and 
+to hear.  The supply function is triggered by a timer and
 runs off a signal.  Locating the system status
 information is somewhat involved, but uninteresting.  Deciding
 where to transmit the resultant packet

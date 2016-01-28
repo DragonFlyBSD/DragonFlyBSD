@@ -35,7 +35,7 @@ Interprocess communication primitives
 .NH 4
 Communication domains
 .PP
-The system provides access to an extensible set of 
+The system provides access to an extensible set of
 communication \fIdomains\fP.  A communication domain
 is identified by a manifest constant defined in the
 file \fI<sys/socket.h>\fP.
@@ -315,7 +315,7 @@ Socket and protocol options
 .PP
 Sockets, and their underlying communication protocols, may
 support \fIoptions\fP.  These options may be used to manipulate
-implementation- or protocol-specific facilities. 
+implementation- or protocol-specific facilities.
 The \fIgetsockopt\fP
 and \fIsetsockopt\fP calls are used to control options:
 .DS

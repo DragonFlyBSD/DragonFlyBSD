@@ -209,7 +209,7 @@ request/reply message in a single UDP
 datagram. Since UDP does not guarantee datagram delivery, the
 Remote Procedure Call (RPC) layer
 times out and retransmits an RPC request if
-no RPC reply has been received. Since this round trip timeout (RTO) value 
+no RPC reply has been received. Since this round trip timeout (RTO) value
 is for the entire RPC operation, including RPC message transmission to the
 server, queuing at the server for an nfsd, performing the RPC and
 sending the RPC reply message back to the client, it can be highly variable

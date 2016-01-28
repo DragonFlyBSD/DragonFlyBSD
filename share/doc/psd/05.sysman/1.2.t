@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)1.2.t	8.1 (Berkeley) 6/8/93
 .\" $FreeBSD: src/share/doc/psd/05.sysman/1.2.t,v 1.5 1999/08/28 00:18:18 peter Exp $
-.\" $DragonFly: src/share/doc/psd/05.sysman/1.2.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .sh "Memory management\(dg
 .NH 3
@@ -39,7 +38,7 @@ releases of the system.  Of the calls described in this section,
 only \fIsbrk\fP and \fIgetpagesize\fP are included in 4.3BSD.
 .FE
 Each process begins execution with three logical areas of memory
-called text, data and stack.  
+called text, data and stack.
 The text area is read-only and shared, while the data and stack
 areas are private to the process.  Both the data and stack areas may
 be extended and contracted on program request.  The call

@@ -41,7 +41,7 @@ information to be emitted by protocols, fragment host memory,
 degrade the overall host performance, etc.  Due to problems
 such as these, most systems allocate a fixed pool of memory
 to the networking system and impose
-a policy optimized for ``normal'' network operation.  
+a policy optimized for ``normal'' network operation.
 .PP
 The networking system developed for UNIX is little different in this
 respect.  At boot time a fixed amount of memory is allocated by
@@ -90,7 +90,7 @@ page of memory.  When data is placed in mbufs,
 it is copied or remapped into logically contiguous pages of
 memory from the network page pool if possible.
 Data smaller than half of the size
-of a page is copied into one or more 112 byte mbuf data areas. 
+of a page is copied into one or more 112 byte mbuf data areas.
 .NH 2
 Protocol buffering policies
 .PP
@@ -122,7 +122,7 @@ acting as a gateway from a high bandwidth network to a low bandwidth
 network).  As a ``defensive'' mechanism the queue limits may be
 adjusted to throttle network traffic load on a host.
 Consider a host willing to devote some percentage of
-its machine to handling network traffic. 
+its machine to handling network traffic.
 If the cost of handling an
 incoming packet can be calculated so that an acceptable
 ``packet handling rate''

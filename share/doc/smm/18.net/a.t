@@ -58,7 +58,7 @@ control are described in chapter 12.
 Routing tables
 .PP
 The network system maintains a set of routing tables for
-selecting a network interface to use in delivering a 
+selecting a network interface to use in delivering a
 packet to its destination.  These tables are of the form:
 .DS
 .ta \w'struct   'u +\w'u_long   'u +\w'sockaddr rt_gateway;    'u
@@ -144,7 +144,7 @@ routing information is too expensive to maintain (e.g. work
 stations), the
 combination of wildcard routing entries and routing redirect
 messages can be used to provide a simple routing management
-scheme without the use of a higher level policy process. 
+scheme without the use of a higher level policy process.
 Current connections may be rerouted after notification of the protocols
 by means of their \fIpr_ctlinput\fP entries.
 Statistics are kept by the routing table routines
@@ -186,7 +186,7 @@ control message.  It is called with a destination address,
 the new gateway to that destination, and the source of the redirect.
 Redirects are accepted only from the current router for the destination.
 If a non-wildcard route
-exists to the destination, the gateway entry in the route is modified 
+exists to the destination, the gateway entry in the route is modified
 to point at the new gateway supplied.  Otherwise, a new routing
 table entry is inserted reflecting the information supplied.  Routes
 to interfaces and routes to gateways which are not directly accessible

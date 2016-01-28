@@ -65,7 +65,7 @@ in that
 the two communicating processes must be related through a
 common ancestor.
 Further, the semantics of pipes makes them almost impossible
-to maintain in a distributed environment. 
+to maintain in a distributed environment.
 .PP
 Earlier attempts at extending the IPC facilities of UNIX have
 met with mixed reaction.  The majority of the problems have
@@ -73,13 +73,13 @@ been related to the fact that these facilities have been tied to
 the UNIX file system, either through naming or implementation.
 Consequently, the IPC facilities provided in 4.2BSD were
 designed as a totally independent subsystem.  The BSD IPC
-allows processes to rendezvous in many ways. 
+allows processes to rendezvous in many ways.
 Processes may rendezvous through a UNIX file system-like
 name space (a space where all names are path names)
 as well as through a
 network name space.  In fact, new name spaces may
 be added at a future time with only minor changes visible
-to users.  Further, the communication facilities 
+to users.  Further, the communication facilities
 have been extended to include more than the simple byte stream
 provided by a pipe.  These extensions have resulted
 in a completely new part of the system which users will need
@@ -91,7 +91,7 @@ This document provides a high-level description
 of the IPC facilities in 4.4BSD and their use.
 It is designed to complement the manual pages for the IPC primitives
 by examples of their use.
-The remainder of this document is organized in four sections.  
+The remainder of this document is organized in four sections.
 Section 2 introduces the IPC-related system calls and the basic model
 of communication.  Section 3 describes some of the supporting
 library routines users may find useful in constructing distributed

@@ -82,7 +82,7 @@ struct socket {
 .DE
 .PP
 Each socket contains two data queues, \fIso_rcv\fP and \fIso_snd\fP,
-and a pointer to routines which provide supporting services. 
+and a pointer to routines which provide supporting services.
 The type of the socket,
 \fIso_type\fP is defined at socket creation time and used in selecting
 those services which are appropriate to support it.  The supporting
@@ -94,7 +94,7 @@ data structure,
 the ``protocol control block,'' is also present in the socket structure.
 Protocols control this data structure, which normally includes a
 back pointer to the parent socket structure to allow easy
-lookup when returning information to a user 
+lookup when returning information to a user
 (for example, placing an error number in the \fIso_error\fP
 field).  The other entries in the socket structure are used in
 queuing connection requests, validating user requests, storing
@@ -147,7 +147,7 @@ when such events occur.
 An event is a change in the socket's state;
 examples of such occurrences are: space
 becoming available in the send queue, new data available in the
-receive queue, connection establishment or disestablishment, etc. 
+receive queue, connection establishment or disestablishment, etc.
 .PP
 A socket may be marked ``privileged'' if it was created by the
 super-user.  Only privileged sockets may
@@ -244,7 +244,7 @@ the two ends are considered distinct.  One end is termed
 end is called \fIpassive\fP and accepts connection requests.
 .PP
 From the passive side, a socket is marked with
-SO_ACCEPTCONN when a \fIlisten\fP call is made, 
+SO_ACCEPTCONN when a \fIlisten\fP call is made,
 creating two queues of sockets: \fIso_q0\fP for connections
 in progress and \fIso_q\fP for connections already made and
 awaiting user acceptance.
@@ -289,7 +289,7 @@ and the disposal of access rights that are not received.
 .PP
 Protocols are described by a set of entry points and certain
 socket-visible characteristics, some of which are used in
-deciding which socket type(s) they may support.  
+deciding which socket type(s) they may support.
 .PP
 An entry in the ``protocol switch'' table exists for each
 protocol module configured into the system.  It has the following form:
@@ -375,7 +375,7 @@ Each network-interface configured into a system defines a
 path through which packets may be sent and received.
 Normally a hardware device is associated with this interface,
 though there is no requirement for this (for example, all
-systems have a software ``loopback'' interface used for 
+systems have a software ``loopback'' interface used for
 debugging and performance analysis).
 In addition to manipulating the hardware device, an interface
 module is responsible
@@ -432,10 +432,10 @@ struct ifaddr {
 The protocol generally maintains this structure as part of a larger
 structure containing additional information concerning the address.
 .PP
-Each interface has a send queue and routines used for 
+Each interface has a send queue and routines used for
 initialization, \fIif_init\fP, and output, \fIif_output\fP.
 If the interface resides on a system bus, the routine \fIif_reset\fP
-will be called after a bus reset has been performed. 
+will be called after a bus reset has been performed.
 An interface may also
 specify a timer routine, \fIif_watchdog\fP;
 if \fIif_timer\fP is non-zero, it is decremented once per second
@@ -600,7 +600,7 @@ of \fIifrw\fP and \fIifxmt\fP structures whose dimensions
 are \fInr\fP and \fInx\fP, respectively.
 \fIif_ubainit\fP is a simpler, backwards-compatible interface used
 for hardware with single buffers of each type.
-They are called only at boot time or after a UNIBUS reset. 
+They are called only at boot time or after a UNIBUS reset.
 One data path (buffered or unbuffered,
 depending on the \fIifu_flags\fP field) is allocated for each buffer.
 The \fInmr\fP parameter indicates

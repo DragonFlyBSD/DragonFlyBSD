@@ -116,7 +116,7 @@ as if the hard limit has been reached, and no
 more resources will be allocated to the user.
 The \fBonly\fP way to reset this condition is
 to reduce usage below quota, then log in again.
-.NH 2 
+.NH 2
 Surviving when quota limit is reached
 .PP
 In most cases, the only way to recover from over

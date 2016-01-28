@@ -159,7 +159,7 @@ result int dopt; int d, cmd, arg;
 #define	F_SETOWN	5	/* set descriptor owner (pid/pgrp) */
 #define	F_GETOWN	6	/* get descriptor owner (pid/pgrp) */
 .DE
-The F_SETFL \fIcmd\fP may be used to set a descriptor in 
+The F_SETFL \fIcmd\fP may be used to set a descriptor in
 non-blocking I/O mode and/or enable signaling when I/O is
 possible.  F_SETOWN may be used to specify a process or process
 group to be signaled when using the latter mode of operation

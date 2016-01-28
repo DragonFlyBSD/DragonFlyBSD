@@ -43,7 +43,7 @@ is based on similar facilities found in
 the VMS operating system.
 Many of the
 ideas related to protocol modularity, memory management, and network
-interfaces are based on Rob Gurwitz's TCP/IP implementation for the 
+interfaces are based on Rob Gurwitz's TCP/IP implementation for the
 4.1BSD version of UNIX on the VAX [Gurwitz81].
 Greg Chesson explained his use of trailer encapsulations in Datakit,
 instigating their use in our system.
@@ -104,7 +104,7 @@ Network Information Center, SRI International.  September 1981.
 Postel, J.  Internet Control Message Protocol, RFC-792.
 Network Information Center, SRI International.  September 1981.
 .IP [Xerox81] 20
-Xerox Corporation.  \fIInternet Transport Protocols\fP. 
+Xerox Corporation.  \fIInternet Transport Protocols\fP.
 Xerox System Integration Standard 028112.  December 1981.
 .IP [Zimmermann80] 20
 Zimmermann, H.  OSI Reference Model \- The ISO Model of

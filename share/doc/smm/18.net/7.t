@@ -184,7 +184,7 @@ if the \fIioctl\fP operation pertains to a particular network interface.
 .IP PRU_SENSE
 .br
 The ``sense'' request is generated when the user makes an \fIfstat\fP
-system call on a socket; it requests status of the associated socket. 
+system call on a socket; it requests status of the associated socket.
 This currently returns a standard \fIstat\fP structure.
 It typically contains only the
 optimal transfer size for the connection (based on buffer size,

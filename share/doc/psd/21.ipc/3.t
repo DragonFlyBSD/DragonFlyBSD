@@ -75,8 +75,8 @@ establishment, as a discovery process must take place,
 but allows a host to be physically mobile without requiring it to
 notify its clientele of its current location.
 .PP
-Standard routines are provided for: mapping host names 
-to network addresses, network names to network numbers, 
+Standard routines are provided for: mapping host names
+to network addresses, network names to network numbers,
 protocol names to protocol numbers, and service names
 to port numbers and the appropriate protocol to
 use in communicating with the server process.  The
@@ -304,7 +304,7 @@ code included in client programs, such as the remote login program,
 is of the form shown in Figure 1.
 (This example will be considered in more detail in section 4.)
 .PP
-If we wanted to make the remote login program independent of the 
+If we wanted to make the remote login program independent of the
 Internet protocols and addressing scheme we would be forced to add
 a layer of routines which masked the network dependent aspects from
 the mainstream login code.  For the current facilities available in
@@ -312,7 +312,7 @@ the system this does not appear to be worthwhile.
 .PP
 Aside from the address-related data base routines, there are several
 other routines available in the run-time library which are of interest
-to users.  These are intended mostly to simplify manipulation of 
+to users.  These are intended mostly to simplify manipulation of
 names and addresses.  Table 1 summarizes the routines
 for manipulating variable length byte strings and handling byte
 swapping of network addresses and values.

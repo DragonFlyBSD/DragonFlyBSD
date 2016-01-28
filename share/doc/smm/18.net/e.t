@@ -45,7 +45,7 @@ to be moved in memory simply by remapping the page
 instead of copying.  The mbuf and network
 interface routines perform page table manipulations
 where needed, hiding the complexities of the VAX
-virtual memory hardware from higher level code. 
+virtual memory hardware from higher level code.
 .PP
 Data enters the system in two ways: from the user,
 or from the network (hardware interface).  When data
@@ -59,7 +59,7 @@ Unfortunately, performing a similar operation when taking
 data from the network is very difficult.
 Consider the format of an incoming packet.  A packet
 usually contains a local network header followed by
-one or more headers used by the high level protocols. 
+one or more headers used by the high level protocols.
 Finally, the data, if any, follows these headers.  Since
 the header information may be variable length, DMA'ing the eventual
 data for the user into a page aligned area of
@@ -73,7 +73,7 @@ a special local network encapsulation may be used.
 This encapsulation, termed a \fItrailer protocol\fP [Leffler84],
 places the variable length header information after
 the data.  A fixed size local network
-header is then prepended to the resultant packet. 
+header is then prepended to the resultant packet.
 The local network header contains the size of the
 data portion (in units of 512 bytes), and a new \fItrailer protocol
 header\fP, inserted before the variable length
@@ -103,7 +103,7 @@ On input, the interface routines identify the
 trailer encapsulation
 by the protocol type stored in the local network header,
 then calculate the number of
-pages of data to find the beginning of the trailer. 
+pages of data to find the beginning of the trailer.
 The trailing information is copied into a separate
 mbuf and linked to the front of the resultant packet.
 .PP
@@ -114,7 +114,7 @@ current scheme works because the local network encapsulation
 header is a fixed size, allowing DMA operations
 to be performed at a known offset from the first data page
 being received.  Should the local network header be
-variable length this scheme fails. 
+variable length this scheme fails.
 .PP
 Statistics collected indicate that as much as 200Kb/s
 can be gained by using a trailer protocol with

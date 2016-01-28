@@ -66,7 +66,7 @@ When used on the VAX-11 together with other UNIX enhancements,
 the original 512 byte UNIX file
 system is incapable of providing the data throughput rates
 that many applications require.
-For example, 
+For example,
 applications
 such as VLSI design and image processing
 do a small amount of processing

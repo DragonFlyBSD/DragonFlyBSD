@@ -186,7 +186,7 @@ open	open a new or existing file
 mknod	make a special file
 portal\(dg	make a portal entry
 unlink	remove a link
-stat*	return status for a file	
+stat*	return status for a file
 lstat	returned status of link
 chown*	change owner
 chmod*	change mode

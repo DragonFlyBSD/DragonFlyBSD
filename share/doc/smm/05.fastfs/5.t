@@ -28,19 +28,19 @@
 .\"	@(#)5.t	8.1 (Berkeley) 6/8/93
 .\"
 .ds RH Functional enhancements
-.NH 
+.NH
 File system functional enhancements
 .PP
 The performance enhancements to the
 UNIX file system did not require
 any changes to the semantics or
 data structures visible to application programs.
-However, several changes had been generally desired for some 
-time but had not been introduced because they would require users to 
+However, several changes had been generally desired for some
+time but had not been introduced because they would require users to
 dump and restore all their file systems.
 Since the new file system already
 required all existing file systems to
-be dumped and restored, 
+be dumped and restored,
 these functional enhancements were introduced at this time.
 .NH 2
 Long file names
@@ -79,7 +79,7 @@ When an entry is deleted from a directory,
 its space is returned to a previous entry
 in the same directory chunk by increasing the size of the
 previous entry by the size of the deleted entry.
-If the first entry of a directory chunk is free, then 
+If the first entry of a directory chunk is free, then
 the entry's inode number is set to zero to indicate
 that it is unallocated.
 .NH 2
@@ -88,7 +88,7 @@ File locking
 The old file system had no provision for locking files.
 Processes that needed to synchronize the updates of a
 file had to use a separate ``lock'' file.
-A process would try to create a ``lock'' file. 
+A process would try to create a ``lock'' file.
 If the creation succeeded, then the process
 could proceed with its update;
 if the creation failed, then the process would wait and try again.
@@ -130,7 +130,7 @@ In the UNIX system, programs with system administrator
 privilege are allowed override any protection scheme.
 Because many of the programs that need to use locks must
 also run as the system administrator,
-we chose to implement advisory locks rather than 
+we chose to implement advisory locks rather than
 create an additional protection scheme that was inconsistent
 with the UNIX philosophy or could
 not be used by system administration programs.
@@ -200,7 +200,7 @@ When all the links to an inode are removed,
 the inode is deallocated.
 This style of referencing an inode does
 not allow references across physical file
-systems, nor does it support inter-machine linkage. 
+systems, nor does it support inter-machine linkage.
 To avoid these limitations
 .I "symbolic links"
 similar to the scheme used by Multics [Feiertag71] have been added.
