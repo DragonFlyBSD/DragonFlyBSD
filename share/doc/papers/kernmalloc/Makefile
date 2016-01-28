@@ -1,21 +1,14 @@
 #	From: @(#)Makefile	1.8 (Berkeley) 6/8/93
-# $FreeBSD: src/share/doc/papers/kernmalloc/Makefile,v 1.5 1999/08/28 00:18:06 peter Exp $
-# $DragonFly: src/share/doc/papers/kernmalloc/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
+# $FreeBSD: head/share/doc/papers/kernmalloc/Makefile 217893 2011-01-26 19:39:31Z uqs $
 
-VOLUME=	papers
-DOC=	kernmalloc
-SRCS=	kernmalloc.ms appendix.ms
-SRCDIR=	${.OBJDIR}	# ack!
-MACROS=	-ms
-USE_TBL=	yes
-USE_PIC=	yes
+VOLUME=		papers
+DOC=		kernmalloc
+SRCS=		kernmalloc.t appendix.ms
+EXTRA=		alloc.fig usage.tbl
+MACROS=		-ms
 USE_EQN=	yes
-CLEANFILES+=	kernmalloc.ms appendix.ms
-
-kernmalloc.ms:	kernmalloc.t alloc.fig usage.tbl
-	(cd ${.CURDIR}; ${SOELIM} kernmalloc.t) > ${.TARGET}
-
-appendix.ms:	appendix.t
-	vgrind -f < ${.CURDIR}/appendix.t > ${.TARGET}
+USE_PIC=	yes
+USE_SOELIM=	yes
+USE_TBL=	yes
 
 .include <bsd.doc.mk>

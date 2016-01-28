@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)fsinterface.ms	1.4 (Berkeley) 4/16/91
-.\" $FreeBSD: src/share/doc/papers/fsinterface/fsinterface.ms,v 1.7.2.1 2000/11/27 18:18:15 ru Exp $
-.\" $DragonFly: src/share/doc/papers/fsinterface/fsinterface.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
+.\" $FreeBSD: head/share/doc/papers/fsinterface/fsinterface.ms 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .nr UX 0
 .de UX
@@ -752,14 +751,13 @@ struct iovec {
 };
 .DE
 .DS
-.ta .5i +\w'UIO_USERISPACE\0\0\0\0\0'u
+.ta .5i +\w'UIO_USERSPACE\0\0\0\0\0'u
 /*
  * Segment flag values.
  */
 enum	uio_seg {
 	UIO_USERSPACE,		/* from user data space */
 	UIO_SYSSPACE,		/* from system space */
-	UIO_USERISPACE		/* from user I space */
 };
 .DE
 .NH

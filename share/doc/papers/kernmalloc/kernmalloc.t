@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)kernmalloc.t	5.1 (Berkeley) 4/16/91
-.\" $FreeBSD: src/share/doc/papers/kernmalloc/kernmalloc.t,v 1.5.2.1 2000/11/28 19:28:09 ru Exp $
-.\" $DragonFly: src/share/doc/papers/kernmalloc/kernmalloc.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
+.\" $FreeBSD: head/share/doc/papers/kernmalloc/kernmalloc.t 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .\" reference a system routine name
 .de RN

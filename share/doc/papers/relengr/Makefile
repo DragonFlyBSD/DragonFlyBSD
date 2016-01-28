@@ -1,13 +1,15 @@
 #	From: @(#)Makefile	1.6 (Berkeley) 6/8/93
-# $FreeBSD: src/share/doc/papers/relengr/Makefile,v 1.6.2.1 2000/11/27 07:57:48 ru Exp $
-# $DragonFly: src/share/doc/papers/relengr/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
+# $FreeBSD: head/share/doc/papers/relengr/Makefile 136910 2004-10-24 15:33:08Z ru $
 
-VOLUME=	papers
-DOC=	releng
-SRCS=	0.t 1.t 2.t 3.t
-MACROS=	-ms
-EXTRA=	ref.bib
-
+VOLUME=		papers
+DOC=		releng
+SRCS=		stubs 0.t 1.t 2.t 3.t
+EXTRA=		ref.bib
+MACROS=		-ms
 USE_REFER=	yes
+CLEANFILES=	stubs
+
+stubs:
+	@(echo .R1; echo database ${.CURDIR}/ref.bib; echo .R2) > ${.TARGET}
 
 .include <bsd.doc.mk>

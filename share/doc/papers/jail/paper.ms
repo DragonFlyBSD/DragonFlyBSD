@@ -1,6 +1,5 @@
 .\"
-.\" $FreeBSD: src/share/doc/papers/jail/paper.ms,v 1.4.2.3 2000/12/07 10:00:04 ru Exp $
-.\" $DragonFly: src/share/doc/papers/jail/paper.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
+.\" $FreeBSD: head/share/doc/papers/jail/paper.ms 69676 2000-12-06 11:56:34Z ru $
 .\"
 .if n .ftr C R
 .ig TL

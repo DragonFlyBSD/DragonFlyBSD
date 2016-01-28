@@ -7,7 +7,6 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/share/doc/papers/malloc/conclusion.ms,v 1.5 1999/08/28 00:18:09 peter Exp $
-.\" $DragonFly: src/share/doc/papers/malloc/conclusion.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .ds RH Conclusion and experience.
 .NH
@@ -21,7 +20,7 @@ wastes time paging in pages it's not going to use.
 In such cases as much as a factor of five in wall-clock time has 
 been seen in difference.
 Apart from that gnumalloc and this implementation are pretty
-much head-on performance wise.
+much head-on performance-wise.
 .PP
 Several legacy programs in the BSD 4.4 Lite distribution had
 code that depended on the memory returned from malloc

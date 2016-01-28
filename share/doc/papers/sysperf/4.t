@@ -27,6 +27,8 @@
 .\"
 .\"	@(#)4.t	5.1 (Berkeley) 4/17/91
 .\"
+.\"	$FreeBSD: head/share/doc/papers/sysperf/4.t 263142 2014-03-14 03:07:51Z eadler $
+.\"
 .ds RH Performance Improvements
 .NH
 Performance Improvements
@@ -666,7 +668,7 @@ heavy load on the system (one syslog message was generated for each
 message recipient causing almost a continuous sequence of sync operations).
 .PP
 The hashed data base files were
-installed in all mail programs, resulting in a order of magnitude
+installed in all mail programs, resulting in an order of magnitude
 speedup on large distribution lists.  The code in \fI/bin/mail\fP
 that notifies the \fIcomsat\fP program when mail has been delivered to
 a user was changed to cache host table lookups, resulting in a similar

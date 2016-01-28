@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)tests.ms	6.2 (Berkeley) 4/16/91
-.\" $FreeBSD: src/share/doc/papers/diskperf/tests.ms,v 1.5 1999/08/28 00:18:04 peter Exp $
-.\" $DragonFly: src/share/doc/papers/diskperf/tests.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
+.\" $FreeBSD: head/share/doc/papers/diskperf/tests.ms 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .ds RH Tests
 .NH
@@ -68,7 +67,7 @@ This is typical of most 4.2BSD user programs since a standard set of
 I/O support routines is commonly used and these routines buffer
 data in similar block sizes.
 .PP
-For each test run, a empty eight Kilobyte block
+For each test run, an empty eight Kilobyte block
 file system was created in the target
 storage system.
 Then each of the four tests was run and timed.

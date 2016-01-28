@@ -1,11 +1,9 @@
 #	From: @(#)Makefile	5.3 (Berkeley) 6/8/93
-# $FreeBSD: src/share/doc/papers/fsinterface/Makefile,v 1.6 1999/08/28 00:18:05 peter Exp $
-# $DragonFly: src/share/doc/papers/fsinterface/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
+# $FreeBSD: head/share/doc/papers/fsinterface/Makefile 105917 2002-10-25 08:10:40Z ru $
 
 VOLUME=	papers
 DOC=	fsinterface
 SRCS=	fsinterface.ms
 MACROS=	-ms
-USE_TBL=	yes
 
 .include <bsd.doc.mk>

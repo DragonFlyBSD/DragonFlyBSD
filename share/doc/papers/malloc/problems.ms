@@ -7,7 +7,6 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/share/doc/papers/malloc/problems.ms,v 1.5 1999/08/28 00:18:11 peter Exp $
-.\" $DragonFly: src/share/doc/papers/malloc/problems.ms,v 1.2 2003/06/17 04:36:56 dillon Exp $
 .\"
 .ds RH The problems
 .NH

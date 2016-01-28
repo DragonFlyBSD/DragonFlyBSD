@@ -1,5 +1,4 @@
-# $FreeBSD: src/share/doc/papers/contents/Makefile,v 1.5.2.1 2002/02/18 12:29:43 ru Exp $
-# $DragonFly: src/share/doc/papers/contents/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
+# $FreeBSD: head/share/doc/papers/contents/Makefile 88052 2001-12-17 13:45:56Z ru $
 
 VOLUME=	papers
 DOC=	contents
