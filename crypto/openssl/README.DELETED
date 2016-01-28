@@ -38,7 +38,6 @@ apps/dsa512.pem
 apps/dsap.pem
 apps/install-apps.com
 apps/makeapps.com
-apps/md4.c
 apps/oid.cnf
 apps/openssl-vms.cnf
 apps/pca-cert.srl
