@@ -94,13 +94,6 @@ DFILE.${_dev}=	${DOC}.${_dev}${DCOMPRESS_EXT}
 .endif
 .endfor
 
-UNROFF?=	unroff
-HTML_SPLIT?=	yes
-UNROFFFLAGS?=	-fhtml
-.if ${HTML_SPLIT} == "yes"
-UNROFFFLAGS+=	split=1
-.endif
-
 # Compatibility mode flag for groff.  Use this when formatting documents with
 # Berkeley me macros (orig_me(7)).
 COMPAT?=	-C
@@ -117,7 +110,7 @@ print: ${DFILE.${_dev}}
 .endfor
 print:
 .for _dev in ${PRINTERDEVICE}
-.if defined(NODOCCOMPRESS)
+.if defined(NODOCCOMPRESS) || ${PRINTERDEVICE:Mhtml}
 	${LPR} ${DFILE.${_dev}}
 .else
 	${DCOMPRESS_CMD} -d ${DFILE.${_dev}} | ${LPR}
@@ -158,32 +151,16 @@ _stamp.extra: ${EXTRA}
 .endif
 
 CLEANFILES+=	_stamp.extra
-.for _dev in ${PRINTERDEVICE:Nhtml}
+.for _dev in ${PRINTERDEVICE}
 .if !target(${DFILE.${_dev}})
 .if target(_stamp.extra)
 ${DFILE.${_dev}}: _stamp.extra
 .endif
 ${DFILE.${_dev}}: ${SRCS}
-.if defined(NODOCCOMPRESS)
+.if defined(NODOCCOMPRESS) || ${PRINTERDEVICE:Mhtml}
 	${ROFF.${_dev}} ${.ALLSRC:N_stamp.extra} > ${.TARGET}
 .else
 	${ROFF.${_dev}} ${.ALLSRC:N_stamp.extra} | ${DCOMPRESS_CMD} > ${.TARGET}
-.endif
-.endif
-.endfor
-
-.for _dev in ${PRINTERDEVICE:Mhtml}
-.if !target(${DFILE.html})
-.if target(_stamp.extra)
-${DFILE.html}: _stamp.extra
-.endif
-${DFILE.html}: ${SRCS}
-.if defined(MACROS) && !empty(MACROS)
-	cd ${SRCDIR}; ${UNROFF} ${MACROS} ${UNROFFFLAGS} \
-	    document=${DOC} ${SRCS}
-.else # unroff(1) requires a macro package as an argument
-	cd ${SRCDIR}; ${UNROFF} -ms ${UNROFFFLAGS} \
-	    document=${DOC} ${SRCS}
 .endif
 .endif
 .endfor
