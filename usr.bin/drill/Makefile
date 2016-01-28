@@ -10,5 +10,6 @@ WARNS?= 2
 LDADD+=	-lprivate_ldns -lcrypto
 DPADD+=	${LIBLDNS} ${LIBCRYPTO}
 CFLAGS+=-I${.CURDIR} -I${LDNS} -I${LDNS}/drill -I${LDNSBASE}
+LDFLAGS+=	-rpath /usr/lib/priv
 
 .include <bsd.prog.mk>
