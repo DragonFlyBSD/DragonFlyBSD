@@ -132,38 +132,76 @@
 .rm #[ #] #H #V #F C
 .\" ========================================================================
 .\"
-.IX Title "DSA_get_ex_new_index 3"
-.TH DSA_get_ex_new_index 3 "2016-01-28" "1.0.1r" "OpenSSL"
+.IX Title "SSL_CTX_set_tlsext_status_cb 3"
+.TH SSL_CTX_set_tlsext_status_cb 3 "2016-01-28" "1.0.1r" "OpenSSL"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
 .nh
 .SH "NAME"
-DSA_get_ex_new_index, DSA_set_ex_data, DSA_get_ex_data \- add application specific data to DSA structures
+SSL_CTX_set_tlsext_status_cb, SSL_CTX_set_tlsext_status_arg,
+SSL_set_tlsext_status_type, SSL_get_tlsext_status_ocsp_resp,
+SSL_set_tlsext_status_ocsp_resp \- OCSP Certificate Status Request functions
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
 .Vb 1
-\& #include <openssl/dsa.h>
+\& #include <openssl/tls1.h>
 \&
-\& int DSA_get_ex_new_index(long argl, void *argp,
-\&                CRYPTO_EX_new *new_func,
-\&                CRYPTO_EX_dup *dup_func,
-\&                CRYPTO_EX_free *free_func);
+\& long SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
+\&                                   int (*callback)(SSL *, void *));
+\& long SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 \&
-\& int DSA_set_ex_data(DSA *d, int idx, void *arg);
+\& long SSL_set_tlsext_status_type(SSL *s, int type);
 \&
-\& char *DSA_get_ex_data(DSA *d, int idx);
+\& long SSL_get_tlsext_status_ocsp_resp(ssl, unsigned char **resp);
+\& long SSL_set_tlsext_status_ocsp_resp(ssl, unsigned char *resp, int len);
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-These functions handle application specific data in \s-1DSA\s0
-structures. Their usage is identical to that of
-\&\fIRSA_get_ex_new_index()\fR, \fIRSA_set_ex_data()\fR and \fIRSA_get_ex_data()\fR
-as described in \fIRSA_get_ex_new_index\fR\|(3).
-.SH "SEE ALSO"
-.IX Header "SEE ALSO"
-\&\fIRSA_get_ex_new_index\fR\|(3), \fIdsa\fR\|(3)
-.SH "HISTORY"
-.IX Header "HISTORY"
-\&\fIDSA_get_ex_new_index()\fR, \fIDSA_set_ex_data()\fR and \fIDSA_get_ex_data()\fR are
-available since OpenSSL 0.9.5.
+A client application may request that a server send back an \s-1OCSP\s0 status response
+(also known as \s-1OCSP\s0 stapling). To do so the client should call the
+\&\fISSL_set_tlsext_status_type()\fR function prior to the start of the handshake.
+Currently the only supported type is \fBTLSEXT_STATUSTYPE_ocsp\fR. This value
+should be passed in the \fBtype\fR argument. The client should additionally provide
+a callback function to decide what to do with the returned \s-1OCSP\s0 response by
+calling \fISSL_CTX_set_tlsext_status_cb()\fR. The callback function should determine
+whether the returned \s-1OCSP\s0 response is acceptable or not. The callback will be
+passed as an argument the value previously set via a call to
+\&\fISSL_CTX_set_tlsext_status_arg()\fR. Note that the callback will not be called in
+the event of a handshake where session resumption occurs (because there are no
+Certificates exchanged in such a handshake).
+.PP
+The response returned by the server can be obtained via a call to
+\&\fISSL_get_tlsext_status_ocsp_resp()\fR. The value \fB*resp\fR will be updated to point
+to the \s-1OCSP\s0 response data and the return value will be the length of that data.
+Typically a callback would obtain an \s-1OCSP_RESPONSE\s0 object from this data via a
+call to the \fId2i_OCSP_RESPONSE()\fR function. If the server has not provided any
+response data then \fB*resp\fR will be \s-1NULL\s0 and the return value from
+\&\fISSL_get_tlsext_status_ocsp_resp()\fR will be \-1.
+.PP
+A server application must also call the \fISSL_CTX_set_tlsext_status_cb()\fR function
+if it wants to be able to provide clients with \s-1OCSP\s0 Certificate Status
+responses. Typically the server callback would obtain the server certificate
+that is being sent back to the client via a call to \fISSL_get_certificate()\fR;
+obtain the \s-1OCSP\s0 response to be sent back; and then set that response data by
+calling \fISSL_set_tlsext_status_ocsp_resp()\fR. A pointer to the response data should
+be provided in the \fBresp\fR argument, and the length of that data should be in
+the \fBlen\fR argument.
+.SH "RETURN VALUES"
+.IX Header "RETURN VALUES"
+The callback when used on the client side should return a negative value on
+error; 0 if the response is not acceptable (in which case the handshake will
+fail) or a positive value if it is acceptable.
+.PP
+The callback when used on the server side should return with either
+\&\s-1SSL_TLSEXT_ERR_OK \s0(meaning that the \s-1OCSP\s0 response that has been set should be
+returned), \s-1SSL_TLSEXT_ERR_NOACK \s0(meaning that an \s-1OCSP\s0 response should not be
+returned) or \s-1SSL_TLSEXT_ERR_ALERT_FATAL \s0(meaning that a fatal error has
+occurred).
+.PP
+\&\fISSL_CTX_set_tlsext_status_cb()\fR, \fISSL_CTX_set_tlsext_status_arg()\fR,
+\&\fISSL_set_tlsext_status_type()\fR and \fISSL_set_tlsext_status_ocsp_resp()\fR return 0 on
+error or 1 on success.
+.PP
+\&\fISSL_get_tlsext_status_ocsp_resp()\fR returns the length of the \s-1OCSP\s0 response data
+or \-1 if there is no \s-1OCSP\s0 response data.
