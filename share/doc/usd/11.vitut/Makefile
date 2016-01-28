@@ -1,11 +1,9 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 6/8/93
 # $FreeBSD: src/share/doc/usd/11.vitut/Makefile,v 1.5 1999/08/28 00:18:51 peter Exp $
-# $DragonFly: src/share/doc/usd/11.vitut/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
-VOLUME=	usd/11.edit
-SRCS=	edittut.ms
-MACROS=	-ms
-SRCDIR=	${.CURDIR}/../../../../contrib/nvi/docs/USD.doc/edit
+VOLUME=		usd/11.edit
+SRCS=		edittut.ms
+MACROS=		-ms
 USE_TBL=	yes
 
 # index for versatec is different from the one in edit.tut
