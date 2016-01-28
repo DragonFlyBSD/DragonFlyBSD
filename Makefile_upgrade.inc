@@ -2280,6 +2280,9 @@ TO_REMOVE+=/usr/lib/profile/libssh.a
 TO_REMOVE+=/lib/libedit.so.5
 TO_REMOVE+=/usr/lib/libprivate_ldns.*
 TO_REMOVE+=/usr/lib/profile/libprivate_ldns.a
+TO_REMOVE+=/usr/lib/libprivate_ssh.*
+TO_REMOVE+=/usr/lib/profile/libprivate_ssh.a
+TO_REMOVE+=/usr/share/man/man5/moduli.5.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

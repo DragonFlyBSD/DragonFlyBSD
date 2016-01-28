@@ -64,6 +64,7 @@ CRUNCH_ALIAS_ssh= scp
 CRUNCH_KEEP_ssh= roaming_write roaming_read add_recv_bytes
 
 CRUNCH_LIBS+= -lprivate_ssh -lcrypto -lz -lpthread
+CRUNCH_LDFLAGS+=	-rpath /usr/lib/priv
 
 .include <bsd.crunchgen.mk>
 .include <bsd.prog.mk>
