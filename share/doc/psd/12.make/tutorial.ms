@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)tutorial.ms	8.1 (Berkeley) 8/18/93
-.\" $FreeBSD: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.8.2.2 2000/11/24 10:08:45 ru Exp $
+.\" $FreeBSD: head/share/doc/psd/12.make/tutorial.ms 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .EH 'PSD:12-%''PMake \*- A Tutorial'
 .OH 'PMake \*- A Tutorial''PSD:12-%'

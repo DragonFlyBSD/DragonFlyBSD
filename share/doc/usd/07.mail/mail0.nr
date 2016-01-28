@@ -27,6 +27,8 @@
 .\"
 .\"	@(#)mail0.nr	8.1 (Berkeley) 6/8/93
 .\"
+.\" $FreeBSD: head/share/doc/usd/07.mail/mail0.nr 263142 2014-03-14 03:07:51Z eadler $
+.\"
 .eh 'USD:7-%''Mail Reference Manual'
 .oh 'Mail Reference Manual''USD:7-%'
 .if n \

@@ -30,6 +30,8 @@
 .\"
 .\"	@(#)2.t	8.1 (Berkeley) 6/8/93
 .\"
+.\"	$FreeBSD: head/share/doc/smm/06.nfs/2.t 263142 2014-03-14 03:07:51Z eadler $
+.\"
 .sh 1 "Not Quite NFS, Crash Tolerant Cache Consistency for NFS"
 .pp
 Not Quite NFS (NQNFS) is an NFS like protocol designed to maintain full cache
@@ -123,7 +125,7 @@ the number of seconds the server is willing to wait for a client with
 an expired write caching lease to push dirty writes.
 .pp
 The server maintains a \fBmodify_revision\fR number for each file. It is
-defined as a unsigned quadword integer that is never zero and that must
+defined as an unsigned quadword integer that is never zero and that must
 increase whenever the corresponding file is modified on the server.
 It is used
 by the client to determine whether or not cached data for the file is
@@ -396,7 +398,7 @@ modifyrev
 .(l
         typedef unsigned hyper modifyrev;
 .)l
-The "modifyrev" is a unsigned quadword integer value that is never zero
+The "modifyrev" is an unsigned quadword integer value that is never zero
 and increases every time the corresponding file is modified on the server.
 .ip \(bu
 nqnfs_time

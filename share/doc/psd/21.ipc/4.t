@@ -26,6 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)4.t	8.1 (Berkeley) 6/8/93
+.\"	$FreeBSD: head/share/doc/psd/21.ipc/4.t 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .\".ds RH "Client/Server Model
 .bp
@@ -119,7 +120,7 @@ main(argc, argv)
 
 	sp = getservbyname("login", "tcp");
 	if (sp == NULL) {
-		fprintf(stderr, "rlogind: tcp/login: unknown service\en");
+		fprintf(stderr, "rlogind: login/tcp: unknown service\en");
 		exit(1);
 	}
 	...
@@ -168,7 +169,7 @@ definition:
 .if n .ta .7i 1.4i 2.1i 2.8i
 sp = getservbyname("login", "tcp");
 if (sp == NULL) {
-	fprintf(stderr, "rlogind: tcp/login: unknown service\en");
+	fprintf(stderr, "rlogind: login/tcp: unknown service\en");
 	exit(1);
 }
 .sp 1
@@ -268,7 +269,7 @@ login:
 .DS
 sp = getservbyname("login", "tcp");
 if (sp == NULL) {
-	fprintf(stderr, "rlogin: tcp/login: unknown service\en");
+	fprintf(stderr, "rlogin: login/tcp: unknown service\en");
 	exit(1);
 }
 .DE

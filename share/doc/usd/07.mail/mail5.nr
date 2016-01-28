@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)mail5.nr	8.1 (Berkeley) 6/8/93
-.\" $FreeBSD: src/usr.bin/mail/USD.doc/mail5.nr,v 1.3.6.2 2002/03/15 19:46:42 mikeh Exp $
+.\" $FreeBSD: head/share/doc/usd/07.mail/mail5.nr 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .bp
 .sh 1 "Additional features"

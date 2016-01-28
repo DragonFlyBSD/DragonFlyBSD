@@ -1,4 +1,4 @@
-.\" $FreeBSD: src/usr.sbin/timed/SMM.doc/timed/timed.ms,v 1.1.1.1.14.1 2000/11/23 10:18:38 ru Exp $
+.\" $FreeBSD: head/share/doc/smm/12.timed/timed.ms 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .\" Copyright (c) 1986, 1993
 .\"	The Regents of the University of California.  All rights reserved.

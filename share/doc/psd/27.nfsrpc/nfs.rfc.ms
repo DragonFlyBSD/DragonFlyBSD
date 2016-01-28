@@ -2,9 +2,8 @@
 .\" Must use  --  tbl  --  with this one
 .\"
 .\" @(#)nfs.rfc.ms	2.2 88/08/05 4.0 RPCSRC
-.\" $FreeBSD: src/lib/libc/rpc/PSD.doc/nfs.rfc.ms,v 1.1.14.1 2000/11/24 09:36:30 ru Exp $
+.\" $FreeBSD: head/share/doc/psd/27.nfsrpc/nfs.rfc.ms 226436 2011-10-16 14:30:28Z eadler $
 .\"
-.so stubs
 .de BT
 .if \\n%=1 .tl ''- % -''
 ..

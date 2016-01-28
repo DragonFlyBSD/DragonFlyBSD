@@ -2,9 +2,8 @@
 .\" Must use -- tbl and pic -- with this one
 .\"
 .\" @(#)rpc.prog.ms	2.3 88/08/11 4.0 RPCSRC
-.\" $FreeBSD: src/lib/libc/rpc/PSD.doc/rpc.prog.ms,v 1.1.14.1 2000/11/24 09:36:30 ru Exp $
+.\" $FreeBSD: head/share/doc/psd/23.rpc/rpc.prog.ms 226436 2011-10-16 14:30:28Z eadler $
 .\"
-.so stubs
 .de BT
 .if \\n%=1 .tl ''- % -''
 ..

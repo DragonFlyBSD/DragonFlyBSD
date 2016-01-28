@@ -1,4 +1,4 @@
-.\" $FreeBSD: src/usr.bin/make/PSD.doc/stubs,v 1.1.2.1 2000/11/24 10:08:45 ru Exp $
+.\" $FreeBSD: head/share/doc/psd/12.make/stubs 216178 2010-12-04 10:11:20Z uqs $
 .\"
 .de Ix
 ..

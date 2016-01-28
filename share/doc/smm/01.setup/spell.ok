@@ -1,3 +1,4 @@
+# $FreeBSD: head/share/doc/smm/01.setup/spell.ok 215334 2010-11-15 05:25:51Z dougb $
 A1096A
 AA
 ACU
@@ -91,7 +92,6 @@ LK201
 LOGFILE
 Leffler
 Luna
-MAKEDEV.local
 MB
 MC68040
 MFS

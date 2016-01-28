@@ -27,6 +27,8 @@
 .\"
 .\"	@(#)3.t	8.1 (Berkeley) 6/8/93
 .\"
+.\"	$FreeBSD: head/share/doc/smm/05.fastfs/3.t 263142 2014-03-14 03:07:51Z eadler $
+.\"
 .ds RH New file system
 .NH
 New file system organization
@@ -193,7 +195,7 @@ Figure 1 \- Example layout of blocks and fragments in a 4096/1024 file system.
 .KE
 Each bit in the map records the status of a fragment;
 an ``X'' shows that the fragment is in use,
-while a ``O'' shows that the fragment is available for allocation.
+while an ``O'' shows that the fragment is available for allocation.
 In this example,
 fragments 0\-5, 10, and 11 are in use,
 while fragments 6\-9, and 12\-15 are free.

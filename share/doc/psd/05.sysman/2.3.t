@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)2.3.t	8.1 (Berkeley) 6/8/93
-.\" $FreeBSD: src/share/doc/psd/05.sysman/2.3.t,v 1.5 1999/08/28 00:18:19 peter Exp $
-.\" $DragonFly: src/share/doc/psd/05.sysman/2.3.t,v 1.2 2003/06/17 04:36:56 dillon Exp $
+.\" $FreeBSD: head/share/doc/psd/05.sysman/2.3.t 263142 2014-03-14 03:07:51Z eadler $
 .\"
 .sh "Interprocess communications
 .NH 3

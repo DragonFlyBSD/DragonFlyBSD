@@ -27,6 +27,8 @@
 .\"
 .\"	@(#)3.t	8.1 (Berkeley) 6/8/93
 .\"
+.\"	$FreeBSD: head/share/doc/psd/21.ipc/3.t 263142 2014-03-14 03:07:51Z eadler $
+.\"
 .\".ds RH "Network Library Routines
 .bp
 .nr H1 3
@@ -241,7 +243,7 @@ struct	protoent {
 .DE
 .PP
 In the NS domain, protocols are indicated by the "client type"
-field of a IDP header.  No protocol database exists; see section
+field of an IDP header.  No protocol database exists; see section
 5 for more information.
 .NH 2
 Service names
@@ -374,7 +376,7 @@ main(argc, argv)
 	...
 	sp = getservbyname("login", "tcp");
 	if (sp == NULL) {
-		fprintf(stderr, "rlogin: tcp/login: unknown service\en");
+		fprintf(stderr, "rlogin: login/tcp: unknown service\en");
 		exit(1);
 	}
 	hp = gethostbyname(argv[1]);
