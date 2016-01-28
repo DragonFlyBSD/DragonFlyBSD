@@ -1,7 +1,7 @@
-# $FreeBSD: src/share/doc/psd/13.rcs/rcs/Makefile,v 1.3 1999/08/28 00:18:22 peter Exp $
-# $DragonFly: src/share/doc/psd/13.rcs/rcs/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
+# $FreeBSD: head/share/doc/psd/13.rcs/rcs/Makefile 136910 2004-10-24 15:33:08Z ru $
 
-SRCS=	rcs.ms
+SRCS=		rcs.ms
 USE_PIC=	yes
+USE_TBL=	yes
 
 .include <bsd.doc.mk>

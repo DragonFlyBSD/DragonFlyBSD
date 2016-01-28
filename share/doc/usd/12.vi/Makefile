@@ -1,4 +1,4 @@
-# $FreeBSD: src/share/doc/usd/12.vi/Makefile,v 1.9 1999/08/28 00:18:52 peter Exp $
+# $FreeBSD: head/share/doc/usd/12.vi/Makefile 106146 2002-10-29 15:01:59Z ru $
 
 SUBDIR=	vi viapwh summary
 

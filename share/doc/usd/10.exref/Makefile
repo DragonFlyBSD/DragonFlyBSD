@@ -1,4 +1,4 @@
-# $FreeBSD: src/share/doc/usd/10.exref/Makefile,v 1.10 1999/08/28 00:18:49 peter Exp $
+# $FreeBSD: head/share/doc/usd/10.exref/Makefile 50476 1999-08-28 00:22:10Z peter $
 
 SUBDIR=	exref summary
 

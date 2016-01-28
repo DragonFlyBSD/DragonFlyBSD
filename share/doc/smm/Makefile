@@ -8,11 +8,16 @@
 # 13.amd (documentation is TeXinfo)
 # 16.security 17.password (encumbered)
 
-# The following modules are built with their programs:
-# 07.lpd
-
-SUBDIR=	title contents 01.setup 02.config 03.fsck 04.quotas 05.fastfs \
-	06.nfs 11.timedop \
-	12.timed 18.net
+SUBDIR=	title \
+	contents \
+	01.setup \
+	02.config \
+	03.fsck \
+	04.quotas \
+	05.fastfs \
+	06.nfs \
+	11.timedop \
+	12.timed \
+	18.net
 
 .include <bsd.subdir.mk>

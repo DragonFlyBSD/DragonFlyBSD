@@ -1,6 +1,5 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 6/8/93
 # $FreeBSD: src/share/doc/psd/Makefile,v 1.14 1999/11/26 09:27:36 peter Exp $
-# $DragonFly: src/share/doc/psd/Makefile,v 1.3 2004/06/26 17:43:38 dillon Exp $
 
 # The following modules do not build/install:
 # 10.gdb
@@ -12,12 +11,22 @@
 # The following modules do not apply to FreeBSD:
 # 07.pascal 08.f77 09.f77io
 
-SUBDIR=	 title contents 
-SUBDIR+= 05.sysman 12.make 13.rcs 18.gprof 20.ipctut 21.ipc
+SUBDIR=	title \
+	contents \
+	05.sysman \
+	12.make \
+	13.rcs \
+	18.gprof \
+	20.ipctut \
+	21.ipc
 
-# The following modules are new in FreeBSD:
-SUBDIR+= 22.rpcgen 23.rpc 24.xdr 25.xdrrfc 26.rpcrfc 27.nfsrpc
-# 28.cvs doesn't work at the moment
-#SUBDIR+= 28.cvs
+# The following modules don't appear in the O'Reilly book, but
+# are in the 4.4BSD distribution.
+SUBDIR+=22.rpcgen \
+	23.rpc \
+	24.xdr \
+	25.xdrrfc \
+	26.rpcrfc \
+	27.nfsrpc
 
 .include <bsd.subdir.mk>

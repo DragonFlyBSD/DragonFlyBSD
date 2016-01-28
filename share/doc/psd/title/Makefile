@@ -1,13 +1,7 @@
-# $FreeBSD: src/share/doc/psd/title/Makefile,v 1.5.2.2 2002/02/18 12:29:44 ru Exp $
-# $DragonFly: src/share/doc/psd/title/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $FreeBSD: head/share/doc/psd/title/Makefile 106151 2002-10-29 16:13:21Z ru $
 
 VOLUME=	psd
-SRCS=	Title
 DOC=	Title
-
-# unroff(1) requires a macro package as an argument
-.if defined(PRINTERDEVICE) && ${PRINTERDEVICE} == "html"
-MACROS=	-ms
-.endif
+SRCS=	Title
 
 .include <bsd.doc.mk>

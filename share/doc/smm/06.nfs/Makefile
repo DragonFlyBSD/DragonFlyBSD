@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/8/93
-# $FreeBSD: src/share/doc/smm/06.nfs/Makefile,v 1.5 1999/08/28 00:18:39 peter Exp $
-# $DragonFly: src/share/doc/smm/06.nfs/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
+# $FreeBSD: head/share/doc/smm/06.nfs/Makefile 50476 1999-08-28 00:22:10Z peter $
 
 VOLUME=	smm/06.nfs
 SRCS=	0.t 1.t 2.t ref.t

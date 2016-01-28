@@ -1,7 +1,6 @@
-# $FreeBSD: src/share/doc/psd/13.rcs/rcs_func/Makefile,v 1.3 1999/08/28 00:18:22 peter Exp $
-# $DragonFly: src/share/doc/psd/13.rcs/rcs_func/Makefile,v 1.2 2003/06/17 04:36:56 dillon Exp $
+# $FreeBSD: head/share/doc/psd/13.rcs/rcs_func/Makefile 106146 2002-10-29 15:01:59Z ru $
 
-SRCS=	rcs_func.ms
 DOC=	rcs_func
+SRCS=	rcs_func.ms
 
 .include <bsd.doc.mk>
