@@ -6,5 +6,6 @@ FILESDIR=	${SHAREDIR}/misc
 
 LDADD+=	-lprivate_edit -ltermcap
 DPADD+=	${LIBEDIT} ${LIBTERMCAP}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

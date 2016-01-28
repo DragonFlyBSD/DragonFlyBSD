@@ -13,5 +13,6 @@ CFLAGS+= -I${.CURDIR}/../common_source
 
 DPADD=	${LIBLPR} ${LIBEDIT} ${LIBTERMCAP}
 LDADD=	${LIBLPR} -lprivate_edit -ltermcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

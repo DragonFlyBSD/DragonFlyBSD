@@ -10,6 +10,8 @@ SRCS=	fsdb.c fsdbutil.c \
 CFLAGS+= -I${.CURDIR}/../fsck
 LDADD+= -lprivate_edit -ltermcap
 DPADD+=	${LIBEDIT} ${LIBTERMCAP}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+
 .PATH:	${.CURDIR}/../fsck ${.CURDIR}/../../sys/vfs/ufs
 WARNS?=	1
 

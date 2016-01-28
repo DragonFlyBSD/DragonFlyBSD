@@ -4,5 +4,6 @@ PROG=	tftp
 SRCS=	main.c tftp.c tftpsubs.c
 DPADD=	${LIBEDIT} ${LIBTERMCAP}
 LDADD=	-lprivate_edit -ltermcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

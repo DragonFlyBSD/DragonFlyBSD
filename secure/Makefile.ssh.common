@@ -5,7 +5,7 @@ CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR} -include ssh_namespace.h
 .if ${.CURDIR:T} != "libssh"
 DPADD+=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
 LDADD+=	-lprivate_ssh -lcrypto -lutil -lz -lpthread
-LDFLAGS+=	-rpath /usr/lib/priv
+LDFLAGS+=	-rpath /usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 
 .PATH:	${SSHDIR} ${SSHDIR}/openbsd-compat

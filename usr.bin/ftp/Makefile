@@ -18,6 +18,7 @@ CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 	-D__dead=__dead2 -DUSE_GLOB_H
 LDADD=	-lprivate_edit -ltermcap -lutil
 DPADD=	${LIBEDIT} ${LIBTERMCAP} ${LIBUTIL}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .if !defined(NO_OPENSSL)
 SRCS+=	ssl.c

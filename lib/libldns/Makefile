@@ -5,6 +5,7 @@ LDNS=		${.CURDIR}/../../contrib/ldns
 LIB=		private_ldns
 SHLIB_MAJOR=	1
 SHLIBDIR?=	/usr/lib/priv
+LIBDIR?=	${SHLIBDIR}
 PROFLIBDIR?=	${SHLIBDIR}/profile
 
 SRCS  =		rdata.c util.c rr.c packet.c wire2host.c \

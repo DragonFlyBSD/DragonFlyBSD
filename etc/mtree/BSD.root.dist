@@ -64,6 +64,8 @@
         ..
     ..
     lib
+        priv
+        ..
     ..
     libexec
     ..

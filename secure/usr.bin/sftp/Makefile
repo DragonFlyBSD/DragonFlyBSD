@@ -9,6 +9,7 @@ SRCS+=	fmt_scaled.c
 
 DPADD+=	${LIBEDIT} ${LIBTERMCAP}
 LDADD+=	-lprivate_edit -ltermcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

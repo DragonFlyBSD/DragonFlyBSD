@@ -2283,6 +2283,14 @@ TO_REMOVE+=/usr/lib/profile/libprivate_ldns.a
 TO_REMOVE+=/usr/lib/libprivate_ssh.*
 TO_REMOVE+=/usr/lib/profile/libprivate_ssh.a
 TO_REMOVE+=/usr/share/man/man5/moduli.5.gz
+TO_REMOVE+=/usr/lib/libprivate_edit.*
+TO_REMOVE+=/usr/lib/profile/libprivate_edit.a
+TO_REMOVE+=/lib/libprivate_edit.so.5
+TO_REMOVE+=/usr/share/man/man3/editline.3.gz
+TO_REMOVE+=/usr/share/man/man3/el_*.3.gz
+TO_REMOVE+=/usr/share/man/man3/history*.3.gz
+TO_REMOVE+=/usr/share/man/man3/tok_*.3.gz
+TO_REMOVE+=/usr/share/man/man5/editrc.5.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

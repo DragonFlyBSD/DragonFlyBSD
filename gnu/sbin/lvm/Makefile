@@ -134,6 +134,7 @@ MKLINKS+=	lvchange.8 lvchange.1 \
 LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -ltermcap -ldevattr
 DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBTERMCAP}
 DPADD+=		${LIBDEVATTR}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .PATH:	${LVM2_DISTDIR}/tools
 

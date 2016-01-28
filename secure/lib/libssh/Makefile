@@ -27,8 +27,9 @@ SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c explicit_bzero.c \
 
 WARNS?=	2
 
-SHLIBDIR?=     /usr/lib/priv
-PROFLIBDIR?=   ${SHLIBDIR}/profile
+SHLIBDIR?=	/usr/lib/priv
+LIBDIR?=	${SHLIBDIR}
+PROFLIBDIR?=	${SHLIBDIR}/profile
 
 .include "../../Makefile.ssh.common"
 .include <bsd.lib.mk>

@@ -2,8 +2,10 @@
 .include	"../Makefile.inc"
 
 LIB=		private_edit
-SHLIB_MAJOR=	5  		# NetBSD designates SHLIB_MAJOR as 3
-SHLIBDIR?=	/lib
+SHLIB_MAJOR=	5
+SHLIBDIR?=	/lib/priv
+LIBDIR?=	/usr/lib/priv
+PROFLIBDIR?=	/usr/lib/priv/profile
 
 SRCDIR= 	${BASEDIR}/src
 .PATH:		${SRCDIR}
@@ -51,49 +53,6 @@ SRCS+=		common.h emacs.h fcns.h help.h vi.h
 SRCS+=  	fcns.c help.c tokenizern.c historyn.c
 
 INCS=		histedit.h
-
-MAN=		editline.3 editrc.5
-
-MLINKS= 	editline.3 el_init.3 \
-		editline.3 el_end.3 \
-		editline.3 el_reset.3 \
-		editline.3 el_gets.3 \
-		editline.3 el_getc.3 \
-		editline.3 el_push.3 \
-		editline.3 el_parse.3 \
-		editline.3 el_set.3 \
-		editline.3 el_get.3 \
-		editline.3 el_source.3 \
-		editline.3 el_resize.3 \
-		editline.3 el_line.3 \
-		editline.3 el_insertstr.3 \
-		editline.3 el_deletestr.3 \
-		editline.3 history_init.3 \
-		editline.3 history_end.3 \
-		editline.3 history.3 \
-		editline.3 tok_init.3 \
-		editline.3 tok_end.3 \
-		editline.3 tok_reset.3 \
-		editline.3 tok_line.3 \
-		editline.3 tok_str.3
-
-MLINKS+=	editline.3 el_wgets.3 \
-		editline.3 el_wgetc.3 \
-		editline.3 el_wpush.3 \
-		editline.3 el_wparse.3 \
-		editline.3 el_wset.3 \
-		editline.3 el_wget.3 \
-		editline.3 el_wline.3 \
-		editline.3 el_winsertstr.3 \
-		editline.3 el_wdeletestr.3 \
-		editline.3 history_winit.3 \
-		editline.3 history_wend.3 \
-		editline.3 history_w.3 \
-		editline.3 tok_winit.3 \
-		editline.3 tok_wend.3 \
-		editline.3 tok_wreset.3 \
-		editline.3 tok_wline.3 \
-		editline.3 tok_wstr.3
 
 CLEANFILES+=	common.h emacs.h fcns.c fcns.h help.c help.h
 CLEANFILES+=	historyn.c tokenizern.c vi.h

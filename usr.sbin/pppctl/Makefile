@@ -5,5 +5,6 @@ MAN=	pppctl.8
 WARNS?=	2
 LDADD+= -lprivate_edit -ltermcap
 DPADD+= ${LIBEDIT} ${LIBTERMCAP}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

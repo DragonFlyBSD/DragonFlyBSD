@@ -31,14 +31,20 @@ CFLAGS+= -DNO_HISTORY
 .  if exists(/usr/lib/libedit.a)
 DPADD= /usr/lib/libedit.a ${LIBTERMCAP}
 LDADD= -ledit -ltermcap
+.  elif exists(/usr/lib/libprivate_edit.a)
+DPADD= /usr/lib/libprivate_edit.a ${LIBTERMCAP}
+LDADD= -lprivate_edit -ltermcap
 .  else
 DPADD= ${LIBEDIT} ${LIBTERMCAP}
 LDADD= -lprivate_edit -ltermcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .  endif
 .else
 DPADD= ${LIBEDIT} ${LIBTERMCAP}
 LDADD= -lprivate_edit -ltermcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
+
 
 .PATH:	${.CURDIR}/bltin \
 	${.CURDIR}/../kill \
