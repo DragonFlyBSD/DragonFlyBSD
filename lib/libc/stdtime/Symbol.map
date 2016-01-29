@@ -33,3 +33,7 @@ DF404.0 {
     tzset;
     tzsetwall;
 };
+
+DF406.0 {
+    timespec_get;
+};

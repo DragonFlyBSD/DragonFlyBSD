@@ -123,6 +123,11 @@ typedef	__pid_t		pid_t;
 #define TIMER_ABSTIME	0x1	/* absolute timer */
 #endif /* !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 200112 */
 
+#if __ISO_C_VISIBLE >= 2011
+/* for timespec_get() */
+#define	TIME_UTC	-1
+#endif
+
 struct tm {
 	int	tm_sec;		/* seconds after the minute [0-60] */
 	int	tm_min;		/* minutes after the hour [0-59] */
@@ -204,6 +209,10 @@ time_t timegm(struct tm * const);
 
 #if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
 #include <xlocale/_time.h>
+#endif
+
+#if __ISO_C_VISIBLE >= 2011
+int timespec_get(struct timespec *ts, int base);
 #endif
 __END_DECLS
 
