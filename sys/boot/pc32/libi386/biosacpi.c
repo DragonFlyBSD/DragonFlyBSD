@@ -83,7 +83,8 @@ biosacpi_detect(void)
 }
 
 /*
- * Find the RSDP in low memory.  See section 5.2.5.1 of the ACPI 5.1 spec.
+ * Find the RSDP in low memory.  See "Finding the RSDP on IA-PC Systems" in
+ * the ACPI spec.
  */
 static ACPI_TABLE_RSDP *
 biosacpi_find_rsdp(void)
@@ -93,7 +94,8 @@ biosacpi_find_rsdp(void)
 
     /* EBDA is the 1 KB addressed by the 16 bit pointer at 0x40e. */
     addr = (uint16_t *)PTOV(ACPI_EBDA_PTR_LOCATION);
-    if ((rsdp = biosacpi_search_rsdp((char *)(*addr << 4), 0x400)) != NULL)
+    if ((rsdp = biosacpi_search_rsdp((char *)(*addr << 4),
+		    ACPI_EBDA_WINDOW_SIZE)) != NULL)
 	return (rsdp);
 
     /* Check the upper memory BIOS space, 0xe0000 - 0xfffff. */
