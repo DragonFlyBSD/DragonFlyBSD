@@ -17,7 +17,8 @@ LDADD+= -L../libbfd -lbfd
 LDADD+= -L../libiberty -liberty
 LDADD+= -L../libdecnumber -ldecnumber
 LDADD+= -L../libgnu -lgnu
-LDADD+= -lncurses -lm -lz -lkvm -llzma
+LDADD+= -lprivate_ncurses -lm -lz -lkvm -llzma
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>
 

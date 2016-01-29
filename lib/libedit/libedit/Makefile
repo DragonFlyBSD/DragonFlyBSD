@@ -13,7 +13,8 @@ SRCDIR= 	${BASEDIR}/src
 CFLAGS+=	-I${SRCDIR} -I${.CURDIR} -I${.OBJDIR}
 
 DPADD=		${LIBNCURSES}
-LDADD=		-lncurses
+LDADD=		-lprivate_ncurses
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 WARNS?=		2
 

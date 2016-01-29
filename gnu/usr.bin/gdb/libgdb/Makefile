@@ -173,8 +173,9 @@ XMLFILES= \
 
 DPADD=	${LIBKVM} ${LIBTERMCAP} ${LIBM}
 DPADD+=	../libbfd/libbfd.a ../libopcodes/libopcodes.a ../libiberty/libiberty.a
-LDADD=	-ltermcap -lm
+LDADD=	-lprivate_termcap -lm
 LDADD+=	-L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include "Makefile.${TARGET_ARCH}"
 

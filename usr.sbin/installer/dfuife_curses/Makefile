@@ -27,6 +27,7 @@ LIBINSTALLER=${.CURDIR}/../libinstaller/libinstaller.a
 .endif
 
 DPADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA} ${LIBPANEL} ${LIBNCURSES}
-LDADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA} -lpanel -lcurses
+LDADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA} -lprivate_panel -lprivate_ncurses
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

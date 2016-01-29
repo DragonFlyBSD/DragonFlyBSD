@@ -19,10 +19,10 @@ CFLAGS+=	-I${.CURDIR}/../include
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 
-SHLIB_MAJOR=	6
+SHLIB_MAJOR=	59
 
 VERSION_DEF=	${.CURDIR}/../Versions.def
-SYMBOL_MAPS=	${.CURDIR}/../lib${LIB:S|w||}/Symbol.map
+SYMBOL_MAPS=	${.CURDIR}/../lib${LIB:S|private_||:S|w||}/Symbol.map
 .if defined(ENABLE_WIDEC)
 SYMBOL_MAPS+=	${.CURDIR}/Symbol.map
 .endif

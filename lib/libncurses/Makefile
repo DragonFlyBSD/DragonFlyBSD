@@ -1,12 +1,7 @@
 SUBDIR=	\
-	libform \
-	libmenu \
 	libncurses \
 	libpanel \
-	libformw \
-	libmenuw \
 	libncursesw \
-	libpanelw \
-	man
+	libpanelw
 
 .include <bsd.subdir.mk>

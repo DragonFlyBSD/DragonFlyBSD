@@ -1,6 +1,8 @@
-LIB=    ncurses${LIB_SUFFIX}
+LIB=    private_ncurses${LIB_SUFFIX}
 
-SHLIBDIR?=	/lib
+SHLIBDIR?=	/lib/priv
+LIBDIR?=	/usr/lib/priv
+PROFLIBDIR?=	/usr/lib/priv/profile
 
 .include "../Makefile.inc"
 
@@ -284,22 +286,22 @@ SRCS+=	\
 	names.c \
 	unctrl.c
 
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libcurses${LIB_SUFFIX}.a
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtermcap${LIB_SUFFIX}.a
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtermlib${LIB_SUFFIX}.a
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtinfo${LIB_SUFFIX}.a
+NCSTATIC=	libprivate_ncurses${LIB_SUFFIX}.a
+NCDYN=		libprivate_ncurses${LIB_SUFFIX}.so
+
+SYMLINKS+=${NCSTATIC} ${LIBDIR}/libprivate_termcap${LIB_SUFFIX}.a
+SYMLINKS+=${NCSTATIC} ${LIBDIR}/libprivate_termlib${LIB_SUFFIX}.a
+SYMLINKS+=${NCSTATIC} ${LIBDIR}/libprivate_tinfo${LIB_SUFFIX}.a
 .if !defined(NOPIC)
 # no need for major at all, it's an ld-time redirection only
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libcurses${LIB_SUFFIX}.so
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libtermcap${LIB_SUFFIX}.so
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libtermlib${LIB_SUFFIX}.so
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libtinfo${LIB_SUFFIX}.so
+SYMLINKS+=${NCDYN} ${SHLIBDIR}/libprivate_termcap${LIB_SUFFIX}.so
+SYMLINKS+=${NCDYN} ${SHLIBDIR}/libprivate_termlib${LIB_SUFFIX}.so
+SYMLINKS+=${NCDYN} ${SHLIBDIR}/libprivate_tinfo${LIB_SUFFIX}.so
 .endif
 .if !defined(NOPROFILE)
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libcurses${LIB_SUFFIX}.a
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libtermcap${LIB_SUFFIX}.a
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libtermlib${LIB_SUFFIX}.a
-SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libtinfo${LIB_SUFFIX}.a
+SYMLINKS+=${NCSTATIC} ${PROFLIBDIR}/libprivate_termcap${LIB_SUFFIX}.a
+SYMLINKS+=${NCSTATIC} ${PROFLIBDIR}/libprivate_termlib${LIB_SUFFIX}.a
+SYMLINKS+=${NCSTATIC} ${PROFLIBDIR}/libprivate_tinfo${LIB_SUFFIX}.a
 .endif
 
 XINCS=	term.h ${.CURDIR}/../include/termcap.h \

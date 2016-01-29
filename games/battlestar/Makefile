@@ -7,10 +7,10 @@ SRCS=	battlestar.c command1.c command2.c command3.c command4.c \
 	init.c cypher.c getcom.c parse.c room.c save.c fly.c misc.c \
 	globals.c dayfile.c nightfile.c dayobjs.c nightobjs.c words.c
 MAN=	battlestar.6
-DPADD=	${LIBCURSES} ${LIBTERMCAP}
-LDADD=	-lcurses -ltermcap
+DPADD=	${LIBNCURSES} ${LIBTERMCAP}
+LDADD=	-lprivate_ncurses -lprivate_termcap
 HIDEGAME=hidegame
-
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/battlestar.log)
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 664 /dev/null \

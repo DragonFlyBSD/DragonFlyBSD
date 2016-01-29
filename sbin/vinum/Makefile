@@ -7,7 +7,7 @@ WARNS?=	2
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libedit -I${.CURDIR}/../../sys
 DPADD=	${LIBEDIT} ${LIBTERMCAP} ${LIBDEVSTAT}
-LDADD=	-lprivate_edit -ltermcap -ldevstat
+LDADD=	-lprivate_edit -lprivate_termcap -ldevstat
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

@@ -16,7 +16,8 @@ CFLAGS+=	-DINET6
 .endif
 
 DPADD=		${LIBTERMCAP} ${LIBTELNET}
-LDADD=		-ltermcap ${LIBTELNET}
+LDADD=		-lprivate_termcap ${LIBTELNET}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 CFLAGS+=	-DIPSEC
 DPADD+=		${LIBIPSEC}

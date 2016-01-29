@@ -4,7 +4,7 @@ PROG=	units
 FILES=	units.lib
 FILESDIR=	${SHAREDIR}/misc
 
-LDADD+=	-lprivate_edit -ltermcap
+LDADD+=	-lprivate_edit -lprivate_termcap
 DPADD+=	${LIBEDIT} ${LIBTERMCAP}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 

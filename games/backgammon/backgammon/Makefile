@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/backgammon/backgammon/Makefile,v 1.2.14.1 2001/04/25 09:28:44 ru Exp $
-# $DragonFly: src/games/backgammon/backgammon/Makefile,v 1.4 2006/10/08 16:22:35 pavalos Exp $
 
 PROG=	backgammon
 CFLAGS+=-I${.CURDIR}/../common_source
@@ -8,7 +7,8 @@ SRCS=	allow.c board.c check.c extra.c fancy.c init.c main.c move.c \
 	odds.c one.c save.c subs.c table.c text.c version.c
 MAN=	backgammon.6
 DPADD=	${LIBTERMCAP}
-LDADD=	-ltermcap
+LDADD=	-lprivate_termcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .PATH:	${.CURDIR}/../common_source
 HIDEGAME=hidegame
 

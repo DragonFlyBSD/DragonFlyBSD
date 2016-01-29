@@ -1,10 +1,10 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/cribbage/Makefile,v 1.7.2.5 2002/08/07 16:31:41 ru Exp $
-# $DragonFly: src/games/cribbage/Makefile,v 1.4 2006/10/08 16:22:35 pavalos Exp $
 
 PROG=	cribbage
-DPADD=	${LIBCURSES}
-LDADD=	-lcurses
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 SRCS=	extern.c crib.c cards.c instr.c io.c score.c support.c
 FILES=	cribbage.n
 FILESNAME_cribbage.n=	cribbage.instr

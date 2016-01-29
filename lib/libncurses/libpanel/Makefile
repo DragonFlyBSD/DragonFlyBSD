@@ -1,4 +1,4 @@
-LIB=    panel${LIB_SUFFIX}
+LIB=    private_panel${LIB_SUFFIX}
 
 .include "../Makefile.inc"
 

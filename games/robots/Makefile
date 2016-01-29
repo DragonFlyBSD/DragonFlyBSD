@@ -1,14 +1,14 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/robots/Makefile,v 1.5.2.3 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/robots/Makefile,v 1.4 2006/10/08 16:22:36 pavalos Exp $
 
 PROG=	robots
 CFLAGS+=-DMAX_PER_UID=5
 SRCS=	extern.c init_field.c main.c make_level.c move.c move_robs.c \
 	play_level.c query.c rnd_pos.c score.c flush_in.c
 MAN=	robots.6
-DPADD=	${LIBCURSES}
-LDADD=	-lcurses
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 HIDEGAME=hidegame
 
 beforeinstall:

@@ -2,7 +2,8 @@
 
 PROG=  colorbars
 MAN=   colorbars.6
-DPADD=	${LIBCURSES} ${LIBTERMCAP}
-LDADD=	-lcurses -ltermcap
+DPADD=	${LIBNCURSES} ${LIBTERMCAP}
+LDADD=	-lprivate_ncurses -lprivate_termcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

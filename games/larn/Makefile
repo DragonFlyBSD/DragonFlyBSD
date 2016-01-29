@@ -1,6 +1,5 @@
 #	@(#)Makefile	5.12 (Berkeley) 5/30/93
 # $FreeBSD: src/games/larn/Makefile,v 1.6.2.5 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/larn/Makefile,v 1.5 2006/10/08 16:22:35 pavalos Exp $
 
 # EXTRA
 #	Incorporates code to gather additional performance statistics
@@ -50,7 +49,8 @@ SRCS=	main.c object.c create.c tok.c display.c global.c data.c io.c \
 	monster.c store.c diag.c help.c config.c nap.c bill.c scores.c \
 	signal.c moreobj.c movem.c regen.c fortune.c savelev.c
 DPADD=	${LIBTERMCAP}
-LDADD=	-ltermcap
+LDADD=	-lprivate_termcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 FILES=	larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn
 HIDEGAME=hidegame

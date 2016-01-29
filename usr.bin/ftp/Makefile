@@ -16,7 +16,7 @@ SRCS=	cmds.c cmdtab.c complete.c domacro.c fetch.c ftp.c main.c \
 CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 	-I${.CURDIR}/../../lib/libc/stdtime \
 	-D__dead=__dead2 -DUSE_GLOB_H
-LDADD=	-lprivate_edit -ltermcap -lutil
+LDADD=	-lprivate_edit -lprivate_termcap -lutil
 DPADD=	${LIBEDIT} ${LIBTERMCAP} ${LIBUTIL}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 

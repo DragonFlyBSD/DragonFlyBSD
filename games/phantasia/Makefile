@@ -3,8 +3,9 @@
 
 PROG=	phantasia
 SRCS=	main.c fight.c io.c interplayer.c gamesupport.c misc.c phantglobs.c
-DPADD=	${LIBM} ${LIBCURSES} ${LIBTERMCAP}
-LDADD=	-lm -lcurses -ltermcap
+DPADD=	${LIBM} ${LIBNCURSES} ${LIBTERMCAP}
+LDADD=	-lm -lprivate_ncurses -lprivate_termcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 NXLDLIBS= -lm
 DATAFILES=characs gold lastdead mess monsters motd scoreboard void
 HIDEGAME=hidegame

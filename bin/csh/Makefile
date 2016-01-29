@@ -36,8 +36,20 @@ MLINKS= csh.1 tcsh.1
 # utilities of the same name are handled with the associated manpage,
 # builtin.1 in share/man/man1/.
 
-DPADD=	${LIBTERMCAP} ${LIBCRYPT}
+.if defined(BOOTSTRAPPING)
+.  if exists(/usr/lib/libtermcap.a)
+DPADD=	/usr/lib/libtermcap.a ${LIBCRYPT}
 LDADD=	-ltermcap -lcrypt
+.  else
+DPADD=	${LIBTERMCAP} ${LIBCRYPT}
+LDADD=	-lprivate_termcap -lcrypt
+LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
+.  endif
+.else
+DPADD=	${LIBTERMCAP} ${LIBCRYPT}
+LDADD=	-lprivate_termcap -lcrypt
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+.endif
 
 LINKS=	${BINDIR}/csh ${BINDIR}/tcsh
 

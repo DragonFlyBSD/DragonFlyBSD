@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/top/Makefile,v 1.5.6.2 2002/08/11 17:09:54 dwmalone Exp $
-# $DragonFly: src/usr.bin/top/Makefile,v 1.8 2007/08/27 16:50:59 pavalos Exp $
 PROG=	top
 
 TOPDIR=	${.CURDIR}/../../contrib/top
@@ -19,7 +18,8 @@ SRCS=	commands.c getopt.c screen.c username.c version.c \
 	color.c display.c hash.c m_dragonfly.c top.c utils.c
 
 DPADD=  ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBKINFO}
-LDADD=  -ltermcap -lm -lkvm -lkinfo
+LDADD=  -lprivate_termcap -lm -lkvm -lkinfo
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 BINGRP= kmem
 BINMODE=2555
 

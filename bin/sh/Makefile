@@ -29,19 +29,27 @@ CFLAGS+=-DSHELL -I. -I${.CURDIR}
 .if defined(BOOTSTRAPPING)
 CFLAGS+= -DNO_HISTORY
 .  if exists(/usr/lib/libedit.a)
-DPADD= /usr/lib/libedit.a ${LIBTERMCAP}
-LDADD= -ledit -ltermcap
+DPADD= /usr/lib/libedit.a
+LDADD= -ledit
 .  elif exists(/usr/lib/libprivate_edit.a)
-DPADD= /usr/lib/libprivate_edit.a ${LIBTERMCAP}
-LDADD= -lprivate_edit -ltermcap
+DPADD= /usr/lib/libprivate_edit.a
+LDADD= -lprivate_edit
 .  else
-DPADD= ${LIBEDIT} ${LIBTERMCAP}
-LDADD= -lprivate_edit -ltermcap
+DPADD= ${LIBEDIT}
+LDADD= -lprivate_edit
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+.  endif
+.  if exists(/usr/lib/libtermcap.a)
+DPADD+= /usr/lib/libtermcap.a
+LDADD+= -ltermcap
+.  else
+DPADD+= ${LIBTERMCAP}
+LDADD+= -lprivate_termcap
+LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
 .  endif
 .else
 DPADD= ${LIBEDIT} ${LIBTERMCAP}
-LDADD= -lprivate_edit -ltermcap
+LDADD= -lprivate_edit -lprivate_termcap
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 

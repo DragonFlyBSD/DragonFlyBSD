@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/hack/Makefile,v 1.20.2.4 2002/08/07 16:31:41 ru Exp $
-# $DragonFly: src/games/hack/Makefile,v 1.6 2006/10/08 16:22:35 pavalos Exp $
 
 PROG=	hack
 SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
@@ -17,7 +16,8 @@ SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
 	hack.onames.h
 MAN=	hack.6
 DPADD=	${LIBTERMCAP}
-LDADD=	-ltermcap
+LDADD=	-lprivate_termcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 CFLAGS+= -I${.CURDIR} -I.
 FILES=	rumors help hh data
 FILESMODE_rumors=	440

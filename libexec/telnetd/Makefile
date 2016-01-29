@@ -21,7 +21,8 @@ CFLAGS+=	-DINET6
 LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a
 
 DPADD=		${LIBUTIL} ${LIBTERMCAP} ${LIBTELNET}
-LDADD=		-lutil -ltermcap ${LIBTELNET}
+LDADD=		-lutil -lprivate_termcap ${LIBTELNET}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .if !defined(NO_OPENSSL)
 SRCS+=		authenc.c

@@ -4,6 +4,7 @@
 PROG=	ul
 
 DPADD=	${LIBTERMCAP}
-LDADD=	-ltermcap
+LDADD=	-lprivate_termcap
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>
