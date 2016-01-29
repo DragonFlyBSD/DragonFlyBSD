@@ -27,7 +27,7 @@ gnu11_FLAGS_FILES=	bad_array_length.cc bad_array_new.cc eh_ptr.cc \
 			new_handler.cc new_op.cc new_opnt.cc
 gnu14_FLAGS=		-std=gnu++14 -Wno-sized-deallocation
 gnu14_FLAGS_FILES=	del_ops.cc del_opvs.cc
-mangle_FLAGS=		-DIN_GLIBCPP_V3
+mangle_FLAGS=		-DHAVE_CONFIG_H -DIN_GLIBCPP_V3
 mangle_FLAGS_FILES=	cp-demangle.c
 
 SRCS=			${libsupc__convenience_la_SOURCES}
