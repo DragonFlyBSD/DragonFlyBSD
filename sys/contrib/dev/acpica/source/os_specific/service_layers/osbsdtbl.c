@@ -402,7 +402,7 @@ OslTableInitialize (
     {
         Address = Gbl_RsdpBase;
     }
-#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
     else if (kenv (KENV_GET, SYSTEM_KENV, Buffer, sizeof (Buffer)) > 0)
     {
         Address = strtoul (Buffer, NULL, 0);
