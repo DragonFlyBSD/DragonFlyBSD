@@ -2894,6 +2894,7 @@ TO_REMOVE+=/usr/share/man/man3/wtouchln.3
 TO_REMOVE+=/usr/share/man/man3/wunctrl.3
 TO_REMOVE+=/usr/share/man/man3/wvline_set.3
 TO_REMOVE+=/usr/share/man/man3/wvline.3
+TO_REMOVE+=/usr/share/zoneinfo/America/Santa_Isabel
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
