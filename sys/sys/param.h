@@ -131,9 +131,10 @@
  * 400400 - 4.4 release
  * 400500 - 4.5 development
  * 400501 - unionfs removal
+ * 400502 - private libraries: ssh ldns edit ncurses
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400501	/* propagated to newvers */
+#define __DragonFly_version 400502	/* propagated to newvers */
 
 #include <sys/_null.h>
 
