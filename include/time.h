@@ -125,7 +125,7 @@ typedef	__pid_t		pid_t;
 
 #if __ISO_C_VISIBLE >= 2011
 /* for timespec_get() */
-#define	TIME_UTC	-1
+#define	TIME_UTC	1
 #endif
 
 struct tm {
