@@ -54,7 +54,7 @@
 #endif
 
 /* Frequency of the clock ticks reported by clock().  */
-#define	CLOCKS_PER_SEC	128
+#define	CLOCKS_PER_SEC	((clock_t)128)
 
 #ifndef _CLOCK_T_DECLARED
 #define _CLOCK_T_DECLARED
