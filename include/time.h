@@ -75,6 +75,7 @@ typedef	__size_t	size_t;
 /*
  * New in POSIX 1003.1b-1993.
  */
+#include <sys/timespec.h>
 #ifndef _CLOCKID_T_DECLARED
 #define _CLOCKID_T_DECLARED
 typedef	__clockid_t	clockid_t;
@@ -84,9 +85,8 @@ typedef	__clockid_t	clockid_t;
 #define _TIMER_T_DECLARED
 typedef	__timer_t	timer_t;
 #endif
-
-#include <sys/timespec.h>
-
+#elif __ISO_C_VISIBLE >= 2011
+#include <sys/_timespec.h>
 #endif /* __POSIX_VISIBLE >= 199309 */
 
 #if __POSIX_VISIBLE >= 200112
