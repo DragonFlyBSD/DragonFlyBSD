@@ -89,10 +89,11 @@
  * Although we have saved user/group IDs, we do not use them in setuid
  * as described in POSIX 1003.1, because the feature does not work for
  * root.  We use the saved IDs in seteuid/setegid, which are not currently
- * part of the POSIX 1003.1 specification.  XXX revisit for 1003.1-2001
- * as this is now mandatory.
+ * part of the POSIX 1003.1 specification.  See comments in kern_prot.c.
+ *
+ * XXX revisit for 1003.1-2008 as this is now mandatory since 1003.1-2001.
  */
-#ifdef _NOT_AVAILABLE
+#if 0
 #define	_POSIX_SAVED_IDS	1 /* saved set-user-ID and set-group-ID */
 #endif
 
