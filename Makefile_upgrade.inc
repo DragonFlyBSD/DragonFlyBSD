@@ -3061,6 +3061,19 @@ TO_REMOVE+=/usr/share/man/man5/term.5.gz
 TO_REMOVE+=/usr/share/man/man5/terminfo.5.gz
 TO_REMOVE+=/usr/share/man/man7/term.7.gz
 TO_REMOVE+=/usr/share/zoneinfo/America/Santa_Isabel
+TO_REMOVE+=/usr/include/eti.h
+TO_REMOVE+=/usr/include/form.h
+TO_REMOVE+=/usr/include/menu.h
+TO_REMOVE+=/usr/lib/libprivate_ldns.a
+TO_REMOVE+=/usr/lib/libprivate_ldns.so
+TO_REMOVE+=/usr/lib/libprivate_ssh.a
+TO_REMOVE+=/usr/lib/libprivate_ssh.so
+TO_REMOVE+=/usr/lib/profile/libform.a
+TO_REMOVE+=/usr/lib/profile/libformw.a
+TO_REMOVE+=/usr/lib/profile/libmenu.a
+TO_REMOVE+=/usr/lib/profile/libmenuw.a
+TO_REMOVE+=/usr/lib/profile/libpanel.a
+TO_REMOVE+=/usr/lib/profile/libpanelw.a
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
