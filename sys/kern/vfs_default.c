@@ -1134,10 +1134,10 @@ vop_stdpathconf(struct vop_pathconf_args *ap)
 		*ap->a_retval = PIPE_BUF;
 		break;
 	case _PC_CHOWN_RESTRICTED:
-		*ap->a_retval = 1;
+		*ap->a_retval = _POSIX_CHOWN_RESTRICTED;
 		break;
 	case _PC_NO_TRUNC:
-		*ap->a_retval = 1;
+		*ap->a_retval = _POSIX_NO_TRUNC;
 		break;
 	case _PC_VDISABLE:
 		*ap->a_retval = _POSIX_VDISABLE;
