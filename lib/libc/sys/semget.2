@@ -53,21 +53,25 @@ set of semaphores.
 .\"
 The key
 is analogous to a filename: it provides a handle that names an
-IPC object.  There are three ways to specify a key:
+IPC object.
+There are three ways to specify a key:
 .Bl -bullet
 .It
-IPC_PRIVATE may be specified, in which case a new IPC object
-will be created.
+.Dv IPC_PRIVATE
+may be specified, in which case a new IPC object will be created.
 .It
-An integer constant may be specified.  If no IPC object corresponding
-to
+An integer constant may be specified.
+If no IPC object corresponding to
 .Fa key
-is specified and the IPC_CREAT bit is set in
+is specified and the
+.Dv IPC_CREAT
+bit is set in
 .Fa flag ,
 a new one will be created.
 .It
 .Fn ftok
-may be used to generate a key from a pathname.  See
+may be used to generate a key from a pathname.
+See
 .Xr ftok 3 .
 .El
 .\"
@@ -129,8 +133,10 @@ Access permission failure.
 .\" this is accurate
 .\"
 .It Bq Er EEXIST
-IPC_CREAT and IPC_EXCL were specified, and a semaphore set
-corresponding to
+.Dv IPC_CREAT
+and
+.Dv IPC_EXCL
+were specified, and a semaphore set corresponding to
 .Fa key
 already exists.
 .It Bq Er EINVAL
@@ -144,7 +150,9 @@ The kernel could not allocate a
 .It Bq Er ENOENT
 No semaphore set was found corresponding to
 .Fa key ,
-and IPC_CREAT was not specified.
+and
+.Dv IPC_CREAT
+was not specified.
 .El
 .Sh SEE ALSO
 .Xr semctl 2 ,

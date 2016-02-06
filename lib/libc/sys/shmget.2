@@ -54,21 +54,25 @@ memory segment.
 .\"
 The key
 is analogous to a filename: it provides a handle that names an
-IPC object.  There are three ways to specify a key:
+IPC object.
+There are three ways to specify a key:
 .Bl -bullet
 .It
-IPC_PRIVATE may be specified, in which case a new IPC object
-will be created.
+.Dv IPC_PRIVATE
+may be specified, in which case a new IPC object will be created.
 .It
-An integer constant may be specified.  If no IPC object corresponding
-to
+An integer constant may be specified.
+If no IPC object corresponding to
 .Fa key
-is specified and the IPC_CREAT bit is set in
+is specified and the
+.Dv IPC_CREAT
+bit is set in
 .Fa flag ,
 a new one will be created.
 .It
 .Fn ftok
-may be used to generate a key from a pathname.  See
+may be used to generate a key from a pathname.
+See
 .Xr ftok 3 .
 .El
 .Pp
@@ -100,8 +104,8 @@ Write access for other.
 .Pp
 When creating a new shared memory segment,
 .Fa size
-indicates the desired size of the new segment in bytes.  The size
-of the segment may be rounded up to a multiple convenient to the
+indicates the desired size of the new segment in bytes.
+The size of the segment may be rounded up to a multiple convenient to the
 kernel (i.e., the page size).
 .Sh RETURN VALUES
 Upon successful completion,
@@ -135,13 +139,17 @@ the system imposed maximum.
 .It Bq Er ENOENT
 No shared memory segment was found matching
 .Fa key ,
-and IPC_CREAT was not specified.
+and
+.Dv IPC_CREAT
+was not specified.
 .It Bq Er ENOSPC
 The kernel was unable to allocate enough memory to
 satisfy the request.
 .It Bq Er EEXIST
-IPC_CREAT and IPC_EXCL were specified, and a shared memory segment
-corresponding to
+.Dv IPC_CREAT
+and
+.Dv IPC_EXCL
+were specified, and a shared memory segment corresponding to
 .Fa key
 already exists.
 .El

@@ -47,8 +47,8 @@
 .Fn Shmat
 attaches the shared memory segment identified by
 .Fa shmid
-to the calling process's address space.  The address where the segment
-is attached is determined as follows:
+to the calling process's address space.
+The address where the segment is attached is determined as follows:
 .\"
 .\" These are cribbed almost exactly from Stevens, _Advanced Programming in
 .\" the UNIX Environment_.
@@ -62,15 +62,20 @@ kernel.
 .It
 If
 .Fa addr
-is nonzero and SHM_RND is not specified in
+is nonzero and
+.Dv SHM_RND
+is not specified in
 .Fa flag ,
 the segment is attached the specified address.
 .It
 If
 .Fa addr
-is specified and SHM_RND is specified,
+is specified and
+.Dv SHM_RND
+is specified,
 .Fa addr
-is rounded down to the nearest multiple of SHMLBA.
+is rounded down to the nearest multiple of
+.Dv SHMLBA .
 .El
 .Pp
 .Fn Shmdt

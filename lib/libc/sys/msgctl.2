@@ -104,7 +104,7 @@ The operation to be performed by
 is specified in
 .Fa cmd
 and is one of:
-.Bl -tag -width IPC_RMIDX
+.Bl -tag -width ".Dv IPC_RMIDX"
 .It Dv IPC_STAT
 Gather information about the message queue and place it in the
 structure pointed to by
@@ -187,7 +187,11 @@ system call will fail if:
 The
 .Fa cmd
 argument
-is equal to IPC_SET or IPC_RMID and the caller is not the super-user, nor does
+is equal to
+.Dv IPC_SET
+or
+.Dv IPC_RMID
+and the caller is not the super-user, nor does
 the effective uid match either the
 .Va msg_perm.uid
 or
@@ -196,10 +200,12 @@ fields of the data structure associated with the message queue.
 .Pp
 An attempt is made to increase the value of
 .Va msg_qbytes
-through IPC_SET
+through
+.Dv IPC_SET
 but the caller is not the super-user.
 .It Bq Er EACCES
-The command is IPC_STAT
+The command is
+.Dv IPC_STAT
 and the caller has no read permission for this message queue.
 .It Bq Er EINVAL
 The

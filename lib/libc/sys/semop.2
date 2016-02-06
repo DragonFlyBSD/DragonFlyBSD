@@ -70,7 +70,12 @@ and
 .Fa sem_flg
 determine an operation to be performed on semaphore number
 .Fa sem_num
-in the set.  The values SEM_UNDO and IPC_NOWAIT may be
+in the set.
+The values
+.Dv SEM_UNDO
+and
+.Dv IPC_NOWAIT
+may be
 .Em OR Ns 'ed
 into the
 .Fa sem_flg
@@ -88,10 +93,13 @@ When
 .Fa sem_op
 is positive, the semaphore's value is incremented by
 .Fa sem_op Ns 's
-value.  If SEM_UNDO is specified, the semaphore's adjust on exit
-value is decremented by
+value.
+If
+.Dv SEM_UNDO
+is specified, the semaphore's adjust on exit value is decremented by
 .Fa sem_op Ns 's
-value.  A positive value for
+value.
+A positive value for
 .Fa sem_op
 generally corresponds to a process releasing a resource
 associated with the semaphore.
@@ -106,7 +114,9 @@ the absolute value of
 .Fa sem_op ,
 then the value is decremented by the absolute value of
 .Fa sem_op .
-If SEM_UNDO is specified, the semaphore's adjust on exit
+If
+.Dv SEM_UNDO
+is specified, the semaphore's adjust on exit
 value is incremented by the absolute value of
 .Fa sem_op .
 .It
@@ -116,12 +126,15 @@ value, one of the following happens:
 .\" XXX a *second* sublist?
 .Bl -bullet
 .It
-If IPC_NOWAIT was specified, then
+If
+.Dv IPC_NOWAIT
+was specified, then
 .Fn semop
 returns immediately with a return value of
 .Er EAGAIN .
 .It
-If some other process has removed the semaphore with the IPC_RMID
+If some other process has removed the semaphore with the
+.Dv IPC_RMID
 option of
 .Fn semctl ,
 then
@@ -151,14 +164,17 @@ When
 is zero, the process waits for the semaphore's value to become zero.
 If it is already zero, the call to
 .Fn semop
-can return immediately.  Otherwise, the calling process is put to
+can return immediately.
+Otherwise, the calling process is put to
 sleep until the semaphore's value becomes zero.
 .El
 .Pp
 For each semaphore a process has in use, the kernel maintains an
-`adjust on exit' value, as alluded to earlier.  When a process
+`adjust on exit' value, as alluded to earlier.
+When a process
 exits, either voluntarily or involuntarily, the adjust on exit value
-for each semaphore is added to the semaphore's value.  This can
+for each semaphore is added to the semaphore's value.
+This can
 be used to insure that a resource is released if a process terminates
 unexpectedly.
 .Sh RETURN VALUES
@@ -187,7 +203,9 @@ semaphore set.
 .It Bq Er EAGAIN
 The semaphore's value was less than
 .Fa sem_op ,
-and IPC_NOWAIT was specified.
+and
+.Dv IPC_NOWAIT
+was specified.
 .It Bq Er E2BIG
 Too many operations were specified.
 .It Bq Er EFBIG
