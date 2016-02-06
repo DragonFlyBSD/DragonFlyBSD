@@ -12,6 +12,7 @@ OBJS+= hptmvraid.o
 
 hptmvraid.o:
 	uudecode -p < ${.CURDIR}/$(MACHINE_ARCH)-elf.raid.o.uu > ${.TARGET}
+	elfedit --output-osabi none ${.TARGET}
 
 #
 # Debug Options:

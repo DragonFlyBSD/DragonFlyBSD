@@ -8,5 +8,6 @@ OBJS+=	hpt27xx_lib.o
 
 hpt27xx_lib.o:
 	uudecode -p < ${.CURDIR}/$(MACHINE_ARCH)-elf.hpt27xx_lib.o.uu > ${.TARGET}
+	elfedit --output-osabi none ${.TARGET}
 
 .include <bsd.kmod.mk>

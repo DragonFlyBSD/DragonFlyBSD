@@ -18,17 +18,17 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 #
 hpt27xx_lib.o			optional	hpt27xx			\
 	dependency	"$S/dev/raid/hpt27xx/x86_64-elf.hpt27xx_lib.o.uu" \
-	compile-with	"uudecode < $S/dev/raid/hpt27xx/x86_64-elf.hpt27xx_lib.o.uu" \
+	compile-with	"uudecode < $S/dev/raid/hpt27xx/x86_64-elf.hpt27xx_lib.o.uu; elfedit --output-osabi none ${.TARGET}" \
 	no-implicit-rule
 #
 hptmvraid.o			optional	hptmv			\
 	dependency	"$S/dev/raid/hptmv/x86_64-elf.raid.o.uu"	\
-	compile-with	"uudecode < $S/dev/raid/hptmv/x86_64-elf.raid.o.uu" \
+	compile-with	"uudecode < $S/dev/raid/hptmv/x86_64-elf.raid.o.uu; elfedit --output-osabi none ${.TARGET}" \
 	no-implicit-rule
 #
 hptrr_lib.o			optional	hptrr			\
 	dependency	"$S/dev/raid/hptrr/x86_64-elf.hptrr_lib.o.uu"	\
-	compile-with	"uudecode < $S/dev/raid/hptrr/x86_64-elf.hptrr_lib.o.uu" \
+	compile-with	"uudecode < $S/dev/raid/hptrr/x86_64-elf.hptrr_lib.o.uu; elfedit --output-osabi none ${.TARGET}" \
 	no-implicit-rule
 #
 emulation/ndis/kern_ndis.c	optional	ndisapi pci

@@ -8,5 +8,6 @@ OBJS = hptrr_lib.o
 
 hptrr_lib.o:
 	uudecode -p < ${.CURDIR}/$(MACHINE_ARCH)-elf.hptrr_lib.o.uu > ${.TARGET}
+	elfedit --output-osabi none ${.TARGET}
 
 .include <bsd.kmod.mk>
