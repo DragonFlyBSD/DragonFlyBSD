@@ -14,14 +14,12 @@
 name="rtsold"
 rcvar=`set_rcvar`
 command="/usr/sbin/${name}"
-start_precmd="rtsold_precmd"
+start_postcmd="rtsold_poststart"
 
-rtsold_precmd()
+rtsold_poststart()
 {
-	if [ "$ip6mode" != "autohost" ]; then
-		warn "\$ip6mode must be set to 'autohost' to use ${name}."
-		return 1
-	fi
+        # wait for DAD
+        sleep $(($(${SYSCTL_N} net.inet6.ip6.dad_count) + 1))
 }
 
 load_rc_config $name
