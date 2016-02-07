@@ -39,7 +39,7 @@
 #define	_GRP_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
 #define	_PATH_GROUP		"/etc/group"
 
