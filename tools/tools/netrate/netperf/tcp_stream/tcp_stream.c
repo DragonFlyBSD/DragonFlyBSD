@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #define NETPERF_CMD	"netperf"
@@ -23,8 +24,8 @@ struct netperf_child {
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -H host [-l len_s] [-i instances] [-m msgsz] "
-	    "[-S sockbuf] [-r|-s]\n", cmd);
+	fprintf(stderr, "%s -H host [-H host1] [-l len_s] [-i instances] "
+	    "[-m msgsz] [-S sockbuf] [-r|-s]\n", cmd);
 	exit(1);
 }
 
@@ -34,23 +35,41 @@ main(int argc, char *argv[])
 	struct netperf_child *instance;
 	char len_str[32], sockbuf_str[64], msgsz_str[64];
 	char *args[32];
-	const char *host, *msgsz, *sockbuf;
-	volatile int ninst, set_minmax = 0;
-	int len, ninst_done;
+	const char *msgsz, *sockbuf;
+	const char **host;
+	volatile int ninst, set_minmax = 0, ninstance, nhost;
+	int len, ninst_done, host_idx, host_arg_idx;
 	int opt, i, null_fd;
 	volatile int reverse = 0, sfile = 0;
 	double result, res_max, res_min, jain;
 
-	host = NULL;
 	ninst = 2;
 	len = 10;
 	msgsz = NULL;
 	sockbuf = NULL;
 
+	host_idx = 0;
+	nhost = 8;
+	host = malloc(sizeof(const char *) * nhost);
+	if (host == NULL)
+		err(1, "malloc failed");
+
 	while ((opt = getopt(argc, argv, "H:S:i:l:m:rs")) != -1) {
 		switch (opt) {
 		case 'H':
-			host = optarg;
+			if (host_idx == nhost) {
+				const char **new_host;
+
+				nhost *= 2;
+				new_host = malloc(sizeof(const char *) * nhost);
+				if (new_host == NULL)
+					err(1, "malloc failed");
+				memcpy(new_host, host,
+				    host_idx * sizeof(const char *));
+				free(host);
+				host = new_host;
+			}
+			host[host_idx++] = optarg;
 			break;
 
 		case 'S':
@@ -83,7 +102,9 @@ main(int argc, char *argv[])
 			usage(argv[0]);
 		}
 	}
-	if (ninst <= 0 || host == NULL || len <= 0)
+	nhost = host_idx;
+
+	if (ninst <= 0 || nhost == 0 || len <= 0)
 		usage(argv[0]);
 
 	snprintf(len_str, sizeof(len_str), "%d", len);
@@ -92,7 +113,8 @@ main(int argc, char *argv[])
 	args[i++] = __DECONST(char *, NETPERF_CMD);
 	args[i++] = __DECONST(char *, "-P0");
 	args[i++] = __DECONST(char *, "-H");
-	args[i++] = __DECONST(char *, host);
+	host_arg_idx = i;
+	args[i++] = __DECONST(char *, NULL);
 	args[i++] = __DECONST(char *, "-l");
 	args[i++] = __DECONST(char *, len_str);
 	args[i++] = __DECONST(char *, "-t");
@@ -123,7 +145,8 @@ main(int argc, char *argv[])
 	}
 	args[i] = NULL;
 
-	instance = calloc(ninst, sizeof(struct netperf_child));
+	ninstance = ninst * nhost;
+	instance = calloc(ninstance, sizeof(struct netperf_child));
 	if (instance == NULL)
 		err(1, "calloc failed");
 
@@ -131,12 +154,12 @@ main(int argc, char *argv[])
 	if (null_fd < 0)
 		err(1, "open null failed");
 
-	for (i = 0; i < ninst; ++i) {
+	for (i = 0; i < ninstance; ++i) {
 		if (pipe(instance[i].pipes) < 0)
 			err(1, "pipe %dth failed", i);
 	}
 
-	for (i = 0; i < ninst; ++i) {
+	for (i = 0; i < ninstance; ++i) {
 		pid_t pid;
 
 		pid = vfork();
@@ -145,6 +168,9 @@ main(int argc, char *argv[])
 
 			dup2(instance[i].pipes[1], STDOUT_FILENO);
 			dup2(null_fd, STDERR_FILENO);
+
+			args[host_arg_idx] = __DECONST(char *,
+			    host[i % nhost]);
 			ret = execv(NETPERF_PATH, args);
 			if (ret < 0) {
 				warn("execv %d failed", i);
@@ -160,7 +186,7 @@ main(int argc, char *argv[])
 	}
 
 	ninst_done = 0;
-	while (ninst_done < ninst) {
+	while (ninst_done < ninstance) {
 		pid_t pid;
 
 		pid = waitpid(-1, NULL, 0);
@@ -173,7 +199,7 @@ main(int argc, char *argv[])
 	res_min = 0.0;
 	jain = 0.0;
 	result = 0.0;
-	for (i = 0; i < ninst; ++i) {
+	for (i = 0; i < ninstance; ++i) {
 		char line[128];
 		FILE *fp;
 
@@ -206,7 +232,7 @@ main(int argc, char *argv[])
 		fclose(fp);
 	}
 
-	jain *= ninst;
+	jain *= ninstance;
 	jain = (result * result) / jain;
 
 	printf("%s %.2f Mbps\n", reverse ? "TCP_MAERTS" : "TCP_STREAM", result);
