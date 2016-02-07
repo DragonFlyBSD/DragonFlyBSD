@@ -78,12 +78,9 @@ bfd/coff-tic80.c
 bfd/coff-u68k.c
 bfd/coff-w65.c
 bfd/coff-we32k.c
-bfd/coff-x86_64.c
 bfd/coff-z80.c
 bfd/coff-z8k.c
 bfd/coff64-rs6000.c
-bfd/coffcode.h
-bfd/cofflink.c
 bfd/coffswap.h
 bfd/config.in
 bfd/configure
@@ -348,7 +345,6 @@ bfd/libhppa.h
 bfd/libieee.h
 bfd/libnlm.h
 bfd/liboasys.h
-bfd/libpei.h
 bfd/libxcoff.h
 bfd/lynx-core.c
 bfd/m68k4knetbsd.c
@@ -392,7 +388,6 @@ bfd/pe-mips.c
 bfd/pe-ppc.c
 bfd/pe-sh.c
 bfd/pe-x86_64.c
-bfd/peXXigen.c
 bfd/pef-traceback.h
 bfd/pef.c
 bfd/pef.h
@@ -404,8 +399,6 @@ bfd/pei-mcore.c
 bfd/pei-mips.c
 bfd/pei-ppc.c
 bfd/pei-sh.c
-bfd/pei-x86_64.c
-bfd/peicode.h
 bfd/plugin.c
 bfd/po/
 bfd/ppcboot.c
@@ -900,7 +893,6 @@ include/coff/h8300.h
 include/coff/h8500.h
 include/coff/i860.h
 include/coff/i960.h
-include/coff/ia64.h
 include/coff/m68k.h
 include/coff/m88k.h
 include/coff/mcore.h
@@ -919,7 +911,6 @@ include/coff/tic54x.h
 include/coff/tic80.h
 include/coff/w65.h
 include/coff/we32k.h
-include/coff/x86_64.h
 include/coff/xcoff.h
 include/coff/z80.h
 include/coff/z8k.h

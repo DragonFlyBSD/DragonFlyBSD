@@ -21,7 +21,8 @@ SRCS=	archive.c archures.c bfd.c bfdio.c bfdwin.c \
 # from Makefile, BFD64_BACKENDS_CFILES  (x86-64 specific)
 SRCS+=	elf64-x86-64.c elf-ifunc.c elf-nacl.c elf64.c elf.c elflink.c \
 	elf-attrs.c elf-strtab.c elf-eh-frame.c dwarf1.c elf32-i386.c \
-	elf-vxworks.c elf32.c elf64-gen.c elf32-gen.c
+	elf-vxworks.c elf32.c elf64-gen.c elf32-gen.c pei-x86_64.c \
+	pex64igen.c cofflink.c
 
 # ALL_MACHINES_CFILES
 SRCS+=	cpu-i386.c cpu-l1om.c cpu-k1om.c
@@ -30,6 +31,7 @@ SRCS+=	cpu-i386.c cpu-l1om.c cpu-k1om.c
 SRCS+=		archive64.c
 
 VECTORS=	x86_64_elf64_vec \
+		x86_64_pei_vec \
 		i386_elf32_vec \
 		l1om_elf64_vec \
 		k1om_elf64_vec \
@@ -71,7 +73,10 @@ elf32-target.h: elfxx-target.h
 	sed -e s/NN/32/g < ${CONTRIBDIR}/elfxx-target.h > ${.TARGET}
 elf64-target.h: elfxx-target.h
 	sed -e s/NN/64/g < ${CONTRIBDIR}/elfxx-target.h > ${.TARGET}
+pex64igen.c: peXXigen.c
+	sed -e s/XX/pex64/g < ${CONTRIBDIR}/peXXigen.c > ${.TARGET}
 
-CLEANFILES=	bfd_stdint.h bfd.h elf64-target.h elf32-target.h targmatch.h
+CLEANFILES=	bfd_stdint.h bfd.h elf64-target.h elf32-target.h targmatch.h \
+		pex64igen.c
 
 .include <bsd.lib.mk>
