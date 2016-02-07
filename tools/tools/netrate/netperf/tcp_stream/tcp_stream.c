@@ -4,6 +4,7 @@
 
 #include <err.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -19,7 +20,11 @@
 
 struct netperf_child {
 	int		pipes[2];
+	pid_t		pid;
 };
+
+static struct netperf_child *instance;
+static int ninstance;
 
 static void
 usage(const char *cmd)
@@ -29,19 +34,31 @@ usage(const char *cmd)
 	exit(1);
 }
 
+static void
+sigint_handler(int sig __unused)
+{
+	int i;
+
+	for (i = 0; i < ninstance; ++i) {
+		if (instance[i].pid != -1)
+			kill(instance[i].pid, SIGKILL);
+	}
+	kill(getpid(), SIGKILL);
+}
+
 int
 main(int argc, char *argv[])
 {
-	struct netperf_child *instance;
 	char len_str[32], sockbuf_str[64], msgsz_str[64];
 	char *args[32];
 	const char *msgsz, *sockbuf;
 	const char **host;
-	volatile int ninst, set_minmax = 0, ninstance, nhost, dual;
-	int len, ninst_done, host_idx, host_arg_idx, test_arg_idx;
+	volatile int set_minmax = 0, nhost, dual;
+	int len, ninst, ninst_done, host_idx, host_arg_idx, test_arg_idx;
 	int opt, i, null_fd;
 	volatile int reverse = 0, sfile = 0;
 	double result, res_max, res_min, jain;
+	sigset_t nset, oset;
 
 	dual = 0;
 	ninst = 2;
@@ -163,7 +180,13 @@ main(int argc, char *argv[])
 	for (i = 0; i < ninstance; ++i) {
 		if (pipe(instance[i].pipes) < 0)
 			err(1, "pipe %dth failed", i);
+		instance[i].pid = -1;
 	}
+
+	sigemptyset(&nset);
+	sigaddset(&nset, SIGINT);
+	sigprocmask(SIG_BLOCK, &nset, &oset);
+	signal(SIGINT, sigint_handler);
 
 	for (i = 0; i < ninstance; ++i) {
 		pid_t pid;
@@ -201,7 +224,10 @@ main(int argc, char *argv[])
 		}
 		close(instance[i].pipes[1]);
 		instance[i].pipes[1] = -1;
+		instance[i].pid = pid;
 	}
+
+	sigprocmask(SIG_SETMASK, &oset, NULL);
 
 	ninst_done = 0;
 	while (ninst_done < ninstance) {
