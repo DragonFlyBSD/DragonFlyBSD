@@ -32,7 +32,7 @@ int
 main(int argc, char *argv[])
 {
 	struct netperf_child *instance;
-	char len_str[32], sockbuf_str[64];
+	char len_str[32], sockbuf_str[64], msgsz_str[64];
 	char *args[32];
 	const char *host, *msgsz, *sockbuf;
 	volatile int ninst, set_minmax = 0;
@@ -105,8 +105,12 @@ main(int argc, char *argv[])
 	if (msgsz != NULL || sockbuf != NULL) {
 		args[i++] = __DECONST(char *, "--");
 		if (msgsz != NULL) {
+			snprintf(msgsz_str, sizeof(msgsz_str), "%s,%s",
+			    msgsz, msgsz);
 			args[i++] = __DECONST(char *, "-m");
-			args[i++] = __DECONST(char *, msgsz);
+			args[i++] = __DECONST(char *, msgsz_str);
+			args[i++] = __DECONST(char *, "-M");
+			args[i++] = __DECONST(char *, msgsz_str);
 		}
 		if (sockbuf != NULL) {
 			snprintf(sockbuf_str, sizeof(sockbuf_str), "%s,%s",
