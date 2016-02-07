@@ -25,7 +25,7 @@ static void
 usage(const char *cmd)
 {
 	fprintf(stderr, "%s -H host [-H host1] [-l len_s] [-i instances] "
-	    "[-m msgsz] [-S sockbuf] [-r|-s]\n", cmd);
+	    "[-m msgsz] [-S sockbuf] [-r|-s] [-x]\n", cmd);
 	exit(1);
 }
 
@@ -37,12 +37,13 @@ main(int argc, char *argv[])
 	char *args[32];
 	const char *msgsz, *sockbuf;
 	const char **host;
-	volatile int ninst, set_minmax = 0, ninstance, nhost;
-	int len, ninst_done, host_idx, host_arg_idx;
+	volatile int ninst, set_minmax = 0, ninstance, nhost, dual;
+	int len, ninst_done, host_idx, host_arg_idx, test_arg_idx;
 	int opt, i, null_fd;
 	volatile int reverse = 0, sfile = 0;
 	double result, res_max, res_min, jain;
 
+	dual = 0;
 	ninst = 2;
 	len = 10;
 	msgsz = NULL;
@@ -54,7 +55,7 @@ main(int argc, char *argv[])
 	if (host == NULL)
 		err(1, "malloc failed");
 
-	while ((opt = getopt(argc, argv, "H:S:i:l:m:rs")) != -1) {
+	while ((opt = getopt(argc, argv, "H:S:i:l:m:rsx")) != -1) {
 		switch (opt) {
 		case 'H':
 			if (host_idx == nhost) {
@@ -98,6 +99,10 @@ main(int argc, char *argv[])
 			sfile = 1;
 			break;
 
+		case 'x':
+			dual = 1;
+			break;
+
 		default:
 			usage(argv[0]);
 		}
@@ -118,6 +123,7 @@ main(int argc, char *argv[])
 	args[i++] = __DECONST(char *, "-l");
 	args[i++] = __DECONST(char *, len_str);
 	args[i++] = __DECONST(char *, "-t");
+	test_arg_idx = i;
 	if (reverse)
 		args[i++] = __DECONST(char *, "TCP_MAERTS");
 	else if (sfile)
@@ -145,7 +151,7 @@ main(int argc, char *argv[])
 	}
 	args[i] = NULL;
 
-	ninstance = ninst * nhost;
+	ninstance = ninst * nhost * (dual + 1);
 	instance = calloc(ninstance, sizeof(struct netperf_child));
 	if (instance == NULL)
 		err(1, "calloc failed");
@@ -171,6 +177,18 @@ main(int argc, char *argv[])
 
 			args[host_arg_idx] = __DECONST(char *,
 			    host[i % nhost]);
+			if (dual) {
+				const char *test_type;
+
+				if ((i / nhost) & dual) {
+					test_type = sfile ?
+					    "TCP_SENDFILE" : "TCP_STREAM";
+				} else {
+					test_type = "TCP_MAERTS";
+				}
+				args[test_arg_idx] = __DECONST(char *,
+				    test_type);
+			}
 			ret = execv(NETPERF_PATH, args);
 			if (ret < 0) {
 				warn("execv %d failed", i);
@@ -235,7 +253,9 @@ main(int argc, char *argv[])
 	jain *= ninstance;
 	jain = (result * result) / jain;
 
-	printf("%s %.2f Mbps\n", reverse ? "TCP_MAERTS" : "TCP_STREAM", result);
+	printf("%s%s %.2f Mbps\n",
+	    (dual || reverse) ? "TCP_MAERTS" : "TCP_STREAM",
+	    dual ? (sfile ? "/TCP_SENDFILE" : "/TCP_STREAM") : "", result);
 	printf("min/max (jain) %.2f Mbps/%.2f Mbps (%f)\n",
 	    res_min, res_max, jain);
 
