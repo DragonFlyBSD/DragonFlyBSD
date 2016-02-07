@@ -85,8 +85,8 @@
 #define	OFF_MAX		LONG_MAX	/* max value for an off_t */
 #define	OFF_MIN		LONG_MIN	/* min value for an off_t */
 
-#define GID_MAX		UINT_MAX        /* max value for a gid_t */
-#define UID_MAX		UINT_MAX        /* max value for a uid_t */
+#define	GID_MAX		UINT_MAX        /* max value for a gid_t */
+#define	UID_MAX		UINT_MAX        /* max value for a uid_t */
 
 /* Quads and long longs are the same size.  Ensure they stay in sync. */
 #define	UQUAD_MAX	ULLONG_MAX	/* max value for a uquad_t */
