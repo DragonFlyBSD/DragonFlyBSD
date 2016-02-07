@@ -5,11 +5,16 @@
 #include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #define NETPERF_CMD	"netperf"
 #define NETPERF_PATH	"/usr/local/bin/" NETPERF_CMD
+
+#ifndef __DECONST
+#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
+#endif
 
 struct netperf_child {
 	int		pipes[2];
@@ -19,7 +24,7 @@ static void
 usage(const char *cmd)
 {
 	fprintf(stderr, "%s -H host [-l len_s] [-i instances] [-m msgsz] "
-	    "[-r|-s]\n", cmd);
+	    "[-S sockbuf] [-r|-s]\n", cmd);
 	exit(1);
 }
 
@@ -29,7 +34,7 @@ main(int argc, char *argv[])
 	struct netperf_child *instance;
 	char len_str[32];
 	char *args[32];
-	const char *host, *msgsz;
+	const char *host, *msgsz, *sockbuf;
 	volatile int ninst, set_minmax = 0;
 	int len, ninst_done;
 	int opt, i, null_fd;
@@ -40,11 +45,16 @@ main(int argc, char *argv[])
 	ninst = 2;
 	len = 10;
 	msgsz = NULL;
+	sockbuf = NULL;
 
-	while ((opt = getopt(argc, argv, "H:i:l:m:rs")) != -1) {
+	while ((opt = getopt(argc, argv, "H:S:i:l:m:rs")) != -1) {
 		switch (opt) {
 		case 'H':
 			host = optarg;
+			break;
+
+		case 'S':
+			sockbuf = optarg;
 			break;
 
 		case 'i':
@@ -92,10 +102,22 @@ main(int argc, char *argv[])
 		args[i++] = __DECONST(char *, "TCP_SENDFILE");
 	else
 		args[i++] = __DECONST(char *, "TCP_STREAM");
-	if (msgsz != NULL) {
+	if (msgsz != NULL || sockbuf != NULL) {
 		args[i++] = __DECONST(char *, "--");
-		args[i++] = __DECONST(char *, "-m");
-		args[i++] = __DECONST(char *, msgsz);
+		if (msgsz != NULL) {
+			args[i++] = __DECONST(char *, "-m");
+			args[i++] = __DECONST(char *, msgsz);
+		}
+		if (sockbuf != NULL) {
+			char buf_str[64];
+
+			snprintf(buf_str, sizeof(buf_str), "%s,%s",
+			    sockbuf, sockbuf);
+			args[i++] = __DECONST(char *, "-s");
+			args[i++] = __DECONST(char *, buf_str);
+			args[i++] = __DECONST(char *, "-S");
+			args[i++] = __DECONST(char *, buf_str);
+		}
 	}
 	args[i] = NULL;
 
