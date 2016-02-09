@@ -47,6 +47,7 @@ static int	dos_close(struct open_file *fd);
 static int	dos_read(struct open_file *fd, void *buf, size_t size, size_t *resid);
 static off_t	dos_seek(struct open_file *fd, off_t offset, int whence);
 static int	dos_stat(struct open_file *fd, struct stat *sb);
+static int	dos_readdir(struct open_file *fd, struct dirent *d);
 
 struct fs_ops dosfs_fsops = {
 	"dosfs",
@@ -56,7 +57,7 @@ struct fs_ops dosfs_fsops = {
 	null_write,
 	dos_seek,
 	dos_stat,
-	null_readdir
+	dos_readdir
 };
 
 #define SECSIZ  512             /* sector size */
@@ -354,6 +355,87 @@ dos_stat(struct open_file *fd, struct stat *sb)
     if ((sb->st_size = fsize(f->fs, &f->de)) == -1)
 	return EINVAL;
     return (0);
+}
+
+static int
+dos_readdir(struct open_file *fd, struct dirent *d)
+{
+    /* DOS_FILE *f = (DOS_FILE *)fd->f_fsdata; */
+    u_char fn[261];
+    DOS_DIR dd;
+    size_t res;
+    u_int chk, i, x, xdn;
+    int err;
+
+    x = chk = 0;
+    while (1) {
+        xdn = x;
+        x = 0;
+        err = dos_read(fd, &dd, sizeof(dd), &res);
+        if (err)
+            return (err);
+        if (res == sizeof(dd))
+            return (ENOENT);
+        if (dd.de.name[0] == 0)
+            return (ENOENT);
+
+        /* Skip deleted entries */
+        if (dd.de.name[0] == 0xe5)
+            continue;
+
+        /* Check if directory entry is volume label */
+        if (dd.de.attr & FA_LABEL) {
+            /*
+             * If volume label set, check if the current entry is
+             * extended entry (FA_XDE) for long file names.
+             */
+            if ((dd.de.attr & FA_MASK) == FA_XDE) {
+                /*
+                 * Read through all following extended entries
+                 * to get the long file name. 0x40 marks the
+                 * last entry containing part of long file name.
+                 */
+                if (dd.xde.seq & 0x40)
+                    chk = dd.xde.chk;
+                else if (dd.xde.seq != xdn - 1 || dd.xde.chk != chk)
+                    continue;
+                x = dd.xde.seq & ~0x40;
+                if (x < 1 || x > 20) {
+                    x = 0;
+                    continue;
+                }
+                cp_xdnm(fn, &dd.xde);
+            } else {
+                /* skip only volume label entries */
+                continue;
+            }
+        } else {
+            if (xdn == 1) {
+                x = 0;
+                for (i = 0; i < 8; i++) {
+                    x = ((x & 1) << 7) | (x >> 1);
+                    x += dd.de.name[i];
+                    x &= 0xff;
+                }
+                for (i = 0; i < 3; i++) {
+                    x = ((x & 1) << 7) | (x >> 1);
+                    x += dd.de.ext[i];
+                    x &= 0xff;
+                }
+                if (x == chk)
+                    break;
+            } else {
+                cp_sfn(fn, &dd.de);
+                break;
+            }
+            x = 0;
+        }
+    }
+
+    d->d_fileno = (dd.de.clus[1] << 8) + dd.de.clus[0];
+    d->d_type = (dd.de.attr & FA_DIR) ? DT_DIR : DT_REG;
+    memcpy(d->d_name, fn, sizeof(d->d_name));
+    return(0);
 }
 
 /*
