@@ -231,7 +231,7 @@ tolower(int c)
 /* sbrk emulation */
 extern void	setheap(void *, void *);
 extern char	*getheap(size_t *sizep);
-extern char	*sbrk(int);
+extern char	*sbrk(intptr_t);
 
 /* Matt Dillon's zalloc/zmalloc */
 extern void	*malloc(size_t);

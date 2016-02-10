@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
 .\"
-.Dd January 2, 2013
+.Dd February 10, 2016
 .Dt LIBSTAND 3
 .Os
 .Sh NAME
@@ -83,7 +83,7 @@ will be used for the heap; attempting to allocate beyond this will result
 in a panic.
 .It Xo
 .Ft "char *"
-.Fn sbrk "int junk"
+.Fn sbrk "intptr_t incr"
 .Xc
 .Pp
 Provides the behaviour of
@@ -92,7 +92,7 @@ i.e.\& returns the highest point that the heap has reached.
 This value can
 be used during testing to determine the actual heap usage.
 The
-.Fa junk
+.Fa incr
 argument is ignored.
 .El
 .Sh ENVIRONMENT
