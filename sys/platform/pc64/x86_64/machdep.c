@@ -92,6 +92,8 @@
 #include <sys/exec.h>
 #include <sys/cons.h>
 
+#include <sys/efi.h>
+
 #include <ddb/ddb.h>
 
 #include <machine/cpu.h>
@@ -1574,7 +1576,163 @@ ssdtosyssd(struct soft_segment_descriptor *ssd,
 #define PHYSMAP_ALIGN_MASK	(vm_paddr_t)(PHYSMAP_ALIGN - 1)
 	vm_paddr_t physmap[PHYSMAP_SIZE];
 	struct bios_smap *smapbase, *smap, *smapend;
+	struct efi_map_header *efihdrbase;
 	u_int32_t smapsize;
+
+static void
+add_smap_entries(int *physmap_idx)
+{
+	int i;
+
+	smapsize = *((u_int32_t *)smapbase - 1);
+	smapend = (struct bios_smap *)((uintptr_t)smapbase + smapsize);
+
+	for (smap = smapbase; smap < smapend; smap++) {
+		if (boothowto & RB_VERBOSE)
+			kprintf("SMAP type=%02x base=%016lx len=%016lx\n",
+			    smap->type, smap->base, smap->length);
+
+		if (smap->type != SMAP_TYPE_MEMORY)
+			continue;
+
+		if (smap->length == 0)
+			continue;
+
+		for (i = 0; i <= *physmap_idx; i += 2) {
+			if (smap->base < physmap[i + 1]) {
+				if (boothowto & RB_VERBOSE) {
+					kprintf("Overlapping or non-monotonic "
+						"memory region, ignoring "
+						"second region\n");
+				}
+				break;
+			}
+		}
+		if (i <= *physmap_idx)
+			continue;
+
+		Realmem += smap->length;
+
+		if (smap->base == physmap[*physmap_idx + 1]) {
+			physmap[*physmap_idx + 1] += smap->length;
+			continue;
+		}
+
+		*physmap_idx += 2;
+		if (*physmap_idx == PHYSMAP_SIZE) {
+			kprintf("Too many segments in the physical "
+				"address map, giving up\n");
+			break;
+		}
+		physmap[*physmap_idx] = smap->base;
+		physmap[*physmap_idx + 1] = smap->base + smap->length;
+	}
+}
+
+#define efi_next_descriptor(ptr, size) \
+	((struct efi_md *)(((uint8_t *) ptr) + size))
+
+static void
+add_efi_map_entries(int *physmap_idx)
+{
+	 struct efi_md *map, *p;
+	 const char *type;
+	 size_t efisz;
+	 int i, ndesc;
+
+	static const char *types[] = {
+		"Reserved",
+		"LoaderCode",
+		"LoaderData",
+		"BootServicesCode",
+		"BootServicesData",
+		"RuntimeServicesCode",
+		"RuntimeServicesData",
+		"ConventionalMemory",
+		"UnusableMemory",
+		"ACPIReclaimMemory",
+		"ACPIMemoryNVS",
+		"MemoryMappedIO",
+		"MemoryMappedIOPortSpace",
+		"PalCode"
+	 };
+
+	/*
+	 * Memory map data provided by UEFI via the GetMemoryMap
+	 * Boot Services API.
+	 */
+	efisz = (sizeof(struct efi_map_header) + 0xf) & ~0xf;
+	map = (struct efi_md *)((uint8_t *)efihdrbase + efisz);
+
+	if (efihdrbase->descriptor_size == 0)
+		return;
+	ndesc = efihdrbase->memory_size / efihdrbase->descriptor_size;
+
+	if (boothowto & RB_VERBOSE)
+		kprintf("%23s %12s %12s %8s %4s\n",
+		    "Type", "Physical", "Virtual", "#Pages", "Attr");
+
+	for (i = 0, p = map; i < ndesc; i++,
+	    p = efi_next_descriptor(p, efihdrbase->descriptor_size)) {
+		if (boothowto & RB_VERBOSE) {
+			if (p->md_type <= EFI_MD_TYPE_PALCODE)
+				type = types[p->md_type];
+			else
+				type = "<INVALID>";
+			kprintf("%23s %012lx %12p %08lx ", type, p->md_phys,
+			    p->md_virt, p->md_pages);
+			if (p->md_attr & EFI_MD_ATTR_UC)
+				kprintf("UC ");
+			if (p->md_attr & EFI_MD_ATTR_WC)
+				kprintf("WC ");
+			if (p->md_attr & EFI_MD_ATTR_WT)
+				kprintf("WT ");
+			if (p->md_attr & EFI_MD_ATTR_WB)
+				kprintf("WB ");
+			if (p->md_attr & EFI_MD_ATTR_UCE)
+				kprintf("UCE ");
+			if (p->md_attr & EFI_MD_ATTR_WP)
+				kprintf("WP ");
+			if (p->md_attr & EFI_MD_ATTR_RP)
+				kprintf("RP ");
+			if (p->md_attr & EFI_MD_ATTR_XP)
+				kprintf("XP ");
+			if (p->md_attr & EFI_MD_ATTR_RT)
+				kprintf("RUNTIME");
+			kprintf("\n");
+		}
+
+		switch (p->md_type) {
+		case EFI_MD_TYPE_CODE:
+		case EFI_MD_TYPE_DATA:
+		case EFI_MD_TYPE_BS_CODE:
+		case EFI_MD_TYPE_BS_DATA:
+		case EFI_MD_TYPE_FREE:
+			/*
+			 * We're allowed to use any entry with these types.
+			 */
+			break;
+		default:
+			continue;
+		}
+
+		Realmem += p->md_pages * PAGE_SIZE;
+
+		if (p->md_phys == physmap[*physmap_idx + 1]) {
+			physmap[*physmap_idx + 1] += p->md_pages * PAGE_SIZE;
+			continue;
+		}
+
+		*physmap_idx += 2;
+		if (*physmap_idx == PHYSMAP_SIZE) {
+			kprintf("Too many segments in the physical "
+				"address map, giving up\n");
+			break;
+		}
+		physmap[*physmap_idx] = p->md_phys;
+		physmap[*physmap_idx + 1] = p->md_phys + p->md_pages * PAGE_SIZE;
+	 }
+}
 
 static void
 getmemsize(caddr_t kmdp, u_int64_t first)
@@ -1597,54 +1755,17 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	 * "Consumer may safely assume that size value precedes data."
 	 * ie: an int32_t immediately precedes smap.
 	 */
+	efihdrbase = (struct efi_map_header *)preload_search_info(kmdp,
+	    MODINFO_METADATA | MODINFOMD_EFI_MAP);
 	smapbase = (struct bios_smap *)preload_search_info(kmdp,
 	    MODINFO_METADATA | MODINFOMD_SMAP);
-	if (smapbase == NULL)
-		panic("No BIOS smap info from loader!");
+	if (smapbase == NULL && efihdrbase == NULL)
+		panic("No BIOS smap or EFI map info from loader!");
 
-	smapsize = *((u_int32_t *)smapbase - 1);
-	smapend = (struct bios_smap *)((uintptr_t)smapbase + smapsize);
-
-	for (smap = smapbase; smap < smapend; smap++) {
-		if (boothowto & RB_VERBOSE)
-			kprintf("SMAP type=%02x base=%016lx len=%016lx\n",
-			    smap->type, smap->base, smap->length);
-
-		if (smap->type != SMAP_TYPE_MEMORY)
-			continue;
-
-		if (smap->length == 0)
-			continue;
-
-		for (i = 0; i <= physmap_idx; i += 2) {
-			if (smap->base < physmap[i + 1]) {
-				if (boothowto & RB_VERBOSE) {
-					kprintf("Overlapping or non-monotonic "
-						"memory region, ignoring "
-						"second region\n");
-				}
-				break;
-			}
-		}
-		if (i <= physmap_idx)
-			continue;
-
-		Realmem += smap->length;
-
-		if (smap->base == physmap[physmap_idx + 1]) {
-			physmap[physmap_idx + 1] += smap->length;
-			continue;
-		}
-
-		physmap_idx += 2;
-		if (physmap_idx == PHYSMAP_SIZE) {
-			kprintf("Too many segments in the physical "
-				"address map, giving up\n");
-			break;
-		}
-		physmap[physmap_idx] = smap->base;
-		physmap[physmap_idx + 1] = smap->base + smap->length;
-	}
+	if (efihdrbase == NULL)
+		add_smap_entries(&physmap_idx);
+	else
+		add_efi_map_entries(&physmap_idx);
 
 	base_memory = physmap[1] / 1024;
 	/* make hole for AP bootstrap code */
