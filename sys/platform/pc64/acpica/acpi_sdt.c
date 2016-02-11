@@ -37,6 +37,7 @@
 #include <sys/systm.h>
 
 #include <machine/pmap.h>
+#include <machine/vmparam.h>
 
 #include <contrib/dev/acpica/source/include/acpi.h>
 
@@ -65,6 +66,15 @@ sdt_probe(void)
 	const ACPI_TABLE_RSDP *rsdp;
 	vm_size_t mapsz;
 	uint8_t *ptr;
+	u_long rsdp_paddr;
+
+	if (kgetenv_ulong("hint.acpi.0.rsdp", &rsdp_paddr) == 1) {
+		SDT_VPRINTF("RSDP in kenv hint\n");
+		mapsz = PAGE_SIZE;
+		ptr = pmap_mapdev(rsdp_paddr, mapsz);
+		rsdp = (const ACPI_TABLE_RSDP *)ptr;
+		goto found_rsdp;
+	}
 
 	if (ebda_addr != 0) {
 		mapsz = ACPI_EBDA_WINDOW_SIZE;

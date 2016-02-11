@@ -35,6 +35,8 @@
 #include <sys/linker_set.h>
 #include <sys/sysctl.h>
 
+#include <machine/vmparam.h>
+
 #include "acpi.h"
 
 static u_long i386_acpi_root;
@@ -59,16 +61,21 @@ AcpiOsGetRootPointer(void)
 {
 	ACPI_SIZE ptr;
 	ACPI_STATUS status;
+	u_long acpi_root;
 
 	if (i386_acpi_root == 0) {
 		/*
 		 * The loader passes the physical address at which it found the
-		 * RSDP in a hint.  We could recover this rather than searching
+		 * RSDP in a hint.  We try to recover this before searching
 		 * manually here.
 		 */
-		status = AcpiFindRootPointer(&ptr);
-		if (ACPI_SUCCESS(status))
-			i386_acpi_root = ptr;
+		if (kgetenv_ulong("hint.acpi.0.rsdp", &acpi_root) == 1) {
+			i386_acpi_root = acpi_root;
+		} else {
+			status = AcpiFindRootPointer(&ptr);
+			if (ACPI_SUCCESS(status))
+				i386_acpi_root = ptr;
+		}
 	}
 
 	return (i386_acpi_root);
