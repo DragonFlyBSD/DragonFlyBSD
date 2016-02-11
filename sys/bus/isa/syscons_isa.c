@@ -37,6 +37,7 @@
 #include <sys/cons.h>
 
 #include <machine/console.h>
+#include <machine/framebuffer.h>
 
 #include <dev/misc/syscons/syscons.h>
 
@@ -139,6 +140,7 @@ sc_get_cons_priority(int *unit, int *flags)
 	int disabled;
 	int u, f;
 	int i;
+	int have_efi_fb = (probe_efi_fb(1) == 0);
 
 	*unit = -1;
 	for (i = -1; (i = resource_locate(i, SC_DRIVER_NAME)) >= 0;) {
@@ -148,6 +150,9 @@ sc_get_cons_priority(int *unit, int *flags)
 			continue;
 		if (resource_int_value(SC_DRIVER_NAME, u, "flags", &f) != 0)
 			f = 0;
+		/* We prefer the EFI Framebuffer over other video devices */
+		if (have_efi_fb && !(f & SC_EFI_FB))
+			continue;
 		if (f & SC_KERNEL_CONSOLE) {
 			/* the user designates this unit to be the console */
 			*unit = u;
@@ -162,6 +167,8 @@ sc_get_cons_priority(int *unit, int *flags)
 	}
 	if ((i < 0) && (*unit < 0))
 		return CN_DEAD;
+	if (!have_efi_fb)
+		*flags &= ~SC_EFI_FB;
 #if 0
 	return ((*flags & SC_KERNEL_CONSOLE) ? CN_INTERNAL : CN_NORMAL);
 #endif

@@ -285,7 +285,13 @@ static struct dev_ops sc_ops = {
 int
 sc_probe_unit(int unit, int flags)
 {
-    if (!scvidprobe(unit, flags, FALSE)) {
+    if ((flags & SC_EFI_FB) && (probe_efi_fb(0) != 0)) {
+	if (bootverbose)
+	    kprintf("sc%d: no EFI framebuffer found.\n", unit);
+	flags &= ~SC_EFI_FB;
+    }
+
+    if (!(flags & SC_EFI_FB) && !scvidprobe(unit, flags, FALSE)) {
 	if (bootverbose)
 	    kprintf("sc%d: no video adapter found.\n", unit);
 	return ENXIO;
@@ -315,8 +321,8 @@ register_framebuffer(struct fb_info *info)
 	return 0;
     }
 
-    /* Ignore this framebuffer if we have already switched to a framebuffer */
-    if (sc->fbi != NULL) {
+    /* Ignore this framebuffer if we already switched to a KMS framebuffer */
+    if (sc->fbi != NULL && !(sc->config & SC_EFI_FB)) {
 	lwkt_reltoken(&tty_token);
 	return 0;
     }
@@ -425,6 +431,9 @@ sc_attach_unit(int unit, int flags)
     cdev_t dev;
     flags &= ~SC_KERNEL_CONSOLE;
 
+    if ((flags & SC_EFI_FB) && probe_efi_fb(0) != 0)
+	flags &= ~SC_EFI_FB;
+
     if (sc_console_unit == unit) {
 	/*
 	 * If this unit is being used as the system console, we need to
@@ -487,7 +496,8 @@ sc_attach_unit(int unit, int flags)
     update_kbd_state(scp, scp->status, LOCK_MASK, FALSE);
 
     kprintf("sc%d: %s <%d virtual consoles, flags=0x%x>\n",
-	   unit, adapter_name(sc->adp), sc->vtys, sc->config);
+	    unit, (sc->config & SC_EFI_FB) ? "EFI_FB" : adapter_name(sc->adp),
+	    sc->vtys, sc->config);
     if (bootverbose) {
 	kprintf("sc%d:", unit);
     	if (sc->adapter >= 0)
@@ -1650,7 +1660,7 @@ sccnprobe(struct consdev *cp)
     cp->cn_pri = sc_get_cons_priority(&unit, &flags);
 
     /* a video card is always required */
-    if (!scvidprobe(unit, flags, TRUE))
+    if (probe_efi_fb(1) != 0 && !scvidprobe(unit, flags, TRUE))
 	cp->cn_pri = CN_DEAD;
 
     /* syscons will become console even when there is no keyboard */
@@ -2834,7 +2844,7 @@ exchange_scr(sc_softc_t *sc)
     scp = sc->cur_scp = sc->new_scp;
     if (sc->old_scp->mode != scp->mode || ISUNKNOWNSC(sc->old_scp))
 	set_mode(scp);
-    else
+    else if (sc->adp != NULL)
 	sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
 		    (void *)sc->adp->va_window, FALSE);
     scp->status |= MOUSE_HIDDEN;
@@ -2978,11 +2988,13 @@ scinit(int unit, int flags)
      */
     sc = sc_get_softc(unit, flags & SC_KERNEL_CONSOLE);
     adp = NULL;
-    if (sc->adapter >= 0) {
+    if (flags & SC_EFI_FB) {
+	sc->fbi = &efi_fb_info;
+    } else if (sc->adapter >= 0) {
 	vid_release(sc->adp, (void *)&sc->adapter);
 	adp = sc->adp;
-	sc->adp = NULL;
     }
+    sc->adp = NULL;
     if (sc->keyboard >= 0) {
 	DPRINTF(5, ("sc%d: releasing kbd%d\n", unit, sc->keyboard));
 	i = kbd_release(sc->kbd, (void *)&sc->keyboard);
@@ -2993,9 +3005,11 @@ scinit(int unit, int flags)
 	}
 	sc->kbd = NULL;
     }
-    sc->adapter = vid_allocate("*", unit, (void *)&sc->adapter);
-    sc->adp = vid_get_adapter(sc->adapter);
-    /* assert((sc->adapter >= 0) && (sc->adp != NULL)) */
+    if (!(flags & SC_EFI_FB)) {
+	sc->adapter = vid_allocate("*", unit, (void *)&sc->adapter);
+	sc->adp = vid_get_adapter(sc->adapter);
+	/* assert((sc->adapter >= 0) && (sc->adp != NULL)) */
+    }
     sc->keyboard = sc_allocate_keyboard(sc, unit);
     DPRINTF(1, ("sc%d: keyboard %d\n", unit, sc->keyboard));
     sc->kbd = kbd_get_keyboard(sc->keyboard);
@@ -3006,7 +3020,10 @@ scinit(int unit, int flags)
 
     if (!(sc->flags & SC_INIT_DONE) || (adp != sc->adp)) {
 
-	sc->initial_mode = sc->adp->va_initial_mode;
+	if (flags & SC_EFI_FB)
+		sc->initial_mode = 0;
+	else
+		sc->initial_mode = sc->adp->va_initial_mode;
 
 #ifndef SC_NO_FONT_LOADING
 	if (flags & SC_KERNEL_CONSOLE) {
@@ -3021,11 +3038,16 @@ scinit(int unit, int flags)
 	}
 #endif
 
-	lwkt_gettoken(&tty_token);
-	/* extract the hardware cursor location and hide the cursor for now */
-	(*vidsw[sc->adapter]->read_hw_cursor)(sc->adp, &col, &row);
-	(*vidsw[sc->adapter]->set_hw_cursor)(sc->adp, -1, -1);
-	lwkt_reltoken(&tty_token);
+	if (flags & SC_EFI_FB) {
+	    col = 0;
+	    row = 0;
+	} else {
+	    lwkt_gettoken(&tty_token);
+	    /* extract the hw cursor location and hide the cursor for now */
+	    (*vidsw[sc->adapter]->read_hw_cursor)(sc->adp, &col, &row);
+	    (*vidsw[sc->adapter]->set_hw_cursor)(sc->adp, -1, -1);
+	    lwkt_reltoken(&tty_token);
+	}
 
 	/* set up the first console */
 	sc->first_vty = unit*MAXCONS;
@@ -3055,10 +3077,12 @@ scinit(int unit, int flags)
 	sc->cur_scp = scp;
 
 	/* copy screen to temporary buffer */
-	sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
-		    (void *)scp->sc->adp->va_window, FALSE);
-	if (ISTEXTSC(scp))
-	    sc_vtb_copy(&scp->scr, 0, &scp->vtb, 0, scp->xsize*scp->ysize);
+	if (scp->fbi == NULL) {
+	    sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
+			(void *)scp->sc->adp->va_window, FALSE);
+	    if (ISTEXTSC(scp))
+		sc_vtb_copy(&scp->scr, 0, &scp->vtb, 0, scp->xsize*scp->ysize);
+	}
 
 	/* move cursors to the initial positions */
 	if (col >= scp->xsize)
@@ -3067,13 +3091,19 @@ scinit(int unit, int flags)
 	    row = scp->ysize - 1;
 	scp->xpos = col;
 	scp->ypos = row;
-	scp->cursor_pos = scp->cursor_oldpos = row*scp->xsize + col;
-	if (bios_value.cursor_end < scp->font_height)
-	    sc->cursor_base = scp->font_height - bios_value.cursor_end - 1;
-	else
+	if (flags & SC_EFI_FB) {
+	    scp->cursor_pos = 0;
 	    sc->cursor_base = 0;
-	i = bios_value.cursor_end - bios_value.cursor_start + 1;
-	sc->cursor_height = imin(i, scp->font_height);
+	    sc->cursor_height = scp->font_height;
+	} else {
+	    scp->cursor_pos = scp->cursor_oldpos = row*scp->xsize + col;
+	    if (bios_value.cursor_end < scp->font_height)
+		sc->cursor_base = scp->font_height - bios_value.cursor_end - 1;
+	    else
+		sc->cursor_base = 0;
+	    i = bios_value.cursor_end - bios_value.cursor_start + 1;
+	    sc->cursor_height = imin(i, scp->font_height);
+	}
 #ifndef SC_NO_SYSMOUSE
 	sc_mouse_move(scp, scp->xpixel/2, scp->ypixel/2);
 #endif
@@ -3085,12 +3115,14 @@ scinit(int unit, int flags)
 	/* save font and palette */
 #ifndef SC_NO_FONT_LOADING
 	sc->fonts_loaded = 0;
-	if (ISFONTAVAIL(sc->adp->va_flags)) {
 #ifdef SC_DFLT_FONT
-	    bcopy(dflt_font_8, sc->font_8, sizeof(dflt_font_8));
-	    bcopy(dflt_font_14, sc->font_14, sizeof(dflt_font_14));
-	    bcopy(dflt_font_16, sc->font_16, sizeof(dflt_font_16));
-	    sc->fonts_loaded = FONT_16 | FONT_14 | FONT_8;
+	bcopy(dflt_font_8, sc->font_8, sizeof(dflt_font_8));
+	bcopy(dflt_font_14, sc->font_14, sizeof(dflt_font_14));
+	bcopy(dflt_font_16, sc->font_16, sizeof(dflt_font_16));
+	sc->fonts_loaded = FONT_16 | FONT_14 | FONT_8;
+#endif /* SC_DFLT_FONT */
+	if (sc->adp != NULL && ISFONTAVAIL(sc->adp->va_flags)) {
+#ifdef SC_DFLT_FONT
 	    if (scp->font_height < 14) {
 		sc_load_font(scp, 0, 8, sc->font_8, 0, 256);
 	    } else if (scp->font_height >= 16) {
@@ -3116,7 +3148,8 @@ scinit(int unit, int flags)
 #endif /* !SC_NO_FONT_LOADING */
 
 #ifndef SC_NO_PALETTE_LOADING
-	save_palette(sc->adp, sc->palette);
+	if (!(flags & SC_EFI_FB))
+	    save_palette(sc->adp, sc->palette);
 #endif
 
 #if NSPLASH > 0

@@ -176,6 +176,7 @@ typedef struct sc_softc {
 	int		config;			/* configuration flags */
 #define SC_AUTODETECT_KBD (1 << 8)
 #define SC_KERNEL_CONSOLE (1 << 9)
+#define SC_EFI_FB	(1 << 10)
 
 	int		flags;			/* status flags */
 #define SC_VISUAL_BELL	(1 << 0)

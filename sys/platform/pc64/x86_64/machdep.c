@@ -2068,6 +2068,7 @@ do_next:
 		pmap_kenter((vm_offset_t)msgbufp + off,
 			    phys_avail[pa_indx] + off);
 	}
+	probe_efi_fb(0);
 }
 
 struct machintr_abi MachIntrABI;
