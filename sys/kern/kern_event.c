@@ -57,16 +57,6 @@
 #define EVENT_REGISTER	1
 #define EVENT_PROCESS	2
 
-/*
- * Global token for kqueue subsystem
- */
-#if 0
-struct lwkt_token kq_token = LWKT_TOKEN_INITIALIZER(kq_token);
-SYSCTL_LONG(_lwkt, OID_AUTO, kq_collisions,
-    CTLFLAG_RW, &kq_token.t_collisions, 0,
-    "Collision counter of kq_token");
-#endif
-
 MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
 struct kevent_copyin_args {

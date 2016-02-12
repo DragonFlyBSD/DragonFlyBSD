@@ -164,11 +164,6 @@ struct kqinfo {
 
 #ifdef _KERNEL
 
-/*
- * Global token for kqueue subsystem
- */
-extern struct lwkt_token kq_token;
-
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_KQUEUE);
 #endif
