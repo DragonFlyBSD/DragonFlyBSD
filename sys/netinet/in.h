@@ -31,7 +31,7 @@
  */
 
 #ifndef _NETINET_IN_H_
-#define _NETINET_IN_H_
+#define	_NETINET_IN_H_
 
 #include <sys/types.h>
 
@@ -64,8 +64,8 @@
 #define	IPPROTO_ICMP		1		/* control message protocol */
 #define	IPPROTO_IGMP		2		/* group mgmt protocol */
 #define	IPPROTO_GGP		3		/* gateway^2 (deprecated) */
-#define IPPROTO_IPV4		4		/* IPv4 encapsulation */
-#define IPPROTO_IPIP		IPPROTO_IPV4	/* for compatibility */
+#define	IPPROTO_IPV4		4		/* IPv4 encapsulation */
+#define	IPPROTO_IPIP		IPPROTO_IPV4	/* for compatibility */
 #define	IPPROTO_TCP		6		/* tcp */
 #define	IPPROTO_ST		7		/* Stream protocol II */
 #define	IPPROTO_EGP		8		/* exterior gateway protocol */
@@ -177,7 +177,7 @@
 #define	IPPROTO_DONE		257
 
 /* Used by RSS: the layer3 protocol is unknown */
-#define IPPROTO_UNKNOWN		258
+#define	IPPROTO_UNKNOWN		258
 
 /*
  * Local port number conventions:
@@ -242,7 +242,7 @@
  * 512, but that conflicts with some well-known-services that firewalls may
  * have a fit if we use.
  */
-#define IPPORT_RESERVEDSTART	600
+#define	IPPORT_RESERVEDSTART	600
 
 #define	IPPORT_MAX		65535
 
@@ -252,7 +252,7 @@ typedef	__uint8_t	sa_family_t;
 #endif
 
 #ifndef _STRUCT_IN_ADDR_DECLARED
-#define _STRUCT_IN_ADDR_DECLARED
+#define	_STRUCT_IN_ADDR_DECLARED
 /*
  * Internet address (a structure for historical reasons)
  */
@@ -339,18 +339,18 @@ struct sockaddr_in {
 #define	IP_MULTICAST_LOOP	11   /* u_char; set/get IP multicast loopback */
 #define	IP_ADD_MEMBERSHIP	12   /* ip_mreq; add an IP group membership */
 #define	IP_DROP_MEMBERSHIP	13   /* ip_mreq; drop an IP group membership */
-#define IP_MULTICAST_VIF	14   /* set/get IP mcast virt. iface */
-#define IP_RSVP_ON		15   /* enable RSVP in kernel */
-#define IP_RSVP_OFF		16   /* disable RSVP in kernel */
-#define IP_RSVP_VIF_ON		17   /* set RSVP per-vif socket */
-#define IP_RSVP_VIF_OFF		18   /* unset RSVP per-vif socket */
-#define IP_PORTRANGE		19   /* int; range to choose for unspec port */
+#define	IP_MULTICAST_VIF	14   /* set/get IP mcast virt. iface */
+#define	IP_RSVP_ON		15   /* enable RSVP in kernel */
+#define	IP_RSVP_OFF		16   /* disable RSVP in kernel */
+#define	IP_RSVP_VIF_ON		17   /* set RSVP per-vif socket */
+#define	IP_RSVP_VIF_OFF		18   /* unset RSVP per-vif socket */
+#define	IP_PORTRANGE		19   /* int; range to choose for unspec port */
 #define	IP_RECVIF		20   /* bool; receive reception if w/dgram */
 /* for IPSEC */
 #define	IP_IPSEC_POLICY		21   /* int; set/get security policy */
 #define	IP_FAITH		22   /* bool; accept FAITH'ed connections */
 
-#define IP_FW_X			49   /* ipfw2 firewall */
+#define	IP_FW_X			49   /* ipfw2 firewall */
 #define	IP_FW_ADD		50   /* add a firewall rule to chain */
 #define	IP_FW_DEL		51   /* delete a firewall rule from chain */
 #define	IP_FW_FLUSH		52   /* flush firewall rule chain */
@@ -477,12 +477,12 @@ struct ip_mreq {
 #ifdef notyet
 #define	IPCTL_DEFMTU		4	/* default MTU */
 #endif
-#define IPCTL_RTEXPIRE		5	/* cloned route expiration time */
-#define IPCTL_RTMINEXPIRE	6	/* min value for expiration time */
-#define IPCTL_RTMAXCACHE	7	/* trigger level for dynamic expire */
+#define	IPCTL_RTEXPIRE		5	/* cloned route expiration time */
+#define	IPCTL_RTMINEXPIRE	6	/* min value for expiration time */
+#define	IPCTL_RTMAXCACHE	7	/* trigger level for dynamic expire */
 #define	IPCTL_SOURCEROUTE	8	/* may perform source routes */
 #define	IPCTL_DIRECTEDBROADCAST	9	/* may re-broadcast received packets */
-#define IPCTL_INTRQMAXLEN	10	/* max length of netisr queue */
+#define	IPCTL_INTRQMAXLEN	10	/* max length of netisr queue */
 #define	IPCTL_INTRQDROPS	11	/* number of netisr q drops */
 #define	IPCTL_STATS		12	/* ipstat structure */
 #define	IPCTL_ACCEPTSOURCEROUTE	13	/* may accept source routed packets */
@@ -522,22 +522,22 @@ struct ifnet; struct mbuf;	/* forward declarations for Standard C */
 
 struct thread;
 
-int	 in_broadcast (struct in_addr, struct ifnet *);
-int	 in_canforward (struct in_addr);
-int	 in_localaddr (struct in_addr);
-char	*inet_ntoa (struct in_addr); /* in libkern */
+int	 in_broadcast(struct in_addr, struct ifnet *);
+int	 in_canforward(struct in_addr);
+int	 in_localaddr(struct in_addr);
+char	*inet_ntoa(struct in_addr); /* in libkern */
 char	*inet_ntop(int, const void * __restrict, char * __restrict,
 	    socklen_t); /* in libkern */
 
-int	prison_replace_wildcards (struct thread *td, struct sockaddr *ip);
-int	prison_remote_ip (struct thread *td, struct sockaddr *ip);
+int	prison_replace_wildcards(struct thread *td, struct sockaddr *ip);
+int	prison_remote_ip(struct thread *td, struct sockaddr *ip);
 
-#define in_hosteq(s, t)	((s).s_addr == (t).s_addr)
-#define in_nullhost(x)	((x).s_addr == INADDR_ANY)
+#define	in_hosteq(s, t)	((s).s_addr == (t).s_addr)
+#define	in_nullhost(x)	((x).s_addr == INADDR_ANY)
 
-#define satosin(sa)	((struct sockaddr_in *)(sa))
-#define sintosa(sin)	((struct sockaddr *)(sin))
-#define ifatoia(ifa)	((struct in_ifaddr *)(ifa))
+#define	satosin(sa)	((struct sockaddr_in *)(sa))
+#define	sintosa(sin)	((struct sockaddr *)(sin))
+#define	ifatoia(ifa)	((struct in_ifaddr *)(ifa))
 
 #endif
 
