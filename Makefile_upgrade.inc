@@ -2331,7 +2331,6 @@ TO_REMOVE+=/usr/share/man/man3/tok_winit.3.gz
 TO_REMOVE+=/usr/share/man/man3/tok_wline.3.gz
 TO_REMOVE+=/usr/share/man/man3/tok_wreset.3.gz
 TO_REMOVE+=/usr/share/man/man3/tok_wstr.3.gz
-TO_REMOVE+=/usr/share/man/man5/editrc.5.gz
 TO_REMOVE+=/lib/libncurses.so.6
 TO_REMOVE+=/lib/libncursesw.so.6
 TO_REMOVE+=/usr/lib/libcurses.a

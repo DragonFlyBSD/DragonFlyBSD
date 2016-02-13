@@ -55,6 +55,8 @@ SRCS+=  	fcns.c help.c tokenizern.c historyn.c
 
 INCS=		histedit.h
 
+MAN=		editrc.5
+
 CLEANFILES+=	common.h emacs.h fcns.c fcns.h help.c help.h
 CLEANFILES+=	historyn.c tokenizern.c vi.h
 AHDR=		vi.h emacs.h common.h
