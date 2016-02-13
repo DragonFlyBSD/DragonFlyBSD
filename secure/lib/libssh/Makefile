@@ -25,6 +25,8 @@ SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c explicit_bzero.c \
 	getrrsetbyname.c glob.c openssl-compat.c \
 	port-tun.c timingsafe_bcmp.c
 
+MAN=	moduli.5
+
 WARNS?=	2
 
 SHLIBDIR?=	/usr/lib/priv

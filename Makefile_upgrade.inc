@@ -2287,7 +2287,6 @@ TO_REMOVE+=/usr/lib/libprivate_ldns.so.1
 TO_REMOVE+=/usr/lib/profile/libprivate_ldns.a
 TO_REMOVE+=/usr/lib/libprivate_ssh.so.4
 TO_REMOVE+=/usr/lib/profile/libprivate_ssh.a
-TO_REMOVE+=/usr/share/man/man5/moduli.5.gz
 TO_REMOVE+=/lib/libprivate_edit.so.5
 TO_REMOVE+=/usr/lib/libprivate_edit.a
 TO_REMOVE+=/usr/lib/libprivate_edit.so
