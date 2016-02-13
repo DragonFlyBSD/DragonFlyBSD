@@ -401,7 +401,9 @@ and
 facilities, and has a lower precedence.
 The filter will record all attempts to deliver a signal to a process,
 even if the signal has been marked as
-.Dv SIG_IGN .
+.Dv SIG_IGN ,
+or has been masked by
+.Fn sigpromask .
 Event notification happens after normal signal delivery processing.
 .Va data
 returns the number of times the signal has occurred since the last call to
@@ -501,6 +503,7 @@ The specified process to attach to does not exist.
 .Xr read 2 ,
 .Xr select 2 ,
 .Xr sigaction 2 ,
+.Xr sigprocmask 2 ,
 .Xr write 2 ,
 .Xr aio_error 3 ,
 .Xr aio_read 3 ,

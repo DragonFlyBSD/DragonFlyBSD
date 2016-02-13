@@ -1305,6 +1305,7 @@ active_process:
 	 * it to.
 	 */
 	if (lp == NULL) {
+		KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
 		SIGADDSET(p->p_siglist, sig);
 		goto out;
 	}
