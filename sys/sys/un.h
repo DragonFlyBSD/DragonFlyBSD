@@ -50,7 +50,7 @@ typedef	__uint8_t	sa_family_t;
  * Definitions for UNIX IPC domain.
  */
 struct	sockaddr_un {
-	u_char		sun_len;	/* sockaddr len including null */
+	uint8_t		sun_len;	/* sockaddr len including null */
 	sa_family_t	sun_family;	/* AF_UNIX */
 	char		sun_path[104];	/* path name (gag) */
 };
