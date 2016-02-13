@@ -31,7 +31,7 @@
  */
 
 #ifndef _SYS_UN_H_
-#define _SYS_UN_H_
+#define	_SYS_UN_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -56,7 +56,7 @@ struct	sockaddr_un {
 };
 
 /* Socket options. */
-#define LOCAL_PEERCRED		0x001		/* retrieve peer credentails */
+#define	LOCAL_PEERCRED		0x001		/* retrieve peer credentails */
 
 #ifdef _KERNEL
 struct mbuf;
@@ -64,18 +64,18 @@ struct socket;
 struct sockopt;
 union netmsg;
 
-int	uipc_usrreq (struct socket *so, int req, struct mbuf *m,
-		struct mbuf *nam, struct mbuf *control);
-void	uipc_ctloutput (union netmsg *msg);
-int	unp_connect2 (struct socket *so, struct socket *so2);
-void	unp_dispose (struct mbuf *m);
-int	unp_externalize (struct mbuf *rights, int flags);
-void	unp_init (void);
+int	uipc_usrreq(struct socket *so, int req, struct mbuf *m,
+	    struct mbuf *nam, struct mbuf *control);
+void	uipc_ctloutput(union netmsg *msg);
+int	unp_connect2(struct socket *so, struct socket *so2);
+void	unp_dispose(struct mbuf *m);
+int	unp_externalize(struct mbuf *rights, int flags);
+void	unp_init(void);
 extern	struct pr_usrreqs uipc_usrreqs;
 #else /* !_KERNEL */
 
 /* actual length of an initialized sockaddr_un */
-#define SUN_LEN(su) \
+#define	SUN_LEN(su) \
 	(sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
 
 #endif /* _KERNEL */
