@@ -15,7 +15,11 @@
 #define NETPERF_PATH	"/usr/local/bin/" NETPERF_CMD
 
 #ifndef __DECONST
-#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
+#define __DECONST(type, var)	((type)(uintptr_t)(const void *)(var))
+#endif
+
+#ifndef __unused
+#define __unused		__attribute__((__unused__))
 #endif
 
 struct netperf_child {
