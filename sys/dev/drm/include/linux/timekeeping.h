@@ -36,4 +36,17 @@ static inline u64 ktime_get_raw_ns(void)
 	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
 }
 
+static inline ktime_t ktime_mono_to_real(ktime_t mono)
+{
+	return mono;
+}
+
+static inline ktime_t ktime_get_real(void)
+{
+	ktime_t kt;
+
+	kt.tv64 = ktime_get_raw_ns();
+	return kt;
+}
+
 #endif	/* _LINUX_TIMEKEEPING_H_ */
