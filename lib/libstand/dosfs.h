@@ -108,6 +108,7 @@ typedef struct {
     u_int lsndta;               /* start of data area */
     u_int fatsz;                /* FAT entry size */
     u_int xclus;                /* maximum cluster number */
+    DOS_DE root;
 } DOS_FS;
 
 typedef struct {
