@@ -82,7 +82,7 @@ command_ls(int argc, char *argv[])
     argc -= (optind - 1);
 
     if (argc < 2) {
-	path = "";
+	path = ".";
     } else {
 	path = argv[1];
     }
