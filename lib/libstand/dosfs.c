@@ -420,14 +420,9 @@ dos_readdir(struct open_file *fd, struct dirent *d)
         } else {
             if (xdn == 1) {
                 x = 0;
-                for (i = 0; i < 8; i++) {
+                for (i = 0; i < 11; i++) {
                     x = ((x & 1) << 7) | (x >> 1);
-                    x += dd.de.name[i];
-                    x &= 0xff;
-                }
-                for (i = 0; i < 3; i++) {
-                    x = ((x & 1) << 7) | (x >> 1);
-                    x += dd.de.ext[i];
+                    x += (i < 8) ? dd.de.name[i] : dd.de.ext[i-8];
                     x &= 0xff;
                 }
                 if (x == chk)
