@@ -275,6 +275,12 @@ tftp_open(const char *path, struct open_file *f)
 	struct iodesc  *io;
 	int             res;
 
+	/* Avoid trying out tftp_open for disk devices in the EFI loader */
+#ifndef __i386__
+	if (strcmp(f->f_dev->dv_name, "net") != 0)
+		return (EINVAL);
+#endif
+
 	tftpfile = (struct tftp_handle *) malloc(sizeof(*tftpfile));
 	if (!tftpfile)
 		return (ENOMEM);

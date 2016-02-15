@@ -412,6 +412,12 @@ nfs_open(const char *upath, struct open_file *f)
 		return (ENXIO);
 	}
 
+	/* Avoid trying out nfs_open for disk devices in the EFI loader */
+#ifndef __i386__
+	if (strcmp(f->f_dev->dv_name, "net") != 0)
+		return (EINVAL);
+#endif
+
 	if (!(desc = socktodesc(*(int *)(f->f_devdata))))
 		return(EINVAL);
 
