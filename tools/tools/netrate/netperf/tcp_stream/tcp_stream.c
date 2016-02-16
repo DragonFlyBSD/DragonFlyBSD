@@ -55,7 +55,7 @@ main(int argc, char *argv[])
 {
 	char len_str[32], sockbuf_str[64], msgsz_str[64];
 	char *args[32];
-	const char *msgsz, *sockbuf;
+	const char *msgsz, *sockbuf, *name1, *name2;
 	const char **host;
 	volatile int set_minmax = 0, nhost, dual;
 	int len, ninst, ninst_done, host_idx, host_arg_idx, test_arg_idx;
@@ -283,9 +283,21 @@ main(int argc, char *argv[])
 	jain *= ninstance;
 	jain = (result * result) / jain;
 
-	printf("%s%s %.2f Mbps\n",
-	    (dual || reverse) ? "TCP_MAERTS" : "TCP_STREAM",
-	    dual ? (sfile ? "/TCP_SENDFILE" : "/TCP_STREAM") : "", result);
+	name1 = "TCP_STREAM";
+	name2 = "";
+	if (dual) {
+		name1 = "TCP_MAERTS";
+		if (sfile)
+			name2 = "/TCP_SENDFILE";
+		else
+			name2 = "/TCP_STREAM";
+	} else if (reverse) {
+		name1 = "TCP_MAERTS";
+	} else if (sfile) {
+		name1 = "TCP_SENDFILE";
+	}
+
+	printf("%s%s %.2f Mbps\n", name1, name2, result);
 	printf("min/max (jain) %.2f Mbps/%.2f Mbps (%f)\n",
 	    res_min, res_max, jain);
 
