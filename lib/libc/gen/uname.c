@@ -28,12 +28,13 @@
  *
  * @(#)uname.c	8.1 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/gen/uname.c,v 1.7 1999/08/27 23:59:06 peter Exp $
- * $DragonFly: src/lib/libc/gen/uname.c,v 1.5 2007/01/19 07:23:40 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
+#include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 int
@@ -46,17 +47,21 @@ uname(struct utsname *name)
 
 	rval = 0;
 
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_OSTYPE;
-	len = sizeof(name->sysname);
-	oerrno = errno;
-	if (sysctl(mib, 2, &name->sysname, &len, NULL, 0) == -1) {
-		if(errno == ENOMEM)
-			errno = oerrno;
-		else
-			rval = -1;
+	if ((p = getenv("UNAME_s"))) {
+		strlcpy(name->sysname, p, sizeof(name->sysname));
+	} else {
+		mib[0] = CTL_KERN;
+		mib[1] = KERN_OSTYPE;
+		len = sizeof(name->sysname);
+		oerrno = errno;
+		if (sysctl(mib, 2, &name->sysname, &len, NULL, 0) == -1) {
+			if(errno == ENOMEM)
+				errno = oerrno;
+			else
+				rval = -1;
+		}
+		name->sysname[sizeof(name->sysname) - 1] = '\0';
 	}
-	name->sysname[sizeof(name->sysname) - 1] = '\0';
 
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_HOSTNAME;
@@ -70,50 +75,63 @@ uname(struct utsname *name)
 	}
 	name->nodename[sizeof(name->nodename) - 1] = '\0';
 
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_OSRELEASE;
-	len = sizeof(name->release);
-	oerrno = errno;
-	if (sysctl(mib, 2, &name->release, &len, NULL, 0) == -1) {
-		if(errno == ENOMEM)
-			errno = oerrno;
-		else
-			rval = -1;
-	}
-	name->release[sizeof(name->release) - 1] = '\0';
-
-	/* The version may have newlines in it, turn them into spaces. */
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_VERSION;
-	len = sizeof(name->version);
-	oerrno = errno;
-	if (sysctl(mib, 2, &name->version, &len, NULL, 0) == -1) {
-		if (errno == ENOMEM)
-			errno = oerrno;
-		else
-			rval = -1;
-	}
-	name->version[sizeof(name->version) - 1] = '\0';
-	for (p = name->version; len--; ++p) {
-		if (*p == '\n' || *p == '\t') {
-			if (len > 1)
-				*p = ' ';
+	if ((p = getenv("UNAME_r"))) {
+		strlcpy(name->release, p, sizeof(name->release));
+	} else {
+		mib[0] = CTL_KERN;
+		mib[1] = KERN_OSRELEASE;
+		len = sizeof(name->release);
+		oerrno = errno;
+		if (sysctl(mib, 2, &name->release, &len, NULL, 0) == -1) {
+			if(errno == ENOMEM)
+				errno = oerrno;
 			else
-				*p = '\0';
+				rval = -1;
+		}
+		name->release[sizeof(name->release) - 1] = '\0';
+	}
+
+	if ((p = getenv("UNAME_v"))) {
+		strlcpy(name->version, p, sizeof(name->version));
+	} else {
+		/* The version may contain newlines, turn them into spaces. */
+		mib[0] = CTL_KERN;
+		mib[1] = KERN_VERSION;
+		len = sizeof(name->version);
+		oerrno = errno;
+		if (sysctl(mib, 2, &name->version, &len, NULL, 0) == -1) {
+			if (errno == ENOMEM)
+				errno = oerrno;
+			else
+				rval = -1;
+		}
+		name->version[sizeof(name->version) - 1] = '\0';
+		for (p = name->version; len--; ++p) {
+			if (*p == '\n' || *p == '\t') {
+				if (len > 1)
+					*p = ' ';
+				else
+					*p = '\0';
+			}
 		}
 	}
 
-	oerrno = errno;
-	mib[1] = HW_MACHINE;
-	mib[0] = CTL_HW;
-	len = sizeof(name->machine);
-	if (sysctl(mib, 2, &name->machine, &len, NULL, 0) == -1) {
-		if (errno == ENOMEM) {
-			errno = oerrno;
-		} else {
-			rval = -1;
-		}
+	if ((p = getenv("UNAME_m"))) {
+		strlcpy(name->machine, p, sizeof(name->machine));
 	}
-	name->machine[sizeof(name->machine) - 1] = '\0';
+	else {
+		oerrno = errno;
+		mib[1] = HW_MACHINE;
+		mib[0] = CTL_HW;
+		len = sizeof(name->machine);
+		if (sysctl(mib, 2, &name->machine, &len, NULL, 0) == -1) {
+			if (errno == ENOMEM) {
+				errno = oerrno;
+			} else {
+				rval = -1;
+			}
+		}
+		name->machine[sizeof(name->machine) - 1] = '\0';
+	}
 	return (rval);
 }
