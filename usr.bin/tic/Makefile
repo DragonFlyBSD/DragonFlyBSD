@@ -18,8 +18,20 @@ CFLAGS+=	-I${.OBJDIR}
 
 # Ideally this should be -lncursesw
 # Wide version can be used when DragonFly 3.3 branch is created
+
+.if defined(BOOTSTRAPPING)
+.if exists (/usr/lib/libncurses.a)
+DPADD=          /usr/lib/libncurses.a
+LDADD=          -lncurses
+.else
+DPADD=          ${LIBNCURSES}
+LDADD=          -lprivate_ncurses
+LDFLAGS+=       -rpath /lib/priv -L /usr/lib/priv
+.endif
+.else
 DPADD=		${LIBNCURSES}
 LDADD=		-lncurses
+.endif
 
 ncurses_def.h:
 	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
