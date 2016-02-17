@@ -45,6 +45,7 @@
 
 #include <bus/isa/isareg.h>
 
+static vr_draw_border_t		kms_draw_border;
 static vr_draw_t		kms_draw;
 static vr_draw_cursor_t		kms_cursor;
 static vr_blink_cursor_t	kms_blink;
@@ -55,7 +56,7 @@ static vr_draw_mouse_t		kms_mouse;
 static void			kms_nop(scr_stat *scp, ...);
 
 static sc_rndr_sw_t kmsrndrsw = {
-	(vr_draw_border_t *)kms_nop,
+	kms_draw_border,
 	kms_draw,
 	(vr_set_cursor_t *)kms_nop,
 	kms_cursor,
@@ -204,7 +205,44 @@ blit_blk(scr_stat *scp, u_char *char_data, int sw, int sh,
 	}
 }
 
+static void
+fill_rect(scr_stat *scp, vm_offset_t draw_pos, int pixel_size,
+	  int width, int height, int line_width, uint32_t fg)
+{
+	int i, j;
+
+	for (i = 0; i < height; i++) {
+		for (j = 0; j < width; j++)
+			writel(draw_pos + j * pixel_size, fg);
+		draw_pos += line_width;
+	}
+}
+
 /* KMS renderer */
+
+static void
+kms_draw_border(scr_stat *scp, int color)
+{
+	sc_softc_t *sc = scp->sc;
+	int line_width, pixel_size;
+	int rightpixel, bottompixel;
+	uint32_t fg;
+	vm_offset_t draw_pos;
+
+	fg = colormap[color];
+	line_width = sc->fbi->stride;
+	pixel_size = 4;
+	rightpixel = sc->fbi->width - scp->xsize * scp->blk_width;
+	bottompixel = sc->fbi->height - scp->ysize * scp->blk_height;
+
+	draw_pos = sc->fbi->vaddr + scp->blk_width * pixel_size * scp->xsize;
+	fill_rect(scp, draw_pos, pixel_size, rightpixel,
+	    scp->blk_height * scp->ysize, line_width, fg);
+
+	draw_pos = sc->fbi->vaddr + scp->blk_height * scp->ysize * line_width;
+	fill_rect(scp, draw_pos, pixel_size, sc->fbi->width,
+	    sc->fbi->height - scp->blk_height * scp->ysize, line_width, fg);
+}
 
 static void
 kms_draw(scr_stat *scp, int from, int count, int flip)
