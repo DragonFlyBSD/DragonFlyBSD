@@ -84,6 +84,12 @@
  *	slab allocator to many CPUs and arbitrary resources". In Proc. 2001 
  * 	USENIX Technical Conference. USENIX Association.
  *
+ * Oversized allocations employ the BIGCACHE mechanic whereby large
+ * allocations may be handed significantly larger buffers, allowing them
+ * to avoid mmap/munmap operations even through significant realloc()s.
+ * The excess space is only trimmed if too many large allocations have been
+ * given this treatment.
+ *
  * TUNING
  *
  * The value of the environment variable MALLOC_OPTIONS is a character string
@@ -122,9 +128,11 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <pthread.h>
+#include <machine/atomic.h>
 
 #include "spinlock.h"
 #include "un-namespace.h"
+
 
 /*
  * Linked list of large allocations
@@ -132,6 +140,7 @@
 typedef struct bigalloc {
 	struct bigalloc *next;	/* hash link */
 	void	*base;		/* base pointer */
+	u_long	active;		/* bytes active */
 	u_long	bytes;		/* bytes allocated */
 } *bigalloc_t;
 
@@ -221,6 +230,19 @@ typedef struct slglobaldata {
 #define BIGXSIZE	(BIGHSIZE / 16)		/* bigalloc lock table */
 #define BIGXMASK	(BIGXSIZE - 1)
 
+/*
+ * BIGCACHE caches oversized allocations.  Note that a linear search is
+ * performed, so do not make the cache too large.
+ *
+ * BIGCACHE will garbage-collect excess space when the excess exceeds the
+ * specified value.  A relatively large number should be used here because
+ * garbage collection is expensive.
+ */
+#define BIGCACHE	16
+#define BIGCACHE_MASK	(BIGCACHE - 1)
+#define BIGCACHE_LIMIT	(1024 * 1024)		/* size limit */
+#define BIGCACHE_EXCESS	(16 * 1024 * 1024)	/* garbage collect */
+
 #define SAFLAG_ZERO	0x0001
 #define SAFLAG_PASSIVE	0x0002
 
@@ -276,9 +298,11 @@ static struct magazine zone_magazine = {
 #define MAGAZINE_EMPTY(mp)	(mp->rounds == 0)
 #define MAGAZINE_NOTEMPTY(mp)	(mp->rounds != 0)
 
-/* Each thread will have a pair of magazines per size-class (NZONES)
+/*
+ * Each thread will have a pair of magazines per size-class (NZONES)
  * The loaded magazine will support immediate allocations, the previous
- * magazine will either be full or empty and can be swapped at need */
+ * magazine will either be full or empty and can be swapped at need
+ */
 typedef struct magazine_pair {
 	struct magazine	*loaded;
 	struct magazine	*prev;
@@ -328,8 +352,12 @@ static int g_malloc_flags = 0;
 static struct slglobaldata	SLGlobalData;
 static bigalloc_t bigalloc_array[BIGHSIZE];
 static spinlock_t bigspin_array[BIGXSIZE];
+static volatile void *bigcache_array[BIGCACHE];		/* atomic swap */
+static volatile size_t bigcache_size_array[BIGCACHE];	/* SMP races ok */
+static volatile int bigcache_index;			/* SMP races ok */
 static int malloc_panic;
 static int malloc_dummy_pointer;
+static size_t excess_alloc;				/* excess big allocs */
 
 static const int32_t weirdary[16] = {
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
@@ -553,6 +581,93 @@ bigalloc_unlock(void *ptr)
 }
 
 /*
+ * Find a bigcache entry that might work for the allocation.  SMP races are
+ * ok here except for the swap (that is, it is ok if bigcache_size_array[i]
+ * is wrong or if a NULL or too-small big is returned).
+ *
+ * Generally speaking it is ok to find a large entry even if the bytes
+ * requested are relatively small (but still oversized), because we really
+ * don't know *what* the application is going to do with the buffer.
+ */
+static __inline
+bigalloc_t
+bigcache_find_alloc(size_t bytes)
+{
+	bigalloc_t big = NULL;
+	size_t test;
+	int i;
+
+	for (i = 0; i < BIGCACHE; ++i) {
+		test = bigcache_size_array[i];
+		if (bytes <= test) {
+			bigcache_size_array[i] = 0;
+			big = atomic_swap_ptr(&bigcache_array[i], NULL);
+			break;
+		}
+	}
+	return big;
+}
+
+/*
+ * Free a bigcache entry, possibly returning one that the caller really must
+ * free.  This is used to cache recent oversized memory blocks.  Only
+ * big blocks smaller than BIGCACHE_LIMIT will be cached this way, so try
+ * to collect the biggest ones we can that are under the limit.
+ */
+static __inline
+bigalloc_t
+bigcache_find_free(bigalloc_t big)
+{
+	int i;
+	int j;
+	int b;
+
+	b = ++bigcache_index;
+	for (i = 0; i < BIGCACHE; ++i) {
+		j = (b + i) & BIGCACHE_MASK;
+		if (bigcache_size_array[j] < big->bytes) {
+			bigcache_size_array[j] = big->bytes;
+			big = atomic_swap_ptr(&bigcache_array[j], big);
+			break;
+		}
+	}
+	return big;
+}
+
+static __inline
+void
+handle_excess_big(void)
+{
+	int i;
+	bigalloc_t big;
+	bigalloc_t *bigp;
+
+	if (excess_alloc <= BIGCACHE_EXCESS)
+		return;
+
+	for (i = 0; i < BIGHSIZE; ++i) {
+		bigp = &bigalloc_array[i];
+		if (*bigp == NULL)
+			continue;
+		if (__isthreaded)
+			_SPINLOCK(&bigspin_array[i & BIGXMASK]);
+		for (big = *bigp; big; big = big->next) {
+			if (big->active < big->bytes) {
+				MASSERT((big->active & PAGE_MASK) == 0);
+				MASSERT((big->bytes & PAGE_MASK) == 0);
+				munmap((char *)big->base + big->active,
+				       big->bytes - big->active);
+				atomic_add_long(&excess_alloc,
+						big->active - big->bytes);
+				big->bytes = big->active;
+			}
+		}
+		if (__isthreaded)
+			_SPINUNLOCK(&bigspin_array[i & BIGXMASK]);
+	}
+}
+
+/*
  * Calculate the zone index for the allocation request size and set the
  * allocation request size to that particular zone's chunk size.
  */
@@ -771,7 +886,8 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 	}
 	bigp = bigalloc_lock(*memptr);
 	big->base = *memptr;
-	big->bytes = size;
+	big->active = size;
+	big->bytes = size;		/* no excess */
 	big->next = *bigp;
 	*bigp = big;
 	bigalloc_unlock(*memptr);
@@ -840,26 +956,54 @@ _slaballoc(size_t size, int flags)
 		 * Page-align and cache-color in case of virtually indexed
 		 * physically tagged L1 caches (aka SandyBridge).  No sweat
 		 * otherwise, so just do it.
+		 *
+		 * (don't count as excess).
 		 */
 		size = (size + PAGE_MASK) & ~(size_t)PAGE_MASK;
-		if ((size & 8191) == 0)
-			size += 4096;
+		if ((size & (PAGE_SIZE * 2 - 1)) == 0)
+			size += PAGE_SIZE;
 
-		chunk = _vmem_alloc(size, PAGE_SIZE, flags);
-		if (chunk == NULL)
-			return(NULL);
-
-		big = _slaballoc(sizeof(struct bigalloc), 0);
-		if (big == NULL) {
-			_vmem_free(chunk, size);
-			return(NULL);
+		/*
+		 * Try to reuse a cached big block to avoid mmap'ing.  If it
+		 * turns out not to fit our requirements we throw it away
+		 * and allocate normally.
+		 */
+		big = NULL;
+		if (size <= BIGCACHE_LIMIT) {
+			big = bigcache_find_alloc(size);
+			if (big && big->bytes < size) {
+				_slabfree(big->base, FASTSLABREALLOC, &big);
+				big = NULL;
+			}
 		}
+		if (big) {
+			chunk = big->base;
+			if (flags & SAFLAG_ZERO)
+				bzero(chunk, size);
+		} else {
+			chunk = _vmem_alloc(size, PAGE_SIZE, flags);
+			if (chunk == NULL)
+				return(NULL);
+
+			big = _slaballoc(sizeof(struct bigalloc), 0);
+			if (big == NULL) {
+				_vmem_free(chunk, size);
+				return(NULL);
+			}
+			big->base = chunk;
+			big->bytes = size;
+		}
+		big->active = size;
+
 		bigp = bigalloc_lock(chunk);
-		big->base = chunk;
-		big->bytes = size;
+		if (big->active < big->bytes) {
+			atomic_add_long(&excess_alloc,
+					big->bytes - big->active);
+		}
 		big->next = *bigp;
 		*bigp = big;
 		bigalloc_unlock(chunk);
+		handle_excess_big();
 
 		return(chunk);
 	}
@@ -1067,24 +1211,65 @@ _slabrealloc(void *ptr, size_t size)
 				 * the allocation.  Also deal with potential
 				 * coloring.
 				 */
-				if (size <= bigbytes &&
-				    (size + 4096 == bigbytes ||
-				     size >= bigbytes - (size >> 2))) {
+				if (size >= (bigbytes >> 1) &&
+				    size <= bigbytes) {
+					if (big->active != size) {
+						atomic_add_long(&excess_alloc,
+								big->active -
+								size);
+					}
+					big->active = size;
 					bigalloc_unlock(ptr);
 					return(ptr);
 				}
 
 				/*
-				 * For large allocations, allocate more space
+				 * For large reallocations, allocate more space
 				 * than we need to try to avoid excessive
 				 * reallocations later on.
 				 */
-				if (size > PAGE_SIZE * 16) {
-					size += size >> 3;
-					size = (size + PAGE_MASK) &
-					       ~(size_t)PAGE_MASK;
+				chunking = size + (size >> 3);
+				chunking = (chunking + PAGE_MASK) &
+					   ~(size_t)PAGE_MASK;
+
+				/*
+				 * Try to allocate adjacently in case the
+				 * program is idiotically realloc()ing a
+				 * huge memory block just slightly bigger.
+				 * (llvm's llc tends to do this a lot).
+				 *
+				 * (MAP_TRYFIXED forces mmap to fail if there
+				 *  is already something at the address).
+				 */
+				if (chunking > bigbytes) {
+					char *addr;
+
+					addr = mmap((char *)ptr + bigbytes,
+						    chunking - bigbytes,
+						    PROT_READ|PROT_WRITE,
+						    MAP_PRIVATE|MAP_ANON|
+						    MAP_TRYFIXED,
+						    -1, 0);
+					if (addr == (char *)ptr + bigbytes) {
+						atomic_add_long(&excess_alloc,
+								big->active -
+								big->bytes +
+								chunking -
+								size);
+						big->bytes = chunking;
+						big->active = size;
+						bigalloc_unlock(ptr);
+
+						return(ptr);
+					}
+					MASSERT((void *)addr == MAP_FAILED);
 				}
 
+				/*
+				 * Failed, unlink big and allocate fresh.
+				 * (note that we have to leave (big) intact
+				 * in case the slaballoc fails).
+				 */
 				*bigp = big->next;
 				bigalloc_unlock(ptr);
 				if ((nptr = _slaballoc(size, 0)) == NULL) {
@@ -1098,12 +1283,16 @@ _slabrealloc(void *ptr, size_t size)
 				if (size > bigbytes)
 					size = bigbytes;
 				bcopy(ptr, nptr, size);
+				atomic_add_long(&excess_alloc, big->active -
+							       big->bytes);
 				_slabfree(ptr, FASTSLABREALLOC, &big);
+
 				return(nptr);
 			}
 			bigp = &big->next;
 		}
 		bigalloc_unlock(ptr);
+		handle_excess_big();
 	}
 
 	/*
@@ -1187,8 +1376,22 @@ _slabfree(void *ptr, int flags, bigalloc_t *rbigp)
 		while ((big = *bigp) != NULL) {
 			if (big->base == ptr) {
 				*bigp = big->next;
+				atomic_add_long(&excess_alloc, big->active -
+							       big->bytes);
 				bigalloc_unlock(ptr);
+
+				/*
+				 * Try to stash the block we are freeing,
+				 * potentially receiving another block in
+				 * return which must be freed.
+				 */
 fastslabrealloc:
+				if (big->bytes <= BIGCACHE_LIMIT) {
+					big = bigcache_find_free(big);
+					if (big == NULL)
+						return;
+				}
+				ptr = big->base;	/* reload */
 				size = big->bytes;
 				_slabfree(big, 0, NULL);
 #ifdef INVARIANTS
@@ -1201,6 +1404,7 @@ fastslabrealloc:
 			bigp = &big->next;
 		}
 		bigalloc_unlock(ptr);
+		handle_excess_big();
 	}
 
 	/*
