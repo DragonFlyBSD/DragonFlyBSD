@@ -61,14 +61,13 @@ elif [ -r /etc/rc.conf ]; then
 	. /etc/rc.conf
 fi
 
-# If we do not have a writable /var, create a memory
-# filesystem for /var.  We don't have /usr yet so
-# use mkdir instead of touch to test.  We want mount
-# to record its mounts so we have to make sure /var/db
-# exists before doing the mount -a.
+# Try to mount root r/w.  If a workable /etc/fstab is present
+# this may give us a RW mount.
 #
-if (/bin/mkdir /var/.diskless 2> /dev/null); then
-        rmdir /var/.diskless
+mount -u /
+
+if (echo "" | dd of=/var/.diskless 2> /dev/null); then
+	echo "diskless: /var is writable"
 else
 	echo "+++ mount_md of /var"
 	mount_md ${varsize:=16M} /var
@@ -109,8 +108,8 @@ echo "+++ create lastlog"
 # filesystem for /tmp.  If /tmp is a symlink (e.g. to /var/tmp,
 # then it should already be writable).
 #
-if (/bin/mkdir /tmp/.diskless 2> /dev/null); then
-	rmdir /tmp/.diskless
+if (echo "" | dd of=/tmp/.diskless 2> /dev/null); then
+	echo "diskless: /tmp is writable"
 else
 	if [ -h /tmp ]; then
 		echo "*** /tmp is a symlink to a non-writable area!"
