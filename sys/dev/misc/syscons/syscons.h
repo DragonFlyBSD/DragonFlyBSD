@@ -525,6 +525,7 @@ void		sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard);
 int		sc_init_emulator(scr_stat *scp, char *name);
 void		sc_paste(scr_stat *scp, u_char *p, int count);
 void		sc_bell(scr_stat *scp, int pitch, int duration);
+void		sc_font_scale(scr_stat *scp, int max_cols, int max_rows);
 
 /* schistory.c */
 #ifndef SC_NO_HISTORY

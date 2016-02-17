@@ -51,9 +51,6 @@
 
 SET_DECLARE(scrndr_set, const sc_renderer_t);
 
-static int desired_cols = 0;
-TUNABLE_INT("kern.kms_columns", &desired_cols);
-
 int
 sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
 		 int fontsize)
@@ -819,31 +816,7 @@ sc_update_render(scr_stat *scp)
 		kprintf("kms console: xpixels %d ypixels %d\n",
 			scp->xpixel, scp->ypixel);
 
-		/*
-		 * If columns not specified in /boot/loader.conf then
-		 * calculate a non-fractional scaling that yields a
-		 * reasonable number of rows and columns. If it is <0,
-		 * don't scale at all.
-		 */
-		if (desired_cols == 0) {
-			int nomag = 1;
-			while (scp->xpixel / (scp->font_width * nomag) >= 80 &&
-			       scp->ypixel / (scp->font_height * nomag) >= 25) {
-				++nomag;
-			}
-			if (nomag > 1)
-				--nomag;
-			desired_cols = scp->xpixel / (scp->font_width * nomag);
-		} else if (desired_cols < 0) {
-			desired_cols = scp->xpixel / scp->font_width;
-		}
-		scp->blk_width = scp->xpixel / desired_cols;
-		scp->blk_height = scp->blk_width * scp->font_height /
-				  scp->font_width;
-
-		/* scp->xsize = scp->xpixel / scp->blk_width; total possible */
-		scp->xsize = desired_cols;
-		scp->ysize = scp->ypixel / scp->blk_height;
+		sc_font_scale(scp, 0, 0);
 
 		kprintf("kms console: scale-to %dx%d cols=%d rows=%d\n",
 			scp->blk_width, scp->blk_height,

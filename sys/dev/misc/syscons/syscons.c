@@ -138,6 +138,9 @@ static	int		syscons_async;
 SYSCTL_INT(_kern, OID_AUTO, syscons_async, CTLFLAG_RW, &syscons_async,
 	   0, "Asynchronous bulk syscons fb updates");
 
+static int desired_cols = 0;
+TUNABLE_INT("kern.kms_columns", &desired_cols);
+
 #define SC_CONSOLECTL	255
 
 #define VIRTUAL_TTY(sc, x) ((SC_DEV((sc),(x)) != NULL) ?	\
@@ -327,6 +330,40 @@ register_framebuffer(struct fb_info *info)
 
     lwkt_reltoken(&tty_token);
     return 0;
+}
+
+void
+sc_font_scale(scr_stat *scp, int max_cols, int max_rows)
+{
+	int cols, rows;
+
+	/*
+	 * If columns not specified in /boot/loader.conf then
+	 * calculate a non-fractional scaling that yields a
+	 * reasonable number of rows and columns. If it is <0,
+	 * don't scale at all.
+	 */
+	if (desired_cols == 0) {
+		int nomag = 1;
+		while (scp->xpixel / (scp->font_width * nomag) >= 80 &&
+		       scp->ypixel / (scp->font_height * nomag) >= 25) {
+			++nomag;
+		}
+		if (nomag > 1)
+			--nomag;
+		cols = scp->xpixel / (scp->font_width * nomag);
+	} else if (desired_cols < 0) {
+		cols = scp->xpixel / scp->font_width;
+	} else {
+		cols = desired_cols;
+	}
+	scp->blk_width = scp->xpixel / cols;
+	scp->blk_height = scp->blk_width * scp->font_height / scp->font_width;
+	rows = scp->ypixel / scp->blk_height;
+
+	/* scp->xsize = scp->xpixel / scp->blk_width; total possible */
+	scp->xsize = max_cols ? imin(max_cols, cols) : cols;
+	scp->ysize = max_rows ? imin(max_rows, rows) : rows;
 }
 
 /* probe video adapters, return TRUE if found */ 
@@ -3259,7 +3296,6 @@ static void
 init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 {
     video_info_t info;
-    int scaled_font_height;
 
     bzero(scp, sizeof(*scp));
 
@@ -3268,10 +3304,29 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->status = 0;
     scp->mode = sc->initial_mode;
     callout_init_mp(&scp->blink_screen_ch);
-    lwkt_gettoken(&tty_token);
-    (*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
-    lwkt_reltoken(&tty_token);
-    if (info.vi_flags & V_INFO_GRAPHICS) {
+    if (sc->fbi == NULL) {
+	lwkt_gettoken(&tty_token);
+	(*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
+	lwkt_reltoken(&tty_token);
+    }
+    if (scp->fbi != NULL) {
+	scp->xpixel = scp->fbi->width;
+	scp->ypixel = scp->fbi->height;
+	scp->font_width = 8;
+	scp->font_height = 16;
+
+	/* The first vty uses a statically allocated 80x25 buffer */
+	if (vty == sc->first_vty)
+		sc_font_scale(scp, 80, 25);
+	else
+		sc_font_scale(scp, 0, 0);
+
+#ifndef SC_NO_FONT_LOADING
+	scp->font = sc->font_16;
+#else
+	scp->font = NULL;
+#endif
+    } else if (info.vi_flags & V_INFO_GRAPHICS) {
 	scp->status |= GRAPHICS_MODE;
 	scp->xpixel = info.vi_width;
 	scp->ypixel = info.vi_height;
@@ -3311,18 +3366,6 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     }
     scp->xoff = scp->yoff = 0;
     scp->xpos = scp->ypos = 0;
-    scp->fbi = sc->fbi;
-    if (scp->fbi != NULL) {
-	scp->xpixel = scp->fbi->width;
-	scp->ypixel = scp->fbi->height;
-
-	scp->blk_width = scp->xpixel / 80;
-	scaled_font_height = scp->blk_width * 100 / scp->font_width;
-	scp->blk_height = scp->ypixel * 100 / scaled_font_height;
-
-	scp->xsize = scp->xpixel / scp->blk_width;
-	scp->ysize = scp->ypixel / scp->blk_height;
-    }
     sc_vtb_init(&scp->vtb, VTB_MEMORY, 0, 0, NULL, FALSE);
     sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, 0, 0, NULL, FALSE);
     scp->start = scp->xsize * scp->ysize - 1;
