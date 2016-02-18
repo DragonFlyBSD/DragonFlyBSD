@@ -199,6 +199,8 @@ knote_acquire(struct knote *kn)
 static __inline int
 knote_release(struct knote *kn)
 {
+	int ret;
+
 	while (kn->kn_status & KN_REPROCESS) {
 		kn->kn_status &= ~KN_REPROCESS;
 		if (kn->kn_status & KN_WAITING) {
@@ -213,11 +215,13 @@ knote_release(struct knote *kn)
 		if (filter_event(kn, 0))
 			KNOTE_ACTIVATE(kn);
 	}
-	kn->kn_status &= ~KN_PROCESSING;
 	if (kn->kn_status & KN_DETACHED)
-		return(1);
+		ret = 1;
 	else
-		return(0);
+		ret = 0;
+	kn->kn_status &= ~KN_PROCESSING;
+	/* kn should not be accessed anymore */
+	return ret;
 }
 
 static int
