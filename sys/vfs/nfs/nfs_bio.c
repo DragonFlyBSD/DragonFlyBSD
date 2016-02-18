@@ -73,6 +73,14 @@ static void nfs_readrpc_bio_done(nfsm_info_t info);
 static void nfs_writerpc_bio_done(nfsm_info_t info);
 static void nfs_commitrpc_bio_done(nfsm_info_t info);
 
+static __inline
+void
+nfs_knote(struct vnode *vp, int flags)
+{
+	if (flags)
+		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
+}
+
 /*
  * Vnode op for read using bio
  */
@@ -492,6 +500,7 @@ nfs_write(struct vop_write_args *ap)
 	int bcount;
 	int biosize;
 	int trivial;
+	int kflags = 0;
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
@@ -617,6 +626,7 @@ again:
 				   uio->uio_offset <= np->n_size);
 			nfs_meta_setsize(vp, td, uio->uio_offset + bytes,
 					 trivial);
+			kflags |= NOTE_EXTEND;
 		}
 		bp = nfs_getcacheblk(vp, loffset, biosize, td);
 		if (bp == NULL) {
@@ -672,6 +682,7 @@ again:
 			bp->b_resid = 0;
 		}
 		np->n_flag |= NLMODIFIED;
+		kflags |= NOTE_WRITE;
 
 		/*
 		 * If dirtyend exceeds file size, chop it down.  This should
@@ -782,6 +793,7 @@ again:
 		nfs_rsunlock(np);
 
 done:
+	nfs_knote(vp, kflags);
 	lwkt_reltoken(&nmp->nm_token);
 	return (error);
 }
