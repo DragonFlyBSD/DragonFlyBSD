@@ -2394,10 +2394,12 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
     }
     scp->mode = mode;
     if (set_mode(scp) == 0) {
-	if (scp->sc->adp->va_info.vi_flags & V_INFO_GRAPHICS)
+	if (scp->fbi == NULL &&
+	    scp->sc->adp->va_info.vi_flags & V_INFO_GRAPHICS) {
 	    scp->status |= GRAPHICS_MODE;
+	}
 #ifndef SC_NO_PALETTE_LOADING
-	if (pal != NULL)
+	if (scp->fbi == NULL && pal != NULL)
 	    load_palette(scp->sc->adp, pal);
 #endif
 	sc_set_border(scp, border);
@@ -2436,7 +2438,8 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
     }
     if (set_mode(scp) == 0) {
 #ifndef SC_NO_PALETTE_LOADING
-	load_palette(scp->sc->adp, scp->sc->palette);
+	if (scp->fbi == NULL)
+	    load_palette(scp->sc->adp, scp->sc->palette);
 #endif
 	--scrn_blanked;
 	crit_exit();
@@ -2831,7 +2834,7 @@ exchange_scr(sc_softc_t *sc)
     if (!ISGRAPHSC(scp))
 	sc_set_cursor_image(scp);
 #ifndef SC_NO_PALETTE_LOADING
-    if (ISGRAPHSC(sc->old_scp))
+    if (sc->fbi == NULL && ISGRAPHSC(sc->old_scp))
 	load_palette(sc->adp, sc->palette);
 #endif
     sc_set_border(scp, scp->border);
@@ -3850,12 +3853,13 @@ set_mode(scr_stat *scp)
     }
 
     /* setup video hardware for the given mode */
-    if (scp->sc->fbi == NULL)
+    if (scp->sc->fbi == NULL) {
 	(*vidsw[scp->sc->adapter]->set_mode)(scp->sc->adp, scp->mode);
-    sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
-		(void *)scp->sc->adp->va_window, FALSE);
-    if (scp->sc->fbi != NULL)
+	sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
+		    (void *)scp->sc->adp->va_window, FALSE);
+    } else {
 	goto done;
+    }
 
 #ifndef SC_NO_FONT_LOADING
     /* load appropriate font */
