@@ -3303,8 +3303,9 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->sc = sc;
     scp->status = 0;
     scp->mode = sc->initial_mode;
+    scp->fbi = sc->fbi;
     callout_init_mp(&scp->blink_screen_ch);
-    if (sc->fbi == NULL) {
+    if (scp->fbi == NULL) {
 	lwkt_gettoken(&tty_token);
 	(*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
 	lwkt_reltoken(&tty_token);
