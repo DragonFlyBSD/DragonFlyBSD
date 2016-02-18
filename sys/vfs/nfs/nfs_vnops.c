@@ -119,6 +119,7 @@ static int	nfs_laccess (struct vop_access_args *);
 static int	nfs_readlink (struct vop_readlink_args *);
 static int	nfs_print (struct vop_print_args *);
 static int	nfs_advlock (struct vop_advlock_args *);
+static int	nfs_kqfilter (struct vop_kqfilter_args *ap);
 
 static	int	nfs_nresolve (struct vop_nresolve_args *);
 /*
@@ -154,7 +155,8 @@ struct vop_ops nfsv2_vnode_vops = {
 	.vop_strategy =		nfs_strategy,
 	.vop_old_symlink =	nfs_symlink,
 	.vop_write =		nfs_write,
-	.vop_nresolve =		nfs_nresolve
+	.vop_nresolve =		nfs_nresolve,
+	.vop_kqfilter =		nfs_kqfilter
 };
 
 /*
@@ -237,6 +239,14 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_misses, CTLFLAG_RD,
 #define	NFSV3ACCESS_ALL (NFSV3ACCESS_READ | NFSV3ACCESS_MODIFY		\
 			 | NFSV3ACCESS_EXTEND | NFSV3ACCESS_EXECUTE	\
 			 | NFSV3ACCESS_DELETE | NFSV3ACCESS_LOOKUP)
+
+static __inline
+void
+nfs_knote(struct vnode *vp, int flags)
+{
+	if (flags)
+		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
+}
 
 /*
  * Returns whether a name component is a degenerate '.' or '..'.
@@ -723,6 +733,7 @@ nfs_setattr(struct vop_setattr_args *ap)
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct vattr *vap = ap->a_vap;
 	int error = 0;
+	int kflags = 0;
 	off_t tsize;
 	thread_t td = curthread;
 
@@ -797,6 +808,9 @@ again:
 			if (error == 0 && np->n_size != vap->va_size)
 				goto again;
 			np->n_vattr.va_size = vap->va_size;
+			kflags |= NOTE_WRITE;
+			if (tsize < vap->va_size)
+				kflags |= NOTE_EXTEND;
 			break;
 		}
 	} else if ((np->n_flag & NLMODIFIED) && vp->v_type == VREG) {
@@ -823,6 +837,8 @@ again:
 		}
 	}
 	error = nfs_setattrrpc(vp, vap, ap->a_cred, td);
+	if (error == 0)
+		kflags |= NOTE_EXTEND;
 
 	/*
 	 * Sanity check if a truncation was issued.  This should only occur
@@ -842,6 +858,7 @@ again:
 		nfs_meta_setsize(vp, td, np->n_size, 0);
 	}
 	lwkt_reltoken(&nmp->nm_token);
+	nfs_knote(vp, kflags);
 
 	return (error);
 }
@@ -1631,6 +1648,8 @@ nfs_mknod(struct vop_old_mknod_args *ap)
 	lwkt_gettoken(&nmp->nm_token);
 	error = nfs_mknodrpc(ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap);
 	lwkt_reltoken(&nmp->nm_token);
+	if (error == 0)
+		nfs_knote(ap->a_dvp, NOTE_WRITE);
 
 	return error;
 }
@@ -1766,6 +1785,7 @@ nfsmout:
 		if (np->n_wucred == NULL)
 			np->n_wucred = crhold(cnp->cn_cred);
 		*ap->a_vpp = newvp;
+		nfs_knote(dvp, NOTE_WRITE);
 	} else if (newvp) {
 		vput(newvp);
 	}
@@ -1832,6 +1852,10 @@ nfs_remove(struct vop_old_remove_args *ap)
 	}
 	np->n_attrstamp = 0;
 	lwkt_reltoken(&nmp->nm_token);
+	if (error == 0) {
+		nfs_knote(vp, NOTE_DELETE);
+		nfs_knote(dvp, NOTE_WRITE);
+	}
 
 	return (error);
 }
@@ -1937,10 +1961,11 @@ nfs_rename(struct vop_old_rename_args *ap)
 	 */
 	if (tvp && VREFCNT(tvp) > 1 && !VTONFS(tvp)->n_sillyrename &&
 		tvp->v_type != VDIR && !nfs_sillyrename(tdvp, tvp, tcnp)) {
+		nfs_knote(tvp, NOTE_DELETE);
 		vput(tvp);
 		tvp = NULL;
 	} else if (tvp) {
-		;
+		nfs_knote(tvp, NOTE_DELETE);
 	}
 
 	error = nfs_renamerpc(fdvp, fcnp->cn_nameptr, fcnp->cn_namelen,
@@ -1948,6 +1973,11 @@ nfs_rename(struct vop_old_rename_args *ap)
 		tcnp->cn_td);
 
 out:
+	if (error == 0) {
+		nfs_knote(fdvp, NOTE_WRITE);
+		nfs_knote(tdvp, NOTE_WRITE);
+		nfs_knote(fvp, NOTE_RENAME);
+	}
 	lwkt_reltoken(&nmp->nm_token);
 	if (tdvp == tvp)
 		vrele(tdvp);
@@ -2077,6 +2107,11 @@ nfsmout:
 	if (error == EEXIST)
 		error = 0;
 	lwkt_reltoken(&nmp->nm_token);
+	if (error == 0) {
+		nfs_knote(vp, NOTE_LINK);
+		nfs_knote(tdvp, NOTE_WRITE);
+	}
+
 	return (error);
 }
 
@@ -2180,6 +2215,8 @@ nfsmout:
 	VTONFS(dvp)->n_flag |= NLMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
+	if (error == 0 && *ap->a_vpp)
+		nfs_knote(*ap->a_vpp, NOTE_WRITE);
 	lwkt_reltoken(&nmp->nm_token);
 
 	return (error);
@@ -2268,6 +2305,7 @@ nfsmout:
 		if (newvp)
 			vrele(newvp);
 	} else {
+		nfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 		*ap->a_vpp = newvp;
 	}
 	lwkt_reltoken(&nmp->nm_token);
@@ -2321,6 +2359,8 @@ nfsmout:
 	 */
 	if (error == ENOENT)
 		error = 0;
+	else
+		nfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	lwkt_reltoken(&nmp->nm_token);
 
 	return (error);
@@ -3640,3 +3680,106 @@ nfsfifo_close(struct vop_close_args *ap)
 	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }
 
+/************************************************************************
+ *                          KQFILTER OPS                                *
+ ************************************************************************/
+
+static void filt_nfsdetach(struct knote *kn);
+static int filt_nfsread(struct knote *kn, long hint);
+static int filt_nfswrite(struct knote *kn, long hint);
+static int filt_nfsvnode(struct knote *kn, long hint);
+
+static struct filterops nfsread_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_nfsdetach, filt_nfsread };
+static struct filterops nfswrite_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_nfsdetach, filt_nfswrite };
+static struct filterops nfsvnode_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_nfsdetach, filt_nfsvnode };
+
+static int
+nfs_kqfilter (struct vop_kqfilter_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct knote *kn = ap->a_kn;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &nfsread_filtops;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &nfswrite_filtops;
+		break;
+	case EVFILT_VNODE:
+		kn->kn_fop = &nfsvnode_filtops;
+		break;
+	default:
+		return (EOPNOTSUPP);
+	}
+
+	kn->kn_hook = (caddr_t)vp;
+
+	knote_insert(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+
+	return(0);
+}
+
+static void
+filt_nfsdetach(struct knote *kn)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+
+	knote_remove(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+}
+
+static int
+filt_nfsread(struct knote *kn, long hint)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+	struct nfsnode *node = VTONFS(vp);
+	off_t off;
+
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+		return(1);
+	}
+
+	/*
+	 * Interlock against MP races when performing this function. XXX
+	 */
+	/* TMPFS_NODE_LOCK_SH(node); */
+	off = node->n_size - kn->kn_fp->f_offset;
+	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	if (kn->kn_sfflags & NOTE_OLDAPI) {
+		/* TMPFS_NODE_UNLOCK(node); */
+		return(1);
+	}
+	if (kn->kn_data == 0) {
+		kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	}
+	/* TMPFS_NODE_UNLOCK(node); */
+	return (kn->kn_data != 0);
+}
+
+static int
+filt_nfswrite(struct knote *kn, long hint)
+{
+	if (hint == NOTE_REVOKE)
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+	kn->kn_data = 0;
+	return (1);
+}
+
+static int
+filt_nfsvnode(struct knote *kn, long hint)
+{
+	if (kn->kn_sfflags & hint)
+		kn->kn_fflags |= hint;
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
+		return (1);
+	}
+	return (kn->kn_fflags != 0);
+}
