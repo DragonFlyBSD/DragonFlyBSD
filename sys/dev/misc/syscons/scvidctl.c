@@ -844,76 +844,72 @@ sc_update_render(scr_stat *scp)
 	if (rndr == NULL && scp->sc->fbi != NULL) {
 		rndr = sc_render_match(scp, "kms", scp->model);
 	}
-	if (rndr != NULL) {
-		scp->rndr = rndr;
-		/* Mostly copied from sc_set_text_mode */
-		if ((error = sc_clean_up(scp))) {
-			crit_exit();
-			return;
-		}
-		new_ysize = 0;
-#ifndef SC_NO_HISTORY
-		old_xpos = old_ypos = 0;
-		if (scp->history != NULL) {
-			if (scp->xsize > 0) {
-				old_xpos = scp->xpos;
-				old_ypos = scp->ypos;
-			}
-			sc_hist_save(scp);
-			new_ysize = sc_vtb_rows(scp->history);
-		}
-#endif
-		prev_ysize = scp->ysize;
-		scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
-		scp->status &= ~(GRAPHICS_MODE | PIXEL_MODE | MOUSE_VISIBLE);
-		scp->model = V_INFO_MM_TEXT;
-		scp->xpixel = scp->fbi->width;
-		scp->ypixel = scp->fbi->height;
-
-		/*
-		 * Assume square pixels for now
-		 */
-		kprintf("kms console: xpixels %d ypixels %d\n",
-			scp->xpixel, scp->ypixel);
-
-		sc_font_scale(scp, 0, 0);
-
-		kprintf("kms console: scale-to %dx%d cols=%d rows=%d\n",
-			scp->blk_width, scp->blk_height,
-			scp->xsize, scp->ysize);
-
-		/* allocate buffers */
-		sc_alloc_scr_buffer(scp, TRUE, TRUE);
-		sc_init_emulator(scp, NULL);
-#ifndef SC_NO_CUTPASTE
-		sc_alloc_cut_buffer(scp, FALSE);
-#endif
-#ifndef SC_NO_HISTORY
-		sc_alloc_history_buffer(scp, new_ysize, prev_ysize, FALSE);
-		if (scp->history != NULL) {
-			sc_hist_getback(scp, prev_ysize);
-			sc_move_cursor(scp, old_xpos, old_ypos);
-		}
-#endif
+	if (rndr == NULL) {	/* this shouldn't happen */
+		rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
+		if (rndr != NULL)
+			scp->rndr = rndr;
 		crit_exit();
-		scp->status &= ~UNKNOWN_MODE;
-		tp = VIRTUAL_TTY(scp->sc, scp->index);
-		if (tp == NULL)
-			return;
-		if (tp->t_winsize.ws_col != scp->xsize ||
-		    tp->t_winsize.ws_row != scp->ysize) {
-			tp->t_winsize.ws_col = scp->xsize;
-			tp->t_winsize.ws_row = scp->ysize;
-			pgsignal(tp->t_pgrp, SIGWINCH, 1);
-		}
 		return;
 	}
-	if (rndr == NULL) {
-		rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
-	}
 
-	if (rndr != NULL) {
-		scp->rndr = rndr;
+	scp->rndr = rndr;
+	/* Mostly copied from sc_set_text_mode */
+	if ((error = sc_clean_up(scp))) {
+		crit_exit();
+		return;
 	}
+	new_ysize = 0;
+#ifndef SC_NO_HISTORY
+	old_xpos = old_ypos = 0;
+	if (scp->history != NULL) {
+		if (scp->xsize > 0) {
+			old_xpos = scp->xpos;
+			old_ypos = scp->ypos;
+		}
+		sc_hist_save(scp);
+		new_ysize = sc_vtb_rows(scp->history);
+	}
+#endif
+	prev_ysize = scp->ysize;
+	scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
+	scp->status &= ~(GRAPHICS_MODE | PIXEL_MODE | MOUSE_VISIBLE);
+	scp->model = V_INFO_MM_TEXT;
+	scp->xpixel = scp->fbi->width;
+	scp->ypixel = scp->fbi->height;
+
+	/*
+	 * Assume square pixels for now
+	 */
+	kprintf("kms console: xpixels %d ypixels %d\n",
+		scp->xpixel, scp->ypixel);
+
+	sc_font_scale(scp, 0, 0);
+
+	kprintf("kms console: scale-to %dx%d cols=%d rows=%d\n",
+		scp->blk_width, scp->blk_height, scp->xsize, scp->ysize);
+
+	/* allocate buffers */
+	sc_alloc_scr_buffer(scp, TRUE, TRUE);
+	sc_init_emulator(scp, NULL);
+#ifndef SC_NO_CUTPASTE
+	sc_alloc_cut_buffer(scp, FALSE);
+#endif
+#ifndef SC_NO_HISTORY
+	sc_alloc_history_buffer(scp, new_ysize, prev_ysize, FALSE);
+	if (scp->history != NULL) {
+		sc_hist_getback(scp, prev_ysize);
+		sc_move_cursor(scp, old_xpos, old_ypos);
+	}
+#endif
 	crit_exit();
+	scp->status &= ~UNKNOWN_MODE;
+	tp = VIRTUAL_TTY(scp->sc, scp->index);
+	if (tp == NULL)
+		return;
+	if (tp->t_winsize.ws_col != scp->xsize ||
+	    tp->t_winsize.ws_row != scp->ysize) {
+		tp->t_winsize.ws_col = scp->xsize;
+		tp->t_winsize.ws_row = scp->ysize;
+		pgsignal(tp->t_pgrp, SIGWINCH, 1);
+	}
 }
