@@ -431,10 +431,10 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
     scp = SC_STAT(tp->t_dev);
     if (scp == NULL)		/* tp == SC_MOUSE */
-		return ENOIOCTL;
+	return ENOIOCTL;
     adp = scp->sc->adp;
-    if (adp == NULL)		/* shouldn't happen??? */
-		return ENODEV;
+    if (adp == NULL && scp->fbi == NULL)	/* shouldn't happen??? */
+	return ENODEV;
 
     lwkt_gettoken(&tty_token);
     switch (cmd) {
@@ -626,8 +626,8 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    /* restore fonts & palette ! */
 #if 0
 #ifndef SC_NO_FONT_LOADING
-	    if (ISFONTAVAIL(adp->va_flags) 
-		&& !(scp->status & (GRAPHICS_MODE | PIXEL_MODE)))
+	    if (scp->fbi == NULL && ISFONTAVAIL(adp->va_flags)
+		&& !(scp->status & (GRAPHICS_MODE | PIXEL_MODE))) {
 		/*
 		 * FONT KLUDGE
 		 * Don't load fonts for now... XXX
@@ -643,11 +643,13 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 #endif
 
 #ifndef SC_NO_PALETTE_LOADING
-	    load_palette(adp, scp->sc->palette);
+	    if (scp->fbi == NULL)
+		load_palette(adp, scp->sc->palette);
 #endif
 
 	    /* move hardware cursor out of the way */
-	    (*vidsw[adp->va_index]->set_hw_cursor)(adp, -1, -1);
+	    if (scp->fbi == NULL)
+		(*vidsw[adp->va_index]->set_hw_cursor)(adp, -1, -1);
 	    /* FALL THROUGH */
 
 	case KD_TEXT1:  	/* switch to TEXT (known) mode */

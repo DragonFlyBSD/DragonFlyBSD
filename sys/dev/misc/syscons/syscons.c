@@ -868,7 +868,10 @@ scioctl(struct dev_ioctl_args *ap)
 	return ENOTTY;
 
     case GIO_COLOR:     	/* is this a color console ? */
-	*(int *)data = (sc->adp->va_flags & V_ADP_COLOR) ? 1 : 0;
+	if (sc->fbi != NULL)
+	    *(int *)data = 1;
+	else
+	    *(int *)data = (sc->adp->va_flags & V_ADP_COLOR) ? 1 : 0;
 	lwkt_reltoken(&tty_token);
 	return 0;
 
@@ -1478,7 +1481,7 @@ scioctl(struct dev_ioctl_args *ap)
 #ifndef SC_NO_FONT_LOADING
 
     case PIO_FONT8x8:   	/* set 8x8 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
 	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
 	}
@@ -1490,14 +1493,16 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Always use the font page #0. XXX
 	 * Don't load if the current font size is not 8x8.
 	 */
-	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height < 14))
+	if (sc->fbi == NULL
+	    && ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height < 14)) {
 	    sc_load_font(sc->cur_scp, 0, 8, sc->font_8, 0, 256);
+	}
 	syscons_unlock();
 	lwkt_reltoken(&tty_token);
 	return 0;
 
     case GIO_FONT8x8:   	/* get 8x8 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
 	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
 	}
@@ -1512,7 +1517,7 @@ scioctl(struct dev_ioctl_args *ap)
 	}
 
     case PIO_FONT8x14:  	/* set 8x14 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
 	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
 	}
@@ -1524,7 +1529,8 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Always use the font page #0. XXX
 	 * Don't load if the current font size is not 8x14.
 	 */
-	if (ISTEXTSC(sc->cur_scp)
+	if (sc->fbi == NULL
+	    && ISTEXTSC(sc->cur_scp)
 	    && (sc->cur_scp->font_height >= 14)
 	    && (sc->cur_scp->font_height < 16)) {
 	    sc_load_font(sc->cur_scp, 0, 14, sc->font_14, 0, 256);
@@ -1534,7 +1540,7 @@ scioctl(struct dev_ioctl_args *ap)
 	return 0;
 
     case GIO_FONT8x14:  	/* get 8x14 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
 	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
 	}
@@ -1549,7 +1555,7 @@ scioctl(struct dev_ioctl_args *ap)
         }
 
     case PIO_FONT8x16:  	/* set 8x16 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
 	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
 	}
@@ -1561,14 +1567,16 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Always use the font page #0. XXX
 	 * Don't load if the current font size is not 8x16.
 	 */
-	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height >= 16))
+	if (sc->fbi == NULL
+	    && ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height >= 16))  {
 	    sc_load_font(sc->cur_scp, 0, 16, sc->font_16, 0, 256);
+	}
 	syscons_unlock();
 	lwkt_reltoken(&tty_token);
 	return 0;
 
     case GIO_FONT8x16:  	/* get 8x16 dot font */
-	if (!ISFONTAVAIL(sc->adp->va_flags)) {
+	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
 	    lwkt_reltoken(&tty_token);
 	    return ENXIO;
 	}

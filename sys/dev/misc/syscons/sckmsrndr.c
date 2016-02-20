@@ -235,6 +235,9 @@ kms_draw_border(scr_stat *scp, int color)
 	rightpixel = sc->fbi->width - scp->xsize * scp->blk_width;
 	bottompixel = sc->fbi->height - scp->ysize * scp->blk_height;
 
+	if (sc->fbi->vaddr == 0)
+		return;
+
 	draw_pos = sc->fbi->vaddr + scp->blk_width * pixel_size * scp->xsize;
 	fill_rect(scp, draw_pos, pixel_size, rightpixel,
 	    scp->blk_height * scp->ysize, line_width, fg);
@@ -256,6 +259,9 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 
 	line_width = sc->fbi->stride;
 	pixel_size = 4;
+
+	if (sc->fbi->vaddr == 0)
+		return;
 
 	draw_pos = sc->fbi->vaddr +
 	    scp->blk_height * line_width * (from / scp->xsize);
@@ -303,6 +309,9 @@ draw_kmscursor(scr_stat *scp, int at, int on, int flip)
 	pixel_size = 4;
 	cursor_base = /* scp->font_height - */ scp->cursor_base;
 	blk_base = scp->blk_height * cursor_base / scp->font_height;
+
+	if (sc->fbi->vaddr == 0)
+		return;
 
 	draw_pos = sc->fbi->vaddr +
 	    scp->blk_width * pixel_size * (at % scp->xsize) +
@@ -385,6 +394,9 @@ draw_kmsmouse(scr_stat *scp, int x, int y)
 
 	line_width = sc->fbi->stride;
 	pixel_size = 4;
+
+	if (sc->fbi->vaddr == 0)
+		return;
 
 	if (x + scp->font_width < scp->font_width * scp->xsize)
 		blk_width = scp->blk_width;
