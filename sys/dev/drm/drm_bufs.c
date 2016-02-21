@@ -99,13 +99,25 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
-		map->handle = drm_ioremap(dev, map);
-		if (!(map->flags & _DRM_WRITE_COMBINING))
-			break;
-		/* FALLTHROUGH */
 	case _DRM_FRAME_BUFFER:
-		if (drm_mtrr_add(map->offset, map->size, DRM_MTRR_WC) == 0)
-			map->mtrr = 1;
+
+		if (map->type == _DRM_FRAME_BUFFER ||
+		    (map->flags & _DRM_WRITE_COMBINING)) {
+			map->mtrr =
+				arch_phys_wc_add(map->offset, map->size);
+		}
+		if (map->type == _DRM_REGISTERS) {
+			if (map->flags & _DRM_WRITE_COMBINING)
+				map->handle = ioremap_wc(map->offset,
+							 map->size);
+			else
+				map->handle = ioremap(map->offset, map->size);
+			if (!map->handle) {
+				kfree(map);
+				return -ENOMEM;
+			}
+		}
+
 		break;
 	case _DRM_SHM:
 		map->handle = kmalloc(map->size, M_DRM, M_WAITOK | M_NULLOK);
@@ -268,16 +280,10 @@ int drm_legacy_rmmap_locked(struct drm_device *dev, struct drm_local_map *map)
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
-		drm_ioremapfree(map);
+		drm_legacy_ioremapfree(map, dev);
 		/* FALLTHROUGH */
 	case _DRM_FRAME_BUFFER:
-		if (map->mtrr) {
-			int __unused retcode;
-			
-			retcode = drm_mtrr_del(0, map->offset, map->size,
-			    DRM_MTRR_WC);
-			DRM_DEBUG("mtrr_del = %d\n", retcode);
-		}
+		arch_phys_wc_del(map->mtrr);
 		break;
 	case _DRM_SHM:
 		drm_free(map->handle, M_DRM);

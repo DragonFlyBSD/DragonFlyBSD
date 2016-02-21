@@ -36,6 +36,12 @@
 #include <machine/cpufunc.h>
 
 void
+drm_clflush_pages(vm_page_t *pages, unsigned long num_pages)
+{
+	pmap_invalidate_cache_pages(pages, num_pages);
+}
+
+void
 drm_clflush_virt_range(void *in_addr, unsigned long length)
 {
 	char *addr = in_addr;

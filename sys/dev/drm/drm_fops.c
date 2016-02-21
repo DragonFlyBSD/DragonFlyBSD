@@ -186,81 +186,6 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 }
 
 /**
- * Release file.
- *
- * \param inode device inode
- * \param file_priv DRM file private.
- * \return zero on success or a negative number on failure.
- *
- * If the hardware lock is held then free it, and take it again for the kernel
- * context since it's necessary to reclaim buffers. Unlink the file private
- * data from its list and free it. Decreases the open count and if it reaches
- * zero calls drm_lastclose().
- */
-
-static void drm_unload(struct drm_device *dev)
-{
-	int i;
-
-	DRM_DEBUG("\n");
-
-	drm_sysctl_cleanup(dev);
-	if (dev->devnode != NULL)
-		destroy_dev(dev->devnode);
-
-	if (drm_core_check_feature(dev, DRIVER_GEM))
-		drm_gem_destroy(dev);
-
-	if (dev->agp && dev->agp->agp_mtrr) {
-		int __unused retcode;
-
-		retcode = drm_mtrr_del(0, dev->agp->agp_info.ai_aperture_base,
-		    dev->agp->agp_info.ai_aperture_size, DRM_MTRR_WC);
-		DRM_DEBUG("mtrr_del = %d", retcode);
-	}
-
-	drm_vblank_cleanup(dev);
-
-	DRM_LOCK(dev);
-	drm_lastclose(dev);
-	DRM_UNLOCK(dev);
-
-	/* Clean up PCI resources allocated by drm_bufs.c.  We're not really
-	 * worried about resource consumption while the DRM is inactive (between
-	 * lastclose and firstopen or unload) because these aren't actually
-	 * taking up KVA, just keeping the PCI resource allocated.
-	 */
-	for (i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
-		if (dev->pcir[i] == NULL)
-			continue;
-		bus_release_resource(dev->dev, SYS_RES_MEMORY,
-		    dev->pcirid[i], dev->pcir[i]);
-		dev->pcir[i] = NULL;
-	}
-
-	if (dev->agp) {
-		drm_free(dev->agp, M_DRM);
-		dev->agp = NULL;
-	}
-
-	if (dev->driver->unload != NULL) {
-		DRM_LOCK(dev);
-		dev->driver->unload(dev);
-		DRM_UNLOCK(dev);
-	}
-
-	drm_mem_uninit();
-
-	if (pci_disable_busmaster(dev->dev))
-		DRM_ERROR("Request to disable bus-master failed.\n");
-
-	lockuninit(&dev->vbl_lock);
-	lockuninit(&dev->dev_lock);
-	lockuninit(&dev->event_lock);
-	lockuninit(&dev->struct_mutex);
-}
-
-/**
  * Take down the DRM device.
  *
  * \param dev DRM device structure.
@@ -346,6 +271,7 @@ int drm_release(device_t kdev)
 {
 	struct drm_device *dev = device_get_softc(kdev);
 	struct drm_magic_entry *pt, *next;
+	int i;
 
 	mutex_lock(&drm_global_mutex);
 
@@ -359,7 +285,61 @@ int drm_release(device_t kdev)
 		drm_ht_remove(&dev->magiclist);
 	}
 
-	drm_unload(dev);
+	/* ========================================================
+	 * Begin inline drm_release
+	 */
+
+	DRM_DEBUG("\n");
+
+	drm_sysctl_cleanup(dev);
+	if (dev->devnode != NULL)
+		destroy_dev(dev->devnode);
+
+	if (drm_core_check_feature(dev, DRIVER_GEM))
+		drm_gem_destroy(dev);
+
+	drm_vblank_cleanup(dev);
+
+	DRM_LOCK(dev);
+	drm_lastclose(dev);
+	DRM_UNLOCK(dev);
+
+	/* Clean up PCI resources allocated by drm_bufs.c.  We're not really
+	 * worried about resource consumption while the DRM is inactive (between
+	 * lastclose and firstopen or unload) because these aren't actually
+	 * taking up KVA, just keeping the PCI resource allocated.
+	 */
+	for (i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
+		if (dev->pcir[i] == NULL)
+			continue;
+		bus_release_resource(dev->dev, SYS_RES_MEMORY,
+		    dev->pcirid[i], dev->pcir[i]);
+		dev->pcir[i] = NULL;
+	}
+
+	if (dev->agp) {
+		drm_free(dev->agp, M_DRM);
+		dev->agp = NULL;
+	}
+
+	if (dev->driver->unload != NULL) {
+		DRM_LOCK(dev);
+		dev->driver->unload(dev);
+		DRM_UNLOCK(dev);
+	}
+
+	if (pci_disable_busmaster(dev->dev))
+		DRM_ERROR("Request to disable bus-master failed.\n");
+
+	lockuninit(&dev->vbl_lock);
+	lockuninit(&dev->dev_lock);
+	lockuninit(&dev->event_lock);
+	lockuninit(&dev->struct_mutex);
+
+	/* ========================================================
+	 * End inline drm_release
+	 */
+
 	if (dev->irqr) {
 		bus_release_resource(dev->dev, SYS_RES_IRQ, dev->irqrid,
 		    dev->irqr);

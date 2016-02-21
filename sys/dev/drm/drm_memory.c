@@ -1,11 +1,17 @@
-/*-
- *Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
- * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
- * Copyright (c) 2011 The FreeBSD Foundation
- * All rights reserved.
+/**
+ * \file drm_memory.c
+ * Memory management wrappers for DRM
  *
- * Portions of this software were developed by Konstantin Belousov
- * under sponsorship from the FreeBSD Foundation.
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ */
+
+/*
+ * Created: Thu Feb  4 14:00:34 1999 by faith@valinux.com
+ *
+ * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
+ * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
+ * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -25,21 +31,10 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
  */
 
-/** @file drm_memory.c
- * Wrappers for kernel memory allocation routines, and MTRR management support.
- *
- * This file previously implemented a memory consumption tracking system using
- * the "area" argument for various different types of allocations, but that
- * has been stripped out for now.
- */
-
+#include <linux/highmem.h>
+#include <linux/export.h>
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
@@ -55,28 +50,26 @@
 
 MALLOC_DEFINE(M_DRM, "m_drm", "DRM memory allocations");
 
-void drm_mem_init(void)
+void drm_legacy_ioremap(struct drm_local_map *map, struct drm_device *dev)
 {
+	map->handle = ioremap(map->offset, map->size);
 }
+EXPORT_SYMBOL(drm_legacy_ioremap);
 
-void drm_mem_uninit(void)
+void drm_legacy_ioremap_wc(struct drm_local_map *map, struct drm_device *dev)
 {
+	map->handle = ioremap_wc(map->offset, map->size);
 }
+EXPORT_SYMBOL(drm_legacy_ioremap_wc);
 
-void *drm_ioremap_wc(struct drm_device *dev, drm_local_map_t *map)
+void drm_legacy_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
 {
-	return pmap_mapdev_attr(map->offset, map->size, VM_MEMATTR_WRITE_COMBINING);
-}
+	if (!map->handle || !map->size)
+		return;
 
-void *drm_ioremap(struct drm_device *dev, drm_local_map_t *map)
-{
-	return pmap_mapdev(map->offset, map->size);
-}
-
-void drm_ioremapfree(drm_local_map_t *map)
-{
 	pmap_unmapdev((vm_offset_t) map->handle, map->size);
 }
+EXPORT_SYMBOL(drm_legacy_ioremapfree);
 
 int
 drm_mtrr_add(unsigned long offset, size_t size, int flags)
@@ -104,11 +97,4 @@ drm_mtrr_del(int __unused handle, unsigned long offset, size_t size, int flags)
 	act = MEMRANGE_SET_REMOVE;
 	strlcpy(mrdesc.mr_owner, "drm", sizeof(mrdesc.mr_owner));
 	return mem_range_attr_set(&mrdesc, &act);
-}
-
-void
-drm_clflush_pages(vm_page_t *pages, unsigned long num_pages)
-{
-
-	pmap_invalidate_cache_pages(pages, num_pages);
 }

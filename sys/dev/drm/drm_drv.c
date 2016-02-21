@@ -1094,7 +1094,6 @@ static int drm_load(struct drm_device *dev)
 
 	INIT_LIST_HEAD(&dev->maplist);
 
-	drm_mem_init();
 	drm_sysctl_init(dev);
 	INIT_LIST_HEAD(&dev->filelist);
 

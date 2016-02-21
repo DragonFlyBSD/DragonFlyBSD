@@ -46,55 +46,32 @@
  */
 static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 {
-	drm_local_map_t bios_map;
 	uint8_t __iomem *bios;
 	resource_size_t vram_base;
 	resource_size_t size = 256 * 1024; /* ??? */
 
-	DRM_INFO("%s: ===> Try IGP's VRAM...\n", __func__);
-
 	if (!(rdev->flags & RADEON_IS_IGP))
-		if (!radeon_card_posted(rdev)) {
-			DRM_INFO("%s: not POSTed discrete card detected, skipping this method...\n",
-			    __func__);
+		if (!radeon_card_posted(rdev))
 			return false;
-		}
 
 	rdev->bios = NULL;
 	vram_base = pci_resource_start(rdev->pdev, 0);
-	DRM_INFO("%s: VRAM base address: 0x%jx\n", __func__, (uintmax_t)vram_base);
-
-	bios_map.offset = vram_base;
-	bios_map.size   = size;
-	bios_map.type   = 0;
-	bios_map.flags  = 0;
-	bios_map.mtrr   = 0;
-	drm_core_ioremap(&bios_map, rdev->ddev);
-	if (bios_map.handle == NULL) {
-		DRM_INFO("%s: failed to ioremap\n", __func__);
+	bios = ioremap(vram_base, size);
+	if (!bios) {
 		return false;
 	}
-	bios = bios_map.handle;
-	size = bios_map.size;
-	DRM_INFO("%s: Map address: %p (%ju bytes)\n", __func__, bios, (uintmax_t)size);
 
 	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
-		if (size == 0) {
-			DRM_INFO("%s: Incorrect BIOS size\n", __func__);
-		} else {
-			DRM_INFO("%s: Incorrect BIOS signature: 0x%02X%02X\n",
-			    __func__, bios[0], bios[1]);
-		}
-		drm_core_ioremapfree(&bios_map, rdev->ddev);
+		iounmap(bios, size);
 		return false;
 	}
 	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
 	if (rdev->bios == NULL) {
-		drm_core_ioremapfree(&bios_map, rdev->ddev);
+		iounmap(bios, size);
 		return false;
 	}
 	memcpy_fromio(rdev->bios, bios, size);
-	drm_core_ioremapfree(&bios_map, rdev->ddev);
+	iounmap(bios, size);
 	return true;
 }
 

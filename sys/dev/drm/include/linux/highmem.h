@@ -29,6 +29,9 @@
 
 #include <machine/vmparam.h>
 
+#include <linux/kernel.h>
+#include <linux/bug.h>
+#include <linux/mm.h>
 #include <linux/uaccess.h>
 
 #include <asm/cacheflush.h>

@@ -1171,11 +1171,6 @@ int drm_prime_lookup_obj(struct drm_device *dev, struct dma_buf *buf,
 			 struct drm_gem_object **obj);
 #endif /* DUMBBELL_WIP */
 
-void	drm_mem_init(void);
-void	drm_mem_uninit(void);
-void	*drm_ioremap_wc(struct drm_device *dev, drm_local_map_t *map);
-void	*drm_ioremap(struct drm_device *dev, drm_local_map_t *map);
-void	drm_ioremapfree(drm_local_map_t *map);
 int	drm_mtrr_add(unsigned long offset, size_t size, int flags);
 int	drm_mtrr_del(int handle, unsigned long offset, size_t size, int flags);
 
@@ -1362,23 +1357,6 @@ drm_free(void *pt, struct malloc_type *area)
 	/* kfree is special!!! */
 	if (pt != NULL)
 		(kfree)(pt, area);
-}
-
-static __inline__ void
-drm_core_ioremap_wc(struct drm_local_map *map, struct drm_device *dev)
-{
-	map->handle = drm_ioremap_wc(dev, map);
-}
-static __inline__ void
-drm_core_ioremap(struct drm_local_map *map, struct drm_device *dev)
-{
-	map->handle = drm_ioremap(dev, map);
-}
-static __inline__ void
-drm_core_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
-{
-	if ( map->handle && map->size )
-		drm_ioremapfree(map);
 }
 
 static __inline__ struct drm_local_map *
