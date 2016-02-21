@@ -60,8 +60,8 @@
 #include <machine/psl.h>
 #include <machine/pc/display.h>
 #include <machine/frame.h>
+#include <machine/framebuffer.h>
 
-#include <dev/drm/include/linux/fb.h>
 #include <dev/misc/kbd/kbdreg.h>
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>

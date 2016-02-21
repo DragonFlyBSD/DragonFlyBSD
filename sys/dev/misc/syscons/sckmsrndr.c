@@ -38,8 +38,7 @@
 #include <sys/thread2.h>
 
 #include <machine/console.h>
-
-#include <dev/drm/include/linux/fb.h>
+#include <machine/framebuffer.h>
 
 #include "syscons.h"
 

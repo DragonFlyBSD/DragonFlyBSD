@@ -34,22 +34,9 @@
 #include <linux/list.h>
 #include <linux/backlight.h>
 
+#include <machine/framebuffer.h>
+
 #define	KHZ2PICOS(a)	(1000000000UL/(a))
-
-struct fb_info {
-	vm_offset_t vaddr;
-	vm_paddr_t paddr;
-	uint16_t width;
-	uint16_t height;
-	uint16_t stride;
-	uint16_t depth;
-	int is_vga_boot_display;
-	void *cookie;
-	void (*restore)(void *);
-	struct device *device;
-};
-
-extern int register_framebuffer(struct fb_info *fb_info);
 
 extern int fb_get_options(const char *name, char **option);
 

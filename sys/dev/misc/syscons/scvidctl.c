@@ -44,8 +44,8 @@
 #include <sys/thread2.h>
 
 #include <machine/console.h>
+#include <machine/framebuffer.h>
 
-#include <dev/drm/include/linux/fb.h>
 #include <dev/video/fb/fbreg.h>
 #include "syscons.h"
 

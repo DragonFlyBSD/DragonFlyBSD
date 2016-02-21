@@ -113,6 +113,7 @@
 #endif
 #include <machine/cputypes.h>
 #include <machine/intr_machdep.h>
+#include <machine/framebuffer.h>
 
 #ifdef OLD_BUS_ARCH
 #include <bus/isa/isa_device.h>
@@ -1732,6 +1733,62 @@ add_efi_map_entries(int *physmap_idx)
 		physmap[*physmap_idx] = p->md_phys;
 		physmap[*physmap_idx + 1] = p->md_phys + p->md_pages * PAGE_SIZE;
 	 }
+}
+
+struct fb_info efi_fb_info;
+int have_efi_framebuffer = 0;
+
+static void
+efi_fb_init_vaddr(void)
+{
+	uint64_t sz;
+
+	sz = efi_fb_info.stride * efi_fb_info.height;
+	efi_fb_info.vaddr = PHYS_TO_DMAP(efi_fb_info.paddr);
+	pmap_change_attr(efi_fb_info.vaddr, (sz + PAGE_MASK) / PAGE_SIZE,
+	    VM_MEMATTR_WRITE_COMBINING);
+
+	if (efi_fb_info.vaddr != 0)
+		memset((void *)efi_fb_info.vaddr, 0x77, sz);
+}
+
+int
+probe_efi_fb(int early)
+{
+	struct efi_fb	*efifb;
+	caddr_t		kmdp;
+
+	if (have_efi_framebuffer) {
+		if (!early && efi_fb_info.vaddr == 0)
+			efi_fb_init_vaddr();
+		return 0;
+	}
+
+	kmdp = preload_search_by_type("elf kernel");
+	if (kmdp == NULL)
+		kmdp = preload_search_by_type("elf64 kernel");
+	efifb = (struct efi_fb *)preload_search_info(kmdp,
+	    MODINFO_METADATA | MODINFOMD_EFI_FB);
+	if (efifb == NULL)
+		return 1;
+
+	have_efi_framebuffer = 1;
+
+	efi_fb_info.is_vga_boot_display = 1;
+	efi_fb_info.width = efifb->fb_width;
+	efi_fb_info.height = efifb->fb_height;
+	efi_fb_info.stride = efifb->fb_stride * 4;
+	efi_fb_info.depth = 32;
+	efi_fb_info.paddr = efifb->fb_addr;
+	if (early) {
+		efi_fb_info.vaddr = 0;
+	} else {
+		efi_fb_init_vaddr();
+	}
+	efi_fb_info.restore = NULL;
+	efi_fb_info.device = NULL;
+
+	return 0;
 }
 
 static void
