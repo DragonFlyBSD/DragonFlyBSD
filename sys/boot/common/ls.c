@@ -82,7 +82,7 @@ command_ls(int argc, char *argv[])
     argc -= (optind - 1);
 
     if (argc < 2) {
-	path = ".";
+	path = "";
     } else {
 	path = argv[1];
     }
@@ -102,7 +102,10 @@ command_ls(int argc, char *argv[])
 		/* stat the file, if possible */
 		sb.st_size = 0;
 		buf = malloc(strlen(path) + strlen(d->d_name) + 2);
-		sprintf(buf, "%s/%s", path, d->d_name);
+		if (strlen(path) == 0)
+		    sprintf(buf, "%s", d->d_name);
+		else
+		    sprintf(buf, "%s/%s", path, d->d_name);
 		/* ignore return, could be symlink, etc. */
 		if (rel_stat(buf, &sb))
 		    sb.st_size = 0;
