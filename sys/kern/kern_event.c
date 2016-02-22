@@ -1477,24 +1477,41 @@ filter_event(struct knote *kn, long hint)
 void
 knote(struct klist *list, long hint)
 {
-	struct kqueue *kq;
-	struct knote *kn;
-	struct knote *kntmp;
+	struct knote *kn, marker;
+
+	marker.kn_filter = EVFILT_MARKER;
+	marker.kn_status = KN_PROCESSING;
 
 	lwkt_getpooltoken(list);
-restart:
-	SLIST_FOREACH(kn, list, kn_next) {
+	if (SLIST_EMPTY(list)) {
+		lwkt_relpooltoken(list);
+		return;
+	}
+
+	SLIST_INSERT_HEAD(list, &marker, kn_next);
+	while ((kn = SLIST_NEXT(&marker, kn_next)) != NULL) {
+		struct kqueue *kq;
+		int last_knote = 0;
+
+		if (kn->kn_filter == EVFILT_MARKER) {
+			/* Skip marker */
+			SLIST_REMOVE(list, &marker, knote, kn_next);
+			if (SLIST_NEXT(kn, kn_next) == NULL)
+				goto done;
+			SLIST_INSERT_AFTER(kn, &marker, kn_next);
+			continue;
+		}
+
 		kq = kn->kn_kq;
 		lwkt_getpooltoken(kq);
 
-		/* temporary verification hack */
-		SLIST_FOREACH(kntmp, list, kn_next) {
-			if (kn == kntmp)
-				break;
-		}
-		if (kn != kntmp || kn->kn_kq != kq) {
+		if (kn != SLIST_NEXT(&marker, kn_next) || kn->kn_kq != kq) {
+			/*
+			 * Don't move the marker; check the knote after
+			 * the marker again.
+			 */
 			lwkt_relpooltoken(kq);
-			goto restart;
+			continue;
 		}
 
 		if (kn->kn_status & KN_PROCESSING) {
@@ -1504,44 +1521,69 @@ restart:
 			 * with it otherwise.
 			 */
 			if (hint == 0) {
+				/*
+				 * Move the marker w/ the kq token, so that
+				 * this knote will not be ripped behind our
+				 * back.
+				 */
+				SLIST_REMOVE(list, &marker, knote, kn_next);
+				if (SLIST_NEXT(kn, kn_next) != NULL)
+					SLIST_INSERT_AFTER(kn, &marker, kn_next);
+				else
+					last_knote = 1;
 				kn->kn_status |= KN_REPROCESS;
 				lwkt_relpooltoken(kq);
+
+				if (last_knote)
+					goto done;
 				continue;
 			}
 
 			/*
 			 * If the hint is non-zero we have to wait or risk
 			 * losing the state the caller is trying to update.
-			 *
-			 * XXX This is a real problem, certain process
-			 *     and signal filters will bump kn_data for
-			 *     already-processed notes more than once if
-			 *     we restart the list scan.  FIXME.
 			 */
 			kn->kn_status |= KN_WAITING | KN_REPROCESS;
 			tsleep(kn, 0, "knotec", hz);
+
+			/*
+			 * Don't move the marker; check this knote again,
+			 * hopefully it is still after the marker.  Or it
+			 * was deleted and we would check the next knote.
+			 */
 			lwkt_relpooltoken(kq);
-			goto restart;
+			continue;
 		}
 
 		/*
 		 * Become the reprocessing master ourselves.
-		 *
-		 * If hint is non-zero running the event is mandatory
-		 * when not deleting so do it whether reprocessing is
-		 * set or not.
 		 */
+		KASSERT((kn->kn_status & KN_DELETING) == 0,
+		    ("acquire a deleting knote %#x", kn->kn_status));
 		kn->kn_status |= KN_PROCESSING;
-		if ((kn->kn_status & KN_DELETING) == 0) {
-			if (filter_event(kn, hint))
-				KNOTE_ACTIVATE(kn);
-		}
-		if (knote_release(kn)) {
-			lwkt_relpooltoken(kq);
-			goto restart;
-		}
+
+		/* Move the marker */
+		SLIST_REMOVE(list, &marker, knote, kn_next);
+		if (SLIST_NEXT(kn, kn_next) != NULL)
+			SLIST_INSERT_AFTER(kn, &marker, kn_next);
+		else
+			last_knote = 1;
+
+		/*
+		 * If hint is non-zero running the event is mandatory
+		 * so do it whether reprocessing is set or not.
+		 */
+		if (filter_event(kn, hint))
+			KNOTE_ACTIVATE(kn);
+
+		knote_release(kn);
 		lwkt_relpooltoken(kq);
+
+		if (last_knote)
+			goto done;
 	}
+	SLIST_REMOVE(list, &marker, knote, kn_next);
+done:
 	lwkt_relpooltoken(list);
 }
 
@@ -1599,18 +1641,49 @@ void
 knote_assume_knotes(struct kqinfo *src, struct kqinfo *dst,
 		    struct filterops *ops, void *hook)
 {
-	struct kqueue *kq;
-	struct knote *kn;
+	struct knote *kn, marker;
+	int has_note;
+
+	marker.kn_filter = EVFILT_MARKER;
+	marker.kn_status = KN_PROCESSING;
 
 	lwkt_getpooltoken(&src->ki_note);
+	if (SLIST_EMPTY(&src->ki_note)) {
+		lwkt_relpooltoken(&src->ki_note);
+		return;
+	}
 	lwkt_getpooltoken(&dst->ki_note);
-	while ((kn = SLIST_FIRST(&src->ki_note)) != NULL) {
+
+restart:
+	has_note = 0;
+	SLIST_INSERT_HEAD(&src->ki_note, &marker, kn_next);
+	while ((kn = SLIST_NEXT(&marker, kn_next)) != NULL) {
+		struct kqueue *kq;
+
+		if (kn->kn_filter == EVFILT_MARKER) {
+			/* Skip marker */
+			SLIST_REMOVE(&src->ki_note, &marker, knote, kn_next);
+			SLIST_INSERT_AFTER(kn, &marker, kn_next);
+			continue;
+		}
+
 		kq = kn->kn_kq;
 		lwkt_getpooltoken(kq);
-		if (SLIST_FIRST(&src->ki_note) != kn || kn->kn_kq != kq) {
+
+		if (kn != SLIST_NEXT(&marker, kn_next) || kn->kn_kq != kq) {
+			/*
+			 * Don't move the marker; check the knote after
+			 * the marker again.
+			 */
 			lwkt_relpooltoken(kq);
 			continue;
 		}
+
+		/* Move marker */
+		SLIST_REMOVE(&src->ki_note, &marker, knote, kn_next);
+		SLIST_INSERT_AFTER(kn, &marker, kn_next);
+
+		has_note = 1;
 		if (knote_acquire(kn)) {
 			knote_remove(&src->ki_note, kn);
 			kn->kn_fop = ops;
@@ -1621,6 +1694,12 @@ knote_assume_knotes(struct kqinfo *src, struct kqinfo *dst,
 		}
 		lwkt_relpooltoken(kq);
 	}
+	SLIST_REMOVE(&src->ki_note, &marker, knote, kn_next);
+	if (has_note) {
+		/* Keep draining, until nothing left */
+		goto restart;
+	}
+
 	lwkt_relpooltoken(&dst->ki_note);
 	lwkt_relpooltoken(&src->ki_note);
 }
