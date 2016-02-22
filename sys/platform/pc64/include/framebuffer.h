@@ -19,13 +19,8 @@ struct fb_info {
 int probe_efi_fb(int early);
 
 int register_framebuffer(struct fb_info *fb_info);
-/*
- * XXX If syscons isn't enabled in kernel config, provide a dummy
- *     inline implementation of register_framebuffer().
- */
 
 extern struct fb_info efi_fb_info;
-extern int have_efi_framebuffer;
 
 #endif  /* _KERNEL */
 

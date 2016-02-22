@@ -1736,7 +1736,7 @@ add_efi_map_entries(int *physmap_idx)
 }
 
 struct fb_info efi_fb_info;
-int have_efi_framebuffer = 0;
+static int have_efi_framebuffer = 0;
 
 static void
 efi_fb_init_vaddr(void)
