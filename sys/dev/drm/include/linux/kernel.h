@@ -58,29 +58,6 @@
 
 #define BUG_ON(condition)	do { if (condition) BUG(); } while(0)
 
-#define _WARN_STR(x) #x
-
-#define WARN_ON(condition) ({						\
-	int __ret = !!(condition);					\
-	if (__ret)							\
-		kprintf("WARNING %s failed at %s:%d\n",			\
-		    _WARN_STR(condition), __FILE__, __LINE__);			\
-	unlikely(__ret);						\
-})
-
-#define WARN_ON_SMP(condition)	WARN_ON(condition)
-
-#define WARN_ON_ONCE(condition) ({					\
-	static int __warned;						\
-	int __ret = !!(condition);					\
-	if (__ret && !__warned) {					\
-		kprintf("WARNING %s failed at %s:%d\n",			\
-		    _WARN_STR(condition), __FILE__, __LINE__);		\
-		__warned = 1;						\
-	}								\
-	unlikely(__ret);						\
-})
-
 #undef	ALIGN
 #define	ALIGN(x, y)		roundup2((x), (y))
 #define	DIV_ROUND_UP		howmany

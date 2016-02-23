@@ -31,6 +31,8 @@
 #ifndef	_LINUX_SCATTERLIST_H_
 #define	_LINUX_SCATTERLIST_H_
 
+#include <linux/bug.h>
+
 /*
  * SG table design.
  *

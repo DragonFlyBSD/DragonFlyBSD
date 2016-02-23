@@ -33,6 +33,7 @@
 
 #include <linux/errno.h>
 #include <linux/gfp.h>
+#include <linux/bug.h>
 #include <linux/kernel.h>
 
 #include <asm/page.h>

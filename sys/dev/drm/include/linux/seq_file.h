@@ -28,6 +28,7 @@
 #define _LINUX_SEQ_FILE_H_
 
 #include <linux/types.h>
+#include <linux/bug.h>
 
 struct seq_file {
 	char	*buf;

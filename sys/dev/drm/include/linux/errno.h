@@ -34,5 +34,6 @@
 #define ECHRNG		EDOM
 #define ENOTSUPP	EOPNOTSUPP
 #define ETIME		ETIMEDOUT
+#define ENODATA		ECONNREFUSED
 
 #endif	/* _LINUX_ERRNO_H_ */

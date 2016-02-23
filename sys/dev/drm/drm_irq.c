@@ -33,6 +33,7 @@
  */
 
 #include <drm/drmP.h>
+#include "drm_trace.h"
 #include "drm_internal.h"
 
 #include <linux/slab.h>
@@ -57,6 +58,50 @@ static bool
 drm_get_last_vbltimestamp(struct drm_device *dev, int crtc,
 			  struct timeval *tvblank, unsigned flags);
 
+unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
+
+/*
+ * Default to use monotonic timestamps for wait-for-vblank and page-flip
+ * complete events.
+ */
+unsigned int drm_timestamp_monotonic = 1;
+
+int drm_vblank_offdelay = 5000;    /* Default to 5000 msecs. */
+
+module_param_named(vblankoffdelay, drm_vblank_offdelay, int, 0600);
+module_param_named(timestamp_precision_usec, drm_timestamp_precision, int, 0600);
+module_param_named(timestamp_monotonic, drm_timestamp_monotonic, int, 0600);
+
+static void store_vblank(struct drm_device *dev, int crtc,
+			 u32 vblank_count_inc,
+			 struct timeval *t_vblank)
+{
+	struct drm_vblank_crtc *vblank = &dev->vblank[crtc];
+	u32 tslot;
+
+	assert_spin_locked(&dev->vblank_time_lock);
+
+	if (t_vblank) {
+		/* All writers hold the spinlock, but readers are serialized by
+		 * the latching of vblank->count below.
+		 */
+		tslot = vblank->count + vblank_count_inc;
+		vblanktimestamp(dev, crtc, tslot) = *t_vblank;
+	}
+
+	/*
+	 * vblank timestamp updates are protected on the write side with
+	 * vblank_time_lock, but on the read side done locklessly using a
+	 * sequence-lock on the vblank counter. Ensure correct ordering using
+	 * memory barrriers. We need the barrier both before and also after the
+	 * counter update to synchronize with the next timestamp write.
+	 * The read-side barriers for this are in drm_vblank_count_and_time.
+	 */
+	smp_wmb();
+	vblank->count += vblank_count_inc;
+	smp_wmb();
+}
+
 /**
  * drm_update_vblank_count - update the master vblank counter
  * @dev: DRM device
@@ -76,14 +121,14 @@ drm_get_last_vbltimestamp(struct drm_device *dev, int crtc,
 static void drm_update_vblank_count(struct drm_device *dev, int crtc)
 {
 	struct drm_vblank_crtc *vblank = &dev->vblank[crtc];
-	u32 cur_vblank, diff, tslot;
+	u32 cur_vblank, diff;
 	bool rc;
 	struct timeval t_vblank;
 
 	/*
 	 * Interrupts were disabled prior to this call, so deal with counter
 	 * wrap if needed.
-	 * NOTE!  It's possible we lost a full dev->max_vblank_count events
+	 * NOTE!  It's possible we lost a full dev->max_vblank_count + 1 events
 	 * here if the register is small or we had vblank interrupts off for
 	 * a long time.
 	 *
@@ -100,7 +145,7 @@ static void drm_update_vblank_count(struct drm_device *dev, int crtc)
 	/* Deal with counter wrap */
 	diff = cur_vblank - vblank->last;
 	if (cur_vblank < vblank->last) {
-		diff += dev->max_vblank_count;
+		diff += dev->max_vblank_count + 1;
 
 		DRM_DEBUG("last_vblank[%d]=0x%x, cur_vblank=0x%x => diff=0x%x\n",
 			  crtc, vblank->last, cur_vblank, diff);
@@ -112,18 +157,15 @@ static void drm_update_vblank_count(struct drm_device *dev, int crtc)
 	if (diff == 0)
 		return;
 
-	/* Reinitialize corresponding vblank timestamp if high-precision query
-	 * available. Skip this step if query unsupported or failed. Will
-	 * reinitialize delayed at next vblank interrupt in that case.
+	/*
+	 * Only reinitialize corresponding vblank timestamp if high-precision query
+	 * available and didn't fail. Otherwise reinitialize delayed at next vblank
+	 * interrupt and assign 0 for now, to mark the vblanktimestamp as invalid.
 	 */
-	if (rc) {
-		tslot = atomic_read(&vblank->count) + diff;
-		vblanktimestamp(dev, crtc, tslot) = t_vblank;
-	}
+	if (!rc)
+		t_vblank = (struct timeval) {0, 0};
 
-	smp_mb__before_atomic();
-	atomic_add(diff, &vblank->count);
-	smp_mb__after_atomic();
+	store_vblank(dev, crtc, diff, &t_vblank);
 }
 
 /*
@@ -167,8 +209,15 @@ static void vblank_disable_and_save(struct drm_device *dev, int crtc)
 		return;
 	}
 
-	dev->driver->disable_vblank(dev, crtc);
-	vblank->enabled = false;
+	/*
+	 * Only disable vblank interrupts if they're enabled. This avoids
+	 * calling the ->disable_vblank() operation in atomic context with the
+	 * hardware potentially runtime suspended.
+	 */
+	if (vblank->enabled) {
+		dev->driver->disable_vblank(dev, crtc);
+		vblank->enabled = false;
+	}
 
 	/* No further vblank irq's will be processed after
 	 * this point. Get current hardware vblank count and
@@ -193,7 +242,7 @@ static void vblank_disable_and_save(struct drm_device *dev, int crtc)
 	/* Compute time difference to stored timestamp of last vblank
 	 * as updated by last invocation of drm_handle_vblank() in vblank irq.
 	 */
-	vblcount = atomic_read(&vblank->count);
+	vblcount = vblank->count;
 	diff_ns = timeval_to_ns(&tvblank) -
 		  timeval_to_ns(&vblanktimestamp(dev, crtc, vblcount));
 
@@ -209,17 +258,8 @@ static void vblank_disable_and_save(struct drm_device *dev, int crtc)
 	 * available. In that case we can't account for this and just
 	 * hope for the best.
 	 */
-	if (vblrc && (abs64(diff_ns) > 1000000)) {
-		/* Store new timestamp in ringbuffer. */
-		vblanktimestamp(dev, crtc, vblcount + 1) = tvblank;
-
-		/* Increment cooked vblank count. This also atomically commits
-		 * the timestamp computed above.
-		 */
-		smp_mb__before_atomic();
-		atomic_inc(&vblank->count);
-		smp_mb__after_atomic();
-	}
+	if (vblrc && (abs64(diff_ns) > 1000000))
+		store_vblank(dev, crtc, 1, &tvblank);
 
 	lockmgr(&dev->vblank_time_lock, LK_RELEASE);
 }
@@ -258,11 +298,10 @@ void drm_vblank_cleanup(struct drm_device *dev)
 	for (crtc = 0; crtc < dev->num_crtcs; crtc++) {
 		struct drm_vblank_crtc *vblank = &dev->vblank[crtc];
 
-		del_timer_sync(&vblank->disable_timer);
+		WARN_ON(vblank->enabled &&
+			drm_core_check_feature(dev, DRIVER_MODESET));
 
-		lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
-		vblank_disable_and_save(dev, crtc);
-		lockmgr(&dev->vbl_lock, LK_RELEASE);
+		del_timer_sync(&vblank->disable_timer);
 	}
 
 	kfree(dev->vblank);
@@ -311,6 +350,13 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 		DRM_INFO("Driver supports precise vblank timestamp query.\n");
 	else
 		DRM_INFO("No driver support for vblank timestamp query.\n");
+
+	/* Must have precise timestamping for reliable vblank instant disable */
+	if (dev->vblank_disable_immediate && !dev->driver->get_vblank_timestamp) {
+		dev->vblank_disable_immediate = false;
+		DRM_INFO("Setting vblank_disable_immediate to false because "
+			 "get_vblank_timestamp == NULL\n");
+	}
 
 	dev->vblank_disable_allowed = false;
 
@@ -440,17 +486,23 @@ int drm_irq_uninstall(struct drm_device *dev)
 	dev->irq_enabled = false;
 
 	/*
-	 * Wake up any waiters so they don't hang.
+	 * Wake up any waiters so they don't hang. This is just to paper over
+	 * isssues for UMS drivers which aren't in full control of their
+	 * vblank/irq handling. KMS drivers must ensure that vblanks are all
+	 * disabled when uninstalling the irq handler.
 	 */
 	if (dev->num_crtcs) {
 		lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
 		for (i = 0; i < dev->num_crtcs; i++) {
 			struct drm_vblank_crtc *vblank = &dev->vblank[i];
 
+			if (!vblank->enabled)
+				continue;
+
+			WARN_ON(drm_core_check_feature(dev, DRIVER_MODESET));
+
+			vblank_disable_and_save(dev, i);
 			wake_up(&vblank->queue);
-			vblank->enabled = false;
-			vblank->last =
-				dev->driver->get_vblank_counter(dev, i);
 		}
 		lockmgr(&dev->vbl_lock, LK_RELEASE);
 	}
@@ -626,8 +678,8 @@ int drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev, int crtc,
 					  const struct drm_crtc *refcrtc,
 					  const struct drm_display_mode *mode)
 {
-	ktime_t stime, etime;
 	struct timeval tv_etime;
+	ktime_t stime, etime;
 	int vbl_status;
 	int vpos, hpos, i;
 	int framedur_ns, linedur_ns, pixeldur_ns, delta_ns, duration_ns;
@@ -672,15 +724,6 @@ int drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev, int crtc,
 		vbl_status = dev->driver->get_scanout_position(dev, crtc, flags, &vpos,
 							       &hpos, &stime, &etime);
 
-		/*
-		 * Get correction for CLOCK_MONOTONIC -> CLOCK_REALTIME if
-		 * CLOCK_REALTIME is requested.
-		 */
-#if 0
-		if (!drm_timestamp_monotonic)
-			mono_time_offset = ktime_get_monotonic_offset();
-#endif
-
 		/* Return as no-op if scanout query unsupported or failed. */
 		if (!(vbl_status & DRM_SCANOUTPOS_VALID)) {
 			DRM_DEBUG("crtc %d : scanoutpos query failed [%d].\n",
@@ -718,10 +761,8 @@ int drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev, int crtc,
 	 */
 	delta_ns = vpos * linedur_ns + hpos * pixeldur_ns;
 
-#if 0
 	if (!drm_timestamp_monotonic)
-		etime = ktime_sub(etime, mono_time_offset);
-#endif
+		etime = ktime_mono_to_real(etime);
 
 	/* save this only for debugging purposes */
 	tv_etime = ktime_to_timeval(etime);
@@ -752,18 +793,13 @@ static struct timeval get_drm_timestamp(void)
 {
 	ktime_t now;
 
-	now = ktime_get();
-#if 0
-	if (!drm_timestamp_monotonic)
-		now = ktime_sub(now, ktime_get_monotonic_offset());
-#endif
-
+	now = drm_timestamp_monotonic ? ktime_get() : ktime_get_real();
 	return ktime_to_timeval(now);
 }
 
 /**
  * drm_get_last_vbltimestamp - retrieve raw timestamp for the most recent
- * 			       vblank interval
+ *                             vblank interval
  * @dev: DRM device
  * @crtc: which CRTC's vblank timestamp to retrieve
  * @tvblank: Pointer to target struct timeval which should receive the timestamp
@@ -822,9 +858,11 @@ drm_get_last_vbltimestamp(struct drm_device *dev, int crtc,
  */
 u32 drm_vblank_count(struct drm_device *dev, int crtc)
 {
+	struct drm_vblank_crtc *vblank = &dev->vblank[crtc];
+
 	if (WARN_ON(crtc >= dev->num_crtcs))
 		return 0;
-	return atomic_read(&dev->vblank[crtc].count);
+	return vblank->count;
 }
 EXPORT_SYMBOL(drm_vblank_count);
 
@@ -869,16 +907,17 @@ u32 drm_vblank_count_and_time(struct drm_device *dev, int crtc,
 	if (WARN_ON(crtc >= dev->num_crtcs))
 		return 0;
 
-	/* Read timestamp from slot of _vblank_time ringbuffer
-	 * that corresponds to current vblank count. Retry if
-	 * count has incremented during readout. This works like
-	 * a seqlock.
+	/*
+	 * Vblank timestamps are read lockless. To ensure consistency the vblank
+	 * counter is rechecked and ordering is ensured using memory barriers.
+	 * This works like a seqlock. The write-side barriers are in store_vblank.
 	 */
 	do {
-		cur_vblank = atomic_read(&vblank->count);
+		cur_vblank = vblank->count;
+		smp_rmb();
 		*vblanktime = vblanktimestamp(dev, crtc, cur_vblank);
 		smp_rmb();
-	} while (cur_vblank != atomic_read(&vblank->count));
+	} while (cur_vblank != vblank->count);
 
 	return cur_vblank;
 }
@@ -901,10 +940,8 @@ static void send_vblank_event(struct drm_device *dev,
 #ifdef __DragonFly__
 	KNOTE(&e->base.file_priv->dkq.ki_note, 0);
 #endif
-#if 0
 	trace_drm_vblank_event_delivered(e->base.pid, e->pipe,
 					 e->event.sequence);
-#endif
 }
 
 /**
@@ -923,6 +960,7 @@ void drm_send_vblank_event(struct drm_device *dev, int crtc,
 {
 	struct timeval now;
 	unsigned int seq;
+
 	if (crtc >= 0) {
 		seq = drm_vblank_count_and_time(dev, crtc, &now);
 	} else {
@@ -1007,6 +1045,9 @@ int drm_vblank_get(struct drm_device *dev, int crtc)
 	struct drm_vblank_crtc *vblank = &dev->vblank[crtc];
 	int ret = 0;
 
+	if (!dev->num_crtcs)
+		return -EINVAL;
+
 	if (WARN_ON(crtc >= dev->num_crtcs))
 		return -EINVAL;
 
@@ -1033,7 +1074,7 @@ EXPORT_SYMBOL(drm_vblank_get);
  * Acquire a reference count on vblank events to avoid having them disabled
  * while in use.
  *
- * This is the native kms version of drm_vblank_off().
+ * This is the native kms version of drm_vblank_get().
  *
  * Returns:
  * Zero on success, nonzero on failure.
@@ -1157,6 +1198,9 @@ void drm_vblank_off(struct drm_device *dev, int crtc)
 	struct timeval now;
 	unsigned int seq;
 
+	if (WARN_ON(crtc >= dev->num_crtcs))
+		return;
+
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 
 	lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
@@ -1255,6 +1299,9 @@ EXPORT_SYMBOL(drm_crtc_vblank_reset);
 void drm_vblank_on(struct drm_device *dev, int crtc)
 {
 	struct drm_vblank_crtc *vblank = &dev->vblank[crtc];
+
+	if (WARN_ON(crtc >= dev->num_crtcs))
+		return;
 
 	lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
 	/* Drop our private "prevent drm_vblank_get" refcount */
@@ -1440,7 +1487,7 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 	unsigned int seq;
 	int ret;
 
-	e = kzalloc(sizeof *e, GFP_KERNEL);
+	e = kzalloc(sizeof(*e), GFP_KERNEL);
 	if (e == NULL) {
 		ret = -ENOMEM;
 		goto err_put;
@@ -1449,7 +1496,7 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 	e->pipe = pipe;
 	e->base.pid = curproc->p_pid;
 	e->event.base.type = DRM_EVENT_VBLANK;
-	e->event.base.length = sizeof e->event;
+	e->event.base.length = sizeof(e->event);
 	e->event.user_data = vblwait->request.signal;
 	e->base.event = &e->event.base;
 	e->base.file_priv = file_priv;
@@ -1469,12 +1516,12 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 		goto err_unlock;
 	}
 
-	if (file_priv->event_space < sizeof e->event) {
+	if (file_priv->event_space < sizeof(e->event)) {
 		ret = -EBUSY;
 		goto err_unlock;
 	}
 
-	file_priv->event_space -= sizeof e->event;
+	file_priv->event_space -= sizeof(e->event);
 	seq = drm_vblank_count_and_time(dev, pipe, &now);
 
 	if ((vblwait->request.type & _DRM_VBLANK_NEXTONMISS) &&
@@ -1486,10 +1533,8 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 	DRM_DEBUG("event on vblank count %d, current %d, crtc %d\n",
 		  vblwait->request.sequence, seq, pipe);
 
-#if 0
 	trace_drm_vblank_event_queued(current->pid, pipe,
 				      vblwait->request.sequence);
-#endif
 
 	e->event.sequence = vblwait->request.sequence;
 	if ((seq - vblwait->request.sequence) <= (1 << 23)) {
@@ -1626,6 +1671,7 @@ static void drm_handle_vblank_events(struct drm_device *dev, int crtc)
 	struct timeval now;
 	unsigned int seq;
 
+	assert_spin_locked(&dev->event_lock);
 
 	seq = drm_vblank_count_and_time(dev, crtc, &now);
 
@@ -1643,9 +1689,7 @@ static void drm_handle_vblank_events(struct drm_device *dev, int crtc)
 		send_vblank_event(dev, e, seq, &now);
 	}
 
-#if 0
 	trace_drm_vblank_event(crtc, seq);
-#endif
 }
 
 /**
@@ -1665,13 +1709,13 @@ bool drm_handle_vblank(struct drm_device *dev, int crtc)
 	s64 diff_ns;
 	struct timeval tvblank;
 
-	if (!dev->num_crtcs)
+	if (WARN_ON_ONCE(!dev->num_crtcs))
 		return false;
-
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 
 	if (WARN_ON(crtc >= dev->num_crtcs))
 		return false;
+
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 
 	/* Need timestamp lock to prevent concurrent execution with
 	 * vblank enable/disable, as this would cause inconsistent
@@ -1691,7 +1735,7 @@ bool drm_handle_vblank(struct drm_device *dev, int crtc)
 	 */
 
 	/* Get current timestamp and count. */
-	vblcount = atomic_read(&vblank->count);
+	vblcount = vblank->count;
 	drm_get_last_vbltimestamp(dev, crtc, &tvblank, DRM_CALLED_FROM_VBLIRQ);
 
 	/* Compute time difference to timestamp of last vblank */
@@ -1707,20 +1751,11 @@ bool drm_handle_vblank(struct drm_device *dev, int crtc)
 	 * e.g., due to spurious vblank interrupts. We need to
 	 * ignore those for accounting.
 	 */
-	if (abs64(diff_ns) > DRM_REDUNDANT_VBLIRQ_THRESH_NS) {
-		/* Store new timestamp in ringbuffer. */
-		vblanktimestamp(dev, crtc, vblcount + 1) = tvblank;
-
-		/* Increment cooked vblank count. This also atomically commits
-		 * the timestamp computed above.
-		 */
-		smp_mb__before_atomic();
-		atomic_inc(&vblank->count);
-		smp_mb__after_atomic();
-	} else {
+	if (abs64(diff_ns) > DRM_REDUNDANT_VBLIRQ_THRESH_NS)
+		store_vblank(dev, crtc, 1, &tvblank);
+	else
 		DRM_DEBUG("crtc %d: Redundant vblirq ignored. diff_ns = %d\n",
 			  crtc, (int) diff_ns);
-	}
 
 	lockmgr(&dev->vblank_time_lock, LK_RELEASE);
 

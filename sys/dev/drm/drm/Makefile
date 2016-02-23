@@ -30,6 +30,7 @@ SRCS	= \
 	drm_modes.c \
 	drm_modeset_lock.c \
 	drm_atomic.c \
+	drm_bridge.c \
 	drm_atomic_helper.c \
 	drm_panel.c \
 	drm_pci.c \

@@ -32,6 +32,7 @@
 #include <linux/list.h>
 #include <linux/compiler.h>
 #include <linux/moduleparam.h>
+#include <linux/jump_label.h>
 #include <linux/export.h>
 
 #define MODULE_AUTHOR(name)

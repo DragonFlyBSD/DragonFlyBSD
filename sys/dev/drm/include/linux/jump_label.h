@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,21 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINUX_BUG_H
-#define LINUX_BUG_H
+#ifndef _LINUX_JUMP_LABEL_H_
+#define _LINUX_JUMP_LABEL_H_
 
-#include <sys/cdefs.h>
-
-#include <asm/bug.h>
+#include <linux/types.h>
 #include <linux/compiler.h>
+#include <linux/bug.h>
 
-#define	BUILD_BUG_ON(CONDITION)	CTASSERT(!(CONDITION))
-
-#define	BUILD_BUG_ON_NOT_POWER_OF_2(n)			      \
-	CTASSERT(((n) != 0) && (((n) & ((n) - 1)) == 0))
-
-#define BUILD_BUG()	BUILD_BUG_ON(1)
-
-#define BUILD_BUG_ON_MSG(cond, msg)
-
-#endif /* LINUX_BUG_H */
+#endif	/* _LINUX_JUMP_LABEL_H_ */

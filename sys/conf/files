@@ -1975,6 +1975,7 @@ dev/crypto/ubsec/ubsec.c		optional ubsec
 dev/drm/ati_pcigart.c			optional drm
 dev/drm/drm_agpsupport.c		optional drm
 dev/drm/drm_atomic.c			optional drm
+dev/drm/drm_bridge.c			optional drm
 dev/drm/drm_atomic_helper.c		optional drm
 dev/drm/drm_auth.c			optional drm
 dev/drm/drm_bufs.c			optional drm
@@ -2059,6 +2060,7 @@ dev/drm/i915/intel_atomic_plane.c	optional i915 drm
 dev/drm/i915/intel_audio.c		optional i915 drm
 dev/drm/i915/intel_bios.c		optional i915 drm
 dev/drm/i915/intel_crt.c		optional i915 drm
+dev/drm/i915/intel_csr.c		optional i915 drm
 dev/drm/i915/intel_ddi.c		optional i915 drm
 dev/drm/i915/intel_display.c		optional i915 drm
 dev/drm/i915/intel_dp.c			optional i915 drm

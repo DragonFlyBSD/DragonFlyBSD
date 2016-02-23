@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013 François Tigeot
+ * Copyright (c) 2013-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@
 
 #include <sys/refcount.h>
 
+#include <linux/bug.h>
 #include <linux/atomic.h>
 #include <linux/mutex.h>
 

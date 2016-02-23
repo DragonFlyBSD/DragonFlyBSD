@@ -19,21 +19,24 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
+ *
  */
 
-#ifndef _I915_COMPONENT_H_
-#define _I915_COMPONENT_H_
+#ifndef I915_GEM_BATCH_POOL_H
+#define I915_GEM_BATCH_POOL_H
 
-struct i915_audio_component {
-	struct device *dev;
+#include "i915_drv.h"
 
-	const struct i915_audio_component_ops {
-		struct module *owner;
-		void (*get_power)(struct device *);
-		void (*put_power)(struct device *);
-		void (*codec_wake_override)(struct device *, bool enable);
-		int (*get_cdclk_freq)(struct device *);
-	} *ops;
+struct i915_gem_batch_pool {
+	struct drm_device *dev;
+	struct list_head cache_list[4];
 };
 
-#endif /* _I915_COMPONENT_H_ */
+/* i915_gem_batch_pool.c */
+void i915_gem_batch_pool_init(struct drm_device *dev,
+			      struct i915_gem_batch_pool *pool);
+void i915_gem_batch_pool_fini(struct i915_gem_batch_pool *pool);
+struct drm_i915_gem_object*
+i915_gem_batch_pool_get(struct i915_gem_batch_pool *pool, size_t size);
+
+#endif /* I915_GEM_BATCH_POOL_H */

@@ -119,7 +119,7 @@ fw_out:
 		return (NULL);
 
 	/* first check the base block */
-	if (!drm_edid_block_valid(block, 0, print_bad_edid)) {
+	if (!drm_edid_block_valid(block, 0, print_bad_edid, NULL)) {
 		connector->bad_edid_counter++;
 		DRM_ERROR("EDID firmware %s base block is invalid ", fwname);
 		goto out;
@@ -140,7 +140,7 @@ fw_out:
 			memcpy(block + (valid_extensions + 1) * EDID_LENGTH,
 			       block + (j * EDID_LENGTH), EDID_LENGTH);
 		}
-		if (drm_edid_block_valid(block + j * EDID_LENGTH, j, print_bad_edid)) {
+		if (drm_edid_block_valid(block + j * EDID_LENGTH, j, print_bad_edid, NULL)) {
 			valid_extensions++;
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
 #define _LINUX_IOMAPPING_H_
 
 #include <linux/types.h>
+#include <linux/bug.h>
 #include <linux/io.h>
 
 struct io_mapping {

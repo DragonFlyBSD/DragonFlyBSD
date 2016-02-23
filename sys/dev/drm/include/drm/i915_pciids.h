@@ -286,5 +286,10 @@
 	INTEL_SKL_GT2_IDS(info), \
 	INTEL_SKL_GT3_IDS(info)
 
+#define INTEL_BXT_IDS(info) \
+	INTEL_VGA_DEVICE(0x0A84, info), \
+	INTEL_VGA_DEVICE(0x0A85, info), \
+	INTEL_VGA_DEVICE(0x0A86, info), \
+	INTEL_VGA_DEVICE(0x0A87, info)
 
 #endif /* _I915_PCIIDS_H */

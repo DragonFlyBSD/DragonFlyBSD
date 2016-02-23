@@ -56,8 +56,6 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 #define trace_i915_gem_request_wait_begin(req)
 #define trace_i915_gem_request_wait_end(req)
 
-#define trace_i915_ring_wait_begin(a)
-#define trace_i915_ring_wait_end(a)
 #define trace_i915_gem_ring_dispatch(a,b)
 #define trace_i915_gem_ring_flush(a,b,c)
 #define trace_i915_gem_ring_sync_to(from, to, seqno)

@@ -69,19 +69,70 @@
 #include "iicbus_if.h"
 #include "iicbb_if.h"
 
-struct gmbus_port {
+struct gmbus_pin {
 	const char *name;
 	int reg;
 };
 
-static const struct gmbus_port gmbus_ports[] = {
-	{ "ssc", GPIOB },
-	{ "vga", GPIOA },
-	{ "panel", GPIOC },
-	{ "dpc", GPIOD },
-	{ "dpb", GPIOE },
-	{ "dpd", GPIOF },
+/* Map gmbus pin pairs to names and registers. */
+static const struct gmbus_pin gmbus_pins[] = {
+	[GMBUS_PIN_SSC] = { "ssc", GPIOB },
+	[GMBUS_PIN_VGADDC] = { "vga", GPIOA },
+	[GMBUS_PIN_PANEL] = { "panel", GPIOC },
+	[GMBUS_PIN_DPC] = { "dpc", GPIOD },
+	[GMBUS_PIN_DPB] = { "dpb", GPIOE },
+	[GMBUS_PIN_DPD] = { "dpd", GPIOF },
 };
+
+static const struct gmbus_pin gmbus_pins_bdw[] = {
+	[GMBUS_PIN_VGADDC] = { "vga", GPIOA },
+	[GMBUS_PIN_DPC] = { "dpc", GPIOD },
+	[GMBUS_PIN_DPB] = { "dpb", GPIOE },
+	[GMBUS_PIN_DPD] = { "dpd", GPIOF },
+};
+
+static const struct gmbus_pin gmbus_pins_skl[] = {
+	[GMBUS_PIN_DPC] = { "dpc", GPIOD },
+	[GMBUS_PIN_DPB] = { "dpb", GPIOE },
+	[GMBUS_PIN_DPD] = { "dpd", GPIOF },
+};
+
+static const struct gmbus_pin gmbus_pins_bxt[] = {
+	[GMBUS_PIN_1_BXT] = { "dpb", PCH_GPIOB },
+	[GMBUS_PIN_2_BXT] = { "dpc", PCH_GPIOC },
+	[GMBUS_PIN_3_BXT] = { "misc", PCH_GPIOD },
+};
+
+/* pin is expected to be valid */
+static const struct gmbus_pin *get_gmbus_pin(struct drm_i915_private *dev_priv,
+					     unsigned int pin)
+{
+	if (IS_BROXTON(dev_priv))
+		return &gmbus_pins_bxt[pin];
+	else if (IS_SKYLAKE(dev_priv))
+		return &gmbus_pins_skl[pin];
+	else if (IS_BROADWELL(dev_priv))
+		return &gmbus_pins_bdw[pin];
+	else
+		return &gmbus_pins[pin];
+}
+
+bool intel_gmbus_is_valid_pin(struct drm_i915_private *dev_priv,
+			      unsigned int pin)
+{
+	unsigned int size;
+
+	if (IS_BROXTON(dev_priv))
+		size = ARRAY_SIZE(gmbus_pins_bxt);
+	else if (IS_SKYLAKE(dev_priv))
+		size = ARRAY_SIZE(gmbus_pins_skl);
+	else if (IS_BROADWELL(dev_priv))
+		size = ARRAY_SIZE(gmbus_pins_bdw);
+	else
+		size = ARRAY_SIZE(gmbus_pins);
+
+	return pin < size && get_gmbus_pin(dev_priv, pin)->reg;
+}
 
 /* Intel GPIO access functions */
 
@@ -217,7 +268,7 @@ static void set_data(device_t idev, int val)
 	POSTING_READ(sc->reg);
 }
 
-static const char *gpio_names[GMBUS_NUM_PORTS] = {
+static const char *gpio_names[GMBUS_NUM_PINS] = {
 	"ssc",
 	"vga",
 	"panel",
@@ -252,8 +303,8 @@ intel_gpio_setup(device_t idev)
 	ksnprintf(sc->name, sizeof(sc->name), "i915 iicbb %s", gpio_names[pin]);
 	device_set_desc(idev, sc->name);
 
-	sc->reg0 = (pin + 1) | GMBUS_RATE_100KHZ;
-	sc->reg = dev_priv->gpio_mmio_base + map_pin_to_reg[pin + 1];
+	sc->reg0 = pin | GMBUS_RATE_100KHZ;
+	sc->reg = dev_priv->gpio_mmio_base + map_pin_to_reg[pin];
 
 	/* add generic bit-banging code */
 	sc->iic_dev = device_add_child(idev, "iicbb", -1);
@@ -649,13 +700,13 @@ out:
 	return ret;
 }
 
-struct device *intel_gmbus_get_adapter(struct drm_i915_private *dev_priv,
-					    unsigned port)
+struct i2c_adapter *intel_gmbus_get_adapter(struct drm_i915_private *dev_priv,
+					    unsigned int pin)
 {
-	WARN_ON(!intel_gmbus_is_port_valid(port));
-	/* -1 to map pin pair to gmbus index */
-	return (intel_gmbus_is_port_valid(port)) ?
-		dev_priv->gmbus[port-1] : NULL;
+	if (WARN_ON(!intel_gmbus_is_valid_pin(dev_priv, pin)))
+		return NULL;
+
+	return dev_priv->gmbus[pin];
 }
 
 void
@@ -703,7 +754,7 @@ intel_gmbus_attach(device_t idev)
 	device_set_desc(idev, sc->name);
 
 	/* By default use a conservative clock rate */
-	sc->reg0 = (pin + 1) | GMBUS_RATE_100KHZ;
+	sc->reg0 = pin | GMBUS_RATE_100KHZ;
 
 	/* XXX force bit banging until GMBUS is fully debugged */
 	if (IS_GEN2(sc->drm_dev)) {
@@ -807,12 +858,16 @@ DRIVER_MODULE(iicbb, intel_iicbb, iicbb_driver, iicbb_devclass, NULL, NULL);
 
 static void intel_teardown_gmbus_m(struct drm_device *dev, int m);
 
-int
-intel_setup_gmbus(struct drm_device *dev)
+/**
+ * intel_gmbus_setup - instantiate all Intel i2c GMBuses
+ * @dev: DRM device
+ */
+int intel_setup_gmbus(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	device_t iic_dev;
-	int i, ret;
+	unsigned int pin;
+	int ret;
 
 	if (HAS_PCH_NOP(dev))
 		return 0;
@@ -826,37 +881,39 @@ intel_setup_gmbus(struct drm_device *dev)
 	lockinit(&dev_priv->gmbus_mutex, "gmbus", 0, LK_CANRECURSE);
 	init_waitqueue_head(&dev_priv->gmbus_wait_queue);
 
-	dev_priv->gmbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->gmbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PINS,
 	    M_DRM, M_WAITOK | M_ZERO);
-	dev_priv->bbbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->bbbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PINS,
 	    M_DRM, M_WAITOK | M_ZERO);
-	dev_priv->gmbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->gmbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PINS,
 	    M_DRM, M_WAITOK | M_ZERO);
-	dev_priv->bbbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->bbbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PINS,
 	    M_DRM, M_WAITOK | M_ZERO);
 
-	for (i = 0; i < GMBUS_NUM_PORTS; i++) {
+	for (pin = 0; pin < GMBUS_NUM_PINS; pin++) {
+		if (!intel_gmbus_is_valid_pin(dev_priv, pin))
+			continue;
+
 		/*
 		 * Initialized bbbus_bridge before gmbus_bridge, since
 		 * gmbus may decide to force quirk transfer in the
 		 * attachment code.
 		 */
-		dev_priv->bbbus_bridge[i] = device_add_child(dev->dev,
-		    "intel_iicbb", i);
-		if (dev_priv->bbbus_bridge[i] == NULL) {
-			DRM_ERROR("bbbus bridge %d creation failed\n", i);
+		dev_priv->bbbus_bridge[pin] = device_add_child(dev->dev,
+		    "intel_iicbb", pin);
+		if (dev_priv->bbbus_bridge[pin] == NULL) {
+			DRM_ERROR("bbbus bridge %d creation failed\n", pin);
 			ret = ENXIO;
 			goto err;
 		}
-		device_quiet(dev_priv->bbbus_bridge[i]);
-		ret = device_probe_and_attach(dev_priv->bbbus_bridge[i]);
+		device_quiet(dev_priv->bbbus_bridge[pin]);
+		ret = device_probe_and_attach(dev_priv->bbbus_bridge[pin]);
 		if (ret != 0) {
-			DRM_ERROR("bbbus bridge %d attach failed, %d\n", i,
-			    ret);
+			DRM_ERROR("bbbus bridge %d attach failed, %d\n", pin, ret);
 			goto err;
 		}
 
-		iic_dev = device_find_child(dev_priv->bbbus_bridge[i], "iicbb",
+		iic_dev = device_find_child(dev_priv->bbbus_bridge[pin], "iicbb",
 		    -1);
 		if (iic_dev == NULL) {
 			DRM_ERROR("bbbus bridge doesn't have iicbb child\n");
@@ -869,31 +926,31 @@ intel_setup_gmbus(struct drm_device *dev)
 			goto err;
 		}
 
-		dev_priv->bbbus[i] = iic_dev;
+		dev_priv->bbbus[pin] = iic_dev;
 
-		dev_priv->gmbus_bridge[i] = device_add_child(dev->dev,
-		    "intel_gmbus", i);
-		if (dev_priv->gmbus_bridge[i] == NULL) {
-			DRM_ERROR("gmbus bridge %d creation failed\n", i);
+		dev_priv->gmbus_bridge[pin] = device_add_child(dev->dev,
+		    "intel_gmbus", pin);
+		if (dev_priv->gmbus_bridge[pin] == NULL) {
+			DRM_ERROR("gmbus bridge %d creation failed\n", pin);
 			ret = ENXIO;
 			goto err;
 		}
-		device_quiet(dev_priv->gmbus_bridge[i]);
-		ret = device_probe_and_attach(dev_priv->gmbus_bridge[i]);
+		device_quiet(dev_priv->gmbus_bridge[pin]);
+		ret = device_probe_and_attach(dev_priv->gmbus_bridge[pin]);
 		if (ret != 0) {
-			DRM_ERROR("gmbus bridge %d attach failed, %d\n", i,
+			DRM_ERROR("gmbus bridge %d attach failed, %d\n", pin,
 			    ret);
 			ret = ENXIO;
 			goto err;
 		}
 
-		iic_dev = device_find_child(dev_priv->gmbus_bridge[i],
+		iic_dev = device_find_child(dev_priv->gmbus_bridge[pin],
 		    "iicbus", -1);
 		if (iic_dev == NULL) {
 			DRM_ERROR("gmbus bridge doesn't have iicbus child\n");
 			goto err;
 		}
-		dev_priv->gmbus[i] = iic_dev;
+		dev_priv->gmbus[pin] = iic_dev;
 
 		intel_i2c_reset(dev);
 	}
@@ -901,7 +958,7 @@ intel_setup_gmbus(struct drm_device *dev)
 	return (0);
 
 err:
-	intel_teardown_gmbus_m(dev, i);
+	intel_teardown_gmbus_m(dev, pin);
 	return (ret);
 }
 
@@ -928,6 +985,6 @@ intel_teardown_gmbus(struct drm_device *dev)
 {
 
 	get_mplock();
-	intel_teardown_gmbus_m(dev, GMBUS_NUM_PORTS);
+	intel_teardown_gmbus_m(dev, GMBUS_NUM_PINS);
 	rel_mplock();
 }

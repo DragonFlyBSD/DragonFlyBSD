@@ -37,6 +37,10 @@
 #include <bus/pci/pcireg.h>
 
 #include <linux/types.h>
+#include <linux/list.h>
+#include <linux/compiler.h>
+#include <linux/errno.h>
+#include <linux/atomic.h>
 #include <linux/device.h>
 #include <linux/io.h>
 
@@ -137,7 +141,6 @@ pcie_get_readrq(struct pci_dev *pdev)
 	int err, cap;
 
 	err = pci_find_extcap(pdev->dev, PCIY_EXPRESS, &cap);
-	WARN_ON(err);
 
 	cap += PCIER_DEVCTRL;
 

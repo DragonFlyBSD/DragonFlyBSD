@@ -347,7 +347,7 @@ typedef struct drm_i915_irq_wait {
 #define I915_PARAM_HAS_COHERENT_PHYS_GTT 29
 #define I915_PARAM_MMAP_VERSION          30
 #define I915_PARAM_HAS_BSD2		 31
-#define I915_PARAM_REVISION		 32
+#define I915_PARAM_REVISION              32
 #define I915_PARAM_SUBSLICE_TOTAL	 33
 #define I915_PARAM_EU_TOTAL		 34
 
@@ -996,6 +996,7 @@ struct drm_intel_overlay_put_image {
 /* flags */
 #define I915_OVERLAY_UPDATE_ATTRS	(1<<0)
 #define I915_OVERLAY_UPDATE_GAMMA	(1<<1)
+#define I915_OVERLAY_DISABLE_DEST_COLORKEY	(1<<2)
 struct drm_intel_overlay_attrs {
 	__u32 flags;
 	__u32 color_key;

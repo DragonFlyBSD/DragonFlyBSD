@@ -535,6 +535,10 @@ struct drm_file {
 	struct list_head fbs;
 	struct lock fbs_lock;
 
+	/** User-created blob properties; this retains a reference on the
+	 *  property. */
+	struct list_head blobs;
+
 	wait_queue_head_t event_wait;
 	struct list_head  event_list;
 	int		  event_space;
@@ -852,9 +856,13 @@ struct drm_sysctl_info {
 struct drm_vblank_crtc {
 	struct drm_device *dev;		/* pointer to the drm_device */
 	wait_queue_head_t queue;	/**< VBLANK wait queue */
-	struct timeval time[DRM_VBLANKTIME_RBSIZE];	/**< timestamp of current count */
 	struct timer_list disable_timer;		/* delayed disable timer */
-	atomic_t count;			/**< number of VBLANK interrupts */
+
+	/* vblank counter, protected by dev->vblank_time_lock for writes */
+	unsigned long count;
+	/* vblank timestamps, protected by dev->vblank_time_lock for writes */
+	struct timeval time[DRM_VBLANKTIME_RBSIZE];
+
 	atomic_t refcount;		/* number of users of vblank interruptsper crtc */
 	u32 last;			/* protected by dev->vbl_lock, used */
 					/* for wraparound handling */

@@ -6,7 +6,8 @@ SRCS =	i915_drv.c \
 	i915_suspend.c \
 	i915_sysfs.c \
 	intel_pm.c \
-	intel_runtime_pm.c
+	intel_runtime_pm.c \
+	intel_csr.c
 
 # GEM code
 SRCS +=	i915_cmd_parser.c \

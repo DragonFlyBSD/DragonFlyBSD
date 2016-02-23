@@ -45,13 +45,15 @@ void
 drm_clflush_virt_range(void *in_addr, unsigned long length)
 {
 	char *addr = in_addr;
+
 	if (cpu_has_clflush) {
+		const int size = cpu_clflush_line_size;
 		char *end = addr + length;
-		cpu_mfence();
-		for (; addr < end; addr += cpu_clflush_line_size)
+		addr = (void *)(((unsigned long)addr) & -size);
+		mb();
+		for (; addr < end; addr += size)
 			clflush((unsigned long)addr);
-		clflush((unsigned long)(end - 1));
-		cpu_mfence();
+		mb();
 		return;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,21 +24,30 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINUX_BUG_H
-#define LINUX_BUG_H
+#ifndef _ASM_BUG_H_
+#define _ASM_BUG_H_
 
-#include <sys/cdefs.h>
+#define _WARN_STR(x)	#x
 
-#include <asm/bug.h>
-#include <linux/compiler.h>
+#define WARN_ON(condition) ({						\
+	int __ret = !!(condition);					\
+	if (__ret)							\
+		kprintf("WARNING %s failed at %s:%d\n",			\
+		    _WARN_STR(condition), __FILE__, __LINE__);		\
+	unlikely(__ret);						\
+})
 
-#define	BUILD_BUG_ON(CONDITION)	CTASSERT(!(CONDITION))
+#define WARN_ON_ONCE(condition) ({					\
+	static int __warned;						\
+	int __ret = !!(condition);					\
+	if (__ret && !__warned) {					\
+		kprintf("WARNING %s failed at %s:%d\n",			\
+		    _WARN_STR(condition), __FILE__, __LINE__);		\
+		__warned = 1;						\
+	}								\
+	unlikely(__ret);						\
+})
 
-#define	BUILD_BUG_ON_NOT_POWER_OF_2(n)			      \
-	CTASSERT(((n) != 0) && (((n) & ((n) - 1)) == 0))
+#define WARN_ON_SMP(condition)	WARN_ON(condition)
 
-#define BUILD_BUG()	BUILD_BUG_ON(1)
-
-#define BUILD_BUG_ON_MSG(cond, msg)
-
-#endif /* LINUX_BUG_H */
+#endif /* _ASM_BUG_H_ */
