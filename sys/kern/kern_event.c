@@ -1610,26 +1610,6 @@ knote_remove(struct klist *klist, struct knote *kn)
 	lwkt_relpooltoken(klist);
 }
 
-#if 0
-/*
- * Remove all knotes from a specified klist
- *
- * Only called from aio.
- */
-void
-knote_empty(struct klist *list)
-{
-	struct knote *kn;
-
-	lwkt_gettoken(&kq_token);
-	while ((kn = SLIST_FIRST(list)) != NULL) {
-		if (knote_acquire(kn))
-			knote_detach_and_drop(kn);
-	}
-	lwkt_reltoken(&kq_token);
-}
-#endif
-
 void
 knote_assume_knotes(struct kqinfo *src, struct kqinfo *dst,
 		    struct filterops *ops, void *hook)
