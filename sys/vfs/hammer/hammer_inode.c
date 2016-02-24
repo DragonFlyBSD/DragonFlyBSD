@@ -1125,10 +1125,12 @@ retry:
  *
  * The PFS root stands alone so we must also bump the nlinks count
  * to prevent it from being destroyed on release.
+ *
+ * Make sure a caller isn't creating a PFS from non-root PFS.
  */
 int
 hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
-		       hammer_pseudofs_inmem_t pfsm)
+		       hammer_pseudofs_inmem_t pfsm, hammer_inode_t dip)
 {
 	hammer_inode_t ip;
 	struct vattr vap;
@@ -1137,6 +1139,12 @@ hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 	ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
 			      pfsm->localization, 0, &error);
 	if (ip == NULL) {
+		if (lo_to_pfs(dip->obj_localization) != HAMMER_ROOT_PFSID) {
+			hmkprintf(trans->hmp,
+				"Warning: creating a PFS from non-root PFS "
+				"is not allowed\n");
+			return(EINVAL);
+		}
 		vattr_null(&vap);
 		vap.va_mode = 0755;
 		vap.va_type = VDIR;

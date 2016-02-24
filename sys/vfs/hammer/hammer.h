@@ -1404,7 +1404,7 @@ int  hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t rec);
 hammer_pseudofs_inmem_t  hammer_load_pseudofs(hammer_transaction_t trans,
 			uint32_t localization, int *errorp);
 int  hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
-			hammer_pseudofs_inmem_t pfsm);
+			hammer_pseudofs_inmem_t pfsm, hammer_inode_t dip);
 int  hammer_save_pseudofs(hammer_transaction_t trans,
 			hammer_pseudofs_inmem_t pfsm);
 int  hammer_unload_pseudofs(hammer_transaction_t trans, uint32_t localization);

@@ -130,7 +130,7 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		if (error == 0 &&
 		    (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
-			error = hammer_mkroot_pseudofs(trans, cred, pfsm);
+			error = hammer_mkroot_pseudofs(trans, cred, pfsm, ip);
 		}
 		if (error == 0)
 			error = hammer_save_pseudofs(trans, pfsm);
