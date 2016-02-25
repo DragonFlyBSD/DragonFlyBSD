@@ -970,15 +970,16 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 		return (EINVAL);
 	}
 
-	tok = lwkt_token_pool_lookup(kq);
-	lwkt_gettoken(tok);
 	if (fops->f_flags & FILTEROP_ISFD) {
 		/* validate descriptor */
 		fp = holdfp(fdp, kev->ident, -1);
-		if (fp == NULL) {
-			lwkt_reltoken(tok);
+		if (fp == NULL)
 			return (EBADF);
-		}
+	}
+
+	tok = lwkt_token_pool_lookup(kq);
+	lwkt_gettoken(tok);
+	if (fp != NULL) {
 		lwkt_getpooltoken(&fp->f_klist);
 again1:
 		SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
