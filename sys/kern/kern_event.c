@@ -951,6 +951,7 @@ int
 kqueue_register(struct kqueue *kq, struct kevent *kev)
 {
 	struct filedesc *fdp = kq->kq_fdp;
+	struct klist *list = NULL;
 	struct filterops *fops;
 	struct file *fp = NULL;
 	struct knote *kn = NULL;
@@ -977,37 +978,26 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 	}
 
 	lwkt_getpooltoken(kq);
+
 	if (fp != NULL) {
-		lwkt_getpooltoken(&fp->f_klist);
-again1:
-		SLIST_FOREACH(kn, &fp->f_klist, kn_link) {
+		list = &fp->f_klist;
+	} else if (kq->kq_knhashmask) {
+		list = &kq->kq_knhash[
+		    KN_HASH((u_long)kev->ident, kq->kq_knhashmask)];
+	}
+	if (list != NULL) {
+		lwkt_getpooltoken(list);
+again:
+		SLIST_FOREACH(kn, list, kn_link) {
 			if (kn->kn_kq == kq &&
 			    kn->kn_filter == kev->filter &&
 			    kn->kn_id == kev->ident) {
 				if (knote_acquire(kn) == 0)
-					goto again1;
+					goto again;
 				break;
 			}
 		}
-		lwkt_relpooltoken(&fp->f_klist);
-	} else {
-		if (kq->kq_knhashmask) {
-			struct klist *list;
-			
-			list = &kq->kq_knhash[
-			    KN_HASH((u_long)kev->ident, kq->kq_knhashmask)];
-			lwkt_getpooltoken(list);
-again2:
-			SLIST_FOREACH(kn, list, kn_link) {
-				if (kn->kn_id == kev->ident &&
-				    kn->kn_filter == kev->filter) {
-					if (knote_acquire(kn) == 0)
-						goto again2;
-					break;
-				}
-			}
-			lwkt_relpooltoken(list);
-		}
+		lwkt_relpooltoken(list);
 	}
 
 	/*
