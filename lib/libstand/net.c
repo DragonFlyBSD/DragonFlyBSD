@@ -92,7 +92,7 @@ sendrecv(struct iodesc *d, ssize_t (*sproc)(struct iodesc *, void *, size_t),
 			}
 			cc = (*sproc)(d, sbuf, ssize);
 			if (cc != -1 && cc < ssize)
-				panic("sendrecv: short write! (%d < %d)",
+				panic("sendrecv: short write! (%zd < %zu)",
 				    cc, ssize);
 
 			tleft = tmo;

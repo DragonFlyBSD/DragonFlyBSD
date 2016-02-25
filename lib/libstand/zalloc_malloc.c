@@ -99,7 +99,7 @@ free(void *ptr)
 #endif
 #ifdef USEENDGUARD
 	if (*((char *)res + res->ga_Bytes - 1) != -2) {
-	    panic("free: guard2 fail @ %p + %d %d/-2",
+	    panic("free: guard2 fail @ %p + %zu %d/-2",
 		  ptr,
 		  res->ga_Bytes - MALLOCALIGN - 1,
 		  *((char *)res + res->ga_Bytes - 1));

@@ -120,7 +120,7 @@ sendudp(struct iodesc *d, void *pkt, size_t len)
 	if (cc == -1)
 		return (-1);
 	if (cc != len)
-		panic("sendudp: bad write (%d != %d)", cc, len);
+		panic("sendudp: bad write (%zd != %zu)", cc, len);
 	return (cc - (sizeof(*ip) + sizeof(*uh)));
 }
 
