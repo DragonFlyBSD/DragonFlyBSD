@@ -950,7 +950,6 @@ sys_kevent(struct kevent_args *uap)
 int
 kqueue_register(struct kqueue *kq, struct kevent *kev)
 {
-	struct lwkt_token *tok;
 	struct filedesc *fdp = kq->kq_fdp;
 	struct filterops *fops;
 	struct file *fp = NULL;
@@ -977,8 +976,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			return (EBADF);
 	}
 
-	tok = lwkt_token_pool_lookup(kq);
-	lwkt_gettoken(tok);
+	lwkt_getpooltoken(kq);
 	if (fp != NULL) {
 		lwkt_getpooltoken(&fp->f_klist);
 again1:
@@ -1155,7 +1153,7 @@ again2:
 	/* kn may be invalid now */
 
 done:
-	lwkt_reltoken(tok);
+	lwkt_relpooltoken(kq);
 	if (fp != NULL)
 		fdrop(fp);
 	return (error);
