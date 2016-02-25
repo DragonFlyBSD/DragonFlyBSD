@@ -892,6 +892,13 @@ typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
 #define HAMMER_PFSD_SLAVE	0x00000001
 #define HAMMER_PFSD_DELETED	0x80000000
 
+#define hammer_is_pfs_slave(pfsd)			\
+	(((pfsd)->mirror_flags & HAMMER_PFSD_SLAVE) != 0)
+#define hammer_is_pfs_master(pfsd)			\
+	(!hammer_is_pfs_slave(pfsd))
+#define hammer_is_pfs_deleted(pfsd)			\
+	(((pfsd)->mirror_flags & HAMMER_PFSD_DELETED) != 0)
+
 #define HAMMER_MAX_PFS		65536
 #define HAMMER_MAX_PFSID	(HAMMER_MAX_PFS - 1)
 #define HAMMER_ROOT_PFSID	0

@@ -1600,8 +1600,7 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 			"different shared-uuid's!\n");
 		exit(1);
 	}
-	if (is_target &&
-	    (pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+	if (is_target && hammer_is_pfs_master(&pfsd)) {
 		fprintf(stderr, "mirror-write: target must be in slave mode\n");
 		exit(1);
 	}

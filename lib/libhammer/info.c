@@ -81,12 +81,10 @@ libhammer_get_fsinfo(const char *path)
 	pi.ondisk = _libhammer_malloc(sizeof(*pfs_od));
 	while(error == 0) {
 		error = ioctl(fd, HAMMERIOC_PFS_ITERATE, &pi);
-		if (error == 0 &&
-		    (pi.ondisk->mirror_flags & HAMMER_PFSD_DELETED) == 0) {
+		if (error == 0 && !hammer_is_pfs_deleted(pi.ondisk)) {
 			pip = _libhammer_malloc(sizeof(*pip));
 			pfs_od = pi.ondisk;
-			pip->ismaster =
-			    (pfs_od->mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
+			pip->ismaster = hammer_is_pfs_master(pfs_od);
 
 			/*
 			 * Fill in structs used in the library. We don't rely on

@@ -1024,8 +1024,7 @@ retry:
 	if (*errorp == 0) {
 		*errorp = hammer_ip_resolve_data(&cursor);
 		if (*errorp == 0) {
-			if (cursor.data->pfsd.mirror_flags &
-			    HAMMER_PFSD_DELETED) {
+			if (hammer_is_pfs_deleted(&cursor.data->pfsd)) {
 				*errorp = ENOENT;
 			} else {
 				bytes = cursor.leaf->data_len;

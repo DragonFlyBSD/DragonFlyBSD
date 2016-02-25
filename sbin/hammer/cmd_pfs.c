@@ -376,7 +376,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		exit(1);
 	}
 
-	if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+	if (hammer_is_pfs_master(pfs.ondisk)) {
 		printf("This PFS is currently setup as a MASTER!\n");
 		printf("Are you absolutely sure you want to destroy it? ");
 		fflush(stdout);
@@ -462,7 +462,7 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 		fprintf(stderr, "You cannot upgrade PFS#0"
 				" (It should already be a master)\n");
 		exit(1);
-	} else if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+	} else if (hammer_is_pfs_master(pfs.ondisk)) {
 		printf("It is already a master\n");
 		exit(1);
 	}
@@ -490,7 +490,7 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
 		fprintf(stderr, "You cannot downgrade PFS#0\n");
 		exit(1);
-	} else if (pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) {
+	} else if (hammer_is_pfs_slave(pfs.ondisk)) {
 		printf("It is already a slave\n");
 		exit(1);
 	}
@@ -520,7 +520,7 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 		parse_pfsd_options(av + 1, ac - 1, pfs.ondisk);
-		if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) &&
+		if (hammer_is_pfs_slave(pfs.ondisk) &&
 		    pfs.pfs_id == HAMMER_ROOT_PFSID) {
 			printf("The real mount point cannot be made a PFS "
 			       "slave, only PFS sub-directories can be made "
@@ -595,7 +595,7 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 		printf("    prune-min=%dd\n", pfsd->prune_min / 60 / 60 / 24);
 	}
 
-	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
+	if (hammer_is_pfs_slave(pfsd)) {
 		printf("    operating as a SLAVE\n");
 	} else {
 		printf("    operating as a MASTER\n");
@@ -612,7 +612,7 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 		if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 			return;
 		if (version.cur_version < 3) {
-			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
+			if (hammer_is_pfs_slave(pfsd)) {
 				printf("    snapshots directory not set for "
 				       "slave\n");
 			} else {

@@ -244,7 +244,7 @@ do_cleanup(const char *path)
 		printf(" WARNING: pfs-slave's snapshots dir is not absolute\n");
 		close(fd);
 		return;
-	} else if (mrec_tmp.pfs.pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
+	} else if (hammer_is_pfs_slave(&mrec_tmp.pfs.pfsd)) {
 		if (version.cur_version < 3) {
 			printf(" WARNING: must configure snapshot dir for PFS slave\n");
 			printf("\tWe suggest <fs>/var/slaves/<name> where "

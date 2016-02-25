@@ -1032,10 +1032,10 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	    ip->obj_asof == HAMMER_MAX_TID &&
 	    ip->obj_localization == HAMMER_DEF_LOCALIZATION &&
 	    strncmp(ip->ino_data.ext.symlink, "@@PFS", 5) == 0) {
-		    if (ip->pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE)
-			    vap->va_size = 26;
-		    else
-			    vap->va_size = 10;
+		if (hammer_is_pfs_slave(&ip->pfsm->pfsd))
+			vap->va_size = 26;
+		else
+			vap->va_size = 10;
 	}
 
 	/*
@@ -1818,8 +1818,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 			pfsm = hammer_load_pseudofs(&trans, localization,
 						    &error);
 			if (error == 0) {
-				if (pfsm->pfsd.mirror_flags &
-				    HAMMER_PFSD_SLAVE) {
+				if (hammer_is_pfs_slave(&pfsm->pfsd)) {
 					/* vap->va_size == 26 */
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",

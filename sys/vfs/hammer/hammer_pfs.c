@@ -80,7 +80,7 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	 * flush_tid2 is the TID most recently flushed, but the UNDO hasn't
 	 * caught up to it yet so a crash will roll us back to flush_tid1.
 	 */
-	if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0)
+	if (hammer_is_pfs_master(&pfsm->pfsd))
 		pfsm->pfsd.sync_end_tid = trans->hmp->flush_tid1;
 
 	/*
@@ -128,8 +128,7 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 		 * We do not create root inodes for slaves, the root inode
 		 * must be mirrored from the master.
 		 */
-		if (error == 0 &&
-		    (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+		if (error == 0 && hammer_is_pfs_master(&pfsm->pfsd)) {
 			error = hammer_mkroot_pseudofs(trans, cred, pfsm, ip);
 		}
 		if (error == 0)
@@ -173,7 +172,7 @@ hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	pfsm = hammer_load_pseudofs(trans, localization, &error);
 	if (error == 0) {
-		if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) != 0) {
+		if (hammer_is_pfs_slave(&pfsm->pfsd)) {
 			error = hammer_pfs_rollback(trans, pfsm,
 					    pfsm->pfsd.sync_end_tid + 1);
 			if (error == 0) {
@@ -220,7 +219,7 @@ hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	pfsm = hammer_load_pseudofs(trans, localization, &error);
 	if (error == 0) {
-		if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+		if (hammer_is_pfs_master(&pfsm->pfsd)) {
 			pfsm->pfsd.mirror_flags |= HAMMER_PFSD_SLAVE;
 			if (pfsm->pfsd.sync_end_tid < hmp->flush_tid1)
 				pfsm->pfsd.sync_end_tid = hmp->flush_tid1;
@@ -295,7 +294,7 @@ hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	pfsm = hammer_load_pseudofs(trans, localization, &error);
 	if (error == 0) {
-		if (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
+		if (hammer_is_pfs_slave(&pfsm->pfsd)) {
 			tid = pfsm->pfsd.sync_end_tid;
 			waitp = &pfsm->pfsd.sync_end_tid;
 		} else {
