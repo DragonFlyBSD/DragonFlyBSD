@@ -101,7 +101,7 @@
 
 #define __byte_swap16_var(x) \
 	__extension__ ({ register __uint16_t __X = (x); \
-	   __asm ("xchgb %h0, %b0" : "+q" (__X)); \
+	   __asm ("xchgb %h0, %b0" : "+Q" (__X)); \
 	   __X; })
 
 #ifdef __OPTIMIZE__
