@@ -487,7 +487,7 @@ check_skipto(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	(*f)->timestamp = time_second;
 	if ((*f)->next_rule == NULL)
 		lookup_next_rule(*f);
-
+	*f = (*f)->next_rule;
 	*cmd_ctl = IP_FW_CTL_AGAIN;
 }
 
