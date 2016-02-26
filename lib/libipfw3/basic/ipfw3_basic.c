@@ -149,9 +149,8 @@ lookup_host (char *host, struct in_addr *ipaddr)
 		if ((he = gethostbyname(host)) == NULL)
 			return -1;
 		*ipaddr = *(struct in_addr *)he->h_addr_list[0];
-		return 0;
 	}
-	return -1;
+	return 0;
 }
 
 /*
