@@ -5,6 +5,7 @@ KMOD=	ipfw3
 SRCS=	ip_fw3.c
 SRCS+=	ip_fw3_log.c ip_fw3_log.h
 SRCS+=  ip_fw3_table.c ip_fw3_table.h
+SRCS+=  ip_fw3_sync.c ip_fw3_sync.h
 SRCS+=	opt_ipfw.h opt_inet.h
 
 .ifndef BUILDING_WITH_KERNEL

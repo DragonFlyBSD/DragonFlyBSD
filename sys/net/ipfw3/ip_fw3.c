@@ -2,10 +2,10 @@
  * Copyright (c) 1993 Daniel Boulet
  * Copyright (c) 1994 Ugen J.S.Antsilevich
  * Copyright (c) 2002 Luigi Rizzo, Universita` di Pisa
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2015 - 2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Bill Yuan <bycn82@gmail.com>
+ * by Bill Yuan <bycn82@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -83,6 +83,7 @@
 #include <net/ipfw3/ip_fw.h>
 #include <net/ipfw3/ip_fw3_log.h>
 #include <net/ipfw3/ip_fw3_table.h>
+#include <net/ipfw3/ip_fw3_sync.h>
 #include <net/ipfw3_basic/ip_fw3_basic.h>
 #include <net/ipfw3_nat/ip_fw3_nat.h>
 #include <net/dummynet3/ip_dummynet3.h>
@@ -176,6 +177,7 @@ SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, static_count, CTLFLAG_RD,
 filter_func filter_funcs[MAX_MODULE][MAX_OPCODE_PER_MODULE];
 struct ipfw_module ipfw_modules[MAX_MODULE];
 struct ipfw_context *ipfw_ctx[MAXCPU];
+struct ipfw_sync_context sync_ctx;
 static int ipfw_ctl(struct sockopt *sopt);
 
 
@@ -1716,6 +1718,20 @@ ipfw_ctl(struct sockopt *sopt)
 		case IP_FW_TABLE_RENAME:
 			error = ipfw_ctl_table_sockopt(sopt);
 			break;
+		case IP_FW_SYNC_SHOW_CONF:
+		case IP_FW_SYNC_SHOW_STATUS:
+		case IP_FW_SYNC_EDGE_CONF:
+		case IP_FW_SYNC_EDGE_START:
+		case IP_FW_SYNC_EDGE_STOP:
+		case IP_FW_SYNC_EDGE_TEST:
+		case IP_FW_SYNC_EDGE_CLEAR:
+		case IP_FW_SYNC_CENTRE_CONF:
+		case IP_FW_SYNC_CENTRE_START:
+		case IP_FW_SYNC_CENTRE_STOP:
+		case IP_FW_SYNC_CENTRE_TEST:
+		case IP_FW_SYNC_CENTRE_CLEAR:
+			error = ipfw_ctl_sync_sockopt(sopt);
+			break;
 		default:
 			kprintf("ipfw_ctl invalid option %d\n",
 				sopt->sopt_name);
@@ -2048,6 +2064,8 @@ ipfw3_init(void)
 	int error;
 
 	ipfw3_log_modevent(MOD_LOAD);
+	ipfw3_sync_modevent(MOD_LOAD);
+
 	init_module();
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 			0, ipfw_init_dispatch);
@@ -2094,6 +2112,8 @@ ipfw3_fini(void)
 	struct netmsg_base smsg;
 
 	ipfw3_log_modevent(MOD_UNLOAD);
+	ipfw3_sync_modevent(MOD_UNLOAD);
+
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 			0, ipfw_fini_dispatch);
 	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);

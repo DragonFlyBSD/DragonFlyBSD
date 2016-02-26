@@ -5,7 +5,7 @@
  * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Bill Yuan <bycn82@gmail.com>
+ * by Bill Yuan <bycn82@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -524,6 +524,7 @@ typedef struct _ip_fw_x_header {
 
 typedef void ipfw_basic_delete_state_t(struct ip_fw *);
 typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
+typedef void ipfw_sync_send_state_t(struct ip_fw_state *, int cpu, int hash);
 
 /* IP_FW3 opcodes */
 
@@ -561,6 +562,21 @@ typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
 #define IP_FW_TABLE_TEST	80	/* table_test 		*/
 #define IP_FW_TABLE_RENAME	81	/* rename a table 	*/
 
+/* opcodes for ipfw3sync */
+#define IP_FW_SYNC_SHOW_CONF	82	/* show sync config */
+#define IP_FW_SYNC_SHOW_STATUS	83	/* show edge & centre running status */
+
+#define IP_FW_SYNC_EDGE_CONF	84	/* config sync edge */
+#define IP_FW_SYNC_EDGE_START	85	/* start the edge */
+#define IP_FW_SYNC_EDGE_STOP	86	/* stop the edge */
+#define IP_FW_SYNC_EDGE_TEST	87	/* test sync edge */
+#define IP_FW_SYNC_EDGE_CLEAR	88	/* stop and clear the edge */
+
+#define IP_FW_SYNC_CENTRE_CONF	89	/* config sync centre */
+#define IP_FW_SYNC_CENTRE_START	90	/* start the centre */
+#define IP_FW_SYNC_CENTRE_STOP	91	/* stop the centre */
+#define IP_FW_SYNC_CENTRE_TEST	92	/* test sync centre */
+#define IP_FW_SYNC_CENTRE_CLEAR	93	/* stop and clear the centre */
 #endif
 
 #endif /* _IP_FW3_H_ */

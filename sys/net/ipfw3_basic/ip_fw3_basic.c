@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@gmail.com>
@@ -67,6 +67,7 @@
 
 #include <net/ipfw3/ip_fw.h>
 #include <net/ipfw3/ip_fw3_table.h>
+#include <net/ipfw3/ip_fw3_sync.h>
 
 #include "ip_fw3_basic.h"
 
@@ -76,6 +77,8 @@ extern struct ipfw_context	*ipfw_ctx[MAXCPU];
 extern int fw_verbose;
 extern ipfw_basic_delete_state_t *ipfw_basic_flush_state_prt;
 extern ipfw_basic_append_state_t *ipfw_basic_append_state_prt;
+extern ipfw_sync_send_state_t *ipfw_sync_send_state_prt;
+extern ipfw_sync_install_state_t *ipfw_sync_install_state_prt;
 
 static int ip_fw_basic_loaded;
 static struct netmsg_base ipfw_timeout_netmsg;	/* schedule ipfw timeout */
@@ -370,7 +373,8 @@ install_state(struct ip_fw *rule, ipfw_insn *cmd, struct ip_fw_args *args)
 	struct ip_fw_state *state;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	struct ipfw_state_context *state_ctx;
-	state_ctx = &ctx->state_ctx[hash_packet(&args->f_id)];
+	int hash = hash_packet(&args->f_id);
+	state_ctx = &ctx->state_ctx[hash];
 	state = kmalloc(sizeof(struct ip_fw_state),
 			M_IPFW3_BASIC, M_NOWAIT | M_ZERO);
 	if (state == NULL) {
@@ -388,9 +392,44 @@ install_state(struct ip_fw *rule, ipfw_insn *cmd, struct ip_fw_args *args)
 		state_ctx->state = state;
 	state_ctx->last = state;
 	state_ctx->count++;
+	ipfw_sync_send_state_prt(state, mycpuid, hash);
 	return state;
 }
 
+void
+ipfw_sync_install_state(struct cmd_send_state *cmd)
+{
+        struct ip_fw_state *state;
+        struct ipfw_context *ctx = ipfw_ctx[cmd->cpu];
+        struct ipfw_state_context *state_ctx;
+        struct ip_fw *rule;
+
+        state_ctx = &ctx->state_ctx[cmd->hash];
+        state = kmalloc(sizeof(struct ip_fw_state),
+                        M_IPFW3_BASIC, M_NOWAIT | M_ZERO);
+        if (state == NULL) {
+                return;
+        }
+        for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
+                if (rule->rulenum == cmd->rulenum) {
+                        goto found;
+                }
+        }
+        return;
+found:
+        state->stub = rule;
+        state->lifetime = cmd->lifetime;
+        state->timestamp = time_second;
+        state->expiry = 0;
+        bcopy(&cmd->flow, &state->flow_id, sizeof(struct ipfw_flow_id));
+        //append the state into the state chian
+        if (state_ctx->last != NULL)
+                state_ctx->last->next = state;
+        else
+                state_ctx->state = state;
+        state_ctx->last = state;
+        state_ctx->count++;
+}
 
 static int
 iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
@@ -1069,6 +1108,7 @@ ipfw_basic_init(void)
 {
 	ipfw_basic_flush_state_prt = ipfw_basic_flush_state;
 	ipfw_basic_append_state_prt = ipfw_basic_add_state;
+	ipfw_sync_install_state_prt = ipfw_sync_install_state;
 
 	register_ipfw_module(MODULE_BASIC_ID, MODULE_BASIC_NAME);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID, O_BASIC_COUNT,

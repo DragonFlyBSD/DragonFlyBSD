@@ -59,11 +59,13 @@
 
 #include "../../sys/net/ipfw3/ip_fw3.h"
 #include "../../sys/net/ipfw3/ip_fw3_table.h"
+#include "../../sys/net/ipfw3/ip_fw3_sync.h"
 #include "../../sys/net/dummynet3/ip_dummynet3.h"
 #include "../../sys/net/libalias/alias.h"
 #include "../../sys/net/ipfw3_basic/ip_fw3_basic.h"
 #include "../../sys/net/ipfw3_nat/ip_fw3_nat.h"
 #include "ipfw.h"
+#include "ipfw3sync.h"
 
 
 #define KEYWORD_SIZE	256
@@ -3537,7 +3539,52 @@ ipfw_main(int ac, char **av)
 		} else {
 			errx(EX_USAGE, "bad ipfw table command `%s'", *av);
 		}
-
+	} else if (!strncmp(*av, "sync", strlen(*av))) {
+		NEXT_ARG;
+		if (!strncmp(*av, "edge", strlen(*av))) {
+			sync_config_edge(ac, av);
+		} else if (!strncmp(*av, "centre", strlen(*av))) {
+			sync_config_centre(ac, av);
+		} else if (!strncmp(*av, "show", strlen(*av))) {
+			NEXT_ARG;
+			if (!strncmp(*av, "config", strlen(*av))) {
+				sync_show_config(ac, av);
+			} else if (!strncmp(*av, "status", strlen(*av))) {
+				sync_show_status(ac, av);
+			} else {
+				errx(EX_USAGE, "bad show command `%s'", *av);
+			}
+		} else if (!strncmp(*av, "start", strlen(*av))) {
+			NEXT_ARG;
+			if (!strncmp(*av, "edge", strlen(*av))) {
+				sync_edge_start(ac, av);
+			} else if (!strncmp(*av, "centre", strlen(*av))) {
+				sync_centre_start(ac, av);
+			}
+		} else if (!strncmp(*av, "stop", strlen(*av))) {
+			NEXT_ARG;
+			if (!strncmp(*av, "edge", strlen(*av))) {
+				sync_edge_stop(ac, av);
+			} else if (!strncmp(*av, "centre", strlen(*av))) {
+				sync_centre_stop(ac, av);
+			}
+		} else if (!strncmp(*av, "clear", strlen(*av))) {
+			NEXT_ARG;
+			if (!strncmp(*av, "edge", strlen(*av))) {
+				sync_edge_clear(ac, av);
+			} else if (!strncmp(*av, "centre", strlen(*av))) {
+				sync_centre_clear(ac, av);
+			}
+		} else if (!strncmp(*av, "test", strlen(*av))) {
+			NEXT_ARG;
+			if (!strncmp(*av, "edge", strlen(*av))) {
+				sync_edge_test(ac, av);
+			} else if (!strncmp(*av, "centre", strlen(*av))) {
+				sync_centre_test(ac, av);
+			}
+		} else {
+			errx(EX_USAGE, "bad ipfw sync command `%s'", *av);
+		}
 	} else {
 		errx(EX_USAGE, "bad ipfw command `%s'", *av);
 	}

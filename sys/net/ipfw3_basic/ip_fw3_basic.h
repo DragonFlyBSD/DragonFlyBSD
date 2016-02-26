@@ -1,5 +1,5 @@
  /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@gmail.com>
@@ -39,6 +39,7 @@
 
 #ifdef _KERNEL
 MALLOC_DEFINE(M_IPFW3_BASIC,"IPFW3_BASIC", "ip_fw3 basic module");
+void ipfw_sync_install_state(struct cmd_send_state *cmd);
 #endif
 
 enum ipfw_basic_opcodes {

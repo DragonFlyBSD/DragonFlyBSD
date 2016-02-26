@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -32,9 +32,20 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IP_FW_H_V3
-#define _IP_FW_H_V3
+#ifndef _IPFW3SYNC_H_
+#define _IPFW3SYNC_H_
 
-#include <net/ipfw3/ip_fw3.h>
+void sync_config_edge(int ac, char *av[]);
+void sync_config_centre(int ac, char *av[]);
+void sync_show_config(int ac, char *av[]);
+void sync_show_status(int ac, char *av[]);
+void sync_edge_start(int ac, char *av[]);
+void sync_centre_start(int ac, char *av[]);
+void sync_edge_stop(int ac, char *av[]);
+void sync_centre_stop(int ac, char *av[]);
+void sync_edge_clear(int ac, char *av[]);
+void sync_centre_clear(int ac, char *av[]);
+void sync_edge_test(int ac, char *av[]);
+void sync_centre_test(int ac, char *av[]);
 
-#endif /* _IP_FW_H */
+#endif
