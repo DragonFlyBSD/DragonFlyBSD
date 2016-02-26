@@ -981,7 +981,7 @@ moduledir_readhints(struct moduledir *mdp)
     if (mdp->d_hints != NULL || (mdp->d_flags & MDIR_NOHINTS))
 	return;
     path = moduledir_fullpath(mdp, "linker.hints");
-    if (rel_stat(path, &st) != 0 || st.st_size < (sizeof(version) + sizeof(int)) ||
+    if (rel_stat(path, &st) != 0 || st.st_size < (ssize_t)(sizeof(version) + sizeof(int)) ||
 	st.st_size > 100 * 1024 || (fd = rel_open(path, NULL, O_RDONLY)) < 0) {
 	free(path);
 	mdp->d_flags |= MDIR_NOHINTS;
@@ -1039,7 +1039,7 @@ moduledir_rebuild(void)
 	for (cplen = ep - cp; cplen > 1 && cp[cplen - 1] == '/'; cplen--)
 	    ;
 	STAILQ_FOREACH(mdp, &moduledir_list, d_link) {
-	    if (strlen(mdp->d_path) != cplen ||	bcmp(cp, mdp->d_path, cplen) != 0)
+	    if (strlen(mdp->d_path) != (unsigned)cplen || bcmp(cp, mdp->d_path, cplen) != 0)
 		continue;
 	    mdp->d_flags &= ~MDIR_REMOVED;
 	    break;

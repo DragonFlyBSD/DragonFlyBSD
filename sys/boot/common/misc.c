@@ -125,7 +125,7 @@ kern_pread(int fd, vm_offset_t dest, size_t len, off_t off)
 	return (-1);
     }
     nread = archsw.arch_readin(fd, dest, len);
-    if (nread != len) {
+    if ((size_t)nread != len) {
 	printf("\nreadin failed\n");
 	return (-1);
     }
@@ -153,7 +153,7 @@ alloc_pread(int fd, off_t off, size_t len)
 	return (NULL);
     }
     nread = read(fd, buf, len);
-    if (nread != len) {
+    if ((size_t)nread != len) {
 	printf("\nread failed\n");
 	free(buf);
 	return (NULL);

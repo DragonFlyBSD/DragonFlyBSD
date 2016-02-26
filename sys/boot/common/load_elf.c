@@ -643,7 +643,7 @@ __elfN(parse_modmetadata)(struct preloaded_file *fp, elf_file_t ef)
 	error = __elfN(reloc_ptr)(fp, ef, v, &md, sizeof(md));
 	if (error == EOPNOTSUPP) {
 	    md.md_cval += ef->off;
-	    md.md_data += ef->off;
+	    md.md_data = (char *)md.md_data + ef->off;
 	} else if (error != 0)
 	    return (error);
 #endif
