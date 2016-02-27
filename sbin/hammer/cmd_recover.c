@@ -40,7 +40,7 @@ struct recover_dict {
 	int64_t	obj_id;
 	uint8_t obj_type;
 	uint8_t flags;
-	uint16_t llid;
+	uint16_t pfs_id;
 	int64_t	size;
 	char	*name;
 };
@@ -52,7 +52,7 @@ struct recover_dict {
 
 static void recover_top(char *ptr);
 static void recover_elm(hammer_btree_leaf_elm_t leaf);
-static struct recover_dict *get_dict(int64_t obj_id, uint16_t llid);
+static struct recover_dict *get_dict(int64_t obj_id, uint16_t pfs_id);
 static char *recover_path(struct recover_dict *dict);
 static void sanitize_string(char *str);
 
@@ -147,7 +147,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 	int len;
 	int zfill;
 	int64_t file_offset;
-	uint16_t llid;
+	uint16_t pfs_id;
 	size_t nlen;
 	int fd;
 	char *name;
@@ -174,9 +174,9 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 	if (len < 0 || len > HAMMER_XBUFSIZE || len > chunk)
 		goto done;
 
-	llid = lo_to_pfs(leaf->base.localization);
+	pfs_id = lo_to_pfs(leaf->base.localization);
 
-	dict = get_dict(leaf->base.obj_id, llid);
+	dict = get_dict(leaf->base.obj_id, pfs_id);
 
 	switch(leaf->base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
@@ -186,7 +186,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		 */
 		if (VerboseOpt) {
 			printf("file %016jx:%05d inode found\n",
-				(uintmax_t)leaf->base.obj_id, llid);
+				(uintmax_t)leaf->base.obj_id, pfs_id);
 		}
 		path1 = recover_path(dict);
 
@@ -202,7 +202,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		    ondisk->inode.parent_obj_id != 0) {
 			dict->flags |= DICTF_PARENT;
 			dict->parent = get_dict(ondisk->inode.parent_obj_id,
-						llid);
+						pfs_id);
 			if (dict->parent &&
 			    (dict->parent->flags & DICTF_MADEDIR) == 0) {
 				dict->parent->flags |= DICTF_MADEDIR;
@@ -249,7 +249,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		if (VerboseOpt) {
 			printf("file %016jx:%05d data %016jx,%d\n",
 				(uintmax_t)leaf->base.obj_id,
-				llid,
+				pfs_id,
 				(uintmax_t)leaf->base.key - len,
 				len);
 		}
@@ -366,7 +366,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		 * We can't deal with hardlinks so if the object already
 		 * has a name assigned to it we just keep using that name.
 		 */
-		dict2 = get_dict(ondisk->entry.obj_id, llid);
+		dict2 = get_dict(ondisk->entry.obj_id, pfs_id);
 		path1 = recover_path(dict2);
 
 		if (dict2->name == NULL)
@@ -403,7 +403,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 
 		printf("dir  %016jx:%05d entry %016jx \"%s\"\n",
 			(uintmax_t)leaf->base.obj_id,
-			llid,
+			pfs_id,
 			(uintmax_t)ondisk->entry.obj_id,
 			name);
 		break;
@@ -424,7 +424,7 @@ struct recover_dict *RDHash[RD_HSIZE];
 
 static
 struct recover_dict *
-get_dict(int64_t obj_id, uint16_t llid)
+get_dict(int64_t obj_id, uint16_t pfs_id)
 {
 	struct recover_dict *dict;
 	int i;
@@ -435,7 +435,7 @@ get_dict(int64_t obj_id, uint16_t llid)
 	i = crc32(&obj_id, sizeof(obj_id)) & RD_HMASK;
 	for (dict = RDHash[i]; dict; dict = dict->next) {
 		if (dict->obj_id == obj_id &&
-		    dict->llid == llid) {
+		    dict->pfs_id == pfs_id) {
 			break;
 		}
 	}
@@ -443,7 +443,7 @@ get_dict(int64_t obj_id, uint16_t llid)
 		dict = malloc(sizeof(*dict));
 		bzero(dict, sizeof(*dict));
 		dict->obj_id = obj_id;
-		dict->llid = llid;
+		dict->pfs_id = pfs_id;
 		dict->next = RDHash[i];
 		dict->size = -1;
 		RDHash[i] = dict;
@@ -456,14 +456,14 @@ get_dict(int64_t obj_id, uint16_t llid)
 		 * real parent directory object is.
 		 */
 		if (dict->obj_id != HAMMER_OBJID_ROOT)
-			dict->parent = get_dict(1, llid);
+			dict->parent = get_dict(1, pfs_id);
 	}
 	return(dict);
 }
 
 struct path_info {
 	enum { PI_FIGURE, PI_LOAD } state;
-	uint16_t llid;
+	uint16_t pfs_id;
 	char *base;
 	char *next;
 	int len;
@@ -478,7 +478,7 @@ recover_path(struct recover_dict *dict)
 	struct path_info info;
 
 	bzero(&info, sizeof(info));
-	info.llid = dict->llid;
+	info.pfs_id = dict->pfs_id;
 	info.state = PI_FIGURE;
 	recover_path_helper(dict, &info);
 	info.base = malloc(info.len);
@@ -526,7 +526,7 @@ recover_path_helper(struct recover_dict *dict, struct path_info *info)
 
 		*info->next++ = '/';
 		if (dict->obj_id == HAMMER_OBJID_ROOT) {
-			snprintf(info->next, 8+1, "PFS%05d", info->llid);
+			snprintf(info->next, 8+1, "PFS%05d", info->pfs_id);
 		} else if (dict->name) {
 			strcpy(info->next, dict->name);
 		} else {
