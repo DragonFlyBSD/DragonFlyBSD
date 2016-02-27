@@ -62,7 +62,7 @@ __elfN(reloc)(struct elf_file *ef, symaddr_fn *symaddr, const void *reldata,
 	switch (reltype) {
 	case ELF_RELOC_REL:
 		rel = (const Elf_Rel *)reldata;
-		where = (Elf_Addr *)((char *)data + relbase + rel->r_offset -
+		where = (Elf64_Addr *)((char *)data + relbase + rel->r_offset -
 		    dataaddr);
 		addend = 0;
 		rtype = ELF_R_TYPE(rel->r_info);
@@ -71,7 +71,7 @@ __elfN(reloc)(struct elf_file *ef, symaddr_fn *symaddr, const void *reldata,
 		break;
 	case ELF_RELOC_RELA:
 		rela = (const Elf_Rela *)reldata;
-		where = (Elf_Addr *)((char *)data + relbase + rela->r_offset -
+		where = (Elf64_Addr *)((char *)data + relbase + rela->r_offset -
 		    dataaddr);
 		addend = rela->r_addend;
 		rtype = ELF_R_TYPE(rela->r_info);
