@@ -30,8 +30,13 @@
 #include <bootstrap.h>
 #include <sys/endian.h>
 
+#ifdef EFI
+/* In EFI, we don't need PTOV(). */
+#define PTOV(x)		(caddr_t)(uintptr_t)(x)
+#else
 #include "btxv86.h"
-#include "libi386.h"
+#endif
+#include "smbios.h"
 
 /*
  * Detect SMBIOS and export information about the SMBIOS into the
@@ -294,16 +299,18 @@ smbios_parse_table(const caddr_t addr, const int ver)
 }
 
 void
-smbios_detect(void)
+smbios_detect(const caddr_t addr)
 {
 	char		buf[16];
-	caddr_t		addr, dmi, smbios;
+	caddr_t		vaddr, dmi, smbios;
 	size_t		count, length;
 	uint32_t	paddr;
-	int		i, major, minor, ver;
+	int		major, minor, ver;
+	unsigned int	i;
 
 	/* Search signatures and validate checksums. */
-	smbios = smbios_sigsearch(PTOV(SMBIOS_START), SMBIOS_LENGTH);
+	smbios = smbios_sigsearch(addr ? addr : PTOV(SMBIOS_START),
+	    SMBIOS_LENGTH);
 	if (smbios == NULL)
 		return;
 
@@ -324,8 +331,8 @@ smbios_detect(void)
 	}
 	ver = (major << 8) | minor;
 
-	addr = PTOV(paddr);
-	for (dmi = addr, i = 0; dmi < addr + length && i < count; i++)
+	vaddr = PTOV(paddr);
+	for (dmi = vaddr, i = 0; dmi < vaddr + length && i < count; i++)
 		dmi = smbios_parse_table(dmi, ver);
 
 	sprintf(buf, "%d.%d", major, minor);

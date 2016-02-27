@@ -122,8 +122,6 @@ extern vm_offset_t	heapbase;
 
 void	biosacpi_detect(void);
 
-void	smbios_detect(void);
-
 int	i386_autoload(void);
 
 int	bi_getboothowto(char *kargs);

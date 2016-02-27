@@ -71,6 +71,7 @@
 
 #include "bootstrap.h"
 #include "libi386/libi386.h"
+#include "libi386/smbios.h"
 #include "btxv86.h"
 
 #define	KARGS_FLAGS_CD		0x1
@@ -251,7 +252,7 @@ main(void)
     biosacpi_detect();
 
     /* detect SMBIOS for future reference */
-    smbios_detect();
+    smbios_detect(NULL);
 
     /* enable EHCI */
     setenv("ehci_load", "YES", 1);
