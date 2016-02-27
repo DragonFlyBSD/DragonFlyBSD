@@ -31,6 +31,8 @@
 #include <sys/queue.h>
 #include <sys/linker_set.h>
 
+struct stat;
+
 /*
  * Generic device specifier; architecture-dependant 
  * versions may be larger, but should be allowed to
