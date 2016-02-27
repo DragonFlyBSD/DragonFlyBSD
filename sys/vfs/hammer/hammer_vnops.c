@@ -1291,9 +1291,7 @@ done:
  * Locate the parent directory of a directory vnode.
  *
  * dvp is referenced but not locked.  *vpp must be returned referenced and
- * locked.  A parent_obj_id of 0 does not necessarily indicate that we are
- * at the root, instead it could indicate that the directory we were in was
- * removed.
+ * locked.  A parent_obj_id of 0 indicates that we are at the root.
  *
  * NOTE: as-of sequences are not linked into the directory structure.  If
  * we are at the root with a different asof then the mount point, reload

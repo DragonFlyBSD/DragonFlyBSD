@@ -755,6 +755,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
  * for non-directory inodes as a recovery aid, but can wind up holding
  * stale information.  However, since object id's are not reused, the worse
  * that happens is that the recovery code is unable to use it.
+ * A parent_obj_id of 0 means it's a root inode of root or non-root PFS.
  *
  * NOTE: Future note on directory hardlinks.  We can implement a record type
  * which allows us to point to multiple parent directories.
