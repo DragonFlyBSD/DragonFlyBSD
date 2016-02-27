@@ -1525,7 +1525,7 @@ generate_mrec_header(int fd, int pfs_id,
 		exit(1);
 	}
 	if (pfs.version != HAMMER_IOC_PSEUDOFS_VERSION) {
-		fprintf(stderr, "Mirror-read: HAMMER pfs version mismatch!\n");
+		fprintf(stderr, "Mirror-read: HAMMER PFS version mismatch!\n");
 		exit(1);
 	}
 	mrec_tmp->pfs.version = pfs.version;
@@ -1560,7 +1560,7 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 		exit(1);
 	}
 	if (pfs.version != HAMMER_IOC_PSEUDOFS_VERSION) {
-		fprintf(stderr, "mirror-write: HAMMER pfs version mismatch!\n");
+		fprintf(stderr, "mirror-write: HAMMER PFS version mismatch!\n");
 		exit(1);
 	}
 

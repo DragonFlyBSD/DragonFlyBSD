@@ -532,13 +532,13 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 			if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 				dump_pfsd(pfs.ondisk, fd);
 			} else {
-				printf("Unable to retrieve pfs configuration "
+				printf("Unable to retrieve PFS configuration "
 					"after successful update: %s\n",
 					strerror(errno));
 				exit(1);
 			}
 		} else {
-			printf("Unable to adjust pfs configuration: %s\n",
+			printf("Unable to adjust PFS configuration: %s\n",
 				strerror(errno));
 			exit(1);
 		}
