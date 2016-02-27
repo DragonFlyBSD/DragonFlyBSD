@@ -198,7 +198,8 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		 * reasonably well organized in their proper directories.
 		 */
 		if ((dict->flags & DICTF_PARENT) == 0 &&
-		    dict->obj_id != 1 && ondisk->inode.parent_obj_id != 0) {
+		    dict->obj_id != HAMMER_OBJID_ROOT &&
+		    ondisk->inode.parent_obj_id != 0) {
 			dict->flags |= DICTF_PARENT;
 			dict->parent = get_dict(ondisk->inode.parent_obj_id,
 						llid);
@@ -353,7 +354,8 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		nlen = len - offsetof(struct hammer_entry_data, name[0]);
 		if ((int)nlen < 0)	/* illegal length */
 			break;
-		if (ondisk->entry.obj_id == 0 || ondisk->entry.obj_id == 1)
+		if (ondisk->entry.obj_id == 0 ||
+		    ondisk->entry.obj_id == HAMMER_OBJID_ROOT)
 			break;
 		name = malloc(nlen + 1);
 		bcopy(ondisk->entry.name, name, nlen);
@@ -453,7 +455,7 @@ get_dict(int64_t obj_id, uint16_t llid)
 		 * DICTF_PARENT will not be set until we know what the
 		 * real parent directory object is.
 		 */
-		if (dict->obj_id != 1)
+		if (dict->obj_id != HAMMER_OBJID_ROOT)
 			dict->parent = get_dict(1, llid);
 	}
 	return(dict);
@@ -498,7 +500,7 @@ recover_path_helper(struct recover_dict *dict, struct path_info *info)
 
 	switch(info->state) {
 	case PI_FIGURE:
-		if (dict->obj_id == 1)
+		if (dict->obj_id == HAMMER_OBJID_ROOT)
 			info->len += 8;
 		else if (dict->name)
 			info->len += strlen(dict->name);
@@ -523,7 +525,7 @@ recover_path_helper(struct recover_dict *dict, struct path_info *info)
 		}
 
 		*info->next++ = '/';
-		if (dict->obj_id == 1) {
+		if (dict->obj_id == HAMMER_OBJID_ROOT) {
 			snprintf(info->next, 8+1, "PFS%05d", info->llid);
 		} else if (dict->name) {
 			strcpy(info->next, dict->name);
