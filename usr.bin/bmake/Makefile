@@ -35,8 +35,6 @@ OSREL!=		echo ${DFLYVERSION} | \
 		awk '{a=int($$1/100000); b=int(($$1-(a*100000))/100); \
 			print a "." b}'
 
-WARNS?= 	4
-
 CPPFLAGS+=	-DUSE_EMALLOC
 CPPFLAGS+=	-DUSE_META
 CPPFLAGS+=	-DMAKE_NATIVE
