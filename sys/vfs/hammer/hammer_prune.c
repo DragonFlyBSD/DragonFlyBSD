@@ -319,7 +319,7 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 		return;
 	if (elm->base.delete_tid != 0)
 		return;
-	if (hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA))
+	if (hammer_btree_extract_data(cursor))
 		return;
 	if (cursor->data->inode.nlinks)
 		return;

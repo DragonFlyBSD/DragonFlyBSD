@@ -250,8 +250,7 @@ retry:
 			mrec_flags |= HAMMER_MRECF_NODATA;
 		}
 		if (data_len) {
-			error = hammer_btree_extract(&cursor,
-						     HAMMER_CURSOR_GET_DATA);
+			error = hammer_btree_extract_data(&cursor);
 			if (error) {
 				if (error != EDOM)
 					break;

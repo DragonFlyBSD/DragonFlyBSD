@@ -1905,8 +1905,13 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 						    &cursor->data_buffer);
 		}
 	} else {
+		/*
+		 * Loading leaf here isn't necessary if it's guaranteed that
+		 * the cursor is at a leaf node (which basically should be)
+		 * because hammer_btree_extract_data() does that.
+		 */
 		cursor->leaf = &cursor->node->ondisk->elms[cursor->index].leaf;
-		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA);
+		error = hammer_btree_extract_data(cursor);
 	}
 	return(error);
 }
