@@ -758,7 +758,7 @@ failed:
  * the cursor, any locks, wait on the returned record, and retry.
  */
 int
-hammer_ip_del_directory(struct hammer_transaction *trans,
+hammer_ip_del_direntry(struct hammer_transaction *trans,
 		     hammer_cursor_t cursor, struct hammer_inode *dip,
 		     struct hammer_inode *ip)
 {

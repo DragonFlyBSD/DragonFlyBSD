@@ -1385,7 +1385,7 @@ int hammer_update_atime_quick(hammer_inode_t ip);
 int  hammer_ip_add_direntry(struct hammer_transaction *trans,
 			hammer_inode_t dip, const char *name, int bytes,
 			hammer_inode_t nip);
-int  hammer_ip_del_directory(struct hammer_transaction *trans,
+int  hammer_ip_del_direntry(struct hammer_transaction *trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,
 			hammer_inode_t ip);
 void hammer_ip_replace_bulk(hammer_mount_t hmp, hammer_record_t record);

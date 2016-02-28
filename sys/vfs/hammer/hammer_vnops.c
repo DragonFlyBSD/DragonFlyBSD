@@ -2034,12 +2034,12 @@ retry:
 	/*
 	 * If all is ok we have to get the inode so we can adjust nlinks.
 	 *
-	 * WARNING: hammer_ip_del_directory() may have to terminate the
+	 * WARNING: hammer_ip_del_direntry() may have to terminate the
 	 * cursor to avoid a recursion.  It's ok to call hammer_done_cursor()
 	 * twice.
 	 */
 	if (error == 0)
-		error = hammer_ip_del_directory(&trans, &cursor, fdip, ip);
+		error = hammer_ip_del_direntry(&trans, &cursor, fdip, ip);
 
 	/*
 	 * XXX A deadlock here will break rename's atomicy for the purposes
@@ -3451,12 +3451,12 @@ retry:
 		/*
 		 * Delete the directory entry.
 		 *
-		 * WARNING: hammer_ip_del_directory() may have to terminate
+		 * WARNING: hammer_ip_del_direntry() may have to terminate
 		 * the cursor to avoid a deadlock.  It is ok to call
 		 * hammer_done_cursor() twice.
 		 */
 		if (error == 0) {
-			error = hammer_ip_del_directory(trans, &cursor,
+			error = hammer_ip_del_direntry(trans, &cursor,
 							dip, ip);
 		}
 		hammer_done_cursor(&cursor);
