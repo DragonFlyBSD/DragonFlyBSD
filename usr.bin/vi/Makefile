@@ -7,7 +7,7 @@
 SRCDIR=		${.CURDIR}/../../contrib/nvi2
 SUBDIR+=	catalog
 
-WARNS?=	0	# some warn issues on 32 bit machines
+WARNS?=	1
 
 VI=	nvi
 EX=	nex
