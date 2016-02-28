@@ -673,7 +673,7 @@ hammer_ip_add_direntry(struct hammer_transaction *trans,
 	record->leaf.base.localization = dip->obj_localization |
 					 hammer_dir_localization(dip);
 	record->leaf.base.obj_id = dip->obj_id;
-	record->leaf.base.key = hammer_directory_namekey(dip, name, bytes,
+	record->leaf.base.key = hammer_direntry_namekey(dip, name, bytes,
 							 &max_iterations);
 	record->leaf.base.rec_type = HAMMER_RECTYPE_DIRENTRY;
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;

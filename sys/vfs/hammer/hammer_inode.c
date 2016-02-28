@@ -794,7 +794,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		ip->obj_localization = pfsm->localization;
 	} else {
 		KKASSERT(dip != NULL);
-		namekey = hammer_directory_namekey(dip, name, namelen, &dummy);
+		namekey = hammer_direntry_namekey(dip, name, namelen, &dummy);
 		ip->obj_id = hammer_alloc_objid(hmp, dip, namekey);
 		ip->obj_localization = dip->obj_localization;
 	}

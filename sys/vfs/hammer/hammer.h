@@ -1181,7 +1181,7 @@ void hammer_clear_undo_history(hammer_mount_t hmp);
 enum vtype hammer_get_vnode_type(uint8_t obj_type);
 int hammer_get_dtype(uint8_t obj_type);
 uint8_t hammer_get_obj_type(enum vtype vtype);
-int64_t hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
+int64_t hammer_direntry_namekey(hammer_inode_t dip, const void *name, int len,
 			uint32_t *max_iterationsp);
 int	hammer_nohistory(hammer_inode_t ip);
 

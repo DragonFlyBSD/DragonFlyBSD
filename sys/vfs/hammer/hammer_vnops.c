@@ -1201,7 +1201,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 *
 	 * The key range is inclusive of both key_beg and key_end.
 	 */
-	namekey = hammer_directory_namekey(dip, ncp->nc_name, nlen,
+	namekey = hammer_direntry_namekey(dip, ncp->nc_name, nlen,
 					   &max_iterations);
 
 	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
@@ -1993,7 +1993,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	 *
 	 * The key range is inclusive of both key_beg and key_end.
 	 */
-	namekey = hammer_directory_namekey(fdip, fncp->nc_name, fncp->nc_nlen,
+	namekey = hammer_direntry_namekey(fdip, fncp->nc_name, fncp->nc_nlen,
 					   &max_iterations);
 retry:
 	hammer_init_cursor(&trans, &cursor, &fdip->cache[1], fdip);
@@ -3341,7 +3341,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
 
-	namekey = hammer_directory_namekey(dip, ncp->nc_name, ncp->nc_nlen,
+	namekey = hammer_direntry_namekey(dip, ncp->nc_name, ncp->nc_nlen,
 					   &max_iterations);
 retry:
 	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);

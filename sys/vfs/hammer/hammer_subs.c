@@ -941,7 +941,7 @@ hammer_nohistory(hammer_inode_t ip)
  * artificial directory entries such as "." and "..".
  */
 int64_t
-hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
+hammer_direntry_namekey(hammer_inode_t dip, const void *name, int len,
 			 uint32_t *max_iterationsp)
 {
 	const char *aname = name;
