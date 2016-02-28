@@ -946,11 +946,11 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
-	error = hammer_ip_add_directory(&trans, dip,
+	error = hammer_ip_add_direntry(&trans, dip,
 					nch->ncp->nc_name, nch->ncp->nc_nlen,
 					nip);
 	if (error)
-		hkprintf("hammer_ip_add_directory error %d\n", error);
+		hkprintf("hammer_ip_add_direntry error %d\n", error);
 
 	/*
 	 * Finish up.
@@ -1406,7 +1406,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	 * dip nor ip are referenced or locked, but their vnodes are
 	 * referenced.  This function will bump the inode's link count.
 	 */
-	error = hammer_ip_add_directory(&trans, dip,
+	error = hammer_ip_add_direntry(&trans, dip,
 					nch->ncp->nc_name, nch->ncp->nc_nlen,
 					ip);
 
@@ -1474,7 +1474,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
-	error = hammer_ip_add_directory(&trans, dip,
+	error = hammer_ip_add_direntry(&trans, dip,
 					nch->ncp->nc_name, nch->ncp->nc_nlen,
 					nip);
 	if (error)
@@ -1554,7 +1554,7 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 * Add the new filesystem object to the directory.  This will also
 	 * bump the inode's link count.
 	 */
-	error = hammer_ip_add_directory(&trans, dip,
+	error = hammer_ip_add_direntry(&trans, dip,
 					nch->ncp->nc_name, nch->ncp->nc_nlen,
 					nip);
 
@@ -1972,7 +1972,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	error = hammer_dounlink(&trans, ap->a_tnch, ap->a_tdvp,
 				ap->a_cred, 0, -1);
 	if (error == 0 || error == ENOENT) {
-		error = hammer_ip_add_directory(&trans, tdip,
+		error = hammer_ip_add_direntry(&trans, tdip,
 						tncp->nc_name, tncp->nc_nlen,
 						ip);
 		if (error == 0) {
@@ -2455,7 +2455,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 		}
 	}
 	if (error == 0)
-		error = hammer_ip_add_directory(&trans, dip, nch->ncp->nc_name,
+		error = hammer_ip_add_direntry(&trans, dip, nch->ncp->nc_name,
 						nch->ncp->nc_nlen, nip);
 
 	/*

@@ -656,7 +656,7 @@ hammer_mem_first(hammer_cursor_t cursor)
  * not be terminated.
  */
 int
-hammer_ip_add_directory(struct hammer_transaction *trans,
+hammer_ip_add_direntry(struct hammer_transaction *trans,
 		     struct hammer_inode *dip, const char *name, int bytes,
 		     struct hammer_inode *ip)
 {

@@ -1382,7 +1382,7 @@ void hammer_test_inode(hammer_inode_t dip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
 int hammer_update_atime_quick(hammer_inode_t ip);
 
-int  hammer_ip_add_directory(struct hammer_transaction *trans,
+int  hammer_ip_add_direntry(struct hammer_transaction *trans,
 			hammer_inode_t dip, const char *name, int bytes,
 			hammer_inode_t nip);
 int  hammer_ip_del_directory(struct hammer_transaction *trans,
