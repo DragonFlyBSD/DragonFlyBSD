@@ -45,7 +45,7 @@
 .Cd "device vke"
 .Pp
 .Pa /var/vkernel/boot/kernel/kernel
-.Op Fl hsUvd
+.Op Fl hdsUv
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
@@ -205,17 +205,19 @@ are allowed.
 specifies the number of CPUs you wish to emulate.
 Up to 16 CPUs are supported with 2 being the default unless otherwise
 specified.
+.Pp
 .Ar lbits
 specifies the number of bits within APICID(=CPUID) needed for representing
 the logical ID.
-Controls the number of threads/core (0bits - 1 thread, 1bit - 2 threads).
+Controls the number of threads/core (0 bits - 1 thread, 1 bit - 2 threads).
 This parameter is optional (mandatory only if
 .Ar cbits
 is specified).
+.Pp
 .Ar cbits
 specifies the number of bits within APICID(=CPUID) needed for representing
 the core ID.
-Controls the number of core/package (0bits - 1 core, 1bit - 2 cores).
+Controls the number of core/package (0 bits - 1 core, 1 bit - 2 cores).
 This parameter is optional.
 .It Fl p Ar pidfile
 Specify a pidfile in which to store the process ID.
