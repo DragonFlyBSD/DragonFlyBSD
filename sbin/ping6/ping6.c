@@ -1542,7 +1542,7 @@ pr_pack(u_char *buf, int cc, struct msghdr *mhdr)
 			} else {
 				i = 0;
 				while (cp < end) {
-					if (dnsdecode((const u_char **)&cp, end,
+					if (dnsdecode((const u_char **)(uintptr_t)&cp, end,
 					    (const u_char *)(ni + 1), dnsname,
 					    sizeof(dnsname)) == NULL) {
 						printf("???");
