@@ -869,9 +869,7 @@ hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 		if (error)
 			break;
 		if (cursor.leaf->base.rec_type == HAMMER_RECTYPE_SNAPSHOT) {
-			error = hammer_btree_extract(
-					     &cursor, HAMMER_CURSOR_GET_LEAF |
-						      HAMMER_CURSOR_GET_DATA);
+			error = hammer_btree_extract_data(&cursor);
 			snap->snaps[snap->count] = cursor.data->snap;
 
 			/*
@@ -940,8 +938,7 @@ hammer_ioc_get_config(hammer_transaction_t trans, hammer_inode_t ip,
 
 	error = hammer_btree_lookup(&cursor);
 	if (error == 0) {
-		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
-						      HAMMER_CURSOR_GET_DATA);
+		error = hammer_btree_extract_data(&cursor);
 		if (error == 0)
 			config->config = cursor.data->config;
 	}
@@ -990,8 +987,7 @@ again:
 
 	error = hammer_btree_lookup(&cursor);
 	if (error == 0) {
-		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
-						      HAMMER_CURSOR_GET_DATA);
+		error = hammer_btree_extract_data(&cursor);
 		error = hammer_delete_at_cursor(&cursor, HAMMER_DELETE_DESTROY,
 						0, 0, 0, NULL);
 		if (error == EDEADLK) {
@@ -1041,8 +1037,7 @@ hammer_ioc_get_data(hammer_transaction_t trans, hammer_inode_t ip,
 
 	error = hammer_btree_lookup(&cursor);
 	if (error == 0) {
-		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
-						      HAMMER_CURSOR_GET_DATA);
+		error = hammer_btree_extract_data(&cursor);
 		if (error == 0) {
 			data->leaf = *cursor.leaf;
 			bytes = cursor.leaf->data_len;

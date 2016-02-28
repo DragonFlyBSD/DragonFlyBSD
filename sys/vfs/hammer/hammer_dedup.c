@@ -65,8 +65,7 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 	error = hammer_btree_lookup(&cursor1);
 	if (error)
 		goto done_cursor;
-	error = hammer_btree_extract(&cursor1, HAMMER_CURSOR_GET_LEAF |
-						HAMMER_CURSOR_GET_DATA);
+	error = hammer_btree_extract_data(&cursor1);
 	if (error)
 		goto done_cursor;
 
@@ -82,8 +81,7 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 	error = hammer_btree_lookup(&cursor2);
 	if (error)
 		goto done_cursors;
-	error = hammer_btree_extract(&cursor2, HAMMER_CURSOR_GET_LEAF |
-						HAMMER_CURSOR_GET_DATA);
+	error = hammer_btree_extract_data(&cursor2);
 	if (error)
 		goto done_cursors;
 

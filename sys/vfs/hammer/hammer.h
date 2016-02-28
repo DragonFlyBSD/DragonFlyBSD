@@ -1620,6 +1620,14 @@ hammer_btree_extract_leaf(hammer_cursor_t cursor)
 	return(hammer_btree_extract(cursor, flags));
 }
 
+static __inline int
+hammer_btree_extract_data(hammer_cursor_t cursor)
+{
+	int flags = HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_GET_DATA;
+
+	return(hammer_btree_extract(cursor, flags));
+}
+
 /*
  * Lookup a blockmap offset.
  */

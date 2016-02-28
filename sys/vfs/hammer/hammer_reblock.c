@@ -452,8 +452,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	int error;
 	void *ndata;
 
-	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA |
-					     HAMMER_CURSOR_GET_LEAF);
+	error = hammer_btree_extract_data(cursor);
 	if (error)
 		return (error);
 	ndata = hammer_alloc_data(cursor->trans, elm->leaf.data_len,
