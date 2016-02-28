@@ -790,7 +790,7 @@ again:
 		error = hammer_btree_lookup(&cursor);
 		if (error)
 			break;
-		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF);
+		error = hammer_btree_extract_leaf(&cursor);
 		if (error)
 			break;
 		error = hammer_delete_at_cursor(&cursor, HAMMER_DELETE_DESTROY,
@@ -865,7 +865,7 @@ hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 
 	error = hammer_btree_first(&cursor);
 	while (error == 0 && snap->count < HAMMER_SNAPS_PER_IOCTL) {
-		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF);
+		error = hammer_btree_extract_leaf(&cursor);
 		if (error)
 			break;
 		if (cursor.leaf->base.rec_type == HAMMER_RECTYPE_SNAPSHOT) {

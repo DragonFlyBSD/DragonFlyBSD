@@ -1612,6 +1612,14 @@ hammer_modify_node_done(hammer_node_t node)
 	hammer_modify_buffer_done(node->buffer);
 }
 
+static __inline int
+hammer_btree_extract_leaf(hammer_cursor_t cursor)
+{
+	int flags = HAMMER_CURSOR_GET_LEAF;
+
+	return(hammer_btree_extract(cursor, flags));
+}
+
 /*
  * Lookup a blockmap offset.
  */

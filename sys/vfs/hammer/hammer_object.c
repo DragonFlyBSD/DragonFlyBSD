@@ -1452,7 +1452,7 @@ hammer_ip_lookup(hammer_cursor_t cursor)
 		return(error);
 	error = hammer_btree_lookup(cursor);
 	if (error == 0)
-		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);
+		error = hammer_btree_extract_leaf(cursor);
 	return(error);
 }
 
@@ -1783,8 +1783,7 @@ again:
 		}
 
 		if (r < 0) {
-			error = hammer_btree_extract(cursor,
-						     HAMMER_CURSOR_GET_LEAF);
+			error = hammer_btree_extract_leaf(cursor);
 			cursor->flags |= HAMMER_CURSOR_ATEDISK;
 			cursor->flags &= ~HAMMER_CURSOR_LASTWASMEM;
 			break;
@@ -1855,7 +1854,7 @@ again:
 		/*
 		 * Only the disk entry is valid
 		 */
-		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);
+		error = hammer_btree_extract_leaf(cursor);
 		cursor->flags |= HAMMER_CURSOR_ATEDISK;
 		cursor->flags &= ~HAMMER_CURSOR_LASTWASMEM;
 		break;
@@ -2249,8 +2248,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * Frontend B-Tree operations track inodes so we tell
 	 * hammer_delete_at_cursor() not to.
 	 */
-	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);
-
+	error = hammer_btree_extract_leaf(cursor);
 	if (error == 0) {
 		error = hammer_delete_at_cursor(
 				cursor,

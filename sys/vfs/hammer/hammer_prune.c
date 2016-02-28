@@ -405,8 +405,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 			/* can EDEADLK */
 			error = hammer_btree_correct_rhb(cursor, tid + 1);
 			if (error == 0) {
-				error = hammer_btree_extract(cursor,
-						     HAMMER_CURSOR_GET_LEAF);
+				error = hammer_btree_extract_leaf(cursor);
 			}
 			if (error == 0) {
 				/* can EDEADLK */
@@ -434,8 +433,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 		delta = (elm->leaf.base.delete_tid - scan->beg_tid) %
 			scan->mod_tid;
 		if (delta) {
-			error = hammer_btree_extract(cursor,
-						     HAMMER_CURSOR_GET_LEAF);
+			error = hammer_btree_extract_leaf(cursor);
 			if (error == 0) {
 				hammer_modify_node(cursor->trans, cursor->node,
 					    &elm->leaf.base.delete_tid,
