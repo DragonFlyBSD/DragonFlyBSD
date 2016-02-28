@@ -1,4 +1,5 @@
-.\"	$NetBSD: stat.1,v 1.11 2003/05/08 13:07:10 wiz Exp $
+.\"	$NetBSD: stat.1,v 1.28 2010/04/05 21:25:01 joerg Exp $
+.\"
 .\" Copyright (c) 2002 The NetBSD Foundation, Inc.
 .\" All rights reserved.
 .\"
@@ -13,13 +14,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"        This product includes software developed by the NetBSD
-.\"        Foundation, Inc. and its contributors.
-.\" 4. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -33,9 +27,9 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.bin/stat/stat.1,v 1.8 2005/06/14 11:50:53 ru Exp $
+.\" $FreeBSD: head/usr.bin/stat/stat.1 267773 2014-06-23 08:23:05Z bapt $
 .\"
-.Dd October 11, 2013
+.Dd February 28, 2016
 .Dt STAT 1
 .Os
 .Sh NAME
@@ -44,20 +38,20 @@
 .Nd display file status
 .Sh SYNOPSIS
 .Nm
-.Op Fl FLnq
+.Op Fl FHLnq
 .Op Fl f Ar format | Fl l | r | s | x
 .Op Fl t Ar timefmt
 .Op Ar
 .Nm readlink
-.Op Fl n
+.Op Fl fn
 .Op Ar
 .Sh DESCRIPTION
 The
 .Nm
 utility displays information about the file pointed to by
 .Ar file .
-Read, write or execute permissions of the named file are not required, but
-all directories listed in the path name leading to the file must be
+Read, write, or execute permissions of the named file are not required, but
+all directories listed in the pathname leading to the file must be
 searchable.
 If no argument is given,
 .Nm
@@ -66,13 +60,41 @@ displays information about the file descriptor for standard input.
 When invoked as
 .Nm readlink ,
 only the target of the symbolic link is printed.
-If the given argument is not a symbolic link,
+If the given argument is not a symbolic link and the
+.Fl f
+option is not specified,
 .Nm readlink
 will print nothing and exit with an error.
+If the
+.Fl f
+option is specified, the output is canonicalized by following every symlink
+in every component of the given path recursively.
+.Nm readlink
+will resolve both absolute and relative paths, and return the absolute pathname
+corresponding to
+.Ar file .
+In this case, the argument does not need to be a symbolic link.
 .Pp
 The information displayed is obtained by calling
 .Xr lstat 2
 with the given argument and evaluating the returned structure.
+The default format displays the
+.Fa st_dev ,
+.Fa st_ino ,
+.Fa st_mode ,
+.Fa st_nlink ,
+.Fa st_uid ,
+.Fa st_gid ,
+.Fa st_rdev ,
+.Fa st_size ,
+.Fa st_atime ,
+.Fa st_mtime ,
+.Fa st_ctime ,
+.Fa st_blksize ,
+.Fa st_blocks ,
+and
+.Fa st_flags
+fields, in that order.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -101,6 +123,13 @@ The use of
 .Fl F
 implies
 .Fl l .
+.It Fl H
+Treat each argument as the hexadecimal representation of an NFS file handle,
+and use
+.Xr fhstat 2
+instead of
+.Xr lstat 2 .
+This requires root privileges.
 .It Fl L
 Use
 .Xr stat 2
@@ -113,6 +142,10 @@ will refer to the target of
 if file is a symbolic link, and not to
 .Ar file
 itself.
+If the link is broken or the target does not exist,
+fall back on
+.Xr lstat 2
+and report information about the link.
 .It Fl n
 Do not force a newline to appear at the end of each piece of output.
 .It Fl q
@@ -142,7 +175,8 @@ display the raw, numerical value (for example, times in seconds since the
 epoch, etc.).
 .It Fl s
 Display information in
-.Dq "shell output" ,
+.Dq shell output
+format,
 suitable for initializing variables.
 .It Fl x
 Display information in a more verbose way as known from some
@@ -238,6 +272,11 @@ Display date in
 format.
 .It Cm dr
 Display actual device name.
+.It Cm f
+Display the flags of
+.Ar file
+as in
+.Nm ls Fl lTdo .
 .It Cm gu
 Display group or user name.
 .It Cm p
@@ -273,7 +312,7 @@ It can be one of the following:
 .Bl -tag -width indent
 .It Cm H
 .Dq High
-\(em
+\[em]
 specifies the major number for devices from
 .Cm r
 or
@@ -290,7 +329,7 @@ and the long output form of
 .Cm T .
 .It Cm L
 .Dq Low
-\(em
+\[em]
 specifies the minor number for devices from
 .Cm r
 or
@@ -315,7 +354,7 @@ style output character for file type when used with
 for this is optional).
 .It Cm M
 .Dq Middle
-\(em
+\[em]
 specifies the
 .Dq group
 bits for permissions from the
@@ -335,48 +374,61 @@ A required field specifier, being one of the following:
 .It Cm d
 Device upon which
 .Ar file
-resides.
+resides
+.Pq Fa st_dev .
 .It Cm i
 .Ar file Ns 's
-inode number.
+inode number
+.Pq Fa st_ino .
 .It Cm p
-File type and permissions.
+File type and permissions
+.Pq Fa st_mode .
 .It Cm l
 Number of hard links to
-.Ar file .
+.Ar file
+.Pq Fa st_nlink .
 .It Cm u , g
 User ID and group ID of
 .Ar file Ns 's
-owner.
+owner
+.Pq Fa st_uid , st_gid .
 .It Cm r
-Device number for character and block device special files.
+Device number for character and block device special files
+.Pq Fa st_rdev .
 .It Cm a , m , c
 The time
 .Ar file
-was last accessed or modified, or when the inode was last changed.
+was last accessed or modified, or when the inode was last changed
+.Pq Fa st_atime , st_mtime , st_ctime .
 .It Cm z
 The size of
 .Ar file
-in bytes.
+in bytes
+.Pq Fa st_size .
 .It Cm b
 Number of blocks allocated for
-.Ar file .
+.Ar file
+.Pq Fa st_blocks .
 .It Cm k
-Optimal file system I/O operation block size.
+Optimal file system I/O operation block size
+.Pq Fa st_blksize .
 .It Cm f
 User defined flags for
 .Ar file .
 .It Cm v
-Inode generation number.
+Inode generation number
+.Pq Fa st_gen .
 .El
 .Pp
-The following four field specifiers are not drawn directly from the
+The following five field specifiers are not drawn directly from the
 data in
 .Vt "struct stat" ,
 but are:
 .Bl -tag -width indent
 .It Cm N
 The name of the file.
+.It Cm R
+The absolute pathname corresponding to the file.
 .It Cm T
 The file type, either as in
 .Nm ls Fl F
@@ -406,12 +458,12 @@ as an output form, with the
 exception of
 .Cm p
 which defaults to
-.Cm O ,
+.Cm O ;
 .Cm a , m ,
 and
 .Cm c
 which default to
-.Cm D ,
+.Cm D ;
 and
 .Cm Y , T ,
 and
@@ -421,8 +473,15 @@ which default to
 .Sh EXIT STATUS
 .Ex -std stat readlink
 .Sh EXAMPLES
+If no options are specified, the default format is
+"%d %i %Sp %l %Su %Sg %r %z \e"%Sa\e" \e"%Sm\e" \e"%Sc\e" %k %b %#Xf %N".
+.Bd -literal -offset indent
+\*[Gt] stat /tmp/bar
+0 78852 -rw-r--r-- 1 root wheel 0 0 "Jul  8 10:26:03 2004" "Jul  8 10:26:03 2004" "Jul  8 10:28:13 2004" 16384 0 0 /tmp/bar
+.Ed
+.Pp
 Given a symbolic link
-.Pa foo
+.Dq foo
 that points from
 .Pa /tmp/foo
 to
@@ -453,7 +512,7 @@ $ echo $st_size $st_mtimespec
 1148 1015432481
 .Ed
 .Pp
-In order to get a list of the kind of files including files pointed to if the
+In order to get a list of file types including files pointed to if the
 file is a symbolic link, you could use the following format:
 .Bd -literal -offset indent
 $ stat -f "%N: %HT%SY" /tmp/*
@@ -494,6 +553,31 @@ you could use the following format:
 Apr 25 11:47:00 2002 /tmp/blah
 Apr 25 10:36:34 2002 /tmp/bar
 Apr 24 16:47:35 2002 /tmp/foo
+.Ed
+.Pp
+To display a file's modification time:
+.Bd -literal -offset indent
+\*[Gt] stat -f %m /tmp/foo
+1177697733
+.Ed
+.Pp
+To display the same modification time in a readable format:
+.Bd -literal -offset indent
+\*[Gt] stat -f %Sm /tmp/foo
+Apr 27 11:15:33 2007
+.Ed
+.Pp
+To display the same modification time in a readable and sortable format:
+.Bd -literal -offset indent
+\*[Gt] stat -f %Sm -t %Y%m%d%H%M%S /tmp/foo
+20070427111533
+.Ed
+.Pp
+To display the same in UTC:
+.Bd -literal -offset indent
+\*[Gt] sh
+$ TZ= stat -f %Sm -t %Y%m%d%H%M%S /tmp/foo
+20070427181533
 .Ed
 .Sh SEE ALSO
 .Xr file 1 ,
