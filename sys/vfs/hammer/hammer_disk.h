@@ -821,19 +821,19 @@ struct hammer_inode_data {
  *
  * NOTE: leaf.base.obj_type from the related B-Tree leaf entry holds
  * the filesystem object type of obj_id, e.g. a den_type equivalent.
- * It is not stored in hammer_entry_data.
+ * It is not stored in hammer_direntry_data.
  *
  * NOTE: name field / the filename data reference is NOT terminated with \0.
  */
-struct hammer_entry_data {
+struct hammer_direntry_data {
 	int64_t obj_id;			/* object being referenced */
 	uint32_t localization;		/* identify pseudo-filesystem */
 	uint32_t reserved02;
 	char	name[16];		/* name (extended) */
 };
 
-#define HAMMER_ENTRY_NAME_OFF	offsetof(struct hammer_entry_data, name[0])
-#define HAMMER_ENTRY_SIZE(nlen)	offsetof(struct hammer_entry_data, name[nlen])
+#define HAMMER_ENTRY_NAME_OFF	offsetof(struct hammer_direntry_data, name[0])
+#define HAMMER_ENTRY_SIZE(nlen)	offsetof(struct hammer_direntry_data, name[nlen])
 
 /*
  * Symlink data which does not fit in the inode is stored in a separate
@@ -938,7 +938,7 @@ struct hammer_config_data {
  * Rollup various structures embedded as record data
  */
 union hammer_data_ondisk {
-	struct hammer_entry_data entry;
+	struct hammer_direntry_data entry;
 	struct hammer_inode_data inode;
 	struct hammer_symlink_data symlink;
 	struct hammer_pseudofs_data pfsd;
