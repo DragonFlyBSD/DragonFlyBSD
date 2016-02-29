@@ -40,8 +40,26 @@
 
 #ifdef PIC
 #define	PIC_PLT(x)	x@PLT
+#if defined(__x86_64__)
 #define	PIC_GOT(x)	x@GOTPCREL(%rip)
 #else
+#define	PIC_PROLOGUE	\
+	pushl	%ebx;	\
+	call	1f;	\
+1:			\
+	popl	%ebx;	\
+	addl	$_GLOBAL_OFFSET_TABLE_+[.-1b],%ebx
+#define	PIC_EPILOGUE	\
+	popl	%ebx
+#define	PIC_GOT(x)	x@GOT(%ebx)
+#define	PIC_GOTOFF(x)	x@GOTOFF(%ebx)
+#endif
+#else
+#if !defined(__x86_64__)
+#define	PIC_PROLOGUE
+#define	PIC_EPILOGUE
+#define	PIC_GOTOFF(x)	x
+#endif
 #define	PIC_PLT(x)	x
 #define	PIC_GOT(x)	x
 #endif
@@ -63,12 +81,25 @@
 			.globl CNAME(x); .type CNAME(x),@function; CNAME(x):
 
 #ifdef PROF
+#if defined(__x86_64__)
 #define	ALTENTRY(x)	_ENTRY(x); \
 			call PIC_PLT(HIDENAME(mcount)); \
 			jmp 9f
 #define	ENTRY(x)	_ENTRY(x); \
 			call PIC_PLT(HIDENAME(mcount)); \
 			9:
+#else
+#define	ALTENTRY(x)	_ENTRY(x); \
+			pushl %ebp; movl %esp,%ebp; \
+			call PIC_PLT(HIDENAME(mcount)); \
+			popl %ebp; \
+			jmp 9f
+#define	ENTRY(x)	_ENTRY(x); \
+			pushl %ebp; movl %esp,%ebp; \
+			call PIC_PLT(HIDENAME(mcount)); \
+			popl %ebp; \
+			9:
+#endif
 #else
 #define	ALTENTRY(x)	_ENTRY(x)
 #define	ENTRY(x)	_ENTRY(x)

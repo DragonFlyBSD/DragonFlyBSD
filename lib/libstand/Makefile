@@ -94,7 +94,3 @@ SRCS+=	hammer1.c
 SRCS+=	hammer2.c
 
 .include <bsd.lib.mk>
-
-.if ${MACHINE_ARCH} == "x86_64"
-CFLAGS+= -I${.CURDIR}
-.endif
