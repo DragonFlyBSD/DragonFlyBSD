@@ -28,7 +28,7 @@
 .\"	@(#)uname.3	8.1 (Berkeley) 1/4/94
 .\" $FreeBSD: src/lib/libc/gen/uname.3,v 1.6.2.4 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd February 16, 2016
+.Dd March 1, 2016
 .Dt UNAME 3
 .Os
 .Sh NAME
@@ -69,30 +69,32 @@ Machine hardware platform.
 .Sh ENVIRONMENT
 .Bl -tag -width ".Ev UNAME_s"
 .It Ev UNAME_s
-If the environment variable
+If the environment or varsym variable
 .Ev UNAME_s
 is set, it will override the
 .Va sysname
 member.
 .It Ev UNAME_r
-If the environment variable
+If the environment or varsym variable
 .Ev UNAME_r
 is set, it will override the
 .Va release
 member.
 .It Ev UNAME_v
-If the environment variable
+If the environment or varsym variable
 .Ev UNAME_v
 is set, it will override the
 .Va version
 member.
 .It Ev UNAME_m
-If the environment variable
+If the environment or varsym variable
 .Ev UNAME_m
 is set, it will override the
 .Va machine
 member.
 .El
+.Pp
+Environment variables have priority over varsym variables.
 .Sh ERRORS
 The
 .Fn uname
@@ -102,6 +104,7 @@ for any of the errors specified for the library functions
 .Xr sysctl 3 .
 .Sh SEE ALSO
 .Xr uname 1 ,
+.Xr varsym 1 ,
 .Xr sysctl 3
 .Sh STANDARDS
 The

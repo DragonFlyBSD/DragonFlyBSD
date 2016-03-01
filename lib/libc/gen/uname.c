@@ -33,9 +33,12 @@
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
+#include <sys/varsym.h>
+
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <unistd.h>
 
 int
 uname(struct utsname *name)
@@ -43,12 +46,15 @@ uname(struct utsname *name)
 	int mib[2], rval;
 	size_t len;
 	char *p;
+	char buf[MAXVARSYM_DATA];
 	int oerrno;
 
 	rval = 0;
 
 	if ((p = getenv("UNAME_s"))) {
 		strlcpy(name->sysname, p, sizeof(name->sysname));
+	} else if (varsym_get(VARSYM_ALL_MASK, "UNAME_s", buf, sizeof(buf)) == 0) {
+		strlcpy(name->sysname, buf, sizeof(name->sysname));
 	} else {
 		mib[0] = CTL_KERN;
 		mib[1] = KERN_OSTYPE;
@@ -77,6 +83,8 @@ uname(struct utsname *name)
 
 	if ((p = getenv("UNAME_r"))) {
 		strlcpy(name->release, p, sizeof(name->release));
+	} else if (varsym_get(VARSYM_ALL_MASK, "UNAME_r", buf, sizeof(buf)) == 0) {
+		strlcpy(name->release, buf, sizeof(name->sysname));
 	} else {
 		mib[0] = CTL_KERN;
 		mib[1] = KERN_OSRELEASE;
@@ -93,6 +101,8 @@ uname(struct utsname *name)
 
 	if ((p = getenv("UNAME_v"))) {
 		strlcpy(name->version, p, sizeof(name->version));
+	} else if (varsym_get(VARSYM_ALL_MASK, "UNAME_v", buf, sizeof(buf)) == 0) {
+		strlcpy(name->version, buf, sizeof(name->sysname));
 	} else {
 		/* The version may contain newlines, turn them into spaces. */
 		mib[0] = CTL_KERN;
@@ -118,8 +128,9 @@ uname(struct utsname *name)
 
 	if ((p = getenv("UNAME_m"))) {
 		strlcpy(name->machine, p, sizeof(name->machine));
-	}
-	else {
+	} else if (varsym_get(VARSYM_ALL_MASK, "UNAME_m", buf, sizeof(buf)) == 0) {
+		strlcpy(name->machine, buf, sizeof(name->sysname));
+	} else {
 		oerrno = errno;
 		mib[1] = HW_MACHINE;
 		mib[0] = CTL_HW;
