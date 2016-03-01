@@ -540,7 +540,7 @@ main(int ac, char **av)
 			else if (strcmp(av[2], "nofilter") == 0)
 				filter = 0;
 		}
-		hammer_cmd_show(-1, arg, filter, 0, NULL, NULL);
+		hammer_cmd_show(HAMMER_OFF_BAD, arg, filter, 0, NULL, NULL);
 		exit(0);
 	}
 	if (strcmp(av[0], "show-undo") == 0) {

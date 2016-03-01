@@ -95,7 +95,7 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat_bits();
 
-	if (node_offset == (hammer_off_t)-1) {
+	if (node_offset == HAMMER_OFF_BAD) {
 		volume = get_volume(RootVolNo);
 		node_offset = volume->ondisk->vol0_btree_root;
 		if (QuietOpt < 3) {
