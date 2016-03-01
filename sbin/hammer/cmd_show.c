@@ -361,14 +361,14 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	       elm->base.rec_type,
 	       (uintmax_t)elm->base.key,
 	       (uintmax_t)elm->base.create_tid);
-	printf("\t       %c del=%016jx ot=%02x ",
+	printf("\t       %c del=%016jx ot=%02x",
 	       (rootelm == ' ' ? deleted : rootelm),
 	       (uintmax_t)elm->base.delete_tid,
 	       elm->base.obj_type);
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		printf("suboff=%016jx",
+		printf(" suboff=%016jx",
 		       (uintmax_t)elm->internal.subtree_offset);
 		if (QuietOpt < 3) {
 			printf(" mirror=%016jx",
@@ -380,16 +380,15 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
-			if (QuietOpt < 3)
-				printf("\n%s\t         ", check_data_crc(elm));
-			else
-				printf("\n\t         ");
-			printf("dataoff=%016jx/%d",
+			printf(" dataoff=%016jx/%d",
 			       (uintmax_t)elm->leaf.data_offset,
 			       elm->leaf.data_len);
 			if (QuietOpt < 3) {
+				const char *p = check_data_crc(elm);
 				printf(" crc=%08x", elm->leaf.data_crc);
-				printf("\n\t         fill=");
+				if (p)
+					printf(" %s", p);
+				printf(" fill=");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
 			if (QuietOpt < 2)
@@ -623,7 +622,7 @@ check_data_crc(hammer_btree_elm_t elm)
 		}
 	}
 	if (crc == elm->leaf.data_crc)
-		return("");
+		return(NULL);
 	return("BX");			/* bad crc */
 }
 
