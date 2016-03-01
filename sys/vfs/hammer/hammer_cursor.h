@@ -119,7 +119,7 @@ struct hammer_cursor {
 
 typedef struct hammer_cursor *hammer_cursor_t;
 
-#define HAMMER_CURSOR_GET_LEAF		0x0001
+#define HAMMER_CURSOR_GET_LEAF		0x0001  /* not used */
 #define HAMMER_CURSOR_GET_DATA		0x0002
 #define HAMMER_CURSOR_BACKEND		0x0004	/* cursor run by backend */
 #define HAMMER_CURSOR_INSERT		0x0008	/* adjust for insert */

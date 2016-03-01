@@ -1615,17 +1615,13 @@ hammer_modify_node_done(hammer_node_t node)
 static __inline int
 hammer_btree_extract_leaf(hammer_cursor_t cursor)
 {
-	int flags = HAMMER_CURSOR_GET_LEAF;
-
-	return(hammer_btree_extract(cursor, flags));
+	return(hammer_btree_extract(cursor, 0));
 }
 
 static __inline int
 hammer_btree_extract_data(hammer_cursor_t cursor)
 {
-	int flags = HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_GET_DATA;
-
-	return(hammer_btree_extract(cursor, flags));
+	return(hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA));
 }
 
 /*

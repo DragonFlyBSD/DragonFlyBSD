@@ -505,8 +505,7 @@ retry:
 	cursor.key_beg.obj_type = 0;
 
 	cursor.asof = asof;
-	cursor.flags = HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_GET_DATA |
-		       HAMMER_CURSOR_ASOF;
+	cursor.flags = HAMMER_CURSOR_GET_DATA | HAMMER_CURSOR_ASOF;
 
 	*errorp = hammer_btree_lookup(&cursor);
 	if (*errorp == EDEADLK) {
@@ -1260,7 +1259,7 @@ retry:
 		cursor->key_beg.obj_type = 0;
 		cursor->asof = ip->obj_asof;
 		cursor->flags &= ~HAMMER_CURSOR_INITMASK;
-		cursor->flags |= HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_ASOF;
+		cursor->flags |= HAMMER_CURSOR_ASOF;
 		cursor->flags |= HAMMER_CURSOR_BACKEND;
 
 		error = hammer_btree_lookup(cursor);
@@ -1431,7 +1430,6 @@ retry:
 	cursor->asof = ip->obj_asof;
 	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
 	cursor->flags |= HAMMER_CURSOR_ASOF;
-	cursor->flags |= HAMMER_CURSOR_GET_LEAF;
 	cursor->flags |= HAMMER_CURSOR_GET_DATA;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
 
