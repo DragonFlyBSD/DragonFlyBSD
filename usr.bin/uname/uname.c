@@ -141,7 +141,7 @@ static
 void
 CHECK_ENV(const char *envname, get_t *getp, get_t nativep, char **varp)
 {
-	char buf[1024];
+	char buf[MAXVARSYM_DATA];
 
 	if ((*varp = getenv(envname)) == NULL) {
 		if (varsym_get(VARSYM_ALL_MASK, envname,
