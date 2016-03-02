@@ -634,8 +634,9 @@ print_config(char *cfgtxt)
 
 	printf("\n%17s", "");
 	printf("config stext=\"\n");
-	while((token = strsep(&cfgtxt, "\r\n")) != NULL) {
-		printf("%17s  %s\n", "", token);
+	if (cfgtxt != NULL) {
+		while((token = strsep(&cfgtxt, "\r\n")) != NULL)
+			printf("%17s  %s\n", "", token);
 	}
 	printf("%17s\"", "");
 }
@@ -735,7 +736,9 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_CONFIG:
 		if (VerboseOpt > 2) {
-			print_config(data->config.text);
+			char *p = strdup(data->config.text);
+			print_config(p);
+			free(p);
 		}
 		break;
 	case HAMMER_RECTYPE_DATA:
