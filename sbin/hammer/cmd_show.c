@@ -314,7 +314,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	char rootelm;
 	const char *label;
 	int flags;
-	int i = ((char*)elm - (char*)node) / 64 - 1;
+	int i = ((char*)elm - (char*)node) / (int)sizeof(*elm) - 1;
 
 	flags = get_elm_flags(node, node_offset, elm, left_bound, right_bound);
 	flagstr[0] = flags ? 'B' : 'G';
@@ -417,7 +417,7 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 {
 	hammer_off_t child_offset;
 	int flags = 0;
-	int i = ((char*)elm - (char*)node) / 64 - 1;
+	int i = ((char*)elm - (char*)node) / (int)sizeof(*elm) - 1;
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
