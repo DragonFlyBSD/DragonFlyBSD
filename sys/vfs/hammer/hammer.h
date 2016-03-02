@@ -1624,6 +1624,12 @@ hammer_btree_extract_data(hammer_cursor_t cursor)
 	return(hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA));
 }
 
+static __inline void
+hammer_crc_set_btree(hammer_node_ondisk_t ondisk)
+{
+	ondisk->crc = crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
+}
+
 /*
  * Lookup a blockmap offset.
  */

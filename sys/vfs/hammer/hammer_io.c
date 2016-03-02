@@ -967,7 +967,7 @@ restart:
 			node->flags &= ~HAMMER_NODE_NEEDSCRC;
 			KKASSERT(node->ondisk);
 			if (inval == 0)
-				node->ondisk->crc = crc32(&node->ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
+				hammer_crc_set_btree(node->ondisk);
 			hammer_rel_node(node);
 			goto restart;
 		}
