@@ -135,9 +135,6 @@ SYSCTL_INT(_kern, OID_AUTO, kq_calloutmax, CTLFLAG_RW,
 static int		kq_checkloop = 1000000;
 SYSCTL_INT(_kern, OID_AUTO, kq_checkloop, CTLFLAG_RW,
     &kq_checkloop, 0, "Maximum number of loops for kqueue scan");
-static int		kq_wakeup_one = 1;
-SYSCTL_INT(_kern, OID_AUTO, kq_wakeup_one, CTLFLAG_RW,
-    &kq_wakeup_one, 0, "Wakeup only one kqueue scanner");
 
 #define KNOTE_ACTIVATE(kn) do { 					\
 	kn->kn_status |= KN_ACTIVE;					\
@@ -831,7 +828,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 
 			lwkt_gettoken(tok);
 			if (kq->kq_count == 0) {
-				kq->kq_state |= KQ_SLEEP;
+				kq->kq_sleep_cnt++;
 				error = tsleep(kq, PCATCH, "kqread", timeout);
 
 				/* don't restart after signals... */
@@ -1371,12 +1368,12 @@ kqueue_close(struct file *fp)
 static void
 kqueue_wakeup(struct kqueue *kq)
 {
-	if (kq->kq_state & KQ_SLEEP) {
-		kq->kq_state &= ~KQ_SLEEP;
-		if (kq_wakeup_one)
+	if (kq->kq_sleep_cnt) {
+		if (kq->kq_sleep_cnt == 1)
 			wakeup_one(kq);
 		else
 			wakeup(kq);
+		kq->kq_sleep_cnt = 0;
 	}
 	KNOTE(&kq->kq_kqinfo.ki_note, 0);
 }
