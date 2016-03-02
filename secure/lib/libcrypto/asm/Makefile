@@ -57,8 +57,10 @@ CLEANFILES+=	${SRCS:S/.pl$/.s/}
 
 sha{256,512}-x86_64.s:	${OPENSSL_SRC}/crypto/sha/asm/sha512-x86_64.pl
 	perl ${.ALLSRC} elf ${.TARGET}
+	echo ".section .note.GNU-stack,\"\",%progbits" >>${.TARGET}
 
 .pl.s:
 	perl ${.IMPSRC} elf ${PERLFLAGS} > ${.TARGET}
+	echo ".section .note.GNU-stack,\"\",%progbits" >>${.TARGET}
 
 .include <bsd.prog.mk>
