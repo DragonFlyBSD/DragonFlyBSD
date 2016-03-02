@@ -672,23 +672,21 @@ print_record(hammer_btree_elm_t elm)
 		       (intmax_t)data->inode.size,
 		       (intmax_t)data->inode.nlinks);
 		if (QuietOpt < 1) {
-			printf(" mode=%05o uflags=%08x\n",
+			printf(" mode=%05o uflags=%08x caps=%02x",
 				data->inode.mode,
-				data->inode.uflags);
-			printf("%17s", "");
-			printf("      ctime=%016jx pobjid=%016jx ot=%02x",
-				(uintmax_t)data->inode.ctime,
+				data->inode.uflags,
+				data->inode.cap_flags);
+			printf(" pobjid=%016jx ot=%02x\n",
 				(uintmax_t)data->inode.parent_obj_id,
 				data->inode.obj_type);
-			if (data->inode.ext.symlink[0])
-				printf(" symlink=\"%s\"\n",
-					data->inode.ext.symlink);
-			else
-				printf("\n");
 			printf("%17s", "");
-			printf("      mtime=%016jx caps=%02x",
+			printf("      ctime=%016jx mtime=%016jx atime=%016jx",
+				(uintmax_t)data->inode.ctime,
 				(uintmax_t)data->inode.mtime,
-				data->inode.cap_flags);
+				(uintmax_t)data->inode.atime);
+			if (data->inode.ext.symlink[0])
+				printf(" symlink=\"%s\"",
+					data->inode.ext.symlink);
 		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
