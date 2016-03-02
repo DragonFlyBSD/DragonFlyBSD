@@ -632,7 +632,8 @@ print_config(char *cfgtxt)
 {
 	char *token;
 
-	printf("\n%17stext=\"\n", "");
+	printf("\n%17s", "");
+	printf("config stext=\"\n");
 	while((token = strsep(&cfgtxt, "\r\n")) != NULL) {
 		printf("%17s  %s\n", "", token);
 	}
@@ -667,7 +668,7 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_INODE:
 		printf("\n%17s", "");
-		printf("size=%jd nlinks=%jd",
+		printf("inode size=%jd nlinks=%jd",
 		       (intmax_t)data->inode.size,
 		       (intmax_t)data->inode.nlinks);
 		if (QuietOpt < 1) {
@@ -675,7 +676,7 @@ print_record(hammer_btree_elm_t elm)
 				data->inode.mode,
 				data->inode.uflags);
 			printf("%17s", "");
-			printf("ctime=%016jx pobjid=%016jx ot=%02x",
+			printf("      ctime=%016jx pobjid=%016jx ot=%02x",
 				(uintmax_t)data->inode.ctime,
 				(uintmax_t)data->inode.parent_obj_id,
 				data->inode.obj_type);
@@ -685,7 +686,7 @@ print_record(hammer_btree_elm_t elm)
 			else
 				printf("\n");
 			printf("%17s", "");
-			printf("mtime=%016jx caps=%02x",
+			printf("      mtime=%016jx caps=%02x",
 				(uintmax_t)data->inode.mtime,
 				data->inode.cap_flags);
 		}
@@ -705,24 +706,24 @@ print_record(hammer_btree_elm_t elm)
 		case HAMMER_FIXKEY_SYMLINK:
 			data_len -= HAMMER_SYMLINK_NAME_OFF;
 			printf("\n%17s", "");
-			printf("symlink=\"%*.*s\"", data_len, data_len,
-				data->symlink.name);
+			printf("fix-symlink name=\"%*.*s\"",
+				data_len, data_len, data->symlink.name);
 			break;
 		}
 		break;
 	case HAMMER_RECTYPE_PFS:
 		printf("\n%17s", "");
-		printf("sync_beg_tid=%016jx sync_end_tid=%016jx\n",
+		printf("pfs sync_beg_tid=%016jx sync_end_tid=%016jx\n",
 			(intmax_t)data->pfsd.sync_beg_tid,
 			(intmax_t)data->pfsd.sync_end_tid);
 		uuid_to_string(&data->pfsd.shared_uuid, &str1, &status);
 		uuid_to_string(&data->pfsd.unique_uuid, &str2, &status);
 		printf("%17s", "");
-		printf("shared_uuid=%s\n", str1);
+		printf("    shared_uuid=%s\n", str1);
 		printf("%17s", "");
-		printf("unique_uuid=%s\n", str2);
+		printf("    unique_uuid=%s\n", str2);
 		printf("%17s", "");
-		printf("mirror_flags=%08x label=\"%s\"",
+		printf("    mirror_flags=%08x label=\"%s\"",
 			data->pfsd.mirror_flags, data->pfsd.label);
 		if (data->pfsd.snapshots[0])
 			printf(" snapshots=\"%s\"", data->pfsd.snapshots);
@@ -731,7 +732,7 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_SNAPSHOT:
 		printf("\n%17s", "");
-		printf("tid=%016jx label=\"%s\"",
+		printf("snapshot tid=%016jx label=\"%s\"",
 			(intmax_t)data->snap.tid, data->snap.label);
 		break;
 	case HAMMER_RECTYPE_CONFIG:
