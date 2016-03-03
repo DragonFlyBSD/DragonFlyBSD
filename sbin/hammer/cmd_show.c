@@ -79,6 +79,7 @@ static int test_btree_out_of_range(hammer_btree_elm_t elm, btree_search_t search
 
 static int num_bad_node = 0;
 static int num_bad_elm = 0;
+static int num_bad_rec = 0;
 static int do_obfuscate = 0;
 
 void
@@ -148,6 +149,9 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	}
 	if (num_bad_elm || VerboseOpt) {
 		printf("%d bad elms\n", num_bad_elm);
+	}
+	if (num_bad_rec || VerboseOpt) {
+		printf("%d bad records\n", num_bad_rec);
 	}
 }
 
@@ -386,8 +390,10 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			if (QuietOpt < 3) {
 				const char *p = check_data_crc(elm);
 				printf(" crc=%08x", elm->leaf.data_crc);
-				if (p)
+				if (p) {
 					printf(" error=%s", p);
+					++num_bad_rec;
+				}
 				printf(" fill=");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
