@@ -637,9 +637,9 @@ print_config(char *cfgtxt)
 	if (cfgtxt != NULL) {
 		while((token = strsep(&cfgtxt, "\r\n")) != NULL)
 			if (strlen(token))
-				printf("%17s  %s\n", "", token);
+				printf("%17s            %s\n", "", token);
 	}
-	printf("%17s\"", "");
+	printf("%17s            \"", "");
 }
 
 static
