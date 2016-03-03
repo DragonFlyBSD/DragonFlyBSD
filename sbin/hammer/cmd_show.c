@@ -633,7 +633,7 @@ print_config(char *cfgtxt)
 	char *token;
 
 	printf("\n%17s", "");
-	printf("config stext=\"\n");
+	printf("config text=\"\n");
 	if (cfgtxt != NULL) {
 		while((token = strsep(&cfgtxt, "\r\n")) != NULL)
 			printf("%17s  %s\n", "", token);
