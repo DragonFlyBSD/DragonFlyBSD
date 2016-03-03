@@ -387,7 +387,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 				const char *p = check_data_crc(elm);
 				printf(" crc=%08x", elm->leaf.data_crc);
 				if (p)
-					printf(" %s", p);
+					printf(" error=%s", p);
 				printf(" fill=");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
@@ -569,12 +569,13 @@ check_data_crc(hammer_btree_elm_t elm)
 	uint32_t crc;
 	int error;
 	char *ptr;
+	static char bo[5];
 
 	data_offset = elm->leaf.data_offset;
 	data_len = elm->leaf.data_len;
 	data_buffer = NULL;
 	if (data_offset == 0 || data_len == 0)
-		return("Z");
+		return("ZO");  /* zero offset or length */
 
 	crc = 0;
 	error = 0;
@@ -582,7 +583,6 @@ check_data_crc(hammer_btree_elm_t elm)
 		blockmap_lookup(data_offset, NULL, NULL, &error);
 		if (error)
 			break;
-
 		ptr = get_buffer_data(data_offset, &data_buffer, 0);
 		len = HAMMER_BUFSIZE - ((int)data_offset & HAMMER_BUFMASK);
 		if (len > data_len)
@@ -596,34 +596,17 @@ check_data_crc(hammer_btree_elm_t elm)
 		data_len -= len;
 		data_offset += len;
 	}
+
 	rel_buffer(data_buffer);
-	if (error) {
-		switch (error) {	/* bad offset */
-		case -1:
-			return("BO-ZL");
-		case -2:
-			return("BO-ZG");
-		case -3:
-			return("BO-RV");
-		case -4:
-			return("BO-AO");
-		case -5:
-			return("BO-DE");
-		case -6:
-			return("BO-L1");
-		case -7:
-			return("BO-LU");
-		case -8:
-			return("BO-L2");
-		case -9:
-			return("BO-LZ");
-		default:
-			return("BO-??");
-		}
+	if (error) {  /* bad offset on blockmap lookup */
+		assert(error < 0);
+		bzero(bo, sizeof(bo));
+		snprintf(bo, sizeof(bo), "BO%d", -error);
+		return(bo);
 	}
-	if (crc == elm->leaf.data_crc)
-		return(NULL);
-	return("BX");			/* bad crc */
+	if (crc != elm->leaf.data_crc)
+		return("BX");  /* bad crc */
+	return(NULL);  /* success */
 }
 
 static
