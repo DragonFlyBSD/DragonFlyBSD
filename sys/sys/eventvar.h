@@ -64,11 +64,13 @@ struct kqueue {
 	struct		filedesc *kq_fdp;
 	int		kq_state;
 	u_int		kq_sleep_cnt;
+	struct		thread *kq_regtd;
 	u_long		kq_knhashmask;          /* size of knhash */
 	struct		klist *kq_knhash;       /* hash table for knotes */
 };
 
 #define KQ_ASYNC	0x04
+#define KQ_REGWAIT	0x08
 
 #endif	/* _KERNEL */
 #endif	/* !_SYS_EVENTVAR_H_ */

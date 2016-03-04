@@ -952,6 +952,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 	struct filterops *fops;
 	struct file *fp = NULL;
 	struct knote *kn = NULL;
+	struct thread *td;
 	int error = 0;
 
 	if (kev->filter < 0) {
@@ -974,7 +975,26 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 			return (EBADF);
 	}
 
+	td = curthread;
 	lwkt_getpooltoken(kq);
+
+	/*
+	 * Make sure that only one thread can register event on this kqueue,
+	 * so that we would not suffer any race, even if the registration
+	 * blocked, i.e. kq token was released, and the kqueue was shared
+	 * between threads (this should be rare though).
+	 */
+	while (__predict_false(kq->kq_regtd != NULL && kq->kq_regtd != td)) {
+		kq->kq_state |= KQ_REGWAIT;
+		tsleep(&kq->kq_regtd, 0, "kqreg", 0);
+	}
+	if (__predict_false(kq->kq_regtd != NULL)) {
+		/* Recursive calling of kqueue_register() */
+		td = NULL;
+	} else {
+		/* Owner of the kq_regtd, i.e. td != NULL */
+		kq->kq_regtd = td;
+	}
 
 	if (fp != NULL) {
 		list = &fp->f_klist;
@@ -1140,6 +1160,13 @@ again:
 	/* kn may be invalid now */
 
 done:
+	if (td != NULL) { /* Owner of the kq_regtd */
+		kq->kq_regtd = NULL;
+		if (__predict_false(kq->kq_state & KQ_REGWAIT)) {
+			kq->kq_state &= ~KQ_REGWAIT;
+			wakeup(&kq->kq_regtd);
+		}
+	}
 	lwkt_relpooltoken(kq);
 	if (fp != NULL)
 		fdrop(fp);
