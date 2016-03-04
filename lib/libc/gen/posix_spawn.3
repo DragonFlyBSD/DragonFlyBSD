@@ -344,7 +344,7 @@ respectively (or, if the error occurs after the calling process successfully
 returns, the child process exits with exit status 127).
 .It
 If
-.Nm POSIX_SPAWN_SETPGROUP
+.Dv POSIX_SPAWN_SETPGROUP
 is set in the spawn-flags attribute of the object referenced by attrp, and
 .Fn posix_spawn
 or
@@ -356,9 +356,9 @@ described by
 the child process exits with exit status 127).
 .It
 If
-.Nm POSIX_SPAWN_SETSCHEDPARAM
+.Dv POSIX_SPAWN_SETSCHEDPARAM
 is set and
-.Nm POSIX_SPAWN_SETSCHEDULER
+.Dv POSIX_SPAWN_SETSCHEDULER
 is not set in the spawn-flags attribute of the object referenced by attrp, then
 if
 .Fn posix_spawn
@@ -372,7 +372,7 @@ to fail, an error value is returned as described by
 child process exits with exit status 127).
 .It
 If
-.Nm POSIX_SPAWN_SETSCHEDULER
+.Dv POSIX_SPAWN_SETSCHEDULER
 is set in the spawn-flags attribute of the object referenced by attrp, and if
 .Fn posix_spawn
 or

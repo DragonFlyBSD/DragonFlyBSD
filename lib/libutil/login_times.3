@@ -99,11 +99,11 @@ The
 .Ar lt_dow
 field is a bit field, containing one bit for each day of the week
 and one bit unused.
-A series
-.Em LTM_*
+A series of
+.Dv LTM_*
 macros may be used for testing bits individually and in combination.
 If no bits are set in this field - i.e., it contains the value
-.Em LTM_NONE
+.Dv LTM_NONE
 - then the entire period is assumed invalid.
 This is used as a convention to mark the termination of an array
 of login_time_t values.
@@ -114,7 +114,7 @@ returns a
 with
 .Ar lt_dow
 equal to
-.Em LTM_NONE
+.Dv LTM_NONE
 then a parsing error was encountered.
 .Pp
 The remaining functions provide the ability to test a given time_t or
@@ -140,7 +140,7 @@ of login_time_t objects, which is up to LC_MAXTIMES (64)
 elements in length, and terminated by an element with its
 .Ar lt_dow
 field set to
-.Em LTM_NONE .
+.Dv LTM_NONE .
 .Pp
 The
 .Fn in_lt
@@ -159,7 +159,7 @@ The
 function returns a filled in structure of type login_time_t containing the
 parsed time period.
 If a parsing error occurs, the lt_dow field is set to
-.Em LTM_NONE
+.Dv LTM_NONE
 (i.e., 0).
 .Pp
 The

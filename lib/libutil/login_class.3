@@ -51,7 +51,9 @@ selecting an appropriate set of environment and resource settings
 for system daemons based on login classes.
 These functions may only be called if the current process is
 running with root privileges.
-If the LOGIN_SETLOGIN flag is used this function calls
+If the
+.Dv LOGIN_SETLOGIN
+flag is used this function calls
 .Xr setlogin 2 ,
 and due care must be taken as detailed in the manpage for that
 function and this affects all processes running in the same session
@@ -71,20 +73,20 @@ Each of these functions is selectable via bit-flags passed
 in the
 .Ar flags
 parameter, which is comprised of one or more of the following:
-.Bl -tag -width LOGIN_SETRESOURCES
-.It LOGIN_SETLOGIN
+.Bl -tag -width ".Dv LOGIN_SETRESOURCES"
+.It Dv LOGIN_SETLOGIN
 Set the login associated with the current session to the user
 specified in the passwd structure.
 .Xr setlogin 2 .
 The
 .Ar pwd
 parameter must not be NULL if this option is used.
-.It LOGIN_SETUSER
+.It Dv LOGIN_SETUSER
 Set ownership of the current process to the uid specified in the
 .Ar uid
 parameter using
 .Xr setuid 2 .
-.It LOGIN_SETGROUP
+.It Dv LOGIN_SETGROUP
 Set group ownership of the current process to the group id
 specified in the passwd structure using
 .Xr setgid 2 ,
@@ -94,7 +96,7 @@ to set up the group access list for the current process.
 The
 .Ar pwd
 parameter must not be NULL if this option is used.
-.It LOGIN_SETRESOURCES
+.It Dv LOGIN_SETRESOURCES
 Set resource limits for the current process based on values
 specified in the system login class database.
 Class capability tags used, with and without -cur (soft limit)
@@ -113,21 +115,21 @@ openfiles     RLIMIT_NOFILE
 sbsize        RLIMIT_SBSIZE
 vmemoryuse    RLIMIT_VMEM
 .Ed
-.It LOGIN_SETPRIORITY
+.It Dv LOGIN_SETPRIORITY
 Set the scheduling priority for the current process based on the
 value specified in the system login class database.
 Class capability tags used:
 .Bd -literal
 priority
 .Ed
-.It LOGIN_SETUMASK
+.It Dv LOGIN_SETUMASK
 Set the umask for the current process to a value in the user or
 system login class database.
 Class capability tags used:
 .Bd -literal
 umask
 .Ed
-.It LOGIN_SETPATH
+.It Dv LOGIN_SETPATH
 Set the "path" and "manpath" environment variables based on values
 in the user or system login class database.
 Class capability tags used with the corresponding environment
@@ -136,7 +138,7 @@ variables set:
 path          PATH
 manpath       MANPATH
 .Ed
-.It LOGIN_SETENV
+.It Dv LOGIN_SETENV
 Set various environment variables based on values in the user or
 system login class database.
 Class capability tags used with the corresponding environment
@@ -150,7 +152,7 @@ term          TERM
 .Pp
 Additional environment variables may be set using the list type
 capability "setenv=var1 val1,var2 val2..,varN valN".
-.It LOGIN_SETALL
+.It Dv LOGIN_SETALL
 Enables all of the above settings.
 .El
 .Pp

@@ -122,7 +122,7 @@ is the bitwise inclusive
 of any of the following
 values defined in
 .In glob.h :
-.Bl -tag -width GLOB_ALTDIRFUNC
+.Bl -tag -width ".Dv GLOB_ALTDIRFUNC"
 .It Dv GLOB_APPEND
 Append pathnames generated to the ones from a previous call (or calls)
 to
@@ -208,7 +208,7 @@ The following values may also be included in
 .Fa flags ,
 however, they are non-standard extensions to
 .St -p1003.2 .
-.Bl -tag -width GLOB_ALTDIRFUNC
+.Bl -tag -width ".Dv GLOB_ALTDIRFUNC"
 .It Dv GLOB_ALTDIRFUNC
 The following additional fields in the pglob structure have been
 initialized with alternate functions for glob to use to open, read,
@@ -340,7 +340,7 @@ returns zero.
 In addition the fields of
 .Fa pglob
 contain the values described below:
-.Bl -tag -width GLOB_NOCHECK
+.Bl -tag -width ".Dv GLOB_NOCHECK"
 .It Fa gl_pathc
 contains the total number of matched pathnames so far.
 This includes other matches from previous invocations of
@@ -377,7 +377,7 @@ terminates due to an error, it sets errno and returns one of the
 following non-zero constants, which are defined in the include
 file
 .In glob.h :
-.Bl -tag -width GLOB_NOCHECK
+.Bl -tag -width ".Dv GLOB_NOCHECK"
 .It Dv GLOB_NOSPACE
 An attempt to allocate memory failed, or if
 .Fa errno

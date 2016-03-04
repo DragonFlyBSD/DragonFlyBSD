@@ -49,7 +49,8 @@ within
 It is assumed that a page has not already been allocated at
 .Fa pindex .
 The page returned is inserted into the object, but is not inserted
-into the pmap. The vm_object must be locked on entry.
+into the pmap.
+The vm_object must be locked on entry.
 .Pp
 .Fn vm_page_alloc
 will not block.
@@ -92,7 +93,9 @@ The
 .Vt vm_page_t
 that was allocated is returned if successful; otherwise,
 .Dv NULL
-is returned. The returned page will be marked PG_BUSY.
+is returned.
+The returned page will be marked
+.Dv PG_BUSY .
 .Sh AUTHORS
 This manual page was written by
 .An Chad David Aq Mt davidc@acns.ab.ca .

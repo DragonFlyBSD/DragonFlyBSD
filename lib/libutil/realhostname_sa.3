@@ -89,7 +89,9 @@ than
 .Ar hsize
 bytes,
 .Xr getnameinfo 3
-with NI_NUMERICHOST specified, is used to convert
+with
+.Dv NI_NUMERICHOST
+specified, is used to convert
 .Ar addr
 to an ASCII form.
 .Pp
@@ -105,22 +107,22 @@ The
 .Fn realhostname_sa
 function will return one of the following constants which are defined in
 .In libutil.h :
-.Bl -tag -width XXX -offset XXX
-.It Li HOSTNAME_FOUND
+.Bl -tag -width ".Dv HOSTNAME_INCORRECTNAME" -offset indent
+.It Dv HOSTNAME_FOUND
 A valid host name was found.
-.It Li HOSTNAME_INCORRECTNAME
+.It Dv HOSTNAME_INCORRECTNAME
 A host name was found, but it did not resolve back to the passed
 .Ar ip .
 .Ar host
 now contains the numeric value of
 .Ar ip .
-.It Li HOSTNAME_INVALIDADDR
+.It Dv HOSTNAME_INVALIDADDR
 .Ar ip
 could not be resolved.
 .Ar host
 now contains the numeric value of
 .Ar ip .
-.It Li HOSTNAME_INVALIDNAME
+.It Dv HOSTNAME_INVALIDNAME
 A host name was found, but it could not be resolved back to any ip number.
 .Ar host
 now contains the numeric value of
