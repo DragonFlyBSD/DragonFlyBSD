@@ -76,6 +76,7 @@ static int init_btree_search(const char *arg, int filter,
 static int test_btree_search(hammer_btree_elm_t elm, btree_search_t search);
 static int test_btree_match(hammer_btree_elm_t elm, btree_search_t search);
 static int test_btree_out_of_range(hammer_btree_elm_t elm, btree_search_t search);
+static void hexdump_record(const void *ptr, int length, const char *hdr);
 
 static int num_bad_node = 0;
 static int num_bad_elm = 0;
@@ -735,14 +736,14 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_DATA:
 		if (VerboseOpt > 3) {
 			printf("\n");
-			hexdump(data, data_len, "\t\t  ", 0);
+			hexdump_record(data, data_len, "\t\t  ");
 		}
 		break;
 	case HAMMER_RECTYPE_EXT:
 	case HAMMER_RECTYPE_DB:
 		if (VerboseOpt > 2) {
 			printf("\n");
-			hexdump(data, data_len, "\t\t  ", 0);
+			hexdump_record(data, data_len, "\t\t  ");
 		}
 		break;
 	default:
@@ -750,6 +751,24 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	}
 	rel_buffer(data_buffer);
+}
+
+/*
+ * HAMMER userspace only supports buffer size upto HAMMER_BUFSIZE
+ * which is 16KB.  Passing record data length larger than 16KB to
+ * hexdump(3) is invalid even if the leaf node elm says >16KB data.
+ */
+static void
+hexdump_record(const void *ptr, int length, const char *hdr)
+{
+	int data_len = length;
+
+	if (data_len > HAMMER_BUFSIZE)  /* XXX */
+		data_len = HAMMER_BUFSIZE;
+	hexdump(ptr, data_len, hdr, 0);
+
+	if (length > data_len)
+		printf("%s....\n", hdr);
 }
 
 static __inline
