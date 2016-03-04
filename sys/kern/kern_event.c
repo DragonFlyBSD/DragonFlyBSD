@@ -64,6 +64,13 @@ struct kevent_copyin_args {
 	int			pchanges;
 };
 
+#define KNOTE_CACHE_MAX		8
+
+struct knote_cache_list {
+	struct klist		knote_cache;
+	int			knote_cache_cnt;
+} __cachealign;
+
 static int	kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		    struct knote *marker);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
@@ -162,6 +169,8 @@ static struct filterops *sysfilt_ops[] = {
 	&file_filtops,			/* EVFILT_EXCEPT */
 	&user_filtops,			/* EVFILT_USER */
 };
+
+static struct knote_cache_list	knote_cache_lists[MAXCPU];
 
 /*
  * Acquire a knote, return non-zero on success, 0 on failure.
@@ -954,6 +963,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 	struct knote *kn = NULL;
 	struct thread *td;
 	int error = 0;
+	struct knote_cache_list *cache_list;
 
 	if (kev->filter < 0) {
 		if (kev->filter + EVFILT_SYSCOUNT < 0)
@@ -973,6 +983,15 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 		fp = holdfp(fdp, kev->ident, -1);
 		if (fp == NULL)
 			return (EBADF);
+	}
+
+	cache_list = &knote_cache_lists[mycpuid];
+	if (SLIST_EMPTY(&cache_list->knote_cache)) {
+		struct knote *new_kn;
+
+		new_kn = knote_alloc();
+		SLIST_INSERT_HEAD(&cache_list->knote_cache, new_kn, kn_link);
+		cache_list->knote_cache_cnt++;
 	}
 
 	td = curthread;
@@ -1031,7 +1050,14 @@ again:
 	 */
 	if (kev->flags & EV_ADD) {
 		if (kn == NULL) {
-			kn = knote_alloc();
+			kn = SLIST_FIRST(&cache_list->knote_cache);
+			if (kn == NULL) {
+				kn = knote_alloc();
+			} else {
+				SLIST_REMOVE_HEAD(&cache_list->knote_cache,
+				    kn_link);
+				cache_list->knote_cache_cnt--;
+			}
 			kn->kn_fp = fp;
 			kn->kn_kq = kq;
 			kn->kn_fop = fops;
@@ -1836,5 +1862,13 @@ knote_alloc(void)
 static void
 knote_free(struct knote *kn)
 {
+	struct knote_cache_list *cache_list;
+
+	cache_list = &knote_cache_lists[mycpuid];
+	if (cache_list->knote_cache_cnt < KNOTE_CACHE_MAX) {
+		SLIST_INSERT_HEAD(&cache_list->knote_cache, kn, kn_link);
+		cache_list->knote_cache_cnt++;
+		return;
+	}
 	kfree(kn, M_KQUEUE);
 }
