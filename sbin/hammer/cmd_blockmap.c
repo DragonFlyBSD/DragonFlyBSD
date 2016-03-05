@@ -112,8 +112,7 @@ dump_blockmap(const char *label, int zone)
 	int xerr;
 	int i;
 
-	assert(RootVolNo >= 0);
-	root_volume = get_volume(RootVolNo);
+	root_volume = get_volume(HAMMER_ROOT_VOLNO);
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
@@ -239,7 +238,7 @@ hammer_cmd_checkmap(void)
 	hammer_blockmap_t undomap;
 	hammer_off_t node_offset;
 
-	volume = get_volume(RootVolNo);
+	volume = get_volume(HAMMER_ROOT_VOLNO);
 	node_offset = volume->ondisk->vol0_btree_root;
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	undomap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];

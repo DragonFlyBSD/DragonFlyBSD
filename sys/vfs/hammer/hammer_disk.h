@@ -683,6 +683,8 @@ struct hammer_volume_ondisk {
 
 typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 
+#define HAMMER_ROOT_VOLNO		0
+
 #define HAMMER_VOLF_NEEDFLUSH		0x0004	/* volume needs flush */
 
 #define HAMMER_VOL_CRCSIZE1	\

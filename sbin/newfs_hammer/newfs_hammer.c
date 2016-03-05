@@ -172,7 +172,6 @@ main(int ac, char **av)
 	ac -= optind;
 	av += optind;
 	nvols = ac;
-	RootVolNo = 0;
 
 	if (nvols == 0) {
 		fprintf(stderr,
@@ -246,9 +245,9 @@ main(int ac, char **av)
 	 * Format the volumes.  Format the root volume first so we can
 	 * bootstrap the freemap.
 	 */
-	format_volume(get_volume(RootVolNo), nvols, label);
+	format_volume(get_volume(HAMMER_ROOT_VOLNO), nvols, label);
 	for (i = 0; i < nvols; ++i) {
-		if (i != RootVolNo)
+		if (i != HAMMER_ROOT_VOLNO)
 			format_volume(get_volume(i), nvols, label);
 	}
 
@@ -258,7 +257,7 @@ main(int ac, char **av)
 	 * new layer2 blocks which reduces the chances of the reblocker
 	 * having to fallback to an extremely inefficient algorithm.
 	 */
-	vol = get_volume(RootVolNo);
+	vol = get_volume(HAMMER_ROOT_VOLNO);
 	vol->cache.modified = 1;
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
@@ -498,7 +497,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_nblocks = vol_buf_size / HAMMER_BUFSIZE;
 	ondisk->vol_blocksize = HAMMER_BUFSIZE;
 
-	ondisk->vol_rootvol = RootVolNo;
+	ondisk->vol_rootvol = HAMMER_ROOT_VOLNO;
 	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
 
 	vol->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
@@ -508,7 +507,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	/*
 	 * Format the root volume.
 	 */
-	if (vol->vol_no == RootVolNo) {
+	if (vol->vol_no == HAMMER_ROOT_VOLNO) {
 		/*
 		 * Check freemap counts before formatting
 		 */
@@ -518,7 +517,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 			errx(1, "Cannot create a HAMMER filesystem less than 10GB "
 				"unless you use -f\n(for the size of Volume %d).  "
 				"HAMMER filesystems less than 50GB are not "
-				"recommended.\n", RootVolNo);
+				"recommended.\n", HAMMER_ROOT_VOLNO);
 		}
 
 		/*
@@ -563,7 +562,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		rel_volume(vol);
 	} else {
 		freeblks = initialize_freemap(vol);
-		root_vol = get_volume(RootVolNo);
+		root_vol = get_volume(HAMMER_ROOT_VOLNO);
 		root_vol->cache.modified = 1;
 		root_vol->ondisk->vol0_stat_freebigblocks += freeblks;
 		root_vol->ondisk->vol0_stat_bigblocks += freeblks;

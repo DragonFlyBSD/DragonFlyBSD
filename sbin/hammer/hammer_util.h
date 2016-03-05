@@ -148,7 +148,6 @@ extern int64_t UndoBufferSize;
 extern int DebugOpt;
 extern const char *ScoreBoardFile;
 extern const char *RestrictTarget;
-extern int RootVolNo;
 extern struct volume_list VolList;
 extern int UseReadBehind;
 extern int UseReadAhead;

@@ -51,7 +51,6 @@ uuid_t Hammer_FSId;
 int64_t BootAreaSize;
 int64_t MemAreaSize;
 int64_t UndoBufferSize;
-int	RootVolNo = -1;
 int	UseReadBehind = -4;
 int	UseReadAhead = 4;
 int	AssertOnFailure = 1;
@@ -119,12 +118,9 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 			    vol->name);
 		}
 		vol_no = ondisk->vol_no;
-		if (RootVolNo < 0) {
-			RootVolNo = ondisk->vol_rootvol;
-		} else if (RootVolNo != (int)ondisk->vol_rootvol) {
-			errx(1, "setup_volume: %s: root volume disagreement: "
-				"%d vs %d",
-				vol->name, RootVolNo, ondisk->vol_rootvol);
+		if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
+			errx(1, "setup_volume: Invalid root volume# %d",
+				ondisk->vol_rootvol);
 		}
 
 		if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType)) != 0) {
@@ -505,7 +501,7 @@ format_freemap(struct volume_info *root_vol)
 	int i, isnew;
 
 	/* Only root volume needs formatting */
-	assert(root_vol->vol_no == RootVolNo);
+	assert(root_vol->vol_no == HAMMER_ROOT_VOLNO);
 
 	layer1_offset = alloc_bigblock(root_vol, HAMMER_ZONE_FREEMAP_INDEX);
 	for (i = 0; i < HAMMER_BIGBLOCK_SIZE; i += sizeof(*layer1)) {
@@ -552,7 +548,7 @@ initialize_freemap(struct volume_info *vol)
 	int64_t count = 0;
 	int64_t layer1_count = 0;
 
-	root_vol = get_volume(RootVolNo);
+	root_vol = get_volume(HAMMER_ROOT_VOLNO);
 	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
 				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
 
@@ -654,7 +650,7 @@ count_freemap(struct volume_info *vol)
 	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
 				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
 
-	if (vol->vol_no == RootVolNo)
+	if (vol->vol_no == HAMMER_ROOT_VOLNO)
 		vol_free_off += HAMMER_BIGBLOCK_SIZE;
 
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
@@ -693,7 +689,7 @@ format_undomap(struct volume_info *root_vol)
 	uint32_t seqno;
 
 	/* Only root volume needs formatting */
-	assert(root_vol->vol_no == RootVolNo);
+	assert(root_vol->vol_no == HAMMER_ROOT_VOLNO);
 	ondisk = root_vol->ondisk;
 
 	/*
