@@ -4570,7 +4570,7 @@ bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
 		static struct krate biokrate = { .freq = 1 };
 		krateprintf(&biokrate,
 			    "Warning: bio_page_alloc: memory exhausted "
-			    "during bufcache page allocation from %s\n",
+			    "during buffer cache page allocation from %s\n",
 			    curthread->td_comm);
 	}
 	if (curthread->td_flags & TDF_SYSTHREAD)
