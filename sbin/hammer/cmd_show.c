@@ -89,6 +89,8 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct volume_info *volume;
+	struct hammer_volume_ondisk *ondisk;
+	struct hammer_blockmap *blockmap;
 	struct btree_search search;
 	struct zone_stat *stats = NULL;
 	int zone;
@@ -100,18 +102,18 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 
 	if (node_offset == HAMMER_OFF_BAD) {
 		volume = get_volume(RootVolNo);
-		node_offset = volume->ondisk->vol0_btree_root;
+		ondisk = volume->ondisk;
+		node_offset = ondisk->vol0_btree_root;
 		if (QuietOpt < 3) {
 			printf("Volume header\trecords=%jd next_tid=%016jx\n",
-			       (intmax_t)volume->ondisk->vol0_stat_records,
-			       (uintmax_t)volume->ondisk->vol0_next_tid);
+			       (intmax_t)ondisk->vol0_stat_records,
+			       (uintmax_t)ondisk->vol0_next_tid);
 			printf("\t\tbufoffset=%016jx\n",
-			       (uintmax_t)volume->ondisk->vol_buf_beg);
+			       (uintmax_t)ondisk->vol_buf_beg);
 			for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
+				blockmap = ondisk->vol0_blockmap + zone;
 				printf("\t\tzone %d\tnext_offset=%016jx\n",
-					zone,
-					(uintmax_t)volume->ondisk->vol0_blockmap[zone].next_offset
-				);
+					zone, blockmap->next_offset);
 			}
 		}
 		rel_volume(volume);
