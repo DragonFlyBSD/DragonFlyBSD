@@ -119,24 +119,26 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 		rel_volume(volume);
 	}
 
-	printf("show %016jx", (uintmax_t)node_offset);
+	printf("show node=%016jx depth=%d arg=\"%s\"\n",
+		(uintmax_t)node_offset, depth, arg ? arg : "");
 
 	do_obfuscate = obfuscate;
 	init_btree_search(arg, filter, &search);
 	if (arg) {
 		if (search.limit >= 1)
-			printf(" lo %08x", search.base.localization);
+			printf(" search lo=%08x", search.base.localization);
 		if (search.limit >= 2)
-			printf(" obj_id %016jx", (uintmax_t)search.base.obj_id);
+			printf(" obj=%016jx", (uintmax_t)search.base.obj_id);
 		if (search.limit >= 3)
-			printf(" rec_type %02x", search.base.rec_type);
+			printf(" rt=%02x", search.base.rec_type);
 		if (search.limit >= 4)
-			printf(" key %016jx", (uintmax_t)search.base.key);
+			printf(" key=%016jx", (uintmax_t)search.base.key);
 		if (search.limit == 5)
-			printf(" create_tid %016jx\n",
+			printf(" tid=%016jx",
 				(uintmax_t)search.base.create_tid);
+		if (search.limit)
+			printf("\n");
 	}
-	printf(" depth %d\n", depth);
 	print_btree_node(node_offset, &search, depth, HAMMER_MAX_TID,
 			 left_bound, right_bound, stats);
 
