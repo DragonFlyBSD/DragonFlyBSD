@@ -79,10 +79,11 @@ static int test_btree_out_of_range(hammer_btree_elm_t elm, btree_search_t search
 
 static int num_bad_node = 0;
 static int num_bad_elm = 0;
+static int do_obfuscate = 0;
 
 void
 hammer_cmd_show(hammer_off_t node_offset, const char *arg,
-		int filter, int depth,
+		int filter, int obfuscate, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct volume_info *volume;
@@ -115,6 +116,8 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	}
 
 	printf("show %016jx", (uintmax_t)node_offset);
+
+	do_obfuscate = obfuscate;
 	init_btree_search(arg, filter, &search);
 	if (arg) {
 		if (search.limit >= 1)
@@ -691,10 +694,12 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_DIRENTRY:
 		data_len -= HAMMER_ENTRY_NAME_OFF;
 		printf("\n%17s", "");
-		printf("dir-entry ino=%016jx lo=%08x name=\"%*.*s\"",
+		printf("dir-entry ino=%016jx lo=%08x",
 		       (uintmax_t)data->entry.obj_id,
-		       data->entry.localization,
-		       data_len, data_len, data->entry.name);
+		       data->entry.localization);
+		if (!do_obfuscate)
+			printf(" name=\"%*.*s\"",
+			       data_len, data_len, data->entry.name);
 		break;
 	case HAMMER_RECTYPE_FIX:
 		switch(elm->leaf.base.key) {
@@ -792,6 +797,8 @@ init_btree_search(const char *arg, int filter, btree_search_t search)
 	search->filter = filter;
 
 	if (arg == NULL)
+		return(-1);
+	if (strcmp(arg, "none") == 0)
 		return(-1);
 
 	s = strdup(arg);

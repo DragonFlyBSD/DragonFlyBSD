@@ -84,7 +84,7 @@ extern const char *SplitupOptStr;
 extern const char *CyclePath;
 
 void hammer_cmd_show(hammer_tid_t node_offset, const char *arg,
-		int filter, int depth,
+		int filter, int obfuscate, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
 void hammer_cmd_show_undo(void);
 void hammer_cmd_sshremote(const char *cmd, const char *target);
