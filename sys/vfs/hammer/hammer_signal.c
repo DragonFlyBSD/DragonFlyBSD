@@ -42,9 +42,9 @@
 #include "hammer.h"
 
 /*
- * Check for a user signal interrupting a long operation
- *
- * MPSAFE
+ * Check for a user signal interrupting a long operation.  Do not allow
+ * stopping or blocking, just check to see if an actionable signal is
+ * pending.
  */
 int
 hammer_signal_check(hammer_mount_t hmp)
@@ -56,7 +56,7 @@ hammer_signal_check(hammer_mount_t hmp)
 		return(0);
 	hmp->check_interrupt = 0;
 
-	if ((sig = CURSIG(curthread->td_lwp)) != 0)
+	if ((sig = CURSIG_NOBLOCK(curthread->td_lwp)) != 0)
 		return(EINTR);
 	return(0);
 }

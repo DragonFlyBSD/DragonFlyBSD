@@ -404,7 +404,7 @@ hammer2_signal_check(time_t *timep)
 	lwkt_user_yield();
 	if (*timep != time_second) {
 		*timep = time_second;
-		if (CURSIG(curthread->td_lwp) != 0)
+		if (CURSIG_NOBLOCK(curthread->td_lwp) != 0)
 			error = EINTR;
 	}
 	return error;
