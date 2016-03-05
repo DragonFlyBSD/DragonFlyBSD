@@ -61,9 +61,6 @@ static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume);
 
 static int
-hammer_test_free_freemap(hammer_transaction_t trans, hammer_volume_t volume);
-
-static int
 hammer_count_bigblocks(hammer_mount_t hmp, hammer_volume_t volume,
 	int64_t *total_bigblocks, int64_t *empty_bigblocks);
 
@@ -219,7 +216,13 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	hmp->volume_to_remove = volume->vol_no;
 
-	if (hammer_test_free_freemap(trans, volume)) {
+	error = hammer_count_bigblocks(hmp, volume,
+			&total_bigblocks, &empty_bigblocks);
+	KKASSERT(error == 0);
+
+	if (total_bigblocks == empty_bigblocks) {
+		hmkprintf(hmp, "%s is already empty\n", volume->vol_name);
+	} else {
 		error = hammer_do_reblock(trans, ip);
 		if (error) {
 			hmp->volume_to_remove = -1;
@@ -581,52 +584,10 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 	return EINVAL;
 }
 
-/*
- * Non-zero return value means we can't free the volume.
- */
-static int
-test_free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
-	hammer_buffer_t *bufferp,
-	struct hammer_blockmap_layer1 *layer1,
-	struct hammer_blockmap_layer2 *layer2,
-	hammer_off_t phys_off,
-	hammer_off_t block_off __unused,
-	void *data)
-{
-	if (layer2 == NULL) {
-		return(0);  /* only layer2 needs to be tested */
-	}
-
-	if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
-		return(0);  /* beyond physically available space */
-	}
-	if (layer2->zone == HAMMER_ZONE_FREEMAP_INDEX) {
-		return(0);  /* big-block for layer1/2 */
-	}
-	if (layer2->append_off == 0 &&
-	    layer2->bytes_free == HAMMER_BIGBLOCK_SIZE) {
-		return(0);  /* big-block is 0% used */
-	}
-
-	return(EBUSY);  /* big-block has data */
-}
-
 static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
-	int error;
-
-	error = hammer_test_free_freemap(trans, volume);
-	if (error)
-		return error;  /* not ready to free */
-
 	return hammer_iterate_l1l2_entries(trans, volume, free_callback, NULL);
-}
-
-static int
-hammer_test_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
-{
-	return hammer_iterate_l1l2_entries(trans, volume, test_free_callback, NULL);
 }
 
 static int
