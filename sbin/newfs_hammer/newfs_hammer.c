@@ -456,6 +456,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	struct hammer_volume_ondisk *ondisk;
 	int64_t freeblks;
 	int64_t freebytes;
+	int64_t vol_buf_size;
 	hammer_off_t vol_alloc;
 	int i;
 
@@ -487,14 +488,14 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 */
 	ondisk->vol_buf_beg = vol_alloc;
 	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;
+	vol_buf_size = ondisk->vol_buf_end - ondisk->vol_buf_beg;
 
-	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
+	if (vol_buf_size < 0) {
 		errx(1, "volume %d %s is too small to hold the volume header",
 		     vol->vol_no, vol->name);
 	}
 
-	ondisk->vol_nblocks = (ondisk->vol_buf_end - ondisk->vol_buf_beg) /
-			      HAMMER_BUFSIZE;
+	ondisk->vol_nblocks = vol_buf_size / HAMMER_BUFSIZE;
 	ondisk->vol_blocksize = HAMMER_BUFSIZE;
 
 	ondisk->vol_rootvol = RootVolNo;
@@ -502,8 +503,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 
 	vol->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	vol->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
-				(ondisk->vol_buf_end - ondisk->vol_buf_beg) &
-				~HAMMER_BIGBLOCK_MASK64);
+				vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);
 
 	/*
 	 * Format the root volume.
