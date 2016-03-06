@@ -245,7 +245,7 @@ main(int ac, char **av)
 	 * Format the volumes.  Format the root volume first so we can
 	 * bootstrap the freemap.
 	 */
-	format_volume(get_volume(HAMMER_ROOT_VOLNO), nvols, label);
+	format_volume(get_root_volume(), nvols, label);
 	for (i = 0; i < nvols; ++i) {
 		if (i != HAMMER_ROOT_VOLNO)
 			format_volume(get_volume(i), nvols, label);
@@ -257,7 +257,7 @@ main(int ac, char **av)
 	 * new layer2 blocks which reduces the chances of the reblocker
 	 * having to fallback to an extremely inefficient algorithm.
 	 */
-	vol = get_volume(HAMMER_ROOT_VOLNO);
+	vol = get_root_volume();
 	vol->cache.modified = 1;
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
@@ -562,7 +562,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		rel_volume(vol);
 	} else {
 		freeblks = initialize_freemap(vol);
-		root_vol = get_volume(HAMMER_ROOT_VOLNO);
+		root_vol = get_root_volume();
 		root_vol->cache.modified = 1;
 		root_vol->ondisk->vol0_stat_freebigblocks += freeblks;
 		root_vol->ondisk->vol0_stat_bigblocks += freeblks;

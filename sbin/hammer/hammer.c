@@ -621,6 +621,9 @@ hammer_parsedevs(const char *blkdevs)
 	if (volnum != vol->ondisk->vol_count)
 		errx(1, "Volume header says %d volumes, but %d specified.",
 			vol->ondisk->vol_count, volnum);
+
+	if (get_root_volume() == NULL)
+		errx(1, "No root volume found");
 }
 
 static

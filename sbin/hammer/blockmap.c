@@ -56,7 +56,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	hammer_off_t result_offset;
 
 	if (volume == NULL)
-		volume = get_volume(HAMMER_ROOT_VOLNO);
+		volume = get_root_volume();
 
 	result_offset = volume->vol_free_off;
 	if (result_offset >= volume->vol_free_end)
@@ -68,7 +68,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	 * Update the freemap if not zone4.
 	 */
 	if (zone != HAMMER_ZONE_FREEMAP_INDEX) {
-		root_vol = get_volume(HAMMER_ROOT_VOLNO);
+		root_vol = get_root_volume();
 		freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
 		layer1_offset = freemap->phys_offset +
@@ -121,7 +121,7 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	hammer_off_t chunk_offset;
 	void *ptr;
 
-	volume = get_volume(HAMMER_ROOT_VOLNO);
+	volume = get_root_volume();
 
 	blockmap = &volume->ondisk->vol0_blockmap[zone];
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
@@ -246,7 +246,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 		goto done;
 	}
 
-	root_volume = get_volume(HAMMER_ROOT_VOLNO);
+	root_volume = get_root_volume();
 	blockmap = &root_volume->ondisk->vol0_blockmap[zone];
 
 	if (zone == HAMMER_ZONE_RAW_BUFFER_INDEX) {

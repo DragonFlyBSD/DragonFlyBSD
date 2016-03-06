@@ -160,6 +160,7 @@ struct volume_info *setup_volume(int32_t vol_no, const char *filename,
 				int isnew, int oflags);
 void check_volume(struct volume_info *vol);
 struct volume_info *get_volume(int32_t vol_no);
+struct volume_info *get_root_volume(void);
 struct buffer_info *get_buffer(hammer_off_t buf_offset, int isnew);
 void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 				int isnew);

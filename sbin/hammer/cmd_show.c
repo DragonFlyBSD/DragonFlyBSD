@@ -101,7 +101,7 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 		stats = hammer_init_zone_stat_bits();
 
 	if (node_offset == HAMMER_OFF_BAD) {
-		volume = get_volume(HAMMER_ROOT_VOLNO);
+		volume = get_root_volume();
 		ondisk = volume->ondisk;
 		node_offset = ondisk->vol0_btree_root;
 		if (QuietOpt < 3) {
@@ -929,7 +929,7 @@ hammer_cmd_show_undo(void)
 	struct buffer_info *data_buffer = NULL;
 	int64_t bytes;
 
-	volume = get_volume(HAMMER_ROOT_VOLNO);
+	volume = get_root_volume();
 	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	if (rootmap->first_offset <= rootmap->next_offset)
 		bytes = rootmap->next_offset - rootmap->first_offset;

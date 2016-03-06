@@ -227,6 +227,12 @@ get_volume(int32_t vol_no)
 	return(vol);
 }
 
+struct volume_info *
+get_root_volume(void)
+{
+	return(get_volume(HAMMER_ROOT_VOLNO));
+}
+
 void
 rel_volume(struct volume_info *volume)
 {
@@ -548,7 +554,7 @@ initialize_freemap(struct volume_info *vol)
 	int64_t count = 0;
 	int64_t layer1_count = 0;
 
-	root_vol = get_volume(HAMMER_ROOT_VOLNO);
+	root_vol = get_root_volume();
 	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
 				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
 
