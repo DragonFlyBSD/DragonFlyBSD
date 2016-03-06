@@ -58,12 +58,9 @@ CFLAGS+=	-I${.CURDIR}/..
 
 # where to get libstand from
 #XXX need a better way to do this
-LIBSTAND=	${.CURDIR}/../../../../lib/libstand/libstand.a
+LIBSTAND=	${.CURDIR}/../../libstand32/libstand32.a
 .if !exists(${LIBSTAND})
-LIBSTAND=	${.OBJDIR}/../../../../lib/libstand/libstand.a
-.if !exists(${LIBSTAND})
-LIBSTAND=	-lstand
-.endif
+LIBSTAND=	${.OBJDIR}/../../libstand32/libstand32.a
 .endif
 CFLAGS+=	-I${.CURDIR}/../../../../lib/libstand/
 

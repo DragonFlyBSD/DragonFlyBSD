@@ -7,23 +7,23 @@
 #   quite large.
 #
 
-LIB=		stand
+LIB?=		stand
 NOPROFILE=	YES
 NOPIC=		YES
-INCS=		stand.h
-MAN=		libstand.3
+INCS?=		stand.h
+MAN?=		libstand.3
 CSTD?=		c99
 WARNS?=		2
 
 LIBSTAND_SRC?=	${.CURDIR}
-.if ${MACHINE_ARCH} == "x86_64"
-LIBSTAND_ARCH?=	i386
-.else
 LIBSTAND_ARCH?=	${MACHINE_ARCH}
-.endif
 
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding
+
+.if ${LIBSTAND_ARCH} == "x86_64"
+CFLAGS+=	-mno-red-zone -fPIC
+.endif
 
 .if ${LIBSTAND_ARCH} == "i386"
 .if ${CCVER:Mgcc*}

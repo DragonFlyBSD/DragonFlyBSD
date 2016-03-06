@@ -3,6 +3,11 @@
 # Build DLoader
 SUBDIR+=		dloader
 
+.if ${MACHINE_ARCH} == "x86_64"
+# Build i386 version of libstand
+SUBDIR+=		libstand32
+.endif
+
 # Pick the machine-dependant subdir based on the target architecture.
 .if ${MACHINE_ARCH} == "x86_64"
 SUBDIR+=		pc32
