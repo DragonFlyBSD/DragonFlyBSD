@@ -3,7 +3,7 @@
 # decompression functionality from libz for libstand
 
 # relative to lib/libstand
-ZLIBDIR= ${.CURDIR}/../../contrib/zlib-1.2
+ZLIBDIR= ${LIBSTAND_SRC}/../../contrib/zlib-1.2
 .PATH: ${ZLIBDIR}
 
 CFLAGS+=-DCOMPILING_LIBSTAND -I${ZLIBDIR}
