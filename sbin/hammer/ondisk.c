@@ -527,6 +527,33 @@ alloc_data_element(hammer_off_t *offp, int32_t data_len,
 }
 
 /*
+ * Format a new blockmap.  This is mostly a degenerate case because
+ * all allocations are now actually done from the freemap.
+ */
+void
+format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset)
+{
+	hammer_blockmap_t blockmap;
+	hammer_off_t zone_base;
+
+	/* Only root volume needs formatting */
+	assert(root_vol->vol_no == HAMMER_ROOT_VOLNO);
+
+	assert(hammer_is_zone2_mapped_index(zone));
+
+	blockmap = &root_vol->ondisk->vol0_blockmap[zone];
+	zone_base = HAMMER_ZONE_ENCODE(zone, offset);
+
+	bzero(blockmap, sizeof(*blockmap));
+	blockmap->phys_offset = 0;
+	blockmap->first_offset = zone_base;
+	blockmap->next_offset = zone_base;
+	blockmap->alloc_offset = HAMMER_ENCODE(zone, 255, -1);
+	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
+	root_vol->cache.modified = 1;
+}
+
+/*
  * Format a new freemap.  Set all layer1 entries to UNAVAIL.  The initialize
  * code will load each volume's freemap.
  */
@@ -812,23 +839,6 @@ format_undomap(struct volume_info *root_vol)
 		scan += bytes;
 	}
 	rel_buffer(buffer);
-}
-
-/*
- * Format a new blockmap.  This is mostly a degenerate case because
- * all allocations are now actually done from the freemap.
- */
-void
-format_blockmap(hammer_blockmap_t blockmap, int zone, hammer_off_t offset)
-{
-	hammer_off_t zone_base = HAMMER_ZONE_ENCODE(zone, offset);
-
-	bzero(blockmap, sizeof(*blockmap));
-	blockmap->phys_offset = 0;
-	blockmap->first_offset = zone_base;
-	blockmap->next_offset = zone_base;
-	blockmap->alloc_offset = HAMMER_ENCODE(zone, 255, -1);
-	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 }
 
 /*

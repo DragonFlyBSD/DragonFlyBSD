@@ -539,7 +539,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 */
 		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
 			if (hammer_is_zone2_mapped_index(i))
-				format_blockmap(&ondisk->vol0_blockmap[i], i, 0);
+				format_blockmap(vol, i, 0);
 		}
 
 		/*

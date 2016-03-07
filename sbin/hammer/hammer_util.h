@@ -178,7 +178,6 @@ hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
 				struct hammer_blockmap_layer1 *layer1,
 				struct hammer_blockmap_layer2 *layer2,
 				int *errorp);
-void format_blockmap(hammer_blockmap_t blockmap, int zone, hammer_off_t offset);
 void format_undomap(struct volume_info *root_vol);
 
 void *alloc_btree_element(hammer_off_t *offp,
@@ -193,6 +192,7 @@ void hammer_key_beg_init(hammer_base_elm_t base);
 void hammer_key_end_init(hammer_base_elm_t base);
 int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 
+void format_blockmap(struct volume_info *vol, int zone, hammer_off_t offset);
 void format_freemap(struct volume_info *root_vol);
 int64_t initialize_freemap(struct volume_info *vol);
 int64_t count_freemap(struct volume_info *vol);
