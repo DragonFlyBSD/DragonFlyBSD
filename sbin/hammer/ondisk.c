@@ -48,8 +48,6 @@ int DebugOpt;
 
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
-int64_t BootAreaSize;
-int64_t MemAreaSize;
 int64_t UndoBufferSize;
 int	UseReadBehind = -4;
 int	UseReadAhead = 4;

@@ -142,8 +142,6 @@ struct zone_stat {
 
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
-extern int64_t BootAreaSize;
-extern int64_t MemAreaSize;
 extern int64_t UndoBufferSize;
 extern int DebugOpt;
 extern const char *ScoreBoardFile;

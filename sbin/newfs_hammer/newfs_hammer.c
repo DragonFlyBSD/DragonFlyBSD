@@ -46,6 +46,8 @@ static uint64_t nowtime(void);
 static void usage(void);
 
 static int ForceOpt = 0;
+static int64_t BootAreaSize;
+static int64_t MemAreaSize;
 static int HammerVersion = -1;
 
 #define GIG	(1024LL*1024*1024)
