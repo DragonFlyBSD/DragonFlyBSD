@@ -606,7 +606,7 @@ hammer_parsedevs(const char *blkdevs)
 		if (strchr(volname, ':'))
 			hammer_parsedevs(volname);
 		else {
-			vol = setup_volume(-1, volname, 0, O_RDONLY);
+			vol = load_volume(volname, O_RDONLY);
 			assert(vol);
 			++volnum;
 		}

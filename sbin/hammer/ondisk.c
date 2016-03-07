@@ -141,53 +141,57 @@ __add_volume(struct volume_info *vol)
 }
 
 /*
- * Lookup the requested information structure and related on-disk buffer.
- * Missing structures are created.
+ * Initialize a volume structure and ondisk vol_no field.
  */
 struct volume_info *
-setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
+init_volume(int32_t vol_no, const char *filename, int oflags)
+{
+	struct volume_info *vol;
+
+	vol = __alloc_volume(filename, oflags);
+	vol->vol_no = vol->ondisk->vol_no = vol_no;
+	vol->cache.modified = 1;
+
+	__add_volume(vol);
+
+	return(vol);
+}
+
+/*
+ * Initialize a volume structure and read ondisk volume header.
+ */
+struct volume_info*
+load_volume(const char *filename, int oflags)
 {
 	struct volume_info *vol;
 	struct hammer_volume_ondisk *ondisk;
 	int n;
 
-	/*
-	 * Allocate the volume structure
-	 */
 	vol = __alloc_volume(filename, oflags);
 	ondisk = vol->ondisk;
 
-	/*
-	 * Read or initialize the volume header
-	 */
-	if (isnew == 0) {
-		n = readhammerbuf(vol, ondisk, 0);
-		if (n == -1) {
-			err(1, "setup_volume: %s: Read failed at offset 0",
-			    vol->name);
-		}
-		vol_no = ondisk->vol_no;
-		if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
-			errx(1, "setup_volume: Invalid root volume# %d",
-				ondisk->vol_rootvol);
-		}
-
-		if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType)) != 0) {
-			errx(1, "setup_volume: %s: Header does not indicate "
-				"that this is a hammer volume", vol->name);
-		}
-		if (TAILQ_EMPTY(&VolList)) {
-			Hammer_FSId = ondisk->vol_fsid;
-		} else if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId)) != 0) {
-			errx(1, "setup_volume: %s: FSId does match other "
-				"volumes!", vol->name);
-		}
+	n = readhammerbuf(vol, ondisk, 0);
+	if (n == -1) {
+		err(1, "load_volume: %s: Read failed at offset 0", vol->name);
 	}
-	vol->vol_no = vol_no;
+	vol->vol_no = ondisk->vol_no;
 
-	if (isnew > 0) {
-		vol->cache.modified = 1;
-        }
+	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
+		errx(1, "load_volume: Invalid root volume# %d",
+			ondisk->vol_rootvol);
+	}
+
+	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
+		errx(1, "load_volume: %s: Header does not indicate "
+			"that this is a hammer volume", vol->name);
+	}
+
+	if (TAILQ_EMPTY(&VolList)) {
+		Hammer_FSId = ondisk->vol_fsid;
+	} else if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
+		errx(1, "load_volume: %s: FSId does match other volumes!",
+			vol->name);
+	}
 
 	__add_volume(vol);
 

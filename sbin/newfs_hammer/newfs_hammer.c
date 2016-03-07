@@ -189,7 +189,7 @@ main(int ac, char **av)
 
 	total = 0;
 	for (i = 0; i < nvols; ++i) {
-		vol = setup_volume(i, av[i], 1, O_RDWR);
+		vol = init_volume(i, av[i], O_RDWR);
 
 		/*
 		 * Load up information on the volume and initialize
