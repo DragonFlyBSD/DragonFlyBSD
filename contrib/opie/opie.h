@@ -106,42 +106,42 @@ struct opie_otpkey {
 #endif /* SEEK_END */
 
 __BEGIN_DECLS
-int  opieaccessfile __P((char *));
-int  rdnets __P((long));
-int  isaddr __P((register char *));
-int  opiealways __P((char *));
-char *opieatob8 __P((struct opie_otpkey *, char *));
-void opiebackspace __P((char *));
-char *opiebtoa8 __P((char *, struct opie_otpkey *));
-char *opiebtoe __P((char *, struct opie_otpkey *));
-char *opiebtoh __P((char *, struct opie_otpkey *));
-int  opieetob __P((struct opie_otpkey *, char *));
-int  opiechallenge __P((struct opie *,char *,char *));
-int  opiegenerator __P((char *,char *,char *));
-int  opiegetsequence __P((struct opie *));
-void opiehash __P((struct opie_otpkey *, unsigned));
-int  opiehtoi __P((register char));
-int  opiekeycrunch __P((int, struct opie_otpkey *, char *, char *));
-int  opielock __P((char *));
-int  opieunlock __P((void));
-void opieunlockaeh __P((void));
-void opiedisableaeh __P((void));
-int  opielookup __P((struct opie *,char *));
-int  opiepasscheck __P((char *));
-int  opienewseed __P((char *));
-void opierandomchallenge __P((char *));
-char * opieskipspace __P((register char *));
-void opiestripcrlf __P((char *));
-int  opieverify __P((struct opie *,char *));
-int opiepasswd __P((struct opie *, int, char *, int, char *, char *));
-char *opiereadpass __P((char *, int, int));
-int opielogin __P((char *line, char *name, char *host));
-const char *opie_get_algorithm __P((void));
-int  opie_haskey __P((char *username));
-char *opie_keyinfo __P((char *));
-int  opie_passverify __P((char *username, char *passwd));
-int  opieinsecure __P((void));
-void opieversion __P((void));
+int  opieaccessfile(char *);
+int  rdnets(long);
+int  isaddr(register char *);
+int  opiealways(char *);
+char *opieatob8(struct opie_otpkey *, char *);
+void opiebackspace(char *);
+char *opiebtoa8(char *, struct opie_otpkey *);
+char *opiebtoe(char *, struct opie_otpkey *);
+char *opiebtoh(char *, struct opie_otpkey *);
+int  opieetob(struct opie_otpkey *, char *);
+int  opiechallenge(struct opie *,char *,char *);
+int  opiegenerator(char *,char *,char *);
+int  opiegetsequence(struct opie *);
+void opiehash(struct opie_otpkey *, unsigned);
+int  opiehtoi(register char);
+int  opiekeycrunch(int, struct opie_otpkey *, char *, char *);
+int  opielock(char *);
+int  opieunlock(void);
+void opieunlockaeh(void);
+void opiedisableaeh(void);
+int  opielookup(struct opie *,char *);
+int  opiepasscheck(char *);
+int  opienewseed(char *);
+void opierandomchallenge(char *);
+char * opieskipspace(register char *);
+void opiestripcrlf(char *);
+int  opieverify(struct opie *,char *);
+int opiepasswd(struct opie *, int, char *, int, char *, char *);
+char *opiereadpass(char *, int, int);
+int opielogin(char *line, char *name, char *host);
+const char *opie_get_algorithm(void);
+int  opie_haskey(char *username);
+char *opie_keyinfo(char *);
+int  opie_passverify(char *username, char *passwd);
+int  opieinsecure(void);
+void opieversion(void);
 __END_DECLS
 
 #if _OPIE
@@ -154,14 +154,14 @@ __END_DECLS
 
 __BEGIN_DECLS
 struct utmp;
-int __opiegetutmpentry __P((char *, struct utmp *));
+int __opiegetutmpentry(char *, struct utmp *);
 #ifdef EOF
-FILE *__opieopen __P((char *, int, int));
+FILE *__opieopen(char *, int, int);
 #endif /* EOF */
-int __opiereadrec __P((struct opie *));
-int __opiewriterec __P((struct opie *));
-int __opieparsechallenge __P((char *buffer, int *algorithm, int *sequence, char **seed, int *exts));
-void opiehashlen __P((int algorithm, void *in, struct opie_otpkey *out, int n));
+int __opiereadrec(struct opie *);
+int __opiewriterec(struct opie *);
+int __opieparsechallenge(char *buffer, int *algorithm, int *sequence, char **seed, int *exts);
+void opiehashlen(int algorithm, void *in, struct opie_otpkey *out, int n);
 __END_DECLS
 
 #define opiestrncpy(dst, src, n) \
