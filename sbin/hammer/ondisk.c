@@ -79,6 +79,39 @@ find_buffer(struct volume_info *volume, hammer_off_t buf_offset)
 	return(NULL);
 }
 
+static
+struct volume_info *
+__alloc_volume(const char *volname, int oflags)
+{
+	struct volume_info *vol;
+	int i;
+
+	vol = malloc(sizeof(*vol));
+	if (vol == NULL)
+		err(1, "alloc_volume");
+	bzero(vol, sizeof(*vol));
+
+	vol->vol_no = -1;
+	vol->name = strdup(volname);
+	vol->fd = open(vol->name, oflags);
+	if (vol->fd < 0)
+		err(1, "alloc_volume: Failed to open %s", vol->name);
+
+	vol->size = 0;
+	vol->device_offset = 0;
+	vol->type = NULL;
+
+	vol->ondisk = malloc(HAMMER_BUFSIZE);
+	if (vol->ondisk == NULL)
+		err(1, "alloc_volume");
+	bzero(vol->ondisk, HAMMER_BUFSIZE);
+
+	for (i = 0; i < HAMMER_BUFLISTS; ++i)
+		TAILQ_INIT(&vol->buffer_lists[i]);
+
+	return(vol);
+}
+
 /*
  * Lookup the requested information structure and related on-disk buffer.
  * Missing structures are created.
@@ -89,29 +122,19 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	struct volume_info *vol;
 	struct volume_info *scan;
 	struct hammer_volume_ondisk *ondisk;
-	int i, n;
+	int n;
 	struct stat st1, st2;
 
 	/*
 	 * Allocate the volume structure
 	 */
-	vol = malloc(sizeof(*vol));
-	bzero(vol, sizeof(*vol));
-	for (i = 0; i < HAMMER_BUFLISTS; ++i)
-		TAILQ_INIT(&vol->buffer_lists[i]);
-	vol->name = strdup(filename);
-	vol->fd = open(vol->name, oflags);
-	if (vol->fd < 0) {
-		err(1, "setup_volume: %s: Open failed", vol->name);
-	}
+	vol = __alloc_volume(filename, oflags);
+	ondisk = vol->ondisk;
 
 	/*
 	 * Read or initialize the volume header
 	 */
-	vol->ondisk = ondisk = malloc(HAMMER_BUFSIZE);
-	if (isnew > 0) {
-		bzero(ondisk, HAMMER_BUFSIZE);
-	} else {
+	if (isnew == 0) {
 		n = readhammerbuf(vol, ondisk, 0);
 		if (n == -1) {
 			err(1, "setup_volume: %s: Read failed at offset 0",
@@ -128,7 +151,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 				"that this is a hammer volume", vol->name);
 		}
 		if (TAILQ_EMPTY(&VolList)) {
-			Hammer_FSId = vol->ondisk->vol_fsid;
+			Hammer_FSId = ondisk->vol_fsid;
 		} else if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId)) != 0) {
 			errx(1, "setup_volume: %s: FSId does match other "
 				"volumes!", vol->name);
