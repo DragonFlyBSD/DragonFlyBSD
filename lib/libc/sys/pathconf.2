@@ -87,27 +87,27 @@ while
 returns information about the file the link references.
 .Pp
 The available values are as follows:
-.Bl -tag -width 6n
-.It Li _PC_LINK_MAX
+.Bl -tag -width ".Dv _PC_CHOWN_RESTRICTED"
+.It Dv _PC_LINK_MAX
 The maximum file link count.
-.It Li _PC_MAX_CANON
+.It Dv _PC_MAX_CANON
 The maximum number of bytes in terminal canonical input line.
-.It Li _PC_MAX_INPUT
+.It Dv _PC_MAX_INPUT
 The minimum maximum number of bytes for which space is available in
 a terminal input queue.
-.It Li _PC_NAME_MAX
+.It Dv _PC_NAME_MAX
 The maximum number of bytes in a file name.
-.It Li _PC_PATH_MAX
+.It Dv _PC_PATH_MAX
 The maximum number of bytes in a pathname.
-.It Li _PC_PIPE_BUF
+.It Dv _PC_PIPE_BUF
 The maximum number of bytes which will be written atomically to a pipe.
-.It Li _PC_CHOWN_RESTRICTED
+.It Dv _PC_CHOWN_RESTRICTED
 Return 1 if appropriate privileges are required for the
 .Xr chown 2
 system call, otherwise 0.
-.It Li _PC_NO_TRUNC
+.It Dv _PC_NO_TRUNC
 Return 1 if file names longer than KERN_NAME_MAX are truncated.
-.It Li _PC_VDISABLE
+.It Dv _PC_VDISABLE
 Returns the terminal character disabling value.
 .El
 .Sh RETURN VALUES
