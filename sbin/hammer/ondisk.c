@@ -112,6 +112,34 @@ __alloc_volume(const char *volname, int oflags)
 	return(vol);
 }
 
+static void
+__add_volume(struct volume_info *vol)
+{
+	struct volume_info *scan;
+	struct stat st1, st2;
+
+	if (fstat(vol->fd, &st1) != 0)
+		errx(1, "add_volume: %s: Failed to stat", vol->name);
+
+	TAILQ_FOREACH(scan, &VolList, entry) {
+		if (scan->vol_no == vol->vol_no) {
+			errx(1, "add_volume: %s: Duplicate volume number %d "
+				"against %s",
+				vol->name, vol->vol_no, scan->name);
+		}
+		if (fstat(scan->fd, &st2) != 0) {
+			errx(1, "add_volume: %s: Failed to stat %s",
+				vol->name, scan->name);
+		}
+		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev)) {
+			errx(1, "add_volume: %s: Specified more than once",
+				vol->name);
+		}
+	}
+
+	TAILQ_INSERT_TAIL(&VolList, vol, entry);
+}
+
 /*
  * Lookup the requested information structure and related on-disk buffer.
  * Missing structures are created.
@@ -120,10 +148,8 @@ struct volume_info *
 setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 {
 	struct volume_info *vol;
-	struct volume_info *scan;
 	struct hammer_volume_ondisk *ondisk;
 	int n;
-	struct stat st1, st2;
 
 	/*
 	 * Allocate the volume structure
@@ -163,28 +189,8 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		vol->cache.modified = 1;
         }
 
-	if (fstat(vol->fd, &st1) != 0){
-		errx(1, "setup_volume: %s: Failed to stat", vol->name);
-	}
+	__add_volume(vol);
 
-	/*
-	 * Link the volume structure in
-	 */
-	TAILQ_FOREACH(scan, &VolList, entry) {
-		if (scan->vol_no == vol_no) {
-			errx(1, "setup_volume: %s: Duplicate volume number %d "
-				"against %s", vol->name, vol_no, scan->name);
-		}
-		if (fstat(scan->fd, &st2) != 0){
-			errx(1, "setup_volume: %s: Failed to stat %s",
-				vol->name, scan->name);
-		}
-		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev)) {
-			errx(1, "setup_volume: %s: Specified more than once",
-				vol->name);
-		}
-	}
-	TAILQ_INSERT_TAIL(&VolList, vol, entry);
 	return(vol);
 }
 
