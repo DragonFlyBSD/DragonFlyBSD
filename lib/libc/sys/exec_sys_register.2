@@ -1,0 +1,113 @@
+.\"
+.\" Copyright (c) 2016
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 7, 2016
+.Dt EXEC_SYS_REGISTER 2
+.Os
+.Sh NAME
+.Nm exec_sys_register ,
+.Nm exec_sys_unregister
+.Nd register/unregister for resident execution
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/resident.h
+.Ft int
+.Fn exec_sys_register "void *entry"
+.Ft int
+.Fn exec_sys_unregister "int id"
+.Sh DESCRIPTION
+The
+.Fn exec_sys_register
+system call registers the binary of the calling process for resident
+execution.
+This snapshots the vmspace and causes future
+.Fn exec Ns s
+of the specified binary to use the snapshot directly rather than load
+and relocate a new copy.
+.Pp
+The
+.Fn exec_sys_unregister
+system call unregisters a resident binary identified by
+.Ar id ,
+or the binary of the calling process if
+.Ar id
+is -1 ,
+or all registered binaries if
+.Ar id
+is -2.
+.Pp
+Both can only be done by the superuser.
+.Sh RETURN VALUES
+.Rv -std exec_sys_register exec_sys_unregister
+.Sh ERRORS
+The
+.Fn exec_sys_register
+system call will fail if one of the following occurs:
+.Bl -tag -width Er
+.It Bq Er EEXIST
+The binary is already resident.
+.It Bq Er ENOENT
+No associated vnode exists.
+.It Bq Er EPERM
+The caller does not have sufficient permissions.
+.El
+.Pp
+The
+.Fn exec_sys_unregister
+system call will fail if one of the following occurs:
+.Bl -tag -width Er
+.It Bq Er ENOENT
+The specified
+.Fa id
+could not be found.
+.It Bq Er EPERM
+The caller does not have sufficient permissions.
+.El
+.Sh SEE ALSO
+.Xr resident 8
+.Sh HISTORY
+The
+.Nm
+and
+.Nm exec_sys_unregister
+system calls first appeared in
+.Dx 1.0 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+and
+.Nm exec_sys_unregister
+system calls were written by
+.An Matthew Dillon
+and this manual page was written by
+.An Sascha Wildner .
