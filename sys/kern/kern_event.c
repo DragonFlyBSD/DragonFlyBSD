@@ -838,6 +838,14 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			lwkt_gettoken(tok);
 			if (kq->kq_count == 0) {
 				kq->kq_sleep_cnt++;
+				if (__predict_false(kq->kq_sleep_cnt == 0)) {
+					/*
+					 * Guard against possible wrapping.  And
+					 * set it to 2, so that kqueue_wakeup()
+					 * can wake everyone up.
+					 */
+					kq->kq_sleep_cnt = 2;
+				}
 				error = tsleep(kq, PCATCH, "kqread", timeout);
 
 				/* don't restart after signals... */
