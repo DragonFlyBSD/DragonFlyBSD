@@ -48,7 +48,6 @@ int DebugOpt;
 
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
-int64_t UndoBufferSize;
 int	UseReadBehind = -4;
 int	UseReadAhead = 4;
 int	AssertOnFailure = 1;
@@ -740,7 +739,7 @@ count_freemap(struct volume_info *vol)
  * Format the undomap for the root volume.
  */
 void
-format_undomap(struct volume_info *root_vol)
+format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 {
 	const int undo_zone = HAMMER_ZONE_UNDO_INDEX;
 	hammer_off_t undo_limit;
@@ -767,7 +766,7 @@ format_undomap(struct volume_info *root_vol)
 	 * Changing this minimum is rather dangerous as complex filesystem
 	 * operations can cause the UNDO FIFO to fill up otherwise.
 	 */
-	undo_limit = UndoBufferSize;
+	undo_limit = *undo_buffer_size;
 	if (undo_limit == 0) {
 		undo_limit = (ondisk->vol_buf_end - ondisk->vol_buf_beg) / 1000;
 		if (undo_limit < 500*1024*1024)
@@ -779,7 +778,7 @@ format_undomap(struct volume_info *root_vol)
 		undo_limit = HAMMER_BIGBLOCK_SIZE;
 	if (undo_limit > HAMMER_BIGBLOCK_SIZE * HAMMER_UNDO_LAYER2)
 		undo_limit = HAMMER_BIGBLOCK_SIZE * HAMMER_UNDO_LAYER2;
-	UndoBufferSize = undo_limit;
+	*undo_buffer_size = undo_limit;
 
 	blockmap = &ondisk->vol0_blockmap[undo_zone];
 	bzero(blockmap, sizeof(*blockmap));

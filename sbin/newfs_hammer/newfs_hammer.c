@@ -48,6 +48,7 @@ static void usage(void);
 static int ForceOpt = 0;
 static int64_t BootAreaSize;
 static int64_t MemAreaSize;
+static int64_t UndoBufferSize;
 static int HammerVersion = -1;
 
 #define GIG	(1024LL*1024*1024)
@@ -549,7 +550,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 * vol0_stat_freebigblocks whenever a new big-block
 		 * is allocated for undo zone.
 		 */
-		format_undomap(vol);
+		format_undomap(vol, &UndoBufferSize);
 		assert(ondisk->vol0_stat_bigblocks == 0);
 		ondisk->vol0_stat_bigblocks = ondisk->vol0_stat_freebigblocks;
 

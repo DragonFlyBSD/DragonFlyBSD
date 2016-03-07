@@ -142,7 +142,6 @@ struct zone_stat {
 
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
-extern int64_t UndoBufferSize;
 extern int DebugOpt;
 extern const char *ScoreBoardFile;
 extern const char *RestrictTarget;
@@ -176,7 +175,7 @@ hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
 				struct hammer_blockmap_layer1 *layer1,
 				struct hammer_blockmap_layer2 *layer2,
 				int *errorp);
-void format_undomap(struct volume_info *root_vol);
+void format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size);
 
 void *alloc_btree_element(hammer_off_t *offp,
 			 struct buffer_info **data_bufferp);
