@@ -41,7 +41,7 @@ static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
 static void trim_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label);
-static hammer_off_t format_root(const char *label);
+static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
 static void usage(void);
 
@@ -556,7 +556,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 * vol0_stat_freebigblocks whenever a new big-block
 		 * is allocated for required zones.
 		 */
-		ondisk->vol0_btree_root = format_root(label);
+		ondisk->vol0_btree_root = format_root_directory(label);
 		++ondisk->vol0_stat_inodes;	/* root inode */
 
 		rel_volume(vol);
@@ -575,7 +575,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
  */
 static
 hammer_off_t
-format_root(const char *label)
+format_root_directory(const char *label)
 {
 	hammer_off_t btree_off;
 	hammer_off_t pfsd_off;
@@ -615,6 +615,9 @@ format_root(const char *label)
 	if (HammerVersion >= HAMMER_VOL_VERSION_SIX)
 		idata->cap_flags |= HAMMER_INODE_CAP_DIRHASH_ALG1;
 
+	/*
+	 * Populate the PFS data for the root PFS.
+	 */
 	pfsd->sync_low_tid = 1;
 	pfsd->sync_beg_tid = 0;
 	pfsd->sync_end_tid = 0;	/* overriden by vol0_next_tid on pfs0 */
@@ -631,6 +634,9 @@ format_root(const char *label)
 	bnode->count = 2;
 	bnode->type = HAMMER_BTREE_TYPE_LEAF;
 
+	/*
+	 * Create the first node element for the inode.
+	 */
 	elm = &bnode->elms[0];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION |
@@ -647,6 +653,9 @@ format_root(const char *label)
 	elm->leaf.data_len = sizeof(*idata);
 	elm->leaf.data_crc = crc32(idata, HAMMER_INODE_CRCSIZE);
 
+	/*
+	 * Create the second node element for the PFS data.
+	 */
 	elm = &bnode->elms[1];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION |
