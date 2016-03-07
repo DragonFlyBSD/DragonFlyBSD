@@ -2,157 +2,95 @@
 # compile flags must support the minimum CPU type for each architecture but
 # may tune support for more advanced processors.
 
+generic_x86_64=	x86_64 mmx sse sse2
+
 .if !defined(CPUTYPE) || empty(CPUTYPE) || ${CPUTYPE} == "native"
 
-. if defined(CPUTYPE) && !empty(CPUTYPE) && ${CPUTYPE} == "native"
-_CPUCFLAGS = -march=native
+. if defined(CPUTYPE) && ${CPUTYPE:Mnative}
+_CPUCFLAGS=	-march=native
 . else
-_CPUCFLAGS =
+_CPUCFLAGS=
 . endif
 
-. if ${MACHINE_ARCH} == "i386"
-MACHINE_CPU = i486 i386
-. elif ${MACHINE_ARCH} == "x86_64"
-MACHINE_CPU = x86_64 sse2 sse mmx
-. endif
+MACHINE_CPU=	${generic_${MACHINE_ARCH}}
 
 .else
-
-_CPUCFLAGS_FIXUP =
-
-# Old CPUTYPE compat shim
-. if ${CPUTYPE} == "i586" \
-  || ${CPUTYPE} == "k5"
-CPUTYPE = pentium
-. elif ${CPUTYPE} == "i586/mmx"
-CPUTYPE = pentium-mmx
-. elif ${CPUTYPE} == "p2"
-CPUTYPE = pentium2
-. elif ${CPUTYPE} == "pentium3m" \
-    || ${CPUTYPE} == "p3m" \
-    || ${CPUTYPE} == "p3" \
-    || ${CPUTYPE} == "c3-2"
-CPUTYPE = pentium3
-. elif ${CPUTYPE} == "pentium4m" \
-    || ${CPUTYPE} == "pentium-m" \
-    || ${CPUTYPE} == "p-m" \
-    || ${CPUTYPE} == "p4"\
-    || ${CPUTYPE} == "p4m"
-CPUTYPE = pentium4
-. elif ${CPUTYPE} == "crusoe"
-CPUTYPE = pentiumpro
-_CPUCFLAGS_FIXUP = -falign-functions=0 -falign-jumps=0 -falign-loops=0
-. elif ${CPUTYPE} == "i686"
-CPUTYPE = pentiumpro
-. elif ${CPUTYPE} == "k6-2"
-CPUTYPE = k6-3
-. elif ${CPUTYPE} == "k7" \
-    || ${CPUTYPE} == "athlon-tbird"
-CPUTYPE = athlon
-. elif ${CPUTYPE} == "athlon-mp" \
-    || ${CPUTYPE} == "athlon-4"
-CPUTYPE = athlon-xp
-. elif ${CPUTYPE} == "k8" \
-    || ${CPUTYPE} == "opteron" \
-    || ${CPUTYPE} == "athlon-fx"
-CPUTYPE = athlon64
-. elif ${CPUTYPE} == "k8-sse3" \
-    || ${CPUTYPE} == "opteron-sse3"
-CPUTYPE = athlon64-sse3
-. elif ${CPUTYPE} == "amdfam10"
-CPUTYPE = barcelona
-. elif ${CPUTYPE} == "c3"
-CPUTYPE = winchip2
-. elif ${CPUTYPE} == "core"
-CPUTYPE = nocona
-. elif ${CPUTYPE} == "corei7-avx" \
-    || ${CPUTYPE} == "corei7-avx-i" \
-    || ${CPUTYPE} == "corei7-avx2"
-CPUTYPE = corei7
-. elif ${CPUTYPE} == "atom"
-CPUTYPE = core2
-. elif ${CPUTYPE} == "bdver2"
-CPUTYPE = bdver1
-. elif ${CPUTYPE} == "btver1"
-CPUTYPE = barcelona
-. endif
 
 ###############################################################################
 # Logic to set up correct gcc optimization flag.  This must be included
 # after /etc/make.conf so it can react to the local value of CPUTYPE
 # defined therein.  Consult:
-#	http://gcc.gnu.org/onlinedocs/gcc/i386-and-x86-64-Options.html
+# https://gcc.gnu.org/onlinedocs/gcc-4.7.4/gcc/i386-and-x86-64-Options.html
+###############################################################################
 
-_CPUCFLAGS = -march=${CPUTYPE} ${_CPUCFLAGS_FIXUP}
+# Some GCC cpu-types have aliases, rename them to a single identifier
+# If the value for cpu-type is not recognized, throw it away and use -native
+
+. if ${CPUTYPE} == "k8" \
+  || ${CPUTYPE} == "opteron" \
+  || ${CPUTYPE} == "athlon-fx"
+CT2=	athlon64
+. elif ${CPUTYPE} == "k8-sse3" \
+    || ${CPUTYPE} == "opteron-sse3"
+CT2=	athlon64-sse3
+. elif ${CPUTYPE} == "amdfam10"
+CT2=	barcelona
+. else
+CT2=	${CPUTYPE}
+. endif
+
+known_x86_64=	athlon64 \
+		athlon64-sse3 \
+		atom \
+		barcelona \
+		bdver1 \
+		bdver2 \
+		btver1 \
+		core-avx-i \
+		core2 \
+		corei7 \
+		corei7-avx \
+		nocona \
+		znver1
+
+. if defined(known_${MACHINE_ARCH}) && \
+     !empty(known_${MACHINE_ARCH}:M${CT2})		# CID: Check CPUTYPE
 
 # Set up the list of CPU features based on the CPU type.  This is an
 # unordered list to make it easy for client makefiles to test for the
 # presence of a CPU feature.
 
-. if ${MACHINE_ARCH} == "i386"
-.  if ${CPUTYPE} == "bdver1"
-MACHINE_CPU = abm 3dnow mmx sse4.2 sse4.1 sse3 sse2 sse \
-	athlon-xp athlon k7 k6 k5 i586
-.  elif ${CPUTYPE} == "barcelona"
-MACHINE_CPU = abm 3dnow mmx sse4a sse3 sse2 sse \
-	athlon-xp athlon k7 k6 k5 i586
-.  elif ${CPUTYPE} == "athlon64-sse3"
-MACHINE_CPU = 3dnow mmx sse3 sse2 sse athlon-xp athlon k7 k6 k5 i586
-.  elif ${CPUTYPE} == "athlon64"
-MACHINE_CPU = 3dnow mmx sse2 sse athlon-xp athlon k7 k6 k5 i586
-.  elif ${CPUTYPE} == "athlon-xp"
-MACHINE_CPU = 3dnow mmx sse athlon-xp athlon k7 k6 k5 i586
-.  elif ${CPUTYPE} == "athlon"
-MACHINE_CPU = 3dnow mmx athlon k7 k6 k5 i586
-.  elif ${CPUTYPE} == "k6-3"
-MACHINE_CPU = 3dnow mmx k6 k5 i586
-.  elif ${CPUTYPE} == "k6"
-MACHINE_CPU = mmx k6 k5 i586
-.  elif ${CPUTYPE} == "geode"
-MACHINE_CPU = 3dnow mmx i686 i586
-.  elif ${CPUTYPE} == "corei7"
-MACHINE_CPU = sse4.2 sse4.1 ssse3 sse3 sse2 sse mmx i686 i586
-.  elif ${CPUTYPE} == "core2"
-MACHINE_CPU = ssse3 sse3 sse2 sse mmx i686 i586
-.  elif ${CPUTYPE} == "nocona"
-MACHINE_CPU = sse3 sse2 sse mmx i686 i586
-.  elif ${CPUTYPE} == "prescott"
-MACHINE_CPU = sse3 sse2 sse mmx i686 i586
-.  elif ${CPUTYPE} == "pentium4"
-MACHINE_CPU = sse2 sse mmx i686 i586
-.  elif ${CPUTYPE} == "pentium3"
-MACHINE_CPU = sse mmx i686 i586
-.  elif ${CPUTYPE} == "pentium2"
-MACHINE_CPU = mmx i686 i586
-.  elif ${CPUTYPE} == "pentiumpro"
-MACHINE_CPU = i686 i586
-.  elif ${CPUTYPE} == "winchip2"
-MACHINE_CPU = 3dnow mmx
-.  elif ${CPUTYPE} == "winchip-c6"
-MACHINE_CPU = mmx
-.  elif ${CPUTYPE} == "pentium-mmx"
-MACHINE_CPU = mmx i586
-.  elif ${CPUTYPE} == "pentium"
-MACHINE_CPU = i586
-.  endif
-MACHINE_CPU += i386 i486
-. elif ${MACHINE_ARCH} == "x86_64"
-.  if ${CPUTYPE} == "bdver1"
-MACHINE_CPU = k8 abm 3dnow sse4.2 sse4.1 sse3
-.  elif ${CPUTYPE} == "barcelona"
-MACHINE_CPU = k8 abm 3dnow sse4a sse3
-.  elif ${CPUTYPE} == "athlon64-sse3"
-MACHINE_CPU = k8 3dnow sse3
-.  elif ${CPUTYPE} == "athlon64"
-MACHINE_CPU = k8 3dnow
-.  elif ${CPUTYPE} == "corei7"
-MACHINE_CPU = sse4.2 sse4.1 ssse3 sse3
-.  elif ${CPUTYPE} == "core2"
-MACHINE_CPU = ssse3 sse3
-.  elif ${CPUTYPE} == "nocona"
-MACHINE_CPU = sse3
-.  endif
-MACHINE_CPU += sse2 sse mmx x86_64
-. endif
+.  if ${MACHINE_ARCH} == "x86_64"
+C_nocona=	${generic_x86_64} sse3
+C_core2=	${C_nocona} ssse3
+C_corei7=	${C_core2} sse41 sse42
+C_corei7avx=	${C_corei7} avx aes pclmul
+C_atom=		${C_core2}
+C_athlon64=	${generic_x86_64} 3dnow
+C_athlon64sse3=	${C_athlon64} sse3
+C_barcelona=	${C_athlon64sse3} sse4a abm
+C_bdver1=	${C_corei7avx} sse4a abm fma4 xop lwp cx16
+C_bdver2=	${C_bdver1} bmi f16c fma tbm
+C_btver1=	${C_barcelona} cx16
+C_coreavxi=	${C_corei7avx} fsgsbase rdrnd f16c
+C_znver1=	${C_corei7avx} bmi bmi2 f16c fma fsgsbase avx2 adcx rdseed \
+		mwaitx sha clzero cx16 movbe sse4a abm xsavec xsaves \
+		clflushop popcnt
+
+.  endif	# end of x86_64 feature list
+
+_CPUCFLAGS=	-march=${CT2}
+MACHINE_CPU=	${C_${CT2:S|-||}}
+
+. else							# CID: Check CPUTYPE
+
+# CPUTYPE was defined and was not empty, but the value does not match known
+# CPU types of the defined MACHINE_ARCH.  Set -march to native and define
+# generic features based on MACHINE_ARCH
+
+_CPUCFLAGS=	-march=native
+MACHINE_CPU=	${generic_${MACHINE_ARCH}}
+
+. endif							# CID: Check CPUTYPE
 
 .endif
