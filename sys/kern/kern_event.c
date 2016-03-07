@@ -1430,11 +1430,13 @@ static void
 kqueue_wakeup(struct kqueue *kq)
 {
 	if (kq->kq_sleep_cnt) {
-		if (kq->kq_sleep_cnt == 1)
+		u_int sleep_cnt = kq->kq_sleep_cnt;
+
+		kq->kq_sleep_cnt = 0;
+		if (sleep_cnt == 1)
 			wakeup_one(kq);
 		else
 			wakeup(kq);
-		kq->kq_sleep_cnt = 0;
 	}
 	KNOTE(&kq->kq_kqinfo.ki_note, 0);
 }
