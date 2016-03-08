@@ -255,10 +255,7 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Pre-size the blockmap layer1/layer2 infrastructure to the zone
-	 * limit.  If we do this the filesystem does not have to allocate
-	 * new layer2 blocks which reduces the chances of the reblocker
-	 * having to fallback to an extremely inefficient algorithm.
+	 * Print information stored in the root volume header.
 	 */
 	vol = get_root_volume();
 	vol->cache.modified = 1;
