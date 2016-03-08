@@ -152,8 +152,9 @@ struct sysctl_oid {
 	struct lock	oid_lock;	/* per-node lock */
 };
 
-#define SYSCTL_IN(r, p, l) (r->newfunc)(r, p, l)
-#define SYSCTL_OUT(r, p, l) (r->oldfunc)(r, p, l)
+#define SYSCTL_IN(r, p, l)	(r->newfunc)(r, p, l)
+#define SYSCTL_OUT(r, p, l)	(r->oldfunc)(r, p, l)
+#define SYSCTL_OUT_STR(r, p)	(r->oldfunc)(r, p, strlen(p) + 1)
 
 int sysctl_handle_int(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_long(SYSCTL_HANDLER_ARGS);
