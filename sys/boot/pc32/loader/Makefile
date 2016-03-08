@@ -27,10 +27,10 @@ HAVE_ISABUS=	yes
 
 BOOT_DLOADER=	yes
 CFLAGS+=	-I${.CURDIR}/../../dloader
-.if exists(${.OBJDIR}/../../dloader/libdloader.a)
-LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
+.if exists(${.OBJDIR}/../../dloader32/libdloader32.a)
+LIBDLOADER=	${.OBJDIR}/../../dloader32/libdloader32.a
 .else
-LIBDLOADER=	${.CURDIR}/../../dloader/libdloader.a
+LIBDLOADER=	${.CURDIR}/../../dloader32/libdloader32.a
 .endif
 
 .if defined(LOADER_BZIP2_SUPPORT)

@@ -2,17 +2,17 @@
 #
 #
 
-.if ${MACHINE_ARCH} == "x86_64"
-.MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE_PLATFORM=pc32 REALLY_X86_64=true
-.else
-.MAKEFLAGS:  REALLY_X86_64=false
-.endif
-
-.if exists(../${MACHINE_PLATFORM}/Makefile.inc)
-.include "../${MACHINE_PLATFORM}/Makefile.inc"
-.endif
-
 SRCS=	subs.c config.c cmds.c
+
+# For i386, dloader32/Makefile takes care of the extra CFLAGS
+.if ${MACHINE_ARCH} != "i386"
+CFLAGS+=	-fPIC -mno-red-zone
+CFLAGS+=	-ffreestanding
+.endif
+
+.if ${MACHINE_ARCH} == "x86_64"
+CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
+.endif
 
 .if HAVE_PNP
 CFLAGS+=	-DHAVE_PNP
@@ -28,7 +28,7 @@ rel_open.o: ../common/rel_open.c
 .include <bsd.prog.mk>
 .else
 OBJS+=		stack_protector.o
-LIB=		dloader
+LIB?=		dloader
 INTERNALLIB=	yes
 
 stack_protector.o: ../../libkern/stack_protector.c
