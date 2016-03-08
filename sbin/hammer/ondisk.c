@@ -246,12 +246,9 @@ get_volume(int32_t vol_no)
 		if (vol->vol_no == vol_no)
 			break;
 	}
-	if (vol == NULL) {
-		if (AssertOnFailure)
-			errx(1, "get_volume: Volume %d does not exist!",
-				vol_no);
-		return(NULL);
-	}
+	if (vol == NULL)
+		errx(1, "get_volume: Volume %d does not exist!", vol_no);
+
 	++vol->cache.refs;
 	/* not added to or removed from hammer cache */
 	return(vol);
@@ -294,11 +291,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	}
 	if (buf_offset == HAMMER_OFF_BAD)
 		return(NULL);
+	assert((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
 
-	if (AssertOnFailure) {
-		assert((buf_offset & HAMMER_OFF_ZONE_MASK) ==
-		       HAMMER_ZONE_RAW_BUFFER);
-	}
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = get_volume(vol_no);
 	if (volume == NULL)

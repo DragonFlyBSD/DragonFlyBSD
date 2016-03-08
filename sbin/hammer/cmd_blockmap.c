@@ -273,7 +273,6 @@ hammer_cmd_checkmap(void)
 	printf("done\n");
 
 	dump_collect_table();
-	AssertOnFailure = 1;
 }
 
 static void
@@ -350,8 +349,7 @@ check_btree_node(hammer_off_t node_offset, int depth)
 				collect_btree_leaf(elm);
 			break;
 		default:
-			if (AssertOnFailure)
-				assert(0);
+			assert(!AssertOnFailure);
 			break;
 		}
 	}
@@ -376,8 +374,7 @@ check_undo(hammer_blockmap_t undomap)
 			collect_undo(scan_offset, head);
 			break;
 		default:
-			if (AssertOnFailure)
-				assert(0);
+			assert(!AssertOnFailure);
 			break;
 		}
 		if ((head->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||

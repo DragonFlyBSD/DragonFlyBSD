@@ -142,8 +142,6 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	print_btree_node(node_offset, &search, depth, HAMMER_MAX_TID,
 			 left_bound, right_bound, stats);
 
-	AssertOnFailure = 1;
-
 	if (VerboseOpt) {
 		hammer_print_zone_stat(stats);
 		hammer_cleanup_zone_stat(stats);
