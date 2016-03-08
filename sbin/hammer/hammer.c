@@ -47,7 +47,7 @@ int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;
 char *SshPort;
-int ForceYesOpt = 0;
+int ForceYesOpt;
 int CompressOpt;
 int ForceOpt;
 int RunningIoctl;

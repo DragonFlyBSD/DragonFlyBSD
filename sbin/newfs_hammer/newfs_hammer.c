@@ -45,7 +45,7 @@ static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
 static void usage(void);
 
-static int ForceOpt = 0;
+static int ForceOpt;
 static int64_t BootAreaSize;
 static int64_t MemAreaSize;
 static int64_t UndoBufferSize;
