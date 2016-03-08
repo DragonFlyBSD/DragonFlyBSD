@@ -1,3 +1,9 @@
+.if ${MACHINE_ARCH} == "x86_64"
+.MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE_PLATFORM=pc32 REALLY_X86_64=true
+.else
+.MAKEFLAGS:  REALLY_X86_64=false
+.endif
+
 # must come before boot2
 SUBDIR=	btx
 
