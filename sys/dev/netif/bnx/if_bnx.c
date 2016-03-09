@@ -2504,12 +2504,11 @@ bnx_attach(device_t dev)
 	}
 
 	std = &sc->bnx_rx_std_ring;
-	lwkt_create(bnx_rx_std_refill_ithread, std, NULL,
-	    &std->bnx_rx_std_ithread, TDF_NOSTART | TDF_INTTHREAD, std_cpuid,
+	lwkt_create(bnx_rx_std_refill_ithread, std, &std->bnx_rx_std_ithread,
+	    NULL, TDF_NOSTART | TDF_INTTHREAD, std_cpuid,
 	    "%s std", device_get_nameunit(dev));
-	lwkt_setpri(&std->bnx_rx_std_ithread, TDPRI_INT_MED);
-	std->bnx_rx_std_ithread.td_preemptable = lwkt_preempt;
-	sc->bnx_flags |= BNX_FLAG_STD_THREAD;
+	lwkt_setpri(std->bnx_rx_std_ithread, TDPRI_INT_MED);
+	std->bnx_rx_std_ithread->td_preemptable = lwkt_preempt;
 
 	return(0);
 fail:
@@ -2521,6 +2520,7 @@ static int
 bnx_detach(device_t dev)
 {
 	struct bnx_softc *sc = device_get_softc(dev);
+	struct bnx_rx_std_ring *std = &sc->bnx_rx_std_ring;
 
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -2533,15 +2533,13 @@ bnx_detach(device_t dev)
 		ether_ifdetach(ifp);
 	}
 
-	if (sc->bnx_flags & BNX_FLAG_STD_THREAD) {
-		struct bnx_rx_std_ring *std = &sc->bnx_rx_std_ring;
-
+	if (std->bnx_rx_std_ithread != NULL) {
 		tsleep_interlock(std, 0);
 
-		if (std->bnx_rx_std_ithread.td_gd == mycpu) {
+		if (std->bnx_rx_std_ithread->td_gd == mycpu) {
 			bnx_rx_std_refill_stop(std);
 		} else {
-			lwkt_send_ipiq(std->bnx_rx_std_ithread.td_gd,
+			lwkt_send_ipiq(std->bnx_rx_std_ithread->td_gd,
 			    bnx_rx_std_refill_stop, std);
 		}
 
@@ -6135,8 +6133,8 @@ bnx_rx_std_refill_sched_ipi(void *xret)
 	atomic_set_int(&std->bnx_rx_std_refill, ret->bnx_rx_mask);
 	cpu_sfence();
 
-	KKASSERT(std->bnx_rx_std_ithread.td_gd == gd);
-	lwkt_schedule(&std->bnx_rx_std_ithread);
+	KKASSERT(std->bnx_rx_std_ithread->td_gd == gd);
+	lwkt_schedule(std->bnx_rx_std_ithread);
 
 	crit_exit_gd(gd);
 }
@@ -6152,8 +6150,8 @@ bnx_rx_std_refill_stop(void *xstd)
 	std->bnx_rx_std_stop = 1;
 	cpu_sfence();
 
-	KKASSERT(std->bnx_rx_std_ithread.td_gd == gd);
-	lwkt_schedule(&std->bnx_rx_std_ithread);
+	KKASSERT(std->bnx_rx_std_ithread->td_gd == gd);
+	lwkt_schedule(std->bnx_rx_std_ithread);
 
 	crit_exit_gd(gd);
 }
@@ -6186,11 +6184,10 @@ bnx_rx_std_refill_sched(struct bnx_rx_ret_ring *ret,
 	atomic_set_int(&std->bnx_rx_std_refill, ret->bnx_rx_mask);
 	cpu_sfence();
 	if (atomic_poll_acquire_int(&std->bnx_rx_std_running)) {
-		if (std->bnx_rx_std_ithread.td_gd == gd) {
-			lwkt_schedule(&std->bnx_rx_std_ithread);
+		if (std->bnx_rx_std_ithread->td_gd == gd) {
+			lwkt_schedule(std->bnx_rx_std_ithread);
 		} else {
-			lwkt_send_ipiq(
-			    std->bnx_rx_std_ithread.td_gd,
+			lwkt_send_ipiq(std->bnx_rx_std_ithread->td_gd,
 			    bnx_rx_std_refill_sched_ipi, ret);
 		}
 	}

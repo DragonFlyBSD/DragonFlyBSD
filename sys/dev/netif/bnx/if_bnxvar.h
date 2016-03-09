@@ -174,7 +174,7 @@ struct bnx_rx_std_ring {
 	int			bnx_rx_std_refill __cachealign;
 	int			bnx_rx_std_used;
 	u_int			bnx_rx_std_running;
-	struct thread		bnx_rx_std_ithread;
+	struct thread		*bnx_rx_std_ithread;
 
 	struct bnx_rx_buf	bnx_rx_std_buf[BGE_STD_RX_RING_CNT];
 
@@ -322,7 +322,6 @@ struct bnx_softc {
 #define BNX_FLAG_TSO		0x00000200
 #define BNX_FLAG_NO_EEPROM	0x10000000
 #define BNX_FLAG_RXTX_BUNDLE	0x20000000
-#define BNX_FLAG_STD_THREAD	0x40000000
 #define BNX_FLAG_STATUS_HASTAG	0x80000000
 
 	uint32_t		bnx_mfw_flags;	/* Management F/W flags */
