@@ -90,6 +90,7 @@ __alloc_volume(const char *volname, int oflags)
 	bzero(vol, sizeof(*vol));
 
 	vol->vol_no = -1;
+	vol->rdonly = (oflags == O_RDONLY);
 	vol->name = strdup(volname);
 	vol->fd = open(vol->name, oflags);
 	if (vol->fd < 0)
@@ -889,6 +890,9 @@ static int
 writehammerbuf(struct volume_info *vol, const void *data, int64_t offset)
 {
 	ssize_t n;
+
+	if (vol->rdonly)
+		return(0);
 
 	n = pwrite(vol->fd, data, HAMMER_BUFSIZE, offset);
 	if (n != HAMMER_BUFSIZE)
