@@ -279,6 +279,12 @@ main(int ac, char **av)
 		free(ptr);
 	}
 
+	uuid_name_lookup(&Hammer_FSType, "DragonFly HAMMER", &status);
+	if (status != uuid_s_ok) {
+		errx(1, "uuids file does not have the DragonFly "
+			"HAMMER filesystem type");
+	}
+
 	/*
 	 * Parse commands
 	 */
@@ -519,12 +525,6 @@ main(int ac, char **av)
 	if (strcmp(av[0], "volume-blkdevs") == 0) {
 		hammer_cmd_volume_blkdevs(av + 1, ac - 1, av[0]);
 		exit(0);
-	}
-
-	uuid_name_lookup(&Hammer_FSType, "DragonFly HAMMER", &status);
-	if (status != uuid_s_ok) {
-		errx(1, "uuids file does not have the DragonFly "
-			"HAMMER filesystem type");
 	}
 
 	if (strcmp(av[0], "show") == 0) {
