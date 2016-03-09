@@ -52,6 +52,7 @@ int	UseReadBehind = -4;
 int	UseReadAhead = 4;
 int	AssertOnFailure = 1;
 struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
+static int valid_hammer_volumes;
 
 static __inline
 int
@@ -183,7 +184,7 @@ load_volume(const char *filename, int oflags)
 			"that this is a hammer volume", vol->name);
 	}
 
-	if (TAILQ_EMPTY(&VolList)) {
+	if (valid_hammer_volumes++ == 0) {
 		Hammer_FSId = ondisk->vol_fsid;
 	} else if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
 		errx(1, "load_volume: %s: FSId does match other volumes!",
