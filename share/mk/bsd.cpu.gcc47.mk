@@ -3,6 +3,7 @@
 # may tune support for more advanced processors.
 
 generic_x86_64=	x86_64 mmx sse sse2
+generic_i386=	i386
 
 .if !defined(CPUTYPE) || empty(CPUTYPE) || ${CPUTYPE} == "native"
 
@@ -50,8 +51,11 @@ known_x86_64=	athlon64 \
 		core2 \
 		corei7 \
 		corei7-avx \
+		i386 \
 		nocona \
 		znver1
+
+known_i386=	i386
 
 . if defined(known_${MACHINE_ARCH}) && \
      !empty(known_${MACHINE_ARCH}:M${CT2})		# CID: Check CPUTYPE
@@ -61,6 +65,7 @@ known_x86_64=	athlon64 \
 # presence of a CPU feature.
 
 .  if ${MACHINE_ARCH} == "x86_64"
+C_i386=		${generic_i386}
 C_nocona=	${generic_x86_64} sse3
 C_core2=	${C_nocona} ssse3
 C_corei7=	${C_core2} sse41 sse42
@@ -78,6 +83,12 @@ C_znver1=	${C_corei7avx} bmi bmi2 f16c fma fsgsbase avx2 adcx rdseed \
 		clflushop popcnt
 
 .  endif	# end of x86_64 feature list
+
+# i386 used for 32-bit BIOS-based boot loaders
+
+.  if ${MACHINE_ARCH} == "i386"
+C_i386=		${generic_i386}
+.  endif	# end of i386 feature list
 
 _CPUCFLAGS=	-march=${CT2}
 MACHINE_CPU=	${C_${CT2:S|-||}}
