@@ -4,8 +4,8 @@ PROG=	units
 FILES=	units.lib
 FILESDIR=	${SHAREDIR}/misc
 
-LDADD+=	-lprivate_edit -lprivate_termcap
-DPADD+=	${LIBEDIT} ${LIBTERMCAP}
+LDADD+=	-lprivate_edit -lprivate_ncurses
+DPADD+=	${LIBEDIT} ${LIBNCURSES}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

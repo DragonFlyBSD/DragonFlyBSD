@@ -48,8 +48,8 @@ CFLAGS+=-DVER=12 -DSUBVER=0 -DNONAP -DUIDSCORE
 SRCS=	main.c object.c create.c tok.c display.c global.c data.c io.c \
 	monster.c store.c diag.c help.c config.c nap.c bill.c scores.c \
 	signal.c moreobj.c movem.c regen.c fortune.c savelev.c
-DPADD=	${LIBTERMCAP}
-LDADD=	-lprivate_termcap
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 FILES=	larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn

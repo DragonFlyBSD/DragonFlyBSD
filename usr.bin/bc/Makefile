@@ -5,8 +5,8 @@ SRCS=		bc.y scan.l tty.c y.tab.h
 CFLAGS+=	-I. -I${.CURDIR}
 WARNS?=		3
 
-DPADD=		${LIBEDIT} ${LIBTERMCAP}
-LDADD=		-lprivate_edit -lprivate_termcap
+DPADD=		${LIBEDIT} ${LIBNCURSES}
+LDADD=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 SCRIPTS=	bc.library

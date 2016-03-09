@@ -3,8 +3,8 @@
 PROG=	pppctl
 MAN=	pppctl.8
 WARNS?=	2
-LDADD+= -lprivate_edit -lprivate_termcap
-DPADD+= ${LIBEDIT} ${LIBTERMCAP}
+LDADD+= -lprivate_edit -lprivate_ncurses
+DPADD+= ${LIBEDIT} ${LIBNCURSES}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

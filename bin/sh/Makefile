@@ -43,13 +43,13 @@ LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 DPADD+= /usr/lib/libtermcap.a
 LDADD+= -ltermcap
 .  else
-DPADD+= ${LIBTERMCAP}
-LDADD+= -lprivate_termcap
+DPADD+= ${LIBNCURSES}
+LDADD+= -lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
 .  endif
 .else
-DPADD= ${LIBEDIT} ${LIBTERMCAP}
-LDADD= -lprivate_edit -lprivate_termcap
+DPADD= ${LIBEDIT} ${LIBNCURSES}
+LDADD= -lprivate_edit -lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 

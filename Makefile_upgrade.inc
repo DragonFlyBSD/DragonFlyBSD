@@ -3067,6 +3067,24 @@ TO_REMOVE+=/usr/lib/profile/libmenu.a
 TO_REMOVE+=/usr/lib/profile/libmenuw.a
 TO_REMOVE+=/usr/lib/profile/libpanel.a
 TO_REMOVE+=/usr/lib/profile/libpanelw.a
+TO_REMOVE+=/lib/priv/libprivate_termcap.so
+TO_REMOVE+=/lib/priv/libprivate_termcapw.so
+TO_REMOVE+=/lib/priv/libprivate_termlib.so
+TO_REMOVE+=/lib/priv/libprivate_termlibw.so
+TO_REMOVE+=/lib/priv/libprivate_tinfo.so
+TO_REMOVE+=/lib/priv/libprivate_tinfow.so
+TO_REMOVE+=/usr/lib/priv/libprivate_termcap.a
+TO_REMOVE+=/usr/lib/priv/libprivate_termcapw.a
+TO_REMOVE+=/usr/lib/priv/libprivate_termlib.a
+TO_REMOVE+=/usr/lib/priv/libprivate_termlibw.a
+TO_REMOVE+=/usr/lib/priv/libprivate_tinfo.a
+TO_REMOVE+=/usr/lib/priv/libprivate_tinfow.a
+TO_REMOVE+=/usr/lib/priv/profile/libprivate_termcap.a
+TO_REMOVE+=/usr/lib/priv/profile/libprivate_termcapw.a
+TO_REMOVE+=/usr/lib/priv/profile/libprivate_termlib.a
+TO_REMOVE+=/usr/lib/priv/profile/libprivate_termlibw.a
+TO_REMOVE+=/usr/lib/priv/profile/libprivate_tinfo.a
+TO_REMOVE+=/usr/lib/priv/profile/libprivate_tinfow.a
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -2,8 +2,8 @@
 # $FreeBSD: src/usr.bin/msgs/Makefile,v 1.6 1999/08/28 01:04:21 peter Exp $
 
 PROG=	msgs
-DPADD=	${LIBTERMCAP}
-LDADD=	-lprivate_termcap
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

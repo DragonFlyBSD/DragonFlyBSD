@@ -8,8 +8,8 @@ SRCS=	cmds.c cmdtab.c convtbl.c devs.c fetch.c ifcmds.c ifstat.c iostat.c \
 	keyboard.c main.c mbufs.c netcmds.c netstat.c pigs.c sensors.c swap.c \
 	icmp.c mode.c ip.c tcp.c vmstat.c ip6.c icmp6.c vmmeter.c symbols.c \
 	utmpentry.c netbw.c pftop.c altqs.c
-DPADD=	${LIBNCURSES} ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBDEVSTAT} ${LIBKINFO}
-LDADD=	-lprivate_ncurses -lprivate_termcap -lm -lkvm -ldevstat -lkinfo
+DPADD=	${LIBNCURSES} ${LIBNCURSES} ${LIBM} ${LIBKVM} ${LIBDEVSTAT} ${LIBKINFO}
+LDADD=	-lprivate_ncurses -lprivate_ncurses -lm -lkvm -ldevstat -lkinfo
 BINGRP=	kmem
 BINMODE=2555
 

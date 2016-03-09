@@ -7,8 +7,8 @@ WARNS?=	0
 # Portability layer
 SRCS+=	fmt_scaled.c
 
-DPADD+=	${LIBEDIT} ${LIBTERMCAP}
-LDADD+=	-lprivate_edit -lprivate_termcap
+DPADD+=	${LIBEDIT} ${LIBNCURSES}
+LDADD+=	-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include "../../Makefile.ssh.common"

@@ -8,8 +8,8 @@ SRCS=	fsdb.c fsdbutil.c \
 	dir.c inode.c memzone.c pass1.c pass1b.c pass2.c pass3.c pass4.c \
 	pass5.c preen.c setup.c utilities.c ffs_subr.c ffs_tables.c
 CFLAGS+= -I${.CURDIR}/../fsck
-LDADD+= -lprivate_edit -lprivate_termcap
-DPADD+=	${LIBEDIT} ${LIBTERMCAP}
+LDADD+= -lprivate_edit -lprivate_ncurses
+DPADD+=	${LIBEDIT} ${LIBNCURSES}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .PATH:	${.CURDIR}/../fsck ${.CURDIR}/../../sys/vfs/ufs

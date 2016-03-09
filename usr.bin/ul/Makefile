@@ -3,8 +3,8 @@
 
 PROG=	ul
 
-DPADD=	${LIBTERMCAP}
-LDADD=	-lprivate_termcap
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

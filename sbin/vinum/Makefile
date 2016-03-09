@@ -6,8 +6,8 @@ MAN=	vinum.8
 WARNS?=	2
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libedit -I${.CURDIR}/../../sys
-DPADD=	${LIBEDIT} ${LIBTERMCAP} ${LIBDEVSTAT}
-LDADD=	-lprivate_edit -lprivate_termcap -ldevstat
+DPADD=	${LIBEDIT} ${LIBNCURSES} ${LIBDEVSTAT}
+LDADD=	-lprivate_edit -lprivate_ncurses -ldevstat
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

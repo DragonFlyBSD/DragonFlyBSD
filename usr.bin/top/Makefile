@@ -17,8 +17,8 @@ CFLAGS+=-D_ENABLEX64
 SRCS=	commands.c getopt.c screen.c username.c version.c \
 	color.c display.c hash.c m_dragonfly.c top.c utils.c
 
-DPADD=  ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBKINFO}
-LDADD=  -lprivate_termcap -lm -lkvm -lkinfo
+DPADD=  ${LIBNCURSES} ${LIBM} ${LIBKVM} ${LIBKINFO}
+LDADD=  -lprivate_ncurses -lm -lkvm -lkinfo
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 BINGRP= kmem
 BINMODE=2555

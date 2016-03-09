@@ -15,8 +15,8 @@ LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a
 CFLAGS+=	-DINET6
 .endif
 
-DPADD=		${LIBTERMCAP} ${LIBTELNET}
-LDADD=		-lprivate_termcap ${LIBTELNET}
+DPADD=		${LIBNCURSES} ${LIBTELNET}
+LDADD=		-lprivate_ncurses ${LIBTELNET}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 CFLAGS+=	-DIPSEC

@@ -4,8 +4,8 @@
 PROG=	ls
 SRCS=	cmp.c ls.c print.c util.c
 
-DPADD=	${LIBUTIL} ${LIBTERMCAP}
-LDADD=	-lutil -lprivate_termcap
+DPADD=	${LIBUTIL} ${LIBNCURSES}
+LDADD=	-lutil -lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 CFLAGS+= -DCOLORLS

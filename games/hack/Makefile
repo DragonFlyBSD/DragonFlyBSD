@@ -15,8 +15,8 @@ SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
 	hack.wizard.c hack.worm.c hack.worn.c hack.zap.c rnd.c \
 	hack.onames.h
 MAN=	hack.6
-DPADD=	${LIBTERMCAP}
-LDADD=	-lprivate_termcap
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 CFLAGS+= -I${.CURDIR} -I.
 FILES=	rumors help hh data

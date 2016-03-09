@@ -11,8 +11,8 @@ BINMODE= 2555
 
 CFLAGS+= -I${.CURDIR}/../common_source
 
-DPADD=	${LIBLPR} ${LIBEDIT} ${LIBTERMCAP}
-LDADD=	${LIBLPR} -lprivate_edit -lprivate_termcap
+DPADD=	${LIBLPR} ${LIBEDIT} ${LIBNCURSES}
+LDADD=	${LIBLPR} -lprivate_edit -lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

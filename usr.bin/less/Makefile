@@ -8,8 +8,8 @@ SRCS=	main.c screen.c brac.c ch.c charset.c cmdbuf.c \
 	output.c pattern.c position.c prompt.c search.c signal.c \
 	tags.c ttyin.c version.c
 CFLAGS+=	-I${.CURDIR} -DSYSDIR=\"/etc\"
-DPADD=	${LIBTERMCAP}
-LDADD=	-lprivate_termcap
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 SCRIPTS= lesspipe.sh

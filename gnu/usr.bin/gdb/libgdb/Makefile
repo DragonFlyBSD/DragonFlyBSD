@@ -171,9 +171,9 @@ XMLFILES= \
 	traceframe-info.dtd \
 	btrace.dtd
 
-DPADD=	${LIBKVM} ${LIBTERMCAP} ${LIBM}
+DPADD=	${LIBKVM} ${LIBNCURSES} ${LIBM}
 DPADD+=	../libbfd/libbfd.a ../libopcodes/libopcodes.a ../libiberty/libiberty.a
-LDADD=	-lprivate_termcap -lm
+LDADD=	-lprivate_ncurses -lm
 LDADD+=	-L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 

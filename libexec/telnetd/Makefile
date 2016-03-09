@@ -20,8 +20,8 @@ CFLAGS+=	-DINET6
 
 LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a
 
-DPADD=		${LIBUTIL} ${LIBTERMCAP} ${LIBTELNET}
-LDADD=		-lutil -lprivate_termcap ${LIBTELNET}
+DPADD=		${LIBUTIL} ${LIBNCURSES} ${LIBTELNET}
+LDADD=		-lutil -lprivate_ncurses ${LIBTELNET}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .if !defined(NO_OPENSSL)

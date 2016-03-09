@@ -289,21 +289,6 @@ SRCS+=	\
 NCSTATIC=	libprivate_ncurses${LIB_SUFFIX}.a
 NCDYN=		libprivate_ncurses${LIB_SUFFIX}.so
 
-SYMLINKS+=${NCSTATIC} ${LIBDIR}/libprivate_termcap${LIB_SUFFIX}.a
-SYMLINKS+=${NCSTATIC} ${LIBDIR}/libprivate_termlib${LIB_SUFFIX}.a
-SYMLINKS+=${NCSTATIC} ${LIBDIR}/libprivate_tinfo${LIB_SUFFIX}.a
-.if !defined(NOPIC)
-# no need for major at all, it's an ld-time redirection only
-SYMLINKS+=${NCDYN} ${SHLIBDIR}/libprivate_termcap${LIB_SUFFIX}.so
-SYMLINKS+=${NCDYN} ${SHLIBDIR}/libprivate_termlib${LIB_SUFFIX}.so
-SYMLINKS+=${NCDYN} ${SHLIBDIR}/libprivate_tinfo${LIB_SUFFIX}.so
-.endif
-.if !defined(NOPROFILE)
-SYMLINKS+=${NCSTATIC} ${PROFLIBDIR}/libprivate_termcap${LIB_SUFFIX}.a
-SYMLINKS+=${NCSTATIC} ${PROFLIBDIR}/libprivate_termlib${LIB_SUFFIX}.a
-SYMLINKS+=${NCSTATIC} ${PROFLIBDIR}/libprivate_tinfo${LIB_SUFFIX}.a
-.endif
-
 XINCS=	term.h ${.CURDIR}/../include/termcap.h \
 	${.CURDIR}/../include/unctrl.h curses.h \
 	${.CURDIR}/../include/ncurses_dll.h

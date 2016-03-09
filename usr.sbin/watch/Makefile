@@ -3,8 +3,8 @@
 PROG=	watch
 MAN=	watch.8
 
-LDADD=	-lprivate_termcap
-DPADD=	${LIBTERMCAP}
+LDADD=	-lprivate_ncurses
+DPADD=	${LIBNCURSES}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

@@ -41,13 +41,13 @@ MLINKS= csh.1 tcsh.1
 DPADD=	/usr/lib/libtermcap.a ${LIBCRYPT}
 LDADD=	-ltermcap -lcrypt
 .  else
-DPADD=	${LIBTERMCAP} ${LIBCRYPT}
-LDADD=	-lprivate_termcap -lcrypt
+DPADD=	${LIBNCURSES} ${LIBCRYPT}
+LDADD=	-lprivate_ncurses -lcrypt
 LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
 .  endif
 .else
-DPADD=	${LIBTERMCAP} ${LIBCRYPT}
-LDADD=	-lprivate_termcap -lcrypt
+DPADD=	${LIBNCURSES} ${LIBCRYPT}
+LDADD=	-lprivate_ncurses -lcrypt
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 

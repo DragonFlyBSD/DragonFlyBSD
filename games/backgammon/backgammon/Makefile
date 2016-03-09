@@ -6,8 +6,8 @@ CFLAGS+=-I${.CURDIR}/../common_source
 SRCS=	allow.c board.c check.c extra.c fancy.c init.c main.c move.c \
 	odds.c one.c save.c subs.c table.c text.c version.c
 MAN=	backgammon.6
-DPADD=	${LIBTERMCAP}
-LDADD=	-lprivate_termcap
+DPADD=	${LIBNCURSES}
+LDADD=	-lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .PATH:	${.CURDIR}/../common_source
 HIDEGAME=hidegame

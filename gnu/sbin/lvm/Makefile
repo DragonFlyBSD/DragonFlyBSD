@@ -131,8 +131,8 @@ MKLINKS+=	lvchange.8 lvchange.1 \
                 vgscan.8 vgscan.1 \
                 vgsplit.8 vgsplit.1
 
-LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -lprivate_termcap -ldevattr
-DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBTERMCAP}
+LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -lprivate_ncurses -ldevattr
+DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBNCURSES}
 DPADD+=		${LIBDEVATTR}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 

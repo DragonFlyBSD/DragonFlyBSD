@@ -2,8 +2,8 @@
 
 PROG= ncal
 
-DPADD+=		${LIBCALENDAR} ${LIBTERMCAP}
-LDADD+=		-lcalendar -lprivate_termcap
+DPADD+=		${LIBCALENDAR} ${LIBNCURSES}
+LDADD+=		-lcalendar -lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 LINKS=		${BINDIR}/ncal ${BINDIR}/cal
