@@ -81,8 +81,9 @@ static const struct sdhci_device {
 } sdhci_devices[] = {
 	{ 0x08221180, 	0xffff,	"RICOH R5C822 SD",
 	    SDHCI_QUIRK_FORCE_DMA },
-	{ 0xe8221180, 	0xffff,	"RICOH SD",
-	    SDHCI_QUIRK_FORCE_DMA },
+	{ 0xe8221180, 	0xffff,	"RICOH R5CE822 SD",
+	    SDHCI_QUIRK_FORCE_DMA |
+	    SDHCI_QUIRK_LOWER_FREQUENCY },
 	{ 0xe8231180, 	0xffff,	"RICOH R5CE823 SD",
 	    SDHCI_QUIRK_LOWER_FREQUENCY },
 	{ 0x8034104c, 	0xffff, "TI XX21/XX11 SD",
@@ -102,12 +103,13 @@ static const struct sdhci_device {
 	{ 0x2381197B, 	0xffff,	"JMicron JMB38X SD",
 	    SDHCI_QUIRK_32BIT_DMA_SIZE |
 	    SDHCI_QUIRK_RESET_AFTER_REQUEST },
+	{ 0x16bc14e4,	0xffff,	"Broadcom BCM577xx SDXC/MMC Card Reader",
+	    SDHCI_QUIRK_BCM577XX_400KHZ_CLKSRC },
 	{ 0,		0xffff,	NULL,
 	    0 }
 };
 
 struct sdhci_pci_softc {
-	device_t	dev;		/* Controller device */
 	u_int		quirks;		/* Chip specific quirks */
 	struct resource *irq_res;	/* IRQ resource */
 	void 		*intrhand;	/* Interrupt handle */
@@ -115,6 +117,8 @@ struct sdhci_pci_softc {
 	int		num_slots;	/* Number of slots on this controller */
 	struct sdhci_slot slots[6];
 	struct resource	*mem_res[6];	/* Memory resource */
+	uint8_t		cfg_freq;	/* Saved mode */
+	uint8_t		cfg_mode;	/* Saved frequency */
 };
 
 static int sdhci_enable_msi = 1;
@@ -203,18 +207,40 @@ static void sdhci_pci_intr(void *arg);
 static void
 sdhci_lower_frequency(device_t dev)
 {
+	struct sdhci_pci_softc *sc = device_get_softc(dev);
 
-	/* Enable SD2.0 mode. */
+	/*
+	 * Enable SD2.0 mode.
+	 * NB: for RICOH R5CE823, this changes the PCI device ID to 0xe822.
+	 */
 	pci_write_config(dev, SDHC_PCI_MODE_KEY, 0xfc, 1);
+	sc->cfg_mode = pci_read_config(dev, SDHC_PCI_MODE, 1);
 	pci_write_config(dev, SDHC_PCI_MODE, SDHC_PCI_MODE_SD20, 1);
 	pci_write_config(dev, SDHC_PCI_MODE_KEY, 0x00, 1);
 
 	/*
 	 * Some SD/MMC cards don't work with the default base
-	 * clock frequency of 200MHz.  Lower it to 50Hz.
+	 * clock frequency of 200 MHz.  Lower it to 50 MHz.
 	 */
 	pci_write_config(dev, SDHC_PCI_BASE_FREQ_KEY, 0x01, 1);
+	sc->cfg_freq = pci_read_config(dev, SDHC_PCI_BASE_FREQ, 1);
 	pci_write_config(dev, SDHC_PCI_BASE_FREQ, 50, 1);
+	pci_write_config(dev, SDHC_PCI_BASE_FREQ_KEY, 0x00, 1);
+}
+
+static void
+sdhci_restore_frequency(device_t dev)
+{
+	struct sdhci_pci_softc *sc = device_get_softc(dev);
+
+	/* Restore mode. */
+	pci_write_config(dev, SDHC_PCI_MODE_KEY, 0xfc, 1);
+	pci_write_config(dev, SDHC_PCI_MODE, sc->cfg_mode, 1);
+	pci_write_config(dev, SDHC_PCI_MODE_KEY, 0x00, 1);
+
+	/* Restore frequency. */
+	pci_write_config(dev, SDHC_PCI_BASE_FREQ_KEY, 0x01, 1);
+	pci_write_config(dev, SDHC_PCI_BASE_FREQ, sc->cfg_freq, 1);
 	pci_write_config(dev, SDHC_PCI_BASE_FREQ_KEY, 0x00, 1);
 }
 
@@ -257,16 +283,11 @@ sdhci_pci_attach(device_t dev)
 	struct sdhci_pci_softc *sc = device_get_softc(dev);
 	uint32_t model;
 	uint16_t subvendor;
-	uint8_t class, subclass, progif;
 	int bar, count, err, rid, slots, i;
 
-	sc->dev = dev;
 	model = (uint32_t)pci_get_device(dev) << 16;
 	model |= (uint32_t)pci_get_vendor(dev) & 0x0000ffff;
 	subvendor = pci_get_subvendor(dev);
-	class = pci_get_class(dev);
-	subclass = pci_get_subclass(dev);
-	progif = pci_get_progif(dev);
 	/* Apply chip specific quirks. */
 	for (i = 0; sdhci_devices[i].model != 0; i++) {
 		if (sdhci_devices[i].model == model &&
@@ -315,12 +336,14 @@ sdhci_pci_attach(device_t dev)
 
 		/* Allocate memory. */
 		rid = PCIR_BAR(bar + i);
-		sc->mem_res[i] = bus_alloc_resource(dev, SYS_RES_MEMORY,
-		    &rid, 0ul, ~0ul, 0x100, RF_ACTIVE);
+		sc->mem_res[i] = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+		    &rid, RF_ACTIVE);
 		if (sc->mem_res[i] == NULL) {
 			device_printf(dev, "Can't allocate memory for slot %d\n", i);
 			continue;
 		}
+
+		slot->quirks = sc->quirks;
 
 		if (sdhci_init_slot(dev, slot, i) != 0)
 			continue;
@@ -362,6 +385,18 @@ sdhci_pci_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    rman_get_rid(sc->mem_res[i]), sc->mem_res[i]);
 	}
+	if (sc->quirks & SDHCI_QUIRK_LOWER_FREQUENCY)
+		sdhci_restore_frequency(dev);
+	return (0);
+}
+
+static int
+sdhci_pci_shutdown(device_t dev)
+{
+	struct sdhci_pci_softc *sc = device_get_softc(dev);
+
+	if (sc->quirks & SDHCI_QUIRK_LOWER_FREQUENCY)
+		sdhci_restore_frequency(dev);
 	return (0);
 }
 
@@ -407,6 +442,7 @@ static device_method_t sdhci_methods[] = {
 	DEVMETHOD(device_probe, sdhci_pci_probe),
 	DEVMETHOD(device_attach, sdhci_pci_attach),
 	DEVMETHOD(device_detach, sdhci_pci_detach),
+	DEVMETHOD(device_shutdown, sdhci_pci_shutdown),
 	DEVMETHOD(device_suspend, sdhci_pci_suspend),
 	DEVMETHOD(device_resume, sdhci_pci_resume),
 
