@@ -1813,3 +1813,4 @@ static devclass_t mmc_devclass;
 
 
 DRIVER_MODULE(mmc, sdhci_pci, mmc_driver, mmc_devclass, NULL, NULL);
+DRIVER_MODULE(mmc, sdhci_acpi, mmc_driver, mmc_devclass, NULL, NULL);

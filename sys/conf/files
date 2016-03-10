@@ -922,6 +922,7 @@ dev/netif/sbsh/if_sbsh.c	optional sbsh
 dev/disk/sdhci/sdhci.c		optional sdhci
 dev/disk/sdhci/sdhci_if.m	optional sdhci
 dev/disk/sdhci/sdhci_pci.c	optional sdhci pci
+dev/disk/sdhci/sdhci_acpi.c	optional sdhci acpi
 bus/smbus/smbus_if.m		optional smbus
 bus/smbus/smbconf.c		optional smbus
 bus/smbus/smbus.c		optional smbus
