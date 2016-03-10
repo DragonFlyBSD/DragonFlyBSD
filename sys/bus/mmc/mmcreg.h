@@ -139,8 +139,8 @@ struct mmc_command {
 #define	R1_READY_FOR_DATA (1u << 8)		/* sx, a */
 #define	R1_APP_CMD (1u << 5)			/* sr, c */
 #define	R1_AKE_SEQ_ERROR (1u << 3)		/* er, c */
-#define	R1_STATUS(x)            (x & 0xFFFFE000
-#define	R1_CURRENT_STATE(x) ((x) & R1_CURRENT_STATE_MASK) >> 9
+#define	R1_STATUS(x)		((x) & 0xFFFFE000)
+#define	R1_CURRENT_STATE(x)	(((x) & R1_CURRENT_STATE_MASK) >> 9)
 #define	R1_STATE_IDLE	0
 #define	R1_STATE_READY	1
 #define	R1_STATE_IDENT	2
@@ -330,6 +330,9 @@ struct mmc_request {
 #define SD_SWITCH_HS_MODE	1
 #define SD_SWITCH_NOCHANGE	0xF
 
+#define	SD_CLR_CARD_DETECT	0
+#define	SD_SET_CARD_DETECT	1
+
 #define	SD_MAX_HS		50000000
 
 /* OCR bits */
@@ -350,6 +353,7 @@ struct mmc_request {
 #define	MMC_OCR_VOLTAGE	0x3fffffffU	/* Vdd Voltage mask */
 #define	MMC_OCR_LOW_VOLTAGE (1u << 7)	/* Low Voltage Range -- tbd */
 #define	MMC_OCR_200_210	(1U << 8)	/* Vdd voltage 2.00 ~ 2.10 */
+#define	MMC_OCR_MIN_VOLTAGE_SHIFT	8
 #define	MMC_OCR_210_220	(1U << 9)	/* Vdd voltage 2.10 ~ 2.20 */
 #define	MMC_OCR_220_230	(1U << 10)	/* Vdd voltage 2.20 ~ 2.30 */
 #define	MMC_OCR_230_240	(1U << 11)	/* Vdd voltage 2.30 ~ 2.40 */
@@ -365,6 +369,7 @@ struct mmc_request {
 #define	MMC_OCR_330_340	(1U << 21)	/* Vdd voltage 3.30 ~ 3.40 */
 #define	MMC_OCR_340_350	(1U << 22)	/* Vdd voltage 3.40 ~ 3.50 */
 #define	MMC_OCR_350_360	(1U << 23)	/* Vdd voltage 3.50 ~ 3.60 */
+#define	MMC_OCR_MAX_VOLTAGE_SHIFT	23
 #define	MMC_OCR_CCS	(1u << 30)	/* Card Capacity status (SD vs SDHC) */
 #define	MMC_OCR_CARD_BUSY (1U << 31)	/* Card Power up status */
 

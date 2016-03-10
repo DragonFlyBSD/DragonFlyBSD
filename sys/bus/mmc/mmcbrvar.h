@@ -72,8 +72,7 @@ enum mmcbr_device_ivars {
     MMCBR_IVAR_VDD,
     MMCBR_IVAR_CAPS,
     MMCBR_IVAR_TIMING,
-    MMCBR_IVAR_MAX_DATA,
-//    MMCBR_IVAR_,
+    MMCBR_IVAR_MAX_DATA
 };
 
 /*
