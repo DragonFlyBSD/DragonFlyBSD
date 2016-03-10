@@ -313,9 +313,10 @@ customizeiso:
 	rm -f ${ISOROOT}/etc/resolv.conf
 .endif
 	#
-	# Finally, update the locate(8) database
+	# Finally, update the locate(8) database, allow ISODIR
+	# to be on tmpfs (fails to create locate database then)
 	#
-	${CHROOT_CMD} /etc/periodic/weekly/310.locate
+	-${CHROOT_CMD} /etc/periodic/weekly/310.locate
 	umount ${ISOROOT}/dev
 	#
 	# Recopy files that dports may have updated in /etc into /etc.hdd
