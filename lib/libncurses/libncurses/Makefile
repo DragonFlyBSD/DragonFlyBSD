@@ -4,94 +4,87 @@ SHLIBDIR?=	/lib/priv
 LIBDIR?=	/usr/lib/priv
 PROFLIBDIR?=	/usr/lib/priv/profile
 
-.include "../Makefile.inc"
+NCURSESBASEDIR=		${NCURSESDIR}/ncurses/base
+NCURSESSERIALDIR=	${NCURSESDIR}/ncurses/tty
+NCURSESTINFODIR=	${NCURSESDIR}/ncurses/tinfo
 
-NCURSESBASEDIR=${NCURSESDIR}/ncurses/base
-NCURSESSERIALDIR=${NCURSESDIR}/ncurses/tty
-NCURSESTINFODIR=${NCURSESDIR}/ncurses/tinfo
-NCURSESTRACEDIR=${NCURSESDIR}/ncurses/trace
-NCURSESWCHARDIR=${NCURSESDIR}/ncurses/widechar
-.PATH: ${NCURSESBASEDIR} ${NCURSESSERIALDIR} ${NCURSESTINFODIR} ${NCURSESTRACEDIR} \
-	${.OBJDIR} ${.CURDIR}/../include ${NCURSESDIR}/include/
-
+ZNCURSES=	yes
 CFLAGS+=	-DTRACE
 CFLAGS+=	-DDRAGONFLY_NATIVE
 
-ncurses_def.h:
-	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
-	  ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+GENHDRS= \
+	curses.h \
+	hashsize.h \
+	init_keytry.h \
+	ncurses_def.h \
+	parametrized.h \
+	term.h
 
-curses.h: $(TERMINFO_CAPS) \
-		curses.head \
-		${NCURSESDIR}/include/curses.tail \
-		${NCURSESDIR}/include//MKkey_defs.sh
-	cat  ${.CURDIR}/../include/curses.head >$@
-	AWK=awk sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
-.if defined(ENABLE_WIDEC)
-	cat ${NCURSESDIR}/include/curses.wide >>$@
-.endif
-	cat ${NCURSESDIR}/include/curses.tail >>$@
+GENSRCS= \
+	codes.c \
+	comp_captab.c \
+	expanded.c \
+	fallback.c \
+	lib_gen.c \
+	lib_keyname.c \
+	names.c \
+	unctrl.c
 
-term.h: MKterm.h.awk ncurses_cfg.h
-	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > $@
-	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h $@
+HEADERS=	curses.h term.h termcap.h unctrl.h
+SRCHDRS=	ncurses_dll.h
 
-hashsize.h:
-	sh ${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} >$@
+term.h: MKterm.h.awk edit_cfg.sh Caps
+	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > ${.TARGET}.new
+	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
 
-parametrized.h:
-	sh ${NCURSESDIR}/include/MKparametrized.sh ${TERMINFO_CAPS} >$@
+hashsize.h: MKhashsize.sh Caps
+	sh ${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} > ${.TARGET}
+
+parametrized.h: MKparametrized.sh Caps
+	sh ${NCURSESDIR}/include/MKparametrized.sh ${TERMINFO_CAPS} > ${.TARGET}
 
 init_keytry.h: make_keys keys.list
-	./make_keys keys.list > $@
+	./make_keys keys.list > ${.TARGET}
 
-make_keys: ${NCURSESTINFODIR}/make_keys.c names.c ncurses_def.h ${VERSION_MAP}
+make_keys: make_keys.c names.c ncurses_def.h ${VERSION_MAP} ${HEADERS}
 	${NXCC} ${NXCFLAGS} -static ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
 
-keys.list:
-	sh ${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | sort > $@
+keys.list: MKkeys_list.sh Caps
+	sh ${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | LC_ALL=C sort > ${.TARGET}
 
-names.c: ${NCURSESTINFODIR}/MKnames.awk
-	awk -f ${NCURSESTINFODIR}/MKnames.awk bigstrings=$(USE_BIG_STRINGS) ${TERMINFO_CAPS} >$@
+names.c: MKnames.awk Caps
+	awk -f ${NCURSESTINFODIR}/MKnames.awk bigstrings=1 ${TERMINFO_CAPS} > ${.TARGET}
 
-codes.c: ${NCURSESTINFODIR}/MKcodes.awk
-	awk -f ${NCURSESTINFODIR}/MKcodes.awk bigstrings=$(USE_BIG_STRINGS) ${TERMINFO_CAPS} >$@
+codes.c: MKcodes.awk Caps
+	awk -f ${NCURSESTINFODIR}/MKcodes.awk bigstrings=1 ${TERMINFO_CAPS} > ${.TARGET}
 
-comp_captab.c: make_hash
-	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 0 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > $@
+comp_captab.c: make_hash MKcaptab.sh MKcaptab.awk Caps
+	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 1 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > ${.TARGET}
 
-make_hash: ${NCURSESTINFODIR}/make_hash.c
+make_hash: make_hash.c hashsize.h ncurses_def.h ${HEADERS}
 	${NXCC} ${NXCFLAGS} -static -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/make_hash.c
 
-make_hash: hashsize.h ncurses_def.h curses.h
+expanded.c: MKexpanded.sh
+	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${CFLAGS} > ${.TARGET}
 
-expanded.c:
-	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${CFLAGS} > $@
-fallback.c:
-	sh ${NCURSESTINFODIR}/MKfallback.sh /usr/share/terminfo ${NCURSESDIR}/misc/terminfo.src >$@
-lib_gen.c: curses.h
-	sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} -E ${CFLAGS}" awk generated <curses.h >$@
-lib_keyname.c: keys.list
-	awk -f ${NCURSESBASEDIR}/MKkeyname.awk keys.list > $@
-unctrl.c:
-	echo | awk -f ${NCURSESBASEDIR}/MKunctrl.awk >$@
+fallback.c: MKfallback.sh
+	sh ${NCURSESTINFODIR}/MKfallback.sh /usr/share/terminfo ${NCURSESDIR}/misc/terminfo.src > ${.TARGET}
 
-CLEANFILES=     curses.h ncurses_def.h term.h hashsize.h parametrized.h comp_captab.c
-CLEANFILES+=    namehdr boolnames boolfnames numnames numfnames strnames strfnames nameftr
-CLEANFILES+=    codes.c init_keytry.h numcodes strcodes boolcodes codeftr make_keys names.c
-CLEANFILES+=    make_hash expanded.c fallback.c lib_gen.c lib_keyname.c unctrl.c keys.list
+lib_gen.c: MKlib_gen.sh curses.h
+	sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} -E ${CFLAGS}" awk generated <curses.h > ${.TARGET}
 
-SRCS=	\
-	curses.h \
-	ncurses_def.h \
-	term.h \
-	hashsize.h \
-	parametrized.h \
-	init_keytry.h
+lib_keyname.c: MKkeyname.awk keys.list
+	awk -f ${NCURSESBASEDIR}/MKkeyname.awk bigstrings=1 keys.list > ${.TARGET}
+
+unctrl.c: MKunctrl.awk
+	echo | awk -f ${NCURSESBASEDIR}/MKunctrl.awk bigstrings=1 > ${.TARGET}
+
+CLEANFILES=     ${GENSRCS} ${GENHDRS} term.h.new curses.h.new
+CLEANFILES+=	make_keys make_hash keys.list
 
 # Base
-SRCS+=	\
-	define_key.c \
+SRCS=	define_key.c \
 	key_defined.c \
 	keybound.c \
 	keyok.c \
@@ -124,8 +117,8 @@ SRCS+=	\
 	lib_initscr.c \
 	lib_insch.c \
 	lib_insdel.c \
-	lib_instr.c \
 	lib_insnstr.c \
+	lib_instr.c \
 	lib_isendwin.c \
 	lib_leaveok.c \
 	lib_mouse.c \
@@ -166,7 +159,6 @@ SRCS+=	\
 	lib_wattron.c \
 	lib_winch.c \
 	lib_window.c \
-	memmove.c \
 	nc_panel.c \
 	resizeterm.c \
 	safe_sprintf.c \
@@ -177,8 +169,7 @@ SRCS+=	\
 	wresize.c
 
 # Serial
-SRCS+=	\
-	hardscroll.c \
+SRCS+=	hardscroll.c \
 	hashmap.c \
 	lib_mvcur.c \
 	lib_tstp.c \
@@ -187,8 +178,7 @@ SRCS+=	\
 	tty_update.c
 
 # Tinfo
-SRCS+=	\
-	access.c \
+SRCS+=	access.c \
 	add_tries.c \
 	alloc_entry.c \
 	alloc_ttype.c \
@@ -198,8 +188,8 @@ SRCS+=	\
 	comp_hash.c \
 	comp_parse.c \
 	comp_scan.c \
-	doalloc.c \
 	db_iterator.c \
+	doalloc.c \
 	entries.c \
 	free_ttype.c \
 	getenv_num.c \
@@ -226,18 +216,17 @@ SRCS+=	\
 	lib_tputs.c \
 	lib_ttyflags.c \
 	name_match.c \
+	obsolete.c \
 	parse_entry.c \
 	read_entry.c \
 	read_termcap.c \
-	setbuf.c \
 	strings.c \
 	trim_sgr0.c \
 	use_screen.c \
 	write_entry.c
 
 # Trace
-SRCS+=	\
-	lib_trace.c \
+SRCS+=	lib_trace.c \
 	lib_traceatr.c \
 	lib_tracebits.c \
 	lib_tracechr.c \
@@ -249,11 +238,17 @@ SRCS+=	\
 	varargs.c \
 	visbuf.c \
 
-# Widechar
+# Generated
+SRCS+=	${GENSRCS} ${GENHDRS}
+
+NCSTATIC=	libprivate_ncurses${LIB_SUFFIX}.a
+NCDYN=		libprivate_ncurses${LIB_SUFFIX}.so
+
 .if defined(ENABLE_WIDEC)
-.PATH: ${NCURSESWCHARDIR}
-SRCS+=	\
-	charable.c \
+INCS=		${HEADERS} ${SRCHDRS}
+INCSLINKS=	curses.h ${INCLUDEDIR}/ncurses.h
+
+SRCS+=	charable.c \
 	lib_add_wch.c \
 	lib_box_set.c \
 	lib_cchar.c \
@@ -274,41 +269,5 @@ SRCS+=	\
 	lib_wacs.c \
 	lib_wunctrl.c
 .endif
-
-# Generated
-SRCS+=	\
-	codes.c \
-	comp_captab.c \
-	expanded.c \
-	fallback.c \
-	lib_gen.c \
-	lib_keyname.c \
-	names.c \
-	unctrl.c
-
-NCSTATIC=	libprivate_ncurses${LIB_SUFFIX}.a
-NCDYN=		libprivate_ncurses${LIB_SUFFIX}.so
-
-XINCS=	term.h ${.CURDIR}/../include/termcap.h \
-	${.CURDIR}/../include/unctrl.h curses.h \
-	${.CURDIR}/../include/ncurses_dll.h
-
-.if defined(ENABLE_WIDEC)
-INCS= ${XINCS}
-INCSLINKS=curses.h ${INCLUDEDIR}/ncurses.h
-.endif
-
-# Make the generated files depend on the headers, otherwise
-# the make depend step cannot run -j parallel due to not yet
-# knowing what the actual dependencies are.
-#
-codes.c: ${XINCS}
-comp_captab.c: ${XINCS}
-expanded.c: ${XINCS}
-fallback.c: ${XINCS}
-lib_gen.c: ${XINCS}
-lib_keyname.c: ${XINCS}
-names.c: ${XINCS}
-unctrl.c: ${XINCS}
 
 .include <bsd.lib.mk>

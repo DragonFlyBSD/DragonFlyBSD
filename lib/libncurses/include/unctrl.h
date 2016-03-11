@@ -45,7 +45,7 @@
 #define NCURSES_UNCTRL_H_incl	1
 
 #undef  NCURSES_VERSION
-#define NCURSES_VERSION "5.9"
+#define NCURSES_VERSION "6.0"
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,7 +56,7 @@ extern "C" {
 #undef unctrl
 NCURSES_EXPORT(NCURSES_CONST char *) unctrl (chtype);
 
-#if 0
+#if 1
 NCURSES_EXPORT(NCURSES_CONST char *) NCURSES_SP_NAME(unctrl) (SCREEN*, chtype);
 #endif
 

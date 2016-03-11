@@ -37,7 +37,7 @@
 #define NCURSES_TERMCAP_H_incl	1
 
 #undef  NCURSES_VERSION
-#define NCURSES_VERSION "5.9"
+#define NCURSES_VERSION "6.0"
 
 #include <ncurses_dll.h>
 

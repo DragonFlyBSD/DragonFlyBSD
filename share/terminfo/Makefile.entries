@@ -1770,7 +1770,6 @@ ENTRY=	1/1178 \
 	s/screen-bce.gnome \
 	s/screen-bce.konsole \
 	s/screen-bce.linux \
-	s/screen-bce.mlterm \
 	s/screen-bce.mrxvt \
 	s/screen-bce.rxvt \
 	s/screen-bce.xterm-new \

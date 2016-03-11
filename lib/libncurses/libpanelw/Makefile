@@ -1,3 +1,3 @@
-ENABLE_WIDEC=
+ENABLE_WIDEC=	yes
 
 .include "${.CURDIR}/../libpanel/Makefile"

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2007,2009 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2009,2014 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -25,10 +25,26 @@
  * sale, use or other dealings in this Software without prior written       *
  * authorization.                                                           *
  ****************************************************************************/
-/* $Id: ncurses_dll.h.in,v 1.8 2009/04/04 22:26:27 tom Exp $ */
+/* $Id: ncurses_dll.h.in,v 1.9 2014/08/02 21:30:20 tom Exp $ */
 
 #ifndef NCURSES_DLL_H_incl
 #define NCURSES_DLL_H_incl 1
+
+/* 2014-08-02 workaround for broken MinGW compiler.
+ * Oddly, only TRACE is mapped to trace - the other -D's are okay.
+ * suggest TDM as an alternative.
+ */
+#if defined(__MINGW64__)
+#elif defined(__MINGW32__)
+#if (__GNUC__ == 4) && (__GNUC_MINOR__ == 8)
+
+#ifdef trace
+#undef trace
+#define TRACE
+#endif
+
+#endif	/* broken compiler */
+#endif	/* MingW */
 
 /*
  * For reentrant code, we map the various global variables into SCREEN by

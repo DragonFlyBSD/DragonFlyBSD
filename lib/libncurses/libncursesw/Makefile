@@ -1,5 +1,3 @@
-ENABLE_WIDEC=
-
-.PATH: ${.CURDIR}/../libncurses
+ENABLE_WIDEC=	yes
 
 .include "${.CURDIR}/../libncurses/Makefile"

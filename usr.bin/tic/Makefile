@@ -57,6 +57,6 @@ dump_entry.o: ${PROGSDIR}/dump_entry.c termsort.h
 CLEANFILES=	ncurses_def.h parametrized.h termsort.c
 
 SRCS=	ncurses_def.h parametrized.h termsort.h
-SRCS+=	tic.c dump_entry.c transform.c
+SRCS+=	tic.c dump_entry.c tparm_type.c transform.c
 
 .include <bsd.prog.mk>

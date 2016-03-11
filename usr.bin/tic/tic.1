@@ -27,7 +27,7 @@
 .\"***************************************************************************
 .\"
 .\" $Id: tic.1m,v 1.47 2010/12/04 18:38:55 tom Exp $
-.Dd September 14, 2013
+.Dd March 11, 2016
 .Dt TIC 1
 .Os
 .Sh NAME
@@ -77,7 +77,9 @@ if
 .Ev TERMINFO
 is not set, and finally look in
 .Pa /usr/share/terminfo .
-.Bl -tag -width ".Fl R subset"
+.Bl -tag -width "-e names"
+.It Fl 0
+restricts the output to a single line
 .It Fl 1
 restricts the output to a single column
 .It Fl a
@@ -94,6 +96,24 @@ Otherwise these are ignored.
 Force source translation to termcap format.
 Capabilities that are not translatable are left in the entry under
 their terminfo names but commented out with two preceding dots.
+The actual format used incorporates some improvements for escaped characters
+from terminfo format. For a stricter BSD-compatible translation,
+add the
+.Fl K
+option.
+.Pp
+If this is combined with -c, tic makes additional checks to report cases
+where the terminfo values do not have an exact equivalent in termcap form.
+For example:
+.Bl -bullet -width 1
+.It
+sgr usually will not convert, because termcap lacks the ability to work
+with more than two parameters, and because termcap lacks many of the
+arithmetic/logical operators used in terminfo.
+.It
+capabilities with more than one delay or with delays before the end of
+the string will not convert completely.
+.El
 .It Fl c
 tells
 .Nm
@@ -107,7 +127,24 @@ with this option, the code will print warnings about entries which,
 after use resolution, are more than 1023 (4096) bytes long.
 Due to a fixed buffer length in older termcap libraries
 (and a documented limit in terminfo),
-these entries may cause core dumps.
+these entries may cause core dumps with other implementations.
+.Pp
+.Nm
+checks string capabilities to ensure that those with parameters will be
+valid expressions.  It does this check only for the predefined string
+capabilities; those which are defined with the
+.Fl x
+option are ignored.
+.It Fl D
+tells
+.Nm
+to print the database locations that it knows about, and exit.
+The first location shown is the one to which it would write compiled
+terminal descriptions.  If
+.Nm
+is not able to find a writable database location according to the rules
+summarized above, it will print a diagnostic and exit with an
+error rather than printing a list of database locations.
 .It Fl e Ar names
 Limit writes and translations to the following comma-separated list of
 terminals.
@@ -134,6 +171,13 @@ Display constant character literals in quoted form
 rather than their decimal equivalents.
 .It Fl I
 Force source translation to terminfo format.
+.It Fl K
+Suppress some longstanding ncurses extensions to termcap format,
+e.g.,
+.Do
+\\s
+.Dc
+for space.
 .It Fl L
 Force source translation to terminfo format
 using the long C variable names listed in
@@ -227,30 +271,9 @@ If
 .Ar n
 is specified and greater than 1, the level of
 detail is increased.
-.It Fl w Ns Op Ar n
-specifies the width of the output.
-The parameter is optional.
-If it is omitted, it defaults to 60.
-.It Fl x
-Treat unknown capabilities as user-defined.
-That is, if you supply a capability name which
-.Nm
-does not recognize, it will infer its type (boolean, number or string)
-from the syntax and make an extended table entry for that.
-User-defined capability strings
-whose name begins with
-.Sq k
-are treated as function keys.
-.Ar file
-contains one or more
-.Xr terminfo 5
-terminal descriptions in source format.
-Each description in the file
-describes the capabilities of a particular terminal.
-.El
 .Pp
 The debug flag levels are as follows:
-.Bl -tag -width "1xxx"
+.Bl -tag -width "1xxx" -compact
 .It 1
 Names of files created and linked
 .It 2
@@ -272,6 +295,33 @@ All values computed in construction of the hash table
 If the debug level
 .Ar n
 is not given, it is taken to be one.
+.It Fl w Ns Op Ar n
+specifies the width of the output.
+The parameter is optional.
+If it is omitted, it defaults to 60.
+.It Fl x
+Treat unknown capabilities as user-defined.
+That is, if you supply a capability name which
+.Nm
+does not recognize, it will infer its type (boolean, number or string)
+from the syntax and make an extended table entry for that.
+User-defined capability strings
+whose name begins with
+.Sq k
+are treated as function keys.
+.Sh PARAMETERS
+.Bl -tag -width "file"
+.It Ar file
+contains one or more
+.Xr terminfo 5
+terminal descriptions in source format.
+Each description in the file
+describes the capabilities of a particular terminal.
+.Pp
+If file is "-", then the data is read from the standard input.
+The file parameter may also be the path of a character-device.
+.El
+.Sh PROCESSING
 .Pp
 All but one of the capabilities recognized by
 .Nm
