@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2010,2011 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2012,2014 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -38,16 +38,22 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_tracemse.c,v 1.18 2011/01/22 19:48:08 tom Exp $")
+MODULE_ID("$Id: lib_tracemse.c,v 1.22 2014/10/10 09:06:26 tom Exp $")
 
 #ifdef TRACE
 
 #define my_buffer sp->tracemse_buf
 
-static char *
-_trace_mmask_t(SCREEN *sp, mmask_t code)
+NCURSES_EXPORT(char *)
+_nc_trace_mmask_t(SCREEN *sp, mmask_t code)
 {
-#define SHOW(m, s) if ((code & m) == m) strcat(strcat(my_buffer, s), ", ")
+#define SHOW(m, s) \
+    if ((code & m) == m) { \
+	size_t n = strlen(my_buffer); \
+	if (n && (my_buffer[n-1] != '{')) \
+	_nc_STRCAT(my_buffer, ", ", sizeof(my_buffer)); \
+	_nc_STRCAT(my_buffer, s, sizeof(my_buffer)); \
+    }
 
     SHOW(BUTTON1_RELEASED, "release-1");
     SHOW(BUTTON1_PRESSED, "press-1");
@@ -110,23 +116,33 @@ _trace_mmask_t(SCREEN *sp, mmask_t code)
 NCURSES_EXPORT(char *)
 _nc_tracemouse(SCREEN *sp, MEVENT const *ep)
 {
-    (void) sprintf(my_buffer, TRACEMSE_FMT,
-		   ep->id,
-		   ep->x,
-		   ep->y,
-		   ep->z,
-		   (unsigned long) ep->bstate);
+    char *result = 0;
 
-    (void) _trace_mmask_t(sp, ep->bstate);
-    (void) strcat(my_buffer, "}");
-    return (my_buffer);
+    if (sp != 0) {
+	_nc_SPRINTF(my_buffer, _nc_SLIMIT(sizeof(my_buffer))
+		    TRACEMSE_FMT,
+		    ep->id,
+		    ep->x,
+		    ep->y,
+		    ep->z,
+		    (unsigned long) ep->bstate);
+
+	(void) _nc_trace_mmask_t(sp, ep->bstate);
+	_nc_STRCAT(my_buffer, "}", sizeof(my_buffer));
+	result = (my_buffer);
+    }
+    return result;
 }
 
 NCURSES_EXPORT(mmask_t)
 _nc_retrace_mmask_t(SCREEN *sp, mmask_t code)
 {
-    *my_buffer = '\0';
-    T((T_RETURN("{%s}"), _trace_mmask_t(sp, code)));
+    if (sp != 0) {
+	*my_buffer = '\0';
+	T((T_RETURN("{%s}"), _nc_trace_mmask_t(sp, code)));
+    } else {
+	T((T_RETURN("{?}")));
+    }
     return code;
 }
 

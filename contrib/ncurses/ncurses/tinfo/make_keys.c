@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2008,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2011,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,11 +39,26 @@
 #define USE_TERMLIB 1
 #include <build.priv.h>
 
-MODULE_ID("$Id: make_keys.c,v 1.19 2010/06/05 22:08:00 tom Exp $")
+MODULE_ID("$Id: make_keys.c,v 1.21 2015/07/16 01:10:03 tom Exp $")
 
 #include <names.c>
 
-#define UNKNOWN (unsigned) (SIZEOF(strnames) + SIZEOF(strfnames))
+static unsigned
+unknown(void)
+{
+    static unsigned result = 0;
+
+    if (result == 0) {
+	unsigned n;
+	for (n = 0; strnames[n] != 0; n++) {
+	    ++result;
+	}
+	for (n = 0; strfnames[n] != 0; n++) {
+	    ++result;
+	}
+    }
+    return result;
+}
 
 static unsigned
 lookup(const char *name)
@@ -64,7 +79,7 @@ lookup(const char *name)
 	    }
 	}
     }
-    return found ? n : UNKNOWN;
+    return found ? n : unknown();
 }
 
 static void
@@ -73,10 +88,11 @@ make_keys(FILE *ifp, FILE *ofp)
     char buffer[BUFSIZ];
     char from[256];
     char to[256];
+    unsigned ignore = unknown();
     unsigned maxlen = 16;
     int scanned;
 
-    while (fgets(buffer, sizeof(buffer), ifp) != 0) {
+    while (fgets(buffer, (int) sizeof(buffer), ifp) != 0) {
 	if (*buffer == '#')
 	    continue;
 
@@ -86,7 +102,7 @@ make_keys(FILE *ifp, FILE *ofp)
 	scanned = sscanf(buffer, "%255s %255s", to, from);
 	if (scanned == 2) {
 	    unsigned code = lookup(from);
-	    if (code == UNKNOWN)
+	    if (code == ignore)
 		continue;
 	    if (strlen(from) > maxlen)
 		maxlen = (unsigned) strlen(from);

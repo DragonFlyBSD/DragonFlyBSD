@@ -1,6 +1,6 @@
 #! /bin/sh
 ##############################################################################
-# Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.                #
+# Copyright (c) 1998-2010,2015 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -29,7 +29,7 @@
 #
 # Author: Thomas E. Dickey, 1997-on
 #
-# $Id: MKexpanded.sh,v 1.17 2010/01/23 17:57:43 tom Exp $
+# $Id: MKexpanded.sh,v 1.18 2015/10/24 23:39:24 tom Exp $
 #
 # Script to generate 'expanded.c', a dummy source that contains functions
 # corresponding to complex macros used in this library.  By making functions,
@@ -125,7 +125,7 @@ _nc_UpdateAttrs (CARG_CH_T c)
 EOF
 
 $preprocessor $TMP 2>/dev/null | \
-	sed -e '1,/^IGNORE$/d' -e 's/^@/#/' -e 's/^#if_/#if /'
+	sed -e '1,/^IGNORE$/d' -e 's/^@/#/' -e 's/^#if_/#if /' -e "s,$TMP,expanded.c,"
 
 cat <<EOF
 #else /* ! NCURSES_EXPANDED */

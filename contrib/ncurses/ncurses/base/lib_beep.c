@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2008,2009 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -46,7 +46,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_beep.c,v 1.15 2009/10/24 22:02:14 tom Exp $")
+MODULE_ID("$Id: lib_beep.c,v 1.17 2014/03/08 20:32:59 tom Exp $")
 
 /*
  *	beep()
@@ -65,18 +65,15 @@ NCURSES_SP_NAME(beep) (NCURSES_SP_DCL0)
 
 #ifdef USE_TERM_DRIVER
     if (SP_PARM != 0)
-	res = CallDriver_1(SP_PARM, doBeepOrFlash, TRUE);
+	res = CallDriver_1(SP_PARM, td_doBeepOrFlash, TRUE);
 #else
     /* FIXME: should make sure that we are not in altchar mode */
     if (cur_term == 0) {
 	res = ERR;
     } else if (bell) {
-	TPUTS_TRACE("bell");
-	res = putp(bell);
-	_nc_flush();
+	res = NCURSES_PUTP2_FLUSH("bell", bell);
     } else if (flash_screen) {
-	TPUTS_TRACE("flash_screen");
-	res = putp(flash_screen);
+	res = NCURSES_PUTP2_FLUSH("flash_screen", flash_screen);
 	_nc_flush();
     }
 #endif

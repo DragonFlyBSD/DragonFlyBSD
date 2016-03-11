@@ -2,10 +2,10 @@
 #
 # MKlib_gen.sh -- generate sources from curses.h macro definitions
 #
-# ($Id: MKlib_gen.sh,v 1.43 2011/01/22 19:47:29 tom Exp $)
+# ($Id: MKlib_gen.sh,v 1.52 2015/10/10 19:36:47 tom Exp $)
 #
 ##############################################################################
-# Copyright (c) 1998-2010,2011 Free Software Foundation, Inc.                #
+# Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -65,6 +65,23 @@ if test "${LC_COLLATE+set}"  = set; then LC_COLLATE=C;  export LC_COLLATE;  fi
 preprocessor="$1 -DNCURSES_INTERNALS -I../include"
 AWK="$2"
 USE="$3"
+
+# A patch discussed here:
+#	https://gcc.gnu.org/ml/gcc-patches/2014-06/msg02185.html
+# introduces spurious #line markers into the preprocessor output.  The result
+# appears in gcc 5.0 and (with modification) in 5.1, making it necessary to
+# determine if we are using gcc, and if so, what version because the proposed
+# solution uses a nonstandard option.
+PRG=`echo "$1" | $AWK '{ sub(/^[ 	]*/,""); sub(/[ 	].*$/, ""); print; }' || exit 0`
+FSF=`"$PRG" --version 2>/dev/null || exit 0 | fgrep "Free Software Foundation" | head -n 1`
+ALL=`"$PRG" -dumpversion 2>/dev/null || exit 0`
+ONE=`echo "$ALL" | sed -e 's/\..*$//'`
+if test -n "$FSF" && test -n "$ALL" && test -n "$ONE" ; then
+	if test $ONE -ge 5 ; then
+		echo ".. adding -P option to work around $PRG $ALL" >&2
+		preprocessor="$preprocessor -P"
+	fi
+fi
 
 PID=$$
 ED1=sed1_${PID}.sed
@@ -160,6 +177,7 @@ EOF3
 if test "$USE" = generated ; then
 cat >$ED4 <<EOF
 	s/^\(.*\) \(.*\) (\(.*\))\$/NCURSES_EXPORT(\1) (\2) (\3)/
+	/attr_[sg]et.* z)/s,z),z GCC_UNUSED),
 EOF
 else
 cat >$ED4 <<EOF
@@ -410,10 +428,45 @@ BEGIN		{
 		print "#undef vwprintw"
 		}
 /^DECLARATIONS/	{start = 1; next;}
-		{if (start) print \$0;}
+		{
+		if (start) {
+			if ( "$USE" == "generated" ) {
+				print \$0;
+			} else if ( \$0 ~ /^[{}]?\$/ ) {
+				print \$0;
+			} else if ( \$0 ~ /;/ ) {
+				print \$0;
+			} else {
+				calls[start] = \$0;
+				print \$0;
+				start++;
+			}
+		}
+		}
 END		{
 		if ( "$USE" != "generated" ) {
-			print "int main(void) { return 0; }"
+			print "int main(void)"
+			print "{"
+			for (n = 1; n < start; ++n) {
+				value = calls[n];
+				if ( value !~ /P_POUNDC/ ) {
+					gsub(/[[:blank:]]+/," ",value);
+					sub(/^[[:alnum:]_]+ /,"",value);
+					sub(/^\* /,"",value);
+					gsub(/[[:alnum:]_]+ \* /,"",value);
+					gsub(/ (const) /," ",value);
+					gsub(/ (int|short|attr_t|chtype|wchar_t|NCURSES_BOOL|NCURSES_OUTC|NCURSES_OUTC_sp|va_list) /," ",value);
+					gsub(/ void /,"",value);
+					sub(/^/,"call_",value);
+					gsub(/ (a[[:digit:]]|z) /, " 0 ", value);
+					gsub(/ int[[:blank:]]*[(][^)]+[)][(][^)]+[)]/, "0", value);
+					printf "\t%s;\n", value;
+				} else {
+					print value;
+				}
+			}
+			print "	return 0;"
+			print "}"
 		}
 		}
 EOF1
@@ -422,6 +475,8 @@ cat >$TMP <<EOF
 #include <ncurses_cfg.h>
 #undef NCURSES_NOMACROS
 #include <curses.h>
+#include <term.h>
+#include <unctrl.h>
 
 DECLARATIONS
 

@@ -31,7 +31,7 @@
  ****************************************************************************/
 
 /*
- * $Id: hashed_db.h,v 1.5 2006/08/19 15:58:34 tom Exp $
+ * $Id: hashed_db.h,v 1.6 2014/04/12 22:41:10 tom Exp $
  */
 
 #ifndef HASHED_DB_H
@@ -40,6 +40,8 @@
 #include <curses.h>
 
 #if USE_HASHED_DB
+
+#define DB_DBM_HSEARCH 0	/* quiet gcc -Wundef with db6 */
 
 #include <db.h>
 

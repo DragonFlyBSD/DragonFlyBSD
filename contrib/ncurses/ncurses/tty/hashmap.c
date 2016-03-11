@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -73,19 +73,23 @@ AUTHOR
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: hashmap.c,v 1.62 2010/04/24 23:46:07 tom Exp $")
+MODULE_ID("$Id: hashmap.c,v 1.65 2015/07/25 20:13:56 tom Exp $")
 
 #ifdef HASHDEBUG
 
 # define _tracef	printf
 # undef TR
+# ifdef TRACE
 # define TR(n, a)	if (_nc_tracing & (n)) { _tracef a ; putchar('\n'); }
+# else
+# define TR(n, a)	{ _tracef a ; putchar('\n'); }
+# endif
 # undef screen_lines
-# define screen_lines MAXLINES
-# define TEXTWIDTH	1
+# define screen_lines(sp) MAXLINES
+# define TEXTWIDTH(sp)	1
 int oldnums[MAXLINES], reallines[MAXLINES];
-static NCURSES_CH_T oldtext[MAXLINES][TEXTWIDTH];
-static NCURSES_CH_T newtext[MAXLINES][TEXTWIDTH];
+static NCURSES_CH_T oldtext[MAXLINES][TEXTWIDTH(sp)];
+static NCURSES_CH_T newtext[MAXLINES][TEXTWIDTH(sp)];
 # define OLDNUM(sp,n)	oldnums[n]
 # define OLDTEXT(sp,n)	oldtext[n]
 # define NEWTEXT(sp,m)	newtext[m]
@@ -120,6 +124,8 @@ hash(SCREEN *sp, NCURSES_CH_T * text)
     int i;
     NCURSES_CH_T ch;
     unsigned long result = 0;
+    (void) sp;
+
     for (i = TEXTWIDTH(sp); i > 0; i--) {
 	ch = *text++;
 	result += (result << 5) + (unsigned long) HASH_VAL(ch);
@@ -133,6 +139,7 @@ update_cost(SCREEN *sp, NCURSES_CH_T * from, NCURSES_CH_T * to)
 {
     int cost = 0;
     int i;
+    (void) sp;
 
     for (i = TEXTWIDTH(sp); i > 0; i--, from++, to++)
 	if (!(CharEq(*from, *to)))
@@ -147,6 +154,7 @@ update_cost_from_blank(SCREEN *sp, NCURSES_CH_T * to)
     int cost = 0;
     int i;
     NCURSES_CH_T blank = blankchar;
+    (void) sp;
 
     if (back_color_erase)
 	SetPair(blank, GetPair(stdscr->_nc_bkgd));
@@ -163,7 +171,7 @@ update_cost_from_blank(SCREEN *sp, NCURSES_CH_T * to)
  * effective. 'blank' indicates whether the line 'to' would become blank.
  */
 static NCURSES_INLINE bool
-cost_effective(SCREEN *sp, const int from, const int to, const bool blank)
+cost_effective(SCREEN *sp, const int from, const int to, const int blank)
 {
     int new_from;
 
@@ -486,13 +494,13 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	return EXIT_FAILURE;
     (void) _nc_alloc_screen();
 
-    for (n = 0; n < screen_lines; n++) {
+    for (n = 0; n < screen_lines(sp); n++) {
 	reallines[n] = n;
 	oldnums[n] = _NEWINDEX;
 	CharOf(oldtext[n][0]) = CharOf(newtext[n][0]) = '.';
     }
 
-    if (isatty(fileno(stdin)))
+    if (NC_ISATTY(fileno(stdin)))
 	usage();
 
 #ifdef TRACE
@@ -509,7 +517,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	    break;
 
 	case 'l':		/* get initial line number vector */
-	    for (n = 0; n < screen_lines; n++) {
+	    for (n = 0; n < screen_lines(sp); n++) {
 		reallines[n] = n;
 		oldnums[n] = _NEWINDEX;
 	    }
@@ -522,9 +530,9 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	    break;
 
 	case 'n':		/* use following letters as text of new lines */
-	    for (n = 0; n < screen_lines; n++)
+	    for (n = 0; n < screen_lines(sp); n++)
 		CharOf(newtext[n][0]) = '.';
-	    for (n = 0; n < screen_lines; n++)
+	    for (n = 0; n < screen_lines(sp); n++)
 		if (line[n + 1] == '\n')
 		    break;
 		else
@@ -532,9 +540,9 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	    break;
 
 	case 'o':		/* use following letters as text of old lines */
-	    for (n = 0; n < screen_lines; n++)
+	    for (n = 0; n < screen_lines(sp); n++)
 		CharOf(oldtext[n][0]) = '.';
-	    for (n = 0; n < screen_lines; n++)
+	    for (n = 0; n < screen_lines(sp); n++)
 		if (line[n + 1] == '\n')
 		    break;
 		else
@@ -546,12 +554,12 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	    _nc_linedump();
 #endif
 	    (void) fputs("Old lines: [", stdout);
-	    for (n = 0; n < screen_lines; n++)
+	    for (n = 0; n < screen_lines(sp); n++)
 		putchar(CharOf(oldtext[n][0]));
 	    putchar(']');
 	    putchar('\n');
 	    (void) fputs("New lines: [", stdout);
-	    for (n = 0; n < screen_lines; n++)
+	    for (n = 0; n < screen_lines(sp); n++)
 		putchar(CharOf(newtext[n][0]));
 	    putchar(']');
 	    putchar('\n');

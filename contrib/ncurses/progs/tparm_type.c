@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2004,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,50 +27,45 @@
  ****************************************************************************/
 
 /****************************************************************************
- *   Author:  Juergen Pfeifer, 1995,1997                                    *
+ *  Author: Thomas E. Dickey                                                *
  ****************************************************************************/
 
-/***************************************************************************
-* Module m_scale                                                           *
-* Menu scaling routine                                                     *
-***************************************************************************/
+#include <tparm_type.h>
 
-#include "menu.priv.h"
+MODULE_ID("$Id: tparm_type.c,v 1.2 2015/04/04 15:01:13 tom Exp $")
 
-MODULE_ID("$Id: m_scale.c,v 1.10 2010/01/23 21:20:10 tom Exp $")
-
-/*---------------------------------------------------------------------------
-|   Facility      :  libnmenu  
-|   Function      :  int scale_menu(const MENU *menu)
-|   
-|   Description   :  Returns the minimum window size necessary for the
-|                    subwindow of menu.  
-|
-|   Return Values :  E_OK                  - success
-|                    E_BAD_ARGUMENT        - invalid menu pointer
-|                    E_NOT_CONNECTED       - no items are connected to menu
-+--------------------------------------------------------------------------*/
-NCURSES_EXPORT(int)
-scale_menu(const MENU * menu, int *rows, int *cols)
+/*
+ * Lookup the type of call we should make to tparm().  This ignores the actual
+ * terminfo capability (bad, because it is not extensible), but makes this
+ * code portable to platforms where sizeof(int) != sizeof(char *).
+ */
+TParams
+tparm_type(const char *name)
 {
-  T((T_CALLED("scale_menu(%p,%p,%p)"),
-     (const void *)menu,
-     (void *)rows,
-     (void *)cols));
+#define TD(code, longname, ti, tc) \
+    	{code, {longname} }, \
+	{code, {ti} }, \
+	{code, {tc} }
+    TParams result = Numbers;
+    /* *INDENT-OFF* */
+    static const struct {
+	TParams code;
+	const char name[12];
+    } table[] = {
+	TD(Num_Str,	"pkey_key",	"pfkey",	"pk"),
+	TD(Num_Str,	"pkey_local",	"pfloc",	"pl"),
+	TD(Num_Str,	"pkey_xmit",	"pfx",		"px"),
+	TD(Num_Str,	"plab_norm",	"pln",		"pn"),
+	TD(Num_Str_Str, "pkey_plab",	"pfxl",		"xl"),
+    };
+    /* *INDENT-ON* */
 
-  if (!menu)
-    RETURN(E_BAD_ARGUMENT);
-
-  if (menu->items && *(menu->items))
-    {
-      if (rows)
-	*rows = menu->height;
-      if (cols)
-	*cols = menu->width;
-      RETURN(E_OK);
+    unsigned n;
+    for (n = 0; n < SIZEOF(table); n++) {
+	if (!strcmp(name, table[n].name)) {
+	    result = table[n].code;
+	    break;
+	}
     }
-  else
-    RETURN(E_NOT_CONNECTED);
+    return result;
 }
-
-/* m_scale.c ends here */

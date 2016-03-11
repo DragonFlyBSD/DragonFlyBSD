@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2010,2011 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,7 +42,7 @@
 #include <ctype.h>
 #include <tic.h>
 
-MODULE_ID("$Id: lib_tparm.c,v 1.82 2011/01/15 22:19:12 tom Exp $")
+MODULE_ID("$Id: lib_tparm.c,v 1.94 2015/07/17 01:03:35 tom Exp $")
 
 /*
  *	char *
@@ -53,7 +53,7 @@ MODULE_ID("$Id: lib_tparm.c,v 1.82 2011/01/15 22:19:12 tom Exp $")
  *
  *	     Cursor addressing and other strings  requiring  parame-
  *	ters in the terminal are described by a parameterized string
- *	capability, with like escapes %x in  it.   For  example,  to
+ *	capability, with escapes like %x in  it.   For  example,  to
  *	address  the  cursor, the cup capability is given, using two
  *	parameters: the row and column to  address  to.   (Rows  and
  *	columns  are  numbered  from  zero and refer to the physical
@@ -107,6 +107,7 @@ MODULE_ID("$Id: lib_tparm.c,v 1.82 2011/01/15 22:19:12 tom Exp $")
 NCURSES_EXPORT_VAR(int) _nc_tparm_err = 0;
 
 #define TPS(var) _nc_prescreen.tparm_state.var
+#define popcount _nc_popcount	/* workaround for NetBSD 6.0 defect */
 
 #if NO_LEAKS
 NCURSES_EXPORT(void)
@@ -128,9 +129,7 @@ get_space(size_t need)
     need += TPS(out_used);
     if (need > TPS(out_size)) {
 	TPS(out_size) = need * 2;
-	TPS(out_buff) = typeRealloc(char, TPS(out_size), TPS(out_buff));
-	if (TPS(out_buff) == 0)
-	    _nc_err_abort(MSG_NO_MEMORY);
+	TYPE_REALLOC(char, TPS(out_size), TPS(out_buff));
     }
 }
 
@@ -143,7 +142,9 @@ save_text(const char *fmt, const char *s, int len)
 
     get_space(s_len + 1);
 
-    (void) sprintf(TPS(out_buff) + TPS(out_used), fmt, s);
+    _nc_SPRINTF(TPS(out_buff) + TPS(out_used),
+		_nc_SLIMIT(TPS(out_size) - TPS(out_used))
+		fmt, s);
     TPS(out_used) += strlen(TPS(out_buff) + TPS(out_used));
 }
 
@@ -153,9 +154,11 @@ save_number(const char *fmt, int number, int len)
     if (len < 30)
 	len = 30;		/* actually log10(MAX_INT)+1 */
 
-    get_space((unsigned) len + 1);
+    get_space((size_t) len + 1);
 
-    (void) sprintf(TPS(out_buff) + TPS(out_used), fmt, number);
+    _nc_SPRINTF(TPS(out_buff) + TPS(out_used),
+		_nc_SLIMIT(TPS(out_size) - TPS(out_used))
+		fmt, number);
     TPS(out_used) += strlen(TPS(out_buff) + TPS(out_used));
 }
 
@@ -164,7 +167,7 @@ save_char(int c)
 {
     if (c == 0)
 	c = 0200;
-    get_space(1);
+    get_space((size_t) 1);
     TPS(out_buff)[TPS(out_used)++] = (char) c;
 }
 
@@ -250,6 +253,9 @@ parse_format(const char *s, char *format, int *len)
 	    case 'x':		/* FALLTHRU */
 	    case 'X':		/* FALLTHRU */
 	    case 's':
+#ifdef EXP_XTERM_1005
+	    case 'u':
+#endif
 		*format++ = *s;
 		done = TRUE;
 		break;
@@ -369,6 +375,9 @@ _nc_tparm_analyze(const char *string, char *p_is_s[NUM_PARM], int *popcount)
 	    case 'x':		/* FALLTHRU */
 	    case 'X':		/* FALLTHRU */
 	    case 'c':		/* FALLTHRU */
+#ifdef EXP_XTERM_1005
+	    case 'u':
+#endif
 		if (lastpop <= 0)
 		    number++;
 		lastpop = -1;
@@ -450,7 +459,7 @@ _nc_tparm_analyze(const char *string, char *p_is_s[NUM_PARM], int *popcount)
 }
 
 static NCURSES_INLINE char *
-tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
+tparam_internal(int use_TPARM_ARG, const char *string, va_list ap)
 {
     char *p_is_s[NUM_PARM];
     TPARM_ARG param[NUM_PARM];
@@ -463,6 +472,8 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
     int i;
     const char *cp = string;
     size_t len2;
+    bool termcap_hack;
+    bool incremented_two;
 
     if (cp == NULL)
 	return NULL;
@@ -478,6 +489,8 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
     number = _nc_tparm_analyze(cp, p_is_s, &popcount);
     if (TPS(fmt_buff) == 0)
 	return NULL;
+
+    incremented_two = FALSE;
 
     if (number > NUM_PARM)
 	number = NUM_PARM;
@@ -511,7 +524,9 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
      * style, which means tparam() will expand termcap strings OK.
      */
     TPS(stack_ptr) = 0;
+    termcap_hack = FALSE;
     if (popcount == 0) {
+	termcap_hack = TRUE;
 	popcount = number;
 	for (i = number - 1; i >= 0; i--) {
 	    if (p_is_s[i])
@@ -522,7 +537,7 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
     }
 #ifdef TRACE
     if (USE_TRACEF(TRACE_CALLS)) {
-	for (i = 0; i < popcount; i++) {
+	for (i = 0; i < num_args; i++) {
 	    if (p_is_s[i] != 0)
 		save_text(", %s", _nc_visbuf(p_is_s[i]), 0);
 	    else
@@ -558,8 +573,22 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
 		save_char(npop());
 		break;
 
+#ifdef EXP_XTERM_1005
+	    case 'u':
+		{
+		    unsigned char target[10];
+		    unsigned source = (unsigned) npop();
+		    int rc = _nc_conv_to_utf8(target, source, (unsigned)
+					      sizeof(target));
+		    int n;
+		    for (n = 0; n < rc; ++n) {
+			save_char(target[n]);
+		    }
+		}
+		break;
+#endif
 	    case 'l':
-		save_number("%d", (int) strlen(spop()), 0);
+		npush((int) strlen(spop()));
 		break;
 
 	    case 's':
@@ -570,10 +599,11 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
 		cp++;
 		i = (UChar(*cp) - '1');
 		if (i >= 0 && i < NUM_PARM) {
-		    if (p_is_s[i])
+		    if (p_is_s[i]) {
 			spush(p_is_s[i]);
-		    else
+		    } else {
 			npush((int) param[i]);
+		    }
 		}
 		break;
 
@@ -642,11 +672,15 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
 		break;
 
 	    case 'A':
-		npush(npop() && npop());
+		y = npop();
+		x = npop();
+		npush(y && x);
 		break;
 
 	    case 'O':
-		npush(npop() || npop());
+		y = npop();
+		x = npop();
+		npush(y || x);
 		break;
 
 	    case '&':
@@ -688,10 +722,26 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
 		break;
 
 	    case 'i':
-		if (p_is_s[0] == 0)
-		    param[0]++;
-		if (p_is_s[1] == 0)
-		    param[1]++;
+		/*
+		 * Increment the first two parameters -- if they are numbers
+		 * rather than strings.  As a side effect, assign into the
+		 * stack; if this is termcap, then the stack was populated
+		 * using the termcap hack above rather than via the terminfo
+		 * 'p' case.
+		 */
+		if (!incremented_two) {
+		    incremented_two = TRUE;
+		    if (p_is_s[0] == 0) {
+			param[0]++;
+			if (termcap_hack)
+			    TPS(stack)[0].data.num = (int) param[0];
+		    }
+		    if (p_is_s[1] == 0) {
+			param[1]++;
+			if (termcap_hack)
+			    TPS(stack)[1].data.num = (int) param[1];
+		    }
+		}
 		break;
 
 	    case '?':
@@ -757,7 +807,7 @@ tparam_internal(bool use_TPARM_ARG, const char *string, va_list ap)
 	cp++;
     }				/* endwhile (*cp) */
 
-    get_space(1);
+    get_space((size_t) 1);
     TPS(out_buff)[TPS(out_used)] = '\0';
 
     T((T_RETURN("%s"), _nc_visbuf(TPS(out_buff))));
