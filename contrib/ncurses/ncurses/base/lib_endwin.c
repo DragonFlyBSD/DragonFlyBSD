@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2008,2009 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2009,2014 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -42,7 +42,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_endwin.c,v 1.22 2009/10/24 22:02:14 tom Exp $")
+MODULE_ID("$Id: lib_endwin.c,v 1.23 2014/03/08 20:32:59 tom Exp $")
 
 NCURSES_EXPORT(int)
 NCURSES_SP_NAME(endwin) (NCURSES_SP_DCL0)
@@ -56,8 +56,8 @@ NCURSES_SP_NAME(endwin) (NCURSES_SP_DCL0)
 	TERMINAL_CONTROL_BLOCK *TCB = TCBOf(SP_PARM);
 
 	SP_PARM->_endwin = TRUE;
-	if (TCB && TCB->drv && TCB->drv->scexit)
-	    TCB->drv->scexit(SP_PARM);
+	if (TCB && TCB->drv && TCB->drv->td_scexit)
+	    TCB->drv->td_scexit(SP_PARM);
 #else
 	SP_PARM->_endwin = TRUE;
 	SP_PARM->_mouse_wrap(SP_PARM);

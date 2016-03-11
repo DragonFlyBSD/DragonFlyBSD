@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2013,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -119,7 +119,7 @@ char *ttyname(int fd);
 #include <dump_entry.h>
 #include <transform.h>
 
-MODULE_ID("$Id: tset.c,v 1.82 2010/05/01 21:42:46 tom Exp $")
+MODULE_ID("$Id: tset.c,v 1.97 2015/11/08 01:45:47 tom Exp $")
 
 /*
  * SCO defines TIOCGSIZE and the corresponding struct.  Other systems (SunOS,
@@ -148,6 +148,10 @@ extern char **environ;
 #undef CTRL
 #define CTRL(x)	((x) & 0x1f)
 
+static void failed(const char *) GCC_NORETURN;
+static void exit_error(void) GCC_NORETURN;
+static void err(const char *,...) GCC_NORETURN;
+
 const char *_nc_progname = "tset";
 
 static TTY mode, oldmode, original;
@@ -160,7 +164,10 @@ static bool isreset = FALSE;	/* invoked as reset */
 static int terasechar = -1;	/* new erase character */
 static int intrchar = -1;	/* new interrupt character */
 static int tkillchar = -1;	/* new kill character */
+
+#if HAVE_SIZECHANGE
 static int tlines, tcolumns;	/* window size */
+#endif
 
 #define LOWERCASE(c) ((isalpha(UChar(c)) && isupper(UChar(c))) ? tolower(UChar(c)) : (c))
 
@@ -203,13 +210,13 @@ static void
 failed(const char *msg)
 {
     char temp[BUFSIZ];
-    unsigned len = strlen(_nc_progname) + 2;
+    size_t len = strlen(_nc_progname) + 2;
 
     if ((int) len < (int) sizeof(temp) - 12) {
-	strcpy(temp, _nc_progname);
-	strcat(temp, ": ");
+	_nc_STRCPY(temp, _nc_progname, sizeof(temp));
+	_nc_STRCAT(temp, ": ", sizeof(temp));
     } else {
-	strcpy(temp, "tset: ");
+	_nc_STRCPY(temp, "tset: ", sizeof(temp));
     }
     perror(strncat(temp, msg, sizeof(temp) - strlen(temp) - 2));
     exit_error();
@@ -300,87 +307,89 @@ typedef struct map {
 
 static MAP *cur, *maplist;
 
+#define DATA(name,value) { { name }, value }
+
 typedef struct speeds {
-    const char *string;
+    const char string[7];
     int speed;
 } SPEEDS;
 
 static const SPEEDS speeds[] =
 {
-    {"0", B0},
-    {"50", B50},
-    {"75", B75},
-    {"110", B110},
-    {"134", B134},
-    {"134.5", B134},
-    {"150", B150},
-    {"200", B200},
-    {"300", B300},
-    {"600", B600},
-    {"1200", B1200},
-    {"1800", B1800},
-    {"2400", B2400},
-    {"4800", B4800},
-    {"9600", B9600},
+    DATA("0", B0),
+    DATA("50", B50),
+    DATA("75", B75),
+    DATA("110", B110),
+    DATA("134", B134),
+    DATA("134.5", B134),
+    DATA("150", B150),
+    DATA("200", B200),
+    DATA("300", B300),
+    DATA("600", B600),
+    DATA("1200", B1200),
+    DATA("1800", B1800),
+    DATA("2400", B2400),
+    DATA("4800", B4800),
+    DATA("9600", B9600),
     /* sgttyb may define up to this point */
 #ifdef B19200
-    {"19200", B19200},
+    DATA("19200", B19200),
 #endif
 #ifdef B38400
-    {"38400", B38400},
+    DATA("38400", B38400),
 #endif
 #ifdef B19200
-    {"19200", B19200},
+    DATA("19200", B19200),
 #endif
 #ifdef B38400
-    {"38400", B38400},
+    DATA("38400", B38400),
 #endif
 #ifdef B19200
-    {"19200", B19200},
+    DATA("19200", B19200),
 #else
 #ifdef EXTA
-    {"19200", EXTA},
+    DATA("19200", EXTA),
 #endif
 #endif
 #ifdef B38400
-    {"38400", B38400},
+    DATA("38400", B38400),
 #else
 #ifdef EXTB
-    {"38400", EXTB},
+    DATA("38400", EXTB),
 #endif
 #endif
 #ifdef B57600
-    {"57600", B57600},
+    DATA("57600", B57600),
 #endif
 #ifdef B115200
-    {"115200", B115200},
+    DATA("115200", B115200),
 #endif
 #ifdef B230400
-    {"230400", B230400},
+    DATA("230400", B230400),
 #endif
 #ifdef B460800
-    {"460800", B460800},
+    DATA("460800", B460800),
 #endif
-    {(char *) 0, 0}
 };
+#undef DATA
 
 static int
 tbaudrate(char *rate)
 {
-    const SPEEDS *sp;
-    int found = FALSE;
+    const SPEEDS *sp = 0;
+    size_t n;
 
     /* The baudrate number can be preceded by a 'B', which is ignored. */
     if (*rate == 'B')
 	++rate;
 
-    for (sp = speeds; sp->string; ++sp) {
-	if (!CaselessCmp(rate, sp->string)) {
-	    found = TRUE;
+    for (n = 0; n < SIZEOF(speeds); ++n) {
+	if (!CaselessCmp(rate, speeds[n].string)) {
+	    sp = speeds + n;
 	    break;
 	}
     }
-    if (!found)
+    if (sp == 0)
 	err("unknown baud rate %s", rate);
     return (sp->speed);
 }
@@ -467,9 +476,6 @@ add_mapping(const char *port, char *arg)
 	mapp->speed = tbaudrate(p);
     }
 
-    if (arg == (char *) 0)	/* Non-optional type. */
-	goto badmopt;
-
     mapp->type = arg;
 
     /* Terminate porttype, if specified. */
@@ -527,19 +533,19 @@ mapped(const char *type)
 		match = TRUE;
 		break;
 	    case EQ:
-		match = (ospeed == mapp->speed);
+		match = ((int) ospeed == mapp->speed);
 		break;
 	    case GE:
-		match = (ospeed >= mapp->speed);
+		match = ((int) ospeed >= mapp->speed);
 		break;
 	    case GT:
-		match = (ospeed > mapp->speed);
+		match = ((int) ospeed > mapp->speed);
 		break;
 	    case LE:
-		match = (ospeed <= mapp->speed);
+		match = ((int) ospeed <= mapp->speed);
 		break;
 	    case LT:
-		match = (ospeed < mapp->speed);
+		match = ((int) ospeed < mapp->speed);
 		break;
 	    default:
 		match = FALSE;
@@ -631,13 +637,14 @@ get_termcap_entry(char *userarg)
      * real entry from /etc/termcap.  This prevents us from being fooled
      * by out of date stuff in the environment.
      */
-  found:if ((p = getenv("TERMCAP")) != 0 && !_nc_is_abs_path(p)) {
+  found:
+    if ((p = getenv("TERMCAP")) != 0 && !_nc_is_abs_path(p)) {
 	/* 'unsetenv("TERMCAP")' is not portable.
 	 * The 'environ' array is better.
 	 */
 	int n;
 	for (n = 0; environ[n] != 0; n++) {
-	    if (!strncmp("TERMCAP=", environ[n], 8)) {
+	    if (!strncmp("TERMCAP=", environ[n], (size_t) 8)) {
 		while ((environ[n] = environ[n + 1]) != 0) {
 		    n++;
 		}
@@ -740,7 +747,7 @@ get_termcap_entry(char *userarg)
 #define DISABLED(val)   ((int)(val) <= 0)
 #endif
 
-#define CHK(val, dft)   (DISABLED(val) ? dft : val)
+#define CHK(val, dft)   (unsigned char) (DISABLED(val) ? dft : val)
 
 static bool set_tabs(void);
 
@@ -788,14 +795,14 @@ reset_mode(void)
     mode.c_cc[VWERASE] = CHK(mode.c_cc[VWERASE], CWERASE);
 #endif
 
-    mode.c_iflag &= ~(IGNBRK | PARMRK | INPCK | ISTRIP | INLCR | IGNCR
+    mode.c_iflag &= ~((unsigned) (IGNBRK | PARMRK | INPCK | ISTRIP | INLCR | IGNCR
 #ifdef IUCLC
-		      | IUCLC
+				  | IUCLC
 #endif
 #ifdef IXANY
-		      | IXANY
+				  | IXANY
 #endif
-		      | IXOFF);
+				  | IXOFF));
 
     mode.c_iflag |= (BRKINT | IGNPAR | ICRNL | IXON
 #ifdef IMAXBEL
@@ -803,44 +810,44 @@ reset_mode(void)
 #endif
 	);
 
-    mode.c_oflag &= ~(0
+    mode.c_oflag &= ~((unsigned) (0
 #ifdef OLCUC
-		      | OLCUC
+				  | OLCUC
 #endif
 #ifdef OCRNL
-		      | OCRNL
+				  | OCRNL
 #endif
 #ifdef ONOCR
-		      | ONOCR
+				  | ONOCR
 #endif
 #ifdef ONLRET
-		      | ONLRET
+				  | ONLRET
 #endif
 #ifdef OFILL
-		      | OFILL
+				  | OFILL
 #endif
 #ifdef OFDEL
-		      | OFDEL
+				  | OFDEL
 #endif
 #ifdef NLDLY
-		      | NLDLY
+				  | NLDLY
 #endif
 #ifdef CRDLY
-		      | CRDLY
+				  | CRDLY
 #endif
 #ifdef TABDLY
-		      | TABDLY
+				  | TABDLY
 #endif
 #ifdef BSDLY
-		      | BSDLY
+				  | BSDLY
 #endif
 #ifdef VTDLY
-		      | VTDLY
+				  | VTDLY
 #endif
 #ifdef FFDLY
-		      | FFDLY
+				  | FFDLY
 #endif
-	);
+		      ));
 
     mode.c_oflag |= (OPOST
 #ifdef ONLCR
@@ -848,19 +855,19 @@ reset_mode(void)
 #endif
 	);
 
-    mode.c_cflag &= ~(CSIZE | CSTOPB | PARENB | PARODD | CLOCAL);
+    mode.c_cflag &= ~((unsigned) (CSIZE | CSTOPB | PARENB | PARODD | CLOCAL));
     mode.c_cflag |= (CS8 | CREAD);
-    mode.c_lflag &= ~(ECHONL | NOFLSH
+    mode.c_lflag &= ~((unsigned) (ECHONL | NOFLSH
 #ifdef TOSTOP
-		      | TOSTOP
+				  | TOSTOP
 #endif
 #ifdef ECHOPTR
-		      | ECHOPRT
+				  | ECHOPRT
 #endif
 #ifdef XCASE
-		      | XCASE
+				  | XCASE
 #endif
-	);
+		      ));
 
     mode.c_lflag |= (ISIG | ICANON | ECHO | ECHOE | ECHOK
 #ifdef ECHOCTL
@@ -907,14 +914,23 @@ static void
 set_control_chars(void)
 {
 #ifdef TERMIOS
-    if (DISABLED(mode.c_cc[VERASE]) || terasechar >= 0)
-	mode.c_cc[VERASE] = (terasechar >= 0) ? terasechar : default_erase();
+    if (DISABLED(mode.c_cc[VERASE]) || terasechar >= 0) {
+	mode.c_cc[VERASE] = UChar((terasechar >= 0)
+				  ? terasechar
+				  : default_erase());
+    }
 
-    if (DISABLED(mode.c_cc[VINTR]) || intrchar >= 0)
-	mode.c_cc[VINTR] = (intrchar >= 0) ? intrchar : CINTR;
+    if (DISABLED(mode.c_cc[VINTR]) || intrchar >= 0) {
+	mode.c_cc[VINTR] = UChar((intrchar >= 0)
+				 ? intrchar
+				 : CINTR);
+    }
 
-    if (DISABLED(mode.c_cc[VKILL]) || tkillchar >= 0)
-	mode.c_cc[VKILL] = (tkillchar >= 0) ? tkillchar : CKILL;
+    if (DISABLED(mode.c_cc[VKILL]) || tkillchar >= 0) {
+	mode.c_cc[VKILL] = UChar((tkillchar >= 0)
+				 ? tkillchar
+				 : CKILL);
+    }
 #endif
 }
 
@@ -970,9 +986,9 @@ set_conversions(void)
     if (newline != (char *) 0 && newline[0] == '\n' && !newline[1]) {
 	/* Newline, not linefeed. */
 #ifdef ONLCR
-	mode.c_oflag &= ~ONLCR;
+	mode.c_oflag &= ~((unsigned) ONLCR);
 #endif
-	mode.c_iflag &= ~ICRNL;
+	mode.c_iflag &= ~((unsigned) ICRNL);
     }
 #ifdef __OBSOLETE__
     if (tgetflag("HD"))		/* Half duplex. */
@@ -1043,11 +1059,18 @@ set_tabs(void)
 {
     if (set_tab && clear_all_tabs) {
 	int c;
+	int lim =
+#if HAVE_SIZECHANGE
+	tcolumns
+#else
+	columns
+#endif
+	 ;
 
 	(void) putc('\r', stderr);	/* Force to left margin. */
 	tputs(clear_all_tabs, 0, outc);
 
-	for (c = 8; c < tcolumns; c += 8) {
+	for (c = 8; c < lim; c += 8) {
 	    /* Get to the right column.  In BSD tset, this
 	     * used to try a bunch of half-clever things
 	     * with cup and hpa, for an average saving of
@@ -1146,26 +1169,26 @@ obsolete(char **argv)
 static void
 usage(void)
 {
-    static const char *tbl[] =
+#define DATA(s) s "\n"
+    static const char msg[] =
     {
-	""
-	,"Options:"
-	,"  -c          set control characters"
-	,"  -e ch       erase character"
-	,"  -I          no initialization strings"
-	,"  -i ch       interrupt character"
-	,"  -k ch       kill character"
-	,"  -m mapping  map identifier to type"
-	,"  -Q          do not output control key settings"
-	,"  -r          display term on stderr"
-	,"  -s          output TERM set command"
-	,"  -V          print curses-version"
-	,"  -w          set window-size"
+	DATA("")
+	DATA("Options:")
+	DATA("  -c          set control characters")
+	DATA("  -e ch       erase character")
+	DATA("  -I          no initialization strings")
+	DATA("  -i ch       interrupt character")
+	DATA("  -k ch       kill character")
+	DATA("  -m mapping  map identifier to type")
+	DATA("  -Q          do not output control key settings")
+	DATA("  -r          display term on stderr")
+	DATA("  -s          output TERM set command")
+	DATA("  -V          print curses-version")
+	DATA("  -w          set window-size")
     };
-    unsigned n;
+#undef DATA
     (void) fprintf(stderr, "Usage: %s [options] [terminal]\n", _nc_progname);
-    for (n = 0; n < sizeof(tbl) / sizeof(tbl[0]); ++n)
-	fprintf(stderr, "%s\n", tbl[n]);
+    fputs(msg, stderr);
     exit_error();
     /* NOTREACHED */
 }
@@ -1270,13 +1293,13 @@ main(int argc, char **argv)
 	reset_mode();
     }
 
-    (void) get_termcap_entry(*argv);
+    ttype = get_termcap_entry(*argv);
 
     if (!noset) {
+#if HAVE_SIZECHANGE
 	tcolumns = columns;
 	tlines = lines;
 
-#if HAVE_SIZECHANGE
 	if (opt_w) {
 	    STRUCT_WINSIZE win;
 	    /* Set window size if not set already */
@@ -1284,8 +1307,8 @@ main(int argc, char **argv)
 	    if (WINSIZE_ROWS(win) == 0 &&
 		WINSIZE_COLS(win) == 0 &&
 		tlines > 0 && tcolumns > 0) {
-		WINSIZE_ROWS(win) = tlines;
-		WINSIZE_COLS(win) = tcolumns;
+		WINSIZE_ROWS(win) = (unsigned short) tlines;
+		WINSIZE_COLS(win) = (unsigned short) tcolumns;
 		(void) ioctl(STDERR_FILENO, IOCTL_SET_WINSIZE, &win);
 	    }
 	}
@@ -1303,9 +1326,6 @@ main(int argc, char **argv)
 	    }
 	}
     }
-
-    /* Get the terminal name from the entry. */
-    ttype = _nc_first_name(cur_term->type.term_names);
 
     if (noset)
 	(void) printf("%s\n", ttype);

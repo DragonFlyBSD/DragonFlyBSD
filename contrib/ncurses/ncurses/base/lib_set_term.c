@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -47,7 +47,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_set_term.c,v 1.138 2010/12/20 00:42:20 tom Exp $")
+MODULE_ID("$Id: lib_set_term.c,v 1.154 2016/01/23 21:32:00 tom Exp $")
 
 #ifdef USE_TERM_DRIVER
 #define MaxColors      InfoOf(sp).maxcolors
@@ -188,19 +188,9 @@ delscreen(SCREEN *sp)
 	FreeIfNeeded(sp->_acs_map);
 	FreeIfNeeded(sp->_screen_acs_map);
 
-	/*
-	 * If the associated output stream has been closed, we can discard the
-	 * set-buffer.  Limit the error check to EBADF, since fflush may fail
-	 * for other reasons than trying to operate upon a closed stream.
-	 */
-	if (sp->_ofp != 0
-	    && sp->_setbuf != 0
-	    && fflush(sp->_ofp) != 0
-	    && errno == EBADF) {
-	    free(sp->_setbuf);
-	}
-
+	NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_ARG);
 	NCURSES_SP_NAME(del_curterm) (NCURSES_SP_ARGx sp->_term);
+	FreeIfNeeded(sp->out_buffer);
 	free(sp);
 
 	/*
@@ -217,6 +207,12 @@ delscreen(SCREEN *sp)
 	    COLOR_PAIRS = 0;
 #endif
 	    _nc_set_screen(0);
+#if USE_WIDEC_SUPPORT
+	    if (SP == 0) {
+		FreeIfNeeded(_nc_wacs);
+		_nc_wacs = 0;
+	    }
+#endif
 	}
     }
     _nc_unlock_global(curses);
@@ -253,13 +249,14 @@ no_mouse_wrap(SCREEN *sp GCC_UNUSED)
 }
 
 #if NCURSES_EXT_FUNCS && USE_COLORFGBG
-static char *
-extract_fgbg(char *src, int *result)
+static const char *
+extract_fgbg(const char *src, int *result)
 {
-    char *dst = 0;
-    long value = strtol(src, &dst, 0);
+    const char *dst = 0;
+    char *tmp = 0;
+    long value = strtol(src, &tmp, 0);
 
-    if (dst == 0) {
+    if ((dst = tmp) == 0) {
 	dst = src;
     } else if (value >= 0) {
 	*result = value;
@@ -272,8 +269,8 @@ extract_fgbg(char *src, int *result)
 }
 #endif
 
-#define ReturnScreenError() _nc_set_screen(0); \
-                            returnCode(ERR)
+#define ReturnScreenError() do { _nc_set_screen(0); \
+                            returnCode(ERR); } while (0)
 
 /* OS-independent screen initializations */
 NCURSES_EXPORT(int)
@@ -284,7 +281,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 				     int slines,
 				     int scolumns,
 				     FILE *output,
-				     bool filtered,
+				     int filtered,
 				     int slk_format)
 {
     char *env;
@@ -362,7 +359,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 	slines = 1;
 	SET_LINES(slines);
 #ifdef USE_TERM_DRIVER
-	CallDriver(sp, setfilter);
+	CallDriver(sp, td_setfilter);
 #else
 	clear_screen = 0;
 	cursor_down = parm_down_cursor = 0;
@@ -383,7 +380,15 @@ NCURSES_SP_NAME(_nc_setupscreen) (
     sp->_lines = (NCURSES_SIZE_T) slines;
     sp->_lines_avail = (NCURSES_SIZE_T) slines;
     sp->_columns = (NCURSES_SIZE_T) scolumns;
+
+    fflush(output);
+    sp->_ofd = output ? fileno(output) : -1;
     sp->_ofp = output;
+    sp->out_limit = (size_t) ((2 + slines) * (6 + scolumns));
+    if ((sp->out_buffer = malloc(sp->out_limit)) == 0)
+	sp->out_limit = 0;
+    sp->out_inuse = 0;
+
     SP_PRE_INIT(sp);
     SetNoPadding(sp);
 
@@ -445,7 +450,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
      * decide later if it is worth having default attributes as well.
      */
     if (getenv("COLORFGBG") != 0) {
-	char *p = getenv("COLORFGBG");
+	const char *p = getenv("COLORFGBG");
 	TR(TRACE_CHARPUT | TRACE_MOVE, ("decoding COLORFGBG %s", p));
 	p = extract_fgbg(p, &(sp->_default_fg));
 	p = extract_fgbg(p, &(sp->_default_bg));
@@ -456,7 +461,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 	if (sp->_default_fg >= MaxColors) {
 	    if (set_a_foreground != ABSENT_STRING
 		&& !strcmp(set_a_foreground, "\033[3%p1%dm")) {
-		set_a_foreground = "\033[3%?%p1%{8}%>%t9%e%p1%d%;m";
+		set_a_foreground = strdup("\033[3%?%p1%{8}%>%t9%e%p1%d%;m");
 	    } else {
 		sp->_default_fg %= MaxColors;
 	    }
@@ -464,7 +469,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 	if (sp->_default_bg >= MaxColors) {
 	    if (set_a_background != ABSENT_STRING
 		&& !strcmp(set_a_background, "\033[4%p1%dm")) {
-		set_a_background = "\033[4%?%p1%{8}%>%t9%e%p1%d%;m";
+		set_a_background = strdup("\033[4%?%p1%{8}%>%t9%e%p1%d%;m");
 	    } else {
 		sp->_default_bg %= MaxColors;
 	    }
@@ -510,16 +515,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 
     if (magic_cookie_glitch > 0) {	/* tvi, wyse */
 
-	sp->_xmc_triggers = sp->_ok_attributes & (
-						     A_STANDOUT |
-						     A_UNDERLINE |
-						     A_REVERSE |
-						     A_BLINK |
-						     A_DIM |
-						     A_BOLD |
-						     A_INVIS |
-						     A_PROTECT
-	    );
+	sp->_xmc_triggers = sp->_ok_attributes & XMC_CONFLICT;
 #if 0
 	/*
 	 * We "should" treat colors as an attribute.  The wyse350 (and its
@@ -584,9 +580,15 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 
     NCURSES_SP_NAME(_nc_init_acs) (NCURSES_SP_ARG);
 #if USE_WIDEC_SUPPORT
-    _nc_init_wacs();
+    sp->_screen_unicode = _nc_unicode_locale();
+    if (_nc_wacs == 0) {
+	_nc_init_wacs();
+    }
+    if (_nc_wacs == 0) {
+	ReturnScreenError();
+    }
 
-    sp->_screen_acs_fix = (_nc_unicode_locale()
+    sp->_screen_acs_fix = (sp->_screen_unicode
 			   && _nc_locale_breaks_acs(sp->_term));
 #endif
     env = _nc_get_locale();
@@ -619,6 +621,7 @@ NCURSES_SP_NAME(_nc_setupscreen) (
 #endif
 #if USE_SIZECHANGE
     sp->_resize = NCURSES_SP_NAME(resizeterm);
+    sp->_ungetch = safe_ungetch;
 #endif
 
     NewScreen(sp)->_clear = TRUE;
@@ -695,7 +698,7 @@ NCURSES_EXPORT(int)
 _nc_setupscreen(int slines GCC_UNUSED,
 		int scolumns GCC_UNUSED,
 		FILE *output,
-		bool filtered,
+		int filtered,
 		int slk_format)
 {
     SCREEN *sp = 0;
@@ -723,7 +726,7 @@ NCURSES_SP_NAME(_nc_ripoffline) (NCURSES_SP_DCLx
     int code = ERR;
 
     START_TRACE();
-    T((T_CALLED("ripoffline(%p,%d,%p)"), (void *) SP_PARM, line, init));
+    T((T_CALLED("ripoffline(%p,%d,%p)"), (void *) SP_PARM, line, TR_FUNC(init)));
 
 #if NCURSES_SP_FUNCS
     if (SP_PARM != 0 && SP_PARM->_prescreen)
@@ -759,6 +762,7 @@ NCURSES_SP_NAME(ripoffline) (NCURSES_SP_DCLx
 			     int line,
 			     int (*init) (WINDOW *, int))
 {
+    START_TRACE();
     return NCURSES_SP_NAME(_nc_ripoffline) (NCURSES_SP_ARGx
 					    (line < 0) ? -1 : 1,
 					    init);

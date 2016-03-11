@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2013,2014 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,7 +39,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_acs.c,v 1.43 2010/12/25 23:00:45 tom Exp $")
+MODULE_ID("$Id: lib_acs.c,v 1.45 2014/03/08 20:32:59 tom Exp $")
 
 #if BROKEN_LINKER || USE_REENTRANT
 #define MyBuffer _nc_prescreen.real_acs_map
@@ -166,11 +166,10 @@ NCURSES_SP_NAME(_nc_init_acs) (NCURSES_SP_DCL0)
     real_map['E'] = '+';	/* large plus or crossover */
 
 #ifdef USE_TERM_DRIVER
-    CallDriver_2(SP_PARM, initacs, real_map, fake_map);
+    CallDriver_2(SP_PARM, td_initacs, real_map, fake_map);
 #else
     if (ena_acs != NULL) {
-	TPUTS_TRACE("ena_acs");
-	putp(ena_acs);
+	NCURSES_PUTP2("ena_acs", ena_acs);
     }
 #if NCURSES_EXT_FUNCS
     /*

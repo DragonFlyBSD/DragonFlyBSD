@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2010,2011 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -84,7 +84,7 @@
 #define CUR SP_TERMTYPE
 #endif
 
-MODULE_ID("$Id: lib_mouse.c,v 1.121 2011/01/22 19:47:47 tom Exp $")
+MODULE_ID("$Id: lib_mouse.c,v 1.168 2015/10/31 20:47:41 tom Exp $")
 
 #include <tic.h>
 
@@ -112,13 +112,24 @@ make an error
 #undef buttons			/* symbol conflict in consio.h */
 #undef mouse_info		/* symbol conflict in consio.h */
 #include <osreldate.h>
-#if (__FreeBSD_version >= 400017)
+#if defined(__DragonFly_version) || (defined(__FreeBSD__) && (__FreeBSD_version >= 400017))
 #include <sys/consio.h>
 #include <sys/fbio.h>
 #else
 #include <machine/console.h>
 #endif
 #endif				/* use_SYSMOUSE */
+
+#if USE_KLIBC_MOUSE
+#include <sys/socket.h>
+#define pipe(handles) socketpair(AF_LOCAL, SOCK_STREAM, 0, handles)
+#define DosWrite(hfile, pbuffer, cbwrite, pcbactual) \
+		write(hfile, pbuffer, cbwrite)
+#define DosExit(action, result )	/* do nothing */
+#define DosCreateThread(ptid, pfn, param, flag, cbStack) \
+		(*(ptid) = _beginthread(pfn, NULL, cbStack, \
+					(void *)param), (*(ptid) == -1))
+#endif
 
 #define MY_TRACE TRACE_ICALLS|TRACE_IEVENT
 
@@ -147,6 +158,9 @@ make an error
 
 #define INVALID_EVENT	-1
 #define NORMAL_EVENT	0
+
+#define ValidEvent(ep) ((ep)->id != INVALID_EVENT)
+#define Invalidate(ep) (ep)->id = INVALID_EVENT
 
 #if USE_GPM_SUPPORT
 
@@ -211,7 +225,7 @@ write_event(SCREEN *sp, int down, int button, int x, int y)
     char buf[6];
     unsigned long ignore;
 
-    strncpy(buf, key_mouse, 3);	/* should be "\033[M" */
+    strcpy(buf, "\033[M");	/* should be the same as key_mouse */
     buf[3] = ' ' + (button - 1) + (down ? 0 : 0x40);
     buf[4] = ' ' + x - LEFT_COL + 1;
     buf[5] = ' ' + y - TOP_ROW + 1;
@@ -219,7 +233,11 @@ write_event(SCREEN *sp, int down, int button, int x, int y)
 }
 
 static void
+#if USE_KLIBC_MOUSE
+mouse_server(void *param)
+#else
 mouse_server(unsigned long param)
+#endif
 {
     SCREEN *sp = (SCREEN *) param;
     unsigned short fWait = MOU_WAIT;
@@ -245,7 +263,8 @@ mouse_server(unsigned long param)
 		/* sit and wait on the event queue */
 		rc = MouReadEventQue(&mouev, &fWait, hmou);
 		if (rc) {
-		    sprintf(err, "Error reading mouse queue, rc=%lu.\r\n", rc);
+		    _nc_SPRINTF(err, _nc_SLIMIT(sizeof(err))
+				"Error reading mouse queue, rc=%lu.\r\n", rc);
 		    break;
 		}
 		if (!sp->_emxmouse_activated)
@@ -271,9 +290,11 @@ mouse_server(unsigned long param)
 	      finish:
 		oldstate = mouev.fs;
 	    }
-	} else
-	    sprintf(err, "Error setting event mask, buttons=%d, rc=%lu.\r\n",
-		    nbuttons, rc);
+	} else {
+	    _nc_SPRINTF(err, _nc_SLIMIT(sizeof(err))
+			"Error setting event mask, buttons=%d, rc=%lu.\r\n",
+			nbuttons, rc);
+	}
 
 	DosWrite(2, err, strlen(err), &rc);
 	MouClose(hmou);
@@ -355,9 +376,46 @@ static void
 init_xterm_mouse(SCREEN *sp)
 {
     sp->_mouse_type = M_XTERM;
+    sp->_mouse_format = MF_X10;
     sp->_mouse_xtermcap = tigetstr("XM");
-    if (!VALID_STRING(sp->_mouse_xtermcap))
+    if (VALID_STRING(sp->_mouse_xtermcap)) {
+	char *code = strstr(sp->_mouse_xtermcap, "[?");
+	if (code != 0) {
+	    code += 2;
+	    while ((*code >= '0') && (*code <= '9')) {
+		char *next = code;
+		while ((*next >= '0') && (*next <= '9')) {
+		    ++next;
+		}
+		if (!strncmp(code, "1006", (size_t) (next - code))) {
+		    sp->_mouse_format = MF_SGR1006;
+		}
+#ifdef EXP_XTERM_1005
+		if (!strncmp(code, "1005", (size_t) (next - code))) {
+		    sp->_mouse_format = MF_XTERM_1005;
+		}
+#endif
+		if (*next == ';') {
+		    while (*next == ';') {
+			++next;
+		    }
+		    code = next;
+		} else {
+		    break;
+		}
+	    }
+	}
+    } else {
+	int code = tigetnum("XM");
+	switch (code) {
+	case 1006:
+	    break;
+	default:
+	    code = 1000;
+	    break;
+	}
 	sp->_mouse_xtermcap = "\033[?1000%?%p1%{1}%=%th%el%;";
+    }
 }
 #endif
 
@@ -367,23 +425,29 @@ enable_xterm_mouse(SCREEN *sp, int enable)
 #if USE_EMX_MOUSE
     sp->_emxmouse_activated = enable;
 #else
-    NCURSES_SP_NAME(_nc_putp) (NCURSES_SP_ARGx
-			       "xterm-mouse",
-			       TPARM_1(sp->_mouse_xtermcap, enable));
+    NCURSES_PUTP2("xterm-mouse", TPARM_1(sp->_mouse_xtermcap, enable));
 #endif
     sp->_mouse_active = enable;
 }
 
 #if USE_GPM_SUPPORT
 static bool
-allow_gpm_mouse(void)
+allow_gpm_mouse(SCREEN *sp GCC_UNUSED)
 {
     bool result = FALSE;
 
-    /* GPM does printf's without checking if stdout is a terminal */
-    if (isatty(fileno(stdout))) {
-	char *list = getenv("NCURSES_GPM_TERMS");
-	char *env = getenv("TERM");
+#if USE_WEAK_SYMBOLS
+    /* Danger Robinson: do not use dlopen for libgpm if already loaded */
+    if ((Gpm_Wgetch)) {
+	if (!sp->_mouse_gpm_loaded) {
+	    T(("GPM library was already dlopen'd, not by us"));
+	}
+    } else
+#endif
+	/* GPM does printf's without checking if stdout is a terminal */
+    if (NC_ISATTY(fileno(stdout))) {
+	const char *list = getenv("NCURSES_GPM_TERMS");
+	const char *env = getenv("TERM");
 	if (list != 0) {
 	    if (env != 0) {
 		result = _nc_name_match(list, env, "|:");
@@ -506,7 +570,7 @@ initialize_mousetype(SCREEN *sp)
 
     /* Try gpm first, because gpm may be configured to run in xterm */
 #if USE_GPM_SUPPORT
-    if (allow_gpm_mouse()) {
+    if (allow_gpm_mouse(sp)) {
 	if (!sp->_mouse_gpm_loaded) {
 #ifdef HAVE_LIBDL
 	    load_gpm_library(sp);
@@ -544,7 +608,7 @@ initialize_mousetype(SCREEN *sp)
 	    int rc;
 
 	    if (!sp->_emxmouse_buttons[0]) {
-		char *s = getenv("MOUSE_BUTTONS_123");
+		const char *s = getenv("MOUSE_BUTTONS_123");
 
 		sp->_emxmouse_buttons[0] = 1;
 		if (s && strlen(s) >= 3) {
@@ -577,13 +641,14 @@ initialize_mousetype(SCREEN *sp)
 
 #if USE_SYSMOUSE
     {
+	static char dev_tty[] = "/dev/tty";
 	struct mouse_info the_mouse;
 	char *the_device = 0;
 
-	if (isatty(sp->_ifd))
+	if (NC_ISATTY(sp->_ifd))
 	    the_device = ttyname(sp->_ifd);
 	if (the_device == 0)
-	    the_device = "/dev/tty";
+	    the_device = dev_tty;
 
 	sp->_mouse_fd = open(the_device, O_RDWR);
 
@@ -641,7 +706,7 @@ initialize_mousetype(SCREEN *sp)
 #endif /* USE_SYSMOUSE */
 
 #ifdef USE_TERM_DRIVER
-    CallDriver(sp, initmouse);
+    CallDriver(sp, td_initmouse);
 #else
     /* we know how to recognize mouse events under "xterm" */
     if (key_mouse != 0) {
@@ -673,7 +738,7 @@ _nc_mouse_init(SCREEN *sp)
 
 	    sp->_mouse_eventp = FirstEV(sp);
 	    for (i = 0; i < EV_MAX; i++)
-		sp->_mouse_events[i].id = INVALID_EVENT;
+		Invalidate(sp->_mouse_events + i);
 
 	    initialize_mousetype(sp);
 
@@ -750,6 +815,7 @@ _nc_mouse_event(SCREEN *sp)
 			eventp->bstate |= BUTTON3_RELEASED;
 		    break;
 		default:
+		    eventp->bstate |= REPORT_MOUSE_POSITION;
 		    break;
 		}
 
@@ -818,157 +884,415 @@ _nc_mouse_event(SCREEN *sp)
     return result;		/* true if we found an event */
 }
 
+#if USE_EMX_MOUSE
+#define PRESS_POSITION(n) \
+    do { \
+	    eventp->bstate = MASK_PRESS(n); \
+	    sp->_mouse_bstate |= MASK_PRESS(n); \
+	    if (button & 0x40) { \
+		    eventp->bstate = MASK_RELEASE(n); \
+		    sp->_mouse_bstate &= ~MASK_PRESS(n); \
+	    } \
+    } while (0)
+#else
+#define PRESS_POSITION(n) \
+    do { \
+	    eventp->bstate = (mmask_t) (sp->_mouse_bstate & MASK_PRESS(n) \
+				    ? REPORT_MOUSE_POSITION \
+				    : MASK_PRESS(n)); \
+	    sp->_mouse_bstate |= MASK_PRESS(n); \
+    } while (0)
+#endif
+
+static bool
+handle_wheel(SCREEN *sp, MEVENT * eventp, int button, int wheel)
+{
+    bool result = TRUE;
+
+    switch (button & 3) {
+    case 0:
+	if (wheel) {
+	    eventp->bstate = MASK_PRESS(4);
+	    /* Do not record in sp->_mouse_bstate; there will be no
+	     * corresponding release event.
+	     */
+	} else {
+	    PRESS_POSITION(1);
+	}
+	break;
+    case 1:
+	if (wheel) {
+#if NCURSES_MOUSE_VERSION == 2
+	    eventp->bstate = MASK_PRESS(5);
+	    /* See comment above for button 4 */
+#else
+	    /* Ignore this event as it is not a true press of the button */
+	    eventp->bstate = REPORT_MOUSE_POSITION;
+#endif
+	} else {
+	    PRESS_POSITION(2);
+	}
+	break;
+    case 2:
+	PRESS_POSITION(3);
+	break;
+    default:
+	result = FALSE;
+	break;
+    }
+    return result;
+}
+
+static bool
+decode_X10_bstate(SCREEN *sp, MEVENT * eventp, unsigned intro)
+{
+    bool result;
+    int b;
+
+    eventp->bstate = 0;
+
+    if (!handle_wheel(sp, eventp, (int) intro, (intro & 96) == 96)) {
+	/*
+	 * Release events aren't reported for individual buttons, just for
+	 * the button set as a whole.  However, because there are normally
+	 * no mouse events under xterm that intervene between press and
+	 * release, we can infer the button actually released by looking at
+	 * the previous event.
+	 */
+	if (sp->_mouse_bstate & BUTTON_PRESSED) {
+	    eventp->bstate = BUTTON_RELEASED;
+	    for (b = 1; b <= MAX_BUTTONS; ++b) {
+		if (!(sp->_mouse_bstate & MASK_PRESS(b)))
+		    eventp->bstate &= ~MASK_RELEASE(b);
+	    }
+	    sp->_mouse_bstate = 0;
+	} else {
+	    /*
+	     * xterm will return a stream of release-events to let the
+	     * application know where the mouse is going, if private mode
+	     * 1002 or 1003 is enabled.
+	     */
+	    eventp->bstate = REPORT_MOUSE_POSITION;
+	}
+    }
+
+    if (intro & 4) {
+	eventp->bstate |= BUTTON_SHIFT;
+    }
+    if (intro & 8) {
+	eventp->bstate |= BUTTON_ALT;
+    }
+    if (intro & 16) {
+	eventp->bstate |= BUTTON_CTRL;
+    }
+    result = (eventp->bstate & REPORT_MOUSE_POSITION) ? TRUE : FALSE;
+    return result;
+}
+
+/* This code requires that your xterm entry contain the kmous capability and
+ * that it be set to the \E[M documented in the Xterm Control Sequences
+ * reference.  This is how we arrange for mouse events to be reported via a
+ * KEY_MOUSE return value from wgetch().  After this value is received,
+ * _nc_mouse_inline() gets called and is immediately responsible for parsing
+ * the mouse status information following the prefix.
+ *
+ * The following quotes from the ctlseqs.ms document in the XTerm distribution,
+ * describing the mouse tracking feature:
+ *
+ * Parameters for all mouse tracking escape sequences generated by xterm encode
+ * numeric parameters in a single character as value+040.  For example, ! is
+ * 1.
+ *
+ * On button press or release, xterm sends ESC [ M CbCxCy.  The low two bits of
+ * Cb encode button information:  0=MB1 pressed, 1=MB2 pressed, 2=MB3 pressed,
+ * 3=release.  The upper bits encode what modifiers were down when the button
+ * was pressed and are added together.  4=Shift, 8=Meta, 16=Control.  Cx and Cy
+ * are the x and y coordinates of the mouse event.  The upper left corner is
+ * (1,1).
+ *
+ * (End quote) By the time we get here, we've eaten the key prefix.  FYI, the
+ * loop below is necessary because mouse click info isn't guaranteed to present
+ * as a single clist item.
+ *
+ * Wheel mice may return buttons 4 and 5 when the wheel is turned.  We encode
+ * those as button presses.
+ */
+static bool
+decode_xterm_X10(SCREEN *sp, MEVENT * eventp)
+{
+    unsigned char kbuf[4];
+    size_t grabbed;
+    int res;
+    bool result;
+
+# if USE_PTHREADS_EINTR
+#  if USE_WEAK_SYMBOLS
+    if ((pthread_self) && (pthread_kill) && (pthread_equal))
+#  endif
+	_nc_globals.read_thread = pthread_self();
+# endif
+    for (grabbed = 0; grabbed < 3; grabbed += (size_t) res) {
+
+	/* For VIO mouse we add extra bit 64 to disambiguate button-up. */
+	res = (int) read(
+#if USE_EMX_MOUSE
+			    (M_FD(sp) >= 0) ? M_FD(sp) : sp->_ifd,
+#else
+			    sp->_ifd,
+#endif
+			    kbuf + grabbed, 3 - grabbed);
+	if (res == -1)
+	    break;
+    }
+#if USE_PTHREADS_EINTR
+    _nc_globals.read_thread = 0;
+#endif
+    kbuf[3] = '\0';
+
+    TR(TRACE_IEVENT,
+       ("_nc_mouse_inline sees the following xterm data: '%s'", kbuf));
+
+    /* there's only one mouse... */
+    eventp->id = NORMAL_EVENT;
+
+    result = decode_X10_bstate(sp, eventp, kbuf[0]);
+
+    eventp->x = (kbuf[1] - ' ') - 1;
+    eventp->y = (kbuf[2] - ' ') - 1;
+
+    return result;
+}
+
+#ifdef EXP_XTERM_1005
+/*
+ * This is identical to X10/X11 responses except that there are two UTF-8
+ * characters storing the ordinates instead of two bytes.
+ */
+static bool
+decode_xterm_1005(SCREEN *sp, MEVENT * eventp)
+{
+    char kbuf[80];
+    size_t grabbed;
+    size_t limit = (sizeof(kbuf) - 1);
+    unsigned coords[2];
+    int res;
+    bool result;
+
+    coords[0] = 0;
+    coords[1] = 0;
+
+# if USE_PTHREADS_EINTR
+#  if USE_WEAK_SYMBOLS
+    if ((pthread_self) && (pthread_kill) && (pthread_equal))
+#  endif
+	_nc_globals.read_thread = pthread_self();
+# endif
+    for (grabbed = 0; grabbed < limit;) {
+
+	res = (int) read(
+#if USE_EMX_MOUSE
+			    (M_FD(sp) >= 0) ? M_FD(sp) : sp->_ifd,
+#else
+			    sp->_ifd,
+#endif
+			    kbuf + grabbed, 1);
+	if (res == -1)
+	    break;
+	grabbed += (size_t) res;
+	if (grabbed > 1) {
+	    size_t check = 1;
+	    int n;
+	    int rc;
+	    for (n = 0; n < 2; ++n) {
+		if (check >= grabbed)
+		    break;
+		rc = _nc_conv_to_utf32(&coords[n], kbuf + check, (unsigned)
+				       (grabbed - check));
+		if (!rc)
+		    break;
+		check += (size_t) rc;
+	    }
+	    if (n >= 2)
+		break;
+	}
+    }
+#if USE_PTHREADS_EINTR
+    _nc_globals.read_thread = 0;
+#endif
+
+    TR(TRACE_IEVENT,
+       ("_nc_mouse_inline sees the following xterm data: %s",
+	_nc_visbufn(kbuf, (int) grabbed)));
+
+    /* there's only one mouse... */
+    eventp->id = NORMAL_EVENT;
+
+    result = decode_X10_bstate(sp, eventp, UChar(kbuf[0]));
+
+    eventp->x = (int) (coords[0] - ' ') - 1;
+    eventp->y = (int) (coords[1] - ' ') - 1;
+
+    return result;
+}
+#endif /* EXP_XTERM_1005 */
+
+/*
+ * ECMA-48 section 5.4
+ */
+#define isInter(c) ((c) >= 0x20 && (c) <= 0x2f)
+#define isParam(c) ((c) >= 0x30 && (c) <= 0x3f)
+#define isFinal(c) ((c) >= 0x40 && (c) <= 0x7e)
+
+#define MAX_PARAMS 9
+
+typedef struct {
+    int nerror;			/* nonzero if there are unexpected chars */
+    int nparam;			/* number of numeric parameters */
+    int params[MAX_PARAMS];
+    int final;			/* the final-character */
+} SGR_DATA;
+
+static bool
+read_SGR(SCREEN *sp, SGR_DATA * result)
+{
+    char kbuf[80];		/* bigger than any possible mouse response */
+    int grabbed = 0;
+    int res;
+    int ch = 0;
+    int now = -1;
+    int marker = 1;
+
+    memset(result, 0, sizeof(*result));
+# if USE_PTHREADS_EINTR
+#  if USE_WEAK_SYMBOLS
+    if ((pthread_self) && (pthread_kill) && (pthread_equal))
+#  endif
+	_nc_globals.read_thread = pthread_self();
+# endif
+    do {
+	res = (int) read(
+#if USE_EMX_MOUSE
+			    (M_FD(sp) >= 0) ? M_FD(sp) : sp->_ifd,
+#else
+			    sp->_ifd,
+#endif
+			    kbuf + grabbed, 1);
+	if (res == -1)
+	    break;
+	if ((grabbed + 3) >= (int) sizeof(kbuf)) {
+	    result->nerror++;
+	    break;
+	}
+	ch = UChar(kbuf[grabbed]);
+	kbuf[grabbed + 1] = 0;
+	switch (ch) {
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+	case '7':
+	case '8':
+	case '9':
+	    if (marker) {
+		++now;
+		result->nparam = (now + 1);
+	    }
+	    marker = 0;
+	    result->params[now] = (result->params[now] * 10) + (ch - '0');
+	    break;
+	case ';':
+	    if (marker) {
+		++now;
+		result->nparam = (now + 1);
+	    }
+	    marker = 1;
+	    break;
+	default:
+	    if (ch < 32 || ch > 126) {
+		/*
+		 * Technically other characters could be interspersed in the
+		 * response.  Ignore those for now.
+		 */
+		result->nerror++;
+		continue;
+	    } else if (isFinal(ch)) {
+		if (marker) {
+		    result->nparam++;
+		}
+		result->final = ch;
+	    } else {
+		result->nerror++;
+	    }
+	    break;
+	}
+	++grabbed;
+    } while (!isFinal(ch));
+#if USE_PTHREADS_EINTR
+    _nc_globals.read_thread = 0;
+#endif
+
+    kbuf[++grabbed] = 0;
+    TR(TRACE_IEVENT,
+       ("_nc_mouse_inline sees the following xterm data: '%s'", kbuf));
+    return (grabbed > 0) && (result->nerror == 0);
+}
+
+static bool
+decode_xterm_SGR1006(SCREEN *sp, MEVENT * eventp)
+{
+    SGR_DATA data;
+    bool result = FALSE;
+    if (read_SGR(sp, &data)) {
+	int b = data.params[0];
+	int b3 = 1 + (b & 3);
+
+	eventp->id = NORMAL_EVENT;
+	if (data.final == 'M') {
+	    (void) handle_wheel(sp, eventp, b, (b & 64) == 64);
+	} else {
+	    mmask_t pressed = (mmask_t) NCURSES_MOUSE_MASK(b3, NCURSES_BUTTON_PRESSED);
+	    mmask_t release = (mmask_t) NCURSES_MOUSE_MASK(b3, NCURSES_BUTTON_RELEASED);
+	    if (sp->_mouse_bstate & pressed) {
+		eventp->bstate = release;
+		sp->_mouse_bstate &= ~pressed;
+	    } else {
+		eventp->bstate = REPORT_MOUSE_POSITION;
+	    }
+	}
+	result = (eventp->bstate & REPORT_MOUSE_POSITION) ? TRUE : FALSE;
+	eventp->x = (data.params[1] ? (data.params[1] - 1) : 0);
+	eventp->y = (data.params[2] ? (data.params[2] - 1) : 0);
+    }
+    return result;
+}
+
 static bool
 _nc_mouse_inline(SCREEN *sp)
 /* mouse report received in the keyboard stream -- parse its info */
 {
-    int b;
     bool result = FALSE;
     MEVENT *eventp = sp->_mouse_eventp;
 
     TR(MY_TRACE, ("_nc_mouse_inline() called"));
 
     if (sp->_mouse_type == M_XTERM) {
-	unsigned char kbuf[4];
-	mmask_t prev;
-	size_t grabbed;
-	int res;
-
-	/* This code requires that your xterm entry contain the kmous
-	 * capability and that it be set to the \E[M documented in the
-	 * Xterm Control Sequences reference.  This is how we
-	 * arrange for mouse events to be reported via a KEY_MOUSE
-	 * return value from wgetch().  After this value is received,
-	 * _nc_mouse_inline() gets called and is immediately
-	 * responsible for parsing the mouse status information
-	 * following the prefix.
-	 *
-	 * The following quotes from the ctrlseqs.ms document in the
-	 * X distribution, describing the X mouse tracking feature:
-	 *
-	 * Parameters for all mouse tracking escape sequences
-	 * generated by xterm encode numeric parameters in a single
-	 * character as value+040.  For example, !  is 1.
-	 *
-	 * On button press or release, xterm sends ESC [ M CbCxCy.
-	 * The low two bits of Cb encode button information: 0=MB1
-	 * pressed, 1=MB2 pressed, 2=MB3 pressed, 3=release.  The
-	 * upper bits encode what modifiers were down when the
-	 * button was pressed and are added together.  4=Shift,
-	 * 8=Meta, 16=Control.  Cx and Cy are the x and y coordinates
-	 * of the mouse event.  The upper left corner is (1,1).
-	 *
-	 * (End quote)  By the time we get here, we've eaten the
-	 * key prefix.  FYI, the loop below is necessary because
-	 * mouse click info isn't guaranteed to present as a
-	 * single clist item.
-	 *
-	 * Wheel mice may return buttons 4 and 5 when the wheel is turned.
-	 * We encode those as button presses.
-	 */
-# if USE_PTHREADS_EINTR
-#  if USE_WEAK_SYMBOLS
-	if ((pthread_self) && (pthread_kill) && (pthread_equal))
-#  endif
-	    _nc_globals.read_thread = pthread_self();
-# endif
-	for (grabbed = 0; grabbed < 3; grabbed += (size_t) res) {
-
-	    /* For VIO mouse we add extra bit 64 to disambiguate button-up. */
-#if USE_EMX_MOUSE
-	    res = (int) read(M_FD(sp) >= 0 ? M_FD(sp) : sp->_ifd, &kbuf, 3);
-#else
-	    res = (int) read(sp->_ifd, kbuf + grabbed, 3 - grabbed);
-#endif
-	    if (res == -1)
-		break;
-	}
-#if USE_PTHREADS_EINTR
-	_nc_globals.read_thread = 0;
-#endif
-	kbuf[3] = '\0';
-
-	TR(TRACE_IEVENT,
-	   ("_nc_mouse_inline sees the following xterm data: '%s'", kbuf));
-
-	/* there's only one mouse... */
-	eventp->id = NORMAL_EVENT;
-
-	/* processing code goes here */
-	eventp->bstate = 0;
-	prev = PREV(eventp)->bstate;
-
-#if USE_EMX_MOUSE
-#define PRESS_POSITION(n) \
-	eventp->bstate = MASK_PRESS(n); \
-	if (kbuf[0] & 0x40) \
-	    eventp->bstate = MASK_RELEASE(n)
-#else
-#define PRESS_POSITION(n) \
-	eventp->bstate = (mmask_t) (prev & MASK_PRESS(n) \
-				    ? REPORT_MOUSE_POSITION \
-				    : MASK_PRESS(n))
-#endif
-
-	switch (kbuf[0] & 0x3) {
-	case 0x0:
-	    if (kbuf[0] & 64)
-		eventp->bstate = MASK_PRESS(4);
-	    else
-		PRESS_POSITION(1);
+	switch (sp->_mouse_format) {
+	case MF_X10:
+	    result = decode_xterm_X10(sp, eventp);
 	    break;
-
-	case 0x1:
-#if NCURSES_MOUSE_VERSION == 2
-	    if (kbuf[0] & 64)
-		eventp->bstate = MASK_PRESS(5);
-	    else
+	case MF_SGR1006:
+	    result = decode_xterm_SGR1006(sp, eventp);
+	    break;
+#ifdef EXP_XTERM_1005
+	case MF_XTERM_1005:
+	    result = decode_xterm_1005(sp, eventp);
+	    break;
 #endif
-		PRESS_POSITION(2);
-	    break;
-
-	case 0x2:
-	    PRESS_POSITION(3);
-	    break;
-
-	case 0x3:
-	    /*
-	     * Release events aren't reported for individual buttons, just for
-	     * the button set as a whole.  However, because there are normally
-	     * no mouse events under xterm that intervene between press and
-	     * release, we can infer the button actually released by looking at
-	     * the previous event.
-	     */
-	    if (prev & (BUTTON_PRESSED | BUTTON_RELEASED)) {
-		eventp->bstate = BUTTON_RELEASED;
-		for (b = 1; b <= MAX_BUTTONS; ++b) {
-		    if (!(prev & MASK_PRESS(b)))
-			eventp->bstate &= ~MASK_RELEASE(b);
-		}
-	    } else {
-		/*
-		 * XFree86 xterm will return a stream of release-events to
-		 * let the application know where the mouse is going, if the
-		 * private mode 1002 or 1003 is enabled.
-		 */
-		eventp->bstate = REPORT_MOUSE_POSITION;
-	    }
-	    break;
-	}
-	result = (eventp->bstate & REPORT_MOUSE_POSITION) ? TRUE : FALSE;
-
-	if (kbuf[0] & 4) {
-	    eventp->bstate |= BUTTON_SHIFT;
-	}
-	if (kbuf[0] & 8) {
-	    eventp->bstate |= BUTTON_ALT;
-	}
-	if (kbuf[0] & 16) {
-	    eventp->bstate |= BUTTON_CTRL;
 	}
 
-	eventp->x = (kbuf[1] - ' ') - 1;
-	eventp->y = (kbuf[2] - ' ') - 1;
 	TR(MY_TRACE,
 	   ("_nc_mouse_inline: primitive mouse-event %s has slot %ld",
 	    _nc_tracemouse(sp, eventp),
@@ -976,16 +1300,30 @@ _nc_mouse_inline(SCREEN *sp)
 
 	/* bump the next-free pointer into the circular list */
 	sp->_mouse_eventp = NEXT(eventp);
-#if 0				/* this return would be needed for QNX's mods to lib_getch.c */
-	return (TRUE);
-#endif
+
+	if (!result) {
+	    /* If this event is from a wheel-mouse, treat it like position
+	     * reports and avoid waiting for the release-events which will
+	     * never come.
+	     */
+	    if (eventp->bstate & BUTTON_PRESSED) {
+		int b;
+
+		for (b = 4; b <= MAX_BUTTONS; ++b) {
+		    if ((eventp->bstate & MASK_PRESS(b))) {
+			result = TRUE;
+			break;
+		    }
+		}
+	    }
+	}
     }
 
     return (result);
 }
 
 static void
-mouse_activate(SCREEN *sp, bool on)
+mouse_activate(SCREEN *sp, int on)
 {
     if (!on && !sp->_mouse_initialized)
 	return;
@@ -994,7 +1332,7 @@ mouse_activate(SCREEN *sp, bool on)
 	return;
 
     if (on) {
-
+	sp->_mouse_bstate = 0;
 	switch (sp->_mouse_type) {
 	case M_XTERM:
 #if NCURSES_EXT_FUNCS
@@ -1074,10 +1412,13 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
 /* parse a run of atomic mouse events into a gesture */
 {
     MEVENT *eventp = sp->_mouse_eventp;
-    MEVENT *ep, *runp, *next, *prev = PREV(eventp);
+    MEVENT *next, *ep;
+    MEVENT *first_valid = NULL;
+    MEVENT *first_invalid = NULL;
     int n;
     int b;
     bool merge;
+    bool endLoop;
 
     TR(MY_TRACE, ("_nc_mouse_parse(%d) called", runcount));
 
@@ -1094,7 +1435,8 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
      *
      * It's possible that the run may not resolve to a single event (for
      * example, if the user quadruple-clicks).  If so, leading events
-     * in the run are ignored.
+     * in the run are ignored if user does not call getmouse in a loop (getting
+     * them from newest to older).
      *
      * Note that this routine is independent of the format of the specific
      * format of the pointing-device's reports.  We can use it to parse
@@ -1102,79 +1444,110 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
      * button basis, as long as the device-dependent mouse code puts stuff
      * on the queue in MEVENT format.
      */
-    if (runcount == 1) {
-	TR(MY_TRACE,
-	   ("_nc_mouse_parse: returning simple mouse event %s at slot %ld",
-	    _nc_tracemouse(sp, prev),
-	    (long) IndexEV(sp, prev)));
-	return (prev->id >= NORMAL_EVENT)
-	    ? ((prev->bstate & sp->_mouse_mask) ? TRUE : FALSE)
-	    : FALSE;
-    }
 
-    /* find the start of the run */
-    runp = eventp;
-    for (n = runcount; n > 0; n--) {
-	runp = PREV(runp);
+    /*
+     * Reset all events that were not set, in case the user sometimes calls
+     * getmouse only once and other times until there are no more events in
+     * queue.
+     *
+     * This also allows reaching the beginning of the run.
+     */
+    ep = eventp;
+    for (n = runcount; n < EV_MAX; n++) {
+	Invalidate(ep);
+	ep = NEXT(ep);
     }
 
 #ifdef TRACE
     if (USE_TRACEF(TRACE_IEVENT)) {
 	_trace_slot(sp, "before mouse press/release merge:");
 	_tracef("_nc_mouse_parse: run starts at %ld, ends at %ld, count %d",
-		RunParams(sp, eventp, runp),
+		RunParams(sp, eventp, ep),
 		runcount);
 	_nc_unlock_global(tracef);
     }
 #endif /* TRACE */
 
     /* first pass; merge press/release pairs */
-    do {
-	merge = FALSE;
-	for (ep = runp; (next = NEXT(ep)) != eventp; ep = next) {
+    endLoop = FALSE;
+    while (!endLoop) {
+	next = NEXT(ep);
+	if (next == eventp) {
+	    /* Will end the loop, but compact before */
+	    endLoop = TRUE;
+	} else {
 
 #define MASK_CHANGED(x) (!(ep->bstate & MASK_PRESS(x)) \
 		      == !(next->bstate & MASK_RELEASE(x)))
 
-	    if (ep->x == next->x && ep->y == next->y
+	    if (ValidEvent(ep) && ValidEvent(next)
+		&& ep->x == next->x && ep->y == next->y
 		&& (ep->bstate & BUTTON_PRESSED)
-		&& MASK_CHANGED(1)
-		&& MASK_CHANGED(2)
-		&& MASK_CHANGED(3)
-		&& MASK_CHANGED(4)
-#if NCURSES_MOUSE_VERSION == 2
-		&& MASK_CHANGED(5)
-#endif
-		) {
+		&& (!(next->bstate & BUTTON_PRESSED))) {
+		bool changed = TRUE;
+
 		for (b = 1; b <= MAX_BUTTONS; ++b) {
-		    if ((sp->_mouse_mask & MASK_CLICK(b))
-			&& (ep->bstate & MASK_PRESS(b))) {
-			ep->bstate &= ~MASK_PRESS(b);
-			ep->bstate |= MASK_CLICK(b);
-			merge = TRUE;
+		    if (!MASK_CHANGED(b)) {
+			changed = FALSE;
+			break;
 		    }
 		}
-		if (merge)
-		    next->id = INVALID_EVENT;
+
+		if (changed) {
+		    merge = FALSE;
+		    for (b = 1; b <= MAX_BUTTONS; ++b) {
+			if ((sp->_mouse_mask & MASK_CLICK(b))
+			    && (ep->bstate & MASK_PRESS(b))) {
+			    next->bstate &= ~MASK_RELEASE(b);
+			    next->bstate |= MASK_CLICK(b);
+			    merge = TRUE;
+			}
+		    }
+		    if (merge) {
+			Invalidate(ep);
+		    }
+		}
 	    }
 	}
-    } while
-	(merge);
 
+	/* Compact valid events */
+	if (!ValidEvent(ep)) {
+	    if ((first_valid != NULL) && (first_invalid == NULL)) {
+		first_invalid = ep;
+	    }
+	} else {
+	    if (first_valid == NULL) {
+		first_valid = ep;
+	    } else if (first_invalid != NULL) {
+		*first_invalid = *ep;
+		Invalidate(ep);
+		first_invalid = NEXT(first_invalid);
+	    }
+	}
+
+	ep = next;
+    }
+
+    if (first_invalid != NULL) {
+	eventp = first_invalid;
+    }
 #ifdef TRACE
     if (USE_TRACEF(TRACE_IEVENT)) {
 	_trace_slot(sp, "before mouse click merge:");
-	_tracef("_nc_mouse_parse: run starts at %ld, ends at %ld, count %d",
-		RunParams(sp, eventp, runp),
-		runcount);
-	_nc_unlock_global(tracef);
+	if (first_valid == NULL) {
+	    _tracef("_nc_mouse_parse: no valid event");
+	} else {
+	    _tracef("_nc_mouse_parse: run starts at %ld, ends at %ld, count %d",
+		    RunParams(sp, eventp, first_valid),
+		    runcount);
+	    _nc_unlock_global(tracef);
+	}
     }
 #endif /* TRACE */
 
     /*
-     * Second pass; merge click runs.  At this point, click events are
-     * each followed by one invalid event. We merge click events
-     * forward in the queue.
+     * Second pass; merge click runs.  We merge click events forward in the
+     * queue.  For example, double click can be changed to triple click.
      *
      * NOTE: There is a problem with this design!  If the application
      * allows enough click events to pile up in the circular queue so
@@ -1187,87 +1560,102 @@ _nc_mouse_parse(SCREEN *sp, int runcount)
      * but the timer element would have to have sub-second resolution,
      * which would get us into portability trouble.
      */
-    do {
-	MEVENT *follower;
+    first_invalid = NULL;
+    endLoop = (first_valid == NULL);
+    ep = first_valid;
+    while (!endLoop) {
+	next = NEXT(ep);
 
-	merge = FALSE;
-	for (ep = runp; (next = NEXT(ep)) != eventp; ep = next)
-	    if (ep->id != INVALID_EVENT) {
-		if (next->id != INVALID_EVENT)
-		    continue;
-		follower = NEXT(next);
-		if (follower->id == INVALID_EVENT)
-		    continue;
-
-		/* merge click events forward */
-		if ((ep->bstate & BUTTON_CLICKED)
-		    && (follower->bstate & BUTTON_CLICKED)) {
-		    for (b = 1; b <= MAX_BUTTONS; ++b) {
-			if ((sp->_mouse_mask & MASK_DOUBLE_CLICK(b))
-			    && (follower->bstate & MASK_CLICK(b))) {
-			    follower->bstate &= ~MASK_CLICK(b);
-			    follower->bstate |= MASK_DOUBLE_CLICK(b);
-			    merge = TRUE;
-			}
+	if (next == eventp) {
+	    /* Will end the loop, but check event type and compact before */
+	    endLoop = TRUE;
+	} else if (!ValidEvent(next)) {
+	    continue;
+	} else {
+	    /* merge click events forward */
+	    if ((ep->bstate & BUTTON_CLICKED)
+		&& (next->bstate & BUTTON_CLICKED)) {
+		merge = FALSE;
+		for (b = 1; b <= MAX_BUTTONS; ++b) {
+		    if ((sp->_mouse_mask & MASK_DOUBLE_CLICK(b))
+			&& (ep->bstate & MASK_CLICK(b))
+			&& (next->bstate & MASK_CLICK(b))) {
+			next->bstate &= ~MASK_CLICK(b);
+			next->bstate |= MASK_DOUBLE_CLICK(b);
+			merge = TRUE;
 		    }
-		    if (merge)
-			ep->id = INVALID_EVENT;
 		}
-
-		/* merge double-click events forward */
-		if ((ep->bstate & BUTTON_DOUBLE_CLICKED)
-		    && (follower->bstate & BUTTON_CLICKED)) {
-		    for (b = 1; b <= MAX_BUTTONS; ++b) {
-			if ((sp->_mouse_mask & MASK_TRIPLE_CLICK(b))
-			    && (follower->bstate & MASK_CLICK(b))) {
-			    follower->bstate &= ~MASK_CLICK(b);
-			    follower->bstate |= MASK_TRIPLE_CLICK(b);
-			    merge = TRUE;
-			}
-		    }
-		    if (merge)
-			ep->id = INVALID_EVENT;
+		if (merge) {
+		    Invalidate(ep);
 		}
 	    }
-    } while
-	(merge);
 
-#ifdef TRACE
-    if (USE_TRACEF(TRACE_IEVENT)) {
-	_trace_slot(sp, "before mouse event queue compaction:");
-	_tracef("_nc_mouse_parse: run starts at %ld, ends at %ld, count %d",
-		RunParams(sp, eventp, runp),
-		runcount);
-	_nc_unlock_global(tracef);
-    }
-#endif /* TRACE */
-
-    /*
-     * Now try to throw away trailing events flagged invalid, or that
-     * don't match the current event mask.
-     */
-    for (; runcount; prev = PREV(eventp), runcount--)
-	if (prev->id == INVALID_EVENT || !(prev->bstate & sp->_mouse_mask)) {
-	    sp->_mouse_eventp = eventp = prev;
+	    /* merge double-click events forward */
+	    if ((ep->bstate & BUTTON_DOUBLE_CLICKED)
+		&& (next->bstate & BUTTON_CLICKED)) {
+		merge = FALSE;
+		for (b = 1; b <= MAX_BUTTONS; ++b) {
+		    if ((sp->_mouse_mask & MASK_TRIPLE_CLICK(b))
+			&& (ep->bstate & MASK_DOUBLE_CLICK(b))
+			&& (next->bstate & MASK_CLICK(b))) {
+			next->bstate &= ~MASK_CLICK(b);
+			next->bstate |= MASK_TRIPLE_CLICK(b);
+			merge = TRUE;
+		    }
+		}
+		if (merge) {
+		    Invalidate(ep);
+		}
+	    }
 	}
-#ifdef TRACE
-    if (USE_TRACEF(TRACE_IEVENT)) {
-	_trace_slot(sp, "after mouse event queue compaction:");
-	_tracef("_nc_mouse_parse: run starts at %ld, ends at %ld, count %d",
-		RunParams(sp, eventp, runp),
-		runcount);
-	_nc_unlock_global(tracef);
+
+	/* Discard event if it does not match event mask */
+	if (!(ep->bstate & sp->_mouse_mask2)) {
+	    Invalidate(ep);
+	}
+
+	/* Compact valid events */
+	if (!ValidEvent(ep)) {
+	    if (ep == first_valid) {
+		first_valid = next;
+	    } else if (first_invalid == NULL) {
+		first_invalid = ep;
+	    }
+	} else if (first_invalid != NULL) {
+	    *first_invalid = *ep;
+	    Invalidate(ep);
+	    first_invalid = NEXT(first_invalid);
+	}
+
+	ep = next;
     }
-    for (ep = runp; ep != eventp; ep = NEXT(ep))
-	if (ep->id != INVALID_EVENT)
-	    TR(MY_TRACE,
-	       ("_nc_mouse_parse: returning composite mouse event %s at slot %ld",
-		_nc_tracemouse(sp, ep),
-		(long) IndexEV(sp, ep)));
+
+    if (first_invalid == NULL) {
+	first_invalid = eventp;
+    }
+    sp->_mouse_eventp = first_invalid;
+
+#ifdef TRACE
+    if (first_valid != NULL) {
+	if (USE_TRACEF(TRACE_IEVENT)) {
+	    _trace_slot(sp, "after mouse event queue compaction:");
+	    _tracef("_nc_mouse_parse: run starts at %ld, ends at %ld, count %d",
+		    RunParams(sp, first_invalid, first_valid),
+		    runcount);
+	    _nc_unlock_global(tracef);
+	}
+	for (ep = first_valid; ep != first_invalid; ep = NEXT(ep)) {
+	    if (ValidEvent(ep))
+		TR(MY_TRACE,
+		   ("_nc_mouse_parse: returning composite mouse event %s at slot %ld",
+		    _nc_tracemouse(sp, ep),
+		    (long) IndexEV(sp, ep)));
+	}
+    }
 #endif /* TRACE */
 
     /* after all this, do we have a valid event? */
-    return (PREV(eventp)->id != INVALID_EVENT);
+    return ValidEvent(PREV(first_invalid));
 }
 
 static void
@@ -1359,7 +1747,16 @@ NCURSES_SP_NAME(getmouse) (NCURSES_SP_DCLx MEVENT * aevent)
 	/* compute the current-event pointer */
 	MEVENT *prev = PREV(eventp);
 
-	if (prev->id != INVALID_EVENT) {
+	/*
+	 * Discard events not matching mask (there could be still some if
+	 * _nc_mouse_parse was not called, e.g., when _nc_mouse_inline returns
+	 * false).
+	 */
+	while (ValidEvent(prev) && (!(prev->bstate & SP_PARM->_mouse_mask2))) {
+	    Invalidate(prev);
+	    prev = PREV(prev);
+	}
+	if (ValidEvent(prev)) {
 	    /* copy the event we find there */
 	    *aevent = *prev;
 
@@ -1367,9 +1764,16 @@ NCURSES_SP_NAME(getmouse) (NCURSES_SP_DCLx MEVENT * aevent)
 			      _nc_tracemouse(SP_PARM, prev),
 			      (long) IndexEV(SP_PARM, prev)));
 
-	    prev->id = INVALID_EVENT;	/* so the queue slot becomes free */
-	    SP_PARM->_mouse_eventp = PREV(prev);
+	    Invalidate(prev);	/* so the queue slot becomes free */
+	    SP_PARM->_mouse_eventp = prev;
 	    result = OK;
+	} else {
+	    /* Reset the provided event */
+	    aevent->bstate = 0;
+	    Invalidate(aevent);
+	    aevent->x = 0;
+	    aevent->y = 0;
+	    aevent->z = 0;
 	}
     }
     returnCode(result);
@@ -1420,6 +1824,7 @@ NCURSES_SP_NAME(mousemask) (NCURSES_SP_DCLx mmask_t newmask, mmask_t * oldmask)
 /* set the mouse event mask */
 {
     mmask_t result = 0;
+    int b;
 
     T((T_CALLED("mousemask(%p,%#lx,%p)"),
        (void *) SP_PARM,
@@ -1447,6 +1852,22 @@ NCURSES_SP_NAME(mousemask) (NCURSES_SP_DCLx mmask_t newmask, mmask_t * oldmask)
 		mouse_activate(SP_PARM, (bool) (result != 0));
 
 		SP_PARM->_mouse_mask = result;
+		SP_PARM->_mouse_mask2 = result;
+
+		/*
+		 * Make a mask corresponding to the states we will need to
+		 * retain (temporarily) while building up the state that the
+		 * user asked for.
+		 */
+		for (b = 1; b <= MAX_BUTTONS; ++b) {
+		    if (SP_PARM->_mouse_mask2 & MASK_TRIPLE_CLICK(b))
+			SP_PARM->_mouse_mask2 |= MASK_DOUBLE_CLICK(b);
+		    if (SP_PARM->_mouse_mask2 & MASK_DOUBLE_CLICK(b))
+			SP_PARM->_mouse_mask2 |= MASK_CLICK(b);
+		    if (SP_PARM->_mouse_mask2 & MASK_CLICK(b))
+			SP_PARM->_mouse_mask2 |= (MASK_PRESS(b) |
+						  MASK_RELEASE(b));
+		}
 	    }
 	}
     }

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2004-2005,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 2014 Free Software Foundation, Inc.                        *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,51 +27,26 @@
  ****************************************************************************/
 
 /****************************************************************************
- *   Author:  Thomas E. Dickey                                              *
+ *  Author: Thomas E. Dickey                                                *
  ****************************************************************************/
 
-#include "menu.priv.h"
+/*
+ * $Id: tparm_type.h,v 1.1 2014/05/21 16:57:56 tom Exp $
+ *
+ * determine expected/actual number of parameters to setup for tparm
+ */
+#ifndef TPARM_TYPE_H
+#define TPARM_TYPE_H 1
 
-MODULE_ID("$Id: m_trace.c,v 1.4 2010/01/23 21:20:10 tom Exp $")
+#define USE_LIBTINFO
+#include <progs.priv.h>
 
-NCURSES_EXPORT(ITEM *)
-_nc_retrace_item(ITEM * code)
-{
-  T((T_RETURN("%p"), (void *)code));
-  return code;
-}
+typedef enum {
+    Numbers = 0
+    ,Num_Str
+    ,Num_Str_Str
+} TParams;
 
-NCURSES_EXPORT(ITEM **)
-_nc_retrace_item_ptr(ITEM ** code)
-{
-  T((T_RETURN("%p"), (void *)code));
-  return code;
-}
+extern TParams tparm_type(const char *name);
 
-NCURSES_EXPORT(Item_Options)
-_nc_retrace_item_opts(Item_Options code)
-{
-  T((T_RETURN("%d"), code));
-  return code;
-}
-
-NCURSES_EXPORT(MENU *)
-_nc_retrace_menu(MENU * code)
-{
-  T((T_RETURN("%p"), (void *)code));
-  return code;
-}
-
-NCURSES_EXPORT(Menu_Hook)
-_nc_retrace_menu_hook(Menu_Hook code)
-{
-  T((T_RETURN("%p"), code));
-  return code;
-}
-
-NCURSES_EXPORT(Menu_Options)
-_nc_retrace_menu_opts(Menu_Options code)
-{
-  T((T_RETURN("%d"), code));
-  return code;
-}
+#endif /* TPARM_TYPE_H */

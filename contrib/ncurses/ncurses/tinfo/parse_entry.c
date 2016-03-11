@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2011,2012 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -47,7 +47,7 @@
 #include <ctype.h>
 #include <tic.h>
 
-MODULE_ID("$Id: parse_entry.c,v 1.75 2010/05/01 19:35:09 tom Exp $")
+MODULE_ID("$Id: parse_entry.c,v 1.80 2015/04/04 14:18:38 tom Exp $")
 
 #ifdef LINT
 static short const parametrized[] =
@@ -145,27 +145,27 @@ _nc_extend_names(ENTRY * entryp, char *name, int token_type)
 	case BOOLEAN:
 	    tp->ext_Booleans++;
 	    tp->num_Booleans++;
-	    tp->Booleans = typeRealloc(NCURSES_SBOOL, tp->num_Booleans, tp->Booleans);
+	    TYPE_REALLOC(NCURSES_SBOOL, tp->num_Booleans, tp->Booleans);
 	    for_each_value(tp->num_Booleans)
 		tp->Booleans[last] = tp->Booleans[last - 1];
 	    break;
 	case NUMBER:
 	    tp->ext_Numbers++;
 	    tp->num_Numbers++;
-	    tp->Numbers = typeRealloc(short, tp->num_Numbers, tp->Numbers);
+	    TYPE_REALLOC(short, tp->num_Numbers, tp->Numbers);
 	    for_each_value(tp->num_Numbers)
 		tp->Numbers[last] = tp->Numbers[last - 1];
 	    break;
 	case STRING:
 	    tp->ext_Strings++;
 	    tp->num_Strings++;
-	    tp->Strings = typeRealloc(char *, tp->num_Strings, tp->Strings);
+	    TYPE_REALLOC(char *, tp->num_Strings, tp->Strings);
 	    for_each_value(tp->num_Strings)
 		tp->Strings[last] = tp->Strings[last - 1];
 	    break;
 	}
 	actual = NUM_EXT_NAMES(tp);
-	tp->ext_Names = typeRealloc(char *, actual, tp->ext_Names);
+	TYPE_REALLOC(char *, actual, tp->ext_Names);
 	while (--actual > offset)
 	    tp->ext_Names[actual] = tp->ext_Names[actual - 1];
 	tp->ext_Names[offset] = _nc_save_str(name);
@@ -202,6 +202,8 @@ _nc_extend_names(ENTRY * entryp, char *name, int token_type)
 #define BAD_TC_USAGE if (!bad_tc_usage) \
  	{ bad_tc_usage = TRUE; \
 	 _nc_warning("Legacy termcap allows only a trailing tc= clause"); }
+
+#define MAX_NUMBER 0x7fff	/* positive shorts only */
 
 NCURSES_EXPORT(int)
 _nc_parse_entry(struct entry *entryp, int literal, bool silent)
@@ -444,8 +446,12 @@ _nc_parse_entry(struct entry *entryp, int literal, bool silent)
 		break;
 
 	    case NUMBER:
-		entryp->tterm.Numbers[entry_ptr->nte_index] =
-		    (short) _nc_curr_token.tk_valnumber;
+		if (_nc_curr_token.tk_valnumber > MAX_NUMBER) {
+		    entryp->tterm.Numbers[entry_ptr->nte_index] = MAX_NUMBER;
+		} else {
+		    entryp->tterm.Numbers[entry_ptr->nte_index] =
+			(short) _nc_curr_token.tk_valnumber;
+		}
 		break;
 
 	    case STRING:
@@ -575,32 +581,32 @@ append_acs(string_desc * dst, int code, char *src)
  * list.  For each capability, we may assume there is a keycap that sends the
  * string which is the value of that capability.
  */
+#define DATA(from, to) { { from }, { to } }
 typedef struct {
-    const char *from;
-    const char *to;
+    const char from[3];
+    const char to[6];
 } assoc;
 static assoc const ko_xlate[] =
 {
-    {"al", "kil1"},		/* insert line key  -> KEY_IL    */
-    {"bt", "kcbt"},		/* back tab         -> KEY_BTAB  */
-    {"cd", "ked"},		/* clear-to-eos key -> KEY_EOL   */
-    {"ce", "kel"},		/* clear-to-eol key -> KEY_EOS   */
-    {"cl", "kclr"},		/* clear key        -> KEY_CLEAR */
-    {"ct", "tbc"},		/* clear all tabs   -> KEY_CATAB */
-    {"dc", "kdch1"},		/* delete char      -> KEY_DC    */
-    {"dl", "kdl1"},		/* delete line      -> KEY_DL    */
-    {"do", "kcud1"},		/* down key         -> KEY_DOWN  */
-    {"ei", "krmir"},		/* exit insert key  -> KEY_EIC   */
-    {"ho", "khome"},		/* home key         -> KEY_HOME  */
-    {"ic", "kich1"},		/* insert char key  -> KEY_IC    */
-    {"im", "kIC"},		/* insert-mode key  -> KEY_SIC   */
-    {"le", "kcub1"},		/* le key           -> KEY_LEFT  */
-    {"nd", "kcuf1"},		/* nd key           -> KEY_RIGHT */
-    {"nl", "kent"},		/* new line key     -> KEY_ENTER */
-    {"st", "khts"},		/* set-tab key      -> KEY_STAB  */
-    {"ta", CANCELLED_STRING},
-    {"up", "kcuu1"},		/* up-arrow key     -> KEY_UP    */
-    {(char *) 0, (char *) 0},
+    DATA("al", "kil1"),		/* insert line key  -> KEY_IL    */
+    DATA("bt", "kcbt"),		/* back tab         -> KEY_BTAB  */
+    DATA("cd", "ked"),		/* clear-to-eos key -> KEY_EOL   */
+    DATA("ce", "kel"),		/* clear-to-eol key -> KEY_EOS   */
+    DATA("cl", "kclr"),		/* clear key        -> KEY_CLEAR */
+    DATA("ct", "tbc"),		/* clear all tabs   -> KEY_CATAB */
+    DATA("dc", "kdch1"),	/* delete char      -> KEY_DC    */
+    DATA("dl", "kdl1"),		/* delete line      -> KEY_DL    */
+    DATA("do", "kcud1"),	/* down key         -> KEY_DOWN  */
+    DATA("ei", "krmir"),	/* exit insert key  -> KEY_EIC   */
+    DATA("ho", "khome"),	/* home key         -> KEY_HOME  */
+    DATA("ic", "kich1"),	/* insert char key  -> KEY_IC    */
+    DATA("im", "kIC"),		/* insert-mode key  -> KEY_SIC   */
+    DATA("le", "kcub1"),	/* le key           -> KEY_LEFT  */
+    DATA("nd", "kcuf1"),	/* nd key           -> KEY_RIGHT */
+    DATA("nl", "kent"),		/* new line key     -> KEY_ENTER */
+    DATA("st", "khts"),		/* set-tab key      -> KEY_STAB  */
+    DATA("ta", ""),
+    DATA("up", "kcuu1"),	/* up-arrow key     -> KEY_UP    */
 };
 
 /*
@@ -654,14 +660,16 @@ postprocess_termcap(TERMTYPE *tp, bool has_base)
 
 	if (WANTED(carriage_return)) {
 	    if (carriage_return_delay > 0) {
-		sprintf(buf, "%s$<%d>", C_CR, carriage_return_delay);
+		_nc_SPRINTF(buf, _nc_SLIMIT(sizeof(buf))
+			    "%s$<%d>", C_CR, carriage_return_delay);
 		carriage_return = _nc_save_str(buf);
 	    } else
 		carriage_return = _nc_save_str(C_CR);
 	}
 	if (WANTED(cursor_left)) {
 	    if (backspace_delay > 0) {
-		sprintf(buf, "%s$<%d>", C_BS, backspace_delay);
+		_nc_SPRINTF(buf, _nc_SLIMIT(sizeof(buf))
+			    "%s$<%d>", C_BS, backspace_delay);
 		cursor_left = _nc_save_str(buf);
 	    } else if (backspaces_with_bs == 1)
 		cursor_left = _nc_save_str(C_BS);
@@ -674,7 +682,8 @@ postprocess_termcap(TERMTYPE *tp, bool has_base)
 		cursor_down = linefeed_if_not_lf;
 	    else if (linefeed_is_newline != 1) {
 		if (new_line_delay > 0) {
-		    sprintf(buf, "%s$<%d>", C_LF, new_line_delay);
+		    _nc_SPRINTF(buf, _nc_SLIMIT(sizeof(buf))
+				"%s$<%d>", C_LF, new_line_delay);
 		    cursor_down = _nc_save_str(buf);
 		} else
 		    cursor_down = _nc_save_str(C_LF);
@@ -685,7 +694,8 @@ postprocess_termcap(TERMTYPE *tp, bool has_base)
 		cursor_down = linefeed_if_not_lf;
 	    else if (linefeed_is_newline != 1) {
 		if (new_line_delay > 0) {
-		    sprintf(buf, "%s$<%d>", C_LF, new_line_delay);
+		    _nc_SPRINTF(buf, _nc_SLIMIT(sizeof(buf))
+				"%s$<%d>", C_LF, new_line_delay);
 		    scroll_forward = _nc_save_str(buf);
 		} else
 		    scroll_forward = _nc_save_str(C_LF);
@@ -694,7 +704,8 @@ postprocess_termcap(TERMTYPE *tp, bool has_base)
 	if (WANTED(newline)) {
 	    if (linefeed_is_newline == 1) {
 		if (new_line_delay > 0) {
-		    sprintf(buf, "%s$<%d>", C_LF, new_line_delay);
+		    _nc_SPRINTF(buf, _nc_SLIMIT(sizeof(buf))
+				"%s$<%d>", C_LF, new_line_delay);
 		    newline = _nc_save_str(buf);
 		} else
 		    newline = _nc_save_str(C_LF);
@@ -736,7 +747,8 @@ postprocess_termcap(TERMTYPE *tp, bool has_base)
 	 */
 	if (WANTED(tab)) {
 	    if (horizontal_tab_delay > 0) {
-		sprintf(buf, "%s$<%d>", C_HT, horizontal_tab_delay);
+		_nc_SPRINTF(buf, _nc_SLIMIT(sizeof(buf))
+			    "%s$<%d>", C_HT, horizontal_tab_delay);
 		tab = _nc_save_str(buf);
 	    } else
 		tab = _nc_save_str(C_HT);
@@ -777,7 +789,6 @@ postprocess_termcap(TERMTYPE *tp, bool has_base)
 	char *bp, *cp, *dp;
 	struct name_table_entry const *from_ptr;
 	struct name_table_entry const *to_ptr;
-	assoc const *ap;
 	char buf2[MAX_TERMINFO_LENGTH];
 	bool foundim;
 
@@ -790,17 +801,21 @@ postprocess_termcap(TERMTYPE *tp, bool has_base)
 	     (cp = strchr(base, ',')) != 0;
 	     base = cp + 1) {
 	    size_t len = (unsigned) (cp - base);
+	    size_t n;
+	    assoc const *ap = 0;
 
-	    for (ap = ko_xlate; ap->from; ap++) {
-		if (len == strlen(ap->from)
-		    && strncmp(ap->from, base, len) == 0)
+	    for (n = 0; n < SIZEOF(ko_xlate); ++n) {
+		if (len == strlen(ko_xlate[n].from)
+		    && strncmp(ko_xlate[n].from, base, len) == 0) {
+		    ap = ko_xlate + n;
 		    break;
+		}
 	    }
-	    if (!(ap->from && ap->to)) {
+	    if (ap == 0) {
 		_nc_warning("unknown capability `%.*s' in ko string",
 			    (int) len, base);
 		continue;
-	    } else if (ap->to == CANCELLED_STRING)	/* ignore it */
+	    } else if (ap->to[0] == '\0')	/* ignore it */
 		continue;
 
 	    /* now we know we found a match in ko_table, so... */

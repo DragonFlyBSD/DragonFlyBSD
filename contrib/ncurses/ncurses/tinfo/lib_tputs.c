@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2015,2016 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -51,7 +51,7 @@
 #include <termcap.h>		/* ospeed */
 #include <tic.h>
 
-MODULE_ID("$Id: lib_tputs.c,v 1.81 2010/12/20 00:42:50 tom Exp $")
+MODULE_ID("$Id: lib_tputs.c,v 1.97 2016/01/23 21:32:00 tom Exp $")
 
 NCURSES_EXPORT_VAR(char) PC = 0;              /* used by termcap library */
 NCURSES_EXPORT_VAR(NCURSES_OSPEED) ospeed = 0;        /* used by termcap library */
@@ -119,7 +119,30 @@ delay_output(int ms)
 NCURSES_EXPORT(void)
 NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_DCL0)
 {
-    (void) fflush(NC_OUTPUT(SP_PARM));
+    if (SP_PARM != 0 && SP_PARM->_ofd >= 0) {
+	if (SP_PARM->out_inuse) {
+	    char *buf = SP_PARM->out_buffer;
+	    size_t amount = SP->out_inuse;
+	    ssize_t res;
+
+	    SP->out_inuse = 0;
+	    while (amount) {
+		res = write(SP_PARM->_ofd, buf, amount);
+
+		if (res > 0) {
+		    /* if the write was incomplete, try again */
+		    amount -= (size_t) res;
+		    buf += res;
+		} else if (errno == EAGAIN) {
+		    continue;
+		} else if (errno == EINTR) {
+		    continue;
+		} else {
+		    break;	/* an error we can not recover from */
+		}
+	    }
+	}
+    }
 }
 
 #if NCURSES_SP_FUNCS
@@ -138,17 +161,23 @@ NCURSES_SP_NAME(_nc_outch) (NCURSES_SP_DCLx int ch)
     COUNT_OUTCHARS(1);
 
     if (HasTInfoTerminal(SP_PARM)
-	&& SP_PARM != 0
-	&& SP_PARM->_cleanup) {
-	char tmp = (char) ch;
-	/*
-	 * POSIX says write() is safe in a signal handler, but the
-	 * buffered I/O is not.
-	 */
-	if (write(fileno(NC_OUTPUT(SP_PARM)), &tmp, 1) == -1)
-	    rc = ERR;
+	&& SP_PARM != 0) {
+	if (SP_PARM->out_buffer != 0) {
+	    if (SP_PARM->out_inuse + 1 >= SP_PARM->out_limit)
+		NCURSES_SP_NAME(_nc_flush) (NCURSES_SP_ARG);
+	    SP_PARM->out_buffer[SP_PARM->out_inuse++] = (char) ch;
+	} else {
+	    char tmp = (char) ch;
+	    /*
+	     * POSIX says write() is safe in a signal handler, but the
+	     * buffered I/O is not.
+	     */
+	    if (write(fileno(NC_OUTPUT(SP_PARM)), &tmp, (size_t) 1) == -1)
+		rc = ERR;
+	}
     } else {
-	if (putc(ch, NC_OUTPUT(SP_PARM)) == EOF)
+	char tmp = (char) ch;
+	if (write(fileno(stdout), &tmp, (size_t) 1) == -1)
 	    rc = ERR;
     }
     return rc;
@@ -162,13 +191,48 @@ _nc_outch(int ch)
 }
 #endif
 
+/*
+ * This is used for the putp special case.
+ */
+NCURSES_EXPORT(int)
+NCURSES_SP_NAME(_nc_putchar) (NCURSES_SP_DCLx int ch)
+{
+    (void) SP_PARM;
+    return putchar(ch);
+}
+
+#if NCURSES_SP_FUNCS
+NCURSES_EXPORT(int)
+_nc_putchar(int ch)
+{
+    return putchar(ch);
+}
+#endif
+
+/*
+ * putp is special - per documentation it calls tputs with putchar as the
+ * parameter for outputting characters.  This means that it uses stdio, which
+ * is not signal-safe.  Applications call this entrypoint; we do not call it
+ * from within the library.
+ */
 NCURSES_EXPORT(int)
 NCURSES_SP_NAME(putp) (NCURSES_SP_DCLx const char *string)
 {
     return NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
-				   string, 1, NCURSES_SP_NAME(_nc_outch));
+				   string, 1, NCURSES_SP_NAME(_nc_putchar));
 }
 
+#if NCURSES_SP_FUNCS
+NCURSES_EXPORT(int)
+putp(const char *string)
+{
+    return NCURSES_SP_NAME(putp) (CURRENT_SCREEN, string);
+}
+#endif
+
+/*
+ * Use these entrypoints rather than "putp" within the library.
+ */
 NCURSES_EXPORT(int)
 NCURSES_SP_NAME(_nc_putp) (NCURSES_SP_DCLx
 			   const char *name GCC_UNUSED,
@@ -178,18 +242,13 @@ NCURSES_SP_NAME(_nc_putp) (NCURSES_SP_DCLx
 
     if (string != 0) {
 	TPUTS_TRACE(name);
-	rc = NCURSES_SP_NAME(putp) (NCURSES_SP_ARGx string);
+	rc = NCURSES_SP_NAME(tputs) (NCURSES_SP_ARGx
+				     string, 1, NCURSES_SP_NAME(_nc_outch));
     }
     return rc;
 }
 
 #if NCURSES_SP_FUNCS
-NCURSES_EXPORT(int)
-putp(const char *string)
-{
-    return NCURSES_SP_NAME(putp) (CURRENT_SCREEN, string);
-}
-
 NCURSES_EXPORT(int)
 _nc_putp(const char *name, const char *string)
 {
@@ -216,9 +275,9 @@ NCURSES_SP_NAME(tputs) (NCURSES_SP_DCLx
 
     if (USE_TRACEF(TRACE_TPUTS)) {
 	if (outc == NCURSES_SP_NAME(_nc_outch))
-	    (void) strcpy(addrbuf, "_nc_outch");
+	    _nc_STRCPY(addrbuf, "_nc_outch", sizeof(addrbuf));
 	else
-	    (void) sprintf(addrbuf, "%p", outc);
+	    _nc_SPRINTF(addrbuf, _nc_SLIMIT(sizeof(addrbuf)) "%p", TR_FUNC(outc));
 	if (_nc_tputs_trace) {
 	    _tracef("tputs(%s = %s, %d, %s) called", _nc_tputs_trace,
 		    _nc_visbuf(string), affcnt, addrbuf);

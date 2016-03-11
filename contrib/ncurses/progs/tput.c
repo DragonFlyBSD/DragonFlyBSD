@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2009,2010 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2014,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -38,8 +39,7 @@
  * Ross Ridge's mytinfo package.
  */
 
-#define USE_LIBTINFO
-#include <progs.priv.h>
+#include <tparm_type.h>
 
 #if !PURE_TERMINFO
 #include <dump_entry.h>
@@ -47,17 +47,11 @@
 #endif
 #include <transform.h>
 
-MODULE_ID("$Id: tput.c,v 1.46 2010/01/09 16:53:24 tom Exp $")
+MODULE_ID("$Id: tput.c,v 1.51 2015/05/23 23:42:55 tom Exp $")
 
 #define PUTS(s)		fputs(s, stdout)
 #define PUTCHAR(c)	putchar(c)
 #define FLUSH		fflush(stdout)
-
-typedef enum {
-    Numbers = 0
-    ,Num_Str
-    ,Num_Str_Str
-} TParams;
 
 static char *prg_name;
 static bool is_init = FALSE;
@@ -88,42 +82,6 @@ check_aliases(const char *name)
 {
     is_init = same_program(name, PROG_INIT);
     is_reset = same_program(name, PROG_RESET);
-}
-
-/*
- * Lookup the type of call we should make to tparm().  This ignores the actual
- * terminfo capability (bad, because it is not extensible), but makes this
- * code portable to platforms where sizeof(int) != sizeof(char *).
- *
- * FIXME: If we want extensibility, analyze the capability string as we do
- * in tparm() to decide how to parse the varargs list.
- */
-static TParams
-tparm_type(const char *name)
-{
-#define TD(code, longname, ti, tc) {code,longname},{code,ti},{code,tc}
-    TParams result = Numbers;
-    /* *INDENT-OFF* */
-    static const struct {
-	TParams code;
-	const char *name;
-    } table[] = {
-	TD(Num_Str,	"pkey_key",	"pfkey",	"pk"),
-	TD(Num_Str,	"pkey_local",	"pfloc",	"pl"),
-	TD(Num_Str,	"pkey_xmit",	"pfx",		"px"),
-	TD(Num_Str,	"plab_norm",	"pln",		"pn"),
-	TD(Num_Str_Str, "pkey_plab",	"pfxl",		"xl"),
-    };
-    /* *INDENT-ON* */
-
-    unsigned n;
-    for (n = 0; n < SIZEOF(table); n++) {
-	if (!strcmp(name, table[n].name)) {
-	    result = table[n].code;
-	    break;
-	}
-    }
-    return result;
 }
 
 static int
@@ -162,7 +120,7 @@ tput(int argc, char *argv[])
     check_aliases(name);
     if (is_reset || is_init) {
 	if (init_prog != 0) {
-	    system(init_prog);
+	    IGNORE_RC(system(init_prog));
 	}
 	FLUSH;
 
@@ -306,7 +264,7 @@ tput(int argc, char *argv[])
     } else if (s != ABSENT_STRING) {
 	if (argc > 1) {
 	    int k;
-	    int popcount;
+	    int ignored;
 	    long numbers[1 + NUM_PARM];
 	    char *strings[1 + NUM_PARM];
 	    char *p_is_s[NUM_PARM];
@@ -337,8 +295,8 @@ tput(int argc, char *argv[])
 		break;
 	    case Numbers:
 	    default:
-		(void) _nc_tparm_analyze(s, p_is_s, &popcount);
-#define myParam(n) (p_is_s[n - 1] != 0 ? ((long) strings[n]) : numbers[n])
+		(void) _nc_tparm_analyze(s, p_is_s, &ignored);
+#define myParam(n) (p_is_s[n - 1] != 0 ? ((TPARM_ARG) strings[n]) : numbers[n])
 		s = TPARM_9(s,
 			    myParam(1),
 			    myParam(2),

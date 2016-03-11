@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2008,2009 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2012,2015 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -41,11 +41,7 @@
 
 #include <curses.priv.h>
 
-#if SVR4_TERMIO && !defined(_POSIX_SOURCE)
-#define _POSIX_SOURCE
-#endif
-
-MODULE_ID("$Id: lib_restart.c,v 1.13 2009/10/24 22:47:43 tom Exp $")
+MODULE_ID("$Id: lib_restart.c,v 1.16 2015/06/27 18:12:15 tom Exp $")
 
 NCURSES_EXPORT(int)
 NCURSES_SP_NAME(restartterm) (NCURSES_SP_DCLx
@@ -55,9 +51,10 @@ NCURSES_SP_NAME(restartterm) (NCURSES_SP_DCLx
 {
     int result;
 #ifdef USE_TERM_DRIVER
-    TERMINAL *new_term;
+    TERMINAL *new_term = 0;
 #endif
 
+    START_TRACE();
     T((T_CALLED("restartterm(%p,%s,%d,%p)"),
        (void *) SP_PARM,
        termp,
@@ -114,6 +111,7 @@ NCURSES_SP_NAME(restartterm) (NCURSES_SP_DCLx
 NCURSES_EXPORT(int)
 restartterm(NCURSES_CONST char *termp, int filenum, int *errret)
 {
+    START_TRACE();
     return NCURSES_SP_NAME(restartterm) (CURRENT_SCREEN, termp, filenum, errret);
 }
 #endif
