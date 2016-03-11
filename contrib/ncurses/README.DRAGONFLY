@@ -4,10 +4,10 @@ GNU NCURSES 5.9
 Original source can be downloaded from:
 http://ftp.gnu.org/pub/gnu/ncurses
 
-file = ncurses-5.9.tar.gz
-date = 5 April 2011
-size = 2826473
-sha1 = 3e042e5f2c7223bffdaac9646a533b8c758b65b5
+file = ncurses-6.0-20160305.tgz
+date = 6 March 2016
+size = 3153972
+sha1 = dbbaff96c4e447148243a9b5a8babb014f5b4bdc
 
 A list of files and directories removed is in README.DELETED
 
