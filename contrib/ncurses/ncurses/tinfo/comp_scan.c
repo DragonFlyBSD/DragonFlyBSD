@@ -525,10 +525,8 @@ _nc_get_token(bool silent)
 		if (!silent) {
 		    if (*after_list == '\0')
 			_nc_warning("empty longname field");
-#ifndef DRAGONFLY_NATIVE
 		    else if (strchr(after_list, ' ') == 0)
 			_nc_warning("older tic versions may treat the description field as an alias");
-#endif
 		}
 	    } else {
 		after_list = tok_buf + strlen(tok_buf);
