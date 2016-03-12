@@ -36,7 +36,9 @@
 #include <sys/linker.h>
 #include <sys/module.h>
 #include <sys/queue.h>
+#ifndef EFI
 #include "libi386/libi386.h"
+#endif
 
 #include "bootstrap.h"
 
@@ -426,6 +428,7 @@ file_loadraw(char *type, char *name)
     laddr = loadaddr;
     for (;;) {
 	/* read in 4k chunks; size is not really important */
+#ifndef EFI
 	if (laddr + 4096 > heapbase) {
 	    sprintf(command_errbuf, "error reading '%s': out of load memory",
 		    name);
@@ -433,6 +436,7 @@ file_loadraw(char *type, char *name)
 	    close(fd);
 	    return(CMD_ERROR);
 	}
+#endif
 	got = archsw.arch_readin(fd, laddr, 4096);
 	if (got == 0)				/* end of file */
 	    break;
