@@ -52,7 +52,7 @@ int
 __elfN(reloc)(struct elf_file *ef, symaddr_fn *symaddr, const void *reldata,
     int reltype, Elf_Addr relbase, Elf_Addr dataaddr, void *data, size_t len)
 {
-#if defined(__i386__) && __ELF_WORD_SIZE == 64
+#if (defined(__x86_64__) || defined(__i386__)) && __ELF_WORD_SIZE == 64
 	Elf64_Addr *where, val;
 	Elf_Addr addend, addr;
 	Elf_Size rtype, symidx;
