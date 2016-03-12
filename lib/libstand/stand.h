@@ -270,8 +270,6 @@ extern struct	dirent *readdirfd(int);
 extern void	srandom(u_long);
 extern u_long	random(void);
 
-extern void	exit(int);
-    
 /* imports from stdlib, locally modified */
 extern long	strtol(const char *, char **, int);
 extern char	*optarg;			/* getopt(3) external variables */
