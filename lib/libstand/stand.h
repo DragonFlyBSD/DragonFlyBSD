@@ -58,6 +58,9 @@
  *	@(#)stand.h	8.1 (Berkeley) 6/11/93
  */
 
+#ifndef _STAND_H_
+#define _STAND_H_
+
 #include <machine/stdarg.h>	/* __va_list */
 #include <sys/types.h>
 #include <sys/cdefs.h>
@@ -401,3 +404,5 @@ free_debug(void *p, const char *file, int line)
 #define free(x)		free_debug(x, __FILE__, __LINE__)
 
 #endif
+
+#endif	/* !_STAND_H_ */
