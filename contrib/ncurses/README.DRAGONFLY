@@ -25,7 +25,13 @@ The following files have been modified:
 	ncurses/base/Mklib_gen.sh
 	ncurses/tinfo/comp_scan.c
 	misc/terminfo.src [1]
+	progs/dump_entry.c [2]
+	progs/tic.c [2]
 
 [1] smcup and rmcup were removed from xterm-basic to disable the
     restoration of the console after less, more, man, and other
     utilities are executed.  It was rendering them useless.
+
+[2] tic can't be built with ncurses 5.9 headers.  Since it is a
+    bootstrap tool, it had to be modified so that it can be, but
+    only during the bootstrap tool building phase.
