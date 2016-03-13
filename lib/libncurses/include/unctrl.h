@@ -56,7 +56,7 @@ extern "C" {
 #undef unctrl
 NCURSES_EXPORT(NCURSES_CONST char *) unctrl (chtype);
 
-#if 1
+#ifndef BOOTSTRAPPING
 NCURSES_EXPORT(NCURSES_CONST char *) NCURSES_SP_NAME(unctrl) (SCREEN*, chtype);
 #endif
 

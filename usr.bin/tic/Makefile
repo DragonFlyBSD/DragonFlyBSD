@@ -19,6 +19,7 @@ CFLAGS+=	-I${.OBJDIR}
 # Ideally this should be -lprivate_ncursesw
 # Wide version can be used when DragonFly 3.3 branch is created
 .if defined(BOOTSTRAPPING)
+CFLAGS+=	-DBOOTSTRAPPING
 .  if exists (/usr/lib/libncurses.a)
 DPADD=		/usr/lib/libncurses.a
 LDADD=		-lncurses

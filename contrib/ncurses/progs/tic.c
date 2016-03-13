@@ -717,7 +717,9 @@ main(int argc, char *argv[])
 #if NCURSES_XNAMES
     use_extended_names(FALSE);
 #endif
+#ifndef BOOTSTRAPPING
     _nc_strict_bsd = 0;
+#endif
 
     /*
      * Processing arguments is a little complicated, since someone made a
@@ -756,7 +758,9 @@ main(int argc, char *argv[])
 	}
 	switch (this_opt) {
 	case 'K':
+#ifndef BOOTSTRAPPING
 	    _nc_strict_bsd = 1;
+#endif
 	    /* the initial version of -K in 20110730 fell-thru here, but the
 	     * same flag is useful when reading sources -TD
 	     */
