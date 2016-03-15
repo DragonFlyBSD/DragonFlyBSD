@@ -662,11 +662,9 @@ initialize_freemap(struct volume_info *vol)
 				 * Fixups XXX - big-blocks already allocated as part
 				 * of the freemap bootstrap.
 				 */
-				if (layer2->zone == 0) {
-					layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
-					layer2->append_off = HAMMER_BIGBLOCK_SIZE;
-					layer2->bytes_free = 0;
-				}
+				layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
+				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
+				layer2->bytes_free = 0;
 			} else if (phys_offset + block_offset < vol->vol_free_end) {
 				layer2->zone = 0;
 				layer2->append_off = 0;
