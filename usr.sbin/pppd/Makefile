@@ -9,7 +9,7 @@ MAN=	pppd.8
 BINMODE=4550
 BINOWN=	root
 BINGRP=	dialer
-WARNS?=	0
+WARNS?=	2
 
 LDADD=	-lcrypt -lutil -lmd
 DPADD=	${LIBCRYPT} ${LIBUTIL} ${LIBMD}
