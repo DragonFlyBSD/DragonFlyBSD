@@ -486,6 +486,15 @@ tcp_usr_listen(netmsg_t msg)
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
+	/*
+	 * Create tcpcb per-cpu port cache
+	 *
+	 * NOTE:
+	 * This _must_ be done before installing this inpcb into
+	 * wildcard hash.
+	 */
+	tcp_pcbport_create(tp);
+
 	if (ncpus2 > 1) {
 		/*
 		 * Put this inpcb into wildcard hash on other cpus.
@@ -526,6 +535,15 @@ tcp6_usr_listen(netmsg_t msg)
 	tp->t_state = TCPS_LISTEN;
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
+
+	/*
+	 * Create tcpcb per-cpu port cache
+	 *
+	 * NOTE:
+	 * This _must_ be done before installing this inpcb into
+	 * wildcard hash.
+	 */
+	tcp_pcbport_create(tp);
 
 	if (ncpus2 > 1) {
 		/*

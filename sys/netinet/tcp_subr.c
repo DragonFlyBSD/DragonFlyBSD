@@ -817,8 +817,10 @@ tcp_listen_detach_handler(netmsg_t msg)
 	struct tcpcb *tp = nmsg->nm_tp;
 	int cpu = mycpuid, nextcpu;
 
-	if (tp->t_flags & TF_LISTEN)
+	if (tp->t_flags & TF_LISTEN) {
 		syncache_destroy(tp, nmsg->nm_tp_inh);
+		tcp_pcbport_merge_oncpu(tp);
+	}
 
 	in_pcbremwildcardhash_oncpu(tp->t_inpcb, &tcbinfo[cpu]);
 
@@ -1041,6 +1043,8 @@ no_valid_rt:
 
 	if (tp->t_flags & TF_LISTEN) {
 		syncache_destroy(tp, tp_inh);
+		tcp_pcbport_merge_oncpu(tp);
+		tcp_pcbport_destroy(tp);
 		if (inp_inh != NULL && inp_inh->inp_socket != NULL) {
 			/*
 			 * Pending sockets inheritance only needs
@@ -1050,6 +1054,7 @@ no_valid_rt:
 			soinherit(so, inp_inh->inp_socket);
 		}
 	}
+	KASSERT(tp->t_pcbport == NULL, ("tcpcb port cache is not destroyed"));
 
 	so_async_rcvd_drop(so);
 	/* Drop the reference for the asynchronized pru_rcvd */
@@ -1057,8 +1062,11 @@ no_valid_rt:
 
 	/*
 	 * NOTE:
-	 * pcbdetach removes any wildcard hash entry on the current CPU.
+	 * - Remove self from listen tcpcb per-cpu port cache _before_
+	 *   pcbdetach.
+	 * - pcbdetach removes any wildcard hash entry on the current CPU.
 	 */
+	tcp_pcbport_remove(inp);
 #ifdef INET6
 	if (isipv6)
 		in6_pcbdetach(inp);
@@ -2444,3 +2452,61 @@ sysctl_tcp_drop(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_net_inet_tcp, OID_AUTO, drop,
     CTLTYPE_STRUCT | CTLFLAG_WR | CTLFLAG_SKIP, NULL,
     0, sysctl_tcp_drop, "", "Drop TCP connection");
+
+void
+tcp_pcbport_create(struct tcpcb *tp)
+{
+	int cpu;
+
+	KASSERT((tp->t_flags & TF_LISTEN) && tp->t_state == TCPS_LISTEN,
+	    ("not a listen tcpcb"));
+
+	KASSERT(tp->t_pcbport == NULL, ("tcpcb port cache was created"));
+	tp->t_pcbport = kmalloc_cachealign(sizeof(struct tcp_pcbport) * ncpus2,
+	    M_PCB, M_WAITOK);
+
+	for (cpu = 0; cpu < ncpus2; ++cpu) {
+		struct inpcbport *phd;
+
+		phd = &tp->t_pcbport[cpu].t_phd;
+		LIST_INIT(&phd->phd_pcblist);
+		/* Though, not used ... */
+		phd->phd_port = tp->t_inpcb->inp_lport;
+	}
+}
+
+void
+tcp_pcbport_merge_oncpu(struct tcpcb *tp)
+{
+	struct inpcbport *phd;
+	struct inpcb *inp;
+	int cpu = mycpuid;
+
+	KASSERT(cpu < ncpus2, ("invalid cpu%d", cpu));
+	phd = &tp->t_pcbport[cpu].t_phd;
+
+	while ((inp = LIST_FIRST(&phd->phd_pcblist)) != NULL) {
+		KASSERT(inp->inp_phd == phd && inp->inp_porthash == NULL,
+		    ("not on tcpcb port cache"));
+		LIST_REMOVE(inp, inp_portlist);
+		in_pcbinsporthash_lport(inp);
+		KASSERT(inp->inp_phd == tp->t_inpcb->inp_phd &&
+		    inp->inp_porthash == tp->t_inpcb->inp_porthash,
+		    ("tcpcb port cache merge failed"));
+	}
+}
+
+void
+tcp_pcbport_destroy(struct tcpcb *tp)
+{
+#ifdef INVARIANTS
+	int cpu;
+
+	for (cpu = 0; cpu < ncpus2; ++cpu) {
+		KASSERT(LIST_EMPTY(&tp->t_pcbport[cpu].t_phd.phd_pcblist),
+		    ("tcpcb port cache is not empty"));
+	}
+#endif
+	kfree(tp->t_pcbport, M_PCB);
+	tp->t_pcbport = NULL;
+}

@@ -131,6 +131,10 @@ struct scoreboard {
 struct netmsg_tcp_timer;
 struct netmsg_base;
 
+struct tcp_pcbport {
+	struct inpcbport	t_phd;
+} __cachealign;
+
 /*
  * Tcp control block, one per tcp; fields:
  * Organized for 16 byte cacheline efficiency.
@@ -140,6 +144,9 @@ struct tcpcb {
 	int	t_dupacks;		/* consecutive dup acks recd */
 	int	t_rxtthresh;		/* # dup acks to start fast rxt */
 	int	tt_cpu;			/* sanity check the cpu */
+
+	struct	tcp_pcbport *t_pcbport;	/* per-cpu local port cache for
+					 * accept(2)'ed sockets */
 
 	struct	tcp_callout *tt_rexmt;	/* retransmit timer */
 	struct	tcp_callout *tt_persist;/* retransmit persistence */
@@ -730,6 +737,52 @@ extern	struct pr_usrreqs tcp_usrreqs;
 extern	u_long tcp_sendspace;
 extern	u_long tcp_recvspace;
 tcp_seq tcp_new_isn (struct tcpcb *);
+
+void	tcp_pcbport_create(struct tcpcb *);
+void	tcp_pcbport_destroy(struct tcpcb *);
+void	tcp_pcbport_merge_oncpu(struct tcpcb *);
+
+static __inline void
+tcp_pcbport_insert(struct tcpcb *ltp, struct inpcb *inp)
+{
+	struct inpcbport *phd;
+	int cpu;
+
+	if (inp->inp_lport != ltp->t_inpcb->inp_lport) {
+		/*
+		 * This could happen with 'ipfw forward'.
+		 */
+		in_pcbinsporthash_lport(inp);
+		return;
+	}
+
+	cpu = mycpuid;
+	KASSERT(cpu < ncpus2, ("invalid cpu%d", cpu));
+	phd = &ltp->t_pcbport[cpu].t_phd;
+
+	/*
+	 * NOTE:
+	 * Set inp_porthash NULL and set inp_phd properly,
+	 * so that tcp_pcbport_remove() could tell that this
+	 * inpcb is on the listen tcpcb per-cpu port cache.
+	 */
+	inp->inp_porthash = NULL;
+	inp->inp_phd = phd;
+	LIST_INSERT_HEAD(&phd->phd_pcblist, inp, inp_portlist);
+}
+
+static __inline void
+tcp_pcbport_remove(struct inpcb *inp)
+{
+	if (inp->inp_porthash == NULL && inp->inp_phd != NULL) {
+		/*
+		 * On listen tcpcb per-cpu port cache.
+		 */
+		LIST_REMOVE(inp, inp_portlist);
+		inp->inp_phd = NULL;
+		/* NOTE: Don't whack inp_lport, which may be used later */
+	}
+}
 
 #endif /* _KERNEL */
 

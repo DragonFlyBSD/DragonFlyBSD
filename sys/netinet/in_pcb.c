@@ -1807,6 +1807,8 @@ in_pcbremporthash(struct inpcb *inp)
 	KASSERT(inp->inp_lport != 0, ("inpcb has no lport"));
 
 	porthash = inp->inp_porthash;
+	KASSERT(porthash != NULL, ("no porthash"));
+
 	GET_PORTHASH_TOKEN(porthash);
 
 	phd = inp->inp_phd;

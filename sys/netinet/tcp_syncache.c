@@ -763,9 +763,12 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		inp->inp_laddr = sc->sc_inc.inc_laddr;
 	}
 	inp->inp_lport = sc->sc_inc.inc_lport;
-	in_pcbinsporthash_lport(inp);
 
 	linp = lso->so_pcb;
+	ltp = intotcpcb(linp);
+
+	tcp_pcbport_insert(ltp, inp);
+
 #ifdef IPSEC
 	/* copy old policy into new socket's */
 	if (ipsec_copy_policy(linp->inp_sp, inp->inp_sp))
@@ -868,7 +871,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	/*
 	 * Inherit some properties from the listen socket
 	 */
-	ltp = intotcpcb(linp);
 	tp->t_keepinit = ltp->t_keepinit;
 	tp->t_keepidle = ltp->t_keepidle;
 	tp->t_keepintvl = ltp->t_keepintvl;
