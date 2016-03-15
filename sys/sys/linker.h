@@ -277,6 +277,7 @@ int linker_ddb_symbol_values(c_linker_sym_t _sym, linker_symval_t *_symval);
 #define MODINFOMD_HOWTO         0x0007          /* (from 5.x) boothowto */
 #define MODINFOMD_KERNEND       0x0008          /* (from 5.x) kernend */
 #define MODINFOMD_SHDR		0x0009		/* section header table */
+#define MODINFOMD_FW_HANDLE	0x000a		/* Firmware dependent handle */
 #define MODINFOMD_NOCOPY	0x8000		/* don't copy this metadata to the kernel */
 
 #define MODINFOMD_DEPLIST	(0x4001 | MODINFOMD_NOCOPY)	/* depends on */
