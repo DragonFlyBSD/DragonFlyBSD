@@ -33,6 +33,7 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/libefi/efinet.c 295210 2016-02-03 14:34:25
 #include <netinet/in_systm.h>
 
 #include <stand.h>
+#include <stdarg.h>
 #include <net.h>
 #include <netif.h>
 
