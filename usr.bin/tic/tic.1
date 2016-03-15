@@ -77,7 +77,7 @@ if
 .Ev TERMINFO
 is not set, and finally look in
 .Pa /usr/share/terminfo .
-.Bl -tag -width "-e names"
+.Bl -tag -width ".Fl R subset"
 .It Fl 0
 restricts the output to a single line
 .It Fl 1
@@ -97,15 +97,18 @@ Force source translation to termcap format.
 Capabilities that are not translatable are left in the entry under
 their terminfo names but commented out with two preceding dots.
 The actual format used incorporates some improvements for escaped characters
-from terminfo format. For a stricter BSD-compatible translation,
-add the
+from terminfo format.
+For a stricter BSD-compatible translation, add the
 .Fl K
 option.
 .Pp
-If this is combined with -c, tic makes additional checks to report cases
+If this is combined with
+.Fl c ,
+.Nm
+makes additional checks to report cases
 where the terminfo values do not have an exact equivalent in termcap form.
 For example:
-.Bl -bullet -width 1
+.Bl -bullet
 .It
 sgr usually will not convert, because termcap lacks the ability to work
 with more than two parameters, and because termcap lacks many of the
@@ -131,7 +134,8 @@ these entries may cause core dumps with other implementations.
 .Pp
 .Nm
 checks string capabilities to ensure that those with parameters will be
-valid expressions.  It does this check only for the predefined string
+valid expressions.
+It does this check only for the predefined string
 capabilities; those which are defined with the
 .Fl x
 option are ignored.
@@ -140,7 +144,8 @@ tells
 .Nm
 to print the database locations that it knows about, and exit.
 The first location shown is the one to which it would write compiled
-terminal descriptions.  If
+terminal descriptions.
+If
 .Nm
 is not able to find a writable database location according to the rules
 summarized above, it will print a diagnostic and exit with an
@@ -238,7 +243,7 @@ are written, and the number of entries which are compiled.
 .It Fl T
 eliminates size-restrictions on the generated text.
 This is mainly useful for testing and analysis, since the compiled
-descriptions are limited (e.g. 1023 for termcap, 4096 for terminfo).
+descriptions are limited (e.g.\& 1023 for termcap, 4096 for terminfo).
 .It Fl t
 tells
 .Nm
@@ -309,6 +314,7 @@ User-defined capability strings
 whose name begins with
 .Sq k
 are treated as function keys.
+.El
 .Sh PARAMETERS
 .Bl -tag -width "file"
 .It Ar file
@@ -322,7 +328,6 @@ If file is "-", then the data is read from the standard input.
 The file parameter may also be the path of a character-device.
 .El
 .Sh PROCESSING
-.Pp
 All but one of the capabilities recognized by
 .Nm
 are documented in
