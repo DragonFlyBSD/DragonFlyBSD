@@ -28,7 +28,8 @@ Revision History
 #pragma pack()
 
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
+#include <sys/types.h>
 #include <sys/stdint.h>
 #else
 //
@@ -79,7 +80,7 @@ Revision History
         #endif
     #endif
 #endif
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 //
 // Basic EFI types of various widths
@@ -249,7 +250,7 @@ typedef uint64_t   UINTN;
 
 #endif // EFI_FW_NT 
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #define INTERFACE_DECL(x) struct x
 #else
 //
@@ -263,7 +264,7 @@ typedef uint64_t   UINTN;
 #else
 #define INTERFACE_DECL(x) typedef struct x
 #endif
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 #ifdef _MSC_EXTENSIONS
 #pragma warning ( disable : 4731 )  // Suppress warnings about modification of EBP
