@@ -375,11 +375,11 @@ main(int argc, CHAR16 *argv[])
 	}
 #endif
 	default: {
-		struct devdesc currdev;
+		struct efi_devdesc currdev;
 
 		currdev.d_dev = dev;
-		currdev.d_unit = unit;
-		currdev.d_opendata = NULL;
+		currdev.d_kind.efidisk.unit = unit;
+		currdev.d_kind.efidisk.data = NULL;
 		currdev.d_type = currdev.d_dev->dv_type;
 		env_setenv("currdev", EV_VOLATILE, efi_fmtdev(&currdev),
 			   efi_setcurrdev, env_nounset);

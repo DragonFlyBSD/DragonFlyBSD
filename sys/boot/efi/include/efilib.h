@@ -38,6 +38,31 @@ extern struct devsw efipart_dev;
 extern struct devsw efinet_dev;
 extern struct netif_driver efinetif;
 
+struct efi_devdesc
+{
+    struct devsw	*d_dev;
+    int			d_type;
+    union
+    {
+	struct
+	{
+	    int		unit;
+	    int		slice;
+	    int		partition;
+	    void	*data;
+	} efidisk;
+	struct
+	{
+	    int		unit;
+	    void	*data;
+	} eficd;
+	struct
+	{
+	    int		unit;		/* XXX net layer lives over these? */
+	} netif;
+    } d_kind;
+};
+
 void *efi_get_table(EFI_GUID *tbl);
 
 int efi_register_handles(struct devsw *, EFI_HANDLE *, EFI_HANDLE *, int);

@@ -99,9 +99,9 @@ dump_mode(EFI_SIMPLE_NETWORK_MODE *mode)
 static int
 efinet_match(struct netif *nif, void *machdep_hint)
 {
-	struct devdesc *dev = machdep_hint;
+	struct efi_devdesc *dev = machdep_hint;
 
-	if (dev->d_unit - 1 == nif->nif_unit)
+	if (dev->d_kind.efidisk.unit - 1 == nif->nif_unit)
 		return (1);
 	return(0);
 }

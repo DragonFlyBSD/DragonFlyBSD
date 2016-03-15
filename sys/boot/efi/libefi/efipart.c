@@ -177,16 +177,16 @@ static int
 efipart_open(struct open_file *f, ...)
 {
 	va_list args;
-	struct devdesc *dev;
+	struct efi_devdesc *dev;
 	EFI_BLOCK_IO *blkio;
 	EFI_HANDLE h;
 	EFI_STATUS status;
 
 	va_start(args, f);
-	dev = va_arg(args, struct devdesc*);
+	dev = va_arg(args, struct efi_devdesc*);
 	va_end(args);
 
-	h = efi_find_handle(&efipart_dev, dev->d_unit);
+	h = efi_find_handle(&efipart_dev, dev->d_kind.efidisk.unit);
 	if (h == NULL)
 		return (EINVAL);
 
@@ -197,20 +197,20 @@ efipart_open(struct open_file *f, ...)
 	if (!blkio->Media->MediaPresent)
 		return (EAGAIN);
 
-	dev->d_opendata = blkio;
+	dev->d_kind.efidisk.data = blkio;
 	return (0);
 }
 
 static int 
 efipart_close(struct open_file *f)
 {
-	struct devdesc *dev;
+	struct efi_devdesc *dev;
 
-	dev = (struct devdesc *)(f->f_devdata);
-	if (dev->d_opendata == NULL)
+	dev = (struct efi_devdesc *)(f->f_devdata);
+	if (dev->d_kind.efidisk.data == NULL)
 		return (EINVAL);
 
-	dev->d_opendata = NULL;
+	dev->d_kind.efidisk.data = NULL;
 	return (0);
 }
 
@@ -258,7 +258,7 @@ static int
 efipart_strategy(void *devdata, int rw, daddr_t blk, size_t size, char *buf,
     size_t *rsize)
 {
-	struct devdesc *dev = (struct devdesc *)devdata;
+	struct efi_devdesc *dev = (struct efi_devdesc *)devdata;
 	EFI_BLOCK_IO *blkio;
 	off_t off;
 	char *blkbuf;
@@ -268,7 +268,7 @@ efipart_strategy(void *devdata, int rw, daddr_t blk, size_t size, char *buf,
 	if (dev == NULL || blk < 0)
 		return (EINVAL);
 
-	blkio = dev->d_opendata;
+	blkio = dev->d_kind.efidisk.data;
 	if (blkio == NULL)
 		return (ENXIO);
 

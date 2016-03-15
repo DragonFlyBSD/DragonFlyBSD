@@ -42,7 +42,7 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/devicename.c 294068 2016-01-15 02:3
 
 #include "loader_efi.h"
 
-static int efi_parsedev(struct devdesc **, const char *, const char **);
+static int efi_parsedev(struct efi_devdesc **, const char *, const char **);
 
 /*
  * Point (dev) at an allocated device specifier for the device matching the
@@ -52,7 +52,7 @@ static int efi_parsedev(struct devdesc **, const char *, const char **);
 int
 efi_getdev(void **vdev, const char *devspec, const char **path)
 {
-	struct devdesc **dev = (struct devdesc **)vdev;
+	struct efi_devdesc **dev = (struct efi_devdesc **)vdev;
 	int rv;
 
 	/*
@@ -84,9 +84,9 @@ efi_getdev(void **vdev, const char *devspec, const char **path)
  * fs<unit>:
  */
 static int
-efi_parsedev(struct devdesc **dev, const char *devspec, const char **path)
+efi_parsedev(struct efi_devdesc **dev, const char *devspec, const char **path)
 {
-	struct devdesc *idev;
+	struct efi_devdesc *idev;
 	struct devsw *dv;
 	char *cp;
 	const char *np;
@@ -125,17 +125,17 @@ efi_parsedev(struct devdesc **dev, const char *devspec, const char **path)
 	} else
 #endif
 	{
-		idev = malloc(sizeof(struct devdesc));
+		idev = malloc(sizeof(struct efi_devdesc));
 		if (idev == NULL)
 			return (ENOMEM);
 
 		idev->d_dev = dv;
 		idev->d_type = dv->dv_type;
-		idev->d_unit = -1;
+		idev->d_kind.efidisk.unit = -1;
 		if (*np != '\0' && *np != ':') {
-			idev->d_unit = strtol(np, &cp, 0);
+			idev->d_kind.efidisk.unit = strtol(np, &cp, 0);
 			if (cp == np) {
-				idev->d_unit = -1;
+				idev->d_kind.efidisk.unit = -1;
 				free(idev);
 				return (EUNIT);
 			}
@@ -159,7 +159,7 @@ efi_parsedev(struct devdesc **dev, const char *devspec, const char **path)
 char *
 efi_fmtdev(void *vdev)
 {
-	struct devdesc *dev = (struct devdesc *)vdev;
+	struct efi_devdesc *dev = (struct efi_devdesc *)vdev;
 	static char buf[SPECNAMELEN + 1];
 
 	switch(dev->d_type) {
@@ -172,7 +172,8 @@ efi_fmtdev(void *vdev)
 		break;
 
 	default:
-		sprintf(buf, "%s%d:", dev->d_dev->dv_name, dev->d_unit);
+		sprintf(buf, "%s%d:", dev->d_dev->dv_name,
+		    dev->d_kind.efidisk.unit);
 		break;
 	}
 
@@ -185,7 +186,7 @@ efi_fmtdev(void *vdev)
 int
 efi_setcurrdev(struct env_var *ev, int flags, const void *value)
 {
-	struct devdesc *ncurr;
+	struct efi_devdesc *ncurr;
 	int rv;
 
 	rv = efi_parsedev(&ncurr, value, NULL);
