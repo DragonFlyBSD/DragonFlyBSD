@@ -7,10 +7,7 @@ WARNS?=	2
 SRCS=	delay.c efi_console.c efinet.c efipart.c errno.c handles.c \
 	libefi.c time.c
 
-.if ${MACHINE_CPUARCH} == "aarch64"
-CFLAGS+=	-msoft-float -mgeneral-regs-only
-.endif
-.if ${MACHINE_ARCH} == "amd64"
+.if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+= -fPIC -mno-red-zone
 .endif
 CFLAGS+= -I${.CURDIR}/../include

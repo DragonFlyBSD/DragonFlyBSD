@@ -2,20 +2,14 @@
 
 BINDIR?=	/boot
 
-.if ${MACHINE_CPUARCH} == "i386"
-CFLAGS+=        -march=i386
-CFLAGS+=	-mno-aes
-.endif
-
 # Options used when building app-specific efi components
 # See conf/kern.mk for the correct set of these
-CFLAGS+=	-ffreestanding -Wformat -msoft-float ${CFLAGS_NO_SIMD}
+CFLAGS+=	-ffreestanding -Wformat
+CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
 LDFLAGS+=	-nostdlib
 
-.if ${MACHINE_CPUARCH} == "amd64"
+.if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-fshort-wchar
 CFLAGS+=	-mno-red-zone
 CFLAGS+=	-mno-aes
 .endif
-
-.include "../Makefile.inc"

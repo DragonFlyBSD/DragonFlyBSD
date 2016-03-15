@@ -2,8 +2,6 @@
 
 MAN=
 
-.include <src.opts.mk>
-
 MK_SSP=		no
 
 PROG=		loader.sym
@@ -21,33 +19,21 @@ SRCS=	autoload.c \
 	smbios.c \
 	vers.c
 
-.if ${MK_ZFS} != "no"
-SRCS+=		zfs.c
-.PATH:		${.CURDIR}/../../zfs
-
-# Disable warnings that are currently incompatible with the zfs boot code
-CWARNFLAGS.zfs.c+=	-Wno-sign-compare
-CWARNFLAGS.zfs.c+=	-Wno-array-bounds
-CWARNFLAGS.zfs.c+=	-Wno-missing-prototypes
-.endif
-
 .PATH: ${.CURDIR}/arch/${MACHINE}
 # For smbios.c
-.PATH: ${.CURDIR}/../../i386/libi386
+.PATH: ${.CURDIR}/../../pc32/libi386
 .include "${.CURDIR}/arch/${MACHINE}/Makefile.inc"
+
+BOOT_DLOADER=	yes
 
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/arch/${MACHINE}
 CFLAGS+=	-I${.CURDIR}/../include
 CFLAGS+=	-I${.CURDIR}/../include/${MACHINE}
-CFLAGS+=	-I${.CURDIR}/../../../contrib/dev/acpica/include
+CFLAGS+=	-I${.CURDIR}/../../../contrib/dev/acpica/source/include
 CFLAGS+=	-I${.CURDIR}/../../..
-CFLAGS+=	-I${.CURDIR}/../../i386/libi386
-.if ${MK_ZFS} != "no"
-CFLAGS+=	-I${.CURDIR}/../../zfs
-CFLAGS+=	-I${.CURDIR}/../../../cddl/boot/zfs
-CFLAGS+=	-DEFI_ZFS_BOOT
-.endif
+CFLAGS+=	-I${.CURDIR}/../../pc32/libi386
+CFLAGS+=	-I${.CURDIR}/../../dloader
 CFLAGS+=	-DNO_PCI -DEFI
 
 # make buildenv doesn't set DESTDIR, this means LIBSTAND
@@ -56,25 +42,9 @@ CFLAGS+=	-DNO_PCI -DEFI
 LIBSTAND=	${.OBJDIR}/../../../../lib/libstand/libstand.a
 .endif
 
-.if ${MK_FORTH} != "no"
-BOOT_FORTH=	yes
-CFLAGS+=	-DBOOT_FORTH
-CFLAGS+=	-I${.CURDIR}/../../ficl
-CFLAGS+=	-I${.CURDIR}/../../ficl/${MACHINE_CPUARCH}
-LIBFICL=	${.OBJDIR}/../../ficl/libficl.a
+.if exists(${.OBJDIR}/../../dloader/libdloader.a)
+LIBDLOADER=	${.OBJDIR}/../../dloader/libdloader.a
 .endif
-
-LOADER_FDT_SUPPORT?=	no
-.if ${MK_FDT} != "no" && ${LOADER_FDT_SUPPORT} != "no"
-CFLAGS+=	-I${.CURDIR}/../../fdt
-CFLAGS+=	-I${.OBJDIR}/../../fdt
-CFLAGS+=	-DLOADER_FDT_SUPPORT
-LIBEFI_FDT=	${.OBJDIR}/../../efi/fdt/libefi_fdt.a
-LIBFDT=		${.OBJDIR}/../../fdt/libfdt.a
-.endif
-
-# Include bcache code.
-HAVE_BCACHE=    yes
 
 .if defined(EFI_STAGING_SIZE)
 CFLAGS+=	-DEFI_STAGING_SIZE=${EFI_STAGING_SIZE}
@@ -101,10 +71,8 @@ vers.c:	${.CURDIR}/../../common/newvers.sh ${.CURDIR}/../../efi/loader/version
 NM?=		nm
 OBJCOPY?=	objcopy
 
-.if ${MACHINE_CPUARCH} == "amd64"
-EFI_TARGET=	efi-app-x86_64
-.elif ${MACHINE_CPUARCH} == "i386"
-EFI_TARGET=	efi-app-ia32
+.if ${MACHINE_ARCH} == "x86_64"
+EFI_TARGET=	pei-x86-64
 .else
 EFI_TARGET=	binary
 .endif
@@ -114,30 +82,16 @@ loader.efi: ${PROG}
 		echo "Undefined symbols in ${.ALLSRC}"; \
 		exit 1; \
 	fi
+	# No "-j .eh_frame", otherwise the loader doesn't run.
 	${OBJCOPY} -j .peheader -j .text -j .sdata -j .data \
 		-j .dynamic -j .dynsym -j .rel.dyn \
-		-j .rela.dyn -j .reloc -j .eh_frame -j set_Xcommand_set \
+		-j .rela.dyn -j .reloc -j set_Xcommand_set \
+		--subsystem efi-app \
 		--output-target=${EFI_TARGET} ${.ALLSRC} ${.TARGET}
 
 LIBEFI=		${.OBJDIR}/../libefi/libefi.a
 
-DPADD=		${LIBFICL} ${LIBEFI} ${LIBFDT} ${LIBEFI_FDT} ${LIBSTAND} \
-		${LDSCRIPT}
-LDADD=		${LIBFICL} ${LIBEFI} ${LIBFDT} ${LIBEFI_FDT} ${LIBSTAND}
+DPADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER} ${LDSCRIPT}
+LDADD=		${LIBEFI} ${LIBSTAND} ${LIBDLOADER}
 
 .include <bsd.prog.mk>
-
-beforedepend ${OBJS}: machine
-
-CLEANFILES+=   machine
-
-machine: .NOMETA
-	ln -sf ${.CURDIR}/../../../${MACHINE}/include machine
-
-.if ${MACHINE_CPUARCH} == "amd64" || ${MACHINE_CPUARCH} == "i386"
-beforedepend ${OBJS}: x86
-CLEANFILES+=   x86
-
-x86: .NOMETA
-	ln -sf ${.CURDIR}/../../../x86/include x86
-.endif
