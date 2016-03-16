@@ -17,7 +17,6 @@
 .\" PERFORMANCE OF THIS SOFTWARE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/getnameinfo.3,v 1.25 2007/02/28 21:28:33 bms Exp $
-.\" $DragonFly: src/lib/libc/net/getnameinfo.3,v 1.5 2007/08/18 20:48:47 swildner Exp $
 .\"
 .Dd February 28, 2007
 .Dt GETNAMEINFO 3
@@ -106,7 +105,7 @@ The
 argument is formed by
 .Tn OR Ns 'ing
 the following values:
-.Bl -tag -width "NI_NUMERICHOSTXX"
+.Bl -tag -width ".Dv NI_NUMERICHOST"
 .It Dv NI_NOFQDN
 A fully qualified domain name is not required for local hosts.
 The local part of the fully qualified domain name is returned instead.
@@ -120,9 +119,9 @@ If the host name cannot be found in DNS and this flag is set,
 a non-zero error code is returned.
 If the host name is not found and the flag is not set, the
 address is returned in numeric form.
-.It NI_NUMERICSERV
+.It Dv NI_NUMERICSERV
 The service name is returned as a digit string representing the port number.
-.It NI_DGRAM
+.It Dv NI_DGRAM
 Specifies that the service being looked up is a datagram
 service, and causes
 .Xr getservbyport 3

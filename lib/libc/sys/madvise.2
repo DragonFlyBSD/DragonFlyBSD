@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)madvise.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/madvise.2,v 1.17.2.8 2003/01/06 23:33:59 trhodes Exp $
-.\" $DragonFly: src/lib/libc/sys/madvise.2,v 1.7 2008/10/06 21:01:37 swildner Exp $
 .\"
 .Dd October 6, 2008
 .Dt MADVISE 2
@@ -68,7 +67,7 @@ argument (see the description of the
 behavior below).
 .Pp
 The known behaviors are:
-.Bl -tag -width MADV_SEQUENTIAL
+.Bl -tag -width ".Dv MADV_SEQUENTIAL"
 .It Dv MADV_NORMAL
 Tells the system to revert to the default paging
 behavior.
@@ -121,10 +120,14 @@ and less restrictive manner.  However, note that this feature is not portable
 across
 .Ux
 platforms (though some may do the right thing by default).
-For more information see the MAP_NOSYNC section of
+For more information see the
+.Dv MAP_NOSYNC
+section of
 .Xr mmap 2
 .It Dv MADV_AUTOSYNC
-Undoes the effects of MADV_NOSYNC for any future pages dirtied within the
+Undoes the effects of
+.Dv MADV_NOSYNC
+for any future pages dirtied within the
 address range.  The effect on pages already dirtied is indeterminate - they
 may or may not be reverted.  You can guarantee reversion by using the
 .Xr msync 2

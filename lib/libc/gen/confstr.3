@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)confstr.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/confstr.3,v 1.15 2007/01/09 00:27:53 imp Exp $
-.\" $DragonFly: src/lib/libc/gen/confstr.3,v 1.6 2008/05/02 02:05:03 swildner Exp $
 .\"
 .Dd December 6, 2006
 .Dt CONFSTR 3
@@ -79,7 +78,7 @@ The copied value is always null terminated.
 .Pp
 The available values are as follows:
 .Bl -tag -width 6n
-.It Li _CS_PATH
+.It Dv _CS_PATH
 Return a value for the
 .Ev PATH
 environment variable that finds all the standard utilities.

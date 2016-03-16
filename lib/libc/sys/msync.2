@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)msync.2	8.2 (Berkeley) 6/21/94
 .\" $FreeBSD: src/lib/libc/sys/msync.2,v 1.16.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/msync.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
 .Dd June 21, 1994
 .Dt MSYNC 2
@@ -58,16 +57,19 @@ if
 is non-zero, only those pages containing
 .Fa addr
 and
-.Fa len-1
+.Fa len Ns -1
 succeeding locations will be examined.
 The
 .Fa flags
 argument may be specified as follows:
-.Bd -literal
-MS_ASYNC	Return immediately
-MS_SYNC		Perform synchronous writes
-MS_INVALIDATE	Invalidate all cached data
-.Ed
+.Bl -tag -width ".Dv MS_INVALIDATE"
+.It Dv MS_ASYNC
+Return immediately
+.It Dv MS_SYNC
+Perform synchronous writes
+.It Dv MS_INVALIDATE
+Invalidate all cached data
+.El
 .Sh RETURN VALUES
 .Rv -std msync
 .Sh ERRORS
