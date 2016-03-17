@@ -218,7 +218,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
     fcntl(fd_in, F_SETFD, fflags & ~FD_CLOEXEC);
 
     snprintf(fmt, sizeof(fmt),
-	"#!/bin/sh\n# atrun uid=%%ld gid=%%ld\n# mail %%%ds %%d",
+	"#!/bin/sh\n# atrun uid=%%u gid=%%u\n# mail %%%ds %%d",
                           MAXLOGNAME - 1);
 
     if (fscanf(stream, fmt, &nuid, &ngid, mailbuf, &send_mail) != 4)
