@@ -49,6 +49,7 @@ enum ig4_op { IG4_IDLE, IG4_READ, IG4_WRITE };
 struct ig4iic_softc {
 	device_t	dev;
 	device_t	smb;
+	device_t	acpismb;
 	struct resource	*regs_res;
 	int		regs_rid;
 	bus_space_tag_t regs_t;

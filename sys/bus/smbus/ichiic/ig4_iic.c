@@ -43,7 +43,6 @@
 #include <sys/module.h>
 #include <sys/errno.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/syslog.h>
 #include <sys/bus.h>
 #include <sys/sysctl.h>
@@ -554,12 +553,26 @@ ig4iic_attach(ig4iic_softc_t *sc)
 		  IG4_CTL_SLAVE_DISABLE |
 		  IG4_CTL_RESTARTEN |
 		  IG4_CTL_SPEED_STD);
+	/*
+	 * When ig4 is attached via ACPI, (child) devices should access the
+	 * smbus via I2cSerialBus ACPI resources instead.
+	 */
+	if (strcmp("acpi", device_get_name(device_get_parent(sc->dev))) != 0) {
+		sc->smb = device_add_child(sc->dev, "smbus", -1);
+		if (sc->smb == NULL) {
+			device_printf(sc->dev, "smbus driver not found\n");
+			error = ENXIO;
+			goto done;
+		}
+	}
 
-	sc->smb = device_add_child(sc->dev, "smbus", -1);
-	if (sc->smb == NULL) {
-		device_printf(sc->dev, "smbus driver not found\n");
-		error = ENXIO;
-		goto done;
+	sc->acpismb = device_add_child(sc->dev, "smbacpi", -1);
+	if (sc->acpismb == NULL) {
+		device_printf(sc->dev, "smbacpi driver not found\n");
+		if (sc->smb == NULL) {
+			error = ENXIO;
+			goto done;
+		}
 	}
 
 #if 0
@@ -620,6 +633,10 @@ ig4iic_detach(ig4iic_softc_t *sc)
 	if (sc->smb) {
 		device_delete_child(sc->dev, sc->smb);
 		sc->smb = NULL;
+	}
+	if (sc->acpismb) {
+		device_delete_child(sc->dev, sc->acpismb);
+		sc->acpismb = NULL;
 	}
 	if (sc->intr_handle) {
 		bus_teardown_intr(sc->dev, sc->intr_res, sc->intr_handle);

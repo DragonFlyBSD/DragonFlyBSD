@@ -935,6 +935,7 @@ bus/smbus/smbus.c		optional smbus
 bus/smbus/amdsmb/amdsmb.c	optional amdsmb pci
 bus/smbus/ichiic/ig4_iic.c	optional ichiic
 bus/smbus/ichiic/ig4_pci.c	optional ichiic pci
+bus/smbus/ichiic/ig4_acpi.c	optional ichiic acpi
 bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/smbus/smb/smb.c		optional smb
