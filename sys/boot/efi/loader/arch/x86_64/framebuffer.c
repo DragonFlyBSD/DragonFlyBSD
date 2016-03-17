@@ -395,7 +395,7 @@ efifb_from_uga(struct efi_fb *efifb, EFI_UGA_DRAW_PROTOCOL *uga)
 	} else {
 		offset = 0;
 		efifb->fb_size = efifb->fb_height * efifb->fb_stride * 4;
-		efifb->fb_addr = strtoul(ev, &p, 0);
+		efifb->fb_addr = strtol(ev, &p, 0);
 		if (*p != '\0')
 			return (1);
 	}
@@ -412,7 +412,7 @@ efifb_from_uga(struct efi_fb *efifb, EFI_UGA_DRAW_PROTOCOL *uga)
 			printf("Unable to reliably detect the stride.\n");
 		}
 	} else {
-		efifb->fb_stride = strtoul(ev, &p, 0);
+		efifb->fb_stride = strtol(ev, &p, 0);
 		if (*p != '\0')
 			return (1);
 	}
