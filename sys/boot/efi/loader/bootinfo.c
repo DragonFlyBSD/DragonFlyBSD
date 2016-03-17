@@ -51,10 +51,6 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/bootinfo.c 293724 2016-01-12 02:17:
 #include "framebuffer.h"
 #endif
 
-#if defined(LOADER_FDT_SUPPORT)
-#include <fdt_platform.h>
-#endif
-
 int bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp);
 
 extern EFI_SYSTEM_TABLE	*ST;
@@ -347,10 +343,6 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	vm_offset_t size;
 	char *rootdevname;
 	int howto;
-#if defined(LOADER_FDT_SUPPORT)
-	vm_offset_t dtbp;
-	int dtb_size;
-#endif
 #if defined(__arm__)
 	vm_offset_t vaddr;
 	size_t i;
@@ -361,9 +353,6 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	uint32_t		mdt[] = {
 	    MODINFOMD_SSYM, MODINFOMD_ESYM, MODINFOMD_KERNEND,
 	    MODINFOMD_ENVP,
-#if defined(LOADER_FDT_SUPPORT)
-	    MODINFOMD_DTBP
-#endif
 	};
 #endif
 
@@ -400,16 +389,6 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	/* Pad to a page boundary. */
 	addr = roundup(addr, PAGE_SIZE);
 
-#if defined(LOADER_FDT_SUPPORT)
-	/* Handle device tree blob */
-	dtbp = addr;
-	dtb_size = fdt_copy(addr);
-		
-	/* Pad to a page boundary */
-	if (dtb_size)
-		addr += roundup(dtb_size, PAGE_SIZE);
-#endif
-
 	kfp = file_findfile(NULL, "elf kernel");
 	if (kfp == NULL)
 		kfp = file_findfile(NULL, "elf64 kernel");
@@ -418,13 +397,6 @@ bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp)
 	kernend = 0;	/* fill it in later */
 	file_addmetadata(kfp, MODINFOMD_HOWTO, sizeof howto, &howto);
 	file_addmetadata(kfp, MODINFOMD_ENVP, sizeof envp, &envp);
-#if defined(LOADER_FDT_SUPPORT)
-	if (dtb_size)
-		file_addmetadata(kfp, MODINFOMD_DTBP, sizeof dtbp, &dtbp);
-	else
-		pager_output("WARNING! Trying to fire up the kernel, but no "
-		    "device tree blob found!\n");
-#endif
 	file_addmetadata(kfp, MODINFOMD_KERNEND, sizeof kernend, &kernend);
 	file_addmetadata(kfp, MODINFOMD_FW_HANDLE, sizeof ST, &ST);
 

@@ -31,23 +31,14 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/conf.c 294068 2016-01-15 02:33:47Z 
 #include <bootstrap.h>
 #include <efi.h>
 #include <efilib.h>
-#ifdef EFI_ZFS_BOOT
-#include <libzfs.h>
-#endif
 
 struct devsw *devsw[] = {
 	&efipart_dev,
 	&efinet_dev,
-#ifdef EFI_ZFS_BOOT
-	&zfs_dev,
-#endif
 	NULL
 };
 
 struct fs_ops *file_system[] = {
-#ifdef EFI_ZFS_BOOT
-	&zfs_fsops,
-#endif
 	&dosfs_fsops,
 	&ufs_fsops,
 	&cd9660_fsops,
