@@ -81,7 +81,6 @@ struct mmcsd_softc {
 	struct lock sc_lock;
 	struct disk disk;
 	struct devstat device_stats;
-	int unit;
 	struct thread *td;
 	struct bio_queue_head bio_queue;
 	daddr_t eblock, eend;	/* Range remaining after the last erase. */
@@ -149,7 +148,7 @@ mmcsd_attach(device_t dev)
 	    DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_DISK);
 
-	dsk = disk_create(sc->unit, &sc->disk, &mmcsd_ops);
+	dsk = disk_create(device_get_unit(dev), &sc->disk, &mmcsd_ops);
 	dsk->si_drv1 = sc;
 	sc->dev_t = dsk;
 
