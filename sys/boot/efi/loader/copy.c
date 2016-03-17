@@ -63,7 +63,7 @@ efi_copy_init(void)
 	}
 	staging_end = staging + STAGE_PAGES * EFI_PAGE_SIZE;
 
-#if defined(__aarch64__) || defined(__arm__)
+#if defined(__aarch64__)
 	/*
 	 * Round the kernel load address to a 2MiB value. This is needed
 	 * because the kernel builds a page table based on where it has

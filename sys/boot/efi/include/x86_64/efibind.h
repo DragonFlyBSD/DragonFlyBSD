@@ -160,7 +160,7 @@ typedef uint64_t   UINTN;
 // RUNTIME_CODE - pragma macro for declaring runtime code    
 //
 
-#ifdef	__amd64__
+#ifdef	__x86_64__
 #define	EFIAPI	__attribute__((ms_abi))
 #endif
 
