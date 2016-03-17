@@ -369,7 +369,7 @@ main(int argc, CHAR16 *argv[])
 		}
 	}
 
-	interact(NULL);			/* doesn't return */
+	interact();			/* doesn't return */
 
 	return (EFI_SUCCESS);		/* keep compiler happy */
 }
