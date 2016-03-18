@@ -1263,7 +1263,6 @@ again:
 	}
 	if (doload) {
 		*errorp = hammer_load_node(trans, node, isnew);
-		trans->flags |= HAMMER_TRANSF_DIDIO;
 		if (*errorp)
 			node = NULL;
 	} else {

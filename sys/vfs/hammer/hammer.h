@@ -130,7 +130,6 @@ struct hammer_transaction {
 typedef struct hammer_transaction *hammer_transaction_t;
 
 #define HAMMER_TRANSF_NEWINODE	0x0001
-#define HAMMER_TRANSF_DIDIO	0x0002
 #define HAMMER_TRANSF_CRCDOM	0x0004	/* EDOM on CRC error, less critical */
 
 /*
