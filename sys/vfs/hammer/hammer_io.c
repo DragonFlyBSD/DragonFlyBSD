@@ -961,7 +961,7 @@ hammer_io_clear_modify(struct hammer_io *io, int inval)
 		hammer_node_t node;
 
 restart:
-		TAILQ_FOREACH(node, &buffer->clist, entry) {
+		TAILQ_FOREACH(node, &buffer->node_list, entry) {
 			if ((node->flags & HAMMER_NODE_NEEDSCRC) == 0)
 				continue;
 			node->flags &= ~HAMMER_NODE_NEEDSCRC;

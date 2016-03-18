@@ -715,7 +715,7 @@ struct hammer_buffer {
 	hammer_off_t zoneX_offset;
 	hammer_off_t zone2_offset;
 	struct hammer_reserve *resv;
-	struct hammer_node_list clist;
+	struct hammer_node_list node_list;
 };
 
 typedef struct hammer_buffer *hammer_buffer_t;

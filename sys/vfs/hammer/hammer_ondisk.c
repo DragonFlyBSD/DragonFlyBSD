@@ -743,7 +743,7 @@ found_aliased:
 	hammer_io_init(&buffer->io, volume, iotype);
 	buffer->io.offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
 	buffer->io.bytes = bytes;
-	TAILQ_INIT(&buffer->clist);
+	TAILQ_INIT(&buffer->node_list);
 	hammer_ref_interlock_true(&buffer->io.lock);
 
 	/*
@@ -1110,7 +1110,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int locked)
 		hammer_rel_volume(volume, 0);
 		hammer_io_clear_modlist(&buffer->io);
 		hammer_flush_buffer_nodes(buffer);
-		KKASSERT(TAILQ_EMPTY(&buffer->clist));
+		KKASSERT(TAILQ_EMPTY(&buffer->node_list));
 		freeme = 1;
 	}
 
@@ -1304,7 +1304,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 		/*
 		 * This is a little confusing but the jist is that
 		 * node->buffer determines whether the node is on
-		 * the buffer's clist and node->ondisk determines
+		 * the buffer's node_list and node->ondisk determines
 		 * whether the buffer is referenced.
 		 *
 		 * We could be racing a buffer release, in which case
@@ -1314,7 +1314,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 		if ((buffer = node->buffer) != NULL) {
 			error = hammer_ref_buffer(buffer);
 			if (error == 0 && node->buffer == NULL) {
-				TAILQ_INSERT_TAIL(&buffer->clist, node, entry);
+				TAILQ_INSERT_TAIL(&buffer->node_list, node, entry);
 				node->buffer = buffer;
 			}
 		} else {
@@ -1323,7 +1323,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 						   HAMMER_BUFSIZE, 0, &error);
 			if (buffer) {
 				KKASSERT(error == 0);
-				TAILQ_INSERT_TAIL(&buffer->clist, node, entry);
+				TAILQ_INSERT_TAIL(&buffer->node_list, node, entry);
 				node->buffer = buffer;
 			}
 		}
@@ -1564,7 +1564,7 @@ hammer_flush_node(hammer_node_t node, int locked)
 		RB_REMOVE(hammer_nod_rb_tree, &node->hmp->rb_nods_root, node);
 		if ((buffer = node->buffer) != NULL) {
 			node->buffer = NULL;
-			TAILQ_REMOVE(&buffer->clist, node, entry);
+			TAILQ_REMOVE(&buffer->node_list, node, entry);
 			/* buffer is unreferenced because ondisk is NULL */
 		}
 		dofree = 1;
@@ -1599,7 +1599,7 @@ hammer_flush_buffer_nodes(hammer_buffer_t buffer)
 {
 	hammer_node_t node;
 
-	while ((node = TAILQ_FIRST(&buffer->clist)) != NULL) {
+	while ((node = TAILQ_FIRST(&buffer->node_list)) != NULL) {
 		KKASSERT(node->ondisk == NULL);
 		KKASSERT((node->flags & HAMMER_NODE_NEEDSCRC) == 0);
 
@@ -1611,7 +1611,7 @@ hammer_flush_buffer_nodes(hammer_buffer_t buffer)
 			KKASSERT(node->buffer != NULL);
 			buffer = node->buffer;
 			node->buffer = NULL;
-			TAILQ_REMOVE(&buffer->clist, node, entry);
+			TAILQ_REMOVE(&buffer->node_list, node, entry);
 			/* buffer is unreferenced because ondisk is NULL */
 		}
 	}
