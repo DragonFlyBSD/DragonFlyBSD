@@ -62,7 +62,7 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 	hammer_off_t result_offset;
 	int i;
 
-	KKASSERT((zone3_off & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_UNDO);
+	KKASSERT(hammer_is_zone_undo(zone3_off));
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp)
 		return(0);

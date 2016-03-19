@@ -2676,8 +2676,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * device.
 	 */
 	nbio = push_bio(bio);
-	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
-	    HAMMER_ZONE_LARGE_DATA) {
+	if (hammer_is_zone_large_data(nbio->bio_offset)) {
 		if (hammer_double_buffer == 0) {
 			lwkt_gettoken(&hmp->fs_token);
 			error = hammer_io_direct_read(hmp, nbio, NULL);
@@ -2854,8 +2853,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 			/*
 			 * Direct read case
 			 */
-			KKASSERT((disk_offset & HAMMER_OFF_ZONE_MASK) ==
-				 HAMMER_ZONE_LARGE_DATA);
+			KKASSERT(hammer_is_zone_large_data(disk_offset));
 			nbio->bio_offset = disk_offset;
 			error = hammer_io_direct_read(hmp, nbio, cursor.leaf);
 			if (hammer_live_dedup && error == 0)
@@ -2869,8 +2867,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 			 * gets a hit later so we can just add the entry
 			 * now.
 			 */
-			KKASSERT((disk_offset & HAMMER_OFF_ZONE_MASK) ==
-				 HAMMER_ZONE_LARGE_DATA);
+			KKASSERT(hammer_is_zone_large_data(disk_offset));
 			nbio->bio_offset = disk_offset;
 			if (hammer_live_dedup)
 				hammer_dedup_cache_add(ip, cursor.leaf);
@@ -3162,7 +3159,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	 */
 	disk_offset = base_disk_offset + (ap->a_loffset - base_offset);
 
-	if ((disk_offset & HAMMER_OFF_ZONE_MASK) != HAMMER_ZONE_LARGE_DATA) {
+	if (!hammer_is_zone_large_data(disk_offset)) {
 		/*
 		 * Only large-data zones can be direct-IOd
 		 */

@@ -722,8 +722,7 @@ found_aliased:
 	 * NOTE: zone2_offset and maxbuf_off are both full zone-2 offset
 	 * specifications.
 	 */
-	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_RAW_BUFFER);
+	KKASSERT(hammer_is_zone_raw_buffer(zone2_offset));
 	vol_no = HAMMER_VOL_DECODE(zone2_offset);
 	volume = hammer_get_volume(hmp, vol_no, errorp);
 	if (volume == NULL)
@@ -796,8 +795,7 @@ hammer_sync_buffers(hammer_mount_t hmp, hammer_off_t base_offset, int bytes)
 	hammer_buffer_t buffer;
 	int error;
 
-	KKASSERT((base_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_LARGE_DATA);
+	KKASSERT(hammer_is_zone_large_data(base_offset));
 
 	while (bytes > 0) {
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
@@ -931,8 +929,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 		 */
 		if (isnew) {
 			error = hammer_io_new(volume->devvp, &buffer->io);
-		} else if ((buffer->zoneX_offset & HAMMER_OFF_ZONE_MASK) ==
-			   HAMMER_ZONE_LARGE_DATA) {
+		} else if (hammer_is_zone_large_data(buffer->zoneX_offset)) {
 			error = hammer_io_read(volume->devvp, &buffer->io,
 					       buffer->io.bytes);
 		} else {
@@ -1238,7 +1235,7 @@ hammer_get_node(hammer_transaction_t trans, hammer_off_t node_offset,
 	hammer_node_t node;
 	int doload;
 
-	KKASSERT((node_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_BTREE);
+	KKASSERT(hammer_is_zone_btree(node_offset));
 
 	/*
 	 * Locate the structure, allocating one if necessary.

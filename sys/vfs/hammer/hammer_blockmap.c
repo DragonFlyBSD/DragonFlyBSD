@@ -817,8 +817,7 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 	int error;
 
 	KKASSERT(resv->refs > 0);
-	KKASSERT((resv->zone_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_RAW_BUFFER);
+	KKASSERT(hammer_is_zone_raw_buffer(resv->zone_offset));
 
 	/*
 	 * Setting append_off to the max prevents any new allocations

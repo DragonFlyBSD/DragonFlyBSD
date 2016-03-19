@@ -172,6 +172,25 @@ typedef uint32_t hammer_crc_t;
 
 #define HAMMER_ZONE(offset)		((offset) & HAMMER_OFF_ZONE_MASK)
 
+#define hammer_is_zone_raw_volume(offset)		\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_RAW_VOLUME)
+#define hammer_is_zone_raw_buffer(offset)		\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_RAW_BUFFER)
+#define hammer_is_zone_undo(offset)			\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_UNDO)
+#define hammer_is_zone_freemap(offset)			\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_FREEMAP)
+#define hammer_is_zone_btree(offset)			\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_BTREE)
+#define hammer_is_zone_meta(offset)			\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_META)
+#define hammer_is_zone_large_data(offset)		\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_LARGE_DATA)
+#define hammer_is_zone_small_data(offset)		\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_SMALL_DATA)
+#define hammer_is_zone_unavail(offset)			\
+	(HAMMER_ZONE(offset) == HAMMER_ZONE_UNAVAIL)
+
 /*
  * Test if the zone is directly mapped to zone-2 offset via freemap.
  */

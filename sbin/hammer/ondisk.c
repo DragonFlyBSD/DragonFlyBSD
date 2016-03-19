@@ -293,7 +293,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	}
 	if (buf_offset == HAMMER_OFF_BAD)
 		return(NULL);
-	assert((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
+	assert(hammer_is_zone_raw_buffer(buf_offset));
 
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = get_volume(vol_no);

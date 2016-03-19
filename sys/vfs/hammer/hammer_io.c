@@ -1410,8 +1410,7 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 	int error;
 
 	buf_offset = bio->bio_offset;
-	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_LARGE_DATA);
+	KKASSERT(hammer_is_zone_large_data(buf_offset));
 
 	/*
 	 * The buffer cache may have an aliased buffer (the reblocker can
@@ -1429,8 +1428,7 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 	zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, &error);
 	if (error)
 		goto done;
-	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_RAW_BUFFER);
+	KKASSERT(hammer_is_zone_raw_buffer(zone2_offset));
 
 	/*
 	 * Resolve volume and raw-offset for 3rd level bio.  The
@@ -1486,8 +1484,7 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 	int error;
 
 	buf_offset = bio->bio_offset;
-	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_LARGE_DATA);
+	KKASSERT(hammer_is_zone_large_data(buf_offset));
 
 	/*
 	 * The buffer cache may have an aliased buffer (the reblocker can
@@ -1505,8 +1502,7 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 	zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, &error);
 	if (error)
 		goto done;
-	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_RAW_BUFFER);
+	KKASSERT(hammer_is_zone_raw_buffer(zone2_offset));
 
 	/*
 	 * Resolve volume and raw-offset for 3rd level bio.  The
