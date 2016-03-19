@@ -170,6 +170,8 @@ typedef uint32_t hammer_crc_t;
 
 #define HAMMER_MAX_ZONES		16
 
+#define HAMMER_ZONE(offset)		((offset) & HAMMER_OFF_ZONE_MASK)
+
 /*
  * Test if the zone is directly mapped to zone-2 offset via freemap.
  */

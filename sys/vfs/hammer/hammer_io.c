@@ -327,8 +327,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 				metatype = "volume";
 				break;
 			case HAMMER_STRUCTURE_META_BUFFER:
-				switch(HAMMER_ITOB(io)->zoneX_offset
-					& HAMMER_OFF_ZONE_MASK) {
+				switch(HAMMER_ZONE(HAMMER_ITOB(io)->zoneX_offset)) {
 				case HAMMER_ZONE_BTREE:
 					metatype = "btree";
 					break;

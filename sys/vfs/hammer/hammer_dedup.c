@@ -107,8 +107,8 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 	 *
 	 * Return with error = 0, but set a CMP_FAILURE flag.
 	 */
-	if ((cursor1.leaf->data_offset & HAMMER_OFF_ZONE_MASK) !=
-	    (cursor2.leaf->data_offset & HAMMER_OFF_ZONE_MASK)) {
+	if (HAMMER_ZONE(cursor1.leaf->data_offset) !=
+	    HAMMER_ZONE(cursor2.leaf->data_offset)) {
 		dedup->head.flags |= HAMMER_IOC_DEDUP_CMP_FAILURE;
 		goto done_cursors;
 	}
@@ -185,7 +185,7 @@ done_cursor:
 static __inline int
 validate_zone(hammer_off_t data_offset)
 {
-	switch(data_offset & HAMMER_OFF_ZONE_MASK) {
+	switch(HAMMER_ZONE(data_offset)) {
 	case HAMMER_ZONE_LARGE_DATA:
 	case HAMMER_ZONE_SMALL_DATA:
 		return (0);

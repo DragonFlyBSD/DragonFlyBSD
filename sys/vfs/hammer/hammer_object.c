@@ -2557,7 +2557,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			}
 			bytes += (ndelete * sizeof(struct hammer_node_ondisk));
 
-			switch(data_offset & HAMMER_OFF_ZONE_MASK) {
+			switch(HAMMER_ZONE(data_offset)) {
 			case HAMMER_ZONE_LARGE_DATA:
 			case HAMMER_ZONE_SMALL_DATA:
 			case HAMMER_ZONE_META:

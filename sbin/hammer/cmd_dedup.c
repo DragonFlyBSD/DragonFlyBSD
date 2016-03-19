@@ -444,8 +444,7 @@ collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 static __inline int
 validate_dedup_pair(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 {
-	if ((p->data_offset & HAMMER_OFF_ZONE_MASK) !=
-	    (q->data_offset & HAMMER_OFF_ZONE_MASK)) {
+	if (HAMMER_ZONE(p->data_offset) != HAMMER_ZONE(q->data_offset)) {
 		return (1);
 	}
 	if (p->data_len != q->data_len) {
