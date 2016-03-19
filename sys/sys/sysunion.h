@@ -312,6 +312,7 @@ union sysunion {
 	struct	getresgid_args getresgid;
 	struct	kqueue_args kqueue;
 	struct	kevent_args kevent;
+	struct	kenv_args kenv;
 	struct	lchflags_args lchflags;
 	struct	uuidgen_args uuidgen;
 	struct	sendfile_args sendfile;

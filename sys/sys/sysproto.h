@@ -1640,6 +1640,15 @@ struct	kevent_args {
 	int	nevents;	char nevents_[PAD_(int)];
 	const struct timespec *	timeout;	char timeout_[PAD_(const struct timespec *)];
 };
+struct	kenv_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	what;	char what_[PAD_(int)];
+	const char *	name;	char name_[PAD_(const char *)];
+	char *	value;	char value_[PAD_(char *)];
+	int	len;	char len_[PAD_(int)];
+};
 struct	lchflags_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2780,6 +2789,7 @@ int	sys_getresuid (struct getresuid_args *);
 int	sys_getresgid (struct getresgid_args *);
 int	sys_kqueue (struct kqueue_args *);
 int	sys_kevent (struct kevent_args *);
+int	sys_kenv (struct kenv_args *);
 int	sys_lchflags (struct lchflags_args *);
 int	sys_uuidgen (struct uuidgen_args *);
 int	sys_sendfile (struct sendfile_args *);

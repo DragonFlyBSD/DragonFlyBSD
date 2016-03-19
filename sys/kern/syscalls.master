@@ -550,7 +550,7 @@
 387	UNIMPL	nosys
 388	UNIMPL	nosys
 389	UNIMPL	nosys
-390	UNIMPL	nosys
+390	STD	{ int kenv(int what, const char *name, char *value, int len); }
 391	STD	{ int lchflags(char *path, int flags); }
 392	STD	{ int uuidgen(struct uuid *store, int count); }
 393	STD	{ int sendfile(int fd, int s, off_t offset, size_t nbytes, \

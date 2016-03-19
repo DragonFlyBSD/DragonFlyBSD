@@ -42,11 +42,14 @@
  */
 
 #include <sys/param.h>
+#include <sys/kenv.h>
 #include <sys/kernel.h>
 #include <sys/libkern.h>
 #include <sys/malloc.h>
+#include <sys/priv.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
+#include <sys/sysproto.h>
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 
@@ -61,13 +64,119 @@ struct spinlock	kenv_dynlock;
 /* constants */
 MALLOC_DEFINE(M_KENV, "kenv", "kernel environment dynamic storage");
 #define	KENV_DYNMAXNUM	512
-#define	KENV_MAXNAMELEN	128
-#define	KENV_MAXVALLEN	128
 
 /* local prototypes */
 static char	*kenv_getstring_dynamic(const char *name, int *idx);
 static char	*kenv_getstring_static(const char *name);
 static char	*kernenv_next(char *cp);
+
+int
+sys_kenv(struct kenv_args *uap)
+{
+	char *name, *value, *buffer = NULL;
+	size_t len, done, needed, buflen;
+	int error, i;
+
+	KASSERT(kenv_isdynamic, ("kenv: kenv_isdynamic = 0"));
+
+	error = 0;
+	if (uap->what == KENV_DUMP) {
+		done = needed = 0;
+		buflen = uap->len;
+		if (buflen > KENV_DYNMAXNUM * (KENV_MNAMELEN + KENV_MVALLEN + 2))
+			buflen = KENV_DYNMAXNUM *
+			    (KENV_MNAMELEN + KENV_MVALLEN + 2);
+		if (uap->len > 0 && uap->value != NULL)
+			buffer = kmalloc(buflen, M_TEMP, M_WAITOK|M_ZERO);
+		spin_lock(&kenv_dynlock);
+		for (i = 0; kenv_dynp[i] != NULL; i++) {
+			len = strlen(kenv_dynp[i]) + 1;
+			needed += len;
+			len = min(len, buflen - done);
+			/*
+			 * If called with a NULL or insufficiently large
+			 * buffer, just keep computing the required size.
+			 */
+			if (uap->value != NULL && buffer != NULL && len > 0) {
+				bcopy(kenv_dynp[i], buffer + done, len);
+				done += len;
+			}
+		}
+		spin_unlock(&kenv_dynlock);
+		if (buffer != NULL) {
+			error = copyout(buffer, uap->value, done);
+			kfree(buffer, M_TEMP);
+		}
+		uap->sysmsg_result = ((done == needed) ? 0 : needed);
+		return (error);
+	}
+
+	switch (uap->what) {
+	case KENV_SET:
+		error = priv_check(curthread, PRIV_KENV_SET);
+		if (error)
+			return (error);
+		break;
+
+	case KENV_UNSET:
+		error = priv_check(curthread, PRIV_KENV_UNSET);
+		if (error)
+			return (error);
+		break;
+	}
+
+	name = kmalloc(KENV_MNAMELEN + 1, M_TEMP, M_WAITOK);
+
+	error = copyinstr(uap->name, name, KENV_MNAMELEN + 1, NULL);
+	if (error)
+		goto done;
+
+	switch (uap->what) {
+	case KENV_GET:
+		value = kgetenv(name);
+		if (value == NULL) {
+			error = ENOENT;
+			goto done;
+		}
+		len = strlen(value) + 1;
+		if (len > uap->len)
+			len = uap->len;
+		error = copyout(value, uap->value, len);
+		kfreeenv(value);
+		if (error)
+			goto done;
+		uap-> sysmsg_result = len;
+		break;
+	case KENV_SET:
+		len = uap->len;
+		if (len < 1) {
+			error = EINVAL;
+			goto done;
+		}
+		if (len > KENV_MVALLEN + 1)
+			len = KENV_MVALLEN + 1;
+		value = kmalloc(len, M_TEMP, M_WAITOK);
+		error = copyinstr(uap->value, value, len, NULL);
+		if (error) {
+			kfree(value, M_TEMP);
+			goto done;
+		}
+		ksetenv(name, value);
+		kfree(value, M_TEMP);
+		break;
+	case KENV_UNSET:
+		error = kunsetenv(name);
+		if (error)
+			error = ENOENT;
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+done:
+	kfree(name, M_TEMP);
+	return (error);
+}
 
 /*
  * Look up a string in the dynamic environment array. Must be called with
@@ -119,7 +228,7 @@ kenv_getstring_static(const char *name)
 char *
 kgetenv(const char *name)
 {
-	char	buf[KENV_MAXNAMELEN + 1 + KENV_MAXVALLEN + 1];
+	char	buf[KENV_MNAMELEN + 1 + KENV_MVALLEN + 1];
 	char	*cp, *ret;
 	int	len;
 
@@ -153,7 +262,7 @@ ksetenv(const char *name, const char *value)
 	if (kenv_isdynamic) {
 		namelen = strlen(name) + 1;
 		vallen = strlen(value) + 1;
-		if ((namelen > KENV_MAXNAMELEN) || (vallen > KENV_MAXVALLEN))
+		if ((namelen > KENV_MNAMELEN) || (vallen > KENV_MVALLEN))
 			return(-1);
 		buf = kmalloc(namelen + vallen, M_KENV, M_WAITOK);
 		ksprintf(buf, "%s=%s", name, value);

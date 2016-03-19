@@ -223,6 +223,7 @@ MIASM =  \
 	getresgid.o \
 	kqueue.o \
 	kevent.o \
+	kenv.o \
 	lchflags.o \
 	uuidgen.o \
 	sendfile.o \

@@ -280,6 +280,7 @@
 #define	SYS_getresgid	361
 #define	SYS_kqueue	362
 #define	SYS_kevent	363
+#define	SYS_kenv	390
 #define	SYS_lchflags	391
 #define	SYS_uuidgen	392
 #define	SYS_sendfile	393
