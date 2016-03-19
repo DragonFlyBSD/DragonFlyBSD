@@ -39,6 +39,8 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/devicename.c 294068 2016-01-15 02:3
 
 #include "loader_efi.h"
 
+#define SPECNAMELEN	63
+
 static int efi_parsedev(struct efi_devdesc **, const char *, const char **);
 
 /*
