@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 2000  Peter Wemm <peter@FreeBSD.org>
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -21,23 +22,29 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.bin/kenv/kenv.1,v 1.1.2.5 2001/12/14 15:53:30 ru Exp $
-.\" $DragonFly: src/usr.bin/kenv/kenv.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $FreeBSD: head/bin/kenv/kenv.1 235316 2012-05-12 02:49:40Z mdf $
 .\"
-.Dd July 8, 2000
+.Dd March 19, 2016
 .Dt KENV 1
 .Os
 .Sh NAME
 .Nm kenv
-.Nd dump the kernel environment
+.Nd dump or modify the kernel environment
 .Sh SYNOPSIS
 .Nm
-.Op Fl h
-.Op Ar variable
+.Op Fl hNq
+.Nm
+.Op Fl qv
+.Ar variable Ns Op = Ns Ar value
+.Nm
+.Op Fl q
+.Fl u
+.Ar variable
 .Sh DESCRIPTION
 The
 .Nm
-utility will dump the kernel environment.
+utility will dump the kernel environment if
+invoked without arguments.
 If the
 .Fl h
 option is specified, it will limit the report to kernel probe hints.
@@ -46,7 +53,54 @@ If an optional
 name is specified,
 .Nm
 will only report that value.
+If the
+.Fl N
+option is specified,
+.Nm
+will only display variable names and not their values.
+If the
+.Fl u
+option is specified,
+.Nm
+will delete the given environment variable.
+If the environment variable is followed by an optional
+.Ar value ,
+.Nm
+will set the environment variable to this value.
+.Pp
+If the
+.Fl q
+option is set, warnings normally printed as a result of being unable to
+perform the requested operation will be suppressed.
+.Pp
+If the
+.Fl v
+option is set, the variable name will be printed out for the
+environment variable in addition to the value when
+.Nm
+is executed with a variable name.
+.Pp
+Variables can be added to the kernel environment using the
+.Pa /boot/loader.conf
+file.
+.\", or also statically compiled into the kernel using the statement
+.\".Pp
+.\".Dl Ic env Ar filename
+.\".Pp
+.\"in the kernel config file.
+The file can contain lines of the form
+.Pp
+.Dl name = "value"  # this is a comment
+.\".Pp
+.\"where whitespace around name and '=', and
+.\"everything after a '#' character, are ignored.  Almost any printable
+.\"character except '=' is acceptable as part of a name.  Quotes
+.\"are optional and necessary only if the value contains
+.\"whitespace.
 .Sh SEE ALSO
+.Xr kenv 2 ,
+.\".Xr kernconf 5 ,
+.Xr loader.conf 5 ,
 .Xr loader 8
 .Sh HISTORY
 The
