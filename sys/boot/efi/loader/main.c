@@ -221,9 +221,6 @@ main(int argc, CHAR16 *argv[])
 				case 'd':
 					howto |= RB_KDB;
 					break;
-				case 'D':
-					howto |= RB_MULTIPLE;
-					break;
 				case 'h':
 					howto |= RB_SERIAL;
 					break;
@@ -234,8 +231,10 @@ main(int argc, CHAR16 *argv[])
 					howto |= RB_PAUSE;
 					break;
 				case 'P':
-					if (!has_kbd)
-						howto |= RB_SERIAL | RB_MULTIPLE;
+					if (!has_kbd) {
+						howto &= ~(RB_MUTE|RB_VIDEO);
+						howto |= RB_SERIAL;
+					}
 					break;
 				case 'r':
 					howto |= RB_DFLTROOT;
@@ -285,12 +284,7 @@ main(int argc, CHAR16 *argv[])
 	for (i = 0; howto_names[i].ev != NULL; i++)
 		if (howto & howto_names[i].mask)
 			setenv(howto_names[i].ev, "YES", 1);
-	if (howto & RB_MULTIPLE) {
-		if (howto & RB_SERIAL)
-			setenv("console", "comconsole efi" , 1);
-		else
-			setenv("console", "efi comconsole" , 1);
-	} else if (howto & RB_SERIAL) {
+	if (howto & RB_SERIAL) {
 		setenv("console", "comconsole" , 1);
 	}
 
