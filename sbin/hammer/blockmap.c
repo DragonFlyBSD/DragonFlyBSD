@@ -255,7 +255,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 		i = (zone_offset & HAMMER_OFF_SHORT_MASK) /
 		    HAMMER_BIGBLOCK_SIZE;
 		if (zone_offset >= blockmap->alloc_offset) {
-			error = -4;
+			error = -3;
 			result_offset = HAMMER_OFF_BAD;
 			goto done;
 		}
@@ -274,7 +274,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 */
 	if (HAMMER_ZONE_FREEMAP_INDEX != zone &&
 	    HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
-		error = -5;
+		error = -4;
 		goto done;
 	}
 
@@ -291,11 +291,11 @@ blockmap_lookup(hammer_off_t zone_offset,
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 	if (layer1 == NULL) {
-		error = -6;
+		error = -5;
 		goto done;
 	}
 	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-		error = -7;
+		error = -6;
 		goto done;
 	}
 
@@ -310,11 +310,11 @@ blockmap_lookup(hammer_off_t zone_offset,
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 	if (layer2 == NULL) {
-		error = -8;
+		error = -7;
 		goto done;
 	}
 	if (layer2->zone != zone) {
-		error = -9;
+		error = -8;
 		goto done;
 	}
 	if (save_layer2)
