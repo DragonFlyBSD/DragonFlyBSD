@@ -58,6 +58,7 @@ SRCS=	\
 	asloperands.c \
 	aslopt.c \
 	asloptions.c \
+	aslpld.c \
 	aslpredef.c \
 	aslprepkg.c \
 	aslprintf.c \
@@ -120,6 +121,7 @@ SRCS=	\
 	dttable2.c \
 	dttemplate.c \
 	dtutils.c \
+	exconcat.c \
 	exconvrt.c \
 	excreate.c \
 	exdump.c \

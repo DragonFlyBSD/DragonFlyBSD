@@ -80,6 +80,7 @@ SRCS+=	\
 	evxfevnt.c \
 	evxfgpe.c \
 	evxfregn.c \
+	exconcat.c \
 	exconfig.c \
 	exconvrt.c \
 	excreate.c \
