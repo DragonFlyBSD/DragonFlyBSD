@@ -54,14 +54,15 @@ hammer_cmd_volume_add(char **av, int ac)
 	struct hammer_ioc_volume ioc;
 	struct volume_info *vol;
 	int fd;
+	const char *device, *filesystem;
 
 	if (ac != 2) {
 		fprintf(stderr, "hammer volume-add <device> <filesystem>\n");
 		exit(1);
 	}
 
-	char *device = av[0];
-	char *filesystem = av[1];
+	device = av[0];
+	filesystem = av[1];
 
         fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
@@ -108,15 +109,15 @@ hammer_cmd_volume_del(char **av, int ac)
 {
 	struct hammer_ioc_volume ioc;
 	int fd;
+	const char *device, *filesystem;
 
 	if (ac != 2) {
 		fprintf(stderr, "hammer volume-del <device> <filesystem>\n");
 		exit(1);
 	}
 
-
-	char *device = av[0];
-	char *filesystem = av[1];
+	device = av[0];
+	filesystem = av[1];
 
         fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
@@ -146,13 +147,14 @@ hammer_print_volumes(char **av, int ac, const char *cmd, const char sep)
 	struct hammer_ioc_volume_list ioc;
 	int fd;
 	int i;
+	const char *filesystem;
 
 	if (ac != 1) {
 		fprintf(stderr, "hammer %s <filesystem>\n", cmd);
 		exit(1);
 	}
 
-	char *filesystem = av[0];
+	filesystem = av[0];
 
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
