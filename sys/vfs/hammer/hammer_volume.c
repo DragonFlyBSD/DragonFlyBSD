@@ -239,6 +239,18 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_rel_volume(volume, 0);
 
 	/*
+	 * XXX: Temporary solution for
+	 * http://lists.dragonflybsd.org/pipermail/kernel/2015-August/175027.html
+	 */
+	hammer_unlock(&hmp->blkmap_lock);
+	hammer_sync_unlock(trans);
+	hammer_flusher_sync(hmp); /* 1 */
+	hammer_flusher_sync(hmp); /* 2 */
+	hammer_flusher_sync(hmp); /* 3 */
+	hammer_sync_lock_sh(trans);
+	hammer_lock_ex(&hmp->blkmap_lock);
+
+	/*
 	 * Unload buffers
 	 */
         RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
