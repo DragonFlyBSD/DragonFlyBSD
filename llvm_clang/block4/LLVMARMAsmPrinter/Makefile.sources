@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMARMAsmPrinter
+
+SRCS=	ARMInstPrinter.cpp \
+
+SRCDIR= lib/Target/ARM/InstPrinter

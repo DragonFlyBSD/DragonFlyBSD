@@ -77,6 +77,9 @@ SUBDIR+= usr.bin
 .if exists(${.CURDIR}/usr.sbin)
 SUBDIR+= usr.sbin
 .endif
+#.if exists(${.CURDIR}/llvm_clang)
+#SUBDIR+= llvm_clang
+#.endif
 
 .if exists(${.CURDIR}/etc)
 SUBDIR+= etc

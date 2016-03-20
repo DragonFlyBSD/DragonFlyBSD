@@ -1,0 +1,22 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMInstCombine
+
+SRCS=	InstructionCombining.cpp \
+	InstCombineAddSub.cpp \
+	InstCombineAndOrXor.cpp \
+	InstCombineCalls.cpp \
+	InstCombineCasts.cpp \
+	InstCombineCompares.cpp \
+	InstCombineLoadStoreAlloca.cpp \
+	InstCombineMulDivRem.cpp \
+	InstCombinePHI.cpp \
+	InstCombineSelect.cpp \
+	InstCombineShifts.cpp \
+	InstCombineSimplifyDemanded.cpp \
+	InstCombineVectorOps.cpp \
+
+HDRDIR=	llvm/Transforms
+HDRDIR=	llvm/Transforms/InstCombine
+
+SRCDIR= lib/Transforms/InstCombine

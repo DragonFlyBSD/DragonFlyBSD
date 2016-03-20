@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMPowerPCAsmPrinter
+
+SRCS=	PPCInstPrinter.cpp \
+
+SRCDIR= lib/Target/PowerPC/InstPrinter

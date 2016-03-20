@@ -1,0 +1,8 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMAArch64Disassembler
+
+SRCS=	AArch64Disassembler.cpp \
+	AArch64ExternalSymbolizer.cpp \
+
+SRCDIR= lib/Target/AArch64/Disassembler

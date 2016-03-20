@@ -1,0 +1,12 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMOption
+
+SRCS=	Arg.cpp \
+	ArgList.cpp \
+	Option.cpp \
+	OptTable.cpp \
+
+HDRDIR=	llvm/Option
+
+SRCDIR= lib/Option

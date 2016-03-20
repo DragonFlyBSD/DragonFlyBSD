@@ -1,0 +1,11 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMBitReader
+
+SRCS=	BitReader.cpp \
+	BitcodeReader.cpp \
+	BitstreamReader.cpp \
+
+HDRDIR=	llvm/Bitcode
+
+SRCDIR= lib/Bitcode/Reader

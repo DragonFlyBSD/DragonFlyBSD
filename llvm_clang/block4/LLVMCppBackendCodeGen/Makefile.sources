@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMCppBackendCodeGen
+
+SRCS=	CPPBackend.cpp \
+
+SRCDIR= lib/Target/CppBackend

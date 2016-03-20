@@ -1,0 +1,17 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMObjCARCOpts
+
+SRCS=	ObjCARC.cpp \
+	ObjCARCOpts.cpp \
+	ObjCARCExpand.cpp \
+	ObjCARCAPElim.cpp \
+	ObjCARCContract.cpp \
+	DependencyAnalysis.cpp \
+	ProvenanceAnalysis.cpp \
+	ProvenanceAnalysisEvaluator.cpp \
+	PtrState.cpp \
+
+HDRDIR=	llvm/Transforms
+
+SRCDIR= lib/Transforms/ObjCARC

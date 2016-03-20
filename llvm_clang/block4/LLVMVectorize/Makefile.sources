@@ -1,0 +1,12 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMVectorize
+
+SRCS=	BBVectorize.cpp \
+	Vectorize.cpp \
+	LoopVectorize.cpp \
+	SLPVectorizer.cpp \
+
+HDRDIR=	llvm/Transforms
+
+SRCDIR= lib/Transforms/Vectorize

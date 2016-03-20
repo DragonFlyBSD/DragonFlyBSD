@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMPowerPCAsmParser
+
+SRCS=	PPCAsmParser.cpp \
+
+SRCDIR= lib/Target/PowerPC/AsmParser

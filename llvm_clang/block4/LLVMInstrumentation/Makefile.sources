@@ -1,0 +1,19 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMInstrumentation
+
+SRCS=	AddressSanitizer.cpp \
+	BoundsChecking.cpp \
+	DataFlowSanitizer.cpp \
+	GCOVProfiling.cpp \
+	MemorySanitizer.cpp \
+	Instrumentation.cpp \
+	InstrProfiling.cpp \
+	PGOInstrumentation.cpp \
+	SafeStack.cpp \
+	SanitizerCoverage.cpp \
+	ThreadSanitizer.cpp \
+
+HDRDIR=	llvm/Transforms
+
+SRCDIR= lib/Transforms/Instrumentation

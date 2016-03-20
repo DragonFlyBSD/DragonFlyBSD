@@ -1,0 +1,26 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMObject
+
+SRCS=	Archive.cpp \
+	ArchiveWriter.cpp \
+	Binary.cpp \
+	COFFObjectFile.cpp \
+	COFFYAML.cpp \
+	ELF.cpp \
+	ELFObjectFile.cpp \
+	ELFYAML.cpp \
+	Error.cpp \
+	IRObjectFile.cpp \
+	MachOObjectFile.cpp \
+	MachOUniversal.cpp \
+	Object.cpp \
+	ObjectFile.cpp \
+	RecordStreamer.cpp \
+	SymbolicFile.cpp \
+	SymbolSize.cpp \
+	FunctionIndexObjectFile.cpp \
+
+HDRDIR=	llvm/Object
+
+SRCDIR= lib/Object

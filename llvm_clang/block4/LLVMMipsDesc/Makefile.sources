@@ -1,0 +1,18 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMMipsDesc
+
+SRCS=	MipsABIInfo.cpp \
+	MipsABIFlagsSection.cpp \
+	MipsAsmBackend.cpp \
+	MipsELFObjectWriter.cpp \
+	MipsELFStreamer.cpp \
+	MipsMCAsmInfo.cpp \
+	MipsMCCodeEmitter.cpp \
+	MipsMCExpr.cpp \
+	MipsMCTargetDesc.cpp \
+	MipsNaClELFStreamer.cpp \
+	MipsOptionRecord.cpp \
+	MipsTargetStreamer.cpp \
+
+SRCDIR= lib/Target/Mips/MCTargetDesc

@@ -1,0 +1,8 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMX86AsmParser
+
+SRCS=	X86AsmInstrumentation.cpp \
+	X86AsmParser.cpp \
+
+SRCDIR= lib/Target/X86/AsmParser

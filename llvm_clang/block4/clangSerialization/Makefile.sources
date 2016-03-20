@@ -1,0 +1,19 @@
+# Automatically generated.  Do not edit!
+
+LIB=	clangSerialization
+
+SRCS=	ASTCommon.cpp \
+	ASTReader.cpp \
+	ASTReaderDecl.cpp \
+	ASTReaderStmt.cpp \
+	ASTWriter.cpp \
+	ASTWriterDecl.cpp \
+	ASTWriterStmt.cpp \
+	GeneratePCH.cpp \
+	GlobalModuleIndex.cpp \
+	Module.cpp \
+	ModuleFileExtension.cpp \
+	ModuleManager.cpp \
+
+
+SRCDIR= tools/clang/lib/Serialization

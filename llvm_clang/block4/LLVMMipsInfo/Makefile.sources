@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMMipsInfo
+
+SRCS=	MipsTargetInfo.cpp \
+
+SRCDIR= lib/Target/Mips/TargetInfo

@@ -70,6 +70,8 @@
         ..
     ..
     libdata
+        clang
+        ..
         gcc47
             objc
             ..
@@ -98,6 +100,8 @@
             elf
             ..
         ..
+	clang
+	..
         custom
         ..
         gcc47

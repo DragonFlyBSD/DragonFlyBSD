@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMAArch64AsmParser
+
+SRCS=	AArch64AsmParser.cpp \
+
+SRCDIR= lib/Target/AArch64/AsmParser

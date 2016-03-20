@@ -1,0 +1,11 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMAsmParser
+
+SRCS=	LLLexer.cpp \
+	LLParser.cpp \
+	Parser.cpp \
+
+HDRDIR=	llvm/Analysis
+
+SRCDIR= lib/AsmParser

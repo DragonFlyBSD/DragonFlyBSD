@@ -1,0 +1,11 @@
+# Automatically generated.  Do not edit!
+
+LIB=	clangRewrite
+
+SRCS=	DeltaTree.cpp \
+	HTMLRewrite.cpp \
+	RewriteRope.cpp \
+	Rewriter.cpp \
+	TokenRewriter.cpp \
+
+SRCDIR= tools/clang/lib/Rewrite

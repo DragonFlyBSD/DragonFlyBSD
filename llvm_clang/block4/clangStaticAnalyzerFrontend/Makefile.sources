@@ -1,0 +1,11 @@
+# Automatically generated.  Do not edit!
+
+LIB=	clangStaticAnalyzerFrontend
+
+SRCS=	AnalysisConsumer.cpp \
+	CheckerRegistration.cpp \
+	ModelConsumer.cpp \
+	FrontendActions.cpp \
+	ModelInjector.cpp \
+
+SRCDIR= tools/clang/lib/StaticAnalyzer/Frontend

@@ -1,0 +1,15 @@
+# Automatically generated.  Do not edit!
+
+PROG_CXX=	clang-tblgen
+
+SRCS=	ClangASTNodesEmitter.cpp \
+	ClangAttrEmitter.cpp \
+	ClangCommentCommandInfoEmitter.cpp \
+	ClangCommentHTMLNamedCharacterReferenceEmitter.cpp \
+	ClangCommentHTMLTagsEmitter.cpp \
+	ClangDiagnosticsEmitter.cpp \
+	ClangSACheckersEmitter.cpp \
+	NeonEmitter.cpp \
+	TableGen.cpp \
+
+SRCDIR= tools/clang/utils/TableGen

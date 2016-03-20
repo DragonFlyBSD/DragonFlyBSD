@@ -1,0 +1,9 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMX86AsmPrinter
+
+SRCS=	X86ATTInstPrinter.cpp \
+	X86IntelInstPrinter.cpp \
+	X86InstComments.cpp \
+
+SRCDIR= lib/Target/X86/InstPrinter

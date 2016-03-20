@@ -1,0 +1,17 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMMCParser
+
+SRCS=	AsmLexer.cpp \
+	AsmParser.cpp \
+	COFFAsmParser.cpp \
+	DarwinAsmParser.cpp \
+	ELFAsmParser.cpp \
+	MCAsmLexer.cpp \
+	MCAsmParser.cpp \
+	MCAsmParserExtension.cpp \
+	MCTargetAsmParser.cpp \
+
+HDRDIR=	llvm/MC/MCParser
+
+SRCDIR= lib/MC/MCParser

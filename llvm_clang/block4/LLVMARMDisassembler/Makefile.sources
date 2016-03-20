@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMARMDisassembler
+
+SRCS=	ARMDisassembler.cpp \
+
+SRCDIR= lib/Target/ARM/Disassembler

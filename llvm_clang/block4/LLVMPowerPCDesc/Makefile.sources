@@ -1,0 +1,14 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMPowerPCDesc
+
+SRCS=	PPCAsmBackend.cpp \
+	PPCMCTargetDesc.cpp \
+	PPCMCAsmInfo.cpp \
+	PPCMCCodeEmitter.cpp \
+	PPCMCExpr.cpp \
+	PPCPredicates.cpp \
+	PPCMachObjectWriter.cpp \
+	PPCELFObjectWriter.cpp \
+
+SRCDIR= lib/Target/PowerPC/MCTargetDesc

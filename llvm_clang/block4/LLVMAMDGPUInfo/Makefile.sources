@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMAMDGPUInfo
+
+SRCS=	AMDGPUTargetInfo.cpp \
+
+SRCDIR= lib/Target/AMDGPU/TargetInfo

@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMX86Utils
+
+SRCS=	X86ShuffleDecode.cpp \
+
+SRCDIR= lib/Target/X86/Utils

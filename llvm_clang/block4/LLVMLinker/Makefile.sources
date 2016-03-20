@@ -1,0 +1,10 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMLinker
+
+SRCS=	IRMover.cpp \
+	LinkModules.cpp \
+
+HDRDIR=	llvm/Linker
+
+SRCDIR= lib/Linker

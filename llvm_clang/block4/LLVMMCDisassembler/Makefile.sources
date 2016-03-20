@@ -1,0 +1,10 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMMCDisassembler
+
+SRCS=	Disassembler.cpp \
+	MCRelocationInfo.cpp \
+	MCExternalSymbolizer.cpp \
+	MCDisassembler.cpp \
+
+SRCDIR= lib/MC/MCDisassembler

@@ -1,0 +1,34 @@
+This tool generates llvm + clang makefile from the vendor CMake files.
+
+How to regenerate makefiles using llvm38 as an example:
+
+  1) > (cd /usr/dports/devel/llvm38 && make clean && make patch)
+  2) > make LLVMVER=38 LLVMFULLVER=3.8.0
+  3) > make install
+
+How to add additional targets to clang:
+
+  A) set CLANG_EXTRA_TARGETS variable /etc/make.conf
+  B) valid value is any combination of
+     "AArch64", "AMDGPU", "ARM", "Mips", "PowerPC"
+  C) e.g. "CLANG_EXTRA_TARGETS= AArch64 ARM"
+
+To build DragonFly's base LLVM
+
+  1) > (cd /usr/dports/devel/llvm38 && make clean && make patch)
+  2) > (cd /usr/obj/dports/devel/llvm38/llvm-3.8.0.src && \
+        patch < /usr/src/tools/tools/llvm_generator/patches/*)
+  3) > (cd /usr/src/contrib && \
+        ln -s /usr/obj/dports/devel/llvm38/llvm-3.8.0.src llvm)
+  4) > (cd /usr/src/llvm_clang && make)
+  5) > mkdir /etc/libexec/clang /usr/libdata/clang
+     > (cd /usr/src/llvm_clang && make install)
+
+After installing the base clang, it can be used with CCVER and
+WORLD_CCVER set in the environment or /etc/make.conf, e.g.
+
+  > env CCVER=clang cc --version
+  clang version 3.8.0 (tags/RELEASE_380/final)
+  Target: x86_64-pc-dragonfly
+  Thread model: posix
+  InstalledDir: /usr/libexec/clang

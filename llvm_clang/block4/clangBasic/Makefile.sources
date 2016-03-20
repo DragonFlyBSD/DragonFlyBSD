@@ -1,0 +1,32 @@
+# Automatically generated.  Do not edit!
+
+LIB=	clangBasic
+
+SRCS=	Attributes.cpp \
+	Builtins.cpp \
+	CharInfo.cpp \
+	Diagnostic.cpp \
+	DiagnosticIDs.cpp \
+	DiagnosticOptions.cpp \
+	FileManager.cpp \
+	FileSystemStatCache.cpp \
+	IdentifierTable.cpp \
+	LangOptions.cpp \
+	Module.cpp \
+	ObjCRuntime.cpp \
+	OpenMPKinds.cpp \
+	OperatorPrecedence.cpp \
+	SanitizerBlacklist.cpp \
+	Sanitizers.cpp \
+	SourceLocation.cpp \
+	SourceManager.cpp \
+	TargetInfo.cpp \
+	Targets.cpp \
+	TokenKinds.cpp \
+	Version.cpp \
+	VersionTuple.cpp \
+	VirtualFileSystem.cpp \
+	Warnings.cpp \
+	${version_inc} \
+
+SRCDIR= tools/clang/lib/Basic

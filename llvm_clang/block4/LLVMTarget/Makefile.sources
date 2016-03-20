@@ -1,0 +1,15 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMTarget
+
+SRCS=	Target.cpp \
+	TargetIntrinsicInfo.cpp \
+	TargetLoweringObjectFile.cpp \
+	TargetMachine.cpp \
+	TargetMachineC.cpp \
+	TargetRecip.cpp \
+	TargetSubtargetInfo.cpp \
+
+HDRDIR=	llvm/Target
+
+SRCDIR= lib/Target

@@ -1,0 +1,15 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMAMDGPUDesc
+
+SRCS=	AMDGPUAsmBackend.cpp \
+	AMDGPUELFObjectWriter.cpp \
+	AMDGPUELFStreamer.cpp \
+	AMDGPUMCCodeEmitter.cpp \
+	AMDGPUMCTargetDesc.cpp \
+	AMDGPUMCAsmInfo.cpp \
+	AMDGPUTargetStreamer.cpp \
+	R600MCCodeEmitter.cpp \
+	SIMCCodeEmitter.cpp \
+
+SRCDIR= lib/Target/AMDGPU/MCTargetDesc

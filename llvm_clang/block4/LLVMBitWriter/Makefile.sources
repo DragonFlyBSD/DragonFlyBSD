@@ -1,0 +1,10 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMBitWriter
+
+SRCS=	BitWriter.cpp \
+	BitcodeWriter.cpp \
+	BitcodeWriterPass.cpp \
+	ValueEnumerator.cpp \
+
+SRCDIR= lib/Bitcode/Writer

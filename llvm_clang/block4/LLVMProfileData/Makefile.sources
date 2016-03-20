@@ -1,0 +1,17 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMProfileData
+
+SRCS=	InstrProf.cpp \
+	InstrProfReader.cpp \
+	InstrProfWriter.cpp \
+	CoverageMapping.cpp \
+	CoverageMappingWriter.cpp \
+	CoverageMappingReader.cpp \
+	SampleProf.cpp \
+	SampleProfReader.cpp \
+	SampleProfWriter.cpp \
+
+HDRDIR=	llvm/ProfileData
+
+SRCDIR= lib/ProfileData

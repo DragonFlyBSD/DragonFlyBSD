@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMPowerPCInfo
+
+SRCS=	PowerPCTargetInfo.cpp \
+
+SRCDIR= lib/Target/PowerPC/TargetInfo

@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMAMDGPUAsmPrinter
+
+SRCS=	AMDGPUInstPrinter.cpp \
+
+SRCDIR= lib/Target/AMDGPU/InstPrinter

@@ -1,0 +1,16 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMTableGen
+
+SRCS=	Error.cpp \
+	Main.cpp \
+	Record.cpp \
+	SetTheory.cpp \
+	StringMatcher.cpp \
+	TableGenBackend.cpp \
+	TGLexer.cpp \
+	TGParser.cpp \
+
+HDRDIR=	llvm/TableGen
+
+SRCDIR= lib/TableGen

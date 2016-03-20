@@ -1,0 +1,7 @@
+# Automatically generated.  Do not edit!
+
+LIB=	LLVMPowerPCDisassembler
+
+SRCS=	PPCDisassembler.cpp \
+
+SRCDIR= lib/Target/PowerPC/Disassembler
