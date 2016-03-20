@@ -564,6 +564,27 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 			goto end;
 		KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 
+		for (block_offset = 0;
+		     block_offset < HAMMER_BLOCKMAP_LAYER2;
+		     block_offset += HAMMER_BIGBLOCK_SIZE) {
+			layer2_offset = layer1->phys_offset +
+				        HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
+			layer2 = hammer_bread(hmp, layer2_offset, &error, &buffer2);
+			if (error)
+				goto end;
+
+			switch (layer2->zone) {
+			case HAMMER_ZONE_UNDO_INDEX:
+				KKASSERT(0);
+			default:
+				KKASSERT(phys_offset + block_offset < aligned_vol_free_end);
+				hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
+				bzero(layer2, sizeof(*layer2));
+				hammer_modify_buffer_done(buffer2);
+				break;
+			}
+		}
+
 		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
