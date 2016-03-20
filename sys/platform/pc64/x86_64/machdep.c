@@ -1739,16 +1739,24 @@ struct fb_info efi_fb_info;
 static int have_efi_framebuffer = 0;
 
 static void
-efi_fb_init_vaddr(void)
+efi_fb_init_vaddr(int direct_map)
 {
 	uint64_t sz;
+	vm_offset_t addr, v;
 
+	v = efi_fb_info.vaddr;
 	sz = efi_fb_info.stride * efi_fb_info.height;
-	efi_fb_info.vaddr = PHYS_TO_DMAP(efi_fb_info.paddr);
-	pmap_change_attr(efi_fb_info.vaddr, (sz + PAGE_MASK) / PAGE_SIZE,
-	    VM_MEMATTR_WRITE_COMBINING);
 
-	if (efi_fb_info.vaddr != 0)
+	if (direct_map) {
+		addr = PHYS_TO_DMAP(efi_fb_info.paddr);
+		if (addr >= DMAP_MIN_ADDRESS && addr + sz < DMAP_MAX_ADDRESS)
+			efi_fb_info.vaddr = addr;
+	} else {
+		efi_fb_info.vaddr = (vm_offset_t)pmap_mapdev_attr(
+		    efi_fb_info.paddr, sz, PAT_WRITE_COMBINING);
+	}
+
+	if (v == 0 && efi_fb_info.vaddr != 0)
 		memset((void *)efi_fb_info.vaddr, 0x77, sz);
 }
 
@@ -1759,8 +1767,10 @@ probe_efi_fb(int early)
 	caddr_t		kmdp;
 
 	if (have_efi_framebuffer) {
-		if (!early && efi_fb_info.vaddr == 0)
-			efi_fb_init_vaddr();
+		if (!early &&
+		    (efi_fb_info.vaddr == 0 ||
+		     efi_fb_info.vaddr == PHYS_TO_DMAP(efi_fb_info.paddr)))
+			efi_fb_init_vaddr(0);
 		return 0;
 	}
 
@@ -1783,13 +1793,21 @@ probe_efi_fb(int early)
 	if (early) {
 		efi_fb_info.vaddr = 0;
 	} else {
-		efi_fb_init_vaddr();
+		efi_fb_init_vaddr(0);
 	}
 	efi_fb_info.restore = NULL;
 	efi_fb_info.device = NULL;
 
 	return 0;
 }
+
+static void
+efifb_startup(void *arg)
+{
+	probe_efi_fb(0);
+}
+
+SYSINIT(efi_fb_info, SI_BOOT1_POST, SI_ORDER_FIRST, efifb_startup, NULL);
 
 static void
 getmemsize(caddr_t kmdp, u_int64_t first)
@@ -2068,7 +2086,9 @@ do_next:
 		pmap_kenter((vm_offset_t)msgbufp + off,
 			    phys_avail[pa_indx] + off);
 	}
-	probe_efi_fb(0);
+	/* Try to get EFI framebuffer working as early as possible */
+	if (have_efi_framebuffer)
+		efi_fb_init_vaddr(1);
 }
 
 struct machintr_abi MachIntrABI;
