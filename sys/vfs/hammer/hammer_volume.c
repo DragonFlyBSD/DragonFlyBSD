@@ -157,7 +157,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 {
 	struct hammer_mount *hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
-	struct hammer_volume_ondisk *ondisk;
+	struct hammer_volume_ondisk ondisk;
 	struct bigblock_stat stat;
 	hammer_volume_t volume;
 	int vol_no;
