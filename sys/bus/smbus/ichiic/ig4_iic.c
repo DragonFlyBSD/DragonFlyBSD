@@ -106,6 +106,13 @@ set_controller(ig4iic_softc_t *sc, uint32_t ctl)
 	int error;
 	uint32_t v;
 
+	if (ctl & IG4_I2C_ENABLE) {
+		reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET |
+						 IG4_INTR_RX_FULL);
+		reg_read(sc, IG4_REG_CLR_INTR);
+	} else {
+		reg_write(sc, IG4_REG_INTR_MASK, 0);
+	}
 	reg_write(sc, IG4_REG_I2C_EN, ctl);
 	error = SMB_ETIMEOUT;
 
@@ -566,8 +573,6 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	/*
 	 * Interrupt on STOP detect or receive character ready
 	 */
-	reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET |
-					 IG4_INTR_RX_FULL);
 	if (set_controller(sc, 0))
 		device_printf(sc->dev, "controller error during attach-1\n");
 	if (set_controller(sc, IG4_I2C_ENABLE))
@@ -604,7 +609,6 @@ ig4iic_detach(ig4iic_softc_t *sc)
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 
 	reg_write(sc, IG4_REG_INTR_MASK, 0);
-	reg_read(sc, IG4_REG_CLR_INTR);
 	set_controller(sc, 0);
 
 	if (sc->generic_attached) {
@@ -912,6 +916,7 @@ ig4iic_intr(void *cookie)
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 /*	reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET);*/
+	reg_read(sc, IG4_REG_CLR_INTR);
 	status = reg_read(sc, IG4_REG_I2C_STA);
 	while (status & IG4_STATUS_RX_NOTEMPTY) {
 		sc->rbuf[sc->rnext & IG4_RBUFMASK] =
@@ -919,7 +924,6 @@ ig4iic_intr(void *cookie)
 		++sc->rnext;
 		status = reg_read(sc, IG4_REG_I2C_STA);
 	}
-	reg_read(sc, IG4_REG_CLR_INTR);
 	wakeup(sc);
 	lockmgr(&sc->lk, LK_RELEASE);
 }
