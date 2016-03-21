@@ -179,16 +179,14 @@ dump_blockmap(const char *label, int zone)
 				xerr,
 				(uintmax_t)scan2,
 				layer2->zone);
-			if (VerboseOpt > 1)
-				printf("vol=%-3d L1=%-7lu L2=%-7lu ",
-					HAMMER_VOL_DECODE(scan2),
-					HAMMER_BLOCKMAP_LAYER1_OFFSET(scan2),
-					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2));
-			else if (VerboseOpt > 0)
-				printf("vol=%-3d L1=%-6d L2=%-6d ",
+			if (VerboseOpt) {
+				printf("vol=%-3d L1#=%-6d L2#=%-6d L1=%-7lu L2=%-7lu ",
 					HAMMER_VOL_DECODE(scan2),
 					HAMMER_BLOCKMAP_LAYER1_INDEX(scan2),
-					HAMMER_BLOCKMAP_LAYER2_INDEX(scan2));
+					HAMMER_BLOCKMAP_LAYER2_INDEX(scan2),
+					HAMMER_BLOCKMAP_LAYER1_OFFSET(scan2),
+					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2));
+			}
 			printf("app=%-7d free=%-7d",
 				layer2->append_off,
 				layer2->bytes_free);
