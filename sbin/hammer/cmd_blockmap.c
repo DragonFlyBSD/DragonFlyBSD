@@ -106,8 +106,8 @@ dump_blockmap(const char *label, int zone)
 	struct buffer_info *buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
-	hammer_off_t scan1;
-	hammer_off_t scan2;
+	hammer_off_t phys_offset;
+	hammer_off_t block_offset;
 	struct zone_stat *stats = NULL;
 	int xerr;
 	int i;
@@ -133,14 +133,14 @@ dump_blockmap(const char *label, int zone)
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat();
 
-	for (scan1 = HAMMER_ZONE_ENCODE(zone, 0);
-	     scan1 < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
-	     scan1 += HAMMER_BLOCKMAP_LAYER2) {
+	for (phys_offset = HAMMER_ZONE_ENCODE(zone, 0);
+	     phys_offset < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
+	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
 		/*
 		 * Dive layer 1.
 		 */
 		layer1_offset = rootmap->phys_offset +
-				HAMMER_BLOCKMAP_LAYER1_OFFSET(scan1);
+				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
 		xerr = ' ';  /* good */
@@ -155,18 +155,19 @@ dump_blockmap(const char *label, int zone)
 		}
 		printf("%c layer1 %016jx @%016jx blocks-free %jd\n",
 			xerr,
-			(uintmax_t)scan1,
+			(uintmax_t)phys_offset,
 			(uintmax_t)layer1->phys_offset,
 			(intmax_t)layer1->blocks_free);
 
-		for (scan2 = scan1;
-		     scan2 < scan1 + HAMMER_BLOCKMAP_LAYER2;
-		     scan2 += HAMMER_BIGBLOCK_SIZE) {
+		for (block_offset = 0;
+		     block_offset < HAMMER_BLOCKMAP_LAYER2;
+		     block_offset += HAMMER_BIGBLOCK_SIZE) {
+			hammer_off_t zone_offset = phys_offset + block_offset;
 			/*
 			 * Dive layer 2, each entry represents a big-block.
 			 */
 			layer2_offset = layer1->phys_offset +
-					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2);
+					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 			xerr = ' ';  /* good */
@@ -180,16 +181,14 @@ dump_blockmap(const char *label, int zone)
 				break;
 			}
 			printf("%c       %016jx zone=%-2d ",
-				xerr,
-				(uintmax_t)scan2,
-				layer2->zone);
+				xerr, (uintmax_t)zone_offset, layer2->zone);
 			if (VerboseOpt) {
 				printf("vol=%-3d L1#=%-6d L2#=%-6d L1=%-7lu L2=%-7lu ",
-					HAMMER_VOL_DECODE(scan2),
-					HAMMER_BLOCKMAP_LAYER1_INDEX(scan2),
-					HAMMER_BLOCKMAP_LAYER2_INDEX(scan2),
-					HAMMER_BLOCKMAP_LAYER1_OFFSET(scan2),
-					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2));
+					HAMMER_VOL_DECODE(zone_offset),
+					HAMMER_BLOCKMAP_LAYER1_INDEX(zone_offset),
+					HAMMER_BLOCKMAP_LAYER2_INDEX(zone_offset),
+					HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_offset),
+					HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset));
 			}
 			printf("app=%-7d free=%-7d",
 				layer2->append_off,
