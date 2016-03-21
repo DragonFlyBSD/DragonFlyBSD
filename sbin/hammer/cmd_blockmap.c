@@ -175,6 +175,10 @@ dump_blockmap(const char *label, int zone)
 				xerr = 'B';
 				++num_bad_layer2;
 			}
+			if (VerboseOpt < 2 && xerr == ' ' &&
+			    layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
+				break;
+			}
 			printf("%c       %016jx zone=%-2d ",
 				xerr,
 				(uintmax_t)scan2,
