@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -237,6 +237,13 @@ mod_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork,
 	cancel_delayed_work(dwork);
 	queue_delayed_work(wq, dwork, delay);
 	return false;
+}
+
+static inline bool
+flush_work(struct work_struct *work)
+{
+	taskqueue_drain(work->taskqueue, &work->work_task);
+	return true;
 }
 
 /* System-wide workqueues */
