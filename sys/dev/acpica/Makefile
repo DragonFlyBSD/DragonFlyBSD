@@ -1,7 +1,5 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
 
-CONTRIBDIR=	${SYSDIR}/${ACPICA_DIR}
-
 SYSDIR?= ${.CURDIR}/../..
 .if ACPI_DEBUG_LOCKS || ACPI_DEBUG_MEMMAP || ACPI_DEBUG_CACHE
 CFLAGS+=	-I${.OBJDIR}/include
