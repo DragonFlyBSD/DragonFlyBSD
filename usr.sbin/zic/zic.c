@@ -2629,39 +2629,25 @@ will not work with pre-2004 versions of zic"));
 }
 
 static void
-newabbr(const char * const string)
+newabbr(const char *string)
 {
-	int i;
+	register int	i;
 
 	if (strcmp(string, GRANDPARENTED) != 0) {
 		const char *	cp;
 		const char *	mp;
 
-		/*
-		** Want one to ZIC_MAX_ABBR_LEN_WO_WARN alphabetics
-		** optionally followed by a + or - and a number from 1 to 14.
-		*/
 		cp = string;
 		mp = NULL;
-		while (isascii((unsigned char) *cp) &&
-			isalpha((unsigned char) *cp))
+		while (isalpha(*cp) || ('0' <= *cp && *cp <= '9')
+		       || *cp == '-' || *cp == '+')
 				++cp;
-		if (cp - string == 0)
-mp = _("time zone abbreviation lacks alphabetic at start");
 		if (noise && cp - string < 3)
-mp = _("time zone abbreviation has fewer than 3 alphabetics");
+		  mp = _("time zone abbreviation has fewer than 3 characters");
 		if (cp - string > ZIC_MAX_ABBR_LEN_WO_WARN)
-mp = _("time zone abbreviation has too many alphabetics");
-		if (mp == NULL && (*cp == '+' || *cp == '-')) {
-			++cp;
-			if (isascii((unsigned char) *cp) &&
-				isdigit((unsigned char) *cp))
-					if (*cp++ == '1' &&
-						*cp >= '0' && *cp <= '4')
-							++cp;
-		}
+		  mp = _("time zone abbreviation has too many characters");
 		if (*cp != '\0')
-mp = _("time zone abbreviation differs from POSIX standard");
+		  mp = _("time zone abbreviation differs from POSIX standard");
 		if (mp != NULL)
 			warning("%s (%s)", mp, string);
 	}

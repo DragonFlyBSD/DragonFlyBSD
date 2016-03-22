@@ -177,7 +177,7 @@ my_localtime(time_t *tp)
 #endif /* !defined TYPECHECK */
 
 static void
-abbrok(const char * const abbrp, const char * const zone)
+abbrok(const char *const abbrp, const char *const zone)
 {
 	const char *cp;
 	const char *wp;
@@ -185,26 +185,16 @@ abbrok(const char * const abbrp, const char * const zone)
 	if (warned)
 		return;
 	cp = abbrp;
-	wp = NULL;
-	while (isascii((unsigned char) *cp) && isalpha((unsigned char) *cp))
+	while (isalpha(*cp) || isdigit(*cp) || *cp == '-' || *cp == '+')
 		++cp;
-	if (cp - abbrp == 0)
-		wp = _("lacks alphabetic at start");
-	else if (cp - abbrp < 3)
-		wp = _("has fewer than 3 alphabetics");
+	if (cp - abbrp < 3)
+	  wp = _("has fewer than 3 characters");
 	else if (cp - abbrp > 6)
-		wp = _("has more than 6 alphabetics");
-	if (wp == NULL && (*cp == '+' || *cp == '-')) {
-		++cp;
-		if (isascii((unsigned char) *cp) &&
-			isdigit((unsigned char) *cp))
-				if (*cp++ == '1' && *cp >= '0' && *cp <= '4')
-					++cp;
-		if (*cp != '\0')
-			wp = _("differs from POSIX standard");
-	}
-	if (wp == NULL)
-		return;
+	  wp = _("has more than 6 characters");
+	else if (*cp)
+	  wp = _("has characters other than ASCII alphanumerics, '-' or '+'");
+	else
+	  return;
 	fflush(stdout);
 	warnx(_("warning: zone \"%s\" abbreviation \"%s\" %s\n"),
 		zone, abbrp, wp);
