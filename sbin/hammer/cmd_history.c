@@ -38,14 +38,14 @@
 
 typedef struct cmd_attr {
 	char *path;
-	long long offset;
+	int64_t offset;
 	long length;
 } cmd_attr_t;
 
-static void hammer_do_history(const char *path, off_t off, int len);
+static void hammer_do_history(const char *path, off_t off, long len);
 static int parse_attr(const char *s, cmd_attr_t *ca);
 static int parse_attr_path(const char *s, cmd_attr_t *ca);
-static void dumpat(const char *path, off_t off, int len);
+static void dumpat(const char *path, off_t off, long len);
 static const char *timestr32(uint32_t time32);
 static __inline int test_strtol(int res, long val);
 static __inline int test_strtoll(int res, long long val);
@@ -76,7 +76,7 @@ hammer_cmd_history(const char *offset_str, char **av, int ac)
 }
 
 static void
-hammer_do_history(const char *path, off_t off, int len)
+hammer_do_history(const char *path, off_t off, long len)
 {
 	struct hammer_ioc_history hist;
 	const char *status;
@@ -208,7 +208,7 @@ parse_attr_path(const char *s, cmd_attr_t *ca)
 }
 
 static void
-dumpat(const char *path, off_t off, int len)
+dumpat(const char *path, off_t off, long len)
 {
 	char buf[1024];
 	int fd;
