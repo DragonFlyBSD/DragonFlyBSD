@@ -21,7 +21,7 @@ To build DragonFly's base LLVM
   3) > (cd /usr/src/contrib && \
         ln -s /usr/obj/dports/devel/llvm38/llvm-3.8.0.src llvm)
   4) > (cd /usr/src/llvm_clang && make)
-  5) > mkdir /etc/libexec/clang /usr/libdata/clang
+  5) > mkdir /usr/libexec/clang /usr/libdata/clang
      > (cd /usr/src/llvm_clang && make install)
 
 After installing the base clang, it can be used with CCVER and
