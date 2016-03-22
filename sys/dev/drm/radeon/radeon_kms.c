@@ -188,7 +188,7 @@ static void radeon_set_filp_rights(struct drm_device *dev,
 				   struct drm_file *applier,
 				   uint32_t *value)
 {
-	DRM_LOCK(dev);
+	mutex_lock(&dev->struct_mutex);
 	if (*value == 1) {
 		/* wants rights */
 		if (!*owner)
@@ -199,7 +199,7 @@ static void radeon_set_filp_rights(struct drm_device *dev,
 			*owner = NULL;
 	}
 	*value = *owner == applier ? 1 : 0;
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 }
 
 /*

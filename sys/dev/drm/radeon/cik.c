@@ -8233,7 +8233,7 @@ restart_ih:
 		WREG32(IH_RB_RPTR, rptr);
 	}
 	if (queue_hotplug)
-		taskqueue_enqueue(rdev->tq, &rdev->hotplug_work);
+		schedule_work(&rdev->hotplug_work);
 	if (queue_reset) {
 		rdev->needs_reset = true;
 		wake_up_all(&rdev->fence_queue);

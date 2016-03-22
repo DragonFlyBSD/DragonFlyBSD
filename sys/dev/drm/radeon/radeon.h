@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #ifndef __RADEON_H__
@@ -72,6 +70,13 @@
 
 #include <contrib/dev/acpica/source/include/acpi.h>
 #include <dev/acpica/acpivar.h>
+
+#include <linux/atomic.h>
+#include <linux/wait.h>
+#include <linux/list.h>
+#include <linux/kref.h>
+#include <linux/hashtable.h>
+#include <linux/fence.h>
 
 #include <drm/ttm/ttm_bo_api.h>
 #include <drm/ttm/ttm_bo_driver.h>
@@ -359,17 +364,18 @@ struct radeon_fence_driver {
 	/* sync_seq is protected by ring emission lock */
 	uint64_t			sync_seq[RADEON_NUM_RINGS];
 	atomic64_t			last_seq;
-	bool				initialized;
+	bool				initialized, delayed_irq;
 	struct delayed_work		lockup_work;
 };
 
 struct radeon_fence {
 	struct radeon_device		*rdev;
 	unsigned int			kref;
-	/* protected by radeon_fence.lock */
 	uint64_t			seq;
 	/* RB, DMA, etc. */
 	unsigned			ring;
+
+	wait_queue_t			fence_wake;
 };
 
 int radeon_fence_driver_start_ring(struct radeon_device *rdev, int ring);
@@ -788,6 +794,7 @@ struct radeon_irq {
 int radeon_irq_kms_init(struct radeon_device *rdev);
 void radeon_irq_kms_fini(struct radeon_device *rdev);
 void radeon_irq_kms_sw_irq_get(struct radeon_device *rdev, int ring);
+bool radeon_irq_kms_sw_irq_get_delayed(struct radeon_device *rdev, int ring);
 void radeon_irq_kms_sw_irq_put(struct radeon_device *rdev, int ring);
 void radeon_irq_kms_pflip_irq_get(struct radeon_device *rdev, int crtc);
 void radeon_irq_kms_pflip_irq_put(struct radeon_device *rdev, int crtc);
@@ -2354,7 +2361,7 @@ struct radeon_device {
 	struct radeon_rlc rlc;
 	struct radeon_mec mec;
 	struct taskqueue *tq;
-	struct task hotplug_work;
+	struct work_struct hotplug_work;
 	struct task audio_work;
 	int num_crtc; /* number of crtcs */
 	struct lock dc_hw_i2c_mutex; /* display controller hw i2c mutex */

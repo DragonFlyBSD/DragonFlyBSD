@@ -803,7 +803,7 @@ irqreturn_t rs600_irq_process(struct radeon_device *rdev)
 		status = rs600_irq_ack(rdev);
 	}
 	if (queue_hotplug)
-		taskqueue_enqueue(rdev->tq, &rdev->hotplug_work);
+		schedule_work(&rdev->hotplug_work);
 	if (queue_hdmi)
 		taskqueue_enqueue(rdev->tq, &rdev->audio_work);
 	if (rdev->msi_enabled) {
