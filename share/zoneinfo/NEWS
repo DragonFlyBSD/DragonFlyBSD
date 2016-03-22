@@ -1,5 +1,64 @@
 News for the tz database
 
+Release 2016b - 2016-03-12 17:30:14 -0800
+
+  Changes affecting future time stamps
+
+    New zones Europe/Astrakhan and Europe/Ulyanovsk for Astrakhan and
+    Ulyanovsk Oblasts, Russia, both of which will switch from +03 to +04 on
+    2016-03-27 at 02:00 local time.  They need distinct zones since their
+    post-1970 histories disagree.  New zone Asia/Barnaul for Altai Krai and
+    Altai Republic, Russia, which will switch from +06 to +07 on the same date
+    and local time.  The Astrakhan change is already official; the others have
+    passed the first reading in the State Duma and are extremely likely.
+    Also, Asia/Sakhalin moves from +10 to +11 on 2016-03-27 at 02:00.
+    (Thanks to Alexander Krivenyshev for the heads-up, and to Matt Johnson
+    and Stepan Golosunov for followup.)
+
+    As a trial of a new system that needs less information to be made up,
+    the new zones use numeric time zone abbreviations like "+04"
+    instead of invented abbreviations like "ASTT".
+
+    Haiti will not observe DST in 2016.  (Thanks to Jean Antoine via
+    Steffen Thorsen.)
+
+    Palestine's spring-forward transition on 2016-03-26 is at 01:00, not 00:00.
+    (Thanks to Hannah Kreitem.) Guess future transitions will be March's last
+    Saturday at 01:00, not March's last Friday at 24:00.
+
+  Changes affecting past time stamps
+
+    Europe/Chisinau observed DST during 1990, and switched from +04 to
+    +03 at 1990-05-06 02:00, instead of switching from +03 to +02.
+    (Thanks to Stepan Golosunov.)
+
+    1991 abbreviations in Europe/Samara should be SAMT/SAMST, not
+    KUYT/KUYST.  (Thanks to Stepan Golosunov.)
+
+  Changes to code
+
+    tzselect's diagnostics and checking, and checktab.awk's checking,
+    have been improved.  (Thanks to J William Piggott.)
+
+    tzcode now builds under MinGW.  (Thanks to Ian Abbott and Esben Haabendal.)
+
+    tzselect now tests Julian-date TZ settings more accurately.
+    (Thanks to J William Piggott.)
+
+  Changes to commentary
+
+    Comments in zone tables have been improved.  (Thanks to J William Piggott.)
+
+    tzselect again limits its menu comments so that menus fit on a
+    24x80 alphanumeric display.
+
+    A new web page tz-how-to.html.  (Thanks to Bill Seymour.)
+
+    In the Theory file, the description of possible time zone abbreviations in
+    tzdata has been cleaned up, as the old description was unclear and
+    inconsistent.  (Thanks to Alain Mouette for reporting the problem.)
+
+
 Release 2016a - 2016-01-26 23:28:02 -0800
 
   Changes affecting future time stamps
