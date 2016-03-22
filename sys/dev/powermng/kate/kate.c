@@ -253,7 +253,7 @@ kate_detach(struct device *dev)
 	return 0;
 }
 
-void
+static void
 kate_refresh(void *arg)
 {
 	struct kate_softc	*sc = arg;

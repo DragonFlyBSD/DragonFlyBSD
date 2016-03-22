@@ -79,7 +79,7 @@ static devclass_t lm_devclass;
 DRIVER_MODULE(lm, isa, lm_isa_driver, lm_devclass, NULL, NULL);
 DRIVER_MODULE(lm, wbsio, lm_isa_driver, lm_devclass, NULL, NULL);
 
-int
+static int
 lm_isa_probe(struct device *dev)
 {
 	struct lm_isa_softc *sc = device_get_softc(dev);
@@ -176,7 +176,7 @@ lm_isa_probe(struct device *dev)
 	return (0);
 }
 
-int
+static int
 lm_isa_attach(struct device *dev)
 {
 	struct lm_isa_softc *sc = device_get_softc(dev);
@@ -224,7 +224,7 @@ lm_isa_attach(struct device *dev)
 	return (0);
 }
 
-int
+static int
 lm_isa_detach(struct device *dev)
 {
 	struct lm_isa_softc *sc = device_get_softc(dev);
