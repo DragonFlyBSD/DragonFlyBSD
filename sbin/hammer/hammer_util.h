@@ -74,11 +74,7 @@ TAILQ_HEAD(volume_list, volume_info);
 
 struct cache_info {
 	TAILQ_ENTRY(cache_info) entry;
-	union {
-		struct volume_info *volume;
-		struct buffer_info *buffer;
-	} u;
-	enum cache_type { ISVOLUME, ISBUFFER } type;
+	struct buffer_info *buffer;
 	int refs;	/* structural references */
 	int modified;	/* ondisk modified flag */
 	int delete;	/* delete flag - delete on last ref */
@@ -93,7 +89,7 @@ struct cache_info {
  * is made to try to make this efficient.
  */
 struct volume_info {
-	struct cache_info	cache;
+	struct cache_info	cache;  /* not used */
 	TAILQ_ENTRY(volume_info) entry;
 	int			vol_no;
 	int			rdonly;
@@ -204,7 +200,7 @@ int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
 int64_t init_mem_area_size(int64_t value, off_t avg_vol_size);
 
 void hammer_cache_set(int bytes);
-void hammer_cache_add(struct cache_info *cache, enum cache_type type);
+void hammer_cache_add(struct cache_info *cache);
 void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);

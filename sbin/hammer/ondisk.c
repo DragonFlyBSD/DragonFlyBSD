@@ -316,8 +316,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		hi = buffer_hash(buf_offset);
 		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
 		++volume->cache.refs;
-		buf->cache.u.buffer = buf;
-		hammer_cache_add(&buf->cache, ISBUFFER);
+		buf->cache.buffer = buf;
+		hammer_cache_add(&buf->cache);
 		dora = (isnew == 0);
 	} else {
 		if (DebugOpt > 1) {

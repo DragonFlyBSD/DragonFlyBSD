@@ -48,10 +48,9 @@ hammer_cache_set(int bytes)
 }
 
 void
-hammer_cache_add(struct cache_info *cache, enum cache_type type)
+hammer_cache_add(struct cache_info *cache)
 {
 	TAILQ_INSERT_HEAD(&CacheList, cache, entry);
-	cache->type = type;
 	CacheUse += HAMMER_BUFSIZE;
 	++NCache;
 }
@@ -100,21 +99,8 @@ hammer_cache_flush(void)
 			cache->refs = 1;
 			cache->delete = 1;
 			--count;
+			rel_buffer(cache->buffer);
 
-			switch(cache->type) {
-			case ISVOLUME:
-				rel_volume(cache->u.volume);
-				break;
-			case ISBUFFER:
-				rel_buffer(cache->u.buffer);
-				break;
-			default:
-				errx(1, "hammer_cache_flush: unknown type: %d",
-				     (int)cache->type);
-				/* not reached */
-				break;
-			}
-			/* structure was freed */
 			if (CacheUse < target)
 				break;
 		}
