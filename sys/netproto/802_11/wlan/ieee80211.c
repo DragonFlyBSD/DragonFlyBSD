@@ -1389,7 +1389,7 @@ media2mode(const struct ifmedia_entry *ime, uint32_t flags, uint16_t *mode)
 /*
  * Handle a media change request on the underlying interface.
  */
-int
+static int
 ieee80211com_media_change(struct ifnet *ifp)
 {
 	return EINVAL;
