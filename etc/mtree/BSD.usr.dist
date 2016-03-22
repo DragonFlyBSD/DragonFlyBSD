@@ -100,8 +100,8 @@
             elf
             ..
         ..
-	clang
-	..
+        clang
+        ..
         custom
         ..
         gcc47
