@@ -4,6 +4,7 @@
 FILES=	bsd.README
 FILES+=	bsd.cpu.mk bsd.cpu.gcc47.mk bsd.cpu.custom.mk
 FILES+=	bsd.cpu.gcc50.mk
+FILES+=	bsd.cpu.clang.mk
 FILES+=	bsd.dep.mk bsd.doc.mk bsd.files.mk bsd.patch.mk
 FILES+=	bsd.incs.mk bsd.init.mk
 FILES+=	bsd.kmod.mk bsd.hostlib.mk
