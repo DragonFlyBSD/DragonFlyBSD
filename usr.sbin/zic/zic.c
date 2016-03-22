@@ -2631,7 +2631,7 @@ will not work with pre-2004 versions of zic"));
 static void
 newabbr(const char *string)
 {
-	register int	i;
+	int i;
 
 	if (strcmp(string, GRANDPARENTED) != 0) {
 		const char *	cp;
