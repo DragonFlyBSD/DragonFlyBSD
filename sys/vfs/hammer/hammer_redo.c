@@ -207,8 +207,8 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 			(int)sizeof(struct hammer_fifo_redo) +
 			(int)sizeof(struct hammer_fifo_tail);
 		if (hammer_debug_general & 0x0080) {
-			hdkprintf("redo %016llx %d %d\n",
-				(long long)next_offset, bytes, n);
+			hdkprintf("redo %016jx %d %d\n",
+				(intmax_t)next_offset, bytes, n);
 		}
 
 		redo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;

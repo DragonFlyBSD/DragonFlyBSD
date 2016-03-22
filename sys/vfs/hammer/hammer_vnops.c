@@ -1256,9 +1256,9 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 				      flags, &error);
 		if (error == ENOENT) {
 			hkprintf("WARNING: Missing inode for dirent \"%s\"\n"
-				"\tobj_id = %016llx, asof=%016llx, lo=%08x\n",
+				"\tobj_id = %016jx, asof=%016jx, lo=%08x\n",
 				ncp->nc_name,
-				(long long)obj_id, (long long)asof,
+				(intmax_t)obj_id, (intmax_t)asof,
 				localization);
 			error = 0;
 			ip = hammer_get_dummy_inode(&trans, dip, obj_id,
@@ -1336,8 +1336,8 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 			parent_obj_id = dip->obj_id;
 			asof = hmp->asof;
 			*ap->a_fakename = kmalloc(19, M_TEMP, M_WAITOK);
-			ksnprintf(*ap->a_fakename, 19, "0x%016llx",
-				  (long long)dip->obj_asof);
+			ksnprintf(*ap->a_fakename, 19, "0x%016jx",
+				  (intmax_t)dip->obj_asof);
 		} else {
 			*ap->a_vpp = NULL;
 			lwkt_reltoken(&hmp->fs_token);
@@ -1819,8 +1819,8 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 				if (hammer_is_pfs_slave(&pfsm->pfsd)) {
 					/* vap->va_size == 26 */
 					ksnprintf(buf, sizeof(buf),
-						  "@@0x%016llx:%05d",
-						  (long long)pfsm->pfsd.sync_end_tid,
+						  "@@0x%016jx:%05d",
+						  (intmax_t)pfsm->pfsd.sync_end_tid,
 						  lo_to_pfs(localization));
 				} else {
 					/* vap->va_size == 10 */
@@ -3397,9 +3397,9 @@ retry:
 		if (error == ENOENT) {
 			hkprintf("WARNING: Removing dirent w/missing inode "
 				"\"%s\"\n"
-				"\tobj_id = %016llx\n",
+				"\tobj_id = %016jx\n",
 				ncp->nc_name,
-				(long long)cursor.data->entry.obj_id);
+				(intmax_t)cursor.data->entry.obj_id);
 			error = 0;
 		}
 

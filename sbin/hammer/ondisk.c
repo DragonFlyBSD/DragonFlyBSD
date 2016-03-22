@@ -307,8 +307,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf = malloc(sizeof(*buf));
 		bzero(buf, sizeof(*buf));
 		if (DebugOpt > 1) {
-			fprintf(stderr, "get_buffer: %016llx %016llx at %p\n",
-				(long long)orig_offset, (long long)buf_offset,
+			fprintf(stderr, "get_buffer: %016jx %016jx at %p\n",
+				(intmax_t)orig_offset, (intmax_t)buf_offset,
 				buf);
 		}
 		buf->buf_offset = buf_offset;
@@ -323,8 +323,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		dora = (isnew == 0);
 	} else {
 		if (DebugOpt > 1) {
-			fprintf(stderr, "get_buffer: %016llx %016llx at %p *\n",
-				(long long)orig_offset, (long long)buf_offset,
+			fprintf(stderr, "get_buffer: %016jx %016jx at %p *\n",
+				(intmax_t)orig_offset, (intmax_t)buf_offset,
 				buf);
 		}
 		hammer_cache_used(&buf->cache);
@@ -338,11 +338,11 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 			n = readhammerbuf(volume, ondisk, buf->raw_offset);
 			if (n == -1) {
 				if (AssertOnFailure)
-					err(1, "get_buffer: %s:%016llx "
-					    "Read failed at offset %016llx",
+					err(1, "get_buffer: %s:%016jx "
+					    "Read failed at offset %016jx",
 					    volume->name,
-					    (long long)buf->buf_offset,
-					    (long long)buf->raw_offset);
+					    (intmax_t)buf->buf_offset,
+					    (intmax_t)buf->raw_offset);
 				bzero(ondisk, HAMMER_BUFSIZE);
 			}
 		}

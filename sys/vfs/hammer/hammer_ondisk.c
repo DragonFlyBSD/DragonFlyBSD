@@ -877,9 +877,9 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 			    (hammer_debug_general & 0x8000)) {
 				krateprintf(&hmp->kdiag,
 					"hammer_del_buffers: unable to "
-					"invalidate %016llx buffer=%p "
+					"invalidate %016jx buffer=%p "
 					"rep=%d lkrefs=%08x\n",
-					(long long)base_offset,
+					(intmax_t)base_offset,
 					buffer, report_conflicts,
 					(buffer ? buffer->io.lock.refs : -1));
 			}
@@ -911,9 +911,9 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	volume = buffer->io.volume;
 
 	if (hammer_debug_io & 0x0004) {
-		hdkprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
-			(long long)buffer->zoneX_offset,
-			(long long)buffer->zone2_offset,
+		hdkprintf("load_buffer %016jx %016jx isnew=%d od=%p\n",
+			(intmax_t)buffer->zoneX_offset,
+			(intmax_t)buffer->zone2_offset,
 			isnew, buffer->ondisk);
 	}
 
@@ -1336,8 +1336,8 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 		if (isnew == 0 &&
 		    (node->flags & HAMMER_NODE_CRCANY) == 0) {
 			if (hammer_crc_test_btree(node->ondisk) == 0) {
-				hdkprintf("CRC B-TREE NODE @ %016llx/%lu FAILED\n",
-					(long long)node->node_offset,
+				hdkprintf("CRC B-TREE NODE @ %016jx/%lu FAILED\n",
+					(intmax_t)node->node_offset,
 					sizeof(*node->ondisk));
 				if (hammer_debug_critical)
 					Debugger("CRC FAILED: B-TREE NODE");

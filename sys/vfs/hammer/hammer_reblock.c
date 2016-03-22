@@ -485,10 +485,10 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	hammer_modify_node_done(cursor->node);
 
 	if (hammer_debug_general & 0x4000) {
-		hdkprintf("%08x %016llx -> %016llx\n",
+		hdkprintf("%08x %016jx -> %016jx\n",
 			(elm ? elm->base.localization : -1),
-			(long long)odata_offset,
-			(long long)ndata_offset);
+			(intmax_t)odata_offset,
+			(intmax_t)ndata_offset);
 	}
 done:
 	if (data_buffer)
@@ -535,10 +535,10 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		hdkprintf("%08x %016llx -> %016llx\n",
+		hdkprintf("%08x %016jx -> %016jx\n",
 			(elm ? elm->base.localization : -1),
-			(long long)onode->node_offset,
-			(long long)nnode->node_offset);
+			(intmax_t)onode->node_offset,
+			(intmax_t)nnode->node_offset);
 	}
 	hammer_modify_node_done(nnode);
 	cursor->node = nnode;
@@ -595,10 +595,10 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		hdkprintf("%08x %016llx -> %016llx\n",
+		hdkprintf("%08x %016jx -> %016jx\n",
 			(elm ? elm->base.localization : -1),
-			(long long)onode->node_offset,
-			(long long)nnode->node_offset);
+			(intmax_t)onode->node_offset,
+			(intmax_t)nnode->node_offset);
 	}
 	hammer_modify_node_done(nnode);
 	cursor->node = nnode;

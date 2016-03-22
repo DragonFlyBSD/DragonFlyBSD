@@ -1452,7 +1452,7 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 	hammer_rel_volume(volume, 0);
 done:
 	if (error) {
-		hdkprintf("failed @ %016llx\n", (long long)zone2_offset);
+		hdkprintf("failed @ %016jx\n", (intmax_t)zone2_offset);
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
@@ -1532,7 +1532,7 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 	hammer_rel_volume(volume, 0);
 done:
 	if (error) {
-		hdkprintf("failed @ %016llx\n", (long long)zone2_offset);
+		hdkprintf("failed @ %016jx\n", (intmax_t)zone2_offset);
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
@@ -1705,7 +1705,7 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 		 * never added to the tree so we do not have to worry
 		 * about the backend.
 		 */
-		hdkprintf("failed @ %016llx\n", (long long)leaf->data_offset);
+		hdkprintf("failed @ %016jx\n", (intmax_t)leaf->data_offset);
 		bp = bio->bio_buf;
 		bp->b_resid = 0;
 		bp->b_error = EIO;

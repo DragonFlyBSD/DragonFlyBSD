@@ -1018,8 +1018,8 @@ hammer_direntry_namekey(hammer_inode_t dip, const void *name, int len,
 		if ((key & 0xFFFFFFFF00000000LL) == 0)
 			key |= 0x100000000LL;
 		if (hammer_debug_general & 0x0400) {
-			hdkprintf("0x%016llx %*.*s\n",
-				(long long)key, len, len, aname);
+			hdkprintf("0x%016jx %*.*s\n",
+				(intmax_t)key, len, len, aname);
 		}
 		*max_iterationsp = 0x00FFFFFF;
 		break;
@@ -1213,8 +1213,8 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 			return(file_offset2);
 		return(HAMMER_XDEMARC);
 	}
-	hpanic("illegal range %lld %lld",
-	      (long long)file_offset1, (long long)file_offset2);
+	hpanic("illegal range %jd %jd",
+	      (intmax_t)file_offset1, (intmax_t)file_offset2);
 }
 
 udev_t

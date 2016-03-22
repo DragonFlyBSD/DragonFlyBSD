@@ -175,7 +175,7 @@ hammer_alloc_tid(hammer_mount_t hmp, int count)
 	if (tid >= 0xFFFFFFFFFF000000ULL)
 		hpanic("Ran out of TIDs!");
 	if (hammer_debug_tid)
-		hdkprintf("%016llx\n", (long long)tid);
+		hdkprintf("%016jx\n", (intmax_t)tid);
 	return(tid);
 }
 

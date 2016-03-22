@@ -528,7 +528,7 @@ rebalance_closeout(hammer_node_lock_t base_item, int base_count,
 	 * degenerate leaf case.
 	 */
 	if (hammer_debug_general & 0x1000) {
-		hdkprintf("%016llx:", (long long)base_item->node->node_offset);
+		hdkprintf("%016jx:", (intmax_t)base_item->node->node_offset);
 	}
 	if (base_item->copy->count != base_count) {
 		base_item->flags |= HAMMER_NODE_LOCK_UPDATED;

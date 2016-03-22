@@ -1254,8 +1254,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (hammer_debug_inode)
 		hdkprintf("DOINSERT LOOKUP %d\n", error);
 	if (error == 0) {
-		hdkprintf("duplicate rec at (%016llx)\n",
-			(long long)record->leaf.base.key);
+		hdkprintf("duplicate rec at (%016jx)\n",
+			(intmax_t)record->leaf.base.key);
 		if (hammer_debug_critical)
 			Debugger("duplicate record1");
 		error = EIO;
@@ -1312,11 +1312,11 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 
 	error = hammer_btree_insert(cursor, &record->leaf, &doprop);
 	if (hammer_debug_inode && error) {
-		hdkprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n",
+		hdkprintf("BTREE INSERT error %d @ %016jx:%d key %016jx\n",
 			error,
-			(long long)cursor->node->node_offset,
+			(intmax_t)cursor->node->node_offset,
 			cursor->index,
-			(long long)record->leaf.base.key);
+			(intmax_t)record->leaf.base.key);
 	}
 
 	/*
@@ -1474,9 +1474,9 @@ _hammer_ip_seek_btree(hammer_cursor_t cursor)
 		error = hammer_btree_lookup(cursor);
 		if (error == ENOENT || error == EDEADLK) {
 			if (hammer_debug_general & 0x2000) {
-				hdkprintf("error %d node %p %016llx index %d\n",
+				hdkprintf("error %d node %p %016jx index %d\n",
 					error, cursor->node,
-					(long long)cursor->node->node_offset,
+					(intmax_t)cursor->node->node_offset,
 					cursor->index);
 			}
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
@@ -1517,8 +1517,8 @@ _hammer_ip_reseek(hammer_cursor_t cursor)
 	/*
 	 * Do the re-seek.
 	 */
-	hkprintf("Debug: re-seeked during scan @ino=%016llx\n",
-		(long long)cursor->ip->obj_id);
+	hkprintf("Debug: re-seeked during scan @ino=%016jx\n",
+		(intmax_t)cursor->ip->obj_id);
 	save = cursor->key_beg;
 	cursor->key_beg = cursor->iprec->leaf.base;
 	error = _hammer_ip_seek_btree(cursor);
@@ -1669,8 +1669,8 @@ again:
 	 */
 	while (cursor->rec_generation != cursor->ip->rec_generation &&
 	       error == 0) {
-		hkprintf("Debug: generation changed during scan @ino=%016llx\n",
-			(long long)cursor->ip->obj_id);
+		hkprintf("Debug: generation changed during scan @ino=%016jx\n",
+			(intmax_t)cursor->ip->obj_id);
 		cursor->rec_generation = cursor->ip->rec_generation;
 		if (cursor->flags & HAMMER_CURSOR_MEMEOF)
 			break;
@@ -2019,8 +2019,8 @@ retry:
 			 * split existing records.
 			 */
 			if (off < ran_beg && leaf->base.key > ran_beg) {
-				hpanic("hammer left edge case %016llx %d",
-					(long long)leaf->base.key,
+				hpanic("hammer left edge case %016jx %d",
+					(intmax_t)leaf->base.key,
 					leaf->data_len);
 			}
 
@@ -2334,8 +2334,8 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			error = copyin(udata, ndata, leaf->data_len);
 			if (error == 0) {
 				if (hammer_crc_test_leaf(ndata, leaf) == 0) {
-					hdkprintf("CRC DATA @ %016llx/%d MISMATCH ON PIPE\n",
-						(long long)ndata_offset,
+					hdkprintf("CRC DATA @ %016jx/%d MISMATCH ON PIPE\n",
+						(intmax_t)ndata_offset,
 						leaf->data_len);
 					error = EINVAL;
 				} else {
@@ -2497,9 +2497,9 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			hammer_modify_node_done(node);
 			doprop = 1;
 			if (hammer_debug_general & 0x0002) {
-				hdkprintf("propagate %016llx @%016llx\n",
-					(long long)elm->leaf.base.delete_tid,
-					(long long)node->node_offset);
+				hdkprintf("propagate %016jx @%016jx\n",
+					(intmax_t)elm->leaf.base.delete_tid,
+					(intmax_t)node->node_offset);
 			}
 		}
 

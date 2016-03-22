@@ -1400,7 +1400,7 @@ failed:
 		hammer_rel_buffer(buffer, 0);
 	hammer_rel_volume(root_volume, 0);
 	if (hammer_debug_general & 0x4000) {
-		hdkprintf("%016llx -> %d\n", (long long)zone_offset, bytes);
+		hdkprintf("%016jx -> %d\n", (intmax_t)zone_offset, bytes);
 	}
 	return(bytes);
 }
@@ -1487,8 +1487,8 @@ failed:
 		hammer_rel_buffer(buffer, 0);
 	hammer_rel_volume(root_volume, 0);
 	if (hammer_debug_general & 0x0800) {
-		hdkprintf("%016llx -> %016llx\n",
-			(long long)zone_offset, (long long)result_offset);
+		hdkprintf("%016jx -> %016jx\n",
+			(intmax_t)zone_offset, (intmax_t)result_offset);
 	}
 	return(result_offset);
 }

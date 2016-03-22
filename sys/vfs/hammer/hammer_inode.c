@@ -927,7 +927,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		hammer_free_inode(ip);
 		ip = NULL;
 	} else if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-		hpanic("duplicate obj_id %llx", (long long)ip->obj_id);
+		hpanic("duplicate obj_id %jx", (intmax_t)ip->obj_id);
 		/* not reached */
 		hammer_free_inode(ip);
 	}
@@ -1884,8 +1884,8 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 		if (hammer_debug_general & 0x10000)
 			hkrateprintf(&hammer_gen_krate,
 			    "Warning: depth limit reached on "
-			    "setup recursion, inode %p %016llx\n",
-			    ip, (long long)ip->obj_id);
+			    "setup recursion, inode %p %016jx\n",
+			    ip, (intmax_t)ip->obj_id);
 		return(-2);
 	}
 

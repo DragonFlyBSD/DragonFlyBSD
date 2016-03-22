@@ -230,8 +230,8 @@ hammer_generate_undo(hammer_transaction_t trans,
 				(int)sizeof(struct hammer_fifo_tail);
 		}
 		if (hammer_debug_general & 0x0080) {
-			hdkprintf("undo %016llx %d %d\n",
-				(long long)next_offset, bytes, n);
+			hdkprintf("undo %016jx %d %d\n",
+				(intmax_t)next_offset, bytes, n);
 		}
 
 		undo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
