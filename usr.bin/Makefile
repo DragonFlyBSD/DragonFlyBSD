@@ -214,6 +214,7 @@ SUBDIR=	alias \
 	uniq \
 	units \
 	unvis \
+	unzip \
 	usbhidaction \
 	u4bhidctl \
 	users \
