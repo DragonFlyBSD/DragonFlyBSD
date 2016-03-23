@@ -90,7 +90,6 @@ alloc_bigblock(struct volume_info *volume, int zone)
 		buffer2->cache.modified = 1;
 
 		--root_vol->ondisk->vol0_stat_freebigblocks;
-		root_vol->cache.modified = 1;
 
 		rel_buffer(buffer1);
 		rel_buffer(buffer2);
@@ -140,7 +139,6 @@ again:
 
 	if ((blockmap->next_offset ^ (blockmap->next_offset + bytes - 1)) &
 	    ~HAMMER_BUFMASK64) {
-		volume->cache.modified = 1;
 		blockmap->next_offset = (blockmap->next_offset + bytes - 1) &
 				        ~HAMMER_BUFMASK64;
 	}
@@ -184,7 +182,6 @@ again:
 		assert(layer2->append_off == 0);
 	}
 	if (layer2->zone != zone) {
-		volume->cache.modified = 1;
 		blockmap->next_offset = (blockmap->next_offset + HAMMER_BIGBLOCK_SIZE) &
 					~HAMMER_BIGBLOCK_MASK64;
 		goto again;
@@ -202,7 +199,6 @@ again:
 
 	buffer1->cache.modified = 1;
 	buffer2->cache.modified = 1;
-	volume->cache.modified = 1;
 
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);

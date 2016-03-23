@@ -89,7 +89,6 @@ struct cache_info {
  * is made to try to make this efficient.
  */
 struct volume_info {
-	struct cache_info	cache;  /* not used */
 	TAILQ_ENTRY(volume_info) entry;
 	int			vol_no;
 	int			rdonly;

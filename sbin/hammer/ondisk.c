@@ -149,7 +149,6 @@ init_volume(int32_t vol_no, const char *filename, int oflags)
 
 	vol = __alloc_volume(filename, oflags);
 	vol->vol_no = vol->ondisk->vol_no = vol_no;
-	vol->cache.modified = 1;
 
 	__add_volume(vol);
 
@@ -251,7 +250,6 @@ get_volume(int32_t vol_no)
 	if (vol == NULL)
 		errx(1, "get_volume: Volume %d does not exist!", vol_no);
 
-	++vol->cache.refs;
 	/* not added to or removed from hammer cache */
 	return(vol);
 }
@@ -263,12 +261,9 @@ get_root_volume(void)
 }
 
 void
-rel_volume(struct volume_info *volume)
+rel_volume(struct volume_info *volume __unused)
 {
-	if (volume == NULL)
-		return;
-	/* not added to or removed from hammer cache */
-	--volume->cache.refs;
+	/* nothing to do */
 }
 
 /*
@@ -315,7 +310,6 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf->volume = volume;
 		hi = buffer_hash(buf_offset);
 		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
-		++volume->cache.refs;
 		buf->cache.buffer = buf;
 		hammer_cache_add(&buf->cache);
 		dora = (isnew == 0);
@@ -545,7 +539,6 @@ format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset)
 	blockmap->next_offset = zone_base;
 	blockmap->alloc_offset = HAMMER_ENCODE(zone, 255, -1);
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
-	root_vol->cache.modified = 1;
 }
 
 /*
@@ -583,7 +576,6 @@ format_freemap(struct volume_info *root_vol)
 	blockmap->next_offset = HAMMER_ENCODE_RAW_BUFFER(0, 0);
 	blockmap->alloc_offset = HAMMER_ENCODE_RAW_BUFFER(255, -1);
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
-	root_vol->cache.modified = 1;
 }
 
 /*
@@ -858,7 +850,6 @@ flush_volume(struct volume_info *volume)
 	}
 	if (writehammerbuf(volume, volume->ondisk, 0) == -1)
 		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
-	volume->cache.modified = 0;
 }
 
 void

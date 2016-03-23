@@ -258,7 +258,6 @@ main(int ac, char **av)
 	 * Print information stored in the root volume header.
 	 */
 	vol = get_root_volume();
-	vol->cache.modified = 1;
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
 	printf("---------------------------------------------\n");
@@ -563,7 +562,6 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	} else {
 		freeblks = initialize_freemap(vol);
 		root_vol = get_root_volume();
-		root_vol->cache.modified = 1;
 		root_vol->ondisk->vol0_stat_freebigblocks += freeblks;
 		root_vol->ondisk->vol0_stat_bigblocks += freeblks;
 		rel_volume(root_vol);
