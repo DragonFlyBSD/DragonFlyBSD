@@ -38,8 +38,8 @@
 #include "hammer_util.h"
 
 static void get_buffer_readahead(struct buffer_info *base);
-static __inline void *get_ondisk(hammer_off_t buf_offset,
-			struct buffer_info **bufferp, int isnew);
+static void *get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
+			int isnew);
 static int readhammerbuf(struct volume_info *vol, void *data, int64_t offset);
 static int writehammerbuf(struct volume_info *vol, const void *data,
 			int64_t offset);
@@ -297,8 +297,6 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = get_volume(vol_no);
-	if (volume == NULL)
-		return(NULL);
 
 	buf_offset &= ~HAMMER_BUFMASK64;
 	buf = find_buffer(volume, buf_offset);
@@ -450,8 +448,7 @@ get_node(hammer_off_t node_offset, struct buffer_info **bufferp)
  * Return a pointer to a buffer data given a buffer offset.
  * If *bufferp is NULL acquire the buffer otherwise use that buffer.
  */
-static __inline
-void *
+static void *
 get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp, int isnew)
 {
 	struct buffer_info *buffer;
@@ -468,7 +465,7 @@ get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp, int isnew)
 }
 
 /*
- * Allocate HAMMER elements - btree nodes, meta data, data storage
+ * Allocate HAMMER elements - B-Tree nodse
  */
 void *
 alloc_btree_element(hammer_off_t *offp, struct buffer_info **data_bufferp)
@@ -481,6 +478,9 @@ alloc_btree_element(hammer_off_t *offp, struct buffer_info **data_bufferp)
 	return (node);
 }
 
+/*
+ * Allocate HAMMER elements - meta data (inode, direntry, PFS, etc)
+ */
 void *
 alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 		   struct buffer_info **data_bufferp)
@@ -494,6 +494,8 @@ alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 }
 
 /*
+ * Allocate HAMMER elements - data storage
+ *
  * The only data_len supported by HAMMER userspace for large data zone
  * (zone 10) is HAMMER_BUFSIZE which is 16KB.  >16KB data does not fit
  * in a buffer allocated by get_buffer().  Also alloc_blockmap() does
@@ -786,7 +788,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	assert(limit_index <= HAMMER_UNDO_LAYER2);
 
 	for (n = 0; n < limit_index; ++n) {
-		ondisk->vol0_undo_array[n] = alloc_bigblock(NULL,
+		ondisk->vol0_undo_array[n] = alloc_bigblock(root_vol,
 							HAMMER_ZONE_UNDO_INDEX);
 	}
 	while (n < HAMMER_UNDO_LAYER2) {
