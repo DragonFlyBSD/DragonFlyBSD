@@ -56,7 +56,7 @@ call.
 The
 .Fa resource
 parameter is one of the following:
-.Bl -tag -width ".Dv RLIMIT_POSIXLOCK"
+.Bl -tag -width ".Dv RLIMIT_POSIXLOCKS"
 .It Dv RLIMIT_AS
 The maximum size (in bytes) of a process' total available memory.
 If this limit is exceeded, the
@@ -105,7 +105,7 @@ Stack extension is performed automatically by the system.
 The maximum size (in bytes) of socket buffer usage for this user.
 This limits the amount of network memory, and hence the amount of
 mbufs, that this user may hold at any time.
-.It Dv RLIMIT_POSIXLOCK
+.It Dv RLIMIT_POSIXLOCKS
 The maximum number of POSIX-type advisory-mode locks available to
 this user.
 .El
