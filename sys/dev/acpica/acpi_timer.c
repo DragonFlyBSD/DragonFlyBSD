@@ -340,6 +340,7 @@ acpi_timer_test(void)
 	    min = delta;
 	last = this;
     }
+    cpu_enable_intr();
 #if defined(__x86_64__)
     write_rflags(s);
 #else
