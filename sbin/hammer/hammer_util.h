@@ -113,7 +113,6 @@ struct buffer_info {
 	hammer_off_t		buf_offset;	/* full hammer offset spec */
 	int64_t			raw_offset;	/* physical offset */
 	int			flags;		/* origination flags */
-	int			use_count;	/* read count */
 	struct volume_info	*volume;
 	void			*ondisk;
 };

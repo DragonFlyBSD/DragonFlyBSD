@@ -320,7 +320,6 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 				buf);
 		}
 		hammer_cache_used(&buf->cache);
-		++buf->use_count;
 	}
 	++buf->cache.refs;
 	hammer_cache_flush();
