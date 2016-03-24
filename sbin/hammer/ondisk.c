@@ -339,6 +339,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		}
 	}
 	if (isnew > 0) {
+		assert(buf->cache.modified == 0);
 		bzero(ondisk, HAMMER_BUFSIZE);
 		buf->cache.modified = 1;
 	}
