@@ -40,9 +40,10 @@
 static void get_buffer_readahead(struct buffer_info *base);
 static void *get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
 			int isnew);
-static int readhammerbuf(struct volume_info *vol, void *data, int64_t offset);
-static int writehammerbuf(struct volume_info *vol, const void *data,
-			int64_t offset);
+static __inline int readhammervol(struct volume_info *vol);
+static __inline int readhammerbuf(struct buffer_info *buf);
+static __inline int writehammervol(struct volume_info *vol);
+static __inline int writehammerbuf(struct buffer_info *buf);
 
 int DebugOpt;
 
@@ -166,12 +167,12 @@ load_volume(const char *filename, int oflags)
 	int n;
 
 	vol = __alloc_volume(filename, oflags);
-	ondisk = vol->ondisk;
 
-	n = readhammerbuf(vol, ondisk, 0);
+	n = readhammervol(vol);
 	if (n == -1) {
 		err(1, "load_volume: %s: Read failed at offset 0", vol->name);
 	}
+	ondisk = vol->ondisk;
 	vol->vol_no = ondisk->vol_no;
 
 	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
@@ -309,7 +310,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf->volume = volume;
 		buf->ondisk = malloc(HAMMER_BUFSIZE);
 		if (isnew <= 0) {
-			n = readhammerbuf(volume, buf->ondisk, buf->raw_offset);
+			n = readhammerbuf(buf);
 			if (n == -1) {
 				if (AssertOnFailure)
 					err(1, "get_buffer: %s:%016jx "
@@ -849,7 +850,7 @@ flush_volume(struct volume_info *volume)
 		TAILQ_FOREACH(buffer, &volume->buffer_lists[i], entry)
 			flush_buffer(buffer);
 	}
-	if (writehammerbuf(volume, volume->ondisk, 0) == -1)
+	if (writehammervol(volume) == -1)
 		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
 }
 
@@ -859,7 +860,7 @@ flush_buffer(struct buffer_info *buffer)
 	struct volume_info *vol;
 
 	vol = buffer->volume;
-	if (writehammerbuf(vol, buffer->ondisk, buffer->raw_offset) == -1)
+	if (writehammerbuf(buffer) == -1)
 		err(1, "Write volume %d (%s)", vol->vol_no, vol->name);
 	buffer->cache.modified = 0;
 }
@@ -868,28 +869,52 @@ flush_buffer(struct buffer_info *buffer)
  * Core I/O operations
  */
 static int
-readhammerbuf(struct volume_info *vol, void *data, int64_t offset)
+__read(struct volume_info *vol, void *data, int64_t offset, int size)
 {
 	ssize_t n;
 
-	n = pread(vol->fd, data, HAMMER_BUFSIZE, offset);
-	if (n != HAMMER_BUFSIZE)
+	n = pread(vol->fd, data, size, offset);
+	if (n != size)
 		return(-1);
 	return(0);
 }
 
+static __inline int
+readhammervol(struct volume_info *vol)
+{
+	return(__read(vol, vol->ondisk, 0, HAMMER_BUFSIZE));
+}
+
+static __inline int
+readhammerbuf(struct buffer_info *buf)
+{
+	return(__read(buf->volume, buf->ondisk, buf->raw_offset, HAMMER_BUFSIZE));
+}
+
 static int
-writehammerbuf(struct volume_info *vol, const void *data, int64_t offset)
+__write(struct volume_info *vol, const void *data, int64_t offset, int size)
 {
 	ssize_t n;
 
 	if (vol->rdonly)
 		return(0);
 
-	n = pwrite(vol->fd, data, HAMMER_BUFSIZE, offset);
-	if (n != HAMMER_BUFSIZE)
+	n = pwrite(vol->fd, data, size, offset);
+	if (n != size)
 		return(-1);
 	return(0);
+}
+
+static __inline int
+writehammervol(struct volume_info *vol)
+{
+	return(__write(vol, vol->ondisk, 0, HAMMER_BUFSIZE));
+}
+
+static __inline int
+writehammerbuf(struct buffer_info *buf)
+{
+	return(__write(buf->volume, buf->ondisk, buf->raw_offset, HAMMER_BUFSIZE));
 }
 
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
