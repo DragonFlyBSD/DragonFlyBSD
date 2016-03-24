@@ -37,17 +37,17 @@ MLINKS= csh.1 tcsh.1
 # builtin.1 in share/man/man1/.
 
 .if defined(BOOTSTRAPPING)
-.if exists(/usr/lib/libtermcap.a)
-DPADD=	/usr/lib/libtermcap.a
-LDADD=	-ltermcap
+.if exists(/usr/lib/libncurses.a)
+DPADD=	/usr/lib/libncurses.a
+LDADD=	-lncurses
 .else
-DPADD= ${LIBTERMCAP} ${LIBCRYPT}
-LDADD= -lprivate_termcap -lcrypt
+DPADD= ${LIBNCURSES} ${LIBCRYPT}
+LDADD= -lprivate_ncurses -lcrypt
 LDFLAGS+= -rpath /lib/priv -L /usr/lib/priv
 .endif
 .else
-DPADD=	${LIBTERMCAP}
-LDADD=	-ltermcap
+DPADD=	${LIBNCURSES}
+LDADD=	-lncurses
 .endif
 
 DPADD+= ${LIBCRYPT}

@@ -29,16 +29,16 @@ CFLAGS+=-DSHELL -I. -I${.CURDIR}
 .if defined(BOOTSTRAPPING)
 CFLAGS+= -DNO_HISTORY
 .if exists(/usr/lib/libedit.a)
-DPADD= /usr/lib/libedit.a /usr/lib/libtermcap.a
-LDADD= -ledit -ltermcap
+DPADD= /usr/lib/libedit.a /usr/lib/libncurses.a
+LDADD= -ledit -lncurses
 .else
-DPADD= ${LIBEDIT} ${LIBTERMCAP}
-LDADD= -lprivate_edit -lprivate_termcap
+DPADD= ${LIBEDIT} ${LIBNCURSES}
+LDADD= -lprivate_edit -lprivate_ncurses
 LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 .else
-DPADD= ${LIBEDIT} ${LIBTERMCAP}
-LDADD= -ledit -ltermcap
+DPADD= ${LIBEDIT} ${LIBNCURSES}
+LDADD= -ledit -lncurses
 .endif
 
 .PATH:	${.CURDIR}/bltin \
