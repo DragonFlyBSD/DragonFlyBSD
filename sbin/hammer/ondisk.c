@@ -273,7 +273,6 @@ rel_volume(struct volume_info *volume __unused)
 struct buffer_info *
 get_buffer(hammer_off_t buf_offset, int isnew)
 {
-	void *ondisk;
 	struct buffer_info *buf;
 	struct volume_info *volume;
 	hammer_off_t orig_offset = buf_offset;
@@ -308,6 +307,20 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf->raw_offset = hammer_xlate_to_phys(volume->ondisk,
 							buf_offset);
 		buf->volume = volume;
+		buf->ondisk = malloc(HAMMER_BUFSIZE);
+		if (isnew <= 0) {
+			n = readhammerbuf(volume, buf->ondisk, buf->raw_offset);
+			if (n == -1) {
+				if (AssertOnFailure)
+					err(1, "get_buffer: %s:%016jx "
+					    "Read failed at offset %016jx",
+					    volume->name,
+					    (intmax_t)buf->buf_offset,
+					    (intmax_t)buf->raw_offset);
+				bzero(buf->ondisk, HAMMER_BUFSIZE);
+			}
+		}
+
 		hi = buffer_hash(buf_offset);
 		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
 		buf->cache.buffer = buf;
@@ -319,28 +332,16 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 				(intmax_t)orig_offset, (intmax_t)buf_offset,
 				buf);
 		}
+		assert(buf->ondisk != NULL);
 		hammer_cache_used(&buf->cache);
 	}
+
 	++buf->cache.refs;
 	hammer_cache_flush();
-	if ((ondisk = buf->ondisk) == NULL) {
-		buf->ondisk = ondisk = malloc(HAMMER_BUFSIZE);
-		if (isnew <= 0) {
-			n = readhammerbuf(volume, ondisk, buf->raw_offset);
-			if (n == -1) {
-				if (AssertOnFailure)
-					err(1, "get_buffer: %s:%016jx "
-					    "Read failed at offset %016jx",
-					    volume->name,
-					    (intmax_t)buf->buf_offset,
-					    (intmax_t)buf->raw_offset);
-				bzero(ondisk, HAMMER_BUFSIZE);
-			}
-		}
-	}
+
 	if (isnew > 0) {
 		assert(buf->cache.modified == 0);
-		bzero(ondisk, HAMMER_BUFSIZE);
+		bzero(buf->ondisk, HAMMER_BUFSIZE);
 		buf->cache.modified = 1;
 	}
 	if (dora)
