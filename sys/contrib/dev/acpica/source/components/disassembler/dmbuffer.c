@@ -75,13 +75,53 @@ AcpiDmPldBuffer (
     UINT8                   *ByteData,
     UINT32                  ByteCount);
 
-static const char *
-AcpiDmFindNameByIndex (
-    UINT64                  Index,
-    const char              **List);
-
 
 #define ACPI_BUFFER_BYTES_PER_LINE      8
+
+
+/* Strings for ToPld */
+
+static char *DmPanelList[] =
+{
+    "TOP",
+    "BOTTOM",
+    "LEFT",
+    "RIGHT",
+    "FRONT",
+    "BACK",
+    "UNKNOWN",
+    NULL
+};
+
+static char *DmVerticalPositionList[] =
+{
+    "UPPER",
+    "CENTER",
+    "LOWER",
+    NULL
+};
+
+static char *DmHorizontalPositionList[] =
+{
+    "LEFT",
+    "CENTER",
+    "RIGHT",
+    NULL
+};
+
+static char *DmShapeList[] =
+{
+    "ROUND",
+    "OVAL",
+    "SQUARE",
+    "VERTICALRECTANGLE",
+    "HORIZONTALRECTANGLE",
+    "VERTICALTRAPEZOID",
+    "HORIZONTALTRAPEZOID",
+    "UNKNOWN",
+    "CHAMFERED",
+    NULL
+};
 
 
 /*******************************************************************************
@@ -615,24 +655,24 @@ AcpiDmIsPldBuffer (
  *
  ******************************************************************************/
 
-static const char *
+static char *
 AcpiDmFindNameByIndex (
     UINT64                  Index,
-    const char              **List)
+    char                    **List)
 {
-    const char              *NameString;
-    UINT32                  i;
+    char                     *Str;
+    UINT32                   i;
 
 
     /* Bounds check */
 
-    NameString = List[0];
+    Str = List[0];
     i = 0;
 
-    while (NameString)
+    while(Str)
     {
         i++;
-        NameString = List[i];
+        Str = List[i];
     }
 
     if (Index >= i)
@@ -660,12 +700,12 @@ AcpiDmFindNameByIndex (
  *
  ******************************************************************************/
 
-#define ACPI_PLD_OUTPUT08   "%*.s%-22s = 0x%X,\n", ACPI_MUL_4 (Level), " "
-#define ACPI_PLD_OUTPUT08P  "%*.s%-22s = 0x%X)\n", ACPI_MUL_4 (Level), " "
-#define ACPI_PLD_OUTPUT16   "%*.s%-22s = 0x%X,\n", ACPI_MUL_4 (Level), " "
-#define ACPI_PLD_OUTPUT16P  "%*.s%-22s = 0x%X)\n", ACPI_MUL_4 (Level), " "
-#define ACPI_PLD_OUTPUT24   "%*.s%-22s = 0x%X,\n", ACPI_MUL_4 (Level), " "
-#define ACPI_PLD_OUTPUTSTR  "%*.s%-22s = \"%s\",\n", ACPI_MUL_4 (Level), " "
+#define ACPI_PLD_OUTPUT08   "%*.s%-18s = 0x%X,\n", ACPI_MUL_4 (Level), " "
+#define ACPI_PLD_OUTPUT08P  "%*.s%-18s = 0x%X)\n", ACPI_MUL_4 (Level), " "
+#define ACPI_PLD_OUTPUT16   "%*.s%-18s = 0x%X,\n", ACPI_MUL_4 (Level), " "
+#define ACPI_PLD_OUTPUT16P  "%*.s%-18s = 0x%X)\n", ACPI_MUL_4 (Level), " "
+#define ACPI_PLD_OUTPUT24   "%*.s%-18s = 0x%X,\n", ACPI_MUL_4 (Level), " "
+#define ACPI_PLD_OUTPUTSTR  "%*.s%-18s = \"%s\",\n", ACPI_MUL_4 (Level), " "
 
 static void
 AcpiDmPldBuffer (
@@ -713,16 +753,16 @@ AcpiDmPldBuffer (
     AcpiOsPrintf (ACPI_PLD_OUTPUT08,  "PLD_Dock", PldInfo->Dock);
     AcpiOsPrintf (ACPI_PLD_OUTPUT08,  "PLD_Lid", PldInfo->Lid);
     AcpiOsPrintf (ACPI_PLD_OUTPUTSTR, "PLD_Panel",
-        AcpiDmFindNameByIndex(PldInfo->Panel, AcpiGbl_PldPanelList));
+        AcpiDmFindNameByIndex(PldInfo->Panel, DmPanelList));
 
     AcpiOsPrintf (ACPI_PLD_OUTPUTSTR, "PLD_VerticalPosition",
-        AcpiDmFindNameByIndex(PldInfo->VerticalPosition, AcpiGbl_PldVerticalPositionList));
+        AcpiDmFindNameByIndex(PldInfo->VerticalPosition, DmVerticalPositionList));
 
     AcpiOsPrintf (ACPI_PLD_OUTPUTSTR, "PLD_HorizontalPosition",
-        AcpiDmFindNameByIndex(PldInfo->HorizontalPosition, AcpiGbl_PldHorizontalPositionList));
+        AcpiDmFindNameByIndex(PldInfo->HorizontalPosition, DmHorizontalPositionList));
 
     AcpiOsPrintf (ACPI_PLD_OUTPUTSTR, "PLD_Shape",
-        AcpiDmFindNameByIndex(PldInfo->Shape, AcpiGbl_PldShapeList));
+        AcpiDmFindNameByIndex(PldInfo->Shape, DmShapeList));
     AcpiOsPrintf (ACPI_PLD_OUTPUT08,  "PLD_GroupOrientation", PldInfo->GroupOrientation);
 
     AcpiOsPrintf (ACPI_PLD_OUTPUT08,  "PLD_GroupToken", PldInfo->GroupToken);

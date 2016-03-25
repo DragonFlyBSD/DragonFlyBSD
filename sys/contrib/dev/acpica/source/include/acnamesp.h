@@ -258,14 +258,14 @@ AcpiNsDumpEntry (
 void
 AcpiNsDumpPathname (
     ACPI_HANDLE             Handle,
-    const char              *Msg,
+    char                    *Msg,
     UINT32                  Level,
     UINT32                  Component);
 
 void
 AcpiNsPrintPathname (
     UINT32                  NumSegments,
-    const char              *Pathname);
+    char                    *Pathname);
 
 ACPI_STATUS
 AcpiNsDumpOneObject (

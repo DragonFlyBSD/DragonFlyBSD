@@ -130,7 +130,7 @@ typedef const struct acpi_rsdump_info
 {
     UINT8                   Opcode;
     UINT8                   Offset;
-    const char              *Name;
+    char                    *Name;
     const char              **Pointer;
 
 } ACPI_RSDUMP_INFO;
@@ -227,7 +227,7 @@ AcpiRsGetPrsMethodData (
 ACPI_STATUS
 AcpiRsGetMethodData (
     ACPI_HANDLE             Handle,
-    const char              *Path,
+    char                    *Path,
     ACPI_BUFFER             *RetBuffer);
 
 ACPI_STATUS

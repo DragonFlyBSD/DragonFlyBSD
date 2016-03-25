@@ -129,10 +129,7 @@ AcpiExAddTable (
     /* Execute any module-level code that was found in the table */
 
     AcpiExExitInterpreter ();
-    if (AcpiGbl_GroupModuleLevelCode)
-    {
-        AcpiNsExecModuleCodeList ();
-    }
+    AcpiNsExecModuleCodeList ();
     AcpiExEnterInterpreter ();
 
     /*

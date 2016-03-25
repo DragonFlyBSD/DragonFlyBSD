@@ -759,7 +759,7 @@ AsGetFile (
     {
         printf ("Could not read the input file %s (%u bytes)\n",
             Filename, Size);
-        goto ErrorFree;
+        goto ErrorExit;
     }
 
     Buffer [Size] = 0;         /* Null terminate the buffer */
@@ -779,8 +779,6 @@ AsGetFile (
     *FileSize = Size;
     return (0);
 
-ErrorFree:
-    free (Buffer);
 
 ErrorExit:
 

@@ -57,32 +57,32 @@
 
 static void
 AcpiRsOutString (
-    const char              *Title,
-    const char              *Value);
+    char                    *Title,
+    char                    *Value);
 
 static void
 AcpiRsOutInteger8 (
-    const char              *Title,
+    char                    *Title,
     UINT8                   Value);
 
 static void
 AcpiRsOutInteger16 (
-    const char              *Title,
+    char                    *Title,
     UINT16                  Value);
 
 static void
 AcpiRsOutInteger32 (
-    const char              *Title,
+    char                    *Title,
     UINT32                  Value);
 
 static void
 AcpiRsOutInteger64 (
-    const char              *Title,
+    char                    *Title,
     UINT64                  Value);
 
 static void
 AcpiRsOutTitle (
-    const char              *Title);
+    char                    *Title);
 
 static void
 AcpiRsDumpByteList (
@@ -264,8 +264,8 @@ AcpiRsDumpDescriptor (
 {
     UINT8                   *Target = NULL;
     UINT8                   *PreviousTarget;
-    const char              *Name;
-    UINT8                   Count;
+    char                    *Name;
+    UINT8                    Count;
 
 
     /* First table entry must contain the table length (# of table entries) */
@@ -308,7 +308,8 @@ AcpiRsDumpDescriptor (
 
             if (Table->Pointer)
             {
-                AcpiRsOutString (Name, Table->Pointer [*Target]);
+                AcpiRsOutString (Name, ACPI_CAST_PTR (char,
+                    Table->Pointer [*Target]));
             }
             else
             {
@@ -335,17 +336,20 @@ AcpiRsDumpDescriptor (
 
         case ACPI_RSD_1BITFLAG:
 
-            AcpiRsOutString (Name, Table->Pointer [*Target & 0x01]);
+            AcpiRsOutString (Name, ACPI_CAST_PTR (char,
+                Table->Pointer [*Target & 0x01]));
             break;
 
         case ACPI_RSD_2BITFLAG:
 
-            AcpiRsOutString (Name, Table->Pointer [*Target & 0x03]);
+            AcpiRsOutString (Name, ACPI_CAST_PTR (char,
+                Table->Pointer [*Target & 0x03]));
             break;
 
         case ACPI_RSD_3BITFLAG:
 
-            AcpiRsOutString (Name, Table->Pointer [*Target & 0x07]);
+            AcpiRsOutString (Name, ACPI_CAST_PTR (char,
+                Table->Pointer [*Target & 0x07]));
             break;
 
         case ACPI_RSD_SHORTLIST:
@@ -539,8 +543,8 @@ AcpiRsDumpAddressCommon (
 
 static void
 AcpiRsOutString (
-    const char              *Title,
-    const char              *Value)
+    char                    *Title,
+    char                    *Value)
 {
 
     AcpiOsPrintf ("%27s : %s", Title, Value);
@@ -553,7 +557,7 @@ AcpiRsOutString (
 
 static void
 AcpiRsOutInteger8 (
-    const char              *Title,
+    char                    *Title,
     UINT8                   Value)
 {
     AcpiOsPrintf ("%27s : %2.2X\n", Title, Value);
@@ -561,7 +565,7 @@ AcpiRsOutInteger8 (
 
 static void
 AcpiRsOutInteger16 (
-    const char              *Title,
+    char                    *Title,
     UINT16                  Value)
 {
 
@@ -570,7 +574,7 @@ AcpiRsOutInteger16 (
 
 static void
 AcpiRsOutInteger32 (
-    const char              *Title,
+    char                    *Title,
     UINT32                  Value)
 {
 
@@ -579,7 +583,7 @@ AcpiRsOutInteger32 (
 
 static void
 AcpiRsOutInteger64 (
-    const char              *Title,
+    char                    *Title,
     UINT64                  Value)
 {
 
@@ -589,7 +593,7 @@ AcpiRsOutInteger64 (
 
 static void
 AcpiRsOutTitle (
-    const char              *Title)
+    char                    *Title)
 {
 
     AcpiOsPrintf ("%27s : ", Title);

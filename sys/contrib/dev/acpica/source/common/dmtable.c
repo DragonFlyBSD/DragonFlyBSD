@@ -118,7 +118,6 @@ static const char           *AcpiDmEinjActions[] =
     "Check Busy Status",
     "Get Command Status",
     "Set Error Type With Address",
-    "Get Execute Timings",
     "Unknown Action"
 };
 
@@ -151,7 +150,6 @@ static const char           *AcpiDmErstActions[] =
     "Get Error Address Range",
     "Get Error Address Length",
     "Get Error Attributes",
-    "Execute Timings",
     "Unknown Action"
 };
 
@@ -211,10 +209,6 @@ static const char           *AcpiDmHestNotifySubnames[] =
     "NMI",
     "CMCI",                         /* ACPI 5.0 */
     "MCE",                          /* ACPI 5.0 */
-    "GPIO",                         /* ACPI 6.0 */
-    "SEA",                          /* ACPI 6.1 */
-    "SEI",                          /* ACPI 6.1 */
-    "GSIV",                         /* ACPI 6.1 */
     "Unknown Notify Type"           /* Reserved */
 };
 

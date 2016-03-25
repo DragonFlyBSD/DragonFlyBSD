@@ -538,14 +538,6 @@ OptOptimizeNamePath (
 
 
 /*
- * aslpld - ToPLD macro support
- */
-void
-OpcDoPld (
-    ACPI_PARSE_OBJECT       *Op);
-
-
-/*
  * aslprintf - Printf/Fprintf macros
  */
 void

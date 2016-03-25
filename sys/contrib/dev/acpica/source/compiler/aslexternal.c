@@ -146,7 +146,6 @@ ExInsertArgCount (
     char *                  ExternalName;
     char *                  CallName;
     UINT16                  ArgCount = 0;
-    ACPI_STATUS             Status;
 
 
     CallName = AcpiNsGetNormalizedPathname (Op->Asl.Node, TRUE);
@@ -167,49 +166,43 @@ ExInsertArgCount (
         NameOp = Next->Asl.Child->Asl.Child;
         ExternalName = AcpiNsGetNormalizedPathname (NameOp->Asl.Node, TRUE);
 
-        if (strcmp (CallName, ExternalName))
+        if (!strcmp (CallName, ExternalName))
         {
-            ACPI_FREE (ExternalName);
-            Next = Next->Asl.Next;
-            continue;
-        }
+            Next->Asl.Child->Asl.CompileFlags |= NODE_VISITED;
 
-        Next->Asl.Child->Asl.CompileFlags |= NODE_VISITED;
+            /*
+             * Since we will reposition Externals to the Root, set Namepath
+             * to the fully qualified name and recalculate the aml length
+             */
+            if (ACPI_FAILURE (UtInternalizeName (
+                ExternalName, &NameOp->Asl.Value.String)))
+            {
+                AslError (ASL_ERROR, ASL_MSG_COMPILER_INTERNAL,
+                    NULL, "- Could not Internalize External");
 
-        /*
-         * Since we will reposition Externals to the Root, set Namepath
-         * to the fully qualified name and recalculate the aml length
-         */
-        Status = UtInternalizeName (ExternalName,
-            &NameOp->Asl.Value.String);
+                break;
+            }
 
-        ACPI_FREE (ExternalName);
-        if (ACPI_FAILURE (Status))
-        {
-            AslError (ASL_ERROR, ASL_MSG_COMPILER_INTERNAL,
-                NULL, "- Could not Internalize External");
+            NameOp->Asl.AmlLength = strlen (NameOp->Asl.Value.String);
+
+            /* Get argument count */
+
+            Child = Op->Asl.Child;
+            while (Child)
+            {
+                ArgCount++;
+                Child = Child->Asl.Next;
+            }
+
+            /* Setup ArgCount operand */
+
+            ArgCountOp = Next->Asl.Child->Asl.Child->Asl.Next->Asl.Next;
+            ArgCountOp->Asl.Value.Integer = ArgCount;
             break;
         }
 
-        NameOp->Asl.AmlLength = strlen (NameOp->Asl.Value.String);
-
-        /* Get argument count */
-
-        Child = Op->Asl.Child;
-        while (Child)
-        {
-            ArgCount++;
-            Child = Child->Asl.Next;
-        }
-
-        /* Setup ArgCount operand */
-
-        ArgCountOp = Next->Asl.Child->Asl.Child->Asl.Next->Asl.Next;
-        ArgCountOp->Asl.Value.Integer = ArgCount;
-        break;
+        Next = Next->Asl.Next;
     }
-
-    ACPI_FREE (CallName);
 }
 
 

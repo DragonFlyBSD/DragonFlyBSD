@@ -100,7 +100,7 @@ AcpiUtRemoveAllocation (
 
 ACPI_STATUS
 AcpiUtCreateList (
-    const char              *ListName,
+    char                    *ListName,
     UINT16                  ObjectSize,
     ACPI_MEMORY_LIST        **ReturnCache)
 {

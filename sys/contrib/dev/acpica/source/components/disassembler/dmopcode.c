@@ -647,8 +647,8 @@ AcpiDmMatchKeyword (
     }
     else
     {
-        AcpiOsPrintf ("%s",
-            AcpiGbl_MatchOps[(ACPI_SIZE) Op->Common.Value.Integer]);
+        AcpiOsPrintf ("%s", ACPI_CAST_PTR (char,
+            AcpiGbl_MatchOps[(ACPI_SIZE) Op->Common.Value.Integer]));
     }
 }
 

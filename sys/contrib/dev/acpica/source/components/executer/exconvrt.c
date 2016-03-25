@@ -137,8 +137,7 @@ AcpiExConvertToInteger (
          * of ACPI 3.0) is that the ToInteger() operator allows both decimal
          * and hexadecimal strings (hex prefixed with "0x").
          */
-        Status = AcpiUtStrtoul64 ((char *) Pointer, Flags,
-            AcpiGbl_IntegerByteWidth, &Result);
+        Status = AcpiUtStrtoul64 ((char *) Pointer, Flags, &Result);
         if (ACPI_FAILURE (Status))
         {
             return_ACPI_STATUS (Status);

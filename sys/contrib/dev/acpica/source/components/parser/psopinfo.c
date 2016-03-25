@@ -165,7 +165,7 @@ AcpiPsGetOpcodeInfo (
  *
  ******************************************************************************/
 
-const char *
+char *
 AcpiPsGetOpcodeName (
     UINT16                  Opcode)
 {

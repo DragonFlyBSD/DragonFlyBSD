@@ -740,7 +740,7 @@ AcpiRsGetAeiMethodData (
 ACPI_STATUS
 AcpiRsGetMethodData (
     ACPI_HANDLE             Handle,
-    const char              *Path,
+    char                    *Path,
     ACPI_BUFFER             *RetBuffer)
 {
     ACPI_OPERAND_OBJECT     *ObjDesc;

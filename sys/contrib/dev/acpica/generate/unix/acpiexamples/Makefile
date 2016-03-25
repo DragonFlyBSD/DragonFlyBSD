@@ -59,7 +59,6 @@ OBJECTS = \
 	$(OBJDIR)/evrgnini.o\
 	$(OBJDIR)/evxface.o\
 	$(OBJDIR)/evxfregn.o\
-	$(OBJDIR)/exconcat.o\
 	$(OBJDIR)/exconfig.o\
 	$(OBJDIR)/exconvrt.o\
 	$(OBJDIR)/excreate.o\

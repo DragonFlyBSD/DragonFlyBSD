@@ -2318,7 +2318,6 @@ ${ACPICA_COMP_DIR}/events/evxface.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evxfevnt.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evxfgpe.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evxfregn.c		optional acpi
-${ACPICA_COMP_DIR}/executer/exconcat.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exconfig.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exconvrt.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/excreate.c		optional acpi

@@ -96,7 +96,6 @@ OBJECTS = \
 	$(OBJDIR)/aslrestype2w.o\
 	$(OBJDIR)/aslstartup.o\
 	$(OBJDIR)/aslstubs.o\
-	$(OBJDIR)/aslpld.o\
 	$(OBJDIR)/asltransform.o\
 	$(OBJDIR)/asltree.o\
 	$(OBJDIR)/aslutils.o\
@@ -144,7 +143,6 @@ OBJECTS = \
 	$(OBJDIR)/dttable2.o\
 	$(OBJDIR)/dttemplate.o\
 	$(OBJDIR)/dtutils.o\
-	$(OBJDIR)/exconcat.o\
 	$(OBJDIR)/exconvrt.o\
 	$(OBJDIR)/excreate.o\
 	$(OBJDIR)/exdump.o\

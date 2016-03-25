@@ -252,6 +252,7 @@ OtXrefWalkPart1 (
 
         MethodInfo->CurrentOp = Op;
         Node = Op->Asl.Node;
+        ParentPath = AcpiNsGetNormalizedPathname (Node, TRUE);
 
         /* Find all objects referenced by this method */
 
@@ -260,11 +261,8 @@ OtXrefWalkPart1 (
 
         if (Status == AE_CTRL_TERMINATE)
         {
-            ParentPath = AcpiNsGetNormalizedPathname (Node, TRUE);
-
             FlPrintFile (ASL_FILE_XREF_OUTPUT, "            %-40s %s",
                 ParentPath, AcpiUtGetTypeName (Node->Type));
-            ACPI_FREE (ParentPath);
 
             switch (Node->Type)
             {
@@ -326,12 +324,12 @@ OtXrefWalkPart1 (
                 }
                 else
                 {
+                    ACPI_FREE (ParentPath);
                     ParentPath = AcpiNsGetNormalizedPathname (
                         NextOp->Asl.Node, TRUE);
 
                     FlPrintFile (ASL_FILE_XREF_OUTPUT, " (%.2u bit) in Buffer %s",
                         Length, ParentPath);
-                    ACPI_FREE (ParentPath);
                 }
                 break;
 
@@ -341,13 +339,13 @@ OtXrefWalkPart1 (
                 FieldOp = NextOp->Asl.Parent;
                 NextOp = FieldOp->Asl.Child;
 
+                ACPI_FREE (ParentPath);
                 ParentPath = AcpiNsGetNormalizedPathname (
                     NextOp->Asl.Node, TRUE);
 
                 FlPrintFile (ASL_FILE_XREF_OUTPUT, " (%.2u bit) in Region %s",
                     (UINT32) Node->Op->Asl.Child->Asl.Value.Integer,
                     ParentPath);
-                ACPI_FREE (ParentPath);
 
                 if (FieldOp->Asl.ParseOpcode == PARSEOP_FIELD)
                 {
@@ -369,6 +367,7 @@ OtXrefWalkPart1 (
             }
 
             FlPrintFile (ASL_FILE_XREF_OUTPUT, "\n");
+            ACPI_FREE (ParentPath);
         }
         break;
 
@@ -673,7 +672,6 @@ OtXrefWalkPart3 (
         "\n[%5u]  %-40s %s Declaration\n",
         Op->Asl.LogicalLineNumber, ParentPath,
         AcpiUtGetTypeName (Node->Type));
-    ACPI_FREE (ParentPath);
 
     XrefInfo->MethodOp = Op;
     XrefInfo->ThisObjectReferences = 0;
@@ -718,7 +716,7 @@ OtXrefAnalysisWalkPart3 (
     void                    *Context)
 {
     ASL_XREF_INFO           *XrefInfo = (ASL_XREF_INFO *) Context;
-    char                    *CallerFullPathname = NULL;
+    char                    *CallerFullPathname;
     ACPI_PARSE_OBJECT       *CallerOp;
     const char              *Operator;
 
@@ -758,24 +756,27 @@ OtXrefAnalysisWalkPart3 (
         CallerOp = CallerOp->Asl.Parent;
     }
 
-    if (CallerOp == XrefInfo->CurrentMethodOp)
-    {
-        return (AE_OK);
-    }
-
-    /* Null CallerOp means the caller is at the namespace root */
+    /* There are some special cases for the oddball operators */
 
     if (CallerOp)
     {
         CallerFullPathname = AcpiNsGetNormalizedPathname (
             CallerOp->Asl.Node, TRUE);
     }
+    else
+    {
+        CallerFullPathname = "<root>";
+    }
 
-    /* There are some special cases for the oddball operators */
+    if (CallerOp == XrefInfo->CurrentMethodOp)
+    {
+        return (AE_OK);
+    }
 
     if (Op->Asl.ParseOpcode == PARSEOP_SCOPE)
     {
         Operator = "Scope";
+
     }
     else if (Op->Asl.Parent->Asl.ParseOpcode == PARSEOP_ALIAS)
     {
@@ -793,7 +794,7 @@ OtXrefAnalysisWalkPart3 (
     FlPrintFile (ASL_FILE_XREF_OUTPUT,
         "[%5u]     %-40s %-8s via path: %s, Operator: %s\n",
         Op->Asl.LogicalLineNumber,
-        CallerFullPathname ? CallerFullPathname : "<root>",
+        CallerFullPathname,
         Operator,
         Op->Asl.ExternalName,
         Op->Asl.Parent->Asl.ParseOpName);
@@ -801,11 +802,6 @@ OtXrefAnalysisWalkPart3 (
     if (!CallerOp)
     {
         CallerOp = ACPI_TO_POINTER (0xFFFFFFFF);
-    }
-
-    if (CallerFullPathname)
-    {
-        ACPI_FREE (CallerFullPathname);
     }
 
     XrefInfo->CurrentMethodOp = CallerOp;

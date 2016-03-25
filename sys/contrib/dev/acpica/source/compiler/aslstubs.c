@@ -64,13 +64,6 @@ AcpiNsExecModuleCodeList (
 }
 
 ACPI_STATUS
-AcpiNsInitializeObjects (
-    void)
-{
-    return (AE_OK);
-}
-
-ACPI_STATUS
 AcpiHwReadPort (
     ACPI_IO_ADDRESS         Address,
     UINT32                  *Value,

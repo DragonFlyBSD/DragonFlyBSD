@@ -244,30 +244,26 @@ AcpiUtSafeStrncat (
  *
  * FUNCTION:    AcpiUtStrtoul64
  *
- * PARAMETERS:  String                  - Null terminated string
- *              Base                    - Radix of the string: 16 or 10 or
- *                                        ACPI_ANY_BASE
- *              MaxIntegerByteWidth     - Maximum allowable integer,in bytes:
- *                                        4 or 8 (32 or 64 bits)
- *              RetInteger              - Where the converted integer is
- *                                        returned
+ * PARAMETERS:  String          - Null terminated string
+ *              Base            - Radix of the string: 16 or ACPI_ANY_BASE;
+ *                                ACPI_ANY_BASE means 'in behalf of ToInteger'
+ *              RetInteger      - Where the converted integer is returned
  *
  * RETURN:      Status and Converted value
  *
  * DESCRIPTION: Convert a string into an unsigned value. Performs either a
- *              32-bit or 64-bit conversion, depending on the input integer
- *              size (often the current mode of the interpreter).
+ *              32-bit or 64-bit conversion, depending on the current mode
+ *              of the interpreter.
  *
- * NOTES:       Negative numbers are not supported, as they are not supported
- *              by ACPI.
- *
- *              AcpiGbl_IntegerByteWidth should be set to the proper width.
+ * NOTES:       AcpiGbl_IntegerByteWidth should be set to the proper width.
  *              For the core ACPICA code, this width depends on the DSDT
- *              version. For iASL, the default byte width is always 8 for the
- *              parser, but error checking is performed later to flag cases
- *              where a 64-bit constant is defined in a 32-bit DSDT/SSDT.
+ *              version. For iASL, the default byte width is always 8.
  *
  *              Does not support Octal strings, not needed at this time.
+ *
+ *              There is an earlier version of the function after this one,
+ *              below. It is slightly different than this one, and the two
+ *              may eventually may need to be merged. (01/2016).
  *
  ******************************************************************************/
 
@@ -275,13 +271,14 @@ ACPI_STATUS
 AcpiUtStrtoul64 (
     char                    *String,
     UINT32                  Base,
-    UINT32                  MaxIntegerByteWidth,
     UINT64                  *RetInteger)
 {
     UINT32                  ThisDigit = 0;
     UINT64                  ReturnValue = 0;
     UINT64                  Quotient;
     UINT64                  Dividend;
+    UINT32                  ToIntegerOp = (Base == ACPI_ANY_BASE);
+    UINT32                  Mode32 = (AcpiGbl_IntegerByteWidth == 4);
     UINT8                   ValidDigits = 0;
     UINT8                   SignOf0x = 0;
     UINT8                   Term = 0;
@@ -293,7 +290,6 @@ AcpiUtStrtoul64 (
     switch (Base)
     {
     case ACPI_ANY_BASE:
-    case 10:
     case 16:
 
         break;
@@ -317,10 +313,10 @@ AcpiUtStrtoul64 (
         String++;
     }
 
-    if (Base == ACPI_ANY_BASE)
+    if (ToIntegerOp)
     {
         /*
-         * Base equal to ACPI_ANY_BASE means 'Either decimal or hex'.
+         * Base equal to ACPI_ANY_BASE means 'ToInteger operation case'.
          * We need to determine if it is decimal or hexadecimal.
          */
         if ((*String == '0') && (tolower ((int) *(String + 1)) == 'x'))
@@ -341,7 +337,7 @@ AcpiUtStrtoul64 (
 
     if (!(*String) || isspace ((int) *String) || *String == '\t')
     {
-        if (Base == ACPI_ANY_BASE)
+        if (ToIntegerOp)
         {
             goto ErrorExit;
         }
@@ -352,11 +348,10 @@ AcpiUtStrtoul64 (
     }
 
     /*
-     * Perform a 32-bit or 64-bit conversion, depending upon the input
-     * byte width
+     * Perform a 32-bit or 64-bit conversion, depending upon the current
+     * execution mode of the interpreter
      */
-    Dividend = (MaxIntegerByteWidth <= ACPI_MAX32_BYTE_WIDTH) ?
-        ACPI_UINT32_MAX : ACPI_UINT64_MAX;
+    Dividend = (Mode32) ? ACPI_UINT32_MAX : ACPI_UINT64_MAX;
 
     /* Main loop: convert the string to a 32- or 64-bit integer */
 
@@ -391,7 +386,7 @@ AcpiUtStrtoul64 (
 
         if (Term)
         {
-            if (Base == ACPI_ANY_BASE)
+            if (ToIntegerOp)
             {
                 goto ErrorExit;
             }
@@ -409,12 +404,11 @@ AcpiUtStrtoul64 (
 
         ValidDigits++;
 
-        if (SignOf0x && ((ValidDigits > 16) ||
-            ((ValidDigits > 8) && (MaxIntegerByteWidth <= ACPI_MAX32_BYTE_WIDTH))))
+        if (SignOf0x && ((ValidDigits > 16) || ((ValidDigits > 8) && Mode32)))
         {
             /*
              * This is ToInteger operation case.
-             * No restrictions for string-to-integer conversion,
+             * No any restrictions for string-to-integer conversion,
              * see ACPI spec.
              */
             goto ErrorExit;
@@ -427,7 +421,7 @@ AcpiUtStrtoul64 (
 
         if (ReturnValue > Quotient)
         {
-            if (Base == ACPI_ANY_BASE)
+            if (ToIntegerOp)
             {
                 goto ErrorExit;
             }
@@ -454,8 +448,7 @@ AllDone:
 
 
 ErrorExit:
-
-    /* Base was set/validated above (10 or 16) */
+    /* Base was set/validated above */
 
     if (Base == 10)
     {
@@ -467,9 +460,9 @@ ErrorExit:
     }
 }
 
-
 #ifdef _OBSOLETE_FUNCTIONS
-/* Removed: 01/2016 */
+/* TBD: use version in ACPICA main code base? */
+/* DONE: 01/2016 */
 
 /*******************************************************************************
  *

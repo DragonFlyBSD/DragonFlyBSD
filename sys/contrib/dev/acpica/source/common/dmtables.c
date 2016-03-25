@@ -141,6 +141,7 @@ AdCreateTableHeader (
     char                    *Filename,
     ACPI_TABLE_HEADER       *Table)
 {
+    char                    *NewFilename;
     UINT8                   Checksum;
 
 
@@ -183,10 +184,11 @@ AdCreateTableHeader (
 
         break;
     }
+    AcpiOsPrintf ("\n");
 
     /* Print and validate the table checksum */
 
-    AcpiOsPrintf ("\n *     Checksum         0x%2.2X",        Table->Checksum);
+    AcpiOsPrintf (" *     Checksum         0x%2.2X",        Table->Checksum);
 
     Checksum = AcpiTbChecksum (ACPI_CAST_PTR (UINT8, Table), Table->Length);
     if (Checksum)
@@ -203,16 +205,33 @@ AdCreateTableHeader (
     AcpiOsPrintf (" *     Compiler Version 0x%8.8X (%u)\n", Table->AslCompilerRevision, Table->AslCompilerRevision);
     AcpiOsPrintf (" */\n");
 
-    /*
-     * Open the ASL definition block.
-     *
-     * Note: the AMLFilename string is left zero-length in order to just let
-     * the compiler create it when the disassembled file is compiled. This
-     * makes it easier to rename the disassembled ASL file if needed.
-     */
+    /* Create AML output filename based on input filename */
+
+    if (Filename)
+    {
+        NewFilename = FlGenerateFilename (Filename, "aml");
+    }
+    else
+    {
+        NewFilename = UtStringCacheCalloc (9);
+        if (NewFilename)
+        {
+            strncat (NewFilename, Table->Signature, 4);
+            strcat (NewFilename, ".aml");
+        }
+    }
+
+    if (!NewFilename)
+    {
+        AcpiOsPrintf (" **** Could not generate AML output filename\n");
+        return;
+    }
+
+    /* Open the ASL definition block */
+
     AcpiOsPrintf (
-        "DefinitionBlock (\"\", \"%4.4s\", %hu, \"%.6s\", \"%.8s\", 0x%8.8X)\n",
-        Table->Signature, Table->Revision,
+        "DefinitionBlock (\"%s\", \"%4.4s\", %hu, \"%.6s\", \"%.8s\", 0x%8.8X)\n",
+        NewFilename, Table->Signature, Table->Revision,
         Table->OemId, Table->OemTableId, Table->OemRevision);
 }
 
