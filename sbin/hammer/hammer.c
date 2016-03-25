@@ -545,8 +545,7 @@ main(int ac, char **av)
 			if (strcmp(av[3], "obfuscate") == 0)
 				obfuscate = 1;
 		}
-		hammer_cmd_show(HAMMER_OFF_BAD, arg,
-				filter, obfuscate, 0, NULL, NULL);
+		hammer_cmd_show(arg, filter, obfuscate);
 		exit(0);
 	}
 	if (strcmp(av[0], "show-undo") == 0) {

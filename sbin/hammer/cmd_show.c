@@ -84,15 +84,14 @@ static int num_bad_rec = 0;
 static int do_obfuscate = 0;
 
 void
-hammer_cmd_show(hammer_off_t node_offset, const char *arg,
-		int filter, int obfuscate, int depth,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+hammer_cmd_show(const char *arg, int filter, int obfuscate)
 {
 	struct volume_info *volume;
 	struct hammer_volume_ondisk *ondisk;
 	struct hammer_blockmap *blockmap;
 	struct btree_search search;
 	struct zone_stat *stats = NULL;
+	hammer_off_t node_offset;
 	int zone;
 
 	AssertOnFailure = (DebugOpt != 0);
@@ -100,27 +99,25 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat_bits();
 
-	if (node_offset == HAMMER_OFF_BAD) {
-		volume = get_root_volume();
-		ondisk = volume->ondisk;
-		node_offset = ondisk->vol0_btree_root;
-		if (QuietOpt < 3) {
-			printf("Volume header\trecords=%jd next_tid=%016jx\n",
-			       (intmax_t)ondisk->vol0_stat_records,
-			       (uintmax_t)ondisk->vol0_next_tid);
-			printf("\t\tbufoffset=%016jx\n",
-			       (uintmax_t)ondisk->vol_buf_beg);
-			for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
-				blockmap = ondisk->vol0_blockmap + zone;
-				printf("\t\tzone %d\tnext_offset=%016jx\n",
-					zone, blockmap->next_offset);
-			}
+	volume = get_root_volume();
+	ondisk = volume->ondisk;
+	node_offset = ondisk->vol0_btree_root;
+	if (QuietOpt < 3) {
+		printf("Volume header\trecords=%jd next_tid=%016jx\n",
+		       (intmax_t)ondisk->vol0_stat_records,
+		       (uintmax_t)ondisk->vol0_next_tid);
+		printf("\t\tbufoffset=%016jx\n",
+		       (uintmax_t)ondisk->vol_buf_beg);
+		for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
+			blockmap = ondisk->vol0_blockmap + zone;
+			printf("\t\tzone %d\tnext_offset=%016jx\n",
+				zone, blockmap->next_offset);
 		}
-		rel_volume(volume);
 	}
+	rel_volume(volume);
 
 	printf("show node=%016jx depth=%d arg=\"%s\"\n",
-		(uintmax_t)node_offset, depth, arg ? arg : "");
+		(uintmax_t)node_offset, 0, arg ? arg : "");
 
 	do_obfuscate = obfuscate;
 	init_btree_search(arg, filter, &search);
@@ -139,8 +136,8 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 		if (search.limit)
 			printf("\n");
 	}
-	print_btree_node(node_offset, &search, depth, HAMMER_MAX_TID,
-			 left_bound, right_bound, stats);
+	print_btree_node(node_offset, &search, 0, HAMMER_MAX_TID,
+			 NULL, NULL, stats);
 
 	if (VerboseOpt) {
 		hammer_print_zone_stat(stats);
