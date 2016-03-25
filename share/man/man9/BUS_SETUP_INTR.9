@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/BUS_SETUP_INTR.9,v 1.20 2007/03/01 14:33:29 ru Exp $
 .\"
-.Dd September 7, 2012
+.Dd March 25, 2016
 .Dt BUS_SETUP_INTR 9
 .Os
 .Sh NAME
@@ -98,10 +98,6 @@ If
 .Dv INTR_MPSAFE
 is specified the kernel is free to call the interrupt handler without
 holding the MP lock.
-.Dv INTR_FAST
-is also sometimes specified and allows the
-interrupt handler to be directly called from the context of the thread
-being interrupted, but is not recommended for most drivers.
 Other interrupt flags exist for special purposes.
 If
 .Dv INTR_NOPOLL
