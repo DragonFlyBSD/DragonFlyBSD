@@ -31,7 +31,6 @@
 .\"
 .\"     @(#)kvm_getprocs.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libkvm/kvm_getprocs.3,v 1.6.2.7 2003/04/29 14:37:04 trhodes Exp $
-.\" $DragonFly: src/lib/libkvm/kvm_getprocs.3,v 1.4 2007/02/01 10:33:25 corecode Exp $
 .\"
 .Dd June 4, 1993
 .Dt KVM_GETPROCS 3
@@ -61,36 +60,37 @@ The
 and
 .Fa arg
 arguments constitute a predicate which limits the set of processes
-returned.  The value of
+returned.
+The value of
 .Fa op
 describes the filtering predicate as follows:
 .Pp
-.Bl -tag -width 20n -offset indent -compact
-.It Sy KERN_PROC_ALL
+.Bl -tag -width ".Dv KERN_PROC_SESSION" -offset indent -compact
+.It Dv KERN_PROC_ALL
 all processes
-.It Sy KERN_PROC_PID
+.It Dv KERN_PROC_PID
 processes with process id
 .Fa arg
-.It Sy KERN_PROC_PGRP
+.It Dv KERN_PROC_PGRP
 processes with process group
 .Fa arg
-.It Sy KERN_PROC_SESSION
+.It Dv KERN_PROC_SESSION
 processes with session
 .Fa arg
-.It Sy KERN_PROC_TTY
+.It Dv KERN_PROC_TTY
 processes with tty
 .Fa arg
-.It Sy KERN_PROC_UID
+.It Dv KERN_PROC_UID
 processes with effective user id
 .Fa arg
-.It Sy KERN_PROC_RUID
+.It Dv KERN_PROC_RUID
 processes with real user id
 .Fa arg
 .El
 .Pp
 If the list of processes should contain all light weight processes,
 add the flag
-.Sy KERN_PROC_FLAG_LWP
+.Dv KERN_PROC_FLAG_LWP
 to
 .Fa op .
 .Pp
@@ -109,8 +109,8 @@ command line arguments passed to process indicated by
 .Fa p .
 Most likely, these arguments correspond to the values passed to
 .Xr exec 3
-on process creation.  This information is, however,
-deliberately under control of the process itself.
+on process creation.
+This information is, however, deliberately under control of the process itself.
 Note that the original command name can be found, unaltered,
 in the p_comm field of the process structure returned by
 .Fn kvm_getprocs .
@@ -118,7 +118,8 @@ in the p_comm field of the process structure returned by
 The
 .Fa nchr
 argument indicates the maximum number of characters, including null bytes,
-to use in building the strings.  If this amount is exceeded, the string
+to use in building the strings.
+If this amount is exceeded, the string
 causing the overflow is truncated and the partial result is returned.
 This is handy for programs like
 .Xr ps 1
@@ -132,7 +133,8 @@ is zero, no limit is imposed and all argument strings are returned in
 their entirety.
 .Pp
 The memory allocated to the argv pointers and string storage
-is owned by the kvm library.  Subsequent
+is owned by the kvm library.
+Subsequent
 .Fn kvm_getprocs
 and
 .Xr kvm_close 3
@@ -142,8 +144,8 @@ The
 .Fn kvm_getenvv
 function is similar to
 .Fn kvm_getargv
-but returns the vector of environment strings.  This data is
-also alterable by the process.
+but returns the vector of environment strings.
+This data is also alterable by the process.
 .Sh RETURN VALUES
 .Fn kvm_getprocs ,
 .Fn kvm_getargv ,
