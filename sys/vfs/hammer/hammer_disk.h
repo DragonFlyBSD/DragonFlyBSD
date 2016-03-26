@@ -670,9 +670,8 @@ struct hammer_volume_ondisk {
 	uint32_t vol_reserved06;
 	uint32_t vol_reserved07;
 
-	int32_t vol_blocksize;		/* for statfs only */
-	int32_t vol_reserved08;
-	int64_t vol_nblocks;		/* total allocatable hammer bufs */
+	int64_t vol_reserved08;
+	int64_t vol_reserved09;
 
 	/*
 	 * These fields are initialized and space is reserved in every

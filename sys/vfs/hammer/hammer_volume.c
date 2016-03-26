@@ -643,9 +643,6 @@ hammer_format_volume_header(struct hammer_mount *hmp,
 		return(EFTYPE);
 	}
 
-	ondisk->vol_nblocks = (ondisk->vol_buf_end - ondisk->vol_buf_beg) /
-			      HAMMER_BUFSIZE;
-	ondisk->vol_blocksize = HAMMER_BUFSIZE;
 	return(0);
 }
 

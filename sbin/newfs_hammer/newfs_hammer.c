@@ -493,9 +493,6 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		     vol->vol_no, vol->name);
 	}
 
-	ondisk->vol_nblocks = vol_buf_size / HAMMER_BUFSIZE;
-	ondisk->vol_blocksize = HAMMER_BUFSIZE;
-
 	ondisk->vol_rootvol = HAMMER_ROOT_VOLNO;
 	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
 
