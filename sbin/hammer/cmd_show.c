@@ -50,12 +50,12 @@ struct {
 	struct zone_stat *stats;
 } opt;
 
+static __inline void print_btree(hammer_off_t node_offset);
+static __inline void print_subtree(hammer_btree_elm_t elm, int depth);
 static void print_btree_node(hammer_off_t node_offset,
 			int depth, hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
-static const char *check_data_crc(hammer_btree_elm_t elm);
-static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
@@ -72,6 +72,8 @@ static int test_rbn_lr(hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static void print_bigblock_fill(hammer_off_t offset);
+static const char *check_data_crc(hammer_btree_elm_t elm);
+static void print_record(hammer_btree_elm_t elm);
 static int init_btree_search(const char *arg);
 static int test_btree_search(hammer_btree_elm_t elm);
 static int test_btree_match(hammer_btree_elm_t elm);
@@ -135,7 +137,7 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate)
 			printf(" tid=%016jx", (uintmax_t)opt.base.create_tid);
 		printf("\n");
 	}
-	print_btree_node(node_offset, 0, HAMMER_MAX_TID, NULL, NULL);
+	print_btree(node_offset);
 
 	if (VerboseOpt) {
 		hammer_print_zone_stat(stats);
@@ -151,6 +153,21 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate)
 	if (num_bad_rec || VerboseOpt) {
 		printf("%d bad records\n", num_bad_rec);
 	}
+}
+
+static __inline
+void
+print_btree(hammer_off_t node_offset)
+{
+	print_btree_node(node_offset, 0, HAMMER_MAX_TID, NULL, NULL);
+}
+
+static __inline
+void
+print_subtree(hammer_btree_elm_t elm, int depth)
+{
+	print_btree_node(elm->internal.subtree_offset, depth,
+			 elm->internal.mirror_tid, &elm[0].base, &elm[1].base);
 }
 
 static void
@@ -217,7 +234,6 @@ print_btree_node(hammer_off_t node_offset,
 	for (i = 0; i < node->count; ++i) {
 		elm = &node->elms[i];
 		ext = NULL;
-
 		if (opt.limit) {
 			switch (node->type) {
 			case HAMMER_BTREE_TYPE_INTERNAL:
@@ -249,10 +265,7 @@ print_btree_node(hammer_off_t node_offset,
 					continue;
 			}
 			if (elm->internal.subtree_offset) {
-				print_btree_node(elm->internal.subtree_offset,
-						 depth + 1,
-						 elm->internal.mirror_tid,
-						 &elm[0].base, &elm[1].base);
+				print_subtree(elm, depth + 1);
 				/*
 				 * Cause show to do normal iteration after
 				 * seeking to the lo:objid:rectype:key:tid
