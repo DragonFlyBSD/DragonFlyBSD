@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)gettimeofday.2	8.2 (Berkeley) 5/26/95
 .\" $FreeBSD: src/lib/libc/sys/gettimeofday.2,v 1.9.2.9 2003/02/11 06:05:00 nsayer Exp $
-.\" $DragonFly: src/lib/libc/sys/gettimeofday.2,v 1.5 2008/05/02 02:05:04 swildner Exp $
 .\"
-.Dd May 26, 1995
+.Dd March 26, 2016
 .Dt GETTIMEOFDAY 2
 .Os
 .Sh NAME
@@ -46,8 +45,16 @@
 .Fn settimeofday "const struct timeval *tp" "const struct timezone *tzp"
 .Sh DESCRIPTION
 .Bf -symbolic
-Note: timezone is no longer used; this information is kept outside
-the kernel.
+Note: The
+.Fn gettimeofday
+and
+.Fn settimeofday
+functions are obsolescent.
+Applications should use the
+.Fn clock_gettime
+and
+.Fn clock_settime
+functions instead.
 .Ef
 .Pp
 The system's notion of the current Greenwich time and the current time
