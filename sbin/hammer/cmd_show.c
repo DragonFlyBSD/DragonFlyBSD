@@ -46,20 +46,21 @@ struct {
 	struct hammer_base_elm base;
 	int		limit;   /* # of fields to test */
 	int		filter;  /* filter type (default -1) */
-} search;
+	int		obfuscate;  /* obfuscate direntry name */
+	struct zone_stat *stats;
+} opt;
 
 static void print_btree_node(hammer_off_t node_offset,
 			int depth, hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound,
-			struct zone_stat *stats);
+			hammer_base_elm_t right_bound);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound,
-			const char *ext, struct zone_stat *stats);
+			const char *ext);
 static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
@@ -71,7 +72,7 @@ static int test_rbn_lr(hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static void print_bigblock_fill(hammer_off_t offset);
-static int init_btree_search(const char *arg, int filter);
+static int init_btree_search(const char *arg);
 static int test_btree_search(hammer_btree_elm_t elm);
 static int test_btree_match(hammer_btree_elm_t elm);
 static int test_btree_out_of_range(hammer_btree_elm_t elm);
@@ -80,7 +81,6 @@ static void hexdump_record(const void *ptr, int length, const char *hdr);
 static int num_bad_node = 0;
 static int num_bad_elm = 0;
 static int num_bad_rec = 0;
-static int do_obfuscate = 0;
 
 void
 hammer_cmd_show(const char *arg, int filter, int obfuscate)
@@ -117,25 +117,25 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate)
 	printf("show node=%016jx depth=%d arg=\"%s\"\n",
 		(uintmax_t)node_offset, 0, arg ? arg : "");
 
-	do_obfuscate = obfuscate;
-	init_btree_search(arg, filter);
-	if (arg) {
-		if (search.limit >= 1)
-			printf(" search lo=%08x", search.base.localization);
-		if (search.limit >= 2)
-			printf(" obj=%016jx", (uintmax_t)search.base.obj_id);
-		if (search.limit >= 3)
-			printf(" rt=%02x", search.base.rec_type);
-		if (search.limit >= 4)
-			printf(" key=%016jx", (uintmax_t)search.base.key);
-		if (search.limit == 5)
-			printf(" tid=%016jx",
-				(uintmax_t)search.base.create_tid);
-		if (search.limit)
-			printf("\n");
+	bzero(&opt, sizeof(opt));
+	opt.filter = filter;
+	opt.obfuscate = obfuscate;
+	opt.stats = stats;
+
+	if (init_btree_search(arg) > 0) {
+		if (opt.limit > 0)
+			printf(" search lo=%08x", opt.base.localization);
+		if (opt.limit > 1)
+			printf(" obj=%016jx", (uintmax_t)opt.base.obj_id);
+		if (opt.limit > 2)
+			printf(" rt=%02x", opt.base.rec_type);
+		if (opt.limit > 3)
+			printf(" key=%016jx", (uintmax_t)opt.base.key);
+		if (opt.limit > 4)
+			printf(" tid=%016jx", (uintmax_t)opt.base.create_tid);
+		printf("\n");
 	}
-	print_btree_node(node_offset, 0, HAMMER_MAX_TID,
-			 NULL, NULL, stats);
+	print_btree_node(node_offset, 0, HAMMER_MAX_TID, NULL, NULL);
 
 	if (VerboseOpt) {
 		hammer_print_zone_stat(stats);
@@ -156,8 +156,7 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate)
 static void
 print_btree_node(hammer_off_t node_offset,
 		int depth, hammer_tid_t mirror_tid,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound,
-		struct zone_stat *stats)
+		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
@@ -213,13 +212,13 @@ print_btree_node(hammer_off_t node_offset,
 	printf(" {\n");
 
 	if (VerboseOpt)
-		hammer_add_zone_stat(stats, node_offset, sizeof(*node));
+		hammer_add_zone_stat(opt.stats, node_offset, sizeof(*node));
 
 	for (i = 0; i < node->count; ++i) {
 		elm = &node->elms[i];
 		ext = NULL;
 
-		if (search.limit) {
+		if (opt.limit) {
 			switch (node->type) {
 			case HAMMER_BTREE_TYPE_INTERNAL:
 				if (!test_btree_out_of_range(elm))
@@ -232,22 +231,20 @@ print_btree_node(hammer_off_t node_offset,
 			}
 		}
 		print_btree_elm(node, node_offset,
-				elm, left_bound, right_bound,
-				ext, stats);
+				elm, left_bound, right_bound, ext);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		assert(i == node->count);  /* boundary */
 		elm = &node->elms[i];
 		print_btree_elm(node, node_offset,
-				elm, left_bound, right_bound,
-				NULL, stats);
+				elm, left_bound, right_bound, NULL);
 	}
 	printf("     }\n");
 
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		for (i = 0; i < node->count; ++i) {
 			elm = &node->elms[i];
-			if (search.limit && search.filter) {
+			if (opt.limit && opt.filter) {
 				if (test_btree_out_of_range(elm))
 					continue;
 			}
@@ -255,15 +252,14 @@ print_btree_node(hammer_off_t node_offset,
 				print_btree_node(elm->internal.subtree_offset,
 						 depth + 1,
 						 elm->internal.mirror_tid,
-						 &elm[0].base, &elm[1].base,
-						 stats);
+						 &elm[0].base, &elm[1].base);
 				/*
 				 * Cause show to do normal iteration after
 				 * seeking to the lo:objid:rectype:key:tid
 				 * by default
 				 */
-				if (search.limit && search.filter == -1)  /* default */
-					search.filter = 0;
+				if (opt.limit && opt.filter == -1)  /* default */
+					opt.filter = 0;
 			}
 		}
 	}
@@ -312,7 +308,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		hammer_btree_elm_t elm,
 		hammer_base_elm_t left_bound,
 		hammer_base_elm_t right_bound,
-		const char *ext, struct zone_stat *stats)
+		const char *ext)
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 	char deleted;
@@ -398,7 +394,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			if (QuietOpt < 2)
 				print_record(elm);
 			if (VerboseOpt)
-				hammer_add_zone_stat(stats,
+				hammer_add_zone_stat(opt.stats,
 					elm->leaf.data_offset,
 					elm->leaf.data_len);
 			break;
@@ -684,7 +680,7 @@ print_record(hammer_btree_elm_t elm)
 		printf("dir-entry ino=%016jx lo=%08x",
 		       (uintmax_t)data->entry.obj_id,
 		       data->entry.localization);
-		if (!do_obfuscate)
+		if (!opt.obfuscate)
 			printf(" name=\"%*.*s\"",
 			       data_len, data_len, data->entry.name);
 		break;
@@ -794,14 +790,13 @@ _strtoull(const char *p, int base)
 }
 
 static int
-init_btree_search(const char *arg, int filter)
+init_btree_search(const char *arg)
 {
 	char *s, *p;
 	int i = 0;
 
-	bzero(&search.base, sizeof(search.base));
-	search.limit = 0;
-	search.filter = filter;
+	bzero(&opt.base, sizeof(opt.base));
+	opt.limit = 0;
 
 	if (arg == NULL)
 		return(-1);
@@ -816,19 +811,19 @@ init_btree_search(const char *arg, int filter)
 		if ((s = strchr(s, ':')) != NULL)
 			*s++ = 0;
 		if (++i == 1) {
-			search.base.localization = _strtoul(p, 16);
+			opt.base.localization = _strtoul(p, 16);
 		} else if (i == 2) {
-			search.base.obj_id = _strtoull(p, 16);
+			opt.base.obj_id = _strtoull(p, 16);
 		} else if (i == 3) {
-			search.base.rec_type = _strtoul(p, 16);
+			opt.base.rec_type = _strtoul(p, 16);
 		} else if (i == 4) {
-			search.base.key = _strtoull(p, 16);
+			opt.base.key = _strtoull(p, 16);
 		} else if (i == 5) {
-			search.base.create_tid = _strtoull(p, 16);
+			opt.base.create_tid = _strtoull(p, 16);
 			break;
 		}
 	}
-	search.limit = i;
+	opt.limit = i;
 	free(s);
 
 	return(i);
@@ -838,8 +833,8 @@ static int
 test_btree_search(hammer_btree_elm_t elm)
 {
 	hammer_base_elm_t base1 = &elm->base;
-	hammer_base_elm_t base2 = &search.base;
-	int limit = search.limit;
+	hammer_base_elm_t base2 = &opt.base;
+	int limit = opt.limit;
 
 	if (base1->localization < base2->localization)
 		return(-1);
@@ -899,7 +894,7 @@ test_btree_out_of_range(hammer_btree_elm_t elm)
 	if (test_btree_search(elm) > 0)
 		return(1);  /* conditions < this elm */
 
-	if (search.limit >= 5) {
+	if (opt.limit >= 5) {
 		if (test_btree_search(elm + 1) <= 0)
 			return(1);  /* next elm <= conditions */
 	} else {
