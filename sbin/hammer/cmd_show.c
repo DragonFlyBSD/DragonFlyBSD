@@ -47,13 +47,14 @@ struct {
 	int		limit;   /* # of fields to test */
 	int		filter;  /* filter type (default -1) */
 	int		obfuscate;  /* obfuscate direntry name */
+	int		indent;  /* use depth indentation */
 	struct zone_stat *stats;
 } opt;
 
 static __inline void print_btree(hammer_off_t node_offset);
-static __inline void print_subtree(hammer_btree_elm_t elm, int depth);
+static __inline void print_subtree(hammer_btree_elm_t elm);
 static void print_btree_node(hammer_off_t node_offset,
-			int depth, hammer_tid_t mirror_tid,
+			hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static void print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
@@ -83,15 +84,38 @@ static void hexdump_record(const void *ptr, int length, const char *hdr);
 static int num_bad_node = 0;
 static int num_bad_elm = 0;
 static int num_bad_rec = 0;
+static int depth;
+
+#define _X	"\t"
+static const char* _indents[] = {
+	"",
+	_X,
+	_X _X,
+	_X _X _X,
+	_X _X _X _X,
+	_X _X _X _X _X,
+	_X _X _X _X _X _X,
+	_X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X _X _X _X _X _X _X,
+	_X _X _X _X _X _X _X _X _X _X _X _X _X _X _X _X,
+	/* deep enough */
+};
+#define INDENT _indents[opt.indent ? depth : 0]
 
 void
-hammer_cmd_show(const char *arg, int filter, int obfuscate)
+hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 {
 	struct volume_info *volume;
 	struct hammer_volume_ondisk *ondisk;
 	struct hammer_blockmap *blockmap;
 	struct zone_stat *stats = NULL;
-	hammer_off_t node_offset;
 	int zone;
 
 	AssertOnFailure = (DebugOpt != 0);
@@ -101,7 +125,6 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate)
 
 	volume = get_root_volume();
 	ondisk = volume->ondisk;
-	node_offset = ondisk->vol0_btree_root;
 	if (QuietOpt < 3) {
 		printf("Volume header\trecords=%jd next_tid=%016jx\n",
 		       (intmax_t)ondisk->vol0_stat_records,
@@ -116,17 +139,16 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate)
 	}
 	rel_volume(volume);
 
-	printf("show node=%016jx depth=%d arg=\"%s\"\n",
-		(uintmax_t)node_offset, 0, arg ? arg : "");
-
 	bzero(&opt, sizeof(opt));
 	opt.filter = filter;
 	opt.obfuscate = obfuscate;
+	opt.indent = indent;
 	opt.stats = stats;
 
 	if (init_btree_search(arg) > 0) {
+		printf("arg=\"%s\"", arg);
 		if (opt.limit > 0)
-			printf(" search lo=%08x", opt.base.localization);
+			printf(" lo=%08x", opt.base.localization);
 		if (opt.limit > 1)
 			printf(" obj=%016jx", (uintmax_t)opt.base.obj_id);
 		if (opt.limit > 2)
@@ -137,7 +159,7 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate)
 			printf(" tid=%016jx", (uintmax_t)opt.base.create_tid);
 		printf("\n");
 	}
-	print_btree(node_offset);
+	print_btree(ondisk->vol0_btree_root);
 
 	if (VerboseOpt) {
 		hammer_print_zone_stat(stats);
@@ -159,21 +181,23 @@ static __inline
 void
 print_btree(hammer_off_t node_offset)
 {
-	print_btree_node(node_offset, 0, HAMMER_MAX_TID, NULL, NULL);
+	depth = -1;
+	print_btree_node(node_offset, HAMMER_MAX_TID, NULL, NULL);
+	assert(depth == -1);
 }
 
 static __inline
 void
-print_subtree(hammer_btree_elm_t elm, int depth)
+print_subtree(hammer_btree_elm_t elm)
 {
-	print_btree_node(elm->internal.subtree_offset, depth,
+	print_btree_node(elm->internal.subtree_offset,
 			 elm->internal.mirror_tid, &elm[0].base, &elm[1].base);
 }
 
 static void
 print_btree_node(hammer_off_t node_offset,
-		int depth, hammer_tid_t mirror_tid,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+		 hammer_tid_t mirror_tid,
+		 hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
@@ -184,6 +208,7 @@ print_btree_node(hammer_off_t node_offset,
 	char badm = ' ';  /* good */
 	const char *ext;
 
+	depth++;
 	node = get_node(node_offset, &buffer);
 
 	if (node == NULL) {
@@ -209,13 +234,8 @@ print_btree_node(hammer_off_t node_offset,
 	if (badm != ' ' || badc != ' ')  /* not good */
 		++num_bad_node;
 
-	printf("%c%c   NODE %016jx ", badc, badm, (uintmax_t)node_offset);
-	if (node == NULL) {
-		printf("(IO ERROR)\n");
-		rel_buffer(buffer);
-		return;
-	}
-
+	printf("%s%c%c   NODE %016jx ",
+	       INDENT, badc, badm, (uintmax_t)node_offset);
 	printf("cnt=%02d p=%016jx type=%c depth=%d mirror=%016jx",
 	       node->count,
 	       (uintmax_t)node->parent,
@@ -255,7 +275,7 @@ print_btree_node(hammer_off_t node_offset,
 		print_btree_elm(node, node_offset,
 				elm, left_bound, right_bound, NULL);
 	}
-	printf("     }\n");
+	printf("%s     }\n", INDENT);
 
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		for (i = 0; i < node->count; ++i) {
@@ -265,7 +285,7 @@ print_btree_node(hammer_off_t node_offset,
 					continue;
 			}
 			if (elm->internal.subtree_offset) {
-				print_subtree(elm, depth + 1);
+				print_subtree(elm);
 				/*
 				 * Cause show to do normal iteration after
 				 * seeking to the lo:objid:rectype:key:tid
@@ -277,6 +297,7 @@ print_btree_node(hammer_off_t node_offset,
 		}
 	}
 	rel_buffer(buffer);
+	depth--;
 }
 
 static __inline
@@ -365,14 +386,16 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	else
 		label = "ELM";
 
-	printf("%s %s %2d %c ", flagstr, label, i, hammer_elm_btype(elm));
+	printf("%s%s %s %2d %c ",
+	       INDENT, flagstr, label, i, hammer_elm_btype(elm));
 	printf("lo=%08x obj=%016jx rt=%02x key=%016jx tid=%016jx\n",
 	       elm->base.localization,
 	       (uintmax_t)elm->base.obj_id,
 	       elm->base.rec_type,
 	       (uintmax_t)elm->base.key,
 	       (uintmax_t)elm->base.create_tid);
-	printf("               %c del=%016jx ot=%02x",
+	printf("%s               %c del=%016jx ot=%02x",
+	       INDENT,
 	       (rootelm == ' ' ? deleted : rootelm),
 	       (uintmax_t)elm->base.delete_tid,
 	       elm->base.obj_type);
@@ -627,14 +650,15 @@ print_config(char *cfgtxt)
 {
 	char *token;
 
-	printf("\n%17s", "");
+	printf("\n%s%17s", INDENT, "");
 	printf("config text=\"\n");
 	if (cfgtxt != NULL) {
 		while((token = strsep(&cfgtxt, "\r\n")) != NULL)
 			if (strlen(token))
-				printf("%17s            %s\n", "", token);
+				printf("%s%17s            %s\n",
+					INDENT, "", token);
 	}
-	printf("%17s            \"", "");
+	printf("%s%17s            \"", INDENT, "");
 }
 
 static
@@ -660,11 +684,11 @@ print_record(hammer_btree_elm_t elm)
 
 	switch(elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_UNKNOWN:
-		printf("\n%17s", "");
+		printf("\n%s%17s", INDENT, "");
 		printf("unknown");
 		break;
 	case HAMMER_RECTYPE_INODE:
-		printf("\n%17s", "");
+		printf("\n%s%17s", INDENT, "");
 		printf("inode size=%jd nlinks=%jd",
 		       (intmax_t)data->inode.size,
 		       (intmax_t)data->inode.nlinks);
@@ -676,7 +700,7 @@ print_record(hammer_btree_elm_t elm)
 			printf(" pobjid=%016jx ot=%02x\n",
 				(uintmax_t)data->inode.parent_obj_id,
 				data->inode.obj_type);
-			printf("%17s", "");
+			printf("%s%17s", INDENT, "");
 			printf("      ctime=%016jx mtime=%016jx atime=%016jx",
 				(uintmax_t)data->inode.ctime,
 				(uintmax_t)data->inode.mtime,
@@ -688,7 +712,7 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
 		data_len -= HAMMER_ENTRY_NAME_OFF;
-		printf("\n%17s", "");
+		printf("\n%s%17s", INDENT, "");
 		printf("dir-entry ino=%016jx lo=%08x",
 		       (uintmax_t)data->entry.obj_id,
 		       data->entry.localization);
@@ -700,14 +724,14 @@ print_record(hammer_btree_elm_t elm)
 		switch(elm->leaf.base.key) {
 		case HAMMER_FIXKEY_SYMLINK:
 			data_len -= HAMMER_SYMLINK_NAME_OFF;
-			printf("\n%17s", "");
+			printf("\n%s%17s", INDENT, "");
 			printf("fix-symlink name=\"%*.*s\"",
 				data_len, data_len, data->symlink.name);
 			break;
 		}
 		break;
 	case HAMMER_RECTYPE_PFS:
-		printf("\n%17s", "");
+		printf("\n%s%17s", INDENT, "");
 		printf("pfs sync_beg_tid=%016jx sync_end_tid=%016jx\n",
 			(intmax_t)data->pfsd.sync_beg_tid,
 			(intmax_t)data->pfsd.sync_end_tid);
@@ -726,7 +750,7 @@ print_record(hammer_btree_elm_t elm)
 		free(str2);
 		break;
 	case HAMMER_RECTYPE_SNAPSHOT:
-		printf("\n%17s", "");
+		printf("\n%s%17s", INDENT, "");
 		printf("snapshot tid=%016jx label=\"%s\"",
 			(intmax_t)data->snap.tid, data->snap.label);
 		break;

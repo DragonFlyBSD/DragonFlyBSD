@@ -83,7 +83,7 @@ extern uint64_t MemoryLimit;
 extern const char *SplitupOptStr;
 extern const char *CyclePath;
 
-void hammer_cmd_show(const char *arg, int filter, int obfuscate);
+void hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent);
 void hammer_cmd_show_undo(void);
 void hammer_cmd_sshremote(const char *cmd, const char *target);
 void hammer_cmd_recover(const char *target_dir);

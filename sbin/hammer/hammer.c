@@ -531,21 +531,29 @@ main(int ac, char **av)
 		const char *arg = NULL;
 		int filter = -1;
 		int obfuscate = 0;
+		int indent = 0;
 
 		hammer_parsedevs(blkdevs);
+		if (ac > 3)
+			errx(1, "Too many options specified");
 		if (ac > 1)
 			arg = av[1];
 		if (ac > 2) {
-			if (strcmp(av[2], "filter") == 0)
-				filter = 1;
-			else if (strcmp(av[2], "nofilter") == 0)
-				filter = 0;
+			char *p, *buf = strdup(av[2]);
+			while((p = strsep(&buf, ",")) != NULL) {
+				if (strcmp(p, "filter") == 0) {
+					filter = 1;
+				} else if (strcmp(p, "nofilter") == 0) {
+					filter = 0;
+				} else if (strcmp(p, "obfuscate") == 0) {
+					obfuscate = 1;
+				} else if (strcmp(p, "indent") == 0) {
+					indent = 1;
+				}
+			}
+			free(buf);
 		}
-		if (ac > 3) {
-			if (strcmp(av[3], "obfuscate") == 0)
-				obfuscate = 1;
-		}
-		hammer_cmd_show(arg, filter, obfuscate);
+		hammer_cmd_show(arg, filter, obfuscate, indent);
 		exit(0);
 	}
 	if (strcmp(av[0], "show-undo") == 0) {
