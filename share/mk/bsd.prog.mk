@@ -100,7 +100,7 @@ _INSTALLFLAGS:=	${INSTALLFLAGS}
 _INSTALLFLAGS:=	${_INSTALLFLAGS${ie}}
 .endfor
 
-.if !target(realinstall)
+.if !target(realinstall) && !defined(INTERNALPROG)
 realinstall: _proginstall
 .ORDER: beforeinstall _proginstall
 _proginstall:
@@ -117,7 +117,7 @@ _proginstall:
 	(cd ${DESTDIR}${ORIGBINDIR}; ${LN} -fs dm ${PROG}; \
 	    chown -h ${BINOWN}:${ORIGBINGRP} ${PROG})
 .endif
-.endif # !target(realinstall)
+.endif # !target(realinstall) && !defined(INTERNALPROG)
 
 .if defined(SCRIPTS) && !empty(SCRIPTS)
 realinstall: _scriptsinstall
