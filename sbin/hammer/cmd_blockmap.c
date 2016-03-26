@@ -245,8 +245,7 @@ hammer_cmd_checkmap(void)
 	undomap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (QuietOpt < 3) {
-		printf("Volume header\trecords=%jd next_tid=%016jx\n",
-		       (intmax_t)volume->ondisk->vol0_stat_records,
+		printf("Volume header\tnext_tid=%016jx\n",
 		       (uintmax_t)volume->ondisk->vol0_next_tid);
 		printf("\t\tbufoffset=%016jx\n",
 		       (uintmax_t)volume->ondisk->vol_buf_beg);

@@ -685,7 +685,7 @@ struct hammer_volume_ondisk {
 	int64_t vol0_stat_freebigblocks;/* number of free big-blocks */
 	int64_t	vol0_stat_bytes;	/* for statfs only */
 	int64_t vol0_stat_inodes;	/* for statfs only */
-	int64_t vol0_stat_records;	/* total records in filesystem */
+	int64_t vol0_reserved10;
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
 	hammer_tid_t vol0_next_tid;	/* highest partially synchronized TID */
 	hammer_off_t vol0_unused03;

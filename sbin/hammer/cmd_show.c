@@ -126,8 +126,7 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 	volume = get_root_volume();
 	ondisk = volume->ondisk;
 	if (QuietOpt < 3) {
-		printf("Volume header\trecords=%jd next_tid=%016jx\n",
-		       (intmax_t)ondisk->vol0_stat_records,
+		printf("Volume header\tnext_tid=%016jx\n",
 		       (uintmax_t)ondisk->vol0_next_tid);
 		printf("\t\tbufoffset=%016jx\n",
 		       (uintmax_t)ondisk->vol_buf_beg);
