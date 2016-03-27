@@ -2638,3 +2638,10 @@ dev/virtual/virtio/virtio/virtio.c	optional virtio
 dev/virtual/virtio/virtio/virtio_bus_if.m optional virtio
 dev/virtual/virtio/virtio/virtio_if.m	optional virtio
 dev/virtual/virtio/virtio/virtqueue.c	optional virtio
+
+#
+# Gpio support for ACPI based SoC platforms
+#
+bus/gpio/gpio_if.m			optional gpio_acpi
+bus/gpio/gpio_acpi/gpio_acpi.c		optional gpio_acpi
+bus/gpio/gpio_intel/gpio_intel.c	optional gpio_intel gpio_acpi

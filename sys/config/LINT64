@@ -2208,6 +2208,12 @@ device		vtnet
 device		virtio_pci
 
 #
+# Gpio support for ACPI based SoC platforms
+#
+device		gpio_acpi
+device		gpio_intel	# GPIO support for Intel SoCs
+
+#
 # Embedded system options:
 #
 # An embedded system might want to run something other than init.

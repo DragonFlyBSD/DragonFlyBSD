@@ -105,6 +105,8 @@ MAN=	aac.4 \
 	fxp.4 \
 	gdb.4 \
 	gif.4 \
+	gpio_acpi.4 \
+	gpio_intel.4 \
 	gre.4 \
 	hifn.4 \
 	hpt27xx.4 \
