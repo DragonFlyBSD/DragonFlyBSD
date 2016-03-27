@@ -74,6 +74,7 @@ static int test_rbn_lr(hammer_btree_elm_t elm,
 			hammer_base_elm_t right_bound);
 static void print_bigblock_fill(hammer_off_t offset);
 static const char *check_data_crc(hammer_btree_elm_t elm);
+static uint32_t get_buf_crc(hammer_off_t buf_offset, int32_t buf_len);
 static void print_record(hammer_btree_elm_t elm);
 static int init_btree_search(const char *arg);
 static int test_btree_search(hammer_btree_elm_t elm);
@@ -598,8 +599,8 @@ check_data_crc(hammer_btree_elm_t elm)
 {
 	struct buffer_info *data_buffer;
 	hammer_off_t data_offset;
+	hammer_off_t buf_offset;
 	int32_t data_len;
-	int32_t len;
 	uint32_t crc;
 	int error;
 	char *ptr;
@@ -611,36 +612,58 @@ check_data_crc(hammer_btree_elm_t elm)
 	if (data_offset == 0 || data_len == 0)
 		return("ZO");  /* zero offset or length */
 
-	crc = 0;
 	error = 0;
-	while (data_len) {
-		blockmap_lookup(data_offset, NULL, NULL, &error);
-		if (error)
-			break;
-		ptr = get_buffer_data(data_offset, &data_buffer, 0);
-		len = HAMMER_BUFSIZE - ((int)data_offset & HAMMER_BUFMASK);
-		if (len > data_len)
-			len = (int)data_len;
-		if (elm->leaf.base.rec_type == HAMMER_RECTYPE_INODE &&
-		    data_len == sizeof(struct hammer_inode_data)) {
-			crc = crc32_ext(ptr, HAMMER_INODE_CRCSIZE, crc);
-		} else {
-			crc = crc32_ext(ptr, len, crc);
-		}
-		data_len -= len;
-		data_offset += len;
-	}
-
-	rel_buffer(data_buffer);
-	if (error) {  /* bad offset on blockmap lookup */
-		assert(error < 0);
+	buf_offset = blockmap_lookup(data_offset, NULL, NULL, &error);
+	if (error) {
 		bzero(bo, sizeof(bo));
 		snprintf(bo, sizeof(bo), "BO%d", -error);
 		return(bo);
 	}
+
+	crc = 0;
+	switch (elm->leaf.base.rec_type) {
+	case HAMMER_RECTYPE_INODE:
+		/* this should always match */
+		if (data_len == sizeof(struct hammer_inode_data)) {
+			ptr = get_buffer_data(buf_offset, &data_buffer, 0);
+			crc = crc32(ptr, HAMMER_INODE_CRCSIZE);
+			rel_buffer(data_buffer);
+		}
+		break;
+	default:
+		crc = get_buf_crc(buf_offset, data_len);
+		break;
+	}
+
+	if (crc == 0)
+		return("Bx");  /* bad crc */
 	if (crc != elm->leaf.data_crc)
 		return("BX");  /* bad crc */
 	return(NULL);  /* success */
+}
+
+static
+uint32_t
+get_buf_crc(hammer_off_t buf_offset, int32_t buf_len)
+{
+	struct buffer_info *data_buffer = NULL;
+	int32_t len;
+	uint32_t crc = 0;
+	char *ptr;
+
+	while (buf_len) {
+		ptr = get_buffer_data(buf_offset, &data_buffer, 0);
+		len = HAMMER_BUFSIZE - ((int)buf_offset & HAMMER_BUFMASK);
+		if (len > buf_len)
+			len = (int)buf_len;
+		assert(len <= HAMMER_BUFSIZE);
+		crc = crc32_ext(ptr, len, crc);
+		buf_len -= len;
+		buf_offset += len;
+	}
+	rel_buffer(data_buffer);
+
+	return(crc);
 }
 
 static
