@@ -2252,7 +2252,9 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 				 * get the lock, just let the leaf remain
 				 * empty.
 				 */
-				/**/
+				/*
+				 * hammer show doesn't consider this as an error.
+				 */
 			}
 			hammer_unlock(&node->lock);
 			hammer_rel_node(node);
@@ -2262,7 +2264,9 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 			 * get the lock, just let the leaf remain
 			 * empty.
 			 */
-			/**/
+			/*
+			 * hammer show doesn't consider this as an error.
+			 */
 		}
 	} else {
 		KKASSERT(parent->ondisk->count > 1);

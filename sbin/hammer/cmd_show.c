@@ -57,6 +57,7 @@ static void print_btree_node(hammer_off_t node_offset,
 			hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
+static int test_node_count(hammer_node_ondisk_t node, char *badmp);
 static void print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm,
 			hammer_base_elm_t left_bound,
@@ -203,7 +204,6 @@ print_btree_node(hammer_off_t node_offset,
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	int i;
-	int maxcount;
 	char badc = ' ';  /* good */
 	char badm = ' ';  /* good */
 	const char *ext;
@@ -221,13 +221,9 @@ print_btree_node(hammer_off_t node_offset,
 			badc = 'B';
 			badm = 'M';
 		}
-		maxcount = hammer_node_max_elements(node->type);
-		if (maxcount == -1) {
+		if (test_node_count(node, &badm) == -1) {
 			badc = 'B';
-			badm = 'U';
-		} else if (node->count == 0 || node->count > maxcount) {
-			badc = 'B';
-			badm = 'C';
+			assert(badm != ' ');
 		}
 	}
 
@@ -298,6 +294,34 @@ print_btree_node(hammer_off_t node_offset,
 	}
 	rel_buffer(buffer);
 	depth--;
+}
+
+static int
+test_node_count(hammer_node_ondisk_t node, char *badmp)
+{
+	hammer_node_ondisk_t parent_node;
+	struct buffer_info *buffer = NULL;
+	int maxcount;
+
+	maxcount = hammer_node_max_elements(node->type);
+
+	if (maxcount == -1) {
+		*badmp = 'U';
+		return(-1);
+	} else if (node->count > maxcount) {
+		*badmp = 'C';
+		return(-1);
+	} else if (node->count == 0) {
+		parent_node = get_node(node->parent, &buffer);
+		if (parent_node->count != 1) {
+			*badmp = 'C';
+			rel_buffer(buffer);
+			return(-1);
+		}
+		rel_buffer(buffer);
+	}
+
+	return(0);
 }
 
 static __inline
