@@ -669,5 +669,9 @@ format_root_directory(const char *label)
 
 	bnode->crc = crc32(&bnode->crc + 1, HAMMER_BTREE_CRCSIZE);
 
+	rel_buffer(data_buffer0);
+	rel_buffer(data_buffer1);
+	rel_buffer(data_buffer2);
+
 	return(btree_off);
 }
