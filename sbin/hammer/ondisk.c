@@ -334,6 +334,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 				buf);
 		}
 		assert(buf->ondisk != NULL);
+		assert(isnew != -1);
 		hammer_cache_used(&buf->cache);
 	}
 

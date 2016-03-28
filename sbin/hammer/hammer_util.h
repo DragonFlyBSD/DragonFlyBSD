@@ -112,7 +112,6 @@ struct buffer_info {
 	TAILQ_ENTRY(buffer_info) entry;
 	hammer_off_t		buf_offset;	/* full hammer offset spec */
 	int64_t			raw_offset;	/* physical offset */
-	int			flags;		/* origination flags */
 	struct volume_info	*volume;
 	void			*ondisk;
 };
