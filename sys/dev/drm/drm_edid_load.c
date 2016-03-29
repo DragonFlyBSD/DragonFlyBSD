@@ -112,7 +112,11 @@ do_edid_fw_load(struct drm_connector *connector, const char *fwname,
 fw_out:
 	fwdata = NULL;
 	if (fw != NULL) {
-		firmware_put(fw, FIRMWARE_UNLOAD);
+		/*
+		 * Don't release edid fw right away, useful if / is
+		 * still not mounted and/or we performing early kms
+		 */
+		firmware_put(fw, 0);
 	}
 
 	if (block == NULL)
