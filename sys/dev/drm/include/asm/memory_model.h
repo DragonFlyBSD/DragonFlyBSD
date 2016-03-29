@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,11 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _ASM_PAGE_H_
-#define _ASM_PAGE_H_
+#ifndef _ASM_MEMORY_MODEL_H_
+#define _ASM_MEMORY_MODEL_H_
 
-#define page_to_phys(page)	VM_PAGE_TO_PHYS(page)
+#define page_to_pfn(page)	OFF_TO_IDX(VM_PAGE_TO_PHYS(page))
 
-#include <asm/memory_model.h>
-
-#endif	/* _ASM_PAGE_H_ */
+#endif	/* _ASM_MEMORY_MODEL_H_ */
