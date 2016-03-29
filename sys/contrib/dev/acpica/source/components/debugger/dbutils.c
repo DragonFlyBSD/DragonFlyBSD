@@ -65,8 +65,6 @@ AcpiDbDumpBuffer (
     UINT32                  Address);
 #endif
 
-static char                 *Gbl_HexToAscii = "0123456789ABCDEF";
-
 
 /*******************************************************************************
  *
@@ -96,7 +94,9 @@ AcpiDbMatchArgument (
 
     for (i = 0; Arguments[i].Name; i++)
     {
-        if (strstr (Arguments[i].Name, UserArgument) == Arguments[i].Name)
+        if (strstr (
+            ACPI_CAST_PTR (char, Arguments[i].Name),
+            ACPI_CAST_PTR (char, UserArgument)) == Arguments[i].Name)
         {
             return (i);
         }
@@ -388,7 +388,7 @@ AcpiDbUint32ToHexString (
 
     for (i = 7; i >= 0; i--)
     {
-        Buffer[i] = Gbl_HexToAscii [Value & 0x0F];
+        Buffer[i] = AcpiGbl_UpperHexDigits [Value & 0x0F];
         Value = Value >> 4;
     }
 }

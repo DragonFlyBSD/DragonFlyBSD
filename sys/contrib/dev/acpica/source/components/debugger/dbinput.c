@@ -71,7 +71,7 @@ AcpiDbSingleThread (
 
 static void
 AcpiDbDisplayCommandInfo (
-    char                    *Command,
+    const char              *Command,
     BOOLEAN                 DisplayAll);
 
 static void
@@ -80,7 +80,7 @@ AcpiDbDisplayHelp (
 
 static BOOLEAN
 AcpiDbMatchCommandHelp (
-    char                        *Command,
+    const char                  *Command,
     const ACPI_DB_COMMAND_HELP  *Help);
 
 
@@ -360,7 +360,7 @@ static const ACPI_DB_COMMAND_HELP   AcpiGbl_DbCommandHelp[] =
 
 static BOOLEAN
 AcpiDbMatchCommandHelp (
-    char                        *Command,
+    const char                  *Command,
     const ACPI_DB_COMMAND_HELP  *Help)
 {
     char                    *Invocation = Help->Invocation;
@@ -422,7 +422,7 @@ AcpiDbMatchCommandHelp (
 
 static void
 AcpiDbDisplayCommandInfo (
-    char                    *Command,
+    const char              *Command,
     BOOLEAN                 DisplayAll)
 {
     const ACPI_DB_COMMAND_HELP  *Next;
@@ -722,7 +722,8 @@ AcpiDbMatchCommand (
 
     for (i = CMD_FIRST_VALID; AcpiGbl_DbCommands[i].Name; i++)
     {
-        if (strstr (AcpiGbl_DbCommands[i].Name, UserCommand) ==
+        if (strstr (
+            ACPI_CAST_PTR (char, AcpiGbl_DbCommands[i].Name), UserCommand) ==
             AcpiGbl_DbCommands[i].Name)
         {
             return (i);
