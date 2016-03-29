@@ -2587,7 +2587,11 @@ filt_sowrite(struct knote *kn, long hint __unused)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
-	kn->kn_data = ssb_space(&so->so_snd);
+	if (so->so_snd.ssb_flags & SSB_PREALLOC)
+		kn->kn_data = ssb_space_prealloc(&so->so_snd);
+	else
+		kn->kn_data = ssb_space(&so->so_snd);
+
 	if (so->so_state & SS_CANTSENDMORE) {
 		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		kn->kn_fflags = so->so_error;
