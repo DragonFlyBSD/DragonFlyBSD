@@ -243,7 +243,7 @@ AcpiHwRead (
         }
 
         ACPI_SET_BITS (Value, Index * AccessWidth,
-            ((1 << AccessWidth) - 1), Value32);
+            ((1UL << AccessWidth) - 1), Value32);
 
         BitWidth -= BitWidth > AccessWidth ? AccessWidth : BitWidth;
         Index++;
