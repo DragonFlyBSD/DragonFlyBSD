@@ -46,64 +46,17 @@
 
 #include <sys/rman.h>
 
-#include "acpi.h"
 #include "opt_acpi.h"
+#include "acpi.h"
 #include <dev/acpica/acpivar.h>
 
 #include <bus/pci/pcivar.h>
 
 #include <bus/gpio/gpio_acpi/gpio_acpivar.h>
 
+#include "gpio_intel_var.h"
+
 #include "gpio_if.h"
-
-#define CHV_GPIO_REG_IS		0x300
-#define CHV_GPIO_REG_MASK	0x380
-#define CHV_GPIO_REG_PINS	0x4400	/* start of pin control registers */
-
-#define CHV_GPIO_REGOFF_CTL0	0x0
-#define CHV_GPIO_REGOFF_CTL1	0x4
-
-#define CHV_GPIO_CTL0_RXSTATE	0x00000001u
-#define CHV_GPIO_CTL0_TXSTATE	0x00000002u
-#define CHV_GPIO_CTL0_GPIOCFG_MASK 0x00000700u
-#define CHV_GPIO_CTL0_GPIOEN	0x00008000u
-#define CHV_GPIO_CTL0_PULLUP	0x00800000u
-#define CHV_GPIO_CTL1_INTCFG_MASK 0x00000007u
-#define CHV_GPIO_CTL1_INVRX	0x00000010u
-
-#define CHV_GPIO_PINSIZE	0x8	/* 8 bytes for each pin */
-#define CHV_GPIO_PINCHUNK	15	/* 15 pins at a time */
-#define CHV_GPIO_PININC		0x400	/* every 0x400 bytes */
-
-#define PIN_ADDRESS(x)					\
-    (CHV_GPIO_REG_PINS +				\
-     ((x) / CHV_GPIO_PINCHUNK) * CHV_GPIO_PININC +	\
-     ((x) % CHV_GPIO_PINCHUNK) * CHV_GPIO_PINSIZE)
-
-#define PIN_CTL0(x)		(PIN_ADDRESS(x) + CHV_GPIO_REGOFF_CTL0)
-#define PIN_CTL1(x)		(PIN_ADDRESS(x) + CHV_GPIO_REGOFF_CTL1)
-
-struct pinrange {
-	int start;
-	int end;
-};
-
-struct pin_intr_map {
-	int pin;
-	void *arg;
-	driver_intr_t *handler;
-};
-
-struct gpio_intel_softc {
-	device_t dev;
-	struct resource *mem_res;
-	struct resource *irq_res;
-	void		*intrhand;
-	struct lock	lk;
-	struct pinrange *ranges;
-	struct pin_intr_map intrmaps[16];
-	void		*acpireg;
-};
 
 static int	gpio_intel_probe(device_t dev);
 static int	gpio_intel_attach(device_t dev);
@@ -112,64 +65,21 @@ static int	gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger,
 		    int polarity, int termination, void *arg,
 		    driver_intr_t *handler);
 static int	gpio_intel_free_intr(device_t dev, u_int pin);
-static int	chv_gpio_read_pin(device_t dev, u_int pin);
-static void	chv_gpio_write_pin(device_t dev, u_int pin, int value);
+static int	gpio_intel_read_pin(device_t dev, u_int pin);
+static void	gpio_intel_write_pin(device_t dev, u_int pin, int value);
 
-static void	chv_gpio_intr(void *arg);
-static int	chv_gpio_map_intr(struct gpio_intel_softc *sc, uint16_t pin,
-		    int trigger, int polarity, int termination, void *arg,
-		    driver_intr_t *handler);
-static void	chv_gpio_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin);
-static BOOLEAN	gpio_intel_pin_exists(struct gpio_intel_softc *sc,
+static void	gpio_intel_intr(void *arg);
+static int	gpio_intel_pin_exists(struct gpio_intel_softc *sc,
 		    uint16_t pin);
 
-/* _UID=1 */
-static struct pinrange chv_sw_ranges[] = {
-	{ 0, 7 },
-	{ 15, 22 },
-	{ 30, 37 },
-	{ 45, 52 },
-	{ 60, 67 },
-	{ 75, 82 },
-	{ 90, 97 },
-	{ -1, -1 }
-};
-
-/* _UID=2 */
-static struct pinrange chv_n_ranges[] = {
-	{ 0, 8 },
-	{ 15, 27 },
-	{ 30, 41 },
-	{ 45, 56 },
-	{ 60, 72 },
-	{ -1, -1 }
-};
-
-/* _UID=3 */
-static struct pinrange chv_e_ranges[] = {
-	{ 0, 11 },
-	{ 15, 26 },
-	{ -1, -1 }
-};
-
-/* _UID=4 */
-static struct pinrange chv_se_ranges[] = {
-	{ 0, 7 },
-	{ 15, 26 },
-	{ 30, 35 },
-	{ 45, 52 },
-	{ 60, 69 },
-	{ 75, 85 },
-	{ -1, -1 }
-};
+static char *cherryview_ids[] = { "INT33FF", NULL };
 
 static int
 gpio_intel_probe(device_t dev)
 {
-        static char *chvgpio_ids[] = { "INT33FF", NULL };
 
         if (acpi_disabled("gpio_intel") ||
-            ACPI_ID_PROBE(device_get_parent(dev), dev, chvgpio_ids) == NULL)
+            ACPI_ID_PROBE(device_get_parent(dev), dev, cherryview_ids) == NULL)
                 return (ENXIO);
 
 	device_set_desc(dev, "Intel Cherry Trail GPIO Controller");
@@ -181,22 +91,19 @@ static int
 gpio_intel_attach(device_t dev)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
-	ACPI_HANDLE handle;
 	int error, i, rid;
 
 	lockinit(&sc->lk, "gpio_intel", 0, LK_CANRECURSE);
 
 	sc->dev = dev;
 
-	handle = acpi_get_handle(dev);
-	if (acpi_MatchUid(handle, "1")) {
-		sc->ranges = chv_sw_ranges;
-	} else if (acpi_MatchUid(handle, "2")) {
-		sc->ranges = chv_n_ranges;
-	} else if (acpi_MatchUid(handle, "3")) {
-		sc->ranges = chv_e_ranges;
-	} else if (acpi_MatchUid(handle, "4")) {
-		sc->ranges = chv_se_ranges;
+        if (ACPI_ID_PROBE(device_get_parent(dev), dev, cherryview_ids)
+	    != NULL) {
+		error = gpio_cherryview_matchuid(sc);
+		if (error) {
+			error = ENXIO;
+			goto err;
+		}
 	} else {
 		error = ENXIO;
 		goto err;
@@ -223,18 +130,18 @@ gpio_intel_attach(device_t dev)
 		goto err;
 	}
 
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
 	/* Activate the interrupt */
 	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
-	    chv_gpio_intr, sc, &sc->intrhand, NULL);
+	    gpio_intel_intr, sc, &sc->intrhand, NULL);
 	if (error)
 		device_printf(dev, "Can't setup IRQ\n");
 
 	/* power up the controller */
 	pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
-	/* mask and clear all interrupt lines */
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_MASK, 0);
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_IS, 0xffff);
+	sc->fns->init(sc);
+	lockmgr(&sc->lk, LK_RELEASE);
 
 	sc->acpireg = gpio_acpi_register(dev);
 
@@ -289,12 +196,17 @@ gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger, int polarity,
     int termination, void *arg, driver_intr_t *handler)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
-	int ret;
+	int i, ret;
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 
 	if (gpio_intel_pin_exists(sc, pin)) {
-		ret = chv_gpio_map_intr(sc, pin, trigger, polarity,
+		/* Make sure this pin isn't mapped yet */
+		for (i = 0; i < 16; i++) {
+			if (sc->intrmaps[i].pin == pin)
+			return (ENOMEM);
+		}
+		ret = sc->fns->map_intr(sc, pin, trigger, polarity,
 		    termination, arg, handler);
 	} else {
 		device_printf(sc->dev, "Invalid pin number %d\n", pin);
@@ -315,7 +227,7 @@ gpio_intel_free_intr(device_t dev, u_int pin)
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 
 	if (gpio_intel_pin_exists(sc, pin)) {
-		chv_gpio_unmap_intr(sc, pin);
+		sc->fns->unmap_intr(sc, pin);
 		ret = 0;
 	} else {
 		device_printf(sc->dev, "Invalid pin number %d\n", pin);
@@ -327,159 +239,46 @@ gpio_intel_free_intr(device_t dev, u_int pin)
 	return (ret);
 }
 
+static int
+gpio_intel_read_pin(device_t dev, u_int pin)
+{
+	struct gpio_intel_softc *sc = device_get_softc(dev);
+	int val;
+
+        /* This operation mustn't fail, otherwise ACPI would be in trouble */
+        KKASSERT(gpio_intel_pin_exists(sc, pin));
+
+        lockmgr(&sc->lk, LK_EXCLUSIVE);
+	val = sc->fns->read_pin(sc, pin);
+        lockmgr(&sc->lk, LK_RELEASE);
+
+	return (val);
+}
+
 static void
-chv_gpio_intr(void *arg)
+gpio_intel_write_pin(device_t dev, u_int pin, int value)
+{
+	struct gpio_intel_softc *sc = device_get_softc(dev);
+
+        /* This operation mustn't fail, otherwise ACPI would be in trouble */
+        KKASSERT(gpio_intel_pin_exists(sc, pin));
+
+        lockmgr(&sc->lk, LK_EXCLUSIVE);
+	sc->fns->write_pin(sc, pin, value);
+        lockmgr(&sc->lk, LK_RELEASE);
+}
+
+static void
+gpio_intel_intr(void *arg)
 {
 	struct gpio_intel_softc *sc = (struct gpio_intel_softc *)arg;
-	struct pin_intr_map *mapping;
-	uint32_t status;
-	int i;
 
-	status = bus_read_4(sc->mem_res, CHV_GPIO_REG_IS);
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_IS, status);
-	for (i = 0; i < 16; i++) {
-		if (status & (1 << i)) {
-			mapping = &sc->intrmaps[i];
-			if (mapping->pin != -1 && mapping->handler != NULL)
-				mapping->handler(mapping->arg);
-		}
-	}
+        lockmgr(&sc->lk, LK_EXCLUSIVE);
+	sc->fns->intr(arg);
+        lockmgr(&sc->lk, LK_RELEASE);
 }
 
-/* XXX Add shared/exclusive argument. */
 static int
-chv_gpio_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
-    int polarity, int termination, void *arg, driver_intr_t *handler)
-{
-	uint32_t reg, reg1, reg2;
-	uint32_t intcfg;
-	int i;
-
-	/* Make sure this pin isn't mapped yet */
-	for (i = 0; i < 16; i++) {
-		if (sc->intrmaps[i].pin == pin)
-			return (ENOMEM);
-	}
-
-	reg1 = bus_read_4(sc->mem_res, PIN_CTL0(pin));
-	reg2 = bus_read_4(sc->mem_res, PIN_CTL1(pin));
-	device_printf(sc->dev,
-	    "pin=%d trigger=%d polarity=%d ctrl0=0x%08x ctrl1=0x%08x\n",
-	    pin, trigger, polarity, reg1, reg2);
-
-	intcfg = reg2 & CHV_GPIO_CTL1_INTCFG_MASK;
-
-	/*
-	 * Sanity Checks, for now we just abort if the configuration doesn't
-	 * match our expectations.
-	 */
-	if (!(reg1 & CHV_GPIO_CTL0_GPIOEN)) {
-		device_printf(sc->dev, "GPIO mode is disabled\n");
-		return (ENXIO);
-	}
-	if ((reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0x0 &&
-	    (reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0x200) {
-		device_printf(sc->dev, "RX is disabled\n");
-		return (ENXIO);
-	}
-	if (trigger == ACPI_LEVEL_SENSITIVE) {
-		if (intcfg != 4) {
-			device_printf(sc->dev,
-			    "trigger is %x, should be 4 (Level)\n", intcfg);
-			return (ENXIO);
-		}
-		if (polarity == ACPI_ACTIVE_BOTH) {
-			device_printf(sc->dev,
-			    "ACTIVE_BOTH incompatible with level trigger\n");
-			return (ENXIO);
-		} else if (polarity == ACPI_ACTIVE_LOW) {
-			if (!(reg2 & CHV_GPIO_CTL1_INVRX)) {
-				device_printf(sc->dev,
-				    "Invert RX not enabled (needed for "
-				    "level/low trigger/polarity)\n");
-				return (ENXIO);
-			}
-		} else {
-			if (reg2 & CHV_GPIO_CTL1_INVRX) {
-				device_printf(sc->dev,
-				    "Invert RX should not be enabled for "
-				    "level/high trigger/polarity\n");
-				return (ENXIO);
-			}
-		}
-	} else {
-		if (polarity == ACPI_ACTIVE_HIGH && intcfg != 2) {
-			device_printf(sc->dev,
-			    "Wrong interrupt configuration, is 0x%x should "
-			    "be 0x%x\n", intcfg, 2);
-			return (ENXIO);
-		} else if (polarity == ACPI_ACTIVE_LOW && intcfg != 1) {
-			device_printf(sc->dev,
-			    "Wrong interrupt configuration, is 0x%x should "
-			    "be 0x%x\n", intcfg, 1);
-			return (ENXIO);
-		} else if (polarity == ACPI_ACTIVE_BOTH && intcfg != 3) {
-			device_printf(sc->dev,
-			    "Wrong interrupt configuration, is 0x%x should "
-			    "be 0x%x\n", intcfg, 3);
-			return (ENXIO);
-		}
-	}
-	if (termination == ACPI_PIN_CONFIG_PULLUP &&
-	    !(reg1 & CHV_GPIO_CTL0_PULLUP)) {
-		device_printf(sc->dev,
-		    "Wrong termination, is pull-down, should be pull-up\n");
-		return (ENXIO);
-	} else if (termination == ACPI_PIN_CONFIG_PULLDOWN &&
-	    (reg1 & CHV_GPIO_CTL0_PULLUP)) {
-		device_printf(sc->dev,
-		    "Wrong termination, is pull-up, should be pull-down\n");
-		return (ENXIO);
-	}
-
-	/*
-	 * XXX Currently we are praying that BIOS/UEFI initialized
-	 *     everything correctly.
-	 */
-	i = (reg1 >> 28) & 0xf;
-	if (sc->intrmaps[i].pin != -1) {
-		device_printf(sc->dev, "Interrupt line %d already used\n", i);
-		return (ENXIO);
-	}
-
-	sc->intrmaps[i].pin = pin;
-	sc->intrmaps[i].arg = arg;
-	sc->intrmaps[i].handler = handler;
-
-	/* unmask interrupt */
-	reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
-	reg |= (1 << i);
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_MASK, reg);
-
-	return (0);
-}
-
-static void
-chv_gpio_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
-{
-	uint32_t reg;
-	int i;
-
-	for (i = 0; i < 16; i++) {
-		if (sc->intrmaps[i].pin == pin) {
-			sc->intrmaps[i].pin = -1;
-			sc->intrmaps[i].arg = NULL;
-			sc->intrmaps[i].handler = NULL;
-
-			/* mask interrupt line */
-			reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
-			reg &= ~(1 << i);
-			bus_write_4(sc->mem_res, CHV_GPIO_REG_MASK, reg);
-		}
-	}
-}
-
-static BOOLEAN
 gpio_intel_pin_exists(struct gpio_intel_softc *sc, uint16_t pin)
 {
 	struct pinrange *r;
@@ -492,62 +291,6 @@ gpio_intel_pin_exists(struct gpio_intel_softc *sc, uint16_t pin)
 	return (FALSE);
 }
 
-static int
-chv_gpio_read_pin(device_t dev, u_int pin)
-{
-	struct gpio_intel_softc *sc = device_get_softc(dev);
-	uint32_t reg;
-	int val;
-
-	/* This operation mustn't fail, otherwise ACPI would be in trouble */
-	KKASSERT(gpio_intel_pin_exists(sc, pin));
-
-	lockmgr(&sc->lk, LK_EXCLUSIVE);
-
-	reg = bus_read_4(sc->mem_res, PIN_CTL0(pin));
-	/* Verify that RX is enabled */
-	KKASSERT((reg & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x0 ||
-	    (reg & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x200);
-
-	if (reg & CHV_GPIO_CTL0_RXSTATE)
-		val = 1;
-	else
-		val = 0;
-
-	lockmgr(&sc->lk, LK_RELEASE);
-
-	return (val);
-}
-
-static void
-chv_gpio_write_pin(device_t dev, u_int pin, int value)
-{
-	struct gpio_intel_softc *sc = device_get_softc(dev);
-	uint32_t reg1, reg2;
-
-	/* This operation mustn't fail, otherwise ACPI would be in trouble */
-	KKASSERT(gpio_intel_pin_exists(sc, pin));
-
-	lockmgr(&sc->lk, LK_EXCLUSIVE);
-
-	reg2 = bus_read_4(sc->mem_res, PIN_CTL1(pin));
-	/* Verify that interrupt is disabled */
-	KKASSERT((reg2 & CHV_GPIO_CTL1_INTCFG_MASK) == 0);
-
-	reg1 = bus_read_4(sc->mem_res, PIN_CTL0(pin));
-	/* Verify that TX is enabled */
-	KKASSERT((reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0 ||
-	    (reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x100);
-
-	if (value)
-		reg1 |= CHV_GPIO_CTL0_TXSTATE;
-	else
-		reg1 &= ~CHV_GPIO_CTL0_TXSTATE;
-	bus_write_4(sc->mem_res, PIN_CTL0(pin), reg1);
-
-	lockmgr(&sc->lk, LK_RELEASE);
-}
-
 static device_method_t gpio_intel_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe, gpio_intel_probe),
@@ -557,8 +300,8 @@ static device_method_t gpio_intel_methods[] = {
 	/* GPIO methods */
 	DEVMETHOD(gpio_alloc_intr, gpio_intel_alloc_intr),
 	DEVMETHOD(gpio_free_intr, gpio_intel_free_intr),
-	DEVMETHOD(gpio_read_pin, chv_gpio_read_pin),
-	DEVMETHOD(gpio_write_pin, chv_gpio_write_pin),
+	DEVMETHOD(gpio_read_pin, gpio_intel_read_pin),
+	DEVMETHOD(gpio_write_pin, gpio_intel_write_pin),
 
 	DEVMETHOD_END
 };

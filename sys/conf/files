@@ -2644,4 +2644,5 @@ dev/virtual/virtio/virtio/virtqueue.c	optional virtio
 #
 bus/gpio/gpio_if.m			optional gpio_acpi
 bus/gpio/gpio_acpi/gpio_acpi.c		optional gpio_acpi
+bus/gpio/gpio_intel/gpio_cherryview.c	optional gpio_intel gpio_acpi
 bus/gpio/gpio_intel/gpio_intel.c	optional gpio_intel gpio_acpi

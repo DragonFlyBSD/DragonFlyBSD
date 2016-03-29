@@ -41,8 +41,8 @@
 #include <sys/mutex.h>
 #include <sys/bus.h>
 
-#include "acpi.h"
 #include "opt_acpi.h"
+#include "acpi.h"
 #include <dev/acpica/acpivar.h>
 
 #include "gpio_acpivar.h"
