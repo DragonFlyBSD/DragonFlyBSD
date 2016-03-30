@@ -462,7 +462,7 @@ get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp, int isnew)
 }
 
 /*
- * Allocate HAMMER elements - B-Tree nodse
+ * Allocate HAMMER elements - B-Tree nodes
  */
 void *
 alloc_btree_element(hammer_off_t *offp, struct buffer_info **data_bufferp)

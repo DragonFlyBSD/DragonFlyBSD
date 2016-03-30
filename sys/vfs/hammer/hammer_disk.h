@@ -647,6 +647,9 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
 struct hammer_volume_ondisk {
 	uint64_t vol_signature;	/* HAMMER_FSBUF_VOLUME for a valid header */
 
+	/*
+	 * These are relative to block device offset, not zone offsets.
+	 */
 	int64_t vol_bot_beg;	/* offset of boot area */
 	int64_t vol_mem_beg;	/* offset of memory log */
 	int64_t vol_buf_beg;	/* offset of the first buffer in volume */
@@ -658,12 +661,12 @@ struct hammer_volume_ondisk {
 	char	  vol_name[64];	/* filesystem label, not a block device path */
 
 	int32_t vol_no;		/* volume number within filesystem */
-	int32_t vol_count;	/* number of volumes making up FS */
+	int32_t vol_count;	/* number of volumes making up filesystem */
 
 	uint32_t vol_version;	/* version control information */
 	hammer_crc_t vol_crc;	/* header crc */
 	uint32_t vol_flags;	/* volume flags */
-	uint32_t vol_rootvol;	/* which volume is the root volume? */
+	uint32_t vol_rootvol;	/* the root volume number (must be 0) */
 
 	int32_t vol_reserved04;
 	int32_t vol_reserved05;
@@ -685,7 +688,7 @@ struct hammer_volume_ondisk {
 	int64_t	vol0_reserved11;
 	int64_t vol0_stat_inodes;	/* for statfs only */
 	int64_t vol0_reserved10;
-	hammer_off_t vol0_btree_root;	/* B-Tree root */
+	hammer_off_t vol0_btree_root;	/* B-Tree root offset in zone-8 */
 	hammer_tid_t vol0_next_tid;	/* highest partially synchronized TID */
 	hammer_off_t vol0_unused03;
 
