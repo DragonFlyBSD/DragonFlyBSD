@@ -651,7 +651,7 @@ struct hammer_volume_ondisk {
 	int64_t vol_mem_beg;	/* offset of memory log */
 	int64_t vol_buf_beg;	/* offset of the first buffer in volume */
 	int64_t vol_buf_end;	/* offset of volume EOF (on buffer boundary) */
-	int64_t vol_locked;	/* not used */
+	int64_t vol_reserved00;
 
 	uuid_t    vol_fsid;	/* identify filesystem */
 	uuid_t    vol_fstype;	/* identify filesystem type */
