@@ -682,7 +682,7 @@ struct hammer_volume_ondisk {
 	 */
 	int64_t vol0_stat_bigblocks;	/* total big-blocks when fs is empty */
 	int64_t vol0_stat_freebigblocks;/* number of free big-blocks */
-	int64_t	vol0_stat_bytes;	/* for statfs only */
+	int64_t	vol0_reserved11;
 	int64_t vol0_stat_inodes;	/* for statfs only */
 	int64_t vol0_reserved10;
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
