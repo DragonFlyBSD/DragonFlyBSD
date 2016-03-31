@@ -104,6 +104,7 @@ show_info(char *path)
 	fprintf(stdout, "Volume identification\n");
 	fprintf(stdout, "\tLabel               %s\n", fip->vol_name);
 	fprintf(stdout, "\tNo. Volumes         %d\n", fip->nvolumes);
+	fprintf(stdout, "\tRoot Volume         %d\n", fip->rootvol);
 	fprintf(stdout, "\tFSID                %s\n", fsid);
 	fprintf(stdout, "\tHAMMER Version      %d\n", fip->version);
 

@@ -72,6 +72,7 @@ libhammer_get_fsinfo(const char *path)
 	fip->vol_fsid = info.vol_fsid;
 	fip->version = info.version;
 	fip->nvolumes = info.nvolumes;
+	fip->rootvol = info.rootvol;
 	fip->inodes = info.inodes;
 	fip->bigblocks = info.bigblocks;
 	fip->freebigblocks = info.freebigblocks;

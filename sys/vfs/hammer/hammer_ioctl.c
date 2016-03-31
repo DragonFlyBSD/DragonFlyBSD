@@ -656,6 +656,7 @@ hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info)
 	info->bigblocks = od->vol0_stat_bigblocks;
 	info->freebigblocks = od->vol0_stat_freebigblocks;
 	info->nvolumes = hm->nvolumes;
+	info->rootvol = od->vol_rootvol;  /* must be 0 */
 
 	return 0;
 }

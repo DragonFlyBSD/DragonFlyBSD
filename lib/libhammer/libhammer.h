@@ -101,7 +101,8 @@ typedef struct libhammer_fsinfo {
 	int64_t  bigblocks;         /* Total big blocks */
 	int64_t  freebigblocks;     /* Free big blocks */
 	int64_t  rsvbigblocks;      /* Reserved big blocks */
-	int32_t  rsv[8];
+	int32_t  rootvol;           /* Root volume # */
+	int32_t  rsv[7];
 	TAILQ_HEAD(pfslist, libhammer_pfsinfo) list_pseudo;
 } *libhammer_fsinfo_t;
 

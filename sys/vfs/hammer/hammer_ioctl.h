@@ -233,7 +233,7 @@ struct hammer_ioc_info {
 
 	int		version;
 	int		nvolumes;
-	int		reserved01;
+	int		rootvol;
 	int		reserved02;
 
 	int64_t		bigblocks;
