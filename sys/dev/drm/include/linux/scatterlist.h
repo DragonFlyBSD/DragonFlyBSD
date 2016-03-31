@@ -52,9 +52,10 @@ struct scatterlist {
 		struct vm_page		*page;
 		struct scatterlist	*sg;
 	} sl_un;
-	dma_addr_t	address;
+	unsigned long	page_link;
 	unsigned long	offset;
 	uint32_t	length;
+	dma_addr_t	dma_address;
 	uint32_t	flags;
 };
 
@@ -70,13 +71,18 @@ struct sg_page_iter {
 	unsigned int		maxents;
 };
 
+
+#define sg_is_chain(sg)		((sg)->page_link & 0x01)
+#define sg_chain_ptr(sg)	\
+	((struct scatterlist *) ((sg)->page_link & ~0x03))
+
 /*
  * Maximum number of entries that will be allocated in one piece, if
  * a list larger than this is required then chaining will be utilized.
  */
 #define SG_MAX_SINGLE_ALLOC             (PAGE_SIZE / sizeof(struct scatterlist))
 
-#define	sg_dma_address(sg)	(sg)->address
+#define	sg_dma_address(sg)	(sg)->dma_address
 #define	sg_dma_len(sg)		(sg)->length
 #define	sg_page(sg)		(sg)->sl_un.page
 #define	sg_scatternext(sg)	(sg)->sl_un.sg
@@ -122,13 +128,11 @@ sg_next(struct scatterlist *sg)
 	return (sg);
 }
 
-#if 0
 static inline vm_paddr_t
 sg_phys(struct scatterlist *sg)
 {
 	return sg_page(sg)->phys_addr + sg->offset;
 }
-#endif
 
 /**
  * sg_chain - Chain two sglists together
@@ -386,10 +390,16 @@ _sg_iter_init(struct scatterlist *sgl, struct sg_page_iter *iter,
 	}
 }
 
+static inline struct vm_page *
+sg_page_iter_page(struct sg_page_iter *piter)
+{
+	return nth_page(sg_page(piter->sg), piter->sg_pgoffset);
+}
+
 static inline dma_addr_t
 sg_page_iter_dma_address(struct sg_page_iter *spi)
 {
-	return spi->sg->address + (spi->sg_pgoffset << PAGE_SHIFT);
+	return spi->sg->dma_address + (spi->sg_pgoffset << PAGE_SHIFT);
 }
 
 #define for_each_sg_page(sgl, iter, nents, pgoffset)			\
