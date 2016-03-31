@@ -39,6 +39,12 @@
 #include <asm/page.h>
 #include <asm/pgtable.h>
 
+static inline struct vm_page *
+nth_page(struct vm_page *page, int n)
+{
+	return page + n;
+}
+
 #define PAGE_ALIGN(addr) round_page(addr)
 
 struct vm_area_struct {
