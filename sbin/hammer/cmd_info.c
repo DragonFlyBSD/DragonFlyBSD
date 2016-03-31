@@ -54,6 +54,8 @@ hammer_cmd_info(char **av, int ac)
                         show_info(*av);
                         --ac;
                         ++av;
+			if (ac)
+				printf("\n");
                 }
 	} else {
 		mntsize = getmntinfo(&stfsbuf, MNT_NOWAIT);
