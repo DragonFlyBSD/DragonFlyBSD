@@ -1266,9 +1266,6 @@ extern void drm_vblank_post_modeset(struct drm_device *dev, int crtc);
 extern int		drm_sysctl_init(struct drm_device *dev);
 extern int		drm_sysctl_cleanup(struct drm_device *dev);
 
-/* Cache management (drm_memory.c) */
-void	drm_clflush_pages(vm_page_t *pages, unsigned long num_pages);
-
 /* Locking IOCTL support (drm_drv.c) */
 int	drm_lock(struct drm_device *dev, void *data,
 		 struct drm_file *file_priv);
@@ -1289,6 +1286,8 @@ int	drm_noop(struct drm_device *dev, void *data,
 		 struct drm_file *file_priv);
 
 /* Cache management (drm_cache.c) */
+void drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages);
+void drm_clflush_sg(struct sg_table *st);
 void drm_clflush_virt_range(void *addr, unsigned long length);
 
 /* DMA support (drm_dma.c) */

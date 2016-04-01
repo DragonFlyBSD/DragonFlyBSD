@@ -35,11 +35,50 @@
 #include <machine/md_var.h>
 #include <machine/cpufunc.h>
 
+/*
+ * clflushopt is an unordered instruction which needs fencing with mfence or
+ * sfence to avoid ordering issues.  For drm_clflush_page this fencing happens
+ * in the caller.
+ */
+static void
+drm_clflush_page(struct vm_page *page)
+{
+	uint8_t *page_virtual;
+	unsigned int i;
+	const int size = cpu_clflush_line_size;
+
+	if (unlikely(page == NULL))
+		return;
+
+	page_virtual = kmap_atomic(page);
+	for (i = 0; i < PAGE_SIZE; i += size)
+		clflush((u_long)(page_virtual + i));
+	kunmap_atomic(page_virtual);
+}
+
 void
 drm_clflush_pages(vm_page_t *pages, unsigned long num_pages)
 {
 	pmap_invalidate_cache_pages(pages, num_pages);
 }
+
+void
+drm_clflush_sg(struct sg_table *st)
+{
+	if (cpu_has_clflush) {
+		struct sg_page_iter sg_iter;
+
+		mb();
+		for_each_sg_page(st->sgl, &sg_iter, st->nents, 0)
+			drm_clflush_page(sg_page_iter_page(&sg_iter));
+		mb();
+
+		return;
+	}
+
+	cpu_wbinvd_on_all_cpus();
+}
+EXPORT_SYMBOL(drm_clflush_sg);
 
 void
 drm_clflush_virt_range(void *in_addr, unsigned long length)
