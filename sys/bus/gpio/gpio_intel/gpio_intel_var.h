@@ -10,6 +10,7 @@ struct pin_intr_map {
 	int pin;
 	void *arg;
 	driver_intr_t *handler;
+	uint32_t orig_intcfg;
 };
 
 struct gpio_intel_softc {

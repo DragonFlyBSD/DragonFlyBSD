@@ -198,7 +198,7 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
     int polarity, int termination, void *arg, driver_intr_t *handler)
 {
 	uint32_t reg, reg1, reg2;
-	uint32_t intcfg;
+	uint32_t intcfg, new_intcfg;
 	int i;
 
 	reg1 = bus_read_4(sc->mem_res, PIN_CTL0(pin));
@@ -207,7 +207,7 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 	    "pin=%d trigger=%d polarity=%d ctrl0=0x%08x ctrl1=0x%08x\n",
 	    pin, trigger, polarity, reg1, reg2);
 
-	intcfg = reg2 & CHV_GPIO_CTL1_INTCFG_MASK;
+	new_intcfg = intcfg = reg2 & CHV_GPIO_CTL1_INTCFG_MASK;
 
 	/*
 	 * Sanity Checks, for now we just abort if the configuration doesn't
@@ -248,21 +248,35 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 			}
 		}
 	} else {
+		/*
+		 * For edge-triggered interrupts it's definitely harmless to
+		 * change between rising-edge, falling-edge and both-edges
+		 * triggering.
+		 */
 		if (polarity == ACPI_ACTIVE_HIGH && intcfg != 2) {
 			device_printf(sc->dev,
 			    "Wrong interrupt configuration, is 0x%x should "
 			    "be 0x%x\n", intcfg, 2);
-			return (ENXIO);
+			if (intcfg == 1 || intcfg == 3)
+				new_intcfg = 2;
+			else
+				return (ENXIO);
 		} else if (polarity == ACPI_ACTIVE_LOW && intcfg != 1) {
 			device_printf(sc->dev,
 			    "Wrong interrupt configuration, is 0x%x should "
 			    "be 0x%x\n", intcfg, 1);
-			return (ENXIO);
+			if (intcfg == 2 || intcfg == 3)
+				new_intcfg = 1;
+			else
+				return (ENXIO);
 		} else if (polarity == ACPI_ACTIVE_BOTH && intcfg != 3) {
 			device_printf(sc->dev,
 			    "Wrong interrupt configuration, is 0x%x should "
 			    "be 0x%x\n", intcfg, 3);
-			return (ENXIO);
+			if (intcfg == 1 || intcfg == 2)
+				new_intcfg = 3;
+			else
+				return (ENXIO);
 		}
 	}
 	if (termination == ACPI_PIN_CONFIG_PULLUP &&
@@ -277,19 +291,26 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 		return (ENXIO);
 	}
 
-	/*
-	 * XXX Currently we are praying that BIOS/UEFI initialized
-	 *     everything correctly.
-	 */
+	/* Check if the interrupt/line configured by BIOS/UEFI is unused */
 	i = (reg1 >> 28) & 0xf;
 	if (sc->intrmaps[i].pin != -1) {
 		device_printf(sc->dev, "Interrupt line %d already used\n", i);
 		return (ENXIO);
 	}
 
+	if (new_intcfg != intcfg) {
+		device_printf(sc->dev,
+		    "Switching interrupt configuration from 0x%x to 0x%x\n",
+		    intcfg, new_intcfg);
+		reg = reg2 & ~CHV_GPIO_CTL1_INTCFG_MASK;
+		reg |= (new_intcfg & CHV_GPIO_CTL1_INTCFG_MASK) << 0;
+		bus_write_4(sc->mem_res, PIN_CTL1(pin), reg);
+	}
+
 	sc->intrmaps[i].pin = pin;
 	sc->intrmaps[i].arg = arg;
 	sc->intrmaps[i].handler = handler;
+	sc->intrmaps[i].orig_intcfg = intcfg;
 
 	/* unmask interrupt */
 	reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
@@ -302,19 +323,30 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 static void
 gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
 {
-	uint32_t reg;
+	uint32_t reg, cfg;
 	int i;
 
 	for (i = 0; i < 16; i++) {
 		if (sc->intrmaps[i].pin == pin) {
+			cfg = sc->intrmaps[i].orig_intcfg;
+
 			sc->intrmaps[i].pin = -1;
 			sc->intrmaps[i].arg = NULL;
 			sc->intrmaps[i].handler = NULL;
+			sc->intrmaps[i].orig_intcfg = 0;
 
 			/* mask interrupt line */
 			reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
 			reg &= ~(1 << i);
 			bus_write_4(sc->mem_res, CHV_GPIO_REG_MASK, reg);
+
+			/* Restore interrupt configuration if needed */
+			reg = bus_read_4(sc->mem_res, PIN_CTL1(pin));
+			if ((reg & CHV_GPIO_CTL1_INTCFG_MASK) != cfg) {
+				reg &= ~CHV_GPIO_CTL1_INTCFG_MASK;
+				reg |= (cfg & CHV_GPIO_CTL1_INTCFG_MASK) << 0;
+				bus_write_4(sc->mem_res, PIN_CTL1(pin), reg);
+			}
 		}
 	}
 }
