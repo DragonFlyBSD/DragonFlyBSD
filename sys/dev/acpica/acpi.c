@@ -1972,6 +1972,28 @@ acpi_MatchHid(ACPI_HANDLE h, const char *hid)
 }
 
 /*
+ * Match a UID string against a handle
+ */
+BOOLEAN
+acpi_MatchUid(ACPI_HANDLE h, const char *uid)
+{
+    ACPI_DEVICE_INFO	*devinfo;
+    int			ret;
+
+    ret = FALSE;
+    if (uid == NULL || h == NULL ||
+	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
+	return (ret);
+
+    if ((devinfo->Valid & ACPI_VALID_UID) != 0 &&
+	strcmp(uid, devinfo->UniqueId.String) == 0)
+	ret = TRUE;
+
+    AcpiOsFree(devinfo);
+    return (ret);
+}
+
+/*
  * Return the handle of a named object within our scope, ie. that of (parent)
  * or one if its parents.
  */

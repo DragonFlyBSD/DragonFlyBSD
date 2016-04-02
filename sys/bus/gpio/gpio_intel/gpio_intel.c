@@ -123,24 +123,6 @@ static void	chv_gpio_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin);
 static BOOLEAN	gpio_intel_pin_exists(struct gpio_intel_softc *sc,
 		    uint16_t pin);
 
-static BOOLEAN	acpi_MatchUid(ACPI_HANDLE h, const char *uid)
-{
-	ACPI_DEVICE_INFO	*devinfo;
-	int			ret;
-
-	ret = FALSE;
-	if (uid == NULL || h == NULL ||
-	    ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
-		return (ret);
-
-	if ((devinfo->Valid & ACPI_VALID_UID) != 0 &&
-	    strcmp(uid, devinfo->UniqueId.String) == 0)
-		ret = TRUE;
-
-	AcpiOsFree(devinfo);
-	return (ret);
-}
-
 /* _UID=1 */
 static struct pinrange chv_sw_ranges[] = {
 	{ 0, 7 },

@@ -479,6 +479,7 @@ ACPI_HANDLE	acpi_GetReference(ACPI_HANDLE scope, ACPI_OBJECT *obj);
 int		acpi_task_thread_init(void);
 void		acpi_task_thread_schedule(void);
 extern BOOLEAN acpi_MatchHid(ACPI_HANDLE h, const char *hid);
+extern BOOLEAN acpi_MatchUid(ACPI_HANDLE h, const char *uid);
 /*
  * Base level for BUS_ADD_CHILD.  Special devices are added at orders less
  * than this, and normal devices at or above this level.  This keeps the
