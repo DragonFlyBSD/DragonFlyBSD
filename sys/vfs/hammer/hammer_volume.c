@@ -316,6 +316,7 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 		len = strlen(volume->vol_name) + 1;
 		KKASSERT(len <= MAXPATHLEN);
 
+		ioc->vols[cnt].vol_no = volume->vol_no;
 		error = copyout(volume->vol_name, ioc->vols[cnt].device_name,
 				len);
 		hammer_rel_volume(volume, 0);
