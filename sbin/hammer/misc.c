@@ -197,6 +197,59 @@ hammer_check_restrict(const char *filesystem)
 	}
 }
 
+int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *p)
+{
+	struct hammer_ioc_volume_list ioc;
+	int fd;
+
+	fd = open(fs, O_RDONLY);
+	if (fd < 0) {
+		perror("open");
+		return(-1);
+	}
+
+	bzero(&ioc, sizeof(ioc));
+	ioc.nvols = HAMMER_MAX_VOLUMES;
+	ioc.vols = malloc(ioc.nvols * sizeof(*ioc.vols));
+	if (ioc.vols == NULL) {
+		perror("malloc");
+		close(fd);
+		return(-1);
+	}
+
+	if (ioctl(fd, HAMMERIOC_LIST_VOLUMES, &ioc) < 0) {
+		perror("ioctl");
+		close(fd);
+		free(ioc.vols);
+		return(-1);
+	}
+
+	bcopy(&ioc, p, sizeof(ioc));
+	close(fd);
+
+	return(0);
+}
+
+int hammer_fs_to_rootvol(const char *fs, char *buf, int len)
+{
+	struct hammer_ioc_volume_list ioc;
+	int i;
+
+	if (hammer_fs_to_vol(fs, &ioc) == -1)
+		return(-1);
+
+	for (i = 0; i < ioc.nvols; i++) {
+		if (ioc.vols[i].vol_no == HAMMER_ROOT_VOLNO) {
+			strlcpy(buf, ioc.vols[i].device_name, len);
+			break;
+		}
+	}
+	assert(i != ioc.nvols);  /* root volume must exist */
+
+	free(ioc.vols);
+	return(0);
+}
+
 /*
  * Functions and data structure for zone statistics
  */

@@ -87,6 +87,7 @@ show_info(char *path)
 	int64_t	    totalbytes, freebytes;
 	char	    *fsid;
 	char	    buf[6];
+	char	    rootvol[MAXPATHLEN];
 
 	fsid = NULL;
 	usedbigblocks = 0;
@@ -102,11 +103,17 @@ show_info(char *path)
 	/* Find out the UUID strings */
 	uuid_to_string(&fip->vol_fsid, &fsid, NULL);
 
+	/* Get the root volume path */
+	if (hammer_fs_to_rootvol(path, rootvol, sizeof(rootvol)) == -1) {
+		fprintf(stderr, "Failed to get root volume path\n");
+		exit(1);
+	}
+
 	/* Volume information */
 	fprintf(stdout, "Volume identification\n");
 	fprintf(stdout, "\tLabel               %s\n", fip->vol_name);
 	fprintf(stdout, "\tNo. Volumes         %d\n", fip->nvolumes);
-	fprintf(stdout, "\tRoot Volume         %d\n", fip->rootvol);
+	fprintf(stdout, "\tRoot Volume         %s\n", rootvol);
 	fprintf(stdout, "\tFSID                %s\n", fsid);
 	fprintf(stdout, "\tHAMMER Version      %d\n", fip->version);
 

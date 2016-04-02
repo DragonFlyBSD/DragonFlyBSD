@@ -119,8 +119,8 @@ void hammer_cmd_get_version(char **av, int ac);
 void hammer_cmd_set_version(char **av, int ac);
 void hammer_cmd_volume_add(char **av, int ac);
 void hammer_cmd_volume_del(char **av, int ac);
-void hammer_cmd_volume_list(char **av, int ac, const char *cmd);
-void hammer_cmd_volume_blkdevs(char **av, int ac, const char *cmd);
+void hammer_cmd_volume_list(char **av, int ac);
+void hammer_cmd_volume_blkdevs(char **av, int ac);
 void hammer_cmd_dedup_simulate(char **av, int ac);
 void hammer_cmd_dedup(char **av, int ac);
 void hammer_cmd_abort_cleanup(char **av, int ac);
@@ -133,6 +133,8 @@ int getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path);
 void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
 void dump_pfsd(hammer_pseudofs_data_t, int);
 void hammer_check_restrict(const char *path);
+int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);
+int hammer_fs_to_rootvol(const char *fs, char *buf, int len);
 void hammer_softprune_scandir(struct softprune **basep,
                          struct hammer_ioc_prune *template,
                          const char *dirname);

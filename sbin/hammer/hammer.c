@@ -519,11 +519,11 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "volume-list") == 0) {
-		hammer_cmd_volume_list(av + 1, ac - 1, av[0]);
+		hammer_cmd_volume_list(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "volume-blkdevs") == 0) {
-		hammer_cmd_volume_blkdevs(av + 1, ac - 1, av[0]);
+		hammer_cmd_volume_blkdevs(av + 1, ac - 1);
 		exit(0);
 	}
 
