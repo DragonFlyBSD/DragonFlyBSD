@@ -938,6 +938,7 @@ bus/smbus/ichiic/ig4_pci.c	optional ichiic pci
 bus/smbus/ichiic/ig4_acpi.c	optional ichiic acpi
 bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
+bus/smbus/smbacpi/smbacpi.c	optional smbacpi acpi
 dev/smbus/smb/smb.c		optional smb
 dev/serial/si/si_drv.c		optional si
 dev/serial/si/si2_z280.c	optional si

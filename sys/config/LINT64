@@ -1658,6 +1658,9 @@ device		sdhci
 # Supported devices:
 # smb		standard io through /dev/smb*
 #
+# ACPI support:
+# smbacpi	support for ACPI I2cSerialBus resources
+#
 # Supported SMB interfaces:
 # iicsmb	I2C to SMB bridge with any iicbus interface
 # bktr		brooktree848 I2C hardware interface
@@ -1680,6 +1683,8 @@ device		amdpm
 device		amdsmb
 
 device		smb
+
+device		smbacpi
 
 #
 # I2C Bus
