@@ -108,7 +108,7 @@ void
 hammer_cmd_volume_del(char **av, int ac)
 {
 	struct hammer_ioc_volume ioc;
-	int fd;
+	int fd, error, retried = 0;
 	const char *device, *filesystem;
 
 	if (ac != 2) {
@@ -131,10 +131,22 @@ hammer_cmd_volume_del(char **av, int ac)
 	 */
 	bzero(&ioc, sizeof(ioc));
 	strncpy(ioc.device_name, device, MAXPATHLEN);
-
+	if (ForceOpt)
+		ioc.flag |= HAMMER_IOC_VOLUME_REBLOCK;
+retry:
 	if (ioctl(fd, HAMMERIOC_DEL_VOLUME, &ioc) < 0) {
+		error = errno;
+		if ((error == ENOTEMPTY) && (retried++ == 0)) {
+			printf("%s is not empty, ", device);
+			printf("do you want to reblock %s? [y/n]\n", device);
+			fflush(stdout);
+			if (getyn() == 1) {
+				ioc.flag |= HAMMER_IOC_VOLUME_REBLOCK;
+				goto retry;
+			}
+		}
 		fprintf(stderr, "hammer volume-del ioctl: %s\n",
-			strerror(errno));
+			strerror(error));
 		exit(1);
 	}
 

@@ -216,13 +216,18 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if (total_bigblocks == empty_bigblocks) {
 		hmkprintf(hmp, "%s is already empty\n", volume->vol_name);
-	} else {
+	} else if (ioc->flag & HAMMER_IOC_VOLUME_REBLOCK) {
 		error = hammer_do_reblock(trans, ip);
 		if (error) {
 			hmp->volume_to_remove = -1;
 			hammer_rel_volume(volume, 0);
 			goto end;
 		}
+	} else {
+		hmkprintf(hmp, "%s is not empty\n", volume->vol_name);
+		hammer_rel_volume(volume, 0);
+		error = ENOTEMPTY;
+		goto end;
 	}
 
 	hammer_sync_lock_sh(trans);

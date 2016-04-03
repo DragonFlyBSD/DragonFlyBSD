@@ -351,11 +351,14 @@ struct hammer_ioc_volume {
 	struct hammer_ioc_head head;
 	char			device_name[MAXPATHLEN];
 	int32_t			vol_no;
-	int32_t			reserved;
+	uint8_t			flag;
+	uint8_t			reserved[3];
 	int64_t			vol_size;
 	int64_t			boot_area_size;
 	int64_t			mem_area_size;
 };
+
+#define HAMMER_IOC_VOLUME_REBLOCK	1
 
 struct hammer_ioc_volume_list {
 	struct hammer_ioc_volume *vols;
