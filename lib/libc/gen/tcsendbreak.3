@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)tcsendbreak.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/tcsendbreak.3,v 1.5.2.3 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/tcsendbreak.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt TCSENDBREAK 3
@@ -67,22 +66,26 @@ depending on the value of
 The value of
 .Fa action
 must be one of the following:
-.Bl -tag -width "TCIOFF"
-.It Fa TCOOFF
+.Bl -tag -width ".Dv TCIOFF"
+.It Dv TCOOFF
 Suspend output.
-.It Fa TCOON
+.It Dv TCOON
 Restart suspended output.
-.It Fa TCIOFF
+.It Dv TCIOFF
 Transmit a STOP character, which is intended to cause the terminal to stop
 transmitting data to the system.
-(See the description of IXOFF in the
+(See the description of
+.Dv IXOFF
+in the
 .Ql Input Modes
 section of
 .Xr termios 4 ) .
-.It Fa TCION
+.It Dv TCION
 Transmit a START character, which is intended to cause the terminal to start
 transmitting data to the system.
-(See the description of IXOFF in the
+(See the description of
+.Dv IXOFF
+in the
 .Ql Input Modes
 section of
 .Xr termios 4 ) .
@@ -98,12 +101,12 @@ from the terminal but not yet read, depending on the value of
 The value of
 .Fa action
 must be one of the following:
-.Bl -tag -width "TCIOFLUSH"
-.It Fa TCIFLUSH
+.Bl -tag -width ".Dv TCIOFLUSH"
+.It Dv TCIFLUSH
 Flush data received but not read.
-.It Fa TCOFLUSH
+.It Dv TCOFLUSH
 Flush data written but not transmitted.
-.It Fa TCIOFLUSH
+.It Dv TCIOFLUSH
 Flush both data received but not read and data written but not transmitted.
 .El
 .Pp

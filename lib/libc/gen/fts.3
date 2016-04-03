@@ -151,7 +151,7 @@ typedef struct _ftsent {
 .Ed
 .Pp
 These fields are defined as follows:
-.Bl -tag -width "fts_namelen"
+.Bl -tag -width ".Fa fts_namelen"
 .It Fa fts_info
 One of the following values describing the returned
 .Vt FTSENT
@@ -162,7 +162,7 @@ With the exception of directories without errors
 all of these
 entries are terminal, that is, they will not be revisited, nor will any
 of their descendants be visited.
-.Bl -tag -width FTS_DEFAULT
+.Bl -tag -width ".Dv FTS_DEFAULT"
 .It Dv FTS_D
 A directory being visited in pre-order.
 .It Dv FTS_DC
@@ -394,7 +394,7 @@ must be specified.
 The options are selected by
 .Em or Ns 'ing
 the following values:
-.Bl -tag -width "FTS_PHYSICAL"
+.Bl -tag -width ".Dv FTS_PHYSICAL"
 .It Dv FTS_COMFOLLOW
 This option causes any symbolic link specified as a root path to be
 followed immediately whether or not
@@ -640,7 +640,7 @@ on the same file hierarchy stream.
 .Pp
 .Em Option
 may be set to the following value:
-.Bl -tag -width FTS_NAMEONLY
+.Bl -tag -width ".Dv FTS_NAMEONLY"
 .It Dv FTS_NAMEONLY
 Only the names of the files are needed.
 The contents of all the fields in the returned linked list of structures
@@ -664,7 +664,7 @@ function
 returns 0 on success, and \-1 if an error occurs.
 .Em Option
 must be set to one of the following values:
-.Bl -tag -width FTS_PHYSICAL
+.Bl -tag -width ".Dv FTS_PHYSICAL"
 .It Dv FTS_AGAIN
 Re-visit the file; any file type may be re-visited.
 The next call to

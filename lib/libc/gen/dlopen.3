@@ -85,7 +85,7 @@ controls the way in which external function references from the
 loaded object are bound to their referents.
 It must contain one of the following values, possibly ORed with
 additional flags which will be described subsequently:
-.Bl -tag -width RTLD_LAZYX
+.Bl -tag -width ".Dv RTLD_NODELETE"
 .It Dv RTLD_LAZY
 Each external function reference is resolved when the function is first
 called.
@@ -105,7 +105,7 @@ call to
 One of the following flags may be ORed into the
 .Fa mode
 argument:
-.Bl -tag -width RTLD_NODELETE
+.Bl -tag -width ".Dv RTLD_NODELETE"
 .It Dv RTLD_GLOBAL
 Symbols from this shared object and its directed acyclic graph (DAG)
 of needed objects will be available for resolving undefined references

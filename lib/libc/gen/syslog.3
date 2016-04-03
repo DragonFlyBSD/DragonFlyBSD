@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)syslog.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/syslog.3,v 1.9.2.9 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/syslog.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt SYSLOG 3
@@ -96,7 +95,7 @@ generating the message.
 The level is selected from the following
 .Em ordered
 (high to low) list:
-.Bl -tag -width LOG_AUTHPRIV
+.Bl -tag -width ".Dv LOG_AUTHPRIV"
 .It Dv LOG_EMERG
 A panic condition.
 This is normally broadcast to all users.
@@ -136,7 +135,7 @@ argument
 is a bit field specifying logging options, which is formed by
 .Tn OR Ns 'ing
 one or more of the following values:
-.Bl -tag -width LOG_AUTHPRIV
+.Bl -tag -width ".Dv LOG_AUTHPRIV"
 .It Dv LOG_CONS
 If
 .Fn syslog
@@ -162,7 +161,7 @@ The
 .Fa facility
 parameter encodes a default facility to be assigned to all messages
 that do not have an explicit facility encoded:
-.Bl -tag -width LOG_AUTHPRIV
+.Bl -tag -width ".Dv LOG_AUTHPRIV"
 .It Dv LOG_AUTH
 The authorization system:
 .Xr login 1 ,

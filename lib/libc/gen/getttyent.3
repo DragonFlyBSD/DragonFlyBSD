@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)getttyent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getttyent.3,v 1.15 2007/01/09 00:27:54 imp Exp $
-.\" $DragonFly: src/lib/libc/gen/getttyent.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
 .Dd November 17, 1996
 .Dt GETTTYENT 3
@@ -84,7 +83,7 @@ struct ttyent {
 .Ed
 .Pp
 The fields are as follows:
-.Bl -tag -width ty_comment
+.Bl -tag -width ".Fa ty_comment"
 .It Fa ty_name
 The name of the character-special file.
 .It Fa ty_getty
@@ -97,7 +96,7 @@ The name of the default terminal type connected to this tty line.
 A mask of bit fields which indicate various actions allowed on this
 tty line.
 The possible flags are as follows:
-.Bl -tag -width TTY_NETWORK
+.Bl -tag -width ".Dv TTY_NETWORK"
 .It Dv TTY_ON
 Enables logins (i.e.,
 .Xr init 8
@@ -184,7 +183,7 @@ return non-zero if the dialup or network flag is set for the
 tty entry relating to the tty named by the argument, and
 zero otherwise.
 .Sh FILES
-.Bl -tag -width /etc/ttys -compact
+.Bl -tag -width ".Pa /etc/ttys" -compact
 .It Pa /etc/ttys
 .El
 .Sh SEE ALSO
