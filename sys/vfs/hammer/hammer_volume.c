@@ -225,11 +225,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		}
 	}
 
-	/*
-	 * Sync filesystem
-	 */
-	hammer_flush_dirty(hmp, 30);
-
 	hammer_sync_lock_sh(trans);
 	hammer_lock_ex(&hmp->blkmap_lock);
 
