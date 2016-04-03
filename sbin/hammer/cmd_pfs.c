@@ -42,7 +42,6 @@ static int scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void pseudofs_usage(int code);
-static int getyn(void);
 static int timetosecs(char *str);
 
 /*
@@ -740,28 +739,6 @@ pseudofs_usage(int code)
 		"    prune-min=[Nd/]hh[:mm[:ss]]\n"
 	);
 	exit(code);
-}
-
-static
-int
-getyn(void)
-{
-	char buf[256];
-	int len;
-
-	if (fgets(buf, sizeof(buf), stdin) == NULL)
-		return(0);
-	len = strlen(buf);
-	while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
-		--len;
-	buf[len] = 0;
-	if (strcmp(buf, "y") == 0 ||
-	    strcmp(buf, "yes") == 0 ||
-	    strcmp(buf, "Y") == 0 ||
-	    strcmp(buf, "YES") == 0) {
-		return(1);
-	}
-	return(0);
 }
 
 /*

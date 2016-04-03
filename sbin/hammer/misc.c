@@ -197,7 +197,29 @@ hammer_check_restrict(const char *filesystem)
 	}
 }
 
-int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *p)
+int
+getyn(void)
+{
+	char buf[256];
+	int len;
+
+	if (fgets(buf, sizeof(buf), stdin) == NULL)
+		return(0);
+	len = strlen(buf);
+	while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+		--len;
+	buf[len] = 0;
+	if (strcmp(buf, "y") == 0 ||
+	    strcmp(buf, "yes") == 0 ||
+	    strcmp(buf, "Y") == 0 ||
+	    strcmp(buf, "YES") == 0) {
+		return(1);
+	}
+	return(0);
+}
+
+int
+hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *p)
 {
 	struct hammer_ioc_volume_list ioc;
 	int fd;
@@ -230,7 +252,8 @@ int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *p)
 	return(0);
 }
 
-int hammer_fs_to_rootvol(const char *fs, char *buf, int len)
+int
+hammer_fs_to_rootvol(const char *fs, char *buf, int len)
 {
 	struct hammer_ioc_volume_list ioc;
 	int i;

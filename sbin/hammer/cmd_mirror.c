@@ -63,7 +63,7 @@ static int validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 static void update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id);
 static ssize_t writebw(int fd, const void *buf, size_t nbytes,
 			uint64_t *bwcount, struct timeval *tv1);
-static int getyn(void);
+static int getyntty(void);
 static void mirror_usage(int code);
 
 /*
@@ -707,7 +707,7 @@ create_pfs(const char *filesystem, uuid_t *s_uuid)
 			"Do you want to create a new slave PFS? (yes|no) ",
 			filesystem);
 		fflush(stderr);
-		if (getyn() != 1) {
+		if (getyntty() != 1) {
 			fprintf(stderr, "Aborting operation\n");
 			exit(1);
 		}
@@ -1692,7 +1692,7 @@ writebw(int fd, const void *buf, size_t nbytes,
  * part of a two-way pipe so we cannot use stdin for this operation.
  */
 static int
-getyn(void)
+getyntty(void)
 {
 	char buf[256];
 	FILE *fp;
