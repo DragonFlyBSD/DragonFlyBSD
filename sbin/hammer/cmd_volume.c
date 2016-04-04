@@ -99,6 +99,7 @@ hammer_cmd_volume_add(char **av, int ac)
 	}
 
 	close(fd);
+	hammer_cmd_volume_list(av + 1, ac - 1);
 }
 
 /*
@@ -151,6 +152,7 @@ retry:
 	}
 
 	close(fd);
+	hammer_cmd_volume_list(av + 1, ac - 1);
 }
 
 /*
