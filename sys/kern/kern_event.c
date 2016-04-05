@@ -613,16 +613,14 @@ kqueue_init(struct kqueue *kq, struct filedesc *fdp)
 void
 kqueue_terminate(struct kqueue *kq)
 {
-	struct lwkt_token *tok;
 	struct knote *kn;
 
-	tok = lwkt_token_pool_lookup(kq);
-	lwkt_gettoken(tok);
+	lwkt_getpooltoken(kq);
 	while ((kn = TAILQ_FIRST(&kq->kq_knlist)) != NULL) {
 		if (knote_acquire(kn))
 			knote_detach_and_drop(kn);
 	}
-	lwkt_reltoken(tok);
+	lwkt_relpooltoken(kq);
 
 	if (kq->kq_knhash) {
 		hashdestroy(kq->kq_knhash, M_KQUEUE, kq->kq_knhashmask);
@@ -1367,14 +1365,11 @@ static int
 kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 	     struct ucred *cred, struct sysmsg *msg)
 {
-	struct lwkt_token *tok;
 	struct kqueue *kq;
 	int error;
 
 	kq = (struct kqueue *)fp->f_data;
-	tok = lwkt_token_pool_lookup(kq);
-	lwkt_gettoken(tok);
-
+	lwkt_getpooltoken(kq);
 	switch(com) {
 	case FIOASYNC:
 		if (*(int *)data)
@@ -1390,7 +1385,7 @@ kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
 		error = ENOTTY;
 		break;
 	}
-	lwkt_reltoken(tok);
+	lwkt_relpooltoken(kq);
 	return (error);
 }
 
