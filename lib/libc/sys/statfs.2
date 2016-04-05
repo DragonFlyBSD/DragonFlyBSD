@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)statfs.2	8.5 (Berkeley) 5/24/95
 .\" $FreeBSD: src/lib/libc/sys/statfs.2,v 1.9.2.7 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/statfs.2,v 1.4 2008/09/28 16:33:35 swildner Exp $
 .\"
 .Dd September 28, 2008
 .Dt STATFS 2
@@ -87,7 +86,7 @@ struct statfs {
 .Ed
 .Pp
 The flags that may be returned include:
-.Bl -tag -width MNT_SYNCHRONOUS
+.Bl -tag -width ".Dv MNT_SYNCHRONOUS"
 .It Dv MNT_RDONLY
 The filesystem is mounted read-only;
 Even the super-user may not write on it.

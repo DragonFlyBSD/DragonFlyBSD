@@ -77,7 +77,7 @@ argument by
 .Em or Ns 'ing
 the following values:
 .Pp
-.Bl -tag -width PROT_WRITE -compact
+.Bl -tag -width ".Dv PROT_WRITE" -compact
 .It Dv PROT_NONE
 Pages may not be accessed.
 .It Dv PROT_READ
@@ -98,7 +98,7 @@ Sharing, mapping type and options are specified in the
 argument by
 .Em or Ns 'ing
 the following values:
-.Bl -tag -width MAP_HASSEMAPHORE
+.Bl -tag -width ".Dv MAP_HASSEMAPHORE"
 .It Dv MAP_ANON
 Map anonymous memory not associated with any specific file.
 The file descriptor used for creating
@@ -130,7 +130,11 @@ must be a multiple of the pagesize.
 Try to do a fixed mapping but fail if another mapping already exists in
 the space instead of overwriting the mapping.
 .Pp
-When used with MAP_STACK this flag allows one MAP_STACK mapping to be
+When used with
+.Dv MAP_STACK
+this flag allows one
+.Dv MAP_STACK
+mapping to be
 made within another (typically the master user stack), as long as
 no pages have been faulted in the area requested.
 .It Dv MAP_HASSEMAPHORE
@@ -143,15 +147,16 @@ Causes data dirtied via this VM map to be flushed to physical media
 only when necessary (usually by the pager) rather than gratuitously.
 Typically this prevents the update daemons from flushing pages dirtied
 through such maps and thus allows efficient sharing of memory across
-unassociated processes using a file-backed shared memory map.  Without
+unassociated processes using a file-backed shared memory map.
+Without
 this option any VM pages you dirty may be flushed to disk every so often
 (every 30-60 seconds usually) which can create performance problems if you
 do not need that to occur (such as when you are using shared file-backed
-mmap regions for IPC purposes).  Note that VM/filesystem coherency is
-maintained whether you use
+mmap regions for IPC purposes).
+Note that VM/filesystem coherency is maintained whether you use
 .Dv MAP_NOSYNC
-or not.  This option is not portable
-across
+or not.
+This option is not portable across
 .Ux
 platforms (yet), though some may implement the same behavior
 by default.
@@ -182,13 +187,14 @@ it.
 You can test file fragmentation by observing the KB/t (kilobytes per
 transfer) results from an
 .Dq Li iostat 1
-while reading a large file sequentially, e.g. using
+while reading a large file sequentially, e.g.\* using
 .Dq Li dd if=filename of=/dev/null bs=32k .
 .Pp
 The
 .Xr fsync 2
 function will flush all dirty data and metadata associated with a file,
-including dirty NOSYNC VM data, to physical media.  The
+including dirty NOSYNC VM data, to physical media.
+The
 .Xr sync 8
 command and
 .Xr sync 2
@@ -197,7 +203,8 @@ The
 .Xr msync 2
 system call is obsolete since
 .Bx
-implements a coherent filesystem buffer cache.  However, it may be
+implements a coherent filesystem buffer cache.
+However, it may be
 used to associate dirty VM pages with filesystem buffers and thus cause
 them to be flushed to physical media sooner rather than later.
 .It Dv MAP_PRIVATE
@@ -220,8 +227,8 @@ and
 This option creates
 a memory region that grows to at most
 .Fa len
-bytes in size, starting from the stack top and growing down.  The
-stack top is the starting address returned by the call, plus
+bytes in size, starting from the stack top and growing down.
+The stack top is the starting address returned by the call, plus
 .Fa len
 bytes.
 The bottom of the stack at maximum growth is the starting
@@ -231,7 +238,8 @@ The entire area is reserved from the point of view of other
 .Fn mmap
 calls, even if not faulted in yet.
 .Pp
-WARNING.  We currently allow
+.Em WARNING !
+We currently allow
 .Dv MAP_STACK
 mappings to provide a hint that points within an existing
 .Dv MAP_STACK
@@ -249,21 +257,24 @@ is used, you cannot count on the returned address matching the hint
 you have provided.
 .It Dv MAP_VPAGETABLE
 Memory accessed via this map is not linearly mapped and will be governed
-by a virtual page table.  The base address of the virtual page table may
-be set using
+by a virtual page table.
+The base address of the virtual page table may be set using
 .Xr mcontrol 2
 with
 .Dv MADV_SETMAP .
 Virtual page tables work with anonymous memory but there
 is no way to populate the page table so for all intents and purposes
 .Dv MAP_VPAGETABLE
-can only be used when mapping file descriptors.  Since the kernel will
-update the VPTE_M bit in the virtual page table, the mapping must R+W
+can only be used when mapping file descriptors.
+Since the kernel will update the
+.Dv VPTE_M
+bit in the virtual page table, the mapping must R+W
 even though actual access to the memory will be properly governed by
 the virtual page table.
 .Pp
 Addressable backing store is limited by the range supported in the virtual
-page table entries.  The kernel may implement a page table abstraction capable
+page table entries.
+The kernel may implement a page table abstraction capable
 of addressing a larger range within the backing store then could otherwise
 be mapped into memory.
 .El
