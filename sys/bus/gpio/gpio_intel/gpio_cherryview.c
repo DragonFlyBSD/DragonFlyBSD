@@ -198,7 +198,7 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
     int polarity, int termination, void *arg, driver_intr_t *handler)
 {
 	uint32_t reg, reg1, reg2;
-	uint32_t intcfg, new_intcfg;
+	uint32_t intcfg, new_intcfg, gpiocfg, new_gpiocfg;
 	int i;
 
 	reg1 = bus_read_4(sc->mem_res, PIN_CTL0(pin));
@@ -208,6 +208,7 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 	    pin, trigger, polarity, reg1, reg2);
 
 	new_intcfg = intcfg = reg2 & CHV_GPIO_CTL1_INTCFG_MASK;
+	new_gpiocfg = gpiocfg = reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK;
 
 	/*
 	 * Sanity Checks, for now we just abort if the configuration doesn't
@@ -217,10 +218,14 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 		device_printf(sc->dev, "GPIO mode is disabled\n");
 		return (ENXIO);
 	}
-	if ((reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0x0 &&
-	    (reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0x200) {
+	if (gpiocfg != 0x0 && gpiocfg != 0x200) {
 		device_printf(sc->dev, "RX is disabled\n");
-		return (ENXIO);
+		if (gpiocfg == 0x100)
+			new_gpiocfg = 0x000;
+		else if (gpiocfg == 0x300)
+			new_gpiocfg = 0x200;
+		else
+			return (ENXIO);
 	}
 	if (trigger == ACPI_LEVEL_SENSITIVE) {
 		if (intcfg != 4) {
@@ -307,10 +312,20 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 		bus_write_4(sc->mem_res, PIN_CTL1(pin), reg);
 	}
 
+	if (new_gpiocfg != gpiocfg) {
+		device_printf(sc->dev,
+		    "Switching gpio configuration from 0x%x to 0x%x\n",
+		    gpiocfg, new_gpiocfg);
+		reg = reg1 & ~CHV_GPIO_CTL0_GPIOCFG_MASK;
+		reg |= (new_gpiocfg & CHV_GPIO_CTL0_GPIOCFG_MASK) << 0;
+		bus_write_4(sc->mem_res, PIN_CTL0(pin), reg);
+	}
+
 	sc->intrmaps[i].pin = pin;
 	sc->intrmaps[i].arg = arg;
 	sc->intrmaps[i].handler = handler;
 	sc->intrmaps[i].orig_intcfg = intcfg;
+	sc->intrmaps[i].orig_gpiocfg = gpiocfg;
 
 	/* unmask interrupt */
 	reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
@@ -323,17 +338,22 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 static void
 gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
 {
-	uint32_t reg, cfg;
+	uint32_t reg, intcfg, gpiocfg;
 	int i;
 
 	for (i = 0; i < 16; i++) {
 		if (sc->intrmaps[i].pin == pin) {
-			cfg = sc->intrmaps[i].orig_intcfg;
+			intcfg = sc->intrmaps[i].orig_intcfg;
+			intcfg &= CHV_GPIO_CTL1_INTCFG_MASK;
+
+			gpiocfg = sc->intrmaps[i].orig_gpiocfg;
+			gpiocfg &= CHV_GPIO_CTL0_GPIOCFG_MASK;
 
 			sc->intrmaps[i].pin = -1;
 			sc->intrmaps[i].arg = NULL;
 			sc->intrmaps[i].handler = NULL;
 			sc->intrmaps[i].orig_intcfg = 0;
+			sc->intrmaps[i].orig_gpiocfg = 0;
 
 			/* mask interrupt line */
 			reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
@@ -342,10 +362,18 @@ gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
 
 			/* Restore interrupt configuration if needed */
 			reg = bus_read_4(sc->mem_res, PIN_CTL1(pin));
-			if ((reg & CHV_GPIO_CTL1_INTCFG_MASK) != cfg) {
+			if ((reg & CHV_GPIO_CTL1_INTCFG_MASK) != intcfg) {
 				reg &= ~CHV_GPIO_CTL1_INTCFG_MASK;
-				reg |= (cfg & CHV_GPIO_CTL1_INTCFG_MASK) << 0;
+				reg |= intcfg;
 				bus_write_4(sc->mem_res, PIN_CTL1(pin), reg);
+			}
+
+			/* Restore gpio configuration if needed */
+			reg = bus_read_4(sc->mem_res, PIN_CTL0(pin));
+			if ((reg & CHV_GPIO_CTL0_GPIOCFG_MASK) != gpiocfg) {
+				reg &= ~CHV_GPIO_CTL0_GPIOCFG_MASK;
+				reg |= gpiocfg;
+				bus_write_4(sc->mem_res, PIN_CTL0(pin), reg);
 			}
 		}
 	}

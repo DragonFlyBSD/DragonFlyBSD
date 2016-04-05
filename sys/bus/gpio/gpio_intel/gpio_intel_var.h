@@ -11,6 +11,7 @@ struct pin_intr_map {
 	void *arg;
 	driver_intr_t *handler;
 	uint32_t orig_intcfg;
+	uint32_t orig_gpiocfg;
 };
 
 struct gpio_intel_softc {
