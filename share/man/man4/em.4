@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.30 2008/10/06 21:55:53 simon Exp $
 .\"
-.Dd November 28, 2014
+.Dd January 14, 2016
 .Dt EM 4
 .Os
 .Sh NAME
@@ -61,8 +61,8 @@ The
 .Nm
 driver provides support for PCI Gigabit Ethernet adapters based on
 the Intel 82540, 82541ER, 82541PI, 82542, 82543, 82544, 82545, 82546,
-82546EB, 82546GB, 82547, 82571, 81572, 82573, 82574, I217 and I218
-Ethernet controller chips.
+82546EB, 82546GB, 82547, 82571, 81572, 82573, 82574, I217, I218 and
+i219 Ethernet controller chips.
 The driver supports Transmit/Receive checksum offload
 and Jumbo Frames on all but 82542-based adapters.
 Furthermore it supports TCP segmentation offload (TSO) on PCI-E adapters.
@@ -71,14 +71,15 @@ The
 .Nm emx
 is a version of the
 .Nm em
-driver for 82571, 82572, 82573, 82574, I217 and I218 Ethernet controller chips
+driver for 82571, 82572, 82573, 82574, I217, I218 and I219 Ethernet
+controller chips
 that additionally supports Receive Side Scaling (RSS, 2 reception queues).
 By default,
 the
 .Nm emx
 driver will try enabling 2 reception queues
 if there are multiple CPUs on the system.
-For 82571, 82572, 82574, I217 and I218
+For 82571, 82572, 82574, I217, I218 and I219
 the
 .Nm emx
 driver could be configured to enable 2 transmission queues.
@@ -185,7 +186,7 @@ The
 .Nm
 driver supports Gigabit Ethernet adapters based on the Intel
 82540, 82541ER, 82541PI, 82542, 82543, 82544, 82545, 82546, 82546EB,
-82546GB, 82547, 82571, 82572, 82573, 82574, I217 and I218
+82546GB, 82547, 82571, 82572, 82573, 82574, I217, I218 and I219
 controller chips:
 .Pp
 .Bl -bullet -compact
@@ -234,6 +235,10 @@ Intel Ethernet Connection I218-LM
 .It
 Intel Ethernet Connection I218-V
 .It
+Intel Ethernet Connection I219-LM
+.It
+Intel Ethernet Connection I219-V
+.It
 Intel Gigabit CT Desktop Adapter
 .It
 Intel PRO/1000 F Server Adapter
@@ -276,7 +281,7 @@ Intel PRO/1000 XT Server Adapter
 The
 .Nm emx
 driver supports Gigabit Ethernet adapters based on the Intel
-82571, 82572, 82573, 82574, I217 and I218 controller chips.
+82571, 82572, 82573, 82574, I217, I218 and I219 controller chips.
 .Sh TUNABLES
 Tunables can be set at the
 .Xr loader 8
