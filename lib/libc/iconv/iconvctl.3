@@ -62,7 +62,7 @@ is an operation-specific argument.
 .Pp
 The possible operations are the following:
 .Bl -tag -width indent
-.It ICONV_TRIVIALP
+.It Dv ICONV_TRIVIALP
 In this case
 .Fa argument
 is an
@@ -70,14 +70,14 @@ is an
 variable, which is set to 1 if the encoding is trivial one, i.e.
 the input and output encodings are the same.
 Otherwise, the variable will be 0.
-.It ICONV_GET_TRANSLITERATE
+.It Dv ICONV_GET_TRANSLITERATE
 Determines if transliteration is enabled.
 The answer is stored in
 .Fa argument ,
 which is of
 .Ft int * .
 It will be set to 1 if this feature is enabled or set to 0 otherwise.
-.It ICONV_SET_TRANSLITERATE
+.It Dv ICONV_SET_TRANSLITERATE
 Enables transliteration if
 .Fa argument ,
 which is of
@@ -85,14 +85,14 @@ which is of
 set to 1 or disables it if
 .Fa argument
 is set to 0.
-.It ICONV_GET_DISCARD_ILSEQ
+.It Dv ICONV_GET_DISCARD_ILSEQ
 Determines if illegal sequences are discarded or not.
 The answer is stored in
 .Fa argument ,
 which is of
 .Ft int * .
 It will be set to 1 if this feature is enabled or set to 0 otherwise.
-.It ICONV_SET_DISCARD_ILSEQ
+.It Dv ICONV_SET_DISCARD_ILSEQ
 Sets whether illegal sequences are discarded or not.
 .Fa argument ,
 which is of
@@ -100,7 +100,7 @@ which is of
 set to 1 or disables it if
 .Fa argument
 is set to 0.
-.It ICONV_SET_HOOKS
+.It Dv ICONV_SET_HOOKS
 Sets callback functions, which will be called back after successful
 conversions.
 The callback functions are stored in a
@@ -110,7 +110,7 @@ variable, which is passed to
 via
 .Fa argument
 by its address.
-.It ICONV_GET_ILSEQ_INVALID
+.It Dv ICONV_GET_ILSEQ_INVALID
 Determines if a character in the input buffer that is valid,
 but for which an identical character does not exist in the target
 codeset returns
@@ -121,7 +121,7 @@ The answer is stored in
 which is of
 .Ft int * .
 It will be set to 1 if this feature is enabled or set to 0 otherwise.
-.It ICONV_SET_ILSEQ_INVALID
+.It Dv ICONV_SET_ILSEQ_INVALID
 Sets whether a character in the input buffer that is valid,
 but for which an identical character does not exist in the target
 codeset returns
@@ -139,7 +139,7 @@ is set to 0 it will be disabled.
 .\" XXX: fallbacks are unimplemented and trying to set them will always
 .\"      return EOPNOTSUPP but definitions are provided for source-level
 .\"      compatibility.
-.\".It ICONV_SET_FALLBACKS
+.\".It Dv ICONV_SET_FALLBACKS
 .\"Sets callback functions, which will be called back after failed
 .\"conversions.
 .\"The callback functions are stored in a

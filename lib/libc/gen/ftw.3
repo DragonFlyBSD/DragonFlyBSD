@@ -127,13 +127,13 @@ argument with the following possible values:
 Physical walk, do not follow symbolic links.
 .It Dv FTW_MOUNT
 The walk will not cross a mount point.
-.It FTW_DEPTH
+.It Dv FTW_DEPTH
 Process directories in post-order.
 Contents of a directory are visited before the directory itself.
 By default,
 .Fn nftw
 traverses the tree in pre-order.
-.It FTW_CHDIR
+.It Dv FTW_CHDIR
 Change to a directory before reading it.
 By default,
 .Fn nftw

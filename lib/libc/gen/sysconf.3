@@ -210,14 +210,18 @@ may change over the lifetime of the calling process,
 this function conforms to
 .St -p1003.1-88 .
 .Pp
-_SC_NPROCESSORS_CONF and _SC_NPROCESSORS_ONLN are nonstandard, but implemented
-in many systems.
+.Dv _SC_NPROCESSORS_CONF
+and
+.Dv _SC_NPROCESSORS_ONLN
+are nonstandard, but implemented in many systems.
 .Sh HISTORY
 The
 .Fn sysconf
 function first appeared in
 .Bx 4.4 .
 .Sh BUGS
-The value for _SC_STREAM_MAX is a minimum maximum, and required to be
-the same as ANSI C's FOPEN_MAX, so the returned value is a ridiculously
-small and misleading number.
+The value for
+.Dv _SC_STREAM_MAX
+is a minimum maximum, and required to be the same as ANSI C's
+.Dv FOPEN_MAX ,
+so the returned value is a ridiculously small and misleading number.

@@ -181,7 +181,9 @@ functions return -1 if an error occurred, or 0 on success.
 If an error occurs when attempting to set the user, login, group
 or resources, a message is reported to
 .Xr syslog 3 ,
-with LOG_ERR priority and directed to the currently active facility.
+with
+.Dv LOG_ERR
+priority and directed to the currently active facility.
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er ENOMEM
