@@ -3991,6 +3991,13 @@ static void gen6_set_rps_thresholds(struct drm_i915_private *dev_priv, u8 val)
 		break;
 	}
 
+	if (IS_VALLEYVIEW(dev_priv)) {
+		ei_up = 64000;
+		ei_down = 64000;
+		threshold_up = 90;
+		threshold_down = 70;
+	}
+
 	I915_WRITE(GEN6_RP_UP_EI,
 		GT_INTERVAL_FROM_US(dev_priv, ei_up));
 	I915_WRITE(GEN6_RP_UP_THRESHOLD,
@@ -4084,9 +4091,21 @@ static void valleyview_set_rps(struct drm_device *dev, u8 val)
 		val &= ~1;
 
 	if (val != dev_priv->rps.cur_freq) {
+		u32 ctrl;
+
+		intel_uncore_forcewake_get(dev_priv, FORCEWAKE_ALL);
+
+		ctrl = 	I915_READ(GEN6_RC_CONTROL);
+		I915_WRITE(GEN6_RC_CONTROL, 0);
+
 		vlv_punit_write(dev_priv, PUNIT_REG_GPU_FREQ_REQ, val);
 		if (!IS_CHERRYVIEW(dev_priv))
 			gen6_set_rps_thresholds(dev_priv, val);
+
+		I915_WRITE(GEN6_RC_CONTROL, ctrl);
+		POSTING_READ(GEN6_RC_CONTROL);
+
+		intel_uncore_forcewake_put(dev_priv, FORCEWAKE_ALL);
 	}
 
 	I915_WRITE(GEN6_PMINTRMSK, gen6_rps_pm_mask(dev_priv, val));
@@ -4109,11 +4128,7 @@ static void vlv_set_rps_idle(struct drm_i915_private *dev_priv)
 	if (dev_priv->rps.cur_freq <= val)
 		return;
 
-	/* Wake up the media well, as that takes a lot less
-	 * power than the Render well. */
-	intel_uncore_forcewake_get(dev_priv, FORCEWAKE_MEDIA);
 	valleyview_set_rps(dev_priv->dev, val);
-	intel_uncore_forcewake_put(dev_priv, FORCEWAKE_MEDIA);
 }
 
 void gen6_rps_busy(struct drm_i915_private *dev_priv)
