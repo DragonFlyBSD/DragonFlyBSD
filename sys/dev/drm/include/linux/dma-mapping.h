@@ -40,6 +40,11 @@ dma_map_page(struct device *dev, struct vm_page *page,
 	return VM_PAGE_TO_PHYS(page) + offset;
 }
 
+static inline void dma_unmap_page(struct device *dev, dma_addr_t addr,
+				  size_t size, enum dma_data_direction dir)
+{
+}
+
 static inline int
 dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
 {
