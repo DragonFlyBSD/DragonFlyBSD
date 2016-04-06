@@ -37,10 +37,10 @@
 #include "hammer.h"
 
 static int
-hammer_format_volume_header(struct hammer_mount *hmp,
+hammer_format_volume_header(hammer_mount_t hmp,
+	struct hammer_ioc_volume *ioc,
 	struct hammer_volume_ondisk *ondisk,
-	const char *vol_name, int vol_no, int vol_count,
-	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size);
+	int vol_no);
 
 static int
 hammer_update_volumes_header(hammer_transaction_t trans,
@@ -99,15 +99,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		goto end;
 	}
 
-	error = hammer_format_volume_header(
-		hmp,
-		&ondisk,
-		hmp->rootvol->ondisk->vol_name,
-		free_vol_no,
-		hmp->nvolumes+1,
-		ioc->vol_size,
-		ioc->boot_area_size,
-		ioc->mem_area_size);
+	error = hammer_format_volume_header(hmp, ioc, &ondisk, free_vol_no);
 	if (error)
 		goto end;
 
@@ -603,40 +595,53 @@ end:
 }
 
 static int
-hammer_format_volume_header(struct hammer_mount *hmp,
+hammer_format_volume_header(hammer_mount_t hmp,
+	struct hammer_ioc_volume *ioc,
 	struct hammer_volume_ondisk *ondisk,
-	const char *vol_name, int vol_no, int vol_count,
-	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size)
+	int vol_no)
 {
+	struct hammer_volume_ondisk *root_ondisk;
 	int64_t vol_alloc;
 
 	KKASSERT(HAMMER_BUFSIZE >= sizeof(struct hammer_volume_ondisk));
 
+	/*
+	 * Just copy from the root volume header.
+	 */
+	root_ondisk = hmp->rootvol->ondisk;
 	bzero(ondisk, sizeof(struct hammer_volume_ondisk));
-	ksnprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s", vol_name);
-	ondisk->vol_fstype = hmp->rootvol->ondisk->vol_fstype;
-	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
-	ondisk->vol_fsid = hmp->fsid;
-	ondisk->vol_rootvol = hmp->rootvol->vol_no;
+	ondisk->vol_fsid = root_ondisk->vol_fsid;
+	ondisk->vol_fstype = root_ondisk->vol_fstype;
+	ksnprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s",
+		root_ondisk->vol_name);
+	ondisk->vol_version = root_ondisk->vol_version;
+	ondisk->vol_rootvol = root_ondisk->vol_no;
+	ondisk->vol_signature = root_ondisk->vol_signature;
+
+	KKASSERT(ondisk->vol_rootvol == HAMMER_ROOT_VOLNO);
+	KKASSERT(ondisk->vol_signature == HAMMER_FSBUF_VOLUME);
+
+	/*
+	 * Assign the new vol_no and vol_count.
+	 */
 	ondisk->vol_no = vol_no;
-	ondisk->vol_count = vol_count;
-	ondisk->vol_version = hmp->version;
+	ondisk->vol_count = root_ondisk->vol_count + 1;
 
 	/*
 	 * Reserve space for (future) header junk, copy volume relative
 	 * offset from the existing root volume.
 	 */
-	vol_alloc = hmp->rootvol->ondisk->vol_bot_beg;
+	vol_alloc = root_ondisk->vol_bot_beg;
 	ondisk->vol_bot_beg = vol_alloc;
-	vol_alloc += boot_area_size;
+	vol_alloc += ioc->boot_area_size;
 	ondisk->vol_mem_beg = vol_alloc;
-	vol_alloc += mem_area_size;
+	vol_alloc += ioc->mem_area_size;
 
 	/*
 	 * The remaining area is the zone 2 buffer allocation area.
 	 */
 	ondisk->vol_buf_beg = vol_alloc;
-	ondisk->vol_buf_end = vol_size & ~(int64_t)HAMMER_BUFMASK;
+	ondisk->vol_buf_end = ioc->vol_size & ~(int64_t)HAMMER_BUFMASK;
 
 	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
 		hmkprintf(hmp, "volume %d %s is too small to hold the volume header\n",
