@@ -465,7 +465,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 
 	ondisk->vol_fsid = Hammer_FSId;
 	ondisk->vol_fstype = Hammer_FSType;
-	snprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s", label);
+	snprintf(ondisk->vol_label, sizeof(ondisk->vol_label), "%s", label);
 	ondisk->vol_no = vol->vol_no;
 	ondisk->vol_count = nvols;
 	ondisk->vol_version = HammerVersion;

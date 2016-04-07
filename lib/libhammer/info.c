@@ -68,7 +68,7 @@ libhammer_get_fsinfo(const char *path)
 	}
 
 	/* Fill filesystem information */
-	snprintf(fip->vol_name, TXTLEN, "%s", info.vol_name);
+	snprintf(fip->vol_name, TXTLEN, "%s", info.vol_label);
 	fip->vol_fsid = info.vol_fsid;
 	fip->version = info.version;
 	fip->nvolumes = info.nvolumes;

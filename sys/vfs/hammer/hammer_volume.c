@@ -612,8 +612,8 @@ hammer_format_volume_header(hammer_mount_t hmp,
 	bzero(ondisk, sizeof(struct hammer_volume_ondisk));
 	ondisk->vol_fsid = root_ondisk->vol_fsid;
 	ondisk->vol_fstype = root_ondisk->vol_fstype;
-	ksnprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s",
-		root_ondisk->vol_name);
+	ksnprintf(ondisk->vol_label, sizeof(ondisk->vol_label), "%s",
+		root_ondisk->vol_label);
 	ondisk->vol_version = root_ondisk->vol_version;
 	ondisk->vol_rootvol = root_ondisk->vol_no;
 	ondisk->vol_signature = root_ondisk->vol_signature;
@@ -644,8 +644,8 @@ hammer_format_volume_header(hammer_mount_t hmp,
 	ondisk->vol_buf_end = ioc->vol_size & ~(int64_t)HAMMER_BUFMASK;
 
 	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
-		hmkprintf(hmp, "volume %d %s is too small to hold the volume header\n",
-		     ondisk->vol_no, ondisk->vol_name);
+		hmkprintf(hmp, "volume %d is too small to hold the volume header\n",
+			ondisk->vol_no);
 		return(EFTYPE);
 	}
 

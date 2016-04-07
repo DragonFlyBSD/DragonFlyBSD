@@ -197,8 +197,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	}
 
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
-		hkprintf("volume %s has an invalid header\n",
-			volume->vol_name);
+		hkprintf("volume %s has an invalid header\n", volume->vol_name);
 		for (i = 0; i < (int)sizeof(ondisk->vol_signature); i++) {
 			kprintf("%02x", ((char*)&ondisk->vol_signature)[i] & 0xFF);
 			if (i != (int)sizeof(ondisk->vol_signature) - 1)

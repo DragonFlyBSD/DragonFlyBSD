@@ -227,7 +227,7 @@ struct hammer_ioc_synctid {
 struct hammer_ioc_info {
 	struct hammer_ioc_head		head;
 
-	char		vol_name[64];
+	char		vol_label[64];
 	uuid_t		vol_fsid;
 	uuid_t		vol_fstype;
 

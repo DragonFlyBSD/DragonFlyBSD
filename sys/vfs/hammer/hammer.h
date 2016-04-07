@@ -1696,7 +1696,7 @@ hammer_buf_attach_io(struct buf *bp, hammer_io_t io)
 #define hkprintf(format, args...)			\
 	kprintf("HAMMER: "format,## args)
 #define hvkprintf(vol, format, args...)			\
-	kprintf("HAMMER(%s) "format, vol->ondisk->vol_name,## args)
+	kprintf("HAMMER(%s) "format, vol->ondisk->vol_label,## args)
 #define hmkprintf(hmp, format, args...)			\
 	kprintf("HAMMER(%s) "format, hmp->mp->mnt_stat.f_mntfromname,## args)
 #define hdkprintf(format, args...)			\
@@ -1705,7 +1705,7 @@ hammer_buf_attach_io(struct buf *bp, hammer_io_t io)
 #define hkrateprintf(rate , format, args...)		\
 	krateprintf(rate, "HAMMER: "format,## args)
 #define hvkrateprintf(rate, vol, format, args...)	\
-	krateprintf(rate, "HAMMER(%s) "format, vol->ondisk->vol_name,## args)
+	krateprintf(rate, "HAMMER(%s) "format, vol->ondisk->vol_label,## args)
 #define hmkrateprintf(rate, hmp, format, args...)	\
 	krateprintf(rate, "HAMMER(%s) "format, hmp->mp->mnt_stat.f_mntfromname,## args)
 #define hdkrateprintf(rate, format, args...)		\

@@ -747,11 +747,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	/*
 	 * Finish setup now that we have a good root volume.
-	 * vol_name is a filesystem label string.
 	 */
 	ksnprintf(mp->mnt_stat.f_mntfromname,
 		  sizeof(mp->mnt_stat.f_mntfromname), "%s",
-		  rootvol->ondisk->vol_name);
+		  rootvol->ondisk->vol_label);
 	mp->mnt_stat.f_fsid.val[0] =
 		crc32((char *)&rootvol->ondisk->vol_fsid + 0, 8);
 	mp->mnt_stat.f_fsid.val[1] =

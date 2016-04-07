@@ -646,7 +646,7 @@ hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info)
 	/* Fill the structure with the necessary information */
 	_hammer_checkspace(hm, HAMMER_CHKSPC_WRITE, &info->rsvbigblocks);
 	info->rsvbigblocks = info->rsvbigblocks >> HAMMER_BIGBLOCK_BITS;
-	strlcpy(info->vol_name, od->vol_name, sizeof(od->vol_name));
+	strlcpy(info->vol_label, od->vol_label, sizeof(od->vol_label));
 
 	info->vol_fsid = hm->fsid;
 	info->vol_fstype = od->vol_fstype;

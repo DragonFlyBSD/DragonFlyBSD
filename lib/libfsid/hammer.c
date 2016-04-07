@@ -65,11 +65,11 @@ hammer_volname(const char *dev)
 	fs = (struct hammer_volume_ondisk *)&buffer;
 
 	if (fs->vol_signature != HAMMER_FSBUF_VOLUME ||
-	    fs->vol_name[0] == '\0')
+	    fs->vol_label[0] == '\0')
 		return NULL;
 
-	fs->vol_name[sizeof(fs->vol_name) - 1] = '\0';
+	fs->vol_label[sizeof(fs->vol_label) - 1] = '\0';
 
-	return fs->vol_name;
+	return fs->vol_label;
 }
 
