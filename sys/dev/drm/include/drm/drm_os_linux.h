@@ -98,33 +98,6 @@ static inline uint32_t ror32(uint32_t word, unsigned int shift)
 	({ __typeof__(*(ptr)) __tmp;                                    \
 	  memcpy(&__tmp, (ptr), sizeof(*(ptr))); __tmp; })
 
-#if _BYTE_ORDER == _LITTLE_ENDIAN
-/* Taken from linux/include/linux/unaligned/le_struct.h. */
-struct __una_u32 { u32 x; } __packed;
-
-static inline u32 __get_unaligned_cpu32(const void *p)
-{
-	const struct __una_u32 *ptr = (const struct __una_u32 *)p;
-	return ptr->x;
-}
-
-static inline u32 get_unaligned_le32(const void *p)
-{
-	return __get_unaligned_cpu32((const u8 *)p);
-}
-#else
-/* Taken from linux/include/linux/unaligned/le_byteshift.h. */
-static inline u32 __get_unaligned_le32(const u8 *p)
-{
-	return p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24;
-}
-
-static inline u32 get_unaligned_le32(const void *p)
-{
-	return __get_unaligned_le32((const u8 *)p);
-}
-#endif
-
 #define KIB_NOTYET()							\
 do {									\
 	if (drm_debug && drm_notyet_flag)				\

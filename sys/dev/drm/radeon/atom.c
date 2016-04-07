@@ -20,9 +20,11 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Author: Stanislaw Skowronek
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/atom.c 254894 2013-08-26 06:31:57Z dumbbell $
  */
+
+#include <linux/module.h>
+#include <linux/sched.h>
+#include <asm/unaligned.h>
 
 #define ATOM_DEBUG
 
