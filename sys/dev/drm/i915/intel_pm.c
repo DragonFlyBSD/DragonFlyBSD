@@ -4158,10 +4158,10 @@ void gen6_rps_idle(struct drm_i915_private *dev_priv)
 	}
 	mutex_unlock(&dev_priv->rps.hw_lock);
 
-	spin_lock(&dev_priv->rps.client_lock);
+	lockmgr(&dev_priv->rps.client_lock, LK_EXCLUSIVE);
 	while (!list_empty(&dev_priv->rps.clients))
 		list_del_init(dev_priv->rps.clients.next);
-	spin_unlock(&dev_priv->rps.client_lock);
+	lockmgr(&dev_priv->rps.client_lock, LK_RELEASE);
 }
 
 void gen6_rps_boost(struct drm_i915_private *dev_priv,
@@ -4182,7 +4182,7 @@ void gen6_rps_boost(struct drm_i915_private *dev_priv,
 	if (rps && time_after(jiffies, submitted + DRM_I915_THROTTLE_JIFFIES))
 		rps = NULL;
 
-	spin_lock(&dev_priv->rps.client_lock);
+	lockmgr(&dev_priv->rps.client_lock, LK_EXCLUSIVE);
 	if (rps == NULL || list_empty(&rps->link)) {
 		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 		if (dev_priv->rps.interrupts_enabled) {
@@ -4197,7 +4197,7 @@ void gen6_rps_boost(struct drm_i915_private *dev_priv,
 		} else
 			dev_priv->rps.boosts++;
 	}
-	spin_unlock(&dev_priv->rps.client_lock);
+	lockmgr(&dev_priv->rps.client_lock, LK_RELEASE);
 }
 
 void intel_set_rps(struct drm_device *dev, u8 val)
@@ -6940,7 +6940,7 @@ void intel_pm_setup(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
-	spin_init(&dev_priv->rps.client_lock, "i915rcl");
+	lockinit(&dev_priv->rps.client_lock, "i915rcl", 0, LK_CANRECURSE);
 
 	INIT_DELAYED_WORK(&dev_priv->rps.delayed_resume_work,
 			  intel_gen6_powersave_work);

@@ -5295,9 +5295,9 @@ void i915_gem_release(struct drm_device *dev, struct drm_file *file)
 	spin_unlock(&file_priv->mm.lock);
 
 	if (!list_empty(&file_priv->rps.link)) {
-		spin_lock(&to_i915(dev)->rps.client_lock);
+		lockmgr(&to_i915(dev)->rps.client_lock, LK_EXCLUSIVE);
 		list_del(&file_priv->rps.link);
-		spin_unlock(&to_i915(dev)->rps.client_lock);
+		lockmgr(&to_i915(dev)->rps.client_lock, LK_RELEASE);
 	}
 }
 

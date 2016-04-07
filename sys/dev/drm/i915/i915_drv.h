@@ -1104,7 +1104,7 @@ struct intel_gen6_power_mgmt {
 	int last_adj;
 	enum { LOW_POWER, BETWEEN, HIGH_POWER } power;
 
-	struct spinlock client_lock;
+	struct lock client_lock;
 	struct list_head clients;
 	bool client_boost;
 
