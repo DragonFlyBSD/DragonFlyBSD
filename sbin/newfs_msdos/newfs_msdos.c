@@ -761,7 +761,7 @@ getdiskinfo(int fd, const char *fname, const char *dtype, int oflag,
 	i = ioctl(fd, DIOCGPART, &pinfo);
 	if (i == -1) {
 	    if (!dtype) {
-		warn("ioctl (GDINFO)");
+		warn("ioctl (GPART)");
 		errx(1, "%s: can't read disk label; "
 		     "disk type must be specified", fname);
 	    } else if (!(dtab = getdisktabbyname(dtype))) {
