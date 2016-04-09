@@ -82,12 +82,14 @@ show_info(char *path)
 {
 	libhammer_fsinfo_t fip;
 	libhammer_pfsinfo_t pi, pi_first;
+	struct hammer_ioc_volume_list ioc;
 	int64_t	    usedbigblocks;
 	int64_t	    usedbytes, rsvbytes;
 	int64_t	    totalbytes, freebytes;
 	char	    *fsid;
 	char	    buf[6];
 	char	    rootvol[MAXPATHLEN];
+	int i;
 
 	fsid = NULL;
 	usedbigblocks = 0;
@@ -103,6 +105,12 @@ show_info(char *path)
 	/* Find out the UUID strings */
 	uuid_to_string(&fip->vol_fsid, &fsid, NULL);
 
+	/* Get the volume paths */
+	if (hammer_fs_to_vol(path, &ioc) == -1) {
+		fprintf(stderr, "Failed to get volume paths\n");
+		exit(1);
+	}
+
 	/* Get the root volume path */
 	if (hammer_fs_to_rootvol(path, rootvol, sizeof(rootvol)) == -1) {
 		fprintf(stderr, "Failed to get root volume path\n");
@@ -113,6 +121,13 @@ show_info(char *path)
 	fprintf(stdout, "Volume identification\n");
 	fprintf(stdout, "\tLabel               %s\n", fip->vol_name);
 	fprintf(stdout, "\tNo. Volumes         %d\n", fip->nvolumes);
+	fprintf(stdout, "\tHAMMER Volumes      ");
+	for (i = 0; i < ioc.nvols; i++) {
+		printf("%s", ioc.vols[i].device_name);
+		if (i != ioc.nvols - 1)
+			printf(":");
+	}
+	printf("\n");
 	fprintf(stdout, "\tRoot Volume         %s\n", rootvol);
 	fprintf(stdout, "\tFSID                %s\n", fsid);
 	fprintf(stdout, "\tHAMMER Version      %d\n", fip->version);
