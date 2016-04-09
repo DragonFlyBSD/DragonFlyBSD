@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 4, 2016
+.Dd April 9, 2016
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -598,7 +598,7 @@ Defaults are:
 snapshots  1d 60d  # 0d 0d  for PFS /tmp, /var/tmp, /usr/obj
 prune      1d 5m
 rebalance  1d 5m
-dedup      1d 5m
+#dedup      1d 5m  # not enabled by default
 reblock    1d 5m
 recopy     30d 10m
 .Ed
