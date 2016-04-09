@@ -67,7 +67,7 @@
 #define CHV_GPIO_CTL0_GPIOEN	0x00008000u
 #define CHV_GPIO_CTL0_PULLUP	0x00800000u
 #define CHV_GPIO_CTL1_INTCFG_MASK 0x00000007u
-#define CHV_GPIO_CTL1_INVRX	0x00000010u
+#define CHV_GPIO_CTL1_INVRXDATA	0x00000040u
 
 #define CHV_GPIO_PINSIZE	0x8	/* 8 bytes for each pin */
 #define CHV_GPIO_PINCHUNK	15	/* 15 pins at a time */
@@ -233,14 +233,14 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 			    "ACTIVE_BOTH incompatible with level trigger\n");
 			return (ENXIO);
 		} else if (polarity == ACPI_ACTIVE_LOW) {
-			if (!(reg2 & CHV_GPIO_CTL1_INVRX)) {
+			if (!(reg2 & CHV_GPIO_CTL1_INVRXDATA)) {
 				device_printf(sc->dev,
 				    "Invert RX not enabled (needed for "
 				    "level/low trigger/polarity)\n");
 				return (ENXIO);
 			}
 		} else {
-			if (reg2 & CHV_GPIO_CTL1_INVRX) {
+			if (reg2 & CHV_GPIO_CTL1_INVRXDATA) {
 				device_printf(sc->dev,
 				    "Invert RX should not be enabled for "
 				    "level/high trigger/polarity\n");
