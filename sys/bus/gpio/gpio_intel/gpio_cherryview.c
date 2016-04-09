@@ -182,12 +182,19 @@ gpio_cherryview_intr(void *arg)
 	int i;
 
 	status = bus_read_4(sc->mem_res, CHV_GPIO_REG_IS);
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_IS, status);
 	for (i = 0; i < 16; i++) {
-		if (status & (1 << i)) {
+		if (status & (1U << i)) {
 			mapping = &sc->intrmaps[i];
+			if (!mapping->is_level) {
+				bus_write_4(sc->mem_res, CHV_GPIO_REG_IS,
+				    (1U << i));
+			}
 			if (mapping->pin != -1 && mapping->handler != NULL)
 				mapping->handler(mapping->arg);
+			if (mapping->is_level) {
+				bus_write_4(sc->mem_res, CHV_GPIO_REG_IS,
+				    (1U << i));
+			}
 		}
 	}
 }
@@ -327,6 +334,11 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 	sc->intrmaps[i].orig_intcfg = intcfg;
 	sc->intrmaps[i].orig_gpiocfg = gpiocfg;
 
+	if (trigger == ACPI_LEVEL_SENSITIVE)
+		sc->intrmaps[i].is_level = 1;
+	else
+		sc->intrmaps[i].is_level = 0;
+
 	/* unmask interrupt */
 	reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
 	reg |= (1 << i);
@@ -352,6 +364,7 @@ gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
 			sc->intrmaps[i].pin = -1;
 			sc->intrmaps[i].arg = NULL;
 			sc->intrmaps[i].handler = NULL;
+			sc->intrmaps[i].is_level = 0;
 			sc->intrmaps[i].orig_intcfg = 0;
 			sc->intrmaps[i].orig_gpiocfg = 0;
 

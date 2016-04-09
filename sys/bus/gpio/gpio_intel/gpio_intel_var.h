@@ -10,6 +10,7 @@ struct pin_intr_map {
 	int pin;
 	void *arg;
 	driver_intr_t *handler;
+	int is_level;
 	uint32_t orig_intcfg;
 	uint32_t orig_gpiocfg;
 };
