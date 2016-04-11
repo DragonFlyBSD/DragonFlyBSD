@@ -594,7 +594,6 @@ initialize_freemap(struct volume_info *vol)
 	struct buffer_info *buffer2 = NULL;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
-	hammer_off_t layer1_base;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
 	hammer_off_t phys_offset;
@@ -616,12 +615,11 @@ initialize_freemap(struct volume_info *vol)
 	 * using blocks from the target volume.
 	 */
 	freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
-	layer1_base = freemap->phys_offset;
 
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
-		layer1_offset = layer1_base +
+		layer1_offset = freemap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
@@ -641,7 +639,7 @@ initialize_freemap(struct volume_info *vol)
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
 		layer1_count = 0;
-		layer1_offset = layer1_base +
+		layer1_offset = freemap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
