@@ -365,6 +365,14 @@ hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 	return(0);
 }
 
+/*
+ * XXX This somehow needs to stop doing hammer_modify_buffer() for
+ * layer2 entries.  In theory adding a large block device could
+ * blow away UNDO fifo.  The best way is to format layer2 entries
+ * in userspace without UNDO getting involved before the device is
+ * safely added to the filesystem.  HAMMER has no interest in what
+ * has happened to the device before it safely joins the filesystem.
+ */
 static int
 hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
@@ -476,6 +484,14 @@ end:
 	return error;
 }
 
+/*
+ * XXX This somehow needs to stop doing hammer_modify_buffer() for
+ * layer2 entries.  In theory removing a large block device could
+ * blow away UNDO fifo.  The best way is to erase layer2 entries
+ * in userspace without UNDO getting involved after the device has
+ * been safely removed from the filesystem.  HAMMER has no interest
+ * in what happens to the device once it's safely removed.
+ */
 static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
@@ -493,7 +509,6 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	int64_t vol_buf_size;
-	int64_t layer1_count = 0;
 	int error = 0;
 
 	KKASSERT(volume->vol_no != HAMMER_ROOT_VOLNO);
@@ -512,7 +527,6 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
-		layer1_count = 0;
 		layer1_offset = freemap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer1);
@@ -549,7 +563,6 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
-		layer1_count = 0;
 		layer1_offset = freemap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer1);
