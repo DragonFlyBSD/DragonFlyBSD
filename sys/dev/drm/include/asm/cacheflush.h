@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,6 +46,14 @@ static inline int set_pages_uc(struct vm_page *page, int num_pages)
 {
 	pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page)),
 			 num_pages, PAT_UNCACHED);
+
+	return 0;
+}
+
+static inline int set_pages_wb(struct vm_page *page, int num_pages)
+{
+	pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page)),
+			 num_pages, PAT_WRITE_BACK);
 
 	return 0;
 }
