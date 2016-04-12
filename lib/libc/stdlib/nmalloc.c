@@ -1243,6 +1243,7 @@ _slabrealloc(void *ptr, size_t size)
 				 */
 				if (chunking > bigbytes) {
 					char *addr;
+					int errno_save = errno;
 
 					addr = mmap((char *)ptr + bigbytes,
 						    chunking - bigbytes,
@@ -1250,6 +1251,7 @@ _slabrealloc(void *ptr, size_t size)
 						    MAP_PRIVATE|MAP_ANON|
 						    MAP_TRYFIXED,
 						    -1, 0);
+					errno = errno_save;
 					if (addr == (char *)ptr + bigbytes) {
 						atomic_add_long(&excess_alloc,
 								big->active -
