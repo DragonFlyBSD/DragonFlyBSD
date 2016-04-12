@@ -246,12 +246,11 @@ the class may access.
 in the class may not access.
 .It "login_prompt	string		The login prompt given by"
 .Xr login 1
-.It minpasswordlen	number	6	The minimum length a local password
-may be.
-.It mixpasswordcase	bool	true	Whether
+.It "minpasswordlen	number	6	The minimum length a local password may be."
+.It "mixpasswordcase	bool	true	Whether"
 .Xr passwd 1
 will warn the user if an all lower case password is entered.
-.It login-backoff	number	3	The number of login attempts
+.It "login-backoff	number	3	The number of login attempts"
 allowed before the backoff delay is inserted after each subsequent
 attempt.
 .It "login-retries	number	10	The number of login attempts"
@@ -378,9 +377,9 @@ when terminating sessions.
 login sessions will be accounted.
 .It "host.exempt 	list		List of remote host wildcards from which"
 login session accounting is exempted.
-.It idletime	time		Maximum idle time before logout (unused).
-.It monthtime 	time		Maximum login time per month.
-.It passwordtime	time		Used by
+.It "idletime	time		Maximum idle time before logout (unused)."
+.It "monthtime 	time		Maximum login time per month."
+.It "passwordtime	time		Used by"
 .Xr passwd 1
 to set next password expiry date.
 .It "refreshtime 	time		New time allowed on account refresh."
@@ -392,10 +391,10 @@ login sessions on ttys in any group.
 login accounting is active.
 .It "ttys.exempt	list		List of ttys and ttygroups for which login accounting"
 is exempt.
-.It warnexpire	time		Advance notice for pending account expiry.
-.It warnpassword	time		Advance notice for pending password expiry.
-.It warntime	time		Advance notice for pending out-of-time.
-.It weektime	time		Maximum login time per week.
+.It "warnexpire	time		Advance notice for pending account expiry."
+.It "warnpassword	time		Advance notice for pending password expiry."
+.It "warntime	time		Advance notice for pending out-of-time."
+.It "weektime	time		Maximum login time per week."
 .El
 .Pp
 These fields are used by the time accounting system, which regulates,
