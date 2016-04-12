@@ -1923,7 +1923,7 @@ static int init_phys_status_page(struct intel_engine_cs *ring)
 
 void intel_unpin_ringbuffer_obj(struct intel_ringbuffer *ringbuf)
 {
-	iounmap(ringbuf->virtual_start, ringbuf->size);
+	iounmap(ringbuf->virtual_start);
 	ringbuf->virtual_start = NULL;
 	i915_gem_object_ggtt_unpin(ringbuf->obj);
 }

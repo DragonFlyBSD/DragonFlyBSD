@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,10 @@
 #define _ASM_IO_H_
 
 #include <machine/pmap.h>
+#include <vm/pmap.h>
 #include <vm/vm.h>
 
+#include <linux/types.h>
 #include <asm/page.h>
 
 #define ioread8(addr)		*(volatile uint8_t *)((char *)addr)
@@ -54,14 +56,32 @@
 #include <linux/vmalloc.h>
 
 /* ioremap function family: map bus addresses into CPU space */
-static inline void __iomem *ioremap_nocache(resource_size_t offset, unsigned long size)
+
+struct iomap {
+	vm_paddr_t paddr;
+	int npages;
+	void *pmap_addr;
+	SLIST_ENTRY(iomap) im_iomaps;
+};
+
+struct iomap *__ioremap_common(unsigned long phys_addr, unsigned long size);
+
+static inline void *ioremap_nocache(resource_size_t phys_addr, unsigned long size)
 {
-	return pmap_mapdev_uncacheable(offset, size);
+	struct iomap *imp;
+
+	imp = __ioremap_common(phys_addr, size);
+	imp->pmap_addr = pmap_mapdev_uncacheable(phys_addr, size);
+	return imp->pmap_addr;
 }
 
 static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long size)
 {
-	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
+	struct iomap *imp;
+
+	imp = __ioremap_common(phys_addr, size);
+	imp->pmap_addr = pmap_mapdev_attr(phys_addr, size, PAT_WRITE_COMBINING);
+	return imp->pmap_addr;
 }
 
 static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
@@ -69,10 +89,7 @@ static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
 	return ioremap_nocache(offset, size);
 }
 
-static inline void iounmap(void __iomem *ptr, unsigned long size)
-{
-	pmap_unmapdev((vm_offset_t) ptr, size);
-}
+void iounmap(void __iomem *ptr);
 
 #define mmiowb cpu_sfence
 

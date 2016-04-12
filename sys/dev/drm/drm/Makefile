@@ -45,6 +45,7 @@ SRCS	= \
 	linux_async.c \
 	linux_compat.c \
 	linux_hdmi.c \
+	linux_iomapping.c \
 	linux_list_sort.c \
 	linux_shmem.c \
 	linux_workqueue.c \

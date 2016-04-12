@@ -62,16 +62,16 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 	}
 
 	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
-		iounmap(bios, size);
+		iounmap(bios);
 		return false;
 	}
 	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
 	if (rdev->bios == NULL) {
-		iounmap(bios, size);
+		iounmap(bios);
 		return false;
 	}
 	memcpy_fromio(rdev->bios, bios, size);
-	iounmap(bios, size);
+	iounmap(bios);
 	return true;
 }
 

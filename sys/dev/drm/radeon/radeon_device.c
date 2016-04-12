@@ -336,7 +336,7 @@ static int radeon_doorbell_init(struct radeon_device *rdev)
  */
 static void radeon_doorbell_fini(struct radeon_device *rdev)
 {
-	iounmap(rdev->doorbell.ptr, rdev->doorbell.size);
+	iounmap(rdev->doorbell.ptr);
 	rdev->doorbell.ptr = NULL;
 }
 
