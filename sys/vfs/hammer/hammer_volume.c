@@ -76,14 +76,14 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
-	if (hmp->nvolumes >= HAMMER_MAX_VOLUMES) {
-		hmkprintf(hmp, "Max number of HAMMER volumes exceeded\n");
-		return (EINVAL);
-	}
-
 	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
 		hmkprintf(hmp, "Another volume operation is in progress!\n");
 		return (EAGAIN);
+	}
+
+	if (hmp->nvolumes >= HAMMER_MAX_VOLUMES) {
+		hmkprintf(hmp, "Max number of HAMMER volumes exceeded\n");
+		return (EINVAL);
 	}
 
 	/*
@@ -160,14 +160,14 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
-	if (hmp->nvolumes <= 1) {
-		hmkprintf(hmp, "No HAMMER volume to delete\n");
-		return (EINVAL);
-	}
-
 	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
 		hmkprintf(hmp, "Another volume operation is in progress!\n");
 		return (EAGAIN);
+	}
+
+	if (hmp->nvolumes <= 1) {
+		hmkprintf(hmp, "No HAMMER volume to delete\n");
+		return (EINVAL);
 	}
 
 	/*
