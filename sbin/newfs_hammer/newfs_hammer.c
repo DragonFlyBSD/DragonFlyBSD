@@ -493,6 +493,10 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		     vol->vol_no, vol->name);
 	}
 
+	if ((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) != 0) {
+		errx(1, "volume %d %s is too large", vol->vol_no, vol->name);
+	}
+
 	ondisk->vol_rootvol = HAMMER_ROOT_VOLNO;
 	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
 
