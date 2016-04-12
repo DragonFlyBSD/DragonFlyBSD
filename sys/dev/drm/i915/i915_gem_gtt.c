@@ -2304,7 +2304,6 @@ static int setup_scratch_page(struct drm_device *dev)
 	return 0;
 }
 
-#if 0
 static void teardown_scratch_page(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -2315,7 +2314,6 @@ static void teardown_scratch_page(struct drm_device *dev)
 		       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
 	__free_page(page);
 }
-#endif
 
 static unsigned int gen6_get_total_gtt_size(u16 snb_gmch_ctl)
 {
@@ -2426,9 +2424,7 @@ static int ggtt_probe_common(struct drm_device *dev,
 	if (ret) {
 		DRM_ERROR("Scratch setup failed\n");
 		/* iounmap will also get called at remove, but meh */
-#if 0
 		iounmap(dev_priv->gtt.gsm);
-#endif
 	}
 
 	return ret;
@@ -2603,12 +2599,10 @@ static int gen6_gmch_probe(struct drm_device *dev,
 
 static void gen6_gmch_remove(struct i915_address_space *vm)
 {
-#if 0
 	struct i915_gtt *gtt = container_of(vm, struct i915_gtt, base);
 
 	iounmap(gtt->gsm);
 	teardown_scratch_page(vm->dev);
-#endif
 }
 
 static int i915_gmch_probe(struct drm_device *dev,

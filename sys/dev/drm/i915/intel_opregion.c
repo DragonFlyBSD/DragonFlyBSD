@@ -787,7 +787,7 @@ void intel_opregion_fini(struct drm_device *dev)
 	}
 
 	/* just clear all opregion memory pointers now */
-	pmap_unmapdev((vm_offset_t)opregion->header, OPREGION_SIZE);
+	iounmap(opregion->header);
 	opregion->header = NULL;
 	opregion->acpi = NULL;
 	opregion->swsci = NULL;
@@ -913,6 +913,6 @@ int intel_opregion_setup(struct drm_device *dev)
 	return 0;
 
 err_out:
-	pmap_unmapdev((vm_offset_t)base, OPREGION_SIZE);
+	iounmap(base);
 	return err;
 }
