@@ -1798,7 +1798,6 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	unsigned long page_offset;
 	vm_page_t m, oldm = NULL;
 	int ret = 0;
-	int didpip = 0;
 	bool write = !!(prot & VM_PROT_WRITE);
 
 	intel_runtime_pm_get(dev_priv);
@@ -1847,10 +1846,7 @@ retry:
 	 * Add a pip count to avoid destruction and certain other
 	 * complex operations (such as collapses?) while unlocked.
 	 */
-	if (didpip == 0) {
-		vm_object_pip_add(vm_obj, 1);
-		didpip = 1;
-	}
+	vm_object_pip_add(vm_obj, 1);
 
 	/*
 	 * XXX We must currently remove the placeholder page now to avoid
@@ -1975,8 +1971,7 @@ out:
 done:
 	if (oldm != NULL)
 		vm_page_free(oldm);
-	if (didpip)
-		vm_object_pip_wakeup(vm_obj);
+	vm_object_pip_wakeup(vm_obj);
 
 	intel_runtime_pm_put(dev_priv);
 	return ret;
