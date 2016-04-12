@@ -82,6 +82,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	if (hmp->nvolumes >= HAMMER_MAX_VOLUMES) {
+		hammer_unlock(&hmp->volume_lock);
 		hmkprintf(hmp, "Max number of HAMMER volumes exceeded\n");
 		return (EINVAL);
 	}
@@ -166,6 +167,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	if (hmp->nvolumes <= 1) {
+		hammer_unlock(&hmp->volume_lock);
 		hmkprintf(hmp, "No HAMMER volume to delete\n");
 		return (EINVAL);
 	}
