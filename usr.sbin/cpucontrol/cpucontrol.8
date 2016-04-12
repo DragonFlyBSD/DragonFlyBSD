@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: release/10.0.0/usr.sbin/cpucontrol/cpucontrol.8 235873 2012-05-24 02:24:03Z wblock $
+.\" $FreeBSD: head/usr.sbin/cpucontrol/cpucontrol.8 267668 2014-06-20 09:57:27Z bapt $
 .\"
-.Dd June 30, 2009
+.Dd April 12, 2016
 .Dt CPUCONTROL 8
 .Os
 .Sh NAME
@@ -60,6 +60,12 @@ device
 .Nm
 .Op Fl vh
 .Fl i Ar level
+.Bk
+.Ar device
+.Ek
+.Nm
+.Op Fl vh
+.Fl i Ar level,level_type
 .Bk
 .Ar device
 .Ek
@@ -114,6 +120,9 @@ In this case the inverted value of mask will be used.
 .It Fl i Ar level
 Retrieve CPUID info.
 Level should be given as a hex number.
+.It Fl i Ar level,level_type
+Retrieve CPUID info.
+Level and level_type should be given as hex numbers.
 .It Fl u
 Apply CPU firmware updates.
 The
