@@ -30,6 +30,8 @@
 #include <linux/gfp.h>
 #include <linux/types.h>
 
+MALLOC_DECLARE(M_DRM);
+
 #define kzalloc(size, flags)	kmalloc(size, M_DRM, flags | M_ZERO)
 
 #define kfree(ptr)	do {		\

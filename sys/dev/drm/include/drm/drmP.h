@@ -83,8 +83,6 @@
 #include <sys/agpio.h>
 #include <sys/mutex.h>
 
-MALLOC_DECLARE(M_DRM);
-
 #include <uapi_drm/drm.h>
 #include <uapi_drm/drm_sarea.h>
 
