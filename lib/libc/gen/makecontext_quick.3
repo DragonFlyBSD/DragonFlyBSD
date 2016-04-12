@@ -194,7 +194,7 @@ static void
 test1(ucontext_t *ucp, void *arg)
 {
 	if ((intptr_t)ucp->uc_arg == 1) {
-		printf("test1 entered for first time\n");
+		printf("test1 entered for first time\en");
 		ucp->uc_arg = (void *)(intptr_t)0;
 	}
 }
@@ -203,7 +203,7 @@ static void
 test2(ucontext_t *ucp, void *arg)
 {
 	if ((intptr_t)ucp->uc_arg == 2) {
-		printf("test2 entered for first time\n");
+		printf("test2 entered for first time\en");
 		ucp->uc_arg = (void *)(intptr_t)0;
 	}
 	++global_counter;
@@ -216,8 +216,8 @@ test3(ucontext_t *ucp, void *arg)
 {
 	/* entered only once */
 	assert((intptr_t)ucp->uc_arg == 3);
-	printf("test3 entered for first time\n");
-	printf("cycle through test1, test2, test3 %d times\n", LOOPS);
+	printf("test3 entered for first time\en");
+	printf("cycle through test1, test2, test3 %d times\en", LOOPS);
 	ucp->uc_arg = (void *)(intptr_t)0;
 
 	for (;;) {
