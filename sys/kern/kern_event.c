@@ -996,8 +996,10 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 		struct knote *new_kn;
 
 		new_kn = knote_alloc();
+		crit_enter();
 		SLIST_INSERT_HEAD(&cache_list->knote_cache, new_kn, kn_link);
 		cache_list->knote_cache_cnt++;
+		crit_exit();
 	}
 
 	td = curthread;
@@ -1056,13 +1058,16 @@ again:
 	 */
 	if (kev->flags & EV_ADD) {
 		if (kn == NULL) {
+			crit_enter();
 			kn = SLIST_FIRST(&cache_list->knote_cache);
 			if (kn == NULL) {
+				crit_exit();
 				kn = knote_alloc();
 			} else {
 				SLIST_REMOVE_HEAD(&cache_list->knote_cache,
 				    kn_link);
 				cache_list->knote_cache_cnt--;
+				crit_exit();
 			}
 			kn->kn_fp = fp;
 			kn->kn_kq = kq;
@@ -1871,8 +1876,10 @@ knote_free(struct knote *kn)
 
 	cache_list = &knote_cache_lists[mycpuid];
 	if (cache_list->knote_cache_cnt < KNOTE_CACHE_MAX) {
+		crit_enter();
 		SLIST_INSERT_HEAD(&cache_list->knote_cache, kn, kn_link);
 		cache_list->knote_cache_cnt++;
+		crit_exit();
 		return;
 	}
 	kfree(kn, M_KQUEUE);
