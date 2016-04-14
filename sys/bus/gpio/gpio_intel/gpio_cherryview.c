@@ -142,6 +142,34 @@ static struct pinrange chv_se_ranges[] = {
 	{ -1, -1 }
 };
 
+static struct lock gpio_lk;
+LOCK_SYSINIT(chvgpiolk, &gpio_lk, "chvgpio", 0);
+
+/*
+ * Use global GPIO register lock to workaround erratum:
+ *
+ * CHT34    Multiple Drivers That Access the GPIO Registers Concurrently May
+ *          Result in Unpredictable System Behaviour
+ */
+static inline uint32_t
+chvgpio_read(struct gpio_intel_softc *sc, bus_size_t offset)
+{
+	uint32_t val;
+
+	lockmgr(&gpio_lk, LK_EXCLUSIVE);
+	val = bus_read_4(sc->mem_res, offset);
+	lockmgr(&gpio_lk, LK_RELEASE);
+	return val;
+}
+
+static inline void
+chvgpio_write(struct gpio_intel_softc *sc, bus_size_t offset, uint32_t val)
+{
+	lockmgr(&gpio_lk, LK_EXCLUSIVE);
+	bus_write_4(sc->mem_res, offset, val);
+	lockmgr(&gpio_lk, LK_RELEASE);
+}
+
 int
 gpio_cherryview_matchuid(struct gpio_intel_softc *sc)
 {
@@ -169,8 +197,8 @@ static void
 gpio_cherryview_init(struct gpio_intel_softc *sc)
 {
 	/* mask and clear all interrupt lines */
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_MASK, 0);
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_IS, 0xffff);
+	chvgpio_write(sc, CHV_GPIO_REG_MASK, 0);
+	chvgpio_write(sc, CHV_GPIO_REG_IS, 0xffff);
 }
 
 static void
@@ -181,18 +209,18 @@ gpio_cherryview_intr(void *arg)
 	uint32_t status;
 	int i;
 
-	status = bus_read_4(sc->mem_res, CHV_GPIO_REG_IS);
+	status = chvgpio_read(sc, CHV_GPIO_REG_IS);
 	for (i = 0; i < 16; i++) {
 		if (status & (1U << i)) {
 			mapping = &sc->intrmaps[i];
 			if (!mapping->is_level) {
-				bus_write_4(sc->mem_res, CHV_GPIO_REG_IS,
+				chvgpio_write(sc, CHV_GPIO_REG_IS,
 				    (1U << i));
 			}
 			if (mapping->pin != -1 && mapping->handler != NULL)
 				mapping->handler(mapping->arg);
 			if (mapping->is_level) {
-				bus_write_4(sc->mem_res, CHV_GPIO_REG_IS,
+				chvgpio_write(sc, CHV_GPIO_REG_IS,
 				    (1U << i));
 			}
 		}
@@ -208,8 +236,8 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 	uint32_t intcfg, new_intcfg, gpiocfg, new_gpiocfg;
 	int i;
 
-	reg1 = bus_read_4(sc->mem_res, PIN_CTL0(pin));
-	reg2 = bus_read_4(sc->mem_res, PIN_CTL1(pin));
+	reg1 = chvgpio_read(sc, PIN_CTL0(pin));
+	reg2 = chvgpio_read(sc, PIN_CTL1(pin));
 	device_printf(sc->dev,
 	    "pin=%d trigger=%d polarity=%d ctrl0=0x%08x ctrl1=0x%08x\n",
 	    pin, trigger, polarity, reg1, reg2);
@@ -316,7 +344,7 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 		    intcfg, new_intcfg);
 		reg = reg2 & ~CHV_GPIO_CTL1_INTCFG_MASK;
 		reg |= (new_intcfg & CHV_GPIO_CTL1_INTCFG_MASK) << 0;
-		bus_write_4(sc->mem_res, PIN_CTL1(pin), reg);
+		chvgpio_write(sc, PIN_CTL1(pin), reg);
 	}
 
 	if (new_gpiocfg != gpiocfg) {
@@ -325,7 +353,7 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 		    gpiocfg, new_gpiocfg);
 		reg = reg1 & ~CHV_GPIO_CTL0_GPIOCFG_MASK;
 		reg |= (new_gpiocfg & CHV_GPIO_CTL0_GPIOCFG_MASK) << 0;
-		bus_write_4(sc->mem_res, PIN_CTL0(pin), reg);
+		chvgpio_write(sc, PIN_CTL0(pin), reg);
 	}
 
 	sc->intrmaps[i].pin = pin;
@@ -340,9 +368,9 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 		sc->intrmaps[i].is_level = 0;
 
 	/* unmask interrupt */
-	reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
+	reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
 	reg |= (1 << i);
-	bus_write_4(sc->mem_res, CHV_GPIO_REG_MASK, reg);
+	chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
 
 	return (0);
 }
@@ -369,24 +397,24 @@ gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
 			sc->intrmaps[i].orig_gpiocfg = 0;
 
 			/* mask interrupt line */
-			reg = bus_read_4(sc->mem_res, CHV_GPIO_REG_MASK);
+			reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
 			reg &= ~(1 << i);
-			bus_write_4(sc->mem_res, CHV_GPIO_REG_MASK, reg);
+			chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
 
 			/* Restore interrupt configuration if needed */
-			reg = bus_read_4(sc->mem_res, PIN_CTL1(pin));
+			reg = chvgpio_read(sc, PIN_CTL1(pin));
 			if ((reg & CHV_GPIO_CTL1_INTCFG_MASK) != intcfg) {
 				reg &= ~CHV_GPIO_CTL1_INTCFG_MASK;
 				reg |= intcfg;
-				bus_write_4(sc->mem_res, PIN_CTL1(pin), reg);
+				chvgpio_write(sc, PIN_CTL1(pin), reg);
 			}
 
 			/* Restore gpio configuration if needed */
-			reg = bus_read_4(sc->mem_res, PIN_CTL0(pin));
+			reg = chvgpio_read(sc, PIN_CTL0(pin));
 			if ((reg & CHV_GPIO_CTL0_GPIOCFG_MASK) != gpiocfg) {
 				reg &= ~CHV_GPIO_CTL0_GPIOCFG_MASK;
 				reg |= gpiocfg;
-				bus_write_4(sc->mem_res, PIN_CTL0(pin), reg);
+				chvgpio_write(sc, PIN_CTL0(pin), reg);
 			}
 		}
 	}
@@ -398,7 +426,7 @@ gpio_cherryview_read_pin(struct gpio_intel_softc *sc, uint16_t pin)
 	uint32_t reg;
 	int val;
 
-	reg = bus_read_4(sc->mem_res, PIN_CTL0(pin));
+	reg = chvgpio_read(sc, PIN_CTL0(pin));
 	/* Verify that RX is enabled */
 	KKASSERT((reg & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x0 ||
 	    (reg & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x200);
@@ -416,11 +444,11 @@ gpio_cherryview_write_pin(struct gpio_intel_softc *sc, uint16_t pin, int value)
 {
 	uint32_t reg1, reg2;
 
-	reg2 = bus_read_4(sc->mem_res, PIN_CTL1(pin));
+	reg2 = chvgpio_read(sc, PIN_CTL1(pin));
 	/* Verify that interrupt is disabled */
 	KKASSERT((reg2 & CHV_GPIO_CTL1_INTCFG_MASK) == 0);
 
-	reg1 = bus_read_4(sc->mem_res, PIN_CTL0(pin));
+	reg1 = chvgpio_read(sc, PIN_CTL0(pin));
 	/* Verify that TX is enabled */
 	KKASSERT((reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0 ||
 	    (reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x100);
@@ -429,5 +457,5 @@ gpio_cherryview_write_pin(struct gpio_intel_softc *sc, uint16_t pin, int value)
 		reg1 |= CHV_GPIO_CTL0_TXSTATE;
 	else
 		reg1 &= ~CHV_GPIO_CTL0_TXSTATE;
-	bus_write_4(sc->mem_res, PIN_CTL0(pin), reg1);
+	chvgpio_write(sc, PIN_CTL0(pin), reg1);
 }
