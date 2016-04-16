@@ -17,15 +17,15 @@
  * implied warranties, including, without limitation, the implied
  * warranties of merchantability and fitness for a particular
  * purpose.
+ *
+ * $FreeBSD: head/sys/boot/efi/boot1/boot1.c 296713 2016-03-12 06:50:16Z andrew $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/boot/efi/boot1/boot1.c 296713 2016-03-12 06:50:16Z andrew $");
 
 #include <sys/param.h>
 #include <machine/elf.h>
 #include <machine/stdarg.h>
 #include <stand.h>
+#include <stdarg.h>
 
 #include <efi.h>
 #include <eficonsctl.h>
@@ -33,11 +33,13 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/boot1/boot1.c 296713 2016-03-12 06:50:16Z 
 #include "boot_module.h"
 #include "paths.h"
 
+#define PATH_CONFIG	"/boot/config"
+#define PATH_DOTCONFIG	"/boot.config"
+#define PATH_LOADER	"/loader.efi"		/* /boot is dedicated */
+#define PATH_LOADER_ALT	"/boot/loader.efi"	/* /boot in root */
+
 static const boot_module_t *boot_modules[] =
 {
-#ifdef EFI_ZFS_BOOT
-	&zfs_module,
-#endif
 #ifdef EFI_UFS_BOOT
 	&ufs_module
 #endif
@@ -47,7 +49,6 @@ static const boot_module_t *boot_modules[] =
 /* The initial number of handles used to query EFI for partitions. */
 #define NUM_HANDLES_INIT	24
 
-void putchar(int c);
 EFI_STATUS efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE* Xsystab);
 
 EFI_SYSTEM_TABLE *systab;
@@ -58,6 +59,12 @@ static EFI_GUID BlockIoProtocolGUID = BLOCK_IO_PROTOCOL;
 static EFI_GUID DevicePathGUID = DEVICE_PATH_PROTOCOL;
 static EFI_GUID LoadedImageGUID = LOADED_IMAGE_PROTOCOL;
 static EFI_GUID ConsoleControlGUID = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
+
+/*
+ * XXX DragonFly's libstand doesn't provide a way to override the malloc
+ *     implementation yet.
+ */
+#if 0
 
 /*
  * Provide Malloc / Free backed by EFIs AllocatePool / FreePool which ensures
@@ -80,6 +87,8 @@ Free(void *buf, const char *file __unused, int line __unused)
 {
 	(void)bs->FreePool(buf);
 }
+
+#endif
 
 /*
  * nodes_match returns TRUE if the imgpath isn't NULL and the nodes match,
@@ -329,6 +338,7 @@ load_loader(const boot_module_t **modp, dev_info_t **devinfop, void **bufp,
 	UINTN i;
 	dev_info_t *dev;
 	const boot_module_t *mod;
+	EFI_STATUS status;
 
 	for (i = 0; i < NUM_BOOT_MODULES; i++) {
 		if (boot_modules[i] == NULL)
@@ -338,8 +348,12 @@ load_loader(const boot_module_t **modp, dev_info_t **devinfop, void **bufp,
 			if (dev->preferred != preferred)
 				continue;
 
-			if (mod->load(PATH_LOADER_EFI, dev, bufp, bufsize) ==
-			    EFI_SUCCESS) {
+			status = mod->load(PATH_LOADER, dev, bufp, bufsize);
+			if (status == EFI_NOT_FOUND) {
+				status = mod->load(PATH_LOADER_ALT, dev, bufp,
+				    bufsize);
+			}
+			if (status == EFI_SUCCESS) {
 				*devinfop = dev;
 				*modp = mod;
 				return (EFI_SUCCESS);
@@ -355,7 +369,7 @@ load_loader(const boot_module_t **modp, dev_info_t **devinfop, void **bufp,
  * it simply boots, otherwise it returns the status of last EFI call.
  */
 static EFI_STATUS
-try_boot()
+try_boot(void)
 {
 	size_t bufsize, loadersize, cmdsize;
 	void *buf, *loaderbuf;
@@ -371,7 +385,8 @@ try_boot()
 		status = load_loader(&mod, &dev, &loaderbuf, &loadersize,
 		    FALSE);
 		if (status != EFI_SUCCESS) {
-			printf("Failed to load '%s'\n", PATH_LOADER_EFI);
+			printf("Failed to load '%s' or '%s'\n",
+			    PATH_LOADER, PATH_LOADER_ALT);
 			return (status);
 		}
 	}
@@ -534,8 +549,9 @@ probe_handle_status(EFI_HANDLE h, EFI_DEVICE_PATH *imgpath)
 	EFI_STATUS status;
 	BOOLEAN preferred;
 
+	preferred = FALSE;
 	status = probe_handle(h, imgpath, &preferred);
-	
+
 	DPRINTF("probe: ");
 	switch (status) {
 	case EFI_UNSUPPORTED:
@@ -601,8 +617,8 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 	conout->EnableCursor(conout, TRUE);
 	conout->ClearScreen(conout);
 
-	printf("\n>> FreeBSD EFI boot block\n");
-	printf("   Loader path: %s\n\n", PATH_LOADER_EFI);
+	printf("\n>> DragonFly EFI boot block\n");
+	printf("   Loader path: %s:%s\n\n", PATH_LOADER, PATH_LOADER_ALT);
 	printf("   Initializing modules:");
 	for (i = 0; i < NUM_BOOT_MODULES; i++) {
 		if (boot_modules[i] == NULL)

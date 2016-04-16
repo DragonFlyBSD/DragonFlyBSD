@@ -61,7 +61,7 @@ self_reloc(Elf_Addr baseaddr, ElfW_Dyn *dynamic)
 {
 	Elf_Word relsz, relent;
 	Elf_Addr *newaddr;
-	ElfW_Rel *rel;
+	ElfW_Rel *rel = 0;
 	ElfW_Dyn *dynp;
 
 	/*

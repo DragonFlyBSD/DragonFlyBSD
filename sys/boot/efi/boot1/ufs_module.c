@@ -66,16 +66,25 @@ dskread(void *buf, u_int64_t lba, int nblk)
 	return (0);
 }
 
+/* For ufsread.c */
+uint64_t fs_off;
+int ls;
+
+static struct ufs_dmadat __dmadat;
+static struct ufs_dmadat *boot2_dmadat;
+
 #include "ufsread.c"
 
-static struct dmadat __dmadat;
+#define fsread boot2_ufs_read
+#define fsread_size boot2_ufs_read_size
+#define lookup boot2_ufs_lookup
 
 static int
 init_dev(dev_info_t* dev)
 {
 
 	devinfo = dev;
-	dmadat = &__dmadat;
+	boot2_dmadat = &__dmadat;
 
 	return fsread(0, NULL, 0);
 }
@@ -142,7 +151,7 @@ load(const char *filepath, dev_info_t *dev, void **bufp, size_t *bufsize)
 }
 
 static void
-status()
+status(void)
 {
 	int i;
 	dev_info_t *dev;
@@ -164,7 +173,7 @@ status()
 }
 
 static dev_info_t *
-_devices()
+_devices(void)
 {
 
 	return (devices);
