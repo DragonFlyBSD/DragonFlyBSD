@@ -45,7 +45,7 @@ static const boot_module_t *boot_modules[] =
 #endif
 };
 
-#define NUM_BOOT_MODULES (sizeof(boot_modules) / sizeof(boot_module_t*))
+#define NUM_BOOT_MODULES NELEM(boot_modules)
 /* The initial number of handles used to query EFI for partitions. */
 #define NUM_HANDLES_INIT	24
 
