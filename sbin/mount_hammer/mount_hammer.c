@@ -53,8 +53,6 @@ static void free_volumes(struct hammer_mount_info *info);
 static void test_volumes(struct hammer_mount_info *info);
 static void usage(void);
 
-#define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
-
 #define MOPT_HAMMEROPTS		\
 	{ "history", 1, HMNT_NOHISTORY, 1 },	\
 	{ "master=", 0, HMNT_MASTERID, 1 },	\
