@@ -139,4 +139,11 @@ get_page(struct vm_page *page)
 	vm_page_hold(page);
 }
 
+extern vm_paddr_t Realmem;
+
+static inline unsigned long get_num_physpages(void)
+{
+	return Realmem / PAGE_SIZE;
+}
+
 #endif	/* _LINUX_MM_H_ */
