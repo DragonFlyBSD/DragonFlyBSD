@@ -3928,8 +3928,6 @@ i915_gem_object_flush_gtt_write_domain(struct drm_i915_gem_object *obj)
 
 	intel_fb_obj_flush(obj, false);
 
-	intel_fb_obj_flush(obj, false);
-
 	trace_i915_gem_object_change_domain(obj,
 					    obj->base.read_domains,
 					    old_write_domain);
