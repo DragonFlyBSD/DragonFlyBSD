@@ -1795,6 +1795,7 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	struct drm_i915_gem_object *obj = to_intel_bo(vm_obj->handle);
 	struct drm_device *dev = obj->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct i915_ggtt_view view = i915_ggtt_view_normal;
 	unsigned long page_offset;
 	vm_page_t m, oldm = NULL;
 	int ret = 0;
@@ -1827,8 +1828,25 @@ retry:
 		goto unlock;
 	}
 
-	/* Now bind it into the GTT if needed */
-	ret = i915_gem_obj_ggtt_pin(obj, 0, PIN_MAPPABLE);
+	/* Use a partial view if the object is bigger than the aperture. */
+	if (obj->base.size >= dev_priv->gtt.mappable_end &&
+	    obj->tiling_mode == I915_TILING_NONE) {
+#if 0
+		static const unsigned int chunk_size = 256; // 1 MiB
+
+		memset(&view, 0, sizeof(view));
+		view.type = I915_GGTT_VIEW_PARTIAL;
+		view.params.partial.offset = rounddown(page_offset, chunk_size);
+		view.params.partial.size =
+			min_t(unsigned int,
+			      chunk_size,
+			      (vma->vm_end - vma->vm_start)/PAGE_SIZE -
+			      view.params.partial.offset);
+#endif
+	}
+
+	/* Now pin it into the GTT if needed */
+	ret = i915_gem_object_ggtt_pin(obj, &view, 0, PIN_MAPPABLE);
 	if (ret)
 		goto unlock;
 
@@ -1891,9 +1909,9 @@ retry:
 
 	obj->fault_mappable = true;
 
+	/* Finally, remap it using the new GTT offset */
 	m = vm_phys_fictitious_to_vm_page(dev_priv->gtt.mappable_base +
-					  i915_gem_obj_ggtt_offset(obj) +
-					  offset);
+			i915_gem_obj_ggtt_offset_view(obj, &view) + offset);
 	if (m == NULL) {
 		ret = -EFAULT;
 		goto unpin;
@@ -1911,16 +1929,54 @@ retry:
 	}
 	m->valid = VM_PAGE_BITS_ALL;
 
-	/*
-	 * Finally, remap it using the new GTT offset.
-	 *
-	 * (object expected to be in a locked state)
-	 */
-	vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
+#if 0
+	if (unlikely(view.type == I915_GGTT_VIEW_PARTIAL)) {
+		/* Overriding existing pages in partial view does not cause
+		 * us any trouble as TLBs are still valid because the fault
+		 * is due to userspace losing part of the mapping or never
+		 * having accessed it before (at this partials' range).
+		 */
+		unsigned long base = vma->vm_start +
+				     (view.params.partial.offset << PAGE_SHIFT);
+		unsigned int i;
+
+		for (i = 0; i < view.params.partial.size; i++) {
+			ret = vm_insert_pfn(vma, base + i * PAGE_SIZE, pfn + i);
+			if (ret)
+				break;
+		}
+
+		obj->fault_mappable = true;
+	} else {
+		if (!obj->fault_mappable) {
+			unsigned long size = min_t(unsigned long,
+						   vma->vm_end - vma->vm_start,
+						   obj->base.size);
+			int i;
+
+			for (i = 0; i < size >> PAGE_SHIFT; i++) {
+				ret = vm_insert_pfn(vma,
+						    (unsigned long)vma->vm_start + i * PAGE_SIZE,
+						    pfn + i);
+				if (ret)
+					break;
+			}
+
+			obj->fault_mappable = true;
+		} else
+			ret = vm_insert_pfn(vma,
+					    (unsigned long)vmf->virtual_address,
+					    pfn + page_offset);
+#endif
+			vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
+#if 0
+	}
+#endif
+
 have_page:
 	*mres = m;
 
-	i915_gem_object_ggtt_unpin(obj);
+	i915_gem_object_ggtt_unpin_view(obj, &view);
 	mutex_unlock(&dev->struct_mutex);
 	ret = VM_PAGER_OK;
 	goto done;
@@ -1931,7 +1987,7 @@ have_page:
 	 * OBJECT EXPECTED TO BE LOCKED.
 	 */
 unpin:
-	i915_gem_object_ggtt_unpin(obj);
+	i915_gem_object_ggtt_unpin_view(obj, &view);
 unlock:
 	mutex_unlock(&dev->struct_mutex);
 out:
