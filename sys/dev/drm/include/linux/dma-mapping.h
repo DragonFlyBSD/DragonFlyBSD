@@ -51,4 +51,23 @@ dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
 	return 0;
 }
 
+static inline int
+dma_map_sg(struct device *dev, struct scatterlist *sg,
+	   int nents, enum dma_data_direction dir)
+{
+	struct scatterlist *s;
+	int i;
+
+	for_each_sg(sg, s, nents, i)
+		s->dma_address = sg_phys(s);
+
+	return nents;
+}
+
+static inline void
+dma_unmap_sg(struct device *dev, struct scatterlist *sg,
+	     int nents, enum dma_data_direction dir)
+{
+}
+
 #endif	/* _LINUX_DMA-MAPPING_H_ */
