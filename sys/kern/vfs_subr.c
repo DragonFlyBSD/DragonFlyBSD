@@ -1830,22 +1830,26 @@ vfs_flagstostr(int flags, const struct mountctl_opt *optp,
 	       char *buf, size_t len, int *errorp)
 {
 	static const struct mountctl_opt optnames[] = {
-		{ MNT_ASYNC,            "asynchronous" },
-		{ MNT_EXPORTED,         "NFS exported" },
-		{ MNT_LOCAL,            "local" },
-		{ MNT_NOATIME,          "noatime" },
-		{ MNT_NODEV,            "nodev" },
-		{ MNT_NOEXEC,           "noexec" },
-		{ MNT_NOSUID,           "nosuid" },
-		{ MNT_NOSYMFOLLOW,      "nosymfollow" },
-		{ MNT_QUOTA,            "with-quotas" },
 		{ MNT_RDONLY,           "read-only" },
 		{ MNT_SYNCHRONOUS,      "synchronous" },
-		{ MNT_NOCLUSTERR,       "noclusterr" },
-		{ MNT_NOCLUSTERW,       "noclusterw" },
+		{ MNT_NOEXEC,           "noexec" },
+		{ MNT_NOSUID,           "nosuid" },
+		{ MNT_NODEV,            "nodev" },
+		{ MNT_ASYNC,            "asynchronous" },
 		{ MNT_SUIDDIR,          "suiddir" },
 		{ MNT_SOFTDEP,          "soft-updates" },
-		{ MNT_IGNORE,           "ignore" },
+		{ MNT_NOSYMFOLLOW,      "nosymfollow" },
+		{ MNT_TRIM,             "trim" },
+		{ MNT_NOATIME,          "noatime" },
+		{ MNT_NOCLUSTERR,       "noclusterr" },
+		{ MNT_NOCLUSTERW,       "noclusterw" },
+		{ MNT_EXRDONLY,         "NFS read-only" },
+		{ MNT_EXPORTED,         "NFS exported" },
+		/* Remaining NFS flags could come here */
+		{ MNT_LOCAL,            "local" },
+		{ MNT_QUOTA,            "with-quotas" },
+		/* { MNT_ROOTFS,           "rootfs" }, */
+		/* { MNT_IGNORE,           "ignore" }, */
 		{ 0,			NULL}
 	};
 	int bwritten;
