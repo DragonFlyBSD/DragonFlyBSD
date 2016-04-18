@@ -22,16 +22,16 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/boot/efi/loader/autoload.c 293724 2016-01-12 02:17:39Z smh $
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/boot/efi/loader/autoload.c 293724 2016-01-12 02:17:39Z smh $");
-
 #include "loader_efi.h"
+
+extern int i386_autoload(void);
 
 int
 efi_autoload(void)
 {
-
-	return (0);
+	return i386_autoload();
 }

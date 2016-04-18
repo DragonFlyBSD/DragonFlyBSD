@@ -14,13 +14,14 @@ SRCS=	autoload.c \
 	conf.c \
 	copy.c \
 	devicename.c \
+	i386_module.c \
 	main.c \
 	self_reloc.c \
 	smbios.c \
 	vers.c
 
 .PATH: ${.CURDIR}/arch/${MACHINE}
-# For smbios.c
+# For smbios.c and i386_module.c
 .PATH: ${.CURDIR}/../../pc32/libi386
 .include "${.CURDIR}/arch/${MACHINE}/Makefile.inc"
 

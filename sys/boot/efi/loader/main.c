@@ -353,6 +353,18 @@ main(int argc, CHAR16 *argv[])
 	}
 	}
 
+	/* enable EHCI */
+	setenv("ehci_load", "YES", 1);
+
+	/* enable XHCI */
+	setenv("xhci_load", "YES", 1);
+
+	/* Check if ACPI is available */
+	if (efi_get_table(&acpi20) != NULL ||
+	    efi_get_table(&acpi) != NULL) {
+		setenv("acpi_load", "YES", 1);
+	}
+
 	setenv("LINES", "24", 1);	/* optional */
 
 	for (k = 0; k < ST->NumberOfTableEntries; k++) {
