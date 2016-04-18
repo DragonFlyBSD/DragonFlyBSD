@@ -71,6 +71,8 @@ hammer_cmd_info(char **av, int ac)
 					show_info(path);
 				}
 			}
+			if (first)
+				fprintf(stdout, "No mounted HAMMER filesystems found\n");
 		} else {
 			fprintf(stdout, "No mounted filesystems found\n");
 		}
