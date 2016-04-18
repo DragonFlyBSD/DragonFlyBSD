@@ -67,14 +67,14 @@ hammer_cmd_info(char **av, int ac)
 					if (first)
 						first = 0;
 					else
-						fprintf(stdout, "\n");
+						printf("\n");
 					show_info(path);
 				}
 			}
 			if (first)
-				fprintf(stdout, "No mounted HAMMER filesystems found\n");
+				printf("No mounted HAMMER filesystems found\n");
 		} else {
-			fprintf(stdout, "No mounted filesystems found\n");
+			printf("No mounted filesystems found\n");
 		}
 	}
 }
@@ -120,36 +120,35 @@ show_info(char *path)
 	}
 
 	/* Volume information */
-	fprintf(stdout, "Volume identification\n");
-	fprintf(stdout, "\tLabel               %s\n", fip->vol_name);
-	fprintf(stdout, "\tNo. Volumes         %d\n", fip->nvolumes);
-	fprintf(stdout, "\tHAMMER Volumes      ");
+	printf("Volume identification\n");
+	printf("\tLabel               %s\n", fip->vol_name);
+	printf("\tNo. Volumes         %d\n", fip->nvolumes);
+	printf("\tHAMMER Volumes      ");
 	for (i = 0; i < ioc.nvols; i++) {
 		printf("%s", ioc.vols[i].device_name);
 		if (i != ioc.nvols - 1)
 			printf(":");
 	}
 	printf("\n");
-	fprintf(stdout, "\tRoot Volume         %s\n", rootvol);
-	fprintf(stdout, "\tFSID                %s\n", fsid);
-	fprintf(stdout, "\tHAMMER Version      %d\n", fip->version);
+	printf("\tRoot Volume         %s\n", rootvol);
+	printf("\tFSID                %s\n", fsid);
+	printf("\tHAMMER Version      %d\n", fip->version);
 
 	/* Big-blocks information */
 	usedbigblocks = fip->bigblocks - fip->freebigblocks;
 
-	fprintf(stdout, "Big-block information\n");
-	fprintf(stdout, "\tTotal      %10jd\n", (intmax_t)fip->bigblocks);
-	fprintf(stdout, "\tUsed       %10jd (%.2lf%%)\n"
-			"\tReserved   %10jd (%.2lf%%)\n"
-			"\tFree       %10jd (%.2lf%%)\n",
-			(intmax_t)usedbigblocks,
-			percent(usedbigblocks, fip->bigblocks),
-			(intmax_t)fip->rsvbigblocks,
-			percent(fip->rsvbigblocks, fip->bigblocks),
-			(intmax_t)(fip->freebigblocks - fip->rsvbigblocks),
-			percent(fip->freebigblocks - fip->rsvbigblocks,
-				fip->bigblocks));
-	fprintf(stdout, "Space information\n");
+	printf("Big-block information\n");
+	printf("\tTotal      %10jd\n", (intmax_t)fip->bigblocks);
+	printf("\tUsed       %10jd (%.2lf%%)\n"
+	       "\tReserved   %10jd (%.2lf%%)\n"
+	       "\tFree       %10jd (%.2lf%%)\n",
+		(intmax_t)usedbigblocks,
+		percent(usedbigblocks, fip->bigblocks),
+		(intmax_t)fip->rsvbigblocks,
+		percent(fip->rsvbigblocks, fip->bigblocks),
+		(intmax_t)(fip->freebigblocks - fip->rsvbigblocks),
+		percent(fip->freebigblocks - fip->rsvbigblocks, fip->bigblocks));
+	printf("Space information\n");
 
 	/* Space information */
 	totalbytes = (fip->bigblocks << HAMMER_BIGBLOCK_BITS);
@@ -158,46 +157,46 @@ show_info(char *path)
 	freebytes = ((fip->freebigblocks - fip->rsvbigblocks)
 	    << HAMMER_BIGBLOCK_BITS);
 
-	fprintf(stdout, "\tNo. Inodes %10jd\n", (intmax_t)fip->inodes);
+	printf("\tNo. Inodes %10jd\n", (intmax_t)fip->inodes);
 	humanize_number(buf, sizeof(buf)  - (totalbytes < 0 ? 0 : 1),
 	    totalbytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tTotal size     %6s (%jd bytes)\n",
+	printf("\tTotal size     %6s (%jd bytes)\n",
 	    buf, (intmax_t)totalbytes);
 
 	humanize_number(buf, sizeof(buf)  - (usedbytes < 0 ? 0 : 1),
 	    usedbytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tUsed           %6s (%.2lf%%)\n", buf,
+	printf("\tUsed           %6s (%.2lf%%)\n", buf,
 	    percent(usedbytes, totalbytes));
 
 	humanize_number(buf, sizeof(buf)  - (rsvbytes < 0 ? 0 : 1),
 	    rsvbytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tReserved       %6s (%.2lf%%)\n", buf,
+	printf("\tReserved       %6s (%.2lf%%)\n", buf,
 	    percent(rsvbytes, totalbytes));
 
 	humanize_number(buf, sizeof(buf)  - (freebytes < 0 ? 0 : 1),
 	    freebytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tFree           %6s (%.2lf%%)\n", buf,
+	printf("\tFree           %6s (%.2lf%%)\n", buf,
 	    percent(freebytes, totalbytes));
 
 	/* Pseudo-filesystem information */
-	fprintf(stdout, "PFS information\n");
-	fprintf(stdout, "\tPFS ID  Mode    Snaps  Mounted on\n");
+	printf("PFS information\n");
+	printf("\tPFS ID  Mode    Snaps  Mounted on\n");
 
 	/* Iterate all the PFSs found */
 	pi_first = libhammer_get_first_pfs(fip);
 	for (pi = pi_first; pi != NULL; pi = libhammer_get_next_pfs(pi)) {
-		fprintf(stdout, "\t%6d  %-6s",
+		printf("\t%6d  %-6s",
 		    pi->pfs_id, (pi->ismaster ? "MASTER" : "SLAVE"));
 
 		snprintf(buf, 6, "%d", pi->snapcount);
-		fprintf(stdout, " %6s  ", (pi->head.error && pi->snapcount == 0) ? "-" : buf);
+		printf(" %6s  ", (pi->head.error && pi->snapcount == 0) ? "-" : buf);
 
 		if (pi->mountedon)
-			fprintf(stdout, "%s", pi->mountedon);
+			printf("%s", pi->mountedon);
 		else
-			fprintf(stdout, "not mounted");
+			printf("not mounted");
 
-		fprintf(stdout, "\n");
+		printf("\n");
 	}
 
 	free(fsid);
