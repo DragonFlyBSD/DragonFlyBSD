@@ -605,8 +605,13 @@ efi_main(EFI_HANDLE Ximage, EFI_SYSTEM_TABLE *Xsystab)
 	max_dim = best_mode = 0;
 	for (i = 0; ; i++) {
 		status = conout->QueryMode(conout, i, &cols, &rows);
-		if (EFI_ERROR(status))
-			break;
+		if (EFI_ERROR(status)) {
+			/* Mode 1 (80x50) can be unsupported on some hw. */
+			if (i == 1)
+				continue;
+			else
+				break;
+		}
 		if (cols * rows > max_dim) {
 			max_dim = cols * rows;
 			best_mode = i;
