@@ -34,6 +34,10 @@
 
 #include "map.h"
 
+#define ROUNDTO 2048	// must be a power of two
+#define ROUNDDOWN(x) ((x-1) & ~(ROUNDTO-1))
+#define ROUNDUP(x) (ROUNDDOWN(x) + ROUNDTO)
+
 int lbawidth;
 
 static map_t *mediamap;
@@ -141,17 +145,22 @@ map_alloc(off_t start, off_t size)
 	off_t delta;
 	map_t *m;
 
+	if (start == 0 && size != 0)
+		size = ROUNDUP(size);
 	for (m = mediamap; m != NULL; m = m->map_next) {
 		if (m->map_type != MAP_TYPE_UNUSED || m->map_start < 2)
 			continue;
 		if (start != 0 && m->map_start > start)
 			return (NULL);
-		delta = (start != 0) ? start - m->map_start : 0;
+		delta = (start != 0) ? start - m->map_start : ROUNDUP(m->map_start) - m->map_start;
 		if (size == 0 || m->map_size - delta >= size) {
 			if (m->map_size - delta <= 0)
 				continue;
-			if (size == 0)
+			if (size == 0) {
 				size = m->map_size - delta;
+				if (start == 0)
+					size = ROUNDDOWN(size);
+			}
 			return (map_add(m->map_start + delta, size,
 				    MAP_TYPE_GPT_PART, NULL));
 		}

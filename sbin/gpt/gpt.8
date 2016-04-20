@@ -156,6 +156,12 @@ UUID.
 You may also specify any symbolic name in the system
 .Xr uuids 5
 files.
+.Pp
+.Em NOTE!
+If you don't specify a beginning sector with
+.Fl b Ar number
+, the new partition will be aligned to 1MiB in size and position
+(in case of 512 byte sector sizes).
 .\" ==== boot ====
 .It Nm Ic boot Ar device ...
 The
