@@ -1080,6 +1080,27 @@ kstrdup(const char *str, struct malloc_type *type)
     return(nstr);
 }
 
+#ifdef SLAB_DEBUG
+char *
+kstrndup_debug(const char *str, size_t maxlen, struct malloc_type *type,
+	      const char *file, int line)
+#else
+char *
+kstrndup(const char *str, size_t maxlen, struct malloc_type *type)
+#endif
+{
+    int zlen;	/* length inclusive of terminating NUL */
+    char *nstr;
+
+    if (str == NULL)
+	return(NULL);
+    zlen = strnlen(str, maxlen) + 1;
+    nstr = kmalloc_debug(zlen, type, M_WAITOK, file, line);
+    bcopy(str, nstr, zlen);
+    nstr[zlen - 1] = '\0';
+    return(nstr);
+}
+
 /*
  * Notify our cpu that a remote cpu has freed some chunks in a zone that
  * we own.  RCount will be bumped so the memory should be good, but validate
