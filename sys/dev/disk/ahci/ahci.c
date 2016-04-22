@@ -599,7 +599,8 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		 * directly attached devices that support it.
 		 */
 		if (ap->ap_type != ATA_PORT_T_PM &&
-		    ap->ap_ata[0]->at_identify.satafsup & (1 << 3)) {
+		    (ap->ap_ata[0]->at_identify.satafsup &
+		    SATA_FEATURE_SUP_DEVIPS)) {
 			if (ahci_set_feature(ap, NULL, ATA_SATAFT_DEVIPS, 1))
 				kprintf("%s: Could not enable device initiated "
 				    "link power management.\n",
@@ -637,8 +638,10 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 
 		/* Disable device initiated link power management */
 		if (ap->ap_type != ATA_PORT_T_PM &&
-		    ap->ap_ata[0]->at_identify.satafsup & (1 << 3))
+		    (ap->ap_ata[0]->at_identify.satafsup &
+		    SATA_FEATURE_SUP_DEVIPS)) {
 			ahci_set_feature(ap, NULL, ATA_SATAFT_DEVIPS, 0);
+		}
 
 		cmd = ahci_pread(ap, AHCI_PREG_CMD);
 		cmd &= ~(AHCI_PREG_CMD_ALPE | AHCI_PREG_CMD_ASP);
@@ -3843,8 +3846,7 @@ ahci_set_feature(struct ahci_port *ap, struct ata_port *atx,
 	xa->fis->type = ATA_FIS_TYPE_H2D;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
 	xa->fis->command = ATA_C_SET_FEATURES;
-	xa->fis->features = enable ? ATA_C_SATA_FEATURE_ENA :
-	                             ATA_C_SATA_FEATURE_DIS;
+	xa->fis->features = enable ? ATA_SF_SATAFT_ENA : ATA_SF_SATAFT_DIS;
 	xa->fis->sector_count = feature;
 	xa->fis->control = ATA_FIS_CONTROL_4BIT;
 

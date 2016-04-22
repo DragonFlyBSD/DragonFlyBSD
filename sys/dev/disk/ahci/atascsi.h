@@ -24,13 +24,11 @@ struct scsi_link;
  */
 
 #define ATA_C_DATA_SET_MANAGEMENT 0x06 /* Data Set Management command */
-#define ATA_C_SATA_FEATURE_ENA	0x10
 #define ATA_C_READDMA_EXT	0x25
 #define ATA_C_READ_LOG_EXT	0x2f
 #define ATA_C_WRITEDMA_EXT	0x35
 #define ATA_C_READ_FPDMA	0x60
 #define ATA_C_WRITE_FPDMA	0x61
-#define ATA_C_SATA_FEATURE_DIS	0x90
 #define ATA_C_PACKET		0xa0
 #define ATA_C_ATAPI_IDENTIFY	0xa1
 #define ATA_C_READDMA		0xc8
@@ -44,21 +42,25 @@ struct scsi_link;
 #define ATA_C_SEC_FREEZE_LOCK	0xf5
 
 /*
- * ATA SATA FEATURES subcommands
+ * ATA SET FEATURES subcommands
+ */
+#define ATA_SF_DSM_TRIM          0x01 /* TRIM DSM feature */
+#define ATA_SF_WRITECACHE_EN	0x02
+#define ATA_SF_SETXFER		0x03
+#define ATA_SF_SATAFT_ENA	0x10
+#define ATA_SF_SATAFT_DIS	0x90
+#define ATA_SF_LOOKAHEAD_EN	0xaa
+
+/*
+ * ATA SATA FEATURES args
  */
 #define ATA_SATAFT_NONZDMA	0x01	/* DMA non-zero buffer offset */
 #define ATA_SATAFT_DMAAAOPT	0x02	/* DMA AA optimization */
 #define ATA_SATAFT_DEVIPS	0x03	/* Device-initiated pwr state*/
 #define ATA_SATAFT_INORDER	0x04	/* in-order data delivery */
 #define ATA_SATAFT_ASYNCNOTIFY	0x05	/* Async notification */
-
-/*
- * ATA SET FEATURES subcommands
- */
-#define ATA_SF_DSM_TRIM          0x01 /* TRIM DSM feature */
-#define ATA_SF_WRITECACHE_EN	0x02
-#define ATA_SF_SETXFER		0x03
-#define ATA_SF_LOOKAHEAD_EN	0xaa
+#define ATA_SATAFT_DEVAPS	0x07	/* Device auto partial to slumber */
+#define ATA_SATAFT_DEVSLEEP	0x09	/* DevSleep power management state */
 
 struct ata_identify {
 	u_int16_t	config;		/*   0 */
@@ -106,6 +108,8 @@ struct ata_identify {
 	u_int16_t	satacap2;	/*  77 */
 #define SATA_CAP2_SNDRCV_FPDMA		(1 << 6)
 	u_int16_t	satafsup;	/*  78 */
+#define SATA_FEATURE_SUP_DEVIPS		0x0008
+#define SATA_FEATURE_SUP_DEVSLEEP	0x0100
 	u_int16_t	satafen;	/*  79 */
 	u_int16_t	majver;		/*  80 */
 	u_int16_t	minver;		/*  81 */
