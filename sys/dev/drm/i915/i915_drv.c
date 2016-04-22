@@ -1863,3 +1863,6 @@ MODULE_DEPEND(i915, drm, 1, 1, 1);
 MODULE_DEPEND(i915, iicbus, 1, 1, 1);
 MODULE_DEPEND(i915, iic, 1, 1, 1);
 MODULE_DEPEND(i915, iicbb, 1, 1, 1);
+#ifdef CONFIG_ACPI
+MODULE_DEPEND(i915, acpi, 1, 1, 1);
+#endif
