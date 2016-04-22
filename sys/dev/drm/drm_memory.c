@@ -48,8 +48,6 @@
 # endif
 #endif
 
-MALLOC_DEFINE(M_DRM, "m_drm", "DRM memory allocations");
-
 void drm_legacy_ioremap(struct drm_local_map *map, struct drm_device *dev)
 {
 	map->handle = ioremap(map->offset, map->size);

@@ -194,6 +194,7 @@ static void chunk_mark_free(SLZone *z, void *chunk);
 MALLOC_DEFINE(M_CACHE, "cache", "Various Dynamically allocated caches");
 MALLOC_DEFINE(M_DEVBUF, "devbuf", "device driver memory");
 MALLOC_DEFINE(M_TEMP, "temp", "misc temporary data buffers");
+MALLOC_DEFINE(M_DRM, "m_drm", "DRM memory allocations");
  
 MALLOC_DEFINE(M_IP6OPT, "ip6opt", "IPv6 options");
 MALLOC_DEFINE(M_IP6NDP, "ip6ndp", "IPv6 Neighbor Discovery");
