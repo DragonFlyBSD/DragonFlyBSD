@@ -36,6 +36,8 @@
         ..
         mtree
         ..
+        pam.d
+        ..
         periodic
             daily
             ..
@@ -45,8 +47,6 @@
             ..
             weekly
             ..
-        ..
-        pam.d
         ..
         ppp
         ..
