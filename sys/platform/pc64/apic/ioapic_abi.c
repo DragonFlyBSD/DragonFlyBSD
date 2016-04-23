@@ -457,6 +457,9 @@ static inthand_t *ioapic_intr[IOAPIC_HWI_VECTORS] = {
 
 #define IOAPIC_HWI_SYSCALL	(IDT_OFFSET_SYSCALL - IDT_OFFSET)
 
+/*
+ * NOTE: Initialized before VM so cannot use kmalloc() for this array.
+ */
 static struct ioapic_irqmap {
 	int			im_type;	/* IOAPIC_IMT_ */
 	enum intr_trigger	im_trig;

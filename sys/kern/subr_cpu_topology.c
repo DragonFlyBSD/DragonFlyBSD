@@ -64,11 +64,14 @@ static cpu_node_t *cpu_root_node;		/* Root node pointer */
 static struct sysctl_ctx_list cpu_topology_sysctl_ctx;
 static struct sysctl_oid *cpu_topology_sysctl_tree;
 static char cpu_topology_members[8*MAXCPU];
-static per_cpu_sysctl_info_t pcpu_sysctl[MAXCPU];
+static per_cpu_sysctl_info_t *pcpu_sysctl;
 static void sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask);
 
 int cpu_topology_levels_number = 1;
 cpu_node_t *root_cpu_node;
+
+MALLOC_DEFINE(M_PCPUSYS, "pcpusys", "pcpu sysctl topology");
+
 
 /* Get the next valid apicid starting
  * from current apicid (curr_apicid
@@ -534,8 +537,10 @@ init_pcpu_topology_sysctl(void)
 	cpumask_t mask;
 	struct sbuf sb;
 
-	for (i = 0; i < ncpus; i++) {
+	pcpu_sysctl = kmalloc(sizeof(*pcpu_sysctl) * MAXCPU, M_PCPUSYS,
+			      M_INTWAIT | M_ZERO);
 
+	for (i = 0; i < ncpus; i++) {
 		sbuf_new(&sb, pcpu_sysctl[i].cpu_name,
 		    sizeof(pcpu_sysctl[i].cpu_name), SBUF_FIXEDLEN);
 		sbuf_printf(&sb,"cpu%d", i);

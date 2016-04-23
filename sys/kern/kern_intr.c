@@ -74,10 +74,17 @@ struct intr_info {
 	int		i_intr;
 };
 
-static struct intr_info intr_info_ary[MAXCPU][MAX_INTS];
+struct intr_info_block {
+	struct intr_info ary[MAXCPU][MAX_INTS];
+};
+
+static struct intr_info_block *intr_block;
 static struct intr_info *swi_info_ary[MAX_SOFTINTS];
 
 static int max_installed_hard_intr[MAXCPU];
+
+MALLOC_DEFINE(M_INTRMNG, "intrmng", "interrupt management");
+
 
 #define EMERGENCY_INTR_POLLING_FREQ_MAX 20000
 
@@ -245,7 +252,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	panic("register_int: bad intr %d", intr);
     if (name == NULL)
 	name = "???";
-    info = &intr_info_ary[cpuid][intr];
+    info = &intr_block->ary[cpuid][intr];
 
     /*
      * Construct an interrupt handler record
@@ -375,7 +382,7 @@ unregister_int(void *id, int cpuid)
     if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
 
-    info = &intr_info_ary[cpuid][intr];
+    info = &intr_block->ary[cpuid][intr];
 
     int_moveto_destcpu(&orig_cpuid, cpuid);
 
@@ -441,7 +448,7 @@ get_interrupt_counter(int intr, int cpuid)
 
     if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
-    info = &intr_info_ary[cpuid][intr];
+    info = &intr_block->ary[cpuid][intr];
     return(info->i_count);
 }
 
@@ -455,7 +462,7 @@ register_randintr(int intr)
 	panic("register_randintr: bad intr %d", intr);
 
     for (cpuid = 0; cpuid < ncpus; ++cpuid) {
-	info = &intr_info_ary[cpuid][intr];
+	info = &intr_block->ary[cpuid][intr];
 	info->i_random.sc_intr = intr;
 	info->i_random.sc_enabled = 1;
     }
@@ -471,7 +478,7 @@ unregister_randintr(int intr)
 	panic("register_swi: bad intr %d", intr);
 
     for (cpuid = 0; cpuid < ncpus; ++cpuid) {
-	info = &intr_info_ary[cpuid][intr];
+	info = &intr_block->ary[cpuid][intr];
 	info->i_random.sc_enabled = -1;
     }
 }
@@ -488,7 +495,7 @@ next_registered_randintr(int intr)
 	int cpuid;
 
 	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
-	    info = &intr_info_ary[cpuid][intr];
+	    info = &intr_block->ary[cpuid][intr];
 	    if (info->i_random.sc_enabled > 0)
 		return intr;
 	}
@@ -562,7 +569,7 @@ void
 sched_ithd_hard(int intr)
 {
 	KKASSERT(intr >= 0 && intr < MAX_HARDINTS);
-	sched_ithd_intern(&intr_info_ary[mycpuid][intr]);
+	sched_ithd_intern(&intr_block->ary[mycpuid][intr]);
 }
 
 #ifdef _KERNEL_VIRTUAL
@@ -571,7 +578,7 @@ void
 sched_ithd_hard_virtual(int intr)
 {
 	KKASSERT(intr >= 0 && intr < MAX_HARDINTS);
-	sched_ithd_intern(&intr_info_ary[0][intr]);
+	sched_ithd_intern(&intr_block->ary[0][intr]);
 }
 
 void *
@@ -616,7 +623,7 @@ ithread_livelock_wakeup(systimer_t st, int in_ipi __unused,
 {
     struct intr_info *info;
 
-    info = &intr_info_ary[mycpuid][(int)(intptr_t)st->data];
+    info = &intr_block->ary[mycpuid][(int)(intptr_t)st->data];
     if (info->i_state != ISTATE_NOTHREAD)
 	lwkt_schedule(info->i_thread);
 }
@@ -674,7 +681,7 @@ ithread_fast_handler(struct intrframe *frame)
     /* We must be in critical section. */
     KKASSERT(td->td_critcount);
 
-    info = &intr_info_ary[mycpuid][intr];
+    info = &intr_block->ary[mycpuid][intr];
 
     /*
      * If we are not processing any FAST interrupts, just schedule the thing.
@@ -787,7 +794,7 @@ ithread_handler(void *arg)
 
     ill_count = 0;
     intr = (int)(intptr_t)arg;
-    info = &intr_info_ary[cpuid][intr];
+    info = &intr_block->ary[cpuid][intr];
     list = &info->i_reclist;
 
     /*
@@ -978,7 +985,7 @@ ithread_emergency(void *arg __unused)
 
     for (;;) {
 	for (intr = 0; intr < max_installed_hard_intr[cpuid]; ++intr) {
-	    info = &intr_info_ary[cpuid][intr];
+	    info = &intr_block->ary[cpuid][intr];
 	    for (rec = info->i_reclist; rec; rec = nrec) {
 		/* rec may be invalid after call */
 		nrec = rec->next;
@@ -1034,7 +1041,7 @@ sysctl_intrnames(SYSCTL_HANDLER_ARGS)
 
     for (cpuid = 0; cpuid < ncpus; ++cpuid) {
 	for (intr = 0; error == 0 && intr < MAX_INTS; ++intr) {
-	    info = &intr_info_ary[cpuid][intr];
+	    info = &intr_block->ary[cpuid][intr];
 
 	    len = 0;
 	    buf[0] = 0;
@@ -1065,7 +1072,7 @@ sysctl_intrcnt_all(SYSCTL_HANDLER_ARGS)
 
     for (cpuid = 0; cpuid < ncpus; ++cpuid) {
 	for (intr = 0; intr < MAX_INTS; ++intr) {
-	    info = &intr_info_ary[cpuid][intr];
+	    info = &intr_block->ary[cpuid][intr];
 
 	    error = SYSCTL_OUT(req, &info->i_count, sizeof(info->i_count));
 	    if (error)
@@ -1107,11 +1114,14 @@ intr_init(void *dummy __unused)
 
 	kprintf("Initialize MI interrupts\n");
 
+	intr_block = kmalloc(sizeof(*intr_block), M_INTRMNG,
+			     M_INTWAIT | M_ZERO);
+
 	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
 		int intr;
 
 		for (intr = 0; intr < MAX_INTS; ++intr) {
-			struct intr_info *info = &intr_info_ary[cpuid][intr];
+			struct intr_info *info = &intr_block->ary[cpuid][intr];
 
 			info->i_cpuid = cpuid;
 			info->i_intr = intr;
