@@ -85,31 +85,23 @@ db_examine(db_addr_t addr, char *fmt, int count)
 	    width = 16;
 	    while ((c = *fp++) != 0) {
 		switch (c) {
-		    case 'b':
+		case 'b':
 			size = 1;
 			width = 4;
 			break;
-		    case 'h':
+		case 'h':
 			size = 2;
 			width = 8;
 			break;
-		    case 'l':
+		case 'l':
 			size = 4;
 			width = 16;
 			break;
-		    case 'g':
+		case 'g':
 			size = 8;
 			width = 32;
 			break;
-		    case 'a':	/* address */
-			/* always forces a new line */
-			if (db_print_position() != 0)
-			    db_printf("\n");
-			db_prev = addr;
-			db_printsym(addr, DB_STGY_ANY);
-			db_printf(":\t");
-			break;
-		    default:
+		default:
 			if (db_print_position() == 0) {
 			    /* Print the address. */
 			    db_printsym(addr, DB_STGY_ANY);
@@ -118,38 +110,50 @@ db_examine(db_addr_t addr, char *fmt, int count)
 			}
 
 			switch (c) {
-			    case 'r':	/* signed, current radix */
+			case 'a':
+				size = sizeof(void *);
+				value = db_get_value(addr, size, TRUE);
+				addr += size;
+				db_printsym(value, DB_STGY_ANY);
+				break;
+			case 'p':
+				size = sizeof(void *);
+				value = db_get_value(addr, size, TRUE);
+				addr += size;
+				db_printf("%p", (void *)value);
+				break;
+			case 'r':	/* signed, current radix */
 				value = db_get_value(addr, size, TRUE);
 				addr += size;
 				db_printf("%+-*lr", width, (long)value);
 				break;
-			    case 'x':	/* unsigned hex */
+			case 'x':	/* unsigned hex */
 				value = db_get_value(addr, size, FALSE);
 				addr += size;
 				db_printf("%-*lx", width, (long)value);
 				break;
-			    case 'z':	/* signed hex */
+			case 'z':	/* signed hex */
 				value = db_get_value(addr, size, TRUE);
 				addr += size;
 				db_format_hex(tbuf, 24, value, FALSE);
 				db_printf("%-*s", width, tbuf);
 				break;
-			    case 'd':	/* signed decimal */
+			case 'd':	/* signed decimal */
 				value = db_get_value(addr, size, TRUE);
 				addr += size;
 				db_printf("%-*ld", width, (long)value);
 				break;
-			    case 'u':	/* unsigned decimal */
+			case 'u':	/* unsigned decimal */
 				value = db_get_value(addr, size, FALSE);
 				addr += size;
 				db_printf("%-*lu", width, (long)value);
 				break;
-			    case 'o':	/* unsigned octal */
+			case 'o':	/* unsigned octal */
 				value = db_get_value(addr, size, FALSE);
 				addr += size;
 				db_printf("%-*lo", width, (long)value);
 				break;
-			    case 'c':	/* character */
+			case 'c':	/* character */
 				value = db_get_value(addr, 1, FALSE);
 				addr += 1;
 				if (value >= ' ' && value <= '~')
@@ -157,7 +161,7 @@ db_examine(db_addr_t addr, char *fmt, int count)
 				else
 				    db_printf("\\%03o", (int)value);
 				break;
-			    case 's':	/* null-terminated string */
+			case 's':	/* null-terminated string */
 				for (;;) {
 				    value = db_get_value(addr, 1, FALSE);
 				    addr += 1;
@@ -169,17 +173,19 @@ db_examine(db_addr_t addr, char *fmt, int count)
 					db_printf("\\%03o", (int)value);
 				}
 				break;
-			    case 'i':	/* instruction */
+			case 'i':	/* instruction */
 				addr = db_disasm(addr, FALSE, NULL);
 				break;
-			    case 'I':	/* instruction, alternate form */
+			case 'I':	/* instruction, alternate form */
 				addr = db_disasm(addr, TRUE, NULL);
 				break;
-			    default:
+			default:
 				break;
 			}
-			if (db_print_position() != 0)
-			    db_end_line(1);
+			if (db_print_position() != 0 ||
+			    c == 'a' || c == 'p') {
+				db_end_line(1);
+			}
 			break;
 		}
 	    }
