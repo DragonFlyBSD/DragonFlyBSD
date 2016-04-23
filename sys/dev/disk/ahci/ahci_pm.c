@@ -452,7 +452,7 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	 * Turn off power management and kill the phy on the target
 	 * if requested.  Hold state for 10ms.
 	 */
-	data = AHCI_PREG_SCTL_IPM_DISABLED;
+	data = ap->ap_sc->sc_ipm_disable;
 	if (hard == 2)
 		data |= AHCI_PREG_SCTL_DET_DISABLE;
 	if (ahci_pm_write(ap, target, SATA_PMREG_SERR, -1))
@@ -467,7 +467,7 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	 */
 	at->at_probe = ATA_PROBE_FAILED;
 	at->at_type = ATA_PORT_T_NONE;
-	data = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_INIT;
+	data = ap->ap_sc->sc_ipm_disable | AHCI_PREG_SCTL_DET_INIT;
 	switch(AhciForceGen) {
 	case 0:
 		data |= AHCI_PREG_SCTL_SPD_ANY;
@@ -504,7 +504,7 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	 * Flush any status, then clear DET to initiate negotiation.
 	 */
 	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
-	data = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_NONE;
+	data = ap->ap_sc->sc_ipm_disable | AHCI_PREG_SCTL_DET_NONE;
 	if (ahci_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;
 

@@ -202,6 +202,7 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_CMD_ALPE		(1<<26) /* Aggro Pwr Mgmt Enable */
 #define  AHCI_PREG_CMD_ASP		(1<<27) /* Aggro Slumber/Partial */
 #define  AHCI_PREG_CMD_ICC		0xf0000000 /* Interface Comm Ctrl */
+#define  AHCI_PREG_CMD_ICC_DEVSLEEP	0x80000000
 #define  AHCI_PREG_CMD_ICC_SLUMBER	0x60000000
 #define  AHCI_PREG_CMD_ICC_PARTIAL	0x20000000
 #define  AHCI_PREG_CMD_ICC_ACTIVE	0x10000000
@@ -255,7 +256,7 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_SCTL_IPM_NONE	0x000
 #define  AHCI_PREG_SCTL_IPM_NOPARTIAL	0x100
 #define  AHCI_PREG_SCTL_IPM_NOSLUMBER	0x200
-#define  AHCI_PREG_SCTL_IPM_DISABLED	0x300
+#define  AHCI_PREG_SCTL_IPM_NODEVSLP	0x400
 #define	 AHCI_PREG_SCTL_SPM		0xf000	/* Select Power Management */
 #define	 AHCI_PREG_SCTL_SPM_NONE	0x0000
 #define	 AHCI_PREG_SCTL_SPM_NOPARTIAL	0x1000
@@ -528,6 +529,7 @@ struct ahci_softc {
 	u_int32_t		sc_vers;	/* AHCI version */
 	int			sc_numports;
 	u_int32_t		sc_portmask;
+	u_int32_t		sc_ipm_disable;
 
 	void			*sc_irq_handle;	/* installed irq vector */
 

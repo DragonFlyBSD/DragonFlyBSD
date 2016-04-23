@@ -429,6 +429,11 @@ ahci_pci_attach(device_t dev)
 	DPRINTF(AHCI_D_VERBOSE, "%s: ports implemented: 0x%08x\n",
 	    DEVNAME(sc), pi);
 
+	sc->sc_ipm_disable = AHCI_PREG_SCTL_IPM_NOPARTIAL |
+			     AHCI_PREG_SCTL_IPM_NOSLUMBER;
+	if (sc->sc_cap2 & AHCI_REG_CAP2_SDS)
+		sc->sc_ipm_disable |= AHCI_PREG_SCTL_IPM_NODEVSLP;
+
 #ifdef AHCI_COALESCE
 	/* Naive coalescing support - enable for all ports. */
 	if (cap & AHCI_REG_CAP_CCCS) {

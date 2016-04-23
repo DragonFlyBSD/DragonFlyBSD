@@ -219,7 +219,7 @@ ahci_init(struct ahci_softc *sc)
 		 *	  on AHCI1.2 as well.
 		 */
 		ahci_port_stop(ap, 1);
-		ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
+		ahci_pwrite(ap, AHCI_PREG_SCTL, ap->ap_sc->sc_ipm_disable);
 		ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 		ahci_pwrite(ap, AHCI_PREG_IE, 0);
 		ahci_write(ap->ap_sc, AHCI_REG_IS, 1 << i);
@@ -331,7 +331,7 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 		}
 
 		/* Write DET to zero */
-		ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
+		ahci_pwrite(ap, AHCI_PREG_SCTL, ap->ap_sc->sc_ipm_disable);
 	}
 
 	/* Allocate RFIS */
@@ -511,7 +511,7 @@ ahci_port_init(struct ahci_port *ap)
 	 * AP_F_HARSH_REINIT is cleared in the hard reset state
 	 */
 	if (ap->ap_flags & AP_F_HARSH_REINIT) {
-		ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
+		ahci_pwrite(ap, AHCI_PREG_SCTL, ap->ap_sc->sc_ipm_disable);
 		ahci_pwrite(ap, AHCI_PREG_CMD, 0);
 
 		ahci_os_sleep(1000);
@@ -591,7 +591,9 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		ahci_port_interrupt_enable(ap);
 
 		sctl = ahci_pread(ap, AHCI_PREG_SCTL);
-		sctl &= ~(AHCI_PREG_SCTL_IPM_DISABLED);
+		sctl &= ~(AHCI_PREG_SCTL_IPM);
+		if (ap->ap_sc->sc_cap2 & AHCI_REG_CAP2_SDS)
+			sctl |= AHCI_PREG_SCTL_IPM_NODEVSLP;
 		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
 
 		/*
@@ -623,8 +625,10 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		ahci_port_interrupt_enable(ap);
 
 		sctl = ahci_pread(ap, AHCI_PREG_SCTL);
-		sctl |= AHCI_PREG_SCTL_IPM_DISABLED;
-		sctl &= ~AHCI_PREG_SCTL_IPM_NOPARTIAL;
+		sctl &= ~(AHCI_PREG_SCTL_IPM);
+		sctl |= AHCI_PREG_SCTL_IPM_NOSLUMBER;
+		if (ap->ap_sc->sc_cap2 & AHCI_REG_CAP2_SDS)
+			sctl |= AHCI_PREG_SCTL_IPM_NODEVSLP;
 		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
 
 		cmd = ahci_pread(ap, AHCI_PREG_CMD);
@@ -648,7 +652,8 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
 		sctl = ahci_pread(ap, AHCI_PREG_SCTL);
-		sctl |= AHCI_PREG_SCTL_IPM_DISABLED;
+		sctl &= ~(AHCI_PREG_SCTL_IPM);
+		sctl |= ap->ap_sc->sc_ipm_disable;
 		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
 
 		/* let the drive come back to avoid PRCS interrupts later */
@@ -1403,8 +1408,7 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	 */
 	ap->ap_type = ATA_PORT_T_NONE;
 
-	r = AHCI_PREG_SCTL_IPM_DISABLED |
-	    AHCI_PREG_SCTL_SPM_DISABLED;
+	r = ap->ap_sc->sc_ipm_disable | AHCI_PREG_SCTL_SPM_DISABLED;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 
 retry:
@@ -1728,8 +1732,7 @@ ahci_port_hardstop(struct ahci_port *ap)
 	 * is a bit unclear what happens w/regards to detecting hotplug
 	 * if it doesn't.
 	 */
-	r = AHCI_PREG_SCTL_IPM_DISABLED |
-	    AHCI_PREG_SCTL_SPM_DISABLED;
+	r = ap->ap_sc->sc_ipm_disable | AHCI_PREG_SCTL_SPM_DISABLED;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 	ahci_os_sleep(10);
 	cmd &= ~AHCI_PREG_CMD_SUD;
