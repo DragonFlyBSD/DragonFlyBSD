@@ -273,11 +273,15 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 
     /*
      * Create an emergency polling thread and set up a systimer to wake
-     * it up.
+     * it up.  objcache isn't operational yet so use kmalloc.
+     *
+     * objcache may not be operational yet, use kmalloc().
      */
     if (emergency_intr_thread[cpuid] == NULL) {
-	lwkt_create(ithread_emergency, NULL,
-		    &emergency_intr_thread[cpuid], NULL,
+	emergency_intr_thread[cpuid] = kmalloc(sizeof(struct thread), M_DEVBUF,
+					       M_INTWAIT | M_ZERO);
+	lwkt_create(ithread_emergency, NULL, NULL,
+		    emergency_intr_thread[cpuid],
 		    TDF_NOSTART | TDF_INTTHREAD, cpuid, "ithreadE %d",
 		    cpuid);
 	systimer_init_periodic_nq(&emergency_intr_timer[cpuid],
@@ -293,7 +297,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     if (info->i_state == ISTATE_NOTHREAD) {
 	info->i_state = ISTATE_NORMAL;
 	info->i_thread = kmalloc(sizeof(struct thread), M_DEVBUF,
-	    M_INTWAIT | M_ZERO);
+				 M_INTWAIT | M_ZERO);
 	lwkt_create(ithread_handler, (void *)(intptr_t)intr, NULL,
 		    info->i_thread, TDF_NOSTART | TDF_INTTHREAD, cpuid,
 		    "ithread%d %d", intr, cpuid);
