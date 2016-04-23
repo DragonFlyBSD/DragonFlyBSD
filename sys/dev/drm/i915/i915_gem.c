@@ -23,36 +23,7 @@
  * Authors:
  *    Eric Anholt <eric@anholt.net>
  *
- * Copyright (c) 2011 The FreeBSD Foundation
- * All rights reserved.
- *
- * This software was developed by Konstantin Belousov under sponsorship from
- * the FreeBSD Foundation.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
  */
-
-#include <machine/md_var.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_vma_manager.h>
@@ -207,7 +178,7 @@ i915_gem_object_get_pages_phys(struct drm_i915_gem_object *obj)
 		return -EINVAL;
 
 	for (i = 0; i < obj->base.size / PAGE_SIZE; i++) {
-		struct vm_page *page;
+		struct page *page;
 		char *src;
 
 		page = shmem_read_mapping_page(mapping, i);
@@ -651,7 +622,7 @@ i915_gem_shmem_pread(struct drm_device *dev,
 	int obj_do_bit17_swizzling, page_do_bit17_swizzling;
 	int prefaulted = 0;
 	int needs_clflush = 0;
-	int i;
+	struct sg_page_iter sg_iter;
 
 	user_data = to_user_ptr(args->data_ptr);
 	remain = args->size;
@@ -664,8 +635,9 @@ i915_gem_shmem_pread(struct drm_device *dev,
 
 	offset = args->offset;
 
-	for (i = 0; i < (obj->base.size >> PAGE_SHIFT); i++) {
-		struct vm_page *page = obj->pages[i];
+	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents,
+			 offset >> PAGE_SHIFT) {
+		struct vm_page *page = sg_page_iter_page(&sg_iter);
 
 		if (remain <= 0)
 			break;
@@ -754,6 +726,10 @@ i915_gem_pread_ioctl(struct drm_device *dev, void *data,
 		ret = -EINVAL;
 		goto out;
 	}
+
+	/* prime objects have no backing filp to GEM pread/pwrite
+	 * pages from.
+	 */
 
 	trace_i915_gem_object_pread(obj, args->offset, args->size);
 
@@ -939,7 +915,7 @@ i915_gem_shmem_pwrite(struct drm_device *dev,
 	int hit_slowpath = 0;
 	int needs_clflush_after = 0;
 	int needs_clflush_before = 0;
-	int i;
+	struct sg_page_iter sg_iter;
 
 	user_data = to_user_ptr(args->data_ptr);
 	remain = args->size;
@@ -975,12 +951,11 @@ i915_gem_shmem_pwrite(struct drm_device *dev,
 
 	VM_OBJECT_LOCK(obj->base.vm_obj);
 	vm_object_pip_add(obj->base.vm_obj, 1);
-	for (i = 0; i < (obj->base.size >> PAGE_SHIFT); i++) {
-		struct vm_page *page = obj->pages[i];
-		int partial_cacheline_write;
 
-		if (i < offset >> PAGE_SHIFT)
-			continue;
+	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents,
+			 offset >> PAGE_SHIFT) {
+		struct vm_page *page = sg_page_iter_page(&sg_iter);
+		int partial_cacheline_write;
 
 		if (remain <= 0)
 			break;
@@ -1021,7 +996,7 @@ i915_gem_shmem_pwrite(struct drm_device *dev,
 					needs_clflush_after);
 
 		mutex_lock(&dev->struct_mutex);
- 
+
 		if (ret)
 			goto out;
 
@@ -1099,6 +1074,10 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
+	/* prime objects have no backing filp to GEM pread/pwrite
+	 * pages from.
+	 */
+
 	trace_i915_gem_object_pwrite(obj, args->offset, args->size);
 
 	ret = -EFAULT;
@@ -1108,7 +1087,6 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 	 * pread/pwrite currently are reading and writing from the CPU
 	 * perspective, requiring manual detiling by the client.
 	 */
-
 	if (obj->tiling_mode == I915_TILING_NONE &&
 	    obj->base.write_domain != I915_GEM_DOMAIN_CPU &&
 	    cpu_write_needs_clflush(obj)) {
@@ -1700,10 +1678,14 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	struct drm_i915_gem_mmap *args = data;
 	struct drm_gem_object *obj;
 	unsigned long addr;
+
 	struct proc *p = curproc;
 	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_size_t size;
 	int error = 0, rv;
+
+	if (args->flags & ~(I915_MMAP_WC))
+		return -EINVAL;
 
 	obj = drm_gem_object_lookup(dev, file, args->handle);
 	if (obj == NULL)
@@ -1718,12 +1700,17 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
+	/* prime objects have no backing filp to GEM mmap
+	 * pages from.
+	 */
+
 	/*
 	 * Call hint to ensure that NULL is not returned as a valid address
 	 * and to reduce vm_map traversals. XXX causes instability, use a
 	 * fixed low address as the start point instead to avoid the NULL
 	 * return issue.
 	 */
+
 	addr = PAGE_SIZE;
 
 	/*
@@ -1774,6 +1761,8 @@ out:
  * to be able to retry.
  *
  * --
+ * vma: VMA in question
+ * vmf: fault info
  *
  * The fault handler is set up by drm_gem_mmap() when a object is GTT mapped
  * from userspace.  The fault handler takes care of binding the object to
@@ -2003,14 +1992,12 @@ out:
 //			ret = VM_FAULT_SIGBUS;
 			break;
 		}
-		/* fall through */
 	case -EAGAIN:
 		/*
 		 * EAGAIN means the gpu is hung and we'll wait for the error
 		 * handler to reset everything when re-faulting in
 		 * i915_mutex_lock_interruptible.
 		 */
-		/* fall through */
 	case -ERESTARTSYS:
 	case -EINTR:
 		VM_OBJECT_UNLOCK(vm_obj);
@@ -2280,11 +2267,8 @@ i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 static void
 i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 {
-	int page_count = obj->base.size / PAGE_SIZE;
-	int i, ret;
-
-	if (!obj->pages)
-		return;
+	struct sg_page_iter sg_iter;
+	int ret;
 
 	BUG_ON(obj->madv == __I915_MADV_PURGED);
 
@@ -2306,8 +2290,8 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 	if (obj->madv == I915_MADV_DONTNEED)
 		obj->dirty = 0;
 
-	for (i = 0; i < page_count; i++) {
-		struct vm_page *page = obj->pages[i];
+	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents, 0) {
+		struct vm_page *page = sg_page_iter_page(&sg_iter);
 
 		if (obj->dirty)
 			set_page_dirty(page);
@@ -2315,14 +2299,14 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 		if (obj->madv == I915_MADV_WILLNEED)
 			mark_page_accessed(page);
 
-		vm_page_busy_wait(obj->pages[i], FALSE, "i915gem");
-		vm_page_unwire(obj->pages[i], 1);
-		vm_page_wakeup(obj->pages[i]);
+		vm_page_busy_wait(page, FALSE, "i915gem");
+		vm_page_unwire(page, 1);
+		vm_page_wakeup(page);
 	}
 	obj->dirty = 0;
 
+	sg_free_table(obj->pages);
 	kfree(obj->pages);
-	obj->pages = NULL;
 }
 
 int
@@ -2355,10 +2339,14 @@ static int
 i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 {
 	struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
-	int page_count, i, j;
+	int page_count, i;
 	vm_object_t vm_obj;
+	struct sg_table *st;
+	struct scatterlist *sg;
+	struct sg_page_iter sg_iter;
 	struct vm_page *page;
-	int ret = -EIO;
+	unsigned long last_pfn = 0;	/* suppress gcc warning */
+	int ret;
 
 	/* Assert that the object is not currently in any GPU domain. As it
 	 * wasn't in the GTT, there shouldn't be any way it could have been in
@@ -2367,9 +2355,15 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 	BUG_ON(obj->base.read_domains & I915_GEM_GPU_DOMAINS);
 	BUG_ON(obj->base.write_domain & I915_GEM_GPU_DOMAINS);
 
+	st = kmalloc(sizeof(*st), M_DRM, M_WAITOK);
+	if (st == NULL)
+		return -ENOMEM;
+
 	page_count = obj->base.size / PAGE_SIZE;
-	obj->pages = kmalloc(page_count * sizeof(vm_page_t), M_DRM,
-	    M_WAITOK);
+	if (sg_alloc_table(st, page_count, GFP_KERNEL)) {
+		kfree(st);
+		return -ENOMEM;
+	}
 
 	/* Get the list of pages out of our struct file.  They'll be pinned
 	 * at this point until we release them.
@@ -2378,6 +2372,8 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 	 */
 	vm_obj = obj->base.vm_obj;
 	VM_OBJECT_LOCK(vm_obj);
+	sg = st->sgl;
+	st->nents = 0;
 	for (i = 0; i < page_count; i++) {
 		page = shmem_read_mapping_page(vm_obj, i);
 		if (IS_ERR(page)) {
@@ -2393,7 +2389,6 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 			 * our own buffer, now let the real VM do its job and
 			 * go down in flames if truly OOM.
 			 */
-
 			i915_gem_shrink_all(dev_priv);
 			page = shmem_read_mapping_page(vm_obj, i);
 			if (IS_ERR(page)) {
@@ -2409,11 +2404,23 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 			continue;
 		}
 #endif
-		obj->pages[i] = page;
+		if (!i || page_to_pfn(page) != last_pfn + 1) {
+			if (i)
+				sg = sg_next(sg);
+			st->nents++;
+			sg_set_page(sg, page, PAGE_SIZE, 0);
+		} else {
+			sg->length += PAGE_SIZE;
+		}
+		last_pfn = page_to_pfn(page);
+
+		/* Check that the i965g/gm workaround works. */
 	}
 #ifdef CONFIG_SWIOTLB
 	if (!swiotlb_nr_tbl())
 #endif
+		sg_mark_end(sg);
+	obj->pages = st;
 	VM_OBJECT_UNLOCK(vm_obj);
 
 	ret = i915_gem_gtt_prepare_object(obj);
@@ -2430,15 +2437,16 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 	return 0;
 
 err_pages:
-	for (j = 0; j < i; j++) {
-		page = obj->pages[j];
+	sg_mark_end(sg);
+	for_each_sg_page(st->sgl, &sg_iter, st->nents, 0) {
+		page = sg_page_iter_page(&sg_iter);
 		vm_page_busy_wait(page, FALSE, "i915gem");
 		vm_page_unwire(page, 0);
 		vm_page_wakeup(page);
 	}
 	VM_OBJECT_UNLOCK(vm_obj);
-	kfree(obj->pages);
-	obj->pages = NULL;
+	sg_free_table(st);
+	kfree(st);
 
 	/* shmemfs first checks if there is enough memory to allocate the page
 	 * and reports ENOSPC should there be insufficient, along with the usual
@@ -2483,6 +2491,10 @@ i915_gem_object_get_pages(struct drm_i915_gem_object *obj)
 		return ret;
 
 	list_add_tail(&obj->global_list, &dev_priv->mm.unbound_list);
+
+	obj->get_page.sg = obj->pages->sgl;
+	obj->get_page.last = 0;
+
 	return 0;
 }
 
@@ -3380,6 +3392,7 @@ int i915_vma_unbind(struct i915_vma *vma)
 		if (vma->ggtt_view.type == I915_GGTT_VIEW_NORMAL) {
 			obj->map_and_fenceable = false;
 		} else if (vma->ggtt_view.pages) {
+			sg_free_table(vma->ggtt_view.pages);
 			kfree(vma->ggtt_view.pages);
 		}
 		vma->ggtt_view.pages = NULL;
@@ -3457,6 +3470,13 @@ static void i965_write_fence_reg(struct drm_device *dev, int reg,
 	if (obj) {
 		u32 size = i915_gem_obj_ggtt_size(obj);
 		uint64_t val;
+
+		/* Adjust fence size to match tiled area */
+		if (obj->tiling_mode != I915_TILING_NONE) {
+			uint32_t row_size = obj->stride *
+				(obj->tiling_mode == I915_TILING_Y ? 32 : 8);
+			size = (size / row_size) * row_size;
+		}
 
 		val = (uint64_t)((i915_gem_obj_ggtt_offset(obj) + size - 4096) &
 				 0xfffff000) << 32;
@@ -3937,7 +3957,7 @@ i915_gem_clflush_object(struct drm_i915_gem_object *obj,
 	 * Stolen memory is always coherent with the GPU as it is explicitly
 	 * marked as wc by the system, or the system is cache-coherent.
 	 */
-	if (obj->stolen)
+	if (obj->stolen || obj->phys_handle)
 		return false;
 
 	/* If the GPU is snooping the contents of the CPU cache,
@@ -3954,7 +3974,7 @@ i915_gem_clflush_object(struct drm_i915_gem_object *obj,
 	}
 
 	trace_i915_gem_object_clflush(obj);
-	drm_clflush_pages(obj->pages, obj->base.size / PAGE_SIZE);
+	drm_clflush_sg(obj->pages);
 	obj->cache_dirty = false;
 
 	return true;

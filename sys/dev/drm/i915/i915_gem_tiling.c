@@ -504,26 +504,29 @@ i915_gem_swizzle_page(struct vm_page *page)
 void
 i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj)
 {
-	int page_count = obj->base.size >> PAGE_SHIFT;
+	struct sg_page_iter sg_iter;
 	int i;
 
 	if (obj->bit_17 == NULL)
 		return;
 
-	for (i = 0; i < page_count; i++) {
-		struct vm_page *page = obj->pages[i];
-		char new_bit_17 = VM_PAGE_TO_PHYS(obj->pages[i]) >> 17;
+	i = 0;
+	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents, 0) {
+		struct vm_page *page = sg_page_iter_page(&sg_iter);
+		char new_bit_17 = page_to_phys(page) >> 17;
 		if ((new_bit_17 & 0x1) !=
 		    (test_bit(i, obj->bit_17) != 0)) {
 			i915_gem_swizzle_page(page);
 			set_page_dirty(page);
 		}
+		i++;
 	}
 }
 
 void
 i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 {
+	struct sg_page_iter sg_iter;
 	int page_count = obj->base.size >> PAGE_SHIFT;
 	int i;
 
@@ -537,10 +540,12 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 		}
 	}
 
-	for (i = 0; i < page_count; i++) {
-		if (VM_PAGE_TO_PHYS(obj->pages[i]) & (1 << 17))
+	i = 0;
+	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents, 0) {
+		if (page_to_phys(sg_page_iter_page(&sg_iter)) & (1 << 17))
 			__set_bit(i, obj->bit_17);
 		else
 			__clear_bit(i, obj->bit_17);
+		i++;
 	}
 }

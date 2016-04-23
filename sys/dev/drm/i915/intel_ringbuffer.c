@@ -656,7 +656,7 @@ intel_fini_pipe_control(struct intel_engine_cs *ring)
 		return;
 
 	if (INTEL_INFO(dev)->gen >= 5) {
-		kunmap(ring->scratch.obj->pages[0]);
+		kunmap(sg_page(ring->scratch.obj->pages->sgl));
 		i915_gem_object_ggtt_unpin(ring->scratch.obj);
 	}
 
@@ -687,7 +687,7 @@ intel_init_pipe_control(struct intel_engine_cs *ring)
 		goto err_unref;
 
 	ring->scratch.gtt_offset = i915_gem_obj_ggtt_offset(ring->scratch.obj);
-	ring->scratch.cpu_page = kmap(ring->scratch.obj->pages[0]);
+	ring->scratch.cpu_page = kmap(sg_page(ring->scratch.obj->pages->sgl));
 	if (ring->scratch.cpu_page == NULL) {
 		ret = -ENOMEM;
 		goto err_unpin;
@@ -1849,7 +1849,7 @@ static void cleanup_status_page(struct intel_engine_cs *ring)
 	if (obj == NULL)
 		return;
 
-	kunmap(obj->pages[0]);
+	kunmap(sg_page(obj->pages->sgl));
 	i915_gem_object_ggtt_unpin(obj);
 	drm_gem_object_unreference(&obj->base);
 	ring->status_page.obj = NULL;
@@ -1897,7 +1897,7 @@ err_unref:
 	}
 
 	ring->status_page.gfx_addr = i915_gem_obj_ggtt_offset(obj);
-	ring->status_page.page_addr = kmap(obj->pages[0]);
+	ring->status_page.page_addr = kmap(sg_page(obj->pages->sgl));
 	memset(ring->status_page.page_addr, 0, PAGE_SIZE);
 
 	DRM_DEBUG_DRIVER("%s hws offset: 0x%08x\n",

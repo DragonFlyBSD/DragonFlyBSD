@@ -138,7 +138,7 @@ struct i915_ggtt_view {
 		} partial;
 	} params;
 
-	struct vm_page **pages;
+	struct sg_table *pages;
 
 	union {
 		struct intel_rotation_info rotation_info;
@@ -278,9 +278,8 @@ struct i915_address_space {
 			    uint64_t length,
 			    bool use_scratch);
 	void (*insert_entries)(struct i915_address_space *vm,
-			       vm_page_t *pages,
+			       struct sg_table *st,
 			       uint64_t start,
-			       unsigned int num_entries,
 			       enum i915_cache_level cache_level, u32 flags);
 	void (*cleanup)(struct i915_address_space *vm);
 	/** Unmap an object from an address space. This usually consists of

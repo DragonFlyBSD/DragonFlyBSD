@@ -2068,8 +2068,12 @@ struct drm_i915_gem_object {
 
 	unsigned int pin_display;
 
-	struct vm_page **pages;
+	struct sg_table *pages;
 	int pages_pin_count;
+	struct get_page {
+		struct scatterlist *sg;
+		int last;
+	} get_page;
 
 	/* prime dma-buf support */
 	void *dma_buf_vmapping;
@@ -2762,10 +2766,34 @@ int i915_gem_obj_prepare_shmem_read(struct drm_i915_gem_object *obj,
 				    int *needs_clflush);
 
 int __must_check i915_gem_object_get_pages(struct drm_i915_gem_object *obj);
-static inline struct vm_page *i915_gem_object_get_page(struct drm_i915_gem_object *obj, int n)
+
+static inline int __sg_page_count(struct scatterlist *sg)
 {
-	return obj->pages[n];
+	return sg->length >> PAGE_SHIFT;
 }
+
+static inline struct vm_page *
+i915_gem_object_get_page(struct drm_i915_gem_object *obj, int n)
+{
+	if (WARN_ON(n >= obj->base.size >> PAGE_SHIFT))
+		return NULL;
+
+	if (n < obj->get_page.last) {
+		obj->get_page.sg = obj->pages->sgl;
+		obj->get_page.last = 0;
+	}
+
+	while (obj->get_page.last + __sg_page_count(obj->get_page.sg) <= n) {
+		obj->get_page.last += __sg_page_count(obj->get_page.sg++);
+#if 0
+		if (unlikely(sg_is_chain(obj->get_page.sg)))
+			obj->get_page.sg = sg_chain_ptr(obj->get_page.sg);
+#endif
+	}
+
+	return nth_page(sg_page(obj->get_page.sg), n - obj->get_page.last);
+}
+
 static inline void i915_gem_object_pin_pages(struct drm_i915_gem_object *obj)
 {
 	BUG_ON(obj->pages == NULL);

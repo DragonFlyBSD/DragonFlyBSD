@@ -1416,7 +1416,7 @@ void intel_logical_ring_cleanup(struct intel_engine_cs *ring)
 	i915_gem_batch_pool_fini(&ring->batch_pool);
 
 	if (ring->status_page.obj) {
-		kunmap(ring->status_page.obj->pages[0]);
+		kunmap(sg_page(ring->status_page.obj->pages->sgl));
 		ring->status_page.obj = NULL;
 	}
 }
@@ -1872,7 +1872,7 @@ static void lrc_setup_hardware_status_page(struct intel_engine_cs *ring,
 	 * in LRC mode. */
 	ring->status_page.gfx_addr = i915_gem_obj_ggtt_offset(default_ctx_obj);
 	ring->status_page.page_addr =
-			kmap(default_ctx_obj->pages[0]);
+			kmap(sg_page(default_ctx_obj->pages->sgl));
 	ring->status_page.obj = default_ctx_obj;
 
 	I915_WRITE(RING_HWS_PGA(ring->mmio_base),

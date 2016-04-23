@@ -865,6 +865,7 @@ static u32 *vmap_batch(struct drm_i915_gem_object *obj,
 {
 	int i;
 	void *addr = NULL;
+	struct sg_page_iter sg_iter;
 	int first_page = start >> PAGE_SHIFT;
 	int last_page = (len + start + 4095) >> PAGE_SHIFT;
 	int npages = last_page - first_page;
@@ -877,9 +878,10 @@ static u32 *vmap_batch(struct drm_i915_gem_object *obj,
 	}
 
 	i = 0;
-	while (i < npages) {
-		pages[i] = obj->pages[first_page + i];
-		i++;
+	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents, first_page) {
+		pages[i++] = sg_page_iter_page(&sg_iter);
+		if (i == npages)
+			break;
 	}
 
 #if 0

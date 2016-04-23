@@ -85,7 +85,7 @@ static int render_state_setup(struct render_state *so)
 	if (ret)
 		return ret;
 
-	page = so->obj->pages[0];
+	page = sg_page(so->obj->pages->sgl);
 	d = kmap(page);
 
 	while (i < rodata->batch_items) {

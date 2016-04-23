@@ -56,7 +56,6 @@
 #include <bus/pci/pcireg.h>
 #include "agppriv.h"
 #include "agpreg.h"
-#include <drm/intel-gtt.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -69,14 +68,16 @@
 
 #include <machine/md_var.h>
 
+#include <linux/slab.h>
+#include <linux/scatterlist.h>
+#include <drm/intel-gtt.h>
+
 #define bus_read_1(r, o) \
 		   bus_space_read_1((r)->r_bustag, (r)->r_bushandle, (o))
 #define bus_read_4(r, o) \
 		   bus_space_read_4((r)->r_bustag, (r)->r_bushandle, (o))
 #define bus_write_4(r, o, v) \
 		    bus_space_write_4((r)->r_bustag, (r)->r_bushandle, (o), (v))
-
-MALLOC_DECLARE(M_AGP);
 
 struct agp_i810_match;
 
@@ -866,7 +867,7 @@ agp_i810_attach(device_t dev)
 	}
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
-	sc->gatt = kmalloc(sizeof(struct agp_gatt), M_AGP, M_WAITOK);
+	sc->gatt = kmalloc(sizeof(struct agp_gatt), M_DRM, M_WAITOK);
 	sc->gatt->ag_entries = AGP_GET_APERTURE(dev) >> AGP_PAGE_SHIFT;
 
 	if ((error = sc->match->driver->get_stolen_size(dev)) != 0 ||
@@ -876,7 +877,7 @@ agp_i810_attach(device_t dev)
 	    (error = sc->match->driver->chipset_flush_setup(dev)) != 0) {
 		bus_release_resources(dev, sc->match->driver->res_spec,
 		    sc->sc_res);
-		kfree(sc->gatt, M_AGP);
+		kfree(sc->gatt);
 		agp_generic_detach(dev);
 		return (error);
 	}
@@ -926,7 +927,7 @@ agp_i810_detach(device_t dev)
 	/* Put the aperture back the way it started. */
 	AGP_SET_APERTURE(dev, sc->initial_aperture);
 
-	kfree(sc->gatt, M_AGP);
+	kfree(sc->gatt);
 	bus_release_resources(dev, sc->match->driver->res_spec, sc->sc_res);
 	agp_free_res(dev);
 
@@ -1169,14 +1170,14 @@ agp_i810_alloc_memory(device_t dev, int type, vm_size_t size)
 				return (0);
 
 			/* Allocate memory for ARGB cursor, if we can. */
-			sc->argb_cursor = contigmalloc(size, M_AGP,
+			sc->argb_cursor = contigmalloc(size, M_DRM,
 			   0, 0, ~0, PAGE_SIZE, 0);
 			if (sc->argb_cursor == NULL)
 				return (0);
 		}
 	}
 
-	mem = kmalloc(sizeof *mem, M_AGP, M_INTWAIT);
+	mem = kmalloc(sizeof *mem, M_DRM, M_INTWAIT);
 	mem->am_id = sc->agp.as_nextid++;
 	mem->am_size = size;
 	mem->am_type = type;
@@ -1241,7 +1242,7 @@ agp_i810_free_memory(device_t dev, struct agp_memory *mem)
 			vm_page_unwire(m, 0);
 			vm_page_wakeup(m);
 		} else {
-			contigfree(sc->argb_cursor, mem->am_size, M_AGP);
+			contigfree(sc->argb_cursor, mem->am_size, M_DRM);
 			sc->argb_cursor = NULL;
 		}
 	}
@@ -1250,7 +1251,7 @@ agp_i810_free_memory(device_t dev, struct agp_memory *mem)
 	TAILQ_REMOVE(&sc->agp.as_memory, mem, am_link);
 	if (mem->am_obj)
 		vm_object_deallocate(mem->am_obj);
-	kfree(mem, M_AGP);
+	kfree(mem);
 	return (0);
 }
 
@@ -1407,6 +1408,30 @@ agp_intel_gtt_insert_pages(device_t dev, u_int first_entry, u_int num_entries,
 	}
 	sc->match->driver->sync_gtt_pte(dev, first_entry + num_entries - 1);
 }
+
+void
+intel_gtt_insert_sg_entries(struct sg_table *st,
+			    unsigned int pg_start,
+			    unsigned int flags)
+{
+	struct agp_i810_softc *sc = device_get_softc(intel_agp);
+	struct scatterlist *sg;
+	dma_addr_t page;
+	int i, j, npages, subpage;
+
+	i = 0;
+	for_each_sg(st->sgl, sg, st->nents, j) {
+		npages = sg_dma_len(sg) / PAGE_SIZE;
+		for (subpage = 0; subpage < npages; subpage++) {
+			page = sg_dma_address(sg) + subpage * PAGE_SIZE;
+			sc->match->driver->install_gtt_pte(intel_agp,
+				pg_start + i, page, flags);
+			i++;
+		}
+	}
+	sc->match->driver->sync_gtt_pte(intel_agp, pg_start + i - 1);
+}
+
 
 struct intel_gtt
 agp_intel_gtt_get(device_t dev)
@@ -1598,93 +1623,10 @@ agp_intel_gtt_chipset_flush(device_t dev)
 }
 
 void
-agp_intel_gtt_unmap_memory(device_t dev, struct sglist *sg_list)
-{
-}
-
-int
-agp_intel_gtt_map_memory(device_t dev, vm_page_t *pages, u_int num_entries,
-    struct sglist **sg_list)
-{
-#if 0
-	struct agp_i810_softc *sc;
-#endif
-	struct sglist *sg;
-	int i;
-#if 0
-	int error;
-	bus_dma_tag_t dmat;
-#endif
-
-	if (*sg_list != NULL)
-		return (0);
-#if 0
-	sc = device_get_softc(dev);
-#endif
-	sg = sglist_alloc(num_entries, M_WAITOK /* XXXKIB */);
-	for (i = 0; i < num_entries; i++) {
-		sg->sg_segs[i].ss_paddr = VM_PAGE_TO_PHYS(pages[i]);
-		sg->sg_segs[i].ss_len = PAGE_SIZE;
-	}
-
-#if 0
-	error = bus_dma_tag_create(bus_get_dma_tag(dev),
-	    1 /* alignment */, 0 /* boundary */,
-	    1ULL << sc->match->busdma_addr_mask_sz /* lowaddr */,
-	    BUS_SPACE_MAXADDR /* highaddr */,
-            NULL /* filtfunc */, NULL /* filtfuncarg */,
-	    BUS_SPACE_MAXADDR /* maxsize */,
-	    BUS_SPACE_UNRESTRICTED /* nsegments */,
-	    BUS_SPACE_MAXADDR /* maxsegsz */,
-	    0 /* flags */, NULL /* lockfunc */, NULL /* lockfuncarg */,
-	    &dmat);
-	if (error != 0) {
-		sglist_free(sg);
-		return (error);
-	}
-	/* XXXKIB */
-#endif
-	*sg_list = sg;
-	return (0);
-}
-
-void
-agp_intel_gtt_insert_sg_entries(device_t dev, struct sglist *sg_list,
-    u_int first_entry, u_int flags)
-{
-	struct agp_i810_softc *sc;
-	vm_paddr_t spaddr;
-	size_t slen;
-	u_int i, j;
-
-	sc = device_get_softc(dev);
-	for (i = j = 0; j < sg_list->sg_nseg; j++) {
-		spaddr = sg_list->sg_segs[i].ss_paddr;
-		slen = sg_list->sg_segs[i].ss_len;
-		for (; slen > 0; i++) {
-			sc->match->driver->install_gtt_pte(dev, first_entry + i,
-			    spaddr, flags);
-			spaddr += AGP_PAGE_SIZE;
-			slen -= AGP_PAGE_SIZE;
-		}
-	}
-	sc->match->driver->sync_gtt_pte(dev, first_entry + i - 1);
-}
-
-void
 intel_gtt_clear_range(u_int first_entry, u_int num_entries)
 {
 
 	agp_intel_gtt_clear_range(intel_agp, first_entry, num_entries);
-}
-
-void
-intel_gtt_insert_pages(u_int first_entry, u_int num_entries, vm_page_t *pages,
-    u_int flags)
-{
-
-	agp_intel_gtt_insert_pages(intel_agp, first_entry, num_entries,
-	    pages, flags);
 }
 
 void intel_gtt_get(size_t *gtt_total, size_t *stolen_size,
@@ -1706,30 +1648,6 @@ intel_gtt_chipset_flush(void)
 {
 
 	return (agp_intel_gtt_chipset_flush(intel_agp));
-}
-
-void
-intel_gtt_unmap_memory(struct sglist *sg_list)
-{
-
-	agp_intel_gtt_unmap_memory(intel_agp, sg_list);
-}
-
-int
-intel_gtt_map_memory(vm_page_t *pages, u_int num_entries,
-    struct sglist **sg_list)
-{
-
-	return (agp_intel_gtt_map_memory(intel_agp, pages, num_entries,
-	    sg_list));
-}
-
-void
-intel_gtt_insert_sg_entries(struct sglist *sg_list, u_int first_entry,
-    u_int flags)
-{
-
-	agp_intel_gtt_insert_sg_entries(intel_agp, sg_list, first_entry, flags);
 }
 
 /*

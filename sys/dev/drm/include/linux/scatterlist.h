@@ -31,7 +31,11 @@
 #ifndef	_LINUX_SCATTERLIST_H_
 #define	_LINUX_SCATTERLIST_H_
 
+#include <linux/string.h>
+#include <linux/types.h>
 #include <linux/bug.h>
+#include <linux/mm.h>
+#include <asm/io.h>
 
 /*
  * SG table design.
@@ -52,7 +56,6 @@ struct scatterlist {
 		struct vm_page		*page;
 		struct scatterlist	*sg;
 	} sl_un;
-	unsigned long	page_link;
 	unsigned long	offset;
 	uint32_t	length;
 	dma_addr_t	dma_address;
@@ -71,10 +74,6 @@ struct sg_page_iter {
 	unsigned int		maxents;
 };
 
-
-#define sg_is_chain(sg)		((sg)->page_link & 0x01)
-#define sg_chain_ptr(sg)	\
-	((struct scatterlist *) ((sg)->page_link & ~0x03))
 
 /*
  * Maximum number of entries that will be allocated in one piece, if
