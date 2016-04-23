@@ -135,7 +135,7 @@ static void int_moveto_origcpu(int, int);
 static void sched_ithd_intern(struct intr_info *info);
 
 static struct systimer emergency_intr_timer[MAXCPU];
-static struct thread emergency_intr_thread[MAXCPU];
+static struct thread *emergency_intr_thread[MAXCPU];
 
 #define ISTATE_NOTHREAD		0
 #define ISTATE_NORMAL		1
@@ -275,14 +275,14 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      * Create an emergency polling thread and set up a systimer to wake
      * it up.
      */
-    if (emergency_intr_thread[cpuid].td_kstack == NULL) {
-	lwkt_create(ithread_emergency, NULL, NULL,
-		    &emergency_intr_thread[cpuid],
+    if (emergency_intr_thread[cpuid] == NULL) {
+	lwkt_create(ithread_emergency, NULL,
+		    &emergency_intr_thread[cpuid], NULL,
 		    TDF_NOSTART | TDF_INTTHREAD, cpuid, "ithreadE %d",
 		    cpuid);
 	systimer_init_periodic_nq(&emergency_intr_timer[cpuid],
 		    emergency_intr_timer_callback,
-		    &emergency_intr_thread[cpuid],
+		    emergency_intr_thread[cpuid],
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
     }
 

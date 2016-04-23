@@ -130,7 +130,7 @@ struct usched usched_bsd4 = {
 };
 
 struct usched_bsd4_pcpu {
-	struct thread	helper_thread;
+	struct thread	*helper_thread;
 	short		rrcount;
 	short		upri;
 	struct lwp	*uschedcp;
@@ -554,7 +554,7 @@ bsd4_select_curproc(globaldata_t gd)
 	} else if (bsd4_runqcount && CPUMASK_TESTBIT(bsd4_rdyprocmask, cpuid)) {
 		ATOMIC_CPUMASK_NANDBIT(bsd4_rdyprocmask, cpuid);
 		spin_unlock(&bsd4_spin);
-		lwkt_schedule(&dd->helper_thread);
+		lwkt_schedule(dd->helper_thread);
 	} else {
 		spin_unlock(&bsd4_spin);
 	}
@@ -873,7 +873,7 @@ found:
 		spin_unlock(&bsd4_spin);
 		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
 			if (dd->uschedcp == NULL) {
-				wakeup_mycpu(&dd->helper_thread);
+				wakeup_mycpu(dd->helper_thread);
 			} else {
 				need_user_resched();
 			}
@@ -884,7 +884,7 @@ found:
 		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
 			lwkt_send_ipiq(gd, bsd4_need_user_resched_remote, NULL);
 		else
-			wakeup(&dd->helper_thread);
+			wakeup(dd->helper_thread);
 	}
 	crit_exit();
 }
@@ -1600,7 +1600,7 @@ bsd4_kick_helper(struct lwp *lp)
 	if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
 		lwkt_send_ipiq(gd, bsd4_need_user_resched_remote, NULL);
 	} else {
-		wakeup(&dd->helper_thread);
+		wakeup(dd->helper_thread);
 	}
 }
 
@@ -1614,7 +1614,7 @@ bsd4_need_user_resched_remote(void *dummy)
 	need_user_resched();
 
 	/* Call wakeup_mycpu to avoid sending IPIs to other CPUs */
-	wakeup_mycpu(&dd->helper_thread);
+	wakeup_mycpu(dd->helper_thread);
 }
 
 /*
@@ -1757,7 +1757,7 @@ sched_thread(void *dummy)
      */
     lwkt_setpri_self(TDPRI_USER_SCHEDULER);
 
-    tsleep(&dd->helper_thread, 0, "sched_thread_sleep", 0);
+    tsleep(dd->helper_thread, 0, "sched_thread_sleep", 0);
 
     for (;;) {
 	/*
@@ -1766,7 +1766,7 @@ sched_thread(void *dummy)
 	 * manual lwkt_switch() call we make below.
 	 */
 	crit_enter_gd(gd);
-	tsleep_interlock(&dd->helper_thread, 0);
+	tsleep_interlock(dd->helper_thread, 0);
 	spin_lock(&bsd4_spin);
 	ATOMIC_CPUMASK_ORMASK(bsd4_rdyprocmask, mask);
 
@@ -1829,7 +1829,7 @@ sched_thread(void *dummy)
 				tmpdd = &bsd4_pcpu[tmpid];
 				ATOMIC_CPUMASK_NANDBIT(bsd4_rdyprocmask, tmpid);
 				spin_unlock(&bsd4_spin);
-				wakeup(&tmpdd->helper_thread);
+				wakeup(tmpdd->helper_thread);
 			} else {
 				spin_unlock(&bsd4_spin);
 			}
@@ -1850,7 +1850,7 @@ sched_thread(void *dummy)
 	 * for us if interrupts and such are pending.
 	 */
 	crit_exit_gd(gd);
-	tsleep(&dd->helper_thread, PINTERLOCKED, "schslp", 0);
+	tsleep(dd->helper_thread, PINTERLOCKED, "schslp", 0);
     }
 }
 
@@ -1957,7 +1957,7 @@ sched_thread_cpu_init(void)
 			}
 		}
 
-		lwkt_create(sched_thread, NULL, NULL, &dd->helper_thread,
+		lwkt_create(sched_thread, NULL, &dd->helper_thread, NULL,
 			    0, i, "usched %d", i);
 
 		/*

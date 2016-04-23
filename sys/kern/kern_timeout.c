@@ -95,7 +95,7 @@ struct softclock_pcpu {
 	int softticks;		/* softticks index */
 	int curticks;		/* per-cpu ticks counter */
 	int isrunning;
-	struct thread thread;
+	struct thread *thread;
 };
 
 typedef struct softclock_pcpu *softclock_pcpu_t;
@@ -152,8 +152,8 @@ swi_softclock_setup(void *arg)
 		 * Kernel code now assumes that callouts do not preempt
 		 * the cpu they were scheduled on.
 		 */
-		lwkt_create(softclock_handler, sc, NULL,
-			    &sc->thread, TDF_NOSTART | TDF_INTTHREAD,
+		lwkt_create(softclock_handler, sc, &sc->thread, NULL,
+			    TDF_NOSTART | TDF_INTTHREAD,
 			    cpu, "softclock %d", cpu);
 	}
 }
@@ -247,7 +247,7 @@ hardclock_softtick(globaldata_t gd)
 		 */
 		if (TAILQ_FIRST(&sc->callwheel[sc->softticks & cwheelmask])) {
 			sc->isrunning = 1;
-			lwkt_schedule(&sc->thread);
+			lwkt_schedule(sc->thread);
 		} else {
 			++sc->softticks;
 		}
@@ -257,7 +257,7 @@ hardclock_softtick(globaldata_t gd)
 		 * catch up.
 		 */
 		sc->isrunning = 1;
-		lwkt_schedule(&sc->thread);
+		lwkt_schedule(sc->thread);
 	}
 }
 
@@ -439,7 +439,7 @@ loop:
 		rel_mplock();
 	}
 	sc->isrunning = 0;
-	lwkt_deschedule_self(&sc->thread);	/* == curthread */
+	lwkt_deschedule_self(sc->thread);	/* == curthread */
 	lwkt_switch();
 	goto loop;
 	/* NOT REACHED */
@@ -861,7 +861,7 @@ skip_slow:
 		intptr_t runco;
 
 		sc = &softclock_pcpu_ary[cpuid];
-		if (gd->gd_curthread == &sc->thread)	/* stop from cb */
+		if (gd->gd_curthread == sc->thread)	/* stop from cb */
 			break;
 		runp = &sc->running;
 		runco = *runp;

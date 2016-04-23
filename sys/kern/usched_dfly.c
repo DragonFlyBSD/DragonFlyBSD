@@ -101,7 +101,7 @@ TAILQ_HEAD(rq, lwp);
 
 struct usched_dfly_pcpu {
 	struct spinlock spin;
-	struct thread	helper_thread;
+	struct thread	*helper_thread;
 	short		unusde01;
 	short		upri;
 	int		uload;
@@ -726,7 +726,7 @@ dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp)
 		 */
 		spin_unlock(&rdd->spin);
 		if (rdd->uschedcp == NULL)
-			wakeup_mycpu(&rdd->helper_thread); /* XXX */
+			wakeup_mycpu(rdd->helper_thread); /* XXX */
 		if ((lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) == 0)
 			need_user_resched();
 	} else {
@@ -1844,7 +1844,7 @@ dfly_need_user_resched_remote(void *dummy)
 	if (dd->uschedcp == NULL &&
 	    CPUMASK_TESTBIT(dfly_rdyprocmask, gd->gd_cpuid)) {
 		ATOMIC_CPUMASK_NANDBIT(dfly_rdyprocmask, gd->gd_cpuid);
-		wakeup_mycpu(&dd->helper_thread);
+		wakeup_mycpu(dd->helper_thread);
 	}
 }
 
@@ -2020,7 +2020,7 @@ dfly_helper_thread(void *dummy)
      */
     lwkt_setpri_self(TDPRI_USER_SCHEDULER);
 
-    tsleep(&dd->helper_thread, 0, "schslp", 0);
+    tsleep(dd->helper_thread, 0, "schslp", 0);
 
     for (;;) {
 	/*
@@ -2029,7 +2029,7 @@ dfly_helper_thread(void *dummy)
 	 * manual lwkt_switch() call we make below.
 	 */
 	crit_enter_gd(gd);
-	tsleep_interlock(&dd->helper_thread, 0);
+	tsleep_interlock(dd->helper_thread, 0);
 
 	spin_lock(&dd->spin);
 
@@ -2117,7 +2117,7 @@ dfly_helper_thread(void *dummy)
 	 * for us if interrupts and such are pending.
 	 */
 	crit_exit_gd(gd);
-	tsleep(&dd->helper_thread, PINTERLOCKED, "schslp", 0);
+	tsleep(dd->helper_thread, PINTERLOCKED, "schslp", 0);
     }
 }
 
@@ -2235,7 +2235,7 @@ usched_dfly_cpu_init(void)
 			}
 		}
 
-		lwkt_create(dfly_helper_thread, NULL, NULL, &dd->helper_thread,
+		lwkt_create(dfly_helper_thread, NULL, &dd->helper_thread, NULL,
 			    0, i, "usched %d", i);
 
 		/*

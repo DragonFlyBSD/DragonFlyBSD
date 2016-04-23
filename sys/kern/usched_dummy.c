@@ -95,7 +95,7 @@ struct usched usched_dummy = {
 
 struct usched_dummy_pcpu {
 	int	rrcount;
-	struct thread helper_thread;
+	struct thread *helper_thread;
 	struct lwp *uschedcp;
 };
 
@@ -311,7 +311,7 @@ dummy_setrunqueue(struct lwp *lp)
 			cpuid = BSFCPUMASK(mask);
 			ATOMIC_CPUMASK_NANDBIT(dummy_rdyprocmask, cpuid);
 			spin_unlock(&dummy_spin);
-			lwkt_schedule(&dummy_pcpu[cpuid].helper_thread);
+			lwkt_schedule(dummy_pcpu[cpuid].helper_thread);
 		} else {
 			spin_unlock(&dummy_spin);
 		}
@@ -495,7 +495,7 @@ dummy_sched_thread(void *dummy)
 			KKASSERT(tmpid != cpuid);
 			ATOMIC_CPUMASK_NANDBIT(dummy_rdyprocmask, tmpid);
 			spin_unlock(&dummy_spin);
-			lwkt_schedule(&dummy_pcpu[tmpid].helper_thread);
+			lwkt_schedule(dummy_pcpu[tmpid].helper_thread);
 		} else {
 			spin_unlock(&dummy_spin);
 		}
@@ -539,7 +539,7 @@ dummy_sched_thread_cpu_init(void)
 	if (bootverbose)
 	    kprintf(" %d", i);
 
-	lwkt_create(dummy_sched_thread, NULL, NULL, &dd->helper_thread, 
+	lwkt_create(dummy_sched_thread, NULL, &dd->helper_thread, NULL,
 		    TDF_NOSTART, i, "dsched %d", i);
 
 	/*

@@ -167,7 +167,7 @@ static struct netmsg_base	if_slowtimo_netmsg;
 
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
-static struct thread	ifnet_threads[MAXCPU];
+static struct thread	*ifnet_threads[MAXCPU];
 static struct mtx	ifnet_mtx = MTX_INITIALIZER("ifnet");
 
 static struct ifsubq_stage_head	ifsubq_stage_heads[MAXCPU];
@@ -3297,7 +3297,7 @@ ifa_destroy(struct ifaddr *ifa)
 struct lwkt_port *
 ifnet_portfn(int cpu)
 {
-	return &ifnet_threads[cpu].td_msgport;
+	return &ifnet_threads[cpu]->td_msgport;
 }
 
 void
@@ -3388,13 +3388,13 @@ ifnetinit(void *dummy __unused)
 	int i;
 
 	for (i = 0; i < ncpus; ++i) {
-		struct thread *thr = &ifnet_threads[i];
+		struct thread **thr = &ifnet_threads[i];
 
-		lwkt_create(ifnet_service_loop, NULL, NULL,
-			    thr, TDF_NOSTART|TDF_FORCE_SPINPORT|TDF_FIXEDCPU,
+		lwkt_create(ifnet_service_loop, NULL, thr, NULL,
+			    TDF_NOSTART|TDF_FORCE_SPINPORT|TDF_FIXEDCPU,
 			    i, "ifnet %d", i);
-		netmsg_service_port_init(&thr->td_msgport);
-		lwkt_schedule(thr);
+		netmsg_service_port_init(&(*thr)->td_msgport);
+		lwkt_schedule(*thr);
 	}
 
 	for (i = 0; i < ncpus; ++i)

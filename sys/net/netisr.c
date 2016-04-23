@@ -91,7 +91,7 @@ static TAILQ_HEAD(,netmsg_port_registration) netreglist;
 static TAILQ_HEAD(,netmsg_rollup) netrulist;
 
 /* Per-CPU thread to handle any protocol.  */
-struct thread netisr_cpu[MAXCPU];
+struct thread *netisr_cpu[MAXCPU];
 lwkt_port netisr_afree_rport;
 lwkt_port netisr_afree_free_so_rport;
 lwkt_port netisr_adone_rport;
@@ -184,12 +184,12 @@ netisr_init(void)
 	 * Create default per-cpu threads for generic protocol handling.
 	 */
 	for (i = 0; i < ncpus; ++i) {
-		lwkt_create(netmsg_service_loop, NULL, NULL,
-			    &netisr_cpu[i],
+		lwkt_create(netmsg_service_loop, NULL, &netisr_cpu[i],
+			    NULL,
 			    TDF_NOSTART|TDF_FORCE_SPINPORT|TDF_FIXEDCPU,
 			    i, "netisr_cpu %d", i);
-		netmsg_service_port_init(&netisr_cpu[i].td_msgport);
-		lwkt_schedule(&netisr_cpu[i]);
+		netmsg_service_port_init(&netisr_cpu[i]->td_msgport);
+		lwkt_schedule(netisr_cpu[i]);
 	}
 
 	/*
@@ -587,7 +587,7 @@ schednetisr_remote(void *data)
 {
 	int num = (int)(intptr_t)data;
 	struct netisr *ni = &netisrs[num];
-	lwkt_port_t port = &netisr_cpu[0].td_msgport;
+	lwkt_port_t port = &netisr_cpu[0]->td_msgport;
 	netmsg_base_t pmsg;
 
 	pmsg = &netisrs[num].ni_netmsg;
