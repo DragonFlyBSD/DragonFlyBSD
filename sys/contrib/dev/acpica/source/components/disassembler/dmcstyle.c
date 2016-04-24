@@ -216,6 +216,7 @@ AcpiDmCheckForSymbolicOpcode (
 
         Child1->Common.DisasmOpcode = ACPI_DASM_LNOT_SUFFIX;
         Op->Common.DisasmOpcode = ACPI_DASM_LNOT_PREFIX;
+        Op->Common.DisasmFlags |= ACPI_PARSEOP_COMPOUND_ASSIGNMENT;
 
         /* Save symbol string in the next child (not peer) */
 
@@ -379,7 +380,7 @@ AcpiDmCheckForSymbolicOpcode (
 
                 /* Convert operator to compound assignment */
 
-                Op->Common.DisasmFlags |= ACPI_PARSEOP_COMPOUND;
+                Op->Common.DisasmFlags |= ACPI_PARSEOP_COMPOUND_ASSIGNMENT;
                 Child1->Common.OperatorSymbol = NULL;
                 return (TRUE);
             }
@@ -407,7 +408,7 @@ AcpiDmCheckForSymbolicOpcode (
 
                 /* Convert operator to compound assignment */
 
-                Op->Common.DisasmFlags |= ACPI_PARSEOP_COMPOUND;
+                Op->Common.DisasmFlags |= ACPI_PARSEOP_COMPOUND_ASSIGNMENT;
                 Child1->Common.OperatorSymbol = NULL;
                 return (TRUE);
             }
@@ -523,6 +524,19 @@ AcpiDmCheckForSymbolicOpcode (
         break;
     }
 
+    /*
+     * Nodes marked with ACPI_PARSEOP_PARAMLIST don't need a parens
+     * output here. We also need to check the parent to see if this op
+     * is part of a compound test (!=, >=, <=).
+     */
+    if ((Op->Common.DisasmFlags & ACPI_PARSEOP_PARAMETER_LIST) ||
+       ((Op->Common.Parent->Common.DisasmFlags & ACPI_PARSEOP_PARAMETER_LIST) &&
+        (Op->Common.DisasmOpcode == ACPI_DASM_LNOT_SUFFIX)))
+    {
+        /* Do Nothing. Paren already generated */
+        return (TRUE);
+    }
+
     /* All other operators, emit an open paren */
 
     AcpiOsPrintf ("(");
@@ -548,6 +562,7 @@ void
 AcpiDmCloseOperator (
     ACPI_PARSE_OBJECT       *Op)
 {
+    BOOLEAN                 IsCStyleOp = FALSE;
 
     /* Always emit paren if ASL+ disassembly disabled */
 
@@ -579,7 +594,7 @@ AcpiDmCloseOperator (
 
         /* Emit paren only if this is not a compound assignment */
 
-        if (Op->Common.DisasmFlags & ACPI_PARSEOP_COMPOUND)
+        if (Op->Common.DisasmFlags & ACPI_PARSEOP_COMPOUND_ASSIGNMENT)
         {
             return;
         }
@@ -590,6 +605,8 @@ AcpiDmCloseOperator (
         {
             AcpiOsPrintf (")");
         }
+
+        IsCStyleOp = TRUE;
         break;
 
     case AML_INDEX_OP:
@@ -617,7 +634,21 @@ AcpiDmCloseOperator (
         break;
     }
 
+    /*
+     * Nodes marked with ACPI_PARSEOP_PARAMLIST don't need a parens
+     * output here. We also need to check the parent to see if this op
+     * is part of a compound test (!=, >=, <=).
+     */
+    if (IsCStyleOp &&
+       ((Op->Common.DisasmFlags & ACPI_PARSEOP_PARAMETER_LIST) ||
+       ((Op->Common.Parent->Common.DisasmFlags & ACPI_PARSEOP_PARAMETER_LIST) &&
+        (Op->Common.DisasmOpcode == ACPI_DASM_LNOT_SUFFIX))))
+    {
+        return;
+    }
+
     AcpiOsPrintf (")");
+    return;
 }
 
 

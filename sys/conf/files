@@ -2412,6 +2412,7 @@ ${ACPICA_COMP_DIR}/tables/tbxfload.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbxfroot.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utaddress.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utalloc.c		optional acpi
+${ACPICA_COMP_DIR}/utilities/utascii.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utbuffer.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utcopy.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utdebug.c		optional acpi

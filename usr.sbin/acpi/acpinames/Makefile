@@ -76,6 +76,7 @@ SRCS+=	\
 	tbxfroot.c \
 	utaddress.c \
 	utalloc.c \
+	utascii.c \
 	utbuffer.c \
 	utcache.c \
 	utdebug.c \

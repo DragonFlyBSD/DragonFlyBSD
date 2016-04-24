@@ -23,6 +23,7 @@ SRCS+=	\
 	osunixxf.c \
 	tbprint.c \
 	tbxfroot.c \
+	utascii.c \
 	utbuffer.c \
 	utdebug.c \
 	utexcep.c \

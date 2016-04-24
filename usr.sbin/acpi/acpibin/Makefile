@@ -17,6 +17,7 @@ SRCS+=	\
 	cmfsize.c \
 	getopt.c \
 	utalloc.c \
+	utascii.c \
 	utbuffer.c \
 	utcache.c \
 	utdebug.c \

@@ -174,6 +174,7 @@ SRCS+=	\
 	tbxfload.c \
 	tbxfroot.c \
 	utaddress.c \
+	utascii.c \
 	utalloc.c \
 	utbuffer.c \
 	utcache.c \

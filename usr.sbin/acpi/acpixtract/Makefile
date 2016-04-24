@@ -18,6 +18,7 @@ SRCS+=	\
 	getopt.c \
 	oslibcfs.c \
 	osunixxf.c \
+	utascii.c \
 	utdebug.c \
 	utexcep.c \
 	utglobal.c \
