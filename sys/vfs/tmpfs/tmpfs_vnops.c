@@ -85,12 +85,9 @@ tmpfs_nresolve(struct vop_nresolve_args *ap)
 	struct vnode *vp = NULL;
 	struct namecache *ncp = ap->a_nch->ncp;
 	struct tmpfs_node *tnode;
-	struct mount *mp;
 	struct tmpfs_dirent *de;
 	struct tmpfs_node *dnode;
 	int error;
-
-	mp = dvp->v_mount;
 
 	dnode = VP_TO_TMPFS_DIR(dvp);
 
@@ -141,12 +138,9 @@ tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	struct vnode **vpp = ap->a_vpp;
 	struct tmpfs_node *dnode = VP_TO_TMPFS_NODE(dvp);
 	struct ucred *cred = ap->a_cred;
-	struct mount *mp;
 	int error;
 
 	*vpp = NULL;
-
-	mp = dvp->v_mount;
 
 	/* Check accessibility of requested node as a first step. */
 	error = VOP_ACCESS(dvp, VEXEC, cred);
@@ -174,10 +168,7 @@ tmpfs_ncreate(struct vop_ncreate_args *ap)
 	struct namecache *ncp = ap->a_nch->ncp;
 	struct vattr *vap = ap->a_vap;
 	struct ucred *cred = ap->a_cred;
-	struct mount *mp;
 	int error;
-
-	mp = dvp->v_mount;
 
 	KKASSERT(vap->va_type == VREG || vap->va_type == VSOCK);
 
@@ -887,9 +878,6 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
-	struct mount *mp;
-
-	mp = dvp->v_mount;
 
 	/*
 	 * We have to acquire the vp from ap->a_nch because we will likely
@@ -969,10 +957,7 @@ tmpfs_nlink(struct vop_nlink_args *ap)
 	struct tmpfs_dirent *de;
 	struct tmpfs_node *node;
 	struct tmpfs_node *dnode;
-	struct mount *mp;
 	int error;
-
-	mp = dvp->v_mount;
 
 	KKASSERT(dvp != vp); /* XXX When can this be false? */
 
@@ -1053,12 +1038,10 @@ tmpfs_nrename(struct vop_nrename_args *ap)
 	struct tmpfs_node *fnode;
 	struct tmpfs_node *tnode;
 	struct tmpfs_node *tdnode;
-	struct mount *mp;
 	char *newname;
 	char *oldname;
 	int error;
 
-	mp = fdvp->v_mount;
 	KKASSERT(fdvp->v_mount == fvp->v_mount);
 
 	/*
@@ -1266,10 +1249,7 @@ tmpfs_nmkdir(struct vop_nmkdir_args *ap)
 	struct namecache *ncp = ap->a_nch->ncp;
 	struct vattr *vap = ap->a_vap;
 	struct ucred *cred = ap->a_cred;
-	struct mount *mp;
 	int error;
-
-	mp = dvp->v_mount;
 
 	KKASSERT(vap->va_type == VDIR);
 
@@ -1294,10 +1274,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
-	struct mount *mp;
 	int error;
-
-	mp = dvp->v_mount;
 
 	/*
 	 * We have to acquire the vp from ap->a_nch because we will likely
