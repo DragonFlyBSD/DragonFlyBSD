@@ -1611,7 +1611,6 @@ static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt, bool aliasing)
 		}
 	}
 
-	ppgtt->base.allocate_va_range = aliasing ? NULL : gen6_alloc_va_range;
 	ppgtt->base.allocate_va_range = gen6_alloc_va_range;
 	ppgtt->base.clear_range = gen6_ppgtt_clear_range;
 	ppgtt->base.insert_entries = gen6_ppgtt_insert_entries;
