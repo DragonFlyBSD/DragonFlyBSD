@@ -16,3 +16,8 @@ parts:
 	It keeps a reference to the firmware until it is unloaded.
 
 This is mainly to demonstrate how to construct firmware image modules.
+
+3) wrap-fw_module.sh
+	A simple shell script that demonstrates firmware construction flow
+	in a more detailed way. This example script can potentially be used by
+	external builders or to derive more sophisticated building scripts.
