@@ -12,6 +12,8 @@
         ..
         kernel
         ..
+        modules.local
+        ..
     ..
     build
     ..

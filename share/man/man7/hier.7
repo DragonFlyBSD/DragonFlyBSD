@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd April 26, 2016
+.Dd April 28, 2016
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@ user utilities fundamental to both single-user and multi-user environments
 .It Pa /boot/
 programs and configuration files used during operating system bootstrap
 .Pp
-.Bl -tag -width ".Pa defaults/" -compact
+.Bl -tag -width ".Pa modules.local/" -compact
 .It Pa defaults/
 default bootstrapping configuration files; see
 .Xr loader.conf 5
@@ -53,6 +53,9 @@ pure kernel executable (the operating system loaded into memory
 at boot time) and loadable kernel modules;
 see
 .Xr kldstat 8
+.It Pa modules.local/
+local loadable kernel modules and wrapped external firmware images; see
+.Xr firmware 9
 .El
 .It Pa /compat/
 files related to compatibility layers
