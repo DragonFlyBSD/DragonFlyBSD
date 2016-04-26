@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd July 23, 2015
+.Dd April 28, 2016
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -551,6 +551,15 @@ See also
 command.
 .It Va LINES
 Define the number of lines on the screen, to be used by the pager.
+.It Va local_modules
+Setting this variable to
+.Dq Li YES
+causes
+.Pa /boot/modules.local
+to be included after
+.Va modules_path
+directories list and passed to kernel for
+.Xr kldload 8 .
 .It Va module_path
 Sets the list of directories which will be searched for modules named in a
 .Nm load

@@ -204,6 +204,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
     if (ef.kernel) {
 	char *mptr;
 	char *fpend;
+	char *modlocal;
 	const char *prefix = "";
 
 	mptr = malloc(strlen(fullpath) * 2 + 10 + 16);
@@ -216,6 +217,12 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 	*fpend = 0;
 	if (strcmp(mptr, "/boot") == 0)
 		sprintf(mptr, "/boot/modules");
+
+	/* Append modules.local for kernel if requested */
+	modlocal = getenv("local_modules");
+	if (modlocal != NULL && strcmp(modlocal, "YES") == 0)
+		strncat(mptr, ";/boot/modules.local", strlen(fullpath) * 2 + 26);
+
 	/* this will be moved to "module_path" on boot */
 	setenv("exported_module_path", mptr, 1);
 	free(mptr);

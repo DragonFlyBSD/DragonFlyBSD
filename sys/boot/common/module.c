@@ -69,6 +69,7 @@ static void			moduledir_rebuild(void);
 static vm_offset_t	loadaddr = 0;
 
 static const char	*default_searchpath ="modules;KERNEL";
+static const char	*local_module_path = "../modules.local";
 
 static STAILQ_HEAD(, moduledir) moduledir_list = STAILQ_HEAD_INITIALIZER(moduledir_list);
 
@@ -1021,7 +1022,7 @@ static void
 moduledir_rebuild(void)
 {
     struct	moduledir *mdp, *mtmp;
-    const char	*path, *cp, *ep;
+    const char	*path, *cp, *ep, *modlocal;
     int		cplen;
 
     path = getenv("module_path");
@@ -1061,6 +1062,31 @@ moduledir_rebuild(void)
 	}
 	if (*ep == 0)
 	    break;
+    }
+    /*
+     * Include modules.local if requested
+     */
+    modlocal = getenv("local_modules");
+    if (modlocal != NULL && strcmp(modlocal, "YES") == 0) {
+	cp = local_module_path;
+	cplen = strlen(local_module_path);
+	STAILQ_FOREACH(mdp, &moduledir_list, d_link) {
+	    if (strlen(mdp->d_path) != (unsigned)cplen || bcmp(cp, mdp->d_path, cplen) != 0)
+		continue;
+	    mdp->d_flags &= ~MDIR_REMOVED;
+	    break;
+	}
+	if (mdp == NULL) {
+	    mdp = malloc(sizeof(*mdp) + cplen + 1);
+	    if (mdp == NULL)
+		return;
+	    mdp->d_path = (char*)(mdp + 1);
+	    bcopy(local_module_path, mdp->d_path, cplen);
+	    mdp->d_path[cplen] = 0;
+	    mdp->d_hints = NULL;
+	    mdp->d_flags = 0;
+	    STAILQ_INSERT_TAIL(&moduledir_list, mdp, d_link);
+	}
     }
     /*
      * Delete unused directories if any
