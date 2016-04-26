@@ -4250,7 +4250,7 @@ igb_alloc_msix(struct igb_softc *sc)
 {
 	int msix_enable, msix_cnt, msix_cnt2, alloc_cnt;
 	int i, x, error;
-	int offset, offset_def, agg_rxtx;
+	int offset, offset_def, agg_rxtx, ring_max;
 	struct igb_intr_data *intr;
 	boolean_t aggregate, setup = FALSE;
 
@@ -4315,6 +4315,10 @@ igb_alloc_msix(struct igb_softc *sc)
 	if (sc->tx_ring_msix > msix_cnt2)
 		sc->tx_ring_msix = msix_cnt2;
 
+	ring_max = sc->rx_ring_msix;
+	if (ring_max < sc->tx_ring_msix)
+		ring_max = sc->tx_ring_msix;
+
 	/* Allow user to force independent RX/TX MSI-X handling */
 	agg_rxtx = device_getenv_int(sc->dev, "msix.agg_rxtx",
 	    igb_msix_agg_rxtx);
@@ -4335,12 +4339,10 @@ igb_alloc_msix(struct igb_softc *sc)
 		if (bootverbose)
 			device_printf(sc->dev, "aggregate TX/RX MSI-X\n");
 		alloc_cnt = msix_cnt2;
-		if (alloc_cnt > ncpus2)
-			alloc_cnt = ncpus2;
-		if (sc->rx_ring_msix > alloc_cnt)
-			sc->rx_ring_msix = alloc_cnt;
-		if (sc->tx_ring_msix > alloc_cnt)
-			sc->tx_ring_msix = alloc_cnt;
+		if (alloc_cnt > ring_max)
+			alloc_cnt = ring_max;
+		KKASSERT(alloc_cnt >= sc->rx_ring_msix &&
+		    alloc_cnt >= sc->tx_ring_msix);
 	}
 	++alloc_cnt;	/* For link status */
 
@@ -4416,15 +4418,11 @@ igb_alloc_msix(struct igb_softc *sc)
 		}
 		igb_msix_tx_conf(sc, 0, &x, offset);
 	} else {
-		int ring_agg, ring_max;
+		int ring_agg;
 
 		ring_agg = sc->rx_ring_msix;
 		if (ring_agg > sc->tx_ring_msix)
 			ring_agg = sc->tx_ring_msix;
-
-		ring_max = sc->rx_ring_msix;
-		if (ring_max < sc->tx_ring_msix)
-			ring_max = sc->tx_ring_msix;
 
 		if (ring_max == ncpus2) {
 			offset = 0;
