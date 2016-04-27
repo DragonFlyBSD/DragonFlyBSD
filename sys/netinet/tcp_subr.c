@@ -706,7 +706,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
  * protocol control block.  The `inp' parameter must have
  * come from the zone allocator set up in tcp_init().
  */
-struct tcpcb *
+void
 tcp_newtcpcb(struct inpcb *inp)
 {
 	struct inp_tp *it;
@@ -779,8 +779,6 @@ tcp_newtcpcb(struct inpcb *inp)
 
 	tp->tt_sndmore = &it->inp_tp_sndmore;
 	tcp_output_init(tp);
-
-	return (tp);		/* XXX */
 }
 
 /*

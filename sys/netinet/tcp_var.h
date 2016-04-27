@@ -657,8 +657,7 @@ void	 tcp_mss (struct tcpcb *, int);
 int	 tcp_mssopt (struct tcpcb *);
 void	 tcp_drop_syn_sent (struct inpcb *, int);
 void	 tcp_mtudisc (struct inpcb *, int);
-struct tcpcb *
-	 tcp_newtcpcb (struct inpcb *);
+void	 tcp_newtcpcb (struct inpcb *);
 int	 tcp_output(struct tcpcb *);
 int	 tcp_output_fair(struct tcpcb *);
 void	 tcp_output_init(struct tcpcb *);

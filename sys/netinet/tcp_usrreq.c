@@ -1679,7 +1679,6 @@ SYSCTL_INT(_net_inet_tcp, TCPCTL_RECVSPACE, recvspace, CTLFLAG_RW,
 static int
 tcp_attach(struct socket *so, struct pru_attach_info *ai)
 {
-	struct tcpcb *tp;
 	struct inpcb *inp;
 	int error;
 	int cpu;
@@ -1709,8 +1708,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	if (isipv6)
 		inp->in6p_hops = -1;	/* use kernel default */
 #endif
-	tp = tcp_newtcpcb(inp);
-	KASSERT(tp != NULL, ("tcp_newtcpcb failed"));
+	tcp_newtcpcb(inp);
 	/* Keep a reference for asynchronized pru_rcvd */
 	soreference(so);
 	return (0);
