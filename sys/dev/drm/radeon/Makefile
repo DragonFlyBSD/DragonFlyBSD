@@ -128,17 +128,6 @@ SRCS	+=								\
 	vce_v1_0.c							\
 	vce_v2_0.c
 
-# UMS driver
-#SRCS	+=								\
-	radeon_cp.c							\
-	radeon_state.c							\
-	radeon_mem.c							\
-	radeon_irq.c							\
-	r300_cmdbuf.c							\
-	r600_blit.c							\
-	r600_cp.c							\
-	drm_buffer.c
-
 #radeon_ioc32.c
 #radeon_prime.c
 #--radeon_trace_points.c
