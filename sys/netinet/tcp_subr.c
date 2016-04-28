@@ -291,6 +291,7 @@ static void tcp_willblock(void);
 static void tcp_notify (struct inpcb *, int);
 
 struct tcp_stats tcpstats_percpu[MAXCPU] __cachealign;
+struct tcp_state_count tcpstate_count[MAXCPU] __cachealign;
 
 static struct netmsg_base tcp_drain_netmsg[MAXCPU];
 static void	tcp_drain_dispatch(netmsg_t nmsg);
@@ -752,7 +753,7 @@ tcp_newtcpcb(struct inpcb *inp)
 		tp->t_flags |= (TF_REQ_SCALE | TF_REQ_TSTMP);
 
 	tp->t_inpcb = inp;	/* XXX */
-	tp->t_state = TCPS_CLOSED;
+	TCP_STATE_INIT(tp);
 	/*
 	 * Init srtt to TCPTV_SRTTBASE (0), so we can tell that we have no
 	 * rtt estimate.  Set rttvar so that srtt + 4 * rttvar gives
@@ -791,7 +792,7 @@ tcp_drop(struct tcpcb *tp, int error)
 	struct socket *so = tp->t_inpcb->inp_socket;
 
 	if (TCPS_HAVERCVDSYN(tp->t_state)) {
-		tp->t_state = TCPS_CLOSED;
+		TCP_STATE_CHANGE(tp, TCPS_CLOSED);
 		tcp_output(tp);
 		tcpstat.tcps_drops++;
 	} else
@@ -902,8 +903,7 @@ tcp_close(struct tcpcb *tp)
 		lwkt_domsg(netisr_cpuport(1), &nmsg.base.lmsg, 0);
 	}
 
-	KKASSERT(tp->t_state != TCPS_TERMINATING);
-	tp->t_state = TCPS_TERMINATING;
+	TCP_STATE_TERM(tp);
 
 	/*
 	 * Make sure that all of our timers are stopped before we
@@ -2450,6 +2450,26 @@ sysctl_tcp_drop(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_net_inet_tcp, OID_AUTO, drop,
     CTLTYPE_STRUCT | CTLFLAG_WR | CTLFLAG_SKIP, NULL,
     0, sysctl_tcp_drop, "", "Drop TCP connection");
+
+static int
+sysctl_tcps_count(SYSCTL_HANDLER_ARGS)
+{
+	u_long state_count[TCP_NSTATES];
+	int cpu;
+
+	memset(state_count, 0, sizeof(state_count));
+	for (cpu = 0; cpu < ncpus2; ++cpu) {
+		int i;
+
+		for (i = 0; i < TCP_NSTATES; ++i)
+			state_count[i] += tcpstate_count[cpu].tcps_count[i];
+	}
+
+	return sysctl_handle_opaque(oidp, state_count, sizeof(state_count), req);
+}
+SYSCTL_PROC(_net_inet_tcp, OID_AUTO, state_count,
+    CTLTYPE_OPAQUE | CTLFLAG_RD, NULL, 0,
+    sysctl_tcps_count, "LU", "TCP connection counts by state");
 
 void
 tcp_pcbport_create(struct tcpcb *tp)

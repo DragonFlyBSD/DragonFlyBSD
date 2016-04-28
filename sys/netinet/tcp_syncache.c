@@ -833,7 +833,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	    ("TCP PORT MISMATCH %p vs %p\n", port, &curthread->td_msgport));
 
 	tp = intotcpcb(inp);
-	tp->t_state = TCPS_SYN_RECEIVED;
+	TCP_STATE_CHANGE(tp, TCPS_SYN_RECEIVED);
 	tp->iss = sc->sc_iss;
 	tp->irs = sc->sc_irs;
 	tcp_rcvseqinit(tp);

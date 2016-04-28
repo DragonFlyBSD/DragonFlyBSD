@@ -1597,7 +1597,7 @@ after_listen:
 			 */
 			tp->t_starttime = ticks;
 			if (tp->t_flags & TF_NEEDFIN) {
-				tp->t_state = TCPS_FIN_WAIT_1;
+				TCP_STATE_CHANGE(tp, TCPS_FIN_WAIT_1);
 				tp->t_flags &= ~TF_NEEDFIN;
 				thflags &= ~TH_SYN;
 			} else {
@@ -1613,7 +1613,7 @@ after_listen:
 			 */
 			tp->t_flags |= TF_ACKNOW;
 			tcp_callout_stop(tp, tp->tt_rexmt);
-			tp->t_state = TCPS_SYN_RECEIVED;
+			TCP_STATE_CHANGE(tp, TCPS_SYN_RECEIVED);
 		}
 
 		/*
@@ -1725,7 +1725,7 @@ after_listen:
 			case TCPS_CLOSE_WAIT:
 				so->so_error = ECONNRESET;
 			close:
-				tp->t_state = TCPS_CLOSED;
+				TCP_STATE_CHANGE(tp, TCPS_CLOSED);
 				tcpstat.tcps_drops++;
 				tp = tcp_close(tp);
 				break;
@@ -1998,7 +1998,7 @@ after_listen:
 		 */
 		tp->t_starttime = ticks;
 		if (tp->t_flags & TF_NEEDFIN) {
-			tp->t_state = TCPS_FIN_WAIT_1;
+			TCP_STATE_CHANGE(tp, TCPS_FIN_WAIT_1);
 			tp->t_flags &= ~TF_NEEDFIN;
 		} else {
 			tcp_established(tp);
@@ -2305,7 +2305,7 @@ process_ACK:
 					tcp_callout_reset(tp, tp->tt_2msl,
 					    tp->t_maxidle, tcp_timer_2msl);
 				}
-				tp->t_state = TCPS_FIN_WAIT_2;
+				TCP_STATE_CHANGE(tp, TCPS_FIN_WAIT_2);
 			}
 			break;
 
@@ -2317,7 +2317,7 @@ process_ACK:
 		 */
 		case TCPS_CLOSING:
 			if (ourfinisacked) {
-				tp->t_state = TCPS_TIME_WAIT;
+				TCP_STATE_CHANGE(tp, TCPS_TIME_WAIT);
 				tcp_canceltimers(tp);
 				tcp_callout_reset(tp, tp->tt_2msl,
 					    2 * tcp_rmx_msl(tp),
@@ -2533,7 +2533,7 @@ dodata:							/* XXX */
 			tp->t_starttime = ticks;
 			/*FALLTHROUGH*/
 		case TCPS_ESTABLISHED:
-			tp->t_state = TCPS_CLOSE_WAIT;
+			TCP_STATE_CHANGE(tp, TCPS_CLOSE_WAIT);
 			break;
 
 		/*
@@ -2541,7 +2541,7 @@ dodata:							/* XXX */
 		 * enter the CLOSING state.
 		 */
 		case TCPS_FIN_WAIT_1:
-			tp->t_state = TCPS_CLOSING;
+			TCP_STATE_CHANGE(tp, TCPS_CLOSING);
 			break;
 
 		/*
@@ -2550,7 +2550,7 @@ dodata:							/* XXX */
 		 * standard timers.
 		 */
 		case TCPS_FIN_WAIT_2:
-			tp->t_state = TCPS_TIME_WAIT;
+			TCP_STATE_CHANGE(tp, TCPS_TIME_WAIT);
 			tcp_canceltimers(tp);
 			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_rmx_msl(tp),
 				    tcp_timer_2msl);
@@ -3443,7 +3443,7 @@ tcp_rmx_msl(const struct tcpcb *tp)
 static void
 tcp_established(struct tcpcb *tp)
 {
-	tp->t_state = TCPS_ESTABLISHED;
+	TCP_STATE_CHANGE(tp, TCPS_ESTABLISHED);
 	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepidle, tcp_timer_keep);
 
 	if (tp->t_rxtsyn > 0) {

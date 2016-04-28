@@ -453,11 +453,20 @@ struct tcp_stats {
 
 #ifdef _KERNEL
 
+#ifndef _NETINET_TCP_FSM_H_
+#include <netinet/tcp_fsm.h>
+#endif
+
+struct tcp_state_count {
+	u_long	tcps_count[TCP_NSTATES];
+} __cachealign;
+
 #define tcpstat	tcpstats_percpu[mycpuid]
 
 struct sockopt;
 
 extern struct tcp_stats		tcpstats_percpu[MAXCPU];
+extern struct tcp_state_count	tcpstate_count[MAXCPU];
 
 static const int tcprexmtthresh = 3;
 #endif
@@ -781,6 +790,58 @@ tcp_pcbport_remove(struct inpcb *inp)
 		inp->inp_phd = NULL;
 		/* NOTE: Don't whack inp_lport, which may be used later */
 	}
+}
+
+static __inline void
+_TCP_STATE_INC(const struct tcpcb *tp)
+{
+	tcpstate_count[mycpuid].tcps_count[tp->t_state]++;
+}
+
+static __inline void
+_TCP_STATE_DEC(const struct tcpcb *tp)
+{
+	tcpstate_count[mycpuid].tcps_count[tp->t_state]--;
+}
+
+static __inline void
+_TCP_STATE_SET(struct tcpcb *tp, int state)
+{
+	tp->t_state = state;
+	_TCP_STATE_INC(tp);
+}
+
+static __inline void
+TCP_STATE_INIT(struct tcpcb *tp)
+{
+	_TCP_STATE_SET(tp, TCPS_CLOSED);
+}
+
+static __inline void
+TCP_STATE_TERM(struct tcpcb *tp)
+{
+	KASSERT(tp->t_state != TCPS_TERMINATING, ("tcpcb was terminated"));
+	_TCP_STATE_DEC(tp);
+	tp->t_state = TCPS_TERMINATING;
+}
+
+static __inline void
+TCP_STATE_CHANGE(struct tcpcb *tp, int state)
+{
+	_TCP_STATE_DEC(tp);
+	_TCP_STATE_SET(tp, state);
+}
+
+static __inline void
+TCP_STATE_MIGRATE_START(const struct tcpcb *tp)
+{
+	_TCP_STATE_DEC(tp);
+}
+
+static __inline void
+TCP_STATE_MIGRATE_END(const struct tcpcb *tp)
+{
+	_TCP_STATE_INC(tp);
 }
 
 #endif /* _KERNEL */

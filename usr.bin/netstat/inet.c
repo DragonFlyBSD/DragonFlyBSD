@@ -392,6 +392,7 @@ CPU_STATS_FUNC(udp, struct udpstat);
 void
 tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
+	u_long state_count[TCP_NSTATES];
 	struct tcp_stats tcpstat, *stattmp;
 	struct tcp_stats zerostat[SMP_MAXCPU];
 	size_t len = sizeof(struct tcp_stats) * SMP_MAXCPU;
@@ -546,6 +547,16 @@ tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 #undef p2
 #undef p2a
 #undef p3
+
+	len = sizeof(state_count);
+	if (sysctlbyname("net.inet.tcp.state_count", state_count, &len, NULL, 0) == 0) {
+		int s;
+
+		for (s = TCPS_TERMINATING + 1; s < TCP_NSTATES; ++s) {
+			printf("\t%lu connection%s in %s state\n", state_count[s],
+			    state_count[s] == 1 ? "" : "s", tcpstates[s]);
+		}
+	}
 }
 
 /*

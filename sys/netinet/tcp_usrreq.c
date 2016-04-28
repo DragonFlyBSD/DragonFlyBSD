@@ -361,6 +361,8 @@ tcp_usr_bind(netmsg_t msg)
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpuid]);
 		msg->bind.nm_flags |= PRUB_RELINK;
 
+		TCP_STATE_MIGRATE_START(tp);
+
 		/* See the related comment in tcp_connect() */
 		lwkt_setmsg_receipt(lmsg, tcp_sosetport);
 		lwkt_forwardmsg(port0, lmsg);
@@ -371,6 +373,7 @@ tcp_usr_bind(netmsg_t msg)
 
 	if (msg->bind.nm_flags & PRUB_RELINK) {
 		msg->bind.nm_flags &= ~PRUB_RELINK;
+		TCP_STATE_MIGRATE_END(tp);
 		in_pcblink(so->so_pcb, &tcbinfo[mycpuid]);
 	}
 	KASSERT(inp->inp_pcbinfo == &tcbinfo[0], ("pcbinfo is not tcbinfo0"));
@@ -459,6 +462,8 @@ tcp_usr_listen(netmsg_t msg)
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpuid]);
 		msg->listen.nm_flags |= PRUL_RELINK;
 
+		TCP_STATE_MIGRATE_START(tp);
+
 		/* See the related comment in tcp_connect() */
 		lwkt_setmsg_receipt(lmsg, tcp_sosetport);
 		lwkt_forwardmsg(port0, lmsg);
@@ -469,6 +474,7 @@ tcp_usr_listen(netmsg_t msg)
 
 	if (msg->listen.nm_flags & PRUL_RELINK) {
 		msg->listen.nm_flags &= ~PRUL_RELINK;
+		TCP_STATE_MIGRATE_END(tp);
 		in_pcblink(so->so_pcb, &tcbinfo[mycpuid]);
 	}
 	KASSERT(inp->inp_pcbinfo == &tcbinfo[0], ("pcbinfo is not tcbinfo0"));
@@ -482,7 +488,7 @@ tcp_usr_listen(netmsg_t msg)
 			goto out;
 	}
 
-	tp->t_state = TCPS_LISTEN;
+	TCP_STATE_CHANGE(tp, TCPS_LISTEN);
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
@@ -532,7 +538,7 @@ tcp6_usr_listen(netmsg_t msg)
 			goto out;
 	}
 
-	tp->t_state = TCPS_LISTEN;
+	TCP_STATE_CHANGE(tp, TCPS_LISTEN);
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
@@ -1086,7 +1092,7 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;
-	tp->t_state = TCPS_SYN_SENT;
+	TCP_STATE_CHANGE(tp, TCPS_SYN_SENT);
 	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepinit, tcp_timer_keep);
 	tp->iss = tcp_new_isn(tp);
 	tcp_sendseqinit(tp);
@@ -1135,6 +1141,7 @@ tcp_connect(netmsg_t msg)
 	 */
 	if (msg->connect.nm_flags & PRUC_RECONNECT) {
 		msg->connect.nm_flags &= ~PRUC_RECONNECT;
+		TCP_STATE_MIGRATE_END(tp);
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	}
 
@@ -1198,6 +1205,8 @@ tcp_connect(netmsg_t msg)
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 		msg->connect.nm_flags |= PRUC_RECONNECT;
 		msg->connect.base.nm_dispatch = tcp_connect;
+
+		TCP_STATE_MIGRATE_START(tp);
 
 		/*
 		 * Use message put done receipt to change this socket's
@@ -1288,6 +1297,7 @@ tcp6_connect(netmsg_t msg)
 	 */
 	if (msg->connect.nm_flags & PRUC_RECONNECT) {
 		msg->connect.nm_flags &= ~PRUC_RECONNECT;
+		TCP_STATE_MIGRATE_END(tp);
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	}
 
@@ -1324,6 +1334,8 @@ tcp6_connect(netmsg_t msg)
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 		msg->connect.nm_flags |= PRUC_RECONNECT;
 		msg->connect.base.nm_dispatch = tcp6_connect;
+
+		TCP_STATE_MIGRATE_START(tp);
 
 		/* See the related comment in tcp_connect() */
 		lwkt_setmsg_receipt(lmsg, tcp_sosetport);
@@ -1392,7 +1404,7 @@ tcp6_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf **mp,
 
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;
-	tp->t_state = TCPS_SYN_SENT;
+	TCP_STATE_CHANGE(tp, TCPS_SYN_SENT);
 	tcp_callout_reset(tp, tp->tt_keep, tp->t_keepinit, tcp_timer_keep);
 	tp->iss = tcp_new_isn(tp);
 	tcp_sendseqinit(tp);
@@ -1761,7 +1773,7 @@ tcp_usrclosed(struct tcpcb *tp)
 
 	case TCPS_CLOSED:
 	case TCPS_LISTEN:
-		tp->t_state = TCPS_CLOSED;
+		TCP_STATE_CHANGE(tp, TCPS_CLOSED);
 		tp = tcp_close(tp);
 		break;
 
@@ -1771,11 +1783,11 @@ tcp_usrclosed(struct tcpcb *tp)
 		break;
 
 	case TCPS_ESTABLISHED:
-		tp->t_state = TCPS_FIN_WAIT_1;
+		TCP_STATE_CHANGE(tp, TCPS_FIN_WAIT_1);
 		break;
 
 	case TCPS_CLOSE_WAIT:
-		tp->t_state = TCPS_LAST_ACK;
+		TCP_STATE_CHANGE(tp, TCPS_LAST_ACK);
 		break;
 	}
 	if (tp && tp->t_state >= TCPS_FIN_WAIT_2) {
