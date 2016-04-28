@@ -774,6 +774,11 @@ dounmount(struct mount *mp, int flags)
 	/*
 	 * So far so good, sync the filesystem once more and
 	 * call the VFS unmount code if the sync succeeds.
+	 *
+	 * A filesystem without explicitly initialzed .vfs_sync
+	 * fails here since vfs_stdnosync() returns EOPNOTSUPP.
+	 * A filesystem needs to implement vfs_stdsync() which
+	 * returns 0 even if there is no backing storage.
 	 */
 	if (error == 0) {
 		if (((mp->mnt_flag & MNT_RDONLY) ||
