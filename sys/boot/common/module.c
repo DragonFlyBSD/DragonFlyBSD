@@ -672,17 +672,14 @@ file_lookup(const char *path, const char *name, int namelen, char **extlist)
 {
     struct stat	st;
     char	*result, *cp, **cpp;
-    int		pathlen, extlen, len;
+    size_t	pathlen, extlen;
 
     pathlen = strlen(path);
     extlen = 0;
     if (extlist == NULL)
 	extlist = emptyextlist;
-    for (cpp = extlist; *cpp; cpp++) {
-	len = strlen(*cpp);
-	if (len > extlen)
-	    extlen = len;
-    }
+    for (cpp = extlist; *cpp; cpp++)
+	extlen = MAX(extlen, strlen(*cpp));
     result = malloc(pathlen + namelen + extlen + 2 + 7 + 1);
     if (result == NULL)
 	return (NULL);
@@ -1015,7 +1012,6 @@ bad:
 	mdp->d_hints = NULL;
     }
     mdp->d_flags |= MDIR_NOHINTS;
-    return;
 }
 
 /*
@@ -1107,5 +1103,4 @@ moduledir_rebuild(void)
 	    free(mtmp);
 	}
     }
-    return;
 }

@@ -94,9 +94,9 @@ help_getnext(int fd, char **topic, char **subtopic, char **desc)
 		free(*subtopic);
 	    if (*desc != NULL)
 		free(*desc);
-	    continue;
+	} else {
+	    return(1);
 	}
-	return(1);
     }
 }
 

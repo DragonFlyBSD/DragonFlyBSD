@@ -151,8 +151,7 @@ net_open(struct open_file *f, ...)
 }
 
 int
-net_close(f)
-    struct open_file *f;
+net_close(struct open_file *f)
 {
 
 #ifdef	NETIF_DEBUG
@@ -205,8 +204,7 @@ int try_bootp = 1;
 extern n_long ip_convertaddr(char *p);
 
 static int
-net_getparams(sock)
-    int sock;
+net_getparams(int sock)
 {
     char buf[MAXHOSTNAMELEN];
     char temp[FNAME_SIZE];
