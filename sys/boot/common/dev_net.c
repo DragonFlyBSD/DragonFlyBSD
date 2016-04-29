@@ -83,7 +83,7 @@ static int netdev_opens;
 static int	net_init(void);
 static int	net_open(struct open_file *, ...);
 static int	net_close(struct open_file *);
-static int	net_strategy();
+static int	net_strategy(void *, int, daddr_t, size_t, char *, size_t *);
 static void	net_print(int);
 
 static int net_getparams(int sock);
