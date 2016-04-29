@@ -84,9 +84,12 @@
 static void	gpio_cherryview_init(struct gpio_intel_softc *sc);
 static void	gpio_cherryview_intr(void *arg);
 static int	gpio_cherryview_map_intr(struct gpio_intel_softc *sc,
-		    uint16_t pin, int trigger, int polarity, int termination,
-		    void *arg, driver_intr_t *handler);
+		    uint16_t pin, int trigger, int polarity, int termination);
 static void	gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc,
+		    uint16_t pin);
+static int	gpio_cherryview_establish_intr(struct gpio_intel_softc *sc,
+		    uint16_t pin, void *arg, driver_intr_t *handler);
+static void	gpio_cherryview_disestablish_intr(struct gpio_intel_softc *sc,
 		    uint16_t pin);
 static int	gpio_cherryview_read_pin(struct gpio_intel_softc *sc,
 		    uint16_t pin);
@@ -98,6 +101,8 @@ static struct gpio_intel_fns gpio_cherryview_fns = {
 	.intr = gpio_cherryview_intr,
 	.map_intr = gpio_cherryview_map_intr,
 	.unmap_intr = gpio_cherryview_unmap_intr,
+	.establish_intr = gpio_cherryview_establish_intr,
+	.disestablish_intr = gpio_cherryview_disestablish_intr,
 	.read_pin = gpio_cherryview_read_pin,
 	.write_pin = gpio_cherryview_write_pin,
 };
@@ -230,7 +235,7 @@ gpio_cherryview_intr(void *arg)
 /* XXX Add shared/exclusive argument. */
 static int
 gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
-    int polarity, int termination, void *arg, driver_intr_t *handler)
+    int polarity, int termination)
 {
 	uint32_t reg, reg1, reg2;
 	uint32_t intcfg, new_intcfg, gpiocfg, new_gpiocfg;
@@ -357,8 +362,8 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 	}
 
 	sc->intrmaps[i].pin = pin;
-	sc->intrmaps[i].arg = arg;
-	sc->intrmaps[i].handler = handler;
+	sc->intrmaps[i].arg = NULL;
+	sc->intrmaps[i].handler = NULL;
 	sc->intrmaps[i].orig_intcfg = intcfg;
 	sc->intrmaps[i].orig_gpiocfg = gpiocfg;
 
@@ -366,11 +371,6 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 		sc->intrmaps[i].is_level = 1;
 	else
 		sc->intrmaps[i].is_level = 0;
-
-	/* unmask interrupt */
-	reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
-	reg |= (1 << i);
-	chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
 
 	return (0);
 }
@@ -396,11 +396,6 @@ gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
 			sc->intrmaps[i].orig_intcfg = 0;
 			sc->intrmaps[i].orig_gpiocfg = 0;
 
-			/* mask interrupt line */
-			reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
-			reg &= ~(1 << i);
-			chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
-
 			/* Restore interrupt configuration if needed */
 			reg = chvgpio_read(sc, PIN_CTL1(pin));
 			if ((reg & CHV_GPIO_CTL1_INTCFG_MASK) != intcfg) {
@@ -416,6 +411,51 @@ gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
 				reg |= gpiocfg;
 				chvgpio_write(sc, PIN_CTL0(pin), reg);
 			}
+		}
+	}
+}
+
+static int
+gpio_cherryview_establish_intr(struct gpio_intel_softc *sc, uint16_t pin,
+    void *arg, driver_intr_t *handler)
+{
+	uint32_t reg;
+	int i;
+
+	for (i = 0; i < 16; i++) {
+		if (sc->intrmaps[i].pin == pin) {
+			sc->intrmaps[i].arg = arg;
+			sc->intrmaps[i].handler = handler;
+
+			/* clear interrupt status flag */
+			chvgpio_write(sc, CHV_GPIO_REG_IS, (1U << i));
+
+			/* unmask interrupt */
+			reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
+			reg |= (1U << i);
+			chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
+			return (0);
+		}
+	}
+
+	return (ENOENT);
+}
+
+static void
+gpio_cherryview_disestablish_intr(struct gpio_intel_softc *sc, uint16_t pin)
+{
+	uint32_t reg;
+	int i;
+
+	for (i = 0; i < 16; i++) {
+		if (sc->intrmaps[i].pin == pin) {
+			/* mask interrupt line */
+			reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
+			reg &= ~(1U << i);
+			chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
+
+			sc->intrmaps[i].arg = NULL;
+			sc->intrmaps[i].handler = NULL;
 		}
 	}
 }

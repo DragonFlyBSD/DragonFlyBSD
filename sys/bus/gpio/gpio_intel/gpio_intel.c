@@ -62,8 +62,10 @@ static int	gpio_intel_probe(device_t dev);
 static int	gpio_intel_attach(device_t dev);
 static int	gpio_intel_detach(device_t dev);
 static int	gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger,
-		    int polarity, int termination, void *arg,
+		    int polarity, int termination);
+static int	gpio_intel_setup_intr(device_t dev, u_int pin, void *arg,
 		    driver_intr_t *handler);
+static int	gpio_intel_teardown_intr(device_t dev, u_int pin);
 static int	gpio_intel_free_intr(device_t dev, u_int pin);
 static int	gpio_intel_read_pin(device_t dev, u_int pin);
 static void	gpio_intel_write_pin(device_t dev, u_int pin, int value);
@@ -193,7 +195,7 @@ gpio_intel_detach(device_t dev)
  */
 static int
 gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger, int polarity,
-    int termination, void *arg, driver_intr_t *handler)
+    int termination)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
 	int i, ret;
@@ -207,9 +209,9 @@ gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger, int polarity,
 			return (ENOMEM);
 		}
 		ret = sc->fns->map_intr(sc, pin, trigger, polarity,
-		    termination, arg, handler);
+		    termination);
 	} else {
-		device_printf(sc->dev, "Invalid pin number %d\n", pin);
+		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
 		ret = ENOENT;
 	}
 
@@ -230,10 +232,48 @@ gpio_intel_free_intr(device_t dev, u_int pin)
 		sc->fns->unmap_intr(sc, pin);
 		ret = 0;
 	} else {
-		device_printf(sc->dev, "Invalid pin number %d\n", pin);
+		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
 		ret = ENOENT;
 	}
 
+	lockmgr(&sc->lk, LK_RELEASE);
+
+	return (ret);
+}
+
+static int
+gpio_intel_setup_intr(device_t dev, u_int pin, void *arg,
+    driver_intr_t *handler)
+{
+	struct gpio_intel_softc *sc = device_get_softc(dev);
+	int ret;
+
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
+	if (gpio_intel_pin_exists(sc, pin)) {
+		ret = sc->fns->establish_intr(sc, pin, arg, handler);
+	} else {
+		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
+		ret = ENOENT;
+	}
+	lockmgr(&sc->lk, LK_RELEASE);
+
+	return (ret);
+}
+
+static int
+gpio_intel_teardown_intr(device_t dev, u_int pin)
+{
+	struct gpio_intel_softc *sc = device_get_softc(dev);
+	int ret;
+
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
+	if (gpio_intel_pin_exists(sc, pin)) {
+		sc->fns->disestablish_intr(sc, pin);
+		ret = 0;
+	} else {
+		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
+		ret = ENOENT;
+	}
 	lockmgr(&sc->lk, LK_RELEASE);
 
 	return (ret);
@@ -300,6 +340,8 @@ static device_method_t gpio_intel_methods[] = {
 	/* GPIO methods */
 	DEVMETHOD(gpio_alloc_intr, gpio_intel_alloc_intr),
 	DEVMETHOD(gpio_free_intr, gpio_intel_free_intr),
+	DEVMETHOD(gpio_setup_intr, gpio_intel_setup_intr),
+	DEVMETHOD(gpio_teardown_intr, gpio_intel_teardown_intr),
 	DEVMETHOD(gpio_read_pin, gpio_intel_read_pin),
 	DEVMETHOD(gpio_write_pin, gpio_intel_write_pin),
 

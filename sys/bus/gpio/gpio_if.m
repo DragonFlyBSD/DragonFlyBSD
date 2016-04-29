@@ -37,7 +37,7 @@
 INTERFACE gpio;
 
 #
-# Setup GPIO interrupt handler.
+# Allocate GPIO interrupt.
 # XXX trigger, polarity and termination constants are currently used from
 #     sys/contrib/dev/acpica/source/include/acrestyp.h
 #
@@ -47,14 +47,30 @@ METHOD int alloc_intr {
 	int trigger;
 	int polarity;
 	int termination;
+};
+
+#
+# Deallocate GPIO interrupt.
+#
+METHOD int free_intr {
+	device_t dev;
+	u_int pin;
+};
+
+#
+# Setup GPIO interrupt.
+#
+METHOD int setup_intr {
+	device_t dev;
+	u_int pin;
 	void *arg;
 	driver_intr_t *handler;
 };
 
 #
-# Remove GPIO interrupt handler.
+# Disable GPIO interrupt.
 #
-METHOD int free_intr {
+METHOD int teardown_intr {
 	device_t dev;
 	u_int pin;
 };

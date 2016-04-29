@@ -29,9 +29,12 @@ struct gpio_intel_softc {
 
 typedef	void(*gpio_intel_init_fn)(struct gpio_intel_softc *sc);
 typedef	int(*gpio_intel_map_intr_fn)(struct gpio_intel_softc *sc,
-	    uint16_t pin, int trigger, int polarity, int termination,
-	    void *arg, driver_intr_t);
+	    uint16_t pin, int trigger, int polarity, int termination);
 typedef	void(*gpio_intel_unmap_intr_fn)(struct gpio_intel_softc *sc,
+	    uint16_t pin);
+typedef	int(*gpio_intel_establish_intr_fn)(struct gpio_intel_softc *sc,
+	    uint16_t pin, void *arg, driver_intr_t);
+typedef	void(*gpio_intel_disestablish_intr_fn)(struct gpio_intel_softc *sc,
 	    uint16_t pin);
 typedef	void(*gpio_intel_write_pin_fn)(struct gpio_intel_softc *sc,
 	    uint16_t pin, int value);
@@ -43,6 +46,8 @@ struct gpio_intel_fns {
 	driver_intr_t		*intr;
 	gpio_intel_map_intr_fn	map_intr;
 	gpio_intel_unmap_intr_fn unmap_intr;
+	gpio_intel_establish_intr_fn establish_intr;
+	gpio_intel_disestablish_intr_fn disestablish_intr;
 	gpio_intel_write_pin_fn	write_pin;
 	gpio_intel_read_pin_fn	read_pin;
 };
