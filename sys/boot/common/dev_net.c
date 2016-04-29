@@ -179,7 +179,8 @@ net_close(struct open_file *f)
 }
 
 int
-net_strategy()
+net_strategy(void *devdata, int rw, daddr_t blk, size_t size, char *buf,
+    size_t *rsize)
 {
     return EIO;
 }
