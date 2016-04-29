@@ -46,10 +46,11 @@
 #define EVFILT_TIMER		(-7)	/* timers */
 #define EVFILT_EXCEPT		(-8)	/* exceptional conditions */
 #define EVFILT_USER		(-9)	/* user events */
+#define EVFILT_FS		(-10)	/* filesystem events */
 
 #define EVFILT_MARKER		0xF	/* placemarker for tailq */
 
-#define EVFILT_SYSCOUNT		9
+#define EVFILT_SYSCOUNT		10
 
 #define EV_SET(kevp_, a, b, c, d, e, f) do {	\
 	struct kevent *kevp = (kevp_);		\
@@ -251,6 +252,8 @@ extern void	knote_fdclose(struct file *fp, struct filedesc *fdp, int fd);
 extern void	kqueue_init(struct kqueue *kq, struct filedesc *fdp);
 extern void	kqueue_terminate(struct kqueue *kq);
 extern int 	kqueue_register(struct kqueue *kq, struct kevent *kev);
+
+extern struct klist fs_klist;	/* EVFILT_FS */
 
 #endif 	/* _KERNEL */
 

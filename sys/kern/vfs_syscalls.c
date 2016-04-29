@@ -415,6 +415,7 @@ update:
 		vfs_unbusy(mp);
 		error = VFS_START(mp, 0);
 		vrele(vp);
+		KNOTE(&fs_klist, VQ_MOUNT);
 	} else {
 		vn_syncer_thr_stop(mp);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
@@ -862,6 +863,7 @@ dounmount(struct mount *mp, int flags)
 		mp = NULL;
 	}
 	error = 0;
+	KNOTE(&fs_klist, VQ_UNMOUNT);
 out:
 	if (mp)
 		lwkt_reltoken(&mp->mnt_token);

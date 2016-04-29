@@ -123,6 +123,9 @@ static void	filt_userdetach(struct knote *kn);
 static int	filt_user(struct knote *kn, long hint);
 static void	filt_usertouch(struct knote *kn, struct kevent *kev,
 				u_long type);
+static int	filt_fsattach(struct knote *kn);
+static void	filt_fsdetach(struct knote *kn);
+static int	filt_fs(struct knote *kn, long hint);
 
 static struct filterops file_filtops =
 	{ FILTEROP_ISFD | FILTEROP_MPSAFE, filt_fileattach, NULL, NULL };
@@ -134,6 +137,8 @@ static struct filterops timer_filtops =
 	{ FILTEROP_MPSAFE, filt_timerattach, filt_timerdetach, filt_timer };
 static struct filterops user_filtops =
 	{ FILTEROP_MPSAFE, filt_userattach, filt_userdetach, filt_user };
+static struct filterops fs_filtops =
+	{ FILTEROP_MPSAFE, filt_fsattach, filt_fsdetach, filt_fs };
 
 static int 		kq_ncallouts = 0;
 static int 		kq_calloutmax = (4 * 1024);
@@ -168,6 +173,7 @@ static struct filterops *sysfilt_ops[] = {
 	&timer_filtops,			/* EVFILT_TIMER */
 	&file_filtops,			/* EVFILT_EXCEPT */
 	&user_filtops,			/* EVFILT_USER */
+	&fs_filtops,			/* EVFILT_FS */
 };
 
 static struct knote_cache_list	knote_cache_lists[MAXCPU];
@@ -591,6 +597,33 @@ filt_usertouch(struct knote *kn, struct kevent *kev, u_long type)
 		panic("filt_usertouch() - invalid type (%ld)", type);
 		break;
 	}
+}
+
+/*
+ * EVFILT_FS
+ */
+struct klist fs_klist = SLIST_HEAD_INITIALIZER(&fs_klist);
+
+static int
+filt_fsattach(struct knote *kn)
+{
+	kn->kn_flags |= EV_CLEAR;
+	knote_insert(&fs_klist, kn);
+
+	return (0);
+}
+
+static void
+filt_fsdetach(struct knote *kn)
+{
+	knote_remove(&fs_klist, kn);
+}
+
+static int
+filt_fs(struct knote *kn, long hint)
+{
+	kn->kn_fflags |= hint;
+	return (kn->kn_fflags != 0);
 }
 
 /*
