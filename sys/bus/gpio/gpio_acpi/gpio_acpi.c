@@ -51,7 +51,8 @@
 
 struct acpi_event_info {
 	device_t dev;
-	uint16_t pin;
+	u_int pin;
+	void *cookie;
 	int trigger;
 };
 
@@ -277,6 +278,7 @@ gpio_acpi_do_map_aei(device_t dev, struct acpi_event_info *info,
     ACPI_RESOURCE_GPIO *gpio)
 {
 	uint16_t pin;
+	void *cookie;
 
 	if (gpio->ConnectionType != ACPI_RESOURCE_GPIO_TYPE_INT) {
 		device_printf(dev, "Unexpected gpio type %d\n",
@@ -312,7 +314,7 @@ gpio_acpi_do_map_aei(device_t dev, struct acpi_event_info *info,
 	pin = gpio->PinTable[0];
 
 	if (GPIO_ALLOC_INTR(dev, pin, gpio->Triggering, gpio->Polarity,
-	    gpio->PinConfig) != 0) {
+	    gpio->PinConfig, &cookie) != 0) {
 		device_printf(dev,
 		    "Failed to allocate AEI interrupt on pin %d\n", pin);
 		return;
@@ -321,12 +323,9 @@ gpio_acpi_do_map_aei(device_t dev, struct acpi_event_info *info,
 	info->dev = dev;
 	info->pin = pin;
 	info->trigger = gpio->Triggering;
+	info->cookie = cookie;
 
-	if (GPIO_SETUP_INTR(dev, pin, info, gpio_acpi_aei_handler) != 0) {
-		device_printf(dev,
-		    "Failed to establish AEI interrupt on pin %d\n", pin);
-		memset(info, 0, sizeof(*info));
-	}
+	GPIO_SETUP_INTR(dev, cookie, info, gpio_acpi_aei_handler);
 }
 
 /* Map ACPI events */
@@ -400,9 +399,9 @@ gpio_acpi_unmap_aei(device_t dev, struct gpio_acpi_data *data)
 	for (i = 0; i < data->num_aei; i++) {
 		info = &data->infos[i];
 		if (info->dev != NULL) {
+			GPIO_TEARDOWN_INTR(dev, info->cookie);
+			GPIO_FREE_INTR(dev, info->cookie);
 			/* XXX Wait until ACPI Event handler has finished */
-			GPIO_TEARDOWN_INTR(dev, info->pin);
-			GPIO_FREE_INTR(dev, info->pin);
 			memset(info, 0, sizeof(*info));
 		}
 	}

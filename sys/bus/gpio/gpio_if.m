@@ -47,22 +47,23 @@ METHOD int alloc_intr {
 	int trigger;
 	int polarity;
 	int termination;
+	void **cookiep;
 };
 
 #
 # Deallocate GPIO interrupt.
 #
-METHOD int free_intr {
+METHOD void free_intr {
 	device_t dev;
-	u_int pin;
+	void *cookie;
 };
 
 #
 # Setup GPIO interrupt.
 #
-METHOD int setup_intr {
+METHOD void setup_intr {
 	device_t dev;
-	u_int pin;
+	void *cookie;
 	void *arg;
 	driver_intr_t *handler;
 };
@@ -70,9 +71,9 @@ METHOD int setup_intr {
 #
 # Disable GPIO interrupt.
 #
-METHOD int teardown_intr {
+METHOD void teardown_intr {
 	device_t dev;
-	u_int pin;
+	void *cookie;
 };
 
 #

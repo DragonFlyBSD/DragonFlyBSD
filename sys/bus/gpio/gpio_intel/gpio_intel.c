@@ -62,11 +62,11 @@ static int	gpio_intel_probe(device_t dev);
 static int	gpio_intel_attach(device_t dev);
 static int	gpio_intel_detach(device_t dev);
 static int	gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger,
-		    int polarity, int termination);
-static int	gpio_intel_setup_intr(device_t dev, u_int pin, void *arg,
+		    int polarity, int termination, void **cookiep);
+static void	gpio_intel_setup_intr(device_t dev, void *cookie, void *arg,
 		    driver_intr_t *handler);
-static int	gpio_intel_teardown_intr(device_t dev, u_int pin);
-static int	gpio_intel_free_intr(device_t dev, u_int pin);
+static void	gpio_intel_teardown_intr(device_t dev, void *cookie);
+static void	gpio_intel_free_intr(device_t dev, void *cookie);
 static int	gpio_intel_read_pin(device_t dev, u_int pin);
 static void	gpio_intel_write_pin(device_t dev, u_int pin, int value);
 
@@ -195,10 +195,14 @@ gpio_intel_detach(device_t dev)
  */
 static int
 gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger, int polarity,
-    int termination)
+    int termination, void **cookiep)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
+	struct pin_intr_map *map = NULL;
 	int i, ret;
+
+	if (cookiep == NULL)
+		return (EINVAL);
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 
@@ -210,6 +214,14 @@ gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger, int polarity,
 		}
 		ret = sc->fns->map_intr(sc, pin, trigger, polarity,
 		    termination);
+		if (ret == 0) {
+			for (i = 0; i < NELEM(sc->intrmaps); i++) {
+				if (sc->intrmaps[i].pin == pin)
+					map = &sc->intrmaps[i];
+			}
+			if (map != NULL)
+				*cookiep = map;
+		}
 	} else {
 		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
 		ret = ENOENT;
@@ -220,63 +232,44 @@ gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger, int polarity,
 	return (ret);
 }
 
-static int
-gpio_intel_free_intr(device_t dev, u_int pin)
+static void
+gpio_intel_free_intr(device_t dev, void *cookie)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
-	int ret;
+	struct pin_intr_map *map = (struct pin_intr_map *)cookie;
+
+	KKASSERT(gpio_intel_pin_exists(sc, map->pin));
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-
-	if (gpio_intel_pin_exists(sc, pin)) {
-		sc->fns->unmap_intr(sc, pin);
-		ret = 0;
-	} else {
-		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
-		ret = ENOENT;
-	}
-
+	sc->fns->unmap_intr(sc, map->pin);
 	lockmgr(&sc->lk, LK_RELEASE);
-
-	return (ret);
 }
 
-static int
-gpio_intel_setup_intr(device_t dev, u_int pin, void *arg,
+static void
+gpio_intel_setup_intr(device_t dev, void *cookie, void *arg,
     driver_intr_t *handler)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
-	int ret;
+	struct pin_intr_map *map = (struct pin_intr_map *)cookie;
+
+	KKASSERT(gpio_intel_pin_exists(sc, map->pin));
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-	if (gpio_intel_pin_exists(sc, pin)) {
-		ret = sc->fns->establish_intr(sc, pin, arg, handler);
-	} else {
-		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
-		ret = ENOENT;
-	}
+	sc->fns->establish_intr(sc, map->pin, arg, handler);
 	lockmgr(&sc->lk, LK_RELEASE);
-
-	return (ret);
 }
 
-static int
-gpio_intel_teardown_intr(device_t dev, u_int pin)
+static void
+gpio_intel_teardown_intr(device_t dev, void *cookie)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
-	int ret;
+	struct pin_intr_map *map = (struct pin_intr_map *)cookie;
+
+	KKASSERT(gpio_intel_pin_exists(sc, map->pin));
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-	if (gpio_intel_pin_exists(sc, pin)) {
-		sc->fns->disestablish_intr(sc, pin);
-		ret = 0;
-	} else {
-		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
-		ret = ENOENT;
-	}
+	sc->fns->disestablish_intr(sc, map->pin);
 	lockmgr(&sc->lk, LK_RELEASE);
-
-	return (ret);
 }
 
 static int
@@ -286,11 +279,11 @@ gpio_intel_read_pin(device_t dev, u_int pin)
 	int val;
 
         /* This operation mustn't fail, otherwise ACPI would be in trouble */
-        KKASSERT(gpio_intel_pin_exists(sc, pin));
+	KKASSERT(gpio_intel_pin_exists(sc, pin));
 
-        lockmgr(&sc->lk, LK_EXCLUSIVE);
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
 	val = sc->fns->read_pin(sc, pin);
-        lockmgr(&sc->lk, LK_RELEASE);
+	lockmgr(&sc->lk, LK_RELEASE);
 
 	return (val);
 }
@@ -301,11 +294,11 @@ gpio_intel_write_pin(device_t dev, u_int pin, int value)
 	struct gpio_intel_softc *sc = device_get_softc(dev);
 
         /* This operation mustn't fail, otherwise ACPI would be in trouble */
-        KKASSERT(gpio_intel_pin_exists(sc, pin));
+	KKASSERT(gpio_intel_pin_exists(sc, pin));
 
-        lockmgr(&sc->lk, LK_EXCLUSIVE);
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
 	sc->fns->write_pin(sc, pin, value);
-        lockmgr(&sc->lk, LK_RELEASE);
+	lockmgr(&sc->lk, LK_RELEASE);
 }
 
 static void
