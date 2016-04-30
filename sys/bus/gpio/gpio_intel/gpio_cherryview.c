@@ -91,6 +91,8 @@ static void	gpio_cherryview_enable_intr(struct gpio_intel_softc *sc,
 		    struct pin_intr_map *map);
 static void	gpio_cherryview_disable_intr(struct gpio_intel_softc *sc,
 		    struct pin_intr_map *map);
+static int	gpio_cherryview_check_io_pin(struct gpio_intel_softc *sc,
+		    uint16_t pin, int flags);
 static int	gpio_cherryview_read_pin(struct gpio_intel_softc *sc,
 		    uint16_t pin);
 static void	gpio_cherryview_write_pin(struct gpio_intel_softc *sc,
@@ -103,6 +105,7 @@ static struct gpio_intel_fns gpio_cherryview_fns = {
 	.unmap_intr = gpio_cherryview_unmap_intr,
 	.enable_intr = gpio_cherryview_enable_intr,
 	.disable_intr = gpio_cherryview_disable_intr,
+	.check_io_pin = gpio_cherryview_check_io_pin,
 	.read_pin = gpio_cherryview_read_pin,
 	.write_pin = gpio_cherryview_write_pin,
 };
@@ -215,6 +218,7 @@ gpio_cherryview_intr(void *arg)
 	int i;
 
 	status = chvgpio_read(sc, CHV_GPIO_REG_IS);
+	KKASSERT(NELEM(sc->intrmaps) >= 16);
 	for (i = 0; i < 16; i++) {
 		if (status & (1U << i)) {
 			mapping = &sc->intrmaps[i];
@@ -442,6 +446,35 @@ gpio_cherryview_disable_intr(struct gpio_intel_softc *sc,
 }
 
 static int
+gpio_cherryview_check_io_pin(struct gpio_intel_softc *sc, uint16_t pin,
+    int flags)
+{
+	uint32_t reg1, reg2;
+
+	reg1 = chvgpio_read(sc, PIN_CTL0(pin));
+	if (flags & (1U << 0)) {
+		/* Verify that RX is enabled */
+		if ((reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0 &&
+		    (reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0x200) {
+			return (0);
+		}
+	}
+	reg2 = chvgpio_read(sc, PIN_CTL1(pin));
+	if (flags & (1U << 1)) {
+		/* Verify that interrupt is disabled */
+		if ((reg2 & CHV_GPIO_CTL1_INTCFG_MASK) != 0)
+			return (0);
+		/* Verify that TX is enabled */
+		if ((reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0 &&
+		    (reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) != 0x100) {
+			return (0);
+		}
+	}
+
+	return (1);
+}
+
+static int
 gpio_cherryview_read_pin(struct gpio_intel_softc *sc, uint16_t pin)
 {
 	uint32_t reg;
@@ -463,20 +496,16 @@ gpio_cherryview_read_pin(struct gpio_intel_softc *sc, uint16_t pin)
 static void
 gpio_cherryview_write_pin(struct gpio_intel_softc *sc, uint16_t pin, int value)
 {
-	uint32_t reg1, reg2;
+	uint32_t reg;
 
-	reg2 = chvgpio_read(sc, PIN_CTL1(pin));
-	/* Verify that interrupt is disabled */
-	KKASSERT((reg2 & CHV_GPIO_CTL1_INTCFG_MASK) == 0);
-
-	reg1 = chvgpio_read(sc, PIN_CTL0(pin));
+	reg = chvgpio_read(sc, PIN_CTL0(pin));
 	/* Verify that TX is enabled */
-	KKASSERT((reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0 ||
-	    (reg1 & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x100);
+	KKASSERT((reg & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0 ||
+	    (reg & CHV_GPIO_CTL0_GPIOCFG_MASK) == 0x100);
 
 	if (value)
-		reg1 |= CHV_GPIO_CTL0_TXSTATE;
+		reg |= CHV_GPIO_CTL0_TXSTATE;
 	else
-		reg1 &= ~CHV_GPIO_CTL0_TXSTATE;
-	chvgpio_write(sc, PIN_CTL0(pin), reg1);
+		reg &= ~CHV_GPIO_CTL0_TXSTATE;
+	chvgpio_write(sc, PIN_CTL0(pin), reg);
 }

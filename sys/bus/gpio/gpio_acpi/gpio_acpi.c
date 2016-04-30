@@ -68,6 +68,9 @@ struct gpio_acpi_data {
 };
 
 static BOOLEAN	gpio_acpi_check_gpioint(device_t dev, ACPI_RESOURCE_GPIO *gpio);
+static void	**gpioio_alloc_pins(device_t dev, device_t provider,
+		    ACPI_RESOURCE_GPIO *gpio, uint16_t idx, uint16_t length,
+		    void **buf);
 
 /* GPIO Address Space Handler */
 static void		gpio_acpi_install_address_space_handler(device_t dev,
@@ -151,6 +154,53 @@ gpio_acpi_check_gpioint(device_t dev, ACPI_RESOURCE_GPIO *gpio)
 }
 
 /*
+ * GpioIo ACPI resource handling
+ */
+
+static void **
+gpioio_alloc_pins(device_t dev, device_t provider, ACPI_RESOURCE_GPIO *gpio,
+    uint16_t idx, uint16_t length, void **buf)
+{
+	void **pins;
+	int flags, i, j;
+
+	if (buf == NULL) {
+		pins = kmalloc(sizeof(*pins) * length, M_DEVBUF,
+		    M_WAITOK | M_ZERO);
+	} else {
+		pins = buf;
+	}
+
+	if (gpio->IoRestriction == ACPI_IO_RESTRICT_INPUT) {
+		flags = (1U << 0);
+	} else if (gpio->IoRestriction ==
+	    ACPI_IO_RESTRICT_OUTPUT) {
+		flags = (1U << 1);
+	} else {
+		flags = (1U << 0) | (1U << 1);
+	}
+	for (i = 0; i < length; i++) {
+		if (GPIO_ALLOC_IO_PIN(provider, gpio->PinTable[idx + i], flags,
+		    &pins[i]) != 0) {
+			device_printf(dev, "Failed to alloc GpioIo pin %u on "
+			    "ResourceSource \"%s\"\n", gpio->PinTable[idx + i],
+			    gpio->ResourceSource.StringPtr);
+			/* Release already alloc-ed pins */
+			for (j = 0; j < i; j++)
+				GPIO_RELEASE_IO_PIN(provider, pins[j]);
+			goto err;
+		}
+	}
+
+	return (pins);
+
+err:
+	if (buf == NULL)
+		kfree(pins, M_DEVBUF);
+	return (NULL);
+}
+
+/*
  * GPIO Address space handler
  */
 
@@ -163,11 +213,6 @@ gpio_acpi_install_address_space_handler(device_t dev,
 
 	handle = acpi_get_handle(dev);
 	data->dev = dev;
-	/*
-	 * XXX Should use the Address Space Setup Handler to check and
-	 *     reserve the GPIO pins, to avoid checking on each READ/WRITE
-	 *     call into the Adress Space Handler.
-	 */
 	s = AcpiInstallAddressSpaceHandler(handle, ACPI_ADR_SPACE_GPIO,
 	    &gpio_acpi_space_handler, NULL, data);
 	if (ACPI_FAILURE(s)) {
@@ -204,57 +249,79 @@ gpio_acpi_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address,
 	UINT8 action = Function & ACPI_IO_MASK;
 	ACPI_RESOURCE *Resource;
 	ACPI_STATUS s = AE_OK;
+	void **pins;
 	int i;
 
-	s = AcpiBufferToResource(info->Connection, info->Length, &Resource);
-	if (ACPI_FAILURE(s))
-		return (s);
-	if (Value == NULL || Resource->Type != ACPI_RESOURCE_TYPE_GPIO) {
-		s = AE_BAD_PARAMETER;
-		goto err;
-	}
-
-	gpio = &Resource->Data.Gpio;
-	if (gpio->ConnectionType != ACPI_RESOURCE_GPIO_TYPE_IO) {
-		s = AE_BAD_PARAMETER;
-		goto err;
-	}
+	if (Value == NULL)
+		return (AE_BAD_PARAMETER);
 
 	/* XXX probably unnecessary */
-	if (BitWidth == 0 || BitWidth > 64) {
+	if (BitWidth == 0 || BitWidth > 64)
+		return (AE_BAD_PARAMETER);
+
+	s = AcpiBufferToResource(info->Connection, info->Length, &Resource);
+	if (ACPI_FAILURE(s)) {
+		device_printf(dev, "AcpiBufferToResource failed\n");
+		return (s);
+	}
+	if (Resource->Type != ACPI_RESOURCE_TYPE_GPIO) {
+		device_printf(dev, "Resource->Type is wrong\n");
+		s = AE_BAD_PARAMETER;
+		goto err;
+	}
+	gpio = &Resource->Data.Gpio;
+	if (gpio->ConnectionType != ACPI_RESOURCE_GPIO_TYPE_IO) {
+		device_printf(dev, "gpio->ConnectionType is wrong\n");
 		s = AE_BAD_PARAMETER;
 		goto err;
 	}
 
 	if (Address + BitWidth > gpio->PinTableLength) {
+		device_printf(dev, "Address + BitWidth out of range\n");
 		s = AE_BAD_ADDRESS;
 		goto err;
 	}
 
+	if (gpio->IoRestriction == ACPI_IO_RESTRICT_OUTPUT &&
+	    action == ACPI_READ) {
+		device_printf(dev,
+		    "IoRestriction is output only, but action is ACPI_READ\n");
+		s = AE_BAD_PARAMETER;
+		goto err;
+	}
+	if (gpio->IoRestriction == ACPI_IO_RESTRICT_INPUT &&
+	    action == ACPI_WRITE) {
+		device_printf(dev,
+		    "IoRestriction is input only, but action is ACPI_WRITE\n");
+		s = AE_BAD_PARAMETER;
+		goto err;
+	}
+
+	/* Make sure we can access all pins, before trying actual read/write */
+	pins = gpioio_alloc_pins(dev, dev, gpio, Address, BitWidth, NULL);
+	if (pins == NULL) {
+		s = AE_BAD_PARAMETER;
+		goto err;
+	}
+
 	if (action == ACPI_READ) {
-		if (gpio->IoRestriction == ACPI_IO_RESTRICT_OUTPUT) {
-			s = AE_BAD_PARAMETER;
-			goto err;
-		}
 		*Value = 0;
 		for (i = 0; i < BitWidth; i++) {
-			val = GPIO_READ_PIN(dev, gpio->PinTable[Address + i]);
+			val = GPIO_READ_PIN(dev, pins[i]);
 			*Value |= val << i;
 		}
 	} else {
-		if (gpio->IoRestriction == ACPI_IO_RESTRICT_INPUT) {
-			s = AE_BAD_PARAMETER;
-			goto err;
-		}
 		for (i = 0; i < BitWidth; i++) {
-			GPIO_WRITE_PIN(dev, gpio->PinTable[Address + i],
-			    *Value & (1ULL << i) ? 1 : 0);
+			GPIO_WRITE_PIN(dev, pins[i],
+			    (*Value & (1ULL << i)) ? 1 : 0);
 		}
 	}
+	for (i = 0; i < BitWidth; i++)
+		GPIO_RELEASE_IO_PIN(dev, pins[i]);
+	kfree(pins, M_DEVBUF);
 
 err:
 	ACPI_FREE(Resource);
-
 	return (s);
 }
 
@@ -363,14 +430,14 @@ gpio_acpi_map_aei(device_t dev, int *num_aei)
 		n = 0;
 		for (res = (ACPI_RESOURCE *)b.Pointer; res < end;
 		    res = ACPI_NEXT_RESOURCE(res)) {
-			if (res->Type == ACPI_RESOURCE_TYPE_END_TAG)
+			if (res->Type == ACPI_RESOURCE_TYPE_END_TAG) {
 				break;
-			switch (res->Type) {
-			case ACPI_RESOURCE_TYPE_GPIO:
+			} else if (res->Type == ACPI_RESOURCE_TYPE_GPIO) {
 				n++;
-				break;
-			default:
-				break;
+			} else {
+				device_printf(dev,
+				    "Unexpected resource type %d\n",
+				    res->Type);
 			}
 		}
 		if (n <= 0) {
@@ -384,17 +451,10 @@ gpio_acpi_map_aei(device_t dev, int *num_aei)
 		    res = ACPI_NEXT_RESOURCE(res)) {
 			if (res->Type == ACPI_RESOURCE_TYPE_END_TAG)
 				break;
-			switch (res->Type) {
-			case ACPI_RESOURCE_TYPE_GPIO:
+			if (res->Type == ACPI_RESOURCE_TYPE_GPIO) {
 				gpio = (ACPI_RESOURCE_GPIO *)&res->Data;
 				gpio_acpi_do_map_aei(dev, &infos[n++], gpio);
-				break;
-			default:
-				device_printf(dev,
-				    "Unexpected resource type %d\n",
-				    res->Type);
-				break;
-			};
+			}
 		}
 		AcpiOsFree(b.Pointer);
 	}

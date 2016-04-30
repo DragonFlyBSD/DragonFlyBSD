@@ -77,17 +77,29 @@ METHOD void teardown_intr {
 };
 
 #
-# XXX Add a method for allocating pins for read/write IO.
-#     Allocating a pin for IO should perform the necessary checks to
-#     make sure that read_/write_pin doesn't trigger an assertion.
+# Reserve IO pin
 #
+METHOD int alloc_io_pin {
+	device_t dev;
+	u_int pin;
+	int flags;
+	void **cookiep;
+};
+
+#
+# Release IO pin
+#
+METHOD int release_io_pin {
+	device_t dev;
+	void *cookie;
+};
 
 #
 # Read pin value, returns 0 or 1.
 #
 METHOD int read_pin {
 	device_t dev;
-	u_int pin;
+	void *cookie;
 };
 
 #
@@ -95,6 +107,6 @@ METHOD int read_pin {
 #
 METHOD void write_pin {
 	device_t dev;
-	u_int pin;
+	void *cookie;
 	int value;
 };
