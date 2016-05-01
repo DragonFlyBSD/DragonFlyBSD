@@ -8,6 +8,7 @@ struct pinrange {
 
 struct pin_intr_map {
 	int pin;
+	int intidx;
 	void *arg;
 	driver_intr_t *handler;
 	int is_level;
@@ -31,11 +32,11 @@ typedef	void(*gpio_intel_init_fn)(struct gpio_intel_softc *sc);
 typedef	int(*gpio_intel_map_intr_fn)(struct gpio_intel_softc *sc,
 	    uint16_t pin, int trigger, int polarity, int termination);
 typedef	void(*gpio_intel_unmap_intr_fn)(struct gpio_intel_softc *sc,
-	    uint16_t pin);
-typedef	int(*gpio_intel_establish_intr_fn)(struct gpio_intel_softc *sc,
-	    uint16_t pin, void *arg, driver_intr_t);
-typedef	void(*gpio_intel_disestablish_intr_fn)(struct gpio_intel_softc *sc,
-	    uint16_t pin);
+	    struct pin_intr_map *map);
+typedef	void(*gpio_intel_enable_intr_fn)(struct gpio_intel_softc *sc,
+	    struct pin_intr_map *map);
+typedef	void(*gpio_intel_disable_intr_fn)(struct gpio_intel_softc *sc,
+	    struct pin_intr_map *map);
 typedef	void(*gpio_intel_write_pin_fn)(struct gpio_intel_softc *sc,
 	    uint16_t pin, int value);
 typedef	int(*gpio_intel_read_pin_fn)(struct gpio_intel_softc *sc,
@@ -46,8 +47,8 @@ struct gpio_intel_fns {
 	driver_intr_t		*intr;
 	gpio_intel_map_intr_fn	map_intr;
 	gpio_intel_unmap_intr_fn unmap_intr;
-	gpio_intel_establish_intr_fn establish_intr;
-	gpio_intel_disestablish_intr_fn disestablish_intr;
+	gpio_intel_enable_intr_fn enable_intr;
+	gpio_intel_disable_intr_fn disable_intr;
 	gpio_intel_write_pin_fn	write_pin;
 	gpio_intel_read_pin_fn	read_pin;
 };

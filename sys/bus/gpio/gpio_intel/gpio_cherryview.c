@@ -86,11 +86,11 @@ static void	gpio_cherryview_intr(void *arg);
 static int	gpio_cherryview_map_intr(struct gpio_intel_softc *sc,
 		    uint16_t pin, int trigger, int polarity, int termination);
 static void	gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc,
-		    uint16_t pin);
-static int	gpio_cherryview_establish_intr(struct gpio_intel_softc *sc,
-		    uint16_t pin, void *arg, driver_intr_t *handler);
-static void	gpio_cherryview_disestablish_intr(struct gpio_intel_softc *sc,
-		    uint16_t pin);
+		    struct pin_intr_map *map);
+static void	gpio_cherryview_enable_intr(struct gpio_intel_softc *sc,
+		    struct pin_intr_map *map);
+static void	gpio_cherryview_disable_intr(struct gpio_intel_softc *sc,
+		    struct pin_intr_map *map);
 static int	gpio_cherryview_read_pin(struct gpio_intel_softc *sc,
 		    uint16_t pin);
 static void	gpio_cherryview_write_pin(struct gpio_intel_softc *sc,
@@ -101,8 +101,8 @@ static struct gpio_intel_fns gpio_cherryview_fns = {
 	.intr = gpio_cherryview_intr,
 	.map_intr = gpio_cherryview_map_intr,
 	.unmap_intr = gpio_cherryview_unmap_intr,
-	.establish_intr = gpio_cherryview_establish_intr,
-	.disestablish_intr = gpio_cherryview_disestablish_intr,
+	.enable_intr = gpio_cherryview_enable_intr,
+	.disable_intr = gpio_cherryview_disable_intr,
 	.read_pin = gpio_cherryview_read_pin,
 	.write_pin = gpio_cherryview_write_pin,
 };
@@ -362,8 +362,7 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 	}
 
 	sc->intrmaps[i].pin = pin;
-	sc->intrmaps[i].arg = NULL;
-	sc->intrmaps[i].handler = NULL;
+	sc->intrmaps[i].intidx = i;
 	sc->intrmaps[i].orig_intcfg = intcfg;
 	sc->intrmaps[i].orig_gpiocfg = gpiocfg;
 
@@ -376,88 +375,70 @@ gpio_cherryview_map_intr(struct gpio_intel_softc *sc, uint16_t pin, int trigger,
 }
 
 static void
-gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc, uint16_t pin)
+gpio_cherryview_unmap_intr(struct gpio_intel_softc *sc,
+    struct pin_intr_map *map)
 {
 	uint32_t reg, intcfg, gpiocfg;
-	int i;
+	uint16_t pin = map->pin;
 
-	for (i = 0; i < 16; i++) {
-		if (sc->intrmaps[i].pin == pin) {
-			intcfg = sc->intrmaps[i].orig_intcfg;
-			intcfg &= CHV_GPIO_CTL1_INTCFG_MASK;
+	intcfg = map->orig_intcfg;
+	intcfg &= CHV_GPIO_CTL1_INTCFG_MASK;
 
-			gpiocfg = sc->intrmaps[i].orig_gpiocfg;
-			gpiocfg &= CHV_GPIO_CTL0_GPIOCFG_MASK;
+	gpiocfg = map->orig_gpiocfg;
+	gpiocfg &= CHV_GPIO_CTL0_GPIOCFG_MASK;
 
-			sc->intrmaps[i].pin = -1;
-			sc->intrmaps[i].arg = NULL;
-			sc->intrmaps[i].handler = NULL;
-			sc->intrmaps[i].is_level = 0;
-			sc->intrmaps[i].orig_intcfg = 0;
-			sc->intrmaps[i].orig_gpiocfg = 0;
+	map->pin = -1;
+	map->intidx = -1;
+	map->is_level = 0;
+	map->orig_intcfg = 0;
+	map->orig_gpiocfg = 0;
 
-			/* Restore interrupt configuration if needed */
-			reg = chvgpio_read(sc, PIN_CTL1(pin));
-			if ((reg & CHV_GPIO_CTL1_INTCFG_MASK) != intcfg) {
-				reg &= ~CHV_GPIO_CTL1_INTCFG_MASK;
-				reg |= intcfg;
-				chvgpio_write(sc, PIN_CTL1(pin), reg);
-			}
-
-			/* Restore gpio configuration if needed */
-			reg = chvgpio_read(sc, PIN_CTL0(pin));
-			if ((reg & CHV_GPIO_CTL0_GPIOCFG_MASK) != gpiocfg) {
-				reg &= ~CHV_GPIO_CTL0_GPIOCFG_MASK;
-				reg |= gpiocfg;
-				chvgpio_write(sc, PIN_CTL0(pin), reg);
-			}
-		}
-	}
-}
-
-static int
-gpio_cherryview_establish_intr(struct gpio_intel_softc *sc, uint16_t pin,
-    void *arg, driver_intr_t *handler)
-{
-	uint32_t reg;
-	int i;
-
-	for (i = 0; i < 16; i++) {
-		if (sc->intrmaps[i].pin == pin) {
-			sc->intrmaps[i].arg = arg;
-			sc->intrmaps[i].handler = handler;
-
-			/* clear interrupt status flag */
-			chvgpio_write(sc, CHV_GPIO_REG_IS, (1U << i));
-
-			/* unmask interrupt */
-			reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
-			reg |= (1U << i);
-			chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
-			return (0);
-		}
+	/* Restore interrupt configuration if needed */
+	reg = chvgpio_read(sc, PIN_CTL1(pin));
+	if ((reg & CHV_GPIO_CTL1_INTCFG_MASK) != intcfg) {
+		reg &= ~CHV_GPIO_CTL1_INTCFG_MASK;
+		reg |= intcfg;
+		chvgpio_write(sc, PIN_CTL1(pin), reg);
 	}
 
-	return (ENOENT);
+	/* Restore gpio configuration if needed */
+	reg = chvgpio_read(sc, PIN_CTL0(pin));
+	if ((reg & CHV_GPIO_CTL0_GPIOCFG_MASK) != gpiocfg) {
+		reg &= ~CHV_GPIO_CTL0_GPIOCFG_MASK;
+		reg |= gpiocfg;
+		chvgpio_write(sc, PIN_CTL0(pin), reg);
+	}
 }
 
 static void
-gpio_cherryview_disestablish_intr(struct gpio_intel_softc *sc, uint16_t pin)
+gpio_cherryview_enable_intr(struct gpio_intel_softc *sc,
+    struct pin_intr_map *map)
 {
 	uint32_t reg;
-	int i;
 
-	for (i = 0; i < 16; i++) {
-		if (sc->intrmaps[i].pin == pin) {
-			/* mask interrupt line */
-			reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
-			reg &= ~(1U << i);
-			chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
+	KKASSERT(map->intidx >= 0);
 
-			sc->intrmaps[i].arg = NULL;
-			sc->intrmaps[i].handler = NULL;
-		}
-	}
+	/* clear interrupt status flag */
+	chvgpio_write(sc, CHV_GPIO_REG_IS, (1U << map->intidx));
+
+	/* unmask interrupt */
+	reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
+	reg |= (1U << map->intidx);
+	chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
+}
+
+static void
+gpio_cherryview_disable_intr(struct gpio_intel_softc *sc,
+    struct pin_intr_map *map)
+{
+	uint32_t reg;
+
+	KKASSERT(map->intidx >= 0);
+
+	/* mask interrupt line */
+	reg = chvgpio_read(sc, CHV_GPIO_REG_MASK);
+	reg &= ~(1U << map->intidx);
+	chvgpio_write(sc, CHV_GPIO_REG_MASK, reg);
 }
 
 static int

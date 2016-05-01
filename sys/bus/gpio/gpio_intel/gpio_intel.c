@@ -215,12 +215,16 @@ gpio_intel_alloc_intr(device_t dev, u_int pin, int trigger, int polarity,
 		ret = sc->fns->map_intr(sc, pin, trigger, polarity,
 		    termination);
 		if (ret == 0) {
+			/* XXX map_intr should return the pin_intr_map */
 			for (i = 0; i < NELEM(sc->intrmaps); i++) {
 				if (sc->intrmaps[i].pin == pin)
 					map = &sc->intrmaps[i];
 			}
-			if (map != NULL)
+			if (map != NULL) {
 				*cookiep = map;
+				map->arg = NULL;
+				map->handler = NULL;
+			}
 		}
 	} else {
 		device_printf(sc->dev, "%s: Invalid pin %d\n", __func__, pin);
@@ -241,7 +245,9 @@ gpio_intel_free_intr(device_t dev, void *cookie)
 	KKASSERT(gpio_intel_pin_exists(sc, map->pin));
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-	sc->fns->unmap_intr(sc, map->pin);
+	map->arg = NULL;
+	map->handler = NULL;
+	sc->fns->unmap_intr(sc, map);
 	lockmgr(&sc->lk, LK_RELEASE);
 }
 
@@ -255,7 +261,9 @@ gpio_intel_setup_intr(device_t dev, void *cookie, void *arg,
 	KKASSERT(gpio_intel_pin_exists(sc, map->pin));
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-	sc->fns->establish_intr(sc, map->pin, arg, handler);
+	map->arg = arg;
+	map->handler = handler;
+	sc->fns->enable_intr(sc, map);
 	lockmgr(&sc->lk, LK_RELEASE);
 }
 
@@ -268,7 +276,9 @@ gpio_intel_teardown_intr(device_t dev, void *cookie)
 	KKASSERT(gpio_intel_pin_exists(sc, map->pin));
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-	sc->fns->disestablish_intr(sc, map->pin);
+	sc->fns->disable_intr(sc, map);
+	map->arg = NULL;
+	map->handler = NULL;
 	lockmgr(&sc->lk, LK_RELEASE);
 }
 
