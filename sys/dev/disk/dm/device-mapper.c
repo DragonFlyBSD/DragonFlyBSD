@@ -66,6 +66,13 @@ static int dm_ioctl_switch(u_long);
 static void dmminphys(struct buf *);
 #endif
 
+static struct dev_ops dmctl_ops = {
+	{ "dm", 0, D_MPSAFE },
+	.d_open		= dmopen,
+	.d_close	= dmclose,
+	.d_ioctl	= dmioctl,
+};
+
 struct dev_ops dm_ops = {
 	{ "dm", 0, D_DISK | D_MPSAFE },
 	.d_open		= dmopen,
@@ -178,7 +185,7 @@ dm_doinit(void)
 	dm_target_init();
 	dm_dev_init();
 	dm_pdev_init();
-	dmcdev = make_dev(&dm_ops, 0, UID_ROOT, GID_OPERATOR, 0640, "mapper/control");
+	dmcdev = make_dev(&dmctl_ops, 0, UID_ROOT, GID_OPERATOR, 0640, "mapper/control");
 }
 
 /*
