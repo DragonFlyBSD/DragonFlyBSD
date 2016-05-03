@@ -202,9 +202,11 @@ knote_acquire(struct knote *kn)
  *
  * Non-zero is returned if the knote is destroyed or detached.
  */
-static __inline void
+static __inline int
 knote_release(struct knote *kn)
 {
+	int ret;
+
 	while (kn->kn_status & KN_REPROCESS) {
 		kn->kn_status &= ~KN_REPROCESS;
 		if (kn->kn_status & KN_WAITING) {
@@ -213,14 +215,19 @@ knote_release(struct knote *kn)
 		}
 		if (kn->kn_status & KN_DELETING) {
 			knote_detach_and_drop(kn);
-			return;
+			return(1);
 			/* NOT REACHED */
 		}
 		if (filter_event(kn, 0))
 			KNOTE_ACTIVATE(kn);
 	}
+	if (kn->kn_status & KN_DETACHED)
+		ret = 1;
+	else
+		ret = 0;
 	kn->kn_status &= ~KN_PROCESSING;
 	/* kn should not be accessed anymore */
+	return ret;
 }
 
 static int
