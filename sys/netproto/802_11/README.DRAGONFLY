@@ -46,8 +46,8 @@
 
 	  In this situation the additional argument can usually be ignored.
 
-      if_inc_counter(ifp, BLAH, 1)		->  ++ifp->if_blah
-      if_inc_counter(ifp, IFCOUNTER_OERRORS, 1) -> ++ifp->if_oerrors;
+      if_inc_counter(ifp, IFCOUNTER_BLAH, 1)	-> IFNET_STAT_INC(ifp, blah, 1)
+      if_inc_counter(ifp, IFCOUNTER_OERRORS, 1) -> IFNET_STAT_INC(ifp, oerrors, 1)
 
       if_drv_flags used with IFF_DRV_RUNNING   ->
       if_flags used used with IFF_RUNNING
