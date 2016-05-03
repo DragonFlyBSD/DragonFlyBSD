@@ -40,6 +40,8 @@
 #include <linux/types.h>
 #include <linux/printk.h>
 
+#define U64_MAX		((u64)~0ULL)
+
 #define KERN_CONT       ""
 #define	KERN_EMERG	"<0>"
 #define	KERN_ALERT	"<1>"
