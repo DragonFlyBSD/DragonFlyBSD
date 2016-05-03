@@ -315,6 +315,20 @@ test_and_clear_bit(long bit, long *var)
 	return !!(val & bit);
 }
 
+static inline unsigned long
+__test_and_clear_bit(unsigned int bit, volatile unsigned long *ptr)
+{
+	const unsigned int units = (sizeof(*ptr) * NBBY);
+	volatile unsigned long *const p = &ptr[bit / units];
+	const unsigned long mask = (1UL << (bit % units));
+	unsigned long v;
+
+	v = *p;
+	*p &= ~mask;
+
+	return ((v & mask) != 0);
+}
+
 static inline long
 test_and_set_bit(long bit, volatile unsigned long *var)
 {
