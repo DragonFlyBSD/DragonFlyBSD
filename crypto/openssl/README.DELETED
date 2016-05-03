@@ -121,6 +121,8 @@ crypto/bn/asm/sparcv9a-mont.pl
 crypto/bn/asm/via-mont.pl
 crypto/bn/asm/vms.mar
 crypto/bn/asm/x86/
+crypto/bn/asm/x86-gf2m.pl
+crypto/bn/asm/x86-mont.pl
 crypto/bn/asm/x86.pl
 crypto/bn/bn.mul
 crypto/bn/bn_prime.pl
