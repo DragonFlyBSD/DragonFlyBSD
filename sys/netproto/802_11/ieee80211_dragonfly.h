@@ -513,6 +513,7 @@ typedef struct lock	ieee80211_com_lock_t;
 typedef struct lock	ieee80211_tx_lock_t;
 typedef struct lock	ieee80211_ageq_lock_t;
 typedef struct lock	ieee80211_scan_table_lock_t;
+typedef struct lock	ieee80211_scan_iter_lock_t;
 typedef struct lock	acl_lock_t;
 typedef struct lock	ieee80211_rte_lock_t;
 typedef struct lock	ieee80211_rt_lock_t;
@@ -523,6 +524,7 @@ typedef struct lock	ieee80211_rt_lock_t;
 #define IEEE80211_NODE_LOCK_INIT(ic, name)	lockinit(&(nt)->nt_nodelock, name, 0, LK_CANRECURSE)
 #define IEEE80211_NODE_ITERATE_LOCK_INIT(ic, name)	lockinit(&(nt)->nt_scanlock, name, 0, LK_CANRECURSE)
 #define IEEE80211_SCAN_TABLE_LOCK_INIT(st, name)	lockinit(&(st)->st_lock, name, 0, LK_CANRECURSE)
+#define IEEE80211_SCAN_ITER_LOCK_INIT(st, name)	lockinit(&(st)->st_scanlock, name, 0, LK_CANRECURSE)
 #define IEEE80211_TX_LOCK_INIT(ic, name)	lockinit(&(ic)->ic_txlock, name, 0, LK_CANRECURSE)
 #define IEEE80211_AGEQ_LOCK_INIT(aq, name)	lockinit(&(aq)->aq_lock, name, 0, LK_CANRECURSE)
 #define IEEE80211_PSQ_INIT(psq, name)		lockinit(&(psq)->psq_lock, name, 0, LK_CANRECURSE)
@@ -534,6 +536,7 @@ typedef struct lock	ieee80211_rt_lock_t;
 #define IEEE80211_NODE_LOCK_DESTROY(nt)		lockuninit(&(nt)->nt_nodelock)
 #define IEEE80211_NODE_ITERATE_LOCK_DESTROY(nt)	lockuninit(&(nt)->nt_scanlock)
 #define IEEE80211_SCAN_TABLE_LOCK_DESTROY(st)	lockuninit(&(st)->st_lock)
+#define IEEE80211_SCAN_ITER_LOCK_DESTROY(st)	lockuninit(&(st)->st_scanlock)
 #define IEEE80211_TX_LOCK_DESTROY(ic)		lockuninit(&(ic)->ic_txlock)
 #define IEEE80211_AGEQ_LOCK_DESTROY(aq)		lockuninit(&(aq)->aq_lock)
 #define IEEE80211_PSQ_DESTROY(psq)		lockuninit(&(psq)->psq_lock)
@@ -545,6 +548,7 @@ typedef struct lock	ieee80211_rt_lock_t;
 #define IEEE80211_NODE_LOCK(nt)			lockmgr(&(nt)->nt_nodelock, LK_EXCLUSIVE)
 #define IEEE80211_NODE_ITERATE_LOCK(nt)		lockmgr(&(nt)->nt_scanlock, LK_EXCLUSIVE)
 #define IEEE80211_SCAN_TABLE_LOCK(st)		lockmgr(&(st)->st_lock, LK_EXCLUSIVE)
+#define IEEE80211_SCAN_ITER_LOCK(st)		lockmgr(&(st)->st_scanlock, LK_EXCLUSIVE)
 #define IEEE80211_TX_LOCK(ic)			lockmgr(&(ic)->ic_txlock, LK_EXCLUSIVE)
 #define IEEE80211_AGEQ_LOCK(aq)			lockmgr(&(aq)->aq_lock, LK_EXCLUSIVE)
 #define IEEE80211_PSQ_LOCK(psq)			lockmgr(&(psq)->psq_lock, LK_EXCLUSIVE)
@@ -556,6 +560,7 @@ typedef struct lock	ieee80211_rt_lock_t;
 #define IEEE80211_NODE_UNLOCK(nt)		lockmgr(&(nt)->nt_nodelock, LK_RELEASE)
 #define IEEE80211_NODE_ITERATE_UNLOCK(nt)	lockmgr(&(nt)->nt_scanlock, LK_RELEASE)
 #define IEEE80211_SCAN_TABLE_UNLOCK(nt)		lockmgr(&(st)->st_lock, LK_RELEASE)
+#define IEEE80211_SCAN_ITER_UNLOCK(nt)		lockmgr(&(st)->st_scanlock, LK_RELEASE)
 #define IEEE80211_TX_UNLOCK(ic)			lockmgr(&(ic)->ic_txlock, LK_RELEASE)
 #define IEEE80211_AGEQ_UNLOCK(aq)		lockmgr(&(aq)->aq_lock, LK_RELEASE)
 #define IEEE80211_PSQ_UNLOCK(psq)		lockmgr(&(psq)->psq_lock, LK_RELEASE)

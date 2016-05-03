@@ -102,11 +102,7 @@ struct sta_table {
 	ieee80211_scan_table_lock_t st_lock;	/* on scan table */
 	TAILQ_HEAD(, sta_entry) st_entry;	/* all entries */
 	LIST_HEAD(, sta_entry) st_hash[STA_HASHSIZE];
-#if defined(__DragonFly__)
-	struct lock	st_scanlock;		/* on st_scaniter */
-#else
-	struct mtx	st_scanlock;		/* on st_scaniter */
-#endif
+	ieee80211_scan_iter_lock_t st_scanlock;	/* on st_scaniter */
 	u_int		st_scaniter;		/* gen# for iterator */
 	u_int		st_scangen;		/* scan generation # */
 	int		st_newscan;
@@ -168,11 +164,7 @@ sta_attach(struct ieee80211_scan_state *ss)
 	if (st == NULL)
 		return 0;
 	IEEE80211_SCAN_TABLE_LOCK_INIT(st, "scantable");
-#if defined(__DragonFly__)
-	lockinit(&st->st_scanlock, "scangen", 0, 0);
-#else
-	mtx_init(&st->st_scanlock, "scangen", "802.11 scangen", MTX_DEF);
-#endif
+	IEEE80211_SCAN_ITER_LOCK_INIT(st, "scangen");
 	TAILQ_INIT(&st->st_entry);
 	ss->ss_priv = st;
 	nrefs++;			/* NB: we assume caller locking */
@@ -190,11 +182,7 @@ sta_detach(struct ieee80211_scan_state *ss)
 	if (st != NULL) {
 		sta_flush_table(st);
 		IEEE80211_SCAN_TABLE_LOCK_DESTROY(st);
-#if defined(__DragonFly__)
-		lockuninit(&st->st_scanlock);
-#else
-		mtx_destroy(&st->st_scanlock);
-#endif
+		IEEE80211_SCAN_ITER_LOCK_DESTROY(st);
 		kfree(st, M_80211_SCAN);
 		KASSERT(nrefs > 0, ("imbalanced attach/detach"));
 		nrefs--;		/* NB: we assume caller locking */
@@ -1411,11 +1399,7 @@ sta_iterate(struct ieee80211_scan_state *ss,
 	struct sta_entry *se;
 	u_int gen;
 
-#if defined(__DragonFly__)
-	lockmgr(&st->st_scanlock, LK_EXCLUSIVE);
-#else
-	mtx_lock(&st->st_scanlock);
-#endif
+	IEEE80211_SCAN_ITER_LOCK(st);
 	gen = st->st_scaniter++;
 restart:
 	IEEE80211_SCAN_TABLE_LOCK(st);
@@ -1431,11 +1415,7 @@ restart:
 	}
 	IEEE80211_SCAN_TABLE_UNLOCK(st);
 
-#if defined(__DragonFly__)
-	lockmgr(&st->st_scanlock, LK_RELEASE);
-#else
-	mtx_unlock(&st->st_scanlock);
-#endif
+	IEEE80211_SCAN_ITER_UNLOCK(st);
 }
 
 static void
