@@ -60,7 +60,6 @@
 #ifndef _WCHAR_H_
 #define _WCHAR_H_
 
-#include <stdio.h> /* for FILE* */
 #include <sys/_null.h>
 #include <sys/types.h>
 #include <machine/limits.h>
@@ -94,6 +93,11 @@ typedef __mbstate_t	mbstate_t;
 #ifndef _SIZE_T_DECLARED
 #define _SIZE_T_DECLARED
 typedef __size_t	size_t;
+#endif
+
+#ifndef _STDFILE_DECLARED
+#define	_STDFILE_DECLARED
+typedef struct __FILE FILE;
 #endif
 
 #ifndef WEOF

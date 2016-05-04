@@ -87,7 +87,10 @@ typedef	__va_list	va_list;
  *
  * WARNING: Do not change the order of the fields in __FILE_public!
  */
+#ifndef _STDFILE_DECLARED
+#define	_STDFILE_DECLARED
 typedef struct __FILE FILE;
+#endif
 
 struct __FILE_public {
 	unsigned char	*_p;		/* current position in (some) buffer */
