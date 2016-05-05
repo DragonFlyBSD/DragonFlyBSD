@@ -464,7 +464,7 @@ To use a particular mirror set the mirror,
 
 and choose the mirror you want to use.
 
-You can also use the file df-release.conf.sample is you prefer to use the
+You can also use the file df-releases.conf.sample if you prefer to use the
 RELEASE repository instead.
 %
 If you want to search for a particular package, use pkg-search(1):
