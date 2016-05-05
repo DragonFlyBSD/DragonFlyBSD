@@ -331,7 +331,11 @@ ieee80211_vap_destroy(struct ieee80211vap *vap)
 	 * since it could dead-lock the domsg to netisrs.
 	 */
 	wlan_serialize_exit();
-	if_clone_destroy(vap->iv_ifp->if_xname);
+	/*
+	 * Make sure we con't end up in an infinite loop in ieee80211_ifdetach
+	 * when if_clone_destroy fails.
+	 */
+	KKASSERT(if_clone_destroy(vap->iv_ifp->if_xname) == 0);
 	wlan_serialize_enter();
 }
 
