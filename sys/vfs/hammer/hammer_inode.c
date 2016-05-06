@@ -1264,7 +1264,7 @@ retry:
 
 		error = hammer_btree_lookup(cursor);
 		if (hammer_debug_inode)
-			hdkprintf("IPDEL %p %08x %d", ip, ip->flags, error);
+			hdkprintf("IPDEL %p %08x %d\n", ip, ip->flags, error);
 
 		if (error == 0) {
 			error = hammer_ip_delete_record(cursor, ip, trans->tid);
