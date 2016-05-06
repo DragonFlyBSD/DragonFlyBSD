@@ -28,14 +28,18 @@
  *
  * @(#) Copyright (c) 1987, 1993, 1994, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)ctags.c	8.4 (Berkeley) 2/7/95
- * $FreeBSD: src/usr.bin/ctags/ctags.c,v 1.7.2.1 2001/09/18 04:16:53 mikeh Exp $
+ * $FreeBSD: head/usr.bin/ctags/ctags.c 216370 2010-12-11 08:32:16Z joel $
  */
+
+#include <sys/wait.h>
 
 #include <err.h>
 #include <limits.h>
+#include <locale.h>
+#include <regex.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "ctags.h"
@@ -78,16 +82,21 @@ main(int argc, char **argv)
 	int	exit_val;			/* exit value */
 	int	step;				/* step through args */
 	int	ch;				/* getopts char */
-	char	cmd[100];			/* too ugly to explain */
+
+	setlocale(LC_ALL, "");
 
 	aflag = uflag = NO;
-	while ((ch = getopt(argc, argv, "BFadf:tuwvx")) != -1)
+	tflag = YES;
+	while ((ch = getopt(argc, argv, "BFTadf:tuwvx")) != -1)
 		switch(ch) {
 		case 'B':
 			searchar = '?';
 			break;
 		case 'F':
 			searchar = '/';
+			break;
+		case 'T':
+			tflag = NO;
 			break;
 		case 'a':
 			aflag++;
@@ -99,7 +108,7 @@ main(int argc, char **argv)
 			outfile = optarg;
 			break;
 		case 't':
-			tflag++;
+			tflag = YES;
 			break;
 		case 'u':
 			uflag++;
@@ -121,6 +130,9 @@ main(int argc, char **argv)
 	if (!argc)
 		usage();
 
+	if (!xflag)
+		setlocale(LC_COLLATE, "C");
+
 	init();
 
 	for (exit_val = step = 0; step < argc; ++step)
@@ -131,7 +143,7 @@ main(int argc, char **argv)
 		else {
 			curfile = argv[step];
 			find_entries(argv[step]);
-			(void)fclose(inf);
+			fclose(inf);
 		}
 
 	if (head) {
@@ -139,23 +151,57 @@ main(int argc, char **argv)
 			put_entries(head);
 		else {
 			if (uflag) {
+				FILE *oldf;
+				regex_t *regx;
+
+				if ((oldf = fopen(outfile, "r")) == NULL)
+					err(1, "opening %s", outfile);
+				if (unlink(outfile))
+					err(1, "unlinking %s", outfile);
+				if ((outf = fopen(outfile, "w")) == NULL)
+					err(1, "recreating %s", outfile);
+				if ((regx = calloc(argc, sizeof(regex_t))) == NULL)
+					err(1, "RE alloc");
 				for (step = 0; step < argc; step++) {
-					(void)sprintf(cmd,
-						"mv %s OTAGS; fgrep -v '\t%s\t' OTAGS >%s; rm OTAGS",
-							outfile, argv[step],
-							outfile);
-					system(cmd);
+					strcpy(lbuf, "\t");
+					strlcat(lbuf, argv[step], LINE_MAX);
+					strlcat(lbuf, "\t", LINE_MAX);
+					if (regcomp(regx + step, lbuf,
+					    REG_NOSPEC))
+						warn("RE compilation failed");
 				}
+nextline:
+				while (fgets(lbuf, LINE_MAX, oldf)) {
+					for (step = 0; step < argc; step++)
+						if (regexec(regx + step,
+						    lbuf, 0, NULL, 0) == 0)
+							goto nextline;
+					fputs(lbuf, outf);
+				}
+				for (step = 0; step < argc; step++)
+					regfree(regx + step);
+				free(regx);
+				fclose(oldf);
+				fclose(outf);
 				++aflag;
 			}
 			if (!(outf = fopen(outfile, aflag ? "a" : "w")))
-				err(exit_val, "%s", outfile);
+				err(1, "%s", outfile);
 			put_entries(head);
-			(void)fclose(outf);
+			fclose(outf);
 			if (uflag) {
-				(void)sprintf(cmd, "sort -o %s %s",
-						outfile, outfile);
-				system(cmd);
+				pid_t pid;
+
+				if ((pid = fork()) == -1)
+					err(1, "fork failed");
+				else if (pid == 0) {
+					execlp("sort", "sort", "-o", outfile,
+					    outfile, NULL);
+					err(1, "exec of sort failed");
+				}
+				/* Just assume the sort went OK. The old code
+				   did not do any checks either. */
+				wait(NULL);
 			}
 		}
 	}
@@ -165,13 +211,13 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: ctags [-BFadtuwvx] [-f tagsfile] file ...\n");
+	fprintf(stderr, "usage: ctags [-BFTadtuwvx] [-f tagsfile] file ...\n");
 	exit(1);
 }
 
 /*
  * init --
- *	this routine sets up the boolean psuedo-functions which work by
+ *	this routine sets up the boolean pseudo-functions which work by
  *	setting boolean flags dependent upon the corresponding character.
  *	Every char which is NOT in that string is false with respect to
  *	the pseudo-function.  Therefore, all of the array "_wht" is NO
@@ -240,7 +286,7 @@ find_entries(char *file)
 				 * for C references.  This may be wrong.
 				 */
 				toss_yysec();
-				(void)strcpy(lbuf, "%%$");
+				strcpy(lbuf, "%%$");
 				pfnote("yylex", lineno);
 				rewind(inf);
 			}
@@ -251,7 +297,7 @@ find_entries(char *file)
 			 * for C references.  This may be wrong.
 			 */
 			toss_yysec();
-			(void)strcpy(lbuf, "%%$");
+			strcpy(lbuf, "%%$");
 			pfnote("yyparse", lineno);
 			y_entries();
 		}

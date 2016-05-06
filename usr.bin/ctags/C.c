@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)C.c	8.4 (Berkeley) 4/2/94
- * $FreeBSD: src/usr.bin/ctags/C.c,v 1.3.2.2 2002/07/30 00:55:07 tjr Exp $
- * $DragonFly: src/usr.bin/ctags/C.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $FreeBSD: head/usr.bin/ctags/C.c 216370 2010-12-11 08:32:16Z joel $
  */
 
 #include <limits.h>
@@ -105,7 +104,7 @@ c_entries(void)
 		 */
 		case '"':
 		case '\'':
-			(void)skip_string(c);
+			skip_string(c);
 			break;
 
 		/*
@@ -118,7 +117,7 @@ c_entries(void)
 				skip_comment(c);
 				continue;
 			}
-			(void)ungetc(c, inf);
+			ungetc(c, inf);
 			c = '/';
 			goto storec;
 
@@ -196,7 +195,7 @@ c_entries(void)
 					;
 				if (c == EOF)
 					return;
-				(void)ungetc(c, inf);
+				ungetc(c, inf);
 				c = save;
 			}
 	storec:		if (!intoken(c)) {
@@ -300,12 +299,12 @@ fnd:
 		if (c == '/' && (GETC(==, '*') || c == '/'))
 			skip_comment(c);
 		else {				/* don't ever "read" '/' */
-			(void)ungetc(c, inf);
+			ungetc(c, inf);
 			return (NO);
 		}
 	}
 	if (c != '{')
-		(void)skip_key('{');
+		skip_key('{');
 	return (YES);
 }
 
@@ -324,7 +323,7 @@ hash_entry(void)
 	/* ignore leading whitespace */
 	while (GETC(!=, EOF) && (c == ' ' || c == '\t'))
 		;
-	(void)ungetc(c, inf);
+	ungetc(c, inf);
 
 	curline = lineno;
 	for (sp = tok;;) {		/* get next token */
@@ -372,7 +371,7 @@ skip:	if (c == '\n') {		/* get rid of rest of define */
 		if (*(sp - 1) != '\\')
 			return;
 	}
-	(void)skip_key('\n');
+	skip_key('\n');
 }
 
 /*
@@ -415,7 +414,7 @@ str_entry(int c) /* c is current character */
 				if (!iswhite(c))
 					break;
 			if (c != '{') {
-				(void)ungetc(c, inf);
+				ungetc(c, inf);
 				return (NO);
 			}
 	}
@@ -511,7 +510,7 @@ skip_key(int key)
 				skip_comment(c);
 				break;
 			}
-			(void)ungetc(c, inf);
+			ungetc(c, inf);
 			c = '/';
 			goto norm;
 		case '\n':

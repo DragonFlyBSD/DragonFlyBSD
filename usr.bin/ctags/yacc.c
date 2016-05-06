@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)yacc.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/usr.bin/ctags/yacc.c,v 1.3.6.3 2002/07/30 00:55:07 tjr Exp $
- * $DragonFly: src/usr.bin/ctags/yacc.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $FreeBSD: head/usr.bin/ctags/yacc.c 216370 2010-12-11 08:32:16Z joel $
  */
 
 #include <ctype.h>
@@ -73,13 +72,13 @@ y_entries(void)
 		case '%':
 			if (GETC(==, '%'))
 				return;
-			(void)ungetc(c, inf);
+			ungetc(c, inf);
 			break;
 		case '/':
 			if (GETC(==, '*') || c == '/')
 				skip_comment(c);
 			else
-				(void)ungetc(c, inf);
+				ungetc(c, inf);
 			break;
 		case '|':
 		case ';':
@@ -105,7 +104,7 @@ y_entries(void)
 				in_rule = YES;
 			}
 			else
-				(void)ungetc(c, inf);
+				ungetc(c, inf);
 		}
 }
 

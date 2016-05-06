@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ctags.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/ctags/ctags.1,v 1.5.2.6 2002/07/30 01:06:31 tjr Exp $
+.\" $FreeBSD: head/usr.bin/ctags/ctags.1 216370 2010-12-11 08:32:16Z joel $
 .\"
-.Dd June 6, 1993
+.Dd May 6, 2016
 .Dt CTAGS 1
 .Os
 .Sh NAME
@@ -38,9 +38,9 @@
 file
 .Sh SYNOPSIS
 .Nm
-.Op Fl BFadtuwvx
+.Op Fl BFTadtuwvx
 .Op Fl f Ar tagsfile
-.Ar name ...
+.Ar
 .Sh DESCRIPTION
 The
 .Nm
@@ -92,7 +92,9 @@ Place the tag descriptions in a file called
 The default behaviour is to place them in a file called
 .Pa tags .
 .It Fl t
-Create tags for typedefs, structs, unions, and enums.
+Create tags for typedefs, structs, unions, and enums (default).
+.It Fl T
+Do not create tags for typedefs, structs, unions, and enums.
 .It Fl u
 Update the specified files in the
 .Pa tags
@@ -172,6 +174,7 @@ This makes use of
 practical in directories with more than one
 program.
 .Pp
+The
 .Xr yacc 1
 and
 .Xr lex 1
@@ -194,9 +197,21 @@ default output tags file
 .Sh EXIT STATUS
 .Ex -std
 Duplicate objects are not considered errors.
+.Sh COMPATIBILITY
+The
+.Fl t
+option is a no-op for compatibility with previous versions of
+.Nm
+that did not create tags for typedefs, enums, structs and unions
+by default.
 .Sh SEE ALSO
 .Xr ex 1 ,
 .Xr vi 1
+.Sh STANDARDS
+The
+.Nm
+utility conforms to
+.St -p1003.1-2008 .
 .Sh HISTORY
 The
 .Nm

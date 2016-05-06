@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)tree.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/usr.bin/ctags/tree.c,v 1.2.6.2 2002/07/30 00:55:07 tjr Exp $
+ * $FreeBSD: head/usr.bin/ctags/tree.c 216370 2010-12-11 08:32:16Z joel $
  */
 
 #include <err.h>
@@ -66,7 +66,7 @@ pfnote(const char *name, int ln)
 			fp = curfile;
 		else
 			++fp;
-		(void)snprintf(nbuf, sizeof(nbuf), "M%s", fp);
+		snprintf(nbuf, sizeof(nbuf), "M%s", fp);
 		fp = strrchr(nbuf, '.');
 		if (fp && !fp[2])
 			*fp = EOS;

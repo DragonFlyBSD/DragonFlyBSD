@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fortran.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/usr.bin/ctags/fortran.c,v 1.3.6.2 2002/07/30 00:55:07 tjr Exp $
- * $DragonFly: src/usr.bin/ctags/fortran.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $FreeBSD: head/usr.bin/ctags/fortran.c 216370 2010-12-11 08:32:16Z joel $
  */
 
 #include <ctype.h>
@@ -115,10 +114,10 @@ PF_funcs(void)
 			continue;
 		for (cp = lbp + 1; *cp && intoken(*cp); ++cp)
 			continue;
-		if ((cp = lbp + 1))
+		if (cp == lbp + 1)
 			continue;
 		*cp = EOS;
-		(void)strlcpy(tok, lbp, sizeof(tok));	/* possible trunc */
+		strlcpy(tok, lbp, sizeof(tok));	/* possible trunc */
 		getline();			/* process line for ex(1) */
 		pfnote(tok, lineno);
 		pfcnt = YES;
