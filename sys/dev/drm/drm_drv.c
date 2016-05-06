@@ -264,7 +264,6 @@ static void drm_minor_free(struct drm_device *dev, unsigned int type)
 	if (!minor)
 		return;
 
-	drm_mode_group_destroy(&minor->mode_group);
 	put_device(minor->kdev);
 
 	spin_lock_irqsave(&drm_minor_lock, flags);
@@ -561,11 +560,7 @@ struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 	if (drm_ht_create(&dev->map_hash, 12))
 		goto err_minors;
 
-	ret = drm_legacy_ctxbitmap_init(dev);
-	if (ret) {
-		DRM_ERROR("Cannot allocate memory for context bitmap.\n");
-		goto err_ht;
-	}
+	drm_legacy_ctxbitmap_init(dev);
 
 	if (drm_core_check_feature(dev, DRIVER_GEM)) {
 		ret = drm_gem_init(dev);
@@ -579,7 +574,6 @@ struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 
 err_ctxbitmap:
 	drm_legacy_ctxbitmap_cleanup(dev);
-err_ht:
 	drm_ht_remove(&dev->map_hash);
 err_minors:
 	drm_minor_free(dev, DRM_MINOR_LEGACY);
@@ -684,20 +678,9 @@ int drm_dev_register(struct drm_device *dev, unsigned long flags)
 			goto err_minors;
 	}
 
-	/* setup grouping for legacy outputs */
-	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		ret = drm_mode_group_init_legacy_group(dev,
-				&dev->primary->mode_group);
-		if (ret)
-			goto err_unload;
-	}
-
 	ret = 0;
 	goto out_unlock;
 
-err_unload:
-	if (dev->driver->unload)
-		dev->driver->unload(dev);
 err_minors:
 	drm_minor_unregister(dev, DRM_MINOR_LEGACY);
 	drm_minor_unregister(dev, DRM_MINOR_RENDER);
@@ -1191,41 +1174,6 @@ void drm_cdevpriv_dtor(void *cd)
 
 	if (dev->driver->driver_features & DRIVER_GEM)
 		drm_gem_release(dev, file_priv);
-
-	if (dev->lock.hw_lock && _DRM_LOCK_IS_HELD(dev->lock.hw_lock->lock)
-	    && dev->lock.file_priv == file_priv) {
-		DRM_DEBUG("Process %d dead, freeing lock for context %d\n",
-			  DRM_CURRENTPID,
-			  _DRM_LOCKING_CONTEXT(dev->lock.hw_lock->lock));
-		if (dev->driver->reclaim_buffers_locked != NULL)
-			dev->driver->reclaim_buffers_locked(dev, file_priv);
-
-		drm_lock_free(&dev->lock,
-		    _DRM_LOCKING_CONTEXT(dev->lock.hw_lock->lock));
-
-				/* FIXME: may require heavy-handed reset of
-                                   hardware at this point, possibly
-                                   processed via a callback to the X
-                                   server. */
-	} else if (dev->driver->reclaim_buffers_locked != NULL &&
-	    dev->lock.hw_lock != NULL) {
-		/* The lock is required to reclaim buffers */
-		for (;;) {
-			if (!dev->lock.hw_lock) {
-				/* Device has been unregistered */
-				retcode = EINTR;
-				break;
-			}
-			/* Contention */
-			retcode = DRM_LOCK_SLEEP(dev, &dev->lock.lock_queue,
-			    PCATCH, "drmlk2", 0);
-			if (retcode)
-				break;
-		}
-		if (retcode == 0) {
-			dev->driver->reclaim_buffers_locked(dev, file_priv);
-		}
-	}
 
 	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA) &&
 	    !dev->driver->reclaim_buffers_locked)

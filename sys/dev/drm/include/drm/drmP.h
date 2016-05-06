@@ -178,19 +178,19 @@ void drm_err(const char *format, ...);
 /*@{*/
 
 /* driver capabilities and requirements mask */
-#define DRIVER_USE_AGP     0x1
-#define DRIVER_REQUIRE_AGP 0x2
-#define DRIVER_PCI_DMA     0x8
-#define DRIVER_SG          0x10
-#define DRIVER_HAVE_DMA    0x20
-#define DRIVER_HAVE_IRQ    0x40
-#define DRIVER_IRQ_SHARED  0x80
-#define DRIVER_DMA_QUEUE   0x200
-#define DRIVER_GEM         0x1000
-#define DRIVER_MODESET     0x2000
-#define DRIVER_PRIME       0x4000
-#define DRIVER_RENDER      0x8000
-#define DRIVER_ATOMIC      0x10000
+#define DRIVER_USE_AGP			0x1
+#define DRIVER_REQUIRE_AGP		0x2
+#define DRIVER_PCI_DMA			0x8
+#define DRIVER_SG			0x10
+#define DRIVER_HAVE_DMA			0x20
+#define DRIVER_HAVE_IRQ			0x40
+#define DRIVER_IRQ_SHARED		0x80
+#define DRIVER_GEM			0x1000
+#define DRIVER_MODESET			0x2000
+#define DRIVER_PRIME			0x4000
+#define DRIVER_RENDER			0x8000
+#define DRIVER_ATOMIC			0x10000
+#define DRIVER_KMS_LEGACY_CONTEXT	0x20000
 
 #define DRM_MAGIC_HASH_ORDER  4  /**< Size of key hash table. Must be power of 2. */
 
@@ -839,7 +839,7 @@ struct drm_minor {
 
 struct drm_pending_vblank_event {
 	struct drm_pending_event base;
-	int pipe;
+	unsigned int pipe;
 	struct drm_event_vblank event;
 };
 
@@ -866,7 +866,7 @@ struct drm_vblank_crtc {
 					/* for wraparound handling */
 	u32 last_wait;			/* Last vblank seqno waited per CRTC */
 	unsigned int inmodeset;		/* Display driver is setting mode */
-	int crtc;			/* crtc index */
+	unsigned int pipe;		/* crtc index */
 	bool enabled;			/* so we don't call enable more than
 					   once per disable */
 };
@@ -1118,6 +1118,7 @@ extern int drm_vblank_offdelay;
 extern unsigned int drm_timestamp_precision;
 
 				/* Driver support (drm_drv.h) */
+extern int drm_ioctl_permit(u32 flags, struct drm_file *file_priv);
 int	drm_probe(device_t kdev, drm_pci_id_list_t *idlist);
 int	drm_attach(device_t kdev, drm_pci_id_list_t *idlist);
 int	drm_create_cdevs(device_t kdev);
@@ -1180,14 +1181,6 @@ int drm_prime_lookup_obj(struct drm_device *dev, struct dma_buf *buf,
 int	drm_mtrr_add(unsigned long offset, size_t size, int flags);
 int	drm_mtrr_del(int handle, unsigned long offset, size_t size, int flags);
 
-/* Locking IOCTL support (drm_lock.c) */
-int	drm_lock_take(struct drm_lock_data *lock_data,
-		      unsigned int context);
-int	drm_lock_transfer(struct drm_lock_data *lock_data,
-			  unsigned int context);
-int	drm_lock_free(struct drm_lock_data *lock_data,
-		      unsigned int context);
-
 /*
  * These are exported to drivers so that they can implement fencing using
  * DMA quiscent + idle. DMA quiescent usually requires the hardware lock.
@@ -1200,39 +1193,36 @@ unsigned long drm_get_resource_len(struct drm_device *dev,
 
 				/* IRQ support (drm_irq.h) */
 extern int drm_irq_install(struct drm_device *dev, int irq);
-int	drm_irq_uninstall(struct drm_device *dev);
-void	drm_driver_irq_preinstall(struct drm_device *dev);
-void	drm_driver_irq_postinstall(struct drm_device *dev);
-void	drm_driver_irq_uninstall(struct drm_device *dev);
+extern int drm_irq_uninstall(struct drm_device *dev);
 
-extern int drm_vblank_init(struct drm_device *dev, int num_crtcs);
+extern int drm_vblank_init(struct drm_device *dev, unsigned int num_crtcs);
 extern int drm_wait_vblank(struct drm_device *dev, void *data,
 			   struct drm_file *filp);
-extern u32 drm_vblank_count(struct drm_device *dev, int crtc);
+extern u32 drm_vblank_count(struct drm_device *dev, int pipe);
 extern u32 drm_crtc_vblank_count(struct drm_crtc *crtc);
-extern u32 drm_vblank_count_and_time(struct drm_device *dev, int crtc,
+extern u32 drm_vblank_count_and_time(struct drm_device *dev, unsigned int pipe,
 				     struct timeval *vblanktime);
-extern void drm_send_vblank_event(struct drm_device *dev, int crtc,
-				     struct drm_pending_vblank_event *e);
+extern void drm_send_vblank_event(struct drm_device *dev, unsigned int pipe,
+				  struct drm_pending_vblank_event *e);
 extern void drm_crtc_send_vblank_event(struct drm_crtc *crtc,
 				       struct drm_pending_vblank_event *e);
-extern bool drm_handle_vblank(struct drm_device *dev, int crtc);
+extern bool drm_handle_vblank(struct drm_device *dev, unsigned int pipe);
 extern bool drm_crtc_handle_vblank(struct drm_crtc *crtc);
-extern int drm_vblank_get(struct drm_device *dev, int crtc);
-extern void drm_vblank_put(struct drm_device *dev, int crtc);
+extern int drm_vblank_get(struct drm_device *dev, unsigned int pipe);
+extern void drm_vblank_put(struct drm_device *dev, unsigned int pipe);
 extern int drm_crtc_vblank_get(struct drm_crtc *crtc);
 extern void drm_crtc_vblank_put(struct drm_crtc *crtc);
-extern void drm_wait_one_vblank(struct drm_device *dev, int crtc);
+extern void drm_wait_one_vblank(struct drm_device *dev, unsigned int pipe);
 extern void drm_crtc_wait_one_vblank(struct drm_crtc *crtc);
-extern void drm_vblank_off(struct drm_device *dev, int crtc);
-extern void drm_vblank_on(struct drm_device *dev, int crtc);
+extern void drm_vblank_off(struct drm_device *dev, unsigned int pipe);
+extern void drm_vblank_on(struct drm_device *dev, unsigned int pipe);
 extern void drm_crtc_vblank_off(struct drm_crtc *crtc);
 extern void drm_crtc_vblank_reset(struct drm_crtc *crtc);
 extern void drm_crtc_vblank_on(struct drm_crtc *crtc);
 extern void drm_vblank_cleanup(struct drm_device *dev);
 
 extern int drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
-						 int crtc, int *max_error,
+						 unsigned int pipe, int *max_error,
 						 struct timeval *vblank_time,
 						 unsigned flags,
 						 const struct drm_crtc *refcrtc,
@@ -1253,8 +1243,8 @@ static inline wait_queue_head_t *drm_crtc_vblank_waitqueue(struct drm_crtc *crtc
 }
 
 /* Modesetting support */
-extern void drm_vblank_pre_modeset(struct drm_device *dev, int crtc);
-extern void drm_vblank_post_modeset(struct drm_device *dev, int crtc);
+extern void drm_vblank_pre_modeset(struct drm_device *dev, unsigned int pipe);
+extern void drm_vblank_post_modeset(struct drm_device *dev, unsigned int pipe);
 
 				/* AGP/GART support (drm_agpsupport.h) */
 

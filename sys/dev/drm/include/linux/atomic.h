@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013-2015 François Tigeot
+ * Copyright (c) 2013-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef	_ASM_ATOMIC_H_
-#define	_ASM_ATOMIC_H_
+#ifndef	_LINUX_ATOMIC_H_
+#define	_LINUX_ATOMIC_H_
 
-#include <sys/types.h>
-#include <machine/atomic.h>
-#include <linux/compiler.h>
+#include <asm/atomic.h>
 
 typedef struct {
 	volatile u_int counter;
@@ -149,16 +147,7 @@ static inline int atomic_add_unless(atomic_t *v, int add, int unless)
 		: "r" (~mask), "m" (*addr)	\
 		: "memory");
 
-/* atomic_set_mask: atomically set bits in a variable */
-#define atomic_set_mask(mask, addr)		\
-	/* atomic *addr |= mask; */		\
-	__asm __volatile("lock orl %0, %1"	\
-		:				\
-		: "r" (mask), "m" (*addr)	\
-		: "memory");
-
-
 #define smp_mb__before_atomic()	cpu_ccfence()
 #define smp_mb__after_atomic()	cpu_ccfence()
 
-#endif	/* _ASM_ATOMIC_H_ */
+#endif	/* _LINUX_ATOMIC_H_ */

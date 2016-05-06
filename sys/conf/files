@@ -2045,6 +2045,7 @@ dev/drm/i915/i915_gem.c			optional i915 drm
 dev/drm/i915/i915_gem_batch_pool.c	optional i915 drm
 dev/drm/i915/i915_gem_context.c		optional i915 drm
 dev/drm/i915/i915_gem_execbuffer.c	optional i915 drm
+dev/drm/i915/i915_gem_fence.c		optional i915 drm
 dev/drm/i915/i915_gem_evict.c		optional i915 drm
 dev/drm/i915/i915_gem_gtt.c		optional i915 drm
 dev/drm/i915/i915_gem_stolen.c		optional i915 drm
@@ -2077,8 +2078,10 @@ dev/drm/i915/intel_fbc.c		optional i915 drm
 dev/drm/i915/intel_fifo_underrun.c	optional i915 drm
 dev/drm/i915/intel_frontbuffer.c	optional i915 drm
 dev/drm/i915/intel_hdmi.c		optional i915 drm
+dev/drm/i915/intel_hotplug.c		optional i915 drm
 dev/drm/i915/intel_i2c.c		optional i915 drm
 dev/drm/i915/intel_lrc.c		optional i915 drm
+dev/drm/i915/intel_mocs.c		optional i915 drm
 dev/drm/i915/intel_lvds.c		optional i915 drm
 dev/drm/i915/intel_modes.c		optional i915 drm
 dev/drm/i915/intel_opregion.c		optional i915 drm

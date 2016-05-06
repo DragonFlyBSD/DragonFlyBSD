@@ -1,7 +1,4 @@
-/*-
- * Copyright (c) 2010 Isilon Systems, Inc.
- * Copyright (c) 2010 iX Systems, Inc.
- * Copyright (c) 2010 Panasas, Inc.
+/*
  * Copyright (c) 2016 François Tigeot
  * All rights reserved.
  *
@@ -27,49 +24,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef	_LINUX_ERR_H_
-#define	_LINUX_ERR_H_
+#ifndef _ASM_ATOMIC_H_
+#define _ASM_ATOMIC_H_
 
-#define MAX_ERRNO	4095
+/* atomic_or: atomically set bits in a variable */
+#define atomic_or(mask, addr)		\
+	/* atomic *addr |= mask; */		\
+	__asm __volatile("lock orl %0, %1"	\
+		:				\
+		: "r" (mask), "m" (*addr)	\
+		: "memory");
 
-#define IS_ERR_VALUE(x) ((x) >= (unsigned long)-MAX_ERRNO)
-
-static inline void *
-ERR_PTR(long error)
-{
-	return (void *)error;
-}
-
-static inline long
-PTR_ERR(const void *ptr)
-{
-	return (long)ptr;
-}
-
-static inline long
-IS_ERR(const void *ptr)
-{
-	return IS_ERR_VALUE((unsigned long)ptr);
-}
-
-static inline long
-IS_ERR_OR_NULL(const void *ptr)
-{
-	return !ptr || IS_ERR_VALUE((unsigned long)ptr);
-}
-
-static inline void *
-ERR_CAST(void *ptr)
-{
-	return (void *)ptr;
-}
-
-static inline int PTR_ERR_OR_ZERO( const void *ptr)
-{
-	if (IS_ERR(ptr))
-		return PTR_ERR(ptr);
-
-	return 0;
-}
-
-#endif	/* _LINUX_ERR_H_ */
+#endif	/* _ASM_ATOMIC_H_ */

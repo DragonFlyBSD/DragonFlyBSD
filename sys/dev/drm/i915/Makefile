@@ -2,28 +2,30 @@ KMOD	= i915
 
 # core driver code
 SRCS =	i915_drv.c \
+	i915_irq.c \
 	i915_params.c \
 	i915_suspend.c \
 	i915_sysfs.c \
+	intel_csr.c \
 	intel_pm.c \
-	intel_runtime_pm.c \
-	intel_csr.c
+	intel_runtime_pm.c
 
 # GEM code
 SRCS +=	i915_cmd_parser.c \
 	i915_gem_batch_pool.c \
 	i915_gem_context.c \
-	i915_gem_render_state.c \
 	i915_gem_evict.c \
 	i915_gem_execbuffer.c \
+	i915_gem_fence.o \
 	i915_gem_gtt.c \
 	i915_gem.c \
+	i915_gem_render_state.c \
 	i915_gem_shrinker.c \
 	i915_gem_stolen.c \
 	i915_gem_tiling.c \
 	i915_gem_userptr.c \
-	i915_irq.c \
 	intel_lrc.c \
+	intel_mocs.c \
 	intel_ringbuffer.c \
 	intel_uncore.c
 
@@ -36,12 +38,15 @@ SRCS +=	intel_renderstate_gen6.c \
 # modesetting core code
 SRCS += \
 	intel_audio.c \
+	intel_atomic.c \
+	intel_atomic_plane.c \
 	intel_acpi.c \
 	intel_bios.c \
 	intel_display.c \
 	intel_fbc.c \
 	intel_fifo_underrun.c \
 	intel_frontbuffer.c \
+	intel_hotplug.c \
 	intel_fbdev.c \
 	intel_modes.c \
 	intel_opregion.c \
@@ -58,15 +63,13 @@ SRCS += \
 	dvo_ns2501.c \
 	dvo_sil164.c \
 	dvo_tfp410.c \
-	intel_atomic.c \
-	intel_atomic_plane.c \
 	intel_crt.c \
 	intel_ddi.c \
-	intel_dp.c \
 	intel_dp_mst.c \
+	intel_dp.c \
 	intel_dsi.c \
-	intel_dsi_pll.c \
 	intel_dsi_panel_vbt.c \
+	intel_dsi_pll.c \
 	intel_dvo.c \
 	intel_hdmi.c \
 	intel_i2c.c \

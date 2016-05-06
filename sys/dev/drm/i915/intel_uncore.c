@@ -27,16 +27,16 @@
 
 #define FORCEWAKE_ACK_TIMEOUT_MS 2
 
-#define __raw_i915_read8(dev_priv__, reg__) DRM_READ8(dev_priv__->mmio_map, reg__)
+#define __raw_i915_read8(dev_priv__, reg__) readb((dev_priv__)->regs + (reg__))
 #define __raw_i915_write8(dev_priv__, reg__, val__) DRM_WRITE8(dev_priv__->mmio_map, reg__, val__)
 
-#define __raw_i915_read16(dev_priv__, reg__) DRM_READ16(dev_priv__->mmio_map, reg__)
+#define __raw_i915_read16(dev_priv__, reg__) readw((dev_priv__)->regs + (reg__))
 #define __raw_i915_write16(dev_priv__, reg__, val__) DRM_WRITE16(dev_priv__->mmio_map, reg__, val__)
 
-#define __raw_i915_read32(dev_priv__, reg__) DRM_READ32(dev_priv__->mmio_map, reg__)
+#define __raw_i915_read32(dev_priv__, reg__) readl((dev_priv__)->regs + (reg__))
 #define __raw_i915_write32(dev_priv__, reg__, val__) DRM_WRITE32(dev_priv__->mmio_map, reg__, val__)
 
-#define __raw_i915_read64(dev_priv__, reg__) DRM_READ64(dev_priv__->mmio_map, reg__)
+#define __raw_i915_read64(dev_priv__, reg__) readq((dev_priv__)->regs + (reg__))
 #define __raw_i915_write64(dev_priv__, reg__, val__) DRM_WRITE64(dev_priv__->mmio_map, reg__, val__)
 
 #define __raw_posting_read(dev_priv__, reg__) (void)__raw_i915_read32(dev_priv__, reg__)
@@ -1461,20 +1461,80 @@ static int gen6_do_reset(struct drm_device *dev)
 	return ret;
 }
 
+static int wait_for_register(struct drm_i915_private *dev_priv,
+			     const u32 reg,
+			     const u32 mask,
+			     const u32 value,
+			     const unsigned long timeout_ms)
+{
+	return wait_for((I915_READ(reg) & mask) == value, timeout_ms);
+}
+
+static int gen8_do_reset(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_engine_cs *engine;
+	int i;
+
+	for_each_ring(engine, dev_priv, i) {
+		I915_WRITE(RING_RESET_CTL(engine->mmio_base),
+			   _MASKED_BIT_ENABLE(RESET_CTL_REQUEST_RESET));
+
+		if (wait_for_register(dev_priv,
+				      RING_RESET_CTL(engine->mmio_base),
+				      RESET_CTL_READY_TO_RESET,
+				      RESET_CTL_READY_TO_RESET,
+				      700)) {
+			DRM_ERROR("%s: reset request timeout\n", engine->name);
+			goto not_ready;
+		}
+	}
+
+	return gen6_do_reset(dev);
+
+not_ready:
+	for_each_ring(engine, dev_priv, i)
+		I915_WRITE(RING_RESET_CTL(engine->mmio_base),
+			   _MASKED_BIT_DISABLE(RESET_CTL_REQUEST_RESET));
+
+	return -EIO;
+}
+
+static int (*intel_get_gpu_reset(struct drm_device *dev))(struct drm_device *)
+{
+	if (!i915.reset)
+		return NULL;
+
+	if (INTEL_INFO(dev)->gen >= 8)
+		return gen8_do_reset;
+	else if (INTEL_INFO(dev)->gen >= 6)
+		return gen6_do_reset;
+	else if (IS_GEN5(dev))
+		return ironlake_do_reset;
+	else if (IS_G4X(dev))
+		return g4x_do_reset;
+	else if (IS_G33(dev))
+		return g33_do_reset;
+	else if (INTEL_INFO(dev)->gen >= 3)
+		return i915_do_reset;
+	else
+		return NULL;
+}
+
 int intel_gpu_reset(struct drm_device *dev)
 {
-	if (INTEL_INFO(dev)->gen >= 6)
-		return gen6_do_reset(dev);
-	else if (IS_GEN5(dev))
-		return ironlake_do_reset(dev);
-	else if (IS_G4X(dev))
-		return g4x_do_reset(dev);
-	else if (IS_G33(dev))
-		return g33_do_reset(dev);
-	else if (INTEL_INFO(dev)->gen >= 3)
-		return i915_do_reset(dev);
-	else
+	int (*reset)(struct drm_device *);
+
+	reset = intel_get_gpu_reset(dev);
+	if (reset == NULL)
 		return -ENODEV;
+
+	return reset(dev);
+}
+
+bool intel_has_gpu_reset(struct drm_device *dev)
+{
+	return intel_get_gpu_reset(dev) != NULL;
 }
 
 void intel_uncore_check_errors(struct drm_device *dev)

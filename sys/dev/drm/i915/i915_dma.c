@@ -139,6 +139,13 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		if (!value)
 			return -ENODEV;
 		break;
+	case I915_PARAM_HAS_GPU_RESET:
+		value = i915.enable_hangcheck &&
+			intel_has_gpu_reset(dev);
+		break;
+	case I915_PARAM_HAS_RESOURCE_STREAMER:
+		value = HAS_RESOURCE_STREAMER(dev);
+		break;
 	default:
 		DRM_DEBUG("Unknown parameter %d\n", param->param);
 		return -EINVAL;
@@ -460,8 +467,8 @@ cleanup_gem:
 cleanup_irq:
 	drm_irq_uninstall(dev);
 cleanup_gem_stolen:
-#if 0
 	i915_gem_cleanup_stolen(dev);
+#if 0
 cleanup_vga_switcheroo:
 	vga_switcheroo_unregister_client(dev->pdev);
 cleanup_vga_client:
@@ -712,11 +719,19 @@ static void intel_device_info_runtime_init(struct drm_device *dev)
 
 	info = (struct intel_device_info *)&dev_priv->info;
 
+	/*
+	 * Skylake and Broxton currently don't expose the topmost plane as its
+	 * use is exclusive with the legacy cursor and we only want to expose
+	 * one of those, not both. Until we can safely expose the topmost plane
+	 * as a DRM_PLANE_TYPE_CURSOR with all the features exposed/supported,
+	 * we don't expose the topmost plane at all to prevent ABI breakage
+	 * down the line.
+	 */
 	if (IS_BROXTON(dev)) {
-		info->num_sprites[PIPE_A] = 3;
-		info->num_sprites[PIPE_B] = 3;
-		info->num_sprites[PIPE_C] = 2;
-	} else if (IS_VALLEYVIEW(dev) || INTEL_INFO(dev)->gen == 9)
+		info->num_sprites[PIPE_A] = 2;
+		info->num_sprites[PIPE_B] = 2;
+		info->num_sprites[PIPE_C] = 1;
+	} else if (IS_VALLEYVIEW(dev))
 		for_each_pipe(dev_priv, pipe)
 			info->num_sprites[pipe] = 2;
 	else
@@ -937,8 +952,8 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		goto out_mtrrfree;
 	}
 
-	dev_priv->dp_wq = alloc_ordered_workqueue("i915-dp", 0);
-	if (dev_priv->dp_wq == NULL) {
+	dev_priv->hotplug.dp_wq = alloc_ordered_workqueue("i915-dp", 0);
+	if (dev_priv->hotplug.dp_wq == NULL) {
 		DRM_ERROR("Failed to create our dp workqueue.\n");
 		ret = -ENOMEM;
 		goto out_freewq;
@@ -1032,7 +1047,7 @@ out_gem_unload:
 	pm_qos_remove_request(&dev_priv->pm_qos);
 	destroy_workqueue(dev_priv->gpu_error.hangcheck_wq);
 out_freedpwq:
-	destroy_workqueue(dev_priv->dp_wq);
+	destroy_workqueue(dev_priv->hotplug.dp_wq);
 out_freewq:
 	destroy_workqueue(dev_priv->wq);
 out_mtrrfree:
@@ -1125,16 +1140,15 @@ int i915_driver_unload(struct drm_device *dev)
 	i915_gem_cleanup_ringbuffer(dev);
 	i915_gem_context_fini(dev);
 	mutex_unlock(&dev->struct_mutex);
-#if 0
+	intel_fbc_cleanup_cfb(dev_priv);
 	i915_gem_cleanup_stolen(dev);
-#endif
 
 	intel_csr_ucode_fini(dev);
 
 	intel_teardown_gmbus(dev);
 	intel_teardown_mchbar(dev);
 
-	destroy_workqueue(dev_priv->dp_wq);
+	destroy_workqueue(dev_priv->hotplug.dp_wq);
 	destroy_workqueue(dev_priv->wq);
 	destroy_workqueue(dev_priv->gpu_error.hangcheck_wq);
 	pm_qos_remove_request(&dev_priv->pm_qos);
@@ -1271,13 +1285,3 @@ const struct drm_ioctl_desc i915_ioctls[] = {
 };
 
 int i915_max_ioctl = ARRAY_SIZE(i915_ioctls);
-
-/*
- * This is really ugly: Because old userspace abused the linux agp interface to
- * manage the gtt, we need to claim that all intel devices are agp.  For
- * otherwise the drm core refuses to initialize the agp support code.
- */
-int i915_driver_device_is_agp(struct drm_device *dev)
-{
-	return 1;
-}

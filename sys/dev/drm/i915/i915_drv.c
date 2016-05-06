@@ -352,7 +352,6 @@ static const struct intel_device_info intel_cherryview_info = {
 };
 
 static const struct intel_device_info intel_skylake_info = {
-	.is_preliminary = 1,
 	.is_skylake = 1,
 	.gen = 9, .num_pipes = 3,
 	.need_gfx_hws = 1, .has_hotplug = 1,
@@ -365,7 +364,6 @@ static const struct intel_device_info intel_skylake_info = {
 };
 
 static const struct intel_device_info intel_skylake_gt3_info = {
-	.is_preliminary = 1,
 	.is_skylake = 1,
 	.gen = 9, .num_pipes = 3,
 	.need_gfx_hws = 1, .has_hotplug = 1,
@@ -543,21 +541,6 @@ bool i915_semaphore_is_enabled(struct drm_device *dev)
 	return true;
 }
 
-void intel_hpd_cancel_work(struct drm_i915_private *dev_priv)
-{
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-
-	dev_priv->long_hpd_port_mask = 0;
-	dev_priv->short_hpd_port_mask = 0;
-	dev_priv->hpd_event_bits = 0;
-
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
-
-	cancel_work_sync(&dev_priv->dig_port_work);
-	cancel_work_sync(&dev_priv->hotplug_work);
-	cancel_delayed_work_sync(&dev_priv->hotplug_reenable_work);
-}
-
 #ifdef __DragonFly__
 #define IS_BUILTIN(blah)	0
 #endif
@@ -597,7 +580,6 @@ static void intel_suspend_encoders(struct drm_i915_private *dev_priv)
 	drm_modeset_unlock_all(dev);
 }
 
-
 static int intel_suspend_complete(struct drm_i915_private *dev_priv);
 static int vlv_resume_prepare(struct drm_i915_private *dev_priv,
 			      bool rpm_resume);
@@ -608,7 +590,6 @@ static int bxt_resume_prepare(struct drm_i915_private *dev_priv);
 static int i915_drm_suspend(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct drm_crtc *crtc;
 	pci_power_t opregion_target_state;
 	int error;
 
@@ -641,8 +622,7 @@ static int i915_drm_suspend(struct drm_device *dev)
 	 * for _thaw. Also, power gate the CRTC power wells.
 	 */
 	drm_modeset_lock_all(dev);
-	for_each_crtc(dev, crtc)
-		intel_crtc_control(crtc, false);
+	intel_display_suspend(dev);
 	drm_modeset_unlock_all(dev);
 
 #if 0
@@ -697,15 +677,18 @@ static int i915_drm_suspend_late(struct drm_device *drm_dev, bool hibernation)
 #if 0
 	pci_disable_device(drm_dev->pdev);
 	/*
-	 * During hibernation on some GEN4 platforms the BIOS may try to access
+	 * During hibernation on some platforms the BIOS may try to access
 	 * the device even though it's already in D3 and hang the machine. So
 	 * leave the device in D0 on those platforms and hope the BIOS will
-	 * power down the device properly. Platforms where this was seen:
-	 * Lenovo Thinkpad X301, X61s
+	 * power down the device properly. The issue was seen on multiple old
+	 * GENs with different BIOS vendors, so having an explicit blacklist
+	 * is inpractical; apply the workaround on everything pre GEN6. The
+	 * platforms where the issue was seen:
+	 * Lenovo Thinkpad X301, X61s, X60, T60, X41
+	 * Fujitsu FSC S7110
+	 * Acer Aspire 1830T
 	 */
-	if (!(hibernation &&
-	      drm_dev->pdev->subsystem_vendor == PCI_VENDOR_ID_LENOVO &&
-	      INTEL_INFO(dev_priv)->gen == 4))
+	if (!(hibernation && INTEL_INFO(dev_priv)->gen < 6))
 		pci_set_power_state(drm_dev->pdev, PCI_D3hot);
 #endif
 
@@ -766,7 +749,7 @@ static int i915_drm_resume(struct drm_device *dev)
 	mutex_lock(&dev->struct_mutex);
 	if (i915_gem_init_hw(dev)) {
 		DRM_ERROR("failed to re-initialize GPU, declaring wedged!\n");
-		atomic_set_mask(I915_WEDGED, &dev_priv->gpu_error.reset_counter);
+			atomic_or(I915_WEDGED, &dev_priv->gpu_error.reset_counter);
 	}
 	mutex_unlock(&dev->struct_mutex);
 
@@ -778,7 +761,7 @@ static int i915_drm_resume(struct drm_device *dev)
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	drm_modeset_lock_all(dev);
-	intel_modeset_setup_hw_state(dev, true);
+	intel_display_resume(dev);
 	drm_modeset_unlock_all(dev);
 
 	intel_dp_mst_resume(dev);
@@ -909,9 +892,6 @@ int i915_reset(struct drm_device *dev)
 	bool simulated;
 	int ret;
 
-	if (!i915.reset)
-		return 0;
-
 	intel_reset_gt_powersave(dev);
 
 	mutex_lock(&dev->struct_mutex);
@@ -995,8 +975,6 @@ static int i915_pci_probe(device_t kdev)
 		return ENXIO;
 
 	device = pci_get_device(kdev);
-
-	driver.driver_features &= ~(DRIVER_USE_AGP);
 
 	for (i = 0; pciidlist[i].device != 0; i++) {
 		if (pciidlist[i].device == device) {
@@ -1562,7 +1540,15 @@ static int intel_runtime_suspend(struct device *device)
 	 * FIXME: We really should find a document that references the arguments
 	 * used below!
 	 */
-	if (IS_HASWELL(dev)) {
+	if (IS_BROADWELL(dev)) {
+		/*
+		 * On Broadwell, if we use PCI_D1 the PCH DDI ports will stop
+		 * being detected, and the call we do at intel_runtime_resume()
+		 * won't be able to restore them. Since PCI_D3hot matches the
+		 * actual specification and appears to be working, use it.
+		 */
+		intel_opregion_notify_adapter(dev, PCI_D3hot);
+	} else {
 		/*
 		 * current versions of firmware which depend on this opregion
 		 * notification have repurposed the D1 definition to mean
@@ -1571,16 +1557,6 @@ static int intel_runtime_suspend(struct device *device)
 		 * the suspend path.
 		 */
 		intel_opregion_notify_adapter(dev, PCI_D1);
-	} else {
-		/*
-		 * On Broadwell, if we use PCI_D1 the PCH DDI ports will stop
-		 * being detected, and the call we do at intel_runtime_resume()
-		 * won't be able to restore them. Since PCI_D3hot matches the
-		 * actual specification and appears to be working, use it. Let's
-		 * assume the other non-Haswell platforms will stay the same as
-		 * Broadwell.
-		 */
-		intel_opregion_notify_adapter(dev, PCI_D3hot);
 	}
 
 	assert_forcewakes_inactive(dev_priv);
@@ -1729,7 +1705,6 @@ static struct drm_driver driver = {
 	 * deal with them for Intel hardware.
 	 */
 	.driver_features =
-	    DRIVER_USE_AGP |
 	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM |
 	    DRIVER_RENDER,
 	.load = i915_driver_load,
@@ -1740,8 +1715,6 @@ static struct drm_driver driver = {
 	.postclose = i915_driver_postclose,
 
 	/* Used in place of i915_pm_ops for non-DRIVER_MODESET */
-
-	.device_is_agp = i915_driver_device_is_agp,
 
 #if defined(CONFIG_DEBUG_FS)
 	.debugfs_init = i915_debugfs_init,
@@ -1806,20 +1779,14 @@ static int __init i915_init(void)
 	driver.num_ioctls = i915_max_ioctl;
 
 	/*
-	 * If CONFIG_DRM_I915_KMS is set, default to KMS unless
-	 * explicitly disabled with the module pararmeter.
-	 *
-	 * Otherwise, just follow the parameter (defaulting to off).
-	 *
-	 * Allow optional vga_text_mode_force boot option to override
-	 * the default behavior.
+	 * Enable KMS by default, unless explicitly overriden by
+	 * either the i915.modeset prarameter or by the
+	 * vga_text_mode_force boot option.
 	 */
-#if defined(CONFIG_DRM_I915_KMS)
-	if (i915.modeset != 0)
-		driver.driver_features |= DRIVER_MODESET;
-#endif
-	if (i915.modeset == 1)
-		driver.driver_features |= DRIVER_MODESET;
+	driver.driver_features |= DRIVER_MODESET;
+
+	if (i915.modeset == 0)
+		driver.driver_features &= ~DRIVER_MODESET;
 
 #ifdef CONFIG_VGA_CONSOLE
 	if (vgacon_text_force() && i915.modeset == -1)
@@ -1838,7 +1805,7 @@ static int __init i915_init(void)
 	 * to the atomic ioctl and the atomic properties.  Only plane operations on
 	 * a single CRTC will actually work.
 	 */
-	if (i915.nuclear_pageflip)
+	if (driver.driver_features & DRIVER_MODESET)
 		driver.driver_features |= DRIVER_ATOMIC;
 
 #if 0
