@@ -1498,7 +1498,7 @@ urtwn_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct urtwn_vap *uvp = URTWN_VAP(vap);
 	struct ieee80211com *ic = vap->iv_ic;
-	struct urtwn_softc *sc = ic->ic_ifp->if_softc;
+	struct urtwn_softc *sc = ic->ic_softc;
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
 	uint32_t reg;
@@ -1980,8 +1980,8 @@ urtwn_start_locked(struct ifnet *ifp)
 static int
 urtwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 {
-	struct urtwn_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
+	struct urtwn_softc *sc = ic->ic_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0, startall = 0;
 
@@ -1995,7 +1995,7 @@ urtwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if ((ifp->if_flags & IFF_RUNNING) == 0) {
-				urtwn_init(ifp->if_softc);
+				urtwn_init(sc);
 				startall = 1;
 			}
 		} else {
@@ -3111,7 +3111,7 @@ urtwn_scan_end(struct ieee80211com *ic)
 static void
 urtwn_set_channel(struct ieee80211com *ic)
 {
-	struct urtwn_softc *sc = ic->ic_ifp->if_softc;
+	struct urtwn_softc *sc = ic->ic_softc;
 
 	URTWN_LOCK(sc);
 	urtwn_set_chan(sc, ic->ic_curchan, NULL);
@@ -3495,7 +3495,7 @@ urtwn_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct urtwn_softc *sc = ifp->if_softc;
+	struct urtwn_softc *sc = ic->ic_softc;
 	struct urtwn_data *bf;
 
 	/* prevent management frames from being sent if we're not ready */

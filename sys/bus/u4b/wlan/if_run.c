@@ -895,7 +895,7 @@ run_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
     const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct ifnet *ifp = ic->ic_ifp;
-	struct run_softc *sc = ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	struct run_vap *rvp;
 	struct ieee80211vap *vap;
 	int i;
@@ -1004,8 +1004,7 @@ run_vap_delete(struct ieee80211vap *vap)
 
 	ic = vap->iv_ic;
 	ifp = ic->ic_ifp;
-
-	sc = ifp->if_softc;
+	sc = ic->ic_softc;
 
 	RUN_LOCK(sc);
 
@@ -2005,7 +2004,7 @@ run_media_change(struct ifnet *ifp)
 	struct ieee80211vap *vap = ifp->if_softc;
 	struct ieee80211com *ic = vap->iv_ic;
 	const struct ieee80211_txparam *tp;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	uint8_t rate, ridx;
 	int error;
 
@@ -2051,7 +2050,7 @@ run_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	const struct ieee80211_txparam *tp;
 	struct ieee80211com *ic = vap->iv_ic;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	struct run_vap *rvp = RUN_VAP(vap);
 	enum ieee80211_state ostate;
 	uint32_t sta[3];
@@ -2181,7 +2180,7 @@ static void
 run_wme_update_cb(void *arg)
 {
 	struct ieee80211com *ic = arg;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	struct ieee80211_wme_state *wmesp = &ic->ic_wme;
 	int aci, error = 0;
 
@@ -2234,7 +2233,7 @@ err:
 static int
 run_wme_update(struct ieee80211com *ic)
 {
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 
 #if defined(__DragonFly__)
 	if (lockstatus(&ic->ic_comlock, curthread) == LK_EXCLUSIVE) {
@@ -2280,7 +2279,7 @@ run_key_set_cb(void *arg)
 	struct ieee80211vap *vap = cmdq->arg1;
 	struct ieee80211_key *k = cmdq->k;
 	struct ieee80211com *ic = vap->iv_ic;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	struct ieee80211_node *ni;
 	uint32_t attr;
 	uint16_t base, associd;
@@ -2402,7 +2401,7 @@ run_key_set(struct ieee80211vap *vap, struct ieee80211_key *k,
 		const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	uint32_t i;
 
 	i = RUN_CMDQ_GET(&sc->cmdq_store);
@@ -2470,7 +2469,7 @@ static int
 run_key_delete(struct ieee80211vap *vap, struct ieee80211_key *k)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	struct ieee80211_key *k0;
 	uint32_t i;
 
@@ -2664,7 +2663,7 @@ run_newassoc_cb(void *arg)
 {
 	struct run_cmdq *cmdq = arg;
 	struct ieee80211_node *ni = cmdq->arg1;
-	struct run_softc *sc = ni->ni_vap->iv_ic->ic_ifp->if_softc;
+	struct run_softc *sc = ni->ni_vap->iv_ic->ic_softc;
 	uint8_t wcid = cmdq->wcid;
 
 	RUN_LOCK_ASSERT(sc, MA_OWNED);
@@ -2682,7 +2681,7 @@ run_newassoc(struct ieee80211_node *ni, int isnew)
 	struct ieee80211_rateset *rs = &ni->ni_rates;
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = vap->iv_ic;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	uint8_t rate;
 	uint8_t ridx;
 	uint8_t wcid;
@@ -3700,7 +3699,7 @@ run_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
     const struct ieee80211_bpf_params *params)
 {
 	struct ifnet *ifp = ni->ni_ic->ic_ifp;
-	struct run_softc *sc = ifp->if_softc;
+	struct run_softc *sc = ni->ni_ic->ic_softc;
 	int error = 0;
  
 	RUN_LOCK(sc);
@@ -3774,8 +3773,8 @@ run_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 static int
 run_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
-	struct run_softc *sc = ifp->if_softc;
-	struct ieee80211com *ic = sc->sc_ifp->if_l2com;
+	struct ieee80211com *ic = ifp->if_l2com;
+	struct run_softc *sc = ic->ic_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	int startall = 0;
 	int error;
@@ -4848,7 +4847,7 @@ run_set_chan(struct run_softc *sc, struct ieee80211_channel *c)
 static void
 run_set_channel(struct ieee80211com *ic)
 {
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 
 	RUN_LOCK(sc);
 	run_set_chan(sc, ic->ic_curchan);
@@ -4860,7 +4859,7 @@ run_set_channel(struct ieee80211com *ic)
 static void
 run_scan_start(struct ieee80211com *ic)
 {
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	uint32_t tmp;
 
 	RUN_LOCK(sc);
@@ -4880,7 +4879,7 @@ run_scan_start(struct ieee80211com *ic)
 static void
 run_scan_end(struct ieee80211com *ic)
 {
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 
 	RUN_LOCK(sc);
 
@@ -4901,7 +4900,7 @@ static void
 run_update_beacon(struct ieee80211vap *vap, int item)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	struct run_vap *rvp = RUN_VAP(vap);
 	int mcast = 0;
 	uint32_t i;
@@ -4940,7 +4939,7 @@ run_update_beacon_cb(void *arg)
 	struct ieee80211vap *vap = arg;
 	struct run_vap *rvp = RUN_VAP(vap);
 	struct ieee80211com *ic = vap->iv_ic;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	struct rt2860_txwi txwi;
 	struct mbuf *m;
 	uint16_t txwisize;
@@ -4988,7 +4987,7 @@ run_update_beacon_cb(void *arg)
 static void
 run_updateprot(struct ieee80211com *ic)
 {
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	uint32_t i;
 
 	i = RUN_CMDQ_GET(&sc->cmdq_store);
@@ -5002,7 +5001,7 @@ static void
 run_updateprot_cb(void *arg)
 {
 	struct ieee80211com *ic = arg;
-	struct run_softc *sc = ic->ic_ifp->if_softc;
+	struct run_softc *sc = ic->ic_softc;
 	uint32_t tmp;
 
 	tmp = RT2860_RTSTH_EN | RT2860_PROT_NAV_SHORT | RT2860_TXOP_ALLOW_ALL;
@@ -5026,7 +5025,7 @@ static void
 run_usb_timeout_cb(void *arg)
 {
 	struct ieee80211vap *vap = arg;
-	struct run_softc *sc = vap->iv_ic->ic_ifp->if_softc;
+	struct run_softc *sc = vap->iv_ic->ic_softc;
 
 	RUN_LOCK_ASSERT(sc, MA_OWNED);
 
@@ -5232,8 +5231,8 @@ static void
 run_updateslot_cb(void *arg)
 {
 	struct ifnet *ifp = arg;
-	struct run_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
+	struct run_softc *sc = ic->ic_softc;
 	uint32_t tmp;
 
 	run_read(sc, RT2860_BKOFF_SLOT_CFG, &tmp);
