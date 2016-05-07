@@ -775,6 +775,7 @@ run_attach(device_t self)
 #endif
 
 	ic->ic_ifp = ifp;
+	ic->ic_softc = sc;
 	ic->ic_name = device_get_nameunit(sc->sc_dev);
 	ic->ic_phytype = IEEE80211_T_OFDM;	/* not only, but not used */
 	ic->ic_opmode = IEEE80211_M_STA;	/* default to BSS mode */
