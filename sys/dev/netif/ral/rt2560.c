@@ -759,7 +759,7 @@ rt2560_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct rt2560_vap *rvp = RT2560_VAP(vap);
 	struct ifnet *ifp = vap->iv_ic->ic_ifp;
-	struct rt2560_softc *sc = ifp->if_softc;
+	struct rt2560_softc *sc = vap->iv_ic->ic_softc;
 	int error;
 
 	if (nstate == IEEE80211_S_INIT && vap->iv_state == IEEE80211_S_RUN) {
@@ -1967,8 +1967,8 @@ rt2560_watchdog_callout(void *arg)
 static int
 rt2560_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 {
-	struct rt2560_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
+	struct rt2560_softc *sc = ic->ic_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0, startall = 0;
 
@@ -2181,8 +2181,7 @@ rt2560_set_chan(struct rt2560_softc *sc, struct ieee80211_channel *c)
 static void
 rt2560_set_channel(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2560_softc *sc = ifp->if_softc;
+	struct rt2560_softc *sc = ic->ic_softc;
 
 	rt2560_set_chan(sc, ic->ic_curchan);
 
@@ -2490,7 +2489,7 @@ static void
 rt2560_scan_start(struct ieee80211com *ic)
 {
 	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2560_softc *sc = ifp->if_softc;
+	struct rt2560_softc *sc = ic->ic_softc;
 
 	/* abort TSF synchronization */
 	RAL_WRITE(sc, RT2560_CSR14, 0);
@@ -2500,8 +2499,7 @@ rt2560_scan_start(struct ieee80211com *ic)
 static void
 rt2560_scan_end(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2560_softc *sc = ifp->if_softc;
+	struct rt2560_softc *sc = ic->ic_softc;
 	struct ieee80211vap *vap = ic->ic_scan->ss_vap;
 
 	rt2560_enable_tsf_sync(sc);
@@ -2743,7 +2741,7 @@ rt2560_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2560_softc *sc = ifp->if_softc;
+	struct rt2560_softc *sc = ic->ic_softc;
 
 	/* prevent management frames from being sent if we're not ready */
 	if (!(ifp->if_flags & IFF_RUNNING)) {

@@ -766,7 +766,7 @@ rt2661_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct rt2661_vap *rvp = RT2661_VAP(vap);
 	struct ieee80211com *ic = vap->iv_ic;
-	struct rt2661_softc *sc = ic->ic_ifp->if_softc;
+	struct rt2661_softc *sc = ic->ic_softc;
 	int error;
 
 	if (nstate == IEEE80211_S_INIT && vap->iv_state == IEEE80211_S_RUN) {
@@ -1643,7 +1643,7 @@ rt2661_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2661_softc *sc = ifp->if_softc;
+	struct rt2661_softc *sc = ic->ic_softc;
 
 	/* prevent management frames from being sent if we're not ready */
 	if (!(ifp->if_flags & IFF_RUNNING)) {
@@ -1701,8 +1701,8 @@ rt2661_watchdog_callout(void *arg)
 static int
 rt2661_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 {
-	struct rt2661_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
+	struct rt2661_softc *sc = ic->ic_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0, startall = 0;
 
@@ -2085,7 +2085,7 @@ rt2661_update_promisc(struct ieee80211com *ic)
 static int
 rt2661_wme_update(struct ieee80211com *ic)
 {
-	struct rt2661_softc *sc = ic->ic_ifp->if_softc;
+	struct rt2661_softc *sc = ic->ic_softc;
 	const struct wmeParams *wmep;
 
 	wmep = ic->ic_wme.wme_chanParams.cap_wmeParams;
@@ -2790,7 +2790,7 @@ static void
 rt2661_scan_start(struct ieee80211com *ic)
 {
 	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2661_softc *sc = ifp->if_softc;
+	struct rt2661_softc *sc = ic->ic_softc;
 	uint32_t tmp;
 
 	/* abort TSF synchronization */
@@ -2802,8 +2802,7 @@ rt2661_scan_start(struct ieee80211com *ic)
 static void
 rt2661_scan_end(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2661_softc *sc = ifp->if_softc;
+	struct rt2661_softc *sc = ic->ic_softc;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 
 	rt2661_enable_tsf_sync(sc);
@@ -2814,8 +2813,7 @@ rt2661_scan_end(struct ieee80211com *ic)
 static void
 rt2661_set_channel(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2661_softc *sc = ifp->if_softc;
+	struct rt2661_softc *sc = ic->ic_softc;
 
 	rt2661_set_chan(sc, ic->ic_curchan);
 }

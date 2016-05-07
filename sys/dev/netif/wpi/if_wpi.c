@@ -1300,8 +1300,7 @@ wpi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct wpi_vap *wvp = WPI_VAP(vap);
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ifnet *ifp = ic->ic_ifp;
-	struct wpi_softc *sc = ifp->if_softc;
+	struct wpi_softc *sc = ic->ic_softc;
 	int error;
 
 	DPRINTF(("%s: %s -> %s flags 0x%x\n", __func__,
@@ -2196,7 +2195,7 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct wpi_softc *sc = ifp->if_softc;
+	struct wpi_softc *sc = ic->ic_softc;
 
 	/* prevent management frames from being sent if we're not ready */
 #if defined(__DragonFly__)
@@ -2390,7 +2389,7 @@ wpi_wme_update(struct ieee80211com *ic)
 {
 #define WPI_EXP2(v)	htole16((1 << (v)) - 1)
 #define WPI_USEC(v)	htole16(IEEE80211_TXOP_TO_US(v))
-	struct wpi_softc *sc = ic->ic_ifp->if_softc;
+	struct wpi_softc *sc = ic->ic_softc;
 	const struct wmeParams *wmep;
 	struct wpi_wme_setup wme;
 	int ac;
@@ -3685,8 +3684,7 @@ wpi_get_power_index(struct wpi_softc *sc, struct wpi_power_group *group,
 static void
 wpi_scan_start(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct wpi_softc *sc = ifp->if_softc;
+	struct wpi_softc *sc = ic->ic_softc;
 
 	WPI_LOCK(sc);
 	wpi_set_led(sc, WPI_LED_LINK, 20, 2);
@@ -3711,8 +3709,7 @@ wpi_scan_end(struct ieee80211com *ic)
 static void
 wpi_set_channel(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct wpi_softc *sc = ifp->if_softc;
+	struct wpi_softc *sc = ic->ic_softc;
 	int error;
 
 	/*
@@ -3738,8 +3735,8 @@ static void
 wpi_scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 {
 	struct ieee80211vap *vap = ss->ss_vap;
-	struct ifnet *ifp = vap->iv_ic->ic_ifp;
-	struct wpi_softc *sc = ifp->if_softc;
+	struct ieee80211com *ic = vap->iv_ic;
+	struct wpi_softc *sc = ic->ic_softc;
 
 	WPI_LOCK(sc);
 	if (wpi_scan(sc))

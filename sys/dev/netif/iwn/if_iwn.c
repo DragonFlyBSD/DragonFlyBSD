@@ -1359,7 +1359,7 @@ iwn_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 	struct iwn_vap *ivp;
 	struct ieee80211vap *vap;
 	uint8_t mac1[IEEE80211_ADDR_LEN];
-	struct iwn_softc *sc = ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return NULL;
@@ -2597,7 +2597,7 @@ static int
 iwn_setregdomain(struct ieee80211com *ic, struct ieee80211_regdomain *rd,
     int nchan, struct ieee80211_channel chans[])
 {
-	struct iwn_softc *sc = ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 	int i;
 
 	for (i = 0; i < nchan; i++) {
@@ -2870,7 +2870,7 @@ iwn_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct iwn_vap *ivp = IWN_VAP(vap);
 	struct ieee80211com *ic = vap->iv_ic;
-	struct iwn_softc *sc = ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 	int error = 0;
 
 	DPRINTF(sc, IWN_DEBUG_TRACE, "->%s begin\n", __func__);
@@ -4958,7 +4958,7 @@ iwn_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct iwn_softc *sc = ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 	int error = 0;
 
 	DPRINTF(sc, IWN_DEBUG_XMIT | IWN_DEBUG_TRACE, "->%s begin\n", __func__);
@@ -5462,7 +5462,7 @@ static int
 iwn_updateedca(struct ieee80211com *ic)
 {
 #define IWN_EXP2(x)	((1 << (x)) - 1)	/* CWmin = 2^ECWmin - 1 */
-	struct iwn_softc *sc = ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 	struct iwn_edca_params cmd;
 	int aci;
 
@@ -7302,7 +7302,7 @@ iwn_ampdu_rx_start(struct ieee80211_node *ni, struct ieee80211_rx_ampdu *rap,
     int baparamset, int batimeout, int baseqctl)
 {
 #define MS(_v, _f)	(((_v) & _f) >> _f##_S)
-	struct iwn_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ni->ni_ic->ic_softc;
 	struct iwn_ops *ops = &sc->ops;
 	struct iwn_node *wn = (void *)ni;
 	struct iwn_node_info node;
@@ -7338,7 +7338,7 @@ static void
 iwn_ampdu_rx_stop(struct ieee80211_node *ni, struct ieee80211_rx_ampdu *rap)
 {
 	struct ieee80211com *ic = ni->ni_ic;
-	struct iwn_softc *sc = ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 	struct iwn_ops *ops = &sc->ops;
 	struct iwn_node *wn = (void *)ni;
 	struct iwn_node_info node;
@@ -7366,7 +7366,7 @@ static int
 iwn_addba_request(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int dialogtoken, int baparamset, int batimeout)
 {
-	struct iwn_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ni->ni_ic->ic_softc;
 	int qid;
 
 	DPRINTF(sc, IWN_DEBUG_TRACE, "->Doing %s\n", __func__);
@@ -7396,7 +7396,7 @@ static int
 iwn_addba_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int code, int baparamset, int batimeout)
 {
-	struct iwn_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ni->ni_ic->ic_softc;
 	int qid = *(int *)tap->txa_private;
 	uint8_t tid = tap->txa_tid;
 	int ret;
@@ -7425,7 +7425,7 @@ iwn_ampdu_tx_start(struct ieee80211com *ic, struct ieee80211_node *ni,
     uint8_t tid)
 {
 	struct ieee80211_tx_ampdu *tap = &ni->ni_tx_ampdu[tid];
-	struct iwn_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ni->ni_ic->ic_softc;
 	struct iwn_ops *ops = &sc->ops;
 	struct iwn_node *wn = (void *)ni;
 	struct iwn_node_info node;
@@ -7459,7 +7459,7 @@ iwn_ampdu_tx_start(struct ieee80211com *ic, struct ieee80211_node *ni,
 static void
 iwn_ampdu_tx_stop(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap)
 {
-	struct iwn_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = ni->ni_ic->ic_softc;
 	struct iwn_ops *ops = &sc->ops;
 	uint8_t tid = tap->txa_tid;
 	int qid;
@@ -8943,8 +8943,7 @@ iwn_stop(struct iwn_softc *sc)
 static void
 iwn_scan_start(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct iwn_softc *sc = ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 
 	IWN_LOCK(sc);
 	/* make the link LED blink while we're scanning */
@@ -8958,8 +8957,7 @@ iwn_scan_start(struct ieee80211com *ic)
 static void
 iwn_scan_end(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct iwn_softc *sc = ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 
 	IWN_LOCK(sc);
@@ -8977,8 +8975,7 @@ static void
 iwn_set_channel(struct ieee80211com *ic)
 {
 	const struct ieee80211_channel *c = ic->ic_curchan;
-	struct ifnet *ifp = ic->ic_ifp;
-	struct iwn_softc *sc = ifp->if_softc;
+	struct iwn_softc *sc = ic->ic_softc;
 	int error;
 
 	DPRINTF(sc, IWN_DEBUG_TRACE, "->Doing %s\n", __func__);
@@ -9009,7 +9006,7 @@ static void
 iwn_scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 {
 	struct ieee80211vap *vap = ss->ss_vap;
-	struct iwn_softc *sc = vap->iv_ic->ic_ifp->if_softc;
+	struct iwn_softc *sc = vap->iv_ic->ic_softc;
 	struct ieee80211com *ic = vap->iv_ic;
 	int error;
 

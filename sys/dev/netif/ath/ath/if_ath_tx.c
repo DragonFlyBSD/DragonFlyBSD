@@ -2358,7 +2358,7 @@ ath_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct ath_softc *sc = ifp->if_softc;
+	struct ath_softc *sc = ic->ic_softc;
 	struct ath_buf *bf;
 	struct ieee80211_frame *wh = mtod(m, struct ieee80211_frame *);
 	int error = 0;
@@ -5747,7 +5747,7 @@ int
 ath_addba_request(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int dialogtoken, int baparamset, int batimeout)
 {
-	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct ath_softc *sc = ni->ni_ic->ic_softc;
 	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
@@ -5824,7 +5824,7 @@ int
 ath_addba_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int status, int code, int batimeout)
 {
-	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct ath_softc *sc = ni->ni_ic->ic_softc;
 	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
@@ -5870,7 +5870,7 @@ ath_addba_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
 void
 ath_addba_stop(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap)
 {
-	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct ath_softc *sc = ni->ni_ic->ic_softc;
 	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
@@ -6003,7 +6003,7 @@ void
 ath_bar_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int status)
 {
-	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct ath_softc *sc = ni->ni_ic->ic_softc;
 	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
@@ -6075,7 +6075,7 @@ void
 ath_addba_response_timeout(struct ieee80211_node *ni,
     struct ieee80211_tx_ampdu *tap)
 {
-	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
+	struct ath_softc *sc = ni->ni_ic->ic_softc;
 	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];

@@ -845,7 +845,7 @@ static void
 rt2860_newassoc(struct ieee80211_node *ni, int isnew)
 {
 	struct ieee80211com *ic = ni->ni_ic;
-	struct rt2860_softc *sc = ic->ic_ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 	uint8_t wcid;
 	char ethstr[ETHER_ADDRSTRLEN + 1];
 
@@ -865,7 +865,7 @@ static void
 rt2860_node_free(struct ieee80211_node *ni)
 {
 	struct ieee80211com *ic = ni->ni_ic;
-	struct rt2860_softc *sc = ic->ic_ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 	uint8_t wcid;
 
 	if (ni->ni_associd != 0) {
@@ -913,7 +913,7 @@ rt2860_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct rt2860_vap *rvp = RT2860_VAP(vap);
 	struct ieee80211com *ic = vap->iv_ic;
-	struct rt2860_softc *sc = ic->ic_ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 	uint32_t tmp;
 	int error;
 
@@ -1707,7 +1707,7 @@ rt2860_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 {
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2860_softc *sc = ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 	int error;
 
 	/* prevent management frames from being sent if we're not ready */
@@ -2014,8 +2014,8 @@ rt2860_watchdog(void *arg)
 static int
 rt2860_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 {
-	struct rt2860_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
+	struct rt2860_softc *sc = ic->ic_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	int error = 0, startall = 0;
 
@@ -2305,8 +2305,7 @@ rt2860_set_basicrates(struct rt2860_softc *sc,
 static void
 rt2860_scan_start(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2860_softc *sc = ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 	uint32_t tmp;
 
 	tmp = RAL_READ(sc, RT2860_BCN_TIME_CFG);
@@ -2319,8 +2318,7 @@ rt2860_scan_start(struct ieee80211com *ic)
 static void
 rt2860_scan_end(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2860_softc *sc = ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 
 	if (vap->iv_state == IEEE80211_S_RUN) {
@@ -2332,8 +2330,7 @@ rt2860_scan_end(struct ieee80211com *ic)
 static void
 rt2860_set_channel(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct rt2860_softc *sc = ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 
 	rt2860_switch_chan(sc, ic->ic_curchan);
 }
@@ -2879,8 +2876,8 @@ rt2860_updateslot(struct ieee80211com *ic)
 static void
 rt2860_updateprot(struct ifnet *ifp)
 {
-	struct rt2860_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
+	struct rt2860_softc *sc = ic->ic_softc;
 	uint32_t tmp;
 
 	tmp = RT2860_RTSTH_EN | RT2860_PROT_NAV_SHORT | RT2860_TXOP_ALLOW_ALL;
@@ -2917,7 +2914,7 @@ rt2860_update_promisc(struct ieee80211com *ic)
 static int
 rt2860_updateedca(struct ieee80211com *ic)
 {
-	struct rt2860_softc *sc = ic->ic_ifp->if_softc;
+	struct rt2860_softc *sc = ic->ic_softc;
 	const struct wmeParams *wmep;
 	int aci;
 

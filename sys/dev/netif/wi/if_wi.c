@@ -510,7 +510,7 @@ wi_vap_create(struct ieee80211com *ic,
 	const uint8_t bssid[IEEE80211_ADDR_LEN],
 	const uint8_t mac[IEEE80211_ADDR_LEN])
 {
-	struct wi_softc *sc = ic->ic_ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
 	struct wi_vap *wvp;
 	struct ieee80211vap *vap;
 
@@ -727,8 +727,7 @@ wi_stop(struct wi_softc *sc, int disable)
 static void
 wi_set_channel(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct wi_softc *sc = ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
 
 	DPRINTF(("%s: channel %d, %sscanning\n", __func__,
 	    ieee80211_chan2ieee(ic, ic->ic_curchan),
@@ -741,8 +740,7 @@ wi_set_channel(struct ieee80211com *ic)
 static void
 wi_scan_start(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct wi_softc *sc = ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
 	struct ieee80211_scan_state *ss = ic->ic_scan;
 
 	DPRINTF(("%s\n", __func__));
@@ -763,8 +761,7 @@ wi_scan_start(struct ieee80211com *ic)
 static void
 wi_scan_end(struct ieee80211com *ic)
 {
-	struct ifnet *ifp = ic->ic_ifp;
-	struct wi_softc *sc = ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
 
 	DPRINTF(("%s: restore port type %d\n", __func__, sc->sc_porttype));
 
@@ -795,9 +792,8 @@ static int
 wi_newstate_sta(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211_node *bss;
-	struct wi_softc *sc = ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
 
 	DPRINTF(("%s: %s -> %s\n", __func__,
 		ieee80211_state_name[vap->iv_state],
@@ -863,9 +859,8 @@ static int
 wi_newstate_hostap(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211_node *bss;
-	struct wi_softc *sc = ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
 	int error;
 
 	DPRINTF(("%s: %s -> %s\n", __func__,
@@ -1044,7 +1039,7 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211vap *vap = ni->ni_vap;
-	struct wi_softc	*sc = ifp->if_softc;
+	struct wi_softc	*sc = ic->ic_softc;
 	struct ieee80211_key *k;
 	struct ieee80211_frame *wh;
 	struct wi_frame frmhdr;
@@ -1207,7 +1202,7 @@ wi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 {
 	struct ieee80211vap *vap = ifp->if_softc;
 	struct ieee80211com *ic = vap->iv_ic;
-	struct wi_softc *sc = ic->ic_ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
 	u_int16_t val;
 	int rate, len;
 
