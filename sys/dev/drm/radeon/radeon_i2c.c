@@ -98,6 +98,8 @@ static int radeon_iicbb_pre_xfer(device_t dev)
 	struct radeon_i2c_bus_rec *rec = &i2c->rec;
 	uint32_t temp;
 
+	lockmgr(&i2c->mutex, LK_EXCLUSIVE);
+
 	/* RV410 appears to have a bug where the hw i2c in reset
 	 * holds the i2c port in a bad state - switch hw i2c away before
 	 * doing DDC - do this for all r200s/r300s/r400s for safety sake
@@ -174,6 +176,8 @@ static void radeon_iicbb_post_xfer(device_t dev)
 	temp = RREG32(rec->mask_data_reg) & ~rec->mask_data_mask;
 	WREG32(rec->mask_data_reg, temp);
 	temp = RREG32(rec->mask_data_reg);
+
+	lockmgr(&i2c->mutex, LK_RELEASE);
 }
 
 static int radeon_iicbb_get_clock(device_t dev)
@@ -891,6 +895,8 @@ static int radeon_hw_i2c_xfer(device_t dev,
 	struct radeon_i2c_bus_rec *rec = &i2c->rec;
 	int ret = 0;
 
+	lockmgr(&i2c->mutex, LK_EXCLUSIVE);
+
 	switch (rdev->family) {
 	case CHIP_R100:
 	case CHIP_RV100:
@@ -956,6 +962,8 @@ static int radeon_hw_i2c_xfer(device_t dev,
 		ret = EIO;
 		break;
 	}
+
+	lockmgr(&i2c->mutex, LK_RELEASE);
 
 	return ret;
 }
@@ -1054,6 +1062,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 
 	i2c->rec = *rec;
 	i2c->dev = dev;
+	lockinit(&i2c->mutex, "ri2cmtx", 0, LK_CANRECURSE);
 	if (rec->mm_i2c ||
 	    (rec->hw_capable &&
 	     radeon_hw_i2c &&

@@ -54,6 +54,7 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 
 	memset(&args, 0, sizeof(args));
 
+	lockmgr(&chan->mutex, LK_EXCLUSIVE);
 	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_EXCLUSIVE);
 
 	base = (unsigned char *)rdev->mode_info.atom_context->scratch;
@@ -103,6 +104,7 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 
 done:
 	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_RELEASE);
+	lockmgr(&chan->mutex, LK_RELEASE);
 
 	return r;
 }
