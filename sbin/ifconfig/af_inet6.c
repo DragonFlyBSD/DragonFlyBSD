@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <ifaddrs.h>
 
 #include <arpa/inet.h>
@@ -96,20 +97,21 @@ static void
 setip6lifetime(const char *cmd, const char *val, int s, 
     const struct afswtch *afp)
 {
-	time_t newval, t;
+	struct timespec now;
+	time_t newval;
 	char *ep;
 
-	t = time(NULL);
+	clock_gettime(CLOCK_MONOTONIC_FAST, &now);
 	newval = (time_t)strtoul(val, &ep, 0);
 	if (val == ep)
 		errx(1, "invalid %s", cmd);
 	if (afp->af_af != AF_INET6)
 		errx(1, "%s not allowed for the AF", cmd);
 	if (strcmp(cmd, "vltime") == 0) {
-		in6_addreq.ifra_lifetime.ia6t_expire = t + newval;
+		in6_addreq.ifra_lifetime.ia6t_expire = now.tv_sec + newval;
 		in6_addreq.ifra_lifetime.ia6t_vltime = newval;
 	} else if (strcmp(cmd, "pltime") == 0) {
-		in6_addreq.ifra_lifetime.ia6t_preferred = t + newval;
+		in6_addreq.ifra_lifetime.ia6t_preferred = now.tv_sec + newval;
 		in6_addreq.ifra_lifetime.ia6t_pltime = newval;
 	}
 }
@@ -182,9 +184,11 @@ in6_status(int s __unused, const struct rt_addrinfo * info)
 	int s6;
 	u_int32_t flags6;
 	struct in6_addrlifetime lifetime;
-	time_t t = time(NULL);
+	struct timespec now;
 	int error;
 	u_int32_t scopeid;
+
+	clock_gettime(CLOCK_MONOTONIC_FAST, &now);
 
 	memset(&null_sin, 0, sizeof(null_sin));
 
@@ -292,15 +296,15 @@ in6_status(int s __unused, const struct rt_addrinfo * info)
 	if (ip6lifetime && (lifetime.ia6t_preferred || lifetime.ia6t_expire)) {
 		printf("pltime ");
 		if (lifetime.ia6t_preferred) {
-			printf("%s ", lifetime.ia6t_preferred < t
-				? "0" : sec2str(lifetime.ia6t_preferred - t));
+			printf("%s ", lifetime.ia6t_preferred < now.tv_sec
+				? "0" : sec2str(lifetime.ia6t_preferred - now.tv_sec));
 		} else
 			printf("infty ");
 
 		printf("vltime ");
 		if (lifetime.ia6t_expire) {
-			printf("%s ", lifetime.ia6t_expire < t
-				? "0" : sec2str(lifetime.ia6t_expire - t));
+			printf("%s ", lifetime.ia6t_expire < now.tv_sec
+				? "0" : sec2str(lifetime.ia6t_expire - now.tv_sec));
 		} else
 			printf("infty ");
 	}
