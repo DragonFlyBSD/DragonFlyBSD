@@ -221,6 +221,7 @@ void radeon_dp_aux_init(struct radeon_connector *radeon_connector)
 {
 	struct radeon_connector_atom_dig *dig_connector = radeon_connector->con_priv;
 
+	dig_connector->dp_i2c_bus->rec.hpd = radeon_connector->hpd.hpd;	/* XXX check*/
 	dig_connector->dp_i2c_bus->aux.dev = radeon_connector->base.kdev;
 	dig_connector->dp_i2c_bus->aux.transfer = radeon_dp_aux_transfer;
 }
@@ -294,7 +295,7 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 		case DP_AUX_I2C_REPLY_ACK:
 			if (mode == MODE_I2C_READ)
 				*read_byte = reply[0];
-			return ret;
+			return (0);		/* XXX: why 0 and not msg size? */
 		case DP_AUX_I2C_REPLY_NACK:
 			DRM_DEBUG_KMS("aux_i2c nack\n");
 			return -EREMOTEIO;
