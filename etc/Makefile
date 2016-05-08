@@ -154,6 +154,8 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/rc.d
+	mkdir -p ${DESTDIR}/var/run/sem
+	chmod 1777 ${DESTDIR}/var/run/sem
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
 	cd ${UPGRADE_SRCDIR}/devd; ${MAKE} install
 	# "../share/termcap/make etc-termcap" expanded inline here:
