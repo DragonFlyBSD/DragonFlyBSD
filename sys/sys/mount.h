@@ -33,8 +33,9 @@
 #ifndef _SYS_MOUNT_H_
 #define _SYS_MOUNT_H_
 
-#include <sys/ucred.h>
+#include <sys/queue.h>
 #include <sys/tree.h>
+#include <sys/ucred.h>
 
 #ifndef _KERNEL
 #if !defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE)
@@ -43,9 +44,6 @@
 #endif /* !_KERNEL */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
 #endif
@@ -456,9 +454,6 @@ struct nfs_public {
  * type of filesystem supported by the kernel. These are searched at
  * mount time to identify the requested filesystem.
  */
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
 struct vfsconf {
 	struct	vfsops *vfc_vfsops;	/* filesystem operations vector */
 	char	vfc_name[MFSNAMELEN];	/* filesystem type name */

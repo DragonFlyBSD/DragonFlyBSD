@@ -69,9 +69,6 @@ typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
  * kernel nor the user version.
  */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#ifndef _MACHINE_THREAD_H_
-#include <machine/thread.h>		/* md_thread */
-#endif
 #ifndef _MACHINE_FRAME_H_
 #include <machine/frame.h>
 #endif
