@@ -364,18 +364,17 @@ struct radeon_fence_driver {
 	/* sync_seq is protected by ring emission lock */
 	uint64_t			sync_seq[RADEON_NUM_RINGS];
 	atomic64_t			last_seq;
-	bool				initialized, delayed_irq;
+	bool				initialized;
 	struct delayed_work		lockup_work;
 };
 
 struct radeon_fence {
 	struct radeon_device		*rdev;
 	unsigned int			kref;
+	/* protected by radeon_fence.lock */
 	uint64_t			seq;
 	/* RB, DMA, etc. */
 	unsigned			ring;
-
-	wait_queue_t			fence_wake;
 };
 
 int radeon_fence_driver_start_ring(struct radeon_device *rdev, int ring);
@@ -794,7 +793,6 @@ struct radeon_irq {
 int radeon_irq_kms_init(struct radeon_device *rdev);
 void radeon_irq_kms_fini(struct radeon_device *rdev);
 void radeon_irq_kms_sw_irq_get(struct radeon_device *rdev, int ring);
-bool radeon_irq_kms_sw_irq_get_delayed(struct radeon_device *rdev, int ring);
 void radeon_irq_kms_sw_irq_put(struct radeon_device *rdev, int ring);
 void radeon_irq_kms_pflip_irq_get(struct radeon_device *rdev, int crtc);
 void radeon_irq_kms_pflip_irq_put(struct radeon_device *rdev, int crtc);
@@ -2361,7 +2359,7 @@ struct radeon_device {
 	struct radeon_rlc rlc;
 	struct radeon_mec mec;
 	struct taskqueue *tq;
-	struct work_struct hotplug_work;
+	struct task hotplug_work;
 	struct task audio_work;
 	int num_crtc; /* number of crtcs */
 	struct lock dc_hw_i2c_mutex; /* display controller hw i2c mutex */

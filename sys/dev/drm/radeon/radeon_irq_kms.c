@@ -42,7 +42,7 @@
 /**
  * radeon_driver_irq_handler_kms - irq handler for KMS
  *
- * @int irq, void *arg: args
+ * @void *arg: args
  *
  * This is the irq handler for the radeon KMS driver (all asics).
  * radeon_irq_process is a macro that points to the per-asic
@@ -78,10 +78,9 @@ irqreturn_t radeon_driver_irq_handler_kms(void *arg)
  * and calls the hotplug handler for each one, then sends
  * a drm hotplug event to alert userspace.
  */
-static void radeon_hotplug_work_func(struct work_struct *work)
+static void radeon_hotplug_work_func(void *arg, int pending)
 {
-	struct radeon_device *rdev = container_of(work, struct radeon_device,
-						  hotplug_work);
+	struct radeon_device *rdev = arg;
 	struct drm_device *dev = rdev->ddev;
 	struct drm_mode_config *mode_config = &dev->mode_config;
 	struct drm_connector *connector;
@@ -266,14 +265,16 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	/* enable msi */
 	rdev->msi_enabled = (rdev->ddev->irq_type == PCI_INTR_TYPE_MSI);
 
-	INIT_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
+	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
 	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
 
 	rdev->irq.installed = true;
+	DRM_UNLOCK(rdev->ddev);
 	r = drm_irq_install(rdev->ddev, rdev->ddev->irq);
+	DRM_LOCK(rdev->ddev);
 	if (r) {
 		rdev->irq.installed = false;
-		flush_work(&rdev->hotplug_work);
+		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
 		return r;
 	}
 
@@ -294,7 +295,7 @@ void radeon_irq_kms_fini(struct radeon_device *rdev)
 	if (rdev->irq.installed) {
 		drm_irq_uninstall(rdev->ddev);
 		rdev->irq.installed = false;
-		flush_work(&rdev->hotplug_work);
+		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
 	}
 }
 
@@ -330,10 +331,12 @@ void radeon_irq_kms_sw_irq_get(struct radeon_device *rdev, int ring)
  * The software interrupt is generally used to signal a fence on
  * a particular ring.
  */
+#ifdef TODO_954605c
 bool radeon_irq_kms_sw_irq_get_delayed(struct radeon_device *rdev, int ring)
 {
 	return atomic_inc_return(&rdev->irq.ring_int[ring]) == 1;
 }
+#endif
 
 /**
  * radeon_irq_kms_sw_irq_put - disable software interrupt

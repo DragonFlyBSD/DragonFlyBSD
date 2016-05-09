@@ -6689,7 +6689,7 @@ restart_ih:
 		WREG32(IH_RB_RPTR, rptr);
 	}
 	if (queue_hotplug)
-		schedule_work(&rdev->hotplug_work);
+		taskqueue_enqueue(rdev->tq, &rdev->hotplug_work);
 	if (queue_thermal && rdev->pm.dpm_enabled)
 		taskqueue_enqueue(rdev->tq, &rdev->pm.dpm.thermal.work);
 	rdev->ih.rptr = rptr;

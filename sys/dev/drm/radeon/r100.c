@@ -796,7 +796,7 @@ irqreturn_t r100_irq_process(struct radeon_device *rdev)
 		status = r100_irq_ack(rdev);
 	}
 	if (queue_hotplug)
-		schedule_work(&rdev->hotplug_work);
+		taskqueue_enqueue(rdev->tq, &rdev->hotplug_work);
 	if (rdev->msi_enabled) {
 		switch (rdev->family) {
 		case CHIP_RS400:
