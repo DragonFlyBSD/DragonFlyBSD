@@ -2237,6 +2237,36 @@ out:
 	return err;
 }
 
+/**
+ * cik_fini_microcode - drop the firmwares image references
+ *
+ * @rdev: radeon_device pointer
+ *
+ * Drop the pfp, me, mec, mec2, rlc, sdma, mc, smc and ce firmware image references.
+ * Called at driver shutdown.
+ */
+static void cik_fini_microcode(struct radeon_device *rdev)
+{
+	release_firmware(rdev->pfp_fw);
+	rdev->pfp_fw = NULL;
+	release_firmware(rdev->me_fw);
+	rdev->me_fw = NULL;
+	release_firmware(rdev->ce_fw);
+	rdev->ce_fw = NULL;
+	release_firmware(rdev->mec_fw);
+	rdev->mec_fw = NULL;
+	release_firmware(rdev->mec2_fw);
+	rdev->mec2_fw = NULL;
+	release_firmware(rdev->rlc_fw);
+	rdev->rlc_fw = NULL;
+	release_firmware(rdev->sdma_fw);
+	rdev->sdma_fw = NULL;
+	release_firmware(rdev->mc_fw);
+	rdev->mc_fw = NULL;
+	release_firmware(rdev->smc_fw);
+	rdev->smc_fw = NULL;
+}
+
 /*
  * Core functions
  */
@@ -8769,6 +8799,7 @@ void cik_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
+	cik_fini_microcode(rdev);
 	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
