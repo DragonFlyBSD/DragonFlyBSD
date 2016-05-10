@@ -2183,13 +2183,13 @@ dev/drm/radeon/rv6xx_dpm.c		optional radeon drm
 dev/drm/radeon/rv730_dpm.c		optional radeon drm
 dev/drm/radeon/rv740_dpm.c		optional radeon drm
 dev/drm/radeon/rv770.c			optional radeon drm
-dev/drm/radeon/rv770_dpm.c		optional radeon drm
 dev/drm/radeon/rv770_dma.c		optional radeon drm
+dev/drm/radeon/rv770_dpm.c		optional radeon drm
 dev/drm/radeon/rv770_smc.c		optional radeon drm
 dev/drm/radeon/si.c			optional radeon drm
 dev/drm/radeon/si_blit_shaders.c	optional radeon drm
-dev/drm/radeon/si_dpm.c			optional radeon drm
 dev/drm/radeon/si_dma.c			optional radeon drm
+dev/drm/radeon/si_dpm.c			optional radeon drm
 dev/drm/radeon/si_smc.c			optional radeon drm
 dev/drm/radeon/sumo_dpm.c		optional radeon drm
 dev/drm/radeon/sumo_smc.c		optional radeon drm
