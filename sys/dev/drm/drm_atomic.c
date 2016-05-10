@@ -1298,6 +1298,18 @@ int drm_atomic_async_commit(struct drm_atomic_state *state)
 }
 EXPORT_SYMBOL(drm_atomic_async_commit);
 
+#ifdef __DragonFly__
+/*
+ * The Linux layer version of kfree() is a macro and can't be called
+ * directly via a function pointer
+ */
+static void
+drm_atomic_event_destroy(struct drm_pending_event *e)
+{
+	kfree(e);
+}
+#endif
+
 /*
  * The big monstor ioctl
  */
@@ -1328,7 +1340,11 @@ static struct drm_pending_vblank_event *create_vblank_event(
 	e->event.user_data = user_data;
 	e->base.event = &e->event.base;
 	e->base.file_priv = file_priv;
+#ifdef __DragonFly__
+	e->base.destroy = drm_atomic_event_destroy;
+#else
 	e->base.destroy = (void (*) (struct drm_pending_event *)) kfree;
+#endif
 
 out:
 	return e;

@@ -1482,6 +1482,10 @@ int drm_modeset_ctl(struct drm_device *dev, void *data,
 }
 
 #ifdef __DragonFly__
+/*
+ * The Linux layer version of kfree() is a macro and can't be called
+ * directly via a function pointer
+ */
 static void
 drm_vblank_event_destroy(struct drm_pending_event *e)
 {
@@ -1512,7 +1516,11 @@ static int drm_queue_vblank_event(struct drm_device *dev, unsigned int pipe,
 	e->event.user_data = vblwait->request.signal;
 	e->base.event = &e->event.base;
 	e->base.file_priv = file_priv;
+#ifdef __DragonFly__
 	e->base.destroy = drm_vblank_event_destroy;
+#else
+	e->base.destroy = (void (*) (struct drm_pending_event *)) kfree;
+#endif
 
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 
