@@ -137,6 +137,7 @@ static bool radeon_read_platform_bios(struct radeon_device *rdev)
 	return true;
 }
 
+#ifdef CONFIG_ACPI
 /* ATRM is used to get the BIOS on the discrete cards in
  * dual-gpu systems.
  */
@@ -268,6 +269,12 @@ static bool radeon_atrm_get_bios(struct radeon_device *rdev)
 	}
 	return true;
 }
+#else
+static inline bool radeon_atrm_get_bios(struct radeon_device *rdev)
+{
+	return false;
+}
+#endif
 
 static bool ni_read_disabled_bios(struct radeon_device *rdev)
 {
@@ -630,6 +637,7 @@ static bool radeon_read_disabled_bios(struct radeon_device *rdev)
 		return legacy_read_disabled_bios(rdev);
 }
 
+#ifdef CONFIG_ACPI
 static bool radeon_acpi_vfct_bios(struct radeon_device *rdev)
 {
 	bool ret = false;
@@ -688,6 +696,12 @@ static bool radeon_acpi_vfct_bios(struct radeon_device *rdev)
 out_unmap:
 	return ret;
 }
+#else
+static inline bool radeon_acpi_vfct_bios(struct radeon_device *rdev)
+{
+	return false;
+}
+#endif
 
 bool radeon_get_bios(struct radeon_device *rdev)
 {
