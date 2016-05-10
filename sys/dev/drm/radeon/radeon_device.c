@@ -966,6 +966,9 @@ int radeon_atombios_init(struct radeon_device *rdev)
 void radeon_atombios_fini(struct radeon_device *rdev)
 {
 	if (rdev->mode_info.atom_context) {
+		/* prevents leaking 512 bytes */
+		kfree(rdev->mode_info.atom_context->iio);
+
 		kfree(rdev->mode_info.atom_context->scratch);
 	}
 	kfree(rdev->mode_info.atom_context);

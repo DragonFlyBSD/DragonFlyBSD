@@ -1497,7 +1497,16 @@ static void radeon_pm_fini_dpm(struct radeon_device *rdev)
 	}
 	radeon_dpm_fini(rdev);
 
-	kfree(rdev->pm.power_state);
+	/* prevents leaking 440 bytes on OLAND */
+	if (rdev->pm.power_state) {
+		int i;
+		for (i = 0; i < rdev->pm.num_power_states; ++i) {
+			kfree(rdev->pm.power_state[i].clock_info);
+		}
+		kfree(rdev->pm.power_state);
+		rdev->pm.power_state = NULL;
+		rdev->pm.num_power_states = 0;
+	}
 
 	radeon_hwmon_fini(rdev);
 }

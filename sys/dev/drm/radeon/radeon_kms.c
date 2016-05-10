@@ -59,9 +59,6 @@ int radeon_driver_unload_kms(struct drm_device *dev)
 {
 	struct radeon_device *rdev = dev->dev_private;
 
-	/* XXX pending drm update */
-	drm_fini_pdev(&dev->pdev);
-
 	if (rdev == NULL)
 		return 0;
 
@@ -77,6 +74,8 @@ int radeon_driver_unload_kms(struct drm_device *dev)
 	radeon_device_fini(rdev);
 
 done_free:
+	/* XXX pending drm update, after this accessing pdev is illegal! */
+	drm_fini_pdev(&dev->pdev);
 	kfree(rdev);
 	dev->dev_private = NULL;
 	return 0;
