@@ -35,7 +35,6 @@
 #ifndef _GPIO_ACPIVAR_H
 #define _GPIO_ACPIVAR_H
 
-void *gpio_acpi_register(device_t dev);
-void gpio_acpi_unregister(device_t dev, void *arg);
+/* XXX */
 
 #endif

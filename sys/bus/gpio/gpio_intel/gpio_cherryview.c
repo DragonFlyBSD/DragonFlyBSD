@@ -41,7 +41,6 @@
 #include <sys/module.h>
 #include <sys/errno.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/bus.h>
 
 #include <sys/rman.h>

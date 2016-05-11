@@ -41,7 +41,6 @@
 #include <sys/module.h>
 #include <sys/errno.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/bus.h>
 
 #include <sys/rman.h>
@@ -51,8 +50,6 @@
 #include <dev/acpica/acpivar.h>
 
 #include <bus/pci/pcivar.h>
-
-#include <bus/gpio/gpio_acpi/gpio_acpivar.h>
 
 #include "gpio_intel_var.h"
 
@@ -151,7 +148,8 @@ gpio_intel_attach(device_t dev)
 	sc->fns->init(sc);
 	lockmgr(&sc->lk, LK_RELEASE);
 
-	sc->acpireg = gpio_acpi_register(dev);
+	device_add_child(dev, "gpio_acpi", -1);
+	bus_generic_attach(dev);
 
 	return (0);
 
@@ -173,8 +171,13 @@ static int
 gpio_intel_detach(device_t dev)
 {
 	struct gpio_intel_softc *sc = device_get_softc(dev);
+	int error;
 
-	gpio_acpi_unregister(dev, sc->acpireg);
+	error = bus_generic_detach(dev);
+	if (error)
+		return (error);
+
+	device_delete_children(dev);
 
 	bus_teardown_intr(dev, sc->irq_res, sc->intrhand);
 	if (sc->irq_res) {

@@ -30,7 +30,6 @@ struct gpio_intel_softc {
 	struct pinrange *ranges;
 	struct pin_intr_map intrmaps[16];
 	struct pin_io_map iomaps[128];
-	void		*acpireg;
 	struct gpio_intel_fns *fns;
 };
 

@@ -32,13 +32,14 @@
  * SUCH DAMAGE.
  */
 
+/* Register GPIO device with ACPICA for ACPI-5.0 GPIO functionality */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/errno.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/bus.h>
 
 #include "opt_acpi.h"
@@ -61,11 +62,17 @@ struct acpi_gpio_handler_data {
 	device_t dev;
 };
 
-struct gpio_acpi_data {
+struct gpio_acpi_softc {
+	device_t dev;
+	device_t parent;
 	struct acpi_event_info *infos;
 	int num_aei;
 	struct acpi_gpio_handler_data space_handler_data;
 };
+
+static int	gpio_acpi_probe(device_t dev);
+static int	gpio_acpi_attach(device_t dev);
+static int	gpio_acpi_detach(device_t dev);
 
 static BOOLEAN	gpio_acpi_check_gpioint(device_t dev, ACPI_RESOURCE_GPIO *gpio);
 static void	**gpioio_alloc_pins(device_t dev, device_t provider,
@@ -73,57 +80,27 @@ static void	**gpioio_alloc_pins(device_t dev, device_t provider,
 		    void **buf);
 
 /* GPIO Address Space Handler */
-static void		gpio_acpi_install_address_space_handler(device_t dev,
-			    struct acpi_gpio_handler_data *data);
-static void		gpio_acpi_remove_address_space_handler(device_t dev,
-			    struct acpi_gpio_handler_data *data);
+static void		gpio_acpi_install_address_space_handler(
+			    struct gpio_acpi_softc *sc);
+static void		gpio_acpi_remove_address_space_handler(
+			    struct gpio_acpi_softc *sc);
 static ACPI_STATUS	gpio_acpi_space_handler(UINT32 Function,
 			    ACPI_PHYSICAL_ADDRESS Address, UINT32 BitWidth,
 			    UINT64 *Value, void *HandlerContext,
 			    void *RegionContext);
 
 /* ACPI Event Interrupts */
-static void	gpio_acpi_do_map_aei(device_t dev,
-		    struct acpi_event_info *info, ACPI_RESOURCE_GPIO *gpio);
-static void	*gpio_acpi_map_aei(device_t dev, int *num_aei);
-static void	gpio_acpi_unmap_aei(device_t dev, struct gpio_acpi_data *data);
+static void	gpio_acpi_do_map_aei(struct gpio_acpi_softc *sc,
+		    ACPI_RESOURCE_GPIO *gpio);
+static void	gpio_acpi_map_aei(struct gpio_acpi_softc *sc);
+static void	gpio_acpi_unmap_aei(struct gpio_acpi_softc *sc);
 static void	gpio_acpi_handle_event(void *Context);
 static void	gpio_acpi_aei_handler(void *arg);
-
-/* Register GPIO device with ACPICA for ACPI-5.0 GPIO functionality */
-void *
-gpio_acpi_register(device_t dev)
-{
-	struct gpio_acpi_data *data;
-
-	data = kmalloc(sizeof(*data), M_DEVBUF, M_WAITOK | M_ZERO);
-
-	gpio_acpi_install_address_space_handler(dev,
-	    &data->space_handler_data);
-
-	data->infos = gpio_acpi_map_aei(dev, &data->num_aei);
-
-	return data;
-}
-
-void
-gpio_acpi_unregister(device_t dev, void *arg)
-{
-	struct gpio_acpi_data *data = (struct gpio_acpi_data *)arg;
-
-	if (data->infos != NULL)
-		gpio_acpi_unmap_aei(dev, data);
-
-	gpio_acpi_remove_address_space_handler(dev, &data->space_handler_data);
-
-	kfree(data, M_DEVBUF);
-}
 
 /* Sanity-Check for GpioInt resources */
 static BOOLEAN
 gpio_acpi_check_gpioint(device_t dev, ACPI_RESOURCE_GPIO *gpio)
 {
-
 	if (gpio->PinTableLength != 1) {
 		device_printf(dev,
 		    "Unexepcted GpioInt resource PinTableLength %d\n",
@@ -205,34 +182,33 @@ err:
  */
 
 static void
-gpio_acpi_install_address_space_handler(device_t dev,
-    struct acpi_gpio_handler_data *data)
+gpio_acpi_install_address_space_handler(struct gpio_acpi_softc *sc)
 {
+	struct acpi_gpio_handler_data *data = &sc->space_handler_data;
 	ACPI_HANDLE handle;
 	ACPI_STATUS s;
 
-	handle = acpi_get_handle(dev);
-	data->dev = dev;
+	handle = acpi_get_handle(sc->parent);
+	data->dev = sc->parent;
 	s = AcpiInstallAddressSpaceHandler(handle, ACPI_ADR_SPACE_GPIO,
 	    &gpio_acpi_space_handler, NULL, data);
 	if (ACPI_FAILURE(s)) {
-		device_printf(dev,
+		device_printf(sc->dev,
 		    "Failed to install GPIO Address Space Handler in ACPI\n");
 	}
 }
 
 static void
-gpio_acpi_remove_address_space_handler(device_t dev,
-    struct acpi_gpio_handler_data *data)
+gpio_acpi_remove_address_space_handler(struct gpio_acpi_softc *sc)
 {
 	ACPI_HANDLE handle;
 	ACPI_STATUS s;
 
-	handle = acpi_get_handle(dev);
+	handle = acpi_get_handle(sc->parent);
 	s = AcpiRemoveAddressSpaceHandler(handle, ACPI_ADR_SPACE_GPIO,
 	    &gpio_acpi_space_handler);
 	if (ACPI_FAILURE(s)) {
-		device_printf(dev,
+		device_printf(sc->dev,
 		    "Failed to remove GPIO Address Space Handler from ACPI\n");
 	}
 }
@@ -337,7 +313,7 @@ gpio_acpi_handle_event(void *Context)
 	ACPI_STATUS s;
 	char buf[5];
 
-	handle = acpi_get_handle(info->dev);
+	handle = acpi_get_handle(device_get_parent(info->dev));
 	if (info->trigger == ACPI_EDGE_SENSITIVE) {
 		ksnprintf(buf, sizeof(buf), "_E%02X", info->pin);
 	} else {
@@ -375,110 +351,169 @@ gpio_acpi_aei_handler(void *arg)
 }
 
 static void
-gpio_acpi_do_map_aei(device_t dev, struct acpi_event_info *info,
-    ACPI_RESOURCE_GPIO *gpio)
+gpio_acpi_do_map_aei(struct gpio_acpi_softc *sc, ACPI_RESOURCE_GPIO *gpio)
 {
+	struct acpi_event_info *info = &sc->infos[sc->num_aei];
 	uint16_t pin;
 	void *cookie;
 
 	if (gpio->ConnectionType != ACPI_RESOURCE_GPIO_TYPE_INT) {
-		device_printf(dev, "Unexpected gpio type %d\n",
+		device_printf(sc->dev, "Unexpected gpio type %d\n",
 		    gpio->ConnectionType);
 		return;
 	}
 
-	if (!gpio_acpi_check_gpioint(dev, gpio))
+	/* sc->dev is correct here, since it's only used for device_printf */
+	if (!gpio_acpi_check_gpioint(sc->dev, gpio))
 		return;
 
 	pin = gpio->PinTable[0];
 
-	if (GPIO_ALLOC_INTR(dev, pin, gpio->Triggering, gpio->Polarity,
+	if (GPIO_ALLOC_INTR(sc->parent, pin, gpio->Triggering, gpio->Polarity,
 	    gpio->PinConfig, &cookie) != 0) {
-		device_printf(dev,
+		device_printf(sc->dev,
 		    "Failed to allocate AEI interrupt on pin %d\n", pin);
 		return;
 	}
 
-	info->dev = dev;
+	info->dev = sc->dev;
 	info->pin = pin;
 	info->trigger = gpio->Triggering;
 	info->cookie = cookie;
 
-	GPIO_SETUP_INTR(dev, cookie, info, gpio_acpi_aei_handler);
+	GPIO_SETUP_INTR(sc->parent, cookie, info, gpio_acpi_aei_handler);
+	sc->num_aei++;
 }
 
 /* Map ACPI events */
-static void *
-gpio_acpi_map_aei(device_t dev, int *num_aei)
+static void
+gpio_acpi_map_aei(struct gpio_acpi_softc *sc)
 {
-	ACPI_HANDLE handle = acpi_get_handle(dev);
+	ACPI_HANDLE handle = acpi_get_handle(sc->parent);
 	ACPI_RESOURCE_GPIO *gpio;
 	ACPI_RESOURCE *res, *end;
 	ACPI_BUFFER b;
 	ACPI_STATUS s;
-	struct acpi_event_info *infos = NULL;
 	int n;
 
-	*num_aei = 0;
+	sc->infos = NULL;
+	sc->num_aei = 0;
 
 	b.Pointer = NULL;
 	b.Length = ACPI_ALLOCATE_BUFFER;
 	s = AcpiGetEventResources(handle, &b);
-	if (ACPI_SUCCESS(s)) {
-		end = (ACPI_RESOURCE *)((char *)b.Pointer + b.Length);
-		/* Count Gpio connections */
-		n = 0;
-		for (res = (ACPI_RESOURCE *)b.Pointer; res < end;
-		    res = ACPI_NEXT_RESOURCE(res)) {
-			if (res->Type == ACPI_RESOURCE_TYPE_END_TAG) {
-				break;
-			} else if (res->Type == ACPI_RESOURCE_TYPE_GPIO) {
-				n++;
-			} else {
-				device_printf(dev,
-				    "Unexpected resource type %d\n",
-				    res->Type);
-			}
+	if (ACPI_FAILURE(s))
+		return;
+
+	end = (ACPI_RESOURCE *)((char *)b.Pointer + b.Length);
+	/* Count Gpio connections */
+	n = 0;
+	for (res = (ACPI_RESOURCE *)b.Pointer; res < end;
+	    res = ACPI_NEXT_RESOURCE(res)) {
+		if (res->Type == ACPI_RESOURCE_TYPE_END_TAG) {
+			break;
+		} else if (res->Type == ACPI_RESOURCE_TYPE_GPIO) {
+			n++;
+		} else {
+			device_printf(sc->dev, "Unexpected resource type %d\n",
+			    res->Type);
 		}
-		if (n <= 0) {
-			AcpiOsFree(b.Pointer);
-			return (infos);
-		}
-		infos = kmalloc(n*sizeof(*infos), M_DEVBUF, M_WAITOK | M_ZERO);
-		*num_aei = n;
-		n = 0;
-		for (res = (ACPI_RESOURCE *)b.Pointer; res < end;
-		    res = ACPI_NEXT_RESOURCE(res)) {
-			if (res->Type == ACPI_RESOURCE_TYPE_END_TAG)
-				break;
-			if (res->Type == ACPI_RESOURCE_TYPE_GPIO) {
-				gpio = (ACPI_RESOURCE_GPIO *)&res->Data;
-				gpio_acpi_do_map_aei(dev, &infos[n++], gpio);
-			}
-		}
-		AcpiOsFree(b.Pointer);
 	}
-	return (infos);
+	if (n <= 0) {
+		AcpiOsFree(b.Pointer);
+		return;
+	}
+	sc->infos = kmalloc(n*sizeof(*sc->infos), M_DEVBUF, M_WAITOK | M_ZERO);
+	for (res = (ACPI_RESOURCE *)b.Pointer; res < end && sc->num_aei < n;
+	    res = ACPI_NEXT_RESOURCE(res)) {
+		if (res->Type == ACPI_RESOURCE_TYPE_END_TAG)
+			break;
+		if (res->Type == ACPI_RESOURCE_TYPE_GPIO) {
+			gpio = (ACPI_RESOURCE_GPIO *)&res->Data;
+			gpio_acpi_do_map_aei(sc, gpio);
+		}
+	}
+	AcpiOsFree(b.Pointer);
 }
 
 /*  Unmap ACPI events */
 static void
-gpio_acpi_unmap_aei(device_t dev, struct gpio_acpi_data *data)
+gpio_acpi_unmap_aei(struct gpio_acpi_softc *sc)
 {
 	struct acpi_event_info *info;
 	int i;
 
-	for (i = 0; i < data->num_aei; i++) {
-		info = &data->infos[i];
-		if (info->dev != NULL) {
-			GPIO_TEARDOWN_INTR(dev, info->cookie);
-			GPIO_FREE_INTR(dev, info->cookie);
-			/* XXX Wait until ACPI Event handler has finished */
-			memset(info, 0, sizeof(*info));
-		}
+	for (i = 0; i < sc->num_aei; i++) {
+		info = &sc->infos[i];
+		KKASSERT(info->dev != NULL);
+		GPIO_TEARDOWN_INTR(sc->parent, info->cookie);
+		GPIO_FREE_INTR(sc->parent, info->cookie);
+		/* XXX Wait until ACPI Event handler has finished */
+		memset(info, 0, sizeof(*info));
 	}
-	kfree(data->infos, M_DEVBUF);
+	kfree(sc->infos, M_DEVBUF);
+	sc->infos = NULL;
+	sc->num_aei = 0;
 }
 
+static int
+gpio_acpi_probe(device_t dev)
+{
+	if (acpi_get_handle(device_get_parent(dev)) == NULL)
+		return (ENXIO);
+
+	device_set_desc(dev, "ACPI GeneralPurposeIo backend");
+
+	return (0);
+}
+
+static int
+gpio_acpi_attach(device_t dev)
+{
+	struct gpio_acpi_softc *sc = device_get_softc(dev);
+
+	sc->dev = dev;
+	sc->parent = device_get_parent(dev);
+
+	gpio_acpi_install_address_space_handler(sc);
+
+	gpio_acpi_map_aei(sc);
+
+	return (0);
+}
+
+static int
+gpio_acpi_detach(device_t dev)
+{
+	struct gpio_acpi_softc *sc = device_get_softc(dev);
+
+	if (sc->infos != NULL)
+		gpio_acpi_unmap_aei(sc);
+
+	gpio_acpi_remove_address_space_handler(sc);
+
+	return (0);
+}
+
+
+static device_method_t gpio_acpi_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe, gpio_acpi_probe),
+	DEVMETHOD(device_attach, gpio_acpi_attach),
+	DEVMETHOD(device_detach, gpio_acpi_detach),
+
+	DEVMETHOD_END
+};
+
+static driver_t gpio_acpi_driver = {
+	"gpio_acpi",
+	gpio_acpi_methods,
+	sizeof(struct gpio_acpi_softc)
+};
+
+static devclass_t gpio_acpi_devclass;
+
+DRIVER_MODULE(gpio_acpi, gpio_intel, gpio_acpi_driver, gpio_acpi_devclass,
+    NULL, NULL);
 MODULE_DEPEND(gpio_acpi, acpi, 1, 1, 1);
 MODULE_VERSION(gpio_acpi, 1);
