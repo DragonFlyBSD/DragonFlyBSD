@@ -35,6 +35,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/systm.h> 
 #include <sys/proc.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/condvar.h>
 
 #include <sys/socket.h>
@@ -71,7 +72,6 @@ __FBSDID("$FreeBSD$");
 void
 ieee80211_scan_attach(struct ieee80211com *ic)
 {
-
 	/*
 	 * If there's no scan method pointer, attach the
 	 * swscan set as a default.
@@ -122,6 +122,7 @@ void
 ieee80211_scan_vattach(struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
+
 	vap->iv_bgscanidle = (IEEE80211_BGSCAN_IDLE_DEFAULT*1000)/hz;
 	vap->iv_bgscanintvl = IEEE80211_BGSCAN_INTVAL_DEFAULT*hz;
 	vap->iv_scanvalid = IEEE80211_SCAN_VALID_DEFAULT*hz;
@@ -452,8 +453,9 @@ ieee80211_cancel_anyscan(struct ieee80211vap *vap)
 }
 
 /*
- * Public access to scan_next for drivers that manage
- * scanning themselves (e.g. for firmware-based devices).
+ * Manually switch to the next channel in the channel list.
+ * Provided for drivers that manage scanning themselves
+ * (e.g. for firmware-based devices).
  */
 void
 ieee80211_scan_next(struct ieee80211vap *vap)
@@ -464,8 +466,9 @@ ieee80211_scan_next(struct ieee80211vap *vap)
 }
 
 /*
- * Public access to scan_next for drivers that are not able to scan single
- * channels (e.g. for firmware-based devices).
+ * Manually stop a scan that is currently running.
+ * Provided for drivers that are not able to scan single channels
+ * (e.g. for firmware-based devices).
  */
 void
 ieee80211_scan_done(struct ieee80211vap *vap)
@@ -485,7 +488,7 @@ ieee80211_scan_done(struct ieee80211vap *vap)
 }
 
 /*
- * Probe the curent channel, if allowed, while scanning.
+ * Probe the current channel, if allowed, while scanning.
  * If the channel is not marked passive-only then send
  * a probe request immediately.  Otherwise mark state and
  * listen for beacons on the channel; if we receive something
@@ -538,8 +541,7 @@ ieee80211_scan_dump_probe_beacon(uint8_t subtype, int isnew,
 
 	kprintf("[%s] %s%s on chan %u (bss chan %u) ",
 	    ether_sprintf(mac), isnew ? "new " : "",
-	    ieee80211_mgt_subtype_name[subtype >> IEEE80211_FC0_SUBTYPE_SHIFT],
-	    sp->chan, sp->bchan);
+	    ieee80211_mgt_subtype_name(subtype), sp->chan, sp->bchan);
 	ieee80211_print_essid(sp->ssid + 2, sp->ssid[1]);
 	kprintf(" rssi %d\n", rssi);
 

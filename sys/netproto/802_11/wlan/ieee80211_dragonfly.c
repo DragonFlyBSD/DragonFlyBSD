@@ -78,66 +78,29 @@ static struct if_clone wlan_cloner =
 
 struct lwkt_serialize wlan_global_serializer = LWKT_SERIALIZE_INITIALIZER;
 
-/*
- * Allocate/free com structure in conjunction with ifnet;
- * these routines are registered with if_register_com_alloc
- * below and are called automatically by the ifnet code
- * when the ifnet of the parent device is created.
- */
-static void *
-wlan_alloc(u_char type, struct ifnet *ifp)
-{
-	struct ieee80211com *ic;
-
-	ic = kmalloc(sizeof(struct ieee80211com), M_80211_COM, M_WAITOK|M_ZERO);
-	ic->ic_ifp = ifp;
-
-	return (ic);
-}
-
-static void
-wlan_free(void *ic, u_char type)
-{
-	kfree(ic, M_80211_COM);
-}
-
 static int
 wlan_clone_create(struct if_clone *ifc, int unit, caddr_t params)
 {
 	struct ieee80211_clone_params cp;
 	struct ieee80211vap *vap;
 	struct ieee80211com *ic;
-	struct ifnet *ifp;
 	int error;
 
 	error = copyin(params, &cp, sizeof(cp));
 	if (error)
 		return error;
 
-	ifnet_lock();
-
-	ifp = ifunit(cp.icp_parent);
-	if (ifp == NULL) {
-		ifnet_unlock();
+	ic = ieee80211_find_com(cp.icp_parent);
+	if (ic == NULL)
 		return ENXIO;
-	}
-	/* XXX move printfs to DIAGNOSTIC before release */
-	if (ifp->if_type != IFT_IEEE80211) {
-		if_printf(ifp, "%s: reject, not an 802.11 device\n", __func__);
-		ifnet_unlock();
-		return ENXIO;
-	}
 	if (cp.icp_opmode >= IEEE80211_OPMODE_MAX) {
-		if_printf(ifp, "%s: invalid opmode %d\n",
-		    __func__, cp.icp_opmode);
-		ifnet_unlock();
+		ic_printf(ic, "%s: invalid opmode %d\n", __func__,
+		    cp.icp_opmode);
 		return EINVAL;
 	}
-	ic = ifp->if_l2com;
 	if ((ic->ic_caps & ieee80211_opcap[cp.icp_opmode]) == 0) {
-		if_printf(ifp, "%s mode not supported\n",
+		ic_printf(ic, "%s mode not supported\n",
 		    ieee80211_opmode_name[cp.icp_opmode]);
-		ifnet_unlock();
 		return EOPNOTSUPP;
 	}
 	if ((cp.icp_flags & IEEE80211_CLONE_TDMA) &&
@@ -147,16 +110,14 @@ wlan_clone_create(struct if_clone *ifc, int unit, caddr_t params)
 	    (1)
 #endif
 	) {
-		if_printf(ifp, "TDMA not supported\n");
-		ifnet_unlock();
+		ic_printf(ic, "TDMA not supported\n");
 		return EOPNOTSUPP;
 	}
 	vap = ic->ic_vap_create(ic, ifc->ifc_name, unit,
 			cp.icp_opmode, cp.icp_flags, cp.icp_bssid,
 			cp.icp_flags & IEEE80211_CLONE_MACADDR ?
-			    cp.icp_macaddr : (const uint8_t *)IF_LLADDR(ifp));
+			    cp.icp_macaddr : ic->ic_macaddr);
 
-	ifnet_unlock();
 
 	return (vap == NULL ? EIO : 0);
 }
@@ -277,6 +238,44 @@ wlan_cv_signal(struct cv *cv, int broadcast)
 #endif
 
 /*
+ * Add RX parameters to the given mbuf.
+ *
+ * Returns 1 if OK, 0 on error.
+ */
+int
+ieee80211_add_rx_params(struct mbuf *m, const struct ieee80211_rx_stats *rxs)
+{
+	struct m_tag *mtag;
+	struct ieee80211_rx_params *rx;
+
+	mtag = m_tag_alloc(MTAG_ABI_NET80211, NET80211_TAG_RECV_PARAMS,
+		sizeof(struct ieee80211_rx_stats), M_NOWAIT);
+	if (mtag == NULL)
+		return (0);
+
+	rx = (struct ieee80211_rx_params *)(mtag + 1);
+	memcpy(&rx->params, rxs, sizeof(*rxs));
+	m_tag_prepend(m, mtag);
+	return (1);
+}
+
+int
+ieee80211_get_rx_params(struct mbuf *m, struct ieee80211_rx_stats *rxs)
+{
+	struct m_tag *mtag;
+	struct ieee80211_rx_params *rx;
+ 
+	mtag = m_tag_locate(m, MTAG_ABI_NET80211, NET80211_TAG_RECV_PARAMS,
+	    NULL);
+	if (mtag == NULL)
+		return (-1);
+	rx = (struct ieee80211_rx_params *)(mtag + 1);
+	memcpy(rxs, &rx->params, sizeof(*rxs));
+	return (0);
+}
+
+#if 0
+/*
  * Misc
  */
 int
@@ -300,27 +299,30 @@ ieee80211_vap_xmitpkt(struct ieee80211vap *vap, struct mbuf *m)
 
 	return error;
 }
+#endif
 
 int
 ieee80211_parent_xmitpkt(struct ieee80211com *ic, struct mbuf *m)
 {
-	struct ifnet *parent = ic->ic_ifp;
-	struct ifaltq_subque *ifsq = ifq_get_subq_default(&parent->if_snd);
 	int error;
-	int wst;
 
 	/*
 	 * Assert the IC TX lock is held - this enforces the
 	 * processing -> queuing order is maintained
 	 */
 	IEEE80211_TX_LOCK_ASSERT(ic);
+	error = ic->ic_transmit(ic, m);
+	if (error) {
+		struct ieee80211_node *ni;
 
-	error = ifsq_enqueue(ifsq, m, NULL);
-	wst = wlan_serialize_push();
-	parent->if_start(parent, ifsq);
-	wlan_serialize_pop(wst);
+		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
 
-	return error;
+		/* XXX number of fragments */
+		IFNET_STAT_INC(ni->ni_vap->iv_ifp, oerrors, 1);
+		ieee80211_free_node(ni);
+		ieee80211_free_mbuf(m);
+	}
+	return (error);
 }
 
 void
@@ -567,7 +569,7 @@ ieee80211_flush_ifq(struct ifaltq *ifq, struct ieee80211vap *vap)
  */
 #define	MC_ALIGN(m, len)						\
 do {									\
-	(m)->m_data += (MCLBYTES - (len)) &~ (sizeof(long) - 1);	\
+	(m)->m_data += rounddown2(MCLBYTES - (len), sizeof(long));	\
 } while (/* CONSTCOND */ 0)
 
 /*
@@ -1094,27 +1096,17 @@ ether_sprintf(const u_char *buf)
 	return (ptr);
 }
 
+/*
+ * Change MAC address on the vap (if was not started).
+ */
 static void
 wlan_iflladdr_event(void *arg __unused, struct ifnet *ifp)
 {
-	struct ieee80211com *ic = ifp->if_l2com;
-	struct ieee80211vap *vap, *next;
-
-	if (ifp->if_type != IFT_IEEE80211 || ic == NULL) {
-		return;
-	}
-
-	TAILQ_FOREACH_MUTABLE(vap, &ic->ic_vaps, iv_next, next) {
-		/*
-		 * If the MAC address has changed on the parent and it was
-		 * copied to the vap on creation then re-sync.
-		 */
-		if (vap->iv_ic == ic &&
-		    (vap->iv_flags_ext & IEEE80211_FEXT_UNIQMAC) == 0) {
-			IEEE80211_ADDR_COPY(vap->iv_myaddr, IF_LLADDR(ifp));
-			if_setlladdr(vap->iv_ifp, IF_LLADDR(ifp),
-				     IEEE80211_ADDR_LEN);
-		}
+	/* NB: identify vap's by if_init */
+	if (ifp->if_init == ieee80211_init &&
+	    (ifp->if_flags & IFF_UP) == 0) {
+		struct ieee80211vap *vap = ifp->if_softc;
+		IEEE80211_ADDR_COPY(vap->iv_myaddr, IF_LLADDR(ifp));
 	}
 }
 
@@ -1139,11 +1131,9 @@ wlan_modevent(module_t mod, int type, void *unused)
 					wlan_iflladdr_event, NULL,
 					EVENTHANDLER_PRI_ANY);
 		if_clone_attach(&wlan_cloner);
-		if_register_com_alloc(IFT_IEEE80211, wlan_alloc, wlan_free);
 		error = 0;
 		break;
 	case MOD_UNLOAD:
-		if_deregister_com_alloc(IFT_IEEE80211);
 		if_clone_detach(&wlan_cloner);
 		EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
 		EVENTHANDLER_DEREGISTER(iflladdr_event, wlan_ifllevent);

@@ -33,7 +33,9 @@ __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
+#include <sys/sbuf.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 
@@ -74,6 +76,7 @@ static void	amrr_tx_update(const struct ieee80211vap *vap,
 			const struct ieee80211_node *, void *, void *, void *);
 static void	amrr_sysctlattach(struct ieee80211vap *,
 			struct sysctl_ctx_list *, struct sysctl_oid *);
+static void	amrr_node_stats(struct ieee80211_node *ni, struct sbuf *s);
 
 /* number of references from net80211 layer */
 static	int nrefs = 0;
@@ -90,6 +93,7 @@ static const struct ieee80211_ratectl amrr = {
 	.ir_tx_complete	= amrr_tx_complete,
 	.ir_tx_update	= amrr_tx_update,
 	.ir_setinterval	= amrr_setinterval,
+	.ir_node_stats  = amrr_node_stats,
 };
 IEEE80211_RATECTL_MODULE(amrr, 1);
 IEEE80211_RATECTL_ALG(amrr, IEEE80211_RATECTL_AMRR, amrr);
@@ -113,8 +117,13 @@ amrr_init(struct ieee80211vap *vap)
 
 	KASSERT(vap->iv_rs == NULL, ("%s called multiple times", __func__));
 
+#if defined(__DragonFly__)
 	amrr = vap->iv_rs = kmalloc(sizeof(struct ieee80211_amrr),
 	    M_80211_RATECTL, M_INTWAIT|M_ZERO);
+#else
+	amrr = vap->iv_rs = IEEE80211_MALLOC(sizeof(struct ieee80211_amrr),
+	    M_80211_RATECTL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (amrr == NULL) {
 		if_printf(vap->iv_ifp, "couldn't alloc ratectl structure\n");
 		return;
@@ -128,7 +137,7 @@ amrr_init(struct ieee80211vap *vap)
 static void
 amrr_deinit(struct ieee80211vap *vap)
 {
-	kfree(vap->iv_rs, M_80211_RATECTL);
+	IEEE80211_FREE(vap->iv_rs, M_80211_RATECTL);
 }
 
 /*
@@ -160,8 +169,13 @@ amrr_node_init(struct ieee80211_node *ni)
 	uint8_t rate;
 
 	if (ni->ni_rctls == NULL) {
+#if defined(__DragonFly__)
 		ni->ni_rctls = amn = kmalloc(sizeof(struct ieee80211_amrr_node),
 		    M_80211_RATECTL, M_INTWAIT|M_ZERO);
+#else
+		ni->ni_rctls = amn = IEEE80211_MALLOC(sizeof(struct ieee80211_amrr_node),
+		    M_80211_RATECTL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 		if (amn == NULL) {
 			if_printf(vap->iv_ifp, "couldn't alloc per-node ratectl "
 			    "structure\n");
@@ -225,7 +239,7 @@ amrr_node_init(struct ieee80211_node *ni)
 static void
 amrr_node_deinit(struct ieee80211_node *ni)
 {
-	kfree(ni->ni_rctls, M_80211_RATECTL);
+	IEEE80211_FREE(ni->ni_rctls, M_80211_RATECTL);
 }
 
 static int
@@ -408,4 +422,32 @@ amrr_sysctlattach(struct ieee80211vap *vap,
 	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "amrr_min_sucess_threshold", CTLFLAG_RW,
 	    &amrr->amrr_min_success_threshold, 0, "");
+}
+
+static void
+amrr_node_stats(struct ieee80211_node *ni, struct sbuf *s)
+{
+	int rate;
+	struct ieee80211_amrr_node *amn = ni->ni_rctls;
+	struct ieee80211_rateset *rs;
+
+	/* XXX TODO: check locking? */
+
+	/* XXX TODO: this should be a method */
+	if (amrr_node_is_11n(ni)) {
+		rs = (struct ieee80211_rateset *) &ni->ni_htrates;
+		rate = rs->rs_rates[amn->amn_rix] & IEEE80211_RATE_VAL;
+		sbuf_printf(s, "rate: MCS %d\n", rate);
+	} else {
+		rs = &ni->ni_rates;
+		rate = rs->rs_rates[amn->amn_rix] & IEEE80211_RATE_VAL;
+		sbuf_printf(s, "rate: %d Mbit\n", rate / 2);
+	}
+
+	sbuf_printf(s, "ticks: %d\n", amn->amn_ticks);
+	sbuf_printf(s, "txcnt: %u\n", amn->amn_txcnt);
+	sbuf_printf(s, "success: %u\n", amn->amn_success);
+	sbuf_printf(s, "success_threshold: %u\n", amn->amn_success_threshold);
+	sbuf_printf(s, "recovery: %u\n", amn->amn_recovery);
+	sbuf_printf(s, "retry_cnt: %u\n", amn->amn_retrycnt);
 }

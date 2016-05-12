@@ -36,6 +36,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/param.h>
 #include <sys/systm.h> 
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/socket.h>
 
 #include <net/if.h>
@@ -44,7 +45,10 @@ __FBSDID("$FreeBSD$");
 #include <net/if_media.h>
 #include <net/if_types.h>
 #include <net/ethernet.h>
-/*#include <net/vnet.h>*/
+#if defined(__DragonFly__)
+#else
+#include <net/vnet.h>
+#endif
 
 #include <netproto/802_11/ieee80211_var.h>
 #ifdef IEEE80211_SUPPORT_TDMA
@@ -158,7 +162,9 @@ DB_SHOW_COMMAND(com, db_show_com)
 	_db_show_com(ic, showvaps, showsta, showmesh, showprocs);
 }
 
-#if !defined(__DragonFly__)
+#if defined(__DragonFly__)
+/* EMPTY */
+#else
 
 DB_SHOW_ALL_COMMAND(vaps, db_show_all_vaps)
 {
@@ -524,7 +530,7 @@ _db_show_com(const struct ieee80211com *ic, int showvaps, int showsta,
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
 		db_printf(" %s(%p)", vap->iv_ifp->if_xname, vap);
 	db_printf("\n");
-	db_printf("\tifp %p(%s)", ic->ic_ifp, ic->ic_ifp->if_xname);
+	db_printf("\tsoftc %p", ic->ic_softc);
 	db_printf("\tname %s", ic->ic_name);
 	db_printf(" comlock %p", &ic->ic_comlock);
 	db_printf("\n");
@@ -532,7 +538,6 @@ _db_show_com(const struct ieee80211com *ic, int showvaps, int showsta,
 	db_printf(" phytype %d", ic->ic_phytype);
 	db_printf(" opmode %s", ieee80211_opmode_name[ic->ic_opmode]);
 	db_printf("\n");
-	db_printf("\tmedia %p", &ic->ic_media);
 	db_printf(" inact %p", &ic->ic_inact);
 	db_printf("\n");
 
@@ -890,9 +895,14 @@ _db_show_mesh(const struct ieee80211_mesh_state *ms)
 	db_printf("routing table:\n");
 	i = 0;
 	TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
+#if defined(__DragonFly__)
 		db_printf("entry %d:\tdest: %s nexthop: %s metric: %u", i,
 		    ether_sprintf(rt->rt_dest), ether_sprintf(rt->rt_nexthop),
 		    rt->rt_metric);
+#else
+		db_printf("entry %d:\tdest: %6D nexthop: %6D metric: %u", i,
+		    rt->rt_dest, ":", rt->rt_nexthop, ":", rt->rt_metric);
+#endif
 
 		db_printf("\tlifetime: %u lastseq: %u priv: %p\n",
 		    ieee80211_mesh_rt_update(rt, 0),

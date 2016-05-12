@@ -149,8 +149,15 @@ ieee80211_tdma_vattach(struct ieee80211vap *vap)
 	KASSERT(vap->iv_caps & IEEE80211_C_TDMA,
 	     ("not a tdma vap, caps 0x%x", vap->iv_caps));
 
+#if defined(__DragonFly__)
 	ts = (struct ieee80211_tdma_state *) kmalloc(
-	     sizeof(struct ieee80211_tdma_state), M_80211_VAP, M_INTWAIT | M_ZERO);
+		sizeof(struct ieee80211_tdma_state), M_80211_VAP,
+		M_INTWAIT | M_ZERO);
+#else
+	ts = (struct ieee80211_tdma_state *) IEEE80211_MALLOC(
+		sizeof(struct ieee80211_tdma_state), M_80211_VAP,
+		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (ts == NULL) {
 		kprintf("%s: cannot allocate TDMA state block\n", __func__);
 		/* NB: fall back to adhdemo mode */
@@ -199,7 +206,7 @@ tdma_vdetach(struct ieee80211vap *vap)
 		return;
 	}
 	ts->tdma_opdetach(vap);
-	kfree(vap->iv_tdma, M_80211_VAP);
+	IEEE80211_FREE(vap->iv_tdma, M_80211_VAP);
 	vap->iv_tdma = NULL;
 
 	setackpolicy(vap->iv_ic, 0);	/* enable ACK's */
@@ -342,8 +349,7 @@ tdma_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 			 */
 			IEEE80211_DISCARD(vap,
 			    IEEE80211_MSG_ELEMID | IEEE80211_MSG_INPUT,
-			    wh, ieee80211_mgt_subtype_name[subtype >>
-				IEEE80211_FC0_SUBTYPE_SHIFT],
+			    wh, ieee80211_mgt_subtype_name(subtype),
 			    "%s", "no TDMA ie");
 			vap->iv_stats.is_rx_mgtdiscard++;
 			return;

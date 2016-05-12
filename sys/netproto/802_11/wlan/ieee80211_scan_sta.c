@@ -34,6 +34,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/endian.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 
 #include <sys/socket.h>
@@ -159,8 +161,14 @@ sta_attach(struct ieee80211_scan_state *ss)
 {
 	struct sta_table *st;
 
+#if defined(__DragonFly__)
 	st = (struct sta_table *) kmalloc(sizeof(struct sta_table),
 		M_80211_SCAN, M_INTWAIT | M_ZERO);
+#else
+	st = (struct sta_table *) IEEE80211_MALLOC(sizeof(struct sta_table),
+		M_80211_SCAN,
+		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (st == NULL)
 		return 0;
 	IEEE80211_SCAN_TABLE_LOCK_INIT(st, "scantable");
@@ -183,7 +191,7 @@ sta_detach(struct ieee80211_scan_state *ss)
 		sta_flush_table(st);
 		IEEE80211_SCAN_TABLE_LOCK_DESTROY(st);
 		IEEE80211_SCAN_ITER_LOCK_DESTROY(st);
-		kfree(st, M_80211_SCAN);
+		IEEE80211_FREE(st, M_80211_SCAN);
 		KASSERT(nrefs > 0, ("imbalanced attach/detach"));
 		nrefs--;		/* NB: we assume caller locking */
 	}
@@ -217,7 +225,7 @@ sta_flush_table(struct sta_table *st)
 		TAILQ_REMOVE(&st->st_entry, se, se_list);
 		LIST_REMOVE(se, se_hash);
 		ieee80211_ies_cleanup(&se->base.se_ies);
-		kfree(se, M_80211_SCAN);
+		IEEE80211_FREE(se, M_80211_SCAN);
 	}
 	memset(st->st_maxrssi, 0, sizeof(st->st_maxrssi));
 }
@@ -252,8 +260,13 @@ sta_add(struct ieee80211_scan_state *ss,
 	LIST_FOREACH(se, &st->st_hash[hash], se_hash)
 		if (IEEE80211_ADDR_EQ(se->base.se_macaddr, macaddr))
 			goto found;
+#if defined(__DragonFly__)
 	se = (struct sta_entry *) kmalloc(sizeof(struct sta_entry),
 		M_80211_SCAN, M_INTWAIT | M_ZERO);
+#else
+	se = (struct sta_entry *) IEEE80211_MALLOC(sizeof(struct sta_entry),
+		M_80211_SCAN, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (se == NULL) {
 		IEEE80211_SCAN_TABLE_UNLOCK(st);
 		return 0;
@@ -736,12 +749,6 @@ sta_cancel(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 	return 0;
 }
 
-/* unaligned little endian access */
-#define LE_READ_2(p)					\
-	((uint16_t)					\
-	 ((((const uint8_t *)(p))[0]      ) |		\
-	  (((const uint8_t *)(p))[1] <<  8)))
- 
 /*
  * Demote any supplied 11g channel to 11b.  There should
  * always be an 11b channel but we check anyway...
@@ -789,7 +796,7 @@ maxrate(const struct ieee80211_scan_entry *se)
 		} else
 			for (i = 31; i >= 0 && isclr(htcap->hc_mcsset, i); i--);
 		if (i >= 0) {
-			caps = LE_READ_2(&htcap->hc_cap);
+			caps = le16dec(&htcap->hc_cap);
 			if ((caps & IEEE80211_HTCAP_CHWIDTH40) &&
 			    (caps & IEEE80211_HTCAP_SHORTGI40))
 				rmax = ieee80211_htrates[i].ht40_rate_400ns;
@@ -875,7 +882,6 @@ static int
 check_rate(struct ieee80211vap *vap, const struct ieee80211_channel *chan,
     const struct ieee80211_scan_entry *se)
 {
-#define	RV(v)	((v) & IEEE80211_RATE_VAL)
 	const struct ieee80211_rateset *srs;
 	int i, j, nrs, r, okrate, badrate, fixedrate, ucastrate;
 	const uint8_t *rs;
@@ -890,7 +896,7 @@ check_rate(struct ieee80211vap *vap, const struct ieee80211_channel *chan,
 	fixedrate = IEEE80211_FIXED_RATE_NONE;
 again:
 	for (i = 0; i < nrs; i++) {
-		r = RV(rs[i]);
+		r = IEEE80211_RV(rs[i]);
 		badrate = r;
 		/*
 		 * Check any fixed rate is included. 
@@ -901,7 +907,7 @@ again:
 		 * Check against our supported rates.
 		 */
 		for (j = 0; j < srs->rs_nrates; j++)
-			if (r == RV(srs->rs_rates[j])) {
+			if (r == IEEE80211_RV(srs->rs_rates[j])) {
 				if (r > okrate)		/* NB: track max */
 					okrate = r;
 				break;
@@ -927,8 +933,7 @@ back:
 	if (okrate == 0 || ucastrate != fixedrate)
 		return badrate | IEEE80211_RATE_BASIC;
 	else
-		return RV(okrate);
-#undef RV
+		return IEEE80211_RV(okrate);
 }
 
 static __inline int
@@ -1329,7 +1334,7 @@ sta_roam_check(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 	 * XXX deauth current ap
 	 */
 	if (curRate < roamRate || curRssi < roamRssi) {
-		if (time_after(ticks, ic->ic_lastscan + vap->iv_scanvalid)) {
+		if (ieee80211_time_after(ticks, ic->ic_lastscan + vap->iv_scanvalid)) {
 			/*
 			 * Scan cache contents are too old; force a scan now
 			 * if possible so we have current state to make a
@@ -1339,7 +1344,7 @@ sta_roam_check(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 			 * XXX force immediate switch on scan complete
 			 */
 			if (!IEEE80211_IS_CHAN_DTURBO(ic->ic_curchan) &&
-			    time_after(ticks, ic->ic_lastdata + vap->iv_bgscanidle))
+			    ieee80211_time_after(ticks, ic->ic_lastdata + vap->iv_bgscanidle))
 				ieee80211_bg_scan(vap, 0);
 			return;
 		}
@@ -1680,7 +1685,7 @@ adhoc_age(struct ieee80211_scan_state *ss)
 			TAILQ_REMOVE(&st->st_entry, se, se_list);
 			LIST_REMOVE(se, se_hash);
 			ieee80211_ies_cleanup(&se->base.se_ies);
-			kfree(se, M_80211_SCAN);
+			IEEE80211_FREE(se, M_80211_SCAN);
 		}
 	}
 	IEEE80211_SCAN_TABLE_UNLOCK(st);
@@ -1705,26 +1710,6 @@ static const struct ieee80211_scanner adhoc_default = {
 IEEE80211_SCANNER_ALG(ibss, IEEE80211_M_IBSS, adhoc_default);
 IEEE80211_SCANNER_ALG(ahdemo, IEEE80211_M_AHDEMO, adhoc_default);
 
-static void
-ap_force_promisc(struct ieee80211com *ic)
-{
-	struct ifnet *ifp = ic->ic_ifp;
-
-	IEEE80211_LOCK(ic);
-	/* set interface into promiscuous mode */
-	ifp->if_flags |= IFF_PROMISC;
-	ieee80211_runtask(ic, &ic->ic_promisc_task);
-	IEEE80211_UNLOCK(ic);
-}
-
-static void
-ap_reset_promisc(struct ieee80211com *ic)
-{
-	IEEE80211_LOCK(ic);
-	ieee80211_syncifflag_locked(ic, IFF_PROMISC);
-	IEEE80211_UNLOCK(ic);
-}
-
 static int
 ap_start(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 {
@@ -1740,7 +1725,6 @@ ap_start(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 	st->st_scangen++;
 	st->st_newscan = 1;
 
-	ap_force_promisc(vap->iv_ic);
 	return 0;
 }
 
@@ -1750,7 +1734,6 @@ ap_start(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 static int
 ap_cancel(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 {
-	ap_reset_promisc(vap->iv_ic);
 	return 0;
 }
 
@@ -1824,7 +1807,6 @@ ap_end(struct ieee80211_scan_state *ss, struct ieee80211vap *vap)
 			return 0;
 		}
 	}
-	ap_reset_promisc(ic);
 	if (ss->ss_flags & (IEEE80211_SCAN_NOPICK | IEEE80211_SCAN_NOJOIN)) {
 		/*
 		 * Manual/background scan, don't select+join the

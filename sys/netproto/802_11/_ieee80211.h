@@ -70,6 +70,7 @@ enum ieee80211_phymode {
 	IEEE80211_MODE_QUARTER	= 11,	/* OFDM, 1/4x clock */
 };
 #define	IEEE80211_MODE_MAX	(IEEE80211_MODE_QUARTER+1)
+#define IEEE80211_MODE_BYTES	howmany(IEEE80211_MODE_MAX, NBBY)
 
 /*
  * Operating mode.  Devices do not necessarily support
@@ -146,7 +147,7 @@ struct ieee80211_channel {
 };
 
 #define	IEEE80211_CHAN_MAX	256
-#define	IEEE80211_CHAN_BYTES	32	/* howmany(IEEE80211_CHAN_MAX, NBBY) */
+#define	IEEE80211_CHAN_BYTES	howmany(IEEE80211_CHAN_MAX, NBBY)
 #define	IEEE80211_CHAN_ANY	0xffff	/* token for ``any channel'' */
 #define	IEEE80211_CHAN_ANYC \
 	((struct ieee80211_channel *) IEEE80211_CHAN_ANY)
@@ -390,15 +391,14 @@ struct ieee80211_regdomain {
  * MIMO antenna/radio state.
  */
 
-#define	IEEE80211_MAX_CHAINS		3
-#define	IEEE80211_MAX_EVM_PILOTS	6
-
 /*
  * XXX This doesn't yet export both ctl/ext chain details
+ * XXX TODO: IEEE80211_MAX_CHAINS is defined in _freebsd.h, not here;
+ * figure out how to pull it in!
  */
 struct ieee80211_mimo_info {
-	int8_t		rssi[IEEE80211_MAX_CHAINS];	/* per-antenna rssi */
-	int8_t		noise[IEEE80211_MAX_CHAINS];	/* per-antenna noise floor */
+	int8_t		rssi[3];	/* per-antenna rssi */
+	int8_t		noise[3];	/* per-antenna noise floor */
 	uint8_t		pad[2];
 	uint32_t	evm[3];		/* EVM data */
 };

@@ -131,7 +131,7 @@ monitor_input(struct ieee80211_node *ni, struct mbuf *m,
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ifnet *ifp = vap->iv_ifp;
 
-	IFNET_STAT_INC(ifp, ipackets, 1);
+	if_inc_counter(ifp, IFCOUNTER_IPACKETS, 1);
 
 	if (ieee80211_radiotap_active_vap(vap))
 		ieee80211_radiotap_rx(vap, m);

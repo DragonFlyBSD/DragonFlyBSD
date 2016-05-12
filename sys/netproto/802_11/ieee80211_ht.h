@@ -65,6 +65,10 @@ struct ieee80211_tx_ampdu {
 #define	IEEE80211_AMPDU_RUNNING(tap) \
 	(((tap)->txa_flags & IEEE80211_AGGR_RUNNING) != 0)
 
+/* return non-zero if AMPDU tx for the TID was NACKed */
+#define	IEEE80211_AMPDU_NACKED(tap)\
+	(!! ((tap)->txa_flags & IEEE80211_AGGR_NAK))
+
 /* return non-zero if AMPDU tx for the TID is running or started */
 #define	IEEE80211_AMPDU_REQUESTED(tap) \
 	(((tap)->txa_flags & \
@@ -84,8 +88,19 @@ struct ieee80211_tx_ampdu {
  */
 
 static __inline void
+ieee80211_txampdu_init_pps(struct ieee80211_tx_ampdu *tap)
+{
+	/*
+	 * Reset packet estimate.
+	 */
+	tap->txa_lastsample = ticks;
+	tap->txa_avgpps = 0;
+}
+
+static __inline void
 ieee80211_txampdu_update_pps(struct ieee80211_tx_ampdu *tap)
 {
+
 	/* NB: scale factor of 2 was picked heuristically */
 	tap->txa_avgpps = ((tap->txa_avgpps << 2) -
 	     tap->txa_avgpps + tap->txa_pkts) >> 2;
@@ -97,6 +112,7 @@ ieee80211_txampdu_update_pps(struct ieee80211_tx_ampdu *tap)
 static __inline void
 ieee80211_txampdu_count_packet(struct ieee80211_tx_ampdu *tap)
 {
+
 	/* XXX bound loop/do more crude estimate? */
 	while (ticks - tap->txa_lastsample >= hz) {
 		ieee80211_txampdu_update_pps(tap);
@@ -200,4 +216,10 @@ uint8_t	*ieee80211_add_htinfo_vendor(uint8_t *, struct ieee80211_node *);
 struct ieee80211_beacon_offsets;
 void	ieee80211_ht_update_beacon(struct ieee80211vap *,
 		struct ieee80211_beacon_offsets *);
+int	ieee80211_ampdu_rx_start_ext(struct ieee80211_node *ni, int tid,
+	    int seq, int baw);
+int	ieee80211_ampdu_tx_request_ext(struct ieee80211_node *ni, int tid);
+int	ieee80211_ampdu_tx_request_active_ext(struct ieee80211_node *ni,
+	    int tid, int status);
+
 #endif /* _NET80211_IEEE80211_HT_H_ */

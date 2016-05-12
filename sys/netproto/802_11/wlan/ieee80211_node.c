@@ -114,7 +114,11 @@ ieee80211_node_attach(struct ieee80211com *ic)
 	    "802.11 staging q");
 	ieee80211_node_table_init(ic, &ic->ic_sta, "station",
 		IEEE80211_INACT_INIT, ic->ic_max_keyix);
+#if defined(__DragonFly__)
 	callout_init_mp(&ic->ic_inact);
+#else
+	callout_init(&ic->ic_inact, 1);
+#endif
 	callout_reset(&ic->ic_inact, IEEE80211_INACT_WAIT*hz,
 		ieee80211_node_timeout, ic);
 
@@ -172,9 +176,16 @@ ieee80211_node_latevattach(struct ieee80211vap *vap)
 			    "WARNING: max aid too small, changed to %d\n",
 			    vap->iv_max_aid);
 		}
+#if defined(__DragonFly__)
 		vap->iv_aid_bitmap = (uint32_t *) kmalloc(
 			howmany(vap->iv_max_aid, 32) * sizeof(uint32_t),
 			M_80211_NODE, M_INTWAIT | M_ZERO);
+#else
+		vap->iv_aid_bitmap = (uint32_t *) IEEE80211_MALLOC(
+			howmany(vap->iv_max_aid, 32) * sizeof(uint32_t),
+			M_80211_NODE,
+			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 		if (vap->iv_aid_bitmap == NULL) {
 			/* XXX no way to recover */
 			kprintf("%s: no memory for AID bitmap, max aid %d!\n",
@@ -199,7 +210,7 @@ ieee80211_node_vdetach(struct ieee80211vap *vap)
 		vap->iv_bss = NULL;
 	}
 	if (vap->iv_aid_bitmap != NULL) {
-		kfree(vap->iv_aid_bitmap, M_80211_NODE);
+		IEEE80211_FREE(vap->iv_aid_bitmap, M_80211_NODE);
 		vap->iv_aid_bitmap = NULL;
 	}
 }
@@ -329,9 +340,10 @@ ieee80211_create_ibss(struct ieee80211vap* vap, struct ieee80211_channel *chan)
 	struct ieee80211_node *ni;
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
-		"%s: creating %s on channel %u\n", __func__,
+		"%s: creating %s on channel %u%c\n", __func__,
 		ieee80211_opmode_name[vap->iv_opmode],
-		ieee80211_chan2ieee(ic, chan));
+		ieee80211_chan2ieee(ic, chan),
+		ieee80211_channel_type_char(chan));
 
 	ni = ieee80211_alloc_node(&ic->ic_sta, vap, vap->iv_myaddr);
 	if (ni == NULL) {
@@ -555,6 +567,33 @@ check_bss_debug(struct ieee80211vap *vap, struct ieee80211_node *ni)
 }
 #endif /* IEEE80211_DEBUG */
  
+
+int
+ieee80211_ibss_merge_check(struct ieee80211_node *ni)
+{
+	struct ieee80211vap *vap = ni->ni_vap;
+
+	if (ni == vap->iv_bss ||
+	    IEEE80211_ADDR_EQ(ni->ni_bssid, vap->iv_bss->ni_bssid)) {
+		/* unchanged, nothing to do */
+		return 0;
+	}
+
+	if (!check_bss(vap, ni)) {
+		/* capabilities mismatch */
+		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ASSOC,
+		    "%s: merge failed, capabilities mismatch\n", __func__);
+#ifdef IEEE80211_DEBUG
+		if (ieee80211_msg_assoc(vap))
+			check_bss_debug(vap, ni);
+#endif
+		vap->iv_stats.is_ibss_capmismatch++;
+		return 0;
+	}
+
+	return 1;
+}
+
 /*
  * Handle 802.11 ad hoc network merge.  The
  * convention, set by the Wireless Ethernet Compatibility Alliance
@@ -570,27 +609,14 @@ check_bss_debug(struct ieee80211vap *vap, struct ieee80211_node *ni)
 int
 ieee80211_ibss_merge(struct ieee80211_node *ni)
 {
-	struct ieee80211vap *vap = ni->ni_vap;
 #ifdef IEEE80211_DEBUG
+	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = ni->ni_ic;
 #endif
 
-	if (ni == vap->iv_bss ||
-	    IEEE80211_ADDR_EQ(ni->ni_bssid, vap->iv_bss->ni_bssid)) {
-		/* unchanged, nothing to do */
+	if (! ieee80211_ibss_merge_check(ni))
 		return 0;
-	}
-	if (!check_bss(vap, ni)) {
-		/* capabilities mismatch */
-		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ASSOC,
-		    "%s: merge failed, capabilities mismatch\n", __func__);
-#ifdef IEEE80211_DEBUG
-		if (ieee80211_msg_assoc(vap))
-			check_bss_debug(vap, ni);
-#endif
-		vap->iv_stats.is_ibss_capmismatch++;
-		return 0;
-	}
+
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ASSOC,
 		"%s: new bssid %s: %s preamble, %s slot time%s\n", __func__,
 		ether_sprintf(ni->ni_bssid),
@@ -892,8 +918,13 @@ node_alloc(struct ieee80211vap *vap, const uint8_t macaddr[IEEE80211_ADDR_LEN])
 {
 	struct ieee80211_node *ni;
 
+#if defined(__DragonFly__)
 	ni = (struct ieee80211_node *) kmalloc(sizeof(struct ieee80211_node),
 		M_80211_NODE, M_INTWAIT | M_ZERO);
+#else
+	ni = (struct ieee80211_node *) IEEE80211_MALLOC(sizeof(struct ieee80211_node),
+		M_80211_NODE, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	return ni;
 }
 
@@ -910,11 +941,18 @@ ieee80211_ies_init(struct ieee80211_ies *ies, const uint8_t *data, int len)
 	memset(ies, 0, offsetof(struct ieee80211_ies, data));
 	if (ies->data != NULL && ies->len != len) {
 		/* data size changed */
-		kfree(ies->data, M_80211_NODE_IE);
+		IEEE80211_FREE(ies->data, M_80211_NODE_IE);
 		ies->data = NULL;
 	}
 	if (ies->data == NULL) {
-		ies->data = (uint8_t *) kmalloc(len, M_80211_NODE_IE, M_INTWAIT);
+#if defined(__DragonFly__)
+		ies->data = (uint8_t *) kmalloc(len,
+			M_80211_NODE_IE, M_INTWAIT | M_ZERO);
+#else
+		ies->data = (uint8_t *) IEEE80211_MALLOC(len, M_80211_NODE_IE,
+			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+
+#endif
 		if (ies->data == NULL) {
 			ies->len = 0;
 			/* NB: pointers have already been zero'd above */
@@ -933,7 +971,7 @@ void
 ieee80211_ies_cleanup(struct ieee80211_ies *ies)
 {
 	if (ies->data != NULL)
-		kfree(ies->data, M_80211_NODE_IE);
+		IEEE80211_FREE(ies->data, M_80211_NODE_IE);
 }
 
 /*
@@ -1012,8 +1050,8 @@ node_cleanup(struct ieee80211_node *ni)
 	if (ni->ni_flags & IEEE80211_NODE_HT)
 		ieee80211_ht_node_cleanup(ni);
 #ifdef IEEE80211_SUPPORT_SUPERG
-	else if (ni->ni_ath_flags & IEEE80211_NODE_ATH)
-		ieee80211_ff_node_cleanup(ni);
+	/* Always do FF node cleanup; for A-MSDU */
+	ieee80211_ff_node_cleanup(ni);
 #endif
 #ifdef IEEE80211_SUPPORT_MESH
 	/*
@@ -1045,7 +1083,7 @@ node_cleanup(struct ieee80211_node *ni)
 
 	ni->ni_associd = 0;
 	if (ni->ni_challenge != NULL) {
-		kfree(ni->ni_challenge, M_80211_NODE);
+		IEEE80211_FREE(ni->ni_challenge, M_80211_NODE);
 		ni->ni_challenge = NULL;
 	}
 	/*
@@ -1080,7 +1118,7 @@ node_free(struct ieee80211_node *ni)
 	ic->ic_node_cleanup(ni);
 	ieee80211_ies_cleanup(&ni->ni_ies);
 	ieee80211_psq_cleanup(&ni->ni_psq);
-	kfree(ni, M_80211_NODE);
+	IEEE80211_FREE(ni, M_80211_NODE);
 }
 
 static void
@@ -1918,9 +1956,16 @@ ieee80211_node_table_init(struct ieee80211com *ic,
 	nt->nt_inact_init = inact;
 	nt->nt_keyixmax = keyixmax;
 	if (nt->nt_keyixmax > 0) {
+#if defined(__DragonFly__)
 		nt->nt_keyixmap = (struct ieee80211_node **) kmalloc(
 			keyixmax * sizeof(struct ieee80211_node *),
 			M_80211_NODE, M_INTWAIT | M_ZERO);
+#else
+		nt->nt_keyixmap = (struct ieee80211_node **) IEEE80211_MALLOC(
+			keyixmax * sizeof(struct ieee80211_node *),
+			M_80211_NODE,
+			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 		if (nt->nt_keyixmap == NULL)
 			ic_printf(ic,
 			    "Cannot allocate key index map with %u entries\n",
@@ -1979,7 +2024,7 @@ ieee80211_node_table_cleanup(struct ieee80211_node_table *nt)
 				kprintf("%s: %s[%u] still active\n", __func__,
 					nt->nt_name, i);
 #endif
-		kfree(nt->nt_keyixmap, M_80211_NODE);
+		IEEE80211_FREE(nt->nt_keyixmap, M_80211_NODE);
 		nt->nt_keyixmap = NULL;
 	}
 	IEEE80211_NODE_ITERATE_LOCK_DESTROY(nt);
@@ -2199,7 +2244,7 @@ ieee80211_node_timeout(void *arg)
 	 * Defer timeout processing if a channel switch is pending.
 	 * We typically need to be mute so not doing things that
 	 * might generate frames is good to handle in one place.
-	 * Supressing the station timeout processing may extend the
+	 * Suppressing the station timeout processing may extend the
 	 * lifetime of inactive stations (by not decrementing their
 	 * idle counters) but this should be ok unless the CSA is
 	 * active for an unusually long time.
@@ -2318,8 +2363,13 @@ ieee80211_iterate_nodes(struct ieee80211_node_table *nt,
 		max_aid = vap->iv_max_aid;
 
 	size = max_aid * sizeof(struct ieee80211_node *);
+#if defined(__DragonFly__)
 	ni_arr = (struct ieee80211_node **) kmalloc(size, M_80211_NODE,
-	    M_INTWAIT | M_ZERO);
+		M_INTWAIT | M_ZERO);
+#else
+	ni_arr = (struct ieee80211_node **) IEEE80211_MALLOC(size, M_80211_NODE,
+		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (ni_arr == NULL)
 		return;
 
@@ -2342,7 +2392,7 @@ ieee80211_iterate_nodes(struct ieee80211_node_table *nt,
 	}
 
 done:
-	kfree(ni_arr, M_80211_NODE);
+	IEEE80211_FREE(ni_arr, M_80211_NODE);
 }
 
 void
@@ -2635,7 +2685,7 @@ ieee80211_erp_timeout(struct ieee80211com *ic)
 	IEEE80211_LOCK_ASSERT(ic);
 
 	if ((ic->ic_flags_ext & IEEE80211_FEXT_NONERP_PR) &&
-	    time_after(ticks, ic->ic_lastnonerp + IEEE80211_NONERP_PRESENT_AGE)) {
+	    ieee80211_time_after(ticks, ic->ic_lastnonerp + IEEE80211_NONERP_PRESENT_AGE)) {
 #if 0
 		IEEE80211_NOTE(vap, IEEE80211_MSG_ASSOC, ni,
 		    "%s", "age out non-ERP sta present on channel");
@@ -2680,7 +2730,6 @@ ieee80211_node_leave(struct ieee80211_node *ni)
 
 	IEEE80211_LOCK(ic);
 	IEEE80211_AID_CLR(vap, ni->ni_associd);
-	ni->ni_associd = 0;
 	vap->iv_sta_assoc--;
 	ic->ic_sta_assoc--;
 

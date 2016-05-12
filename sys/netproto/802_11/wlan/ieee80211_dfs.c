@@ -243,7 +243,7 @@ dfs_timeout(void *arg)
 	for (i = 0; i < ic->ic_nchans; i++) {
 		c = &ic->ic_channels[i];
 		if (IEEE80211_IS_CHAN_RADAR(c)) {
-			if (time_after_eq(now, dfs->nol_event[i]+NOL_TIMEOUT)) {
+			if (ieee80211_time_after_eq(now, dfs->nol_event[i]+NOL_TIMEOUT)) {
 				c->ic_state &= ~IEEE80211_CHANSTATE_RADAR;
 				if (c->ic_state & IEEE80211_CHANSTATE_NORADAR) {
 					/*
@@ -265,8 +265,12 @@ dfs_timeout(void *arg)
 	}
 	if (oldest != now) {
 		/* arrange to process next channel up for a status change */
+#if defined(__DragonFly__)
 		callout_schedule_dfly(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
 				dfs_timeout, ic);
+#else
+		callout_schedule(&dfs->nol_timer, oldest + NOL_TIMEOUT - now);
+#endif
 	}
 }
 
@@ -366,7 +370,11 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 		announce_radar(ic, chan, dfs->newchan);
 
 		if (callout_pending(&dfs->cac_timer))
+#if defined(__DragonFly__)
 			callout_schedule_dfly(&dfs->cac_timer, 0, cac_timeout, dfs->cac_timer.c_arg);
+#else
+			callout_schedule(&dfs->cac_timer, 0);
+#endif
 		else if (dfs->newchan != NULL) {
 			/* XXX mode 1, switch count 2 */
 			/* XXX calculate switch count based on max

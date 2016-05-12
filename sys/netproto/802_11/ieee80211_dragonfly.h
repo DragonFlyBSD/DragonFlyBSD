@@ -126,13 +126,15 @@ uint16_t ieee80211_txtime(struct ieee80211_node *, u_int, uint8_t, uint32_t);
 	(((_ifp)->if_flags & IFF_UP) && \
 	 ((_ifp)->if_flags & IFF_RUNNING))
 
+/* XXX TODO: cap these at 1, as hz may not be 1000 */
 #define	msecs_to_ticks(ms)	(((ms)*hz)/1000)
 #define	ticks_to_msecs(t)	(1000*(t) / hz)
 #define	ticks_to_secs(t)	((t) / hz)
-#define time_after(a,b) 	((long)(b) - (long)(a) < 0)
-#define time_before(a,b)	time_after(b,a)
-#define time_after_eq(a,b)	((long)(a) - (long)(b) >= 0)
-#define time_before_eq(a,b)	time_after_eq(b,a)
+
+#define ieee80211_time_after(a,b) 	((long)(b) - (long)(a) < 0)
+#define ieee80211_time_before(a,b)	ieee80211_time_after(b,a)
+#define ieee80211_time_after_eq(a,b)	((long)(a) - (long)(b) >= 0)
+#define ieee80211_time_before_eq(a,b)	ieee80211_time_after_eq(b,a)
 
 struct mbuf *ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen);
 
@@ -141,7 +143,7 @@ struct mbuf *ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen);
 #define	M_EAPOL		M_PROTO3		/* PAE/EAPOL frame */
 #define	M_PWR_SAV	M_PROTO4		/* bypass PS handling */
 #define	M_MORE_DATA	M_PROTO5		/* more data frames to follow */
-#define	M_FF		M_PROTO6		/* fast frame */
+#define	M_FF		M_PROTO6		/* fast frame / A-MSDU */
 #define	M_TXCB		M_PROTO7		/* do tx complete callback */
 #define	M_AMPDU_MPDU	M_PROTO8		/* ok for A-MPDU aggregation */
 #define	M_80211_TX \
@@ -210,6 +212,8 @@ void	ieee80211_process_callback(struct ieee80211_node *, struct mbuf *, int);
 /* See below; this is after the bpf_params definition */
 
 void	get_random_bytes(void *, size_t);
+
+#define	NET80211_TAG_RECV_PARAMS	2
 
 struct ieee80211com;
 
@@ -507,6 +511,43 @@ int	ieee80211_add_xmit_params(struct mbuf *m,
 	    const struct ieee80211_bpf_params *);
 int	ieee80211_get_xmit_params(struct mbuf *m,
 	    struct ieee80211_bpf_params *);
+
+#define	IEEE80211_MAX_CHAINS		3
+#define	IEEE80211_MAX_EVM_PILOTS	6
+
+#define	IEEE80211_R_NF		0x0000001	/* global NF value valid */
+#define	IEEE80211_R_RSSI	0x0000002	/* global RSSI value valid */
+#define	IEEE80211_R_C_CHAIN	0x0000004	/* RX chain count valid */
+#define	IEEE80211_R_C_NF	0x0000008	/* per-chain NF value valid */
+#define	IEEE80211_R_C_RSSI	0x0000010	/* per-chain RSSI value valid */
+#define	IEEE80211_R_C_EVM	0x0000020	/* per-chain EVM valid */
+#define	IEEE80211_R_C_HT40	0x0000040	/* RX'ed packet is 40mhz, pilots 4,5 valid */
+#define	IEEE80211_R_FREQ	0x0000080	/* Freq value populated, MHz */
+#define	IEEE80211_R_IEEE	0x0000100	/* IEEE value populated */
+#define	IEEE80211_R_BAND	0x0000200	/* Frequency band populated */
+
+struct ieee80211_rx_stats {
+	uint32_t r_flags;		/* IEEE80211_R_* flags */
+	uint8_t c_chain;		/* number of RX chains involved */
+	int16_t	c_nf_ctl[IEEE80211_MAX_CHAINS];	/* per-chain NF */
+	int16_t	c_nf_ext[IEEE80211_MAX_CHAINS];	/* per-chain NF */
+	int16_t	c_rssi_ctl[IEEE80211_MAX_CHAINS];	/* per-chain RSSI */
+	int16_t	c_rssi_ext[IEEE80211_MAX_CHAINS];	/* per-chain RSSI */
+	uint8_t nf;			/* global NF */
+	uint8_t rssi;			/* global RSSI */
+	uint8_t evm[IEEE80211_MAX_CHAINS][IEEE80211_MAX_EVM_PILOTS];
+					/* per-chain, per-pilot EVM values */
+	uint16_t c_freq;
+	uint8_t c_ieee;
+};
+
+struct ieee80211_rx_params {
+	struct ieee80211_rx_stats params;
+};
+int	ieee80211_add_rx_params(struct mbuf *m,
+	    const struct ieee80211_rx_stats *rxs);
+int	ieee80211_get_rx_params(struct mbuf *m,
+	    struct ieee80211_rx_stats *rxs);
 #endif /* _KERNEL */
 
 /*
@@ -583,6 +624,8 @@ typedef struct lock	ieee80211_rt_lock_t;
 
 #define IEEE80211_LOCK_ASSERT(ic)		\
 				KKASSERT(lockstatus(&(ic)->ic_comlock, curthread) == LK_EXCLUSIVE)
+#define IEEE80211_UNLOCK_ASSERT(ic)		\
+				KKASSERT(lockstatus(&(ic)->ic_comlock, curthread) != LK_EXCLUSIVE)
 #define IEEE80211_NODE_LOCK_ASSERT(nt)		\
 				KKASSERT(lockstatus(&(nt)->nt_nodelock, curthread) == LK_EXCLUSIVE)
 #define IEEE80211_NODE_ITERATE_LOCK_ASSERT(nt)		\
@@ -629,5 +672,20 @@ typedef struct lock	ieee80211_rt_lock_t;
 				callout_init_lk(callo, lk)
 #define callout_schedule_dfly(callo, timo, func, args)	\
 				callout_reset(callo, timo, func, args)
+
+/*
+ * if_inc macros
+ */
+#define ifd_IFCOUNTER_IERRORS	ifd_ierrors
+#define ifd_IFCOUNTER_IPACKETS	ifd_ipackets
+#define ifd_IFCOUNTER_IBYTES	ifd_ibytes
+#define ifd_IFCOUNTER_OERRORS	ifd_oerrors
+#define ifd_IFCOUNTER_OPACKETS	ifd_opackets
+#define ifd_IFCOUNTER_OMCASTS	ifd_omcasts
+#define ifd_IFCOUNTER_OBYTES	ifd_obytes
+
+#define if_inc_counter		IFNET_STAT_INC
+
+#define IEEE80211_FREE(ptr, type)	kfree((ptr), (type))
 
 #endif /* _NET80211_IEEE80211_DRAGONFLY_H_ */

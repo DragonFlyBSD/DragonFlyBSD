@@ -203,14 +203,24 @@ mesh_rt_add_locked(struct ieee80211vap *vap,
 
 	MESH_RT_LOCK_ASSERT(ms);
 
+#if defined(__DragonFly__)
 	rt = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_route)) +
 	    ms->ms_ppath->mpp_privlen, M_80211_MESH_RT, M_INTWAIT | M_ZERO);
+#else
+	rt = IEEE80211_MALLOC(ALIGN(sizeof(struct ieee80211_mesh_route)) +
+	    ms->ms_ppath->mpp_privlen, M_80211_MESH_RT,
+	    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (rt != NULL) {
 		rt->rt_vap = vap;
 		IEEE80211_ADDR_COPY(rt->rt_dest, dest);
 		rt->rt_priv = (void *)ALIGN(&rt[1]);
 		MESH_RT_ENTRY_LOCK_INIT(rt, "MBSS_RT");
+#if defined(__DragonFly__)
 		callout_init_mp(&rt->rt_discovery);
+#else
+		callout_init(&rt->rt_discovery, 1);
+#endif
 		rt->rt_updtime = ticks;	/* create time */
 		TAILQ_INSERT_TAIL(&ms->ms_routes, rt, rt_next);
 	}
@@ -352,7 +362,7 @@ mesh_rt_del(struct ieee80211_mesh_state *ms, struct ieee80211_mesh_route *rt)
 	MESH_RT_ENTRY_LOCK(rt);
 	callout_drain(&rt->rt_discovery);
 	MESH_RT_ENTRY_LOCK_DESTROY(rt);
-	kfree(rt, M_80211_MESH_RT);
+	IEEE80211_FREE(rt, M_80211_MESH_RT);
 }
 
 void
@@ -433,13 +443,12 @@ mesh_rt_flush_invalid(struct ieee80211vap *vap)
 	MESH_RT_UNLOCK(ms);
 }
 
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 int
 ieee80211_mesh_register_proto_path(const struct ieee80211_mesh_proto_path *mpp)
 {
 	int i, firstempty = -1;
 
-	for (i = 0; i < N(mesh_proto_paths); i++) {
+	for (i = 0; i < nitems(mesh_proto_paths); i++) {
 		if (strncmp(mpp->mpp_descr, mesh_proto_paths[i].mpp_descr,
 		    IEEE80211_MESH_PROTO_DSZ) == 0)
 			return EEXIST;
@@ -459,7 +468,7 @@ ieee80211_mesh_register_proto_metric(const struct
 {
 	int i, firstempty = -1;
 
-	for (i = 0; i < N(mesh_proto_metrics); i++) {
+	for (i = 0; i < nitems(mesh_proto_metrics); i++) {
 		if (strncmp(mpm->mpm_descr, mesh_proto_metrics[i].mpm_descr,
 		    IEEE80211_MESH_PROTO_DSZ) == 0)
 			return EEXIST;
@@ -479,7 +488,7 @@ mesh_select_proto_path(struct ieee80211vap *vap, const char *name)
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	int i;
 
-	for (i = 0; i < N(mesh_proto_paths); i++) {
+	for (i = 0; i < nitems(mesh_proto_paths); i++) {
 		if (strcasecmp(mesh_proto_paths[i].mpp_descr, name) == 0) {
 			ms->ms_ppath = &mesh_proto_paths[i];
 			return 0;
@@ -494,7 +503,7 @@ mesh_select_proto_metric(struct ieee80211vap *vap, const char *name)
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 	int i;
 
-	for (i = 0; i < N(mesh_proto_metrics); i++) {
+	for (i = 0; i < nitems(mesh_proto_metrics); i++) {
 		if (strcasecmp(mesh_proto_metrics[i].mpm_descr, name) == 0) {
 			ms->ms_pmetric = &mesh_proto_metrics[i];
 			return 0;
@@ -502,7 +511,6 @@ mesh_select_proto_metric(struct ieee80211vap *vap, const char *name)
 	}
 	return ENOENT;
 }
-#undef	N
 
 static void
 mesh_gatemode_setup(struct ieee80211vap *vap)
@@ -646,7 +654,7 @@ mesh_vdetach(struct ieee80211vap *vap)
 	ieee80211_mesh_rt_flush(vap);
 	MESH_RT_LOCK_DESTROY(ms);
 	ms->ms_ppath->mpp_vdetach(vap);
-	kfree(vap->iv_mesh, M_80211_VAP);
+	IEEE80211_FREE(vap->iv_mesh, M_80211_VAP);
 	vap->iv_mesh = NULL;
 }
 
@@ -659,8 +667,13 @@ mesh_vattach(struct ieee80211vap *vap)
 	vap->iv_opdetach = mesh_vdetach;
 	vap->iv_recv_mgmt = mesh_recv_mgmt;
 	vap->iv_recv_ctl = mesh_recv_ctl;
+#if defined(__DragonFly__)
 	ms = kmalloc(sizeof(struct ieee80211_mesh_state), M_80211_VAP,
 	    M_INTWAIT | M_ZERO);
+#else
+	ms = IEEE80211_MALLOC(sizeof(struct ieee80211_mesh_state), M_80211_VAP,
+	    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (ms == NULL) {
 		kprintf("%s: couldn't alloc MBSS state\n", __func__);
 		return;
@@ -672,8 +685,13 @@ mesh_vattach(struct ieee80211vap *vap)
 	TAILQ_INIT(&ms->ms_known_gates);
 	TAILQ_INIT(&ms->ms_routes);
 	MESH_RT_LOCK_INIT(ms, "MBSS");
+#if defined(__DragonFly__)
 	callout_init_mp(&ms->ms_cleantimer);
 	callout_init_mp(&ms->ms_gatetimer);
+#else
+	callout_init(&ms->ms_cleantimer, 1);
+	callout_init(&ms->ms_gatetimer, 1);
+#endif
 	ms->ms_gateseq = 0;
 	mesh_select_proto_metric(vap, "AIRTIME");
 	KASSERT(ms->ms_pmetric, ("ms_pmetric == NULL"));
@@ -877,8 +895,14 @@ ieee80211_mesh_mark_gate(struct ieee80211vap *vap, const uint8_t *addr,
 		/* New mesh gate add it to known table. */
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, addr,
 		    "%s", "stored new gate information from pro-PREQ.");
+#if defined(__DragonFly__)
 		gr = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
 		    M_80211_MESH_GT_RT, M_INTWAIT | M_ZERO);
+#else
+		gr = IEEE80211_MALLOC(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
+		    M_80211_MESH_GT_RT,
+		    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 		IEEE80211_ADDR_COPY(gr->gr_addr, addr);
 		TAILQ_INSERT_TAIL(&ms->ms_known_gates, gr, gr_next);
 	}
@@ -1040,7 +1064,7 @@ mesh_transmit_to_gate(struct ieee80211vap *vap, struct mbuf *m,
 
 	ni = ieee80211_mesh_find_txnode(vap, rt_gate->rt_dest);
 	if (ni == NULL) {
-		IFNET_STAT_INC(ifp, oerrors, 1);
+		if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 		m_freem(m);
 		return;
 	}
@@ -1087,10 +1111,16 @@ ieee80211_mesh_forward_to_gates(struct ieee80211vap *vap,
 	TAILQ_FOREACH_SAFE(gr, &ms->ms_known_gates, gr_next, gr_next) {
 		rt_gate = gr->gr_route;
 		if (rt_gate == NULL) {
+#if defined(__DragonFly__)
 			IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP,
 				rt_dest->rt_dest,
 				"mesh gate with no path %s",
 				ether_sprintf(gr->gr_addr));
+#else
+			IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP,
+				"mesh gate with no path %6D",
+				gr->gr_addr, ":");
+#endif
 			continue;
 		}
 		if ((rt_gate->rt_flags & IEEE80211_MESHRT_FLAGS_VALID) == 0)
@@ -1155,7 +1185,7 @@ mesh_forward(struct ieee80211vap *vap, struct mbuf *m,
 	IEEE80211_TX_UNLOCK_ASSERT(ic);
 
 	/*
-	 * mesh ttl of 1 means we are the last one receving it,
+	 * mesh ttl of 1 means we are the last one receiving it,
 	 * according to amendment we decrement and then check if
 	 * 0, if so we dont forward.
 	 */
@@ -1176,7 +1206,7 @@ mesh_forward(struct ieee80211vap *vap, struct mbuf *m,
 		IEEE80211_NOTE_FRAME(vap, IEEE80211_MSG_MESH, wh,
 		    "%s", "frame not fwd'd, cannot dup");
 		vap->iv_stats.is_mesh_fwd_nobuf++;
-		IFNET_STAT_INC(ifp, oerrors, 1);
+		if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 		return;
 	}
 	mcopy = m_pullup(mcopy, ieee80211_hdrspace(ic, wh) +
@@ -1185,7 +1215,7 @@ mesh_forward(struct ieee80211vap *vap, struct mbuf *m,
 		IEEE80211_NOTE_FRAME(vap, IEEE80211_MSG_MESH, wh,
 		    "%s", "frame not fwd'd, too short");
 		vap->iv_stats.is_mesh_fwd_tooshort++;
-		IFNET_STAT_INC(ifp, oerrors, 1);
+		if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 		m_freem(mcopy);
 		return;
 	}
@@ -1239,12 +1269,8 @@ mesh_forward(struct ieee80211vap *vap, struct mbuf *m,
 	IEEE80211_TX_LOCK(ic);
 	err = ieee80211_parent_xmitpkt(ic, mcopy);
 	IEEE80211_TX_UNLOCK(ic);
-	if (err != 0) {
-		/* NB: IFQ_HANDOFF reclaims mbuf */
-		ieee80211_free_node(ni);
-	} else {
-		IFNET_STAT_INC(ifp, opackets, 1);
-	}
+	if (!err)
+		if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
 }
 
 static struct mbuf *
@@ -1391,8 +1417,13 @@ mesh_recv_indiv_data_to_fwrd(struct ieee80211vap *vap, struct mbuf *m,
 	/* set lifetime of addr3 (meshDA) to initial value */
 	rt_meshda = ieee80211_mesh_rt_find(vap, qwh->i_addr3);
 	if (rt_meshda == NULL) {
+#if defined(__DragonFly__)
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, qwh->i_addr2,
 		    "no route to meshDA(%s)", ether_sprintf(qwh->i_addr3));
+#else
+		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, qwh->i_addr2,
+		    "no route to meshDA(%6D)", qwh->i_addr3, ":");
+#endif
 		/*
 		 * [Optional] any of the following three actions:
 		 * o silently discard 				[X]
@@ -1478,10 +1509,16 @@ mesh_recv_indiv_data_to_me(struct ieee80211vap *vap, struct mbuf *m,
 		 * All other cases: forward of MSDUs from the MBSS to DS indiv.
 		 * addressed according to 13.11.3.2.
 		 */
+#if defined(__DragonFly__)
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_OUTPUT, qwh->i_addr2,
 		    "forward frame to DS, SA(%s) DA(%s)",
 		    ether_sprintf(mc10->mc_addr6),
 		    ether_sprintf(mc10->mc_addr5));
+#else
+		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_OUTPUT, qwh->i_addr2,
+		    "forward frame to DS, SA(%6D) DA(%6D)",
+		    mc10->mc_addr6, ":", mc10->mc_addr5, ":");
+#endif
 	}
 	return (0); /* process locally */
 }
@@ -1542,7 +1579,6 @@ mesh_input(struct ieee80211_node *ni, struct mbuf *m,
 	uint32_t seq;
 	const uint8_t *addr;
 	uint8_t qos[2];
-	ieee80211_seq rxseq;
 
 	KASSERT(ni != NULL, ("null node"));
 	ni->ni_inact = ni->ni_inact_reload;
@@ -1587,24 +1623,8 @@ mesh_input(struct ieee80211_node *ni, struct mbuf *m,
 			if (IEEE80211_QOS_HAS_SEQ(wh) &&
 			    TID_TO_WME_AC(tid) >= WME_AC_VI)
 				ic->ic_wme.wme_hipri_traffic++;
-			rxseq = le16toh(*(uint16_t *)wh->i_seq);
-			if (! ieee80211_check_rxseq(ni, wh)) {
-				/* duplicate, discard */
-				IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_INPUT,
-				    wh->i_addr1, "duplicate",
-				    "seqno <%u,%u> fragno <%u,%u> tid %u",
-				    rxseq >> IEEE80211_SEQ_SEQ_SHIFT,
-				    ni->ni_rxseqs[tid] >>
-				    IEEE80211_SEQ_SEQ_SHIFT,
-				    rxseq & IEEE80211_SEQ_FRAG_MASK,
-				    ni->ni_rxseqs[tid] &
-				    IEEE80211_SEQ_FRAG_MASK,
-				    tid);
-				vap->iv_stats.is_rx_dup++;
-				IEEE80211_NODE_STAT(ni, rx_dup);
+			if (! ieee80211_check_rxseq(ni, wh, wh->i_addr1))
 				goto out;
-			}
-			ni->ni_rxseqs[tid] = rxseq;
 		}
 	}
 #ifdef IEEE80211_DEBUG
@@ -1732,7 +1752,7 @@ mesh_input(struct ieee80211_node *ni, struct mbuf *m,
 		}
 		/* XXX: are we sure there is no reallocating after m_pullup? */
 
-		seq = LE_READ_4(mc->mc_seq);
+		seq = le32dec(mc->mc_seq);
 		if (IEEE80211_IS_MULTICAST(wh->i_addr1))
 			addr = wh->i_addr3;
 		else if (ae == IEEE80211_MESH_AE_01)
@@ -1815,8 +1835,7 @@ mesh_input(struct ieee80211_node *ni, struct mbuf *m,
 		    (vap->iv_ic->ic_flags & IEEE80211_F_SCAN)) ||
 		    ieee80211_msg_dumppkts(vap)) {
 			if_printf(ifp, "received %s from %s rssi %d\n",
-			    ieee80211_mgt_subtype_name[subtype >>
-			    IEEE80211_FC0_SUBTYPE_SHIFT],
+			    ieee80211_mgt_subtype_name(subtype),
 			    ether_sprintf(wh->i_addr2), rssi);
 		}
 #endif
@@ -1839,7 +1858,7 @@ mesh_input(struct ieee80211_node *ni, struct mbuf *m,
 		break;
 	}
 err:
-	IFNET_STAT_INC(ifp, ierrors, 1);
+	if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
 out:
 	if (m != NULL) {
 		if (need_tap && ieee80211_radiotap_active_vap(vap))
@@ -2098,6 +2117,7 @@ mesh_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0, int subtype,
 	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
 	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
 	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
+	case IEEE80211_FC0_SUBTYPE_TIMING_ADV:
 	case IEEE80211_FC0_SUBTYPE_ATIM:
 	case IEEE80211_FC0_SUBTYPE_DISASSOC:
 	case IEEE80211_FC0_SUBTYPE_AUTH:
@@ -2156,12 +2176,12 @@ mesh_parse_meshpeering_action(struct ieee80211_node *ni,
 			mpie = (const struct ieee80211_meshpeer_ie *) frm;
 			memset(mp, 0, sizeof(*mp));
 			mp->peer_len = mpie->peer_len;
-			mp->peer_proto = LE_READ_2(&mpie->peer_proto);
-			mp->peer_llinkid = LE_READ_2(&mpie->peer_llinkid);
+			mp->peer_proto = le16dec(&mpie->peer_proto);
+			mp->peer_llinkid = le16dec(&mpie->peer_llinkid);
 			switch (subtype) {
 			case IEEE80211_ACTION_MESHPEERING_CONFIRM:
 				mp->peer_linkid =
-				    LE_READ_2(&mpie->peer_linkid);
+				    le16dec(&mpie->peer_linkid);
 				break;
 			case IEEE80211_ACTION_MESHPEERING_CLOSE:
 				/* NB: peer link ID is optional */
@@ -2169,12 +2189,12 @@ mesh_parse_meshpeering_action(struct ieee80211_node *ni,
 				    (IEEE80211_MPM_BASE_SZ + 2)) {
 					mp->peer_linkid = 0;
 					mp->peer_rcode =
-					    LE_READ_2(&mpie->peer_linkid);
+					    le16dec(&mpie->peer_linkid);
 				} else {
 					mp->peer_linkid =
-					    LE_READ_2(&mpie->peer_linkid);
+					    le16dec(&mpie->peer_linkid);
 					mp->peer_rcode =
-					    LE_READ_2(&mpie->peer_rcode);
+					    le16dec(&mpie->peer_rcode);
 				}
 				break;
 			}
@@ -2571,8 +2591,8 @@ mesh_parse_meshgate_action(struct ieee80211_node *ni,
 			ie->gann_hopcount = gannie->gann_hopcount;
 			ie->gann_ttl = gannie->gann_ttl;
 			IEEE80211_ADDR_COPY(ie->gann_addr, gannie->gann_addr);
-			ie->gann_seq = LE_READ_4(&gannie->gann_seq);
-			ie->gann_interval = LE_READ_2(&gannie->gann_interval);
+			ie->gann_seq = le32dec(&gannie->gann_seq);
+			ie->gann_interval = le16dec(&gannie->gann_interval);
 			break;
 		}
 		frm += frm[1] + 2;
@@ -2609,10 +2629,16 @@ mesh_recv_action_meshgate(struct ieee80211_node *ni,
 	if (IEEE80211_ADDR_EQ(vap->iv_myaddr, ie.gann_addr))
 		return 0;
 
+#if defined(__DragonFly__)
 	IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, ni->ni_macaddr,
 	    "received GANN, meshgate: %s (seq %u)",
 	    ether_sprintf(ie.gann_addr),
 	    ie.gann_seq);
+#else
+	IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, ni->ni_macaddr,
+	    "received GANN, meshgate: %6D (seq %u)", ie.gann_addr, ":",
+	    ie.gann_seq);
+#endif
 
 	if (ms == NULL)
 		return (0);
@@ -2637,8 +2663,14 @@ mesh_recv_action_meshgate(struct ieee80211_node *ni,
 		/* this GANN is from a new mesh Gate add it to known table. */
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, ie.gann_addr,
 		    "stored new GANN information, seq %u.", ie.gann_seq);
+#if defined(__DragonFly__)
 		gr = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
 		    M_80211_MESH_GT_RT, M_INTWAIT | M_ZERO);
+#else
+		gr = IEEE80211_MALLOC(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
+		    M_80211_MESH_GT_RT,
+		    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 		IEEE80211_ADDR_COPY(gr->gr_addr, ie.gann_addr);
 		TAILQ_INSERT_TAIL(&ms->ms_known_gates, gr, gr_next);
 	}
@@ -2877,8 +2909,8 @@ mesh_send_action_meshpeering_close(struct ieee80211_node *ni,
 	uint8_t *frm;
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_ACTION | IEEE80211_MSG_MESH, ni,
-	    "send PEER CLOSE action: localid 0x%x, peerid 0x%x reason %d",
-	    args[0], args[1], args[2]);
+	    "send PEER CLOSE action: localid 0x%x, peerid 0x%x reason %d (%s)",
+	    args[0], args[1], args[2], ieee80211_reason_to_string(args[2]));
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
 	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n", __func__, __LINE__,
@@ -3396,8 +3428,13 @@ void
 ieee80211_mesh_node_init(struct ieee80211vap *vap, struct ieee80211_node *ni)
 {
 	ni->ni_flags |= IEEE80211_NODE_QOS;
+#if defined(__DragonFly__)
 	callout_init_mp(&ni->ni_mltimer);
 	callout_init_mp(&ni->ni_mlhtimer);
+#else
+	callout_init(&ni->ni_mltimer, 1);
+	callout_init(&ni->ni_mlhtimer, 1);
+#endif
 }
 
 /*
@@ -3494,7 +3531,12 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			}
 			ireq->i_len = len;
 			/* XXX M_WAIT? */
+#if defined(__DragonFly__)
 			p = kmalloc(len, M_TEMP, M_INTWAIT | M_ZERO);
+#else
+			p = IEEE80211_MALLOC(len, M_TEMP,
+				IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 			if (p == NULL)
 				return ENOMEM;
 			off = 0;
@@ -3519,7 +3561,7 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			MESH_RT_UNLOCK(ms);
 			error = copyout(p, (uint8_t *)ireq->i_data,
 			    ireq->i_len);
-			kfree(p, M_TEMP);
+			IEEE80211_FREE(p, M_TEMP);
 			break;
 		case IEEE80211_MESH_RTCMD_FLUSH:
 		case IEEE80211_MESH_RTCMD_ADD:

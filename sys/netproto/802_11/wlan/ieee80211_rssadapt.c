@@ -132,8 +132,13 @@ rssadapt_init(struct ieee80211vap *vap)
 	KASSERT(vap->iv_rs == NULL, ("%s: iv_rs already initialized",
 	    __func__));
 	
+#if defined(__DragonFly__)
 	vap->iv_rs = rs = kmalloc(sizeof(struct ieee80211_rssadapt),
 	    M_80211_RATECTL, M_INTWAIT|M_ZERO);
+#else
+	vap->iv_rs = rs = IEEE80211_MALLOC(sizeof(struct ieee80211_rssadapt),
+	    M_80211_RATECTL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 	if (rs == NULL) {
 		if_printf(vap->iv_ifp, "couldn't alloc ratectl structure\n");
 		return;
@@ -146,7 +151,7 @@ rssadapt_init(struct ieee80211vap *vap)
 static void
 rssadapt_deinit(struct ieee80211vap *vap)
 {
-	kfree(vap->iv_rs, M_80211_RATECTL);
+	IEEE80211_FREE(vap->iv_rs, M_80211_RATECTL);
 }
 
 static void
@@ -175,8 +180,13 @@ rssadapt_node_init(struct ieee80211_node *ni)
 
 	if (ni->ni_rctls == NULL) {
 		ni->ni_rctls = ra =
+#if defined(__DragonFly__)
 		    kmalloc(sizeof(struct ieee80211_rssadapt_node),
 		        M_80211_RATECTL, M_INTWAIT|M_ZERO);
+#else
+		    IEEE80211_MALLOC(sizeof(struct ieee80211_rssadapt_node),
+			M_80211_RATECTL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
+#endif
 		if (ra == NULL) {
 			if_printf(vap->iv_ifp, "couldn't alloc per-node ratectl "
 			    "structure\n");
@@ -204,7 +214,7 @@ static void
 rssadapt_node_deinit(struct ieee80211_node *ni)
 {
 
-	kfree(ni->ni_rctls, M_80211_RATECTL);
+	IEEE80211_FREE(ni->ni_rctls, M_80211_RATECTL);
 }
 
 static __inline int
