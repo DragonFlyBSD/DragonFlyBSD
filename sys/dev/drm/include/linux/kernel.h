@@ -62,6 +62,7 @@
 
 #undef	ALIGN
 #define	ALIGN(x, y)		roundup2((x), (y))
+#define	IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
 #define	DIV_ROUND_UP		howmany
 #define DIV_ROUND_UP_ULL(X, N)	DIV_ROUND_UP((unsigned long long)(X), (N))
 

@@ -78,8 +78,6 @@
 #define	KTR_DRM		KTR_DEV
 #define	KTR_DRM_REG	KTR_SPARE3
 
-#define	IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
-
 #define KIB_NOTYET()							\
 do {									\
 	if (drm_debug && drm_notyet_flag)				\
