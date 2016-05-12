@@ -3,8 +3,15 @@
  * OS abstraction macros.
  */
 
+#include <sys/param.h>
 #include <sys/endian.h>
+#include <sys/systm.h>
+#include <sys/serialize.h>
 
+/** Current process ID */
+#define DRM_CURRENTPID		(curproc != NULL ? curproc->p_pid : -1)
+#define DRM_UDELAY(d)		DELAY(d)
+/** Read a byte from a MMIO region */
 #define DRM_READ8(map, offset)						\
 	*(volatile u_int8_t *)(((vm_offset_t)(map)->handle) +		\
 	    (vm_offset_t)(offset))
@@ -32,7 +39,19 @@
 	*(volatile u_int64_t *)(((vm_offset_t)(map)->handle) +		\
 	    (vm_offset_t)(offset)) = htole64(val)
 
-#define DRM_UDELAY(udelay)	DELAY(udelay)
+/* Returns -errno to shared code */
+#define DRM_WAIT_ON( ret, queue, timeout, condition )		\
+for ( ret = 0 ; !ret && !(condition) ; ) {			\
+	lwkt_serialize_enter(&dev->irq_lock);			\
+	if (!(condition)) {					\
+		tsleep_interlock(&(queue), PCATCH);		\
+		lwkt_serialize_exit(&dev->irq_lock);		\
+		ret = -tsleep(&(queue), PCATCH | PINTERLOCKED,	\
+			  "drmwtq", (timeout));			\
+	} else {						\
+		lwkt_serialize_exit(&dev->irq_lock);		\
+	}							\
+}
 
 /* include code to override EDID blocks from external firmware modules */
 #define CONFIG_DRM_LOAD_EDID_FIRMWARE

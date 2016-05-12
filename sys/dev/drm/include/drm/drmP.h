@@ -294,7 +294,6 @@ SYSCTL_DECL(_hw_drm);
 
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
-#define DRM_CURRENTPID		(curproc != NULL ? curproc->p_pid : -1)
 #define DRM_LOCK(dev)		lockmgr(&(dev)->struct_mutex, LK_EXCLUSIVE)
 #define DRM_UNLOCK(dev)		lockmgr(&(dev)->struct_mutex, LK_RELEASE)
 #define	DRM_LOCK_SLEEP(dev, chan, flags, msg, timeout)			\
@@ -316,20 +315,6 @@ typedef void			irqreturn_t;
 #define drm_get_device_from_kdev(_kdev) (_kdev->si_drv1)
 
 #define DRM_MTRR_WC		MDF_WRITECOMBINE
-
-/* Returns -errno to shared code */
-#define DRM_WAIT_ON( ret, queue, timeout, condition )		\
-for ( ret = 0 ; !ret && !(condition) ; ) {			\
-	lwkt_serialize_enter(&dev->irq_lock);			\
-	if (!(condition)) {					\
-            tsleep_interlock(&(queue), PCATCH);			\
-            lwkt_serialize_exit(&dev->irq_lock);		\
-            ret = -tsleep(&(queue), PCATCH | PINTERLOCKED,	\
-			  "drmwtq", (timeout));			\
-        } else {                                                \
-                lwkt_serialize_exit(&dev->irq_lock);            \
-        }                                                 	\
-}
 
 int vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
     vm_memattr_t memattr);
