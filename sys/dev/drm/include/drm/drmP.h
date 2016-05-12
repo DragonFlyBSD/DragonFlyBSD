@@ -82,9 +82,6 @@
 #include <sys/memrange.h>
 #include <sys/mutex.h>
 
-#include <uapi_drm/drm.h>
-#include <uapi_drm/drm_sarea.h>
-
 #include <linux/atomic.h>
 #include <linux/bug.h>
 #include <linux/dma-mapping.h>
@@ -112,14 +109,18 @@
 
 #include <asm/uaccess.h>
 
+#include <uapi_drm/drm.h>
+#include <uapi_drm/drm_mode.h>
+
 #include <drm/drm_agpsupport.h>
+#include <drm/drm_crtc.h>
 #include <drm/drm_global.h>
-
-#include <drm/drm_vma_manager.h>
-
-#include <drm/drm_os_linux.h>
 #include <drm/drm_hashtab.h>
+#include <drm/drm_mem_util.h>
 #include <drm/drm_mm.h>
+#include <drm/drm_os_linux.h>
+#include <uapi_drm/drm_sarea.h>
+#include <drm/drm_vma_manager.h>
 
 struct drm_file;
 struct drm_device;
@@ -130,7 +131,9 @@ struct drm_dma_handle;
 struct drm_gem_object;
 
 struct device_node;
-struct videomode;
+#ifdef CONFIG_VIDEOMODE_HELPERS
+struct videomode;	/* XXX empty struct in videomode.h ? */
+#endif
 struct reservation_object;
 struct dma_buf_attachment;
 
@@ -500,9 +503,6 @@ struct drm_gem_mm {
 	struct drm_open_hash offset_hash; /**< User token hash table for maps */
 	struct unrhdr *idxunr;
 };
-
-
-#include "drm_crtc.h"
 
 /**
  * struct drm_master - drm master structure
@@ -1228,8 +1228,6 @@ drm_free(void *pt, struct malloc_type *area)
 	if (pt != NULL)
 		(kfree)(pt, area);
 }
-
-#include <drm/drm_mem_util.h>
 
 struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 				 struct device *parent);

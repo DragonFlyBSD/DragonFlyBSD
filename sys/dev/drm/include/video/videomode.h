@@ -26,7 +26,9 @@
 
 #include <linux/types.h>
 
+#ifdef CONFIG_VIDEOMODE_HELPERS
 struct videomode {
 };
+#endif
 
 #endif /* __VIDEO_VIDEOMODE_H__ */
