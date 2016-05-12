@@ -12,7 +12,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. Neither the name of the University nor the names of its contributors
+.\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -29,10 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)chgrp.1	8.3 (Berkeley) 3/31/94
-.\" $FreeBSD: src/usr.sbin/chown/chgrp.1,v 1.9.2.3 2001/08/16 15:55:44 ru Exp $
-.\" $DragonFly: src/usr.sbin/chown/chgrp.1,v 1.7 2006/02/17 19:40:13 swildner Exp $
+.\" $FreeBSD: head/usr.sbin/chown/chgrp.1 282208 2015-04-29 00:49:00Z smh $
 .\"
-.Dd March 31, 1994
+.Dd May 12, 2016
 .Dt CHGRP 1
 .Os
 .Sh NAME
@@ -40,11 +39,7 @@
 .Nd change group
 .Sh SYNOPSIS
 .Nm
-.Op Fl fhvR
-.Ar group
-.Ar
-.Nm
-.Op Fl fv
+.Op Fl fhvx
 .Oo
 .Fl R
 .Op Fl H | Fl L | Fl P
@@ -65,8 +60,9 @@ The following options are available:
 .It Fl H
 If the
 .Fl R
-option is specified, symbolic links on the command line are followed.
-(Symbolic links encountered in the tree traversal are not followed).
+option is specified, symbolic links on the command line are followed
+and hence unaffected by the command.
+(Symbolic links encountered during traversal are not followed.)
 .It Fl L
 If the
 .Fl R
@@ -77,15 +73,14 @@ If the
 option is specified, no symbolic links are followed.
 This is the default.
 .It Fl R
-Recursively change file group IDs.
-For each
-.Ar file
-operand that names a directory,
-.Nm
-shall change the group of the directory
-and all files in the file hierarchy below it.
+Change the group ID of the file hierarchies rooted in the files,
+instead of just the files themselves.
+Beware of unintentionally matching the
+.Dq Pa ".."
+hard link to the parent directory when using wildcards like
+.Dq Li ".*" .
 .It Fl f
-The force option ignores errors, except for usage errors and doesn't
+The force option ignores errors, except for usage errors and does not
 query about strange modes (unless the user does not have proper permissions).
 .It Fl h
 If the file is a symbolic link, the group ID of the link itself is changed
@@ -94,6 +89,13 @@ rather than the file that is pointed to.
 Cause
 .Nm
 to be verbose, showing files as the group is modified.
+If the
+.Fl v
+flag is specified more than once,
+.Nm
+will print the filename, followed by the old and new numeric group ID.
+.It Fl x
+File system mount points are not traversed.
 .El
 .Pp
 The
@@ -129,10 +131,10 @@ group ID file
 In previous versions of this system, symbolic links did not have groups.
 .Pp
 The
-.Fl f
-and
 .Fl v
-options are extensions to the standard.
+and
+.Fl x
+options are non-standard and their use in scripts is not recommended.
 .Sh SEE ALSO
 .Xr chown 2 ,
 .Xr fts 3 ,
@@ -143,7 +145,6 @@ options are extensions to the standard.
 .Sh STANDARDS
 The
 .Nm
-utility conforms to
+utility is expected to be
 .St -p1003.2
-and
-.St -p1003.1-2004 .
+compatible.
