@@ -443,7 +443,7 @@ struct drm_file {
 	/** Lock for synchronization of access to object_idr. */
 	struct lock table_lock;
 
-	void		 *driver_priv;
+	void *driver_priv;
 
 	int		  is_master;
 	struct drm_master *masterp;
@@ -462,8 +462,8 @@ struct drm_file {
 	struct list_head blobs;
 
 	wait_queue_head_t event_wait;
-	struct list_head  event_list;
-	int		  event_space;
+	struct list_head event_list;
+	int event_space;
 
 	struct drm_prime_file_private prime;
 };
@@ -503,18 +503,13 @@ struct drm_gem_mm {
  * @driver_priv: Pointer to driver-private information.
  */
 struct drm_master {
-
-	struct kref refcount; /* refcount for this master */
-
-	struct list_head head; /**< each minor contains a list of masters */
-	struct drm_minor *minor; /**< link back to minor we are a master for */
-
+	struct kref refcount;		/* refcount for this master */
+	struct list_head head;		/**< each minor contains a list of masters */
+	struct drm_minor *minor;	/**< link back to minor we are a master for */
 	char *unique;			/**< Unique identifier: e.g., busid */
 	int unique_len;			/**< Length of unique field */
 	int unique_size;		/**< amount allocated */
-
 	int blocked;			/**< Blocked due to VC switch? */
-
 	struct drm_open_hash magiclist;
 	struct list_head magicfree;
 	struct drm_lock_data lock;
@@ -548,29 +543,65 @@ struct drm_master {
  * in this family
  */
 struct drm_driver {
-	int	(*load)(struct drm_device *, unsigned long flags);
-	int	(*use_msi)(struct drm_device *, unsigned long flags);
-	int	(*firstopen)(struct drm_device *);
-	int	(*open)(struct drm_device *, struct drm_file *);
-	void	(*preclose)(struct drm_device *, struct drm_file *file_priv);
-	void	(*postclose)(struct drm_device *, struct drm_file *);
-	void	(*lastclose)(struct drm_device *);
-	int	(*unload)(struct drm_device *);
-	void	(*reclaim_buffers_locked)(struct drm_device *,
-					  struct drm_file *file_priv);
-	int	(*dma_ioctl)(struct drm_device *dev, void *data,
-			     struct drm_file *file_priv);
-	int	(*dma_quiescent)(struct drm_device *);
-	int	(*context_ctor)(struct drm_device *dev, int context);
-	int	(*context_dtor)(struct drm_device *dev, int context);
-	void	(*irq_preinstall)(struct drm_device *dev);
-	int	(*irq_postinstall)(struct drm_device *dev);
-	void	(*irq_uninstall)(struct drm_device *dev);
-	void	(*irq_handler)(void *arg);
+	int (*load) (struct drm_device *, unsigned long flags);
+	int (*use_msi) (struct drm_device *, unsigned long flags);
+	int (*firstopen) (struct drm_device *);
+	int (*open) (struct drm_device *, struct drm_file *);
+	void (*preclose) (struct drm_device *, struct drm_file *file_priv);
+	void (*postclose) (struct drm_device *, struct drm_file *);
+	void (*lastclose) (struct drm_device *);
+	int (*unload) (struct drm_device *);
+	void (*reclaim_buffers_locked) (struct drm_device *,
+					struct drm_file *file_priv);
+	int (*dma_ioctl) (struct drm_device *dev, void *data, struct drm_file *file_priv);
+	int (*dma_quiescent) (struct drm_device *);
+	int (*context_ctor) (struct drm_device *dev, int context);
+	int (*context_dtor) (struct drm_device *dev, int context);
 
-	u32	(*get_vblank_counter)(struct drm_device *dev, int crtc);
-	int	(*enable_vblank)(struct drm_device *dev, int crtc);
-	void	(*disable_vblank)(struct drm_device *dev, int crtc);
+	/**
+	 * get_vblank_counter - get raw hardware vblank counter
+	 * @dev: DRM device
+	 * @crtc: counter to fetch
+	 *
+	 * Driver callback for fetching a raw hardware vblank counter for @crtc.
+	 * If a device doesn't have a hardware counter, the driver can simply
+	 * return the value of drm_vblank_count. The DRM core will account for
+	 * missed vblank events while interrupts where disabled based on system
+	 * timestamps.
+	 *
+	 * Wraparound handling and loss of events due to modesetting is dealt
+	 * with in the DRM core code.
+	 *
+	 * RETURNS
+	 * Raw vblank counter value.
+	 */
+	u32 (*get_vblank_counter) (struct drm_device *dev, int crtc);
+
+	/**
+	 * enable_vblank - enable vblank interrupt events
+	 * @dev: DRM device
+	 * @crtc: which irq to enable
+	 *
+	 * Enable vblank interrupts for @crtc.  If the device doesn't have
+	 * a hardware vblank counter, this routine should be a no-op, since
+	 * interrupts will have to stay on to keep the count accurate.
+	 *
+	 * RETURNS
+	 * Zero on success, appropriate errno if the given @crtc's vblank
+	 * interrupt cannot be enabled.
+	 */
+	int (*enable_vblank) (struct drm_device *dev, int crtc);
+
+	/**
+	 * disable_vblank - disable vblank interrupt events
+	 * @dev: DRM device
+	 * @crtc: which irq to enable
+	 *
+	 * Disable vblank interrupts for @crtc.  If the device doesn't have
+	 * a hardware vblank counter, this routine should be a no-op, since
+	 * interrupts will have to stay on to keep the count accurate.
+	 */
+	void (*disable_vblank) (struct drm_device *dev, int crtc);
 
 	/**
 	 * Called by \c drm_device_is_agp.  Typically used to determine if a
@@ -620,32 +651,81 @@ struct drm_driver {
 				     int *vpos, int *hpos, ktime_t *stime,
 				     ktime_t *etime);
 
-	int	(*get_vblank_timestamp)(struct drm_device *dev, int crtc,
-		    int *max_error, struct timeval *vblank_time,
-		    unsigned flags);
+	/**
+	 * Called by \c drm_get_last_vbltimestamp. Should return a precise
+	 * timestamp when the most recent VBLANK interval ended or will end.
+	 *
+	 * Specifically, the timestamp in @vblank_time should correspond as
+	 * closely as possible to the time when the first video scanline of
+	 * the video frame after the end of VBLANK will start scanning out,
+	 * the time immediately after end of the VBLANK interval. If the
+	 * @crtc is currently inside VBLANK, this will be a time in the future.
+	 * If the @crtc is currently scanning out a frame, this will be the
+	 * past start time of the current scanout. This is meant to adhere
+	 * to the OpenML OML_sync_control extension specification.
+	 *
+	 * \param dev dev DRM device handle.
+	 * \param crtc crtc for which timestamp should be returned.
+	 * \param *max_error Maximum allowable timestamp error in nanoseconds.
+	 *                   Implementation should strive to provide timestamp
+	 *                   with an error of at most *max_error nanoseconds.
+	 *                   Returns true upper bound on error for timestamp.
+	 * \param *vblank_time Target location for returned vblank timestamp.
+	 * \param flags 0 = Defaults, no special treatment needed.
+	 * \param       DRM_CALLED_FROM_VBLIRQ = Function is called from vblank
+	 *	        irq handler. Some drivers need to apply some workarounds
+	 *              for gpu-specific vblank irq quirks if flag is set.
+	 *
+	 * \returns
+	 * Zero if timestamping isn't supported in current display mode or a
+	 * negative number on failure. A positive status code on success,
+	 * which describes how the vblank_time timestamp was computed.
+	 */
+	int (*get_vblank_timestamp) (struct drm_device *dev, int crtc,
+				     int *max_error,
+				     struct timeval *vblank_time,
+				     unsigned flags);
 
-	void	(*gem_free_object)(struct drm_gem_object *obj);
-	int	(*gem_open_object)(struct drm_gem_object *, struct drm_file *);
-	void	(*gem_close_object)(struct drm_gem_object *, struct drm_file *);
+	/* these have to be filled in */
 
-	struct cdev_pager_ops *gem_pager_ops;
+	void (*irq_handler) (void *arg);
+	void (*irq_preinstall) (struct drm_device *dev);
+	int (*irq_postinstall) (struct drm_device *dev);
+	void (*irq_uninstall) (struct drm_device *dev);
 
-	int	(*dumb_create)(struct drm_file *file_priv,
-		    struct drm_device *dev, struct drm_mode_create_dumb *args);
-	int	(*dumb_map_offset)(struct drm_file *file_priv,
-		    struct drm_device *dev, uint32_t handle, uint64_t *offset);
-	int	(*dumb_destroy)(struct drm_file *file_priv,
-		    struct drm_device *dev, uint32_t handle);
+	/**
+	 * Driver-specific constructor for drm_gem_objects, to set up
+	 * obj->driver_private.
+	 *
+	 * Returns 0 on success.
+	 */
+	void (*gem_free_object) (struct drm_gem_object *obj);
+	int (*gem_open_object) (struct drm_gem_object *, struct drm_file *);
+	void (*gem_close_object) (struct drm_gem_object *, struct drm_file *);
 
-	int	(*sysctl_init)(struct drm_device *dev,
+	int (*sysctl_init) (struct drm_device *dev,
 		    struct sysctl_ctx_list *ctx, struct sysctl_oid *top);
-	void	(*sysctl_cleanup)(struct drm_device *dev);
+	void (*sysctl_cleanup) (struct drm_device *dev);
 
 	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
 
-	int	major;
-	int	minor;
-	int	patchlevel;
+	/* dumb alloc support */
+	int (*dumb_create)(struct drm_file *file_priv,
+			   struct drm_device *dev,
+			   struct drm_mode_create_dumb *args);
+	int (*dumb_map_offset)(struct drm_file *file_priv,
+			       struct drm_device *dev, uint32_t handle,
+			       uint64_t *offset);
+	int (*dumb_destroy)(struct drm_file *file_priv,
+			    struct drm_device *dev,
+			    uint32_t handle);
+
+	/* Driver private ops for this object */
+	struct cdev_pager_ops *gem_pager_ops;
+
+	int major;
+	int minor;
+	int patchlevel;
 	const char *name;		/* Simple driver name		   */
 	const char *desc;		/* Longer driver name		   */
 	const char *date;		/* Date of last major changes.	   */
@@ -795,7 +875,6 @@ struct drm_device {
 	struct drm_device_dma *dma;		/**< Optional pointer for DMA support */
 	/*@} */
 
-	int		  irq;		/* Interrupt used by board	   */
 	int		  irq_type;	/* IRQ type (MSI enabled or not) */
 	int		  irqrid;	/* Interrupt used by board */
 	struct resource   *irqr;	/* Resource for interrupt used by board	   */
@@ -812,7 +891,7 @@ struct drm_device {
 
 	/** \name Context support */
 	/*@{ */
-	int irq_enabled;		/**< True if irq handler is enabled */
+
 	__volatile__ long context_flag;	/**< Context swapping flag */
 	__volatile__ long interrupt_flag; /**< Interruption handler flag */
 	__volatile__ long dma_flag;	/**< DMA dispatch flag */
@@ -824,6 +903,8 @@ struct drm_device {
 
 	/** \name VBLANK IRQ support */
 	/*@{ */
+	int irq_enabled;		/**< True if irq handler is enabled */
+	int irq;			/* Interrupt used by board */
 
 	/*
 	 * At load time, disabling the vblank interrupt won't be allowed since
@@ -887,7 +968,7 @@ struct drm_device {
 	struct drm_minor *control;		/**< Control node for card */
 	struct drm_minor *primary;		/**< render type primary screen head */
 
-        struct drm_mode_config mode_config;	/**< Current mode config */
+	struct drm_mode_config mode_config;	/**< Current mode config */
 
 	/** \name GEM information */
 	/*@{ */
@@ -1094,7 +1175,7 @@ extern void drm_calc_timestamping_constants(struct drm_crtc *crtc,
  */
 static inline wait_queue_head_t *drm_crtc_vblank_waitqueue(struct drm_crtc *crtc)
 {
-       return &crtc->dev->vblank[drm_crtc_index(crtc)].queue;
+	return &crtc->dev->vblank[drm_crtc_index(crtc)].queue;
 }
 
 /* Modesetting support */
