@@ -392,7 +392,7 @@ list_net_interfaces()
 	#
 	case ${network_interfaces} in
 	[Aa][Uu][Tt][Oo])
-		_autolist="`ifconfig -l`"
+		_autolist="`ifconfig -l` `sysctl -in net.wlan.devices`"
 		_lo=
 		for _if in ${_autolist} ; do
 			if [ "$_if" = "lo0" ]; then

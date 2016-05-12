@@ -133,7 +133,7 @@ network_common()
 		eval showstat=\$showstat_${ifn}
 		if [ ! -z ${showstat} ]; then
 			if [ -n "$_verbose" ]; then
-				ifconfig ${ifn}
+				ifconfig ${ifn} 2>/dev/null
 			else
 				echo -n " ${ifn}"
 			fi
