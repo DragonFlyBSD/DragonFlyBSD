@@ -44,8 +44,12 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <machine/bus.h>
 #include <machine/resource.h>
+#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -56,12 +60,17 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 
-#include <net80211/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_var.h>
 
-#include <dev/ath/if_athvar.h>
+#include <dev/netif/ath/ath/if_athvar.h>
 
+#if defined(__DragonFly__)
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#else
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>
+#endif
 
 /* For EEPROM firmware */
 #ifdef	ATH_EEPROM_FIRMWARE
@@ -82,7 +91,7 @@ struct ath_pci_softc {
 
 /*
  * XXX eventually this should be some system level definition
- * so modules will have probe/attach information like USB.
+ * so modules will hvae probe/attach information like USB.
  * But for now..
  */
 struct pci_device_id {
@@ -295,18 +304,32 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "could not map interrupt\n");
 		goto bad1;
 	}
+#if defined(__DragonFly__)
+	if (bus_setup_intr(dev, psc->sc_irq,
+			   INTR_MPSAFE,
+			   ath_intr, sc, &psc->sc_ih,
+			   &wlan_global_serializer)) {
+		device_printf(dev, "could not establish interrupt\n");
+		goto bad2;
+	}
+#else
 	if (bus_setup_intr(dev, psc->sc_irq,
 			   INTR_TYPE_NET | INTR_MPSAFE,
 			   NULL, ath_intr, sc, &psc->sc_ih)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
+#endif
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
+#if defined(__DragonFly__)
+			       16, 0,			/* alignment, bounds */
+#else
 			       1, 0,			/* alignment, bounds */
+#endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */
@@ -314,8 +337,11 @@ ath_pci_attach(device_t dev)
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
+#if defined(__DragonFly__)
+#else
 			       NULL,			/* lockfunc */
 			       NULL,			/* lockarg */
+#endif
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -341,7 +367,7 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "%s: EEPROM firmware @ %p\n",
 		    __func__, fw->data);
 		sc->sc_eepromdata =
-		    malloc(fw->datasize, M_TEMP, M_WAITOK | M_ZERO);
+		    kmalloc(fw->datasize, M_TEMP, M_WAITOK | M_ZERO);
 		if (! sc->sc_eepromdata) {
 			device_printf(dev, "%s: can't malloc eepromdata\n",
 			    __func__);
@@ -356,7 +382,7 @@ ath_pci_attach(device_t dev)
 	if (error == 0)					/* success */
 		return 0;
 
-#ifdef	ATH_EEPROM_FIRMWARE
+#ifdef ATH_EEPROM_FIRMWARE
 bad4:
 #endif
 	bus_dma_tag_destroy(sc->sc_dmat);
@@ -372,7 +398,6 @@ bad1:
 	ATH_RX_LOCK_DESTROY(sc);
 	ATH_TX_LOCK_DESTROY(sc);
 	ATH_LOCK_DESTROY(sc);
-
 bad:
 	return (error);
 }
@@ -401,7 +426,7 @@ ath_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
 
 	if (sc->sc_eepromdata)
-		free(sc->sc_eepromdata, M_TEMP);
+		kfree(sc->sc_eepromdata, M_TEMP);
 
 	ATH_TXSTATUS_LOCK_DESTROY(sc);
 	ATH_PCU_LOCK_DESTROY(sc);
@@ -463,7 +488,7 @@ static driver_t ath_pci_driver = {
 	sizeof (struct ath_pci_softc)
 };
 static	devclass_t ath_devclass;
-DRIVER_MODULE(ath_pci, pci, ath_pci_driver, ath_devclass, 0, 0);
+DRIVER_MODULE(ath_pci, pci, ath_pci_driver, ath_devclass, NULL, NULL);
 MODULE_VERSION(ath_pci, 1);
 MODULE_DEPEND(ath_pci, wlan, 1, 1, 1);		/* 802.11 media layer */
 MODULE_DEPEND(ath_pci, if_ath, 1, 1, 1);	/* if_ath driver */

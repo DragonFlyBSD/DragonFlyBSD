@@ -939,10 +939,6 @@ ath_hal_getdiagstate(struct ath_hal *ah, int request,
 		} else
 			return AH_FALSE;
 		return AH_TRUE;
-	case HAL_DIAG_CHANSURVEY:
-		*result = &AH_PRIVATE(ah)->ah_chansurvey;
-		*resultsize = sizeof(HAL_CHANNEL_SURVEY);
-		return AH_TRUE;
 	}
 	return AH_FALSE;
 }
@@ -1441,18 +1437,17 @@ ath_hal_mhz2ieee_2ghz(struct ath_hal *ah, int freq)
 
 /*
  * Clear the current survey data.
- *
+ * 
  * This should be done during a channel change.
  */
 void
 ath_hal_survey_clear(struct ath_hal *ah)
 {
-
 	OS_MEMZERO(&AH_PRIVATE(ah)->ah_chansurvey,
 	    sizeof(AH_PRIVATE(ah)->ah_chansurvey));
 }
 
-/*
+/* 
  * Add a sample to the channel survey.
  */
 void

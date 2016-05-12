@@ -30,6 +30,10 @@
  */
 #include "opt_ah.h"
 
+#if defined(__DragonFly__)
+#define CTLFLAG_RWTUN	CTLFLAG_RW
+#endif
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -38,16 +42,28 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#if defined(__DragonFly__)
+#else
 #include <sys/pcpu.h>
+#endif
 #include <sys/lock.h>
 #include <sys/mutex.h>
 
 #include <machine/stdarg.h>
 
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
+#if defined(__DragonFly__)
 
-#include <dev/ath/ath_hal/ah.h>
-#include <dev/ath/ath_hal/ah_debug.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/if_media.h>
+#include <net/if_types.h>
+#include <netproto/802_11/ieee80211_var.h>	/* ether_sprintf */
+
+#endif
+
+#include <dev/netif/ath/ath_hal/ah.h>
+#include <dev/netif/ath/ath_hal/ah_debug.h>
 
 /*
  * WiSoC boards overload the bus tag with information about the
@@ -70,9 +86,8 @@
  * XXX This is a global lock for now; it should be pushed to
  * a per-device lock in some platform-independent fashion.
  */
-struct mtx ah_regser_mtx;
-MTX_SYSINIT(ah_regser, &ah_regser_mtx, "Atheros register access mutex",
-    MTX_SPIN);
+struct lock ah_regser_mtx;
+LOCK_SYSINIT(ah_regser, &ah_regser_mtx, "Atheros register access mutex", 0);
 
 extern	void ath_hal_printf(struct ath_hal *, const char*, ...)
 		__printflike(2,3);
@@ -105,28 +120,28 @@ static MALLOC_DEFINE(M_ATH_HAL, "ath_hal", "ath hal data");
 void*
 ath_hal_malloc(size_t size)
 {
-	return malloc(size, M_ATH_HAL, M_NOWAIT | M_ZERO);
+	return kmalloc(size, M_ATH_HAL, M_INTWAIT | M_ZERO);
 }
 
 void
 ath_hal_free(void* p)
 {
-	free(p, M_ATH_HAL);
+	kfree(p, M_ATH_HAL);
 }
 
 void
-ath_hal_vprintf(struct ath_hal *ah, const char* fmt, va_list ap)
+ath_hal_vprintf(struct ath_hal *ah, const char* fmt, __va_list ap)
 {
-	vprintf(fmt, ap);
+	kvprintf(fmt, ap);
 }
 
 void
 ath_hal_printf(struct ath_hal *ah, const char* fmt, ...)
 {
-	va_list ap;
-	va_start(ap, fmt);
+	__va_list ap;
+	__va_start(ap, fmt);
 	ath_hal_vprintf(ah, fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 }
 
 const char*
@@ -162,9 +177,9 @@ DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...)
 	    (ah != NULL && ah->ah_config.ah_debug & mask) ||
 	    (ath_hal_debug & mask)) {
 		__va_list ap;
-		va_start(ap, fmt);
+		__va_start(ap, fmt);
 		ath_hal_vprintf(ah, fmt, ap);
-		va_end(ap);
+		__va_end(ap);
 	}
 }
 #undef	HAL_DEBUG_UNMASKABLE
@@ -184,9 +199,9 @@ DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...)
  * NB: doesn't handle multiple devices properly; only one DEVICE record
  *     is emitted and the different devices are not identified.
  */
-#include <sys/alq.h>
-#include <sys/pcpu.h>
-#include <dev/ath/ath_hal/ah_decode.h>
+/*#include <sys/alq.h> FreeBSD */
+/*#include <sys/pcpu.h> FreeBSD */
+#include <dev/netif/ath/ath_hal/ah_decode.h>
 
 static	struct alq *ath_hal_alq;
 static	int ath_hal_alq_emitdev;	/* need to emit DEVICE record */
@@ -209,13 +224,13 @@ ath_hal_setlogging(int enable)
 			sizeof (struct athregrec), ath_hal_alq_qsize);
 		ath_hal_alq_lost = 0;
 		ath_hal_alq_emitdev = 1;
-		printf("ath_hal: logging to %s enabled\n",
+		kprintf("ath_hal: logging to %s enabled\n",
 			ath_hal_logfile);
 	} else {
 		if (ath_hal_alq)
 			alq_close(ath_hal_alq);
 		ath_hal_alq = NULL;
-		printf("ath_hal: logging disabled\n");
+		kprintf("ath_hal: logging disabled\n");
 		error = 0;
 	}
 	return (error);
@@ -291,11 +306,11 @@ ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 		}
 	}
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_lock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_EXCLUSIVE);
 	bus_space_write_4(tag, h, reg, val);
 	OS_BUS_BARRIER_REG(ah, reg, OS_BUS_BARRIER_WRITE);
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_unlock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_RELEASE);
 }
 
 u_int32_t
@@ -305,21 +320,19 @@ ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 	bus_space_handle_t h = ah->ah_sh;
 	u_int32_t val;
 
-#ifdef	AH_DEBUG
 	/* Debug - complain if we haven't fully waken things up */
 	if (! ath_hal_reg_whilst_asleep(ah, reg) &&
 	    ah->ah_powerMode != HAL_PM_AWAKE) {
 		ath_hal_printf(ah, "%s: reg=0x%08x, pm=%d\n",
 		    __func__, reg, ah->ah_powerMode);
 	}
-#endif
 
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_lock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_EXCLUSIVE);
 	OS_BUS_BARRIER_REG(ah, reg, OS_BUS_BARRIER_READ);
 	val = bus_space_read_4(tag, h, reg);
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_unlock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_RELEASE);
 	if (ath_hal_alq) {
 		struct ale *ale = ath_hal_alq_get(ah);
 		if (ale) {
@@ -368,7 +381,7 @@ ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 	bus_space_tag_t tag = BUSTAG(ah);
 	bus_space_handle_t h = ah->ah_sh;
 
-#ifdef	AH_DEBUG
+#ifdef AH_DEBUG
 	/* Debug - complain if we haven't fully waken things up */
 	if (! ath_hal_reg_whilst_asleep(ah, reg) &&
 	    ah->ah_powerMode != HAL_PM_AWAKE) {
@@ -378,11 +391,11 @@ ath_hal_reg_write(struct ath_hal *ah, u_int32_t reg, u_int32_t val)
 #endif
 
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_lock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_EXCLUSIVE);
 	bus_space_write_4(tag, h, reg, val);
 	OS_BUS_BARRIER_REG(ah, reg, OS_BUS_BARRIER_WRITE);
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_unlock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_RELEASE);
 }
 
 u_int32_t
@@ -392,7 +405,7 @@ ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 	bus_space_handle_t h = ah->ah_sh;
 	u_int32_t val;
 
-#ifdef	AH_DEBUG
+#ifdef AH_DEBUG
 	/* Debug - complain if we haven't fully waken things up */
 	if (! ath_hal_reg_whilst_asleep(ah, reg) &&
 	    ah->ah_powerMode != HAL_PM_AWAKE) {
@@ -402,21 +415,56 @@ ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 #endif
 
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_lock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_EXCLUSIVE);
 	OS_BUS_BARRIER_REG(ah, reg, OS_BUS_BARRIER_READ);
 	val = bus_space_read_4(tag, h, reg);
 	if (ah->ah_config.ah_serialise_reg_war)
-		mtx_unlock_spin(&ah_regser_mtx);
+		lockmgr(&ah_regser_mtx, LK_RELEASE);
 	return val;
 }
-#endif /* AH_DEBUG_ALQ */
+#endif /* AH_DEBUG || AH_REGOPS_FUNC */
 
 #ifdef AH_ASSERT
 void
 ath_hal_assert_failed(const char* filename, int lineno, const char *msg)
 {
-	printf("Atheros HAL assertion failure: %s: line %u: %s\n",
+	kprintf("Atheros HAL assertion failure: %s: line %u: %s\n",
 		filename, lineno, msg);
 	panic("ath_hal_assert");
 }
 #endif /* AH_ASSERT */
+
+/*
+ * Module glue.
+ */
+static int
+ath_hal_modevent(module_t mod, int type, void *unused)
+{
+       int error;
+
+       wlan_serialize_enter();
+
+       switch (type) {
+       case MOD_LOAD:
+	       error = 0;
+	       break;
+       case MOD_UNLOAD:
+	       error = 0;
+	       break;
+       default:
+	       error = EINVAL;
+	       break;
+       }
+       wlan_serialize_exit();
+
+       return error;
+}
+
+static moduledata_t ath_hal_mod = {
+       "ath_hal",
+       ath_hal_modevent,
+       0
+};
+
+DECLARE_MODULE(ath_hal, ath_hal_mod, SI_SUB_DRIVERS, SI_ORDER_ANY);
+MODULE_VERSION(ath_hal, 1);

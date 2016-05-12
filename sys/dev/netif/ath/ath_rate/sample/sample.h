@@ -113,7 +113,7 @@ struct sample_node {
 #ifdef	_KERNEL
 
 #define	ATH_NODE_SAMPLE(an)	((struct sample_node *)&(an)[1])
-#define	IS_RATE_DEFINED(sn, rix)	(((uint64_t) (sn)->ratemask & (1ULL<<((uint64_t) rix))) != 0)
+#define	IS_RATE_DEFINED(sn, rix)	(((uint64_t)(sn)->ratemask & (1ULL<<((uint64_t) rix))) != 0)
 
 #ifndef MIN
 #define	MIN(a,b)	((a) < (b) ? (a) : (b))
@@ -148,7 +148,7 @@ static unsigned calc_usecs_unicast_packet(struct ath_softc *sc,
 	KASSERT(rt != NULL, ("no rate table, mode %u", sc->sc_curmode));
 
 	if (rix >= rt->rateCount) {
-		printf("bogus rix %d, max %u, mode %u\n",
+		kprintf("bogus rix %d, max %u, mode %u\n",
 		       rix, rt->rateCount, sc->sc_curmode);
 		return 0;
 	}

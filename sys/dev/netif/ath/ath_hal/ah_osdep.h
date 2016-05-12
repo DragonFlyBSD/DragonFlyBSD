@@ -39,7 +39,19 @@
 #include <sys/endian.h>
 #include <sys/linker_set.h>
 
-#include <machine/bus.h>
+#if defined(__DragonFly__)
+
+#include <sys/bus.h>
+
+#ifndef true
+#define true 1
+#endif
+
+#ifndef false
+#define false 0
+#endif
+
+#endif
 
 /*
  * Bus i/o type definitions.

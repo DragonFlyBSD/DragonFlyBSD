@@ -68,9 +68,13 @@ __FBSDID("$FreeBSD$");
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
-#include <sys/smp.h>	/* for mp_ncpus */
 
+#if defined(__DragonFly__)
+/* empty */
+#else
+#include <sys/smp.h>
 #include <machine/bus.h>
+#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -81,13 +85,13 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <net80211/ieee80211_superg.h>
+#include <netproto/802_11/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <net80211/ieee80211_tdma.h>
+#include <netproto/802_11/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -97,31 +101,31 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
-#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/ath/ath_hal/ah_diagcodes.h>
+#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
 
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_misc.h>
-#include <dev/ath/if_ath_tsf.h>
-#include <dev/ath/if_ath_tx.h>
-#include <dev/ath/if_ath_sysctl.h>
-#include <dev/ath/if_ath_led.h>
-#include <dev/ath/if_ath_keycache.h>
-#include <dev/ath/if_ath_rx.h>
-#include <dev/ath/if_ath_beacon.h>
-#include <dev/ath/if_athdfs.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_misc.h>
+#include <dev/netif/ath/ath/if_ath_tsf.h>
+#include <dev/netif/ath/ath/if_ath_tx.h>
+#include <dev/netif/ath/ath/if_ath_sysctl.h>
+#include <dev/netif/ath/ath/if_ath_led.h>
+#include <dev/netif/ath/ath/if_ath_keycache.h>
+#include <dev/netif/ath/ath/if_ath_rx.h>
+#include <dev/netif/ath/ath/if_ath_beacon.h>
+#include <dev/netif/ath/ath/if_athdfs.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/ath/ath_tx99/ath_tx99.h>
+#include <dev/netif/ath/ath_tx99/ath_tx99.h>
 #endif
 
 #ifdef	ATH_DEBUG_ALQ
-#include <dev/ath/if_ath_alq.h>
+#include <dev/netif/ath/ath/if_ath_alq.h>
 #endif
 
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <dev/ath/if_ath_tdma.h>
+#include <dev/netif/ath/ath/if_ath_tdma.h>
 
 static void	ath_tdma_settimers(struct ath_softc *sc, u_int32_t nexttbtt,
 		    u_int32_t bintval);

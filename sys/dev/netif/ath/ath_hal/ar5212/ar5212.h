@@ -347,7 +347,7 @@ struct ath_hal_5212 {
 	uint32_t	ah_tx_chainmask;
 
 	/* Used to return ANI statistics to the diagnostic API */
-	HAL_ANI_STATS	ext_ani_stats;
+	HAL_ANI_STATS   ext_ani_stats;
 };
 #define	AH5212(_ah)	((struct ath_hal_5212 *)(_ah))
 

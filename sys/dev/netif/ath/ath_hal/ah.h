@@ -538,16 +538,16 @@ typedef enum {
 
 /* XXX this is duplicate information! */
 typedef struct {
-	u_int32_t	cyclecnt_diff;		/* delta cycle count */
-	u_int32_t	rxclr_cnt;		/* rx clear count */
-	u_int32_t	extrxclr_cnt;		/* ext chan rx clear count */
-	u_int32_t	txframecnt_diff;	/* delta tx frame count */
-	u_int32_t	rxframecnt_diff;	/* delta rx frame count */
-	u_int32_t	listen_time;		/* listen time in msec - time for which ch is free */
-	u_int32_t	ofdmphyerr_cnt;		/* OFDM err count since last reset */
-	u_int32_t	cckphyerr_cnt;		/* CCK err count since last reset */
-	u_int32_t	ofdmphyerrcnt_diff;	/* delta OFDM Phy Error Count */
-	HAL_BOOL	valid;			/* if the stats are valid*/
+	u_int32_t       cyclecnt_diff;          /* delta cycle count */
+	u_int32_t       rxclr_cnt;              /* rx clear count */
+	u_int32_t       extrxclr_cnt;           /* ext chan rx clear count */
+	u_int32_t       txframecnt_diff;        /* delta tx frame count */
+	u_int32_t       rxframecnt_diff;        /* delta rx frame count */
+	u_int32_t       listen_time;            /* listen time in msec - time for which ch is free */
+	u_int32_t       ofdmphyerr_cnt;         /* OFDM err count since last reset */
+	u_int32_t       cckphyerr_cnt;          /* CCK err count since last reset */
+	u_int32_t       ofdmphyerrcnt_diff;     /* delta OFDM Phy Error Count */
+	HAL_BOOL        valid;                  /* if the stats are valid*/
 } HAL_ANISTATS;
 
 typedef struct {
@@ -863,40 +863,40 @@ typedef struct {
  * to fetch ANI information.
  */
 typedef struct {
-	uint32_t	ast_ani_niup;   /* ANI increased noise immunity */
-	uint32_t	ast_ani_nidown; /* ANI decreased noise immunity */
-	uint32_t	ast_ani_spurup; /* ANI increased spur immunity */
-	uint32_t	ast_ani_spurdown;/* ANI descreased spur immunity */
-	uint32_t	ast_ani_ofdmon; /* ANI OFDM weak signal detect on */
-	uint32_t	ast_ani_ofdmoff;/* ANI OFDM weak signal detect off */
-	uint32_t	ast_ani_cckhigh;/* ANI CCK weak signal threshold high */
-	uint32_t	ast_ani_ccklow; /* ANI CCK weak signal threshold low */
-	uint32_t	ast_ani_stepup; /* ANI increased first step level */
-	uint32_t	ast_ani_stepdown;/* ANI decreased first step level */
-	uint32_t	ast_ani_ofdmerrs;/* ANI cumulative ofdm phy err count */
-	uint32_t	ast_ani_cckerrs;/* ANI cumulative cck phy err count */
-	uint32_t	ast_ani_reset;  /* ANI parameters zero'd for non-STA */
-	uint32_t	ast_ani_lzero;  /* ANI listen time forced to zero */
-	uint32_t	ast_ani_lneg;   /* ANI listen time calculated < 0 */
-	HAL_MIB_STATS	ast_mibstats;   /* MIB counter stats */
-	HAL_NODE_STATS	ast_nodestats;  /* Latest rssi stats from driver */
+	uint32_t        ast_ani_niup;   /* ANI increased noise immunity */
+	uint32_t        ast_ani_nidown; /* ANI decreased noise immunity */
+	uint32_t        ast_ani_spurup; /* ANI increased spur immunity */
+	uint32_t        ast_ani_spurdown;/* ANI descreased spur immunity */
+	uint32_t        ast_ani_ofdmon; /* ANI OFDM weak signal detect on */
+	uint32_t        ast_ani_ofdmoff;/* ANI OFDM weak signal detect off */
+	uint32_t        ast_ani_cckhigh;/* ANI CCK weak signal threshold high */
+	uint32_t        ast_ani_ccklow; /* ANI CCK weak signal threshold low */
+	uint32_t        ast_ani_stepup; /* ANI increased first step level */
+	uint32_t        ast_ani_stepdown;/* ANI decreased first step level */
+	uint32_t        ast_ani_ofdmerrs;/* ANI cumulative ofdm phy err count */
+	uint32_t        ast_ani_cckerrs;/* ANI cumulative cck phy err count */
+	uint32_t        ast_ani_reset;  /* ANI parameters zero'd for non-STA */
+	uint32_t        ast_ani_lzero;  /* ANI listen time forced to zero */
+	uint32_t        ast_ani_lneg;   /* ANI listen time calculated < 0 */
+	HAL_MIB_STATS   ast_mibstats;   /* MIB counter stats */
+	HAL_NODE_STATS  ast_nodestats;  /* Latest rssi stats from driver */
 } HAL_ANI_STATS;
 
 typedef struct {
-	uint8_t		noiseImmunityLevel;
-	uint8_t		spurImmunityLevel;
-	uint8_t		firstepLevel;
-	uint8_t		ofdmWeakSigDetectOff;
-	uint8_t		cckWeakSigThreshold;
-	uint32_t	listenTime;
+	uint8_t         noiseImmunityLevel;
+	uint8_t         spurImmunityLevel;
+	uint8_t         firstepLevel;
+	uint8_t         ofdmWeakSigDetectOff;
+	uint8_t         cckWeakSigThreshold;
+	uint32_t        listenTime;
 
 	/* NB: intentionally ordered so data exported to user space is first */
-	uint32_t	txFrameCount;   /* Last txFrameCount */
-	uint32_t	rxFrameCount;   /* Last rx Frame count */
-	uint32_t	cycleCount;     /* Last cycleCount
+	uint32_t        txFrameCount;   /* Last txFrameCount */
+	uint32_t        rxFrameCount;   /* Last rx Frame count */
+	uint32_t        cycleCount;     /* Last cycleCount
 					   (to detect wrap-around) */
-	uint32_t	ofdmPhyErrCount;/* OFDM err count since last reset */
-	uint32_t	cckPhyErrCount; /* CCK err count since last reset */
+	uint32_t        ofdmPhyErrCount;/* OFDM err count since last reset */
+	uint32_t        cckPhyErrCount; /* CCK err count since last reset */
 } HAL_ANI_STATE;
 
 struct ath_desc;

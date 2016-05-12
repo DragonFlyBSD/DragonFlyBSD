@@ -68,9 +68,11 @@ __FBSDID("$FreeBSD$");
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
-#include <sys/smp.h>	/* for mp_ncpus */
 
+#if !defined(__DragonFly__)
+#include <sys/smp.h>	/* for mp_ncpus */
 #include <machine/bus.h>
+#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -81,13 +83,13 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <net80211/ieee80211_superg.h>
+#include <netproto/802_11/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <net80211/ieee80211_tdma.h>
+#include <netproto/802_11/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -97,22 +99,22 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
-#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/ath/ath_hal/ah_diagcodes.h>
+#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
 
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_misc.h>
-#include <dev/ath/if_ath_btcoex.h>
-#include <dev/ath/if_ath_spectral.h>
-#include <dev/ath/if_ath_lna_div.h>
-#include <dev/ath/if_athdfs.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_misc.h>
+#include <dev/netif/ath/ath/if_ath_btcoex.h>
+#include <dev/netif/ath/ath/if_ath_spectral.h>
+#include <dev/netif/ath/ath/if_ath_lna_div.h>
+#include <dev/netif/ath/ath/if_athdfs.h>
 
 #ifdef	IEEE80211_SUPPORT_TDMA
-#include <dev/ath/if_ath_tdma.h>
+#include <dev/netif/ath/ath/if_ath_tdma.h>
 #endif
 
-#include <dev/ath/if_ath_ioctl.h>
+#include <dev/netif/ath/ath/if_ath_ioctl.h>
 
 /*
  * ioctl() related pieces.
@@ -227,9 +229,9 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 
 bad:
 	if ((ad->ad_id & ATH_DIAG_IN) && indata != NULL)
-		free(indata, M_TEMP);
+		kfree(indata, M_TEMP);
 	if ((ad->ad_id & ATH_DIAG_DYN) && outdata != NULL)
-		free(outdata, M_TEMP);
+		kfree(outdata, M_TEMP);
 	return error;
 }
 #endif /* ATH_DIAGAPI */
@@ -251,10 +253,18 @@ ath_ioctl(struct ieee80211com *ic, u_long cmd, void *data)
 		sc->sc_stats.ast_rx_packets = 0;
 		TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 			ifp = vap->iv_ifp;
+#if defined(__DragonFly__)
+			uint64_t v;
+			IFNET_STAT_GET(ifp, opackets, v);
+			sc->sc_stats.ast_tx_packets += v;
+			IFNET_STAT_GET(ifp, ipackets, v);
+			sc->sc_stats.ast_rx_packets += v;
+#else
 			sc->sc_stats.ast_tx_packets += ifp->if_get_counter(ifp,
 			    IFCOUNTER_OPACKETS);
 			sc->sc_stats.ast_rx_packets += ifp->if_get_counter(ifp,
 			    IFCOUNTER_IPACKETS);
+#endif
 		}
 		sc->sc_stats.ast_tx_rssi = ATH_RSSI(sc->sc_halstats.ns_avgtxrssi);
 		sc->sc_stats.ast_rx_rssi = ATH_RSSI(sc->sc_halstats.ns_avgrssi);

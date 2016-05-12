@@ -48,8 +48,12 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <machine/bus.h>
 #include <machine/resource.h>
+#endif
 #include <sys/bus.h>
 
 #include <sys/socket.h>
@@ -60,7 +64,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#include <net80211/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_var.h>
 
 #include <net/bpf.h>
 
@@ -69,9 +73,9 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_lna_div.h>
+#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_lna_div.h>
 
 /* Linux compatibility macros */
 /*
@@ -96,8 +100,8 @@ ath_lna_div_attach(struct ath_softc *sc)
 	if (! ath_hal_hasdivantcomb(sc->sc_ah))
 		return (0);
 
-	ss = malloc(sizeof(struct if_ath_ant_comb_state),
-	    M_TEMP, M_WAITOK | M_ZERO);
+	ss = kmalloc(sizeof(struct if_ath_ant_comb_state),
+		     M_TEMP, M_WAITOK | M_ZERO);
 	if (ss == NULL) {
 		device_printf(sc->sc_dev, "%s: failed to allocate\n",
 		    __func__);
@@ -131,7 +135,7 @@ int
 ath_lna_div_detach(struct ath_softc *sc)
 {
 	if (sc->sc_lna_div != NULL) {
-		free(sc->sc_lna_div, M_TEMP);
+		kfree(sc->sc_lna_div, M_TEMP);
 		sc->sc_lna_div = NULL;
 	}
 	sc->sc_dolnadiv = 0;
@@ -170,7 +174,7 @@ ath_lna_div_ioctl(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = malloc(insize, M_TEMP, M_NOWAIT);
+		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -187,7 +191,7 @@ ath_lna_div_ioctl(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = malloc(outsize, M_TEMP, M_NOWAIT);
+		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -203,9 +207,9 @@ ath_lna_div_ioctl(struct ath_softc *sc, struct ath_diag *ad)
 		error = EFAULT;
 bad:
 	if ((ad->ad_id & ATH_DIAG_IN) && indata != NULL)
-		free(indata, M_TEMP);
+		kfree(indata, M_TEMP);
 	if ((ad->ad_id & ATH_DIAG_DYN) && outdata != NULL)
-		free(outdata, M_TEMP);
+		kfree(outdata, M_TEMP);
 	return (error);
 }
 

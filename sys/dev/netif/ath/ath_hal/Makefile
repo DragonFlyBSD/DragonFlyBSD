@@ -93,12 +93,22 @@ SRCS+=  ar9287.c ar9287_reset.c ar9287_attach.c ar9287_cal.c ar9287_olc.c
 
 # + AR9300 HAL
 .PATH:  ${HALCONTRIB}/ar9300
-SRCS+= ar9300_interrupts.c ar9300_radar.c ar9300_ani.c ar9300_keycache.c
-SRCS+= ar9300_radio.c ar9300_xmit.c ar9300_attach.c ar9300_mci.c ar9300_stub.c
-SRCS+= ar9300_xmit_ds.c ar9300_beacon.c ar9300_misc.c ar9300_recv.c
-SRCS+= ar9300_stub_funcs.c ar9300_eeprom.c ar9300_paprd.c ar9300_recv_ds.c
-SRCS+= ar9300_freebsd.c ar9300_phy.c ar9300_reset.c ar9300_gpio.c
-SRCS+= ar9300_power.c ar9300_timer.c
+#SRCS+= ar9300_interrupts.c ar9300_radar.c ar9300_ani.c ar9300_keycache.c
+#SRCS+= ar9300_radio.c ar9300_xmit.c ar9300_attach.c ar9300_mci.c ar9300_stub.c
+#SRCS+= ar9300_xmit_ds.c ar9300_beacon.c ar9300_misc.c ar9300_recv.c
+#SRCS+= ar9300_stub_funcs.c ar9300_eeprom.c ar9300_paprd.c ar9300_recv_ds.c
+#SRCS+= ar9300_freebsd.c ar9300_phy.c ar9300_reset.c ar9300_gpio.c
+#SRCS+= ar9300_power.c ar9300_timer.c
+
+SRCS+= ar9300_aic.c ar9300_ani.c ar9300_attach.c ar9300_beacon.c
+SRCS+= ar9300_eeprom.c ar9300_freebsd.c ar9300_gpio.c ar9300_interrupts.c
+SRCS+= ar9300_keycache.c ar9300_mci.c ar9300_misc.c ar9300_paprd.c
+SRCS+= ar9300_phy.c ar9300_power.c ar9300_radar.c ar9300_radio.c
+SRCS+= ar9300_raw_adc_capture.c ar9300_recv.c ar9300_recv_ds.c ar9300_reset.c
+SRCS+= ar9300_rtt.c ar9300_spectral.c ar9300_stub.c
+SRCS+= ar9300_stub_funcs.c ar9300_timer.c ar9300_tx99_tgt.c ar9300_txbf.c
+SRCS+= ar9300_txbf_cal.c ar9300_xmit.c ar9300_xmit_ds.c
+# missing ar9300_sim.c
 
 CFLAGS+=  -I. -I${HAL} -I${HALCONTRIB}
 

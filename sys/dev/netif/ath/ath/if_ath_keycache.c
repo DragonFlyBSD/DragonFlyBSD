@@ -59,7 +59,11 @@ __FBSDID("$FreeBSD$");
 #include <sys/taskqueue.h>
 #include <sys/priv.h>
 
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <machine/bus.h>
+#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -70,15 +74,15 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_var.h>
 
 #include <net/bpf.h>
 
-#include <dev/ath/if_athvar.h>
+#include <dev/netif/ath/ath/if_athvar.h>
 
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_keycache.h>
-#include <dev/ath/if_ath_misc.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_keycache.h>
+#include <dev/netif/ath/ath/if_ath_misc.h>
 
 #ifdef ATH_DEBUG
 static void
@@ -95,21 +99,21 @@ ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,
 	};
 	int i, n;
 
-	printf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
+	kprintf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
 	for (i = 0, n = hk->kv_len; i < n; i++)
-		printf("%02x", hk->kv_val[i]);
-	printf(" mac %s", ether_sprintf(mac));
+		kprintf("%02x", hk->kv_val[i]);
+	kprintf(" mac %s", ether_sprintf(mac));
 	if (hk->kv_type == HAL_CIPHER_TKIP) {
-		printf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
+		kprintf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
 		for (i = 0; i < sizeof(hk->kv_mic); i++)
-			printf("%02x", hk->kv_mic[i]);
+			kprintf("%02x", hk->kv_mic[i]);
 		if (!sc->sc_splitmic) {
-			printf(" txmic ");
+			kprintf(" txmic ");
 			for (i = 0; i < sizeof(hk->kv_txmic); i++)
-				printf("%02x", hk->kv_txmic[i]);
+				kprintf("%02x", hk->kv_txmic[i]);
 		}
 	}
-	printf("\n");
+	kprintf("\n");
 }
 #endif
 

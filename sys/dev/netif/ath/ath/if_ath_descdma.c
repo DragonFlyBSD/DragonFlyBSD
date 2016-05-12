@@ -68,9 +68,13 @@ __FBSDID("$FreeBSD$");
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
-#include <sys/smp.h>	/* for mp_ncpus */
 
+#if defined(__DragonFly__)
+/* empty */
+#else
+#include <sys/smp.h>	/* for mp_ncpus */
 #include <machine/bus.h>
+#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -81,13 +85,13 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <net80211/ieee80211_superg.h>
+#include <netproto/802_11/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <net80211/ieee80211_tdma.h>
+#include <netproto/802_11/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -97,28 +101,28 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
-#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/ath/ath_hal/ah_diagcodes.h>
+#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
 
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_misc.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_misc.h>
 #if 0
-#include <dev/ath/if_ath_tsf.h>
-#include <dev/ath/if_ath_tx.h>
-#include <dev/ath/if_ath_sysctl.h>
-#include <dev/ath/if_ath_led.h>
-#include <dev/ath/if_ath_keycache.h>
-#include <dev/ath/if_ath_rx.h>
-#include <dev/ath/if_ath_rx_edma.h>
-#include <dev/ath/if_ath_tx_edma.h>
-#include <dev/ath/if_ath_beacon.h>
-#include <dev/ath/if_ath_btcoex.h>
-#include <dev/ath/if_ath_spectral.h>
-#include <dev/ath/if_ath_lna_div.h>
-#include <dev/ath/if_athdfs.h>
+#include <dev/netif/ath/ath/if_ath_tsf.h>
+#include <dev/netif/ath/ath/if_ath_tx.h>
+#include <dev/netif/ath/ath/if_ath_sysctl.h>
+#include <dev/netif/ath/ath/if_ath_led.h>
+#include <dev/netif/ath/ath/if_ath_keycache.h>
+#include <dev/netif/ath/ath/if_ath_rx.h>
+#include <dev/netif/ath/ath/if_ath_rx_edma.h>
+#include <dev/netif/ath/ath/if_ath_tx_edma.h>
+#include <dev/netif/ath/ath/if_ath_beacon.h>
+#include <dev/netif/ath/ath/if_ath_btcoex.h>
+#include <dev/netif/ath/ath/if_ath_spectral.h>
+#include <dev/netif/ath/ath/if_ath_lna_div.h>
+#include <dev/netif/ath/ath/if_athdfs.h>
 #endif
-#include <dev/ath/if_ath_descdma.h>
+#include <dev/netif/ath/ath/if_ath_descdma.h>
 
 MALLOC_DECLARE(M_ATHDEV);
 
@@ -186,8 +190,11 @@ ath_descdma_alloc_desc(struct ath_softc *sc,
 		       1,			/* nsegments */
 		       dd->dd_desc_len,		/* maxsegsize */
 		       0,			/* flags */
+#if defined(__DragonFly__)
+#else
 		       NULL,			/* lockfunc */
 		       NULL,			/* lockarg */
+#endif
 		       &dd->dd_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
@@ -260,7 +267,7 @@ ath_descdma_setup(struct ath_softc *sc,
 
 	/* allocate rx buffers */
 	bsize = sizeof(struct ath_buf) * nbuf;
-	bf = malloc(bsize, M_ATHDEV, M_NOWAIT | M_ZERO);
+	bf = kmalloc(bsize, M_ATHDEV, M_NOWAIT | M_ZERO);
 	if (bf == NULL) {
 		device_printf(sc->sc_dev,
 		    "malloc of %s buffers failed, size %u\n",
@@ -348,7 +355,7 @@ ath_descdma_setup_rx_edma(struct ath_softc *sc,
 
 	/* allocate rx buffers */
 	bsize = sizeof(struct ath_buf) * nbuf;
-	bf = malloc(bsize, M_ATHDEV, M_NOWAIT | M_ZERO);
+	bf = kmalloc(bsize, M_ATHDEV, M_NOWAIT | M_ZERO);
 	if (bf == NULL) {
 		device_printf(sc->sc_dev,
 		    "malloc of %s buffers failed, size %u\n",
@@ -437,6 +444,6 @@ ath_descdma_cleanup(struct ath_softc *sc,
 		TAILQ_INIT(head);
 
 	if (dd->dd_bufptr != NULL)
-		free(dd->dd_bufptr, M_ATHDEV);
+		kfree(dd->dd_bufptr, M_ATHDEV);
 	memset(dd, 0, sizeof(*dd));
 }

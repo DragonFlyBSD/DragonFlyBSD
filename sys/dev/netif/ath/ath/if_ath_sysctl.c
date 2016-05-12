@@ -59,7 +59,11 @@ __FBSDID("$FreeBSD$");
 #include <sys/taskqueue.h>
 #include <sys/priv.h>
 
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <machine/bus.h>
+#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -70,13 +74,13 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <net80211/ieee80211_superg.h>
+#include <netproto/802_11/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <net80211/ieee80211_tdma.h>
+#include <netproto/802_11/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -86,22 +90,22 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
-#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/ath/ath_hal/ah_diagcodes.h>
+#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
 
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_led.h>
-#include <dev/ath/if_ath_misc.h>
-#include <dev/ath/if_ath_tx.h>
-#include <dev/ath/if_ath_sysctl.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_led.h>
+#include <dev/netif/ath/ath/if_ath_misc.h>
+#include <dev/netif/ath/ath/if_ath_tx.h>
+#include <dev/netif/ath/ath/if_ath_sysctl.h>
 
 #ifdef ATH_TX99_DIAG
 #include <dev/ath/ath_tx99/ath_tx99.h>
 #endif
 
 #ifdef	ATH_DEBUG_ALQ
-#include <dev/ath/if_ath_alq.h>
+#include <dev/netif/ath/if_ath_alq.h>
 #endif
 
 static int
@@ -466,33 +470,33 @@ ath_sysctl_txagg(SYSCTL_HANDLER_ARGS)
 	if (param != 1)
 		return 0;
 
-	printf("no tx bufs (empty list): %d\n", sc->sc_stats.ast_tx_getnobuf);
-	printf("no tx bufs (was busy): %d\n", sc->sc_stats.ast_tx_getbusybuf);
+	kprintf("no tx bufs (empty list): %d\n", sc->sc_stats.ast_tx_getnobuf);
+	kprintf("no tx bufs (was busy): %d\n", sc->sc_stats.ast_tx_getbusybuf);
 
-	printf("aggr single packet: %d\n",
+	kprintf("aggr single packet: %d\n",
 	    sc->sc_aggr_stats.aggr_single_pkt);
-	printf("aggr single packet w/ BAW closed: %d\n",
+	kprintf("aggr single packet w/ BAW closed: %d\n",
 	    sc->sc_aggr_stats.aggr_baw_closed_single_pkt);
-	printf("aggr non-baw packet: %d\n",
+	kprintf("aggr non-baw packet: %d\n",
 	    sc->sc_aggr_stats.aggr_nonbaw_pkt);
-	printf("aggr aggregate packet: %d\n",
+	kprintf("aggr aggregate packet: %d\n",
 	    sc->sc_aggr_stats.aggr_aggr_pkt);
-	printf("aggr single packet low hwq: %d\n",
+	kprintf("aggr single packet low hwq: %d\n",
 	    sc->sc_aggr_stats.aggr_low_hwq_single_pkt);
-	printf("aggr single packet RTS aggr limited: %d\n",
+	kprintf("aggr single packet RTS aggr limited: %d\n",
 	    sc->sc_aggr_stats.aggr_rts_aggr_limited);
-	printf("aggr sched, no work: %d\n",
+	kprintf("aggr sched, no work: %d\n",
 	    sc->sc_aggr_stats.aggr_sched_nopkt);
 	for (i = 0; i < 64; i++) {
-		printf("%2d: %10d ", i, sc->sc_aggr_stats.aggr_pkts[i]);
+		kprintf("%2d: %10d ", i, sc->sc_aggr_stats.aggr_pkts[i]);
 		if (i % 4 == 3)
-			printf("\n");
+			kprintf("\n");
 	}
-	printf("\n");
+	kprintf("\n");
 
 	for (i = 0; i < HAL_NUM_TX_QUEUES; i++) {
 		if (ATH_TXQ_SETUP(sc, i)) {
-			printf("HW TXQ %d: axq_depth=%d, axq_aggr_depth=%d, "
+			kprintf("HW TXQ %d: axq_depth=%d, axq_aggr_depth=%d, "
 			    "axq_fifo_depth=%d, holdingbf=%p\n",
 			    i,
 			    sc->sc_txq[i].axq_depth,
@@ -506,31 +510,31 @@ ath_sysctl_txagg(SYSCTL_HANDLER_ARGS)
 	ATH_TXBUF_LOCK(sc);
 	TAILQ_FOREACH(bf, &sc->sc_txbuf, bf_list) {
 		if (bf->bf_flags & ATH_BUF_BUSY) {
-			printf("Busy: %d\n", t);
+			kprintf("Busy: %d\n", t);
 			i++;
 		}
 		t++;
 	}
 	ATH_TXBUF_UNLOCK(sc);
-	printf("Total TX buffers: %d; Total TX buffers busy: %d (%d)\n",
+	kprintf("Total TX buffers: %d; Total TX buffers busy: %d (%d)\n",
 	    t, i, sc->sc_txbuf_cnt);
 
 	i = t = 0;
 	ATH_TXBUF_LOCK(sc);
 	TAILQ_FOREACH(bf, &sc->sc_txbuf_mgmt, bf_list) {
 		if (bf->bf_flags & ATH_BUF_BUSY) {
-			printf("Busy: %d\n", t);
+			kprintf("Busy: %d\n", t);
 			i++;
 		}
 		t++;
 	}
 	ATH_TXBUF_UNLOCK(sc);
-	printf("Total mgmt TX buffers: %d; Total mgmt TX buffers busy: %d\n",
+	kprintf("Total mgmt TX buffers: %d; Total mgmt TX buffers busy: %d\n",
 	    t, i);
 
 	ATH_RX_LOCK(sc);
 	for (i = 0; i < 2; i++) {
-		printf("%d: fifolen: %d/%d; head=%d; tail=%d; m_pending=%p, m_holdbf=%p\n",
+		kprintf("%d: fifolen: %d/%d; head=%d; tail=%d; m_pending=%p, m_holdbf=%p\n",
 		    i,
 		    sc->sc_rxedma[i].m_fifo_depth,
 		    sc->sc_rxedma[i].m_fifolen,
@@ -543,7 +547,7 @@ ath_sysctl_txagg(SYSCTL_HANDLER_ARGS)
 	TAILQ_FOREACH(bf, &sc->sc_rxbuf, bf_list) {
 		i++;
 	}
-	printf("Total RX buffers in free list: %d buffers\n",
+	kprintf("Total RX buffers in free list: %d buffers\n",
 	    i);
 	ATH_RX_UNLOCK(sc);
 
@@ -821,11 +825,17 @@ ath_sysctlattach(struct ath_softc *sc)
 #ifdef	ATH_DEBUG
 	SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"debug", CTLFLAG_RW, &sc->sc_debug,
+#if defined(__DragonFly__)
+		0,
+#endif
 		"control debugging printfs");
 #endif
 #ifdef	ATH_DEBUG_ALQ
 	SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"ktrdebug", CTLFLAG_RW, &sc->sc_ktrdebug,
+#if defined(__DragonFly__)
+		0,
+#endif
 		"control debugging KTR");
 #endif /* ATH_DEBUG_ALQ */
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
@@ -1029,7 +1039,7 @@ ath_sysctl_stats_attach_rxphyerr(struct ath_softc *sc, struct sysctl_oid_list *p
 	tree = SYSCTL_ADD_NODE(ctx, parent, OID_AUTO, "rx_phy_err", CTLFLAG_RD, NULL, "Per-code RX PHY Errors");
 	child = SYSCTL_CHILDREN(tree);
 	for (i = 0; i < 64; i++) {
-		snprintf(sn, sizeof(sn), "%d", i);
+		ksnprintf(sn, sizeof(sn), "%d", i);
 		SYSCTL_ADD_UINT(ctx, child, OID_AUTO, sn, CTLFLAG_RD, &sc->sc_stats.ast_rx_phy[i], 0, "");
 	}
 }
@@ -1048,7 +1058,7 @@ ath_sysctl_stats_attach_intr(struct ath_softc *sc,
 	    CTLFLAG_RD, NULL, "Sync interrupt statistics");
 	child = SYSCTL_CHILDREN(tree);
 	for (i = 0; i < 32; i++) {
-		snprintf(sn, sizeof(sn), "%d", i);
+		ksnprintf(sn, sizeof(sn), "%d", i);
 		SYSCTL_ADD_UINT(ctx, child, OID_AUTO, sn, CTLFLAG_RD,
 		    &sc->sc_intr_stats.sync_intr[i], 0, "");
 	}

@@ -68,9 +68,13 @@ __FBSDID("$FreeBSD$");
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
-#include <sys/smp.h>	/* for mp_ncpus */
 
+#if defined(__DragonFly__)
+/* empty */
+#else
+#include <sys/smp.h>   /* for mp_ncpus */
 #include <machine/bus.h>
+#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -81,10 +85,10 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <net80211/ieee80211_superg.h>
+#include <netproto/802_11/ieee80211_superg.h>
 #endif
 
 #include <net/bpf.h>
@@ -94,15 +98,15 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
+#include <dev/netif/ath/ath/if_athvar.h>
 
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_misc.h>
-#include <dev/ath/if_ath_tx.h>
-#include <dev/ath/if_ath_beacon.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_misc.h>
+#include <dev/netif/ath/ath/if_ath_tx.h>
+#include <dev/netif/ath/ath/if_ath_beacon.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/ath/ath_tx99/ath_tx99.h>
+#include <dev/netif/ath/ath/ath_tx99/ath_tx99.h>
 #endif
 
 /*
@@ -205,9 +209,15 @@ ath_beacon_alloc(struct ath_softc *sc, struct ieee80211_node *ni)
 		sc->sc_stats.ast_be_nombuf++;
 		return ENOMEM;
 	}
+#if defined(__DragonFly__)
+	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m,
+				     bf->bf_segs, 1, &bf->bf_nseg,
+				     BUS_DMA_NOWAIT);
+#else
 	error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
 				     bf->bf_segs, &bf->bf_nseg,
 				     BUS_DMA_NOWAIT);
+#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: cannot map mbuf, bus_dmamap_load_mbuf_sg returns %d\n",
@@ -716,9 +726,16 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, m, nmcastq)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
+#if defined(__DragonFly__)
+		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
+					     bf->bf_dmamap, m,
+					     bf->bf_segs, 1, &bf->bf_nseg,
+					     BUS_DMA_NOWAIT);
+#else
 		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
 					     bf->bf_segs, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
+#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",
@@ -832,9 +849,16 @@ ath_beacon_start_adhoc(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, m, 0)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
+#if defined(__DragonFly__)
+		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
+					     bf->bf_dmamap, m,
+					     bf->bf_segs, 1, &bf->bf_nseg,
+					     BUS_DMA_NOWAIT);
+#else
 		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
 					     bf->bf_segs, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
+#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",

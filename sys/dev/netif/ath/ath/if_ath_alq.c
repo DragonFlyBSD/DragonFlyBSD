@@ -39,14 +39,22 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <sys/pcpu.h>
+#endif
 #include <sys/lock.h>
 #include <sys/mutex.h>
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <sys/alq.h>
+#endif
 #include <sys/endian.h>
 #include <sys/time.h>
 
-#include <dev/ath/if_ath_alq.h>
+#include <dev/netif/ath/ath/if_ath_alq.h>
 
 #ifdef	ATH_DEBUG_ALQ
 static struct ale *
@@ -70,8 +78,8 @@ if_ath_alq_init(struct if_ath_alq *alq, const char *devname)
 	bzero(alq, sizeof(*alq));
 
 	strncpy(alq->sc_alq_devname, devname, ATH_ALQ_DEVNAME_LEN);
-	printf("%s (%s): attached\n", __func__, alq->sc_alq_devname);
-	snprintf(alq->sc_alq_filename, ATH_ALQ_FILENAME_LEN,
+	kprintf("%s (%s): attached\n", __func__, alq->sc_alq_devname);
+	ksnprintf(alq->sc_alq_filename, ATH_ALQ_FILENAME_LEN,
 	    "/tmp/ath_%s_alq.log", alq->sc_alq_devname);
 
 	/* XXX too conservative, right? */
@@ -95,7 +103,7 @@ if_ath_alq_tidyup(struct if_ath_alq *alq)
 {
 
 	if_ath_alq_stop(alq);
-	printf("%s (%s): detached\n", __func__, alq->sc_alq_devname);
+	kprintf("%s (%s): detached\n", __func__, alq->sc_alq_devname);
 	bzero(alq, sizeof(*alq));
 }
 
@@ -115,10 +123,10 @@ if_ath_alq_start(struct if_ath_alq *alq)
 	    alq->sc_alq_qsize, 0);
 
 	if (error != 0) {
-		printf("%s (%s): failed, err=%d\n", __func__,
+		kprintf("%s (%s): failed, err=%d\n", __func__,
 		    alq->sc_alq_devname, error);
 	} else {
-		printf("%s (%s): opened\n", __func__, alq->sc_alq_devname);
+		kprintf("%s (%s): opened\n", __func__, alq->sc_alq_devname);
 		alq->sc_alq_isactive = 1;
 		if_ath_alq_post(alq, ATH_ALQ_INIT_STATE,
 		    sizeof (struct if_ath_alq_init_state),
@@ -134,7 +142,7 @@ if_ath_alq_stop(struct if_ath_alq *alq)
 	if (alq->sc_alq_isactive == 0)
 		return (0);
 
-	printf("%s (%s): closed\n", __func__, alq->sc_alq_devname);
+	kprintf("%s (%s): closed\n", __func__, alq->sc_alq_devname);
 
 	alq->sc_alq_isactive = 0;
 	alq_close(alq->sc_alq_alq);

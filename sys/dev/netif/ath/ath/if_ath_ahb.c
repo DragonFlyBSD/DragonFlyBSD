@@ -46,8 +46,12 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <machine/bus.h>
 #include <machine/resource.h>
+#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -58,13 +62,16 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 
-#include <net80211/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_var.h>
 
-#include <dev/ath/if_athvar.h>
+#include <dev/netif/ath/ath/if_athvar.h>
 
+#if defined(__DragonFly__)
+#else
 #include <mips/atheros/ar71xxreg.h>
 #include <mips/atheros/ar91xxreg.h>
 #include <mips/atheros/ar71xx_cpudef.h>
+#endif
 
 /*
  * bus glue.
@@ -117,6 +124,10 @@ ath_ahb_probe(device_t dev)
 	return ENXIO;
 }
 
+#if defined(__DragonFly__)
+/* empty */
+#else
+
 static void
 ath_ahb_intr(void *arg)
 {
@@ -124,6 +135,8 @@ ath_ahb_intr(void *arg)
 	ar71xx_device_flush_ddr(AR71XX_CPU_DDR_FLUSH_WMAC);
 	ath_intr(arg);
 }
+
+#endif
 
 static int
 ath_ahb_attach(device_t dev)
@@ -177,8 +190,8 @@ ath_ahb_attach(device_t dev)
 	 * after boot-time.
 	 */
 	psc->sc_eeprom = bus_alloc_resource(dev, SYS_RES_MEMORY,
-	    &rid, (uintptr_t) eepromaddr,
-	    (uintptr_t) eepromaddr + (uintptr_t) (eepromsize - 1), 0, RF_ACTIVE);
+	     &rid, (uintptr_t) eepromaddr,
+	  (uintptr_t) eepromaddr + (uintptr_t) (eepromsize - 1), 0, RF_ACTIVE);
 	if (psc->sc_eeprom == NULL) {
 		device_printf(dev, "cannot map eeprom space\n");
 		goto bad0;
@@ -193,7 +206,7 @@ ath_ahb_attach(device_t dev)
 	sc->sc_invalid = 1;
 
 	/* Copy the EEPROM data out */
-	sc->sc_eepromdata = malloc(eepromsize, M_TEMP, M_NOWAIT | M_ZERO);
+	sc->sc_eepromdata = kmalloc(eepromsize, M_TEMP, M_INTWAIT | M_ZERO);
 	if (sc->sc_eepromdata == NULL) {
 		device_printf(dev, "cannot allocate memory for eeprom data\n");
 		goto bad1;
@@ -218,18 +231,33 @@ ath_ahb_attach(device_t dev)
 		device_printf(dev, "could not map interrupt\n");
 		goto bad1;
 	}
+
+#if defined(__DragonFly__)
+	if (bus_setup_intr(dev, psc->sc_irq,
+			   INTR_MPSAFE,
+			   ath_intr, sc, &psc->sc_ih,
+			   &wlan_global_serializer)) {
+		device_printf(dev, "could not establish interrupt\n");
+		goto bad2;
+	}
+#else
 	if (bus_setup_intr(dev, psc->sc_irq,
 			   INTR_TYPE_NET | INTR_MPSAFE,
 			   NULL, ath_ahb_intr, sc, &psc->sc_ih)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
+#endif
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
+#if defined(__DragonFly__)
+			       16, 0,			/* alignment, bounds */
+#else
 			       1, 0,			/* alignment, bounds */
+#endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */
@@ -237,8 +265,11 @@ ath_ahb_attach(device_t dev)
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
+#if defined(__DragonFly__)
+#else
 			       NULL,			/* lockfunc */
 			       NULL,			/* lockarg */
+#endif
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -284,7 +315,7 @@ bad0:
 bad:
 	/* XXX?! */
 	if (sc->sc_eepromdata)
-		free(sc->sc_eepromdata, M_TEMP);
+		kfree(sc->sc_eepromdata, M_TEMP);
 	return (error);
 }
 
@@ -308,7 +339,7 @@ ath_ahb_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, 0, psc->sc_eeprom);
 	/* XXX?! */
 	if (sc->sc_eepromdata)
-		free(sc->sc_eepromdata, M_TEMP);
+		kfree(sc->sc_eepromdata, M_TEMP);
 
 	ATH_TXSTATUS_LOCK_DESTROY(sc);
 	ATH_RX_LOCK_DESTROY(sc);
@@ -365,8 +396,11 @@ static driver_t ath_ahb_driver = {
 	sizeof (struct ath_ahb_softc)
 };
 static	devclass_t ath_devclass;
-DRIVER_MODULE(ath, nexus, ath_ahb_driver, ath_devclass, 0, 0);
+DRIVER_MODULE(ath, nexus, ath_ahb_driver, ath_devclass, NULL, NULL);
+#if defined(__DragonFly__)
+#else
 DRIVER_MODULE(ath, apb, ath_ahb_driver, ath_devclass, 0, 0);
+#endif
 MODULE_VERSION(ath, 1);
 MODULE_DEPEND(ath, wlan, 1, 1, 1);		/* 802.11 media layer */
 MODULE_DEPEND(ath, if_ath, 1, 1, 1);		/* if_ath driver */
