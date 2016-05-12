@@ -190,7 +190,7 @@ int radeon_msi_ok(struct drm_device *rdev, unsigned long flags)
 		return false;
 
 	/* MSIs don't work on AGP */
-	if (drm_device_is_agp(rdev))
+	if (drm_pci_device_is_agp(rdev))
 		return false;
 
 	/* force MSI on */

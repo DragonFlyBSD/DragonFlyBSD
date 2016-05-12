@@ -136,19 +136,17 @@ int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 	u32 lnkcap = 0, lnkcap2 = 0;
 
 	*mask = 0;
-	if (!drm_device_is_pcie(dev))
-		return -EINVAL;
 
 	root = device_get_parent(dev->dev);
-
-	pos = 0;
-	pci_find_extcap(root, PCIY_EXPRESS, &pos);
-	if (!pos)
-		return -EINVAL;
 
 	/* we've been informed via and serverworks don't make the cut */
 	if (pci_get_vendor(root) == PCI_VENDOR_ID_VIA ||
 	    pci_get_vendor(root) == PCI_VENDOR_ID_SERVERWORKS)
+		return -EINVAL;
+
+	pos = 0;
+	pci_find_extcap(root, PCIY_EXPRESS, &pos);
+	if (!pos)
 		return -EINVAL;
 
 	lnkcap = pci_read_config(root, pos + PCIER_LINKCAP, 4);
@@ -157,27 +155,30 @@ int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 	lnkcap &= PCIEM_LNKCAP_SPEED_MASK;
 	lnkcap2 &= 0xfe;
 
+#define	PCI_EXP_LNKCAP_SLS_2_5GB	PCIEM_LNKCAP_SPEED_2_5
+#define	PCI_EXP_LNKCAP_SLS_5_0GB	PCIEM_LNKCAP_SPEED_5
 #define	PCI_EXP_LNKCAP2_SLS_2_5GB 0x02	/* Supported Link Speed 2.5GT/s */
 #define	PCI_EXP_LNKCAP2_SLS_5_0GB 0x04	/* Supported Link Speed 5.0GT/s */
 #define	PCI_EXP_LNKCAP2_SLS_8_0GB 0x08	/* Supported Link Speed 8.0GT/s */
 
-	if (lnkcap2) { /* PCIE GEN 3.0 */
+	if (lnkcap2) {	/* PCIe r3.0-compliant */
 		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_2_5GB)
 			*mask |= DRM_PCIE_SPEED_25;
 		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_5_0GB)
 			*mask |= DRM_PCIE_SPEED_50;
 		if (lnkcap2 & PCI_EXP_LNKCAP2_SLS_8_0GB)
 			*mask |= DRM_PCIE_SPEED_80;
-	} else {
-		if (lnkcap & 1)
+	} else {	/* pre-r3.0 */
+		if (lnkcap & PCI_EXP_LNKCAP_SLS_2_5GB)
 			*mask |= DRM_PCIE_SPEED_25;
-		if (lnkcap & 2)
+		if (lnkcap & PCI_EXP_LNKCAP_SLS_5_0GB)
 			*mask |= DRM_PCIE_SPEED_50;
 	}
 
 	DRM_INFO("probing gen 2 caps for device %x:%x = %x/%x\n", pci_get_vendor(root), pci_get_device(root), lnkcap, lnkcap2);
 	return 0;
 }
+EXPORT_SYMBOL(drm_pcie_get_speed_cap_mask);
 
 /**
  * Get interrupt from bus id.

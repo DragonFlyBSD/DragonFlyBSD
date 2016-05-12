@@ -1384,6 +1384,20 @@ int drm_dev_set_unique(struct drm_device *dev, const char *fmt, ...);
 #define VM_OBJECT_WLOCK(object)		VM_OBJECT_LOCK(object)
 #define VM_OBJECT_WUNLOCK(object)	VM_OBJECT_UNLOCK(object)
 
+/* PCI section */
+static __inline__ int drm_pci_device_is_agp(struct drm_device *dev)
+{
+	if (dev->driver->device_is_agp != NULL) {
+		int err = (*dev->driver->device_is_agp) (dev);
+
+		if (err != 2) {
+			return err;
+		}
+	}
+
+	return (pci_find_extcap(dev->dev, PCIY_AGP, NULL) == 0);
+}
+
 #define DRM_PCIE_SPEED_25 1
 #define DRM_PCIE_SPEED_50 2
 #define DRM_PCIE_SPEED_80 4
