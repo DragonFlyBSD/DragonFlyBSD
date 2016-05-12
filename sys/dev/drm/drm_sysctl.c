@@ -33,6 +33,7 @@
 #include <sys/types.h>
 
 #include <drm/drmP.h>
+#include "drm_legacy.h"
 
 SYSCTL_NODE(_hw, OID_AUTO, dri, CTLFLAG_RD, 0, "DRI Graphics");
 SYSCTL_INT(_hw_dri, OID_AUTO, debug, CTLFLAG_RW, &drm_debug, 0,
@@ -205,8 +206,8 @@ done:
 static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS
 {
 	struct drm_device	 *dev = arg1;
-	drm_device_dma_t *dma = dev->dma;
-	drm_device_dma_t tempdma;
+	struct drm_device_dma *dma = dev->dma;
+	struct drm_device_dma tempdma;
 	int *templists;
 	int i;
 	char buf[128];

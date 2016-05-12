@@ -65,7 +65,7 @@ int drm_mmap(struct dev_mmap_args *ap)
 
 	DRM_DEBUG("called with offset %016jx\n", (uintmax_t)offset);
 	if (dev->dma && offset < ptoa(dev->dma->page_count)) {
-		drm_device_dma_t *dma = dev->dma;
+		struct drm_device_dma *dma = dev->dma;
 
 		spin_lock(&dev->dma_lock);
 

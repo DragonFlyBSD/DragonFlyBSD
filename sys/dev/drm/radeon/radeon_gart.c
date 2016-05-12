@@ -29,6 +29,7 @@
  */
 
 #include <drm/drmP.h>
+#include "drm/drm_legacy.h"		/* for drm_dma_handle_t */
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
 

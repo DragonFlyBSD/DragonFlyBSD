@@ -253,7 +253,7 @@ bool radeon_get_bios(struct radeon_device *rdev);
  * Dummy page
  */
 struct radeon_dummy_page {
-	drm_dma_handle_t *dmah;
+	struct drm_dma_handle *dmah;
 	dma_addr_t	addr;
 };
 int radeon_dummy_page_init(struct radeon_device *rdev);
@@ -618,7 +618,7 @@ struct radeon_mc;
 #define RADEON_GART_PAGE_SNOOP	(1 << 3)
 
 struct radeon_gart {
-	drm_dma_handle_t		*dmah;
+	struct drm_dma_handle		*dmah;
 	dma_addr_t			table_addr;
 	struct radeon_bo		*robj;
 	void				*ptr;

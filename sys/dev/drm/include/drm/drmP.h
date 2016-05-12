@@ -124,6 +124,9 @@
 struct drm_file;
 struct drm_device;
 struct drm_agp_head;
+struct drm_local_map;
+struct drm_device_dma;
+struct drm_dma_handle;
 struct drm_gem_object;
 
 struct device_node;
@@ -311,16 +314,6 @@ typedef void			irqreturn_t;
 
 #define DRM_MTRR_WC		MDF_WRITECOMBINE
 
-#define LOCK_TEST_WITH_RETURN(dev, file_priv)				\
-do {									\
-	if (!_DRM_LOCK_IS_HELD(dev->lock.hw_lock->lock) ||		\
-	     dev->lock.file_priv != file_priv) {			\
-		DRM_ERROR("%s called without lock held\n",		\
-			   __FUNCTION__);				\
-		return EINVAL;						\
-	}								\
-} while (0)
-
 /* Returns -errno to shared code */
 #define DRM_WAIT_ON( ret, queue, timeout, condition )		\
 for ( ret = 0 ; !ret && !(condition) ; ) {			\
@@ -405,33 +398,6 @@ typedef struct drm_magic_head {
 	struct drm_magic_entry *tail;
 } drm_magic_head_t;
 
-typedef struct drm_buf {
-	int idx;		       /**< Index into master buflist */
-	int total;		       /**< Buffer size */
-	int order;		       /**< log-base-2(total) */
-	int used;		       /**< Amount of buffer in use (for DMA) */
-	unsigned long offset;	       /**< Byte offset (used internally) */
-	void *address;		       /**< Address of buffer */
-	unsigned long bus_address;     /**< Bus address of buffer */
-	struct drm_buf *next;	       /**< Kernel-only: used for free list */
-	__volatile__ int waiting;      /**< On kernel DMA queue */
-	__volatile__ int pending;      /**< On hardware DMA queue */
-	struct drm_file *file_priv;    /**< Private of holding file descr */
-	int context;		       /**< Kernel queue for this buffer */
-	int while_locked;	       /**< Dispatch this buffer while locked */
-	enum {
-		DRM_LIST_NONE = 0,
-		DRM_LIST_FREE = 1,
-		DRM_LIST_WAIT = 2,
-		DRM_LIST_PEND = 3,
-		DRM_LIST_PRIO = 4,
-		DRM_LIST_RECLAIM = 5
-	} list;			       /**< Which list we're on */
-
-	int dev_priv_size;		 /**< Size of buffer private storage */
-	void *dev_private;		 /**< Per-buffer private storage */
-} drm_buf_t;
-
 /** bufs is one longer than it has to be */
 struct drm_waitlist {
 	int count;			/**< Number of possible buffers */
@@ -442,26 +408,6 @@ struct drm_waitlist {
 	struct spinlock *read_lock;
 	struct spinlock *write_lock;
 };
-
-typedef struct drm_dma_handle {
-	void *vaddr;
-	size_t size;
-	bus_addr_t busaddr;
-	bus_dma_tag_t tag;
-	bus_dmamap_t map;
-} drm_dma_handle_t;
-
-typedef struct drm_buf_entry {
-	int		  buf_size;
-	int		  buf_count;
-	drm_buf_t	  *buflist;
-	int		  seg_count;
-	int		  page_order;
-	struct drm_dma_handle **seglist;
-
-	int low_mark;			/**< Low water mark */
-	int high_mark;			/**< High water mark */
-} drm_buf_entry_t;
 
 /* Event queued up for userspace to read */
 struct drm_pending_event {
@@ -543,65 +489,6 @@ struct drm_lock_data {
 	struct drm_file *file_priv;
 	wait_queue_head_t lock_queue;	/**< Queue of blocked processes */
 	unsigned long lock_time;	/**< Time of last lock in jiffies */
-};
-
-/* This structure, in the struct drm_device, is always initialized while the
- * device
- * is open.  dev->dma_lock protects the incrementing of dev->buf_use, which
- * when set marks that no further bufs may be allocated until device teardown
- * occurs (when the last open of the device has closed).  The high/low
- * watermarks of bufs are only touched by the X Server, and thus not
- * concurrently accessed, so no locking is needed.
- */
-typedef struct drm_device_dma {
-
-	struct drm_buf_entry bufs[DRM_MAX_ORDER + 1];	/**< buffers, grouped by their size order */
-	int buf_count;			/**< total number of buffers */
-	struct drm_buf **buflist;		/**< Vector of pointers into drm_device_dma::bufs */
-	int seg_count;
-	int page_count;			/**< number of pages */
-	unsigned long *pagelist;	/**< page list */
-	unsigned long byte_count;
-	enum {
-		_DRM_DMA_USE_AGP = 0x01,
-		_DRM_DMA_USE_SG = 0x02,
-		_DRM_DMA_USE_FB = 0x04,
-		_DRM_DMA_USE_PCI_RO = 0x08
-	} flags;
-
-} drm_device_dma_t;
-
-typedef struct drm_sg_mem {
-	vm_offset_t vaddr;
-	vm_paddr_t *busaddr;
-	vm_pindex_t pages;
-} drm_sg_mem_t;
-
-/**
- * Kernel side of a mapping
- */
-struct drm_local_map {
-	resource_size_t offset;	 /**< Requested physical address (0 for SAREA)*/
-	unsigned long size;	 /**< Requested physical size (bytes) */
-	enum drm_map_type type;	 /**< Type of memory to map */
-	enum drm_map_flags flags;	 /**< Flags */
-	void *handle;		 /**< User-space: "Handle" to pass to mmap() */
-				 /**< Kernel-space: kernel-virtual address */
-	int mtrr;		 /**< MTRR slot used */
-};
-
-typedef struct drm_local_map drm_local_map_t;
-
-/**
- * Mappings list
- */
-struct drm_map_list {
-	struct list_head head;		/**< list head */
-	struct drm_hash_item hash;
-	struct drm_local_map *map;	/**< mapping */
-	uint64_t user_token;
-	struct drm_master *master;
-	struct drm_mm_node *file_offset_node;	/**< fake offset */
 };
 
 /**
@@ -926,8 +813,10 @@ struct drm_device {
 
 	struct drm_lock_data lock;	/* Information on hardware lock	   */
 
-				/* DMA queues (contexts) */
-	drm_device_dma_t  *dma;		/* Optional pointer for DMA support */
+	/** \name DMA support */
+	/*@{ */
+	struct drm_device_dma *dma;		/**< Optional pointer for DMA support */
+	/*@} */
 
 	int		  irq;		/* Interrupt used by board	   */
 	int		  irq_type;	/* IRQ type (MSI enabled or not) */
@@ -1000,7 +889,7 @@ struct drm_device {
 	struct drm_sysctl_info *sysctl;
 
 
-	drm_sg_mem_t      *sg;  /* Scatter gather memory */
+	struct drm_sg_mem *sg;	/**< Scatter gather memory */
 	unsigned int num_crtcs;                  /**< Number of CRTCs on this device */
 
 	unsigned long     *ctx_bitmap;
@@ -1281,9 +1170,9 @@ int	drm_sg_free(struct drm_device *dev, void *data,
 		    struct drm_file *file_priv);
 
 /* consistent PCI memory functions (drm_pci.c) */
-extern drm_dma_handle_t *drm_pci_alloc(struct drm_device *dev, size_t size,
-				       size_t align);
-void	drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah);
+extern struct drm_dma_handle *drm_pci_alloc(struct drm_device *dev, size_t size,
+					    size_t align);
+void	drm_pci_free(struct drm_device *dev, struct drm_dma_handle *dmah);
 
 			       /* sysfs support (drm_sysfs.c) */
 extern void drm_sysfs_hotplug_event(struct drm_device *dev);
@@ -1338,22 +1227,6 @@ drm_free(void *pt, struct malloc_type *area)
 	/* kfree is special!!! */
 	if (pt != NULL)
 		(kfree)(pt, area);
-}
-
-static __inline__ struct drm_local_map *
-drm_core_findmap(struct drm_device *dev, unsigned long offset)
-{
-	struct drm_map_list *_entry;
-
-	list_for_each_entry(_entry, &dev->maplist, head) {
-		if (offset == (unsigned long)_entry->map->handle)
-			return _entry->map;
-	}
-	return NULL;
-}
-
-static __inline__ void drm_core_dropmap(struct drm_map *map)
-{
 }
 
 #include <drm/drm_mem_util.h>

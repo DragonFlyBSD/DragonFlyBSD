@@ -75,8 +75,8 @@ int drm_legacy_dma_setup(struct drm_device *dev)
  */
 void drm_legacy_dma_takedown(struct drm_device *dev)
 {
-	drm_device_dma_t  *dma = dev->dma;
-	int		  i, j;
+	struct drm_device_dma *dma = dev->dma;
+	int i, j;
 
 	if (dma == NULL)
 		return;
@@ -90,45 +90,56 @@ void drm_legacy_dma_takedown(struct drm_device *dev)
 			for (j = 0; j < dma->bufs[i].seg_count; j++) {
 				drm_pci_free(dev, dma->bufs[i].seglist[j]);
 			}
-			drm_free(dma->bufs[i].seglist, M_DRM);
+			kfree(dma->bufs[i].seglist);
 		}
-
-	   	if (dma->bufs[i].buf_count) {
-		   	for (j = 0; j < dma->bufs[i].buf_count; j++) {
-				drm_free(dma->bufs[i].buflist[j].dev_private,
-				    M_DRM);
+		if (dma->bufs[i].buf_count) {
+			for (j = 0; j < dma->bufs[i].buf_count; j++) {
+				kfree(dma->bufs[i].buflist[j].dev_private);
 			}
-			drm_free(dma->bufs[i].buflist, M_DRM);
+			kfree(dma->bufs[i].buflist);
 		}
 	}
 
-	drm_free(dma->buflist, M_DRM);
-	drm_free(dma->pagelist, M_DRM);
-	drm_free(dev->dma, M_DRM);
+	kfree(dma->buflist);
+	kfree(dma->pagelist);
+	kfree(dev->dma);
 	dev->dma = NULL;
 	spin_uninit(&dev->dma_lock);
 }
 
-
+/**
+ * Free a buffer.
+ *
+ * \param dev DRM device.
+ * \param buf buffer to free.
+ *
+ * Resets the fields of \p buf.
+ */
 void drm_legacy_free_buffer(struct drm_device *dev, struct drm_buf * buf)
 {
 	if (!buf)
 		return;
 
-	buf->pending  = 0;
-	buf->file_priv= NULL;
-	buf->used     = 0;
+	buf->pending = 0;
+	buf->file_priv = NULL;
+	buf->used = 0;
 }
 
+/**
+ * Reclaim the buffers.
+ *
+ * \param file_priv DRM file private.
+ *
+ * Frees each buffer associated with \p file_priv not already on the hardware.
+ */
 void drm_legacy_reclaim_buffers(struct drm_device *dev,
 				struct drm_file *file_priv)
 {
-	drm_device_dma_t *dma = dev->dma;
-	int		 i;
+	struct drm_device_dma *dma = dev->dma;
+	int i;
 
 	if (!dma)
 		return;
-
 	for (i = 0; i < dma->buf_count; i++) {
 		if (dma->buflist[i]->file_priv == file_priv) {
 			switch (dma->buflist[i]->list) {

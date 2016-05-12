@@ -1716,6 +1716,8 @@ struct i915_execbuffer_params {
 	struct drm_i915_gem_request     *request;
 };
 
+struct drm_local_map;
+
 struct drm_i915_private {
 	struct drm_device *dev;
 	struct kmem_cache *objects;
@@ -1730,8 +1732,7 @@ struct drm_i915_private {
 	device_t *bbbus_bridge;
 	device_t *bbbus;
 
-	drm_local_map_t *sarea;
-	drm_local_map_t *mmio_map;
+	struct drm_local_map *mmio_map;
 	char __iomem *regs;
 
 	struct intel_uncore uncore;
@@ -1750,7 +1751,6 @@ struct drm_i915_private {
 	 * controller on different i2c buses. */
 	struct lock gmbus_mutex;
 
-	struct _drm_i915_sarea *sarea_priv;
 	/**
 	 * Base address of the gmbus and gpio block.
 	 */

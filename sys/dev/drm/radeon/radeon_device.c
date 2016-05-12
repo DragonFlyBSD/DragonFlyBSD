@@ -28,6 +28,7 @@
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_device.c 255573 2013-09-14 17:24:41Z dumbbell $
  */
 #include <drm/drmP.h>
+#include "drm/drm_legacy.h"		/* for drm_dma_handle_t */
 #include <drm/drm_crtc_helper.h>
 #include <uapi_drm/radeon_drm.h>
 #include <asm/io.h>
