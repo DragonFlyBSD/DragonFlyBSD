@@ -560,17 +560,9 @@ struct drm_driver {
 					  struct drm_file *file_priv);
 	int	(*dma_ioctl)(struct drm_device *dev, void *data,
 			     struct drm_file *file_priv);
-	void	(*dma_ready)(struct drm_device *);
 	int	(*dma_quiescent)(struct drm_device *);
-	int	(*dma_flush_block_and_flush)(struct drm_device *, int context,
-					     enum drm_lock_flags flags);
-	int	(*dma_flush_unblock)(struct drm_device *, int context,
-				     enum drm_lock_flags flags);
 	int	(*context_ctor)(struct drm_device *dev, int context);
 	int	(*context_dtor)(struct drm_device *dev, int context);
-	int	(*kernel_context_switch)(struct drm_device *dev, int old,
-					 int new);
-	int	(*kernel_context_switch_unlock)(struct drm_device *dev);
 	void	(*irq_preinstall)(struct drm_device *dev);
 	int	(*irq_postinstall)(struct drm_device *dev);
 	void	(*irq_uninstall)(struct drm_device *dev);
