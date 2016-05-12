@@ -1,6 +1,8 @@
 #ifndef DRM_ATI_PCIGART_H
 #define DRM_ATI_PCIGART_H
 
+#include <drm/drm_legacy.h>
+
 /* location of GART table */
 #define DRM_ATI_GART_MAIN 1
 #define DRM_ATI_GART_FB   2
@@ -15,11 +17,9 @@ struct drm_ati_pcigart_info {
 	void *addr;
 	dma_addr_t bus_addr;
 	dma_addr_t table_mask;
-	dma_addr_t member_mask;
 	struct drm_dma_handle *table_handle;
-	drm_local_map_t mapping;
+	struct drm_local_map mapping;
 	int table_size;
-	struct drm_dma_handle *dmah; /* handle for ATI PCIGART table */
 };
 
 extern int drm_ati_pcigart_init(struct drm_device *dev,

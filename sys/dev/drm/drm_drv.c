@@ -1080,8 +1080,8 @@ static int drm_load(struct drm_device *dev)
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
 	if (drm_core_has_AGP(dev)) {
-		if (drm_device_is_agp(dev))
-			dev->agp = drm_agp_init();
+		if (drm_pci_device_is_agp(dev))
+			dev->agp = drm_agp_init(dev);
 		if (drm_core_check_feature(dev, DRIVER_REQUIRE_AGP) &&
 		    dev->agp == NULL) {
 			DRM_ERROR("Card isn't AGP, or couldn't initialize "

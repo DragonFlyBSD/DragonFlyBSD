@@ -38,6 +38,8 @@
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
+#if __OS_HAS_AGP
+
 #ifdef HAVE_PAGE_AGP
 # include <asm/agp.h>
 #else
@@ -47,6 +49,10 @@
 #  define PAGE_AGP	PAGE_KERNEL
 # endif
 #endif
+
+
+#else  /*  __OS_HAS_AGP  */
+#endif				/* agp */
 
 void drm_legacy_ioremap(struct drm_local_map *map, struct drm_device *dev)
 {

@@ -78,6 +78,13 @@ void drm_legacy_vma_flush(struct drm_device *d);
  * AGP Support
  */
 
+struct drm_agp_mem {
+	void *handle;
+	unsigned long bound; /* address */
+	int pages;
+	struct drm_agp_mem *prev;
+	struct drm_agp_mem *next;
+};
 
 /*
  * Generic Userspace Locking-API

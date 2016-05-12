@@ -80,7 +80,6 @@
 #include <sys/mman.h>
 #include <sys/rman.h>
 #include <sys/memrange.h>
-#include <sys/agpio.h>
 #include <sys/mutex.h>
 
 #include <uapi_drm/drm.h>
@@ -113,6 +112,7 @@
 
 #include <asm/uaccess.h>
 
+#include <drm/drm_agpsupport.h>
 #include <drm/drm_global.h>
 
 #include <drm/drm_vma_manager.h>
@@ -282,8 +282,6 @@ SYSCTL_DECL(_hw_drm);
 
 #define DRM_IF_VERSION(maj, min) (maj << 16 | min)
 
-#define __OS_HAS_AGP	1
-
 #define DRM_DEV_MODE	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
 #define DRM_DEV_UID	UID_ROOT
 #define DRM_DEV_GID	GID_WHEEL
@@ -309,16 +307,8 @@ typedef void			irqreturn_t;
 #define IRQ_HANDLED		/* nothing */
 #define IRQ_NONE		/* nothing */
 
-enum {
-	DRM_IS_NOT_AGP,
-	DRM_IS_AGP,
-	DRM_MIGHT_BE_AGP
-};
-#define DRM_AGP_MEM		struct agp_memory_info
-
 #define drm_get_device_from_kdev(_kdev) (_kdev->si_drv1)
 
-#define DRM_AGP_FIND_DEVICE()	agp_find_device()
 #define DRM_MTRR_WC		MDF_WRITECOMBINE
 
 #define LOCK_TEST_WITH_RETURN(dev, file_priv)				\
@@ -719,6 +709,19 @@ struct drm_driver {
 	void	(*disable_vblank)(struct drm_device *dev, int crtc);
 
 	/**
+	 * Called by \c drm_device_is_agp.  Typically used to determine if a
+	 * card is really attached to AGP or not.
+	 *
+	 * \param dev  DRM device handle
+	 *
+	 * \returns
+	 * One of three values is returned depending on whether or not the
+	 * card is absolutely \b not AGP (return of 0), absolutely \b is AGP
+	 * (return of 1), or may or may not be AGP (return of 2).
+	 */
+	int (*device_is_agp) (struct drm_device *dev);
+
+	/**
 	 * Called by vblank timestamping code.
 	 *
 	 * Return the current display scanout position from a crtc, and an
@@ -775,19 +778,6 @@ struct drm_driver {
 	void	(*sysctl_cleanup)(struct drm_device *dev);
 
 	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
-
-	/**
-	 * Called by \c drm_device_is_agp.  Typically used to determine if a
-	 * card is really attached to AGP or not.
-	 *
-	 * \param dev  DRM device handle
-	 *
-	 * \returns
-	 * One of three values is returned depending on whether or not the
-	 * card is absolutely \b not AGP (return of 0), absolutely \b is AGP
-	 * (return of 1), or may or may not be AGP (return of 2).
-	 */
-	int	(*device_is_agp) (struct drm_device * dev);
 
 	int	major;
 	int	minor;
@@ -1245,10 +1235,6 @@ static inline wait_queue_head_t *drm_crtc_vblank_waitqueue(struct drm_crtc *crtc
 /* Modesetting support */
 extern void drm_vblank_pre_modeset(struct drm_device *dev, unsigned int pipe);
 extern void drm_vblank_post_modeset(struct drm_device *dev, unsigned int pipe);
-
-				/* AGP/GART support (drm_agpsupport.h) */
-
-#include <drm/drm_agpsupport.h>
 
 /* sysctl support (drm_sysctl.h) */
 extern int		drm_sysctl_init(struct drm_device *dev);

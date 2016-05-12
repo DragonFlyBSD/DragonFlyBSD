@@ -2,25 +2,23 @@
 #define _DRM_AGPSUPPORT_H_
 
 #include <linux/kernel.h>
+#include <linux/list.h>
 #include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/types.h>
+#include <sys/agpio.h>
 #include <dev/agp/agpvar.h>
-#include <drm/drmP.h>
+#include <uapi_drm/drm.h>
 
-typedef struct drm_agp_mem {
-	void               *handle;
-	unsigned long      bound; /* address */
-	int                pages;
-	struct drm_agp_mem *prev;
-	struct drm_agp_mem *next;
-} drm_agp_mem_t;
+struct drm_device;
+struct drm_file;
+
+#define __OS_HAS_AGP	1
 
 struct drm_agp_head {
-	device_t	   agpdev;
-	struct agp_info    agp_info;
-	const char         *chipset;
-	drm_agp_mem_t      *memory;
+	device_t	agpdev;
+	struct agp_info	agp_info;
+	struct drm_agp_mem *memory;
 	unsigned long mode;
 	int enabled;
 	int acquired;
@@ -32,7 +30,7 @@ struct drm_agp_head {
 
 #if __OS_HAS_AGP
 
-#if 0
+#ifdef __linux__
 void drm_free_agp(struct agp_memory * handle, int pages);
 int drm_bind_agp(struct agp_memory * handle, unsigned int start);
 int drm_unbind_agp(struct agp_memory * handle);
@@ -43,9 +41,7 @@ struct agp_memory *drm_agp_bind_pages(struct drm_device *dev,
 				uint32_t type);
 #endif
 
-int	drm_device_is_agp(struct drm_device *dev);
-int	drm_device_is_pcie(struct drm_device *dev);
-struct drm_agp_head *drm_agp_init(void);
+struct drm_agp_head *drm_agp_init(struct drm_device *dev);
 void drm_agp_clear(struct drm_device *dev);
 int drm_agp_acquire(struct drm_device *dev);
 int drm_agp_acquire_ioctl(struct drm_device *dev, void *data,
@@ -56,13 +52,9 @@ int drm_agp_release_ioctl(struct drm_device *dev, void *data,
 int drm_agp_enable(struct drm_device *dev, struct drm_agp_mode mode);
 int drm_agp_enable_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv);
-void	*drm_agp_allocate_memory(size_t pages, u32 type);
 int drm_agp_info(struct drm_device *dev, struct drm_agp_info *info);
 int drm_agp_info_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv);
-int	drm_agp_free_memory(void *handle);
-int	drm_agp_bind_memory(void *handle, off_t start);
-int	drm_agp_unbind_memory(void *handle);
 int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request);
 int drm_agp_alloc_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
@@ -75,8 +67,10 @@ int drm_agp_unbind_ioctl(struct drm_device *dev, void *data,
 int drm_agp_bind(struct drm_device *dev, struct drm_agp_binding *request);
 int drm_agp_bind_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv);
+
 #else /* __OS_HAS_AGP */
 
+#ifdef __linux__
 static inline void drm_free_agp(struct agp_memory * handle, int pages)
 {
 }
@@ -99,6 +93,7 @@ static inline struct agp_memory *drm_agp_bind_pages(struct drm_device *dev,
 {
 	return NULL;
 }
+#endif
 
 static inline struct drm_agp_head *drm_agp_init(struct drm_device *dev)
 {
@@ -202,6 +197,7 @@ static inline int drm_agp_bind_ioctl(struct drm_device *dev, void *data,
 {
 	return -ENODEV;
 }
+
 #endif /* __OS_HAS_AGP */
 
 #endif /* _DRM_AGPSUPPORT_H_ */

@@ -213,29 +213,8 @@ int drm_lastclose(struct drm_device * dev)
 		dev->unique_len = 0;
 	}
 
-	/* Clear AGP information */
-	if (dev->agp) {
-		drm_agp_mem_t *entry;
-		drm_agp_mem_t *nexte;
+	drm_agp_clear(dev);
 
-		/* Remove AGP resources, but leave dev->agp intact until
-		 * drm_unload is called.
-		 */
-		for (entry = dev->agp->memory; entry; entry = nexte) {
-			nexte = entry->next;
-			if (entry->bound)
-				drm_agp_unbind_memory(entry->handle);
-			drm_agp_free_memory(entry->handle);
-			drm_free(entry, M_DRM);
-		}
-		dev->agp->memory = NULL;
-
-		if (dev->agp->acquired)
-			drm_agp_release(dev);
-
-		dev->agp->acquired = 0;
-		dev->agp->enabled  = 0;
-	}
 	if (dev->sg != NULL) {
 		drm_legacy_sg_cleanup(dev->sg);
 		dev->sg = NULL;
