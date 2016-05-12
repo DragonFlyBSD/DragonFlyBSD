@@ -862,7 +862,11 @@ int16_t
 ar9300_Stub_GetNfHistMid(const int16_t calData[])
 {
 
+#if defined(__DragonFly__)
+	kprintf("%s: called\n", __func__);
+#else
 	printf("%s: called\n", __func__);
+#endif
 	return (0);
 }
 
