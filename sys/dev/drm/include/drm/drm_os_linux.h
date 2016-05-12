@@ -1,8 +1,6 @@
 /**
- * \file drm_os_freebsd.h
+ * \file drm_os_dragonfly.h
  * OS abstraction macros.
- *
- * $FreeBSD: head/sys/dev/drm2/drm_os_freebsd.h 254858 2013-08-25 14:27:14Z dumbbell $
  */
 
 #include <sys/endian.h>
@@ -63,7 +61,6 @@
 #define	likely(x)              __builtin_expect(!!(x), 1)
 
 #define DRM_UDELAY(udelay)	DELAY(udelay)
-#define DRM_TIME_SLICE		(hz/20)  /* Time slice for GLXContexts	  */
 
 #define	lower_32_bits(n)	((u32)(n))
 
@@ -71,18 +68,7 @@
 #define	memcpy_fromio(a, b, c)	memcpy((a), (b), (c))
 #define	memcpy_toio(a, b, c)	memcpy((a), (b), (c))
 
-/* XXXKIB what is the right code for the FreeBSD ? */
-/* kib@ used ENXIO here -- dumbbell@ */
 #define	EREMOTEIO	EIO
-
-#define	KTR_DRM		KTR_DEV
-#define	KTR_DRM_REG	KTR_SPARE3
-
-#define KIB_NOTYET()							\
-do {									\
-	if (drm_debug && drm_notyet_flag)				\
-		kprintf("NOTYET: %s at %s:%d\n", __func__, __FILE__, __LINE__); \
-} while (0)
 
 /* include code to override EDID blocks from external firmware modules */
 #define CONFIG_DRM_LOAD_EDID_FIRMWARE

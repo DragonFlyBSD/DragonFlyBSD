@@ -38,8 +38,6 @@
 SYSCTL_NODE(_hw, OID_AUTO, dri, CTLFLAG_RD, 0, "DRI Graphics");
 SYSCTL_INT(_hw_dri, OID_AUTO, debug, CTLFLAG_RW, &drm_debug, 0,
 	    "Enable debugging output");
-SYSCTL_INT(_hw_dri, OID_AUTO, notyet, CTLFLAG_RW, &drm_notyet_flag, 0,
-	    "Enable notyet reminders");
 SYSCTL_INT(_hw_dri, OID_AUTO, vblank_offdelay, CTLFLAG_RW,
 	    &drm_vblank_offdelay, 0, "Delay until vblank irq auto-disable");
 SYSCTL_INT(_hw_dri, OID_AUTO, timestamp_precision, CTLFLAG_RW,

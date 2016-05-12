@@ -879,8 +879,6 @@ module_exit(drm_core_exit);
 #define DRM_DEBUGBITS_ON (0x0)
 #endif
 
-int drm_notyet_flag = 0;
-
 static int drm_load(struct drm_device *dev);
 drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);
@@ -895,7 +893,6 @@ drm_modevent(module_t mod, int type, void *data)
 	switch (type) {
 	case MOD_LOAD:
 		TUNABLE_INT_FETCH("drm.debug", &drm_debug);
-		TUNABLE_INT_FETCH("drm.notyet", &drm_notyet_flag);
 		break;
 	}
 	return (0);

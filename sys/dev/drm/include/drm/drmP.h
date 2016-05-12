@@ -989,7 +989,6 @@ static inline int drm_core_has_AGP(struct drm_device *dev)
 #define drm_core_has_AGP(dev) (0)
 #endif
 
-extern int	drm_notyet_flag;
 extern unsigned int drm_rnodes;
 extern unsigned int drm_universal_planes;
 
