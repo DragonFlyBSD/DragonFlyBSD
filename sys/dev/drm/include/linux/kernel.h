@@ -33,6 +33,7 @@
 #include <sys/param.h>
 #include <sys/libkern.h>
 #include <sys/stat.h>
+#include <sys/endian.h>
 
 #include <linux/bitops.h>
 #include <linux/compiler.h>
@@ -204,5 +205,26 @@ char *drm_asprintf(int flags, const char *format, ...) __printflike(2, 3);
 
 #define DIV_ROUND_CLOSEST_ULL(ll, d)	\
  ({ unsigned long long _tmp = (ll)+(d)/2; do_div(_tmp, d); _tmp; })
+
+#define	lower_32_bits(n)	((u32)(n))
+
+/* Byteorder compat layer */
+#if _BYTE_ORDER == _BIG_ENDIAN
+#define	__BIG_ENDIAN 4321
+#else
+#define	__LITTLE_ENDIAN 1234
+#endif
+
+#define	cpu_to_le16(x)	htole16(x)
+#define	le16_to_cpu(x)	le16toh(x)
+#define	cpu_to_le32(x)	htole32(x)
+#define	le32_to_cpu(x)	le32toh(x)
+#define	le32_to_cpup(x)	le32toh(*x)
+
+#define	cpu_to_be16(x)	htobe16(x)
+#define	be16_to_cpu(x)	be16toh(x)
+#define	cpu_to_be32(x)	htobe32(x)
+#define	be32_to_cpu(x)	be32toh(x)
+#define	be32_to_cpup(x)	be32toh(*x)
 
 #endif	/* _LINUX_KERNEL_H_ */
