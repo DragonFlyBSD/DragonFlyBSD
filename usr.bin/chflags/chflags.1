@@ -30,10 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)chflags.1	8.4 (Berkeley) 5/2/95
-.\" $FreeBSD: src/bin/chflags/chflags.1,v 1.30 2008/03/09 12:10:24 rwatson Exp $
-.\" $DragonFly: src/usr.bin/chflags/chflags.1,v 1.8 2008/11/12 15:18:26 swildner Exp $
+.\" $FreeBSD: head/bin/chflags/chflags.1 282208 2015-04-29 00:49:00Z smh $
 .\"
-.Dd November 11, 2008
+.Dd May 11, 2016
 .Dt CHFLAGS 1
 .Os
 .Sh NAME
@@ -67,8 +66,9 @@ nor modify the exit status to reflect such failures.
 .It Fl H
 If the
 .Fl R
-option is specified, symbolic links on the command line are followed.
-(Symbolic links encountered in the tree traversal are not followed.)
+option is specified, symbolic links on the command line are followed
+and hence unaffected by the command.
+(Symbolic links encountered during traversal are not followed.)
 .It Fl h
 If the
 .Ar file
@@ -85,8 +85,12 @@ If the
 option is specified, no symbolic links are followed.
 This is the default.
 .It Fl R
-Change the file flags for the file hierarchies rooted
-in the files instead of just the files themselves.
+Change the file flags of the file hierarchies rooted in the files,
+instead of just the files themselves.
+Beware of unintentionally matching the
+.Dq Pa ".."
+hard link to the parent directory when using wildcards like
+.Dq Li ".*" .
 .It Fl v
 Cause
 .Nm
