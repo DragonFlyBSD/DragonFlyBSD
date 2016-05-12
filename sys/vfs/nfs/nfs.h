@@ -171,6 +171,7 @@ struct nfs_args {
 #define	NFSMNT_ACREGMAX		0x00080000
 #define	NFSMNT_ACDIRMIN		0x00100000
 #define	NFSMNT_ACDIRMAX		0x00200000
+#define	NFSMNT_RETRYCNT		0x00400000  /* Set retry count */
 
 #define NFSSTA_HASWRITEVERF	0x00040000  /* Has write verifier for V3 */
 #define NFSSTA_GOTPATHCONF	0x00080000  /* Got the V3 pathconf info */

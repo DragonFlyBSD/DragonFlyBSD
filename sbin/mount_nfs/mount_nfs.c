@@ -83,6 +83,7 @@
 #define ALTF_ACREGMAX	0x10000
 #define ALTF_ACDIRMIN	0x20000
 #define ALTF_ACDIRMAX	0x40000
+#define ALTF_RETRYCNT	0x80000
 
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
@@ -107,6 +108,7 @@ struct mntopt mopts[] = {
 	{ "acdirmin=", 0, ALTF_ACDIRMIN, 1 },
 	{ "acdirmax=", 0, ALTF_ACDIRMAX, 1 },
 	{ "cache", 0, ALTF_CACHE, 1 },
+	{ "retrycnt=", 0, ALTF_RETRYCNT, 1 },
 	MOPT_NULL
 };
 
@@ -227,6 +229,7 @@ set_flags(int* altflags, int* nfsflags, int dir)
 #ifdef NFSMNT_CACHE
 	F(CACHE);
 #endif
+	F(RETRYCNT);
 
 #undef F
 #undef F2
@@ -365,6 +368,12 @@ main(int argc, char **argv)
 			if(altflags & ALTF_ACDIRMAX)
 				nfsargsp->acdirmax = atoi(strstr(optarg,
 				    "acdirmax=") + 9);
+			if(altflags & ALTF_RETRYCNT) {
+				num = atoi(strstr(optarg, "retrycnt=") + 9);
+				if (num < 0)
+					errx(1, "illegal -o retrycnt value -- %s", optarg);
+				retrycnt = num;
+			}
 			break;
 		case 'P':
 			/* obsolete for NFSMNT_RESVPORT, now default */
