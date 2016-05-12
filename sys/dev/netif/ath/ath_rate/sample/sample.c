@@ -55,6 +55,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
+#include <machine/bus.h>
+#include <machine/resource.h>
 #include <sys/bus.h>
 
 #include <sys/socket.h>
@@ -65,7 +67,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#include <netproto/802_11/ieee80211_var.h>
+#include <net80211/ieee80211_var.h>
 
 #include <net/bpf.h>
 
@@ -74,12 +76,10 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/netif/ath/ath/if_athvar.h>
-#include <dev/netif/ath/ath_rate/sample/sample.h>
-#include <dev/netif/ath/ath_hal/ah_desc.h>
-#include <dev/netif/ath/ath_rate/sample/tx_schedules.h>
-
-extern  const char* ath_hal_ether_sprintf(const uint8_t *mac);
+#include <dev/ath/if_athvar.h>
+#include <dev/ath/ath_rate/sample/sample.h>
+#include <dev/ath/ath_hal/ah_desc.h>
+#include <dev/ath/ath_rate/sample/tx_schedules.h>
 
 /*
  * This file is an implementation of the SampleRate algorithm
@@ -488,8 +488,7 @@ ath_rate_findrate(struct ath_softc *sc, struct ath_node *an,
 #define	RATE(ix)	(DOT11RATE(ix) / 2)
 	struct sample_node *sn = ATH_NODE_SAMPLE(an);
 	struct sample_softc *ssc = ATH_SOFTC_SAMPLE(sc);
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
 	const int size_bin = size_to_bin(frameLen);
 	int rix, mrr, best_rix, change_rates;
@@ -587,7 +586,7 @@ ath_rate_findrate(struct ath_softc *sc, struct ath_node *an,
 			 * This is likely not optimal!
 			 */
 #if 0
-			kprintf("cur rix/att %x/%d, best rix/att %x/%d\n",
+			printf("cur rix/att %x/%d, best rix/att %x/%d\n",
 			    MCS(cur_rix), cur_att, MCS(best_rix), average_tx_time);
 #endif
 			if ((MCS(best_rix) > MCS(cur_rix)) &&
@@ -641,7 +640,7 @@ done:
 	 * out how to better reproduce it.
 	 */
 	if (rix < 0 || rix >= rt->rateCount) {
-		kprintf("%s: ERROR: rix %d out of bounds (rateCount=%d)\n",
+		printf("%s: ERROR: rix %d out of bounds (rateCount=%d)\n",
 		    __func__,
 		    rix,
 		    rt->rateCount);
@@ -843,9 +842,11 @@ update_stats(struct ath_softc *sc, struct ath_node *an,
 }
 
 static void
-badrate(struct ifnet *ifp, int series, int hwrate, int tries, int status)
+badrate(struct ath_softc *sc, int series, int hwrate, int tries, int status)
 {
-	if_printf(ifp, "bad series%d hwrate 0x%x, tries %u ts_status 0x%x\n",
+
+	device_printf(sc->sc_dev,
+	    "bad series%d hwrate 0x%x, tries %u ts_status 0x%x\n",
 	    series, hwrate, tries, status);
 }
 
@@ -854,8 +855,7 @@ ath_rate_tx_complete(struct ath_softc *sc, struct ath_node *an,
 	const struct ath_rc_series *rc, const struct ath_tx_status *ts,
 	int frame_size, int nframes, int nbad)
 {
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct sample_node *sn = ATH_NODE_SAMPLE(an);
 	int final_rix, short_tries, long_tries;
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
@@ -891,9 +891,10 @@ ath_rate_tx_complete(struct ath_softc *sc, struct ath_node *an,
 
 	if (!mrr || ts->ts_finaltsi == 0) {
 		if (!IS_RATE_DEFINED(sn, final_rix)) {
-			device_printf(sc->sc_dev, "%s: ts_rate=%d ts_finaltsi=%d\n",
-			    __func__, ts->ts_rate, ts->ts_finaltsi);
-			badrate(ifp, 0, ts->ts_rate, long_tries, status);
+			device_printf(sc->sc_dev,
+			    "%s: ts_rate=%d ts_finaltsi=%d, final_rix=%d\n",
+			    __func__, ts->ts_rate, ts->ts_finaltsi, final_rix);
+			badrate(sc, 0, ts->ts_rate, long_tries, status);
 			return;
 		}
 		/*
@@ -945,7 +946,7 @@ ath_rate_tx_complete(struct ath_softc *sc, struct ath_node *an,
 
 		for (i = 0; i < 4; i++) {
 			if (rc[i].tries && !IS_RATE_DEFINED(sn, rc[i].rix))
-				badrate(ifp, 0, rc[i].ratecode, rc[i].tries,
+				badrate(sc, 0, rc[i].ratecode, rc[i].tries,
 				    status);
 		}
 
@@ -1092,16 +1093,16 @@ ath_rate_ctl_reset(struct ath_softc *sc, struct ieee80211_node *ni)
 	if (ieee80211_msg(ni->ni_vap, IEEE80211_MSG_RATECTL)) {
 		uint64_t mask;
 
-		ieee80211_note(ni->ni_vap, "[%s] %s: size 1600 rate/tt",
-		    ath_hal_ether_sprintf(ni->ni_macaddr), __func__);
+		ieee80211_note(ni->ni_vap, "[%6D] %s: size 1600 rate/tt",
+		    ni->ni_macaddr, ":", __func__);
 		for (mask = sn->ratemask, rix = 0; mask != 0; mask >>= 1, rix++) {
 			if ((mask & 1) == 0)
 				continue;
-			kprintf(" %d %s/%d", dot11rate(rt, rix), dot11rate_label(rt, rix),
+			printf(" %d %s/%d", dot11rate(rt, rix), dot11rate_label(rt, rix),
 			    calc_usecs_unicast_packet(sc, 1600, rix, 0,0,
 			        (ni->ni_chw == 40)));
 		}
-		kprintf("\n");
+		printf("\n");
 	}
 #endif
 	for (y = 0; y < NUM_PACKET_SIZE_BINS; y++) {
@@ -1196,8 +1197,8 @@ ath_rate_fetch_node_stats(struct ath_softc *sc, struct ath_node *an,
 	 * Take a temporary copy of the sample node state so we can
 	 * modify it before we copy it.
 	 */
-	tv = kmalloc(sizeof(struct ath_rateioctl_rt), M_TEMP,
-		     M_INTWAIT | M_ZERO);
+	tv = malloc(sizeof(struct ath_rateioctl_rt), M_TEMP,
+	    M_NOWAIT | M_ZERO);
 	if (tv == NULL) {
 		return (ENOMEM);
 	}
@@ -1237,7 +1238,7 @@ ath_rate_fetch_node_stats(struct ath_softc *sc, struct ath_node *an,
 	copyout(sn, rs->buf + o, sizeof(struct sample_node));
 	o += sizeof(struct sample_node);
 
-	kfree(tv, M_TEMP);
+	free(tv, M_TEMP);
 
 	return (0);
 }
@@ -1251,25 +1252,25 @@ sample_stats(void *arg, struct ieee80211_node *ni)
 	uint64_t mask;
 	int rix, y;
 
-	kprintf("\n[%s] refcnt %d static_rix (%d %s) ratemask 0x%jx\n",
+	printf("\n[%s] refcnt %d static_rix (%d %s) ratemask 0x%jx\n",
 	    ether_sprintf(ni->ni_macaddr), ieee80211_node_refcnt(ni),
 	    dot11rate(rt, sn->static_rix),
 	    dot11rate_label(rt, sn->static_rix),
 	    (uintmax_t)sn->ratemask);
 	for (y = 0; y < NUM_PACKET_SIZE_BINS; y++) {
-		kprintf("[%4u] cur rix %d (%d %s) since switch: packets %d ticks %u\n",
+		printf("[%4u] cur rix %d (%d %s) since switch: packets %d ticks %u\n",
 		    bin_to_size(y), sn->current_rix[y],
 		    dot11rate(rt, sn->current_rix[y]),
 		    dot11rate_label(rt, sn->current_rix[y]),
 		    sn->packets_since_switch[y], sn->ticks_since_switch[y]);
-		kprintf("[%4u] last sample (%d %s) cur sample (%d %s) packets sent %d\n",
+		printf("[%4u] last sample (%d %s) cur sample (%d %s) packets sent %d\n",
 		    bin_to_size(y),
 		    dot11rate(rt, sn->last_sample_rix[y]),
 		    dot11rate_label(rt, sn->last_sample_rix[y]),
 		    dot11rate(rt, sn->current_sample_rix[y]),
 		    dot11rate_label(rt, sn->current_sample_rix[y]),
 		    sn->packets_sent[y]);
-		kprintf("[%4u] packets since sample %d sample tt %u\n",
+		printf("[%4u] packets since sample %d sample tt %u\n",
 		    bin_to_size(y), sn->packets_since_sample[y],
 		    sn->sample_tt[y]);
 	}
@@ -1279,7 +1280,7 @@ sample_stats(void *arg, struct ieee80211_node *ni)
 		for (y = 0; y < NUM_PACKET_SIZE_BINS; y++) {
 			if (sn->stats[y][rix].total_packets == 0)
 				continue;
-			kprintf("[%2u %s:%4u] %8ju:%-8ju (%3d%%) (EWMA %3d.%1d%%) T %8ju F %4d avg %5u last %u\n",
+			printf("[%2u %s:%4u] %8ju:%-8ju (%3d%%) (EWMA %3d.%1d%%) T %8ju F %4d avg %5u last %u\n",
 			    dot11rate(rt, rix), dot11rate_label(rt, rix),
 			    bin_to_size(y),
 			    (uintmax_t) sn->stats[y][rix].total_packets,
@@ -1300,8 +1301,7 @@ static int
 ath_rate_sysctl_stats(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	int error, v;
 
 	v = 0;
@@ -1370,7 +1370,7 @@ ath_rate_attach(struct ath_softc *sc)
 {
 	struct sample_softc *ssc;
 	
-	ssc = kmalloc(sizeof(struct sample_softc), M_DEVBUF, M_INTWAIT|M_ZERO);
+	ssc = malloc(sizeof(struct sample_softc), M_DEVBUF, M_NOWAIT|M_ZERO);
 	if (ssc == NULL)
 		return NULL;
 	ssc->arc.arc_space = sizeof(struct sample_node);
@@ -1389,46 +1389,5 @@ ath_rate_detach(struct ath_ratectrl *arc)
 {
 	struct sample_softc *ssc = (struct sample_softc *) arc;
 	
-	kfree(ssc, M_DEVBUF);
+	free(ssc, M_DEVBUF);
 }
-
-/*
- * Module glue.
- */
-static int
-sample_modevent(module_t mod, int type, void *unused)
-{
-	int error;
-
-	wlan_serialize_enter();
-
-	switch (type) {
-	case MOD_LOAD:
-		if (bootverbose) {
-			kprintf("ath_rate: <SampleRate bit-rate "
-				"selection algorithm>\n");
-		}
-		error = 0;
-		break;
-	case MOD_UNLOAD:
-		error = 0;
-		break;
-	default:
-		error = EINVAL;
-		break;
-	}
-	wlan_serialize_exit();
-
-	return error;
-}
-
-static moduledata_t sample_mod = {
-	"ath_rate",
-	sample_modevent,
-	0
-};
-
-DECLARE_MODULE(ath_rate, sample_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
-MODULE_VERSION(ath_rate, 1);
-MODULE_DEPEND(ath_rate, ath_hal, 1, 1, 1);
-MODULE_DEPEND(ath_rate, wlan, 1, 1, 1);

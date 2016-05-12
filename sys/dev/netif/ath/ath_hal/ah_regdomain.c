@@ -21,8 +21,8 @@
 
 #include "ah.h"
 
-#include <netproto/802_11/_ieee80211.h>
-#include <netproto/802_11/ieee80211_regdomain.h>
+#include <net80211/_ieee80211.h>
+#include <net80211/ieee80211_regdomain.h>
 
 #include "ah_internal.h"
 #include "ah_eeprom.h"
@@ -490,7 +490,7 @@ getchannels(struct ath_hal *ah,
 			break;
 		default:
 			HALDEBUG(ah, HAL_DEBUG_REGDOMAIN,
-			    "%s: Unkonwn HAL mode 0x%x\n", __func__, cm->mode);
+			    "%s: Unknown HAL mode 0x%x\n", __func__, cm->mode);
 			continue;
 		}
 		if (isChanBitMaskZero(channelBM))

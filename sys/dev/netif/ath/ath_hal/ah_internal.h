@@ -27,7 +27,7 @@
 #define	AH_MIN(a,b)	((a)<(b)?(a):(b))
 #define	AH_MAX(a,b)	((a)>(b)?(a):(b))
 
-#include <netproto/802_11/_ieee80211.h>
+#include <net80211/_ieee80211.h>
 #include "opt_ah.h"			/* needed for AH_SUPPORT_AR5416 */
 
 #ifndef	AH_SUPPORT_AR5416
@@ -282,7 +282,8 @@ typedef struct {
 			halRadioRetentionSupport	: 1,
 			halSpectralScanSupport		: 1,
 			halRxUsingLnaMixing		: 1,
-			halRxDoMyBeacon			: 1;
+			halRxDoMyBeacon			: 1,
+			halHwUapsdTrig			: 1;
 
 	uint32_t	halWirelessModes;
 	uint16_t	halTotalQueues;
@@ -421,9 +422,13 @@ struct ath_hal_private {
 	uint32_t	ah_fatalState[6];	/* AR_ISR+shadow regs */
 	int		ah_rxornIsFatal;	/* how to treat HAL_INT_RXORN */
 
-#ifndef	ATH_NF_PER_CHAN
+	/* Only used if ATH_NF_PER_CHAN is defined */
 	HAL_NFCAL_HIST_FULL	nf_cal_hist;
-#endif	/* ! ATH_NF_PER_CHAN */
+
+	/*
+	 * Channel survey history - current channel only.
+	 */
+	 HAL_CHANNEL_SURVEY	ah_chansurvey;	/* channel survey */
 };
 
 #define	AH_PRIVATE(_ah)	((struct ath_hal_private *)(_ah))
@@ -1026,6 +1031,17 @@ ath_hal_getantennaallowed(struct ath_hal *ah,
 /*
  * Map the given 2GHz channel to an IEEE number.
  */
-extern	int ath_hal_mhz2ieee_2ghz(struct ath_hal *, HAL_CHANNEL_INTERNAL *);
+extern	int ath_hal_mhz2ieee_2ghz(struct ath_hal *, int freq);
+
+/*
+ * Clear the channel survey data.
+ */
+extern	void ath_hal_survey_clear(struct ath_hal *ah);
+
+/*
+ * Add a sample to the channel survey data.
+ */
+extern	void ath_hal_survey_add_sample(struct ath_hal *ah,
+	    HAL_SURVEY_SAMPLE *hs);
 
 #endif /* _ATH_AH_INTERAL_H_ */

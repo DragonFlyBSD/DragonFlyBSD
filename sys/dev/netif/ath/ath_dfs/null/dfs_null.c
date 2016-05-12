@@ -47,6 +47,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
+#include <machine/bus.h>
+#include <machine/resource.h>
 #include <sys/bus.h>
 
 #include <sys/socket.h>
@@ -57,7 +59,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#include <netproto/802_11/ieee80211_var.h>
+#include <net80211/ieee80211_var.h>
 
 #include <net/bpf.h>
 
@@ -66,10 +68,10 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/netif/ath/ath/if_athvar.h>
-#include <dev/netif/ath/ath/if_athdfs.h>
+#include <dev/ath/if_athvar.h>
+#include <dev/ath/if_athdfs.h>
 
-#include <dev/netif/ath/ath_hal/ah_desc.h>
+#include <dev/ath/ath_hal/ah_desc.h>
 
 /*
  * Methods which are required
@@ -179,7 +181,7 @@ ath_dfs_process_phy_err(struct ath_softc *sc, struct mbuf *m,
 }
 
 /*
- * Process the radar events and determine whether a DFS event has occured.
+ * Process the radar events and determine whether a DFS event has occurred.
  *
  * This is designed to run outside of the RX processing path.
  * The RX path will call ath_dfs_tasklet_needed() to see whether
@@ -228,7 +230,7 @@ ath_ioctl_phyerr(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
+		indata = malloc(insize, M_TEMP, M_NOWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -245,7 +247,7 @@ ath_ioctl_phyerr(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
+		outdata = malloc(outsize, M_TEMP, M_NOWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -276,9 +278,9 @@ ath_ioctl_phyerr(struct ath_softc *sc, struct ath_diag *ad)
 		error = EFAULT;
 bad:
 	if ((ad->ad_id & ATH_DIAG_IN) && indata != NULL)
-		kfree(indata, M_TEMP);
+		free(indata, M_TEMP);
 	if ((ad->ad_id & ATH_DIAG_DYN) && outdata != NULL)
-		kfree(outdata, M_TEMP);
+		free(outdata, M_TEMP);
 	return (error);
 }
 
@@ -291,41 +293,3 @@ ath_dfs_get_thresholds(struct ath_softc *sc, HAL_PHYERR_PARAM *param)
 	ath_hal_getdfsthresh(sc->sc_ah, param);
 	return (1);
 }
-
-/*
- * Module glue.
- */
-static int
-null_dfs_modevent(module_t mod, int type, void *unused)
-{
-	int error;
-
-	wlan_serialize_enter();
-
-	switch (type) {
-	case MOD_LOAD:
-		if (bootverbose) {
-			kprintf("ath_dfs: WTF module\n");
-		}
-		error = 0;
-		break;
-	case MOD_UNLOAD:
-		error = 0;
-		break;
-	default:
-		error = EINVAL;
-		break;
-	}
-	wlan_serialize_exit();
-
-	return error;
-}
-
-static moduledata_t null_dfs_mod = {
-	"ath_dfs",
-	null_dfs_modevent,
-	0
-};
-
-DECLARE_MODULE(ath_dfs, null_dfs_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
-MODULE_VERSION(ath_dfs, 1);

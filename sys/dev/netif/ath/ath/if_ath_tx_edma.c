@@ -68,6 +68,9 @@ __FBSDID("$FreeBSD$");
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
+#include <sys/smp.h>	/* for mp_ncpus */
+
+#include <machine/bus.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -77,15 +80,14 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_llc.h>
-#include <net/ifq_var.h>
 
-#include <netproto/802_11/ieee80211_var.h>
-#include <netproto/802_11/ieee80211_regdomain.h>
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <netproto/802_11/ieee80211_superg.h>
+#include <net80211/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <netproto/802_11/ieee80211_tdma.h>
+#include <net80211/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -95,29 +97,30 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/netif/ath/ath/if_athvar.h>
-#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
+#include <dev/ath/if_athvar.h>
+#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/ath/ath_hal/ah_diagcodes.h>
 
-#include <dev/netif/ath/ath/if_ath_debug.h>
-#include <dev/netif/ath/ath/if_ath_misc.h>
-#include <dev/netif/ath/ath/if_ath_tsf.h>
-#include <dev/netif/ath/ath/if_ath_tx.h>
-#include <dev/netif/ath/ath/if_ath_sysctl.h>
-#include <dev/netif/ath/ath/if_ath_led.h>
-#include <dev/netif/ath/ath/if_ath_keycache.h>
-#include <dev/netif/ath/ath/if_ath_rx.h>
-#include <dev/netif/ath/ath/if_ath_beacon.h>
-#include <dev/netif/ath/ath/if_athdfs.h>
+#include <dev/ath/if_ath_debug.h>
+#include <dev/ath/if_ath_misc.h>
+#include <dev/ath/if_ath_tsf.h>
+#include <dev/ath/if_ath_tx.h>
+#include <dev/ath/if_ath_sysctl.h>
+#include <dev/ath/if_ath_led.h>
+#include <dev/ath/if_ath_keycache.h>
+#include <dev/ath/if_ath_rx.h>
+#include <dev/ath/if_ath_beacon.h>
+#include <dev/ath/if_athdfs.h>
+#include <dev/ath/if_ath_descdma.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/netif/ath/ath_tx99/ath_tx99.h>
+#include <dev/ath/ath_tx99/ath_tx99.h>
 #endif
 
-#include <dev/netif/ath/ath/if_ath_tx_edma.h>
+#include <dev/ath/if_ath_tx_edma.h>
 
 #ifdef	ATH_DEBUG_ALQ
-#include <dev/netif/ath/ath/if_ath_alq.h>
+#include <dev/ath/if_ath_alq.h>
 #endif
 
 /*
@@ -465,8 +468,9 @@ ath_edma_setup_txfifo(struct ath_softc *sc, int qnum)
 {
 	struct ath_tx_edma_fifo *te = &sc->sc_txedma[qnum];
 
-	te->m_fifo = kmalloc(sizeof(struct ath_buf *) * HAL_TXFIFO_DEPTH,
-			     M_ATHDEV, M_INTWAIT | M_ZERO);
+	te->m_fifo = malloc(sizeof(struct ath_buf *) * HAL_TXFIFO_DEPTH,
+	    M_ATHDEV,
+	    M_NOWAIT | M_ZERO);
 	if (te->m_fifo == NULL) {
 		device_printf(sc->sc_dev, "%s: malloc failed\n",
 		    __func__);
@@ -487,7 +491,7 @@ ath_edma_free_txfifo(struct ath_softc *sc, int qnum)
 	struct ath_tx_edma_fifo *te = &sc->sc_txedma[qnum];
 
 	/* XXX TODO: actually deref the ath_buf entries? */
-	kfree(te->m_fifo, M_ATHDEV);
+	free(te->m_fifo, M_ATHDEV);
 	return (0);
 }
 
@@ -534,7 +538,6 @@ ath_edma_dma_txteardown(struct ath_softc *sc)
 static void
 ath_edma_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 {
-	struct ifnet *ifp = sc->sc_ifp;
 	int i;
 
 	DPRINTF(sc, ATH_DEBUG_RESET, "%s: called\n", __func__);
@@ -576,13 +579,6 @@ ath_edma_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 
 	/* XXX dump out the frames */
 
-	IF_LOCK(&ifp->if_snd);
-#if defined(__DragonFly__)
-	ifq_clr_oactive(&ifp->if_snd);
-#else
-	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
-#endif
-	IF_UNLOCK(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 }
 
@@ -834,16 +830,6 @@ ath_edma_tx_processq(struct ath_softc *sc, int dosched)
 	}
 
 	sc->sc_wd_timer = 0;
-
-	if (idx > 0) {
-		IF_LOCK(&sc->sc_ifp->if_snd);
-#if defined(__DragonFly__)
-		ifq_clr_oactive(&sc->sc_ifp->if_snd);
-#else
-		sc->sc_ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
-#endif
-		IF_UNLOCK(&sc->sc_ifp->if_snd);
-	}
 
 	/* Kick software scheduler */
 	/*

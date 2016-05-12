@@ -30,8 +30,6 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
-#define CTLFLAG_RWTUN	CTLFLAG_RW
-
 #include "opt_inet.h"
 #include "opt_ath.h"
 #include "opt_wlan.h"
@@ -54,6 +52,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/taskqueue.h>
 #include <sys/priv.h>
 
+#include <machine/bus.h>
+
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
@@ -62,13 +62,13 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <netproto/802_11/ieee80211_var.h>
-#include <netproto/802_11/ieee80211_regdomain.h>
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <netproto/802_11/ieee80211_superg.h>
+#include <net80211/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <netproto/802_11/ieee80211_tdma.h>
+#include <net80211/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -78,16 +78,16 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/netif/ath/ath/if_athvar.h>
-#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
+#include <dev/ath/if_athvar.h>
+#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/ath/ath_hal/ah_diagcodes.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/netif/ath/ath/ath_tx99/ath_tx99.h>
+#include <dev/ath/ath_tx99/ath_tx99.h>
 #endif
 
 #ifdef ATH_DEBUG
-#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/ath/if_ath_debug.h>
 
 uint64_t ath_debug = 0;
 
@@ -105,7 +105,7 @@ ath_printrxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 	int i;
 
 	for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-		kprintf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
+		printf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
 		       "      %08x %08x %08x %08x\n",
 		    ix, ds, (const struct ath_desc *)bf->bf_daddr + i,
 		    ds->ds_link, ds->ds_data,
@@ -113,17 +113,17 @@ ath_printrxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 		    ds->ds_ctl0, ds->ds_ctl1,
 		    ds->ds_hw[0], ds->ds_hw[1]);
 		if (ah->ah_magic == 0x20065416) {
-			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[2], ds->ds_hw[3], ds->ds_hw[4],
 			    ds->ds_hw[5], ds->ds_hw[6], ds->ds_hw[7],
 			    ds->ds_hw[8]);
 		} else if (ah->ah_magic == 0x19741014) {
-			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[2], ds->ds_hw[3], ds->ds_hw[4],
 			    ds->ds_hw[5], ds->ds_hw[6], ds->ds_hw[7],
 			    ds->ds_hw[8]);
 
-			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[9], ds->ds_hw[10], ds->ds_hw[11],
 			    ds->ds_hw[12], ds->ds_hw[13], ds->ds_hw[14],
 			    ds->ds_hw[15]);
@@ -142,7 +142,7 @@ ath_printtxbuf_edma(struct ath_softc *sc, const struct ath_buf *first_bf,
 	const struct ath_desc_txedma *eds;
 	int i, n;
 
-	kprintf("Q%u[%3u] (nseg=%d)", qnum, ix, bf->bf_nseg);
+	printf("Q%u[%3u] (nseg=%d)", qnum, ix, bf->bf_nseg);
 	while (bf != NULL) {
 		/*
 		 * XXX For now, assume the txmap size is 4.
@@ -158,38 +158,38 @@ ath_printtxbuf_edma(struct ath_softc *sc, const struct ath_buf *first_bf,
 		    i < n;
 		    i ++, ds += sc->sc_tx_desclen) {
 			eds = (const struct ath_desc_txedma *) ds;
-			kprintf(" (DS.V:%p DS.P:%p) I: %08x L:%08x F:%04x%s\n",
+			printf(" (DS.V:%p DS.P:%p) I: %08x L:%08x F:%04x%s\n",
 			    eds, (const struct ath_desc *)bf->bf_daddr + i,
 			    eds->ds_info, eds->ds_link,
 			    bf->bf_state.bfs_txflags,
 			    !done ? "" : (ts->ts_status == 0) ? " *" : " !");
-			kprintf(" (D[0] = %08x(%08x), D[1] = %08x(%08x)\n",
+			printf(" (D[0] = %08x(%08x), D[1] = %08x(%08x)\n",
 			    eds->ds_hw[0], eds->ds_hw[1],
 			    eds->ds_hw[2], eds->ds_hw[3]);
-			kprintf(" (D[2] = %08x(%08x), D[3] = %08x(%08x)\n",
+			printf(" (D[2] = %08x(%08x), D[3] = %08x(%08x)\n",
 			    eds->ds_hw[4], eds->ds_hw[5],
 			    eds->ds_hw[6], eds->ds_hw[7]);
-			kprintf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
+			printf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
 			    bf->bf_state.bfs_seqno,
 			    bf->bf_state.bfs_retries,
 			    bf->bf_state.bfs_addedbaw,
 			    bf->bf_state.bfs_dobaw);
-			kprintf("        %08x %08x %08x %08x %08x %08x\n",
+			printf("        %08x %08x %08x %08x %08x %08x\n",
 			    eds->ds_hw[8], eds->ds_hw[9],
 			    eds->ds_hw[10], eds->ds_hw[11],
 			    eds->ds_hw[12], eds->ds_hw[13]);
-			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    eds->ds_hw[14], eds->ds_hw[15], eds->ds_hw[16],
 			    eds->ds_hw[17], eds->ds_hw[18], eds->ds_hw[19],
 			    eds->ds_hw[20]);
 #if 0
-			kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+			printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[22],ds->ds_hw[23],ds->ds_hw[24],
 			    ds->ds_hw[25],ds->ds_hw[26],ds->ds_hw[27],
 			    ds->ds_hw[28], ds->ds_hw[29]);
 #endif
 		}
-		kprintf("  [end]\n");
+		printf("  [end]\n");
 		bf = bf->bf_next;
 	}
 }
@@ -204,35 +204,35 @@ ath_printtxbuf_legacy(struct ath_softc *sc, const struct ath_buf *first_bf,
 	const struct ath_desc *ds;
 	int i;
 
-	kprintf("Q%u[%3u]", qnum, ix);
+	printf("Q%u[%3u]", qnum, ix);
 	while (bf != NULL) {
-		kprintf("    (bf=%p, lastds=%p)\n", bf, first_bf->bf_lastds);
-		kprintf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
+		printf("    (bf=%p, lastds=%p)\n", bf, first_bf->bf_lastds);
+		printf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
 		    bf->bf_state.bfs_seqno,
 		    bf->bf_state.bfs_retries,
 		    bf->bf_state.bfs_addedbaw,
 		    bf->bf_state.bfs_dobaw);
 		for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-			kprintf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:%04x%s\n",
+			printf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:%04x%s\n",
 			    ds, (const struct ath_desc *)bf->bf_daddr + i,
 			    ds->ds_link, ds->ds_data, bf->bf_state.bfs_txflags,
 			    !done ? "" : (ts->ts_status == 0) ? " *" : " !");
-			kprintf("        %08x %08x %08x %08x %08x %08x\n",
+			printf("        %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_ctl0, ds->ds_ctl1,
 			    ds->ds_hw[0], ds->ds_hw[1],
 			    ds->ds_hw[2], ds->ds_hw[3]);
 			if (ah->ah_magic == 0x20065416) {
-				kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+				printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 				    ds->ds_hw[4], ds->ds_hw[5], ds->ds_hw[6],
 				    ds->ds_hw[7], ds->ds_hw[8], ds->ds_hw[9],
 				    ds->ds_hw[10],ds->ds_hw[11]);
-				kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+				printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 				    ds->ds_hw[12],ds->ds_hw[13],ds->ds_hw[14],
 				    ds->ds_hw[15],ds->ds_hw[16],ds->ds_hw[17],
 				    ds->ds_hw[18], ds->ds_hw[19]);
 			}
 		}
-		kprintf("  [end]\n");
+		printf("  [end]\n");
 		bf = bf->bf_next;
 	}
 }
@@ -252,10 +252,10 @@ ath_printtxstatbuf(struct ath_softc *sc, const struct ath_buf *first_bf,
 	const uint32_t *ds, u_int qnum, u_int ix, int done)
 {
 
-	kprintf("Q%u[%3u] ", qnum, ix);
-	kprintf("        %08x %08x %08x %08x %08x %08x\n",
+	printf("Q%u[%3u] ", qnum, ix);
+	printf("        %08x %08x %08x %08x %08x %08x\n",
 	    ds[0], ds[1], ds[2], ds[3], ds[4], ds[5]);
-	kprintf("        %08x %08x %08x %08x %08x\n",
+	printf("        %08x %08x %08x %08x %08x\n",
 	    ds[6], ds[7], ds[8], ds[9], ds[10]);
 }
 

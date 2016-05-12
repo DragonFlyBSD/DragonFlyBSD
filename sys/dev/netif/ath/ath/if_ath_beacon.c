@@ -68,7 +68,9 @@ __FBSDID("$FreeBSD$");
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
+#include <sys/smp.h>	/* for mp_ncpus */
 
+#include <machine/bus.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -79,10 +81,10 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <netproto/802_11/ieee80211_var.h>
-#include <netproto/802_11/ieee80211_regdomain.h>
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <netproto/802_11/ieee80211_superg.h>
+#include <net80211/ieee80211_superg.h>
 #endif
 
 #include <net/bpf.h>
@@ -92,15 +94,15 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/ath/if_athvar.h>
 
-#include <dev/netif/ath/ath/if_ath_debug.h>
-#include <dev/netif/ath/ath/if_ath_misc.h>
-#include <dev/netif/ath/ath/if_ath_tx.h>
-#include <dev/netif/ath/ath/if_ath_beacon.h>
+#include <dev/ath/if_ath_debug.h>
+#include <dev/ath/if_ath_misc.h>
+#include <dev/ath/if_ath_tx.h>
+#include <dev/ath/if_ath_beacon.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/netif/ath/ath/ath_tx99/ath_tx99.h>
+#include <dev/ath/ath_tx99/ath_tx99.h>
 #endif
 
 /*
@@ -132,7 +134,7 @@ int
 ath_beaconq_config(struct ath_softc *sc)
 {
 #define	ATH_EXPONENT_TO_VALUE(v)	((1<<(v))-1)
-	struct ieee80211com *ic = sc->sc_ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct ath_hal *ah = sc->sc_ah;
 	HAL_TXQ_INFO qi;
 
@@ -197,21 +199,15 @@ ath_beacon_alloc(struct ath_softc *sc, struct ieee80211_node *ni)
 	 * we assume the mbuf routines will return us something
 	 * with this alignment (perhaps should assert).
 	 */
-	m = ieee80211_beacon_alloc(ni, &avp->av_boff);
+	m = ieee80211_beacon_alloc(ni);
 	if (m == NULL) {
 		device_printf(sc->sc_dev, "%s: cannot get mbuf\n", __func__);
 		sc->sc_stats.ast_be_nombuf++;
 		return ENOMEM;
 	}
-#if defined(__DragonFly__)
-	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m,
-				     bf->bf_segs, 1, &bf->bf_nseg,
-				     BUS_DMA_NOWAIT);
-#else
 	error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
 				     bf->bf_segs, &bf->bf_nseg,
 				     BUS_DMA_NOWAIT);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: cannot map mbuf, bus_dmamap_load_mbuf_sg returns %d\n",
@@ -378,7 +374,7 @@ ath_beacon_setup(struct ath_softc *sc, struct ath_buf *bf)
 void
 ath_beacon_update(struct ieee80211vap *vap, int item)
 {
-	struct ieee80211_beacon_offsets *bo = &ATH_VAP(vap)->av_boff;
+	struct ieee80211_beacon_offsets *bo = &vap->iv_bcn_off;
 
 	setbit(bo->bo_flags, item);
 }
@@ -468,7 +464,7 @@ ath_beacon_proc(void *arg, int pending)
 	}
 
 	if (sc->sc_stagbeacons) {			/* staggered beacons */
-		struct ieee80211com *ic = sc->sc_ifp->if_l2com;
+		struct ieee80211com *ic = &sc->sc_ic;
 		uint32_t tsftu;
 
 		tsftu = ath_hal_gettsf32(ah) >> 10;
@@ -717,19 +713,12 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 	/* XXX lock mcastq? */
 	nmcastq = avp->av_mcastq.axq_depth;
 
-	if (ieee80211_beacon_update(bf->bf_node, &avp->av_boff, m, nmcastq)) {
+	if (ieee80211_beacon_update(bf->bf_node, m, nmcastq)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
-#if defined(__DragonFly__)
-		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
-					     bf->bf_dmamap, m,
-					     bf->bf_segs, 1, &bf->bf_nseg,
-					     BUS_DMA_NOWAIT);
-#else
 		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
 					     bf->bf_segs, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",
@@ -737,7 +726,7 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 			return NULL;
 		}
 	}
-	if ((avp->av_boff.bo_tim[4] & 1) && cabq->axq_depth) {
+	if ((vap->iv_bcn_off.bo_tim[4] & 1) && cabq->axq_depth) {
 		DPRINTF(sc, ATH_DEBUG_BEACON,
 		    "%s: cabq did not drain, mcastq %u cabq %u\n",
 		    __func__, nmcastq, cabq->axq_depth);
@@ -775,7 +764,7 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 	 * Enable the CAB queue before the beacon queue to
 	 * insure cab frames are triggered by this beacon.
 	 */
-	if (avp->av_boff.bo_tim[4] & 1) {
+	if (vap->iv_bcn_off.bo_tim[4] & 1) {
 
 		/* NB: only at DTIM */
 		ATH_TXQ_LOCK(&avp->av_mcastq);
@@ -840,19 +829,12 @@ ath_beacon_start_adhoc(struct ath_softc *sc, struct ieee80211vap *vap)
 	 */
 	bf = avp->av_bcbuf;
 	m = bf->bf_m;
-	if (ieee80211_beacon_update(bf->bf_node, &avp->av_boff, m, 0)) {
+	if (ieee80211_beacon_update(bf->bf_node, m, 0)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
-#if defined(__DragonFly__)
-		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
-					     bf->bf_dmamap, m,
-					     bf->bf_segs, 1, &bf->bf_nseg,
-					     BUS_DMA_NOWAIT);
-#else
 		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
 					     bf->bf_segs, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",
@@ -935,7 +917,7 @@ ath_beacon_config(struct ath_softc *sc, struct ieee80211vap *vap)
 	((((u_int32_t)(_h)) << 22) | (((u_int32_t)(_l)) >> 10))
 #define	FUDGE	2
 	struct ath_hal *ah = sc->sc_ah;
-	struct ieee80211com *ic = sc->sc_ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211_node *ni;
 	u_int32_t nexttbtt, intval, tsftu;
 	u_int32_t nexttbtt_u8, intval_u8;
@@ -960,11 +942,11 @@ ath_beacon_config(struct ath_softc *sc, struct ieee80211vap *vap)
 	ATH_UNLOCK(sc);
 
 	/* extract tstamp from last beacon and convert to TU */
-	nexttbtt = TSF_TO_TU(LE_READ_4(ni->ni_tstamp.data + 4),
-			     LE_READ_4(ni->ni_tstamp.data));
+	nexttbtt = TSF_TO_TU(le32dec(ni->ni_tstamp.data + 4),
+			     le32dec(ni->ni_tstamp.data));
 
-	tsf_beacon = ((uint64_t) LE_READ_4(ni->ni_tstamp.data + 4)) << 32;
-	tsf_beacon |= LE_READ_4(ni->ni_tstamp.data);
+	tsf_beacon = ((uint64_t) le32dec(ni->ni_tstamp.data + 4)) << 32;
+	tsf_beacon |= le32dec(ni->ni_tstamp.data);
 
 	if (ic->ic_opmode == IEEE80211_M_HOSTAP ||
 	    ic->ic_opmode == IEEE80211_M_MBSS) {

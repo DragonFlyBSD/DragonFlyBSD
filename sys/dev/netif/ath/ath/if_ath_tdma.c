@@ -68,6 +68,9 @@ __FBSDID("$FreeBSD$");
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
+#include <sys/smp.h>	/* for mp_ncpus */
+
+#include <machine/bus.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -78,13 +81,13 @@ __FBSDID("$FreeBSD$");
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <netproto/802_11/ieee80211_var.h>
-#include <netproto/802_11/ieee80211_regdomain.h>
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <netproto/802_11/ieee80211_superg.h>
+#include <net80211/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <netproto/802_11/ieee80211_tdma.h>
+#include <net80211/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -94,31 +97,31 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/netif/ath/ath/if_athvar.h>
-#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
+#include <dev/ath/if_athvar.h>
+#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/ath/ath_hal/ah_diagcodes.h>
 
-#include <dev/netif/ath/ath/if_ath_debug.h>
-#include <dev/netif/ath/ath/if_ath_misc.h>
-#include <dev/netif/ath/ath/if_ath_tsf.h>
-#include <dev/netif/ath/ath/if_ath_tx.h>
-#include <dev/netif/ath/ath/if_ath_sysctl.h>
-#include <dev/netif/ath/ath/if_ath_led.h>
-#include <dev/netif/ath/ath/if_ath_keycache.h>
-#include <dev/netif/ath/ath/if_ath_rx.h>
-#include <dev/netif/ath/ath/if_ath_beacon.h>
-#include <dev/netif/ath/ath/if_athdfs.h>
+#include <dev/ath/if_ath_debug.h>
+#include <dev/ath/if_ath_misc.h>
+#include <dev/ath/if_ath_tsf.h>
+#include <dev/ath/if_ath_tx.h>
+#include <dev/ath/if_ath_sysctl.h>
+#include <dev/ath/if_ath_led.h>
+#include <dev/ath/if_ath_keycache.h>
+#include <dev/ath/if_ath_rx.h>
+#include <dev/ath/if_ath_beacon.h>
+#include <dev/ath/if_athdfs.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/netif/ath/ath_tx99/ath_tx99.h>
+#include <dev/ath/ath_tx99/ath_tx99.h>
 #endif
 
 #ifdef	ATH_DEBUG_ALQ
-#include <dev/netif/ath/ath/if_ath_alq.h>
+#include <dev/ath/if_ath_alq.h>
 #endif
 
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <dev/netif/ath/ath/if_ath_tdma.h>
+#include <dev/ath/if_ath_tdma.h>
 
 static void	ath_tdma_settimers(struct ath_softc *sc, u_int32_t nexttbtt,
 		    u_int32_t bintval);
@@ -247,8 +250,7 @@ void
 ath_tdma_config(struct ath_softc *sc, struct ieee80211vap *vap)
 {
 	struct ath_hal *ah = sc->sc_ah;
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	const struct ieee80211_txparam *tp;
 	const struct ieee80211_tdma_state *tdma = NULL;
 	int rix;
@@ -256,7 +258,7 @@ ath_tdma_config(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (vap == NULL) {
 		vap = TAILQ_FIRST(&ic->ic_vaps);   /* XXX */
 		if (vap == NULL) {
-			if_printf(ifp, "%s: no vaps?\n", __func__);
+			device_printf(sc->sc_dev, "%s: no vaps?\n", __func__);
 			return;
 		}
 	}
@@ -286,7 +288,7 @@ ath_tdma_config(struct ath_softc *sc, struct ieee80211vap *vap)
 		/* XXX short preamble assumed */
 		/* XXX non-11n rate assumed */
 		sc->sc_tdmaguard = ath_hal_computetxtime(ah, sc->sc_currates,
-			ifp->if_mtu + IEEE80211_MAXOVERHEAD, rix, AH_TRUE);
+		    vap->iv_ifp->if_mtu + IEEE80211_MAXOVERHEAD, rix, AH_TRUE);
 	}
 
 	ath_hal_intrset(ah, 0);
@@ -546,7 +548,7 @@ ath_tdma_update(struct ieee80211_node *ni,
 	 *     slot position changes) because ieee80211_add_tdma
 	 *     skips over the data.
 	 */
-	memcpy(ATH_VAP(vap)->av_boff.bo_tdma +
+	memcpy(vap->iv_bcn_off.bo_tdma +
 		__offsetof(struct ieee80211_tdma_param, tdma_tstamp),
 		&ni->ni_tstamp.data, 8);
 #if 0

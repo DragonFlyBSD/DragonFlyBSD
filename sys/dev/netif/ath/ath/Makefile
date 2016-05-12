@@ -9,6 +9,7 @@ SRCS+=	if_ath_alq.c if_ath_lna_div.c if_ath_tdma.c
 SRCS+=	if_ath_beacon.c if_ath_pci.c if_ath_tx.c
 SRCS+=	if_ath_btcoex.c if_ath_rx.c if_ath_tx_edma.c
 SRCS+=	if_ath_debug.c if_ath_rx_edma.c if_ath_tx_ht.c
+SRCS+=	if_ath_descdma.c if_ath_ioctl.c
 
 SRCS+=	device_if.h bus_if.h pci_if.h
 SRCS+=	opt_ath.h opt_ah.h opt_wlan.h opt_inet.h opt_ktr.h

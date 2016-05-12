@@ -47,6 +47,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
+#include <machine/bus.h>
+#include <machine/resource.h>
 #include <sys/bus.h>
 
 #include <sys/socket.h>
@@ -57,7 +59,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#include <netproto/802_11/ieee80211_var.h>
+#include <net80211/ieee80211_var.h>
 
 #include <net/bpf.h>
 
@@ -66,10 +68,10 @@ __FBSDID("$FreeBSD$");
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/netif/ath/ath/if_athvar.h>
-#include <dev/netif/ath/ath/if_ath_spectral.h>
+#include <dev/ath/if_athvar.h>
+#include <dev/ath/if_ath_spectral.h>
 
-#include <dev/netif/ath/ath_hal/ah_desc.h>
+#include <dev/ath/ath_hal/ah_desc.h>
 
 struct ath_spectral_state {
 	HAL_SPECTRAL_PARAM	spectral_state;
@@ -109,7 +111,7 @@ ath_spectral_attach(struct ath_softc *sc)
 	if (! ath_hal_spectral_supported(sc->sc_ah))
 		return (0);
 
-	ss = kmalloc(sizeof(struct ath_spectral_state),
+	ss = malloc(sizeof(struct ath_spectral_state),
 	    M_TEMP, M_WAITOK | M_ZERO);
 
 	if (ss == NULL) {
@@ -136,7 +138,7 @@ ath_spectral_detach(struct ath_softc *sc)
 		return (0);
 
 	if (sc->sc_spectral != NULL) {
-		kfree(sc->sc_spectral, M_TEMP);
+		free(sc->sc_spectral, M_TEMP);
 	}
 	return (0);
 }
@@ -193,7 +195,7 @@ ath_ioctl_spectral(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
+		indata = malloc(insize, M_TEMP, M_NOWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -210,7 +212,7 @@ ath_ioctl_spectral(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
+		outdata = malloc(outsize, M_TEMP, M_NOWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -280,9 +282,9 @@ ath_ioctl_spectral(struct ath_softc *sc, struct ath_diag *ad)
 		error = EFAULT;
 bad:
 	if ((ad->ad_id & ATH_DIAG_IN) && indata != NULL)
-		kfree(indata, M_TEMP);
+		free(indata, M_TEMP);
 	if ((ad->ad_id & ATH_DIAG_DYN) && outdata != NULL)
-		kfree(outdata, M_TEMP);
+		free(outdata, M_TEMP);
 	return (error);
 }
 

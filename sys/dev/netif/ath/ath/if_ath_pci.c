@@ -44,6 +44,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
+#include <machine/bus.h>
+#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -54,21 +56,12 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 
-#include <netproto/802_11/ieee80211_var.h>
+#include <net80211/ieee80211_var.h>
 
-#include <dev/netif/ath/ath/if_athvar.h>
-
-#if defined(__DragonFly__)
-
-#include <bus/pci/pcivar.h>
-#include <bus/pci/pcireg.h>
-
-#else
+#include <dev/ath/if_athvar.h>
 
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>
-
-#endif
 
 /* For EEPROM firmware */
 #ifdef	ATH_EEPROM_FIRMWARE
@@ -89,7 +82,7 @@ struct ath_pci_softc {
 
 /*
  * XXX eventually this should be some system level definition
- * so modules will hvae probe/attach information like USB.
+ * so modules will have probe/attach information like USB.
  * But for now..
  */
 struct pci_device_id {
@@ -286,6 +279,12 @@ ath_pci_attach(device_t dev)
 	 */
 	sc->sc_invalid = 1;
 
+	ATH_LOCK_INIT(sc);
+	ATH_PCU_LOCK_INIT(sc);
+	ATH_RX_LOCK_INIT(sc);
+	ATH_TX_LOCK_INIT(sc);
+	ATH_TXSTATUS_LOCK_INIT(sc);
+
 	/*
 	 * Arrange interrupt line.
 	 */
@@ -296,32 +295,18 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "could not map interrupt\n");
 		goto bad1;
 	}
-#if defined(__DragonFly__)
-	if (bus_setup_intr(dev, psc->sc_irq,
-			   INTR_MPSAFE,
-			   ath_intr, sc, &psc->sc_ih,
-			   &wlan_global_serializer)) {
-		device_printf(dev, "could not establish interrupt\n");
-		goto bad2;
-	}
-#else
 	if (bus_setup_intr(dev, psc->sc_irq,
 			   INTR_TYPE_NET | INTR_MPSAFE,
 			   NULL, ath_intr, sc, &psc->sc_ih)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
-#endif
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
-#if defined(__DragonFly__)
-			       4, 0,			/* alignment, bounds */
-#else
 			       1, 0,			/* alignment, bounds */
-#endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */
@@ -329,10 +314,8 @@ ath_pci_attach(device_t dev)
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
-#if !defined(__DragonFly__)
 			       NULL,			/* lockfunc */
 			       NULL,			/* lockarg */
-#endif
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -352,40 +335,30 @@ ath_pci_attach(device_t dev)
 		if (fw == NULL) {
 			device_printf(dev, "%s: couldn't find firmware\n",
 			    __func__);
-			goto bad3;
+			goto bad4;
 		}
 
 		device_printf(dev, "%s: EEPROM firmware @ %p\n",
 		    __func__, fw->data);
 		sc->sc_eepromdata =
-		    kmalloc(fw->datasize, M_TEMP, M_WAITOK | M_ZERO);
+		    malloc(fw->datasize, M_TEMP, M_WAITOK | M_ZERO);
 		if (! sc->sc_eepromdata) {
 			device_printf(dev, "%s: can't malloc eepromdata\n",
 			    __func__);
-			goto bad3;
+			goto bad4;
 		}
 		memcpy(sc->sc_eepromdata, fw->data, fw->datasize);
 		firmware_put(fw, 0);
 	}
 #endif /* ATH_EEPROM_FIRMWARE */
 
-	ATH_LOCK_INIT(sc);
-	ATH_PCU_LOCK_INIT(sc);
-	ATH_RX_LOCK_INIT(sc);
-	ATH_TX_LOCK_INIT(sc);
-	ATH_TX_IC_LOCK_INIT(sc);
-	ATH_TXSTATUS_LOCK_INIT(sc);
-
 	error = ath_attach(pci_get_device(dev), sc);
 	if (error == 0)					/* success */
 		return 0;
 
-	ATH_TXSTATUS_LOCK_DESTROY(sc);
-	ATH_PCU_LOCK_DESTROY(sc);
-	ATH_RX_LOCK_DESTROY(sc);
-	ATH_TX_IC_LOCK_DESTROY(sc);
-	ATH_TX_LOCK_DESTROY(sc);
-	ATH_LOCK_DESTROY(sc);
+#ifdef	ATH_EEPROM_FIRMWARE
+bad4:
+#endif
 	bus_dma_tag_destroy(sc->sc_dmat);
 bad3:
 	bus_teardown_intr(dev, psc->sc_irq, psc->sc_ih);
@@ -393,6 +366,13 @@ bad2:
 	bus_release_resource(dev, SYS_RES_IRQ, 0, psc->sc_irq);
 bad1:
 	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
+
+	ATH_TXSTATUS_LOCK_DESTROY(sc);
+	ATH_PCU_LOCK_DESTROY(sc);
+	ATH_RX_LOCK_DESTROY(sc);
+	ATH_TX_LOCK_DESTROY(sc);
+	ATH_LOCK_DESTROY(sc);
+
 bad:
 	return (error);
 }
@@ -421,12 +401,11 @@ ath_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
 
 	if (sc->sc_eepromdata)
-		kfree(sc->sc_eepromdata, M_TEMP);
+		free(sc->sc_eepromdata, M_TEMP);
 
 	ATH_TXSTATUS_LOCK_DESTROY(sc);
 	ATH_PCU_LOCK_DESTROY(sc);
 	ATH_RX_LOCK_DESTROY(sc);
-	ATH_TX_IC_LOCK_DESTROY(sc);
 	ATH_TX_LOCK_DESTROY(sc);
 	ATH_LOCK_DESTROY(sc);
 
@@ -484,7 +463,7 @@ static driver_t ath_pci_driver = {
 	sizeof (struct ath_pci_softc)
 };
 static	devclass_t ath_devclass;
-DRIVER_MODULE(ath_pci, pci, ath_pci_driver, ath_devclass, NULL, NULL);
+DRIVER_MODULE(ath_pci, pci, ath_pci_driver, ath_devclass, 0, 0);
 MODULE_VERSION(ath_pci, 1);
 MODULE_DEPEND(ath_pci, wlan, 1, 1, 1);		/* 802.11 media layer */
 MODULE_DEPEND(ath_pci, if_ath, 1, 1, 1);	/* if_ath driver */

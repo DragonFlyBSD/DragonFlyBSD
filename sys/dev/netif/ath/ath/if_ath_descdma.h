@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011 Sam Leffler, Errno Consulting
+ * Copyright (c) 2015 Adrian Chadd <adrian@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,15 +28,19 @@
  *
  * $FreeBSD$
  */
+#ifndef	__IF_ATH_DESCDMA_H__
+#define	__IF_ATH_DESCDMA_H__
 
-#ifndef	__IF_ATH_CRYPTO_H__
-#define	__IF_ATH_CRYPTO_H__
-
-extern int ath_key_alloc(struct ieee80211vap *, struct ieee80211_key *,
-    ieee80211_keyix *, ieee80211_keyix *);
-extern int ath_key_delete(struct ieee80211vap *, const struct ieee80211_key *);
-extern int ath_key_set(struct ieee80211vap *, const struct ieee80211_key *);
-extern int ath_keyset(struct ath_softc *sc, struct ieee80211vap *vap,
-    const struct ieee80211_key *k, struct ieee80211_node *bss);
+extern  int ath_descdma_alloc_desc(struct ath_softc *sc,
+	    struct ath_descdma *dd, ath_bufhead *head, const char *name,
+	    int ds_size, int ndesc);
+extern  int ath_descdma_setup(struct ath_softc *sc, struct ath_descdma *dd,
+	    ath_bufhead *head, const char *name, int ds_size, int nbuf,
+	    int ndesc);
+extern  int ath_descdma_setup_rx_edma(struct ath_softc *sc,
+	    struct ath_descdma *dd, ath_bufhead *head, const char *name,
+	    int nbuf, int desclen);
+extern  void ath_descdma_cleanup(struct ath_softc *sc,
+	    struct ath_descdma *dd, ath_bufhead *head);
 
 #endif
