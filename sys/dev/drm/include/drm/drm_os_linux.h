@@ -63,9 +63,6 @@
 #define	likely(x)              __builtin_expect(!!(x), 1)
 
 #define DRM_UDELAY(udelay)	DELAY(udelay)
-#define DRM_MDELAY(msecs)	do { int loops = (msecs);		\
-				  while (loops--) DELAY(1000);		\
-				} while (0)
 #define DRM_TIME_SLICE		(hz/20)  /* Time slice for GLXContexts	  */
 
 #define	lower_32_bits(n)	((u32)(n))
@@ -81,22 +78,7 @@
 #define	KTR_DRM		KTR_DEV
 #define	KTR_DRM_REG	KTR_SPARE3
 
-/**
- * ror32 - rotate a 32-bit value right
- * @word: value to rotate
- * @shift: bits to roll
- *
- * Source: include/linux/bitops.h
- */
-static inline uint32_t ror32(uint32_t word, unsigned int shift)
-{
-	return (word >> shift) | (word << (32 - shift));
-}
-
 #define	IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
-#define	get_unaligned(ptr)                                              \
-	({ __typeof__(*(ptr)) __tmp;                                    \
-	  memcpy(&__tmp, (ptr), sizeof(*(ptr))); __tmp; })
 
 #define KIB_NOTYET()							\
 do {									\
