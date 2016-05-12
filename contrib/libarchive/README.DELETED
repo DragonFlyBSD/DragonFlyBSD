@@ -9,6 +9,8 @@ build/bump-version.sh
 build/clean.sh
 build/cmake/
 build/pkgconfig/
+cat/CMakeLists.txt
+cat/test/
 config.h.in
 configure
 configure.ac
