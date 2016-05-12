@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -28,15 +28,15 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
- * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.9 2008/09/02 22:13:11 swildner Exp $
+ * $FreeBSD: head/bin/chmod/chmod.c 283997 2015-06-04 19:18:58Z pluknet $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fts.h>
 #include <limits.h>
 #include <stdio.h>
@@ -44,19 +44,18 @@
 #include <string.h>
 #include <unistd.h>
 
-static void usage (void);
+static void usage(void);
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	FTS *ftsp;
 	FTSENT *p;
-	mode_t newmode;
 	void *set;
 	int Hflag, Lflag, Rflag, ch, fflag;
 	int fts_options, hflag, rval, vflag;
 	char *mode;
-	int (*change_mode) (const char *, mode_t);
+	mode_t newmode;
 
 	Hflag = Lflag = Rflag = fflag = hflag = vflag = 0;
 	while ((ch = getopt(argc, argv, "HLPRXfghorstuvwx")) != -1)
@@ -103,8 +102,9 @@ main(int argc, char **argv)
 				--optind;
 			goto done;
 		case 'v':
-			vflag = 1;
+			vflag++;
 			break;
+		case '?':
 		default:
 			usage();
 		}
@@ -114,23 +114,24 @@ done:	argv += optind;
 	if (argc < 2)
 		usage();
 
-	fts_options = FTS_PHYSICAL;
 	if (Rflag) {
 		if (hflag)
-			errx(1,
-		"the -R and -h options may not be specified together.");
-		if (Hflag)
-			fts_options |= FTS_COMFOLLOW;
+			errx(1, "the -R and -h options may not be "
+			    "specified together.");
 		if (Lflag) {
-			fts_options &= ~FTS_PHYSICAL;
-			fts_options |= FTS_LOGICAL;
-		}
-	}
+			fts_options = FTS_LOGICAL;
+		} else {
+			fts_options = FTS_PHYSICAL;
 
-	if (hflag)
-		change_mode = lchmod;
-	else
-		change_mode = chmod;
+			if (Hflag) {
+				fts_options |= FTS_COMFOLLOW;
+			}
+		}
+	} else if (hflag) {
+		fts_options = FTS_PHYSICAL;
+	} else {
+		fts_options = FTS_LOGICAL;
+	}
 
 	mode = *argv;
 	errno = 0;
@@ -143,50 +144,62 @@ done:	argv += optind;
 	}
 
 	if ((ftsp = fts_open(++argv, fts_options, 0)) == NULL)
-		err(1, NULL);
+		err(1, "fts_open");
 	for (rval = 0; (p = fts_read(ftsp)) != NULL;) {
+		int atflag;
+
+		if ((fts_options & FTS_LOGICAL) ||
+		    ((fts_options & FTS_COMFOLLOW) &&
+		    p->fts_level == FTS_ROOTLEVEL))
+			atflag = 0;
+		else
+			atflag = AT_SYMLINK_NOFOLLOW;
+
 		switch (p->fts_info) {
-		case FTS_D:			/* Change it at FTS_DP. */
+		case FTS_D:
 			if (!Rflag)
 				fts_set(ftsp, p, FTS_SKIP);
-			continue;
-		case FTS_DNR:			/* Warn, chmod, continue. */
+			break;
+		case FTS_DNR:			/* Warn, chmod. */
 			warnx("%s: %s", p->fts_path, strerror(p->fts_errno));
 			rval = 1;
 			break;
+		case FTS_DP:			/* Already changed at FTS_D. */
+			continue;
 		case FTS_ERR:			/* Warn, continue. */
 		case FTS_NS:
 			warnx("%s: %s", p->fts_path, strerror(p->fts_errno));
 			rval = 1;
 			continue;
-		case FTS_SL:			/* Ignore. */
-		case FTS_SLNONE:
-			/*
-			 * The only symlinks that end up here are ones that
-			 * don't point to anything and ones that we found
-			 * doing a physical walk.
-			 */
-			if (!hflag)
-				continue;
-			/* else */
-			/* FALLTHROUGH */
 		default:
 			break;
 		}
 		newmode = getmode(set, p->fts_statp->st_mode);
 		if ((newmode & ALLPERMS) == (p->fts_statp->st_mode & ALLPERMS))
 			continue;
-		if ((*change_mode)(p->fts_accpath, newmode) && !fflag) {
+		if (fchmodat(AT_FDCWD, p->fts_accpath, newmode, atflag) == -1
+		    && !fflag) {
 			warn("%s", p->fts_path);
 			rval = 1;
-		} else {
-		    	if (vflag)
-				printf("%s\n", p->fts_accpath);
+		} else if (vflag) {
+			printf("%s", p->fts_path);
+
+			if (vflag > 1) {
+				char m1[12], m2[12];
+
+				strmode(p->fts_statp->st_mode, m1);
+				strmode((p->fts_statp->st_mode &
+				    S_IFMT) | newmode, m2);
+				printf(": 0%o [%s] -> 0%o [%s]",
+				    p->fts_statp->st_mode, m1,
+				    (p->fts_statp->st_mode & S_IFMT) |
+				    newmode, m2);
+			}
+			printf("\n");
 		}
 	}
 	if (errno)
 		err(1, "fts_read");
-	free(set);
 	exit(rval);
 }
 

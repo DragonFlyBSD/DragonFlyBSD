@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 1989, 1990, 1993, 1994
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -29,10 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)chmod.1	8.4 (Berkeley) 3/31/94
-.\" $FreeBSD: src/bin/chmod/chmod.1,v 1.17.2.16 2003/02/24 03:01:00 trhodes Exp $
-.\" $DragonFly: src/bin/chmod/chmod.1,v 1.3 2006/02/17 19:33:30 swildner Exp $
+.\" $FreeBSD: head/bin/chmod/chmod.1 282208 2015-04-29 00:49:00Z smh $
 .\"
-.Dd March 31, 1994
+.Dd May 11, 2016
 .Dt CHMOD 1
 .Os
 .Sh NAME
@@ -63,9 +63,9 @@ nor modify the exit status to reflect such failures.
 .It Fl H
 If the
 .Fl R
-option is specified, symbolic links on the command line are followed.
-(Symbolic links encountered in the tree traversal are not followed by
-default.)
+option is specified, symbolic links on the command line are followed
+and hence unaffected by the command.
+(Symbolic links encountered during tree traversal are not followed.)
 .It Fl h
 If the file is a symbolic link, change the mode of the link itself
 rather than the file that the link points to.
@@ -79,12 +79,20 @@ If the
 option is specified, no symbolic links are followed.
 This is the default.
 .It Fl R
-Change the modes of the file hierarchies rooted in the files
+Change the modes of the file hierarchies rooted in the files,
 instead of just the files themselves.
+Beware of unintentionally matching the
+.Dq Pa ".."
+hard link to the parent directory when using wildcards like
+.Dq Li ".*" .
 .It Fl v
 Cause
 .Nm
 to be verbose, showing filenames as the mode is modified.
+If the
+.Fl v
+flag is specified more than once, the old and new modes of the file
+will also be printed, in both octal and symbolic notation.
 .El
 .Pp
 The
@@ -102,33 +110,6 @@ Only the owner of a file or the super-user is permitted to change
 the mode of a file.
 .Sh EXIT STATUS
 .Ex -std
-.Sh EXAMPLES
-.Bl -tag -width "u=rwx,go=u-w" -compact
-.It Li 644
-make a file readable by anyone and writable by the owner only.
-.Pp
-.It Li go-w
-deny write permission to group and others.
-.Pp
-.It Li =rw,+X
-set the read and write permissions to the usual defaults, but
-retain any execute permissions that are currently set.
-.Pp
-.It Li +X
-make a directory or file searchable/executable by everyone if it is
-already searchable/executable by anyone.
-.Pp
-.It Li 755
-.It Li u=rwx,go=rx
-.It Li u=rwx,go=u-w
-make a file readable/executable by everyone and writable by the owner only.
-.Pp
-.It Li go=
-clear all mode bits for group and others.
-.Pp
-.It Li g=u-w
-set the group bits equal to the user bits, but clear the group write bit.
-.El
 .Sh MODES
 Modes may be absolute or symbolic.
 An absolute mode is an octal number constructed from the sum of
@@ -251,6 +232,8 @@ If no value is supplied for
 each permission bit specified in
 .Ar perm ,
 for which the corresponding bit in the file mode creation mask
+(see
+.Xr umask 2 )
 is clear, is set.
 Otherwise, the mode bits represented by the specified
 .Ar who
@@ -275,7 +258,9 @@ values are cleared.
 .It =
 The mode bits specified by the
 .Ar who
-value are cleared, or, if no who value is specified, the owner, group
+value are cleared, or, if no
+.Ar who
+value is specified, the owner, group
 and other mode bits are cleared.
 Then, if no value is supplied for
 .Ar who ,
@@ -300,6 +285,37 @@ Operations upon the other permissions only (specified by the symbol
 ``o'' by itself), in combination with the
 .Ar perm
 symbols ``s'' or ``t'', are ignored.
+.Pp
+The ``w'' permission on directories will permit file creation, relocation,
+and copy into that directory.
+Files created within the directory itself will inherit its group ID.
+.Sh EXAMPLES
+.Bl -tag -width "u=rwx,go=u-w" -compact
+.It Li 644
+make a file readable by anyone and writable by the owner only.
+.Pp
+.It Li go-w
+deny write permission to group and others.
+.Pp
+.It Li =rw,+X
+set the read and write permissions to the usual defaults, but
+retain any execute permissions that are currently set.
+.Pp
+.It Li +X
+make a directory or file searchable/executable by everyone if it is
+already searchable/executable by anyone.
+.Pp
+.It Li 755
+.It Li u=rwx,go=rx
+.It Li u=rwx,go=u-w
+make a file readable/executable by everyone and writable by the owner only.
+.Pp
+.It Li go=
+clear all mode bits for group and others.
+.Pp
+.It Li g=u-w
+set the group bits equal to the user bits, but clear the group write bit.
+.El
 .Sh COMPATIBILITY
 The
 .Fl v
@@ -332,6 +348,6 @@ A
 command appeared in
 .At v1 .
 .Sh BUGS
-There's no
+There is no
 .Ar perm
-option for the naughty bits.
+option for the naughty bits of a horse.
