@@ -37,11 +37,11 @@
 .Nd get or set kernel state
 .Sh SYNOPSIS
 .Nm
-.Op Fl bdeNnox
+.Op Fl bdeiNnoqx
 .Ar name Ns Op = Ns Ar value
 .Ar ...
 .Nm
-.Op Fl bdeNnox
+.Op Fl bdeiNnoqx
 .Fl a
 .Sh DESCRIPTION
 The
@@ -81,6 +81,8 @@ This option is ignored if either
 or
 .Fl n
 is specified, or a variable is being set.
+.It Fl i
+Exit cleanly (exit code 0) with no output if the sysctl does not exist.
 .It Fl N
 Show only variable names, not their values.
 This is particularly useful with shells that offer programmable
@@ -104,6 +106,9 @@ use:
 Show opaque variables (which are normally suppressed).
 The format and length are printed, as well as a hex dump of the first
 sixteen bytes of the value.
+.It Fl q
+Exit (exit code N) with no output if the sysctl does not exist.  Each
+failed mib on the command line increments N.
 .It Fl X
 Equivalent to
 .Fl x a

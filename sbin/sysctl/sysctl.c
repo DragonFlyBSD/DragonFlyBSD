@@ -49,9 +49,10 @@
 #include <unistd.h>
 
 static int	aflag, bflag, dflag, eflag, Nflag, nflag, oflag, xflag;
+static int	iflag, qflag;
 
 static int	oidfmt(int *, size_t, char *, u_int *);
-static void	parse(const char *);
+static int	parse(const char *);
 static int	show_var(int *, size_t);
 static int	sysctl_all(int *, size_t);
 static void	set_T_dev_t(const char *, void **, size_t *);
@@ -71,10 +72,12 @@ int
 main(int argc, char **argv)
 {
 	int ch;
+	int warncount;
+
 	setbuf(stdout,0);
 	setbuf(stderr,0);
 
-	while ((ch = getopt(argc, argv, "AabdeNnowxX")) != -1) {
+	while ((ch = getopt(argc, argv, "AabdeiNnoqwxX")) != -1) {
 		switch (ch) {
 		case 'A':
 			/* compatibility */
@@ -92,6 +95,9 @@ main(int argc, char **argv)
 		case 'e':
 			eflag = 1;
 			break;
+		case 'i':
+			iflag = 1;
+			break;
 		case 'N':
 			Nflag = 1;
 			break;
@@ -100,6 +106,9 @@ main(int argc, char **argv)
 			break;
 		case 'o':
 			oflag = 1;
+			break;
+		case 'q':
+			qflag = 1;
 			break;
 		case 'w':
 			/* compatibility */
@@ -125,9 +134,11 @@ main(int argc, char **argv)
 		exit(sysctl_all(0, 0));
 	if (argc == 0)
 		usage();
+	warncount = 0;
 	while (argc-- > 0)
-		parse(*argv++);
-	exit(0);
+		warncount += parse(*argv++);
+
+	return warncount;
 }
 
 /*
@@ -135,7 +146,7 @@ main(int argc, char **argv)
  * Lookup and print out the MIB entry if it exists.
  * Set a new value if requested.
  */
-static void
+static int
 parse(const char *string)
 {
 	size_t len;
@@ -171,6 +182,10 @@ parse(const char *string)
 
 	len = CTL_MAXNAME;
 	if (sysctlnametomib(name, mib, &len) < 0) {
+		if (iflag)
+			return 0;
+		if (qflag)
+			return 1;
 		if (errno == ENOENT) {
 			errx(1, "unknown oid '%s'", name);
 		} else {
@@ -178,8 +193,12 @@ parse(const char *string)
 		}
 	}
 
-	if (oidfmt(mib, len, fmt, &kind))
-		err(1, "couldn't find format of oid '%s'", name);
+	if (oidfmt(mib, len, fmt, &kind)) {
+		warn("couldn't find format of oid '%s'", name);
+		if (iflag)
+			return 1;
+		exit(1);
+	}
 
 	if (newval == NULL) {
 		if ((kind & CTLTYPE) == CTLTYPE_NODE) {
@@ -265,7 +284,7 @@ parse(const char *string)
 					string);
 			default:
 				warn("%s", string);
-				return;
+				return 1;
 			}
 		}
 		if (!bflag)
@@ -280,6 +299,8 @@ parse(const char *string)
 
 	if (name_allocated != NULL)
 		free(name_allocated);
+
+	return 0;
 }
 
 /* These functions will dump out various interesting structures. */
