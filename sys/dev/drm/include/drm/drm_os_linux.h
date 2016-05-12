@@ -34,7 +34,5 @@
 
 #define DRM_UDELAY(udelay)	DELAY(udelay)
 
-#define	EREMOTEIO	EIO
-
 /* include code to override EDID blocks from external firmware modules */
 #define CONFIG_DRM_LOAD_EDID_FIRMWARE
