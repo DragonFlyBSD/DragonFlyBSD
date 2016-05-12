@@ -274,7 +274,6 @@ ieee80211_get_rx_params(struct mbuf *m, struct ieee80211_rx_stats *rxs)
 	return (0);
 }
 
-#if 0
 /*
  * Misc
  */
@@ -299,7 +298,6 @@ ieee80211_vap_xmitpkt(struct ieee80211vap *vap, struct mbuf *m)
 
 	return error;
 }
-#endif
 
 int
 ieee80211_parent_xmitpkt(struct ieee80211com *ic, struct mbuf *m)
