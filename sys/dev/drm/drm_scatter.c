@@ -33,6 +33,27 @@
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
+static void drm_sg_cleanup(struct drm_sg_mem * entry)
+{
+	if (entry == NULL)
+		return;
+
+	if (entry->vaddr != 0)
+		kmem_free(&kernel_map, entry->vaddr, IDX_TO_OFF(entry->pages));
+
+	kfree(entry->busaddr);
+	kfree(entry);
+}
+
+void drm_legacy_sg_cleanup(struct drm_device *dev)
+{
+	if (drm_core_check_feature(dev, DRIVER_SG) && dev->sg &&
+	    !drm_core_check_feature(dev, DRIVER_MODESET)) {
+		drm_sg_cleanup(dev->sg);
+		dev->sg = NULL;
+	}
+}
+
 int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
@@ -56,7 +77,7 @@ int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
 	entry->vaddr = kmem_alloc_attr(&kernel_map, size, M_WAITOK | M_ZERO,
 	    0, BUS_SPACE_MAXADDR_32BIT, VM_MEMATTR_WRITE_COMBINING);
 	if (entry->vaddr == 0) {
-		drm_legacy_sg_cleanup(entry);
+		drm_sg_cleanup(entry);
 		return (-ENOMEM);
 	}
 
@@ -68,7 +89,7 @@ int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
 	DRM_LOCK(dev);
 	if (dev->sg) {
 		DRM_UNLOCK(dev);
-		drm_legacy_sg_cleanup(entry);
+		drm_sg_cleanup(entry);
 		return (-EINVAL);
 	}
 	dev->sg = entry;
@@ -81,20 +102,6 @@ int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
 	    *(unsigned long *)entry->vaddr);
 
 	return (0);
-}
-
-void drm_legacy_sg_cleanup(struct drm_sg_mem *entry)
-{
-	if (entry == NULL)
-		return;
-
-	if (entry->vaddr != 0)
-		kmem_free(&kernel_map, entry->vaddr, IDX_TO_OFF(entry->pages));
-
-	drm_free(entry->busaddr, M_DRM);
-	drm_free(entry, M_DRM);
-
-	return;
 }
 
 int drm_legacy_sg_free(struct drm_device *dev, void *data,
@@ -113,7 +120,7 @@ int drm_legacy_sg_free(struct drm_device *dev, void *data,
 
 	DRM_DEBUG("free 0x%jx\n", (uintmax_t)entry->vaddr);
 
-	drm_legacy_sg_cleanup(entry);
+	drm_sg_cleanup(entry);
 
 	return (0);
 }

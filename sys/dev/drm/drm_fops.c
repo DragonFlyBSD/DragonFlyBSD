@@ -215,11 +215,7 @@ int drm_lastclose(struct drm_device * dev)
 
 	drm_agp_clear(dev);
 
-	if (dev->sg != NULL) {
-		drm_legacy_sg_cleanup(dev->sg);
-		dev->sg = NULL;
-	}
-
+	drm_legacy_sg_cleanup(dev);
 	drm_legacy_dma_takedown(dev);
 
 	if (dev->lock.hw_lock) {
