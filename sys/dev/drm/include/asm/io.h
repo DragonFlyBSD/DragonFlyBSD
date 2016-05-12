@@ -91,6 +91,11 @@ static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
 
 void iounmap(void __iomem *ptr);
 
+/* XXX these should have volatile */
+#define	memset_io(a, b, c)	memset((a), (b), (c))
+#define	memcpy_fromio(a, b, c)	memcpy((a), (b), (c))
+#define	memcpy_toio(a, b, c)	memcpy((a), (b), (c))
+
 #define mmiowb cpu_sfence
 
 #endif	/* _ASM_IO_H_ */

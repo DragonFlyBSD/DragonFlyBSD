@@ -32,6 +32,7 @@
 #include <drm/ttm/ttm_placement.h>
 #include <sys/sfbuf.h>
 #include <linux/export.h>
+#include <linux/io.h>
 #include <linux/wait.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)

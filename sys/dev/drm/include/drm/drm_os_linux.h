@@ -34,10 +34,6 @@
 
 #define DRM_UDELAY(udelay)	DELAY(udelay)
 
-#define	memset_io(a, b, c)	memset((a), (b), (c))
-#define	memcpy_fromio(a, b, c)	memcpy((a), (b), (c))
-#define	memcpy_toio(a, b, c)	memcpy((a), (b), (c))
-
 #define	EREMOTEIO	EIO
 
 /* include code to override EDID blocks from external firmware modules */
