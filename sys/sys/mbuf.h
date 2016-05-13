@@ -79,7 +79,10 @@
  */
 struct m_hdr {
 	struct	mbuf *mh_next;		/* next buffer in chain */
-	struct	mbuf *mh_nextpkt;	/* next chain in queue/record */
+	union {
+		struct	mbuf *mh_nextpkt; /* next chain in queue/record */
+		STAILQ_ENTRY(mbuf) mh_stailqpkt;
+	};
 	caddr_t	mh_data;		/* location of data */
 	int	mh_len;			/* amount of data in this mbuf */
 	int	mh_flags;		/* flags; see below */
@@ -216,6 +219,7 @@ struct mbuf {
 #define	m_type		m_hdr.mh_type
 #define	m_flags		m_hdr.mh_flags
 #define	m_nextpkt	m_hdr.mh_nextpkt
+#define	m_stailqpkt	m_hdr.mh_stailqpkt
 #define	m_pkthdr	M_dat.MH.MH_pkthdr
 #define	m_ext		M_dat.MH.MH_dat.MH_ext
 #define	m_pktdat	M_dat.MH.MH_dat.MH_databuf
@@ -718,6 +722,105 @@ static __inline struct m_tag *
 m_tag_find(struct mbuf *m, int type, struct m_tag *start)
 {
 	return m_tag_locate(m, MTAG_ABI_COMPAT, type, start);
+}
+
+struct mbufq {
+	STAILQ_HEAD(, mbuf)	mq_head;
+	int			mq_len;
+	int			mq_maxlen;
+};
+
+static inline void
+mbufq_init(struct mbufq *mq, int maxlen)
+{
+
+	STAILQ_INIT(&mq->mq_head);
+	mq->mq_maxlen = maxlen;
+	mq->mq_len = 0;
+}
+
+static inline struct mbuf *
+mbufq_flush(struct mbufq *mq)
+{
+	struct mbuf *m;
+
+	m = STAILQ_FIRST(&mq->mq_head);
+	STAILQ_INIT(&mq->mq_head);
+	mq->mq_len = 0;
+	return (m);
+}
+
+static inline void
+mbufq_drain(struct mbufq *mq)
+{
+	struct mbuf *m, *n;
+
+	n = mbufq_flush(mq);
+	while ((m = n) != NULL) {
+		n = STAILQ_NEXT(m, m_stailqpkt);
+		m_freem(m);
+	}
+}
+
+static inline struct mbuf *
+mbufq_first(const struct mbufq *mq)
+{
+
+	return (STAILQ_FIRST(&mq->mq_head));
+}
+
+static inline struct mbuf *
+mbufq_last(const struct mbufq *mq)
+{
+
+	return (STAILQ_LAST(&mq->mq_head, mbuf, m_stailqpkt));
+}
+
+static inline int
+mbufq_full(const struct mbufq *mq)
+{
+
+	return (mq->mq_len >= mq->mq_maxlen);
+}
+
+static inline int
+mbufq_len(const struct mbufq *mq)
+{
+
+	return (mq->mq_len);
+}
+
+static inline int
+mbufq_enqueue(struct mbufq *mq, struct mbuf *m)
+{
+
+	if (mbufq_full(mq))
+		return (ENOBUFS);
+	STAILQ_INSERT_TAIL(&mq->mq_head, m, m_stailqpkt);
+	mq->mq_len++;
+	return (0);
+}
+
+static inline struct mbuf *
+mbufq_dequeue(struct mbufq *mq)
+{
+	struct mbuf *m;
+
+	m = STAILQ_FIRST(&mq->mq_head);
+	if (m) {
+		STAILQ_REMOVE_HEAD(&mq->mq_head, m_stailqpkt);
+		m->m_nextpkt = NULL;
+		mq->mq_len--;
+	}
+	return (m);
+}
+
+static inline void
+mbufq_prepend(struct mbufq *mq, struct mbuf *m)
+{
+
+	STAILQ_INSERT_HEAD(&mq->mq_head, m, m_stailqpkt);
+	mq->mq_len++;
 }
 
 #endif	/* _KERNEL */
