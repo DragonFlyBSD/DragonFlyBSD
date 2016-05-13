@@ -1,9 +1,12 @@
-SUBDIR= an age alc ale ath bce bfe bge bwn \
+SUBDIR= age alc ale bce bfe bge \
 	dc em ep et \
-	fwe fxp ic iwi iwm iwn jme lge lnc \
-	mii_layer my msk mxge ndis nfe nge oce pcn \
-	ral re rl sbsh sf sis sk sln ste stge ti tl tx txp \
-	vge vr vx wb wi wpi xe xl ig_hal emx ae igb ix bnx
+	fwe fxp ic jme lge lnc \
+	mii_layer my msk mxge nfe nge oce pcn \
+	re rl sbsh sf sis sk sln ste stge ti tl tx txp \
+	vge vr vx wb xe xl ig_hal emx ae igb ix bnx
+
+#SUBDIR+= an ath bwn ral iwi iwm iwn wpi wi ndis
+SUBDIR+= ath
 
 # Empty for concurrent build
 #
