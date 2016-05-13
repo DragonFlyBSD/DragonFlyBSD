@@ -1191,10 +1191,10 @@ static int intel_backlight_device_register(struct intel_connector *connector)
 		panel->backlight.device = NULL;
 		return -ENODEV;
 	}
-#endif
 
 	DRM_DEBUG_KMS("Connector %s backlight sysfs interface registered\n",
 		      connector->base.name);
+#endif
 
 	return 0;
 }
