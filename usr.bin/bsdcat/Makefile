@@ -1,6 +1,8 @@
 PROG=	bsdcat
 SRCS=	bsdcat.c cmdline.c
 SRCS+=	err.c
+
+WARNS?=	2
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
 LDADD=	-larchive -lbz2 -llzma -lmd -lz
 
