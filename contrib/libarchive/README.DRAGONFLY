@@ -8,5 +8,6 @@ configure hint:
 
 This source is used in:
 	lib/libarchive
+	usr.bin/bsdcat
 	usr.bin/cpio
 	usr.bin/tar

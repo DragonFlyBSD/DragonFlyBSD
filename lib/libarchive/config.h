@@ -118,6 +118,9 @@
 /* SHA512 via ARCHIVE_CRYPTO_SHA512_WIN supported. */
 /* #undef ARCHIVE_CRYPTO_SHA512_WIN */
 
+/* Version number of bsdcat */
+/* #undef BSDCAT_VERSION_STRING */
+
 /* Version number of bsdcpio */
 /* #undef BSDCPIO_VERSION_STRING */
 
@@ -160,8 +163,14 @@
 /* True for systems with POSIX ACL support */
 #define HAVE_ACL_USER 1
 
+/* Define to 1 if you have the `arc4random_buf' function. */
+#define HAVE_ARC4RANDOM_BUF 1
+
 /* Define to 1 if you have the <attr/xattr.h> header file. */
 /* #undef HAVE_ATTR_XATTR_H */
+
+/* Define to 1 if you have the <Bcrypt.h> header file. */
+/* #undef HAVE_BCRYPT_H */
 
 /* Define to 1 if you have the <bzlib.h> header file. */
 #define HAVE_BZLIB_H 1
@@ -191,6 +200,14 @@
    0 if you don't. */
 #define HAVE_DECL_EXTATTR_NAMESPACE_USER 1
 
+/* Define to 1 if you have the declaration of `INT32_MAX', and to 0 if you
+   don't. */
+#define HAVE_DECL_INT32_MAX 1
+
+/* Define to 1 if you have the declaration of `INT32_MIN', and to 0 if you
+   don't. */
+#define HAVE_DECL_INT32_MIN 1
+
 /* Define to 1 if you have the declaration of `INT64_MAX', and to 0 if you
    don't. */
 #define HAVE_DECL_INT64_MAX 1
@@ -198,6 +215,14 @@
 /* Define to 1 if you have the declaration of `INT64_MIN', and to 0 if you
    don't. */
 #define HAVE_DECL_INT64_MIN 1
+
+/* Define to 1 if you have the declaration of `INTMAX_MAX', and to 0 if you
+   don't. */
+#define HAVE_DECL_INTMAX_MAX 1
+
+/* Define to 1 if you have the declaration of `INTMAX_MIN', and to 0 if you
+   don't. */
+#define HAVE_DECL_INTMAX_MIN 1
 
 /* Define to 1 if you have the declaration of `SIZE_MAX', and to 0 if you
    don't. */
@@ -218,6 +243,10 @@
 /* Define to 1 if you have the declaration of `UINT64_MAX', and to 0 if you
    don't. */
 #define HAVE_DECL_UINT64_MAX 1
+
+/* Define to 1 if you have the declaration of `UINTMAX_MAX', and to 0 if you
+   don't. */
+#define HAVE_DECL_UINTMAX_MAX 1
 
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
@@ -406,9 +435,6 @@
 /* Define to 1 if you have the `acl' library (-lacl). */
 /* #undef HAVE_LIBACL */
 
-/* Define to 1 if you have the `attr' library (-lattr). */
-/* #undef HAVE_LIBATTR */
-
 /* Define to 1 if you have the `bz2' library (-lbz2). */
 #define HAVE_LIBBZ2 1
 
@@ -426,6 +452,9 @@
 
 /* Define to 1 if you have the `expat' library (-lexpat). */
 /* #undef HAVE_LIBEXPAT */
+
+/* Define to 1 if you have the `lz4' library (-llz4). */
+/* #undef HAVE_LIBLZ4 */
 
 /* Define to 1 if you have the `lzma' library (-llzma). */
 #define HAVE_LIBLZMA 1
@@ -524,6 +553,12 @@
 /* Define to 1 if you have the `lutimes' function. */
 #define HAVE_LUTIMES 1
 
+/* Define to 1 if you have the <lz4hc.h> header file. */
+/* #undef HAVE_LZ4HC_H */
+
+/* Define to 1 if you have the <lz4.h> header file. */
+/* #undef HAVE_LZ4_H */
+
 /* Define to 1 if you have the <lzmadec.h> header file. */
 /* #undef HAVE_LZMADEC_H */
 
@@ -566,8 +601,17 @@
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 /* #undef HAVE_NDIR_H */
 
+/* Define to 1 if you have the <nettle/aes.h> header file. */
+/* #undef HAVE_NETTLE_AES_H */
+
+/* Define to 1 if you have the <nettle/hmac.h> header file. */
+/* #undef HAVE_NETTLE_HMAC_H */
+
 /* Define to 1 if you have the <nettle/md5.h> header file. */
 /* #undef HAVE_NETTLE_MD5_H */
+
+/* Define to 1 if you have the <nettle/pbkdf2.h> header file. */
+/* #undef HAVE_NETTLE_PBKDF2_H */
 
 /* Define to 1 if you have the <nettle/ripemd160.h> header file. */
 /* #undef HAVE_NETTLE_RIPEMD160_H */
@@ -593,6 +637,9 @@
 /* Define to 1 if you have the `pipe' function. */
 #define HAVE_PIPE 1
 
+/* Define to 1 if you have the `PKCS5_PBKDF2_HMAC_SHA1' function. */
+/* #undef HAVE_PKCS5_PBKDF2_HMAC_SHA1 */
+
 /* Define to 1 if you have the `poll' function. */
 #define HAVE_POLL 1
 
@@ -601,6 +648,9 @@
 
 /* Define to 1 if you have the `posix_spawnp' function. */
 #define HAVE_POSIX_SPAWNP 1
+
+/* Define to 1 if you have the <pthread.h> header file. */
+#define HAVE_PTHREAD_H 1
 
 /* Define to 1 if you have the <pwd.h> header file. */
 #define HAVE_PWD_H 1
@@ -613,6 +663,12 @@
 
 /* Define to 1 if you have the `readlinkat' function. */
 #define HAVE_READLINKAT 1
+
+/* Define to 1 if you have the `readpassphrase' function. */
+#define HAVE_READPASSPHRASE 1
+
+/* Define to 1 if you have the <readpassphrase.h> header file. */
+#define HAVE_READPASSPHRASE_H 1
 
 /* Define to 1 if you have the <regex.h> header file. */
 #define HAVE_REGEX_H 1
@@ -884,6 +940,9 @@
 /* Define to 1 if you have the `wmemcpy' function. */
 #define HAVE_WMEMCPY 1
 
+/* Define to 1 if you have the `wmemmove' function. */
+#define HAVE_WMEMMOVE 1
+
 /* Define to 1 if you have a working EXT2_IOC_GETFLAGS */
 /* #undef HAVE_WORKING_EXT2_IOC_GETFLAGS */
 
@@ -906,7 +965,7 @@
 /* #undef HAVE__MKGMTIME64 */
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST
+#define ICONV_CONST 
 
 /* Version number of libarchive as a single integer */
 /* #undef LIBARCHIVE_VERSION_NUMBER */
@@ -930,8 +989,8 @@
    <sysmacros.h>. */
 /* #undef MAJOR_IN_SYSMACROS */
 
-/* Define to 1 if your C compiler doesn't accept -c and -o together. */
-/* #undef NO_MINUS_C_MINUS_O */
+/* Define to '0x05020000' for Windows Server 2003 APIs. */
+/* #undef NTDDI_VERSION */
 
 /* Name of package */
 #define PACKAGE "libarchive"
@@ -994,7 +1053,7 @@
 /* Version number of package */
 /* #undef VERSION */
 
-/* Define to '0x0500' for Windows 2000 APIs. */
+/* Define to '0x0502' for Windows Server 2003 APIs. */
 /* #undef WINVER */
 
 /* Enable large inode numbers on Mac OS X 10.5.  */
@@ -1036,7 +1095,7 @@
    #define below would cause a syntax error. */
 /* #undef _UINT8_T */
 
-/* Define to '0x0500' for Windows 2000 APIs. */
+/* Define to '0x0502' for Windows Server 2003 APIs. */
 /* #undef _WIN32_WINNT */
 
 /* Define to empty if `const' does not conform to ANSI C. */

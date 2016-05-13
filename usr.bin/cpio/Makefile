@@ -1,6 +1,6 @@
 PROG=	bsdcpio
 SRCS=	cmdline.c cpio.c
-SRCS+=	err.c line_reader.c
+SRCS+=	err.c line_reader.c passphrase.c
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
 LDADD=	-larchive -lbz2 -llzma -lmd -lz
 

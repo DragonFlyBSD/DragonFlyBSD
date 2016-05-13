@@ -22,6 +22,7 @@ SUBDIR=	alias \
 	biff \
 	bmake \
 	brandelf \
+	bsdcat \
 	btpin \
 	bzip2 \
 	bzip2recover \
