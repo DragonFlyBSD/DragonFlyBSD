@@ -486,8 +486,6 @@ struct iwm_softc {
 	int			sc_scan_last_antenna;
 	int			sc_scanband;
 
-	int			sc_auth_prot;
-
 	int			sc_fixed_ridx;
 
 	int			sc_staid;
