@@ -131,11 +131,9 @@ __FBSDID("$FreeBSD$");
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_arp.h>
-#include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/ifq_var.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -196,13 +194,13 @@ iwm_mvm_binding_cmd(struct iwm_softc *sc, struct iwm_node *in, uint32_t action)
 }
 
 int
-iwm_mvm_binding_update(struct iwm_softc *sc, struct iwm_node *in, int add)
+iwm_mvm_binding_update(struct iwm_softc *sc, struct iwm_node *in)
 {
-	return iwm_mvm_binding_cmd(sc, in, IWM_FW_CTXT_ACTION_ADD);
+	return iwm_mvm_binding_cmd(sc, in, IWM_FW_CTXT_ACTION_MODIFY);
 }
 
 int
 iwm_mvm_binding_add_vif(struct iwm_softc *sc, struct iwm_node *in)
 {
-	return iwm_mvm_binding_update(sc, in, IWM_FW_CTXT_ACTION_ADD);
+	return iwm_mvm_binding_cmd(sc, in, IWM_FW_CTXT_ACTION_ADD);
 }
