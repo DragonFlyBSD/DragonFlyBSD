@@ -119,8 +119,6 @@
  *	(bug fix) memset in iwm_reset_rx_ring.
  *	(debug)   added several kprintf()s on error
  *
- *	wlan_serialize_enter()/exit() hacks (will be removable when we
- *					     do the device netif removal).
  *	header file paths (DFly allows localized path specifications).
  *	minor header file differences.
  *
@@ -4979,9 +4977,7 @@ iwm_preinit(void *arg)
 	 * At this point we've committed - if we fail to do setup,
 	 * we now also have to tear down the net80211 state.
 	 */
-	wlan_serialize_enter();
 	ieee80211_ifattach(ic);
-	wlan_serialize_exit();
 	ic->ic_vap_create = iwm_vap_create;
 	ic->ic_vap_delete = iwm_vap_delete;
 	ic->ic_raw_xmit = iwm_raw_xmit;
@@ -5081,9 +5077,7 @@ iwm_scan_start(struct ieee80211com *ic)
 	if (error) {
 		device_printf(sc->sc_dev, "could not initiate scan\n");
 		IWM_UNLOCK(sc);
-		wlan_serialize_enter();
 		ieee80211_cancel_scan(vap);
-		wlan_serialize_exit();
 	} else {
 		iwm_led_blink_start(sc);
 		IWM_UNLOCK(sc);
@@ -5213,9 +5207,7 @@ iwm_detach_local(struct iwm_softc *sc, int do_net80211)
 	callout_drain(&sc->sc_watchdog_to);
 	iwm_stop_device(sc);
 	if (do_net80211) {
-		wlan_serialize_enter();
 		ieee80211_ifdetach(&sc->sc_ic);
-		wlan_serialize_exit();
 	}
 
 	/* Free descriptor rings */
