@@ -5,8 +5,8 @@ SUBDIR= age alc ale bce bfe bge \
 	re rl sbsh sf sis sk sln ste stge ti tl tx txp \
 	vge vr vx wb xe xl ig_hal emx ae igb ix bnx
 
-#SUBDIR+= an ath bwn ral iwi iwm iwn wpi wi ndis
-SUBDIR+= ath
+#SUBDIR+= an ath bwn ral iwi iwn wpi wi ndis
+SUBDIR+= ath iwm
 
 # Empty for concurrent build
 #
