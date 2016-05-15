@@ -52,7 +52,7 @@ enum {
 
 #define DPRINTF(sc, m, fmt, ...) do {			\
 	if (sc->sc_debug & (m))				\
-		kprintf(fmt, __VA_ARGS__);		\
+		printf(fmt, __VA_ARGS__);		\
 } while (0)
 
 static const char *
