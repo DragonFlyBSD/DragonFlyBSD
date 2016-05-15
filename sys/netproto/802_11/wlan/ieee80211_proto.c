@@ -1649,7 +1649,7 @@ ieee80211_restart_all(struct ieee80211com *ic)
 	 * block & drain net80211 taskqueue.
 	 */
 #if defined(__DragonFly__)
-	taskqueue_enqueue(ic->ic_tq, &ic->ic_restart_task);
+	taskqueue_enqueue(taskqueue_thread[0], &ic->ic_restart_task);
 #else
 	taskqueue_enqueue(taskqueue_thread, &ic->ic_restart_task);
 #endif

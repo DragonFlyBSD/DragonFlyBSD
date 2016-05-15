@@ -421,7 +421,7 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 #endif
 
 #if defined(__DragonFly__)
-	taskqueue_drain(ic->ic_tq, &ic->ic_restart_task);
+	taskqueue_drain(taskqueue_thread[0], &ic->ic_restart_task);
 #else
 	taskqueue_drain(taskqueue_thread, &ic->ic_restart_task);
 #endif
