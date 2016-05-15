@@ -2790,11 +2790,11 @@ bwn_dma_ringsetup(struct bwn_mac *mac, int controller_index,
 #if defined(__DragonFly__)
 		dr->dr_txhdr_cache = contigmalloc(
 		    (dr->dr_numslots / BWN_TX_SLOTS_PER_FRAME) *
-		    BWN_HDRSIZE(mac), M_DEVBUF, M_WAITOK,
+		    BWN_HDRSIZE(mac), M_DEVBUF, M_WAITOK | M_ZERO,
 		    0, BUS_SPACE_MAXADDR, 8, 0);
 		if (dr->dr_txhdr_cache == NULL) {
 			device_printf(sc->sc_dev,
-			    "can't create TX ring DMA memory\n");
+			    "can't allocate TX header DMA memory\n");
 			goto fail1;
 		}
 #else
