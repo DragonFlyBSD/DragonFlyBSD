@@ -358,6 +358,10 @@ dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
 dev/netif/bnx/if_bnx.c			optional bnx
 dev/netif/bwn/bwn/if_bwn.c		optional bwn siba_bwn
+dev/netif/bwn/bwn/if_bwn_phy_common.c	optional bwn siba_bwn
+dev/netif/bwn/bwn/if_bwn_phy_g.c	optional bwn siba_bwn
+dev/netif/bwn/bwn/if_bwn_phy_lp.c	optional bwn siba_bwn
+dev/netif/bwn/bwn/if_bwn_util.c		optional bwn siba_bwn
 dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_pci.c		optional bt pci
 dev/disk/ccd/ccd.c			optional ccd
