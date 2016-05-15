@@ -16,7 +16,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/usb/wlan/if_runreg.h 260219 2014-01-03 06:01:05Z kevlo $
+ * $FreeBSD: head/sys/dev/usb/wlan/if_runreg.h 288666 2015-10-04 13:39:00Z kevlo $
  */
 
 #ifndef _IF_RUNREG_H_
@@ -274,7 +274,6 @@
 #define	RT2860_USB_TXOP_HALT		(1 << 20)
 #define	RT2860_USB_TX_CLEAR		(1 << 19)
 #define	RT2860_USB_PHY_WD_EN		(1 << 16)
-#define	RT2860_USB_PHY_MAN_RST		(1 << 15)
 #define	RT2860_USB_RX_AGG_LMT(x)	((x) << 8)	/* in unit of 1KB */
 #define	RT2860_USB_RX_AGG_TO(x)		((x) & 0xff)	/* in unit of 33ns */
 
