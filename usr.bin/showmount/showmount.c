@@ -51,6 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <vis.h>
 
 /* Constant defs */
 #define	ALL	1
@@ -58,6 +59,7 @@
 
 #define	DODUMP		0x1
 #define	DOEXPORTS	0x2
+#define	DOPARSABLEEXPORTS	0x4
 
 struct mountlist {
 	struct mountlist *ml_left;
@@ -102,9 +104,10 @@ main(int argc, char **argv)
 	struct grouplist *grp;
 	int rpcs = 0, mntvers = 1;
 	const char *host;
-	int ch, estat;
+	int ch, estat, nbytes;
+	char strvised[1024 * 4 + 1];
 
-	while ((ch = getopt(argc, argv, "ade3")) != -1)
+	while ((ch = getopt(argc, argv, "adEe3")) != -1)
 		switch (ch) {
 		case 'a':
 			if (type == 0) {
@@ -120,6 +123,9 @@ main(int argc, char **argv)
 			} else
 				usage();
 			break;
+		case 'E':
+			rpcs |= DOPARSABLEEXPORTS;
+			break;
 		case 'e':
 			rpcs |= DOEXPORTS;
 			break;
@@ -132,6 +138,13 @@ main(int argc, char **argv)
 		}
 	argc -= optind;
 	argv += optind;
+
+	if ((rpcs & DOPARSABLEEXPORTS) != 0) {
+		if ((rpcs & DOEXPORTS) != 0)
+			errx(1, "-E cannot be used with -e");
+		if ((rpcs & DODUMP) != 0)
+			errx(1, "-E cannot be used with -a or -d");
+	}
 
 	if (argc > 0)
 		host = *argv;
@@ -148,7 +161,7 @@ main(int argc, char **argv)
 			clnt_perrno(estat);
 			errx(1, "can't do mountdump rpc");
 		}
-	if (rpcs & DOEXPORTS)
+	if (rpcs & (DOEXPORTS | DOPARSABLEEXPORTS))
 		if ((estat = tcp_callrpc(host, RPCPROG_MNT, mntvers,
 			RPCMNT_EXPORT, (xdrproc_t)xdr_void, NULL,
 			(xdrproc_t)xdr_exports, (char *)&exports)) != 0) {
@@ -186,6 +199,17 @@ main(int argc, char **argv)
 				}
 				printf("\n");
 			}
+			exp = exp->ex_next;
+		}
+	}
+	if (rpcs & DOPARSABLEEXPORTS) {
+		exp = exports;
+		while (exp) {
+			nbytes = strnvis(strvised, exp->ex_dirp,
+			    sizeof(strvised), VIS_GLOB | VIS_NL);
+			if (nbytes == -1)
+				err(1, "strsnvis");
+			printf("%s\n", strvised);
 			exp = exp->ex_next;
 		}
 	}

@@ -32,7 +32,7 @@
 .\" $FreeBSD: src/usr.bin/showmount/showmount.8,v 1.18 2005/01/18 13:43:52 ru Exp $
 .\" $DragonFly: src/usr.bin/showmount/showmount.8,v 1.3 2006/02/17 19:39:10 swildner Exp $
 .\"
-.Dd March 29, 1995
+.Dd May 15, 2016
 .Dt SHOWMOUNT 8
 .Os
 .Sh NAME
@@ -41,7 +41,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl a | d
-.Op Fl e3
+.Op Fl Ee3
 .Op Ar host
 .Sh DESCRIPTION
 The
@@ -72,6 +72,12 @@ List all mount points in the form:
 .Ed
 .It Fl d
 List directory paths of mount points instead of hosts.
+.It Fl E
+Show the
+.Ar host Ns 's
+exports list in a script-friendly format.
+Client addresses and the header are not shown, and special
+characters are escaped.
 .It Fl e
 Show the
 .Ar host Ns 's
