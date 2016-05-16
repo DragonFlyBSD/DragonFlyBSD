@@ -277,6 +277,7 @@ static void	bwn_dma_free_ringmemory(struct bwn_dma_ring *);
 static void	bwn_dma_cleanup(struct bwn_dma_ring *);
 static void	bwn_dma_free_descbufs(struct bwn_dma_ring *);
 static int	bwn_dma_tx_reset(struct bwn_mac *, uint16_t, int);
+static void	bwn_dma_rx_handle_overflow(struct bwn_dma_ring *);
 static void	bwn_dma_rx(struct bwn_dma_ring *);
 static int	bwn_dma_rx_reset(struct bwn_mac *, uint16_t, int);
 static void	bwn_dma_free_descbuf(struct bwn_dma_ring *,
@@ -2340,7 +2341,7 @@ bwn_chip_init(struct bwn_mac *mac)
 		BWN_WRITE_4(mac, 0x018c, 0x02000000);
 	}
 	BWN_WRITE_4(mac, BWN_INTR_REASON, 0x00004000);
-	BWN_WRITE_4(mac, BWN_DMA0_INTR_MASK, 0x0001dc00);
+	BWN_WRITE_4(mac, BWN_DMA0_INTR_MASK, 0x0001fc00);
 	BWN_WRITE_4(mac, BWN_DMA1_INTR_MASK, 0x0000dc00);
 	BWN_WRITE_4(mac, BWN_DMA2_INTR_MASK, 0x0000dc00);
 	BWN_WRITE_4(mac, BWN_DMA3_INTR_MASK, 0x0001dc00);
@@ -4921,7 +4922,7 @@ bwn_intr(void *arg)
 #endif
 	}
 
-	mac->mac_reason[0] = BWN_READ_4(mac, BWN_DMA0_REASON) & 0x0001dc00;
+	mac->mac_reason[0] = BWN_READ_4(mac, BWN_DMA0_REASON) & 0x0001fc00;
 	mac->mac_reason[1] = BWN_READ_4(mac, BWN_DMA1_REASON) & 0x0000dc00;
 	mac->mac_reason[2] = BWN_READ_4(mac, BWN_DMA2_REASON) & 0x0000dc00;
 	mac->mac_reason[3] = BWN_READ_4(mac, BWN_DMA3_REASON) & 0x0001dc00;
@@ -4977,24 +4978,15 @@ bwn_intrtask(void *arg, int npending)
 		}
 	}
 
-	if (merged & (BWN_DMAINTR_FATALMASK | BWN_DMAINTR_NONFATALMASK)) {
-		if (merged & BWN_DMAINTR_FATALMASK) {
-			device_printf(sc->sc_dev,
-			    "Fatal DMA error: %#x %#x %#x %#x %#x %#x\n",
-			    mac->mac_reason[0], mac->mac_reason[1],
-			    mac->mac_reason[2], mac->mac_reason[3],
-			    mac->mac_reason[4], mac->mac_reason[5]);
-			bwn_restart(mac, "DMA error");
-			BWN_UNLOCK(sc);
-			return;
-		}
-		if (merged & BWN_DMAINTR_NONFATALMASK) {
-			device_printf(sc->sc_dev,
-			    "DMA error: %#x %#x %#x %#x %#x %#x\n",
-			    mac->mac_reason[0], mac->mac_reason[1],
-			    mac->mac_reason[2], mac->mac_reason[3],
-			    mac->mac_reason[4], mac->mac_reason[5]);
-		}
+	if (merged & BWN_DMAINTR_FATALMASK) {
+		device_printf(sc->sc_dev,
+		    "Fatal DMA error: %#x %#x %#x %#x %#x %#x\n",
+		    mac->mac_reason[0], mac->mac_reason[1],
+		    mac->mac_reason[2], mac->mac_reason[3],
+		    mac->mac_reason[4], mac->mac_reason[5]);
+		bwn_restart(mac, "DMA error");
+		BWN_UNLOCK(sc);
+		return;
 	}
 
 	if (mac->mac_reason_intr & BWN_INTR_UCODE_DEBUG)
@@ -5011,6 +5003,10 @@ bwn_intrtask(void *arg, int npending)
 		bwn_intr_noise(mac);
 
 	if (mac->mac_flags & BWN_MAC_FLAG_DMA) {
+		if (mac->mac_reason[0] & BWN_DMAINTR_RDESC_UFLOW) {
+			device_printf(sc->sc_dev, "RX descriptor overflow\n");
+			bwn_dma_rx_handle_overflow(mac->mac_method.dma.rx);
+		}
 		if (mac->mac_reason[0] & BWN_DMAINTR_RX_DONE) {
 			bwn_dma_rx(mac->mac_method.dma.rx);
 			rx = 1;
@@ -5257,6 +5253,19 @@ bwn_pio_rx(struct bwn_pio_rxqueue *prq)
 	if (i >= 5000)
 		device_printf(sc->sc_dev, "too many RX frames in PIO mode\n");
 	return ((i > 0) ? 1 : 0);
+}
+
+static void
+bwn_dma_rx_handle_overflow(struct bwn_dma_ring *dr)
+{
+	int curslot, prevslot;
+
+	curslot = dr->get_curslot(dr);
+	if (curslot == 0)
+		prevslot = dr->dr_numslots - 1;
+	else
+		prevslot = curslot - 1;
+	dr->set_curslot(dr, prevslot);
 }
 
 static void
