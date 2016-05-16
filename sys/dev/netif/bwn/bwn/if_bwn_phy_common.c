@@ -219,7 +219,6 @@ bwn_mac_phy_clock_set(struct bwn_mac *mac, int enabled)
 	}
 }
 
-#if !defined(__DragonFly__)
 /* http://bcm-v4.sipsolutions.net/802.11/PHY/BmacCorePllReset */
 void
 bwn_wireless_core_phy_pll_reset(struct bwn_mac *mac)
@@ -234,4 +233,3 @@ bwn_wireless_core_phy_pll_reset(struct bwn_mac *mac)
 		siba_cc_mask32(sc->sc_dev, SIBA_CC_CHIPCTL_DATA, ~0x4);
 	}
 }
-#endif
