@@ -322,7 +322,6 @@ void ci_stop_smc_clock(struct radeon_device *rdev);
 void ci_start_smc_clock(struct radeon_device *rdev);
 bool ci_is_smc_running(struct radeon_device *rdev);
 PPSMC_Result ci_send_msg_to_smc(struct radeon_device *rdev, PPSMC_Msg msg);
-PPSMC_Result ci_wait_for_smc_inactive(struct radeon_device *rdev);
 int ci_load_smc_ucode(struct radeon_device *rdev, u32 limit);
 int ci_read_smc_sram_dword(struct radeon_device *rdev,
 			   u32 smc_address, u32 *value, u32 limit);

@@ -28,15 +28,13 @@
  *    Jerome Glisse <glisse@freedesktop.org>
  *    Thomas Hellstrom <thomas-at-tungstengraphics-dot-com>
  *    Dave Airlie
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_object.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
-#ifdef DUMBBELL_WIP
+#ifdef TRACE_TODO
 #include "radeon_trace.h"
-#endif /* DUMBBELL_WIP */
+#endif
 #include <linux/io.h>
 
 
@@ -230,9 +228,9 @@ int radeon_bo_create(struct radeon_device *rdev,
 	}
 	*bo_ptr = bo;
 
-#ifdef DUMBBELL_WIP
+#ifdef TRACE_TODO
 	trace_radeon_bo_create(bo);
-#endif /* DUMBBELL_WIP */
+#endif
 
 	return 0;
 }
@@ -548,14 +546,6 @@ int radeon_bo_list_validate(struct radeon_device *rdev,
 	}
 	return 0;
 }
-
-#ifdef DUMBBELL_WIP
-int radeon_bo_fbdev_mmap(struct radeon_bo *bo,
-			     struct vm_area_struct *vma)
-{
-	return ttm_fbdev_mmap(vma, &bo->tbo);
-}
-#endif /* DUMBBELL_WIP */
 
 int radeon_bo_get_surface_reg(struct radeon_bo *bo)
 {

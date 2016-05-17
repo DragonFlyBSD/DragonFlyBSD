@@ -722,7 +722,6 @@ struct rv7xx_power_info *rv770_get_pi(struct radeon_device *rdev);
 struct evergreen_power_info *evergreen_get_pi(struct radeon_device *rdev);
 struct ni_power_info *ni_get_pi(struct radeon_device *rdev);
 struct ni_ps *ni_get_ps(struct radeon_ps *rps);
-void ni_dpm_reset_asic(struct radeon_device *rdev);
 
 struct ni_power_info *ni_get_pi(struct radeon_device *rdev)
 {
@@ -3863,11 +3862,13 @@ void ni_dpm_post_set_power_state(struct radeon_device *rdev)
 	ni_update_current_ps(rdev, new_ps);
 }
 
+#if 0
 void ni_dpm_reset_asic(struct radeon_device *rdev)
 {
 	ni_restrict_performance_levels_before_switch(rdev);
 	rv770_set_boot_state(rdev);
 }
+#endif
 
 union power_info {
 	struct _ATOM_POWERPLAY_INFO info;

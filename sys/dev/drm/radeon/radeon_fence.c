@@ -27,15 +27,13 @@
  * Authors:
  *    Jerome Glisse <glisse@freedesktop.org>
  *    Dave Airlie
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_fence.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #include <drm/drmP.h>
 #include "radeon_reg.h"
 #include "radeon.h"
-#ifdef DUMBBELL_WIP
+#ifdef TRACE_TODO
 #include "radeon_trace.h"
-#endif /* DUMBBELL_WIP */
+#endif
 
 /*
  * Fences

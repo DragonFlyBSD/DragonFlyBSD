@@ -45,7 +45,6 @@
 struct rv7xx_ps *rv770_get_ps(struct radeon_ps *rps);
 struct rv7xx_power_info *rv770_get_pi(struct radeon_device *rdev);
 struct evergreen_power_info *evergreen_get_pi(struct radeon_device *rdev);
-void cypress_dpm_reset_asic(struct radeon_device *rdev);
 
 static void cypress_enable_bif_dynamic_pcie_gen2(struct radeon_device *rdev,
 						 bool enable)
@@ -2006,11 +2005,13 @@ int cypress_dpm_set_power_state(struct radeon_device *rdev)
 	return 0;
 }
 
+#if 0
 void cypress_dpm_reset_asic(struct radeon_device *rdev)
 {
 	rv770_restrict_performance_levels_before_switch(rdev);
 	rv770_set_boot_state(rdev);
 }
+#endif
 
 void cypress_dpm_display_configuration_changed(struct radeon_device *rdev)
 {

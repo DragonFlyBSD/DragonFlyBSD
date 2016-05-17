@@ -1920,5 +1920,5 @@ int radeon_debugfs_init(struct drm_minor *minor)
 void radeon_debugfs_cleanup(struct drm_minor *minor)
 {
 }
-#endif /* DUMBBELL_WIP */
 #endif
+#endif /* DUMBBELL_WIP */

@@ -40,8 +40,6 @@
 
 #define SCLK_MIN_DEEPSLEEP_FREQ     1350
 
-void si_dpm_reset_asic(struct radeon_device *rdev);
-
 static const struct si_cac_config_reg cac_weights_tahiti[] =
 {
 	{ 0x0, 0x0000ffff, 0, 0xc, SISLANDS_CACCONFIG_CGIND },
@@ -3320,11 +3318,13 @@ int si_dpm_force_performance_level(struct radeon_device *rdev,
 	return 0;
 }
 
+#if 0
 static int si_set_boot_state(struct radeon_device *rdev)
 {
 	return (si_send_msg_to_smc(rdev, PPSMC_MSG_SwitchToInitialState) == PPSMC_Result_OK) ?
 		0 : -EINVAL;
 }
+#endif
 
 static int si_set_sw_state(struct radeon_device *rdev)
 {
@@ -6153,13 +6153,14 @@ void si_dpm_post_set_power_state(struct radeon_device *rdev)
 	ni_update_current_ps(rdev, new_ps);
 }
 
-
+#if 0
 void si_dpm_reset_asic(struct radeon_device *rdev)
 {
 	si_restrict_performance_levels_before_switch(rdev);
 	si_disable_ulv(rdev);
 	si_set_boot_state(rdev);
 }
+#endif
 
 void si_dpm_display_configuration_changed(struct radeon_device *rdev)
 {

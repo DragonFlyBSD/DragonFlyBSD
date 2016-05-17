@@ -47,7 +47,6 @@
 
 struct rv7xx_ps *rv770_get_ps(struct radeon_ps *rps);
 struct rv7xx_power_info *rv770_get_pi(struct radeon_device *rdev);
-void rv770_dpm_reset_asic(struct radeon_device *rdev);
 struct evergreen_power_info *evergreen_get_pi(struct radeon_device *rdev);
 
 struct rv7xx_ps *rv770_get_ps(struct radeon_ps *rps)
@@ -236,6 +235,7 @@ u8 rv770_get_seq_value(struct radeon_device *rdev,
 		MC_CG_SEQ_DRAMCONF_S0 : MC_CG_SEQ_DRAMCONF_S1;
 }
 
+#if 0
 int rv770_read_smc_soft_register(struct radeon_device *rdev,
 				 u16 reg_offset, u32 *value)
 {
@@ -245,6 +245,7 @@ int rv770_read_smc_soft_register(struct radeon_device *rdev,
 					 pi->soft_regs_start + reg_offset,
 					 value, pi->sram_end);
 }
+#endif
 
 int rv770_write_smc_soft_register(struct radeon_device *rdev,
 				  u16 reg_offset, u32 value)
@@ -2080,6 +2081,7 @@ int rv770_dpm_set_power_state(struct radeon_device *rdev)
 	return 0;
 }
 
+#if 0
 void rv770_dpm_reset_asic(struct radeon_device *rdev)
 {
 	struct rv7xx_power_info *pi = rv770_get_pi(rdev);
@@ -2092,6 +2094,7 @@ void rv770_dpm_reset_asic(struct radeon_device *rdev)
 	if (pi->dcodt)
 		rv770_program_dcodt_after_state_switch(rdev, boot_ps, boot_ps);
 }
+#endif
 
 void rv770_dpm_setup_asic(struct radeon_device *rdev)
 {

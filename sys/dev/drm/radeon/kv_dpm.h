@@ -187,7 +187,6 @@ struct kv_power_info {
 /* kv_smc.c */
 int kv_notify_message_to_smu(struct radeon_device *rdev, u32 id);
 int kv_dpm_get_enable_mask(struct radeon_device *rdev, u32 *enable_mask);
-void kv_dpm_reset_asic(struct radeon_device *rdev);
 int kv_send_msg_to_smc_with_parameter(struct radeon_device *rdev,
 				      PPSMC_Msg msg, u32 parameter);
 int kv_read_smc_sram_dword(struct radeon_device *rdev, u32 smc_address,
