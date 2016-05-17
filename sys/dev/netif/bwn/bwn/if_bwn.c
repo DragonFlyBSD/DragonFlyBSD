@@ -1167,6 +1167,12 @@ bwn_dma_tx_start(struct bwn_mac *mac, struct ieee80211_node *ni, struct mbuf *m)
 		    __func__, error);
 		goto fail;
 	}
+	if (mt->mt_paddr == 0) {
+		device_printf(sc->sc_dev,
+		    "%s: can't load TX buffer within segment constraints (1)\n",
+		    __func__);
+		goto fail;
+	}
 	bus_dmamap_sync(dr->dr_txring_dtag, mt->mt_dmap,
 	    BUS_DMASYNC_PREWRITE);
 	dr->setdesc(dr, desc, mt->mt_paddr, BWN_HDRSIZE(mac), 1, 0, 0);
@@ -2802,7 +2808,7 @@ bwn_dma_ringsetup(struct bwn_mac *mac, int controller_index,
 		 * Create TX ring DMA stuffs
 		 */
 		error = bus_dma_tag_create(dma->parent_dtag,
-				    BWN_ALIGN, 0,
+				    1, 0,
 				    BUS_SPACE_MAXADDR,
 				    BUS_SPACE_MAXADDR,
 				    NULL, NULL,
@@ -3141,7 +3147,7 @@ bwn_dma_allocringmemory(struct bwn_dma_ring *dr)
 	error = bus_dmamap_load(dr->dr_ring_dtag, dr->dr_ring_dmap,
 	    dr->dr_ring_descbase, BWN_DMA_RINGMEMSIZE,
 	    bwn_dma_ring_addr, &dr->dr_ring_dmabase, BUS_DMA_NOWAIT);
-	if (error) {
+	if (error || dr->dr_ring_dmabase == 0) {
 		device_printf(sc->sc_dev,
 		    "can't load DMA mem: TODO free\n");
 		return (-1);
@@ -3701,7 +3707,9 @@ bwn_dma_gettype(struct bwn_mac *mac)
 static void
 bwn_dma_ring_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
 {
-	if (!error) {
+	if (error) {
+		*((bus_addr_t *)arg) = 0;
+	} else {
 		KASSERT(nseg == 1, ("too many segments(%d)\n", nseg));
 		*((bus_addr_t *)arg) = seg->ds_addr;
 	}
