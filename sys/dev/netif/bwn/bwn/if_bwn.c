@@ -2788,23 +2788,15 @@ bwn_dma_ringsetup(struct bwn_mac *mac, int controller_index,
 		KASSERT(BWN_TXRING_SLOTS % BWN_TX_SLOTS_PER_FRAME == 0,
 		    ("%s:%d: fail", __func__, __LINE__));
 
-#if defined(__DragonFly__)
 		dr->dr_txhdr_cache = contigmalloc(
 		    (dr->dr_numslots / BWN_TX_SLOTS_PER_FRAME) *
-		    BWN_HDRSIZE(mac), M_DEVBUF, M_WAITOK | M_ZERO,
-		    0, BUS_SPACE_MAXADDR, 8, 0);
+		    BWN_MAXTXHDRSIZE, M_DEVBUF, M_WAITOK | M_ZERO,
+		    0, BUS_SPACE_MAXADDR, 2, 0);
 		if (dr->dr_txhdr_cache == NULL) {
 			device_printf(sc->sc_dev,
 			    "can't allocate TX header DMA memory\n");
 			goto fail1;
 		}
-#else
-		dr->dr_txhdr_cache =
-		    kmalloc((dr->dr_numslots / BWN_TX_SLOTS_PER_FRAME) *
-			BWN_HDRSIZE(mac), M_DEVBUF, M_NOWAIT | M_ZERO);
-		KASSERT(dr->dr_txhdr_cache != NULL,
-		    ("%s:%d: fail", __func__, __LINE__));
-#endif
 
 		/*
 		 * Create TX ring DMA stuffs
@@ -2894,15 +2886,11 @@ bwn_dma_ringsetup(struct bwn_mac *mac, int controller_index,
 	return (dr);
 
 fail2:
-#if defined(__DragonFly__)
 	if (dr->dr_txhdr_cache != NULL) {
 		contigfree(dr->dr_txhdr_cache,
 		    (dr->dr_numslots / BWN_TX_SLOTS_PER_FRAME) *
-		    BWN_HDRSIZE(mac), M_DEVBUF);
+		    BWN_MAXTXHDRSIZE, M_DEVBUF);
 	}
-#else
-	kfree(dr->dr_txhdr_cache, M_DEVBUF);
-#endif
 fail1:
 	kfree(dr->dr_meta, M_DEVBUF);
 fail0:
@@ -2920,15 +2908,11 @@ bwn_dma_ringfree(struct bwn_dma_ring **dr)
 	bwn_dma_free_descbufs(*dr);
 	bwn_dma_free_ringmemory(*dr);
 
-#if defined(__DragonFly__)
 	if ((*dr)->dr_txhdr_cache != NULL) {
 		contigfree((*dr)->dr_txhdr_cache,
 		    ((*dr)->dr_numslots / BWN_TX_SLOTS_PER_FRAME) *
-		    BWN_HDRSIZE((*dr)->dr_mac), M_DEVBUF);
+		    BWN_MAXTXHDRSIZE, M_DEVBUF);
 	}
-#else
-	kfree((*dr)->dr_txhdr_cache, M_DEVBUF);
-#endif
 	kfree((*dr)->dr_meta, M_DEVBUF);
 	kfree(*dr, M_DEVBUF);
 
