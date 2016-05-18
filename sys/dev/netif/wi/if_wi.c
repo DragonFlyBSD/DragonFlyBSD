@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/dev/wi/if_wi.c 196970 2009-09-08 13:19:05Z phk $
+ * $FreeBSD: head/sys/dev/wi/if_wi.c 299083 2016-05-04 18:08:38Z avos $
  */
 
 /*
@@ -48,7 +48,7 @@
  * without an NDA (if at all). What they do release is an API library
  * called the HCF (Hardware Control Functions) which is supposed to
  * do the device-specific operations of a device driver for you. The
- * publically available version of the HCF library (the 'HCF Light') is 
+ * publicly available version of the HCF library (the 'HCF Light') is
  * a) extremely gross, b) lacks certain features, particularly support
  * for 802.11 frames, and c) is contaminated by the GNU Public License.
  *
@@ -61,6 +61,7 @@
  * Prism 2 chipsets with firmware from Intersil and Symbol.
  */
 
+#include "opt_wlan.h"
 
 #define WI_HERMES_STATS_WAR	/* Work around stats counter bug. */
 
@@ -72,6 +73,7 @@
 #include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/socket.h>
 #include <sys/module.h>
 #include <sys/bus.h>
@@ -79,21 +81,31 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 
+#if !defined(__DragonFly__)
+#include <machine/bus.h>
+#include <machine/resource.h>
+#endif
 #include <machine/atomic.h>
 #include <sys/rman.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_llc.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/ifq_var.h>
 
+#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#else
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_ioctl.h>
+#include <net80211/ieee80211_radiotap.h>
+#endif
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -103,21 +115,24 @@
 
 #include <net/bpf.h>
 
-#include <dev/netif/wi/if_wavelan_ieee.h>
-#include <dev/netif/wi/if_wireg.h>
-#include <dev/netif/wi/if_wivar.h>
+#if defined(__DragonFly__)
+#include "if_wavelan_ieee.h"
+#include "if_wireg.h"
+#include "if_wivar.h"
+#else
+#include <dev/wi/if_wavelan_ieee.h>
+#include <dev/wi/if_wireg.h>
+#include <dev/wi/if_wivar.h>
+#endif
 
-static struct ieee80211vap *wi_vap_create(struct ieee80211com *ic,
-		const char name[IFNAMSIZ], int unit,
-		enum ieee80211_opmode opmode, int flags,
-		const uint8_t bssid[IEEE80211_ADDR_LEN],
-		const uint8_t mac[IEEE80211_ADDR_LEN]);
+static struct ieee80211vap *wi_vap_create(struct ieee80211com *,
+		    const char [IFNAMSIZ], int, enum ieee80211_opmode, int,
+		    const uint8_t [IEEE80211_ADDR_LEN],
+		    const uint8_t [IEEE80211_ADDR_LEN]);
 static void wi_vap_delete(struct ieee80211vap *vap);
-static void wi_stop_locked(struct wi_softc *sc, int disable);
-static void wi_start_locked(struct ifnet *);
-static void wi_start(struct ifnet *, struct ifaltq_subque *);
-static int  wi_start_tx(struct ifnet *ifp, struct wi_frame *frmhdr,
-		struct mbuf *m0);
+static int  wi_transmit(struct ieee80211com *, struct mbuf *);
+static void wi_start(struct wi_softc *);
+static int  wi_start_tx(struct wi_softc *, struct wi_frame *, struct mbuf *);
 static int  wi_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		const struct ieee80211_bpf_params *);
 static int  wi_newstate_sta(struct ieee80211vap *, enum ieee80211_state, int);
@@ -127,10 +142,9 @@ static void wi_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m,
 		int subtype, const struct ieee80211_rx_stats *rxs,
 		int rssi, int nf);
 static int  wi_reset(struct wi_softc *);
-static void wi_watchdog_callout(void *);
-static int  wi_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static void wi_watchdog(void *);
+static void wi_parent(struct ieee80211com *);
 static void wi_media_status(struct ifnet *, struct ifmediareq *);
-
 static void wi_rx_intr(struct wi_softc *);
 static void wi_tx_intr(struct wi_softc *);
 static void wi_tx_ex_intr(struct wi_softc *);
@@ -149,10 +163,10 @@ static int  wi_write_ssid(struct wi_softc *, int, u_int8_t *, int);
 static int  wi_cmd(struct wi_softc *, int, int, int, int);
 static int  wi_seek_bap(struct wi_softc *, int, int);
 static int  wi_read_bap(struct wi_softc *, int, int, void *, int);
-static int  wi_write_bap(struct wi_softc *, int, int, void *, int);
+static int  wi_write_bap(struct wi_softc *, int, int, const void *, int);
 static int  wi_mwrite_bap(struct wi_softc *, int, int, struct mbuf *, int);
 static int  wi_read_rid(struct wi_softc *, int, void *, int *);
-static int  wi_write_rid(struct wi_softc *, int, void *, int);
+static int  wi_write_rid(struct wi_softc *, int, const void *, int);
 static int  wi_write_appie(struct wi_softc *, int, const struct ieee80211_appie *);
 
 static void wi_scan_start(struct ieee80211com *);
@@ -167,7 +181,8 @@ wi_write_val(struct wi_softc *sc, int rid, u_int16_t val)
 	return wi_write_rid(sc, rid, &val, sizeof(val));
 }
 
-SYSCTL_NODE(_hw, OID_AUTO, wi, CTLFLAG_RD, 0, "Wireless driver parameters");
+static SYSCTL_NODE(_hw, OID_AUTO, wi, CTLFLAG_RD, 0,
+	    "Wireless driver parameters");
 
 static	struct timeval lasttxerror;	/* time of last tx error msg */
 static	int curtxeps;			/* current tx error msgs/sec */
@@ -232,8 +247,7 @@ int
 wi_attach(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
-	struct ieee80211com *ic;
-	struct ifnet *ifp;
+	struct ieee80211com *ic = &sc->sc_ic;
 	int i, nrates, buflen;
 	u_int16_t val;
 	u_int8_t ratebuf[2 + IEEE80211_RATE_SIZE];
@@ -244,15 +258,6 @@ wi_attach(device_t dev)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
 	int error;
-	uint8_t macaddr[IEEE80211_ADDR_LEN];
-
-	ifp = sc->sc_ifp = if_alloc(IFT_IEEE80211);
-	if (ifp == NULL) {
-		device_printf(dev, "can not if_alloc\n");
-		wi_free(dev);
-		return ENOSPC;
-	}
-	ic = ifp->if_l2com;
 
 	sc->sc_firmware_type = WI_NOTYPE;
 	sc->wi_cmd_count = 500;
@@ -283,8 +288,8 @@ wi_attach(device_t dev)
 	}
 
 	/* Export info about the device via sysctl */
-	sctx = device_get_sysctl_ctx(sc->sc_dev);
-	soid = device_get_sysctl_tree(sc->sc_dev);
+	sctx = device_get_sysctl_ctx(dev);
+	soid = device_get_sysctl_tree(dev);
 	SYSCTL_ADD_STRING(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 	    "firmware_type", CTLFLAG_RD,
 	    wi_firmware_names[sc->sc_firmware_type], 0,
@@ -296,12 +301,20 @@ wi_attach(device_t dev)
 		SYSCTL_ADD_INT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 		    "pri_version", CTLFLAG_RD, &sc->sc_pri_firmware_ver, 0,
 		    "Primary Firmware version");
-	SYSCTL_ADD_INT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "nic_id",
+	SYSCTL_ADD_UINT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "nic_id",
 	    CTLFLAG_RD, &sc->sc_nic_id, 0, "NIC id");
 	SYSCTL_ADD_STRING(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "nic_name",
 	    CTLFLAG_RD, sc->sc_nic_name, 0, "NIC name");
 
-	callout_init(&sc->sc_watchdog);
+#if defined(__DragonFly__)
+	lockinit(&sc->sc_lk, device_get_nameunit(dev), 0, LK_CANRECURSE);
+	callout_init_lk(&sc->sc_watchdog, &sc->sc_lk);
+#else
+	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), MTX_NETWORK_LOCK,
+	    MTX_DEF | MTX_RECURSE);
+	callout_init_mtx(&sc->sc_watchdog, &sc->sc_mtx, 0);
+#endif
+	mbufq_init(&sc->sc_snd, ifqmaxlen);
 
 	/*
 	 * Read the station address.
@@ -310,12 +323,13 @@ wi_attach(device_t dev)
 	 * the probe to fail.
 	 */
 	buflen = IEEE80211_ADDR_LEN;
-	error = wi_read_rid(sc, WI_RID_MAC_NODE, macaddr, &buflen);
+	error = wi_read_rid(sc, WI_RID_MAC_NODE, &ic->ic_macaddr, &buflen);
 	if (error != 0) {
 		buflen = IEEE80211_ADDR_LEN;
-		error = wi_read_rid(sc, WI_RID_MAC_NODE, macaddr, &buflen);
+		error = wi_read_rid(sc, WI_RID_MAC_NODE, &ic->ic_macaddr,
+		    &buflen);
 	}
-	if (error || IEEE80211_ADDR_EQ(macaddr, empty_macaddr)) {
+	if (error || IEEE80211_ADDR_EQ(&ic->ic_macaddr, empty_macaddr)) {
 		if (error != 0)
 			device_printf(dev, "mac read failed %d\n", error);
 		else {
@@ -326,18 +340,6 @@ wi_attach(device_t dev)
 		return (error);
 	}
 
-	ifp->if_softc = sc;
-	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_ioctl = wi_ioctl;
-	ifp->if_start = wi_start;
-	ifp->if_init = wi_init;
-	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
-#ifdef notyet
-	ifq_set_ready(&ifp->if_snd);
-#endif
-
-	ic->ic_ifp = ifp;
 	ic->ic_softc = sc;
 	ic->ic_name = device_get_nameunit(dev);
 	ic->ic_phytype = IEEE80211_T_DS;
@@ -353,7 +355,7 @@ wi_attach(device_t dev)
 	 */
 	buflen = sizeof(val);
 	if (wi_read_rid(sc, WI_RID_CHANNEL_LIST, &val, &buflen) != 0)
-		val = htole16(0x1fff);	/* assume 1-11 */
+		val = htole16(0x1fff);	/* assume 1-13 */
 	KASSERT(val != 0, ("wi_attach: no available channels listed!"));
 
 	val <<= 1;			/* shift for base 1 indices */
@@ -451,16 +453,17 @@ wi_attach(device_t dev)
 
 	sc->sc_portnum = WI_DEFAULT_PORT;
 
-	ieee80211_ifattach(ic, macaddr);
+	ieee80211_ifattach(ic);
 	ic->ic_raw_xmit = wi_raw_xmit;
 	ic->ic_scan_start = wi_scan_start;
 	ic->ic_scan_end = wi_scan_end;
 	ic->ic_set_channel = wi_set_channel;
-
 	ic->ic_vap_create = wi_vap_create;
 	ic->ic_vap_delete = wi_vap_delete;
 	ic->ic_update_mcast = wi_update_mcast;
 	ic->ic_update_promisc = wi_update_promisc;
+	ic->ic_transmit = wi_transmit;
+	ic->ic_parent = wi_parent;
 
 	ieee80211_radiotap_attach(ic,
 	    &sc->sc_tx_th.wt_ihdr, sizeof(sc->sc_tx_th),
@@ -471,12 +474,16 @@ wi_attach(device_t dev)
 	if (bootverbose)
 		ieee80211_announce(ic);
 
+#if defined(__DragonFly__)
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 	    wi_intr, sc, &sc->wi_intrhand, NULL);
+#else
+	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
+	    NULL, wi_intr, sc, &sc->wi_intrhand);
+#endif
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		ieee80211_ifdetach(ic);
-		if_free(sc->sc_ifp);
 		wi_free(dev);
 		return error;
 	}
@@ -488,27 +495,33 @@ int
 wi_detach(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
+
+	WI_LOCK(sc);
 
 	/* check if device was removed */
 	sc->wi_gone |= !bus_child_present(dev);
 
-	wi_stop_locked(sc, 0);
+	wi_stop(sc, 0);
+	WI_UNLOCK(sc);
 	ieee80211_ifdetach(ic);
 
 	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
-	if_free(sc->sc_ifp);
 	wi_free(dev);
+	mbufq_drain(&sc->sc_snd);
+#if defined(__DragonFly__)
+	lockuninit(&sc->sc_lk);
+#else
+	mtx_destroy(&sc->sc_mtx);
+#endif
 	return (0);
 }
 
 static struct ieee80211vap *
-wi_vap_create(struct ieee80211com *ic,
-	const char name[IFNAMSIZ], int unit,
-	enum ieee80211_opmode opmode, int flags,
-	const uint8_t bssid[IEEE80211_ADDR_LEN],
-	const uint8_t mac[IEEE80211_ADDR_LEN])
+wi_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
+    enum ieee80211_opmode opmode, int flags,
+    const uint8_t bssid[IEEE80211_ADDR_LEN],
+    const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct wi_softc *sc = ic->ic_softc;
 	struct wi_vap *wvp;
@@ -516,13 +529,10 @@ wi_vap_create(struct ieee80211com *ic,
 
 	if (!TAILQ_EMPTY(&ic->ic_vaps))		/* only one at a time */
 		return NULL;
-	wvp = (struct wi_vap *) kmalloc(sizeof(struct wi_vap),
-	    M_80211_VAP, M_NOWAIT | M_ZERO);
-	if (wvp == NULL)
-		return NULL;
+	wvp = kmalloc(sizeof(struct wi_vap), M_80211_VAP, M_WAITOK | M_ZERO);
 
 	vap = &wvp->wv_vap;
-	ieee80211_vap_setup(ic, vap, name, unit, opmode, flags, bssid, mac);
+	ieee80211_vap_setup(ic, vap, name, unit, opmode, flags, bssid);
 
 	vap->iv_max_aid = WI_MAX_AID;
 
@@ -556,7 +566,7 @@ wi_vap_create(struct ieee80211com *ic,
 	}
 
 	/* complete setup */
-	ieee80211_vap_attach(vap, ieee80211_media_change, wi_media_status);
+	ieee80211_vap_attach(vap, ieee80211_media_change, wi_media_status, mac);
 	ic->ic_opmode = opmode;
 	return vap;
 }
@@ -575,7 +585,9 @@ wi_shutdown(device_t dev)
 {
 	struct wi_softc *sc = device_get_softc(dev);
 
+	WI_LOCK(sc);
 	wi_stop(sc, 1);
+	WI_UNLOCK(sc);
 	return (0);
 }
 
@@ -583,12 +595,15 @@ void
 wi_intr(void *arg)
 {
 	struct wi_softc *sc = arg;
-	struct ifnet *ifp = sc->sc_ifp;
 	u_int16_t status;
 
-	if (sc->wi_gone || !sc->sc_enabled || (ifp->if_flags & IFF_UP) == 0) {
+	WI_LOCK(sc);
+
+	if (sc->wi_gone || !sc->sc_enabled ||
+	    (sc->sc_flags & WI_FLAGS_RUNNING) == 0) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
 		CSR_WRITE_2(sc, WI_EVENT_ACK, 0xFFFF);
+		WI_UNLOCK(sc);
 		return;
 	}
 
@@ -604,11 +619,13 @@ wi_intr(void *arg)
 		wi_tx_ex_intr(sc);
 	if (status & WI_EV_INFO)
 		wi_info_intr(sc);
-	if (!ifq_is_oactive(&ifp->if_snd) && !ifq_is_empty(&ifp->if_snd))
-		wi_start_locked(ifp);
+	if (mbufq_first(&sc->sc_snd) != NULL)
+		wi_start(sc);
 
 	/* Re-enable interrupts. */
 	CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
+
+	WI_UNLOCK(sc);
 
 	return;
 }
@@ -626,7 +643,7 @@ wi_enable(struct wi_softc *sc)
 
 static int
 wi_setup_locked(struct wi_softc *sc, int porttype, int mode,
-	uint8_t mac[IEEE80211_ADDR_LEN])
+	const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	int i;
 
@@ -660,47 +677,36 @@ wi_setup_locked(struct wi_softc *sc, int porttype, int mode,
 	return 0;
 }
 
-static void
-wi_init_locked(struct wi_softc *sc)
+void
+wi_init(struct wi_softc *sc)
 {
-	struct ifnet *ifp = sc->sc_ifp;
 	int wasenabled;
+
+	WI_LOCK_ASSERT(sc);
 
 	wasenabled = sc->sc_enabled;
 	if (wasenabled)
-		wi_stop_locked(sc, 1);
+		wi_stop(sc, 1);
 
-	if (wi_setup_locked(sc, sc->sc_porttype, 3, IF_LLADDR(ifp)) != 0) {
-		if_printf(ifp, "interface not running\n");
-		wi_stop_locked(sc, 1);
+	if (wi_setup_locked(sc, sc->sc_porttype, 3,
+	    sc->sc_ic.ic_macaddr) != 0) {
+		device_printf(sc->sc_dev, "interface not running\n");
+		wi_stop(sc, 1);
 		return;
 	}
 
-	ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
+	sc->sc_flags |= WI_FLAGS_RUNNING;
 
-	callout_reset(&sc->sc_watchdog, hz, wi_watchdog_callout, sc);
+	callout_reset(&sc->sc_watchdog, hz, wi_watchdog, sc);
 
 	wi_enable(sc);			/* Enable desired port */
 }
 
 void
-wi_init(void *arg)
+wi_stop(struct wi_softc *sc, int disable)
 {
-	struct wi_softc *sc = arg;
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
 
-	wi_init_locked(sc);
-
-	if (ifp->if_flags & IFF_RUNNING)
-		ieee80211_start_all(ic);		/* start all vap's */
-}
-
-static void
-wi_stop_locked(struct wi_softc *sc, int disable)
-{
-	struct ifnet *ifp = sc->sc_ifp;
+	WI_LOCK_ASSERT(sc);
 
 	if (sc->sc_enabled && !sc->wi_gone) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
@@ -714,14 +720,7 @@ wi_stop_locked(struct wi_softc *sc, int disable)
 	sc->sc_tx_timer = 0;
 	sc->sc_false_syns = 0;
 
-	ifp->if_flags &= ~IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
-}
-
-void
-wi_stop(struct wi_softc *sc, int disable)
-{
-	wi_stop_locked(sc, disable);
+	sc->sc_flags &= ~WI_FLAGS_RUNNING;
 }
 
 static void
@@ -733,8 +732,10 @@ wi_set_channel(struct ieee80211com *ic)
 	    ieee80211_chan2ieee(ic, ic->ic_curchan),
 	    ic->ic_flags & IEEE80211_F_SCAN ? "" : "!"));
 
+	WI_LOCK(sc);
 	wi_write_val(sc, WI_RID_OWN_CHNL,
 	    ieee80211_chan2ieee(ic, ic->ic_curchan));
+	WI_UNLOCK(sc);
 }
 
 static void
@@ -745,6 +746,7 @@ wi_scan_start(struct ieee80211com *ic)
 
 	DPRINTF(("%s\n", __func__));
 
+	WI_LOCK(sc);
 	/*
 	 * Switch device to monitor mode.
 	 */
@@ -755,6 +757,7 @@ wi_scan_start(struct ieee80211com *ic)
 	}
 	/* force full dwell time to compensate for firmware overhead */
 	ss->ss_mindwell = ss->ss_maxdwell = msecs_to_ticks(400);
+	WI_UNLOCK(sc);
 
 }
 
@@ -765,11 +768,13 @@ wi_scan_end(struct ieee80211com *ic)
 
 	DPRINTF(("%s: restore port type %d\n", __func__, sc->sc_porttype));
 
+	WI_LOCK(sc);
 	wi_write_val(sc, WI_RID_PORTTYPE, sc->sc_porttype);
 	if (sc->sc_firmware_type == WI_INTERSIL) {
 		wi_cmd(sc, WI_CMD_DISABLE | WI_PORT0, 0, 0, 0);
 		wi_cmd(sc, WI_CMD_ENABLE | WI_PORT0, 0, 0, 0);
 	}
+	WI_UNLOCK(sc);
 }
 
 static void
@@ -800,6 +805,7 @@ wi_newstate_sta(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ieee80211_state_name[nstate]));
 
 	if (nstate == IEEE80211_S_AUTH) {
+		WI_LOCK(sc);
 		wi_setup_locked(sc, WI_PORTTYPE_BSS, 3, vap->iv_myaddr);
 
 		if (vap->iv_flags & IEEE80211_F_PMGTON) {
@@ -843,6 +849,7 @@ wi_newstate_sta(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			    ieee80211_chan2ieee(ic, bss->ni_chan));
 			wi_write_rid(sc, WI_RID_JOIN_REQ, &join, sizeof(join));
 		}
+		WI_UNLOCK(sc);
 
 		/*
 		 * NB: don't go through 802.11 layer, it'll send auth frame;
@@ -869,6 +876,7 @@ wi_newstate_hostap(struct ieee80211vap *vap, enum ieee80211_state nstate, int ar
 
 	error = WI_VAP(vap)->wv_newstate(vap, nstate, arg);
 	if (error == 0 && nstate == IEEE80211_S_RUN) {
+		WI_LOCK(sc);
 		wi_setup_locked(sc, WI_PORTTYPE_HOSTAP, 0, vap->iv_myaddr);
 
 		bss = vap->iv_bss;
@@ -911,14 +919,35 @@ wi_newstate_hostap(struct ieee80211vap *vap, enum ieee80211_state nstate, int ar
 			sc->sc_encryption = 0;
 
 		wi_enable(sc);		/* enable port */
+		WI_UNLOCK(sc);
 	}
 	return error;
 }
 
-static void
-wi_start_locked(struct ifnet *ifp)
+static int
+wi_transmit(struct ieee80211com *ic, struct mbuf *m)
 {
-	struct wi_softc	*sc = ifp->if_softc;
+	struct wi_softc *sc = ic->ic_softc;
+	int error;
+
+	WI_LOCK(sc);
+	if ((sc->sc_flags & WI_FLAGS_RUNNING) == 0) {
+		WI_UNLOCK(sc);
+		return (ENXIO);
+	}
+	error = mbufq_enqueue(&sc->sc_snd, m);
+	if (error) {
+		WI_UNLOCK(sc);
+		return (error);
+	}
+	wi_start(sc);
+	WI_UNLOCK(sc);
+	return (0);
+}
+
+static void
+wi_start(struct wi_softc *sc)
+{
 	struct ieee80211_node *ni;
 	struct ieee80211_frame *wh;
 	struct mbuf *m0;
@@ -927,20 +956,15 @@ wi_start_locked(struct ifnet *ifp)
 	const struct llc *llc;
 	int cur;
 
+	WI_LOCK_ASSERT(sc);
+
 	if (sc->wi_gone)
 		return;
 
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
-	for (;;) {
-		m0 = ifq_dequeue(&ifp->if_snd);
-		if (m0 == NULL)
-			break;
-		if (sc->sc_txd[cur].d_len != 0) {
-			ifq_prepend(&ifp->if_snd, m0);
-			ifq_set_oactive(&ifp->if_snd);
-			break;
-		}
+	while (sc->sc_txd[cur].d_len == 0 &&
+	    (m0 = mbufq_dequeue(&sc->sc_snd)) != NULL) {
 		ni = (struct ieee80211_node *) m0->m_pkthdr.rcvif;
 
 		/* reconstruct 802.3 header */
@@ -989,25 +1013,16 @@ wi_start_locked(struct ifnet *ifp)
 		m_adj(m0, sizeof(struct ieee80211_frame));
 		frmhdr.wi_dat_len = htole16(m0->m_pkthdr.len);
 		ieee80211_free_node(ni);
-		if (wi_start_tx(ifp, &frmhdr, m0))
+		if (wi_start_tx(sc, &frmhdr, m0))
 			continue;
 
 		sc->sc_txnext = cur = (cur + 1) % sc->sc_ntxbuf;
-		IFNET_STAT_INC(ifp, opackets, 1);
 	}
 }
 
-static void
-wi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
-{
-	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	wi_start_locked(ifp);
-}
-
 static int
-wi_start_tx(struct ifnet *ifp, struct wi_frame *frmhdr, struct mbuf *m0)
+wi_start_tx(struct wi_softc *sc, struct wi_frame *frmhdr, struct mbuf *m0)
 {
-	struct wi_softc	*sc = ifp->if_softc;
 	int cur = sc->sc_txnext;
 	int fid, off, error;
 
@@ -1017,13 +1032,17 @@ wi_start_tx(struct ifnet *ifp, struct wi_frame *frmhdr, struct mbuf *m0)
 	     || wi_mwrite_bap(sc, fid, off, m0, m0->m_pkthdr.len) != 0;
 	m_freem(m0);
 	if (error) {
-		IFNET_STAT_INC(ifp, oerrors, 1);
+#if defined(__DragonFly__)
+		++sc->sc_ic.ic_oerrors;
+#else
+		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
+#endif
 		return -1;
 	}
 	sc->sc_txd[cur].d_len = off;
 	if (sc->sc_txcur == cur) {
 		if (wi_cmd(sc, WI_CMD_TX | WI_RECLAIM, fid, 0, 0)) {
-			if_printf(ifp, "xmit failed\n");
+			device_printf(sc->sc_dev, "xmit failed\n");
 			sc->sc_txd[cur].d_len = 0;
 			return -1;
 		}
@@ -1037,7 +1056,6 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	    const struct ieee80211_bpf_params *params)
 {
 	struct ieee80211com *ic = ni->ni_ic;
-	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct wi_softc	*sc = ic->ic_softc;
 	struct ieee80211_key *k;
@@ -1046,6 +1064,8 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	int cur;
 	int rc = 0;
 
+	WI_LOCK(sc);
+
 	if (sc->wi_gone) {
 		rc = ENETDOWN;
 		goto out;
@@ -1053,7 +1073,6 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
 	if (sc->sc_txd[cur].d_len != 0) {
-		ifq_set_oactive(&ifp->if_snd);
 		rc = ENOBUFS;
 		goto out;
 	}
@@ -1084,19 +1103,20 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	    (caddr_t)&frmhdr.wi_whdr);
 	m_adj(m0, sizeof(struct ieee80211_frame));
 	frmhdr.wi_dat_len = htole16(m0->m_pkthdr.len);
-	if (wi_start_tx(ifp, &frmhdr, m0) < 0) {
+	if (wi_start_tx(sc, &frmhdr, m0) < 0) {
 		m0 = NULL;
 		rc = EIO;
 		goto out;
 	}
 	m0 = NULL;
+	ieee80211_free_node(ni);
 
 	sc->sc_txnext = cur = (cur + 1) % sc->sc_ntxbuf;
 out:
+	WI_UNLOCK(sc);
 
 	if (m0 != NULL)
 		m_freem(m0);
-	ieee80211_free_node(ni);
 	return rc;
 }
 
@@ -1114,7 +1134,7 @@ wi_reset(struct wi_softc *sc)
 	}
 	sc->sc_reset = 1;
 	if (i == WI_INIT_TRIES) {
-		if_printf(sc->sc_ifp, "reset failed\n");
+		device_printf(sc->sc_dev, "reset failed\n");
 		return error;
 	}
 
@@ -1129,72 +1149,66 @@ wi_reset(struct wi_softc *sc)
 }
 
 static void
-wi_watchdog_callout(void *arg)
+wi_watchdog(void *arg)
 {
 	struct wi_softc	*sc = arg;
-	struct ifnet *ifp = sc->sc_ifp;
+
+	WI_LOCK_ASSERT(sc);
 
 	if (!sc->sc_enabled)
 		return;
 
 	if (sc->sc_tx_timer && --sc->sc_tx_timer == 0) {
-		if_printf(ifp, "device timeout\n");
-		IFNET_STAT_INC(ifp, oerrors, 1);
-		wi_init_locked(ifp->if_softc);
+		device_printf(sc->sc_dev, "device timeout\n");
+#if defined(__DragonFly__)
+		++sc->sc_ic.ic_oerrors;
+#else
+		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
+#endif
+		wi_init(sc);
 		return;
 	}
-	callout_reset(&sc->sc_watchdog, hz, wi_watchdog_callout, sc);
+	callout_reset(&sc->sc_watchdog, hz, wi_watchdog, sc);
 }
 
-static int
-wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
+static void
+wi_parent(struct ieee80211com *ic)
 {
-	struct wi_softc *sc = ifp->if_softc;
-	struct ieee80211com *ic = ifp->if_l2com;
-	struct ifreq *ifr = (struct ifreq *) data;
-	int error = 0, startall = 0;
+	struct wi_softc *sc = ic->ic_softc;
+	int startall = 0;
 
-	switch (cmd) {
-	case SIOCSIFFLAGS:
-		/*
-		 * Can't do promisc and hostap at the same time.  If all that's
-		 * changing is the promisc flag, try to short-circuit a call to
-		 * wi_init() by just setting PROMISC in the hardware.
-		 */
-		if (ifp->if_flags & IFF_UP) {
-			if (ic->ic_opmode != IEEE80211_M_HOSTAP &&
-			    ifp->if_flags & IFF_RUNNING) {
-				if ((ifp->if_flags ^ sc->sc_if_flags) & IFF_PROMISC) {
-					wi_write_val(sc, WI_RID_PROMISC,
-					    (ifp->if_flags & IFF_PROMISC) != 0);
-				} else {
-					wi_init_locked(sc);
-					startall = 1;
-				}
+	WI_LOCK(sc);
+	/*
+	 * Can't do promisc and hostap at the same time.  If all that's
+	 * changing is the promisc flag, try to short-circuit a call to
+	 * wi_init() by just setting PROMISC in the hardware.
+	 */
+	if (ic->ic_nrunning > 0) {
+		if (ic->ic_opmode != IEEE80211_M_HOSTAP &&
+		    sc->sc_flags & WI_FLAGS_RUNNING) {
+			if (ic->ic_promisc > 0 &&
+			    (sc->sc_flags & WI_FLAGS_PROMISC) == 0) {
+				wi_write_val(sc, WI_RID_PROMISC, 1);
+				sc->sc_flags |= WI_FLAGS_PROMISC;
+			} else if (ic->ic_promisc == 0 &&
+			    (sc->sc_flags & WI_FLAGS_PROMISC) != 0) {
+				wi_write_val(sc, WI_RID_PROMISC, 0);
+				sc->sc_flags &= ~WI_FLAGS_PROMISC;
 			} else {
-				wi_init_locked(sc);
+				wi_init(sc);
 				startall = 1;
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
-				wi_stop_locked(sc, 1);
-			sc->wi_gone = 0;
+			wi_init(sc);
+			startall = 1;
 		}
-		sc->sc_if_flags = ifp->if_flags;
-		if (startall)
-			ieee80211_start_all(ic);
-		break;
-	case SIOCGIFMEDIA:
-		error = ifmedia_ioctl(ifp, ifr, &ic->ic_media, cmd);
-		break;
-	case SIOCGIFADDR:
-		error = ether_ioctl(ifp, cmd, data);
-		break;
-	default:
-		error = EINVAL;
-		break;
+	} else if (sc->sc_flags & WI_FLAGS_RUNNING) {
+		wi_stop(sc, 1);
+		sc->wi_gone = 0;
 	}
-	return error;
+	WI_UNLOCK(sc);
+	if (startall)
+		ieee80211_start_all(ic);
 }
 
 static void
@@ -1230,23 +1244,21 @@ wi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 static void
 wi_sync_bssid(struct wi_softc *sc, u_int8_t new_bssid[IEEE80211_ADDR_LEN])
 {
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	struct ieee80211_node *ni = vap->iv_bss;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	if (IEEE80211_ADDR_EQ(new_bssid, ni->ni_bssid))
 		return;
 
-	DPRINTF(("wi_sync_bssid: bssid %s -> ", kether_ntoa(ni->ni_bssid, ethstr)));
-	DPRINTF(("%s ?\n", kether_ntoa(new_bssid, ethstr)));
+	DPRINTF(("wi_sync_bssid: bssid %s -> ", ether_sprintf(ni->ni_bssid)));
+	DPRINTF(("%s ?\n", ether_sprintf(new_bssid)));
 
 	/* In promiscuous mode, the BSSID field is not a reliable
 	 * indicator of the firmware's BSSID. Damp spurious
 	 * change-of-BSSID indications.
 	 */
-	if ((ifp->if_flags & IFF_PROMISC) != 0 &&
+	if (ic->ic_promisc > 0 &&
 	    !ppsratecheck(&sc->sc_last_syn, &sc->sc_false_syns,
 	                 WI_MAX_FALSE_SYNS))
 		return;
@@ -1267,8 +1279,7 @@ wi_sync_bssid(struct wi_softc *sc, u_int8_t new_bssid[IEEE80211_ADDR_LEN])
 static __noinline void
 wi_rx_intr(struct wi_softc *sc)
 {
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct wi_frame frmhdr;
 	struct mbuf *m;
 	struct ieee80211_frame *wh;
@@ -1283,7 +1294,11 @@ wi_rx_intr(struct wi_softc *sc)
 	/* First read in the frame header */
 	if (wi_read_bap(sc, fid, 0, &frmhdr, sizeof(frmhdr))) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++sc->sc_ic.ic_ierrors;
+#else
+		counter_u64_add(ic->ic_ierrors, 1);
+#endif
 		DPRINTF(("wi_rx_intr: read fid %x failed\n", fid));
 		return;
 	}
@@ -1294,7 +1309,11 @@ wi_rx_intr(struct wi_softc *sc)
 	status = le16toh(frmhdr.wi_status);
 	if (status & WI_STAT_ERRSTAT) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++sc->sc_ic.ic_ierrors;
+#else
+		counter_u64_add(ic->ic_ierrors, 1);
+#endif
 		DPRINTF(("wi_rx_intr: fid %x error status %x\n", fid, status));
 		return;
 	}
@@ -1309,7 +1328,11 @@ wi_rx_intr(struct wi_softc *sc)
 	if (off + len > MCLBYTES) {
 		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 			CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-			IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+			++sc->sc_ic.ic_ierrors;
+#else
+			counter_u64_add(ic->ic_ierrors, 1);
+#endif
 			DPRINTF(("wi_rx_intr: oversized packet\n"));
 			return;
 		} else
@@ -1322,7 +1345,11 @@ wi_rx_intr(struct wi_softc *sc)
 		m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++sc->sc_ic.ic_ierrors;
+#else
+		counter_u64_add(ic->ic_ierrors, 1);
+#endif
 		DPRINTF(("wi_rx_intr: MGET failed\n"));
 		return;
 	}
@@ -1331,7 +1358,6 @@ wi_rx_intr(struct wi_softc *sc)
 	wi_read_bap(sc, fid, sizeof(frmhdr),
 	    m->m_data + sizeof(struct ieee80211_frame), len);
 	m->m_pkthdr.len = m->m_len = sizeof(struct ieee80211_frame) + len;
-	m->m_pkthdr.rcvif = ifp;
 
 	CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 
@@ -1361,6 +1387,8 @@ wi_rx_intr(struct wi_softc *sc)
 	if (ic->ic_opmode == IEEE80211_M_IBSS && dir == IEEE80211_FC1_DIR_NODS)
 		wi_sync_bssid(sc, wh->i_addr3);
 
+	WI_UNLOCK(sc);
+
 	ni = ieee80211_find_rxnode(ic, mtod(m, struct ieee80211_frame_min *));
 	if (ni != NULL) {
 		(void) ieee80211_input(ni, m, rssi, nf);
@@ -1368,15 +1396,14 @@ wi_rx_intr(struct wi_softc *sc)
 	} else
 		(void) ieee80211_input_all(ic, m, rssi, nf);
 
+	WI_LOCK(sc);
 }
 
 static __noinline void
 wi_tx_ex_intr(struct wi_softc *sc)
 {
-	struct ifnet *ifp = sc->sc_ifp;
 	struct wi_frame frmhdr;
 	int fid;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	fid = CSR_READ_2(sc, WI_TX_CMP_FID);
 	/* Read in the frame header */
@@ -1389,26 +1416,35 @@ wi_tx_ex_intr(struct wi_softc *sc)
 		 */
 		if ((status & WI_TXSTAT_DISCONNECT) == 0) {
 			if (ppsratecheck(&lasttxerror, &curtxeps, wi_txerate)) {
-				if_printf(ifp, "tx failed");
+				device_printf(sc->sc_dev, "tx failed");
 				if (status & WI_TXSTAT_RET_ERR)
 					kprintf(", retry limit exceeded");
 				if (status & WI_TXSTAT_AGED_ERR)
 					kprintf(", max transmit lifetime exceeded");
 				if (status & WI_TXSTAT_DISCONNECT)
 					kprintf(", port disconnected");
-				if (status & WI_TXSTAT_FORM_ERR)
+				if (status & WI_TXSTAT_FORM_ERR) {
+#if defined(__DragonFly__)
 					kprintf(", invalid format (data len %u src %s)",
 						le16toh(frmhdr.wi_dat_len),
-					    kether_ntoa(frmhdr.wi_ehdr.ether_shost, ethstr));
+						ether_sprintf(frmhdr.wi_ehdr.ether_shost));
+#else
+					printf(", invalid format (data len %u src %6D)",
+						le16toh(frmhdr.wi_dat_len),
+						frmhdr.wi_ehdr.ether_shost, ":");
+#endif
+				}
 				if (status & ~0xf)
 					kprintf(", status=0x%x", status);
 				kprintf("\n");
 			}
-			IFNET_STAT_INC(ifp, oerrors, 1);
-		} else {
+#if defined(__DragonFly__)
+			++sc->sc_ic.ic_oerrors;
+#else
+			counter_u64_add(sc->sc_ic.ic_oerrors, 1);
+#endif
+		} else
 			DPRINTF(("port disconnected\n"));
-			IFNET_STAT_INC(ifp, collisions, 1);	/* XXX */
-		}
 	} else
 		DPRINTF(("wi_tx_ex_intr: read fid %x failed\n", fid));
 	CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_TX_EXC);
@@ -1417,7 +1453,6 @@ wi_tx_ex_intr(struct wi_softc *sc)
 static __noinline void
 wi_tx_intr(struct wi_softc *sc)
 {
-	struct ifnet *ifp = sc->sc_ifp;
 	int fid, cur;
 
 	if (sc->wi_gone)
@@ -1428,19 +1463,17 @@ wi_tx_intr(struct wi_softc *sc)
 
 	cur = sc->sc_txcur;
 	if (sc->sc_txd[cur].d_fid != fid) {
-		if_printf(ifp, "bad alloc %x != %x, cur %d nxt %d\n",
+		device_printf(sc->sc_dev, "bad alloc %x != %x, cur %d nxt %d\n",
 		    fid, sc->sc_txd[cur].d_fid, cur, sc->sc_txnext);
 		return;
 	}
 	sc->sc_tx_timer = 0;
 	sc->sc_txd[cur].d_len = 0;
 	sc->sc_txcur = cur = (cur + 1) % sc->sc_ntxbuf;
-	if (sc->sc_txd[cur].d_len == 0)
-		ifq_clr_oactive(&ifp->if_snd);
-	else {
+	if (sc->sc_txd[cur].d_len != 0) {
 		if (wi_cmd(sc, WI_CMD_TX | WI_RECLAIM, sc->sc_txd[cur].d_fid,
 		    0, 0)) {
-			if_printf(ifp, "xmit failed\n");
+			device_printf(sc->sc_dev, "xmit failed\n");
 			sc->sc_txd[cur].d_len = 0;
 		} else {
 			sc->sc_tx_timer = 5;
@@ -1451,8 +1484,7 @@ wi_tx_intr(struct wi_softc *sc)
 static __noinline void
 wi_info_intr(struct wi_softc *sc)
 {
-	struct ifnet *ifp = sc->sc_ifp;
-	struct ieee80211com *ic = ifp->if_l2com;
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	int i, fid, len, off;
 	u_int16_t ltbuf[2];
@@ -1466,6 +1498,10 @@ wi_info_intr(struct wi_softc *sc)
 	case WI_INFO_LINK_STAT:
 		wi_read_bap(sc, fid, sizeof(ltbuf), &stat, sizeof(stat));
 		DPRINTF(("wi_info_intr: LINK_STAT 0x%x\n", le16toh(stat)));
+
+		if (vap == NULL)
+			goto finish;
+
 		switch (le16toh(stat)) {
 		case WI_INFO_LINK_STAT_CONNECTED:
 			if (vap->iv_state == IEEE80211_S_RUN &&
@@ -1473,16 +1509,20 @@ wi_info_intr(struct wi_softc *sc)
 				break;
 			/* fall thru... */
 		case WI_INFO_LINK_STAT_AP_CHG:
+			IEEE80211_LOCK(ic);
 			vap->iv_bss->ni_associd = 1 | 0xc000;	/* NB: anything will do */
 			ieee80211_new_state(vap, IEEE80211_S_RUN, 0);
+			IEEE80211_UNLOCK(ic);
 			break;
 		case WI_INFO_LINK_STAT_AP_INR:
 			break;
 		case WI_INFO_LINK_STAT_DISCONNECTED:
 			/* we dropped off the net; e.g. due to deauth/disassoc */
+			IEEE80211_LOCK(ic);
 			vap->iv_bss->ni_associd = 0;
 			vap->iv_stats.is_rx_deauth++;
 			ieee80211_new_state(vap, IEEE80211_S_SCAN, 0);
+			IEEE80211_UNLOCK(ic);
 			break;
 		case WI_INFO_LINK_STAT_AP_OOR:
 			/* XXX does this need to be per-vap? */
@@ -1508,28 +1548,25 @@ wi_info_intr(struct wi_softc *sc)
 #endif
 			*ptr += stat;
 		}
-		IFNET_STAT_SET(ifp, collisions,
-		    sc->sc_stats.wi_tx_single_retries +
-		    sc->sc_stats.wi_tx_multi_retries +
-		    sc->sc_stats.wi_tx_retry_limit);
 		break;
 	default:
 		DPRINTF(("wi_info_intr: got fid %x type %x len %d\n", fid,
 		    le16toh(ltbuf[1]), le16toh(ltbuf[0])));
 		break;
 	}
+finish:
 	CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_INFO);
 }
 
 static int
 wi_write_multi(struct wi_softc *sc)
 {
-	struct ifnet *ifp = sc->sc_ifp;
-	int n;
-	struct ifmultiaddr *ifma;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211vap *vap;
 	struct wi_mcast mlist;
+	int n;
 
-	if (ifp->if_flags & IFF_ALLMULTI || ifp->if_flags & IFF_PROMISC) {
+	if (ic->ic_allmulti > 0 || ic->ic_promisc > 0) {
 allmulti:
 		memset(&mlist, 0, sizeof(mlist));
 		return wi_write_rid(sc, WI_RID_MCAST_LIST, &mlist,
@@ -1537,21 +1574,31 @@ allmulti:
 	}
 
 	n = 0;
-#ifdef __FreeBSD__
-	if_maddr_rlock(ifp);
+	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
+		struct ifnet *ifp;
+		struct ifmultiaddr *ifma;
+
+		ifp = vap->iv_ifp;
+#if defined(__DragonFly__)
+		/* nothing */
+#else
+		if_maddr_rlock(ifp);
 #endif
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-		if (ifma->ifma_addr->sa_family != AF_LINK)
-			continue;
-		if (n >= 16)
-			goto allmulti;
-		IEEE80211_ADDR_COPY(&mlist.wi_mcast[n],
-		    (LLADDR((struct sockaddr_dl *)ifma->ifma_addr)));
-		n++;
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+			if (ifma->ifma_addr->sa_family != AF_LINK)
+				continue;
+			if (n >= 16)
+				goto allmulti;
+			IEEE80211_ADDR_COPY(&mlist.wi_mcast[n],
+			    (LLADDR((struct sockaddr_dl *)ifma->ifma_addr)));
+			n++;
+		}
+#if defined(__DragonFly__)
+		/* nothing */
+#else
+		if_maddr_runlock(ifp);
+#endif
 	}
-#ifdef __FreeBSD__
-	if_maddr_runlock(ifp);
-#endif
 	return wi_write_rid(sc, WI_RID_MCAST_LIST, &mlist,
 	    IEEE80211_ADDR_LEN * n);
 }
@@ -1559,6 +1606,7 @@ allmulti:
 static void
 wi_update_mcast(struct ieee80211com *ic)
 {
+
 	wi_write_multi(ic->ic_softc);
 }
 
@@ -1567,10 +1615,12 @@ wi_update_promisc(struct ieee80211com *ic)
 {
 	struct wi_softc *sc = ic->ic_softc;
 
+	WI_LOCK(sc);
 	/* XXX handle WEP special case handling? */
 	wi_write_val(sc, WI_RID_PROMISC, 
 	    (ic->ic_opmode == IEEE80211_M_MONITOR ||
-	     (ic->ic_ifp->if_flags & IFF_PROMISC)));
+	     (ic->ic_promisc > 0)));
+	WI_UNLOCK(sc);
 }
 
 static void
@@ -1853,8 +1903,7 @@ wi_seek_bap(struct wi_softc *sc, int id, int off)
 static int
 wi_read_bap(struct wi_softc *sc, int id, int off, void *buf, int buflen)
 {
-	u_int16_t *ptr;
-	int i, error, cnt;
+	int error, cnt;
 
 	if (buflen == 0)
 		return 0;
@@ -1863,18 +1912,15 @@ wi_read_bap(struct wi_softc *sc, int id, int off, void *buf, int buflen)
 			return error;
 	}
 	cnt = (buflen + 1) / 2;
-	ptr = (u_int16_t *)buf;
-	for (i = 0; i < cnt; i++)
-		*ptr++ = CSR_READ_2(sc, WI_DATA0);
+	CSR_READ_MULTI_STREAM_2(sc, WI_DATA0, (u_int16_t *)buf, cnt);
 	sc->sc_bap_off += cnt * 2;
 	return 0;
 }
 
 static int
-wi_write_bap(struct wi_softc *sc, int id, int off, void *buf, int buflen)
+wi_write_bap(struct wi_softc *sc, int id, int off, const void *buf, int buflen)
 {
-	u_int16_t *ptr;
-	int i, error, cnt;
+	int error, cnt;
 
 	if (buflen == 0)
 		return 0;
@@ -1884,9 +1930,7 @@ wi_write_bap(struct wi_softc *sc, int id, int off, void *buf, int buflen)
 			return error;
 	}
 	cnt = (buflen + 1) / 2;
-	ptr = (u_int16_t *)buf;
-	for (i = 0; i < cnt; i++)
-		CSR_WRITE_2(sc, WI_DATA0, ptr[i]);
+	CSR_WRITE_MULTI_STREAM_2(sc, WI_DATA0, (const uint16_t *)buf, cnt);
 	sc->sc_bap_off += cnt * 2;
 
 	return 0;
@@ -1976,7 +2020,7 @@ wi_read_rid(struct wi_softc *sc, int rid, void *buf, int *buflenp)
 }
 
 static int
-wi_write_rid(struct wi_softc *sc, int rid, void *buf, int buflen)
+wi_write_rid(struct wi_softc *sc, int rid, const void *buf, int buflen)
 {
 	int error;
 	u_int16_t ltbuf[2];
@@ -2021,9 +2065,15 @@ wi_alloc(device_t dev, int rid)
 
 	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
 		sc->iobase_rid = rid;
+#if defined(__DragonFly__)
 		sc->iobase = bus_alloc_resource(dev, SYS_RES_IOPORT,
 		    &sc->iobase_rid, 0, ~0, (1 << 6),
 		    rman_make_alignment_flags(1 << 6) | RF_ACTIVE);
+#else
+		sc->iobase = bus_alloc_resource_anywhere(dev, SYS_RES_IOPORT,
+		    &sc->iobase_rid, (1 << 6),
+		    rman_make_alignment_flags(1 << 6) | RF_ACTIVE);
+#endif
 		if (sc->iobase == NULL) {
 			device_printf(dev, "No I/O space?!\n");
 			return ENXIO;

@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/dev/wi/if_wi_pci.c 181209 2008-08-02 20:45:28Z imp $
+ * $FreeBSD: head/sys/dev/wi/if_wi_pci.c 295126 2016-02-01 17:41:21Z glebius $
  */
 
 /*
@@ -42,27 +42,50 @@
 
 #include <sys/param.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/socket.h>
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+
+#if !defined(__DragonFly__)
+#include <machine/bus.h>
+#include <machine/resource.h>
+#endif
 #include <sys/rman.h>
 
-#include <bus/pci/pcireg.h>
+#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#else
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
+#endif
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
 
+#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#else
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_radiotap.h>
+#endif
 
-#include <dev/netif/wi/if_wavelan_ieee.h>
-#include <dev/netif/wi/if_wireg.h>
-#include <dev/netif/wi/if_wivar.h>
+#if defined(__DragonFly__)
+#include "if_wavelan_ieee.h"
+#include "if_wireg.h"
+#include "if_wivar.h"
+#else
+#include <dev/wi/if_wavelan_ieee.h>
+#include <dev/wi/if_wireg.h>
+#include <dev/wi/if_wivar.h>
+#endif
 
 static int wi_pci_probe(device_t);
 static int wi_pci_attach(device_t);
@@ -117,18 +140,15 @@ wi_pci_probe(device_t dev)
 	struct wi_softc		*sc;
 	int i;
 
-	wlan_serialize_enter();
 	sc = device_get_softc(dev);
 	for(i=0; pci_ids[i].vendor != 0; i++) {
 		if ((pci_get_vendor(dev) == pci_ids[i].vendor) &&
 			(pci_get_device(dev) == pci_ids[i].device)) {
 			sc->wi_bus_type = pci_ids[i].bus_type;
 			device_set_desc(dev, pci_ids[i].desc);
-			wlan_serialize_exit();
 			return (BUS_PROBE_DEFAULT);
 		}
 	}
-	wlan_serialize_exit();
 	return(ENXIO);
 }
 
@@ -136,31 +156,17 @@ static int
 wi_pci_attach(device_t dev)
 {
 	struct wi_softc		*sc;
-	u_int32_t		command, wanted;
+	u_int32_t		command;
 	u_int16_t		reg;
 	int			error;
 	int			timeout;
 
-	wlan_serialize_enter();
 	sc = device_get_softc(dev);
-
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	wanted = PCIM_CMD_PORTEN|PCIM_CMD_MEMEN;
-	command |= wanted;
-	pci_write_config(dev, PCIR_COMMAND, command, 4);
-	command = pci_read_config(dev, PCIR_COMMAND, 4);
-	if ((command & wanted) != wanted) {
-		device_printf(dev, "wi_pci_attach() failed to enable pci!\n");
-		wlan_serialize_exit();
-		return (ENXIO);
-	}
 
 	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
 		error = wi_alloc(dev, WI_PCI_IORES);
-		if (error) {
-			wlan_serialize_exit();
+		if (error)
 			return (error);
-		}
 
 		/* Make sure interrupts are disabled. */
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
@@ -187,7 +193,6 @@ wi_pci_attach(device_t dev)
 		if (sc->mem == NULL) {
 			device_printf(dev, "couldn't allocate memory\n");
 			wi_free(dev);
-			wlan_serialize_exit();
 			return (ENXIO);
 		}
 		sc->wi_bmemtag = rman_get_bustag(sc->mem);
@@ -205,15 +210,12 @@ wi_pci_attach(device_t dev)
 			device_printf(dev, "CSM_READ_1(WI_COR_OFFSET) "
 			    "wanted %d, got %d\n", WI_COR_VALUE, reg);
 			wi_free(dev);
-			wlan_serialize_exit();
 			return (ENXIO);
 		}
 	} else {
 		error = wi_alloc(dev, WI_PCI_LMEMRES);
-		if (error) {
-			wlan_serialize_exit();
+		if (error)
 			return (error);
-		}
 
 		CSR_WRITE_2(sc, WI_PCICOR_OFF, WI_PCICOR_RESET);
 		DELAY(250000);
@@ -229,7 +231,6 @@ wi_pci_attach(device_t dev)
 		if (timeout == 0) {
 			device_printf(dev, "couldn't reset prism pci core.\n");
 			wi_free(dev);
-			wlan_serialize_exit();
 			return(ENXIO);
 		}
 	}
@@ -241,14 +242,12 @@ wi_pci_attach(device_t dev)
 		    "CSR_READ_2(WI_HFA384X_SWSUPPORT0_OFF) "
 		    "wanted %d, got %d\n", WI_PRISM2STA_MAGIC, reg);
 		wi_free(dev);
-		wlan_serialize_exit();
 		return (ENXIO);
 	}
 
 	error = wi_attach(dev);
 	if (error != 0)
 		wi_free(dev);
-	wlan_serialize_exit();
 	return (error);
 }
 
@@ -257,9 +256,9 @@ wi_pci_suspend(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
 
-	wlan_serialize_enter();
+	WI_LOCK(sc);
 	wi_stop(sc, 1);
-	wlan_serialize_exit();
+	WI_UNLOCK(sc);
 	
 	return (0);
 }
@@ -268,20 +267,15 @@ static int
 wi_pci_resume(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
-	struct ifnet *ifp = sc->sc_ifp;
+	struct ieee80211com *ic = &sc->sc_ic;
 
-	wlan_serialize_enter();
+	WI_LOCK(sc);
 	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
-		wlan_serialize_exit();
 		return (0);
+		WI_UNLOCK(sc);
 	}
-
-	if (ifp->if_flags & IFF_UP) {
-		ifp->if_init(ifp->if_softc);
-		if (ifp->if_flags & IFF_RUNNING)
-			if_devstart(ifp);
-	}
-	wlan_serialize_exit();
-
+	if (ic->ic_nrunning > 0)
+		wi_init(sc);
+	WI_UNLOCK(sc);
 	return (0);
 }

@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/dev/wi/if_wi_pccard.c 182250 2008-08-27 05:39:44Z imp $
+ * $FreeBSD: head/sys/dev/wi/if_wi_pccard.c 292079 2015-12-11 05:27:56Z imp $
  */
 
 /*
@@ -42,10 +42,17 @@
 
 #include <sys/param.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/socket.h>
 #include <sys/systm.h>
+#include <sys/mbuf.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+
+#if !defined(__DragonFly__)
+#include <machine/bus.h>
+#include <machine/resource.h>
+#endif
 #include <sys/rman.h>
 
 #include <net/if.h>
@@ -55,16 +62,32 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
+#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
+#else
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_radiotap.h>
+#endif
 
+#if defined(__DragonFly__)
 #define PCCARD_API_LEVEL 6
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccard_cis.h>
+#else
+#include <dev/pccard/pccardvar.h>
+#include <dev/pccard/pccard_cis.h>
+#endif
 
-#include <dev/netif/wi/if_wavelan_ieee.h>
-#include <dev/netif/wi/if_wireg.h>
-#include <dev/netif/wi/if_wivar.h>
+#if defined(__DragonFly__)
+#include "if_wavelan_ieee.h"
+#include "if_wireg.h"
+#include "if_wivar.h"
+#else
+#include <dev/wi/if_wavelan_ieee.h>
+#include <dev/wi/if_wireg.h>
+#include <dev/wi/if_wivar.h>
+#endif
 
 #include "card_if.h"
 #include "pccarddevs.h"
@@ -148,31 +171,37 @@ static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(TDK, LAK_CD011WL),
 	{ NULL }
 };
+#if !defined(__DragonFly__)
+PCCARD_PNP_INFO(wi_pccard_products);
+#endif
 
 static int
 wi_pccard_probe(device_t dev)
 {
 	const struct pccard_product *pp;
 	u_int32_t fcn = PCCARD_FUNCTION_UNSPEC;
-
-	wlan_serialize_enter();
+#if !defined(__DragonFly__)
+	int error;
+#endif
 
 	/* Make sure we're a network driver */
+#if defined(__DragonFly__)
 	fcn = pccard_get_function_number(dev);
-	if (fcn != PCCARD_FUNCTION_NETWORK) {
-		wlan_serialize_exit();
+#else
+	error = pccard_get_function(dev, &fcn);
+	if (error != 0)
+		return error;
+#endif
+	if (fcn != PCCARD_FUNCTION_NETWORK)
 		return ENXIO;
-	}
 
 	pp = pccard_product_lookup(dev, wi_pccard_products,
 	    sizeof(wi_pccard_products[0]), NULL);
 	if (pp != NULL) {
 		if (pp->pp_name != NULL)
 			device_set_desc(dev, pp->pp_name);
-		wlan_serialize_exit();
 		return 0;
 	}
-	wlan_serialize_exit();
 	return ENXIO;
 }
 
@@ -182,7 +211,6 @@ wi_pccard_attach(device_t dev)
 	struct wi_softc	*sc;
 	int error;
 
-	wlan_serialize_enter();
 	sc = device_get_softc(dev);
 	sc->wi_gone = 0;
 	sc->wi_bus_type = WI_BUS_PCCARD;
@@ -197,6 +225,5 @@ wi_pccard_attach(device_t dev)
 		if (error != 0)
 			wi_free(dev);
 	}
-	wlan_serialize_exit();
 	return error;
 }

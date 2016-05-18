@@ -31,7 +31,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/dev/wi/if_wivar.h 194023 2009-06-11 17:14:28Z avg $
+ * $FreeBSD: head/sys/dev/wi/if_wivar.h 288095 2015-09-22 06:34:07Z adrian $
  */
 
 /*
@@ -58,7 +58,6 @@
 
 struct wi_vap {
 	struct ieee80211vap	wv_vap;
-	struct ieee80211_beacon_offsets	wv_bo;
 
 	void		(*wv_recv_mgmt)(struct ieee80211_node *, struct mbuf *,
 			    int, const struct ieee80211_rx_stats *rxs, int, int);
@@ -68,9 +67,14 @@ struct wi_vap {
 #define	WI_VAP(vap)		((struct wi_vap *)(vap))
 
 struct wi_softc	{
-	struct arpcom		arpcom;
-	struct ifnet		*sc_ifp;
+	struct ieee80211com	sc_ic;
+	struct mbufq		sc_snd;
 	device_t		sc_dev;
+#if defined(__DragonFly__)
+	struct lock		sc_lk;
+#else
+	struct mtx		sc_mtx;
+#endif
 	struct callout		sc_watchdog;
 	int			sc_unit;
 	int			wi_gone;
@@ -107,7 +111,6 @@ struct wi_softc	{
 	int			wi_cmd_count;
 
 	int			sc_flags;
-	int			sc_if_flags;
 	int			sc_bap_id;
 	int			sc_bap_off;
 
@@ -152,6 +155,8 @@ struct wi_softc	{
 #define	WI_FLAGS_HAS_ROAMING		0x0020
 #define	WI_FLAGS_HAS_FRAGTHR		0x0200
 #define	WI_FLAGS_HAS_DBMADJUST		0x0400
+#define	WI_FLAGS_RUNNING		0x0800
+#define	WI_FLAGS_PROMISC		0x1000
 
 struct wi_card_ident {
 	u_int16_t	card_id;
@@ -170,13 +175,23 @@ struct wi_card_ident {
 #define	WI_RSSI_TO_DBM(sc, rssi) (MIN((sc)->sc_max_rssi, \
     MAX((sc)->sc_min_rssi, (rssi))) - (sc)->sc_dbm_offset)
 
+#if defined(__DragonFly__)
+#define	WI_LOCK(_sc) 		lockmgr(&(_sc)->sc_lk, LK_EXCLUSIVE)
+#define	WI_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lk, LK_RELEASE)
+#define	WI_LOCK_ASSERT(_sc)	KKASSERT(lockstatus(&(_sc)->sc_lk, curthread) == LK_EXCLUSIVE)
+#else
+#define	WI_LOCK(_sc) 		mtx_lock(&(_sc)->sc_mtx)
+#define	WI_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
+#define	WI_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_mtx, MA_OWNED)
+#endif
+
 int	wi_attach(device_t);
 int	wi_detach(device_t);
 int	wi_shutdown(device_t);
 int	wi_alloc(device_t, int);
 void	wi_free(device_t);
 extern devclass_t wi_devclass;
-void	wi_init(void *);
 void	wi_intr(void *);
 int	wi_mgmt_xmit(struct wi_softc *, caddr_t, int);
 void	wi_stop(struct wi_softc *, int);
+void	wi_init(struct wi_softc *);
