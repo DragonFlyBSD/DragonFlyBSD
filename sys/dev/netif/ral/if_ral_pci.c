@@ -1,5 +1,3 @@
-/*	$FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.10 2012/05/10 17:41:16 bschmidt Exp $	*/
-
 /*-
  * Copyright (c) 2005, 2006
  *	Damien Bergamini <damien.bergamini@free.fr>
@@ -17,48 +15,50 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * PCI/Cardbus front-end for the Ralink RT2560/RT2561/RT2561S/RT2661 driver.
  */
 
 #include <sys/param.h>
-#include <sys/sysctl.h>
-#include <sys/sockio.h>
-#include <sys/mbuf.h>
-#include <sys/kernel.h>
-#include <sys/socket.h>
 #include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/endian.h>
+#include <sys/kernel.h>
+#include <sys/lock.h>
+#include <sys/malloc.h>
+#include <sys/mbuf.h>
+#include <sys/module.h>
+#include <sys/mutex.h>
 #include <sys/rman.h>
+#include <sys/socket.h>
 
-#include <net/bpf.h>
-#include <net/if.h>
-#include <net/if_arp.h>
+#include <machine/bus.h>
+#include <machine/resource.h>
+
 #include <net/ethernet.h>
-#include <net/if_dl.h>
+#include <net/if.h>
 #include <net/if_media.h>
-#include <net/if_types.h>
+#include <net/route.h>
 
-#include <netproto/802_11/ieee80211_var.h>
-#include <netproto/802_11/ieee80211_radiotap.h>
-#include <netproto/802_11/ieee80211_amrr.h>
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_radiotap.h>
 
-#include "pcidevs.h"
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
-#include <dev/netif/ral/rt2560var.h>
-#include <dev/netif/ral/rt2661var.h>
-#include <dev/netif/ral/rt2860var.h>
+#include <dev/ral/rt2560var.h>
+#include <dev/ral/rt2661var.h>
+#include <dev/ral/rt2860var.h>
 
 MODULE_DEPEND(ral, pci, 1, 1, 1);
 MODULE_DEPEND(ral, firmware, 1, 1, 1);
 MODULE_DEPEND(ral, wlan, 1, 1, 1);
 MODULE_DEPEND(ral, wlan_amrr, 1, 1, 1);
+
+static int ral_msi_disable;
+TUNABLE_INT("hw.ral.msi_disable", &ral_msi_disable);
 
 struct ral_pci_ident {
 	uint16_t	vendor;
@@ -67,73 +67,44 @@ struct ral_pci_ident {
 };
 
 static const struct ral_pci_ident ral_pci_ids[] = {
-	{ PCI_VENDOR_AWT, PCI_PRODUCT_AWT_RT2890,
-		"Ralink Technology RT2890" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_1,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_2,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_3,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_4,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_5,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_6,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_7,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT3591_1,
-		"Ralink Technology RT3591" },
-	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT3591_2,
-		"Ralink Technology RT3591" },
-	{ PCI_VENDOR_MSI, PCI_PRODUCT_MSI_RT3090,
-		"Ralink Technology RT3090" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2560,
-		"Ralink Technology RT2560" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561S,
-		"Ralink Technology RT2561S" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561,
-		"Ralink Technology RT2561" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2661,
-		"Ralink Technology RT2661" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2760,
-		"Ralink Technology RT2760" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2790,
-		"Ralink Technology RT2790" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2860,
-		"Ralink Technology RT2860" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2890,
-		"Ralink Technology RT2890" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3060,
-		"Ralink Technology RT3060" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3062,
-		"Ralink Technology RT3062" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3090,
-		"Ralink Technology RT3090" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3091,
-		"Ralink Technology RT3091" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3092,
-		"Ralink Technology RT3092" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3390,
-		"Ralink Technology RT3390" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3562,
-		"Ralink Technology RT3562" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3592,
-		"Ralink Technology RT3592" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3593,
-		"Ralink Technology RT3593" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT5390_1,
-		"Ralink Technology RT5390" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT5390_2,
-		"Ralink Technology RT5390" },
-	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT5390_3,
-		"Ralink Technology RT5390" },
-
+	{ 0x1432, 0x7708, "Edimax RT2860" },
+	{ 0x1432, 0x7711, "Edimax RT3591" },
+	{ 0x1432, 0x7722, "Edimax RT3591" },
+	{ 0x1432, 0x7727, "Edimax RT2860" },
+	{ 0x1432, 0x7728, "Edimax RT2860" },
+	{ 0x1432, 0x7738, "Edimax RT2860" },
+	{ 0x1432, 0x7748, "Edimax RT2860" },
+	{ 0x1432, 0x7758, "Edimax RT2860" },
+	{ 0x1432, 0x7768, "Edimax RT2860" },
+	{ 0x1462, 0x891a, "MSI RT3090" },
+	{ 0x1814, 0x0201, "Ralink Technology RT2560" },
+	{ 0x1814, 0x0301, "Ralink Technology RT2561S" },
+	{ 0x1814, 0x0302, "Ralink Technology RT2561" },
+	{ 0x1814, 0x0401, "Ralink Technology RT2661" },
+	{ 0x1814, 0x0601, "Ralink Technology RT2860" },
+	{ 0x1814, 0x0681, "Ralink Technology RT2890" },
+	{ 0x1814, 0x0701, "Ralink Technology RT2760" },
+	{ 0x1814, 0x0781, "Ralink Technology RT2790" },
+	{ 0x1814, 0x3060, "Ralink Technology RT3060" },
+	{ 0x1814, 0x3062, "Ralink Technology RT3062" },
+	{ 0x1814, 0x3090, "Ralink Technology RT3090" },
+	{ 0x1814, 0x3091, "Ralink Technology RT3091" },
+	{ 0x1814, 0x3092, "Ralink Technology RT3092" },
+	{ 0x1814, 0x3390, "Ralink Technology RT3390" },
+	{ 0x1814, 0x3562, "Ralink Technology RT3562" },
+	{ 0x1814, 0x3592, "Ralink Technology RT3592" },
+	{ 0x1814, 0x3593, "Ralink Technology RT3593" },
+	{ 0x1814, 0x5360, "Ralink Technology RT5390" },
+	{ 0x1814, 0x5362, "Ralink Technology RT5392" },
+	{ 0x1814, 0x5390, "Ralink Technology RT5390" },
+	{ 0x1814, 0x5392, "Ralink Technology RT5392" },
+	{ 0x1814, 0x539a, "Ralink Technology RT5390" },
+	{ 0x1814, 0x539f, "Ralink Technology RT5390" },
+	{ 0x1a3b, 0x1059, "AWT RT2890" },
 	{ 0, 0, NULL }
 };
 
-static struct ral_opns {
+static const struct ral_opns {
 	int	(*attach)(device_t, int);
 	int	(*detach)(void *);
 	void	(*shutdown)(void *);
@@ -172,9 +143,7 @@ struct ral_pci_softc {
 		struct rt2860_softc sc_rt2860;
 	} u;
 
-	struct ral_opns		*sc_opns;
-	int			irq_rid;
-	int			mem_rid;
+	const struct ral_opns	*sc_opns;
 	struct resource		*irq;
 	struct resource		*mem;
 	void			*sc_ih;
@@ -214,47 +183,32 @@ ral_pci_probe(device_t dev)
 {
 	const struct ral_pci_ident *ident;
 
-	wlan_serialize_enter();
-
 	for (ident = ral_pci_ids; ident->name != NULL; ident++) {
 		if (pci_get_vendor(dev) == ident->vendor &&
 		    pci_get_device(dev) == ident->device) {
 			device_set_desc(dev, ident->name);
-			wlan_serialize_exit();
-			return 0;
+			return (BUS_PROBE_DEFAULT);
 		}
 	}
-	wlan_serialize_exit();
 	return ENXIO;
 }
-
-/* Base Address Register */
-#define RAL_PCI_BAR0	0x10
 
 static int
 ral_pci_attach(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
-	int error;
+	int count, error, rid;
 
-	wlan_serialize_enter();
-	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
-		device_printf(dev, "chip is in D%d power mode "
-		    "-- setting to D0\n", pci_get_powerstate(dev));
-		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
-	}
-
-	/* enable bus-mastering */
 	pci_enable_busmaster(dev);
 
 	switch (pci_get_device(dev)) {
-	case PCI_PRODUCT_RALINK_RT2560:
+	case 0x0201:
 		psc->sc_opns = &ral_rt2560_opns;
 		break;
-	case PCI_PRODUCT_RALINK_RT2561S:
-	case PCI_PRODUCT_RALINK_RT2561:
-	case PCI_PRODUCT_RALINK_RT2661:
+	case 0x0301:
+	case 0x0302:
+	case 0x0401:
 		psc->sc_opns = &ral_rt2661_opns;
 		break;
 	default:
@@ -262,12 +216,11 @@ ral_pci_attach(device_t dev)
 		break;
 	}
 
-	psc->mem_rid = RAL_PCI_BAR0;
-	psc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &psc->mem_rid,
+	rid = PCIR_BAR(0);
+	psc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
 	    RF_ACTIVE);
 	if (psc->mem == NULL) {
 		device_printf(dev, "could not allocate memory resource\n");
-		wlan_serialize_exit();
 		return ENXIO;
 	}
 
@@ -275,34 +228,40 @@ ral_pci_attach(device_t dev)
 	sc->sc_sh = rman_get_bushandle(psc->mem);
 	sc->sc_invalid = 1;
 	
-	psc->irq_rid = 0;
-	psc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &psc->irq_rid,
-	    RF_ACTIVE | RF_SHAREABLE);
+	rid = 0;
+	if (ral_msi_disable == 0) {
+		count = 1;
+		if (pci_alloc_msi(dev, &count) == 0)
+			rid = 1;
+	}
+	psc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
+	    (rid != 0 ? 0 : RF_SHAREABLE));
 	if (psc->irq == NULL) {
 		device_printf(dev, "could not allocate interrupt resource\n");
-		wlan_serialize_exit();
+		pci_release_msi(dev);
+		bus_release_resource(dev, SYS_RES_MEMORY,
+		    rman_get_rid(psc->mem), psc->mem);
 		return ENXIO;
 	}
 
 	error = (*psc->sc_opns->attach)(dev, pci_get_device(dev));
 	if (error != 0) {
-		wlan_serialize_exit();
+		(void)ral_pci_detach(dev);
 		return error;
 	}
 
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
-	error = bus_setup_intr(dev, psc->irq, INTR_MPSAFE,
-	    psc->sc_opns->intr, psc, &psc->sc_ih, &wlan_global_serializer);
+	error = bus_setup_intr(dev, psc->irq, INTR_TYPE_NET | INTR_MPSAFE,
+	    NULL, psc->sc_opns->intr, psc, &psc->sc_ih);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
-		wlan_serialize_exit();
+		(void)ral_pci_detach(dev);
 		return error;
 	}
 	sc->sc_invalid = 0;
 	
-	wlan_serialize_exit();
 	return 0;
 }
 
@@ -312,19 +271,21 @@ ral_pci_detach(device_t dev)
 	struct ral_pci_softc *psc = device_get_softc(dev);
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
 	
-	wlan_serialize_enter();
 	/* check if device was removed */
 	sc->sc_invalid = !bus_child_present(dev);
-	
+
+	if (psc->sc_ih != NULL)
+		bus_teardown_intr(dev, psc->irq, psc->sc_ih);
 	(*psc->sc_opns->detach)(psc);
 
 	bus_generic_detach(dev);
-	bus_teardown_intr(dev, psc->irq, psc->sc_ih);
-	bus_release_resource(dev, SYS_RES_IRQ, psc->irq_rid, psc->irq);
+	bus_release_resource(dev, SYS_RES_IRQ, rman_get_rid(psc->irq),
+	    psc->irq);
+	pci_release_msi(dev);
 
-	bus_release_resource(dev, SYS_RES_MEMORY, psc->mem_rid, psc->mem);
+	bus_release_resource(dev, SYS_RES_MEMORY, rman_get_rid(psc->mem),
+	    psc->mem);
 
-	wlan_serialize_exit();
 	return 0;
 }
 
@@ -333,9 +294,7 @@ ral_pci_shutdown(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
-	wlan_serialize_enter();
 	(*psc->sc_opns->shutdown)(psc);
-	wlan_serialize_exit();
 
 	return 0;
 }
@@ -345,9 +304,7 @@ ral_pci_suspend(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
-	wlan_serialize_enter();
 	(*psc->sc_opns->suspend)(psc);
-	wlan_serialize_exit();
 
 	return 0;
 }
@@ -357,9 +314,7 @@ ral_pci_resume(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 
-	wlan_serialize_enter();
 	(*psc->sc_opns->resume)(psc);
-	wlan_serialize_exit();
 
 	return 0;
 }
