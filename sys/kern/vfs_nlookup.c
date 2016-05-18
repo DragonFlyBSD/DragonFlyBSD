@@ -459,7 +459,11 @@ nlookup(struct nlookupdata *nd)
     int len;
     int dflags;
     int hit = 1;
+    int saveflag = nd->nl_flags;
+    boolean_t doretry = FALSE;
+    boolean_t inretry = FALSE;
 
+nlookup_start:
 #ifdef KTRACE
     if (KTRPOINT(nd->nl_td, KTR_NAMEI))
 	ktrnamei(nd->nl_td->td_lwp, nd->nl_path);
@@ -656,6 +660,10 @@ nlookup(struct nlookupdata *nd)
 			error = cache_resolve(&nch, nd->nl_cred);
 			if (error != EAGAIN &&
 			    (nch.ncp->nc_flag & NCF_DESTROYED) == 0) {
+				if (error == ESTALE) {
+				    error = ENOENT;
+				    doretry = TRUE;
+				}
 				break;
 			}
 			kprintf("[diagnostic] nlookup: relookup %*.*s\n",
@@ -709,6 +717,10 @@ nlookup(struct nlookupdata *nd)
 	if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
 	    hit = 0;
 	    error = cache_resolve(&nch, nd->nl_cred);
+	    if (error == ESTALE) {
+		error = ENOENT;
+		doretry = TRUE;
+	    }
 	    KKASSERT(error != EAGAIN);
 	} else {
 	    error = nch.ncp->nc_error;
@@ -948,6 +960,17 @@ double_break:
 
     if (nd->nl_flags & NLC_NCPISLOCKED)
 	KKASSERT(cache_lockstatus(&nd->nl_nch) > 0);
+
+    /*
+     * Retry the whole thing if doretry flag is set, but only once.
+     * autofs(5) may mount another filesystem under its root directory
+     * while resolving a path.
+     */
+    if (doretry && !inretry) {
+	inretry = TRUE;
+	nd->nl_flags = saveflag;
+	goto nlookup_start;
+    }
 
     /*
      * NOTE: If NLC_CREATE was set the ncp may represent a negative hit
