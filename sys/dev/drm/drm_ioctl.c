@@ -525,8 +525,14 @@ int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 EXPORT_SYMBOL(drm_ioctl_permit);
 #endif
 
-#define DRM_IOCTL_DEF(ioctl, _func, _flags) \
-	[DRM_IOCTL_NR(ioctl)] = {.cmd = ioctl, .func = _func, .flags = _flags, .cmd_drv = 0, .name = #ioctl}
+#define DRM_IOCTL_DEF(ioctl, _func, _flags)	\
+	[DRM_IOCTL_NR(ioctl)] = {		\
+		.cmd = ioctl,			\
+		.func = _func,			\
+		.flags = _flags,		\
+		.cmd_drv = 0,			\
+		.name = #ioctl			\
+	}
 
 /** Ioctl table */
 static const struct drm_ioctl_desc drm_ioctls[] = {
@@ -699,14 +705,14 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		is_driver_ioctl = 1;
 	}
 
-	DRM_DEBUG_IOCTL("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
-	    DRM_CURRENTPID, cmd, nr, (long)dev->dev,
-	    file_priv->authenticated);
+	DRM_DEBUG_IOCTL("pid=%d, dev=0x%lx, auth=%d, %s\n",
+		  DRM_CURRENTPID, (long)dev->dev,
+		  file_priv->authenticated, ioctl->name);
 
 	/* Do not trust userspace, use our own definition */
 	func = ioctl->func;
 
-	if (func == NULL) {
+	if (unlikely(func == NULL)) {
 		DRM_DEBUG_FIOCTL("no function\n");
 		return EINVAL;
 	}

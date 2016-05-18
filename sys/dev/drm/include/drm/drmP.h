@@ -405,8 +405,15 @@ struct drm_ioctl_desc {
  * Creates a driver or general drm_ioctl_desc array entry for the given
  * ioctl, for use by drm_ioctl().
  */
-#define DRM_IOCTL_DEF_DRV(ioctl, _func, _flags)			\
-	[DRM_IOCTL_NR(DRM_##ioctl)] = {.cmd = DRM_##ioctl, .func = _func, .flags = _flags, .cmd_drv = DRM_IOCTL_##ioctl}
+
+#define DRM_IOCTL_DEF_DRV(ioctl, _func, _flags)				\
+	[DRM_IOCTL_NR(DRM_##ioctl)] = {					\
+		.cmd = DRM_##ioctl,					\
+		.func = _func,						\
+		.flags = _flags,					\
+		.cmd_drv = DRM_IOCTL_##ioctl,				\
+		.name = #ioctl						\
+	}
 
 typedef struct drm_magic_entry {
 	struct list_head head;
