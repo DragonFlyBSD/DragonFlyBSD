@@ -4018,7 +4018,13 @@ intel_dp_get_dpcd(struct intel_dp *intel_dp)
 				    sizeof(intel_dp->dpcd)) < 0)
 		return false; /* aux transfer failed */
 
+#ifdef __DragonFly__
+	char dpcd_hex_dump[DP_RECEIVER_CAP_SIZE * 3];
+	DRM_DEBUG_KMS("DPCD: %s\n", hexncpy(intel_dp->dpcd, sizeof(intel_dp->dpcd),
+		      dpcd_hex_dump, sizeof(dpcd_hex_dump), " "));
+#else
 	DRM_DEBUG_KMS("DPCD: %*ph\n", (int) sizeof(intel_dp->dpcd), intel_dp->dpcd);
+#endif
 
 	if (intel_dp->dpcd[DP_DPCD_REV] == 0)
 		return false; /* DPCD not present */
