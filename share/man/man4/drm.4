@@ -23,7 +23,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd November 29, 2015
+.Dd May 20, 2016
 .Dt DRM 4
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@ drivers provide support for the following chipsets:
 .Bl -column -offset indent ".Pa radeonkms.ko" ".Sy Kernel Option" ".Sy Chipset"
 .It Sy Module Ta Sy "Kernel option" Ta Sy Chipset
 .It Pa i915.ko Ta i915 Ta Intel i915, i945, i965, G3x, G4x
-.It Pa radeonkms.ko Ta radeon Ta AMD Radeon
+.It Pa radeonkms.ko Ta radeon Ta AMD/ATI Radeon
 .El
 .Pp
 In most cases
@@ -69,7 +69,7 @@ If for some reason an
 is preferred, DRI must be enabled:
 .Bd -literal
 Section "DRI"
-        Group "wheel"
+        Group "video"
         Mode 0660
 EndSection
 .Ed
@@ -77,6 +77,17 @@ EndSection
 With KMS, DRI is always enabled since the
 .Nm
 is always required.
+.Pp
+To access
+.Pa /dev/dri/cardN
+devices user must be a member of the
+.Li video
+group.
+Users can be added to the
+.Li video
+group with
+.Xr pw 8
+groupmod option.
 .\".Pp
 .\"In order to use two graphics cards (an on-board and another
 .\"AGP/PCI/PCIe card) with DRI, a
@@ -103,6 +114,29 @@ Tunables can be set at the
 prompt before booting the kernel or stored in
 .Xr loader.conf 5 .
 .Bl -tag -width "xxxxxx"
+.It Va drm.debug
+Enable internal verbose debug messages, might slow down the machine.
+Debug categories are enabled by setting their bits:
+.Bl -tag -width "xxxxx"
+.It 0x001
+CORE - generic drm code
+.It 0x002
+DRIVER - vendor specific parts of the driver
+.It 0x004
+KMS - modesetting troubleshoot
+.It 0x008
+PRIME (no prime support)
+.It 0x010
+ATOMIC - atomic code used by i915
+.It 0x100
+PID - include pid number (useful in certain scenarios)
+.It 0x200
+FIOCTL - failed ioctls
+.It 0x400
+IOCTL - very spammy ioctl prints
+.It 0x800
+VBLANK - very spammy vblank prints
+.El
 .It Va drm.edid_firmware
 Load external EDID binary monitor data from firmware module.
 Useful if monitor is not sending appropiate EDID block, no video on
