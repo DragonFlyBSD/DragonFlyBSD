@@ -105,7 +105,11 @@ struct rt2560_vap {
 
 struct rt2560_softc {
 	struct ieee80211com	sc_ic;
+#if defined(__DragonFly__)
+	struct lock		sc_mtx;
+#else
 	struct mtx		sc_mtx;
+#endif
 	struct mbufq		sc_snd;
 	device_t		sc_dev;
 	bus_space_tag_t		sc_st;
@@ -159,6 +163,16 @@ void	rt2560_stop(void *);
 void	rt2560_resume(void *);
 void	rt2560_intr(void *);
 
+#if defined(__DragonFly__)
+
+#define RAL_LOCK(sc)		lockmgr(&(sc)->sc_mtx, LK_EXCLUSIVE)
+#define RAL_LOCK_ASSERT(sc)	KKASSERT(lockstatus(&(sc)->sc_mtx, curthread) == LK_EXCLUSIVE)
+#define RAL_UNLOCK(sc)		lockmgr(&(sc)->sc_mtx, LK_RELEASE)
+
+#else
+
 #define RAL_LOCK(sc)		mtx_lock(&(sc)->sc_mtx)
 #define RAL_LOCK_ASSERT(sc)	mtx_assert(&(sc)->sc_mtx, MA_OWNED)
 #define RAL_UNLOCK(sc)		mtx_unlock(&(sc)->sc_mtx)
+
+#endif

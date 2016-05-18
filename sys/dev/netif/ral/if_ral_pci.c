@@ -34,23 +34,27 @@ __FBSDID("$FreeBSD$");
 #include <sys/rman.h>
 #include <sys/socket.h>
 
+#if defined(__DragonFly__)
+/* empty */
+#else
 #include <machine/bus.h>
 #include <machine/resource.h>
+#endif
 
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/route.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_radiotap.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
-#include <dev/ral/rt2560var.h>
-#include <dev/ral/rt2661var.h>
-#include <dev/ral/rt2860var.h>
+#include <dev/netif/ral/rt2560var.h>
+#include <dev/netif/ral/rt2661var.h>
+#include <dev/netif/ral/rt2860var.h>
 
 MODULE_DEPEND(ral, pci, 1, 1, 1);
 MODULE_DEPEND(ral, firmware, 1, 1, 1);
@@ -147,6 +151,7 @@ struct ral_pci_softc {
 	struct resource		*irq;
 	struct resource		*mem;
 	void			*sc_ih;
+	int			sc_irq_type;
 };
 
 static int ral_pci_probe(device_t);
@@ -198,7 +203,23 @@ ral_pci_attach(device_t dev)
 {
 	struct ral_pci_softc *psc = device_get_softc(dev);
 	struct rt2560_softc *sc = &psc->u.sc_rt2560;
+#if defined(__DragonFly__)
+	int error, rid;
+#else
 	int count, error, rid;
+#endif
+#if defined(__DragonFly__)
+	int irq_flags;
+#endif
+
+#if defined(__DragonFly__)
+	/* still needed? XXX */
+	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
+		device_printf(dev, "chip is in D%d power mode "
+		    "-- setting to D0\n", pci_get_powerstate(dev));
+		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
+	}
+#endif
 
 	pci_enable_busmaster(dev);
 
@@ -228,6 +249,11 @@ ral_pci_attach(device_t dev)
 	sc->sc_sh = rman_get_bushandle(psc->mem);
 	sc->sc_invalid = 1;
 	
+#if defined(__DragonFly__)
+	psc->sc_irq_type = pci_alloc_1intr(dev, ~ral_msi_disable,
+					    &rid, &irq_flags);
+	psc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, irq_flags);
+#else
 	rid = 0;
 	if (ral_msi_disable == 0) {
 		count = 1;
@@ -236,6 +262,7 @@ ral_pci_attach(device_t dev)
 	}
 	psc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
 	    (rid != 0 ? 0 : RF_SHAREABLE));
+#endif
 	if (psc->irq == NULL) {
 		device_printf(dev, "could not allocate interrupt resource\n");
 		pci_release_msi(dev);
@@ -253,8 +280,13 @@ ral_pci_attach(device_t dev)
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
+#if defined(__DragonFly__)
+	error = bus_setup_intr(dev, psc->irq, INTR_MPSAFE,
+	    psc->sc_opns->intr, psc, &psc->sc_ih, &wlan_global_serializer);
+#else
 	error = bus_setup_intr(dev, psc->irq, INTR_TYPE_NET | INTR_MPSAFE,
 	    NULL, psc->sc_opns->intr, psc, &psc->sc_ih);
+#endif
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		(void)ral_pci_detach(dev);
@@ -279,6 +311,11 @@ ral_pci_detach(device_t dev)
 	(*psc->sc_opns->detach)(psc);
 
 	bus_generic_detach(dev);
+
+#if defined(__DragonFly__)
+	if (psc->sc_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
+#endif
 	bus_release_resource(dev, SYS_RES_IRQ, rman_get_rid(psc->irq),
 	    psc->irq);
 	pci_release_msi(dev);
