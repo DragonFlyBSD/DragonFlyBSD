@@ -25,11 +25,8 @@ __FBSDID("$FreeBSD$");
  * Driver for Realtek RTL8188CE-VAU/RTL8188CUS/RTL8188EU/RTL8188RU/RTL8192CU.
  */
 
-#if defined(__DragonFly__)
-#else
 #include "opt_wlan.h"
 #include "opt_urtwn.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/sockio.h>
