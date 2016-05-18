@@ -6384,7 +6384,7 @@ restart_ih:
 		return IRQ_NONE;
 
 	rptr = rdev->ih.rptr;
-	DRM_DEBUG("si_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
+	DRM_DEBUG_VBLANK("si_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
 
 	/* Order reading of wptr vs. reading of IH ring data */
 	rmb();
@@ -6412,13 +6412,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[0]))
 						radeon_crtc_handle_vblank(rdev, 0);
 					rdev->irq.stat_regs.evergreen.disp_int &= ~LB_D1_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D1 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D1 vblank\n");
 				}
 				break;
 			case 1: /* D1 vline */
 				if (rdev->irq.stat_regs.evergreen.disp_int & LB_D1_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.evergreen.disp_int &= ~LB_D1_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D1 vline\n");
+					DRM_DEBUG_VBLANK("IH: D1 vline\n");
 				}
 				break;
 			default:
@@ -6438,13 +6438,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[1]))
 						radeon_crtc_handle_vblank(rdev, 1);
 					rdev->irq.stat_regs.evergreen.disp_int_cont &= ~LB_D2_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D2 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D2 vblank\n");
 				}
 				break;
 			case 1: /* D2 vline */
 				if (rdev->irq.stat_regs.evergreen.disp_int_cont & LB_D2_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.evergreen.disp_int_cont &= ~LB_D2_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D2 vline\n");
+					DRM_DEBUG_VBLANK("IH: D2 vline\n");
 				}
 				break;
 			default:
@@ -6464,13 +6464,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[2]))
 						radeon_crtc_handle_vblank(rdev, 2);
 					rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~LB_D3_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D3 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D3 vblank\n");
 				}
 				break;
 			case 1: /* D3 vline */
 				if (rdev->irq.stat_regs.evergreen.disp_int_cont2 & LB_D3_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~LB_D3_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D3 vline\n");
+					DRM_DEBUG_VBLANK("IH: D3 vline\n");
 				}
 				break;
 			default:
@@ -6490,13 +6490,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[3]))
 						radeon_crtc_handle_vblank(rdev, 3);
 					rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~LB_D4_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D4 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D4 vblank\n");
 				}
 				break;
 			case 1: /* D4 vline */
 				if (rdev->irq.stat_regs.evergreen.disp_int_cont3 & LB_D4_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~LB_D4_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D4 vline\n");
+					DRM_DEBUG_VBLANK("IH: D4 vline\n");
 				}
 				break;
 			default:
@@ -6516,13 +6516,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[4]))
 						radeon_crtc_handle_vblank(rdev, 4);
 					rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~LB_D5_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D5 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D5 vblank\n");
 				}
 				break;
 			case 1: /* D5 vline */
 				if (rdev->irq.stat_regs.evergreen.disp_int_cont4 & LB_D5_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~LB_D5_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D5 vline\n");
+					DRM_DEBUG_VBLANK("IH: D5 vline\n");
 				}
 				break;
 			default:
@@ -6542,13 +6542,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[5]))
 						radeon_crtc_handle_vblank(rdev, 5);
 					rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~LB_D6_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D6 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D6 vblank\n");
 				}
 				break;
 			case 1: /* D6 vline */
 				if (rdev->irq.stat_regs.evergreen.disp_int_cont5 & LB_D6_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~LB_D6_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D6 vline\n");
+					DRM_DEBUG_VBLANK("IH: D6 vline\n");
 				}
 				break;
 			default:
@@ -6562,7 +6562,7 @@ restart_ih:
 		case 14: /* D4 page flip */
 		case 16: /* D5 page flip */
 		case 18: /* D6 page flip */
-			DRM_DEBUG("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
+			DRM_DEBUG_VBLANK("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, (src_id - 8) >> 1);
 			break;

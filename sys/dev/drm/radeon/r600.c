@@ -4024,7 +4024,7 @@ restart_ih:
 		return IRQ_NONE;
 
 	rptr = rdev->ih.rptr;
-	DRM_DEBUG("r600_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
+	DRM_DEBUG_VBLANK("r600_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
 
 	/* Order reading of wptr vs. reading of IH ring data */
 	rmb();
@@ -4051,13 +4051,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[0]))
 						radeon_crtc_handle_vblank(rdev, 0);
 					rdev->irq.stat_regs.r600.disp_int &= ~LB_D1_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D1 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D1 vblank\n");
 				}
 				break;
 			case 1: /* D1 vline */
 				if (rdev->irq.stat_regs.r600.disp_int & LB_D1_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.r600.disp_int &= ~LB_D1_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D1 vline\n");
+					DRM_DEBUG_VBLANK("IH: D1 vline\n");
 				}
 				break;
 			default:
@@ -4077,13 +4077,13 @@ restart_ih:
 					if (atomic_read(&rdev->irq.pflip[1]))
 						radeon_crtc_handle_vblank(rdev, 1);
 					rdev->irq.stat_regs.r600.disp_int &= ~LB_D2_VBLANK_INTERRUPT;
-					DRM_DEBUG("IH: D2 vblank\n");
+					DRM_DEBUG_VBLANK("IH: D2 vblank\n");
 				}
 				break;
 			case 1: /* D1 vline */
 				if (rdev->irq.stat_regs.r600.disp_int & LB_D2_VLINE_INTERRUPT) {
 					rdev->irq.stat_regs.r600.disp_int &= ~LB_D2_VLINE_INTERRUPT;
-					DRM_DEBUG("IH: D2 vline\n");
+					DRM_DEBUG_VBLANK("IH: D2 vline\n");
 				}
 				break;
 			default:
@@ -4092,12 +4092,12 @@ restart_ih:
 			}
 			break;
 		case 9: /* D1 pflip */
-			DRM_DEBUG("IH: D1 flip\n");
+			DRM_DEBUG_VBLANK("IH: D1 flip\n");
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, 0);
 			break;
 		case 11: /* D2 pflip */
-			DRM_DEBUG("IH: D2 flip\n");
+			DRM_DEBUG_VBLANK("IH: D2 flip\n");
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, 1);
 			break;
