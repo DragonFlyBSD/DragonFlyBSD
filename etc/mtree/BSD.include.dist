@@ -434,6 +434,8 @@
         ..
         smbfs
         ..
+        autofs
+        ..
         isofs
             cd9660
             ..

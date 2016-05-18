@@ -3,7 +3,7 @@
 
 SUBDIR=fifofs msdosfs portal nfs procfs puffs \
 	hpfs ntfs smbfs isofs mfs udf \
-	nullfs hammer tmpfs
+	nullfs hammer tmpfs autofs
 
 .if defined(WANT_HAMMER2)
 SUBDIR+= hammer2

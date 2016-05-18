@@ -261,6 +261,7 @@ struct mount {
 #define	MNT_NOEXEC	0x00000004	/* can't exec from filesystem */
 #define	MNT_NOSUID	0x00000008	/* don't honor setuid bits on fs */
 #define	MNT_NODEV	0x00000010	/* don't interpret special files */
+#define	MNT_AUTOMOUNTED	0x00000020	/* mounted by automountd(8) */
 #define	MNT_ASYNC	0x00000040	/* file system written asynchronously */
 #define	MNT_SUIDDIR	0x00100000	/* special handling of SUID on dirs */
 #define	MNT_SOFTDEP	0x00200000	/* soft updates being done */
@@ -304,7 +305,7 @@ struct mount {
 			MNT_ROOTFS	| MNT_NOATIME	| MNT_NOCLUSTERR| \
 			MNT_NOCLUSTERW	| MNT_SUIDDIR	| MNT_SOFTDEP	| \
 			MNT_IGNORE	| MNT_NOSYMFOLLOW | MNT_EXPUBLIC| \
-			MNT_TRIM)
+			MNT_TRIM	| MNT_AUTOMOUNTED)
 /*
  * External filesystem command modifier flags.
  * Unmount can use the MNT_FORCE flag.

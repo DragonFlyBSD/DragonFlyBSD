@@ -28,7 +28,7 @@
 .\"     @(#)mount.8	8.8 (Berkeley) 6/16/94
 .\" $FreeBSD: src/sbin/mount/mount.8,v 1.31.2.12 2003/02/23 21:17:42 trhodes Exp $
 .\"
-.Dd October 7, 2011
+.Dd May 15, 2016
 .Dt MOUNT 8
 .Os
 .Sh NAME
@@ -121,6 +121,11 @@ This is a
 flag to set,
 and should not be used unless you are prepared to recreate the file
 system should your system crash.
+.It Cm automounted
+This flag indicates that the file system was mounted by
+.Xr automountd 8 .
+Automounted file systems are automatically unmounted by
+.Xr autounmountd 8 .
 .It Cm current
 When used with the
 .Fl u
@@ -415,7 +420,10 @@ have permission to load the module.
 .Xr mount_tmpfs 8 ,
 .Xr mount_udf 8 ,
 .Xr sysctl 8 ,
-.Xr umount 8
+.Xr umount 8 ,
+.Xr automount 8 ,
+.Xr automountd 8 ,
+.Xr autounmountd 8 ,
 .Sh HISTORY
 A
 .Nm

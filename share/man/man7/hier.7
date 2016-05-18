@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd April 28, 2016
+.Dd May 15, 2016
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -146,6 +146,10 @@ and
 .It Pa /mnt/
 empty directory commonly used by
 system administrators as a temporary mount point
+.It Pa /net/
+automounted NFS shares;
+see
+.Xr auto_master 5
 .It Pa /pfs/
 pseudo file system directory (on
 .Xr hammer 5

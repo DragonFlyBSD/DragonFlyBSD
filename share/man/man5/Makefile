@@ -54,6 +54,7 @@ MAN=	acct.5 \
 	stab.5 \
 	sysctl.conf.5 \
 	tmpfs.5 \
+	autofs.5 \
 	utmp.5 \
 	utmpx.5 \
 	uuids.5 \

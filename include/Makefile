@@ -90,7 +90,8 @@ LSUBDIRS= \
 	netproto/key netproto/smb \
 	vfs/isofs/cd9660 vfs/puffs \
 	vfs/msdosfs vfs/nfs vfs/ntfs \
-	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2
+	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2 \
+	vfs/autofs
 
 # For SHARED=symlinks, bus/cam is a symlink, so cam/scsi is taken care of
 LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnet/*:Nnetgraph/*:Nnetgraph7/*}

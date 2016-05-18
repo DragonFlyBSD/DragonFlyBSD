@@ -12,6 +12,7 @@ SUBDIR= 802_11 \
 	arp \
 	asf \
 	authpf \
+	autofs \
 	bootparamd \
 	btconfig \
 	bthcid \
@@ -36,6 +37,7 @@ SUBDIR= 802_11 \
 	fdcontrol \
 	fdformat \
 	fdwrite \
+	fstyp \
 	ftp-proxy \
 	fwcontrol \
 	gifconfig \

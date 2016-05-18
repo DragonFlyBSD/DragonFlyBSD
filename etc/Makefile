@@ -21,7 +21,7 @@ BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 
 # Initial distribution files are installed read-write (644)
 #
-BIN1=	amd.map auth.conf \
+BIN1=	amd.map auth.conf auto_master \
 	crontab csh.cshrc csh.login csh.logout \
 	devtab dhclient.conf dm.conf dntpd.conf \
 	ftpusers group \
@@ -160,6 +160,8 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	chmod 1777 ${DESTDIR}/var/run/sem
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
 	cd ${UPGRADE_SRCDIR}/devd; ${MAKE} install
+	mkdir -p ${DESTDIR}/etc/autofs
+	cd ${UPGRADE_SRCDIR}/autofs; ${MAKE} install
 	# "../share/termcap/make etc-termcap" expanded inline here:
 	${LN} -fs /usr/share/misc/termcap ${DESTDIR}/etc/termcap
 	# "../usr.sbin/rmt/make etc-rmt" expanded inline here:
@@ -266,6 +268,7 @@ distribution:
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
 	cd ${.CURDIR}/devd; ${MAKE} install
+	cd ${.CURDIR}/autofs; ${MAKE} install
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
 	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
 	cd ${.CURDIR}; \

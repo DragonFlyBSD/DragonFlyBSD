@@ -57,6 +57,7 @@ struct mntopt {
 #define MOPT_NOCLUSTERR		{ "clusterr",	1, MNT_NOCLUSTERR, 0 }
 #define MOPT_NOCLUSTERW		{ "clusterw",	1, MNT_NOCLUSTERW, 0 }
 #define MOPT_SUIDDIR		{ "suiddir",	0, MNT_SUIDDIR, 0 }
+#define MOPT_AUTOMOUNTED	{ "automounted",0, MNT_AUTOMOUNTED, 0 }
 #define MOPT_IGNORE		{ "ignore",	0, MNT_IGNORE, 0 }
 
 /* Control flags. */
@@ -90,6 +91,7 @@ struct mntopt {
 	MOPT_RDONLY,							\
 	MOPT_NOCLUSTERR,						\
 	MOPT_NOCLUSTERW,						\
+	MOPT_AUTOMOUNTED,						\
 	MOPT_IGNORE
 
 extern int getmnt_silent;

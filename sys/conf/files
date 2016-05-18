@@ -1773,6 +1773,9 @@ vfs/tmpfs/tmpfs_fifoops.c	optional tmpfs
 vfs/tmpfs/tmpfs_subr.c		optional tmpfs
 vfs/tmpfs/tmpfs_vfsops.c	optional tmpfs
 vfs/tmpfs/tmpfs_vnops.c		optional tmpfs
+vfs/autofs/autofs.c		optional autofs
+vfs/autofs/autofs_vfsops.c	optional autofs
+vfs/autofs/autofs_vnops.c	optional autofs
 #
 vm/default_pager.c		standard
 vm/device_pager.c		standard
