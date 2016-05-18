@@ -34,9 +34,7 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_core.c 299541 2016-05-12 16:14:16Z ad
  * the Sonics Silicon Backplane driver.
  */
 
-#if defined(__DragonFly__)
 #include "opt_siba.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -77,7 +75,6 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_core.c 299541 2016-05-12 16:14:16Z ad
 #include <dev/siba/sibavar.h>
 #endif
 
-#ifdef SIBA_DEBUG
 enum {
 	SIBA_DEBUG_SCAN		= 0x00000001,	/* scan */
 	SIBA_DEBUG_PMU		= 0x00000002,	/* PMU */
@@ -87,12 +84,14 @@ enum {
 	SIBA_DEBUG_CORE		= 0x00000020,	/* handling cores */
 	SIBA_DEBUG_ANY		= 0xffffffff
 };
-#define DPRINTF(siba, m, fmt, ...) do {			\
-	if (siba->siba_debug & (m))			\
-		kprintf(fmt, __VA_ARGS__);		\
+
+#ifdef SIBA_DEBUG
+#define DPRINTF(siba, m,  ...) do {				\
+	if (siba->siba_debug & (m))				\
+		device_printf(siba->siba_dev, __VA_ARGS__);	\
 } while (0)
 #else
-#define DPRINTF(siba, m, fmt, ...) do { (void) siba; } while (0)
+#define DPRINTF(siba, m, ...) do { (void) siba; } while (0)
 #endif
 #define	N(a)			(sizeof(a) / sizeof(a[0]))
 
