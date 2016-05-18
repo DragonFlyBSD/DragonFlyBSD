@@ -155,6 +155,19 @@ struct dma_buf_attachment;
  * ATOMIC: used in the atomic code.
  *	  This is the category used by the DRM_DEBUG_ATOMIC() macro.
  *
+ *
+ * PID: used as modifier to include PID number in messages.
+ *	  This is the category used by the all debug macros.
+ *
+ * FIOCTL: used in failed ioctl debugging.
+ *	  This is the category used by the DRM_DEBUG_FIOCTL() macro.
+ *
+ * IOCTL: used in ioctl debugging.
+ *	  This is the category used by the DRM_DEBUG_IOCTL() macro.
+ *
+ * VBLANK: used in vblank debugging.
+ *	  This is the category used by the DRM_DEBUG_VBLANK() macro.
+ *
  * Enabling verbose debug messages is done through the drm.debug parameter,
  * each category being enabled by a bit.
  *
@@ -165,19 +178,30 @@ struct dma_buf_attachment;
  * drm.debug=0xf will enable all messages
  *
  * An interesting feature is that it's possible to enable verbose logging at
- * run-time by echoing the debug value in its sysfs node:
- *   # echo 0xf > /sys/module/drm/parameters/debug
+ * run-time by using hw.drm.debug sysctl variable:
+ *   # sysctl hw.drm.debug=0xfff
  */
-#define DRM_UT_CORE 		0x01
+#define DRM_UT_CORE		0x01
 #define DRM_UT_DRIVER		0x02
 #define DRM_UT_KMS		0x04
 #define DRM_UT_PRIME		0x08
 #define DRM_UT_ATOMIC		0x10
+/* Extra DragonFly debug categories */
+#ifdef __DragonFly__
+#define DRM_UT_RES6		0x20	/* reserved for future expansion */
+#define DRM_UT_RES7		0x40	/* reserved for future expansion */
+#define DRM_UT_RES8		0x80	/* reserved for future expansion */
+#define DRM_UT_PID		0x100
+#define DRM_UT_FIOCTL		0x200
+#define DRM_UT_IOCTL		0x400
+#define DRM_UT_VBLANK		0x800
+#endif
 
+extern __printflike(2, 3)
 void drm_ut_debug_printk(const char *function_name,
 			 const char *format, ...);
-
-void drm_err(const char *format, ...);
+extern __printflike(2, 3)
+void drm_err(const char *func, const char *format, ...);
 
 /***********************************************************************/
 /** \name DRM template customization defaults */
@@ -210,9 +234,8 @@ void drm_err(const char *format, ...);
  * \param fmt printf() like format string.
  * \param arg arguments
  */
-#define DRM_ERROR(fmt, ...) \
-	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
-	    DRM_CURRENTPID, __func__ , ##__VA_ARGS__)
+#define DRM_ERROR(fmt, ...)				\
+	drm_err(__func__, fmt, ##__VA_ARGS__)
 
 /**
  * Rate limited error output.  Like DRM_ERROR() but won't flood the log.
@@ -220,8 +243,16 @@ void drm_err(const char *format, ...);
  * \param fmt printf() like format string.
  * \param arg arguments
  */
+#define DRM_ERROR_RATELIMITED(fmt, ...)				\
+({									\
+	static struct krate krate_derr = { .freq = 1, .count = -16 };	\
+									\
+	krateprintf(&krate_derr, "error: [" DRM_NAME ":%s] *ERROR* "	\
+	    fmt, __func__, ##__VA_ARGS__);				\
+})
 
-#define DRM_INFO(fmt, ...)  kprintf("info: [" DRM_NAME "] " fmt , ##__VA_ARGS__)
+#define DRM_INFO(fmt, ...)				\
+	printk(KERN_INFO "[" DRM_NAME "] " fmt, ##__VA_ARGS__)
 
 #define DRM_INFO_ONCE(fmt, ...)				\
 	printk_once(KERN_INFO "[" DRM_NAME "] " fmt, ##__VA_ARGS__)
@@ -232,41 +263,50 @@ void drm_err(const char *format, ...);
  * \param fmt printf() like format string.
  * \param arg arguments
  */
+#define DRM_DEBUG(fmt, args...)						\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_CORE))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 
-#define	DRM_DEBUGBITS_DEBUG		0x1
-#define	DRM_DEBUGBITS_KMS		0x2
-#define	DRM_DEBUGBITS_FAILED_IOCTL	0x4
-#define	DRM_DEBUGBITS_VERBOSE		0x8
-
-#define DRM_DEBUG(fmt, ...) do {					\
-	if ((drm_debug & DRM_DEBUGBITS_DEBUG) != 0)		\
-		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
-#define DRM_DEBUG_VERBOSE(fmt, ...) do {				\
-	if ((drm_debug & DRM_DEBUGBITS_VERBOSE) != 0)		\
-		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
-#define DRM_DEBUG_KMS(fmt, ...) do {					\
-	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
-		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
-#define DRM_DEBUG_DRIVER(fmt, ...) do {					\
-	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
-		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
-			__func__ , ##__VA_ARGS__);			\
-} while (0)
-
+#define DRM_DEBUG_DRIVER(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_DRIVER))		\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
+#define DRM_DEBUG_KMS(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_KMS))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
+#define DRM_DEBUG_PRIME(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_PRIME))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
 #define DRM_DEBUG_ATOMIC(fmt, args...)					\
 	do {								\
 		if (unlikely(drm_debug & DRM_UT_ATOMIC))		\
 			drm_ut_debug_printk(__func__, fmt, ##args);	\
 	} while (0)
+
+#ifdef __DragonFly__
+#define DRM_DEBUG_FIOCTL(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_FIOCTL))		\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
+#define DRM_DEBUG_IOCTL(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_IOCTL))			\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
+#define DRM_DEBUG_VBLANK(fmt, args...)					\
+	do {								\
+		if (unlikely(drm_debug & DRM_UT_VBLANK))		\
+			drm_ut_debug_printk(__func__, fmt, ##args);	\
+	} while (0)
+#endif
 
 /*@}*/
 

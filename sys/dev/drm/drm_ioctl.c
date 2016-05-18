@@ -683,7 +683,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		return ENODEV;
 
 	if (IOCGROUP(cmd) != DRM_IOCTL_BASE) {
-		DRM_DEBUG("Bad ioctl group 0x%x\n", (int)IOCGROUP(cmd));
+		DRM_DEBUG_FIOCTL("Bad ioctl group 0x%x\n", (int)IOCGROUP(cmd));
 		return EINVAL;
 	}
 
@@ -699,7 +699,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		is_driver_ioctl = 1;
 	}
 
-	DRM_DEBUG_VERBOSE("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
+	DRM_DEBUG_IOCTL("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
 	    DRM_CURRENTPID, cmd, nr, (long)dev->dev,
 	    file_priv->authenticated);
 
@@ -707,7 +707,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	func = ioctl->func;
 
 	if (func == NULL) {
-		DRM_DEBUG("no function\n");
+		DRM_DEBUG_FIOCTL("no function\n");
 		return EINVAL;
 	}
 
@@ -732,13 +732,13 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	}
 
 	if (!ioctl)
-		DRM_DEBUG("invalid ioctl: pid=%d, dev=0x%lx, auth=%d, cmd=0x%02lx, nr=0x%02x\n",
+		DRM_DEBUG_FIOCTL("invalid ioctl: pid=%d, dev=0x%lx, auth=%d, cmd=0x%02lx, nr=0x%02x\n",
 			  DRM_CURRENTPID,
 			  (long)dev->dev,
 			  file_priv->authenticated, cmd, nr);
 
 	if (retcode)
-		DRM_DEBUG("ret = %d\n", retcode);
+		DRM_DEBUG_FIOCTL("ret = %d\n", retcode);
 	return retcode;
 }
 EXPORT_SYMBOL(drm_ioctl);

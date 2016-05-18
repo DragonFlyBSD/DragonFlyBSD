@@ -33,7 +33,22 @@
 #include "drm_legacy.h"
 #include "drm_internal.h"
 
+/* Provides three levels of debug: off, minimal, verbose */
+#ifdef __DragonFly__
+#if DRM_DEBUG_DEFAULT_ON == 1
+#define DRM_DEBUGBITS_ON (DRM_UT_CORE | DRM_UT_DRIVER | DRM_UT_KMS |	\
+			  DRM_UT_PRIME| DRM_UT_ATOMIC | DRM_UT_FIOCTL)
+#elif DRM_DEBUG_DEFAULT_ON == 2
+#define DRM_DEBUGBITS_ON (DRM_UT_CORE | DRM_UT_DRIVER | DRM_UT_KMS |	\
+			  DRM_UT_PRIME| DRM_UT_ATOMIC | DRM_UT_FIOCTL |	\
+			  DRM_UT_PID  | DRM_UT_IOCTL  | DRM_UT_VBLANK)
+#else
+#define DRM_DEBUGBITS_ON (0x0)
+#endif
+unsigned int drm_debug = DRM_DEBUGBITS_ON;	/* defaults to 0 */
+#else
 unsigned int drm_debug = 0;	/* 1 to enable debug output */
+#endif /* __DragonFly__ */
 EXPORT_SYMBOL(drm_debug);
 
 MODULE_AUTHOR(CORE_AUTHOR);
@@ -55,42 +70,32 @@ struct class *drm_class;
 static struct dentry *drm_debugfs_root;
 #endif
 
-void drm_err(const char *format, ...)
+void drm_err(const char *func, const char *format, ...)
 {
-#if 0
-	struct va_format vaf;
-	va_list args;
-	int r;
+	__va_list args;
 
-	va_start(args, format);
+	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* ", DRM_CURRENTPID, func);
 
-	vaf.fmt = format;
-	vaf.va = &args;
-
-	printk(KERN_ERR "[" DRM_NAME ":%pf] *ERROR* %pV",
-	       __builtin_return_address(0), &vaf);
-
-	va_end(args);
-
-	return r;
-#endif
+	__va_start(args, format);
+	kvprintf(format, args);
+	__va_end(args);
 }
 EXPORT_SYMBOL(drm_err);
 
 void drm_ut_debug_printk(const char *function_name, const char *format, ...)
 {
-#if 0
-	struct va_format vaf;
-	va_list args;
+	__va_list args;
 
-	va_start(args, format);
-	vaf.fmt = format;
-	vaf.va = &args;
+	if (unlikely(drm_debug & DRM_UT_PID)) {
+		kprintf("[" DRM_NAME ":pid%d:%s] ",
+		    DRM_CURRENTPID, function_name);
+	} else {
+		kprintf("[" DRM_NAME ":%s] ", function_name);
+	}
 
-	printk(KERN_DEBUG "[" DRM_NAME ":%s] %pV", function_name, &vaf);
-
-	va_end(args);
-#endif
+	__va_start(args, format);
+	kvprintf(format, args);
+	__va_end(args);
 }
 EXPORT_SYMBOL(drm_ut_debug_printk);
 
@@ -869,16 +874,6 @@ module_exit(drm_core_exit);
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 
-#if DRM_DEBUG_DEFAULT_ON == 1
-#define DRM_DEBUGBITS_ON (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS | \
-    DRM_DEBUGBITS_FAILED_IOCTL)
-#elif DRM_DEBUG_DEFAULT_ON == 2
-#define DRM_DEBUGBITS_ON (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS | \
-    DRM_DEBUGBITS_FAILED_IOCTL | DRM_DEBUGBITS_VERBOSE)
-#else
-#define DRM_DEBUGBITS_ON (0x0)
-#endif
-
 static int drm_load(struct drm_device *dev);
 drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);
@@ -1239,6 +1234,7 @@ drm_mmap_single(struct dev_mmap_single_args *ap)
 	}
 }
 
+/* XXX broken code */
 #if DRM_LINUX
 
 #include <sys/sysproto.h>

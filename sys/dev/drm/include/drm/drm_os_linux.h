@@ -8,6 +8,22 @@
 #include <sys/systm.h>
 #include <sys/serialize.h>
 
+/* Handle the DRM options from kernel config. */
+#ifdef __DragonFly__
+#include "opt_drm.h"
+
+#ifdef DRM_DEBUG
+#  if DRM_DEBUG>1
+#    define DRM_DEBUG_DEFAULT_ON 2
+#  else
+#    define DRM_DEBUG_DEFAULT_ON 1
+#  endif
+#undef DRM_DEBUG
+/* XXX disable DRM_LINUX for now to unbreak LINT64 */
+#undef DRM_LINUX
+#endif /* DRM_DEBUG */
+#endif
+
 /** Current process ID */
 #define DRM_CURRENTPID		(curproc != NULL ? curproc->p_pid : -1)
 #define DRM_UDELAY(d)		DELAY(d)
