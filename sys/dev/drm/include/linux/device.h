@@ -29,6 +29,8 @@
 
 #include <linux/lockdep.h>
 
+#define	dev_dbg(dev, fmt, ...)						\
+	device_printf((dev), "debug: " fmt, ## __VA_ARGS__)
 #define	dev_err(dev, fmt, ...)						\
 	device_printf((dev), "error: " fmt, ## __VA_ARGS__)
 #define	dev_warn(dev, fmt, ...)						\

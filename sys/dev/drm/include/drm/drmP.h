@@ -322,12 +322,6 @@ void vm_phys_fictitious_unreg_range(vm_paddr_t start, vm_paddr_t end);
 vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 
 
-#define	dev_dbg(dev, fmt, ...) do {					\
-	if ((drm_debug& DRM_DEBUGBITS_KMS) != 0) {			\
-		device_printf((dev), "debug: " fmt, ## __VA_ARGS__);	\
-	}								\
-} while (0)
-
 typedef struct drm_pci_id_list
 {
 	int vendor;

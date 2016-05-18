@@ -28,6 +28,7 @@
 #define _LINUX_IO_H_
 
 #include <linux/kernel.h>
+#include <linux/bug.h>
 #include <asm/io.h>
 #include <asm/page.h>
 

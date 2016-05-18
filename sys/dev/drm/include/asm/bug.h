@@ -27,6 +27,17 @@
 #ifndef _ASM_BUG_H_
 #define _ASM_BUG_H_
 
+#include <sys/param.h>
+#include <linux/kernel.h>
+
+#define BUG()	do				\
+{						\
+	panic("BUG in %s at %s:%u",		\
+		__func__, __FILE__, __LINE__);	\
+} while (0)
+
+#define BUG_ON(condition)	do { if (condition) BUG(); } while(0)
+
 #define _WARN_STR(x)	#x
 
 #define WARN_ON(condition) ({						\
@@ -37,6 +48,15 @@
 	unlikely(__ret);						\
 })
 
+#ifndef WARN
+#define WARN(condition, format...) ({					\
+	int __ret_warn_on = !!(condition);				\
+	if (unlikely(__ret_warn_on))					\
+		pr_warning(format);					\
+	unlikely(__ret_warn_on);					\
+})
+#endif
+
 #define WARN_ON_ONCE(condition) ({					\
 	static int __warned;						\
 	int __ret = !!(condition);					\
@@ -44,6 +64,17 @@
 		kprintf("WARNING %s failed at %s:%d\n",			\
 		    _WARN_STR(condition), __FILE__, __LINE__);		\
 		__warned = 1;						\
+	}								\
+	unlikely(__ret);						\
+})
+
+#define WARN_ONCE(condition, format...) ({				\
+	static bool __warned_once;					\
+	int __ret = !!(condition);					\
+									\
+	if ((condition) && !__warned_once) {				\
+		WARN(condition, format);				\
+		__warned_once = true;					\
 	}								\
 	unlikely(__ret);						\
 })

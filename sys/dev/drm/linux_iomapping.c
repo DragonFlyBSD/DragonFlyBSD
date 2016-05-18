@@ -30,6 +30,7 @@
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/bug.h>
 #include <asm/page.h>
 #include <asm/io.h>
 

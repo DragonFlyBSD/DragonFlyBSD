@@ -43,98 +43,13 @@
 
 #define U64_MAX		((u64)~0ULL)
 
-#define KERN_CONT       ""
-#define	KERN_EMERG	"<0>"
-#define	KERN_ALERT	"<1>"
-#define	KERN_CRIT	"<2>"
-#define	KERN_ERR	"<3>"
-#define	KERN_WARNING	"<4>"
-#define	KERN_NOTICE	"<5>"
-#define	KERN_INFO	"<6>"
-#define	KERN_DEBUG	"<7>"
-
-#define BUG()	do				\
-{						\
-	panic("BUG in %s at %s:%u",		\
-		__func__, __FILE__, __LINE__);	\
-} while (0)
-
-#define BUG_ON(condition)	do { if (condition) BUG(); } while(0)
-
 #undef	ALIGN
 #define	ALIGN(x, y)		roundup2((x), (y))
 #define	IS_ALIGNED(x, y)	(((x) & ((y) - 1)) == 0)
 #define	DIV_ROUND_UP		howmany
 #define DIV_ROUND_UP_ULL(X, N)	DIV_ROUND_UP((unsigned long long)(X), (N))
 
-#define	printk(X...)		kprintf(X)
-#define	pr_debug(fmt, ...)	printk(KERN_DEBUG # fmt, ##__VA_ARGS__)
 #define udelay(t)       	DELAY(t)
-
-#ifndef pr_fmt
-#define pr_fmt(fmt) fmt
-#endif
-
-/*
- * Print a one-time message (analogous to WARN_ONCE() et al):
- */
-#define printk_once(x...) ({                    \
-        static bool __print_once;               \
-                                                \
-        if (!__print_once) {                    \
-                __print_once = true;            \
-                printk(x);                      \
-        }                                       \
-})
-
-
-
-#define pr_emerg(fmt, ...) \
-        printk(KERN_EMERG pr_fmt(fmt), ##__VA_ARGS__)
-#define pr_alert(fmt, ...) \
-        printk(KERN_ALERT pr_fmt(fmt), ##__VA_ARGS__)
-#define pr_crit(fmt, ...) \
-        printk(KERN_CRIT pr_fmt(fmt), ##__VA_ARGS__)
-#define pr_err(fmt, ...) \
-        kprintf(KERN_ERR pr_fmt(fmt), ##__VA_ARGS__)
-#define pr_warning(fmt, ...) \
-        printk(KERN_WARNING pr_fmt(fmt), ##__VA_ARGS__)
-#define pr_warn pr_warning
-#define pr_notice(fmt, ...) \
-        printk(KERN_NOTICE pr_fmt(fmt), ##__VA_ARGS__)
-#define pr_info(fmt, ...) \
-        printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
-#define pr_cont(fmt, ...) \
-        printk(KERN_CONT fmt, ##__VA_ARGS__)
-
-/* pr_devel() should produce zero code unless DEBUG is defined */
-#ifdef DEBUG
-#define pr_devel(fmt, ...) \
-        printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
-#else
-#define pr_devel(fmt, ...) \
-        ({ if (0) printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__); 0; })
-#endif
-
-#ifndef WARN
-#define WARN(condition, format...) ({                                   \
-        int __ret_warn_on = !!(condition);                              \
-        if (unlikely(__ret_warn_on))                                    \
-                pr_warning(format);                                     \
-        unlikely(__ret_warn_on);                                        \
-})
-#endif
-
-#define WARN_ONCE(condition, format...)	({	\
-	static bool __warned_once;		\
-	int __ret = !!(condition);		\
-						\
-	if ((condition) && !__warned_once) {	\
-		WARN(condition, format);	\
-		__warned_once = true;		\
-	}					\
-	unlikely(__ret);			\
-})
 
 #define container_of(ptr, type, member)				\
 ({								\
