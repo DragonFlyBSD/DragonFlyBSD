@@ -34,6 +34,15 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/* BSD specific gem helpers. */
+#define	DRM_GEM_MAPPING_MASK	(3ULL << 62)
+#define	DRM_GEM_MAPPING_KEY	(2ULL << 62) /* Non-canonical address form */
+#define	DRM_GEM_MAX_IDX		0x3fffff
+#define	DRM_GEM_MAPPING_IDX(o)	(((o) >> 40) & DRM_GEM_MAX_IDX)
+#define	DRM_GEM_MAPPING_OFF(i)	(((uint64_t)(i)) << 40)
+#define	DRM_GEM_MAPPING_MAPOFF(o) \
+    ((o) & ~(DRM_GEM_MAPPING_OFF(DRM_GEM_MAX_IDX) | DRM_GEM_MAPPING_KEY))
+
 /**
  * This structure defines the drm_mm memory object, which will be used by the
  * DRM for its buffer objects.

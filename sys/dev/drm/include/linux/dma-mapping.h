@@ -33,6 +33,8 @@
 #include <linux/dma-direction.h>
 #include <linux/scatterlist.h>
 
+#define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) - 1)
+
 static inline dma_addr_t
 dma_map_page(struct device *dev, struct vm_page *page,
     unsigned long offset, size_t size, enum dma_data_direction direction)

@@ -373,7 +373,7 @@ drm_setclientcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
  *
  * Sets the requested interface version
  */
-int drm_setversion(struct drm_device *dev, void *data, struct drm_file *file_priv)
+static int drm_setversion(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_set_version *sv = data;
 	struct drm_set_version ver;

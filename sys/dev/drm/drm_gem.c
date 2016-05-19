@@ -781,18 +781,3 @@ drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset, vm_size_t size
 	*obj_res = vm_obj;
 	return (0);
 }
-
-void
-drm_gem_pager_dtr(void *handle)
-{
-	struct drm_gem_object *obj;
-	struct drm_device *dev;
-
-	obj = handle;
-	dev = obj->dev;
-
-	DRM_LOCK(dev);
-	drm_gem_free_mmap_offset(obj);
-	drm_gem_object_unreference(obj);
-	DRM_UNLOCK(dev);
-}

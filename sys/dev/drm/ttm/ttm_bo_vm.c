@@ -120,7 +120,7 @@ ttm_bo_vm_fault(vm_object_t vm_obj, vm_ooffset_t offset,
 	} else
 		oldm = NULL;
 retry:
-	VM_OBJECT_WUNLOCK(vm_obj);
+	VM_OBJECT_UNLOCK(vm_obj);
 	m = NULL;
 
 reserve:
@@ -229,7 +229,7 @@ reserve:
 		    VM_MEMATTR_WRITE_BACK : ttm_io_prot(bo->mem.placement));
 	}
 
-	VM_OBJECT_WLOCK(vm_obj);
+	VM_OBJECT_LOCK(vm_obj);
 	if ((m->flags & PG_BUSY) != 0) {
 #if 0
 		vm_page_sleep(m, "ttmpbs");
@@ -262,11 +262,11 @@ out_unlock1:
 	return (retval);
 
 out_io_unlock:
-	VM_OBJECT_WLOCK(vm_obj);
+	VM_OBJECT_LOCK(vm_obj);
 	goto out_io_unlock1;
 
 out_unlock:
-	VM_OBJECT_WLOCK(vm_obj);
+	VM_OBJECT_LOCK(vm_obj);
 	goto out_unlock1;
 }
 
@@ -366,14 +366,14 @@ ttm_bo_release_mmap(struct ttm_buffer_object *bo)
 	if (vm_obj == NULL)
 		return;
 
-	VM_OBJECT_WLOCK(vm_obj);
+	VM_OBJECT_LOCK(vm_obj);
 	for (i = 0; i < bo->num_pages; i++) {
 		m = vm_page_lookup_busy_wait(vm_obj, i, TRUE, "ttm_unm");
 		if (m == NULL)
 			continue;
 		cdev_pager_free_page(vm_obj, m);
 	}
-	VM_OBJECT_WUNLOCK(vm_obj);
+	VM_OBJECT_UNLOCK(vm_obj);
 
 	vm_object_deallocate(vm_obj);
 }
