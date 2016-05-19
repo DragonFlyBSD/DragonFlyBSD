@@ -268,7 +268,6 @@ device		wlan_wep	# 802.11 WEP support
 # mode (the factory default). If you set the switches on your ISA
 # card for a manually chosen I/O address and IRQ, you must specify
 # those parameters here.
-device		an
 #device		ath		# Atheros NICs
 #device		ath_hal		# Atheros Hardware Access Layer
 options 	AH_SUPPORT_AR5416	# enable AR5416 tx/rx descriptors

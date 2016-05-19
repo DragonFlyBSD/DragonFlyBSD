@@ -35,7 +35,6 @@ MAN=	aac.4 \
 	amdsbwd.4 \
 	amdsmb.4 \
 	amr.4 \
-	an.4 \
 	aperf.4 \
 	aps.4 \
 	arcmsr.4 \
@@ -417,7 +416,6 @@ MLINKS+=age.4 if_age.4
 MLINKS+=agp.4 agpgart.4
 MLINKS+=alc.4 if_alc.4
 MLINKS+=ale.4 if_ale.4
-MLINKS+=an.4 if_an.4
 MLINKS+=ath.4 if_ath.4
 MLINKS+=aue.4 if_aue.4
 MLINKS+=axe.4 if_axe.4

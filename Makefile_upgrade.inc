@@ -3087,6 +3087,8 @@ TO_REMOVE+=/usr/lib/priv/profile/libprivate_tinfo.a
 TO_REMOVE+=/usr/lib/priv/profile/libprivate_tinfow.a
 TO_REMOVE+=/usr/share/terminfo/s/screen-bce.mlterm
 TO_REMOVE+=/boot/loader.sym
+TO_REMOVE+=/usr/share/man/man4/an.4.gz
+TO_REMOVE+=/usr/share/man/man4/if_an.4.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
