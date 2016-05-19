@@ -66,7 +66,7 @@ int drm_sysctl_init(struct drm_device *dev)
 	struct sysctl_oid *top;
 	int i, unit;
 
-	info = kmalloc(sizeof *info, M_DRM, M_WAITOK | M_ZERO);
+	info = kzalloc(sizeof *info, GFP_KERNEL);
 	if ( !info )
 		return 1;
 	dev->sysctl = info;
@@ -108,7 +108,7 @@ int drm_sysctl_cleanup(struct drm_device *dev)
 	int error;
 
 	error = sysctl_ctx_free(&dev->sysctl->ctx);
-	drm_free(dev->sysctl, M_DRM);
+	kfree(dev->sysctl);
 	dev->sysctl = NULL;
 	if (dev->driver->sysctl_cleanup != NULL)
 		dev->driver->sysctl_cleanup(dev);
@@ -252,7 +252,7 @@ static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS
 
 	SYSCTL_OUT(req, "", 1);
 done:
-	drm_free(templists, M_DRM);
+	kfree(templists);
 	return retcode;
 }
 
@@ -297,6 +297,6 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 
 	SYSCTL_OUT(req, "", 1);
 done:
-	drm_free(tempprivs, M_DRM);
+	kfree(tempprivs);
 	return retcode;
 }

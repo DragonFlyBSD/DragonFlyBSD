@@ -108,12 +108,11 @@ static int ttm_bo_man_init(struct ttm_mem_type_manager *man,
 {
 	struct ttm_range_manager *rman;
 
-	rman = kmalloc(sizeof(*rman), M_DRM, M_ZERO | M_WAITOK);
+	rman = kzalloc(sizeof(*rman), GFP_KERNEL);
 	if (!rman)
 		return -ENOMEM;
 
 	drm_mm_init(&rman->mm, 0, p_size);
-
 	lockinit(&rman->lock, "ttmrman", 0, LK_CANRECURSE);
 	man->priv = rman;
 	return 0;

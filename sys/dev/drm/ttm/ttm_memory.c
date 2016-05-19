@@ -52,7 +52,7 @@ static void ttm_mem_zone_kobj_release(struct ttm_mem_zone *zone)
 
 	pr_info("Zone %7s: Used memory at exit: %llu kiB\n",
 		zone->name, (unsigned long long)zone->used_mem >> 10);
-	drm_free(zone, M_DRM);
+	kfree(zone);
 }
 
 #if 0
@@ -194,7 +194,7 @@ static int ttm_mem_init_kernel_zone(struct ttm_mem_global *glob,
 {
 	struct ttm_mem_zone *zone;
 
-	zone = kmalloc(sizeof(*zone), M_DRM, M_WAITOK | M_ZERO);
+	zone = kzalloc(sizeof(*zone), GFP_KERNEL);
 
 	zone->name = "kernel";
 	zone->zone_mem = mem;
@@ -214,14 +214,14 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 {
 	struct ttm_mem_zone *zone;
 
-	zone = kmalloc(sizeof(*zone), M_DRM, M_WAITOK | M_ZERO);
+	zone = kzalloc(sizeof(*zone), GFP_KERNEL);
 
 	/**
 	 * No special dma32 zone needed.
 	 */
 
 	if ((physmem * PAGE_SIZE) <= ((uint64_t) 1ULL << 32)) {
-		drm_free(zone, M_DRM);
+		kfree(zone);
 		return 0;
 	}
 

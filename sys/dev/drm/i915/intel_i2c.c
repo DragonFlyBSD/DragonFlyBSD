@@ -969,13 +969,13 @@ intel_teardown_gmbus_m(struct drm_device *dev, int m)
 
 	dev_priv = dev->dev_private;
 
-	drm_free(dev_priv->gmbus, M_DRM);
+	kfree(dev_priv->gmbus);
 	dev_priv->gmbus = NULL;
-	drm_free(dev_priv->bbbus, M_DRM);
+	kfree(dev_priv->bbbus);
 	dev_priv->bbbus = NULL;
-	drm_free(dev_priv->gmbus_bridge, M_DRM);
+	kfree(dev_priv->gmbus_bridge);
 	dev_priv->gmbus_bridge = NULL;
-	drm_free(dev_priv->bbbus_bridge, M_DRM);
+	kfree(dev_priv->bbbus_bridge);
 	dev_priv->bbbus_bridge = NULL;
 	lockuninit(&dev_priv->gmbus_mutex);
 }

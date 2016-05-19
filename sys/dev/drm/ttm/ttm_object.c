@@ -125,7 +125,7 @@ static void ttm_object_file_destroy(struct kref *kref)
 	struct ttm_object_file *tfile =
 		container_of(kref, struct ttm_object_file, refcount);
 
-	drm_free(tfile, M_DRM);
+	kfree(tfile);
 }
 
 
@@ -306,7 +306,7 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 		BUG_ON(ret != -EINVAL);
 
 		ttm_mem_global_free(mem_glob, sizeof(*ref));
-		drm_free(ref, M_DRM);
+		kfree(ref);
 	}
 
 	return ret;
@@ -332,7 +332,7 @@ static void ttm_ref_object_release(struct kref *kref)
 
 	ttm_base_object_unref(&ref->obj);
 	ttm_mem_global_free(mem_glob, sizeof(*ref));
-	drm_free(ref, M_DRM);
+	kfree(ref);
 	lockmgr(&tfile->lock, LK_EXCLUSIVE);
 }
 
@@ -416,7 +416,7 @@ out_err:
 	for (i = 0; i < j; ++i)
 		drm_ht_remove(&tfile->ref_hash[i]);
 
-	drm_free(tfile, M_DRM);
+	kfree(tfile);
 
 	return NULL;
 }
@@ -441,7 +441,7 @@ struct ttm_object_device *ttm_object_device_init(struct ttm_mem_global
 	if (likely(ret == 0))
 		return tdev;
 
-	drm_free(tdev, M_DRM);
+	kfree(tdev);
 	return NULL;
 }
 EXPORT_SYMBOL(ttm_object_device_init);
@@ -456,6 +456,6 @@ void ttm_object_device_release(struct ttm_object_device **p_tdev)
 	drm_ht_remove(&tdev->object_hash);
 	lockmgr(&tdev->object_lock, LK_RELEASE);
 
-	drm_free(tdev, M_DRM);
+	kfree(tdev);
 }
 EXPORT_SYMBOL(ttm_object_device_release);

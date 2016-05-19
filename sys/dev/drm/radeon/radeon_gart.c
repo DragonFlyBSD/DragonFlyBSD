@@ -367,8 +367,8 @@ void radeon_gart_fini(struct radeon_device *rdev)
 		radeon_gart_unbind(rdev, 0, rdev->gart.num_cpu_pages);
 	}
 	rdev->gart.ready = false;
-	drm_free(rdev->gart.pages, M_DRM);
-	drm_free(rdev->gart.pages_addr, M_DRM);
+	kfree(rdev->gart.pages);
+	kfree(rdev->gart.pages_addr);
 	rdev->gart.pages = NULL;
 	rdev->gart.pages_addr = NULL;
 

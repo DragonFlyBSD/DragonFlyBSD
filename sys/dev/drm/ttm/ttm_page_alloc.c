@@ -168,8 +168,7 @@ ttm_caching_state_to_vm(enum ttm_caching_state cstate)
 
 static void ttm_pool_kobj_release(struct ttm_pool_manager *m)
 {
-
-	drm_free(m, M_DRM);
+	kfree(m);
 }
 
 #if 0
@@ -799,7 +798,7 @@ int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 
 	pr_info("Initializing pool allocator\n");
 
-	_manager = kmalloc(sizeof(*_manager), M_DRM, M_WAITOK | M_ZERO);
+	_manager = kzalloc(sizeof(*_manager), GFP_KERNEL);
 
 	ttm_page_pool_init_locked(&_manager->wc_pool, 0, "wc");
 	ttm_page_pool_init_locked(&_manager->uc_pool, 0, "uc");

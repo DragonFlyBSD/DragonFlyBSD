@@ -234,7 +234,7 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 
 	handle = drm_agp_allocate_memory(pages, type);
 	if (handle == NULL) {
-		drm_free(entry, M_DRM);
+		kfree(entry);
 		return -ENOMEM;
 	}
 	

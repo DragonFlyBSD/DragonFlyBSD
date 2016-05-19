@@ -96,7 +96,7 @@ static int drm_setunique(struct drm_device *dev, void *data,
 		return -ENOMEM;
 
 	if (copy_from_user(busid, u->unique, u->unique_len)) {
-		drm_free(busid, M_DRM);
+		kfree(busid);
 		return -EFAULT;
 	}
 	busid[u->unique_len] = '\0';
@@ -106,7 +106,7 @@ static int drm_setunique(struct drm_device *dev, void *data,
 	 */
 	ret = ksscanf(busid, "PCI:%d:%d:%d", &bus, &slot, &func);
 	if (ret != 3) {
-		drm_free(busid, M_DRM);
+		kfree(busid);
 		return -EINVAL;
 	}
 	domain = bus >> 8;
@@ -116,7 +116,7 @@ static int drm_setunique(struct drm_device *dev, void *data,
 	    (bus != dev->pci_bus) ||
 	    (slot != dev->pci_slot) ||
 	    (func != dev->pci_func)) {
-		drm_free(busid, M_DRM);
+		kfree(busid);
 		return -EINVAL;
 	}
 

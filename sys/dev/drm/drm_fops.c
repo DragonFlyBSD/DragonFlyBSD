@@ -165,7 +165,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		/* shared code returns -errno */
 		retcode = -dev->driver->open(dev, priv);
 		if (retcode != 0) {
-			drm_free(priv, M_DRM);
+			kfree(priv);
 			DRM_UNLOCK(dev);
 			return retcode;
 		}
@@ -208,7 +208,7 @@ int drm_lastclose(struct drm_device * dev)
 	mutex_lock(&dev->struct_mutex);
 
 	if (dev->unique) {
-		drm_free(dev->unique, M_DRM);
+		kfree(dev->unique);
 		dev->unique = NULL;
 		dev->unique_len = 0;
 	}
@@ -293,7 +293,7 @@ int drm_release(device_t kdev)
 	}
 
 	if (dev->agp) {
-		drm_free(dev->agp, M_DRM);
+		kfree(dev->agp);
 		dev->agp = NULL;
 	}
 

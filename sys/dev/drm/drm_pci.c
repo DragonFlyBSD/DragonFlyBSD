@@ -78,7 +78,7 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 	    0,		/* flags */
 	    &dmah->tag);
 	if (ret != 0) {
-		drm_free(dmah, M_DRM);
+		kfree(dmah);
 		return NULL;
 	}
 
@@ -86,7 +86,7 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO | BUS_DMA_NOCACHE, &dmah->map);
 	if (ret != 0) {
 		bus_dma_tag_destroy(dmah->tag);
-		drm_free(dmah, M_DRM);
+		kfree(dmah);
 		return NULL;
 	}
 
@@ -95,7 +95,7 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 	if (ret != 0) {
 		bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 		bus_dma_tag_destroy(dmah->tag);
-		drm_free(dmah, M_DRM);
+		kfree(dmah);
 		return NULL;
 	}
 

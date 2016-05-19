@@ -1395,7 +1395,7 @@ int ttm_bo_create(struct ttm_bo_device *bdev,
 	int ret;
 
 	*p_bo = NULL;
-	bo = kmalloc(sizeof(*bo), M_DRM, M_WAITOK | M_ZERO);
+	bo = kzalloc(sizeof(*bo), GFP_KERNEL);
 	if (unlikely(bo == NULL))
 		return -ENOMEM;
 
