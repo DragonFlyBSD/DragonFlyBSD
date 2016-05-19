@@ -1071,16 +1071,9 @@ static int drm_load(struct drm_device *dev)
 
 	INIT_LIST_HEAD(&dev->vblank_event_list);
 
-	if (drm_core_has_AGP(dev)) {
+	if (drm_core_check_feature(dev, DRIVER_USE_AGP)) {
 		if (drm_pci_device_is_agp(dev))
 			dev->agp = drm_agp_init(dev);
-		if (drm_core_check_feature(dev, DRIVER_REQUIRE_AGP) &&
-		    dev->agp == NULL) {
-			DRM_ERROR("Card isn't AGP, or couldn't initialize "
-			    "AGP.\n");
-			retcode = ENOMEM;
-			goto error;
-		}
 		if (dev->agp != NULL && dev->agp->agp_info.ai_aperture_base != 0) {
 			if (drm_mtrr_add(dev->agp->agp_info.ai_aperture_base,
 			    dev->agp->agp_info.ai_aperture_size, DRM_MTRR_WC) == 0)
@@ -1120,7 +1113,6 @@ static int drm_load(struct drm_device *dev)
 
 error1:
 	drm_gem_destroy(dev);
-error:
 	drm_sysctl_cleanup(dev);
 	DRM_LOCK(dev);
 	drm_lastclose(dev);

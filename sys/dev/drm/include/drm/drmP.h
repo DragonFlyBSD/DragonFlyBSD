@@ -209,7 +209,6 @@ void drm_err(const char *func, const char *format, ...);
 
 /* driver capabilities and requirements mask */
 #define DRIVER_USE_AGP			0x1
-#define DRIVER_REQUIRE_AGP		0x2
 #define DRIVER_PCI_DMA			0x8
 #define DRIVER_SG			0x10
 #define DRIVER_HAVE_DMA			0x20
@@ -416,22 +415,6 @@ typedef struct drm_magic_entry {
 	struct drm_file	       *priv;
 	struct drm_magic_entry *next;
 } drm_magic_entry_t;
-
-typedef struct drm_magic_head {
-	struct drm_magic_entry *head;
-	struct drm_magic_entry *tail;
-} drm_magic_head_t;
-
-/** bufs is one longer than it has to be */
-struct drm_waitlist {
-	int count;			/**< Number of possible buffers */
-	struct drm_buf **bufs;		/**< List of pointers to buffers */
-	struct drm_buf **rp;			/**< Read pointer */
-	struct drm_buf **wp;			/**< Write pointer */
-	struct drm_buf **end;		/**< End pointer */
-	struct spinlock *read_lock;
-	struct spinlock *write_lock;
-};
 
 /* Event queued up for userspace to read */
 struct drm_pending_event {
@@ -1067,15 +1050,6 @@ static inline bool drm_is_master(const struct drm_file *file)
 /******************************************************************/
 /** \name Internal function definitions */
 /*@{*/
-
-#if __OS_HAS_AGP
-static inline int drm_core_has_AGP(struct drm_device *dev)
-{
-	return drm_core_check_feature(dev, DRIVER_USE_AGP);
-}
-#else
-#define drm_core_has_AGP(dev) (0)
-#endif
 
 				/* Driver support (drm_drv.h) */
 extern int drm_ioctl_permit(u32 flags, struct drm_file *file_priv);

@@ -142,6 +142,11 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 		}
 		break;
 	case _DRM_AGP:
+
+		if (!dev->agp) {
+			kfree(map);
+			return -EINVAL;
+		}
 		/*valid = 0;*/
 		/* In some cases (i810 driver), user space may have already
 		 * added the AGP base itself, because dev->agp->base previously
@@ -1156,7 +1161,7 @@ int drm_legacy_mapbufs(struct drm_device *dev, void *data,
 	if (request->count < dma->buf_count)
 		goto done;
 
-	if ((drm_core_has_AGP(dev) && (dma->flags & _DRM_DMA_USE_AGP)) ||
+	if ((dev->agp && (dma->flags & _DRM_DMA_USE_AGP)) ||
 	    (drm_core_check_feature(dev, DRIVER_SG) &&
 	    (dma->flags & _DRM_DMA_USE_SG))) {
 		drm_local_map_t *map = dev->agp_buffer_map;
