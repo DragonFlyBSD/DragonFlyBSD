@@ -1,4 +1,4 @@
-/*	$FreeBSD: src/sys/dev/iwi/if_iwivar.h,v 1.21 2009/05/21 15:30:59 sam Exp $	*/
+/*	$FreeBSD: head/sys/dev/iwi/if_iwivar.h 290407 2015-11-05 17:58:18Z avos $	*/
 
 /*-
  * Copyright (c) 2004, 2005
@@ -125,13 +125,23 @@ struct iwi_vap {
 #define	IWI_VAP(vap)	((struct iwi_vap *)(vap))
 
 struct iwi_softc {
-	struct ifnet		*sc_ifp;
-	void			(*sc_node_free)(struct ieee80211_node *);
+#if defined(__DragonFly__)
+	struct lock		sc_lock;
+#else
+	struct mtx		sc_mtx;
+#endif
+	struct ieee80211com	sc_ic;
+	struct mbufq		sc_snd;
 	device_t		sc_dev;
 
-	struct lock		sc_lock;
+	void			(*sc_node_free)(struct ieee80211_node *);
+
 	uint8_t			sc_mcast[IEEE80211_ADDR_LEN];
-	struct devfs_bitmap		sc_unr;
+#if defined(__DragonFly__)
+	struct devfs_bitmap	sc_unr;
+#else
+	struct unrhdr		*sc_unr;
+#endif
 
 	uint32_t		flags;
 #define IWI_FLAG_FW_INITED	(1 << 0)
@@ -153,8 +163,6 @@ struct iwi_softc {
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
 	void 			*sc_ih;
-	int			mem_rid;
-	int			irq_rid;
 
 	/*
 	 * The card needs external firmware images to work, which is made of a
@@ -192,9 +200,10 @@ struct iwi_softc {
 	struct task		sc_radiofftask;	/* radio off processing */
 	struct task		sc_restarttask;	/* restart adapter processing */
 	struct task		sc_disassoctask;
-	struct task		sc_wmetask;	/* set wme parameters */
+	struct task		sc_monitortask;
 
-	unsigned int		sc_softled : 1,	/* enable LED gpio status */
+	unsigned int		sc_running : 1,	/* initialized */
+				sc_softled : 1,	/* enable LED gpio status */
 				sc_ledstate: 1,	/* LED on/off state */
 				sc_blinking: 1;	/* LED blink operation active */
 	u_int			sc_nictype;	/* NIC type from EEPROM */
@@ -206,9 +215,9 @@ struct iwi_softc {
 	u_int8_t		sc_txrate;	/* current tx rate for LED */
 	u_int8_t		sc_txrix;
 	u_int16_t		sc_ledoff;	/* off time for current blink */
-	struct callout		sc_ledtimer_callout;	/* led off timer */
-	struct callout		sc_wdtimer_callout;	/* watchdog timer */
-	struct callout		sc_rftimer_callout;	/* rfkill timer */
+	struct callout		sc_ledtimer;	/* led off timer */
+	struct callout		sc_wdtimer;	/* watchdog timer */
+	struct callout		sc_rftimer;	/* rfkill timer */
 
 	int			sc_tx_timer;
 	int			sc_state_timer;	/* firmware state timer */
@@ -216,6 +225,9 @@ struct iwi_softc {
 
 	struct iwi_rx_radiotap_header sc_rxtap;
 	struct iwi_tx_radiotap_header sc_txtap;
+
+	struct iwi_notif_link_quality sc_linkqual;
+	int			sc_linkqual_valid;
 };
 
 #define	IWI_STATE_BEGIN(_sc, _state)	do {			\
@@ -236,3 +248,42 @@ struct iwi_softc {
 	wakeup(_sc);						\
 	_sc->sc_state_timer = 0;				\
 } while (0)
+
+/*
+ * NB.: This models the only instance of async locking in iwi_init_locked
+ *	and must be kept in sync.
+ */
+#if defined(__DragonFly__)
+
+#define	IWI_LOCK_INIT(sc) \
+	lockinit(&(sc)->sc_lock, device_get_nameunit((sc)->sc_dev), 0, 0)
+#define	IWI_LOCK_DESTROY(sc)	lockuninit(&(sc)->sc_lock)
+#define	IWI_LOCK_DECL	int	__waslocked = 0
+#define IWI_LOCK_ASSERT(sc)	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) == LK_EXCLUSIVE)
+#define IWI_LOCK(sc)	do {				\
+	if (!(__waslocked = (lockstatus(&(sc)->sc_lock, curthread) == LK_EXCLUSIVE)))	\
+		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE);	\
+} while (0)
+#define IWI_UNLOCK(sc)	do {			\
+	if (!__waslocked)			\
+		lockmgr(&(sc)->sc_lock, LK_RELEASE);	\
+} while (0)
+
+#else
+
+#define	IWI_LOCK_INIT(sc) \
+	mtx_init(&(sc)->sc_mtx, device_get_nameunit((sc)->sc_dev), \
+	    MTX_NETWORK_LOCK, MTX_DEF)
+#define	IWI_LOCK_DESTROY(sc)	mtx_destroy(&(sc)->sc_mtx)
+#define	IWI_LOCK_DECL	int	__waslocked = 0
+#define IWI_LOCK_ASSERT(sc)	mtx_assert(&(sc)->sc_mtx, MA_OWNED)
+#define IWI_LOCK(sc)	do {				\
+	if (!(__waslocked = mtx_owned(&(sc)->sc_mtx)))	\
+		mtx_lock(&(sc)->sc_mtx);		\
+} while (0)
+#define IWI_UNLOCK(sc)	do {			\
+	if (!__waslocked)			\
+		mtx_unlock(&(sc)->sc_mtx);	\
+} while (0)
+
+#endif
