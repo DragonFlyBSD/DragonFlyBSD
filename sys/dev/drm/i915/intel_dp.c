@@ -1960,8 +1960,15 @@ void intel_edp_panel_vdd_on(struct intel_dp *intel_dp)
 	vdd = edp_panel_vdd_on(intel_dp);
 	pps_unlock(intel_dp);
 
+#if 1
+/* XXX: limit dmesg spam to 16 warnings instead of 137, where is the bug? */
+	if(!vdd)
+		DRM_ERROR_RATELIMITED("eDP port %c VDD already requested on\n",
+		    port_name(dp_to_dig_port(intel_dp)->port));
+#else
 	I915_STATE_WARN(!vdd, "eDP port %c VDD already requested on\n",
 	     port_name(dp_to_dig_port(intel_dp)->port));
+#endif
 }
 
 static void edp_panel_vdd_off_sync(struct intel_dp *intel_dp)
