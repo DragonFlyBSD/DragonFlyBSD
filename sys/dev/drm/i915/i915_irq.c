@@ -2426,6 +2426,7 @@ static int i915_enable_vblank(struct drm_device *dev, int pipe)
 	if (INTEL_INFO(dev)->gen >= 4)
 		i915_enable_pipestat(dev_priv, pipe,
 				     PIPE_START_VBLANK_INTERRUPT_STATUS);
+	else
 		i915_enable_pipestat(dev_priv, pipe,
 				     PIPE_VBLANK_INTERRUPT_STATUS);
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
