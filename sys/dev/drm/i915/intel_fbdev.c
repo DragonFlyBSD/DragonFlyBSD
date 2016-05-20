@@ -812,6 +812,12 @@ void intel_fbdev_restore_mode(struct drm_device *dev)
 
 	fb_helper = &ifbdev->helper;
 
+	/* XXX: avoid dead-locking the Xorg on exit */
+	if (mutex_is_locked(&dev->mode_config.mutex)) {
+		DRM_ERROR("fubar while trying to restore kms_console\n");
+		return; /* drm_modeset_unlock_all(dev) ? */
+	}
+
 	ret = drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
 	if (ret) {
 		DRM_DEBUG("failed to restore crtc mode\n");
