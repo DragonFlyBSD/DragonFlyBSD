@@ -29,12 +29,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pci.c,v 1.26 2010/12/19 11:14:34 tijl Exp $
+ * $FreeBSD: head/sys/dev/if_ndis/if_ndis_pci.c 292411 2015-12-17 21:01:19Z glebius $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
@@ -42,31 +43,56 @@
 #include <sys/lock.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_arp.h>
 #include <net/if_media.h>
+#include <net/ethernet.h>
 
+#if !defined(__DragonFly__)
+#include <machine/bus.h>
+#include <machine/resource.h>
+#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 
+#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
+#else
+#include <net80211/ieee80211_var.h>
+#endif
 
+#if defined(__DragonFly__)
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
+#else
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
+#include <dev/usb/usb.h>
+#include <dev/usb/usbdi.h>
+#endif
 
+#if defined(__DragonFly__)
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/cfg_var.h>
 #include <emulation/ndis/resource_var.h>
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/ndis_var.h>
 #include <dev/netif/ndis/if_ndisvar.h>
+#else
+#include <compat/ndis/pe_var.h>
+#include <compat/ndis/cfg_var.h>
+#include <compat/ndis/resource_var.h>
+#include <compat/ndis/ntoskrnl_var.h>
+#include <compat/ndis/ndis_var.h>
+#include <dev/if_ndis/if_ndisvar.h>
+#endif
 
 MODULE_DEPEND(if_ndis, pci, 1, 1, 1);
 
 static int ndis_probe_pci	(device_t);
 static int ndis_attach_pci	(device_t);
-static int ndis_detach_pci	(device_t);
 static struct resource_list *ndis_get_resource_list
 				(device_t, device_t);
 static int ndis_devcompare	(interface_type,
@@ -82,7 +108,7 @@ static device_method_t ndis_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		ndis_probe_pci),
 	DEVMETHOD(device_attach,	ndis_attach_pci),
-	DEVMETHOD(device_detach,	ndis_detach_pci),
+	DEVMETHOD(device_detach,	ndis_detach),
 	DEVMETHOD(device_shutdown,	ndis_shutdown),
 	DEVMETHOD(device_suspend,	ndis_suspend),
 	DEVMETHOD(device_resume,	ndis_resume),
@@ -101,8 +127,7 @@ static driver_t ndis_driver = {
 
 static devclass_t ndis_devclass;
 
-DRIVER_MODULE(if_ndis, pci, ndis_driver, ndis_devclass, ndisdrv_modevent, NULL);
-DRIVER_MODULE(if_ndis, cardbus, ndis_driver, ndis_devclass, ndisdrv_modevent, NULL);
+DRIVER_MODULE(if_ndis, pci, ndis_driver, ndis_devclass, ndisdrv_modevent, 0);
 
 static int
 ndis_devcompare(interface_type bustype, struct ndis_pci_type *t, device_t dev)
@@ -164,7 +189,7 @@ static int
 ndis_attach_pci(device_t dev)
 {
 	struct ndis_softc	*sc;
-	int			error = 0, rid;
+	int			unit, error = 0, rid;
 	struct ndis_pci_type	*t;
 	int			devidx = 0, defidx = 0;
 	struct resource_list	*rl;
@@ -173,16 +198,13 @@ ndis_attach_pci(device_t dev)
 	uint16_t		vid, did;
 	uint32_t		subsys;
 
-	wlan_serialize_enter();
-
 	sc = device_get_softc(dev);
+	unit = device_get_unit(dev);
 	sc->ndis_dev = dev;
 
 	db = windrv_match((matchfuncptr)ndis_devcompare, dev);
-	if (db == NULL) {
-		wlan_serialize_exit();
+	if (db == NULL)
 		return (ENXIO);
-	}
 	sc->ndis_dobj = db->windrv_object;
 	sc->ndis_regvals = db->windrv_regvals;
 
@@ -293,7 +315,7 @@ ndis_attach_pci(device_t dev)
 			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
                         BUS_SPACE_MAXADDR,	/* highaddr */
 			NULL, NULL,		/* filter, filterarg */
-			MAXBSIZE, NDIS_NSEG_NEW,/* maxsize, nsegments */
+			DFLTPHYS, NDIS_NSEG_NEW,/* maxsize, nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
 			BUS_DMA_ALLOCNOW,       /* flags */
 			&sc->ndis_parent_tag);
@@ -331,18 +353,6 @@ ndis_attach_pci(device_t dev)
 	error = ndis_attach(dev);
 
 fail:
-	wlan_serialize_exit();
-	return(error);
-}
-
-static int
-ndis_detach_pci(device_t dev)
-{
-	int error = 0;
-
-	wlan_serialize_enter();
-	error = ndis_detach(dev);
-	wlan_serialize_exit();
 	return(error);
 }
 

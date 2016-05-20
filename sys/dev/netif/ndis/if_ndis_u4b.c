@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/if_ndis/if_ndis_usb.c,v 1.26 2012/11/17 01:51:54 svnexp Exp $
+ * $FreeBSD: head/sys/dev/if_ndis/if_ndis_usb.c 257176 2013-10-26 17:58:36Z glebius $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -50,11 +51,22 @@
 #include <net/bpf.h>
 
 #include <sys/bus.h>
+#if defined(__DragonFly__)
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
+#else
+#include <machine/bus.h>
+#include <dev/usb/usb.h>
+#include <dev/usb/usbdi.h>
+#endif
 
+#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
+#else
+#include <net80211/ieee80211_var.h>
+#endif
 
+#if defined(__DragonFly__)
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/cfg_var.h>
 #include <emulation/ndis/resource_var.h>
@@ -62,6 +74,15 @@
 #include <emulation/ndis/ndis_var.h>
 #include <emulation/ndis/u4bd_var.h>
 #include <dev/netif/ndis/if_ndisvar.h>
+#else
+#include <compat/ndis/pe_var.h>
+#include <compat/ndis/cfg_var.h>
+#include <compat/ndis/resource_var.h>
+#include <compat/ndis/ntoskrnl_var.h>
+#include <compat/ndis/ndis_var.h>
+#include <compat/ndis/usbd_var.h>
+#include <dev/if_ndis/if_ndisvar.h>
+#endif
 
 SYSCTL_NODE(_hw, OID_AUTO, ndisusb, CTLFLAG_RD, 0, "NDIS USB driver parameters");
 
@@ -166,7 +187,11 @@ ndisusb_attach(device_t self)
 	db = uaa->driver_ivar;
 	sc = (struct ndis_softc *)dummy;
 	sc->ndis_dev = self;
+#if defined(__DragonFly__)
 	lockinit(&sc->ndisusb_lock, "NDIS USB", 0, LK_CANRECURSE);
+#else
+	mtx_init(&sc->ndisusb_mtx, "NDIS USB", MTX_NETWORK_LOCK, MTX_DEF);
+#endif
 	sc->ndis_dobj = db->windrv_object;
 	sc->ndis_regvals = db->windrv_regvals;
 	sc->ndis_iftype = PNPBus;
@@ -219,7 +244,11 @@ ndisusb_detach(device_t self)
 
 	(void)ndis_detach(self);
 
+#if defined(__DragonFly__)
 	lockuninit(&sc->ndisusb_lock);
+#else
+	mtx_destroy(&sc->ndisusb_mtx);
+#endif
 	return (0);
 }
 

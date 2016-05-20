@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.21 2012/11/17 01:51:54 svnexp Exp $
+ * $FreeBSD: head/sys/dev/if_ndis/if_ndis_pccard.c 296137 2016-02-27 03:38:01Z jhibbits $
  */
 
 #include <sys/ctype.h>
@@ -43,32 +43,59 @@
 #include <sys/lock.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_arp.h>
 #include <net/if_media.h>
+#include <net/ethernet.h>
 
+#if !defined(__DragonFly__)
+#include <machine/bus.h>
+#include <machine/resource.h>
+#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include <netproto/802_11/ieee80211_var.h>
-
+#if defined(__DragonFly__)
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
+#else
+#include <dev/usb/usb.h>
+#include <dev/usb/usbdi.h>
+#endif
 
+#if defined(__DragonFly__)
+#include <netproto/802_11/ieee80211_var.h>
+#else
+#include <net80211/ieee80211_var.h>
+#endif
+
+#if defined(__DragonFly__)
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/cfg_var.h>
 #include <emulation/ndis/resource_var.h>
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/ndis_var.h>
 #include <dev/netif/ndis/if_ndisvar.h>
+#else
+#include <compat/ndis/pe_var.h>
+#include <compat/ndis/cfg_var.h>
+#include <compat/ndis/resource_var.h>
+#include <compat/ndis/ntoskrnl_var.h>
+#include <compat/ndis/ndis_var.h>
+#include <dev/if_ndis/if_ndisvar.h>
+#endif
 
+#if defined(__DragonFly__)
 #include <bus/pccard/pccardvar.h>
+#else
+#include <dev/pccard/pccardvar.h>
+#endif
 #include "card_if.h"
 
 MODULE_DEPEND(if_ndis, pccard, 1, 1, 1);
 
 static int ndis_probe_pccard	(device_t);
 static int ndis_attach_pccard	(device_t);
-static int ndis_detach_pccard	(device_t);
 static struct resource_list *ndis_get_resource_list
 				(device_t, device_t);
 static int ndis_devcompare	(interface_type,
@@ -86,7 +113,7 @@ static device_method_t ndis_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		ndis_probe_pccard),
 	DEVMETHOD(device_attach,	ndis_attach_pccard),
-	DEVMETHOD(device_detach,	ndis_detach_pccard),
+	DEVMETHOD(device_detach,	ndis_detach),
 	DEVMETHOD(device_shutdown,	ndis_shutdown),
 	DEVMETHOD(device_suspend,	ndis_suspend),
 	DEVMETHOD(device_resume,	ndis_resume),
@@ -118,12 +145,24 @@ ndis_devcompare(interface_type bustype, struct ndis_pccard_type *t,
     device_t dev)
 {
 	const char		*prodstr, *vendstr;
+#if !defined(__DragonFly__)
+	int			error;
+#endif
 
 	if (bustype != PCMCIABus)
 		return(FALSE);
 
+#if defined(__DragonFly__)
 	prodstr = pccard_get_product_str(dev);
 	vendstr = pccard_get_vendor_str(dev);
+#else
+	error = pccard_get_product_str(dev, &prodstr);
+	if (error)
+		return(FALSE);
+	error = pccard_get_vendor_str(dev, &vendstr);
+	if (error)
+		return(FALSE);
+#endif
 
 	while(t->ndis_name != NULL) {
 		if (strcasecmp(vendstr, t->ndis_vid) == 0 &&
@@ -170,21 +209,19 @@ static int
 ndis_attach_pccard(device_t dev)
 {
 	struct ndis_softc	*sc;
-	int			error = 0, rid;
+	int			unit, error = 0, rid;
 	struct ndis_pccard_type	*t;
 	int			devidx = 0;
 	const char		*prodstr, *vendstr;
 	struct drvdb_ent	*db;
 
-	wlan_serialize_enter();
 	sc = device_get_softc(dev);
+	unit = device_get_unit(dev);
 	sc->ndis_dev = dev;
 
 	db = windrv_match((matchfuncptr)ndis_devcompare, dev);
-	if (db == NULL) {
-		wlan_serialize_exit();
+	if (db == NULL)
 		return (ENXIO);
-	}
 	sc->ndis_dobj = db->windrv_object;
 	sc->ndis_regvals = db->windrv_regvals;
 	resource_list_init(&sc->ndis_rl);
@@ -199,9 +236,15 @@ ndis_attach_pccard(device_t dev)
 		goto fail;
 	}
 	sc->ndis_rescnt++;
+#if defined(__DragonFly__)
 	resource_list_add(&sc->ndis_rl, SYS_RES_IOPORT, sc->ndis_io_rid,
 	    rman_get_start(sc->ndis_res_io), rman_get_end(sc->ndis_res_io),
 	    rman_get_size(sc->ndis_res_io), -1);
+#else
+	resource_list_add(&sc->ndis_rl, SYS_RES_IOPORT, sc->ndis_io_rid,
+	    rman_get_start(sc->ndis_res_io), rman_get_end(sc->ndis_res_io),
+	    rman_get_size(sc->ndis_res_io));
+#endif
 
 	rid = 0;
 	sc->ndis_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
@@ -213,9 +256,14 @@ ndis_attach_pccard(device_t dev)
 		goto fail;
 	}
 	sc->ndis_rescnt++;
+#if defined(__DragonFly__)
 	resource_list_add(&sc->ndis_rl, SYS_RES_IRQ, rid,
 	    rman_get_start(sc->ndis_irq), rman_get_start(sc->ndis_irq), 1,
 	    rman_get_cpuid(sc->ndis_irq));
+#else
+	resource_list_add(&sc->ndis_rl, SYS_RES_IRQ, rid,
+	    rman_get_start(sc->ndis_irq), rman_get_start(sc->ndis_irq), 1);
+#endif
 
 	sc->ndis_iftype = PCMCIABus;
 
@@ -223,8 +271,17 @@ ndis_attach_pccard(device_t dev)
 
 	t = db->windrv_devlist;
 
+#if defined(__DragonFly__)
 	prodstr = pccard_get_product_str(dev);
 	vendstr = pccard_get_vendor_str(dev);
+#else
+	error = pccard_get_product_str(dev, &prodstr);
+	if (error)
+		return(error);
+	error = pccard_get_vendor_str(dev, &vendstr);
+	if (error)
+		return(error);
+#endif
 
 	while(t->ndis_name != NULL) {
 		if (strcasecmp(vendstr, t->ndis_vid) == 0 &&
@@ -239,18 +296,6 @@ ndis_attach_pccard(device_t dev)
 	error = ndis_attach(dev);
 
 fail:
-	wlan_serialize_exit();
-	return(error);
-}
-
-static int
-ndis_detach_pccard(device_t dev)
-{
-	int error = 0;
-
-	wlan_serialize_enter();
-	error = ndis_detach(dev);
-	wlan_serialize_exit();
 	return(error);
 }
 
@@ -276,8 +321,13 @@ ndis_alloc_amem(void *arg)
 
 	sc = arg;
 	rid = NDIS_AM_RID;
+#if defined(__DragonFly__)
 	sc->ndis_res_am = bus_alloc_resource(sc->ndis_dev, SYS_RES_MEMORY,
 	    &rid, 0UL, ~0UL, 0x1000, RF_ACTIVE);
+#else
+	sc->ndis_res_am = bus_alloc_resource_anywhere(sc->ndis_dev,
+	    SYS_RES_MEMORY, &rid, 0x1000, RF_ACTIVE);
+#endif
 
 	if (sc->ndis_res_am == NULL) {
 		device_printf(sc->ndis_dev,
@@ -285,9 +335,15 @@ ndis_alloc_amem(void *arg)
 		return(ENXIO);
 	}
 	sc->ndis_rescnt++;
+#if defined(__DragonFly__)
 	resource_list_add(&sc->ndis_rl, SYS_RES_MEMORY, rid,
 	    rman_get_start(sc->ndis_res_am), rman_get_end(sc->ndis_res_am),
 	    rman_get_size(sc->ndis_res_am), -1);
+#else
+	resource_list_add(&sc->ndis_rl, SYS_RES_MEMORY, rid,
+	    rman_get_start(sc->ndis_res_am), rman_get_end(sc->ndis_res_am),
+	    rman_get_size(sc->ndis_res_am));
+#endif
 
 	error = CARD_SET_MEMORY_OFFSET(device_get_parent(sc->ndis_dev),
 	    sc->ndis_dev, rid, 0, NULL);
