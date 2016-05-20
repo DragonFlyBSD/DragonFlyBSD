@@ -72,4 +72,35 @@ dma_unmap_sg(struct device *dev, struct scatterlist *sg,
 {
 }
 
+static inline void *
+dma_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
+    gfp_t flag)
+{
+	vm_paddr_t high;
+	size_t align;
+	void *mem;
+
+#if 0 /* XXX swildner */
+	if (dev->dma_mask)
+		high = *dev->dma_mask;
+	else
+#endif
+		high = BUS_SPACE_MAXADDR_32BIT;
+	align = PAGE_SIZE << get_order(size);
+	mem = (void *)kmem_alloc_contig(size, 0, high, align);
+	if (mem)
+		*dma_handle = vtophys(mem);
+	else
+		*dma_handle = 0;
+	return (mem);
+}
+
+static inline void
+dma_free_coherent(struct device *dev, size_t size, void *cpu_addr,
+    dma_addr_t dma_handle)
+{
+
+	kmem_free(&kernel_map, (vm_offset_t)cpu_addr, size);
+}
+
 #endif	/* _LINUX_DMA-MAPPING_H_ */
