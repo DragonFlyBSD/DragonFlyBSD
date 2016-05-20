@@ -3089,6 +3089,8 @@ TO_REMOVE+=/usr/share/terminfo/s/screen-bce.mlterm
 TO_REMOVE+=/boot/loader.sym
 TO_REMOVE+=/usr/share/man/man4/an.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_an.4.gz
+TO_REMOVE+=/usr/share/man/man8/ancontrol.8.gz
+TO_REMOVE+=/usr/sbin/ancontrol
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

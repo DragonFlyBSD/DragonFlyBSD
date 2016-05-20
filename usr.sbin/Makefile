@@ -9,7 +9,6 @@ SUBDIR= 802_11 \
 	acpi \
 	adduser \
 	amd \
-	ancontrol \
 	arp \
 	asf \
 	authpf \
