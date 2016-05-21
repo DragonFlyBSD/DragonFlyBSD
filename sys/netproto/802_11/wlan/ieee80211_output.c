@@ -3646,10 +3646,18 @@ ieee80211_tx_complete(struct ieee80211_node *ni, struct mbuf *m, int status)
 		struct ifnet *ifp = ni->ni_vap->iv_ifp;
 
 		if (status == 0) {
-			if_inc_counter(ifp, IFCOUNTER_OBYTES, m->m_pkthdr.len);
 			if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
+#if defined(__DragonFly__)
+			/*
+			 * On DragonFly, IFCOUNTER_OBYTES and
+			 * IFCOUNTER_OMCASTS increments are currently done
+			 * by ifq_dispatch() already.
+			 */
+#else
+			if_inc_counter(ifp, IFCOUNTER_OBYTES, m->m_pkthdr.len);
 			if (m->m_flags & M_MCAST)
 				if_inc_counter(ifp, IFCOUNTER_OMCASTS, 1);
+#endif
 		} else
 			if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 		if (m->m_flags & M_TXCB)
