@@ -771,7 +771,7 @@ iwm_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
         if (error != 0)
                 return;
 	KASSERT(nsegs == 1, ("too many DMA segments, %d should be 1", nsegs));
-        *(bus_addr_t *)arg = segs[0].ds_addr;
+	*(bus_addr_t *)arg = segs[0].ds_addr;
 }
 
 static int
@@ -2289,7 +2289,7 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 	    &paddr, BUS_DMA_NOWAIT);
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev,
-		    "%s: can't not map mbuf, error %d\n", __func__,
+		    "%s: can't map mbuf, error %d\n", __func__,
 		    error);
 		goto fail;
 	}
