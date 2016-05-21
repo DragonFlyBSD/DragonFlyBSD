@@ -50,7 +50,7 @@
       if_inc_counter(ifp, IFCOUNTER_OERRORS, 1) -> IFNET_STAT_INC(ifp, oerrors, 1)
 
       if_drv_flags used with IFF_DRV_RUNNING   ->
-      if_flags used used with IFF_RUNNING
+      if_flags used with IFF_RUNNING
 
       if_drv_flags used with IFF_DRV_OACTIVE  ->
       ifq_is_oactive(), ifq_set_oactive(), ifq_clr_oactive() as appropriate.
@@ -66,7 +66,7 @@
 
       lockmgr(lk, LK_EXCUSIVE)
       lockmgr(lk, LK_RELEASE)
-      lockinit(lk, wmesg, flags)		(typcally 0 or LK_CANRECURSE)
+      lockinit(lk, wmesg, 0, flags)		(typically 0 or LK_CANRECURSE)
       KKASSERT(lockstatus(lk) == LK_EXCUSIVE)	(asserting held)
       KKASSERT(lockstatus(lk) != LK_EXCUSIVE)	(asserting not held)
 
