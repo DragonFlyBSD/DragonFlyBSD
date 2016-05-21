@@ -409,6 +409,10 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 
 #if defined(__DragonFly__)
+	wlan_serialize_enter();
+#endif
+
+#if defined(__DragonFly__)
 	lockmgr(&ic_list_lock, LK_EXCLUSIVE);
 #else
 	mtx_lock(&ic_list_mtx);
@@ -457,6 +461,10 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	taskqueue_free(ic->ic_tq);
 	IEEE80211_TX_LOCK_DESTROY(ic);
 	IEEE80211_LOCK_DESTROY(ic);
+
+#if defined(__DragonFly__)
+	wlan_serialize_exit();
+#endif
 }
 
 struct ieee80211com *

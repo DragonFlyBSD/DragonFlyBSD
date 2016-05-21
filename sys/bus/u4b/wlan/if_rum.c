@@ -595,7 +595,6 @@ rum_detach(device_t self)
 	struct rum_softc *sc = device_get_softc(self);
 	struct ieee80211com *ic = &sc->sc_ic;
 
-	wlan_serialize_enter();
 	/* Prevent further ioctls */
 	RUM_LOCK(sc);
 	sc->sc_detached = 1;
@@ -617,7 +616,6 @@ rum_detach(device_t self)
 	mbufq_drain(&sc->sc_snd);
 	RUM_CMDQ_LOCK_DESTROY(sc);
 	RUM_LOCK_DESTROY(sc);
-	wlan_serialize_exit();
 
 	return (0);
 }

@@ -1416,13 +1416,7 @@ ath_detach(struct ath_softc *sc)
 	ath_stop(sc);
 	ATH_UNLOCK(sc);
 
-#if defined(__DragonFly__)
-	wlan_serialize_enter();
-#endif
 	ieee80211_ifdetach(&sc->sc_ic);
-#if defined(__DragonFly__)
-	wlan_serialize_exit();
-#endif
 	taskqueue_free(sc->sc_tq);
 #ifdef ATH_TX99_DIAG
 	if (sc->sc_tx99 != NULL)
