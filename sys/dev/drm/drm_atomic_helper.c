@@ -889,6 +889,8 @@ EXPORT_SYMBOL(drm_atomic_helper_commit_modeset_enables);
 static void wait_for_fences(struct drm_device *dev,
 			    struct drm_atomic_state *state)
 {
+/* XXX: implement linux/fence.h first */
+#if 0
 	struct drm_plane *plane;
 	struct drm_plane_state *plane_state;
 	int i;
@@ -899,12 +901,11 @@ static void wait_for_fences(struct drm_device *dev,
 
 		WARN_ON(!plane->state->fb);
 
-#if 0
 		fence_wait(plane->state->fence, false);
 		fence_put(plane->state->fence);
-#endif
 		plane->state->fence = NULL;
 	}
+#endif
 }
 
 static bool framebuffer_changed(struct drm_device *dev,
