@@ -1,5 +1,5 @@
 KMOD	= if_wpi
-SRCS	= if_wpi.c device_if.h bus_if.h pci_if.h opt_wlan.h
+SRCS	= if_wpi.c device_if.h bus_if.h pci_if.h opt_wlan.h opt_wpi.h
 SRCS	+= miibus_if.h
 
 SUBDIR	= fw
