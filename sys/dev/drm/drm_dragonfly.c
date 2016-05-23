@@ -109,6 +109,8 @@ static void drm_fill_pdev(struct device *dev, struct pci_dev *pdev)
 	pdev->device = pci_get_device(dev);
 	pdev->subsystem_vendor = pci_get_subvendor(dev);
 	pdev->subsystem_device = pci_get_subdevice(dev);
+
+	pdev->revision = pci_get_revid(dev) & 0xff;
 }
 
 void drm_init_pdev(struct device *dev, struct pci_dev **pdev)
@@ -131,6 +133,19 @@ void drm_fini_pdev(struct pci_dev **pdev)
 	kfree((*pdev)->bus);
 
 	kfree(*pdev);
+}
+
+void drm_print_pdev(struct pci_dev *pdev)
+{
+	if (pdev == NULL) {
+		DRM_ERROR("pdev is null!\n");
+		return;
+	}
+
+	DRM_INFO("pdev:  vendor=0x%04x  device=0x%04x rev=0x%02x\n",
+		 pdev->vendor, pdev->device, pdev->revision);
+	DRM_INFO("      svendor=0x%04x sdevice=0x%04x irq=%u\n",
+		 pdev->subsystem_vendor, pdev->subsystem_device, pdev->irq);
 }
 
 /* Allocation of PCI memory resources (framebuffer, registers, etc.) for

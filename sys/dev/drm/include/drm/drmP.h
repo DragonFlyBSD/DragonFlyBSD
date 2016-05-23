@@ -1193,6 +1193,7 @@ char *drm_asprintf(int flags, const char *format, ...) __printflike(2, 3);
 /* XXX glue logic, should be done in drm_pci_init(), pending drm update */
 void drm_init_pdev(struct device *dev, struct pci_dev **pdev);
 void drm_fini_pdev(struct pci_dev **pdev);
+void drm_print_pdev(struct pci_dev *pdev);
 
 /* Inline drm_free() helper for area kfree() */
 static __inline__ void

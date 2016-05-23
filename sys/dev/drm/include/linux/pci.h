@@ -62,14 +62,14 @@ struct pci_dev {
 	struct pci_bus *bus;		/* bus device is nailed to */
 	struct device *dev;		/* NOTE the star */
 
-	unsigned short vendor;		/* vendor ID */
-	unsigned short device;		/* device ID */
-	unsigned short subsystem_vendor;
-	unsigned short subsystem_device;
+	uint16_t vendor;		/* vendor ID */
+	uint16_t device;		/* device ID */
+	uint16_t subsystem_vendor;
+	uint16_t subsystem_device;
 
-	u8 revision;
+	uint8_t revision;		/* revision ID */
 
-	unsigned int irq;
+	unsigned int irq;		/* handle with care */
 };
 
 struct pci_bus {

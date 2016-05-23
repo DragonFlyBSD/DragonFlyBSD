@@ -982,7 +982,11 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 		}
 
 		dev->irq = (int) rman_get_start(dev->irqr);
+		dev->pdev->irq = dev->irq; /* for i915 */
 	}
+
+	/* Print the contents of pdev struct. */
+	drm_print_pdev(dev->pdev);
 
 	lockinit(&dev->dev_lock, "drmdev", 0, LK_CANRECURSE);
 	lwkt_serialize_init(&dev->irq_lock);

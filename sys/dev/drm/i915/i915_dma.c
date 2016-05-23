@@ -413,9 +413,6 @@ static int i915_load_modeset_init(struct drm_device *dev)
 
 	intel_power_domains_init_hw(dev_priv);
 
-#ifdef __DragonFly__
-	dev_priv->dev->pdev->irq = dev->irq;
-#endif
 	ret = intel_irq_install(dev_priv);
 	if (ret)
 		goto cleanup_gem_stolen;
