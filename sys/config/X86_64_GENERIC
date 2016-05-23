@@ -268,20 +268,20 @@ device		wlan_wep	# 802.11 WEP support
 # mode (the factory default). If you set the switches on your ISA
 # card for a manually chosen I/O address and IRQ, you must specify
 # those parameters here.
-#device		ath		# Atheros NICs
-#device		ath_hal		# Atheros Hardware Access Layer
+device		ath		# Atheros NICs
+device		ath_hal		# Atheros Hardware Access Layer
 options 	AH_SUPPORT_AR5416	# enable AR5416 tx/rx descriptors
-#device		ath_rate_sample	# Atheros Sample TX rate control algorithm
-#device		siba_bwn	# Sonic Inc. Silicon Backplane needed for bwn
-#device		bwn		# Broadcom BCM43xx NICs using v4 firmware
-#device		ral		# Ralink Technology 802.11 wireless NIC
-#device		iwn		# Intel IEEE 802.11n wireless network driver
-##device		rtw		# RealTek 802.11 wireless NIC
-#device		wpi		# Intel 3945ABG Wireless LAN IEEE 802.11 driver
+device		ath_rate_sample	# Atheros Sample TX rate control algorithm
+device		siba_bwn	# Sonic Inc. Silicon Backplane needed for bwn
+device		bwn		# Broadcom BCM43xx NICs using v4 firmware
+device		ral		# Ralink Technology 802.11 wireless NIC
+device		iwn		# Intel IEEE 802.11n wireless network driver
+#device		rtw		# RealTek 802.11 wireless NIC
+device		wpi		# Intel 3945ABG Wireless LAN IEEE 802.11 driver
 # WaveLAN/IEEE 802.11 wireless NICs.  Note: the WaveLAN/IEEE really
 # exists only as a PCMCIA device, so there is no ISA attachment needed
 # and resources will always be dynamically assigned by the pccard code.
-#device		wi
+device		wi
 
 device		lnc0	at isa? disable port 0x280 irq 10 drq 0
 device		cs0	at isa? disable port 0x300
