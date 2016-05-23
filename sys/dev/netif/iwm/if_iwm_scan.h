@@ -106,8 +106,6 @@
 #ifndef	__IF_IWN_SCAN_H__
 #define	__IF_IWN_SCAN_H__
 
-extern	int
-iwm_mvm_scan_request(struct iwm_softc *sc, int flags,
-	    int n_ssids, uint8_t *ssid, int ssid_len);
+extern	int iwm_mvm_lmac_scan(struct iwm_softc *sc);
 
 #endif	/* __IF_IWN_SCAN_H__ */

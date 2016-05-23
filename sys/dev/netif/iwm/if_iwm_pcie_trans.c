@@ -336,13 +336,20 @@ iwm_check_rfkill(struct iwm_softc *sc)
 int
 iwm_set_hw_ready(struct iwm_softc *sc)
 {
+	int ready;
+
 	IWM_SETBITS(sc, IWM_CSR_HW_IF_CONFIG_REG,
 	    IWM_CSR_HW_IF_CONFIG_REG_BIT_NIC_READY);
 
-	return iwm_poll_bit(sc, IWM_CSR_HW_IF_CONFIG_REG,
+	ready = iwm_poll_bit(sc, IWM_CSR_HW_IF_CONFIG_REG,
 	    IWM_CSR_HW_IF_CONFIG_REG_BIT_NIC_READY,
 	    IWM_CSR_HW_IF_CONFIG_REG_BIT_NIC_READY,
 	    IWM_HW_READY_TIMEOUT);
+	if (ready) {
+		IWM_SETBITS(sc, IWM_CSR_MBOX_SET_REG,
+		    IWM_CSR_MBOX_SET_REG_OS_ALIVE);
+	}
+	return ready;
 }
 #undef IWM_HW_READY_TIMEOUT
 
@@ -529,9 +536,7 @@ iwm_start_hw(struct iwm_softc *sc)
 		return error;
 
 	/* Reset the entire device */
-	IWM_WRITE(sc, IWM_CSR_RESET,
-	    IWM_CSR_RESET_REG_FLAG_SW_RESET |
-	    IWM_CSR_RESET_REG_FLAG_NEVO_RESET);
+	IWM_WRITE(sc, IWM_CSR_RESET, IWM_CSR_RESET_REG_FLAG_SW_RESET);
 	DELAY(10);
 
 	if ((error = iwm_apm_init(sc)) != 0)

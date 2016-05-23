@@ -181,13 +181,16 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 {
 	struct iwm_tx_ring *ring = &sc->txq[IWM_MVM_CMD_QUEUE];
 	struct iwm_tfd *desc;
-	struct iwm_tx_data *data;
-	struct iwm_device_cmd *cmd = NULL;
+	struct iwm_tx_data *txdata = NULL;
+	struct iwm_device_cmd *cmd;
 	bus_addr_t paddr;
 	uint32_t addr_lo;
 	int error = 0, i, paylen, off;
 	int code;
 	int async, wantresp;
+	int group_id;
+	size_t hdrlen, datasz;
+	uint8_t *data;
 
 	code = hcmd->id;
 	async = hcmd->flags & IWM_CMD_ASYNC;
@@ -222,43 +225,65 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	}
 
 	desc = &ring->desc[ring->cur];
-	data = &ring->data[ring->cur];
+	txdata = &ring->data[ring->cur];
 
-	if (paylen > sizeof(cmd->data)) {
+	group_id = iwm_cmd_groupid(code);
+	if (group_id != 0) {
+		hdrlen = sizeof(cmd->hdr_wide);
+		datasz = sizeof(cmd->data_wide);
+	} else {
+		hdrlen = sizeof(cmd->hdr);
+		datasz = sizeof(cmd->data);
+	}
+
+	if (paylen > datasz) {
 		IWM_DPRINTF(sc, IWM_DEBUG_CMD,
 		    "large command paylen=%u len0=%u\n",
 			paylen, hcmd->len[0]);
 		/* Command is too large */
+		size_t totlen = hdrlen + paylen;
 		if (paylen > IWM_MAX_CMD_PAYLOAD_SIZE) {
 			device_printf(sc->sc_dev,
 			    "firmware command too long (%zd bytes)\n",
-			    paylen + sizeof(cmd->hdr));
+			    totlen);
 			error = EINVAL;
 			goto out;
 		}
+		cmd = NULL;
 		error = bus_dmamem_alloc(ring->data_dmat, (void **)&cmd,
-		    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &data->map);
+		    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &txdata->map);
 		if (error != 0)
 			goto out;
-		error = bus_dmamap_load(ring->data_dmat, data->map,
-		    cmd, paylen + sizeof(cmd->hdr), iwm_dma_map_mem,
-		    &paddr, BUS_DMA_NOWAIT);
+		KKASSERT(cmd != NULL);
+		error = bus_dmamap_load(ring->data_dmat, txdata->map,
+		    cmd, totlen, iwm_dma_map_mem, &paddr, BUS_DMA_NOWAIT);
 		if (error != 0)
 			goto out;
 	} else {
 		cmd = &ring->cmd[ring->cur];
-		paddr = data->cmd_paddr;
+		paddr = txdata->cmd_paddr;
 	}
 
-	cmd->hdr.code = code;
-	cmd->hdr.flags = 0;
-	cmd->hdr.qid = ring->qid;
-	cmd->hdr.idx = ring->cur;
+	if (group_id != 0) {
+		cmd->hdr_wide.opcode = iwm_cmd_opcode(code);
+		cmd->hdr_wide.group_id = group_id;
+		cmd->hdr_wide.qid = ring->qid;
+		cmd->hdr_wide.idx = ring->cur;
+		cmd->hdr_wide.length = htole16(paylen);
+		cmd->hdr_wide.version = iwm_cmd_version(code);
+		data = cmd->data_wide;
+	} else {
+		cmd->hdr.code = code;
+		cmd->hdr.flags = 0;
+		cmd->hdr.qid = ring->qid;
+		cmd->hdr.idx = ring->cur;
+		data = cmd->data;
+	}
 
 	for (i = 0, off = 0; i < nitems(hcmd->data); i++) {
 		if (hcmd->len[i] == 0)
 			continue;
-		memcpy(cmd->data + off, hcmd->data[i], hcmd->len[i]);
+		memcpy(data + off, hcmd->data[i], hcmd->len[i]);
 		off += hcmd->len[i];
 	}
 	KASSERT(off == paylen, ("off %d != paylen %d", off, paylen));
@@ -267,18 +292,17 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	addr_lo = htole32((uint32_t)paddr);
 	memcpy(&desc->tbs[0].lo, &addr_lo, sizeof(uint32_t));
 	desc->tbs[0].hi_n_len  = htole16(iwm_get_dma_hi_addr(paddr)
-	    | ((sizeof(cmd->hdr) + paylen) << 4));
+	    | ((hdrlen + paylen) << 4));
 	desc->num_tbs = 1;
 
 	IWM_DPRINTF(sc, IWM_DEBUG_CMD,
-	    "%s: iwm_send_cmd 0x%x size=%lu %s\n",
-	    __func__,
+	    "iwm_send_cmd 0x%x size=%lu %s\n",
 	    code,
-	    (unsigned long) (hcmd->len[0] + hcmd->len[1] + sizeof(cmd->hdr)),
+	    (unsigned long) (hcmd->len[0] + hcmd->len[1] + hdrlen),
 	    async ? " (async)" : "");
 
-	if (paylen > sizeof(cmd->data)) {
-		bus_dmamap_sync(ring->data_dmat, data->map,
+	if (paylen > datasz) {
+		bus_dmamap_sync(ring->data_dmat, txdata->map,
 		    BUS_DMASYNC_PREWRITE);
 	} else {
 		bus_dmamap_sync(ring->cmd_dma.tag, ring->cmd_dma.map,
@@ -328,8 +352,8 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		}
 	}
  out:
-	if (cmd && paylen > sizeof(cmd->data))
-		bus_dmamem_free(ring->data_dmat, cmd, data->map);
+	if (cmd && paylen > sizeof(cmd->data) && txdata != NULL)
+		bus_dmamem_free(ring->data_dmat, cmd, txdata->map);
 	if (wantresp && error != 0) {
 		iwm_free_resp(sc, hcmd);
 	}
@@ -412,4 +436,32 @@ iwm_free_resp(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	    == (IWM_CMD_WANT_SKB|IWM_CMD_SYNC), ("invalid flags"));
 	sc->sc_wantresp = -1;
 	wakeup(&sc->sc_wantresp);
+}
+
+uint8_t
+iwm_fw_valid_tx_ant(struct iwm_softc *sc)
+{
+	uint8_t tx_ant;
+
+	tx_ant = ((sc->sc_fw_phy_config & IWM_FW_PHY_CFG_TX_CHAIN)
+	    >> IWM_FW_PHY_CFG_TX_CHAIN_POS);
+
+	if (sc->sc_nvm.valid_tx_ant)
+		tx_ant &= sc->sc_nvm.valid_tx_ant;
+
+	return tx_ant;
+}
+
+uint8_t
+iwm_fw_valid_rx_ant(struct iwm_softc *sc)
+{
+	uint8_t rx_ant;
+
+	rx_ant = ((sc->sc_fw_phy_config & IWM_FW_PHY_CFG_RX_CHAIN)
+	    >> IWM_FW_PHY_CFG_RX_CHAIN_POS);
+
+	if (sc->sc_nvm.valid_rx_ant)
+		rx_ant &= sc->sc_nvm.valid_rx_ant;
+
+	return rx_ant;
 }

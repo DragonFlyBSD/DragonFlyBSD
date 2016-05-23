@@ -163,7 +163,7 @@ iwm_mvm_scan_rx_chain(struct iwm_softc *sc)
 	uint16_t rx_chain;
 	uint8_t rx_ant;
 
-	rx_ant = IWM_FW_VALID_RX_ANT(sc);
+	rx_ant = iwm_fw_valid_rx_ant(sc);
 	rx_chain = rx_ant << IWM_PHY_RX_CHAIN_VALID_POS;
 	rx_chain |= rx_ant << IWM_PHY_RX_CHAIN_FORCE_MIMO_SEL_POS;
 	rx_chain |= rx_ant << IWM_PHY_RX_CHAIN_FORCE_SEL_POS;
@@ -171,6 +171,7 @@ iwm_mvm_scan_rx_chain(struct iwm_softc *sc)
 	return htole16(rx_chain);
 }
 
+#if 0
 static uint32_t
 iwm_mvm_scan_max_out_time(struct iwm_softc *sc, uint32_t flags, int is_assoc)
 {
@@ -188,15 +189,7 @@ iwm_mvm_scan_suspend_time(struct iwm_softc *sc, int is_assoc)
 		return 0;
 	return htole32(SUSPEND_TIME_PERIOD);
 }
-
-static uint32_t
-iwm_mvm_scan_rxon_flags(struct iwm_softc *sc, int flags)
-{
-	if (flags & IEEE80211_CHAN_2GHZ)
-		return htole32(IWM_PHY_BAND_24);
-	else
-		return htole32(IWM_PHY_BAND_5);
-}
+#endif
 
 static uint32_t
 iwm_mvm_scan_rate_n_flags(struct iwm_softc *sc, int flags, int no_cck)
@@ -207,7 +200,7 @@ iwm_mvm_scan_rate_n_flags(struct iwm_softc *sc, int flags, int no_cck)
 	for (i = 0, ind = sc->sc_scan_last_antenna;
 	    i < IWM_RATE_MCS_ANT_NUM; i++) {
 		ind = (ind + 1) % IWM_RATE_MCS_ANT_NUM;
-		if (IWM_FW_VALID_TX_ANT(sc) & (1 << ind)) {
+		if (iwm_fw_valid_tx_ant(sc) & (1 << ind)) {
 			sc->sc_scan_last_antenna = ind;
 			break;
 		}
@@ -221,6 +214,7 @@ iwm_mvm_scan_rate_n_flags(struct iwm_softc *sc, int flags, int no_cck)
 		return htole32(IWM_RATE_6M_PLCP | tx_ant);
 }
 
+#if 0
 /*
  * If req->n_ssids > 0, it means we should do an active scan.
  * In case of active scan w/o directed scan, we receive a zero-length SSID
@@ -244,24 +238,19 @@ iwm_mvm_get_passive_dwell(struct iwm_softc *sc, int flags)
 {
 	return (flags & IEEE80211_CHAN_2GHZ) ? 100 + 20 : 100 + 10;
 }
+#endif
 
-static int
-iwm_mvm_scan_fill_channels(struct iwm_softc *sc, struct iwm_scan_cmd *cmd,
-	int flags, int n_ssids, int basic_ssid)
+static uint8_t
+iwm_mvm_lmac_scan_fill_channels(struct iwm_softc *sc,
+    struct iwm_scan_channel_cfg_lmac *chan, int n_ssids)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
-	uint16_t passive_dwell = iwm_mvm_get_passive_dwell(sc, flags);
-	uint16_t active_dwell = iwm_mvm_get_active_dwell(sc, flags, n_ssids);
-	struct iwm_scan_channel *chan = (struct iwm_scan_channel *)
-		(cmd->data + le16toh(cmd->tx_cmd.len));
-	int type = (1 << n_ssids) - 1;
 	struct ieee80211_channel *c;
-	int nchan, j;
+	uint8_t nchan;
+	int j;
 
-	if (!basic_ssid)
-		type |= (1 << n_ssids);
-
-	for (nchan = j = 0; j < ic->ic_nchans; j++) {
+	for (nchan = j = 0;
+	    j < ic->ic_nchans && nchan < sc->sc_capa_n_scan_channels; j++) {
 		c = &ic->ic_channels[j];
 		/* For 2GHz, only populate 11b channels */
 		/* For 5GHz, only populate 11a channels */
@@ -269,6 +258,7 @@ iwm_mvm_scan_fill_channels(struct iwm_softc *sc, struct iwm_scan_cmd *cmd,
 		 * Catch other channels, in case we have 900MHz channels or
 		 * something in the chanlist.
 		 */
+#if 0
 		if ((flags & IEEE80211_CHAN_2GHZ) && (! IEEE80211_IS_CHAN_B(c))) {
 			continue;
 		} else if ((flags & IEEE80211_CHAN_5GHZ) && (! IEEE80211_IS_CHAN_A(c))) {
@@ -281,160 +271,231 @@ iwm_mvm_scan_fill_channels(struct iwm_softc *sc, struct iwm_scan_cmd *cmd,
 			    c->ic_ieee,
 			    c->ic_flags);
 		}
+#endif
 		IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_EEPROM,
 		    "Adding channel %d (%d Mhz) to the list\n",
 			nchan, c->ic_freq);
-		chan->channel = htole16(ieee80211_mhz2ieee(c->ic_freq, flags));
-		chan->type = htole32(type);
-		if (c->ic_flags & IEEE80211_CHAN_PASSIVE)
-			chan->type &= htole32(~IWM_SCAN_CHANNEL_TYPE_ACTIVE);
-		chan->active_dwell = htole16(active_dwell);
-		chan->passive_dwell = htole16(passive_dwell);
-		chan->iteration_count = htole16(1);
+		chan->channel_num = htole16(ieee80211_mhz2ieee(c->ic_freq, 0));
+		chan->iter_count = htole16(1);
+		chan->iter_interval = 0;
+		chan->flags = htole32(IWM_UNIFIED_SCAN_CHANNEL_PARTIAL);
+#if 0 /* makes scanning while associated less useful */
+		if (n_ssids != 0)
+			chan->flags |= htole32(1 << 1); /* select SSID 0 */
+#endif
 		chan++;
 		nchan++;
 	}
-	if (nchan == 0)
-		device_printf(sc->sc_dev,
-		    "%s: NO CHANNEL!\n", __func__);
+
 	return nchan;
 }
 
-/*
- * Fill in probe request with the following parameters:
- * TA is our vif HW address, which mac80211 ensures we have.
- * Packet is broadcasted, so this is both SA and DA.
- * The probe request IE is made out of two: first comes the most prioritized
- * SSID if a directed scan is requested. Second comes whatever extra
- * information was given to us as the scan request IE.
- */
-static uint16_t
-iwm_mvm_fill_probe_req(struct iwm_softc *sc, struct ieee80211_frame *frame,
-	const uint8_t *ta, int n_ssids, const uint8_t *ssid, int ssid_len,
-	const uint8_t *ie, int ie_len, int left)
+static int
+iwm_mvm_fill_probe_req(struct iwm_softc *sc, struct iwm_scan_probe_req *preq)
 {
-	uint8_t *pos = NULL;
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211_frame *wh = (struct ieee80211_frame *)preq->buf;
+	struct ieee80211_rateset *rs;
+	size_t remain = sizeof(preq->buf);
+	uint8_t *frm, *pos;
+	int ssid_len = 0;
 
-	/* Make sure there is enough space for the probe request,
-	 * two mandatory IEs and the data */
-	left -= sizeof(*frame);
-	if (left < 0)
-		return 0;
+	memset(preq, 0, sizeof(*preq));
 
-	frame->i_fc[0] = IEEE80211_FC0_VERSION_0 | IEEE80211_FC0_TYPE_MGT |
+	/* Ensure enough space for header and SSID IE. */
+	if (remain < sizeof(*wh) + 2 + ssid_len)
+		return ENOBUFS;
+
+	/*
+	 * Build a probe request frame.  Most of the following code is a
+	 * copy & paste of what is done in net80211.
+	 */
+	wh->i_fc[0] = IEEE80211_FC0_VERSION_0 | IEEE80211_FC0_TYPE_MGT |
 	    IEEE80211_FC0_SUBTYPE_PROBE_REQ;
-	frame->i_fc[1] = IEEE80211_FC1_DIR_NODS;
-	IEEE80211_ADDR_COPY(frame->i_addr1, ieee80211broadcastaddr);
-	IEEE80211_ADDR_COPY(frame->i_addr2, ta);
-	IEEE80211_ADDR_COPY(frame->i_addr3, ieee80211broadcastaddr);
+	wh->i_fc[1] = IEEE80211_FC1_DIR_NODS;
+	IEEE80211_ADDR_COPY(wh->i_addr1, ieee80211broadcastaddr);
+	IEEE80211_ADDR_COPY(wh->i_addr2, ic->ic_macaddr);
+	IEEE80211_ADDR_COPY(wh->i_addr3, ieee80211broadcastaddr);
+	*(uint16_t *)&wh->i_dur[0] = 0; /* filled by HW */
+	*(uint16_t *)&wh->i_seq[0] = 0; /* filled by HW */
 
-	/* for passive scans, no need to fill anything */
-	if (n_ssids == 0)
-		return sizeof(*frame);
+	frm = (uint8_t *)(wh + 1);
+	frm = ieee80211_add_ssid(frm, NULL, 0);
 
-	/* points to the payload of the request */
-	pos = (uint8_t *)frame + sizeof(*frame);
+	/* Tell the firmware where the MAC header is. */
+	preq->mac_header.offset = 0;
+	preq->mac_header.len = htole16(frm - (uint8_t *)wh);
+	remain -= frm - (uint8_t *)wh;
 
-	/* fill in our SSID IE */
-	left -= ssid_len + 2;
-	if (left < 0)
-		return 0;
+	/* Fill in 2GHz IEs and tell firmware where they are. */
+	rs = &ic->ic_sup_rates[IEEE80211_MODE_11G];
+	if (rs->rs_nrates > IEEE80211_RATE_SIZE) {
+		if (remain < 4 + rs->rs_nrates)
+			return ENOBUFS;
+	} else if (remain < 2 + rs->rs_nrates) {
+		return ENOBUFS;
+	}
+	preq->band_data[0].offset = htole16(frm - (uint8_t *)wh);
+	pos = frm;
+	frm = ieee80211_add_rates(frm, rs);
+	if (rs->rs_nrates > IEEE80211_RATE_SIZE)
+		frm = ieee80211_add_xrates(frm, rs);
+	preq->band_data[0].len = htole16(frm - pos);
+	remain -= frm - pos;
 
-	pos = ieee80211_add_ssid(pos, ssid, ssid_len);
-
-	if (ie && ie_len && left >= ie_len) {
-		memcpy(pos, ie, ie_len);
-		pos += ie_len;
+	if (isset(sc->sc_enabled_capa,
+	    IWM_UCODE_TLV_CAPA_DS_PARAM_SET_IE_SUPPORT)) {
+		if (remain < 3)
+			return ENOBUFS;
+		*frm++ = IEEE80211_ELEMID_DSPARMS;
+		*frm++ = 1;
+		*frm++ = 0;
+		remain -= 3;
 	}
 
-	return pos - (uint8_t *)frame;
+	if (sc->sc_nvm.sku_cap_band_52GHz_enable) {
+		/* Fill in 5GHz IEs. */
+		rs = &ic->ic_sup_rates[IEEE80211_MODE_11A];
+		if (rs->rs_nrates > IEEE80211_RATE_SIZE) {
+			if (remain < 4 + rs->rs_nrates)
+				return ENOBUFS;
+		} else if (remain < 2 + rs->rs_nrates) {
+			return ENOBUFS;
+		}
+		preq->band_data[1].offset = htole16(frm - (uint8_t *)wh);
+		pos = frm;
+		frm = ieee80211_add_rates(frm, rs);
+		if (rs->rs_nrates > IEEE80211_RATE_SIZE)
+			frm = ieee80211_add_xrates(frm, rs);
+		preq->band_data[1].len = htole16(frm - pos);
+		remain -= frm - pos;
+	}
+
+	/* Send 11n IEs on both 2GHz and 5GHz bands. */
+	preq->common_data.offset = htole16(frm - (uint8_t *)wh);
+	pos = frm;
+#if 0
+	if (ic->ic_flags & IEEE80211_F_HTON) {
+		if (remain < 28)
+			return ENOBUFS;
+		frm = ieee80211_add_htcaps(frm, ic);
+		/* XXX add WME info? */
+	}
+#endif
+	preq->common_data.len = htole16(frm - pos);
+
+	return 0;
 }
 
 int
-iwm_mvm_scan_request(struct iwm_softc *sc, int flags,
-	int n_ssids, uint8_t *ssid, int ssid_len)
+iwm_mvm_lmac_scan(struct iwm_softc *sc)
 {
 	struct iwm_host_cmd hcmd = {
-		.id = IWM_SCAN_REQUEST_CMD,
+		.id = IWM_SCAN_OFFLOAD_REQUEST_CMD,
 		.len = { 0, },
-		.data = { sc->sc_scan_cmd, },
+		.data = { NULL, },
 		.flags = IWM_CMD_SYNC,
-		.dataflags = { IWM_HCMD_DFL_NOCOPY, },
 	};
-	struct iwm_scan_cmd *cmd = sc->sc_scan_cmd;
-	int is_assoc = 0;
+	struct iwm_scan_req_lmac *req;
+	size_t req_len;
 	int ret;
-	uint32_t status;
-	int basic_ssid =
-	    !(sc->sc_capaflags & IWM_UCODE_TLV_FLAGS_NO_BASIC_SSID);
-
-	sc->sc_scanband = flags & (IEEE80211_CHAN_2GHZ | IEEE80211_CHAN_5GHZ);
+	int ssid_len = 0;
+	const uint8_t *ssid = NULL;
 
 	IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
 	    "Handling ieee80211 scan request\n");
-	memset(cmd, 0, sc->sc_scan_cmd_len);
 
-	cmd->quiet_time = htole16(IWM_ACTIVE_QUIET_TIME);
-	cmd->quiet_plcp_th = htole16(IWM_PLCP_QUIET_THRESH);
-	cmd->rxchain_sel_flags = iwm_mvm_scan_rx_chain(sc);
-	cmd->max_out_time = iwm_mvm_scan_max_out_time(sc, 0, is_assoc);
-	cmd->suspend_time = iwm_mvm_scan_suspend_time(sc, is_assoc);
-	cmd->rxon_flags = iwm_mvm_scan_rxon_flags(sc, flags);
-	cmd->filter_flags = htole32(IWM_MAC_FILTER_ACCEPT_GRP |
-	    IWM_MAC_FILTER_IN_BEACON);
+	req_len = sizeof(struct iwm_scan_req_lmac) +
+	    (sizeof(struct iwm_scan_channel_cfg_lmac) *
+	    sc->sc_capa_n_scan_channels) + sizeof(struct iwm_scan_probe_req);
+	if (req_len > IWM_MAX_CMD_PAYLOAD_SIZE)
+		return ENOMEM;
+	req = kmalloc(req_len, M_DEVBUF, M_INTWAIT | M_ZERO);
+	if (req == NULL)
+		return ENOMEM;
 
-	cmd->type = htole32(IWM_SCAN_TYPE_FORCED);
-	cmd->repeats = htole32(1);
+	hcmd.len[0] = (uint16_t)req_len;
+	hcmd.data[0] = (void *)req;
 
-	/*
-	 * If the user asked for passive scan, don't change to active scan if
-	 * you see any activity on the channel - remain passive.
-	 */
-	if (n_ssids > 0) {
-		cmd->passive2active = htole16(1);
-		cmd->scan_flags |= IWM_SCAN_FLAGS_PASSIVE2ACTIVE;
-#if 0
-		if (basic_ssid) {
-			ssid = req->ssids[0].ssid;
-			ssid_len = req->ssids[0].ssid_len;
-		}
-#endif
-	} else {
-		cmd->passive2active = 0;
-		cmd->scan_flags &= ~IWM_SCAN_FLAGS_PASSIVE2ACTIVE;
+	/* These timings correspond to iwlwifi's UNASSOC scan. */
+	req->active_dwell = 10;
+	req->passive_dwell = 110;
+	req->fragmented_dwell = 44;
+	req->extended_dwell = 90;
+	req->max_out_time = 0;
+	req->suspend_time = 0;
+
+	req->scan_prio = htole32(IWM_SCAN_PRIORITY_HIGH);
+	req->rx_chain_select = iwm_mvm_scan_rx_chain(sc);
+	req->iter_num = htole32(1);
+	req->delay = 0;
+
+	req->scan_flags = htole32(IWM_MVM_LMAC_SCAN_FLAG_PASS_ALL |
+	    IWM_MVM_LMAC_SCAN_FLAG_ITER_COMPLETE |
+	    IWM_MVM_LMAC_SCAN_FLAG_EXTENDED_DWELL);
+	if (ssid_len == 0)
+		req->scan_flags |= htole32(IWM_MVM_LMAC_SCAN_FLAG_PASSIVE);
+	else
+		req->scan_flags |=
+		    htole32(IWM_MVM_LMAC_SCAN_FLAG_PRE_CONNECTION);
+	if (isset(sc->sc_enabled_capa,
+	    IWM_UCODE_TLV_CAPA_DS_PARAM_SET_IE_SUPPORT))
+		req->scan_flags |= htole32(IWM_MVM_LMAC_SCAN_FLAGS_RRM_ENABLED);
+
+	req->flags = htole32(IWM_PHY_BAND_24);
+	if (sc->sc_nvm.sku_cap_band_52GHz_enable)
+		req->flags |= htole32(IWM_PHY_BAND_5);
+	req->filter_flags =
+	    htole32(IWM_MAC_FILTER_ACCEPT_GRP | IWM_MAC_FILTER_IN_BEACON);
+
+	/* Tx flags 2 GHz. */
+	req->tx_cmd[0].tx_flags = htole32(IWM_TX_CMD_FLG_SEQ_CTL |
+	    IWM_TX_CMD_FLG_BT_DIS);
+	req->tx_cmd[0].rate_n_flags =
+	    iwm_mvm_scan_rate_n_flags(sc, IEEE80211_CHAN_2GHZ, 1/*XXX*/);
+	req->tx_cmd[0].sta_id = sc->sc_aux_sta.sta_id;
+
+	/* Tx flags 5 GHz. */
+	req->tx_cmd[1].tx_flags = htole32(IWM_TX_CMD_FLG_SEQ_CTL |
+	    IWM_TX_CMD_FLG_BT_DIS);
+	req->tx_cmd[1].rate_n_flags =
+	    iwm_mvm_scan_rate_n_flags(sc, IEEE80211_CHAN_5GHZ, 1/*XXX*/);
+	req->tx_cmd[1].sta_id = sc->sc_aux_sta.sta_id;
+
+	/* Check if we're doing an active directed scan. */
+	if (ssid_len != 0) {
+		req->direct_scan[0].id = IEEE80211_ELEMID_SSID;
+		req->direct_scan[0].len = ssid_len;
+		memcpy(req->direct_scan[0].ssid, ssid,
+		    ssid_len);
 	}
 
-	cmd->tx_cmd.tx_flags = htole32(IWM_TX_CMD_FLG_SEQ_CTL |
-	    IWM_TX_CMD_FLG_BT_DIS);
-	cmd->tx_cmd.sta_id = sc->sc_aux_sta.sta_id;
-	cmd->tx_cmd.life_time = htole32(IWM_TX_CMD_LIFE_TIME_INFINITE);
-	cmd->tx_cmd.rate_n_flags = iwm_mvm_scan_rate_n_flags(sc, flags, 1/*XXX*/);
+	req->n_channels = iwm_mvm_lmac_scan_fill_channels(sc,
+	    (struct iwm_scan_channel_cfg_lmac *)req->data,
+	    ssid_len != 0);
 
-	cmd->tx_cmd.len = htole16(iwm_mvm_fill_probe_req(sc,
-			    (struct ieee80211_frame *)cmd->data,
-			    sc->sc_ic.ic_macaddr, n_ssids, ssid, ssid_len,
-			    NULL, 0, sc->sc_capa_max_probe_len));
+	ret = iwm_mvm_fill_probe_req(sc,
+			    (struct iwm_scan_probe_req *)(req->data +
+			    (sizeof(struct iwm_scan_channel_cfg_lmac) *
+			    sc->sc_capa_n_scan_channels)));
+	if (ret) {
+		kfree(req, M_DEVBUF);
+		return ret;
+	}
 
-	cmd->channel_count
-	    = iwm_mvm_scan_fill_channels(sc, cmd, flags, n_ssids, basic_ssid);
+	/* Specify the scan plan: We'll do one iteration. */
+	req->schedule[0].iterations = 1;
+	req->schedule[0].full_scan_mul = 1;
 
-	cmd->len = htole16(sizeof(struct iwm_scan_cmd) +
-		le16toh(cmd->tx_cmd.len) +
-		(cmd->channel_count * sizeof(struct iwm_scan_channel)));
-	hcmd.len[0] = le16toh(cmd->len);
+	/* Disable EBS. */
+	req->channel_opt[0].non_ebs_ratio = 1;
+	req->channel_opt[1].non_ebs_ratio = 1;
 
-	status = IWM_SCAN_RESPONSE_OK;
-	ret = iwm_mvm_send_cmd_status(sc, &hcmd, &status);
-	if (!ret && status == IWM_SCAN_RESPONSE_OK) {
+	ret = iwm_send_cmd(sc, &hcmd);
+	if (!ret) {
 		IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
 		    "Scan request was sent successfully\n");
-	} else {
-		/*
-		 * If the scan failed, it usually means that the FW was unable
-		 * to allocate the time events. Warn on it, but maybe we
-		 * should try to send the command again with different params.
-		 */
-		ret = EIO;
 	}
+	kfree(req, M_DEVBUF);
 	return ret;
 }
