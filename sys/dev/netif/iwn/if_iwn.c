@@ -440,6 +440,9 @@ iwn_attach(device_t dev)
 	struct iwn_softc *sc = device_get_softc(dev);
 	struct ieee80211com *ic;
 	int i, error, rid;
+#if defined(__DragonFly__)
+	int irq_flags;
+#endif
 
 	sc->sc_dev = dev;
 
@@ -486,16 +489,18 @@ iwn_attach(device_t dev)
 	sc->sc_sh = rman_get_bushandle(sc->mem);
 
 #if defined(__DragonFly__)
-	rid = 0;
+	pci_alloc_1intr(dev, 1, &rid, &irq_flags);
+	/* Install interrupt handler. */
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, irq_flags);
 #else
 	i = 1;
 	rid = 0;
 	if (pci_alloc_msi(dev, &i) == 0)
 		rid = 1;
-#endif
 	/* Install interrupt handler. */
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
 	    (rid != 0 ? 0 : RF_SHAREABLE));
+#endif
 	if (sc->irq == NULL) {
 		device_printf(dev, "can't map interrupt\n");
 		error = ENOMEM;
