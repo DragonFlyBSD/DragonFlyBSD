@@ -4073,8 +4073,6 @@ ath_tx_tid_drain(struct ath_softc *sc, struct ath_node *an,
 		    tid->tid,
 		    tap->txa_start);
 #else
-		
-#endif
 		DPRINTF(sc, ATH_DEBUG_SW_TX_CTRL,
 		    "%s: %6D: node %p: TID %d: sliding BAW left edge to %d\n",
 		    __func__,
@@ -4083,6 +4081,7 @@ ath_tx_tid_drain(struct ath_softc *sc, struct ath_node *an,
 		    an,
 		    tid->tid,
 		    tap->txa_start);
+#endif
 #endif
 		ni->ni_txseqs[tid->tid] = tap->txa_start;
 		tid->baw_tail = tid->baw_head;
