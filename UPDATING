@@ -12,14 +12,21 @@
 +         UPGRADING DRAGONFLY FROM 4.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
-2015-12-26
+AN DRIVER REMOVED
+-----------------
 
-	The default group assigned to /dev/dri entries has been changed
-	from 'wheel' to 'video' with the id of '44'. If you want to have
-	access to the dri devices please add yourself to the video group
-	with:
+The an(4) driver has been removed. It was in the X86_64_GENERIC kernel
+config file, so any configurations derived from it have to be adjusted.
 
-	# pw groupmod video -m $USER
+/DEV/DRI GROUP CHANGED
+----------------------
+
+The default group assigned to /dev/dri entries has been changed
+from 'wheel' to 'video' with the id of '44'. If you want to have
+access to the dri devices please add yourself to the video group
+with:
+
+# pw groupmod video -m $USER
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 4.2 TO LATER VERSIONS                +
