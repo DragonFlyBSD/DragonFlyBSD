@@ -299,6 +299,7 @@ contrib/dev/ath/ath_hal/ar9300/ar9300_radio.c		optional ath_hal
 contrib/dev/ath/ath_hal/ar9300/ar9300_recv.c		optional ath_hal
 contrib/dev/ath/ath_hal/ar9300/ar9300_recv_ds.c		optional ath_hal
 contrib/dev/ath/ath_hal/ar9300/ar9300_reset.c		optional ath_hal
+contrib/dev/ath/ath_hal/ar9300/ar9300_spectral.c	optional ath_hal
 contrib/dev/ath/ath_hal/ar9300/ar9300_stub.c		optional ath_hal
 contrib/dev/ath/ath_hal/ar9300/ar9300_stub_funcs.c	optional ath_hal
 contrib/dev/ath/ath_hal/ar9300/ar9300_timer.c		optional ath_hal
@@ -311,6 +312,10 @@ dev/netif/ath/ath_rate/onoe/onoe.c	optional ath_rate_onoe \
 dev/netif/ath/ath_rate/sample/sample.c	optional ath_rate_sample \
 	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
 dev/netif/ath/ath/if_ath.c		optional ath \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
+dev/netif/ath/ath/if_ath_ioctl.c	optional ath \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
+dev/netif/ath/ath/if_ath_descdma.c	optional ath \
 	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
 dev/netif/ath/ath/if_ath_ahb.c		optional ath \
 	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
