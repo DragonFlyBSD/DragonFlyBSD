@@ -3087,10 +3087,11 @@ TO_REMOVE+=/usr/lib/priv/profile/libprivate_tinfo.a
 TO_REMOVE+=/usr/lib/priv/profile/libprivate_tinfow.a
 TO_REMOVE+=/usr/share/terminfo/s/screen-bce.mlterm
 TO_REMOVE+=/boot/loader.sym
+TO_REMOVE+=/boot/kernel/if_an.ko
+TO_REMOVE+=/usr/sbin/ancontrol
 TO_REMOVE+=/usr/share/man/man4/an.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_an.4.gz
 TO_REMOVE+=/usr/share/man/man8/ancontrol.8.gz
-TO_REMOVE+=/usr/sbin/ancontrol
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
