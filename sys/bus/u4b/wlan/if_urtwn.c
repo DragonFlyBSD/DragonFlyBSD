@@ -676,7 +676,7 @@ urtwn_sysctlattach(struct urtwn_softc *sc)
 	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
 	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
 
-	SYSCTL_ADD_U32(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "debug", CTLFLAG_RW, &sc->sc_debug, sc->sc_debug,
 	    "control debugging printfs");
 #endif
@@ -1785,13 +1785,13 @@ urtwn_dump_rom_contents(struct urtwn_softc *sc, uint8_t *rom, uint16_t size)
 	device_printf(sc->sc_dev, "%s:", __func__);
 	for (i = 0; i < size; i++) {
 		if (i % 32 == 0)
-			printf("\n%03X: ", i);
+			kprintf("\n%03X: ", i);
 		else if (i % 4 == 0)
-			printf(" ");
+			kprintf(" ");
 
-		printf("%02X", rom[i]);
+		kprintf("%02X", rom[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 }
 #endif
 
@@ -4609,9 +4609,9 @@ urtwn_get_txpower(struct urtwn_softc *sc, int chain,
 #ifdef USB_DEBUG
 	if (sc->sc_debug & URTWN_DEBUG_TXPWR) {
 		/* Dump per-rate Tx power values. */
-		printf("Tx power for chain %d:\n", chain);
+		kprintf("Tx power for chain %d:\n", chain);
 		for (ridx = URTWN_RIDX_CCK1; ridx < URTWN_RIDX_COUNT; ridx++)
-			printf("Rate %d = %u\n", ridx, power[ridx]);
+			kprintf("Rate %d = %u\n", ridx, power[ridx]);
 	}
 #endif
 }
