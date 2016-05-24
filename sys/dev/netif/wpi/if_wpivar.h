@@ -147,7 +147,7 @@ struct wpi_vap {
 	lockinit(&(_wvp)->wv_mtx, "lock for wv_bcbuf/wv_boff structures", 0, 0)
 #define WPI_VAP_LOCK(_wvp)		lockmgr(&(_wvp)->wv_mtx, LK_EXCLUSIVE)
 #define WPI_VAP_UNLOCK(_wvp)		lockmgr(&(_wvp)->wv_mtx, LK_RELEASE)
-#define WPI_VAP_LOCK_ASSERT(_wvp)	KKASSERT(lockstatus(&(_wvp)->wv_mtx) == LK_EXCLUSIVE)
+#define WPI_VAP_LOCK_ASSERT(_wvp)	KKASSERT(lockstatus(&(_wvp)->wv_mtx, curthread) == LK_EXCLUSIVE)
 #define WPI_VAP_LOCK_DESTROY(_wvp)	lockuninit(&(_wvp)->wv_mtx)
 
 struct wpi_fw_part {
@@ -282,14 +282,14 @@ struct wpi_softc {
 	lockinit(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), 0, 0);
 #define WPI_LOCK(_sc)		lockmgr(&(_sc)->sc_mtx, LK_EXCLUSIVE)
 #define WPI_UNLOCK(_sc)		lockmgr(&(_sc)->sc_mtx, LK_RELEASE)
-#define WPI_LOCK_ASSERT(_sc)	KKASSERT(lockstatus(&(_sc)->sc_mtx) == LK_EXCLUSIVE)
+#define WPI_LOCK_ASSERT(_sc)	KKASSERT(lockstatus(&(_sc)->sc_mtx, curthread) == LK_EXCLUSIVE)
 #define WPI_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->sc_mtx)
 
 #define WPI_RXON_LOCK_INIT(_sc) \
 	lockinit(&(_sc)->rxon_mtx, "lock for wpi_rxon structure", 0, 0)
 #define WPI_RXON_LOCK(_sc)		lockmgr(&(_sc)->rxon_mtx, LK_EXCLUSIVE)
 #define WPI_RXON_UNLOCK(_sc)		lockmgr(&(_sc)->rxon_mtx, LK_RELEASE)
-#define WPI_RXON_LOCK_ASSERT(_sc)	KKASSERT(lockstatus(&(_sc)->rxon_mtx) == LK_EXCLUSIVE)
+#define WPI_RXON_LOCK_ASSERT(_sc)	KKASSERT(lockstatus(&(_sc)->rxon_mtx, curthread) == LK_EXCLUSIVE)
 #define WPI_RXON_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->rxon_mtx)
 
 #define WPI_TX_LOCK_INIT(_sc) \
