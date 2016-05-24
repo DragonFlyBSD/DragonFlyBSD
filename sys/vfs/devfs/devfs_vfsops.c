@@ -270,7 +270,6 @@ static struct vfsops devfs_vfsops = {
 	.vfs_unmount	= devfs_vfs_unmount,
 	.vfs_root 	= devfs_vfs_root,
 	.vfs_statfs	= devfs_vfs_statfs,
-	.vfs_sync 	= vfs_stdsync,
 	.vfs_vget	= devfs_vfs_vget,
 	.vfs_vptofh	= devfs_vfs_vptofh,
 	.vfs_fhtovp	= devfs_vfs_fhtovp,

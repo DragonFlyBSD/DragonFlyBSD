@@ -227,7 +227,6 @@ static struct vfsops portal_vfsops = {
 	.vfs_unmount =  	portal_unmount,
 	.vfs_root =     	portal_root,
 	.vfs_statfs =   	portal_statfs,
-	.vfs_sync =     	vfs_stdsync
 };
 
 VFS_SET(portal_vfsops, portal, VFCF_SYNTHETIC);

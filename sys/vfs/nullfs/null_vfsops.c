@@ -398,7 +398,6 @@ static struct vfsops null_vfsops = {
 	.vfs_root =     	nullfs_root,
 	.vfs_quotactl =   	nullfs_quotactl,
 	.vfs_statfs =    	nullfs_statfs,
-	.vfs_sync =     	vfs_stdsync,
 	.vfs_extattrctl =  	nullfs_extattrctl,
 	.vfs_fhtovp =		nullfs_fhtovp,
 	.vfs_vptofh =		nullfs_vptofh,

@@ -148,7 +148,6 @@ static struct vfsops procfs_vfsops = {
 	.vfs_unmount =    	procfs_unmount,
 	.vfs_root =    		procfs_root,
 	.vfs_statfs =    	procfs_statfs,
-	.vfs_sync =    		vfs_stdsync
 };
 
 VFS_SET(procfs_vfsops, procfs, VFCF_SYNTHETIC);

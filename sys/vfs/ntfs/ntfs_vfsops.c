@@ -802,7 +802,6 @@ static struct vfsops ntfs_vfsops = {
 	.vfs_root =     	ntfs_root,
 	.vfs_statfs =   	ntfs_statfs,
 	.vfs_statvfs =		ntfs_statvfs,
-	.vfs_sync =      	vfs_stdsync,
 	.vfs_vget =     	ntfs_vget,
 	.vfs_fhtovp =   	ntfs_fhtovp,
 	.vfs_checkexp =   	ntfs_checkexp,

@@ -86,7 +86,6 @@ static struct vfsops cd9660_vfsops = {
 	.vfs_unmount =		cd9660_unmount,
 	.vfs_root =		cd9660_root,
 	.vfs_statfs =		cd9660_statfs,
-	.vfs_sync =		vfs_stdsync,
 	.vfs_vget =		cd9660_vget,
 	.vfs_fhtovp =		cd9660_fhtovp,
 	.vfs_checkexp =		cd9660_checkexp,

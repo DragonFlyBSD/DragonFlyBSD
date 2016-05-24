@@ -593,7 +593,6 @@ static struct vfsops tmpfs_vfsops = {
 	.vfs_statfs =			tmpfs_statfs,
 	.vfs_fhtovp =			tmpfs_fhtovp,
 	.vfs_vptofh =			tmpfs_vptofh, 
-	.vfs_sync =			vfs_stdsync,
 	.vfs_checkexp =			tmpfs_checkexp,
 };
 

@@ -352,7 +352,6 @@ static struct vfsops dirfs_vfsops = {
 	.vfs_statvfs =			dirfs_statvfs,
 	.vfs_fhtovp =			dirfs_fhtovp,
 	.vfs_vptofh =			dirfs_vptofh,
-	.vfs_sync =			vfs_stdsync,
 	.vfs_checkexp =			dirfs_checkexp
 };
 

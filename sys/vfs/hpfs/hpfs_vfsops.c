@@ -557,7 +557,6 @@ static struct vfsops hpfs_vfsops = {
 	.vfs_unmount =  	hpfs_unmount,
 	.vfs_root =     	hpfs_root,
 	.vfs_statfs =   	hpfs_statfs,
-	.vfs_sync =     	vfs_stdsync,
 	.vfs_vget =     	hpfs_vget,
 	.vfs_fhtovp =   	hpfs_fhtovp,
 	.vfs_checkexp =  	hpfs_checkexp,

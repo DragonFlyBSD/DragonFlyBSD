@@ -116,7 +116,6 @@ static struct vfsops udf_vfsops = {
 	.vfs_unmount =    	udf_unmount,
 	.vfs_root =    		udf_root,
 	.vfs_statfs =    	udf_statfs,
-	.vfs_sync =    		vfs_stdsync,
 	.vfs_vget =    		udf_vget,
 	.vfs_fhtovp =    	udf_fhtovp,
 	.vfs_vptofh =    	udf_vptofh
