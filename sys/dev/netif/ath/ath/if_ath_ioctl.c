@@ -182,7 +182,7 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = malloc(insize, M_TEMP, M_NOWAIT);
+		indata = kmalloc(insize, M_TEMP, M_NOWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -199,7 +199,7 @@ ath_ioctl_diag(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = malloc(outsize, M_TEMP, M_NOWAIT);
+		outdata = kmalloc(outsize, M_TEMP, M_NOWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
