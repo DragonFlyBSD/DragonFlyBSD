@@ -66,9 +66,6 @@ int	ieee80211_force_swcrypto = 0;
 SYSCTL_INT(_net_wlan, OID_AUTO, force_swcrypto, CTLFLAG_RW,
 	    &ieee80211_force_swcrypto, 0, "force software crypto");
 
-MALLOC_DEFINE(M_80211_COM, "80211com", "802.11 com state");
-
-
 static int	wlan_clone_destroy(struct ifnet *);
 static int	wlan_clone_create(struct if_clone *, int, caddr_t);
 
