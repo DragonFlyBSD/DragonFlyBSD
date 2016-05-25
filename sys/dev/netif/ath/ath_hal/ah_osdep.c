@@ -423,7 +423,7 @@ ath_hal_reg_read(struct ath_hal *ah, u_int32_t reg)
 		lockmgr(&ah_regser_mtx, LK_RELEASE);
 	return val;
 }
-#endif /* AH_DEBUG || AH_REGOPS_FUNC */
+#endif /* AH_DEBUG_ALQ */
 
 #ifdef AH_ASSERT
 void
