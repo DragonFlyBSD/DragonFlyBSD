@@ -88,10 +88,7 @@ If
 is \-1 then the request refers to the currently active value.
 .It Dv IEEE80211_IOC_NUMSSIDS
 Returns the number of SSIDs this card supports.
-In most cases, this is
-1, but some devices such as
-.Xr an 4
-support more.
+In most cases, this is 1, but some devices might support more.
 .It Dv IEEE80211_IOC_WEP
 Returns the current WEP status in
 .Va i_val .
@@ -230,9 +227,7 @@ Set the powersave sleep time in msec to the value in
 .El
 .Sh SEE ALSO
 .Xr ioctl 2 ,
-.Xr an 4 ,
 .Xr wi 4 ,
-.Xr ancontrol 8 ,
 .Xr ifconfig 8
 .Sh HISTORY
 The
