@@ -1046,6 +1046,8 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_BIGBLOCK_SIZE;
 	hammer_rel_volume(volume, 0);
 
+	if (breserved > bfree)
+		breserved = bfree;
 	mp->mnt_stat.f_bfree = (bfree - breserved) / HAMMER_BUFSIZE;
 	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 	if (mp->mnt_stat.f_files < 0)
@@ -1082,6 +1084,8 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_BIGBLOCK_SIZE;
 	hammer_rel_volume(volume, 0);
 
+	if (breserved > bfree)
+		breserved = bfree;
 	mp->mnt_vstat.f_bfree = (bfree - breserved) / HAMMER_BUFSIZE;
 	mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
 	if (mp->mnt_vstat.f_files < 0)
