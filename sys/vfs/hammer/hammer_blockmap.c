@@ -425,7 +425,7 @@ hammer_blockmap_reserve(hammer_mount_t hmp, int zone, int bytes,
 	hammer_off_t layer2_offset;
 	hammer_off_t base_off;
 	hammer_reserve_t resv;
-	hammer_reserve_t resx;
+	hammer_reserve_t resx = NULL;
 	int loops = 0;
 	int offset;
 
@@ -586,7 +586,6 @@ again:
 			goto again;
 		}
 		++resv->refs;
-		resx = NULL;
 	} else {
 		resx = kmalloc(sizeof(*resv), hmp->m_misc,
 			       M_WAITOK | M_ZERO | M_USE_RESERVE);
@@ -754,7 +753,6 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 			goto failed;
 		}
 		++resv->refs;
-		resx = NULL;
 	} else {
 		resx = kmalloc(sizeof(*resv), hmp->m_misc,
 			       M_WAITOK | M_ZERO | M_USE_RESERVE);
