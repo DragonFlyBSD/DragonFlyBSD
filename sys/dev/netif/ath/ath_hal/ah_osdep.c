@@ -90,7 +90,7 @@ struct lock ah_regser_mtx;
 LOCK_SYSINIT(ah_regser, &ah_regser_mtx, "Atheros register access mutex", 0);
 
 extern	void ath_hal_printf(struct ath_hal *, const char*, ...)
-		__printflike(2,3);
+		__printflike(2, 3);
 extern	void ath_hal_vprintf(struct ath_hal *, const char*, __va_list)
 		__printflike(2, 0);
 extern	const char* ath_hal_ether_sprintf(const u_int8_t *mac);
@@ -101,7 +101,8 @@ extern	void ath_hal_assert_failed(const char* filename,
 		int lineno, const char* msg);
 #endif
 #ifdef AH_DEBUG
-extern	void DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...);
+extern	void DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...)
+		__printflike(3, 4);
 #endif /* AH_DEBUG */
 
 /* NB: put this here instead of the driver to avoid circular references */
