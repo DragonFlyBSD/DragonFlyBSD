@@ -710,6 +710,7 @@ hammer_ip_add_direntry(struct hammer_transaction *trans,
 		cursor.key_beg.key = record->leaf.base.key;
 		if (--max_iterations == 0) {
 			hammer_rel_mem_record(record);
+			hmkprintf(trans->hmp, "Failed to find an unused namekey\n");
 			error = ENOSPC;
 			goto failed;
 		}

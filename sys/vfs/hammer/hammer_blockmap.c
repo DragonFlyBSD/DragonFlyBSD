@@ -137,6 +137,8 @@ again:
 	 */
 	if (next_offset == HAMMER_ZONE_ENCODE(zone + 1, 0)) {
 		if (++loops == 2) {
+			hmkprintf(hmp, "No space left for zone %d "
+				"allocation\n", zone);
 			result_offset = 0;
 			*errorp = ENOSPC;
 			goto failed;
@@ -455,6 +457,8 @@ again:
 	 */
 	if (next_offset == HAMMER_ZONE_ENCODE(zone + 1, 0)) {
 		if (++loops == 2) {
+			hmkprintf(hmp, "No space left for zone %d "
+				"reservation\n", zone);
 			*errorp = ENOSPC;
 			goto failed;
 		}
@@ -1521,6 +1525,7 @@ _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp)
 	    (usedbytes >> HAMMER_BIGBLOCK_BITS)) {
 		return(0);
 	}
+
 	return (ENOSPC);
 }
 
