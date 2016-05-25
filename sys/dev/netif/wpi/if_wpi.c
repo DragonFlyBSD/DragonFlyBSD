@@ -4222,9 +4222,9 @@ wpi_scan(struct wpi_softc *sc, struct ieee80211_channel *c)
 		memcpy(essids[i].data, ss->ss_ssid[i].ssid, essids[i].len);
 #ifdef WPI_DEBUG
 		if (sc->sc_debug & WPI_DEBUG_SCAN) {
-			printf("Scanning Essid: ");
+			kprintf("Scanning Essid: ");
 			ieee80211_print_essid(essids[i].data, essids[i].len);
-			printf("\n");
+			kprintf("\n");
 		}
 #endif
 	}

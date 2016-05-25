@@ -50,7 +50,7 @@ enum {
 
 #define DPRINTF(sc, m, ...) do {		\
 	if (sc->sc_debug & (m))			\
-		printf(__VA_ARGS__);		\
+		kprintf(__VA_ARGS__);		\
 } while (0)
 
 #define TRACE_STR_BEGIN		"->%s: begin\n"
@@ -119,7 +119,7 @@ static const char *wpi_get_csr_string(size_t csr)
 		WPI_DESC(WPI_ANA_PLL);
 		WPI_DESC(WPI_DBG_HPET_MEM);
 	default:
-		KASSERT(0, ("Unknown CSR: %d\n", csr));
+		KASSERT(0, ("Unknown CSR: %zu\n", csr));
 		return "UNKNOWN CSR";
 	}
 }
@@ -132,7 +132,7 @@ static const char *wpi_get_prph_string(size_t prph)
 		WPI_DESC(WPI_APMG_PCI_STT);
 		WPI_DESC(WPI_APMG_RFKILL);
 	default:
-		KASSERT(0, ("Unknown register: %d\n", prph));
+		KASSERT(0, ("Unknown register: %zu\n", prph));
 		return "UNKNOWN PRPH";
 	}
 }
