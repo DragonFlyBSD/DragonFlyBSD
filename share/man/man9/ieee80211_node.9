@@ -24,9 +24,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/ieee80211_node.9,v 1.7 2010/03/29 17:39:38 trasz Exp $
+.\" $FreeBSD: head/share/man/man9/ieee80211_node.9 296207 2016-02-29 17:26:41Z trasz $
 .\"
-.Dd April 28, 2010
+.Dd May 25, 2016
 .Dt IEEE80211_NODE 9
 .Os
 .Sh NAME
@@ -103,7 +103,7 @@ Node table entries are reference counted.
 That is, there is a count of all long term references that determines
 when an entry may be reclaimed.
 References are held by every in-flight frame sent to a station to
-insure the entry is not reclaimed while the frame is queued or otherwise
+ensure the entry is not reclaimed while the frame is queued or otherwise
 held by a driver.
 Routines that lookup a table entry return a
 .Dq held reference
@@ -187,8 +187,8 @@ iwi_node_alloc(struct ieee80211vap *vap,
 {
         struct iwi_node *in;
 
-        in = malloc(sizeof (struct iwi_node), M_80211_NODE,
-		M_NOWAIT | M_ZERO);
+        in = kmalloc(sizeof(struct iwi_node), M_80211_NODE,
+		M_INTWAIT | M_ZERO);
         if (in == NULL)
                 return NULL;
         in->in_station = -1;
@@ -210,7 +210,7 @@ iwi_node_free(struct ieee80211_node *ni)
         struct iwi_node *in = (struct iwi_node *)ni;
 
         if (in->in_station != -1)
-                free_unr(sc->sc_unr, in->in_station);
+                devfs_clone_bitmap_put(&sc->sc_unr, in->in_station);
         sc->sc_node_free(ni);	/* invoke net80211 free handler */
 }
 .Ed

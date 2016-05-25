@@ -23,13 +23,13 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/ieee80211_vap.9,v 1.2 2009/09/18 00:33:47 brueffer Exp $
+.\" $FreeBSD: head/share/man/man9/ieee80211_vap.9 233648 2012-03-29 05:02:12Z eadler $
 .\"
-.Dd April 28, 2010
+.Dd May 25 2016
 .Dt IEEE80211_VAP 9
 .Os
 .Sh NAME
-.Nm net80211_vap
+.Nm ieee80211_vap
 .Nd 802.11 network layer virtual radio support
 .Sh SYNOPSIS
 .In net/if.h
@@ -119,7 +119,7 @@ to deactivate the vap and isolate it from activities such as requests
 from user applications.
 The driver can then reclaim resources held by the vap and re-enable
 device operation.
-The exact procedure for quiesceing a device is unspecified but typically
+The exact procedure for quiescing a device is unspecified but typically
 it involves blocking interrupts and stopping transmit and receive
 processing.
 .Sh MULTI-VAP OPERATION

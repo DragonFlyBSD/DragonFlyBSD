@@ -119,7 +119,6 @@ MAN=	aac.4 \
 	icmp.4 \
 	icmp6.4 \
 	ida.4 \
-	ieee80211.4 \
 	ifmedia.4 \
 	ifmib.4 \
 	igb.4 \

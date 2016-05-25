@@ -24,10 +24,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/ieee80211_output.9,v 1.6 2010/03/29 17:39:38 trasz Exp $
+.\" $FreeBSD: head/share/man/man9/ieee80211_output.9 233648 2012-03-29 05:02:12Z eadler $
 .\" $Id: ieee80211_output.9,v 1.5 2004/03/04 12:31:18 bruce Exp $
 .\"
-.Dd April 28, 2010
+.Dd May 25, 2016
 .Dt IEEE80211_OUTPUT 9
 .Os
 .Sh NAME
@@ -43,9 +43,6 @@
 .\"
 .Ft int
 .Fn M_SEQNO_GET "struct mbuf *"
-.\"
-.Ft struct ieee80211_key *
-.Fn ieee80211_crypto_encap "struct ieee80211_node *" "struct mbuf *"
 .\"
 .Ft void
 .Fo ieee80211_process_callback
@@ -193,4 +190,5 @@ the frame was successfully queued.
 .Sh SEE ALSO
 .Xr bpf 4 ,
 .Xr ieee80211 9 ,
+.Xr ieee80211_crypto_encap 9 ,
 .Xr ifnet 9
