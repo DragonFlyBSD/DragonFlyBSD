@@ -61,7 +61,6 @@ int hammer_count_record_datas;
 int hammer_count_volumes;
 int hammer_count_buffers;
 int hammer_count_nodes;
-int64_t hammer_count_extra_space_used;
 int64_t hammer_stats_btree_lookups;
 int64_t hammer_stats_btree_searches;
 int64_t hammer_stats_btree_inserts;
@@ -184,8 +183,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_buffers, CTLFLAG_RD,
 	   &hammer_count_buffers, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, count_extra_space_used, CTLFLAG_RD,
-	   &hammer_count_extra_space_used, 0, "");
 
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_searches, CTLFLAG_RD,
 	   &hammer_stats_btree_searches, 0, "");

@@ -1514,7 +1514,6 @@ _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp)
 		    ((int64_t)hammer_limit_dirtybufspace) +
 		    (slop << HAMMER_BIGBLOCK_BITS);
 
-	hammer_count_extra_space_used = usedbytes;	/* debugging */
 	if (resp)
 		*resp = usedbytes;
 

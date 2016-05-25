@@ -1012,7 +1012,6 @@ extern int hammer_count_record_datas;
 extern int hammer_count_volumes;
 extern int hammer_count_buffers;
 extern int hammer_count_nodes;
-extern int64_t hammer_count_extra_space_used;
 extern int64_t hammer_stats_btree_lookups;
 extern int64_t hammer_stats_btree_searches;
 extern int64_t hammer_stats_btree_inserts;
