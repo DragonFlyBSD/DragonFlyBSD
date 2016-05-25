@@ -1594,7 +1594,7 @@ rt2560_tx_mgt(struct rt2560_softc *sc, struct mbuf *m0,
 
 #if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->prioq.data_dmat, data->map, m0,
-	    segs, 1, &nsegs, 0);
+	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 	error = bus_dmamap_load_mbuf_sg(sc->prioq.data_dmat, data->map, m0,
 	    segs, &nsegs, 0);
@@ -1701,7 +1701,7 @@ rt2560_sendprot(struct rt2560_softc *sc,
 
 #if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->txq.data_dmat, data->map,
-	    mprot, segs, 1, &nsegs, 0);
+	    mprot, segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 	error = bus_dmamap_load_mbuf_sg(sc->txq.data_dmat, data->map,
 	    mprot, segs, &nsegs, 0);
@@ -1769,7 +1769,7 @@ rt2560_tx_raw(struct rt2560_softc *sc, struct mbuf *m0,
 
 #if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->prioq.data_dmat, data->map, m0,
-	    segs, 1, &nsegs, 0);
+	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 	error = bus_dmamap_load_mbuf_sg(sc->prioq.data_dmat, data->map, m0,
 	    segs, &nsegs, 0);
@@ -1879,7 +1879,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 
 #if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->txq.data_dmat, data->map, m0,
-	    segs, 1, &nsegs, 0);
+	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 	error = bus_dmamap_load_mbuf_sg(sc->txq.data_dmat, data->map, m0,
 	    segs, &nsegs, 0);
@@ -1903,7 +1903,7 @@ rt2560_tx_data(struct rt2560_softc *sc, struct mbuf *m0,
 #if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->txq.data_dmat,
 		    data->map,
-		    m0, segs, 1, &nsegs, 0);
+		    m0, segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 		error = bus_dmamap_load_mbuf_sg(sc->txq.data_dmat, data->map,
 		    m0, segs, &nsegs, 0);

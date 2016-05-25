@@ -1653,7 +1653,7 @@ rt2860_tx(struct rt2860_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 
 #if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map, m,
-	    segs, 1, &nsegs, 0);
+	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 	error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m, segs,
 	    &nsegs, 0);
@@ -1686,7 +1686,7 @@ rt2860_tx(struct rt2860_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 
 #if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map,
-		    m, segs, 1, &nsegs, 0);
+		    m, segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 		error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m,
 		    segs, &nsegs, 0);
@@ -1911,7 +1911,7 @@ rt2860_tx_raw(struct rt2860_softc *sc, struct mbuf *m,
 
 #if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map, m,
-	    segs, 1, &nsegs, 0);
+	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 	error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m, segs,
 	    &nsegs, 0);
@@ -1944,7 +1944,7 @@ rt2860_tx_raw(struct rt2860_softc *sc, struct mbuf *m,
 
 #if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map,
-		    m, segs, 1, &nsegs, 0);
+		    m, segs, 1, &nsegs, BUS_DMA_NOWAIT);
 #else
 		error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m,
 		    segs, &nsegs, 0);
