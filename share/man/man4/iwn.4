@@ -23,9 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/share/man/man4/iwn.4 248507 2013-03-19 13:43:55Z glebius $
+.\" $FreeBSD: head/share/man/man4/iwn.4 270842 2014-08-30 13:47:05Z brueffer $
 .\"
-.Dd November 23, 2013
+.Dd May 26, 2016
 .Dt IWN 4
 .Os
 .Sh NAME
@@ -40,13 +40,19 @@ kernel configuration file:
 .Cd "device iwnfw"
 .Cd "device pci"
 .Cd "device wlan"
+.\".Cd "device firmware"
 .Ed
 .Pp
 .\"You also need to select a firmware for your device.
 .\"Choose one from:
 .\".Bd -ragged -offset indent
-.\".Cd "device iwn4965fw"
 .\".Cd "device iwn1000fw"
+.\".Cd "device iwn100fw"
+.\".Cd "device iwn105fw"
+.\".Cd "device iwn135fw"
+.\".Cd "device iwn2000fw"
+.\".Cd "device iwn2030fw"
+.\".Cd "device iwn4965fw"
 .\".Cd "device iwn5000fw"
 .\".Cd "device iwn5150fw"
 .\".Cd "device iwn6000fw"
@@ -67,8 +73,13 @@ module at boot time, place the following lines in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 if_iwn_load="YES"
-iwn4965fw_load="YES"
 iwn1000fw_load="YES"
+iwn100fw_load="YES"
+iwn105fw_load="YES"
+iwn135fw_load="YES"
+iwn2000fw_load="YES"
+iwn2030fw_load="YES"
+iwn4965fw_load="YES"
 iwn5000fw_load="YES"
 iwn5150fw_load="YES"
 iwn6000fw_load="YES"
@@ -85,10 +96,13 @@ driver provides support for:
 .It Intel Centrino Advanced-N 6200
 .It Intel Centrino Advanced-N 6205
 .It Intel Centrino Advanced-N 6230
+.It Intel Centrino Advanced-N 6235
 .It Intel Centrino Advanced-N + WiMAX 6250
 .It Intel Centrino Ultimate-N 6300
 .It Intel Centrino Wireless-N 100
+.It Intel Centrino Wireless-N 105
 .It Intel Centrino Wireless-N 130
+.It Intel Centrino Wireless-N 135
 .It Intel Centrino Wireless-N 1000
 .It Intel Centrino Wireless-N 1030
 .It Intel Centrino Wireless-N 2200

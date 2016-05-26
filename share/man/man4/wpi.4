@@ -24,9 +24,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD$
+.\" $FreeBSD: head/share/man/man4/wpi.4 289399 2015-10-16 00:38:05Z bdrewery $
 .\"
-.Dd October 5, 2008
+.Dd May 26, 2016
 .Dt WPI 4
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@ kernel configuration file:
 .Cd "device pci"
 .Cd "device wlan"
 .Cd "device wlan_amrr"
+.\".Cd "device firmware"
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -55,7 +56,7 @@ The
 .Nm
 driver provides support for the
 .Tn Intel
-3945ABG Wireless network adapter
+3945ABG Wireless network adapter.
 .Nm
 supports
 .Cm station ,
@@ -115,18 +116,14 @@ unload/reload the driver to continue.
 The hardware switch controlling the radio is currently turned off.
 Data transmission is not possible in this state.
 .El
-.Sh BUGS
-Not all the error messages are documented here.
-.Pp
-Background scanning is not currently supported.
 .Sh SEE ALSO
-.\".Xr wpifw 4 ,
 .Xr ifmedia 4 ,
 .Xr pci 4 ,
 .Xr wlan 4 ,
 .Xr wlan_ccmp 4 ,
 .Xr wlan_tkip 4 ,
 .Xr wlan_wep 4 ,
+.\".Xr wpifw 4 ,
 .Xr ifconfig 8 ,
 .Xr wpa_supplicant 8
 .Sh AUTHORS
@@ -142,3 +139,7 @@ ported
 .Nm
 to
 .Fx .
+.Sh BUGS
+Not all the error messages are documented here.
+.Pp
+Background scanning is not currently supported.

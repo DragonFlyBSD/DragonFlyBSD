@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/share/man/man4/bwn.4 233992 2012-04-07 09:05:30Z joel $
+.\" $FreeBSD: head/share/man/man4/bwn.4 284291 2015-06-12 00:02:31Z brueffer $
 .\"
-.Dd May 10, 2016
+.Dd May 26, 2016
 .Dt BWN 4
 .Os
 .Sh NAME
@@ -39,6 +39,7 @@ kernel configuration file:
 .Cd "device bwn"
 .Cd "device wlan"
 .Cd "device wlan_amrr"
+.\".Cd "device firmware"
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -68,8 +69,12 @@ The
 port needs to be installed before
 .Xr ifconfig 8
 will work.
-In most cases you need to use the bwn_v4_ucode module but if you are a
-LP (low power) PHY user please use the bwn_v4_lp_ucode module.
+In most cases the
+.Pa bwn_v4_ucode
+kernel module from the port should be used.
+However, if an LP (low power) PHY is being used, the
+.Pa bwn_v4_lp_ucode
+module should be used.
 .Sh HARDWARE
 The
 .Nm
@@ -88,6 +93,12 @@ driver supports Broadcom BCM43xx based wireless devices, including:
 .It "Linksys WPC54GS Ver 2	BCM4318	CardBus	b/g"
 .It "US Robotics 5411	BCM4318	CardBus	b/g"
 .El
+.\".Pp
+.\"Users of older Broadcom chipsets (BCM4301, BCM4303 and BCM4306 rev 2)
+.\"must use
+.\".Xr bwi 4
+.\"because the v4 version of the firmware does not support these chips.
+.\"The newer firmware is too big to fit into these old chips.
 .Sh EXAMPLES
 Join an existing BSS network (i.e., connect to an access point):
 .Bd -literal -offset indent
@@ -121,6 +132,7 @@ The default value is 1.
 .El
 .Sh SEE ALSO
 .Xr arp 4 ,
+.\".Xr bwi 4 ,
 .Xr cardbus 4 ,
 .Xr ifmedia 4 ,
 .Xr intro 4 ,
