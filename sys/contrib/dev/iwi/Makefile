@@ -1,4 +1,4 @@
-#	$FreeBSD: src/sys/contrib/dev/iwi/Makefile,v 1.1 2009/05/09 18:54:18 sam Exp $
+#	$FreeBSD: head/sys/contrib/dev/iwi/Makefile 191945 2009-05-09 18:54:18Z sam $
 
 FW_VERSION=3.1
 ALL=	ipw2200-bss.fw.uu ipw2200-ibss.fw.uu ipw2200-sniffer.fw.uu

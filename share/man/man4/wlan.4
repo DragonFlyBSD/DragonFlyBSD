@@ -23,9 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/wlan.4,v 1.23 2010/01/14 09:38:23 roam Exp $
+.\" $FreeBSD: head/share/man/man4/wlan.4 290127 2015-10-29 03:22:27Z kevlo $
 .\"
-.Dd May 10, 2011
+.Dd May 26, 2016
 .Dt WLAN 4
 .Os
 .Sh NAME
@@ -121,7 +121,7 @@ Note that an interface's type cannot be changed once it is created.
 .Pp
 .Nm
 defines several mechanisms by which plugin modules may
-be used to extend its' functionality.
+be used to extend its functionality.
 Cryptographic support such as WEP, TKIP, and AES-CCMP are implemented
 as standalone modules (if not statically configured into a system)
 that register with
@@ -129,63 +129,6 @@ that register with
 Similarly there is an authenticator framework for defining 802.11
 authentication services and a framework for integrating access
 control mechanisms specific to the 802.11 protocol.
-.\".Sh EXAMPLES
-.\"Join an existing BSS network (i.e., connect to an access point):
-.\".Pp
-.\".Dl "ifconfig iface 192.168.0.20/24"
-.\".Pp
-.\"Join a specific BSS network with network name
-.\".Dq Li my_net :
-.\".Pp
-.\".Dl "ifconfig iface 192.168.0.20/24 ssid my_net"
-.\".Pp
-.\"Join a specific BSS network with 64 bit WEP encryption:
-.\".Bd -literal -offset indent
-.\"ifconfig iface 192.168.0.20/24 ssid my_net wepmode on \e
-.\"        wepkey 0x1234567890 weptxkey 1
-.\".Ed
-.\".Pp
-.\"Join a specific BSS network with 128 bit WEP encryption:
-.\".Bd -literal -offset indent
-.\"ifconfig iface 192.168.0.20/24 ssid my_net wepmode on \e
-.\"        wepkey 0x01020304050607080910111213 weptxkey 1
-.\".Ed
-.\".Pp
-.\"Join/create an 802.11b IBSS network:
-.\".Bd -literal -offset indent
-.\"ifconfig iface 192.168.0.20/24 ssid my_net mediaopt adhoc
-.\".Ed
-.\".Pp
-.\"To debug a network setup, you may wish to enable interface debugging:
-.\".Bd -literal -offset indent
-.\"ifconfig iface down debug up
-.\".Ed
-.\".Pp
-.\"To disable debugging, you may simply use:
-.\".Bd -literal -offset indent
-.\"ifconfig iface down -debug up
-.\".Ed
-.\".Pp
-.\"Create an 802.11g host-based access point:
-.\".Bd -literal -offset indent
-.\"ifconfig iface 192.168.0.20/24 ssid my_net mode 11g mediaopt hostap
-.\".Ed
-.\".Pp
-.\"Create an 802.11a host-based access point with WEP enabled:
-.\".Bd -literal -offset indent
-.\"ifconfig iface 192.168.0.20/24 ssid my_net wepmode on \e
-.\"	wepkey 0x1234567890 weptxkey 1 mode 11a mediaopt hostap
-.\".Ed
-.\".Pp
-.\"Create a host-based wireless bridge to fxp0:
-.\".Bd -literal -offset indent
-.\"ifconfig iface up ssid my_net media DS/11Mbps mediaopt hostap
-.\"sysctl net.inet.ip.check_interface=0
-.\"ifconfig bridge0 create
-.\"ifconfig bridge0 addm iface1 addm iface2 up
-.\".Ed
-.\".Pp
-.\"This will give you the same functionality as an access point.
 .Sh DEBUGGING
 If the
 .Dv IEEE80211_DEBUG
@@ -229,13 +172,18 @@ and stations implementing earlier drafts (e.g. Linux)
 may not interoperate.
 .Sh SEE ALSO
 .Xr ath 4 ,
+.Xr bwi 4 ,
 .Xr bwn 4 ,
 .\".Xr ipw 4 ,
 .Xr iwi 4 ,
+.Xr iwm 4 ,
 .Xr iwn 4 ,
 .\".Xr malo 4 ,
+.\".Xr mwl 4 ,
 .Xr netintro 4 ,
+.\".Xr otus 4 ,
 .Xr ral 4 ,
+.\".Xr rsu 4 ,
 .Xr rum 4 ,
 .Xr run 4 ,
 .\".Xr uath 4 ,
@@ -245,7 +193,6 @@ may not interoperate.
 .Xr urtwn 4 ,
 .Xr wi 4 ,
 .Xr wlan_acl 4 ,
-.Xr wlan_amrr 4 ,
 .Xr wlan_ccmp 4 ,
 .Xr wlan_tkip 4 ,
 .Xr wlan_wep 4 ,

@@ -1,4 +1,4 @@
-# $FreeBSD$
+# $FreeBSD: head/sys/contrib/dev/ral/rt2561s.fw.uu 178354 2008-04-20 20:35:46Z sam $
 #
 # Copyright (c) 2005-2008, Ralink Technology Corp.
 # 	Paul Lin <paul_lin@ralinktech.com.tw>
