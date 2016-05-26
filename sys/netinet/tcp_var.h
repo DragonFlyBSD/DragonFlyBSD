@@ -654,6 +654,7 @@ struct tcpcb *
 	 tcp_close (struct tcpcb *);
 void	 tcp_ctlinput(union netmsg *);
 void	 tcp_ctloutput(union netmsg *);
+struct netmsg_pr_ctloutput *tcp_ctloutmsg(struct sockopt *);
 inp_notify_t tcp_get_inpnotify(int cmd, const struct sockaddr *sa,
 	    int *arg, struct ip **ip0, int *cpuid);
 struct tcpcb *

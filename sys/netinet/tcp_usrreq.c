@@ -1440,9 +1440,13 @@ tcp_ctloutput(netmsg_t msg)
 {
 	struct socket *so = msg->base.nm_so;
 	struct sockopt *sopt = msg->ctloutput.nm_sopt;
+	struct thread *td = NULL;
 	int	error, opt, optval, opthz;
 	struct	inpcb *inp;
 	struct	tcpcb *tp;
+
+	if (msg->ctloutput.nm_flags & PRCO_HELDTD)
+		td = sopt->sopt_td;
 
 	error = 0;
 	inp = so->so_pcb;
@@ -1497,6 +1501,8 @@ tcp_ctloutput(netmsg_t msg)
 #endif /* INET6 */
 		ip_ctloutput(msg);
 		/* msg invalid now */
+		if (td != NULL)
+			lwkt_rele(td);
 		return;
 	}
 
@@ -1666,7 +1672,69 @@ tcp_ctloutput(netmsg_t msg)
 		break;
 	}
 done:
+	if (td != NULL)
+		lwkt_rele(td);
 	lwkt_replymsg(&msg->lmsg, error);
+}
+
+struct netmsg_tcp_ctloutput {
+	struct netmsg_pr_ctloutput ctloutput;
+	struct sockopt		sopt;
+	int			sopt_val;
+};
+
+/*
+ * Allocate netmsg_pr_ctloutput for asynchronous tcp_ctloutput.
+ */
+struct netmsg_pr_ctloutput *
+tcp_ctloutmsg(struct sockopt *sopt)
+{
+	struct netmsg_tcp_ctloutput *msg;
+	int flags = 0, error;
+
+	KASSERT(sopt->sopt_dir == SOPT_SET, ("not from ctloutput"));
+
+	/* Only small set of options allows asynchronous setting. */
+	if (sopt->sopt_level != IPPROTO_TCP)
+		return NULL;
+	switch (sopt->sopt_name) {
+	case TCP_NODELAY:
+	case TCP_NOOPT:
+	case TCP_NOPUSH:
+	case TCP_FASTKEEP:
+		break;
+	default:
+		return NULL;
+	}
+
+	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_WAITOK | M_NULLOK);
+	if (msg == NULL) {
+		/* Fallback to synchronous tcp_ctloutput */
+		return NULL;
+	}
+
+	/* Save the sockopt */
+	msg->sopt = *sopt;
+
+	/* Fixup the sopt.sopt_val ptr */
+	error = sooptcopyin(sopt, &msg->sopt_val,
+	    sizeof(msg->sopt_val), sizeof(msg->sopt_val));
+	if (error) {
+		kfree(msg, M_LWKTMSG);
+		return NULL;
+	}
+	msg->sopt.sopt_val = &msg->sopt_val;
+
+	/* Hold the current thread */
+	if (msg->sopt.sopt_td != NULL) {
+		flags |= PRCO_HELDTD;
+		lwkt_hold(msg->sopt.sopt_td);
+	}
+
+	msg->ctloutput.nm_flags = flags;
+	msg->ctloutput.nm_sopt = &msg->sopt;
+
+	return &msg->ctloutput;
 }
 
 /*

@@ -267,8 +267,11 @@ struct netmsg_pru_soreceive {
 
 struct netmsg_pr_ctloutput {
 	struct netmsg_base	base;
+	int			nm_flags;	/* PRCO_xx */
 	struct sockopt		*nm_sopt;
 };
+
+#define PRCO_HELDTD		0x1
 
 struct netmsg_pr_ctlinput {
 	struct netmsg_base	base;

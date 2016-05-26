@@ -527,8 +527,25 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 	int error;
 
 	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
+
+	if (sopt->sopt_dir == SOPT_SET && so->so_proto->pr_ctloutmsg != NULL) {
+		struct netmsg_pr_ctloutput *amsg;
+
+		/* Fast path: asynchronous pr_ctloutput */
+		amsg = so->so_proto->pr_ctloutmsg(sopt);
+		if (amsg != NULL) {
+			netmsg_init(&amsg->base, so, &netisr_afree_rport, 0,
+			    so->so_proto->pr_ctloutput);
+			/* nm_flags and nm_sopt are setup by pr_ctloutmsg */
+			lwkt_sendmsg(so->so_port, &amsg->base.lmsg);
+			return 0;
+		}
+		/* FALLTHROUGH */
+	}
+
 	netmsg_init(&msg.base, so, &curthread->td_msgport,
 		    0, so->so_proto->pr_ctloutput);
+	msg.nm_flags = 0;
 	msg.nm_sopt = sopt;
 	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);

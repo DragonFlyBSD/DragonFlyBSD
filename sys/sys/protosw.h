@@ -103,6 +103,8 @@ struct protosw {
 					/* output to protocol (from above) */
 	void	(*pr_ctlinput)(netmsg_t);
 					/* control input (from below) */
+	struct netmsg_pr_ctloutput *(*pr_ctloutmsg)(struct sockopt *);
+					/* allocate netmsg for ctloutput */
 	void	(*pr_ctloutput)(netmsg_t);
 					/* control output (from above) */
 	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *, int *);
