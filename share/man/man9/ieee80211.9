@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man9/ieee80211.9 233648 2012-03-29 05:02:12Z eadler $
 .\"
-.Dd May 25, 2016
+.Dd May 26, 2016
 .Dt IEEE80211 9
 .Os
 .Sh NAME
@@ -36,7 +36,7 @@
 .In net/if_media.h
 .In netproto/802_11/ieee80211_var.h
 .Ft void
-.Fn ieee80211_ifattach "struct ieee80211com *ic" "const uint8_t macaddr[IEEE80211_ADDR_LEN]"
+.Fn ieee80211_ifattach "struct ieee80211com *ic"
 .Ft void
 .Fn ieee80211_ifdetach "struct ieee80211com *ic"
 .Sh DESCRIPTION

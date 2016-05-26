@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man9/ieee80211_beacon.9 197300 2009-09-18 00:33:47Z brueffer $
 .\"
-.Dd April 28, 2010
+.Dd May 26, 2016
 .Dt IEEE80211_BEACON 9
 .Os
 .Sh NAME
@@ -39,13 +39,11 @@
 .Ft "struct mbuf *"
 .Fo ieee80211_beacon_alloc
 .Fa "struct ieee80211_node *"
-.Fa "struct ieee80211_beacon_offsets *"
 .Fc
 .\"
 .Ft int
 .Fo ieee80211_beacon_update
 .Fa "struct ieee80211_node *"
-.Fa "struct ieee80211_beacon_offsets *"
 .Fa "struct mbuf *"
 .Fa "int mcast"
 .Fc
@@ -61,11 +59,6 @@ in hostap, adhoc, and mesh operating modes.
 Drivers should use
 .Fn ieee80211_beacon_alloc
 to create an initial beacon frame.
-The
-.Vt ieee80211_beacon_offsets
-structure holds information about the beacon contents that is used
-to optimize updates done with
-.Fn ieee80211_beacon_update .
 .Pp
 Update calls should only be done when something changes that
 affects the contents of the beacon frame.

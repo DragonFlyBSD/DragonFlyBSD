@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man9/ieee80211_vap.9 233648 2012-03-29 05:02:12Z eadler $
 .\"
-.Dd May 25 2016
+.Dd May 26 2016
 .Dt IEEE80211_VAP 9
 .Os
 .Sh NAME
@@ -44,7 +44,6 @@
 .Fa "enum ieee80211_opmode opmode"
 .Fa "int flags"
 .Fa "const uint8_t bssid[IEEE80211_ADDR_LEN]"
-.Fa "const uint8_t macaddr[IEEE80211_ADDR_LEN]"
 .Fc
 .\"
 .Ft int
@@ -52,6 +51,7 @@
 .Fa "struct ieee80211vap *"
 .Fa "ifm_change_cb_t media_change"
 .Fa "ifm_stat_cb_t media_stat"
+.Fa "const uint8_t macaddr[IEEE80211_ADDR_LEN]"
 .Fc
 .\"
 .Ft void
