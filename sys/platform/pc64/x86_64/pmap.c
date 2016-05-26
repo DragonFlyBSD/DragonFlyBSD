@@ -4098,8 +4098,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		}
 		origpte = *ptep;
 		cpu_ccfence();
-		KKASSERT(origpte == 0 ||
-			 (origpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0);
+		KASSERT(origpte == 0 ||
+			 (origpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0,
+			 ("Invalid PTE 0x%016jx @ 0x%016jx\n", origpte, va));
 	} else {
 		if (va >= VM_MAX_USER_ADDRESS) {
 			/*
@@ -4118,8 +4119,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		}
 		origpte = *ptep;
 		cpu_ccfence();
-		KKASSERT(origpte == 0 ||
-			 (origpte & pmap->pmap_bits[PG_MANAGED_IDX]));
+		KASSERT(origpte == 0 ||
+			 (origpte & pmap->pmap_bits[PG_MANAGED_IDX]),
+			 ("Invalid PTE 0x%016jx @ 0x%016jx\n", origpte, va));
 	}
 
 	pa = VM_PAGE_TO_PHYS(m);
