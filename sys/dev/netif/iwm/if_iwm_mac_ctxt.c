@@ -271,12 +271,24 @@ iwm_mvm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	/*
 	 * XXX should we error out if in_assoc is 1 and ni == NULL?
 	 */
+#if 0
 	if (in->in_assoc) {
 		IEEE80211_ADDR_COPY(cmd->bssid_addr, ni->ni_bssid);
 	} else {
 		/* eth broadcast address */
 		memset(cmd->bssid_addr, 0xff, sizeof(cmd->bssid_addr));
 	}
+#else
+	/*
+	 * XXX This workaround makes the firmware behave more correctly once
+	 *     we are associated, regularly giving us statistics notifications,
+	 *     as well as signaling missed beacons to us.
+	 *     Since we only call iwm_mvm_mac_ctxt_add() and
+	 *     iwm_mvm_mac_ctxt_changed() when already authenticating or
+	 *     associating, ni->ni_bssid should always make sense here.
+	 */
+	IEEE80211_ADDR_COPY(cmd->bssid_addr, ni->ni_bssid);
+#endif
 
 	/*
 	 * Default to 2ghz if no node information is given.
