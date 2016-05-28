@@ -325,7 +325,7 @@ vtblk_attach(device_t dev)
 	 * Allocate working sglist. The number of segments may be too
 	 * large to safely store on the stack.
 	 */
-	sc->vtblk_sglist = sglist_alloc(sc->vtblk_max_nsegs, M_NOWAIT);
+	sc->vtblk_sglist = sglist_alloc(sc->vtblk_max_nsegs, M_INTWAIT);
 	if (sc->vtblk_sglist == NULL) {
 		error = ENOMEM;
 		device_printf(dev, "cannot allocate sglist\n");
@@ -528,6 +528,18 @@ vtblk_negotiate_features(struct vtblk_softc *sc)
 	sc->vtblk_features = virtio_negotiate_features(dev, features);
 }
 
+/*
+ * Calculate the maximum number of DMA segment supported.  Note
+ * that the in/out header is encoded in the segment list.  We
+ * assume that VTBLK_MIN_SEGMENTS covers that part of it so
+ * we add it into the desired total.  If the SEG_MAX feature
+ * is not specified we have to just assume that the host can
+ * handle the maximum number of segments required for a MAXPHYS
+ * sized request.
+ *
+ * The additional + 1 is in case a MAXPHYS-sized buffer crosses
+ * a page boundary.
+ */
 static int
 vtblk_maximum_segments(struct vtblk_softc *sc,
     struct virtio_blk_config *blkcfg)
@@ -539,11 +551,12 @@ vtblk_maximum_segments(struct vtblk_softc *sc,
 	nsegs = VTBLK_MIN_SEGMENTS;
 
 	if (virtio_with_feature(dev, VIRTIO_BLK_F_SEG_MAX)) {
-		nsegs += MIN(blkcfg->seg_max, MAXPHYS / PAGE_SIZE + 1);
-		if (sc->vtblk_flags & VTBLK_FLAG_INDIRECT)
-			nsegs = MIN(nsegs, VIRTIO_MAX_INDIRECT);
-	} else
-		nsegs += 1;
+		nsegs = MIN(blkcfg->seg_max, MAXPHYS / PAGE_SIZE + 1 + nsegs);
+	} else {
+		nsegs = MAXPHYS / PAGE_SIZE + 1 + nsegs;
+	}
+	if (sc->vtblk_flags & VTBLK_FLAG_INDIRECT)
+		nsegs = MIN(nsegs, VIRTIO_MAX_INDIRECT);
 
 	return (nsegs);
 }
@@ -1062,7 +1075,7 @@ vtblk_alloc_requests(struct vtblk_softc *sc)
 
 	for (i = 0; i < nreqs; i++) {
 		req = contigmalloc(sizeof(struct vtblk_request), M_DEVBUF,
-		    M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
+		    M_WAITOK, 0, BUS_SPACE_MAXADDR, 16, 0);
 		if (req == NULL)
 			return (ENOMEM);
 

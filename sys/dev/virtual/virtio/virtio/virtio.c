@@ -118,7 +118,7 @@ virtio_describe(device_t dev, const char *msg,
 	const char *name;
 	int n;
 
-	if ((buf = kmalloc(512, M_TEMP, M_NOWAIT)) == NULL) {
+	if ((buf = kmalloc(512, M_TEMP, M_INTWAIT)) == NULL) {
 		device_printf(dev, "%s features: 0x%"PRIx64"\n", msg,
 		    features);
 		return;

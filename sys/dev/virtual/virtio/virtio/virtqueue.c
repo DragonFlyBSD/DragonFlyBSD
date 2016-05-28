@@ -172,7 +172,7 @@ virtqueue_alloc(device_t dev, uint16_t queue, uint16_t size, int align,
 	}
 
 	vq = kmalloc(sizeof(struct virtqueue) +
-	    size * sizeof(struct vq_desc_extra), M_DEVBUF, M_NOWAIT | M_ZERO);
+	    size * sizeof(struct vq_desc_extra), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (vq == NULL) {
 		device_printf(dev, "cannot allocate virtqueue\n");
 		return (ENOMEM);
@@ -198,7 +198,7 @@ virtqueue_alloc(device_t dev, uint16_t queue, uint16_t size, int align,
 
 	vq->vq_ring_size = round_page(vring_size(size, align));
 	vq->vq_ring_mem = contigmalloc(vq->vq_ring_size, M_DEVBUF,
-	    M_NOWAIT | M_ZERO, 0, highaddr, PAGE_SIZE, 0);
+	    M_INTWAIT | M_ZERO, 0, highaddr, PAGE_SIZE, 0);
 	if (vq->vq_ring_mem == NULL) {
 		device_printf(dev,
 		    "cannot allocate memory for virtqueue ring\n");
@@ -248,8 +248,8 @@ virtqueue_init_indirect(struct virtqueue *vq, int indirect_size)
 	for (i = 0; i < vq->vq_nentries; i++) {
 		dxp = &vq->vq_descx[i];
 
-		dxp->indirect = contigmalloc(size, M_DEVBUF, M_NOWAIT,
-		    0, BUS_SPACE_MAXADDR, 4, 0);
+		dxp->indirect = contigmalloc(size, M_DEVBUF, M_INTWAIT,
+		    0, BUS_SPACE_MAXADDR, 16, 0);
 		if (dxp->indirect == NULL) {
 			device_printf(dev, "cannot allocate indirect list\n");
 			return (ENOMEM);
