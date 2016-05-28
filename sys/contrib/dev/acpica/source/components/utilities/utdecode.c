@@ -258,9 +258,6 @@ AcpiUtGetTypeName (
 }
 
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
 const char *
 AcpiUtGetObjectTypeName (
     ACPI_OPERAND_OBJECT     *ObjDesc)
@@ -287,10 +284,8 @@ AcpiUtGetObjectTypeName (
         return_PTR ("Invalid object");
     }
 
-    return_PTR (AcpiUtGetTypeName (ObjDesc->Common.Type));
+    return_STR (AcpiUtGetTypeName (ObjDesc->Common.Type));
 }
-
-#pragma GCC diagnostic pop
 
 
 /*******************************************************************************

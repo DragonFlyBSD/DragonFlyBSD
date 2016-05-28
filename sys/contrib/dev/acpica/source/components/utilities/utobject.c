@@ -90,9 +90,6 @@ AcpiUtGetElementLength (
  *
  ******************************************************************************/
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
 ACPI_OPERAND_OBJECT  *
 AcpiUtCreateInternalObjectDbg (
     const char              *ModuleName,
@@ -159,8 +156,6 @@ AcpiUtCreateInternalObjectDbg (
 
     return_PTR (Object);
 }
-
-#pragma GCC diagnostic pop
 
 
 /*******************************************************************************
