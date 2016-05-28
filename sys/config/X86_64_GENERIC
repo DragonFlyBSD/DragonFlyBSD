@@ -262,12 +262,6 @@ device		wlan_ccmp	# 802.11 CCMP support
 device		wlan_tkip	# 802.11 TKIP support
 device		wlan_wep	# 802.11 WEP support
 #device		wlan_amrr	# AMRR
-
-# Aironet 4500/4800 802.11 wireless NICs.  Note: the declaration below will
-# work for PCMCIA and PCI cards, as well as ISA cards set to ISA PnP
-# mode (the factory default). If you set the switches on your ISA
-# card for a manually chosen I/O address and IRQ, you must specify
-# those parameters here.
 device		ath		# Atheros NICs
 device		ath_hal		# Atheros Hardware Access Layer
 options 	AH_SUPPORT_AR5416	# enable AR5416 tx/rx descriptors

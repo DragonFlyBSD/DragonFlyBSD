@@ -1120,8 +1120,6 @@ device		puc
 # wi: Lucent WaveLAN/IEEE 802.11 PCMCIA adapters. Note: this supports both
 #     the PCMCIA and ISA cards: the ISA card is really a PCMCIA to ISA
 #     bridge with a PCMCIA adapter plugged into it.
-# an: Aironet 4500/4800 802.11 wireless adapters. Supports the PCMCIA,
-#     PCI and ISA varieties.
 # xe: Xircom/Intel EtherExpress Pro100/16 PC Card ethernet controller.
 #
 device cs
