@@ -949,6 +949,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	       atop(round_page(MSGBUF_SIZE)))
 
 	virtual_start = va;
+	virtual_start = pmap_kmem_choose(virtual_start);
 
 	*CMAP1 = 0;
 
