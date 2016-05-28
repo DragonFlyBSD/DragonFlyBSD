@@ -138,11 +138,13 @@ IOCTL - very spammy ioctl prints
 VBLANK - very spammy vblank prints
 .El
 .It Va drm.edid_firmware
-Load external EDID binary monitor data from firmware module.
-Useful if monitor is not sending appropiate EDID block, no video on
-connected monitor or there is a need to enforce custom video modes.
-Optionally, connector name can be specified before firmware name
-followed by colon, for example:
+Load external EDID binary monitor data from a firmware module.
+Useful if the monitor is not sending an appropriate EDID block, if there
+is no video on the connected monitor or if there is a need to enforce
+custom video modes.
+Optionally, the connector name can be specified before the firmware name
+followed by a colon.
+For example:
 .Pp
 .Dl drm.edid_firmware="DVI-D-1:edidfw_repaired"
 .Pp

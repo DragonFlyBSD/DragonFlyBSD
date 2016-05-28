@@ -511,7 +511,7 @@ installworld: installcheck
 installworld-force:
 	@echo "Doing a forced installworld.  This will install to a temporary directory,"
 	@echo "then copy the main binaries and libraries with a static cpdup to ${DESTDIR}/"
-	@echo "and finally willl issue a normal installworld.  Starting in 5 seconds.".
+	@echo "and finally will issue a normal installworld.  Starting in 5 seconds.".
 	@echo "^C to abort."
 	sleep 1
 	rm -rf /usr/obj/temp > /dev/null 2>& 1 || chflags -R noschg /usr/obj/temp
