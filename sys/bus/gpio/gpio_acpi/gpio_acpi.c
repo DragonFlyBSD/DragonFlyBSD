@@ -67,6 +67,8 @@ struct gpio_acpi_data {
 	struct acpi_gpio_handler_data space_handler_data;
 };
 
+static BOOLEAN	gpio_acpi_check_gpioint(device_t dev, ACPI_RESOURCE_GPIO *gpio);
+
 /* GPIO Address Space Handler */
 static void		gpio_acpi_install_address_space_handler(device_t dev,
 			    struct acpi_gpio_handler_data *data);
@@ -114,6 +116,40 @@ gpio_acpi_unregister(device_t dev, void *arg)
 	kfree(data, M_DEVBUF);
 }
 
+/* Sanity-Check for GpioInt resources */
+static BOOLEAN
+gpio_acpi_check_gpioint(device_t dev, ACPI_RESOURCE_GPIO *gpio)
+{
+
+	if (gpio->PinTableLength != 1) {
+		device_printf(dev,
+		    "Unexepcted GpioInt resource PinTableLength %d\n",
+		    gpio->PinTableLength);
+		return (FALSE);
+	}
+	switch (gpio->Triggering) {
+	case ACPI_LEVEL_SENSITIVE:
+	case ACPI_EDGE_SENSITIVE:
+		break;
+	default:
+		device_printf(dev, "Invalid GpioInt resource Triggering: %d\n",
+		    gpio->Triggering);
+		return (FALSE);
+	}
+	switch (gpio->Polarity) {
+	case ACPI_ACTIVE_HIGH:
+	case ACPI_ACTIVE_LOW:
+	case ACPI_ACTIVE_BOTH:
+		break;
+	default:
+		device_printf(dev, "Invalid GpioInt resource Polarity: %d\n",
+		    gpio->Polarity);
+		return (FALSE);
+	}
+
+	return (TRUE);
+}
+
 /*
  * GPIO Address space handler
  */
@@ -134,7 +170,7 @@ gpio_acpi_install_address_space_handler(device_t dev,
 	 */
 	s = AcpiInstallAddressSpaceHandler(handle, ACPI_ADR_SPACE_GPIO,
 	    &gpio_acpi_space_handler, NULL, data);
-	if (!ACPI_SUCCESS(s)) {
+	if (ACPI_FAILURE(s)) {
 		device_printf(dev,
 		    "Failed to install GPIO Address Space Handler in ACPI\n");
 	}
@@ -150,7 +186,7 @@ gpio_acpi_remove_address_space_handler(device_t dev,
 	handle = acpi_get_handle(dev);
 	s = AcpiRemoveAddressSpaceHandler(handle, ACPI_ADR_SPACE_GPIO,
 	    &gpio_acpi_space_handler);
-	if (!ACPI_SUCCESS(s)) {
+	if (ACPI_FAILURE(s)) {
 		device_printf(dev,
 		    "Failed to remove GPIO Address Space Handler from ACPI\n");
 	}
@@ -242,9 +278,8 @@ gpio_acpi_handle_event(void *Context)
 	}
 	if (info->pin <= 255 && ACPI_SUCCESS(AcpiGetHandle(handle, buf, &h))) {
 		s = AcpiEvaluateObject(handle, buf, NULL, NULL);
-		if (!ACPI_SUCCESS(s)) {
+		if (ACPI_FAILURE(s))
 			device_printf(info->dev, "evaluating %s failed\n", buf);
-		}
 	} else {
 		ACPI_OBJECT_LIST arglist;
 		ACPI_OBJECT arg;
@@ -254,9 +289,8 @@ gpio_acpi_handle_event(void *Context)
 		arg.Type = ACPI_TYPE_INTEGER;
 		arg.Integer.Value = info->pin;
 		s = AcpiEvaluateObject(handle, "_EVT", &arglist, NULL);
-		if (!ACPI_SUCCESS(s)) {
+		if (ACPI_FAILURE(s))
 			device_printf(info->dev, "evaluating _EVT failed\n");
-		}
 	}
 }
 
@@ -267,7 +301,7 @@ gpio_acpi_aei_handler(void *arg)
 	ACPI_STATUS s;
 
 	s = AcpiOsExecute(OSL_GPE_HANDLER, gpio_acpi_handle_event, arg);
-	if (!ACPI_SUCCESS(s)) {
+	if (ACPI_FAILURE(s)) {
 		device_printf(info->dev,
 		    "AcpiOsExecute for Acpi Event handler failed\n");
 	}
@@ -285,31 +319,9 @@ gpio_acpi_do_map_aei(device_t dev, struct acpi_event_info *info,
 		    gpio->ConnectionType);
 		return;
 	}
-	if (gpio->PinTableLength != 1) {
-		device_printf(dev,
-		    "Unexepcted gpio PinTableLength expected 1 got %d\n",
-		    gpio->PinTableLength);
-		return;
-	}
 
-	/* sanity checks */
-	switch (gpio->Triggering) {
-	case ACPI_LEVEL_SENSITIVE:
-	case ACPI_EDGE_SENSITIVE:
-		break;
-	default:
-		device_printf(dev, "Invalid Trigger: %d\n", gpio->Triggering);
+	if (!gpio_acpi_check_gpioint(dev, gpio))
 		return;
-	}
-	switch (gpio->Polarity) {
-	case ACPI_ACTIVE_HIGH:
-	case ACPI_ACTIVE_LOW:
-	case ACPI_ACTIVE_BOTH:
-		break;
-	default:
-		device_printf(dev, "Invalid Polarity: %d\n", gpio->Polarity);
-		return;
-	}
 
 	pin = gpio->PinTable[0];
 
