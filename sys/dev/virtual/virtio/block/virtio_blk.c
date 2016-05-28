@@ -509,10 +509,11 @@ vtblk_strategy(struct dev_strategy_args *ap)
 		devstat_start_transaction(&sc->stats);
 		bioqdisksort(&sc->vtblk_bioq, bio);
 		vtblk_startio(sc);
+		lwkt_serialize_exit(&sc->vtblk_slz);
 	} else {
+		lwkt_serialize_exit(&sc->vtblk_slz);
 		vtblk_finish_bio(bio, ENXIO);
 	}
-	lwkt_serialize_exit(&sc->vtblk_slz);
 	return 0;
 }
 
