@@ -150,16 +150,28 @@ refresh_automounted(void)
 static int
 do_unmount(const fsid_t fsid __unused, const char *mountpoint)
 {
-	int error;
+	struct stat sb;
+	int error, isbusy = 0;
 
 	error = unmount(mountpoint, 0);
 	if (error != 0) {
 		if (errno == EBUSY) {
+			isbusy = 1;
 			log_debugx("cannot unmount %s: %s",
 			    mountpoint, strerror(errno));
 		} else {
 			log_warn("cannot unmount %s", mountpoint);
 		}
+	}
+
+	/*
+	 * XXX: Workaround for DragonFly kernel bug.
+	 * https://bugs.dragonflybsd.org/issues/2908
+	 */
+	if (isbusy) {
+		log_debugx("workaround DragonFly kernel bug via stat(2)");
+		if (stat(mountpoint, &sb))
+			log_warn("cannot stat %s", mountpoint);
 	}
 
 	return (error);
