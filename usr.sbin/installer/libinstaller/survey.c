@@ -37,11 +37,14 @@
  * $Id: survey.c,v 1.17 2005/02/06 21:05:18 cpressey Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/diskslice.h>
 #include <sys/sysctl.h>
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "libaura/dict.h"
 
@@ -151,10 +154,13 @@ survey_storage(struct i_fn_args *a)
 	struct disk *d = NULL;
 	int number = 0;
 	int failure = 0;
+	int fd;
 	size_t len;
 	struct aura_dict *di;
 	void *rk;
 	size_t rk_len;
+	struct partinfo diskpart;
+	char diskpath[PATH_MAX];
 
 	disks_free(a->s);
 
@@ -211,14 +217,18 @@ survey_storage(struct i_fn_args *a)
 		cmd = command_add(cmds, "%s%s '@DESC' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
 		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
-		cmd = command_add(cmds, "%s%s -w '^%s: [0-9]*MB' %s%s >>%ssurvey.txt || %s%s '%s' >>%ssurvey.txt",
-		    a->os_root, cmd_name(a, "GREP"),
-		    disk,
-		    a->os_root, cmd_name(a, "DMESG_BOOT"),
-		    a->tmp,
+		snprintf(diskpath, PATH_MAX, "/dev/%s", disk);
+		if ((fd = open(diskpath, O_RDONLY)) < 0)
+			failure |= 1;
+		bzero(&diskpart, sizeof(diskpart));
+		if (ioctl(fd, DIOCGPART, &diskpart) < 0)
+			failure |= 1;
+		cmd = command_add(cmds, "%s%s '%s: %luMB' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"),
 		    disk,
+		    diskpart.media_size / 1024 / 1024,
 		    a->tmp);
+		close(fd);
 		cmd = command_add(cmds, "%s%s '@END' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
 		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
