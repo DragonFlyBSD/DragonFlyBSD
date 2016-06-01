@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd June 20, 2015
+.Dd June 1, 2016
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -161,6 +161,12 @@ Setting this to
 enables
 .Xr powerd 8 ,
 a CPU speed control daemon.
+.It Va powerd_flags
+.Pq Vt str
+Empty by default.
+Additional flags passed to the
+.Xr powerd 8
+program.
 .It Va sensorsd_enable
 .Pq Vt bool
 Set to
