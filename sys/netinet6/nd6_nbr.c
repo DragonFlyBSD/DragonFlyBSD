@@ -434,9 +434,9 @@ nd6_ns_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 	/* estimate the size of message */
 	maxlen = sizeof(*ip6) + sizeof(*nd_ns);
 	maxlen += (sizeof(struct nd_opt_hdr) + ifp->if_addrlen + 7) & ~7;
-	if (max_linkhdr + maxlen >= MCLBYTES) {
+	if (max_linkhdr + maxlen > MCLBYTES) {
 #ifdef DIAGNOSTIC
-		kprintf("nd6_ns_output: max_linkhdr + maxlen >= MCLBYTES "
+		kprintf("nd6_ns_output: max_linkhdr + maxlen > MCLBYTES "
 		    "(%d + %d > %d)\n", max_linkhdr, maxlen, MCLBYTES);
 #endif
 		return;
@@ -899,9 +899,9 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 	/* estimate the size of message */
 	maxlen = sizeof(*ip6) + sizeof(*nd_na);
 	maxlen += (sizeof(struct nd_opt_hdr) + ifp->if_addrlen + 7) & ~7;
-	if (max_linkhdr + maxlen >= MCLBYTES) {
+	if (max_linkhdr + maxlen > MCLBYTES) {
 #ifdef DIAGNOSTIC
-		kprintf("nd6_na_output: max_linkhdr + maxlen >= MCLBYTES "
+		kprintf("nd6_na_output: max_linkhdr + maxlen > MCLBYTES "
 		    "(%d + %d > %d)\n", max_linkhdr, maxlen, MCLBYTES);
 #endif
 		return;
