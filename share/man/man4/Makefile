@@ -284,6 +284,7 @@ MAN=	aac.4 \
 	sl.4 \
 	sln.4 \
 	smb.4 \
+	smbacpi.4 \
 	smbus.4 \
 	smp.4 \
 	sn.4 \

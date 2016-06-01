@@ -29,35 +29,36 @@
 .\" SUCH DAMAGE.
 .\"
 .Dd June 1, 2016
-.Dt GPIO_ACPI 4
+.Dt SMBACPI 4
 .Os
 .Sh NAME
-.Nm gpio_acpi
-.Nd ACPI support for GPIO events and GPIO operation regions
+.Nm smbacpi
+.Nd ACPI support for I2cSerialBus Connections
 .Sh SYNOPSIS
 To compile this module into the kernel,
 place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
 .Cd device acpi
-.Cd device gpio_acpi
+.Cd device smbus
+.Cd device smbacpi
 .Ed
 .Pp
 Alternatively, to load the module at boot time,
 place the following line in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
-gpio_acpi_load="YES"
+smbacpi_load="YES"
 .Ed
 .Sh DESCRIPTION
 The
 .Nm
-module provides ACPI support for GPIO-Signaled Events,
-and implements an ACPI address-space handler for accesses to
-ACPI GeneralPurposeIo operation-regions.
+module provides ACPI support for accesses to I2cSerialBus Connections
+specified in ACPI-5.0 GenericSerialBus Operation Regions.
 .Sh SEE ALSO
 .Xr acpi 4 ,
-.Xr gpio_intel 4 ,
-.Xr smbacpi 4
+.Xr gpio_acpi 4 ,
+.Xr ichiic 4 ,
+.Xr smbus 4
 .Sh AUTHORS
 .An Imre Vadasz
