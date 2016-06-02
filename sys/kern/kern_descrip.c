@@ -2967,7 +2967,6 @@ SYSINIT(filelistheads, SI_BOOT1_LOCK, SI_ORDER_ANY,
 static void
 file_objcache_init(void *dummy __unused)
 {
-	kprintf("objcache maxfiles %d\n", maxfiles);
 	file_objcache = objcache_create("file", maxfiles, maxfiles / 8,
 	    NULL, NULL, NULL, /* TODO: ctor/dtor */
 	    objcache_malloc_alloc, objcache_malloc_free, &file_malloc_args);
