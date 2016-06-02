@@ -54,7 +54,7 @@ CRUNCH_ALIAS_rm= unlink
 
 
 CRUNCH_SRCDIRS+= usr.bin
-CRUNCH_PROGS_usr.bin= du less
+CRUNCH_PROGS_usr.bin= du less undo
 CRUNCH_ALIAS_less= more
 
 CRUNCH_SRCDIRS+= secure/usr.bin
