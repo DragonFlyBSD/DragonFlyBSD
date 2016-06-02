@@ -86,4 +86,7 @@ LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .PATH:	${LVM2_DISTDIR}/tools
 
+afterinstall:
+	strip ${DESTDIR}${BINDIR}/lvm
+
 .include <bsd.prog.mk>
