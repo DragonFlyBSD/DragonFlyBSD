@@ -92,6 +92,7 @@
 #include <sys/kcore.h>
 #include <sys/kinfo.h>
 #include <sys/un.h>
+#include <sys/objcache.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -140,6 +141,13 @@ static int nfiles;		/* actual number of open files */
 extern int cmask;	
 
 struct lwkt_token revoke_token = LWKT_TOKEN_INITIALIZER(revoke_token);
+
+static struct objcache		*file_objcache;
+
+static struct objcache_malloc_args file_malloc_args = {
+	.objsize	= sizeof(struct file),
+	.mtype		= M_FILE
+};
 
 /*
  * Fixup fd_freefile and fd_lastfile after a descriptor has been cleared.
@@ -1551,7 +1559,8 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 	/*
 	 * Allocate a new file descriptor.
 	 */
-	fp = kmalloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
+	fp = objcache_get(file_objcache, M_WAITOK);
+	bzero(fp, sizeof(*fp));
 	spin_init(&fp->f_spin, "falloc");
 	SLIST_INIT(&fp->f_klist);
 	fp->f_count = 1;
@@ -1753,7 +1762,7 @@ ffree(struct file *fp)
 	fsetcred(fp, NULL);
 	if (fp->f_nchandle.ncp)
 	    cache_drop(&fp->f_nchandle);
-	kfree(fp, M_FILE);
+	objcache_put(file_objcache, fp);
 }
 
 /*
@@ -2954,3 +2963,13 @@ filelist_heads_init(void *arg __unused)
 
 SYSINIT(filelistheads, SI_BOOT1_LOCK, SI_ORDER_ANY,
     filelist_heads_init, NULL);
+
+static void
+file_objcache_init(void *dummy __unused)
+{
+	kprintf("objcache maxfiles %d\n", maxfiles);
+	file_objcache = objcache_create("file", maxfiles, maxfiles / 8,
+	    NULL, NULL, NULL, /* TODO: ctor/dtor */
+	    objcache_malloc_alloc, objcache_malloc_free, &file_malloc_args);
+}
+SYSINIT(fpobjcache, SI_BOOT2_POST_SMP, SI_ORDER_ANY, file_objcache_init, NULL);
