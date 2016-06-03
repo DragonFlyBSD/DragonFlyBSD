@@ -321,34 +321,13 @@ hammer_extend_layer1_bits(int vol, int newsiz, int oldsiz)
 	l1_bits[vol] = p;
 
 	p += HAMMER_LAYER1_UINT64 * oldsiz;
-	bzero((void*)p, HAMMER_LAYER1_BYTES * (newsiz - oldsiz));
-}
-
-static
-void
-hammer_dump_layer1_bits(void)
-{
-	int i, j, n;
-
-	assert(l1_bits);
-	printf("Layer1 bitmaps\n");
-
-	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
-		if (l1_max[i] != -1) {
-			printf("volume=%d %p\n", i, l1_bits[i]);
-			n = (l1_max[i] + 1) * HAMMER_LAYER1_UINT64;
-			for (j = 0; j < n; j++) {
-				printf("\tblock[%d][%d]=0x%016lX\n",
-					i, j << 6, *(l1_bits[i] + j));
-			}
-		}
-	}
+	bzero(p, HAMMER_LAYER1_BYTES * (newsiz - oldsiz));
 }
 
 struct zone_stat*
 hammer_init_zone_stat(void)
 {
-	return calloc(HAMMER_MAX_ZONES, sizeof(struct zone_stat));
+	return(calloc(HAMMER_MAX_ZONES, sizeof(struct zone_stat)));
 }
 
 struct zone_stat*
@@ -377,8 +356,6 @@ hammer_cleanup_zone_stat(struct zone_stat *stats)
 	int i;
 
 	if (l1_bits) {
-		if (DebugOpt)
-			hammer_dump_layer1_bits();
 		for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
 			free(l1_bits[i]);
 			l1_bits[i] = NULL;
@@ -397,7 +374,7 @@ hammer_cleanup_zone_stat(struct zone_stat *stats)
 static
 void
 _hammer_add_zone_stat(struct zone_stat *stats, int zone,
-			hammer_off_t bytes, int new_block, int new_item)
+	hammer_off_t bytes, int new_block, int new_item)
 {
 	struct zone_stat *sp = stats + zone;
 
@@ -410,7 +387,7 @@ _hammer_add_zone_stat(struct zone_stat *stats, int zone,
 
 void
 hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
-			hammer_off_t bytes)
+	hammer_off_t bytes)
 {
 	int zone, vol, i, j, new_block;
 	uint64_t *p;
@@ -424,7 +401,7 @@ hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
 	j = HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
 
 	if (i > l1_max[vol]) {
-		assert(i < 1024);  /* XXX hardcoded */
+		assert(i < 1024);  /* no >1024 layer1 per volume */
 		hammer_extend_layer1_bits(vol, i + 1, l1_max[vol] + 1);
 		l1_max[vol] = i;
 	}
@@ -439,17 +416,29 @@ hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
  */
 void
 hammer_add_zone_stat_layer2(struct zone_stat *stats,
-			struct hammer_blockmap_layer2 *layer2)
+	struct hammer_blockmap_layer2 *layer2)
 {
 	_hammer_add_zone_stat(stats, layer2->zone,
 		HAMMER_BIGBLOCK_SIZE - layer2->bytes_free, 1, 0);
+}
+
+static __inline
+double
+_calc_used_percentage(hammer_off_t blocks, hammer_off_t used)
+{
+	double res;
+
+	if (blocks)
+		res = ((double)(used * 100)) / (blocks << HAMMER_BIGBLOCK_BITS);
+	else
+		res = 0;
+	return(res);
 }
 
 void
 hammer_print_zone_stat(const struct zone_stat *stats)
 {
 	int i;
-	double per;
 	hammer_off_t total_blocks = 0;
 	hammer_off_t total_items = 0;
 	hammer_off_t total_used = 0;
@@ -459,13 +448,9 @@ hammer_print_zone_stat(const struct zone_stat *stats)
 	printf("\tzone #  blocks       items              used[B]             used[%%]\n");
 
 	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
-		if (p->blocks)
-			per = ((double)(p->used * 100)) /
-				(p->blocks * HAMMER_BIGBLOCK_SIZE);
-		else
-			per = 0;
 		printf("\tzone %-2d %-12ju %-18ju %-19ju %g\n",
-			i, p->blocks, p->items, p->used, per);
+			i, p->blocks, p->items, p->used,
+			_calc_used_percentage(p->blocks, p->used));
 		total_blocks += p->blocks;
 		total_items += p->items;
 		total_used += p->used;
@@ -476,14 +461,10 @@ hammer_print_zone_stat(const struct zone_stat *stats)
 	 * Remember that zone0 is always 0% used and zone15 is
 	 * always 100% used.
 	 */
-	if (total_blocks)
-		per = ((double)(total_used * 100)) /
-			(total_blocks * HAMMER_BIGBLOCK_SIZE);
-	else
-		per = 0;
-
 	printf("\t----------------------------------------------------------------------\n");
 	printf("\ttotal   %-12ju %-18ju %-19ju %g\n",
-		(uintmax_t)total_blocks, (uintmax_t)total_items,
-		(uintmax_t)total_used, per);
+		(uintmax_t)total_blocks,
+		(uintmax_t)total_items,
+		(uintmax_t)total_used,
+		_calc_used_percentage(total_blocks, total_used));
 }
