@@ -559,6 +559,20 @@ iwm7265.fw				optional iwmfw			\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwm7265.fw"
+iwm8000Cfw.c				optional iwmfw			\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwm8000C.fw:iwm8000Cfw -miwm8000Cfw -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"iwm8000Cfw.c"
+iwm8000Cfw.fwo				optional iwmfw			\
+	dependency	"iwm8000C.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"iwm8000Cfw.fwo"
+iwm8000C.fw				optional iwmfw			\
+	dependency	"$S/contrib/dev/iwm/iwm-8000C-16.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"iwm8000C.fw"
 dev/netif/iwn/if_iwn.c	optional iwn
 iwn1000fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn1000.fw:iwn1000fw -miwn1000fw -c${.TARGET}" \
