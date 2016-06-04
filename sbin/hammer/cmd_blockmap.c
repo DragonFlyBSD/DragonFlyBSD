@@ -211,7 +211,7 @@ dump_blockmap(const char *label, int zone)
 						layer2->bytes_free;
 				} else {
 					/* UNAVAIL zone has 0 for bytes_free */
-					bytes_used = 0;
+					bytes_used = HAMMER_BIGBLOCK_SIZE;
 				}
 				printf(" fill=%-5.1lf crc=%08x-%08x\n",
 					bytes_used * 100 / HAMMER_BIGBLOCK_SIZE,
