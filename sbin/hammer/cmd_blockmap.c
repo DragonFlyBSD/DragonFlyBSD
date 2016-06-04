@@ -109,7 +109,7 @@ dump_blockmap(const char *label, int zone)
 	hammer_off_t phys_offset;
 	hammer_off_t block_offset;
 	struct zone_stat *stats = NULL;
-	int xerr;
+	int xerr, aerr, ferr;
 	int i;
 
 	root_volume = get_root_volume();
@@ -170,18 +170,29 @@ dump_blockmap(const char *label, int zone)
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
-			xerr = ' ';  /* good */
+			xerr = aerr = ferr = ' ';  /* good */
 			if (layer2->entry_crc !=
 			    crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 				xerr = 'B';
 				++num_bad_layer2;
 			}
-			if (VerboseOpt < 2 && xerr == ' ' &&
+			if (layer2->append_off > HAMMER_BIGBLOCK_SIZE) {
+				aerr = 'A';
+				++num_bad_layer2;
+			}
+			if (layer2->bytes_free < 0 ||
+			    layer2->bytes_free > HAMMER_BIGBLOCK_SIZE) {
+				ferr = 'F';
+				++num_bad_layer2;
+			}
+
+			if (VerboseOpt < 2 &&
+			    xerr == ' ' && aerr == ' ' && ferr == ' ' &&
 			    layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
 				break;
 			}
-			printf("%c       %016jx zone=%-2d ",
-				xerr, (uintmax_t)zone_offset, layer2->zone);
+			printf("%c%c%c     %016jx zone=%-2d ",
+				xerr, aerr, ferr, (uintmax_t)zone_offset, layer2->zone);
 			if (VerboseOpt) {
 				printf("vol=%-3d L1#=%-6d L2#=%-6d L1=%-7lu L2=%-7lu ",
 					HAMMER_VOL_DECODE(zone_offset),
