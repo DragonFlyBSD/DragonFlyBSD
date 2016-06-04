@@ -460,13 +460,7 @@ static int
 iwm_mvm_mac_ctx_send(struct iwm_softc *sc, struct ieee80211vap *vap,
     uint32_t action)
 {
-	int ret;
-
-	ret = iwm_mvm_mac_ctxt_cmd_station(sc, vap, action);
-	if (ret)
-		return (ret);
-
-	return (0);
+	return iwm_mvm_mac_ctxt_cmd_station(sc, vap, action);
 }
 
 int
@@ -492,17 +486,13 @@ int
 iwm_mvm_mac_ctxt_changed(struct iwm_softc *sc, struct ieee80211vap *vap)
 {
 	struct iwm_vap *iv = IWM_VAP(vap);
-	int ret;
 
 	if (iv->is_uploaded == 0) {
 		device_printf(sc->sc_dev, "%s: called; uploaded = 0\n",
 		    __func__);
 		return (EIO);
 	}
-	ret = iwm_mvm_mac_ctx_send(sc, vap, IWM_FW_CTXT_ACTION_MODIFY);
-	if (ret)
-		return (ret);
-	return (0);
+	return iwm_mvm_mac_ctx_send(sc, vap, IWM_FW_CTXT_ACTION_MODIFY);
 }
 
 #if 0
