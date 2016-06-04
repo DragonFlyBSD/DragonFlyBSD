@@ -1170,7 +1170,7 @@ options		BWN_DEBUG	# turn on debugging output
 options		BWN_RXRING_SLOTS=128	# number of RX slots to allocate
 options		BWN_TXRING_SLOTS=128	# number of TX slots to allocate
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
-device		iwm		# Intel Dual Band Wireless AC 3160/3165/7260/7265
+device		iwm		# Intel Dual Band Wireless AC 3160/3165/7260/7265/8260
 options		IWM_DEBUG	# turn on debugging output
 device		iwn		# Intel WiFi Link 4965/1000/5000/5150/5300/6000/6050
 options		IWN_DEBUG	# turn on debugging output

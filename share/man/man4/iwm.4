@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/iwm.4 286441 2015-08-08 06:06:48Z rpaulo $
 .\"
-.Dd May 26, 2016
+.Dd June 5, 2016
 .Dt IWM 4
 .Os
 .Sh NAME
@@ -48,6 +48,7 @@ You also need to select a firmware for your device.
 .\".Cd "device iwm3160fw"
 .\".Cd "device iwm7260fw"
 .\".Cd "device iwm7265fw"
+.\".Cd "device iwm8000Cfw"
 .\".Ed
 .\".Pp
 .\"Or you can use
@@ -66,6 +67,7 @@ if_iwm_load="YES"
 iwm3160fw_load="YES"
 iwm7260fw_load="YES"
 iwm7265fw_load="YES"
+iwm8000Cfw_load="YES"
 .Ed
 .Sh DESCRIPTION
 The
@@ -77,6 +79,7 @@ driver provides support for:
 .It Intel Dual Band Wireless AC 3165
 .It Intel Dual Band Wireless AC 7260
 .It Intel Dual Band Wireless AC 7265
+.It Intel Dual Band Wireless AC 8260
 .El
 .Pp
 .Nm
