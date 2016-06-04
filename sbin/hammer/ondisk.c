@@ -276,7 +276,6 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 {
 	struct buffer_info *buf;
 	struct volume_info *volume;
-	hammer_off_t orig_offset = buf_offset;
 	int vol_no;
 	int zone;
 	int hi, n;
@@ -299,11 +298,6 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	if (buf == NULL) {
 		buf = malloc(sizeof(*buf));
 		bzero(buf, sizeof(*buf));
-		if (DebugOpt > 1) {
-			fprintf(stderr, "get_buffer: %016jx %016jx at %p\n",
-				(intmax_t)orig_offset, (intmax_t)buf_offset,
-				buf);
-		}
 		buf->buf_offset = buf_offset;
 		buf->raw_offset = hammer_xlate_to_phys(volume->ondisk,
 							buf_offset);
@@ -328,11 +322,6 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		hammer_cache_add(&buf->cache);
 		dora = (isnew == 0);
 	} else {
-		if (DebugOpt > 1) {
-			fprintf(stderr, "get_buffer: %016jx %016jx at %p *\n",
-				(intmax_t)orig_offset, (intmax_t)buf_offset,
-				buf);
-		}
 		assert(buf->ondisk != NULL);
 		assert(isnew != -1);
 		hammer_cache_used(&buf->cache);
