@@ -258,20 +258,18 @@ iwm_mvm_lmac_scan_fill_channels(struct iwm_softc *sc,
 		 * Catch other channels, in case we have 900MHz channels or
 		 * something in the chanlist.
 		 */
-#if 0
-		if ((flags & IEEE80211_CHAN_2GHZ) && (! IEEE80211_IS_CHAN_B(c))) {
-			continue;
-		} else if ((flags & IEEE80211_CHAN_5GHZ) && (! IEEE80211_IS_CHAN_A(c))) {
-			continue;
-		} else {
+		if ((IEEE80211_IS_CHAN_2GHZ(c) && ! IEEE80211_IS_CHAN_B(c)) ||
+		    (IEEE80211_IS_CHAN_5GHZ(c) && ! IEEE80211_IS_CHAN_A(c)) ||
+		    !(IEEE80211_IS_CHAN_2GHZ(c) || IEEE80211_IS_CHAN_5GHZ(c))) {
 			IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_EEPROM,
 			    "%s: skipping channel (freq=%d, ieee=%d, flags=0x%08x)\n",
 			    __func__,
 			    c->ic_freq,
 			    c->ic_ieee,
 			    c->ic_flags);
+			continue;
 		}
-#endif
+
 		IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_EEPROM,
 		    "Adding channel %d (%d Mhz) to the list\n",
 			nchan, c->ic_freq);
