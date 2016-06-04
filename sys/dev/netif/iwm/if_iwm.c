@@ -3838,8 +3838,11 @@ iwm_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			IWM_UNLOCK(sc);
 			IEEE80211_LOCK(ic);
 			/* Always pass arg as -1 since we can't Tx right now. */
-			/* XXX arg or -1 ? */
-			vap->iv_newstate(vap, IEEE80211_S_INIT, arg);
+			/*
+			 * XXX arg is just ignored anyway when transitioning
+			 *     to IEEE80211_S_INIT.
+			 */
+			vap->iv_newstate(vap, IEEE80211_S_INIT, -1);
 			IWM_DPRINTF(sc, IWM_DEBUG_STATE,
 			    "Going INIT->SCAN\n");
 			nstate = IEEE80211_S_SCAN;
