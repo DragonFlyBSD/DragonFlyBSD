@@ -499,11 +499,11 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		nsc = sc->nscary[j];
 		if (nsc == NULL) {
 			nsc = kmalloc(sizeof(*nsc), M_NVME, M_WAITOK | M_ZERO);
+			nsc->unit = nvme_alloc_disk_unit();
 			sc->nscary[j] = nsc;
 		}
 		if (sc->nscmax <= j)
 			sc->nscmax = j + 1;
-		nsc->unit = j;
 		nsc->sc = sc;
 		nsc->nsid = rp->nids[i];
 		nsc->state = NVME_NSC_STATE_UNATTACHED;

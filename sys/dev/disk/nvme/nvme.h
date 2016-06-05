@@ -301,6 +301,7 @@ int nvme_issue_shutdown(nvme_softc_t *sc);
 void nvme_disk_attach(nvme_softns_t *nsc);
 void nvme_disk_detach(nvme_softns_t *nsc);
 void nvme_disk_requeues(nvme_softc_t *sc);
+int nvme_alloc_disk_unit(void);
 
 void nvme_intr(void *arg);
 size_t string_cleanup(char *str, int domiddle);
