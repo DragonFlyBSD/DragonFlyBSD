@@ -75,7 +75,11 @@ main(int ac, char **av)
 	    fd = open(av[1], O_RDONLY);
 	    srandomdev();
 	    for (;;) {
-		long pos = (random() % limit) & ~(off_t)(bytes - 1);
+		long pos;
+
+		pos = random() ^ ((long)random() << 31);
+		pos &= 0x7FFFFFFFFFFFFFFFLLU;
+		pos = (pos % limit) & ~(off_t)(bytes - 1);
 		lseek(fd, pos, 0);
 		read(fd, buf, bytes);
 		atomic_add_int(counterp, 1);
