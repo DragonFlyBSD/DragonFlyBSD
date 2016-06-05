@@ -276,7 +276,7 @@ iwm_mvm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 		IEEE80211_ADDR_COPY(cmd->bssid_addr, ni->ni_bssid);
 	} else {
 		/* eth broadcast address */
-		memset(cmd->bssid_addr, 0xff, sizeof(cmd->bssid_addr));
+		IEEE80211_ADDR_COPY(cmd->bssid_addr, ieee80211broadcastaddr);
 	}
 #else
 	/*

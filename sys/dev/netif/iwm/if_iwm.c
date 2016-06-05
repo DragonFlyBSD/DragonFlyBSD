@@ -373,6 +373,7 @@ static void	iwm_nic_error(struct iwm_softc *);
 static void	iwm_notif_intr(struct iwm_softc *);
 static void	iwm_intr(void *);
 static int	iwm_attach(device_t);
+static int	iwm_is_valid_ether_addr(uint8_t *);
 static void	iwm_preinit(void *);
 static int	iwm_detach_local(struct iwm_softc *sc, int);
 static void	iwm_init_task(void *);
@@ -2380,7 +2381,11 @@ iwm_run_init_mvm_ucode(struct iwm_softc *sc, int justnvm)
 			device_printf(sc->sc_dev, "failed to read nvm\n");
 			return error;
 		}
-		IEEE80211_ADDR_COPY(sc->sc_ic.ic_macaddr, sc->sc_nvm.hw_addr);
+
+		if (!iwm_is_valid_ether_addr(sc->sc_ic.ic_macaddr)) {
+			IEEE80211_ADDR_COPY(sc->sc_ic.ic_macaddr,
+			    sc->sc_nvm.hw_addr);
+		}
 
 		return 0;
 	}
@@ -5411,6 +5416,17 @@ fail:
 	iwm_detach_local(sc, 0);
 
 	return ENXIO;
+}
+
+static int
+iwm_is_valid_ether_addr(uint8_t *addr)
+{
+	char zero_addr[IEEE80211_ADDR_LEN] = { 0, 0, 0, 0, 0, 0 };
+
+	if ((addr[0] & 1) || IEEE80211_ADDR_EQ(zero_addr, addr))
+		return (FALSE);
+
+	return (TRUE);
 }
 
 static int
