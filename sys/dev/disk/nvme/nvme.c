@@ -440,14 +440,12 @@ nvme_wait_request(nvme_request_t *req)
 			nvme_poll_completions(req->comq, lk);
 			if (req->state != NVME_REQ_SUBMITTED)
 				break;
-			if (lk)
-				lksleep(req, lk, 0, "nvwait", 1);
-			else
-				tsleep(req, 0, "nvwait", 1);
+			lksleep(req, lk, 0, "nvwait", hz);
 		}
 		lockmgr(lk, LK_RELEASE);
 		KKASSERT(req->state == NVME_REQ_COMPLETED);
 	}
+	cpu_lfence();
 	code = NVME_COMQ_STATUS_CODE_GET(req->res.tail.status);
 
 	return code;
@@ -568,10 +566,20 @@ nvme_poll_completions(nvme_comqueue_t *comq, struct lock *lk)
 void
 nvme_intr(void *arg)
 {
-	kprintf("I");
-#if 0
 	nvme_softc_t *sc = arg;
-#endif
+	nvme_comqueue_t *comq;
+	uint16_t i;
+
+	/*nvme_write(sc, NVME_REG_INTSET, 0x00000001U);*/
+	for (i = 0; i <= sc->niocomqs; ++i) {
+		comq = &sc->comqueues[i];
+		if (comq->nqe == 0)     /* not configured */
+			continue;
+		lockmgr(&comq->lk, LK_EXCLUSIVE);
+                nvme_poll_completions(comq, &comq->lk);
+		lockmgr(&comq->lk, LK_RELEASE);
+	}
+	/*nvme_write(sc, NVME_REG_INTCLR, 0x00000001U);*/
 }
 
 /*

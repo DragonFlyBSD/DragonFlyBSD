@@ -46,11 +46,11 @@
 #include "nvme.h"
 
 static void nvme_admin_thread(void *arg);
-static void nvme_admin_state_identify_ctlr(nvme_softc_t *sc);
-static void nvme_admin_state_make_queues(nvme_softc_t *sc);
-static void nvme_admin_state_identify_ns(nvme_softc_t *sc);
-static void nvme_admin_state_operating(nvme_softc_t *sc);
-static void nvme_admin_state_failed(nvme_softc_t *sc);
+static int nvme_admin_state_identify_ctlr(nvme_softc_t *sc);
+static int nvme_admin_state_make_queues(nvme_softc_t *sc);
+static int nvme_admin_state_identify_ns(nvme_softc_t *sc);
+static int nvme_admin_state_operating(nvme_softc_t *sc);
+static int nvme_admin_state_failed(nvme_softc_t *sc);
 
 /*
  * Start the admin thread and block until it says it is running.
@@ -85,8 +85,38 @@ nvme_start_admin_thread(nvme_softc_t *sc)
 void
 nvme_stop_admin_thread(nvme_softc_t *sc)
 {
+	uint32_t i;
+
 	atomic_set_int(&sc->admin_signal, ADMIN_SIG_STOP);
 
+	/*
+	 * We have to wait for the admin thread to finish its probe
+	 * before shutting it down.
+	 */
+	lockmgr(&sc->admin_lk, LK_EXCLUSIVE);
+	while ((sc->admin_signal & ADMIN_SIG_PROBED) == 0)
+		lksleep(&sc->admin_signal, &sc->admin_lk, 0, "nvwend", 0);
+	lockmgr(&sc->admin_lk, LK_RELEASE);
+
+	/*
+	 * Disconnect our disks while the admin thread is still running,
+	 * ensuring that the poll works even if interrupts are broken.
+	 * Otherwise we could deadlock in the devfs core.
+	 */
+	for (i = 0; i < NVME_MAX_NAMESPACES; ++i) {
+		nvme_softns_t *nsc;
+
+		if ((nsc = sc->nscary[i]) != NULL) {
+			nvme_disk_detach(nsc);
+
+			kfree(nsc, M_NVME);
+			sc->nscary[i] = NULL;
+		}
+	}
+
+	/*
+	 * Ask the admin thread to shut-down.
+	 */
 	lockmgr(&sc->admin_lk, LK_EXCLUSIVE);
 	wakeup(&sc->admin_signal);
 	while (sc->admin_signal & ADMIN_SIG_RUNNING)
@@ -120,6 +150,8 @@ nvme_admin_thread(void *arg)
 	sc->admin_func = nvme_admin_state_identify_ctlr;
 
 	while ((sc->admin_signal & ADMIN_SIG_STOP) == 0) {
+		nvme_intr(sc);
+#if 0
 		nvme_poll_completions(&sc->comqueues[0], NULL);
 		for (i = 1; i <= sc->niocomqs; ++i) {
 			nvme_comqueue_t *comq = &sc->comqueues[i];
@@ -131,27 +163,16 @@ nvme_admin_thread(void *arg)
 			nvme_poll_completions(comq, &comq->lk);
 			lockmgr(&comq->lk, LK_RELEASE);
 		}
-
-		sc->admin_func(sc);
-		lksleep(&sc->admin_signal, &sc->admin_lk, 0, "nvidle", 1);
+#endif
+		if (sc->admin_func(sc) == 0) {
+			lksleep(&sc->admin_signal, &sc->admin_lk, 0,
+				"nvidle", hz);
+		}
 	}
 
 	/*
 	 * Cleanup state.
-	 *
-	 * NOTE: We leave the admin queue intact, the detach code will
-	 *	 deal with it.
 	 */
-	for (i = 0; i < NVME_MAX_NAMESPACES; ++i) {
-		nvme_softns_t *nsc;
-
-		if ((nsc = sc->nscary[i]) != NULL) {
-			nvme_disk_detach(nsc);
-
-			kfree(nsc, M_NVME);
-			sc->nscary[i] = NULL;
-		}
-	}
 	for (i = 1; i <= sc->niosubqs; ++i)
 		nvme_free_subqueue(sc, i);
 	for (i = 1; i <= sc->niocomqs; ++i)
@@ -169,7 +190,7 @@ nvme_admin_thread(void *arg)
  * Identify the controller
  */
 static
-void
+int
 nvme_admin_state_identify_ctlr(nvme_softc_t *sc)
 {
 	nvme_request_t *req;
@@ -210,13 +231,15 @@ nvme_admin_state_identify_ctlr(nvme_softc_t *sc)
 		      model, serial, rp->ns_count);
 
 	sc->admin_func = nvme_admin_state_make_queues;
+
+	return 1;
 }
 
 /*
  * Request and create the I/O queues.  Figure out CPU mapping optimizations.
  */
 static
-void
+int
 nvme_admin_state_make_queues(nvme_softc_t *sc)
 {
 	nvme_request_t *req;
@@ -388,13 +411,15 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	} else {
 		sc->admin_func = nvme_admin_state_identify_ns;
 	}
+
+	return 1;
 }
 
 /*
  * Identify available namespaces, iterate, and attach to disks.
  */
 static
-void
+int
 nvme_admin_state_identify_ns(nvme_softc_t *sc)
 {
 	nvme_request_t *req;
@@ -482,16 +507,29 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 	}
 
 	sc->admin_func = nvme_admin_state_operating;
+	return 1;
 }
 
 static
-void
+int
 nvme_admin_state_operating(nvme_softc_t *sc)
 {
+	if ((sc->admin_signal & ADMIN_SIG_PROBED) == 0) {
+		atomic_set_int(&sc->admin_signal, ADMIN_SIG_PROBED);
+		wakeup(&sc->admin_signal);
+	}
+
+	return 0;
 }
 
 static
-void
+int
 nvme_admin_state_failed(nvme_softc_t *sc)
 {
+	if ((sc->admin_signal & ADMIN_SIG_PROBED) == 0) {
+		atomic_set_int(&sc->admin_signal, ADMIN_SIG_PROBED);
+		wakeup(&sc->admin_signal);
+	}
+
+	return 0;
 }

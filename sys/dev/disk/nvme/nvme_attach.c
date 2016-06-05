@@ -42,7 +42,7 @@ static const nvme_device_t nvme_devices[] = {
 	{ 0, 0, nvme_pci_attach, nvme_pci_detach, "NVME-PCIe" }
 };
 
-static int	nvme_msi_enable = 1;
+static int	nvme_msi_enable = 0;
 TUNABLE_INT("hw.nvme.msi.enable", &nvme_msi_enable);
 
 /*
@@ -105,23 +105,6 @@ nvme_pci_attach(device_t dev)
 	sc->dev = dev;
 
 	/*
-	 * Map the interrupt or initial interrupt which will be used for
-	 * the admin queue.
-	 */
-	msi_enable = nvme_msi_enable;
-
-	sc->irq_type = pci_alloc_1intr(dev, msi_enable,
-				       &sc->rid_irq, &irq_flags);
-
-	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-					 &sc->rid_irq, irq_flags);
-	if (sc->irq == NULL) {
-		device_printf(dev, "unable to map interrupt\n");
-		nvme_pci_detach(dev);
-		return (ENXIO);
-	}
-
-	/*
 	 * Map the register window
 	 */
 	sc->rid_regs = PCIR_BAR(0);
@@ -134,6 +117,31 @@ nvme_pci_attach(device_t dev)
 	}
 	sc->iot = rman_get_bustag(sc->regs);
 	sc->ioh = rman_get_bushandle(sc->regs);
+
+	/*
+	 * NVMe allows the MSI-X table to be mapped to BAR 4/5.
+	 * Always try to map BAR4, but it's ok if it fails.  Must
+	 * be done prior to allocating our interrupts.
+	 */
+	sc->rid_bar4 = PCIR_BAR(4);
+	sc->bar4 = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+					  &sc->rid_bar4, RF_ACTIVE);
+
+	/*
+	 * Map the interrupt or initial interrupt which will be used for
+	 * the admin queue.
+	 */
+	msi_enable = nvme_msi_enable;
+	sc->irq_type = pci_alloc_1intr(dev, msi_enable,
+				       &sc->rid_irq, &irq_flags);
+
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+					 &sc->rid_irq, irq_flags);
+	if (sc->irq == NULL) {
+		device_printf(dev, "unable to map interrupt\n");
+		nvme_pci_detach(dev);
+		return (ENXIO);
+	}
 
 	/*
 	 * Make sure the chip is disabled, which will reset all controller
@@ -383,6 +391,12 @@ nvme_pci_detach(device_t dev)
 				     sc->rid_regs, sc->regs);
 		sc->regs = NULL;
 	}
+	if (sc->bar4) {
+		bus_release_resource(dev, SYS_RES_MEMORY,
+				     sc->rid_bar4, sc->regs);
+		sc->bar4 = NULL;
+	}
+
 
 	/*
 	 * Cleanup the DMA tags

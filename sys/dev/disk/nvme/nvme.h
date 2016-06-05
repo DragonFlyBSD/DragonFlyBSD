@@ -213,9 +213,11 @@ typedef struct nvme_softc {
 	 * register map resources
 	 */
 	struct resource	*regs;
+	struct resource	*bar4;
 	bus_space_tag_t	iot;
 	bus_space_handle_t ioh;
 	int		rid_regs;
+	int		rid_bar4;
 
 	struct resource	*irq;
 	int		rid_irq;
@@ -239,7 +241,7 @@ typedef struct nvme_softc {
 	 */
 	uint32_t	admin_signal;
 	struct lock	admin_lk;
-	void		(*admin_func)(struct nvme_softc *);
+	int		(*admin_func)(struct nvme_softc *);
 	nvme_ident_ctlr_data_t idctlr;
 	nvme_nslist_data_t nslist;
 	nvme_softns_t	*nscary[NVME_MAX_NAMESPACES];
@@ -247,6 +249,7 @@ typedef struct nvme_softc {
 
 #define ADMIN_SIG_STOP		0x00000001
 #define ADMIN_SIG_RUNNING	0x00000002
+#define ADMIN_SIG_PROBED	0x00000004
 
 #define NVME_QMAP_RDLOW		0
 #define NVME_QMAP_RDHIGH	1
