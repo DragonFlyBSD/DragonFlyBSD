@@ -507,6 +507,7 @@ options 	NFS			#Network filesystem
 
 # The rest are optional:
 #options 	NFS_NOSERVER		#Disable the NFS-server code.
+options 	AUTOFS			#Automounter filesystem
 options 	CD9660			#ISO 9660 filesystem
 options		HAMMER			#HAMMER filesystem
 options 	HPFS			#OS/2 File system
