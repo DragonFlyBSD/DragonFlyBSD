@@ -205,14 +205,8 @@ dump_blockmap(const char *label, int zone)
 				layer2->append_off,
 				layer2->bytes_free);
 			if (VerboseOpt) {
-				double bytes_used;
-				if (layer2->zone != HAMMER_ZONE_UNAVAIL_INDEX) {
-					bytes_used = HAMMER_BIGBLOCK_SIZE -
-						layer2->bytes_free;
-				} else {
-					/* UNAVAIL zone has 0 for bytes_free */
-					bytes_used = HAMMER_BIGBLOCK_SIZE;
-				}
+				double bytes_used = HAMMER_BIGBLOCK_SIZE -
+					layer2->bytes_free;
 				printf(" fill=%-5.1lf crc=%08x-%08x\n",
 					bytes_used * 100 / HAMMER_BIGBLOCK_SIZE,
 					layer1->layer1_crc,
