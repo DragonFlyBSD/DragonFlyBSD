@@ -13,6 +13,7 @@ This directory contains the following files:
 
 amd.map		- configuration file for amd(8)
 auth.conf	- authentication capability database
+auto_master	- autofs(5) configuration file
 crontab		- system scheduled command table
 csh.cshrc	- system-wide .cshrc for csh(1)
 csh.login	- system-wide .login for csh(1)
@@ -71,6 +72,7 @@ shells		- list of configurable shells
 sysctl.conf	- kernel state defaults
 syslog.conf	- configuration file for syslogd(8)
 ttys		- defines port configuration for init(8)
+autofs/		- directory containing autofs(5) map files
 defaults/	- directory containing default configuration files
 defaults/compilers.conf	- default configuration for non-base compilers
 defaults/devfs.conf	- default rule file for devfs(5)
