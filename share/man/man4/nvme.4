@@ -1,0 +1,141 @@
+.\" Copyright (c) 2016 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd June 5, 2015
+.Dt NVME 4
+.Os
+.Sh NAME
+.Nm nvme
+.Nd NVM Express Controller for PCIe-based SSDs
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device nvme"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+nvme_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for PCIe storage controllers conforming to the
+NVM Express Controller Interface specification.
+NVMe controllers have a direct PCIe host interface to the controller
+which in turn has a direct connection to the underlying non-volatile
+(typically flash) storage, yielding a huge reduction in latency and
+increase in performance over
+.Xr ahci 4 .
+.Pp
+In addition, NVMe controllers are capable of supporting up to 65535
+independent submission and completion queues each able to support upwards
+of 16384 queue entries.  Each queue may be assigned its own interrupt
+vector out of the controller's pool (up to 2048).
+.Pp
+Actual controllers typically implement lower limits.  While most controllers
+allow a maximal number of queue entries, the total number of queues is often
+limited to far less than 65535.  8-32 queues are commonly supported.
+Similarly, while up to 2048 MSI-X vectors can be supported by the spec,
+actual controllers typically support fewer vectors.  Still, having several
+MSI-X vectors allows interrupts to be distributed to multiple CPUs,
+reducing bottlenecks and improving performance.  The multiple queues can
+be divvied up across available cpu cores by the driver, as well as split-up
+based on the type of I/O operation being performed (such as giving read
+and write I/O commands their own queues).  This also significantly
+reduces bottlenecks and improves performance, particularly in mixed
+read-write environments.
+.Sh FORM FACTOR
+NVMe boards usually come in one of two flavors, either a tiny form-factor
+with a M.2 or NGFF connector, supplying 2 or 4 PCIe lanes, or in a larger
+form that slips into a normal PCIe slot.  The larger form typically
+implements 2, 4, or 8 lanes.  Also note that adapter cards that fit
+into normal PCIe slots and can mount the smaller M.2/NGFF NVME cards can
+be cheaply purchased.
+.Sh PERFORMANCE
+Typical performance for a 2-lane (x2) board is in the 700MB/s to 1.5 GByte/s
+range.  4-lane (x4) boards typically range from 1.0 GBytes/s to 2.5 GBytes/s.
+Full-blown PCIe cards run the whole gamut, 2.5 GBytes/sec is fairly typical
+but performance can exceed 5 GBytes/sec in a high-end card.
+.Pp
+Multi-threaded random-read performance can exceed 300,000 IOPS on an x4 board.
+Single-threaded performance is usually in the 40,000 to 100,000 IOPS range.
+Sequential submission/completion latencies are typically below 35uS while
+random submission/completion latencies are typically below 110uS.
+Performance (uncached) through a filesystem will be bottlenecked by additional
+factors, particularly if testing is only being done on a single file.
+.Pp
+The biggest differentiation between boards is usually write performance.
+Small boards with only a few flash chips have relatively low write
+performance, usually in the 150MByte/sec range.  Higher-end boards will have
+significantly better write performance, potentially exceeding 1.0 GByte/sec.
+.Pp
+For reference, the SATA-III physical interface is limited to 600 MBytes/sec
+and the extra phy layer results in higher latencies, and AHCI controllers are
+limited to a single 32-entry queue.
+.Sh FEATURES
+The DragonFly
+.Nm
+driver automatically selects the best SMP-friendly and
+I/O-typing queue configuration possible based on what the controller
+supports.
+It uses a direct disk device API which bypasses CAM, so kernel code paths
+to read and write blocks are SMP-friendly and, depending on the queue
+configuration, potentially conflict-free.
+The driver is capable of submitting commands and processing responses on
+multiple queues simultaniously in a SMP environment.
+.Pp
+The driver pre-reserves DMA memory for all necessary descriptors, queue
+entries, and internal driver structures, and allows for a very generous
+number of queue entries (1024) for maximum performance.
+.Pp
+.Sh SEE ALSO
+.Xr intro 4 ,
+.Xr pci 4 ,
+.Xr ahci 4 ,
+.Xr loader.conf 5
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 4.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver for DragonFly was written from scratch by
+.An Matthew Dillon Aq Mt dillon@backplane.com
+based on the NVM Expression 1.2a specification.
