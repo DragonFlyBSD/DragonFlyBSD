@@ -226,7 +226,6 @@ static struct vfsops autofs_vfsops = {
 	.vfs_statvfs =		autofs_statvfs,
 	.vfs_init =		autofs_init,
 	.vfs_uninit =		autofs_uninit,
-	.vfs_sync =		vfs_stdsync,	/* for unmount(2) */
 #if 0
 	.vfs_vptofh =		NULL,
 	.vfs_fhtovp =		NULL,
