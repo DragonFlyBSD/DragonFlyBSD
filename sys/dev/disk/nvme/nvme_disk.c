@@ -369,6 +369,7 @@ nvme_disk_callback(nvme_request_t *req, struct lock *lk)
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
 	} else {
+		bp->b_resid = 0;
 		biodone(bio);
 	}
 	if (lk)					/* comq lock */
