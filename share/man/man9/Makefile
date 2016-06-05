@@ -583,6 +583,7 @@ MLINKS+=kprintf.9 krateprintf.9 \
 	kprintf.9 uprintf.9
 MLINKS+=ksignal.9 gsignal.9 \
 	ksignal.9 pgsignal.9
+MLINKS+=kstrdup.9 kstrndup.9
 MLINKS+=ktr.9 KTR_COND_LOG.9 \
 	ktr.9 KTR_INFO.9 \
 	ktr.9 KTR_INFO_MASTER.9 \

@@ -28,21 +28,23 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 14, 2016
+.Dd June 5, 2016
 .Dt KSTRDUP 9
 .Os
 .Sh NAME
-.Nm kstrdup
+.Nm kstrdup ,
+.Nm kstrndup
 .Nd save a copy of a string
 .Sh SYNOPSIS
 .In sys/malloc.h
 .Ft char *
 .Fn kstrdup "const char *str" "struct malloc_type *type"
+.Ft char *
+.Fn kstrndup "const char *str" "size_t maxlen" "struct malloc_type *type"
 .Sh DESCRIPTION
 The
-.Fn strdup
-function
-allocates sufficient memory of type
+.Fn kstrdup
+function allocates sufficient memory of type
 .Fa type
 for a copy of the string
 .Fa str ,
@@ -50,6 +52,16 @@ does the copy, and returns a pointer to it.
 The pointer may subsequently be used as an
 argument to the function
 .Xr kfree 9 .
+.Pp
+The
+.Fn kstrndup
+function copies at most
+.Fa maxlen
+characters from the string
+.Fa str
+and will always
+.Dv NUL
+terminate the copied string.
 .Sh SEE ALSO
 .Xr kfree 9 ,
 .Xr kmalloc 9
