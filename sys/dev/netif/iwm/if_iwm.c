@@ -2450,6 +2450,7 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 	struct iwm_rx_ring *ring = &sc->rxq;
 	struct iwm_rx_data *data = &ring->data[idx];
 	struct mbuf *m;
+	bus_dmamap_t oldmap = NULL;
 	int error;
 	bus_addr_t paddr;
 
@@ -2458,7 +2459,7 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 		return ENOBUFS;
 
 	if (data->m != NULL)
-		bus_dmamap_unload(ring->data_dmat, data->map);
+		oldmap = data->map;
 
 	m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
 	error = bus_dmamap_create(ring->data_dmat, 0, &data->map);
@@ -2468,17 +2469,23 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 		    __func__, error);
 		goto fail;
 	}
-	data->m = m;
 	error = bus_dmamap_load(ring->data_dmat, data->map,
-	    mtod(data->m, void *), IWM_RBUF_SIZE, iwm_dma_map_addr,
+	    mtod(m, void *), IWM_RBUF_SIZE, iwm_dma_map_addr,
 	    &paddr, BUS_DMA_NOWAIT);
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev,
 		    "%s: can't map mbuf, error %d\n", __func__,
 		    error);
+		bus_dmamap_destroy(ring->data_dmat, data->map);
 		goto fail;
 	}
 	bus_dmamap_sync(ring->data_dmat, data->map, BUS_DMASYNC_PREREAD);
+	data->m = m;
+
+	if (oldmap != NULL) {
+		bus_dmamap_unload(ring->data_dmat, oldmap);
+		bus_dmamap_destroy(ring->data_dmat, oldmap);
+	}
 
 	/* Update RX descriptor. */
 	KKASSERT((paddr & 255) == 0);
@@ -2488,6 +2495,9 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 
 	return 0;
 fail:
+	m_freem(m);
+	if (oldmap != NULL)
+		data->map = oldmap;
 	return error;
 }
 
