@@ -2996,6 +2996,7 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	const struct iwm_rate *rinfo;
 	uint32_t flags;
 	u_int hdrlen;
+	struct mbuf *m_defragged;
 	bus_dma_segment_t *seg, segs[IWM_MAX_SCATTER];
 	int nsegs;
 	uint8_t tid, type;
@@ -3122,12 +3123,14 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 			return error;
 		}
 		/* Too many DMA segments, linearize mbuf. */
-		if (m_defrag(m, M_NOWAIT)) {
+		m_defragged = m_defrag(m, M_NOWAIT);
+		if (m_defragged == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not defrag mbuf\n", __func__);
 			m_freem(m);
 			return (ENOBUFS);
 		}
+		m = m_defragged;
 
 #if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map, m,
