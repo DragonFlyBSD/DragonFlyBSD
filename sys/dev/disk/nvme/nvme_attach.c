@@ -45,6 +45,9 @@ static const nvme_device_t nvme_devices[] = {
 static int	nvme_msi_enable = 0;
 TUNABLE_INT("hw.nvme.msi.enable", &nvme_msi_enable);
 
+TAILQ_HEAD(, nvme_softc) nvme_sc_list = TAILQ_HEAD_INITIALIZER(nvme_sc_list);
+struct lock nvme_master_lock = LOCK_INITIALIZER("nvmstr", 0, 0);
+
 /*
  * Match during probe and attach.  The device does not yet have a softc.
  */
@@ -344,6 +347,10 @@ nvme_pci_attach(device_t dev)
 		nvme_pci_detach(dev);
 		return (ENXIO);
 	}
+	lockmgr(&nvme_master_lock, LK_EXCLUSIVE);
+	sc->flags |= NVME_SC_ATTACHED;
+	TAILQ_INSERT_TAIL(&nvme_sc_list, sc, entry);
+	lockmgr(&nvme_master_lock, LK_RELEASE);
 
 	return(0);
 }
@@ -360,6 +367,11 @@ nvme_pci_detach(device_t dev)
 	 * Stop the admin thread
 	 */
 	nvme_stop_admin_thread(sc);
+
+	/*
+	 * Issue a normal shutdown and wait for completion
+	 */
+	nvme_issue_shutdown(sc);
 
 	/*
 	 * Disable the chip
@@ -397,7 +409,6 @@ nvme_pci_detach(device_t dev)
 		sc->bar4 = NULL;
 	}
 
-
 	/*
 	 * Cleanup the DMA tags
 	 */
@@ -416,6 +427,13 @@ nvme_pci_detach(device_t dev)
 	if (sc->adm_tag) {
 		bus_dma_tag_destroy(sc->adm_tag);
 		sc->adm_tag = NULL;
+	}
+
+	if (sc->flags & NVME_SC_ATTACHED) {
+		lockmgr(&nvme_master_lock, LK_EXCLUSIVE);
+		sc->flags &= ~NVME_SC_ATTACHED;
+		TAILQ_REMOVE(&nvme_sc_list, sc, entry);
+		lockmgr(&nvme_master_lock, LK_RELEASE);
 	}
 
 	return (0);

@@ -35,6 +35,7 @@
 #include "nvme.h"
 
 static void nvme_disk_callback(nvme_request_t *req, struct lock *lk);
+static int nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay);
 
 static d_open_t nvme_open;
 static d_close_t nvme_close;
@@ -120,6 +121,9 @@ nvme_open(struct dev_open_args *ap)
 	nvme_softns_t *nsc = dev->si_drv1;
 	nvme_softc_t *sc = nsc->sc;
 
+	if (sc->flags & NVME_SC_UNLOADING)
+		return ENXIO;
+
 	atomic_add_long(&sc->opencnt, 1);
 
 	return 0;
@@ -149,8 +153,52 @@ nvme_strategy(struct dev_strategy_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	nvme_softns_t *nsc = dev->si_drv1;
+
+	nvme_strategy_core(nsc, ap->a_bio, nvme_sync_delay);
+
+	return 0;
+}
+
+/*
+ * Called from admin thread to requeue BIOs.  We must call
+ * nvme_strategy_core() with delay = 0 to disable synchronous
+ * optimizations to avoid deadlocking the admin thread.
+ */
+void
+nvme_disk_requeues(nvme_softc_t *sc)
+{
+	nvme_softns_t *nsc;
+	struct bio *bio;
+	int i;
+
+	for (i = 0; i < sc->nscmax; ++i) {
+		nsc = sc->nscary[i];
+		if (nsc == NULL || nsc->sc == NULL)
+			continue;
+		if (bioq_first(&nsc->bioq)) {
+			lockmgr(&nsc->lk, LK_EXCLUSIVE);
+			while ((bio = bioq_first(&nsc->bioq)) != NULL) {
+				bioq_remove(&nsc->bioq, bio);
+				lockmgr(&nsc->lk, LK_RELEASE);
+				if (nvme_strategy_core(nsc, bio, 0))
+					goto next;
+				lockmgr(&nsc->lk, LK_EXCLUSIVE);
+			}
+			lockmgr(&nsc->lk, LK_RELEASE);
+		}
+next:
+		;
+	}
+}
+
+
+/*
+ * Returns non-zero if no requests are available.
+ */
+static int
+nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
+{
 	nvme_softc_t *sc = nsc->sc;
-	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	uint64_t nlba;
 	uint64_t secno;
@@ -180,9 +228,12 @@ nvme_strategy(struct dev_strategy_args *ap)
 			break;
 		}
 		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_RDHIGH]];
-		/* get_request doe snot need the subq lock */
+		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_READ,
 				       bp->b_data, nlba * nsc->blksize);
+		if (req == NULL)
+			goto requeue;
+
 		req->cmd.read.head.nsid = nsc->nsid;
 		req->cmd.read.start_lba = secno;
 		req->cmd.read.count_lba = nlba - 1;	/* 0's based */
@@ -196,9 +247,11 @@ nvme_strategy(struct dev_strategy_args *ap)
 			break;
 		}
 		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WRHIGH]];
-		/* get_request doe snot need the subq lock */
+		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_WRITE,
 				       bp->b_data, nlba * nsc->blksize);
+		if (req == NULL)
+			goto requeue;
 		req->cmd.write.head.nsid = nsc->nsid;
 		req->cmd.write.start_lba = secno;
 		req->cmd.write.count_lba = nlba - 1;	/* 0's based */
@@ -209,8 +262,10 @@ nvme_strategy(struct dev_strategy_args *ap)
 			break;
 		}
 		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WRHIGH]];
-		/* get_request doe snot need the subq lock */
+		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_WRITEZ, NULL, 0);
+		if (req == NULL)
+			goto requeue;
 		req->cmd.writez.head.nsid = nsc->nsid;
 		req->cmd.writez.start_lba = secno;
 		req->cmd.writez.count_lba = nlba - 1;	/* 0's based */
@@ -220,8 +275,10 @@ nvme_strategy(struct dev_strategy_args *ap)
 		break;
 	case BUF_CMD_FLUSH:
 		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WRHIGH]];
-		/* get_request doe snot need the subq lock */
+		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_FLUSH, NULL, 0);
+		if (req == NULL)
+			goto requeue;
 		req->cmd.flush.head.nsid = nsc->nsid;
 		break;
 	default:
@@ -233,7 +290,6 @@ nvme_strategy(struct dev_strategy_args *ap)
 	 */
 	if (req) {
 		nvme_comqueue_t *comq;
-		int delay = nvme_sync_delay;
 
 		/* HACK OPTIMIZATIONS - TODO NEEDS WORK */
 
@@ -279,6 +335,16 @@ nvme_strategy(struct dev_strategy_args *ap)
 		biodone(bio);
 	}
 	return 0;
+
+	/*
+	 * No requests were available, requeue the bio
+	 */
+requeue:
+	BUF_KERNPROC(bp);
+	lockmgr(&nsc->lk, LK_EXCLUSIVE);
+	bioqdisksort(&nsc->bioq, bio);
+	lockmgr(&nsc->lk, LK_RELEASE);
+	return 1;
 }
 
 static

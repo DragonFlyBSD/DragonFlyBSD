@@ -166,6 +166,7 @@
 #define NVME_CONFIG_IOCOM_ES_SET(pwr)	((pwr) << 20)
 #define NVME_CONFIG_IOSUB_ES_SET(pwr)	((pwr) << 16)
 
+#define NVME_CONFIG_SHUT_MASK	0x0000C000U
 #define NVME_CONFIG_SHUT_NONE	0x00000000U
 #define NVME_CONFIG_SHUT_NORM	0x00004000U	/* normal shutdown */
 #define NVME_CONFIG_SHUT_EMERG	0x00008000U	/* emergency shutdown */

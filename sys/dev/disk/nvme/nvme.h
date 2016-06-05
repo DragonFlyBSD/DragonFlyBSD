@@ -128,6 +128,7 @@ typedef struct nvme_subqueue {
 	uint32_t	subq_doorbell_reg;
 	uint32_t	subq_head;
 	uint32_t	subq_tail;	/* new requests */
+	int		signal_requeue;
 
 	/*
 	 * DMA resources
@@ -173,6 +174,8 @@ typedef struct nvme_comqueue {
 typedef struct nvme_softns {
 	struct nvme_softc *sc;
 	nvme_ident_ns_data_t idns;
+	struct bio_queue_head bioq;	/* excess BIOs */
+	struct lock	lk;		/* mostly for bioq handling */
 	int		state;
 	int		unit;
 	uint32_t	nsid;
@@ -187,6 +190,7 @@ typedef struct nvme_softns {
 
 
 typedef struct nvme_softc {
+	TAILQ_ENTRY(nvme_softc) entry;	/* global list */
 	device_t	dev;		/* core device */
 	const nvme_device_t *ad;	/* quirk detection etc */
 	thread_t	admintd;
@@ -200,6 +204,7 @@ typedef struct nvme_softc {
 	uint16_t	dumpqno;
 	uint16_t	eventqno;
 	uint16_t	qmap[SMP_MAXCPU][4];
+	uint32_t	flags;
 	nvme_subqueue_t	subqueues[NVME_MAX_QUEUES];
 	nvme_comqueue_t	comqueues[NVME_MAX_QUEUES];
 
@@ -245,11 +250,17 @@ typedef struct nvme_softc {
 	nvme_ident_ctlr_data_t idctlr;
 	nvme_nslist_data_t nslist;
 	nvme_softns_t	*nscary[NVME_MAX_NAMESPACES];
+	int		nscmax;
 } nvme_softc_t;
+
+#define NVME_SC_ATTACHED	0x00000001
+#define NVME_SC_UNLOADING	0x00000002
 
 #define ADMIN_SIG_STOP		0x00000001
 #define ADMIN_SIG_RUNNING	0x00000002
 #define ADMIN_SIG_PROBED	0x00000004
+#define ADMIN_SIG_REQUEUE	0x00000008
+#define ADMIN_SIG_RUN_MASK	(ADMIN_SIG_STOP | ADMIN_SIG_REQUEUE)
 
 #define NVME_QMAP_RDLOW		0
 #define NVME_QMAP_RDHIGH	1
@@ -283,9 +294,13 @@ void nvme_stop_admin_thread(nvme_softc_t *sc);
 
 int nvme_create_subqueue(nvme_softc_t *sc, uint16_t qid);
 int nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid);
+int nvme_delete_subqueue(nvme_softc_t *sc, uint16_t qid);
+int nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid);
+int nvme_issue_shutdown(nvme_softc_t *sc);
 
 void nvme_disk_attach(nvme_softns_t *nsc);
 void nvme_disk_detach(nvme_softns_t *nsc);
+void nvme_disk_requeues(nvme_softc_t *sc);
 
 void nvme_intr(void *arg);
 size_t string_cleanup(char *str, int domiddle);

@@ -309,6 +309,8 @@ nvme_get_admin_request(nvme_softc_t *sc, uint8_t opcode)
  * Fields in cmd.head will be initialized and remaining fields will be zero'd.
  * Caller is responsible for filling in remaining fields as appropriate.
  *
+ * May return NULL if no requests are available.
+ *
  * Caller does NOT have to hold the queue lock.
  */
 nvme_request_t *
@@ -319,24 +321,25 @@ nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 	nvme_request_t *next;
 
 	/*
-	 * XXX optimize this.  The lock is currently needed because a
-	 * another cpu could pull a request off, use it, finish, and put
-	 * it back (and next pointer might then be different) all inbetween
-	 * our req = and our atomic op.  This would assign the wrong 'next'
-	 * field.
+	 * The lock is currently needed because a another cpu could pull
+	 * a request off, use it, finish, and put it back (and next pointer
+	 * might then be different) all inbetween our req = and our atomic
+	 * op.  This would assign the wrong 'next' field.
+	 *
+	 * XXX optimize this.
 	 */
 	lockmgr(&queue->lk, LK_EXCLUSIVE);
 	for (;;) {
 		req = queue->first_avail;
 		cpu_ccfence();
-		if (req) {
-			next = req->next_avail;
-			if (atomic_cmpset_ptr(&queue->first_avail, req, next))
-				break;
-		} else {
-			/* XXX */
-			lksleep(queue, &queue->lk, 0, "nvwait", 1);
+		if (req == NULL) {
+			queue->signal_requeue = 1;
+			lockmgr(&queue->lk, LK_RELEASE);
+			return NULL;
 		}
+		next = req->next_avail;
+		if (atomic_cmpset_ptr(&queue->first_avail, req, next))
+			break;
 	}
 	lockmgr(&queue->lk, LK_RELEASE);
 	req->next_avail = NULL;
@@ -474,6 +477,18 @@ nvme_put_request(nvme_request_t *req)
 		req->next_avail = next;
 		if (atomic_cmpset_ptr(&queue->first_avail, next, req))
 			break;
+	}
+
+	/*
+	 * If BIOs were deferred due to lack of request space signal the
+	 * admin thread to requeue them.  This is a bit messy and normally
+	 * should not happen due to the large number of queue entries nvme
+	 * usually has.  Let it race for now (admin has a 1hz tick).
+	 */
+	if (queue->signal_requeue) {
+		queue->signal_requeue = 0;
+		atomic_set_int(&queue->sc->admin_signal, ADMIN_SIG_REQUEUE);
+		wakeup(&queue->sc->admin_signal);
 	}
 }
 
@@ -631,6 +646,87 @@ nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid)
 	nvme_put_request(req);
 
 	return status;
+}
+
+/*
+ * Issue command to delete a submission queue.
+ */
+int
+nvme_delete_subqueue(nvme_softc_t *sc, uint16_t qid)
+{
+	nvme_request_t *req;
+	/*nvme_subqueue_t *subq = &sc->subqueues[qid];*/
+	int status;
+
+	req = nvme_get_admin_request(sc, NVME_OP_DELETE_SUBQ);
+	req->cmd.head.prp1 = 0;
+	req->cmd.delete.qid = qid;
+
+	nvme_submit_request(req);
+	status = nvme_wait_request(req);
+	nvme_put_request(req);
+
+	return status;
+}
+
+/*
+ * Issue command to delete a completion queue.
+ */
+int
+nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
+{
+	nvme_request_t *req;
+	/*nvme_comqueue_t *comq = &sc->comqueues[qid];*/
+	int status;
+
+	req = nvme_get_admin_request(sc, NVME_OP_DELETE_COMQ);
+	req->cmd.head.prp1 = 0;
+	req->cmd.delete.qid = qid;
+
+	nvme_submit_request(req);
+	status = nvme_wait_request(req);
+	nvme_put_request(req);
+
+	return status;
+}
+
+/*
+ * Issue friendly shutdown to controller.
+ */
+int
+nvme_issue_shutdown(nvme_softc_t *sc)
+{
+	uint32_t reg;
+	int base_ticks;
+	int error;
+
+	/*
+	 * Put us in shutdown
+	 */
+	reg = nvme_read(sc, NVME_REG_CONFIG);
+	reg &= ~NVME_CONFIG_SHUT_MASK;
+	reg |= NVME_CONFIG_SHUT_NORM;
+	nvme_write(sc, NVME_REG_CONFIG, reg);
+
+	/*
+	 * Wait up to 10 seconds for acknowlegement
+	 */
+	error = ENXIO;
+	base_ticks = ticks;
+	while ((int)(ticks - base_ticks) < 10 * 20) {
+		reg = nvme_read(sc, NVME_REG_STATUS);
+		if ((reg & NVME_STATUS_SHUT_MASK) & NVME_STATUS_SHUT_DONE) {
+			error = 0;
+			break;
+		}
+		nvme_os_sleep(50);	/* 50ms poll */
+	}
+	if (error)
+		device_printf(sc->dev, "Unable to shutdown chip nicely\n");
+	else
+		device_printf(sc->dev, "Normal chip shutdown succeeded\n");
+
+	return error;
 }
 
 /*

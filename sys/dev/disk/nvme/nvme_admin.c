@@ -164,7 +164,12 @@ nvme_admin_thread(void *arg)
 			lockmgr(&comq->lk, LK_RELEASE);
 		}
 #endif
-		if (sc->admin_func(sc) == 0) {
+		if (sc->admin_signal & ADMIN_SIG_REQUEUE) {
+			atomic_clear_int(&sc->admin_signal, ADMIN_SIG_REQUEUE);
+			nvme_disk_requeues(sc);
+		}
+		if (sc->admin_func(sc) == 0 &&
+		    (sc->admin_signal & ADMIN_SIG_RUN_MASK) == 0) {
 			lksleep(&sc->admin_signal, &sc->admin_lk, 0,
 				"nvidle", hz);
 		}
@@ -172,11 +177,19 @@ nvme_admin_thread(void *arg)
 
 	/*
 	 * Cleanup state.
+	 *
+	 * Note that we actually issue delete queue commands here.  The NVME
+	 * spec says that for a normal shutdown the I/O queues should be
+	 * deleted prior to issuing the shutdown in the CONFIG register.
 	 */
-	for (i = 1; i <= sc->niosubqs; ++i)
+	for (i = 1; i <= sc->niosubqs; ++i) {
+		nvme_delete_subqueue(sc, i);
 		nvme_free_subqueue(sc, i);
-	for (i = 1; i <= sc->niocomqs; ++i)
+	}
+	for (i = 1; i <= sc->niocomqs; ++i) {
+		nvme_delete_comqueue(sc, i);
 		nvme_free_comqueue(sc, i);
+	}
 
 	/*
 	 * Signal that we are done.
@@ -488,11 +501,15 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 			nsc = kmalloc(sizeof(*nsc), M_NVME, M_WAITOK | M_ZERO);
 			sc->nscary[j] = nsc;
 		}
+		if (sc->nscmax <= j)
+			sc->nscmax = j + 1;
 		nsc->unit = j;
 		nsc->sc = sc;
 		nsc->nsid = rp->nids[i];
 		nsc->state = NVME_NSC_STATE_UNATTACHED;
 		nsc->idns = req->info->idns;
+		bioq_init(&nsc->bioq);
+		lockinit(&nsc->lk, "nvnsc", 0, 0);
 
 		nvme_put_request(req);
 

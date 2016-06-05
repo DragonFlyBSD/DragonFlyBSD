@@ -43,8 +43,8 @@
 static int	nvme_probe (device_t dev);
 static int	nvme_attach (device_t dev);
 static int	nvme_detach (device_t dev);
-#if 0
 static int	nvme_shutdown (device_t dev);
+#if 0
 static int	nvme_suspend (device_t dev);
 static int	nvme_resume (device_t dev);
 #endif
@@ -53,8 +53,8 @@ static device_method_t nvme_methods[] = {
 	DEVMETHOD(device_probe,		nvme_probe),
 	DEVMETHOD(device_attach,	nvme_attach),
 	DEVMETHOD(device_detach,	nvme_detach),
-#if 0
 	DEVMETHOD(device_shutdown,	nvme_shutdown),
+#if 0
 	DEVMETHOD(device_suspend,	nvme_suspend),
 	DEVMETHOD(device_resume,	nvme_resume),
 #endif
@@ -79,7 +79,7 @@ MODULE_VERSION(nvme, 1);
  * Device bus method procedures
  */
 static int
-nvme_probe (device_t dev)
+nvme_probe(device_t dev)
 {
 	const nvme_device_t *ad;
 
@@ -95,7 +95,7 @@ nvme_probe (device_t dev)
 }
 
 static int
-nvme_attach (device_t dev)
+nvme_attach(device_t dev)
 {
 	nvme_softc_t *sc = device_get_softc(dev);
 	int error;
@@ -116,7 +116,7 @@ nvme_attach (device_t dev)
 }
 
 static int
-nvme_detach (device_t dev)
+nvme_detach(device_t dev)
 {
 	nvme_softc_t *sc = device_get_softc(dev);
 	int error = 0;
@@ -128,22 +128,25 @@ nvme_detach (device_t dev)
 	return(error);
 }
 
+/*
+ * System halt/reboot
+ */
+static int
+nvme_shutdown(device_t dev)
+{
+	return nvme_detach(dev);
+}
+
 #if 0
 
 static int
-nvme_shutdown (device_t dev)
+nvme_suspend(device_t dev)
 {
 	return (0);
 }
 
 static int
-nvme_suspend (device_t dev)
-{
-	return (0);
-}
-
-static int
-nvme_resume (device_t dev)
+nvme_resume(device_t dev)
 {
 	return (0);
 }
