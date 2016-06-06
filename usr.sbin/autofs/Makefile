@@ -2,7 +2,7 @@ PROG=	automount
 SRCS=	automount.c automountd.c autounmountd.c common.c \
 	defined.c log.c popen.c token.l
 
-CFLAGS+= -I${.CURDIR}/../../sys
+CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys
 
 MAN=	automount.8 automountd.8 autounmountd.8 auto_master.5
 
