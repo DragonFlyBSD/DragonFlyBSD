@@ -136,7 +136,9 @@ nvme_pci_attach(device_t dev)
 
 	/*
 	 * Map the interrupt or initial interrupt which will be used for
-	 * the admin queue.
+	 * the admin queue.  NVME chipsets can potentially support a huge
+	 * number of MSIX vectors but we really only need enough for
+	 * available cpus, plus 1.
 	 */
 	msi_enable = device_getenv_int(dev, "msi.enable", nvme_msi_enable);
 	msix_enable = device_getenv_int(dev, "msix.enable", nvme_msix_enable);
@@ -148,6 +150,8 @@ nvme_pci_attach(device_t dev)
 
 		sc->nirqs = pci_msix_count(dev);
 		sc->irq_type = PCI_INTR_TYPE_MSIX;
+		if (sc->nirqs > ncpus + 1)		/* max we need */
+			sc->nirqs = ncpus + 1;
 
 		error = pci_setup_msix(dev);
 		cpu = (last_global_cpu + 0) % ncpus;	/* GCC warn */
