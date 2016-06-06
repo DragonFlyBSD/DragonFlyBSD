@@ -42,11 +42,15 @@ static const nvme_device_t nvme_devices[] = {
 	{ 0, 0, nvme_pci_attach, nvme_pci_detach, "NVME-PCIe" }
 };
 
+static int	nvme_msix_enable = 1;
+TUNABLE_INT("hw.nvme.msix.enable", &nvme_msix_enable);
 static int	nvme_msi_enable = 0;
 TUNABLE_INT("hw.nvme.msi.enable", &nvme_msi_enable);
 
 TAILQ_HEAD(, nvme_softc) nvme_sc_list = TAILQ_HEAD_INITIALIZER(nvme_sc_list);
 struct lock nvme_master_lock = LOCK_INITIALIZER("nvmstr", 0, 0);
+
+static int last_global_cpu;
 
 /*
  * Match during probe and attach.  The device does not yet have a softc.
@@ -93,10 +97,10 @@ static int
 nvme_pci_attach(device_t dev)
 {
 	nvme_softc_t *sc = device_get_softc(dev);
-	uint32_t irq_flags;
 	uint32_t reg;
 	int error;
 	int msi_enable;
+	int msix_enable;
 
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
 		device_printf(dev, "BIOS disabled PCI interrupt, "
@@ -134,16 +138,76 @@ nvme_pci_attach(device_t dev)
 	 * Map the interrupt or initial interrupt which will be used for
 	 * the admin queue.
 	 */
-	msi_enable = nvme_msi_enable;
-	sc->irq_type = pci_alloc_1intr(dev, msi_enable,
-				       &sc->rid_irq, &irq_flags);
+	msi_enable = device_getenv_int(dev, "msi.enable", nvme_msi_enable);
+	msix_enable = device_getenv_int(dev, "msix.enable", nvme_msix_enable);
 
-	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-					 &sc->rid_irq, irq_flags);
-	if (sc->irq == NULL) {
+	error = 0;
+	if (msix_enable) {
+		int i;
+		int cpu;
+
+		sc->nirqs = pci_msix_count(dev);
+		sc->irq_type = PCI_INTR_TYPE_MSIX;
+
+		error = pci_setup_msix(dev);
+		for (i = 0; error == 0 && i < sc->nirqs; ++i) {
+			cpu = (last_global_cpu + i) % ncpus;
+			error = pci_alloc_msix_vector(dev, i,
+						      &sc->rid_irq[i], cpu);
+			if (error)
+				break;
+			sc->irq[i] = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+							    &sc->rid_irq[i],
+							    RF_ACTIVE);
+			/*
+			 * Ok if this overwrites older cpu assignments.
+			 * In particular, we want it to overwrite the admin
+			 * cpu (cpu for vector 0) with the I/O cpu.
+			 */
+			sc->cputovect[cpu] = i;
+		}
+		if (error) {
+			while (--i >= 0) {
+				bus_release_resource(dev, SYS_RES_IRQ,
+						     sc->rid_irq[i],
+						     sc->irq[i]);
+				pci_release_msix_vector(dev, sc->rid_irq[i]);
+				sc->irq[i] = NULL;
+			}
+			/* leave error intact to fall through to normal */
+		} else {
+			last_global_cpu = (last_global_cpu + sc->nirqs) % ncpus;
+			pci_enable_msix(dev);
+		}
+	}
+	if (error) {
+		uint32_t irq_flags;
+
+		error = 0;
+		sc->nirqs = 1;
+		sc->irq_type = pci_alloc_1intr(dev, msi_enable,
+					       &sc->rid_irq[0], &irq_flags);
+		sc->irq[0] = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+						 &sc->rid_irq[0], irq_flags);
+	}
+	if (sc->irq[0] == NULL) {
 		device_printf(dev, "unable to map interrupt\n");
 		nvme_pci_detach(dev);
 		return (ENXIO);
+	} else {
+		const char *type;
+		switch(sc->irq_type) {
+		case PCI_INTR_TYPE_MSI:
+			type = "MSI";
+			break;
+		case PCI_INTR_TYPE_MSIX:
+			type = "MSIX";
+			break;
+		default:
+			type = "normal-int";
+			break;
+		}
+		device_printf(dev, "mapped %d %s IRQs\n", sc->nirqs, type);
 	}
 
 	/*
@@ -362,6 +426,7 @@ static int
 nvme_pci_detach(device_t dev)
 {
 	nvme_softc_t *sc = device_get_softc(dev);
+	int i;
 
 	/*
 	 * Stop the admin thread
@@ -387,13 +452,25 @@ nvme_pci_detach(device_t dev)
 	/*
 	 * Release related resources.
 	 */
-	if (sc->irq) {
-		bus_release_resource(dev, SYS_RES_IRQ, sc->rid_irq, sc->irq);
-		sc->irq = NULL;
+	for (i = 0; i < sc->nirqs; ++i) {
+		if (sc->irq[i]) {
+			bus_release_resource(dev, SYS_RES_IRQ,
+					     sc->rid_irq[i], sc->irq[i]);
+			sc->irq[i] = NULL;
+			if (sc->irq_type == PCI_INTR_TYPE_MSIX)
+				pci_release_msix_vector(dev, sc->rid_irq[i]);
+		}
 	}
-
-	if (sc->irq_type == PCI_INTR_TYPE_MSI)
+	switch(sc->irq_type) {
+	case PCI_INTR_TYPE_MSI:
 		pci_release_msi(dev);
+		break;
+	case PCI_INTR_TYPE_MSIX:
+		pci_teardown_msix(dev);
+		break;
+	default:
+		break;
+	}
 
 	/*
 	 * Release remaining chipset resources

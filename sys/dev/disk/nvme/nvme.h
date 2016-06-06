@@ -207,6 +207,7 @@ typedef struct nvme_softc {
 	uint32_t	flags;
 	nvme_subqueue_t	subqueues[NVME_MAX_QUEUES];
 	nvme_comqueue_t	comqueues[NVME_MAX_QUEUES];
+	int		cputovect[SMP_MAXCPU];
 
 	/*
 	 * bio/disk layer tracking
@@ -224,10 +225,11 @@ typedef struct nvme_softc {
 	int		rid_regs;
 	int		rid_bar4;
 
-	struct resource	*irq;
-	int		rid_irq;
+	int		nirqs;
 	int		irq_type;
-	void		*irq_handle;	/* installed irq vector for adminq */
+	struct resource	*irq[NVME_MAX_QUEUES];
+	int		rid_irq[NVME_MAX_QUEUES];
+	void		*irq_handle[NVME_MAX_QUEUES];
 
 	/*
 	 * dma tags

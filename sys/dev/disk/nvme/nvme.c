@@ -581,11 +581,27 @@ nvme_poll_completions(nvme_comqueue_t *comq, struct lock *lk)
 void
 nvme_intr(void *arg)
 {
-	nvme_softc_t *sc = arg;
-	nvme_comqueue_t *comq;
-	uint16_t i;
+	nvme_comqueue_t *comq = arg;
+	nvme_softc_t *sc;
+	int i;
+	int skip;
 
-	/*nvme_write(sc, NVME_REG_INTSET, 0x00000001U);*/
+	sc = comq->sc;
+	if (sc->nirqs == 1)
+		skip = 1;
+	else
+		skip = sc->nirqs - 1;
+
+	for (i = comq->qid; i <= sc->niocomqs; i += skip) {
+		if (comq->nqe) {
+			lockmgr(&comq->lk, LK_EXCLUSIVE);
+			nvme_poll_completions(comq, &comq->lk);
+			lockmgr(&comq->lk, LK_RELEASE);
+		}
+		comq += skip;
+	}
+
+#if 0
 	for (i = 0; i <= sc->niocomqs; ++i) {
 		comq = &sc->comqueues[i];
 		if (comq->nqe == 0)     /* not configured */
@@ -594,7 +610,7 @@ nvme_intr(void *arg)
                 nvme_poll_completions(comq, &comq->lk);
 		lockmgr(&comq->lk, LK_RELEASE);
 	}
-	/*nvme_write(sc, NVME_REG_INTCLR, 0x00000001U);*/
+#endif
 }
 
 /*
@@ -633,12 +649,31 @@ nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid)
 	nvme_request_t *req;
 	nvme_comqueue_t *comq = &sc->comqueues[qid];
 	int status;
+	int error;
+	uint16_t ivect;
+
+	error = 0;
+	if (sc->nirqs > 1) {
+		ivect = 1 + (qid - 1) % (sc->nirqs - 1);
+		if (qid && ivect == qid) {
+			error = bus_setup_intr(sc->dev, sc->irq[ivect],
+						INTR_MPSAFE,
+						nvme_intr,
+						&sc->comqueues[ivect],
+						&sc->irq_handle[ivect],
+						NULL);
+		}
+	} else {
+		ivect = 0;
+	}
+	if (error)
+		return error;
 
 	req = nvme_get_admin_request(sc, NVME_OP_CREATE_COMQ);
 	req->cmd.head.prp1 = comq->pcomq;
 	req->cmd.crcom.comq_id = qid;
 	req->cmd.crcom.comq_size = comq->nqe - 1;	/* 0's based value */
-	req->cmd.crcom.ivect = 0;
+	req->cmd.crcom.ivect = ivect;
 	req->cmd.crcom.flags = NVME_CREATECOM_PC | NVME_CREATECOM_IEN;
 
 	nvme_submit_request(req);
@@ -678,6 +713,7 @@ nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
 	nvme_request_t *req;
 	/*nvme_comqueue_t *comq = &sc->comqueues[qid];*/
 	int status;
+	uint16_t ivect;
 
 	req = nvme_get_admin_request(sc, NVME_OP_DELETE_COMQ);
 	req->cmd.head.prp1 = 0;
@@ -686,6 +722,15 @@ nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
 	nvme_submit_request(req);
 	status = nvme_wait_request(req);
 	nvme_put_request(req);
+
+	if (qid && sc->nirqs > 1) {
+		ivect = 1 + (qid - 1) % (sc->nirqs - 1);
+		if (ivect == qid) {
+			bus_teardown_intr(sc->dev,
+					  sc->irq[ivect],
+					  sc->irq_handle[ivect]);
+		}
+	}
 
 	return status;
 }
