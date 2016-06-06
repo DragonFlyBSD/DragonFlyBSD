@@ -341,6 +341,7 @@ static int
 iwm_mvm_fill_probe_req(struct iwm_softc *sc, struct iwm_scan_probe_req *preq)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	struct ieee80211_frame *wh = (struct ieee80211_frame *)preq->buf;
 	struct ieee80211_rateset *rs;
 	size_t remain = sizeof(preq->buf);
@@ -362,7 +363,7 @@ iwm_mvm_fill_probe_req(struct iwm_softc *sc, struct iwm_scan_probe_req *preq)
 	    IEEE80211_FC0_SUBTYPE_PROBE_REQ;
 	wh->i_fc[1] = IEEE80211_FC1_DIR_NODS;
 	IEEE80211_ADDR_COPY(wh->i_addr1, ieee80211broadcastaddr);
-	IEEE80211_ADDR_COPY(wh->i_addr2, ic->ic_macaddr);
+	IEEE80211_ADDR_COPY(wh->i_addr2, vap ? vap->iv_myaddr : ic->ic_macaddr);
 	IEEE80211_ADDR_COPY(wh->i_addr3, ieee80211broadcastaddr);
 	*(uint16_t *)&wh->i_dur[0] = 0; /* filled by HW */
 	*(uint16_t *)&wh->i_seq[0] = 0; /* filled by HW */
@@ -439,6 +440,8 @@ int
 iwm_mvm_config_umac_scan(struct iwm_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
+
 	struct iwm_scan_config *scan_config;
 	int ret, nchan;
 	size_t cmd_size;
@@ -474,7 +477,8 @@ iwm_mvm_config_umac_scan(struct iwm_softc *sc)
 	scan_config->out_of_channel_time = htole32(0);
 	scan_config->suspend_time = htole32(0);
 
-	IEEE80211_ADDR_COPY(scan_config->mac_addr, sc->sc_ic.ic_macaddr);
+	IEEE80211_ADDR_COPY(scan_config->mac_addr,
+	    vap ? vap->iv_myaddr : ic->ic_macaddr);
 
 	scan_config->bcast_sta_id = sc->sc_aux_sta.sta_id;
 	scan_config->channel_flags = IWM_CHANNEL_FLAG_EBS |
