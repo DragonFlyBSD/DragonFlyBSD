@@ -181,6 +181,7 @@ bus_space_read_4(bus_space_tag_t tag, bus_space_handle_t handle,
 	return (*(volatile u_int32_t *)(handle + offset));
 }
 
+#ifdef _KERNEL
 static __inline u_int64_t
 bus_space_read_8(bus_space_tag_t tag, bus_space_handle_t handle,
 		 bus_size_t offset)
@@ -189,6 +190,7 @@ bus_space_read_8(bus_space_tag_t tag, bus_space_handle_t handle,
 		panic("bus_space_read_8: illegal on I/O space");
 	return (*(volatile u_int64_t *)(handle + offset));
 }
+#endif
 
 /*
  * Read `count' 1, 2, 4, or 8 byte quantities from bus space
@@ -429,17 +431,15 @@ bus_space_write_4(bus_space_tag_t tag, bus_space_handle_t bsh,
 		*(volatile u_int32_t *)(bsh + offset) = value;
 }
 
+#ifdef _KERNEL
 static __inline void
 bus_space_write_8(bus_space_tag_t tag, bus_space_handle_t bsh,
 		       bus_size_t offset, u_int64_t value)
 {
 	if (tag == X86_64_BUS_SPACE_IO)
-		panic("bus_space_read_8: illegal on I/O space");
+		panic("bus_space_write_8: illegal on I/O space");
 	*(volatile u_int64_t *)(bsh + offset) = value;
 }
-
-#if 0	/* Cause a link error for bus_space_write_8 */
-#define	bus_space_write_8	!!! bus_space_write_8 not implemented !!!
 #endif
 
 /*
