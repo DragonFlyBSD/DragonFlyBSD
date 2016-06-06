@@ -600,17 +600,6 @@ nvme_intr(void *arg)
 		}
 		comq += skip;
 	}
-
-#if 0
-	for (i = 0; i <= sc->niocomqs; ++i) {
-		comq = &sc->comqueues[i];
-		if (comq->nqe == 0)     /* not configured */
-			continue;
-		lockmgr(&comq->lk, LK_EXCLUSIVE);
-                nvme_poll_completions(comq, &comq->lk);
-		lockmgr(&comq->lk, LK_RELEASE);
-	}
-#endif
 }
 
 /*

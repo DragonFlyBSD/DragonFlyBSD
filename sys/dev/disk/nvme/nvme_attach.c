@@ -150,6 +150,7 @@ nvme_pci_attach(device_t dev)
 		sc->irq_type = PCI_INTR_TYPE_MSIX;
 
 		error = pci_setup_msix(dev);
+		cpu = (last_global_cpu + 0) % ncpus;	/* GCC warn */
 		for (i = 0; error == 0 && i < sc->nirqs; ++i) {
 			cpu = (last_global_cpu + i) % ncpus;
 			error = pci_alloc_msix_vector(dev, i,
@@ -160,12 +161,28 @@ nvme_pci_attach(device_t dev)
 							    &sc->rid_irq[i],
 							    RF_ACTIVE);
 			/*
-			 * Ok if this overwrites older cpu assignments.
-			 * In particular, we want it to overwrite the admin
-			 * cpu (cpu for vector 0) with the I/O cpu.
+			 * We want this to overwrite queue 0's cpu vector
+			 * when the cpu's rotate through later on.
 			 */
+			if (sc->cputovect[cpu] == 0)
+				sc->cputovect[cpu] = i;
+		}
+
+		/*
+		 * If we did not iterate enough cpus (that is, there weren't
+		 * enough irqs for all available cpus) we still need to
+		 * finish or sc->cputovect[] mapping.
+		 */
+		while (error == 0) {
+			cpu = (cpu + 1) % ncpus;
+			i = (i + 1) % sc->nirqs;
+			if (i == 0)
+				i = 1;
+			if (sc->cputovect[cpu] != 0)
+				break;
 			sc->cputovect[cpu] = i;
 		}
+
 		if (error) {
 			while (--i >= 0) {
 				bus_release_resource(dev, SYS_RES_IRQ,

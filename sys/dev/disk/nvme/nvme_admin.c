@@ -308,6 +308,8 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		/*
 		 * If we got all the queues we wanted do a full-bore setup of
 		 * qmap[cpu][type].
+		 *
+		 * Remember that subq 0 / comq 0 is the admin queue.
 		 */
 		kprintf("optimal map\n");
 		sc->dumpqno = 1;
@@ -317,8 +319,8 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		qno = 3;
 		for (i = 0; i < ncpus; ++i) {
 			int cpuqno = sc->cputovect[i];
-			if (cpuqno == 0)	/* don't use admincomq */
-				cpuqno = 1;
+
+			KKASSERT(cpuqno != 0);
 			sc->qmap[i][0] = qno + 0;
 			sc->qmap[i][1] = qno + 1;
 			sc->qmap[i][2] = qno + 2;
@@ -335,50 +337,51 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		/*
 		 * We have enough to give each cpu its own submission
 		 * and completion queue.
+		 *
+		 * leave dumpqno and eventqno set to the admin queue.
 		 */
 		kprintf("nominal map 1:1 cpu\n");
 		sc->dumpqno = 0;
 		sc->eventqno = 0;
 		for (i = 0; i < ncpus; ++i) {
 			qno = sc->cputovect[i];
-			if (qno == 0)		/* don't use admincomq */
-				qno = 1;
-			sc->qmap[i][0] = qno + 0;
-			sc->qmap[i][1] = qno + 0;
-			sc->qmap[i][2] = qno + 0;
-			sc->qmap[i][3] = qno + 0;
-			sc->subqueues[qno + 0].comqid = qno + 0;
-			sc->subqueues[qno + 1].comqid = qno + 0;
-			sc->subqueues[qno + 2].comqid = qno + 0;
-			sc->subqueues[qno + 3].comqid = qno + 0;
+			KKASSERT(qno != 0);
+			sc->qmap[i][0] = qno;
+			sc->qmap[i][1] = qno;
+			sc->qmap[i][2] = qno;
+			sc->qmap[i][3] = qno;
+			sc->subqueues[qno].comqid = qno;
 		}
 		sc->niosubqs = ncpus;
 		sc->niocomqs = ncpus;
-	} else if (sc->niosubqs >= 6 && sc->niocomqs >= 3) {
+	} else if (sc->niosubqs >= 4 && sc->niocomqs >= 2) {
 		/*
 		 * We have enough queues to separate and prioritize reads
-		 * and writes, plus dumps and async events.
+		 * and writes, but all cpus have to share the same submission
+		 * queues.  Completion queues are split up between cpus
+		 * as much as possible.
 		 *
-		 * We may or may not have enough comqs to match up cpus.
+		 * leave dumpqno and eventqno set to the admin queue.
 		 */
 		kprintf("rw-sep map\n");
-		sc->dumpqno = 1;
-		sc->eventqno = 2;
-		sc->subqueues[1].comqid = 1;
-		sc->subqueues[2].comqid = 2;
-		qno = 3;
+		qno = 1;
 		for (i = 0; i < ncpus; ++i) {
 			int cpuqno = sc->cputovect[i];
-			if (cpuqno == 0)	/* don't use admincomq */
-				cpuqno = 1;
-			sc->qmap[i][0] = qno + 0;
-			sc->qmap[i][1] = qno + 1;
-			sc->qmap[i][2] = qno + 2;
-			sc->qmap[i][3] = qno + 3;
-			sc->subqueues[qno + 0].comqid = cpuqno;
-			sc->subqueues[qno + 1].comqid = cpuqno;
-			sc->subqueues[qno + 2].comqid = cpuqno;
-			sc->subqueues[qno + 3].comqid = cpuqno;
+
+			KKASSERT(qno != 0);
+			sc->qmap[i][0] = qno + 0;	/* read lopri */
+			sc->qmap[i][1] = qno + 1;	/* read hipri */
+			sc->qmap[i][2] = qno + 2;	/* write lopri */
+			sc->qmap[i][3] = qno + 3;	/* write hipri */
+			if (i <= 0)
+				sc->subqueues[qno + 0].comqid = cpuqno;
+			if (i <= 1)
+				sc->subqueues[qno + 1].comqid = cpuqno;
+			if (i <= 2)
+				sc->subqueues[qno + 2].comqid = cpuqno;
+			if (i <= 3)
+				sc->subqueues[qno + 3].comqid = cpuqno;
+			/* do not increment qno */
 		}
 		sc->niosubqs = 6;
 		sc->niocomqs = 3;
@@ -392,21 +395,23 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		sc->eventqno = 0;
 		for (i = 0; i < ncpus; ++i) {
 			int cpuqno = sc->cputovect[i];
-			if (cpuqno == 0)	/* don't use admincomq */
-				cpuqno = 1;
-			sc->qmap[i][0] = qno + 0;	/* read low pri */
-			sc->qmap[i][1] = qno + 0;	/* read high pri */
-			sc->qmap[i][2] = qno + 1;	/* write low pri */
-			sc->qmap[i][3] = qno + 1;	/* write high pri */
-			sc->subqueues[qno + 0].comqid = cpuqno;
-			sc->subqueues[qno + 1].comqid = cpuqno;
+
+			KKASSERT(qno != 0);
+			sc->qmap[i][0] = qno + 0;	/* read lopri */
+			sc->qmap[i][1] = qno + 0;	/* read hi pri */
+			sc->qmap[i][2] = qno + 1;	/* write lopri */
+			sc->qmap[i][3] = qno + 1;	/* write hi pri */
+			if (i <= 0)
+				sc->subqueues[qno + 0].comqid = cpuqno;
+			if (i <= 1)
+				sc->subqueues[qno + 1].comqid = cpuqno;
 		}
 		sc->niosubqs = 2;
 		sc->niocomqs = 1;
 	} else {
 		/*
 		 * Minimal configuration, all cpus and I/O types use the
-		 * same queue.
+		 * same queue.  Sad day.
 		 */
 		kprintf("minimal map\n");
 		sc->dumpqno = 0;
