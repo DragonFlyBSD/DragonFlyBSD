@@ -456,16 +456,16 @@ want no backup:
 
 	sed -i '' s/e/o/g foo
 %
-By default pkg-install(1) downloads all packages from a random DragonFly BSD mirror.
-To use a particular mirror set the mirror,
+To use a particular mirror for pkg-install downloads, copy the example config:
 
 	cp /usr/local/etc/pkg/repos/df-latest.conf.sample \
 		/usr/local/etc/pkg/repos/df-latest.conf
 
-and choose the mirror you want to use.
+and choose the mirror you want to use in df-latest.conf.
 
-You can also use the file df-releases.conf.sample if you prefer to use the
-RELEASE repository instead.
+This will always point to the latest version of dports.  You can copy the file 
+'df-releases.conf.sample' to use the repository that matches the current 
+release version of DragonFly.
 %
 If you want to search for a particular package, use pkg-search(1):
 
