@@ -4886,6 +4886,42 @@ struct iwm_umac_error_event_table {
 #define ERROR_START_OFFSET  (1 * sizeof(uint32_t))
 #define ERROR_ELEM_SIZE     (7 * sizeof(uint32_t))
 
+#ifdef IWM_DEBUG
+struct {
+	const char *name;
+	uint8_t num;
+} advanced_lookup[] = {
+	{ "NMI_INTERRUPT_WDG", 0x34 },
+	{ "SYSASSERT", 0x35 },
+	{ "UCODE_VERSION_MISMATCH", 0x37 },
+	{ "BAD_COMMAND", 0x38 },
+	{ "NMI_INTERRUPT_DATA_ACTION_PT", 0x3C },
+	{ "FATAL_ERROR", 0x3D },
+	{ "NMI_TRM_HW_ERR", 0x46 },
+	{ "NMI_INTERRUPT_TRM", 0x4C },
+	{ "NMI_INTERRUPT_BREAK_POINT", 0x54 },
+	{ "NMI_INTERRUPT_WDG_RXF_FULL", 0x5C },
+	{ "NMI_INTERRUPT_WDG_NO_RBD_RXF_FULL", 0x64 },
+	{ "NMI_INTERRUPT_HOST", 0x66 },
+	{ "NMI_INTERRUPT_ACTION_PT", 0x7C },
+	{ "NMI_INTERRUPT_UNKNOWN", 0x84 },
+	{ "NMI_INTERRUPT_INST_ACTION_PT", 0x86 },
+	{ "ADVANCED_SYSASSERT", 0 },
+};
+
+static const char *
+iwm_desc_lookup(uint32_t num)
+{
+	int i;
+
+	for (i = 0; i < nitems(advanced_lookup) - 1; i++)
+		if (advanced_lookup[i].num == num)
+			return advanced_lookup[i].name;
+
+	/* No entry matches 'num', so it is the last: ADVANCED_SYSASSERT */
+	return advanced_lookup[i].name;
+}
+
 static void
 iwm_nic_umac_error(struct iwm_softc *sc)
 {
@@ -4931,42 +4967,6 @@ iwm_nic_umac_error(struct iwm_softc *sc)
 	device_printf(sc->sc_dev, "0x%08X | last host cmd\n", table.cmd_header);
 	device_printf(sc->sc_dev, "0x%08X | isr status reg\n",
 	    table.nic_isr_pref);
-}
-
-#ifdef IWM_DEBUG
-struct {
-	const char *name;
-	uint8_t num;
-} advanced_lookup[] = {
-	{ "NMI_INTERRUPT_WDG", 0x34 },
-	{ "SYSASSERT", 0x35 },
-	{ "UCODE_VERSION_MISMATCH", 0x37 },
-	{ "BAD_COMMAND", 0x38 },
-	{ "NMI_INTERRUPT_DATA_ACTION_PT", 0x3C },
-	{ "FATAL_ERROR", 0x3D },
-	{ "NMI_TRM_HW_ERR", 0x46 },
-	{ "NMI_INTERRUPT_TRM", 0x4C },
-	{ "NMI_INTERRUPT_BREAK_POINT", 0x54 },
-	{ "NMI_INTERRUPT_WDG_RXF_FULL", 0x5C },
-	{ "NMI_INTERRUPT_WDG_NO_RBD_RXF_FULL", 0x64 },
-	{ "NMI_INTERRUPT_HOST", 0x66 },
-	{ "NMI_INTERRUPT_ACTION_PT", 0x7C },
-	{ "NMI_INTERRUPT_UNKNOWN", 0x84 },
-	{ "NMI_INTERRUPT_INST_ACTION_PT", 0x86 },
-	{ "ADVANCED_SYSASSERT", 0 },
-};
-
-static const char *
-iwm_desc_lookup(uint32_t num)
-{
-	int i;
-
-	for (i = 0; i < nitems(advanced_lookup) - 1; i++)
-		if (advanced_lookup[i].num == num)
-			return advanced_lookup[i].name;
-
-	/* No entry matches 'num', so it is the last: ADVANCED_SYSASSERT */
-	return advanced_lookup[i].name;
 }
 
 /*
