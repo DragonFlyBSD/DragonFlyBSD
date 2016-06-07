@@ -118,6 +118,7 @@ static struct mbuf *tulip_dequeue_mbuf(tulip_ringinfo_t *ri, tulip_descinfo_t *d
 static void	tulip_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 static void	tulip_dma_map_rxbuf(void *, bus_dma_segment_t *, int,
 		    bus_size_t, int);
+static void	tulip_ifinit(void *);
 
 static void
 tulip_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
@@ -3755,6 +3756,15 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 }
 
 static void
+tulip_ifinit(void *xsc)
+{	
+    tulip_softc_t *sc = xsc;
+
+    tulip_addr_filter(sc); /* reinit multicast filter */
+    tulip_init(sc);
+}
+
+static void
 tulip_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
     tulip_softc_t *sc = (tulip_softc_t *)ifp->if_softc;
@@ -3830,6 +3840,7 @@ tulip_attach(tulip_softc_t *sc)
     struct ifnet *ifp = &sc->arpcom.ac_if;
 
     ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST;
+    ifp->if_init = tulip_ifinit;
     ifp->if_ioctl = tulip_ifioctl;
     ifp->if_start = tulip_ifstart;
     ifp->if_watchdog = tulip_ifwatchdog;
