@@ -1793,10 +1793,11 @@ typedef union {
 	nvme_lba_fmt_data_t	lbafmt;
 	nvme_ident_ctlr_data_t	idctlr;
 	nvme_ident_ns_data_t	idns;
+	nvme_ident_ns_list_t	nslist;
+	nvme_ident_ctlr_list_t	ctlrlist;
 	nvme_log_error_data_t	logerr;
 	nvme_log_smart_data_t	logsmart;
 	nvme_fw_slot_data_t	fwslot;
-	nvme_nslist_data_t	nslist;
 	nvme_nsmgmt_create_data_t nsmgmt;
 	nvme_cmdeff_data_t	cmdeff;
 	nvme_resnotify_data_t	resnotify;

@@ -471,49 +471,90 @@ int
 nvme_admin_state_identify_ns(nvme_softc_t *sc)
 {
 	nvme_request_t *req;
-	nvme_nslist_data_t *rp;
+	nvme_ident_ns_list_t *rp;
 	int status;
 	uint32_t i;
 	uint32_t j;
 
+	if (bootverbose) {
+		if (sc->idctlr.admin_cap & NVME_ADMIN_NSMANAGE)
+			device_printf(sc->dev,
+				      "Namespace management supported\n");
+		else
+			device_printf(sc->dev,
+				      "Namespace management not supported\n");
+	}
+#if 0
 	/*
-	 * Identify Namespace List
+	 * Identify Controllers		TODO TODO TODO
 	 */
-	req = nvme_get_admin_request(sc, NVME_OP_IDENTIFY);
-	req->cmd.identify.cns = NVME_CNS_ACT_NSLIST;
-	req->cmd.identify.cntid = 0;
-	bzero(req->info, sizeof(*req->info));
-	nvme_submit_request(req);
-	status = nvme_wait_request(req);
-	/* XXX handle status */
+	if (sc->idctlr.admin_cap & NVME_ADMIN_NSMANAGE) {
+		req = nvme_get_admin_request(sc, NVME_OP_IDENTIFY);
+		req->cmd.identify.cns = NVME_CNS_ANY_CTLR_LIST;
+		req->cmd.identify.cntid = 0;
+		bzero(req->info, sizeof(*req->info));
+		nvme_submit_request(req);
+		status = nvme_wait_request(req);
+		kprintf("nsquery status %08x\n", status);
 
-	sc->nslist = req->info->nslist;
-	nvme_put_request(req);
+#if 0
+		for (i = 0; i < req->info->ctlrlist.idcount; ++i) {
+			kprintf("CTLR %04x\n", req->info->ctlrlist.ctlrids[i]);
+		}
+#endif
+		nvme_put_request(req);
+	}
+#endif
+
+	rp = kmalloc(sizeof(*rp), M_NVME, M_WAITOK | M_ZERO);
+	if (sc->idctlr.admin_cap & NVME_ADMIN_NSMANAGE) {
+		/*
+		 * Namespace management supported, query active namespaces.
+		 */
+		req = nvme_get_admin_request(sc, NVME_OP_IDENTIFY);
+		req->cmd.identify.cns = NVME_CNS_ACT_NSLIST;
+		req->cmd.identify.cntid = 0;
+		bzero(req->info, sizeof(*req->info));
+		nvme_submit_request(req);
+		status = nvme_wait_request(req);
+		kprintf("nsquery status %08x\n", status);
+		/* XXX handle status */
+
+		cpu_lfence();
+		*rp = req->info->nslist;
+		nvme_put_request(req);
+	} else {
+		/*
+		 * Namespace management not supported, assume nsids 1..N.
+		 */
+		for (i = 1; i <= sc->idctlr.ns_count && i <= 1024; ++i)
+			rp->nsids[i-1] = i;
+	}
 
 	/*
 	 * Identify each Namespace
 	 */
-	rp = &sc->nslist;
-	for (i = 0; i < sc->idctlr.ns_count; ++i) {
+	for (i = 0; i < 1024; ++i) {
 		nvme_softns_t *nsc;
 		nvme_lba_fmt_data_t *lbafmt;
 
-		if (rp->nids[i] == 0)
+		if (rp->nsids[i] == 0)
 			continue;
-
 		req = nvme_get_admin_request(sc, NVME_OP_IDENTIFY);
 		req->cmd.identify.cns = NVME_CNS_ACT_NS;
 		req->cmd.identify.cntid = 0;
-		req->cmd.identify.head.nsid = rp->nids[i];
+		req->cmd.identify.head.nsid = rp->nsids[i];
 		bzero(req->info, sizeof(*req->info));
 		nvme_submit_request(req);
 		status = nvme_wait_request(req);
-		if (status != 0)
+		if (status != 0) {
+			kprintf("NS FAILED %08x\n", status);
 			continue;
+		}
 
 		for (j = 0; j < NVME_MAX_NAMESPACES; ++j) {
 			if (sc->nscary[j] &&
-			    sc->nscary[j]->nsid == rp->nids[i])
+			    sc->nscary[j]->nsid == rp->nsids[i])
 				break;
 		}
 		if (j == NVME_MAX_NAMESPACES) {
@@ -527,7 +568,7 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		}
 		if (j < 0) {
 			device_printf(sc->dev, "not enough room in nscary for "
-					       "namespace %08x\n", rp->nids[i]);
+					       "namespace %08x\n", rp->nsids[i]);
 			nvme_put_request(req);
 			continue;
 		}
@@ -540,7 +581,7 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		if (sc->nscmax <= j)
 			sc->nscmax = j + 1;
 		nsc->sc = sc;
-		nsc->nsid = rp->nids[i];
+		nsc->nsid = rp->nsids[i];
 		nsc->state = NVME_NSC_STATE_UNATTACHED;
 		nsc->idns = req->info->idns;
 		bioq_init(&nsc->bioq);
@@ -557,6 +598,7 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		 */
 		nvme_disk_attach(nsc);
 	}
+	kfree(rp, M_NVME);
 
 	sc->admin_func = nvme_admin_state_operating;
 	return 1;

@@ -121,7 +121,7 @@ multiple queues simultaniously in a SMP environment.
 .Pp
 The driver pre-reserves DMA memory for all necessary descriptors, queue
 entries, and internal driver structures, and allows for a very generous
-number of queue entries (1024) for maximum performance.
+number of queue entries (1024 x NQueues) for maximum performance.
 .Sh SEE ALSO
 .Xr intro 4 ,
 .Xr pci 4 ,
@@ -140,4 +140,4 @@ driver for
 .Dx
 was written from scratch by
 .An Matthew Dillon Aq Mt dillon@backplane.com
-based on the NVM Expression 1.2a specification.
+based on the NVM Express 1.2a specification.

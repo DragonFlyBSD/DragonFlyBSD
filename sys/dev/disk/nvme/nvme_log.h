@@ -113,17 +113,6 @@ typedef struct {
 		((data) & NVME_FWSLOT_CRF_FWCURR_MASK)
 
 /*
- * Changed Namespace List (Log ID 04) (4096 bytes?)
- *
- * list is sub-grouped in sets of two nids.  If more than 1024 namespaces
- * have changed attributes the first entry will be set to 0xFFFFFFFF and
- * the remaining entries shall be zero-filled.
- */
-typedef struct {
-	uint32_t	nids[1024];
-} __packed nvme_nslist_data_t;
-
-/*
  * Command Supported and Effects (Log ID 05) (4096 bytes)
  *
  * Iterates available admin and I/O commands, one command-effects data

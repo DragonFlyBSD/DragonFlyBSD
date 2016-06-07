@@ -250,7 +250,6 @@ typedef struct nvme_softc {
 	struct lock	admin_lk;
 	int		(*admin_func)(struct nvme_softc *);
 	nvme_ident_ctlr_data_t idctlr;
-	nvme_nslist_data_t nslist;
 	nvme_softns_t	*nscary[NVME_MAX_NAMESPACES];
 	int		nscmax;
 } nvme_softc_t;

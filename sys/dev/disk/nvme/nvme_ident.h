@@ -137,6 +137,18 @@ typedef struct {
 	uint8_t		vendor3072[1024];
 } __packed nvme_ident_ctlr_data_t;
 
+/*
+ * Controller list format
+ */
+typedef struct {
+	uint16_t	idcount;	/* 2047 max */
+	uint16_t	ctlrids[2047];	/* N controller ids */
+} __packed nvme_ident_ctlr_list_t;
+
+typedef struct {
+	uint32_t	nsids[1024];	/* N namespace ids */
+} __packed nvme_ident_ns_list_t;
+
 #define NVME_CMIC_80		0x80
 #define NVME_CMIC_40		0x40
 #define NVME_CMIC_20		0x20
@@ -148,7 +160,7 @@ typedef struct {
 
 #define NVME_ASYNC_NSATTRCHG	0x00000100U /* supports ns attr chg event */
 
-#define NVME_ADMIN_NSMANAGE	0x0008U
+#define NVME_ADMIN_NSMANAGE	0x0008U	/* admin_cap */
 #define NVME_ADMIN_FWIMG	0x0004U
 #define NVME_ADMIN_FORMAT	0x0002U
 #define NVME_ADMIN_SECURITY	0x0001U
@@ -300,11 +312,3 @@ typedef struct {
 					/* 4-7 reserved */
 
 #define NVME_NMIC_SHARED		0x01
-
-/*
- * Controller list format
- */
-typedef struct {
-	uint16_t	idcount;	/* 2047 max */
-	uint16_t	ctlrid[1];	/* N controller ids */
-} __packed nvme_ctlr_list_t;
