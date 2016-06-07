@@ -107,7 +107,8 @@ For reference, the SATA-III physical interface is limited to 600 MBytes/sec
 and the extra phy layer results in higher latencies, and AHCI controllers are
 limited to a single 32-entry queue.
 .Sh FEATURES
-The DragonFly
+The
+.Dx
 .Nm
 driver automatically selects the best SMP-friendly and
 I/O-typing queue configuration possible based on what the controller
@@ -121,7 +122,6 @@ multiple queues simultaniously in a SMP environment.
 The driver pre-reserves DMA memory for all necessary descriptors, queue
 entries, and internal driver structures, and allows for a very generous
 number of queue entries (1024) for maximum performance.
-.Pp
 .Sh SEE ALSO
 .Xr intro 4 ,
 .Xr pci 4 ,
@@ -136,6 +136,8 @@ driver first appeared in
 .An -nosplit
 The
 .Nm
-driver for DragonFly was written from scratch by
+driver for
+.Dx
+was written from scratch by
 .An Matthew Dillon Aq Mt dillon@backplane.com
 based on the NVM Expression 1.2a specification.
