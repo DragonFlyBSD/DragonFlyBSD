@@ -375,3 +375,14 @@ nvme_disk_callback(nvme_request_t *req, struct lock *lk)
 	if (lk)					/* comq lock */
 		lockmgr(lk, LK_EXCLUSIVE);
 }
+
+int
+nvme_alloc_disk_unit(void)
+{
+	static int unit_counter = 0;
+	int unit;
+
+	unit = atomic_fetchadd_int(&unit_counter, 1);
+
+	return unit;
+}

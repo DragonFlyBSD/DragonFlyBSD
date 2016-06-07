@@ -249,6 +249,9 @@ iwm_nic_lock(struct iwm_softc *sc)
 	IWM_SETBITS(sc, IWM_CSR_GP_CNTRL,
 	    IWM_CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
 
+	if (sc->sc_device_family == IWM_DEVICE_FAMILY_8000)
+		DELAY(2);
+
 	if (iwm_poll_bit(sc, IWM_CSR_GP_CNTRL,
 	    IWM_CSR_GP_CNTRL_REG_VAL_MAC_ACCESS_EN,
 	    IWM_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY
@@ -256,6 +259,8 @@ iwm_nic_lock(struct iwm_softc *sc)
 		rv = 1;
 	} else {
 		/* jolt */
+		IWM_DPRINTF(sc, IWM_DEBUG_RESET,
+		    "%s: resetting device via NMI\n", __func__);
 		IWM_WRITE(sc, IWM_CSR_RESET, IWM_CSR_RESET_REG_FLAG_FORCE_NMI);
 	}
 
@@ -418,8 +423,10 @@ iwm_apm_init(struct iwm_softc *sc)
 	IWM_DPRINTF(sc, IWM_DEBUG_RESET, "iwm apm start\n");
 
 	/* Disable L0S exit timer (platform NMI Work/Around) */
-	IWM_SETBITS(sc, IWM_CSR_GIO_CHICKEN_BITS,
-	    IWM_CSR_GIO_CHICKEN_BITS_REG_BIT_DIS_L0S_EXIT_TIMER);
+	if (sc->sc_device_family != IWM_DEVICE_FAMILY_8000) {
+		IWM_SETBITS(sc, IWM_CSR_GIO_CHICKEN_BITS,
+		    IWM_CSR_GIO_CHICKEN_BITS_REG_BIT_DIS_L0S_EXIT_TIMER);
+	}
 
 	/*
 	 * Disable L0s without affecting L1;
@@ -440,7 +447,7 @@ iwm_apm_init(struct iwm_softc *sc)
 
 	iwm_apm_config(sc);
 
-#if 0 /* not for 7k */
+#if 0 /* not for 7k/8k */
 	/* Configure analog phase-lock-loop before activating to D0A */
 	if (trans->cfg->base_params->pll_cfg_val)
 		IWM_SETBITS(trans, IWM_CSR_ANA_PLL_CFG,
@@ -496,18 +503,19 @@ iwm_apm_init(struct iwm_softc *sc)
 	 * do not disable clocks.  This preserves any hardware bits already
 	 * set by default in "CLK_CTRL_REG" after reset.
 	 */
-	iwm_write_prph(sc, IWM_APMG_CLK_EN_REG, IWM_APMG_CLK_VAL_DMA_CLK_RQT);
-	//kpause("iwmapm", 0, mstohz(20), NULL);
-	DELAY(20);
+	if (sc->sc_device_family == IWM_DEVICE_FAMILY_7000) {
+		iwm_write_prph(sc, IWM_APMG_CLK_EN_REG,
+		    IWM_APMG_CLK_VAL_DMA_CLK_RQT);
+		DELAY(20);
 
-	/* Disable L1-Active */
-	iwm_set_bits_prph(sc, IWM_APMG_PCIDEV_STT_REG,
-	    IWM_APMG_PCIDEV_STT_VAL_L1_ACT_DIS);
+		/* Disable L1-Active */
+		iwm_set_bits_prph(sc, IWM_APMG_PCIDEV_STT_REG,
+		    IWM_APMG_PCIDEV_STT_VAL_L1_ACT_DIS);
 
-	/* Clear the interrupt in APMG if the NIC is in RFKILL */
-	iwm_write_prph(sc, IWM_APMG_RTC_INT_STT_REG,
-	    IWM_APMG_RTC_INT_STT_RFKILL);
-
+		/* Clear the interrupt in APMG if the NIC is in RFKILL */
+		iwm_write_prph(sc, IWM_APMG_RTC_INT_STT_REG,
+		    IWM_APMG_RTC_INT_STT_RFKILL);
+	}
  out:
 	if (error)
 		device_printf(sc->sc_dev, "apm init error %d\n", error);

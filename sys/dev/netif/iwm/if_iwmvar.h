@@ -139,6 +139,7 @@ struct iwm_tx_radiotap_header {
 
 #define IWM_UCODE_SECT_MAX 16
 #define IWM_FWDMASEGSZ (192*1024)
+#define IWM_FWDMASEGSZ_8000 (320*1024)
 /* sanity check value */
 #define IWM_FWMAXSIZE (2*1024*1024)
 
@@ -198,8 +199,9 @@ struct iwm_nvm_data {
 	uint8_t radio_cfg_pnum;
 	uint8_t valid_tx_ant, valid_rx_ant;
 #define IWM_NUM_CHANNELS	39
+#define IWM_NUM_CHANNELS_8000	51
 
-	uint16_t nvm_ch_flags[IWM_NUM_CHANNELS];
+	uint16_t nvm_ch_flags[IWM_NUM_CHANNELS_8000];
 
 	uint16_t nvm_version;
 	uint8_t max_tx_pwr_half_dbm;
@@ -296,6 +298,7 @@ struct iwm_rx_ring {
 
 struct iwm_ucode_status {
 	uint32_t uc_error_event_table;
+	uint32_t uc_umac_error_event_table;
 	uint32_t uc_log_event_table;
 
 	int uc_ok;
@@ -306,6 +309,7 @@ struct iwm_ucode_status {
 
 /* lower blocks contain EEPROM image and calibration data */
 #define IWM_OTP_LOW_IMAGE_SIZE_FAMILY_7000 	16384
+#define IWM_OTP_LOW_IMAGE_SIZE_FAMILY_8000	32768
 
 #define IWM_MVM_TE_SESSION_PROTECTION_MAX_TIME_MS 500
 #define IWM_MVM_TE_SESSION_PROTECTION_MIN_TIME_MS 400
@@ -443,7 +447,14 @@ struct iwm_softc {
 	int			ict_cur;
 
 	int			sc_hw_rev;
+#define IWM_SILICON_A_STEP	0
+#define IWM_SILICON_B_STEP	1
+#define IWM_SILICON_C_STEP	2
+#define IWM_SILICON_D_STEP	3
 	int			sc_hw_id;
+	int			sc_device_family;
+#define IWM_DEVICE_FAMILY_7000	1
+#define IWM_DEVICE_FAMILY_8000	2
 
 	struct iwm_dma_info	kw_dma;
 	struct iwm_dma_info	fw_dma;

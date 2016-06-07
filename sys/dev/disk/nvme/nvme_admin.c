@@ -63,9 +63,9 @@ nvme_start_admin_thread(nvme_softc_t *sc)
 	lockinit(&sc->admin_lk, "admlk", 0, 0);
 	sc->admin_signal = 0;
 
-	error = bus_setup_intr(sc->dev, sc->irq, INTR_MPSAFE,
-			       nvme_intr, sc,
-			       &sc->irq_handle, NULL);
+	error = bus_setup_intr(sc->dev, sc->irq[0], INTR_MPSAFE,
+			       nvme_intr, &sc->comqueues[0],
+			       &sc->irq_handle[0], NULL);
 	if (error) {
 		device_printf(sc->dev, "unable to install interrupt\n");
 		return error;
@@ -122,9 +122,9 @@ nvme_stop_admin_thread(nvme_softc_t *sc)
 	while (sc->admin_signal & ADMIN_SIG_RUNNING)
 		lksleep(&sc->admin_signal, &sc->admin_lk, 0, "nvwend", 0);
 	lockmgr(&sc->admin_lk, LK_RELEASE);
-	if (sc->irq_handle) {
-		bus_teardown_intr(sc->dev, sc->irq, sc->irq_handle);
-		sc->irq_handle = NULL;
+	if (sc->irq_handle[0]) {
+		bus_teardown_intr(sc->dev, sc->irq[0], sc->irq_handle[0]);
+		sc->irq_handle[0] = NULL;
 	}
 	lockuninit(&sc->admin_lk);
 
@@ -150,10 +150,7 @@ nvme_admin_thread(void *arg)
 	sc->admin_func = nvme_admin_state_identify_ctlr;
 
 	while ((sc->admin_signal & ADMIN_SIG_STOP) == 0) {
-		nvme_intr(sc);
-#if 0
-		nvme_poll_completions(&sc->comqueues[0], NULL);
-		for (i = 1; i <= sc->niocomqs; ++i) {
+		for (i = 0; i <= sc->niocomqs; ++i) {
 			nvme_comqueue_t *comq = &sc->comqueues[i];
 
 			if (comq->nqe == 0)	/* not configured */
@@ -163,7 +160,6 @@ nvme_admin_thread(void *arg)
 			nvme_poll_completions(comq, &comq->lk);
 			lockmgr(&comq->lk, LK_RELEASE);
 		}
-#endif
 		if (sc->admin_signal & ADMIN_SIG_REQUEUE) {
 			atomic_clear_int(&sc->admin_signal, ADMIN_SIG_REQUEUE);
 			nvme_disk_requeues(sc);
@@ -271,6 +267,7 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	 *
 	 * This driver runs optimally with 4 submission queues and one
 	 * completion queue per cpu (rdhipri, rdlopri, wrhipri, wrlopri),
+	 *
 	 * +1 for dumps
 	 * +1 for async events
 	 */
@@ -311,6 +308,8 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		/*
 		 * If we got all the queues we wanted do a full-bore setup of
 		 * qmap[cpu][type].
+		 *
+		 * Remember that subq 0 / comq 0 is the admin queue.
 		 */
 		kprintf("optimal map\n");
 		sc->dumpqno = 1;
@@ -319,39 +318,70 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		sc->subqueues[2].comqid = 2;
 		qno = 3;
 		for (i = 0; i < ncpus; ++i) {
+			int cpuqno = sc->cputovect[i];
+
+			KKASSERT(cpuqno != 0);
 			sc->qmap[i][0] = qno + 0;
 			sc->qmap[i][1] = qno + 1;
 			sc->qmap[i][2] = qno + 2;
 			sc->qmap[i][3] = qno + 3;
-			sc->subqueues[qno + 0].comqid = i + 3;
-			sc->subqueues[qno + 1].comqid = i + 3;
-			sc->subqueues[qno + 2].comqid = i + 3;
-			sc->subqueues[qno + 3].comqid = i + 3;
+			sc->subqueues[qno + 0].comqid = cpuqno;
+			sc->subqueues[qno + 1].comqid = cpuqno;
+			sc->subqueues[qno + 2].comqid = cpuqno;
+			sc->subqueues[qno + 3].comqid = cpuqno;
 			qno += 4;
 		}
 		sc->niosubqs = ncpus * 4 + 2;
 		sc->niocomqs = ncpus + 2;
-	} else if (sc->niosubqs >= 6 && sc->niocomqs >= 3) {
+	} else if (sc->niosubqs >= ncpus && sc->niocomqs >= ncpus) {
+		/*
+		 * We have enough to give each cpu its own submission
+		 * and completion queue.
+		 *
+		 * leave dumpqno and eventqno set to the admin queue.
+		 */
+		kprintf("nominal map 1:1 cpu\n");
+		sc->dumpqno = 0;
+		sc->eventqno = 0;
+		for (i = 0; i < ncpus; ++i) {
+			qno = sc->cputovect[i];
+			KKASSERT(qno != 0);
+			sc->qmap[i][0] = qno;
+			sc->qmap[i][1] = qno;
+			sc->qmap[i][2] = qno;
+			sc->qmap[i][3] = qno;
+			sc->subqueues[qno].comqid = qno;
+		}
+		sc->niosubqs = ncpus;
+		sc->niocomqs = ncpus;
+	} else if (sc->niosubqs >= 4 && sc->niocomqs >= 2) {
 		/*
 		 * We have enough queues to separate and prioritize reads
-		 * and writes, plus dumps and async events, but the cpus
-		 * have to all use the same queue set.
+		 * and writes, but all cpus have to share the same submission
+		 * queues.  Completion queues are split up between cpus
+		 * as much as possible.
+		 *
+		 * leave dumpqno and eventqno set to the admin queue.
 		 */
-		kprintf("nominal map\n");
-		sc->dumpqno = 1;
-		sc->eventqno = 2;
-		sc->subqueues[1].comqid = 1;
-		sc->subqueues[2].comqid = 2;
-		qno = 3;
+		kprintf("rw-sep map\n");
+		qno = 1;
 		for (i = 0; i < ncpus; ++i) {
-			sc->qmap[i][0] = qno + 0;
-			sc->qmap[i][1] = qno + 1;
-			sc->qmap[i][2] = qno + 2;
-			sc->qmap[i][3] = qno + 3;
-			sc->subqueues[qno + 0].comqid = 3;
-			sc->subqueues[qno + 1].comqid = 3;
-			sc->subqueues[qno + 2].comqid = 3;
-			sc->subqueues[qno + 3].comqid = 3;
+			int cpuqno = sc->cputovect[i];
+
+			KKASSERT(qno != 0);
+			sc->qmap[i][0] = qno + 0;	/* read lopri */
+			sc->qmap[i][1] = qno + 1;	/* read hipri */
+			sc->qmap[i][2] = qno + 2;	/* write lopri */
+			sc->qmap[i][3] = qno + 3;	/* write hipri */
+			if (i <= 0)
+				sc->subqueues[qno + 0].comqid = cpuqno;
+			if (i <= 1)
+				sc->subqueues[qno + 1].comqid = cpuqno;
+			if (i <= 2)
+				sc->subqueues[qno + 2].comqid = cpuqno;
+			if (i <= 3)
+				sc->subqueues[qno + 3].comqid = cpuqno;
+			/* do not increment qno */
 		}
 		sc->niosubqs = 6;
 		sc->niocomqs = 3;
@@ -364,19 +394,24 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		sc->dumpqno = 0;
 		sc->eventqno = 0;
 		for (i = 0; i < ncpus; ++i) {
-			sc->qmap[i][0] = qno + 0;	/* read low pri */
-			sc->qmap[i][1] = qno + 0;	/* read high pri */
-			sc->qmap[i][2] = qno + 1;	/* write low pri */
-			sc->qmap[i][3] = qno + 1;	/* write high pri */
-			sc->subqueues[qno + 0].comqid = 1;
-			sc->subqueues[qno + 1].comqid = 1;
+			int cpuqno = sc->cputovect[i];
+
+			KKASSERT(qno != 0);
+			sc->qmap[i][0] = qno + 0;	/* read lopri */
+			sc->qmap[i][1] = qno + 0;	/* read hi pri */
+			sc->qmap[i][2] = qno + 1;	/* write lopri */
+			sc->qmap[i][3] = qno + 1;	/* write hi pri */
+			if (i <= 0)
+				sc->subqueues[qno + 0].comqid = cpuqno;
+			if (i <= 1)
+				sc->subqueues[qno + 1].comqid = cpuqno;
 		}
 		sc->niosubqs = 2;
 		sc->niocomqs = 1;
 	} else {
 		/*
 		 * Minimal configuration, all cpus and I/O types use the
-		 * same queue.
+		 * same queue.  Sad day.
 		 */
 		kprintf("minimal map\n");
 		sc->dumpqno = 0;
@@ -499,11 +534,11 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		nsc = sc->nscary[j];
 		if (nsc == NULL) {
 			nsc = kmalloc(sizeof(*nsc), M_NVME, M_WAITOK | M_ZERO);
+			nsc->unit = nvme_alloc_disk_unit();
 			sc->nscary[j] = nsc;
 		}
 		if (sc->nscmax <= j)
 			sc->nscmax = j + 1;
-		nsc->unit = j;
 		nsc->sc = sc;
 		nsc->nsid = rp->nids[i];
 		nsc->state = NVME_NSC_STATE_UNATTACHED;
