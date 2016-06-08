@@ -645,10 +645,10 @@ hammer_format_volume_header(hammer_mount_t hmp,
 	ondisk->vol_count = root_ondisk->vol_count + 1;
 
 	/*
-	 * Reserve space for (future) header junk, copy volume relative
-	 * offset from the existing root volume.
+	 * Reserve space for (future) header junk.
 	 */
 	vol_alloc = root_ondisk->vol_bot_beg;
+	KKASSERT(vol_alloc == HAMMER_VOL_ALLOC);
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += ioc->boot_area_size;
 	ondisk->vol_mem_beg = vol_alloc;

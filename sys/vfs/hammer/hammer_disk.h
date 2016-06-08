@@ -90,6 +90,11 @@
 #define HAMMER_MAX_VOLUMES	256
 
 /*
+ * Reserved space for (future) header junk after the volume header.
+ */
+#define HAMMER_VOL_ALLOC	(HAMMER_BUFSIZE * 16)
+
+/*
  * Hammer transaction ids are 64 bit unsigned integers and are usually
  * synchronized with the time of day in nanoseconds.
  *

@@ -474,7 +474,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 * Reserve space for (future) header junk, setup our poor-man's
 	 * big-block allocator.
 	 */
-	vol_alloc = HAMMER_BUFSIZE * 16;  /* 262144 */
+	vol_alloc = HAMMER_VOL_ALLOC;
 
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += BootAreaSize;
