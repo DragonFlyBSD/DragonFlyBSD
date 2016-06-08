@@ -597,7 +597,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 		struct {
 			uint64_t value;
 			uint64_t reserved[7];
-		} crc64;
+		} xxhash64;
 		struct {
 			char data[24];
 			char reserved[40];
@@ -664,13 +664,13 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_CHECK_NONE		0
 #define HAMMER2_CHECK_DISABLED		1
 #define HAMMER2_CHECK_ISCSI32		2
-#define HAMMER2_CHECK_CRC64		3
+#define HAMMER2_CHECK_XXHASH64		3
 #define HAMMER2_CHECK_SHA192		4
 #define HAMMER2_CHECK_FREEMAP		5
 
 /* user-specifiable check modes only */
 #define HAMMER2_CHECK_STRINGS		{ "none", "disabled", "crc32", \
-					  "crc64", "sha192" }
+					  "xxhash64", "sha192" }
 #define HAMMER2_CHECK_STRINGS_COUNT	5
 
 /*

@@ -257,6 +257,7 @@ h2pfs_check(int fd, hammer2_blockref_t *bref,
 	int i;
 	size_t bytes;
 	uint32_t cv;
+	uint64_t cv64;
 
 	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 
@@ -314,7 +315,14 @@ h2pfs_check(int fd, hammer2_blockref_t *bref,
 				       cv);
 			}
 			break;
-		case HAMMER2_CHECK_CRC64:
+		case HAMMER2_CHECK_XXHASH64:
+			cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
+			if (bref->check.xxhash64.value != cv64) {
+				printf("\t(xxhash failed %02x:%016jx/%016jx)\n",
+				       bref->methods,
+				       bref->check.xxhash64.value,
+				       cv64);
+			}
 			break;
 		case HAMMER2_CHECK_SHA192:
 			break;

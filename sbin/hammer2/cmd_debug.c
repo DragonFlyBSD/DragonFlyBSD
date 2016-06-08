@@ -437,6 +437,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	const char *type_str;
 	char *str = NULL;
 	uint32_t cv;
+	uint64_t cv64;
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
@@ -538,8 +539,16 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 				printf("(meth %02x) ", bref->methods);
 			}
 			break;
-		case HAMMER2_CHECK_CRC64:
-			printf("(meth %02x) ", bref->methods);
+		case HAMMER2_CHECK_XXHASH64:
+			cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
+			if (bref->check.xxhash64.value != cv64) {
+				printf("(xxhash64 %02x:%016jx/%016jx) ",
+				       bref->methods,
+				       bref->check.xxhash64.value,
+				       cv64);
+			} else {
+				printf("(meth %02x) ", bref->methods);
+			}
 			break;
 		case HAMMER2_CHECK_SHA192:
 			printf("(meth %02x) ", bref->methods);

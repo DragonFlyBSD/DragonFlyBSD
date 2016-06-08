@@ -78,11 +78,13 @@ static struct hammer2_pfslist hammer2_pfslist;
 static struct lock hammer2_mntlk;
 
 int hammer2_debug;
-int hammer2_cluster_enable = 1;
+int hammer2_cluster_enable = 4;
 int hammer2_hardlink_enable = 1;
 int hammer2_flush_pipe = 100;
 int hammer2_synchronous_flush = 1;
 int hammer2_dio_count;
+long hammer2_chain_allocs;
+long hammer2_chain_frees;
 long hammer2_limit_dirty_chains;
 long hammer2_count_modified_chains;
 long hammer2_iod_file_read;
@@ -129,6 +131,10 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, synchronous_flush, CTLFLAG_RW,
 	   &hammer2_synchronous_flush, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RW,
+	   &hammer2_chain_allocs, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_frees, CTLFLAG_RW,
+	   &hammer2_chain_frees, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_chains, CTLFLAG_RW,
 	   &hammer2_limit_dirty_chains, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, count_modified_chains, CTLFLAG_RW,
@@ -185,6 +191,13 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_fmap_write, CTLFLAG_RW,
 	   &hammer2_ioa_fmap_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_volu_write, CTLFLAG_RW,
 	   &hammer2_ioa_volu_write, 0, "");
+
+long hammer2_check_icrc32;
+long hammer2_check_xxhash64;
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, check_icrc32, CTLFLAG_RW,
+	   &hammer2_check_icrc32, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, check_xxhash64, CTLFLAG_RW,
+	   &hammer2_check_xxhash64, 0, "");
 
 static int hammer2_vfs_init(struct vfsconf *conf);
 static int hammer2_vfs_uninit(struct vfsconf *vfsp);
@@ -377,10 +390,14 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		/*
 		 * Distribute backend operations to threads
 		 */
-		for (j = 0; j < HAMMER2_MAXCLUSTER; ++j)
-			TAILQ_INIT(&pmp->xopq[j]);
-		for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
-			hammer2_xop_group_init(pmp, &pmp->xop_groups[j]);
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			for (j = 0; j < HAMMER2_XOPGROUPS +
+					HAMMER2_SPECTHREADS; ++j) {
+				TAILQ_INIT(&pmp->xopq[i][j]);
+			}
+		}
+		for (i = 0; i < HAMMER2_XOPGROUPS; ++i)
+			hammer2_xop_group_init(pmp, &pmp->xop_groups[i]);
 
 		/*
 		 * Save the last media transaction id for the flusher.  Set

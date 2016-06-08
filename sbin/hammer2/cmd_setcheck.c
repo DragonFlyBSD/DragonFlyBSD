@@ -57,8 +57,8 @@ cmd_setcheck(const char *check_str, char **paths)
 				break;
 		}
 		if (check_algo < 0 && strcasecmp(check_str, "default") == 0) {
-			check_algo = HAMMER2_CHECK_ISCSI32;
-			check_str = "crc32";
+			check_algo = HAMMER2_CHECK_XXHASH64;
+			check_str = "xxhash64";
 		}
 		if (check_algo < 0 && strcasecmp(check_str, "disabled") == 0) {
 			check_algo = HAMMER2_CHECK_DISABLED;

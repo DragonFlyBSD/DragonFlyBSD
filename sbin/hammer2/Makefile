@@ -9,6 +9,7 @@ MAN=	hammer2.8
 #NOMAN=	TRUE
 DEBUG_FLAGS=-g
 
+CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+= -pthread
 LDADD=	-ldmsg -lm -lutil -lmd -lcrypto
@@ -16,5 +17,7 @@ DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBMD} ${LIBCRYPTO}
 
 #.PATH: ${.CURDIR}/../../sys/libkern
 #SRCS+= crc32.c
+.PATH: ${.CURDIR}/../../sys/vfs/hammer2/xxhash
+SRCS+= xxhash.c
 
 .include <bsd.prog.mk>

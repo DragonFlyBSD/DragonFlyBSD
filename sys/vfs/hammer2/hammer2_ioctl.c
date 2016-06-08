@@ -634,7 +634,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		nip->meta.comp_algo =
 			HAMMER2_ENC_ALGO(HAMMER2_COMP_NEWFS_DEFAULT);
 		nip->meta.check_algo =
-			HAMMER2_ENC_ALGO( HAMMER2_CHECK_ISCSI32);
+			HAMMER2_ENC_ALGO( HAMMER2_CHECK_XXHASH64);
 
 		if (strcasecmp(pfs->name, "boot") == 0) {
 			nip->meta.comp_algo =

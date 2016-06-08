@@ -48,13 +48,14 @@ hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 {
 	lockinit(&thr->lk, "h2thr", 0, 0);
 	thr->pmp = pmp;
-	thr->xopq = &pmp->xopq[clindex];
 	thr->clindex = clindex;
 	thr->repidx = repidx;
 	if (repidx >= 0) {
-		lwkt_create(func, thr, &thr->td, NULL, 0, -1,
+		thr->xopq = &pmp->xopq[clindex][repidx];
+		lwkt_create(func, thr, &thr->td, NULL, 0, repidx % ncpus,
 			    "%s-%s.%02d", id, pmp->pfs_names[clindex], repidx);
 	} else {
+		thr->xopq = &pmp->xopq[clindex][HAMMER2_XOPGROUPS-repidx];
 		lwkt_create(func, thr, &thr->td, NULL, 0, -1,
 			    "%s-%s", id, pmp->pfs_names[clindex]);
 	}
@@ -287,10 +288,8 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	hammer2_thread_t *thr;
 #endif
 	hammer2_pfs_t *pmp;
-#if 0
-	int g;
-#endif
 	int i;
+	int ng;
 	int nchains;
 
 	ip1 = xop->ip1;
@@ -298,6 +297,10 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	if (pmp->has_xop_threads == 0)
 		hammer2_xop_helper_create(pmp);
 
+	/*ng = pmp->xop_iterator++;*/
+	ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)) ^
+		   hammer2_icrc32(&func, sizeof(func)));
+	ng = ng & HAMMER2_XOPGROUPS_MASK;
 #if 0
 	g = pmp->xop_iterator++;
 	g = g & HAMMER2_XOPGROUPS_MASK;
@@ -329,7 +332,7 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 		if (i != notidx && ip1->cluster.array[i].chain) {
 			atomic_set_int(&xop->run_mask, 1U << i);
 			atomic_set_int(&xop->chk_mask, 1U << i);
-			TAILQ_INSERT_TAIL(&pmp->xopq[i], xop, collect[i].entry);
+			TAILQ_INSERT_TAIL(&pmp->xopq[i][ng], xop, collect[i].entry);
 		}
 	}
 	hammer2_spin_unex(&pmp->xop_spin);
@@ -340,7 +343,7 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	 */
 	for (i = 0; i < nchains; ++i) {
 		if (i != notidx)
-			wakeup_one(&pmp->xopq[i]);
+			wakeup(&pmp->xopq[i][ng]);
 	}
 }
 
@@ -357,6 +360,7 @@ void
 hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 {
 	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
 	int i;
 
 	/*
@@ -371,6 +375,21 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 		if (mask == HAMMER2_XOPMASK_VOP)
 			wakeup(xop);
 		return;
+	}
+
+	/*
+	 * Cache the terminating cluster.
+	 */
+	if ((ip = xop->ip1) != NULL) {
+		hammer2_cluster_t *tmpclu;
+
+		tmpclu = hammer2_cluster_copy(&xop->cluster);
+		hammer2_spin_ex(&ip->cluster_spin);
+		tmpclu = atomic_swap_ptr((volatile void **)&ip->cluster_cache,
+					 tmpclu);
+		hammer2_spin_unex(&ip->cluster_spin);
+		if (tmpclu)
+			hammer2_cluster_drop(tmpclu);
 	}
 
 	/*

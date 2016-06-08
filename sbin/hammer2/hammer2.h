@@ -62,6 +62,7 @@
 #include <vfs/hammer2/hammer2_disk.h>
 #include <vfs/hammer2/hammer2_mount.h>
 #include <vfs/hammer2/hammer2_ioctl.h>
+#include <vfs/hammer2/hammer2_xxhash.h>
 
 #include <stdio.h>
 #include <stdlib.h>

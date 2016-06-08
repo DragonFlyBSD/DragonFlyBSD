@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/sysctl.h>
+#include <vfs/hammer2/hammer2_xxhash.h>
 #include <vfs/hammer2/hammer2_disk.h>
 
 #include <stdio.h>
@@ -589,12 +590,12 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 			rawip->meta.comp_algo = HAMMER2_ENC_ALGO(
 						    HAMMER2_COMP_AUTOZERO);
 			rawip->meta.check_algo = HAMMER2_ENC_ALGO(
-						    HAMMER2_CHECK_ISCSI32);
+						    HAMMER2_CHECK_XXHASH64);
 		} else  {
 			rawip->meta.comp_algo = HAMMER2_ENC_ALGO(
 						    HAMMER2_COMP_NEWFS_DEFAULT);
 			rawip->meta.check_algo = HAMMER2_ENC_ALGO(
-						    HAMMER2_CHECK_ISCSI32);
+						    HAMMER2_CHECK_XXHASH64);
 		}
 
 		/*
@@ -623,11 +624,11 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		root_blockref[i].key = rawip->meta.name_key;
 		root_blockref[i].copyid = HAMMER2_COPYID_LOCAL;
 		root_blockref[i].keybits = 0;
-		root_blockref[i].check.iscsi32.value =
-				hammer2_icrc32(rawip, sizeof(*rawip));
+		root_blockref[i].check.xxhash64.value =
+				XXH64(rawip, sizeof(*rawip), XXH_HAMMER2_SEED);
 		root_blockref[i].type = HAMMER2_BREF_TYPE_INODE;
 		root_blockref[i].methods =
-				HAMMER2_ENC_CHECK(HAMMER2_CHECK_ISCSI32) |
+				HAMMER2_ENC_CHECK(HAMMER2_CHECK_XXHASH64) |
 				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
 		root_blockref[i].mirror_tid = 16;
 		root_blockref[i].flags = HAMMER2_BREF_FLAG_PFSROOT;
@@ -657,7 +658,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	rawip->meta.name_key = 0;
 
 	rawip->meta.comp_algo = HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
-	rawip->meta.check_algo = HAMMER2_ENC_ALGO(HAMMER2_CHECK_ISCSI32);
+	rawip->meta.check_algo = HAMMER2_ENC_ALGO(HAMMER2_CHECK_XXHASH64);
 
 	/*
 	 * The super-root is flagged as a PFS and typically given its own
@@ -695,10 +696,10 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	sroot_blockref.copyid = HAMMER2_COPYID_LOCAL;
 	sroot_blockref.keybits = 0;
-	sroot_blockref.check.iscsi32.value =
-					hammer2_icrc32(rawip, sizeof(*rawip));
+	sroot_blockref.check.xxhash64.value =
+					XXH64(rawip, sizeof(*rawip), XXH_HAMMER2_SEED);
 	sroot_blockref.type = HAMMER2_BREF_TYPE_INODE;
-	sroot_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_ISCSI32) |
+	sroot_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_XXHASH64) |
 			         HAMMER2_ENC_COMP(HAMMER2_COMP_AUTOZERO);
 	sroot_blockref.mirror_tid = 16;
 	rawip = NULL;

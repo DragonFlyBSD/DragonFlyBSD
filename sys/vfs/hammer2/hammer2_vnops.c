@@ -977,8 +977,11 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			bawrite(bp);
 		} else if (ioflag & IO_ASYNC) {
 			bawrite(bp);
-		} else {
+		} else if (ip->vp->v_mount->mnt_flag & MNT_NOCLUSTERW) {
 			bdwrite(bp);
+		} else {
+			bp->b_flags |= B_CLUSTEROK;
+			cluster_write(bp, new_eof, lblksize, seqcount);
 		}
 	}
 

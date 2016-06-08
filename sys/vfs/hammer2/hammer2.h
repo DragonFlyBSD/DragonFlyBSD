@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -90,6 +90,7 @@
 #include <sys/mutex2.h>
 #include <sys/thread2.h>
 
+#include "hammer2_xxhash.h"
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 #include "hammer2_ioctl.h"
@@ -294,6 +295,7 @@ struct hammer2_io {
 	struct spinlock spin;
 	struct hammer2_dev *hmp;
 	struct buf	*bp;
+	uint64_t	crc_good_mask;
 	off_t		pbase;
 	int		psize;
 	int		refs;
@@ -304,7 +306,7 @@ typedef struct hammer2_io hammer2_io_t;
 
 #define HAMMER2_DIO_INPROG	0x80000000	/* bio in progress */
 #define HAMMER2_DIO_GOOD	0x40000000	/* dio->bp is stable */
-#define HAMMER2_DIO_WAITING	0x20000000	/* (old) */
+#define HAMMER2_DIO_WAITING	0x20000000	/* wait for inprog clr */
 #define HAMMER2_DIO_DIRTY	0x10000000	/* flush on last drop */
 
 #define HAMMER2_DIO_MASK	0x0FFFFFFF
@@ -369,7 +371,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
 #define HAMMER2_CHAIN_DEFERRED		0x00000080	/* flush depth defer */
-#define HAMMER2_CHAIN_UNUSED000001000	0x00000100
+#define HAMMER2_CHAIN_TESTEDGOOD	0x00000100	/* crc tested good */
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
 #define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
@@ -563,6 +565,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_XOPGROUPS_MASK	(HAMMER2_XOPGROUPS - 1)
 #define HAMMER2_XOPMASK_VOP	0x80000000U
 
+#define HAMMER2_SPECTHREADS	1	/* sync */
+
 struct hammer2_cluster_item {
 	hammer2_chain_t		*chain;
 	int			cache_index;
@@ -705,6 +709,7 @@ struct hammer2_inode {
 	uint8_t			comp_heuristic;
 	hammer2_inode_meta_t	meta;		/* copy of meta-data */
 	hammer2_off_t		osize;
+	hammer2_cluster_t	*cluster_cache;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -808,8 +813,9 @@ typedef struct hammer2_thread hammer2_thread_t;
  */
 struct hammer2_dedup {
 	hammer2_off_t	data_off;
-	uint32_t	data_crc;
+	uint64_t	data_crc;
 	uint32_t	ticks;
+	uint32_t	unused03;
 };
 
 typedef struct hammer2_dedup hammer2_dedup_t;
@@ -1147,7 +1153,8 @@ struct hammer2_pfs {
 	int			has_xop_threads;
 	struct spinlock		xop_spin;	/* xop sequencer */
 	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
-	hammer2_xop_list_t	xopq[HAMMER2_MAXCLUSTER];
+	hammer2_xop_list_t	xopq[HAMMER2_MAXCLUSTER][HAMMER2_XOPGROUPS+
+							 HAMMER2_SPECTHREADS];
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
@@ -1242,6 +1249,8 @@ extern int hammer2_hardlink_enable;
 extern int hammer2_flush_pipe;
 extern int hammer2_synchronous_flush;
 extern int hammer2_dio_count;
+extern long hammer2_chain_allocs;
+extern long hammer2_chain_frees;
 extern long hammer2_limit_dirty_chains;
 extern long hammer2_count_modified_chains;
 extern long hammer2_iod_file_read;
@@ -1267,6 +1276,9 @@ extern long hammer2_ioa_meta_write;
 extern long hammer2_ioa_indr_write;
 extern long hammer2_ioa_fmap_write;
 extern long hammer2_ioa_volu_write;
+
+extern long hammer2_check_xxhash64;
+extern long hammer2_check_icrc32;
 
 extern struct objcache *cache_buffer_read;
 extern struct objcache *cache_buffer_write;
@@ -1481,9 +1493,12 @@ void hammer2_io_bdwrite(hammer2_io_t **diop);
 int hammer2_io_bwrite(hammer2_io_t **diop);
 int hammer2_io_isdirty(hammer2_io_t *dio);
 void hammer2_io_setdirty(hammer2_io_t *dio);
-void hammer2_io_setinval(hammer2_io_t *dio, u_int bytes);
+void hammer2_io_setinval(hammer2_io_t *dio, hammer2_off_t off, u_int bytes);
 void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
+int hammer2_io_crc_good(hammer2_chain_t *chain, uint64_t *maskp);
+void hammer2_io_crc_setmask(hammer2_io_t *dio, uint64_t mask);
+void hammer2_io_crc_clrmask(hammer2_io_t *dio, uint64_t mask);
 
 /*
  * hammer2_thread.c

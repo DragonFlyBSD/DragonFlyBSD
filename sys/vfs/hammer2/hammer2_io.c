@@ -62,6 +62,29 @@ struct hammer2_cleanupcb_info {
 	int	count;
 };
 
+static __inline
+uint64_t
+hammer2_io_mask(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
+{
+	uint64_t mask;
+	int i;
+
+	if (bytes < 1024)	/* smaller chunks not supported */
+		return 0;
+
+	/*
+	 * Calculate crc check mask for larger chunks
+	 */
+	i = (((off & ~HAMMER2_OFF_MASK_RADIX) - dio->pbase) &
+	     HAMMER2_PBUFMASK) >> 10;
+	if (i == 0 && bytes == HAMMER2_PBUFSIZE)
+		return((uint64_t)-1);
+	mask = ((uint64_t)1U << (bytes >> 10)) - 1;
+	mask <<= i;
+
+	return mask;
+}
+
 #define HAMMER2_GETBLK_GOOD	0
 #define HAMMER2_GETBLK_QUEUED	1
 #define HAMMER2_GETBLK_OWNED	2
@@ -146,7 +169,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 		 * Issue the iocb immediately if the buffer is already good.
 		 * Once set GOOD cannot be cleared until refs drops to 0.
 		 *
-		 * lfence required because dio is not interlockedf for
+		 * lfence required because dio's are not interlocked for
 		 * the DIO_GOOD test.
 		 */
 		if (refs & HAMMER2_DIO_GOOD) {
@@ -639,6 +662,73 @@ hammer2_io_data(hammer2_io_t *dio, off_t lbase)
 }
 
 /*
+ * Keep track of good CRCs in dio->good_crc_mask. XXX needs to be done
+ * in the chain structure, but chain structure needs to be persistent as
+ * well on refs=0 and it isn't.
+ */
+int
+hammer2_io_crc_good(hammer2_chain_t *chain, uint64_t *maskp)
+{
+	hammer2_io_t *dio;
+	uint64_t mask;
+
+	if ((dio = chain->dio) != NULL && chain->bytes >= 1024) {
+		mask = hammer2_io_mask(dio, chain->bref.data_off, chain->bytes);
+		*maskp = mask;
+		if ((dio->crc_good_mask & mask) == mask)
+			return 1;
+		return 0;
+	}
+	*maskp = 0;
+
+	return 0;
+}
+
+void
+hammer2_io_crc_setmask(hammer2_io_t *dio, uint64_t mask)
+{
+	if (dio) {
+		if (sizeof(long) == 8) {
+			atomic_set_long(&dio->crc_good_mask, mask);
+		} else {
+#if _BYTE_ORDER == _LITTLE_ENDIAN
+			atomic_set_int(&((int *)&dio->crc_good_mask)[0],
+					(uint32_t)mask);
+			atomic_set_int(&((int *)&dio->crc_good_mask)[1],
+					(uint32_t)(mask >> 32));
+#else
+			atomic_set_int(&((int *)&dio->crc_good_mask)[0],
+					(uint32_t)(mask >> 32));
+			atomic_set_int(&((int *)&dio->crc_good_mask)[1],
+					(uint32_t)mask);
+#endif
+		}
+	}
+}
+
+void
+hammer2_io_crc_clrmask(hammer2_io_t *dio, uint64_t mask)
+{
+	if (dio) {
+		if (sizeof(long) == 8) {
+			atomic_clear_long(&dio->crc_good_mask, mask);
+		} else {
+#if _BYTE_ORDER == _LITTLE_ENDIAN
+			atomic_clear_int(&((int *)&dio->crc_good_mask)[0],
+					(uint32_t)mask);
+			atomic_clear_int(&((int *)&dio->crc_good_mask)[1],
+					(uint32_t)(mask >> 32));
+#else
+			atomic_clear_int(&((int *)&dio->crc_good_mask)[0],
+					(uint32_t)(mask >> 32));
+			atomic_clear_int(&((int *)&dio->crc_good_mask)[1],
+					(uint32_t)mask);
+#endif
+		}
+	}
+}
+
+/*
  * Helpers for hammer2_io_new*() functions
  */
 static
@@ -777,13 +867,15 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 	 * do what needs to be done with dio->bp.
 	 */
 	if (iocb->flags & HAMMER2_IOCB_INPROG) {
+		int hce;
+
 		if (dio->bp && (dio->bp->b_flags & B_CACHE)) {
 			/*
 			 * Already good, likely due to being chained from
 			 * another iocb.
 			 */
 			error = 0;
-		} else if (hammer2_cluster_enable) {
+		} else if ((hce = hammer2_cluster_enable) != 0) {
 			/*
 			 * Synchronous cluster I/O for now.
 			 */
@@ -795,7 +887,7 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 			       ~HAMMER2_SEGMASK64;
 			error = cluster_read(dio->hmp->devvp, peof, dio->pbase,
 					     dio->psize,
-					     dio->psize, HAMMER2_PBUFSIZE*4,
+					     dio->psize, HAMMER2_PBUFSIZE*hce,
 					     &dio->bp);
 		} else {
 			/*
@@ -887,8 +979,11 @@ hammer2_io_setdirty(hammer2_io_t *dio)
 }
 
 void
-hammer2_io_setinval(hammer2_io_t *dio, u_int bytes)
+hammer2_io_setinval(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
 {
+	uint64_t mask = hammer2_io_mask(dio, off, bytes);
+
+	hammer2_io_crc_clrmask(dio, mask);
 	if ((u_int)dio->psize == bytes)
 		dio->bp->b_flags |= B_INVAL | B_RELBUF;
 }

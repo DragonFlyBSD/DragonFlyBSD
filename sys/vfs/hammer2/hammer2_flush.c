@@ -801,7 +801,9 @@ again:
 		if ((chain->flags & HAMMER2_CHAIN_DESTROY) &&
 		    (chain->flags & HAMMER2_CHAIN_DEDUP) == 0 &&
 		    chain->dio) {
-			hammer2_io_setinval(chain->dio, chain->bytes);
+			hammer2_io_setinval(chain->dio,
+					    chain->bref.data_off,
+					    chain->bytes);
 		}
 	}
 

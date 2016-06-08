@@ -1,9 +1,10 @@
 # Makefile for hammer2 vfs
 #
 #
-.PATH: ${.CURDIR} ${.CURDIR}/zlib
+.PATH: ${.CURDIR} ${.CURDIR}/zlib ${.CURDIR}/xxhash
 
 CFLAGS+= -DINVARIANTS -DSMP
+CFLAGS+= -DXXH_NAMESPACE=h2_
 KMOD=	hammer2
 SRCS=	hammer2_vfsops.c hammer2_vnops.c hammer2_xops.c hammer2_inode.c
 SRCS+=	hammer2_strategy.c
@@ -15,5 +16,6 @@ SRCS+=  hammer2_zlib_adler32.c hammer2_zlib_deflate.c
 SRCS+=  hammer2_zlib_inffast.c hammer2_zlib_inflate.c
 SRCS+=  hammer2_zlib_inftrees.c hammer2_zlib_trees.c
 SRCS+=  hammer2_zlib_zutil.c
+SRCS+=	xxhash.c
 
 .include <bsd.kmod.mk>

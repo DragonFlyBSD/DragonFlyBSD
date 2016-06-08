@@ -143,12 +143,28 @@ hammer2_chain_t *
 hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how)
 {
 	hammer2_chain_t *chain;
+	hammer2_cluster_t *cluster;
 
 	hammer2_spin_sh(&ip->cluster_spin);
-	if (clindex >= ip->cluster.nchains)
+	cluster = ip->cluster_cache;
+	if (0 && cluster) {
+		if (clindex >= cluster->nchains)
+			chain = NULL;
+		else
+			chain = cluster->array[clindex].chain;
+		if (chain) {
+			hammer2_chain_ref(chain);
+			hammer2_spin_unsh(&ip->cluster_spin);
+			hammer2_chain_lock(chain, how);
+			return chain;
+		}
+	}
+
+	cluster = &ip->cluster;
+	if (clindex >= cluster->nchains)
 		chain = NULL;
 	else
-		chain = ip->cluster.array[clindex].chain;
+		chain = cluster->array[clindex].chain;
 	if (chain) {
 		hammer2_chain_ref(chain);
 		hammer2_spin_unsh(&ip->cluster_spin);
@@ -314,6 +330,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *pip;
+	hammer2_cluster_t *tmpclu;
 	u_int refs;
 
 	while (ip) {
@@ -348,6 +365,15 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				pip = ip->pip;
 				ip->pip = NULL;
 				ip->pmp = NULL;
+
+				/*
+				 * Clean out the cluster cache
+				 */
+				tmpclu = ip->cluster_cache;
+				if (tmpclu) {
+					ip->cluster_cache = NULL;
+					hammer2_cluster_drop(tmpclu);
+				}
 
 				/*
 				 * Cleaning out ip->cluster isn't entirely

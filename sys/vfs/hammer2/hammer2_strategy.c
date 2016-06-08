@@ -90,6 +90,17 @@ static void hammer2_dedup_record(hammer2_chain_t *chain, char *data);
 static hammer2_off_t hammer2_dedup_lookup(hammer2_dev_t *hmp,
 			char **datap, int pblksize);
 
+int h2timer[32];
+int h2last;
+int h2lid;
+
+#define TIMER(which)	do {				\
+	if (h2last) 					\
+		h2timer[h2lid] += (int)(ticks - h2last);\
+	h2last = ticks;					\
+	h2lid = which;					\
+} while(0)
+
 int
 hammer2_vop_strategy(struct vop_strategy_args *ap)
 {
@@ -125,7 +136,9 @@ hammer2_vop_strategy(struct vop_strategy_args *ap)
  * (struct vnode *vp, off_t loffset, off_t *doffsetp, int *runp, int *runb)
  *
  * Basically disabled, the logical buffer write thread has to deal with
- * buffers one-at-a-time.
+ * buffers one-at-a-time.  Note that this should not prevent cluster_read()
+ * from reading-ahead, it simply prevents it from trying form a single
+ * cluster buffer for the logical request.  H2 already uses 64KB buffers!
  */
 int
 hammer2_vop_bmap(struct vop_bmap_args *ap)
@@ -288,6 +301,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;
 	int error;
 
+	TIMER(0);
 	lbase = xop->lbase;
 	bio = xop->bio;
 	bp = bio->bio_buf;
@@ -295,6 +309,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
+	TIMER(1);
 	if (parent) {
 		chain = hammer2_chain_lookup(&parent, &key_dummy,
 					     lbase, lbase,
@@ -306,7 +321,9 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		chain = NULL;
 	}
+	TIMER(2);
 	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	TIMER(3);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -317,6 +334,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	}
 	chain = NULL;	/* safety */
 	parent = NULL;	/* safety */
+	TIMER(4);
 
 	/*
 	 * Race to finish the frontend
@@ -335,6 +353,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	 * frontend collection non-blocking.
 	 */
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_NOWAIT);
+	TIMER(5);
 
 	switch(error) {
 	case 0:
@@ -367,6 +386,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
 	}
+	TIMER(6);
 }
 
 static
@@ -611,6 +631,7 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 	*errorp = 0;
 	KKASSERT(pblksize >= HAMMER2_ALLOC_MIN);
 retry:
+	TIMER(30);
 	chain = hammer2_chain_lookup(parentp, &key_dummy,
 				     lbase, lbase,
 				     &cache_index,
@@ -670,6 +691,7 @@ retry:
 			break;
 		}
 	}
+	TIMER(31);
 	return (chain);
 }
 
@@ -1223,13 +1245,47 @@ hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 {
 	hammer2_dev_t *hmp;
 	hammer2_dedup_t *dedup;
-	int32_t crc;
+	uint64_t crc;
 	int best = 0;
 	int i;
 	int dticks;
 
 	hmp = chain->hmp;
-	crc = hammer2_icrc32(data, chain->bytes);
+
+	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
+	case HAMMER2_CHECK_ISCSI32:
+		/*
+		 * XXX use the built-in crc (the dedup lookup sequencing
+		 * needs to be fixed so the check code is already present
+		 * when dedup_lookup is called)
+		 */
+#if 0
+		crc = (uint64_t)(uint32_t)chain->bref.check.iscsi32.value;
+#endif
+		crc = XXH64(data, chain->bytes, XXH_HAMMER2_SEED);
+		break;
+	case HAMMER2_CHECK_XXHASH64:
+		crc = chain->bref.check.xxhash64.value;
+		break;
+	case HAMMER2_CHECK_SHA192:
+		/*
+		 * XXX use the built-in crc (the dedup lookup sequencing
+		 * needs to be fixed so the check code is already present
+		 * when dedup_lookup is called)
+		 */
+#if 0
+		crc = ((uint64_t *)chain->bref.check.sha192.data)[0] ^
+		      ((uint64_t *)chain->bref.check.sha192.data)[1] ^
+		      ((uint64_t *)chain->bref.check.sha192.data)[2];
+#endif
+		crc = XXH64(data, chain->bytes, XXH_HAMMER2_SEED);
+		break;
+	default:
+		/*
+		 * Cannot dedup without a check code
+		 */
+		return;
+	}
 	dedup = &hmp->heur_dedup[crc & (HAMMER2_DEDUP_HEUR_MASK & ~3)];
 	for (i = 0; i < 4; ++i) {
 		if (dedup[i].data_crc == crc) {
@@ -1242,7 +1298,7 @@ hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 	}
 	dedup += best;
 	if (hammer2_debug & 0x40000) {
-		kprintf("REC %04x %08x %016jx\n",
+		kprintf("REC %04x %016jx %016jx\n",
 			(int)(dedup - hmp->heur_dedup),
 			crc,
 			chain->bref.data_off);
@@ -1260,7 +1316,7 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 	hammer2_dedup_t *dedup;
 	hammer2_io_t *dio;
 	hammer2_off_t off;
-	uint32_t crc;
+	uint64_t crc;
 	char *data;
 	int i;
 
@@ -1268,11 +1324,16 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 	if (data == NULL)
 		return 0;
 
-	crc = hammer2_icrc32(data, pblksize);
+	/*
+	 * XXX use the built-in crc (the dedup lookup sequencing
+	 * needs to be fixed so the check code is already present
+	 * when dedup_lookup is called)
+	 */
+	crc = XXH64(data, pblksize, XXH_HAMMER2_SEED);
 	dedup = &hmp->heur_dedup[crc & (HAMMER2_DEDUP_HEUR_MASK & ~3)];
 
 	if (hammer2_debug & 0x40000) {
-		kprintf("LOC %04x/4 %08x\n",
+		kprintf("LOC %04x/4 %016jx\n",
 			(int)(dedup - hmp->heur_dedup),
 			crc);
 	}
