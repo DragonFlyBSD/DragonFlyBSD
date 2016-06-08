@@ -203,7 +203,7 @@ typedef struct nvme_softc {
 	uint16_t	niocomqs;	/* #of I/O completion queues */
 	uint16_t	dumpqno;
 	uint16_t	eventqno;
-	uint16_t	qmap[SMP_MAXCPU][4];
+	uint16_t	qmap[SMP_MAXCPU][2];
 	uint32_t	flags;
 	nvme_subqueue_t	subqueues[NVME_MAX_QUEUES];
 	nvme_comqueue_t	comqueues[NVME_MAX_QUEUES];
@@ -263,10 +263,8 @@ typedef struct nvme_softc {
 #define ADMIN_SIG_REQUEUE	0x00000008
 #define ADMIN_SIG_RUN_MASK	(ADMIN_SIG_STOP | ADMIN_SIG_REQUEUE)
 
-#define NVME_QMAP_RDLOW		0
-#define NVME_QMAP_RDHIGH	1
-#define NVME_QMAP_WRLOW		2
-#define NVME_QMAP_WRHIGH	3
+#define NVME_QMAP_RD		0
+#define NVME_QMAP_WR		1
 
 const nvme_device_t *nvme_lookup_device(device_t dev);
 void nvme_os_sleep(int ms);

@@ -94,6 +94,12 @@ nvme_enable(nvme_softc_t *sc, int enable)
 	if (error) {
 		device_printf(sc->dev, "Cannot %s device\n",
 			      (enable ? "enable" : "disable"));
+	} else {
+#if 0
+		kprintf("gratuitous 15 second sleep\n");
+		nvme_os_sleep(15000);
+		kprintf("gratuitous 15 second sleep done\n");
+#endif
 	}
 	return error;
 }

@@ -268,13 +268,13 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	 * This driver runs optimally with 4 submission queues and one
 	 * completion queue per cpu (rdhipri, rdlopri, wrhipri, wrlopri),
 	 *
-	 * +1 for dumps
-	 * +1 for async events
+	 * +1 for dumps			XXX future
+	 * +1 for async events		XXX future
 	 */
 	req = nvme_get_admin_request(sc, NVME_OP_SET_FEATURES);
 
-	niosubqs = ncpus * 4 + 2;
-	niocomqs = ncpus + 2;
+	niosubqs = ncpus * 2 + 0;
+	niocomqs = ncpus + 0;
 	if (niosubqs > NVME_MAX_QUEUES)
 		niosubqs = NVME_MAX_QUEUES;
 	if (niocomqs > NVME_MAX_QUEUES)
@@ -304,7 +304,10 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 
 	nvme_put_request(req);
 
-	if (sc->niosubqs >= ncpus * 4 + 2 && sc->niocomqs >= ncpus + 2) {
+	sc->dumpqno = 0;
+	sc->eventqno = 0;
+
+	if (sc->niosubqs >= ncpus * 2 + 0 && sc->niocomqs >= ncpus + 0) {
 		/*
 		 * If we got all the queues we wanted do a full-bore setup of
 		 * qmap[cpu][type].
@@ -312,27 +315,19 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		 * Remember that subq 0 / comq 0 is the admin queue.
 		 */
 		kprintf("optimal map\n");
-		sc->dumpqno = 1;
-		sc->eventqno = 2;
-		sc->subqueues[1].comqid = 1;
-		sc->subqueues[2].comqid = 2;
-		qno = 3;
+		qno = 1;
 		for (i = 0; i < ncpus; ++i) {
 			int cpuqno = sc->cputovect[i];
 
 			KKASSERT(cpuqno != 0);
 			sc->qmap[i][0] = qno + 0;
 			sc->qmap[i][1] = qno + 1;
-			sc->qmap[i][2] = qno + 2;
-			sc->qmap[i][3] = qno + 3;
 			sc->subqueues[qno + 0].comqid = cpuqno;
 			sc->subqueues[qno + 1].comqid = cpuqno;
-			sc->subqueues[qno + 2].comqid = cpuqno;
-			sc->subqueues[qno + 3].comqid = cpuqno;
-			qno += 4;
+			qno += 2;
 		}
-		sc->niosubqs = ncpus * 4 + 2;
-		sc->niocomqs = ncpus + 2;
+		sc->niosubqs = ncpus * 2 + 0;
+		sc->niocomqs = ncpus + 0;
 	} else if (sc->niosubqs >= ncpus && sc->niocomqs >= ncpus) {
 		/*
 		 * We have enough to give each cpu its own submission
@@ -341,20 +336,16 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		 * leave dumpqno and eventqno set to the admin queue.
 		 */
 		kprintf("nominal map 1:1 cpu\n");
-		sc->dumpqno = 0;
-		sc->eventqno = 0;
 		for (i = 0; i < ncpus; ++i) {
 			qno = sc->cputovect[i];
 			KKASSERT(qno != 0);
 			sc->qmap[i][0] = qno;
 			sc->qmap[i][1] = qno;
-			sc->qmap[i][2] = qno;
-			sc->qmap[i][3] = qno;
 			sc->subqueues[qno].comqid = qno;
 		}
 		sc->niosubqs = ncpus;
 		sc->niocomqs = ncpus;
-	} else if (sc->niosubqs >= 4 && sc->niocomqs >= 2) {
+	} else if (sc->niosubqs >= 2 && sc->niocomqs >= 2) {
 		/*
 		 * We have enough queues to separate and prioritize reads
 		 * and writes, but all cpus have to share the same submission
@@ -371,36 +362,26 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 			KKASSERT(qno != 0);
 			sc->qmap[i][0] = qno + 0;	/* read lopri */
 			sc->qmap[i][1] = qno + 1;	/* read hipri */
-			sc->qmap[i][2] = qno + 2;	/* write lopri */
-			sc->qmap[i][3] = qno + 3;	/* write hipri */
 			if (i <= 0)
 				sc->subqueues[qno + 0].comqid = cpuqno;
 			if (i <= 1)
 				sc->subqueues[qno + 1].comqid = cpuqno;
-			if (i <= 2)
-				sc->subqueues[qno + 2].comqid = cpuqno;
-			if (i <= 3)
-				sc->subqueues[qno + 3].comqid = cpuqno;
 			/* do not increment qno */
 		}
-		sc->niosubqs = 6;
-		sc->niocomqs = 3;
+		sc->niosubqs = 2;
+		sc->niocomqs = 2;
 	} else if (sc->niosubqs >= 2) {
 		/*
 		 * We have enough to have separate read and write queues.
 		 */
 		kprintf("basic map\n");
 		qno = 1;
-		sc->dumpqno = 0;
-		sc->eventqno = 0;
 		for (i = 0; i < ncpus; ++i) {
 			int cpuqno = sc->cputovect[i];
 
 			KKASSERT(qno != 0);
-			sc->qmap[i][0] = qno + 0;	/* read lopri */
-			sc->qmap[i][1] = qno + 0;	/* read hi pri */
-			sc->qmap[i][2] = qno + 1;	/* write lopri */
-			sc->qmap[i][3] = qno + 1;	/* write hi pri */
+			sc->qmap[i][0] = qno + 0;	/* read */
+			sc->qmap[i][1] = qno + 1;	/* write */
 			if (i <= 0)
 				sc->subqueues[qno + 0].comqid = cpuqno;
 			if (i <= 1)
@@ -419,8 +400,6 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		for (i = 0; i < ncpus; ++i) {
 			sc->qmap[i][0] = 1;
 			sc->qmap[i][1] = 1;
-			sc->qmap[i][2] = 1;
-			sc->qmap[i][3] = 1;
 		}
 		sc->subqueues[1].comqid = 1;
 		sc->niosubqs = 1;

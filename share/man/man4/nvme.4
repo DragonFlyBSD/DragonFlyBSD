@@ -122,6 +122,50 @@ multiple queues simultaniously in a SMP environment.
 The driver pre-reserves DMA memory for all necessary descriptors, queue
 entries, and internal driver structures, and allows for a very generous
 number of queue entries (1024 x NQueues) for maximum performance.
+.Sh HINTS ON NVME CARDS
+So far I've only been able to test one Samsung NVME M.2 card and
+an Intel 750 HHHL (half-height / half-length) PCIe card.
+.Pp
+My recommendation is to go with Samsung.  The firmware is pretty good.
+It appears to be implemented reasonably well regardless of the queue
+configuration or I/O blocksize employed, giving expected scaling without
+any quirky behavior.
+.Pp
+The intel 750 has very poorly-implemented firmware.
+For example, the more queues the driver configures, the poorer
+the single-threaded read performance is.  And no matter the queue
+configuration it appears that adding a second concurrent reader drops
+performance drastically, then it slowly increases as you add more concurrent
+readers.  In addition, on the 750, the firmware degrades horribly when
+reads use a blocksize of 64KB.  The best performance is at 32KB.  In fact,
+performance again degrades horribly if you drop down to 16KB.
+And if that weren't bad enough, the 750 takes over 13 seconds to become
+ready after a machine power-up or reset.
+.Pp
+The grand result of all of this is that filesystem performance through an
+Intel NVME card is going to be hit-or-miss, depending on inconseqential
+differences in blocksize and queue configuration.
+Regardless of whatever hacks Intel might be employing in their own drivers,
+this is just totally unacceptable driver behavior.
+.Pp
+I do not recommend rebranders like Plextor or Kingston.  For one thing,
+if you do buy these, be very careful to get one that is actually a NVME
+card and not a M.2 card with an AHCI controller on it.  Plextor's performance
+is particularly bad.  Kingston seems to have done a better job and reading
+at 1.0GB/s+ is possible despite the cpu overhead of going through an AHCI
+controller (the flash in both cases is directly connected to the controller,
+so there is no SATA Phy to get in the way).  Of course, if you actually want
+an AHCI card, then these might be the way to go, and you might even be able
+to boot from them.
+.Pp
+.Sh HINTS ON CONFIGURING MACHINES (BIOS)
+If nvme locks up while trying to probe the BIOS did something horrible to
+the PCIe card.  If you have enabled your BIOS's FastBoot option, turn it
+off, this may fix the issue.
+.Pp
+Most BIOSes cannot boot from an NVME card, or if they can it generally
+requires doing a UEFI boot for which DragonFly support is a bit of a headache
+configuring.  So take this into consideration as well.
 .Sh SEE ALSO
 .Xr intro 4 ,
 .Xr pci 4 ,

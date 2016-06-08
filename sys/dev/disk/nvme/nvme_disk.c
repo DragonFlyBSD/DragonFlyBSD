@@ -227,7 +227,7 @@ nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
 			nobytes = 1;
 			break;
 		}
-		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_RDHIGH]];
+		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_RD]];
 		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_READ,
 				       bp->b_data, nlba * nsc->blksize);
@@ -246,7 +246,7 @@ nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
 			nobytes = 1;
 			break;
 		}
-		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WRHIGH]];
+		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WR]];
 		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_WRITE,
 				       bp->b_data, nlba * nsc->blksize);
@@ -261,7 +261,7 @@ nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
 			nobytes = 1;
 			break;
 		}
-		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WRHIGH]];
+		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WR]];
 		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_WRITEZ, NULL, 0);
 		if (req == NULL)
@@ -274,7 +274,7 @@ nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
 					   /* NVME_DSM_SEQREQ */
 		break;
 	case BUF_CMD_FLUSH:
-		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WRHIGH]];
+		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WR]];
 		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_FLUSH, NULL, 0);
 		if (req == NULL)
