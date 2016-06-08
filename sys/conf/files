@@ -1757,7 +1757,6 @@ vfs/hammer/hammer_btree.c	optional hammer
 vfs/hammer/hammer_cursor.c	optional hammer
 vfs/hammer/hammer_volume.c	optional hammer
 vfs/hammer/hammer_flusher.c	optional hammer
-vfs/hammer/hammer_freemap.c	optional hammer
 vfs/hammer/hammer_inode.c	optional hammer
 vfs/hammer/hammer_io.c		optional hammer
 vfs/hammer/hammer_ioctl.c	optional hammer
