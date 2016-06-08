@@ -2777,7 +2777,7 @@ findblk(struct vnode *vp, off_t loffset, int flags)
  *
  *	If B_RAM is set the buffer might be just fine, but we return
  *	NULL anyway because we want the code to fall through to the
- *	cluster read.  Otherwise read-ahead breaks.
+ *	cluster read to issue more read-aheads.  Otherwise read-ahead breaks.
  *
  *	If blksize is 0 the buffer cache buffer must already be fully
  *	cached.
@@ -2795,9 +2795,12 @@ getcacheblk(struct vnode *vp, off_t loffset, int blksize, int blkflags)
 	if (blksize) {
 		bp = getblk(vp, loffset, blksize, blkflags, 0);
 		if (bp) {
-			if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) ==
-			    B_CACHE) {
+			if ((bp->b_flags & (B_INVAL | B_CACHE)) == B_CACHE) {
 				bp->b_flags &= ~B_AGE;
+				if (bp->b_flags & B_RAM) {
+					bqrelse(bp);
+					bp = NULL;
+				}
 			} else {
 				brelse(bp);
 				bp = NULL;
