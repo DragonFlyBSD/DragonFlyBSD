@@ -49,7 +49,7 @@ int hammer_debug_btree;
 int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_critical;		/* non-zero enter debugger on error */
-int hammer_cluster_enable = 1;		/* enable read clustering by default */
+int hammer_cluster_enable = 2;		/* ena cluster_read, scale x 2 */
 int hammer_live_dedup = 0;
 int hammer_tdmux_ticks;
 int hammer_count_fsyncs;

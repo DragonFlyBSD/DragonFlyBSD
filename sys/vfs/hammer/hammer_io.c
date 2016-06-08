@@ -301,12 +301,14 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 	int   error;
 
 	if ((bp = io->bp) == NULL) {
+		int hce = hammer_cluster_enable;
+
 		atomic_add_long(&hammer_count_io_running_read, io->bytes);
-		if (hammer_cluster_enable && limit > io->bytes) {
+		if (hce && limit > io->bytes) {
 			error = cluster_read(devvp, io->offset + limit,
 					     io->offset, io->bytes,
 					     HAMMER_CLUSTER_SIZE,
-					     HAMMER_CLUSTER_SIZE,
+					     HAMMER_CLUSTER_SIZE * hce,
 					     &io->bp);
 		} else {
 			error = bread(devvp, io->offset, io->bytes, &io->bp);
@@ -1518,6 +1520,9 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 		 * Convert to the raw volume->devvp offset and acquire
 		 * the buf, issuing async I/O if necessary.
 		 */
+		hammer_off_t limit;
+		int hce;
+
 		buf_offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
 
 		if (leaf && hammer_verify_data) {
@@ -1526,8 +1531,22 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 		} else {
 			bio->bio_caller_info2.index = 0;
 		}
-		breadcb(volume->devvp, buf_offset, bp->b_bufsize,
-			hammer_indirect_callback, bio);
+
+		hce = hammer_cluster_enable;
+		if (hce > 0) {
+			limit = (zone2_offset + HAMMER_BIGBLOCK_MASK64) &
+				~HAMMER_BIGBLOCK_MASK64;
+			limit -= zone2_offset;
+			cluster_readcb(volume->devvp, limit, buf_offset,
+				       bp->b_bufsize,
+				       HAMMER_CLUSTER_SIZE,
+				       HAMMER_CLUSTER_SIZE * hce,
+				       hammer_indirect_callback,
+				       bio);
+		} else {
+			breadcb(volume->devvp, buf_offset, bp->b_bufsize,
+				hammer_indirect_callback, bio);
+		}
 	}
 	hammer_rel_volume(volume, 0);
 done:
