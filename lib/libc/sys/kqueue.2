@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/sys/kqueue.2,v 1.1.2.16 2002/07/02 21:05:08 mp Exp $
 .\"
-.Dd December 4, 2015
+.Dd June 8, 2016
 .Dt KQUEUE 2
 .Os
 .Sh NAME
@@ -427,6 +427,10 @@ contains the number of times the timeout has expired since the last call to
 This filter automatically sets the
 .Dv EV_CLEAR
 flag internally.
+.It Dv EVFILT_FS
+Establishes a file system monitor identified by
+.Va ident .
+Currently it only monitors file system mount and unmount actions.
 .El
 .Sh RETURN VALUES
 .Fn kqueue
