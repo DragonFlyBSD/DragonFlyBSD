@@ -439,6 +439,31 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		sc->admin_func = nvme_admin_state_identify_ns;
 	}
 
+	/*
+	 * Basically interrupt coalescing is worthless if we care about
+	 * performance, at least on the Intel 750.  Setting the threshold
+	 * has no effect if time is set to 0.  The smallest time that can
+	 * be set is a value of 1 (== 100uS), which is much too long.  That
+	 * is only 10,000 interrupts/sec/cpu and on the Intel 750 it totally
+	 * destroys sequential performance.
+	 */
+	req = nvme_get_admin_request(sc, NVME_OP_SET_FEATURES);
+
+	device_printf(sc->dev, "Interrupt Coalesce: 100uS / 4 qentries\n");
+
+	req->cmd.setfeat.flags = NVME_FID_INTCOALESCE;
+	req->cmd.setfeat.intcoal.thr = 0;
+	req->cmd.setfeat.intcoal.time = 0;
+
+	nvme_submit_request(req);
+	status = nvme_wait_request(req);
+	if (status) {
+		device_printf(sc->dev,
+			      "Interrupt coalesce failed status=%d\n",
+			      status);
+	}
+	nvme_put_request(req);
+
 	return 1;
 }
 
