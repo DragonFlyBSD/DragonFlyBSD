@@ -278,7 +278,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	struct volume_info *volume;
 	int vol_no;
 	int zone;
-	int hi, n;
+	int hi;
 	int dora = 0;
 
 	zone = HAMMER_ZONE_DECODE(buf_offset);
@@ -304,15 +304,12 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf->volume = volume;
 		buf->ondisk = malloc(HAMMER_BUFSIZE);
 		if (isnew <= 0) {
-			n = readhammerbuf(buf);
-			if (n == -1) {
-				if (AssertOnFailure)
-					err(1, "get_buffer: %s:%016jx "
-					    "Read failed at offset %016jx",
-					    volume->name,
-					    (intmax_t)buf->buf_offset,
-					    (intmax_t)buf->raw_offset);
-				bzero(buf->ondisk, HAMMER_BUFSIZE);
+			if (readhammerbuf(buf) == -1) {
+				err(1, "get_buffer: %s:%016jx "
+				    "Read failed at offset %016jx",
+				    volume->name,
+				    (intmax_t)buf->buf_offset,
+				    (intmax_t)buf->raw_offset);
 			}
 		}
 
