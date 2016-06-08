@@ -661,7 +661,8 @@ nlookup_start:
 			if (error != EAGAIN &&
 			    (nch.ncp->nc_flag & NCF_DESTROYED) == 0) {
 				if (error == ESTALE) {
-				    error = ENOENT;
+				    if (!inretry)
+					error = ENOENT;
 				    doretry = TRUE;
 				}
 				break;
@@ -718,7 +719,8 @@ nlookup_start:
 	    hit = 0;
 	    error = cache_resolve(&nch, nd->nl_cred);
 	    if (error == ESTALE) {
-		error = ENOENT;
+		if (!inretry)
+		    error = ENOENT;
 		doretry = TRUE;
 	    }
 	    KKASSERT(error != EAGAIN);
