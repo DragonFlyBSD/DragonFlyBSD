@@ -2353,10 +2353,15 @@ iwm_nvm_init(struct iwm_softc *sc)
 		nvm_sections[section].length = len;
 	}
 	kfree(buf, M_DEVBUF);
-	if (error)
-		return error;
+	if (error == 0)
+		error = iwm_parse_nvm_sections(sc, nvm_sections);
 
-	return iwm_parse_nvm_sections(sc, nvm_sections);
+	for (i = 0; i < IWM_NVM_NUM_OF_SECTIONS; i++) {
+		if (nvm_sections[i].data != NULL)
+			kfree(nvm_sections[i].data, M_DEVBUF);
+	}
+
+	return error;
 }
 
 /*
@@ -6261,6 +6266,7 @@ iwm_detach_local(struct iwm_softc *sc, int do_net80211)
 	}
 
 	/* Free descriptor rings */
+	iwm_free_rx_ring(sc, &sc->rxq);
 	for (i = 0; i < nitems(sc->txq); i++)
 		iwm_free_tx_ring(sc, &sc->txq[i]);
 
