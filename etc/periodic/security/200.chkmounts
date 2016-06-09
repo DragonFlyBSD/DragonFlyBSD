@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/periodic/security/200.chkmounts,v 1.2.2.4 2002/11/07 19:38:46 thomas Exp $
-# $DragonFly: src/etc/periodic/security/200.chkmounts,v 1.2 2003/06/17 04:24:48 dillon Exp $
 #
 
 # Show changes in the way filesystems are mounted
@@ -46,10 +45,6 @@ rc=0
 
 case "$daily_status_security_chkmounts_enable" in
     [Yy][Ee][Ss])
-	case "$daily_status_security_noamd" in
-	    [Yy][Ee][Ss])
-		ignore="${ignore}|^amd:"
-	esac
 	case "$daily_status_security_nomfs" in
 	    [Yy][Ee][Ss])
 		ignore="${ignore}|^mfs:"

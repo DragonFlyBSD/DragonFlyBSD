@@ -1,6 +1,5 @@
 #!/bin/sh
 # $FreeBSD: src/usr.sbin/ypserv/ypinit.sh,v 1.4 2002/12/30 21:18:15 schweikh Exp $
-# $DragonFly: src/usr.sbin/ypserv/ypinit.sh,v 1.3 2007/05/13 22:25:42 swildner Exp $
 #
 # ypinit.sh - setup a master or slave server.
 # (Taken from OpenBSD and modified for FreeBSD.)
@@ -15,7 +14,7 @@ MAPLIST="master.passwd.byname master.passwd.byuid passwd.byname passwd.byuid \
 	 group.byname group.bygid hosts.byname hosts.byaddr services.byname \
 	 rpc.byname rpc.bynumber networks.byname networks.byaddr netgroup \
 	 netgroup.byuser netgroup.byhost netid.byname publickey.byname \
-	 bootparams ethers.byname ethers.byaddr amd.host mail.aliases \
+	 bootparams ethers.byname ethers.byaddr mail.aliases \
 	 ypservers protocols.byname protocols.bynumber netmasks.byaddr"
 
 ERROR_EXISTS="NO"

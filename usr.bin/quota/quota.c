@@ -588,13 +588,6 @@ getnfsquota(struct statfs *fst, struct quotause *qup, long id, int quotatype)
 		return (0);
 	}
 
-	/* Avoid attempting the RPC for special amd(8) filesystems. */
-	if (strncmp(fst->f_mntfromname, "pid", 3) == 0 &&
-	    strchr(fst->f_mntfromname, '@') != NULL) {
-		*cp = ':';
-		return (0);
-	}
-
 	gq_args.gqa_pathp = cp + 1;
 	gq_args.gqa_uid = id;
 	if (callaurpc(fst->f_mntfromname, RQUOTAPROG, RQUOTAVERS,

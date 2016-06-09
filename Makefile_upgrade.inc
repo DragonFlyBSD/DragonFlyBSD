@@ -3093,6 +3093,27 @@ TO_REMOVE+=/usr/share/man/man4/an.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_an.4.gz
 TO_REMOVE+=/usr/share/man/man8/ancontrol.8.gz
 TO_REMOVE+=/usr/share/man/man4/ieee80211.4.gz
+TO_REMOVE+=/etc/amd.map
+TO_REMOVE+=/etc/rc.d/amd
+TO_REMOVE+=/usr/bin/pawd
+TO_REMOVE+=/usr/sbin/amd
+TO_REMOVE+=/usr/sbin/amq
+TO_REMOVE+=/usr/sbin/fixmount
+TO_REMOVE+=/usr/sbin/fsinfo
+TO_REMOVE+=/usr/sbin/hlfsd
+TO_REMOVE+=/usr/sbin/mk-amd-map
+TO_REMOVE+=/usr/sbin/wire-test
+TO_REMOVE+=/usr/share/examples/etc/amd.map
+TO_REMOVE+=/usr/share/man/man1/pawd.1.gz
+TO_REMOVE+=/usr/share/man/man5/amd.conf.5.gz
+TO_REMOVE+=/usr/share/man/man7/am-utils.7.gz
+TO_REMOVE+=/usr/share/man/man8/amd.8.gz
+TO_REMOVE+=/usr/share/man/man8/amq.8.gz
+TO_REMOVE+=/usr/share/man/man8/fixmount.8.gz
+TO_REMOVE+=/usr/share/man/man8/fsinfo.8.gz
+TO_REMOVE+=/usr/share/man/man8/hlfsd.8.gz
+TO_REMOVE+=/usr/share/man/man8/mk-amd-map.8.gz
+TO_REMOVE+=/usr/share/man/man8/wire-test.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

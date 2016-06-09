@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/periodic.conf.5,v 1.8.2.22 2003/02/08 21:42:01 gshapiro Exp $
 .\"
-.Dd October 10, 2014
+.Dd June 9, 2016
 .Dt PERIODIC.CONF 5
 .Os
 .Sh NAME
@@ -486,15 +486,6 @@ Set to the list of filesystem types that should not be checked when
 .Va daily_status_security_chkmounts_enable
 is set to
 .Dq YES .
-.It Va daily_status_security_noamd
-.Pq Vt bool
-Set to
-.Dq YES
-if you want to ignore
-.Xr amd 8
-mounts when comparing against yesterdays filesystem mounts in the
-.Va daily_status_security_chkmounts_enable
-check.
 .It Va daily_status_security_nomfs
 .Pq Vt bool
 Set to
@@ -751,7 +742,6 @@ is shared or distributed.
 .Xr rdist 1 ,
 .Xr rc.conf 5 ,
 .Xr ac 8 ,
-.Xr amd 8 ,
 .Xr chkgrp 8 ,
 .Xr dump 8 ,
 .Xr mfs 8 ,

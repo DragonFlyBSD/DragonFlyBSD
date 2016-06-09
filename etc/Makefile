@@ -21,7 +21,7 @@ BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 
 # Initial distribution files are installed read-write (644)
 #
-BIN1=	amd.map auth.conf auto_master \
+BIN1=	auth.conf auto_master \
 	crontab csh.cshrc csh.login csh.logout \
 	devtab dhclient.conf dm.conf dntpd.conf \
 	ftpusers group \

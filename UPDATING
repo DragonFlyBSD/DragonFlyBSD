@@ -12,6 +12,13 @@
 +         UPGRADING DRAGONFLY FROM 4.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+AMD REMOVED
+-----------
+
+The am-utils automounter suite has been removed. It stopped working
+at some point and was never fixed. autofs(5) and the associated
+userland has been brought in from FreeBSD and replaces it.
+
 AN DRIVER REMOVED
 -----------------
 

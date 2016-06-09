@@ -209,7 +209,7 @@ directory_type(char *dir)
 
 /*
  * Tests whether the given file name (without a preceding path)
- * is a proper man page name (like "mk-amd-map.8.gz").
+ * is a proper man page name (like "dntpd.8.gz").
  * Only alphanumerics and '_' are allowed after the last '.' and
  * the last '.' can't be the first or last characters.
  */
