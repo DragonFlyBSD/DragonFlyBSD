@@ -151,13 +151,11 @@ hpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 				kprintf("hpfs_mount: vfs_export failed %d\n",
 					error);
 			}
-			goto success;
 		} else {
 			dprintf(("name [FAILED]\n"));
 			error = EINVAL;
-			goto success;
 		}
-		dprintf(("\n"));
+		goto success;
 	}
 
 	/*

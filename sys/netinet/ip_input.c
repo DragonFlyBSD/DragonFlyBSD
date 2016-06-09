@@ -1138,9 +1138,8 @@ found:
 		fp->ipq_frags = m;
 		m->m_nextpkt = NULL;
 		goto inserted;
-	} else {
-		fp->ipq_nfrags++;
 	}
+	fp->ipq_nfrags++;
 
 #define	GETIP(m)	((struct ip*)((m)->m_pkthdr.header))
 
@@ -2051,9 +2050,8 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 			if (mtemp)
 				ipflow_create(&fwd_ro, mtemp);
 			goto done;
-		} else {
-			ipstat.ips_redirectsent++;
 		}
+		ipstat.ips_redirectsent++;
 	} else {
 		ipstat.ips_cantforward++;
 	}

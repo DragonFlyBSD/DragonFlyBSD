@@ -468,10 +468,9 @@ out:
 				 postat_ret, vap);
 		error = 0;
 		goto nfsmout;
-	} else {
-		fp = nfsm_build(&info, NFSX_V2FATTR);
-		nfsm_srvfattr(nfsd, vap, fp);
 	}
+	fp = nfsm_build(&info, NFSX_V2FATTR);
+	nfsm_srvfattr(nfsd, vap, fp);
 	/* fall through */
 
 nfsmout:

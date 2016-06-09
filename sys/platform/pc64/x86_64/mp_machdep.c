@@ -1419,31 +1419,25 @@ detect_cpu_topology(void)
 	static int topology_detected = 0;
 	int count = 0;
 	
-	if (topology_detected) {
+	if (topology_detected)
 		goto OUT;
-	}
-	
 	if ((cpu_feature & CPUID_HTT) == 0) {
 		core_bits = 0;
 		logical_CPU_bits = 0;
 		goto OUT;
-	} else {
-		count = (cpu_procinfo & CPUID_HTT_CORES)
-		    >> CPUID_HTT_CORE_SHIFT;
-	}	
-
-	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
-		detect_intel_topology(count);	
-	} else if (cpu_vendor_id == CPU_VENDOR_AMD) {
-		detect_amd_topology(count);
 	}
+	count = (cpu_procinfo & CPUID_HTT_CORES) >> CPUID_HTT_CORE_SHIFT;
+
+	if (cpu_vendor_id == CPU_VENDOR_INTEL)
+		detect_intel_topology(count);	
+	else if (cpu_vendor_id == CPU_VENDOR_AMD)
+		detect_amd_topology(count);
+	topology_detected = 1;
 
 OUT:
 	if (bootverbose)
 		kprintf("Bits within APICID: logical_CPU_bits: %d; core_bits: %d\n",
 		    logical_CPU_bits, core_bits);
-
-	topology_detected = 1;
 }
 
 /* Interface functions to calculate chip_ID,

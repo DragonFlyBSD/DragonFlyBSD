@@ -955,11 +955,9 @@ _rmc_wrr_dequeue_next(struct rm_ifdat *ifd, int op)
 		ifd->pollcache_ = NULL;
 		goto _wrr_out;
 	}
-	else {
-		/* mode == ALTDQ_POLL || pollcache == NULL */
-		ifd->pollcache_ = NULL;
-		ifd->borrowed_[ifd->qi_] = NULL;
-	}
+	/* mode == ALTDQ_POLL || pollcache == NULL */
+	ifd->pollcache_ = NULL;
+	ifd->borrowed_[ifd->qi_] = NULL;
 #ifdef ADJUST_CUTOFF
  _again:
 #endif
@@ -1118,11 +1116,10 @@ _rmc_prr_dequeue_next(struct rm_ifdat *ifd, int op)
 		cpri = cl->pri_;
 		ifd->pollcache_ = NULL;
 		goto _prr_out;
-	} else {
-		/* mode == ALTDQ_POLL || pollcache == NULL */
-		ifd->pollcache_ = NULL;
-		ifd->borrowed_[ifd->qi_] = NULL;
 	}
+	/* mode == ALTDQ_POLL || pollcache == NULL */
+	ifd->pollcache_ = NULL;
+	ifd->borrowed_[ifd->qi_] = NULL;
 #ifdef ADJUST_CUTOFF
  _again:
 #endif

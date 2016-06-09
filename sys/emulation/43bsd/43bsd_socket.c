@@ -293,12 +293,11 @@ sys_osendmsg(struct osendmsg_args *uap)
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;
-		} else {
-			cm = mtod(control, struct cmsghdr *);
-			cm->cmsg_len = control->m_len;
-			cm->cmsg_level = SOL_SOCKET;
-			cm->cmsg_type = SCM_RIGHTS;
 		}
+		cm = mtod(control, struct cmsghdr *);
+		cm->cmsg_len = control->m_len;
+		cm->cmsg_level = SOL_SOCKET;
+		cm->cmsg_type = SCM_RIGHTS;
 	}
 
 	get_mplock();
