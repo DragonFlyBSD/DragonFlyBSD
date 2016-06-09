@@ -445,7 +445,7 @@ void
 hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 {
 	hammer2_chain_t *chain;
-	hammer2_inode_t *ip;
+	uint32_t nmask;
 	int i;
 
 	/*
@@ -456,15 +456,26 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	 * XXX optimize wakeup.
 	 */
 	KKASSERT(xop->run_mask & mask);
-	if (atomic_fetchadd_int(&xop->run_mask, -mask) != mask) {
-		if (mask == HAMMER2_XOPMASK_VOP)
-			wakeup(xop);
+	nmask = atomic_fetchadd_int(&xop->run_mask, -mask);
+	if ((nmask & ~HAMMER2_XOPMASK_FIFOW) != mask) {
+		if (mask == HAMMER2_XOPMASK_VOP) {
+			if (nmask & HAMMER2_XOPMASK_FIFOW)
+				wakeup(xop);
+		}
 		return;
 	}
+	/* else nobody else left, we can ignore FIFOW */
 
+	/*
+	 * All collectors are gone, we can cleanup and dispose of the XOP.
+	 * Note that this can wind up being a frontend OR a backend.
+	 * Pending chains are locked shared and not owned by any thread.
+	 */
+#if 0
 	/*
 	 * Cache the terminating cluster.
 	 */
+	hammer2_inode_t *ip;
 	if ((ip = xop->ip1) != NULL) {
 		hammer2_cluster_t *tmpclu;
 
@@ -476,12 +487,9 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 		if (tmpclu)
 			hammer2_cluster_drop(tmpclu);
 	}
+#endif
 
 	/*
-	 * All collectors are gone, we can cleanup and dispose of the XOP.
-	 * Note that this can wind up being a frontend OR a backend.
-	 * Pending chains are locked shared and not owned by any thread.
-	 *
 	 * Cleanup the collection cluster.
 	 */
 	for (i = 0; i < xop->cluster.nchains; ++i) {
@@ -497,12 +505,15 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 
 	/*
 	 * Cleanup the fifos, use check_counter to optimize the loop.
+	 * Since we are the only entity left on this xop we don't have
+	 * to worry about fifo flow control, and one lfence() will do the
+	 * job.
 	 */
+	cpu_lfence();
 	mask = xop->chk_mask;
 	for (i = 0; mask && i < HAMMER2_MAXCLUSTER; ++i) {
 		hammer2_xop_fifo_t *fifo = &xop->collect[i];
 		while (fifo->ri != fifo->wi) {
-			cpu_lfence();
 			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
 			if (chain) {
 				hammer2_chain_pull_shared_lock(chain);
@@ -510,8 +521,6 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 				hammer2_chain_drop(chain);
 			}
 			++fifo->ri;
-			if (fifo->wi - fifo->ri < HAMMER2_XOPFIFO / 2)
-				wakeup(xop);	/* XXX optimize */
 		}
 		mask &= ~(1U << i);
 	}
@@ -591,6 +600,7 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 		 int clindex, int error)
 {
 	hammer2_xop_fifo_t *fifo;
+	uint32_t mask;
 
 	/*
 	 * Early termination (typicaly of xop_readir)
@@ -610,15 +620,19 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 		lwkt_yield();
 	while (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
 		atomic_set_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
-		tsleep_interlock(xop, 0);
-		if (hammer2_xop_active(xop) == 0) {
+		mask = xop->run_mask;
+		if ((mask & HAMMER2_XOPMASK_VOP) == 0) {
 			error = EINTR;
 			goto done;
 		}
-		cpu_lfence();
-		if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
-			tsleep(xop, PINTERLOCKED, "h2feed", hz*60);
+		tsleep_interlock(xop, 0);
+		if (atomic_cmpset_int(&xop->run_mask, mask,
+				      mask | HAMMER2_XOPMASK_FIFOW)) {
+			if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
+				tsleep(xop, PINTERLOCKED, "h2feed", hz*60);
+			}
 		}
+		/* retry */
 	}
 	atomic_clear_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
 	if (chain) {

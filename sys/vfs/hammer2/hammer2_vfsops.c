@@ -383,8 +383,10 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		lockinit(&pmp->lock_nlink, "h2nlink", 0, 0);
 		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
 		spin_init(&pmp->xop_spin, "h2xop");
+		spin_init(&pmp->lru_spin, "h2lru");
 		RB_INIT(&pmp->inum_tree);
 		TAILQ_INIT(&pmp->sideq);
+		TAILQ_INIT(&pmp->lru_list);
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
 		/*
@@ -566,6 +568,7 @@ static void
 hammer2_pfsfree(hammer2_pfs_t *pmp)
 {
 	hammer2_inode_t *iroot;
+	hammer2_chain_t *chain;
 	int i;
 	int j;
 
@@ -594,6 +597,19 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 		pmp->iroot = NULL;
 	}
 
+	/*
+	 * Cleanup chains remaining on LRU list.
+	 */
+	kprintf("pfsfree: %p lrucount=%d\n", pmp, pmp->lru_count);
+	while ((chain = TAILQ_FIRST(&pmp->lru_list)) != NULL) {
+		hammer2_chain_ref(chain);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
+		hammer2_chain_drop(chain);
+	}
+
+	/*
+	 * Free remaining pmp resources
+	 */
 	kmalloc_destroy(&pmp->mmsg);
 	kmalloc_destroy(&pmp->minode);
 
@@ -1428,7 +1444,7 @@ hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp)
  * block device must be cleaned up.
  *
  * If pmp is supplied multiple devices might be backing the PFS and each
- * must be disconnect.  This might not be the last PFS using some of the
+ * must be disconnected.  This might not be the last PFS using some of the
  * underlying devices.  Also, we have to adjust our hmp->mount_count
  * accounting for the devices backing the pmp which is now undergoing an
  * unmount.

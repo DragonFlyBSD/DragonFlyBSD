@@ -146,8 +146,9 @@ hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how)
 	hammer2_cluster_t *cluster;
 
 	hammer2_spin_sh(&ip->cluster_spin);
+#if 0
 	cluster = ip->cluster_cache;
-	if (0 && cluster) {
+	if (cluster) {
 		if (clindex >= cluster->nchains)
 			chain = NULL;
 		else
@@ -159,6 +160,7 @@ hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how)
 			return chain;
 		}
 	}
+#endif
 
 	cluster = &ip->cluster;
 	if (clindex >= cluster->nchains)
@@ -330,7 +332,6 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *pip;
-	hammer2_cluster_t *tmpclu;
 	u_int refs;
 
 	while (ip) {
@@ -366,14 +367,17 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				ip->pip = NULL;
 				ip->pmp = NULL;
 
+#if 0
 				/*
 				 * Clean out the cluster cache
 				 */
+				hammer2_cluster_t *tmpclu;
 				tmpclu = ip->cluster_cache;
 				if (tmpclu) {
 					ip->cluster_cache = NULL;
 					hammer2_cluster_drop(tmpclu);
 				}
+#endif
 
 				/*
 				 * Cleaning out ip->cluster isn't entirely

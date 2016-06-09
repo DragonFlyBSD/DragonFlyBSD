@@ -310,6 +310,18 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	bio = xop->bio;
 	bp = bio->bio_buf;
 
+	/*
+	 * This is difficult to optimize.  The logical buffer might be
+	 * partially dirty (contain dummy zero-fill pages), which would
+	 * mess up our crc calculation if we were to try a direct read.
+	 * So for now we always double-buffer through the underlying
+	 * storage.
+	 *
+	 * If not for the above problem we could conditionalize on
+	 * (1) 64KB buffer, (2) one chain (not multi-master) and
+	 * (3) !hammer2_double_buffer, and issue a direct read into the
+	 * logical buffer.
+	 */
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
@@ -366,8 +378,8 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 		chain = xop->head.cluster.focus;
 		hammer2_strategy_read_completion(chain, (char *)chain->data,
 						 xop->bio);
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		biodone(bio);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
 	case ENOENT:
 		xop->finished = 1;
@@ -417,7 +429,7 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 		hammer2_dedup_record(chain, data);
 
 		/*
-		 * Decopmression and copy.
+		 * Decompression and copy.
 		 */
 		switch (HAMMER2_DEC_COMP(chain->bref.methods)) {
 		case HAMMER2_COMP_LZ4:

@@ -137,6 +137,7 @@ typedef struct spinlock			hammer2_spin_t;
 #define hammer2_spin_unex		spin_unlock
 
 TAILQ_HEAD(hammer2_xop_list, hammer2_xop_head);
+TAILQ_HEAD(hammer2_chain_list, hammer2_chain);
 
 typedef struct hammer2_xop_list	hammer2_xop_list_t;
 
@@ -333,6 +334,7 @@ struct hammer2_chain {
 
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
+	TAILQ_ENTRY(hammer2_chain) lru_node;	/* 0-refs LRU */
 };
 
 typedef struct hammer2_chain hammer2_chain_t;
@@ -378,7 +380,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DELAYED		0x00001000	/* delayed flush */
 #define HAMMER2_CHAIN_COUNTEDBREFS	0x00002000	/* block table stats */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
-#define HAMMER2_CHAIN_UNUSED00008000	0x00008000
+#define HAMMER2_CHAIN_ONLRU		0x00008000	/* on LRU list */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
 #define HAMMER2_CHAIN_BMAPPED		0x00040000	/* present in blkmap */
@@ -559,11 +561,15 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * to a chain still part of the synchronized set.
  */
 #define HAMMER2_MAXCLUSTER	8
+#define HAMMER2_XOPMASK_CLUSTER	((1U << HAMMER2_MAXCLUSTER) - 1)
 #define HAMMER2_XOPFIFO		16
 #define HAMMER2_XOPFIFO_MASK	(HAMMER2_XOPFIFO - 1)
 #define HAMMER2_XOPGROUPS	16
 #define HAMMER2_XOPGROUPS_MASK	(HAMMER2_XOPGROUPS - 1)
 #define HAMMER2_XOPMASK_VOP	0x80000000U
+#define HAMMER2_XOPMASK_FIFOW	0x40000000U
+
+#define HAMMER2_XOPMASK_ALLDONE	(HAMMER2_XOPMASK_VOP | HAMMER2_XOPMASK_CLUSTER)
 
 #define HAMMER2_SPECTHREADS	1	/* sync */
 
@@ -1147,6 +1153,9 @@ struct hammer2_pfs {
 	struct malloc_type	*mmsg;
 	struct spinlock		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
+	struct spinlock		lru_spin;	/* inumber lookup */
+	struct hammer2_chain_list lru_list;	/* chains on LRU */
+	int			lru_count;	/* #of chains on LRU */
 	hammer2_tid_t		modify_tid;	/* modify transaction id */
 	hammer2_tid_t		inode_tid;	/* inode allocator */
 	uint8_t			pfs_nmasters;	/* total masters */
@@ -1169,6 +1178,8 @@ struct hammer2_pfs {
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
+
+#define HAMMER2_LRU_LIMIT		1024	/* per pmp lru_list */
 
 #define HAMMER2_DIRTYCHAIN_WAITING	0x80000000
 #define HAMMER2_DIRTYCHAIN_MASK		0x7FFFFFFF

@@ -233,7 +233,7 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	 * Set the PFS boundary flag if this chain represents a PFS root.
 	 */
 	if (bref->flags & HAMMER2_BREF_FLAG_PFSROOT)
-		chain->flags |= HAMMER2_CHAIN_PFSBOUNDARY;
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_PFSBOUNDARY);
 	hammer2_chain_core_init(chain);
 
 	return (chain);
@@ -265,7 +265,27 @@ hammer2_chain_core_init(hammer2_chain_t *chain)
 void
 hammer2_chain_ref(hammer2_chain_t *chain)
 {
-	atomic_add_int(&chain->refs, 1);
+	if (atomic_fetchadd_int(&chain->refs, 1) == 0) {
+		/*
+		 * 0->non-zero transition must ensure that chain is removed
+		 * from the LRU list.
+		 *
+		 * NOTE: Already holding lru_spin here so we cannot call
+		 *	 hammer2_chain_ref() to get it off lru_list, do
+		 *	 it manually.
+		 */
+		if (chain->flags & HAMMER2_CHAIN_ONLRU) {
+			hammer2_pfs_t *pmp = chain->pmp;
+			hammer2_spin_ex(&pmp->lru_spin);
+			if (chain->flags & HAMMER2_CHAIN_ONLRU) {
+				atomic_add_int(&pmp->lru_count, -1);
+				atomic_clear_int(&chain->flags,
+						 HAMMER2_CHAIN_ONLRU);
+				TAILQ_REMOVE(&pmp->lru_list, chain, lru_node);
+			}
+			hammer2_spin_unex(&pmp->lru_spin);
+		}
+	}
 #if 0
 	kprintf("REFC %p %d %08x\n", chain, chain->refs - 1, chain->flags);
 	print_backtrace(8);
@@ -404,6 +424,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		 *
 		 * If the chain has a parent the MODIFIED bit prevents
 		 * scrapping.
+		 *
+		 * Chains with UPDATE/MODIFIED are *not* put on the LRU list!
 		 */
 		if (chain->flags & (HAMMER2_CHAIN_UPDATE |
 				    HAMMER2_CHAIN_MODIFIED)) {
@@ -466,6 +488,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 *
 	 * Retry (return chain) if we fail to transition the refs to 0, else
 	 * return NULL indication nothing more to do.
+	 *
+	 * Chains with children are NOT put on the LRU list.
 	 */
 	if (chain->core.chain_count) {
 		if (atomic_cmpset_int(&chain->refs, 1, 0)) {
@@ -489,14 +513,74 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	pmp = chain->pmp;	/* can be NULL */
 	rdrop = NULL;
 
+	parent = chain->parent;
+
+	/*
+	 * WARNING! chain's spin lock is still held here, and other spinlocks
+	 *	    will be acquired and released in the code below.  We
+	 *	    cannot be making fancy procedure calls!
+	 */
+
+	/*
+	 * We can cache the chain if it is associated with a pmp
+	 * and not flagged as being destroyed or requesting a full
+	 * release.  In this situation the chain is not removed
+	 * from its parent, i.e. it can still be looked up.
+	 *
+	 * We intentionally do not cache DATA chains because these
+	 * were likely used to load data into the logical buffer cache
+	 * and will not be accessed again for some time.
+	 */
+	if ((chain->flags &
+	     (HAMMER2_CHAIN_DESTROY | HAMMER2_CHAIN_RELEASE)) == 0 &&
+	    chain->pmp &&
+	    chain->bref.type != HAMMER2_BREF_TYPE_DATA) {
+		if (parent)
+			hammer2_spin_ex(&parent->core.spin);
+		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
+			/* 1->0 transition failed, retry */
+			if (parent)
+				hammer2_spin_unex(&parent->core.spin);
+			hammer2_spin_unex(&chain->core.spin);
+			return(chain);
+		}
+		KKASSERT((chain->flags & HAMMER2_CHAIN_ONLRU) == 0);
+		hammer2_spin_ex(&pmp->lru_spin);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONLRU);
+		TAILQ_INSERT_TAIL(&pmp->lru_list, chain, lru_node);
+
+		/*
+		 * If we are over the LRU limit we need to drop something.
+		 */
+		if (pmp->lru_count > HAMMER2_LRU_LIMIT) {
+			rdrop = TAILQ_FIRST(&pmp->lru_list);
+			atomic_clear_int(&rdrop->flags, HAMMER2_CHAIN_ONLRU);
+			TAILQ_REMOVE(&pmp->lru_list, rdrop, lru_node);
+			atomic_add_int(&rdrop->refs, 1);
+			atomic_set_int(&rdrop->flags, HAMMER2_CHAIN_RELEASE);
+		} else {
+			atomic_add_int(&pmp->lru_count, 1);
+		}
+		hammer2_spin_unex(&pmp->lru_spin);
+		if (parent) {
+			hammer2_spin_unex(&parent->core.spin);
+			parent = NULL;	/* safety */
+		}
+		hammer2_spin_unex(&chain->core.spin);
+
+		return rdrop;
+		/* NOT REACHED */
+	}
+
 	/*
 	 * Spinlock the parent and try to drop the last ref on chain.
-	 * On success remove chain from its parent, otherwise return NULL.
+	 * On success determine if we should dispose of the chain
+	 * (remove the chain from its parent, etc).
 	 *
-	 * (normal core locks are top-down recursive but we define core
-	 *  spinlocks as bottom-up recursive, so this is safe).
+	 * (normal core locks are top-down recursive but we define
+	 * core spinlocks as bottom-up recursive, so this is safe).
 	 */
-	if ((parent = chain->parent) != NULL) {
+	if (parent) {
 		hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
 			/* 1->0 transition failed, retry */
@@ -532,6 +616,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		}
 		hammer2_spin_unex(&parent->core.spin);
 		parent = NULL;	/* safety */
+		/* FALL THROUGH */
 	}
 
 	/*
@@ -561,7 +646,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 * return one directly.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_ALLOCATED) {
-		chain->flags &= ~HAMMER2_CHAIN_ALLOCATED;
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ALLOCATED);
 		chain->hmp = NULL;
 		kfree(chain, hmp->mchain);
 	}
@@ -856,7 +941,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 
 	TIMER(26);
 		if (hammer2_io_crc_good(chain, &mask)) {
-			chain->flags |= HAMMER2_CHAIN_TESTEDGOOD;
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_TESTEDGOOD);
 		} else if (hammer2_chain_testcheck(chain, bdata) == 0) {
 			kprintf("chain %016jx.%02x meth=%02x "
 				"CHECK FAIL %08x (flags=%08x)\n",
@@ -873,7 +958,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 				chain->bref.type, chain->bref.key,
 				chain->bytes);
 #endif
-			chain->flags |= HAMMER2_CHAIN_TESTEDGOOD;
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_TESTEDGOOD);
 		}
 	}
 	TIMER(27);
@@ -3680,7 +3765,7 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	}
 
 	/*
-	 * Permanent deletions mark the chain as destroyed.  H
+	 * Permanent deletions mark the chain as destroyed.
 	 */
 	if (flags & HAMMER2_DELETE_PERMANENT) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
