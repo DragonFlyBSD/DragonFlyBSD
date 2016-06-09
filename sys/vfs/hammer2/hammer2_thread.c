@@ -250,6 +250,7 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 
 	xop->head.ip1 = ip;
 	xop->head.func = NULL;
+	xop->head.flags = flags;
 	xop->head.state = 0;
 	xop->head.error = 0;
 	xop->head.collect_key = 0;
@@ -375,9 +376,13 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	if (pmp->has_xop_threads == 0)
 		hammer2_xop_helper_create(pmp);
 
-	/*ng = pmp->xop_iterator++;*/
-	ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)) ^
-		   hammer2_icrc32(&func, sizeof(func)));
+	if (xop->flags & HAMMER2_XOP_ITERATOR) {
+		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)) ^
+			   pmp->xop_iterator++);
+	} else {
+		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)) ^
+			   hammer2_icrc32(&func, sizeof(func)));
+	}
 	ng = ng & HAMMER2_XOPGROUPS_MASK;
 #if 0
 	g = pmp->xop_iterator++;

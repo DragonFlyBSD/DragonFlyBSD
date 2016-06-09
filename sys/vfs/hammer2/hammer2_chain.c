@@ -1721,6 +1721,9 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 	 * access the RBTREE, and it is possible to collide with another
 	 * hammer2_chain_get() operation because the caller might only hold
 	 * a shared lock on the parent.
+	 *
+	 * NOTE: Get races can occur quite often when we distribute
+	 *	 asynchronous read-aheads across multiple threads.
 	 */
 	KKASSERT(parent->refs > 0);
 	error = hammer2_chain_insert(parent, chain,
@@ -1729,7 +1732,7 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 				     generation);
 	if (error) {
 		KKASSERT((chain->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
-		kprintf("chain %p get race\n", chain);
+		/*kprintf("chain %p get race\n", chain);*/
 		hammer2_chain_drop(chain);
 		chain = NULL;
 	} else {
@@ -2049,8 +2052,10 @@ again:
 		chain = hammer2_chain_get(parent, generation,
 					  &bcopy);
 		if (chain == NULL) {
+			/*
 			kprintf("retry lookup parent %p keys %016jx:%016jx\n",
 				parent, key_beg, key_end);
+			*/
 			goto again;
 		}
 		if (bcmp(&bcopy, bref, sizeof(bcopy))) {

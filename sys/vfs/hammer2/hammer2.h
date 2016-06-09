@@ -864,6 +864,7 @@ struct hammer2_xop_head {
 	uint32_t		check_counter;
 	uint32_t		run_mask;
 	uint32_t		chk_mask;
+	int			flags;
 	int			state;
 	int			error;
 	hammer2_key_t		collect_key;
@@ -1028,6 +1029,7 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
  * MODIFYING	- This is a modifying transaction, allocate a mtid.
  */
 #define HAMMER2_XOP_MODIFYING		0x00000001
+#define HAMMER2_XOP_ITERATOR		0x00000002
 
 /*
  * Global (per partition) management structure, represents a hard block

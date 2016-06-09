@@ -271,7 +271,11 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	lbase = bio->bio_offset;
 	KKASSERT(((int)lbase & HAMMER2_PBUFMASK) == 0);
 
-	xop = hammer2_xop_alloc(ip, 0);
+	if (bp->b_bio1.bio_flags & BIO_SYNC) {
+		xop = hammer2_xop_alloc(ip, 0);
+	} else {
+		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_ITERATOR);
+	}
 	xop->finished = 0;
 	xop->bio = bio;
 	xop->lbase = lbase;
