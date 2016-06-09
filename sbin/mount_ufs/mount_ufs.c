@@ -105,8 +105,7 @@ mount_ufs(int argc, const char **argv)
 		char *dev_name = strdup(args.fspec);
 		dev_name = strtok(dev_name + strlen("/dev/da"),"s");
 		sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
-		sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
-		if(errno == ENOENT) {
+		if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) < 0) {
 			printf("Device:%s does not support the TRIM command\n",
 			    args.fspec);
 			ufs_usage();

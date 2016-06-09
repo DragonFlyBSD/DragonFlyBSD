@@ -217,8 +217,7 @@ main(int ac, char **av)
 			sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled",
 			    dev_name);
 			errno=0;
-			sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
-			if(errno == ENOENT) {
+			if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) < 0) {
 				printf("%s %s (%s) does not support the TRIM "
 				    "command\n",
 				    vol->type, vol->name, sysctl_name);
