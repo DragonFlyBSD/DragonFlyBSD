@@ -206,6 +206,16 @@ static void vm_pageout_page_stats(int q);
  * queues are unbalanced so add significant slop.  The queue scans
  * will stop early when targets are reached and will start where they
  * left off on the next pass.
+ *
+ * We need to be generous here because there are all sorts of loading
+ * conditions that can cause edge cases if try to average over all queues.
+ * In particular, storage subsystems have become so fast that paging
+ * activity can become quite frantic.  Eventually we will probably need
+ * two paging threads, one for dirty pages and one for clean, to deal
+ * with the bandwidth requirements.
+
+ * So what we do is calculate a value that can be satisfied nominally by
+ * only having to scan half the queues.
  */
 static __inline int
 PQAVERAGE(int n)
@@ -213,11 +223,9 @@ PQAVERAGE(int n)
 	int avg;
 
 	if (n >= 0) {
-		avg = ((n + (PQ_L2_SIZE - 1)) / PQ_L2_SIZE + 1);
-		avg += avg / 2 + 1;
+		avg = ((n + (PQ_L2_SIZE - 1)) / (PQ_L2_SIZE / 2) + 1);
 	} else {
-		avg = ((n - (PQ_L2_SIZE - 1)) / PQ_L2_SIZE - 1);
-		avg += avg / 2 - 1;
+		avg = ((n - (PQ_L2_SIZE - 1)) / (PQ_L2_SIZE / 2) - 1);
 	}
 	return avg;
 }
