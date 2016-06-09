@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.16 2008/06/07 11:44:04 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -251,18 +250,16 @@ sys_modnext(struct modnext_args *uap)
     module_t mod;
     int error;
 
+    error = 0;
     get_mplock();
     uap->sysmsg_result = -1;
     if (uap->modid == 0) {
 	mod = TAILQ_FIRST(&modules);
-	if (mod) {
+	if (mod)
 	    uap->sysmsg_result = mod->id;
-	    error = 0;
-	    goto done;
-	} else {
+	else
 	    error = ENOENT;
-	    goto done;
-	}
+	goto done;
     }
 
     mod = module_lookupbyid(uap->modid);
@@ -275,7 +272,6 @@ sys_modnext(struct modnext_args *uap)
 	uap->sysmsg_result = TAILQ_NEXT(mod, link)->id;
     else
 	uap->sysmsg_result = 0;
-    error = 0;
 done:
     rel_mplock();
     return error;
