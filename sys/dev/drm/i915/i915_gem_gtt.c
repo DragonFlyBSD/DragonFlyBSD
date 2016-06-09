@@ -1071,14 +1071,15 @@ static int gen8_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 		return ret;
 
 	ppgtt->base.start = 0;
+#ifndef __DragonFly__
 	ppgtt->base.total = 1ULL << 32;
-#define CONFIG_X86_32 0
 	if (IS_ENABLED(CONFIG_X86_32))
 		/* While we have a proliferation of size_t variables
 		 * we cannot represent the full ppgtt size on 32bit,
 		 * so limit it to the same size as the GGTT (currently
 		 * 2GiB).
 		 */
+#endif
 		ppgtt->base.total = to_i915(ppgtt->base.dev)->gtt.base.total;
 	ppgtt->base.cleanup = gen8_ppgtt_cleanup;
 	ppgtt->base.allocate_va_range = gen8_alloc_va_range;
