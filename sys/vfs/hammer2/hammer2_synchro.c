@@ -104,25 +104,60 @@ hammer2_primary_sync_thread(void *arg)
 	hammer2_deferred_list_t list;
 	hammer2_deferred_ip_t *defer;
 	int error;
+	uint32_t flags;
+	uint32_t nflags;
 
 	pmp = thr->pmp;
 	bzero(&list, sizeof(list));
 
-	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	while ((thr->flags & HAMMER2_THREAD_STOP) == 0) {
+	for (;;) {
+		flags = thr->flags;
+		cpu_ccfence();
+
+		/*
+		 * Handle stop request
+		 */
+		if (flags & HAMMER2_THREAD_STOP)
+			break;
+
 		/*
 		 * Handle freeze request
 		 */
-		if (thr->flags & HAMMER2_THREAD_FREEZE) {
-			atomic_set_int(&thr->flags, HAMMER2_THREAD_FROZEN);
-			atomic_clear_int(&thr->flags, HAMMER2_THREAD_FREEZE);
+		if (flags & HAMMER2_THREAD_FREEZE) {
+			nflags = (flags & ~(HAMMER2_THREAD_FREEZE |
+					    HAMMER2_THREAD_CLIENTWAIT)) |
+				 HAMMER2_THREAD_FROZEN;
+			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
+				continue;
+			if (flags & HAMMER2_THREAD_CLIENTWAIT)
+				wakeup(&thr->flags);
+			flags = nflags;
+			/* fall through */
+		}
+
+		if (flags & HAMMER2_THREAD_UNFREEZE) {
+			nflags = flags & ~(HAMMER2_THREAD_UNFREEZE |
+					   HAMMER2_THREAD_FROZEN |
+					   HAMMER2_THREAD_CLIENTWAIT);
+			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
+				continue;
+			if (flags & HAMMER2_THREAD_CLIENTWAIT)
+				wakeup(&thr->flags);
+			flags = nflags;
+			/* fall through */
 		}
 
 		/*
 		 * Force idle if frozen until unfrozen or stopped.
 		 */
-		if (thr->flags & HAMMER2_THREAD_FROZEN) {
-			lksleep(thr->xopq, &thr->lk, 0, "frozen", 0);
+		if (flags & HAMMER2_THREAD_FROZEN) {
+			nflags = flags | HAMMER2_THREAD_WAITING;
+			tsleep_interlock(&thr->flags, 0);
+			if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
+				tsleep(&thr->flags, PINTERLOCKED, "frozen", 0);
+				atomic_clear_int(&thr->flags,
+						 HAMMER2_THREAD_WAITING);
+			}
 			continue;
 		}
 
@@ -130,8 +165,11 @@ hammer2_primary_sync_thread(void *arg)
 		 * Reset state on REMASTER request
 		 */
 		if (thr->flags & HAMMER2_THREAD_REMASTER) {
-			atomic_clear_int(&thr->flags, HAMMER2_THREAD_REMASTER);
-			/* reset state */
+			nflags = flags & ~HAMMER2_THREAD_REMASTER;
+			if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
+				/* reset state here */
+			}
+			continue;
 		}
 
 		/*
@@ -208,12 +246,17 @@ hammer2_primary_sync_thread(void *arg)
 		/*
 		 * Wait for event, or 5-second poll.
 		 */
-		lksleep(thr->xopq, &thr->lk, 0, "h2idle", hz * 5);
+		nflags = flags | HAMMER2_THREAD_WAITING;
+		tsleep_interlock(&thr->flags, 0);
+		if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
+			tsleep(&thr->flags, 0, "h2idle", hz * 5);
+			atomic_clear_int(&thr->flags, HAMMER2_THREAD_WAITING);
+		}
 	}
 	thr->td = NULL;
-	wakeup(thr);
-	lockmgr(&thr->lk, LK_RELEASE);
+	hammer2_thr_return(thr, HAMMER2_THREAD_STOPPED);
 	/* thr structure can go invalid after this point */
+	wakeup(thr);
 }
 
 #if 0

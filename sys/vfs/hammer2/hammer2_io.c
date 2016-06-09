@@ -546,10 +546,12 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	if (orefs & HAMMER2_DIO_GOOD) {
 		KKASSERT(bp != NULL);
 		if (orefs & HAMMER2_DIO_DIRTY) {
-			if (hammer2_cluster_enable) {
+			int hce;
+
+			if ((hce = hammer2_cluster_enable) > 0) {
 				peof = (pbase + HAMMER2_SEGMASK64) &
 				       ~HAMMER2_SEGMASK64;
-				cluster_write(bp, peof, psize, 4);
+				cluster_write(bp, peof, psize, hce);
 			} else {
 				bp->b_flags |= B_CLUSTEROK;
 				bdwrite(bp);
@@ -875,7 +877,7 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 			 * another iocb.
 			 */
 			error = 0;
-		} else if ((hce = hammer2_cluster_enable) != 0) {
+		} else if ((hce = hammer2_cluster_enable) > 0) {
 			/*
 			 * Synchronous cluster I/O for now.
 			 */

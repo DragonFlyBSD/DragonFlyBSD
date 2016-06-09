@@ -970,6 +970,17 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		 * WARNING: Pageout daemon will issue UIO_NOCOPY writes
 		 *	    with IO_SYNC or IO_ASYNC set.  These writes
 		 *	    must be handled as the pageout daemon expects.
+		 *
+		 * NOTE!    H2 relies on cluster_write() here because it
+		 *	    cannot preallocate disk blocks at the logical
+		 *	    level due to not knowing what the compression
+		 *	    size will be at this time.
+		 *
+		 *	    We must use cluster_write() here and we depend
+		 *	    on the write-behind feature to flush buffers
+		 *	    appropriately.  If we let the buffer daemons do
+		 *	    it the block allocations will be all over the
+		 *	    map.
 		 */
 		if (ioflag & IO_SYNC) {
 			bwrite(bp);

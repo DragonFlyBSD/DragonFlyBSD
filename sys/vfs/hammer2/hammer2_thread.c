@@ -38,7 +38,103 @@
 #include "hammer2.h"
 
 /*
- * Initialize the suspplied thread structure, starting the specified
+ * Signal that the thread has work.
+ */
+void
+hammer2_thr_signal(hammer2_thread_t *thr, uint32_t flags)
+{
+	uint32_t oflags;
+
+	for (;;) {
+		oflags = thr->flags;
+		cpu_ccfence();
+		if (oflags & HAMMER2_THREAD_WAITING) {
+			if (atomic_cmpset_int(&thr->flags, oflags,
+				  (oflags | flags) & ~HAMMER2_THREAD_WAITING)) {
+				wakeup(&thr->flags);
+				break;
+			}
+		} else {
+			if (atomic_cmpset_int(&thr->flags, oflags,
+					      oflags | flags)) {
+				break;
+			}
+		}
+	}
+}
+
+/*
+ * Return status to waiting client(s)
+ */
+void
+hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags)
+{
+	uint32_t oflags;
+	uint32_t nflags;
+
+	for (;;) {
+		oflags = thr->flags;
+		cpu_ccfence();
+		nflags = (oflags | flags) & ~HAMMER2_THREAD_CLIENTWAIT;
+
+		if (oflags & HAMMER2_THREAD_CLIENTWAIT) {
+			if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
+				wakeup(thr);
+				break;
+			}
+		} else {
+			if (atomic_cmpset_int(&thr->flags, oflags, nflags))
+				break;
+		}
+	}
+}
+
+/*
+ * Wait until the bits in flags are set.
+ */
+void
+hammer2_thr_wait(hammer2_thread_t *thr, uint32_t flags)
+{
+	uint32_t oflags;
+	uint32_t nflags;
+
+	for (;;) {
+		oflags = thr->flags;
+		cpu_ccfence();
+		if ((oflags & flags) == flags)
+			break;
+		nflags = oflags | HAMMER2_THREAD_CLIENTWAIT;
+		tsleep_interlock(thr, 0);
+		if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
+			tsleep(thr, PINTERLOCKED, "h2twait", hz*60);
+		}
+	}
+}
+
+/*
+ * Wait until the bits in flags are clear.
+ */
+void
+hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags)
+{
+	uint32_t oflags;
+	uint32_t nflags;
+
+	for (;;) {
+		oflags = thr->flags;
+		cpu_ccfence();
+		if ((oflags & flags) == 0)
+			break;
+		nflags = oflags | HAMMER2_THREAD_CLIENTWAIT;
+		tsleep_interlock(thr, 0);
+		if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
+			tsleep(thr, PINTERLOCKED, "h2twait", hz*60);
+		}
+	}
+}
+
+/*
+ * Initialize the supplied thread structure, starting the specified
  * thread.
  */
 void
@@ -46,7 +142,6 @@ hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 		   const char *id, int clindex, int repidx,
 		   void (*func)(void *arg))
 {
-	lockinit(&thr->lk, "h2thr", 0, 0);
 	thr->pmp = pmp;
 	thr->clindex = clindex;
 	thr->repidx = repidx;
@@ -73,16 +168,10 @@ hammer2_thr_delete(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
-	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_set_int(&thr->flags, HAMMER2_THREAD_STOP);
-	wakeup(thr->xopq);
-	while (thr->td) {
-		lksleep(thr, &thr->lk, 0, "h2thr", hz);
-	}
-	lockmgr(&thr->lk, LK_RELEASE);
+	hammer2_thr_signal(thr, HAMMER2_THREAD_STOP);
+	hammer2_thr_wait(thr, HAMMER2_THREAD_STOPPED);
 	thr->pmp = NULL;
 	thr->xopq = NULL;
-	lockuninit(&thr->lk);
 }
 
 /*
@@ -95,17 +184,13 @@ hammer2_thr_remaster(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
-	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_set_int(&thr->flags, HAMMER2_THREAD_REMASTER);
-	wakeup(thr->xopq);
-	lockmgr(&thr->lk, LK_RELEASE);
+	hammer2_thr_signal(thr, HAMMER2_THREAD_REMASTER);
 }
 
 void
 hammer2_thr_freeze_async(hammer2_thread_t *thr)
 {
-	atomic_set_int(&thr->flags, HAMMER2_THREAD_FREEZE);
-	wakeup(thr->xopq);
+	hammer2_thr_signal(thr, HAMMER2_THREAD_FREEZE);
 }
 
 void
@@ -113,13 +198,8 @@ hammer2_thr_freeze(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
-	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_set_int(&thr->flags, HAMMER2_THREAD_FREEZE);
-	wakeup(thr->xopq);
-	while ((thr->flags & HAMMER2_THREAD_FROZEN) == 0) {
-		lksleep(thr, &thr->lk, 0, "h2frz", hz);
-	}
-	lockmgr(&thr->lk, LK_RELEASE);
+	hammer2_thr_signal(thr, HAMMER2_THREAD_FREEZE);
+	hammer2_thr_wait(thr, HAMMER2_THREAD_FROZEN);
 }
 
 void
@@ -127,10 +207,8 @@ hammer2_thr_unfreeze(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
-	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_clear_int(&thr->flags, HAMMER2_THREAD_FROZEN);
-	wakeup(thr->xopq);
-	lockmgr(&thr->lk, LK_RELEASE);
+	hammer2_thr_signal(thr, HAMMER2_THREAD_UNFREEZE);
+	hammer2_thr_wait_neg(thr, HAMMER2_THREAD_FROZEN);
 }
 
 int
@@ -342,8 +420,10 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	 * Try to wakeup just one xop thread for each cluster node.
 	 */
 	for (i = 0; i < nchains; ++i) {
-		if (i != notidx)
-			wakeup(&pmp->xopq[i][ng]);
+		if (i != notidx) {
+			hammer2_thr_signal(&pmp->xop_groups[ng].thrs[i],
+					   HAMMER2_THREAD_XOPQ);
+		}
 	}
 }
 
@@ -831,14 +911,6 @@ hammer2_xop_dequeue(hammer2_thread_t *thr, hammer2_xop_head_t *xop)
 	atomic_clear_int(&xop->collect[clindex].flags,
 			 HAMMER2_XOP_FIFO_RUN);
 	hammer2_spin_unex(&pmp->xop_spin);
-
-	/*
-	 * We do not necessarily need to wakeup a dependent waiter, we will
-	 * loop up and process any unlocked dependency immediately.  However,
-	 * if there is more than one waking up other threads might improve
-	 * performance.
-	 */
-	/*wakeup_one(thr->xopq);*/
 }
 
 /*
@@ -857,36 +929,73 @@ hammer2_primary_xops_thread(void *arg)
 	hammer2_pfs_t *pmp;
 	hammer2_xop_head_t *xop;
 	uint32_t mask;
+	uint32_t flags;
+	uint32_t nflags;
 	hammer2_xop_func_t last_func = NULL;
 
 	pmp = thr->pmp;
 	/*xgrp = &pmp->xop_groups[thr->repidx]; not needed */
 	mask = 1U << thr->clindex;
 
-	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	while ((thr->flags & HAMMER2_THREAD_STOP) == 0) {
+	for (;;) {
+		flags = thr->flags;
+
+		/*
+		 * Handle stop request
+		 */
+		if (flags & HAMMER2_THREAD_STOP)
+			break;
+
 		/*
 		 * Handle freeze request
 		 */
-		if (thr->flags & HAMMER2_THREAD_FREEZE) {
-			atomic_set_int(&thr->flags, HAMMER2_THREAD_FROZEN);
-			atomic_clear_int(&thr->flags, HAMMER2_THREAD_FREEZE);
+		if (flags & HAMMER2_THREAD_FREEZE) {
+			nflags = (flags & ~(HAMMER2_THREAD_FREEZE |
+					    HAMMER2_THREAD_CLIENTWAIT)) |
+				 HAMMER2_THREAD_FROZEN;
+			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
+				continue;
+			if (flags & HAMMER2_THREAD_CLIENTWAIT)
+				wakeup(&thr->flags);
+			flags = nflags;
+			/* fall through */
+		}
+
+		if (flags & HAMMER2_THREAD_UNFREEZE) {
+			nflags = flags & ~(HAMMER2_THREAD_UNFREEZE |
+					   HAMMER2_THREAD_FROZEN |
+					   HAMMER2_THREAD_CLIENTWAIT);
+			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
+				continue;
+			if (flags & HAMMER2_THREAD_CLIENTWAIT)
+				wakeup(&thr->flags);
+			flags = nflags;
+			/* fall through */
 		}
 
 		/*
 		 * Force idle if frozen until unfrozen or stopped.
 		 */
-		if (thr->flags & HAMMER2_THREAD_FROZEN) {
-			lksleep(thr->xopq, &thr->lk, 0, "frozen", 0);
+		if (flags & HAMMER2_THREAD_FROZEN) {
+			nflags = flags | HAMMER2_THREAD_WAITING;
+			tsleep_interlock(&thr->flags, 0);
+			if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
+				tsleep(&thr->flags, PINTERLOCKED, "frozen", 0);
+				atomic_clear_int(&thr->flags,
+						 HAMMER2_THREAD_WAITING);
+			}
 			continue;
 		}
 
 		/*
 		 * Reset state on REMASTER request
 		 */
-		if (thr->flags & HAMMER2_THREAD_REMASTER) {
-			atomic_clear_int(&thr->flags, HAMMER2_THREAD_REMASTER);
-			/* reset state */
+		if (flags & HAMMER2_THREAD_REMASTER) {
+			nflags = flags & ~HAMMER2_THREAD_REMASTER;
+			if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
+				/* reset state here */
+			}
+			continue;
 		}
 
 		/*
@@ -897,15 +1006,19 @@ hammer2_primary_xops_thread(void *arg)
 		 * may also abort processing if the frontend VOP becomes
 		 * inactive.
 		 */
-		tsleep_interlock(thr->xopq, 0);
+		if (flags & HAMMER2_THREAD_XOPQ) {
+			nflags = flags & ~HAMMER2_THREAD_XOPQ;
+			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
+				continue;
+			flags = nflags;
+			/* fall through */
+		}
 		while ((xop = hammer2_xop_next(thr)) != NULL) {
 			if (hammer2_xop_active(xop)) {
-				lockmgr(&thr->lk, LK_RELEASE);
 				last_func = xop->func;
 				xop->func((hammer2_xop_t *)xop, thr->clindex);
 				hammer2_xop_dequeue(thr, xop);
 				hammer2_xop_retire(xop, mask);
-				lockmgr(&thr->lk, LK_EXCLUSIVE);
 			} else {
 				last_func = xop->func;
 				hammer2_xop_feed(xop, NULL, thr->clindex,
@@ -916,13 +1029,19 @@ hammer2_primary_xops_thread(void *arg)
 		}
 
 		/*
-		 * Wait for event.  The xopq is not interlocked by thr->lk,
-		 * use the tsleep interlock sequence.
+		 * Wait for event, interlock using THREAD_WAITING and
+		 * THREAD_SIGNAL.
 		 *
 		 * For robustness poll on a 30-second interval, but nominally
 		 * expect to be woken up.
 		 */
-		lksleep(thr->xopq, &thr->lk, PINTERLOCKED, "h2idle", hz*30);
+		nflags = flags | HAMMER2_THREAD_WAITING;
+
+		tsleep_interlock(&thr->flags, 0);
+		if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
+			tsleep(&thr->flags, PINTERLOCKED, "h2idle", hz*30);
+			atomic_clear_int(&thr->flags, HAMMER2_THREAD_WAITING);
+		}
 	}
 
 #if 0
@@ -936,9 +1055,8 @@ hammer2_primary_xops_thread(void *arg)
 		hammer2_xop_retire(xop, mask);
 	}
 #endif
-
 	thr->td = NULL;
-	wakeup(thr);
-	lockmgr(&thr->lk, LK_RELEASE);
+	hammer2_thr_return(thr, HAMMER2_THREAD_STOPPED);
 	/* thr structure can go invalid after this point */
+	wakeup(thr);
 }

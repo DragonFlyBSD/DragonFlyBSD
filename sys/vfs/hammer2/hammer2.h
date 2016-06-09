@@ -795,18 +795,27 @@ struct hammer2_thread {
 	int		depth;
 	int		clindex;	/* cluster element index */
 	int		repidx;
-	struct lock	lk;		/* thread control lock */
 };
 
 typedef struct hammer2_thread hammer2_thread_t;
 
 #define HAMMER2_THREAD_UNMOUNTING	0x0001	/* unmount request */
 #define HAMMER2_THREAD_DEV		0x0002	/* related to dev, not pfs */
-#define HAMMER2_THREAD_UNUSED04		0x0004
+#define HAMMER2_THREAD_WAITING		0x0004	/* thread in idle tsleep */
 #define HAMMER2_THREAD_REMASTER		0x0008	/* remaster request */
 #define HAMMER2_THREAD_STOP		0x0010	/* exit request */
 #define HAMMER2_THREAD_FREEZE		0x0020	/* force idle */
-#define HAMMER2_THREAD_FROZEN		0x0040	/* restart */
+#define HAMMER2_THREAD_FROZEN		0x0040	/* thread is frozen */
+#define HAMMER2_THREAD_XOPQ		0x0080	/* work pending */
+#define HAMMER2_THREAD_STOPPED		0x0100	/* thread has stopped */
+#define HAMMER2_THREAD_UNFREEZE		0x0200
+#define HAMMER2_THREAD_CLIENTWAIT	0x0400
+
+#define HAMMER2_THREAD_WAKEUP_MASK	(HAMMER2_THREAD_UNMOUNTING |	\
+					 HAMMER2_THREAD_REMASTER |	\
+					 HAMMER2_THREAD_STOP |		\
+					 HAMMER2_THREAD_FREEZE |	\
+					 HAMMER2_THREAD_XOPQ)
 
 /*
  * Support structure for dedup heuristic.
@@ -1503,6 +1512,10 @@ void hammer2_io_crc_clrmask(hammer2_io_t *dio, uint64_t mask);
 /*
  * hammer2_thread.c
  */
+void hammer2_thr_signal(hammer2_thread_t *thr, uint32_t flags);
+void hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags);
+void hammer2_thr_wait(hammer2_thread_t *thr, uint32_t flags);
+void hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags);
 void hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 			const char *id, int clindex, int repidx,
 			void (*func)(void *arg));
