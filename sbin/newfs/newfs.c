@@ -432,9 +432,7 @@ main(int argc, char **argv)
 		sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled",
 		    dev_name);
 
-		sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0);
-
-		if(errno == ENOENT) {
+		if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) < 0) {
 			printf("Device:%s does not support the TRIM command\n",
 			    special);
 			usage();
