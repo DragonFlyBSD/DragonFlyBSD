@@ -485,7 +485,7 @@ check_volume(const char *path, int *fdp)
  * is to be the initial mount point, or at least the first mount point.
  *
  * [----reserved_area----][boot_area][aux_area]
- * [[vol_hdr]...         ]                      [sroot][root]
+ * [[vol_hdr]...         ]                     [sroot][root]...
  *
  * The sroot and root inodes eat 512 bytes each.  newfs labels can only be
  * 64 bytes so the root (snapshot) inode does not need to extend past 512
