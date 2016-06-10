@@ -70,7 +70,8 @@ static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits,
 		hammer2_tid_t mtid, int for_type, int *errorp);
-static void hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop);
+static hammer2_io_t *hammer2_chain_drop_data(hammer2_chain_t *chain,
+		int lastdrop);
 static hammer2_chain_t *hammer2_combined_find(
 		hammer2_chain_t *parent,
 		hammer2_blockref_t *base, int count,
@@ -389,8 +390,8 @@ hammer2_chain_drop(hammer2_chain_t *chain)
  * recursive drop or NULL, possibly returning the same chain if the atomic
  * op fails.
  *
- * Whem two chains need to be recursively dropped we use the chain
- * we would otherwise free to placehold the additional chain.  It's a bit
+ * When two chains need to be recursively dropped we use the chain we
+ * would otherwise free to placehold the additional chain.  It's a bit
  * convoluted but we can't just recurse without potentially blowing out
  * the kernel stack.
  *
@@ -408,13 +409,14 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rdrop;
+	hammer2_io_t *dio;
 
 	/*
 	 * Critical field access.
 	 */
 	hammer2_spin_ex(&chain->core.spin);
 
-	if (chain->parent) {
+	if ((parent = chain->parent) != NULL) {
 		/*
 		 * If the chain has a parent the UPDATE bit prevents scrapping
 		 * as the chain is needed to properly flush the parent.  Try
@@ -430,7 +432,10 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		if (chain->flags & (HAMMER2_CHAIN_UPDATE |
 				    HAMMER2_CHAIN_MODIFIED)) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
+				dio = hammer2_chain_drop_data(chain, 0);
 				hammer2_spin_unex(&chain->core.spin);
+				if (dio)
+					hammer2_io_bqrelse(&dio);
 				chain = NULL;
 			} else {
 				hammer2_spin_unex(&chain->core.spin);
@@ -481,6 +486,9 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		/* spinlock still held */
 	}
 
+	/* spinlock still held */
+	dio = NULL;
+
 	/*
 	 * If any children exist we must leave the chain intact with refs == 0.
 	 * They exist because chains are retained below us which have refs or
@@ -492,11 +500,20 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 * Chains with children are NOT put on the LRU list.
 	 */
 	if (chain->core.chain_count) {
+		if (parent)
+			hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0)) {
+			dio = hammer2_chain_drop_data(chain, 1);
 			hammer2_spin_unex(&chain->core.spin);
+			if (parent)
+				hammer2_spin_unex(&parent->core.spin);
 			chain = NULL;
+			if (dio)
+				hammer2_io_bqrelse(&dio);
 		} else {
 			hammer2_spin_unex(&chain->core.spin);
+			if (parent)
+				hammer2_spin_unex(&parent->core.spin);
 		}
 		return (chain);
 	}
@@ -538,12 +555,24 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		if (parent)
 			hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
-			/* 1->0 transition failed, retry */
+			/*
+			 * 1->0 transition failed, retry.  Do not drop
+			 * the chain's data yet!
+			 */
 			if (parent)
 				hammer2_spin_unex(&parent->core.spin);
 			hammer2_spin_unex(&chain->core.spin);
+
 			return(chain);
 		}
+
+		/*
+		 * Success, be sure to clean out the chain's data
+		 * before putting it on a queue that it might be
+		 * reused from.
+		 */
+		dio = hammer2_chain_drop_data(chain, 1);
+
 		KKASSERT((chain->flags & HAMMER2_CHAIN_ONLRU) == 0);
 		hammer2_spin_ex(&pmp->lru_spin);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONLRU);
@@ -567,6 +596,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			parent = NULL;	/* safety */
 		}
 		hammer2_spin_unex(&chain->core.spin);
+		if (dio)
+			hammer2_io_bqrelse(&dio);
 
 		return rdrop;
 		/* NOT REACHED */
@@ -583,9 +614,14 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	if (parent) {
 		hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
-			/* 1->0 transition failed, retry */
+			/*
+			 * 1->0 transition failed, retry.
+			 */
 			hammer2_spin_unex(&parent->core.spin);
+			dio = hammer2_chain_drop_data(chain, 0);
 			hammer2_spin_unex(&chain->core.spin);
+			if (dio)
+				hammer2_io_bqrelse(&dio);
 			return(chain);
 		}
 
@@ -635,9 +671,9 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 */
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_UPDATE |
 				  HAMMER2_CHAIN_MODIFIED)) == 0);
-	hammer2_chain_drop_data(chain, 1);
-
-	KKASSERT(chain->dio == NULL);
+	dio = hammer2_chain_drop_data(chain, 1);
+	if (dio)
+		hammer2_io_bqrelse(&dio);
 
 	/*
 	 * Once chain resources are gone we can use the now dead chain
@@ -660,21 +696,27 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 /*
  * On either last lock release or last drop
  */
-static void
+static hammer2_io_t *
 hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 {
-	/*hammer2_dev_t *hmp = chain->hmp;*/
+	hammer2_io_t *dio;
 
-	switch(chain->bref.type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		if (lastdrop)
-			chain->data = NULL;
-		break;
-	default:
-		KKASSERT(chain->data == NULL);
-		break;
+	if ((dio = chain->dio) != NULL) {
+		chain->dio = NULL;
+		chain->data = NULL;
+	} else {
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_VOLUME:
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			if (lastdrop)
+				chain->data = NULL;
+			break;
+		default:
+			KKASSERT(chain->data == NULL);
+			break;
+		}
 	}
+	return dio;
 }
 
 /*
@@ -899,10 +941,12 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 * elements if the physical block size matches the request.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
-		error = hammer2_io_new(hmp, bref->data_off, chain->bytes,
-					&chain->dio);
+		error = hammer2_io_new(hmp, bref->type,
+				       bref->data_off, chain->bytes,
+				       &chain->dio);
 	} else {
-		error = hammer2_io_bread(hmp, bref->data_off, chain->bytes,
+		error = hammer2_io_bread(hmp, bref->type,
+					 bref->data_off, chain->bytes,
 					 &chain->dio);
 		hammer2_adjreadcounter(&chain->bref, chain->bytes);
 	}
@@ -1020,14 +1064,18 @@ done:
 /*
  * Unlock and deref a chain element.
  *
- * On the last lock release any non-embedded data (chain->dio) will be
- * retired.
+ * NOTE: Any associated dio is retained until lastdrop.  Also remember that
+ *	 the presence of children under chain prevent the chain's destruction
+ *	 but do not add additional references, so the dio will still be
+ *	 dropped.
  */
 void
 hammer2_chain_unlock(hammer2_chain_t *chain)
 {
+#if 0
 	hammer2_mtx_state_t ostate;
 	long *counterp;
+#endif
 	u_int lockcnt;
 
 	--curthread->td_tracker;
@@ -1054,6 +1102,8 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		/* retry */
 	}
 
+#if 0
+	/* XXX REMOVED, OLD CODE THAT DROPPED DIO */
 	/*
 	 * On the 1->0 transition we upgrade the core lock (if necessary)
 	 * to exclusive for terminal processing.  If after upgrading we find
@@ -1080,8 +1130,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 * dirty.
 	 */
 	if (chain->dio == NULL) {
-		if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
-			hammer2_chain_drop_data(chain, 0);
 		hammer2_mtx_unlock(&chain->lock);
 		return;
 	}
@@ -1119,6 +1167,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 */
 	chain->data = NULL;
 	hammer2_io_bqrelse(&chain->dio);
+#endif
 	hammer2_mtx_unlock(&chain->lock);
 }
 
@@ -1508,10 +1557,12 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		KKASSERT(chain != &hmp->vchain && chain != &hmp->fchain);
 
 		if (wasinitial && dedup_off == 0) {
-			error = hammer2_io_new(hmp, chain->bref.data_off,
+			error = hammer2_io_new(hmp, chain->bref.type,
+					       chain->bref.data_off,
 					       chain->bytes, &dio);
 		} else {
-			error = hammer2_io_bread(hmp, chain->bref.data_off,
+			error = hammer2_io_bread(hmp, chain->bref.type,
+						 chain->bref.data_off,
 						 chain->bytes, &dio);
 		}
 		hammer2_adjreadcounter(&chain->bref, chain->bytes);
@@ -2044,8 +2095,11 @@ again:
 		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 			base = NULL;
 		} else {
-			if (parent->data == NULL)
-				panic("parent->data is NULL");
+			if (parent->data == NULL) {
+				kprintf("parent->data is NULL %p\n", parent);
+				while (1)
+					tsleep(parent, 0, "xxx", 0);
+			}
 			base = &parent->data->npdata[0];
 		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);

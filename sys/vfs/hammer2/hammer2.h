@@ -270,6 +270,7 @@ struct hammer2_iocb {
 	int			lsize;
 	uint32_t		flags;
 	int			error;
+	int			btype;
 };
 
 typedef struct hammer2_iocb hammer2_iocb_t;
@@ -300,7 +301,8 @@ struct hammer2_io {
 	off_t		pbase;
 	int		psize;
 	int		refs;
-	int		act;			/* activity */
+	int		act;		/* activity */
+	int		btype;		/* approximate BREF_TYPE_* */
 };
 
 typedef struct hammer2_io hammer2_io_t;
@@ -331,6 +333,7 @@ struct hammer2_chain {
 	u_int		refs;
 	u_int		lockcnt;
 	int		error;			/* on-lock data error state */
+	int		unused01;
 
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
@@ -1502,13 +1505,13 @@ void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 void hammer2_io_complete(hammer2_iocb_t *iocb);
 void hammer2_io_callback(struct bio *bio);
 void hammer2_iocb_wait(hammer2_iocb_t *iocb);
-int hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
+int hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_newnz(hammer2_dev_t *hmp, off_t lbase, int lsize,
+int hammer2_io_newnz(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_newq(hammer2_dev_t *hmp, off_t lbase, int lsize,
+int hammer2_io_newq(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_bread(hammer2_dev_t *hmp, off_t lbase, int lsize,
+int hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 void hammer2_io_bawrite(hammer2_io_t **diop);
 void hammer2_io_bdwrite(hammer2_io_t **diop);

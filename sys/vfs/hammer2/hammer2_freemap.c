@@ -646,6 +646,7 @@ success:
 
 		if ((bmap->bitmapq[i] & pbmmask) == 0) {
 			error = hammer2_io_newq(hmp,
+						HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 						(*basep + (offset & ~pmask)) |
 						 pradix,
 						psize, &dio);

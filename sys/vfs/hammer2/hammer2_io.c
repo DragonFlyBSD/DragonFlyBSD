@@ -42,6 +42,7 @@
  *
  */
 static int hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg);
+static void dio_write_stats_update(hammer2_io_t *dio);
 
 static int
 hammer2_io_cmp(hammer2_io_t *io1, hammer2_io_t *io2)
@@ -134,6 +135,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 		dio->hmp = hmp;
 		dio->pbase = pbase;
 		dio->psize = psize;
+		dio->btype = iocb->btype;
 		dio->refs = 1;
 		hammer2_spin_init(&dio->spin, "h2dio");
 		TAILQ_INIT(&dio->iocbq);
@@ -548,6 +550,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		if (orefs & HAMMER2_DIO_DIRTY) {
 			int hce;
 
+			dio_write_stats_update(dio);
 			if ((hce = hammer2_cluster_enable) > 0) {
 				peof = (pbase + HAMMER2_SEGMASK64) &
 				       ~HAMMER2_SEGMASK64;
@@ -563,6 +566,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		}
 	} else if (bp) {
 		if (orefs & HAMMER2_DIO_DIRTY) {
+			dio_write_stats_update(dio);
 			bdwrite(bp);
 		} else {
 			brelse(bp);
@@ -786,10 +790,12 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 				 * QUEUE ASYNC I/O, IOCB IS NOT YET COMPLETE.
 				 */
 				if (dio->bp) {
-					if (dio->refs & HAMMER2_DIO_DIRTY)
+					if (dio->refs & HAMMER2_DIO_DIRTY) {
+						dio_write_stats_update(dio);
 						bdwrite(dio->bp);
-					else
+					} else {
 						bqrelse(dio->bp);
+					}
 					dio->bp = NULL;
 				}
 				atomic_set_int(&iocb->flags, HAMMER2_IOCB_READ);
@@ -810,7 +816,7 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 
 static
 int
-_hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
+_hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	        hammer2_io_t **diop, int flags)
 {
 	hammer2_iocb_t iocb;
@@ -823,6 +829,7 @@ _hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	iocb.lbase = lbase;
 	iocb.lsize = lsize;
 	iocb.flags = flags;
+	iocb.btype = btype;
 	iocb.error = 0;
 	hammer2_io_getblk(hmp, lbase, lsize, &iocb);
 	if ((iocb.flags & HAMMER2_IOCB_DONE) == 0)
@@ -833,24 +840,26 @@ _hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
 }
 
 int
-hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
+hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	       hammer2_io_t **diop)
 {
-	return(_hammer2_io_new(hmp, lbase, lsize, diop, HAMMER2_IOCB_ZERO));
+	return(_hammer2_io_new(hmp, btype, lbase, lsize,
+			       diop, HAMMER2_IOCB_ZERO));
 }
 
 int
-hammer2_io_newnz(hammer2_dev_t *hmp, off_t lbase, int lsize,
-	       hammer2_io_t **diop)
+hammer2_io_newnz(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
+		 hammer2_io_t **diop)
 {
-	return(_hammer2_io_new(hmp, lbase, lsize, diop, 0));
+	return(_hammer2_io_new(hmp, btype, lbase, lsize, diop, 0));
 }
 
 int
-hammer2_io_newq(hammer2_dev_t *hmp, off_t lbase, int lsize,
-	       hammer2_io_t **diop)
+hammer2_io_newq(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
+		hammer2_io_t **diop)
 {
-	return(_hammer2_io_new(hmp, lbase, lsize, diop, HAMMER2_IOCB_QUICK));
+	return(_hammer2_io_new(hmp, btype, lbase, lsize,
+			       diop, HAMMER2_IOCB_QUICK));
 }
 
 static
@@ -911,7 +920,7 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 }
 
 int
-hammer2_io_bread(hammer2_dev_t *hmp, off_t lbase, int lsize,
+hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 		hammer2_io_t **diop)
 {
 	hammer2_iocb_t iocb;
@@ -923,6 +932,7 @@ hammer2_io_bread(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	iocb.ptr = NULL;
 	iocb.lbase = lbase;
 	iocb.lsize = lsize;
+	iocb.btype = btype;
 	iocb.flags = 0;
 	iocb.error = 0;
 	hammer2_io_getblk(hmp, lbase, lsize, &iocb);
@@ -1006,4 +1016,33 @@ int
 hammer2_io_isdirty(hammer2_io_t *dio)
 {
 	return((dio->refs & HAMMER2_DIO_DIRTY) != 0);
+}
+
+static
+void
+dio_write_stats_update(hammer2_io_t *dio)
+{
+	long *counterp;
+
+	switch(dio->btype) {
+	case 0:
+		return;
+	case HAMMER2_BREF_TYPE_DATA:
+		counterp = &hammer2_iod_file_write;
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		counterp = &hammer2_iod_meta_write;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		counterp = &hammer2_iod_indr_write;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		counterp = &hammer2_iod_fmap_write;
+		break;
+	default:
+		counterp = &hammer2_iod_volu_write;
+		break;
+	}
+	*counterp += dio->psize;
 }

@@ -982,6 +982,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 			 * if possible.
 			 */
 			*errorp = hammer2_io_newnz(chain->hmp,
+						   chain->bref.type,
 						   chain->bref.data_off,
 						   chain->bytes,
 						   &dio);
@@ -1189,6 +1190,7 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		error = hammer2_io_newnz(chain->hmp,
+					 chain->bref.type,
 					 chain->bref.data_off,
 					 chain->bytes, &dio);
 		if (error) {
