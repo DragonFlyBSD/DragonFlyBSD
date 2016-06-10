@@ -904,6 +904,7 @@ iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
 
 	dma->tag = NULL;
 	dma->size = size;
+	dma->vaddr = NULL;
 
 #if defined(__DragonFly__)
 	error = bus_dma_tag_create(tag, alignment,
@@ -928,8 +929,11 @@ iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
 
         error = bus_dmamap_load(dma->tag, dma->map, dma->vaddr, size,
             iwm_dma_map_addr, &dma->paddr, BUS_DMA_NOWAIT);
-        if (error != 0)
-                goto fail;
+        if (error != 0) {
+		bus_dmamem_free(dma->tag, dma->vaddr, dma->map);
+		dma->vaddr = NULL;
+		goto fail;
+	}
 
 	bus_dmamap_sync(dma->tag, dma->map, BUS_DMASYNC_PREWRITE);
 
@@ -944,22 +948,17 @@ fail:
 static void
 iwm_dma_contig_free(struct iwm_dma_info *dma)
 {
-	if (dma->map != NULL) {
-		if (dma->vaddr != NULL) {
-			bus_dmamap_sync(dma->tag, dma->map,
-			    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
-			bus_dmamap_unload(dma->tag, dma->map);
-			bus_dmamem_free(dma->tag, dma->vaddr, dma->map);
-			dma->vaddr = NULL;
-		}
-		bus_dmamap_destroy(dma->tag, dma->map);
-		dma->map = NULL;
+	if (dma->vaddr != NULL) {
+		bus_dmamap_sync(dma->tag, dma->map,
+		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
+		bus_dmamap_unload(dma->tag, dma->map);
+		bus_dmamem_free(dma->tag, dma->vaddr, dma->map);
+		dma->vaddr = NULL;
 	}
 	if (dma->tag != NULL) {
 		bus_dma_tag_destroy(dma->tag);
 		dma->tag = NULL;
 	}
-
 }
 
 /* fwmem is used to load firmware onto the card */
