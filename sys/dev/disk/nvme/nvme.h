@@ -284,7 +284,7 @@ nvme_request_t *nvme_get_admin_request(nvme_softc_t *sc, uint8_t opcode);
 nvme_request_t *nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 			char *kva, size_t bytes);
 void nvme_submit_request(nvme_request_t *req);
-int nvme_wait_request(nvme_request_t *req);
+int nvme_wait_request(nvme_request_t *req, int ticks);
 void nvme_put_request(nvme_request_t *req);
 void nvme_poll_completions(nvme_comqueue_t *queue, struct lock *lk);
 

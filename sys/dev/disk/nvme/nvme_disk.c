@@ -41,12 +41,14 @@ static d_open_t nvme_open;
 static d_close_t nvme_close;
 static d_ioctl_t nvme_ioctl;
 static d_strategy_t nvme_strategy;
+static d_dump_t nvme_dump;
 
 static struct dev_ops nvme_ops = {
 	{ "nvme", 0, D_DISK | D_MPSAFE | D_CANFREE | D_TRACKCLOSE},
 	.d_open =       nvme_open,
 	.d_close =      nvme_close,
 	.d_read =       physread,
+	.d_dump =       nvme_dump,
 	.d_write =      physwrite,
 	.d_ioctl =      nvme_ioctl,
 	.d_strategy =   nvme_strategy,
@@ -385,4 +387,69 @@ nvme_alloc_disk_unit(void)
 	unit = atomic_fetchadd_int(&unit_counter, 1);
 
 	return unit;
+}
+
+static int
+nvme_dump(struct dev_dump_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	nvme_softns_t *nsc = dev->si_drv1;
+	nvme_softc_t *sc = nsc->sc;
+	uint64_t nlba;
+	uint64_t secno;
+	nvme_subqueue_t *subq;
+	nvme_comqueue_t *comq;
+	nvme_request_t *req;
+
+	/*
+	 * Calculate sector/extent
+	 */
+	secno = ap->a_offset / nsc->blksize;
+	nlba = ap->a_length / nsc->blksize;
+
+	subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WR]];
+
+	if (nlba) {
+		/*
+		 * Issue a WRITE
+		 *
+		 * get_request does not need the subq lock.
+		 */
+		req = nvme_get_request(subq, NVME_IOCMD_WRITE,
+				       ap->a_virtual, nlba * nsc->blksize);
+		req->cmd.write.head.nsid = nsc->nsid;
+		req->cmd.write.start_lba = secno;
+		req->cmd.write.count_lba = nlba - 1;	/* 0's based */
+	} else {
+		/*
+		 * Issue a FLUSH
+		 *
+		 * get_request does not need the subq lock.
+		 */
+		req = nvme_get_request(subq, NVME_IOCMD_FLUSH, NULL, 0);
+		req->cmd.flush.head.nsid = nsc->nsid;
+	}
+
+	/*
+	 * Prevent callback from occurring if the synchronous
+	 * delay optimization is enabled.
+	 */
+	req->callback = NULL;
+	req->nsc = nsc;
+	lockmgr(&subq->lk, LK_EXCLUSIVE);
+	nvme_submit_request(req);	/* needs subq lock */
+	lockmgr(&subq->lk, LK_RELEASE);
+
+	comq = req->comq;
+	nvme_wait_request(req, 1);
+	nvme_put_request(req);			/* does not need subq lock */
+
+	/*
+	 * Shut the nvme controller down nicely when we finish the dump.
+	 */
+	if (nlba == 0)
+		nvme_issue_shutdown(sc);
+
+
+	return 0;
 }

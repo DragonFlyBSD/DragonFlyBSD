@@ -435,7 +435,7 @@ nvme_submit_request(nvme_request_t *req)
  * sleeps, else pass NULL.
  */
 int
-nvme_wait_request(nvme_request_t *req)
+nvme_wait_request(nvme_request_t *req, int ticks)
 {
 	struct lock *lk;
 	int code;
@@ -629,7 +629,7 @@ nvme_create_subqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.crsub.comq_id = subq->comqid;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req);
+	status = nvme_wait_request(req, hz);
 	nvme_put_request(req);
 
 	return status;
@@ -672,7 +672,7 @@ nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.crcom.flags = NVME_CREATECOM_PC | NVME_CREATECOM_IEN;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req);
+	status = nvme_wait_request(req, hz);
 	nvme_put_request(req);
 
 	return status;
@@ -693,7 +693,7 @@ nvme_delete_subqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.delete.qid = qid;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req);
+	status = nvme_wait_request(req, hz);
 	nvme_put_request(req);
 
 	return status;
@@ -715,7 +715,7 @@ nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.delete.qid = qid;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req);
+	status = nvme_wait_request(req, hz);
 	nvme_put_request(req);
 
 	if (qid && sc->nirqs > 1) {
