@@ -352,7 +352,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		}
 	}
  out:
-	if (cmd && paylen > sizeof(cmd->data) && txdata != NULL)
+	if (cmd && paylen > datasz && txdata != NULL)
 		bus_dmamem_free(ring->data_dmat, cmd, txdata->map);
 	if (wantresp && error != 0) {
 		iwm_free_resp(sc, hcmd);
