@@ -333,7 +333,7 @@ struct hammer2_chain {
 	u_int		refs;
 	u_int		lockcnt;
 	int		error;			/* on-lock data error state */
-	int		unused01;
+	int		persist_refs;		/* (aka ip->cluster) */
 
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
@@ -707,6 +707,7 @@ RB_HEAD(hammer2_inode_tree, hammer2_inode);
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
 	hammer2_mtx_t		lock;		/* inode lock */
+	hammer2_mtx_t		truncate_lock;	/* prevent truncates */
 	struct hammer2_pfs	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;

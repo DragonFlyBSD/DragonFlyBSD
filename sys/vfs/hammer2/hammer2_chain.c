@@ -1064,18 +1064,13 @@ done:
 /*
  * Unlock and deref a chain element.
  *
- * NOTE: Any associated dio is retained until lastdrop.  Also remember that
- *	 the presence of children under chain prevent the chain's destruction
- *	 but do not add additional references, so the dio will still be
- *	 dropped.
+ * Remember that the presence of children under chain prevent the chain's
+ * destruction but do not add additional references, so the dio will still
+ * be dropped.
  */
 void
 hammer2_chain_unlock(hammer2_chain_t *chain)
 {
-#if 0
-	hammer2_mtx_state_t ostate;
-	long *counterp;
-#endif
 	u_int lockcnt;
 
 	--curthread->td_tracker;
@@ -1102,72 +1097,25 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		/* retry */
 	}
 
-#if 0
-	/* XXX REMOVED, OLD CODE THAT DROPPED DIO */
 	/*
-	 * On the 1->0 transition we upgrade the core lock (if necessary)
-	 * to exclusive for terminal processing.  If after upgrading we find
-	 * that lockcnt is non-zero, another thread is racing us and will
-	 * handle the unload for us later on, so just cleanup and return
-	 * leaving the data/io intact
+	 * Normally we want to disassociate the data on the last unlock,
+	 * but leave it intact if persist_refs is non-zero.  The persist-data
+	 * user modifies persist_refs only while holding the chain locked
+	 * so there should be no race on the last unlock here.
 	 *
-	 * Otherwise if lockcnt is still 0 it is possible for it to become
-	 * non-zero and race, but since we hold the core->lock exclusively
-	 * all that will happen is that the chain will be reloaded after we
-	 * unload it.
+	 * NOTE: If this was a shared lock we have to temporarily upgrade it
+	 *	 to prevent data load races.
 	 */
-	ostate = hammer2_mtx_upgrade(&chain->lock);
-	if (chain->lockcnt) {
-		hammer2_mtx_unlock(&chain->lock);
-		return;
-	}
+	if (chain->persist_refs == 0) {
+		hammer2_io_t *dio;
 
-	/*
-	 * Shortcut the case if the data is embedded or not resolved.
-	 * Only drop non-DIO-based data if the chain is not modified.
-	 *
-	 * Do NOT NULL out chain->data (e.g. inode data), it might be
-	 * dirty.
-	 */
-	if (chain->dio == NULL) {
-		hammer2_mtx_unlock(&chain->lock);
-		return;
-	}
-
-	/*
-	 * Statistics
-	 */
-	if (hammer2_io_isdirty(chain->dio)) {
-		switch(chain->bref.type) {
-		case HAMMER2_BREF_TYPE_DATA:
-			counterp = &hammer2_iod_file_write;
-			break;
-		case HAMMER2_BREF_TYPE_INODE:
-			counterp = &hammer2_iod_meta_write;
-			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-			counterp = &hammer2_iod_indr_write;
-			break;
-		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-			counterp = &hammer2_iod_fmap_write;
-			break;
-		default:
-			counterp = &hammer2_iod_volu_write;
-			break;
+		hammer2_mtx_upgrade(&chain->lock);
+		if (chain->lockcnt == 0) {
+			dio = hammer2_chain_drop_data(chain, 0);
+			if (dio)
+				hammer2_io_bqrelse(&dio);
 		}
-		*counterp += chain->bytes;
 	}
-
-	/*
-	 * Clean out the dio.
-	 *
-	 * NOTE: Freemap leaf's use reserved blocks and thus no aliasing
-	 *	 is possible.
-	 */
-	chain->data = NULL;
-	hammer2_io_bqrelse(&chain->dio);
-#endif
 	hammer2_mtx_unlock(&chain->lock);
 }
 

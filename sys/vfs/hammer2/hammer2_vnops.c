@@ -426,7 +426,9 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			if (vap->va_size == ip->meta.size)
 				break;
 			if (vap->va_size < ip->meta.size) {
+				hammer2_mtx_ex(&ip->truncate_lock);
 				hammer2_truncate_file(ip, vap->va_size);
+				hammer2_mtx_unlock(&ip->truncate_lock);
 			} else {
 				hammer2_extend_file(ip, vap->va_size);
 			}
@@ -782,6 +784,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 	 *	    vnode level.
 	 */
 	hammer2_mtx_sh(&ip->lock);
+	hammer2_mtx_sh(&ip->truncate_lock);
 	size = ip->meta.size;
 	hammer2_mtx_unlock(&ip->lock);
 
@@ -811,6 +814,8 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 		uiomove((char *)bp->b_data + loff, n, uio);
 		bqrelse(bp);
 	}
+	hammer2_mtx_unlock(&ip->truncate_lock);
+
 	return (error);
 }
 
@@ -839,6 +844,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 *	    vnode level.
 	 */
 	hammer2_mtx_ex(&ip->lock);
+	hammer2_mtx_sh(&ip->truncate_lock);
 	if (ioflag & IO_APPEND)
 		uio->uio_offset = ip->meta.size;
 	old_eof = ip->meta.size;
@@ -1001,7 +1007,9 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 * the entire write is a failure and we have to back-up.
 	 */
 	if (error && new_eof != old_eof) {
+		hammer2_mtx_unlock(&ip->truncate_lock);
 		hammer2_mtx_ex(&ip->lock);
+		hammer2_mtx_ex(&ip->truncate_lock);
 		hammer2_truncate_file(ip, old_eof);
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
 			hammer2_inode_chain_sync(ip);
@@ -1016,6 +1024,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		hammer2_knote(ip->vp, kflags);
 	}
 	hammer2_trans_assert_strategy(ip->pmp);
+	hammer2_mtx_unlock(&ip->truncate_lock);
 
 	return error;
 }
