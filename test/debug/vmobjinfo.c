@@ -65,6 +65,7 @@
 #include <kvm.h>
 #include <nlist.h>
 #include <getopt.h>
+#include <ctype.h>
 
 TAILQ_HEAD(object_q, vm_object);
 

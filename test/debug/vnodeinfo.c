@@ -61,7 +61,6 @@
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
-#include <vfs/dirfs/dirfs.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,7 +80,6 @@ struct nlist Nl[] = {
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static struct mount *dumpmount(kvm_t *kd, struct mount *mp);
 static struct vnode *dumpvp(kvm_t *kd, struct vnode *vp, int whichlist, char *vfc_name);
-static void dump_dirfs_node(kvm_t *kd, void *arg);
 static void dumpbufs(kvm_t *kd, void *bufp, const char *id);
 static void dumplocks(kvm_t *kd, struct lockf *lockf);
 static void dumplockinfo(kvm_t *kd, struct lockf_range *item);
@@ -92,7 +90,6 @@ static const struct dump_private_data {
 	char vfc_name[MFSNAMELEN];
 	void (*dumpfn)(kvm_t *, void *);
 } dumplist[] = {
-	{ "dirfs", dump_dirfs_node },
 	{ "", NULL }
 };
 
@@ -226,51 +223,6 @@ vtype(enum vtype type)
     }
     snprintf(buf, sizeof(buf), "%d", (int)type);
     return(buf);
-}
-
-static
-void dump_dirfs_node(kvm_t *kd, void *arg)
-{
-	dirfs_node_t dnp = (dirfs_node_t)arg;
-	struct dirfs_node dn;
-	char *name = NULL;
-	char strfd[16] = {0};
-
-	/* No garbage allowed */
-	bzero(&dn, sizeof(dn));
-
-	/*
-	 * Attempt to read in the address of the dnp and also
-	 * its name if there is any.
-	 */
-	kkread(kd, (u_long)dnp, &dn, sizeof(dn));
-	if (dn.dn_name != NULL) {
-		name = dn.dn_name;
-		dn.dn_name = calloc(1, MAXPATHLEN);
-		kkread(kd, (u_long)name, dn.dn_name, dn.dn_namelen);
-	}
-	printf("\tDIRFS\n");
-	printf("\t\tdn_name=%s mode=%u flags=%08x refs=%d ",
-	    (dn.dn_name ? dn.dn_name : "NULL"), dn.dn_mode, dn.dn_flags,
-	    dn.dn_refcnt);
-
-	printf("state=");
-	if (dn.dn_state & DIRFS_ROOT)
-		printf("DIRFS_ROOT ");
-
-	if (dn.dn_fd == -1)
-		sprintf(strfd, "%s", "NOFD");
-	else
-		sprintf(strfd, "%d", dn.dn_fd);
-
-	printf("\n\t\tuid=%u gid=%u objtype=%s nlinks=%d dn_fd=%s\n", dn.dn_uid,
-	       dn.dn_gid, vtype(dn.dn_type), dn.dn_links, strfd);
-	printf("\t\tsize=%jd ctime=%ju atime=%ju mtime=%ju\n\n",
-	       dn.dn_size, (intmax_t)dn.dn_ctime,
-	       (uintmax_t)dn.dn_atime, (uintmax_t)dn.dn_mtime);
-
-	if (dn.dn_name)
-		free(dn.dn_name);
 }
 
 static struct vnode *
