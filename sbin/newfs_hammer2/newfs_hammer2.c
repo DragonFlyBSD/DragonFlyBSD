@@ -190,7 +190,7 @@ main(int ac, char **av)
 			if (Hammer2Version >= HAMMER2_VOL_VERSION_WIP) {
 				Hammer2Version = HAMMER2_VOL_VERSION_WIP - 1;
 				fprintf(stderr,
-					"newfs_hammer: WARNING: HAMMER2 VFS "
+					"newfs_hammer2: WARNING: HAMMER2 VFS "
 					"supports higher version than I "
 					"understand,\n"
 					"using version %d\n",
@@ -198,7 +198,7 @@ main(int ac, char **av)
 			}
 		} else {
 			fprintf(stderr,
-				"newfs_hammer: WARNING: HAMMER2 VFS not "
+				"newfs_hammer2: WARNING: HAMMER2 VFS not "
 				"loaded, cannot get version info.\n"
 				"Using version %d\n",
 				HAMMER2_VOL_VERSION_DEFAULT);
@@ -332,7 +332,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"usage: newfs_hammer -L label [-f] [-b bootsize] "
+		"usage: newfs_hammer2 -L label [-f] [-b bootsize] "
 		"[-r redosize] [-V version] special ...\n"
 	);
 	exit(1);
@@ -465,7 +465,7 @@ check_volume(const char *path, int *fdp)
 		 * can be as small as HAMMER2_LOGSIZE (16KB).
 		 */
 		if (pinfo.reserved_blocks) {
-			errx(1, "HAMMER cannot be placed in a partition "
+			errx(1, "HAMMER2 cannot be placed in a partition "
 				"which overlaps the disklabel or MBR");
 		}
 		if (pinfo.media_blksize > HAMMER2_PBUFSIZE ||
