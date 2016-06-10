@@ -254,7 +254,9 @@ static int	iwm_firmware_store_section(struct iwm_softc *,
 static int	iwm_set_default_calib(struct iwm_softc *, const void *);
 static void	iwm_fw_info_free(struct iwm_fw_info *);
 static int	iwm_read_firmware(struct iwm_softc *, enum iwm_ucode_type);
+#if !defined(__DragonFly__)
 static void	iwm_dma_map_addr(void *, bus_dma_segment_t *, int, int);
+#endif
 static int	iwm_dma_contig_alloc(bus_dma_tag_t, struct iwm_dma_info *,
                                      bus_size_t, bus_size_t);
 static void	iwm_dma_contig_free(struct iwm_dma_info *);
@@ -887,6 +889,7 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
  * DMA resource routines
  */
 
+#if !defined(__DragonFly__)
 static void
 iwm_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 {
@@ -895,6 +898,7 @@ iwm_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 	KASSERT(nsegs == 1, ("too many DMA segments, %d should be 1", nsegs));
 	*(bus_addr_t *)arg = segs[0].ds_addr;
 }
+#endif
 
 static int
 iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
@@ -903,22 +907,27 @@ iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
 	int error;
 
 	dma->tag = NULL;
+	dma->map = NULL;
 	dma->size = size;
 	dma->vaddr = NULL;
 
 #if defined(__DragonFly__)
-	error = bus_dma_tag_create(tag, alignment,
-				   0,
-				   BUS_SPACE_MAXADDR_32BIT,
-				   BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   size, 1, size,
-				   BUS_DMA_NOWAIT, &dma->tag);
+	bus_dmamem_t dmem;
+	error = bus_dmamem_coherent(tag, alignment, 0,
+				    BUS_SPACE_MAXADDR_32BIT,
+				    BUS_SPACE_MAXADDR,
+				    size, BUS_DMA_NOWAIT, &dmem);
+	if (error != 0)
+		goto fail;
+
+	dma->tag = dmem.dmem_tag;
+	dma->map = dmem.dmem_map;
+	dma->vaddr = dmem.dmem_addr;
+	dma->paddr = dmem.dmem_busaddr;
 #else
 	error = bus_dma_tag_create(tag, alignment,
             0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, size,
             1, size, 0, NULL, NULL, &dma->tag);
-#endif
         if (error != 0)
                 goto fail;
 
@@ -934,6 +943,7 @@ iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
 		dma->vaddr = NULL;
 		goto fail;
 	}
+#endif
 
 	bus_dmamap_sync(dma->tag, dma->map, BUS_DMASYNC_PREWRITE);
 
@@ -2834,18 +2844,22 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 	struct iwm_rx_data *data = &ring->data[idx];
 	struct mbuf *m;
 	bus_dmamap_t dmamap = NULL;
-	int error;
-	bus_addr_t paddr;
+	bus_dma_segment_t seg;
+	int nsegs, error;
 
 	m = m_getjcl(M_NOWAIT, MT_DATA, M_PKTHDR, IWM_RBUF_SIZE);
 	if (m == NULL)
 		return ENOBUFS;
 
 	m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
-	error = bus_dmamap_load(ring->data_dmat, ring->spare_map,
-	    mtod(m, void *), IWM_RBUF_SIZE, iwm_dma_map_addr,
-	    &paddr, BUS_DMA_NOWAIT);
-	if (error != 0 && error != EFBIG) {
+#if defined(__DragonFly__)
+	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, ring->spare_map,
+	    m, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
+#else
+	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, ring->spare_map, m,
+	    &seg, &nsegs, BUS_DMA_NOWAIT);
+#endif
+	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: can't map mbuf, error %d\n", __func__, error);
 		goto fail;
@@ -2863,8 +2877,8 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 	data->m = m;
 
 	/* Update RX descriptor. */
-	KKASSERT((paddr & 255) == 0);
-	ring->desc[idx] = htole32(paddr >> 8);
+	KKASSERT((seg.ds_addr & 255) == 0);
+	ring->desc[idx] = htole32(seg.ds_addr >> 8);
 	bus_dmamap_sync(ring->desc_dma.tag, ring->desc_dma.map,
 	    BUS_DMASYNC_PREWRITE);
 
@@ -3361,10 +3375,12 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	struct iwm_tx_cmd *tx;
 	struct ieee80211_frame *wh;
 	struct ieee80211_key *k = NULL;
+#if !defined(__DragonFly__)
+	struct mbuf *m1;
+#endif
 	const struct iwm_rate *rinfo;
 	uint32_t flags;
 	u_int hdrlen;
-	struct mbuf *m_defragged;
 	bus_dma_segment_t *seg, segs[IWM_MAX_SCATTER];
 	int nsegs;
 	uint8_t tid, type;
@@ -3476,7 +3492,7 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	/* Trim 802.11 header. */
 	m_adj(m, hdrlen);
 #if defined(__DragonFly__)
-	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map, m,
+	error = bus_dmamap_load_mbuf_defrag(ring->data_dmat, data->map, &m,
 					    segs, IWM_MAX_SCATTER - 2,
 					    &nsegs, BUS_DMA_NOWAIT);
 #else
@@ -3484,6 +3500,12 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	    segs, &nsegs, BUS_DMA_NOWAIT);
 #endif
 	if (error != 0) {
+#if defined(__DragonFly__)
+		device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
+		    error);
+		m_freem(m);
+		return error;
+#else
 		if (error != EFBIG) {
 			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 			    error);
@@ -3491,29 +3513,24 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 			return error;
 		}
 		/* Too many DMA segments, linearize mbuf. */
-		m_defragged = m_defrag(m, M_NOWAIT);
-		if (m_defragged == NULL) {
+		m1 = m_collapse(m, M_NOWAIT, IWM_MAX_SCATTER - 2);
+		if (m1 == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not defrag mbuf\n", __func__);
 			m_freem(m);
 			return (ENOBUFS);
 		}
-		m = m_defragged;
+		m = m1;
 
-#if defined(__DragonFly__)
-		error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map, m,
-						    segs, IWM_MAX_SCATTER - 2,
-						    &nsegs, BUS_DMA_NOWAIT);
-#else
 		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m,
 		    segs, &nsegs, BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 			    error);
 			m_freem(m);
 			return error;
 		}
+#endif
 	}
 	data->m = m;
 	data->in = in;
