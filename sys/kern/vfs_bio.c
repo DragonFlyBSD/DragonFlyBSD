@@ -2921,9 +2921,11 @@ loop:
 		 * as well.
 		 */
 		if (bp->b_vp != vp || bp->b_loffset != loffset) {
+#if 0
 			kprintf("Warning buffer %p (vp %p loffset %lld) "
 				"was recycled\n",
 				bp, vp, (long long)loffset);
+#endif
 			BUF_UNLOCK(bp);
 			goto loop;
 		}

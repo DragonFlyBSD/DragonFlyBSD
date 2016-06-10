@@ -624,6 +624,7 @@ static int vfsync_bp(struct buf *bp, void *data);
 
 struct vfsync_info {
 	struct vnode *vp;
+	int fastpass;
 	int synchronous;
 	int syncdeps;
 	int lazycount;
@@ -690,8 +691,10 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 		 * all the dependancies flushed.
 		 */
 		info.cmpfunc = vfsync_data_only_cmp;
+		info.fastpass = 1;
 		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, vfsync_data_only_cmp,
 			vfsync_bp, &info);
+		info.fastpass = 0;
 		error = vfsync_wait_output(vp, waitoutput);
 		if (error == 0) {
 			info.skippedbufs = 0;
@@ -701,12 +704,15 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 			error = vfsync_wait_output(vp, waitoutput);
 			if (info.skippedbufs) {
 				kprintf("Warning: vfsync skipped %d dirty "
-					"bufs in pass2!\n", info.skippedbufs);
+					"buf%s in pass2!\n",
+					info.skippedbufs,
+					((info.skippedbufs > 1) ? "s" : ""));
 			}
 		}
 		while (error == 0 && passes > 0 &&
 		       !RB_EMPTY(&vp->v_rbdirty_tree)
 		) {
+			info.skippedbufs = 0;
 			if (--passes == 0) {
 				info.synchronous = 1;
 				info.syncdeps = 1;
@@ -719,10 +725,19 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 			info.syncdeps = 1;
 			if (error == 0)
 				error = vfsync_wait_output(vp, waitoutput);
+			if (info.skippedbufs && passes == 0) {
+				kprintf("Warning: vfsync skipped %d dirty "
+					"buf%s in final pass!\n",
+					info.skippedbufs,
+					((info.skippedbufs > 1) ? "s" : ""));
+			}
 		}
+		if (!RB_EMPTY(&vp->v_rbdirty_tree))
+			kprintf("dirty bufs left after final pass\n");
 		break;
 	}
 	lwkt_reltoken(&vp->v_token);
+
 	return(error);
 }
 
@@ -777,12 +792,34 @@ vfsync_bp(struct buf *bp, void *data)
 	struct vnode *vp = info->vp;
 	int error;
 
-	/*
-	 * Ignore buffers that we cannot immediately lock.
-	 */
-	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-		++info->skippedbufs;
-		return(0);
+	if (info->fastpass) {
+		/*
+		 * Ignore buffers that we cannot immediately lock.
+		 */
+		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
+			if (BUF_TIMELOCK(bp, LK_EXCLUSIVE, "bflst1", 1)) {
+				++info->skippedbufs;
+				return(0);
+			}
+		}
+	} else if (info->synchronous == 0) {
+		/*
+		 * Normal pass, give the buffer a little time to become
+		 * available to us.
+		 */
+		if (BUF_TIMELOCK(bp, LK_EXCLUSIVE, "bflst2", hz / 10)) {
+			++info->skippedbufs;
+			return(0);
+		}
+	} else {
+		/*
+		 * Synchronous pass, give the buffer a lot of time before
+		 * giving up.
+		 */
+		if (BUF_TIMELOCK(bp, LK_EXCLUSIVE, "bflst3", hz * 10)) {
+			++info->skippedbufs;
+			return(0);
+		}
 	}
 
 	/*
