@@ -1335,11 +1335,11 @@ void hammer2_dev_unlock(hammer2_dev_t *hmp);
 
 int hammer2_get_dtype(const hammer2_inode_data_t *ipdata);
 int hammer2_get_vtype(uint8_t type);
-u_int8_t hammer2_get_obj_type(enum vtype vtype);
-void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
-u_int64_t hammer2_timespec_to_time(const struct timespec *ts);
-u_int32_t hammer2_to_unix_xid(const uuid_t *uuid);
-void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
+uint8_t hammer2_get_obj_type(enum vtype vtype);
+void hammer2_time_to_timespec(uint64_t xtime, struct timespec *ts);
+uint64_t hammer2_timespec_to_time(const struct timespec *ts);
+uint32_t hammer2_to_unix_xid(const uuid_t *uuid);
+void hammer2_guid_to_uuid(uuid_t *uuid, uint32_t guid);
 void hammer2_trans_manage_init(hammer2_pfs_t *pmp);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);

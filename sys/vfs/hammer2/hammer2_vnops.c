@@ -366,7 +366,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	error = 0;
 
 	if (vap->va_flags != VNOVAL) {
-		u_int32_t flags;
+		uint32_t flags;
 
 		flags = ip->meta.uflags;
 		error = vop_helper_setattr_flags(&flags, vap->va_flags,

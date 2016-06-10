@@ -136,7 +136,7 @@ hammer2_get_vtype(uint8_t type)
 	/* not reached */
 }
 
-u_int8_t
+uint8_t
 hammer2_get_obj_type(enum vtype vtype)
 {
 	switch(vtype) {
@@ -164,16 +164,16 @@ hammer2_get_obj_type(enum vtype vtype)
  * Convert a hammer2 64-bit time to a timespec.
  */
 void
-hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts)
+hammer2_time_to_timespec(uint64_t xtime, struct timespec *ts)
 {
 	ts->tv_sec = (unsigned long)(xtime / 1000000);
 	ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
 }
 
-u_int64_t
+uint64_t
 hammer2_timespec_to_time(const struct timespec *ts)
 {
-	u_int64_t xtime;
+	uint64_t xtime;
 
 	xtime = (unsigned)(ts->tv_nsec / 1000) +
 		(unsigned long)ts->tv_sec * 1000000ULL;
@@ -183,17 +183,17 @@ hammer2_timespec_to_time(const struct timespec *ts)
 /*
  * Convert a uuid to a unix uid or gid
  */
-u_int32_t
+uint32_t
 hammer2_to_unix_xid(const uuid_t *uuid)
 {
-	return(*(const u_int32_t *)&uuid->node[2]);
+	return(*(const uint32_t *)&uuid->node[2]);
 }
 
 void
-hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid)
+hammer2_guid_to_uuid(uuid_t *uuid, uint32_t guid)
 {
 	bzero(uuid, sizeof(*uuid));
-	*(u_int32_t *)&uuid->node[2] = guid;
+	*(uint32_t *)&uuid->node[2] = guid;
 }
 
 /*
