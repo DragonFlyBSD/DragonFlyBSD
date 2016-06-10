@@ -90,7 +90,7 @@ static void mount_callback1(const char *, hammer2_blockref_t *, int);
 static void mount_callback2(const char *, hammer2_blockref_t *, int);
 static void cmd_mountall_alarm(int signo);
 
-static int DidAlarm;
+static volatile sig_atomic_t DidAlarm;
 
 int
 cmd_mountall(int ac, const char **av)
