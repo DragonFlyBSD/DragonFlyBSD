@@ -1104,13 +1104,16 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 * so there should be no race on the last unlock here.
 	 *
 	 * NOTE: If this was a shared lock we have to temporarily upgrade it
-	 *	 to prevent data load races.
+	 *	 to prevent data load races.  We can only do this non-blocking,
+	 *	 and unlock/relock-excl can deadlock.  If the try fails it
+	 *	 means someone else got a shared or exclusive lock while we
+	 *	 we bandying about.
 	 */
 	if (chain->persist_refs == 0) {
 		hammer2_io_t *dio;
 
-		hammer2_mtx_upgrade(&chain->lock);
-		if (chain->lockcnt == 0) {
+		if (hammer2_mtx_upgrade_try(&chain->lock) == 0 &&
+		    chain->lockcnt == 0) {
 			dio = hammer2_chain_drop_data(chain, 0);
 			if (dio)
 				hammer2_io_bqrelse(&dio);

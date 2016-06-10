@@ -147,18 +147,9 @@ typedef struct hammer2_xop_list	hammer2_xop_list_t;
  */
 static __inline
 int
-hammer2_mtx_upgrade(hammer2_mtx_t *mtx)
+hammer2_mtx_upgrade_try(hammer2_mtx_t *mtx)
 {
-	int wasexclusive;
-
-	if (mtx_islocked_ex(mtx)) {
-		wasexclusive = 1;
-	} else {
-		mtx_unlock(mtx);
-		mtx_lock_ex_quick(mtx);
-		wasexclusive = 0;
-	}
-	return wasexclusive;
+	return mtx_upgrade_try(mtx);
 }
 
 /*
