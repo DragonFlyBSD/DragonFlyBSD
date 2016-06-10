@@ -33,6 +33,9 @@
  * SUCH DAMAGE.
  */
 
+#ifndef HAMMER2_HAMMER2_H_
+#define HAMMER2_HAMMER2_H_
+
 /*
  * Rollup headers for hammer2 utility
  */
@@ -164,3 +167,5 @@ uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
 
 void hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged);
 void print_inode(char* inode_string);
+
+#endif /* !HAMMER2_HAMMER2_H_ */
