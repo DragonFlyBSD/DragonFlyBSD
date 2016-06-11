@@ -1155,7 +1155,7 @@ bdwrite(struct buf *bp)
 	 * range here will be inaccurate.
 	 *
 	 * However, we must still clean the pages to satisfy the
-	 * vnode_pager and pageout daemon, so theythink the pages
+	 * vnode_pager and pageout daemon, so they think the pages
 	 * have been "cleaned".  What has really occured is that
 	 * they've been earmarked for later writing by the buffer
 	 * cache.

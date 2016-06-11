@@ -466,6 +466,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 	int count;
 	int i;
 	int ioflags;
+	int obytecount;
 
 	/*
 	 * Do not do anything if the vnode is bad.
@@ -531,6 +532,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 		KASSERT(secmask < PAGE_SIZE, ("vnode_pager_generic_getpages: sector size %d too large", secmask + 1));
 		bytecount = (bytecount + secmask) & ~secmask;
 	}
+	obytecount = bytecount;
 
 	/*
 	 * Severe hack to avoid deadlocks with the buffer cache
@@ -595,6 +597,10 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 				kprintf("page failed but no I/O error page "
 					"%p object %p pindex %d\n",
 					mt, mt->object, (int) mt->pindex);
+				kprintf("i=%d foff=%016lx bytecount=%d/%d"
+					"uioresid=%zd\n",
+					i, foff, obytecount, bytecount,
+					auio.uio_resid);
 				/* whoops, something happened */
 				error = EINVAL;
 			}

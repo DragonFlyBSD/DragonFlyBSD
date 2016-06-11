@@ -387,6 +387,10 @@ nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
 				bzero(bp->b_data + oboff, oblksize - oboff);
 				bp->b_bio2.bio_offset = NOOFFSET;
 				bdwrite(bp);
+			} else {
+				kprintf("nvextendbuf: bread EOF @ %016jx "
+					"error %d\n",
+					truncboffset, error);
 			}
 		}
 	}
