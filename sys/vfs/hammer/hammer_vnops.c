@@ -423,13 +423,13 @@ hammer_vop_read(struct vop_read_args *ap)
 			break;
 		}
 skip:
-		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IODEBUG)) {
+		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IOISSUED)) {
 			hdkprintf("zone2_offset %016jx read file %016jx@%016jx\n",
 				(intmax_t)bp->b_bio2.bio_offset,
 				(intmax_t)ip->obj_id,
 				(intmax_t)bp->b_loffset);
 		}
-		bp->b_flags &= ~B_IODEBUG;
+		bp->b_flags &= ~B_IOISSUED;
 		if (blksize == HAMMER_XBUFSIZE)
 			bp->b_flags |= B_CLUSTEROK;
 

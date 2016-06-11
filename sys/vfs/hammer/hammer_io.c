@@ -321,7 +321,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 		 * even if we error out here.
 		 */
 		bp = io->bp;
-		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IODEBUG)) {
+		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IOISSUED)) {
 			const char *metatype;
 
 			switch(io->type) {
@@ -358,7 +358,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
 				(intmax_t)bp->b_bio2.bio_offset,
 				metatype);
 		}
-		bp->b_flags &= ~B_IODEBUG;
+		bp->b_flags &= ~B_IOISSUED;
 		bp->b_ops = &hammer_bioops;
 
 		hammer_buf_attach_io(bp, io); /* locked by the io lock */

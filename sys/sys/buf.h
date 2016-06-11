@@ -296,7 +296,7 @@ struct buf {
 #define	B_HASBOGUS	0x00000200	/* Contains bogus pages */
 #define	B_EINTR		0x00000400	/* I/O was interrupted */
 #define	B_ERROR		0x00000800	/* I/O error occurred. */
-#define	B_IODEBUG	0x00001000	/* (Debugging only bread) */
+#define	B_IOISSUED	0x00001000	/* Flag when I/O issued (vfs can clr) */
 #define	B_INVAL		0x00002000	/* Does not contain valid info. */
 #define	B_LOCKED	0x00004000	/* Locked in core (not reusable). */
 #define	B_NOCACHE	0x00008000	/* Destroy buffer AND backing store */

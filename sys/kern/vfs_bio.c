@@ -3586,7 +3586,7 @@ vn_strategy(struct vnode *vp, struct bio *bio)
 	 * (aka HAMMER), allowing the consumer to determine if I/O had
 	 * actually occurred.
 	 */
-	bp->b_flags |= B_IODEBUG;
+	bp->b_flags |= B_IOISSUED;
 
 	/*
 	 * Handle the swap cache intercept.
