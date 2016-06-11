@@ -219,9 +219,9 @@ struct iwm_host_cmd {
 	int handler_status;
 
 	uint32_t flags;
+	uint32_t id;
 	uint16_t len[IWM_MAX_CMD_TBS_PER_TFD];
 	uint8_t dataflags[IWM_MAX_CMD_TBS_PER_TFD];
-	uint32_t id;
 };
 
 /*
@@ -271,13 +271,6 @@ struct iwm_tx_ring {
 #define IWM_RBUF_SIZE		4096
 
 #define	IWM_MAX_SCATTER		20
-
-struct iwm_softc;
-struct iwm_rbuf {
-	struct iwm_softc	*sc;
-	void			*vaddr;
-	bus_addr_t		paddr;
-};
 
 struct iwm_rx_data {
 	struct mbuf	*m;

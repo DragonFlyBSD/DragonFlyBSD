@@ -276,7 +276,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		cmd->hdr_wide.version = iwm_cmd_version(code);
 		data = cmd->data_wide;
 	} else {
-		cmd->hdr.code = code;
+		cmd->hdr.code = iwm_cmd_opcode(code);
 		cmd->hdr.flags = 0;
 		cmd->hdr.qid = ring->qid;
 		cmd->hdr.idx = ring->cur;
