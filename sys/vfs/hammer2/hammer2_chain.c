@@ -877,6 +877,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 {
 	hammer2_blockref_t *bref;
 	hammer2_dev_t *hmp;
+	hammer2_io_t *dio;
 	char *bdata;
 	int error;
 
@@ -965,6 +966,28 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	chain->error = 0;
 
 	/*
+	 * This isn't perfect and can be ignored on OSs which do not have
+	 * an indication as to whether a buffer is coming from cache or
+	 * if I/O was actually issued for the read.  TESTEDGOOD will work
+	 * pretty well without the B_IOISSUED logic because chains are
+	 * cached.
+	 *
+	 * If the underlying kernel buffer covers the entire chain we can
+	 * use the B_IOISSUED indication to determine if we have to re-run
+	 * the CRC on chain data for chains that managed to stay cached
+	 * across the kernel disposal of the original buffer.
+	 */
+	if ((dio = chain->dio) != NULL && dio->bp) {
+		struct buf *bp = dio->bp;
+
+		if (dio->psize == chain->bytes &&
+		    (bp->b_flags & B_IOISSUED)) {
+			chain->flags &= ~HAMMER2_CHAIN_TESTEDGOOD;
+			bp->b_flags &= ~B_IOISSUED;
+		}
+	}
+
+	/*
 	 * NOTE: A locked chain's data cannot be modified without first
 	 *	 calling hammer2_chain_modify().
 	 */
@@ -974,6 +997,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 * been zero'd and marked dirty.
 	 */
 	bdata = hammer2_io_data(chain->dio, chain->bref.data_off);
+
 	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 		chain->bref.flags |= HAMMER2_BREF_FLAG_ZERO;
@@ -985,12 +1009,8 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 		 * to calculate crc?  or simple crc?).
 		 */
 	} else if ((chain->flags & HAMMER2_CHAIN_TESTEDGOOD) == 0) {
-		uint64_t mask;
-
 	TIMER(26);
-		if (hammer2_io_crc_good(chain, &mask)) {
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_TESTEDGOOD);
-		} else if (hammer2_chain_testcheck(chain, bdata) == 0) {
+		if (hammer2_chain_testcheck(chain, bdata) == 0) {
 			kprintf("chain %016jx.%02x meth=%02x "
 				"CHECK FAIL %08x (flags=%08x)\n",
 				chain->bref.data_off,
@@ -1000,12 +1020,6 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 				chain->flags);
 			chain->error = HAMMER2_ERROR_CHECK;
 		} else {
-			hammer2_io_crc_setmask(chain->dio, mask);
-#if 0
-			kprintf("chain %02x %016jx %u\n",
-				chain->bref.type, chain->bref.key,
-				chain->bytes);
-#endif
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_TESTEDGOOD);
 		}
 	}

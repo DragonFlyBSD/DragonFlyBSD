@@ -367,6 +367,15 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	 * Async operation has not completed and we now own the lock.
 	 * Determine if we can complete the operation by issuing the
 	 * frontend collection non-blocking.
+	 *
+	 * H2 double-buffers the data, setting B_NOTMETA on the logical
+	 * buffer hints to the OS that the logical buffer should not be
+	 * swapcached (since the device buffer can be).
+	 *
+	 * Also note that even for compressed data we would rather the
+	 * kernel cache/swapcache device buffers more and (decompressed)
+	 * logical buffers less, since that will significantly improve
+	 * the amount of end-user data that can be cached.
 	 */
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_NOWAIT);
 	TIMER(5);
@@ -375,6 +384,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	case 0:
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
+		bp->b_flags |= B_NOTMETA;
 		chain = xop->head.cluster.focus;
 		hammer2_strategy_read_completion(chain, (char *)chain->data,
 						 xop->bio);
@@ -384,6 +394,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	case ENOENT:
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
+		bp->b_flags |= B_NOTMETA;
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		bzero(bp->b_data, bp->b_bcount);
@@ -426,9 +437,15 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 		bp->b_error = 0;
 	} else if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 		/*
-		 * Data is on-media, record for live dedup.
+		 * Data is on-media, record for live dedup.  Release the
+		 * chain (try to free it) when done.  The data is still
+		 * cached by both the buffer cache in front and the
+		 * block device behind us.  This leaves more room in the
+		 * LRU chain cache for meta-data chains which we really
+		 * want to retain.
 		 */
 		hammer2_dedup_record(chain, data);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
 
 		/*
 		 * Decompression and copy.
@@ -451,7 +468,6 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 				bzero(bp->b_data + chain->bytes,
 				      bp->b_bcount - chain->bytes);
 			}
-			bp->b_flags |= B_NOTMETA;
 			bp->b_resid = 0;
 			bp->b_error = 0;
 			break;
@@ -579,6 +595,10 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 	 * Async operation has not completed and we now own the lock.
 	 * Determine if we can complete the operation by issuing the
 	 * frontend collection non-blocking.
+	 *
+	 * H2 double-buffers the data, setting B_NOTMETA on the logical
+	 * buffer hints to the OS that the logical buffer should not be
+	 * swapcached (since the device buffer can be).
 	 */
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_NOWAIT);
 
@@ -587,6 +607,7 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 	case 0:
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
+		bp->b_flags |= B_NOTMETA;
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		biodone(bio);

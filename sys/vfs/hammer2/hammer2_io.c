@@ -667,6 +667,7 @@ hammer2_io_data(hammer2_io_t *dio, off_t lbase)
 	return(bp->b_data + off);
 }
 
+#if 0
 /*
  * Keep track of good CRCs in dio->good_crc_mask. XXX needs to be done
  * in the chain structure, but chain structure needs to be persistent as
@@ -733,6 +734,7 @@ hammer2_io_crc_clrmask(hammer2_io_t *dio, uint64_t mask)
 		}
 	}
 }
+#endif
 
 /*
  * Helpers for hammer2_io_new*() functions
@@ -993,9 +995,10 @@ hammer2_io_setdirty(hammer2_io_t *dio)
 void
 hammer2_io_setinval(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
 {
+#if 0
 	uint64_t mask = hammer2_io_mask(dio, off, bytes);
-
 	hammer2_io_crc_clrmask(dio, mask);
+#endif
 	if ((u_int)dio->psize == bytes) {
 		dio->bp->b_flags |= B_INVAL | B_RELBUF;
 		/* dio->bp->b_flags &= ~B_CACHE; not needed */

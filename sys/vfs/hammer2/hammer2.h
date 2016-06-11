@@ -288,7 +288,6 @@ struct hammer2_io {
 	struct spinlock spin;
 	struct hammer2_dev *hmp;
 	struct buf	*bp;
-	uint64_t	crc_good_mask;
 	off_t		pbase;
 	int		psize;
 	int		refs;
