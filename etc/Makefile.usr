@@ -5,18 +5,12 @@
 GITHOST?=git.dragonflybsd.org
 GITHOST_DPORTS?=mirror-master.dragonflybsd.org
 
-THISGIT!= which git 2>/dev/null; echo
 DPTBALL=/tmp/dports.tar.gz
 PKGBALL=/tmp/pkgboot.tar.xz
 DPDLURL=https://api.github.com/repos/DragonFlyBSD/DPorts/tarball/
 PKGBOOT_VERSION=02
 PKGBOOT_x86_64=bootstrap_pkg_${PKGBOOT_VERSION}_x86-64.tar.xz
 PKGBOOT=http://mirror-master.dragonflybsd.org/dports/bootstraps/${PKGBOOT_${MACHINE_ARCH}}
-GITNFMSG="git must be present on the system to use this option."
-ERRDP="Error: ${.CURDIR}/dports already exists"
-ERRSR="Error: ${.CURDIR}/src already exists"
-ERRNDP="Error: ${.CURDIR}/dports does not exist"
-ERRNSR="Error: ${.CURDIR}/src does not exist"
 ERRPKG="Error: Bootstrap not necessary, ${.CURDIR}/local/sbin/pkg already exists"
 WSTARS="***************************************************************"
 WARNPS="  Warning: Delete or move ${.CURDIR}/pkg before building any dport!"
@@ -59,41 +53,36 @@ help all:
 	@echo "If automating please feel free to run git pull's from cron."
 	@echo "We prefer once a day but you can run them more often if you desire"
 
-src-create-repo:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/src/.git)
-	@echo ${ERRSR}
-.else
+git-check:
+	@/usr/bin/which -s git || \
+		(echo "git must be present on the system to use this option."; /usr/bin/false)
+
+src-check: git-check
+	@/bin/test ! -d ${.CURDIR}/src/.git || \
+		(echo "Error: ${.CURDIR}/src already exists"; /usr/bin/false)
+
+src-check-hasdir: git-check
+	@/bin/test -d ${.CURDIR}/src/.git || \
+		(echo "Error: ${.CURDIR}/src does not exist"; /usr/bin/false)
+
+src-create-repo: src-check
 	@echo "If problems occur you may have to rm -rf src and try again."
 	@echo
-	mkdir -p ${.CURDIR}/src
-	cd ${.CURDIR}/src && git init
-	cd ${.CURDIR}/src && \
+	@mkdir -p ${.CURDIR}/src
+	@cd ${.CURDIR}/src && git init
+	@cd ${.CURDIR}/src && \
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
 	cd ${.CURDIR}/src && git branch master origin/master
-.endif
 
 src-create: src-create-repo
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/src/.git)
-	@echo ${ERRSR}
-.else
 	cd ${.CURDIR}/src && git checkout master
 	cd ${.CURDIR}/src && git pull
-.endif
 
-src-create-shallow:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/src/.git)
-	@echo ${ERRSR}
-.else
+src-create-shallow: src-check
 	@echo "If problems occur you may have to rm -rf src and try again."
 	@echo
-	mkdir -p ${.CURDIR}/src
+	@mkdir -p ${.CURDIR}/src
 	cd ${.CURDIR}/src && git init
 	cd ${.CURDIR}/src && \
 	    git remote add origin git://${GITHOST}/dragonfly.git
@@ -101,44 +90,28 @@ src-create-shallow:
 	cd ${.CURDIR}/src && git branch master origin/master
 	cd ${.CURDIR}/src && git checkout master
 	cd ${.CURDIR}/src && git pull
-.endif
 
-src-checkout:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif !exists (${.CURDIR}/src/.git)
-	@echo ${ERRNSR}
-.else
+src-checkout: src-check-hasdir
 	cd ${.CURDIR}/src && git checkout master
-.endif
 
-src-update:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif !exists (${.CURDIR}/src/.git)
-	@echo ${ERRNSR}
-.else
+src-update: src-check-hasdir
 	cd ${.CURDIR}/src && git pull
-.endif
 
 release-sys-extract:
 	cd ${.CURDIR} && tar xvpjf src-sys.tar.bz2
 
-dports-update:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif !exists (${.CURDIR}/dports)
-	@echo ${ERRNDP}
-.else
-	cd ${.CURDIR}/dports && git pull
-.endif
+dports-check: git-check
+	@/bin/test ! -d ${.CURDIR}/dports/.git || \
+		   (echo "Error: ${.CURDIR}/dports already exists"; /usr/bin/false)
 
-dports-create:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/dports)
-	@echo ${ERRDP}
-.else
+dports-check-hasdir: git-check
+	@/bin/test -d ${.CURDIR}/dports || \
+		   (echo "Error: ${.CURDIR}/dports does not exist"; /usr/bin/false)
+
+dports-update: dports-check-hasdir
+	cd ${.CURDIR}/dports && git pull
+
+dports-create: dports-check
 	@echo "If problems occur you may have to rm -rf dports and try again."
 	@echo
 	git clone git://${GITHOST_DPORTS}/dports.git ${.CURDIR}/dports
@@ -147,14 +120,8 @@ dports-create:
 	@echo ${WARNPS}
 	@echo ${WSTARS}
 .endif
-.endif
 
-dports-create-shallow:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/dports)
-	@echo ${ERRDP}
-.else
+dports-create-shallow: dports-check
 	@echo "If problems occur you may have to rm -rf dports and try again."
 	@echo
 	git clone --depth=1 git://${GITHOST_DPORTS}/dports.git \
@@ -164,12 +131,8 @@ dports-create-shallow:
 	@echo ${WARNPS}
 	@echo ${WSTARS}
 .endif
-.endif
 
-dports-download:
-.if exists (${.CURDIR}/dports)
-	@echo ${ERRDP}
-.else
+dports-download: dports-check
 	rm -f ${DPTBALL}
 	fetch -o ${DPTBALL} ${DPDLURL}
 	tar -xf ${DPTBALL} -C ${.CURDIR}
@@ -180,15 +143,13 @@ dports-download:
 	@echo ${WARNPS}
 	@echo ${WSTARS}
 .endif
-.endif
 
-dports-replace:
-.if !exists (${.CURDIR}/dports)
-	@echo ${ERRNDP}
-.elif exists(${.CURDIR}/dports/.git)
+dports-replace: dports-check-hasdir
+.if exists(${.CURDIR}/dports/.git)
 	@echo "Error: this is git repository currently."
 	@echo "Remove ${.CURDIR}/dports and execute \"make dports-downloads\" if you want"
 	@echo "to convert to a non-git version."
+	@/usr/bin/false
 .else
 	rm -f ${DPTBALL}
 	fetch -o ${DPTBALL} ${DPDLURL}
@@ -215,9 +176,11 @@ pkg-bootstrap-force:
 pkg-bootstrap:
 .if exists(${.CURDIR}/local/sbin/pkg)
 	@echo ${ERRPKG}
+	@/usr/bin/false
 .elif exists(${.CURDIR}/local/etc/pkg.conf)
 	@echo "Error: ${.CURDIR}/local/etc/pkg.conf will be ovewritten"
 	@echo "Please move this file and rerun 'make pkg-bootstrap'"
+	@/usr/bin/false
 .else
 	@fetch -o ${PKGBALL} ${PKGBOOT}
 	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
