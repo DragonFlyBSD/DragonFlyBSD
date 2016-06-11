@@ -996,8 +996,10 @@ hammer2_io_setinval(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
 	uint64_t mask = hammer2_io_mask(dio, off, bytes);
 
 	hammer2_io_crc_clrmask(dio, mask);
-	if ((u_int)dio->psize == bytes)
+	if ((u_int)dio->psize == bytes) {
 		dio->bp->b_flags |= B_INVAL | B_RELBUF;
+		/* dio->bp->b_flags &= ~B_CACHE; not needed */
+	}
 }
 
 void

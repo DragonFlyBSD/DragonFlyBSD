@@ -712,6 +712,10 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 				chain->data = NULL;
 			break;
 		default:
+			if (chain->data != NULL) {
+				hammer2_spin_unex(&chain->core.spin);
+				panic("chain data not null");
+			}
 			KKASSERT(chain->data == NULL);
 			break;
 		}
@@ -2814,6 +2818,10 @@ again:
 		}
 		goto again;
 	}
+
+	if (chain->flags & HAMMER2_CHAIN_DELETED)
+		kprintf("Inserting deleted chain @%016jx\n",
+			chain->bref.key);
 
 	/*
 	 * Link the chain into its parent.

@@ -176,7 +176,7 @@ hammer2_decompress_LZ4_callback(const char *data, u_int bytes, struct bio *bio)
 
 	KKASSERT(bp->b_bufsize <= HAMMER2_PBUFSIZE);
 	compressed_size = *(const int *)data;
-	KKASSERT(compressed_size <= bytes - sizeof(int));
+	KKASSERT((uint32_t)compressed_size <= bytes - sizeof(int));
 
 	compressed_buffer = objcache_get(cache_buffer_read, M_INTWAIT);
 	result = LZ4_decompress_safe(__DECONST(char *, &data[sizeof(int)]),
@@ -394,6 +394,8 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 		hammer2_mtx_unlock(&xop->lock);
 		break;
 	default:
+		kprintf("strategy_xop_read: error %d loff=%016jx\n",
+			error, bp->b_loffset);
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_ERROR;
@@ -435,10 +437,12 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 		case HAMMER2_COMP_LZ4:
 			hammer2_decompress_LZ4_callback(data, chain->bytes,
 							bio);
+			/* b_resid set by call */
 			break;
 		case HAMMER2_COMP_ZLIB:
 			hammer2_decompress_ZLIB_callback(data, chain->bytes,
 							 bio);
+			/* b_resid set by call */
 			break;
 		case HAMMER2_COMP_NONE:
 			KKASSERT(chain->bytes <= bp->b_bcount);
@@ -558,7 +562,7 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 		hammer2_chain_drop(parent);
 		parent = NULL;	/* safety */
 	}
-	error = hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 
 	/*
 	 * Race to finish the frontend
@@ -593,6 +597,8 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 		hammer2_mtx_unlock(&xop->lock);
 		break;
 	default:
+		kprintf("strategy_xop_write: error %d loff=%016jx\n",
+			error, bp->b_loffset);
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_ERROR;
@@ -652,6 +658,11 @@ retry:
 				     lbase, lbase,
 				     &cache_index,
 				     HAMMER2_LOOKUP_NODATA);
+
+	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED))
+		kprintf("assign physical deleted chain @ %016jx\n",
+			lbase);
+
 	if (chain == NULL) {
 		/*
 		 * We found a hole, create a new chain entry.
@@ -728,6 +739,8 @@ hammer2_write_file_core(struct buf *bp, hammer2_inode_t *ip,
 {
 	hammer2_chain_t *chain;
 	char *data = bp->b_data;
+
+	*errorp = 0;
 
 	switch(HAMMER2_DEC_ALGO(ip->meta.comp_algo)) {
 	case HAMMER2_COMP_NONE:
@@ -1124,12 +1137,13 @@ static
 void
 zero_write(struct buf *bp, hammer2_inode_t *ip,
 	   hammer2_chain_t **parentp,
-	   hammer2_key_t lbase, hammer2_tid_t mtid, int *errorp __unused)
+	   hammer2_key_t lbase, hammer2_tid_t mtid, int *errorp)
 {
 	hammer2_chain_t *chain;
 	hammer2_key_t key_dummy;
 	int cache_index = -1;
 
+	*errorp = 0;
 	chain = hammer2_chain_lookup(parentp, &key_dummy,
 				     lbase, lbase,
 				     &cache_index,

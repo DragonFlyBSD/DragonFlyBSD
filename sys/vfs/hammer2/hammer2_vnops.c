@@ -798,10 +798,37 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 		lblksize = hammer2_calc_logical(ip, uio->uio_offset,
 						&lbase, &leof);
 
+#if 1
 		error = cluster_read(ip->vp, leof, lbase, lblksize,
 				     uio->uio_resid, seqcount * BKVASIZE,
 				     &bp);
-
+#else
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			bp = getblk(ip->vp, lbase, lblksize, GETBLK_BHEAVY, 0);
+			if (bp->b_flags & B_CACHE) {
+				int i;
+				int j = 0;
+				if (bp->b_xio.xio_npages != 16)
+					kprintf("NPAGES BAD\n");
+				for (i = 0; i < bp->b_xio.xio_npages; ++i) {
+					vm_page_t m;
+					m = bp->b_xio.xio_pages[i];
+					if (m == NULL || m->valid == 0) {
+						kprintf("bp %016jx %016jx pg %d inv",
+							lbase, leof, i);
+						if (m)
+							kprintf("m->object %p/%p", m->object, ip->vp->v_object);
+						kprintf("\n");
+						j = 1;
+					}
+				}
+				if (j)
+					kprintf("b_flags %08x, b_error %d\n", bp->b_flags, bp->b_error);
+			}
+			bqrelse(bp);
+		}
+		error = bread(ip->vp, lbase, lblksize, &bp);
+#endif
 		if (error)
 			break;
 		loff = (int)(uio->uio_offset - lbase);
@@ -811,7 +838,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 		if (n > size - uio->uio_offset)
 			n = (int)(size - uio->uio_offset);
 		bp->b_flags |= B_AGE;
-		uiomove((char *)bp->b_data + loff, n, uio);
+		uiomovebp(bp, (char *)bp->b_data + loff, n, uio);
 		bqrelse(bp);
 	}
 	hammer2_mtx_unlock(&ip->truncate_lock);
@@ -917,6 +944,8 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 				trivial = 1;
 			endofblk = 1;
 		}
+		if (lbase >= new_eof)
+			trivial = 1;
 
 		/*
 		 * Get the buffer
@@ -964,7 +993,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		/*
 		 * Ok, copy the data in
 		 */
-		error = uiomove(bp->b_data + loff, n, uio);
+		error = uiomovebp(bp, bp->b_data + loff, n, uio);
 		kflags |= NOTE_WRITE;
 		modified = 1;
 		if (error) {
@@ -997,8 +1026,12 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		} else if (ip->vp->v_mount->mnt_flag & MNT_NOCLUSTERW) {
 			bdwrite(bp);
 		} else {
+#if 1
 			bp->b_flags |= B_CLUSTEROK;
 			cluster_write(bp, new_eof, lblksize, seqcount);
+#else
+			bdwrite(bp);
+#endif
 		}
 	}
 
