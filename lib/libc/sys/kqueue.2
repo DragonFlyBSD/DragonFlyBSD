@@ -85,7 +85,7 @@ is used to register events with the queue, and return any pending
 events to the user.
 .Fa changelist
 is a pointer to an array of
-.Va kevent
+.Vt kevent
 structures, as defined in
 .In sys/event.h .
 All changes contained in the
@@ -111,7 +111,7 @@ waits indefinitely.
 To effect a poll, the
 .Fa timeout
 argument should be non-NULL, pointing to a zero-valued
-.Va timespec
+.Vt timespec
 structure.
 The same array may be used for the
 .Fa changelist
@@ -123,7 +123,7 @@ is a macro which is provided for ease of initializing a
 kevent structure.
 .Pp
 The
-.Va kevent
+.Vt kevent
 structure is defined as:
 .Bd -literal
 struct kevent {
@@ -140,25 +140,25 @@ The fields of
 .Fa struct kevent
 are:
 .Bl -tag -width XXXfilter
-.It ident
+.It Fa ident
 Value used to identify this event.
 The exact interpretation is determined by the attached filter,
 but often is a file descriptor.
-.It filter
+.It Fa filter
 Identifies the kernel filter used to process this event.
 The pre-defined system filters are described below.
-.It flags
+.It Fa flags
 Actions to perform on the event.
-.It fflags
+.It Fa fflags
 Filter-specific flags.
-.It data
+.It Fa data
 Filter-specific data value.
-.It udata
+.It Fa udata
 Opaque user-defined value passed through the kernel unchanged.
 .El
 .Pp
 The
-.Va flags
+.Fa flags
 field can contain the following values:
 .Bl -tag -width ".Dv EV_DISPATCH"
 .It Dv EV_ADD
@@ -193,7 +193,7 @@ When passed as input, it forces
 .Dv EV_ERROR
 to always be returned.
 When a filter is successfully added the
-.Va data
+.Fa data
 field will be zero.
 .It Dv EV_ONESHOT
 Causes the event to return only the first occurrence of the filter
@@ -214,9 +214,9 @@ below.
 .Pp
 The predefined system filters are listed below.
 Arguments may be passed to and from the filter via the
-.Va fflags
+.Fa fflags
 and
-.Va data
+.Fa data
 fields in the kevent structure.
 .Bl -tag -width ".Dv EVFILT_SIGNAL"
 .It Dv EVFILT_READ
@@ -229,7 +229,7 @@ on the descriptor type.
 Sockets which have previously been passed to
 .Fn listen
 return when there is an incoming connection pending.
-.Va data
+.Fa data
 contains the size of the listen backlog.
 .Pp
 Other socket descriptors return when there is data to be read,
@@ -240,35 +240,35 @@ This may be overridden with a per-filter low water mark at the
 time the filter is added by setting the
 .Dv NOTE_LOWAT
 flag in
-.Va fflags ,
+.Fa fflags ,
 and specifying the new low water mark in
-.Va data .
+.Fa data .
 On return,
-.Va data
+.Fa data
 contains the number of bytes in the socket buffer.
 .Pp
 If the read direction of the socket has shutdown, then the filter also sets
 .Dv EV_EOF
 in
-.Va flags ,
+.Fa flags ,
 and returns the socket error (if any) in
-.Va fflags .
+.Fa fflags .
 It is possible for EOF to be returned (indicating the connection is gone)
 while there is still data pending in the socket buffer.
 .It Vnodes
 Returns when the file pointer is not at the end of file.
-.Va data
+.Fa data
 contains the offset from current position to end of file,
 and may be negative.
 .It "Fifos, Pipes"
 Returns when the there is data to read;
-.Va data
+.Fa data
 contains the number of bytes available.
 .Pp
 When the last writer disconnects, the filter will set
 .Dv EV_EOF
 in
-.Va flags .
+.Fa flags .
 This may be cleared by passing in
 .Dv EV_CLEAR ,
 at which point the filter will resume waiting for data to become
@@ -278,7 +278,7 @@ available before returning.
 Takes a descriptor as the identifier, and returns whenever
 it is possible to write to the descriptor.
 For sockets, pipes and fifos,
-.Va data
+.Fa data
 will contain the amount of space remaining in the write buffer.
 The filter will set
 .Dv EV_EOF
@@ -293,40 +293,41 @@ identical to the
 case.
 .It Dv EVFILT_EXCEPT
 Takes a descriptor as the identifier, and returns whenever one of the
-specified exceptional conditions has occurred on the descriptor. Conditions
-are specified in
-.Va fflags .
+specified exceptional conditions has occurred on the descriptor.
+Conditions are specified in
+.Fa fflags .
 Currently, a filter can monitor the reception of out-of-band data with
 .Dv NOTE_OOB .
 .It Dv EVFILT_AIO
 The sigevent portion of the AIO request is filled in, with
-.Va sigev_notify_kqueue
+.Fa sigev_notify_kqueue
 containing the descriptor of the kqueue that the event should
 be attached to,
-.Va sigev_value
+.Fa sigev_value
 containing the udata value, and
-.Va sigev_notify
+.Fa sigev_notify
 set to
 .Dv SIGEV_KEVENT .
 When the aio_* function is called, the event will be registered
 with the specified kqueue, and the
-.Va ident
+.Fa ident
 argument set to the
 .Fa struct aiocb
 returned by the aio_* function.
-The filter returns under the same conditions as aio_error.
+The filter returns under the same conditions as
+.Fn aio_error .
 .Pp
 Alternatively, a kevent structure may be initialized, with
-.Va ident
+.Fa ident
 containing the descriptor of the kqueue, and the
 address of the kevent structure placed in the
-.Va aio_lio_opcode
+.Fa aio_lio_opcode
 field of the AIO request.
 However, this approach will not work on architectures with 64-bit
 pointers, and should be considered deprecated.
 .It Dv EVFILT_VNODE
 Takes a file descriptor as the identifier and the events to watch for in
-.Va fflags ,
+.Fa fflags ,
 and returns when one or more of the requested events occurs on the descriptor.
 The events to monitor are:
 .Bl -tag -width ".Dv NOTE_RENAME"
@@ -350,12 +351,12 @@ or the underlying fileystem was unmounted.
 .El
 .Pp
 On return,
-.Va fflags
+.Fa fflags
 contains the events which triggered the filter.
 .It Dv EVFILT_PROC
 Takes the process ID to monitor as the identifier and the events to watch for
 in
-.Va fflags ,
+.Fa fflags ,
 and returns when the process performs one or more of the requested events.
 If a process can normally see another process, it can attach an event to it.
 The events to monitor are:
@@ -376,20 +377,20 @@ calls.
 The parent process will return with
 .Dv NOTE_TRACK
 set in the
-.Va fflags
+.Fa fflags
 field, while the child process will return with
 .Dv NOTE_CHILD
 set in
-.Va fflags
+.Fa fflags
 and the parent PID in
-.Va data .
+.Fa data .
 .It Dv NOTE_TRACKERR
 This flag is returned if the system was unable to attach an event to
 the child process, usually due to resource limitations.
 .El
 .Pp
 On return,
-.Va fflags
+.Fa fflags
 contains the events which triggered the filter.
 .It Dv EVFILT_SIGNAL
 Takes the signal number to monitor as the identifier and returns
@@ -405,7 +406,7 @@ even if the signal has been marked as
 or has been masked by
 .Fn sigpromask .
 Event notification happens after normal signal delivery processing.
-.Va data
+.Fa data
 returns the number of times the signal has occurred since the last call to
 .Fn kevent .
 This filter automatically sets the
@@ -413,15 +414,15 @@ This filter automatically sets the
 flag internally.
 .It Dv EVFILT_TIMER
 Establishes an arbitrary timer identified by
-.Va ident .
+.Fa ident .
 When adding a timer,
-.Va data
+.Fa data
 specifies the timeout period in milliseconds.
 The timer will be periodic unless
 .Dv EV_ONESHOT
 is specified.
 On return,
-.Va data
+.Fa data
 contains the number of times the timeout has expired since the last call to
 .Fn kevent .
 This filter automatically sets the
@@ -429,7 +430,7 @@ This filter automatically sets the
 flag internally.
 .It Dv EVFILT_FS
 Establishes a file system monitor identified by
-.Va ident .
+.Fa ident .
 Currently it only monitors file system mount and unmount actions.
 .El
 .Sh RETURN VALUES
@@ -454,9 +455,9 @@ then the event will be placed in the
 with
 .Dv EV_ERROR
 set in
-.Va flags
+.Fa flags
 and the system error in
-.Va data .
+.Fa data .
 Otherwise,
 .Dv -1
 will be returned, and
@@ -486,7 +487,7 @@ function fails if:
 The process does not have permission to register a filter.
 .It Bq Er EFAULT
 There was an error reading or writing the
-.Va kevent
+.Vt kevent
 structure.
 .It Bq Er EBADF
 The specified descriptor is invalid.
