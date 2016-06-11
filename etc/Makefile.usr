@@ -147,7 +147,7 @@ dports-download: dports-check
 dports-replace: dports-check-hasdir
 .if exists(${.CURDIR}/dports/.git)
 	@echo "Error: this is git repository currently."
-	@echo "Remove ${.CURDIR}/dports and execute \"make dports-downloads\" if you want"
+	@echo "Remove ${.CURDIR}/dports and execute \"make dports-download\" if you want"
 	@echo "to convert to a non-git version."
 	@/usr/bin/false
 .else
