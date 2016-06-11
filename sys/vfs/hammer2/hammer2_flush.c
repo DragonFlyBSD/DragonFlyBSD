@@ -515,11 +515,16 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		TAILQ_INSERT_TAIL(&info->flushq, chain, flush_node);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEFERRED);
 		++info->diddeferral;
-	} else if (chain->flags & HAMMER2_CHAIN_ONFLUSH) {
+	} else if (chain->flags & (HAMMER2_CHAIN_ONFLUSH |
+				   HAMMER2_CHAIN_DESTROY)) {
 		/*
 		 * Downward recursion search (actual flush occurs bottom-up).
 		 * pre-clear ONFLUSH.  It can get set again due to races,
 		 * which we want so the scan finds us again in the next flush.
+		 *
+		 * We must also recurse if DESTROY is set so we can finally
+		 * get rid of the related children, otherwise the node will
+		 * just get re-flushed on lastdrop.
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 		info->parent = chain;
@@ -1014,6 +1019,15 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 
 	hammer2_chain_unlock(parent);
 	hammer2_chain_lock(child, HAMMER2_RESOLVE_MAYBE);
+
+	/*
+	 * Must propagate the DESTROY flag downwards, otherwise the
+	 * parent could end up never being removed because it will
+	 * be requeued to the flusher if it survives this run due to
+	 * the flag.
+	 */
+	if (parent && (parent->flags & HAMMER2_CHAIN_DESTROY))
+		atomic_set_int(&child->flags, HAMMER2_CHAIN_DESTROY);
 
 	/*
 	 * Recurse and collect deferral data.  We're in the media flush,

@@ -385,7 +385,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 #define HAMMER2_CHAIN_FLUSH_MASK	(HAMMER2_CHAIN_MODIFIED |	\
 					 HAMMER2_CHAIN_UPDATE |		\
-					 HAMMER2_CHAIN_ONFLUSH)
+					 HAMMER2_CHAIN_ONFLUSH |	\
+					 HAMMER2_CHAIN_DESTROY)
 
 /*
  * Hammer2 error codes, used by chain->error and cluster->error.  The error

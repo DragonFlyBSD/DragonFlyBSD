@@ -441,7 +441,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 		return HAMMER2_BULK_ABORT;
 	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
 		++cbinfo->count_inodes_scanned;
-		if ((cbinfo->count_inodes_scanned & 1023) == 0)
+		if ((cbinfo->count_inodes_scanned & 65535) == 0)
 			kprintf(" inodes %6ld bytes %9ld\n",
 				cbinfo->count_inodes_scanned,
 				cbinfo->bytes_scanned);
