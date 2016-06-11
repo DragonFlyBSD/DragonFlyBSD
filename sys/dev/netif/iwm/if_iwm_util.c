@@ -156,19 +156,6 @@ __FBSDID("$FreeBSD$");
 int iwmsleep(void *chan, struct lock *lk, int flags, const char *wmesg, int to);
 #endif
 
-static void
-iwm_dma_map_mem(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
-{
-        if (error != 0)
-                return;
-	KASSERT(nsegs <= 2, ("too many DMA segments, %d should be <= 2",
-	    nsegs));
-	if (nsegs > 1)
-		KASSERT(segs[1].ds_addr == segs[0].ds_addr + segs[0].ds_len,
-		    ("fragmented DMA memory"));
-	*(bus_addr_t *)arg = segs[0].ds_addr;
-}
-
 /*
  * Send a command to the firmware.  We try to implement the Linux
  * driver interface for the routine.
@@ -183,12 +170,15 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	struct iwm_tfd *desc;
 	struct iwm_tx_data *txdata = NULL;
 	struct iwm_device_cmd *cmd;
+	struct mbuf *m;
+	bus_dma_segment_t seg;
 	bus_addr_t paddr;
 	uint32_t addr_lo;
 	int error = 0, i, paylen, off;
 	int code;
 	int async, wantresp;
 	int group_id;
+	int nsegs;
 	size_t hdrlen, datasz;
 	uint8_t *data;
 
@@ -249,16 +239,29 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 			error = EINVAL;
 			goto out;
 		}
-		cmd = NULL;
-		error = bus_dmamem_alloc(ring->data_dmat, (void **)&cmd,
-		    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &txdata->map);
-		if (error != 0)
+		m = m_getjcl(M_NOWAIT, MT_DATA, M_PKTHDR, IWM_RBUF_SIZE);
+		if (m == NULL) {
+			error = ENOBUFS;
 			goto out;
-		KKASSERT(cmd != NULL);
-		error = bus_dmamap_load(ring->data_dmat, txdata->map,
-		    cmd, totlen, iwm_dma_map_mem, &paddr, BUS_DMA_NOWAIT);
-		if (error != 0)
+		}
+
+		m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
+#if defined(__DragonFly__)
+		error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
+		    txdata->map, m, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
+#else
+		error = bus_dmamap_load_mbuf_sg(ring->data_dmat,
+		    txdata->map, m, &seg, &nsegs, BUS_DMA_NOWAIT);
+#endif
+		if (error != 0) {
+			device_printf(sc->sc_dev,
+			    "%s: can't map mbuf, error %d\n", __func__, error);
+			m_freem(m);
 			goto out;
+		}
+		txdata->m = m; /* mbuf will be freed in iwm_cmd_done() */
+		cmd = mtod(m, struct iwm_device_cmd *);
+		paddr = seg.ds_addr;
 	} else {
 		cmd = &ring->cmd[ring->cur];
 		paddr = txdata->cmd_paddr;
@@ -352,8 +355,6 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		}
 	}
  out:
-	if (cmd && paylen > datasz && txdata != NULL)
-		bus_dmamem_free(ring->data_dmat, cmd, txdata->map);
 	if (wantresp && error != 0) {
 		iwm_free_resp(sc, hcmd);
 	}
