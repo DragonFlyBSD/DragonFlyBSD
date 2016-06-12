@@ -443,7 +443,7 @@ iwm_mvm_config_umac_scan(struct iwm_softc *sc)
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 
 	struct iwm_scan_config *scan_config;
-	int ret, nchan;
+	int ret, j, nchan;
 	size_t cmd_size;
 	struct ieee80211_channel *c;
 	struct iwm_host_cmd hcmd = {
@@ -485,10 +485,16 @@ iwm_mvm_config_umac_scan(struct iwm_softc *sc)
 	    IWM_CHANNEL_FLAG_ACCURATE_EBS | IWM_CHANNEL_FLAG_EBS_ADD |
 	    IWM_CHANNEL_FLAG_PRE_SCAN_PASSIVE2ACTIVE;
 
-	for (c = &ic->ic_channels[1], nchan = 0;
-	    c <= &ic->ic_channels[IEEE80211_CHAN_MAX] &&
-	    nchan < sc->sc_capa_n_scan_channels; c++) {
-		if (c->ic_flags == 0)
+	for (nchan = j = 0;
+	    j < ic->ic_nchans && nchan < sc->sc_capa_n_scan_channels; j++) {
+		c = &ic->ic_channels[j];
+		/* For 2GHz, only populate 11b channels */
+		/* For 5GHz, only populate 11a channels */
+		/*
+		 * Catch other channels, in case we have 900MHz channels or
+		 * something in the chanlist.
+		 */
+		if (iwm_mvm_scan_skip_channel(c))
 			continue;
 		scan_config->channel_array[nchan++] =
 		    ieee80211_mhz2ieee(c->ic_freq, 0);
