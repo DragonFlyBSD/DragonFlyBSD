@@ -122,7 +122,7 @@ static struct vmm_bname vmm_bnames[] = {
 
 static struct vmm_bname vmm_pnames[] = {
 	{ "VMware Virtual Platform",	VMM_GUEST_VMWARE },	/* VMWare VM */
-	{ "Virtual Machine",		VMM_GUEST_VPC },	/* M$ VirtualPC */
+	{ "Virtual Machine",		VMM_GUEST_HYPERV },	/* MS Hyper-V */
 	{ "VirtualBox",			VMM_GUEST_VBOX },	/* Sun VirtualBox */
 	{ "Parallels Virtual Platform",	VMM_GUEST_PARALLELS },	/* Parallels VM */
 	{ "KVM",			VMM_GUEST_KVM },	/* KVM */
@@ -138,7 +138,7 @@ static const char *const vmm_guest_sysctl_names[] = {
 	"bhyve",
 	"kvm",
 	"vmware",
-	"vpc",
+	"hyperv",
 	"vbox",
 	"parallels",
 	"vkernel",
@@ -146,6 +146,10 @@ static const char *const vmm_guest_sysctl_names[] = {
 	NULL
 };
 CTASSERT(NELEM(vmm_guest_sysctl_names) - 1 == VMM_GUEST_LAST);
+
+char		vmm_vendor[16];
+SYSCTL_STRING(_kern, OID_AUTO, vmm_vendor, CTLFLAG_RD, vmm_vendor, 0,
+    "Virtual machine vendor");
 
 /*
  * Detect known Virtual Machine hosts by inspecting the emulated BIOS.

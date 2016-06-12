@@ -86,6 +86,7 @@ extern int ticks;
 extern int lbolt;			/* once a second sleep address */
 extern void *lbolt_syncer;		/* approx 1 hz but may be sped up */
 extern enum vmm_guest_type vmm_guest; 	/* Running as virtual machine guest? */
+extern char vmm_vendor[16];
 
 enum vmm_guest_type {
 	VMM_GUEST_NONE = 0,
@@ -96,7 +97,7 @@ enum vmm_guest_type {
 	VMM_GUEST_BHYVE,
 	VMM_GUEST_KVM,
 	VMM_GUEST_VMWARE,
-	VMM_GUEST_VPC,
+	VMM_GUEST_HYPERV,
 	VMM_GUEST_VBOX,
 	VMM_GUEST_PARALLELS,
 	VMM_GUEST_VKERNEL,

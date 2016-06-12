@@ -149,6 +149,41 @@ init_via(void)
 	}
 }
 
+static enum vmm_guest_type
+detect_vmm(void)
+{
+	enum vmm_guest_type guest;
+
+	/*
+	 * [RFC] CPUID usage for interaction between Hypervisors and Linux.
+	 * http://lkml.org/lkml/2008/10/1/246
+	 *
+	 * KB1009458: Mechanisms to determine if software is running in
+	 * a VMware virtual machine
+	 * http://kb.vmware.com/kb/1009458
+	 */
+	if (cpu_feature2 & CPUID2_VMM) {
+		u_int regs[4];
+
+		do_cpuid(0x40000000, regs);
+		if (regs[0] >= 0x40000000) {
+			((u_int *)&vmm_vendor)[0] = regs[1];
+			((u_int *)&vmm_vendor)[1] = regs[2];
+			((u_int *)&vmm_vendor)[2] = regs[3];
+			vmm_vendor[12] = '\0';
+			if (strcmp(vmm_vendor, "VMwareVMware") == 0)
+				return VMM_GUEST_VMWARE;
+			else if (strcmp(vmm_vendor, "Microsoft Hv") == 0)
+				return VMM_GUEST_HYPERV;
+		}
+	}
+
+	guest = detect_virtual();
+	if (guest == VMM_GUEST_NONE && (cpu_feature2 & CPUID2_VMM))
+		guest = VMM_GUEST_UNKNOWN;
+	return guest;
+}
+
 /*
  * Initialize CPU control registers
  */
@@ -165,9 +200,7 @@ initializecpu(int cpu)
 
 	if (cpu == 0) {
 		/* Check if we are running in a hypervisor. */
-		vmm_guest = detect_virtual();
-		if (vmm_guest == VMM_GUEST_NONE && (cpu_feature2 & CPUID2_VMM))
-			vmm_guest = VMM_GUEST_UNKNOWN;
+		vmm_guest = detect_vmm();
 	}
 
 #if !defined(CPU_DISABLE_AVX)
