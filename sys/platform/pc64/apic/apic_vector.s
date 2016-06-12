@@ -348,7 +348,7 @@ Xtimer:
 
 	subq	$8,%rsp			/* make same as interrupt frame */
 	movq	%rsp,%rdi		/* pass frame by reference */
-	call	lapic_timer_always
+	call	pcpu_timer_always
 	addq	$8,%rsp			/* turn into trapframe */
 
 	incl    PCPU(cnt) + V_TIMER
@@ -364,7 +364,7 @@ Xtimer:
 	incl	PCPU(intr_nesting_level)
 	incl	TD_CRITCOUNT(%rbx)
 	sti
-	call	lapic_timer_process_frame
+	call	pcpu_timer_process_frame
 	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
 	addq	$8,%rsp			/* turn into trapframe */

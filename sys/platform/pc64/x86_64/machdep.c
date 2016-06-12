@@ -154,6 +154,8 @@ extern void ffs_rawread_setup(void);
 #endif /* DIRECTIO */
 static void init_locks(void);
 
+extern void pcpu_timer_always(struct intrframe *);
+
 SYSINIT(cpu, SI_BOOT2_START_CPU, SI_ORDER_FIRST, cpu_startup, NULL);
 SYSINIT(pic_finish, SI_BOOT2_FINISH_PIC, SI_ORDER_FIRST, pic_finish, NULL);
 SYSINIT(cpu_finish, SI_BOOT2_FINISH_CPU, SI_ORDER_FIRST, cpu_finish, NULL);
@@ -3069,4 +3071,62 @@ cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS)
 	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
 	    &cpu_mwait_spin, FALSE);
 	return error;
+}
+
+/*
+ * This manual debugging code is called unconditionally from Xtimer
+ * (the per-cpu timer interrupt) whether the current thread is in a
+ * critical section or not) and can be useful in tracking down lockups.
+ *
+ * NOTE: MANUAL DEBUG CODE
+ */
+#if 0
+static int saveticks[SMP_MAXCPU];
+static int savecounts[SMP_MAXCPU];
+#endif
+
+void
+pcpu_timer_always(struct intrframe *frame)
+{
+#if 0
+	globaldata_t gd = mycpu;
+	int cpu = gd->gd_cpuid;
+	char buf[64];
+	short *gptr;
+	int i;
+
+	if (cpu <= 20) {
+		gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
+		*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
+		++gptr;
+
+		ksnprintf(buf, sizeof(buf), " %p %16s %d %16s ",
+		    (void *)frame->if_rip, gd->gd_curthread->td_comm, ticks,
+		    gd->gd_infomsg);
+		for (i = 0; buf[i]; ++i) {
+			gptr[i] = 0x0700 | (unsigned char)buf[i];
+		}
+	}
+#if 0
+	if (saveticks[gd->gd_cpuid] != ticks) {
+		saveticks[gd->gd_cpuid] = ticks;
+		savecounts[gd->gd_cpuid] = 0;
+	}
+	++savecounts[gd->gd_cpuid];
+	if (savecounts[gd->gd_cpuid] > 2000 && panicstr == NULL) {
+		panic("cpud %d panicing on ticks failure",
+			gd->gd_cpuid);
+	}
+	for (i = 0; i < ncpus; ++i) {
+		int delta;
+		if (saveticks[i] && panicstr == NULL) {
+			delta = saveticks[i] - ticks;
+			if (delta < -10 || delta > 10) {
+				panic("cpu %d panicing on cpu %d watchdog",
+				      gd->gd_cpuid, i);
+			}
+		}
+	}
+#endif
+#endif
 }

@@ -138,7 +138,7 @@ typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
 
 inthand_t
 	Xspuriousint,	/* handle APIC "spurious INTs" */
-	Xtimer;		/* handle LAPIC timer INT */
+	Xtimer;		/* handle per-cpu timer INT */
 
 inthand_t
 	Xinvltlb,	/* TLB shootdowns */

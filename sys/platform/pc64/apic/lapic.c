@@ -55,9 +55,6 @@ static void	lapic_timer_set_divisor(int);
 static void	lapic_timer_fixup_handler(void *);
 static void	lapic_timer_restart_handler(void *);
 
-void		lapic_timer_process(void);
-void		lapic_timer_process_frame(struct intrframe *);
-void		lapic_timer_always(struct intrframe *);
 
 static int	lapic_timer_enable = 1;
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
@@ -328,88 +325,6 @@ lapic_timer_calibrate(void)
 
 	kprintf("lapic: divisor index %d, frequency %u Hz\n",
 		lapic_timer_divisor_idx, lapic_cputimer_intr.freq);
-}
-
-static void
-lapic_timer_process_oncpu(struct globaldata *gd, struct intrframe *frame)
-{
-	sysclock_t count;
-
-	gd->gd_timer_running = 0;
-
-	count = sys_cputimer->count();
-	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
-		systimer_intr(&count, 0, frame);
-}
-
-void
-lapic_timer_process(void)
-{
-	lapic_timer_process_oncpu(mycpu, NULL);
-}
-
-void
-lapic_timer_process_frame(struct intrframe *frame)
-{
-	lapic_timer_process_oncpu(mycpu, frame);
-}
-
-/*
- * This manual debugging code is called unconditionally from Xtimer
- * (the lapic timer interrupt) whether the current thread is in a
- * critical section or not) and can be useful in tracking down lockups.
- *
- * NOTE: MANUAL DEBUG CODE
- */
-#if 0
-static int saveticks[SMP_MAXCPU];
-static int savecounts[SMP_MAXCPU];
-#endif
-
-void
-lapic_timer_always(struct intrframe *frame)
-{
-#if 0
-	globaldata_t gd = mycpu;
-	int cpu = gd->gd_cpuid;
-	char buf[64];
-	short *gptr;
-	int i;
-
-	if (cpu <= 20) {
-		gptr = (short *)0xFFFFFFFF800b8000 + 80 * cpu;
-		*gptr = ((*gptr + 1) & 0x00FF) | 0x0700;
-		++gptr;
-
-		ksnprintf(buf, sizeof(buf), " %p %16s %d %16s ",
-		    (void *)frame->if_rip, gd->gd_curthread->td_comm, ticks,
-		    gd->gd_infomsg);
-		for (i = 0; buf[i]; ++i) {
-			gptr[i] = 0x0700 | (unsigned char)buf[i];
-		}
-	}
-#if 0
-	if (saveticks[gd->gd_cpuid] != ticks) {
-		saveticks[gd->gd_cpuid] = ticks;
-		savecounts[gd->gd_cpuid] = 0;
-	}
-	++savecounts[gd->gd_cpuid];
-	if (savecounts[gd->gd_cpuid] > 2000 && panicstr == NULL) {
-		panic("cpud %d panicing on ticks failure",
-			gd->gd_cpuid);
-	}
-	for (i = 0; i < ncpus; ++i) {
-		int delta;
-		if (saveticks[i] && panicstr == NULL) {
-			delta = saveticks[i] - ticks;
-			if (delta < -10 || delta > 10) {
-				panic("cpu %d panicing on cpu %d watchdog",
-				      gd->gd_cpuid, i);
-			}
-		}
-	}
-#endif
-#endif
 }
 
 static void

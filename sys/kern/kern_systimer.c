@@ -58,6 +58,9 @@
 #include <sys/systimer.h>
 #include <sys/thread2.h>
 
+extern void	pcpu_timer_process(void);
+extern void	pcpu_timer_process_frame(struct intrframe *);
+
 /*
  * Execute ready systimers.  Called directly from the platform-specific
  * one-shot timer clock interrupt (e.g. clkintr()) or via an IPI.  May
@@ -297,4 +300,28 @@ systimer_init_oneshot(systimer_t info, systimer_func_t func, void *data, int us)
     info->which = sys_cputimer;
     info->gd = mycpu;
     systimer_add(info);
+}
+
+static void
+pcpu_timer_process_oncpu(struct globaldata *gd, struct intrframe *frame)
+{
+	sysclock_t count;
+
+	gd->gd_timer_running = 0;
+
+	count = sys_cputimer->count();
+	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
+		systimer_intr(&count, 0, frame);
+}
+
+void
+pcpu_timer_process(void)
+{
+	pcpu_timer_process_oncpu(mycpu, NULL);
+}
+
+void
+pcpu_timer_process_frame(struct intrframe *frame)
+{
+	pcpu_timer_process_oncpu(mycpu, frame);
 }

@@ -324,7 +324,7 @@ doreti_timer:
 	sti
 	subq	$8,%rsp			/* trapframe->intrframe */
 	movq	%rsp,%rdi		/* pass frame by ref (C arg) */
-	call	lapic_timer_process_frame
+	call	pcpu_timer_process_frame
 	addq	$8,%rsp			/* intrframe->trapframe */
 	decl	PCPU(intr_nesting_level)
 	movl	%r12d,%eax		/* restore cpl for loop */
@@ -446,7 +446,7 @@ splz_timer:
 	andl	$~RQF_TIMER,PCPU(reqflags)
 	sti
 	pushq	%rax
-	call	lapic_timer_process
+	call	pcpu_timer_process
 	popq	%rax
 	jmp	splz_next
 
