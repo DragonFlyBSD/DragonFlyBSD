@@ -617,13 +617,12 @@ calibrate_clocks(void)
 	 */
 	if (tsc_present) {
 		tsc_frequency = rdtsc() - old_tsc;
+		if (bootverbose) {
+			kprintf("TSC clock: %jd Hz (Method A)\n",
+			    (intmax_t)tsc_frequency);
+		}
 	}
 
-	if (tsc_present) {
-		kprintf("TSC%s clock: %llu Hz, ",
-		    tsc_invariant ? " invariant" : "",
-		    (long long)tsc_frequency);
-	}
 	kprintf("i8254 clock: %u Hz\n", tot_count);
 	return (tot_count);
 
@@ -856,10 +855,16 @@ startrtclock(void)
 		tsc_frequency = rdtsc() - old_tsc;
 #ifdef CLK_USE_TSC_CALIBRATION
 		if (bootverbose) {
-			kprintf("TSC clock: %llu Hz (Method B)\n",
-				tsc_frequency);
+			kprintf("TSC clock: %jd Hz (Method B)\n",
+			    (intmax_t)tsc_frequency);
 		}
 #endif
+	}
+
+	if (tsc_present) {
+		kprintf("TSC%s clock: %jd Hz\n",
+		    tsc_invariant ? " invariant" : "",
+		    (intmax_t)tsc_frequency);
 	}
 
 	EVENTHANDLER_REGISTER(shutdown_post_sync, resettodr_on_shutdown, NULL, SHUTDOWN_PRI_LAST);
