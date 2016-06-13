@@ -2,13 +2,13 @@
 .\" the BSD Copyright as specified in the file "/usr/src/COPYRIGHT" in
 .\" the source tree.
 .\"
-.Dd October 24, 2010
+.Dd June 12, 2016
 .Dt TUNING 7
 .Os
 .Sh NAME
 .Nm tuning
 .Nd performance tuning under DragonFly
-.Sh SYSTEM SETUP - DISKLABEL, NEWFS, TUNEFS, SWAP
+.Sh SYSTEM SETUP
 Modern
 .Dx
 systems typically have just three partitions on the main drive.
@@ -16,23 +16,32 @@ In order, a UFS
 .Pa /boot ,
 .Pa swap ,
 and a HAMMER
-.Pa / .
-The installer usually creates a multitude of PFSs (pseudo filesystems) on
-the HAMMER partition for /var, /tmp, and numerous other sub-trees.
-These PFSs exist to ease the management of snapshots and backups.
+.Pa root .
+The installer used to create separate PFSs for half a dozen directories,
+but now it just puts (almost) everything in the root.
+It will separate stuff that doesn't need to be backed up into a /build
+subdirectory and create null-mounts for things like /usr/obj, but it
+no longer creates separate PFSs for these.
+If desired, you can make /build its own mount to separate-out the
+components of the filesystem which do not need to be persistent.
 .Pp
 Generally speaking the
 .Pa /boot
-partition should be around 768MB in size.  The minimum recommended
-is around 350MB, giving you room for backup kernels and alternative
-boot schemes.
+partition should be 1GB in size.  This is the minimum recommended
+size, giving you room for backup kernels and alternative boot schemes.
+.Dx
+always installs debug-enabled kernels and modules and these can take
+up quite a bit of disk space (but will not take up any extra ram).
 .Pp
 In the old days we recommended that swap be sized to at least 2x main
 memory.  These days swap is often used for other activities, including
-.Xr tmpfs 5 .
+.Xr tmpfs 5
+and
+.Xr swapcache 8 .
 We recommend that swap be sized to the larger of 2x main memory or
 1GB if you have a fairly small disk and up to 16GB if you have a
 moderately endowed system and a large drive.
+Or even larger if you have a SSD+HDD system in order to use swapcache.
 If you are on a minimally configured machine you may, of course,
 configure far less swap or no swap at all but we recommend at least
 some swap.
@@ -41,7 +50,8 @@ at least 2x swap versus main memory.
 Configuring too little swap can lead to inefficiencies in the VM
 page scanning code as well as create issues later on if you add
 more memory to your machine.
-Swap is a good idea even if you don't think you will ever need it as it allows the
+Swap is a good idea even if you don't think you will ever need it as it
+allows the
 machine to page out completely unused data from idle programs (like getty),
 maximizing the ram available for your activities.
 .Pp
@@ -51,10 +61,13 @@ facility with a SSD we recommend the SSD be configured with at
 least a 32G swap partition.
 If you are on a moderately well configured 64-bit system you can
 size swap even larger.
+Keep in mind that each 1GByte of swapcache requires around 1MByte of
+ram.
 .Pp
 Finally, on larger systems with multiple drives, if the use
-of SSD swap is not in the cards, we recommend that you
-configure swap on each drive (up to four drives).
+of SSD swap is not in the cards or if it is and you need higher-than-normal
+swapcache bandwidth, you can configure swap on up to four drives and
+the kernel will interleave the storage.
 The swap partitions on the drives should be approximately the same size.
 The kernel can handle arbitrary sizes but
 internal data structures scale to 4 times the largest swap partition.
@@ -66,11 +79,16 @@ little, swap space is the saving grace of
 .Ux
 and even if you do not normally use much swap, it can give you more time to
 recover from a runaway program before being forced to reboot.
+However, keep in mind that any sort of swap space failure can lock the
+system up.
+Most machines are setup with only one or two swap partitions.
 .Pp
 Most
 .Dx
-systems have a single HAMMER root and use PFSs to break it up into
-various administrative domains.
+systems have a single HAMMER root.
+PFSs can be used to administratively separate domains for backup purposes
+but tend to be a hassle otherwise so if you don't need the administrative
+separation you don't really need to use multiple HAMMER PFSs.
 All the PFSs share the same allocation layer so there is no longer a need
 to size each individual mount.
 Instead you should review the
@@ -109,68 +127,31 @@ option is called
 .Ux
 filesystems normally update the last-accessed time of a file or
 directory whenever it is accessed.
-This operation is handled in
+However, this creates a massive burden on copy-on-write filesystems like
+HAMMER, particularly when scanning the filesystem.
 .Dx
-with a delayed write and normally does not create a burden on the system.
-However, if your system is accessing a huge number of files on a continuing
-basis the buffer cache can wind up getting polluted with atime updates,
-creating a burden on the system.
-For example, if you are running a heavily
-loaded web site, or a news server with lots of readers, you might want to
-consider turning off atime updates on your larger partitions with this
-.Xr mount 8
-option.
-You should not gratuitously turn off atime updates everywhere.
-For example, the
-.Pa /var
-filesystem customarily
-holds mailboxes, and atime (in combination with mtime) is used to
-determine whether a mailbox has new mail.
-.Sh STRIPING DISKS
-In larger systems you can stripe partitions from several drives together
-to create a much larger overall partition.
-Striping can also improve
-the performance of a filesystem by splitting I/O operations across two
-or more disks.
-The
-.Xr vinum 8 ,
-.Xr lvm 8 ,
-and
-.Xr dm 8
-subsystems may be used to create simple striped filesystems.
-We have deprecated
-.Xr ccd 4 .
-Generally
-speaking, striping smaller partitions such as the root and
-.Pa /var/tmp ,
-or essentially read-only partitions such as
-.Pa /usr
-is a complete waste of time.
-You should only stripe partitions that require serious I/O performance.
-We recommend that such partitions be completely separate mounts
-and not use the same storage media as your root mount.
-.Pp
-I should reiterate that last comment.  Do not stripe your boot+root.
-Just about everything in there will be cached in system memory anyway.
-Neither would I recommend RAIDing your root.
-If robustness is needed placing your boot, swap, and root on a SSD
-which has about the same MTBF as your motherboard, then RAIDing everything
-which requires significant amounts of storage, should be sufficient.
-There isn't much point making the boot/swap/root storage even more redundant
-when the motherboard itself has no redundancy.
-When a high level of total system redundancy is required you need to be
-thinking more about having multiple physical machines that back each
-other up.
-.Pp
-When striping multiple disks always partition in multiples of at
-least 8 megabytes and use at least a 128KB stripe.
-A 256KB stripe is probably even better.
-This will avoid mis-aligning HAMMER big-blocks (which are 8MB)
-or causing a single I/O cluster from crossing a stripe boundary.
-.Dx
-will issue a significant amount of read-ahead, upwards of a megabyte
-or more if it determines accesses are linear enough, which is
-sufficient to issue concurrent I/O across multiple stripes.
+currently defaults to disabling atime updates on HAMMER mounts.
+It can be enabled by setting the
+.Va vfs.hammer.noatime
+tunable to 0 in
+.Xr loader.conf 5
+but we recommend leaving it disabled.
+The lack of atime updates can create issues with certain programs
+such as when detecting whether unread mail is present, but
+applications for the most part no longer depend on it.
+.Sh SSD SWAP
+The single most important thing you can do is have at least one
+solid-state drive in your system, and configure your swap space
+on that drive.
+If you are using a combination of a smaller SSD and a very larger HDD,
+you can use
+.Xr swapcache 8
+to automatically cache data from your HDD.
+But even if you do not, having swap space configured on your SSD will
+significantly improve performance under even modest paging loads.
+It is particularly useful to configure a significant amount of swap
+on a workstation, 32GB or more is not uncommon, to handle bloated
+leaky applications such as browsers.
 .Sh SYSCTL TUNING
 .Xr sysctl 8
 variables permit system behavior to be monitored and controlled at
@@ -234,22 +215,14 @@ sysctls are of particular interest if you are running network intensive
 applications.
 They control the amount of send and receive buffer space
 allowed for any given TCP connection.
-The default sending buffer is 32K; the default receiving buffer
-is 64K.
-You can often
-improve bandwidth utilization by increasing the default at the cost of
-eating up more kernel memory for each connection.
+However,
+.Dx
+now auto-tunes these parameters using a number of other related
+sysctls (run 'sysctl net.inet.tcp' to get a list) and usually
+no longer need to be tuned manually.
 We do not recommend
-increasing the defaults if you are serving hundreds or thousands of
-simultaneous connections because it is possible to quickly run the system
-out of memory due to stalled connections building up.
-But if you need
-high bandwidth over a fewer number of connections, especially if you have
-gigabit Ethernet, increasing these defaults can make a huge difference.
-You can adjust the buffer size for incoming and outgoing data separately.
-For example, if your machine is primarily doing web serving you may want
-to decrease the recvspace in order to be able to increase the
-sendspace without eating too much kernel memory.
+increasing or decreasing the defaults if you are managing a very large
+number of connections.
 Note that the routing table (see
 .Xr route 8 )
 can be used to introduce route-specific send and receive buffer size
@@ -287,17 +260,15 @@ sysctl determines whether or not the TCP implementation should attempt
 to detect dead TCP connections by intermittently delivering
 .Dq keepalives
 on the connection.
-By default, this is disabled for all applications, only applications
-that specifically request keepalives will use them.
-In most environments, TCP keepalives will improve the management of
-system state by expiring dead TCP connections, particularly for
-systems serving dialup users who may not always terminate individual
-TCP connections before disconnecting from the network.
-However, in some environments, temporary network outages may be
-incorrectly identified as dead sessions, resulting in unexpectedly
-terminated TCP connections.
-In such environments, setting the sysctl to 0 may reduce the occurrence of
-TCP session disconnections.
+By default, this is now enabled for all applications.
+We do not recommend turning it off.
+The extra network bandwidth is minimal and this feature will clean-up
+stalled and long-dead connections that might not otherwise be cleaned
+up.
+In the past people using dialup connections often did not want to
+use this feature in order to be able to retain connections across
+long disconnections, but in modern day the only default that makes
+sense is for the feature to be turned on.
 .Pp
 The
 .Va net.inet.tcp.delayed_ack
@@ -322,18 +293,13 @@ turning off delayed acks may be referring to the slow-start issue.
 The
 .Va net.inet.tcp.inflight_enable
 sysctl turns on bandwidth delay product limiting for all TCP connections.
-The system will attempt to calculate the bandwidth delay product for each
-connection and limit the amount of data queued to the network to just the
-amount required to maintain optimum throughput.  This feature is useful
-if you are serving data over modems, GigE, or high speed WAN links (or
-any other link with a high bandwidth*delay product), especially if you are
-also using window scaling or have configured a large send window.  If
-you enable this option you should also be sure to set
-.Va net.inet.tcp.inflight_debug
-to 0 (disable debugging), and for production use setting
-.Va net.inet.tcp.inflight_min
-to at least 6144 may be beneficial.  Note, however, that setting high
-minimums may effectively disable bandwidth limiting depending on the link.
+This feature is now turned on by default and we recommend that it be
+left on.
+It will slightly reduce the maximum bandwidth of a connection but the
+benefits of the feature in reducing packet backlogs at router constriction
+points are enormous.
+These benefits make it a whole lot easier for router algorithms to manage
+QOS for multiple connections.
 The limiting feature reduces the amount of data built up in intermediate
 router and switch packet queues as well as reduces the amount of data built
 up in the local host's interface queue.  With fewer packets queued up,
@@ -341,6 +307,18 @@ interactive connections, especially over slow modems, will also be able
 to operate with lower round trip times.  However, note that this feature
 only affects data transmission (uploading / server-side).  It does not
 affect data reception (downloading).
+.Pp
+The system will attempt to calculate the bandwidth delay product for each
+connection and limit the amount of data queued to the network to just the
+amount required to maintain optimum throughput.  This feature is useful
+if you are serving data over modems, GigE, or high speed WAN links (or
+any other link with a high bandwidth*delay product), especially if you are
+also using window scaling or have configured a large send window.
+.Pp
+For production use setting
+.Va net.inet.tcp.inflight_min
+to at least 6144 may be beneficial.  Note, however, that setting high
+minimums may effectively disable bandwidth limiting depending on the link.
 .Pp
 Adjusting
 .Va net.inet.tcp.inflight_stab
@@ -395,11 +373,22 @@ Larger listen queues also do a better job of fending off denial of service
 attacks.
 .Pp
 The
+.Va kern.maxvnodes
+specifies how many vnodes and related file structures the kernel will
+cache.
+The kernel uses a very generous default for this parameter based on
+available physical memory.
+You generally do not want to mess with this parameter as it directly
+effects how well the kernel can cache not only file structures but also
+the underlying file data.
+But you can lower it if kernel memory use is higher than you would like.
+.Pp
+The
 .Va kern.maxfiles
 sysctl determines how many open files the system supports.
 The default is
-typically a few thousand but you may need to bump this up to ten or twenty
-thousand if you are running databases or large descriptor-heavy daemons.
+typically based on available physical memory but you may need to bump
+it up if you are running databases or large descriptor-heavy daemons.
 The read-only
 .Va kern.openfiles
 sysctl may be interrogated to determine the current number of open files
@@ -455,6 +444,18 @@ of file descriptors; many of the tunable values set to their defaults by
 may be individually overridden at boot-time or run-time as described
 elsewhere in this document.
 .Pp
+.Va kern.nbuf
+sets how many filesystem buffers the kernel should cache.
+Filesystem buffers can be up to 128KB each.  UFS typically uses an 8KB
+blocksize while HAMMER typically uses 64KB.
+The defaults usually suffice.
+The cached buffers represent wired physical memory so specifying a value
+that is too large can result in excessive kernel memory use, and is also
+not entirely necessary since the pages backing the buffers are also
+cached by the VM page cache (which does not use wired memory).
+The buffer cache significantly improves the hot path for cached file
+accesses.
+.Pp
 The
 .Va kern.dfldsiz
 and
@@ -476,24 +477,26 @@ tunable controls how much the stack segment will grow when a process
 needs to allocate more stack.
 .Pp
 .Va kern.ipc.nmbclusters
+and
+.Va kern.ipc.nmbjclusters
 may be adjusted to increase the number of network mbufs the system is
 willing to allocate.
-Each cluster represents approximately 2K of memory,
+Each normal cluster represents approximately 2K of memory,
 so a value of 1024 represents 2M of kernel memory reserved for network
 buffers.
-You can do a simple calculation to figure out how many you need.
-If you have a web server which maxes out at 1000 simultaneous connections,
-and each connection eats a 16K receive and 16K send buffer, you need
-approximately 32MB worth of network buffers to deal with it.
-A good rule of
-thumb is to multiply by 2, so 32MBx2 = 64MB/2K = 32768.
-So for this case
-you would want to set
-.Va kern.ipc.nmbclusters
-to 32768.
-We recommend values between
-1024 and 4096 for machines with moderates amount of memory, and between 4096
-and 32768 for machines with greater amounts of memory.
+Each 'j' cluster is typically 4KB, so a value of 1024 represents 4M of
+kernel memory.
+You can do a simple calculation to figure out how many you need but
+keep in mind that tcp buffer sizing is now more dynamic than it used to
+be.
+.Pp
+The defaults usually suffice but you may want to bump it up on service-heavy
+machines.
+Modern machines often need a large number of mbufs to operate services
+efficiently, values of 65536, even upwards of 262144 or more are common.
+If you are running a server, it is better to be generous than to be frugal.
+Remember the memory calculation though.
+.Pp
 Under no circumstances
 should you specify an arbitrarily high value for this parameter, it could
 lead to a boot-time crash.
@@ -519,7 +522,7 @@ and drivers you do not have will reduce the size of your kernel, sometimes
 by a megabyte or more, leaving more memory available for applications.
 .Pp
 If your motherboard is AHCI-capable then we strongly recommend turning
-on AHCI mode.
+on AHCI mode in the BIOS if it is not the default.
 .Sh CPU, MEMORY, DISK, NETWORK
 The type of tuning you do depends heavily on where your system begins to
 bottleneck as load increases.
@@ -537,63 +540,99 @@ can be used to monitor this.
 There are many solutions to saturated disks:
 increasing memory for caching, mirroring disks, distributing operations across
 several machines, and so forth.
-If disk performance is an issue and you
-are using IDE drives, switching to SCSI can help a great deal.
-While modern
-IDE drives compare with SCSI in raw sequential bandwidth, the moment you
-start seeking around the disk SCSI drives usually win.
 .Pp
 Finally, you might run out of network suds.
-The first line of defense for
-improving network performance is to make sure you are using switches instead
-of hubs, especially these days where switches are almost as cheap.
-Hubs
-have severe problems under heavy loads due to collision backoff and one bad
-host can severely degrade the entire LAN.
-Second, optimize the network path
+Optimize the network path
 as much as possible.
-For example, in
-.Xr firewall 7
-we describe a firewall protecting internal hosts with a topology where
-the externally visible hosts are not routed through it.
-Use 100BaseT rather
-than 10BaseT, or use 1000BaseT rather than 100BaseT, depending on your needs.
-Most bottlenecks occur at the WAN link (e.g.\&
-modem, T1, DSL, whatever).
-If expanding the link is not an option it may be possible to use the
-.Xr dummynet 4
-feature to implement peak shaving or other forms of traffic shaping to
-prevent the overloaded service (such as web services) from affecting other
-services (such as email), or vice versa.
-In home installations this could
-be used to give interactive traffic (your browser,
-.Xr ssh 1
-logins) priority
-over services you export from your box (web services, email).
+If you are operating a machine as a router you may need to
+setup a
+.Xr pf 4
+firewall (also see
+.Xr firewall 7 .
+.Dx
+has a very good fair-share queueing algorithm for QOS in
+.Xr pf 4 .
+.Sh SOURCE OF KERNEL MEMORY USAGE
+The primary sources of kernel memory usage are:
+.Pp
+.Bl -tag
+.It Va kern.maxvnodes
+The maximum number of cached vnodes in the system.
+These can eat quite a bit of kernel memory, primarily due to auxillary
+structures tracked by the HAMMER filesystem.
+It is relatively easy to configure a smaller value, but we do not
+recommend reducing this parameter below 100000.
+Smaller values directly impact the number of discrete files the
+kernel can cache data for at once.
+.It Va kern.ipc.nmbclusters
+.It Va kern.ipc.nmbjclusters
+Calculate approximately 2KB per normal cluster and 4KB per jumbo
+cluster.
+Do not make these values too low or you risk deadlocking the network
+stack.
+.It Va kern.nbuf
+The number of filesystem buffers managed by the kernel.
+The kernel wires the underlying cached VM pages, typically 8KB (UFS) or
+64KB (HAMMER) per buffer.
+.It swap/swapcache
+Swap memory requires approximately 1MB of physical ram for each 1GB
+of swap space.
+When swapcache is used, additional memory may be required to keep
+VM objects around longer (only really reducable by reducing the
+value of
+.Va kern.maxvnodes
+which you can do post-boot if you desire).
+.It tmpfs
+Tmpfs is very useful but keep in mind that while the file data itself
+is backed by swap, the meta-data (the directory topology) requires
+wired kernel memory.
+.It mmu page tables
+Even though the underlying data pages themselves can be paged to swap,
+the page tables are usually wired into memory.
+This can create problems when a large number of processes are mmap()ing
+very large files.
+Sometimes turning on
+.Va machdep.pmap_mmu_optimize
+suffices to reduce overhead.
+Page table kernel memory use can be observed by using 'vmstat -z'
+.It Va kern.ipc.shm_use_phys
+It is sometimes necessary to force shared memory to use physical memory
+when running a large database which uses shared memory to implement its
+own data caching.
+The use of sysv shared memory in this regard allows the database to
+distinguish between data which it knows it can access instantly (i.e.
+without even having to page-in from swap) verses data which it might require
+and I/O to fetch.
+.Pp
+If you use this feature be very careful with regards to the database's
+shared memory configuration as you will be wiring the memory.
+.El
 .Sh SEE ALSO
-.Xr netstat 1 ,
-.Xr systat 1 ,
-.Xr dummynet 4 ,
-.Xr nata 4 ,
-.Xr login.conf 5 ,
-.Xr rc.conf 5 ,
-.Xr sysctl.conf 5 ,
-.Xr firewall 7 ,
-.Xr hier 7 ,
 .Xr boot 8 ,
 .Xr ccdconfig 8 ,
 .Xr config 8 ,
 .Xr disklabel 8 ,
+.Xr dm 4 ,
+.Xr dummynet 4 ,
+.Xr firewall 7 ,
 .Xr fsck 8 ,
+.Xr hier 7 ,
 .Xr ifconfig 8 ,
 .Xr ipfw 8 ,
 .Xr loader 8 ,
+.Xr login.conf 5 ,
 .Xr mount 8 ,
+.Xr nata 4 ,
+.Xr netstat 1 ,
 .Xr newfs 8 ,
+.Xr pf 4 ,
+.Xr pf.conf 5 ,
+.Xr rc.conf 5 ,
 .Xr route 8 ,
+.Xr systat 1 ,
 .Xr sysctl 8 ,
-.Xr tunefs 8 ,
-.Xr vinum 8
+.Xr sysctl.conf 5 ,
+.Xr tunefs 8
 .Sh HISTORY
 The
 .Nm
