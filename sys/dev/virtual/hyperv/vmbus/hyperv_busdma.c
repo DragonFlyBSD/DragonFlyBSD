@@ -22,21 +22,48 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD$
  */
 
-#ifndef _HYPERV_VAR_H_
-#define _HYPERV_VAR_H_
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/bus.h>
 
-#ifndef NANOSEC
-#define NANOSEC			1000000000ULL
-#endif
-#define HYPERV_TIMER_NS_FACTOR	100ULL
-#define HYPERV_TIMER_FREQ	(NANOSEC / HYPERV_TIMER_NS_FACTOR)
+#include <dev/virtual/hyperv/include/hyperv_busdma.h>
 
-extern u_int	hyperv_features;
+void
+hyperv_dma_map_paddr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
+{
+	bus_addr_t *paddr = arg;
 
-uint64_t	hypercall_post_message(bus_addr_t);
+	if (error)
+		return;
 
-#endif	/* !_HYPERV_VAR_H_ */
+	KASSERT(nseg == 1, ("too many segments %d!", nseg));
+	*paddr = segs->ds_addr;
+}
+
+void *
+hyperv_dmamem_alloc(bus_dma_tag_t parent_dtag, bus_size_t alignment,
+    bus_addr_t boundary, bus_size_t size, struct hyperv_dma *dma, int flags)
+{
+	bus_dmamem_t dmem;
+	int error;
+
+	error = bus_dmamem_coherent(parent_dtag, alignment, boundary,
+	    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, size, flags, &dmem);
+	if (error)
+		return NULL;
+
+	dma->hv_dtag = dmem.dmem_tag;
+	dma->hv_dmap = dmem.dmem_map;
+	dma->hv_paddr = dmem.dmem_busaddr;
+	return dmem.dmem_addr;
+}
+
+void
+hyperv_dmamem_free(struct hyperv_dma *dma, void *ptr)
+{
+	bus_dmamap_unload(dma->hv_dtag, dma->hv_dmap);
+	bus_dmamem_free(dma->hv_dtag, ptr, dma->hv_dmap);
+	bus_dma_tag_destroy(dma->hv_dtag);
+}

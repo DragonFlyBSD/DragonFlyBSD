@@ -22,21 +22,26 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD$
  */
 
-#ifndef _HYPERV_VAR_H_
-#define _HYPERV_VAR_H_
+#include <sys/param.h>
+#include <machine/msi_machdep.h>
+#include <dev/virtual/hyperv/vmbus/hyperv_machdep.h>
 
-#ifndef NANOSEC
-#define NANOSEC			1000000000ULL
-#endif
-#define HYPERV_TIMER_NS_FACTOR	100ULL
-#define HYPERV_TIMER_FREQ	(NANOSEC / HYPERV_TIMER_NS_FACTOR)
+uint64_t
+hypercall_md(volatile void *hc_addr, uint64_t in_val,
+    uint64_t in_paddr, uint64_t out_paddr)
+{
+	uint64_t status;
 
-extern u_int	hyperv_features;
+	__asm__ __volatile__ ("mov %0, %%r8" : : "r" (out_paddr): "r8");
+	__asm__ __volatile__ ("call *%3" : "=a" (status) :
+	    "c" (in_val), "d" (in_paddr), "m" (hc_addr));
+	return (status);
+}
 
-uint64_t	hypercall_post_message(bus_addr_t);
-
-#endif	/* !_HYPERV_VAR_H_ */
+int
+hyperv_msi2vector(uint64_t msi_addr __unused, uint32_t msi_data)
+{
+	return (msi_data & MSI_X86_DATA_INTVEC);
+}

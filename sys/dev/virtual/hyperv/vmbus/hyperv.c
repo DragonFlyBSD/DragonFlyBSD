@@ -33,6 +33,8 @@
 
 #include <machine/cpufunc.h>
 
+#include <dev/virtual/hyperv/include/hyperv_busdma.h>
+#include <dev/virtual/hyperv/vmbus/hyperv_machdep.h>
 #include <dev/virtual/hyperv/vmbus/hyperv_reg.h>
 #include <dev/virtual/hyperv/vmbus/hyperv_var.h>
 
@@ -55,10 +57,18 @@
 	 MSR_HV_GUESTID_OSID_DRAGONFLY | \
 	 MSR_HV_GUESTID_OSTYPE_FREEBSD)
 
+struct hypercall_ctx {
+	void			*hc_addr;
+	struct hyperv_dma	hc_dma;
+};
+
 static void		hyperv_cputimer_construct(struct cputimer *,
 			    sysclock_t);
 static sysclock_t	hyperv_cputimer_count(void);
 static boolean_t	hyperv_identify(void);
+static int		hypercall_create(void);
+static void		hypercall_destroy(void);
+static void		hypercall_memfree(void);
 
 u_int			hyperv_features;
 static u_int		hyperv_recommends;
@@ -80,6 +90,15 @@ static struct cputimer	hyperv_cputimer = {
 	0, 0, 0
 };
 
+static struct hypercall_ctx	hypercall_context;
+
+uint64_t
+hypercall_post_message(bus_addr_t msg_paddr)
+{
+	return hypercall_md(hypercall_context.hc_addr,
+	    HYPERCALL_POST_MESSAGE, msg_paddr, 0);
+}
+
 static void
 hyperv_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
 {
@@ -94,6 +113,72 @@ hyperv_cputimer_count(void)
 
 	val = rdmsr(MSR_HV_TIME_REF_COUNT);
 	return (val + hyperv_cputimer.base);
+}
+
+static void
+hypercall_memfree(void)
+{
+	hyperv_dmamem_free(&hypercall_context.hc_dma,
+	    hypercall_context.hc_addr);
+	hypercall_context.hc_addr = NULL;
+}
+
+static int
+hypercall_create(void)
+{
+	uint64_t hc, hc_orig;
+
+	hypercall_context.hc_addr = hyperv_dmamem_alloc(NULL, PAGE_SIZE, 0,
+	    PAGE_SIZE, &hypercall_context.hc_dma, BUS_DMA_WAITOK);
+	if (hypercall_context.hc_addr == NULL) {
+		kprintf("hyperv: Hypercall page allocation failed\n");
+		return ENOMEM;
+	}
+
+	/* Get the 'reserved' bits, which requires preservation. */
+	hc_orig = rdmsr(MSR_HV_HYPERCALL);
+
+	/*
+	 * Setup the Hypercall page.
+	 *
+	 * NOTE: 'reserved' bits MUST be preserved.
+	 */
+	hc = ((hypercall_context.hc_dma.hv_paddr >> PAGE_SHIFT) <<
+	    MSR_HV_HYPERCALL_PGSHIFT) |
+	    (hc_orig & MSR_HV_HYPERCALL_RSVD_MASK) |
+	    MSR_HV_HYPERCALL_ENABLE;
+	wrmsr(MSR_HV_HYPERCALL, hc);
+
+	/*
+	 * Confirm that Hypercall page did get setup.
+	 */
+	hc = rdmsr(MSR_HV_HYPERCALL);
+	if ((hc & MSR_HV_HYPERCALL_ENABLE) == 0) {
+		kprintf("hyperv: Hypercall setup failed\n");
+		hypercall_memfree();
+		return EIO;
+	}
+	if (bootverbose)
+		kprintf("hyperv: Hypercall created\n");
+
+	return 0;
+}
+
+static void
+hypercall_destroy(void)
+{
+	uint64_t hc;
+
+	if (hypercall_context.hc_addr == NULL)
+		return;
+
+	/* Disable Hypercall */
+	hc = rdmsr(MSR_HV_HYPERCALL);
+	wrmsr(MSR_HV_HYPERCALL, (hc & MSR_HV_HYPERCALL_RSVD_MASK));
+	hypercall_memfree();
+
+	if (bootverbose)
+		kprintf("hyperv: Hypercall destroyed\n");
 }
 
 static boolean_t
@@ -192,6 +277,8 @@ hyperv_identify(void)
 static void
 hyperv_init(void *dummy __unused)
 {
+	int error;
+
 	if (!hyperv_identify()) {
 		/* Not Hyper-V; reset guest id to the generic one. */
 		if (vmm_guest == VMM_GUEST_HYPERV)
@@ -207,6 +294,12 @@ hyperv_init(void *dummy __unused)
 		cputimer_register(&hyperv_cputimer);
 		cputimer_select(&hyperv_cputimer, 0);
 	}
+
+	error = hypercall_create();
+	if (error) {
+		/* Can't perform any Hyper-V specific actions */
+		vmm_guest = VMM_GUEST_UNKNOWN;
+	}
 }
 SYSINIT(hyperv_initialize, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
     hyperv_init, NULL);
@@ -218,6 +311,7 @@ hyperv_uninit(void *dummy __unused)
 		/* Deregister Hyper-V systimer */
 		cputimer_deregister(&hyperv_cputimer);
 	}
+	hypercall_destroy();
 }
 SYSUNINIT(hyperv_uninitialize, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
     hyperv_uninit, NULL);

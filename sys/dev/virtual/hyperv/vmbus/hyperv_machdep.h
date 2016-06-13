@@ -26,17 +26,13 @@
  * $FreeBSD$
  */
 
-#ifndef _HYPERV_VAR_H_
-#define _HYPERV_VAR_H_
+#ifndef _HYPERV_MACHDEP_H_
+#define _HYPERV_MACHDEP_H_
 
-#ifndef NANOSEC
-#define NANOSEC			1000000000ULL
-#endif
-#define HYPERV_TIMER_NS_FACTOR	100ULL
-#define HYPERV_TIMER_FREQ	(NANOSEC / HYPERV_TIMER_NS_FACTOR)
+#include <sys/param.h>
 
-extern u_int	hyperv_features;
+uint64_t	hypercall_md(volatile void *hc_addr, uint64_t in_val,
+		    uint64_t in_paddr, uint64_t out_paddr);
+int		hyperv_msi2vector(uint64_t msi_addr, uint32_t msi_data);
 
-uint64_t	hypercall_post_message(bus_addr_t);
-
-#endif	/* !_HYPERV_VAR_H_ */
+#endif	/* !_HYPERV_MACHDEP_H_ */

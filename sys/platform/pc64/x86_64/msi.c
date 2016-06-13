@@ -31,7 +31,6 @@
 # define MSI_X86_DATA_DELNMI		IOART_DELNMI
 # define MSI_X86_DATA_DELINIT		IOART_DELINIT
 # define MSI_X86_DATA_DELEXINT		IOART_DELEXINT
-#define	MSI_X86_DATA_INTVEC		IOART_INTVEC	/* Interrupt vector. */
 
 #define	MSI_X86_ADDR(lapic_id) \
 	(MSI_X86_ADDR_BASE | (lapic_id) << 12 | \
