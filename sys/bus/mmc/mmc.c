@@ -369,7 +369,7 @@ mmc_highest_voltage(uint32_t ocr)
 	int i;
 
 	for (i = MMC_OCR_MAX_VOLTAGE_SHIFT;
-	    i >= MMC_OCR_MIN_VOLTAGE_SHIFT; i--)
+	    i >= 7; i--)
 		if (ocr & (1 << i))
 			return (i);
 	return (-1);
@@ -606,7 +606,7 @@ mmc_send_if_cond(struct mmc_softc *sc, uint8_t vhs)
 	cmd.flags = MMC_RSP_R7 | MMC_CMD_BCR;
 	cmd.data = NULL;
 
-	err = mmc_wait_for_cmd(sc, &cmd, CMD_RETRIES);
+	err = mmc_wait_for_cmd(sc, &cmd, 5*CMD_RETRIES);
 	return (err);
 }
 
