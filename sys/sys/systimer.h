@@ -129,6 +129,7 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_GEODE		6
 #define CPUTIMER_CS5536		7
 #define CPUTIMER_TSC		8
+#define CPUTIMER_VMM		9
 
 #define CPUTIMER_PRI_DUMMY	-10
 #define CPUTIMER_PRI_8254	0
@@ -138,6 +139,7 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_PRI_GEODE	40
 #define CPUTIMER_PRI_VKERNEL	200
 #define CPUTIMER_PRI_TSC	250
+#define CPUTIMER_PRI_VMM	1000
 
 void cputimer_select(struct cputimer *, int);
 void cputimer_register(struct cputimer *);
