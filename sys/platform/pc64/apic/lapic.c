@@ -72,11 +72,13 @@ static struct cputimer_intr lapic_cputimer_intr = {
 	.restart = lapic_timer_intr_restart,
 	.pmfixup = lapic_timer_intr_pmfixup,
 	.initclock = cputimer_intr_default_initclock,
+	.pcpuhand = NULL,
 	.next = SLIST_ENTRY_INITIALIZER,
 	.name = "lapic",
 	.type = CPUTIMER_INTR_LAPIC,
 	.prio = CPUTIMER_INTR_PRIO_LAPIC,
-	.caps = CPUTIMER_INTR_CAP_NONE
+	.caps = CPUTIMER_INTR_CAP_NONE,
+	.priv = NULL
 };
 
 static int		lapic_timer_divisor_idx = -1;

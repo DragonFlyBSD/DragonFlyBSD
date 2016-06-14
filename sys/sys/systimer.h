@@ -175,6 +175,7 @@ void cputimer_default_destruct(struct cputimer *);
  * restart   -- Start the possibly stalled interrupt cputimer immediately.
  *              Do fixup if necessary.
  * pmfixup   -- Called after ACPI power management is enabled.
+ * pcpuhand  -- Per-cpu handler (could be NULL).
  */
 struct cputimer_intr {
 	sysclock_t	freq;
@@ -190,11 +191,14 @@ struct cputimer_intr {
 			(struct cputimer_intr *);
 	void		(*initclock)
 			(struct cputimer_intr *, boolean_t);
+	void		(*pcpuhand)
+			(struct cputimer_intr *);
 	SLIST_ENTRY(cputimer_intr) next;
 	const char	*name;
 	int		type;	/* CPUTIMER_INTR_ */
 	int		prio;	/* CPUTIMER_INTR_PRIO_ */
 	uint32_t	caps;	/* CPUTIMER_INTR_CAP_ */
+	void		*priv;	/* private data */
 };
 
 #define CPUTIMER_INTR_8254		0

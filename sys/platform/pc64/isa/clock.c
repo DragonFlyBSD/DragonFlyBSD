@@ -177,11 +177,13 @@ static struct cputimer_intr i8254_cputimer_intr = {
     .restart = cputimer_intr_default_restart,
     .pmfixup = cputimer_intr_default_pmfixup,
     .initclock = i8254_intr_initclock,
+    .pcpuhand = NULL,
     .next = SLIST_ENTRY_INITIALIZER,
     .name = "i8254",
     .type = CPUTIMER_INTR_8254,
     .prio = CPUTIMER_INTR_PRIO_8254,
-    .caps = CPUTIMER_INTR_CAP_PS
+    .caps = CPUTIMER_INTR_CAP_PS,
+    .priv = NULL
 };
 
 /*

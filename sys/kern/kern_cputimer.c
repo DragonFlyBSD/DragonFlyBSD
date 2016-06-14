@@ -45,6 +45,9 @@
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
+extern void	pcpu_timer_process(void);
+extern void	pcpu_timer_process_frame(struct intrframe *);
+
 static sysclock_t dummy_cputimer_count(void);
 
 static struct cputimer dummy_cputimer = {
@@ -571,4 +574,39 @@ cputimer_intr_powersave_remreq(void)
     }
 
     lwkt_serialize_exit(&cputimer_intr_ps_slize);
+}
+
+static __inline void
+cputimer_intr_pcpuhand(void)
+{
+    struct cputimer_intr *cti = sys_cputimer_intr;
+
+    if (cti->pcpuhand != NULL)
+	cti->pcpuhand(cti);
+}
+
+static void
+pcpu_timer_process_oncpu(struct globaldata *gd, struct intrframe *frame)
+{
+	sysclock_t count;
+
+	cputimer_intr_pcpuhand();
+
+	gd->gd_timer_running = 0;
+
+	count = sys_cputimer->count();
+	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
+		systimer_intr(&count, 0, frame);
+}
+
+void
+pcpu_timer_process(void)
+{
+	pcpu_timer_process_oncpu(mycpu, NULL);
+}
+
+void
+pcpu_timer_process_frame(struct intrframe *frame)
+{
+	pcpu_timer_process_oncpu(mycpu, frame);
 }

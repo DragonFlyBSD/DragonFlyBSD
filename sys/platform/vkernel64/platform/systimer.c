@@ -109,11 +109,13 @@ static struct cputimer_intr vkernel_cputimer_intr = {
 	.restart = cputimer_intr_default_restart,
 	.pmfixup = cputimer_intr_default_pmfixup,
 	.initclock = vktimer_intr_initclock,
+	.pcpuhand = NULL,
 	.next = SLIST_ENTRY_INITIALIZER,
 	.name = "vkernel",
 	.type = CPUTIMER_INTR_VKERNEL,
 	.prio = CPUTIMER_INTR_PRIO_VKERNEL,
-	.caps = CPUTIMER_INTR_CAP_NONE
+	.caps = CPUTIMER_INTR_CAP_NONE,
+	.priv = NULL
 };
 
 /*
