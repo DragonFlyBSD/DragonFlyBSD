@@ -1135,12 +1135,16 @@ acpi_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	     * parse the resources but have to defer it until a driver
 	     * actually allocates the interrupt via bus_alloc_resource().
 	     *
-	     * XXX: Should we handle the lookup failing?
+	     * NB: Lookup failure is fine, since the device may add its
+	     * own interrupt resources, e.g. MSI or MSI-X.
 	     */
-	    if (ACPI_SUCCESS(acpi_lookup_irq_resource(child, *rid, res, &ares)))
+	    if (ACPI_SUCCESS(
+		    acpi_lookup_irq_resource(child, *rid, res, &ares))) {
 		acpi_config_intr(child, &ares);
-	    else
-		kprintf("irq resource not found\n");
+	    } else {
+		if (bootverbose)
+		    kprintf("irq resource not found\n");
+	    }
 	    break;
 	}
 
