@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2016.05.11
-#	Date:    2016-05-11 03:15:02
+#	Version: 2016.06.07
+#	Date:    2016-06-07 03:15:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at http://pci-ids.ucw.cz/.
@@ -271,6 +271,7 @@
 		103c 12c5  Ultra320 SCSI [A7173A]
 		103c 1323  Core I/O LAN/SCSI Combo [AB314A]
 		103c 3108  Single Channel Ultra320 SCSI HBA G2
+		103c 322a  SC11Xe Ultra320 Single Channel PCIe x4 SCSI Host Bus Adapter (412911-B21)
 		124b 1170  PMC-USCSI320
 # VMware's emulation of this device. Was missing from the list.
 		15ad 1976  LSI Logic Parallel SCSI Controller
@@ -1524,6 +1525,7 @@
 	6649  Bonaire [FirePro W5100]
 		1002 0b0c  FirePro W4300
 		103c 0b0c  Bonaire [FirePro W4300]
+		103c 230c  FirePro W5100
 	6650  Bonaire
 	6651  Bonaire
 	6658  Bonaire XTX [Radeon R7 260X/360]
@@ -2150,7 +2152,7 @@
 	67b9  Vesuvius [Radeon R9 295X2]
 	67be  Hawaii LE
 	67c0  Ellesmere [Polaris10]
-	67df  Ellesmere [Polaris10]
+	67df  Ellesmere [Radeon RX 480]
 	67e0  Baffin [Polaris11]
 	67e1  Baffin [Polaris11]
 	67e8  Baffin [Polaris11]
@@ -10436,7 +10438,7 @@
 	1287  GK208 [GeForce GT 730]
 	1288  GK208 [GeForce GT 720]
 	1289  GK208 [GeForce GT 710]
-	128b  GK208 [GeForce GT 710]
+	128b  GK208 [GeForce GT 710B]
 	1290  GK208M [GeForce GT 730M]
 		103c 2afa  GeForce GT 730A
 		103c 2b04  GeForce GT 730A
@@ -10506,6 +10508,7 @@
 	139b  GM107M [GeForce GTX 960M]
 		103c 2b4c  GeForce GTX 960A
 	139c  GM107M [GeForce 940M]
+	139d  GM107M [GeForce GTX 750 Ti]
 	13b0  GM107GLM [Quadro M2000M]
 	13b1  GM107GLM [Quadro M1000M]
 	13b2  GM107GLM [Quadro M600M]
@@ -10534,20 +10537,52 @@
 	13fb  GM204GLM [Quadro M5500]
 	1401  GM206 [GeForce GTX 960]
 	1402  GM206 [GeForce GTX 950]
+	1406  GM206 [GeForce GTX 960]
 	1407  GM206 [GeForce GTX 750 v2]
 	1427  GM206M [GeForce GTX 965M]
 	1430  GM206GL [Quadro M2000]
 	1431  GM206GL [Tesla M4]
+	15f0  GP100GL
+	15f1  GP100GL
+	15f8  GP100GL
+	15f9  GP100GL
 	1617  GM204M [GeForce GTX 980M]
 	1618  GM204M [GeForce GTX 970M]
 	1619  GM204M [GeForce GTX 965M]
 	161a  GM204M [GeForce GTX 980]
 	1667  GM204M [GeForce GTX 965M]
+	1725  GP100
+	172e  GP100
+	172f  GP100
 	17c2  GM200 [GeForce GTX TITAN X]
 	17c8  GM200 [GeForce GTX 980 Ti]
 	17f0  GM200GL [Quadro M6000]
 	17f1  GM200GL [Quadro M6000 24GB]
 	17fd  GM200GL [Tesla M40]
+	1b00  GP102
+	1b01  GP102
+	1b70  GP102GL
+	1b78  GP102GL
+	1b80  GP104 [GeForce GTX 1080]
+	1b81  GP104 [GeForce GTX 1070]
+	1b82  GP104
+	1b83  GP104
+	1bb0  GP104GL
+	1bb1  GP104GL
+	1bb4  GP104GL
+	1c00  GP106
+	1c01  GP106
+	1c02  GP106
+	1c03  GP106
+	1c30  GP106GL
+	1c70  GP106GL
+	1c80  GP107
+	1c81  GP107
+	1c82  GP107
+	1ca7  GP107GL
+	1ca8  GP107GL
+	1caa  GP107GL
+	1d01  GP108
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
 		103c 1934  FlexFabric 20Gb 2-port 650M Adapter
@@ -10798,6 +10833,7 @@
 		1028 0283  Vostro 220
 		1028 04b2  Vostro 3350
 		1028 04da  Vostro 3750
+		1028 06f3  Latitude 3570
 		103c 1611  Pavilion DM1Z-3000
 		103c 1950  ProBook 450/455
 		103c 2a6f  Asus IPIBL-LB Motherboard
@@ -16723,11 +16759,21 @@
 	16c9  BCM57302 NetXtreme-C Dual-port 10Gb/25Gb Ethernet
 	16ca  BCM57304 NetXtreme-C Dual-port 10Gb/25Gb/40Gb/50Gb Ethernet
 	16cb  BCM57304 NetXtreme-C Ethernet Virtual Function
+	16ce  BCM57311 NetXtreme-C Single-port 10Gb RDMA Ethernet
+	16cf  BCM57312 NetXtreme-C Dual-port 10Gb/25Gb RDMA Ethernet
 	16d0  BCM57402 NetXtreme-E Dual-port 10Gb Ethernet
 	16d1  BCM57404 NetXtreme-E Dual-port 10Gb/25Gb Ethernet
 	16d2  BCM57406 NetXtreme-E Dual-port 10GBase-T Ethernet
 	16d3  BCM57404 NetXtreme-E Ethernet Virtual Function
+	16d6  BCM57412 NetXtreme-E Dual-port 10Gb RDMA Ethernet
+	16d7  BCM57414 NetXtreme-E Dual-port 10Gb/25Gb RDMA Ethernet
+	16d8  BCM57416 NetXtreme-E Dual-port 10GBase-T RDMA Ethernet
+	16d9  BCM57417 NetXtreme-E Dual-port 10GBase-T RDMA Ethernet
+	16dc  BCM57414 NetXtreme-E Ethernet Virtual Function
 	16dd  NetLink BCM5781 Gigabit Ethernet PCI Express
+	16df  BCM57314 NetXtreme-C Dual-port 10Gb/25Gb/40Gb/50Gb RDMA Ethernet
+	16e1  BCM57314 NetXtreme-C Ethernet Virtual Function
+	16e2  BCM57417 NetXtreme-E Dual-port 10Gb/25Gb RDMA Ethernet
 	16f3  NetXtreme BCM5727 Gigabit Ethernet PCIe
 	16f7  NetXtreme BCM5753 Gigabit Ethernet PCI Express
 	16fd  NetXtreme BCM5753M Gigabit Ethernet PCI Express
@@ -18258,6 +18304,7 @@
 		1a3b 1186  AW-NE186H
 	0033  AR9580 Wireless Network Adapter
 	0034  AR9462 Wireless Network Adapter
+		1028 0300  Wireless 1802 802.11abgn Adapter
 		1a56 2003  Killer Wireless-N 1202 Half-size Mini PCIe Card
 	0036  QCA9565 / AR9565 Wireless Network Adapter
 	0037  AR9485 Wireless Network Adapter
@@ -18268,6 +18315,7 @@
 		1a56 1525  Killer N1525 Wireless-AC
 	0040  QCA9980/9990 802.11ac Wireless Network Adapter
 	0041  QCA6164 802.11ac Wireless Network Adapter
+	0042  QCA9377 802.11ac Wireless Network Adapter
 	0050  QCA9887 802.11ac Wireless Network Adapter
 	0207  AR5210 Wireless Network Adapter [AR5000 802.11a]
 	1014  AR5212 802.11abg NIC
@@ -18386,6 +18434,11 @@
 	7005  XMC-7K410CC: User-Configurable Kintex-7 FPGA, 410k logic cells, conduction-cooled
 	7006  XMC-7A200: User-Configurable Artix-7 FPGA, 200k logic cells with Plug-In I/O
 	7007  XMC-7A200CC: User-Configurable Conduction-Cooled Artix-7 FPGA, with 200k logic cells
+	7011  AP440-1: 32-Channel Isolated Digital Input Module
+	7012  AP440-2: 32-Channel Isolated Digital Input Module
+	7013  AP440-3: 32-Channel Isolated Digital Input Module
+	7014  AP445: 32-Channel Isolated Digital Output Module
+	7018  AP408: 32-Channel Digital I/O Module
 16da  Advantech Co., Ltd.
 	0011  INES GPIB-PCI
 16df  PIKA Technologies Inc.
@@ -18484,9 +18537,10 @@
 		177d 0004  CN2350 [LiquidIO II] 2-port 25GbE Intelligent adapter
 	9703  CN23XX [LiquidIO II] NVMe Controller
 	9712  CN23XX [LiquidIO II] SRIOV Virtual Function
+		177d 0003  CN2350 [LiquidIO II] 2-port 10GbE SRIOV Virtual Function
 	9713  CN23XX [LiquidIO II] NVMe SRIOV Virtual Function
 	9800  Octeon Fusion CNF75XX Processor
-	a001  THUNDERX MRML Bridge
+	a001  ThunderX MRML(Master RML Bridge to RSL devices)
 	a002  THUNDERX PCC Bridge
 		177d a102  CN88XX PCC Bridge
 	a008  THUNDERX SMMU
@@ -18524,15 +18578,24 @@
 	a026  THUNDERX BGX (Common Ethernet Interface)
 	a027  THUNDERX IOBN
 	a029  THUNDERX NCSI (Network Controller Sideband Interface)
-	a02a  THUNDERX SGP
+	a02a  ThunderX SGPIO (Serial GPIO controller for SATA disk lights)
 	a02b  THUNDERX SMI / MDIO Controller
 	a02c  THUNDERX DAP (Debug Access Port)
 	a02d  THUNDERX PCIERC (PCIe Root Complex)
-	a02e  THUNDERX L2C-TAD
+	a02e  ThunderX L2C-TAD (Level 2 cache tag and data)
 	a02f  THUNDERX L2C-CBC
 	a030  THUNDERX L2C-MCI
 	a031  THUNDERX MIO-FUS (Fuse Access Controller)
 	a032  THUNDERX FUSF (Fuse Controller)
+	a033  THUNDERX Random Number Generator virtual function
+	a034  THUNDERX Network Interface Controller virtual function
+	a035  THUNDERX Parallel Bus
+	a036  ThunderX RAD (RAID acceleration engine) virtual function
+	a037  THUNDERX ZIP virtual function
+	a040  THUNDERX CPT Cryptographic Accelerator
+	a100  THUNDERX CN88XX 48 core SoC
+	a200  OCTEON TX CN81XX/CN80XX
+	a300  OCTEON TX CN83XX
 1787  Hightech Information System Ltd.
 1789  Ennyah Technologies Corp.
 # also used by Struck Innovative Systeme for joint developments
@@ -19147,13 +19210,20 @@
 		1924 800c  SFN7x22F-R3 Flareon Ultra 7000 Series 10G Adapter
 		1924 800d  SFN7x02F-R3 Flareon 7000 Series 10G Adapter
 		1924 8010  SFA7942Q-R1 QSFP+ AOE Adapter
+		1924 8015  SFA7942Q-A5-0-R1 QSFP+ AOE Adapter
 	0923  SFC9140
 		1924 800b  SFN7x42Q-R1 Flareon Ultra 7000 Series 10/40G Adapter
 		1924 800e  SFN7x42Q-R2 Flareon Ultra 7000 Series 10/40G Adapter
 		1924 800f  SFN7xx4F-R1 Flareon Ultra 7000 Series 10G Adapter
 	0a03  SFC9220
+		1924 8011  SFN 8022-R1 Solarflare Flareon 8000 Series 10G Adapter
 		1924 8012  SFN8522-R1 Flareon Ultra 8000 Series 10G Adapter
+		1924 8013  SFN8042-R1 Solarflare Flareon 8000 Series 10/40G Adapter
 		1924 8014  SFN8542-R1 Flareon Ultra 8000 Series 10/40G Adapter
+		1924 8016  SFN8022-R2 Flareon 8000 Series 10G Adapter
+		1924 8017  SFN8522-R2 Flareon Ultra 8000 Series 10G Adapter
+		1924 8018  SFN8042-R2 Flareon 8000 Series 10/40G Adapter
+		1924 8019  SFN8542-R2 Flareon Ultra 8000 Series 10/40G Adapter
 	1803  SFC9020 Virtual Function [Solarstorm]
 	1813  SFL9021 Virtual Function [Solarstorm]
 	1903  SFC9120 Virtual Function
@@ -19669,6 +19739,9 @@
 		1af4 1100  QEMU Virtual Machine
 	0005  QEMU PCI Test Device
 		1af4 1100  QEMU Virtual Machine
+	0006  PCI Rocker Ethernet switch device
+	0007  PCI SD Card Host Controller Interface
+	000a  PCI-PCI bridge (multiseat)
 	0100  QXL paravirtual graphic card
 		1af4 1100  QEMU Virtual Machine
 1b37  Signal Processing Devices Sweden AB
@@ -19724,6 +19797,7 @@
 	9485  88SE9485 SAS/SATA 6Gb/s controller
 1b55  NetUP Inc.
 	18f6  Dual DVB Universal CI card
+	18f7  Dual DVB Universal CI card rev 1.4
 	2a2c  Dual DVB-S2-CI card
 	e2e4  Dual DVB-T/C-CI RF card
 # 2xHDMI and 2xHD-SDI inputs
@@ -19851,6 +19925,9 @@
 1cb1  Collion UG & Co.KG
 1cc5  Embedded Intelligence, Inc.
 	0100  CAN-PCIe-02
+1cc7  Radian Memory Systems Inc.
+	0200  RMS-200
+	0250  RMS-250
 1cd2  SesKion GmbH
 	0301  Simulyzer-RT CompactPCI Serial DIO-1 card
 	0302  Simulyzer-RT CompactPCI Serial PSI5-ECU-1 card
@@ -19872,6 +19949,8 @@
 1d21  Allo
 1d26  Kalray Inc.
 	0040  Turbocard2 Accelerator
+	0080  Open Network Interface Card 80G
+	00c0  Turbocard3 Accelerator
 	e004  AB01/EMB01 Development Board
 1d40  Techman Electronics (Changshu) Co., Ltd.
 1d44  DPT
@@ -22332,6 +22411,7 @@
 		8086 0001  Ethernet Converged Network Adapter X550-T2
 		8086 001a  Ethernet Converged Network Adapter X550-T2
 		8086 0022  Ethernet Converged Network Adapter X550-T2
+	1565  X550 Virtual Function
 	1566  DSL4410 Thunderbolt NHI [Redwood Ridge 2C 2013]
 	1567  DSL4410 Thunderbolt Bridge [Redwood Ridge 2C 2013]
 	1568  DSL4510 Thunderbolt NHI [Redwood Ridge 4C 2013]
@@ -22489,6 +22569,7 @@
 	1902  HD Graphics 510
 	1903  Skylake Processor Thermal Subsystem
 	1904  Skylake Host Bridge/DRAM Registers
+		1028 06f3  Latitude 3570
 	1905  Skylake PCIe Controller (x8)
 	1906  HD Graphics 510
 	1908  Skylake Host Bridge/DRAM Registers
@@ -22499,6 +22580,7 @@
 	1911  Skylake Gaussian Mixture Model
 	1912  HD Graphics 530
 	1916  HD Graphics 520
+		1028 06f3  Latitude 3570
 	1918  Skylake Host Bridge/DRAM Registers
 	1919  Skylake Imaging Unit
 	191b  HD Graphics 530
@@ -22971,37 +23053,37 @@
 	225c  Xeon Phi coprocessor SE10/7120 series
 	225d  Xeon Phi coprocessor 3120 series 
 	225e  Xeon Phi coprocessor 31S1
-	2280  Braswell SoC Transaction Router
-	2284  Braswell HD Audio Controller
-	2286  Braswell Serial I/O DMA
-	228a  Braswell Serial I/O HSUART Port 1
-	228c  Braswell Serial I/O HSUART Port 2
-	2292  Braswell Platform Controller Unit SMBus
-	2294  Braswell Storage Cluster Control MMC Port
-	2295  Braswell Storage Cluster Control SDIO Port
-	2296  Braswell Storage Cluster Control SD Port
-	2298  Braswell Trusted Execution Engine Interface
-	229c  Braswell Platform Controller Unit LPC
-	22a3  Braswell SATA Controller
-	22a4  Braswell SATA AHCI Controller
-	22a8  Braswell Low Power Engine Audio
-	22b0  Braswell PCI Configuration Registers
-	22b1  Braswell Integrated Graphics Controller
-	22b5  Braswell USB xHCI Host Controller
-	22b8  Braswell ISP Camera
-	22c0  Braswell Serial I/O DMA
-	22c1  Braswell Serial I/O I2C Port 1
-	22c2  Braswell Serial I/O I2C Port 2
-	22c3  Braswell Serial I/O I2C Port 3
-	22c4  Braswell Serial I/O I2C Port 4
-	22c5  Braswell Serial I/O I2C Port 5
-	22c6  Braswell Serial I/O I2C Port 6
-	22c7  Braswell Serial I/O I2C Port 7
-	22c8  Braswell PCIe Port 1
-	22ca  Braswell PCIe Port 2
-	22cc  Braswell PCIe Port 3
-	22ce  Braswell PCIe Port 4
-	22dc  Braswell P-Unit Power Management
+	2280  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SoC Transaction Register
+	2284  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series High Definition Audio Controller
+	2286  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO1 DMA Controller
+	228a  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO1 HSUART Controller #1
+	228c  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO1 HSUART Controller #2
+	2292  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx SMBus Controller
+	2294  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series MMC Controller
+	2295  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SDIO Controller
+	2296  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SD Controller
+	2298  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series Trusted Execution Engine
+	229c  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series PCU
+	22a3  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SATA Controller
+	22a4  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SATA AHCI Controller
+	22a8  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series Low Power Engine Audio
+	22b0  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series PCI Configuration Registers
+	22b1  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Integrated Graphics Controller
+	22b5  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series USB xHCI Controller
+	22b8  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series Imaging Unit
+	22c0  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 DMA Controller
+	22c1  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 I2C Controller #1
+	22c2  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 I2C Controller #2
+	22c3  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 I2C Controller #3
+	22c4  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 I2C Controller #4
+	22c5  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 I2C Controller #5
+	22c6  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 I2C Controller #6
+	22c7  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series LPIO2 I2C Controller #7
+	22c8  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series PCI Express Port #1
+	22ca  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series PCI Express Port #2
+	22cc  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series PCI Express Port #3
+	22ce  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series PCI Express Port #4
+	22dc  Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series Power Management Controller
 	2310  DH89xxCC LPC Controller
 	2323  DH89xxCC 4 Port SATA AHCI Controller
 	2330  DH89xxCC SMBus Controller
@@ -25793,6 +25875,7 @@
 	37d2  Ethernet Connection X722 for 10GBASE-T
 	37d3  Ethernet Connection X722 for 10GbE SFP+
 	37d4  Ethernet Connection X722 for 10GbE QSFP+
+	37d9  X722 Hyper-V Virtual Function
 	3a00  82801JD/DO (ICH10 Family) 4-port SATA IDE Controller
 	3a02  82801JD/DO (ICH10 Family) SATA AHCI Controller
 	3a05  82801JD/DO (ICH10 Family) SATA RAID Controller
@@ -26966,20 +27049,28 @@
 	9ce5  Wildcat Point-LP Serial IO GSPI Controller #0
 	9ce6  Wildcat Point-LP Serial IO GSPI Controller #1
 	9d03  Sunrise Point-LP SATA Controller [AHCI mode]
+		1028 06f3  Latitude 3570
 	9d14  Sunrise Point-LP PCI Express Root Port #5
 	9d15  Sunrise Point-LP PCI Express Root Port #6
 	9d21  Sunrise Point-LP PMC
+		1028 06f3  Latitude 3570
 	9d23  Sunrise Point-LP SMBus
+		1028 06f3  Latitude 3570
 	9d27  Sunrise Point-LP Serial IO UART Controller #0
 	9d28  Sunrise Point-LP Serial IO UART Controller #1
 	9d29  Sunrise Point-LP Serial IO SPI Controller #0
 	9d2a  Sunrise Point-LP Serial IO SPI Controller #1
 	9d2d  Sunrise Point-LP Secure Digital IO Controller
 	9d2f  Sunrise Point-LP USB 3.0 xHCI Controller
+		1028 06f3  Latitude 3570
 	9d31  Sunrise Point-LP Thermal subsystem
+		1028 06f3  Latitude 3570
 	9d3a  Sunrise Point-LP CSME HECI #1
+		1028 06f3  Latitude 3570
 	9d48  Sunrise Point-LP LPC Controller
+		1028 06f3  Latitude 3570
 	9d60  Sunrise Point-LP Serial IO I2C Controller #0
+		1028 06f3  Latitude 3570
 		8086 9d60  100 Series PCH/Sunrise Point PCH I2C0 [Skylake/Kaby Lake LPSS I2C]
 	9d61  Sunrise Point-LP Serial IO I2C Controller #1
 	9d62  Sunrise Point-LP Serial IO I2C Controller #2
@@ -26988,6 +27079,7 @@
 	9d65  Sunrise Point-LP Serial IO I2C Controller #5
 	9d66  Sunrise Point-LP Serial IO UART Controller #2
 	9d70  Sunrise Point-LP HD Audio
+		1028 06f3  Latitude 3570
 	a000  Atom Processor D4xx/D5xx/N4xx/N5xx DMI Bridge
 		1458 5000  GA-D525TUD
 		8086 4f4d  DeskTop Board D510MO
