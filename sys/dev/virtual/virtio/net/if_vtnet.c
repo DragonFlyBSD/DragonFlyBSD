@@ -551,7 +551,7 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 	 * always physically contiguous.
 	 */
 	if ((sc->vtnet_flags & VTNET_FLAG_MRG_RXBUFS) == 0) {
-		sc->vtnet_rx_nsegs = sc->vtnet_flags & VTNET_FLAG_LRO_NOMRG ?
+		sc->vtnet_rx_nsegs = (sc->vtnet_flags & VTNET_FLAG_LRO_NOMRG) ?
 		    VTNET_MAX_RX_SEGS : VTNET_MIN_RX_SEGS;
 	} else
 		sc->vtnet_rx_nsegs = VTNET_MRG_RX_SEGS;
@@ -2210,11 +2210,11 @@ vtnet_rx_filter(struct vtnet_softc *sc)
 
 	if (vtnet_set_promisc(sc, ifp->if_flags & IFF_PROMISC) != 0)
 		device_printf(dev, "cannot %s promiscuous mode\n",
-		    ifp->if_flags & IFF_PROMISC ? "enable" : "disable");
+		    (ifp->if_flags & IFF_PROMISC) ? "enable" : "disable");
 
 	if (vtnet_set_allmulti(sc, ifp->if_flags & IFF_ALLMULTI) != 0)
 		device_printf(dev, "cannot %s all-multicast mode\n",
-		    ifp->if_flags & IFF_ALLMULTI ? "enable" : "disable");
+		    (ifp->if_flags & IFF_ALLMULTI) ? "enable" : "disable");
 }
 
 static int

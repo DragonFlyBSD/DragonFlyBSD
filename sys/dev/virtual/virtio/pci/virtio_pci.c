@@ -251,8 +251,7 @@ vtpci_attach(device_t dev)
 
 	if (pci_find_extcap(dev, PCIY_MSI, NULL) != 0)
 		sc->vtpci_flags |= VIRTIO_PCI_FLAG_NO_MSI;
-	/* XXX(vsrinivas): Check out how to get MSI-X */
-#ifdef OLD_MSI
+#if 0 /* XXX(vsrinivas): Check out how to get MSI-X */
 	if (pci_find_extcap(dev, PCIY_MSIX, NULL) == 0) {
 		rid = PCIR_BAR(1);
 		sc->vtpci_msix_res = bus_alloc_resource_any(dev,
@@ -860,7 +859,7 @@ vtpci_alloc_msix(struct vtpci_softc *sc, int nvectors)
 {
 	/* XXX(vsrinivas): Huh? Is this how MSI-X works?*/
 	/* XXX(vsrinivas): All of this was disabled... */
-#ifdef OLD_MSI
+#if 0
 	device_t dev;
 	int nmsix, cnt, required;
 
