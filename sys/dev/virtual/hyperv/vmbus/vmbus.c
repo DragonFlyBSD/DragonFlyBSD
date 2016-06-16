@@ -311,6 +311,25 @@ vmbus_detach(device_t dev)
 	return (0);
 }
 
+static __inline void
+vmbus_msg_reset(volatile struct vmbus_message *msg)
+{
+	msg->msg_type = HYPERV_MSGTYPE_NONE;
+	/*
+	 * Make sure that the write to msg_type (i.e. set to
+	 * HYPERV_MSGTYPE_NONE) happens before we read the
+	 * msg_flags and send EOM to the hypervisor.
+	 */
+	cpu_mfence();
+	if (msg->msg_flags & VMBUS_MSGFLAG_PENDING) {
+		/*
+		 * Ask the hypervisor to rescan message queue,
+		 * and deliver new message if any.
+		 */
+		wrmsr(MSR_HV_EOM, 0);
+	}
+}
+
 static void
 vmbus_intr(void *xpsc)
 {
@@ -324,23 +343,7 @@ vmbus_intr(void *xpsc)
 			vmbus_chan_msgproc(psc->sc,
 			    __DEVOLATILE(const struct vmbus_message *, msg));
 		}
-
-		msg->msg_type = HYPERV_MSGTYPE_NONE;
-		/*
-		 * Make sure the write to msg_type (i.e. set to
-		 * HYPERV_MSGTYPE_NONE) happens before we read the
-		 * msg_flags and EOMing. Otherwise, the EOMing will
-		 * not deliver any more messages since there is no
-		 * empty slot
-		 */
-		cpu_mfence();
-		if (msg->msg_flags & VMBUS_MSGFLAG_PENDING) {
-			/*
-			 * This will cause message queue rescan to possibly
-			 * deliver another msg from the hypervisor
-			 */
-			wrmsr(MSR_HV_EOM, 0);
-		}
+		vmbus_msg_reset(msg);
 	}
 }
 
@@ -931,25 +934,8 @@ vmbus_timer_msgintr(struct vmbus_pcpu_data *psc)
 	volatile struct vmbus_message *msg;
 
 	msg = psc->message + VMBUS_SINT_TIMER;
-	if (msg->msg_type == HYPERV_MSGTYPE_TIMER_EXPIRED) {
-		msg->msg_type = HYPERV_MSGTYPE_NONE;
-
-		/*
-		 * Make sure the write to msg_type (i.e. set to
-		 * HYPERV_MSGTYPE_NONE) happens before we read the
-		 * msg_flags and EOMing.  Otherwise, the EOMing will
-		 * not deliver any more messages since there is no
-		 * empty slot.
-		 */
-		cpu_mfence();
-		if (msg->msg_flags & VMBUS_MSGFLAG_PENDING) {
-			/*
-			 * This will cause message queue rescan to possibly
-			 * deliver another msg from the hypervisor
-			 */
-			wrmsr(MSR_HV_EOM, 0);
-		}
-	}
+	if (msg->msg_type == HYPERV_MSGTYPE_TIMER_EXPIRED)
+		vmbus_msg_reset(msg);
 }
 
 static void
