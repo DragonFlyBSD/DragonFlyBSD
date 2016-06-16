@@ -56,6 +56,16 @@
 	 MSR_HV_STIMER_CFG_SINT_MASK)
 
 /*
+ * Two additionally required features:
+ * - SynIC is needed for interrupt generation.
+ * - Time reference counter is needed to set ABS reference count to
+ *   STIMER0_COUNT.
+ */
+#define CPUID_HV_TIMER_MASK		(CPUID_HV_MSR_TIME_REFCNT |	\
+					 CPUID_HV_MSR_SYNIC |		\
+					 CPUID_HV_MSR_SYNTIMER)
+
+/*
  * NOTE: DO NOT CHANGE THIS.
  */
 #define VMBUS_SINT_MESSAGE		2
@@ -200,8 +210,11 @@ static int
 vmbus_attach(device_t dev)
 {
 	struct vmbus_softc *sc = device_get_softc(dev);
-	int error, cpu, unit;
+	int error, cpu, use_timer;
 
+	/*
+	 * Basic setup.
+	 */
 	sc->vmbus_dev = dev;
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		struct vmbus_pcpu_data *psc = VMBUS_PCPU(sc, cpu);
@@ -210,7 +223,14 @@ vmbus_attach(device_t dev)
 		psc->cpuid = cpu;
 		psc->timer_last = UINT64_MAX;
 	}
-	unit = device_get_unit(dev);
+
+	/*
+	 * Should we use interrupt timer?
+	 */
+	use_timer = 0;
+	if (device_get_unit(dev) == 0 &&
+	    (hyperv_features & CPUID_HV_TIMER_MASK) == CPUID_HV_TIMER_MASK)
+		use_timer = 1;
 
 	/*
 	 * Create context for "post message" Hypercalls
@@ -234,9 +254,9 @@ vmbus_attach(device_t dev)
 	if (error)
 		goto failed;
 
-	if (unit == 0) {
+	if (use_timer) {
 		/*
-		 * Make sure timer is stopped.
+		 * Make sure that interrupt timer is stopped.
 		 */
 		lwkt_cpusync_simple(smp_active_mask, vmbus_timer_stop, sc);
 	}
@@ -254,9 +274,9 @@ vmbus_attach(device_t dev)
 	if (error)
 		goto failed;
 
-	if (unit == 0) {
+	if (use_timer) {
 		/*
-		 * Configure and register vmbus interrupt cputimer.
+		 * Configure and register vmbus interrupt timer.
 		 */
 		lwkt_cpusync_simple(smp_active_mask, vmbus_timer_config, sc);
 		vmbus_cputimer_intr.priv = sc;
