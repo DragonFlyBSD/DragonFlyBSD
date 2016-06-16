@@ -79,10 +79,10 @@ int	showtid;		/* -H */
 static int needuser, needcomm, needenv;
 #if defined(LAZY_PS)
 static int forceuread=0;
-#define PS_ARGS	"aCcefgHhjLlM:mN:O:o:p:rRSTt:U:uvwx"
+#define PS_ARGS	"AaCcefgHhjLlM:mN:O:o:p:rRSTt:U:uvwx"
 #else
 static int forceuread=1;
-#define PS_ARGS	"aCcegHhjLlM:mN:O:o:p:rRSTt:U:uvwx"
+#define PS_ARGS	"AaCcegHhjLlM:mN:O:o:p:rRSTt:U:uvwx"
 #endif
 
 enum sort { DEFAULT, SORTMEM, SORTCPU } sortby = DEFAULT;
@@ -170,6 +170,9 @@ main(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, PS_ARGS)) != -1) {
 		switch((char)ch) {
+		case 'A':
+			all = xflg = 1;
+			break;
 		case 'a':
 			all = 1;
 			break;
