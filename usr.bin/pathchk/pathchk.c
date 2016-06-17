@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/pathchk/pathchk.c,v 1.2.2.1 2002/11/08 04:20:33 tjr Exp $
- * $DragonFly: src/usr.bin/pathchk/pathchk.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $FreeBSD: head/usr.bin/pathchk/pathchk.c 256800 2013-10-20 20:10:31Z jilles $
  */
 
 /*
@@ -51,6 +50,7 @@ static int	 portable(const char *);
 static void	 usage(void);
 
 static int	 pflag;			/* Perform portability checks */
+static int	 Pflag;			/* Check for empty paths, leading '-' */
 
 int
 main(int argc, char *argv[])
@@ -58,10 +58,13 @@ main(int argc, char *argv[])
 	int ch, rval;
 	const char *arg;
 
-	while ((ch = getopt(argc, argv, "p")) > 0) {
+	while ((ch = getopt(argc, argv, "pP")) > 0) {
 		switch (ch) {
 		case 'p':
 			pflag = 1;
+			break;
+		case 'P':
+			Pflag = 1;
 			break;
 		default:
 			usage();
@@ -85,7 +88,7 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: pathchk [-p] pathname...\n");
+	fprintf(stderr, "usage: pathchk [-pP] pathname ...\n");
 	exit(1);
 }
 
@@ -94,13 +97,22 @@ check(const char *path)
 {
 	struct stat sb;
 	long complen, namemax, pathmax, svnamemax;
-	int badch, last;
+	int last;
 	char *end, *p, *pathd;
 
 	if ((pathd = strdup(path)) == NULL)
 		err(1, "strdup");
 
 	p = pathd;
+
+	if (Pflag && *p == '\0') {
+		warnx("%s: empty pathname", path);
+		goto bad;
+	}
+	if ((Pflag || pflag) && (*p == '-' || strstr(p, "/-") != NULL)) {
+		warnx("%s: contains a component starting with '-'", path);
+		goto bad;
+	}
 
 	if (!pflag) {
 		errno = 0;
@@ -129,9 +141,9 @@ check(const char *path)
 			goto bad;
 		}
 
-		if (pflag && (badch = portable(p)) >= 0) {
+		if (pflag && !portable(p)) {
 			warnx("%s: %s: component contains non-portable "
-			    "character `%c'", path, p, badch);
+			    "character", path, p);
 			goto bad;
 		}
 
@@ -157,8 +169,8 @@ check(const char *path)
 			pathmax = PATH_MAX;
 	} else
 		pathmax = _POSIX_PATH_MAX;
-	if (pathmax != -1 && strlen(path) > (size_t)pathmax) {
-		warnx("%s: path too long (limit %ld)", path, pathmax);
+	if (pathmax != -1 && strlen(path) >= (size_t)pathmax) {
+		warnx("%s: path too long (limit %ld)", path, pathmax - 1);
 		goto bad;
 	}
 
@@ -170,8 +182,7 @@ bad:	free(pathd);
 }
 
 /*
- * Check whether a path component contains only portable characters. Return
- * the first non-portable character found.
+ * Check whether a path component contains only portable characters.
  */
 static int
 portable(const char *path)
@@ -182,12 +193,9 @@ portable(const char *path)
 	    "0123456789._-";
 	long s;
 
-	if (*path == '-')
-		return (*path);
-
 	s = strspn(path, charset);
 	if (path[s] != '\0')
-		return (path[s]);
+		return (0);
 
-	return (-1);
+	return (1);
 }
