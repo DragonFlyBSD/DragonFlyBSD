@@ -102,12 +102,14 @@ nvme_pci_attach(device_t dev)
 	int msi_enable;
 	int msix_enable;
 
+#if 0
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
 		device_printf(dev, "BIOS disabled PCI interrupt, "
 				   "re-enabling\n");
 		pci_write_config(dev, PCIR_COMMAND,
 			pci_read_config(dev, PCIR_COMMAND, 2) & ~0x0400, 2);
 	}
+#endif
 
 	sc->dev = dev;
 
@@ -201,7 +203,7 @@ nvme_pci_attach(device_t dev)
 			pci_enable_msix(dev);
 		}
 	}
-	if (error) {
+	if (msix_enable == 0 || error) {
 		uint32_t irq_flags;
 
 		error = 0;
@@ -403,6 +405,12 @@ nvme_pci_attach(device_t dev)
 	nvme_write8(sc, NVME_REG_ADM_COMADR, (uint64_t)sc->comqueues[0].pcomq);
 
 	/*
+	 * qemu appears to require this, real hardware does not appear
+	 * to require this.
+	 */
+	pci_enable_busmaster(dev);
+
+	/*
 	 * Other configuration registers
 	 */
 	reg = NVME_CONFIG_IOSUB_ES_SET(6) |		/* 64 byte sub entry */
@@ -503,7 +511,7 @@ nvme_pci_detach(device_t dev)
 	}
 	if (sc->bar4) {
 		bus_release_resource(dev, SYS_RES_MEMORY,
-				     sc->rid_bar4, sc->regs);
+				     sc->rid_bar4, sc->bar4);
 		sc->bar4 = NULL;
 	}
 
