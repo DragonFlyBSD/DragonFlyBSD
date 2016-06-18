@@ -91,11 +91,15 @@ nvme_stop_admin_thread(nvme_softc_t *sc)
 
 	/*
 	 * We have to wait for the admin thread to finish its probe
-	 * before shutting it down.
+	 * before shutting it down.  Break out if the admin thread
+	 * never managed to even start.
 	 */
 	lockmgr(&sc->admin_lk, LK_EXCLUSIVE);
-	while ((sc->admin_signal & ADMIN_SIG_PROBED) == 0)
+	while ((sc->admin_signal & ADMIN_SIG_PROBED) == 0) {
+		if ((sc->admin_signal & ADMIN_SIG_RUNNING) == 0)
+			break;
 		lksleep(&sc->admin_signal, &sc->admin_lk, 0, "nvwend", 0);
+	}
 	lockmgr(&sc->admin_lk, LK_RELEASE);
 
 	/*
