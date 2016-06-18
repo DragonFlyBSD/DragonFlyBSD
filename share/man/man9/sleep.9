@@ -156,7 +156,7 @@ The pattern is:
 (test condition of interest)
 tsleep_interlock(ident, flags)
 (release high level synchronization primitive)
-tsleep(..., PINTERLOCKED, ...)
+tsleep(..., flags | PINTERLOCKED, ...)
 .Ed
 .Pp
 For example, to implement
@@ -166,7 +166,7 @@ spin_lock(&important_lock);
 if (important_condition == 0) {
 	tsleep_interlock(ident, flags);
 	spin_unlock(&important_lock);
-	tsleep(..., PINTERLOCKED, ...);
+	tsleep(..., flags | PINTERLOCKED, ...);
 }
 .Ed
 .Pp
