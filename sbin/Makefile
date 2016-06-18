@@ -76,6 +76,7 @@ SUBDIR=	adjkerntz \
 	nfsiod \
 	nologin \
 	nos-tun \
+	nvmectl \
 	ping \
 	ping6 \
 	quotacheck \
