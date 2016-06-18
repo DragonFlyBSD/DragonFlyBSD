@@ -55,7 +55,6 @@ nvme_getlog_ioctl(nvme_softc_t *sc, nvme_getlog_ioctl_t *ioc)
 	bzero(req->info, sizeof(*req->info));
 	nvme_submit_request(req);
 	ioc->status = nvme_wait_request(req, hz);
-	kprintf("LID %02x STATUS %02x\n", ioc->lid, ioc->status);
 	bcopy(req->info, &ioc->info, ioc->ret_size);
 	nvme_put_request(req);
 	lockmgr(&sc->ioctl_lk, LK_RELEASE);
