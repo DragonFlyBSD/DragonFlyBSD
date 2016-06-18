@@ -32,35 +32,35 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/conf.h>
-#include <sys/bus.h>
-#include <sys/device.h>
-#include <sys/disk.h>
-#include <sys/devicestat.h>
-#include <sys/stat.h>
-#include <sys/buf.h>
-#include <sys/proc.h>
-#include <sys/queue.h>
-#include <sys/rman.h>
-#include <sys/endian.h>
-#include <sys/sysctl.h>
-#include <sys/kthread.h>
-#include <sys/ioccom.h>
+#include "nvme.h"
 
-#include <sys/buf2.h>
+int
+nvme_getlog_ioctl(nvme_softc_t *sc, nvme_getlog_ioctl_t *ioc)
+{
+	int error;
+	nvme_request_t *req;
 
-#include <machine/clock.h>
-#include <machine/pmap.h>
+	if ((ioc->ret_size & 3) || ioc->ret_size > sizeof(ioc->info))
+		return EINVAL;
+	if (ioc->ret_size < 4)
+		return EINVAL;
 
-#include <vm/vm.h>
+	lockmgr(&sc->ioctl_lk, LK_EXCLUSIVE);
+	req = nvme_get_admin_request(sc, NVME_OP_GET_LOG_PAGE);
+	req->cmd.head.nsid = -1;
+	req->cmd.getlog.lid = ioc->lid;
+	req->cmd.getlog.numdl = ioc->ret_size / 4 - 1;
+	/* leave numdh 0 (NVMe 1.2.1 allows > 65535 dwords) */
+	/* leave lpol and lpou 0 for now */
+	bzero(req->info, sizeof(*req->info));
+	nvme_submit_request(req);
+	ioc->status = nvme_wait_request(req, hz);
+	kprintf("LID %02x STATUS %02x\n", ioc->lid, ioc->status);
+	bcopy(req->info, &ioc->info, ioc->ret_size);
+	nvme_put_request(req);
+	lockmgr(&sc->ioctl_lk, LK_RELEASE);
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
-#include "pcidevs.h"
+	error = 0;
 
-#include <sys/thread2.h>
-#include <sys/mplock2.h>
+	return error;
+}

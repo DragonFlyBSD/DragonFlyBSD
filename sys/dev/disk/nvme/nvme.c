@@ -315,9 +315,10 @@ nvme_get_admin_request(nvme_softc_t *sc, uint8_t opcode)
  * Fields in cmd.head will be initialized and remaining fields will be zero'd.
  * Caller is responsible for filling in remaining fields as appropriate.
  *
- * May return NULL if no requests are available.
+ * May return NULL if no requests are available (should only be possible
+ * on an I/O queue, admin queue operations are managed).
  *
- * Caller does NOT have to hold the queue lock.
+ * Caller should NOT hold the queue lock.
  */
 nvme_request_t *
 nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
@@ -341,6 +342,8 @@ nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 		if (req == NULL) {
 			queue->signal_requeue = 1;
 			lockmgr(&queue->lk, LK_RELEASE);
+			KKASSERT(queue->qid != 0);
+
 			return NULL;
 		}
 		next = req->next_avail;

@@ -61,6 +61,7 @@ nvme_start_admin_thread(nvme_softc_t *sc)
 	int error;
 
 	lockinit(&sc->admin_lk, "admlk", 0, 0);
+	lockinit(&sc->ioctl_lk, "nvioc", 0, 0);
 	sc->admin_signal = 0;
 
 	error = bus_setup_intr(sc->dev, sc->irq[0], INTR_MPSAFE,
@@ -130,6 +131,7 @@ nvme_stop_admin_thread(nvme_softc_t *sc)
 		bus_teardown_intr(sc->dev, sc->irq[0], sc->irq_handle[0]);
 		sc->irq_handle[0] = NULL;
 	}
+	lockuninit(&sc->ioctl_lk);
 	lockuninit(&sc->admin_lk);
 
 	/*

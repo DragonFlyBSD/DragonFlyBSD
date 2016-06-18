@@ -147,7 +147,20 @@ nvme_close(struct dev_close_args *ap)
 static int
 nvme_ioctl(struct dev_ioctl_args *ap)
 {
-	return ENOIOCTL;
+	cdev_t dev = ap->a_head.a_dev;
+	nvme_softns_t *nsc = dev->si_drv1;
+	nvme_softc_t *sc = nsc->sc;
+	int error;
+
+	switch(ap->a_cmd) {
+	case NVMEIOCGETLOG:
+		error = nvme_getlog_ioctl(sc, (void *)ap->a_data);
+		break;
+	default:
+		error = ENOIOCTL;
+		break;
+	}
+	return error;
 }
 
 static int

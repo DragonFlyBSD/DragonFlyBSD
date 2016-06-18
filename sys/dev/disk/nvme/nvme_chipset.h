@@ -822,15 +822,19 @@ typedef struct {
 #if _BYTE_ORDER == _LITTLE_ENDIAN
 	uint8_t		lid;
 	uint8_t		reserved01;
-	uint16_t	numd;
+	uint16_t	numdl;		/* 0's based value */
+	uint16_t	numdu;		/* msb (NVMe 1.2.1 or later) */
+	uint16_t	reserved02;
 #else
-	uint16_t	numd;
+	uint16_t	numdl;
 	uint8_t		reserved01;
 	uint8_t		lid;
+	uint16_t	reserved02;
+	uint16_t	numdu;
 #endif
-	uint32_t	reserved11;
-	uint32_t	reserved12;
-	uint32_t	reserved13;
+					/* NOTE: must be 4-byte aligned */
+	uint32_t	lpol;		/* NVME 1.2.1+ logpg offset low */
+	uint32_t	lpou;		/* NVME 1.2.1+ logpg offset high */
 	uint32_t	reserved14;
 	uint32_t	reserved15;
 } __packed nvme_getlog_cmd_t;
@@ -1795,7 +1799,7 @@ typedef union {
 	nvme_ident_ns_data_t	idns;
 	nvme_ident_ns_list_t	nslist;
 	nvme_ident_ctlr_list_t	ctlrlist;
-	nvme_log_error_data_t	logerr;
+	nvme_log_error_data_t	logerr[64];
 	nvme_log_smart_data_t	logsmart;
 	nvme_fw_slot_data_t	fwslot;
 	nvme_nsmgmt_create_data_t nsmgmt;

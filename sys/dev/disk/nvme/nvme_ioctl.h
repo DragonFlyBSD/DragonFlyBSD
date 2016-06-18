@@ -32,35 +32,17 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/conf.h>
-#include <sys/bus.h>
-#include <sys/device.h>
-#include <sys/disk.h>
-#include <sys/devicestat.h>
-#include <sys/stat.h>
-#include <sys/buf.h>
-#include <sys/proc.h>
-#include <sys/queue.h>
-#include <sys/rman.h>
-#include <sys/endian.h>
-#include <sys/sysctl.h>
-#include <sys/kthread.h>
-#include <sys/ioccom.h>
+/*
+ * NOTE: Ioctl specifies 1's based values, ret_size will be translated
+ *	 for the actual command.
+ */
+typedef struct nvme_getlog_ioctl {
+	uint8_t			lid;		/* log page to request */
+	uint8_t			reserved01;
+	uint16_t		status;		/* status return */
+	uint32_t		ret_size;	/* NUMDL/NUMDU */
+	uint32_t		beg_offset;	/* LPOL/LPOU */
+	nvme_admin_data_t	info;		/* return data */
+} nvme_getlog_ioctl_t;
 
-#include <sys/buf2.h>
-
-#include <machine/clock.h>
-#include <machine/pmap.h>
-
-#include <vm/vm.h>
-
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
-#include "pcidevs.h"
-
-#include <sys/thread2.h>
-#include <sys/mplock2.h>
+#define NVMEIOCGETLOG   _IOWR('O', 0, struct nvme_getlog_ioctl)

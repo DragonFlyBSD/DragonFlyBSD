@@ -46,6 +46,7 @@
 #include "nvme_ident.h"
 #include "nvme_ns.h"
 #include "nvme_chipset.h"
+#include "nvme_ioctl.h"
 
 MALLOC_DECLARE(M_NVME);
 
@@ -248,6 +249,7 @@ typedef struct nvme_softc {
 	 */
 	uint32_t	admin_signal;
 	struct lock	admin_lk;
+	struct lock	ioctl_lk;
 	int		(*admin_func)(struct nvme_softc *);
 	nvme_ident_ctlr_data_t idctlr;
 	nvme_softns_t	*nscary[NVME_MAX_NAMESPACES];
@@ -266,6 +268,9 @@ typedef struct nvme_softc {
 #define NVME_QMAP_RD		0
 #define NVME_QMAP_WR		1
 
+/*
+ * Prototypes
+ */
 const nvme_device_t *nvme_lookup_device(device_t dev);
 void nvme_os_sleep(int ms);
 int nvme_os_softsleep(void);
@@ -301,6 +306,8 @@ void nvme_disk_attach(nvme_softns_t *nsc);
 void nvme_disk_detach(nvme_softns_t *nsc);
 void nvme_disk_requeues(nvme_softc_t *sc);
 int nvme_alloc_disk_unit(void);
+
+int nvme_getlog_ioctl(nvme_softc_t *sc, nvme_getlog_ioctl_t *ioc);
 
 void nvme_intr(void *arg);
 size_t string_cleanup(char *str, int domiddle);
