@@ -38,6 +38,7 @@ typedef int (*cmd_t)(int ac, char **av, const char *id, int fd);
 
 static cmd_t parsecmd(int ac, char **av, int *globokp);
 static int cmd_info(int ac, char **av, const char *id, int fd);
+static int cmd_errors(int ac, char **av, const char *id, int fd);
 static void usage(int rc);
 
 int VerboseOpt;
@@ -129,6 +130,10 @@ parsecmd(int ac, char **av, int *globokp)
 		*globokp = 1;
 		return cmd_info;
 	}
+	if (strcmp(av[0], "errors") == 0) {
+		*globokp = 1;
+		return cmd_errors;
+	}
 	fprintf(stderr, "Command %s not recognized\n", av[0]);
 
 	usage(1);
@@ -183,9 +188,8 @@ cmd_info(int ac __unused, char **av __unused, const char *id, int fd)
 	} else {
 		printf("none\n");
 	}
-	printf("\tcomp_temp:\t%dC %dC\n",
-		smart->comp_temp1 - 273,
-		smart->comp_temp2 - 273);
+	printf("\tcomp_temp:\t%dC\n",
+		(int)(smart->comp_temp1 + (smart->comp_temp2 << 8)) - 273);
 	printf("\tLIFE_LEFT:\t%d%% (%d%% used)\n",
 		100 - (int)smart->rated_life,
 		(int)smart->rated_life);
@@ -235,12 +239,78 @@ cmd_info(int ac __unused, char **av __unused, const char *id, int fd)
 }
 
 static
+int
+cmd_errors(int ac __unused, char **av __unused, const char *id, int fd)
+{
+	nvme_getlog_ioctl_t ioc;
+	nvme_log_error_data_t *errs;
+	int i;
+
+	bzero(&ioc, sizeof(ioc));
+	ioc.lid = NVME_LID_ERROR;
+	ioc.ret_size = sizeof(ioc.info.logsmart);
+
+	if (ioctl(fd, NVMEIOCGETLOG, &ioc) < 0) {
+		fprintf(stderr, "ioctl failed: %s\n", strerror(errno));
+		return 1;
+	}
+	if (NVME_COMQ_STATUS_CODE_GET(ioc.status)) {
+		fprintf(stderr, "%s: type %d code 0x%02x\n",
+			id,
+			NVME_COMQ_STATUS_TYPE_GET(ioc.status),
+			NVME_COMQ_STATUS_CODE_GET(ioc.status));
+		return 1;
+	}
+	printf("%s:\n", id);
+	errs = &ioc.info.logerr[0];
+
+	for (i = 0; i < 64; ++i) {
+		if (errs->error_count == 0 && errs->subq_id == 0 &&
+		    errs->cmd_id == 0 && errs->status == 0 &&
+		    errs->param == 0 && errs->nsid == 0 &&
+		    errs->vendor == 0 && errs->csi == 0 && errs->lba == 0)
+			continue;
+
+		if (errs->param || errs->vendor || errs->csi) {
+			printf("\t%2d cnt=%-3ld subq=%-2d cmdi=%-3d "
+			       "status=%d,0x%02x parm=%04x nsid=%-3d vend=%d "
+			       "csi=0x%lx lba=%ld",
+			       i, errs->error_count,
+			       (int16_t)errs->subq_id,
+			       (int16_t)errs->cmd_id,
+			       NVME_COMQ_STATUS_TYPE_GET(errs->status),
+			       NVME_COMQ_STATUS_CODE_GET(errs->status),
+			       errs->param, errs->nsid,
+			       errs->vendor,
+			       errs->csi, errs->lba);
+		} else {
+			printf("\t%2d cnt=%-3ld subq=%-2d cmdi=%-3d "
+			       "status=%d,0x%02x nsid=%-3d lba=%ld",
+			       i, errs->error_count,
+			       (int16_t)errs->subq_id,
+			       (int16_t)errs->cmd_id,
+			       NVME_COMQ_STATUS_TYPE_GET(errs->status),
+			       NVME_COMQ_STATUS_CODE_GET(errs->status),
+			       errs->nsid,
+			       errs->lba);
+		}
+		if (errs->status & NVME_COMQ_STATUS_DNR)
+			printf(" DNR");
+		printf(" %s\n", status_to_str(errs->status));
+		++errs;
+	}
+
+	return 0;
+}
+
+static
 void
 usage(int rc)
 {
 	fprintf(stderr,
 		"nvmectl [-v] cmd [nvme0,1,2...]\n"
 		"\tinfo\n"
+		"\terrors\n"
 	);
 	exit(rc);
 }

@@ -49,3 +49,4 @@
 #include <libutil.h>
 
 const char *format_number(uint64_t value);
+const char *status_to_str(uint16_t status);
