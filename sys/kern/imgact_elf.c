@@ -93,9 +93,11 @@ static boolean_t check_PT_NOTE(struct image_params *imgp,
     Elf_Brandnote *checknote, int32_t *osrel, const Elf_Phdr * pnote);
 static boolean_t extract_interpreter(struct image_params *imgp,
     const Elf_Phdr *pinterpreter, char *data);
+static u_long pie_base_hint(struct proc *p);
 
 static int elf_legacy_coredump = 0;
 static int __elfN(fallback_brand) = -1;
+static int elf_pie_base_mmap = 0;
 #if defined(__x86_64__)
 SYSCTL_NODE(_kern, OID_AUTO, elf64, CTLFLAG_RW, 0, "");
 SYSCTL_INT(_debug, OID_AUTO, elf64_legacy_coredump, CTLFLAG_RW,
@@ -103,6 +105,10 @@ SYSCTL_INT(_debug, OID_AUTO, elf64_legacy_coredump, CTLFLAG_RW,
 SYSCTL_INT(_kern_elf64, OID_AUTO, fallback_brand, CTLFLAG_RW,
     &elf64_fallback_brand, 0, "ELF64 brand of last resort");
 TUNABLE_INT("kern.elf64.fallback_brand", &elf64_fallback_brand);
+SYSCTL_INT(_kern_elf64, OID_AUTO, pie_base_mmap, CTLFLAG_RW,
+    &elf_pie_base_mmap, 0,
+    "choose a base address for PIE as if it is mapped with mmap()");
+TUNABLE_INT("kern.elf64.pie_base_mmap", &elf_pie_base_mmap);
 #else /* i386 assumed */
 SYSCTL_NODE(_kern, OID_AUTO, elf32, CTLFLAG_RW, 0, "");
 SYSCTL_INT(_debug, OID_AUTO, elf32_legacy_coredump, CTLFLAG_RW,
@@ -110,6 +116,10 @@ SYSCTL_INT(_debug, OID_AUTO, elf32_legacy_coredump, CTLFLAG_RW,
 SYSCTL_INT(_kern_elf32, OID_AUTO, fallback_brand, CTLFLAG_RW,
     &elf32_fallback_brand, 0, "ELF32 brand of last resort");
 TUNABLE_INT("kern.elf32.fallback_brand", &elf32_fallback_brand);
+SYSCTL_INT(_kern_elf32, OID_AUTO, pie_base_mmap, CTLFLAG_RW,
+    &elf_pie_base_mmap, 0,
+    "choose a base address for PIE as if it is mapped with mmap()");
+TUNABLE_INT("kern.elf32.pie_base_mmap", &elf_pie_base_mmap);
 #endif
 
 static Elf_Brandinfo *elf_brand_list[MAX_BRANDS];
@@ -610,7 +620,7 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 	u_long text_size = 0, data_size = 0, total_size = 0;
 	u_long text_addr = 0, data_addr = 0;
 	u_long seg_size, seg_addr;
-	u_long addr, baddr, et_dyn_addr, entry = 0, proghdr = 0;
+	u_long addr, baddr, et_dyn_addr = 0, entry = 0, proghdr = 0;
 	int32_t osrel = 0;
 	int error = 0, i, n;
 	boolean_t failure;
@@ -680,25 +690,25 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 		uprintf("ELF binary type \"%u\" not known.\n",
 		    hdr->e_ident[EI_OSABI]);
 		if (interp != NULL)
-		        kfree(interp, M_TEMP);
+			kfree(interp, M_TEMP);
 		return (ENOEXEC);
 	}
 	if (hdr->e_type == ET_DYN) {
 		if ((brand_info->flags & BI_CAN_EXEC_DYN) == 0) {
-		        if (interp != NULL)
-		                kfree(interp, M_TEMP);
+			if (interp != NULL)
+				kfree(interp, M_TEMP);
 			return (ENOEXEC);
-                }
+		}
 		/*
-		 * Honour the base load address from the dso if it is
-		 * non-zero for some reason.
+		 * If p_vaddr field of PT_LOAD program header is zero and type of an
+		 * executale is ET_DYN, then it must be a position independent
+		 * executable (PIE). In this case the system needs to pick a base
+		 * address for us. Set et_dyn_addr to non-zero and choose the actual
+		 * address when we are ready.
 		 */
 		if (baddr == 0)
-			et_dyn_addr = ET_DYN_LOAD_ADDR;
-		else
-			et_dyn_addr = 0;
-	} else
-		et_dyn_addr = 0;
+			et_dyn_addr = 1;
+	}
 
 	if (interp != NULL && brand_info->interp_newpath != NULL)
 		newinterp = brand_info->interp_newpath;
@@ -714,6 +724,9 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 	vsetflags(imgp->vp, VTEXT);
 
 	vmspace = imgp->proc->p_vmspace;
+	/* Choose the base address for dynamic executables if we need to. */
+	if (et_dyn_addr)
+		et_dyn_addr = pie_base_hint(imgp->proc);
 
 	for (i = 0; i < hdr->e_phnum; i++) {
 		switch (phdr[i].p_type) {
@@ -1915,4 +1928,16 @@ __elfN(untrans_prot)(vm_prot_t prot)
 	if (prot & VM_PROT_WRITE)
 		flags |= PF_W;
 	return (flags);
+}
+
+static u_long
+pie_base_hint(struct proc *p)
+{
+	u_long base;
+
+	if (elf_pie_base_mmap)
+		base = vm_map_hint(p, 0, VM_PROT_READ | VM_PROT_EXECUTE);
+	else
+		base = ET_DYN_LOAD_ADDR;
+	return base;
 }
