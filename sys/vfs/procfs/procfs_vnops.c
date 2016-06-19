@@ -359,7 +359,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	    tsleep_interlock(&procp->p_stype, PCATCH);
 	    spin_unlock(&procp->p_spin);
 	    if (procp->p_stops == 0) {
-		error = EINVAL;
+		error = 0;
 		goto done;
 	    }
 	    if (procp->p_flags & P_POSTEXIT) {
