@@ -129,18 +129,22 @@ _ascii_mbsnrtowcs(wchar_t * __restrict dst, const char ** __restrict src,
 	size_t nchr;
 
 	if (dst == NULL) {
-		s = memchr(*src, '\0', nms);
-		if (*s & 0x80) {
-			errno = EILSEQ;
-			return ((size_t)-1);
+		s = *src;
+		while (*s != '\0' && nms-- > 0) {
+			if (*s & 0x80) {
+				errno = EILSEQ;
+				return ((size_t)-1);
+			}
+			++s;
 		}
-		return (s != NULL ? s - *src : nms);
+		return (s - *src);
 	}
 
 	s = *src;
 	nchr = 0;
 	while (len-- > 0 && nms-- > 0) {
 		if (*s & 0x80) {
+			*src = s;
 			errno = EILSEQ;
 			return ((size_t)-1);
 		}
@@ -175,6 +179,7 @@ _ascii_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
 	nchr = 0;
 	while (len-- > 0 && nwc-- > 0) {
 		if (*s < 0 || *s > 127) {
+			*src = s;
 			errno = EILSEQ;
 			return ((size_t)-1);
 		}
