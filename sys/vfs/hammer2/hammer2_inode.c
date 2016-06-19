@@ -683,10 +683,13 @@ again:
 
 /*
  * Create a new inode in the specified directory using the vattr to
- * figure out the type of inode.
+ * figure out the type.  A non-zero type field overrides vattr.
  *
- * If no error occurs the new inode with its cluster locked is returned in
- * *nipp, otherwise an error is returned and *nipp is set to NULL.
+ * If no error occurs the new inode with its cluster locked is returned.
+ * However, when creating an OBJTYPE_HARDLINK, the caller can assume
+ * that NULL will be returned (that is, the caller already has the inode
+ * in-hand and is creating a hardlink to it, we do not need to return a
+ * representitive ip).
  *
  * If vap and/or cred are NULL the related fields are not set and the
  * inode type defaults to a directory.  This is used when creating PFSs
@@ -694,8 +697,17 @@ again:
  *
  * dip is not locked on entry.
  *
- * NOTE: When used to create a snapshot, the inode is temporarily associated
- *	 with the super-root spmp. XXX should pass new pmp for snapshot.
+ * NOTE: This function is used to create all manners of inodes, including
+ *	 super-root entries for snapshots and PFSs.  When used to create a
+ *	 snapshot the inode will be temporarily associated with the spmp.
+ *
+ * NOTE: When creating a normal file or directory the caller must call this
+ *	 function twice, once to create the actual inode and once to create
+ *	 the hardlink representing the directory entry.  This function is
+ *	 only called once when creating a softlink.  The softlink itself.
+ *
+ * NOTE: When creating a hardlink target (a real inode), name/name_len is
+ *	 passed as NULL/0, and caller should pass lhc as inum.
  */
 hammer2_inode_t *
 hammer2_inode_create(hammer2_inode_t *dip,
@@ -843,8 +855,12 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	    xop->meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
 	}
-	if (name)
+	if (name) {
 		hammer2_xop_setname(&xop->head, name, name_len);
+	} else {
+		name_len = hammer2_xop_setname_inum(&xop->head, inum);
+		KKASSERT(lhc == inum);
+	}
 	xop->meta.name_len = name_len;
 	xop->meta.name_key = lhc;
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -1284,7 +1300,11 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 	hammer2_trans_done(pmp);
 }
 
+#if 0
 /*
+ * REMOVED - No longer applicable now that we are indexing inodes under
+ *	     the iroot.
+ *
  * Find the directory common to both fdip and tdip that satisfies the
  * conditions.  The common directory is not allowed to cross a XLINK
  * boundary.  If ishardlink is non-zero and we successfully find the
@@ -1360,6 +1380,7 @@ hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip,
 	*errorp = EXDEV;
 	return(NULL);
 }
+#endif
 
 /*
  * Mark an inode as being modified, meaning that the caller will modify

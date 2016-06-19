@@ -289,6 +289,18 @@ hammer2_xop_setname2(hammer2_xop_head_t *xop, const char *name, size_t name_len)
 	bcopy(name, xop->name2, name_len);
 }
 
+size_t
+hammer2_xop_setname_inum(hammer2_xop_head_t *xop, hammer2_key_t inum)
+{
+	const size_t name_len = 18;
+
+	xop->name1 = kmalloc(name_len + 1, M_HAMMER2, M_WAITOK | M_ZERO);
+	xop->name1_len = name_len;
+	ksnprintf(xop->name1, name_len + 1, "0x%016jx", (intmax_t)inum);
+
+	return name_len;
+}
+
 
 void
 hammer2_xop_setip2(hammer2_xop_head_t *xop, hammer2_inode_t *ip2)

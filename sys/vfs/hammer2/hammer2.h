@@ -1369,8 +1369,6 @@ hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
 int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 			const char *name, size_t name_len,
 			hammer2_key_t lhc);
-hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
-			hammer2_inode_t *tdip, int *errorp, int ishardlink);
 void hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
 void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
@@ -1544,6 +1542,7 @@ void hammer2_xop_setname(hammer2_xop_head_t *xop,
 				const char *name, size_t name_len);
 void hammer2_xop_setname2(hammer2_xop_head_t *xop,
 				const char *name, size_t name_len);
+size_t hammer2_xop_setname_inum(hammer2_xop_head_t *xop, hammer2_key_t inum);
 void hammer2_xop_setip2(hammer2_xop_head_t *xop, hammer2_inode_t *ip2);
 void hammer2_xop_setip3(hammer2_xop_head_t *xop, hammer2_inode_t *ip3);
 void hammer2_xop_reinit(hammer2_xop_head_t *xop);

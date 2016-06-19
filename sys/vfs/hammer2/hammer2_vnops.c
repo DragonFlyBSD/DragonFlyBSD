@@ -1265,6 +1265,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
+	hammer2_tid_t inum;
 	int error;
 
 	LOCKSTART;
@@ -1280,10 +1281,27 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
-	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0,
-				   hammer2_trans_newinum(dip->pmp), 0, 0,
+
+	inum = hammer2_trans_newinum(dip->pmp);
+
+	/*
+	 * Create the actual inode as a hidden file in the iroot, then
+	 * create the directory entry as a hardlink to it.  The creation
+	 * of the actual inode sets its nlinks to 1 which is the value
+	 * we desire.
+	 */
+	nip = hammer2_inode_create(dip->pmp->iroot, ap->a_vap, ap->a_cred,
+				   NULL, 0, inum,
+				   inum, 0, 0,
 				   0, &error);
+	if (error == 0) {
+		hammer2_inode_create(dip, NULL, NULL,
+				     name, name_len, 0,
+				     nip->meta.inum,
+				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
+				     0, &error);
+	}
+
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1338,15 +1356,12 @@ static
 int
 hammer2_vop_nlink(struct vop_nlink_args *ap)
 {
-	hammer2_xop_nlink_t *xop1;
 	hammer2_inode_t *fdip;	/* target directory to create link in */
 	hammer2_inode_t *tdip;	/* target directory to create link in */
-	hammer2_inode_t *cdip;	/* common parent directory */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
-	int nlink_locked;
 	int error;
 
 	LOCKSTART;
@@ -1376,22 +1391,11 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_trans_init(ip->pmp, 0);
 
 	/*
-	 * The common parent directory must be locked first to avoid deadlocks.
-	 * Also note that fdip and/or tdip might match cdip.
-	 *
-	 * WARNING!  The kernel's namecache locks are insufficient for
-	 *	     protecting us from hardlink shifts, since unrelated
-	 *	     rename() or link() calls on parent directories might
-	 *	     cause a shift.  A PFS-wide lock is required for this
-	 *	     situation.
+	 * Target should be an indexed inode or there's no way we will ever
+	 * be able to find it!
 	 */
-	if (ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY ||
-	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
-		lockmgr(&ip->pmp->lock_nlink, LK_EXCLUSIVE);
-		nlink_locked = 1;
-	} else {
-		nlink_locked = 0;
-	}
+	KKASSERT((ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0);
+
 	fdip = ip->pip;
 	error = 0;
 
@@ -1399,13 +1403,11 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * Can return NULL and error == EXDEV if the common parent
 	 * crosses a directory with the xlink flag set.
 	 */
-	cdip = hammer2_inode_common_parent(fdip, tdip, &error, 1);
-	if (cdip)
-		hammer2_inode_lock(cdip, 0);
 	hammer2_inode_lock(fdip, 0);
 	hammer2_inode_lock(tdip, 0);
 	hammer2_inode_lock(ip, 0);
 
+#if 0
 	/*
 	 * Dispatch xop_nlink unconditionally since we have to update nlinks.
 	 *
@@ -1442,7 +1444,9 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 		hammer2_inode_modify(ip);
 		ip->meta.name_key = ip->meta.inum;
 		ip->meta.name_len = 18;	/* "0x%016jx" */
+		/* The filename is not stored in ip->meta */
 	}
+#endif
 
 	/*
 	 * Create the hardlink target and bump nlinks.
@@ -1463,13 +1467,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
-	if (cdip) {
-		hammer2_inode_unlock(cdip);
-		hammer2_inode_drop(cdip);
-	}
 
-	if (nlink_locked)
-		lockmgr(&ip->pmp->lock_nlink, LK_RELEASE);
 	hammer2_trans_done(ip->pmp);
 
 	LOCKSTOP;
@@ -1491,6 +1489,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
+	hammer2_tid_t inum;
 	int error;
 
 	LOCKSTART;
@@ -1506,10 +1505,26 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
 
+	inum = hammer2_trans_newinum(dip->pmp);
+
+	/*
+	 * Create the actual inode as a hidden file in the iroot, then
+	 * create the directory entry as a hardlink to it.  The creation
+	 * of the actual inode sets its nlinks to 1 which is the value
+	 * we desire.
+	 */
 	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0,
-				   hammer2_trans_newinum(dip->pmp), 0, 0,
+				   NULL, 0, inum,
+				   inum, 0, 0,
 				   0, &error);
+
+	if (error == 0) {
+		hammer2_inode_create(dip, NULL, NULL,
+				     name, name_len, 0,
+				     nip->meta.inum,
+				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
+				     0, &error);
+	}
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1539,6 +1554,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
+	hammer2_tid_t inum;
 	int error;
 
 	LOCKSTART;
@@ -1554,9 +1570,16 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
 
+	/*
+	 * The device node is entered as the directory entry itself and not
+	 * as a hardlink to an inode.  Since one cannot obtain a
+	 * file handle on the filesystem entry representing the device, we
+	 * do not have to worry about indexing its inode.
+	 */
+	inum = hammer2_trans_newinum(dip->pmp);
 	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
 				   name, name_len, 0,
-				   hammer2_trans_newinum(dip->pmp), 0, 0,
+				   inum, 0, 0,
 				   0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
@@ -1587,6 +1610,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
+	hammer2_tid_t inum;
 	int error;
 	
 	dip = VTOI(ap->a_dvp);
@@ -1601,9 +1625,16 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
+	/*
+	 * The softlink is entered into the directory itself and not
+	 * as a hardlink to an inode.  Since one cannot obtain a
+	 * file handle on the softlink itself we do not have to worry
+	 * about indexing its inode.
+	 */
+	inum = hammer2_trans_newinum(dip->pmp);
 	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
 				   name, name_len, 0,
-				   hammer2_trans_newinum(dip->pmp), 0, 0,
+				   inum, 0, 0,
 				   0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
@@ -1788,7 +1819,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 {
 	struct namecache *fncp;
 	struct namecache *tncp;
-	hammer2_inode_t *cdip;
 	hammer2_inode_t *fdip;
 	hammer2_inode_t *tdip;
 	hammer2_inode_t *ip;
@@ -1798,7 +1828,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	size_t tname_len;
 	int error;
 	int tnch_error;
-	int nlink_locked;
 	hammer2_key_t tlhc;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
@@ -1830,59 +1859,18 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 */
 	ip = VTOI(fncp->nc_vp);
 
-	/*
-	 * The common parent directory must be locked first to avoid deadlocks.
-	 * Also note that fdip and/or tdip might match cdip.
-	 *
-	 * WARNING!  The kernel's namecache locks are insufficient for
-	 *	     protecting us from hardlink shifts, since unrelated
-	 *	     rename() or link() calls on parent directories might
-	 *	     cause a shift.  A PFS-wide lock is required for this
-	 *	     situation.
-	 */
-	if (ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY ||
-	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
-		lockmgr(&ip->pmp->lock_nlink, LK_EXCLUSIVE);
-		nlink_locked = 1;
-	} else {
-		nlink_locked = 0;
-	}
+	KKASSERT((ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0);
 
 	/*
 	 * Can return NULL and error == EXDEV if the common parent
 	 * crosses a directory with the xlink flag set.
 	 */
 	error = 0;
-	cdip = hammer2_inode_common_parent(ip->pip, tdip, &error, 0);
-	if (cdip == NULL) {
-		tnch_error = error;
-		goto done3;
-	}
-	hammer2_inode_lock(cdip, 0);
 	hammer2_inode_lock(fdip, 0);
 	hammer2_inode_lock(tdip, 0);
 	hammer2_inode_ref(ip);		/* extra ref */
 
-	/*
-	 * If ip is a hardlink target and fdip != cdip we must shift the
-	 * inode to cdip.
-	 */
 	hammer2_inode_lock(ip, 0);
-
-	if (fdip != cdip &&
-	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
-		hammer2_xop_nlink_t *xop1;
-
-		xop1 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_setip2(&xop1->head, ip);
-		hammer2_xop_setip3(&xop1->head, cdip);
-		xop1->nlinks_delta = 0;
-
-		hammer2_xop_start(&xop1->head, hammer2_xop_nlink);
-		error = hammer2_xop_collect(&xop1->head, 0);
-		hammer2_xop_retire(&xop1->head, HAMMER2_XOPMASK_VOP);
-	}
-	/* hammer2_inode_unlock(ip); */
 
 	/*
 	 * Delete the target namespace.
@@ -2019,14 +2007,9 @@ done2:
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
-	hammer2_inode_unlock(cdip);
 	hammer2_inode_drop(ip);
-	hammer2_inode_drop(cdip);
-done3:
 	hammer2_inode_run_sideq(fdip->pmp);
 
-	if (nlink_locked)
-		lockmgr(&ip->pmp->lock_nlink, LK_RELEASE);
 	hammer2_trans_done(tdip->pmp);
 
 	/*

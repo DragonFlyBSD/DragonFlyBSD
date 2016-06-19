@@ -420,6 +420,7 @@ done:
 	}
 }
 
+#if 0
 /*
  * Backend for hammer2_vop_nlink() and hammer2_vop_nrename()
  *
@@ -592,6 +593,7 @@ done:
 		hammer2_chain_drop(chain);
 	}
 }
+#endif
 
 /*
  * Backend for hammer2_vop_nrename()
