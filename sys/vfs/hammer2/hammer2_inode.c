@@ -1577,9 +1577,6 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 		}
 		chain->data->ipdata.meta.name_key = xop->lhc;
 	}
-	hammer2_chain_unlock(chain);
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
-				  HAMMER2_RESOLVE_SHARED);
 fail:
 	if (parent) {
 		hammer2_chain_unlock(parent);
@@ -1666,9 +1663,6 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 	while (chain) {
 		hammer2_chain_delete(parent, chain,
 				     xop->head.mtid, HAMMER2_DELETE_PERMANENT);
-		hammer2_chain_unlock(chain);
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
-					  HAMMER2_RESOLVE_SHARED);
 		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
 		/* depend on function to unlock the shared lock */
 		chain = hammer2_chain_next(&parent, chain, &key_next,

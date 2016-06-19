@@ -1384,11 +1384,15 @@ hammer2_chain_t *hammer2_chain_alloc(hammer2_dev_t *hmp,
 				hammer2_blockref_t *bref);
 void hammer2_chain_core_init(hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
+void hammer2_chain_ref_hold(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
+void hammer2_chain_drop_unhold(hammer2_chain_t *chain);
 void hammer2_chain_lock(hammer2_chain_t *chain, int how);
-void hammer2_chain_lock_downgrade(hammer2_chain_t *chain);
+void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
+#if 0
 void hammer2_chain_push_shared_lock(hammer2_chain_t *chain);
 void hammer2_chain_pull_shared_lock(hammer2_chain_t *chain);
+#endif
 void hammer2_chain_load_data(hammer2_chain_t *chain);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
@@ -1408,6 +1412,7 @@ void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *parent,
 				hammer2_tid_t mtid, hammer2_off_t dedup_off,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
+void hammer2_chain_unlock_hold(hammer2_chain_t *chain);
 void hammer2_chain_wait(hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
 				hammer2_blockref_t *bref);

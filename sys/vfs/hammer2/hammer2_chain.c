@@ -294,6 +294,20 @@ hammer2_chain_ref(hammer2_chain_t *chain)
 }
 
 /*
+ * Ref a locked chain and force the data to be held across an unlock.
+ * Chain must be currently locked.  The user of the chain who desires
+ * to release the hold must call hammer2_chain_lock_unhold() to lock
+ * and unhold the chain, then unlock normally, or may simply call
+ * hammer2_chain_drop_unhold() (which is safer against deadlocks).
+ */
+void
+hammer2_chain_ref_hold(hammer2_chain_t *chain)
+{
+	atomic_add_int(&chain->persist_refs, 1);
+	hammer2_chain_ref(chain);
+}
+
+/*
  * Insert the chain in the core rbtree.
  *
  * Normal insertions are placed in the live rbtree.  Insertion of a deleted
@@ -383,6 +397,32 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 			/* retry the same chain */
 		}
 	}
+}
+
+/*
+ * Unhold a held and probably not-locked chain.  To ensure that the data
+ * is properly dropped we check lockcnt.  If lockcnt is 0 we unconditionally
+ * interlock the chain to release its data.  We must obtain the lock
+ * unconditionally becuase it is possible for the chain to still be
+ * temporarily locked by a hammer2_chain_unlock() call in a race.
+ */
+void
+hammer2_chain_drop_unhold(hammer2_chain_t *chain)
+{
+	hammer2_io_t *dio;
+
+	atomic_add_int(&chain->persist_refs, -1);
+	cpu_lfence();
+	if (chain->lockcnt == 0) {
+		hammer2_mtx_ex(&chain->lock);
+		if (chain->lockcnt == 0) {
+                        dio = hammer2_chain_drop_data(chain, 0);
+                        if (dio)
+                                hammer2_io_bqrelse(&dio);
+                }
+		hammer2_mtx_unlock(&chain->lock);
+	}
+	hammer2_chain_drop(chain);
 }
 
 /*
@@ -827,6 +867,20 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 }
 
 /*
+ * Lock the chain and remove the data hold (matches against
+ * hammer2_chain_unlock_hold()).  The data remains valid because
+ * the chain is now locked, but will be dropped as per-normal when
+ * the caller does a normal unlock.
+ */
+void
+hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how)
+{
+	atomic_add_int(&chain->persist_refs, -1);
+	hammer2_chain_lock(chain, how);
+}
+
+#if 0
+/*
  * Downgrade an exclusive chain lock to a shared chain lock.
  *
  * NOTE: There is no upgrade equivalent due to the ease of
@@ -837,7 +891,9 @@ hammer2_chain_lock_downgrade(hammer2_chain_t *chain)
 {
 	hammer2_mtx_downgrade(&chain->lock);
 }
+#endif
 
+#if 0
 /*
  * Obtains a second shared lock on the chain, does not account the second
  * shared lock as being owned by the current thread.
@@ -864,6 +920,7 @@ hammer2_chain_pull_shared_lock(hammer2_chain_t *chain)
 {
 	++curthread->td_tracker;
 }
+#endif
 
 /*
  * Issue I/O and install chain->data.  Caller must hold a chain lock, lock
@@ -982,7 +1039,8 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 
 		if (dio->psize == chain->bytes &&
 		    (bp->b_flags & B_IOISSUED)) {
-			chain->flags &= ~HAMMER2_CHAIN_TESTEDGOOD;
+			atomic_clear_int(&chain->flags,
+					 HAMMER2_CHAIN_TESTEDGOOD);
 			bp->b_flags &= ~B_IOISSUED;
 		}
 	}
@@ -1138,6 +1196,16 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		}
 	}
 	hammer2_mtx_unlock(&chain->lock);
+}
+
+/*
+ * Unlock and hold chain data intact
+ */
+void
+hammer2_chain_unlock_hold(hammer2_chain_t *chain)
+{
+	atomic_add_int(&chain->persist_refs, 1);
+	hammer2_chain_unlock(chain);
 }
 
 /*

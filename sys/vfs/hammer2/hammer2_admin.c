@@ -509,9 +509,7 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 		chain = xop->cluster.array[i].chain;
 		if (chain) {
 			xop->cluster.array[i].chain = NULL;
-			hammer2_chain_pull_shared_lock(chain);
-			hammer2_chain_unlock(chain);
-			hammer2_chain_drop(chain);
+			hammer2_chain_drop_unhold(chain);
 		}
 	}
 
@@ -527,11 +525,8 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 		hammer2_xop_fifo_t *fifo = &xop->collect[i];
 		while (fifo->ri != fifo->wi) {
 			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
-			if (chain) {
-				hammer2_chain_pull_shared_lock(chain);
-				hammer2_chain_unlock(chain);
-				hammer2_chain_drop(chain);
-			}
+			if (chain)
+				hammer2_chain_drop_unhold(chain);
 			++fifo->ri;
 		}
 		mask &= ~(1U << i);
@@ -583,9 +578,9 @@ hammer2_xop_active(hammer2_xop_head_t *xop)
  * the frontend.  Chains are fed from multiple nodes concurrently
  * and pipelined via per-node FIFOs in the XOP.
  *
- * The chain must be locked shared.  This function adds an additional
- * shared-lock and ref to the chain for the frontend to collect.  Caller
- * must still unlock/drop the chain.
+ * The chain must be locked (either shared or exclusive).  The caller may
+ * unlock and drop the chain on return.  This function will add an extra
+ * ref and hold the chain's data for the pass-back.
  *
  * No xop lock is needed because we are only manipulating fields under
  * our direct control.
@@ -596,16 +591,6 @@ hammer2_xop_active(hammer2_xop_head_t *xop)
  *
  * Returns non-zero on error.  In this situation the caller retains a
  * ref on the chain but loses the lock (we unlock here).
- *
- * WARNING!  The chain is moving between two different threads, it must
- *	     be locked SHARED to retain its data mapping, not exclusive.
- *	     When multiple operations are in progress at once, chains fed
- *	     back to the frontend for collection can wind up being locked
- *	     in different orders, only a shared lock can prevent a deadlock.
- *
- *	     Exclusive locks may only be used by a XOP backend node thread
- *	     temporarily, with no direct or indirect dependencies (aka
- *	     blocking/waiting) on other nodes.
  */
 int
 hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
@@ -647,10 +632,8 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 		/* retry */
 	}
 	atomic_clear_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
-	if (chain) {
-		hammer2_chain_ref(chain);
-		hammer2_chain_push_shared_lock(chain);
-	}
+	if (chain)
+		hammer2_chain_ref_hold(chain);
 	if (error == 0 && chain)
 		error = chain->error;
 	fifo->errors[fifo->wi & HAMMER2_XOPFIFO_MASK] = error;
@@ -736,10 +719,9 @@ loop:
 		/*
 		 * Advance element if possible, advanced element may be NULL.
 		 */
-		if (chain) {
-			hammer2_chain_unlock(chain);
-			hammer2_chain_drop(chain);
-		}
+		if (chain)
+			hammer2_chain_drop_unhold(chain);
+
 		fifo = &xop->collect[i];
 		if (fifo->ri != fifo->wi) {
 			cpu_lfence();
