@@ -724,6 +724,14 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		wipdata->meta.name_key = xop->lhc;
 		wipdata->meta.name_len = xop->head.name2_len;
 	}
+	if (chain->data->ipdata.meta.iparent != xop->head.ip3->meta.inum) {
+		hammer2_inode_data_t *wipdata;
+
+		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		wipdata = &chain->data->ipdata;
+
+		wipdata->meta.iparent = xop->head.ip3->meta.inum;
+	}
 
 	/*
 	 * We must seek parent properly for the create.

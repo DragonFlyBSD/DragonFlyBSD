@@ -808,6 +808,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 		xop->meta.target_type = target_type;
 	}
 	xop->meta.inum = inum;
+	xop->meta.iparent = dip->meta.inum;
 	
 	/* Inherit parent's inode compression mode. */
 	xop->meta.comp_algo = dip_comp_algo;

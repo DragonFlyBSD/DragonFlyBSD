@@ -884,7 +884,7 @@ struct hammer2_inode_meta {
 	hammer2_tid_t	inum;		/* 0058 inode number */
 	hammer2_off_t	size;		/* 0060 size of file */
 	uint64_t	nlinks;		/* 0068 hard links (typ only dirs) */
-	hammer2_tid_t	iparent;	/* 0070 parent inum (recovery only) */
+	hammer2_tid_t	iparent;	/* 0070 parent inum */
 	hammer2_key_t	name_key;	/* 0078 full filename key */
 	uint16_t	name_len;	/* 0080 filename length */
 	uint8_t		ncopies;	/* 0082 ncopies to local media */
