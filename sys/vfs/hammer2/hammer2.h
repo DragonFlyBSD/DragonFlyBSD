@@ -1372,6 +1372,7 @@ int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 void hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
 void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
+void hammer2_inode_resolve_pip(hammer2_inode_t *ip);
 
 /*
  * hammer2_chain.c

@@ -1606,10 +1606,53 @@ again:
 static
 int
 hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
-	     ino_t ino, struct vnode **vpp)
+		 ino_t ino, struct vnode **vpp)
 {
-	kprintf("hammer2_vget\n");
-	return (EOPNOTSUPP);
+	hammer2_xop_lookup_t *xop;
+	hammer2_pfs_t *pmp;
+	hammer2_inode_t *ip;
+	hammer2_tid_t inum;
+	int error;
+
+	inum = (hammer2_tid_t)ino & HAMMER2_DIRHASH_USERMSK;
+
+	error = 0;
+	pmp = MPTOPMP(mp);
+
+	/*
+	 * Easy if we already have it cached
+	 */
+	ip = hammer2_inode_lookup(pmp, inum);
+	if (ip) {
+		hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
+		*vpp = hammer2_igetv(ip, &error);
+		hammer2_inode_unlock(ip);
+		hammer2_inode_drop(ip);		/* from lookup */
+
+		return error;
+	}
+
+	/*
+	 * Otherwise we have to find the inode
+	 */
+	xop = hammer2_xop_alloc(pmp->iroot, 0);
+	xop->lhc = inum;
+	hammer2_xop_start(&xop->head, hammer2_xop_lookup);
+	error = hammer2_xop_collect(&xop->head, 0);
+
+	if (error == 0)
+		ip = hammer2_inode_get(pmp, NULL, &xop->head.cluster, -1);
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+
+	if (ip) {
+		hammer2_inode_resolve_pip(ip);
+		*vpp = hammer2_igetv(ip, &error);
+		hammer2_inode_unlock(ip);
+	} else {
+		*vpp = NULL;
+		error = ENOENT;
+	}
+	return (error);
 }
 
 static
@@ -1617,8 +1660,8 @@ int
 hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	hammer2_pfs_t *pmp;
-	int error;
 	struct vnode *vp;
+	int error;
 
 	pmp = MPTOPMP(mp);
 	if (pmp->iroot == NULL) {
@@ -2170,7 +2213,16 @@ static
 int
 hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
-	return (0);
+	hammer2_inode_t *ip;
+
+	KKASSERT(MAXFIDSZ >= 16);
+	ip = VTOI(vp);
+	fhp->fid_len = offsetof(struct fid, fid_data[16]);
+	fhp->fid_ext = 0;
+	((hammer2_tid_t *)fhp->fid_data)[0] = ip->meta.inum;
+	((hammer2_tid_t *)fhp->fid_data)[1] = 0;
+
+	return 0;
 }
 
 static
@@ -2178,7 +2230,23 @@ int
 hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	       struct fid *fhp, struct vnode **vpp)
 {
-	return (0);
+	hammer2_pfs_t *pmp;
+	hammer2_tid_t inum;
+	int error;
+
+	pmp = MPTOPMP(mp);
+	inum = ((hammer2_tid_t *)fhp->fid_data)[0] & HAMMER2_DIRHASH_USERMSK;
+	if (vpp) {
+		if (inum == 1)
+			error = hammer2_vfs_root(mp, vpp);
+		else
+			error = hammer2_vfs_vget(mp, NULL, inum, vpp);
+	} else {
+		error = 0;
+	}
+	if (error)
+		kprintf("fhtovp: %016jx -> %p, %d\n", inum, *vpp, error);
+	return error;
 }
 
 static
@@ -2186,7 +2254,20 @@ int
 hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 		 int *exflagsp, struct ucred **credanonp)
 {
-	return (0);
+	hammer2_pfs_t *pmp;
+	struct netcred *np;
+	int error;
+
+	pmp = MPTOPMP(mp);
+	np = vfs_export_lookup(mp, &pmp->export, nam);
+	if (np) {
+		*exflagsp = np->netc_exflags;
+		*credanonp = &np->netc_anon;
+		error = 0;
+	} else {
+		error = EACCES;
+	}
+	return error;
 }
 
 /*

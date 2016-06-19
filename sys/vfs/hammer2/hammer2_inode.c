@@ -682,6 +682,59 @@ again:
 }
 
 /*
+ * Resolve the parent inode for ip using ip->meta.iparent.
+ *
+ * Called with locked inode as argument
+ */
+void
+hammer2_inode_resolve_pip(hammer2_inode_t *ip)
+{
+	hammer2_pfs_t *pmp = ip->pmp;
+	hammer2_inode_t *pip;
+	hammer2_xop_lookup_t *xop;
+	int first = 1;
+	int error;
+
+	while (ip->pip == NULL && ip != pmp->iroot &&
+	       ip->meta.iparent != 0) {
+		pip = hammer2_inode_lookup(ip->pmp, ip->meta.iparent);
+		if (pip) {
+			ip->pip = pip;	/* transfer ref to ip->pip */
+			return;
+		}
+		xop = hammer2_xop_alloc(pmp->iroot, 0);
+		xop->lhc = ip->meta.iparent;
+		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
+		error = hammer2_xop_collect(&xop->head, 0);
+
+		if (error) {
+			kprintf("hammer2_inode_resolve_pip: "
+				"cannot find %016jx\n",
+				ip->meta.iparent);
+			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+			break;
+		}
+		kprintf("NFS load inum %016jx iparent %016jx\n",
+			ip->meta.inum, ip->meta.iparent);
+		pip = hammer2_inode_get(pmp, NULL, &xop->head.cluster, -1);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		ip->pip = pip;
+		if (pip)
+			hammer2_inode_ref(pip);
+		else
+			kprintf("Unable to load inode!\n");
+		if (first) {
+			first = 0;
+		} else {
+			hammer2_inode_unlock(ip);
+		}
+		ip = pip;
+	}
+	if (first == 0)
+		hammer2_inode_unlock(ip);
+}
+
+/*
  * Create a new inode in the specified directory using the vattr to
  * figure out the type.  A non-zero type field overrides vattr.
  *
