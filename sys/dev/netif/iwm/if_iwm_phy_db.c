@@ -319,7 +319,7 @@ iwm_send_phy_db_cmd(struct iwm_softc *sc, uint16_t type,
 	struct iwm_phy_db_cmd phy_db_cmd;
 	struct iwm_host_cmd cmd = {
 		.id = IWM_PHY_DB_CMD,
-		.flags = IWM_CMD_SYNC,
+		.flags = IWM_CMD_ASYNC,
 	};
 
 	IWM_DPRINTF(sc, IWM_DEBUG_CMD,
