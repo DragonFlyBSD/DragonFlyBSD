@@ -62,8 +62,8 @@ struct intr_info {
 	intrec_t	i_reclist;
 	struct thread	*i_thread;	/* don't embed struct thread */
 	struct random_softc i_random;
-	int		i_running;
 	long		i_count;	/* interrupts dispatched */
+	int		i_running;
 	int		i_mplock_required;
 	int		i_fast;
 	int		i_slow;
