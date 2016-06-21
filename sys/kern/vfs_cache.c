@@ -2308,8 +2308,9 @@ cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 	if (error)
 		return (error);
 	if (ncvp_debug) {
-		kprintf("inefficient_scan: directory iosize %ld "
+		kprintf("inefficient_scan of (%p,%s): directory iosize %ld "
 			"vattr fileid = %lld\n",
+			nch->ncp, nch->ncp->nc_name,
 			vat.va_blocksize,
 			(long long)vat.va_fileid);
 	}
