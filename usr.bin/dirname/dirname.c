@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/dirname/dirname.c,v 1.5.6.2 2001/08/02 01:49:44 obrien Exp $
- * $DragonFly: src/usr.bin/dirname/dirname.c,v 1.5 2004/08/25 01:40:23 dillon Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dirname.c	8.4 (Berkeley) 5/4/95
@@ -59,18 +58,21 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1)
+	if (argc < 1)
 		usage();
 
-	if ((p = dirname(argv[0])) == NULL)
-		err(1, "%s", argv[0]);
-	printf("%s\n", p);
+	while (argc--) {
+		if ((p = dirname(*argv)) == NULL)
+			err(1, "%s", *argv);
+		argv++;
+		printf("%s\n", p);
+	}
 	exit(0);
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: dirname path\n");
+	fprintf(stderr, "usage: dirname path [...]\n");
 	exit(1);
 }

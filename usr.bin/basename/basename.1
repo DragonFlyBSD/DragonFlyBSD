@@ -93,6 +93,24 @@ and writes the result to the standard output.
 .Sh EXIT STATUS
 .Ex -std basename dirname
 .Sh EXAMPLES
+.Nm
+together with
+.Ar -a
+interprets the second argument as a
+.Ar string
+and produces "foo" followed by "bar" for:
+.Pp
+.Dl basename -a /usr/bin/foo /sbin/bar
+.Pp
+Passing multiple arguments to
+.Nm dirname
+produces
+.Pa /usr/bin
+followed by
+.Pa /sbin
+.Pp
+.Dl dirname /usr/bin/foo /sbin/bar
+.Pp
 The following line sets the shell variable
 .Ev FOO
 to
