@@ -153,6 +153,7 @@ static enum vmm_guest_type
 detect_vmm(void)
 {
 	enum vmm_guest_type guest;
+	char vendor[16];
 
 	/*
 	 * [RFC] CPUID usage for interaction between Hypervisors and Linux.
@@ -166,15 +167,24 @@ detect_vmm(void)
 		u_int regs[4];
 
 		do_cpuid(0x40000000, regs);
+		((u_int *)&vendor)[0] = regs[1];
+		((u_int *)&vendor)[1] = regs[2];
+		((u_int *)&vendor)[2] = regs[3];
+		vendor[12] = '\0';
 		if (regs[0] >= 0x40000000) {
-			((u_int *)&vmm_vendor)[0] = regs[1];
-			((u_int *)&vmm_vendor)[1] = regs[2];
-			((u_int *)&vmm_vendor)[2] = regs[3];
-			vmm_vendor[12] = '\0';
+			memcpy(vmm_vendor, vendor, 13);
 			if (strcmp(vmm_vendor, "VMwareVMware") == 0)
 				return VMM_GUEST_VMWARE;
 			else if (strcmp(vmm_vendor, "Microsoft Hv") == 0)
 				return VMM_GUEST_HYPERV;
+			else if (strcmp(vmm_vendor, "KVMKVMKVM") == 0)
+				return VMM_GUEST_KVM;
+		} else if (regs[0] == 0) {
+			/* Also detect old KVM versions with regs[0] == 0 */
+			if (strcmp(vendor, "KVMKVMKVM") == 0) {
+				memcpy(vmm_vendor, vendor, 13);
+				return VMM_GUEST_KVM;
+			}
 		}
 	}
 
