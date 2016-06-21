@@ -354,6 +354,8 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 	 * on dio->bp.
 	 */
 	if ((iocb->flags & HAMMER2_IOCB_INPROG) == 0) {
+		if (dio->bp)
+			BUF_KERNPROC(dio->bp);
 		atomic_set_int(&iocb->flags, HAMMER2_IOCB_DONE);
 		return;
 	}

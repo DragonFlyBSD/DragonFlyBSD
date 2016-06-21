@@ -481,7 +481,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_MASK		0x0F
 
 #define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
-#define HAMMER2_RESOLVE_UNUSED20	0x20
+#define HAMMER2_RESOLVE_LOCKAGAIN	0x20	/* another shared lock */
 #define HAMMER2_RESOLVE_RDONLY		0x40	/* higher level op flag */
 
 /*

@@ -825,13 +825,22 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	atomic_add_int(&chain->lockcnt, 1);
 
 	TIMER(20);
+
 	/*
-	 * Get the appropriate lock.
+	 * Get the appropriate lock.  If LOCKAGAIN is flagged with SHARED
+	 * the caller expects a shared lock to already be present and we
+	 * are giving it another ref.  This case must importantly not block
+	 * if there is a pending exclusive lock request.
 	 */
-	if (how & HAMMER2_RESOLVE_SHARED)
-		hammer2_mtx_sh(&chain->lock);
-	else
+	if (how & HAMMER2_RESOLVE_SHARED) {
+		if (how & HAMMER2_RESOLVE_LOCKAGAIN) {
+			hammer2_mtx_sh_again(&chain->lock);
+		} else {
+			hammer2_mtx_sh(&chain->lock);
+		}
+	} else {
 		hammer2_mtx_ex(&chain->lock);
+	}
 	++curthread->td_tracker;
 	TIMER(21);
 
@@ -2097,6 +2106,11 @@ again:
 		 * the embedded data (the strategy code does this for us).
 		 *
 		 * This is only applicable to regular files and softlinks.
+		 *
+		 * We need a second lock on parent.  Since we already have
+		 * a lock we must pass LOCKAGAIN to prevent unexpected
+		 * blocking (we don't want to block on a second shared
+		 * ref if an exclusive lock is pending)
 		 */
 		if (parent->data->ipdata.meta.op_flags &
 		    HAMMER2_OPFLAG_DIRECTDATA) {
@@ -2107,7 +2121,9 @@ again:
 			}
 			hammer2_chain_ref(parent);
 			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-				hammer2_chain_lock(parent, how_always);
+				hammer2_chain_lock(parent,
+						   how_always |
+						    HAMMER2_RESOLVE_LOCKAGAIN);
 			*key_nextp = key_end + 1;
 			return (parent);
 		}

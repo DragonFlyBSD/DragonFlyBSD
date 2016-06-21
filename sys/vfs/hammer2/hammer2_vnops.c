@@ -1568,10 +1568,19 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	 * do not have to worry about indexing its inode.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
-	nip = hammer2_inode_create(dip, dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0,
+	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
+				   NULL, 0, inum,
 				   inum, 0, 0,
 				   0, &error);
+	if (error == 0) {
+		hammer2_inode_create(dip, dip, NULL, NULL,
+				     name, name_len, 0,
+				     nip->meta.inum,
+				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
+				     0, &error);
+	}
+
+
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1637,10 +1646,20 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 * about indexing its inode.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
-	nip = hammer2_inode_create(dip, dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0,
+
+	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
+				   NULL, 0, inum,
 				   inum, 0, 0,
 				   0, &error);
+	if (error == 0) {
+		hammer2_inode_create(dip, dip, NULL, NULL,
+				     name, name_len, 0,
+				     nip->meta.inum,
+				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
+				     0, &error);
+	}
+
+
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
