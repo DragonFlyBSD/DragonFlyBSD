@@ -212,8 +212,6 @@ static int hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp,
 				struct ucred *cred);
 static int hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
 				struct ucred *cred);
-static int hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
-				ino_t ino, struct vnode **vpp);
 static int hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 				struct fid *fhp, struct vnode **vpp);
 static int hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp);
@@ -1603,7 +1601,6 @@ again:
 	kfree(hmp, M_HAMMER2);
 }
 
-static
 int
 hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 		 ino_t ino, struct vnode **vpp)
@@ -1640,12 +1637,21 @@ hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 	hammer2_xop_start(&xop->head, hammer2_xop_lookup);
 	error = hammer2_xop_collect(&xop->head, 0);
 
-	if (error == 0)
-		ip = hammer2_inode_get(pmp, NULL, &xop->head.cluster, -1);
+	if (error == 0) {
+		if (hammer2_cluster_rdata(&xop->head.cluster) == NULL) {
+			kprintf("vget: no collect error but also no rdata\n");
+			kprintf("xop %p\n", xop);
+			while ((hammer2_debug & 0x80000) == 0) {
+				tsleep(xop, PCATCH, "wait", hz * 10);
+			}
+			ip = NULL;
+		} else {
+			ip = hammer2_inode_get(pmp, NULL, &xop->head.cluster, -1);
+		}
+	}
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
 	if (ip) {
-		hammer2_inode_resolve_pip(ip);
 		*vpp = hammer2_igetv(ip, &error);
 		hammer2_inode_unlock(ip);
 	} else {

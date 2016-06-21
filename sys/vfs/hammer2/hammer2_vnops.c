@@ -564,8 +564,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		 * (ip is the current dir. xip is the parent dir).
 		 */
 		inum = ip->meta.inum & HAMMER2_DIRHASH_USERMSK;
-		if (ip->pip && ip != ip->pmp->iroot)
-			inum = ip->pip->meta.inum & HAMMER2_DIRHASH_USERMSK;
+		if (ip != ip->pmp->iroot)
+			inum = ip->meta.iparent & HAMMER2_DIRHASH_USERMSK;
 		r = vop_write_dirent(&error, uio, inum, DT_DIR, 2, "..");
 		if (r)
 			goto done;
@@ -1237,21 +1237,20 @@ int
 hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
 	hammer2_inode_t *dip;
-	hammer2_inode_t *ip;
+	hammer2_tid_t inum;
 	int error;
 
 	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
+	inum = dip->meta.iparent;
+	*ap->a_vpp = NULL;
 
-	if ((ip = dip->pip) == NULL) {
-		*ap->a_vpp = NULL;
-		LOCKSTOP;
-		return ENOENT;
+	if (inum) {
+		error = hammer2_vfs_vget(ap->a_dvp->v_mount, NULL,
+					 inum, ap->a_vpp);
+	} else {
+		error = ENOENT;
 	}
-	hammer2_inode_lock(ip, 0);
-	*ap->a_vpp = hammer2_igetv(ip, &error);
-	hammer2_inode_unlock(ip);
-
 	LOCKSTOP;
 	return error;
 }
@@ -1290,12 +1289,12 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * of the actual inode sets its nlinks to 1 which is the value
 	 * we desire.
 	 */
-	nip = hammer2_inode_create(dip->pmp->iroot, ap->a_vap, ap->a_cred,
+	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
 				   NULL, 0, inum,
 				   inum, 0, 0,
 				   0, &error);
 	if (error == 0) {
-		hammer2_inode_create(dip, NULL, NULL,
+		hammer2_inode_create(dip, dip, NULL, NULL,
 				     name, name_len, 0,
 				     nip->meta.inum,
 				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
@@ -1356,7 +1355,6 @@ static
 int
 hammer2_vop_nlink(struct vop_nlink_args *ap)
 {
-	hammer2_inode_t *fdip;	/* target directory to create link in */
 	hammer2_inode_t *tdip;	/* target directory to create link in */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
 	struct namecache *ncp;
@@ -1378,13 +1376,13 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	/*
 	 * ip represents the file being hardlinked.  The file could be a
 	 * normal file or a hardlink target if it has already been hardlinked.
-	 * If ip is a hardlinked target then ip->pip represents the location
-	 * of the hardlinked target, NOT the location of the hardlink pointer.
+	 * (with the new semantics, it will almost always be a hardlink
+	 * target).
 	 *
 	 * Bump nlinks and potentially also create or move the hardlink
 	 * target in the parent directory common to (ip) and (tdip).  The
-	 * consolidation code can modify ip->cluster and ip->pip.  The
-	 * returned cluster is locked.
+	 * consolidation code can modify ip->cluster.  The returned cluster
+	 * is locked.
 	 */
 	ip = VTOI(ap->a_vp);
 	hammer2_pfs_memory_wait(ip->pmp);
@@ -1396,14 +1394,12 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	KKASSERT((ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0);
 
-	fdip = ip->pip;
 	error = 0;
 
 	/*
 	 * Can return NULL and error == EXDEV if the common parent
 	 * crosses a directory with the xlink flag set.
 	 */
-	hammer2_inode_lock(fdip, 0);
 	hammer2_inode_lock(tdip, 0);
 	hammer2_inode_lock(ip, 0);
 
@@ -1452,7 +1448,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * Create the hardlink target and bump nlinks.
 	 */
 	if (error == 0) {
-		hammer2_inode_create(tdip, NULL, NULL,
+		hammer2_inode_create(tdip, tdip, NULL, NULL,
 				     name, name_len, 0,
 				     ip->meta.inum,
 				     HAMMER2_OBJTYPE_HARDLINK, ip->meta.type,
@@ -1466,7 +1462,6 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	}
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
-	hammer2_inode_unlock(fdip);
 
 	hammer2_trans_done(ip->pmp);
 
@@ -1513,13 +1508,13 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	 * of the actual inode sets its nlinks to 1 which is the value
 	 * we desire.
 	 */
-	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
+	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
 				   NULL, 0, inum,
 				   inum, 0, 0,
 				   0, &error);
 
 	if (error == 0) {
-		hammer2_inode_create(dip, NULL, NULL,
+		hammer2_inode_create(dip, dip, NULL, NULL,
 				     name, name_len, 0,
 				     nip->meta.inum,
 				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
@@ -1577,7 +1572,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	 * do not have to worry about indexing its inode.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
-	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
+	nip = hammer2_inode_create(dip, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, 0,
 				   inum, 0, 0,
 				   0, &error);
@@ -1632,7 +1627,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 * about indexing its inode.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
-	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
+	nip = hammer2_inode_create(dip, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, 0,
 				   inum, 0, 0,
 				   0, &error);
@@ -1988,21 +1983,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		}
 	}
 
-	/*
-	 * Fixup ip->pip if we were renaming the actual file and not a
-	 * hardlink pointer.
-	 */
-	if (error == 0 && (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
-		hammer2_inode_t *opip;
-
-		if (ip->pip != tdip) {
-			hammer2_inode_ref(tdip);
-			opip = ip->pip;
-			ip->pip = tdip;
-			if (opip)
-				hammer2_inode_drop(opip);
-		}
-	}
 done2:
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);

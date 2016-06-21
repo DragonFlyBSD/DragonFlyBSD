@@ -700,7 +700,6 @@ struct hammer2_inode {
 	hammer2_mtx_t		lock;		/* inode lock */
 	hammer2_mtx_t		truncate_lock;	/* prevent truncates */
 	struct hammer2_pfs	*pmp;		/* PFS mount */
-	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
 	struct spinlock		cluster_spin;	/* update cluster */
 	hammer2_cluster_t	cluster;
@@ -1362,17 +1361,14 @@ void hammer2_inode_modify(hammer2_inode_t *ip);
 void hammer2_inode_run_sideq(hammer2_pfs_t *pmp);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
+			hammer2_inode_t *pip,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len, hammer2_key_t lhc,
 			hammer2_key_t inum, uint8_t type, uint8_t target_type,
 			int flags, int *errorp);
-int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
-			const char *name, size_t name_len,
-			hammer2_key_t lhc);
 void hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
 void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
-void hammer2_inode_resolve_pip(hammer2_inode_t *ip);
 
 /*
  * hammer2_chain.c
@@ -1400,10 +1396,9 @@ hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
 int hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 				hammer2_tid_t mtid);
 
-int hammer2_chain_hardlink_find(hammer2_inode_t *dip,
-				hammer2_chain_t **parentp,
+int hammer2_chain_hardlink_find(hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
-				int flags);
+				int clindex, int flags);
 void hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 				hammer2_off_t dedup_off, int flags);
 void hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
@@ -1604,6 +1599,8 @@ hammer2_pfs_t *hammer2_pfsalloc(hammer2_chain_t *chain,
 				const hammer2_inode_data_t *ripdata,
 				hammer2_tid_t modify_tid,
 				hammer2_dev_t *force_local);
+int hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
+				ino_t ino, struct vnode **vpp);
 
 void hammer2_lwinprog_ref(hammer2_pfs_t *pmp);
 void hammer2_lwinprog_drop(hammer2_pfs_t *pmp);

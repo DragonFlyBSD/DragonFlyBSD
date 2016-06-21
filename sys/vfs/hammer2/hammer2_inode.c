@@ -331,7 +331,6 @@ void
 hammer2_inode_drop(hammer2_inode_t *ip)
 {
 	hammer2_pfs_t *pmp;
-	hammer2_inode_t *pip;
 	u_int refs;
 
 	while (ip) {
@@ -363,8 +362,6 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				}
 				hammer2_spin_unex(&pmp->inum_spin);
 
-				pip = ip->pip;
-				ip->pip = NULL;
 				ip->pmp = NULL;
 
 #if 0
@@ -385,15 +382,9 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				 */
 				hammer2_inode_repoint(ip, NULL, NULL);
 
-				/*
-				 * We have to drop pip (if non-NULL) to
-				 * dispose of our implied reference from
-				 * ip->pip.  We can simply loop on it.
-				 */
 				kfree(ip, pmp->minode);
 				atomic_add_long(&pmp->inmem_inodes, -1);
-				ip = pip;
-				/* continue with pip (can be NULL) */
+				ip = NULL;	/* will terminate loop */
 			} else {
 				hammer2_spin_unex(&ip->pmp->inum_spin);
 			}
@@ -647,10 +638,6 @@ again:
 		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);/*XXX*/
 	}
 
-	nip->pip = dip;				/* can be NULL */
-	if (dip)
-		hammer2_inode_ref(dip);	/* ref dip for nip->pip */
-
 	nip->pmp = pmp;
 
 	/*
@@ -682,59 +669,6 @@ again:
 }
 
 /*
- * Resolve the parent inode for ip using ip->meta.iparent.
- *
- * Called with locked inode as argument
- */
-void
-hammer2_inode_resolve_pip(hammer2_inode_t *ip)
-{
-	hammer2_pfs_t *pmp = ip->pmp;
-	hammer2_inode_t *pip;
-	hammer2_xop_lookup_t *xop;
-	int first = 1;
-	int error;
-
-	while (ip->pip == NULL && ip != pmp->iroot &&
-	       ip->meta.iparent != 0) {
-		pip = hammer2_inode_lookup(ip->pmp, ip->meta.iparent);
-		if (pip) {
-			ip->pip = pip;	/* transfer ref to ip->pip */
-			return;
-		}
-		xop = hammer2_xop_alloc(pmp->iroot, 0);
-		xop->lhc = ip->meta.iparent;
-		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
-		error = hammer2_xop_collect(&xop->head, 0);
-
-		if (error) {
-			kprintf("hammer2_inode_resolve_pip: "
-				"cannot find %016jx\n",
-				ip->meta.iparent);
-			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-			break;
-		}
-		kprintf("NFS load inum %016jx iparent %016jx\n",
-			ip->meta.inum, ip->meta.iparent);
-		pip = hammer2_inode_get(pmp, NULL, &xop->head.cluster, -1);
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		ip->pip = pip;
-		if (pip)
-			hammer2_inode_ref(pip);
-		else
-			kprintf("Unable to load inode!\n");
-		if (first) {
-			first = 0;
-		} else {
-			hammer2_inode_unlock(ip);
-		}
-		ip = pip;
-	}
-	if (first == 0)
-		hammer2_inode_unlock(ip);
-}
-
-/*
  * Create a new inode in the specified directory using the vattr to
  * figure out the type.  A non-zero type field overrides vattr.
  *
@@ -763,21 +697,23 @@ hammer2_inode_resolve_pip(hammer2_inode_t *ip)
  *	 passed as NULL/0, and caller should pass lhc as inum.
  */
 hammer2_inode_t *
-hammer2_inode_create(hammer2_inode_t *dip,
+hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 		     struct vattr *vap, struct ucred *cred,
 		     const uint8_t *name, size_t name_len, hammer2_key_t lhc,
-		     hammer2_key_t inum, uint8_t type, uint8_t target_type,
+		     hammer2_key_t inum,
+		     uint8_t type, uint8_t target_type,
 		     int flags, int *errorp)
 {
 	hammer2_xop_create_t *xop;
 	hammer2_inode_t *nip;
 	int error;
 	uid_t xuid;
-	uuid_t dip_uid;
-	uuid_t dip_gid;
-	uint32_t dip_mode;
-	uint8_t dip_comp_algo;
-	uint8_t dip_check_algo;
+	uuid_t pip_uid;
+	uuid_t pip_gid;
+	uint32_t pip_mode;
+	uint8_t pip_comp_algo;
+	uint8_t pip_check_algo;
+	hammer2_tid_t pip_inum;
 
 	if (name)
 		lhc = hammer2_dirhash(name, name_len);
@@ -798,11 +734,12 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 */
 	hammer2_inode_lock(dip, 0);
 
-	dip_uid = dip->meta.uid;
-	dip_gid = dip->meta.gid;
-	dip_mode = dip->meta.mode;
-	dip_comp_algo = dip->meta.comp_algo;
-	dip_check_algo = dip->meta.check_algo;
+	pip_uid = pip->meta.uid;
+	pip_gid = pip->meta.gid;
+	pip_mode = pip->meta.mode;
+	pip_comp_algo = pip->meta.comp_algo;
+	pip_check_algo = pip->meta.check_algo;
+	pip_inum = (pip == pip->pmp->iroot) ? 0 : pip->meta.inum;
 
 	/*
 	 * If name specified, locate an unused key in the collision space.
@@ -861,11 +798,11 @@ hammer2_inode_create(hammer2_inode_t *dip,
 		xop->meta.target_type = target_type;
 	}
 	xop->meta.inum = inum;
-	xop->meta.iparent = dip->meta.inum;
+	xop->meta.iparent = pip_inum;
 	
 	/* Inherit parent's inode compression mode. */
-	xop->meta.comp_algo = dip_comp_algo;
-	xop->meta.check_algo = dip_check_algo;
+	xop->meta.comp_algo = pip_comp_algo;
+	xop->meta.check_algo = pip_check_algo;
 	xop->meta.version = HAMMER2_INODE_VERSION_ONE;
 	hammer2_update_time(&xop->meta.ctime);
 	xop->meta.mtime = xop->meta.ctime;
@@ -873,10 +810,10 @@ hammer2_inode_create(hammer2_inode_t *dip,
 		xop->meta.mode = vap->va_mode;
 	xop->meta.nlinks = 1;
 	if (vap) {
-		if (dip && dip->pmp) {
-			xuid = hammer2_to_unix_xid(&dip_uid);
+		if (dip->pmp) {
+			xuid = hammer2_to_unix_xid(&pip_uid);
 			xuid = vop_helper_create_uid(dip->pmp->mp,
-						     dip_mode,
+						     pip_mode,
 						     xuid,
 						     cred,
 						     &vap->va_mode);
@@ -895,8 +832,8 @@ hammer2_inode_create(hammer2_inode_t *dip,
 			xop->meta.gid = vap->va_gid_uuid;
 		else if (vap->va_gid != (gid_t)VNOVAL)
 			hammer2_guid_to_uuid(&xop->meta.gid, vap->va_gid);
-		else if (dip)
-			xop->meta.gid = dip_gid;
+		else
+			xop->meta.gid = pip_gid;
 	}
 
 	/*
@@ -967,6 +904,7 @@ done2:
  * dip and ip must both be locked exclusively (dip in particular to avoid
  * lhc collisions).
  */
+static
 int
 hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 		      const char *name, size_t name_len,
@@ -974,7 +912,6 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 {
 	hammer2_xop_scanlhc_t *sxop;
 	hammer2_xop_connect_t *xop;
-	hammer2_inode_t *opip;
 	hammer2_key_t lhcbase;
 	int error;
 
@@ -1005,18 +942,6 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 		}
 	} else {
 		error = 0;
-	}
-
-	/*
-	 * Formally reconnect the in-memory structure.  ip must
-	 * be locked exclusively to safely change ip->pip.
-	 */
-	if (ip->pip != dip) {
-		hammer2_inode_ref(dip);
-		opip = ip->pip;
-		ip->pip = dip;
-		if (opip)
-			hammer2_inode_drop(opip);
 	}
 
 	/*
@@ -1062,7 +987,6 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	hammer2_chain_t *dropch[HAMMER2_MAXCLUSTER];
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
-	hammer2_inode_t *opip;
 	int i;
 
 	bzero(dropch, sizeof(dropch));
@@ -1128,16 +1052,6 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		ip->cluster.flags &= ~HAMMER2_CLUSTER_ZFLAGS;
 	}
 
-	/*
-	 * Repoint ip->pip if requested (non-NULL pip).
-	 */
-	if (pip && ip->pip != pip) {
-		opip = ip->pip;
-		hammer2_inode_ref(pip);
-		ip->pip = pip;
-	} else {
-		opip = NULL;
-	}
 	hammer2_spin_unex(&ip->cluster_spin);
 
 	/*
@@ -1147,8 +1061,6 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		if (dropch[i])
 			hammer2_chain_drop(dropch[i]);
 	}
-	if (opip)
-		hammer2_inode_drop(opip);
 }
 
 /*
@@ -1315,7 +1227,8 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 	if (error == ENOENT) {
 		kprintf("PFS CREATE HIDDEN DIR\n");
 
-		pmp->ihidden = hammer2_inode_create(pmp->iroot, NULL, NULL,
+		pmp->ihidden = hammer2_inode_create(pmp->iroot, pmp->iroot,
+						    NULL, NULL,
 						    NULL, 0,
 				/* lhc */	    HAMMER2_INODE_HIDDENDIR,
 				/* inum */	    HAMMER2_INODE_HIDDENDIR,
@@ -1353,88 +1266,6 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 	hammer2_inode_unlock(pmp->iroot);
 	hammer2_trans_done(pmp);
 }
-
-#if 0
-/*
- * REMOVED - No longer applicable now that we are indexing inodes under
- *	     the iroot.
- *
- * Find the directory common to both fdip and tdip that satisfies the
- * conditions.  The common directory is not allowed to cross a XLINK
- * boundary.  If ishardlink is non-zero and we successfully find the
- * common parent, we will continue to iterate parents until we hit a
- * XLINK boundary.
- *
- * Returns a held but not locked inode.  Caller typically locks the inode,
- * and when through unlocks AND drops it.
- */
-hammer2_inode_t *
-hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip,
-			    int *errorp, int ishardlink)
-{
-	hammer2_inode_t *scan1;
-	hammer2_inode_t *scan2;
-	int state;
-
-	/*
-	 * We used to have a depth field but it complicated matters too
-	 * much for directory renames.  So now its ugly.  Check for
-	 * simple cases before giving up and doing it the expensive way.
-	 *
-	 * XXX need a bottom-up topology stability lock
-	 */
-	if (fdip == tdip) {
-		hammer2_inode_ref(fdip);
-		return(fdip);
-	}
-
-	/*
-	 * XXX not MPSAFE
-	 *
-	 * state: -1	sub-scan failed
-	 *	   0
-	 *	  +1	sub-scan succeeded (find xlink boundary if rename)
-	 */
-	for (scan1 = fdip; scan1->pmp == fdip->pmp; scan1 = scan1->pip) {
-		scan2 = tdip;
-		state = 0;
-		while (scan2->pmp == tdip->pmp) {
-			if (state == 0 && scan1 == scan2) {
-				/*
-				 * Found common parent, stop here on rename,
-				 * continue if creating a hardlink.
-				 */
-				if (ishardlink == 0) {
-					hammer2_inode_ref(scan1);
-					return(scan1);
-				}
-				state = 1;
-			}
-			if (state == 1) {
-				/*
-				 * Search for XLINK boundary when hardlink.
-				 */
-				if ((scan2->meta.uflags &
-				     (SF_XLINK | UF_XLINK)) ||
-				    scan2->pip == NULL ||
-				    scan2->pip->pmp != scan1->pmp) {
-					hammer2_inode_ref(scan2);
-					return(scan2);
-				}
-			}
-			if (scan2->meta.uflags & (SF_XLINK | UF_XLINK))
-				break;
-			scan2 = scan2->pip;
-			if (scan2 == NULL)
-				break;
-		}
-		if (scan1->meta.uflags & (SF_XLINK | UF_XLINK))
-			break;
-	}
-	*errorp = EXDEV;
-	return(NULL);
-}
-#endif
 
 /*
  * Mark an inode as being modified, meaning that the caller will modify

@@ -65,23 +65,39 @@
  */
 static
 int
-checkdirempty(hammer2_chain_t *orig_parent)
+checkdirempty(hammer2_chain_t *parent, hammer2_chain_t *chain, int clindex)
 {
-	hammer2_chain_t *parent;
-	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	int cache_index = -1;
 	int error;
 
-	parent = hammer2_chain_lookup_init(orig_parent, 0);
-	chain = hammer2_chain_lookup(&parent, &key_next,
-				     HAMMER2_DIRHASH_VISIBLE,
-				     HAMMER2_KEY_MAX,
-				     &cache_index, 0);
-	error = chain ? ENOTEMPTY : 0;
+	error = 0;
+	chain = hammer2_chain_lookup_init(chain, 0);
+
+	if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
+		parent = NULL;
+		error = hammer2_chain_hardlink_find(&parent, &chain,
+						    clindex, 0);
+		if (parent) {
+			hammer2_chain_unlock(parent);
+			hammer2_chain_drop(parent);
+		}
+	}
+
+	parent = chain;
+	chain = NULL;
+	if (parent) {
+		chain = hammer2_chain_lookup(&parent, &key_next,
+					     HAMMER2_DIRHASH_VISIBLE,
+					     HAMMER2_KEY_MAX,
+					     &cache_index, 0);
+	}
 	if (chain) {
+		error = ENOTEMPTY;
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+	} else {
+		error = 0;
 	}
 	hammer2_chain_lookup_done(parent);
 
@@ -236,10 +252,9 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	error = 0;
 	if (chain) {
 		if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
-			error = hammer2_chain_hardlink_find(
-						xop->head.ip1,
-						&parent, &chain,
-						HAMMER2_LOOKUP_SHARED);
+			error = hammer2_chain_hardlink_find(&parent, &chain,
+							    clindex,
+							HAMMER2_LOOKUP_SHARED);
 		}
 	}
 done:
@@ -341,7 +356,7 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 		}
 
 		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
-		    checkdirempty(chain) != 0) {
+		    checkdirempty(parent, chain, clindex) != 0) {
 			error = ENOTEMPTY;
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    xop->isdir == 0) {
@@ -381,8 +396,8 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	    chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 		int error2;
 
-		error2 = hammer2_chain_hardlink_find(xop->head.ip1,
-						     &parent, &chain, 0);
+		error2 = hammer2_chain_hardlink_find(&parent, &chain,
+						     clindex, 0);
 		if (chain && error == 0 && error2 == 0 &&
 		    (int64_t)chain->data->ipdata.meta.nlinks <= 1) {
 			hammer2_chain_delete(parent, chain,
@@ -573,8 +588,6 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 	 * To avoid having to scan the collision space we can simply
 	 * reuse the inode's original name_key.  But ip->meta.name_key
 	 * may have already been updated by the front-end, so use xop->lhc.
-	 *
-	 * (frontend is responsible for fixing up ip->pip).
 	 */
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
@@ -757,9 +770,6 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
 				     xop->head.mtid, 0, 0);
-	/*
-	 * (frontend is responsible for fixing up ip->pip).
-	 */
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 	if (parent) {

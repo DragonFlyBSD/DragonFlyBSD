@@ -415,7 +415,7 @@ hammer2_chain_drop_unhold(hammer2_chain_t *chain)
 	cpu_lfence();
 	if (chain->lockcnt == 0) {
 		hammer2_mtx_ex(&chain->lock);
-		if (chain->lockcnt == 0) {
+		if (chain->lockcnt == 0 && chain->persist_refs == 0) {
                         dio = hammer2_chain_drop_data(chain, 0);
                         if (dio)
                                 hammer2_io_bqrelse(&dio);
@@ -654,14 +654,20 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	if (parent) {
 		hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
-			/*
-			 * 1->0 transition failed, retry.
-			 */
+#if 0
+			/* XXX remove, don't try to drop data on fail */
 			hammer2_spin_unex(&parent->core.spin);
 			dio = hammer2_chain_drop_data(chain, 0);
 			hammer2_spin_unex(&chain->core.spin);
 			if (dio)
 				hammer2_io_bqrelse(&dio);
+#endif
+			/*
+			 * 1->0 transition failed, retry.
+			 */
+			hammer2_spin_unex(&parent->core.spin);
+			hammer2_spin_unex(&chain->core.spin);
+
 			return(chain);
 		}
 
@@ -1189,7 +1195,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		hammer2_io_t *dio;
 
 		if (hammer2_mtx_upgrade_try(&chain->lock) == 0 &&
-		    chain->lockcnt == 0) {
+		    chain->lockcnt == 0 && chain->persist_refs == 0) {
 			dio = hammer2_chain_drop_data(chain, 0);
 			if (dio)
 				hammer2_io_bqrelse(&dio);
@@ -4512,13 +4518,12 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
  * (*chainp) is unlocked and dropped.
  */
 int
-hammer2_chain_hardlink_find(hammer2_inode_t *dip,
-			hammer2_chain_t **parentp,
-			hammer2_chain_t **chainp,
-			int flags)
+hammer2_chain_hardlink_find(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
+			    int clindex, int flags)
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rchain;
+	hammer2_pfs_t *pmp;
 	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
 	int cache_index = -1;
@@ -4531,59 +4536,24 @@ hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 	 * Obtain the key for the hardlink from *chainp.
 	 */
 	rchain = *chainp;
+	pmp = rchain->pmp;
 	lhc = rchain->data->ipdata.meta.inum;
 	hammer2_chain_unlock(rchain);
 	hammer2_chain_drop(rchain);
 	rchain = NULL;
 
-	for (;;) {
-		int again;
-
-		rchain = hammer2_chain_lookup(parentp, &key_dummy,
-					      lhc, lhc,
-					      &cache_index, flags);
-		if (rchain)
-			break;
-
-		/*
-		 * Iterate parents, handle parent rename races by retrying
-		 * the operation.
-		 */
-		again = 0;
-		for (;;) {
-			parent = *parentp;
-			if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
-				if (again == 1)
-					break;
-				++again;
-			}
-			if (parent->bref.flags & HAMMER2_BREF_FLAG_PFSROOT)
-				goto done;
-			for (;;) {
-				if (parent->parent == NULL)
-					goto done;
-				parent = parent->parent;
-				hammer2_chain_ref(parent);
-				hammer2_chain_unlock(*parentp);
-				hammer2_chain_lock(parent,
-						   HAMMER2_RESOLVE_ALWAYS |
-						   resolve_flags);
-				if ((*parentp)->parent == parent) {
-					hammer2_chain_drop(*parentp);
-					*parentp = parent;
-					break;
-				}
-				hammer2_chain_unlock(parent);
-				hammer2_chain_drop(parent);
-				hammer2_chain_lock(*parentp,
-						   HAMMER2_RESOLVE_ALWAYS |
-						   resolve_flags);
-				parent = *parentp;
-			}
-		}
+	/*
+	 * Hardlinks hang off of iroot
+	 */
+	if (*parentp) {
+		hammer2_chain_unlock(*parentp);
+		hammer2_chain_drop(*parentp);
 	}
-done:
-
+	parent = hammer2_inode_chain(pmp->iroot, clindex, resolve_flags);
+	rchain = hammer2_chain_lookup(&parent, &key_dummy,
+				      lhc, lhc,
+				      &cache_index, flags);
+	*parentp = parent;
 	*chainp = rchain;
 	return (rchain ? 0 : EINVAL);
 }
@@ -4692,7 +4662,8 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 	VATTR_NULL(&vat);
 	vat.va_type = VDIR;
 	vat.va_mode = 0755;
-	nip = hammer2_inode_create(hmp->spmp->iroot, &vat, proc0.p_ucred,
+	nip = hammer2_inode_create(hmp->spmp->iroot, hmp->spmp->iroot,
+				   &vat, proc0.p_ucred,
 				   pmp->name, name_len, 0,
 				   1, 0, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);

@@ -608,7 +608,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 
 	hammer2_trans_init(hmp->spmp, 0);
 	mtid = hammer2_trans_sub(hmp->spmp);
-	nip = hammer2_inode_create(hmp->spmp->iroot, NULL, NULL,
+	nip = hammer2_inode_create(hmp->spmp->iroot, hmp->spmp->iroot,
+				   NULL, NULL,
 				   pfs->name, strlen(pfs->name), 0,
 				   1, HAMMER2_OBJTYPE_DIRECTORY, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);
