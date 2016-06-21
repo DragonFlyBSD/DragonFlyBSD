@@ -1308,6 +1308,20 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		*ap->a_vpp = hammer2_igetv(nip, &error);
 		hammer2_inode_unlock(nip);
 	}
+
+	/*
+	 * Update dip's mtime
+	 */
+	if (error == 0) {
+		uint64_t mtime;
+
+		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		hammer2_update_time(&mtime);
+		hammer2_inode_modify(dip);
+		dip->meta.mtime = mtime;
+		hammer2_inode_unlock(dip);
+	}
+
 	hammer2_trans_done(dip->pmp);
 
 	if (error == 0) {
@@ -1403,47 +1417,6 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_lock(tdip, 0);
 	hammer2_inode_lock(ip, 0);
 
-#if 0
-	/*
-	 * Dispatch xop_nlink unconditionally since we have to update nlinks.
-	 *
-	 * Otherwise we'd be able to avoid the XOP if the ip does not have
-	 * to be converted or moved.
-	 * If ip is not a hardlink target we must convert it to a hardlink.
-	 * If fdip != cdip we must shift the inode to cdip.
-	 *
-	 * XXX this and other nlink update usage should be passed top-down
-	 *     and not updated with a delta bottom-up.
-	 */
-#if 0
-	if (fdip != cdip || (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE))
-#endif
-	if (error == 0) {
-		xop1 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_setip2(&xop1->head, ip);
-		hammer2_xop_setip3(&xop1->head, cdip);
-		xop1->nlinks_delta = 1;
-
-		hammer2_xop_start(&xop1->head, hammer2_xop_nlink);
-		error = hammer2_xop_collect(&xop1->head, 0);
-		hammer2_xop_retire(&xop1->head, HAMMER2_XOPMASK_VOP);
-		if (error == ENOENT)
-			error = 0;
-	}
-
-	/*
-	 * Must synchronize original inode whos chains are now a hardlink
-	 * target.  We must match what the backend XOP did to the
-	 * chains.
-	 */
-	if (error == 0 && (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
-		hammer2_inode_modify(ip);
-		ip->meta.name_key = ip->meta.inum;
-		ip->meta.name_len = 18;	/* "0x%016jx" */
-		/* The filename is not stored in ip->meta */
-	}
-#endif
-
 	/*
 	 * Create the hardlink target and bump nlinks.
 	 */
@@ -1457,6 +1430,15 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 		++ip->meta.nlinks;
 	}
 	if (error == 0) {
+		/*
+		 * Update dip's mtime
+		 */
+		uint64_t mtime;
+
+		hammer2_update_time(&mtime);
+		hammer2_inode_modify(tdip);
+		tdip->meta.mtime = mtime;
+
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
 	}
@@ -1527,6 +1509,20 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		*ap->a_vpp = hammer2_igetv(nip, &error);
 		hammer2_inode_unlock(nip);
 	}
+
+	/*
+	 * Update dip's mtime
+	 */
+	if (error == 0) {
+		uint64_t mtime;
+
+		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		hammer2_update_time(&mtime);
+		hammer2_inode_modify(dip);
+		dip->meta.mtime = mtime;
+		hammer2_inode_unlock(dip);
+	}
+
 	hammer2_trans_done(dip->pmp);
 
 	if (error == 0) {
@@ -1583,6 +1579,20 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		*ap->a_vpp = hammer2_igetv(nip, &error);
 		hammer2_inode_unlock(nip);
 	}
+
+	/*
+	 * Update dip's mtime
+	 */
+	if (error == 0) {
+		uint64_t mtime;
+
+		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		hammer2_update_time(&mtime);
+		hammer2_inode_modify(dip);
+		dip->meta.mtime = mtime;
+		hammer2_inode_unlock(dip);
+	}
+
 	hammer2_trans_done(dip->pmp);
 
 	if (error == 0) {
@@ -1666,6 +1676,20 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	} else {
 		hammer2_inode_unlock(nip);
 	}
+
+	/*
+	 * Update dip's mtime
+	 */
+	if (error == 0) {
+		uint64_t mtime;
+
+		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		hammer2_update_time(&mtime);
+		hammer2_inode_modify(dip);
+		dip->meta.mtime = mtime;
+		hammer2_inode_unlock(dip);
+	}
+
 	hammer2_trans_done(dip->pmp);
 
 	/*
@@ -1737,6 +1761,19 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
 
+	/*
+	 * Update dip's mtime
+	 */
+	if (error == 0) {
+		uint64_t mtime;
+
+		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		hammer2_update_time(&mtime);
+		hammer2_inode_modify(dip);
+		dip->meta.mtime = mtime;
+		hammer2_inode_unlock(dip);
+	}
+
 	hammer2_inode_run_sideq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
@@ -1797,6 +1834,20 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	} else {
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
+
+	/*
+	 * Update dip's mtime
+	 */
+	if (error == 0) {
+		uint64_t mtime;
+
+		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		hammer2_update_time(&mtime);
+		hammer2_inode_modify(dip);
+		dip->meta.mtime = mtime;
+		hammer2_inode_unlock(dip);
+	}
+
 	hammer2_inode_run_sideq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
@@ -1823,6 +1874,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	size_t tname_len;
 	int error;
 	int tnch_error;
+	int update_tdip;
+	int update_fdip;
 	hammer2_key_t tlhc;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
@@ -1847,6 +1900,9 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 
 	hammer2_pfs_memory_wait(tdip->pmp);
 	hammer2_trans_init(tdip->pmp, 0);
+
+	update_tdip = 0;
+	update_fdip = 0;
 
 	/*
 	 * ip is the inode being renamed.  If this is a hardlink then
@@ -1912,6 +1968,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 			error = tnch_error;
 			goto done2;
 		}
+		update_tdip = 1;
 	}
 
 	/*
@@ -1981,9 +2038,27 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 			ip->meta.name_key = tlhc;
 
 		}
+		update_fdip = 1;
+		update_fdip = 1;
 	}
 
 done2:
+	/*
+	 * Update directory mtimes to represent the something changed.
+	 */
+	if (update_fdip || update_tdip) {
+		uint64_t mtime;
+
+		hammer2_update_time(&mtime);
+		if (update_fdip) {
+			hammer2_inode_modify(fdip);
+			fdip->meta.mtime = mtime;
+		}
+		if (update_tdip) {
+			hammer2_inode_modify(tdip);
+			tdip->meta.mtime = mtime;
+		}
+	}
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
