@@ -2,7 +2,7 @@
  * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Bill Yuan <bycn82@gmail.com>
+ * by Bill Yuan <bycn82@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,7 +56,7 @@
 #include <net/pfil.h>
 
 #include "../../../sys/net/ipfw3/ip_fw3.h"
-#include "../../../sbin/ipfw3/ipfw.h"
+#include "../../../sbin/ipfw3/ipfw3.h"
 #include "ipfw3_basic.h"
 
 
@@ -96,21 +96,7 @@ static struct char_int_map ether_types[] = {
 	{ NULL, 	0 }
 };
 
-/**
- * match_token takes a table and a string, returns the value associated
- * with the string (0 meaning an error in most cases)
- */
-static int
-match_token(struct char_int_map *table, char *string)
-{
-	while (table->key) {
-		if (strcmp(table->key, string) == 0)
-			return table->val;
 
-		table++;
-	}
-	return 0;
-};
 
 static char *
 match_token2(struct char_int_map *table, int val)

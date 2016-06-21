@@ -135,17 +135,11 @@ struct netmsg_zent {
 	uint16_t	log_only;
 };
 
-ipfw_nat_cfg_t *ipfw_nat_cfg_ptr;
-ipfw_nat_cfg_t *ipfw_nat_del_ptr;
-ipfw_nat_cfg_t *ipfw_nat_flush_ptr;
-ipfw_nat_cfg_t *ipfw_nat_get_cfg_ptr;
-ipfw_nat_cfg_t *ipfw_nat_get_log_ptr;
+ip_fw_ctl_t *ipfw_ctl_nat_ptr = NULL;
 
 /* handlers which implemented in ipfw_basic module */
 ipfw_basic_delete_state_t *ipfw_basic_flush_state_prt = NULL;
 ipfw_basic_append_state_t *ipfw_basic_append_state_prt = NULL;
-
-static struct ipfw_nat_context *ipfw_nat_ctx;
 
 extern int ip_fw_loaded;
 static uint32_t static_count;	/* # of static rules */
@@ -206,7 +200,7 @@ register_ipfw_module(int module_id,char *module_name)
 		}
 		tmp++;
 	}
-	kprintf("ipfw3 module %s loaded ", module_name);
+	kprintf("ipfw3 module %s loaded\n", module_name);
 }
 
 int
@@ -242,7 +236,8 @@ decide:
 		for (i = 0; i < MAX_MODULE; i++) {
 			if (tmp->type == 1 && tmp->id == module_id) {
 				tmp->type = 0;
-				kprintf("ipfw3 module %s unloaded ", tmp->name);
+				kprintf("ipfw3 module %s unloaded\n",
+						tmp->name);
 				break;
 			}
 			tmp++;
@@ -1677,20 +1672,14 @@ ipfw_ctl(struct sockopt *sopt)
 			error = ipfw_ctl_zero_entry(rulenum,
 					sopt->sopt_name == IP_FW_RESETLOG);
 			break;
-		case IP_FW_NAT_CFG:
-			error = ipfw_nat_cfg_ptr(sopt);
-			break;
+		case IP_FW_NAT_ADD:
 		case IP_FW_NAT_DEL:
-			error = ipfw_nat_del_ptr(sopt);
-			break;
 		case IP_FW_NAT_FLUSH:
-			error = ipfw_nat_flush_ptr(sopt);
-			break;
 		case IP_FW_NAT_GET:
-			error = ipfw_nat_get_cfg_ptr(sopt);
-			break;
-		case IP_FW_NAT_LOG:
-			error = ipfw_nat_get_log_ptr(sopt);
+		case IP_FW_NAT_GET_RECORD:
+			if (ipfw_ctl_nat_ptr != NULL) {
+				error = ipfw_ctl_nat_ptr(sopt);
+			}
 			break;
 		case IP_DUMMYNET_GET:
 		case IP_DUMMYNET_CONFIGURE:
@@ -1973,11 +1962,6 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 	struct ipfw_context *ctx;
 	struct ip_fw *def_rule;
 
-	if (mycpuid == 0 ) {
-		ipfw_nat_ctx = kmalloc(sizeof(struct ipfw_nat_context),
-				M_IPFW3, M_WAITOK | M_ZERO);
-	}
-
 	ctx = kmalloc(sizeof(struct ipfw_context), M_IPFW3, M_WAITOK | M_ZERO);
 	ipfw_ctx[mycpuid] = ctx;
 
@@ -2025,7 +2009,7 @@ ipfw_init_dispatch(netmsg_t nmsg)
 	struct netmsg_ipfw fwmsg;
 	int error = 0;
 	if (IPFW3_LOADED) {
-		kprintf("IP firewall already loaded\n");
+		kprintf("ipfw3 already loaded\n");
 		error = EEXIST;
 		goto reply;
 	}
@@ -2039,17 +2023,9 @@ ipfw_init_dispatch(netmsg_t nmsg)
 	ip_fw_ctl_x_ptr = ipfw_ctl_x;
 	ip_fw_dn_io_ptr = ipfw_dummynet_io;
 
-	kprintf("ipfw3 initialized, default to %s, logging ",
-		(int)(ipfw_ctx[mycpuid]->ipfw_default_rule->cmd[0].opcode) ==
-		O_BASIC_ACCEPT ? "accept" : "deny");
+	kprintf("ipfw3 initialized, default to %s\n",
+			filters_default_to_accept ? "accept" : "deny");
 
-#ifdef IPFIREWALL_VERBOSE
-	fw_verbose = 1;
-#endif
-	if (fw_verbose == 0) {
-		kprintf("disabled ");
-	}
-	kprintf("\n");
 	ip_fw3_loaded = 1;
 	if (fw3_enable)
 		ipfw_hook();
@@ -2099,9 +2075,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 			ipfw_ctx[cpu] = NULL;
 		}
 	}
-	kfree(ipfw_nat_ctx,M_IPFW3);
-	ipfw_nat_ctx = NULL;
-	kprintf("IP firewall unloaded\n");
+	kprintf("ipfw3 unloaded\n");
 
 	lwkt_replymsg(&nmsg->lmsg, error);
 }

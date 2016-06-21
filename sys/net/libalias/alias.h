@@ -249,9 +249,12 @@ unsigned int
 void		LibAliasUninit(struct libalias *);
 
 /* Packet Handling functions. */
-int		LibAliasIn (struct libalias *, char *_ptr, int _maxpacketsize);
-int		LibAliasOut(struct libalias *, char *_ptr, int _maxpacketsize);
-int		LibAliasOutTry(struct libalias *, char *_ptr, int _maxpacketsize, int _create);
+int		LibAliasIn (struct libalias *, char *_ptr, int _maxpacketsize,
+		struct alias_link **);
+int		LibAliasOut(struct libalias *, char *_ptr, int _maxpacketsize,
+		struct alias_link **);
+int		LibAliasOutTry(struct libalias *, char *_ptr, int
+		_maxpacketsize, int _create, struct alias_link **);
 int		LibAliasUnaliasOut(struct libalias *, char *_ptr, int _maxpacketsize);
 
 /* Port and address redirection functions. */

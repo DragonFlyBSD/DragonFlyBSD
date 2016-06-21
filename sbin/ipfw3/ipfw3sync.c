@@ -76,7 +76,7 @@
 #include "../../sys/net/ipfw3_basic/ip_fw3_basic.h"
 #include "../../sys/net/ipfw3_nat/ip_fw3_nat.h"
 
-#include "ipfw.h"
+#include "ipfw3.h"
 #include "ipfw3sync.h"
 
 void

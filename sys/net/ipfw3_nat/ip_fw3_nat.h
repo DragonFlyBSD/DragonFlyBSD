@@ -2,7 +2,7 @@
  * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Bill Yuan <bycn82@gmail.com>
+ * by Bill Yuan <bycn82@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,7 +39,32 @@
 #define MODULE_NAT_NAME		"nat"
 
 #ifdef _KERNEL
+
 MALLOC_DEFINE(M_IPFW_NAT, "IPFW3/NAT", "IPFW3/NAT 's");
+
+/* place to hold the nat conf */
+struct ipfw_nat_context {
+	LIST_HEAD(, cfg_nat) nat;	/* list of nat entries*/
+};
+
+struct netmsg_nat_del {
+	struct netmsg_base base;
+	int id;
+};
+
+struct netmsg_nat_add {
+	struct netmsg_base base;
+	char *buf;
+};
+
+struct netmsg_alias_link_add {
+	struct netmsg_base base;
+	struct alias_link *lnk;
+	int id;
+	int is_outgoing;
+	int is_tcp;
+};
+
 #endif
 
 enum ipfw_nat_opcodes {
@@ -54,6 +79,8 @@ struct ipfw_ioc_nat_state {
 	int		timestamp;
 	int		expire_time;
 	int		nat_id;
+	int		cpuid;
+	int		is_outgoing;
 	u_short		src_port;
 	u_short		dst_port;
 	u_short		alias_port;

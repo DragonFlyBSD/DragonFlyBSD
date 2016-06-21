@@ -344,7 +344,6 @@ struct dn_flow_set;
 
 typedef int	ip_fw_chk_t(struct ip_fw_args *);
 typedef int	ip_fw_ctl_t(struct sockopt *);
-typedef int	ipfw_nat_cfg_t(struct sockopt *);
 typedef void ip_fw_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
 
 
@@ -380,10 +379,6 @@ struct ipfw_state_context {
 	int	count;
 };
 
-/* place to hold the nat conf */
-struct ipfw_nat_context {
-	LIST_HEAD(, cfg_nat) nat;		/* list of nat entries */
-};
 
 typedef void (*filter_func)(int *cmd_ctl,int *cmd_val,struct ip_fw_args **args,
 struct ip_fw **f,ipfw_insn *cmd,uint16_t ip_len);
@@ -542,11 +537,11 @@ typedef void ipfw_sync_send_state_t(struct ip_fw_state *, int cpu, int hash);
 
 #define IP_FW_MODULE		67  /* get modules names */
 
-#define IP_FW_NAT_CFG		68   /* add/config a nat rule */
+#define IP_FW_NAT_ADD		68   /* add/config a nat rule */
 #define IP_FW_NAT_DEL		69   /* delete a nat rule */
 #define IP_FW_NAT_FLUSH		70   /* get configuration of a nat rule */
 #define IP_FW_NAT_GET		71   /* get config of a nat rule */
-#define IP_FW_NAT_LOG		72   /* get nat record of a nat rule */
+#define IP_FW_NAT_GET_RECORD	72   /* get nat record of a nat rule */
 
 #define IP_FW_STATE_ADD		56   /* add one state */
 #define IP_FW_STATE_DEL		57   /* delete states of one rulenum */

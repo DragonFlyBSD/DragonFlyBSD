@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Bill Yuan <bycn82@gmail.com>
+ * by Bill Yuan <bycn82@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,25 +32,28 @@
  * SUCH DAMAGE.
  */
 
+#ifndef _IPFW3NAT_H_
+#define _IPFW3NAT_H_
 
-#ifndef _IPFW_H
-#define _IPFW_H
+#define NAT_BUF_LEN	1024
+#define port_range u_long
 
+void nat_config(int ac, char **av);
+void nat_show_config(char *buf);
+void nat_show(int ac, char **av);
+int setup_redir_port(char *spool_buf, int len, int *_ac, char ***_av);
+int setup_redir_proto(char *spool_buf, int len, int *_ac, char ***_av);
+int str2proto(const char* str);
+int str2addr_portrange (const char* str, struct in_addr* addr,
+		char* proto, port_range *portRange);
+void set_addr_dynamic(const char *ifn, struct cfg_nat *n);
+int setup_redir_addr(char *spool_buf, int len, int *_ac, char ***_av);
+int str2portrange(const char* str, const char* proto, port_range *portRange);
+void str2addr(const char* str, struct in_addr* addr);
+void nat_delete_config(int ac, char *av[]);
+void nat_show_state(int ac, char **av);
+int get_kern_boottime(void);
 
-struct char_int_map {
-	char *key;
-	int val;
-};
-
-
-typedef void (*parser_func)(ipfw_insn **cmd,int *ac, char **av[]);
-typedef void (*shower_func)(ipfw_insn *cmd, int show_or);
-typedef void (*register_func)(int module, int opcode,parser_func parser,shower_func shower);
-typedef void (*register_keyword)(int module,int opcode,char *word,int type);
-void register_ipfw_keyword(int module, int opcode,char *word,int type);
-void register_ipfw_func(int module, int opcode,parser_func parser,shower_func shower);
-typedef void (*init_module)(register_func func,register_keyword keyword);
-int do_get_x(int optname, void *rule, int *optlen);
-int do_set_x(int optname, void *rule, int optlen);
-
+void nat_flush(void);
+void nat_main(int ac, char **av);
 #endif

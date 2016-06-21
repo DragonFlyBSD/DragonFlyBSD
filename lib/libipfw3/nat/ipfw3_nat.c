@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Bill Yuan <bycn82@gmail.com>
+ * by Bill Yuan <bycn82@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@
 #include <netinet/in.h>
 
 #include "../../../sys/net/ipfw3/ip_fw3.h"
-#include "../../../sbin/ipfw3/ipfw.h"
+#include "../../../sbin/ipfw3/ipfw3.h"
 #include "ipfw3_nat.h"
 
 
