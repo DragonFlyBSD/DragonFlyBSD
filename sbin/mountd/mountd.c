@@ -614,6 +614,13 @@ create_service(struct netconfig *nconf)
 			}
 		}
 
+		{
+			int on = 1;
+
+			setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
+				   (char *)&on, sizeof(on));
+		}
+
 		r = bindresvport_sa(fd, res->ai_addr);
 		if (r != 0) {
 			syslog(LOG_ERR, "bindresvport_sa: %m");
