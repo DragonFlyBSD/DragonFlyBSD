@@ -86,11 +86,13 @@ struct pollfd {
 
 #include <sys/cdefs.h>
 
+#if __BSD_VISIBLE
 #ifndef _SYS_SIGNAL_H_
 #include <sys/signal.h>
 #endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>
+#endif
 #endif
 
 __BEGIN_DECLS
@@ -99,11 +101,11 @@ __BEGIN_DECLS
  * least has it here in <sys/poll.h>.
  */
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
-int	poll (struct pollfd *, nfds_t, int);
+int	poll(struct pollfd *, nfds_t, int);
 #endif
 #if __BSD_VISIBLE
-int	ppoll (struct pollfd *, nfds_t, const struct timespec *,
-	       const sigset_t *);
+int	ppoll(struct pollfd *, nfds_t, const struct timespec *,
+	    const sigset_t *);
 #endif
 __END_DECLS
 
