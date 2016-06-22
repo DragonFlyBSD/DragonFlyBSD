@@ -203,7 +203,7 @@ add_alias_link_dispatch(netmsg_t alias_link_add)
 	start_point = StartPointIn(lnk->alias_addr,
 			lnk->alias_port, lnk->link_type);
 	LIST_INSERT_HEAD(&la->linkTableIn[start_point], lnk, list_in);
-	kfree(alias_link_add, M_IPFW_NAT);
+	kfree(alias_link_add, M_LWKTMSG);
 }
 
 int
@@ -265,7 +265,7 @@ badnat:
 		if (nextcpu != mycpuid) {
 			struct netmsg_alias_link_add *msg;
 			msg = kmalloc(sizeof(struct netmsg_alias_link_add),
-					M_IPFW_NAT, M_NOWAIT | M_ZERO);
+					M_LWKTMSG, M_NOWAIT | M_ZERO);
 
 			netmsg_init(&msg->base, NULL,
 					&curthread->td_msgport, 0,
