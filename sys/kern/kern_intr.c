@@ -64,7 +64,8 @@ struct intr_info {
 	struct random_softc i_random;
 	long		i_count;	/* interrupts dispatched */
 	int		i_running;
-	int		i_mplock_required;
+	short		i_mplock_required;
+	short		i_flags;
 	int		i_fast;
 	int		i_slow;
 	int		i_state;
@@ -243,7 +244,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 {
     struct intr_info *info;
     struct intrec **list;
-    intrec_t rec;
+    intrec_t rec = NULL;
     int orig_cpuid;
 
     KKASSERT(cpuid >= 0 && cpuid < ncpus);
@@ -253,6 +254,23 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     if (name == NULL)
 	name = "???";
     info = &intr_block->ary[cpuid][intr];
+
+    int_moveto_destcpu(&orig_cpuid, cpuid);
+
+    /*
+     * This intr has been registered as exclusive one, so
+     * it can't shared.
+     */
+    if (info->i_flags & INTR_EXCL)
+	goto done;
+
+    /*
+     * This intr has been registered as shared one, so it
+     * can't be used for exclusive handler.
+     */
+    list = &info->i_reclist;
+    if ((intr_flags & INTR_EXCL) && *list != NULL)
+	goto done;
 
     /*
      * Construct an interrupt handler record
@@ -268,8 +286,6 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     rec->intr_flags = intr_flags;
     rec->next = NULL;
     rec->serializer = serializer;
-
-    int_moveto_destcpu(&orig_cpuid, cpuid);
 
     /*
      * Create an emergency polling thread and set up a systimer to wake
@@ -308,8 +324,6 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	info->i_thread->td_preemptable = lwkt_preempt;
     }
 
-    list = &info->i_reclist;
-
     /*
      * Keep track of how many fast and slow interrupts we have.
      * Set i_mplock_required if any handler in the chain requires
@@ -321,6 +335,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	++info->i_fast;
     else
 	++info->i_slow;
+    info->i_flags |= (intr_flags & INTR_EXCL);
 
     /*
      * Enable random number generation keying off of this interrupt.
@@ -357,8 +372,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     if (intr < FIRST_SOFTINT && info->i_slow + info->i_fast == 1)
 	machintr_intr_setup(intr, intr_flags);
 
+done:
     int_moveto_origcpu(orig_cpuid, cpuid);
-
     return(rec);
 }
 
@@ -424,8 +439,11 @@ unregister_int(void *id, int cpuid)
 	    info->i_mplock_required = 0;
     }
 
-    if (intr >= FIRST_SOFTINT && info->i_reclist == NULL)
-	swi_info_ary[intr - FIRST_SOFTINT] = NULL;
+    if (info->i_reclist == NULL) {
+	info->i_flags = 0;
+	if (intr >= FIRST_SOFTINT)
+	    swi_info_ary[intr - FIRST_SOFTINT] = NULL;
+    }
 
     crit_exit();
 
