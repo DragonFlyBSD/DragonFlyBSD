@@ -1563,7 +1563,7 @@ tre_parse(tre_parse_ctx_t *ctx)
 		      }
 		    if (ctx->re + 2 < ctx->re_end)
 		      {
-			if (*(ctx->re + 1) == CHAR_BACKSLASH && *(ctx->re + 1) == CHAR_QUESTIONMARK)
+			if (*(ctx->re + 1) == CHAR_BACKSLASH && *(ctx->re + 2) == CHAR_QUESTIONMARK)
 			  {
 			    /* Process the question mark only in enhanced mode.
 			       Otherwise, the question mark is a literal in BRE */
