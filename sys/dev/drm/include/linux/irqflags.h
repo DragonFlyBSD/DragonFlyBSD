@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,10 +28,11 @@
 #define _LINUX_IRQFLAGS_H_
 
 /*
- * Disabling interrupts, even on a single CPU core is crazy.
- * Don't even try to do such a thing
+ * local_irq_disable/enable functions prevent interrupts to run on the
+ * current CPU in critical sections of code.
+ * This maps nicely to crit_enter/exit sequences in the DragonFly kernel
  */
-#define local_irq_disable()
-#define local_irq_enable()
+#define local_irq_disable()	crit_enter()
+#define local_irq_enable()	crit_exit()
 
 #endif	/* _LINUX_IRQFLAGS_H_ */
