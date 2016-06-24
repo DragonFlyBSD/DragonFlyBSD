@@ -286,8 +286,6 @@ RB_HEAD(hammer_dedup_off_rb_tree, hammer_dedup_cache);
 RB_PROTOTYPE2(hammer_dedup_off_rb_tree, hammer_dedup_cache, off_entry,
 		hammer_dedup_off_rb_compare, hammer_off_t);
 
-#define DEDUP_CACHE_SIZE	4096 /* XXX make it a dynamic tunable */
-
 typedef struct hammer_dedup_cache {
 	RB_ENTRY(hammer_dedup_cache) crc_entry;
 	RB_ENTRY(hammer_dedup_cache) off_entry;

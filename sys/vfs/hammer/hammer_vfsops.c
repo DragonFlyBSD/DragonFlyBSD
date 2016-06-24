@@ -92,7 +92,7 @@ long hammer_limit_dirtybufspace;	/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 2048;	/* per inode */
 int hammer_limit_reclaims;
-int hammer_live_dedup_cache_size = DEDUP_CACHE_SIZE;
+int hammer_live_dedup_cache_size = 4096;
 int hammer_limit_redo = 4096 * 1024;	/* per inode */
 int hammer_autoflush = 500;		/* auto flush (typ on reclaim) */
 int hammer_verify_zone;
