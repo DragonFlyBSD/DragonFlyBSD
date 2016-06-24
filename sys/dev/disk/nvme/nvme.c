@@ -655,7 +655,7 @@ nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid)
 		ivect = 1 + (qid - 1) % (sc->nirqs - 1);
 		if (qid && ivect == qid) {
 			error = bus_setup_intr(sc->dev, sc->irq[ivect],
-						INTR_MPSAFE,
+						INTR_MPSAFE | INTR_HIFREQ,
 						nvme_intr,
 						&sc->comqueues[ivect],
 						&sc->irq_handle[ivect],

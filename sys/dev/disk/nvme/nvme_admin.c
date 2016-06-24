@@ -58,13 +58,19 @@ static int nvme_admin_state_failed(nvme_softc_t *sc);
 int
 nvme_start_admin_thread(nvme_softc_t *sc)
 {
-	int error;
+	int error, intr_flags;
 
 	lockinit(&sc->admin_lk, "admlk", 0, 0);
 	lockinit(&sc->ioctl_lk, "nvioc", 0, 0);
 	sc->admin_signal = 0;
 
-	error = bus_setup_intr(sc->dev, sc->irq[0], INTR_MPSAFE,
+	intr_flags = INTR_MPSAFE;
+	if (sc->nirqs == 1) {
+		/* This interrupt processes data CQs too */
+		intr_flags |= INTR_HIFREQ;
+	}
+
+	error = bus_setup_intr(sc->dev, sc->irq[0], intr_flags,
 			       nvme_intr, &sc->comqueues[0],
 			       &sc->irq_handle[0], NULL);
 	if (error) {
