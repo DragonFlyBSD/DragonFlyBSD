@@ -106,6 +106,7 @@ struct u_device {
  * NOTE: INTR_FAST is no longer supported, all device interrupts are threaded
  *	 now.  Only clock interrupts are 'fast'.
  */
+#define	INTR_HIFREQ	0x0040	/* high frequency interrupt */
 #define	INTR_CLOCK	0x0080	/* (was INTR_FAST) */
 #define	INTR_EXCL	0x0100
 #define	INTR_MPSAFE	0x0200

@@ -143,10 +143,14 @@ static struct thread *emergency_intr_thread[MAXCPU];
 #define ISTATE_LIVELOCKED	2
 
 static int livelock_limit = 40000;
+static int livelock_limit_hi = 120000;
 static int livelock_lowater = 20000;
 static int livelock_debug = -1;
 SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
         CTLFLAG_RW, &livelock_limit, 0, "Livelock interrupt rate limit");
+SYSCTL_INT(_kern, OID_AUTO, livelock_limit_hi,
+        CTLFLAG_RW, &livelock_limit_hi, 0,
+	"Livelock interrupt rate limit (high frequency)");
 SYSCTL_INT(_kern, OID_AUTO, livelock_lowater,
         CTLFLAG_RW, &livelock_lowater, 0, "Livelock low-water mark restore");
 SYSCTL_INT(_kern, OID_AUTO, livelock_debug,
@@ -335,7 +339,17 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	++info->i_fast;
     else
 	++info->i_slow;
+
     info->i_flags |= (intr_flags & INTR_EXCL);
+    if (info->i_slow + info->i_fast == 1 && (intr_flags & INTR_HIFREQ)) {
+	/*
+	 * Allow high frequency interrupt, if this intr is not
+	 * shared yet.
+	 */
+	info->i_flags |= INTR_HIFREQ;
+    } else {
+	info->i_flags &= ~INTR_HIFREQ;
+    }
 
     /*
      * Enable random number generation keying off of this interrupt.
@@ -443,6 +457,10 @@ unregister_int(void *id, int cpuid)
 	info->i_flags = 0;
 	if (intr >= FIRST_SOFTINT)
 	    swi_info_ary[intr - FIRST_SOFTINT] = NULL;
+    } else if (info->i_fast + info->i_slow == 1 &&
+	(info->i_reclist->intr_flags & INTR_HIFREQ)) {
+	/* Unshared high frequency interrupt. */
+	info->i_flags |= INTR_HIFREQ;
     }
 
     crit_exit();
@@ -812,6 +830,7 @@ ithread_handler(void *arg)
     globaldata_t gd;
     struct systimer ill_timer;	/* enforced freq. timer */
     u_int ill_count;		/* interrupt livelock counter */
+    int upper_limit;		/* interrupt livelock upper limit */
     TD_INVARIANTS_DECLARE;
 
     ill_count = 0;
@@ -922,7 +941,11 @@ ithread_handler(void *arg)
 	     * If we did not exceed the frequency limit, we are done.  
 	     * If the interrupt has not retriggered we deschedule ourselves.
 	     */
-	    if (ill_count <= livelock_limit) {
+	    if (info->i_flags & INTR_HIFREQ)
+		upper_limit = livelock_limit_hi;
+	    else
+		upper_limit = livelock_limit;
+	    if (ill_count <= upper_limit) {
 		if (info->i_running == 0) {
 		    lwkt_deschedule_self(gd->gd_curthread);
 		    lwkt_switch();
@@ -935,9 +958,9 @@ ithread_handler(void *arg)
 	     * to wake the thread up at the limit frequency.
 	     */
 	    kprintf("intr %d on cpu%d at %d/%d hz, livelocked limit engaged!\n",
-		    intr, cpuid, ill_count, livelock_limit);
+		    intr, cpuid, ill_count, upper_limit);
 	    info->i_state = ISTATE_LIVELOCKED;
-	    if ((use_limit = livelock_limit) < 100)
+	    if ((use_limit = upper_limit) < 100)
 		use_limit = 100;
 	    else if (use_limit > 500000)
 		use_limit = 500000;
