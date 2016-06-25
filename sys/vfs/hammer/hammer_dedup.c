@@ -34,8 +34,6 @@
 
 #include "hammer.h"
 
-static __inline int validate_zone(hammer_off_t data_offset);
-
 int
 hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 		 struct hammer_ioc_dedup *dedup)
@@ -86,16 +84,14 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 		goto done_cursors;
 
 	/*
-	 * Zone validation. We can't de-dup any of the other zones
-	 * (BTREE or META) or bad things will happen.
+	 * Zone validation.
+	 * We can only de-dup data zones or bad things will happen.
 	 *
 	 * Return with error = 0, but set an INVALID_ZONE flag.
 	 */
-	error = validate_zone(cursor1.leaf->data_offset) +
-			    validate_zone(cursor2.leaf->data_offset);
-	if (error) {
+	if (!hammer_is_zone_data(cursor1.leaf->data_offset) ||
+	    !hammer_is_zone_data(cursor2.leaf->data_offset)) {
 		dedup->head.flags |= HAMMER_IOC_DEDUP_INVALID_ZONE;
-		error = 0;
 		goto done_cursors;
 	}
 
@@ -180,18 +176,6 @@ done_cursor:
 		seq = hammer_flusher_async_one(trans->hmp);
 	}
 	return (error);
-}
-
-static __inline int
-validate_zone(hammer_off_t data_offset)
-{
-	switch(HAMMER_ZONE(data_offset)) {
-	case HAMMER_ZONE_LARGE_DATA:
-	case HAMMER_ZONE_SMALL_DATA:
-		return (0);
-	default:
-		return (1);
-	}
 }
 
 /************************************************************************

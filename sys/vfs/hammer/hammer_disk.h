@@ -195,6 +195,8 @@ typedef uint32_t hammer_crc_t;
 	(HAMMER_ZONE(offset) == HAMMER_ZONE_SMALL_DATA)
 #define hammer_is_zone_unavail(offset)			\
 	(HAMMER_ZONE(offset) == HAMMER_ZONE_UNAVAIL)
+#define hammer_is_zone_data(offset)			\
+	(hammer_is_zone_large_data(offset) || hammer_is_zone_small_data(offset))
 
 /*
  * Test if the zone is directly mapped to zone-2 offset via freemap.
