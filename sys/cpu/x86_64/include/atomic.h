@@ -685,6 +685,9 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_store_rel_64	atomic_store_rel_long
 #define	atomic_swap_64		atomic_swap_long
 #define	atomic_fetchadd_64	atomic_fetchadd_long
+#define atomic_cmpset_64	atomic_cmpset_long
+#define atomic_set_64		atomic_set_long
+#define atomic_clear_64		atomic_clear_long
 
 /* Operations on pointers. */
 #define atomic_set_ptr(p, v) \

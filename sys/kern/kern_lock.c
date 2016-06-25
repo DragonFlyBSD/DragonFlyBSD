@@ -728,7 +728,8 @@ lockmgr_kernproc(struct lock *lp)
 
 	if (lp->lk_lockholder != LK_KERNTHREAD) {
 		KASSERT(lp->lk_lockholder == td,
-		    ("lockmgr_kernproc: lock not owned by curthread %p", td));
+		    ("lockmgr_kernproc: lock not owned by curthread %p: %p",
+		    td, lp->lk_lockholder));
 		lp->lk_lockholder = LK_KERNTHREAD;
 		COUNT(td, -1);
 	}

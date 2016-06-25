@@ -305,8 +305,10 @@ mtx_downgrade(mtx_t *mtx)
 static __inline int
 mtx_upgrade_try(mtx_t *mtx)
 {
-	if (atomic_cmpset_int(&mtx->mtx_lock, 1, MTX_EXCLUSIVE | 1))
+	if (atomic_cmpset_int(&mtx->mtx_lock, 1, MTX_EXCLUSIVE | 1)) {
+		mtx->mtx_owner = curthread;
 		return(0);
+	}
 	return (_mtx_upgrade_try(mtx));
 }
 
