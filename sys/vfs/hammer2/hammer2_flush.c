@@ -800,15 +800,24 @@ again:
 
 		/*
 		 * If the chain was destroyed try to avoid unnecessary I/O.
-		 * (this only really works if the DIO system buffer is the
-		 * same size as chain->bytes).
+		 * The DIO system buffer may silently disallow the
+		 * invalidation.
 		 */
-		if ((chain->flags & HAMMER2_CHAIN_DESTROY) &&
-		    (chain->flags & HAMMER2_CHAIN_DEDUP) == 0 &&
-		    chain->dio) {
-			hammer2_io_setinval(chain->dio,
-					    chain->bref.data_off,
-					    chain->bytes);
+		if (chain->flags & HAMMER2_CHAIN_DESTROY) {
+			hammer2_io_t *dio;
+
+			if (chain->dio) {
+				hammer2_io_setinval(chain->dio,
+						    chain->bref.data_off,
+						    chain->bytes);
+			} else if ((dio = hammer2_io_getquick(hmp,
+						  chain->bref.data_off,
+						  chain->bytes)) != NULL) {
+				hammer2_io_setinval(dio,
+						    chain->bref.data_off,
+						    chain->bytes);
+				hammer2_io_putblk(&dio);
+			}
 		}
 	}
 

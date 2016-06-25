@@ -289,20 +289,25 @@ struct hammer2_io {
 	struct hammer2_dev *hmp;
 	struct buf	*bp;
 	off_t		pbase;
+	uint64_t	refs;
 	int		psize;
-	int		refs;
 	int		act;		/* activity */
 	int		btype;		/* approximate BREF_TYPE_* */
+	int		unused01;
 };
 
 typedef struct hammer2_io hammer2_io_t;
 
-#define HAMMER2_DIO_INPROG	0x80000000	/* bio in progress */
-#define HAMMER2_DIO_GOOD	0x40000000	/* dio->bp is stable */
-#define HAMMER2_DIO_WAITING	0x20000000	/* wait for inprog clr */
-#define HAMMER2_DIO_DIRTY	0x10000000	/* flush on last drop */
+#define HAMMER2_DIO_INPROG	0x8000000000000000LLU	/* bio in progress */
+#define HAMMER2_DIO_GOOD	0x4000000000000000LLU	/* dio->bp is stable */
+#define HAMMER2_DIO_WAITING	0x2000000000000000LLU	/* wait on INPROG */
+#define HAMMER2_DIO_DIRTY	0x1000000000000000LLU	/* flush last drop */
+#define HAMMER2_DIO_INVALOK	0x0800000000000000LLU	/* ok to inval */
+#define HAMMER2_DIO_INVAL	0x0400000000000000LLU	/* inval request */
 
-#define HAMMER2_DIO_MASK	0x0FFFFFFF
+#define HAMMER2_DIO_MASK	0x00FFFFFFFFFFFFFFLLU
+
+#define HAMMER2_DIO_INVALBITS	(HAMMER2_DIO_INVAL | HAMMER2_DIO_INVALOK)
 
 /*
  * Primary chain structure keeps track of the topology in-memory.
@@ -361,7 +366,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DESTROY		0x00000004
-#define HAMMER2_CHAIN_DEDUP		0x00000008	/* used as dedup src */
+#define HAMMER2_CHAIN_DEDUP		0x00000008	/* recorded for dedup */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
@@ -1260,7 +1265,8 @@ extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
 
 extern int hammer2_debug;
-extern int hammer2_cluster_enable;
+extern int hammer2_cluster_read;
+extern int hammer2_cluster_write;
 extern int hammer2_hardlink_enable;
 extern int hammer2_flush_pipe;
 extern int hammer2_synchronous_flush;
@@ -1491,6 +1497,7 @@ void hammer2_io_putblk(hammer2_io_t **diop);
 void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
 hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize);
+void hammer2_io_resetinval(hammer2_dev_t *hmp, off_t lbase);
 void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_iocb_t *iocb);
 void hammer2_io_complete(hammer2_iocb_t *iocb);

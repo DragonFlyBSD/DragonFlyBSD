@@ -245,8 +245,8 @@ static int h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_blockref_t *bref);
 static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
 static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
-			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap,
-			int nofree);
+			hammer2_off_t data_off, hammer2_bmap_data_t *live,
+			hammer2_bmap_data_t *bmap, int nofree);
 
 int
 hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
@@ -689,7 +689,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
 
-		h2_bulkfree_sync_adjust(cbinfo, live, bmap, nofree);
+		h2_bulkfree_sync_adjust(cbinfo, data_off, live, bmap, nofree);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
@@ -705,6 +705,21 @@ next:
 }
 
 /*
+ * When bulkfree is finally able to free a block it must make sure that
+ * the INVALOK bit in any cached DIO is cleared prior to the block being
+ * reused.
+ */
+static
+void
+fixup_dio(hammer2_dev_t *hmp, hammer2_off_t data_off, int bindex, int scount)
+{
+	data_off += (scount >> 1) * HAMMER2_FREEMAP_BLOCK_SIZE;
+	data_off += bindex *
+		(HAMMER2_FREEMAP_BLOCK_SIZE * HAMMER2_BMAP_BLOCKS_PER_ELEMENT);
+	hammer2_io_resetinval(hmp, data_off);
+}
+
+/*
  * Merge the bulkfree bitmap against the existing bitmap.
  *
  * If nofree is non-zero the merge will only mark free blocks as allocated
@@ -713,8 +728,8 @@ next:
 static
 void
 h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
-			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap,
-			int nofree)
+			hammer2_off_t data_off, hammer2_bmap_data_t *live,
+			hammer2_bmap_data_t *bmap, int nofree)
 {
 	int bindex;
 	int scount;
@@ -768,6 +783,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					live->bitmapq[bindex] &=
 					    ~((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_11_10;
+					fixup_dio(cbinfo->hmp, data_off,
+						  bindex, scount);
 					break;
 				}
 			} else if ((mmask & 3) == 3) {

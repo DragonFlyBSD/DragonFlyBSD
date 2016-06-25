@@ -1291,6 +1291,9 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
  *
  * WARNING! This code is SMP safe but the heuristic allows SMP collisions.
  *	    All fields must be loaded into locals and validated.
+ *
+ * WARNING! Should only be used for file data, hammer2_chain_modify() only
+ *	    checks for the dedup case on data chains.
  */
 static
 void
@@ -1401,14 +1404,21 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 		dio = hammer2_io_getquick(hmp, off, pblksize);
 		if (dio &&
 		    bcmp(data, hammer2_io_data(dio, off), pblksize) == 0) {
+			/*
+			 * Make sure the INVALOK flag is cleared to prevent
+			 * the possibly-dirty bp from being invalidated now
+			 * that we are using it as part of a de-dup operation.
+			 */
 			if (hammer2_debug & 0x40000) {
 				kprintf("DEDUP SUCCESS %016jx\n",
 					(intmax_t)off);
 			}
+			atomic_clear_64(&dio->refs, HAMMER2_DIO_INVALOK);
 			hammer2_io_putblk(&dio);
 			*datap = NULL;
 			dedup[i].ticks = ticks;	/* update use */
 			++hammer2_iod_file_wdedup;
+
 			return off;		/* RETURN */
 		}
 		if (dio)

@@ -109,7 +109,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	 */
 	/*int psize = hammer2_devblksize(lsize);*/
 	int psize = HAMMER2_PBUFSIZE;
-	int refs;
+	uint64_t refs;
 
 	pmask = ~(hammer2_off_t)(psize - 1);
 
@@ -124,7 +124,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	hammer2_spin_sh(&hmp->io_spin);
 	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, pbase);
 	if (dio) {
-		if ((atomic_fetchadd_int(&dio->refs, 1) &
+		if ((atomic_fetchadd_64(&dio->refs, 1) &
 		     HAMMER2_DIO_MASK) == 0) {
 			atomic_add_int(&dio->hmp->iofree_count, -1);
 		}
@@ -145,7 +145,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 			atomic_add_int(&hammer2_dio_count, 1);
 			hammer2_spin_unex(&hmp->io_spin);
 		} else {
-			if ((atomic_fetchadd_int(&xio->refs, 1) &
+			if ((atomic_fetchadd_64(&xio->refs, 1) &
 			     HAMMER2_DIO_MASK) == 0) {
 				atomic_add_int(&xio->hmp->iofree_count, -1);
 			}
@@ -190,7 +190,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 			 * queue the iocb.
 			 */
 			hammer2_spin_ex(&dio->spin);
-			if (atomic_cmpset_int(&dio->refs, refs,
+			if (atomic_cmpset_64(&dio->refs, refs,
 					      refs | HAMMER2_DIO_WAITING)) {
 				iocb->flags |= HAMMER2_IOCB_ONQ |
 					       HAMMER2_IOCB_INPROG;
@@ -205,7 +205,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 			 * If DIO_INPROG is not set then set it and issue the
 			 * callback immediately to start I/O.
 			 */
-			if (atomic_cmpset_int(&dio->refs, refs,
+			if (atomic_cmpset_64(&dio->refs, refs,
 					      refs | HAMMER2_DIO_INPROG)) {
 				iocb->flags |= HAMMER2_IOCB_INPROG;
 				iocb->callback(iocb);
@@ -230,8 +230,8 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 	off_t pbase;
 	off_t pmask;
 	int psize = HAMMER2_PBUFSIZE;
-	int orefs;
-	int nrefs;
+	uint64_t orefs;
+	uint64_t nrefs;
 
 	pmask = ~(hammer2_off_t)(psize - 1);
 
@@ -250,7 +250,7 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 		return NULL;
 	}
 
-	if ((atomic_fetchadd_int(&dio->refs, 1) & HAMMER2_DIO_MASK) == 0)
+	if ((atomic_fetchadd_64(&dio->refs, 1) & HAMMER2_DIO_MASK) == 0)
 		atomic_add_int(&dio->hmp->iofree_count, -1);
 	hammer2_spin_unsh(&hmp->io_spin);
 
@@ -261,7 +261,7 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 	 * Obtain/validate the buffer.  Do NOT issue I/O.  Discard if
 	 * the system does not have the data already cached.
 	 */
-	nrefs = -1;
+	nrefs = (uint64_t)-1;
 	for (;;) {
 		orefs = dio->refs;
 		cpu_ccfence();
@@ -286,7 +286,7 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 		if ((orefs & HAMMER2_DIO_INPROG))
 			break;
 		nrefs = orefs | HAMMER2_DIO_INPROG;
-		if (atomic_cmpset_int(&dio->refs, orefs, nrefs) == 0)
+		if (atomic_cmpset_64(&dio->refs, orefs, nrefs) == 0)
 			continue;
 
 		/*
@@ -302,11 +302,15 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 #endif
 			bread(hmp->devvp, dio->pbase, dio->psize, &bp);
 		}
+
+		/*
+		 * System buffer must also have remained cached.
+		 */
 		if (bp) {
 			if ((bp->b_flags & B_ERROR) == 0 &&
 			    (bp->b_flags & B_CACHE)) {
 				dio->bp = bp;	/* assign BEFORE setting flag */
-				atomic_set_int(&dio->refs, HAMMER2_DIO_GOOD);
+				atomic_set_64(&dio->refs, HAMMER2_DIO_GOOD);
 			} else {
 				bqrelse(bp);
 				bp = NULL;
@@ -326,12 +330,31 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 	}
 
 	/*
-	 * Only return the dio if its buffer is good.
+	 * Only return the dio if its buffer is good.  If the buffer is not
+	 * good be sure to clear INVALOK, meaning that invalidation is no
+	 * longer acceptable
 	 */
 	if ((dio->refs & HAMMER2_DIO_GOOD) == 0) {
 		hammer2_io_putblk(&dio);
 	}
 	return dio;
+}
+
+/*
+ * Make sure that INVALOK is cleared on the dio associated with the specified
+ * data offset.  Called from bulkfree when a block becomes reusable.
+ */
+void
+hammer2_io_resetinval(hammer2_dev_t *hmp, off_t data_off)
+{
+	hammer2_io_t *dio;
+
+	data_off &= ~HAMMER2_PBUFMASK64;
+	hammer2_spin_sh(&hmp->io_spin);
+	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, data_off);
+	if (dio)
+		atomic_clear_64(&dio->refs, HAMMER2_DIO_INVALOK);
+	hammer2_spin_unsh(&hmp->io_spin);
 }
 
 /*
@@ -342,20 +365,21 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 {
 	hammer2_io_t *dio = iocb->dio;
 	hammer2_iocb_t *cbtmp;
-	uint32_t orefs;
-	uint32_t nrefs;
+	uint64_t orefs;
+	uint64_t nrefs;
 	uint32_t oflags;
 	uint32_t nflags;
 
 	/*
 	 * If IOCB_INPROG was not set completion is synchronous due to the
 	 * buffer already being good.  We can simply set IOCB_DONE and return.
+	 *
 	 * In this situation DIO_INPROG is not set and we have no visibility
-	 * on dio->bp.
+	 * on dio->bp.  We should not try to mess with dio->bp because another
+	 * thread may be finishing up its processing.  dio->bp should already
+	 * be set to BUF_KERNPROC()!
 	 */
 	if ((iocb->flags & HAMMER2_IOCB_INPROG) == 0) {
-		if (dio->bp)
-			BUF_KERNPROC(dio->bp);
 		atomic_set_int(&iocb->flags, HAMMER2_IOCB_DONE);
 		return;
 	}
@@ -374,7 +398,7 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 		BUF_KERNPROC(dio->bp);
 		if ((dio->bp->b_flags & B_ERROR) == 0) {
 			KKASSERT(dio->bp->b_flags & B_CACHE);
-			atomic_set_int(&dio->refs, HAMMER2_DIO_GOOD);
+			atomic_set_64(&dio->refs, HAMMER2_DIO_GOOD);
 		}
 	}
 
@@ -406,14 +430,13 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 				hammer2_spin_unex(&dio->spin);
 				cbtmp->callback(cbtmp);	/* chained */
 				break;
-			} else if (atomic_cmpset_int(&dio->refs,
-						     orefs, nrefs)) {
+			} else if (atomic_cmpset_64(&dio->refs, orefs, nrefs)) {
 				hammer2_spin_unex(&dio->spin);
 				break;
 			}
 			hammer2_spin_unex(&dio->spin);
 			/* retry */
-		} else if (atomic_cmpset_int(&dio->refs, orefs, nrefs)) {
+		} else if (atomic_cmpset_64(&dio->refs, orefs, nrefs)) {
 			break;
 		} /* else retry */
 		/* retry */
@@ -484,8 +507,8 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	off_t peof;
 	off_t pbase;
 	int psize;
-	int orefs;
-	int nrefs;
+	uint64_t orefs;
+	uint64_t nrefs;
 
 	dio = *diop;
 	*diop = NULL;
@@ -512,14 +535,15 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			 * Lastdrop case, INPROG can be set.
 			 */
 			nrefs &= ~(HAMMER2_DIO_GOOD | HAMMER2_DIO_DIRTY);
+			nrefs &= ~(HAMMER2_DIO_INVAL);
 			nrefs |= HAMMER2_DIO_INPROG;
-			if (atomic_cmpset_int(&dio->refs, orefs, nrefs))
+			if (atomic_cmpset_64(&dio->refs, orefs, nrefs))
 				break;
 		} else if ((orefs & HAMMER2_DIO_MASK) == 1) {
 			/*
 			 * Lastdrop case, INPROG already set.
 			 */
-			if (atomic_cmpset_int(&dio->refs, orefs, nrefs)) {
+			if (atomic_cmpset_64(&dio->refs, orefs, nrefs)) {
 				atomic_add_int(&hmp->iofree_count, 1);
 				return;
 			}
@@ -527,7 +551,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			/*
 			 * Normal drop case.
 			 */
-			if (atomic_cmpset_int(&dio->refs, orefs, nrefs))
+			if (atomic_cmpset_64(&dio->refs, orefs, nrefs))
 				return;
 		}
 		cpu_pause();
@@ -549,15 +573,28 @@ hammer2_io_putblk(hammer2_io_t **diop)
 
 	if (orefs & HAMMER2_DIO_GOOD) {
 		KKASSERT(bp != NULL);
-		if (orefs & HAMMER2_DIO_DIRTY) {
+		if ((orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
+			bp->b_flags |= B_INVAL | B_RELBUF;
+			brelse(bp);
+		} else if (orefs & HAMMER2_DIO_DIRTY) {
 			int hce;
 
 			dio_write_stats_update(dio);
-			if ((hce = hammer2_cluster_enable) > 0) {
+			if ((hce = hammer2_cluster_write) > 0) {
+				/*
+				 * Allows write-behind to keep the buffer
+				 * cache sane.
+				 */
 				peof = (pbase + HAMMER2_SEGMASK64) &
 				       ~HAMMER2_SEGMASK64;
+				bp->b_flags |= B_CLUSTEROK;
 				cluster_write(bp, peof, psize, hce);
 			} else {
+				/*
+				 * Allows dirty buffers to accumulate and
+				 * possibly be canceled (e.g. by a 'rm'),
+				 * will burst-write later.
+				 */
 				bp->b_flags |= B_CLUSTEROK;
 				bdwrite(bp);
 			}
@@ -567,7 +604,10 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			bqrelse(bp);
 		}
 	} else if (bp) {
-		if (orefs & HAMMER2_DIO_DIRTY) {
+		if ((orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
+			bp->b_flags |= B_INVAL | B_RELBUF;
+			brelse(bp);
+		} else if (orefs & HAMMER2_DIO_DIRTY) {
 			dio_write_stats_update(dio);
 			bdwrite(bp);
 		} else {
@@ -772,6 +812,14 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 					vfs_bio_clrbuf(dio->bp);
 					dio->bp->b_flags |= B_CACHE;
 				}
+
+				/*
+				 * Invalidation is ok on newly allocated
+				 * buffers.  Flag will be cleared on used
+				 * by de-dup code.  hammer2_chain_modify()
+				 * also checks this flag.
+				 */
+				atomic_set_64(&dio->refs, HAMMER2_DIO_INVALOK);
 			} else if (iocb->flags & HAMMER2_IOCB_QUICK) {
 				/*
 				 * Partial buffer, quick mode.  Do nothing.
@@ -813,7 +861,7 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 	if (dio->bp) {
 		if (iocb->flags & HAMMER2_IOCB_ZERO)
 			bzero(hammer2_io_data(dio, iocb->lbase), iocb->lsize);
-		atomic_set_int(&dio->refs, HAMMER2_DIO_DIRTY);
+		atomic_set_64(&dio->refs, HAMMER2_DIO_DIRTY);
 	}
 	hammer2_io_complete(iocb);
 }
@@ -890,7 +938,7 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 			 * another iocb.
 			 */
 			error = 0;
-		} else if ((hce = hammer2_cluster_enable) > 0) {
+		} else if ((hce = hammer2_cluster_read) > 0) {
 			/*
 			 * Synchronous cluster I/O for now.
 			 */
@@ -969,21 +1017,21 @@ hammer2_io_callback(struct bio *bio)
 void
 hammer2_io_bawrite(hammer2_io_t **diop)
 {
-	atomic_set_int(&(*diop)->refs, HAMMER2_DIO_DIRTY);
+	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
 	hammer2_io_putblk(diop);
 }
 
 void
 hammer2_io_bdwrite(hammer2_io_t **diop)
 {
-	atomic_set_int(&(*diop)->refs, HAMMER2_DIO_DIRTY);
+	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
 	hammer2_io_putblk(diop);
 }
 
 int
 hammer2_io_bwrite(hammer2_io_t **diop)
 {
-	atomic_set_int(&(*diop)->refs, HAMMER2_DIO_DIRTY);
+	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
 	hammer2_io_putblk(diop);
 	return (0);	/* XXX */
 }
@@ -991,20 +1039,19 @@ hammer2_io_bwrite(hammer2_io_t **diop)
 void
 hammer2_io_setdirty(hammer2_io_t *dio)
 {
-	atomic_set_int(&dio->refs, HAMMER2_DIO_DIRTY);
+	atomic_set_64(&dio->refs, HAMMER2_DIO_DIRTY);
 }
 
+/*
+ * Request an invalidation.  The hammer2_io code will oblige only if
+ * DIO_INVALOK is also set.  INVALOK is cleared if the dio is used
+ * in a dedup lookup and prevents invalidation of the dirty buffer.
+ */
 void
 hammer2_io_setinval(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
 {
-#if 0
-	uint64_t mask = hammer2_io_mask(dio, off, bytes);
-	hammer2_io_crc_clrmask(dio, mask);
-#endif
-	if ((u_int)dio->psize == bytes) {
-		dio->bp->b_flags |= B_INVAL | B_RELBUF;
-		/* dio->bp->b_flags &= ~B_CACHE; not needed */
-	}
+	if ((u_int)dio->psize == bytes)
+		atomic_set_64(&dio->refs, HAMMER2_DIO_INVAL);
 }
 
 void

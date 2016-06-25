@@ -829,8 +829,10 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 		}
 		error = bread(ip->vp, lbase, lblksize, &bp);
 #endif
-		if (error)
+		if (error) {
+			brelse(bp);
 			break;
+		}
 		loff = (int)(uio->uio_offset - lbase);
 		n = lblksize - loff;
 		if (n > uio->uio_resid)
@@ -1030,6 +1032,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			bp->b_flags |= B_CLUSTEROK;
 			cluster_write(bp, new_eof, lblksize, seqcount);
 #else
+			bp->b_flags |= B_CLUSTEROK;
 			bdwrite(bp);
 #endif
 		}

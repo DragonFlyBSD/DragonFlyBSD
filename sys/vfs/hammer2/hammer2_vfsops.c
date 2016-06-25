@@ -78,7 +78,8 @@ static struct hammer2_pfslist hammer2_pfslist;
 static struct lock hammer2_mntlk;
 
 int hammer2_debug;
-int hammer2_cluster_enable = 4;
+int hammer2_cluster_read = 4;		/* physical read-ahead */
+int hammer2_cluster_write = 0;		/* bdwrite() so later inval works */
 int hammer2_hardlink_enable = 1;
 int hammer2_flush_pipe = 100;
 int hammer2_synchronous_flush = 1;
@@ -123,8 +124,10 @@ SYSCTL_NODE(_vfs, OID_AUTO, hammer2, CTLFLAG_RW, 0, "HAMMER2 filesystem");
 
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
 	   &hammer2_debug, 0, "");
-SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_enable, CTLFLAG_RW,
-	   &hammer2_cluster_enable, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_read, CTLFLAG_RW,
+	   &hammer2_cluster_read, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_write, CTLFLAG_RW,
+	   &hammer2_cluster_write, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, hardlink_enable, CTLFLAG_RW,
 	   &hammer2_hardlink_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,

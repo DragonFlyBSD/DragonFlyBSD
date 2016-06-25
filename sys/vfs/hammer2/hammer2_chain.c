@@ -124,20 +124,6 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 	return(0);		/* overlap (must not cross edge boundary) */
 }
 
-static __inline
-int
-hammer2_isclusterable(hammer2_chain_t *chain)
-{
-	if (hammer2_cluster_enable) {
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
-		    chain->bref.type == HAMMER2_BREF_TYPE_INODE ||
-		    chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
-			return(1);
-		}
-	}
-	return(0);
-}
-
 /*
  * Make a chain visible to the flusher.  The flusher needs to be able to
  * do flushes of subdirectory chains or single files so it does a top-down
@@ -504,8 +490,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		if (chain->core.chain_count ||
 		    (chain->flags & (HAMMER2_CHAIN_MODIFIED |
 				     HAMMER2_CHAIN_DEDUP)) ==
-		    (HAMMER2_CHAIN_MODIFIED |
-		     HAMMER2_CHAIN_DEDUP)) {
+		    (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_DEDUP)) {
 			/*
 			 * Put on flushq (should ensure refs > 1), retry
 			 * the drop.
@@ -1416,6 +1401,57 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 }
 
 /*
+ * Helper for chains already flagged as MODIFIED.  A new allocation may
+ * still be required if the existing one has already been used in a de-dup.
+ */
+static __inline
+int
+modified_needs_new_allocation(hammer2_chain_t *chain)
+{
+	hammer2_io_t *dio;
+
+	/*
+	 * We only live-dedup data, we do not live-dedup meta-data.
+	 */
+	if (chain->bref.type != HAMMER2_BREF_TYPE_DATA)
+		return 0;
+
+	/*
+	 * If this flag is not set the current modification has not been
+	 * recorded for dedup so a new allocation is not needed.  The
+	 * recording occurs when dirty file data is flushed from the frontend
+	 * to the backend.
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_DEDUP) == 0)
+		return 0;
+
+	/*
+	 * If the DEDUP flag is set we have one final line of defense to
+	 * allow re-use of a modified buffer, and that is if the DIO_INVALOK
+	 * flag is still set on the underlying DIO.  This flag is only set
+	 * for hammer2_io_new() buffers which cover the whole buffer (64KB),
+	 * and is cleared when a dedup operation actually decides to use
+	 * the buffer.
+	 */
+
+	if ((dio = chain->dio) != NULL) {
+		if (dio->refs & HAMMER2_DIO_INVALOK)
+			return 0;
+	} else {
+		dio = hammer2_io_getquick(chain->hmp, chain->bref.data_off,
+					  chain->bytes);
+		if (dio) {
+			if (dio->refs & HAMMER2_DIO_INVALOK) {
+				hammer2_io_putblk(&dio);
+				return 0;
+			}
+			hammer2_io_putblk(&dio);
+		}
+	}
+	return 1;
+}
+
+/*
  * Set the chain modified so its data can be changed by the caller.
  *
  * Sets bref.modify_tid to mtid only if mtid != 0.  Note that bref.modify_tid
@@ -1464,14 +1500,13 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	/*
 	 * Set MODIFIED to indicate that the chain has been modified.
 	 * Set UPDATE to ensure that the blockref is updated in the parent.
+	 *
+	 * If MODIFIED is already set determine if we can reuse the assigned
+	 * data block or if we need a new data block.  The assigned data block
+	 * can be reused if HAMMER2_DIO_INVALOK is set on the dio.
 	 */
-	if ((chain->flags & (HAMMER2_CHAIN_DEDUP | HAMMER2_CHAIN_MODIFIED)) ==
-	    (HAMMER2_CHAIN_DEDUP | HAMMER2_CHAIN_MODIFIED)) {
-		/*
-		 * Modified already set but a new allocation is needed
-		 * anyway because we recorded this data_off for possible
-		 * dedup operation.
-		 */
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) &&
+	    modified_needs_new_allocation(chain)) {
 		newmod = 1;
 	} else if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		/*
@@ -1489,12 +1524,10 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	}
 
 	/*
-	 * Flag parent update required, clear DEDUP flag (already processed
-	 * above).
+	 * Flag parent update required.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DEDUP);
 
 	/*
 	 * The modification or re-modification requires an allocation and
@@ -1523,6 +1556,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 						HAMMER2_FREEMAP_DORECOVER);
 			} else {
 				hammer2_freemap_alloc(chain, chain->bytes);
+				atomic_clear_int(&chain->flags,
+						 HAMMER2_CHAIN_DEDUP);
 			}
 			/* XXX failed allocation */
 		}
