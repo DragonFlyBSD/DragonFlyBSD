@@ -127,7 +127,7 @@ main(int ac, char *av[])
 	if (strchr(devpath, '@') == NULL) {
 		fprintf(stderr,
 			"hammer2_mount: no @LABEL specified: \"%s\"\n"
-			"typical labels are @BOOT, @ROOT, and @DATA\n",
+			"typical labels are @LOCAL, @ROOT\n",
 			devpath);
 		exit(1);
 	}
