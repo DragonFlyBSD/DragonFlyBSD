@@ -111,22 +111,22 @@ static uint32_t DedupCrcEnd;
 static uint64_t MemoryUse;
 
 /* PFS global ids - we deal with just one PFS at a run */
-int glob_fd;
-struct hammer_ioc_pseudofs_rw glob_pfs;
+static int glob_fd;
+static struct hammer_ioc_pseudofs_rw glob_pfs;
 
 /*
  * Global accounting variables
  *
  * Last three don't have to be 64-bit, just to be safe..
  */
-uint64_t dedup_alloc_size = 0;
-uint64_t dedup_ref_size = 0;
-uint64_t dedup_skipped_size = 0;
-uint64_t dedup_crc_failures = 0;
-uint64_t dedup_sha_failures = 0;
-uint64_t dedup_underflows = 0;
-uint64_t dedup_successes_count = 0;
-uint64_t dedup_successes_bytes = 0;
+static uint64_t dedup_alloc_size;
+static uint64_t dedup_ref_size;
+static uint64_t dedup_skipped_size;
+static uint64_t dedup_crc_failures;
+static uint64_t dedup_sha_failures;
+static uint64_t dedup_underflows;
+static uint64_t dedup_successes_count;
+static uint64_t dedup_successes_bytes;
 
 static int rb_sim_dedup_entry_compare(struct sim_dedup_entry *sim_de1,
 				struct sim_dedup_entry *sim_de2);
