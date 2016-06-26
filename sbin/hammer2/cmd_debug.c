@@ -531,23 +531,25 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		case HAMMER2_CHECK_ISCSI32:
 			cv = hammer2_icrc32(&media, bytes);
 			if (bref->check.iscsi32.value != cv) {
-				printf("(icrc %02x:%08x/%08x) ",
+				printf("(icrc %02x:%08x/%08x failed) ",
 				       bref->methods,
 				       bref->check.iscsi32.value,
 				       cv);
 			} else {
-				printf("(meth %02x) ", bref->methods);
+				printf("(meth %02x, iscsi32=%08x) ",
+				       bref->methods, cv);
 			}
 			break;
 		case HAMMER2_CHECK_XXHASH64:
 			cv64 = XXH64(&media, bytes, XXH_HAMMER2_SEED);
 			if (bref->check.xxhash64.value != cv64) {
-				printf("(xxhash64 %02x:%016jx/%016jx) ",
+				printf("(xxhash64 %02x:%016jx/%016jx failed) ",
 				       bref->methods,
 				       bref->check.xxhash64.value,
 				       cv64);
 			} else {
-				printf("(meth %02x) ", bref->methods);
+				printf("(meth %02x, xxh=%016jx) ",
+				       bref->methods, cv64);
 			}
 			break;
 		case HAMMER2_CHECK_SHA192:
@@ -556,12 +558,13 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		case HAMMER2_CHECK_FREEMAP:
 			cv = hammer2_icrc32(&media, bytes);
 			if (bref->check.freemap.icrc32 != cv) {
-				printf("(fcrc %02x:%08x/%08x) ",
+				printf("(fcrc %02x:%08x/%08x failed) ",
 					bref->methods,
 					bref->check.freemap.icrc32,
 					cv);
 			} else {
-				printf("(meth %02x) ", bref->methods);
+				printf("(meth %02x, fcrc=%08x) ",
+					bref->methods, cv);
 			}
 			break;
 		}
@@ -706,9 +709,11 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 #error "cmd_debug.c: HAMMER2_BMAP_ELEMENTS expected to be 8"
 #endif
 
-			tabprintf(tab + 4, "%04d.%04x (avail=%7d) "
+			tabprintf(tab + 4, "%016jx %04d.%04x (avail=%7d) "
 				  "%016jx %016jx %016jx %016jx "
 				  "%016jx %016jx %016jx %016jx\n",
+				  bref->key +
+				   i * 256 * HAMMER2_FREEMAP_BLOCK_SIZE,
 				  i, media.bmdata[i].class,
 				  media.bmdata[i].avail,
 				  media.bmdata[i].bitmapq[0],
