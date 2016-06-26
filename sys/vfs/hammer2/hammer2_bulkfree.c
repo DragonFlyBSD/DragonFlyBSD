@@ -631,7 +631,10 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 			 * remark blocks as fully allocated.
 			 */
 			if (live_chain) {
-				kprintf("live_chain %016jx\n", (intmax_t)key);
+				if (hammer2_debug & 1) {
+					kprintf("live_chain %016jx\n",
+						(intmax_t)key);
+				}
 				if (live_chain->bref.mirror_tid >
 				    cbinfo->saved_mirror_tid) {
 					kprintf("hammer2_bulkfree: "

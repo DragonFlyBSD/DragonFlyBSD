@@ -507,6 +507,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 			atomic_add_long(&hammer2_count_modified_chains, -1);
+			if (chain->pmp)
+				hammer2_pfs_memory_wakeup(chain->pmp);
 		}
 		/* spinlock still held */
 	}
@@ -1069,13 +1071,6 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	} else if ((chain->flags & HAMMER2_CHAIN_TESTEDGOOD) == 0) {
 	TIMER(26);
 		if (hammer2_chain_testcheck(chain, bdata) == 0) {
-			kprintf("chain %016jx.%02x meth=%02x "
-				"CHECK FAIL %08x (flags=%08x)\n",
-				chain->bref.data_off,
-				chain->bref.type,
-				chain->bref.methods,
-				hammer2_icrc32(bdata, chain->bytes),
-				chain->flags);
 			chain->error = HAMMER2_ERROR_CHECK;
 		} else {
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_TESTEDGOOD);
@@ -1595,6 +1590,7 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
 	    (flags & HAMMER2_MODIFY_OPTDATA) &&
 	    chain->data == NULL) {
+		KKASSERT(chain->dio == NULL);
 		goto skip2;
 	}
 
@@ -4489,6 +4485,8 @@ hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata)
 int
 hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 {
+	uint32_t check32;
+	uint64_t check64;
 	int r;
 
 	if (chain->bref.flags & HAMMER2_BREF_FLAG_ZERO)
@@ -4502,13 +4500,33 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		r = 1;
 		break;
 	case HAMMER2_CHECK_ISCSI32:
-		r = (chain->bref.check.iscsi32.value ==
-		     hammer2_icrc32(bdata, chain->bytes));
+		check32 = hammer2_icrc32(bdata, chain->bytes);
+		r = (chain->bref.check.iscsi32.value == check32);
+		if (r == 0) {
+			kprintf("chain %016jx.%02x meth=%02x CHECK FAIL "
+				"(flags=%08x, bref/data %08x/%08x)\n",
+				chain->bref.data_off,
+				chain->bref.type,
+				chain->bref.methods,
+				chain->flags,
+				chain->bref.check.iscsi32.value,
+				check32);
+		}
 		hammer2_check_icrc32 += chain->bytes;
 		break;
 	case HAMMER2_CHECK_XXHASH64:
-		r = (chain->bref.check.xxhash64.value ==
-		     XXH64(bdata, chain->bytes, XXH_HAMMER2_SEED));
+		check64 = XXH64(bdata, chain->bytes, XXH_HAMMER2_SEED);
+		r = (chain->bref.check.xxhash64.value == check64);
+		if (r == 0) {
+			kprintf("chain %016jx.%02x meth=%02x CHECK FAIL "
+				"(flags=%08x, bref/data %016jx/%016jx)\n",
+				chain->bref.data_off,
+				chain->bref.type,
+				chain->bref.methods,
+				chain->flags,
+				chain->bref.check.xxhash64.value,
+				check64);
+		}
 		hammer2_check_xxhash64 += chain->bytes;
 		break;
 	case HAMMER2_CHECK_SHA192:
@@ -4529,6 +4547,11 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 				r = 1;
 			} else {
 				r = 0;
+				kprintf("chain %016jx.%02x meth=%02x "
+					"CHECK FAIL\n",
+					chain->bref.data_off,
+					chain->bref.type,
+					chain->bref.methods);
 			}
 		}
 		break;
@@ -4536,12 +4559,20 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		r = (chain->bref.check.freemap.icrc32 ==
 		     hammer2_icrc32(bdata, chain->bytes));
 		if (r == 0) {
+			kprintf("chain %016jx.%02x meth=%02x "
+				"CHECK FAIL\n",
+				chain->bref.data_off,
+				chain->bref.type,
+				chain->bref.methods);
 			kprintf("freemap.icrc %08x icrc32 %08x (%d)\n",
 				chain->bref.check.freemap.icrc32,
-				hammer2_icrc32(bdata, chain->bytes), chain->bytes);
+				hammer2_icrc32(bdata, chain->bytes),
+					       chain->bytes);
 			if (chain->dio)
 				kprintf("dio %p buf %016jx,%d bdata %p/%p\n",
-					chain->dio, chain->dio->bp->b_loffset, chain->dio->bp->b_bufsize, bdata, chain->dio->bp->b_data);
+					chain->dio, chain->dio->bp->b_loffset,
+					chain->dio->bp->b_bufsize, bdata,
+					chain->dio->bp->b_data);
 		}
 
 		break;

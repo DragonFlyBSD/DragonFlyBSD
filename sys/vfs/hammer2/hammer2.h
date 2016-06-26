@@ -1455,7 +1455,6 @@ void hammer2_chain_bulkdrop(hammer2_chain_t *copy);
 void hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata);
 int hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata);
 
-
 void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
@@ -1507,8 +1506,7 @@ int hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 int hammer2_io_newnz(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_newq(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
-				hammer2_io_t **diop);
+void hammer2_io_newq(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize);
 int hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 void hammer2_io_bawrite(hammer2_io_t **diop);

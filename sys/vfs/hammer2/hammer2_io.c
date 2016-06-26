@@ -573,10 +573,13 @@ hammer2_io_putblk(hammer2_io_t **diop)
 
 	if (orefs & HAMMER2_DIO_GOOD) {
 		KKASSERT(bp != NULL);
+#if 1
 		if ((orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
 			bp->b_flags |= B_INVAL | B_RELBUF;
 			brelse(bp);
-		} else if (orefs & HAMMER2_DIO_DIRTY) {
+		} else
+#endif
+		if (orefs & HAMMER2_DIO_DIRTY) {
 			int hce;
 
 			dio_write_stats_update(dio);
@@ -604,10 +607,13 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			bqrelse(bp);
 		}
 	} else if (bp) {
+#if 1
 		if ((orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
 			bp->b_flags |= B_INVAL | B_RELBUF;
 			brelse(bp);
-		} else if (orefs & HAMMER2_DIO_DIRTY) {
+		} else
+#endif
+		if (orefs & HAMMER2_DIO_DIRTY) {
 			dio_write_stats_update(dio);
 			bdwrite(bp);
 		} else {
@@ -815,11 +821,22 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 
 				/*
 				 * Invalidation is ok on newly allocated
-				 * buffers.  Flag will be cleared on used
-				 * by de-dup code.  hammer2_chain_modify()
-				 * also checks this flag.
+				 * buffers which cover the entire buffer.
+				 * Flag will be cleared on use by the de-dup
+				 * code.
+				 *
+				 * hammer2_chain_modify() also checks this flag.
+				 *
+				 * QUICK mode is used by the freemap code to
+				 * pre-validate a junk buffer to prevent an
+				 * unnecessary read I/O.  We do NOT want
+				 * to set INVALOK in that situation as the
+				 * underlying allocations may be smaller.
 				 */
-				atomic_set_64(&dio->refs, HAMMER2_DIO_INVALOK);
+				if ((iocb->flags & HAMMER2_IOCB_QUICK) == 0) {
+					atomic_set_64(&dio->refs,
+						      HAMMER2_DIO_INVALOK);
+				}
 			} else if (iocb->flags & HAMMER2_IOCB_QUICK) {
 				/*
 				 * Partial buffer, quick mode.  Do nothing.
@@ -872,7 +889,6 @@ _hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	        hammer2_io_t **diop, int flags)
 {
 	hammer2_iocb_t iocb;
-	hammer2_io_t *dio;
 
 	iocb.callback = hammer2_iocb_new_callback;
 	iocb.cluster = NULL;
@@ -886,7 +902,7 @@ _hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	hammer2_io_getblk(hmp, lbase, lsize, &iocb);
 	if ((iocb.flags & HAMMER2_IOCB_DONE) == 0)
 		hammer2_iocb_wait(&iocb);
-	dio = *diop = iocb.dio;
+	*diop = iocb.dio;
 
 	return (iocb.error);
 }
@@ -906,12 +922,18 @@ hammer2_io_newnz(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	return(_hammer2_io_new(hmp, btype, lbase, lsize, diop, 0));
 }
 
-int
-hammer2_io_newq(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
-		hammer2_io_t **diop)
+/*
+ * This is called from the freemap to pre-validate a full-sized buffer
+ * whos contents we don't care about, in order to prevent an unnecessary
+ * read-before-write.
+ */
+void
+hammer2_io_newq(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize)
 {
-	return(_hammer2_io_new(hmp, btype, lbase, lsize,
-			       diop, HAMMER2_IOCB_QUICK));
+	hammer2_io_t *dio = NULL;
+
+	_hammer2_io_new(hmp, btype, lbase, lsize, &dio, HAMMER2_IOCB_QUICK);
+	hammer2_io_bqrelse(&dio);
 }
 
 static
@@ -976,7 +998,6 @@ hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 		hammer2_io_t **diop)
 {
 	hammer2_iocb_t iocb;
-	hammer2_io_t *dio;
 
 	iocb.callback = hammer2_iocb_bread_callback;
 	iocb.cluster = NULL;
@@ -990,7 +1011,7 @@ hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	hammer2_io_getblk(hmp, lbase, lsize, &iocb);
 	if ((iocb.flags & HAMMER2_IOCB_DONE) == 0)
 		hammer2_iocb_wait(&iocb);
-	dio = *diop = iocb.dio;
+	*diop = iocb.dio;
 
 	return (iocb.error);
 }

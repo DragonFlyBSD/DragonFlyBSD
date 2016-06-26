@@ -529,13 +529,11 @@ int
 hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 		   uint16_t class, int n, int radix, hammer2_key_t *basep)
 {
-	hammer2_io_t *dio;
 	size_t size;
 	size_t bgsize;
 	int bmradix;
 	hammer2_bitmap_t bmmask;
 	int offset;
-	int error;
 	int i;
 	int j;
 
@@ -645,12 +643,9 @@ success:
 #endif
 
 		if ((bmap->bitmapq[i] & pbmmask) == 0) {
-			error = hammer2_io_newq(hmp,
-						HAMMER2_BREF_TYPE_FREEMAP_LEAF,
-						(*basep + (offset & ~pmask)) |
-						 pradix,
-						psize, &dio);
-			hammer2_io_bqrelse(&dio);
+			hammer2_io_newq(hmp, HAMMER2_BREF_TYPE_FREEMAP_LEAF,
+					(*basep + (offset & ~pmask)) |
+					pradix, psize);
 		}
 	}
 
