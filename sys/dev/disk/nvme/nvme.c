@@ -315,8 +315,9 @@ nvme_get_admin_request(nvme_softc_t *sc, uint8_t opcode)
  * Fields in cmd.head will be initialized and remaining fields will be zero'd.
  * Caller is responsible for filling in remaining fields as appropriate.
  *
- * May return NULL if no requests are available (should only be possible
- * on an I/O queue, admin queue operations are managed).
+ * May return NULL if no requests are available or if there is no room in
+ * the submission queue to handle it (should only be possible on an I/O queue,
+ * admin queue operations are managed).
  *
  * Caller should NOT hold the queue lock.
  */
@@ -328,14 +329,33 @@ nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 	nvme_request_t *next;
 
 	/*
-	 * The lock is currently needed because a another cpu could pull
-	 * a request off, use it, finish, and put it back (and next pointer
-	 * might then be different) all inbetween our req = and our atomic
-	 * op.  This would assign the wrong 'next' field.
-	 *
-	 * XXX optimize this.
+	 * No easy lockless way to pull a new request off.  We have to check
+	 * for a number of conditions and there may be multiple threads
+	 * making this call simultaneously, which complicates matters even
+	 * more.
 	 */
 	lockmgr(&queue->lk, LK_EXCLUSIVE);
+
+	/*
+	 * Make sure the submission queue has room to accomodate the
+	 * request.  Requests can be completed out of order so the
+	 * submission ring could still be full even though we have
+	 * requests available.
+	 */
+	if ((queue->subq_tail + queue->unsubmitted + 1) % queue->nqe ==
+	    queue->subq_head) {
+		queue->signal_requeue = 1;
+		lockmgr(&queue->lk, LK_RELEASE);
+		KKASSERT(queue->qid != 0);
+
+		return NULL;
+	}
+
+	/*
+	 * Pop the next available request off of the first_avail linked
+	 * list.  An atomic op must be used here because nvme_put_request()
+	 * returns requests to the list without holding queue->lk.
+	 */
 	for (;;) {
 		req = queue->first_avail;
 		cpu_ccfence();
@@ -350,7 +370,18 @@ nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 		if (atomic_cmpset_ptr(&queue->first_avail, req, next))
 			break;
 	}
+
+	/*
+	 * We have to keep track of unsubmitted requests in order to be
+	 * able to properly check whether the ring is full or not (check
+	 * is done at the top of this procedure, above).
+	 */
+	++queue->unsubmitted;
 	lockmgr(&queue->lk, LK_RELEASE);
+
+	/*
+	 * Fill-in basic fields and do the DMA mapping.
+	 */
 	req->next_avail = NULL;
 	KKASSERT(req->state == NVME_REQ_AVAIL);
 	req->state = NVME_REQ_ALLOCATED;
@@ -422,8 +453,10 @@ nvme_submit_request(nvme_request_t *req)
 	nvme_allcmd_t *cmd;
 
 	cmd = &queue->ksubq[queue->subq_tail];
+	--queue->unsubmitted;
 	if (++queue->subq_tail == queue->nqe)
 		queue->subq_tail = 0;
+	KKASSERT(queue->subq_tail != queue->subq_head);
 	*cmd = req->cmd;
 	cpu_sfence();	/* needed? */
 	req->state = NVME_REQ_SUBMITTED;
@@ -562,13 +595,20 @@ nvme_poll_completions(nvme_comqueue_t *comq, struct lock *lk)
 		cpu_lfence();	/* needed prior to content check */
 
 		/*
-		 * Locate the request.  The request could be on a different
-		 * queue.  Copy the fields and wakeup anyone waiting on req.
+		 * Locate the request and related submission queue.  The
+		 * request could be on a different queue.  A submission
+		 * queue can have only one completion queue, so we can
+		 * update subq_head without locking the submission queue.
+		 */
+		subq = &sc->subqueues[res->tail.subq_id];
+		subq->subq_head = res->tail.subq_head_ptr;
+		req = &subq->reqary[res->tail.cmd_id];
+
+		/*
+		 * Copy the fields and wakeup anyone waiting on req.
 		 * The response field in the completion queue can be reused
 		 * once we doorbell which is why we make a copy.
 		 */
-		subq = &sc->subqueues[res->tail.subq_id];
-		req = &subq->reqary[res->tail.cmd_id];
 		KKASSERT(req->state == NVME_REQ_SUBMITTED &&
 			 req->comq == comq);
 		req->res = *res;

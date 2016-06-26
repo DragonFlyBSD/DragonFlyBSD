@@ -127,8 +127,10 @@ typedef struct nvme_subqueue {
 	uint16_t	qid;		/* which queue# are we on? */
 	uint16_t	comqid;		/* we are tied to this completion qu */
 	uint32_t	subq_doorbell_reg;
-	uint32_t	subq_head;
+	uint32_t	subq_head;	/* start of active requests */
 	uint32_t	subq_tail;	/* new requests */
+	uint32_t	unsubmitted;	/* #unsubmitted requests */
+	int		unused01;
 	int		signal_requeue;
 
 	/*
