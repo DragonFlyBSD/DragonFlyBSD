@@ -391,6 +391,8 @@ nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
 				kprintf("nvextendbuf: bread EOF @ %016jx "
 					"error %d\n",
 					truncboffset, error);
+				bp->b_flags |= B_INVAL | B_RELBUF;
+				brelse(bp);
 			}
 		}
 	}
