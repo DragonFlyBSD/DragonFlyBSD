@@ -701,10 +701,12 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		printf("{\n");
 		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
+			/*
 			if (media.bmdata[i].class == 0 &&
 			    media.bmdata[i].avail == 0) {
 				continue;
 			}
+			*/
 #if HAMMER2_BMAP_ELEMENTS != 8
 #error "cmd_debug.c: HAMMER2_BMAP_ELEMENTS expected to be 8"
 #endif

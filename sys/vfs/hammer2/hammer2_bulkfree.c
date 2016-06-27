@@ -46,6 +46,9 @@
 
 #include "hammer2.h"
 
+#define H2FMBASE(key, radix)    ((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
+#define H2FMSHIFT(radix)        ((hammer2_off_t)1 << (radix))
+
 /*
  * breadth-first search
  */
@@ -241,6 +244,7 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 /*
  * Bulkfree callback info
  */
+static void cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size);
 static int h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_blockref_t *bref);
 static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
@@ -274,8 +278,12 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	 */
 	hammer2_dedup_clear(hmp);
 
-#if 0
+#if 1
 	/*
+	 * XXX This has been put back in.  The below check is currently
+	 * disabled because it creates quite a bit of confusion, so we're
+	 * going to try to fix this in a different way.
+	 *
 	 * XXX This has been removed.  Instead of trying to flush, which
 	 * appears to have a ton of races against life chains even with
 	 * the two-stage scan, we simply refuse to free any blocks
@@ -334,18 +342,22 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 		 * We have enough ram to represent (incr) bytes of storage.
 		 * Each 64KB of ram represents 2GB of storage.
 		 */
-		bzero(cbinfo.bmap, size);
+		cbinfo_bmap_init(&cbinfo, size);
 		incr = size / HAMMER2_FREEMAP_LEVELN_PSIZE *
 		       HAMMER2_FREEMAP_LEVEL1_SIZE;
 		if (hmp->voldata.volu_size - cbinfo.sbase < incr)
 			cbinfo.sstop = hmp->voldata.volu_size;
 		else
 			cbinfo.sstop = cbinfo.sbase + incr;
-		if (hammer2_debug & 1)
-		kprintf("bulkfree pass %016jx/%jdGB\n",
-			(intmax_t)cbinfo.sbase,
-			(intmax_t)incr / HAMMER2_FREEMAP_LEVEL1_SIZE);
+		if (hammer2_debug & 1) {
+			kprintf("bulkfree pass %016jx/%jdGB\n",
+				(intmax_t)cbinfo.sbase,
+				(intmax_t)incr / HAMMER2_FREEMAP_LEVEL1_SIZE);
+		}
 
+		/*
+		 * Scan topology for stuff inside this range.
+		 */
 		hammer2_trans_init(hmp->spmp, 0);
 		cbinfo.mtid = hammer2_trans_sub(hmp->spmp);
 		cbinfo.pri = 0;
@@ -369,8 +381,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 			save = TAILQ_FIRST(&cbinfo.list);
 		}
 
-		kprintf("bulkfree lastdrop %d %d\n",
-			vchain->refs, vchain->core.chain_count);
+		kprintf("bulkfree lastdrop %d %d doabort=%d\n",
+			vchain->refs, vchain->core.chain_count, doabort);
 
 		/*
 		 * If complete scan succeeded we can synchronize our
@@ -394,6 +406,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 		if (doabort)
 			break;
 		cbinfo.sbase = cbinfo.sstop;
+		cbinfo.adj_free = 0;
 	}
 	hammer2_chain_bulkdrop(vchain);
 	kmem_free_swapbacked(&cbinfo.kp);
@@ -420,8 +433,42 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	kprintf("    dedup factor       %ld\n", cbinfo.count_dedup_factor);
 
 	lockmgr(&hmp->bulklk, LK_RELEASE);
+	/* hammer2_vfs_sync(mp, MNT_WAIT); sync needed */
 
 	return doabort;
+}
+
+static void
+cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size)
+{
+	hammer2_bmap_data_t *bmap = cbinfo->bmap;
+	hammer2_key_t key = cbinfo->sbase;
+	hammer2_key_t lokey;
+	hammer2_key_t hikey;
+
+	lokey = (cbinfo->hmp->voldata.allocator_beg + HAMMER2_SEGMASK64) &
+		~HAMMER2_SEGMASK64;
+	hikey = cbinfo->hmp->voldata.volu_size & ~HAMMER2_SEGMASK64;
+
+	bzero(bmap, size);
+	while (size) {
+		if (lokey < H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
+			    HAMMER2_ZONE_SEG64) {
+			lokey = H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
+				HAMMER2_ZONE_SEG64;
+		}
+		if (key < lokey || key >= hikey) {
+                        memset(bmap->bitmapq, -1,
+                               sizeof(bmap->bitmapq));
+                        bmap->avail = 0;
+                        bmap->linear = HAMMER2_SEGSIZE;
+		} else {
+			bmap->avail = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
+		}
+		size -= sizeof(*bmap);
+		key += HAMMER2_FREEMAP_LEVEL0_SIZE;
+		++bmap;
+	}
 }
 
 static int
@@ -447,18 +494,17 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 				cbinfo->bytes_scanned);
 	}
 
-
 	/*
 	 * Calculate the data offset and determine if it is within
 	 * the current freemap range being gathered.
 	 */
 	error = 0;
 	data_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
-	if (data_off < cbinfo->sbase || data_off > cbinfo->sstop)
+	if (data_off < cbinfo->sbase || data_off >= cbinfo->sstop)
 		return 0;
 	if (data_off < cbinfo->hmp->voldata.allocator_beg)
 		return 0;
-	if (data_off > cbinfo->hmp->voldata.volu_size)
+	if (data_off >= cbinfo->hmp->voldata.volu_size)
 		return 0;
 
 	/*
@@ -472,7 +518,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	bytes = (size_t)1 << radix;
 	class = (bref->type << 8) | hammer2_devblkradix(radix);
 
-	if (data_off + bytes > cbinfo->sstop) {
+	if (data_off + bytes >= cbinfo->sstop) {
 		kprintf("hammer2_bulkfree_scan: illegal 2GB boundary "
 			"%016jx %016jx/%d\n",
 			(intmax_t)bref->data_off,
@@ -580,11 +626,22 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_t *live_chain;
 	int cache_index = -1;
 	int bmapindex;
-	int nofree;
 
-	kprintf("hammer2_bulkfree - range %016jx-%016jx\n",
-		(intmax_t)cbinfo->sbase,
-		(intmax_t)cbinfo->sstop);
+	kprintf("hammer2_bulkfree - range ");
+
+	if (cbinfo->sbase < cbinfo->hmp->voldata.allocator_beg)
+		kprintf("%016jx-",
+			(intmax_t)cbinfo->hmp->voldata.allocator_beg);
+	else
+		kprintf("%016jx-",
+			(intmax_t)cbinfo->sbase);
+
+	if (cbinfo->sstop > cbinfo->hmp->voldata.volu_size)
+		kprintf("%016jx\n",
+			(intmax_t)cbinfo->hmp->voldata.volu_size);
+	else
+		kprintf("%016jx\n",
+			(intmax_t)cbinfo->sstop);
 		
 	data_off = cbinfo->sbase;
 	bmap = cbinfo->bmap;
@@ -593,7 +650,6 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_ref(live_parent);
 	hammer2_chain_lock(live_parent, HAMMER2_RESOLVE_ALWAYS);
 	live_chain = NULL;
-	nofree = 1;	/* safety */
 
 	/*
 	 * Iterate each hammer2_bmap_data_t line (128 bytes) managing
@@ -604,15 +660,19 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		 * The freemap is not used below allocator_beg or beyond
 		 * volu_size.
 		 */
+		int nofree;
+
 		if (data_off < cbinfo->hmp->voldata.allocator_beg)
 			goto next;
-		if (data_off > cbinfo->hmp->voldata.volu_size)
+		if (data_off >= cbinfo->hmp->voldata.volu_size)
 			goto next;
 
 		/*
 		 * Locate the freemap leaf on the live filesystem
 		 */
 		key = (data_off & ~HAMMER2_FREEMAP_LEVEL1_MASK);
+		nofree = 0;
+
 		if (live_chain == NULL || live_chain->bref.key != key) {
 			if (live_chain) {
 				hammer2_chain_unlock(live_chain);
@@ -625,6 +685,8 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					    key + HAMMER2_FREEMAP_LEVEL1_MASK,
 					    &cache_index,
 					    HAMMER2_LOOKUP_ALWAYS);
+
+#if 0
 			/*
 			 * If recent allocations were made we avoid races by
 			 * not staging or freeing any blocks.  We can still
@@ -645,7 +707,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					nofree = 0;
 				}
 			}
-					
+#endif
 		}
 		if (live_chain == NULL) {
 			/*
@@ -686,11 +748,13 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 			 sizeof(bmap->bitmapq)) == 0) {
 			goto next;
 		}
-		if (hammer2_debug & 1)
-		kprintf("live %016jx %04d.%04x (avail=%d)\n",
-			data_off, bmapindex, live->class, live->avail);
+		if (hammer2_debug & 1) {
+			kprintf("live %016jx %04d.%04x (avail=%d)\n",
+				data_off, bmapindex, live->class, live->avail);
+		}
 
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
+		live = &live_chain->data->bmdata[bmapindex];
 
 		h2_bulkfree_sync_adjust(cbinfo, data_off, live, bmap, nofree);
 next:

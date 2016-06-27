@@ -446,7 +446,10 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
  *     Deleted-but-open inodes can still be individually flushed via the
  *     filesystem syncer.
  *
- * (5) Note that an unmodified child may still need the block table in its
+ * (5) Delete parents on the way back up if they are normal indirect blocks
+ *     and have no children.
+ *
+ * (6) Note that an unmodified child may still need the block table in its
  *     parent updated (e.g. rename/move).  The child will have UPDATE set
  *     in this case.
  *
@@ -894,6 +897,23 @@ again:
 			}
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_BMAPPED |
 							HAMMER2_CHAIN_BMAPUPD);
+			hammer2_chain_unlock(parent);
+			goto skipupdate;
+		}
+
+		/*
+		 * (semi-optional code)
+		 *
+		 * The flusher is responsible for deleting empty indirect
+		 * blocks at this point.  If we don't do this, no major harm
+		 * will be done but the empty indirect blocks will stay in
+		 * the topology and make it a bit messy.
+		 */
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT &&
+		    chain->core.live_count == 0) {
+			hammer2_chain_delete(parent, chain,
+					     chain->bref.modify_tid,
+					     HAMMER2_DELETE_PERMANENT);
 			hammer2_chain_unlock(parent);
 			goto skipupdate;
 		}

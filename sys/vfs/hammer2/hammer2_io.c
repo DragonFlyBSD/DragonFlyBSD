@@ -116,6 +116,10 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	KKASSERT((1 << (int)(lbase & HAMMER2_OFF_MASK_RADIX)) == lsize);
 	lbase &= ~HAMMER2_OFF_MASK_RADIX;
 	pbase = lbase & pmask;
+	if (pbase == 0 || ((lbase + lsize - 1) & pmask) != pbase) {
+		kprintf("Illegal: %016jx %016jx+%08x / %016jx\n",
+			pbase, lbase, lsize, pmask);
+	}
 	KKASSERT(pbase != 0 && ((lbase + lsize - 1) & pmask) == pbase);
 
 	/*
@@ -238,6 +242,10 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 	KKASSERT((1 << (int)(lbase & HAMMER2_OFF_MASK_RADIX)) == lsize);
 	lbase &= ~HAMMER2_OFF_MASK_RADIX;
 	pbase = lbase & pmask;
+	if (pbase == 0 || ((lbase + lsize - 1) & pmask) != pbase) {
+		kprintf("Illegal: %016jx %016jx+%08x / %016jx\n",
+			pbase, lbase, lsize, pmask);
+	}
 	KKASSERT(pbase != 0 && ((lbase + lsize - 1) & pmask) == pbase);
 
 	/*

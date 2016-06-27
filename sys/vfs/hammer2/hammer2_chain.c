@@ -2104,9 +2104,8 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	 * Recurse (*parentp) upward if necessary until the parent completely
 	 * encloses the key range or we hit the inode.
 	 *
-	 * This function handles races against the flusher doing a delete-
-	 * duplicate above us and re-homes the parent to the duplicate in
-	 * that case, otherwise we'd wind up recursing down a stale chain.
+	 * Handle races against the flusher deleting indirect nodes on its
+	 * way back up by continuing to recurse upward past the deletion.
 	 */
 	parent = *parentp;
 	hmp = parent->hmp;
@@ -2116,8 +2115,11 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		scan_beg = parent->bref.key;
 		scan_end = scan_beg +
 			   ((hammer2_key_t)1 << parent->bref.keybits) - 1;
-		if (key_beg >= scan_beg && key_end <= scan_end)
-			break;
+		if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT ||
+		    (parent->flags & HAMMER2_CHAIN_DELETED) == 0) {
+			if (key_beg >= scan_beg && key_end <= scan_end)
+				break;
+		}
 		parent = hammer2_chain_getparent(parentp, how_maybe);
 	}
 
@@ -2446,6 +2448,9 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		/*
 		 * Continue iteration with next parent unless the current
 		 * parent covers the range.
+		 *
+		 * (This also handles the case of a deleted, empty indirect
+		 * node).
 		 */
 		key_beg = parent->bref.key +
 			  ((hammer2_key_t)1 << parent->bref.keybits);
@@ -3893,6 +3898,9 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
  * chain (such as an inode) may still need visibility into its contents,
  * as well as the ability to read and modify the contents.  For example,
  * for an unlinked file which is still open.
+ *
+ * Also note that the flusher is responsible for cleaning up empty
+ * indirect blocks.
  */
 void
 hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,

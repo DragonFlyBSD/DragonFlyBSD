@@ -223,6 +223,8 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 		 * area, not allocated from the freemap.
 		 */
 		error = hammer2_freemap_reserve(chain, radix);
+		KKASSERT(error == 0);
+
 		return error;
 	}
 
@@ -289,6 +291,8 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	hmp->heur_freemap[hindex] = iter.bnext;
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
+
+	KKASSERT(error == 0);
 
 	return (error);
 }
@@ -489,7 +493,6 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			 key + bytes <= hmp->voldata.volu_size);
 		KKASSERT((key & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 		bref->data_off = key | radix;
-
 #if 0
 		kprintf("alloc cp=%p %016jx %016jx using %016jx\n",
 			chain,
@@ -838,6 +841,7 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	int modified = 0;
 	int cache_index = -1;
 	int error;
+	size_t bgsize = 0;
 
 	KKASSERT(how == HAMMER2_FREEMAP_DORECOVER);
 
@@ -981,6 +985,7 @@ again:
 				if ((*bitmap & bmmask11) == bmmask00) {
 					bmap->avail -=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
+					bgsize += HAMMER2_FREEMAP_BLOCK_SIZE;
 				}
 				if (bmap->class == 0)
 					bmap->class = class;
@@ -1083,6 +1088,13 @@ again:
 done:
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
+
+	if (bgsize) {
+		hammer2_voldata_lock(hmp);
+		hammer2_voldata_modify(hmp);
+		hmp->voldata.allocator_free -= bgsize;
+		hammer2_voldata_unlock(hmp);
+	}
 }
 
 /*
