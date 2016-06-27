@@ -436,6 +436,7 @@ typedef void if_init_f_t (void *);
 #define	if_omcasts	if_data.ifi_omcasts
 #define	if_iqdrops	if_data.ifi_iqdrops
 #define	if_noproto	if_data.ifi_noproto
+#define	if_oqdrops	if_data.ifi_oqdrops
 #define	if_lastchange	if_data.ifi_lastchange
 #define if_recvquota	if_data.ifi_recvquota
 #define	if_xmitquota	if_data.ifi_xmitquota
@@ -459,6 +460,7 @@ struct ifdata_pcpu {
 	u_long	ifd_omcasts;		/* packets sent via multicast */
 	u_long	ifd_iqdrops;		/* dropped on input, this interface */
 	u_long	ifd_noproto;		/* destined for unsupported protocol */
+	u_long	ifd_oqdrops;		/* dropped on output, this interface */
 } __cachealign;
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */

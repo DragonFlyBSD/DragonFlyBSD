@@ -1697,6 +1697,7 @@ if_slowtimo_dispatch(netmsg_t nmsg)
 			IFNET_STAT_GET(ifp, omcasts, ifp->if_omcasts);
 			IFNET_STAT_GET(ifp, iqdrops, ifp->if_iqdrops);
 			IFNET_STAT_GET(ifp, noproto, ifp->if_noproto);
+			IFNET_STAT_GET(ifp, oqdrops, ifp->if_oqdrops);
 		}
 
 		if (ifp->if_timer == 0 || --ifp->if_timer) {
@@ -3075,6 +3076,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	ALTQ_SQ_LOCK(ifsq);
 	error = ifsq_enqueue_locked(ifsq, m, pa);
 	if (error) {
+		IFNET_STAT_INC(ifp, oqdrops, 1);
 		if (!ifsq_data_ready(ifsq)) {
 			ALTQ_SQ_UNLOCK(ifsq);
 			crit_exit_quick(td);

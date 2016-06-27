@@ -882,7 +882,7 @@ sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 		rv = ifsq_enqueue(ifsq, m, &pktattr);
 	}
 	if (rv) {
-		IFNET_STAT_INC(ifp, oerrors, 1);
+		IFNET_STAT_INC(ifp, oqdrops, 1);
 		crit_exit();
 		return(rv);
 	}

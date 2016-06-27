@@ -399,6 +399,8 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 			IFNET_STAT_INC(_ifp, omcasts, 1);
 		if (!ifsq_is_oactive(_ifsq))
 			(*_ifp->if_start)(_ifp, _ifsq);
+	} else {
+		IFNET_STAT_INC(_ifp, oqdrops, 1);
 	}
 	return(_error);
 }

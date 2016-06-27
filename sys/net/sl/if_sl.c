@@ -504,7 +504,7 @@ sloutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 		error = ifsq_enqueue(ifsq, m, &pktattr);
 	}
 	if (error) {
-		IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
+		IFNET_STAT_INC(&sc->sc_if, oqdrops, 1);
 		crit_exit();
 		return (error);
 	}

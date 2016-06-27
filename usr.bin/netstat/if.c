@@ -124,8 +124,8 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 	u_long oerrors;
 	u_long ierrors;
 	u_long collisions;
+	u_long oqdrops;
 	short timer;
-	int drops;
 	struct sockaddr *sa = NULL;
 	char name[IFNAMSIZ];
 	short network_layer;
@@ -228,6 +228,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		oerrors = ifdata.ifd_oerrors;
 		ierrors = ifdata.ifd_ierrors;
 		collisions = ifdata.ifd_collisions;
+		oqdrops = ifdata.ifd_oqdrops;
 
 		for (cpu = 1; cpu < ncpus; ++cpu) {
 			if (kread(ifdataaddr + (cpu * sizeof(ifdata)),
@@ -240,10 +241,10 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 			oerrors += ifdata.ifd_oerrors;
 			ierrors += ifdata.ifd_ierrors;
 			collisions += ifdata.ifd_collisions;
+			oqdrops += ifdata.ifd_oqdrops;
 		}
 
 		timer = ifnet.if_timer;
-		drops = 0;
 
 		if (ifaddraddr == 0) {
 			printf("%-7.7s %-5lu ", name, ifnet.if_mtu);
@@ -410,7 +411,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		}
 		if (dflag) {
 			printf(" ");
-			show_stat("d", 3, drops, link_layer);
+			show_stat("lu", 5, oqdrops, link_layer);
 		}
 		putchar('\n');
 		if (aflag && ifaddrfound) {
@@ -481,7 +482,7 @@ struct	iftot {
 	u_long	ift_op;			/* output packets */
 	u_long	ift_oe;			/* output errors */
 	u_long	ift_co;			/* collisions */
-	u_int	ift_dr;			/* drops */
+	u_long	ift_dr;			/* drops */
 	u_long	ift_ib;			/* input bytes */
 	u_long	ift_ob;			/* output bytes */
 };
@@ -587,6 +588,7 @@ loop:
 		ifnet.if_oerrors = ifdata.ifd_oerrors;
 		ifnet.if_obytes = ifdata.ifd_obytes;
 		ifnet.if_collisions = ifdata.ifd_collisions;
+		ifnet.if_oqdrops = ifdata.ifd_oqdrops;
 
 		for (cpu = 1; cpu < ncpus; ++cpu) {
 			if (kread(ifdata_addr + (cpu * sizeof(ifdata)),
@@ -601,6 +603,7 @@ loop:
 			ifnet.if_oerrors += ifdata.ifd_oerrors;
 			ifnet.if_obytes += ifdata.ifd_obytes;
 			ifnet.if_collisions += ifdata.ifd_collisions;
+			ifnet.if_oqdrops += ifdata.ifd_oqdrops;
 		}
 
 		if (!first) {
@@ -613,7 +616,7 @@ loop:
 				ifnet.if_obytes - ip->ift_ob,
 				ifnet.if_collisions - ip->ift_co);
 			if (dflag)
-				printf(" %5u", 0 - ip->ift_dr);
+				printf(" %5lu", ifnet.if_oqdrops - ip->ift_dr);
 		}
 		ip->ift_ip = ifnet.if_ipackets;
 		ip->ift_ie = ifnet.if_ierrors;
@@ -622,7 +625,7 @@ loop:
 		ip->ift_oe = ifnet.if_oerrors;
 		ip->ift_ob = ifnet.if_obytes;
 		ip->ift_co = ifnet.if_collisions;
-		ip->ift_dr = 0;
+		ip->ift_dr = ifnet.if_oqdrops;
 	} else {
 		sum->ift_ip = 0;
 		sum->ift_ie = 0;
@@ -653,6 +656,7 @@ loop:
 			ifnet.if_oerrors = ifdata.ifd_oerrors;
 			ifnet.if_obytes = ifdata.ifd_obytes;
 			ifnet.if_collisions = ifdata.ifd_collisions;
+			ifnet.if_oqdrops = ifdata.ifd_oqdrops;
 
 			for (cpu = 1; cpu < ncpus; ++cpu) {
 				if (kread(ifdata_addr + (cpu * sizeof(ifdata)),
@@ -667,6 +671,7 @@ loop:
 				ifnet.if_oerrors += ifdata.ifd_oerrors;
 				ifnet.if_obytes += ifdata.ifd_obytes;
 				ifnet.if_collisions += ifdata.ifd_collisions;
+				ifnet.if_oqdrops += ifdata.ifd_oqdrops;
 			}
 
 			/*
@@ -686,7 +691,7 @@ loop:
 				sum->ift_oe += ifnet.if_oerrors;
 				sum->ift_ob += ifnet.if_obytes;
 				sum->ift_co += ifnet.if_collisions;
-				sum->ift_dr += 0;
+				sum->ift_dr += ifnet.if_oqdrops;
 			}
 			off = (u_long)TAILQ_NEXT(&ifnet, if_link);
 		}

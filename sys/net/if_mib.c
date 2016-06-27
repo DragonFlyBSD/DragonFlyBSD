@@ -120,6 +120,7 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 		COPY_DATA(omcasts);
 		COPY_DATA(iqdrops);
 		COPY_DATA(noproto);
+		COPY_DATA(oqdrops);
 #undef COPY_DATA
 
 		ifmd.ifmd_snd_maxlen = ifp->if_snd.altq_maxlen;
@@ -164,6 +165,7 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 		COPY_DATA(omcasts);
 		COPY_DATA(iqdrops);
 		COPY_DATA(noproto);
+		COPY_DATA(oqdrops);
 #undef COPY_DATA
 
 #ifdef notyet

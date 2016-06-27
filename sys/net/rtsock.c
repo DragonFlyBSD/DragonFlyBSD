@@ -1272,6 +1272,7 @@ ifnet_compute_stats(struct ifnet *ifp)
 	IFNET_STAT_GET(ifp, omcasts, ifp->if_omcasts);
 	IFNET_STAT_GET(ifp, iqdrops, ifp->if_iqdrops);
 	IFNET_STAT_GET(ifp, noproto, ifp->if_noproto);
+	IFNET_STAT_GET(ifp, oqdrops, ifp->if_oqdrops);
 }
 
 static int

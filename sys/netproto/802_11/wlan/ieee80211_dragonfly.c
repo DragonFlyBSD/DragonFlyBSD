@@ -289,6 +289,8 @@ ieee80211_vap_xmitpkt(struct ieee80211vap *vap, struct mbuf *m)
 	IEEE80211_TX_UNLOCK_ASSERT(vap->iv_ic);
 
 	error = ifsq_enqueue(ifsq, m, NULL);
+	if (error)
+		IFNET_STAT_INC(ifp, oqdrops, 1);
 	wst = wlan_serialize_push();
 	ifp->if_start(ifp, ifsq);
 	wlan_serialize_pop(wst);

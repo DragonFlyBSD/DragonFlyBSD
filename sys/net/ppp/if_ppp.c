@@ -855,7 +855,7 @@ pppoutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 	}
 	if (error) {
 	    crit_exit();
-	    IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
+	    IFNET_STAT_INC(&sc->sc_if, oqdrops, 1);
 	    sc->sc_stats.ppp_oerrors++;
 	    return (error);
 	}
@@ -931,7 +931,7 @@ ppp_requeue(struct ppp_softc *sc)
 		error = ifsq_enqueue(ifsq, m, NULL);
 	    }
 	    if (error) {
-		    IFNET_STAT_INC(&sc->sc_if, oerrors, 1);
+		    IFNET_STAT_INC(&sc->sc_if, oqdrops, 1);
 		    sc->sc_stats.ppp_oerrors++;
 	    }
 	    break;
