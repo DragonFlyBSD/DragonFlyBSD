@@ -1382,13 +1382,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 */
 	hammer2_xop_helper_cleanup(pmp);
 
-	/*
-	 * Cleanup our reference on ihidden.
-	 */
-	if (pmp->ihidden) {
-		hammer2_inode_drop(pmp->ihidden);
-		pmp->ihidden = NULL;
-	}
 	if (pmp->mp)
 		hammer2_unmount_helper(mp, pmp, NULL);
 
@@ -1709,20 +1702,6 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 			 * Prime the mount info.
 			 */
 			hammer2_vfs_statfs(mp, &mp->mnt_stat, NULL);
-
-			/*
-			 * With the cluster operational, check for and
-			 * install ihidden if needed.  The install_hidden
-			 * code needs to get a transaction so we must unlock
-			 * iroot around it.
-			 *
-			 * This is only applicable PFS mounts, there is no
-			 * hidden directory in the spmp.
-			 */
-			hammer2_inode_unlock(pmp->iroot);
-			hammer2_inode_install_hidden(pmp);
-			hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_SHARED);
-
 			break;
 		}
 

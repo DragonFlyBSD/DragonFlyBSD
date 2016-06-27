@@ -167,7 +167,6 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vclrisdirty(vp);
 
 	/*
-	 * An unlinked inode may have been relinked to the ihidden directory.
 	 * This occurs if the inode was unlinked while open.  Reclamation of
 	 * these inodes requires processing we cannot safely do here so add
 	 * the inode to the sideq in that situation.
@@ -1761,7 +1760,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
 	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 0;
-	xop->dopermanent = isopen ?  0 : HAMMER2_DELETE_PERMANENT;
+	xop->dopermanent = 0;
 	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
 
 	/*
@@ -1835,7 +1834,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
 	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 1;
-	xop->dopermanent = isopen ?  0 : HAMMER2_DELETE_PERMANENT;
+	xop->dopermanent = 0;
 	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
 
 	/*
@@ -1962,7 +1961,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		hammer2_xop_setname(&xop2->head, tname, tname_len);
 		isopen = cache_isopen(ap->a_tnch);
 		xop2->isdir = -1;
-		xop2->dopermanent = isopen ?  0 : HAMMER2_DELETE_PERMANENT;
+		xop2->dopermanent = 0;
 		hammer2_xop_start(&xop2->head, hammer2_xop_unlink);
 
 		/*

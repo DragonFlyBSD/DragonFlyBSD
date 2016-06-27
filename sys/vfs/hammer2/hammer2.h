@@ -729,7 +729,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
 #define HAMMER2_INODE_ONRBTREE		0x0008
 #define HAMMER2_INODE_RESIZED		0x0010	/* requires inode_fsync */
-#define HAMMER2_INODE_ISDELETED		0x0020	/* deleted, not in ihidden */
+#define HAMMER2_INODE_ISDELETED		0x0020	/* deleted */
 #define HAMMER2_INODE_ISUNLINKED	0x0040
 #define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
 #define HAMMER2_INODE_ONSIDEQ		0x0100	/* on side processing queue */
@@ -1116,7 +1116,7 @@ hammer2_chain_wrok(hammer2_chain_t *chain)
  * cluster.
  *
  * WARNING! Portions of this structure have deferred initialization.  In
- *	    particular, if not mounted there will be no ihidden or wthread.
+ *	    particular, if not mounted there will be no wthread.
  *	    umounted network PFSs will also be missing iroot and numerous
  *	    other fields will not be initialized prior to mount.
  *
@@ -1138,7 +1138,6 @@ struct hammer2_pfs {
 	hammer2_dev_t		*spmp_hmp;	/* only if super-root pmp */
 	hammer2_dev_t		*force_local;	/* only if 'local' mount */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
-	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	uint8_t			pfs_types[HAMMER2_MAXCLUSTER];
 	char			*pfs_names[HAMMER2_MAXCLUSTER];
 	hammer2_dev_t		*pfs_hmps[HAMMER2_MAXCLUSTER];
@@ -1374,7 +1373,6 @@ hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
 			int flags, int *errorp);
 void hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
-void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_chain.c

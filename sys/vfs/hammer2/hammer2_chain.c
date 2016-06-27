@@ -2003,6 +2003,10 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 	oparent = *parentp;
 	hammer2_spin_ex(&oparent->core.spin);
 	nparent = oparent->parent;
+	if (nparent == NULL) {
+		hammer2_spin_unex(&oparent->core.spin);
+		panic("hammer2_chain_getparent: no parent");
+	}
 	hammer2_chain_ref(nparent);
 	hammer2_spin_unex(&oparent->core.spin);
 	if (oparent) {

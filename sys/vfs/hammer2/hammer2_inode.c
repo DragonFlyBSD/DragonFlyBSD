@@ -725,8 +725,6 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	 * entry in.  At the same time check for key collisions
 	 * and iterate until we don't get one.
 	 *
-	 * NOTE: hidden inodes do not have iterators.
-	 *
 	 * Lock the directory exclusively for now to guarantee that
 	 * we can find an unused lhc for the name.  Due to collisions,
 	 * two different creates can end up with the same lhc so we
@@ -896,81 +894,6 @@ done2:
 }
 
 /*
- * Connect the disconnected inode (ip) to the directory (dip) with the
- * specified (name, name_len).  If name is NULL, (lhc) will be used as
- * the directory key and the inode's embedded name will not be modified
- * for future recovery purposes.
- *
- * dip and ip must both be locked exclusively (dip in particular to avoid
- * lhc collisions).
- */
-static
-int
-hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
-		      const char *name, size_t name_len,
-		      hammer2_key_t lhc)
-{
-	hammer2_xop_scanlhc_t *sxop;
-	hammer2_xop_connect_t *xop;
-	hammer2_key_t lhcbase;
-	int error;
-
-	/*
-	 * Calculate the lhc and resolve the collision space.
-	 */
-	if (name) {
-		lhc = lhcbase = hammer2_dirhash(name, name_len);
-		sxop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
-		sxop->lhc = lhc;
-		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
-		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
-			if (lhc != sxop->head.cluster.focus->bref.key)
-				break;
-			++lhc;
-		}
-		hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
-
-		if (error) {
-			if (error != ENOENT)
-				goto done;
-			++lhc;
-			error = 0;
-		}
-		if ((lhcbase ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
-			error = ENOSPC;
-			goto done;
-		}
-	} else {
-		error = 0;
-	}
-
-	/*
-	 * Connect her up
-	 */
-	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
-	if (name)
-		hammer2_xop_setname(&xop->head, name, name_len);
-	hammer2_xop_setip2(&xop->head, ip);
-	xop->lhc = lhc;
-	hammer2_xop_start(&xop->head, hammer2_inode_xop_connect);
-	error = hammer2_xop_collect(&xop->head, 0);
-	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-
-	/*
-	 * On success make the same adjustments to ip->meta or the
-	 * next flush may blow up the chain.
-	 */
-	if (error == 0) {
-		hammer2_inode_modify(ip);
-		ip->meta.name_key = lhc;
-		if (name)
-			ip->meta.name_len = name_len;
-	}
-done:
-	return error;
-}
-
-/*
  * Repoint ip->cluster's chains to cluster's chains and fixup the default
  * focus.  All items, valid or invalid, are repointed.  hammer2_xop_start()
  * filters out invalid or non-matching elements.
@@ -1111,8 +1034,7 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 
 /*
  * Called with a locked inode to finish unlinking an inode after xop_unlink
- * had been run.  This function is responsible for decrementing nlinks and
- * moving deleted inodes to the hidden directory if they are still open.
+ * had been run.  This function is responsible for decrementing nlinks.
  *
  * We don't bother decrementing nlinks if the file is not open and this was
  * the last link.
@@ -1120,8 +1042,8 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
  * If the inode is a hardlink target it's chain has not yet been deleted,
  * otherwise it's chain has been deleted.
  *
- * If isopen then any prior deletion was not permanent and the inode must
- * be moved to the hidden directory.
+ * If isopen then any prior deletion was not permanent and the inode is
+ * left intact with nlinks == 0;
  */
 int
 hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
@@ -1133,15 +1055,13 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 
 	/*
 	 * Decrement nlinks.  If this is the last link and the file is
-	 * not open, the chain has already been removed and we don't bother
-	 * dirtying the inode.
+	 * not open we can just delete the inode and not bother dropping
+	 * nlinks to 0 (avoiding unnecessary block updates).
 	 */
 	if (ip->meta.nlinks == 1) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISUNLINKED);
-		if (isopen == 0) {
-			atomic_set_int(&ip->flags, HAMMER2_INODE_ISDELETED);
-			return 0;
-		}
+		if (isopen == 0)
+			goto killit;
 	}
 
 	hammer2_inode_modify(ip);
@@ -1164,107 +1084,21 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	}
 
 	/*
-	 * nlinks is now zero, the inode should have already been deleted.
-	 * If the file is open it was deleted non-permanently and must be
-	 * moved to the hidden directory.
-	 *
-	 * When moving to the hidden directory we force the name_key to the
-	 * inode number to avoid collisions.
+	 * nlinks is now zero, delete the inode if not open.
 	 */
-	if (isopen) {
-		hammer2_inode_lock(pmp->ihidden, 0);
-		error = hammer2_inode_connect(pmp->ihidden, ip,
-					      NULL, 0, ip->meta.inum);
-		hammer2_inode_unlock(pmp->ihidden);
-	} else {
-		error = 0;
-	}
-	return error;
-}
+	if (isopen == 0) {
+		hammer2_xop_destroy_t *xop;
 
-/*
- * This is called from the mount code to initialize pmp->ihidden
- */
-void
-hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
-{
-	int error;
-
-	if (pmp->ihidden)
-		return;
-
-	hammer2_trans_init(pmp, 0);
-	hammer2_inode_lock(pmp->iroot, 0);
-
-	/*
-	 * Find the hidden directory
-	 */
-	{
-		hammer2_xop_lookup_t *xop;
-
-		xop = hammer2_xop_alloc(pmp->iroot, HAMMER2_XOP_MODIFYING);
-		xop->lhc = HAMMER2_INODE_HIDDENDIR;
-		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
+killit:
+		atomic_set_int(&ip->flags, HAMMER2_INODE_ISDELETED);
+		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
+		hammer2_xop_start(&xop->head,
+				  hammer2_inode_xop_destroy);
 		error = hammer2_xop_collect(&xop->head, 0);
-
-		if (error == 0) {
-			/*
-			 * Found the hidden directory
-			 */
-			kprintf("PFS FOUND HIDDEN DIR\n");
-			pmp->ihidden = hammer2_inode_get(pmp, pmp->iroot,
-							 &xop->head.cluster,
-							 -1);
-			hammer2_inode_ref(pmp->ihidden);
-			hammer2_inode_unlock(pmp->ihidden);
-		}
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
-
-	/*
-	 * Create the hidden directory if it could not be found.
-	 */
-	if (error == ENOENT) {
-		kprintf("PFS CREATE HIDDEN DIR\n");
-
-		pmp->ihidden = hammer2_inode_create(pmp->iroot, pmp->iroot,
-						    NULL, NULL,
-						    NULL, 0,
-				/* lhc */	    HAMMER2_INODE_HIDDENDIR,
-				/* inum */	    HAMMER2_INODE_HIDDENDIR,
-				/* type */	    HAMMER2_OBJTYPE_DIRECTORY,
-				/* target_type */   0,
-				/* flags */	    0,
-						    &error);
-		if (pmp->ihidden) {
-			hammer2_inode_ref(pmp->ihidden);
-			hammer2_inode_unlock(pmp->ihidden);
-		}
-		if (error)
-			kprintf("PFS CREATE ERROR %d\n", error);
-	}
-
-	/*
-	 * Scan the hidden directory on-mount and destroy its contents
-	 */
-	if (error == 0) {
-		hammer2_xop_unlinkall_t *xop;
-
-		hammer2_inode_lock(pmp->ihidden, 0);
-		xop = hammer2_xop_alloc(pmp->ihidden, HAMMER2_XOP_MODIFYING);
-		xop->key_beg = HAMMER2_KEY_MIN;
-		xop->key_end = HAMMER2_KEY_MAX;
-		hammer2_xop_start(&xop->head, hammer2_inode_xop_unlinkall);
-
-		while ((error = hammer2_xop_collect(&xop->head, 0)) == 0) {
-			;
-		}
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		hammer2_inode_unlock(pmp->ihidden);
-	}
-
-	hammer2_inode_unlock(pmp->iroot);
-	hammer2_trans_done(pmp);
+	error = 0;
+	return error;
 }
 
 /*
@@ -1375,19 +1209,14 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
 		hammer2_inode_lock(ip, 0);
 		if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
 			/*
-			 * The inode was unlinked while open, causing H2
-			 * to relink it to a hidden directory to allow
-			 * cluster operations to continue until close.
-			 *
-			 * The inode must be deleted and destroyed.
+			 * The inode was unlinked while open.  The inode must
+			 * be deleted and destroyed.
 			 */
 			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 			hammer2_xop_start(&xop->head,
 					  hammer2_inode_xop_destroy);
 			error = hammer2_xop_collect(&xop->head, 0);
 			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-
-			atomic_clear_int(&ip->flags, HAMMER2_INODE_ISDELETED);
 		} else {
 			/*
 			 * The inode was dirty as-of the reclaim, requiring

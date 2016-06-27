@@ -273,9 +273,16 @@ done:
  * Backend for hammer2_vop_nremove(), hammer2_vop_nrmdir(), and helper
  * for hammer2_vop_nrename().
  *
- * This function locates and removes the directory entry.  If the
- * entry is a hardlink pointer, this function will also remove the
- * hardlink target if the target's nlinks is 1.
+ * This function locates and removes a directory entry.  If the entry is
+ * a hardlink pointer, this function does NOT remove the hardlink target,
+ * but will lookup and return the hardlink target.
+ *
+ * Note that any hardlink target's nlinks may not be synchronized to the
+ * in-memory inode.  hammer2_inode_unlink_finisher() is responsible for the
+ * final disposition of the hardlink target.
+ *
+ * If an inode pointer we lookup and return the actual inode.  If not, we
+ * return the deleted directory entry.
  *
  * The frontend is responsible for moving open inodes to the hidden directory
  * and for decrementing nlinks.
@@ -331,39 +338,45 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	}
 
 	/*
-	 * If the directory entry is a HARDLINK pointer then obtain the
-	 * underlying file type for the directory typing tests and delete
-	 * the HARDLINK pointer chain permanently.  The frontend is left
-	 * responsible for handling nlinks on and deleting the actual inode.
-	 *
-	 * If the directory entry is the actual inode then use its type
-	 * for the directory typing tests and delete the chain, permanency
-	 * depends on whether the inode is open or not.
-	 *
-	 * Check directory typing and delete the entry.  Note that
-	 * nlinks adjustments are made on the real inode by the frontend,
-	 * not here.
+	 * The directory entry will almost always be a hardlink pointer,
+	 * which we permanently delete.  Otherwise we go by xop->dopermanent.
+	 * Note that the target chain's nlinks may not be synchronized with
+	 * the in-memory hammer2_inode_t structure, so we don't try to do
+	 * anything fancy here.
 	 */
 	error = 0;
 	if (chain) {
 		int dopermanent = xop->dopermanent;
 		uint8_t type;
 
+		/*
+		 * If the directory entry is the actual inode then use its
+		 * type for the directory typing tests, otherwise if it is
+		 * a hardlink pointer then use the secondary type field for
+		 * directory typing tests.
+		 *
+		 * Also, hardlink pointers are always permanently deleted
+		 * (because they aren't the actual inode).
+		 */
 		type = chain->data->ipdata.meta.type;
 		if (type == HAMMER2_OBJTYPE_HARDLINK) {
 			type = chain->data->ipdata.meta.target_type;
 			dopermanent |= HAMMER2_DELETE_PERMANENT;
 		}
 
+		/*
+		 * Check directory typing and delete the entry.  Note that
+		 * nlinks adjustments are made on the real inode by the
+		 * frontend, not here.
+		 */
 		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    checkdirempty(parent, chain, clindex) != 0) {
 			error = ENOTEMPTY;
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    xop->isdir == 0) {
 			error = ENOTDIR;
-		} else 
-		if (type != HAMMER2_OBJTYPE_DIRECTORY &&
-		    xop->isdir >= 1) {
+		} else if (type != HAMMER2_OBJTYPE_DIRECTORY &&
+			   xop->isdir >= 1) {
 			error = EISDIR;
 		} else {
 			/*
@@ -378,42 +391,32 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	}
 
 	/*
-	 * If the entry is a hardlink pointer, resolve it.  If this is the
-	 * last link, delete it.  The frontend has the master copy of nlinks
-	 * but we still have to make adjustments here to synchronize with it.
-	 *
-	 * On delete / adjust nlinks if there is no error.  But we still need
-	 * to resolve the hardlink to feed the inode's real chain back to
-	 * the frontend.
-	 *
-	 * XXX we are basically tracking the nlinks count by doing a delta
-	 *     adjustment instead of having the frontend pass the absolute
-	 *     value down.  We really need to have the frontend pass the
-	 *     absolute value down (difficult because there might not be
-	 *     an 'ip').  See also hammer2_xop_nlink().
+	 * If the entry is a hardlink pointer, resolve it.  We do not try
+	 * to manipulate the contents of the hardlink target as it might
+	 * not be synchronized with the front-end hammer2_inode_t.  Nor do
+	 * we try to lookup the front-end hammer2_inode_t here (we are the
+	 * backend!).
 	 */
 	if (chain &&
 	    chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 		int error2;
 
+		lhc = chain->data->ipdata.meta.inum;
+
 		error2 = hammer2_chain_hardlink_find(&parent, &chain,
 						     clindex, 0);
-		if (chain && error == 0 && error2 == 0 &&
-		    (int64_t)chain->data->ipdata.meta.nlinks <= 1) {
-			hammer2_chain_delete(parent, chain,
-					     xop->head.mtid,
-					     xop->dopermanent);
-		} else if (chain && error == 0 && error2 == 0) {
-			hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
-			--chain->data->ipdata.meta.nlinks;
+		if (error2) {
+			kprintf("hardlink_find: %016jx %p failed\n",
+				lhc, chain);
+			error2 = 0;	/* silently ignore */
 		}
 		if (error == 0)
 			error = error2;
 	}
 
 	/*
-	 * We always return the hardlink target (the real inode) for
-	 * further action.
+	 * Return the inode target for further action.  Typically used by
+	 * hammer2_inode_unlink_finisher().
 	 */
 done:
 	hammer2_xop_feed(&xop->head, chain, clindex, error);
