@@ -804,8 +804,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 	hammer2_bitmap_t mmask;
 
 	for (bindex = 0; bindex < HAMMER2_BMAP_ELEMENTS; ++bindex) {
-		lmask = live->bitmapq[bindex];
-		mmask = bmap->bitmapq[bindex];
+		lmask = live->bitmapq[bindex];	/* live */
+		mmask = bmap->bitmapq[bindex];	/* snapshotted bulkfree */
 		if (lmask == mmask)
 			continue;
 

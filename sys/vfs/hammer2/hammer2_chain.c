@@ -64,8 +64,6 @@
 
 #include "hammer2.h"
 
-static int hammer2_indirect_optimize;	/* XXX SYSCTL */
-
 static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits,
@@ -2926,8 +2924,11 @@ again:
 	if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
-	KKASSERT(parent->core.live_count >= 0 &&
-		 parent->core.live_count <= count);
+	KASSERT(parent->core.live_count >= 0 &&
+		parent->core.live_count <= count,
+		("bad live_count %d/%d (%02x, %d)",
+			parent->core.live_count, count,
+			parent->bref.type, parent->bytes));
 
 	/*
 	 * If no free blockref could be found we must create an indirect
@@ -3296,9 +3297,14 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 static int hammer2_chain_indkey_freemap(hammer2_chain_t *parent,
 				hammer2_key_t *keyp, int keybits,
 				hammer2_blockref_t *base, int count);
-static int hammer2_chain_indkey_normal(hammer2_chain_t *parent,
+static int hammer2_chain_indkey_file(hammer2_chain_t *parent,
 				hammer2_key_t *keyp, int keybits,
-				hammer2_blockref_t *base, int count);
+				hammer2_blockref_t *base, int count,
+				int ncount);
+static int hammer2_chain_indkey_dir(hammer2_chain_t *parent,
+				hammer2_key_t *keyp, int keybits,
+				hammer2_blockref_t *base, int count,
+				int ncount);
 static
 hammer2_chain_t *
 hammer2_chain_create_indirect(hammer2_chain_t *parent,
@@ -3318,6 +3324,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	hammer2_key_t key_next;
 	int keybits = create_bits;
 	int count;
+	int ncount;
 	int nbytes;
 	int cache_index;
 	int loops;
@@ -3343,6 +3350,48 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	bzero(&dummy, sizeof(dummy));
 
 	/*
+	 * How big should our new indirect block be?  It has to be at least
+	 * as large as its parent.
+	 *
+	 * The freemap uses a specific indirect block size.  The number of
+	 * levels are built dynamically and ultimately depend on the size
+	 * volume.  Because freemap blocks are taken from the reserved areas
+	 * of the volume our goal is efficiency (fewer levels) and not so
+	 * much to save disk space.
+	 *
+	 * The first indirect block level for a directory usually uses
+	 * HAMMER2_IND_BYTES_MIN (4KB = 32 directory entries).
+	 * (the 4 entries built-into the inode can handle 4 directory
+	 *  entries)
+	 *
+	 * The first indirect block level for a file usually uses
+	 * HAMMER2_IND_BYTES_NOM (16KB = 128 blockrefs = ~8MB file).
+	 * (the 4 entries built-into the inode can handle a 256KB file).
+	 *
+	 * The first indirect block level down from an inode typically
+	 * uses LBUFSIZE (16384), else it uses PBUFSIZE (65536).
+	 */
+	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+		nbytes = HAMMER2_FREEMAP_LEVELN_PSIZE;
+	} else if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		if (parent->data->ipdata.meta.type ==
+		    HAMMER2_OBJTYPE_DIRECTORY)
+			nbytes = HAMMER2_IND_BYTES_MIN;	/* 4KB = 32 entries */
+		else
+			nbytes = HAMMER2_IND_BYTES_NOM;	/* 16KB = ~8MB file */
+
+	} else {
+		nbytes = HAMMER2_IND_BYTES_MAX;
+	}
+	if (nbytes < count * sizeof(hammer2_blockref_t)) {
+		KKASSERT(for_type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
+			 for_type != HAMMER2_BREF_TYPE_FREEMAP_LEAF);
+		nbytes = count * sizeof(hammer2_blockref_t);
+	}
+	ncount = nbytes / sizeof(hammer2_blockref_t);
+
+	/*
 	 * When creating an indirect block for a freemap node or leaf
 	 * the key/keybits must be fitted to static radix levels because
 	 * particular radix levels use particular reserved blocks in the
@@ -3352,13 +3401,20 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 * we need to create, and whether it is on the high-side or the
 	 * low-side.
 	 */
-	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
-	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+	switch(for_type) {
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		keybits = hammer2_chain_indkey_freemap(parent, &key, keybits,
 						       base, count);
-	} else {
-		keybits = hammer2_chain_indkey_normal(parent, &key, keybits,
-						      base, count);
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		keybits = hammer2_chain_indkey_file(parent, &key, keybits,
+						    base, count, ncount);
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		keybits = hammer2_chain_indkey_dir(parent, &key, keybits,
+						   base, count, ncount);
+		break;
 	}
 
 	/*
@@ -3366,29 +3422,6 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 * high bits and throwing away the low bits.
 	 */
 	key &= ~(((hammer2_key_t)1 << keybits) - 1);
-
-	/*
-	 * How big should our new indirect block be?  It has to be at least
-	 * as large as its parent.
-	 *
-	 * The freemap uses a specific indirect block size.
-	 *
-	 * The first indirect block level down from an inode typically
-	 * uses LBUFSIZE (16384), else it uses PBUFSIZE (65536).
-	 */
-	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
-	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		nbytes = HAMMER2_FREEMAP_LEVELN_PSIZE;
-	} else if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		nbytes = HAMMER2_IND_BYTES_MIN;
-	} else {
-		nbytes = HAMMER2_IND_BYTES_MAX;
-	}
-	if (nbytes < count * sizeof(hammer2_blockref_t)) {
-		KKASSERT(for_type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
-			 for_type != HAMMER2_BREF_TYPE_FREEMAP_LEAF);
-		nbytes = count * sizeof(hammer2_blockref_t);
-	}
 
 	/*
 	 * Ok, create our new indirect block
@@ -3599,6 +3632,8 @@ next_key_spinlocked:
 }
 
 /*
+ * Freemap indirect blocks
+ *
  * Calculate the keybits and highside/lowside of the freemap node the
  * caller is creating.
  *
@@ -3718,34 +3753,44 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 }
 
 /*
- * Calculate the keybits and highside/lowside of the indirect block the
- * caller is creating.
+ * File indirect blocks
+ *
+ * Calculate the key/keybits for the indirect block to create by scanning
+ * existing keys.  The key being created is also passed in *keyp and can be
+ * inside or outside the indirect block.  Regardless, the indirect block
+ * must hold at least two keys in order to guarantee sufficient space.
+ *
+ * We use a modified version of the freemap's fixed radix tree, but taylored
+ * for file data.  Basically we configure an indirect block encompassing the
+ * smallest key.
  */
 static int
-hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
-			    int keybits, hammer2_blockref_t *base, int count)
+hammer2_chain_indkey_file(hammer2_chain_t *parent, hammer2_key_t *keyp,
+			    int keybits, hammer2_blockref_t *base, int count,
+			    int ncount)
 {
+	hammer2_chain_t *chain;
 	hammer2_blockref_t *bref;
-	hammer2_chain_t	*chain;
+	hammer2_key_t key;
 	hammer2_key_t key_beg;
 	hammer2_key_t key_end;
 	hammer2_key_t key_next;
-	hammer2_key_t key;
-	int nkeybits;
+	int nradix;
+	int cache_index;
 	int locount;
 	int hicount;
-	int cache_index;
 	int maxloops = 300000;
 
 	key = *keyp;
 	locount = 0;
 	hicount = 0;
+	keybits = 64;
 
 	/*
 	 * Calculate the range of keys in the array being careful to skip
-	 * slots which are overridden with a deletion.  Once the scan
-	 * completes we will cut the key range in half and shift half the
-	 * range into the new indirect block.
+	 * slots which are overridden with a deletion.
+	 *
+	 * Locate the smallest key.
 	 */
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
@@ -3768,6 +3813,141 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 		if (bref == NULL)
 			break;
 
+		/*
+		 * Skip deleted chains.
+		 */
+		if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+			if (key_next == 0 || key_next > key_end)
+				break;
+			key_beg = key_next;
+			continue;
+		}
+
+		/*
+		 * Use the full live (not deleted) element for the scan
+		 * iteration.  HAMMER2 does not allow partial replacements.
+		 *
+		 * XXX should be built into hammer2_combined_find().
+		 */
+		key_next = bref->key + ((hammer2_key_t)1 << bref->keybits);
+
+		if (keybits > bref->keybits) {
+			key = bref->key;
+			keybits = bref->keybits;
+		} else if (keybits == bref->keybits && bref->key < key) {
+			key = bref->key;
+		}
+		if (key_next == 0)
+			break;
+		key_beg = key_next;
+	}
+	hammer2_spin_unex(&parent->core.spin);
+
+	/*
+	 * Calculate the static keybits for a higher-level indirect block
+	 * that contains the key.
+	 */
+	*keyp = key;
+
+	switch(ncount) {
+	case HAMMER2_IND_BYTES_MIN / sizeof(hammer2_blockref_t):
+		nradix = HAMMER2_IND_RADIX_MIN - HAMMER2_BLOCKREF_RADIX;
+		break;
+	case HAMMER2_IND_BYTES_NOM / sizeof(hammer2_blockref_t):
+		nradix = HAMMER2_IND_RADIX_NOM - HAMMER2_BLOCKREF_RADIX;
+		break;
+	case HAMMER2_IND_BYTES_MAX / sizeof(hammer2_blockref_t):
+		nradix = HAMMER2_IND_RADIX_MAX - HAMMER2_BLOCKREF_RADIX;
+		break;
+	default:
+		panic("bad ncount %d\n", ncount);
+		nradix = 0;
+		break;
+	}
+
+	/*
+	 * The largest radix that can be returned for an indirect block is
+	 * 63 bits.  (The largest practical indirect block radix is actually
+	 * 62 bits because the top-level inode or volume root contains four
+	 * entries, but allow 63 to be returned).
+	 */
+	if (nradix >= 64)
+		nradix = 63;
+
+	return keybits + nradix;
+}
+
+#if 1
+
+/*
+ * Directory indirect blocks.
+ *
+ * Covers both the inode index (directory of inodes), and directory contents
+ * (filenames hardlinked to inodes).
+ *
+ * Because directory keys are hashed we generally try to cut the space in
+ * half.  We accomodate the inode index (which tends to have linearly
+ * increasing inode numbers) by ensuring that the keyspace is at least large
+ * enough to fill up the indirect block being created.
+ */
+static int
+hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
+			 int keybits, hammer2_blockref_t *base, int count,
+			 int ncount)
+{
+	hammer2_blockref_t *bref;
+	hammer2_chain_t	*chain;
+	hammer2_key_t key_beg;
+	hammer2_key_t key_end;
+	hammer2_key_t key_next;
+	hammer2_key_t key;
+	int nkeybits;
+	int locount;
+	int hicount;
+	int cache_index;
+	int maxloops = 300000;
+
+	/*
+	 * Shortcut if the parent is the inode.  In this situation the
+	 * parent has 4+1 directory entries and we are creating an indirect
+	 * block capable of holding many more.
+	 */
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		return 63;
+	}
+
+	key = *keyp;
+	locount = 0;
+	hicount = 0;
+
+	/*
+	 * Calculate the range of keys in the array being careful to skip
+	 * slots which are overridden with a deletion.
+	 */
+	key_beg = 0;
+	key_end = HAMMER2_KEY_MAX;
+	cache_index = 0;
+	hammer2_spin_ex(&parent->core.spin);
+
+	for (;;) {
+		if (--maxloops == 0) {
+			panic("indkey_freemap shit %p %p:%d\n",
+			      parent, base, count);
+		}
+		chain = hammer2_combined_find(parent, base, count,
+					      &cache_index, &key_next,
+					      key_beg, key_end,
+					      &bref);
+
+		/*
+		 * Exhausted search
+		 */
+		if (bref == NULL)
+			break;
+
+		/*
+		 * Deleted object
+		 */
 		if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
 			if (key_next == 0 || key_next > key_end)
 				break;
@@ -3838,41 +4018,218 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 
 	/*
 	 * Adjust keybits to represent half of the full range calculated
-	 * above (radix 63 max)
+	 * above (radix 63 max) for our new indirect block.
 	 */
 	--keybits;
 
 	/*
-	 * Select whichever half contains the most elements.  Theoretically
-	 * we can select either side as long as it contains at least one
-	 * element (in order to ensure that a free slot is present to hold
-	 * the indirect block).
+	 * Expand keybits to hold at least ncount elements.  ncount will be
+	 * a power of 2.  This is to try to completely fill leaf nodes (at
+	 * least for keys which are not hashes).
+	 *
+	 * We aren't counting 'in' or 'out', we are counting 'high side'
+	 * and 'low side' based on the bit at (1LL << keybits).  We want
+	 * everything to be inside in these cases so shift it all to
+	 * the low or high side depending on the new high bit.
 	 */
-	if (hammer2_indirect_optimize) {
-		/*
-		 * Insert node for least number of keys, this will arrange
-		 * the first few blocks of a large file or the first few
-		 * inodes in a directory with fewer indirect blocks when
-		 * created linearly.
-		 */
-		if (hicount < locount && hicount != 0)
-			key |= (hammer2_key_t)1 << keybits;
-		else
-			key &= ~(hammer2_key_t)1 << keybits;
-	} else {
-		/*
-		 * Insert node for most number of keys, best for heavily
-		 * fragmented files.
-		 */
-		if (hicount > locount)
-			key |= (hammer2_key_t)1 << keybits;
-		else
-			key &= ~(hammer2_key_t)1 << keybits;
+	while (((hammer2_key_t)1 << keybits) < ncount) {
+		++keybits;
+		if (key & ((hammer2_key_t)1 << keybits)) {
+			hicount += locount;
+			locount = 0;
+		} else {
+			locount += hicount;
+			hicount = 0;
+		}
 	}
+
+	if (hicount > locount)
+		key |= (hammer2_key_t)1 << keybits;
+	else
+		key &= ~(hammer2_key_t)1 << keybits;
+
 	*keyp = key;
 
 	return (keybits);
 }
+
+#else
+
+/*
+ * Directory indirect blocks.
+ *
+ * Covers both the inode index (directory of inodes), and directory contents
+ * (filenames hardlinked to inodes).
+ *
+ * Because directory keys are hashed we generally try to cut the space in
+ * half.  We accomodate the inode index (which tends to have linearly
+ * increasing inode numbers) by ensuring that the keyspace is at least large
+ * enough to fill up the indirect block being created.
+ */
+static int
+hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
+			 int keybits, hammer2_blockref_t *base, int count,
+			 int ncount)
+{
+	hammer2_blockref_t *bref;
+	hammer2_chain_t	*chain;
+	hammer2_key_t key_beg;
+	hammer2_key_t key_end;
+	hammer2_key_t key_next;
+	hammer2_key_t key;
+	int nkeybits;
+	int locount;
+	int hicount;
+	int cache_index;
+	int maxloops = 300000;
+
+	/*
+	 * Shortcut if the parent is the inode.  In this situation the
+	 * parent has 4+1 directory entries and we are creating an indirect
+	 * block capable of holding many more.
+	 */
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		return 63;
+	}
+
+	key = *keyp;
+	locount = 0;
+	hicount = 0;
+
+	/*
+	 * Calculate the range of keys in the array being careful to skip
+	 * slots which are overridden with a deletion.
+	 */
+	key_beg = 0;
+	key_end = HAMMER2_KEY_MAX;
+	cache_index = 0;
+	hammer2_spin_ex(&parent->core.spin);
+
+	for (;;) {
+		if (--maxloops == 0) {
+			panic("indkey_freemap shit %p %p:%d\n",
+			      parent, base, count);
+		}
+		chain = hammer2_combined_find(parent, base, count,
+					      &cache_index, &key_next,
+					      key_beg, key_end,
+					      &bref);
+
+		/*
+		 * Exhausted search
+		 */
+		if (bref == NULL)
+			break;
+
+		/*
+		 * Deleted object
+		 */
+		if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+			if (key_next == 0 || key_next > key_end)
+				break;
+			key_beg = key_next;
+			continue;
+		}
+
+		/*
+		 * Use the full live (not deleted) element for the scan
+		 * iteration.  HAMMER2 does not allow partial replacements.
+		 *
+		 * XXX should be built into hammer2_combined_find().
+		 */
+		key_next = bref->key + ((hammer2_key_t)1 << bref->keybits);
+
+		/*
+		 * Expand our calculated key range (key, keybits) to fit
+		 * the scanned key.  nkeybits represents the full range
+		 * that we will later cut in half (two halves @ nkeybits - 1).
+		 */
+		nkeybits = keybits;
+		if (nkeybits < bref->keybits) {
+			if (bref->keybits > 64) {
+				kprintf("bad bref chain %p bref %p\n",
+					chain, bref);
+				Debugger("fubar");
+			}
+			nkeybits = bref->keybits;
+		}
+		while (nkeybits < 64 &&
+		       (~(((hammer2_key_t)1 << nkeybits) - 1) &
+		        (key ^ bref->key)) != 0) {
+			++nkeybits;
+		}
+
+		/*
+		 * If the new key range is larger we have to determine
+		 * which side of the new key range the existing keys fall
+		 * under by checking the high bit, then collapsing the
+		 * locount into the hicount or vise-versa.
+		 */
+		if (keybits != nkeybits) {
+			if (((hammer2_key_t)1 << (nkeybits - 1)) & key) {
+				hicount += locount;
+				locount = 0;
+			} else {
+				locount += hicount;
+				hicount = 0;
+			}
+			keybits = nkeybits;
+		}
+
+		/*
+		 * The newly scanned key will be in the lower half or the
+		 * upper half of the (new) key range.
+		 */
+		if (((hammer2_key_t)1 << (nkeybits - 1)) & bref->key)
+			++hicount;
+		else
+			++locount;
+
+		if (key_next == 0)
+			break;
+		key_beg = key_next;
+	}
+	hammer2_spin_unex(&parent->core.spin);
+	bref = NULL;	/* now invalid (safety) */
+
+	/*
+	 * Adjust keybits to represent half of the full range calculated
+	 * above (radix 63 max) for our new indirect block.
+	 */
+	--keybits;
+
+	/*
+	 * Expand keybits to hold at least ncount elements.  ncount will be
+	 * a power of 2.  This is to try to completely fill leaf nodes (at
+	 * least for keys which are not hashes).
+	 *
+	 * We aren't counting 'in' or 'out', we are counting 'high side'
+	 * and 'low side' based on the bit at (1LL << keybits).  We want
+	 * everything to be inside in these cases so shift it all to
+	 * the low or high side depending on the new high bit.
+	 */
+	while (((hammer2_key_t)1 << keybits) < ncount) {
+		++keybits;
+		if (key & ((hammer2_key_t)1 << keybits)) {
+			hicount += locount;
+			locount = 0;
+		} else {
+			locount += hicount;
+			hicount = 0;
+		}
+	}
+
+	if (hicount > locount)
+		key |= (hammer2_key_t)1 << keybits;
+	else
+		key &= ~(hammer2_key_t)1 << keybits;
+
+	*keyp = key;
+
+	return (keybits);
+}
+
+#endif
 
 /*
  * Sets CHAIN_DELETED and remove the chain's blockref from the parent if
