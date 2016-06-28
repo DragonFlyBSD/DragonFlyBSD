@@ -1276,7 +1276,7 @@ hammer2_chain_base_and_count(hammer2_chain_t *parent, int *countp)
 /*
  * This counts the number of live blockrefs in a block array and
  * also calculates the point at which all remaining blockrefs are empty.
- * This routine can only be called on a live chain (DUPLICATED flag not set).
+ * This routine can only be called on a live chain.
  *
  * NOTE: Flag is not set until after the count is complete, allowing
  *	 callers to test the flag without holding the spinlock.
@@ -1417,8 +1417,8 @@ modified_needs_new_allocation(hammer2_chain_t *chain)
 	 * recording occurs when dirty file data is flushed from the frontend
 	 * to the backend.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_DEDUP) == 0)
-		return 0;
+	if (chain->flags & HAMMER2_CHAIN_DEDUP)
+		return 1;
 
 	/*
 	 * If the DEDUP flag is set we have one final line of defense to
@@ -1835,11 +1835,6 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 	hammer2_key_t child_end;
 
 	/*
-	 * WARNING! Do not discard DUPLICATED chains, it is possible that
-	 *	    we are catching an insertion half-way done.  If a
-	 *	    duplicated chain turns out to be the best choice the
-	 *	    caller will re-check its flags after locking it.
-	 *
 	 * WARNING! Layerq is scanned forwards, exact matches should keep
 	 *	    the existing info->best.
 	 */
@@ -2126,8 +2121,8 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		}
 		parent = hammer2_chain_getparent(parentp, how_maybe);
 	}
-
 again:
+
 	TIMER(9);
 	if (--maxloops == 0)
 		panic("hammer2_chain_lookup: maxloops");
@@ -2184,6 +2179,7 @@ again:
 				goto done;
 			}
 		}
+
 		/*
 		 * Optimize indirect blocks in the INITIAL state to avoid
 		 * I/O.
@@ -2306,7 +2302,7 @@ again:
 	TIMER(16);
 	/*
 	 * chain is referenced but not locked.  We must lock the chain
-	 * to obtain definitive DUPLICATED/DELETED state
+	 * to obtain definitive state.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
@@ -2314,6 +2310,7 @@ again:
 	} else {
 		hammer2_chain_lock(chain, how);
 	}
+	KKASSERT(chain->parent == parent);
 	TIMER(17);
 
 	/*
@@ -2324,12 +2321,12 @@ again:
 	 *
 	 * NOTE: Lookups can race delete-duplicate because
 	 *	 delete-duplicate does not lock the parent's core
-	 *	 (they just use the spinlock on the core).  We must
-	 *	 check for races by comparing the DUPLICATED flag before
-	 *	 releasing the spinlock with the flag after locking the
-	 *	 chain.
+	 *	 (they just use the spinlock on the core).
 	 */
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
+		kprintf("skip deleted chain %016jx.%02x key=%016jx\n",
+			chain->bref.data_off, chain->bref.type,
+			chain->bref.key);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		key_beg = *key_nextp;
@@ -2684,7 +2681,7 @@ again:
 
 	/*
 	 * chain is referenced but not locked.  We must lock the chain
-	 * to obtain definitive DUPLICATED/DELETED state
+	 * to obtain definitive state.
 	 */
 	if (chain)
 		hammer2_chain_lock(chain, how);
@@ -2700,10 +2697,7 @@ again:
 	 *
 	 * NOTE: Lookups can race delete-duplicate because
 	 *	 delete-duplicate does not lock the parent's core
-	 *	 (they just use the spinlock on the core).  We must
-	 *	 check for races by comparing the DUPLICATED flag before
-	 *	 releasing the spinlock with the flag after locking the
-	 *	 chain.
+	 *	 (they just use the spinlock on the core).
 	 */
 	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
 		hammer2_chain_unlock(chain);
@@ -3053,8 +3047,7 @@ done:
  *
  * Neither (parent) or (chain) can be errored.
  *
- * If (parent) is non-NULL then the new duplicated chain is inserted under
- * the parent.
+ * If (parent) is non-NULL then the chain is inserted under the parent.
  *
  * If (parent) is NULL then the newly duplicated chain is not inserted
  * anywhere, similar to if it had just been chain_alloc()'d (suitable for
@@ -3476,11 +3469,10 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		/*
 		 * Load the new indirect block by acquiring the related
 		 * chains (potentially from media as it might not be
-		 * in-memory).  Then move it to the new parent (ichain)
-		 * via DELETE-DUPLICATE.
+		 * in-memory).  Then move it to the new parent (ichain).
 		 *
 		 * chain is referenced but not locked.  We must lock the
-		 * chain to obtain definitive DUPLICATED/DELETED state
+		 * chain to obtain definitive state.
 		 */
 		if (chain) {
 			/*
@@ -3518,10 +3510,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *
 		 * NOTE: Lookups can race delete-duplicate because
 		 *	 delete-duplicate does not lock the parent's core
-		 *	 (they just use the spinlock on the core).  We must
-		 *	 check for races by comparing the DUPLICATED flag before
-		 *	 releasing the spinlock with the flag after locking the
-		 *	 chain.
+		 *	 (they just use the spinlock on the core).
 		 *
 		 *	 (note reversed logic for this one)
 		 */
@@ -3779,10 +3768,6 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 		if (bref == NULL)
 			break;
 
-		/*
-		 * NOTE: No need to check DUPLICATED here because we do
-		 *	 not release the spinlock.
-		 */
 		if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
 			if (key_next == 0 || key_next > key_end)
 				break;
@@ -4530,10 +4515,12 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		check64 = XXH64(bdata, chain->bytes, XXH_HAMMER2_SEED);
 		r = (chain->bref.check.xxhash64.value == check64);
 		if (r == 0) {
-			kprintf("chain %016jx.%02x meth=%02x CHECK FAIL "
+			kprintf("chain %016jx.%02x key=%016jx "
+				"meth=%02x CHECK FAIL "
 				"(flags=%08x, bref/data %016jx/%016jx)\n",
 				chain->bref.data_off,
 				chain->bref.type,
+				chain->bref.key,
 				chain->bref.methods,
 				chain->flags,
 				chain->bref.check.xxhash64.value,

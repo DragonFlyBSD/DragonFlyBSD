@@ -71,13 +71,22 @@ struct objcache *cache_buffer_write;
 /*
  * Strategy code (async logical file buffer I/O from system)
  *
- * WARNING: The strategy code cannot safely use hammer2 transactions
- *	    as this can deadlock against vfs_sync's vfsync() call
- *	    if multiple flushes are queued.  All H2 structures must
- *	    already be present and ready for the DIO.
+ * It should only be possible for this to be called outside of a flush,
+ * or during the PREFLUSH stage of a flush.  A transaction must be used
+ * to interlock against a new flush starting up to avoid corrupting the
+ * flush.
  *
- *	    Reads can be initiated asynchronously, writes have to be
- *	    spooled to a separate thread for action to avoid deadlocks.
+ * Except for the transaction init (which should normally not block),
+ * we essentially run the strategy operation asynchronously via a XOP.
+ *
+ * XXX This isn't supposed to be able to deadlock against vfs_sync vfsync()
+ *     calls but it has in the past when multiple flushes are queued.
+ *
+ * XXX We currently terminate the transaction once we get a quorum, otherwise
+ *     the frontend can stall, but this can leave the remaining nodes with
+ *     a potential flush conflict.  We need to delay flushes on those nodes
+ *     until running transactions complete separately from the normal
+ *     transaction sequencing.  FIXME TODO.
  */
 static void hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex);
 static void hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex);
@@ -86,7 +95,6 @@ static int hammer2_strategy_write(struct vop_strategy_args *ap);
 static void hammer2_strategy_read_completion(hammer2_chain_t *chain,
 				char *data, struct bio *bio);
 
-static void hammer2_dedup_record(hammer2_chain_t *chain, char *data);
 static hammer2_off_t hammer2_dedup_lookup(hammer2_dev_t *hmp,
 			char **datap, int pblksize);
 
@@ -529,6 +537,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	
 	hammer2_lwinprog_ref(pmp);
 	hammer2_trans_assert_strategy(pmp);
+	hammer2_trans_init(pmp, HAMMER2_TRANS_BUFCACHE);
 
 	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 	xop->finished = 0;
@@ -602,33 +611,33 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 	 */
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_NOWAIT);
 
-	switch(error) {
-	case ENOENT:
-	case 0:
-		xop->finished = 1;
+	if (error == EINPROGRESS) {
 		hammer2_mtx_unlock(&xop->lock);
+		return;
+	}
+
+	/*
+	 * Async operation has completed.
+	 */
+	xop->finished = 1;
+	hammer2_mtx_unlock(&xop->lock);
+
+	if (error == ENOENT || error == 0) {
 		bp->b_flags |= B_NOTMETA;
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		biodone(bio);
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		hammer2_lwinprog_drop(ip->pmp);
-		break;
-	case EINPROGRESS:
-		hammer2_mtx_unlock(&xop->lock);
-		break;
-	default:
+	} else {
 		kprintf("strategy_xop_write: error %d loff=%016jx\n",
 			error, bp->b_loffset);
-		xop->finished = 1;
-		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		hammer2_lwinprog_drop(ip->pmp);
-		break;
 	}
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+	hammer2_trans_assert_strategy(ip->pmp);
+	hammer2_lwinprog_drop(ip->pmp);
+	hammer2_trans_done(ip->pmp);
 }
 
 /*
@@ -680,9 +689,13 @@ retry:
 				     &cache_index,
 				     HAMMER2_LOOKUP_NODATA);
 
-	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED))
-		kprintf("assign physical deleted chain @ %016jx\n",
-			lbase);
+	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+		kprintf("assign physical deleted chain @ "
+			"%016jx (%016jx.%02x) ip %016jx\n",
+			lbase, chain->bref.data_off, chain->bref.type,
+			ip->meta.inum);
+		Debugger("bleh");
+	}
 
 	if (chain == NULL) {
 		/*
@@ -1049,9 +1062,6 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 			 * The flush code doesn't calculate check codes for
 			 * file data (doing so can result in excessive I/O),
 			 * so we do it here.
-			 *
-			 * Record for dedup only after the DIO's buffer cache
-			 * buffer has been updated.
 			 */
 			hammer2_chain_setcheck(chain, bdata);
 			hammer2_dedup_record(chain, bdata);
@@ -1244,9 +1254,6 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 		 * The flush code doesn't calculate check codes for
 		 * file data (doing so can result in excessive I/O),
 		 * so we do it here.
-		 *
-		 * Record for dedup only after the DIO's buffer cache
-		 * buffer has been updated.
 		 */
 		hammer2_chain_setcheck(chain, bdata);
 		hammer2_dedup_record(chain, bdata);
@@ -1293,9 +1300,10 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
  *	    All fields must be loaded into locals and validated.
  *
  * WARNING! Should only be used for file data, hammer2_chain_modify() only
- *	    checks for the dedup case on data chains.
+ *	    checks for the dedup case on data chains.  Also, dedup data can
+ *	    only be recorded for committed chains (so NOT strategy writes
+ *	    which can undergo further modification after the fact!).
  */
-static
 void
 hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 {
@@ -1305,6 +1313,20 @@ hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 	int best = 0;
 	int i;
 	int dticks;
+
+	if (hammer2_dedup_enable == 0)
+		return;
+
+	/*
+	 * Only committed data can be recorded for de-duplication, otherwise
+	 * the contents may change out from under us.  So, on read if the
+	 * chain is not modified, and on flush when the chain is committed.
+	 */
+	if ((chain->flags &
+	    (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_INITIAL)) == 0) {
+		return;
+	}
+
 
 	hmp = chain->hmp;
 
@@ -1376,6 +1398,8 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 	char *data;
 	int i;
 
+	if (hammer2_dedup_enable == 0)
+		return 0;
 	data = *datap;
 	if (data == NULL)
 		return 0;

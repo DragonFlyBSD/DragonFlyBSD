@@ -582,7 +582,9 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	if (orefs & HAMMER2_DIO_GOOD) {
 		KKASSERT(bp != NULL);
 #if 1
-		if ((orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
+		if (hammer2_inval_enable &&
+		    (orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
+			++hammer2_iod_invals;
 			bp->b_flags |= B_INVAL | B_RELBUF;
 			brelse(bp);
 		} else
@@ -616,7 +618,9 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		}
 	} else if (bp) {
 #if 1
-		if ((orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
+		if (hammer2_inval_enable &&
+		    (orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
+			++hammer2_iod_invals;
 			bp->b_flags |= B_INVAL | B_RELBUF;
 			brelse(bp);
 		} else

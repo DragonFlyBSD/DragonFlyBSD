@@ -910,7 +910,21 @@ again:
 		 * the topology and make it a bit messy.
 		 */
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT &&
+		    chain->core.live_count == 0 &&
+		    (chain->flags & (HAMMER2_CHAIN_INITIAL |
+				     HAMMER2_CHAIN_COUNTEDBREFS)) == 0) {
+			base = &chain->data->npdata[0];
+			count = chain->bytes / sizeof(hammer2_blockref_t);
+			hammer2_chain_countbrefs(chain, base, count);
+		}
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT &&
 		    chain->core.live_count == 0) {
+#if 0
+			kprintf("DELETE CHAIN %016jx.%02x %016jx/%d refs=%d\n",
+				chain->bref.data_off, chain->bref.type,
+				chain->bref.key, chain->bref.keybits,
+				chain->refs);
+#endif
 			hammer2_chain_delete(parent, chain,
 					     chain->bref.modify_tid,
 					     HAMMER2_DELETE_PERMANENT);

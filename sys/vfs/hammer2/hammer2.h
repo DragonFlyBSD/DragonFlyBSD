@@ -1266,7 +1266,8 @@ extern struct vop_ops hammer2_fifo_vops;
 extern int hammer2_debug;
 extern int hammer2_cluster_read;
 extern int hammer2_cluster_write;
-extern int hammer2_hardlink_enable;
+extern int hammer2_dedup_enable;
+extern int hammer2_inval_enable;
 extern int hammer2_flush_pipe;
 extern int hammer2_synchronous_flush;
 extern int hammer2_dio_count;
@@ -1274,6 +1275,7 @@ extern long hammer2_chain_allocs;
 extern long hammer2_chain_frees;
 extern long hammer2_limit_dirty_chains;
 extern long hammer2_count_modified_chains;
+extern long hammer2_iod_invals;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;
 extern long hammer2_iod_indr_read;
@@ -1287,16 +1289,6 @@ extern long hammer2_iod_meta_write;
 extern long hammer2_iod_indr_write;
 extern long hammer2_iod_fmap_write;
 extern long hammer2_iod_volu_write;
-extern long hammer2_ioa_file_read;
-extern long hammer2_ioa_meta_read;
-extern long hammer2_ioa_indr_read;
-extern long hammer2_ioa_fmap_read;
-extern long hammer2_ioa_volu_read;
-extern long hammer2_ioa_file_write;
-extern long hammer2_ioa_meta_write;
-extern long hammer2_ioa_indr_write;
-extern long hammer2_ioa_fmap_write;
-extern long hammer2_ioa_volu_write;
 
 extern long hammer2_check_xxhash64;
 extern long hammer2_check_icrc32;
@@ -1480,6 +1472,7 @@ void hammer2_trans_clear_preflush(hammer2_pfs_t *pmp);
 void hammer2_trans_done(hammer2_pfs_t *pmp);
 hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
+void hammer2_dedup_record(hammer2_chain_t *chain, char *data);
 
 /*
  * hammer2_ioctl.c
