@@ -484,13 +484,14 @@ static void __intel_uncore_forcewake_put(struct drm_i915_private *dev_priv,
 void intel_uncore_forcewake_put(struct drm_i915_private *dev_priv,
 				enum forcewake_domains fw_domains)
 {
+	unsigned long irqflags;
 
 	if (!dev_priv->uncore.funcs.force_wake_put)
 		return;
 
-	lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 	__intel_uncore_forcewake_put(dev_priv, fw_domains);
-	lockmgr(&dev_priv->uncore.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
 }
 
 /**
