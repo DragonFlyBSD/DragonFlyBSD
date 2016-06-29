@@ -755,10 +755,10 @@ static int i915_drm_resume(struct drm_device *dev)
 
 	intel_modeset_init_hw(dev);
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	if (dev_priv->display.hpd_irq_setup)
 		dev_priv->display.hpd_irq_setup(dev);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	drm_modeset_lock_all(dev);
 	intel_display_resume(dev);

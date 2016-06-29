@@ -245,10 +245,11 @@ static int __gen6_gt_wait_for_fifo(struct drm_i915_private *dev_priv)
 static void intel_uncore_fw_release_timer(unsigned long arg)
 {
 	struct intel_uncore_forcewake_domain *domain = (void *)arg;
+	unsigned long irqflags;
 
 	assert_device_not_suspended(domain->i915);
 
-	lockmgr(&domain->i915->uncore.lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&domain->i915->uncore.lock, irqflags);
 	if (WARN_ON(domain->wake_count == 0))
 		domain->wake_count++;
 
@@ -256,12 +257,13 @@ static void intel_uncore_fw_release_timer(unsigned long arg)
 		domain->i915->uncore.funcs.force_wake_put(domain->i915,
 							  1 << domain->id);
 
-	lockmgr(&domain->i915->uncore.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&domain->i915->uncore.lock, irqflags);
 }
 
 void intel_uncore_forcewake_reset(struct drm_device *dev, bool restore)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 	struct intel_uncore_forcewake_domain *domain;
 	int retry_count = 100;
 	enum forcewake_domain_id id;
@@ -281,7 +283,7 @@ void intel_uncore_forcewake_reset(struct drm_device *dev, bool restore)
 			intel_uncore_fw_release_timer((unsigned long)domain);
 		}
 
-		lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE);
+		spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 
 		for_each_fw_domain(domain, dev_priv, id) {
 			if (timer_pending(&domain->timer))
@@ -296,7 +298,7 @@ void intel_uncore_forcewake_reset(struct drm_device *dev, bool restore)
 			break;
 		}
 
-		lockmgr(&dev_priv->uncore.lock, LK_RELEASE);
+		spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
 #if 0
 		cond_resched();
 #endif
@@ -325,7 +327,7 @@ void intel_uncore_forcewake_reset(struct drm_device *dev, bool restore)
 	if (!restore)
 		assert_forcewakes_inactive(dev_priv);
 
-	lockmgr(&dev_priv->uncore.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
 }
 
 static void intel_uncore_ellc_detect(struct drm_device *dev)
@@ -417,15 +419,16 @@ static void __intel_uncore_forcewake_get(struct drm_i915_private *dev_priv,
 void intel_uncore_forcewake_get(struct drm_i915_private *dev_priv,
 				enum forcewake_domains fw_domains)
 {
+	unsigned long irqflags;
 
 	if (!dev_priv->uncore.funcs.force_wake_get)
 		return;
 
 	WARN_ON(dev_priv->pm.suspended);
 
-	lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 	__intel_uncore_forcewake_get(dev_priv, fw_domains);
-	lockmgr(&dev_priv->uncore.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
 }
 
 /**
@@ -677,12 +680,13 @@ __gen2_read(64)
 #undef GEN2_READ_HEADER
 
 #define GEN6_READ_HEADER(x) \
+	unsigned long irqflags; \
 	u##x val = 0; \
 	assert_device_not_suspended(dev_priv); \
-	lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE)
+	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags)
 
 #define GEN6_READ_FOOTER \
-	lockmgr(&dev_priv->uncore.lock, LK_RELEASE); \
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags); \
 	trace_i915_reg_rw(false, reg, val, sizeof(val), trace); \
 	return val
 
@@ -849,12 +853,13 @@ __gen2_write(64)
 #undef GEN2_WRITE_HEADER
 
 #define GEN6_WRITE_HEADER \
+	unsigned long irqflags; \
 	trace_i915_reg_rw(true, reg, val, sizeof(val), trace); \
 	assert_device_not_suspended(dev_priv); \
-	lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE)
+	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags)
 
 #define GEN6_WRITE_FOOTER \
-	lockmgr(&dev_priv->uncore.lock, LK_RELEASE)
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags)
 
 #define __gen6_write(x) \
 static void \

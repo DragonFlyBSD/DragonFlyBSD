@@ -281,19 +281,19 @@ void gen6_reset_rps_interrupts(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	uint32_t reg = gen6_pm_iir(dev_priv);
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	I915_WRITE(reg, dev_priv->pm_rps_events);
 	I915_WRITE(reg, dev_priv->pm_rps_events);
 	POSTING_READ(reg);
 	dev_priv->rps.pm_iir = 0;
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 }
 
 void gen6_enable_rps_interrupts(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 
 	WARN_ON(dev_priv->rps.pm_iir);
 	WARN_ON(I915_READ(gen6_pm_iir(dev_priv)) & dev_priv->pm_rps_events);
@@ -302,7 +302,7 @@ void gen6_enable_rps_interrupts(struct drm_device *dev)
 				dev_priv->pm_rps_events);
 	gen6_enable_pm_irq(dev_priv, dev_priv->pm_rps_events);
 
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 }
 
 u32 gen6_sanitize_rps_pm_mask(struct drm_i915_private *dev_priv, u32 mask)
@@ -326,13 +326,13 @@ void gen6_disable_rps_interrupts(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	dev_priv->rps.interrupts_enabled = false;
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	cancel_work_sync(&dev_priv->rps.work);
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 
 	I915_WRITE(GEN6_PMINTRMSK, gen6_sanitize_rps_pm_mask(dev_priv, ~0));
 
@@ -340,9 +340,8 @@ void gen6_disable_rps_interrupts(struct drm_device *dev)
 	I915_WRITE(gen6_pm_ier(dev_priv), I915_READ(gen6_pm_ier(dev_priv)) &
 				~dev_priv->pm_rps_events);
 
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
-	/* Wait for pending IRQ handlers to complete (on other CPUs) */
 #if 0
 	synchronize_irq(dev->irq);
 #endif
@@ -492,14 +491,14 @@ static void i915_enable_asle_pipestat(struct drm_device *dev)
 	if (!dev_priv->opregion.asle || !IS_MOBILE(dev))
 		return;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 
 	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_LEGACY_BLC_EVENT_STATUS);
 	if (INTEL_INFO(dev)->gen >= 4)
 		i915_enable_pipestat(dev_priv, PIPE_A,
 				     PIPE_LEGACY_BLC_EVENT_STATUS);
 
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 }
 
 /*
@@ -682,6 +681,7 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 	int vbl_start, vbl_end, hsync_start, htotal, vtotal;
 	bool in_vbl = true;
 	int ret = 0;
+	unsigned long irqflags;
 
 	if (WARN_ON(!mode->crtc_clock)) {
 		DRM_DEBUG_DRIVER("trying to get scanoutpos for disabled "
@@ -708,7 +708,7 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 	 * register reads, potentially with preemption disabled, so the
 	 * following code must not block on uncore.lock.
 	 */
-	lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 
 	/* preempt_disable_rt() should go right here in PREEMPT_RT patchset. */
 
@@ -763,7 +763,7 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 
 	/* preempt_enable_rt() should go right here in PREEMPT_RT patchset. */
 
-	lockmgr(&dev_priv->uncore.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
 
 	in_vbl = position >= vbl_start && position < vbl_end;
 
@@ -796,11 +796,12 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 int intel_get_crtc_scanline(struct intel_crtc *crtc)
 {
 	struct drm_i915_private *dev_priv = crtc->base.dev->dev_private;
+	unsigned long irqflags;
 	int position;
 
-	lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 	position = __intel_get_crtc_scanline(crtc);
-	lockmgr(&dev_priv->uncore.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
 
 	return position;
 }
@@ -974,10 +975,10 @@ static void gen6_pm_rps_work(struct work_struct *work)
 	int new_delay, adj, min, max;
 	u32 pm_iir;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	/* Speed up work cancelation during disabling rps interrupts. */
 	if (!dev_priv->rps.interrupts_enabled) {
-		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+		spin_unlock_irq(&dev_priv->irq_lock);
 		return;
 	}
 	pm_iir = dev_priv->rps.pm_iir;
@@ -986,7 +987,7 @@ static void gen6_pm_rps_work(struct work_struct *work)
 	gen6_enable_pm_irq(dev_priv, dev_priv->pm_rps_events);
 	client_boost = dev_priv->rps.client_boost;
 	dev_priv->rps.client_boost = false;
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	/* Make sure we didn't queue anything we're not going to process. */
 	WARN_ON(pm_iir & ~dev_priv->pm_rps_events);
@@ -1048,6 +1049,7 @@ static void gen6_pm_rps_work(struct work_struct *work)
 
 	mutex_unlock(&dev_priv->rps.hw_lock);
 }
+
 
 /**
  * ivybridge_parity_work - Workqueue called when a parity error interrupt
@@ -1125,9 +1127,9 @@ static void ivybridge_parity_work(struct work_struct *work)
 
 out:
 	WARN_ON(dev_priv->l3_parity.which_slice);
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	gen5_enable_gt_irq(dev_priv, GT_PARITY_ERROR(dev_priv->dev));
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	mutex_unlock(&dev_priv->dev->struct_mutex);
 }
@@ -1611,6 +1613,7 @@ static irqreturn_t valleyview_irq_handler(void *arg)
 
 		if (gt_iir == 0 && pm_iir == 0 && iir == 0)
 			goto out;
+
 
 		if (gt_iir)
 			snb_gt_irq_handler(dev, dev_priv, gt_iir);
@@ -2421,15 +2424,16 @@ void i915_handle_error(struct drm_device *dev, bool wedged,
 static int i915_enable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	if (INTEL_INFO(dev)->gen >= 4)
 		i915_enable_pipestat(dev_priv, pipe,
 				     PIPE_START_VBLANK_INTERRUPT_STATUS);
 	else
 		i915_enable_pipestat(dev_priv, pipe,
 				     PIPE_VBLANK_INTERRUPT_STATUS);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 
 	return 0;
 }
@@ -2437,12 +2441,13 @@ static int i915_enable_vblank(struct drm_device *dev, int pipe)
 static int ironlake_enable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 	uint32_t bit = (INTEL_INFO(dev)->gen >= 7) ? DE_PIPE_VBLANK_IVB(pipe) :
 						     DE_PIPE_VBLANK(pipe);
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	ironlake_enable_display_irq(dev_priv, bit);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 
 	return 0;
 }
@@ -2450,11 +2455,12 @@ static int ironlake_enable_vblank(struct drm_device *dev, int pipe)
 static int valleyview_enable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	i915_enable_pipestat(dev_priv, pipe,
 			     PIPE_START_VBLANK_INTERRUPT_STATUS);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 
 	return 0;
 }
@@ -2462,12 +2468,13 @@ static int valleyview_enable_vblank(struct drm_device *dev, int pipe)
 static int gen8_enable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	dev_priv->de_irq_mask[pipe] &= ~GEN8_PIPE_VBLANK;
 	I915_WRITE(GEN8_DE_PIPE_IMR(pipe), dev_priv->de_irq_mask[pipe]);
 	POSTING_READ(GEN8_DE_PIPE_IMR(pipe));
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 	return 0;
 }
 
@@ -2477,44 +2484,48 @@ static int gen8_enable_vblank(struct drm_device *dev, int pipe)
 static void i915_disable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	i915_disable_pipestat(dev_priv, pipe,
 			      PIPE_VBLANK_INTERRUPT_STATUS |
 			      PIPE_START_VBLANK_INTERRUPT_STATUS);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 }
 
 static void ironlake_disable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 	uint32_t bit = (INTEL_INFO(dev)->gen >= 7) ? DE_PIPE_VBLANK_IVB(pipe) :
 						     DE_PIPE_VBLANK(pipe);
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	ironlake_disable_display_irq(dev_priv, bit);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 }
 
 static void valleyview_disable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	i915_disable_pipestat(dev_priv, pipe,
 			      PIPE_START_VBLANK_INTERRUPT_STATUS);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 }
 
 static void gen8_disable_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long irqflags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	dev_priv->de_irq_mask[pipe] |= GEN8_PIPE_VBLANK;
 	I915_WRITE(GEN8_DE_PIPE_IMR(pipe), dev_priv->de_irq_mask[pipe]);
 	POSTING_READ(GEN8_DE_PIPE_IMR(pipe));
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, irqflags);
 }
 
 static bool
@@ -2973,7 +2984,7 @@ void gen8_irq_power_well_post_enable(struct drm_i915_private *dev_priv,
 {
 	uint32_t extra_ier = GEN8_PIPE_VBLANK | GEN8_PIPE_FIFO_UNDERRUN;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	if (pipe_mask & 1 << PIPE_A)
 		GEN8_IRQ_INIT_NDX(DE_PIPE, PIPE_A,
 				  dev_priv->de_irq_mask[PIPE_A],
@@ -2986,7 +2997,7 @@ void gen8_irq_power_well_post_enable(struct drm_i915_private *dev_priv,
 		GEN8_IRQ_INIT_NDX(DE_PIPE, PIPE_C,
 				  dev_priv->de_irq_mask[PIPE_C],
 				  ~dev_priv->de_irq_mask[PIPE_C] | extra_ier);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 }
 
 static void cherryview_irq_preinstall(struct drm_device *dev)
@@ -3181,9 +3192,9 @@ static int ironlake_irq_postinstall(struct drm_device *dev)
 		 * spinlocking not required here for correctness since interrupt
 		 * setup is guaranteed to run in single-threaded context. But we
 		 * need it to make the assert_spin_locked happy. */
-		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+		spin_lock_irq(&dev_priv->irq_lock);
 		ironlake_enable_display_irq(dev_priv, DE_PCU_EVENT);
-		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+		spin_unlock_irq(&dev_priv->irq_lock);
 	}
 
 	return 0;
@@ -3298,10 +3309,10 @@ static void vlv_display_irq_postinstall(struct drm_i915_private *dev_priv)
 
 	/* Interrupt setup is already guaranteed to be single-threaded, this is
 	 * just to make the assert_spin_locked check happy. */
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	if (dev_priv->display_irqs_enabled)
 		valleyview_display_irqs_install(dev_priv);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 }
 
 static int valleyview_irq_postinstall(struct drm_device *dev)
@@ -3435,10 +3446,10 @@ static void vlv_display_irq_uninstall(struct drm_i915_private *dev_priv)
 {
 	/* Interrupt setup is already guaranteed to be single-threaded, this is
 	 * just to make the assert_spin_locked check happy. */
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	if (dev_priv->display_irqs_enabled)
 		valleyview_display_irqs_uninstall(dev_priv);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	vlv_display_irq_reset(dev_priv);
 
@@ -3523,10 +3534,10 @@ static int i8xx_irq_postinstall(struct drm_device *dev)
 
 	/* Interrupt setup is already guaranteed to be single-threaded, this is
 	 * just to make the assert_spin_locked check happy. */
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_CRC_DONE_INTERRUPT_STATUS);
 	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_CRC_DONE_INTERRUPT_STATUS);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	return 0;
 }
@@ -3704,10 +3715,10 @@ static int i915_irq_postinstall(struct drm_device *dev)
 
 	/* Interrupt setup is already guaranteed to be single-threaded, this is
 	 * just to make the assert_spin_locked check happy. */
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_CRC_DONE_INTERRUPT_STATUS);
 	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_CRC_DONE_INTERRUPT_STATUS);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	return 0;
 }
@@ -3904,11 +3915,11 @@ static int i965_irq_postinstall(struct drm_device *dev)
 
 	/* Interrupt setup is already guaranteed to be single-threaded, this is
 	 * just to make the assert_spin_locked check happy. */
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_GMBUS_INTERRUPT_STATUS);
 	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_CRC_DONE_INTERRUPT_STATUS);
 	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_CRC_DONE_INTERRUPT_STATUS);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	/*
 	 * Enable some error detection, note the instruction error mask

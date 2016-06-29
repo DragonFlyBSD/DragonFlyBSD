@@ -197,7 +197,7 @@ static void intel_hpd_irq_storm_reenable_work(struct work_struct *work)
 
 	intel_runtime_pm_get(dev_priv);
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	for_each_hpd_pin(i) {
 		struct drm_connector *connector;
 
@@ -221,7 +221,7 @@ static void intel_hpd_irq_storm_reenable_work(struct work_struct *work)
 	}
 	if (dev_priv->display.hpd_irq_setup)
 		dev_priv->display.hpd_irq_setup(dev);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	intel_runtime_pm_put(dev_priv);
 }
@@ -256,12 +256,12 @@ static void i915_digport_work_func(struct work_struct *work)
 	int i;
 	u32 old_bits = 0;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	long_port_mask = dev_priv->hotplug.long_port_mask;
 	dev_priv->hotplug.long_port_mask = 0;
 	short_port_mask = dev_priv->hotplug.short_port_mask;
 	dev_priv->hotplug.short_port_mask = 0;
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	for (i = 0; i < I915_MAX_PORTS; i++) {
 		bool valid = false;
@@ -288,9 +288,9 @@ static void i915_digport_work_func(struct work_struct *work)
 	}
 
 	if (old_bits) {
-		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+		spin_lock_irq(&dev_priv->irq_lock);
 		dev_priv->hotplug.event_bits |= old_bits;
-		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+		spin_unlock_irq(&dev_priv->irq_lock);
 		schedule_work(&dev_priv->hotplug.hotplug_work);
 	}
 }
@@ -313,7 +313,7 @@ static void i915_hotplug_work_func(struct work_struct *work)
 	mutex_lock(&mode_config->mutex);
 	DRM_DEBUG_KMS("running encoder hotplug functions\n");
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 
 	hpd_event_bits = dev_priv->hotplug.event_bits;
 	dev_priv->hotplug.event_bits = 0;
@@ -321,7 +321,7 @@ static void i915_hotplug_work_func(struct work_struct *work)
 	/* Disable hotplug on connectors that hit an irq storm. */
 	intel_hpd_irq_storm_disable(dev_priv);
 
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	list_for_each_entry(connector, &mode_config->connector_list, head) {
 		intel_connector = to_intel_connector(connector);
@@ -342,6 +342,7 @@ static void i915_hotplug_work_func(struct work_struct *work)
 	if (changed)
 		drm_kms_helper_hotplug_event(dev);
 }
+
 
 /**
  * intel_hpd_irq_handler - main hotplug irq handler
@@ -469,14 +470,18 @@ void intel_hpd_init(struct drm_i915_private *dev_priv)
 		connector->polled = intel_connector->polled;
 		if (connector->encoder && !connector->polled && I915_HAS_HOTPLUG(dev) && intel_connector->encoder->hpd_pin > HPD_NONE)
 			connector->polled = DRM_CONNECTOR_POLL_HPD;
+		if (intel_connector->mst_port)
+			connector->polled = DRM_CONNECTOR_POLL_HPD;
 	}
 
-	/* Interrupt setup is already guaranteed to be single-threaded, this is
-	 * just to make the assert_spin_locked checks happy. */
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	/*
+	 * Interrupt setup is already guaranteed to be single-threaded, this is
+	 * just to make the assert_spin_locked checks happy.
+	 */
+	spin_lock_irq(&dev_priv->irq_lock);
 	if (dev_priv->display.hpd_irq_setup)
 		dev_priv->display.hpd_irq_setup(dev);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 }
 
 void intel_hpd_init_work(struct drm_i915_private *dev_priv)
@@ -489,13 +494,13 @@ void intel_hpd_init_work(struct drm_i915_private *dev_priv)
 
 void intel_hpd_cancel_work(struct drm_i915_private *dev_priv)
 {
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 
 	dev_priv->hotplug.long_port_mask = 0;
 	dev_priv->hotplug.short_port_mask = 0;
 	dev_priv->hotplug.event_bits = 0;
 
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	cancel_work_sync(&dev_priv->hotplug.dig_port_work);
 	cancel_work_sync(&dev_priv->hotplug.hotplug_work);

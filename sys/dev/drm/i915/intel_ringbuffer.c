@@ -1511,14 +1511,15 @@ gen5_ring_get_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
 	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
 		return false;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (ring->irq_refcount++ == 0)
 		gen5_enable_gt_irq(dev_priv, ring->irq_enable_mask);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 
 	return true;
 }
@@ -1528,11 +1529,12 @@ gen5_ring_put_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (--ring->irq_refcount == 0)
 		gen5_disable_gt_irq(dev_priv, ring->irq_enable_mask);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 }
 
 static bool
@@ -1540,17 +1542,18 @@ i9xx_ring_get_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return false;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (ring->irq_refcount++ == 0) {
 		dev_priv->irq_mask &= ~ring->irq_enable_mask;
 		I915_WRITE(IMR, dev_priv->irq_mask);
 		POSTING_READ(IMR);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 
 	return true;
 }
@@ -1560,14 +1563,15 @@ i9xx_ring_put_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (--ring->irq_refcount == 0) {
 		dev_priv->irq_mask |= ring->irq_enable_mask;
 		I915_WRITE(IMR, dev_priv->irq_mask);
 		POSTING_READ(IMR);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 }
 
 static bool
@@ -1575,17 +1579,18 @@ i8xx_ring_get_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return false;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (ring->irq_refcount++ == 0) {
 		dev_priv->irq_mask &= ~ring->irq_enable_mask;
 		I915_WRITE16(IMR, dev_priv->irq_mask);
 		POSTING_READ16(IMR);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 
 	return true;
 }
@@ -1595,14 +1600,15 @@ i8xx_ring_put_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (--ring->irq_refcount == 0) {
 		dev_priv->irq_mask |= ring->irq_enable_mask;
 		I915_WRITE16(IMR, dev_priv->irq_mask);
 		POSTING_READ16(IMR);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 }
 
 static int
@@ -1647,11 +1653,12 @@ gen6_ring_get_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
 	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
 		return false;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (ring->irq_refcount++ == 0) {
 		if (HAS_L3_DPF(dev) && ring->id == RCS)
 			I915_WRITE_IMR(ring,
@@ -1661,7 +1668,7 @@ gen6_ring_get_irq(struct intel_engine_cs *ring)
 			I915_WRITE_IMR(ring, ~ring->irq_enable_mask);
 		gen5_enable_gt_irq(dev_priv, ring->irq_enable_mask);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 
 	return true;
 }
@@ -1671,8 +1678,9 @@ gen6_ring_put_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (--ring->irq_refcount == 0) {
 		if (HAS_L3_DPF(dev) && ring->id == RCS)
 			I915_WRITE_IMR(ring, ~GT_PARITY_ERROR(dev));
@@ -1680,7 +1688,7 @@ gen6_ring_put_irq(struct intel_engine_cs *ring)
 			I915_WRITE_IMR(ring, ~0);
 		gen5_disable_gt_irq(dev_priv, ring->irq_enable_mask);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 }
 
 static bool
@@ -1688,16 +1696,17 @@ hsw_vebox_get_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
 	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
 		return false;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (ring->irq_refcount++ == 0) {
 		I915_WRITE_IMR(ring, ~ring->irq_enable_mask);
 		gen6_enable_pm_irq(dev_priv, ring->irq_enable_mask);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 
 	return true;
 }
@@ -1707,13 +1716,14 @@ hsw_vebox_put_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (--ring->irq_refcount == 0) {
 		I915_WRITE_IMR(ring, ~0);
 		gen6_disable_pm_irq(dev_priv, ring->irq_enable_mask);
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 }
 
 static bool
@@ -1721,11 +1731,12 @@ gen8_ring_get_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
 	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
 		return false;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (ring->irq_refcount++ == 0) {
 		if (HAS_L3_DPF(dev) && ring->id == RCS) {
 			I915_WRITE_IMR(ring,
@@ -1736,7 +1747,7 @@ gen8_ring_get_irq(struct intel_engine_cs *ring)
 		}
 		POSTING_READ(RING_IMR(ring->mmio_base));
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 
 	return true;
 }
@@ -1746,8 +1757,9 @@ gen8_ring_put_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (--ring->irq_refcount == 0) {
 		if (HAS_L3_DPF(dev) && ring->id == RCS) {
 			I915_WRITE_IMR(ring,
@@ -1757,7 +1769,7 @@ gen8_ring_put_irq(struct intel_engine_cs *ring)
 		}
 		POSTING_READ(RING_IMR(ring->mmio_base));
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 }
 
 static int

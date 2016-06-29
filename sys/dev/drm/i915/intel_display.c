@@ -3259,10 +3259,10 @@ void intel_finish_reset(struct drm_device *dev)
 
 	intel_modeset_init_hw(dev);
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev_priv->irq_lock);
 	if (dev_priv->display.hpd_irq_setup)
 		dev_priv->display.hpd_irq_setup(dev);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irq(&dev_priv->irq_lock);
 
 	intel_display_resume(dev);
 
@@ -3308,9 +3308,9 @@ static bool intel_crtc_has_pending_flip(struct drm_crtc *crtc)
 	    intel_crtc->reset_counter != atomic_read(&dev_priv->gpu_error.reset_counter))
 		return false;
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev->event_lock);
 	pending = to_intel_crtc(crtc)->unpin_work != NULL;
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irq(&dev->event_lock);
 
 	return pending;
 }
@@ -3922,12 +3922,12 @@ void intel_crtc_wait_for_pending_flips(struct drm_crtc *crtc)
 				       60*HZ) == 0)) {
 		struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 
-		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+		spin_lock_irq(&dev->event_lock);
 		if (intel_crtc->unpin_work) {
 			WARN_ONCE(1, "Removing stuck page flip\n");
 			page_flip_completed(intel_crtc);
 		}
-		lockmgr(&dev->event_lock, LK_RELEASE);
+		spin_unlock_irq(&dev->event_lock);
 	}
 
 	if (crtc->primary->fb) {
@@ -10664,10 +10664,10 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 	struct drm_device *dev = crtc->dev;
 	struct intel_unpin_work *work;
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev->event_lock);
 	work = intel_crtc->unpin_work;
 	intel_crtc->unpin_work = NULL;
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irq(&dev->event_lock);
 
 	if (work) {
 		cancel_work_sync(&work->work);
@@ -10709,6 +10709,7 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 {
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	struct intel_unpin_work *work;
+	unsigned long flags;
 
 	/* Ignore early vblank irqs */
 	if (intel_crtc == NULL)
@@ -10718,20 +10719,20 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 	 * This is called both by irq handlers and the reset code (to complete
 	 * lost pageflips) so needs the full irqsave spinlocks.
 	 */
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev->event_lock, flags);
 	work = intel_crtc->unpin_work;
 
 	/* Ensure we don't miss a work->pending update ... */
 	smp_rmb();
 
 	if (work == NULL || atomic_read(&work->pending) < INTEL_FLIP_COMPLETE) {
-		lockmgr(&dev->event_lock, LK_RELEASE);
+		spin_unlock_irqrestore(&dev->event_lock, flags);
 		return;
 	}
 
 	page_flip_completed(intel_crtc);
 
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
 
 void intel_finish_page_flip(struct drm_device *dev, int pipe)
@@ -10801,6 +10802,7 @@ void intel_prepare_page_flip(struct drm_device *dev, int plane)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc =
 		to_intel_crtc(dev_priv->plane_to_crtc_mapping[plane]);
+	unsigned long flags;
 
 
 	/*
@@ -10811,10 +10813,10 @@ void intel_prepare_page_flip(struct drm_device *dev, int plane)
 	 * generate a page-flip completion irq, i.e. every modeset
 	 * is also accompanied by a spurious intel_prepare_page_flip().
 	 */
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev->event_lock, flags);
 	if (intel_crtc->unpin_work && page_flip_finished(intel_crtc))
 		atomic_inc_not_zero(&intel_crtc->unpin_work->pending);
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
 
 static inline void intel_mark_page_flip_active(struct intel_crtc *intel_crtc)
@@ -11354,7 +11356,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 		goto free_work;
 
 	/* We borrow the event spin lock for protecting unpin_work */
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev->event_lock);
 	if (intel_crtc->unpin_work) {
 		/* Before declaring the flip queue wedged, check if
 		 * the hardware completed the operation behind our backs.
@@ -11364,7 +11366,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 			page_flip_completed(intel_crtc);
 		} else {
 			DRM_DEBUG_DRIVER("flip queue: crtc already busy\n");
-			lockmgr(&dev->event_lock, LK_RELEASE);
+			spin_unlock_irq(&dev->event_lock);
 
 			drm_crtc_vblank_put(crtc);
 			kfree(work);
@@ -11372,7 +11374,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 		}
 	}
 	intel_crtc->unpin_work = work;
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irq(&dev->event_lock);
 
 	if (atomic_read(&intel_crtc->unpin_work_count) >= 2)
 		flush_workqueue(dev_priv->wq);
@@ -11482,9 +11484,9 @@ cleanup:
 	drm_gem_object_unreference_unlocked(&obj->base);
 	drm_framebuffer_unreference(work->old_fb);
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&dev->event_lock);
 	intel_crtc->unpin_work = NULL;
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irq(&dev->event_lock);
 
 	drm_crtc_vblank_put(crtc);
 free_work:
@@ -11521,9 +11523,9 @@ retry:
 			drm_atomic_state_free(state);
 
 		if (ret == 0 && event) {
-			lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+			spin_lock_irq(&dev->event_lock);
 			drm_send_vblank_event(dev, pipe, event);
-			lockmgr(&dev->event_lock, LK_RELEASE);
+			spin_unlock_irq(&dev->event_lock);
 		}
 	}
 	return ret;
@@ -12195,7 +12197,9 @@ encoder_retry:
 		goto encoder_retry;
 	}
 
-	pipe_config->dither = pipe_config->pipe_bpp != base_bpp;
+	/* Dithering seems to not pass-through bits correctly when it should, so
+	 * only enable it on 6bpc panels. */
+	pipe_config->dither = pipe_config->pipe_bpp == 6*3;
 	DRM_DEBUG_KMS("plane bpp: %i, pipe bpp: %i, dithering: %i\n",
 		      base_bpp, pipe_config->pipe_bpp, pipe_config->dither);
 
@@ -14716,11 +14720,7 @@ static void i915_disable_vga(struct drm_device *dev)
 #endif
 	udelay(300);
 
-	/*
-	 * Fujitsu-Siemens Lifebook S6010 (830) has problems resuming
-	 * from S3 without preserving (some of?) the other bits.
-	 */
-	I915_WRITE(vga_reg, dev_priv->bios_vgacntr | VGA_DISP_DISABLE);
+	I915_WRITE(vga_reg, VGA_DISP_DISABLE);
 	POSTING_READ(vga_reg);
 }
 
@@ -14821,8 +14821,6 @@ void intel_modeset_init(struct drm_device *dev)
 
 	intel_shared_dpll_init(dev);
 
-	/* save the BIOS value before clobbering it */
-	dev_priv->bios_vgacntr = I915_READ(i915_vgacntrl_reg(dev));
 	/* Just disable it once at startup */
 	i915_disable_vga(dev);
 	intel_setup_outputs(dev);
@@ -15674,7 +15672,7 @@ void intel_modeset_preclose(struct drm_device *dev, struct drm_file *file)
 	for_each_intel_crtc(dev, crtc) {
 		struct intel_unpin_work *work;
 
-		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+		spin_lock_irq(&dev->event_lock);
 
 		work = crtc->unpin_work;
 
@@ -15684,6 +15682,6 @@ void intel_modeset_preclose(struct drm_device *dev, struct drm_file *file)
 			work->event = NULL;
 		}
 
-		lockmgr(&dev->event_lock, LK_RELEASE);
+		spin_unlock_irq(&dev->event_lock);
 	}
 }

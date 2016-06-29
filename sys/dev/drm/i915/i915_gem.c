@@ -3022,10 +3022,11 @@ i915_gem_retire_requests(struct drm_device *dev)
 		i915_gem_retire_requests_ring(ring);
 		idle &= list_empty(&ring->request_list);
 		if (i915.enable_execlists) {
+			unsigned long flags;
 
-			lockmgr(&ring->execlist_lock, LK_EXCLUSIVE);
+			spin_lock_irqsave(&ring->execlist_lock, flags);
 			idle &= list_empty(&ring->execlist_queue);
-			lockmgr(&ring->execlist_lock, LK_RELEASE);
+			spin_unlock_irqrestore(&ring->execlist_lock, flags);
 
 			intel_execlists_retire_requests(ring);
 		}

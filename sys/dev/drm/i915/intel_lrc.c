@@ -543,7 +543,7 @@ static int execlists_context_queue(struct drm_i915_gem_request *request)
 
 	request->tail = request->ringbuf->tail;
 
-	lockmgr(&ring->execlist_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&ring->execlist_lock);
 
 	list_for_each_entry(cursor, &ring->execlist_queue, execlist_link)
 		if (++num_elements > 2)
@@ -569,7 +569,7 @@ static int execlists_context_queue(struct drm_i915_gem_request *request)
 	if (num_elements == 0)
 		execlists_context_unqueue(ring);
 
-	lockmgr(&ring->execlist_lock, LK_RELEASE);
+	spin_unlock_irq(&ring->execlist_lock);
 
 	return 0;
 }
@@ -935,9 +935,9 @@ void intel_execlists_retire_requests(struct intel_engine_cs *ring)
 		return;
 
 	INIT_LIST_HEAD(&retired_list);
-	lockmgr(&ring->execlist_lock, LK_EXCLUSIVE);
+	spin_lock_irq(&ring->execlist_lock);
 	list_replace_init(&ring->execlist_retired_req_list, &retired_list);
-	lockmgr(&ring->execlist_lock, LK_RELEASE);
+	spin_unlock_irq(&ring->execlist_lock);
 
 	list_for_each_entry_safe(req, tmp, &retired_list, execlist_link) {
 		struct intel_context *ctx = req->ctx;
@@ -1574,16 +1574,17 @@ static bool gen8_logical_ring_get_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
 	if (WARN_ON(!intel_irqs_enabled(dev_priv)))
 		return false;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (ring->irq_refcount++ == 0) {
 		I915_WRITE_IMR(ring, ~(ring->irq_enable_mask | ring->irq_keep_mask));
 		POSTING_READ(RING_IMR(ring->mmio_base));
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 
 	return true;
 }
@@ -1592,13 +1593,14 @@ static void gen8_logical_ring_put_irq(struct intel_engine_cs *ring)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	unsigned long flags;
 
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev_priv->irq_lock, flags);
 	if (--ring->irq_refcount == 0) {
 		I915_WRITE_IMR(ring, ~ring->irq_keep_mask);
 		POSTING_READ(RING_IMR(ring->mmio_base));
 	}
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev_priv->irq_lock, flags);
 }
 
 static int gen8_emit_flush(struct drm_i915_gem_request *request,
