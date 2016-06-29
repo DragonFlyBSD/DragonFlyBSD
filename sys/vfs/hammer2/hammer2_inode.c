@@ -1092,8 +1092,7 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 killit:
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISDELETED);
 		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_start(&xop->head,
-				  hammer2_inode_xop_destroy);
+		hammer2_xop_start(&xop->head, hammer2_inode_xop_destroy);
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
@@ -1325,6 +1324,7 @@ hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
 	pmp = ip->pmp;
 	chain = NULL;
 
+again:
 	parent = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (parent)
 		hammer2_chain_getparent(&parent, HAMMER2_RESOLVE_ALWAYS);
@@ -1337,6 +1337,17 @@ hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
+	if (chain->parent != parent) {
+		kprintf("hammer2_inode_xop_destroy: "
+			"parent changed %p->(%p,%p)\n",
+			chain, parent, chain->parent);
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		goto again;
+	}
+
 	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 	error = 0;
 done:
