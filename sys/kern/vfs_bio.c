@@ -2571,9 +2571,7 @@ again:
 		if (bp->b_flags & B_INVAL) {
 			spin_unlock(&pcpu->spin);
 			brelse(bp);
-			spin_lock(&pcpu->spin);
-			++r;
-			break;
+			goto doloop;
 		}
 
 		/*
@@ -2619,11 +2617,15 @@ again:
 			bp->b_flags |= B_AGE;
 			cluster_awrite(bp);
 		}
+		/* bp invalid but needs to be NULL-tested if we break out */
+doloop:
 		spin_lock(&pcpu->spin);
 		++r;
 		if (--loops == 0)
 			break;
+		bp = marker;
 	}
+	/* bp is invalid here but can be NULL-tested to advance */
 
 	TAILQ_REMOVE(&pcpu->bufqueues[q], marker, b_freelist);
 	marker->b_qindex = BQUEUE_NONE;
