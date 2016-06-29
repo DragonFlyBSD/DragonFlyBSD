@@ -1318,20 +1318,21 @@ static struct drm_pending_vblank_event *create_vblank_event(
 		struct drm_device *dev, struct drm_file *file_priv, uint64_t user_data)
 {
 	struct drm_pending_vblank_event *e = NULL;
+	unsigned long flags;
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev->event_lock, flags);
 	if (file_priv->event_space < sizeof e->event) {
-		lockmgr(&dev->event_lock, LK_RELEASE);
+		spin_unlock_irqrestore(&dev->event_lock, flags);
 		goto out;
 	}
 	file_priv->event_space -= sizeof e->event;
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev->event_lock, flags);
 
 	e = kzalloc(sizeof *e, GFP_KERNEL);
 	if (e == NULL) {
-		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+		spin_lock_irqsave(&dev->event_lock, flags);
 		file_priv->event_space += sizeof e->event;
-		lockmgr(&dev->event_lock, LK_RELEASE);
+		spin_unlock_irqrestore(&dev->event_lock, flags);
 		goto out;
 	}
 
@@ -1353,10 +1354,11 @@ out:
 static void destroy_vblank_event(struct drm_device *dev,
 		struct drm_file *file_priv, struct drm_pending_vblank_event *e)
 {
+	unsigned long flags;
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&dev->event_lock, flags);
 	file_priv->event_space += sizeof e->event;
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	spin_unlock_irqrestore(&dev->event_lock, flags);
 	kfree(e);
 }
 
