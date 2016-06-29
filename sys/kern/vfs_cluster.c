@@ -292,7 +292,7 @@ cluster_readx(struct vnode *vp, off_t filesize, off_t loffset,
 	maxrbuild = vmaxiosize(vp) / blksize;
 
 	/*
-	 * if it is in the cache, then check to see if the reads have been
+	 * If it is in the cache, then check to see if the reads have been
 	 * sequential.  If they have, then try some read-ahead, otherwise
 	 * back-off on prospective read-aheads.
 	 */
@@ -1218,8 +1218,15 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		cc->v_lasta = cc->v_clen = cc->v_cstart = cc->v_lastw = 0;
 
 	if (cc->v_clen == 0 || loffset != cc->v_lastw + blksize ||
-	    bp->b_bio2.bio_offset == NOOFFSET ||
-	    (bp->b_bio2.bio_offset != cc->v_lasta + blksize)) {
+	    (bp->b_bio2.bio_offset != NOOFFSET &&
+	     (bp->b_bio2.bio_offset != cc->v_lasta + blksize))) {
+		/*
+		 * Next block is not logically sequential, or, if physical
+		 * block offsets are available, not physically sequential.
+		 *
+		 * If physical block offsets are not available we only
+		 * get here if we weren't logically sequential.
+		 */
 		maxclen = vmaxiosize(vp);
 		if (cc->v_clen != 0) {
 			/*
@@ -1291,6 +1298,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 				}
 			}
 		}
+
 		/*
 		 * Consider beginning a cluster. If at end of file, make
 		 * cluster as large as possible, otherwise find size of
@@ -1373,6 +1381,11 @@ cluster_awrite(struct buf *bp)
 
 	total = cluster_wbuild(bp->b_vp, &bp, bp->b_bufsize,
 			       bp->b_loffset, vmaxiosize(bp->b_vp));
+
+	/*
+	 * If bp is still non-NULL then cluster_wbuild() did not initiate
+	 * I/O on it and we must do so here to provide the API guarantee.
+	 */
 	if (bp)
 		bawrite(bp);
 

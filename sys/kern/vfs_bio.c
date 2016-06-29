@@ -161,10 +161,13 @@ static struct thread *bufdaemon_td;
 static struct thread *bufdaemonhw_td;
 static u_int lowmempgallocs;
 static u_int lowmempgfails;
+static u_int flushperqueue = 1024;
 
 /*
  * Sysctls for operational control of the buffer cache.
  */
+SYSCTL_UINT(_vfs, OID_AUTO, flushperqueue, CTLFLAG_RW, &flushperqueue, 0,
+	"Number of buffers to flush from each per-cpu queue");
 SYSCTL_LONG(_vfs, OID_AUTO, lodirtybufspace, CTLFLAG_RW, &lodirtybufspace, 0,
 	"Number of dirty buffers to flush before bufdaemon becomes inactive");
 SYSCTL_LONG(_vfs, OID_AUTO, hidirtybufspace, CTLFLAG_RW, &hidirtybufspace, 0,
@@ -2482,18 +2485,20 @@ buf_daemon_hw(void)
 }
 
 /*
- * flushbufqueues:
+ * Flush up to (flushperqueue) buffers in the dirty queue.  Each cpu has a
+ * localized version of the queue.  Each call made to this function iterates
+ * to another cpu.  It is desireable to flush several buffers from the same
+ * cpu's queue at once, as these are likely going to be linear.
  *
- *	Try to flush a buffer in the dirty queue.  We must be careful to
- *	free up B_INVAL buffers instead of write them, which NFS is 
- *	particularly sensitive to.
+ * We must be careful to free up B_INVAL buffers instead of write them, which
+ * NFS is particularly sensitive to.
  *
- *	B_RELBUF may only be set by VFSs.  We do set B_AGE to indicate
- *	that we really want to try to get the buffer out and reuse it
- *	due to the write load on the machine.
+ * B_RELBUF may only be set by VFSs.  We do set B_AGE to indicate that we
+ * really want to try to get the buffer out and reuse it due to the write
+ * load on the machine.
  *
- *	We must lock the buffer in order to check its validity before we
- *	can mess with its contents.  spin isn't enough.
+ * We must lock the buffer in order to check its validity before we can mess
+ * with its contents.  spin isn't enough.
  */
 static int
 flushbufqueues(struct buf *marker, bufq_type_t q)
@@ -2501,6 +2506,7 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 	struct bufpcpu *pcpu;
 	struct buf *bp;
 	int r = 0;
+	u_int loops = flushperqueue;
 	int lcpu = marker->b_qcpu;
 
 	KKASSERT(marker->b_qindex == BQUEUE_NONE);
@@ -2615,7 +2621,8 @@ again:
 		}
 		spin_lock(&pcpu->spin);
 		++r;
-		break;
+		if (--loops == 0)
+			break;
 	}
 
 	TAILQ_REMOVE(&pcpu->bufqueues[q], marker, b_freelist);
