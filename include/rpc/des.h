@@ -26,7 +26,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  *  @(#)des.h	2.2 88/08/10 4.0 RPCSRC; from 2.7 88/02/08 SMI
- *  $DragonFly: src/include/rpc/des.h,v 1.2 2003/11/14 01:01:50 dillon Exp $
  */
 /*
  * Generic DES driver interface
@@ -34,7 +33,9 @@
  * Copyright (c) 1986 by Sun Microsystems, Inc.
  */
 
+#ifdef notdef
 #include <sys/ioccom.h>
+#endif
 
 #define DES_MAXLEN 	65536	/* maximum # of bytes to encrypt  */
 #define DES_QUICKLEN	16	/* maximum # of bytes to encrypt quickly */
@@ -70,16 +71,16 @@ struct desparams {
 /*
  * Encrypt an arbitrary sized buffer
  */
-#define	DESIOCBLOCK	_IOWR(d, 6, struct desparams)
+#define	DESIOCBLOCK	_IOWR('d', 6, struct desparams)
 
-/* 
+/*
  * Encrypt of small amount of data, quickly
  */
-#define DESIOCQUICK	_IOWR(d, 7, struct desparams) 
+#define DESIOCQUICK	_IOWR('d', 7, struct desparams)
 
 #endif
 
 /*
  * Software DES.
  */
-extern int _des_crypt ( char *, int, struct desparams * );
+extern int _des_crypt( char *, int, struct desparams * );
