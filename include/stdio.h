@@ -456,6 +456,7 @@ __sfileno(FILE *_fp)
 
 extern int __isthreaded;
 
+#ifndef __cplusplus
 #define	feof(p)		(!__isthreaded ? __sfeof(p) : (feof)(p))
 #define	ferror(p)	(!__isthreaded ? __sferror(p) : (ferror)(p))
 #define	clearerr(p)	(!__isthreaded ? __sclearerr(p) : (clearerr)(p))
@@ -487,6 +488,7 @@ extern int __isthreaded;
 #define	getchar_unlocked()	getc_unlocked(stdin)
 #define	putchar_unlocked(x)	putc_unlocked(x, stdout)
 #endif
+#endif /* __cplusplus */
 
 __END_DECLS
 #endif /* !_STDIO_H_ */
