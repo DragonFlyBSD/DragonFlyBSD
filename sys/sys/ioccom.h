@@ -28,7 +28,6 @@
  *
  *	@(#)ioccom.h	8.2 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/ioccom.h,v 1.9 1999/12/29 04:24:42 peter Exp $
- * $DragonFly: src/sys/sys/ioccom.h,v 1.4 2007/01/10 13:33:22 swildner Exp $
  */
 
 #ifndef	_SYS_IOCCOM_H_
@@ -50,10 +49,10 @@
 #define	IOC_OUT		0x40000000	/* copy out parameters */
 #define	IOC_IN		0x80000000	/* copy in parameters */
 #define	IOC_INOUT	(IOC_IN|IOC_OUT)
-#define	IOC_DIRMASK	0xe0000000	/* mask for IN/OUT/VOID */
+#define	IOC_DIRMASK	(IOC_VOID|IOC_OUT|IOC_IN)
 
-#define	_IOC(inout,group,num,len) \
-	((unsigned long)(inout | ((len & IOCPARM_MASK) << 16) | ((group) << 8) | (num)))
+#define	_IOC(inout,group,num,len)	((unsigned long) \
+	((inout) | (((len) & IOCPARM_MASK) << 16) | ((group) << 8) | (num)))
 #define	_IO(g,n)	_IOC(IOC_VOID,	(g), (n), 0)
 #define	_IOR(g,n,t)	_IOC(IOC_OUT,	(g), (n), sizeof(t))
 #define	_IOW(g,n,t)	_IOC(IOC_IN,	(g), (n), sizeof(t))
@@ -65,7 +64,7 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	ioctl (int, unsigned long, ...);
+int	ioctl(int, unsigned long, ...);
 __END_DECLS
 
 #endif
