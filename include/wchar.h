@@ -100,10 +100,12 @@ typedef __size_t	size_t;
 #define	WEOF 	((wint_t)(-1))
 #endif
 
+#if __BSD_VISIBLE
 #define WCSBIN_EOF		0x01	/* indicate input buffer EOF */
 #define WCSBIN_SURRO		0x02	/* allow surrogates */
 #define WCSBIN_LONGCODES	0x04	/* allow up to 31-bit WCs */
 #define WCSBIN_STRICT		0x08	/* no escaping, else escapes happen */
+#endif
 
 struct tm;
 
@@ -125,8 +127,10 @@ size_t	mbrtowc(wchar_t * __restrict, const char * __restrict, size_t,
 int	mbsinit(const mbstate_t *);
 size_t	mbsrtowcs(wchar_t * __restrict, const char ** __restrict, size_t,
 	    mbstate_t * __restrict);
+#if __BSD_VISIBLE
 size_t	mbintowcr(wchar_t * __restrict dst, const char * __restrict src,
 	    size_t dlen, size_t *slen, int flags);
+#endif
 wint_t	putwc(wchar_t, FILE *);
 wint_t	putwchar(wchar_t);
 int	swprintf(wchar_t * __restrict, size_t n, const wchar_t * __restrict,
@@ -139,8 +143,10 @@ int	vswprintf(wchar_t * __restrict, size_t n, const wchar_t * __restrict,
 	    __va_list);
 int	vwprintf(const wchar_t * __restrict, __va_list);
 size_t	wcrtomb(char * __restrict, wchar_t, mbstate_t * __restrict);
+#if __BSD_VISIBLE
 size_t	wcrtombin(char * __restrict dst, const wchar_t * __restrict src,
 	    size_t dlen, size_t *slen, int flags);
+#endif
 wchar_t	*wcscat(wchar_t * __restrict, const wchar_t * __restrict);
 wchar_t	*wcschr(const wchar_t *, wchar_t) __pure;
 int	wcscmp(const wchar_t *, const wchar_t *) __pure;
@@ -177,10 +183,12 @@ wchar_t	*wmemset(wchar_t *, wchar_t, size_t);
 int	wprintf(const wchar_t * __restrict, ...);
 int	wscanf(const wchar_t * __restrict, ...);
 
+#if __BSD_VISIBLE
 size_t	utf8towcr(wchar_t * __restrict dst, const char * __restrict src,
 	    size_t dlen, size_t *slen, int flags);
 size_t	wcrtoutf8(char * __restrict dst, const wchar_t * __restrict src,
 	    size_t dlen, size_t *slen, int flags);
+#endif
 
 #ifndef _STDSTREAM_DECLARED
 extern FILE *__stdinp;
