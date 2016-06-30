@@ -49,8 +49,6 @@ typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
 /*
  * Standard va types and macros
  */
-#define	__va_size(type) \
-	(((sizeof(type) + sizeof(int) - 1) / sizeof(int)) * sizeof(int))
 
 #ifdef __GNUC__
 
@@ -66,6 +64,8 @@ typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
 #else /* !__GNUC__ */
 
 /* Provide a free-standing implementation */
+#define __va_size(type) \
+	(((sizeof(type) + sizeof(int) - 1) / sizeof(int)) * sizeof(int))
 #define __va_start(ap, last) \
 	((ap) = (__va_list)&(last) + __va_size(last))
 #define __va_arg(ap, type) \
