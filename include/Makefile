@@ -34,8 +34,6 @@ INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 INCS+=	hesiod.h
 .endif
 
-MHDRS=	varargs.h
-
 # Only for default SHARED=copies case
 SHDRS=	soundcard.h joystick.h
 
