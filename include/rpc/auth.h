@@ -30,9 +30,7 @@
  *	from: @(#)auth.h 1.17 88/02/08 SMI
  *	from: @(#)auth.h	2.3 88/08/07 4.0 RPCSRC
  *	from: @(#)auth.h	1.43 	98/02/02 SMI
- * $NetBSD: auth.h,v 1.15 2000/06/02 22:57:55 fvdl Exp $
  * $FreeBSD: src/include/rpc/auth.h,v 1.21 2006/02/28 16:02:26 deischen Exp $
- * $DragonFly: src/include/rpc/auth.h,v 1.4 2004/02/26 13:58:26 joerg Exp $
  */
 
 /*

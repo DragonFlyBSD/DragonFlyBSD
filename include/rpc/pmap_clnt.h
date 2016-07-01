@@ -29,7 +29,6 @@
  *	from: @(#)pmap_clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: pmap_clnt.h,v 1.9 2000/06/02 22:57:55 fvdl Exp $
  * $FreeBSD: src/include/rpc/pmap_clnt.h,v 1.14 2002/04/28 15:18:45 des Exp $
- * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.7 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*

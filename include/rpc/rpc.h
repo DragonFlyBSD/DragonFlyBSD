@@ -29,7 +29,6 @@
  *	from: @(#)rpc.h	2.4 89/07/11 4.0 RPCSRC
  * $NetBSD: rpc.h,v 1.13 2000/06/02 22:57:56 fvdl Exp $
  * $FreeBSD: src/include/rpc/rpc.h,v 1.17 2002/03/23 17:24:55 imp Exp $
- * $DragonFly: src/include/rpc/rpc.h,v 1.6 2007/12/04 20:59:15 swildner Exp $
  */
 
 /*

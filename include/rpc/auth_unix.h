@@ -28,7 +28,6 @@
  *	from: @(#)auth_unix.h 1.8 88/02/08 SMI
  *	from: @(#)auth_unix.h	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/auth_unix.h,v 1.10 1999/08/27 23:45:03 peter Exp $
- * $DragonFly: src/include/rpc/auth_unix.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
 /*
@@ -69,7 +68,7 @@ struct authunix_parms {
 #define authsys_parms authunix_parms
 
 __BEGIN_DECLS
-extern bool_t xdr_authunix_parms (XDR *, struct authunix_parms *);
+extern bool_t xdr_authunix_parms(XDR *, struct authunix_parms *);
 __END_DECLS
 
 /*

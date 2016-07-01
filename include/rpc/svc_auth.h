@@ -29,7 +29,6 @@
  *	from: @(#)svc_auth.h	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: svc_auth.h,v 1.8 2000/06/02 22:57:57 fvdl Exp $
  * $FreeBSD: src/include/rpc/svc_auth.h,v 1.15 2008/09/09 14:15:55 dfr Exp $
- * $DragonFly: src/include/rpc/svc_auth.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
 /*

@@ -29,7 +29,6 @@
  *	from: @(#)pmap_rmt.h	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: pmap_rmt.h,v 1.7 1998/02/11 23:01:23 lukem Exp $
  * $FreeBSD: src/include/rpc/pmap_rmt.h,v 1.12 2002/03/23 17:24:55 imp Exp $
- * $DragonFly: src/include/rpc/pmap_rmt.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
 /*
