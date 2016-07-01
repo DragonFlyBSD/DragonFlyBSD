@@ -40,7 +40,6 @@
 #include <sys/spinlock2.h>
 #include <sys/serialize.h>
 #include <sys/proc.h>
-#include <machine/varargs.h>
 
 MALLOC_DEFINE(M_TASKQUEUE, "taskqueue", "Task Queues");
 

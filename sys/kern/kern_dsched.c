@@ -50,7 +50,6 @@
 #include <sys/buf2.h>
 #include <sys/dsched.h>
 #include <sys/fcntl.h>
-#include <machine/varargs.h>
 
 /*
  * Called on disk_create()

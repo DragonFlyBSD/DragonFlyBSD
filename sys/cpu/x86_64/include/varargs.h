@@ -45,7 +45,7 @@
 
 #ifdef __GNUC__
 
-typedef	__va_list	va_list;
+typedef __builtin_va_list	va_list;	/* internally known to gcc */
 
 typedef int __builtin_va_alist_t __attribute__((__mode__(__word__)));
 
