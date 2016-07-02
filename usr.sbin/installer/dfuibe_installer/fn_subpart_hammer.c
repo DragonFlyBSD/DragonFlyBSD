@@ -241,7 +241,7 @@ create_subpartitions(struct i_fn_args *a)
 		}
 
 		if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
-			command_add(cmds, "%s%s /dev/%s",
+			command_add(cmds, "%s%s -i 65536 /dev/%s",
 			    a->os_root, cmd_name(a, "NEWFS"),
 			    subpartition_get_device_name(sp));
 		} else {
