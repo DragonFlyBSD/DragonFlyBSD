@@ -56,6 +56,6 @@ static inline void spin_unlock_irq(struct lock *lock)
 }
 
 #define spin_lock_irqsave(lock, flags)		do { flags = 0; spin_lock_irq(lock); } while(0)
-#define spin_unlock_irqrestore(lock, flags)	spin_unlock_irq(lock)
+#define spin_unlock_irqrestore(lock, flags)	do { flags = 0; spin_unlock_irq(lock); } while(0)
 
 #endif	/* _LINUX_SPINLOCK_H_ */
