@@ -41,6 +41,7 @@
 #include <string.h>
 #include <paths.h>
 #include <errno.h>
+#include <limits.h>
 #include <machine/stdint.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>

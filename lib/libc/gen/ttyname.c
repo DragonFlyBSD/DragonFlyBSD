@@ -28,7 +28,6 @@
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.24 2007/01/09 00:27:55 imp Exp $
- * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.14 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -41,6 +40,7 @@
 #include <string.h>
 #include <paths.h>
 #include <errno.h>
+#include <limits.h>
 #include <machine/stdint.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>

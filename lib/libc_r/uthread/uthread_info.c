@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_info.c,v 1.14.2.9 2003/02/15 05:35:31 kris Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_info.c,v 1.6 2007/01/08 21:41:53 dillon Exp $
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -40,6 +39,7 @@
 #include <paths.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <limits.h>
 #include "pthread_private.h"
 
 #ifndef NELEMENTS

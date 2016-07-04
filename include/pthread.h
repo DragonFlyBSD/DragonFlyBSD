@@ -42,7 +42,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/signal.h>
-#include <limits.h>
+#include <machine/limits.h>
 #include <sys/sched.h>
 
 /*
