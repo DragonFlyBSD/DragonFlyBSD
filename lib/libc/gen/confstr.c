@@ -38,7 +38,6 @@
 #include <string.h>
 #include <unistd.h>
 
-
 size_t
 confstr(int name, char *buf, size_t len)
 {
@@ -50,19 +49,19 @@ confstr(int name, char *buf, size_t len)
 		p = _PATH_STDPATH;
 		goto docopy;
 
-		/*
-		 * POSIX/SUS ``Programming Environments'' stuff
-		 *
-		 * We don't support more than one programming environment
-		 * on any platform (yet), so we just return the empty
-		 * string for the environment we are compiled for,
-		 * and the string "unsupported programming environment"
-		 * for anything else.  (The Standard says that if these
-		 * values are used on a system which does not support
-		 * this environment -- determined via sysconf() -- then
-		 * the value we return is unspecified.  So, we return
-		 * something which will cause obvious breakage.)
-		 */
+	/*
+	 * POSIX/SUS ``Programming Environments'' stuff
+	 *
+	 * We don't support more than one programming environment
+	 * on any platform (yet), so we just return the empty
+	 * string for the environment we are compiled for,
+	 * and the string "unsupported programming environment"
+	 * for anything else.  (The Standard says that if these
+	 * values are used on a system which does not support
+	 * this environment -- determined via sysconf() -- then
+	 * the value we return is unspecified.  So, we return
+	 * something which will cause obvious breakage.)
+	 */
 	case _CS_POSIX_V6_ILP32_OFF32_CFLAGS:
 	case _CS_POSIX_V6_ILP32_OFF32_LDFLAGS:
 	case _CS_POSIX_V6_ILP32_OFF32_LIBS:
