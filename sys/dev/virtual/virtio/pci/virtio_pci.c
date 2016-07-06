@@ -851,7 +851,7 @@ vtpci_alloc_msi(struct vtpci_softc *sc)
             &sc->vtpci_irq_rid, &irq_flags);
 
 
-	return (1);
+	return (0);
 }
 
 static int
