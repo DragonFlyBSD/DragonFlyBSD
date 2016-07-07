@@ -197,7 +197,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 
 	lwkt_gettoken(&p->p_token);
 	plimit_lwp_fork(p);	/* force exclusive access */
-	lp = lwp_fork(curthread->td_lwp, p, RFPROC);
+	lp = lwp_fork(curthread->td_lwp, p, RFPROC | RFMEM);
 	error = cpu_prepare_lwp(lp, &params);
 	if (error)
 		goto fail;
@@ -674,7 +674,20 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	bcopy(&origlp->lwp_startcopy, &lp->lwp_startcopy,
 	    (unsigned) ((caddr_t)&lp->lwp_endcopy -
 			(caddr_t)&lp->lwp_startcopy));
-	lp->lwp_flags |= origlp->lwp_flags & LWP_ALTSTACK;
+
+	/*
+	 * Reset the sigaltstack if memory is shared, otherwise inherit
+	 * it.
+	 */
+	if (flags & RFMEM) {
+		lp->lwp_sigstk.ss_flags = SS_DISABLE;
+		lp->lwp_sigstk.ss_size = 0;
+		lp->lwp_sigstk.ss_sp = NULL;
+		lp->lwp_flags &= ~LWP_ALTSTACK;
+	} else {
+		lp->lwp_flags |= origlp->lwp_flags & LWP_ALTSTACK;
+	}
+
 	/*
 	 * Set cpbase to the last timeout that occured (not the upcoming
 	 * timeout).

@@ -639,8 +639,7 @@ sys_sigaltstack(struct sigaltstack_args *uap)
 			return (error);
 	}
 
-	error = kern_sigaltstack(uap->ss ? &ss : NULL,
-	    uap->oss ? &oss : NULL);
+	error = kern_sigaltstack(uap->ss ? &ss : NULL, uap->oss ? &oss : NULL);
 
 	if (error == 0 && uap->oss)
 		error = copyout(&oss, uap->oss, sizeof(*uap->oss));
