@@ -2293,16 +2293,24 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	/*
 	 * On modern intel cpus, haswell or later, cpu_idle_hlt=1 is better
-	 * becaue the cpu does significant power management in HLT
+	 * because the cpu does significant power management in MWAIT
 	 * (also suggested is to set sysctl machdep.mwait.CX.idle=AUTODEEP).
 	 *
-	 * On modern amd cpus or on any older amd or intel cpu,
-	 * cpu_idle_hlt=2 is better because ACPI is needed to reduce power
-	 * consumption.
+	 * On modern amd cpus cpu_idle_hlt=3 is better, because the cpu does
+	 * significant power management in HLT or ACPI (but cpu_idle_hlt=1
+	 * would try to use MWAIT).
+	 *
+	 * On older amd or intel cpus, cpu_idle_hlt=2 is better because ACPI
+	 * is needed to reduce power consumption, but wakeup times are often
+	 * longer.
 	 */
 	if (cpu_vendor_id == CPU_VENDOR_INTEL &&
 	    CPUID_TO_MODEL(cpu_id) >= 0x3C) {	/* Haswell or later */
 		cpu_idle_hlt = 1;
+	}
+	if (cpu_vendor_id == CPU_VENDOR_AMD &&
+	    CPUID_TO_FAMILY(cpu_id) >= 0x14) {	/* Bobcat or later */
+		cpu_idle_hlt = 3;
 	}
 
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &ioapic_enable); /* for compat */
