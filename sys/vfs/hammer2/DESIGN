@@ -4,6 +4,7 @@
 				Matthew Dillon
 			     dillon@backplane.com
 
+			       09-Jul-2016 (v4)
 			       03-Apr-2015 (v3)
 			       14-May-2013 (v2)
 			       08-Feb-2012 (v1)
@@ -14,8 +15,8 @@
   - bulkfree		- operational
   - Compression		- operational
   - Snapshots		- operational
-  - Deduper		- specced
-  - Subhierarchy quotas - specced
+  - Deduper		- live operational, batch specced
+  - Subhierarchy quotas - (may have to be discarded)
   - Logical Encryption	- not specced yet
   - Copies		- not specced yet
   - fsync bypass	- not specced yet
@@ -138,6 +139,12 @@
 * Zero detection on write (writing all-zeros), which requires the data
   buffer to be scanned, is fully supported.  This allows the writing of 0's
   to create holes.
+
+* Allow sector overwrite (avoid copy-on-write) under certain circumstances.
+  This is allowed on file data blocks if the file check mode is set to NONE,
+  as long as the data block's modify_tid does not violate the last snapshot
+  taken (if it does, a copy is made and overwrites are allowed on the copy
+  until the next snapshot).
 
 * Copies support for redundancy within a single physical filesystem.
   Up to 256 physical disks and/or partitions can be ganged to form a
@@ -313,9 +320,9 @@ not propagate up, instead serving as a seed for update_tid.
 
 There are several other stored transaction ids in HAMMER2.  There is a
 separate freemap_tid in the volume header that is used to allow freemap
-flushes to be deferred, and inodes have an attr_tid and a dirent_tid which
-tracks attribute changes and (for directories) create/rename/delete changes.
-The inode TIDs are used as an aid for the cache coherency subsystem.
+flushes to be deferred, and inodes have a pfs_psnap_tid which is used in
+conjuction with CHECK_NONE to allow blocks without a check code which do
+not violate the most recent snapshot to be overwritten in-place.
 
 Remember that since this is a copy-on-write filesystem, we can propagate
 a considerable amount of information up the tree to the volume header

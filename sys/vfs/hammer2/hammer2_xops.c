@@ -495,7 +495,8 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 		did_delete = 1;
 
 		tmp = NULL;
-		error = hammer2_chain_create(&parent, &tmp, pmp,
+		error = hammer2_chain_create(&parent, &tmp,
+					     pmp, HAMMER2_METH_DEFAULT,
 					     chain->bref.key, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES,
@@ -570,7 +571,8 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 			error = EEXIST;
 			goto done;
 		}
-		error = hammer2_chain_create(&parent, &chain, pmp,
+		error = hammer2_chain_create(&parent, &chain,
+					     pmp, HAMMER2_METH_DEFAULT,
 					     wipdata->meta.name_key, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES,
@@ -768,7 +770,8 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		goto done;
 	}
 
-	error = hammer2_chain_create(&parent, &chain, pmp,
+	error = hammer2_chain_create(&parent, &chain,
+				     pmp, HAMMER2_METH_DEFAULT,
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,

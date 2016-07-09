@@ -1425,8 +1425,8 @@ hammer2_blockref_t *hammer2_chain_scan(hammer2_chain_t *parent,
 				hammer2_blockref_t *bref,
 				int *firstp, int *cache_indexp, int flags);
 
-int hammer2_chain_create(hammer2_chain_t **parentp,
-				hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
+int hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
+				hammer2_pfs_t *pmp, int methods,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes, hammer2_tid_t mtid,
 				hammer2_off_t dedup_off, int flags);

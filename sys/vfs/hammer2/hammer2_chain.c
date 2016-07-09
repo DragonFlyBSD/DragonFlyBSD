@@ -1507,8 +1507,36 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		 */
 		atomic_add_long(&hammer2_count_modified_chains, 1);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_pfs_memory_inc(chain->pmp);	/* can be NULL */
-		newmod = 1;
+		hammer2_pfs_memory_inc(chain->pmp);  /* can be NULL */
+
+		/*
+		 * We may be able to avoid a copy-on-write if the chain's
+		 * check mode is set to NONE and the chain's current
+		 * modify_tid is beyond the last explicit snapshot tid.
+		 *
+		 * This implements HAMMER2's overwrite-in-place feature.
+		 *
+		 * NOTE! This data-block cannot be used as a de-duplication
+		 *	 source when the check mode is set to NONE.
+		 */
+		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
+		    (chain->flags & HAMMER2_CHAIN_INITIAL) == 0 &&
+		    HAMMER2_DEC_CHECK(chain->bref.methods) ==
+		     HAMMER2_CHECK_NONE &&
+		    chain->pmp &&
+		    chain->bref.modify_tid >
+		     chain->pmp->iroot->meta.pfs_lsnap_tid &&
+		    modified_needs_new_allocation(chain) == 0) {
+			/*
+			 * Sector overwrite allowed.
+			 */
+			newmod = 0;
+		} else {
+			/*
+			 * Sector overwrite not allowed, must copy-on-write.
+			 */
+			newmod = 1;
+		}
 	} else {
 		/*
 		 * Already flagged modified, no new allocation is needed.
@@ -2752,8 +2780,8 @@ done:
  * and will be reassigned.
  */
 int
-hammer2_chain_create(hammer2_chain_t **parentp,
-		     hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
+hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
+		     hammer2_pfs_t *pmp, int methods,
 		     hammer2_key_t key, int keybits, int type, size_t bytes,
 		     hammer2_tid_t mtid, hammer2_off_t dedup_off, int flags)
 {
@@ -2792,12 +2820,21 @@ hammer2_chain_create(hammer2_chain_t **parentp,
 		dummy.key = key;
 		dummy.keybits = keybits;
 		dummy.data_off = hammer2_getradix(bytes);
-		dummy.methods = parent->bref.methods;
-		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    parent->data) {
-			dummy.methods &= ~HAMMER2_ENC_CHECK(-1);
-			dummy.methods |= HAMMER2_ENC_CHECK(
-					  parent->data->ipdata.meta.check_algo);
+
+		/*
+		 * Inherit methods from parent by default.  Primarily used
+		 * for BREF_TYPE_DATA.  Non-data types *must* be set to
+		 * a non-NONE check algorithm.
+		 */
+		if (methods == -1)
+			dummy.methods = parent->bref.methods;
+		else
+			dummy.methods = (uint8_t)methods;
+
+		if (type != HAMMER2_BREF_TYPE_DATA &&
+		    HAMMER2_DEC_CHECK(dummy.methods) == HAMMER2_CHECK_NONE) {
+			dummy.methods |=
+				HAMMER2_ENC_CHECK(HAMMER2_CHECK_DEFAULT);
 		}
 
 		chain = hammer2_chain_alloc(hmp, pmp, &dummy);
@@ -3106,7 +3143,8 @@ hammer2_chain_rename(hammer2_blockref_t *bref,
 		KKASSERT(parent->refs > 0);
 		KKASSERT(parent->error == 0);
 
-		hammer2_chain_create(parentp, &chain, chain->pmp,
+		hammer2_chain_create(parentp, &chain,
+				     chain->pmp, HAMMER2_METH_DEFAULT,
 				     bref->key, bref->keybits, bref->type,
 				     chain->bytes, mtid, 0, flags);
 		KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
@@ -3435,7 +3473,9 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	dummy.bref.key = key;
 	dummy.bref.keybits = keybits;
 	dummy.bref.data_off = hammer2_getradix(nbytes);
-	dummy.bref.methods = parent->bref.methods;
+	dummy.bref.methods =
+		HAMMER2_ENC_CHECK(HAMMER2_DEC_CHECK(parent->bref.methods)) |
+		HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
 
 	ichain = hammer2_chain_alloc(hmp, parent->pmp, &dummy.bref);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);

@@ -715,6 +715,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_pfs_t *pfs = data;
 	hammer2_dev_t	*hmp;
+	hammer2_pfs_t	*pmp;
 	hammer2_chain_t	*chain;
 	hammer2_tid_t	mtid;
 	int error;
@@ -724,23 +725,29 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	if (pfs->name[sizeof(pfs->name)-1] != 0)
 		return(EINVAL);
 
-	hmp = ip->pmp->pfs_hmps[0];
+	pmp = ip->pmp;
+	ip = pmp->iroot;
+
+	hmp = pmp->pfs_hmps[0];
 	if (hmp == NULL)
 		return (EINVAL);
 
-	hammer2_vfs_sync(ip->pmp->mp, MNT_WAIT);
+	hammer2_vfs_sync(pmp->mp, MNT_WAIT);
 
-	hammer2_trans_init(ip->pmp, HAMMER2_TRANS_ISFLUSH);
-	mtid = hammer2_trans_sub(ip->pmp);
+	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+	mtid = hammer2_trans_sub(pmp);
 	hammer2_inode_lock(ip, 0);
+	hammer2_inode_modify(ip);
+	ip->meta.pfs_lsnap_tid = mtid;
 
+	/* XXX cluster it! */
 	chain = hammer2_inode_chain(ip, 0, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_chain_snapshot(chain, pfs, mtid);
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
 
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(ip->pmp);
+	hammer2_trans_done(pmp);
 
 	return (error);
 }

@@ -673,6 +673,8 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_CHECK_SHA192		4
 #define HAMMER2_CHECK_FREEMAP		5
 
+#define HAMMER2_CHECK_DEFAULT		HAMMER2_CHECK_XXHASH64
+
 /* user-specifiable check modes only */
 #define HAMMER2_CHECK_STRINGS		{ "none", "disabled", "crc32", \
 					  "xxhash64", "sha192" }
@@ -696,6 +698,11 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_COMP_STRINGS		{ "none", "autozero", "lz4", "zlib" }
 #define HAMMER2_COMP_STRINGS_COUNT	4
 
+/*
+ * Passed to hammer2_chain_create(), causes methods to be inherited from
+ * parent.
+ */
+#define HAMMER2_METH_DEFAULT		-1
 
 /*
  * HAMMER2 block references are collected into sets of 4 blockrefs.  These
@@ -920,8 +927,15 @@ struct hammer2_inode_meta {
 	hammer2_key_t	unusedB8;	/* 00B8 subtree byte count */
 	hammer2_key_t	inode_quota;	/* 00C0 subtree quota inode count */
 	hammer2_key_t	unusedC8;	/* 00C8 subtree inode count */
-	hammer2_tid_t	attr_tid;	/* 00D0 attributes changed */
-	hammer2_tid_t	dirent_tid;	/* 00D8 directory/attr changed */
+
+	/*
+	 * The last snapshot tid is tested against modify_tid to determine
+	 * when a copy must be made of a data block whos check mode has been
+	 * disabled (a disabled check mode allows data blocks to be updated
+	 * in place instead of copy-on-write).
+	 */
+	hammer2_tid_t	pfs_lsnap_tid;	/* 00D0 last snapshot tid */
+	hammer2_tid_t	reservedD8;	/* 00D8 (avail) */
 
 	/*
 	 * Tracks (possibly degenerate) free areas covering all sub-tree

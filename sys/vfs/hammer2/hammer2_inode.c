@@ -1274,7 +1274,7 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	}
 
 	error = hammer2_chain_create(&parent, &chain,
-				     xop->head.ip1->pmp,
+				     xop->head.ip1->pmp, HAMMER2_METH_DEFAULT,
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
@@ -1464,7 +1464,8 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	/*
 	 * Reconnect the chain to the new parent directory
 	 */
-	error = hammer2_chain_create(&parent, &chain, pmp,
+	error = hammer2_chain_create(&parent, &chain,
+				     pmp, HAMMER2_METH_DEFAULT,
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,

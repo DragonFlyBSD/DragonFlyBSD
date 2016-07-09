@@ -706,7 +706,10 @@ retry:
 		 */
 		dedup_off = hammer2_dedup_lookup((*parentp)->hmp, datap,
 						 pblksize);
-		*errorp = hammer2_chain_create(parentp, &chain, ip->pmp,
+		*errorp = hammer2_chain_create(parentp, &chain,
+					       ip->pmp,
+				       HAMMER2_ENC_CHECK(ip->meta.check_algo) |
+				       HAMMER2_ENC_COMP(HAMMER2_COMP_NONE),
 					       lbase, HAMMER2_PBUFRADIX,
 					       HAMMER2_BREF_TYPE_DATA,
 					       pblksize, mtid,
@@ -1361,6 +1364,11 @@ hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 	default:
 		/*
 		 * Cannot dedup without a check code
+		 *
+		 * NOTE: In particular, CHECK_NONE allows a sector to be
+		 *	 overwritten without copy-on-write, recording
+		 *	 a dedup block for a CHECK_NONE object would be
+		 *	 a disaster!
 		 */
 		return;
 	}

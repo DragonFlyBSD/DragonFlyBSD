@@ -634,7 +634,7 @@ again:
 		 *	 embedded data don't need this.
 		 */
 		if (hammer2_debug & 0x1000) {
-			kprintf("Flush %p.%d %016jx/%d data=%016jx",
+			kprintf("Flush %p.%d %016jx/%d data=%016jx\n",
 				chain, chain->bref.type,
 				(uintmax_t)chain->bref.key,
 				chain->bref.keybits,

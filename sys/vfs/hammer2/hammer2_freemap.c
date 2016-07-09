@@ -350,7 +350,8 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 		kprintf("freemap create L1 @ %016jx bpref %016jx\n",
 			key, iter->bpref);
 #endif
-		error = hammer2_chain_create(parentp, &chain, hmp->spmp,
+		error = hammer2_chain_create(parentp, &chain,
+				     hmp->spmp, HAMMER2_METH_DEFAULT,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE,
@@ -905,7 +906,8 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	 * bref.check.freemap structure.
 	 */
 	if (chain == NULL && how == HAMMER2_FREEMAP_DORECOVER) {
-		error = hammer2_chain_create(&parent, &chain, hmp->spmp,
+		error = hammer2_chain_create(&parent, &chain,
+				     hmp->spmp, HAMMER2_METH_DEFAULT,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE,

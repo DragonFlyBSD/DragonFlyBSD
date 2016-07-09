@@ -757,7 +757,8 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	KKASSERT(chain == NULL);
 
 	chain = NULL;
-	hammer2_chain_create(parentp, &chain, thr->pmp,
+	hammer2_chain_create(parentp, &chain,
+			     thr->pmp, focus->bref.methods,
 			     focus->bref.key, focus->bref.keybits,
 			     focus->bref.type, focus->bytes,
 			     mtid, 0, 0);
@@ -958,10 +959,16 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 				focus->data->ipdata.meta.data_quota;
 			chain->data->ipdata.meta.inode_quota =
 				focus->data->ipdata.meta.inode_quota;
-			chain->data->ipdata.meta.attr_tid =
-				focus->data->ipdata.meta.attr_tid;
-			chain->data->ipdata.meta.dirent_tid =
-				focus->data->ipdata.meta.dirent_tid;
+
+			/*
+			 * last snapshot tid controls overwrite
+			 */
+			if (chain->data->ipdata.meta.pfs_lsnap_tid <
+			    focus->data->ipdata.meta.pfs_lsnap_tid) {
+				chain->data->ipdata.meta.pfs_lsnap_tid =
+					focus->data->ipdata.meta.pfs_lsnap_tid;
+			}
+
 			hammer2_chain_setcheck(chain, chain->data);
 			break;
 		}
