@@ -303,10 +303,6 @@ int	kgetenv_quad (const char *name, quad_t *data);
 int	kgetenv_long(const char *name, long *data);
 extern char *kern_envp;
 
-#ifdef APM_FIXUP_CALLTODO 
-void	adjust_timeout_calltodo (struct timeval *time_change); 
-#endif /* APM_FIXUP_CALLTODO */ 
-
 #include <sys/libkern.h>
 
 /* Initialize the world */
