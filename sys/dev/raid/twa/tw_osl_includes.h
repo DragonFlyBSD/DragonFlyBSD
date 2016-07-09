@@ -62,7 +62,6 @@
 #include <sys/time.h>
 
 #include <machine/clock.h>
-#include <stdarg.h>
 
 #include <vm/vm.h>
 

@@ -60,7 +60,6 @@
 
 #include <machine/clock.h>
 #include <machine/endian.h>
-#include <stdarg.h>
 
 #include <bus/pci/pcivar.h>
 

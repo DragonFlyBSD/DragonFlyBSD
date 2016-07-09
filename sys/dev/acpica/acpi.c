@@ -3659,7 +3659,7 @@ acpi_pm_func(u_long cmd, void *arg, ...)
 	int	state, acpi_state;
 	int	error;
 	struct	acpi_softc *sc;
-	va_list	ap;
+	__va_list ap;
 
 	error = 0;
 	switch (cmd) {
@@ -3670,9 +3670,9 @@ acpi_pm_func(u_long cmd, void *arg, ...)
 			goto out;
 		}
 
-		va_start(ap, arg);
-		state = va_arg(ap, int);
-		va_end(ap);
+		__va_start(ap, arg);
+		state = __va_arg(ap, int);
+		__va_end(ap);
 
 		switch (state) {
 		case POWER_SLEEP_STATE_STANDBY:

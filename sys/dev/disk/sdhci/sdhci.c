@@ -25,8 +25,6 @@
  * $FreeBSD: src/sys/dev/sdhci/sdhci.c,v 1.8 2009/02/17 19:12:15 mav Exp $
  */
 
-#include <stdarg.h>
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
@@ -114,15 +112,15 @@ sdhci_getaddr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 static int
 slot_printf(struct sdhci_slot *slot, const char * fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int retval;
 
 	retval = kprintf("%s-slot%d: ",
 	    device_get_nameunit(slot->bus), slot->num);
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	retval += kvprintf(fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 	return (retval);
 }
 

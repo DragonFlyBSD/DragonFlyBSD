@@ -67,7 +67,10 @@
 #include <sys/ctype.h>
 #include <sys/systm.h>
 #include <machine/acpica_machdep.h>
-#include <stdarg.h>
+
+typedef	__va_list		va_list;
+#define	va_start(ap, last)	__va_start(ap, last)
+#define	va_end(ap)		__va_end(ap)
 
 #ifdef ACPI_DEBUG
 #define ACPI_DEBUG_OUTPUT       /* enable debug output */

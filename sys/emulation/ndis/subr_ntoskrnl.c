@@ -54,7 +54,6 @@
 #include <sys/sysctl.h>
 
 #include <machine/atomic.h>
-#include <machine/stdarg.h>
 
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -74,7 +73,7 @@
 #include <emulation/ndis/hal_var.h>
 #include <emulation/ndis/ndis_var.h>
 
-#include <stdarg.h>
+#include <machine/stdarg.h>
 
 #ifdef NTOSKRNL_DEBUG_TIMERS
 static int sysctl_show_timers(SYSCTL_HANDLER_ARGS);
@@ -3364,12 +3363,12 @@ PsTerminateSystemThread(ndis_status status)
 static uint32_t
 DbgPrint(char *fmt, ...)
 {
-	va_list			ap;
+	__va_list		ap;
 
 	if (bootverbose) {
-		va_start(ap, fmt);
+		__va_start(ap, fmt);
 		kvprintf(fmt, ap);
-		va_end(ap);
+		__va_end(ap);
 	}
 
 	return (STATUS_SUCCESS);

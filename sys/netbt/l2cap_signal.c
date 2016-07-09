@@ -31,8 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdarg.h>
-
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
@@ -999,9 +997,9 @@ l2cap_send_command_rej(struct hci_link *link, uint8_t ident,
 {
 	l2cap_cmd_rej_cp cp;
 	int len = 0;
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, reason);
+	__va_start(ap, reason);
 
 	cp.reason = htole16(reason);
 
@@ -1012,15 +1010,15 @@ l2cap_send_command_rej(struct hci_link *link, uint8_t ident,
 
 	case L2CAP_REJ_MTU_EXCEEDED:
 		len = 4;
-		cp.data[0] = va_arg(ap, int);		/* SigMTU */
+		cp.data[0] = __va_arg(ap, int);		/* SigMTU */
 		cp.data[0] = htole16(cp.data[0]);
 		break;
 
 	case L2CAP_REJ_INVALID_CID:
 		len = 6;
-		cp.data[0] = va_arg(ap, int);		/* dcid */
+		cp.data[0] = __va_arg(ap, int);		/* dcid */
 		cp.data[0] = htole16(cp.data[0]);
-		cp.data[1] = va_arg(ap, int);		/* scid */
+		cp.data[1] = __va_arg(ap, int);		/* scid */
 		cp.data[1] = htole16(cp.data[1]);
 		break;
 
@@ -1029,7 +1027,7 @@ l2cap_send_command_rej(struct hci_link *link, uint8_t ident,
 		return EINVAL;
 	}
 
-	va_end(ap);
+	__va_end(ap);
 
 	return l2cap_send_signal(link, L2CAP_COMMAND_REJ, ident, len, &cp);
 }

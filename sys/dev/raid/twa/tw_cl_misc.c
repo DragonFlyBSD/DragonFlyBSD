@@ -490,7 +490,7 @@ tw_cl_create_event(struct tw_cl_ctlr_handle *ctlr_handle,
 	struct tw_cl_event_packet	event_pkt;
 	struct tw_cl_event_packet	*event;
 	TW_UINT32			aen_head;
-	va_list				ap;
+	__va_list			ap;
 
 	tw_cli_dbg_printf(8, ctlr_handle, tw_osl_cur_func(), "entered");
 
@@ -529,9 +529,9 @@ tw_cl_create_event(struct tw_cl_ctlr_handle *ctlr_handle,
 	tw_osl_strcpy(event->severity_str, severity_str);
 	event->retrieved = TW_CL_AEN_NOT_RETRIEVED;
 
-	va_start(ap, event_specific_desc);
+	__va_start(ap, event_specific_desc);
 	tw_osl_vsprintf(event->parameter_data, event_specific_desc, ap);
-	va_end(ap);
+	__va_end(ap);
 
 	event->parameter_len =
 		(TW_UINT8)(tw_osl_strlen(event->parameter_data));
@@ -630,15 +630,15 @@ tw_cli_dbg_printf(TW_UINT8 dbg_level,
 {
 #ifdef TW_OSL_DEBUG
 	TW_INT8	print_str[256];
-	va_list	ap;
+	__va_list	ap;
 
 	tw_osl_memzero(print_str, 256);
 	if (dbg_level <= TW_OSL_DEBUG_LEVEL_FOR_CL) {
 		tw_osl_sprintf(print_str, "%s: ", cur_func);
 
-		va_start(ap, fmt);
+		__va_start(ap, fmt);
 		tw_osl_vsprintf(print_str + tw_osl_strlen(print_str), fmt, ap);
-		va_end(ap);
+		__va_end(ap);
 
 		tw_osl_strcpy(print_str + tw_osl_strlen(print_str), "\n");
 		tw_osl_dbg_printf(ctlr_handle, "%s", print_str);

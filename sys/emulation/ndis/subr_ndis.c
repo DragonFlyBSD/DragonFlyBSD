@@ -106,8 +106,6 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_map.h>
 
-#include <stdarg.h>
-
 static char ndis_filepath[MAXPATHLEN];
 
 SYSCTL_STRING(_hw, OID_AUTO, ndis_filepath, CTLFLAG_RW, ndis_filepath,
@@ -901,7 +899,7 @@ NdisWriteErrorLogEntry(ndis_handle adapter, ndis_error_code code,
 	uint32_t numerrors, ...)
 {
 	ndis_miniport_block	*block;
-	va_list			ap;
+	__va_list		ap;
 	int			i, error;
 	char			*str = NULL;
 	uint16_t		flags;
@@ -938,11 +936,11 @@ NdisWriteErrorLogEntry(ndis_handle adapter, ndis_error_code code,
 
 	if (ifp != NULL && ifp->if_flags & IFF_DEBUG) {
 		device_printf(dev, "NDIS NUMERRORS: %x\n", numerrors);
-		va_start(ap, numerrors);
+		__va_start(ap, numerrors);
 		for (i = 0; i < numerrors; i++)
 			device_printf(dev, "argptr: %p\n",
-			    va_arg(ap, void *));
-		va_end(ap);
+			    __va_arg(ap, void *));
+		__va_end(ap);
 	}
 
 	if (as.as_len)

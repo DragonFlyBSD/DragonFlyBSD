@@ -141,7 +141,6 @@ __FBSDID("$FreeBSD: src/sys/netinet/libalias/alias_db.c,v 1.71.2.2.2.1 2008/11/2
 
 	See HISTORY file for additional revisions.
 */
-#include <stdarg.h>
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
@@ -332,11 +331,11 @@ SeqDiff(u_long x, u_long y)
 static void
 AliasLog(char *str, const char *format, ...)
 {
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, format);
+	__va_start(ap, format);
 	kvsnprintf(str, LIBALIAS_BUF_SIZE, format, ap);
-	va_end(ap);
+	__va_end(ap);
 }
 #else
 static void
