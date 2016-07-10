@@ -45,14 +45,14 @@
  */
 static inline void spin_lock_irq(struct lock *lock)
 {
-	lockmgr(lock, LK_EXCLUSIVE);
 	crit_enter();
+	lockmgr(lock, LK_EXCLUSIVE);
 }
 
 static inline void spin_unlock_irq(struct lock *lock)
 {
-	crit_exit();
 	lockmgr(lock, LK_RELEASE);
+	crit_exit();
 }
 
 #define spin_lock_irqsave(lock, flags)		do { flags = 0; spin_lock_irq(lock); } while(0)
