@@ -4,6 +4,8 @@
  * $DragonFly: src/test/sysperf/pipe1.c,v 1.1 2003/08/12 02:29:44 dillon Exp $
  */
 
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "blib.h"
 
 int

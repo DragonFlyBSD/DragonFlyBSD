@@ -4,8 +4,10 @@
  * $DragonFly: src/test/sysperf/pipe2.c,v 1.5 2004/04/29 16:05:21 dillon Exp $
  */
 
-#include "blib.h"
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/resource.h>
+#include "blib.h"
 
 #define PAGE_SIZE	4096
 #define PAGE_MASK	(PAGE_SIZE - 1)
