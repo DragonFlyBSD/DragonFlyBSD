@@ -652,6 +652,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			tabprintf(tab, "pfs_fsid %s\n",
 				  hammer2_uuid_to_str(&media.ipdata.meta.pfs_fsid,
 						      &str));
+			tabprintf(tab, "pfs_lsnap_tid 0x%016jx\n",
+				  (uintmax_t)media.ipdata.meta.pfs_lsnap_tid);
 		}
 		tabprintf(tab, "data_quota  %ju\n",
 			  (uintmax_t)media.ipdata.meta.data_quota);
@@ -661,12 +663,6 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			  (uintmax_t)media.ipdata.meta.inode_quota);
 		tabprintf(tab, "inode_count %ju\n",
 			  (uintmax_t)bref->inode_count);
-		tabprintf(tab, "attr_tid    0x%016jx\n",
-			  (uintmax_t)media.ipdata.meta.attr_tid);
-		if (media.ipdata.meta.type == HAMMER2_OBJTYPE_DIRECTORY) {
-			tabprintf(tab, "dirent_tid  %016jx\n",
-				  (uintmax_t)media.ipdata.meta.dirent_tid);
-		}
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		bscan = &media.npdata[0];
