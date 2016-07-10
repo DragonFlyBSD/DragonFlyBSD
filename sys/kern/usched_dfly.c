@@ -757,24 +757,41 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 */
 	KKASSERT(gd->gd_spinlocks == 0);
 
-	if (lp == NULL)
-		return;
-
 	/*
-	 * Do we need to round-robin?  We round-robin 10 times a second.
-	 * This should only occur for cpu-bound batch processes.
+	 * If lp is NULL we might be contended and lwkt_switch() may have
+	 * cycled into the idle thread.  Apply the tick to the current
+	 * process on this cpu if it is contended.
 	 */
-	if (++lp->lwp_rrcount >= usched_dfly_rrinterval) {
-		lp->lwp_thread->td_wakefromcpu = -1;
-		need_user_resched();
+	if (gd->gd_curthread == &gd->gd_idlethread) {
+		lp = dd->uschedcp;
+		if (lp && (lp->lwp_thread == NULL ||
+			   lp->lwp_thread->td_contended == 0)) {
+			lp = NULL;
+		}
 	}
 
 	/*
-	 * Adjust estcpu upward using a real time equivalent calculation,
-	 * and recalculate lp's priority.
+	 * Dock thread for tick
 	 */
-	lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUMAX / ESTCPUFREQ + 1);
-	dfly_resetpriority(lp);
+	if (lp) {
+		/*
+		 * Do we need to round-robin?  We round-robin 10 times a
+		 * second.  This should only occur for cpu-bound batch
+		 * processes.
+		 */
+		if (++lp->lwp_rrcount >= usched_dfly_rrinterval) {
+			lp->lwp_thread->td_wakefromcpu = -1;
+			need_user_resched();
+		}
+
+		/*
+		 * Adjust estcpu upward using a real time equivalent
+		 * calculation, and recalculate lp's priority.
+		 */
+		lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu +
+					   ESTCPUMAX / ESTCPUFREQ + 1);
+		dfly_resetpriority(lp);
+	}
 
 	/*
 	 * Rebalance two cpus every 8 ticks, pulling the worst thread

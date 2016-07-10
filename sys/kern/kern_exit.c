@@ -421,8 +421,15 @@ exit1(int rv)
 	 * the environment as it can, and the last process cleaned up
 	 * by vmspace_exit() (which decrements exitingcnt) cleans up the
 	 * remainder.
+	 *
+	 * NOTE: Releasing p_token around this call is helpful if the
+	 *	 vmspace had a huge RSS.  Otherwise some other process
+	 *	 trying to do an allproc or other scan (like 'ps') may
+	 *	 stall for a long time.
 	 */
+	lwkt_reltoken(&p->p_token);
 	vmspace_relexit(vm);
+	lwkt_gettoken(&p->p_token);
 
 	if (SESS_LEADER(p)) {
 		struct session *sp = p->p_session;
@@ -1088,9 +1095,17 @@ loop:
 			 * to safely destroy its vmspace.  Wait for any current
 			 * holders to go away (so the vmspace remains stable),
 			 * then scrap it.
+			 *
+			 * NOTE: Releasing the parent process (q) p_token
+			 *	 across the vmspace_exitfree() call is
+			 *	 important here to reduce stalls on
+			 *	 interactions with (q) (such as
+			 *	 fork/exec/wait or 'ps').
 			 */
 			PSTALL(p, "reap4", 0);
+			lwkt_reltoken(&q->p_token);
 			vmspace_exitfree(p);
+			lwkt_gettoken(&q->p_token);
 			PSTALL(p, "reap5", 0);
 
 			/*
