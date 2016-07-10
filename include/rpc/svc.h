@@ -333,6 +333,7 @@ extern int svc_create(void (*)(struct svc_req *, SVCXPRT *),
 			   const rpcprog_t, const rpcvers_t, const char *);
 /*
  *      void (*dispatch)(struct svc_req *, SVCXPRT *);
+ *                                      -- dispatch routine
  *      const rpcprog_t prognum;        -- program number
  *      const rpcvers_t versnum;        -- version number
  *      const char *nettype;            -- network type
@@ -349,6 +350,7 @@ extern SVCXPRT *svc_tp_create(void (*)(struct svc_req *, SVCXPRT *),
 				   const struct netconfig *);
         /*
          * void (*dispatch)(struct svc_req *, SVCXPRT *);
+         *                                -- dispatch routine
          * const rpcprog_t prognum;       -- program number
          * const rpcvers_t versnum;       -- version number
          * const struct netconfig *nconf; -- netconfig structure
