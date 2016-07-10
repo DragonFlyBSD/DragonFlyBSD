@@ -667,6 +667,8 @@ lwkt_switch(void)
      * the current thread has been descheduled.
      */
     for (;;) {
+	int major_contention;
+
 	clear_lwkt_resched();
 
 	/*
@@ -698,6 +700,7 @@ lwkt_switch(void)
 	{
 	    goto havethread;
 	}
+	major_contention = (ntd->td_contended > 10);
 
 	/*
 	 * Coldpath (SMP only since tokens always succeed on UP)
@@ -710,9 +713,9 @@ lwkt_switch(void)
 	 * The lwkt_schedulerclock() will assert need_lwkt_resched() on
 	 * the next tick whenever the current head is not the current thread.
 	 */
-#ifdef	INVARIANTS
+	if (ntd->td_release)
+		ntd->td_release(ntd);
 	++ntd->td_contended;
-#endif
 	++gd->gd_cnt.v_lock_colls;
 
 	if (fairq_bypass > 0)
@@ -721,13 +724,18 @@ lwkt_switch(void)
 	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
 #ifndef NO_LWKT_SPLIT_USERPRI
 		/*
-		 * Never schedule threads returning to userland or the
-		 * user thread scheduler helper thread when higher priority
-		 * threads are present.  The runq is sorted by priority
-		 * so we can give up traversing it when we find the first
-		 * low priority thread.
+		 * Do not generally schedule threads returning to userland
+		 * or the user thread scheduler helper thread when higher
+		 * priority threads are present.  The runq is sorted by
+		 * priority so we can give up traversing it when we find
+		 * the first low priority thread.
+		 *
+		 * As an exception, we allow scheduling of lower priority
+		 * threads if all higher priority threads are seriously
+		 * contended.  This can prevent major contention from causing
+		 * long multi-second pauses for other processes.
 		 */
-		if (ntd->td_pri < TDPRI_KERN_LPSCHED) {
+		if (!major_contention && ntd->td_pri < TDPRI_KERN_LPSCHED) {
 			ntd = NULL;
 			break;
 		}
@@ -740,9 +748,11 @@ lwkt_switch(void)
 		    lwkt_getalltokens(ntd, (spinning >= lwkt_spin_loops))) {
 			goto havethread;
 		}
-#ifdef	INVARIANTS
+		if (ntd->td_release)
+			ntd->td_release(ntd);
 		++ntd->td_contended;
-#endif
+		if (ntd->td_contended < 10)
+			major_contention = 0;
 		++gd->gd_cnt.v_lock_colls;
 	}
 
@@ -857,6 +867,7 @@ havethread:
      * thread.
      */
     ntd->td_wmesg = NULL;
+    ntd->td_contended = 0;
     ++gd->gd_cnt.v_swtch;
     gd->gd_idle_repeat = 0;
 
