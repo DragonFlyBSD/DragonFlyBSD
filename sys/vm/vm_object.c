@@ -1124,6 +1124,7 @@ static int vm_object_terminate_callback(vm_page_t p, void *data);
 void
 vm_object_terminate(vm_object_t object)
 {
+	struct rb_vm_page_scan_info info;
 	int n;
 
 	/*
@@ -1187,8 +1188,9 @@ vm_object_terminate(vm_object_t object)
 	 * removes them from paging queues. Don't free wired pages, just
 	 * remove them from the object. 
 	 */
+	info.count = 0;
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
-				vm_object_terminate_callback, NULL);
+				vm_object_terminate_callback, &info);
 
 	/*
 	 * Let the pager know object is dead.
@@ -1208,7 +1210,7 @@ vm_object_terminate(vm_object_t object)
 			"still has %d pages\n",
 			object, object->resident_page_count);
 		vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
-					vm_object_terminate_callback, NULL);
+					vm_object_terminate_callback, &info);
 	}
 
 	/*
@@ -1240,10 +1242,13 @@ vm_object_terminate(vm_object_t object)
  * The caller must hold the object.
  */
 static int
-vm_object_terminate_callback(vm_page_t p, void *data __unused)
+vm_object_terminate_callback(vm_page_t p, void *data)
 {
+	struct rb_vm_page_scan_info *info = data;
 	vm_object_t object;
 
+	if ((++info->count & 7) == 0)
+		lwkt_user_yield();
 	object = p->object;
 	vm_page_busy_wait(p, TRUE, "vmpgtrm");
 	if (object != p->object) {
@@ -1263,7 +1268,6 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 		vm_page_remove(p);
 		vm_page_wakeup(p);
 	}
-	lwkt_yield();
 	return(0);
 }
 
@@ -1325,6 +1329,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	info.limit = flags;
 	info.pagerflags = pagerflags;
 	info.object = object;
+	info.count = 0;
 
 	/*
 	 * If cleaning the entire object do a pass to mark the pages read-only.
@@ -1375,6 +1380,8 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 
+	if ((++info->count & 7) == 0)
+		lwkt_user_yield();
 	vm_page_flag_set(p, PG_CLEANCHK);
 	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
 		info->error = 1;
@@ -1384,7 +1391,6 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 	} else {
 		info->error = 1;
 	}
-	lwkt_yield();
 	return(0);
 }
 
@@ -1457,7 +1463,8 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	vm_object_page_collect_flush(info->object, p, info->pagerflags);
 	/* vm_wait_nominal(); this can deadlock the system in syncer/pageout */
 done:
-	lwkt_yield();
+	if ((++info->count & 7) == 0)
+		lwkt_user_yield();
 	return(0);
 }
 
@@ -1609,6 +1616,7 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 		return;
 	info.start_pindex = start;
 	info.end_pindex = end - 1;
+	info.count = 0;
 
 	vm_object_hold(object);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
@@ -1622,8 +1630,13 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
  * The caller must hold the object
  */
 static int
-vm_object_pmap_remove_callback(vm_page_t p, void *data __unused)
+vm_object_pmap_remove_callback(vm_page_t p, void *data)
 {
+	struct rb_vm_page_scan_info *info = data;
+
+	if ((++info->count & 7) == 0)
+		lwkt_user_yield();
+
 	vm_page_protect(p, VM_PROT_NONE);
 	return(0);
 }

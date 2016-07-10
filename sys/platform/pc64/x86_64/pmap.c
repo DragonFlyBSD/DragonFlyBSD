@@ -3255,6 +3255,7 @@ struct pmap_scan_info {
 		     pt_entry_t *, void *);
 	void *arg;
 	int doinval;
+	int count;
 	struct pmap_inval_info inval;
 };
 
@@ -3289,6 +3290,7 @@ pmap_scan(struct pmap_scan_info *info)
 #endif
 
 	pmap_inval_init(&info->inval);
+	info->count = 0;
 
 again:
 	/*
@@ -3739,7 +3741,8 @@ kernel_skip:
 			sva += PAGE_SIZE;
 			++ptep;
 		}
-		lwkt_yield();
+		if ((++info->count & 7) == 0)
+			lwkt_user_yield();
 	}
 	if (pd_pv) {
 		pv_put(pd_pv);
@@ -3749,7 +3752,8 @@ kernel_skip:
 		pv_put(pt_pv);
 		pt_pv = NULL;
 	}
-	lwkt_yield();
+	if ((++info->count & 7) == 0)
+		lwkt_user_yield();
 
 	/*
 	 * Relock before returning.

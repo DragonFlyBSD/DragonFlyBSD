@@ -246,6 +246,8 @@ struct rb_vm_page_scan_info {
 	int		desired;
 	int		error;
 	int		pagerflags;
+	int		count;
+	int		unused01;
 	vm_offset_t	addr;
 	vm_pindex_t	backing_offset_index;
 	struct vm_object *object;

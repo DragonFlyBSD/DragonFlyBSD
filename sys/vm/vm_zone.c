@@ -135,6 +135,8 @@ void
 zfree(vm_zone_t z, void *item)
 {
 	globaldata_t gd = mycpu;
+	void *tail_item;
+	int count;
 	int zmax;
 
 	/*
@@ -145,33 +147,54 @@ zfree(vm_zone_t z, void *item)
 	if (zmax < 64)
 		zmax = 64;
 
-	if (z->zfreecnt_pcpu[gd->gd_cpuid] < zmax) {
-		crit_enter_gd(gd);
-		((void **)item)[0] = z->zitems_pcpu[gd->gd_cpuid];
-#ifdef INVARIANTS
-		if (((void **)item)[1] == (void *)ZENTRY_FREE)
-			zerror(ZONE_ERROR_ALREADYFREE);
-		((void **)item)[1] = (void *)ZENTRY_FREE;
-#endif
-		z->zitems_pcpu[gd->gd_cpuid] = item;
-		++z->zfreecnt_pcpu[gd->gd_cpuid];
-		crit_exit_gd(gd);
-		return;
-	}
-
 	/*
-	 * Per-zone spinlock for the remainder.
+	 * Add to pcpu cache
 	 */
-	spin_lock(&z->zlock);
-	((void **)item)[0] = z->zitems;
+	crit_enter_gd(gd);
+	((void **)item)[0] = z->zitems_pcpu[gd->gd_cpuid];
 #ifdef INVARIANTS
 	if (((void **)item)[1] == (void *)ZENTRY_FREE)
 		zerror(ZONE_ERROR_ALREADYFREE);
 	((void **)item)[1] = (void *)ZENTRY_FREE;
 #endif
+	z->zitems_pcpu[gd->gd_cpuid] = item;
+	++z->zfreecnt_pcpu[gd->gd_cpuid];
+
+	if (z->zfreecnt_pcpu[gd->gd_cpuid] < zmax) {
+		crit_exit_gd(gd);
+		return;
+	}
+
+	/*
+	 * Hystereis, move (zmax) (calculated below) items to the pool.
+	 */
+	zmax = zmax / 2;
+	if (zmax > zone_burst)
+		zmax = zone_burst;
+	tail_item = item;
+	count = 1;
+
+	while (count < zmax) {
+		tail_item = ((void **)tail_item)[0];
+		++count;
+	}
+
+	z->zitems_pcpu[gd->gd_cpuid] = ((void **)tail_item)[0];
+	z->zfreecnt_pcpu[gd->gd_cpuid] -= count;
+
+	/*
+	 * Per-zone spinlock for the remainder.
+	 *
+	 * Also implement hysteresis by freeing a number of pcpu
+	 * entries.
+	 */
+	spin_lock(&z->zlock);
+	((void **)tail_item)[0] = z->zitems;
 	z->zitems = item;
-	z->zfreecnt++;
+	z->zfreecnt += count;
+
 	spin_unlock(&z->zlock);
+	crit_exit_gd(gd);
 }
 
 /*
