@@ -259,6 +259,7 @@ SYSCTL_PROC(_net_inet_ip, IPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
 TAILQ_HEAD(ipqhead, ipq);
 struct ipfrag_queue {
 	int			nipq;
+	int			timeo_inprog;
 	struct netmsg_base	timeo_netmsg;
 	struct netmsg_base	drain_netmsg;
 	struct ipqhead		ipq[IPREASS_NHASH];
@@ -1390,6 +1391,7 @@ ipfrag_timeo_ipi(void *arg __unused)
 	int cpu = mycpuid;
 	struct lwkt_msg *msg = &ipfrag_queue_pcpu[cpu].timeo_netmsg.lmsg;
 
+	ipfrag_queue_pcpu[cpu].timeo_inprog = 0;
 	crit_enter();
 	if (msg->ms_flags & MSGF_DONE)
 		lwkt_sendmsg_oncpu(netisr_cpuport(cpu), msg);
@@ -1400,8 +1402,16 @@ static void
 ipfrag_slowtimo(void)
 {
 	cpumask_t mask;
+	int i;
 
-	CPUMASK_ASSBMASK(mask, ncpus);
+	CPUMASK_ASSZERO(mask);
+	for (i = 0; i < ncpus; ++i) {
+		if (ipfrag_queue_pcpu[i].nipq &&
+		    ipfrag_queue_pcpu[i].timeo_inprog == 0) {
+			ipfrag_queue_pcpu[i].timeo_inprog = 1;
+			CPUMASK_ORBIT(mask, i);
+		}
+	}
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 	if (CPUMASK_TESTNZERO(mask))
 		lwkt_send_ipiq_mask(mask, ipfrag_timeo_ipi, NULL);
