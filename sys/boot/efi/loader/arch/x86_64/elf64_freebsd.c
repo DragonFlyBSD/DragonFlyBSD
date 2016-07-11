@@ -41,7 +41,7 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/arch/amd64/elf64_freebsd.c 293724 2
 
 #include "bootstrap.h"
 
-#include "platform/acfreebsd.h"
+#include "platform/acdragonfly.h"
 #include "acconfig.h"
 #define ACPI_SYSTEM_XFACE
 #include "actypes.h"
