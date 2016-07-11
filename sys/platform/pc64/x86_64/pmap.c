@@ -3626,6 +3626,12 @@ kernel_skip:
 
 		while (sva < va_next) {
 			/*
+			 * Yield every 64 pages.
+			 */
+			if ((++info->count & 63) == 0)
+				lwkt_user_yield();
+
+			/*
 			 * Acquire the related pte_pv, if any.  If *ptep == 0
 			 * the related pte_pv should not exist, but if *ptep
 			 * is not zero the pte_pv may or may not exist (e.g.
@@ -3741,8 +3747,6 @@ kernel_skip:
 			sva += PAGE_SIZE;
 			++ptep;
 		}
-		if ((++info->count & 7) == 0)
-			lwkt_user_yield();
 	}
 	if (pd_pv) {
 		pv_put(pd_pv);

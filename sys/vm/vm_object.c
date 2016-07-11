@@ -1247,7 +1247,7 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 	struct rb_vm_page_scan_info *info = data;
 	vm_object_t object;
 
-	if ((++info->count & 7) == 0)
+	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
 	object = p->object;
 	vm_page_busy_wait(p, TRUE, "vmpgtrm");
@@ -1380,7 +1380,7 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 
-	if ((++info->count & 7) == 0)
+	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
 	vm_page_flag_set(p, PG_CLEANCHK);
 	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
@@ -1463,7 +1463,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	vm_object_page_collect_flush(info->object, p, info->pagerflags);
 	/* vm_wait_nominal(); this can deadlock the system in syncer/pageout */
 done:
-	if ((++info->count & 7) == 0)
+	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
 	return(0);
 }
@@ -1634,7 +1634,7 @@ vm_object_pmap_remove_callback(vm_page_t p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 
-	if ((++info->count & 7) == 0)
+	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
 
 	vm_page_protect(p, VM_PROT_NONE);
@@ -2667,6 +2667,9 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 
+	if ((++info->count & 63) == 0)
+		lwkt_user_yield();
+
 	if (vm_page_busy_try(p, TRUE)) {
 		vm_page_sleep_busy(p, TRUE, "vmopar");
 		info->error = 1;
@@ -2710,6 +2713,7 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	 */
 	vm_page_protect(p, VM_PROT_NONE);
 	vm_page_free(p);
+
 	return(0);
 }
 

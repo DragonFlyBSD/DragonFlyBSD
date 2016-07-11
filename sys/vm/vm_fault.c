@@ -2845,11 +2845,29 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 		}
 
 		/*
+		 * Follow the VM object chain to obtain the page to be mapped
+		 * into the pmap.  This version of the prefault code only
+		 * works with terminal objects.
+		 *
+		 * The page must already exist.  If we encounter a problem
+		 * we stop here.
+		 *
+		 * WARNING!  We cannot call swap_pager_unswapped() or insert
+		 *	     a new vm_page with a shared token.
+		 */
+		pindex = ((addr - entry->start) + entry->offset) >> PAGE_SHIFT;
+
+		m = vm_page_lookup_busy_try(object, pindex, TRUE, &error);
+		if (m == NULL || error)
+			break;
+
+		/*
 		 * Skip pages already mapped, and stop scanning in that
 		 * direction.  When the scan terminates in both directions
 		 * we are done.
 		 */
 		if (pmap_prefault_ok(pmap, addr) == 0) {
+			vm_page_wakeup(m);
 			if (i & 1)
 				noneg = 1;
 			else
@@ -2860,44 +2878,38 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 		}
 
 		/*
-		 * Follow the VM object chain to obtain the page to be mapped
-		 * into the pmap.  This version of the prefault code only
-		 * works with terminal objects.
-		 *
-		 * WARNING!  We cannot call swap_pager_unswapped() with a
-		 *	     shared token.
+		 * Stop if the page cannot be trivially entered into the
+		 * pmap.
 		 */
-		pindex = ((addr - entry->start) + entry->offset) >> PAGE_SHIFT;
-
-		m = vm_page_lookup_busy_try(object, pindex, TRUE, &error);
-		if (m == NULL || error)
-			continue;
-
-		if (((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
-		    (m->flags & PG_FICTITIOUS) == 0 &&
-		    ((m->flags & PG_SWAPPED) == 0 ||
-		     (prot & VM_PROT_WRITE) == 0 ||
-		     (fault_flags & VM_FAULT_DIRTY) == 0)) {
-			/*
-			 * A fully valid page not undergoing soft I/O can
-			 * be immediately entered into the pmap.
-			 */
-			if ((m->queue - m->pc) == PQ_CACHE)
-				vm_page_deactivate(m);
-			if (prot & VM_PROT_WRITE) {
-				vm_object_set_writeable_dirty(m->object);
-				vm_set_nosync(m, entry);
-				if (fault_flags & VM_FAULT_DIRTY) {
-					vm_page_dirty(m);
-					/*XXX*/
-					swap_pager_unswapped(m);
-				}
-			}
-			pmap_enter(pmap, addr, m, prot, 0, entry);
-			mycpu->gd_cnt.v_vm_faults++;
-			if (curthread->td_lwp)
-				++curthread->td_lwp->lwp_ru.ru_minflt;
+		if (((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) ||
+		    (m->flags & PG_FICTITIOUS) ||
+		    ((m->flags & PG_SWAPPED) &&
+		     (prot & VM_PROT_WRITE) &&
+		     (fault_flags & VM_FAULT_DIRTY))) {
+			vm_page_wakeup(m);
+			break;
 		}
+
+		/*
+		 * Enter the page into the pmap.  The object might be held
+		 * shared so we can't do any (serious) modifying operation
+		 * on it.
+		 */
+		if ((m->queue - m->pc) == PQ_CACHE)
+			vm_page_deactivate(m);
+		if (prot & VM_PROT_WRITE) {
+			vm_object_set_writeable_dirty(m->object);
+			vm_set_nosync(m, entry);
+			if (fault_flags & VM_FAULT_DIRTY) {
+				vm_page_dirty(m);
+				/* can't happeen due to conditional above */
+				/* swap_pager_unswapped(m); */
+			}
+		}
+		pmap_enter(pmap, addr, m, prot, 0, entry);
+		mycpu->gd_cnt.v_vm_faults++;
+		if (curthread->td_lwp)
+			++curthread->td_lwp->lwp_ru.ru_minflt;
 		vm_page_wakeup(m);
 	}
 }
