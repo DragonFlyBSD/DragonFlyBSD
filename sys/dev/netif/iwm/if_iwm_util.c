@@ -152,10 +152,6 @@ __FBSDID("$FreeBSD$");
 #include "if_iwm_util.h"
 #include "if_iwm_pcie_trans.h"
 
-#if defined(__DragonFly__)
-int iwmsleep(void *chan, struct lock *lk, int flags, const char *wmesg, int to);
-#endif
-
 /*
  * Send a command to the firmware.  We try to implement the Linux
  * driver interface for the routine.
@@ -196,7 +192,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		KASSERT(!async, ("invalid async parameter"));
 		while (sc->sc_wantresp != -1) {
 #if defined(__DragonFly__)
-			iwmsleep(&sc->sc_wantresp, &sc->sc_lk, 0, "iwmcmdsl", 0);
+			lksleep(&sc->sc_wantresp, &sc->sc_lk, 0, "iwmcmdsl", 0);
 #else
 			msleep(&sc->sc_wantresp, &sc->sc_mtx, 0, "iwmcmdsl", 0);
 #endif
@@ -341,7 +337,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		/* m..m-mmyy-mmyyyy-mym-ym m-my generation */
 		int generation = sc->sc_generation;
 #if defined(__DragonFly__)
-		error = iwmsleep(desc, &sc->sc_lk, PCATCH, "iwmcmd", hz);
+		error = lksleep(desc, &sc->sc_lk, PCATCH, "iwmcmd", hz);
 #else
 		error = msleep(desc, &sc->sc_mtx, PCATCH, "iwmcmd", hz);
 #endif

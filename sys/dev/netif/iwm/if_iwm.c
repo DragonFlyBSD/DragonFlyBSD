@@ -125,7 +125,7 @@
  * Comprehensive list of adjustments for DragonFly #ifdef'd:
  *	(safety)  added register read-back serialization in iwm_reset_rx_ring().
  *	packet counters
- *	msleep -> iwmsleep (handle deadlocks due to dfly interrupt serializer)
+ *	msleep -> lksleep
  *	mtx -> lk  (mtx functions -> lockmgr functions)
  *	callout differences
  *	taskqueue differences
@@ -428,30 +428,6 @@ static int	iwm_msi_enable = 1;
 
 TUNABLE_INT("hw.iwm.msi.enable", &iwm_msi_enable);
 
-/*
- * This is a hack due to the wlan_serializer deadlocking sleepers.
- */
-int iwmsleep(void *chan, struct lock *lk, int flags, const char *wmesg, int to);
-
-int
-iwmsleep(void *chan, struct lock *lk, int flags, const char *wmesg, int to)
-{
-	int error;
-
-	if (wlan_is_serialized()) {
-		wlan_serialize_exit();
-		kprintf("%s: have to release serializer for sleeping\n",
-		    __func__);
-		error = lksleep(chan, lk, flags, wmesg, to);
-		lockmgr(lk, LK_RELEASE);
-		wlan_serialize_enter();
-		lockmgr(lk, LK_EXCLUSIVE);
-	} else {
-		error = lksleep(chan, lk, flags, wmesg, to);
-	}
-	return error;
-}
-
 #endif
 
 /*
@@ -556,7 +532,7 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 
 	while (fw->fw_status == IWM_FW_STATUS_INPROGRESS) {
 #if defined(__DragonFly__)
-		iwmsleep(&sc->sc_fw, &sc->sc_lk, 0, "iwmfwp", 0);
+		lksleep(&sc->sc_fw, &sc->sc_lk, 0, "iwmfwp", 0);
 #else
 		msleep(&sc->sc_fw, &sc->sc_mtx, 0, "iwmfwp", 0);
 #endif
@@ -2460,7 +2436,7 @@ iwm_firmware_load_chunk(struct iwm_softc *sc, uint32_t dst_addr,
 	error = 0;
 	while (!sc->sc_fw_chunk_done) {
 #if defined(__DragonFly__)
-		error = iwmsleep(&sc->sc_fw, &sc->sc_lk, 0, "iwmfw", hz);
+		error = lksleep(&sc->sc_fw, &sc->sc_lk, 0, "iwmfw", hz);
 #else
 		error = msleep(&sc->sc_fw, &sc->sc_mtx, 0, "iwmfw", hz);
 #endif
@@ -2644,7 +2620,7 @@ iwm_load_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 	/* wait for the firmware to load */
 	for (w = 0; !sc->sc_uc.uc_intr && w < 10; w++) {
 #if defined(__DragonFly__)
-		error = iwmsleep(&sc->sc_uc, &sc->sc_lk, 0, "iwmuc", hz/10);
+		error = lksleep(&sc->sc_uc, &sc->sc_lk, 0, "iwmuc", hz/10);
 #else
 		error = msleep(&sc->sc_uc, &sc->sc_mtx, 0, "iwmuc", hz/10);
 #endif
@@ -2663,7 +2639,7 @@ iwm_load_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 	 * Give the firmware some time to initialize.
 	 * Accessing it too early causes errors.
 	 */
-	iwmsleep(&w, &sc->sc_lk, 0, "iwmfwinit", hz);
+	lksleep(&w, &sc->sc_lk, 0, "iwmfwinit", hz);
 
 	return error;
 }
@@ -2824,7 +2800,7 @@ iwm_run_init_mvm_ucode(struct iwm_softc *sc, int justnvm)
 	 */
 	while (!sc->sc_init_complete) {
 #if defined(__DragonFly__)
-		error = iwmsleep(&sc->sc_init_complete, &sc->sc_lk,
+		error = lksleep(&sc->sc_init_complete, &sc->sc_lk,
 				 0, "iwminit", 2*hz);
 #else
 		error = msleep(&sc->sc_init_complete, &sc->sc_mtx,
@@ -6208,7 +6184,7 @@ iwm_init_task(void *arg1)
 	IWM_LOCK(sc);
 	while (sc->sc_flags & IWM_FLAG_BUSY) {
 #if defined(__DragonFly__)
-		iwmsleep(&sc->sc_flags, &sc->sc_lk, 0, "iwmpwr", 0);
+		lksleep(&sc->sc_flags, &sc->sc_lk, 0, "iwmpwr", 0);
 #else
 		msleep(&sc->sc_flags, &sc->sc_mtx, 0, "iwmpwr", 0);
 #endif
