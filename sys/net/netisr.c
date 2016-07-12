@@ -86,6 +86,7 @@ struct netisr_barrier {
 	int			br_isset;
 };
 
+void *netlastfunc[MAXCPU];
 static struct netisr netisrs[NETISR_MAX];
 static TAILQ_HEAD(,netmsg_port_registration) netreglist;
 static TAILQ_HEAD(,netmsg_rollup) netrulist;
@@ -325,6 +326,7 @@ netmsg_service_loop(void *arg)
 				/*
 				 * We are on the correct port, dispatch it.
 				 */
+				netlastfunc[mycpuid] = msg->nm_dispatch;
 				msg->nm_dispatch((netmsg_t)msg);
 			}
 			if (--limit == 0)

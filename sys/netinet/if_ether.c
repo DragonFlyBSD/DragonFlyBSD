@@ -679,7 +679,10 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_permanent_modify, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_creation_failure, CTLFLAG_RW,
 	   &log_arp_creation_failure, 0, "Log arp creation failure");
 
-static void
+/*
+ * Returns non-zero if the routine updated anything.
+ */
+static int
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		 boolean_t generate_report, boolean_t dologging)
 {
@@ -689,6 +692,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	struct sockaddr_dl *sdl;
 	struct rtentry *rt;
 	char hexstr[2][64];
+	int changed = create;
 
 	KASSERT(curthread->td_type == TD_TYPE_NETISR,
 	    ("arp update not in netisr"));
@@ -738,18 +742,25 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 				    ifp->if_xname);
 			}
 			if (nifp == NULL)
-				return;
+				return 0;
 
 			/*
 			 * nifp is our man!  Replace rt_ifp and adjust
 			 * the sdl.
 			 */
 			ifp = rt->rt_ifp = nifp;
-			sdl->sdl_type = ifp->if_type;
-			sdl->sdl_index = ifp->if_index;
+			if (sdl->sdl_type != ifp->if_type) {
+				sdl->sdl_type = ifp->if_type;
+				changed = 1;
+			}
+			if (sdl->sdl_index != ifp->if_index) {
+				sdl->sdl_index = ifp->if_index;
+				changed = 1;
+			}
 		}
 		if (sdl->sdl_alen &&
 		    bcmp(ar_sha(ah), LLADDR(sdl), sdl->sdl_alen)) {
+			changed = 1;
 			if (rt->rt_expire != 0) {
 				if (dologging && log_arp_movements) {
 					hexncpy((u_char *)LLADDR(sdl), ifp->if_addrlen,
@@ -770,7 +781,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 					"permanent entry for %s on %s\n",
 					hexstr[0], inet_ntoa(isaddr), ifp->if_xname);
 				}
-				return;
+				return changed;
 			}
 		}
 		/*
@@ -794,15 +805,28 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 				"(ignored)", hexstr[0],
 				ah->ar_hln, ifp->if_addrlen);
 			}
-			return;
+			return changed;
 		}
 		memcpy(LLADDR(sdl), ar_sha(ah), sdl->sdl_alen = ah->ar_hln);
 		if (rt->rt_expire != 0) {
-			rt->rt_expire = time_uptime + arpt_keep;
+			if (rt->rt_expire != time_uptime + arpt_keep &&
+			    rt->rt_expire != time_uptime + arpt_keep - 1) {
+				rt->rt_expire = time_uptime + arpt_keep;
+				changed = 1;
+			}
 		}
-		rt->rt_flags &= ~RTF_REJECT;
-		la->la_asked = 0;
-		la->la_preempt = arp_maxtries;
+		if (rt->rt_flags & RTF_REJECT) {
+			rt->rt_flags &= ~RTF_REJECT;
+			changed = 1;
+		}
+		if (la->la_asked != 0) {
+			la->la_asked = 0;
+			changed = 1;
+		}
+		if (la->la_preempt != arp_maxtries) {
+			la->la_preempt = arp_maxtries;
+			changed = 1;
+		}
 
 		/*
 		 * This particular cpu might have been holding an mbuf
@@ -814,8 +838,10 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			la->la_hold = NULL;
 			m_adj(m, sizeof(struct ether_header));
 			ifp->if_output(ifp, m, rt_key(rt), rt);
+			changed = 1;
 		}
 	}
+	return changed;
 }
 
 /*
@@ -832,6 +858,7 @@ in_arpinput(struct mbuf *m)
 	struct in_addr isaddr, itaddr, myaddr;
 	uint8_t *enaddr = NULL;
 	int req_len;
+	int changed;
 	char hexstr[64];
 
 	req_len = arphdr_len2(ifp->if_addrlen, sizeof(struct in_addr));
@@ -1019,14 +1046,15 @@ match:
 	 * However, we only need to generate rtmsg on CPU0.
 	 */
 	ASSERT_IN_NETISR(0);
-	arp_update_oncpu(m, isaddr.s_addr, itaddr.s_addr == myaddr.s_addr,
-	    RTL_REPORTMSG, TRUE);
+	changed = arp_update_oncpu(m, isaddr.s_addr,
+				   itaddr.s_addr == myaddr.s_addr,
+				   RTL_REPORTMSG, TRUE);
 
-	if (ncpus > 1) {
+	if (ncpus > 1 && changed) {
 		struct netmsg_inarp *msg = &m->m_hdr.mh_arpmsg;
 
 		netmsg_init(&msg->base, NULL, &netisr_apanic_rport,
-		    0, arp_update_msghandler);
+			    0, arp_update_msghandler);
 		msg->m = m;
 		msg->saddr = isaddr.s_addr;
 		msg->taddr = itaddr.s_addr;
@@ -1066,8 +1094,9 @@ arp_update_msghandler(netmsg_t msg)
 	 * no need to generate rtmsg on them.
 	 */
 	KASSERT(mycpuid > 0, ("arp update msg on cpu%d", mycpuid));
-	arp_update_oncpu(rmsg->m, rmsg->saddr, rmsg->taddr == rmsg->myaddr,
-	    RTL_DONTREPORT, FALSE);
+	arp_update_oncpu(rmsg->m, rmsg->saddr,
+			 rmsg->taddr == rmsg->myaddr,
+			 RTL_DONTREPORT, FALSE);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus) {
