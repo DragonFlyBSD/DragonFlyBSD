@@ -394,12 +394,12 @@ struct thread {
 #define TDPRI_USER_IDLE		4	/* user scheduler idle */
 #define TDPRI_USER_NORM		6	/* user scheduler normal */
 #define TDPRI_USER_REAL		8	/* user scheduler real time */
-#define TDPRI_KERN_LPSCHED	9	/* scheduler helper for userland sch */
+#define TDPRI_KERN_LPSCHED	9	/* (comparison point only) */
 #define TDPRI_KERN_USER		10	/* kernel / block in syscall */
 #define TDPRI_KERN_DAEMON	12	/* kernel daemon (pageout, etc) */
 #define TDPRI_SOFT_NORM		14	/* kernel / normal */
 #define TDPRI_SOFT_TIMER	16	/* kernel / timer */
-#define TDPRI_EXITING		19	/* exiting thread */
+#define TDPRI_UNUSED19		19
 #define TDPRI_INT_SUPPORT	20	/* kernel / high priority support */
 #define TDPRI_INT_LOW		27	/* low priority interrupt */
 #define TDPRI_INT_MED		28	/* medium priority interrupt */

@@ -93,6 +93,11 @@ typedef struct {
 
 #define CPUMASK_SIMPLE(cpu)	((__uint64_t)1 << (cpu))
 
+#define CPUMASK_ADDR(mask, cpu)						\
+		((cpu) < 64) ? &(mask).ary[0] :				\
+		((cpu) < 128) ? &(mask).ary[1] :			\
+		((cpu) < 192) ? &(mask).ary[2] : &(mask).ary[3])))
+
 #define BSRCPUMASK(val)		((val).ary[3] ? 192 + bsrq((val).ary[3]) : \
 				((val).ary[2] ? 128 + bsrq((val).ary[2]) : \
 				((val).ary[1] ? 64 + bsrq((val).ary[1]) : \
