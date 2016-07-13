@@ -47,6 +47,7 @@
 
 #include <machine/clock.h>
 #include <machine/md_var.h>
+#include <machine/framebuffer.h>
 #ifdef __x86_64__
 #include <machine/pc/bios.h>
 #endif
@@ -415,6 +416,12 @@ static void direct_fill(video_adapter_t *, int);
 static int
 vga_configure(int flags)
 {
+    /* No VGA when booted via UEFI */
+    if (probe_efi_fb(0) == 0)
+        return 0;	/* XXX nobody uses this return value */
+
+    /* XXX Also abort if VGA isn't present according to ACPI FADT BootFlags */
+
     probe_adapters();
     if (probe_done(&biosadapter)) {
 	biosadapter.va_flags |= V_ADP_INITIALIZED;
@@ -827,6 +834,12 @@ vga_error(void)
 static int
 vga_probe(int unit, video_adapter_t **adpp, void *arg, int flags)
 {
+    /* No VGA when booted via UEFI */
+    if (probe_efi_fb(0) == 0)
+        return (ENXIO);
+
+    /* XXX Also abort if VGA isn't present according to ACPI FADT BootFlags */
+
     probe_adapters();
     if (unit != 0)
 	return ENXIO;
