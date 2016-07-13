@@ -91,8 +91,6 @@ int		vga_mmap(cdev_t dev, vga_softc_t *sc, vm_offset_t offset,
 			 int prot);
 #endif
 
-extern int	(*vga_sub_configure)(int flags);
-
 #endif /* _KERNEL */
 
 #endif /* _DEV_FB_VGAREG_H_ */

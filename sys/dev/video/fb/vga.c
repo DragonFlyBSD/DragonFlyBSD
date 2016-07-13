@@ -176,7 +176,6 @@ static video_adapter_t biosadapter = {
 
 /* video driver declarations */
 static int			vga_configure(int flags);
-       int			(*vga_sub_configure)(int flags);
 static int			vga_error(void);
 static vi_probe_t		vga_probe;
 static vi_init_t		vga_init;
@@ -422,8 +421,6 @@ vga_configure(int flags)
 	if (!config_done(&biosadapter) && !(vid_register(&biosadapter) < 0))
 	    biosadapter.va_flags |= V_ADP_REGISTERED;
     }
-    if (vga_sub_configure != NULL)
-	(*vga_sub_configure)(flags);
 
     return 1;
 }
@@ -855,8 +852,6 @@ vga_init(int unit, video_adapter_t *adp, int flags)
 		return ENXIO;
 	adp->va_flags |= V_ADP_REGISTERED;
     }
-    if (vga_sub_configure != NULL)
-	(*vga_sub_configure)(0);
 
     return 0;
 }
