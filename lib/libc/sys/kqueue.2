@@ -404,7 +404,7 @@ The filter will record all attempts to deliver a signal to a process,
 even if the signal has been marked as
 .Dv SIG_IGN ,
 or has been masked by
-.Fn sigpromask .
+.Fn sigprocmask .
 Event notification happens after normal signal delivery processing.
 .Fa data
 returns the number of times the signal has occurred since the last call to
