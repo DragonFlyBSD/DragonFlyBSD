@@ -256,6 +256,8 @@ nvme_admin_state_identify_ctlr(nvme_softc_t *sc)
 	return 1;
 }
 
+#define COMQFIXUP(msix, ncomqs)	((((msix) - 1) % ncomqs) + 1)
+
 /*
  * Request and create the I/O queues.  Figure out CPU mapping optimizations.
  */
@@ -329,7 +331,7 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		kprintf("optimal map\n");
 		qno = 1;
 		for (i = 0; i < ncpus; ++i) {
-			int cpuqno = sc->cputovect[i];
+			int cpuqno = COMQFIXUP(sc->cputovect[i], ncpus);
 
 			KKASSERT(cpuqno != 0);
 			sc->qmap[i][0] = qno + 0;
@@ -353,7 +355,7 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 			KKASSERT(qno != 0);
 			sc->qmap[i][0] = qno;
 			sc->qmap[i][1] = qno;
-			sc->subqueues[qno].comqid = qno;
+			sc->subqueues[qno].comqid = COMQFIXUP(qno, ncpus);
 		}
 		sc->niosubqs = ncpus;
 		sc->niocomqs = ncpus;
@@ -361,15 +363,15 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		/*
 		 * We have enough queues to separate and prioritize reads
 		 * and writes, but all cpus have to share the same submission
-		 * queues.  Completion queues are split up between cpus
-		 * as much as possible.
+		 * queues.  There aren't enough submission queues to split up
+		 * the completion queues between cpus.
 		 *
 		 * leave dumpqno and eventqno set to the admin queue.
 		 */
 		kprintf("rw-sep map\n");
 		qno = 1;
 		for (i = 0; i < ncpus; ++i) {
-			int cpuqno = sc->cputovect[i];
+			int cpuqno = COMQFIXUP(sc->cputovect[i], 2);
 
 			KKASSERT(qno != 0);
 			sc->qmap[i][0] = qno + 0;	/* read lopri */
@@ -389,7 +391,7 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		kprintf("basic map\n");
 		qno = 1;
 		for (i = 0; i < ncpus; ++i) {
-			int cpuqno = sc->cputovect[i];
+			int cpuqno = COMQFIXUP(sc->cputovect[i], 1);
 
 			KKASSERT(qno != 0);
 			sc->qmap[i][0] = qno + 0;	/* read */

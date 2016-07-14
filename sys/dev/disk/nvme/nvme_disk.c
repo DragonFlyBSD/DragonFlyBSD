@@ -111,8 +111,10 @@ nvme_disk_attach(nvme_softns_t *nsc)
 void
 nvme_disk_detach(nvme_softns_t *nsc)
 {
-	disk_destroy(&nsc->disk);
-	devstat_remove_entry(&nsc->stats);
+	if (nsc->cdev) {
+		disk_destroy(&nsc->disk);
+		devstat_remove_entry(&nsc->stats);
+	}
 }
 
 static
