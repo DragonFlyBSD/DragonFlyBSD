@@ -39,7 +39,7 @@
 
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
-static void trim_volume(struct volume_info *vol);
+static int trim_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
@@ -204,41 +204,8 @@ main(int ac, char **av)
 			sizetostr(vol->size));
 
 		if (eflag) {
-			if (strcmp(vol->type, "REGFILE") == 0) {
-				fprintf(stderr, "Cannot TRIM regular file %s\n",
-					vol->name);
+			if (trim_volume(vol) == -1)
 				exit(1);
-			}
-
-			char sysctl_name[64];
-			int trim_enabled = 0;
-			size_t olen = sizeof(trim_enabled);
-			char *dev_name = strdup(vol->name);
-
-			if (strncmp(dev_name, "/dev/da", 7)) {
-				fprintf(stderr, "%s does not support the TRIM "
-					"command\n", dev_name);
-				exit(1);
-			}
-
-			dev_name = strtok(dev_name + strlen("/dev/da"),"s");
-
-			sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled",
-			    dev_name);
-			errno=0;
-			if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) < 0) {
-				printf("%s %s (%s) does not support the TRIM "
-				    "command\n",
-				    vol->type, vol->name, sysctl_name);
-				usage();
-			}
-			if(!trim_enabled) {
-				printf("Erase device option selected, but "
-				    "sysctl (%s) is not enabled\n", sysctl_name);
-				usage();
-
-			}
-			trim_volume(vol);
 		}
 		total += vol->size;
 	}
@@ -427,26 +394,59 @@ nowtime(void)
  * TRIM the volume, but only if the backing store is a DEVICE
  */
 static
-void
+int
 trim_volume(struct volume_info *vol)
 {
-	if (strncmp(vol->type, "DEVICE", sizeof("DEVICE")) == 0) {
-		off_t ioarg[2];
+	size_t olen;
+	char *dev_name, *p;
+	char sysctl_name[64];
+	int trim_enabled;
+	off_t ioarg[2];
 
-		/* 1MB offset to prevent destroying disk-reserved area */
-		ioarg[0] = vol->device_offset;
-		ioarg[1] = vol->size;
-
-		printf("Trimming %s %s, sectors (%llu -%llu)\n",
-		    vol->type, vol->name,
-		    (unsigned long long)ioarg[0]/512,
-		    (unsigned long long)ioarg[1]/512);
-
-		if (ioctl(vol->fd, IOCTLTRIM, ioarg) < 0) {
-			printf("Device trim failed\n");
-			usage ();
-		}
+	if (strcmp(vol->type, "DEVICE")) {
+		fprintf(stderr, "Cannot TRIM regular file %s\n", vol->name);
+		return(-1);
 	}
+	if (strncmp(vol->name, "/dev/da", 7)) {
+		fprintf(stderr, "%s does not support the TRIM command\n",
+			vol->name);
+		return(-1);
+	}
+
+	/* Extract a number from /dev/da?s? */
+	dev_name = strdup(vol->name);
+	p = strtok(dev_name + strlen("/dev/da"), "s");
+	sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", p);
+	free(dev_name);
+
+	trim_enabled = 0;
+	olen = sizeof(trim_enabled);
+
+	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) == -1) {
+		fprintf(stderr, "%s (%s) does not support the TRIM command\n",
+			vol->name, sysctl_name);
+		return(-1);
+	}
+	if (!trim_enabled) {
+		fprintf(stderr, "Erase device option selected, but sysctl (%s) "
+			"is not enabled\n", sysctl_name);
+		return(-1);
+	}
+
+	ioarg[0] = vol->device_offset;
+	ioarg[1] = vol->size;
+
+	printf("Trimming %s %s, sectors %llu-%llu\n",
+		vol->type, vol->name,
+		(unsigned long long)ioarg[0] / 512,
+		(unsigned long long)ioarg[1] / 512);
+
+	if (ioctl(vol->fd, IOCTLTRIM, ioarg) == -1) {
+		fprintf(stderr, "Device trim failed\n");
+		return(-1);
+	}
+
+	return(0);
 }
 
 /*
