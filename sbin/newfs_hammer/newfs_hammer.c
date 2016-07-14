@@ -214,6 +214,13 @@ main(int ac, char **av)
 			int trim_enabled = 0;
 			size_t olen = sizeof(trim_enabled);
 			char *dev_name = strdup(vol->name);
+
+			if (strncmp(dev_name, "/dev/da", 7)) {
+				fprintf(stderr, "%s does not support the TRIM "
+					"command\n", dev_name);
+				exit(1);
+			}
+
 			dev_name = strtok(dev_name + strlen("/dev/da"),"s");
 
 			sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled",
