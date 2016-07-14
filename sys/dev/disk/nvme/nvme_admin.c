@@ -361,29 +361,26 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 		sc->niocomqs = ncpus;
 	} else if (sc->niosubqs >= 2 && sc->niocomqs >= 2) {
 		/*
-		 * We have enough queues to separate and prioritize reads
-		 * and writes, but all cpus have to share the same submission
-		 * queues.  There aren't enough submission queues to split up
-		 * the completion queues between cpus.
+		 * prioritize trying to distribute available queues to
+		 * cpus, don't separate read and write.
 		 *
 		 * leave dumpqno and eventqno set to the admin queue.
 		 */
-		kprintf("rw-sep map\n");
-		qno = 1;
+		kprintf("rw-sep map (%d, %d)\n", sc->niosubqs, sc->niocomqs);
 		for (i = 0; i < ncpus; ++i) {
-			int cpuqno = COMQFIXUP(sc->cputovect[i], 2);
+			int cpuqno = COMQFIXUP(sc->cputovect[i], sc->niocomqs);
+			int qno = COMQFIXUP((i + 1), sc->niosubqs);
 
 			KKASSERT(qno != 0);
-			sc->qmap[i][0] = qno + 0;	/* read lopri */
-			sc->qmap[i][1] = qno + 1;	/* read hipri */
-			if (i <= 0)
-				sc->subqueues[qno + 0].comqid = cpuqno;
-			if (i <= 1)
-				sc->subqueues[qno + 1].comqid = cpuqno;
+			sc->qmap[i][0] = qno;		/* read */
+			sc->qmap[i][1] = qno;		/* write */
+			sc->subqueues[qno].comqid = cpuqno;
 			/* do not increment qno */
 		}
+#if 0
 		sc->niosubqs = 2;
 		sc->niocomqs = 2;
+#endif
 	} else if (sc->niosubqs >= 2) {
 		/*
 		 * We have enough to have separate read and write queues.
