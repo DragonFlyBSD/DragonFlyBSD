@@ -36,7 +36,8 @@
 
 SLIST_HEAD(iomap_list_head, iomap) iomap_list = SLIST_HEAD_INITIALIZER(iomap_list);
 
-struct iomap * __ioremap_common(unsigned long phys_addr, unsigned long size)
+void __iomem *
+__ioremap_common(unsigned long phys_addr, unsigned long size, int cache_mode)
 {
 	struct iomap *imp;
 
@@ -47,9 +48,10 @@ struct iomap * __ioremap_common(unsigned long phys_addr, unsigned long size)
 	imp = kmalloc(sizeof(struct iomap), M_DRM, M_WAITOK);
 	imp->paddr = phys_addr;
 	imp->npages = size / PAGE_SIZE;
+	imp->pmap_addr = pmap_mapdev_attr(phys_addr, size, cache_mode);
 	SLIST_INSERT_HEAD(&iomap_list, imp, im_iomaps);
 
-	return imp;
+	return imp->pmap_addr;
 }
 
 void iounmap(void __iomem *ptr)

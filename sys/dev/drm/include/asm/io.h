@@ -64,29 +64,25 @@ struct iomap {
 	SLIST_ENTRY(iomap) im_iomaps;
 };
 
-struct iomap *__ioremap_common(unsigned long phys_addr, unsigned long size);
+void __iomem *
+__ioremap_common(unsigned long phys_addr, unsigned long size, int cache_mode);
 
-static inline void *ioremap_nocache(resource_size_t phys_addr, unsigned long size)
+static inline void __iomem *
+ioremap_nocache(resource_size_t phys_addr, unsigned long size)
 {
-	struct iomap *imp;
-
-	imp = __ioremap_common(phys_addr, size);
-	imp->pmap_addr = pmap_mapdev_uncacheable(phys_addr, size);
-	return imp->pmap_addr;
+	return __ioremap_common(phys_addr, size, PAT_UNCACHEABLE);
 }
 
-static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long size)
-{
-	struct iomap *imp;
-
-	imp = __ioremap_common(phys_addr, size);
-	imp->pmap_addr = pmap_mapdev_attr(phys_addr, size, PAT_WRITE_COMBINING);
-	return imp->pmap_addr;
-}
-
-static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
+static inline void __iomem *
+ioremap(resource_size_t offset, unsigned long size)
 {
 	return ioremap_nocache(offset, size);
+}
+
+static inline void __iomem *
+ioremap_wc(resource_size_t phys_addr, unsigned long size)
+{
+	return __ioremap_common(phys_addr, size, PAT_WRITE_COMBINING);
 }
 
 void iounmap(void __iomem *ptr);
