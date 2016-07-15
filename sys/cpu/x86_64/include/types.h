@@ -94,9 +94,9 @@ typedef struct {
 #define CPUMASK_SIMPLE(cpu)	((__uint64_t)1 << (cpu))
 
 #define CPUMASK_ADDR(mask, cpu)						\
-		((cpu) < 64) ? &(mask).ary[0] :				\
-		((cpu) < 128) ? &(mask).ary[1] :			\
-		((cpu) < 192) ? &(mask).ary[2] : &(mask).ary[3])))
+		(((cpu) < 64) ? &(mask).ary[0] :			\
+		(((cpu) < 128) ? &(mask).ary[1] :			\
+		(((cpu) < 192) ? &(mask).ary[2] : &(mask).ary[3])))
 
 #define BSRCPUMASK(val)		((val).ary[3] ? 192 + bsrq((val).ary[3]) : \
 				((val).ary[2] ? 128 + bsrq((val).ary[2]) : \
@@ -255,6 +255,12 @@ typedef struct {
 			atomic_clear_cpumask(&(mask).ary[((i) >> 6) & 3], \
 					   CPUMASK_SIMPLE((i) & 63))
 
+#define ATOMIC_CPUMASK_TESTANDSET(mask, i)				  \
+		atomic_testandset_long(&(mask).ary[((i) >> 6) & 3], (i))
+
+#define ATOMIC_CPUMASK_TESTANDCLR(mask, i)				  \
+		atomic_testandclear_long(&(mask).ary[((i) >> 6) & 3], (i))
+
 #define ATOMIC_CPUMASK_ORMASK(mask, val) do {				  \
 			atomic_set_cpumask(&(mask).ary[0], (val).ary[0]); \
 			atomic_set_cpumask(&(mask).ary[1], (val).ary[1]); \
@@ -267,6 +273,13 @@ typedef struct {
 			atomic_clear_cpumask(&(mask).ary[1], (val).ary[1]); \
 			atomic_clear_cpumask(&(mask).ary[2], (val).ary[2]); \
 			atomic_clear_cpumask(&(mask).ary[3], (val).ary[3]); \
+					 } while(0)
+
+#define ATOMIC_CPUMASK_COPY(mask, val) do {				    \
+			atomic_store_rel_cpumask(&(mask).ary[0], (val).ary[0]);\
+			atomic_store_rel_cpumask(&(mask).ary[1], (val).ary[1]);\
+			atomic_store_rel_cpumask(&(mask).ary[2], (val).ary[2]);\
+			atomic_store_rel_cpumask(&(mask).ary[3], (val).ary[3]);\
 					 } while(0)
 
 #endif

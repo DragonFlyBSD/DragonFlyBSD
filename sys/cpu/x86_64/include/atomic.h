@@ -71,7 +71,9 @@
 	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 
 int	atomic_testandset_int(volatile u_int *p, u_int v);
+int	atomic_testandset_long(volatile u_long *p, u_long v);
 int	atomic_testandclear_int(volatile u_int *p, u_int v);
+int	atomic_testandclear_long(volatile u_long *p, u_long v);
 
 #else /* !KLD_MODULE */
 #define MPLOCKED	"lock ; "
@@ -418,6 +420,7 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 #if defined(KLD_MODULE)
 
 extern int atomic_cmpxchg_int(volatile u_int *_dst, u_int _old, u_int _new);
+extern int atomic_cmpxchg_long_test(volatile u_long *_dst, u_long _old, u_long _new);
 extern int atomic_cmpset_short(volatile u_short *_dst,
 	u_short _old, u_short _new);
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
@@ -433,6 +436,20 @@ atomic_cmpxchg_int(volatile u_int *_dst, u_int _old, u_int _new)
 	u_int res = _old;
 
 	__asm __volatile(MPLOCKED "cmpxchgl %2,%1; " \
+			 : "+a" (res), "=m" (*_dst) \
+			 : "r" (_new), "m" (*_dst) \
+			 : "memory");
+	return (res);
+}
+
+static __inline int
+atomic_cmpxchg_long_test(volatile u_long *_dst, u_long _old, u_long _new)
+{
+	u_int res = _old;
+
+	__asm __volatile(MPLOCKED "cmpxchgq %2,%1; "
+				  " setz %%al;"
+				  " movsbq %%al,%%rax" \
 			 : "+a" (res), "=m" (*_dst) \
 			 : "r" (_new), "m" (*_dst) \
 			 : "memory");
@@ -517,6 +534,23 @@ atomic_testandset_int(volatile u_int *p, u_int v)
 }
 
 static __inline int
+atomic_testandset_long(volatile u_long *p, u_long v)
+{
+	u_char res;
+
+	__asm __volatile(
+	"	" MPLOCKED "		"
+	"	btsq	%2,%1 ;		"
+	"	setc	%0 ;		"
+	"# atomic_testandset_int"
+	: "=q" (res),			/* 0 */
+	  "+m" (*p)			/* 1 */
+	: "Ir" (v & 0x3f)		/* 2 */
+	: "cc");
+	return (res);
+}
+
+static __inline int
 atomic_testandclear_int(volatile u_int *p, u_int v)
 {
 	u_char res;
@@ -529,6 +563,23 @@ atomic_testandclear_int(volatile u_int *p, u_int v)
 	: "=q" (res),			/* 0 */
 	  "+m" (*p)			/* 1 */
 	: "Ir" (v & 0x1f)		/* 2 */
+	: "cc");
+	return (res);
+}
+
+static __inline int
+atomic_testandclear_long(volatile u_long *p, u_long v)
+{
+	u_char res;
+
+	__asm __volatile(
+	"	" MPLOCKED "		"
+	"	btrq	%2,%1 ;		"
+	"	setc	%0 ;		"
+	"# atomic_testandclear_int"
+	: "=q" (res),			/* 0 */
+	  "+m" (*p)			/* 1 */
+	: "Ir" (v & 0x3f)		/* 2 */
 	: "cc");
 	return (res);
 }
@@ -547,7 +598,7 @@ extern void	atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v);
 static __inline u_##TYPE				\
 atomic_load_acq_##TYPE(volatile u_##TYPE *p)		\
 {							\
-	u_##TYPE res;					\
+	u_##TYPE res; /* accumulator can be anything */	\
 							\
 	__asm __volatile(MPLOCKED LOP			\
 	: "=a" (res),			/* 0 */		\
@@ -626,6 +677,8 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define atomic_set_cpumask		atomic_set_long
 #define atomic_clear_cpumask		atomic_clear_long
 #define atomic_cmpset_cpumask		atomic_cmpset_long
+#define atomic_store_rel_cpumask	atomic_store_rel_long
+#define atomic_load_acq_cpumask		atomic_load_acq_long
 
 /* Operations on 8-bit bytes. */
 #define	atomic_set_8		atomic_set_char
