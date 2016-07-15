@@ -33,7 +33,6 @@
  * SUCH DAMAGE.
  */
 
-#define _KERNEL_STRUCTURES
 #include <sys/types.h>
 #include <sys/usched.h>
 #include <stdio.h>

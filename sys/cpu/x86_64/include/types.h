@@ -83,8 +83,6 @@ typedef struct {
 	__uint64_t      ary[4];
 } cpumask_t;
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
 #define CPUMASK_INITIALIZER_ALLONES	{ .ary = { (__uint64_t)-1, \
 					  (__uint64_t)-1, \
 					  (__uint64_t)-1, \
@@ -281,8 +279,6 @@ typedef struct {
 			atomic_store_rel_cpumask(&(mask).ary[2], (val).ary[2]);\
 			atomic_store_rel_cpumask(&(mask).ary[3], (val).ary[3]);\
 					 } while(0)
-
-#endif
 
 #define CPULOCK_EXCLBIT	0		/* exclusive lock bit number */
 #define CPULOCK_EXCL	0x00000001	/* exclusive lock */
