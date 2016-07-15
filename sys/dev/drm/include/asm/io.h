@@ -85,6 +85,12 @@ ioremap_wc(resource_size_t phys_addr, unsigned long size)
 	return __ioremap_common(phys_addr, size, PAT_WRITE_COMBINING);
 }
 
+static inline void __iomem *
+ioremap_wt(resource_size_t phys_addr, unsigned long size)
+{
+	return __ioremap_common(phys_addr, size, PAT_WRITE_THROUGH);
+}
+
 void iounmap(void __iomem *ptr);
 
 /* XXX these should have volatile */
