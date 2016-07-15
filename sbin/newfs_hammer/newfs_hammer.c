@@ -204,7 +204,8 @@ main(int ac, char **av)
 			sizetostr(vol->size));
 
 		if (eflag) {
-			if (trim_volume(vol) == -1)
+			int res = trim_volume(vol);
+			if (res == -1 || (res == 1 && ForceOpt == 0))
 				exit(1);
 		}
 		total += vol->size;
@@ -405,12 +406,12 @@ trim_volume(struct volume_info *vol)
 
 	if (strcmp(vol->type, "DEVICE")) {
 		fprintf(stderr, "Cannot TRIM regular file %s\n", vol->name);
-		return(-1);
+		return(1);
 	}
 	if (strncmp(vol->name, "/dev/da", 7)) {
 		fprintf(stderr, "%s does not support the TRIM command\n",
 			vol->name);
-		return(-1);
+		return(1);
 	}
 
 	/* Extract a number from /dev/da?s? */
@@ -425,12 +426,12 @@ trim_volume(struct volume_info *vol)
 	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) == -1) {
 		fprintf(stderr, "%s (%s) does not support the TRIM command\n",
 			vol->name, sysctl_name);
-		return(-1);
+		return(1);
 	}
 	if (!trim_enabled) {
 		fprintf(stderr, "Erase device option selected, but sysctl (%s) "
 			"is not enabled\n", sysctl_name);
-		return(-1);
+		return(1);
 	}
 
 	ioarg[0] = vol->device_offset;
