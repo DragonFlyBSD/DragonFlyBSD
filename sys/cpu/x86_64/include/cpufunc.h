@@ -47,6 +47,7 @@
 
 struct thread;
 struct region_descriptor;
+struct pmap;
 
 __BEGIN_DECLS
 #define readb(va)	(*(volatile u_int8_t *) (va))
@@ -416,7 +417,8 @@ invd(void)
 #if defined(_KERNEL)
 
 void smp_invltlb(void);
-void smp_invltlb_intr(void);
+void smp_invlpg(cpumask_t *cmdmask);
+void smp_inval_intr(void);
 
 #ifndef _CPU_INVLPG_DEFINED
 

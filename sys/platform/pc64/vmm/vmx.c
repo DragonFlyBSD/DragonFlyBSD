@@ -1449,12 +1449,12 @@ restart:
 	 * instructions. We have to execute a special instruction that
 	 * invalidates all EPT cache ("invept").
 	 *
-	 * pm_invgen it's a generation number which is incremented in the
-	 * pmap_inval_interlock, before doing any invalidates. The
-	 * pmap_inval_interlock will cause all the CPUs that are using
-	 * the EPT to VMEXIT and wait for the interlock to complete.
-	 * When they will VMENTER they will see that the generation
-	 * number had changed from their current and do a invept.
+	 * pm_invgen it's a generation number which is incremented in
+	 * pmap_inval_smp*(), before doing any invalidates.  This will
+	 * cause all CPUs thaat are using the EPT to VMEXIT and wait for
+	 * the interlock to complete.  When they VMENTER they will see that
+	 * the generation number had changed from their current and do a
+	 * invept.
 	 */
 	if (vti->eptgen != td->td_proc->p_vmspace->vm_pmap.pm_invgen) {
 		vti->eptgen = td->td_proc->p_vmspace->vm_pmap.pm_invgen;

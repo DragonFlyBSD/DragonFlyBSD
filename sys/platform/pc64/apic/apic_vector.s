@@ -191,9 +191,10 @@ Xinvltlb:
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
+	incl    PCPU(cnt) + V_IPI
 	subq	$8,%rsp			/* make same as interrupt frame */
 	movq	%rsp,%rdi		/* pass frame by reference */
-	call	smp_invltlb_intr
+	call	smp_inval_intr
 	addq	$8,%rsp			/* turn into trapframe */
 	MEXITCOUNT
 	APIC_POP_FRAME

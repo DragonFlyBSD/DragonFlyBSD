@@ -818,11 +818,10 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 
 /*
  * Enter an unmanaged KVA mapping for the private use of the current
- * cpu only.  pmap_kenter_sync() may be called to make the mapping usable
- * by other cpus.
+ * cpu only.
  *
- * It is illegal for the mapping to be accessed by other cpus unleess
- * pmap_kenter_sync*() is called.
+ * It is illegal for the mapping to be accessed by other cpus without
+ * proper invalidation.
  */
 void
 pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
@@ -838,19 +837,6 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 	if (*pte & VPTE_V)
 		pmap_inval_pte_quick(pte, &kernel_pmap, va);
 	*pte = npte;
-}
-
-/*
- * Synchronize a kvm mapping originally made for the private use on
- * some other cpu so it can be used on our cpu.  Turns out to be the
- * same madvise() call, because we have to sync the real pmaps anyway.
- *
- * XXX add MADV_RESYNC to improve performance.
- */
-void
-pmap_kenter_sync_quick(vm_offset_t va)
-{
-	cpu_invlpg((void *)va);
 }
 
 /*

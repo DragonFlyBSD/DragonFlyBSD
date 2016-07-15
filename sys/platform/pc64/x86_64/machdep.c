@@ -170,6 +170,8 @@ struct privatespace *CPU_prvspace[MAXCPU] = { &CPU_prvspace_bsp };
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
 int64_t tsc_offsets[MAXCPU];
+cpumask_t smp_idleinvl_mask;
+cpumask_t smp_idleinvl_reqs;
 
 static int cpu_mwait_halt_global; /* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
 
@@ -1177,6 +1179,17 @@ cpu_idle(void)
 		 * NOTE: Preemptions do not reset gd_idle_repeat.   Also we
 		 *	 don't bother capping gd_idle_repeat, it is ok if
 		 *	 it overflows.
+		 *
+		 * Implement optimized invltlb operations when halted
+		 * in idle.  By setting the bit in smp_idleinvl_mask
+		 * we inform other cpus that they can set _reqs to
+		 * request an invltlb.  Current the code to do that
+		 * sets the bits in _reqs anyway, but then check _mask
+		 * to determine if they can assume the invltlb will execute.
+		 *
+		 * A critical section is required to ensure that interrupts
+		 * do not fully run until after we've had a chance to execute
+		 * the request.
 		 */
 		if (gd->gd_idle_repeat == 0) {
 			stat->repeat = (stat->repeat + stat->repeat_last) >> 1;
@@ -1196,12 +1209,22 @@ cpu_idle(void)
 		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			splz(); /* XXX */
+			crit_enter_gd(gd);
+			ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
 			    cpu_mwait_cx_hint(stat), 0);
 			stat->halt++;
+			ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask, gd->gd_cpuid);
+			if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
+						      gd->gd_cpuid)) {
+				cpu_invltlb();
+			}
+			crit_exit_gd(gd);
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
 			splz();
+			crit_enter_gd(gd);
+			ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
 			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 				if (quick)
 					cpu_idle_default_hook();
@@ -1210,6 +1233,12 @@ cpu_idle(void)
 			}
 			__asm __volatile("sti");
 			stat->halt++;
+			ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask, gd->gd_cpuid);
+			if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
+						      gd->gd_cpuid)) {
+				cpu_invltlb();
+			}
+			crit_exit_gd(gd);
 		} else {
 			splz();
 			__asm __volatile("sti");

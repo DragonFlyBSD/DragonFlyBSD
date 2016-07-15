@@ -343,20 +343,6 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 	return(pte);
 }
 
-/*
- * Synchronize a kvm mapping originally made for the private use on
- * some other cpu so it can be used on all cpus.
- *
- * XXX add MADV_RESYNC to improve performance.
- *
- * We don't need to do anything because our pmap_inval_pte_quick()
- * synchronizes it immediately.
- */
-void
-pmap_kenter_sync(vm_offset_t va __unused)
-{
-}
-
 void
 cpu_invlpg(void *addr)
 {

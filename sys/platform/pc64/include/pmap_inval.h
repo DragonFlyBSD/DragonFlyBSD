@@ -41,30 +41,17 @@
 #include <sys/thread.h>
 #endif
 
-typedef struct pmap_inval_info {
-    int			pir_flags;
-    vm_offset_t		pir_va;
-    struct lwkt_cpusync	pir_cpusync;
-} pmap_inval_info;
-
-typedef pmap_inval_info *pmap_inval_info_t;
-
-#define PIRF_INVLTLB	0x0001	/* request invalidation of whole table */
-#define PIRF_INVL1PG	0x0002	/* else request invalidation of one page */
-#define PIRF_CPUSYNC	0x0004	/* cpusync is currently active */
-#define PIRF_QUICK	0x0008	/* quick (deinterlock only) */
-
 #ifdef _KERNEL
 
 #ifndef _MACHINE_PMAP_H_
 #include <machine/pmap.h>
 #endif
 
-void pmap_inval_init(pmap_inval_info_t);
-void pmap_inval_interlock(pmap_inval_info_t, pmap_t, vm_offset_t);
-void pmap_inval_invltlb(pmap_inval_info_t);
-void pmap_inval_deinterlock(pmap_inval_info_t, pmap_t);
-void pmap_inval_done(pmap_inval_info_t);
+pt_entry_t pmap_inval_smp(pmap_t pmap, vm_offset_t va,
+			pt_entry_t *ptep, pt_entry_t npte);
+int pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va,
+			pt_entry_t *ptep, pt_entry_t opte, pt_entry_t npte);
+int pmap_inval_intr(cpumask_t *cpumask);
 
 #endif
 

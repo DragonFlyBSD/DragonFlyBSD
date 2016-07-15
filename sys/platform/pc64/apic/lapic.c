@@ -486,11 +486,14 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 {
 	unsigned long rflags;
 	u_long  icr_lo;
+	int loops = 1;
 
 	rflags = read_rflags();
 	cpu_disable_intr();
 	while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		cpu_pause();
+		if (++loops == 10000000)
+			kprintf("apic_ipi stall cpu %d\n", mycpuid);
 	}
 	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK) | dest_type | 
 		delivery_mode | vector;
@@ -506,11 +509,14 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	unsigned long rflags;
 	u_long  icr_lo;
 	u_long  icr_hi;
+	int loops = 1;
 
 	rflags = read_rflags();
 	cpu_disable_intr();
 	while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 		cpu_pause();
+		if (++loops == 10000000)
+			kprintf("apic_ipi stall cpu %d (sing)\n", mycpuid);
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
 	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
@@ -538,23 +544,26 @@ single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
 {
 	u_long  icr_lo;
 	u_long  icr_hi;
+	unsigned long rflags;
 
-	crit_enter();
+	rflags = read_rflags();
+	cpu_disable_intr();
 	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-	    crit_exit();
-	    return(0);
+		write_rflags(rflags);
+		return(0);
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
 	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
 	lapic->icr_hi = icr_hi;
 
 	/* build IRC_LOW */
-	icr_lo = (lapic->icr_lo & APIC_RESV2_MASK)
-	    | APIC_DEST_DESTFLD | delivery_mode | vector;
+	icr_lo = (lapic->icr_lo & APIC_RESV2_MASK) |
+		 APIC_DEST_DESTFLD | delivery_mode | vector;
 
 	/* write APIC ICR */
 	lapic->icr_lo = icr_lo;
-	crit_exit();
+	write_rflags(rflags);
+
 	return(1);
 }
 

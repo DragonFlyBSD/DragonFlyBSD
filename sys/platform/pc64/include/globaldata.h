@@ -69,14 +69,14 @@ struct mdglobaldata {
 	struct x86_64tss gd_common_tss;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
-	int		unused005;
-	int		unused001;
+	int		gd_xinvaltlb;	/* reentrancy check invaltlb routine */
+	int		gd_unused001;
 	int		gd_spending;	/* software interrupt pending */
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
 	int		gd_private_tss;
-	u_int		unused002;
-	u_int		unused003;
+	u_int		gd_unused002;
+	u_int		gd_unused003;
 	u_int		gd_ss_eflags;
 	pt_entry_t	*gd_cunused0;
 	pt_entry_t	*gd_cunused1;
@@ -92,7 +92,7 @@ struct mdglobaldata {
 	register_t	unused004;
 	register_t	gd_user_fs;	/* current user fs in MSR */
 	register_t	gd_user_gs;	/* current user gs in MSR */
-	cpumask_t	gd_invltlb_ret;
+	cpumask_t	gd_unused006;
 	u_long		gd_ipending[3];
 };
 

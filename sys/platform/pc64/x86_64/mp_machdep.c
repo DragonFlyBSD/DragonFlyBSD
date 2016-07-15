@@ -178,7 +178,15 @@ cpumask_t smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
 cpumask_t smp_finalize_mask = CPUMASK_INITIALIZER_ONLYONE;
 
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
+static int	invl_mfence = 0;
+SYSCTL_INT(_machdep, OID_AUTO, invl_mfence, CTLFLAG_RW, &invl_mfence, 0, "");
 static u_int	bootMP_size;
+static u_int	report_invlpg_src;
+SYSCTL_INT(_machdep, OID_AUTO, report_invlpg_src, CTLFLAG_RW,
+	&report_invlpg_src, 0, "");
+static u_int	report_invltlb_src;
+SYSCTL_INT(_machdep, OID_AUTO, report_invltlb_src, CTLFLAG_RW,
+	&report_invltlb_src, 0, "");
 
 /* Local data for detecting CPU TOPOLOGY */
 static int core_bits = 0;
@@ -794,120 +802,392 @@ smitest(void)
  * TLB is not flushed.  If the caller wishes to flush the current cpu's
  * TLB the caller must call cpu_invltlb() in addition to smp_invltlb().
  *
+ * This routine may be called concurrently from multiple cpus.  When this
+ * happens, smp_invltlb() can wind up sticking around in the confirmation
+ * while() loop at the end as additional cpus are added to the global
+ * cpumask, until they are acknowledged by another IPI.
+ *
  * NOTE: If for some reason we were unable to start all cpus we cannot
  *	 safely use broadcast IPIs.
  */
 
-static cpumask_t smp_invltlb_req;
+cpumask_t smp_smurf_mask;
+static cpumask_t smp_invltlb_mask;
+#define LOOPMASK   (/* 32 * */ 16 * 128 * 1024 - 1)
+#ifdef LOOPMASK_IN
+cpumask_t smp_in_mask;
+#endif
+cpumask_t smp_invmask;
+extern cpumask_t smp_idleinvl_mask;
+extern cpumask_t smp_idleinvl_reqs;
 
-#define SMP_INVLTLB_DEBUG
+/*
+ * Atomically OR bits in *mask to smp_smurf_mask.  Return the prior
+ * contents of smp_smurf_mask (the caller can NAND against omask to
+ * obtain just the bits that changed from 0->1).
+ *
+ * Atomic ops which write the same value to the target memory as already
+ * exists in the target memory may cause relaxed synchronization between
+ * cpus.
+ *
+ * omask = smp_smurf_mask
+ * smp_smurf_mask |= mask
+ */
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 
+static __noinline
+void
+smp_smurf_fetchset(cpumask_t *mask, cpumask_t *omask, int frompg)
+{
+	if (invl_mfence >= 0) {
+		int i;
+		__uint64_t obits;
+		__uint64_t nbits;
+
+		if (invl_mfence)
+			cpu_mfence();
+		i = 0;
+		while (i < CPUMASK_ELEMENTS) {
+			obits = smp_smurf_mask.ary[i];
+			cpu_ccfence();
+			nbits = obits | mask->ary[i];
+			if (atomic_cmpset_long(&smp_smurf_mask.ary[i], obits, nbits)) {
+				omask->ary[i] = obits;
+				++i;
+			}
+		}
+	} else {
+		ATOMIC_CPUMASK_ORMASK(smp_smurf_mask, *mask);
+		CPUMASK_ASSZERO(*omask);
+	}
+	cpu_mfence();
+}
+
+/*
+ * Atomically set bits in smp_idleinvl_reqs based on bits set in mask.
+ * Return a cpumask (omask) representing which cpus are currently idle
+ * and will automatically cpu_invltlb() when they wake up.
+ *
+ * Bits may be set in smp_idleinvl_reqs that are not idle.  The caller
+ * must (mask NAND omask) to reduce the callers IPI list to those cpus
+ * it requested which are also idle.
+ *
+ * NOTE! If the cpu idle code does not support this function, it will
+ *	 leave its bits in smp_idleinvl_mask cleared and this function
+ *	 will effectively be a NOP.
+ */
+static
+void
+smp_smurf_idleinvlclr(cpumask_t *mask, cpumask_t *omask)
+{
+	ATOMIC_CPUMASK_ORMASK(smp_idleinvl_reqs, *mask);
+	ATOMIC_CPUMASK_COPY(*omask, smp_idleinvl_mask);
+}
+
+/*
+ * Issue cpu_invltlb() across all cpus except the current cpu.
+ */
 void
 smp_invltlb(void)
 {
 	struct mdglobaldata *md = mdcpu;
-#ifdef SMP_INVLTLB_DEBUG
-	long count = 0;
-	long xcount = 0;
+	cpumask_t mask;
+	cpumask_t omask;
+	unsigned long rflags;
+#ifdef LOOPMASK
+	int loops;
 #endif
-	cpumask_t tmpmask;
-	cpumask_t tmpmask2;
 
-	crit_enter_gd(&md->mi);
-	CPUMASK_ASSZERO(md->gd_invltlb_ret);
+	if (report_invltlb_src > 0) {
+		if (--report_invltlb_src <= 0)
+			print_backtrace(8);
+	}
+	/*
+	 * Disallow normal interrupts, set all active cpus except our own
+	 * in the global smp_invltlb_mask.
+	 */
 	++md->mi.gd_cnt.v_smpinvltlb;
-	ATOMIC_CPUMASK_ORBIT(smp_invltlb_req, md->mi.gd_cpuid);
-#ifdef SMP_INVLTLB_DEBUG
-again:
-#endif
-	if (CPUMASK_CMPMASKEQ(smp_startup_mask, smp_active_mask)) {
+	crit_enter_gd(&md->mi);
+
+	/*
+	 * Bits we want to set in smp_invltlb_mask.  We do not want to signal
+	 * our own cpu.  Also try to remove bits associated with idle cpus
+	 * that we can flag for auto-invltlb.
+	 */
+	mask = smp_active_mask;
+	CPUMASK_NANDBIT(mask, md->mi.gd_cpuid);
+	smp_smurf_idleinvlclr(&mask, &omask);
+	CPUMASK_NANDMASK(mask, omask);
+
+	rflags = read_rflags();
+	cpu_disable_intr();
+	ATOMIC_CPUMASK_ORMASK(smp_invltlb_mask, mask);
+
+	/*
+	 * IPI non-idle cpus represented by mask.  The omask calculation
+	 * removes cpus from the mask which already have a Xinvltlb IPI
+	 * pending (avoid double-queueing the IPI).
+	 *
+	 * We must disable real interrupts when setting the smurf flags or
+	 * we might race a XINVLTLB before we manage to send the ipi's for
+	 * the bits we set.
+	 *
+	 * NOTE: We are not signalling ourselves, mask already does NOT
+	 * include our own cpu.
+	 */
+	smp_smurf_fetchset(&mask, &omask, 0);
+	CPUMASK_NANDMASK(mask, omask);		/* mask = only 0->1 trans */
+
+	/*
+	 * Issue the IPI.  Note that the XINVLTLB IPI runs regardless of
+	 * the critical section count on the target cpus.
+	 */
+	CPUMASK_ORMASK(mask, md->mi.gd_cpumask);
+	if (CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
-		tmpmask = smp_active_mask;
-		CPUMASK_NANDMASK(tmpmask, md->mi.gd_cpumask);
-		selected_apic_ipi(tmpmask, XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
+		CPUMASK_NANDMASK(mask, md->mi.gd_cpumask);
+		selected_apic_ipi(mask, XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
 	}
 
-#ifdef SMP_INVLTLB_DEBUG
-	if (xcount)
-		kprintf("smp_invltlb: ipi sent\n");
-#endif
-	for (;;) {
-		tmpmask = smp_active_mask;
-		tmpmask2 = tmpmask;
-		CPUMASK_ANDMASK(tmpmask, md->gd_invltlb_ret);
-		CPUMASK_NANDMASK(tmpmask, md->mi.gd_cpumask);
-		CPUMASK_NANDMASK(tmpmask2, md->mi.gd_cpumask);
-
-		if (CPUMASK_CMPMASKEQ(tmpmask, tmpmask2))
-			break;
-		cpu_mfence();
+	/*
+	 * Wait for acknowledgement by all cpus.  smp_inval_intr() will
+	 * temporarily enable interrupts to avoid deadlocking the lapic,
+	 * and will also handle running cpu_invltlb() and remote invlpg
+	 * command son our cpu if some other cpu requests it of us.
+	 *
+	 * WARNING! I originally tried to implement this as a hard loop
+	 *	    checking only smp_invltlb_mask (and issuing a local
+	 *	    cpu_invltlb() if requested), with interrupts enabled
+	 *	    and without calling smp_inval_intr().  This DID NOT WORK.
+	 *	    It resulted in weird races where smurf bits would get
+	 *	    cleared without any action being taken.
+	 */
+	smp_inval_intr();
+	CPUMASK_ASSZERO(mask);
+	while (CPUMASK_CMPMASKNEQ(smp_invltlb_mask, mask)) {
+		smp_inval_intr();
 		cpu_pause();
-#ifdef SMP_INVLTLB_DEBUG
-		/* DEBUGGING */
-		if (++count == 400000000) {
-			print_backtrace(-1);
-			kprintf("smp_invltlb: endless loop %08lx %08lx, "
-				"rflags %016jx retry",
-			      (long)CPUMASK_LOWMASK(md->gd_invltlb_ret),
-			      (long)CPUMASK_LOWMASK(smp_invltlb_req),
-			      (intmax_t)read_rflags());
-			__asm __volatile ("sti");
-			++xcount;
-			if (xcount > 2)
-				lwkt_process_ipiq();
-			if (xcount > 3) {
-				int bcpu;
-				globaldata_t xgd;
-
-				tmpmask = smp_active_mask;
-				CPUMASK_NANDMASK(tmpmask, md->gd_invltlb_ret);
-				CPUMASK_NANDMASK(tmpmask, md->mi.gd_cpumask);
-				bcpu = BSFCPUMASK(tmpmask);
-
-				kprintf("bcpu %d\n", bcpu);
-				xgd = globaldata_find(bcpu);
-				kprintf("thread %p %s\n", xgd->gd_curthread, xgd->gd_curthread->td_comm);
-			}
-			if (xcount > 5)
-				Debugger("giving up");
-			count = 0;
-			goto again;
+#ifdef LOOPMASK
+		if (++loops == 1000000) {
+			kprintf("smp_invltlb: waited too long\n");
+			loops = 0;
+			mdcpu->gd_xinvaltlb = 0;
+			smp_invlpg(&smp_active_mask);
 		}
 #endif
 	}
-	ATOMIC_CPUMASK_NANDBIT(smp_invltlb_req, md->mi.gd_cpuid);
+	write_rflags(rflags);
 	crit_exit_gd(&md->mi);
 }
 
 /*
- * Called from Xinvltlb assembly with interrupts disabled.  We didn't
- * bother to bump the critical section count or nested interrupt count
- * so only do very low level operations here.
+ * Should only be called from pmap_inval.c, issues the XINVLTLB IPI which
+ * causes callbacks to be made to pmap_inval_intr() on multiple cpus, as
+ * specified by the cpumask.  Used for interlocked page invalidations.
  */
 void
-smp_invltlb_intr(void)
+smp_invlpg(cpumask_t *cmdmask)
 {
 	struct mdglobaldata *md = mdcpu;
-	struct mdglobaldata *omd;
 	cpumask_t mask;
-	int cpu;
+	cpumask_t omask;
+	unsigned long rflags;
 
-	cpu_mfence();
-	mask = smp_invltlb_req;
-	cpu_invltlb();
-	while (CPUMASK_TESTNZERO(mask)) {
-		cpu = BSFCPUMASK(mask);
-		CPUMASK_NANDBIT(mask, cpu);
-		omd = (struct mdglobaldata *)globaldata_find(cpu);
-		ATOMIC_CPUMASK_ORBIT(omd->gd_invltlb_ret, md->mi.gd_cpuid);
+	if (report_invlpg_src > 0) {
+		if (--report_invlpg_src <= 0)
+			print_backtrace(8);
 	}
+
+	/*
+	 * Disallow normal interrupts, set all active cpus in the pmap,
+	 * plus our own for completion processing (it might or might not
+	 * be part of the set).
+	 */
+	crit_enter_gd(&md->mi);
+	mask = smp_active_mask;
+	CPUMASK_ANDMASK(mask, *cmdmask);
+	CPUMASK_ORMASK(mask, md->mi.gd_cpumask);
+
+	/*
+	 * Avoid double-queuing IPIs, which can deadlock us.  We must disable
+	 * real interrupts when setting the smurf flags or we might race a
+	 * XINVLTLB before we manage to send the ipi's for the bits we set.
+	 *
+	 * NOTE: We might be including our own cpu in the smurf mask.
+	 */
+	rflags = read_rflags();
+	cpu_disable_intr();
+	smp_smurf_fetchset(&mask, &omask, 1);
+	CPUMASK_NANDMASK(mask, omask);		/* mask = only 0->1 trans */
+
+	/*
+	 * Issue the IPI.  Note that the XINVLTLB IPI runs regardless of
+	 * the critical section count on the target cpus.
+	 *
+	 * We do not include our own cpu when issuing the IPI.
+	 */
+	if (CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
+		all_but_self_ipi(XINVLTLB_OFFSET);
+	} else {
+		CPUMASK_NANDMASK(mask, md->mi.gd_cpumask);
+		selected_apic_ipi(mask, XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
+	}
+
+	/*
+	 * This will synchronously wait for our command to complete,
+	 * as well as process commands from other cpus.  It also handles
+	 * reentrancy.
+	 */
+	cpu_disable_intr();
+	smp_inval_intr();
+	write_rflags(rflags);
+	crit_exit_gd(&md->mi);
+}
+
+/*
+ * Called from Xinvltlb assembly with interrupts hard-disabled.  The
+ * assembly doesn't check for or mess with the critical section count.
+ *
+ * THIS CODE IS INTENDED TO EXPLICITLY IGNORE THE CRITICAL SECTION COUNT.
+ * THAT IS, THE INTERRUPT IS INTENDED TO FUNCTION EVEN WHEN MAINLINE CODE
+ * IS IN A CRITICAL SECTION.
+ */
+void
+smp_inval_intr(void)
+{
+	struct mdglobaldata *md = mdcpu;
+	cpumask_t cpumask;
+
+	/*
+	 * This is a real mess.  I'd like to just leave interrupts disabled
+	 * but it can cause the lapic to deadlock if too many interrupts queue
+	 * to it, due to the idiotic design of the lapic.  So instead we have
+	 * to enter a critical section so normal interrupts are made pending
+	 * and track whether this one was reentered.
+	 */
+	if (md->gd_xinvaltlb) {		/* reentrant on cpu */
+		md->gd_xinvaltlb = 2;
+		return;
+	}
+	md->gd_xinvaltlb = 1;
+
+	/*
+	 * Check only those cpus with active Xinvl* commands pending.
+	 *
+	 * We are going to enable interrupts so make sure we are in a
+	 * critical section.  This is necessary to avoid deadlocking
+	 * the lapic.
+	 */
+	cpumask = smp_invmask;
+	crit_enter_gd(&md->mi);
+loop:
+	cpu_enable_intr();
+#ifdef LOOPMASK_IN
+	ATOMIC_CPUMASK_ORBIT(smp_in_mask, md->mi.gd_cpuid);
+#endif
+	ATOMIC_CPUMASK_NANDBIT(smp_smurf_mask, md->mi.gd_cpuid);
+
+	/*
+	 * Specific page request(s), and we can't return until all bits
+	 * are zero.
+	 *
+	 * Must reenable interrupts to prevent the apic from locking up.
+	 */
+	for (;;) {
+		/*
+		 * We can only add bits to the cpumask to test during the
+		 * loop because the smp_invmask bit is cleared once the
+		 * originator completes the command (the targets may still
+		 * be cycling their own completions in this loop, afterwords).
+		 *
+		 * lfence required prior to all tests as this Xinvltlb
+		 * interrupt could race the originator (already be in progress
+		 * wnen the originator decides to issue, due to an issue by
+		 * another cpu).
+		 */
+		cpu_lfence();
+		CPUMASK_ORMASK(cpumask, smp_invmask);
+		if (CPUMASK_TESTBIT(smp_invltlb_mask, md->mi.gd_cpuid)) {
+			ATOMIC_CPUMASK_NANDBIT(smp_invltlb_mask,
+					       md->mi.gd_cpuid);
+			cpu_invltlb();
+			cpu_mfence();
+		}
+		cpumask = smp_active_mask;	/* XXX */
+		if (pmap_inval_intr(&cpumask) == 0) {
+			/*
+			 * Clear our smurf mask to allow new IPIs, but deal
+			 * with potential races.
+			 */
+			break;
+#if 0
+			ATOMIC_CPUMASK_NANDBIT(smp_smurf_mask,
+						md->mi.gd_cpuid);
+			cpu_lfence();
+			if (pmap_inval_intr(&cpumask) == 0)
+				break;
+
+			/*
+			 * Still looping (race), re-set the smurf bit.  If
+			 * another race occurred and set it before we could,
+			 * stop here to avoid deadlocking on the hardware
+			 * IPI (another IPI will occur).
+			 */
+			smp_smurf_fetchset(&md->mi.gd_cpumask, &omask);
+			if (CPUMASK_TESTBIT(omask, md->mi.gd_cpuid)) {
+				break;
+			}
+#endif
+		}
+
+		/*
+		 * Test if someone sent us another invalidation IPI, break
+		 * out so we can take it to avoid deadlocking the lapic
+		 * interrupt queue (? stupid intel, amd).
+		 */
+		if (md->gd_xinvaltlb == 2)
+			break;
+		/*
+		if (CPUMASK_TESTBIT(smp_smurf_mask, md->mi.gd_cpuid))
+			break;
+		*/
+	}
+
+	/*
+	 * Full invalidation request
+	 */
+	if (CPUMASK_TESTBIT(smp_invltlb_mask, md->mi.gd_cpuid)) {
+		ATOMIC_CPUMASK_NANDBIT(smp_invltlb_mask,
+				       md->mi.gd_cpuid);
+		cpu_invltlb();
+		cpu_mfence();
+	}
+#ifdef LOOPMASK_IN
+	ATOMIC_CPUMASK_NANDBIT(smp_in_mask, md->mi.gd_cpuid);
+#endif
+	/*
+	 * Check to see if another Xinvltlb interrupt occurred and loop up
+	 * if it did.
+	 */
+	cpu_disable_intr();
+	if (md->gd_xinvaltlb == 2) {
+		md->gd_xinvaltlb = 1;
+		goto loop;
+	}
+	md->gd_xinvaltlb = 0;
+
+	/*
+	 * We will return via doreti, do not try to stack pending ints
+	 */
+	crit_exit_noyield(md->mi.gd_curthread);
 }
 
 void
 cpu_wbinvd_on_all_cpus_callback(void *arg)
 {
-    wbinvd();
+	wbinvd();
 }
 
 void
