@@ -112,9 +112,9 @@ printcpuinfo(void)
 	u_int regs[4], i;
 	char *brand;
 
-	cpu_class = x86_64_cpus[cpu].cpu_class;
+	cpu_class = x86_64_cpus[cpu_type].cpu_class;
 	kprintf("CPU: ");
-	strncpy(cpu_model, x86_64_cpus[cpu].cpu_name, sizeof (cpu_model));
+	strncpy(cpu_model, x86_64_cpus[cpu_type].cpu_name, sizeof (cpu_model));
 
 	/* Check for extended CPUID information and a processor name. */
 	if (cpu_exthigh >= 0x80000004) {
@@ -599,7 +599,7 @@ identify_cpu(void)
 	}
 
 	/* XXX */
-	cpu = CPU_CLAWHAMMER;
+	cpu_type = CPU_CLAWHAMMER;
 
 	if (cpu_feature & CPUID_SSE2)
 		cpu_mi_feature |= CPU_MI_BZERONT;

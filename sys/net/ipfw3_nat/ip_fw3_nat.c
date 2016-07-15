@@ -800,6 +800,7 @@ ipfw_nat_fini(void)
 {
 	struct cfg_nat *ptr, *tmp;
 	struct ipfw_nat_context *ctx;
+	int cpu;
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		ctx = ipfw_nat_ctx[cpu];
