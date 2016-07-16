@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 16, 2012
+.Dd July 16, 2016
 .Dt USCHED_SET 2
 .Os
 .Sh NAME
@@ -53,7 +53,9 @@ and removing a CPU from the list of available CPUs for an LWP.
 The
 .Fn usched_set
 function requires superuser privileges for all commands except
-.Dv USCHED_GET_CPU .
+.Dv USCHED_GET_CPU
+and
+.Dv USCHED_GET_CPUMASK .
 .Pp
 The
 .Fa cmd
@@ -72,6 +74,9 @@ assign the LWP to the cpuid pointed to by
 .Fa data .
 .It Dv USCHED_GET_CPU
 copy the LWP's CPU ID to the cpuid pointed to by
+.Fa data .
+.It Dv USCHED_GET_CPUMASK
+copy the LWP's CPU mask to the cpumask_t type pointed to by
 .Fa data .
 .It Dv USCHED_ADD_CPU
 add the cpuid specified by

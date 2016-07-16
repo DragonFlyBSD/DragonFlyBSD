@@ -263,6 +263,14 @@ sys_usched_set(struct usched_set_args *uap)
 		}
 		error = copyout(&(mycpu->gd_cpuid), uap->data, sizeof(int));
 		break;
+	case USCHED_GET_CPUMASK:
+		/* USCHED_GET_CPUMASK doesn't require special privileges. */
+		if (uap->bytes != sizeof(cpumask_t)) {
+			error = EINVAL;
+			break;
+		}
+		error = copyout(&lp->lwp_cpumask, uap->data, sizeof(cpumask_t));
+		break;
 	case USCHED_ADD_CPU:
 		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
 			break;
