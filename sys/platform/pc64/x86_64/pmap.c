@@ -1339,10 +1339,15 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	    kernel_pmap.pmap_bits[PG_V_IDX];
 //	    pgeflag;
 	ptep = vtopte(va);
+#if 1
+	pmap_inval_smp(&kernel_pmap, va, ptep, npte);
+#else
+	/* FUTURE */
 	if (*ptep)
 		pmap_inval_smp(&kernel_pmap, va, ptep, npte);
 	else
 		*ptep = npte;
+#endif
 }
 
 /*
@@ -1362,7 +1367,12 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 	    kernel_pmap.pmap_bits[PG_V_IDX];
 //	    pgeflag;
 	ptep = vtopte(va);
+#if 1
+	res = 1;
+#else
+	/* FUTURE */
 	res = (*ptep != 0);
+#endif
 	*ptep = npte;
 	cpu_invlpg((void *)va);
 
