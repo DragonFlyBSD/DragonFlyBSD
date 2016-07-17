@@ -180,8 +180,10 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	/*
 	 * Make the requested modification, wakeup any waiters.
 	 */
-	copyin(uap->srcaddr, &val, sizeof(long));
-	copyout(&val, uap->dstaddr, sizeof(long));
+	if (uap->srcaddr) {
+		copyin(uap->srcaddr, &val, sizeof(long));
+		copyout(&val, uap->dstaddr, sizeof(long));
+	}
 
 	atomic_clear_int(&p->p_vmm_cpulock, CPULOCK_EXCL);
 	wakeup(&p->p_vmm_cpulock);

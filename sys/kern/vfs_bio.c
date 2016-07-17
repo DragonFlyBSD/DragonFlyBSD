@@ -4495,7 +4495,7 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 			vm_page_wire(p);
 			p->valid = VM_PAGE_BITS_ALL;
 			vm_page_flag_clear(p, PG_ZERO);
-			pmap_kenter(pg, VM_PAGE_TO_PHYS(p));
+			pmap_kenter_noinval(pg, VM_PAGE_TO_PHYS(p));
 			bp->b_xio.xio_pages[index] = p;
 			vm_page_wakeup(p);
 
@@ -4503,6 +4503,7 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 			++index;
 		}
 	}
+	pmap_invalidate_range(&kernel_pmap, from, to);
 	bp->b_xio.xio_npages = index;
 }
 
@@ -4624,12 +4625,13 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 					(long long)bp->b_loffset);
 			}
 			bp->b_xio.xio_pages[index] = NULL;
-			pmap_kremove(pg);
+			pmap_kremove_noinval(pg);
 			vm_page_busy_wait(p, FALSE, "vmhldpg");
 			vm_page_unwire(p, 0);
 			vm_page_free(p);
 		}
 	}
+	pmap_invalidate_range(&kernel_pmap, from, to);
 	bp->b_xio.xio_npages = newnpages;
 }
 

@@ -842,6 +842,20 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 	return res;
 }
 
+void
+pmap_kenter_noinval(vm_offset_t va, vm_paddr_t pa)
+{
+	pt_entry_t *pte;
+	pt_entry_t npte;
+
+	KKASSERT(va >= KvaStart && va < KvaEnd);
+
+	npte = (vpte_t)pa | VPTE_RW | VPTE_V | VPTE_U;
+	pte = vtopte(va);
+
+	*pte = npte;
+}
+
 /*
  * Remove an unmanaged mapping created with pmap_kenter*().
  */
@@ -879,6 +893,17 @@ pmap_kremove_quick(vm_offset_t va)
 	*pte = 0;
 }
 
+void
+pmap_kremove_noinval(vm_offset_t va)
+{
+	pt_entry_t *pte;
+
+	KKASSERT(va >= KvaStart && va < KvaEnd);
+
+	pte = vtopte(va);
+	*pte = 0;
+}
+
 /*
  *	Used to map a range of physical addresses into kernel
  *	virtual address space.
@@ -891,7 +916,6 @@ pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 {
 	return PHYS_TO_DMAP(start);
 }
-
 
 /*
  * Map a set of unmanaged VM pages into KVM.

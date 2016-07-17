@@ -178,8 +178,6 @@ cpumask_t smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
 cpumask_t smp_finalize_mask = CPUMASK_INITIALIZER_ONLYONE;
 
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
-static int	invl_mfence = 0;
-SYSCTL_INT(_machdep, OID_AUTO, invl_mfence, CTLFLAG_RW, &invl_mfence, 0, "");
 static u_int	bootMP_size;
 static u_int	report_invlpg_src;
 SYSCTL_INT(_machdep, OID_AUTO, report_invlpg_src, CTLFLAG_RW,
@@ -822,78 +820,66 @@ extern cpumask_t smp_idleinvl_mask;
 extern cpumask_t smp_idleinvl_reqs;
 
 /*
- * Atomically OR bits in *mask to smp_smurf_mask.  Return the prior
- * contents of smp_smurf_mask (the caller can NAND against omask to
- * obtain just the bits that changed from 0->1).
- *
- * Atomic ops which write the same value to the target memory as already
- * exists in the target memory may cause relaxed synchronization between
- * cpus.
- *
- * omask = smp_smurf_mask
- * smp_smurf_mask |= mask
+ * Atomically OR bits in *mask to smp_smurf_mask.  Adjust *mask to remove
+ * bits that do not need to be IPId.  These bits are still part of the command,
+ * but the target cpus have already been signalled and do not need to be
+ * sigalled again.
  */
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 
 static __noinline
 void
-smp_smurf_fetchset(cpumask_t *mask, cpumask_t *omask, int frompg)
+smp_smurf_fetchset(cpumask_t *mask, int frompg)
 {
-	if (invl_mfence >= 0) {
-		int i;
-		__uint64_t obits;
-		__uint64_t nbits;
+	cpumask_t omask;
+	int i;
+	__uint64_t obits;
+	__uint64_t nbits;
 
-		if (invl_mfence)
-			cpu_mfence();
-		i = 0;
-		while (i < CPUMASK_ELEMENTS) {
-			obits = smp_smurf_mask.ary[i];
-			cpu_ccfence();
-			nbits = obits | mask->ary[i];
-			if (atomic_cmpset_long(&smp_smurf_mask.ary[i], obits, nbits)) {
-				omask->ary[i] = obits;
-				++i;
-			}
+	i = 0;
+	while (i < CPUMASK_ELEMENTS) {
+		obits = smp_smurf_mask.ary[i];
+		cpu_ccfence();
+		nbits = obits | mask->ary[i];
+		if (atomic_cmpset_long(&smp_smurf_mask.ary[i], obits, nbits)) {
+			omask.ary[i] = obits;
+			++i;
 		}
-	} else {
-		ATOMIC_CPUMASK_ORMASK(smp_smurf_mask, *mask);
-		CPUMASK_ASSZERO(*omask);
 	}
-	cpu_mfence();
+	CPUMASK_NANDMASK(*mask, omask);
 }
 
 /*
- * Atomically set bits in smp_idleinvl_reqs based on bits set in mask.
- * Return a cpumask (omask) representing which cpus are currently idle
- * and will automatically cpu_invltlb() when they wake up.
+ * This is a mechanism which guarantees that cpu_invltlb() will be executed
+ * on idle cpus without having to signal or wake them up.  The invltlb will be
+ * executed when they wake up, prior to any scheduling or interrupt thread.
  *
- * Bits may be set in smp_idleinvl_reqs that are not idle.  The caller
- * must (mask NAND omask) to reduce the callers IPI list to those cpus
- * it requested which are also idle.
- *
- * NOTE! If the cpu idle code does not support this function, it will
- *	 leave its bits in smp_idleinvl_mask cleared and this function
- *	 will effectively be a NOP.
+ * (*mask) is modified to remove the cpus we successfully negotiate this
+ * function with.  This function may only be used with semi-synchronous
+ * commands (typically invltlb's or semi-synchronous invalidations which
+ * are usually associated only with kernel memory).
  */
-static
 void
-smp_smurf_idleinvlclr(cpumask_t *mask, cpumask_t *omask)
+smp_smurf_idleinvlclr(cpumask_t *mask)
 {
 	ATOMIC_CPUMASK_ORMASK(smp_idleinvl_reqs, *mask);
-	ATOMIC_CPUMASK_COPY(*omask, smp_idleinvl_mask);
+	/* cpu_lfence() not needed */
+	CPUMASK_NANDMASK(*mask, smp_idleinvl_mask);
 }
 
 /*
  * Issue cpu_invltlb() across all cpus except the current cpu.
+ *
+ * This function will arrange to avoid idle cpus, but still gurantee that
+ * invltlb is run on them when they wake up prior to any scheduling or
+ * nominal interrupt.
  */
 void
 smp_invltlb(void)
 {
 	struct mdglobaldata *md = mdcpu;
 	cpumask_t mask;
-	cpumask_t omask;
 	unsigned long rflags;
 #ifdef LOOPMASK
 	int loops;
@@ -917,8 +903,7 @@ smp_invltlb(void)
 	 */
 	mask = smp_active_mask;
 	CPUMASK_NANDBIT(mask, md->mi.gd_cpuid);
-	smp_smurf_idleinvlclr(&mask, &omask);
-	CPUMASK_NANDMASK(mask, omask);
+	smp_smurf_idleinvlclr(&mask);
 
 	rflags = read_rflags();
 	cpu_disable_intr();
@@ -936,8 +921,7 @@ smp_invltlb(void)
 	 * NOTE: We are not signalling ourselves, mask already does NOT
 	 * include our own cpu.
 	 */
-	smp_smurf_fetchset(&mask, &omask, 0);
-	CPUMASK_NANDMASK(mask, omask);		/* mask = only 0->1 trans */
+	smp_smurf_fetchset(&mask, 0);
 
 	/*
 	 * Issue the IPI.  Note that the XINVLTLB IPI runs regardless of
@@ -986,13 +970,15 @@ smp_invltlb(void)
  * Should only be called from pmap_inval.c, issues the XINVLTLB IPI which
  * causes callbacks to be made to pmap_inval_intr() on multiple cpus, as
  * specified by the cpumask.  Used for interlocked page invalidations.
+ *
+ * NOTE: Caller has already called smp_smurf_idleinvlclr(&mask) if the
+ *	 command it setup was semi-synchronous-safe.
  */
 void
 smp_invlpg(cpumask_t *cmdmask)
 {
 	struct mdglobaldata *md = mdcpu;
 	cpumask_t mask;
-	cpumask_t omask;
 	unsigned long rflags;
 
 	if (report_invlpg_src > 0) {
@@ -1019,8 +1005,7 @@ smp_invlpg(cpumask_t *cmdmask)
 	 */
 	rflags = read_rflags();
 	cpu_disable_intr();
-	smp_smurf_fetchset(&mask, &omask, 1);
-	CPUMASK_NANDMASK(mask, omask);		/* mask = only 0->1 trans */
+	smp_smurf_fetchset(&mask, 1);
 
 	/*
 	 * Issue the IPI.  Note that the XINVLTLB IPI runs regardless of
@@ -1078,7 +1063,8 @@ smp_inval_intr(void)
 	 *
 	 * We are going to enable interrupts so make sure we are in a
 	 * critical section.  This is necessary to avoid deadlocking
-	 * the lapic.
+	 * the lapic and to ensure that we execute our commands prior to
+	 * any nominal interrupt or preemption.
 	 */
 	cpumask = smp_invmask;
 	crit_enter_gd(&md->mi);
@@ -1092,8 +1078,6 @@ loop:
 	/*
 	 * Specific page request(s), and we can't return until all bits
 	 * are zero.
-	 *
-	 * Must reenable interrupts to prevent the apic from locking up.
 	 */
 	for (;;) {
 		/*
@@ -1135,7 +1119,7 @@ loop:
 			 * stop here to avoid deadlocking on the hardware
 			 * IPI (another IPI will occur).
 			 */
-			smp_smurf_fetchset(&md->mi.gd_cpumask, &omask);
+			smp_smurf_fetchset(&md->mi.gd_cpumask XXX
 			if (CPUMASK_TESTBIT(omask, md->mi.gd_cpuid)) {
 				break;
 			}
@@ -1188,18 +1172,6 @@ void
 cpu_wbinvd_on_all_cpus_callback(void *arg)
 {
 	wbinvd();
-}
-
-void
-smp_invlpg_range_cpusync(void *arg)
-{
-	vm_offset_t eva, sva, addr;
-	sva = ((struct smp_invlpg_range_cpusync_arg *)arg)->sva;
-	eva = ((struct smp_invlpg_range_cpusync_arg *)arg)->eva;
-
-	for (addr = sva; addr < eva; addr += PAGE_SIZE) {
-		cpu_invlpg((void *)addr);
-	}
 }
 
 /*

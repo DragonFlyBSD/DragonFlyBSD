@@ -479,19 +479,16 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	vm_paddr_t pa;
 	vm_page_t pga = vm_page_array;
 	u_long offset;
-	int dotlb;
 
 	if (size == 0)
 		panic("vm_contig_pg_kmap: size must not be 0");
 	size = round_page(size);
 	addr = kmem_alloc_pageable(&kernel_map, size);
 	if (addr) {
-		dotlb = 0;
 		pa = VM_PAGE_TO_PHYS(&pga[start]);
 		for (offset = 0; offset < size; offset += PAGE_SIZE)
-			dotlb += pmap_kenter_quick(addr + offset, pa + offset);
-		if (dotlb)
-			smp_invltlb();
+			pmap_kenter_noinval(addr + offset, pa + offset);
+		pmap_invalidate_range(&kernel_pmap, addr, addr + size);
 		if (flags & M_ZERO)
 			bzero((void *)addr, size);
 	}

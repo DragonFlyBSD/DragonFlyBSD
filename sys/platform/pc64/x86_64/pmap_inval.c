@@ -49,6 +49,7 @@
 #include <sys/proc.h>
 #include <sys/vmmeter.h>
 #include <sys/thread2.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -66,6 +67,8 @@
 #define LOOPMASK	(/* 32 * */ 16 * 128 * 1024 - 1)
 #endif
 
+#define MAX_INVAL_PAGES		128
+
 struct pmap_inval_info {
 	vm_offset_t	va;
 	pt_entry_t	*ptep;
@@ -73,6 +76,7 @@ struct pmap_inval_info {
 	pt_entry_t	npte;
 	enum { INVDONE, INVSTORE, INVCMPSET } mode;
 	int		success;
+	int		npgs;
 	cpumask_t	done;
 	cpumask_t	mask;
 #ifdef LOOPMASK
@@ -92,6 +96,10 @@ extern cpumask_t		smp_in_mask;
 #endif
 extern cpumask_t		smp_smurf_mask;
 #endif
+static long pmap_inval_bulk_count;
+
+SYSCTL_LONG(_machdep, OID_AUTO, pmap_inval_bulk_count, CTLFLAG_RW,
+	    &pmap_inval_bulk_count, 0, "");
 
 static void
 pmap_inval_init(pmap_t pmap)
@@ -164,6 +172,8 @@ loopdebug(const char *msg, pmap_inval_info_t *info)
 	kprintf("\n");
 }
 
+#ifdef CHECKSIG
+
 #define CHECKSIGMASK(info)	_checksigmask(info, __FILE__, __LINE__)
 
 static
@@ -180,14 +190,28 @@ _checksigmask(pmap_inval_info_t *info, const char *file, int line)
 	}
 }
 
+#else
 
+#define CHECKSIGMASK(info)
+
+#endif
+
+/*
+ * Invalidate the specified va across all cpus associated with the pmap.
+ * If va == (vm_offset_t)-1, we invltlb() instead of invlpg().  The operation
+ * will be done fully synchronously with storing npte into *ptep and returning
+ * opte.
+ *
+ * If ptep is NULL the operation will execute semi-synchronously.
+ * ptep must be NULL if npgs > 1
+ */
 pt_entry_t
-pmap_inval_smp(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
-	       pt_entry_t npte)
+pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
+	       pt_entry_t *ptep, pt_entry_t npte)
 {
 	globaldata_t gd = mycpu;
 	pmap_inval_info_t *info;
-	pt_entry_t opte;
+	pt_entry_t opte = 0;
 	int cpu = gd->gd_cpuid;
 	cpumask_t tmpmask;
 	unsigned long rflags;
@@ -199,19 +223,34 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 		pmap = &kernel_pmap;
 	pmap_inval_init(pmap);
 	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
-		for (;;) {
-			opte = *ptep;
-			cpu_ccfence();
-			if (atomic_cmpset_long(ptep, opte, npte)) {
-				if (va == (vm_offset_t)-1)
-					cpu_invltlb();
-				else
-					cpu_invlpg((void *)va);
-				pmap_inval_done(pmap);
-				return opte;
-			}
-			cpu_pause();
+		/*
+		 * Convert to invltlb if there are too many pages to
+		 * invlpg on.
+		 */
+		if (npgs > MAX_INVAL_PAGES) {
+			npgs = 0;
+			va = (vm_offset_t)-1;
 		}
+
+		/*
+		 * Invalidate the specified pages, handle invltlb if requested.
+		 */
+		while (npgs) {
+			--npgs;
+			if (ptep) {
+				opte = atomic_swap_long(ptep, npte);
+				++ptep;
+			}
+			if (va == (vm_offset_t)-1)
+				break;
+			cpu_invlpg((void *)va);
+			va += PAGE_SIZE;
+		}
+		if (va == (vm_offset_t)-1)
+			cpu_invltlb();
+		pmap_inval_done(pmap);
+
+		return opte;
 	}
 
 	/*
@@ -254,6 +293,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	ATOMIC_CPUMASK_ORBIT(smp_invmask, cpu);
 
 	info->va = va;
+	info->npgs = npgs;
 	info->ptep = ptep;
 	info->npte = npte;
 	info->opte = 0;
@@ -263,9 +303,18 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	tmpmask = pmap->pm_active;	/* volatile (bits may be cleared) */
 	cpu_ccfence();
 	CPUMASK_ANDMASK(tmpmask, smp_active_mask);
+
+	/*
+	 * If ptep is NULL the operation can be semi-synchronous, which means
+	 * we can improve performance by flagging and removing idle cpus
+	 * (see the idleinvlclr function in mp_machdep.c).
+	 *
+	 * Typically kernel page table operation is semi-synchronous.
+	 */
+	if (ptep == NULL)
+		smp_smurf_idleinvlclr(&tmpmask);
 	CPUMASK_ORBIT(tmpmask, cpu);
 	info->mode = INVSTORE;
-	cpu_ccfence();
 
 	/*
 	 * Command may start executing the moment 'done' is initialized,
@@ -274,13 +323,13 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * cpu clears its mask bit, but other cpus CAN start clearing their
 	 * mask bits).
 	 */
-	cpu_ccfence();
 	info->mask = tmpmask;
 #ifdef LOOPMASK
 	info->sigmask = tmpmask;
 	CHECKSIGMASK(info);
 #endif
-	info->done = tmpmask;
+	cpu_sfence();
+	info->done = tmpmask;	/* execute can begin here due to races */
 
 	/*
 	 * Pass our copy of the done bits (so they don't change out from
@@ -303,8 +352,8 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 }
 
 /*
- * API function - invalidation the pte at (va) and replace *ptep with
- * npte atomically only if *ptep equals opte, across the pmap's active cpus.
+ * API function - invalidate the pte at (va) and replace *ptep with npte
+ * atomically only if *ptep equals opte, across the pmap's active cpus.
  *
  * Returns 1 on success, 0 on failure (caller typically retries).
  */
@@ -379,6 +428,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	ATOMIC_CPUMASK_ORBIT(smp_invmask, cpu);
 
 	info->va = va;
+	info->npgs = 1;			/* unused */
 	info->ptep = ptep;
 	info->npte = npte;
 	info->opte = opte;
@@ -423,6 +473,101 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	pmap_inval_done(pmap);
 
 	return success;
+}
+
+void
+pmap_inval_bulk_init(pmap_inval_bulk_t *bulk, struct pmap *pmap)
+{
+	bulk->pmap = pmap;
+	bulk->va_beg = 0;
+	bulk->va_end = 0;
+	bulk->count = 0;
+}
+
+pt_entry_t
+pmap_inval_bulk(pmap_inval_bulk_t *bulk, vm_offset_t va,
+		pt_entry_t *ptep, pt_entry_t npte)
+{
+	pt_entry_t pte;
+
+	/*
+	 * Degenerate case, localized or we don't care (e.g. because we
+	 * are jacking the entire page table) or the pmap is not in-use
+	 * by anyone.  No invalidations are done on any cpu.
+	 */
+	if (bulk == NULL) {
+		pte = atomic_swap_long(ptep, npte);
+		return pte;
+	}
+
+	/*
+	 * If it isn't the kernel pmap we execute the operation synchronously
+	 * on all cpus belonging to the pmap, which avoids concurrency bugs in
+	 * the hw related to changing pte's out from under threads.
+	 *
+	 * Eventually I would like to implement streaming pmap invalidation
+	 * for user pmaps to reduce mmap/munmap overheads for heavily-loaded
+	 * threaded programs.
+	 */
+	if (bulk->pmap != &kernel_pmap) {
+		pte = pmap_inval_smp(bulk->pmap, va, 1, ptep, npte);
+		return pte;
+	}
+
+	/*
+	 * This is the kernel_pmap.  All unmap operations presume that there
+	 * are no other cpus accessing the addresses in question.  Implement
+	 * the bulking algorithm.  collect the required information and
+	 * synchronize once at the end.
+	 */
+	pte = atomic_swap_long(ptep, npte);
+	if (va == (vm_offset_t)-1) {
+		bulk->va_beg = va;
+	} else if (bulk->va_beg == bulk->va_end) {
+		bulk->va_beg = va;
+		bulk->va_end = va + PAGE_SIZE;
+	} else if (va == bulk->va_end) {
+		bulk->va_end = va + PAGE_SIZE;
+	} else {
+		bulk->va_beg = (vm_offset_t)-1;
+		bulk->va_end = 0;
+#if 0
+		pmap_inval_bulk_flush(bulk);
+		bulk->count = 1;
+		if (va == (vm_offset_t)-1) {
+			bulk->va_beg = va;
+			bulk->va_end = 0;
+		} else {
+			bulk->va_beg = va;
+			bulk->va_end = va + PAGE_SIZE;
+		}
+#endif
+	}
+	++bulk->count;
+
+	return pte;
+}
+
+void
+pmap_inval_bulk_flush(pmap_inval_bulk_t *bulk)
+{
+	if (bulk == NULL)
+		return;
+	if (bulk->count > 0)
+		pmap_inval_bulk_count += (bulk->count - 1);
+	if (bulk->va_beg != bulk->va_end) {
+		if (bulk->va_beg == (vm_offset_t)-1) {
+			pmap_inval_smp(bulk->pmap, bulk->va_beg, 1, NULL, 0);
+		} else {
+			long n;
+
+			n = (bulk->va_end - bulk->va_beg) >> PAGE_SHIFT;
+			pmap_inval_smp(bulk->pmap, bulk->va_beg, n, NULL, 0);
+		}
+	}
+	bulk->va_beg = 0;
+	bulk->va_end = 0;
+	bulk->count = 0;
 }
 
 /*
@@ -493,23 +638,34 @@ pmap_inval_intr(cpumask_t *cpumaskp)
 				 */
 				ATOMIC_CPUMASK_NANDBIT(info->mask, cpu);
 				loopme = 1;
-			} else if (CPUMASK_TESTBIT(info->mask, n)) {
+			} else if (info->ptep &&
+				   CPUMASK_TESTBIT(info->mask, n)) {
 				/*
-				 * Other cpu waits for originator (n) to
-				 * complete the command.
+				 * Other cpu must wait for the originator (n)
+				 * to complete its command if ptep is not NULL.
 				 */
 				loopme = 1;
 			} else {
 				/*
 				 * Other cpu detects that the originator has
-				 * completed its command.  Now that the page
-				 * table entry has changed, we can follow up
-				 * with our own invalidation.
+				 * completed its command, or there was no
+				 * command.
+				 *
+				 * Now that the page table entry has changed,
+				 * we can follow up with our own invalidation.
 				 */
-				if (info->va == (vm_offset_t)-1)
+				vm_offset_t va = info->va;
+				int npgs;
+
+				if (va == (vm_offset_t)-1 ||
+				    info->npgs > MAX_INVAL_PAGES) {
 					cpu_invltlb();
-				else
-					cpu_invlpg((void *)info->va);
+				} else {
+					for (npgs = info->npgs; npgs; --npgs) {
+						cpu_invlpg((void *)va);
+						va += PAGE_SIZE;
+					}
+				}
 				ATOMIC_CPUMASK_NANDBIT(info->done, cpu);
 				/* info invalid now */
 				/* loopme left alone */
@@ -541,15 +697,11 @@ pmap_inval_intr(cpumask_t *cpumaskp)
 				 */
 				KKASSERT(info->mode != INVDONE);
 				if (info->mode == INVSTORE) {
-					info->opte = *info->ptep;
-					cpu_ccfence();
-					if (atomic_cmpset_long(info->ptep,
-						     info->opte, info->npte)) {
-						CHECKSIGMASK(info);
-						ATOMIC_CPUMASK_NANDBIT(info->mask, cpu);
-						CHECKSIGMASK(info);
-					}
-					/* else will loop/retry */
+					if (info->ptep)
+						info->opte = atomic_swap_long(info->ptep, info->npte);
+					CHECKSIGMASK(info);
+					ATOMIC_CPUMASK_NANDBIT(info->mask, cpu);
+					CHECKSIGMASK(info);
 				} else {
 					if (atomic_cmpset_long(info->ptep,
 							      info->opte, info->npte)) {
@@ -571,10 +723,18 @@ pmap_inval_intr(cpumask_t *cpumaskp)
 			 * until the other cpus have cleared their done bits
 			 * (asynchronously).
 			 */
-			if (info->va == (vm_offset_t)-1)
+			vm_offset_t va = info->va;
+			int npgs;
+
+			if (va == (vm_offset_t)-1 ||
+			    info->npgs > MAX_INVAL_PAGES) {
 				cpu_invltlb();
-			else
-				cpu_invlpg((void *)info->va);
+			} else {
+				for (npgs = info->npgs; npgs; --npgs) {
+					cpu_invlpg((void *)va);
+					va += PAGE_SIZE;
+				}
+			}
 #ifdef LOOPMASK
 			info->xloops = 0;
 #endif

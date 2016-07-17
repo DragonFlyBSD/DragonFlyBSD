@@ -416,10 +416,6 @@ invd(void)
 
 #if defined(_KERNEL)
 
-void smp_invltlb(void);
-void smp_invlpg(cpumask_t *cmdmask);
-void smp_inval_intr(void);
-
 #ifndef _CPU_INVLPG_DEFINED
 
 /*
@@ -434,26 +430,6 @@ cpu_invlpg(void *addr)
 	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
 }
 
-#endif
-
-#if defined(_KERNEL)
-struct smp_invlpg_range_cpusync_arg {
-	vm_offset_t sva;
-	vm_offset_t eva;
-};
-
-void
-smp_invlpg_range_cpusync(void *arg);
-
-static __inline void
-smp_invlpg_range(cpumask_t mask, vm_offset_t sva, vm_offset_t eva)
-{
-	struct smp_invlpg_range_cpusync_arg arg;
-
-	arg.sva = sva;
-	arg.eva = eva;
-	lwkt_cpusync_simple(mask, smp_invlpg_range_cpusync, &arg);
-}
 #endif
 
 static __inline void
@@ -708,6 +684,8 @@ cpu_invltlb(void)
 }
 
 #endif
+
+extern void smp_invltlb(void);
 
 static __inline u_short
 rfs(void)

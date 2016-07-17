@@ -154,7 +154,8 @@ guest_sync_addr(struct pmap *pmap,
 	 */
 	if (CPUMASK_TESTZERO(pmap->pm_active) ||
 	    CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
-		*dst_ptep = *src_ptep;
+		if (src_ptep)
+			*dst_ptep = *src_ptep;
 		vmm_cpu_invltlb();
 	} else {
 		vmm_guest_sync_addr(__DEVOLATILE(void *, dst_ptep),
@@ -190,6 +191,20 @@ pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	} else {
 		pte = 0;
 		guest_sync_addr(pmap, ptep, &pte);
+	}
+}
+
+/*
+ * Invalidate the tlb for a range of virtual addresses across all cpus
+ * belonging to the pmap.
+ */
+void
+pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
+{
+	if (vmm_enabled == 0) {
+		pmap_inval_cpu(pmap, sva, eva - sva);
+	} else {
+		guest_sync_addr(pmap, NULL, NULL);
 	}
 }
 
