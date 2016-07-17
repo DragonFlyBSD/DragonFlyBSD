@@ -823,20 +823,23 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
  * It is illegal for the mapping to be accessed by other cpus without
  * proper invalidation.
  */
-void
+int
 pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 {
-	pt_entry_t *pte;
+	pt_entry_t *ptep;
 	pt_entry_t npte;
+	int res;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
 	npte = (vpte_t)pa | VPTE_RW | VPTE_V | VPTE_U;
-	pte = vtopte(va);
+	ptep = vtopte(va);
+	res = (*ptep != 0);
 
-	if (*pte & VPTE_V)
-		pmap_inval_pte_quick(pte, &kernel_pmap, va);
-	*pte = npte;
+	if (*ptep & VPTE_V)
+		pmap_inval_pte_quick(ptep, &kernel_pmap, va);
+	*ptep = npte;
+	return res;
 }
 
 /*
