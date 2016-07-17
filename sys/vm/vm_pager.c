@@ -657,10 +657,10 @@ relpbuf(struct buf *bp, int *pfreecnt)
 		KKASSERT(bp->b_kvabase);
 		spin_lock(&bswspin_mem[iter]);
 		TAILQ_INSERT_HEAD(&bswlist_mem[iter], bp, b_freelist);
-		if (atomic_fetchadd_int(&pbuf_mem_count, 1) == 0)
+		if (atomic_fetchadd_int(&pbuf_mem_count, 1) == nswbuf_mem / 4)
 			wake = 1;
 		if (pfreecnt) {
-			if (atomic_fetchadd_int(pfreecnt, 1) == 0)
+			if (atomic_fetchadd_int(pfreecnt, 1) == 1)
 				wake_free = 1;
 		}
 		spin_unlock(&bswspin_mem[iter]);
@@ -670,10 +670,10 @@ relpbuf(struct buf *bp, int *pfreecnt)
 		KKASSERT(bp->b_kvabase);
 		spin_lock(&bswspin_kva[iter]);
 		TAILQ_INSERT_HEAD(&bswlist_kva[iter], bp, b_freelist);
-		if (atomic_fetchadd_int(&pbuf_kva_count, 1) == 0)
+		if (atomic_fetchadd_int(&pbuf_kva_count, 1) == nswbuf_kva / 4)
 			wake = 1;
 		if (pfreecnt) {
-			if (atomic_fetchadd_int(pfreecnt, 1) == 0)
+			if (atomic_fetchadd_int(pfreecnt, 1) == 1)
 				wake_free = 1;
 		}
 		spin_unlock(&bswspin_kva[iter]);
@@ -684,10 +684,10 @@ relpbuf(struct buf *bp, int *pfreecnt)
 		KKASSERT(bp >= swbuf_raw && bp < &swbuf_raw[nswbuf_raw]);
 		spin_lock(&bswspin_raw[iter]);
 		TAILQ_INSERT_HEAD(&bswlist_raw[iter], bp, b_freelist);
-		if (atomic_fetchadd_int(&pbuf_raw_count, 1) == 0)
+		if (atomic_fetchadd_int(&pbuf_raw_count, 1) == nswbuf_raw / 4)
 			wake = 1;
 		if (pfreecnt) {
-			if (atomic_fetchadd_int(pfreecnt, 1) == 0)
+			if (atomic_fetchadd_int(pfreecnt, 1) == 1)
 				wake_free = 1;
 		}
 		spin_unlock(&bswspin_raw[iter]);

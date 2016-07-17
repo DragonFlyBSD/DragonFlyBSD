@@ -438,12 +438,12 @@ again:
 			"considerations", nbuf);
 	}
 
-	nswbuf_mem = lmax(lmin(nbuf / 32, 256), 8);
+	nswbuf_mem = lmax(lmin(nbuf / 32, 512), 8);
 #ifdef NSWBUF_MIN
 	if (nswbuf_mem < NSWBUF_MIN)
 		nswbuf_mem = NSWBUF_MIN;
 #endif
-	nswbuf_kva = lmax(lmin(nbuf / 4, 256), 16);
+	nswbuf_kva = lmax(lmin(nbuf / 4, 512), 16);
 #ifdef NSWBUF_MIN
 	if (nswbuf_kva < NSWBUF_MIN)
 		nswbuf_kva = NSWBUF_MIN;
