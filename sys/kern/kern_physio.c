@@ -15,9 +15,6 @@
  *    John S. Dyson.
  * 4. Modifications may be freely made to this file if the above conditions
  *    are met.
- *
- * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.27 2008/08/22 08:47:56 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -40,11 +37,13 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 	int saflags;
 	int iolen;
 	int bcount;
-	int bounceit;
 	caddr_t ubase;
 	struct buf *bp;
 
-	bp = getpbuf_kva(NULL);
+	if (uio->uio_segflg == UIO_USERSPACE)
+		bp = getpbuf_mem(NULL);
+	else
+		bp = getpbuf_kva(NULL);
 	saflags = bp->b_flags;
 	error = 0;
 
@@ -87,18 +86,9 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 				bcount = dev->si_iosize_max;
 
 			ubase = uio->uio_iov[i].iov_base;
-			bounceit = (int)(((vm_offset_t)ubase) & 15);
 			iolen = ((vm_offset_t)ubase) & PAGE_MASK;
-			if (bounceit) {
-				if (bcount > bp->b_kvasize)
-					bcount = bp->b_kvasize;
-			} else {
-				if ((bcount + iolen) > bp->b_kvasize) {
-					bcount = bp->b_kvasize;
-					if (iolen != 0)
-						bcount -= PAGE_SIZE;
-				}
-			}
+			if (bcount > bp->b_kvasize)
+				bcount = bp->b_kvasize;
 
 			/*
 			 * If we have to use a bounce buffer allocate kernel
@@ -107,20 +97,19 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 			 * copying.
 			 */
 			if (uio->uio_segflg == UIO_USERSPACE) {
-				if (bounceit) {
-					bp->b_data = bp->b_kvabase;
-					bp->b_bcount = bcount;
-					vm_hold_load_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
-					if (uio->uio_rw == UIO_WRITE) {
-						error = copyin(ubase, bp->b_data, bcount);
-						if (error) {
-							vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
-							goto doerror;
-						}
+				/* bp->b_data = bp->b_kvabase; */
+				bp->b_bcount = bcount;
+				/*
+				vm_hold_load_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
+				*/
+				if (uio->uio_rw == UIO_WRITE) {
+					error = copyin(ubase, bp->b_data, bcount);
+					if (error) {
+						/*
+						vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
+						*/
+						goto doerror;
 					}
-				} else if (vmapbuf(bp, ubase, bcount) < 0) {
-					error = EFAULT;
-					goto doerror;
 				}
 			} else {
 				bp->b_data = uio->uio_iov[i].iov_base;
@@ -131,17 +120,12 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 
 			iolen = bp->b_bcount - bp->b_resid;
 			if (uio->uio_segflg == UIO_USERSPACE) {
-				if (bounceit) {
-					if (uio->uio_rw == UIO_READ && iolen) {
-						error = copyout(bp->b_data, ubase, iolen);
-						if (error) {
-							bp->b_flags |= B_ERROR;
-							bp->b_error = error;
-						}
+				if (uio->uio_rw == UIO_READ && iolen) {
+					error = copyout(bp->b_data, ubase, iolen);
+					if (error) {
+						bp->b_flags |= B_ERROR;
+						bp->b_error = error;
 					}
-					vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
-				} else {
-					vunmapbuf(bp);
 				}
 			}
 			if (iolen == 0 && !(bp->b_flags & B_ERROR))

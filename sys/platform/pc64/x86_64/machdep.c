@@ -438,16 +438,22 @@ again:
 			"considerations", nbuf);
 	}
 
-	nswbuf = lmax(lmin(nbuf / 4, 256), 16);
+	nswbuf_mem = lmax(lmin(nbuf / 32, 256), 8);
 #ifdef NSWBUF_MIN
-	if (nswbuf < NSWBUF_MIN)
-		nswbuf = NSWBUF_MIN;
+	if (nswbuf_mem < NSWBUF_MIN)
+		nswbuf_mem = NSWBUF_MIN;
+#endif
+	nswbuf_kva = lmax(lmin(nbuf / 4, 256), 16);
+#ifdef NSWBUF_MIN
+	if (nswbuf_kva < NSWBUF_MIN)
+		nswbuf_kva = NSWBUF_MIN;
 #endif
 #ifdef DIRECTIO
 	ffs_rawread_setup();
 #endif
 
-	valloc(swbuf, struct buf, nswbuf);
+	valloc(swbuf_mem, struct buf, nswbuf_mem);
+	valloc(swbuf_kva, struct buf, nswbuf_kva);
 	valloc(buf, struct buf, nbuf);
 
 	/*
@@ -475,12 +481,13 @@ again:
 
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
 		      ((vm_offset_t)(nbuf + 16) * BKVASIZE) +
-		      (nswbuf * MAXPHYS) + pager_map_size);
+		      ((nswbuf_mem + nswbuf_kva) * MAXPHYS) + pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
 		      ((vm_offset_t)(nbuf + 16) * BKVASIZE));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
-		      ((vm_offset_t)nswbuf * MAXPHYS) + pager_map_size);
+		      ((vm_offset_t)(nswbuf_mem + nswbuf_kva) * MAXPHYS) +
+		      pager_map_size);
 	pager_map.system_map = 1;
 	kprintf("avail memory = %ju (%ju MB)\n",
 		(uintmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages),

@@ -834,26 +834,41 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 
 	npte = (vpte_t)pa | VPTE_RW | VPTE_V | VPTE_U;
 	ptep = vtopte(va);
+#if 1
+	res = 1;
+#else
+	/* FUTURE */
 	res = (*ptep != 0);
+#endif
 
 	if (*ptep & VPTE_V)
 		pmap_inval_pte_quick(ptep, &kernel_pmap, va);
 	*ptep = npte;
+
 	return res;
 }
 
-void
+int
 pmap_kenter_noinval(vm_offset_t va, vm_paddr_t pa)
 {
-	pt_entry_t *pte;
+	pt_entry_t *ptep;
 	pt_entry_t npte;
+	int res;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
 	npte = (vpte_t)pa | VPTE_RW | VPTE_V | VPTE_U;
-	pte = vtopte(va);
+	ptep = vtopte(va);
+#if 1
+	res = 1;
+#else
+	/* FUTURE */
+	res = (*ptep != 0);
+#endif
 
-	*pte = npte;
+	*ptep = npte;
+
+	return res;
 }
 
 /*

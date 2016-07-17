@@ -80,7 +80,8 @@ SYSCTL_INT(_vfs_ffs, OID_AUTO, rawreadahead, CTLFLAG_RW, &rawreadahead, 0,
 void
 ffs_rawread_setup(void)
 {
-	ffsrawbufcnt = (nswbuf > 100 ) ? (nswbuf - (nswbuf >> 4)) : nswbuf - 8;
+	ffsrawbufcnt = (nswbuf_kva > 100 ) ?
+		(nswbuf_kva - (nswbuf_kva >> 4)) : nswbuf_kva - 8;
 }
 
 

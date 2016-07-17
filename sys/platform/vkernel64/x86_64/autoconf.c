@@ -154,29 +154,37 @@ cpu_startup(void *dummy)
 		kprintf("Warning: nbufs capped at %ld\n", nbuf);
 	}
 
-	nswbuf = lmax(lmin(nbuf / 4, 256), 16);
+	nswbuf_mem = lmax(lmin(nbuf / 32, 32), 4);
 #ifdef NSWBUF_MIN
-	if (nswbuf < NSWBUF_MIN)
-		nswbuf = NSWBUF_MIN;
+	if (nswbuf_mem < NSWBUF_MIN)
+		nswbuf_mem = NSWBUF_MIN;
+#endif
+	nswbuf_kva = lmax(lmin(nbuf / 4, 256), 16);
+#ifdef NSWBUF_MIN
+	if (nswbuf_kva < NSWBUF_MIN)
+		nswbuf_kva = NSWBUF_MIN;
 #endif
 
 	/*
 	 * Allocate memory for the buffer cache
 	 */
 	buf = (void *)kmem_alloc(&kernel_map, nbuf * sizeof(struct buf));
-	swbuf = (void *)kmem_alloc(&kernel_map, nswbuf * sizeof(struct buf));
-
+	swbuf_mem = (void *)kmem_alloc(&kernel_map, nswbuf_mem * sizeof(struct buf));
+	swbuf_kva = (void *)kmem_alloc(&kernel_map, nswbuf_kva * sizeof(struct buf));
 
 #ifdef DIRECTIO
         ffs_rawread_setup();
 #endif
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
-		      (nbuf*BKVASIZE*2) + (nswbuf*MAXPHYS) + pager_map_size);
+		      (nbuf*BKVASIZE*2) +
+		      (nswbuf_mem + nswbuf_kva) *MAXPHYS +
+		      pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
 		      (nbuf*BKVASIZE*2));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
-		      (nswbuf*MAXPHYS) + pager_map_size);
+		      (nswbuf_mem + nswbuf_kva) *MAXPHYS +
+		      pager_map_size);
 	pager_map.system_map = 1;
 	kprintf("avail memory = %lu (%luK bytes)\n", ptoa(vmstats.v_free_count),
 		ptoa(vmstats.v_free_count) / 1024);

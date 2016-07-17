@@ -373,8 +373,8 @@ swap_pager_swap_init(void)
 
 	nsw_cluster_max = min((MAXPHYS/PAGE_SIZE), MAX_PAGEOUT_CLUSTER);
 
-	nsw_rcount = (nswbuf + 1) / 2;
-	nsw_wcount_sync = (nswbuf + 3) / 4;
+	nsw_rcount = (nswbuf_kva + 1) / 2;
+	nsw_wcount_sync = (nswbuf_kva + 3) / 4;
 	nsw_wcount_async = 4;
 	nsw_wcount_async_max = nsw_wcount_async;
 
@@ -1524,8 +1524,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		/*
 		 * limit range
 		 */
-		if ((n = swap_async_max) > nswbuf / 2)
-			n = nswbuf / 2;
+		if ((n = swap_async_max) > nswbuf_kva / 2)
+			n = nswbuf_kva / 2;
 		if (n < 1)
 			n = 1;
 		swap_async_max = n;

@@ -290,7 +290,7 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 int
 smbfs_init(struct vfsconf *vfsp)
 {
-	smbfs_pbuf_freecnt = nswbuf / 2 + 1;
+	smbfs_pbuf_freecnt = nswbuf_kva / 2 + 1;
 	SMBVDEBUG("done.\n");
 	return 0;
 }

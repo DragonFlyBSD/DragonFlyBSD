@@ -83,7 +83,9 @@ int	maxposixlocksperuid;		/* max # POSIX locks per uid */
 int	ncallout;			/* maximum # of timer events */
 int	mbuf_wait = 32;			/* mbuf sleep time in ticks */
 long	nbuf;
-long	nswbuf;
+long	nswbuf_mem;
+long	nswbuf_kva;
+long	nswbuf_raw;
 long	maxswzone;			/* max swmeta KVA storage */
 long	maxbcache;			/* max buffer cache KVA storage */
 enum vmm_guest_type vmm_guest = VMM_GUEST_NONE;	/* Running as VM guest? */
@@ -103,7 +105,9 @@ SYSCTL_PROC(_kern, OID_AUTO, vmm_guest, CTLFLAG_RD | CTLTYPE_STRING,
  * them here forces loader errors if this file is omitted
  * (if they've been externed everywhere else; hah!).
  */
-struct	buf *swbuf;
+struct	buf *swbuf_mem;
+struct	buf *swbuf_kva;
+struct	buf *swbuf_raw;
 
 struct vmm_bname {
 	const char *str;

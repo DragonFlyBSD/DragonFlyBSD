@@ -117,7 +117,7 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 	 * XXX hack - This initialization should be put somewhere else.
 	 */
 	if (vnode_pbuf_freecnt < 0) {
-	    vnode_pbuf_freecnt = nswbuf / 2 + 1;
+	    vnode_pbuf_freecnt = nswbuf_kva / 2 + 1;
 	}
 
 	/*

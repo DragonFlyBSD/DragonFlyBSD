@@ -611,7 +611,7 @@ nfs_init(struct vfsconf *vfsp)
 	nfs_prev_nfssvc_sy_call = sysent[SYS_nfssvc].sy_call;
 	sysent[SYS_nfssvc].sy_call = (sy_call_t *)sys_nfssvc;
 
-	nfs_pbuf_freecnt = nswbuf / 2 + 1;
+	nfs_pbuf_freecnt = nswbuf_kva / 2 + 1;
 
 	return (0);
 }

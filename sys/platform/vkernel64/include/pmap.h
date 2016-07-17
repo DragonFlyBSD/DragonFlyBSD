@@ -110,8 +110,6 @@
 
 #ifdef _KERNEL
 
-vm_paddr_t pmap_kextract(vm_offset_t);
-
 /*
  * XXX
  */

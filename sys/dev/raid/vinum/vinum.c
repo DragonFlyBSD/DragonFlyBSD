@@ -261,7 +261,7 @@ free_vinum(int cleardrive)
 STATIC void
 vinum_initconf(void)
 {
-    vinum_conf.physbufs = nswbuf / 2 + 1;
+    vinum_conf.physbufs = nswbuf_kva / 2 + 1;
 
     /* allocate space: drives... */
     DRIVE = (struct drive *) Malloc(sizeof(struct drive) * INITIAL_DRIVES);

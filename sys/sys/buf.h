@@ -160,7 +160,7 @@ struct buf {
 	unsigned int b_qindex;		/* buffer queue index */
 	unsigned int b_qcpu;		/* buffer queue cpu */
 	unsigned char b_act_count;	/* similar to vm_page act_count */
-	unsigned char b_unused01;
+	unsigned char b_swindex;
 	struct lock b_lock;		/* Buffer lock */
 	buf_cmd_t b_cmd;		/* I/O command */
 	int	b_bufsize;		/* Allocated buffer size. */
@@ -380,8 +380,12 @@ extern int      buf_maxio;              /* nominal maximum I/O for buffer */
 extern struct buf *buf;			/* The buffer headers. */
 extern char	*buffers;		/* The buffer contents. */
 extern int	bufpages;		/* Number of memory pages in the buffer pool. */
-extern struct	buf *swbuf;		/* Swap I/O buffer headers. */
-extern long	nswbuf;			/* Number of swap I/O buffer headers. */
+extern struct	buf *swbuf_mem;		/* Swap I/O buffer headers. */
+extern struct	buf *swbuf_kva;		/* Swap I/O buffer headers. */
+extern struct	buf *swbuf_raw;		/* Swap I/O buffer headers. */
+extern long	nswbuf_mem;		/* Number of swap I/O buffer headers. */
+extern long	nswbuf_kva;		/* Number of swap I/O buffer headers. */
+extern long	nswbuf_raw;		/* Number of swap I/O buffer headers. */
 extern int	bioq_reorder_burst_interval;
 extern int	bioq_reorder_burst_bytes;
 extern int	bioq_reorder_minor_interval;
@@ -417,6 +421,7 @@ void	brelse (struct buf *);
 void	bqrelse (struct buf *);
 int	cluster_awrite (struct buf *);
 struct buf *getpbuf (int *);
+struct buf *getpbuf_mem (int *);
 struct buf *getpbuf_kva (int *);
 int	inmem (struct vnode *, off_t);
 struct buf *findblk (struct vnode *, off_t, int);
