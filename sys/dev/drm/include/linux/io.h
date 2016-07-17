@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,16 +31,6 @@
 #include <linux/bug.h>
 #include <asm/io.h>
 #include <asm/page.h>
-
-#if defined(writel)
-#undef writel
-#endif
-
-static inline void
-writel(uint32_t value, volatile void *addr)
-{
-	*(volatile uint32_t *)addr = value;
-}
 
 static inline int
 arch_phys_wc_add(unsigned long base, unsigned long size)

@@ -34,6 +34,34 @@
 #include <linux/types.h>
 #include <asm/page.h>
 
+#undef writeb
+static inline void
+writeb(u8 value, volatile void __iomem *addr)
+{
+	*(volatile uint8_t *)addr = value;
+}
+
+#undef writew
+static inline void
+writew(u16 value, volatile void __iomem *addr)
+{
+	*(volatile uint16_t *)addr = value;
+}
+
+#undef writel
+static inline void
+writel(u32 value, volatile void __iomem *addr)
+{
+	*(volatile uint32_t *)addr = value;
+}
+
+#undef writeq
+static inline void
+writeq(u64 value, volatile void __iomem *addr)
+{
+	*(volatile uint64_t *)addr = value;
+}
+
 #define ioread8(addr)		*(volatile uint8_t *)((char *)addr)
 #define ioread16(addr)		*(volatile uint16_t *)((char *)addr)
 #define ioread32(addr)		*(volatile uint32_t *)((char *)addr)
