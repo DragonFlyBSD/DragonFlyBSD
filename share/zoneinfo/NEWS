@@ -1,5 +1,27 @@
 News for the tz database
 
+Release 2016f - 2016-07-05 16:26:51 +0200
+
+  Changes affecting future time stamps
+
+    The Egyptian government changed its mind on short notice, and
+    Africa/Cairo will not introduce DST starting 2016-07-07 after all.
+    (Thanks to Mina Samuel.)
+
+    Asia/Novosibirsk switches from +06 to +07 on 2016-07-24 at 02:00.
+    (Thanks to Stepan Golosunov.)
+
+  Changes to past and future time stamps
+
+    Asia/Novokuznetsk and Asia/Novosibirsk now use numeric time zone
+    abbreviations instead of invented ones.
+
+  Changes affecting past time stamps
+
+    Europe/Minsk's 1992-03-29 spring-forward transition was at 02:00 not 00:00.
+    (Thanks to Stepan Golosunov.)
+
+
 Release 2016e - 2016-06-14 08:46:16 -0700
 
   Changes affecting future time stamps
