@@ -2,8 +2,10 @@
  * IBM PC display definitions
  *
  * $FreeBSD: src/sys/i386/include/pc/display.h,v 1.5.2.1 2001/12/17 10:31:05 nyan Exp $
- * $DragonFly: src/sys/platform/pc64/include/pc/display.h,v 1.1 2008/08/29 17:07:18 dillon Exp $
  */
+
+#ifndef _MACHINE_PC_DISPLAY_H_
+#define _MACHINE_PC_DISPLAY_H_
 
 /* Color attributes for foreground text */
 
@@ -44,3 +46,5 @@
 /* Monochrome attributes for text background */
 
 #define	BG_INTENSE		0x10
+
+#endif /* !_MACHINE_PC_DISPLAY_H_ */

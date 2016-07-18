@@ -28,14 +28,13 @@
  *
  * $NetBSD$
  * $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $
- * $DragonFly: src/sys/dev/disk/ncv/dvcfg.h,v 1.7 2006/11/07 19:56:22 dillon Exp $
  */
 /*
  * Copyright (c) 1996 Naofumi HONDA.  All rights reserved.
  */
 
-#ifndef _MACHINE_DVCFG_H_
-#define _MACHINE_DVCFG_H_
+#ifndef _DVCFG_H_
+#define _DVCFG_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -66,4 +65,4 @@ dvcfg_hw(struct dvcfg_hwsel *selp, u_int num)
 }
 
 #define	DVCFG_HW(SELP, NUM)	dvcfg_hw((SELP), (NUM))
-#endif	/* _MACHINE_DVCFG_H_ */
+#endif	/* !_DVCFG_H_ */

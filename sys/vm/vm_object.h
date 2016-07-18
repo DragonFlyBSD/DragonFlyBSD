@@ -85,7 +85,7 @@
 #ifndef _MACHINE_PMAP_H_
 #include <machine/pmap.h>
 #endif
-#ifndef _MACHINE_ATOMIC_H_
+#ifndef _CPU_ATOMIC_H_
 #include <machine/atomic.h>
 #endif
 #ifndef _VM_VM_H_

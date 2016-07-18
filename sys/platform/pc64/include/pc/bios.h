@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD$
- * $DragonFly: src/sys/platform/pc64/include/pc/bios.h,v 1.1 2008/08/29 17:07:18 dillon Exp $
  */
 
 #ifndef _MACHINE_PC_BIOS_H_

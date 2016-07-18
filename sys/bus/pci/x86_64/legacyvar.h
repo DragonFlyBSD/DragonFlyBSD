@@ -26,8 +26,8 @@
  * $FreeBSD: src/sys/i386/include/legacyvar.h,v 1.8.8.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
-#ifndef _MACHINE_LEGACYVAR_H_
-#define	_MACHINE_LEGACYVAR_H_
+#ifndef _X86_64_LEGACYVAR_H_
+#define _X86_64_LEGACYVAR_H_
 
 enum legacy_device_ivars {
 	LEGACY_IVAR_PCIDOMAIN,
@@ -55,4 +55,4 @@ struct resource *legacy_pcib_alloc_resource(device_t dev, device_t child,
     int type, int *rid, u_long start, u_long end, u_long count, u_int flags,
     int cpuid);
 
-#endif /* !_MACHINE_LEGACYVAR_H_ */
+#endif /* !_X86_64_LEGACYVAR_H_ */
