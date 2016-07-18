@@ -382,7 +382,7 @@ again:
 	    (name) = (type *)v; v = (caddr_t)((lim) = ((name)+(num)))
 
 	/*
-	 * The nominal buffer size (and minimum KVA allocation) is BKVASIZE.
+	 * The nominal buffer size (and minimum KVA allocation) is MAXBSIZE.
 	 * For the first 64MB of ram nominally allocate sufficient buffers to
 	 * cover 1/4 of our ram.  Beyond the first 64MB allocate additional
 	 * buffers to cover 1/20 of our ram over 64MB.  When auto-sizing
@@ -392,7 +392,7 @@ again:
 	 * factor represents the 1/4 x ram conversion.
 	 */
 	if (nbuf == 0) {
-		long factor = 4 * BKVASIZE / 1024;
+		long factor = 4 * NBUFCALCSIZE / 1024;
 		long kbytes = physmem * (PAGE_SIZE / 1024);
 
 		nbuf = 50;
@@ -400,8 +400,8 @@ again:
 			nbuf += min((kbytes - 4096) / factor, 65536 / factor);
 		if (kbytes > 65536)
 			nbuf += (kbytes - 65536) * 2 / (factor * 5);
-		if (maxbcache && nbuf > maxbcache / BKVASIZE)
-			nbuf = maxbcache / BKVASIZE;
+		if (maxbcache && nbuf > maxbcache / NBUFCALCSIZE)
+			nbuf = maxbcache / NBUFCALCSIZE;
 	}
 
 	/*
@@ -409,9 +409,9 @@ again:
 	 * kernel_map.
 	 */
 	if (nbuf > (virtual_end - virtual_start +
-		    virtual2_end - virtual2_start) / (BKVASIZE * 2)) {
+		    virtual2_end - virtual2_start) / (MAXBSIZE * 2)) {
 		nbuf = (virtual_end - virtual_start +
-			virtual2_end - virtual2_start) / (BKVASIZE * 2);
+			virtual2_end - virtual2_start) / (MAXBSIZE * 2);
 		kprintf("Warning: nbufs capped at %ld due to kvm\n", nbuf);
 	}
 
@@ -421,8 +421,8 @@ again:
 	 * individual buffers are typically wired, having too many bufs
 	 * can prevent the system from paging properly.
 	 */
-	if (nbuf > physmem * PAGE_SIZE / (BKVASIZE * 2)) {
-		nbuf = physmem * PAGE_SIZE / (BKVASIZE * 2);
+	if (nbuf > physmem * PAGE_SIZE / (NBUFCALCSIZE * 2)) {
+		nbuf = physmem * PAGE_SIZE / (NBUFCALCSIZE * 2);
 		kprintf("Warning: nbufs capped at %ld due to physmem\n", nbuf);
 	}
 
@@ -480,10 +480,10 @@ again:
 		panic("startup: table size inconsistency");
 
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
-		      ((vm_offset_t)(nbuf + 16) * BKVASIZE) +
+		      ((vm_offset_t)(nbuf + 16) * MAXBSIZE) +
 		      ((nswbuf_mem + nswbuf_kva) * MAXPHYS) + pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
-		      ((vm_offset_t)(nbuf + 16) * BKVASIZE));
+		      ((vm_offset_t)(nbuf + 16) * MAXBSIZE));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      ((vm_offset_t)(nswbuf_mem + nswbuf_kva) * MAXPHYS) +

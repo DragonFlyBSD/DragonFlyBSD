@@ -229,28 +229,13 @@
  *		and may be made smaller at the risk of not being able to use
  *		filesystems which require a block size exceeding MAXBSIZE.
  *
- * BKVASIZE -	Nominal buffer space per buffer, in bytes.  BKVASIZE is the
- *		minimum KVM memory reservation the kernel is willing to make.
- *		Filesystems can of course request smaller chunks.  Actual 
- *		backing memory uses a chunk size of a page (PAGE_SIZE).
- *
- *		If you make BKVASIZE too small you risk seriously fragmenting
- *		the buffer KVM map which may slow things down a bit.  If you
- *		make it too big the kernel will not be able to optimally use 
- *		the KVM memory reserved for the buffer cache and will wind 
- *		up with too-few buffers.
- *
- *		By default we now use maximally-sized reservations.  But on
- *		32-bit machines we reduce this 16KB.  Maximally-sized
- *		reservations greatly reduces defragmentation and buffer_map
- *		messing around and is more SMP-friendly.
+ * NBUFCALCSIZE - Calculate sufficient buffer cache buffers for the memory
+ *		desired as if each buffer were sized to this value (actual
+ *		real memory use).  Hysteresis works both ways.
  */
 #define MAXBSIZE	65536		/* must be power of 2 */
-#ifndef BKVASIZE
-#define BKVASIZE	MAXBSIZE	/* must be power of 2 */
-#endif
+#define NBUFCALCSIZE	16384		/* for nbuf calculation only */
 
-#define BKVAMASK	(BKVASIZE-1)
 #define MAXFRAG 	8
 
 /*

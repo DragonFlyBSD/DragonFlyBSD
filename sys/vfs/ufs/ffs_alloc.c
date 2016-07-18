@@ -1680,7 +1680,7 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 	tp->i_number = ip->i_number;
 	tp->size = size;
 
-	bp = getnewbuf(0,0,0,1);
+	bp = getnewbuf(0, 0, 0, 1, NULL);
 	BUF_KERNPROC(bp);
 	bp->b_cmd = BUF_CMD_FREEBLKS;
 	bp->b_bio1.bio_offset =  fsbtodoff(ip->i_fs, bno);

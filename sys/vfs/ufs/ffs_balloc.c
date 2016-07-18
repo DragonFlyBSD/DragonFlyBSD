@@ -417,7 +417,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 					    lblktodoff(fs, lbn),
 					    (int)fs->fs_bsize, 
 					    fs->fs_bsize,
-					    seqcount * BKVASIZE,
+					    seqcount * MAXBSIZE,
 					    &dbp);
 			} else {
 				error = bread(vp, lblktodoff(fs, lbn),

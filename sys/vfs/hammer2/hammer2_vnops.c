@@ -799,7 +799,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 
 #if 1
 		error = cluster_read(ip->vp, leof, lbase, lblksize,
-				     uio->uio_resid, seqcount * BKVASIZE,
+				     uio->uio_resid, seqcount * MAXBSIZE,
 				     &bp);
 #else
 		if (uio->uio_segflg == UIO_NOCOPY) {

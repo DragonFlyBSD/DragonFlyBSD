@@ -269,7 +269,7 @@ cd9660_read(struct vop_read_args *ap)
 						     loffset, size,
 						     uio->uio_resid,
 						     (ap->a_ioflag >> 16) *
-						      BKVASIZE,
+						      MAXBSIZE,
 						     &bp);
 			} else {
 				error = bread(vp, loffset, size, &bp);

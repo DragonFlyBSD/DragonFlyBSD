@@ -477,7 +477,7 @@ daioctl(struct dev_ioctl_args *ap)
 			 * 
 			 */
 			byte_count = MIN(bytes_left,0x7FFF8000);
-			bp = getnewbuf(0,0,0,1);
+			bp = getnewbuf(0, 0, 0, 1, NULL);
 		
 			bp->b_cmd = BUF_CMD_FREEBLKS;
 			bp->b_bio1.bio_offset = bytes_start;
