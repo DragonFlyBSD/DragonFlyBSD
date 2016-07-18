@@ -301,7 +301,7 @@ _collate_lookup(struct xlocale_collate *table, const wchar_t *t, int *len,
 	if ((sptr = *state) != NULL) {
 		*pri = *sptr;
 		sptr++;
-		if ((sptr == *state) || (*sptr == 0))
+		if ((sptr == *state) || (sptr == NULL))
 			*state = NULL;
 		else
 			*state = sptr;
@@ -443,6 +443,7 @@ _collate_wxfrm(struct xlocale_collate *table, const wchar_t *src, wchar_t *xf,
 						errno = EINVAL;
 						goto fail;
 					}
+					state = NULL;
 					pri = COLLATE_MAX_PRIORITY;
 				}
 				if (room) {
@@ -461,6 +462,7 @@ _collate_wxfrm(struct xlocale_collate *table, const wchar_t *src, wchar_t *xf,
 						errno = EINVAL;
 						goto fail;
 					}
+					state = NULL;
 					continue;
 				}
 				if (room) {
@@ -590,6 +592,7 @@ _collate_sxfrm(struct xlocale_collate *table, const wchar_t *src, char *xf,
 						errno = EINVAL;
 						goto fail;
 					}
+					state = NULL;
 					pri = COLLATE_MAX_PRIORITY;
 				}
 
@@ -615,6 +618,7 @@ _collate_sxfrm(struct xlocale_collate *table, const wchar_t *src, char *xf,
 						errno = EINVAL;
 						goto fail;
 					}
+					state = NULL;
 					continue;
 				}
 
