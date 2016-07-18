@@ -175,6 +175,7 @@ __FBSDID("$FreeBSD$");
 #include "if_iwmreg.h"
 #include "if_iwmvar.h"
 #include "if_iwm_debug.h"
+#include "if_iwm_notif_wait.h"
 #include "if_iwm_util.h"
 #include "if_iwm_binding.h"
 #include "if_iwm_phy_db.h"
@@ -5247,6 +5248,8 @@ iwm_notif_intr(struct iwm_softc *sc)
 			continue;
 		}
 
+		iwm_notification_wait_notify(sc->sc_notif_wait, code, pkt);
+
 		switch (code) {
 		case IWM_REPLY_RX_PHY_CMD:
 			iwm_mvm_rx_rx_phy_cmd(sc, pkt, data);
@@ -5894,6 +5897,12 @@ iwm_attach(device_t dev)
 	callout_init(&sc->sc_led_blink_to);
 	TASK_INIT(&sc->sc_es_task, 0, iwm_endscan_cb, sc);
 
+	sc->sc_notif_wait = iwm_notification_wait_init(sc);
+	if (sc->sc_notif_wait == NULL) {
+		device_printf(dev, "failed to init notification wait struct\n");
+		goto fail;
+	}
+
 	/* Init phy db */
 	sc->sc_phy_db = iwm_phy_db_init(sc);
 	if (!sc->sc_phy_db) {
@@ -6379,6 +6388,11 @@ iwm_detach_local(struct iwm_softc *sc, int do_net80211)
 
 	/* Finished with the hardware - detach things */
 	iwm_pci_detach(dev);
+
+	if (sc->sc_notif_wait != NULL) {
+		iwm_notification_wait_free(sc->sc_notif_wait);
+		sc->sc_notif_wait = NULL;
+	}
 
 	mbufq_drain(&sc->sc_snd);
 	IWM_LOCK_DESTROY(sc);
