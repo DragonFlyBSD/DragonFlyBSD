@@ -127,7 +127,7 @@ ffs_blkatoff_ra(struct vnode *vp, off_t uoffset, char **res, struct buf **bpp,
 		 */
 		error = cluster_read(vp, (off_t)ip->i_size,
 				     base_loffset, bsize,
-				     bsize, seqcount * BKVASIZE, &bp);
+				     bsize, seqcount * MAXBSIZE, &bp);
 	} else if (seqcount > 1) {
 		/*
 		 * Faked read ahead

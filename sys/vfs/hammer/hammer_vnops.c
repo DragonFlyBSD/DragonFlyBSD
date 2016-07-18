@@ -341,7 +341,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	 * Allow the UIO's size to override the sequential heuristic.
 	 */
 	blksize = hammer_blocksize(uio->uio_offset);
-	seqcount = (uio->uio_resid + (BKVASIZE - 1)) / BKVASIZE;
+	seqcount = (uio->uio_resid + (MAXBSIZE - 1)) / MAXBSIZE;
 	ioseqcount = (ap->a_ioflag >> 16);
 	if (seqcount < ioseqcount)
 		seqcount = ioseqcount;
@@ -413,7 +413,7 @@ hammer_vop_read(struct vop_read_args *ap)
 			error = cluster_readx(ap->a_vp,
 					     file_limit, base_offset,
 					     blksize, uio->uio_resid,
-					     seqcount * BKVASIZE, &bp);
+					     seqcount * MAXBSIZE, &bp);
 		} else {
 			error = breadnx(ap->a_vp, base_offset, blksize,
 					NULL, NULL, 0, &bp);

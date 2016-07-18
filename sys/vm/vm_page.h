@@ -430,6 +430,8 @@ vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(
 vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(
 		struct vm_object *, vm_pindex_t, int, int *
 		VM_PAGE_DEBUG_ARGS);
+vm_page_t vm_page_repurpose(struct vm_object *, vm_pindex_t, int, int *,
+		vm_page_t, int *);
 void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
 void vm_page_startup (void);

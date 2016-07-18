@@ -138,7 +138,7 @@ cpu_startup(void *dummy)
 	    (uintmax_t)ptoa(Maxmem), (uintmax_t)(ptoa(Maxmem) / 1024));
 
 	if (nbuf == 0) {
-		int factor = 4 * BKVASIZE / 1024;
+		int factor = 4 * NBUFCALCSIZE / 1024;
 		int kbytes = Maxmem * (PAGE_SIZE / 1024);
 
 		nbuf = 50;
@@ -146,11 +146,11 @@ cpu_startup(void *dummy)
 			nbuf += min((kbytes - 4096) / factor, 65536 / factor);
 		if (kbytes > 65536)
 			nbuf += (kbytes - 65536) * 2 / (factor * 5);
-		if (maxbcache && nbuf > maxbcache / BKVASIZE)
-			nbuf = maxbcache / BKVASIZE;
+		if (maxbcache && nbuf > maxbcache / NBUFCALCSIZE)
+			nbuf = maxbcache / NBUFCALCSIZE;
 	}
-	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
-		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
+	if (nbuf > (virtual_end - virtual_start) / (MAXBSIZE * 2)) {
+		nbuf = (virtual_end - virtual_start) / (MAXBSIZE * 2);
 		kprintf("Warning: nbufs capped at %ld\n", nbuf);
 	}
 
@@ -176,11 +176,11 @@ cpu_startup(void *dummy)
         ffs_rawread_setup();
 #endif
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
-		      (nbuf*BKVASIZE*2) +
+		      (nbuf * MAXBSIZE * 2) +
 		      (nswbuf_mem + nswbuf_kva) *MAXPHYS +
 		      pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
-		      (nbuf*BKVASIZE*2));
+		      (nbuf * MAXBSIZE * 2));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      (nswbuf_mem + nswbuf_kva) *MAXPHYS +

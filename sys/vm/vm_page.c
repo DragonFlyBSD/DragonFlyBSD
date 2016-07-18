@@ -1149,6 +1149,51 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *object,
 }
 
 /*
+ * Attempt to repurpose the passed-in page.  If the passed-in page cannot
+ * be repurposed it will be released, *must_reenter will be set to 1, and
+ * this function will fall-through to vm_page_lookup_busy_try().
+ */
+vm_page_t
+vm_page_repurpose(struct vm_object *object, vm_pindex_t pindex,
+		  int also_m_busy, int *errorp, vm_page_t m,
+		  int *must_reenter)
+{
+	if (m) {
+		vm_page_busy_wait(m, TRUE, "biodep");
+		if ((m->flags & (PG_UNMANAGED | PG_MAPPED | PG_FICTITIOUS)) ||
+		    m->busy || m->wire_count != 1 || m->hold_count) {
+			vm_page_unwire(m, 0);
+			vm_page_wakeup(m);
+			/* fall through to normal lookup */
+		} else if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
+			vm_page_unwire(m, 0);
+			vm_page_deactivate(m);
+			vm_page_wakeup(m);
+			/* fall through to normal lookup */
+		} else {
+			/*
+			 * We can safely repurpose the page.  It should
+			 * already be unqueued.
+			 */
+			KKASSERT(m->queue == PQ_NONE && m->dirty == 0);
+			vm_page_remove(m);
+			m->valid = 0;
+			if (vm_page_insert(m, object, pindex)) {
+				kprintf("x");
+				return m;
+			}
+			vm_page_unwire(m, 0);
+			vm_page_free(m);
+			/* fall through to normal lookup */
+		}
+	}
+	*must_reenter = 1;
+	m = vm_page_lookup_busy_try(object, pindex, also_m_busy, errorp);
+
+	return m;
+}
+
+/*
  * Caller must hold the related vm_object
  */
 vm_page_t

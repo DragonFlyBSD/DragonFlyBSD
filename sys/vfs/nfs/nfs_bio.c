@@ -118,7 +118,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	    (uio->uio_offset + uio->uio_resid) > nmp->nm_maxfilesize)
 		return (EFBIG);
 	biosize = vp->v_mount->mnt_stat.f_iosize;
-	seqcount = (int)((off_t)(ioflag >> IO_SEQSHIFT) * biosize / BKVASIZE);
+	seqcount = (int)((off_t)(ioflag >> IO_SEQSHIFT) * biosize / MAXBSIZE);
 
 	/*
 	 * For nfs, cache consistency can only be maintained approximately.

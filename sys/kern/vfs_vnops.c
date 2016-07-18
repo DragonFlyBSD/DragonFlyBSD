@@ -443,7 +443,7 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 	    uio->uio_offset == fp->f_nextoff) {
 		int tmpseq = fp->f_seqcount;
 
-		tmpseq += (uio->uio_resid + BKVASIZE - 1) / BKVASIZE;
+		tmpseq += (uio->uio_resid + MAXBSIZE - 1) / MAXBSIZE;
 		if (tmpseq > IO_SEQMAX)
 			tmpseq = IO_SEQMAX;
 		fp->f_seqcount = tmpseq;
