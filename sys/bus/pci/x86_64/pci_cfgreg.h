@@ -27,6 +27,9 @@
  *
  */
 
+#ifndef _X86_64_PCI_CFGREG_H_
+#define _X86_64_PCI_CFGREG_H_
+
 #define CONF1_ADDR_PORT    0x0cf8
 #define CONF1_DATA_PORT    0x0cfc
 
@@ -53,3 +56,5 @@ void		pci_pir_open(void);
 int		pci_pir_probe(int bus, int require_parse);
 int		pci_pir_route_interrupt(int bus, int device, int func, int pin);
 #endif
+
+#endif /* !_X86_64_PCI_CFGREG_H_ */

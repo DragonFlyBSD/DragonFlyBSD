@@ -3115,6 +3115,7 @@ TO_REMOVE+=/usr/share/man/man8/hlfsd.8.gz
 TO_REMOVE+=/usr/share/man/man8/mk-amd-map.8.gz
 TO_REMOVE+=/usr/share/man/man8/wire-test.8.gz
 TO_REMOVE+=/usr/include/varargs.h
+TO_REMOVE+=/usr/include/bus/pci/pcibus.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -41,7 +41,6 @@
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <bus/pci/pcibus.h>
 #include <bus/pci/pci_cfgreg.h>
 
 #include <vm/pmap.h>
