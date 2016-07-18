@@ -1,19 +1,12 @@
 #ifndef _MACHINE_PARAM_H_
-
-#ifndef _NO_NAMESPACE_POLLUTION
 #define _MACHINE_PARAM_H_
-#endif
 
 #ifndef _MACHINE_PLATFORM
 #define _MACHINE_PLATFORM	vkernel64
 #endif
 
-#ifndef _NO_NAMESPACE_POLLUTION
-
 #ifndef MACHINE_PLATFORM
 #define MACHINE_PLATFORM	"vkernel64"
-#endif
-
 #endif
 
 /*

@@ -35,20 +35,11 @@
  */
 
 #ifndef _CPU_PARAM_H_
-
-/*
- * Do not prevent re-includes of <machine/param.h> if the file was included
- * with NO_NAMESPACE_POLLUTION, or expected macros will not exist.
- */
-#ifndef _NO_NAMESPACE_POLLUTION
 #define _CPU_PARAM_H_
-#endif
 
 /*
  * Machine dependent constants for x86_64.
  */
-#ifndef _CPU_PARAM_H1_
-#define _CPU_PARAM_H1_
 
 /*
  * Round p (pointer or byte index) up to a correctly-aligned value
@@ -68,10 +59,6 @@
 #ifndef _MACHINE_ARCH
 #define	_MACHINE_ARCH	x86_64
 #endif
-
-#endif	/* _CPU_PARAM_H1_ */
-
-#ifndef _NO_NAMESPACE_POLLUTION
 
 #ifndef MACHINE
 #define MACHINE		"x86_64"
@@ -258,5 +245,4 @@ extern void _TSTMP(u_int32_t argument);
 #endif /* !KERN_TIMESTAMP */
 #endif /* _KERNEL */
 
-#endif /* !_NO_NAMESPACE_POLLUTION */
 #endif /* !_CPU_PARAM_H_ */
