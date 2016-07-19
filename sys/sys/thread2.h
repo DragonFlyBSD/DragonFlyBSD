@@ -28,6 +28,7 @@
 #include <sys/globaldata.h>
 #endif
 #include <machine/cpufunc.h>
+#include <machine/cpumask.h>
 
 /*
  * Is a token held either by the specified thread or held shared?

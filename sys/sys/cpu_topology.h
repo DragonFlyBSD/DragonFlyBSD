@@ -3,6 +3,8 @@
 
 #ifdef _KERNEL
 
+#include <machine/cpumask.h>
+
 /* CPU TOPOLOGY DATA AND FUNCTIONS */
 struct cpu_node {
 	struct cpu_node * parent_node;

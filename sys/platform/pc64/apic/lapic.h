@@ -82,6 +82,10 @@ int	single_apic_ipi_passive(int, int, int);
 /*
  * Send an IPI INTerrupt containing 'vector' to all CPUs EXCEPT myself
  */
+#ifndef _CPU_CPUMASK_H_
+#include <machine/cpumask.h>
+#endif
+
 static __inline int
 all_but_self_ipi(int vector)
 {

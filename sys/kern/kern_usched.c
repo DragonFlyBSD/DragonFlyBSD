@@ -31,7 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.9 2007/07/02 17:06:55 dillon Exp $
  */
 
 #include <sys/errno.h>
@@ -44,6 +43,7 @@
 
 #include <sys/mplock2.h>
 
+#include <machine/cpumask.h>
 #include <machine/smp.h>
 
 static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);
