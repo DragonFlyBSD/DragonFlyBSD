@@ -77,7 +77,7 @@ typedef __uint32_t      cpulock_t;      /* count and exclusive lock */
  *	    whole mask.
  */
 
-#define CPUMASK_ELEMENTS	4	/* tested by assembly for #error */
+#define _CPUMASK_ELEMENTS	4	/* tested by assembly for #error */
 
 typedef struct {
 	__uint64_t      ary[4];

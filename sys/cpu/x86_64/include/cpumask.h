@@ -38,9 +38,11 @@
 #include <cpu/types.h>
 #include <cpu/atomic.h>
 
-#if CPUMASK_ELEMENTS != 4
+#if _CPUMASK_ELEMENTS != 4
 #error "CPUMASK macros incompatible with cpumask_t"
 #endif
+
+#define CPUMASK_ELEMENTS	_CPUMASK_ELEMENTS
 
 #define CPUMASK_INITIALIZER_ALLONES	{ .ary = { (__uint64_t)-1, \
 					  (__uint64_t)-1, \

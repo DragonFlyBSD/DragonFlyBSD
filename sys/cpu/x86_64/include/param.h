@@ -72,7 +72,7 @@
  * remain compatible between UP and SMP builds.
  *
  * WARNING!  CPUMASK macros in include/cpumask.h must also be adjusted,
- *	     as well as any assembly.  Be sure that CPUMASK_ELEMENTS
+ *	     as well as any assembly.  Be sure that _CPUMASK_ELEMENTS
  *	     is always correct so incompatible assembly #error's out
  *	     during the kernel compile.
  *
