@@ -1152,11 +1152,20 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *object,
  * Attempt to repurpose the passed-in page.  If the passed-in page cannot
  * be repurposed it will be released, *must_reenter will be set to 1, and
  * this function will fall-through to vm_page_lookup_busy_try().
+ *
+ * The passed-in page must be wired and not busy.  The returned page will
+ * be busied and not wired.
+ *
+ * A different page may be returned.  The returned page will be busied and
+ * not wired.
+ *
+ * NULL can be returned.  If so, the required page could not be busied.
+ * The passed-in page will be unwired.
  */
 vm_page_t
 vm_page_repurpose(struct vm_object *object, vm_pindex_t pindex,
 		  int also_m_busy, int *errorp, vm_page_t m,
-		  int *must_reenter)
+		  int *must_reenter, int *iswired)
 {
 	if (m) {
 		vm_page_busy_wait(m, TRUE, "biodep");
@@ -1178,8 +1187,11 @@ vm_page_repurpose(struct vm_object *object, vm_pindex_t pindex,
 			KKASSERT(m->queue == PQ_NONE && m->dirty == 0);
 			vm_page_remove(m);
 			m->valid = 0;
+			m->act_count = 0;
 			if (vm_page_insert(m, object, pindex)) {
-				kprintf("x");
+				*errorp = 0;
+				*iswired = 1;
+
 				return m;
 			}
 			vm_page_unwire(m, 0);
@@ -1188,6 +1200,7 @@ vm_page_repurpose(struct vm_object *object, vm_pindex_t pindex,
 		}
 	}
 	*must_reenter = 1;
+	*iswired = 0;
 	m = vm_page_lookup_busy_try(object, pindex, also_m_busy, errorp);
 
 	return m;
