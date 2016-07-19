@@ -141,6 +141,7 @@ static long dirtybufspacehw;		/* atomic */
 static long dirtybufcounthw;		/* atomic */
 static long runningbufspace;		/* atomic */
 static long runningbufcount;		/* atomic */
+static long repurposedspace;
 long lodirtybufspace;
 long hidirtybufspace;
 static int getnewbufcalls;
@@ -154,6 +155,9 @@ static u_int bd_wake_index;
 static u_int vm_cycle_point = 40; /* 23-36 will migrate more act->inact */
 static int debug_commit;
 static int debug_bufbio;
+static long bufcache_bw = 200 * 1024 * 1024;
+static long bufcache_bw_accum;
+static int bufcache_bw_ticks;
 
 static struct thread *bufdaemon_td;
 static struct thread *bufdaemonhw_td;
@@ -174,6 +178,8 @@ SYSCTL_LONG(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
 	"Minimum amount of buffer space required for active I/O");
 SYSCTL_LONG(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
 	"Maximum amount of buffer space to usable for active I/O");
+SYSCTL_LONG(_vfs, OID_AUTO, bufcache_bw, CTLFLAG_RW, &bufcache_bw, 0,
+	"Buffer-cache -> VM page cache transfer bandwidth");
 SYSCTL_UINT(_vfs, OID_AUTO, lowmempgallocs, CTLFLAG_RW, &lowmempgallocs, 0,
 	"Page allocations done during periods of very low free memory");
 SYSCTL_UINT(_vfs, OID_AUTO, lowmempgfails, CTLFLAG_RW, &lowmempgfails, 0,
@@ -199,6 +205,8 @@ SYSCTL_LONG(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
 	"I/O bytes currently in progress due to asynchronous writes");
 SYSCTL_LONG(_vfs, OID_AUTO, runningbufcount, CTLFLAG_RD, &runningbufcount, 0,
 	"I/O buffers currently in progress due to asynchronous writes");
+SYSCTL_LONG(_vfs, OID_AUTO, repurposedspace, CTLFLAG_RD, &repurposedspace, 0,
+	"Buffer-cache memory repurposed in-place");
 SYSCTL_LONG(_vfs, OID_AUTO, maxbufspace, CTLFLAG_RD, &maxbufspace, 0,
 	"Hard limit on maximum amount of memory usable for buffer space");
 SYSCTL_LONG(_vfs, OID_AUTO, hibufspace, CTLFLAG_RD, &hibufspace, 0,
@@ -1912,7 +1920,8 @@ vfs_vmio_release(struct buf *bp)
  * avoid piecemeal wakeups of the pageout daemon.
  */
 struct buf *
-getnewbuf(int blkflags, int slptimeo, int size, int maxsize, int *repurpose)
+getnewbuf(int blkflags, int slptimeo, int size, int maxsize,
+	  struct vm_object **repurposep)
 {
 	struct bufpcpu *pcpu;
 	struct buf *bp;
@@ -1956,13 +1965,36 @@ restart:
 	spin_lock(&pcpu->spin);
 
 	/*
+	 * Determine if repurposing should be disallowed.  Generally speaking
+	 * do not repurpose buffers if the buffer cache hasn't capped.  Also
+	 * control repurposing based on buffer-cache -> main-memory bandwidth.
+	 * That is, we want to recycle buffers normally up until the buffer
+	 * cache bandwidth (new-buffer bw) exceeds bufcache_bw.
+	 *
+	 * (This is heuristical, SMP collisions are ok)
+	 */
+	if (repurposep) {
+		int delta = ticks - bufcache_bw_ticks;
+		if (delta < 0 || delta >= hz) {
+			atomic_swap_long(&bufcache_bw_accum, 0);
+			atomic_swap_int(&bufcache_bw_ticks, ticks);
+		}
+		atomic_add_long(&bufcache_bw_accum, size);
+		if (bufspace < lobufspace) {
+			repurposep = NULL;
+		} else if (bufcache_bw_accum < bufcache_bw) {
+			repurposep = NULL;
+		}
+	}
+
+	/*
 	 * Prime the scan for this cpu.  Locate the first buffer to
 	 * check.  If we are flushing buffers we must skip the
 	 * EMPTY queue.
 	 */
 	nqindex = BQUEUE_EMPTY;
 	nbp = TAILQ_FIRST(&pcpu->bufqueues[BQUEUE_EMPTY]);
-	if (nbp == NULL || *flushingp) {
+	if (nbp == NULL || *flushingp || repurposep) {
 		nqindex = BQUEUE_CLEAN;
 		nbp = TAILQ_FIRST(&pcpu->bufqueues[BQUEUE_CLEAN]);
 	}
@@ -2089,9 +2121,20 @@ restart:
 			KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 		}
 
+		/*
+		 * CLEAN buffers have content or associations that must be
+		 * cleaned out if not repurposing.
+		 */
 		if (qindex == BQUEUE_CLEAN) {
-			if (bp->b_flags & B_VMIO)
-				vfs_vmio_release(bp);
+			if (bp->b_flags & B_VMIO) {
+				if (repurposep && bp->b_bufsize &&
+				    (bp->b_flags & (B_DELWRI | B_MALLOC)) == 0) {
+					*repurposep = bp->b_vp->v_object;
+					vm_object_hold(*repurposep);
+				} else {
+					vfs_vmio_release(bp);
+				}
+			}
 			if (bp->b_vp)
 				brelvp(bp);
 		}
@@ -2109,8 +2152,10 @@ restart:
 			 bp, bp->b_flags, bp->b_vp, qindex));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 
-		if (bp->b_bufsize)
-			allocbuf(bp, 0);
+		if (repurposep == NULL || *repurposep == NULL) {
+			if (bp->b_bufsize)
+				allocbuf(bp, 0);
+		}
 
                 if (bp->b_flags & (B_VNDIRTY | B_VNCLEAN | B_HASHED)) {
 			kprintf("getnewbuf: caught bug vp queue "
@@ -2124,7 +2169,8 @@ restart:
 		bp->b_error = 0;
 		bp->b_resid = 0;
 		bp->b_bcount = 0;
-		bp->b_xio.xio_npages = 0;
+		if (repurposep == NULL || *repurposep == NULL)
+			bp->b_xio.xio_npages = 0;
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
 		bp->b_act_count = ACT_INIT;
 		reinitbufbio(bp);
@@ -2138,6 +2184,14 @@ restart:
 		if (bufspace < lobufspace)
 			*flushingp = 0;
 		if (*flushingp) {
+			if (repurposep && *repurposep != NULL) {
+				bp->b_flags |= B_VMIO;
+				vfs_vmio_release(bp);
+				if (bp->b_bufsize)
+					allocbuf(bp, 0);
+				vm_object_drop(*repurposep);
+				*repurposep = NULL;
+			}
 			bp->b_flags |= B_INVAL;
 			brelse(bp);
 			restart_reason = 5;
@@ -2155,6 +2209,14 @@ restart:
 		 * buffer's contents but we cannot yet reuse the buffer.
 		 */
 		if (bp->b_refs) {
+			if (repurposep && *repurposep != NULL) {
+				bp->b_flags |= B_VMIO;
+				vfs_vmio_release(bp);
+				if (bp->b_bufsize)
+					allocbuf(bp, 0);
+				vm_object_drop(*repurposep);
+				*repurposep = NULL;
+			}
 			bp->b_flags |= B_INVAL;
 			brelse(bp);
 			restart_reason = 6;
@@ -2927,7 +2989,7 @@ loop:
 		 * directory vnode is not a special case.
 		 */
 		int bsize, maxsize;
-		int repurpose;
+		vm_object_t repurpose;
 
 		if (vp->v_type == VBLK || vp->v_type == VCHR)
 			bsize = DEV_BSIZE;
@@ -2938,8 +3000,19 @@ loop:
 
 		maxsize = size + (loffset & PAGE_MASK);
 		maxsize = imax(maxsize, bsize);
-		repurpose = 0;
+		repurpose = NULL;
 
+		/*
+		 * Allow repurposing.  The returned buffer may contain VM
+		 * pages associated with its previous incarnation.  These
+		 * pages must be repurposed for the new buffer (hopefully
+		 * without disturbing the KVM mapping).
+		 *
+		 * WARNING!  If repurpose != NULL on return, the buffer will
+		 *	     still contain some data from its prior
+		 *	     incarnation.  We MUST properly dispose of this
+		 *	     data.
+		 */
 		bp = getnewbuf(blkflags, slptimeo, size, maxsize, &repurpose);
 		if (bp == NULL) {
 			if (slpflags || slptimeo)
@@ -2961,6 +3034,11 @@ loop:
 		/* bp->b_bio2.bio_next = NULL; */
 
 		if (bgetvp(vp, bp, size)) {
+			if (repurpose) {
+				bp->b_flags |= B_VMIO;
+				repurposebuf(bp, 0);
+				vm_object_drop(repurpose);
+			}
 			bp->b_flags |= B_INVAL;
 			brelse(bp);
 			goto loop;
@@ -2975,15 +3053,17 @@ loop:
 
 		/*
 		 * If we allowed repurposing of the buffer it will contain
-		 * partially-freed vm_page's, already kmapped, that can be
+		 * free-but-held vm_page's, already kmapped, that can be
 		 * repurposed.  The repurposebuf() code handles reassigning
 		 * those pages to the new (object, offsets) and dealing with
 		 * the case where the pages already exist.
 		 */
-		if (repurpose)
+		if (repurpose) {
 			repurposebuf(bp, size);
-		else
+			vm_object_drop(repurpose);
+		} else {
 			allocbuf(bp, size);
+		}
 	}
 	return (bp);
 }
@@ -3328,17 +3408,14 @@ allocbuf(struct buf *bp, int size)
 /*
  * repurposebuf() (VMIO only)
  *
- * This performs a function similar to allocbuf() but assumes that the
- * buffer is basically a new buffer and that any VM pages installed are
- * freed pages which need to be reassigned.  This function must also
- * determine if any of the desired pages at (object, index) already exist
- * and use those instead of the free ones already present.
+ * This performs a function similar to allocbuf() but the passed-in buffer
+ * may contain some detrius from its previous incarnation in the form of
+ * the page array.  We try to repurpose the underlying pages.
  *
- * This code is typically only called when the system is under memory stress,
- * meaning that I/O is occurring faster than the pageout demon can free stuff
- * up.  It allows the buffer cache to recycle pages within its own confines
- * and potentially be able to avoid unmapping and remapping KVM, allowing an
- * extreme degree of I/O to be performed.
+ * This code is nominally called to recycle buffer cache buffers AND (if
+ * they are clean) to also recycle their underlying pages.  We currently
+ * can only recycle unmapped, clean pages.  The code is called when buffer
+ * cache 'newbuf' bandwidth exceeds (bufrate_cache) bytes per second.
  */
 static
 void
@@ -3346,13 +3423,14 @@ repurposebuf(struct buf *bp, int size)
 {
 	int newbsize;
 	int desiredpages;
-	struct vnode *vp;
 	vm_offset_t toff;
 	vm_offset_t tinc;
 	vm_object_t obj;
 	vm_page_t m;
 	int i;
 	int must_reenter = 0;
+	long deaccumulate = 0;
+
 
 	KKASSERT((bp->b_flags & (B_VMIO | B_DELWRI | B_MALLOC)) == B_VMIO);
 	if (BUF_REFCNT(bp) == 0)
@@ -3375,8 +3453,12 @@ repurposebuf(struct buf *bp, int size)
 	bp->b_bcount = 0;
 	bp->b_flags |= B_CACHE;
 
-	vp = bp->b_vp;
-	obj = vp->v_object;
+	if (desiredpages) {
+		obj = bp->b_vp->v_object;
+		vm_object_hold(obj);
+	} else {
+		obj = NULL;
+	}
 
 	/*
 	 * Step 1, bring in the VM pages from the object, repurposing or
@@ -3385,10 +3467,10 @@ repurposebuf(struct buf *bp, int size)
 	 *
 	 * We are growing the buffer, possibly in a byte-granular fashion.
 	 */
-	vm_object_hold(obj);
 	for (i = 0; i < desiredpages; ++i) {
 		vm_pindex_t pi;
 		int error;
+		int iswired;
 
 		pi = OFF_TO_IDX(bp->b_loffset) + i;
 
@@ -3401,7 +3483,8 @@ repurposebuf(struct buf *bp, int size)
 		m = (i < bp->b_xio.xio_npages) ? bp->b_xio.xio_pages[i] : NULL;
 		bp->b_xio.xio_pages[i] = NULL;
 		KASSERT(m != bogus_page, ("repurposebuf: bogus page found"));
-		m = vm_page_repurpose(obj, pi, FALSE, &error, m, &must_reenter);
+		m = vm_page_repurpose(obj, pi, FALSE, &error, m,
+				      &must_reenter, &iswired);
 
 		if (error) {
 			vm_page_sleep_busy(m, FALSE, "pgtblk");
@@ -3423,23 +3506,36 @@ repurposebuf(struct buf *bp, int size)
 				vm_page_wakeup(m);
 				bp->b_flags &= ~B_CACHE;
 				bp->b_xio.xio_pages[i] = m;
+				if (m->valid)
+					deaccumulate += PAGE_SIZE;
 			} else {
 				--i;	/* retry */
 			}
 			continue;
 		}
+		if (m->valid)
+			deaccumulate += PAGE_SIZE;
 
 		/*
 		 * We found a page and were able to busy it.
 		 */
 		vm_page_flag_clear(m, PG_ZERO);
-		vm_page_wire(m);
+		if (!iswired)
+			vm_page_wire(m);
 		vm_page_wakeup(m);
 		bp->b_xio.xio_pages[i] = m;
 		if (bp->b_act_count < m->act_count)
 			bp->b_act_count = m->act_count;
 	}
-	vm_object_drop(obj);
+	if (desiredpages)
+		vm_object_drop(obj);
+
+	/*
+	 * Even though its a new buffer, any pages already in the VM
+	 * page cache should not count towards I/O bandwidth.
+	 */
+	if (deaccumulate)
+		atomic_add_long(&bufcache_bw_accum, -deaccumulate);
 
 	/*
 	 * Clean-up any loose pages.
@@ -3500,6 +3596,8 @@ repurposebuf(struct buf *bp, int size)
 	if (must_reenter) {
 		pmap_qenter((vm_offset_t)bp->b_data,
 			    bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+	} else {
+		atomic_add_long(&repurposedspace, newbsize);
 	}
 	bp->b_data = (caddr_t)((vm_offset_t)bp->b_data |
 		     (vm_offset_t)(bp->b_loffset & PAGE_MASK));

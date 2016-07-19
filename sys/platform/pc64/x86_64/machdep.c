@@ -435,7 +435,7 @@ again:
 		nbuf = (virtual_end - virtual_start) /
 		       sizeof(struct buf) / 2;
 		kprintf("Warning: nbufs capped at %ld due to valloc "
-			"considerations", nbuf);
+			"considerations\n", nbuf);
 	}
 
 	nswbuf_mem = lmax(lmin(nbuf / 32, 512), 8);
