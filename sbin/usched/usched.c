@@ -35,6 +35,7 @@
 
 #include <sys/types.h>
 #include <sys/usched.h>
+#include <machine/cpumask.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

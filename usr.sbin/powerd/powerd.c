@@ -49,6 +49,7 @@
 #include <sys/soundcard.h>
 #include <sys/time.h>
 #include <machine/cpufunc.h>
+#include <machine/cpumask.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
