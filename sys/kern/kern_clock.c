@@ -179,7 +179,7 @@ SYSCTL_PROC(_kern, OID_AUTO, cp_time, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
  * the real time.
  *
  * WARNING! time_second can backstep on time corrections. Also, unlike
- *          time second, time_uptime is not a "real" time_t (seconds
+ *          time_second, time_uptime is not a "real" time_t (seconds
  *          since the Epoch) but seconds since booting.
  */
 struct timespec boottime;	/* boot time (realtime) for reference only */
@@ -198,9 +198,15 @@ time_t time_uptime;		/* read-only 'passive' uptime in seconds */
  * used on both SMP and UP systems to avoid MP races between cpu's and
  * interrupt races on UP systems.
  */
+struct hardtime {
+	__uint32_t time_second;
+	sysclock_t cpuclock_base;
+};
+
 #define BASETIME_ARYSIZE	16
 #define BASETIME_ARYMASK	(BASETIME_ARYSIZE - 1)
 static struct timespec basetime[BASETIME_ARYSIZE];
+static struct hardtime hardtime[BASETIME_ARYSIZE];
 static volatile int basetime_index;
 
 static int
@@ -281,8 +287,9 @@ initclocks_pcpu(void)
 	if (gd->gd_cpuid == 0) {
 	    gd->gd_time_seconds = 1;
 	    gd->gd_cpuclock_base = sys_cputimer->count();
+	    hardtime[0].time_second = gd->gd_time_seconds;
+	    hardtime[0].cpuclock_base = gd->gd_cpuclock_base;
 	} else {
-	    /* XXX */
 	    gd->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
 	    gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
 	}
@@ -354,6 +361,7 @@ set_timeofday(struct timespec *ts)
 	 */
 	crit_enter();
 	ni = (basetime_index + 1) & BASETIME_ARYMASK;
+	cpu_lfence();
 	nbt = &basetime[ni];
 	nanouptime(nbt);
 	nbt->tv_sec = ts->tv_sec - nbt->tv_sec;
@@ -408,12 +416,12 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	}
 
 	/*
-	 * Realtime updates are per-cpu.  Note that timer corrections as
-	 * returned by microtime() and friends make an additional adjustment
-	 * using a system-wise 'basetime', but the running time is always
-	 * taken from the per-cpu globaldata area.  Since the same clock
-	 * is distributing (XXX SMP) to all cpus, the per-cpu timebases
-	 * stay in synch.
+	 * We update the compensation base to calculate fine-grained time
+	 * from the sys_cputimer on a per-cpu basis in order to avoid
+	 * having to mess around with locks.  sys_cputimer is assumed to
+	 * be consistent across all cpus.  CPU N copies the base state from
+	 * CPU 0 using the same FIFO trick that we use for basetime (so we
+	 * don't catch a CPU 0 update in the middle).
 	 *
 	 * Note that we never allow info->time (aka gd->gd_hardclock.time)
 	 * to reverse index gd_cpuclock_base, but that it is possible for
@@ -422,12 +430,29 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	 * timers count events, though everything should resynch again
 	 * immediately.
 	 */
-	cputicks = info->time - gd->gd_cpuclock_base;
-	if (cputicks >= sys_cputimer->freq) {
-		++gd->gd_time_seconds;
-		gd->gd_cpuclock_base += sys_cputimer->freq;
-		if (gd->gd_cpuid == 0)
-			++time_uptime;	/* uncorrected monotonic 1-sec gran */
+	if (gd->gd_cpuid == 0) {
+		int ni;
+
+		cputicks = info->time - gd->gd_cpuclock_base;
+		if (cputicks >= sys_cputimer->freq) {
+			cputicks /= sys_cputimer->freq;
+			if (cputicks != 0 && cputicks != 1)
+				kprintf("Warning: hardclock missed > 1 sec\n");
+			gd->gd_time_seconds += cputicks;
+			gd->gd_cpuclock_base += sys_cputimer->freq * cputicks;
+			/* uncorrected monotonic 1-sec gran */
+			time_uptime += cputicks;
+		}
+		ni = (basetime_index + 1) & BASETIME_ARYMASK;
+		hardtime[ni].time_second = gd->gd_time_seconds;
+		hardtime[ni].cpuclock_base = gd->gd_cpuclock_base;
+	} else {
+		int ni;
+
+		ni = basetime_index;
+		cpu_lfence();
+		gd->gd_time_seconds = hardtime[ni].time_second;
+		gd->gd_cpuclock_base = hardtime[ni].cpuclock_base;
 	}
 
 	/*
@@ -1198,6 +1223,7 @@ getmicrotime(struct timeval *tvp)
 	tvp->tv_usec = (sys_cputimer->freq64_usec * delta) >> 32;
 
 	bt = &basetime[basetime_index];
+	cpu_lfence();
 	tvp->tv_sec += bt->tv_sec;
 	tvp->tv_usec += bt->tv_nsec / 1000;
 	while (tvp->tv_usec >= 1000000) {
@@ -1225,6 +1251,7 @@ getnanotime(struct timespec *tsp)
 	tsp->tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
 
 	bt = &basetime[basetime_index];
+	cpu_lfence();
 	tsp->tv_sec += bt->tv_sec;
 	tsp->tv_nsec += bt->tv_nsec;
 	while (tsp->tv_nsec >= 1000000000) {
@@ -1278,6 +1305,7 @@ microtime(struct timeval *tvp)
 	tvp->tv_usec = (sys_cputimer->freq64_usec * delta) >> 32;
 
 	bt = &basetime[basetime_index];
+	cpu_lfence();
 	tvp->tv_sec += bt->tv_sec;
 	tvp->tv_usec += bt->tv_nsec / 1000;
 	while (tvp->tv_usec >= 1000000) {
@@ -1305,6 +1333,7 @@ nanotime(struct timespec *tsp)
 	tsp->tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
 
 	bt = &basetime[basetime_index];
+	cpu_lfence();
 	tsp->tv_sec += bt->tv_sec;
 	tsp->tv_nsec += bt->tv_nsec;
 	while (tsp->tv_nsec >= 1000000000) {
@@ -1314,8 +1343,14 @@ nanotime(struct timespec *tsp)
 }
 
 /*
- * note: this is not exactly synchronized with real time.  To do that we
- * would have to do what microtime does and check for a nanoseconds overflow.
+ * Get an approximate time_t.  It does not have to be accurate.  This
+ * function is called only from KTR and can be called with the system in
+ * any state so do not use a critical section or other complex operation
+ * here.
+ *
+ * NOTE: This is not exactly synchronized with real time.  To do that we
+ *	 would have to do what microtime does and check for a nanoseconds
+ *	 overflow.
  */
 time_t
 get_approximate_time_t(void)
@@ -1414,6 +1449,7 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 #else
 	int fhard __unused;
 #endif
+	int ni;
 
 	gd = mycpu;
 
@@ -1450,7 +1486,9 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		delta %= sys_cputimer->freq;
 	}
 	ts.tv_nsec = (sys_cputimer->freq64_nsec * delta) >> 32;
-	bt = &basetime[basetime_index];
+	ni = basetime_index;
+	cpu_lfence();
+	bt = &basetime[ni];
 	ts.tv_sec += bt->tv_sec;
 	ts.tv_nsec += bt->tv_nsec;
 	while (ts.tv_nsec >= 1000000000) {
