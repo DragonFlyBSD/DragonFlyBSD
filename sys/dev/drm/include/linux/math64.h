@@ -65,4 +65,11 @@ div_u64(uint64_t dividend, uint32_t divisor)
 	return (dividend / divisor);
 }
 
+static inline int64_t
+div_s64(int64_t dividend, int32_t divisor)
+{
+	return (dividend / divisor);
+}
+
+
 #endif					/* _LINUX_MATH64_H */
