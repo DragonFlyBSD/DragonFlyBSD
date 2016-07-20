@@ -195,6 +195,7 @@ struct lwkt_ipiq {
     int		ip_rindex;      /* only written by target cpu */
     int		ip_xindex;      /* written by target, indicates completion */
     int		ip_windex;      /* only written by source cpu */
+    int		ip_drain;	/* drain source limit */
     struct {
 	ipifunc3_t	func;
 	void		*arg1;
