@@ -88,6 +88,7 @@ struct vm_page *vm_page_array;
 int vm_page_array_size;
 
 void checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj);
+static void kkread_vmpage(kvm_t *kd, u_long addr, vm_page_t m);
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static int kkread_err(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
@@ -159,7 +160,7 @@ main(int ac, char **av)
 	    printf("page %d\r", i);
 	    fflush(stdout);
 	}
-	kkread(kd, (u_long)&vm_page_array[i], &m, sizeof(m));
+	kkread_vmpage(kd, (u_long)&vm_page_array[i], &m);
 	if (m.object) {
 	    kkread(kd, (u_long)m.object, &obj, sizeof(obj));
 	    checkpage(kd, &vm_page_array[i], &m, &obj);
@@ -328,6 +329,29 @@ checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj)
 		" page not found in bucket list\n", hv, mptr);
     }
 #endif
+}
+
+/*
+ * Acclerate the reading of VM pages
+ */
+static void
+kkread_vmpage(kvm_t *kd, u_long addr, vm_page_t m)
+{
+    static struct vm_page vpcache[1024];
+    static u_long vpbeg;
+    static u_long vpend;
+
+    if (addr < vpbeg || addr >= vpend) {
+	vpbeg = addr;
+	vpend = addr + 1024 * sizeof(*m);
+	if (vpend > (u_long)(uintptr_t)vm_page_array +
+		    vm_page_array_size * sizeof(*m)) {
+	    vpend = (u_long)(uintptr_t)vm_page_array +
+		    vm_page_array_size * sizeof(*m);
+	}
+	kkread(kd, vpbeg, vpcache, vpend - vpbeg);
+    }
+    *m = vpcache[(addr - vpbeg) / sizeof(*m)];
 }
 
 static void
