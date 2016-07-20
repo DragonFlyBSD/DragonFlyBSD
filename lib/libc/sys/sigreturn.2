@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)sigreturn.2	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/sys/sigreturn.2,v 1.6.2.6 2002/09/15 00:33:23 archie Exp $
+.\" $FreeBSD: head/lib/libc/sys/sigreturn.2 255296 2013-09-06 09:08:40Z jilles $
 .\"
-.Dd June 4, 1993
+.Dd July 20, 2016
 .Dt SIGRETURN 2
 .Os
 .Sh NAME
@@ -41,10 +41,12 @@
 .Ft int
 .Fn sigreturn "ucontext_t *scp"
 .Sh DESCRIPTION
-.Fn Sigreturn
+The
+.Fn sigreturn
+system call
 allows users to atomically unmask, switch stacks,
 and return from a signal context.
-The processes signal mask and stack status are
+The thread's signal mask and stack status are
 restored from the context structure pointed to by
 .Fa scp .
 The system call does not return;
@@ -54,22 +56,22 @@ Execution resumes at the specified pc.
 This system call is used by the trampoline code and
 .Xr longjmp 3
 when returning from a signal to the previously executing program.
-.Sh NOTES
-This system call is not available in
-.Bx 4.2
-hence it should not be used if backward compatibility is needed.
 .Sh RETURN VALUES
 If successful, the system call does not return.
 Otherwise, a value of -1 is returned and
 .Va errno
 is set to indicate the error.
 .Sh ERRORS
-.Fn Sigreturn
-will fail and the process context will remain unchanged
+The
+.Fn sigreturn
+system call
+will fail and the thread context will remain unchanged
 if one of the following occurs.
 .Bl -tag -width Er
 .It Bq Er EFAULT
-.Fa Scp
+The
+.Fa scp
+argument
 points to memory that is not a valid part of the process
 address space.
 .It Bq Er EINVAL
@@ -83,5 +85,5 @@ raise the privilege level of the process.
 .Sh HISTORY
 The
 .Fn sigreturn
-function call appeared in
+system call appeared in
 .Bx 4.3 .

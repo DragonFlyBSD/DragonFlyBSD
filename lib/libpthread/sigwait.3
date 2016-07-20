@@ -26,7 +26,7 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc_r/man/sigwait.3,v 1.2.2.6 2001/12/17 10:08:26 ru Exp $
-.Dd April 15, 2009
+.Dd July 20, 2016
 .Dt SIGWAIT 3
 .Os
 .Sh NAME
@@ -37,7 +37,7 @@
 .Sh SYNOPSIS
 .In signal.h
 .Ft int
-.Fn sigwait "const sigset_t *set" "int *sig"
+.Fn sigwait "const sigset_t * __restrict set" "int * __restrict sig"
 .Sh DESCRIPTION
 The
 .Fn sigwait
@@ -49,7 +49,7 @@ waits until one or more of the selected signals has been generated.
 Then
 .Fn sigwait
 atomically clears one of the selected signals from the set of pending signals
-for the process and sets the location pointed to by
+(for the process or for the current thread) and sets the location pointed to by
 .Fa sig
 to the signal number that was cleared.
 .Pp
@@ -65,19 +65,23 @@ returns 0 and sets the location pointed to by
 to the cleared signal number.
 Otherwise, an error number is returned.
 .Sh ERRORS
+The
 .Fn sigwait
-will fail if:
+function will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
+The
 .Fa set
-specifies one or more invalid signal numbers.
+argument specifies one or more invalid signal numbers.
 .El
 .Sh SEE ALSO
 .Xr sigaction 2 ,
 .Xr sigpending 2 ,
 .Xr sigsuspend 2 ,
+.Xr pause 3 ,
 .Xr pthread_sigmask 3
 .Sh STANDARDS
+The
 .Fn sigwait
-conforms to
+function conforms to
 .St -p1003.1-96 .

@@ -29,10 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)sigpending.2	8.3 (Berkeley) 1/12/94
-.\" $FreeBSD: src/lib/libc/sys/sigpending.2,v 1.5.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/sigpending.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $FreeBSD: head/lib/libc/sys/sigpending.2 255296 2013-09-06 09:08:40Z jilles $
 .\"
-.Dd January 12, 1994
+.Dd July 20, 2016
 .Dt SIGPENDING 2
 .Os
 .Sh NAME
@@ -47,8 +46,8 @@
 .Sh DESCRIPTION
 The
 .Fn sigpending
-function returns a mask of the signals pending for delivery
-to the calling process in the location indicated by
+system call returns a mask of the signals pending for delivery
+to the calling thread or the calling process in the location indicated by
 .Fa set .
 Signals may be pending because they are currently masked,
 or transiently before delivery (although the latter case is not
@@ -56,7 +55,9 @@ normally detectable).
 .Sh RETURN VALUES
 .Rv -std sigpending
 .Sh ERRORS
+The
 .Fn sigpending
+system call
 will fail if:
 .Bl -tag -width Er
 .It Bq Er EFAULT
@@ -66,9 +67,11 @@ argument specified an invalid address.
 .El
 .Sh SEE ALSO
 .Xr sigaction 2 ,
-.Xr sigprocmask 2
+.Xr sigprocmask 2 ,
+.Xr sigsuspend 2 ,
+.Xr sigsetops 3
 .Sh STANDARDS
 The
 .Fn sigpending
-function call is expected to conform to
+system call is expected to conform to
 .St -p1003.1-90 .

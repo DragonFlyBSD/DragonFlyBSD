@@ -91,8 +91,9 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	setgroups.2 setpgid.2 setregid.2 setresuid.2 setreuid.2 setsid.2 \
 	setuid.2 shmat.2 shmctl.2 shmget.2 shutdown.2 \
 	sigaction.2 sigaltstack.2 sigpending.2 sigprocmask.2 sigreturn.2 \
-	sigstack.2 sigsuspend.2 socket.2 socketpair.2 stat.2 statfs.2 \
-	statvfs.2 swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 \
+	sigstack.2 sigsuspend.2 sigwaitinfo.2 socket.2 socketpair.2 \
+	stat.2 statfs.2 statvfs.2 swapon.2 \
+	symlink.2 sync.2 sysarch.2 syscall.2 \
 	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
 	unlink.2 unlinkat.2 utimensat.2 utimes.2 utrace.2 usched_set.2 \
 	uuidgen.2 \
@@ -183,6 +184,7 @@ MLINKS+=shmat.2 shmat.3 \
 	shmat.2 shmdt.2
 MLINKS+=shmctl.2 shmctl.3
 MLINKS+=shmget.2 shmget.3
+MLINKS+=sigwaitinfo.2 sigtimedwait.2
 MLINKS+=stat.2 fstat.2 stat.2 fstatat.2 stat.2 lstat.2
 MLINKS+=statfs.2 fstatfs.2
 MLINKS+=statvfs.2 fstatvfs.2
