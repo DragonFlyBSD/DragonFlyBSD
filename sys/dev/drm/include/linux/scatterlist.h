@@ -4,6 +4,7 @@
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
  * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
+ * Copyright (c) 2016 Matt Macy <mmacy@nextbsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,6 +73,8 @@ struct sg_page_iter {
 	struct scatterlist	*sg;
 	unsigned int		sg_pgoffset;	/* page index */
 	unsigned int		maxents;
+	unsigned int		__nents;
+	int			__pg_advance;
 };
 
 
@@ -339,6 +342,27 @@ sg_alloc_table(struct sg_table *table, unsigned int nents, gfp_t gfp_mask)
 	return ret;
 }
 
+static inline int
+sg_nents(struct scatterlist *sg)
+{
+	int nents;
+	for (nents = 0; sg; sg = sg_next(sg))
+		nents++;
+	return nents;
+}
+
+static inline void
+__sg_page_iter_start(struct sg_page_iter *piter,
+			  struct scatterlist *sglist, unsigned int nents,
+			  unsigned long pgoffset)
+{
+	piter->__pg_advance = 0;
+	piter->__nents = nents;
+
+	piter->sg = sglist;
+	piter->sg_pgoffset = pgoffset;
+}
+
 /*
  * Iterate pages in sg list.
  */
@@ -361,6 +385,34 @@ _sg_iter_next(struct sg_page_iter *iter)
 		pgcount = (sg->offset + sg->length + PAGE_MASK) >> PAGE_SHIFT;
 	}
 	iter->sg = sg;
+}
+
+static inline int
+sg_page_count(struct scatterlist *sg)
+{
+	return PAGE_ALIGN(sg->offset + sg->length) >> PAGE_SHIFT;
+}
+
+static inline bool
+__sg_page_iter_next(struct sg_page_iter *piter)
+{
+	if (piter->__nents == 0)
+		return (false);
+	if (piter->sg == NULL)
+		return (false);
+
+	piter->sg_pgoffset += piter->__pg_advance;
+	piter->__pg_advance = 1;
+
+	while (piter->sg_pgoffset >= sg_page_count(piter->sg)) {
+		piter->sg_pgoffset -= sg_page_count(piter->sg);
+		piter->sg = sg_next(piter->sg);
+		if (--piter->__nents == 0)
+			return (false);
+		if (piter->sg == NULL)
+			return (false);
+	}
+	return (true);
 }
 
 /*
