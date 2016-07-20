@@ -60,8 +60,8 @@ struct symdata {
 
 static TAILQ_HEAD(symlist, symdata) symlist;
 static struct symdata *symcache;
-static char *symbegin;
-static char *symend;
+static char *symbegin = (void *)(intptr_t)0;
+static char *symend = (void *)(intptr_t)-1;
 
 void
 read_symbols(const char *file)

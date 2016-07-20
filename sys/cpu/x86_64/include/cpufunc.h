@@ -686,6 +686,7 @@ cpu_invltlb(void)
 #endif
 
 extern void smp_invltlb(void);
+extern void smp_sniff(void);
 
 static __inline u_short
 rfs(void)

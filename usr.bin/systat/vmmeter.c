@@ -37,9 +37,7 @@ static int vmm_fetched;
 static struct vmmeter vmm_totcur, vmm_totprev;
 static struct vmmeter *vmm_cur, *vmm_prev;
 static struct kinfo_cputime *vmm_cptime_cur, *vmm_cptime_prev;
-#if 0
 static struct save_ctx symctx;
-#endif
 static int symbols_read;
 
 static void
@@ -106,6 +104,10 @@ showvmm(void)
 	else
 		DRAW_ROW(n, TOT_START, 8, "%*u", DTOT( v_lock_colls));
 	DRAW_ROW2(n, TOT_START, 18, "%*.*s", ""); /* label */
+	DRAW_ROW2(n, TOT_START, 30, "%*.*s", ""); /* sample_pc */
+#if 0
+	DRAW_ROW2(n, TOT_START, 20, "%*.*s", ""); /* sample_sp */
+#endif
 
 #undef DTOT
 
@@ -169,16 +171,14 @@ do { \
 #undef CPUV
 #undef CPUD
 
-#if 0
 #define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
-		n = X_START + CPU_LABEL_W;
-
-		DRAW_ROW(n, CPU_STARTX + i, 15, "%-*s", CPUC(i, msg));
-		DRAW_ROW(n, CPU_STARTX + i, 35, "%-*s",
-			address_to_symbol((void *)(intptr_t)CPUC(i, stallpc),
-					  &symctx));
-#undef CPUC
+		DRAW_ROW2(n, CPU_START + i, 30, "%*.*s",
+			 address_to_symbol((void *)(intptr_t)CPUC(i, sample_pc),
+					   &symctx));
+#if 0
+		DRAW_ROW(n, CPU_START + i, 19, " %016jx", CPUC(i, sample_sp));
 #endif
+#undef CPUC
 	}
 }
 
@@ -213,6 +213,10 @@ labelvmm(void)
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "idle%");
 	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "smpcol");
 	DRAW_ROW(n, TOT_START - 1, 18, "%*s", "label");
+	DRAW_ROW(n, TOT_START - 1, 30, "%*s", "sample_pc");
+#if 0
+	DRAW_ROW(n, TOT_START - 1, 18, "%*s", "sample_sp");
+#endif
 
 	mvprintw(TOT_START, X_START, "total");
 	for (i = 0; i < vmm_ncpus; ++i)

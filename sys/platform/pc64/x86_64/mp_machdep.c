@@ -956,9 +956,13 @@ smp_invltlb(void)
 #ifdef LOOPMASK
 		if (++loops == 1000000) {
 			kprintf("smp_invltlb: waited too long\n");
-			loops = 0;
 			mdcpu->gd_xinvaltlb = 0;
 			smp_invlpg(&smp_active_mask);
+		}
+		if (++loops == 2000000) {
+			kprintf("smp_invltlb: giving up\n");
+			loops = 0;
+			CPUMASK_ASSZERO(smp_invltlb_mask);
 		}
 #endif
 	}
@@ -1029,6 +1033,17 @@ smp_invlpg(cpumask_t *cmdmask)
 	smp_inval_intr();
 	write_rflags(rflags);
 	crit_exit_gd(&md->mi);
+}
+
+void
+smp_sniff(void)
+{
+	globaldata_t gd = mycpu;
+	int dummy;
+
+	all_but_self_ipi(XSNIFF_OFFSET);
+	gd->gd_sample_pc = smp_sniff;
+	gd->gd_sample_sp = &dummy;
 }
 
 /*

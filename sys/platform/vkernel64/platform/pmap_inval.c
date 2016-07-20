@@ -383,3 +383,9 @@ smp_invltlb(void)
 	/* at the moment pmap_inval_pte_quick */
 	/* do nothing */
 }
+
+void
+smp_sniff(void)
+{
+	/* not implemented */
+}

@@ -197,6 +197,26 @@ Xinvltlb:
 	call	smp_inval_intr
 	addq	$8,%rsp			/* turn into trapframe */
 	MEXITCOUNT
+	/*APIC_POP_FRAME*/
+	jmp	doreti			/* doreti b/c intrs enabled */
+
+/*
+ * Handle sniffs - sniff %rip and %rsp.
+ */
+	.text
+	SUPERALIGN_TEXT
+	.globl	Xsniff
+Xsniff:
+	APIC_PUSH_FRAME
+	movq	lapic, %rax
+	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
+	FAKE_MCOUNT(TF_RIP(%rsp))
+	incl    PCPU(cnt) + V_IPI
+	movq	TF_RIP(%rsp),%rax
+	movq	%rax,PCPU(sample_pc)
+	movq	TF_RSP(%rsp),%rax
+	movq	%rax,PCPU(sample_sp)
+	MEXITCOUNT
 	APIC_POP_FRAME
 	jmp	doreti_iret
 

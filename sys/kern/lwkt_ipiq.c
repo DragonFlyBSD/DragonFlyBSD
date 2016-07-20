@@ -187,9 +187,6 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 {
     lwkt_ipiq_t ip;
     int windex;
-#ifdef _KERNEL_VIRTUAL
-    int repeating = 0;
-#endif
     struct globaldata *gd = mycpu;
 
     logipiq(send_norm, func, arg1, arg2, gd, target);
@@ -223,21 +220,50 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 #else
 #error "no read_*flags"
 #endif
+#ifndef _KERNEL_VIRTUAL
+	uint64_t tsc_base = rdtsc();
+#endif
+	int repeating = 0;
 
 	cpu_enable_intr();
 	++ipiq_stat(gd).ipiq_fifofull;
 	DEBUG_PUSH_INFO("send_ipiq3");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
-	    if (atomic_poll_acquire_int(&target->gd_npoll)) {
+#if 0
+	    if (atomic_swap_int(&target->gd_npoll, 1) == 0) {
 		logipiq(cpu_send, func, arg1, arg2, gd, target);
 		cpu_send_ipiq(target->gd_cpuid);
 	    }
+#endif
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	    cpu_pause();
+
+	    /*
+	     * Check for target not draining issue.  This should be fixed but
+	     * leave the code in-place anyway as it can recover an otherwise
+	     * dead system.
+	     */
 #ifdef _KERNEL_VIRTUAL
 	    if (repeating++ > 10)
 		    pthread_yield();
+#else
+	    if (rdtsc() - tsc_base > tsc_frequency) {
+		++repeating;
+		if (repeating > 10) {
+			smp_sniff();
+			ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
+			cpu_send_ipiq(target->gd_cpuid);
+			kprintf("send_ipiq %d->%d tgt not draining (%d) sniff=%p,%p\n",
+				gd->gd_cpuid, target->gd_cpuid, repeating,
+				target->gd_sample_pc, target->gd_sample_sp);
+		} else {
+			smp_sniff();
+			kprintf("send_ipiq %d->%d tgt not draining (%d)\n",
+				gd->gd_cpuid, target->gd_cpuid, repeating);
+		}
+		tsc_base = rdtsc();
+	    }
 #endif
 	}
 	DEBUG_POP_INFO();
@@ -262,7 +288,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     /*
      * signal the target cpu that there is work pending.
      */
-    if (atomic_poll_acquire_int(&target->gd_npoll)) {
+    if (atomic_swap_int(&target->gd_npoll, 1) == 0) {
 	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
@@ -292,9 +318,6 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 {
     lwkt_ipiq_t ip;
     int windex;
-#ifdef _KERNEL_VIRTUAL
-    int repeating = 0;
-#endif
     struct globaldata *gd = mycpu;
 
     KKASSERT(target != gd);
@@ -320,21 +343,50 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 #else
 #error "no read_*flags"
 #endif
+#ifndef _KERNEL_VIRTUAL
+	uint64_t tsc_base = rdtsc();
+#endif
+	int repeating = 0;
 
 	cpu_enable_intr();
 	++ipiq_stat(gd).ipiq_fifofull;
 	DEBUG_PUSH_INFO("send_ipiq3_passive");
 	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
-	    if (atomic_poll_acquire_int(&target->gd_npoll)) {
+#if 0
+	    if (atomic_swap_int(&target->gd_npoll, 1) == 0) {
 		logipiq(cpu_send, func, arg1, arg2, gd, target);
 		cpu_send_ipiq(target->gd_cpuid);
 	    }
+#endif
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	    cpu_pause();
+
+	    /*
+	     * Check for target not draining issue.  This should be fixed but
+	     * leave the code in-place anyway as it can recover an otherwise
+	     * dead system.
+	     */
 #ifdef _KERNEL_VIRTUAL
 	    if (repeating++ > 10)
 		    pthread_yield();
+#else
+	    if (rdtsc() - tsc_base > tsc_frequency) {
+		++repeating;
+		if (repeating > 10) {
+			smp_sniff();
+			ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
+			cpu_send_ipiq(target->gd_cpuid);
+			kprintf("send_ipiq %d->%d tgt not draining (%d) sniff=%p,%p\n",
+				gd->gd_cpuid, target->gd_cpuid, repeating,
+				target->gd_sample_pc, target->gd_sample_sp);
+		} else {
+			smp_sniff();
+			kprintf("send_ipiq %d->%d tgt not draining (%d)\n",
+				gd->gd_cpuid, target->gd_cpuid, repeating);
+		}
+		tsc_base = rdtsc();
+	    }
 #endif
 	}
 	DEBUG_POP_INFO();
@@ -410,7 +462,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
     /*
      * This isn't a passive IPI, we still have to signal the target cpu.
      */
-    if (atomic_poll_acquire_int(&target->gd_npoll)) {
+    if (atomic_swap_int(&target->gd_npoll, 1) == 0) {
 	logipiq(cpu_send, func, arg1, arg2, gd, target);
 	cpu_send_ipiq(target->gd_cpuid);
     } else {
@@ -559,10 +611,16 @@ lwkt_process_ipiq(void)
     cpumask_t mask;
     int n;
 
-    ++gd->gd_processing_ipiq;
+    /*
+     * We must process the entire cpumask if we are reentrant because it might
+     * have been partially cleared.
+     */
+    if (++gd->gd_processing_ipiq > 1)
+	ATOMIC_CPUMASK_COPY(gd->gd_ipimask, smp_active_mask);
 again:
-    cpu_lfence();
+    atomic_swap_int(&gd->gd_npoll, 0);
     mask = gd->gd_ipimask;
+    cpu_ccfence();
     ATOMIC_CPUMASK_NANDMASK(gd->gd_ipimask, mask);
     while (CPUMASK_TESTNZERO(mask)) {
 	n = BSFCPUMASK(mask);
@@ -592,11 +650,7 @@ again:
      * Interlock to allow more IPI interrupts.  Recheck ipimask after
      * releasing gd_npoll.
      */
-    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
-	goto again;
-    atomic_poll_release_int(&gd->gd_npoll);
-    cpu_mfence();
-    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
+    if (atomic_swap_int(&gd->gd_npoll, 0))
 	goto again;
     --gd->gd_processing_ipiq;
 }
@@ -610,9 +664,16 @@ lwkt_process_ipiq_frame(struct intrframe *frame)
     cpumask_t mask;
     int n;
 
+    /*
+     * We must process the entire cpumask if we are reentrant because it might
+     * have been partially cleared.
+     */
+    if (++gd->gd_processing_ipiq > 1)
+	ATOMIC_CPUMASK_COPY(gd->gd_ipimask, smp_active_mask);
 again:
-    cpu_lfence();
+    atomic_swap_int(&gd->gd_npoll, 0);
     mask = gd->gd_ipimask;
+    cpu_ccfence();
     ATOMIC_CPUMASK_NANDMASK(gd->gd_ipimask, mask);
     while (CPUMASK_TESTNZERO(mask)) {
 	n = BSFCPUMASK(mask);
@@ -638,12 +699,9 @@ again:
      * Interlock to allow more IPI interrupts.  Recheck ipimask after
      * releasing gd_npoll.
      */
-    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
+    if (atomic_swap_int(&gd->gd_npoll, 0))
 	goto again;
-    atomic_poll_release_int(&gd->gd_npoll);
-    cpu_mfence();
-    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
-	goto again;
+    --gd->gd_processing_ipiq;
 }
 
 #if 0

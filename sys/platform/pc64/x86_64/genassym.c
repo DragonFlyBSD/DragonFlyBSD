@@ -109,6 +109,7 @@ ASSYM(GD_CNT, offsetof(struct mdglobaldata, mi.gd_cnt));
 ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
 ASSYM(GD_CPUMASK, offsetof(struct mdglobaldata, mi.gd_cpumask));
 ASSYM(GD_SAMPLE_PC, offsetof(struct mdglobaldata, mi.gd_sample_pc));
+ASSYM(GD_SAMPLE_SP, offsetof(struct mdglobaldata, mi.gd_sample_sp));
 
 ASSYM(PCB_CR3, offsetof(struct pcb, pcb_cr3));
 ASSYM(PCB_R15, offsetof(struct pcb, pcb_r15));

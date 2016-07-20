@@ -164,6 +164,10 @@ lapic_init(boolean_t bsp)
 		/* Install an inter-CPU IPI for CPU stop/restart */
 		setidt_global(XCPUSTOP_OFFSET, Xcpustop,
 		    SDT_SYSIGT, SEL_KPL, 0);
+
+		/* Install an inter-CPU IPI for TLB invalidation */
+		setidt_global(XSNIFF_OFFSET, Xsniff,
+		    SDT_SYSIGT, SEL_KPL, 0);
 	}
 
 	/*

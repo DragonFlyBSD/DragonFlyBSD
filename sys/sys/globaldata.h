@@ -174,7 +174,8 @@ struct globaldata {
 	void		*gd_sample_pc;		/* sample program ctr/tr */
 	void		*gd_reserved_pcpu_mmap; /* future */
 	uint64_t	gd_forkid;		/* per-cpu unique inc ncpus */
-	uint64_t	gd_reserved64[4];
+	void		*gd_sample_sp;		/* sample stack pointer */
+	uint64_t	gd_reserved64[3];
 	void		*gd_preserved[4];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };

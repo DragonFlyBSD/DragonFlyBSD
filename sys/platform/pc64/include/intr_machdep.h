@@ -57,7 +57,7 @@
  *	0xff (255) +-------------+
  *		   |             | 15 (IPIs: Xcpustop, Xspuriousint)
  *	0xf0 (240) +-------------+
- *		   |             | 14 (IPIs: Xinvltlb, Xipiq, Xtimer)
+ *		   |             | 14 (IPIs: Xinvltlb, Xipiq, Xtimer, Xsniff)
  *	0xe0 (224) +-------------+
  *		   |             | 13
  *	0xd0 (208) +-------------+
@@ -111,7 +111,10 @@
 /* TIMER rendezvous */
 #define XTIMER_OFFSET		(IDT_OFFSET_IPIG1 + 4)
 
-/* IPI group1 5 ~ 15: unused */
+/* SNIFF rendezvous */
+#define XSNIFF_OFFSET		(IDT_OFFSET_IPIG1 + 5)
+
+/* IPI group1 6 ~ 15: unused */
 
 
 /*
@@ -143,7 +146,8 @@ inthand_t
 inthand_t
 	Xinvltlb,	/* TLB shootdowns */
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */
-	Xipiq;		/* handle lwkt_send_ipiq() requests */
+	Xipiq,		/* handle lwkt_send_ipiq() requests */
+	Xsniff;		/* sniff CPU */
 
 #endif /* LOCORE */
 

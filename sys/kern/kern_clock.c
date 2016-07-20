@@ -133,11 +133,16 @@ sysctl_cputime(SYSCTL_HANDLER_ARGS)
 {
 	int cpu, error = 0;
 	size_t size = sizeof(struct kinfo_cputime);
+	struct kinfo_cputime tmp;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if ((error = SYSCTL_OUT(req, &cputime_percpu[cpu], size)))
+		tmp = cputime_percpu[cpu];
+		tmp.cp_sample_pc = (int64_t)globaldata_find(cpu)->gd_sample_pc;
+		tmp.cp_sample_sp = (int64_t)globaldata_find(cpu)->gd_sample_sp;
+		if ((error = SYSCTL_OUT(req, &tmp, size)) != 0)
 			break;
 	}
+	smp_sniff();
 
 	return (error);
 }

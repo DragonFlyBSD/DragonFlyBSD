@@ -711,7 +711,6 @@ lwkt_switch(void)
     if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 	ASSERT_NO_TOKENS_HELD(ntd);
     cpu_time.cp_msg[0] = 0;
-    cpu_time.cp_stallpc = 0;
     goto haveidle;
 
 havethread:
