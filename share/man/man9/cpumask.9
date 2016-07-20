@@ -1,0 +1,226 @@
+.\"
+.\" Copyright (c) 2016 The DragonFly Project.
+.\" All rights reserved.
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"
+.Dd July 24, 2016
+.Dt CPUMASK 9
+.Os
+.Sh NAME
+.Nm CPUMASK
+.Nm ATOMIC_CPUMASK_COPY ,
+.Nm ATOMIC_CPUMASK_NANDBIT ,
+.Nm ATOMIC_CPUMASK_NANDMASK ,
+.Nm ATOMIC_CPUMASK_ORBIT ,
+.Nm ATOMIC_CPUMASK_ORMASK ,
+.Nm ATOMIC_CPUMASK_TESTANDCLR ,
+.Nm ATOMIC_CPUMASK_TESTANDSET ,
+.Nm BSFCPUMASK ,
+.Nm BSRCPUMASK ,
+.Nm CPUMASK_ADDR ,
+.Nm CPUMASK_ANDBIT ,
+.Nm CPUMASK_ANDMASK ,
+.Nm CPUMASK_ASSALLONES ,
+.Nm CPUMASK_ASSBIT ,
+.Nm CPUMASK_ASSBMASK ,
+.Nm CPUMASK_ASSNBMASK ,
+.Nm CPUMASK_ASSZERO ,
+.Nm CPUMASK_CMPMASKEQ ,
+.Nm CPUMASK_CMPMASKNEQ ,
+.Nm CPUMASK_ISUP ,
+.Nm CPUMASK_LOWMASK ,
+.Nm CPUMASK_NANDBIT ,
+.Nm CPUMASK_NANDMASK ,
+.Nm CPUMASK_ORBIT ,
+.Nm CPUMASK_ORMASK ,
+.Nm CPUMASK_SIMPLE ,
+.Nm CPUMASK_TESTBIT ,
+.Nm CPUMASK_TESTMASK ,
+.Nm CPUMASK_TESTNZERO ,
+.Nm CPUMASK_TESTZERO ,
+.Nm CPUMASK_XORMASK
+.Nd Macros to manipulate cpumask_t fields
+.Sh SYNOPSIS
+.In machine/cpumask.h
+.Fo ATOMIC_CPUMASK_COPY
+.Fa "mask"
+.Fa "val"
+.Fc
+.Fo ATOMIC_CPUMASK_NANDBIT
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo ATOMIC_CPUMASK_NANDMASK
+.Fa "mask"
+.Fa "val"
+.Fc
+.Fo ATOMIC_CPUMASK_ORBIT
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo ATOMIC_CPUMASK_ORMASK
+.Fa "mask"
+.Fa "val"
+.Fc
+.Fo ATOMIC_CPUMASK_TESTANDCLR
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo ATOMIC_CPUMASK_TESTANDSET
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo BSFCPUMASK
+.Fa "val"
+.Fc
+.Fo BSRCPUMASK
+.Fa "val"
+.Fc
+.Fo CPUMASK_ADDR
+.Fa "mask"
+.Fa "cpu"
+.Fc
+.Fo CPUMASK_ANDBIT
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo CPUMASK_ANDMASK
+.Fa "mask"
+.Fa "val"
+.Fc
+.Fo CPUMASK_ASSALLONES
+.Fa "mask"
+.Fc
+.Fo CPUMASK_ASSBIT
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo CPUMASK_ASSBMASK
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo CPUMASK_ASSNBMASK
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo CPUMASK_ASSZERO
+.Fa "mask"
+.Fc
+.Fo CPUMASK_CMPMASKEQ
+.Fa "mask1"
+.Fa "mask2"
+.Fc
+.Fo CPUMASK_CMPMASKNEQ
+.Fa "mask1"
+.Fa "mask2"
+.Fc
+.Fo CPUMASK_ISUP
+.Fa "val"
+.Fc
+.Fo CPUMASK_LOWMASK
+.Fa "val"
+.Fc
+.Fo CPUMASK_NANDBIT
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo CPUMASK_NANDMASK
+.Fa "mask"
+.Fa "val"
+.Fc
+.Fo CPUMASK_ORBIT
+.Fa "mask"
+.Fa "i"
+.Fc
+.Fo CPUMASK_ORMASK
+.Fa "mask"
+.Fa "val"
+.Fc
+.Fo CPUMASK_SIMPLE
+.Fa "cpu"
+.Fc
+.Fo CPUMASK_TESTBIT
+.Fa "val"
+.Fa "i"
+.Fc
+.Fo CPUMASK_TESTMASK
+.Fa "mask1"
+.Fa "mask2"
+.Fc
+.Fo CPUMASK_TESTNZERO
+.Fa "val"
+.Fc
+.Fo CPUMASK_TESTZERO
+.Fa "val"
+.Fc
+.Fo CPUMASK_XORMASK
+.Fa "mask"
+.Fa "val"
+.Fc
+.Sh DESCRIPTION
+The
+.Nm
+macros allow to safely manipulate the non standard type CPU bitmasks that uses
+.Dv CPUMASK_ELEMENTS
+of 64-bit words in
+.Vt cpumask_t
+type.
+.Pp
+Declared CPU mask variables can be initialized using one of
+.Dv CPUMASK_INITIALIZER_ALLONES ,
+.Dv CPUMASK_INITIALIZER_ONLYONE
+macros.
+.Pp
+The
+.Nm BSFCPUMASK
+performs a "bit scan forward" assembler instruction over whole
+.Vt cpumask_t
+type, while the
+.Nm BSRCPUMASK
+performs a "bit scan reverse".
+.Pp
+Keep in mind that macros like
+.Nm CPUMASK_SIMPLE
+might only work in 64-bit mask range as they are provided as a convenience to
+build more sophisticated macros.
+.Pp
+The
+.Nm
+macros with ATOMIC prefix perform
+.Xr atomic 9
+operations on the given CPU mask.
+.Pp
+When adding, modifying or removing CPUMASK macros, it is important to be
+aware that these interfaces may be used by libraries, applications,
+users or documentation.
+Changing the
+.Vt cpumask_t
+length defined by
+.Dv CPUMASK_ELEMENTS
+requires adjustment of both
+.Nm
+macros and kernel assembly sources because
+.Nm
+are implemented as non variably-sized macros.

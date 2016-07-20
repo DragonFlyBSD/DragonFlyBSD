@@ -34,6 +34,7 @@ MAN=	accept_filter.9 \
 	config_intrhook.9 \
 	contigmalloc.9 \
 	copy.9 \
+	cpumask.9 \
 	crit_enter.9 \
 	crypto.9 \
 	DB_COMMAND.9 \
@@ -395,6 +396,37 @@ MLINKS+=copy.9 copyin.9 \
 	copy.9 copyout.9 \
 	copy.9 copyout_nofault.9 \
 	copy.9 copystr.9
+MLINKS+=cpumask.9 ATOMIC_CPUMASK_COPY.9 \
+	cpumask.9 ATOMIC_CPUMASK_NANDBIT.9 \
+	cpumask.9 ATOMIC_CPUMASK_NANDMASK.9 \
+	cpumask.9 ATOMIC_CPUMASK_ORBIT.9 \
+	cpumask.9 ATOMIC_CPUMASK_ORMASK.9 \
+	cpumask.9 ATOMIC_CPUMASK_TESTANDCLR.9 \
+	cpumask.9 ATOMIC_CPUMASK_TESTANDSET.9 \
+	cpumask.9 BSFCPUMASK.9 \
+	cpumask.9 BSRCPUMASK.9 \
+	cpumask.9 CPUMASK_ADDR.9 \
+	cpumask.9 CPUMASK_ANDBIT.9 \
+	cpumask.9 CPUMASK_ANDMASK.9 \
+	cpumask.9 CPUMASK_ASSALLONES.9 \
+	cpumask.9 CPUMASK_ASSBIT.9 \
+	cpumask.9 CPUMASK_ASSBMASK.9 \
+	cpumask.9 CPUMASK_ASSNBMASK.9 \
+	cpumask.9 CPUMASK_ASSZERO.9 \
+	cpumask.9 CPUMASK_CMPMASKEQ.9 \
+	cpumask.9 CPUMASK_CMPMASKNEQ.9 \
+	cpumask.9 CPUMASK_ISUP.9 \
+	cpumask.9 CPUMASK_LOWMASK.9 \
+	cpumask.9 CPUMASK_NANDBIT.9 \
+	cpumask.9 CPUMASK_NANDMASK.9 \
+	cpumask.9 CPUMASK_ORBIT.9 \
+	cpumask.9 CPUMASK_ORMASK.9 \
+	cpumask.9 CPUMASK_SIMPLE.9 \
+	cpumask.9 CPUMASK_TESTBIT.9 \
+	cpumask.9 CPUMASK_TESTMASK.9 \
+	cpumask.9 CPUMASK_TESTNZERO.9 \
+	cpumask.9 CPUMASK_TESTZERO.9 \
+	cpumask.9 CPUMASK_XORMASK.9
 MLINKS+=crit_enter.9 crit_enter_gd.9 \
 	crit_enter.9 crit_enter_id.9 \
 	crit_enter.9 crit_exit.9 \
