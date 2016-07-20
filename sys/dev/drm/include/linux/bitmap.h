@@ -41,4 +41,15 @@ bitmap_or(unsigned long *dst, const unsigned long *src1,
 	}
 }
 
+static inline int
+bitmap_weight(unsigned long *bitmap, unsigned int nbits)
+{
+	unsigned int bit;
+	unsigned int retval = 0;
+
+	for_each_set_bit(bit, bitmap, nbits)
+		retval++;
+	return (retval);
+}
+
 #endif	/* _LINUX_BITMAP_H_ */
