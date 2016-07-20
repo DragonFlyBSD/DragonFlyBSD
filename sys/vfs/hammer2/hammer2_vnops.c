@@ -1378,6 +1378,9 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	size_t name_len;
 	int error;
 
+	if (ap->a_dvp->v_mount != ap->a_vp->v_mount)
+		return(EXDEV);
+
 	LOCKSTART;
 	tdip = VTOI(ap->a_dvp);
 	if (tdip->pmp->ronly) {
@@ -1401,6 +1404,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * is locked.
 	 */
 	ip = VTOI(ap->a_vp);
+	KASSERT(ip->pmp, ("ip->pmp is NULL %p %p", ip, ip->pmp));
 	hammer2_pfs_memory_wait(ip->pmp);
 	hammer2_trans_init(ip->pmp, 0);
 
