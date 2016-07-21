@@ -187,12 +187,24 @@ int
 findintralias(const char *name, int limit)
 {
 	int i;
+	size_t nlen;
+	size_t ilen;
 
-	if (strlen(name) > 6)
-		return limit;
+	nlen = strlen(name);
 	for (i = 0; i < limit; ++i) {
 		if (strcmp(name, intrname[i]) == 0)
 			break;
+		ilen = strlen(intrname[i]);
+		if (nlen == ilen &&
+		    nlen > 1 &&
+		    strncmp(name, intrname[i], nlen - 1) == 0 &&
+		    strchr(name, ' ') &&
+		    isdigit(name[nlen - 1]) &&
+		    (isdigit(intrname[i][nlen - 1]) ||
+		     intrname[i][nlen - 1] == '*')) {
+			intrname[i][nlen - 1] = '*';
+			break;
+		}
 	}
 	return i;
 }
