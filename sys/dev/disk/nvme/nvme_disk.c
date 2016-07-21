@@ -313,14 +313,17 @@ nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
 		/*
 		 * Prevent callback from occurring if the synchronous
 		 * delay optimization is enabled.
+		 *
+		 * NOTE: subq lock does not protect the I/O (completion
+		 *	 only needs the comq lock).
 		 */
 		if (delay == 0)
 			req->callback = nvme_disk_callback;
 		req->nsc = nsc;
 		req->bio = bio;
+		BUF_KERNPROC(bp);		/* do before submit */
 		lockmgr(&subq->lk, LK_EXCLUSIVE);
 		nvme_submit_request(req);	/* needs subq lock */
-		BUF_KERNPROC(bp);		/* do before lock release */
 		lockmgr(&subq->lk, LK_RELEASE);
 		if (delay) {
 			comq = req->comq;
@@ -354,13 +357,24 @@ nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
 	return 0;
 
 	/*
-	 * No requests were available, requeue the bio
+	 * No requests were available, requeue the bio.
+	 *
+	 * The nvme_get_request() call armed the requeue signal but
+	 * it is possible that it was picked up too quickly.  If it
+	 * was, signal the admin thread ourselves.  This case will occur
+	 * relatively rarely and only under heavy I/O conditions so we
+	 * don't have to be entirely efficient about dealing with it.
 	 */
 requeue:
 	BUF_KERNPROC(bp);
 	lockmgr(&nsc->lk, LK_EXCLUSIVE);
 	bioqdisksort(&nsc->bioq, bio);
 	lockmgr(&nsc->lk, LK_RELEASE);
+	if (atomic_swap_int(&subq->signal_requeue, 1) == 0) {
+		atomic_swap_int(&subq->signal_requeue, 0);
+                atomic_set_int(&subq->sc->admin_signal, ADMIN_SIG_REQUEUE);
+                wakeup(&subq->sc->admin_signal);
+	}
 	return 1;
 }
 
