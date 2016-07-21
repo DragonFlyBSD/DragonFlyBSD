@@ -25,12 +25,11 @@
  *
  */
 #include <linux/dmi.h>
-#include <drm/drmP.h>
 #include <drm/drm_dp_helper.h>
+#include <drm/drmP.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "intel_bios.h"
-#include <linux/string.h>
 
 #define	SLAVE_ADDR1	0x70
 #define	SLAVE_ADDR2	0x72
@@ -1236,20 +1235,13 @@ static const struct dmi_system_id intel_no_opregion_vbt[] = {
 	{ }
 };
 
-static const struct bdb_header *validate_vbt(const void __iomem *_base,
+static const struct bdb_header *validate_vbt(const void *base,
 					     size_t size,
-					     const void __iomem *_vbt,
+					     const void *_vbt,
 					     const char *source)
 {
-	/*
-	 * This is the one place where we explicitly discard the address space
-	 * (__iomem) of the BIOS/VBT. (And this will cause a sparse complaint.)
-	 * From now on everything is based on 'base', and treated as regular
-	 * memory.
-	 */
-	const char *base = (const void *) _base;
-	size_t offset = (const char *)_vbt - (const char*)_base;
-	const struct vbt_header *vbt = (const struct vbt_header *)(base + offset);
+	size_t offset = (const char *)_vbt - (const char *)base;
+	const struct vbt_header *vbt = _vbt;
 	const struct bdb_header *bdb;
 
 	if (offset + sizeof(struct vbt_header) > size) {
@@ -1268,7 +1260,7 @@ static const struct bdb_header *validate_vbt(const void __iomem *_base,
 		return NULL;
 	}
 
-	bdb = (const struct bdb_header*)(base + offset);
+	bdb = (const struct bdb_header *)((const char *)base + offset);
 	if (offset + bdb->bdb_size > size) {
 		DRM_DEBUG_DRIVER("BDB incomplete\n");
 		return NULL;
@@ -1287,7 +1279,15 @@ static const struct bdb_header *find_vbt(void __iomem *bios, size_t size)
 	/* Scour memory looking for the VBT signature. */
 	for (i = 0; i + 4 < size; i++) {
 		if (ioread32(bios + i) == *((const u32 *) "$VBT")) {
-			bdb = validate_vbt((char *)bios, size, (char *)bios + i, "PCI ROM");
+			/*
+			 * This is the one place where we explicitly discard the
+			 * address space (__iomem) of the BIOS/VBT. From now on
+			 * everything is based on 'base', and treated as regular
+			 * memory.
+			 */
+			void *_bios = (void __force *) bios;
+
+			bdb = validate_vbt(_bios, size, (const char *)_bios + i, "PCI ROM");
 			break;
 		}
 	}
@@ -1362,22 +1362,4 @@ intel_parse_bios(struct drm_device *dev)
 #endif
 
 	return 0;
-}
-
-/* Ensure that vital registers have been initialised, even if the BIOS
- * is absent or just failing to do its job.
- */
-void intel_setup_bios(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
-	 /* Set the Panel Power On/Off timings if uninitialized. */
-	if (!HAS_PCH_SPLIT(dev) &&
-	    I915_READ(PP_ON_DELAYS) == 0 && I915_READ(PP_OFF_DELAYS) == 0) {
-		/* Set T2 to 40ms and T5 to 200ms */
-		I915_WRITE(PP_ON_DELAYS, 0x019007d0);
-
-		/* Set T3 to 35ms and Tx to 200ms */
-		I915_WRITE(PP_OFF_DELAYS, 0x015e07d0);
-	}
 }

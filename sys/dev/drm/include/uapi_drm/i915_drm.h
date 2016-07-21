@@ -699,10 +699,10 @@ struct drm_i915_gem_exec_object2 {
 #define EXEC_OBJECT_NEEDS_FENCE (1<<0)
 #define EXEC_OBJECT_NEEDS_GTT	(1<<1)
 #define EXEC_OBJECT_WRITE	(1<<2)
-#ifdef __DragonFly__
-#define __EXEC_OBJECT_UNKNOWN_FLAGS -(EXEC_OBJECT_WRITE<<1)
-#else /* Linux 4.6 */
 #define EXEC_OBJECT_SUPPORTS_48B_ADDRESS (1<<3)
+#ifdef __DragonFly__
+#define __EXEC_OBJECT_UNKNOWN_FLAGS -(EXEC_OBJECT_SUPPORTS_48B_ADDRESS<<1)
+#else /* Linux 4.6 */
 #define EXEC_OBJECT_PINNED	(1<<4)
 #define __EXEC_OBJECT_UNKNOWN_FLAGS -(EXEC_OBJECT_PINNED<<1)
 #endif

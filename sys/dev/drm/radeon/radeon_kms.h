@@ -12,12 +12,5 @@ void radeon_driver_postclose_kms(struct drm_device *dev,
 				 struct drm_file *file_priv);
 void radeon_driver_preclose_kms(struct drm_device *dev,
 				struct drm_file *file_priv);
-u32 radeon_get_vblank_counter_kms(struct drm_device *dev, int crtc);
-int radeon_enable_vblank_kms(struct drm_device *dev, int crtc);
-void radeon_disable_vblank_kms(struct drm_device *dev, int crtc);
-int radeon_get_vblank_timestamp_kms(struct drm_device *dev, int crtc,
-				    int *max_error,
-				    struct timeval *vblank_time,
-				    unsigned flags);
 
 #endif /* !defined(__RADEON_KMS_H__) */

@@ -60,18 +60,18 @@ static void i965_write_fence_reg(struct drm_device *dev, int reg,
 				 struct drm_i915_gem_object *obj)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int fence_reg;
+	int fence_reg_lo, fence_reg_hi;
 	int fence_pitch_shift;
 
 	if (INTEL_INFO(dev)->gen >= 6) {
-		fence_reg = FENCE_REG_SANDYBRIDGE_0;
-		fence_pitch_shift = SANDYBRIDGE_FENCE_PITCH_SHIFT;
+		fence_reg_lo = FENCE_REG_GEN6_LO(reg);
+		fence_reg_hi = FENCE_REG_GEN6_HI(reg);
+		fence_pitch_shift = GEN6_FENCE_PITCH_SHIFT;
 	} else {
-		fence_reg = FENCE_REG_965_0;
+		fence_reg_lo = FENCE_REG_965_LO(reg);
+		fence_reg_hi = FENCE_REG_965_HI(reg);
 		fence_pitch_shift = I965_FENCE_PITCH_SHIFT;
 	}
-
-	fence_reg += reg * 8;
 
 	/* To w/a incoherency with non-atomic 64-bit register updates,
 	 * we split the 64-bit update into two 32-bit writes. In order
@@ -82,8 +82,8 @@ static void i965_write_fence_reg(struct drm_device *dev, int reg,
 	 * For extra levels of paranoia, we make sure each step lands
 	 * before applying the next step.
 	 */
-	I915_WRITE(fence_reg, 0);
-	POSTING_READ(fence_reg);
+	I915_WRITE(fence_reg_lo, 0);
+	POSTING_READ(fence_reg_lo);
 
 	if (obj) {
 		u32 size = i915_gem_obj_ggtt_size(obj);
@@ -104,14 +104,14 @@ static void i965_write_fence_reg(struct drm_device *dev, int reg,
 			val |= 1 << I965_FENCE_TILING_Y_SHIFT;
 		val |= I965_FENCE_REG_VALID;
 
-		I915_WRITE(fence_reg + 4, val >> 32);
-		POSTING_READ(fence_reg + 4);
+		I915_WRITE(fence_reg_hi, val >> 32);
+		POSTING_READ(fence_reg_hi);
 
-		I915_WRITE(fence_reg + 0, val);
-		POSTING_READ(fence_reg);
+		I915_WRITE(fence_reg_lo, val);
+		POSTING_READ(fence_reg_lo);
 	} else {
-		I915_WRITE(fence_reg + 4, 0);
-		POSTING_READ(fence_reg + 4);
+		I915_WRITE(fence_reg_hi, 0);
+		POSTING_READ(fence_reg_hi);
 	}
 }
 
@@ -150,13 +150,8 @@ static void i915_write_fence_reg(struct drm_device *dev, int reg,
 	} else
 		val = 0;
 
-	if (reg < 8)
-		reg = FENCE_REG_830_0 + reg * 4;
-	else
-		reg = FENCE_REG_945_8 + (reg - 8) * 4;
-
-	I915_WRITE(reg, val);
-	POSTING_READ(reg);
+	I915_WRITE(FENCE_REG(reg), val);
+	POSTING_READ(FENCE_REG(reg));
 }
 
 static void i830_write_fence_reg(struct drm_device *dev, int reg,
@@ -187,8 +182,8 @@ static void i830_write_fence_reg(struct drm_device *dev, int reg,
 	} else
 		val = 0;
 
-	I915_WRITE(FENCE_REG_830_0 + reg * 4, val);
-	POSTING_READ(FENCE_REG_830_0 + reg * 4);
+	I915_WRITE(FENCE_REG(reg), val);
+	POSTING_READ(FENCE_REG(reg));
 }
 
 inline static bool i915_gem_object_needs_mb(struct drm_i915_gem_object *obj)
@@ -323,7 +318,7 @@ i915_find_fence_reg(struct drm_device *dev)
 
 	/* First try to find a free reg */
 	avail = NULL;
-	for (i = dev_priv->fence_reg_start; i < dev_priv->num_fence_regs; i++) {
+	for (i = 0; i < dev_priv->num_fence_regs; i++) {
 		reg = &dev_priv->fence_regs[i];
 		if (!reg->obj)
 			return reg;
@@ -648,11 +643,10 @@ i915_gem_detect_bit_6_swizzle(struct drm_device *dev)
 		}
 
 		/* check for L-shaped memory aka modified enhanced addressing */
-		if (IS_GEN4(dev)) {
-			uint32_t ddc2 = I915_READ(DCC2);
-
-			if (!(ddc2 & DCC2_MODIFIED_ENHANCED_DISABLE))
-				dev_priv->quirks |= QUIRK_PIN_SWIZZLED_PAGES;
+		if (IS_GEN4(dev) &&
+		    !(I915_READ(DCC2) & DCC2_MODIFIED_ENHANCED_DISABLE)) {
+			swizzle_x = I915_BIT_6_SWIZZLE_UNKNOWN;
+			swizzle_y = I915_BIT_6_SWIZZLE_UNKNOWN;
 		}
 
 		if (dcc == 0xffffffff) {
@@ -681,14 +675,33 @@ i915_gem_detect_bit_6_swizzle(struct drm_device *dev)
 		 * matching, which was the case for the swizzling required in
 		 * the table above, or from the 1-ch value being less than
 		 * the minimum size of a rank.
+		 *
+		 * Reports indicate that the swizzling actually
+		 * varies depending upon page placement inside the
+		 * channels, i.e. we see swizzled pages where the
+		 * banks of memory are paired and unswizzled on the
+		 * uneven portion, so leave that as unknown.
 		 */
-		if (I915_READ16(C0DRB3) != I915_READ16(C1DRB3)) {
-			swizzle_x = I915_BIT_6_SWIZZLE_NONE;
-			swizzle_y = I915_BIT_6_SWIZZLE_NONE;
-		} else {
+		if (I915_READ16(C0DRB3) == I915_READ16(C1DRB3)) {
 			swizzle_x = I915_BIT_6_SWIZZLE_9_10;
 			swizzle_y = I915_BIT_6_SWIZZLE_9;
 		}
+	}
+
+	if (swizzle_x == I915_BIT_6_SWIZZLE_UNKNOWN ||
+	    swizzle_y == I915_BIT_6_SWIZZLE_UNKNOWN) {
+		/* Userspace likes to explode if it sees unknown swizzling,
+		 * so lie. We will finish the lie when reporting through
+		 * the get-tiling-ioctl by reporting the physical swizzle
+		 * mode as unknown instead.
+		 *
+		 * As we don't strictly know what the swizzling is, it may be
+		 * bit17 dependent, and so we need to also prevent the pages
+		 * from being moved.
+		 */
+		dev_priv->quirks |= QUIRK_PIN_SWIZZLED_PAGES;
+		swizzle_x = I915_BIT_6_SWIZZLE_NONE;
+		swizzle_y = I915_BIT_6_SWIZZLE_NONE;
 	}
 
 	dev_priv->mm.bit_6_swizzle_x = swizzle_x;
