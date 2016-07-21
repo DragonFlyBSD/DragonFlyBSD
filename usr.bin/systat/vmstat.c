@@ -106,7 +106,10 @@ static	char buf[26];
 static	time_t t;
 static	double etime;
 static	int nintr;
+static	int  *intralias;
+static	int  *intrsmp;
 static	long *intrloc;
+static	long *lacc;
 static	char **intrname;
 static	int nextintsrow;
 static  int extended_vm_stats;
@@ -179,6 +182,21 @@ static struct nlist namelist[] = {
 
 #define	MAXDRIVES	DRIVESPACE	 /* max # to display */
 
+static
+int
+findintralias(const char *name, int limit)
+{
+	int i;
+
+	if (strlen(name) > 6)
+		return limit;
+	for (i = 0; i < limit; ++i) {
+		if (strcmp(name, intrname[i]) == 0)
+			break;
+	}
+	return i;
+}
+
 int
 initkre(void)
 {
@@ -224,11 +242,19 @@ initkre(void)
 			}
 			intrname = malloc(nintr * sizeof(char *));
 			intrloc = malloc(nintr * sizeof(*intrloc));
+			lacc = malloc(nintr * sizeof(*lacc));
+			intralias = malloc(nintr * sizeof(*intralias));
+			intrsmp = malloc(nintr * sizeof(*intrsmp));
+			bzero(intrsmp, nintr * sizeof(*intrsmp));
+
 			nintr = 0;
 			for (b = i = 0; i < bytes; ++i) {
 				if (intrnamebuf[i] == 0) {
 					intrname[nintr] = intrnamebuf + b;
 					intrloc[nintr] = 0;
+					intralias[nintr] =
+					  findintralias(intrname[nintr], nintr);
+					++intrsmp[intralias[nintr]];
 					b = i + 1;
 					++nintr;
 				}
@@ -394,7 +420,7 @@ showkre(void)
 {
 	float f1, f2;
 	int psiz;
-	int i, lc;
+	int i, j, lc;
 	long inttotal;
 	long l;
 	static int failcnt = 0;
@@ -430,22 +456,26 @@ showkre(void)
 	if (etime == 0)
 		etime = 1;
 	inttotal = 0;
+	bzero(lacc, nintr * sizeof(*lacc));
+
 	for (i = 0; i < nintr; i++) {
 		if (s.intrcnt[i] == 0)
 			continue;
-		if (intrloc[i] == 0) {
+		j = intralias[i];
+		if (intrloc[j] == 0) {
 			if (nextintsrow == LINES)
 				continue;
-			intrloc[i] = nextintsrow++;
-			mvprintw(intrloc[i], INTSCOL + 9, "%-10.10s",
-				intrname[i]);
+			intrloc[j] = nextintsrow++;
+			mvprintw(intrloc[j], INTSCOL + 9, "%-10.10s",
+				intrname[j]);
 		}
 		X(intrcnt);
 		l = (long)((float)s.intrcnt[i]/etime + 0.5);
+		lacc[j] += l;
 		inttotal += l;
-		put64(l, intrloc[i], INTSCOL + 2, 6, 'D');
+		put64(lacc[j], intrloc[j], INTSCOL + 3, 5, 'D');
 	}
-	put64(inttotal, INTSROW + 1, INTSCOL + 2, 6, 'D');
+	put64(inttotal, INTSROW + 1, INTSCOL + 3, 5, 'D');
 	Z(ncs_goodhits); Z(ncs_badhits); Z(ncs_miss);
 	Z(ncs_longhits); Z(ncs_longmiss); Z(ncs_neghits);
 	s.nchcount = nchtotal.ncs_goodhits + nchtotal.ncs_badhits +
