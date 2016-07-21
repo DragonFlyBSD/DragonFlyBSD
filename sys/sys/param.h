@@ -133,9 +133,10 @@
  * 400501 - unionfs removal
  * 400502 - private libraries: ssh ldns edit ncurses
  * 400503 - libarchive-3.0.2 import (add bsdcat)
+ * 400600 - 4.6 release
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400503	/* propagated to newvers */
+#define __DragonFly_version 400600	/* propagated to newvers */
 
 #include <sys/_null.h>
 

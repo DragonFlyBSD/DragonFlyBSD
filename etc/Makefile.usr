@@ -73,10 +73,10 @@ src-create-repo: src-check
 	@cd ${.CURDIR}/src && \
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
-	cd ${.CURDIR}/src && git branch master origin/master
+	cd ${.CURDIR}/src && git branch DragonFly_RELEASE_4_6 origin/DragonFly_RELEASE_4_6
 
 src-create: src-create-repo
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_4_6
 	cd ${.CURDIR}/src && git pull
 
 src-create-shallow: src-check
@@ -87,12 +87,12 @@ src-create-shallow: src-check
 	cd ${.CURDIR}/src && \
 	    git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch --depth=1 origin
-	cd ${.CURDIR}/src && git branch master origin/master
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git branch DragonFly_RELEASE_4_6 origin/DragonFly_RELEASE_4_6
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_4_6
 	cd ${.CURDIR}/src && git pull
 
 src-checkout: src-check-hasdir
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_4_6
 
 src-update: src-check-hasdir
 	cd ${.CURDIR}/src && git pull
