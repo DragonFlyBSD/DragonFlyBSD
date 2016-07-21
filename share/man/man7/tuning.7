@@ -39,30 +39,48 @@ memory.  These days swap is often used for other activities, including
 and
 .Xr swapcache 8 .
 We recommend that swap be sized to the larger of 2x main memory or
-1GB if you have a fairly small disk and up to 16GB if you have a
-moderately endowed system and a large drive.
-Or even larger if you have a SSD+HDD system in order to use swapcache.
+1GB if you have a fairly small disk and 16GB or more if you have a
+modestly endowed system.
+If you have a modest SSD + large HDD combination, we recommend
+a large dedicated swap partition on the SSD.  For example, if
+you have a 128GB SSD and 2TB or more of HDD storage, dedicating
+upwards of 64GB of the SSD to swap and using
+.Xr swapcache 8
+and
+.Xr tmpfs 5
+will significantly improve your HDD's performance.
+.Pp
+In an all-SSD or mostly-SSD system,
+.Xr swapcache 8
+is not normally used but you may still want to have a large swap
+partition to support
+.Xr tmpfs 5
+use.
+Our synth/poudriere build machines run with a 200GB
+swap partition and use tmpfs for all the builder jails.  50-100 GB
+is swapped out at the peak of the build.  As a result, actual
+system storage bandwidth is minimized and performance increased.
+.Pp
 If you are on a minimally configured machine you may, of course,
 configure far less swap or no swap at all but we recommend at least
 some swap.
 The kernel's VM paging algorithms are tuned to perform best when there is
-at least 2x swap versus main memory.
+swap space configured.
 Configuring too little swap can lead to inefficiencies in the VM
 page scanning code as well as create issues later on if you add
-more memory to your machine.
+more memory to your machine, so don't be shy about it.
 Swap is a good idea even if you don't think you will ever need it as it
 allows the
-machine to page out completely unused data from idle programs (like getty),
+machine to page out completely unused data and idle programs (like getty),
 maximizing the ram available for your activities.
 .Pp
 If you intend to use the
 .Xr swapcache 8
-facility with a SSD we recommend the SSD be configured with at
-least a 32G swap partition.
-If you are on a moderately well configured 64-bit system you can
-size swap even larger.
-Keep in mind that each 1GByte of swapcache requires around 1MByte of
-ram.
+facility with a SSD + HDD combination we recommend configuring as much
+swap space as you can on the SSD.
+However, keep in mind that each 1GByte of swapcache requires around
+1MByte of ram, so don't scale your swap beyond the equivalent ram
+that you reasonably want to eat to support it.
 .Pp
 Finally, on larger systems with multiple drives, if the use
 of SSD swap is not in the cards or if it is and you need higher-than-normal
@@ -200,9 +218,22 @@ it up to four or five megabytes.  Note that setting too high a value
 bad clustering performance.  Do not set this value arbitrarily high!  Also,
 higher write queueing values may add latency to reads occurring at the same
 time.
+The
+.Va vfs.bufcache_bw
+controls data cycling within the buffer cache.  I/O bandwidth less than
+this specification (per second) will cycle into the much larger general
+VM page cache while I/O bandwidth in excess of this specification will
+be recycled within the buffer cache, reducing the load on the rest of
+the VM system.
+The default value is 200 megabytes (209715200), which means that the
+system will try harder to cache data coming off a slower hard drive
+and less hard trying to cache data coming off a fast SSD.
+This parameter is particularly important if you have NVMe drives in
+your system as these storage devices are capable of transfering
+well over 2GBytes/sec into the system.
 .Pp
 There are various other buffer-cache and VM page cache related sysctls.
-We do not recommend modifying these values.
+We do not recommend modifying their values.
 As of
 .Fx 4.3 ,
 the VM system does an extremely good job tuning itself.
