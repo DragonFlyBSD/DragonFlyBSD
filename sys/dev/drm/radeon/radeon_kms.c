@@ -722,8 +722,11 @@ void radeon_driver_preclose_kms(struct drm_device *dev,
  * Gets the frame count on the requested crtc (all asics).
  * Returns frame count on success, -EINVAL on failure.
  */
+u32 radeon_get_vblank_counter_kms(struct drm_device *dev, int crtc);
 u32 radeon_get_vblank_counter_kms(struct drm_device *dev, int crtc)
 {
+	int vpos, hpos, stat;
+	u32 count;
 	struct radeon_device *rdev = dev->dev_private;
 
 	if (crtc < 0 || crtc >= rdev->num_crtc) {
@@ -731,8 +734,61 @@ u32 radeon_get_vblank_counter_kms(struct drm_device *dev, int crtc)
 		return -EINVAL;
 	}
 
-	return radeon_get_vblank_counter(rdev, crtc);
+	/* The hw increments its frame counter at start of vsync, not at start
+	 * of vblank, as is required by DRM core vblank counter handling.
+	 * Cook the hw count here to make it appear to the caller as if it
+	 * incremented at start of vblank. We measure distance to start of
+	 * vblank in vpos. vpos therefore will be >= 0 between start of vblank
+	 * and start of vsync, so vpos >= 0 means to bump the hw frame counter
+	 * result by 1 to give the proper appearance to caller.
+	 */
+	if (rdev->mode_info.crtcs[crtc]) {
+		/* Repeat readout if needed to provide stable result if
+		 * we cross start of vsync during the queries.
+		 */
+		do {
+			count = radeon_get_vblank_counter(rdev, crtc);
+			/* Ask radeon_get_crtc_scanoutpos to return vpos as
+			 * distance to start of vblank, instead of regular
+			 * vertical scanout pos.
+			 */
+			stat = radeon_get_crtc_scanoutpos(
+				dev, crtc, GET_DISTANCE_TO_VBLANKSTART,
+				&vpos, &hpos, NULL, NULL,
+				&rdev->mode_info.crtcs[crtc]->base.hwmode);
+		} while (count != radeon_get_vblank_counter(rdev, crtc));
+
+		if (((stat & (DRM_SCANOUTPOS_VALID | DRM_SCANOUTPOS_ACCURATE)) !=
+		    (DRM_SCANOUTPOS_VALID | DRM_SCANOUTPOS_ACCURATE))) {
+			DRM_DEBUG_VBL("Query failed! stat %d\n", stat);
+		}
+		else {
+			DRM_DEBUG_VBL("crtc %d: dist from vblank start %d\n",
+				      crtc, vpos);
+
+			/* Bump counter if we are at >= leading edge of vblank,
+			 * but before vsync where vpos would turn negative and
+			 * the hw counter really increments.
+			 */
+			if (vpos >= 0)
+				count++;
+		}
+	}
+	else {
+	    /* Fallback to use value as is. */
+	    count = radeon_get_vblank_counter(rdev, crtc);
+	    DRM_DEBUG_VBL("NULL mode info! Returned count may be wrong.\n");
+	}
+
+	return count;
 }
+
+int radeon_enable_vblank_kms(struct drm_device *dev, int crtc);
+void radeon_disable_vblank_kms(struct drm_device *dev, int crtc);
+int radeon_get_vblank_timestamp_kms(struct drm_device *dev, int crtc,
+				    int *max_error,
+				    struct timeval *vblank_time,
+				    unsigned flags);
 
 /**
  * radeon_enable_vblank_kms - enable vblank interrupt
@@ -746,6 +802,7 @@ u32 radeon_get_vblank_counter_kms(struct drm_device *dev, int crtc)
 int radeon_enable_vblank_kms(struct drm_device *dev, int crtc)
 {
 	struct radeon_device *rdev = dev->dev_private;
+	unsigned long irqflags;
 	int r;
 
 	if (crtc < 0 || crtc >= rdev->num_crtc) {
@@ -753,10 +810,10 @@ int radeon_enable_vblank_kms(struct drm_device *dev, int crtc)
 		return -EINVAL;
 	}
 
-	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->irq.lock, irqflags);
 	rdev->irq.crtc_vblank_int[crtc] = true;
 	r = radeon_irq_set(rdev);
-	lockmgr(&rdev->irq.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
 	return r;
 }
 
@@ -771,16 +828,17 @@ int radeon_enable_vblank_kms(struct drm_device *dev, int crtc)
 void radeon_disable_vblank_kms(struct drm_device *dev, int crtc)
 {
 	struct radeon_device *rdev = dev->dev_private;
+	unsigned long irqflags;
 
 	if (crtc < 0 || crtc >= rdev->num_crtc) {
 		DRM_ERROR("Invalid crtc %d\n", crtc);
 		return;
 	}
 
-	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&rdev->irq.lock, irqflags);
 	rdev->irq.crtc_vblank_int[crtc] = false;
 	radeon_irq_set(rdev);
-	lockmgr(&rdev->irq.lock, LK_RELEASE);
+	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
 }
 
 /**
@@ -817,7 +875,7 @@ int radeon_get_vblank_timestamp_kms(struct drm_device *dev, int crtc,
 	/* Helper routine in DRM core does all the work: */
 	return drm_calc_vbltimestamp_from_scanoutpos(dev, crtc, max_error,
 						     vblank_time, flags,
-						     drmcrtc, &drmcrtc->hwmode);
+						     &drmcrtc->hwmode);
 }
 
 #define KMS_INVALID_IOCTL(name)						\

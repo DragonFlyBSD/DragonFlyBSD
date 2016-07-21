@@ -288,8 +288,7 @@
 
 #define INTEL_BXT_IDS(info) \
 	INTEL_VGA_DEVICE(0x0A84, info), \
-	INTEL_VGA_DEVICE(0x0A85, info), \
-	INTEL_VGA_DEVICE(0x0A86, info), \
-	INTEL_VGA_DEVICE(0x0A87, info)
+	INTEL_VGA_DEVICE(0x1A84, info), \
+	INTEL_VGA_DEVICE(0x5A84, info)
 
 #endif /* _I915_PCIIDS_H */

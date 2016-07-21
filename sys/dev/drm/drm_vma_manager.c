@@ -105,7 +105,7 @@ void drm_vma_offset_manager_destroy(struct drm_vma_offset_manager *mgr)
 EXPORT_SYMBOL(drm_vma_offset_manager_destroy);
 
 /**
- * drm_vma_offset_lookup() - Find node in offset space
+ * drm_vma_offset_lookup_locked() - Find node in offset space
  * @mgr: Manager object
  * @start: Start address for object (page-based)
  * @pages: Size of object (page-based)

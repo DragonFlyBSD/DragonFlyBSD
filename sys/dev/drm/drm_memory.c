@@ -35,10 +35,12 @@
 
 #include <linux/highmem.h>
 #include <linux/export.h>
+#include <linux/kconfig.h>
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
-#if __OS_HAS_AGP
+#define CONFIG_AGP 1
+#if IS_ENABLED(CONFIG_AGP)
 
 #ifdef HAVE_PAGE_AGP
 # include <asm/agp.h>
@@ -51,8 +53,8 @@
 #endif
 
 
-#else  /*  __OS_HAS_AGP  */
-#endif				/* agp */
+#else /*  CONFIG_AGP  */
+#endif /* CONFIG_AGP */
 
 void drm_legacy_ioremap(struct drm_local_map *map, struct drm_device *dev)
 {
@@ -74,31 +76,3 @@ void drm_legacy_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
 	pmap_unmapdev((vm_offset_t) map->handle, map->size);
 }
 EXPORT_SYMBOL(drm_legacy_ioremapfree);
-
-int
-drm_mtrr_add(unsigned long offset, size_t size, int flags)
-{
-	int act;
-	struct mem_range_desc mrdesc;
-
-	mrdesc.mr_base = offset;
-	mrdesc.mr_len = size;
-	mrdesc.mr_flags = flags;
-	act = MEMRANGE_SET_UPDATE;
-	strlcpy(mrdesc.mr_owner, "drm", sizeof(mrdesc.mr_owner));
-	return mem_range_attr_set(&mrdesc, &act);
-}
-
-int
-drm_mtrr_del(int __unused handle, unsigned long offset, size_t size, int flags)
-{
-	int act;
-	struct mem_range_desc mrdesc;
-
-	mrdesc.mr_base = offset;
-	mrdesc.mr_len = size;
-	mrdesc.mr_flags = flags;
-	act = MEMRANGE_SET_REMOVE;
-	strlcpy(mrdesc.mr_owner, "drm", sizeof(mrdesc.mr_owner));
-	return mem_range_attr_set(&mrdesc, &act);
-}

@@ -121,14 +121,8 @@ int drm_legacy_lock(struct drm_device *dev, void *data,
 	 * really probably not the correct answer but lets us debug xkb
  	 * xserver for now */
 	if (!file_priv->is_master) {
-		sigemptyset(&dev->sigmask);
-		sigaddset(&dev->sigmask, SIGSTOP);
-		sigaddset(&dev->sigmask, SIGTSTP);
-		sigaddset(&dev->sigmask, SIGTTIN);
-		sigaddset(&dev->sigmask, SIGTTOU);
 		dev->sigdata.context = lock->context;
 		dev->sigdata.lock = master->lock.hw_lock;
-		block_all_signals(drm_notifier, dev, &dev->sigmask);
 	}
 
 	if (dev->driver->dma_quiescent && (lock->flags & _DRM_LOCK_QUIESCENT))

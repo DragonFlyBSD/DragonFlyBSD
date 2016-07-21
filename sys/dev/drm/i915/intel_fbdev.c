@@ -119,8 +119,9 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 		container_of(helper, struct intel_fbdev, helper);
 	struct drm_framebuffer *fb;
 	struct drm_device *dev = helper->dev;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct drm_mode_fb_cmd2 mode_cmd = {};
-	struct drm_i915_gem_object *obj;
+	struct drm_i915_gem_object *obj = NULL;
 	int size, ret;
 
 	/* we don't do packed 24bpp */
@@ -137,7 +138,12 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 
 	size = mode_cmd.pitches[0] * mode_cmd.height;
 	size = PAGE_ALIGN(size);
-	obj = i915_gem_object_create_stolen(dev, size);
+
+	/* If the FB is too big, just don't use it since fbdev is not very
+	 * important and we should probably use that space with FBC or other
+	 * features. */
+	if (size * 2 < dev_priv->gtt.stolen_usable_size)
+		obj = i915_gem_object_create_stolen(dev, size);
 	if (obj == NULL)
 		obj = i915_gem_alloc_object(dev, size);
 	if (!obj) {
@@ -561,16 +567,13 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 	struct intel_crtc *intel_crtc;
 	unsigned int max_size = 0;
 
-	if (!i915.fastboot)
-		return false;
-
 	/* Find the largest fb */
 	for_each_crtc(dev, crtc) {
 		struct drm_i915_gem_object *obj =
 			intel_fb_obj(crtc->primary->state->fb);
 		intel_crtc = to_intel_crtc(crtc);
 
-		if (!intel_crtc->active || !obj) {
+		if (!crtc->state->active || !obj) {
 			DRM_DEBUG_KMS("pipe %c not active or no fb, skipping\n",
 				      pipe_name(intel_crtc->pipe));
 			continue;
@@ -595,7 +598,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 
 		intel_crtc = to_intel_crtc(crtc);
 
-		if (!intel_crtc->active) {
+		if (!crtc->state->active) {
 			DRM_DEBUG_KMS("pipe %c not active, skipping\n",
 				      pipe_name(intel_crtc->pipe));
 			continue;
@@ -658,7 +661,7 @@ static bool intel_fbdev_init_bios(struct drm_device *dev,
 	for_each_crtc(dev, crtc) {
 		intel_crtc = to_intel_crtc(crtc);
 
-		if (!intel_crtc->active)
+		if (!crtc->state->active)
 			continue;
 
 		WARN(!crtc->primary->fb,
@@ -708,6 +711,8 @@ int intel_fbdev_init(struct drm_device *dev)
 		kfree(ifbdev);
 		return ret;
 	}
+
+	ifbdev->helper.atomic = true;
 
 	dev_priv->fbdev = ifbdev;
 	INIT_WORK(&dev_priv->fbdev_suspend_work, intel_fbdev_suspend_worker);

@@ -60,6 +60,8 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 #define trace_i915_gem_ring_flush(a,b,c)
 #define trace_i915_gem_ring_sync_to(from, to, seqno)
 
+#define trace_i915_gem_shrink(dev_priv, target, flags)
+
 #define trace_i915_reg_rw(a,b,c,d,trace)
 
 #define trace_intel_gpu_freq_change(a)
@@ -69,9 +71,9 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 
 #define trace_i915_gem_evict_vm(vm)
 
-#define trace_i915_pipe_update_start(crtc, min, max)
-#define trace_i915_pipe_update_vblank_evaded(crtc, min, max, start_vbl_count)
-#define trace_i915_pipe_update_end(crtc, end_vbl_count)
+#define trace_i915_pipe_update_start(crtc)
+#define trace_i915_pipe_update_vblank_evaded(crtc)
+#define trace_i915_pipe_update_end(crtc, end_vbl_count, scanline_end)
 
 #define trace_i915_context_create(ctx)
 #define trace_i915_context_free(ctx)
@@ -85,5 +87,8 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 #define trace_i915_page_table_entry_map(a,b,c,d,e,f)
 
 #define trace_i915_va_alloc(a,b,c,d)
+
+#define trace_i915_page_directory_entry_alloc(vm, pdpe, start, shift)
+#define trace_i915_page_directory_pointer_entry_alloc(vm, pdpe, start, shift)
 
 #endif /* _I915_TRACE_H_ */
