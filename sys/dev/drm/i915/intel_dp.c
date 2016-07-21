@@ -1960,7 +1960,7 @@ void intel_edp_panel_vdd_on(struct intel_dp *intel_dp)
 	vdd = edp_panel_vdd_on(intel_dp);
 	pps_unlock(intel_dp);
 
-#if 1
+#ifdef __DragonFly__
 /* XXX: limit dmesg spam to 16 warnings instead of 137, where is the bug? */
 	if(!vdd)
 		DRM_ERROR_RATELIMITED("eDP port %c VDD already requested on\n",
