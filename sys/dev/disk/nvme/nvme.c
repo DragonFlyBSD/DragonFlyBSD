@@ -344,9 +344,9 @@ nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 	 */
 	if ((queue->subq_tail + queue->unsubmitted + 1) % queue->nqe ==
 	    queue->subq_head) {
-		queue->signal_requeue = 1;
 		lockmgr(&queue->lk, LK_RELEASE);
 		KKASSERT(queue->qid != 0);
+		atomic_swap_int(&queue->signal_requeue, 1);
 
 		return NULL;
 	}
@@ -360,9 +360,9 @@ nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 		req = queue->first_avail;
 		cpu_ccfence();
 		if (req == NULL) {
-			queue->signal_requeue = 1;
 			lockmgr(&queue->lk, LK_RELEASE);
 			KKASSERT(queue->qid != 0);
+			atomic_swap_int(&queue->signal_requeue, 1);
 
 			return NULL;
 		}
@@ -527,8 +527,7 @@ nvme_put_request(nvme_request_t *req)
 	 * should not happen due to the large number of queue entries nvme
 	 * usually has.  Let it race for now (admin has a 1hz tick).
 	 */
-	if (queue->signal_requeue) {
-		queue->signal_requeue = 0;
+	if (atomic_swap_int(&queue->signal_requeue, 0)) {
 		atomic_set_int(&queue->sc->admin_signal, ADMIN_SIG_REQUEUE);
 		wakeup(&queue->sc->admin_signal);
 	}
