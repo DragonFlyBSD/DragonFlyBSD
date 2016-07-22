@@ -743,8 +743,7 @@ nativekernel:	bk_build_list bk_kernwarn
 # The quickkernel target rebuilds the specified kernels as quickly
 # as possible.  It will use the native tools or the buildworld cross tools
 # based on whether the kernel was originally generated via buildkernel or
-# nativekernel.  Config is rerun but the object hierarchy is not rebuilt,
-# nor is the make depend step run.
+# nativekernel.  Config is rerun but the object hierarchy is not rebuilt.
 #
 quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 .for _kernel in ${BUILDKERNELS}
@@ -759,6 +758,10 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
+.if !defined(NO_KERNELDEPEND)
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${KMAKEENV} make KERNEL=${INSTKERNNAME} depend
+.endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    ${KMAKEENV} make KERNEL=${INSTKERNNAME} all
 .else
@@ -766,6 +769,10 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 	cd ${KRNLCONFDIR}; \
 	    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 		${KERNCONFDIR}/${_kernel}
+.endif
+.if !defined(NO_KERNELDEPEND)
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    make KERNEL=${INSTKERNNAME} depend
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    make KERNEL=${INSTKERNNAME} all
