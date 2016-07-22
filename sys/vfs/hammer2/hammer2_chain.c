@@ -4983,14 +4983,12 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 
 /*
  * The caller presents a shared-locked (parent, chain) where the chain
- * is of type HAMMER2_OBJTYPE_HARDLINK.  The caller must hold the ip
- * structure representing the inode locked to prevent
- * consolidation/deconsolidation races.
+ * is of type HAMMER2_OBJTYPE_HARDLINK.
  *
  * The flags passed in are LOOKUP flags, not RESOLVE flags.  Only
  * HAMMER2_LOOKUP_SHARED is supported.
  *
- * We locate the hardlink in the current or a common parent directory.
+ * We locate the actual inode chain & parent.
  *
  * If we are unable to locate the hardlink, EIO is returned and
  * (*chainp) is unlocked and dropped.

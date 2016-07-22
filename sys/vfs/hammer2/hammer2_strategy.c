@@ -689,7 +689,13 @@ retry:
 				     &cache_index,
 				     HAMMER2_LOOKUP_NODATA);
 
-	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+	/*
+	 * The lookup code should not return a DELETED chain to us, unless
+	 * its a short-file embedded in the inode.  Then it is possible for
+	 * the lookup to return a deleted inode.
+	 */
+	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED) &&
+	    chain->bref.type != HAMMER2_BREF_TYPE_INODE) {
 		kprintf("assign physical deleted chain @ "
 			"%016jx (%016jx.%02x) ip %016jx\n",
 			lbase, chain->bref.data_off, chain->bref.type,

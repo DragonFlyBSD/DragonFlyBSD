@@ -2053,10 +2053,11 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-#if 0
+#if 1
 	/*
 	 * Preflush the vnodes using a normal transaction before interlocking
-	 * with a flush transaction.
+	 * with a flush transaction.  We do this to try to run as much of
+	 * the compression as possible outside the flush transaction.
 	 */
 	hammer2_trans_init(pmp, 0);
 	info.error = 0;
