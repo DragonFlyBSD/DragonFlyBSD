@@ -62,25 +62,44 @@
 
 /*
  * Determine if the specified directory is empty.  Returns 0 on success.
+ *
+ * May return 0, ENOTDIR, or EAGAIN.
  */
 static
 int
-checkdirempty(hammer2_chain_t *parent, hammer2_chain_t *chain, int clindex)
+checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 {
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	int cache_index = -1;
 	int error;
 
 	error = 0;
-	chain = hammer2_chain_lookup_init(chain, 0);
+	chain = hammer2_chain_lookup_init(ochain, 0);
 
 	if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
+		if (oparent)
+			hammer2_chain_unlock(oparent);
+
 		parent = NULL;
 		error = hammer2_chain_hardlink_find(&parent, &chain,
 						    clindex, 0);
 		if (parent) {
 			hammer2_chain_unlock(parent);
 			hammer2_chain_drop(parent);
+		}
+		if (oparent) {
+			hammer2_chain_lock(oparent, HAMMER2_RESOLVE_ALWAYS);
+			if (ochain->parent != oparent) {
+				if (chain) {
+					hammer2_chain_unlock(chain);
+					hammer2_chain_drop(chain);
+				}
+				kprintf("H2EAGAIN\n");
+
+				return EAGAIN;
+			}
 		}
 	}
 
@@ -301,6 +320,7 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;	/* XXX */
 	int error;
 
+again:
 	/*
 	 * Requires exclusive lock
 	 */
@@ -368,10 +388,21 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 		 * Check directory typing and delete the entry.  Note that
 		 * nlinks adjustments are made on the real inode by the
 		 * frontend, not here.
+		 *
+		 * Unfortunately, checkdirempty() may have to unlock (parent).
+		 * If it no longer matches chain->parent after re-locking,
+		 * EAGAIN is returned.
 		 */
 		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
-		    checkdirempty(parent, chain, clindex) != 0) {
-			error = ENOTEMPTY;
+		    (error = checkdirempty(parent, chain, clindex)) != 0) {
+			/* error may be EAGAIN or ENOTEMPTY */
+			if (error == EAGAIN) {
+				hammer2_chain_unlock(chain);
+				hammer2_chain_drop(chain);
+				hammer2_chain_unlock(parent);
+				hammer2_chain_drop(parent);
+				goto again;
+			}
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    xop->isdir == 0) {
 			error = ENOTDIR;
