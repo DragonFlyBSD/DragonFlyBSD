@@ -29,12 +29,12 @@
 
 static inline void __set_bit(int nr, volatile unsigned long *addr)
 {
-	*(addr + (nr / BITS_PER_LONG)) |= (1 << (nr % BITS_PER_LONG));
+	*(addr + (nr / BITS_PER_LONG)) |= (1LU << (nr % BITS_PER_LONG));
 }
 
 static inline void __clear_bit(int nr, volatile unsigned long *addr)
 {
-	*(addr + (nr / BITS_PER_LONG)) &= ~(1 << (nr % BITS_PER_LONG));
+	*(addr + (nr / BITS_PER_LONG)) &= ~(1LU << (nr % BITS_PER_LONG));
 }
 
 #endif	/* _ASM_BITOPS_NON_ATOMIC_H_ */
