@@ -786,7 +786,10 @@ static void gen8_ppgtt_clear_pte_range(struct i915_address_space *vm,
 			num_entries--;
 		}
 
-		kunmap_px(ppgtt, pt);
+		kunmap_px(ppgtt, pt_vaddr);	/* XXX dillon, out of order
+						 * patch from linux
+						 * 44a71024 12-Apr-2016
+						 */
 
 		pte = 0;
 		if (++pde == I915_PDES) {
@@ -840,7 +843,15 @@ gen8_ppgtt_insert_pte_entries(struct i915_address_space *vm,
 	while (__sg_page_iter_next(sg_iter)) {
 		if (pt_vaddr == NULL) {
 			struct i915_page_directory *pd = pdp->page_directory[pdpe];
+			while (pd == NULL) {
+				kprintf("PD NULL pdp %p pdpe %u\n", pdp, pdpe);
+				tsleep(&pd, 0, "froze", hz);
+			}
 			struct i915_page_table *pt = pd->page_table[pde];
+			while (pt == NULL) {
+				kprintf("PT NULL pdp %p pdpe %u\n", pd, pde);
+				tsleep(&pd, 0, "froze", hz);
+			}
 
 			pt_vaddr = kmap_px(pt);
 		}
@@ -1322,6 +1333,8 @@ static int gen8_alloc_va_range_3lvl(struct i915_address_space *vm,
 		gen8_for_each_pde(pt, pd, pd_start, pd_len, temp, pde) {
 			/* Same reasoning as pd */
 			WARN_ON(!pt);
+			if (pt == NULL)		/* XXX dillon hack */
+				continue;	/* XXX dillon hack */
 			WARN_ON(!pd_len);
 			WARN_ON(!gen8_pte_count(pd_start, pd_len));
 
