@@ -78,6 +78,7 @@
 	.globl	gd_user_fs, gd_user_gs
 	.globl	gd_sample_pc
 	.globl	gd_sample_sp
+	.globl	gd_npoll
 
 	.set    gd_cpuid,globaldata + GD_CPUID
 	.set    gd_cpumask,globaldata + GD_CPUMASK
@@ -93,4 +94,5 @@
 	.set	gd_user_gs,globaldata + GD_USER_GS
 	.set	gd_sample_pc,globaldata + GD_SAMPLE_PC
 	.set	gd_sample_sp,globaldata + GD_SAMPLE_SP
+	.set	gd_npoll,globaldata + GD_NPOLL
 

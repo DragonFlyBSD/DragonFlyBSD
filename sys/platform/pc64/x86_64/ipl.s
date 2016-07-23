@@ -308,7 +308,9 @@ doreti_ipiq:
 	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
+	subq	%rax,%rax
 	sti
+	xchgl	%eax,PCPU(npoll)	/* (atomic op) allow another Xipi */
 	subq	$8,%rsp			/* trapframe->intrframe */
 	movq	%rsp,%rdi		/* pass frame by ref (C arg) */
 	call	lwkt_process_ipiq_frame
@@ -438,6 +440,8 @@ splz_ipiq:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	sti
 	pushq	%rax
+	subq	%rax,%rax
+	xchgl	%eax,PCPU(npoll)	/* (atomic op) allow another Xipi */
 	call	lwkt_process_ipiq
 	popq	%rax
 	jmp	splz_next

@@ -129,6 +129,7 @@ splz(void)
 		crit_enter_quick(td);
 		if (gd->mi.gd_reqflags & RQF_IPIQ) {
 			atomic_clear_int(&gd->mi.gd_reqflags, RQF_IPIQ);
+			atomic_swap_int(&gd->mi.gd_npoll, 0);
 			lwkt_process_ipiq();
 		}
 		if (gd->mi.gd_reqflags & RQF_INTPEND) {

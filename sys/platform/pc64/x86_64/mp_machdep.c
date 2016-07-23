@@ -830,7 +830,7 @@ extern cpumask_t smp_idleinvl_reqs;
 
 static __noinline
 void
-smp_smurf_fetchset(cpumask_t *mask, int frompg)
+smp_smurf_fetchset(cpumask_t *mask)
 {
 	cpumask_t omask;
 	int i;
@@ -921,7 +921,7 @@ smp_invltlb(void)
 	 * NOTE: We are not signalling ourselves, mask already does NOT
 	 * include our own cpu.
 	 */
-	smp_smurf_fetchset(&mask, 0);
+	smp_smurf_fetchset(&mask);
 
 	/*
 	 * Issue the IPI.  Note that the XINVLTLB IPI runs regardless of
@@ -1009,7 +1009,7 @@ smp_invlpg(cpumask_t *cmdmask)
 	 */
 	rflags = read_rflags();
 	cpu_disable_intr();
-	smp_smurf_fetchset(&mask, 1);
+	smp_smurf_fetchset(&mask);
 
 	/*
 	 * Issue the IPI.  Note that the XINVLTLB IPI runs regardless of
@@ -1080,6 +1080,11 @@ smp_inval_intr(void)
 	 * critical section.  This is necessary to avoid deadlocking
 	 * the lapic and to ensure that we execute our commands prior to
 	 * any nominal interrupt or preemption.
+	 *
+	 * WARNING! It is very important that we only clear out but in
+	 *	    smp_smurf_mask once for each interrupt we take.  In
+	 *	    this case, we clear it on initial entry and only loop
+	 *	    on the reentrancy detect (caused by another interrupt).
 	 */
 	cpumask = smp_invmask;
 	crit_enter_gd(&md->mi);
@@ -1121,24 +1126,6 @@ loop:
 			 * with potential races.
 			 */
 			break;
-#if 0
-			ATOMIC_CPUMASK_NANDBIT(smp_smurf_mask,
-						md->mi.gd_cpuid);
-			cpu_lfence();
-			if (pmap_inval_intr(&cpumask) == 0)
-				break;
-
-			/*
-			 * Still looping (race), re-set the smurf bit.  If
-			 * another race occurred and set it before we could,
-			 * stop here to avoid deadlocking on the hardware
-			 * IPI (another IPI will occur).
-			 */
-			smp_smurf_fetchset(&md->mi.gd_cpumask XXX
-			if (CPUMASK_TESTBIT(omask, md->mi.gd_cpuid)) {
-				break;
-			}
-#endif
 		}
 
 		/*
@@ -1418,8 +1405,9 @@ ap_init(void)
 	 * Once the critical section has exited, normal interrupt processing
 	 * may occur.
 	 */
+	atomic_swap_int(&mycpu->gd_npoll, 0);
 	lwkt_process_ipiq();
-	crit_exit_noyield(mycpu->gd_curthread);
+	crit_exit();
 
 	/*
 	 * Final final, allow the waiting BSP to resume the boot process,

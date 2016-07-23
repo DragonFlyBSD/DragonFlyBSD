@@ -80,6 +80,7 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
 	if (td->td_critcount == 0) {
 		++td->td_critcount;
 		++gd->gd_intr_nesting_level;
+		atomic_swap_int(&gd->mi.gd_npoll, 0);
 		lwkt_process_ipiq();
 		--gd->gd_intr_nesting_level;
 		--td->td_critcount;
