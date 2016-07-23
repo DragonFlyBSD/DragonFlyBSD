@@ -104,8 +104,6 @@ SYSCTL_INT(_lwkt, OID_AUTO, panic_ipiq_count, CTLFLAG_RW, &panic_ipiq_count, 0, 
 KTR_INFO_MASTER(ipiq);
 KTR_INFO(KTR_IPIQ, ipiq, send_norm, 0, IPIQ_STRING, IPIQ_ARGS);
 KTR_INFO(KTR_IPIQ, ipiq, send_pasv, 1, IPIQ_STRING, IPIQ_ARGS);
-KTR_INFO(KTR_IPIQ, ipiq, send_nbio, 2, IPIQ_STRING, IPIQ_ARGS);
-KTR_INFO(KTR_IPIQ, ipiq, send_fail, 3, IPIQ_STRING, IPIQ_ARGS);
 KTR_INFO(KTR_IPIQ, ipiq, receive, 4, IPIQ_STRING, IPIQ_ARGS);
 KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08lx", unsigned long mask);
 KTR_INFO(KTR_IPIQ, ipiq, sync_end, 6, "cpumask=%08lx", unsigned long mask);
