@@ -35,8 +35,6 @@
 #include <linux/module.h>
 #include "drm_legacy.h"
 
-#if __OS_HAS_AGP
-
 #include <dev/agp/agpreg.h>
 #include <bus/pci/pcireg.h>
 
@@ -547,5 +545,3 @@ void drm_agp_clear(struct drm_device *dev)
 	dev->agp->acquired = 0;
 	dev->agp->enabled = 0;
 }
-
-#endif /* __OS_HAS_AGP */

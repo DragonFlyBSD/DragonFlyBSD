@@ -6,14 +6,13 @@
 #include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/types.h>
+#include <linux/kconfig.h>
 #include <sys/agpio.h>
 #include <dev/agp/agpvar.h>
 #include <uapi_drm/drm.h>
 
 struct drm_device;
 struct drm_file;
-
-#define __OS_HAS_AGP	1
 
 struct drm_agp_head {
 	device_t	agpdev;
@@ -28,7 +27,8 @@ struct drm_agp_head {
 	unsigned long page_mask;
 };
 
-#if __OS_HAS_AGP
+#define CONFIG_AGP 1
+#if IS_ENABLED(CONFIG_AGP)
 
 #ifdef __linux__
 void drm_free_agp(struct agp_memory * handle, int pages);
@@ -68,9 +68,8 @@ int drm_agp_bind(struct drm_device *dev, struct drm_agp_binding *request);
 int drm_agp_bind_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv);
 
-#else /* __OS_HAS_AGP */
+#else /* CONFIG_AGP */
 
-#ifdef __linux__
 static inline void drm_free_agp(struct agp_memory * handle, int pages)
 {
 }
@@ -93,7 +92,6 @@ static inline struct agp_memory *drm_agp_bind_pages(struct drm_device *dev,
 {
 	return NULL;
 }
-#endif
 
 static inline struct drm_agp_head *drm_agp_init(struct drm_device *dev)
 {
@@ -109,19 +107,7 @@ static inline int drm_agp_acquire(struct drm_device *dev)
 	return -ENODEV;
 }
 
-static inline int drm_agp_acquire_ioctl(struct drm_device *dev, void *data,
-					struct drm_file *file_priv)
-{
-	return -ENODEV;
-}
-
 static inline int drm_agp_release(struct drm_device *dev)
-{
-	return -ENODEV;
-}
-
-static inline int drm_agp_release_ioctl(struct drm_device *dev, void *data,
-					struct drm_file *file_priv)
 {
 	return -ENODEV;
 }
@@ -132,20 +118,8 @@ static inline int drm_agp_enable(struct drm_device *dev,
 	return -ENODEV;
 }
 
-static inline int drm_agp_enable_ioctl(struct drm_device *dev, void *data,
-				       struct drm_file *file_priv)
-{
-	return -ENODEV;
-}
-
 static inline int drm_agp_info(struct drm_device *dev,
 			       struct drm_agp_info *info)
-{
-	return -ENODEV;
-}
-
-static inline int drm_agp_info_ioctl(struct drm_device *dev, void *data,
-				     struct drm_file *file_priv)
 {
 	return -ENODEV;
 }
@@ -156,20 +130,8 @@ static inline int drm_agp_alloc(struct drm_device *dev,
 	return -ENODEV;
 }
 
-static inline int drm_agp_alloc_ioctl(struct drm_device *dev, void *data,
-				      struct drm_file *file_priv)
-{
-	return -ENODEV;
-}
-
 static inline int drm_agp_free(struct drm_device *dev,
 			       struct drm_agp_buffer *request)
-{
-	return -ENODEV;
-}
-
-static inline int drm_agp_free_ioctl(struct drm_device *dev, void *data,
-				     struct drm_file *file_priv)
 {
 	return -ENODEV;
 }
@@ -180,24 +142,12 @@ static inline int drm_agp_unbind(struct drm_device *dev,
 	return -ENODEV;
 }
 
-static inline int drm_agp_unbind_ioctl(struct drm_device *dev, void *data,
-				       struct drm_file *file_priv)
-{
-	return -ENODEV;
-}
-
 static inline int drm_agp_bind(struct drm_device *dev,
 			       struct drm_agp_binding *request)
 {
 	return -ENODEV;
 }
 
-static inline int drm_agp_bind_ioctl(struct drm_device *dev, void *data,
-				     struct drm_file *file_priv)
-{
-	return -ENODEV;
-}
-
-#endif /* __OS_HAS_AGP */
+#endif /* CONFIG_AGP */
 
 #endif /* _DRM_AGPSUPPORT_H_ */

@@ -49,8 +49,7 @@
  *
  * You must not use multiple offset managers on a single address_space.
  * Otherwise, mm-core will be unable to tear down memory mappings as the VM will
- * no longer be linear. Please use VM_NONLINEAR in that case and implement your
- * own offset managers.
+ * no longer be linear.
  *
  * This offset manager works on page-based addresses. That is, every argument
  * and return code (with the exception of drm_vma_node_offset_addr()) is given
@@ -58,6 +57,13 @@
  * must always be page-aligned (as usual).
  * If you want to get a valid byte-based user-space address for a given offset,
  * please see drm_vma_node_offset_addr().
+ *
+ * Additionally to offset management, the vma offset manager also handles access
+ * management. For every open-file context that is allowed to access a given
+ * node, you must call drm_vma_node_allow(). Otherwise, an mmap() call on this
+ * open-file with the offset of the node will fail with -EACCES. To revoke
+ * access again, use drm_vma_node_revoke(). However, the caller is responsible
+ * for destroying already existing mappings, if required.
  */
 
 /**
@@ -115,37 +121,21 @@ EXPORT_SYMBOL(drm_vma_offset_manager_destroy);
  * region and the given node will be returned, as long as the node spans the
  * whole requested area (given the size in number of pages as @pages).
  *
+ * Note that before lookup the vma offset manager lookup lock must be acquired
+ * with drm_vma_offset_lock_lookup(). See there for an example. This can then be
+ * used to implement weakly referenced lookups using kref_get_unless_zero().
+ *
+ * Example:
+ *     drm_vma_offset_lock_lookup(mgr);
+ *     node = drm_vma_offset_lookup_locked(mgr);
+ *     if (node)
+ *         kref_get_unless_zero(container_of(node, sth, entr));
+ *     drm_vma_offset_unlock_lookup(mgr);
+ *
  * RETURNS:
  * Returns NULL if no suitable node can be found. Otherwise, the best match
  * is returned. It's the caller's responsibility to make sure the node doesn't
  * get destroyed before the caller can access it.
- */
-struct drm_vma_offset_node *drm_vma_offset_lookup(struct drm_vma_offset_manager *mgr,
-						  unsigned long start,
-						  unsigned long pages)
-{
-	struct drm_vma_offset_node *node;
-
-	lockmgr(&mgr->vm_lock, LK_EXCLUSIVE);
-	node = drm_vma_offset_lookup_locked(mgr, start, pages);
-	lockmgr(&mgr->vm_lock, LK_RELEASE);
-
-	return node;
-}
-EXPORT_SYMBOL(drm_vma_offset_lookup);
-
-/**
- * drm_vma_offset_lookup_locked() - Find node in offset space
- * @mgr: Manager object
- * @start: Start address for object (page-based)
- * @pages: Size of object (page-based)
- *
- * Same as drm_vma_offset_lookup() but requires the caller to lock offset lookup
- * manually. See drm_vma_offset_lock_lookup() for an example.
- *
- * RETURNS:
- * Returns NULL if no suitable node can be found. Otherwise, the best match
- * is returned.
  */
 struct drm_vma_offset_node *drm_vma_offset_lookup_locked(struct drm_vma_offset_manager *mgr,
 							 unsigned long start,
@@ -279,3 +269,150 @@ void drm_vma_offset_remove(struct drm_vma_offset_manager *mgr,
 	lockmgr(&mgr->vm_lock, LK_RELEASE);
 }
 EXPORT_SYMBOL(drm_vma_offset_remove);
+
+/**
+ * drm_vma_node_allow - Add open-file to list of allowed users
+ * @node: Node to modify
+ * @filp: Open file to add
+ *
+ * Add @filp to the list of allowed open-files for this node. If @filp is
+ * already on this list, the ref-count is incremented.
+ *
+ * The list of allowed-users is preserved across drm_vma_offset_add() and
+ * drm_vma_offset_remove() calls. You may even call it if the node is currently
+ * not added to any offset-manager.
+ *
+ * You must remove all open-files the same number of times as you added them
+ * before destroying the node. Otherwise, you will leak memory.
+ *
+ * This is locked against concurrent access internally.
+ *
+ * RETURNS:
+ * 0 on success, negative error code on internal failure (out-of-mem)
+ */
+int drm_vma_node_allow(struct drm_vma_offset_node *node, struct file *filp)
+{
+	struct rb_node **iter;
+	struct rb_node *parent = NULL;
+	struct drm_vma_offset_file *new, *entry;
+	int ret = 0;
+
+	/* Preallocate entry to avoid atomic allocations below. It is quite
+	 * unlikely that an open-file is added twice to a single node so we
+	 * don't optimize for this case. OOM is checked below only if the entry
+	 * is actually used. */
+	new = kmalloc(sizeof(*entry), M_DRM, M_WAITOK);
+
+	lockmgr(&node->vm_lock, LK_EXCLUSIVE);
+
+	iter = &node->vm_files.rb_node;
+
+	while (likely(*iter)) {
+		parent = *iter;
+		entry = rb_entry(*iter, struct drm_vma_offset_file, vm_rb);
+
+		if (filp == entry->vm_filp) {
+			entry->vm_count++;
+			goto unlock;
+		} else if (filp > entry->vm_filp) {
+			iter = &(*iter)->rb_right;
+		} else {
+			iter = &(*iter)->rb_left;
+		}
+	}
+
+	if (!new) {
+		ret = -ENOMEM;
+		goto unlock;
+	}
+
+	new->vm_filp = filp;
+	new->vm_count = 1;
+	rb_link_node(&new->vm_rb, parent, iter);
+	rb_insert_color(&new->vm_rb, &node->vm_files);
+	new = NULL;
+
+unlock:
+	lockmgr(&node->vm_lock, LK_RELEASE);
+	kfree(new);
+	return ret;
+}
+EXPORT_SYMBOL(drm_vma_node_allow);
+
+/**
+ * drm_vma_node_revoke - Remove open-file from list of allowed users
+ * @node: Node to modify
+ * @filp: Open file to remove
+ *
+ * Decrement the ref-count of @filp in the list of allowed open-files on @node.
+ * If the ref-count drops to zero, remove @filp from the list. You must call
+ * this once for every drm_vma_node_allow() on @filp.
+ *
+ * This is locked against concurrent access internally.
+ *
+ * If @filp is not on the list, nothing is done.
+ */
+void drm_vma_node_revoke(struct drm_vma_offset_node *node, struct file *filp)
+{
+	struct drm_vma_offset_file *entry;
+	struct rb_node *iter;
+
+	lockmgr(&node->vm_lock, LK_EXCLUSIVE);
+
+	iter = node->vm_files.rb_node;
+	while (likely(iter)) {
+		entry = rb_entry(iter, struct drm_vma_offset_file, vm_rb);
+		if (filp == entry->vm_filp) {
+			if (!--entry->vm_count) {
+				rb_erase(&entry->vm_rb, &node->vm_files);
+				kfree(entry);
+			}
+			break;
+		} else if (filp > entry->vm_filp) {
+			iter = iter->rb_right;
+		} else {
+			iter = iter->rb_left;
+		}
+	}
+
+	lockmgr(&node->vm_lock, LK_RELEASE);
+}
+EXPORT_SYMBOL(drm_vma_node_revoke);
+
+/**
+ * drm_vma_node_is_allowed - Check whether an open-file is granted access
+ * @node: Node to check
+ * @filp: Open-file to check for
+ *
+ * Search the list in @node whether @filp is currently on the list of allowed
+ * open-files (see drm_vma_node_allow()).
+ *
+ * This is locked against concurrent access internally.
+ *
+ * RETURNS:
+ * true iff @filp is on the list
+ */
+bool drm_vma_node_is_allowed(struct drm_vma_offset_node *node,
+			     struct file *filp)
+{
+	struct drm_vma_offset_file *entry;
+	struct rb_node *iter;
+
+	lockmgr(&node->vm_lock, LK_EXCLUSIVE);
+
+	iter = node->vm_files.rb_node;
+	while (likely(iter)) {
+		entry = rb_entry(iter, struct drm_vma_offset_file, vm_rb);
+		if (filp == entry->vm_filp)
+			break;
+		else if (filp > entry->vm_filp)
+			iter = iter->rb_right;
+		else
+			iter = iter->rb_left;
+	}
+
+	lockmgr(&node->vm_lock, LK_RELEASE);
+
+	return iter;
+}
+EXPORT_SYMBOL(drm_vma_node_is_allowed);

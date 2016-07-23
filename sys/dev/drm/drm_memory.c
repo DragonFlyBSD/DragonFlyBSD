@@ -39,7 +39,6 @@
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
-#define CONFIG_AGP 1
 #if IS_ENABLED(CONFIG_AGP)
 
 #ifdef HAVE_PAGE_AGP
