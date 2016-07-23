@@ -32,7 +32,6 @@
 #include "intel_drv.h"
 
 #include <linux/bitmap.h>
-#include <linux/highmem.h>
 
 /**
  * DOC: Global GTT views
@@ -455,50 +454,6 @@ static void free_pt(struct drm_device *dev, struct i915_page_table *pt)
 	cleanup_px(dev, pt);
 	kfree(pt->used_ptes);
 	kfree(pt);
-}
-
-/**
- * alloc_pt_range() - Allocate a multiple page tables
- * @pd:		The page directory which will have at least @count entries
- *		available to point to the allocated page tables.
- * @pde:	First page directory entry for which we are allocating.
- * @count:	Number of pages to allocate.
- * @dev:	DRM device.
- *
- * Allocates multiple page table pages and sets the appropriate entries in the
- * page table structure within the page directory. Function cleans up after
- * itself on any failures.
- *
- * Return: 0 if allocation succeeded.
- */
-static int alloc_pt_range(struct i915_page_directory *pd, uint16_t pde, size_t count,
-			  struct drm_device *dev)
-{
-	int i, ret;
-
-	/* 512 is the max page tables per page_directory on any platform. */
-	if (WARN_ON(pde + count > I915_PDES))
-		return -EINVAL;
-
-	for (i = pde; i < pde + count; i++) {
-		struct i915_page_table *pt = alloc_pt(dev);
-
-		if (IS_ERR(pt)) {
-			ret = PTR_ERR(pt);
-			goto err_out;
-		}
-		WARN(pd->page_table[i],
-		     "Leaking page directory entry %d (%p)\n",
-		     i, pd->page_table[i]);
-		pd->page_table[i] = pt;
-	}
-
-	return 0;
-
-err_out:
-	while (i-- > pde)
-		free_pt(dev, pd->page_table[i]);
-	return ret;
 }
 
 static void gen8_initialize_pt(struct i915_address_space *vm,
@@ -1592,7 +1547,6 @@ static int gen8_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 		if (ret)
 			goto free_scratch;
 
-#define CONFIG_X86_32	0
 		ppgtt->base.total = 1ULL << 32;
 		ppgtt->switch_mm = gen8_legacy_mm_switch;
 		trace_i915_page_directory_pointer_entry_alloc(&ppgtt->base,
@@ -1614,33 +1568,6 @@ static int gen8_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 free_scratch:
 	gen8_free_scratch(&ppgtt->base);
 	return ret;
-}
-
-static int gen8_aliasing_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
-{
-	struct drm_device *dev = ppgtt->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	uint64_t start = 0, size = dev_priv->gtt.base.total;
-	int ret;
-
-	ret = gen8_ppgtt_init(ppgtt);
-	if (ret)
-		return ret;
-
-	/* Aliasing PPGTT has to always work and be mapped because of the way we
-	 * use RESTORE_INHIBIT in the context switch. This will be fixed
-	 * eventually. */
-	ret = gen8_alloc_va_range(&ppgtt->base, start, size);
-	if (ret) {
-		free_pd(ppgtt->base.dev, ppgtt->base.scratch_pd);
-		free_pt(ppgtt->base.dev, ppgtt->base.scratch_pt);
-		return ret;
-	}
-
-	ppgtt->base.allocate_va_range = NULL;
-	ppgtt->base.clear_range(&ppgtt->base, 0, ppgtt->base.total, true);
-
-	return 0;
 }
 
 static void gen6_dump_ppgtt(struct i915_hw_ppgtt *ppgtt, struct seq_file *m)
@@ -1975,7 +1902,7 @@ static int gen6_alloc_va_range(struct i915_address_space *vm,
 	 */
 	gen6_for_each_pde(pt, &ppgtt->pd, start, length, temp, pde) {
 		if (pt != vm->scratch_pt) {
-//			WARN_ON(bitmap_empty(pt->used_ptes, GEN6_PTES));
+			WARN_ON(bitmap_empty(pt->used_ptes, GEN6_PTES));
 			continue;
 		}
 
@@ -2147,7 +2074,7 @@ static void gen6_scratch_va_range(struct i915_hw_ppgtt *ppgtt,
 		ppgtt->pd.page_table[pde] = ppgtt->base.scratch_pt;
 }
 
-static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt, bool aliasing)
+static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 {
 	struct drm_device *dev = ppgtt->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -2170,17 +2097,6 @@ static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt, bool aliasing)
 	if (ret)
 		return ret;
 
-	if (aliasing) {
-		/* preallocate all pts */
-		ret = alloc_pt_range(&ppgtt->pd, 0, I915_PDES,
-				ppgtt->base.dev);
-
-		if (ret) {
-			gen6_ppgtt_cleanup(&ppgtt->base);
-			return ret;
-		}
-	}
-
 	ppgtt->base.allocate_va_range = gen6_alloc_va_range;
 	ppgtt->base.clear_range = gen6_ppgtt_clear_range;
 	ppgtt->base.insert_entries = gen6_ppgtt_insert_entries;
@@ -2197,10 +2113,7 @@ static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt, bool aliasing)
 	ppgtt->pd_addr = (gen6_pte_t __iomem *)dev_priv->gtt.gsm +
 		ppgtt->pd.base.ggtt_offset / sizeof(gen6_pte_t);
 
-	if (aliasing)
-		ppgtt->base.clear_range(&ppgtt->base, 0, ppgtt->base.total, true);
-	else
-		gen6_scratch_va_range(ppgtt, 0, ppgtt->base.total);
+	gen6_scratch_va_range(ppgtt, 0, ppgtt->base.total);
 
 	gen6_write_page_range(dev_priv, &ppgtt->pd, 0, ppgtt->base.total);
 
@@ -2214,15 +2127,12 @@ static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt, bool aliasing)
 	return 0;
 }
 
-static int __hw_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt,
-		bool aliasing)
+static int __hw_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt)
 {
 	ppgtt->base.dev = dev;
 
 	if (INTEL_INFO(dev)->gen < 8)
-		return gen6_ppgtt_init(ppgtt, aliasing);
-	else if (aliasing)
-		return gen8_aliasing_ppgtt_init(ppgtt);
+		return gen6_ppgtt_init(ppgtt);
 	else
 		return gen8_ppgtt_init(ppgtt);
 }
@@ -2242,7 +2152,7 @@ int i915_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret = 0;
 
-	ret = __hw_ppgtt_init(dev, ppgtt, false);
+	ret = __hw_ppgtt_init(dev, ppgtt);
 	if (ret == 0) {
 		kref_init(&ppgtt->ref);
 		i915_address_space_init(&ppgtt->base, dev_priv);
@@ -2440,7 +2350,7 @@ int i915_gem_gtt_prepare_object(struct drm_i915_gem_object *obj)
 
 static void gen8_set_pte(void __iomem *addr, gen8_pte_t pte)
 {
-#if 0
+#ifdef writeq
 	writeq(pte, addr);
 #else
 	iowrite32((u32)pte, addr);
@@ -2593,6 +2503,7 @@ static void i915_ggtt_insert_entries(struct i915_address_space *vm,
 		AGP_USER_MEMORY : AGP_USER_CACHED_MEMORY;
 
 	intel_gtt_insert_sg_entries(pages, start >> PAGE_SHIFT, flags);
+
 }
 
 static void i915_ggtt_clear_range(struct i915_address_space *vm,
@@ -2816,7 +2727,7 @@ static int i915_gem_setup_global_gtt(struct drm_device *dev,
 		if (!ppgtt)
 			return -ENOMEM;
 
-		ret = __hw_ppgtt_init(dev, ppgtt, true);
+		ret = __hw_ppgtt_init(dev, ppgtt);
 		if (ret) {
 			ppgtt->base.cleanup(&ppgtt->base);
 			kfree(ppgtt);
@@ -3165,6 +3076,7 @@ static int gen6_gmch_probe(struct drm_device *dev,
 
 static void gen6_gmch_remove(struct i915_address_space *vm)
 {
+
 	struct i915_gtt *gtt = container_of(vm, struct i915_gtt, base);
 
 	iounmap(gtt->gsm);
@@ -3267,6 +3179,8 @@ void i915_gem_restore_gtt_mappings(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_gem_object *obj;
 	struct i915_address_space *vm;
+	struct i915_vma *vma;
+	bool flush;
 
 	i915_check_and_clear_faults(dev);
 
@@ -3276,16 +3190,23 @@ void i915_gem_restore_gtt_mappings(struct drm_device *dev)
 				       dev_priv->gtt.base.total,
 				       true);
 
+	/* Cache flush objects bound into GGTT and rebind them. */
+	vm = &dev_priv->gtt.base;
 	list_for_each_entry(obj, &dev_priv->mm.bound_list, global_list) {
-		struct i915_vma *vma = i915_gem_obj_to_vma(obj,
-							   &dev_priv->gtt.base);
-		if (!vma)
-			continue;
+		flush = false;
+		list_for_each_entry(vma, &obj->vma_list, vma_link) {
+			if (vma->vm != vm)
+				continue;
 
-		i915_gem_clflush_object(obj, obj->pin_display);
-		WARN_ON(i915_vma_bind(vma, obj->cache_level, PIN_UPDATE));
+			WARN_ON(i915_vma_bind(vma, obj->cache_level,
+					      PIN_UPDATE));
+
+			flush = true;
+		}
+
+		if (flush)
+			i915_gem_clflush_object(obj, obj->pin_display);
 	}
-
 
 	if (INTEL_INFO(dev)->gen >= 8) {
 		if (IS_CHERRYVIEW(dev) || IS_BROXTON(dev))
