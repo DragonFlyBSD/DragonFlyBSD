@@ -564,7 +564,7 @@ reinstall:
 	cd ${.CURDIR}; make -f Makefile.inc1 install
 
 #
-# buildkernel, nativekernel, quickkernel, and installkernel
+# buildkernel, nativekernel, quickkernel, realquickkernel, and installkernel
 #
 # Which kernels to build and/or install is specified by setting
 # KERNCONF. If not defined an X86_64_GENERIC kernel is built/installed.
@@ -637,7 +637,7 @@ maybe_bk_tools:
 	@if [ ! -f ${KRNLOBJDIR}/${_kernel}/.nativekernel_run ]; then \
 	    if [ ! -f ${WORLDDEST}/.libraries_done ]; then \
 		echo "The kernel was build using buildworld tools which no" ; \
-		echo "longer appear to exist, quickkernel failed!" ; \
+		echo "longer appear to exist, (real)quickkernel failed!" ; \
 		/usr/bin/false; \
 	    fi; \
 	fi
@@ -740,12 +740,13 @@ nativekernel:	bk_build_list bk_kernwarn
 	@echo "--------------------------------------------------------------"
 .endfor
 
-# The quickkernel target rebuilds the specified kernels as quickly
+# The (real)quickkernel target rebuilds the specified kernels as quickly
 # as possible.  It will use the native tools or the buildworld cross tools
 # based on whether the kernel was originally generated via buildkernel or
 # nativekernel.  Config is rerun but the object hierarchy is not rebuilt.
+# realquickkernel skips the depend step (analogous to realquickworld).
 #
-quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
+quickkernel realquickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 .for _kernel in ${BUILDKERNELS}
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
@@ -758,7 +759,7 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
-.if !defined(NO_KERNELDEPEND)
+.if !defined(NO_KERNELDEPEND) && !target(realquickkernel)
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    ${KMAKEENV} make KERNEL=${INSTKERNNAME} depend
 .endif
@@ -770,7 +771,7 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 	    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 		${KERNCONFDIR}/${_kernel}
 .endif
-.if !defined(NO_KERNELDEPEND)
+.if !defined(NO_KERNELDEPEND) && !target(realquickkernel)
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    make KERNEL=${INSTKERNNAME} depend
 .endif

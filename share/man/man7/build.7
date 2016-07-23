@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\"
-.Dd July 22, 2016
+.Dd July 23, 2016
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -126,11 +126,14 @@ Rebuild the kernel and the kernel-modules using native tools.
 .It Cm quickkernel
 Same as
 .Cm buildkernel ,
-but skip the depend step and do not clean out the
-obj modules.
+but do not clean out the obj modules.
 This target can be used for incremental upgrades once a full
 build of the kernel has been done with
 .Cm buildkernel .
+.It Cm realquickkernel
+Same as
+.Cm quickkernel ,
+but also skip the depend step.
 .It Cm installkernel
 Install the kernel and the kernel-modules.
 .It Cm reinstallkernel
