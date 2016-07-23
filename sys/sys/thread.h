@@ -272,7 +272,7 @@ struct thread {
     void	*td_unused01;	/* (future I/O scheduler heuristic) */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
-    int		td_contended;	/* token contention count */
+    u_int	td_contended;	/* token contention count */
     u_int	td_mpflags;	/* flags can be set by foreign cpus */
     int		td_cscount;	/* cpu synchronization master */
     int		td_wakefromcpu;	/* who woke me up? */

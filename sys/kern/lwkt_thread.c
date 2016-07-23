@@ -128,8 +128,8 @@ extern int lwkt_sched_debug;
 int lwkt_sched_debug = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, sched_debug, CTLFLAG_RW,
 	&lwkt_sched_debug, 0, "Scheduler debug");
-static int lwkt_spin_loops = 10;
-SYSCTL_INT(_lwkt, OID_AUTO, spin_loops, CTLFLAG_RW,
+static u_int lwkt_spin_loops = 10;
+SYSCTL_UINT(_lwkt, OID_AUTO, spin_loops, CTLFLAG_RW,
 	&lwkt_spin_loops, 0, "Scheduler spin loops until sorted decon");
 static int preempt_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW,
@@ -634,6 +634,7 @@ lwkt_switch(void)
     if ((ntd = td->td_preempted) != NULL) {
 	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
 	ntd->td_flags |= TDF_PREEMPT_DONE;
+	ntd->td_contended = 0;		/* reset contended */
 
 	/*
 	 * The interrupt may have woken a thread up, we need to properly
@@ -666,7 +667,7 @@ lwkt_switch(void)
 		goto havethread;
 	    }
 	    ++gd->gd_cnt.v_lock_colls;
-	    ++ntd->td_contended;
+	    ++ntd->td_contended;	/* overflow ok */
 	} while (ntd->td_contended < (lwkt_spin_loops >> 1));
 	upri = ntd->td_upri;
 
@@ -691,7 +692,7 @@ lwkt_switch(void)
 		lwkt_getalltokens(ntd, (ntd->td_contended > lwkt_spin_loops))) {
 		    goto havethread;
 	    }
-	    ++ntd->td_contended;
+	    ++ntd->td_contended;	/* overflow ok */
 	    ++gd->gd_cnt.v_lock_colls;
 	}
 
@@ -719,7 +720,7 @@ havethread:
      * thread.
      */
     ntd->td_wmesg = NULL;
-    ntd->td_contended = 0;
+    ntd->td_contended = 0;	/* reset once scheduled */
     ++gd->gd_cnt.v_swtch;
     gd->gd_idle_repeat = 0;
 
