@@ -16,9 +16,9 @@
 #			buildworld.
 # nativekernel	      - Rebuild the kernel and the kernel-modules from scratch
 #		        using native tools.
-# quickkernel	      - rebuild the kernel quickly (build or native), skip
-#			the make depend step and do not clean out the obj
-#			modules.
+# quickkernel	      - rebuild the kernel quickly (build or native), and do
+#			not clean out the obj modules.
+# realquickkernel     - Like quickkernel, but skips depend too.
 # installkernel       - Install the kernel and the kernel-modules.
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
@@ -78,7 +78,7 @@
 # Define the user-driven targets. These are listed here in alphabetical
 # order, but that's not important.
 #
-TGTS=	all all-man buildkernel quickkernel nativekernel \
+TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
@@ -97,14 +97,18 @@ BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 .ORDER: buildworld buildkernel
 .ORDER: buildworld nativekernel
 .ORDER: buildworld quickkernel
+.ORDER: buildworld realquickkernel
 .ORDER: buildkernel installkernel
 .ORDER: buildkernel reinstallkernel
 .ORDER: quickworld installworld
 .ORDER: quickworld buildkernel
 .ORDER: quickworld nativekernel
 .ORDER: quickworld quickkernel
+.ORDER: quickworld realquickkernel
 .ORDER: quickkernel installkernel
 .ORDER: quickkernel reinstallkernel
+.ORDER: realquickkernel installkernel
+.ORDER: realquickkernel reinstallkernel
 
 PATH=	/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/pkg/bin
 MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
