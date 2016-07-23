@@ -345,7 +345,9 @@ Xipiq:
 	movq	%rsp,%rdi		/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
 	incl	TD_CRITCOUNT(%rbx)
+	subq	%rax,%rax
 	sti
+	xchgl	%eax,PCPU(npoll)	/* (atomic op) allow another Xipi */
 	call	lwkt_process_ipiq_frame
 	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)

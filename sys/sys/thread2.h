@@ -313,19 +313,6 @@ lwkt_send_ipiq2_mask(cpumask_t mask, ipifunc2_t func, void *arg1, int arg2)
 }
 
 static __inline int
-lwkt_send_ipiq_nowait(globaldata_t target, ipifunc1_t func, void *arg)
-{
-    return(lwkt_send_ipiq3_nowait(target, (ipifunc3_t)func, arg, 0));
-}
-
-static __inline int
-lwkt_send_ipiq2_nowait(globaldata_t target, ipifunc2_t func, 
-		       void *arg1, int arg2)
-{
-    return(lwkt_send_ipiq3_nowait(target, (ipifunc3_t)func, arg1, arg2));
-}
-
-static __inline int
 lwkt_send_ipiq_passive(globaldata_t target, ipifunc1_t func, void *arg)
 {
     return(lwkt_send_ipiq3_passive(target, (ipifunc3_t)func, arg, 0));

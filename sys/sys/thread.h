@@ -484,12 +484,9 @@ extern void lwkt_acquire(struct thread *);
 extern int  lwkt_send_ipiq3(struct globaldata *, ipifunc3_t, void *, int);
 extern int  lwkt_send_ipiq3_passive(struct globaldata *, ipifunc3_t,
 				    void *, int);
-extern int  lwkt_send_ipiq3_nowait(struct globaldata *, ipifunc3_t,
-				   void *, int);
 extern int  lwkt_send_ipiq3_bycpu(int, ipifunc3_t, void *, int);
 extern int  lwkt_send_ipiq3_mask(cpumask_t, ipifunc3_t, void *, int);
 extern void lwkt_wait_ipiq(struct globaldata *, int);
-extern int  lwkt_seq_ipiq(struct globaldata *);
 extern void lwkt_process_ipiq(void);
 extern void lwkt_process_ipiq_frame(struct intrframe *);
 extern void lwkt_smp_stopped(void);

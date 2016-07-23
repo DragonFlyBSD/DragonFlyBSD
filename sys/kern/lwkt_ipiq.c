@@ -190,6 +190,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     int windex;
     int level1;
     int level2;
+    long rflags;
     struct globaldata *gd = mycpu;
 
     logipiq(send_norm, func, arg1, arg2, gd, target);
@@ -235,17 +236,13 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     }
 
     if (ip->ip_windex - ip->ip_rindex > level1) {
-#if defined(__x86_64__)
-	unsigned long rflags = read_rflags();
-#else
-#error "no read_*flags"
-#endif
 #ifndef _KERNEL_VIRTUAL
 	uint64_t tsc_base = rdtsc();
 #endif
 	int repeating = 0;
 	int olimit;
 
+	rflags = read_rflags();
 	cpu_enable_intr();
 	++ipiq_stat(gd).ipiq_fifofull;
 	DEBUG_PUSH_INFO("send_ipiq3");
@@ -267,16 +264,16 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	    if (rdtsc() - tsc_base > tsc_frequency) {
 		++repeating;
 		if (repeating > 10) {
-			smp_sniff();
-			ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
-			cpu_send_ipiq(target->gd_cpuid);
 			kprintf("send_ipiq %d->%d tgt not draining (%d) sniff=%p,%p\n",
 				gd->gd_cpuid, target->gd_cpuid, repeating,
 				target->gd_sample_pc, target->gd_sample_sp);
-		} else {
 			smp_sniff();
+			ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
+			cpu_send_ipiq(target->gd_cpuid);
+		} else {
 			kprintf("send_ipiq %d->%d tgt not draining (%d)\n",
 				gd->gd_cpuid, target->gd_cpuid, repeating);
+			smp_sniff();
 		}
 		tsc_base = rdtsc();
 	    }
@@ -292,8 +289,18 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     }
 
     /*
-     * Queue the new message
+     * Queue the new message and signal the target cpu.  For now we need to
+     * physically disable interrupts because the target will not get signalled
+     * by other cpus once we set target->gd_npoll and we don't want to get
+     * interrupted.
+     *
+     * XXX not sure why this is a problem, the critical section should prevent
+     *     any stalls (incoming interrupts except Xinvltlb and Xsnoop will
+     *	   just be made pending).
      */
+    rflags = read_rflags();
+    cpu_disable_intr();
+
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_info[windex].func = func;
     ip->ip_info[windex].arg1 = arg1;
@@ -311,6 +318,8 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     } else {
 	++ipiq_stat(gd).ipiq_avoided;
     }
+    write_rflags(rflags);
+
     --gd->gd_intr_nesting_level;
     crit_exit();
     logipiq(send_end, func, arg1, arg2, gd, target);
@@ -382,62 +391,6 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
     logipiq(send_end, func, arg1, arg2, gd, target);
 
     return(ip->ip_windex);
-}
-
-/*
- * Send an IPI request without blocking, return 0 on success, ENOENT on 
- * failure.  The actual queueing of the hardware IPI may still force us
- * to spin and process incoming IPIs but that will eventually go away
- * when we've gotten rid of the other general IPIs.
- */
-int
-lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func, 
-		       void *arg1, int arg2)
-{
-    lwkt_ipiq_t ip;
-    int windex;
-    struct globaldata *gd = mycpu;
-
-    logipiq(send_nbio, func, arg1, arg2, gd, target);
-    KKASSERT(curthread->td_critcount);
-    if (target == gd) {
-	func(arg1, arg2, NULL);
-	logipiq(send_end, func, arg1, arg2, gd, target);
-	return(0);
-    } 
-    crit_enter();
-    ++gd->gd_intr_nesting_level;
-    ++ipiq_stat(gd).ipiq_count;
-    ip = &gd->gd_ipiq[target->gd_cpuid];
-
-    if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO * 2 / 3) {
-	logipiq(send_fail, func, arg1, arg2, gd, target);
-	--gd->gd_intr_nesting_level;
-	crit_exit();
-	return(ENOENT);
-    }
-    windex = ip->ip_windex & MAXCPUFIFO_MASK;
-    ip->ip_info[windex].func = func;
-    ip->ip_info[windex].arg1 = arg1;
-    ip->ip_info[windex].arg2 = arg2;
-    cpu_sfence();
-    ++ip->ip_windex;
-    ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
-
-    /*
-     * This isn't a passive IPI, we still have to signal the target cpu.
-     */
-    if (atomic_swap_int(&target->gd_npoll, 1) == 0) {
-	logipiq(cpu_send, func, arg1, arg2, gd, target);
-	cpu_send_ipiq(target->gd_cpuid);
-    } else {
-	++ipiq_stat(gd).ipiq_avoided;
-    }
-    --gd->gd_intr_nesting_level;
-    crit_exit();
-
-    logipiq(send_end, func, arg1, arg2, gd, target);
-    return(0);
 }
 
 /*
@@ -543,15 +496,6 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
     }
 }
 
-int
-lwkt_seq_ipiq(globaldata_t target)
-{
-    lwkt_ipiq_t ip;
-
-    ip = &mycpu->gd_ipiq[target->gd_cpuid];
-    return(ip->ip_windex);
-}
-
 /*
  * Called from IPI interrupt (like a fast interrupt), which has placed
  * us in a critical section.  The MP lock may or may not be held.
@@ -576,13 +520,8 @@ lwkt_process_ipiq(void)
     cpumask_t mask;
     int n;
 
-    /*
-     * We must process the entire cpumask if we are reentrant because it might
-     * have been partially cleared.
-     */
     ++gd->gd_processing_ipiq;
 again:
-    atomic_swap_int(&gd->gd_npoll, 0);
     mask = gd->gd_ipimask;
     cpu_ccfence();
     while (CPUMASK_TESTNZERO(mask)) {
@@ -614,11 +553,8 @@ again:
     }
 
     /*
-     * Interlock to allow more IPI interrupts.  Recheck ipimask after
-     * releasing gd_npoll.
+     * Interlock to allow more IPI interrupts.
      */
-    if (atomic_swap_int(&gd->gd_npoll, 0))
-	goto again;
     --gd->gd_processing_ipiq;
 }
 
@@ -631,13 +567,8 @@ lwkt_process_ipiq_frame(struct intrframe *frame)
     cpumask_t mask;
     int n;
 
-    /*
-     * We must process the entire cpumask if we are reentrant because it might
-     * have been partially cleared.
-     */
     ++gd->gd_processing_ipiq;
 again:
-    atomic_swap_int(&gd->gd_npoll, 0);
     mask = gd->gd_ipimask;
     cpu_ccfence();
     while (CPUMASK_TESTNZERO(mask)) {
@@ -663,13 +594,6 @@ again:
 	    /* need_ipiq(); do not reflag */
 	}
     }
-
-    /*
-     * Interlock to allow more IPI interrupts.  Recheck ipimask after
-     * releasing gd_npoll.
-     */
-    if (atomic_swap_int(&gd->gd_npoll, 0))
-	goto again;
     --gd->gd_processing_ipiq;
 }
 
@@ -712,6 +636,7 @@ again:
 		ip += gd->gd_cpuid;
 		if ((limit = ip->ip_drain) != 0) {
 		    lwkt_process_ipiq_core(sgd, ip, NULL, limit);
+		    /* no gd_ipimask when doing limited processing */
 		}
 	    }
 	}
@@ -732,7 +657,8 @@ again:
 }
 
 /*
- *
+ * Process incoming IPI requests until only <limit> are left (0 to exhaust
+ * all incoming IPI requests).
  */
 static int
 lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip, 
