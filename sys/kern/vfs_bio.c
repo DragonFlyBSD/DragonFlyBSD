@@ -164,6 +164,7 @@ static struct thread *bufdaemonhw_td;
 static u_int lowmempgallocs;
 static u_int lowmempgfails;
 static u_int flushperqueue = 1024;
+static int repurpose_enable;
 
 /*
  * Sysctls for operational control of the buffer cache.
@@ -186,6 +187,8 @@ SYSCTL_UINT(_vfs, OID_AUTO, lowmempgfails, CTLFLAG_RW, &lowmempgfails, 0,
 	"Page allocations which failed during periods of very low free memory");
 SYSCTL_UINT(_vfs, OID_AUTO, vm_cycle_point, CTLFLAG_RW, &vm_cycle_point, 0,
 	"Recycle pages to active or inactive queue transition pt 0-64");
+SYSCTL_UINT(_vfs, OID_AUTO, repurpose_enable, CTLFLAG_RW, &repurpose_enable, 0,
+	"Enable buffer cache VM repurposing for high-I/O");
 /*
  * Sysctls determining current state of the buffer cache.
  */
@@ -1463,19 +1466,20 @@ brelse(struct buf *bp)
 
 					mtmp = bp->b_xio.xio_pages[j];
 					if (mtmp == bogus_page) {
+						if ((bp->b_flags & B_HASBOGUS) == 0)
+							panic("brelse: bp %p corrupt bogus", bp);
 						mtmp = vm_page_lookup(obj, poff + j);
-						if (!mtmp) {
-							panic("brelse: page missing");
-						}
+						if (!mtmp)
+							panic("brelse: bp %p page %d missing", bp, j);
 						bp->b_xio.xio_pages[j] = mtmp;
 					}
 				}
-				bp->b_flags &= ~B_HASBOGUS;
 				vm_object_drop(obj);
 
-				if ((bp->b_flags & B_INVAL) == 0) {
+				if ((bp->b_flags & B_HASBOGUS) || (bp->b_flags & B_INVAL) == 0) {
 					pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
 						bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+					bp->b_flags &= ~B_HASBOGUS;
 				}
 				m = bp->b_xio.xio_pages[i];
 			}
@@ -2127,7 +2131,8 @@ restart:
 		 */
 		if (qindex == BQUEUE_CLEAN) {
 			if (bp->b_flags & B_VMIO) {
-				if (repurposep && bp->b_bufsize &&
+				if (repurpose_enable &&
+				    repurposep && bp->b_bufsize &&
 				    (bp->b_flags & (B_DELWRI | B_MALLOC)) == 0) {
 					*repurposep = bp->b_vp->v_object;
 					vm_object_hold(*repurposep);
@@ -3974,8 +3979,8 @@ bpdone(struct buf *bp, int elseit)
 
 		vm_object_hold(obj);
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
-			int bogusflag = 0;
 			int resid;
+			int isbogus;
 
 			resid = ((foff + PAGE_SIZE) & ~(off_t)PAGE_MASK) - foff;
 			if (resid > iosize)
@@ -3989,13 +3994,15 @@ bpdone(struct buf *bp, int elseit)
 			 */
 			m = bp->b_xio.xio_pages[i];
 			if (m == bogus_page) {
-				bogusflag = 1;
+				if ((bp->b_flags & B_HASBOGUS) == 0)
+					panic("bpdone: bp %p corrupt bogus", bp);
 				m = vm_page_lookup(obj, OFF_TO_IDX(foff));
 				if (m == NULL)
 					panic("bpdone: page disappeared");
 				bp->b_xio.xio_pages[i] = m;
-				pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
-					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+				isbogus = 1;
+			} else {
+				isbogus = 0;
 			}
 #if defined(VFS_BIO_DEBUG)
 			if (OFF_TO_IDX(foff) != m->pindex) {
@@ -4011,9 +4018,8 @@ bpdone(struct buf *bp, int elseit)
 			 * only need to do this here in the read case.
 			 */
 			vm_page_busy_wait(m, FALSE, "bpdpgw");
-			if (cmd == BUF_CMD_READ && !bogusflag && resid > 0) {
+			if (cmd == BUF_CMD_READ && isbogus == 0 && resid > 0)
 				vfs_clean_one_page(bp, i, m);
-			}
 			vm_page_flag_clear(m, PG_ZERO);
 
 			/*
@@ -4050,7 +4056,11 @@ bpdone(struct buf *bp, int elseit)
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 			iosize -= resid;
 		}
-		bp->b_flags &= ~B_HASBOGUS;
+		if (bp->b_flags & B_HASBOGUS) {
+			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
+				    bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+			bp->b_flags &= ~B_HASBOGUS;
+		}
 		vm_object_drop(obj);
 	}
 
@@ -4178,8 +4188,6 @@ vfs_unbusy_pages(struct buf *bp)
 					panic("vfs_unbusy_pages: page missing");
 				}
 				bp->b_xio.xio_pages[i] = m;
-				pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
-					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 			}
 			vm_page_busy_wait(m, FALSE, "bpdpgw");
 			vm_page_flag_clear(m, PG_ZERO);
@@ -4187,7 +4195,11 @@ vfs_unbusy_pages(struct buf *bp)
 			vm_page_wakeup(m);
 			vm_object_pip_wakeup(obj);
 		}
-		bp->b_flags &= ~B_HASBOGUS;
+		if (bp->b_flags & B_HASBOGUS) {
+			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
+				    bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+			bp->b_flags &= ~B_HASBOGUS;
+		}
 		vm_object_drop(obj);
 	}
 }

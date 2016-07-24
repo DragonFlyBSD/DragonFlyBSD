@@ -1041,8 +1041,10 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
 				bp->b_xio.xio_npages++;
 			}
-			if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL)
+			if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) {
 				tbp->b_xio.xio_pages[j] = bogus_page;
+				tbp->b_flags |= B_HASBOGUS;
+			}
 		}
 		/*
 		 * XXX shouldn't this be += size for both, like in 
@@ -1068,6 +1070,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 		if ((bp->b_xio.xio_pages[j]->valid & VM_PAGE_BITS_ALL) ==
 		    VM_PAGE_BITS_ALL) {
 			bp->b_xio.xio_pages[j] = bogus_page;
+			bp->b_flags |= B_HASBOGUS;
 		}
 	}
 	if (bp->b_bufsize > bp->b_kvasize) {
