@@ -432,12 +432,12 @@ getpbuf(int *pfreecnt)	/* raw */
 	for (;;) {
 		while (pfreecnt && *pfreecnt <= 0) {
 			tsleep_interlock(pfreecnt, 0);
-			if (atomic_fetchadd_int(pfreecnt, 0) <= 0)
+			if ((int)atomic_fetchadd_int(pfreecnt, 0) <= 0)
 				tsleep(pfreecnt, PINTERLOCKED, "wswbuf0", 0);
 		}
 		if (pbuf_raw_count <= 0) {
 			tsleep_interlock(&pbuf_raw_count, 0);
-			if (atomic_fetchadd_int(&pbuf_raw_count, 0) <= 0)
+			if ((int)atomic_fetchadd_int(&pbuf_raw_count, 0) <= 0)
 				tsleep(&pbuf_raw_count, PINTERLOCKED,
 				       "wswbuf0", 0);
 			continue;
@@ -477,12 +477,12 @@ getpbuf_kva(int *pfreecnt)
 	for (;;) {
 		while (pfreecnt && *pfreecnt <= 0) {
 			tsleep_interlock(pfreecnt, 0);
-			if (atomic_fetchadd_int(pfreecnt, 0) <= 0)
+			if ((int)atomic_fetchadd_int(pfreecnt, 0) <= 0)
 				tsleep(pfreecnt, PINTERLOCKED, "wswbuf0", 0);
 		}
 		if (pbuf_kva_count <= 0) {
 			tsleep_interlock(&pbuf_kva_count, 0);
-			if (atomic_fetchadd_int(&pbuf_kva_count, 0) <= 0)
+			if ((int)atomic_fetchadd_int(&pbuf_kva_count, 0) <= 0)
 				tsleep(&pbuf_kva_count, PINTERLOCKED,
 				       "wswbuf0", 0);
 			continue;
@@ -526,12 +526,12 @@ getpbuf_mem(int *pfreecnt)
 	for (;;) {
 		while (pfreecnt && *pfreecnt <= 0) {
 			tsleep_interlock(pfreecnt, 0);
-			if (atomic_fetchadd_int(pfreecnt, 0) <= 0)
+			if ((int)atomic_fetchadd_int(pfreecnt, 0) <= 0)
 				tsleep(pfreecnt, PINTERLOCKED, "wswbuf0", 0);
 		}
 		if (pbuf_mem_count <= 0) {
 			tsleep_interlock(&pbuf_mem_count, 0);
-			if (atomic_fetchadd_int(&pbuf_mem_count, 0) <= 0)
+			if ((int)atomic_fetchadd_int(&pbuf_mem_count, 0) <= 0)
 				tsleep(&pbuf_mem_count, PINTERLOCKED,
 				       "wswbuf0", 0);
 			continue;
@@ -666,7 +666,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 		spin_unlock(&bswspin_mem[iter]);
 		if (wake)
 			wakeup(&pbuf_mem_count);
-	} else if (swbuf_kva && bp < &swbuf_kva[nswbuf_kva]) {
+	} else if (bp >= swbuf_kva && bp < &swbuf_kva[nswbuf_kva]) {
 		KKASSERT(bp->b_kvabase);
 		spin_lock(&bswspin_kva[iter]);
 		TAILQ_INSERT_HEAD(&bswlist_kva[iter], bp, b_freelist);
