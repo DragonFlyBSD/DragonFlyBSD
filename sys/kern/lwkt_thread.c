@@ -70,10 +70,13 @@
 
 #include <machine/stdarg.h>
 #include <machine/smp.h>
+#include <machine/clock.h>
 
 #ifdef _KERNEL_VIRTUAL
 #include <pthread.h>
 #endif
+
+#define LOOPMASK
 
 #if !defined(KTR_CTXSW)
 #define KTR_CTXSW KTR_ALL
@@ -534,6 +537,9 @@ lwkt_switch(void)
     thread_t td = gd->gd_curthread;
     thread_t ntd;
     int upri;
+#ifdef LOOPMASK
+    uint64_t tsc_base = rdtsc();
+#endif
 
     KKASSERT(gd->gd_processing_ipiq == 0);
     KKASSERT(td->td_flags & TDF_RUNNING);
@@ -668,6 +674,13 @@ lwkt_switch(void)
 	    }
 	    ++gd->gd_cnt.v_lock_colls;
 	    ++ntd->td_contended;	/* overflow ok */
+#ifdef LOOPMASK
+	    if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
+		    kprintf("lwkt_switch: excessive contended %d "
+			    "thread %p\n", ntd->td_contended, ntd);
+		    tsc_base = rdtsc();
+	    }
+#endif
 	} while (ntd->td_contended < (lwkt_spin_loops >> 1));
 	upri = ntd->td_upri;
 
@@ -769,6 +782,13 @@ void
 lwkt_switch_return(thread_t otd)
 {
 	globaldata_t rgd;
+#ifdef LOOPMASK
+	uint64_t tsc_base = rdtsc();
+#endif
+	int exiting;
+
+	exiting = otd->td_flags & TDF_EXITING;
+	cpu_ccfence();
 
 	/*
 	 * Check if otd was migrating.  Now that we are on ntd we can finish
@@ -796,8 +816,13 @@ lwkt_switch_return(thread_t otd)
 	/*
 	 * Final exit validations (see lwp_wait()).  Note that otd becomes
 	 * invalid the *instant* we set TDF_MP_EXITSIG.
+	 *
+	 * Use the EXITING status loaded from before we clear TDF_RUNNING,
+	 * because if it is not set otd becomes invalid the instant we clear
+	 * TDF_RUNNING on it (otherwise, if the system is fast enough, we
+	 * might 'steal' TDF_EXITING from another switch-return!).
 	 */
-	while (otd->td_flags & TDF_EXITING) {
+	while (exiting) {
 		u_int mpflags;
 
 		mpflags = otd->td_mpflags;
@@ -816,6 +841,14 @@ lwkt_switch_return(thread_t otd)
 				break;
 			}
 		}
+
+#ifdef LOOPMASK
+		if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
+			kprintf("lwkt_switch_return: excessive TDF_EXITING "
+				"thread %p\n", otd);
+			tsc_base = rdtsc();
+		}
+#endif
 	}
 }
 
@@ -1236,12 +1269,14 @@ lwkt_acquire(thread_t td)
 {
     globaldata_t gd;
     globaldata_t mygd;
-    int retry = 10000000;
 
     KKASSERT(td->td_flags & TDF_MIGRATING);
     gd = td->td_gd;
     mygd = mycpu;
     if (gd != mycpu) {
+#ifdef LOOPMASK
+	uint64_t tsc_base = rdtsc();
+#endif
 	cpu_lfence();
 	KKASSERT((td->td_flags & TDF_RUNQ) == 0);
 	crit_enter_gd(mygd);
@@ -1249,13 +1284,15 @@ lwkt_acquire(thread_t td)
 	while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) {
 	    lwkt_process_ipiq();
 	    cpu_lfence();
-	    if (--retry == 0) {
-		kprintf("lwkt_acquire: stuck: td %p td->td_flags %08x\n",
-			td, td->td_flags);
-		retry = 10000000;
-	    }
 #ifdef _KERNEL_VIRTUAL
 	    pthread_yield();
+#endif
+#ifdef LOOPMASK
+	    if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
+		    kprintf("lwkt_acquire: stuck td %p td->td_flags %08x\n",
+			    td, td->td_flags);
+		    tsc_base = rdtsc();
+	    }
 #endif
 	}
 	DEBUG_POP_INFO();
