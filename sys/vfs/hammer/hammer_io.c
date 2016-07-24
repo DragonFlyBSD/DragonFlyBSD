@@ -1665,10 +1665,6 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 		if (error == 0) {
 			bp = bio->bio_buf;
 			KKASSERT((bp->b_bufsize & HAMMER_BUFMASK) == 0);
-			/*
-			hammer_del_buffers(hmp, buf_offset,
-					   zone2_offset, bp->b_bufsize);
-			*/
 
 			/*
 			 * Second level bio - cached zone2 offset.
@@ -1771,7 +1767,6 @@ hammer_io_direct_write_complete(struct bio *nbio)
 		lwkt_reltoken(&hmp->fs_token);
 		bp->b_flags |= B_INVAL;
 	}
-	biodone(obio);
 
 	KKASSERT(record->gflags & HAMMER_RECG_DIRECT_IO);
 	if (record->gflags & HAMMER_RECG_DIRECT_WAIT) {
@@ -1783,7 +1778,10 @@ hammer_io_direct_write_complete(struct bio *nbio)
 		record->gflags &= ~HAMMER_RECG_DIRECT_IO;
 		/* record can disappear once DIRECT_IO flag is cleared */
 	}
+
 	lwkt_reltoken(&hmp->io_token);
+
+	biodone(obio);
 }
 
 
