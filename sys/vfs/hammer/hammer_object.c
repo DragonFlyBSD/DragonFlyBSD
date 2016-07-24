@@ -1890,13 +1890,21 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 		 * on-disk reference.
 		 *
 		 * NOTE: Reserve-ahead data records must be handled in the
-		 * context of the related high level buffer cache buffer
-		 * to interlock against async writes.
+		 *	 context of the related high level buffer cache buffer
+		 *	 to interlock against async writes.
+		 *
+		 * NOTE: We might catch a direct write in-progress, in which
+		 *	 case we must wait for it to complete.  The wait
+		 *	 function will also clean out any buffer aliases.
+		 *
+		 *	 (In fact, it is possible that the write had not
+		 *	  even started yet).
 		 */
 		record = cursor->iprec;
 		cursor->data = record->data;
 		error = 0;
 		if (cursor->data == NULL) {
+			hammer_io_direct_wait(record);
 			KKASSERT(record->leaf.base.rec_type ==
 				 HAMMER_RECTYPE_DATA);
 			cursor->data = hammer_bread_ext(cursor->trans->hmp,
