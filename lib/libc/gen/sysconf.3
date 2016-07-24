@@ -28,7 +28,7 @@
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd October 26, 2015
+.Dd July 25, 2016
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -117,6 +117,9 @@ The number of processors online.
 The maximum number of open files per user id.
 .It Dv _SC_PAGESIZE
 The size of a system page in bytes.
+.It Dv _SC_PAGE_SIZE
+Equivalent to
+.Dv _SC_PAGESIZE.
 .It Dv _SC_RE_DUP_MAX
 The maximum number of repeated occurrences of a regular expression
 permitted when using interval notation.
@@ -175,6 +178,12 @@ otherwise \-1.
 The version of
 .St -p1003.2
 with which the system attempts to comply.
+.El
+.Pp
+These values also exist, but may not be standard:
+.Bl -tag -width 6n
+.It Dv _SC_PHYS_PAGES
+The number of pages of physical memory.
 .El
 .Sh RETURN VALUES
 If the call to
