@@ -1225,6 +1225,7 @@ cpu_idle(void)
 			if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
 						      gd->gd_cpuid)) {
 				cpu_invltlb();
+				cpu_mfence();
 			}
 			crit_exit_gd(gd);
 		} else if (cpu_idle_hlt) {
@@ -1244,6 +1245,7 @@ cpu_idle(void)
 			if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
 						      gd->gd_cpuid)) {
 				cpu_invltlb();
+				cpu_mfence();
 			}
 			crit_exit_gd(gd);
 		} else {
