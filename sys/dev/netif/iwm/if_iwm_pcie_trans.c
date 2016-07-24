@@ -525,6 +525,8 @@ iwm_apm_init(struct iwm_softc *sc)
 void
 iwm_apm_stop(struct iwm_softc *sc)
 {
+	IWM_DPRINTF(sc, IWM_DEBUG_TRANS, "%s: iwm apm stop\n", __func__);
+
 	/* stop device's busmaster DMA activity */
 	IWM_SETBITS(sc, IWM_CSR_RESET, IWM_CSR_RESET_REG_FLAG_STOP_MASTER);
 
@@ -532,7 +534,17 @@ iwm_apm_stop(struct iwm_softc *sc)
 	    IWM_CSR_RESET_REG_FLAG_MASTER_DISABLED,
 	    IWM_CSR_RESET_REG_FLAG_MASTER_DISABLED, 100))
 		device_printf(sc->sc_dev, "timeout waiting for master\n");
-	IWM_DPRINTF(sc, IWM_DEBUG_TRANS, "%s: iwm apm stop\n", __func__);
+
+	/* Reset the entire device */
+	IWM_SETBITS(sc, IWM_CSR_RESET, IWM_CSR_RESET_REG_FLAG_SW_RESET);
+	DELAY(1000);
+
+	/*
+	 * Clear "initialization complete" bit to move adapter from
+	 * D0A* (powered-up Active) --> D0U* (Uninitialized) state.
+	 */
+	IWM_CLRBITS(sc, IWM_CSR_GP_CNTRL,
+		    IWM_CSR_GP_CNTRL_REG_FLAG_INIT_DONE);
 }
 
 int
@@ -545,7 +557,7 @@ iwm_start_hw(struct iwm_softc *sc)
 
 	/* Reset the entire device */
 	IWM_WRITE(sc, IWM_CSR_RESET, IWM_CSR_RESET_REG_FLAG_SW_RESET);
-	DELAY(10);
+	DELAY(1000);
 
 	if ((error = iwm_apm_init(sc)) != 0)
 		return error;
