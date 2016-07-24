@@ -192,10 +192,15 @@ Xinvltlb:
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	incl    PCPU(cnt) + V_IPI
+	movq	PCPU(curthread),%rbx
+	incl    PCPU(intr_nesting_level)
+	incl    TD_CRITCOUNT(%rbx)
 	subq	$8,%rsp			/* make same as interrupt frame */
 	movq	%rsp,%rdi		/* pass frame by reference */
-	call	smp_inval_intr
+	call	smp_inval_intr		/* called w/interrupts disabled */
 	addq	$8,%rsp			/* turn into trapframe */
+	decl	TD_CRITCOUNT(%rbx)
+	decl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	/*APIC_POP_FRAME*/
 	jmp	doreti			/* doreti b/c intrs enabled */

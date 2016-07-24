@@ -65,6 +65,7 @@
 #include <machine/specialreg.h>
 #include <machine/globaldata.h>
 #include <machine/pmap_inval.h>
+#include <machine/clock.h>
 
 #include <machine/md_var.h>		/* setidt() */
 #include <machine_base/icu/icu.h>	/* IPIs */
@@ -185,6 +186,9 @@ SYSCTL_INT(_machdep, OID_AUTO, report_invlpg_src, CTLFLAG_RW,
 static u_int	report_invltlb_src;
 SYSCTL_INT(_machdep, OID_AUTO, report_invltlb_src, CTLFLAG_RW,
 	&report_invltlb_src, 0, "");
+static int	optimized_invltlb;
+SYSCTL_INT(_machdep, OID_AUTO, optimized_invltlb, CTLFLAG_RW,
+	&optimized_invltlb, 0, "");
 
 /* Local data for detecting CPU TOPOLOGY */
 static int core_bits = 0;
@@ -863,9 +867,11 @@ smp_smurf_fetchset(cpumask_t *mask)
 void
 smp_smurf_idleinvlclr(cpumask_t *mask)
 {
-	ATOMIC_CPUMASK_ORMASK(smp_idleinvl_reqs, *mask);
-	/* cpu_lfence() not needed */
-	CPUMASK_NANDMASK(*mask, smp_idleinvl_mask);
+	if (optimized_invltlb) {
+		ATOMIC_CPUMASK_ORMASK(smp_idleinvl_reqs, *mask);
+		/* cpu_lfence() not needed */
+		CPUMASK_NANDMASK(*mask, smp_idleinvl_mask);
+	}
 }
 
 /*
@@ -882,13 +888,15 @@ smp_invltlb(void)
 	cpumask_t mask;
 	unsigned long rflags;
 #ifdef LOOPMASK
-	int loops;
+	uint64_t tsc_base = rdtsc();
+	int repeats = 0;
 #endif
 
 	if (report_invltlb_src > 0) {
 		if (--report_invltlb_src <= 0)
 			print_backtrace(8);
 	}
+
 	/*
 	 * Disallow normal interrupts, set all active cpus except our own
 	 * in the global smp_invltlb_mask.
@@ -954,15 +962,20 @@ smp_invltlb(void)
 		smp_inval_intr();
 		cpu_pause();
 #ifdef LOOPMASK
-		if (++loops == 1000000) {
-			kprintf("smp_invltlb: waited too long\n");
+		if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
+			kprintf("smp_invltlb %d: waited too long %08jx "
+				"dbg=%08jx %08jx\n",
+				md->mi.gd_cpuid,
+				smp_invltlb_mask.ary[0],
+				smp_idleinvl_mask.ary[0],
+				smp_idleinvl_reqs.ary[0]);
 			mdcpu->gd_xinvaltlb = 0;
 			smp_invlpg(&smp_active_mask);
-		}
-		if (++loops == 2000000) {
-			kprintf("smp_invltlb: giving up\n");
-			loops = 0;
-			CPUMASK_ASSZERO(smp_invltlb_mask);
+			tsc_base = rdtsc();
+			if (++repeats > 10) {
+				kprintf("smp_invltlb: giving up\n");
+				CPUMASK_ASSZERO(smp_invltlb_mask);
+			}
 		}
 #endif
 	}
@@ -971,19 +984,15 @@ smp_invltlb(void)
 }
 
 /*
- * Should only be called from pmap_inval.c, issues the XINVLTLB IPI which
- * causes callbacks to be made to pmap_inval_intr() on multiple cpus, as
- * specified by the cpumask.  Used for interlocked page invalidations.
- *
- * NOTE: Caller has already called smp_smurf_idleinvlclr(&mask) if the
- *	 command it setup was semi-synchronous-safe.
+ * Called from a critical section with interrupts hard-disabled.
+ * This function issues an XINVLTLB IPI and then executes any pending
+ * command on the current cpu before returning.
  */
 void
 smp_invlpg(cpumask_t *cmdmask)
 {
 	struct mdglobaldata *md = mdcpu;
 	cpumask_t mask;
-	unsigned long rflags;
 
 	if (report_invlpg_src > 0) {
 		if (--report_invlpg_src <= 0)
@@ -995,7 +1004,6 @@ smp_invlpg(cpumask_t *cmdmask)
 	 * plus our own for completion processing (it might or might not
 	 * be part of the set).
 	 */
-	crit_enter_gd(&md->mi);
 	mask = smp_active_mask;
 	CPUMASK_ANDMASK(mask, *cmdmask);
 	CPUMASK_ORMASK(mask, md->mi.gd_cpumask);
@@ -1007,8 +1015,6 @@ smp_invlpg(cpumask_t *cmdmask)
 	 *
 	 * NOTE: We might be including our own cpu in the smurf mask.
 	 */
-	rflags = read_rflags();
-	cpu_disable_intr();
 	smp_smurf_fetchset(&mask);
 
 	/*
@@ -1028,11 +1034,10 @@ smp_invlpg(cpumask_t *cmdmask)
 	 * This will synchronously wait for our command to complete,
 	 * as well as process commands from other cpus.  It also handles
 	 * reentrancy.
+	 *
+	 * (interrupts are disabled and we are in a critical section here)
 	 */
-	cpu_disable_intr();
 	smp_inval_intr();
-	write_rflags(rflags);
-	crit_exit_gd(&md->mi);
 }
 
 void
@@ -1047,8 +1052,9 @@ smp_sniff(void)
 }
 
 /*
- * Called from Xinvltlb assembly with interrupts hard-disabled.  The
- * assembly doesn't check for or mess with the critical section count.
+ * Called from Xinvltlb assembly with interrupts hard-disabled and in a
+ * critical section.  gd_intr_nesting_level may or may not be bumped
+ * depending on entry.
  *
  * THIS CODE IS INTENDED TO EXPLICITLY IGNORE THE CRITICAL SECTION COUNT.
  * THAT IS, THE INTERRUPT IS INTENDED TO FUNCTION EVEN WHEN MAINLINE CODE
@@ -1059,6 +1065,23 @@ smp_inval_intr(void)
 {
 	struct mdglobaldata *md = mdcpu;
 	cpumask_t cpumask;
+#ifdef LOOPMASK
+	uint64_t tsc_base = rdtsc();
+#endif
+
+#if 0
+	/*
+	 * The idle code is in a critical section, but that doesn't stop
+	 * Xinvltlb from executing, so deal with the race which can occur
+	 * in that situation.  Otherwise r-m-w operations by pmap_inval_intr()
+	 * may have problems.
+	 */
+	if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs, md->mi.gd_cpuid)) {
+		ATOMIC_CPUMASK_NANDBIT(smp_invltlb_mask, md->mi.gd_cpuid);
+		cpu_invltlb();
+		cpu_mfence();
+	}
+#endif
 
 	/*
 	 * This is a real mess.  I'd like to just leave interrupts disabled
@@ -1087,7 +1110,6 @@ smp_inval_intr(void)
 	 *	    on the reentrancy detect (caused by another interrupt).
 	 */
 	cpumask = smp_invmask;
-	crit_enter_gd(&md->mi);
 loop:
 	cpu_enable_intr();
 #ifdef LOOPMASK_IN
@@ -1100,6 +1122,37 @@ loop:
 	 * are zero.
 	 */
 	for (;;) {
+		int toolong;
+
+		/*
+		 * Also execute any pending full invalidation request in
+		 * this loop.
+		 */
+		if (CPUMASK_TESTBIT(smp_invltlb_mask, md->mi.gd_cpuid)) {
+			ATOMIC_CPUMASK_NANDBIT(smp_invltlb_mask,
+					       md->mi.gd_cpuid);
+			cpu_invltlb();
+			cpu_mfence();
+		}
+
+#ifdef LOOPMASK
+		if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
+			kprintf("smp_inval_intr %d inv=%08jx tlbm=%08jx "
+				"idle=%08jx/%08jx\n",
+				md->mi.gd_cpuid,
+				smp_invmask.ary[0],
+				smp_invltlb_mask.ary[0],
+				smp_idleinvl_mask.ary[0],
+				smp_idleinvl_reqs.ary[0]);
+			tsc_base = rdtsc();
+			toolong = 1;
+		} else {
+			toolong = 0;
+		}
+#else
+		toolong = 0;
+#endif
+
 		/*
 		 * We can only add bits to the cpumask to test during the
 		 * loop because the smp_invmask bit is cleared once the
@@ -1113,14 +1166,9 @@ loop:
 		 */
 		cpu_lfence();
 		CPUMASK_ORMASK(cpumask, smp_invmask);
-		if (CPUMASK_TESTBIT(smp_invltlb_mask, md->mi.gd_cpuid)) {
-			ATOMIC_CPUMASK_NANDBIT(smp_invltlb_mask,
-					       md->mi.gd_cpuid);
-			cpu_invltlb();
-			cpu_mfence();
-		}
-		cpumask = smp_active_mask;	/* XXX */
-		if (pmap_inval_intr(&cpumask) == 0) {
+		/*cpumask = smp_active_mask;*/	/* XXX */
+
+		if (pmap_inval_intr(&cpumask, toolong) == 0) {
 			/*
 			 * Clear our smurf mask to allow new IPIs, but deal
 			 * with potential races.
@@ -1150,6 +1198,7 @@ loop:
 		cpu_invltlb();
 		cpu_mfence();
 	}
+
 #ifdef LOOPMASK_IN
 	ATOMIC_CPUMASK_NANDBIT(smp_in_mask, md->mi.gd_cpuid);
 #endif
@@ -1163,11 +1212,6 @@ loop:
 		goto loop;
 	}
 	md->gd_xinvaltlb = 0;
-
-	/*
-	 * We will return via doreti, do not try to stack pending ints
-	 */
-	crit_exit_noyield(md->mi.gd_curthread);
 }
 
 void

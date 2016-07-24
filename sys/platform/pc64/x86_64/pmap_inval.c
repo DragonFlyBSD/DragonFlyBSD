@@ -217,11 +217,15 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	unsigned long rflags;
 
 	/*
-	 * Shortcut single-cpu case if possible.
+	 * Initialize invalidation for pmap and enter critical section.
 	 */
 	if (pmap == NULL)
 		pmap = &kernel_pmap;
 	pmap_inval_init(pmap);
+
+	/*
+	 * Shortcut single-cpu case if possible.
+	 */
 	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
 		/*
 		 * Convert to invltlb if there are too many pages to
@@ -254,10 +258,20 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	}
 
 	/*
-	 * We must wait for other cpus which may still be finishing up a
-	 * prior operation.
+	 * We need a critical section to prevent getting preempted while
+	 * we setup our command.  A preemption might execute its own
+	 * pmap_inval*() command and create confusion below.
 	 */
 	info = &invinfo[cpu];
+
+	/*
+	 * We must wait for other cpus which may still be finishing up a
+	 * prior operation that we requested.
+	 *
+	 * We do not have to disable interrupts here.  An Xinvltlb can occur
+	 * at any time (even within a critical section), but it will not
+	 * act on our command until we set our done bits.
+	 */
 	while (CPUMASK_TESTNZERO(info->done)) {
 #ifdef LOOPMASK
 		int loops;
@@ -275,21 +289,10 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	KKASSERT(info->mode == INVDONE);
 
 	/*
-	 * Must disable interrupts to prevent an Xinvltlb (which ignores
-	 * critical sections) from trying to execute our command before we
-	 * have managed to send any IPIs to the target cpus.
-	 */
-	rflags = read_rflags();
-	cpu_disable_intr();
-
-	/*
 	 * Must set our cpu in the invalidation scan mask before
 	 * any possibility of [partial] execution (remember, XINVLTLB
 	 * can interrupt a critical section).
 	 */
-	if (CPUMASK_TESTBIT(smp_invmask, cpu)) {
-		kprintf("bcpu %d already in\n", cpu);
-	}
 	ATOMIC_CPUMASK_ORBIT(smp_invmask, cpu);
 
 	info->va = va;
@@ -300,6 +303,8 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 #ifdef LOOPMASK
 	info->failed = 0;
 #endif
+	info->mode = INVSTORE;
+
 	tmpmask = pmap->pm_active;	/* volatile (bits may be cleared) */
 	cpu_ccfence();
 	CPUMASK_ANDMASK(tmpmask, smp_active_mask);
@@ -314,7 +319,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	if (ptep == NULL)
 		smp_smurf_idleinvlclr(&tmpmask);
 	CPUMASK_ORBIT(tmpmask, cpu);
-	info->mode = INVSTORE;
+	info->mask = tmpmask;
 
 	/*
 	 * Command may start executing the moment 'done' is initialized,
@@ -323,13 +328,16 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	 * cpu clears its mask bit, but other cpus CAN start clearing their
 	 * mask bits).
 	 */
-	info->mask = tmpmask;
 #ifdef LOOPMASK
 	info->sigmask = tmpmask;
 	CHECKSIGMASK(info);
 #endif
 	cpu_sfence();
-	info->done = tmpmask;	/* execute can begin here due to races */
+	rflags = read_rflags();
+	cpu_disable_intr();
+
+	ATOMIC_CPUMASK_COPY(info->done, tmpmask);
+	/* execution can begin here due to races */
 
 	/*
 	 * Pass our copy of the done bits (so they don't change out from
@@ -369,11 +377,15 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	unsigned long rflags;
 
 	/*
-	 * Shortcut single-cpu case if possible.
+	 * Initialize invalidation for pmap and enter critical section.
 	 */
 	if (pmap == NULL)
 		pmap = &kernel_pmap;
 	pmap_inval_init(pmap);
+
+	/*
+	 * Shortcut single-cpu case if possible.
+	 */
 	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
 		if (atomic_cmpset_long(ptep, opte, npte)) {
 			if (va == (vm_offset_t)-1)
@@ -389,10 +401,16 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	}
 
 	/*
+	 * We need a critical section to prevent getting preempted while
+	 * we setup our command.  A preemption might execute its own
+	 * pmap_inval*() command and create confusion below.
+	 */
+	info = &invinfo[cpu];
+
+	/*
 	 * We must wait for other cpus which may still be finishing
 	 * up a prior operation.
 	 */
-	info = &invinfo[cpu];
 	while (CPUMASK_TESTNZERO(info->done)) {
 #ifdef LOOPMASK
 		int loops;
@@ -410,21 +428,10 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	KKASSERT(info->mode == INVDONE);
 
 	/*
-	 * Must disable interrupts to prevent an Xinvltlb (which ignores
-	 * critical sections) from trying to execute our command before we
-	 * have managed to send any IPIs to the target cpus.
-	 */
-	rflags = read_rflags();
-	cpu_disable_intr();
-
-	/*
 	 * Must set our cpu in the invalidation scan mask before
 	 * any possibility of [partial] execution (remember, XINVLTLB
 	 * can interrupt a critical section).
 	 */
-	if (CPUMASK_TESTBIT(smp_invmask, cpu)) {
-		kprintf("acpu %d already in\n", cpu);
-	}
 	ATOMIC_CPUMASK_ORBIT(smp_invmask, cpu);
 
 	info->va = va;
@@ -433,12 +440,14 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	info->npte = npte;
 	info->opte = opte;
 	info->failed = 0;
+	info->mode = INVCMPSET;
+	info->success = 0;
+
 	tmpmask = pmap->pm_active;	/* volatile */
 	cpu_ccfence();
 	CPUMASK_ANDMASK(tmpmask, smp_active_mask);
 	CPUMASK_ORBIT(tmpmask, cpu);
-	info->mode = INVCMPSET;		/* initialize last */
-	info->success = 0;
+	info->mask = tmpmask;
 
 	/*
 	 * Command may start executing the moment 'done' is initialized,
@@ -446,23 +455,19 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * changing (other cpus can't clear done bits until the originating
 	 * cpu clears its mask bit).
 	 */
-	cpu_ccfence();
-	info->mask = tmpmask;
 #ifdef LOOPMASK
 	info->sigmask = tmpmask;
 	CHECKSIGMASK(info);
 #endif
-	info->done = tmpmask;
+	cpu_sfence();
+	rflags = read_rflags();
+	cpu_disable_intr();
+
+	ATOMIC_CPUMASK_COPY(info->done, tmpmask);
 
 	/*
-	 * Calling smp_invlpg() will issue the IPIs to XINVLTLB (which can
-	 * execute even from inside a critical section), and will call us
-	 * back with via pmap_inval_intr() with interrupts disabled.
-	 *
-	 * Unlike smp_invltlb(), this interface causes all cpus to stay
-	 * inside XINVLTLB until the whole thing is done.  When our cpu
-	 * detects that the whole thing is done we execute the requested
-	 * operation and return.
+	 * Pass our copy of the done bits (so they don't change out from
+	 * under us) to generate the Xinvltlb interrupt on the targets.
 	 */
 	smp_invlpg(&tmpmask);
 	success = info->success;
@@ -571,10 +576,10 @@ pmap_inval_bulk_flush(pmap_inval_bulk_t *bulk)
 }
 
 /*
- * Called with interrupts hard-disabled.
+ * Called with a critical section held and interrupts enabled.
  */
 int
-pmap_inval_intr(cpumask_t *cpumaskp)
+pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 {
 	globaldata_t gd = mycpu;
 	pmap_inval_info_t *info;
@@ -610,6 +615,13 @@ pmap_inval_intr(cpumask_t *cpumaskp)
 		if (!CPUMASK_TESTBIT(info->done, cpu))
 			continue;
 		cpu_lfence();
+#ifdef LOOPMASK
+		if (toolong) {
+			kprintf("pminvl %d->%d %08jx %08jx mode=%d\n",
+				cpu, n, info->done.ary[0], info->mask.ary[0],
+				info->mode);
+		}
+#endif
 
 		/*
 		 * info->mask and info->done always contain the originating
@@ -687,7 +699,9 @@ pmap_inval_intr(cpumask_t *cpumaskp)
 					loopdebug("orig_waitC", info);
 					/* XXX recover from possible bug */
 					mdcpu->gd_xinvaltlb = 0;
+					cpu_disable_intr();
 					smp_invlpg(&smp_active_mask);
+					cpu_enable_intr();
 				}
 #endif
 			} else {
