@@ -405,9 +405,13 @@ update:
 			cache_allocroot(&mp->mnt_ncmountpt, mp, NULL);
 			cache_unlock(&mp->mnt_ncmountpt);
 		}
+		vn_unlock(vp);
 		mp->mnt_ncmounton = nch;		/* inherits ref */
+		cache_lock(&nch);
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
+		cache_unlock(&nch);
 		cache_ismounting(mp);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 		mountlist_insert(mp, MNTINS_LAST);
 		vn_unlock(vp);
@@ -1100,33 +1104,50 @@ kern_mountctl(const char *path, int op, struct file *fp,
 		void *buf, int buflen, int *res)
 {
 	struct vnode *vp;
-	struct mount *mp;
 	struct nlookupdata nd;
+	struct nchandle nch;
 	int error;
 
 	*res = 0;
 	vp = NULL;
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0)
-		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
-	mp = nd.nl_nch.mount;
-	nlookup_done(&nd);
 	if (error)
 		return (error);
+	error = nlookup(&nd);
+	if (error) {
+		nlookup_done(&nd);
+		return (error);
+	}
+	error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	if (error) {
+		nlookup_done(&nd);
+		return (error);
+	}
+
+	/*
+	 * Yes, all this is needed to use the nch.mount below, because
+	 * we must maintain a ref on the mount to avoid ripouts (e.g.
+	 * due to heavy mount/unmount use by synth or poudriere).
+	 */
+	nch = nd.nl_nch;
+	cache_zero(&nd.nl_nch);
+	cache_unlock(&nch);
+	nlookup_done(&nd);
 	vn_unlock(vp);
 
 	/*
 	 * Must be the root of the filesystem
 	 */
 	if ((vp->v_flag & (VROOT|VPFSROOT)) == 0) {
+		cache_drop(&nch);
 		vrele(vp);
 		return (EINVAL);
 	}
-	error = vop_mountctl(mp->mnt_vn_use_ops, vp, op, fp, ctl, ctllen,
+	error = vop_mountctl(nch.mount->mnt_vn_use_ops, vp, op, fp, ctl, ctllen,
 			     buf, buflen, res);
 	vrele(vp);
+	cache_drop(&nch);
+
 	return (error);
 }
 

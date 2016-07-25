@@ -2498,6 +2498,7 @@ cache_zap(struct namecache *ncp, int nonblock)
 	 */
 	for (;;) {
 		refs = ncp->nc_refs;
+		cpu_ccfence();
 		if (refs == 1 && TAILQ_EMPTY(&ncp->nc_list))
 			break;
 		if (atomic_cmpset_int(&ncp->nc_refs, refs, refs - 1)) {
@@ -2540,6 +2541,12 @@ cache_zap(struct namecache *ncp, int nonblock)
 	 * ncp should not have picked up any refs.  Physically
 	 * destroy the ncp.
 	 */
+	if (ncp->nc_refs != 1) {
+		int save_refs = ncp->nc_refs;
+		cpu_ccfence();
+		panic("cache_zap: %p bad refs %d (%d)\n",
+			ncp, save_refs, atomic_fetchadd_int(&ncp->nc_refs, 0));
+	}
 	KKASSERT(ncp->nc_refs == 1);
 	/* _cache_unlock(ncp) not required */
 	ncp->nc_refs = -1;	/* safety */
@@ -2759,8 +2766,11 @@ restart:
 				 * conditions that might have changed since
 				 * we did not have the lock before.
 				 */
-				if ((ncp->nc_flag & NCF_DESTROYED) ||
-				    ncp->nc_parent != par_nch->ncp) {
+				if (ncp->nc_parent != par_nch->ncp ||
+				    ncp->nc_nlen != nlc->nlc_namelen ||
+				    bcmp(ncp->nc_name, nlc->nlc_nameptr,
+					 ncp->nc_nlen) ||
+				    (ncp->nc_flag & NCF_DESTROYED)) {
 					_cache_put(ncp);
 					goto restart;
 				}
@@ -2890,8 +2900,12 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 			_cache_hold(ncp);
 			spin_unlock_shared(&nchpp->spin);
 			if (_cache_lock_shared_special(ncp) == 0) {
-				if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
+				if (ncp->nc_parent == par_nch->ncp &&
+				    ncp->nc_nlen == nlc->nlc_namelen &&
+				    bcmp(ncp->nc_name, nlc->nlc_nameptr,
+					 ncp->nc_nlen) == 0 &&
 				    (ncp->nc_flag & NCF_DESTROYED) == 0 &&
+				    (ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
 				    _cache_auto_unresolve_test(mp, ncp) == 0) {
 					goto found;
 				}
@@ -3709,48 +3723,6 @@ cache_purge(struct vnode *vp)
 {
 	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN);
 }
-
-/*
- * Flush all entries referencing a particular filesystem.
- *
- * Since we need to check it anyway, we will flush all the invalid
- * entries at the same time.
- */
-#if 0
-
-void
-cache_purgevfs(struct mount *mp)
-{
-	struct nchash_head *nchpp;
-	struct namecache *ncp, *nnp;
-
-	/*
-	 * Scan hash tables for applicable entries.
-	 */
-	for (nchpp = &nchashtbl[nchash]; nchpp >= nchashtbl; nchpp--) {
-		spin_lock_wr(&nchpp->spin); XXX
-		ncp = LIST_FIRST(&nchpp->list);
-		if (ncp)
-			_cache_hold(ncp);
-		while (ncp) {
-			nnp = LIST_NEXT(ncp, nc_hash);
-			if (nnp)
-				_cache_hold(nnp);
-			if (ncp->nc_mount == mp) {
-				_cache_lock(ncp);
-				ncp = cache_zap(ncp, 0);
-				if (ncp)
-					_cache_drop(ncp);
-			} else {
-				_cache_drop(ncp);
-			}
-			ncp = nnp;
-		}
-		spin_unlock_wr(&nchpp->spin); XXX
-	}
-}
-
-#endif
 
 static int disablecwd;
 SYSCTL_INT(_debug, OID_AUTO, disablecwd, CTLFLAG_RW, &disablecwd, 0,
