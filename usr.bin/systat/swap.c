@@ -147,11 +147,10 @@ showswap(void)
 			mvwprintw(
 			    wnd,
 			    i + 1,
-			    _col,
+			    0,
 			    "%-5s",
 			    "Total"
 			);
-			_col += 5;
 		}
 		if (kvmsw[i].ksw_total == 0) {
 			mvwprintw(
