@@ -1106,6 +1106,7 @@ kern_mountctl(const char *path, int op, struct file *fp,
 	struct vnode *vp;
 	struct nlookupdata nd;
 	struct nchandle nch;
+	struct mount *mp;
 	int error;
 
 	*res = 0;
@@ -1135,6 +1136,8 @@ kern_mountctl(const char *path, int op, struct file *fp,
 	nlookup_done(&nd);
 	vn_unlock(vp);
 
+	mp = nch.mount;
+
 	/*
 	 * Must be the root of the filesystem
 	 */
@@ -1143,7 +1146,14 @@ kern_mountctl(const char *path, int op, struct file *fp,
 		vrele(vp);
 		return (EINVAL);
 	}
-	error = vop_mountctl(nch.mount->mnt_vn_use_ops, vp, op, fp, ctl, ctllen,
+	if (mp == NULL || mp->mnt_kern_flag & MNTK_UNMOUNT) {
+		kprintf("kern_mountctl: Warning, \"%s\" racing unmount\n",
+			path);
+		cache_drop(&nch);
+		vrele(vp);
+		return (EINVAL);
+	}
+	error = vop_mountctl(mp->mnt_vn_use_ops, vp, op, fp, ctl, ctllen,
 			     buf, buflen, res);
 	vrele(vp);
 	cache_drop(&nch);
