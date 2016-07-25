@@ -332,10 +332,17 @@ vfs_mountroot_devfs(void)
 			cache_allocroot(&mp->mnt_ncmountpt, mp, NULL);
 			cache_unlock(&mp->mnt_ncmountpt);
 		}
+		vn_unlock(vp);
 		mp->mnt_ncmounton = nch;		/* inherits ref */
+		cache_lock(&nch);
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
+		cache_unlock(&nch);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
-		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
+		/*
+		 * XXX get the root of the fs and
+		 * cache_setvp(mnt_ncmountpt...)
+		 */
 		mountlist_insert(mp, MNTINS_LAST);
 		vn_unlock(vp);
 		//checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);

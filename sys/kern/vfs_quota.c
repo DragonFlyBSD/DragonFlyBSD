@@ -328,16 +328,14 @@ int
 sys_vquotactl(struct vquotactl_args *vqa)
 /* const char *path, struct plistref *pref */
 {
+	struct nchandle nch;
 	const char *path;
 	struct plistref pref;
 	prop_dictionary_t dict;
 	prop_object_t args;
 	char *cmd;
-
 	prop_array_t pa_out;
-
 	struct nlookupdata nd;
-	struct mount *mp;
 	int error;
 
 	if (!vfs_quota_enabled)
@@ -345,54 +343,60 @@ sys_vquotactl(struct vquotactl_args *vqa)
 	path = vqa->path;
 	error = copyin(vqa->pref, &pref, sizeof(pref));
 	error = prop_dictionary_copyin(&pref, &dict);
-	if (error != 0)
+	if (error)
 		return(error);
 
 	/* we have a path, get its mount point */
 	error = nlookup_init(&nd, path, UIO_USERSPACE, 0);
-	if (error != 0)
+	if (error)
 		return (error);
 	error = nlookup(&nd);
-	if (error != 0)
+	if (error)
 		return (error);
-	mp = nd.nl_nch.mount;
+	nch = nd.nl_nch;
+	cache_zero(&nd.nl_nch);
 	nlookup_done(&nd);
 
 	/* get the command */
 	if (prop_dictionary_get_cstring(dict, "command", &cmd) == 0) {
 		kprintf("sys_vquotactl(): couldn't get command\n");
+		cache_put(&nch);
 		return EINVAL;
 	}
 	args = prop_dictionary_get(dict, "arguments");
 	if (args == NULL) {
 		kprintf("couldn't get arguments\n");
+		cache_put(&nch);
 		return EINVAL;
 	}
 
 	pa_out = prop_array_create();
-	if (pa_out == NULL)
+	if (pa_out == NULL) {
+		cache_put(&nch);
 		return ENOMEM;
+	}
 
 	if (strcmp(cmd, "get usage all") == 0) {
-		cmd_get_usage_all(mp, pa_out);
+		cmd_get_usage_all(nch.mount, pa_out);
 		goto done;
 	}
 	if (strcmp(cmd, "set usage all") == 0) {
-		error = cmd_set_usage_all(mp, args);
+		error = cmd_set_usage_all(nch.mount, args);
 		goto done;
 	}
 	if (strcmp(cmd, "set limit") == 0) {
-		error = cmd_set_limit(mp, args);
+		error = cmd_set_limit(nch.mount, args);
 		goto done;
 	}
 	if (strcmp(cmd, "set limit uid") == 0) {
-		error = cmd_set_limit_uid(mp, args);
+		error = cmd_set_limit_uid(nch.mount, args);
 		goto done;
 	}
 	if (strcmp(cmd, "set limit gid") == 0) {
-		error = cmd_set_limit_gid(mp, args);
+		error = cmd_set_limit_gid(nch.mount, args);
 		goto done;
 	}
+	cache_put(&nch);
 	return EINVAL;
 
 done:
@@ -402,6 +406,7 @@ done:
 
 	error = prop_dictionary_copyout(&pref, dict);
 	error = copyout(&pref, vqa->pref, sizeof(pref));
+	cache_put(&nch);
 
 	return error;
 }
