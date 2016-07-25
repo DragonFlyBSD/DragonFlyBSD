@@ -172,6 +172,8 @@ void		 pmap_pinit2 (pmap_t);
 void		 pmap_protect (pmap_t, vm_offset_t, vm_offset_t, vm_prot_t);
 void		 pmap_qenter (vm_offset_t, struct vm_page **, int);
 void		 pmap_qremove (vm_offset_t, int);
+void		 pmap_qremove_quick (vm_offset_t, int);
+void		 pmap_qremove_noinval (vm_offset_t, int);
 void		 pmap_kenter (vm_offset_t, vm_paddr_t);
 int		 pmap_kenter_quick (vm_offset_t, vm_paddr_t);
 int		 pmap_kenter_noinval (vm_offset_t, vm_paddr_t);

@@ -947,9 +947,8 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		if (*pte & VPTE_V)
-			pmap_inval_pte(pte, &kernel_pmap, va);
 		*pte = VM_PAGE_TO_PHYS(*m) | VPTE_RW | VPTE_V | VPTE_U;
+		pmap_inval_pte(pte, &kernel_pmap, va);
 		va += PAGE_SIZE;
 		m++;
 	}
@@ -970,9 +969,43 @@ pmap_qremove(vm_offset_t va, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		if (*pte & VPTE_V)
-			pmap_inval_pte(pte, &kernel_pmap, va);
-		*pte = 0;
+		atomic_swap_long(pte, 0);
+		pmap_inval_pte(pte, &kernel_pmap, va);
+		va += PAGE_SIZE;
+	}
+}
+
+void
+pmap_qremove_quick(vm_offset_t va, int count)
+{
+	vm_offset_t end_va;
+
+	end_va = va + count * PAGE_SIZE;
+	KKASSERT(va >= KvaStart && end_va < KvaEnd);
+
+	while (va < end_va) {
+		pt_entry_t *pte;
+
+		pte = vtopte(va);
+		atomic_swap_long(pte, 0);
+		cpu_invlpg((void *)va);
+		va += PAGE_SIZE;
+	}
+}
+
+void
+pmap_qremove_noinval(vm_offset_t va, int count)
+{
+	vm_offset_t end_va;
+
+	end_va = va + count * PAGE_SIZE;
+	KKASSERT(va >= KvaStart && end_va < KvaEnd);
+
+	while (va < end_va) {
+		pt_entry_t *pte;
+
+		pte = vtopte(va);
+		atomic_swap_long(pte, 0);
 		va += PAGE_SIZE;
 	}
 }
