@@ -1885,8 +1885,17 @@ vfs_vmio_release(struct buf *bp)
 		}
 	}
 
-	pmap_qremove(trunc_page((vm_offset_t) bp->b_data),
-		     bp->b_xio.xio_npages);
+	/*
+	 * Zero out the pmap pte's for the mapping, but don't bother
+	 * invalidating the TLB.  The range will be properly invalidating
+	 * when new pages are entered into the mapping.
+	 *
+	 * This in particular reduces tmpfs tear-down overhead and reduces
+	 * buffer cache re-use overhead (one invalidation sequence instead
+	 * of two per re-use).
+	 */
+	pmap_qremove_noinval(trunc_page((vm_offset_t) bp->b_data),
+			     bp->b_xio.xio_npages);
 	if (bp->b_bufsize) {
 		atomic_add_long(&bufspace, -bp->b_bufsize);
 		bp->b_bufsize = 0;
