@@ -149,6 +149,7 @@ IDTVEC(ioapic_intr##irq_num) ;						\
 	incl	TD_CRITCOUNT(%rbx) ;					\
 	sti ;								\
 	call	ithread_fast_handler ;	/* returns 0 to unmask */	\
+	cli ;				/* interlock avoid stacking */	\
 	decl	TD_CRITCOUNT(%rbx) ;					\
 	addq	$8, %rsp ;		/* intrframe -> trapframe */	\
 	UNMASK_IRQ(irq_num) ;						\
@@ -354,6 +355,7 @@ Xipiq:
 	sti
 	xchgl	%eax,PCPU(npoll)	/* (atomic op) allow another Xipi */
 	call	lwkt_process_ipiq_frame
+	cli 				/* interlock avoid stacking */
 	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
 	addq	$8,%rsp			/* turn into trapframe */
@@ -393,6 +395,7 @@ Xtimer:
 	incl	TD_CRITCOUNT(%rbx)
 	sti
 	call	pcpu_timer_process_frame
+	cli 				/* interlock avoid stacking */
 	decl	TD_CRITCOUNT(%rbx)
 	decl	PCPU(intr_nesting_level)
 	addq	$8,%rsp			/* turn into trapframe */
