@@ -108,7 +108,7 @@ restart_mountd(void)
 		return;
 	}
 	/* We have mountd(8) PID in mountdpid varible, let's signal it. */
-	if (kill(mountdpid, SIGHUP) == -1)
+	if (kill(mountdpid, SIGUSR1) == -1)
 		err(1, "signal mountd");
 }
 
