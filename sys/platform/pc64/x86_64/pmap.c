@@ -1554,12 +1554,15 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 }
 
 /*
- * Add a list of wired pages to the kva
- * this routine is only used for temporary
- * kernel mappings that do not need to have
- * page modification or references recorded.
- * Note that old mappings are simply written
- * over.  The page *must* be wired.
+ * Add a list of wired pages to the kva.  This routine is used for temporary
+ * kernel mappings such as those found in buffer cache buffer.  Page
+ * modifications and accesses are not tracked or recorded.
+ *
+ * NOTE! Old mappings are simply overwritten, and we cannot assume relaxed
+ *	 semantics as previous mappings may have been zerod without any
+ *	 invalidation.
+ *
+ * The page *must* be wired.
  */
 void
 pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
@@ -1584,27 +1587,74 @@ pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
 }
 
 /*
- * This routine jerks page mappings from the
- * kernel -- it is meant only for temporary mappings.
+ * This routine jerks page mappings from the kernel -- it is meant only
+ * for temporary mappings such as those found in buffer cache buffers.
+ * No recording modified or access status occurs.
  *
  * MPSAFE, INTERRUPT SAFE (cluster callback)
  */
 void
-pmap_qremove(vm_offset_t va, int count)
+pmap_qremove(vm_offset_t beg_va, int count)
 {
 	vm_offset_t end_va;
+	vm_offset_t va;
 
-	end_va = va + count * PAGE_SIZE;
+	end_va = beg_va + count * PAGE_SIZE;
 
-	while (va < end_va) {
+	for (va = beg_va; va < end_va; va += PAGE_SIZE) {
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
 		(void)pte_load_clear(pte);
 		cpu_invlpg((void *)va);
-		va += PAGE_SIZE;
 	}
-	smp_invltlb();
+	pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+}
+
+/*
+ * This routine removes temporary kernel mappings, only invalidating them
+ * on the current cpu.  It should only be used under carefully controlled
+ * conditions.
+ */
+void
+pmap_qremove_quick(vm_offset_t beg_va, int count)
+{
+	vm_offset_t end_va;
+	vm_offset_t va;
+
+	end_va = beg_va + count * PAGE_SIZE;
+
+	for (va = beg_va; va < end_va; va += PAGE_SIZE) {
+		pt_entry_t *pte;
+
+		pte = vtopte(va);
+		(void)pte_load_clear(pte);
+		cpu_invlpg((void *)va);
+	}
+}
+
+/*
+ * This routine removes temporary kernel mappings *without* invalidating
+ * the TLB.  It can only be used on permanent kva reservations such as those
+ * found in buffer cache buffers, under carefully controlled circumstances.
+ *
+ * NOTE: Repopulating these KVAs requires unconditional invalidation.
+ *	 (pmap_qenter() does unconditional invalidation).
+ */
+void
+pmap_qremove_noinval(vm_offset_t beg_va, int count)
+{
+	vm_offset_t end_va;
+	vm_offset_t va;
+
+	end_va = beg_va + count * PAGE_SIZE;
+
+	for (va = beg_va; va < end_va; va += PAGE_SIZE) {
+		pt_entry_t *pte;
+
+		pte = vtopte(va);
+		(void)pte_load_clear(pte);
+	}
 }
 
 /*
