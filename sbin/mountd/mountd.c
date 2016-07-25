@@ -165,17 +165,19 @@ void	free_dir(struct dirlist *);
 void	free_exp(struct exportlist *);
 void	free_grp(struct grouplist *);
 void	free_host(struct hostlist *);
-void	get_exportlist(void);
+void	get_exportlist(int incremental);
 int	get_host(char *, struct grouplist *, struct grouplist *);
 struct hostlist *get_ht(void);
 int	get_line(void);
 void	get_mountlist(void);
+static void delete_export(struct statfs *fsp);
 int	get_net(char *, struct netmsk *, int);
 void	getexp_err(struct exportlist *, struct grouplist *);
 struct grouplist *get_grp(void);
 void	hang_dirp(struct dirlist *, struct grouplist *,
 				struct exportlist *, int);
-void	huphandler(int sig);
+void	huphandler1(int sig);
+void	huphandler2(int sig);
 int     makemask(struct sockaddr_storage *ssp, int bitlen);
 void	mntsrv(struct svc_req *, SVCXPRT *);
 void	nextfield(char **, char **);
@@ -211,7 +213,8 @@ int resvport_only = 1;
 int nhosts = 0;
 int dir_only = 1;
 int dolog = 0;
-int got_sighup = 0;
+int got_sighup1 = 0;
+int got_sighup2 = 0;
 
 int xcreated = 0;
 char *svcport_str = NULL;
@@ -343,13 +346,14 @@ main(int argc, char **argv)
 	openlog("mountd", LOG_PID, LOG_DAEMON);
 	if (debug)
 		warnx("getting export list");
-	get_exportlist();
+	get_exportlist(0);
 	if (debug)
 		warnx("getting mount list");
 	get_mountlist();
 	if (debug)
 		warnx("here we go");
-	signal(SIGHUP, huphandler);
+	signal(SIGHUP, huphandler1);
+	signal(SIGUSR1, huphandler2);
 	signal(SIGTERM, terminate);
 	signal(SIGPIPE, SIG_IGN);
 
@@ -428,9 +432,13 @@ main(int argc, char **argv)
 
 	/* Expand svc_run() here so that we can call get_exportlist(). */
 	for (;;) {
-		if (got_sighup) {
-			get_exportlist();
-			got_sighup = 0;
+		if (got_sighup1) {
+			got_sighup1 = 0;
+			get_exportlist(0);
+		}
+		if (got_sighup2) {
+			got_sighup2 = 0;
+			get_exportlist(1);
 		}
 		readfds = svc_fdset;
 		switch (select(svc_maxfd + 1, &readfds, NULL, NULL, NULL)) {
@@ -723,6 +731,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 
 	sigemptyset(&sighup_mask);
 	sigaddset(&sighup_mask, SIGHUP);
+
 	saddr = svc_getrpccaller(transp)->buf;
 	switch (saddr->sa_family) {
 	case AF_INET6:
@@ -979,6 +988,7 @@ xdr_explist_common(XDR *xdrsp, caddr_t cp, int brief)
 
 	sigemptyset(&sighup_mask);
 	sigaddset(&sighup_mask, SIGHUP);
+	sigaddset(&sighup_mask, SIGUSR1);
 	sigprocmask(SIG_BLOCK, &sighup_mask, NULL);
 	ep = exphead;
 	while (ep) {
@@ -1178,6 +1188,9 @@ get_exportlist_one(void)
 						fsb.f_mntonname);
 					else
 					    out_of_mem();
+
+					delete_export(&fsb);
+
 					if (debug)
 						warnx("making new ep fs=0x%x,0x%x",
 						    fsb.f_fsid.val[0],
@@ -1325,10 +1338,13 @@ nextline:
 }
 
 /*
- * Get the export list from all specified files
+ * Get the export list from all specified files.
+ *
+ * If incremental is non-zero we were signalled by mount and we do not
+ * call mountctl() to blow away existing exports.
  */
 void
-get_exportlist(void)
+get_exportlist(int incremental)
 {
 	struct exportlist *ep, *ep2;
 	struct grouplist *grp, *tgrp;
@@ -1366,15 +1382,6 @@ get_exportlist(void)
 	 */
 	num = getmntinfo(&mntbufp, MNT_NOWAIT);
 	for (i = 0; i < num; i++) {
-		union {
-			struct ufs_args ua;
-			struct iso_args ia;
-			struct mfs_args ma;
-			struct msdosfs_args da;
-			struct ntfs_args na;
-		} targs;
-		struct export_args export;
-
 		fsp = &mntbufp[i];
 		if (getvfsbyname(fsp->f_fstypename, &vfc) != 0) {
 			syslog(LOG_ERR, "getvfsbyname() failed for %s",
@@ -1390,23 +1397,8 @@ get_exportlist(void)
 		if (vfc.vfc_flags & VFCF_NETWORK)
 			continue;
 
-		export.ex_flags = MNT_DELEXPORT;
-		if (mountctl(fsp->f_mntonname, MOUNTCTL_SET_EXPORT, -1,
-			     &export, sizeof(export), NULL, 0) == 0) {
-		} else if (!strcmp(fsp->f_fstypename, "mfs") ||
-		    !strcmp(fsp->f_fstypename, "ufs") ||
-		    !strcmp(fsp->f_fstypename, "msdos") ||
-		    !strcmp(fsp->f_fstypename, "ntfs") ||
-		    !strcmp(fsp->f_fstypename, "cd9660")) {
-			bzero(&targs, sizeof targs);
-			targs.ua.fspec = NULL;
-			targs.ua.export.ex_flags = MNT_DELEXPORT;
-			if (mount(fsp->f_fstypename, fsp->f_mntonname,
-				  fsp->f_flags | MNT_UPDATE,
-				  (caddr_t)&targs) < 0)
-				syslog(LOG_ERR, "can't delete exports for %s",
-				    fsp->f_mntonname);
-		}
+		if (incremental == 0)
+			delete_export(fsp);
 	}
 
 	/*
@@ -2394,6 +2386,40 @@ get_mountlist(void)
 	fclose(mlfile);
 }
 
+static
+void
+delete_export(struct statfs *fsp)
+{
+	union {
+		struct ufs_args ua;
+		struct iso_args ia;
+		struct mfs_args ma;
+		struct msdosfs_args da;
+		struct ntfs_args na;
+	} targs;
+	struct export_args export;
+
+	export.ex_flags = MNT_DELEXPORT;
+	if (mountctl(fsp->f_mntonname, MOUNTCTL_SET_EXPORT, -1,
+		     &export, sizeof(export), NULL, 0) == 0) {
+		/* ok */
+	} else if (!strcmp(fsp->f_fstypename, "mfs") ||
+	    !strcmp(fsp->f_fstypename, "ufs") ||
+	    !strcmp(fsp->f_fstypename, "msdos") ||
+	    !strcmp(fsp->f_fstypename, "ntfs") ||
+	    !strcmp(fsp->f_fstypename, "cd9660")) {
+		bzero(&targs, sizeof targs);
+		targs.ua.fspec = NULL;
+		targs.ua.export.ex_flags = MNT_DELEXPORT;
+		if (mount(fsp->f_fstypename, fsp->f_mntonname,
+			  fsp->f_flags | MNT_UPDATE,
+			  (caddr_t)&targs) < 0)
+			syslog(LOG_ERR, "can't delete exports for %s",
+			    fsp->f_mntonname);
+	}
+}
+
+
 void
 del_mlist(char *hostp, char *dirp)
 {
@@ -2664,9 +2690,15 @@ sa_rawaddr(struct sockaddr *sa, int *nbytes) {
 }
 
 void
-huphandler(int sig)
+huphandler1(int sig)
 {
-	got_sighup = 1;
+	got_sighup1 = 1;
+}
+
+void
+huphandler2(int sig)
+{
+	got_sighup2 = 1;
 }
 
 void terminate(int sig)
