@@ -1,25 +1,4 @@
-/*
- * Powerdog Industries kindly requests feedback from anyone modifying
- * this function:
- *
- * Date: Thu, 05 Jun 1997 23:17:17 -0400
- * From: Kevin Ruddy <kevin.ruddy@powerdog.com>
- * To: James FitzGibbon <james@nexis.net>
- * Subject: Re: Use of your strptime(3) code (fwd)
- *
- * The reason for the "no mod" clause was so that modifications would
- * come back and we could integrate them and reissue so that a wider
- * audience could use it (thereby spreading the wealth).  This has
- * made it possible to get strptime to work on many operating systems.
- * I'm not sure why that's "plain unacceptable" to the FreeBSD team.
- *
- * Anyway, you can change it to "with or without modification" as
- * you see fit.  Enjoy.
- *
- * Kevin Ruddy
- * Powerdog Industries, Inc.
- */
-/*
+/*-
  * Copyright (c) 1994 Powerdog Industries.  All rights reserved.
  *
  * Copyright (c) 2011 The FreeBSD Foundation
@@ -36,12 +15,6 @@
  *    notice, this list of conditions and the following disclaimer
  *    in the documentation and/or other materials provided with the
  *    distribution.
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgement:
- *      This product includes software developed by Powerdog Industries.
- * 4. The name of Powerdog Industries may not be used to endorse or
- *    promote products derived from this software without specific prior
- *    written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY POWERDOG INDUSTRIES ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -55,9 +28,13 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies, either expressed or implied, of Powerdog Industries.
+ *
  * @(#)strptime.c	0.1 (Powerdog) 94/03/27
  * @(#) Copyright (c) 1994 Powerdog Industries.  All rights reserved.
- * $FreeBSD: head/lib/libc/stdtime/strptime.c 227753 2011-11-20 14:45:42Z theraven $
+ * $FreeBSD: head/lib/libc/stdtime/strptime.c 267544 2014-06-16 14:55:09Z pfg $
  */
 
 #include "namespace.h"
@@ -73,7 +50,7 @@
 
 static char * _strptime(const char *, const char *, struct tm *, int *, locale_t);
 
-#define asizeof(a)	(sizeof (a) / sizeof ((a)[0]))
+#define	asizeof(a)	(sizeof(a) / sizeof((a)[0]))
 
 static char *
 _strptime(const char *buf, const char *fmt, struct tm *tm, int *GMTp,
@@ -81,8 +58,7 @@ _strptime(const char *buf, const char *fmt, struct tm *tm, int *GMTp,
 {
 	char	c;
 	const char *ptr;
-	int	i,
-		len;
+	int	i, len;
 	int Ealternative, Oalternative;
 	struct lc_time_T *tptr = __get_current_time_locale(locale);
 
@@ -116,7 +92,7 @@ label:
 
 		case '+':
 			buf = _strptime(buf, tptr->date_fmt, tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
@@ -140,13 +116,13 @@ label:
 
 		case 'c':
 			buf = _strptime(buf, tptr->c_fmt, tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'D':
 			buf = _strptime(buf, "%m/%d/%y", tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
@@ -164,37 +140,37 @@ label:
 
 		case 'F':
 			buf = _strptime(buf, "%Y-%m-%d", tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'R':
 			buf = _strptime(buf, "%H:%M", tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'r':
 			buf = _strptime(buf, tptr->ampm_fmt, tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'T':
 			buf = _strptime(buf, "%H:%M:%S", tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'X':
 			buf = _strptime(buf, tptr->X_fmt, tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
 		case 'x':
 			buf = _strptime(buf, tptr->x_fmt, tm, GMTp, locale);
-			if (buf == 0)
+			if (buf == NULL)
 				return (NULL);
 			break;
 
@@ -486,7 +462,8 @@ label:
 			}
 			errno = sverrno;
 			buf = cp;
-			gmtime_r(&t, tm);
+			if (gmtime_r(&t, tm) == NULL)
+				return (NULL);
 			*GMTp = 1;
 			}
 			break;
@@ -580,9 +557,8 @@ label:
 			break;
 		}
 	}
-	return (char *)buf;
+	return ((char *)buf);
 }
-
 
 char *
 strptime_l(const char * __restrict buf, const char * __restrict fmt,
@@ -596,11 +572,13 @@ strptime_l(const char * __restrict buf, const char * __restrict fmt,
 	ret = _strptime(buf, fmt, tm, &gmt, loc);
 	if (ret && gmt) {
 		time_t t = timegm(tm);
+
 		localtime_r(&t, tm);
 	}
 
 	return (ret);
 }
+
 char *
 strptime(const char * __restrict buf, const char * __restrict fmt,
     struct tm * __restrict tm)
