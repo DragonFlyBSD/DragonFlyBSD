@@ -146,14 +146,10 @@ ENTRY(cpu_heavy_switch)
 #error "assembly incompatible with cpumask_t"
 #endif
 1:
-	movq	PCPU(other_cpus)+0,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+0(%rcx)
-	movq	PCPU(other_cpus)+8,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+8(%rcx)
-	movq	PCPU(other_cpus)+16,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+16(%rcx)
-	movq	PCPU(other_cpus)+24,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+24(%rcx)
+	movq	PCPU(cpumask_simple),%rsi
+	movq	PCPU(cpumask_offset),%r12
+	xorq	$-1,%rsi
+	MPLOCKED andq %rsi, VM_PMAP+PM_ACTIVE(%rcx, %r12, 1)
 2:
 
 	/*
@@ -258,14 +254,11 @@ ENTRY(cpu_exit_switch)
 	testq	%rcx,%rcx
 	jz	2f
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movq	PCPU(other_cpus)+0,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+0(%rcx)
-	movq	PCPU(other_cpus)+8,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+8(%rcx)
-	movq	PCPU(other_cpus)+16,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+16(%rcx)
-	movq	PCPU(other_cpus)+24,%rax
-	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+24(%rcx)
+
+	movq	PCPU(cpumask_simple),%rax
+	movq	PCPU(cpumask_offset),%r12
+	xorq	$-1,%rax
+	MPLOCKED andq %rax, VM_PMAP+PM_ACTIVE(%rcx, %r12, 1)
 2:
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
@@ -335,14 +328,9 @@ ENTRY(cpu_heavy_restore)
 #if CPUMASK_ELEMENTS != 4
 #error "assembly incompatible with cpumask_t"
 #endif
-	movq	PCPU(cpumask)+0,%rsi		/* new contents */
-	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE+0(%rcx)
-	movq	PCPU(cpumask)+8,%rsi
-	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE+8(%rcx)
-	movq	PCPU(cpumask)+16,%rsi
-	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE+16(%rcx)
-	movq	PCPU(cpumask)+24,%rsi
-	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE+24(%rcx)
+	movq	PCPU(cpumask_simple),%rsi
+	movq	PCPU(cpumask_offset),%r12
+	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE(%rcx, %r12, 1)
 
 	movl	VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
 	testl	$CPULOCK_EXCL,%esi
