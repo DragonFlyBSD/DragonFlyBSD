@@ -1,4 +1,6 @@
 /*-
+ * Copyright (c) 2014 Gary Mills
+ * Copyright 2011, Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 1994 Powerdog Industries.  All rights reserved.
  *
  * Copyright (c) 2011 The FreeBSD Foundation
@@ -47,6 +49,7 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "timelocal.h"
+#include "tzfile.h"
 
 static char * _strptime(const char *, const char *, struct tm *, int *, locale_t);
 
@@ -60,13 +63,10 @@ _strptime(const char *buf, const char *fmt, struct tm *tm, int *GMTp,
 	const char *ptr;
 	int	i, len;
 	int Ealternative, Oalternative;
-	struct lc_time_T *tptr = __get_current_time_locale(locale);
+	const struct lc_time_T *tptr = __get_current_time_locale(locale);
 
 	ptr = fmt;
 	while (*ptr != 0) {
-		if (*buf == 0)
-			break;
-
 		c = *ptr++;
 
 		if (c != '%') {
@@ -84,7 +84,6 @@ _strptime(const char *buf, const char *fmt, struct tm *tm, int *GMTp,
 label:
 		c = *ptr++;
 		switch (c) {
-		case 0:
 		case '%':
 			if (*buf++ != '%')
 				return (NULL);
@@ -111,7 +110,7 @@ label:
 			if (i < 19)
 				return (NULL);
 
-			tm->tm_year = i * 100 - 1900;
+			tm->tm_year = i * 100 - TM_YEAR_BASE;
 			break;
 
 		case 'c':
@@ -218,11 +217,6 @@ label:
 				tm->tm_sec = i;
 			}
 
-			if (*buf != 0 &&
-				isspace_l((unsigned char)*buf, locale))
-				while (*ptr != 0 &&
-				       !isspace_l((unsigned char)*ptr, locale))
-					ptr++;
 			break;
 
 		case 'H':
@@ -255,11 +249,6 @@ label:
 
 			tm->tm_hour = i;
 
-			if (*buf != 0 &&
-			    isspace_l((unsigned char)*buf, locale))
-				while (*ptr != 0 &&
-				       !isspace_l((unsigned char)*ptr, locale))
-					ptr++;
 			break;
 
 		case 'p':
@@ -329,11 +318,6 @@ label:
 			if (i > 53)
 				return (NULL);
 
-			if (*buf != 0 &&
-			    isspace_l((unsigned char)*buf, locale))
-				while (*ptr != 0 &&
-				       !isspace_l((unsigned char)*ptr, locale))
-					ptr++;
 			break;
 
 		case 'w':
@@ -346,18 +330,22 @@ label:
 
 			tm->tm_wday = i;
 
-			if (*buf != 0 &&
-			    isspace_l((unsigned char)*buf, locale))
-				while (*ptr != 0 &&
-				       !isspace_l((unsigned char)*ptr, locale))
-					ptr++;
 			break;
 
-		case 'd':
 		case 'e':
 			/*
-			 * The %e specifier is explicitly documented as not
-			 * being zero-padded but there is no harm in allowing
+			 * With %e format, our strftime(3) adds a blank space
+			 * before single digits.
+			 */
+			if (*buf != 0 &&
+			    isspace_l((unsigned char)*buf, locale))
+			       buf++;
+			/* FALLTHROUGH */
+		case 'd':
+			/*
+			 * The %e specifier was once explicitly documented as
+			 * not being zero-padded but was later changed to
+			 * equivalent to %d.  There is no harm in allowing
 			 * such padding.
 			 *
 			 * XXX The %e specifier may gobble one too many
@@ -378,11 +366,6 @@ label:
 
 			tm->tm_mday = i;
 
-			if (*buf != 0 &&
-			    isspace_l((unsigned char)*buf, locale))
-				while (*ptr != 0 &&
-				       !isspace_l((unsigned char)*ptr, locale))
-					ptr++;
 			break;
 
 		case 'B':
@@ -439,11 +422,6 @@ label:
 
 			tm->tm_mon = i - 1;
 
-			if (*buf != 0 &&
-			    isspace_l((unsigned char)*buf, locale))
-				while (*ptr != 0 &&
-				       !isspace_l((unsigned char)*ptr, locale))
-					ptr++;
 			break;
 
 		case 's':
@@ -485,7 +463,7 @@ label:
 				len--;
 			}
 			if (c == 'Y')
-				i -= 1900;
+				i -= TM_YEAR_BASE;
 			if (c == 'y' && i < 69)
 				i += 100;
 			if (i < 0)
@@ -493,11 +471,6 @@ label:
 
 			tm->tm_year = i;
 
-			if (*buf != 0 &&
-			    isspace_l((unsigned char)*buf, locale))
-				while (*ptr != 0 &&
-				       !isspace_l((unsigned char)*ptr, locale))
-					ptr++;
 			break;
 
 		case 'Z':
@@ -555,6 +528,15 @@ label:
 			*GMTp = 1;
 			}
 			break;
+
+		case 'n':
+		case 't':
+			while (isspace_l((unsigned char)*buf, locale))
+				buf++;
+			break;
+
+		default:
+			return (NULL);
 		}
 	}
 	return ((char *)buf);
