@@ -755,6 +755,8 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	gd->gd_sysid_alloc = cpuid;	/* prime low bits for cpu lookup */
 	gd->gd_cpuid = cpuid;
 	CPUMASK_ASSBIT(gd->gd_cpumask, cpuid);
+	gd->gd_cpumask_simple = CPUMASK_SIMPLE(cpuid);
+	gd->gd_cpumask_offset = (uintptr_t)CPUMASK_ADDR(*(cpumask_t *)0, cpuid);
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);

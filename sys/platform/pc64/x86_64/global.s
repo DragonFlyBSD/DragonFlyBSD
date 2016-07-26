@@ -79,6 +79,8 @@
 	.globl	gd_sample_pc
 	.globl	gd_sample_sp
 	.globl	gd_npoll
+	.globl	gd_cpumask_simple
+	.globl	gd_cpumask_offset
 
 	.set    gd_cpuid,globaldata + GD_CPUID
 	.set    gd_cpumask,globaldata + GD_CPUMASK
@@ -95,4 +97,6 @@
 	.set	gd_sample_pc,globaldata + GD_SAMPLE_PC
 	.set	gd_sample_sp,globaldata + GD_SAMPLE_SP
 	.set	gd_npoll,globaldata + GD_NPOLL
+	.set	gd_cpumask_simple,globaldata + GD_CPUMASK_SIMPLE
+	.set	gd_cpumask_offset,globaldata + GD_CPUMASK_OFFSET
 

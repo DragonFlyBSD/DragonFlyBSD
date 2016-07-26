@@ -916,6 +916,7 @@ lwkt_preempt(thread_t ntd, int critcount)
 	++preempt_miss;
 	return;
     }
+
     /*
      * We don't have to check spinlocks here as they will also bump
      * td_critcount.
