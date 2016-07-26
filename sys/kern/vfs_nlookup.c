@@ -1243,8 +1243,11 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		}
 
 		/*
-		 * XXX we're not supposed to update nc_flag when holding
-		 *     a shared lock.
+		 * We're not supposed to update nc_flag when holding a shared
+		 * lock, but we allow the case for certain flags.  Note that
+		 * holding an exclusive lock allows updating nc_flag without
+		 * atomics.  nc_flag is not allowe to be updated at all unless
+		 * a shared or exclusive lock is held.
 		 */
 		atomic_clear_short(&ncp->nc_flag,
 				   (NCF_SF_NOCACHE | NCF_UF_CACHE |
