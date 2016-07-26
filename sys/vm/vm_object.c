@@ -1189,6 +1189,7 @@ vm_object_terminate(vm_object_t object)
 	 * remove them from the object. 
 	 */
 	info.count = 0;
+	info.object = object;
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
 				vm_object_terminate_callback, &info);
 
@@ -1250,6 +1251,11 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
 	object = p->object;
+	if (object != info->object) {
+		kprintf("vm_object_terminate_callback: obj/pg race %p/%p\n",
+			info->object, p);
+		return(0);
+	}
 	vm_page_busy_wait(p, TRUE, "vmpgtrm");
 	if (object != p->object) {
 		kprintf("vm_object_terminate: Warning: Encountered "
@@ -1382,11 +1388,19 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 
 	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
+	if (p->object != info->object ||
+	    p->pindex < info->start_pindex ||
+	    p->pindex > info->end_pindex) {
+		kprintf("vm_object_page_clean_pass1: obj/pg race %p/%p\n",
+			info->object, p);
+		return(0);
+	}
 	vm_page_flag_set(p, PG_CLEANCHK);
 	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
 		info->error = 1;
 	} else if (vm_page_busy_try(p, FALSE) == 0) {
-		vm_page_protect(p, VM_PROT_READ);	/* must not block */
+		if (p->object == info->object)
+			vm_page_protect(p, VM_PROT_READ);
 		vm_page_wakeup(p);
 	} else {
 		info->error = 1;
@@ -1404,6 +1418,14 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	struct rb_vm_page_scan_info *info = data;
 	int generation;
 
+	if (p->object != info->object ||
+	    p->pindex < info->start_pindex ||
+	    p->pindex > info->end_pindex) {
+		kprintf("vm_object_page_clean_pass2: obj/pg race %p/%p\n",
+			info->object, p);
+		return(0);
+	}
+
 	/*
 	 * Do not mess with pages that were inserted after we started
 	 * the cleaning pass.
@@ -1413,7 +1435,10 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 
 	generation = info->object->generation;
 	vm_page_busy_wait(p, TRUE, "vpcwai");
+
 	if (p->object != info->object ||
+	    p->pindex < info->start_pindex ||
+	    p->pindex > info->end_pindex ||
 	    info->object->generation != generation) {
 		info->error = 1;
 		vm_page_wakeup(p);
@@ -1465,6 +1490,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 done:
 	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
+
 	return(0);
 }
 
@@ -1617,6 +1643,7 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 	info.start_pindex = start;
 	info.end_pindex = end - 1;
 	info.count = 0;
+	info.object = object;
 
 	vm_object_hold(object);
 	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
@@ -1637,7 +1664,16 @@ vm_object_pmap_remove_callback(vm_page_t p, void *data)
 	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
 
+	if (info->object != p->object ||
+	    p->pindex < info->start_pindex ||
+	    p->pindex > info->end_pindex) {
+		kprintf("vm_object_pmap_remove_callback: obj/pg race %p/%p\n",
+			info->object, p);
+		return(0);
+	}
+
 	vm_page_protect(p, VM_PROT_NONE);
+
 	return(0);
 }
 
@@ -2623,6 +2659,7 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * contents, be sure to get all pages, even those that might be 
 	 * beyond the end of the object.
 	 */
+	info.object = object;
 	info.start_pindex = start;
 	if (end == 0)
 		info.end_pindex = (vm_pindex_t)-1;
@@ -2670,9 +2707,23 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
 
+	if (info->object != p->object ||
+	    p->pindex < info->start_pindex ||
+	    p->pindex > info->end_pindex) {
+		kprintf("vm_object_page_remove_callbackA: obj/pg race %p/%p\n",
+			info->object, p);
+		return(0);
+	}
 	if (vm_page_busy_try(p, TRUE)) {
 		vm_page_sleep_busy(p, TRUE, "vmopar");
 		info->error = 1;
+		return(0);
+	}
+	if (info->object != p->object) {
+		/* this should never happen */
+		kprintf("vm_object_page_remove_callbackB: obj/pg race %p/%p\n",
+			info->object, p);
+		vm_page_wakeup(p);
 		return(0);
 	}
 
