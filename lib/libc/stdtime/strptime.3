@@ -23,9 +23,9 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/lib/libc/stdtime/strptime.3 237573 2012-06-25 21:51:40Z issyl0 $
+.\" $FreeBSD: head/lib/libc/stdtime/strptime.3 272533 2014-10-04 18:00:15Z pfg $
 .\" "
-.Dd June 25, 2012
+.Dd July 26, 2016
 .Dt STRPTIME 3
 .Os
 .Sh NAME
@@ -80,6 +80,11 @@ and
 are now interpreted as beginning at 1969 per POSIX requirements.
 Years 69-00 are interpreted in the 20th century (1969-2000), years
 01-68 in the 21st century (2001-2068).
+The
+.Fa \&%U
+and
+.Fa %W
+format specifiers accept any value within the range 00 to 53.
 .Pp
 If the
 .Fa format
@@ -159,14 +164,6 @@ is taken as midnight
 and 12PM
 (post meridiem)
 is taken as noon.
-.Pp
-The
-.Fa \&%U
-and
-.Fa %W
-format specifiers accept any value within the range 00 to 53
-without validating against other values supplied (like month
-or day of the year, for example).
 .Pp
 The
 .Fa %Z
