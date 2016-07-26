@@ -485,6 +485,8 @@ _cache_lock_shared(struct namecache *ncp)
 }
 
 /*
+ * Lock ncp exclusively, return 0 on success.
+ *
  * NOTE: nc_refs may be zero if the ncp is interlocked by circumstance,
  *	 such as the case where one of its children is locked.
  */
@@ -1535,7 +1537,6 @@ cache_inval(struct nchandle *nch, int flags)
 static int
 _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 {
-	struct namecache *kid;
 	struct namecache *nextkid;
 	int rcnt = 0;
 
@@ -1546,35 +1547,67 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 		ncp->nc_flag |= NCF_DESTROYED;
 		++ncp->nc_generation;
 	}
-	if ((flags & CINV_CHILDREN) && 
-	    (kid = TAILQ_FIRST(&ncp->nc_list)) != NULL
+	while ((flags & CINV_CHILDREN) &&
+	       (nextkid = TAILQ_FIRST(&ncp->nc_list)) != NULL
 	) {
-		_cache_hold(kid);
+		struct namecache *kid;
+		int restart;
+
+		restart = 0;
+		_cache_hold(nextkid);
 		if (++track->depth > MAX_RECURSION_DEPTH) {
 			track->resume_ncp = ncp;
 			_cache_hold(ncp);
 			++rcnt;
 		}
-		_cache_unlock(ncp);
-		while (kid) {
-			if (track->resume_ncp) {
+		while ((kid = nextkid) != NULL) {
+			/*
+			 * Parent (ncp) must be locked for the iteration.
+			 */
+			nextkid = NULL;
+			if (kid->nc_parent != ncp) {
 				_cache_drop(kid);
+				kprintf("cache_inval_internal restartA %s\n", ncp->nc_name);
+				restart = 1;
 				break;
 			}
 			if ((nextkid = TAILQ_NEXT(kid, nc_entry)) != NULL)
 				_cache_hold(nextkid);
+
+			/*
+			 * Parent unlocked for this section to avoid
+			 * deadlocks.
+			 */
+			_cache_unlock(ncp);
+			if (track->resume_ncp) {
+				_cache_drop(kid);
+				_cache_lock(ncp);
+				break;
+			}
 			if ((kid->nc_flag & NCF_UNRESOLVED) == 0 ||
 			    TAILQ_FIRST(&kid->nc_list)
 			) {
 				_cache_lock(kid);
+				if (kid->nc_parent != ncp) {
+					kprintf("cache_inval_internal restartB %s\n", ncp->nc_name);
+					restart = 1;
+					_cache_unlock(kid);
+					_cache_drop(kid);
+					_cache_lock(ncp);
+					break;
+				}
+
 				rcnt += _cache_inval_internal(kid, flags & ~CINV_DESTROY, track);
 				_cache_unlock(kid);
 			}
 			_cache_drop(kid);
-			kid = nextkid;
+			_cache_lock(ncp);
 		}
+		if (nextkid)
+			_cache_drop(nextkid);
 		--track->depth;
-		_cache_lock(ncp);
+		if (restart == 0)
+			break;
 	}
 
 	/*
@@ -2444,6 +2477,7 @@ cache_zap(struct namecache *ncp, int nonblock)
 {
 	struct namecache *par;
 	struct vnode *dropvp;
+	struct nchash_head *nchpp;
 	int refs;
 
 	/*
@@ -2467,6 +2501,7 @@ cache_zap(struct namecache *ncp, int nonblock)
 	 * Acquire locks.  Note that the parent can't go away while we hold
 	 * a child locked.
 	 */
+	nchpp = NULL;
 	if ((par = ncp->nc_parent) != NULL) {
 		if (nonblock) {
 			for (;;) {
@@ -2487,10 +2522,15 @@ cache_zap(struct namecache *ncp, int nonblock)
 			_cache_hold(par);
 			_cache_lock(par);
 		}
-		spin_lock(&ncp->nc_head->spin);
+		nchpp = ncp->nc_head;
+		spin_lock(&nchpp->spin);
 	}
 
 	/*
+	 * At this point if we find refs == 1 it should not be possible for
+	 * anyone else to have access to the ncp.  We are holding the only
+	 * possible access point left (nchpp) spin-locked.
+	 *
 	 * If someone other then us has a ref or we have children
 	 * we cannot zap the entry.  The 1->0 transition and any
 	 * further list operation is protected by the spinlocks
@@ -2503,7 +2543,7 @@ cache_zap(struct namecache *ncp, int nonblock)
 			break;
 		if (atomic_cmpset_int(&ncp->nc_refs, refs, refs - 1)) {
 			if (par) {
-				spin_unlock(&ncp->nc_head->spin);
+				spin_unlock(&nchpp->spin);
 				_cache_put(par);
 			}
 			_cache_unlock(ncp);
@@ -2522,9 +2562,7 @@ cache_zap(struct namecache *ncp, int nonblock)
 	 */
 	dropvp = NULL;
 	if (par) {
-		struct nchash_head *nchpp = ncp->nc_head;
-
-		KKASSERT(nchpp != NULL);
+		KKASSERT(nchpp == ncp->nc_head);
 		LIST_REMOVE(ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
@@ -2989,6 +3027,20 @@ restart:
 				par_locked = 0;
 			}
 			if (_cache_lock_special(ncp) == 0) {
+				if (ncp->nc_parent != par_nch->ncp ||
+				    ncp->nc_nlen != nlc->nlc_namelen ||
+				    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) ||
+				    (ncp->nc_flag & NCF_DESTROYED)) {
+					kprintf("cache_lookup_nonblock: "
+						"ncp-race %p %*.*s\n",
+						ncp,
+						nlc->nlc_namelen,
+						nlc->nlc_namelen,
+						nlc->nlc_nameptr);
+					_cache_unlock(ncp);
+					_cache_drop(ncp);
+					goto failed;
+				}
 				_cache_auto_unresolve(mp, ncp);
 				if (new_ncp) {
 					_cache_free(new_ncp);
