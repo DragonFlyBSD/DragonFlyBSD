@@ -373,6 +373,7 @@ label:
 				return (NULL);
 
 			i = *buf - '0';
+			buf++;
 			if (i > 6)
 				return (NULL);
 
@@ -612,7 +613,8 @@ label:
 			}
 			tm->tm_yday = (7 -
 			    first_wday_of(tm->tm_year + TM_YEAR_BASE) +
-			    day_offset) % 7 + (week_offset - 1) * 7 +
+			    day_offset) % 7 + (week_offset - 1 +
+			    (tm->tm_wday == 0 ? day_offset : 0)) * 7 +
 			    tm->tm_wday - day_offset;
 			flags |= FLAG_YDAY;
 		}
