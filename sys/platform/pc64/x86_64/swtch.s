@@ -142,9 +142,6 @@ ENTRY(cpu_heavy_switch)
 	jz	1f
 	cmpq	LWP_VMSPACE(%r13),%rcx		/* same vmspace? */
 	je	2f
-#if CPUMASK_ELEMENTS != 4
-#error "assembly incompatible with cpumask_t"
-#endif
 1:
 	movq	PCPU(cpumask_simple),%rsi
 	movq	PCPU(cpumask_offset),%r12
@@ -237,11 +234,9 @@ ENTRY(cpu_exit_switch)
 	 */
 	movq	KPML4phys,%rcx
 	movq	%cr3,%rax
-#if 1
 	cmpq	%rcx,%rax
 	je	1f
-#endif
-	/* JG no increment of statistics counters? see cpu_heavy_restore */
+
 	movq	%rcx,%cr3
 1:
 	movq	PCPU(curthread),%rbx
@@ -325,9 +320,6 @@ ENTRY(cpu_heavy_restore)
 	movq	TD_LWP(%rax),%rcx
 	movq	LWP_VMSPACE(%rcx),%rcx		/* RCX = vmspace */
 
-#if CPUMASK_ELEMENTS != 4
-#error "assembly incompatible with cpumask_t"
-#endif
 	movq	PCPU(cpumask_simple),%rsi
 	movq	PCPU(cpumask_offset),%r12
 	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE(%rcx, %r12, 1)
@@ -749,10 +741,8 @@ ENTRY(cpu_lwkt_switch)
 ENTRY(cpu_lwkt_restore)
 	movq	KPML4phys,%rcx	/* YYY borrow but beware desched/cpuchg/exit */
 	movq	%cr3,%rdx
-#if 1
 	cmpq	%rcx,%rdx
 	je	1f
-#endif
 	movq	%rcx,%cr3
 1:
 	/*
