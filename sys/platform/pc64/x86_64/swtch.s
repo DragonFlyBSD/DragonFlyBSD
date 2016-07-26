@@ -82,6 +82,38 @@
 
 #define MPLOCKED        lock ;
 
+/*
+ * PREEMPT_OPTIMIZE
+ *
+ * This feature allows the preempting (interrupt) kernel thread to borrow
+ * %cr3 from the user process it interrupts, allowing us to do-away with
+ * two %cr3 stores, two atomic ops (pm_active is not modified), and pmap
+ * lock tests (not needed since pm_active is not modified).
+ *
+ * Unfortunately, I couldn't really measure any result so for now the
+ * optimization is disabled.
+ */
+#undef PREEMPT_OPTIMIZE
+
+/*
+ * LWP_SWITCH_OPTIMIZE
+ *
+ * This optimization attempted to avoid a %cr3 store and atomic op, and
+ * it might have been useful on older cpus but newer cpus (and more
+ * importantly multi-core cpus) generally do not switch between LWPs on
+ * the same cpu.  Multiple user threads are more likely to be distributed
+ * across multiple cpus.  In cpu-bound situations the scheduler will already
+ * be in batch-mode (meaning relatively few context-switches/sec), and
+ * otherwise the lwp(s) are likely to be blocked waiting for events.
+ *
+ * On the flip side, the conditionals this option uses measurably reduce
+ * performance (just slightly, honestly).  So this option is disabled.
+ */
+#undef LWP_SWITCH_OPTIMIZE
+
+	/*
+	 * Global Declarations
+	 */
 	.data
 
 	.globl	panic
@@ -93,8 +125,10 @@ swtch_optim_stats:	.long	0		/* number of _swtch_optims */
 tlb_flush_count:	.long	0
 #endif
 
+	/*
+	 * Code
+	 */
 	.text
-
 
 /*
  * cpu_heavy_switch(struct thread *next_thread)
@@ -128,21 +162,40 @@ ENTRY(cpu_heavy_switch)
 	 * Clear the cpu bit in the pmap active mask.  The restore
 	 * function will set the bit in the pmap active mask.
 	 *
-	 * Special case: when switching between threads sharing the
-	 * same vmspace if we avoid clearing the bit we do not have
-	 * to reload %cr3 (if we clear the bit we could race page
-	 * table ops done by other threads and would have to reload
-	 * %cr3, because those ops will not know to IPI us).
+	 * If we are switching away due to a preempt, TD_PREEMPTED(%rdi)
+	 * will be non-NULL.  In this situation we do want to avoid extra
+	 * atomic ops and %cr3 reloads (see top of file for reasoning).
+	 *
+	 * NOTE: Do not try to optimize avoiding the %cr3 reload or pm_active
+	 *	 adjustment.  This mattered on uni-processor systems but in
+	 *	 multi-core systems we are highly unlikely to be switching
+	 *	 to another thread belonging to the same process on this cpu.
+	 *
+	 *	 (more likely the target thread is still sleeping, or if cpu-
+	 *	 bound the scheduler is in batch mode and the switch rate is
+	 *	 already low).
 	 */
 	movq	%rcx,%rbx			/* RBX = oldthread */
+#ifdef PREEMPT_OPTIMIZE
+	/*
+	 * If we are being preempted the target thread borrows our %cr3
+	 * and we leave our pmap bits intact for the duration.
+	 */
+	movq	TD_PREEMPTED(%rdi),%r13
+	testq	%r13,%r13
+	jne	2f
+#endif
+
 	movq	TD_LWP(%rcx),%rcx		/* RCX = oldlwp	*/
-	movq	TD_LWP(%rdi),%r13		/* R13 = newlwp */
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = oldvmspace */
+#ifdef LWP_SWITCH_OPTIMIZE
+	movq	TD_LWP(%rdi),%r13		/* R13 = newlwp */
 	testq	%r13,%r13			/* might not be a heavy */
 	jz	1f
 	cmpq	LWP_VMSPACE(%r13),%rcx		/* same vmspace? */
 	je	2f
 1:
+#endif
 	movq	PCPU(cpumask_simple),%rsi
 	movq	PCPU(cpumask_offset),%r12
 	xorq	$-1,%rsi
@@ -229,6 +282,17 @@ ENTRY(cpu_heavy_switch)
  *	complete.
  */
 ENTRY(cpu_exit_switch)
+
+#ifdef PREEMPT_OPTIMIZE
+	/*
+	 * If we were preempting we are switching back to the original thread.
+	 * In this situation we already have the original thread's %cr3 and
+	 * should not replace it!
+	 */
+	testl	$TDF_PREEMPT_DONE, TD_FLAGS(%rdi)
+	jne	1f
+#endif
+
 	/*
 	 * Get us out of the vmspace
 	 */
@@ -302,6 +366,16 @@ ENTRY(cpu_heavy_restore)
 #if defined(SWTCH_OPTIM_STATS)
 	incl	_swtch_optim_stats
 #endif
+#ifdef PREEMPT_OPTIMIZE
+	/*
+	 * If restoring our thread after a preemption has returned to
+	 * us, our %cr3 and pmap were borrowed and are being returned to
+	 * us and no further action on those items need be taken.
+	 */
+	testl	$TDF_PREEMPT_DONE, TD_FLAGS(%rax)
+	jne	4f
+#endif
+
 	/*
 	 * Tell the pmap that our cpu is using the VMSPACE now.  We cannot
 	 * safely test/reload %cr3 until after we have set the bit in the
@@ -584,7 +658,8 @@ ENTRY(savectx)
 	ret
 
 /*
- * cpu_idle_restore()	(current thread in %rax on entry) (one-time execution)
+ * cpu_idle_restore()	(current thread in %rax on entry, old thread in %rbx)
+ *			(one-time entry)
  *
  *	Don't bother setting up any regs other than %rbp so backtraces
  *	don't die.  This restore function is used to bootstrap into the
@@ -604,10 +679,10 @@ ENTRY(savectx)
 ENTRY(cpu_idle_restore)
 	/* cli */
 	movq	KPML4phys,%rcx
-	/* JG xor? */
-	movq	$0,%rbp
-	/* JG push RBP? */
-	pushq	$0
+	xorq	%rbp,%rbp		/* dummy frame pointer */
+	pushq	$0			/* dummy return pc */
+
+	/* NOTE: idle thread can never preempt */
 	movq	%rcx,%cr3
 	cmpl	$0,PCPU(cpuid)
 	je	1f
@@ -655,7 +730,18 @@ ENTRY(cpu_kthread_restore)
 	movq	KPML4phys,%rcx
 	movq	TD_PCB(%rax),%r13
 	xorq	%rbp,%rbp
+
+#ifdef PREEMPT_OPTIMIZE
+	/*
+	 * If we are preempting someone we borrow their %cr3, do not overwrite
+	 * it!
+	 */
+	movq	TD_PREEMPTED(%rax),%r14
+	testq	%r14,%r14
+	jne	1f
+#endif
 	movq	%rcx,%cr3
+1:
 
 	/*
 	 * rax and rbx come from the switchout code.  Call
@@ -727,18 +813,22 @@ ENTRY(cpu_lwkt_switch)
 /*
  * cpu_lwkt_restore()	(current thread in %rax on entry)
  *
- *	Standard LWKT restore function.  This function is always called
- *	while in a critical section.
+ * Standard LWKT restore function.  This function is always called
+ * while in a critical section.
  *	
- *	Warning: due to preemption the restore function can be used to 
- *	'return' to the original thread.  Interrupt disablement must be
- *	protected through the switch so we cannot run splz here.
- *
- *	YYY we theoretically do not need to load KPML4phys into cr3, but if
- *	so we need a way to detect when the PTD we are using is being 
- *	deleted due to a process exiting.
+ * WARNING! Due to preemption the restore function can be used to 'return'
+ *	    to the original thread.   Interrupt disablement must be
+ *	    protected through the switch so we cannot run splz here.
  */
 ENTRY(cpu_lwkt_restore)
+#ifdef PREEMPT_OPTIMIZE
+	/*
+	 * If we are preempting someone we borrow their %cr3 and pmap
+	 */
+	movq	TD_PREEMPTED(%rax),%r14	/* kernel thread preempting? */
+	testq	%r14,%r14
+	jne	1f			/* yes, borrow %cr3 from old thread */
+#endif
 	movq	KPML4phys,%rcx	/* YYY borrow but beware desched/cpuchg/exit */
 	movq	%cr3,%rdx
 	cmpq	%rcx,%rdx
