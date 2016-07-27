@@ -45,7 +45,7 @@
 
 char *_mktemp(char *);
 
-static int _gettemp(char *, int *, int, int);
+static int _gettemp(char *, int *, int, int, int);
 
 static const unsigned char padchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -55,7 +55,15 @@ mkstemps(char *path, int slen)
 {
 	int fd;
 
-	return (_gettemp(path, &fd, 0, slen) ? fd : -1);
+	return (_gettemp(path, &fd, 0, slen, 0) ? fd : -1);
+}
+
+int
+mkostemps(char *path, int slen, int oflags)
+{
+	int fd;
+
+	return (_gettemp(path, &fd, 0, slen, oflags) ? fd : -1);
 }
 
 int
@@ -63,19 +71,27 @@ mkstemp(char *path)
 {
 	int fd;
 
-	return (_gettemp(path, &fd, 0, 0) ? fd : -1);
+	return (_gettemp(path, &fd, 0, 0, 0) ? fd : -1);
+}
+
+int
+mkostemp(char *path, int oflags)
+{
+	int fd;
+
+	return (_gettemp(path, &fd, 0, 0, oflags) ? fd : -1);
 }
 
 char *
 mkdtemp(char *path)
 {
-	return (_gettemp(path, NULL, 1, 0) ? path : NULL);
+	return (_gettemp(path, NULL, 1, 0, 0) ? path : NULL);
 }
 
 char *
 _mktemp(char *path)
 {
-	return (_gettemp(path, NULL, 0, 0) ? path : NULL);
+	return (_gettemp(path, NULL, 0, 0, 0) ? path : NULL);
 }
 
 __warn_references(mktemp,
@@ -88,7 +104,7 @@ mktemp(char *path)
 }
 
 static int
-_gettemp(char *path, int *doopen, int domkdir, int slen)
+_gettemp(char *path, int *doopen, int domkdir, int slen, int oflags)
 {
 	char *start, *trv, *suffp, *carryp;
 	char *pad;
@@ -97,6 +113,11 @@ _gettemp(char *path, int *doopen, int domkdir, int slen)
 	uint32_t rand;
 	char carrybuf[MAXPATHLEN];
 
+	if ((oflags & ~(O_APPEND | O_DIRECT | O_SHLOCK |
+		        O_EXLOCK | O_SYNC | O_CLOEXEC)) != 0) {
+		errno = EINVAL;
+		return (0);
+	}
 	if ((doopen != NULL && domkdir) || slen < 0) {
 		errno = EINVAL;
 		return (0);

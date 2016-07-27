@@ -118,7 +118,7 @@ __hash_open(const char *file, int flags, mode_t mode,
 	hashp->flags = flags;
 
 	if (file) {
-		if ((hashp->fp = _open(file, flags, mode)) == -1)
+		if ((hashp->fp = _open(file, flags | O_CLOEXEC, mode)) == -1)
 			RETURN_ERROR(errno, error0);
 		_fcntl(hashp->fp, F_SETFD, 1);
 		new_table = _fstat(hashp->fp, &statbuf) == 0 &&

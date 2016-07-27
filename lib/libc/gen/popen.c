@@ -46,6 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <paths.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include "un-namespace.h"
 #include "libc_private.h"
@@ -68,9 +69,11 @@ popen(const char *command, const char *type)
 {
 	struct pid *cur;
 	FILE *iop;
-	int pdes[2], pid, twoway;
+	int pdes[2], pid, twoway, cloexec;
 	const char *argv[4];
 	struct pid *p;
+
+	cloexec = (strchr(type, 'e') != NULL);
 
 	/*
 	 * Lite2 introduced two-way popen() pipes using _socketpair().
@@ -81,10 +84,11 @@ popen(const char *command, const char *type)
 		type = "r+";
 	} else  {
 		twoway = 0;
-		if ((*type != 'r' && *type != 'w') || type[1])
+		if ((*type != 'r' && *type != 'w') ||
+		    (type[1] && (type[1] != 'e' || type[2])))
 			return (NULL);
 	}
-	if (pipe(pdes) < 0)
+	if (pipe2(pdes, O_CLOEXEC) < 0)
 		return (NULL);
 
 	if ((cur = malloc(sizeof(struct pid))) == NULL) {
@@ -118,6 +122,7 @@ popen(const char *command, const char *type)
 			 * variables.
 			 */
 			_close(pdes[0]);
+			_fcntl(pdes[1], F_SETFD, 0);
 			if (pdes[1] != STDOUT_FILENO) {
 				_dup2(pdes[1], STDOUT_FILENO);
 				_close(pdes[1]);
@@ -126,6 +131,7 @@ popen(const char *command, const char *type)
 			} else if (twoway && (pdes[1] != STDIN_FILENO))
 				_dup2(pdes[1], STDIN_FILENO);
 		} else {
+			_fcntl(pdes[0], F_SETFD, 0);
 			if (pdes[0] != STDIN_FILENO) {
 				_dup2(pdes[0], STDIN_FILENO);
 				_close(pdes[0]);
@@ -155,6 +161,11 @@ popen(const char *command, const char *type)
 	THREAD_LOCK();
 	SLIST_INSERT_HEAD(&pidlist, cur, next);
 	THREAD_UNLOCK();
+
+	if (!cloexec) {
+		int fd = (*type == 'r') ? pdes[0] : pdes[1];
+		_fcntl(fd, F_SETFD, 0);
+	}
 
 	return (iop);
 }

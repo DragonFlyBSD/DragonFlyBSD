@@ -126,7 +126,7 @@ arc4_stir(void)
 	 *	 random.
 	 */
 	n = 0;
-	fd = _open(RANDOMDEV, O_RDONLY, 0);
+	fd = _open(RANDOMDEV, O_RDONLY | O_CLOEXEC, 0);
 	if (fd >= 0) {
 		n = _read(fd, rnd, sizeof(rnd));
 		_close(fd);

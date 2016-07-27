@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <wordexp.h>
 #include "un-namespace.h"
@@ -98,7 +99,7 @@ we_askshell(const char *words, wordexp_t *we, int flags)
 	if ((ifs = getenv("IFS")) == NULL)
 		ifs = " \t\n";
 
-	if (pipe(pdes) < 0)
+	if (pipe2(pdes, O_CLOEXEC) < 0)
 		return (WRDE_NOSPACE);	/* XXX */
 	if ((pid = fork()) < 0) {
 		_close(pdes[0]);
@@ -114,6 +115,7 @@ we_askshell(const char *words, wordexp_t *we, int flags)
 		char *cmd;
 
 		_close(pdes[0]);
+		_fcntl(pdes[1], F_SETFD, 0);
 		if (_dup2(pdes[1], STDOUT_FILENO) < 0)
 			_exit(1);
 		_close(pdes[1]);

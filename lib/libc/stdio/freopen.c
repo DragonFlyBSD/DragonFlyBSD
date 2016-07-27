@@ -111,6 +111,9 @@ freopen(const char * __restrict file, const char * __restrict mode, FILE *fp)
 			ftruncate(fp->pub._fileno, (off_t)0);
 		if (!(oflags & O_APPEND))
 			_sseek(fp, (fpos_t)0, SEEK_SET);
+		if (oflags & O_CLOEXEC)
+			_fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
+
 		f = fp->pub._fileno;
 		isopen = 0;
 		wantfd = -1;
@@ -190,9 +193,16 @@ finish:
 	 * assume stderr is always fd STDERR_FILENO, even if being freopen'd.
 	 */
 	if (wantfd >= 0 && f != wantfd) {
-		if (_dup2(f, wantfd) >= 0) {
-			_close(f);
-			f = wantfd;
+		if (oflags & O_CLOEXEC) {
+			if (_fcntl(f, F_DUP2FD_CLOEXEC, wantfd) >= 0) {
+				_close(f);
+				f = wantfd;
+			}
+		} else {
+			if (_dup2(f, wantfd) >= 0) {
+				_close(f);
+				f = wantfd;
+			}
 		}
 	}
 

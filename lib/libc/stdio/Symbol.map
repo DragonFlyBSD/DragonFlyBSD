@@ -152,6 +152,11 @@ DF404.0 {
     wscanf_l;
 };
 
+DF406.0 {
+    mkostemp;
+    mkostemps;
+};
+
 DFprivate_1.0 {
     __fcloseall;
     __fflush;
