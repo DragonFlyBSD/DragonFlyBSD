@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-static struct timeval tv1;
-static struct timeval tv2;
-static long long last_us;
+static __thread struct timeval tv1;
+static __thread struct timeval tv2;
+static __thread long long last_us;
 
 void
 start_timing(void)
