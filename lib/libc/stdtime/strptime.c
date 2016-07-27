@@ -561,23 +561,40 @@ label:
 		case 'z':
 			{
 			int sign = 1;
+			len = 4;			/* RFC 822/ISO 8601 */
 
 			if (*buf != '+') {
 				if (*buf == '-')
 					sign = -1;
+				else if (*buf == 'Z')	/* ISO 8601 Z (UTC) */
+					len = 0;
 				else
 					return (NULL);
 			}
 
 			buf++;
 			i = 0;
-			for (len = 4; len > 0; len--) {
+			for (; len > 0; len--) {
 				if (isdigit_l((unsigned char)*buf, locale)) {
 					i *= 10;
 					i += *buf - '0';
 					buf++;
-				} else
+				} else if (*buf == ':' && len == 2) {
+					buf++;		/* ISO 8601 +hh:mm */
+					if (isdigit_l((unsigned char)*buf,
+					    locale)) {
+						i *= 10;
+						i += *buf - '0';
+						buf++;
+					} else {
+						return (NULL);
+					}
+				} else if (len == 2) {
+					i *= 100;	/* ISO 8601 +hh */
+					break;
+				} else {
 					return (NULL);
+				}
 			}
 
 			tm->tm_hour -= sign * (i / 100);

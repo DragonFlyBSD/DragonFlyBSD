@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/lib/libc/stdtime/strptime.3 272533 2014-10-04 18:00:15Z pfg $
 .\" "
-.Dd July 26, 2016
+.Dd August 7, 2016
 .Dt STRPTIME 3
 .Os
 .Sh NAME
@@ -80,11 +80,21 @@ and
 are now interpreted as beginning at 1969 per POSIX requirements.
 Years 69-00 are interpreted in the 20th century (1969-2000), years
 01-68 in the 21st century (2001-2068).
+Four-digit year values in
+.Fa \&%Y
+specifier are interpreted as days since year 1900
+as per POSIX requirements.
 The
 .Fa \&%U
 and
 .Fa %W
 format specifiers accept any value within the range 00 to 53.
+.Pp
+The time zone
+.Fa \&%z
+format specifier accepts both RFC 822 (+hhmm) and ISO 8601 (+hhmm +hh:mm +hh Z)
+standard time zone formats.
+The -00, -00:00, -0000 time zone values are also accepted as per RFC 3339.
 .Pp
 If the
 .Fa format
