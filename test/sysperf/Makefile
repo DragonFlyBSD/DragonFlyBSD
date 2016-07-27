@@ -2,7 +2,8 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 /tmp/sc6 /tmp/sc7 \
 	/tmp/loop1 /tmp/loop2 /tmp/loop3 /tmp/loop4 \
 	/tmp/call1 /tmp/call2 /tmp/call3 /tmp/cmp \
 	/tmp/mt2 /tmp/mt3 /tmp/mt4 \
-	/tmp/fork1 /tmp/pipe1 /tmp/pipe2 \
+	/tmp/fork1 /tmp/pipe1 /tmp/pipe2 /tmp/pipe3 \
+	/tmp/umtx1 \
 	/tmp/sp1 \
 	/tmp/sw1 /tmp/sw2 /tmp/sw3 \
 	/tmp/mbw1 \
@@ -52,6 +53,12 @@ all:	$(TARGETS)
 
 /tmp/pipe2: pipe2.c blib.c
 	$(CC) $(CFLAGS) pipe2.c blib.c -o /tmp/pipe2
+
+/tmp/pipe3: pipe3.c blib.c
+	$(CC) $(CFLAGS) pipe3.c blib.c -pthread -o /tmp/pipe3
+
+/tmp/umtx1: umtx1.c blib.c
+	$(CC) $(CFLAGS) umtx1.c blib.c -pthread -o /tmp/umtx1
 
 /tmp/sp1: socketpair.c blib.c
 	$(CC) $(CFLAGS) socketpair.c blib.c -o /tmp/sp1
