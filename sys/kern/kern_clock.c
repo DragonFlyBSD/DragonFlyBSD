@@ -82,6 +82,7 @@
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
+#include <sys/priv.h>
 #include <sys/timex.h>
 #include <sys/timepps.h>
 #include <sys/upmap.h>
@@ -132,17 +133,29 @@ static int
 sysctl_cputime(SYSCTL_HANDLER_ARGS)
 {
 	int cpu, error = 0;
+	int root_error;
 	size_t size = sizeof(struct kinfo_cputime);
 	struct kinfo_cputime tmp;
 
+	/*
+	 * NOTE: For security reasons, only root can sniff %rip
+	 */
+	root_error = priv_check_cred(curthread->td_ucred, PRIV_ROOT, 0);
+
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		tmp = cputime_percpu[cpu];
-		tmp.cp_sample_pc = (int64_t)globaldata_find(cpu)->gd_sample_pc;
-		tmp.cp_sample_sp = (int64_t)globaldata_find(cpu)->gd_sample_sp;
+		if (root_error == 0) {
+			tmp.cp_sample_pc =
+				(int64_t)globaldata_find(cpu)->gd_sample_pc;
+			tmp.cp_sample_sp =
+				(int64_t)globaldata_find(cpu)->gd_sample_sp;
+		}
 		if ((error = SYSCTL_OUT(req, &tmp, size)) != 0)
 			break;
 	}
-	smp_sniff();
+
+	if (root_error == 0)
+		smp_sniff();
 
 	return (error);
 }

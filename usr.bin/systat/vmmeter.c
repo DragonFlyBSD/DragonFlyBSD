@@ -8,6 +8,7 @@
 #include <kinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <devstat.h>
 
@@ -104,10 +105,12 @@ showvmm(void)
 	else
 		DRAW_ROW(n, TOT_START, 8, "%*u", DTOT( v_lock_colls));
 	DRAW_ROW2(n, TOT_START, 18, "%*.*s", ""); /* label */
-	DRAW_ROW2(n, TOT_START, 30, "%*.*s", ""); /* sample_pc */
+	if (getuid() == 0) {
+		DRAW_ROW2(n, TOT_START, 30, "%*.*s", ""); /* sample_pc */
 #if 0
-	DRAW_ROW2(n, TOT_START, 20, "%*.*s", ""); /* sample_sp */
+		DRAW_ROW2(n, TOT_START, 20, "%*.*s", ""); /* sample_sp */
 #endif
+	}
 
 #undef DTOT
 
@@ -172,12 +175,18 @@ do { \
 #undef CPUD
 
 #define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
-		DRAW_ROW2(n, CPU_START + i, 30, "%*.*s",
-			 address_to_symbol((void *)(intptr_t)CPUC(i, sample_pc),
-					   &symctx));
+
+		if (vmm_cptime_cur[i].cp_sample_pc) {
+			void *rip;
+
+			rip = (void *)(intptr_t)CPUC(i, sample_pc);
+			DRAW_ROW2(n, CPU_START + i, 30, "%*.*s",
+				  address_to_symbol(rip, &symctx));
 #if 0
-		DRAW_ROW(n, CPU_START + i, 19, " %016jx", CPUC(i, sample_sp));
+			DRAW_ROW(n, CPU_START + i, 19, " %016jx",
+				 CPUC(i, sample_sp));
 #endif
+		}
 #undef CPUC
 	}
 }
@@ -213,10 +222,12 @@ labelvmm(void)
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "idle%");
 	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "smpcol");
 	DRAW_ROW(n, TOT_START - 1, 18, "%*s", "label");
-	DRAW_ROW(n, TOT_START - 1, 30, "%*s", "sample_pc");
+	if (getuid() == 0) {
+		DRAW_ROW(n, TOT_START - 1, 30, "%*s", "sample_pc");
 #if 0
-	DRAW_ROW(n, TOT_START - 1, 18, "%*s", "sample_sp");
+		DRAW_ROW(n, TOT_START - 1, 18, "%*s", "sample_sp");
 #endif
+	}
 
 	mvprintw(TOT_START, X_START, "total");
 	for (i = 0; i < vmm_ncpus; ++i)
