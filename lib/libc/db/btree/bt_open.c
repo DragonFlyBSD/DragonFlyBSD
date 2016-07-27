@@ -44,6 +44,7 @@
 #include "namespace.h"
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -194,7 +195,7 @@ __bt_open(const char *fname, int flags, mode_t mode, const BTREEINFO *openinfo,
 			goto einval;
 		}
 
-		if ((t->bt_fd = _open(fname, flags, mode)) < 0)
+		if ((t->bt_fd = _open(fname, flags | O_CLOEXEC, mode)) < 0)
 			goto err;
 
 	} else {
@@ -403,7 +404,7 @@ tmp(void)
 
 	sigfillset(&set);
 	_sigprocmask(SIG_BLOCK, &set, &oset);
-	if ((fd = mkstemp(path)) != -1)
+	if ((fd = mkostemp(path, O_CLOEXEC)) != -1)
 		unlink(path);
 	_sigprocmask(SIG_SETMASK, &oset, NULL);
 	return(fd);

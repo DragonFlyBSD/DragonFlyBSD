@@ -51,6 +51,7 @@
 
 #include "namespace.h"
 #include <sys/param.h>
+#include <sys/file.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -859,7 +860,7 @@ open_temp(HTAB *hashp)
 	/* Block signals; make sure file goes away at process exit. */
 	sigfillset(&set);
 	_sigprocmask(SIG_BLOCK, &set, &oset);
-	if ((hashp->fp = mkstemp(path)) != -1) {
+	if ((hashp->fp = mkostemp(path, O_CLOEXEC)) != -1) {
 		unlink(path);
 		_fcntl(hashp->fp, F_SETFD, 1);
 	}

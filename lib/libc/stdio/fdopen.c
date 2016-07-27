@@ -63,6 +63,10 @@ fdopen(int fd, const char *mode)
 
 	if ((fp = __sfp()) == NULL)
 		return (NULL);
+
+	if (oflags & O_CLOEXEC)
+		_fcntl(fd, F_SETFD, FD_CLOEXEC);    /* silently ignore err */
+
 	fp->pub._flags = flags;
 	/*
 	 * If opened for appending, but underlying descriptor does not have
