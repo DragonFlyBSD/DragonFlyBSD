@@ -246,16 +246,18 @@ _pci_get_rle(struct pci_dev *pdev, int bar)
 static inline phys_addr_t
 pci_resource_start(struct pci_dev *pdev, int bar)
 {
-	struct resource_list_entry *rle;
+	struct resource *res;
+	int rid;
 
-	rle = _pci_get_rle(pdev, bar);
-	if (rle == NULL)
+	rid = PCIR_BAR(bar);
+	res = bus_alloc_resource_any(pdev->dev, SYS_RES_MEMORY, &rid, RF_SHAREABLE);
+	if (res == NULL) {
+		kprintf("pci_resource_start(0x%x, 0x%x) failed\n",
+			pdev->device, PCIR_BAR(bar));
 		return -1;
+	}
 
-	kprintf("pci_resource_start(0x%x, 0x%x) = 0x%lx\n",
-		pdev->device, PCIR_BAR(bar), rman_get_start(rle->res));
-
-	return  rman_get_start(rle->res);
+	return rman_get_start(res);
 }
 
 static inline phys_addr_t
