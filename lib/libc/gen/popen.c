@@ -139,7 +139,7 @@ popen(const char *command, const char *type)
 			_close(pdes[1]);
 		}
 		SLIST_FOREACH(p, &pidlist, next)
-			_close(fileno(p->fp));
+			_close(__sfileno(p->fp));
 		_execve(_PATH_BSHELL, __DECONST(char * const *, argv), environ);
 		_exit(127);
 		/* NOTREACHED */
@@ -199,6 +199,10 @@ pclose(FILE *iop)
 		SLIST_REMOVE_HEAD(&pidlist, next);
 	else
 		SLIST_REMOVE_AFTER(last, next);
+
+	/* re-apply close-on-exec for unlock/fclose race */
+	_fcntl(__sfileno(iop), F_SETFD, FD_CLOEXEC);
+
 	THREAD_UNLOCK();
 
 	fclose(iop);
