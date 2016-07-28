@@ -525,7 +525,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			atomic_add_int(&p1->p_upmap->invfork, 1);
 	}
 
-
 	/*
 	 * Inherit the virtual kernel structure (allows a virtual kernel
 	 * to fork to simulate multiple cpus).
@@ -730,12 +729,25 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	/*
 	 * Assign a TID to the lp.  Loop until the insert succeeds (returns
 	 * NULL).
+	 *
+	 * If we are in a vfork assign the same TID as the lwp that did the
+	 * vfork().  This way if the user program messes around with
+	 * pthread calls inside the vfork(), it will operate like an
+	 * extension of the (blocked) parent.  Also note that since the
+	 * address space is being shared, insofar as pthreads is concerned,
+	 * the code running in the vfork() is part of the original process.
 	 */
-	lp->lwp_tid = destproc->p_lasttid;
+	if (flags & RFPPWAIT) {
+		lp->lwp_tid = origlp->lwp_tid - 1;
+	} else {
+		lp->lwp_tid = destproc->p_lasttid;
+	}
+
 	do {
 		if (++lp->lwp_tid < 0)
 			lp->lwp_tid = 1;
 	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
+
 	destproc->p_lasttid = lp->lwp_tid;
 	destproc->p_nthreads++;
 
