@@ -27,7 +27,7 @@
  *
  * @(#) Copyright (c) 1993 Andrew Moore, Talke Studio. All rights reserved.
  * @(#)main.c,v 1.1 1994/02/01 00:34:42 alm Exp
- * $FreeBSD: head/bin/ed/main.c 241720 2012-10-19 05:43:38Z ed $
+ * $FreeBSD: head/bin/ed/main.c 292455 2015-12-18 23:05:36Z pfg $
  */
 
 /*
@@ -489,7 +489,8 @@ exec_command(void)
 			return ERR;
 		else if (open_sbuf() < 0)
 			return FATAL;
-		if (*fnp && *fnp != '!') strcpy(old_filename, fnp);
+		if (*fnp && *fnp != '!')
+			 strlcpy(old_filename, fnp, PATH_MAX);
 #ifdef BACKWARDS
 		if (*fnp == '\0' && *old_filename == '\0') {
 			errmsg = "no current filename";
@@ -516,7 +517,8 @@ exec_command(void)
 			return ERR;
 		}
 		GET_COMMAND_SUFFIX();
-		if (*fnp) strcpy(old_filename, fnp);
+		if (*fnp)
+			strlcpy(old_filename, fnp, PATH_MAX);
 		printf("%s\n", strip_escapes(old_filename));
 		break;
 	case 'g':
@@ -647,7 +649,7 @@ exec_command(void)
 		GET_COMMAND_SUFFIX();
 		if (!isglobal) clear_undo_stack();
 		if (*old_filename == '\0' && *fnp != '!')
-			strcpy(old_filename, fnp);
+			strlcpy(old_filename, fnp, PATH_MAX);
 #ifdef BACKWARDS
 		if (*fnp == '\0' && *old_filename == '\0') {
 			errmsg = "no current filename";
@@ -781,7 +783,7 @@ exec_command(void)
 			return ERR;
 		GET_COMMAND_SUFFIX();
 		if (*old_filename == '\0' && *fnp != '!')
-			strcpy(old_filename, fnp);
+			strlcpy(old_filename, fnp, PATH_MAX);
 #ifdef BACKWARDS
 		if (*fnp == '\0' && *old_filename == '\0') {
 			errmsg = "no current filename";

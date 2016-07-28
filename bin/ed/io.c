@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * @(#)io.c,v 1.1 1994/02/01 00:34:41 alm Exp
- * $FreeBSD: head/bin/ed/io.c 241737 2012-10-19 14:49:42Z ed $
+ * $FreeBSD: head/bin/ed/io.c 300692 2016-05-25 18:38:30Z truckman $
  */
 
 #include "ed.h"
@@ -36,20 +36,24 @@ read_file(char *fn, long n)
 {
 	FILE *fp;
 	long size;
-
+	int cs;
 
 	fp = (*fn == '!') ? popen(fn + 1, "r") : fopen(strip_escapes(fn), "r");
 	if (fp == NULL) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
 		errmsg = "cannot open input file";
 		return ERR;
-	} else if ((size = read_stream(fp, n)) < 0)
-		return ERR;
-	 else if (((*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
+	}
+	if ((size = read_stream(fp, n)) < 0) {
+		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		errmsg = "error reading input file";
+	}
+	if ((cs = (*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
 		errmsg = "cannot close input file";
-		return ERR;
 	}
+	if (size < 0 || cs < 0)
+		return ERR;
 	if (!scripted)
 		fprintf(stdout, "%lu\n", size);
 	return current_addr - n;
@@ -143,19 +147,24 @@ write_file(char *fn, const char *mode, long n, long m)
 {
 	FILE *fp;
 	long size;
+	int cs;
 
 	fp = (*fn == '!') ? popen(fn+1, "w") : fopen(strip_escapes(fn), mode);
 	if (fp == NULL) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
 		errmsg = "cannot open output file";
 		return ERR;
-	} else if ((size = write_stream(fp, n, m)) < 0)
-		return ERR;
-	 else if (((*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
+	}
+	if ((size = write_stream(fp, n, m)) < 0) {
+		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
+		errmsg = "error writing output file";
+	}
+	if ((cs = (*fn == '!') ?  pclose(fp) : fclose(fp)) < 0) {
 		fprintf(stderr, "%s: %s\n", fn, strerror(errno));
 		errmsg = "cannot close output file";
-		return ERR;
 	}
+	if (size < 0 || cs < 0)
+		return ERR;
 	if (!scripted)
 		fprintf(stdout, "%lu\n", size);
 	return n ? m - n + 1 : 0;

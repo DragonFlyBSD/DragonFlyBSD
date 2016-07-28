@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * @(#)glob.c,v 1.1 1994/02/01 00:34:40 alm Exp
- * $FreeBSD: head/bin/ed/glbl.c 241720 2012-10-19 05:43:38Z ed $
+ * $FreeBSD: head/bin/ed/glbl.c 281758 2015-04-20 02:07:57Z eadler $
  */
 
 #include <sys/types.h>
@@ -154,7 +154,7 @@ set_active_node(line_t *lp)
 		if (active_list != NULL) {
 #endif
 			if ((ts = (line_t **) realloc(active_list,
-			    (ti += MINBUFSZ) * sizeof(line_t **))) == NULL) {
+			    (ti += MINBUFSZ) * sizeof(line_t *))) == NULL) {
 				fprintf(stderr, "%s\n", strerror(errno));
 				errmsg = "out of memory";
 				SPL0();

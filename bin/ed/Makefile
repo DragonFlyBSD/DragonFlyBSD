@@ -1,4 +1,4 @@
-# $FreeBSD: head/bin/ed/Makefile 235654 2012-05-19 17:55:49Z marcel $
+# $FreeBSD: head/bin/ed/Makefile 298107 2016-04-16 07:45:30Z gjb $
 
 PROG=	ed
 SRCS=	buf.c cbc.c glbl.c io.c main.c re.c sub.c undo.c
