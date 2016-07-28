@@ -498,7 +498,7 @@ exit1(int rv)
 	 */
 	if (p->p_flags & P_PPWAIT) {
 		if (p->p_pptr && p->p_pptr->p_upmap)
-			p->p_pptr->p_upmap->invfork = 0;
+			atomic_add_int(&p->p_pptr->p_upmap->invfork, -1);
 		atomic_clear_int(&p->p_flags, P_PPWAIT);
 		wakeup(p->p_pptr);
 	}
