@@ -58,11 +58,7 @@
 #include "ed.h"
 
 
-#ifdef _POSIX_SOURCE
 static sigjmp_buf env;
-#else
-static jmp_buf env;
-#endif
 
 /* static buffers */
 char stdinbuf[1];		/* stdin buffer */
@@ -144,12 +140,7 @@ top:
 	signal(SIGHUP, signal_hup);
 	signal(SIGQUIT, SIG_IGN);
 	signal(SIGINT, signal_int);
-#ifdef _POSIX_SOURCE
-	if ((status = sigsetjmp(env, 1)))
-#else
-	if ((status = setjmp(env)))
-#endif
-	{
+	if ((status = sigsetjmp(env, 1))) {
 		fputs("\n?\n", stderr);
 		errmsg = "interrupt";
 	} else {
@@ -1372,11 +1363,7 @@ handle_int(int signo)
 	if (!sigactive)
 		quit(1);
 	sigflags &= ~(1 << (signo - 1));
-#ifdef _POSIX_SOURCE
 	siglongjmp(env, -1);
-#else
-	longjmp(env, -1);
-#endif
 }
 
 
