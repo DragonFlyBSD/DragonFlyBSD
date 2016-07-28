@@ -522,7 +522,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	if (flags & RFPPWAIT) {
 		p2->p_flags |= P_PPWAIT;
 		if (p1->p_upmap)
-			p1->p_upmap->invfork = 1;
+			atomic_add_int(&p1->p_upmap->invfork, 1);
 	}
 
 
