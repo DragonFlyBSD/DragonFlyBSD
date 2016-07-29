@@ -93,8 +93,6 @@ enum zeroidle_state {
 #define DEFAULT_SLEEP_TIME	(hz / 10)
 #define LONG_SLEEP_TIME		(hz * 10)
 
-static int zero_state;
-
 /*
  * Attempt to maintain approximately 1/2 of our free pages in a
  * PG_ZERO'd state. Add some hysteresis to (attempt to) avoid
@@ -106,26 +104,33 @@ static int zero_state;
  * Returns non-zero if pages should be zerod.
  */
 static int
-vm_page_zero_check(void)
+vm_page_zero_check(int *zero_countp, int *zero_statep)
 {
+	int i;
+
+	*zero_countp = 0;
 	if (idlezero_enable == 0)
 		return (0);
-	if (zero_state == 0) {
+	for (i = 0; i < PQ_L2_SIZE; ++i) {
+		struct vpgqueues *vpq = &vm_page_queues[PQ_FREE + i];
+		*zero_countp += vpq->zero_count;
+	}
+	if (*zero_statep == 0) {
 		/*
 		 * Wait for the count to fall to LO before starting
 		 * to zero pages.
 		 */
-		if (vm_page_zero_count <= ZIDLE_LO(vmstats.v_free_count))
-			zero_state = 1;
+		if (*zero_countp <= ZIDLE_LO(vmstats.v_free_count))
+			*zero_statep = 1;
 	} else {
 		/*
 		 * Once we are zeroing pages wait for the count to
 		 * increase to HI before we stop zeroing pages.
 		 */
-		if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
-			zero_state = 0;
+		if (*zero_countp >= ZIDLE_HI(vmstats.v_free_count))
+			*zero_statep = 0;
 	}
-	return (zero_state);
+	return (*zero_statep);
 }
 
 /*
@@ -133,11 +138,11 @@ vm_page_zero_check(void)
  * when there is an excess of zeroed pages.
  */
 static int
-vm_page_zero_time(void)
+vm_page_zero_time(int zero_count)
 {
 	if (idlezero_enable == 0)
 		return (LONG_SLEEP_TIME);
-	if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
+	if (zero_count >= ZIDLE_HI(vmstats.v_free_count))
 		return (LONG_SLEEP_TIME);
 	return (DEFAULT_SLEEP_TIME);
 }
@@ -146,7 +151,7 @@ vm_page_zero_time(void)
  * MPSAFE thread
  */
 static void
-vm_pagezero(void __unused *arg)
+vm_pagezero(void *arg)
 {
 	vm_page_t m = NULL;
 	struct lwbuf *lwb = NULL;
@@ -156,6 +161,8 @@ vm_pagezero(void __unused *arg)
 	int npages = 0;
 	int sleep_time;	
 	int i = 0;
+	int cpu = (int)(intptr_t)arg;
+	int zero_state = 0;
 
 	/*
 	 * Adjust thread parameters before entering our loop.  The thread
@@ -168,22 +175,24 @@ vm_pagezero(void __unused *arg)
 	 * with it released until tokenization is finished.
 	 */
 	lwkt_setpri_self(TDPRI_IDLE_WORK);
-	lwkt_setcpu_self(globaldata_find(ncpus - 1));
+	lwkt_setcpu_self(globaldata_find(cpu));
 	sleep_time = DEFAULT_SLEEP_TIME;
 
 	/*
 	 * Loop forever
 	 */
 	for (;;) {
+		int zero_count;
+
 		switch(state) {
 		case STATE_IDLE:
 			/*
 			 * Wait for work.
 			 */
 			tsleep(&zero_state, 0, "pgzero", sleep_time);
-			if (vm_page_zero_check())
+			if (vm_page_zero_check(&zero_count, &zero_state))
 				npages = idlezero_rate / 10;
-			sleep_time = vm_page_zero_time();
+			sleep_time = vm_page_zero_time(zero_count);
 			if (npages)
 				state = STATE_GET_PAGE;	/* Fallthrough */
 			break;
@@ -234,15 +243,16 @@ vm_pagezero(void __unused *arg)
 static void
 pagezero_start(void __unused *arg)
 {
-	int error;
 	struct thread *td;
+	int i;
 
 	if (idlezero_nocache < 0 && (cpu_mi_feature & CPU_MI_BZERONT))
 		idlezero_nocache = 1;
 
-	error = kthread_create(vm_pagezero, NULL, &td, "pagezero");
-	if (error)
-		panic("pagezero_start: error %d", error);
+	for (i = 0; i < ncpus; ++i) {
+		kthread_create(vm_pagezero, (void *)(intptr_t)i,
+			       &td, "pagezero %d", i);
+	}
 }
 
 SYSINIT(pagezero, SI_SUB_KTHREAD_VM, SI_ORDER_ANY, pagezero_start, NULL);

@@ -1619,6 +1619,8 @@ ssdtosyssd(struct soft_segment_descriptor *ssd,
 	struct bios_smap *smapbase, *smap, *smapend;
 	struct efi_map_header *efihdrbase;
 	u_int32_t smapsize;
+#define PHYSMAP_HANDWAVE	(vm_paddr_t)(2 * 1024 * 1024)
+#define PHYSMAP_HANDWAVE_MASK	(PHYSMAP_HANDWAVE - 1)
 
 static void
 add_smap_entries(int *physmap_idx)
@@ -1981,14 +1983,18 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	 */
 	for (i = 0; i <= physmap_idx; i += 2) {
 		vm_paddr_t end;
+		vm_paddr_t incr = PHYSMAP_ALIGN;
 
 		end = physmap[i + 1];
 
-		for (pa = physmap[i]; pa < end; pa += PHYSMAP_ALIGN) {
-			int tmp, page_bad, full;
-			int *ptr = (int *)CADDR1;
+		for (pa = physmap[i]; pa < end; pa += incr) {
+			int page_bad, full;
+			volatile uint64_t *ptr = (uint64_t *)CADDR1;
+			uint64_t tmp;
 
+			incr = PHYSMAP_ALIGN;
 			full = FALSE;
+
 			/*
 			 * block out kernel memory as not available.
 			 */
@@ -2007,53 +2013,71 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			page_bad = FALSE;
 
 			/*
+			 * Always test the first and last block supplied in
+			 * the map entry, but it just takes too long to run
+			 * the test these days and we already have to skip
+			 * pages.  Handwave it on PHYSMAP_HANDWAVE boundaries.
+			 */
+			if (pa != physmap[i]) {
+				vm_paddr_t bytes = end - pa;
+				if ((pa & PHYSMAP_HANDWAVE_MASK) == 0 &&
+				    bytes >= PHYSMAP_HANDWAVE + PHYSMAP_ALIGN) {
+					incr = PHYSMAP_HANDWAVE;
+					goto handwaved;
+				}
+			}
+
+			/*
 			 * map page into kernel: valid, read/write,non-cacheable
 			 */
 			*pte = pa |
 			    kernel_pmap.pmap_bits[PG_V_IDX] |
 			    kernel_pmap.pmap_bits[PG_RW_IDX] |
 			    kernel_pmap.pmap_bits[PG_N_IDX];
-			cpu_invltlb();
+			cpu_invlpg(__DEVOLATILE(void *, ptr));
+			cpu_mfence();
 
 			tmp = *ptr;
 			/*
 			 * Test for alternating 1's and 0's
 			 */
-			*(volatile int *)ptr = 0xaaaaaaaa;
+			*ptr = 0xaaaaaaaaaaaaaaaaLLU;
 			cpu_mfence();
-			if (*(volatile int *)ptr != 0xaaaaaaaa)
+			if (*ptr != 0xaaaaaaaaaaaaaaaaLLU)
 				page_bad = TRUE;
 			/*
 			 * Test for alternating 0's and 1's
 			 */
-			*(volatile int *)ptr = 0x55555555;
+			*ptr = 0x5555555555555555LLU;
 			cpu_mfence();
-			if (*(volatile int *)ptr != 0x55555555)
+			if (*ptr != 0x5555555555555555LLU)
 				page_bad = TRUE;
 			/*
 			 * Test for all 1's
 			 */
-			*(volatile int *)ptr = 0xffffffff;
+			*ptr = 0xffffffffffffffffLLU;
 			cpu_mfence();
-			if (*(volatile int *)ptr != 0xffffffff)
+			if (*ptr != 0xffffffffffffffffLLU)
 				page_bad = TRUE;
 			/*
 			 * Test for all 0's
 			 */
-			*(volatile int *)ptr = 0x0;
+			*ptr = 0x0;
 			cpu_mfence();
-			if (*(volatile int *)ptr != 0x0)
+			if (*ptr != 0x0)
 				page_bad = TRUE;
 			/*
 			 * Restore original value.
 			 */
 			*ptr = tmp;
+handwaved:
 
 			/*
 			 * Adjust array of valid/good pages.
 			 */
 			if (page_bad == TRUE)
 				continue;
+
 			/*
 			 * If this good page is a continuation of the
 			 * previous set of good pages, then just increase
@@ -2066,7 +2090,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 * will terminate the loop.
 			 */
 			if (phys_avail[pa_indx] == pa) {
-				phys_avail[pa_indx] += PHYSMAP_ALIGN;
+				phys_avail[pa_indx] += incr;
 			} else {
 				pa_indx++;
 				if (pa_indx == PHYS_AVAIL_ARRAY_END) {
@@ -2077,12 +2101,12 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 					goto do_dump_avail;
 				}
 				phys_avail[pa_indx++] = pa;
-				phys_avail[pa_indx] = pa + PHYSMAP_ALIGN;
+				phys_avail[pa_indx] = pa + incr;
 			}
-			physmem += PHYSMAP_ALIGN / PAGE_SIZE;
+			physmem += incr / PAGE_SIZE;
 do_dump_avail:
 			if (dump_avail[da_indx] == pa) {
-				dump_avail[da_indx] += PHYSMAP_ALIGN;
+				dump_avail[da_indx] += incr;
 			} else {
 				da_indx++;
 				if (da_indx == DUMP_AVAIL_ARRAY_END) {
@@ -2090,7 +2114,7 @@ do_dump_avail:
 					goto do_next;
 				}
 				dump_avail[da_indx++] = pa;
-				dump_avail[da_indx] = pa + PHYSMAP_ALIGN;
+				dump_avail[da_indx] = pa + incr;
 			}
 do_next:
 			if (full)
@@ -2099,6 +2123,7 @@ do_next:
 	}
 	*pte = 0;
 	cpu_invltlb();
+	cpu_mfence();
 
 	/*
 	 * The last chunk must contain at least one page plus the message
