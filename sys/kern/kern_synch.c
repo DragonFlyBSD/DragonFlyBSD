@@ -654,6 +654,9 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 */
 	if (timo) {
 		while (td->td_flags & TDF_TIMEOUT_RUNNING) {
+			/* else we won't get rescheduled! */
+			if (lp->lwp_stat != LSSTOP)
+				lp->lwp_stat = LSSLEEP;
 			lwkt_deschedule_self(td);
 			td->td_wmesg = "tsrace";
 			lwkt_switch();
