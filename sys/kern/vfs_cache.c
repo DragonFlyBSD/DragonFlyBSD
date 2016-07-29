@@ -359,8 +359,8 @@ _cache_lock(struct namecache *ncp)
 			if (didwarn == 0) {
 				didwarn = ticks;
 				kprintf("[diagnostic] cache_lock: "
-					"blocked on %p %08x",
-					ncp, count);
+					"%s blocked on %p %08x",
+					td->td_comm, ncp, count);
 				kprintf(" \"%*.*s\"\n",
 					ncp->nc_nlen, ncp->nc_nlen,
 					ncp->nc_name);
@@ -369,8 +369,9 @@ _cache_lock(struct namecache *ncp)
 		/* loop */
 	}
 	if (didwarn) {
-		kprintf("[diagnostic] cache_lock: unblocked %*.*s after "
+		kprintf("[diagnostic] cache_lock: %s unblocked %*.*s after "
 			"%d secs\n",
+			td->td_comm,
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
 			(int)(ticks + (hz / 2) - begticks) / hz);
 	}
@@ -465,10 +466,10 @@ _cache_lock_shared(struct namecache *ncp)
 		if (error == EWOULDBLOCK) {
 			optreq = 0;
 			if (didwarn == 0) {
-				didwarn = ticks;
+				didwarn = ticks - nclockwarn;
 				kprintf("[diagnostic] cache_lock_shared: "
-					"blocked on %p %08x",
-					ncp, count);
+					"%s blocked on %p %08x",
+					curthread->td_comm, ncp, count);
 				kprintf(" \"%*.*s\"\n",
 					ncp->nc_nlen, ncp->nc_nlen,
 					ncp->nc_name);
@@ -478,7 +479,8 @@ _cache_lock_shared(struct namecache *ncp)
 	}
 	if (didwarn) {
 		kprintf("[diagnostic] cache_lock_shared: "
-			"unblocked %*.*s after %d secs\n",
+			"%s unblocked %*.*s after %d secs\n",
+			curthread->td_comm,
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
 			(int)(ticks - didwarn) / hz);
 	}
