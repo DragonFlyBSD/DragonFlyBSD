@@ -53,8 +53,9 @@ struct vmbus_pcpu_data {
 	void			*intr_hand;
 	struct resource		*intr_res;
 	int			intr_rid;
+	int			intr_irq;
 	int			intr_vec;
-	char			intr_desc[24];
+	char			intr_desc[20];
 } __cachealign;
 
 struct vmbus_softc {

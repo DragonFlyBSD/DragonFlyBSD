@@ -1142,8 +1142,7 @@ acpi_alloc_resource(device_t bus, device_t child, int type, int *rid,
 		    acpi_lookup_irq_resource(child, *rid, res, &ares))) {
 		acpi_config_intr(child, &ares);
 	    } else {
-		if (bootverbose)
-		    kprintf("irq resource not found\n");
+		kprintf("irq resource not found\n");
 	    }
 	    break;
 	}
