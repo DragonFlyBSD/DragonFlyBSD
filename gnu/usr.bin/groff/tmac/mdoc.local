@@ -97,6 +97,7 @@
 .ds doc-operating-system-DragonFly-4.1 4.1
 .ds doc-operating-system-DragonFly-4.3 4.3
 .ds doc-operating-system-DragonFly-4.5 4.5
+.ds doc-operating-system-DragonFly-4.6 4.6
 .ds doc-operating-system-DragonFly-4.7 4.7
 .
 .\" FreeBSD releases not found in doc-common.
