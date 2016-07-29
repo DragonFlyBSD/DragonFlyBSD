@@ -158,7 +158,9 @@ int	_raise(int);
 unsigned	_sleep(unsigned);
 int	_system(const char *);
 int	_tcdrain(int);
+#if 0
 int	_vfork(void);
+#endif
 pid_t	_wait(int *);
 pid_t	_waitpid(pid_t wpid, int *status, int options);
 
@@ -636,6 +638,11 @@ ___usleep(unsigned int useconds)
 
 __strong_reference(___usleep, usleep);
 
+#if 0
+/*
+ * REMOVED - vfork() works as per normal.  In a threaded environment vfork()
+ *	     blocks the calling thread only and not other threads.
+ */
 int
 _vfork(void)
 {
@@ -643,6 +650,7 @@ _vfork(void)
 }
 
 __strong_reference(_vfork, vfork);
+#endif
 
 pid_t
 _wait(int *istat)
