@@ -117,7 +117,6 @@ static int			vmbus_dma_alloc(struct vmbus_softc *);
 static void			vmbus_dma_free(struct vmbus_softc *);
 static int			vmbus_intr_setup(struct vmbus_softc *);
 static void			vmbus_intr_teardown(struct vmbus_softc *);
-static int			vmbus_intr_rid(struct resource_list *, int);
 static void			vmbus_synic_setup(void *);
 static void			vmbus_synic_teardown(void *);
 static void			vmbus_timer_stop(void *);
@@ -711,56 +710,37 @@ vmbus_dma_free(struct vmbus_softc *sc)
 }
 
 static int
-vmbus_intr_rid(struct resource_list *rl, int rid)
-{
-	do {
-		++rid;
-		if (resource_list_find(rl, SYS_RES_IRQ, rid) == NULL)
-			break;
-	} while (1);
-	return rid;
-}
-
-static int
 vmbus_intr_setup(struct vmbus_softc *sc)
 {
 	device_t dev = sc->vmbus_dev;
-	device_t parent = device_get_parent(dev);
-	device_t bus = device_get_parent(parent);
-	struct resource_list *rl;
+	device_t bus = device_get_parent(device_get_parent(dev));
 	int rid, cpu;
-
-	rl = BUS_GET_RESOURCE_LIST(parent, dev);
-	if (rl == NULL)
-		return ENXIO;
 
 	rid = 0;
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		struct vmbus_pcpu_data *psc = VMBUS_PCPU(sc, cpu);
-		struct resource *res;
 		uint64_t msi_addr;
 		uint32_t msi_data;
-		int irq, error;
+		int error;
 
-		error = PCIB_ALLOC_MSIX(bus, dev, &irq, cpu);
+		error = PCIB_ALLOC_MSIX(bus, dev, &psc->intr_irq, cpu);
 		if (error) {
 			device_printf(dev, "alloc vector on cpu%d failed: %d\n",
 			    cpu, error);
 			return ENXIO;
 		}
-		rid = vmbus_intr_rid(rl, rid);
-		resource_list_add(rl, SYS_RES_IRQ, rid, irq, irq, 1, cpu);
-		psc->intr_rid = rid;
+		psc->intr_rid = ++rid;
 
-		res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE);
-		if (res == NULL) {
+		psc->intr_res = BUS_ALLOC_RESOURCE(bus, dev, SYS_RES_IRQ,
+		    &psc->intr_rid, psc->intr_irq, psc->intr_irq, 1,
+		    RF_ACTIVE, cpu);
+		if (psc->intr_res == NULL) {
 			device_printf(dev, "alloc irq on cpu%d failed: %d\n",
 			    cpu, error);
 			return ENXIO;
 		}
-		psc->intr_res = res;
 
-		error = PCIB_MAP_MSI(bus, dev, rman_get_start(res),
+		error = PCIB_MAP_MSI(bus, dev, rman_get_start(psc->intr_res),
 		    &msi_addr, &msi_data, cpu);
 		if (error) {
 			device_printf(dev, "map irq on cpu%d failed: %d\n",
@@ -771,13 +751,13 @@ vmbus_intr_setup(struct vmbus_softc *sc)
 
 		if (bootverbose) {
 			device_printf(dev, "vector %d irq %d on cpu%d\n",
-			    psc->intr_vec, irq, cpu);
+			    psc->intr_vec, psc->intr_irq, cpu);
 		}
 
 		ksnprintf(psc->intr_desc, sizeof(psc->intr_desc), "%s cpu%d",
 		    device_get_nameunit(dev), cpu);
-		error = bus_setup_intr_descr(dev, res, INTR_MPSAFE, vmbus_intr,
-		    psc, &psc->intr_hand, NULL, psc->intr_desc);
+		error = bus_setup_intr_descr(dev, psc->intr_res, INTR_MPSAFE,
+		    vmbus_intr, psc, &psc->intr_hand, NULL, psc->intr_desc);
 		if (error) {
 			device_printf(dev, "setup intr on cpu%d failed: %d\n",
 			    cpu, error);
@@ -791,13 +771,8 @@ static void
 vmbus_intr_teardown(struct vmbus_softc *sc)
 {
 	device_t dev = sc->vmbus_dev;
-	device_t parent = device_get_parent(dev);
-	struct resource_list *rl;
+	device_t bus = device_get_parent(device_get_parent(dev));
 	int cpu;
-
-	rl = BUS_GET_RESOURCE_LIST(parent, dev);
-	if (rl == NULL)
-		return;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		struct vmbus_pcpu_data *psc = VMBUS_PCPU(sc, cpu);
@@ -808,22 +783,13 @@ vmbus_intr_teardown(struct vmbus_softc *sc)
 		}
 
 		if (psc->intr_res != NULL) {
-			bus_release_resource(dev, SYS_RES_IRQ, psc->intr_rid,
-			    psc->intr_res);
+			BUS_RELEASE_RESOURCE(bus, dev, SYS_RES_IRQ,
+			    psc->intr_rid, psc->intr_res);
 			psc->intr_res = NULL;
 		}
 
 		if (psc->intr_rid != 0) {
-			struct resource_list_entry *rle;
-			int irq;
-
-			rle = resource_list_find(rl, SYS_RES_IRQ,
-			    psc->intr_rid);
-			irq = rle->start;
-			resource_list_delete(rl, SYS_RES_IRQ, psc->intr_rid);
-
-			PCIB_RELEASE_MSIX(device_get_parent(parent), dev, irq,
-			    psc->cpuid);
+			PCIB_RELEASE_MSIX(bus, dev, psc->intr_irq, psc->cpuid);
 			psc->intr_rid = 0;
 		}
 	}
