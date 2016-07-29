@@ -387,10 +387,10 @@ labelkre(void)
 		/*
 		 * room for extended VM stats
 		 */
-		mvprintw(VMSTATROW + 11, VMSTATCOL - 6, "zfod");
+		mvprintw(VMSTATROW + 11, VMSTATCOL - 6, "nzfod");
 		mvprintw(VMSTATROW + 12, VMSTATCOL - 6, "ozfod");
-		mvprintw(VMSTATROW + 13, VMSTATCOL - 6, "%%sloz");
-		mvprintw(VMSTATROW + 14, VMSTATCOL - 6, "tfree");
+		mvprintw(VMSTATROW + 13, VMSTATCOL - 6, "%%zslo");
+		mvprintw(VMSTATROW + 14, VMSTATCOL - 6, "pgfre");
 		extended_vm_stats = 1;
 	} else {
 		extended_vm_stats = 0;
@@ -583,13 +583,15 @@ showkre(void)
 	PUTRATE(Vmm.v_intrans, VMSTATROW + 12, VMSTATCOL, 7);
 
 	if (extended_vm_stats) {
-		PUTRATE_PGTOB(Vmm.v_zfod, VMSTATROW + 11, VMSTATCOL - 16, 9);
-		PUTRATE_PGTOB(Vmm.v_ozfod, VMSTATROW + 12, VMSTATCOL - 16, 9);
+		int64_t orig_zfod = s.Vmm.v_zfod;
+		s.Vmm.v_zfod -= s.Vmm.v_ozfod;
+		PUTRATE_PGTOB(Vmm.v_zfod, VMSTATROW + 11, VMSTATCOL - 14, 7);
+		PUTRATE_PGTOB(Vmm.v_ozfod, VMSTATROW + 12, VMSTATCOL - 14, 7);
 #define nz(x)	((x) ? (x) : 1)
-		put64((s.Vmm.v_zfod - s.Vmm.v_ozfod) * 100 / nz(s.Vmm.v_zfod),
-		    VMSTATROW + 13, VMSTATCOL - 16, 9, 'D');
+		put64((s.Vmm.v_zfod) * 100 / nz(orig_zfod),
+		    VMSTATROW + 13, VMSTATCOL - 14, 7, 'D');
 #undef nz
-		PUTRATE(Vmm.v_tfree, VMSTATROW + 14, VMSTATCOL - 16, 9);
+		PUTRATE_PGTOB(Vmm.v_tfree, VMSTATROW + 14, VMSTATCOL - 14, 7);
 	}
 
 	put64(s.bufspace, VMSTATROW + 13, VMSTATCOL, 7, 0);
