@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)mktemp.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdio/mktemp.3,v 1.22 2007/01/09 00:28:07 imp Exp $
+.\" $FreeBSD: head/lib/libc/stdio/mktemp.3 254151 2013-08-09 17:24:23Z jilles $
 .\"
-.Dd July 27, 2016
+.Dd July 29, 2016
 .Dt MKTEMP 3
 .Os
 .Sh NAME
@@ -37,7 +37,7 @@
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In unistd.h
+.In stdlib.h
 .Ft char *
 .Fn mktemp "char *template"
 .Ft int
@@ -45,11 +45,12 @@
 .Ft int
 .Fn mkostemp "char *template" "int oflags"
 .Ft int
-.Fn mkstemps "char *template" "int suffixlen"
-.Ft int
 .Fn mkostemps "char *template" "int suffixlen" "int oflags"
 .Ft char *
 .Fn mkdtemp "char *template"
+.In unistd.h
+.Ft int
+.Fn mkstemps "char *template" "int suffixlen"
 .Sh DESCRIPTION
 The
 .Fn mktemp
@@ -93,20 +94,35 @@ function is like
 .Fn mkstemp
 but allows specifying additional
 .Xr open 2
-flags such as
+flags (defined in
+.In fcntl.h ) .
+The permitted flags are
+.Dv O_APPEND ,
+.Dv O_DIRECT ,
+.Dv O_SHLOCK ,
+.Dv O_EXLOCK ,
+.Dv O_SYNC
+and
 .Dv O_CLOEXEC .
 .Pp
 The
 .Fn mkstemps
-function acts the same as
-.Fn mkstemp ,
-except it permits a suffix to exist in the template.
+and
+.Fn mkostemps
+functions act the same as
+.Fn mkstemp
+and
+.Fn mkostemp
+respectively,
+except they permit a suffix to exist in the template.
 The template should be of the form
 .Pa /tmp/tmpXXXXXXsuffix .
 The
 .Fn mkstemps
+and
+.Fn mkostemps
 function
-is told the length of the suffix string.
+are told the length of the suffix string.
 .Pp
 The
 .Fn mkostemps
@@ -131,9 +147,11 @@ functions return a pointer to the template on success and
 .Dv NULL
 on failure.
 The
-.Fn mkstemp
-and
+.Fn mkstemp ,
+.Fn mkostemp ,
 .Fn mkstemps
+and
+.Fn mkostemps
 functions
 return \-1 if no suitable file could be created.
 If either call fails an error code is placed in the global variable
@@ -141,7 +159,9 @@ If either call fails an error code is placed in the global variable
 .Sh ERRORS
 The
 .Fn mkstemp ,
-.Fn mkstemps
+.Fn mkostemp ,
+.Fn mkstemps ,
+.Fn mkostemps
 and
 .Fn mkdtemp
 functions
@@ -154,8 +174,25 @@ The pathname portion of the template is not an existing directory.
 .El
 .Pp
 The
+.Fn mkostemp
+and
+.Fn mkostemps
+functions
+may also set
+.Va errno
+to the following value:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The
+.Fa oflags
+argument is invalid.
+.El
+.Pp
+The
 .Fn mkstemp ,
-.Fn mkstemps
+.Fn mkostemp ,
+.Fn mkstemps ,
+.Fn mkostemps
 and
 .Fn mkdtemp
 functions
@@ -166,9 +203,11 @@ to any value specified by the
 function.
 .Pp
 The
-.Fn mkstemp
-and
+.Fn mkstemp ,
+.Fn mkostemp ,
 .Fn mkstemps
+and
+.Fn mkostemps
 functions
 may also set
 .Va errno
@@ -202,18 +241,33 @@ with an argument of
 will result in a core dump due to
 .Fn mkstemp
 attempting to modify the string constant that was given.
-If the program in question makes heavy use of that type
-of function call, you do have the option of compiling the program
-so that it will store string constants in a writable segment of memory.
-See
-.Xr gcc 1
-for more information.
+.Pp
+The
+.Fn mkdtemp ,
+.Fn mkstemp
+and
+.Fn mktemp
+function prototypes are also available from
+.In unistd.h .
 .Sh SEE ALSO
 .Xr chmod 2 ,
 .Xr getpid 2 ,
 .Xr mkdir 2 ,
 .Xr open 2 ,
 .Xr stat 2
+.Sh STANDARDS
+The
+.Fn mkstemp
+and
+.Fn mkdtemp
+functions are expected to conform to
+.St -p1003.1-2008 .
+The
+.Fn mktemp
+function is expected to conform to
+.St -p1003.1-2001
+and is not specified by
+.St -p1003.1-2008 .
 .Sh HISTORY
 A
 .Fn mktemp
@@ -235,6 +289,14 @@ function first appeared in
 .Ox 2.4 ,
 and later in
 .Fx 3.4 .
+The
+.Fn mkostemp
+and
+.Fn mkostemps
+functions appeared in
+.Fx 10.0
+and were imported to
+.Dx 4.6 .
 .Sh BUGS
 This family of functions produces filenames which can be guessed,
 though the risk is minimized when large numbers of
@@ -251,6 +313,8 @@ and opening it for use
 particularly dangerous from a security perspective.
 Whenever it is possible,
 .Fn mkstemp
+or
+.Fn mkostemp
 should be used instead, since it does not have the race condition.
 If
 .Fn mkstemp
@@ -264,10 +328,3 @@ and the return status of the call should be tested for failure.
 This will ensure that the program does not continue blindly
 in the event that an attacker has already created the file
 with the intention of manipulating or reading its contents.
-.Pp
-The implementation of these functions calls
-.Xr arc4random 3 ,
-which is not reentrant.
-You must provide your own locking around this and other consumers of the
-.Xr arc4random 3
-API.
