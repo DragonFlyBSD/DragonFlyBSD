@@ -245,6 +245,19 @@ vcnt(SYSCTL_HANDLER_ARGS)
 	return(SYSCTL_OUT(req, &count, sizeof(int)));
 }
 
+static
+int
+vzerocnt(SYSCTL_HANDLER_ARGS)
+{
+	int count = 0;
+	int i;
+
+	for (i = 0; i < PQ_L2_SIZE; ++i) {
+		count += vm_page_queues[PQ_FREE+i].zero_count;
+	}
+	return(SYSCTL_OUT(req, &count, sizeof(int)));
+}
+
 /*
  * No requirements.
  */
@@ -407,9 +420,8 @@ SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 	v_interrupt_free_min, CTLFLAG_RD, &vmstats.v_interrupt_free_min, 0,
 	"Reserved number of pages for int code");
-SYSCTL_INT(_vm_stats_misc, OID_AUTO,
-	zero_page_count, CTLFLAG_RD, &vm_page_zero_count, 0,
-	"Number of zeroing pages");
+SYSCTL_PROC(_vm_stats_misc, OID_AUTO, zero_page_count, CTLTYPE_UINT|CTLFLAG_RD,
+	0, 0, vzerocnt, "IU", "Pre-zerod VM pages");
 
 /*
  * No requirements.

@@ -406,8 +406,6 @@ again:
 			KKASSERT(m->object == NULL);
 			vm_page_unqueue_nowakeup(m);
 			m->valid = VM_PAGE_BITS_ALL;
-			if (m->flags & PG_ZERO)
-				vm_page_zero_count--;
 			KASSERT(m->dirty == 0,
 				("vm_contig_pg_alloc: page %p was dirty", m));
 			KKASSERT(m->wire_count == 0);

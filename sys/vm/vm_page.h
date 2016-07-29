@@ -265,8 +265,10 @@ struct vpgqueues {
 	int	lcnt;
 	int	flipflop;	/* probably not the best place */
 	struct spinlock spin;
+	int	zero_count;	/* only applies to PQ_FREE queues */
+	int	unused00;
 	char	unused[64 - sizeof(struct pglist) -
-			sizeof(int *) - sizeof(int) * 2];
+			sizeof(int *) - sizeof(int) * 4];
 };
 
 extern struct vpgqueues vm_page_queues[PQ_COUNT];
@@ -355,7 +357,6 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *
  */
 
-extern int vm_page_zero_count;
 extern struct vm_page *vm_page_array;	/* First resident page in table */
 extern int vm_page_array_size;		/* number of vm_page_t's */
 extern long first_page;			/* first physical page number */

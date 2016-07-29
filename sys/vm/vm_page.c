@@ -162,7 +162,6 @@ vm_page_queue_init(void)
  */
 long first_page = 0;
 int vm_page_array_size = 0;
-int vm_page_zero_count = 0;
 vm_page_t vm_page_array = NULL;
 vm_paddr_t vm_low_phys_reserved;
 
@@ -234,15 +233,20 @@ vm_add_new_page(vm_paddr_t pa)
 	atomic_add_int(&vmstats.v_page_count, 1);
 	atomic_add_int(&vmstats.v_free_count, 1);
 	vpq = &vm_page_queues[m->queue];
+#if 0
+	/* too expensive time-wise in large-mem configurations */
 	if ((vpq->flipflop & 15) == 0) {
 		pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->flags |= PG_ZERO;
 		TAILQ_INSERT_TAIL(&vpq->pl, m, pageq);
-		atomic_add_int(&vm_page_zero_count, 1);
+		++vpq->zero_count;
 	} else {
+#endif
 		TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
+#if 0
 	}
 	++vpq->flipflop;
+#endif
 	++vpq->lcnt;
 }
 
@@ -665,7 +669,7 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		m->queue = PQ_NONE;
 		vm_page_queues_spin_unlock(queue);
 		if ((queue - m->pc) == PQ_FREE && (m->flags & PG_ZERO))
-			atomic_subtract_int(&vm_page_zero_count, 1);
+			--pq->zero_count;
 		if ((queue - m->pc) == PQ_CACHE || (queue - m->pc) == PQ_FREE)
 			return (queue - m->pc);
 	}
@@ -699,7 +703,7 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 		if (queue - m->pc == PQ_FREE) {
 			if (m->flags & PG_ZERO) {
 				TAILQ_INSERT_TAIL(&pq->pl, m, pageq);
-				atomic_add_int(&vm_page_zero_count, 1);
+				++pq->zero_count;
 			} else {
 				TAILQ_INSERT_HEAD(&pq->pl, m, pageq);
 			}
