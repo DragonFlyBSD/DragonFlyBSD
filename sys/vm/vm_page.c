@@ -75,6 +75,7 @@
 #include <sys/kernel.h>
 #include <sys/alist.h>
 #include <sys/sysctl.h>
+#include <sys/cpu_topology.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -659,6 +660,7 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 {
 	struct vpgqueues *pq;
 	u_short queue;
+	u_short oqueue;
 
 	queue = m->queue;
 	if (queue != PQ_NONE) {
@@ -667,11 +669,12 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		atomic_add_int(pq->cnt, -1);
 		pq->lcnt--;
 		m->queue = PQ_NONE;
-		vm_page_queues_spin_unlock(queue);
+		oqueue = queue;
 		if ((queue - m->pc) == PQ_FREE && (m->flags & PG_ZERO))
 			--pq->zero_count;
 		if ((queue - m->pc) == PQ_CACHE || (queue - m->pc) == PQ_FREE)
-			return (queue - m->pc);
+			queue -= m->pc;
+		vm_page_queues_spin_unlock(oqueue);	/* intended */
 	}
 	return queue;
 }
@@ -1365,8 +1368,10 @@ _vm_page_list_find2(int basequeue, int index)
 	 * Note that for the first loop, index+i and index-i wind up at the
 	 * same place.  Even though this is not totally optimal, we've already
 	 * blown it by missing the cache case so we do not care.
+	 *
+	 * NOTE: Fan out from our starting index for localization purposes.
 	 */
-	for (i = PQ_L2_SIZE / 2; i > 0; --i) {
+	for (i = 1; i <= PQ_L2_SIZE / 2; ++i) {
 		for (;;) {
 			m = TAILQ_FIRST(&pq[(index + i) & PQ_L2_MASK].pl);
 			if (m) {
@@ -1595,6 +1600,9 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	vm_object_t obj;
 	vm_page_t m;
 	u_short pg_color;
+	int phys_id;
+	int core_id;
+	int object_pg_color;
 
 #if 0
 	/*
@@ -1614,14 +1622,50 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	m = NULL;
 
 	/*
-	 * Cpu twist - cpu localization algorithm
+	 * CPU LOCALIZATION
+	 *
+	 * CPU localization algorithm.  Break the page queues up by physical
+	 * id and core id (note that two cpu threads will have the same core
+	 * id, and core_id != gd_cpuid).
+	 *
+	 * This is nowhere near perfect, for example the last pindex in a
+	 * subgroup will overflow into the next cpu or package.  But this
+	 * should get us good page reuse locality in heavy mixed loads.
 	 */
-	if (object) {
-		pg_color = gd->gd_cpuid + (pindex & ~ncpus_fit_mask) +
-			   (object->pg_color & ~ncpus_fit_mask);
+	phys_id = get_cpu_phys_id(gd->gd_cpuid);
+	core_id = get_cpu_core_id(gd->gd_cpuid);
+	object_pg_color = object ? object->pg_color : 0;
+
+	if (cpu_topology_phys_ids && cpu_topology_core_ids) {
+		if (PQ_L2_SIZE / ncpus >= 16) {
+			/*
+			 * Enough space for a full break-down.
+			 */
+			pg_color = PQ_L2_SIZE * core_id /
+				   cpu_topology_core_ids;
+			pg_color += PQ_L2_SIZE * phys_id *
+				    cpu_topology_core_ids /
+				    cpu_topology_phys_ids;
+			pg_color += (pindex + object_pg_color) %
+				    (PQ_L2_SIZE / (cpu_topology_core_ids *
+						   cpu_topology_phys_ids));
+		} else {
+			/*
+			 * Hopefully enough space to at least break the
+			 * queues down by package id.
+			 */
+			pg_color = PQ_L2_SIZE * phys_id / cpu_topology_phys_ids;
+			pg_color += (pindex + object_pg_color) %
+				    (PQ_L2_SIZE / cpu_topology_phys_ids);
+		}
 	} else {
-		pg_color = gd->gd_cpuid + (pindex & ~ncpus_fit_mask);
+		/*
+		 * Unknown topology, distribute things evenly.
+		 */
+		pg_color = gd->gd_cpuid * PQ_L2_SIZE / ncpus;
+		pg_color += pindex + object_pg_color;
 	}
+
 	KKASSERT(page_req & 
 		(VM_ALLOC_NORMAL|VM_ALLOC_QUICK|
 		 VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
@@ -2201,7 +2245,8 @@ vm_page_free_fromq_fast(void)
 				vm_page_spin_unlock(m);
 			} else if (m->flags & PG_ZERO) {
 				/*
-				 * The page is already PG_ZERO, requeue it and loop
+				 * The page is already PG_ZERO, requeue it
+				 * and loop.
 				 */
 				_vm_page_add_queue_spinlocked(m,
 							      PQ_FREE + m->pc,

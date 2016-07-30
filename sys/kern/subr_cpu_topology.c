@@ -68,10 +68,16 @@ static per_cpu_sysctl_info_t *pcpu_sysctl;
 static void sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask);
 
 int cpu_topology_levels_number = 1;
+int cpu_topology_core_ids;
+int cpu_topology_phys_ids;
 cpu_node_t *root_cpu_node;
 
 MALLOC_DEFINE(M_PCPUSYS, "pcpusys", "pcpu sysctl topology");
 
+SYSCTL_INT(_hw, OID_AUTO, cpu_topology_core_ids, CTLFLAG_RW,
+	   &cpu_topology_core_ids, 0, "# of real cores per package");
+SYSCTL_INT(_hw, OID_AUTO, cpu_topology_phys_ids, CTLFLAG_RW,
+	   &cpu_topology_phys_ids, 0, "# of physical packages");
 
 /* Get the next valid apicid starting
  * from current apicid (curr_apicid
@@ -561,6 +567,8 @@ init_pcpu_topology_sysctl(void)
 		sbuf_finish(&sb);
 
 		pcpu_sysctl[i].physical_id = get_chip_ID(i); 
+		if (cpu_topology_phys_ids < pcpu_sysctl[i].physical_id)
+			cpu_topology_phys_ids = pcpu_sysctl[i].physical_id + 1;
 
 		/* Get core siblings */
 		mask = get_cpumask_from_level(i, CORE_LEVEL);
@@ -576,6 +584,8 @@ init_pcpu_topology_sysctl(void)
 		sbuf_finish(&sb);
 
 		pcpu_sysctl[i].core_id = get_core_number_within_chip(i);
+		if (cpu_topology_core_ids < pcpu_sysctl[i].core_id)
+			cpu_topology_core_ids = pcpu_sysctl[i].core_id + 1;
 
 	}
 }
@@ -714,6 +724,22 @@ sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask)
 		}
 	}
 	sbuf_printf(sb, ") ");
+}
+
+int
+get_cpu_core_id(int cpuid)
+{
+	if (pcpu_sysctl)
+		return(pcpu_sysctl[cpuid].core_id);
+	return(0);
+}
+
+int
+get_cpu_phys_id(int cpuid)
+{
+	if (pcpu_sysctl)
+		return(pcpu_sysctl[cpuid].physical_id);
+	return(0);
 }
 
 /* Build the CPU Topology and SYSCTL Topology tree */
