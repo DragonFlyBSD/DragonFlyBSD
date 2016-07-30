@@ -1510,8 +1510,6 @@ _cache_inval(struct namecache *ncp, int flags)
 		r = _cache_inval_internal(ncp, flags, &track);
 		if (track.resume_ncp == NULL)
 			break;
-		kprintf("Warning: deep namecache recursion at %s\n",
-			ncp->nc_name);
 		_cache_unlock(ncp);
 		while ((ncp2 = track.resume_ncp) != NULL) {
 			track.resume_ncp = NULL;
@@ -1569,7 +1567,8 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 			nextkid = NULL;
 			if (kid->nc_parent != ncp) {
 				_cache_drop(kid);
-				kprintf("cache_inval_internal restartA %s\n", ncp->nc_name);
+				kprintf("cache_inval_internal restartA %s\n",
+					ncp->nc_name);
 				restart = 1;
 				break;
 			}
@@ -1591,7 +1590,9 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 			) {
 				_cache_lock(kid);
 				if (kid->nc_parent != ncp) {
-					kprintf("cache_inval_internal restartB %s\n", ncp->nc_name);
+					kprintf("cache_inval_internal "
+						"restartB %s\n",
+						ncp->nc_name);
 					restart = 1;
 					_cache_unlock(kid);
 					_cache_drop(kid);
