@@ -205,25 +205,6 @@ typedef struct vm_page *vm_page_t;
 #define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 256	/* A number of colors opt for 1M cache */
-
-#if 0
-#define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_L2_SIZE 128	/* A number of colors opt for 512K cache */
-
-#define PQ_PRIME1 13	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_PRIME2 7	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_L2_SIZE 64	/* A number of colors opt for 256K cache */
-
-#define PQ_PRIME1 9	/* Produces a good PQ_L2_SIZE/3 + PQ_PRIME1 */
-#define PQ_PRIME2 5	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_L2_SIZE 32	/* A number of colors opt for 128k cache */
-
-#define PQ_PRIME1 5	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_PRIME2 3	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_L2_SIZE 16	/* A reasonable number of colors (opt for 64K cache) */
-#endif
-
 #define PQ_L2_MASK	(PQ_L2_SIZE - 1)
 
 #define PQ_NONE		0
@@ -461,8 +442,12 @@ void vm_page_dirty(vm_page_t m);
 void vm_page_register_action(vm_page_action_t action, vm_page_event_t event);
 void vm_page_unregister_action(vm_page_action_t action);
 void vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg);
-void VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m, int also_m_busy, const char *wmsg VM_PAGE_DEBUG_ARGS);
-int VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m, int also_m_busy VM_PAGE_DEBUG_ARGS);
+void VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m,
+			int also_m_busy, const char *wmsg VM_PAGE_DEBUG_ARGS);
+int VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m,
+			int also_m_busy VM_PAGE_DEBUG_ARGS);
+u_short vm_get_pg_color(globaldata_t gd, vm_object_t object,
+			vm_pindex_t pindex);
 
 #ifdef VM_PAGE_DEBUG
 
