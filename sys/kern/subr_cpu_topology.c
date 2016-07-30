@@ -539,9 +539,12 @@ get_cpu_node_by_chipid(int chip_id)
 static void
 init_pcpu_topology_sysctl(void)
 {
-	int i;
-	cpumask_t mask;
 	struct sbuf sb;
+	cpumask_t mask;
+	int min_id = -1;
+	int max_id = -1;
+	int i;
+	int phys_id;
 
 	pcpu_sysctl = kmalloc(sizeof(*pcpu_sysctl) * MAXCPU, M_PCPUSYS,
 			      M_INTWAIT | M_ZERO);
@@ -566,9 +569,12 @@ init_pcpu_topology_sysctl(void)
 		sbuf_trim(&sb);
 		sbuf_finish(&sb);
 
-		pcpu_sysctl[i].physical_id = get_chip_ID(i); 
-		if (cpu_topology_phys_ids < pcpu_sysctl[i].physical_id)
-			cpu_topology_phys_ids = pcpu_sysctl[i].physical_id + 1;
+		phys_id = get_chip_ID(i);
+		pcpu_sysctl[i].physical_id = phys_id;
+		if (min_id < 0 || min_id > phys_id)
+			min_id = phys_id;
+		if (max_id < 0 || max_id < phys_id)
+			max_id = phys_id;
 
 		/* Get core siblings */
 		mask = get_cpumask_from_level(i, CORE_LEVEL);
@@ -587,6 +593,17 @@ init_pcpu_topology_sysctl(void)
 		if (cpu_topology_core_ids < pcpu_sysctl[i].core_id)
 			cpu_topology_core_ids = pcpu_sysctl[i].core_id + 1;
 
+	}
+
+	/*
+	 * Normalize physical ids so they can be used by the VM system.
+	 * Some systems number starting at 0 others number starting at 1.
+	 */
+	cpu_topology_phys_ids = max_id - min_id + 1;
+	if (cpu_topology_phys_ids <= 0)		/* don't crash */
+		cpu_topology_phys_ids = 1;
+	for (i = 0; i < ncpus; i++) {
+		pcpu_sysctl[i].physical_id %= cpu_topology_phys_ids;
 	}
 }
 

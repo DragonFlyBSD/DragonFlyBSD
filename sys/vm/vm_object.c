@@ -134,7 +134,6 @@ static long vm_object_count;
 
 static long object_collapses;
 static long object_bypasses;
-static int next_index;
 static vm_zone_t obj_zone;
 static struct vm_zone obj_zone_store;
 #define VM_OBJECTS_INIT 256
@@ -257,7 +256,8 @@ vm_quickcolor(void)
 	int pg_color;
 
 	pg_color = (int)(intptr_t)gd->gd_curthread >> 10;
-	pg_color += ++gd->gd_quick_color;
+	pg_color += gd->gd_quick_color;
+	gd->gd_quick_color += PQ_PRIME2;
 
 	return pg_color;
 }
@@ -371,7 +371,6 @@ VMOBJDEBUG(vm_object_drop)(vm_object_t obj VMOBJDBARGS)
 void
 _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 {
-	int incr;
 	int n;
 
 	RB_INIT(&object->rb_memq);
@@ -392,11 +391,6 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->shadow_count = 0;
 	/* cpu localization twist */
 	object->pg_color = vm_quickcolor();
-	if ( size > (PQ_L2_SIZE / 3 + PQ_PRIME1))
-		incr = PQ_L2_SIZE / 3 + PQ_PRIME1;
-	else
-		incr = size;
-	next_index = (next_index + incr) & PQ_L2_MASK;
 	object->handle = NULL;
 	object->backing_object = NULL;
 	object->backing_object_offset = (vm_ooffset_t)0;

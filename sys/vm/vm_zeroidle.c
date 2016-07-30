@@ -59,9 +59,6 @@
 /*
  * Implement the pre-zeroed page mechanism.
  */
-#define ZIDLE_LO(v)	((v) * 2 / 3)
-#define ZIDLE_HI(v)	((v) * 4 / 5)
-
 /* Number of bytes to zero between reschedule checks */
 #define IDLEZERO_RUN	(64)
 
@@ -79,8 +76,8 @@ static int idlezero_nocache = -1;
 SYSCTL_INT(_vm, OID_AUTO, idlezero_nocache, CTLFLAG_RW, &idlezero_nocache, 0,
 	   "Maximum pages per second to zero");
 
-static int idlezero_count = 0;
-SYSCTL_INT(_vm, OID_AUTO, idlezero_count, CTLFLAG_RD, &idlezero_count, 0,
+static ulong idlezero_count = 0;
+SYSCTL_ULONG(_vm, OID_AUTO, idlezero_count, CTLFLAG_RD, &idlezero_count, 0,
 	   "The number of physical pages prezeroed at idle time");
 
 enum zeroidle_state {
@@ -106,28 +103,47 @@ enum zeroidle_state {
 static int
 vm_page_zero_check(int *zero_countp, int *zero_statep)
 {
+	int base;
+	int count;
+	int nz;
+	int nt;
 	int i;
 
 	*zero_countp = 0;
 	if (idlezero_enable == 0)
 		return (0);
-	for (i = 0; i < PQ_L2_SIZE; ++i) {
-		struct vpgqueues *vpq = &vm_page_queues[PQ_FREE + i];
-		*zero_countp += vpq->zero_count;
+
+	base = vm_get_pg_color(mycpu, NULL, 0) & PQ_L2_MASK;
+	count = 16;
+	while (count < PQ_L2_SIZE / ncpus)
+		count <<= 1;
+	if (base + count > PQ_L2_SIZE)
+		count = PQ_L2_SIZE - base;
+
+	for (i = nt = nz = 0; i < count; ++i) {
+		struct vpgqueues *vpq = &vm_page_queues[PQ_FREE + base + i];
+		nz += vpq->zero_count;
+		nt += vpq->lcnt;
+	}
+
+	if (nt > 10) {
+		*zero_countp = nz * 100 / nt;
+	} else {
+		*zero_countp = 100;
 	}
 	if (*zero_statep == 0) {
 		/*
 		 * Wait for the count to fall to LO before starting
 		 * to zero pages.
 		 */
-		if (*zero_countp <= ZIDLE_LO(vmstats.v_free_count))
+		if (*zero_countp <= 50)
 			*zero_statep = 1;
 	} else {
 		/*
 		 * Once we are zeroing pages wait for the count to
 		 * increase to HI before we stop zeroing pages.
 		 */
-		if (*zero_countp >= ZIDLE_HI(vmstats.v_free_count))
+		if (*zero_countp >= 90)
 			*zero_statep = 0;
 	}
 	return (*zero_statep);
@@ -142,7 +158,7 @@ vm_page_zero_time(int zero_count)
 {
 	if (idlezero_enable == 0)
 		return (LONG_SLEEP_TIME);
-	if (zero_count >= ZIDLE_HI(vmstats.v_free_count))
+	if (zero_count >= 90)
 		return (LONG_SLEEP_TIME);
 	return (DEFAULT_SLEEP_TIME);
 }
@@ -233,7 +249,7 @@ vm_pagezero(void *arg)
 			vm_page_flag_set(m, PG_ZERO);
 			vm_page_free_toq(m);
 			state = STATE_GET_PAGE;
-			++idlezero_count;
+			++idlezero_count;	/* non-locked, SMP race ok */
 			break;
 		}
 		lwkt_yield();

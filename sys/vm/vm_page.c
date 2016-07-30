@@ -97,8 +97,25 @@
 #include <vm/vm_page2.h>
 #include <sys/spinlock2.h>
 
-#define VMACTION_HSIZE	256
-#define VMACTION_HMASK	(VMACTION_HSIZE - 1)
+/*
+ * Action hash for user umtx support.
+ */
+#define VMACTION_HSIZE		256
+#define VMACTION_HMASK		(VMACTION_HSIZE - 1)
+
+/*
+ * SET - Minimum required set associative size, must be a power of 2.  We
+ *	 want this to match or exceed the set-associativeness of the cpu.
+ *
+ * GRP - A larger set that allows bleed-over into the domains of other
+ *	 nearby cpus.  Also must be a power of 2.  Used by the page zeroing
+ *	 code to smooth things out a bit.
+ */
+#define PQ_SET_ASSOC		16
+#define PQ_SET_ASSOC_MASK	(PQ_SET_ASSOC - 1)
+
+#define PQ_GRP_ASSOC		(PQ_SET_ASSOC * 2)
+#define PQ_GRP_ASSOC_MASK	(PQ_GRP_ASSOC - 1)
 
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
@@ -750,6 +767,69 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 }
 
 /*
+ * This calculates and returns a page color given an optional VM object and
+ * either a pindex or an iterator.  We attempt to return a cpu-localized
+ * pg_color that is still roughly 16-way set-associative.  The CPU topology
+ * is used if it was probed.
+ *
+ * The caller may use the returned value to index into e.g. PQ_FREE when
+ * allocating a page in order to nominally obtain pages that are hopefully
+ * already localized to the requesting cpu.  This function is not able to
+ * provide any sort of guarantee of this, but does its best to improve
+ * hardware cache management performance.
+ *
+ * WARNING! The caller must mask the returned value with PQ_L2_MASK.
+ */
+u_short
+vm_get_pg_color(globaldata_t gd, vm_object_t object, vm_pindex_t pindex)
+{
+	u_short pg_color;
+	int phys_id;
+	int core_id;
+	int object_pg_color;
+
+	phys_id = get_cpu_phys_id(gd->gd_cpuid);
+	core_id = get_cpu_core_id(gd->gd_cpuid);
+	object_pg_color = object ? object->pg_color : 0;
+
+	if (cpu_topology_phys_ids && cpu_topology_core_ids) {
+		int grpsize = PQ_L2_SIZE / cpu_topology_phys_ids;
+
+		if (grpsize / cpu_topology_core_ids >= PQ_SET_ASSOC) {
+			/*
+			 * Enough space for a full break-down.
+			 */
+			pg_color = phys_id * grpsize;
+			pg_color += core_id * grpsize / cpu_topology_core_ids;
+			pg_color += (pindex + object_pg_color) %
+				    (grpsize / cpu_topology_core_ids);
+		} else {
+			/*
+			 * Not enough space, split up by physical package,
+			 * then split up by core id but only down to a
+			 * 16-set.  If all else fails, force a 16-set.
+			 */
+			pg_color = phys_id * grpsize;
+			if (grpsize > 16) {
+				pg_color += 16 * (core_id % (grpsize / 16));
+				grpsize = 16;
+			} else {
+				grpsize = 16;
+			}
+			pg_color += (pindex + object_pg_color) %
+				    grpsize;
+		}
+	} else {
+		/*
+		 * Unknown topology, distribute things evenly.
+		 */
+		pg_color = gd->gd_cpuid * PQ_L2_SIZE / ncpus;
+		pg_color += pindex + object_pg_color;
+	}
+	return pg_color;
+}
+
+/*
  * Wait until PG_BUSY can be set, then set it.  If also_m_busy is TRUE we
  * also wait for m->busy to become 0 before setting PG_BUSY.
  */
@@ -1312,6 +1392,9 @@ vm_page_unqueue(vm_page_t m)
  * caches.  We need this optimization because cpu caches tend to be
  * physical caches, while object spaces tend to be virtual.
  *
+ * The page coloring optimization also, very importantly, tries to localize
+ * memory to cpus and physical sockets.
+ *
  * On MP systems each PQ_FREE and PQ_CACHE color queue has its own spinlock
  * and the algorithm is adjusted to localize allocations on a per-core basis.
  * This is done by 'twisting' the colors.
@@ -1336,10 +1419,12 @@ _vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
 	vm_page_t m;
 
 	for (;;) {
-		if (prefer_zero)
-			m = TAILQ_LAST(&vm_page_queues[basequeue+index].pl, pglist);
-		else
+		if (prefer_zero) {
+			m = TAILQ_LAST(&vm_page_queues[basequeue+index].pl,
+				       pglist);
+		} else {
 			m = TAILQ_FIRST(&vm_page_queues[basequeue+index].pl);
+		}
 		if (m == NULL) {
 			m = _vm_page_list_find2(basequeue, index);
 			return(m);
@@ -1355,49 +1440,44 @@ _vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
 	return(m);
 }
 
+/*
+ * If we could not find the page in the desired queue try to find it in
+ * a nearby queue.
+ */
 static vm_page_t
 _vm_page_list_find2(int basequeue, int index)
 {
-	int i;
-	vm_page_t m = NULL;
 	struct vpgqueues *pq;
+	vm_page_t m = NULL;
+	int pqmask = PQ_SET_ASSOC_MASK >> 1;
+	int pqi;
+	int i;
 
+	index &= PQ_L2_MASK;
 	pq = &vm_page_queues[basequeue];
 
 	/*
-	 * Note that for the first loop, index+i and index-i wind up at the
-	 * same place.  Even though this is not totally optimal, we've already
-	 * blown it by missing the cache case so we do not care.
-	 *
-	 * NOTE: Fan out from our starting index for localization purposes.
+	 * Run local sets of 16, 32, 64, 128, and the whole queue if all
+	 * else fails (PQ_L2_MASK which is 255).
 	 */
-	for (i = 1; i <= PQ_L2_SIZE / 2; ++i) {
-		for (;;) {
-			m = TAILQ_FIRST(&pq[(index + i) & PQ_L2_MASK].pl);
+	do {
+		pqmask = (pqmask << 1) | 1;
+		for (i = 0; i <= pqmask; ++i) {
+			pqi = (index & ~pqmask) | ((index + i) & pqmask);
+			m = TAILQ_FIRST(&pq[pqi].pl);
 			if (m) {
 				_vm_page_and_queue_spin_lock(m);
-				if (m->queue ==
-				    basequeue + ((index + i) & PQ_L2_MASK)) {
+				if (m->queue == basequeue + pqi) {
 					_vm_page_rem_queue_spinlocked(m);
 					return(m);
 				}
 				_vm_page_and_queue_spin_unlock(m);
+				--i;
 				continue;
 			}
-			m = TAILQ_FIRST(&pq[(index - i) & PQ_L2_MASK].pl);
-			if (m) {
-				_vm_page_and_queue_spin_lock(m);
-				if (m->queue ==
-				    basequeue + ((index - i) & PQ_L2_MASK)) {
-					_vm_page_rem_queue_spinlocked(m);
-					return(m);
-				}
-				_vm_page_and_queue_spin_unlock(m);
-				continue;
-			}
-			break;	/* next i */
 		}
-	}
+	} while (pqmask != PQ_L2_MASK);
+
 	return(m);
 }
 
@@ -1600,9 +1680,6 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	vm_object_t obj;
 	vm_page_t m;
 	u_short pg_color;
-	int phys_id;
-	int core_id;
-	int object_pg_color;
 
 #if 0
 	/*
@@ -1632,39 +1709,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	 * subgroup will overflow into the next cpu or package.  But this
 	 * should get us good page reuse locality in heavy mixed loads.
 	 */
-	phys_id = get_cpu_phys_id(gd->gd_cpuid);
-	core_id = get_cpu_core_id(gd->gd_cpuid);
-	object_pg_color = object ? object->pg_color : 0;
-
-	if (cpu_topology_phys_ids && cpu_topology_core_ids) {
-		if (PQ_L2_SIZE / ncpus >= 16) {
-			/*
-			 * Enough space for a full break-down.
-			 */
-			pg_color = PQ_L2_SIZE * core_id /
-				   cpu_topology_core_ids;
-			pg_color += PQ_L2_SIZE * phys_id *
-				    cpu_topology_core_ids /
-				    cpu_topology_phys_ids;
-			pg_color += (pindex + object_pg_color) %
-				    (PQ_L2_SIZE / (cpu_topology_core_ids *
-						   cpu_topology_phys_ids));
-		} else {
-			/*
-			 * Hopefully enough space to at least break the
-			 * queues down by package id.
-			 */
-			pg_color = PQ_L2_SIZE * phys_id / cpu_topology_phys_ids;
-			pg_color += (pindex + object_pg_color) %
-				    (PQ_L2_SIZE / cpu_topology_phys_ids);
-		}
-	} else {
-		/*
-		 * Unknown topology, distribute things evenly.
-		 */
-		pg_color = gd->gd_cpuid * PQ_L2_SIZE / ncpus;
-		pg_color += pindex + object_pg_color;
-	}
+	pg_color = vm_get_pg_color(gd, object, pindex);
 
 	KKASSERT(page_req & 
 		(VM_ALLOC_NORMAL|VM_ALLOC_QUICK|
@@ -2224,15 +2269,29 @@ vm_page_free_toq(vm_page_t m)
  *
  * Remove a non-zero page from one of the free queues; the page is removed for
  * zeroing, so do not issue a wakeup.
+ *
+ * Our zeroidle code is now per-cpu so only do a limited scan.  We try to
+ * stay within a single cpu's domain but we do a little statistical
+ * improvement by encompassing two cpu's domains worst-case.
  */
 vm_page_t
 vm_page_free_fromq_fast(void)
 {
-	static int qi;
+	globaldata_t gd = mycpu;
 	vm_page_t m;
 	int i;
+	int qi;
 
-	for (i = 0; i < PQ_L2_SIZE; ++i) {
+	m = NULL;
+	qi = vm_get_pg_color(gd, NULL, ++gd->gd_quick_color);
+	qi = qi & PQ_L2_MASK;
+
+	/*
+	 * 16 = one cpu's domain
+	 * 32 = two cpu's domains
+	 * (note masking at bottom of loop!)
+	 */
+	for (i = 0; i < 10; ++i) {
 		m = vm_page_list_find(PQ_FREE, qi, FALSE);
 		/* page is returned spinlocked and removed from its queue */
 		if (m) {
@@ -2271,7 +2330,6 @@ vm_page_free_fromq_fast(void)
 			}
 			m = NULL;
 		}
-		qi = (qi + PQ_PRIME2) & PQ_L2_MASK;
 	}
 	return (m);
 }
