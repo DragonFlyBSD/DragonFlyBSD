@@ -52,7 +52,6 @@ SRCS+=	\
 	nsxfeval.c \
 	nsxfname.c \
 	nsxfobj.c \
-	oslibcfs.c \
 	osunixxf.c \
 	psargs.c \
 	psloop.c \
@@ -96,7 +95,6 @@ SRCS+=	\
 	utobject.c \
 	utosi.c \
 	utownerid.c \
-	utprint.c \
 	utstate.c \
 	utstring.c \
 	utxface.c \

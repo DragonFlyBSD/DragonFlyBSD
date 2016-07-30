@@ -16,7 +16,6 @@ SRCS=	\
 
 SRCS+=	\
 	getopt.c \
-	oslibcfs.c \
 	osunixxf.c \
 	utascii.c \
 	utdebug.c \
@@ -24,7 +23,6 @@ SRCS+=	\
 	utglobal.c \
 	utmath.c \
 	utnonansi.c \
-	utprint.c \
 	utxferror.c
 
 CFLAGS+= \

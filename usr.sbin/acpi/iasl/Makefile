@@ -154,7 +154,6 @@ SRCS=	\
 	nswalk.c \
 	nsxfobj.c \
 	osunixxf.c \
-	oslibcfs.c \
 	prexpress.c \
 	prmacros.c \
 	prscan.c \
@@ -198,7 +197,6 @@ SRCS=	\
 	utobject.c \
 	utownerid.c \
 	utpredef.c \
-	utprint.c \
 	utresrc.c \
 	utstate.c \
 	utstring.c \
@@ -216,6 +214,9 @@ YFLAGS=	-d
 
 ASLPARSER_M4INC = \
 	aslcstyle.y \
+	aslhelpers.y \
+	aslkeywords.y \
+	aslprimaries.y \
 	aslresources.y \
 	aslrules.y \
 	aslsupport.y \

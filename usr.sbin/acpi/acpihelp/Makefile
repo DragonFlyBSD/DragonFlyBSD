@@ -15,6 +15,7 @@ SRCS=	\
 	ahaslkey.c \
 	ahaslops.c \
 	ahdecode.c \
+	ahgrammar.c \
 	ahids.c \
 	ahpredef.c \
 	ahmain.c \
@@ -23,7 +24,6 @@ SRCS=	\
 
 SRCS+=	\
 	getopt.c \
-	oslibcfs.c \
 	osunixxf.c \
 	utdebug.c \
 	utexcep.c \
@@ -32,7 +32,6 @@ SRCS+=	\
 	utmath.c \
 	utnonansi.c \
 	utpredef.c \
-	utprint.c \
 	utuuid.c
 
 CFLAGS+= \

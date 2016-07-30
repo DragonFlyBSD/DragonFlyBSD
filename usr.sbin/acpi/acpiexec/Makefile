@@ -137,7 +137,6 @@ SRCS+=	\
 	nsxfeval.c \
 	nsxfname.c \
 	nsxfobj.c \
-	oslibcfs.c \
 	osunixxf.c \
 	psargs.c \
 	psloop.c \
@@ -198,7 +197,6 @@ SRCS+=	\
 	utosi.c \
 	utownerid.c \
 	utpredef.c \
-	utprint.c \
 	utresrc.c \
 	utstate.c \
 	utstring.c \
