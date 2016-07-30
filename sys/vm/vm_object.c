@@ -250,6 +250,18 @@ vm_object_assert_held(vm_object_t obj)
 	ASSERT_LWKT_TOKEN_HELD(&obj->token);
 }
 
+static __inline int
+vm_quickcolor(void)
+{
+	globaldata_t gd = mycpu;
+	int pg_color;
+
+	pg_color = (int)(intptr_t)gd->gd_curthread >> 10;
+	pg_color += ++gd->gd_quick_color;
+
+	return pg_color;
+}
+
 void
 VMOBJDEBUG(vm_object_hold)(vm_object_t obj VMOBJDBARGS)
 {
@@ -379,7 +391,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->agg_pv_list_count = 0;
 	object->shadow_count = 0;
 	/* cpu localization twist */
-	object->pg_color = (int)(intptr_t)curthread;
+	object->pg_color = vm_quickcolor();
 	if ( size > (PQ_L2_SIZE / 3 + PQ_PRIME1))
 		incr = PQ_L2_SIZE / 3 + PQ_PRIME1;
 	else
@@ -1937,7 +1949,7 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 			vm_object_set_flag(result, OBJ_ONSHADOW);
 		}
 		/* cpu localization twist */
-		result->pg_color = (int)(intptr_t)curthread;
+		result->pg_color = vm_quickcolor();
 	}
 
 	/*
