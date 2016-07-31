@@ -203,6 +203,13 @@
 					(mask).ary[3] ^= (val).ary[3];	\
 					} while(0)
 
+#define CPUMASK_INVMASK(mask)		do {				\
+					(mask).ary[0] ^= -1L;		\
+					(mask).ary[1] ^= -1L;		\
+					(mask).ary[2] ^= -1L;		\
+					(mask).ary[3] ^= -1L;		\
+					} while(0)
+
 #define ATOMIC_CPUMASK_ORBIT(mask, i)					  \
 			atomic_set_cpumask(&(mask).ary[((i) >> 6) & 3],	  \
 					   CPUMASK_SIMPLE((i) & 63))
