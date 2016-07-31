@@ -102,7 +102,7 @@ TAILQ_HEAD(rq, lwp);
 struct usched_dfly_pcpu {
 	struct spinlock spin;
 	struct thread	*helper_thread;
-	short		unusde01;
+	u_short		scancpu;
 	short		upri;
 	int		uload;
 	int		ucount;
@@ -180,7 +180,6 @@ struct usched usched_dfly = {
 					/* currently running a user process */
 static cpumask_t dfly_curprocmask = CPUMASK_INITIALIZER_ALLONES;
 static cpumask_t dfly_rdyprocmask;	/* ready to accept a user process */
-static volatile int dfly_scancpu;
 static volatile int dfly_ucount;	/* total running on whole system */
 static struct usched_dfly_pcpu dfly_pcpu[MAXCPU];
 static struct sysctl_ctx_list usched_dfly_sysctl_ctx;
@@ -1241,6 +1240,18 @@ dfly_forking(struct lwp *plp, struct lwp *lp)
 	lp->lwp_estfast = 0;
 
 	/*
+	 * Even though the lp will be scheduled specially the first time
+	 * due to lp->lwp_forked, it is important to initialize lwp_qcpu
+	 * to avoid favoring a fixed cpu.
+	 */
+#if 0
+	static uint16_t save_cpu;
+	lp->lwp_qcpu = ++save_cpu % ncpus;
+#else
+	lp->lwp_qcpu = plp->lwp_qcpu;
+#endif
+
+	/*
 	 * Dock the parent a cost for the fork, protecting us from fork
 	 * bombs.  If the parent is forking quickly make the child more
 	 * batchy.
@@ -1606,9 +1617,11 @@ dfly_choose_best_queue(struct lwp *lp)
 		}
 		cpup = cpub;
 	}
-	if (usched_dfly_chooser)
+	if (usched_dfly_chooser > 0) {
+		--usched_dfly_chooser;		/* only N lines */
 		kprintf("lp %02d->%02d %s\n",
 			lp->lwp_qcpu, rdd->cpuid, lp->lwp_proc->p_comm);
+	}
 	return (rdd);
 }
 
@@ -1652,7 +1665,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 
 	/*
 	 * When the topology is known choose a cpu whos group has, in
-	 * aggregate, has the lowest weighted load.
+	 * aggregate, has the highest weighted load.
 	 */
 	cpup = root_cpu_node;
 	rdd = dd;
@@ -1687,6 +1700,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 			CPUMASK_ANDMASK(mask, smp_active_mask);
 			if (CPUMASK_TESTZERO(mask))
 				continue;
+
 			count = 0;
 			load = 0;
 
@@ -1695,6 +1709,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 				rdd = &dfly_pcpu[cpuid];
 				load += rdd->uload;
 				load += rdd->ucount * usched_dfly_weight3;
+
 				if (rdd->uschedcp == NULL &&
 				    rdd->runqcount == 0 &&
 				    globaldata_find(cpuid)->gd_tdrunqcount == 0
@@ -1722,7 +1737,9 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 			 * The best candidate is the one with the worst
 			 * (highest) load.
 			 */
-			if (cpub == NULL || highest_load < load) {
+			if (cpub == NULL || highest_load < load ||
+			    (highest_load == load &&
+			     CPUMASK_TESTMASK(cpun->members, dd->cpumask))) {
 				highest_load = load;
 				cpub = cpun;
 			}
@@ -1763,64 +1780,84 @@ dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp)
 	dfly_pcpu_t rdd;
 	cpumask_t tmpmask;
 	cpumask_t mask;
+	int cpubase;
 	int cpuid;
 
 	/*
 	 * Fallback to the original heuristic, select random cpu,
-	 * first checking cpus not currently running a user thread.
+	 * first checking the cpus not currently running a user thread.
+	 *
+	 * Use cpuid as the base cpu in our scan, first checking
+	 * cpuid...(ncpus-1), then 0...(cpuid-1).  This avoid favoring
+	 * lower-numbered cpus.
 	 */
-	++dfly_scancpu;
-	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
+	++dd->scancpu;		/* SMP race ok */
 	mask = dfly_rdyprocmask;
 	CPUMASK_NANDMASK(mask, dfly_curprocmask);
 	CPUMASK_ANDMASK(mask, lp->lwp_cpumask);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 	CPUMASK_ANDMASK(mask, usched_global_cpumask);
 
-	while (CPUMASK_TESTNZERO(mask)) {
-		CPUMASK_ASSNBMASK(tmpmask, cpuid);
-		if (CPUMASK_TESTMASK(tmpmask, mask)) {
-			CPUMASK_ANDMASK(tmpmask, mask);
-			cpuid = BSFCPUMASK(tmpmask);
-		} else {
-			cpuid = BSFCPUMASK(mask);
-		}
+	cpubase = (int)(dd->scancpu % ncpus);
+	CPUMASK_ASSBMASK(tmpmask, cpubase);
+	CPUMASK_INVMASK(tmpmask);
+	CPUMASK_ANDMASK(tmpmask, mask);
+	while (CPUMASK_TESTNZERO(tmpmask)) {
+		cpuid = BSFCPUMASK(tmpmask);
 		rdd = &dfly_pcpu[cpuid];
 
 		if ((rdd->upri & ~PPQMASK) >= (lp->lwp_priority & ~PPQMASK))
 			goto found;
-		CPUMASK_NANDBIT(mask, cpuid);
+		CPUMASK_NANDBIT(tmpmask, cpuid);
+	}
+
+	CPUMASK_ASSBMASK(tmpmask, cpubase);
+	CPUMASK_ANDMASK(tmpmask, mask);
+	while (CPUMASK_TESTNZERO(tmpmask)) {
+		cpuid = BSFCPUMASK(tmpmask);
+		rdd = &dfly_pcpu[cpuid];
+
+		if ((rdd->upri & ~PPQMASK) >= (lp->lwp_priority & ~PPQMASK))
+			goto found;
+		CPUMASK_NANDBIT(tmpmask, cpuid);
 	}
 
 	/*
 	 * Then cpus which might have a currently running lp
 	 */
-	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
 	mask = dfly_rdyprocmask;
 	CPUMASK_ANDMASK(mask, dfly_curprocmask);
 	CPUMASK_ANDMASK(mask, lp->lwp_cpumask);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 	CPUMASK_ANDMASK(mask, usched_global_cpumask);
 
-	while (CPUMASK_TESTNZERO(mask)) {
-		CPUMASK_ASSNBMASK(tmpmask, cpuid);
-		if (CPUMASK_TESTMASK(tmpmask, mask)) {
-			CPUMASK_ANDMASK(tmpmask, mask);
-			cpuid = BSFCPUMASK(tmpmask);
-		} else {
-			cpuid = BSFCPUMASK(mask);
-		}
+	CPUMASK_ASSBMASK(tmpmask, cpubase);
+	CPUMASK_INVMASK(tmpmask);
+	CPUMASK_ANDMASK(tmpmask, mask);
+	while (CPUMASK_TESTNZERO(tmpmask)) {
+		cpuid = BSFCPUMASK(tmpmask);
 		rdd = &dfly_pcpu[cpuid];
 
 		if ((rdd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
 			goto found;
-		CPUMASK_NANDBIT(mask, cpuid);
+		CPUMASK_NANDBIT(tmpmask, cpuid);
+	}
+
+	CPUMASK_ASSBMASK(tmpmask, cpubase);
+	CPUMASK_ANDMASK(tmpmask, mask);
+	while (CPUMASK_TESTNZERO(tmpmask)) {
+		cpuid = BSFCPUMASK(tmpmask);
+		rdd = &dfly_pcpu[cpuid];
+
+		if ((rdd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
+			goto found;
+		CPUMASK_NANDBIT(tmpmask, cpuid);
 	}
 
 	/*
-	 * If we cannot find a suitable cpu we reload from dfly_scancpu
-	 * and round-robin.  Other cpus will pickup as they release their
-	 * current lwps or become ready.
+	 * If we cannot find a suitable cpu we round-robin using scancpu.
+	 * Other cpus will pickup as they release their current lwps or
+	 * become ready.
 	 *
 	 * Avoid a degenerate system lockup case if usched_global_cpumask
 	 * is set to 0 or otherwise does not cover lwp_cpumask.
@@ -1828,7 +1865,7 @@ dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp)
 	 * We only kick the target helper thread in this case, we do not
 	 * set the user resched flag because
 	 */
-	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
+	cpuid = cpubase;
 	if (CPUMASK_TESTBIT(usched_global_cpumask, cpuid) == 0)
 		cpuid = 0;
 	rdd = &dfly_pcpu[cpuid];

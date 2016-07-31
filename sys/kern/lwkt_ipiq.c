@@ -403,18 +403,43 @@ lwkt_send_ipiq3_bycpu(int dcpu, ipifunc3_t func, void *arg1, int arg2)
 /*
  * Send a message to several target cpus.  Typically used for scheduling.
  * The message will not be sent to stopped cpus.
+ *
+ * To prevent treating low-numbered cpus as favored sons, the IPIs are
+ * issued in order starting at mycpu upward, then from 0 through mycpu.
+ * This is particularly important to prevent random scheduler pickups
+ * from favoring cpu 0.
  */
 int
 lwkt_send_ipiq3_mask(cpumask_t mask, ipifunc3_t func, void *arg1, int arg2)
 {
     int cpuid;
     int count = 0;
+    cpumask_t amask;
 
     CPUMASK_NANDMASK(mask, stopped_cpus);
-    while (CPUMASK_TESTNZERO(mask)) {
-	cpuid = BSFCPUMASK(mask);
+
+    /*
+     * All cpus in mask which are >= mycpu
+     */
+    CPUMASK_ASSBMASK(amask, mycpu->gd_cpuid);
+    CPUMASK_INVMASK(amask);
+    CPUMASK_ANDMASK(amask, mask);
+    while (CPUMASK_TESTNZERO(amask)) {
+	cpuid = BSFCPUMASK(amask);
 	lwkt_send_ipiq3(globaldata_find(cpuid), func, arg1, arg2);
-	CPUMASK_NANDBIT(mask, cpuid);
+	CPUMASK_NANDBIT(amask, cpuid);
+	++count;
+    }
+
+    /*
+     * All cpus in mask which are < mycpu
+     */
+    CPUMASK_ASSBMASK(amask, mycpu->gd_cpuid);
+    CPUMASK_ANDMASK(amask, mask);
+    while (CPUMASK_TESTNZERO(amask)) {
+	cpuid = BSFCPUMASK(amask);
+	lwkt_send_ipiq3(globaldata_find(cpuid), func, arg1, arg2);
+	CPUMASK_NANDBIT(amask, cpuid);
 	++count;
     }
     return(count);

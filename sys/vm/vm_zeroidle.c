@@ -1,9 +1,7 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1994 John Dyson
- * Copyright (c) 2001 Matt Dillon
- * Copyright (c) 2010 The DragonFly Project
+ * Copyright (c) 2001,2016 Matt Dillon
+ * Copyright (c) 2010,2016 The DragonFly Project
  *
  * All Rights Reserved.
  *
@@ -33,10 +31,6 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
- *	Utah $Hdr: vm_machdep.c	1.16.1.1 89/06/23$
- * from FreeBSD: .../i386/vm_machdep.c,v 1.165 2001/07/04 23:27:04 dillon
  */
 
 #include <sys/param.h>
