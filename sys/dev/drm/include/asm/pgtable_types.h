@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,5 +34,7 @@
 #define _PAGE_PWT	X86_PG_NC_PWT
 #define _PAGE_PCD	X86_PG_NC_PCD
 #define _PAGE_PAT	X86_PG_PTE_PAT
+
+#define PAGE_KERNEL 0	/* XXX: doesn't mean anything */
 
 #endif	/* _ASM_PGTABLE_TYPES_H_ */

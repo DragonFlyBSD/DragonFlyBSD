@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,27 @@
 #ifndef _LINUX_VMALLOC_H_
 #define _LINUX_VMALLOC_H_
 
-static inline void vunmap(const void *addr)
+#include <vm/vm_extern.h>
+
+static inline void *
+vmap(struct vm_page **pages, unsigned int count,
+		unsigned long flags, unsigned long prot)
+{
+	vm_offset_t off;
+	size_t size;
+
+	size = count * PAGE_SIZE;
+	off = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
+	if (off == 0)
+		return (NULL);
+
+	pmap_qenter(off, pages, count);
+
+	return (void *)off;
+}
+
+static inline void
+vunmap(const void *addr)
 {
 	/* Nothing to do on systems with a direct memory map */
 }
