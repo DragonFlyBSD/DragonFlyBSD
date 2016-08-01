@@ -388,7 +388,6 @@ void vm_page_wakeup(vm_page_t m);
 void vm_page_hold(vm_page_t);
 void vm_page_unhold(vm_page_t);
 void vm_page_activate (vm_page_t);
-void vm_page_pcpu_cache(void);
 
 vm_size_t vm_contig_avail_pages(void);
 vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);

@@ -1608,45 +1608,6 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 }
 
 /*
- * This implements a per-cpu cache of free, zero'd, ready-to-go pages.
- * The idea is to populate this cache prior to acquiring any locks so
- * we don't wind up potentially zeroing VM pages (under heavy loads) while
- * holding potentialy contending locks.
- *
- * Note that we allocate the page uninserted into anything and use a pindex
- * of 0, the vm_page_alloc() will effectively add gd_cpuid so these
- * allocations should wind up being uncontended.  However, we still want
- * to rove across PQ_L2_SIZE.
- */
-void
-vm_page_pcpu_cache(void)
-{
-#if 0
-	globaldata_t gd = mycpu;
-	vm_page_t m;
-
-	if (gd->gd_vmpg_count < GD_MINVMPG) {
-		crit_enter_gd(gd);
-		while (gd->gd_vmpg_count < GD_MAXVMPG) {
-			m = vm_page_alloc(NULL, ticks & ~ncpus2_mask,
-					  VM_ALLOC_NULL_OK | VM_ALLOC_NORMAL |
-					  VM_ALLOC_NULL_OK | VM_ALLOC_ZERO);
-			if (gd->gd_vmpg_count < GD_MAXVMPG) {
-				if ((m->flags & PG_ZERO) == 0) {
-					pmap_zero_page(VM_PAGE_TO_PHYS(m));
-					vm_page_flag_set(m, PG_ZERO);
-				}
-				gd->gd_vmpg_array[gd->gd_vmpg_count++] = m;
-			} else {
-				vm_page_free(m);
-			}
-		}
-		crit_exit_gd(gd);
-	}
-#endif
-}
-
-/*
  * vm_page_alloc()
  *
  * Allocate and return a memory cell associated with this VM object/offset

@@ -309,7 +309,6 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	int inherit_prot;
 
 	inherit_prot = fault_type & VM_PROT_NOSYNC;
-	vm_page_pcpu_cache();
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
 	fs.vp = NULL;
