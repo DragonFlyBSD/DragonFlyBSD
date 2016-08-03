@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "buffer 3"
-.TH buffer 3 "2016-05-03" "1.0.1t" "OpenSSL"
+.TH buffer 3 "2016-05-03" "1.0.2h" "OpenSSL"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -164,6 +164,8 @@ standard C library equivalents
 \& size_t BUF_strlcpy(char *dst, const char *src, size_t size);
 \&
 \& size_t BUF_strlcat(char *dst, const char *src, size_t size);
+\&
+\& size_t BUF_strnlen(const char *str, size_t maxlen);
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
@@ -179,11 +181,11 @@ before freeing up in case the buffer contains sensitive data.
 \&\fBlen\fR. Any data already in the buffer is preserved if it increases in
 size.
 .PP
-\&\fIBUF_strdup()\fR, \fIBUF_strndup()\fR, \fIBUF_memdup()\fR, \fIBUF_strlcpy()\fR and
-\&\fIBUF_strlcat()\fR are equivalents of the standard C library functions. The
-\&\fIdup()\fR functions use \fIOPENSSL_malloc()\fR underneath and so should be used
-in preference to the standard library for memory leak checking or
-replacing the \fImalloc()\fR function.
+\&\fIBUF_strdup()\fR, \fIBUF_strndup()\fR, \fIBUF_memdup()\fR, \fIBUF_strlcpy()\fR,
+\&\fIBUF_strlcat()\fR and BUF_strnlen are equivalents of the standard C
+library functions. The \fIdup()\fR functions use \fIOPENSSL_malloc()\fR underneath
+and so should be used in preference to the standard library for memory
+leak checking or replacing the \fImalloc()\fR function.
 .PP
 Memory allocated from these functions should be freed up using the
 \&\fIOPENSSL_free()\fR function.

@@ -3,13 +3,11 @@
 LIB=		crypto
 SHLIB_MAJOR=	5
 SHLIBDIR?=	/lib
-WARNS?=		2
+WARNS?=		1
 
 SUBDIR=	engines
 
-.if ${MACHINE_ARCH} == "x86_64"
 LDFLAGS+=-Wl,-Bsymbolic
-.endif
 
 .if exists(Makefile.man)
 .include "Makefile.man"
@@ -20,9 +18,7 @@ LDFLAGS+=-Wl,-Bsymbolic
 # base sources
 SRCS=	cryptlib.c mem.c mem_dbg.c cversion.c ex_data.c cpt_err.c ebcdic.c \
 	uid.c o_time.c o_dir.c o_fips.c o_init.c fips_ers.c
-.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	x86_64cpuid.s
-.endif
 INCS=	../e_os2.h
 INCS+=	crypto.h opensslv.h opensslconf.h ebcdic.h symhacks.h ossl_typ.h
 SRCS+=	buildinf.h
@@ -48,9 +44,8 @@ opensslconf.h: opensslconf-${MACHINE_ARCH}.h
 
 # aes
 SRCS+=	aes_misc.c aes_ecb.c aes_cfb.c aes_ofb.c aes_ctr.c aes_ige.c aes_wrap.c
-.if ${MACHINE_ARCH} == "x86_64"
-SRCS+=	aes-x86_64.s vpaes-x86_64.s bsaes-x86_64.s aesni-x86_64.s aesni-sha1-x86_64.s
-.endif
+SRCS+=	aes-x86_64.s vpaes-x86_64.s bsaes-x86_64.s aesni-x86_64.s \
+	aesni-sha1-x86_64.s aesni-sha256-x86_64.s aesni-mb-x86_64.s
 INCS+=	aes.h
 
 # asn1
@@ -71,9 +66,7 @@ INCS+=	asn1.h asn1_mac.h asn1t.h
 
 # bf
 SRCS+=	bf_skey.c bf_ecb.c bf_cfb64.c bf_ofb64.c
-.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	bf_enc.c
-.endif
 INCS+=	blowfish.h
 
 # bio
@@ -91,9 +84,7 @@ SRCS+=	bn_add.c bn_div.c bn_exp.c bn_lib.c bn_ctx.c bn_mul.c bn_mod.c \
 	bn_kron.c bn_sqrt.c bn_gcd.c bn_prime.c bn_err.c bn_sqr.c \
 	bn_recp.c bn_mont.c bn_mpi.c bn_exp2.c bn_gf2m.c bn_nist.c \
 	bn_depr.c bn_const.c bn_x931p.c
-.if ${MACHINE_ARCH} == "x86_64"
-SRCS+=	x86_64-gcc.c x86_64-mont.s x86_64-mont5.s x86_64-gf2m.s modexp512-x86_64.s
-.endif
+SRCS+=	x86_64-gcc.c x86_64-mont.s x86_64-mont5.s x86_64-gf2m.s rsaz_exp.c rsaz-x86_64.s rsaz-avx2.s
 INCS+=	bn.h
 
 # buffer
@@ -102,9 +93,7 @@ INCS+=	buffer.h
 
 # camellia
 SRCS+=	cmll_ecb.c cmll_ofb.c cmll_cfb.c cmll_ctr.c cmll_utl.c
-.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	cmll-x86_64.s cmll_misc.c
-.endif
 INCS+=	camellia.h
 
 # cast
@@ -118,7 +107,7 @@ INCS+=	cmac.h
 # cms
 SRCS+=	cms_lib.c cms_asn1.c cms_att.c cms_io.c cms_smime.c cms_err.c \
 	cms_sd.c cms_dd.c cms_cd.c cms_env.c cms_enc.c cms_ess.c \
-	cms_pwri.c
+	cms_pwri.c cms_kari.c
 INCS+=	cms.h
 
 # comp
@@ -138,14 +127,12 @@ SRCS+=	set_key.c  ecb_enc.c  cbc_enc.c \
 	ofb_enc.c  str2key.c  pcbc_enc.c qud_cksm.c rand_key.c \
 	fcrypt.c xcbc_enc.c rpc_enc.c  cbc_cksm.c \
 	ede_cbcm_enc.c des_old.c des_old2.c read2pwd.c
-.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	des_enc.c fcrypt_b.c
-.endif
 INCS+=	des.h des_old.h
 
 # dh
 SRCS+=	dh_asn1.c dh_gen.c dh_key.c dh_lib.c dh_check.c dh_err.c dh_depr.c \
-	dh_ameth.c dh_pmeth.c dh_prn.c
+	dh_ameth.c dh_pmeth.c dh_prn.c dh_rfc5114.c dh_kdf.c
 INCS+=	dh.h
 
 # dsa
@@ -163,10 +150,11 @@ SRCS+=	ec_lib.c ecp_smpl.c ecp_mont.c ecp_nist.c ec_cvt.c ec_mult.c \
 	ec2_smpl.c ec2_mult.c ec_ameth.c ec_pmeth.c eck_prn.c \
 	ecp_nistp224.c ecp_nistp256.c ecp_nistp521.c ecp_nistputil.c \
 	ecp_oct.c ec2_oct.c ec_oct.c
+SRCS+=	ecp_nistz256.c ecp_nistz256-x86_64.s
 INCS+=	ec.h
 
 # ecdh
-SRCS+=	ech_lib.c ech_ossl.c ech_key.c ech_err.c
+SRCS+=	ech_lib.c ech_ossl.c ech_key.c ech_err.c ech_kdf.c
 INCS+=	ecdh.h
 
 # ecdsa
@@ -179,7 +167,7 @@ SRCS+=	eng_err.c eng_lib.c eng_list.c eng_init.c eng_ctrl.c \
 	tb_rsa.c tb_dsa.c tb_ecdsa.c tb_dh.c tb_ecdh.c tb_rand.c tb_store.c \
 	tb_cipher.c tb_digest.c tb_pkmeth.c tb_asnmth.c \
 	eng_openssl.c eng_cnf.c eng_dyn.c eng_cryptodev.c \
-	eng_rsax.c eng_rdrand.c
+	eng_rdrand.c
 INCS+=	engine.h
 
 # err
@@ -197,8 +185,8 @@ SRCS+=	encode.c digest.c evp_enc.c evp_key.c evp_acnf.c evp_cnf.c \
 	bio_md.c bio_b64.c bio_enc.c evp_err.c e_null.c \
 	c_all.c c_allc.c c_alld.c evp_lib.c bio_ok.c \
 	evp_pkey.c evp_pbe.c p5_crpt.c p5_crpt2.c \
-	e_old.c pmeth_lib.c pmeth_fn.c pmeth_gn.c m_sigver.c evp_fips.c \
-	e_aes_cbc_hmac_sha1.c e_rc4_hmac_md5.c
+	e_old.c pmeth_lib.c pmeth_fn.c pmeth_gn.c m_sigver.c \
+	e_aes_cbc_hmac_sha1.c e_aes_cbc_hmac_sha256.c e_rc4_hmac_md5.c
 INCS+=	evp.h
 
 # hmac
@@ -230,9 +218,7 @@ INCS+=	md4.h
 
 # md5
 SRCS+=	md5_dgst.c md5_one.c
-.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	md5-x86_64.s
-.endif
 INCS+=	md5.h
 
 # mdc2
@@ -241,10 +227,8 @@ INCS+=	mdc2.h
 
 # modes
 SRCS+=	cbc128.c ctr128.c cts128.c cfb128.c ofb128.c gcm128.c \
-	ccm128.c xts128.c
-.if ${MACHINE_ARCH} == "x86_64"
-SRCS+=	ghash-x86_64.s
-.endif
+	ccm128.c xts128.c wrap128.c
+SRCS+=	ghash-x86_64.s aesni-gcm-x86_64.s
 INCS+=	modes.h
 
 # objects
@@ -287,9 +271,7 @@ INCS+=	rc2.h
 
 # rc4
 SRCS+=	rc4_utl.c
-.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	rc4-x86_64.s rc4-md5-x86_64.s
-.endif
 INCS+=	rc4.h
 
 # rc5
@@ -314,9 +296,8 @@ INCS+=	seed.h
 
 # sha
 SRCS+=	sha_dgst.c sha1dgst.c sha_one.c sha1_one.c sha256.c sha512.c
-.if ${MACHINE_ARCH} == "x86_64"
-SRCS+=	sha1-x86_64.s sha256-x86_64.s sha512-x86_64.s
-.endif
+SRCS+=	sha1-x86_64.s sha256-x86_64.s sha512-x86_64.s \
+	sha1-mb-x86_64.s sha256-mb-x86_64.s
 INCS+=	sha.h
 
 # srp
@@ -347,9 +328,7 @@ INCS+=	ui.h ui_compat.h
 
 # whrlpool
 SRCS+=	wp_dgst.c
-.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	wp-x86_64.s
-.endif
 INCS+=	whrlpool.h
 
 # x509
@@ -367,7 +346,7 @@ SRCS+=	v3_bcons.c v3_bitst.c v3_conf.c v3_extku.c v3_ia5.c v3_lib.c \
 	v3_int.c v3_enum.c v3_sxnet.c v3_cpols.c v3_crld.c v3_purp.c v3_info.c \
 	v3_ocsp.c v3_akeya.c v3_pmaps.c v3_pcons.c v3_ncons.c v3_pcia.c v3_pci.c \
 	pcy_cache.c pcy_node.c pcy_data.c pcy_map.c pcy_tree.c pcy_lib.c \
-	v3_asid.c v3_addr.c
+	v3_asid.c v3_addr.c v3_scts.c
 INCS+=	x509v3.h
 
 .include <bsd.lib.mk>

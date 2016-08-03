@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "S_CLIENT 1"
-.TH S_CLIENT 1 "2016-05-03" "1.0.1t" "OpenSSL"
+.TH S_CLIENT 1 "2016-05-03" "1.0.2h" "OpenSSL"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -173,6 +173,9 @@ s_client \- SSL/TLS client program
 [\fB\-no_ssl2\fR]
 [\fB\-no_ssl3\fR]
 [\fB\-no_tls1\fR]
+[\fB\-no_tls1_1\fR]
+[\fB\-no_tls1_2\fR]
+[\fB\-fallback_scsv\fR]
 [\fB\-bugs\fR]
 [\fB\-cipher cipherlist\fR]
 [\fB\-serverpref\fR]
@@ -183,6 +186,7 @@ s_client \- SSL/TLS client program
 [\fB\-sess_out filename\fR]
 [\fB\-sess_in filename\fR]
 [\fB\-rand file(s)\fR]
+[\fB\-serverinfo types\fR]
 [\fB\-status\fR]
 [\fB\-nextprotoneg protocols\fR]
 .SH "DESCRIPTION"
@@ -306,6 +310,9 @@ given as a hexadecimal number without leading 0x, for example \-psk
 These options require or disable the use of the specified \s-1SSL\s0 or \s-1TLS\s0 protocols.
 By default the initial handshake uses a \fIversion-flexible\fR method which will
 negotiate the highest mutually supported protocol version.
+.IP "\fB\-fallback_scsv\fR" 4
+.IX Item "-fallback_scsv"
+Send \s-1TLS_FALLBACK_SCSV\s0 in the ClientHello.
 .IP "\fB\-bugs\fR" 4
 .IX Item "-bugs"
 there are several known bug in \s-1SSL\s0 and \s-1TLS\s0 implementations. Adding this
@@ -350,6 +357,12 @@ generator, or an \s-1EGD\s0 socket (see \fIRAND_egd\fR\|(3)).
 Multiple files can be specified separated by a OS-dependent character.
 The separator is \fB;\fR for MS-Windows, \fB,\fR for OpenVMS, and \fB:\fR for
 all others.
+.IP "\fB\-serverinfo types\fR" 4
+.IX Item "-serverinfo types"
+a list of comma-separated \s-1TLS\s0 Extension Types (numbers between 0 and 
+65535).  Each type will be sent as an empty ClientHello \s-1TLS\s0 Extension.
+The server's response (if any) will be encoded and displayed as a \s-1PEM\s0
+file.
 .IP "\fB\-status\fR" 4
 .IX Item "-status"
 sends a certificate status request to the server (\s-1OCSP\s0 stapling). The server
@@ -432,4 +445,4 @@ information whenever a session is renegotiated.
 \&\fIsess_id\fR\|(1), \fIs_server\fR\|(1), \fIciphers\fR\|(1)
 .SH "HISTORY"
 .IX Header "HISTORY"
-The \-no_alt_chains options was first added to OpenSSL 1.0.1n and 1.0.2b.
+The \-no_alt_chains options was first added to OpenSSL 1.0.2b.
