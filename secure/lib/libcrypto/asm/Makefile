@@ -60,11 +60,11 @@ CLEANFILES+=	${SRCS:S/.pl$/.s/}
 .SUFFIXES:	.pl
 
 sha{256,512}-x86_64.s:	${OPENSSL_SRC}/crypto/sha/asm/sha512-x86_64.pl
-	perl ${.ALLSRC} elf ${.TARGET}
+	env CC=cc perl ${.ALLSRC} elf ${.TARGET}
 	echo ".section .note.GNU-stack,\"\",%progbits" >>${.TARGET}
 
 .pl.s:
-	perl ${.IMPSRC} elf ${PERLFLAGS} > ${.TARGET}
+	env CC=cc perl ${.IMPSRC} elf > ${.TARGET}
 	echo ".section .note.GNU-stack,\"\",%progbits" >>${.TARGET}
 
 .include <bsd.prog.mk>
