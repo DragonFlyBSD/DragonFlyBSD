@@ -51,6 +51,8 @@
 #define VKDISK_MAX	16
 #define	SERNOLEN        30
 
+#define	pagezero(addr)	bzero((addr), PAGE_SIZE)
+
 struct vknetif_info {
 	int		tap_fd;
 	int		tap_unit;
