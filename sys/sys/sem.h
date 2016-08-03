@@ -8,7 +8,7 @@
  */
 
 #ifndef _SYS_SEM_H_
-#define _SYS_SEM_H_
+#define	_SYS_SEM_H_
 
 #include <sys/ipc.h>
 
@@ -47,9 +47,9 @@ struct sembuf {
 	short	sem_op;		/* semaphore operation */
 	short	sem_flg;	/* operation flags */
 };
-#define SEM_UNDO	010000
+#define	SEM_UNDO	010000
 
-#define MAX_SOPS	5	/* maximum # of sembuf's per semop call */
+#define	MAX_SOPS	5	/* maximum # of sembuf's per semop call */
 
 /*
  * semctl's arg parameter structure
@@ -63,20 +63,20 @@ union semun {
 /*
  * commands for semctl
  */
-#define GETNCNT	3	/* Return the value of semncnt {READ} */
-#define GETPID	4	/* Return the value of sempid {READ} */
-#define GETVAL	5	/* Return the value of semval {READ} */
-#define GETALL	6	/* Return semvals into arg.array {READ} */
-#define GETZCNT	7	/* Return the value of semzcnt {READ} */
-#define SETVAL	8	/* Set the value of semval to arg.val {ALTER} */
-#define SETALL	9	/* Set semvals from arg.array {ALTER} */
-#define SEM_STAT 10	/* Like IPC_STAT but treats semid as sema-index */
+#define	GETNCNT	3	/* Return the value of semncnt {READ} */
+#define	GETPID	4	/* Return the value of sempid {READ} */
+#define	GETVAL	5	/* Return the value of semval {READ} */
+#define	GETALL	6	/* Return semvals into arg.array {READ} */
+#define	GETZCNT	7	/* Return the value of semzcnt {READ} */
+#define	SETVAL	8	/* Set the value of semval to arg.val {ALTER} */
+#define	SETALL	9	/* Set semvals from arg.array {ALTER} */
+#define	SEM_STAT 10	/* Like IPC_STAT but treats semid as sema-index */
 
 /*
  * Permissions
  */
-#define SEM_A		0200	/* alter permission */
-#define SEM_R		0400	/* read permission */
+#define	SEM_A		0200	/* alter permission */
+#define	SEM_R		0400	/* read permission */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -107,7 +107,7 @@ struct seminfo {
 /*
  * Process sem_undo vectors at proc exit.
  */
-void	semexit (struct proc *p);
+void	semexit(struct proc *p);
 extern struct seminfo	seminfo;
 
 #endif
@@ -116,9 +116,9 @@ extern struct seminfo	seminfo;
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int semctl (int, int, int, ...);
-int semget (key_t, int, int);
-int semop (int, struct sembuf *,unsigned);
+int	semctl(int, int, int, ...);
+int	semget(key_t, int, int);
+int	semop(int, struct sembuf *, unsigned);
 __END_DECLS
 #endif /* !_KERNEL */
 

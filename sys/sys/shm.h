@@ -37,20 +37,20 @@
  */
 
 #ifndef _SYS_SHM_H_
-#define _SYS_SHM_H_
+#define	_SYS_SHM_H_
 
 #include <sys/ipc.h>
 
-#define SHM_RDONLY  010000  /* Attach read-only (else read-write) */
-#define SHM_RND     020000  /* Round attach address to SHMLBA */
-#define SHMLBA      PAGE_SIZE /* Segment low boundary address multiple */
+#define	SHM_RDONLY  010000  /* Attach read-only (else read-write) */
+#define	SHM_RND     020000  /* Round attach address to SHMLBA */
+#define	SHMLBA      PAGE_SIZE /* Segment low boundary address multiple */
 
 /* "official" access mode definitions; somewhat braindead since you have
    to specify (SHM_* >> 3) for group and (SHM_* >> 6) for world permissions */
-#define SHM_R       (IPC_R)
-#define SHM_W       (IPC_W)
+#define	SHM_R       (IPC_R)
+#define	SHM_W       (IPC_W)
 
-typedef unsigned int	shmatt_t;
+typedef	unsigned int	shmatt_t;
 
 struct shmid_ds {
 	struct ipc_perm shm_perm;	/* operation permission structure */
@@ -87,18 +87,18 @@ extern struct shminfo	shminfo;
 struct proc;
 struct vmspace;
 
-void	shmexit (struct vmspace *);
-void	shmfork (struct proc *, struct proc *);
+void	 shmexit(struct vmspace *);
+void	 shmfork(struct proc *, struct proc *);
 
 #else /* !_KERNEL */
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int shmget (key_t, size_t, int);
-int shmctl (int, int, struct shmid_ds *);
-void *shmat  (int, const void *, int);
-int shmdt  (const void *);
+int	 shmget(key_t, size_t, int);
+int	 shmctl(int, int, struct shmid_ds *);
+void	*shmat(int, const void *, int);
+int	 shmdt(const void *);
 __END_DECLS
 
 #endif /* !_KERNEL */

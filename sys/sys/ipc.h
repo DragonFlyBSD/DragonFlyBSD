@@ -38,14 +38,13 @@
  *
  *	@(#)ipc.h	8.4 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/ipc.h,v 1.15 1999/12/29 04:24:43 peter Exp $
- * $DragonFly: src/sys/sys/ipc.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 /*
  * SVID compatible ipc.h file
  */
 #ifndef _SYS_IPC_H_
-#define _SYS_IPC_H_
+#define	_SYS_IPC_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -90,7 +89,7 @@ struct proc;
 
 #ifdef _KERNEL
 
-int	ipcperm (struct proc *, struct ipc_perm *, int);
+int	ipcperm(struct proc *, struct ipc_perm *, int);
 
 #else /* ! _KERNEL */
 
@@ -99,7 +98,7 @@ int	ipcperm (struct proc *, struct ipc_perm *, int);
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-key_t	ftok (const char *, int);
+key_t	ftok(const char *, int);
 __END_DECLS
 
 #endif /* _KERNEL */

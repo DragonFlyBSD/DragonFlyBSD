@@ -14,7 +14,6 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/sys/aio.h,v 1.13.2.8 2002/08/31 03:18:23 alc Exp $
- * $DragonFly: src/sys/sys/aio.h,v 1.5 2007/04/22 01:13:16 dillon Exp $
  */
 
 #ifndef _SYS_AIO_H_
@@ -50,7 +49,7 @@
  * LIO opcodes
  */
 #define	LIO_NOP			0x0
-#define LIO_WRITE		0x1
+#define	LIO_WRITE		0x1
 #define	LIO_READ		0x2
 
 /*

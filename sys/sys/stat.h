@@ -183,7 +183,7 @@ struct stat {
 #define	UF_FBSDRSVD20	0x00000020	/* (unused) */
 #define	UF_NOHISTORY	0x00000040	/* do not retain history/snapshots */
 #define	UF_CACHE	0x00000080	/* enable data swapcache */
-#define UF_XLINK	0x00000100	/* cross-link (hardlink) boundary */
+#define	UF_XLINK	0x00000100	/* cross-link (hardlink) boundary */
 
 /*
  * Super-user changeable flags.
@@ -196,7 +196,7 @@ struct stat {
 #define	SF_FBSDRSVD20	0x00200000	/* (used by FreeBSD for snapshots) */
 #define	SF_NOHISTORY	0x00400000	/* do not retain history/snapshots */
 #define	SF_NOCACHE	0x00800000	/* disable data swapcache */
-#define SF_XLINK	0x01000000	/* cross-link (hardlink) boundary */
+#define	SF_XLINK	0x01000000	/* cross-link (hardlink) boundary */
 
 #ifdef _KERNEL
 /*

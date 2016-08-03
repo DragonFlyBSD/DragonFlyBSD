@@ -21,7 +21,7 @@
  */
 
 #ifndef _SYS_MSG_H_
-#define _SYS_MSG_H_
+#define	_SYS_MSG_H_
 
 #include <sys/ipc.h>
 
@@ -30,7 +30,7 @@
  * are as defined by the SV API Intel 386 Processor Supplement.
  */
 
-#define MSG_NOERROR	010000		/* don't complain about too long msgs */
+#define	MSG_NOERROR	010000		/* don't complain about too long msgs */
 
 typedef	unsigned long	msglen_t;
 typedef	unsigned long	msgqnum_t;
@@ -107,10 +107,10 @@ extern struct msginfo	msginfo;
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int msgctl (int, int, struct msqid_ds *);
-int msgget (key_t, int);
-int msgsnd (int, const void *, size_t, int);
-int msgrcv (int, void *, size_t, long, int); /* XXX should return ssize_t */
+int	msgctl(int, int, struct msqid_ds *);
+int	msgget(key_t, int);
+int	msgsnd(int, const void *, size_t, int);
+int	msgrcv(int, void *, size_t, long, int); /* XXX should return ssize_t */
 __END_DECLS
 #endif
 

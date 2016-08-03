@@ -31,18 +31,18 @@
  */
 
 #ifndef _NETINET_TCP_H_
-#define _NETINET_TCP_H_
+#define	_NETINET_TCP_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
 #include <machine/endian.h>
 
-typedef	u_int32_t tcp_seq;
-typedef int32_t	  tcp_seq_diff_t;
+typedef	u_int32_t	tcp_seq;
+typedef	int32_t		tcp_seq_diff_t;
 
-#define tcp6_seq	tcp_seq	/* for KAME src sync over BSD*'s */
-#define tcp6hdr		tcphdr	/* for KAME src sync over BSD*'s */
+#define	tcp6_seq	tcp_seq	/* for KAME src sync over BSD*'s */
+#define	tcp6hdr		tcphdr	/* for KAME src sync over BSD*'s */
 
 /*
  * TCP header.
@@ -80,31 +80,31 @@ struct tcphdr {
 
 #define	TCPOPT_EOL		0
 #define	TCPOPT_NOP		1
-#define TCPOPT_2NOPs		(TCPOPT_NOP << 24 | TCPOPT_NOP << 16)
+#define	TCPOPT_2NOPs		(TCPOPT_NOP << 24 | TCPOPT_NOP << 16)
 #define	TCPOPT_MAXSEG		2
-#define    TCPOLEN_MAXSEG		4
-#define TCPOPT_WINDOW		3
-#define    TCPOLEN_WINDOW		3
-#define TCPOPT_SACK_PERMITTED	4
-#define    TCPOLEN_SACK_PERMITTED		2
+#define	   TCPOLEN_MAXSEG		4
+#define	TCPOPT_WINDOW		3
+#define	   TCPOLEN_WINDOW		3
+#define	TCPOPT_SACK_PERMITTED	4
+#define	   TCPOLEN_SACK_PERMITTED		2
 #define	   TCPOPT_SACK_PERMITTED_ALIGNED	\
     (TCPOPT_2NOPs | TCPOPT_SACK_PERMITTED << 8 | TCPOLEN_SACK_PERMITTED)
-#define    TCPOLEN_SACK_PERMITTED_ALIGNED	4
-#define TCPOPT_SACK		5
+#define	   TCPOLEN_SACK_PERMITTED_ALIGNED	4
+#define	TCPOPT_SACK		5
 #define	   TCPOLEN_SACK		2
 #define	   TCPOLEN_SACK_BLOCK	8
-#define TCPOPT_SACK_ALIGNED	(TCPOPT_2NOPs | TCPOPT_SACK << 8)
+#define	TCPOPT_SACK_ALIGNED	(TCPOPT_2NOPs | TCPOPT_SACK << 8)
 #define	   TCPOLEN_SACK_ALIGNED	4
-#define TCPOPT_TIMESTAMP	8
-#define    TCPOLEN_TIMESTAMP		10
-#define    TCPOLEN_TSTAMP_APPA		(TCPOLEN_TIMESTAMP+2) /* appendix A */
-#define    TCPOPT_TSTAMP_HDR		\
+#define	TCPOPT_TIMESTAMP	8
+#define	   TCPOLEN_TIMESTAMP		10
+#define	   TCPOLEN_TSTAMP_APPA		(TCPOLEN_TIMESTAMP+2) /* appendix A */
+#define	   TCPOPT_TSTAMP_HDR		\
     (TCPOPT_2NOPs | TCPOPT_TIMESTAMP << 8 | TCPOLEN_TIMESTAMP)
 #define	TCPOPT_CC		11		/* CC options: RFC-1644 */
-#define TCPOPT_CCNEW		12
-#define TCPOPT_CCECHO		13
-#define TCPOPT_SIGNATURE		19      /* Keyed MD5: RFC 2385 */
-#define TCPOLEN_SIGNATURE		18
+#define	TCPOPT_CCNEW		12
+#define	TCPOPT_CCECHO		13
+#define	TCPOPT_SIGNATURE		19      /* Keyed MD5: RFC 2385 */
+#define	TCPOLEN_SIGNATURE		18
 
 /*
  * Default maximum segment size for TCP.
@@ -139,13 +139,13 @@ struct tcphdr {
 
 #define	TCP_MAXWIN		65535	/* max value for (unscaled) window */
 
-#define TCP_MIN_WINSHIFT	5	/* requested minimum (x32) */
-#define TCP_MAX_WINSHIFT	14	/* maximum window shift */
+#define	TCP_MIN_WINSHIFT	5	/* requested minimum (x32) */
+#define	TCP_MAX_WINSHIFT	14	/* maximum window shift */
 
-#define TCP_MAXBURST		4	/* maximum segments in a burst */
+#define	TCP_MAXBURST		4	/* maximum segments in a burst */
 
-#define TCP_MAXHLEN	(0xf<<2)	/* max length of header in bytes */
-#define TCP_MAXOLEN	(TCP_MAXHLEN - sizeof(struct tcphdr))
+#define	TCP_MAXHLEN	(0xf<<2)	/* max length of header in bytes */
+#define	TCP_MAXOLEN	(TCP_MAXHLEN - sizeof(struct tcphdr))
 					/* max space left for options */
 
 /*
@@ -153,14 +153,14 @@ struct tcphdr {
  */
 #define	TCP_NODELAY	0x01	/* don't delay send to coalesce packets */
 #define	TCP_MAXSEG	0x02	/* set maximum segment size */
-#define TCP_NOPUSH	0x04	/* don't push last block of write */
-#define TCP_NOOPT	0x08	/* don't use TCP options */
-#define TCP_SIGNATURE_ENABLE    0x10    /* use MD5 digests (RFC2385) */
-#define TCP_KEEPINIT	0x20	/* set max time to establish connection */
+#define	TCP_NOPUSH	0x04	/* don't push last block of write */
+#define	TCP_NOOPT	0x08	/* don't use TCP options */
+#define	TCP_SIGNATURE_ENABLE    0x10    /* use MD5 digests (RFC2385) */
+#define	TCP_KEEPINIT	0x20	/* set max time to establish connection */
 /* 0x40 unused */
-#define TCP_FASTKEEP	0x80
-#define TCP_KEEPIDLE	0x100	/* set time before keepalive probes begin */
-#define TCP_KEEPINTVL	0x200	/* set time between keepalive probes */
-#define TCP_KEEPCNT	0x400	/* set max number of keepalive probes */
+#define	TCP_FASTKEEP	0x80
+#define	TCP_KEEPIDLE	0x100	/* set time before keepalive probes begin */
+#define	TCP_KEEPINTVL	0x200	/* set time between keepalive probes */
+#define	TCP_KEEPCNT	0x400	/* set max number of keepalive probes */
 
 #endif
