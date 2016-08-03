@@ -23,7 +23,7 @@
  * This version cannot perform asynchronous notification of I/O completion
  * on DragonFly via SIGEV_SIGNAL.
  *
- *    2) SIGEV_SIGNAL code is present, but if-ed out under 'notyet'; Dfly
+ *    2) SIGEV_SIGNAL code is present, but if-ed out as 'not yet'; Dfly
  *	 does not support sigqueue(), so we cannot control the payload to
  *	 a SIGINFO-signal from userspace. Programs using AIO signals use
  *	 the payload field to carry pointers to the completed AIO structure,
@@ -97,7 +97,7 @@ _aio_thr_start(void *vsigevp)
 int 
 aio_read(struct aiocb *ap)
 {
-#ifndef notyet
+#if 0 /* not yet */
 	if ((ap->aio_sigevent.sigev_notify != SIGEV_NONE) &&
 	    (ap->aio_sigevent.sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
@@ -117,7 +117,7 @@ aio_read(struct aiocb *ap)
 int 
 aio_write(struct aiocb *ap)
 {
-#ifndef notyet
+#if 0 /* not yet */
 	if ((ap->aio_sigevent.sigev_notify != SIGEV_NONE) &&
 	    (ap->aio_sigevent.sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
@@ -137,7 +137,7 @@ aio_write(struct aiocb *ap)
 int
 aio_fsync(int op, struct aiocb *ap)
 {
-#ifndef notyet
+#if 0 /* not yet */
 	if ((ap->aio_sigevent.sigev_notify != SIGEV_NONE) &&
 	    (ap->aio_sigevent.sigev_notify != SIGEV_THREAD))
 		return (ENOSYS);
@@ -157,7 +157,7 @@ lio_listio(int mode, struct aiocb *const apv[], int nent,
 {
 	int i;
 
-#ifndef notyet
+#if 0 /* not yet */
 	if (sigevp &&
 	    (sigevp->sigev_notify != SIGEV_NONE) &&
 	    (sigevp->sigev_notify != SIGEV_THREAD))
