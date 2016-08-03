@@ -19,24 +19,8 @@
 #ifndef _SYS_AIO_H_
 #define	_SYS_AIO_H_
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>
-#endif
-#ifndef _SYS_SIGNAL_H_
+#include <sys/_timespec.h>
 #include <sys/signal.h>
-#endif
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
-#ifndef _SYS_CALLOUT_H_
-#include <sys/callout.h>
-#endif
-#ifndef _SYS_EVENT_H_
-#include <sys/event.h>
-#endif
 
 /*
  * Returned by aio_cancel:
