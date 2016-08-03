@@ -38,17 +38,17 @@
 #ifndef _SYS_STAT_H_
 #define	_SYS_STAT_H_
 
-#if !defined(_POSIX_SOURCE)
+#include <sys/cdefs.h>
+#include <sys/types.h>
+
+#if !defined(_KERNEL) && __BSD_VISIBLE
 /*
- * XXX we need this for struct timespec.  We get miscellaneous namespace
- * pollution with it.
+ * XXX We get miscellaneous namespace pollution with this.
  */
-#ifndef _SYS_TIME_H_
 #include <sys/time.h>
-#endif
-#else	/* !_POSIX_SOURCE */
+#else
 #include <sys/_timespec.h>
-#endif	/* _POSIX_SOURCE */
+#endif
 
 #ifdef _KERNEL
 #define	__dev_t	udev_t
@@ -60,6 +60,9 @@
  * stat structure notes:
  *
  * NOTE: st_fsmid removed in DragonFly 2.5.x.
+ *
+ * XXX st_blocks should be blkcnt_t; st_blksize should be blksize_t;
+ *     see 1003.1-2008
  */
 struct stat {
 	ino_t	  st_ino;		/* inode's number */
@@ -93,7 +96,7 @@ struct stat {
 #define	st_ctime st_ctim.tv_sec
 
 /* BSD compatibility */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	st_atimespec st_atim
 #define	st_mtimespec st_mtim
 #define	st_ctimespec st_ctim
@@ -101,7 +104,7 @@ struct stat {
 
 #define	S_ISUID	0004000			/* set user id on execution */
 #define	S_ISGID	0002000			/* set group id on execution */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	S_ISTXT	0001000			/* sticky bit */
 #endif
 
@@ -110,7 +113,7 @@ struct stat {
 #define	S_IWUSR	0000200			/* W for owner */
 #define	S_IXUSR	0000100			/* X for owner */
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	S_IREAD		S_IRUSR
 #define	S_IWRITE	S_IWUSR
 #define	S_IEXEC		S_IXUSR
@@ -126,18 +129,20 @@ struct stat {
 #define	S_IWOTH	0000002			/* W for other */
 #define	S_IXOTH	0000001			/* X for other */
 
-#ifndef _POSIX_SOURCE
+#if __XSI_VISIBLE
 #define	S_IFMT	 0170000		/* type of file mask */
 #define	S_IFIFO	 0010000		/* named pipe (fifo) */
 #define	S_IFCHR	 0020000		/* character special */
 #define	S_IFDIR	 0040000		/* directory */
 #define	S_IFBLK	 0060000		/* block special */
 #define	S_IFREG	 0100000		/* regular */
-#define	S_IFDB	 0110000		/* record access file */
 #define	S_IFLNK	 0120000		/* symbolic link */
 #define	S_IFSOCK 0140000		/* socket */
-#define	S_IFWHT  0160000		/* whiteout */
 #define	S_ISVTX	 0001000		/* save swapped text even after use */
+#endif
+#if __BSD_VISIBLE
+#define	S_IFDB	 0110000		/* record access file */
+#define	S_IFWHT  0160000		/* whiteout */
 #endif
 
 #define	S_ISDIR(m)	(((m) & 0170000) == 0040000)	/* directory */
@@ -146,9 +151,11 @@ struct stat {
 #define	S_ISREG(m)	(((m) & 0170000) == 0100000)	/* regular file */
 #define	S_ISDB(m)	(((m) & 0170000) == 0110000)	/* record access file */
 #define	S_ISFIFO(m)	(((m) & 0170000) == 0010000)	/* fifo or socket */
-#ifndef _POSIX_SOURCE
+#if __POSIX_VISIBLE
 #define	S_ISLNK(m)	(((m) & 0170000) == 0120000)	/* symbolic link */
 #define	S_ISSOCK(m)	(((m) & 0170000) == 0140000)	/* socket */
+#endif
+#if __BSD_VISIBLE
 #define	S_ISWHT(m)	(((m) & 0170000) == 0160000)	/* whiteout */
 #endif
 
@@ -160,7 +167,7 @@ struct stat {
  */
 #define	S_TYPEISMQ(buf)		(0)	/* message queue */
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	ACCESSPERMS	(S_IRWXU|S_IRWXG|S_IRWXO)	/* 0777 */
 							/* 7777 */
 #define	ALLPERMS	(S_ISUID|S_ISGID|S_ISTXT|S_IRWXU|S_IRWXG|S_IRWXO)
@@ -208,7 +215,7 @@ struct stat {
 #define	NOUNLINK	(UF_NOUNLINK | SF_NOUNLINK)
 #endif
 
-#endif /* !_POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 #if __POSIX_VISIBLE >= 200809
 #define	UTIME_NOW	-1
@@ -220,12 +227,16 @@ struct stat {
 
 __BEGIN_DECLS
 int	chmod(const char *, mode_t);
+int	fchmod(int, mode_t);
 #if __POSIX_VISIBLE >= 200809
 int	fchmodat(int, const char *, mode_t, int);
 int	futimens(int, const struct timespec *);
 int	utimensat(int, const char *, const struct timespec *, int);
 #endif
 int	fstat(int, struct stat *);
+#if __POSIX_VISIBLE >= 199506
+int	lstat(const char *, struct stat *);
+#endif
 int	mkdir(const char *, mode_t);
 int	mkfifo(const char *, mode_t);
 #if !defined(_MKNOD_DECLARED) && __XSI_VISIBLE
@@ -242,15 +253,12 @@ int	mkfifoat(int, const char *, mode_t);
 #if __XSI_VISIBLE >= 700
 int	mknodat(int, const char *, mode_t, dev_t);
 #endif
-
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 int	chflags(const char *, u_long);
 int	fchflags(int, u_long);
 int	lchflags(const char *, u_long);
 int	chflagsat(int, const char *, u_long, int);
-int	fchmod(int, mode_t);
 int	lchmod(const char *, mode_t);
-int	lstat(const char *, struct stat *);
 #endif
 __END_DECLS
 
