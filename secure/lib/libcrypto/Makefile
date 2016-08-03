@@ -35,11 +35,7 @@ buildinf.h:
 	echo "#endif" ) > ${.TARGET}
 
 opensslconf.h: opensslconf-${MACHINE_ARCH}.h
-.if defined(WANT_IDEA)
-	sed '/^# define OPENSSL_NO_IDEA$$/d;/^#  define NO_IDEA$$/d' ${.ALLSRC} > ${.TARGET}
-.else
 	cp ${.ALLSRC} ${.TARGET}
-.endif
 
 
 # aes
@@ -194,11 +190,8 @@ SRCS+=	hmac.c hm_ameth.c hm_pmeth.c
 INCS+=	hmac.h
 
 # idea
-.if defined(WANT_IDEA)
 SRCS+=	i_cbc.c i_cfb64.c i_ofb64.c i_ecb.c i_skey.c
 INCS+=	idea.h
-_ideapath=	${LCRYPTO_SRC}/crypto/idea
-.endif
 
 # krb5
 SRCS+=	krb5_asn.c
@@ -368,6 +361,7 @@ INCS+=	x509v3.h
 	${LCRYPTO_SRC}/crypto/aes \
 	${LCRYPTO_SRC}/crypto/rc2 \
 	${LCRYPTO_SRC}/crypto/rc4 \
+	${LCRYPTO_SRC}/crypto/idea \
 	${LCRYPTO_SRC}/crypto/bf \
 	${LCRYPTO_SRC}/crypto/cast \
 	${LCRYPTO_SRC}/crypto/camellia \
@@ -407,6 +401,5 @@ INCS+=	x509v3.h
 	${LCRYPTO_SRC}/crypto/ts \
 	${LCRYPTO_SRC}/crypto/srp \
 	${LCRYPTO_SRC}/crypto/cmac \
-	${_ideapath} \
 	${LCRYPTO_SRC} \
 	${.CURDIR}/man
