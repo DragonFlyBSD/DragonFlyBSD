@@ -1743,17 +1743,9 @@ readrest:
 			fs->first_m = NULL;
 
 			/*
-			 * Zero the page if necessary and mark it valid.
+			 * Zero the page and mark it valid.
 			 */
-			if ((fs->m->flags & PG_ZERO) == 0) {
-				vm_page_zero_fill(fs->m);
-			} else {
-#ifdef PMAP_DEBUG
-				pmap_page_assertzero(VM_PAGE_TO_PHYS(fs->m));
-#endif
-				vm_page_flag_clear(fs->m, PG_ZERO);
-				mycpu->gd_cnt.v_ozfod++;
-			}
+			vm_page_zero_fill(fs->m);
 			mycpu->gd_cnt.v_zfod++;
 			fs->m->valid = VM_PAGE_BITS_ALL;
 			break;	/* break to PAGE HAS BEEN FOUND */
@@ -2000,7 +1992,6 @@ readrest:
 		vm_page_zero_invalid(fs->m, TRUE);
 		kprintf("Warning: page %p partially invalid on fault\n", fs->m);
 	}
-	vm_page_flag_clear(fs->m, PG_ZERO);
 
 	return (KERN_SUCCESS);
 }
@@ -2247,8 +2238,6 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 		/*
 		 * Enter it in the pmap...
 		 */
-
-		vm_page_flag_clear(dst_m, PG_ZERO);
 		pmap_enter(dst_map->pmap, vaddr, dst_m, prot, FALSE, dst_entry);
 
 		/*
@@ -2699,16 +2688,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 			/*
 			 * Page must be zerod.
 			 */
-			if ((m->flags & PG_ZERO) == 0) {
-				vm_page_zero_fill(m);
-			} else {
-#ifdef PMAP_DEBUG
-				pmap_page_assertzero(
-						VM_PAGE_TO_PHYS(m));
-#endif
-				vm_page_flag_clear(m, PG_ZERO);
-				mycpu->gd_cnt.v_ozfod++;
-			}
+			vm_page_zero_fill(m);
 			mycpu->gd_cnt.v_zfod++;
 			m->valid = VM_PAGE_BITS_ALL;
 

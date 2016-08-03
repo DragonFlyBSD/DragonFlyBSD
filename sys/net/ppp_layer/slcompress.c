@@ -59,9 +59,6 @@
 
 #define BCMP(p1, p2, n) bcmp((char *)(p1), (char *)(p2), (int)(n))
 #define BCOPY(p1, p2, n) bcopy((char *)(p1), (char *)(p2), (int)(n))
-#ifndef _KERNEL
-#define ovbcopy bcopy
-#endif
 
 void
 sl_compress_init(struct slcompress *comp, int max_state)
@@ -436,7 +433,7 @@ sl_uncompress_tcp(u_char **bufp, int len, u_int type, struct slcompress *comp)
 	 */
 	if ((intptr_t)cp & 3) {
 		if (len > 0)
-			ovbcopy(cp, (caddr_t)((intptr_t)cp &~ 3), len);
+			bcopy(cp, (caddr_t)((intptr_t)cp &~ 3), len);
 		cp = (u_char *)((intptr_t)cp &~ 3);
 	}
 	cp -= hlen;

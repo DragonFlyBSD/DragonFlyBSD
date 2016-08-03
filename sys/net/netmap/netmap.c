@@ -751,7 +751,7 @@ netmap_grab_packets(struct netmap_kring *kring, struct mbq *q, int force)
 		}
 		slot->flags &= ~NS_FORWARD; // XXX needed ?
 		/* XXX adapt to the case of a multisegment packet */
-		m = m_devget(BDG_NMB(na, slot), slot->len, 0, na->ifp, NULL);
+		m = m_devget(BDG_NMB(na, slot), slot->len, 0, na->ifp);
 
 		if (m == NULL)
 			break;

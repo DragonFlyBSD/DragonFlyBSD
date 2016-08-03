@@ -34,23 +34,12 @@
 #define V_MAX_ADAPTERS		8		/* XXX */
 
 /* some macros */
-#if defined(__x86_64__)
-#define bcopy_io(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
-#define bcopy_toio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
-#define bcopy_fromio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
+#define bcopy_io(s, d, c)	bcopy((void *)(s), (void *)(d), (c))
+#define bcopy_toio(s, d, c)	bcopy((void *)(s), (void *)(d), (c))
+#define bcopy_fromio(s, d, c)	bcopy((void *)(s), (void *)(d), (c))
 #define bzero_io(d, c)		bzero((void *)(d), (c))
 #define fill_io(p, d, c)	fill((p), (void *)(d), (c))
 #define fillw_io(p, d, c)	fillw((p), (void *)(d), (c))
-void generic_bcopy(const void *s, void *d, size_t c);
-#else /* !__x86_64__ */
-#define bcopy_io(s, d, c)	memcpy_io((d), (s), (c))
-#define bcopy_toio(s, d, c)	memcpy_toio((d), (void *)(s), (c))
-#define bcopy_fromio(s, d, c)	memcpy_fromio((void *)(d), (s), (c))
-#define bzero_io(d, c)		memset_io((d), 0, (c))
-#define fill_io(p, d, c)	memset_io((d), (p), (c))
-#define fillw(p, d, c)		memsetw((d), (p), (c))
-#define fillw_io(p, d, c)	memsetw_io((d), (p), (c))
-#endif /* !__x86_64__ */
 
 /* video function table */
 typedef int vi_probe_t(int unit, video_adapter_t **adpp, void *arg, int flags);

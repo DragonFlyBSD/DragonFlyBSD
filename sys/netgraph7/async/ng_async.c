@@ -525,7 +525,7 @@ nga_rcv_sync(const sc_p sc, item_p item)
 	sc->abuf[alen++] = PPP_FLAG;
 
 	/* Put frame in an mbuf and ship it off */
-	if (!(m = m_devget(sc->abuf, alen, 0, rcvif, NULL))) {
+	if (!(m = m_devget(sc->abuf, alen, 0, rcvif))) {
 		NG_FREE_ITEM(item);
 		error = ENOBUFS;
 	} else {
@@ -590,7 +590,7 @@ nga_rcv_async(const sc_p sc, item_p item)
 
 				/* OK, ship it out */
 				if ((n = m_devget(sc->sbuf + skip,
-					   sc->slen - skip, 0, rcvif, NULL))) {
+					   sc->slen - skip, 0, rcvif))) {
 					if (item) { /* sets NULL -> item */
 						NG_FWD_NEW_DATA(error, item,
 							sc->sync, n);

@@ -85,7 +85,6 @@ void	doreti_iret_fault(void) __asm(__STRING(doreti_iret_fault));
 void	enable_sse(void);
 void	fillw(int /*u_short*/ pat, void *base, size_t cnt);
 void	pagezero(void *addr);
-void	pagecopy(void *from, void *to);
 void	setidt_global(int idx, alias_for_inthand_t *func,
 	    int typ, int dpl, int ist);
 void	setidt(int idx, alias_for_inthand_t *func,

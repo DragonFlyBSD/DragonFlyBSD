@@ -2028,7 +2028,7 @@ ipsec4_encapsulate(struct mbuf *m, struct secasvar *sav)
 		oip = mtod(m->m_next, struct ip *);
 	}
 	ip = mtod(m, struct ip *);
-	ovbcopy((caddr_t)ip, (caddr_t)oip, hlen);
+	bcopy((caddr_t)ip, (caddr_t)oip, hlen);
 	m->m_len = sizeof(struct ip);
 	m->m_pkthdr.len -= (hlen - sizeof(struct ip));
 
@@ -2125,7 +2125,7 @@ ipsec6_encapsulate(struct mbuf *m, struct secasvar *sav)
 		oip6 = mtod(m->m_next, struct ip6_hdr *);
 	}
 	ip6 = mtod(m, struct ip6_hdr *);
-	ovbcopy((caddr_t)ip6, (caddr_t)oip6, sizeof(struct ip6_hdr));
+	bcopy((caddr_t)ip6, (caddr_t)oip6, sizeof(struct ip6_hdr));
 
 	/* XXX: Fake scoped addresses */
 	in6_clearscope(&oip6->ip6_src);

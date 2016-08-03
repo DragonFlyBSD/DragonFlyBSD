@@ -494,7 +494,7 @@ lp_intr (void *arg)
 	    len -= CLPIPHDRLEN;
 	    IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
 	    IFNET_STAT_INC(&sc->sc_if, ibytes, len);
-	    top = m_devget(sc->sc_ifbuf + CLPIPHDRLEN, len, 0, &sc->sc_if, 0);
+	    top = m_devget(sc->sc_ifbuf + CLPIPHDRLEN, len, 0, &sc->sc_if);
 	    if (top) {
 		if (sc->sc_if.if_bpf)
 		    lptap(&sc->sc_if, top);
@@ -539,7 +539,7 @@ lp_intr (void *arg)
 	    len -= LPIPHDRLEN;
 	    IFNET_STAT_INC(&sc->sc_if, ipackets, 1);
 	    IFNET_STAT_INC(&sc->sc_if, ibytes, len);
-	    top = m_devget(sc->sc_ifbuf + LPIPHDRLEN, len, 0, &sc->sc_if, 0);
+	    top = m_devget(sc->sc_ifbuf + LPIPHDRLEN, len, 0, &sc->sc_if);
 	    if (top) {
 		if (sc->sc_if.if_bpf)
 		    lptap(&sc->sc_if, top);

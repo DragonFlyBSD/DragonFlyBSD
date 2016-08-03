@@ -251,20 +251,7 @@ vm_add_new_page(vm_paddr_t pa)
 	atomic_add_int(&vmstats.v_page_count, 1);
 	atomic_add_int(&vmstats.v_free_count, 1);
 	vpq = &vm_page_queues[m->queue];
-#if 0
-	/* too expensive time-wise in large-mem configurations */
-	if ((vpq->flipflop & 15) == 0) {
-		pmap_zero_page(VM_PAGE_TO_PHYS(m));
-		m->flags |= PG_ZERO;
-		TAILQ_INSERT_TAIL(&vpq->pl, m, pageq);
-		++vpq->zero_count;
-	} else {
-#endif
-		TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
-#if 0
-	}
-	++vpq->flipflop;
-#endif
+	TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
 	++vpq->lcnt;
 }
 
@@ -687,8 +674,6 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		pq->lcnt--;
 		m->queue = PQ_NONE;
 		oqueue = queue;
-		if ((queue - m->pc) == PQ_FREE && (m->flags & PG_ZERO))
-			--pq->zero_count;
 		if ((queue - m->pc) == PQ_CACHE || (queue - m->pc) == PQ_FREE)
 			queue -= m->pc;
 		vm_page_queues_spin_unlock(oqueue);	/* intended */
@@ -717,16 +702,11 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 		m->queue = queue;
 
 		/*
-		 * Put zero'd pages on the end ( where we look for zero'd pages
-		 * first ) and non-zerod pages at the head.
+		 * PQ_FREE is always handled LIFO style to try to provide
+		 * cache-hot pages to programs.
 		 */
 		if (queue - m->pc == PQ_FREE) {
-			if (m->flags & PG_ZERO) {
-				TAILQ_INSERT_TAIL(&pq->pl, m, pageq);
-				++pq->zero_count;
-			} else {
-				TAILQ_INSERT_HEAD(&pq->pl, m, pageq);
-			}
+			TAILQ_INSERT_HEAD(&pq->pl, m, pageq);
 		} else if (athead) {
 			TAILQ_INSERT_HEAD(&pq->pl, m, pageq);
 		} else {
@@ -1787,7 +1767,7 @@ done:
 	 * Initialize the structure, inheriting some flags but clearing
 	 * all the rest.  The page has already been busied for us.
 	 */
-	vm_page_flag_clear(m, ~(PG_ZERO | PG_BUSY | PG_SBUSY));
+	vm_page_flag_clear(m, ~(PG_BUSY | PG_SBUSY));
 	KKASSERT(m->wire_count == 0);
 	KKASSERT(m->busy == 0);
 	m->act_count = 0;
@@ -2203,7 +2183,6 @@ vm_page_free_toq(vm_page_t m)
 		vm_page_flag_clear(m, PG_NEED_COMMIT);
 
 	if (m->hold_count != 0) {
-		vm_page_flag_clear(m, PG_ZERO);
 		_vm_page_add_queue_spinlocked(m, PQ_HOLD + m->pc, 0);
 	} else {
 		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 0);
@@ -2223,76 +2202,6 @@ vm_page_free_toq(vm_page_t m)
 		vm_page_spin_unlock(m);
 	}
 	vm_page_free_wakeup();
-}
-
-/*
- * vm_page_free_fromq_fast()
- *
- * Remove a non-zero page from one of the free queues; the page is removed for
- * zeroing, so do not issue a wakeup.
- *
- * Our zeroidle code is now per-cpu so only do a limited scan.  We try to
- * stay within a single cpu's domain but we do a little statistical
- * improvement by encompassing two cpu's domains worst-case.
- */
-vm_page_t
-vm_page_free_fromq_fast(void)
-{
-	globaldata_t gd = mycpu;
-	vm_page_t m;
-	int i;
-	int qi;
-
-	m = NULL;
-	qi = vm_get_pg_color(gd, NULL, ++gd->gd_quick_color);
-	qi = qi & PQ_L2_MASK;
-
-	/*
-	 * 16 = one cpu's domain
-	 * 32 = two cpu's domains
-	 * (note masking at bottom of loop!)
-	 */
-	for (i = 0; i < 10; ++i) {
-		m = vm_page_list_find(PQ_FREE, qi, FALSE);
-		/* page is returned spinlocked and removed from its queue */
-		if (m) {
-			if (vm_page_busy_try(m, TRUE)) {
-				/*
-				 * We were unable to busy the page, deactivate
-				 * it and loop.
-				 */
-				_vm_page_deactivate_locked(m, 0);
-				vm_page_spin_unlock(m);
-			} else if (m->flags & PG_ZERO) {
-				/*
-				 * The page is already PG_ZERO, requeue it
-				 * and loop.
-				 */
-				_vm_page_add_queue_spinlocked(m,
-							      PQ_FREE + m->pc,
-							      0);
-				vm_page_queue_spin_unlock(m);
-				if (_vm_page_wakeup(m)) {
-					vm_page_spin_unlock(m);
-					wakeup(m);
-				} else {
-					vm_page_spin_unlock(m);
-				}
-			} else {
-				/*
-				 * The page is not PG_ZERO'd so return it.
-				 */
-				KKASSERT((m->flags & (PG_UNMANAGED |
-						      PG_NEED_COMMIT)) == 0);
-				KKASSERT(m->hold_count == 0);
-				KKASSERT(m->wire_count == 0);
-				vm_page_spin_unlock(m);
-				break;
-			}
-			m = NULL;
-		}
-	}
-	return (m);
 }
 
 /*
@@ -2769,8 +2678,6 @@ vm_page_clear_commit(vm_page_t m)
  *
  * This routine may not be called from an interrupt.
  *
- * PG_ZERO is *ALWAYS* cleared by this routine.
- *
  * No other requirements.
  */
 vm_page_t
@@ -2817,18 +2724,26 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 	 *
 	 * If VM_ALLOC_FORCE_ZERO the page is unconditionally zero'd and set
 	 * valid even if already valid.
+	 *
+	 * NOTE!  We have removed all of the PG_ZERO optimizations and also
+	 *	  removed the idle zeroing code.  These optimizations actually
+	 *	  slow things down on modern cpus because the zerod area is
+	 *	  likely uncached, placing a memory-access burden on the
+	 *	  accesors taking the fault.
+	 *
+	 *	  By always zeroing the page in-line with the fault, no
+	 *	  dynamic ram reads are needed and the caches are hot, ready
+	 *	  for userland to access the memory.
 	 */
 	if (m->valid == 0) {
 		if (allocflags & (VM_ALLOC_ZERO | VM_ALLOC_FORCE_ZERO)) {
-			if ((m->flags & PG_ZERO) == 0)
-				pmap_zero_page(VM_PAGE_TO_PHYS(m));
+			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 			m->valid = VM_PAGE_BITS_ALL;
 		}
 	} else if (allocflags & VM_ALLOC_FORCE_ZERO) {
 		pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->valid = VM_PAGE_BITS_ALL;
 	}
-	vm_page_flag_clear(m, PG_ZERO);
 failed:
 	vm_object_drop(object);
 	return(m);

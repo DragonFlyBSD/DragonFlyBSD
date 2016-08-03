@@ -1285,7 +1285,7 @@ ip_insertoptions(struct mbuf *m, struct mbuf *opt, int *phlen)
 		m->m_data -= optlen;
 		m->m_len += optlen;
 		m->m_pkthdr.len += optlen;
-		ovbcopy(ip, mtod(m, caddr_t), sizeof(struct ip));
+		bcopy(ip, mtod(m, caddr_t), sizeof(struct ip));
 	}
 	ip = mtod(m, struct ip *);
 	bcopy(p->ipopt_list, ip + 1, optlen);
@@ -1685,7 +1685,7 @@ ip_pcbopts(int optname, struct mbuf **pcbopt, struct mbuf *m)
 	cnt = m->m_len;
 	m->m_len += sizeof(struct in_addr);
 	cp = mtod(m, u_char *) + sizeof(struct in_addr);
-	ovbcopy(mtod(m, caddr_t), cp, cnt);
+	bcopy(mtod(m, caddr_t), cp, cnt);
 	bzero(mtod(m, caddr_t), sizeof(struct in_addr));
 
 	for (; cnt > 0; cnt -= optlen, cp += optlen) {
@@ -1731,9 +1731,9 @@ ip_pcbopts(int optname, struct mbuf **pcbopt, struct mbuf *m)
 			 * Then copy rest of options back
 			 * to close up the deleted entry.
 			 */
-			ovbcopy(&cp[IPOPT_OFFSET+1] + sizeof(struct in_addr),
-				&cp[IPOPT_OFFSET+1],
-				cnt - (IPOPT_MINOFF - 1));
+			bcopy(&cp[IPOPT_OFFSET+1] + sizeof(struct in_addr),
+			      &cp[IPOPT_OFFSET+1],
+			      cnt - (IPOPT_MINOFF - 1));
 			break;
 		}
 	}

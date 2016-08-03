@@ -1336,7 +1336,7 @@ rt2860_rx_intr(struct rt2860_softc *sc)
 		/* HW may insert 2 padding bytes after 802.11 header */
 		if (rxd->flags & htole32(RT2860_RX_L2PAD)) {
 			u_int hdrlen = ieee80211_hdrsize(wh);
-			ovbcopy(wh, (caddr_t)wh + 2, hdrlen);
+			bcopy(wh, (caddr_t)wh + 2, hdrlen);
 			m->m_data += 2;
 			wh = mtod(m, struct ieee80211_frame *);
 		}

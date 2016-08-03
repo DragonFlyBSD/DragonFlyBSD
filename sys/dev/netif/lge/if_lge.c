@@ -885,7 +885,7 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 
 		if (lge_newbuf(sc, &LGE_RXTAIL(sc), NULL) == ENOBUFS) {
 			m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
-			    total_len + ETHER_ALIGN, 0, ifp, NULL);
+				      total_len + ETHER_ALIGN, 0, ifp);
 			lge_newbuf(sc, &LGE_RXTAIL(sc), m);
 			if (m0 == NULL) {
 				kprintf("lge%d: no receive buffers "

@@ -412,11 +412,12 @@ again:
 			KKASSERT(m->busy == 0);
 
 			/*
-			 * Clear all flags except PG_BUSY, PG_ZERO, and
-			 * PG_WANTED, then unbusy the now allocated page.
+			 * Clear all flags except PG_[S]BUSY and PG_WANTED,
+			 * then unbusy the now allocated page.
 			 */
-			vm_page_flag_clear(m, ~(PG_BUSY | PG_SBUSY |
-						PG_ZERO | PG_WANTED));
+			vm_page_flag_clear(m, ~(PG_BUSY |
+						PG_SBUSY |
+						PG_WANTED));
 			vm_page_wire(m);
 			vm_page_wakeup(m);
 		}

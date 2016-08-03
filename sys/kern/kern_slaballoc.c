@@ -1559,8 +1559,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     }
 
     /*
-     * Allocate the pages.  Do not mess with the PG_ZERO flag or map
-     * them yet.  VM_ALLOC_NORMAL can only be set if we are not preempting.
+     * Allocate the pages.  Do not map them yet.  VM_ALLOC_NORMAL can only
+     * be set if we are not preempting.
      *
      * VM_ALLOC_SYSTEM is automatically set if we are preempting and
      * M_WAITOK was specified as an alternative (i.e. M_USE_RESERVE is
@@ -1634,7 +1634,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     crit_exit();
 
     /*
-     * Enter the pages into the pmap and deal with PG_ZERO and M_ZERO.
+     * Enter the pages into the pmap and deal with M_ZERO.
      */
     m = mbase;
     i = 0;
@@ -1647,9 +1647,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	vm_page_wire(m);
 	pmap_enter(&kernel_pmap, addr + i, m, VM_PROT_ALL | VM_PROT_NOSYNC,
 		   1, NULL);
-	if ((m->flags & PG_ZERO) == 0 && (flags & M_ZERO))
-	    bzero((char *)addr + i, PAGE_SIZE);
-	vm_page_flag_clear(m, PG_ZERO);
+	if (flags & M_ZERO)
+		pagezero((char *)addr + i);
 	KKASSERT(m->flags & (PG_WRITEABLE | PG_MAPPED));
 	vm_page_flag_set(m, PG_REFERENCED);
 	vm_page_wakeup(m);

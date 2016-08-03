@@ -291,7 +291,7 @@ icintr (device_t dev, int event, char *ptr)
 
 	  BPF_TAP(&sc->ic_if, sc->ic_ifbuf, len + ICHDRLEN);
 
-	  top = m_devget(sc->ic_ifbuf + ICHDRLEN, len, 0, &sc->ic_if, 0);
+	  top = m_devget(sc->ic_ifbuf + ICHDRLEN, len, 0, &sc->ic_if);
 
 	  if (top)
 	    netisr_queue(NETISR_IP, top);

@@ -565,7 +565,7 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	*((u_int16_t *)outbuf) = htons(header);
 
 	/* Return packet in an mbuf */
-	*resultp = m_devget((caddr_t)outbuf, outlen, 0, NULL, NULL);
+	*resultp = m_devget((caddr_t)outbuf, outlen, 0, NULL);
 	kfree(outbuf, M_NETGRAPH);
 	return (*resultp == NULL ? ENOBUFS : 0);
 }
@@ -737,7 +737,7 @@ failed:
 #endif
 
 	/* Return result in an mbuf */
-	*resultp = m_devget((caddr_t)buf, len, 0, NULL, NULL);
+	*resultp = m_devget((caddr_t)buf, len, 0, NULL);
 	kfree(buf, M_NETGRAPH);
 	return (*resultp == NULL ? ENOBUFS : 0);
 }

@@ -1066,7 +1066,7 @@ rl_rxeof(struct rl_softc *sc)
 			 * the data.
 			 */
 			m = m_devget(rxbufpos - RL_ETHER_ALIGN,
-			    wrap + RL_ETHER_ALIGN, 0, ifp, NULL);
+				     wrap + RL_ETHER_ALIGN, 0, ifp);
 			if (m == NULL) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 			} else {
@@ -1077,7 +1077,7 @@ rl_rxeof(struct rl_softc *sc)
 			cur_rx = (total_len - wrap + ETHER_CRC_LEN);
 		} else {
 			m = m_devget(rxbufpos - RL_ETHER_ALIGN,
-			    total_len + RL_ETHER_ALIGN, 0, ifp, NULL);
+				     total_len + RL_ETHER_ALIGN, 0, ifp);
 			if (m == NULL) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 			} else

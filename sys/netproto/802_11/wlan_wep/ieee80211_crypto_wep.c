@@ -197,7 +197,7 @@ wep_encap(struct ieee80211_key *k, struct mbuf *m)
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);
-	ovbcopy(ivp + wep.ic_header, ivp, hdrlen);
+	bcopy(ivp + wep.ic_header, ivp, hdrlen);
 	ivp += hdrlen;
 
 	wep_setiv(k, ivp);
@@ -252,7 +252,7 @@ wep_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	/*
 	 * Copy up 802.11 header and strip crypto bits.
 	 */
-	ovbcopy(mtod(m, void *), mtod(m, uint8_t *) + wep.ic_header, hdrlen);
+	bcopy(mtod(m, void *), mtod(m, uint8_t *) + wep.ic_header, hdrlen);
 	m_adj(m, wep.ic_header);
 	m_adj(m, -wep.ic_trailer);
 

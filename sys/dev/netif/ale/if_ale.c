@@ -2227,7 +2227,7 @@ ale_rxeof(struct ale_softc *sc)
 			}
 		}
 		/*
-		 * m_devget(9) is major bottle-neck of ale(4)(It comes
+		 * m_devget(9) is major bottle-neck of ale(4) (It comes
 		 * from hardware limitation). For jumbo frames we could
 		 * get a slightly better performance if driver use
 		 * m_getjcl(9) with proper buffer size argument. However
@@ -2236,7 +2236,7 @@ ale_rxeof(struct ale_softc *sc)
 		 * on these low-end consumer ethernet controller.
 		 */
 		m = m_devget((char *)(rs + 1), length - ETHER_CRC_LEN,
-		    ETHER_ALIGN, ifp, NULL);
+			     ETHER_ALIGN, ifp);
 		if (m == NULL) {
 			IFNET_STAT_INC(ifp, iqdrops, 1);
 			ale_rx_update_page(sc, &rx_page, length, &prod);

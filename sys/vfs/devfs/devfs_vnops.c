@@ -2051,8 +2051,6 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 		nextoff = toff + PAGE_SIZE;
 		m = ap->a_m[i];
 
-		m->flags &= ~PG_ZERO;
-
 		/*
 		 * NOTE: vm_page_undirty/clear_dirty etc do not clear the
 		 *	 pmap modified bit.  pmap modified bit should have

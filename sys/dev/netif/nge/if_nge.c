@@ -1253,7 +1253,7 @@ nge_rxeof(struct nge_softc *sc)
 		if (nge_newbuf(sc, cur_rx, NULL) == ENOBUFS) {
 #endif
 			m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
-			    total_len + ETHER_ALIGN, 0, ifp, NULL);
+				      total_len + ETHER_ALIGN, 0, ifp);
 			nge_newbuf(sc, cur_rx, m);
 			if (m0 == NULL) {
 				kprintf("nge%d: no receive buffers "

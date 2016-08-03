@@ -2243,14 +2243,11 @@ extpacket:
  * Note: "offset" is ill-defined and always called as 0, so ignore it.
  */
 struct mbuf *
-m_devget(char *buf, int len, int offset, struct ifnet *ifp,
-    void (*copy)(volatile const void *from, volatile void *to, size_t length))
+m_devget(char *buf, int len, int offset, struct ifnet *ifp)
 {
 	struct mbuf *m, *mfirst = NULL, **mtail;
 	int nsize, flags;
 
-	if (copy == NULL)
-		copy = bcopy;
 	mtail = &mfirst;
 	flags = M_PKTHDR;
 
@@ -2270,7 +2267,7 @@ m_devget(char *buf, int len, int offset, struct ifnet *ifp,
 			flags = 0;
 		}
 
-		copy(buf, m->m_data, (unsigned)m->m_len);
+		bcopy(buf, m->m_data, (unsigned)m->m_len);
 		buf += m->m_len;
 		len -= m->m_len;
 		*mtail = m;

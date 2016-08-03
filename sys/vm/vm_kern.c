@@ -399,7 +399,7 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
  */
 vm_offset_t
 kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags, vm_paddr_t low,
-    vm_paddr_t high, vm_memattr_t memattr)
+		vm_paddr_t high, vm_memattr_t memattr)
 {
 	vm_offset_t addr, i, offset;
 	vm_page_t m;
@@ -433,7 +433,7 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags, vm_paddr_t low,
 		vm_object_hold(&kernel_object);
 		vm_page_insert(m, &kernel_object, OFF_TO_IDX(offset + i));
 		vm_object_drop(&kernel_object);
-		if ((flags & M_ZERO) && (m->flags & PG_ZERO) == 0)
+		if (flags & M_ZERO)
 			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 		m->valid = VM_PAGE_BITS_ALL;
 	}

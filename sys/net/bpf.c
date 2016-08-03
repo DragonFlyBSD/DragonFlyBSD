@@ -114,14 +114,15 @@ static void	bpf_attachd(struct bpf_d *d, struct bpf_if *bp);
 static void	bpf_detachd(struct bpf_d *d);
 static void	bpf_resetd(struct bpf_d *);
 static void	bpf_freed(struct bpf_d *);
-static void	bpf_mcopy(const void *, void *, size_t);
+static void	bpf_mcopy(volatile const void *, volatile void *, size_t);
 static int	bpf_movein(struct uio *, int, struct mbuf **,
 			   struct sockaddr *, int *, struct bpf_insn *);
 static int	bpf_setif(struct bpf_d *, struct ifreq *);
 static void	bpf_timed_out(void *);
 static void	bpf_wakeup(struct bpf_d *);
 static void	catchpacket(struct bpf_d *, u_char *, u_int, u_int,
-			    void (*)(const void *, void *, size_t),
+			    void (*)(volatile const void *,
+				     volatile void *, size_t),
 			    const struct timeval *);
 static int	bpf_setf(struct bpf_d *, struct bpf_program *, u_long cmd);
 static int	bpf_getdltlist(struct bpf_d *, struct bpf_dltlist *);
@@ -1219,7 +1220,7 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 				microtime(&tv);
 				gottime = 1;
 			}
-			catchpacket(d, pkt, pktlen, slen, ovbcopy, &tv);
+			catchpacket(d, pkt, pktlen, slen, bcopy, &tv);
 		}
 	}
 	lwkt_reltoken(&bpf_token);
@@ -1230,11 +1231,11 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
  * from m_copydata in sys/uipc_mbuf.c.
  */
 static void
-bpf_mcopy(const void *src_arg, void *dst_arg, size_t len)
+bpf_mcopy(volatile const void *src_arg, volatile void *dst_arg, size_t len)
 {
-	const struct mbuf *m;
+	volatile const struct mbuf *m;
 	u_int count;
-	u_char *dst;
+	volatile u_char *dst;
 
 	m = src_arg;
 	dst = dst_arg;
@@ -1361,7 +1362,7 @@ bpf_ptap(struct bpf_if *bp, struct mbuf *m, const void *data, u_int dlen)
  */
 static void
 catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
-	    void (*cpfn)(const void *, void *, size_t),
+	    void (*cpfn)(volatile const void *, volatile void *, size_t),
 	    const struct timeval *tv)
 {
 	struct bpf_hdr *hp;

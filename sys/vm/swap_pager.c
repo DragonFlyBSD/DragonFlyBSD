@@ -1796,7 +1796,6 @@ swp_pager_async_iodone(struct bio *bio)
 				 */
 
 				m->valid = 0;
-				vm_page_flag_clear(m, PG_ZERO);
 				vm_page_flag_clear(m, PG_SWAPINPROG);
 
 				/*
@@ -1850,8 +1849,6 @@ swp_pager_async_iodone(struct bio *bio)
 			 * that existed in the old swapper for a time before
 			 * it got ripped out due to precisely this problem.
 			 *
-			 * clear PG_ZERO in page.
-			 *
 			 * If not the requested page then deactivate it.
 			 *
 			 * Note that the requested page, reqpage, is left
@@ -1869,7 +1866,7 @@ swp_pager_async_iodone(struct bio *bio)
 			/*pmap_clear_modify(m);*/
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_undirty(m);
-			vm_page_flag_clear(m, PG_ZERO | PG_SWAPINPROG);
+			vm_page_flag_clear(m, PG_SWAPINPROG);
 			vm_page_flag_set(m, PG_SWAPPED);
 
 			/*

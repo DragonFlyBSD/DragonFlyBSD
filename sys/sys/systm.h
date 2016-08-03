@@ -242,16 +242,10 @@ u_quad_t strtouq(const char *, char **, int) __nonnull(1);
  *
  * NOTE: bcopyb() - is a dumb byte-granular bcopy.  This routine is
  *		    explicitly not meant to be sophisticated.
- * NOTE: bcopyi() - is a dumb int-granular bcopy (len is still in bytes).
- *		    This routine is explicitly not meant to be sophisticated.
  */
 void	bcopyb(const void *from, void *to, size_t len)
 	    __nonnull(1) __nonnull(2);
-void	bcopyi(const void *from, void *to, size_t len)
-	    __nonnull(1) __nonnull(2);
 void	bcopy(volatile const void *from, volatile void *to, size_t len)
-	    __nonnull(1) __nonnull(2);
-void	ovbcopy(const void *from, void *to, size_t len)
 	    __nonnull(1) __nonnull(2);
 void	bzero(volatile void *buf, size_t len) __nonnull(1);
 void	bzeront(volatile void *buf, size_t len) __nonnull(1);

@@ -280,7 +280,6 @@ vm_pager_bufferinit(void *dummy __unused)
 			KKASSERT(m != NULL);
 			bp->b_xio.xio_internal_pages[j] = m;
 			vm_page_wire(m);
-			vm_page_flag_clear(m, PG_ZERO);
 			/* early boot, no other cpus running yet */
 			pmap_kenter_noinval(pg * PAGE_SIZE, VM_PAGE_TO_PHYS(m));
 			cpu_invlpg((void *)(pg * PAGE_SIZE));

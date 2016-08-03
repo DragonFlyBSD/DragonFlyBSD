@@ -732,7 +732,7 @@ ship_msg(struct ngpcb *pcbp, struct ng_mesg *msg, struct sockaddr_ng *addr)
 
 	/* Copy the message itself into an mbuf chain */
 	msglen = sizeof(struct ng_mesg) + msg->header.arglen;
-	mdata = m_devget((caddr_t) msg, msglen, 0, NULL, NULL);
+	mdata = m_devget((caddr_t) msg, msglen, 0, NULL);
 
 	/* Here we free the message, as we are the end of the line.
 	 * We need to do that regardless of whether we got mbufs. */

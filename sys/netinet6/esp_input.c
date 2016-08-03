@@ -404,7 +404,7 @@ noreplaycheck:
 		stripsiz = esplen + ivlen;
 
 		ip = mtod(m, struct ip *);
-		ovbcopy((caddr_t)ip, (caddr_t)(((u_char *)ip) + stripsiz), off);
+		bcopy((caddr_t)ip, (caddr_t)(((u_char *)ip) + stripsiz), off);
 		m->m_data += stripsiz;
 		m->m_len -= stripsiz;
 		m->m_pkthdr.len -= stripsiz;
@@ -778,7 +778,7 @@ noreplaycheck:
 
 		ip6 = mtod(m, struct ip6_hdr *);
 		if (m->m_len >= stripsiz + off) {
-			ovbcopy((caddr_t)ip6, ((caddr_t)ip6) + stripsiz, off);
+			bcopy((caddr_t)ip6, ((caddr_t)ip6) + stripsiz, off);
 			m->m_data += stripsiz;
 			m->m_len -= stripsiz;
 			m->m_pkthdr.len -= stripsiz;

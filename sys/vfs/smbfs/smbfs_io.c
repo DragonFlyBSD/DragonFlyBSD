@@ -481,8 +481,6 @@ smbfs_getpages(struct vop_getpages_args *ap)
 		nextoff = toff + PAGE_SIZE;
 		m = pages[i];
 
-		m->flags &= ~PG_ZERO;
-
 		/*
 		 * NOTE: pmap dirty bit should have already been cleared.
 		 *	 We do not clear it here.

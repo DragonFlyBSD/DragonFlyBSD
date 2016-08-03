@@ -446,8 +446,8 @@ insert:
 	 * Delete frag6 header with as a few cost as possible.
 	 */
 	if (offset < m->m_len) {
-		ovbcopy((caddr_t)ip6, (caddr_t)ip6 + sizeof(struct ip6_frag),
-			offset);
+		bcopy((caddr_t)ip6, (caddr_t)ip6 + sizeof(struct ip6_frag),
+		      offset);
 		m->m_data += sizeof(struct ip6_frag);
 		m->m_len -= sizeof(struct ip6_frag);
 	} else {

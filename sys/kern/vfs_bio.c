@@ -1448,7 +1448,7 @@ brelse(struct buf *bp)
 
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			m = bp->b_xio.xio_pages[i];
-			vm_page_flag_clear(m, PG_ZERO);
+
 			/*
 			 * If we hit a bogus page, fixup *all* of them
 			 * now.  Note that we left these pages wired
@@ -1844,8 +1844,6 @@ vfs_vmio_release(struct buf *bp)
 		 * WARNING: vm_page_try_*() also checks PG_NEED_COMMIT for us.
 		 */
 		if (m->wire_count == 0) {
-			vm_page_flag_clear(m, PG_ZERO);
-
 			if (bp->b_flags & B_DIRECT) {
 				/*
 				 * Attempt to free the page if B_DIRECT is
@@ -3330,7 +3328,6 @@ allocbuf(struct buf *bp, int size)
 					m = bio_page_alloc(bp, obj, pi, desiredpages - bp->b_xio.xio_npages);
 					if (m) {
 						vm_page_wire(m);
-						vm_page_flag_clear(m, PG_ZERO);
 						vm_page_wakeup(m);
 						bp->b_flags &= ~B_CACHE;
 						bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
@@ -3342,7 +3339,6 @@ allocbuf(struct buf *bp, int size)
 				/*
 				 * We found a page and were able to busy it.
 				 */
-				vm_page_flag_clear(m, PG_ZERO);
 				vm_page_wire(m);
 				vm_page_wakeup(m);
 				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
@@ -3516,7 +3512,6 @@ repurposebuf(struct buf *bp, int size)
 			m = bio_page_alloc(bp, obj, pi, desiredpages - i);
 			if (m) {
 				vm_page_wire(m);
-				vm_page_flag_clear(m, PG_ZERO);
 				vm_page_wakeup(m);
 				bp->b_flags &= ~B_CACHE;
 				bp->b_xio.xio_pages[i] = m;
@@ -3533,7 +3528,6 @@ repurposebuf(struct buf *bp, int size)
 		/*
 		 * We found a page and were able to busy it.
 		 */
-		vm_page_flag_clear(m, PG_ZERO);
 		if (!iswired)
 			vm_page_wire(m);
 		vm_page_wakeup(m);
@@ -4029,7 +4023,6 @@ bpdone(struct buf *bp, int elseit)
 			vm_page_busy_wait(m, FALSE, "bpdpgw");
 			if (cmd == BUF_CMD_READ && isbogus == 0 && resid > 0)
 				vfs_clean_one_page(bp, i, m);
-			vm_page_flag_clear(m, PG_ZERO);
 
 			/*
 			 * when debugging new filesystems or buffer I/O
@@ -4199,7 +4192,6 @@ vfs_unbusy_pages(struct buf *bp)
 				bp->b_xio.xio_pages[i] = m;
 			}
 			vm_page_busy_wait(m, FALSE, "bpdpgw");
-			vm_page_flag_clear(m, PG_ZERO);
 			vm_page_io_finish(m);
 			vm_page_wakeup(m);
 			vm_object_pip_wakeup(obj);
@@ -4271,7 +4263,6 @@ retry:
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
 
-			vm_page_flag_clear(m, PG_ZERO);
 			if ((bp->b_flags & B_CLUSTER) == 0) {
 				vm_object_pip_add(obj, 1);
 				vm_page_io_start(m);
@@ -4299,7 +4290,6 @@ retry:
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
 
-			vm_page_flag_clear(m, PG_ZERO);	/* XXX */
 			if (bp->b_cmd == BUF_CMD_WRITE) {
 				/*
 				 * When readying a vnode-backed buffer for
@@ -4580,8 +4570,7 @@ vfs_bio_clrbuf(struct buf *bp)
 				bp->b_resid = 0;
 				return;
 			}
-			if (((bp->b_xio.xio_pages[0]->flags & PG_ZERO) == 0) &&
-			    ((bp->b_xio.xio_pages[0]->valid & mask) == 0)) {
+			if ((bp->b_xio.xio_pages[0]->valid & mask) == 0) {
 				bzero(bp->b_data, bp->b_bufsize);
 				bp->b_xio.xio_pages[0]->valid |= mask;
 				bp->b_resid = 0;
@@ -4599,18 +4588,16 @@ vfs_bio_clrbuf(struct buf *bp)
 			if ((bp->b_xio.xio_pages[i]->valid & mask) == mask)
 				continue;
 			if ((bp->b_xio.xio_pages[i]->valid & mask) == 0) {
-				if ((bp->b_xio.xio_pages[i]->flags & PG_ZERO) == 0) {
-					bzero(sa, ea - sa);
-				}
+				bzero(sa, ea - sa);
 			} else {
 				for (; sa < ea; sa += DEV_BSIZE, j++) {
-					if (((bp->b_xio.xio_pages[i]->flags & PG_ZERO) == 0) &&
-						(bp->b_xio.xio_pages[i]->valid & (1<<j)) == 0)
+					if ((bp->b_xio.xio_pages[i]->valid &
+					    (1<<j)) == 0) {
 						bzero(sa, DEV_BSIZE);
+					}
 				}
 			}
 			bp->b_xio.xio_pages[i]->valid |= mask;
-			vm_page_flag_clear(bp->b_xio.xio_pages[i], PG_ZERO);
 		}
 		bp->b_resid = 0;
 	} else {
@@ -4654,7 +4641,6 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 		if (p) {
 			vm_page_wire(p);
 			p->valid = VM_PAGE_BITS_ALL;
-			vm_page_flag_clear(p, PG_ZERO);
 			pmap_kenter_noinval(pg, VM_PAGE_TO_PHYS(p));
 			bp->b_xio.xio_pages[index] = p;
 			vm_page_wakeup(p);

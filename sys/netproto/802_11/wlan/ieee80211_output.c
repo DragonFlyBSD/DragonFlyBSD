@@ -3451,9 +3451,9 @@ ieee80211_beacon_update(struct ieee80211_node *ni, struct mbuf *m, int mcast)
 				/* copy up/down trailer */
 				int adjust = tie->tim_bitmap+timlen
 					   - bo->bo_tim_trailer;
-				ovbcopy(bo->bo_tim_trailer,
-				    bo->bo_tim_trailer+adjust,
-				    bo->bo_tim_trailer_len);
+				bcopy(bo->bo_tim_trailer,
+				      bo->bo_tim_trailer+adjust,
+				      bo->bo_tim_trailer_len);
 				bo->bo_tim_trailer += adjust;
 				bo->bo_erp += adjust;
 				bo->bo_htinfo += adjust;
@@ -3564,8 +3564,8 @@ ieee80211_beacon_update(struct ieee80211_node *ni, struct mbuf *m, int mcast)
 		if (aielen != bo->bo_appie_len) {
 			/* copy up/down trailer */
 			int adjust = aielen - bo->bo_appie_len;
-			ovbcopy(bo->bo_tim_trailer, bo->bo_tim_trailer+adjust,
-				bo->bo_tim_trailer_len);
+			bcopy(bo->bo_tim_trailer, bo->bo_tim_trailer+adjust,
+			      bo->bo_tim_trailer_len);
 			bo->bo_tim_trailer += adjust;
 			bo->bo_appie += adjust;
 			bo->bo_appie_len = aielen;

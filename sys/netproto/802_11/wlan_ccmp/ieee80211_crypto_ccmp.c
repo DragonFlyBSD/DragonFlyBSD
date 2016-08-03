@@ -181,7 +181,7 @@ ccmp_encap(struct ieee80211_key *k, struct mbuf *m)
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);
-	ovbcopy(ivp + ccmp.ic_header, ivp, hdrlen);
+	bcopy(ivp + ccmp.ic_header, ivp, hdrlen);
 	ivp += hdrlen;
 
 	ccmp_setiv(k, ivp);
@@ -269,7 +269,7 @@ ccmp_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	/*
 	 * Copy up 802.11 header and strip crypto bits.
 	 */
-	ovbcopy(mtod(m, void *), mtod(m, uint8_t *) + ccmp.ic_header, hdrlen);
+	bcopy(mtod(m, void *), mtod(m, uint8_t *) + ccmp.ic_header, hdrlen);
 	m_adj(m, ccmp.ic_header);
 	m_adj(m, -ccmp.ic_trailer);
 

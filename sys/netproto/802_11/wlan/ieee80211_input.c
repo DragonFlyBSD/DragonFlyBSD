@@ -404,8 +404,8 @@ ieee80211_decap1(struct mbuf *m, int *framelen)
 	*framelen = ntohs(eh->ether_type)	/* encap'd frame size */
 		  + sizeof(struct ether_header) - sizeof(struct llc);
 	eh->ether_type = llc->llc_un.type_snap.ether_type;
-	ovbcopy(eh, mtod(m, uint8_t *) + sizeof(struct llc),
-		sizeof(struct ether_header));
+	bcopy(eh, mtod(m, uint8_t *) + sizeof(struct llc),
+	      sizeof(struct ether_header));
 	m_adj(m, sizeof(struct llc));
 	return m;
 #undef FF_LLC_SIZE

@@ -1380,11 +1380,10 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	/*
 	 * We leave the top-level page table page cached, wired, and mapped in
 	 * the pmap until the dtor function (pmap_puninit()) gets called.
-	 * However, still clean it up so we can set PG_ZERO.
+	 * However, still clean it up.
 	 */
 	if (p->pindex == NUPDE + NUPDPE + PML4PML4I) {
 		bzero(pmap->pm_pml4, PAGE_SIZE);
-		vm_page_flag_set(p, PG_ZERO);
 		vm_page_wakeup(p);
 	} else {
 		abort();
@@ -1710,9 +1709,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 				      "grow kernel");
 			}
 			paddr = VM_PAGE_TO_PHYS(nkpg);
-			if ((nkpg->flags & PG_ZERO) == 0)
-				pmap_zero_page(paddr);
-			vm_page_flag_clear(nkpg, PG_ZERO);
+			pmap_zero_page(paddr);
 			newpdp = (pdp_entry_t)(paddr |
 			    VPTE_V | VPTE_RW | VPTE_U |
 			    VPTE_A | VPTE_M);
@@ -1743,7 +1740,6 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		vm_page_wire(nkpg);
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
-		vm_page_flag_clear(nkpg, PG_ZERO);
 		newpdir = (pd_entry_t)(ptppaddr |
 		    VPTE_V | VPTE_RW | VPTE_U |
 		    VPTE_A | VPTE_M);
@@ -2827,28 +2823,6 @@ pmap_zero_page(vm_paddr_t phys)
 	vm_offset_t va = PHYS_TO_DMAP(phys);
 
 	bzero((void *)va, PAGE_SIZE);
-}
-
-/*
- * pmap_page_assertzero:
- *
- *	Assert that a page is empty, panic if it isn't.
- */
-void
-pmap_page_assertzero(vm_paddr_t phys)
-{
-	int i;
-
-	crit_enter();
-	vm_offset_t virt = PHYS_TO_DMAP(phys);
-
-	for (i = 0; i < PAGE_SIZE; i += sizeof(int)) {
-	    if (*(int *)((char *)virt + i) != 0) {
-		panic("pmap_page_assertzero() @ %p not zero!",
-		    (void *)virt);
-	    }
-	}
-	crit_exit();
 }
 
 /*

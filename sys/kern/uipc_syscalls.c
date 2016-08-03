@@ -1809,7 +1809,6 @@ retry_lookup:
 				    IO_VMIO | ((MAXBSIZE / bsize) << 16),
 				    td->td_ucred);
 			vn_unlock(vp);
-			vm_page_flag_clear(pg, PG_ZERO);
 			vm_page_busy_wait(pg, FALSE, "sockpg");
 			/*vm_page_io_finish(pg);*/
 			if (error) {

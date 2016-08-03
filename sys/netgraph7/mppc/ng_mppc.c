@@ -529,7 +529,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 				
 			/* Replace m by the compresed one. */
 			m_freem(m);
-			m = m_devget((caddr_t)outbuf, outlen, 0, NULL, NULL);
+			m = m_devget((caddr_t)outbuf, outlen, 0, NULL);
 		}
 		d->flushed = (rtn & MPPC_EXPANDED) != 0
 		    || (flags & MPPC_SAVE_HISTORY) == 0;
@@ -774,7 +774,7 @@ failed:
 		len = decomplen - destCnt;
 	
 		m_freem(m);
-		m = m_devget((caddr_t)decompbuf, len, 0, NULL, NULL);
+		m = m_devget((caddr_t)decompbuf, len, 0, NULL);
 		kfree(decompbuf, M_NETGRAPH_MPPC);
 	}
 #endif

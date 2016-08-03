@@ -82,9 +82,7 @@ phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
 	vm_page_t m = *mpp;
 
-	if ((m->flags & PG_ZERO) == 0)
-		vm_page_zero_fill(m);
-	vm_page_flag_set(m, PG_ZERO);
+	vm_page_zero_fill(m);
 	/* Switch off pv_entries */
 	vm_page_unmanage(m);
 	m->valid = VM_PAGE_BITS_ALL;

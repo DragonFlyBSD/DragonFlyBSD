@@ -586,7 +586,7 @@ ngdwrite(cdev_t dev, struct uio *uio, int flag)
 	} else
 		kprintf("%s(): len <= 0 : supposed to happen?!\n", __func__);
 
-	m = m_devget(buffer, len, 0, NULL, NULL);
+	m = m_devget(buffer, len, 0, NULL);
 
 	NG_SEND_DATA_ONLY(error, connection->active_hook, m);
 

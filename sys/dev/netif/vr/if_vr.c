@@ -1014,7 +1014,7 @@ vr_rxeof(struct vr_softc *sc)
 		total_len -= ETHER_CRC_LEN;
 
 		m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
-		    total_len + ETHER_ALIGN, 0, ifp, NULL);
+			      total_len + ETHER_ALIGN, 0, ifp);
 		vr_newbuf(sc, cur_rx, m);
 		if (m0 == NULL) {
 			IFNET_STAT_INC(ifp, ierrors, 1);

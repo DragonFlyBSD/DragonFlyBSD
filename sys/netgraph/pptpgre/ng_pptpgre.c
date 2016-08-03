@@ -665,8 +665,8 @@ bad:
 			a->ato = PPTP_MIN_TIMEOUT;
 
 		/* Shift packet transmit times in our transmit window */
-		ovbcopy(a->timeSent + index + 1, a->timeSent,
-		    sizeof(*a->timeSent) * (PPTP_XMIT_WIN - (index + 1)));
+		bcopy(a->timeSent + index + 1, a->timeSent,
+		      sizeof(*a->timeSent) * (PPTP_XMIT_WIN - (index + 1)));
 
 		/* If we sent an entire window, increase window size by one */
 		if (PPTP_SEQ_DIFF(ack, a->winAck) >= 0

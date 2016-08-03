@@ -614,7 +614,7 @@ ae_rxeof(struct ae_softc *sc, struct ae_rxd *rxd)
 		return (EIO);
 	}
 
-	m = m_devget(&rxd->data[0], size, ETHER_ALIGN, ifp, NULL);
+	m = m_devget(&rxd->data[0], size, ETHER_ALIGN, ifp);
 	if (m == NULL)
 		return (ENOBUFS);
 

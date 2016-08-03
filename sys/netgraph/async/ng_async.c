@@ -501,11 +501,12 @@ nga_rcv_sync(const sc_p sc, struct mbuf *m, meta_p meta)
 	sc->abuf[alen++] = PPP_FLAG;
 
 	/* Put frame in an mbuf and ship it off */
-	if (!(m = m_devget(sc->abuf, alen, 0, rcvif, NULL))) {
+	if (!(m = m_devget(sc->abuf, alen, 0, rcvif))) {
 		NG_FREE_META(meta);
 		error = ENOBUFS;
-	} else
+	} else {
 		NG_SEND_DATA(error, sc->async, m, meta);
+	}
 	return (error);
 }
 
@@ -563,8 +564,10 @@ nga_rcv_async(const sc_p sc, struct mbuf * m, meta_p meta)
 
 				/* OK, ship it out */
 				if ((n = m_devget(sc->sbuf + skip,
-					   sc->slen - skip, 0, rcvif, NULL)))
+						  sc->slen - skip,
+						  0, rcvif))) {
 					NG_SEND_DATA(error, sc->sync, n, meta);
+				}
 				sc->stats.asyncFrames++;
 reset:
 				sc->amode = MODE_NORMAL;

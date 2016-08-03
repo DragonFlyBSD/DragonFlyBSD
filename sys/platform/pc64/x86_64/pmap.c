@@ -2023,16 +2023,8 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	vm_page_spin_unlock(m);
 	vm_page_unmanage(m);	/* m must be spinunlocked */
 
-	if ((m->flags & PG_ZERO) == 0) {
-		pmap_zero_page(VM_PAGE_TO_PHYS(m));
-	}
-#ifdef PMAP_DEBUG
-	else {
-		pmap_page_assertzero(VM_PAGE_TO_PHYS(m));
-	}
-#endif
+	pmap_zero_page(VM_PAGE_TO_PHYS(m));
 	m->valid = VM_PAGE_BITS_ALL;
-	vm_page_flag_clear(m, PG_ZERO);
 	vm_page_wire(m);	/* wire for mapping in parent */
 
 	/*
@@ -2483,11 +2475,6 @@ pmap_release_pv(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk)
 	vm_page_unwire(p, 0);
 	KKASSERT(p->wire_count == 0);
 
-	/*
-	 * Theoretically this page, if not the pml4 page, should contain
-	 * all-zeros.  But its just too dangerous to mark it PG_ZERO.  Free
-	 * normally.
-	 */
 	vm_page_free(p);
 skip:
 	pv_free(pv);
@@ -2773,9 +2760,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 				      "kernel");
 			}
 			paddr = VM_PAGE_TO_PHYS(nkpg);
-			if ((nkpg->flags & PG_ZERO) == 0)
-				pmap_zero_page(paddr);
-			vm_page_flag_clear(nkpg, PG_ZERO);
+			pmap_zero_page(paddr);
 			newpd = (pdp_entry_t)
 			    (paddr |
 			    kernel_pmap.pmap_bits[PG_V_IDX] |
@@ -2809,7 +2794,6 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		vm_page_wire(nkpg);
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
-		vm_page_flag_clear(nkpg, PG_ZERO);
 		newpt = (pd_entry_t) (ptppaddr |
 		    kernel_pmap.pmap_bits[PG_V_IDX] |
 		    kernel_pmap.pmap_bits[PG_RW_IDX] |
@@ -4577,25 +4561,6 @@ pmap_zero_page(vm_paddr_t phys)
 	vm_offset_t va = PHYS_TO_DMAP(phys);
 
 	pagezero((void *)va);
-}
-
-/*
- * pmap_page_assertzero:
- *
- *	Assert that a page is empty, panic if it isn't.
- */
-void
-pmap_page_assertzero(vm_paddr_t phys)
-{
-	vm_offset_t va = PHYS_TO_DMAP(phys);
-	size_t i;
-
-	for (i = 0; i < PAGE_SIZE; i += sizeof(long)) {
-		if (*(long *)((char *)va + i) != 0) {
-			panic("pmap_page_assertzero() @ %p not zero!",
-			      (void *)(intptr_t)va);
-		}
-	}
 }
 
 /*

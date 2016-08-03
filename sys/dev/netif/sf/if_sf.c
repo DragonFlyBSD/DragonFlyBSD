@@ -949,7 +949,7 @@ sf_rxeof(struct sf_softc *sc)
 		}
 
 		m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
-		    cur_rx->sf_len + ETHER_ALIGN, 0, ifp, NULL);
+			      cur_rx->sf_len + ETHER_ALIGN, 0, ifp);
 		sf_newbuf(sc, desc, m);
 		if (m0 == NULL) {
 			IFNET_STAT_INC(ifp, ierrors, 1);

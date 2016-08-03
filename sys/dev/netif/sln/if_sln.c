@@ -909,8 +909,8 @@ sln_rx(struct sln_softc *sc)
 		rx_space = (u_long)((sc->sln_bufdata.sln_rx_buf + SL_RX_BUFLEN) - rx_bufpos);
 
 		if (pkt_size > rx_space) {
-			m = m_devget(rx_bufpos - 2, pkt_size + 2, 0, ifp, NULL);	/* 2 for etherer head
-											 * align */
+			/* 2 for etherer head align */
+			m = m_devget(rx_bufpos - 2, pkt_size + 2, 0, ifp);
 
 			if (m == NULL) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
@@ -922,7 +922,7 @@ sln_rx(struct sln_softc *sc)
 				m_copyback(m, rx_space, pkt_size - rx_space, sc->sln_bufdata.sln_rx_buf);
 			}
 		} else {
-			m = m_devget(rx_bufpos - 2, pkt_size + 2, 0, ifp, NULL);
+			m = m_devget(rx_bufpos - 2, pkt_size + 2, 0, ifp);
 
 			if (m == NULL) {
 				u_long ierr;

@@ -940,7 +940,7 @@ ngs_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 	/* Copy the message itself into an mbuf chain. */
 	m = m_devget((caddr_t)msg, sizeof(struct ng_mesg) + msg->header.arglen,
-	    0, NULL, NULL);
+		     0, NULL);
 
 	/*
 	 * Here we free the message. We need to do that

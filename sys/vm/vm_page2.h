@@ -340,16 +340,10 @@ vm_page_copy(vm_page_t src_m, vm_page_t dest_m)
 
 /*
  * Free a page.  The page must be marked BUSY.
- *
- * Always clear PG_ZERO when freeing a page, which ensures the flag is not
- * set unless we are absolutely certain the page is zerod.  This is
- * particularly important when the vm_page_alloc*() code moves pages from
- * PQ_CACHE to PQ_FREE.
  */
 static __inline void
 vm_page_free(vm_page_t m)
 {
-	vm_page_flag_clear(m, PG_ZERO);
 	vm_page_free_toq(m);
 }
 
@@ -372,7 +366,6 @@ vm_page_free_zero(vm_page_t m)
 	}
 #endif
 #endif
-	vm_page_flag_set(m, PG_ZERO);
 	vm_page_free_toq(m);
 }
 

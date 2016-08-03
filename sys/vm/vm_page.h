@@ -287,7 +287,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define	PG_FICTITIOUS	0x00000008	/* physical page doesn't exist (O) */
 #define	PG_WRITEABLE	0x00000010	/* page is writeable */
 #define PG_MAPPED	0x00000020	/* page is mapped (managed) */
-#define	PG_ZERO		0x00000040	/* page is zeroed */
+#define	PG_UNUSED0040	0x00000040
 #define PG_REFERENCED	0x00000080	/* page has been referenced */
 #define PG_CLEANCHK	0x00000100	/* page will be checked for cleaning */
 #define PG_SWAPINPROG	0x00000200	/* swap I/O in progress on page	     */

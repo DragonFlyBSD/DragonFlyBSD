@@ -293,8 +293,8 @@ m_makespace(struct mbuf *m0, int skip, int hlen, int *off)
 		 * so there's space to write the new header.
 		 */
 		/* XXX can this be memcpy? does it handle overlap? */
-		ovbcopy(mtod(m, caddr_t) + skip,
-			mtod(m, caddr_t) + skip + hlen, remain);
+		bcopy(mtod(m, caddr_t) + skip,
+		      mtod(m, caddr_t) + skip + hlen, remain);
 		m->m_len += hlen;
 		*off = skip;
 	}

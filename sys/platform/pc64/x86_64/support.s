@@ -41,11 +41,14 @@
 	.text
 
 /*
- * bcopy family
- * void bzero(void *buf, size_t len)
+ * bzero(ptr:%rdi, bytes:%rsi)
+ *
+ * Using rep stosq is 70% faster than a %rax loop and almost as fast as
+ * a %xmm0 loop on a modern intel cpu.
+ *
+ * Do not use non-termportal instructions here as we do not know the caller's
+ * intent.
  */
-
-/* done */
 ENTRY(bzero)
 	movq	%rsi,%rcx
 	xorl	%eax,%eax
@@ -59,21 +62,26 @@ ENTRY(bzero)
 	stosb
 	ret
 
-/* Address: %rdi */
+/*
+ * pagezero(ptr:%rdi)
+ *
+ * Using rep stosq is nearly as fast as using %xmm0 on a modern intel cpu,
+ * and about 70% faster than a %rax loop.
+ *
+ * Do not use non-termportal instructions here as we do not know the caller's
+ * intent.
+ */
 ENTRY(pagezero)
-	movq	$-PAGE_SIZE,%rdx
-	subq	%rdx,%rdi
+	movq	$PAGE_SIZE>>3,%rcx
 	xorl	%eax,%eax
-1:
-	movq	%rax,(%rdi,%rdx)	/* movnti */
-	movq	%rax,8(%rdi,%rdx)	/* movnti */
-	movq	%rax,16(%rdi,%rdx)	/* movnti */
-	movq	%rax,24(%rdi,%rdx)	/* movnti */
-	addq	$32,%rdx
-	jne	1b
-	/*sfence*/
+	cld
+	rep
+	stosq
 	ret
 
+/*
+ * bcmp(ptr:%rdi, ptr:%rsi, bytes:%rdx)
+ */
 ENTRY(bcmp)
 	movq	%rdx,%rcx
 	shrq	$3,%rcx
@@ -92,12 +100,10 @@ ENTRY(bcmp)
 	ret
 
 /*
- * bcopy(src, dst, cnt)
- *       rdi, rsi, rdx
- *  ws@tools.de     (Wolfgang Solfrank, TooLs GmbH) +49-228-985800
+ * bcopy(src:%rdi, dst:%rsi, cnt:%rdx)
+ *
+ * ws@tools.de (Wolfgang Solfrank, TooLs GmbH) +49-228-985800
  */
-ENTRY(generic_bcopy)	/* generic_bcopy is bcopy without FPU */
-ENTRY(ovbcopy) /* our bcopy doesn't use the FPU, so ovbcopy is the same */
 ENTRY(bcopy)
 	xchgq	%rsi,%rdi
 	movq	%rdx,%rcx
@@ -117,7 +123,7 @@ ENTRY(bcopy)
 	movsb
 	ret
 
-	/* ALIGN_TEXT */
+	ALIGN_TEXT
 1:
 	addq	%rcx,%rdi			/* copy backwards */
 	addq	%rcx,%rsi
@@ -127,7 +133,7 @@ ENTRY(bcopy)
 	std
 	rep
 	movsb
-	movq	%rdx,%rcx			/* copy remainder by 32-bit words */
+	movq	%rdx,%rcx			/* copy by 32-bit words */
 	shrq	$3,%rcx
 	subq	$7,%rsi
 	subq	$7,%rdi
@@ -135,6 +141,7 @@ ENTRY(bcopy)
 	movsq
 	cld
 	ret
+
 ENTRY(reset_dbregs)
 	movq	$0x200,%rax   /* the manual says that bit 10 must be set to 1 */
 	movq    %rax,%dr7     /* disable all breapoints first */
@@ -159,32 +166,6 @@ ENTRY(memcpy)
 	andq	$7,%rcx				/* any bytes left? */
 	rep
 	movsb
-	ret
-
-/*
- * pagecopy(%rdi=from, %rsi=to)
- */
-ENTRY(pagecopy)
-	movq	$-PAGE_SIZE,%rax
-	movq	%rax,%rdx
-	subq	%rax,%rdi
-	subq	%rax,%rsi
-1:
-	/*prefetchnta (%rdi,%rax)*/
-	/*addq	$64,%rax*/
-	/*jne	1b*/
-2:
-	movq	(%rdi,%rdx),%rax
-	movq	%rax,(%rsi,%rdx)	/* movnti */
-	movq	8(%rdi,%rdx),%rax
-	movq	%rax,8(%rsi,%rdx)	/* movnti */
-	movq	16(%rdi,%rdx),%rax
-	movq	%rax,16(%rsi,%rdx)	/* movnti */
-	movq	24(%rdi,%rdx),%rax
-	movq	%rax,24(%rsi,%rdx)	/* movnti */
-	addq	$32,%rdx
-	jne	2b
-	/*sfence*/
 	ret
 
 /* fillw(pat, base, cnt) */  

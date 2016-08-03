@@ -1107,7 +1107,7 @@ my_rxeof(struct my_softc * sc)
 
 		if (total_len < MINCLSIZE) {
 			m = m_devget(mtod(cur_rx->my_mbuf, char *),
-			    total_len, 0, ifp, NULL);
+				     total_len, 0, ifp);
 			cur_rx->my_ptr->my_status = MY_OWNByNIC;
 			if (m == NULL) {
 				IFNET_STAT_INC(ifp, ierrors, 1);

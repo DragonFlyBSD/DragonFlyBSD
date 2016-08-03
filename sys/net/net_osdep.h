@@ -183,38 +183,6 @@
  *		void xxattach(void *);
  *		PSEUDO_SET(xxattach, if_xx);
  *
- * - ovbcopy()
- *	in NetBSD 1.4 or later, ovbcopy() is not supplied in the kernel.
- *	we have updated sys/systm.h to include declaration.
- *
- * - splnet()
- *	NetBSD 1.4 or later requires splsoftnet().
- *	other operating systems use splnet().
- *
- * - splimp()
- *	NetBSD-current (2001/4/13): use splnet() in network, splvm() in vm.
- *	other operating systems: use splimp().
- *
- * - struct ifnet for loopback interface
- *	BSDI3: struct ifnet loif;
- *	BSDI4: struct ifnet *loifp;
- *	NetBSD, OpenBSD 2.8, FreeBSD2: struct ifnet loif[NLOOP];
- *	OpenBSD 2.9: struct ifnet *lo0ifp;
- *
- *	odd thing is that many of them refers loif as ifnet *loif,
- *	not loif[NLOOP], from outside of if_loop.c.
- *
- * - number of bpf pseudo devices
- *	others: bpfilter.h, NBPFILTER
- *	FreeBSD4: use_bpf.h, NBPF
- *	solution:
- *		#if defined(__FreeBSD__) && __FreeBSD__ >= 4
- *		#include "use_bpf.h"
- *		#define NBPFILTER	NBPF
- *		#else
- *		#include "bpfilter.h"
- *		#endif
- *
  * - protosw for IPv4 (sys/netinet)
  *	FreeBSD4: struct ipprotosw in netinet/ipprotosw.h
  *	others: struct protosw in sys/protosw.h

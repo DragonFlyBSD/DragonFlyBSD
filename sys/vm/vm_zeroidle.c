@@ -50,6 +50,25 @@
 #include <sys/thread2.h>
 #include <vm/vm_page2.h>
 
+#if 0
+/*
+ * Remove this file in 2017.
+ *
+ * REMOVED -  Basically does not provide any performance benefit and instead
+ *	      appears to cause a performance detriment.  I surmise the issue
+ *	      is simply that it takes such an enormous amount of time to read
+ *	      data from dynamic ram, what really matters for a page-fault is
+ *	      not that the page is zerod but instead that its cache is hot.
+ *
+ *	      Zeroing the page during idle periods means the page is likely
+ *	      to be cold in the cache when it actually gets used.  Zeroing the
+ *	      page in-line with the VM-fault, on the other-hand, not only
+ *	      ensures that the memory will be hot in the cache, the zeroing
+ *	      operation itself does not actually have to read the dynamic ram,
+ *	      it really only writes into the cache (for a 4K page), so the
+ *	      page is already hot when the user program then accesses it.
+ */
+
 /*
  * Implement the pre-zeroed page mechanism.
  */
@@ -266,3 +285,5 @@ pagezero_start(void __unused *arg)
 }
 
 SYSINIT(pagezero, SI_SUB_KTHREAD_VM, SI_ORDER_ANY, pagezero_start, NULL);
+
+#endif

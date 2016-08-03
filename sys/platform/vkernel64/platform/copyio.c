@@ -45,18 +45,6 @@
 /*
  * A bcopy that works dring low level boot, before FP is working
  */
-void
-ovbcopy(const void *src, void *dst, size_t len)
-{
-	bcopy(src, dst, len);
-}
-
-void
-bcopyi(const void *src, void *dst, size_t len)
-{
-	bcopy(src, dst, len);
-}
-
 u_long
 casuword(volatile u_long *p, u_long oldval, u_long newval)
 {

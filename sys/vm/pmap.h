@@ -186,7 +186,6 @@ void		 pmap_reference (pmap_t);
 void		 pmap_remove (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_remove_pages (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_zero_page (vm_paddr_t);
-void		 pmap_page_assertzero (vm_paddr_t);
 void		 pmap_zero_page_area (vm_paddr_t, int off, int size);
 int		 pmap_prefault_ok (pmap_t, vm_offset_t);
 void		 pmap_change_attr(vm_offset_t va, vm_size_t count, int mode);

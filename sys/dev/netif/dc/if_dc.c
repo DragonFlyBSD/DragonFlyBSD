@@ -2573,6 +2573,7 @@ dc_rxeof(struct dc_softc *sc)
 		 * allocate a new buffer for the receive ring, and pass up
 		 * the one where the packet is already, saving the expensive
 		 * copy done in m_devget().
+		 *
 		 * If we are on an architecture with alignment problems, or
 		 * if the allocation fails, then use m_devget and leave the
 		 * existing buffer in the receive ring.
@@ -2587,7 +2588,7 @@ dc_rxeof(struct dc_softc *sc)
 			struct mbuf *m0;
 
 			m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
-			    total_len + ETHER_ALIGN, 0, ifp, NULL);
+				      total_len + ETHER_ALIGN, 0, ifp);
 			dc_newbuf(sc, i, m);
 			DC_INC(i, DC_RX_LIST_CNT);
 			if (m0 == NULL) {
