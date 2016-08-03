@@ -1379,6 +1379,18 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 	struct proc *p = lp->lwp_proc;
 
 	/*
+	 * Check for exit-race.  If one lwp exits the process concurrent with
+	 * another lwp creating a new thread, the two operations may cross
+	 * each other resulting in the newly-created lwp not receiving a
+	 * KILL signal.
+	 */
+	if (p->p_flags & P_WEXIT) {
+		kprintf("pid %d (%s) exit race handled\n",
+			p->p_pid, p->p_comm);
+		lwpsignal(p, lp, SIGKILL);
+	}
+
+	/*
 	 * Newly forked processes are given a kernel priority.  We have to
 	 * adjust the priority to a normal user priority and fake entry
 	 * into the kernel (call userenter()) to install a passive release
