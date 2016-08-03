@@ -46,24 +46,29 @@
 #ifndef _SYS_IPC_H_
 #define	_SYS_IPC_H_
 
-#ifndef _SYS_TYPES_H_
+#include <sys/cdefs.h>
 #include <sys/types.h>
-#endif
 
+/*
+ * XXX cuid and uid should be uid_t; cgid and gid should be gid_t
+ *     mode should be mode_t; see 1003.1-2008
+ */
 struct ipc_perm {
-	ushort	cuid;	/* creator user id */
-	ushort	cgid;	/* creator group id */
-	ushort	uid;	/* user id */
-	ushort	gid;	/* group id */
-	ushort	mode;	/* r/w permission */
-	ushort	seq;	/* sequence # (to generate unique msg/sem/shm id) */
-	key_t	key;	/* user specified msg/sem/shm key */
+	unsigned short	cuid;	/* creator user id; XXX should be uid_t */
+	unsigned short	cgid;	/* creator group id; XXX should be gid_t */
+	unsigned short	uid;	/* user id; XXX should be uid_t */
+	unsigned short	gid;	/* group id; XXX should be gid_t */
+	unsigned short	mode;	/* r/w permission */
+	unsigned short	seq;	/* sequence # (to generate unique msg/sem/shm id) */
+	key_t		key;	/* user specified msg/sem/shm key */
 };
 
+#if __BSD_VISIBLE
 /* common mode bits */
 #define	IPC_R		000400	/* read permission */
 #define	IPC_W		000200	/* write/alter permission */
 #define	IPC_M		010000	/* permission to change control info */
+#endif
 
 /* SVID required constants (same values as system 5) */
 #define	IPC_CREAT	001000	/* create entry if key does not exist */
@@ -81,7 +86,7 @@ struct ipc_perm {
 /* Macros to convert between ipc ids and array indices or sequence ids */
 #define	IPCID_TO_IX(id)		((id) & 0xffff)
 #define	IPCID_TO_SEQ(id)	(((id) >> 16) & 0xffff)
-#define	IXSEQ_TO_IPCID(ix,perm)	(((perm.seq) << 16) | (ix & 0xffff))
+#define	IXSEQ_TO_IPCID(ix,perm)	(((perm.seq) << 16) | ((ix) & 0xffff))
 
 struct proc;
 
