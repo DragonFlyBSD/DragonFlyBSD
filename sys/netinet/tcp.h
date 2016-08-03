@@ -33,10 +33,11 @@
 #ifndef _NETINET_TCP_H_
 #define	_NETINET_TCP_H_
 
-#ifndef _SYS_TYPES_H_
+#include <sys/cdefs.h>
+
+#if __BSD_VISIBLE
+
 #include <sys/types.h>
-#endif
-#include <machine/endian.h>
 
 typedef	u_int32_t	tcp_seq;
 typedef	int32_t		tcp_seq_diff_t;
@@ -147,11 +148,13 @@ struct tcphdr {
 #define	TCP_MAXHLEN	(0xf<<2)	/* max length of header in bytes */
 #define	TCP_MAXOLEN	(TCP_MAXHLEN - sizeof(struct tcphdr))
 					/* max space left for options */
+#endif /* __BSD_VISIBLE */
 
 /*
  * User-settable options (used with setsockopt).
  */
 #define	TCP_NODELAY	0x01	/* don't delay send to coalesce packets */
+#if __BSD_VISIBLE
 #define	TCP_MAXSEG	0x02	/* set maximum segment size */
 #define	TCP_NOPUSH	0x04	/* don't push last block of write */
 #define	TCP_NOOPT	0x08	/* don't use TCP options */
@@ -162,5 +165,6 @@ struct tcphdr {
 #define	TCP_KEEPIDLE	0x100	/* set time before keepalive probes begin */
 #define	TCP_KEEPINTVL	0x200	/* set time between keepalive probes */
 #define	TCP_KEEPCNT	0x400	/* set max number of keepalive probes */
+#endif /* __BSD_VISIBLE */
 
 #endif
