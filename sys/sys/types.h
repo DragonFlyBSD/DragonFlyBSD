@@ -56,7 +56,7 @@
 #include <sys/_pthreadtypes.h>
 #endif
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 typedef	unsigned char	u_char;
 typedef	unsigned short	u_short;
 typedef	unsigned int	u_int;
@@ -157,7 +157,7 @@ typedef	udev_t		dev_t;		/* device number */
 typedef	u_int32_t	dev_t;		/* device number */
 #define	udev_t dev_t
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 
 /*
  * minor() gives a cookie instead of an index since we don't want to
@@ -168,7 +168,7 @@ typedef	u_int32_t	dev_t;		/* device number */
 #define	minor(x)	((int)((x)&0xffff00ff))         /* minor number */
 #define	makedev(x,y)	((dev_t)(((x) << 8) | (y)))     /* create dev_t */
 
-#endif /* _POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 #endif /* !_KERNEL */
 
