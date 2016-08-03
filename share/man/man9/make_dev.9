@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/make_dev.9,v 1.2.2.3 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd August 26, 2012
+.Dd August 3, 2016
 .Dt MAKE_DEV 9
 .Os
 .Sh NAME
@@ -112,7 +112,7 @@ are defined in
 #define S_ISUID 0004000    /* set user id on execution */
 #define S_ISGID 0002000    /* set group id on execution */
 #define S_ISVTX 0001000    /* sticky bit */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define S_ISTXT 0001000
 #endif
 .Ed
