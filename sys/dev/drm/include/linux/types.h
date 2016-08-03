@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,7 +50,6 @@ typedef _Bool bool;
 
 typedef u64 phys_addr_t;
 
-typedef unsigned long kernel_ulong_t;
 typedef unsigned int gfp_t;
 typedef uint64_t loff_t;
 typedef vm_paddr_t resource_size_t;

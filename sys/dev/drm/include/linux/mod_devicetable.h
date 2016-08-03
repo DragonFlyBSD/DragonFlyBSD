@@ -27,6 +27,9 @@
 #ifndef _LINUX_MOD_DEVICETABLE_H_
 #define _LINUX_MOD_DEVICETABLE_H_
 
+#include <linux/types.h>
+typedef unsigned long kernel_ulong_t;
+
 #define DMI_MATCH(a, b)		{(a), (b)}
 #define DMI_EXACT_MATCH(a, b)	{(a), (b)}
 
