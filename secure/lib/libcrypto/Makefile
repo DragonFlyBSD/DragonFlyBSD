@@ -24,7 +24,7 @@ INCS+=	crypto.h opensslv.h opensslconf.h ebcdic.h symhacks.h ossl_typ.h
 SRCS+=	buildinf.h
 INCSDIR=	${INCLUDEDIR}/openssl
 
-CLEANFILES+=	buildinf.h opensslconf.h
+CLEANFILES+=	buildinf.h
 
 buildinf.h:
 	( echo "#ifndef MK1MF_BUILD"; \
@@ -33,9 +33,6 @@ buildinf.h:
 	echo "  #define PLATFORM \"`uname -s`-`uname -m`\""; \
 	echo "  #define DATE \"`LC_ALL=C date`\""; \
 	echo "#endif" ) > ${.TARGET}
-
-opensslconf.h: opensslconf-${MACHINE_ARCH}.h
-	cp ${.ALLSRC} ${.TARGET}
 
 
 # aes

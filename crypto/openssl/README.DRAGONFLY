@@ -3,7 +3,7 @@ Original source can be downloaded from OpenSSL at
 
 Here's some hints to upgrading:
 ./Configure shared --prefix=/usr --openssldir=/etc/ssl BSD-x86_64
-cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-x86_64.h
+cp crypto/opensslconf.h ../../secure/lib/libcrypto/
 cd ../../secure/lib/libcrypto
 # Update the version and date in Makefile.inc
 make man-makefile-update && make man-update
@@ -11,7 +11,3 @@ cd ../libssl
 make man-makefile-update && make man-update
 cd ../../usr.bin/openssl
 make man-makefile-update && make man-update
-cd ../..
-cvs add lib/libcrypto/man/*.3 lib/libssl/man/*.3 usr.bin/openssl/man/*.1
-cd ../crypto/openssl-0.9
-xargs rm -rf < README.DELETED
