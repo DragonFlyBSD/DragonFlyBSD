@@ -23,6 +23,7 @@
 #ifndef _SYS_MSG_H_
 #define	_SYS_MSG_H_
 
+#include <sys/cdefs.h>
 #include <sys/ipc.h>
 
 /*
@@ -34,6 +35,26 @@
 
 typedef	unsigned long	msglen_t;
 typedef	unsigned long	msgqnum_t;
+
+#ifndef _PID_T_DECLARED
+typedef	__pid_t		pid_t;
+#define	_PID_T_DECLARED
+#endif
+
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
+
+#ifndef _SSIZE_T_DECLARED
+typedef	__ssize_t	ssize_t;
+#define	_SSIZE_T_DECLARED
+#endif
+
+#ifndef _TIME_T_DECLARED
+typedef	__time_t	time_t;
+#define	_TIME_T_DECLARED
+#endif
 
 /*!!! In the kernel implementation, both msg_first and msg_last
  * have 'struct msg*' type.
@@ -61,6 +82,7 @@ struct msqid_ds {
 	long	msg_pad4[4];
 };
 
+#if __BSD_VISIBLE
 /*
  * Structure describing a message.  The SVID doesn't suggest any
  * particular name for this structure.  There is a reference in the
@@ -75,6 +97,7 @@ struct mymsg {
 	long	mtype;		/* message type (+ve integer) */
 	char	mtext[1];	/* message body */
 };
+#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -100,12 +123,7 @@ struct msginfo {
 
 #ifdef _KERNEL
 extern struct msginfo	msginfo;
-#endif
-
-#ifndef _KERNEL
-
-#include <sys/cdefs.h>
-
+#else
 __BEGIN_DECLS
 int	msgctl(int, int, struct msqid_ds *);
 int	msgget(key_t, int);
