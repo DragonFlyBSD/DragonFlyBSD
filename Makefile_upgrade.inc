@@ -3116,6 +3116,10 @@ TO_REMOVE+=/usr/share/man/man8/mk-amd-map.8.gz
 TO_REMOVE+=/usr/share/man/man8/wire-test.8.gz
 TO_REMOVE+=/usr/include/varargs.h
 TO_REMOVE+=/usr/include/bus/pci/pcibus.h
+TO_REMOVE+=/usr/share/openssl/man/man3/CMS_set1_signer_certs.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/d2i_509_CRL_fp.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/EVP_PKEY_ctrl.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/EVP_PKEY_ctrl_str.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
