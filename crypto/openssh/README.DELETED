@@ -66,7 +66,6 @@ openbsd-compat/port-solaris.c
 openbsd-compat/port-uw.c
 openbsd-compat/pwcache.c
 openbsd-compat/readpassphrase.c
-openbsd-compat/realpath.c
 openbsd-compat/regress/
 openbsd-compat/rresvport.c
 openbsd-compat/setenv.c
