@@ -1,4 +1,4 @@
-/* $OpenBSD: sshd.c,v 1.428 2014/07/15 15:54:14 millert Exp $ */
+/* $OpenBSD: sshd.c,v 1.470 2016/05/24 04:43:45 dtucker Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -71,6 +71,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 #ifdef WITH_OPENSSL
 #include <openssl/dh.h>
@@ -94,6 +95,7 @@
 #include "log.h"
 #include "buffer.h"
 #include "misc.h"
+#include "match.h"
 #include "servconf.h"
 #include "uidswap.h"
 #include "compat.h"
@@ -119,9 +121,9 @@
 #include "ssh-gss.h"
 #endif
 #include "monitor_wrap.h"
-#include "roaming.h"
 #include "ssh-sandbox.h"
 #include "version.h"
+#include "ssherr.h"
 
 #ifndef O_NOCTTY
 #define O_NOCTTY	0
@@ -186,11 +188,8 @@ int num_listen_socks = 0;
 char *client_version_string = NULL;
 char *server_version_string = NULL;
 
-/* for rekeying XXX fixme */
-Kex *xxx_kex;
-
 /* Daemon's agent connection */
-AuthenticationConnection *auth_conn = NULL;
+int auth_sock = -1;
 int have_agent = 0;
 
 /*
@@ -230,7 +229,7 @@ u_char *session_id2 = NULL;
 u_int session_id2_len = 0;
 
 /* record remote hostname or ip */
-u_int utmp_len = MAXHOSTNAMELEN;
+u_int utmp_len = HOST_NAME_MAX+1;
 
 /* options.max_startup sized array of fd ints */
 int *startup_pipes = NULL;
@@ -372,7 +371,8 @@ grace_alarm_handler(int sig)
 	}
 
 	/* Log error and exit. */
-	sigdie("Timeout before authentication for %s", get_remote_ipaddr());
+	sigdie("Timeout before authentication for %s port %d",
+	    ssh_remote_ipaddr(active_state), ssh_remote_port(active_state));
 }
 
 /*
@@ -408,7 +408,7 @@ key_regeneration_alarm(int sig)
 }
 
 static void
-sshd_exchange_identification(int sock_in, int sock_out)
+sshd_exchange_identification(struct ssh *ssh, int sock_in, int sock_out)
 {
 	u_int i;
 	int mismatch;
@@ -437,19 +437,21 @@ sshd_exchange_identification(int sock_in, int sock_out)
 	    options.version_addendum, newline);
 
 	/* Send our protocol version identification. */
-	if (roaming_atomicio(vwrite, sock_out, server_version_string,
+	if (atomicio(vwrite, sock_out, server_version_string,
 	    strlen(server_version_string))
 	    != strlen(server_version_string)) {
-		logit("Could not write ident string to %s", get_remote_ipaddr());
+		logit("Could not write ident string to %s port %d",
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh));
 		cleanup_exit(255);
 	}
 
 	/* Read other sides version identification. */
 	memset(buf, 0, sizeof(buf));
 	for (i = 0; i < sizeof(buf) - 1; i++) {
-		if (roaming_atomicio(read, sock_in, &buf[i], 1) != 1) {
-			logit("Did not receive identification string from %s",
-			    get_remote_ipaddr());
+		if (atomicio(read, sock_in, &buf[i], 1) != 1) {
+			logit("Did not receive identification string "
+			    "from %s port %d",
+			    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh));
 			cleanup_exit(255);
 		}
 		if (buf[i] == '\r') {
@@ -478,7 +480,7 @@ sshd_exchange_identification(int sock_in, int sock_out)
 		(void) atomicio(vwrite, sock_out, s, strlen(s));
 		logit("Bad protocol version identification '%.100s' "
 		    "from %s port %d", client_version_string,
-		    get_remote_ipaddr(), get_remote_port());
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh));
 		close(sock_in);
 		close(sock_out);
 		cleanup_exit(255);
@@ -486,23 +488,25 @@ sshd_exchange_identification(int sock_in, int sock_out)
 	debug("Client protocol version %d.%d; client software version %.100s",
 	    remote_major, remote_minor, remote_version);
 
-	compat_datafellows(remote_version);
+	ssh->compat = compat_datafellows(remote_version);
 
-	if ((datafellows & SSH_BUG_PROBE) != 0) {
-		logit("probed from %s with %s.  Don't panic.",
-		    get_remote_ipaddr(), client_version_string);
+	if ((ssh->compat & SSH_BUG_PROBE) != 0) {
+		logit("probed from %s port %d with %s.  Don't panic.",
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh),
+		    client_version_string);
 		cleanup_exit(255);
 	}
-	if ((datafellows & SSH_BUG_SCANNER) != 0) {
-		logit("scanned from %s with %s.  Don't panic.",
-		    get_remote_ipaddr(), client_version_string);
+	if ((ssh->compat & SSH_BUG_SCANNER) != 0) {
+		logit("scanned from %s port %d with %s.  Don't panic.",
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh),
+		    client_version_string);
 		cleanup_exit(255);
 	}
-	if ((datafellows & SSH_BUG_RSASIGMD5) != 0) {
+	if ((ssh->compat & SSH_BUG_RSASIGMD5) != 0) {
 		logit("Client version \"%.100s\" uses unsafe RSA signature "
 		    "scheme; disabling use of RSA keys", remote_version);
 	}
-	if ((datafellows & SSH_BUG_DERIVEKEY) != 0) {
+	if ((ssh->compat & SSH_BUG_DERIVEKEY) != 0) {
 		fatal("Client version \"%.100s\" uses unsafe key agreement; "
 		    "refusing connection", remote_version);
 	}
@@ -547,8 +551,9 @@ sshd_exchange_identification(int sock_in, int sock_out)
 		(void) atomicio(vwrite, sock_out, s, strlen(s));
 		close(sock_in);
 		close(sock_out);
-		logit("Protocol major versions differ for %s: %.200s vs. %.200s",
-		    get_remote_ipaddr(),
+		logit("Protocol major versions differ for %s port %d: "
+		    "%.200s vs. %.200s",
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh),
 		    server_version_string, client_version_string);
 		cleanup_exit(255);
 	}
@@ -622,44 +627,46 @@ privsep_preauth_child(void)
 
 	arc4random_stir();
 	arc4random_buf(rnd, sizeof(rnd));
+#ifdef WITH_OPENSSL
 	RAND_seed(rnd, sizeof(rnd));
+	if ((RAND_bytes((u_char *)rnd, 1)) != 1)
+		fatal("%s: RAND_bytes failed", __func__);
+#endif
 	explicit_bzero(rnd, sizeof(rnd));
 
 	/* Demote the private keys to public keys. */
 	demote_sensitive_data();
 
-	/* Change our root directory */
-	if (chroot(_PATH_PRIVSEP_CHROOT_DIR) == -1)
-		fatal("chroot(\"%s\"): %s", _PATH_PRIVSEP_CHROOT_DIR,
-		    strerror(errno));
-	if (chdir("/") == -1)
-		fatal("chdir(\"/\"): %s", strerror(errno));
+	/* Demote the child */
+	if (getuid() == 0 || geteuid() == 0) {
+		/* Change our root directory */
+		if (chroot(_PATH_PRIVSEP_CHROOT_DIR) == -1)
+			fatal("chroot(\"%s\"): %s", _PATH_PRIVSEP_CHROOT_DIR,
+			    strerror(errno));
+		if (chdir("/") == -1)
+			fatal("chdir(\"/\"): %s", strerror(errno));
 
-	/* Drop our privileges */
-	debug3("privsep user:group %u:%u", (u_int)privsep_pw->pw_uid,
-	    (u_int)privsep_pw->pw_gid);
-#if 0
-	/* XXX not ready, too heavy after chroot */
-	do_setusercontext(privsep_pw);
-#else
-	gidset[0] = privsep_pw->pw_gid;
-	if (setgroups(1, gidset) < 0)
-		fatal("setgroups: %.100s", strerror(errno));
-	permanently_set_uid(privsep_pw);
-#endif
+		/* Drop our privileges */
+		debug3("privsep user:group %u:%u", (u_int)privsep_pw->pw_uid,
+		    (u_int)privsep_pw->pw_gid);
+		gidset[0] = privsep_pw->pw_gid;
+		if (setgroups(1, gidset) < 0)
+			fatal("setgroups: %.100s", strerror(errno));
+		permanently_set_uid(privsep_pw);
+	}
 }
 
 static int
 privsep_preauth(Authctxt *authctxt)
 {
-	int status;
+	int status, r;
 	pid_t pid;
 	struct ssh_sandbox *box = NULL;
 
 	/* Set up unprivileged child process to deal with network data */
 	pmonitor = monitor_init();
 	/* Store a pointer to the kex for later rekeying */
-	pmonitor->m_pkex = &xxx_kex;
+	pmonitor->m_pkex = &active_state->kex;
 
 	if (use_privsep == PRIVSEP_ON)
 		box = ssh_sandbox_init(pmonitor);
@@ -670,8 +677,14 @@ privsep_preauth(Authctxt *authctxt)
 		debug2("Network child is on pid %ld", (long)pid);
 
 		pmonitor->m_pid = pid;
-		if (have_agent)
-			auth_conn = ssh_get_authentication_connection();
+		if (have_agent) {
+			r = ssh_get_authentication_socket(&auth_sock);
+			if (r != 0) {
+				error("Could not get agent socket: %s",
+				    ssh_err(r));
+				have_agent = 0;
+			}
+		}
 		if (box != NULL)
 			ssh_sandbox_parent_preauth(box, pid);
 		monitor_child_preauth(authctxt, pmonitor);
@@ -706,9 +719,7 @@ privsep_preauth(Authctxt *authctxt)
 		/* Arrange for logging to be sent to the monitor */
 		set_log_handler(mm_log_handler, pmonitor);
 
-		/* Demote the child */
-		if (getuid() == 0 || geteuid() == 0)
-			privsep_preauth_child();
+		privsep_preauth_child();
 		setproctitle("%s", "[net]");
 		if (box != NULL)
 			ssh_sandbox_child(box);
@@ -757,7 +768,11 @@ privsep_postauth(Authctxt *authctxt)
 
 	arc4random_stir();
 	arc4random_buf(rnd, sizeof(rnd));
+#ifdef WITH_OPENSSL
 	RAND_seed(rnd, sizeof(rnd));
+	if ((RAND_bytes((u_char *)rnd, 1)) != 1)
+		fatal("%s: RAND_bytes failed", __func__);
+#endif
 	explicit_bzero(rnd, sizeof(rnd));
 
 	/* Drop privileges */
@@ -788,8 +803,15 @@ list_hostkey_types(void)
 		key = sensitive_data.host_keys[i];
 		if (key == NULL)
 			key = sensitive_data.host_pubkeys[i];
-		if (key == NULL)
+		if (key == NULL || key->type == KEY_RSA1)
 			continue;
+		/* Check that the key is accepted in HostkeyAlgorithms */
+		if (match_pattern_list(sshkey_ssh_name(key),
+		    options.hostkeyalgorithms, 0) != 1) {
+			debug3("%s: %s key not permitted by HostkeyAlgorithms",
+			    __func__, sshkey_ssh_name(key));
+			continue;
+		}
 		switch (key->type) {
 		case KEY_RSA:
 		case KEY_DSA:
@@ -799,6 +821,12 @@ list_hostkey_types(void)
 				buffer_append(&b, ",", 1);
 			p = key_ssh_name(key);
 			buffer_append(&b, p, strlen(p));
+
+			/* for RSA we also support SHA2 signatures */
+			if (key->type == KEY_RSA) {
+				p = ",rsa-sha2-512,rsa-sha2-256";
+				buffer_append(&b, p, strlen(p));
+			}
 			break;
 		}
 		/* If the private key has a cert peer, then list that too */
@@ -806,8 +834,6 @@ list_hostkey_types(void)
 		if (key == NULL)
 			continue;
 		switch (key->type) {
-		case KEY_RSA_CERT_V00:
-		case KEY_DSA_CERT_V00:
 		case KEY_RSA_CERT:
 		case KEY_DSA_CERT:
 		case KEY_ECDSA_CERT:
@@ -819,23 +845,21 @@ list_hostkey_types(void)
 			break;
 		}
 	}
-	buffer_append(&b, "\0", 1);
-	ret = xstrdup(buffer_ptr(&b));
+	if ((ret = sshbuf_dup_string(&b)) == NULL)
+		fatal("%s: sshbuf_dup_string failed", __func__);
 	buffer_free(&b);
 	debug("list_hostkey_types: %s", ret);
 	return ret;
 }
 
 static Key *
-get_hostkey_by_type(int type, int need_private)
+get_hostkey_by_type(int type, int nid, int need_private, struct ssh *ssh)
 {
 	int i;
 	Key *key;
 
 	for (i = 0; i < options.num_host_key_files; i++) {
 		switch (type) {
-		case KEY_RSA_CERT_V00:
-		case KEY_DSA_CERT_V00:
 		case KEY_RSA_CERT:
 		case KEY_DSA_CERT:
 		case KEY_ECDSA_CERT:
@@ -848,7 +872,8 @@ get_hostkey_by_type(int type, int need_private)
 				key = sensitive_data.host_pubkeys[i];
 			break;
 		}
-		if (key != NULL && key->type == type)
+		if (key != NULL && key->type == type &&
+		    (key->type != KEY_ECDSA || key->ecdsa_nid == nid))
 			return need_private ?
 			    sensitive_data.host_keys[i] : key;
 	}
@@ -856,15 +881,15 @@ get_hostkey_by_type(int type, int need_private)
 }
 
 Key *
-get_hostkey_public_by_type(int type)
+get_hostkey_public_by_type(int type, int nid, struct ssh *ssh)
 {
-	return get_hostkey_by_type(type, 0);
+	return get_hostkey_by_type(type, nid, 0, ssh);
 }
 
 Key *
-get_hostkey_private_by_type(int type)
+get_hostkey_private_by_type(int type, int nid, struct ssh *ssh)
 {
-	return get_hostkey_by_type(type, 1);
+	return get_hostkey_by_type(type, nid, 1, ssh);
 }
 
 Key *
@@ -876,7 +901,7 @@ get_hostkey_by_index(int ind)
 }
 
 Key *
-get_hostkey_public_by_index(int ind)
+get_hostkey_public_by_index(int ind, struct ssh *ssh)
 {
 	if (ind < 0 || ind >= options.num_host_key_files)
 		return (NULL);
@@ -884,22 +909,73 @@ get_hostkey_public_by_index(int ind)
 }
 
 int
-get_hostkey_index(Key *key)
+get_hostkey_index(Key *key, int compare, struct ssh *ssh)
 {
 	int i;
 
 	for (i = 0; i < options.num_host_key_files; i++) {
 		if (key_is_cert(key)) {
-			if (key == sensitive_data.host_certificates[i])
+			if (key == sensitive_data.host_certificates[i] ||
+			    (compare && sensitive_data.host_certificates[i] &&
+			    sshkey_equal(key,
+			    sensitive_data.host_certificates[i])))
 				return (i);
 		} else {
-			if (key == sensitive_data.host_keys[i])
+			if (key == sensitive_data.host_keys[i] ||
+			    (compare && sensitive_data.host_keys[i] &&
+			    sshkey_equal(key, sensitive_data.host_keys[i])))
 				return (i);
-			if (key == sensitive_data.host_pubkeys[i])
+			if (key == sensitive_data.host_pubkeys[i] ||
+			    (compare && sensitive_data.host_pubkeys[i] &&
+			    sshkey_equal(key, sensitive_data.host_pubkeys[i])))
 				return (i);
 		}
 	}
 	return (-1);
+}
+
+/* Inform the client of all hostkeys */
+static void
+notify_hostkeys(struct ssh *ssh)
+{
+	struct sshbuf *buf;
+	struct sshkey *key;
+	int i, nkeys, r;
+	char *fp;
+
+	/* Some clients cannot cope with the hostkeys message, skip those. */
+	if (datafellows & SSH_BUG_HOSTKEYS)
+		return;
+
+	if ((buf = sshbuf_new()) == NULL)
+		fatal("%s: sshbuf_new", __func__);
+	for (i = nkeys = 0; i < options.num_host_key_files; i++) {
+		key = get_hostkey_public_by_index(i, ssh);
+		if (key == NULL || key->type == KEY_UNSPEC ||
+		    key->type == KEY_RSA1 || sshkey_is_cert(key))
+			continue;
+		fp = sshkey_fingerprint(key, options.fingerprint_hash,
+		    SSH_FP_DEFAULT);
+		debug3("%s: key %d: %s %s", __func__, i,
+		    sshkey_ssh_name(key), fp);
+		free(fp);
+		if (nkeys == 0) {
+			packet_start(SSH2_MSG_GLOBAL_REQUEST);
+			packet_put_cstring("hostkeys-00@openssh.com");
+			packet_put_char(0); /* want-reply */
+		}
+		sshbuf_reset(buf);
+		if ((r = sshkey_putb(key, buf)) != 0)
+			fatal("%s: couldn't put hostkey %d: %s",
+			    __func__, i, ssh_err(r));
+		packet_put_string(sshbuf_ptr(buf), sshbuf_len(buf));
+		nkeys++;
+	}
+	debug3("%s: sent %d hostkeys", __func__, nkeys);
+	if (nkeys == 0)
+		fatal("%s: no hostkeys", __func__);
+	packet_send();
+	sshbuf_free(buf);
 }
 
 /*
@@ -951,12 +1027,13 @@ usage(void)
 }
 
 static void
-send_rexec_state(int fd, Buffer *conf)
+send_rexec_state(int fd, struct sshbuf *conf)
 {
-	Buffer m;
+	struct sshbuf *m;
+	int r;
 
-	debug3("%s: entering fd = %d config len %d", __func__, fd,
-	    buffer_len(conf));
+	debug3("%s: entering fd = %d config len %zu", __func__, fd,
+	    sshbuf_len(conf));
 
 	/*
 	 * Protocol from reexec master to child:
@@ -970,31 +1047,41 @@ send_rexec_state(int fd, Buffer *conf)
 	 *	bignum	q			"
 	 *	string rngseed		(only if OpenSSL is not self-seeded)
 	 */
-	buffer_init(&m);
-	buffer_put_cstring(&m, buffer_ptr(conf));
+	if ((m = sshbuf_new()) == NULL)
+		fatal("%s: sshbuf_new failed", __func__);
+	if ((r = sshbuf_put_stringb(m, conf)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 #ifdef WITH_SSH1
 	if (sensitive_data.server_key != NULL &&
 	    sensitive_data.server_key->type == KEY_RSA1) {
-		buffer_put_int(&m, 1);
-		buffer_put_bignum(&m, sensitive_data.server_key->rsa->e);
-		buffer_put_bignum(&m, sensitive_data.server_key->rsa->n);
-		buffer_put_bignum(&m, sensitive_data.server_key->rsa->d);
-		buffer_put_bignum(&m, sensitive_data.server_key->rsa->iqmp);
-		buffer_put_bignum(&m, sensitive_data.server_key->rsa->p);
-		buffer_put_bignum(&m, sensitive_data.server_key->rsa->q);
+		if ((r = sshbuf_put_u32(m, 1)) != 0 ||
+		    (r = sshbuf_put_bignum1(m,
+		    sensitive_data.server_key->rsa->e)) != 0 ||
+		    (r = sshbuf_put_bignum1(m,
+		    sensitive_data.server_key->rsa->n)) != 0 ||
+		    (r = sshbuf_put_bignum1(m,
+		    sensitive_data.server_key->rsa->d)) != 0 ||
+		    (r = sshbuf_put_bignum1(m,
+		    sensitive_data.server_key->rsa->iqmp)) != 0 ||
+		    (r = sshbuf_put_bignum1(m,
+		    sensitive_data.server_key->rsa->p)) != 0 ||
+		    (r = sshbuf_put_bignum1(m,
+		    sensitive_data.server_key->rsa->q)) != 0)
+			fatal("%s: buffer error: %s", __func__, ssh_err(r));
 	} else
 #endif
-		buffer_put_int(&m, 0);
+		if ((r = sshbuf_put_u32(m, 1)) != 0)
+			fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
-#ifndef OPENSSL_PRNG_ONLY
-	rexec_send_rng_seed(&m);
+#if defined(WITH_OPENSSL) && !defined(OPENSSL_PRNG_ONLY)
+	rexec_send_rng_seed(m);
 #endif
 
-	if (ssh_msg_send(fd, 0, &m) == -1)
+	if (ssh_msg_send(fd, 0, m) == -1)
 		fatal("%s: ssh_msg_send failed", __func__);
 
-	buffer_free(&m);
+	sshbuf_free(m);
 
 	debug3("%s: done", __func__);
 }
@@ -1017,7 +1104,7 @@ recv_rexec_state(int fd, Buffer *conf)
 
 	cp = buffer_get_string(&m, &len);
 	if (conf != NULL)
-		buffer_append(conf, cp, len + 1);
+		buffer_append(conf, cp, len);
 	free(cp);
 
 	if (buffer_get_int(&m)) {
@@ -1035,12 +1122,10 @@ recv_rexec_state(int fd, Buffer *conf)
 		    sensitive_data.server_key->rsa) != 0)
 			fatal("%s: rsa_generate_additional_parameters "
 			    "error", __func__);
-#else
-		fatal("ssh1 not supported");
 #endif
 	}
 
-#ifndef OPENSSL_PRNG_ONLY
+#if defined(WITH_OPENSSL) && !defined(OPENSSL_PRNG_ONLY)
 	rexec_recv_rng_seed(&m);
 #endif
 
@@ -1188,9 +1273,8 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 	for (;;) {
 		if (received_sighup)
 			sighup_restart();
-		if (fdset != NULL)
-			free(fdset);
-		fdset = (fd_set *)xcalloc(howmany(maxfd + 1, NFDBITS),
+		free(fdset);
+		fdset = xcalloc(howmany(maxfd + 1, NFDBITS),
 		    sizeof(fd_mask));
 
 		for (i = 0; i < num_listen_socks; i++)
@@ -1207,7 +1291,8 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 			logit("Received signal %d; terminating.",
 			    (int) received_sigterm);
 			close_listen_socks();
-			unlink(options.pid_file);
+			if (options.pid_file != NULL)
+				unlink(options.pid_file);
 			exit(received_sigterm == SIGTERM ? 0 : 255);
 		}
 		if (key_used && key_do_regen) {
@@ -1370,7 +1455,11 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 			 */
 			arc4random_stir();
 			arc4random_buf(rnd, sizeof(rnd));
+#ifdef WITH_OPENSSL
 			RAND_seed(rnd, sizeof(rnd));
+			if ((RAND_bytes((u_char *)rnd, 1)) != 1)
+				fatal("%s: RAND_bytes failed", __func__);
+#endif
 			explicit_bzero(rnd, sizeof(rnd));
 		}
 
@@ -1380,6 +1469,47 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 	}
 }
 
+/*
+ * If IP options are supported, make sure there are none (log and
+ * return an error if any are found).  Basically we are worried about
+ * source routing; it can be used to pretend you are somebody
+ * (ip-address) you are not. That itself may be "almost acceptable"
+ * under certain circumstances, but rhosts autentication is useless
+ * if source routing is accepted. Notice also that if we just dropped
+ * source routing here, the other side could use IP spoofing to do
+ * rest of the interaction and could still bypass security.  So we
+ * exit here if we detect any IP options.
+ */
+static void
+check_ip_options(struct ssh *ssh)
+{
+#ifdef IP_OPTIONS
+	int sock_in = ssh_packet_get_connection_in(ssh);
+	struct sockaddr_storage from;
+	socklen_t option_size, i, fromlen = sizeof(from);
+	u_char opts[200];
+	char text[sizeof(opts) * 3 + 1];
+
+	memset(&from, 0, sizeof(from));
+	if (getpeername(sock_in, (struct sockaddr *)&from,
+	    &fromlen) < 0)
+		return;
+	if (from.ss_family != AF_INET)
+		return;
+	/* XXX IPv6 options? */
+
+	if (getsockopt(sock_in, IPPROTO_IP, IP_OPTIONS, opts,
+	    &option_size) >= 0 && option_size != 0) {
+		text[0] = '\0';
+		for (i = 0; i < option_size; i++)
+			snprintf(text + i*3, sizeof(text) - i*3,
+			    " %2.2x", opts[i]);
+		fatal("Connection from %.100s port %d with IP opts: %.800s",
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh), text);
+	}
+	return;
+#endif /* IP_OPTIONS */
+}
 
 /*
  * Main program for the daemon.
@@ -1387,13 +1517,14 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 int
 main(int ac, char **av)
 {
+	struct ssh *ssh = NULL;
 	extern char *optarg;
 	extern int optind;
-	int opt, i, j, on = 1;
+	int r, opt, i, j, on = 1;
 	int sock_in = -1, sock_out = -1, newsock = -1;
 	const char *remote_ip;
 	int remote_port;
-	char *line, *logfile = NULL;
+	char *fp, *line, *laddr, *logfile = NULL;
 	int config_s[2] = { -1 , -1 };
 	u_int n;
 	u_int64_t ibytes, obytes;
@@ -1403,6 +1534,8 @@ main(int ac, char **av)
 	int keytype;
 	Authctxt *authctxt;
 	struct connection_info *connection_info = get_connection_info(0, 0);
+
+	ssh_malloc_init();	/* must be called before any mallocs */
 
 #ifdef HAVE_SECUREWARE
 	(void)set_auth_parameters(ac, av);
@@ -1433,7 +1566,8 @@ main(int ac, char **av)
 	initialize_server_options(&options);
 
 	/* Parse command-line arguments. */
-	while ((opt = getopt(ac, av, "f:p:b:k:h:g:u:o:C:dDeE:iqrtQRT46")) != -1) {
+	while ((opt = getopt(ac, av,
+	    "C:E:b:c:f:g:h:k:o:p:u:46DQRTdeiqrt")) != -1) {
 		switch (opt) {
 		case '4':
 			options.address_family = AF_INET;
@@ -1463,7 +1597,7 @@ main(int ac, char **av)
 			no_daemon_flag = 1;
 			break;
 		case 'E':
-			logfile = xstrdup(optarg);
+			logfile = optarg;
 			/* FALLTHROUGH */
 		case 'e':
 			log_stderr = 1;
@@ -1532,8 +1666,8 @@ main(int ac, char **av)
 				exit(1);
 			break;
 		case 'u':
-			utmp_len = (u_int)strtonum(optarg, 0, MAXHOSTNAMELEN+1, NULL);
-			if (utmp_len > MAXHOSTNAMELEN) {
+			utmp_len = (u_int)strtonum(optarg, 0, HOST_NAME_MAX+1+1, NULL);
+			if (utmp_len > HOST_NAME_MAX+1) {
 				fprintf(stderr, "Invalid utmp length.\n");
 				exit(1);
 			}
@@ -1565,10 +1699,8 @@ main(int ac, char **av)
 #endif
 
 	/* If requested, redirect the logs to the specified logfile. */
-	if (logfile != NULL) {
+	if (logfile != NULL)
 		log_redirect_stderr_to(logfile);
-		free(logfile);
-	}
 	/*
 	 * Force logging to stderr until we have loaded the private host
 	 * key (unless started from inetd)
@@ -1615,7 +1747,7 @@ main(int ac, char **av)
 	buffer_init(&cfg);
 	if (rexeced_flag)
 		recv_rexec_state(REEXEC_CONFIG_PASS_FD, &cfg);
-	else
+	else if (strcasecmp(config_file_name, "none") != 0)
 		load_server_config(config_file_name, &cfg);
 
 	parse_server_config(&options, rexeced_flag ? "rexec" : config_file_name,
@@ -1636,6 +1768,11 @@ main(int ac, char **av)
 	    strcasecmp(options.authorized_keys_command, "none") != 0))
 		fatal("AuthorizedKeysCommand set without "
 		    "AuthorizedKeysCommandUser");
+	if (options.authorized_principals_command_user == NULL &&
+	    (options.authorized_principals_command != NULL &&
+	    strcasecmp(options.authorized_principals_command, "none") != 0))
+		fatal("AuthorizedPrincipalsCommand set without "
+		    "AuthorizedPrincipalsCommandUser");
 
 	/*
 	 * Check whether there is any path through configured auth methods.
@@ -1693,21 +1830,25 @@ main(int ac, char **av)
 	    sizeof(Key *));
 	sensitive_data.host_pubkeys = xcalloc(options.num_host_key_files,
 	    sizeof(Key *));
-	for (i = 0; i < options.num_host_key_files; i++) {
-		sensitive_data.host_keys[i] = NULL;
-		sensitive_data.host_pubkeys[i] = NULL;
-	}
 
 	if (options.host_key_agent) {
 		if (strcmp(options.host_key_agent, SSH_AUTHSOCKET_ENV_NAME))
 			setenv(SSH_AUTHSOCKET_ENV_NAME,
 			    options.host_key_agent, 1);
-		have_agent = ssh_agent_present();
+		if ((r = ssh_get_authentication_socket(NULL)) == 0)
+			have_agent = 1;
+		else
+			error("Could not connect to agent \"%s\": %s",
+			    options.host_key_agent, ssh_err(r));
 	}
 
 	for (i = 0; i < options.num_host_key_files; i++) {
+		if (options.host_key_files[i] == NULL)
+			continue;
 		key = key_load_private(options.host_key_files[i], "", NULL);
 		pubkey = key_load_public(options.host_key_files[i], NULL);
+		if (pubkey == NULL && key != NULL)
+			pubkey = key_demote(key);
 		sensitive_data.host_keys[i] = key;
 		sensitive_data.host_pubkeys[i] = pubkey;
 
@@ -1735,11 +1876,17 @@ main(int ac, char **av)
 		case KEY_DSA:
 		case KEY_ECDSA:
 		case KEY_ED25519:
-			sensitive_data.have_ssh2_key = 1;
+			if (have_agent || key != NULL)
+				sensitive_data.have_ssh2_key = 1;
 			break;
 		}
-		debug("private host key: #%d type %d %s", i, keytype,
-		    key_type(key ? key : pubkey));
+		if ((fp = sshkey_fingerprint(pubkey, options.fingerprint_hash,
+		    SSH_FP_DEFAULT)) == NULL)
+			fatal("sshkey_fingerprint failed");
+		debug("%s host key #%d: %s %s",
+		    key ? "private" : "agent", i, keytype == KEY_RSA1 ?
+		    sshkey_type(pubkey) : sshkey_ssh_name(pubkey), fp);
+		free(fp);
 	}
 	if ((options.protocol & SSH_PROTO_1) && !sensitive_data.have_ssh1_key) {
 		logit("Disabling protocol version 1. Could not load host key");
@@ -1764,6 +1911,8 @@ main(int ac, char **av)
 		sensitive_data.host_certificates[i] = NULL;
 
 	for (i = 0; i < options.num_host_cert_files; i++) {
+		if (options.host_cert_files[i] == NULL)
+			continue;
 		key = key_load_public(options.host_cert_files[i], NULL);
 		if (key == NULL) {
 			error("Could not load host certificate: %s",
@@ -1798,8 +1947,8 @@ main(int ac, char **av)
 #ifdef WITH_SSH1
 	/* Check certain values for sanity. */
 	if (options.protocol & SSH_PROTO_1) {
-		if (options.server_key_bits < 512 ||
-		    options.server_key_bits > 32768) {
+		if (options.server_key_bits < SSH_RSA_MINIMUM_MODULUS_SIZE ||
+		    options.server_key_bits > OPENSSL_RSA_MAX_MODULUS_BITS) {
 			fprintf(stderr, "Bad server key size.\n");
 			exit(1);
 		}
@@ -1931,7 +2080,7 @@ main(int ac, char **av)
 		 * Write out the pid file after the sigterm handler
 		 * is setup and the listen sockets are bound
 		 */
-		if (!debug_flag) {
+		if (options.pid_file != NULL && !debug_flag) {
 			FILE *f = fopen(options.pid_file, "w");
 
 			if (f == NULL) {
@@ -2028,37 +2177,35 @@ main(int ac, char **av)
 	 */
 	packet_set_connection(sock_in, sock_out);
 	packet_set_server();
+	ssh = active_state; /* XXX */
+	check_ip_options(ssh);
 
 	/* Set SO_KEEPALIVE if requested. */
 	if (options.tcp_keep_alive && packet_connection_is_on_socket() &&
 	    setsockopt(sock_in, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) < 0)
 		error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
 
-	if ((remote_port = get_remote_port()) < 0) {
-		debug("get_remote_port failed");
+	if ((remote_port = ssh_remote_port(ssh)) < 0) {
+		debug("ssh_remote_port failed");
 		cleanup_exit(255);
 	}
 
 	/*
-	 * We use get_canonical_hostname with usedns = 0 instead of
-	 * get_remote_ipaddr here so IP options will be checked.
-	 */
-	(void) get_canonical_hostname(0);
-	/*
 	 * The rest of the code depends on the fact that
-	 * get_remote_ipaddr() caches the remote ip, even if
+	 * ssh_remote_ipaddr() caches the remote ip, even if
 	 * the socket goes away.
 	 */
-	remote_ip = get_remote_ipaddr();
+	remote_ip = ssh_remote_ipaddr(ssh);
 
 #ifdef SSH_AUDIT_EVENTS
 	audit_connection_from(remote_ip, remote_port);
 #endif
 
 	/* Log the connection. */
+	laddr = get_local_ipaddr(sock_in);
 	verbose("Connection from %s port %d on %s port %d",
-	    remote_ip, remote_port,
-	    get_local_ipaddr(sock_in), get_local_port());
+	    remote_ip, remote_port, laddr,  ssh_local_port(ssh));
+	free(laddr);
 
 	/*
 	 * We don't want to listen forever unless the other side
@@ -2072,7 +2219,7 @@ main(int ac, char **av)
 	if (!debug_flag)
 		alarm(options.login_grace_time);
 
-	sshd_exchange_identification(sock_in, sock_out);
+	sshd_exchange_identification(ssh, sock_in, sock_out);
 
 	/* In inetd mode, generate ephemeral key only for proto 1 connections */
 	if (!compat20 && inetd_flag && sensitive_data.server_key == NULL)
@@ -2095,8 +2242,12 @@ main(int ac, char **av)
 	if (use_privsep) {
 		if (privsep_preauth(authctxt) == 1)
 			goto authenticated;
-	} else if (compat20 && have_agent)
-		auth_conn = ssh_get_authentication_connection();
+	} else if (compat20 && have_agent) {
+		if ((r = ssh_get_authentication_socket(&auth_sock)) != 0) {
+			error("Unable to get agent socket: %s", ssh_err(r));
+			have_agent = 0;
+		}
+	}
 
 	/* perform the key exchange */
 	/* authenticate user and start session */
@@ -2165,12 +2316,15 @@ main(int ac, char **av)
 	packet_set_timeout(options.client_alive_interval,
 	    options.client_alive_count_max);
 
+	/* Try to send all our hostkeys to the client */
+	if (compat20)
+		notify_hostkeys(active_state);
+
 	/* Start session. */
 	do_authenticated(authctxt);
 
 	/* The connection has been terminated. */
-	packet_get_state(MODE_IN, NULL, NULL, NULL, &ibytes);
-	packet_get_state(MODE_OUT, NULL, NULL, NULL, &obytes);
+	packet_get_bytes(&ibytes, &obytes);
 	verbose("Transferred: sent %llu, received %llu bytes",
 	    (unsigned long long)obytes, (unsigned long long)ibytes);
 
@@ -2201,6 +2355,7 @@ main(int ac, char **av)
 int
 ssh1_session_key(BIGNUM *session_key_int)
 {
+	struct ssh *ssh = active_state; /* XXX */
 	int rsafail = 0;
 
 	if (BN_cmp(sensitive_data.server_key->rsa->n,
@@ -2209,9 +2364,9 @@ ssh1_session_key(BIGNUM *session_key_int)
 		if (BN_num_bits(sensitive_data.server_key->rsa->n) <
 		    BN_num_bits(sensitive_data.ssh1_host_key->rsa->n) +
 		    SSH_KEY_BITS_RESERVED) {
-			fatal("do_connection: %s: "
+			fatal("do_connection: %s port %d: "
 			    "server_key %d < host_key %d + SSH_KEY_BITS_RESERVED %d",
-			    get_remote_ipaddr(),
+			    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh),
 			    BN_num_bits(sensitive_data.server_key->rsa->n),
 			    BN_num_bits(sensitive_data.ssh1_host_key->rsa->n),
 			    SSH_KEY_BITS_RESERVED);
@@ -2227,9 +2382,9 @@ ssh1_session_key(BIGNUM *session_key_int)
 		if (BN_num_bits(sensitive_data.ssh1_host_key->rsa->n) <
 		    BN_num_bits(sensitive_data.server_key->rsa->n) +
 		    SSH_KEY_BITS_RESERVED) {
-			fatal("do_connection: %s: "
+			fatal("do_connection: %s port %d: "
 			    "host_key %d < server_key %d + SSH_KEY_BITS_RESERVED %d",
-			    get_remote_ipaddr(),
+			    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh),
 			    BN_num_bits(sensitive_data.ssh1_host_key->rsa->n),
 			    BN_num_bits(sensitive_data.server_key->rsa->n),
 			    SSH_KEY_BITS_RESERVED);
@@ -2250,10 +2405,13 @@ ssh1_session_key(BIGNUM *session_key_int)
 static void
 do_ssh1_kex(void)
 {
+	struct ssh *ssh = active_state; /* XXX */
 	int i, len;
 	int rsafail = 0;
-	BIGNUM *session_key_int;
+	BIGNUM *session_key_int, *fake_key_int, *real_key_int;
 	u_char session_key[SSH_SESSION_KEY_LENGTH];
+	u_char fake_key_bytes[4096 / 8];
+	size_t fake_key_len;
 	u_char cookie[8];
 	u_int cipher_type, auth_mask, protocol_flags;
 
@@ -2331,74 +2489,62 @@ do_ssh1_kex(void)
 	debug("Encryption type: %.200s", cipher_name(cipher_type));
 
 	/* Get the encrypted integer. */
-	if ((session_key_int = BN_new()) == NULL)
+	if ((real_key_int = BN_new()) == NULL)
 		fatal("do_ssh1_kex: BN_new failed");
-	packet_get_bignum(session_key_int);
+	packet_get_bignum(real_key_int);
 
 	protocol_flags = packet_get_int();
 	packet_set_protocol_flags(protocol_flags);
 	packet_check_eom();
 
-	/* Decrypt session_key_int using host/server keys */
-	rsafail = PRIVSEP(ssh1_session_key(session_key_int));
+	/* Setup a fake key in case RSA decryption fails */
+	if ((fake_key_int = BN_new()) == NULL)
+		fatal("do_ssh1_kex: BN_new failed");
+	fake_key_len = BN_num_bytes(real_key_int);
+	if (fake_key_len > sizeof(fake_key_bytes))
+		fake_key_len = sizeof(fake_key_bytes);
+	arc4random_buf(fake_key_bytes, fake_key_len);
+	if (BN_bin2bn(fake_key_bytes, fake_key_len, fake_key_int) == NULL)
+		fatal("do_ssh1_kex: BN_bin2bn failed");
+
+	/* Decrypt real_key_int using host/server keys */
+	rsafail = PRIVSEP(ssh1_session_key(real_key_int));
+	/* If decryption failed, use the fake key. Else, the real key. */
+	if (rsafail)
+		session_key_int = fake_key_int;
+	else
+		session_key_int = real_key_int;
 
 	/*
 	 * Extract session key from the decrypted integer.  The key is in the
 	 * least significant 256 bits of the integer; the first byte of the
 	 * key is in the highest bits.
 	 */
-	if (!rsafail) {
-		(void) BN_mask_bits(session_key_int, sizeof(session_key) * 8);
-		len = BN_num_bytes(session_key_int);
-		if (len < 0 || (u_int)len > sizeof(session_key)) {
-			error("do_ssh1_kex: bad session key len from %s: "
-			    "session_key_int %d > sizeof(session_key) %lu",
-			    get_remote_ipaddr(), len, (u_long)sizeof(session_key));
-			rsafail++;
-		} else {
-			explicit_bzero(session_key, sizeof(session_key));
-			BN_bn2bin(session_key_int,
-			    session_key + sizeof(session_key) - len);
+	(void) BN_mask_bits(session_key_int, sizeof(session_key) * 8);
+	len = BN_num_bytes(session_key_int);
+	if (len < 0 || (u_int)len > sizeof(session_key)) {
+		error("%s: bad session key len from %s port %d: "
+		    "session_key_int %d > sizeof(session_key) %lu", __func__,
+		    ssh_remote_ipaddr(ssh), ssh_remote_port(ssh),
+		    len, (u_long)sizeof(session_key));
+		rsafail++;
+	} else {
+		explicit_bzero(session_key, sizeof(session_key));
+		BN_bn2bin(session_key_int,
+		    session_key + sizeof(session_key) - len);
 
-			derive_ssh1_session_id(
-			    sensitive_data.ssh1_host_key->rsa->n,
-			    sensitive_data.server_key->rsa->n,
-			    cookie, session_id);
-			/*
-			 * Xor the first 16 bytes of the session key with the
-			 * session id.
-			 */
-			for (i = 0; i < 16; i++)
-				session_key[i] ^= session_id[i];
-		}
-	}
-	if (rsafail) {
-		int bytes = BN_num_bytes(session_key_int);
-		u_char *buf = xmalloc(bytes);
-		struct ssh_digest_ctx *md;
-
-		logit("do_connection: generating a fake encryption key");
-		BN_bn2bin(session_key_int, buf);
-		if ((md = ssh_digest_start(SSH_DIGEST_MD5)) == NULL ||
-		    ssh_digest_update(md, buf, bytes) < 0 ||
-		    ssh_digest_update(md, sensitive_data.ssh1_cookie,
-		    SSH_SESSION_KEY_LENGTH) < 0 ||
-		    ssh_digest_final(md, session_key, sizeof(session_key)) < 0)
-			fatal("%s: md5 failed", __func__);
-		ssh_digest_free(md);
-		if ((md = ssh_digest_start(SSH_DIGEST_MD5)) == NULL ||
-		    ssh_digest_update(md, session_key, 16) < 0 ||
-		    ssh_digest_update(md, sensitive_data.ssh1_cookie,
-		    SSH_SESSION_KEY_LENGTH) < 0 ||
-		    ssh_digest_final(md, session_key + 16,
-		    sizeof(session_key) - 16) < 0)
-			fatal("%s: md5 failed", __func__);
-		ssh_digest_free(md);
-		explicit_bzero(buf, bytes);
-		free(buf);
+		derive_ssh1_session_id(
+		    sensitive_data.ssh1_host_key->rsa->n,
+		    sensitive_data.server_key->rsa->n,
+		    cookie, session_id);
+		/*
+		 * Xor the first 16 bytes of the session key with the
+		 * session id.
+		 */
 		for (i = 0; i < 16; i++)
-			session_id[i] = session_key[i] ^ session_key[i + 16];
+			session_key[i] ^= session_id[i];
 	}
+
 	/* Destroy the private and public keys. No longer. */
 	destroy_sensitive_data();
 
@@ -2406,7 +2552,8 @@ do_ssh1_kex(void)
 		mm_ssh1_session_id(session_id);
 
 	/* Destroy the decrypted integer.  It is no longer needed. */
-	BN_clear_free(session_key_int);
+	BN_clear_free(real_key_int);
+	BN_clear_free(fake_key_int);
 
 	/* Set the session key.  From this on all communications will be encrypted. */
 	packet_set_encryption_key(session_key, SSH_SESSION_KEY_LENGTH, cipher_type);
@@ -2423,73 +2570,82 @@ do_ssh1_kex(void)
 }
 #endif
 
-void
-sshd_hostkey_sign(Key *privkey, Key *pubkey, u_char **signature, u_int *slen,
-    u_char *data, u_int dlen)
+int
+sshd_hostkey_sign(Key *privkey, Key *pubkey, u_char **signature, size_t *slen,
+    const u_char *data, size_t dlen, const char *alg, u_int flag)
 {
+	int r;
+	u_int xxx_slen, xxx_dlen = dlen;
+
 	if (privkey) {
-		if (PRIVSEP(key_sign(privkey, signature, slen, data, dlen) < 0))
+		if (PRIVSEP(key_sign(privkey, signature, &xxx_slen, data, xxx_dlen,
+		    alg) < 0))
 			fatal("%s: key_sign failed", __func__);
+		if (slen)
+			*slen = xxx_slen;
 	} else if (use_privsep) {
-		if (mm_key_sign(pubkey, signature, slen, data, dlen) < 0)
+		if (mm_key_sign(pubkey, signature, &xxx_slen, data, xxx_dlen,
+		    alg) < 0)
 			fatal("%s: pubkey_sign failed", __func__);
+		if (slen)
+			*slen = xxx_slen;
 	} else {
-		if (ssh_agent_sign(auth_conn, pubkey, signature, slen, data,
-		    dlen))
-			fatal("%s: ssh_agent_sign failed", __func__);
+		if ((r = ssh_agent_sign(auth_sock, pubkey, signature, slen,
+		    data, dlen, alg, datafellows)) != 0)
+			fatal("%s: ssh_agent_sign failed: %s",
+			    __func__, ssh_err(r));
 	}
+	return 0;
 }
 
-/*
- * SSH2 key exchange: diffie-hellman-group1-sha1
- */
+/* SSH2 key exchange */
 static void
 do_ssh2_kex(void)
 {
 	char *myproposal[PROPOSAL_MAX] = { KEX_SERVER };
-	Kex *kex;
-
-	if (options.ciphers != NULL) {
-		myproposal[PROPOSAL_ENC_ALGS_CTOS] =
-		myproposal[PROPOSAL_ENC_ALGS_STOC] = options.ciphers;
-	}
-	myproposal[PROPOSAL_ENC_ALGS_CTOS] =
-	    compat_cipher_proposal(myproposal[PROPOSAL_ENC_ALGS_CTOS]);
-	myproposal[PROPOSAL_ENC_ALGS_STOC] =
-	    compat_cipher_proposal(myproposal[PROPOSAL_ENC_ALGS_STOC]);
-
-	if (options.macs != NULL) {
-		myproposal[PROPOSAL_MAC_ALGS_CTOS] =
-		myproposal[PROPOSAL_MAC_ALGS_STOC] = options.macs;
-	}
-	if (options.compression == COMP_NONE) {
-		myproposal[PROPOSAL_COMP_ALGS_CTOS] =
-		myproposal[PROPOSAL_COMP_ALGS_STOC] = "none";
-	} else if (options.compression == COMP_DELAYED) {
-		myproposal[PROPOSAL_COMP_ALGS_CTOS] =
-		myproposal[PROPOSAL_COMP_ALGS_STOC] = "none,zlib@openssh.com";
-	}
-	if (options.kex_algorithms != NULL)
-		myproposal[PROPOSAL_KEX_ALGS] = options.kex_algorithms;
+	struct kex *kex;
+	int r;
 
 	myproposal[PROPOSAL_KEX_ALGS] = compat_kex_proposal(
-	    myproposal[PROPOSAL_KEX_ALGS]);
+	    options.kex_algorithms);
+	myproposal[PROPOSAL_ENC_ALGS_CTOS] = compat_cipher_proposal(
+	    options.ciphers);
+	myproposal[PROPOSAL_ENC_ALGS_STOC] = compat_cipher_proposal(
+	    options.ciphers);
+	myproposal[PROPOSAL_MAC_ALGS_CTOS] =
+	    myproposal[PROPOSAL_MAC_ALGS_STOC] = options.macs;
+
+	if (options.compression == COMP_NONE) {
+		myproposal[PROPOSAL_COMP_ALGS_CTOS] =
+		    myproposal[PROPOSAL_COMP_ALGS_STOC] = "none";
+	} else if (options.compression == COMP_DELAYED) {
+		myproposal[PROPOSAL_COMP_ALGS_CTOS] =
+		    myproposal[PROPOSAL_COMP_ALGS_STOC] =
+		    "none,zlib@openssh.com";
+	}
 
 	if (options.rekey_limit || options.rekey_interval)
-		packet_set_rekey_limits((u_int32_t)options.rekey_limit,
+		packet_set_rekey_limits(options.rekey_limit,
 		    (time_t)options.rekey_interval);
 
 	myproposal[PROPOSAL_SERVER_HOST_KEY_ALGS] = compat_pkalg_proposal(
 	    list_hostkey_types());
 
 	/* start key exchange */
-	kex = kex_setup(myproposal);
+	if ((r = kex_setup(active_state, myproposal)) != 0)
+		fatal("kex_setup: %s", ssh_err(r));
+	kex = active_state->kex;
 #ifdef WITH_OPENSSL
 	kex->kex[KEX_DH_GRP1_SHA1] = kexdh_server;
 	kex->kex[KEX_DH_GRP14_SHA1] = kexdh_server;
+	kex->kex[KEX_DH_GRP14_SHA256] = kexdh_server;
+	kex->kex[KEX_DH_GRP16_SHA512] = kexdh_server;
+	kex->kex[KEX_DH_GRP18_SHA512] = kexdh_server;
 	kex->kex[KEX_DH_GEX_SHA1] = kexgex_server;
 	kex->kex[KEX_DH_GEX_SHA256] = kexgex_server;
+# ifdef OPENSSL_HAS_ECC
 	kex->kex[KEX_ECDH_SHA2] = kexecdh_server;
+# endif
 #endif
 	kex->kex[KEX_C25519_SHA256] = kexc25519_server;
 	kex->server = 1;
@@ -2500,9 +2656,7 @@ do_ssh2_kex(void)
 	kex->host_key_index=&get_hostkey_index;
 	kex->sign = sshd_hostkey_sign;
 
-	xxx_kex = kex;
-
-	dispatch_run(DISPATCH_BLOCK, &kex->done, kex);
+	dispatch_run(DISPATCH_BLOCK, &kex->done, active_state);
 
 	session_id2 = kex->session_id;
 	session_id2_len = kex->session_id_len;

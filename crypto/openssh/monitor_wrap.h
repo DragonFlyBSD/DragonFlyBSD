@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor_wrap.h,v 1.24 2014/01/29 06:18:35 djm Exp $ */
+/* $OpenBSD: monitor_wrap.h,v 1.30 2016/03/07 19:02:43 djm Exp $ */
 
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
@@ -40,15 +40,17 @@ struct Authctxt;
 void mm_log_handler(LogLevel, const char *, void *);
 int mm_is_monitor(void);
 DH *mm_choose_dh(int, int, int);
-int mm_key_sign(Key *, u_char **, u_int *, u_char *, u_int);
+int mm_key_sign(Key *, u_char **, u_int *, const u_char *, u_int, const char *);
 void mm_inform_authserv(char *, char *);
 struct passwd *mm_getpwnamallow(const char *);
 char *mm_auth2_read_banner(void);
 int mm_auth_password(struct Authctxt *, char *);
-int mm_key_allowed(enum mm_keytype, char *, char *, Key *);
-int mm_user_key_allowed(struct passwd *, Key *);
-int mm_hostbased_key_allowed(struct passwd *, char *, char *, Key *);
-int mm_auth_rhosts_rsa_key_allowed(struct passwd *, char *, char *, Key *);
+int mm_key_allowed(enum mm_keytype, const char *, const char *, Key *, int);
+int mm_user_key_allowed(struct passwd *, Key *, int);
+int mm_hostbased_key_allowed(struct passwd *, const char *,
+    const char *, Key *);
+int mm_auth_rhosts_rsa_key_allowed(struct passwd *, const char *,
+    const char *, Key *);
 int mm_key_verify(Key *, u_char *, u_int, u_char *, u_int);
 int mm_auth_rsa_key_allowed(struct passwd *, BIGNUM *, Key **);
 int mm_auth_rsa_verify_response(Key *, BIGNUM *, u_char *);
@@ -87,7 +89,7 @@ void mm_ssh1_session_id(u_char *);
 int mm_ssh1_session_key(BIGNUM *);
 
 /* Key export functions */
-struct Newkeys *mm_newkeys_from_blob(u_char *, int);
+struct newkeys *mm_newkeys_from_blob(u_char *, int);
 int mm_newkeys_to_blob(int, u_char **, u_int *);
 
 void monitor_apply_keystate(struct monitor *);
@@ -103,9 +105,6 @@ int mm_skey_query(void *, char **, char **, u_int *, char ***, u_int **);
 int mm_skey_respond(void *, u_int, char **);
 
 /* zlib allocation hooks */
-
-void *mm_zalloc(struct mm_master *, u_int, u_int);
-void mm_zfree(struct mm_master *, void *);
 void mm_init_compression(struct mm_master *);
 
 #endif /* _MM_WRAP_H_ */

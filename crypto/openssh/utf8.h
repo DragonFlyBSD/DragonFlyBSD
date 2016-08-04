@@ -1,6 +1,6 @@
-/* $OpenBSD: roaming_serv.c,v 1.1 2009/10/24 11:18:23 andreas Exp $ */
+/* $OpenBSD: utf8.h,v 1.1 2016/05/25 23:48:45 schwarze Exp $ */
 /*
- * Copyright (c) 2004-2009 AppGate Network Security AB
+ * Copyright (c) 2016 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,17 +15,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "includes.h"
-
-#include <sys/types.h>
-
-#include "roaming.h"
-
-/*
- * Wait for the roaming client to reconnect. Returns 0 if a connect ocurred.
- */
-int
-wait_for_roaming_reconnect(void)
-{
-	return 1;
-}
+int	 mprintf(const char *, ...)
+	     __attribute__((format(printf, 1, 2)));
+int	 fmprintf(FILE *, const char *, ...)
+	     __attribute__((format(printf, 2, 3)));
+int	 vfmprintf(FILE *, const char *, va_list);
+int	 snmprintf(char *, size_t, int *, const char *, ...)
+	     __attribute__((format(printf, 4, 5)));

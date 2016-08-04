@@ -1,3 +1,4 @@
+.skipped-commit-ids
 ChangeLog
 INSTALL
 Makefile.in
@@ -35,6 +36,7 @@ openbsd-compat/bsd-asprintf.c
 openbsd-compat/bsd-closefrom.c
 openbsd-compat/bsd-cray.c
 openbsd-compat/bsd-cygwin_util.c
+openbsd-compat/bsd-err.c
 openbsd-compat/bsd-getpeereid.c
 openbsd-compat/bsd-nextstep.c
 openbsd-compat/bsd-openpty.c
@@ -81,8 +83,6 @@ openbsd-compat/strtoll.c
 openbsd-compat/strtonum.c
 openbsd-compat/strtoul.c
 openbsd-compat/strtoull.c
-openbsd-compat/vis.c
-openbsd-compat/vis.h
 openbsd-compat/xcrypt.c
 openssh.xml.in
 opensshd.init.in
@@ -90,9 +90,10 @@ regress/
 sandbox-capsicum.c
 sandbox-darwin.c
 sandbox-null.c
+sandbox-pledge.c
 sandbox-seccomp-filter.c
+sandbox-solaris.c
 sandbox-systrace.c
-scard/
 scp.0
 sftp-server.0
 sftp.0

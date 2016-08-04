@@ -33,8 +33,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $OpenBSD: sshd.8,v 1.276 2014/07/03 22:40:43 djm Exp $
-.Dd $Mdocdate: July 3 2014 $
+.\" $OpenBSD: sshd.8,v 1.284 2016/02/17 07:38:19 jmc Exp $
+.Dd $Mdocdate: February 17 2016 $
 .Dt SSHD 8
 .Os
 .Sh NAME
@@ -184,15 +184,12 @@ Specifies that
 .Nm
 is being run from
 .Xr inetd 8 .
+If SSH protocol 1 is enabled,
 .Nm
-is normally not run
+should not  normally be run
 from inetd because it needs to generate the server key before it can
-respond to the client, and this may take tens of seconds.
-Clients would have to wait too long if the key was regenerated every time.
-However, with small key sizes (e.g. 512) using
-.Nm
-from inetd may
-be feasible.
+respond to the client, and this may take some time.
+Clients may have to wait too long if the key was regenerated every time.
 .It Fl k Ar key_gen_time
 Specifies how often the ephemeral protocol version 1 server key is
 regenerated (default 3600 seconds, or one hour).
@@ -278,16 +275,14 @@ though this can be changed via the
 .Cm Protocol
 option in
 .Xr sshd_config 5 .
-Protocol 2 supports DSA, ECDSA, ED25519 and RSA keys;
-protocol 1 only supports RSA keys.
-For both protocols,
-each host has a host-specific key,
-normally 2048 bits,
-used to identify the host.
+Protocol 1 should not be used
+and is only offered to support legacy devices.
 .Pp
-Forward security for protocol 1 is provided through
+Each host has a host-specific key,
+used to identify the host.
+Partial forward security for protocol 1 is provided through
 an additional server key,
-normally 768 bits,
+normally 1024 bits,
 generated when the server starts.
 This key is normally regenerated every hour if it has been used, and
 is never stored on disk.
@@ -424,6 +419,8 @@ See
 below.
 .It
 Runs user's shell or command.
+All commands are run under the user's login shell as specified in the
+system password database.
 .El
 .Sh SSHRC
 If the file
@@ -471,7 +468,7 @@ does not exist either, xauth is used to add the cookie.
 .Cm AuthorizedKeysFile
 specifies the files containing public keys for
 public key authentication;
-if none is specified, the default is
+if this option is not specified, the default is
 .Pa ~/.ssh/authorized_keys
 and
 .Pa ~/.ssh/authorized_keys2 .
@@ -523,6 +520,10 @@ No spaces are permitted, except within double quotes.
 The following option specifications are supported (note
 that option keywords are case-insensitive):
 .Bl -tag -width Ds
+.It Cm agent-forwarding
+Enable authentication agent forwarding previously disabled by the
+.Cm restrict
+option.
 .It Cm cert-authority
 Specifies that the listed key is a certification authority (CA) that is
 trusted to validate signed certificates for user authentication.
@@ -604,10 +605,10 @@ Disables execution of
 Forbids X11 forwarding when this key is used for authentication.
 Any X11 forward requests by the client will return an error.
 .It Cm permitopen="host:port"
-Limit local
-.Li ``ssh -L''
-port forwarding such that it may only connect to the specified host and
-port.
+Limit local port forwarding with
+.Xr ssh 1
+.Fl L
+such that it may only connect to the specified host and port.
 IPv6 addresses can be specified by enclosing the address in square brackets.
 Multiple
 .Cm permitopen
@@ -617,6 +618,9 @@ they must be literal domains or addresses.
 A port specification of
 .Cm *
 matches any port.
+.It Cm port-forwarding
+Enable port forwarding previously disabled by the
+.Cm restrict
 .It Cm principals="principals"
 On a
 .Cm cert-authority
@@ -628,12 +632,33 @@ This option is ignored for keys that are not marked as trusted certificate
 signers using the
 .Cm cert-authority
 option.
+.It Cm pty
+Permits tty allocation previously disabled by the
+.Cm restrict
+option.
+.It Cm restrict
+Enable all restrictions, i.e. disable port, agent and X11 forwarding,
+as well as disabling PTY allocation
+and execution of
+.Pa ~/.ssh/rc .
+If any future restriction capabilities are added to authorized_keys files
+they will be included in this set.
 .It Cm tunnel="n"
 Force a
 .Xr tun 4
 device on the server.
 Without this option, the next available device will be used if
 the client requests a tunnel.
+.It Cm user-rc
+Enables execution of
+.Pa ~/.ssh/rc
+previously disabled by the
+.Cm restrict
+option.
+.It Cm X11-forwarding
+Permits X11 forwarding previously disabled by the
+.Cm restrict
+option.
 .El
 .Pp
 An example authorized_keys file:
@@ -648,6 +673,10 @@ permitopen="192.0.2.1:80",permitopen="192.0.2.2:25" ssh-dss
 AAAAB5...21S==
 tunnel="0",command="sh /etc/netstart tun0" ssh-rsa AAAA...==
 jane@example.net
+restrict,command="uptime" ssh-rsa AAAA1C8...32Tv==
+user@example.net
+restrict,pty,command="nethack" ssh-rsa AAAA1f8...IrrC5==
+user@example.net
 .Ed
 .Sh SSH_KNOWN_HOSTS FILE FORMAT
 The
@@ -808,7 +837,7 @@ secret, but the recommended permissions are read/write/execute for the user,
 and not accessible by others.
 .Pp
 .It Pa ~/.ssh/authorized_keys
-Lists the public keys (DSA, ECDSA, ED25519, RSA)
+Lists the public keys (DSA, ECDSA, Ed25519, RSA)
 that can be used for logging in as this user.
 The format of this file is described above.
 The content of the file is not highly sensitive, but the recommended
@@ -857,9 +886,12 @@ This file is for host-based authentication (see
 It should only be writable by root.
 .Pp
 .It Pa /etc/moduli
-Contains Diffie-Hellman groups used for the "Diffie-Hellman Group Exchange".
+Contains Diffie-Hellman groups used for the "Diffie-Hellman Group Exchange"
+key exchange method.
 The file format is described in
 .Xr moduli 5 .
+If no usable groups are found in this file then fixed internal groups will
+be used.
 .Pp
 .It Pa /etc/motd
 See

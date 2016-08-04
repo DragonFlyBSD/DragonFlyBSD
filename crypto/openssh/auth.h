@@ -1,4 +1,4 @@
-/* $OpenBSD: auth.h,v 1.78 2014/07/03 11:16:55 djm Exp $ */
+/* $OpenBSD: auth.h,v 1.88 2016/05/04 14:04:40 markus Exp $ */
 
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
@@ -42,6 +42,9 @@
 #include <krb5.h>
 #endif
 
+struct ssh;
+struct sshkey;
+
 typedef struct Authctxt Authctxt;
 typedef struct Authmethod Authmethod;
 typedef struct KbdintDevice KbdintDevice;
@@ -53,7 +56,7 @@ struct Authctxt {
 	int		 valid;		/* user exists and is allowed to login */
 	int		 attempt;
 	int		 failures;
-	int		 server_caused_failure; 
+	int		 server_caused_failure;
 	int		 force_pwchange;
 	char		*user;		/* username sent by the client */
 	char		*service;
@@ -75,6 +78,9 @@ struct Authctxt {
 #endif
 	Buffer		*loginmsg;
 	void		*methoddata;
+
+	struct sshkey	**prev_userkeys;
+	u_int		 nprev_userkeys;
 };
 /*
  * Every authentication method has to handle authentication requests for
@@ -118,11 +124,14 @@ BIGNUM	*auth_rsa_generate_challenge(Key *);
 int	 auth_rsa_verify_response(Key *, BIGNUM *, u_char[]);
 int	 auth_rsa_key_allowed(struct passwd *, BIGNUM *, Key **);
 
-int	 auth_rhosts_rsa_key_allowed(struct passwd *, char *, char *, Key *);
+int	 auth_rhosts_rsa_key_allowed(struct passwd *, const char *,
+    const char *, Key *);
 int	 hostbased_key_allowed(struct passwd *, const char *, char *, Key *);
-int	 user_key_allowed(struct passwd *, Key *);
+int	 user_key_allowed(struct passwd *, Key *, int);
 void	 pubkey_auth_info(Authctxt *, const Key *, const char *, ...)
 	    __attribute__((__format__ (printf, 3, 4)));
+void	 auth2_record_userkey(Authctxt *, struct sshkey *);
+int	 auth2_userkey_already_used(Authctxt *, struct sshkey *);
 
 struct stat;
 int	 auth_secure_path(const char *, struct stat *, const char *, uid_t,
@@ -189,18 +198,21 @@ FILE	*auth_openkeyfile(const char *, struct passwd *, int);
 FILE	*auth_openprincipals(const char *, struct passwd *, int);
 int	 auth_key_is_revoked(Key *);
 
+const char	*auth_get_canonical_hostname(struct ssh *, int);
+
 HostStatus
 check_key_in_hostfiles(struct passwd *, Key *, const char *,
     const char *, const char *);
 
 /* hostkey handling */
 Key	*get_hostkey_by_index(int);
-Key	*get_hostkey_public_by_index(int);
-Key	*get_hostkey_public_by_type(int);
-Key	*get_hostkey_private_by_type(int);
-int	 get_hostkey_index(Key *);
+Key	*get_hostkey_public_by_index(int, struct ssh *);
+Key	*get_hostkey_public_by_type(int, int, struct ssh *);
+Key	*get_hostkey_private_by_type(int, int, struct ssh *);
+int	 get_hostkey_index(Key *, int, struct ssh *);
 int	 ssh1_session_key(BIGNUM *);
-void	 sshd_hostkey_sign(Key *, Key *, u_char **, u_int *, u_char *, u_int);
+int	 sshd_hostkey_sign(Key *, Key *, u_char **, size_t *,
+	     const u_char *, size_t, const char *, u_int);
 
 /* debug messages during authentication */
 void	 auth_debug_add(const char *fmt,...) __attribute__((format(printf, 1, 2)));
