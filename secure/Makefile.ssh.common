@@ -1,6 +1,6 @@
 SSHDIR=		${.CURDIR}/../../../crypto/openssh
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR} -include ssh_namespace.h
+CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR}
 
 .if ${.CURDIR:T} != "libssh"
 DPADD+=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}

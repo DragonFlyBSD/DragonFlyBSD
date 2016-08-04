@@ -9,7 +9,7 @@ DPADD=	${LIBSSH} ${LIBCRYPTO} ${LIBCRYPT}
 
 WARNS?=	4
 SSHDIR=		${.CURDIR}/../../../crypto/openssh
-CFLAGS+=	-I${SSHDIR} -include ssh_namespace.h
+CFLAGS+=	-I${SSHDIR}
 LDFLAGS+=	-rpath /usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.lib.mk>

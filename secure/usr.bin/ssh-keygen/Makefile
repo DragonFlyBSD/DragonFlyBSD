@@ -2,7 +2,6 @@
 # $DragonFly: src/secure/usr.bin/ssh-keygen/Makefile,v 1.3 2004/07/31 19:03:01 geekgod Exp $
 
 PROG=	ssh-keygen
-SRCS=	ssh-keygen.c roaming_dummy.c
 WARNS?=	3
 
 .include "../../Makefile.ssh.common"

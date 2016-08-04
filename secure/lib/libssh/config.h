@@ -1,9 +1,6 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Define if building universal (internal helper macro) */
-/* #undef AC_APPLE_UNIVERSAL_BUILD */
-
 /* Define if you have a getaddrinfo that fails for the all-zeros IPv6 address
    */
 /* #undef AIX_GETNAMEINFO_HACK */
@@ -52,8 +49,8 @@
    against it */
 /* #undef BROKEN_READ_COMPARISON */
 
-/* Define if you have a broken realpath. */
-/* #undef BROKEN_REALPATH */
+/* realpath does not work with nonexistent files */
+#define BROKEN_REALPATH 1
 
 /* Needed for NeXT */
 /* #undef BROKEN_SAVED_UIDS */
@@ -79,8 +76,8 @@
 /* Define if your snprintf is busted */
 /* #undef BROKEN_SNPRINTF */
 
-/* FreeBSD strnvis argument order is swapped compared to OpenBSD */
-/* #undef BROKEN_STRNVIS */
+/* missing VIS_ALL */
+#define BROKEN_STRNVIS 1
 
 /* tcgetattr with ICANON may hang */
 /* #undef BROKEN_TCGETATTR_ICANON */
@@ -134,7 +131,7 @@
 #define DISABLE_WTMPX 1
 
 /* Enable for PKCS#11 support */
-#define ENABLE_PKCS11 /**/
+#define ENABLE_PKCS11 
 
 /* File names may not contain backslash characters */
 /* #undef FILESYSTEM_NO_BACKSLASH */
@@ -292,6 +289,10 @@
 /* Define if your libraries define daemon() */
 #define HAVE_DAEMON 1
 
+/* Define to 1 if you have the declaration of `AI_NUMERICSERV', and to 0 if
+   you don't. */
+#define HAVE_DECL_AI_NUMERICSERV 1
+
 /* Define to 1 if you have the declaration of `authenticate', and to 0 if you
    don't. */
 /* #undef HAVE_DECL_AUTHENTICATE */
@@ -377,7 +378,7 @@
 #define HAVE_DIRENT_H 1
 
 /* Define to 1 if you have the `dirfd' function. */
-/* #undef HAVE_DIRFD */
+#define HAVE_DIRFD 1
 
 /* Define to 1 if you have the `dirname' function. */
 #define HAVE_DIRNAME 1
@@ -399,6 +400,15 @@
 
 /* Define to 1 if you have the `endutxent' function. */
 #define HAVE_ENDUTXENT 1
+
+/* Define to 1 if you have the `err' function. */
+#define HAVE_ERR 1
+
+/* Define to 1 if you have the `errx' function. */
+#define HAVE_ERRX 1
+
+/* Define to 1 if you have the <err.h> header file. */
+#define HAVE_ERR_H 1
 
 /* Define if your system has /etc/default/login */
 /* #undef HAVE_ETC_DEFAULT_LOGIN */
@@ -667,6 +677,9 @@
 /* Define to 1 if you have the `krb5_get_error_message' function. */
 /* #undef HAVE_KRB5_GET_ERROR_MESSAGE */
 
+/* Define to 1 if you have the <langinfo.h> header file. */
+#define HAVE_LANGINFO_H 1
+
 /* Define to 1 if you have the <lastlog.h> header file. */
 /* #undef HAVE_LASTLOG_H */
 
@@ -693,9 +706,6 @@
 
 /* Define to 1 if you have the `network' library (-lnetwork). */
 /* #undef HAVE_LIBNETWORK */
-
-/* Define to 1 if you have the `nsl' library (-lnsl). */
-/* #undef HAVE_LIBNSL */
 
 /* Define to 1 if you have the `pam' library (-lpam). */
 #define HAVE_LIBPAM 1
@@ -760,6 +770,9 @@
 /* Define to 1 if you have the `mblen' function. */
 #define HAVE_MBLEN 1
 
+/* Define to 1 if you have the `mbtowc' function. */
+#define HAVE_MBTOWC 1
+
 /* Define to 1 if you have the `md5_crypt' function. */
 /* #undef HAVE_MD5_CRYPT */
 
@@ -805,6 +818,9 @@
 /* Define to 1 if you have the `ngetaddrinfo' function. */
 /* #undef HAVE_NGETADDRINFO */
 
+/* Define to 1 if you have the `nl_langinfo' function. */
+#define HAVE_NL_LANGINFO 1
+
 /* Define to 1 if you have the `nsleep' function. */
 /* #undef HAVE_NSLEEP */
 
@@ -845,6 +861,9 @@
 /* define if you have pid_t data type */
 #define HAVE_PID_T 1
 
+/* Define to 1 if you have the `pledge' function. */
+/* #undef HAVE_PLEDGE */
+
 /* Define to 1 if you have the `poll' function. */
 #define HAVE_POLL 1
 
@@ -853,6 +872,12 @@
 
 /* Define to 1 if you have the `prctl' function. */
 /* #undef HAVE_PRCTL */
+
+/* Define to 1 if you have the `priv_basicset' function. */
+/* #undef HAVE_PRIV_BASICSET */
+
+/* Define to 1 if you have the <priv.h> header file. */
+/* #undef HAVE_PRIV_H */
 
 /* Define if you have /proc/$pid/fd */
 /* #undef HAVE_PROC_PID */
@@ -875,6 +900,9 @@
 /* Define to 1 if you have the <readpassphrase.h> header file. */
 #define HAVE_READPASSPHRASE_H 1
 
+/* Define to 1 if you have the `reallocarray' function. */
+/* #undef HAVE_REALLOCARRAY */
+
 /* Define to 1 if you have the `realpath' function. */
 #define HAVE_REALPATH 1
 
@@ -882,7 +910,7 @@
 #define HAVE_RECVMSG 1
 
 /* sys/resource.h has RLIMIT_NPROC */
-#define HAVE_RLIMIT_NPROC /**/
+#define HAVE_RLIMIT_NPROC 
 
 /* Define to 1 if you have the <rpc/types.h> header file. */
 #define HAVE_RPC_TYPES_H 1
@@ -952,6 +980,12 @@
 
 /* Define to 1 if you have the `setpcred' function. */
 /* #undef HAVE_SETPCRED */
+
+/* Define to 1 if you have the `setpflags' function. */
+/* #undef HAVE_SETPFLAGS */
+
+/* Define to 1 if you have the `setppriv' function. */
+/* #undef HAVE_SETPPRIV */
 
 /* Define to 1 if you have the `setproctitle' function. */
 #define HAVE_SETPROCTITLE 1
@@ -1097,28 +1131,28 @@
 /* define if you have struct in6_addr data type */
 #define HAVE_STRUCT_IN6_ADDR 1
 
-/* Define to 1 if `pw_change' is a member of `struct passwd'. */
+/* Define to 1 if `pw_change' is member of `struct passwd'. */
 #define HAVE_STRUCT_PASSWD_PW_CHANGE 1
 
-/* Define to 1 if `pw_class' is a member of `struct passwd'. */
+/* Define to 1 if `pw_class' is member of `struct passwd'. */
 #define HAVE_STRUCT_PASSWD_PW_CLASS 1
 
-/* Define to 1 if `pw_expire' is a member of `struct passwd'. */
+/* Define to 1 if `pw_expire' is member of `struct passwd'. */
 #define HAVE_STRUCT_PASSWD_PW_EXPIRE 1
 
-/* Define to 1 if `pw_gecos' is a member of `struct passwd'. */
+/* Define to 1 if `pw_gecos' is member of `struct passwd'. */
 #define HAVE_STRUCT_PASSWD_PW_GECOS 1
 
 /* define if you have struct sockaddr_in6 data type */
 #define HAVE_STRUCT_SOCKADDR_IN6 1
 
-/* Define to 1 if `sin6_scope_id' is a member of `struct sockaddr_in6'. */
+/* Define to 1 if `sin6_scope_id' is member of `struct sockaddr_in6'. */
 #define HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID 1
 
 /* define if you have struct sockaddr_storage data type */
 #define HAVE_STRUCT_SOCKADDR_STORAGE 1
 
-/* Define to 1 if `st_blksize' is a member of `struct stat'. */
+/* Define to 1 if `st_blksize' is member of `struct stat'. */
 #define HAVE_STRUCT_STAT_ST_BLKSIZE 1
 
 /* Define to 1 if the system has the type `struct timespec'. */
@@ -1340,6 +1374,15 @@
 /* Define to 1 if you have the `waitpid' function. */
 #define HAVE_WAITPID 1
 
+/* Define to 1 if you have the `warn' function. */
+#define HAVE_WARN 1
+
+/* Define to 1 if you have the <wchar.h> header file. */
+#define HAVE_WCHAR_H 1
+
+/* Define to 1 if you have the `wcwidth' function. */
+#define HAVE_WCWIDTH 1
+
 /* Define to 1 if you have the `_getlong' function. */
 #define HAVE__GETLONG 1
 
@@ -1435,11 +1478,11 @@
 /* compiler does not accept __attribute__ on return types */
 /* #undef NO_ATTRIBUTE_ON_RETURN_TYPE */
 
-/* Define if the concept of ports only accessible to superusers isn't known */
-/* #undef NO_IPPORT_RESERVED_CONCEPT */
-
 /* Define if you don't want to use lastlog in session.c */
 /* #undef NO_SSH_LASTLOG */
+
+/* Define to disable UID restoration test */
+/* #undef NO_UID_RESTORATION_TEST */
 
 /* Define if X11 doesn't support AF_UNIX sockets on that system */
 /* #undef NO_X11_UNIX_SOCKETS */
@@ -1468,7 +1511,7 @@
 /* libcrypto is missing AES 192 and 256 bit functions */
 /* #undef OPENSSL_LOBOTOMISED_AES */
 
-/* Define if you want OpenSSL's internally seeded PRNG only */
+/* Define if you want the OpenSSL internally seeded PRNG only */
 #define OPENSSL_PRNG_ONLY 1
 
 /* Define to the address where bug reports for this package should be sent. */
@@ -1482,9 +1525,6 @@
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "openssh"
-
-/* Define to the home page for this package. */
-#define PACKAGE_URL ""
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "Portable"
@@ -1520,6 +1560,9 @@
 /* no privsep sandboxing */
 /* #undef SANDBOX_NULL */
 
+/* Sandbox using pledge(2) */
+/* #undef SANDBOX_PLEDGE */
+
 /* Sandbox using setrlimit(2) */
 #define SANDBOX_RLIMIT 1
 
@@ -1531,6 +1574,9 @@
 
 /* define if setrlimit RLIMIT_NOFILE breaks things */
 /* #undef SANDBOX_SKIP_RLIMIT_NOFILE */
+
+/* Sandbox using Solaris/Illumos privileges */
+/* #undef SANDBOX_SOLARIS */
 
 /* Sandbox using systrace(4) */
 /* #undef SANDBOX_SYSTRACE */
@@ -1638,6 +1684,9 @@
 /* Use PIPES instead of a socketpair() */
 /* #undef USE_PIPES */
 
+/* Define if you have Solaris privileges */
+/* #undef USE_SOLARIS_PRIVS */
+
 /* Define if you have Solaris process contracts */
 /* #undef USE_SOLARIS_PROCESS_CONTRACTS */
 
@@ -1670,19 +1719,11 @@
 /* #undef WITH_SELINUX */
 
 /* include SSH protocol version 1 support */
-#define WITH_SSH1 1
+/* #undef WITH_SSH1 */
 
-/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
-   significant byte first (like Motorola and SPARC, unlike Intel). */
-#if defined AC_APPLE_UNIVERSAL_BUILD
-# if defined __BIG_ENDIAN__
-#  define WORDS_BIGENDIAN 1
-# endif
-#else
-# ifndef WORDS_BIGENDIAN
-/* #  undef WORDS_BIGENDIAN */
-# endif
-#endif
+/* Define to 1 if your processor stores words with the most significant byte
+   first (like Motorola and SPARC, unlike Intel and VAX). */
+/* #undef WORDS_BIGENDIAN */
 
 /* Define if xauth is found in your path */
 /* #undef XAUTH_PATH */

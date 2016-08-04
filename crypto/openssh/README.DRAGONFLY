@@ -8,7 +8,6 @@ Upgrading notes:
 	--with-pam --with-libedit --with-ssl-engine
 
 Update config.h in secure/lib/libssh.
-Update ssh_namespace.h
 
 Used in:
 lib/pam_module/pam_ssh/

@@ -2,7 +2,7 @@
 # $DragonFly: src/secure/libexec/sftp-server/Makefile,v 1.4 2008/04/07 01:20:18 pavalos Exp $
 
 PROG=   sftp-server
-SRCS=   sftp-server.c sftp-common.c sftp-server-main.c roaming_dummy.c
+SRCS=   sftp-server.c sftp-common.c sftp-server-main.c
 MAN=	sftp-server.8
 WARNS?=	0
 
