@@ -1,6 +1,6 @@
-/* $OpenBSD: roaming_dummy.c,v 1.3 2009/06/21 09:04:03 dtucker Exp $ */
+/*	$OpenBSD: reallocarray.c,v 1.2 2014/12/08 03:45:00 bcook Exp $	*/
 /*
- * Copyright (c) 2004-2009 AppGate Network Security AB
+ * Copyright (c) 2008 Otto Moerbeek <otto@drijf.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,47 +15,32 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * This file is included in the client programs which should not
- * support roaming.
- */
+/* OPENBSD ORIGINAL: lib/libc/stdlib/reallocarray.c */
 
 #include "includes.h"
+#ifndef HAVE_REALLOCARRAY
 
 #include <sys/types.h>
-#include <unistd.h>
+#include <errno.h>
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#include <stdlib.h>
 
-#include "roaming.h"
+/*
+ * This is sqrt(SIZE_MAX+1), as s1*s2 <= SIZE_MAX
+ * if both s1 < MUL_NO_OVERFLOW and s2 < MUL_NO_OVERFLOW
+ */
+#define MUL_NO_OVERFLOW	((size_t)1 << (sizeof(size_t) * 4))
 
-int resume_in_progress = 0;
-
-u_int64_t
-get_recv_bytes(void)
+void *
+reallocarray(void *optr, size_t nmemb, size_t size)
 {
-	return 0;
+	if ((nmemb >= MUL_NO_OVERFLOW || size >= MUL_NO_OVERFLOW) &&
+	    nmemb > 0 && SIZE_MAX / nmemb < size) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	return realloc(optr, size * nmemb);
 }
-
-ssize_t
-roaming_write(int fd, const void *buf, size_t count, int *cont)
-{
-	return write(fd, buf, count);
-}
-
-ssize_t
-roaming_read(int fd, void *buf, size_t count, int *cont)
-{
-	if (cont)
-		*cont = 0;
-	return read(fd, buf, count);
-}
-
-void
-add_recv_bytes(u_int64_t num)
-{
-}
-
-int
-resume_kex(void)
-{
-	return 1;
-}
+#endif /* HAVE_REALLOCARRAY */

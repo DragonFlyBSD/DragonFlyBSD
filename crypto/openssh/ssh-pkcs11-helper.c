@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-pkcs11-helper.c,v 1.8 2014/06/24 01:13:21 djm Exp $ */
+/* $OpenBSD: ssh-pkcs11-helper.c,v 1.12 2016/02/15 09:47:49 dtucker Exp $ */
 /*
  * Copyright (c) 2010 Markus Friedl.  All rights reserved.
  *
@@ -280,6 +280,7 @@ main(int argc, char **argv)
 
 	extern char *__progname;
 
+	ssh_malloc_init();	/* must be called before any mallocs */
 	TAILQ_INIT(&pkcs11_keylist);
 	pkcs11_init(0);
 
@@ -301,8 +302,8 @@ main(int argc, char **argv)
 	buffer_init(&oqueue);
 
 	set_size = howmany(max + 1, NFDBITS) * sizeof(fd_mask);
-	rset = (fd_set *)xmalloc(set_size);
-	wset = (fd_set *)xmalloc(set_size);
+	rset = xmalloc(set_size);
+	wset = xmalloc(set_size);
 
 	for (;;) {
 		memset(rset, 0, set_size);

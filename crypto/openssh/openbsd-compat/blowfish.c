@@ -50,7 +50,9 @@
 #endif
 
 #include <sys/types.h>
-#include "blf.h"
+#ifdef HAVE_BLF_H
+#include <blf.h>
+#endif
 
 #undef inline
 #ifdef __GNUC__

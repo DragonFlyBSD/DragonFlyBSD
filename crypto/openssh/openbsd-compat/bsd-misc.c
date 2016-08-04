@@ -31,8 +31,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "xmalloc.h"
-
 #ifndef HAVE___PROGNAME
 char *__progname;
 #endif
@@ -43,13 +41,12 @@ char *__progname;
  */
 char *ssh_get_progname(char *argv0)
 {
+	char *p, *q;
 #ifdef HAVE___PROGNAME
 	extern char *__progname;
 
-	return xstrdup(__progname);
+	p = __progname;
 #else
-	char *p;
-
 	if (argv0 == NULL)
 		return ("unknown");	/* XXX */
 	p = strrchr(argv0, '/');
@@ -57,9 +54,12 @@ char *ssh_get_progname(char *argv0)
 		p = argv0;
 	else
 		p++;
-
-	return (xstrdup(p));
 #endif
+	if ((q = strdup(p)) == NULL) {
+		perror("strdup");
+		exit(1);
+	}
+	return q;
 }
 
 #ifndef HAVE_SETLOGIN
@@ -274,5 +274,30 @@ getpgid(pid_t pid)
 
 	errno = ESRCH;
 	return -1;
+}
+#endif
+
+#ifndef HAVE_PLEDGE
+int
+pledge(const char *promises, const char *paths[])
+{
+	return 0;
+}
+#endif
+
+#ifndef HAVE_MBTOWC
+/* a mbtowc that only supports ASCII */
+int
+mbtowc(wchar_t *pwc, const char *s, size_t n)
+{
+	if (s == NULL || *s == '\0')
+		return 0;	/* ASCII is not state-dependent */
+	if (*s < 0 || *s > 0x7f || n < 1) {
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+	if (pwc != NULL)
+		*pwc = *s;
+	return 1;
 }
 #endif

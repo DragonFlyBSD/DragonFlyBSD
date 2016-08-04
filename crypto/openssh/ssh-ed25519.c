@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-ed25519.c,v 1.4 2014/06/24 01:13:21 djm Exp $ */
+/* $OpenBSD: ssh-ed25519.c,v 1.7 2016/04/21 06:08:02 djm Exp $ */
 /*
  * Copyright (c) 2013 Markus Friedl <markus@openbsd.org>
  *
@@ -25,9 +25,8 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "xmalloc.h"
 #include "log.h"
-#include "buffer.h"
+#include "sshbuf.h"
 #define SSHKEY_INTERNAL
 #include "sshkey.h"
 #include "ssherr.h"
@@ -108,7 +107,8 @@ ssh_ed25519_verify(const struct sshkey *key,
 	if (key == NULL ||
 	    sshkey_type_plain(key->type) != KEY_ED25519 ||
 	    key->ed25519_pk == NULL ||
-	    datalen >= INT_MAX - crypto_sign_ed25519_BYTES)
+	    datalen >= INT_MAX - crypto_sign_ed25519_BYTES ||
+	    signature == NULL || signaturelen == 0)
 		return SSH_ERR_INVALID_ARGUMENT;
 
 	if ((b = sshbuf_from(signature, signaturelen)) == NULL)
@@ -128,11 +128,13 @@ ssh_ed25519_verify(const struct sshkey *key,
 		r = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
-	if (datalen >= SIZE_MAX - len)
-		return SSH_ERR_INVALID_ARGUMENT;
+	if (datalen >= SIZE_MAX - len) {
+		r = SSH_ERR_INVALID_ARGUMENT;
+		goto out;
+	}
 	smlen = len + datalen;
 	mlen = smlen;
-	if ((sm = malloc(smlen)) == NULL || (m = xmalloc(mlen)) == NULL) {
+	if ((sm = malloc(smlen)) == NULL || (m = malloc(mlen)) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
@@ -163,4 +165,3 @@ ssh_ed25519_verify(const struct sshkey *key,
 	free(ktype);
 	return r;
 }
-

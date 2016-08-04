@@ -8,9 +8,9 @@
 .\"
 .\" Created: Sun May  7 00:14:37 1995 ylo
 .\"
-.\" $OpenBSD: scp.1,v 1.62 2014/03/19 14:42:44 tedu Exp $
+.\" $OpenBSD: scp.1,v 1.71 2016/07/16 06:57:55 jmc Exp $
 .\"
-.Dd $Mdocdate: March 19 2014 $
+.Dd $Mdocdate: July 16 2016 $
 .Dt SCP 1
 .Os
 .Sh NAME
@@ -30,14 +30,14 @@
 .Sm off
 .Oo
 .Op Ar user No @
-.Ar host1 No :
+.Ar host1 :
 .Oc Ar file1
 .Sm on
 .Ar ...
 .Sm off
 .Oo
 .Op Ar user No @
-.Ar host2 No :
+.Ar host2 :
 .Oc Ar file2
 .Sm on
 .Ek
@@ -133,6 +133,7 @@ For full details of the options listed below, and their possible values, see
 .It CanonicalizeHostname
 .It CanonicalizeMaxDots
 .It CanonicalizePermittedCNAMEs
+.It CertificateFile
 .It ChallengeResponseAuthentication
 .It CheckHostIP
 .It Cipher
@@ -150,11 +151,13 @@ For full details of the options listed below, and their possible values, see
 .It HashKnownHosts
 .It Host
 .It HostbasedAuthentication
+.It HostbasedKeyTypes
 .It HostKeyAlgorithms
 .It HostKeyAlias
 .It HostName
-.It IdentityFile
 .It IdentitiesOnly
+.It IdentityAgent
+.It IdentityFile
 .It IPQoS
 .It KbdInteractiveAuthentication
 .It KbdInteractiveDevices
@@ -169,6 +172,8 @@ For full details of the options listed below, and their possible values, see
 .It PreferredAuthentications
 .It Protocol
 .It ProxyCommand
+.It ProxyJump
+.It PubkeyAcceptedKeyTypes
 .It PubkeyAuthentication
 .It RekeyLimit
 .It RhostsRSAAuthentication
@@ -178,6 +183,7 @@ For full details of the options listed below, and their possible values, see
 .It ServerAliveCountMax
 .It StrictHostKeyChecking
 .It TCPKeepAlive
+.It UpdateHostKeys
 .It UsePrivilegedPort
 .It User
 .It UserKnownHostsFile

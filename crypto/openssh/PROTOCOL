@@ -40,8 +40,8 @@ http://www.openssh.com/txt/draft-miller-secsh-compression-delayed-00.txt
      "ecdsa-sha2-nistp521-cert-v01@openssh.com"
 
 OpenSSH introduces new public key algorithms to support certificate
-authentication for users and hostkeys. These methods are documented in
-the file PROTOCOL.certkeys
+authentication for users and host keys. These methods are documented
+in the file PROTOCOL.certkeys
 
 1.4. transport: Elliptic Curve cryptography
 
@@ -175,7 +175,7 @@ whitelisted to receive this message upon request.
 
 OpenSSH supports layer 2 and layer 3 tunnelling via the "tun@openssh.com"
 channel type. This channel type supports forwarding of network packets
-with datagram boundaries intact between endpoints equipped with 
+with datagram boundaries intact between endpoints equipped with
 interfaces like the BSD tun(4) device. Tunnel forwarding channels are
 requested by the client with the following packet:
 
@@ -247,7 +247,8 @@ to request that the server make a connection to a Unix domain socket.
 	uint32		initial window size
 	uint32		maximum packet size
 	string		socket path
-	string		reserved for future use
+	string		reserved
+	uint32		reserved
 
 Similar to forwarded-tcpip, forwarded-streamlocal is sent by the
 server when the client has previously send the server a streamlocal-forward
@@ -281,6 +282,53 @@ by the client cancel the forwarding of a Unix domain socket.
 	string		"cancel-streamlocal-forward@openssh.com"
 	boolean		FALSE
 	string		socket path
+
+2.5. connection: hostkey update and rotation "hostkeys-00@openssh.com"
+and "hostkeys-prove-00@openssh.com"
+
+OpenSSH supports a protocol extension allowing a server to inform
+a client of all its protocol v.2 host keys after user-authentication
+has completed.
+
+	byte		SSH_MSG_GLOBAL_REQUEST
+	string		"hostkeys-00@openssh.com"
+	string[]	hostkeys
+
+Upon receiving this message, a client should check which of the
+supplied host keys are present in known_hosts. For keys that are
+not present, it should send a "hostkeys-prove@openssh.com" message
+to request the server prove ownership of the private half of the
+key.
+
+	byte		SSH_MSG_GLOBAL_REQUEST
+	string		"hostkeys-prove-00@openssh.com"
+	char		1 /* want-reply */
+	string[]	hostkeys
+
+When a server receives this message, it should generate a signature
+using each requested key over the following:
+
+	string		"hostkeys-prove-00@openssh.com"
+	string		session identifier
+	string		hostkey
+
+These signatures should be included in the reply, in the order matching
+the hostkeys in the request:
+
+	byte		SSH_MSG_REQUEST_SUCCESS
+	string[]	signatures
+
+When the client receives this reply (and not a failure), it should
+validate the signatures and may update its known_hosts file, adding keys
+that it has not seen before and deleting keys for the server host that
+are no longer offered.
+
+These extensions let a client learn key types that it had not previously
+encountered, thereby allowing it to potentially upgrade from weaker
+key algorithms to better ones. It also supports graceful key rotation:
+a server may offer multiple keys of the same type for a period (to
+give clients an opportunity to learn them using this extension) before
+removing the deprecated key from those offered.
 
 3. SFTP protocol changes
 
@@ -406,4 +454,4 @@ respond with a SSH_FXP_STATUS message.
 This extension is advertised in the SSH_FXP_VERSION hello with version
 "1".
 
-$OpenBSD: PROTOCOL,v 1.24 2014/07/15 15:54:14 millert Exp $
+$OpenBSD: PROTOCOL,v 1.30 2016/04/08 06:35:54 djm Exp $
