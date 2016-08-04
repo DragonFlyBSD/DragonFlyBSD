@@ -27,7 +27,7 @@
 #   GSSAPIAuthentication no
 #   GSSAPIDelegateCredentials no
 #   BatchMode no
-#   CheckHostIP no
+#   CheckHostIP yes
 #   AddressFamily any
 #   ConnectTimeout 0
 #   StrictHostKeyChecking ask
@@ -40,9 +40,6 @@
 #   Ciphers aes128-ctr,aes192-ctr,aes256-ctr,arcfour256,arcfour128,aes128-cbc,3des-cbc
 #   MACs hmac-md5,hmac-sha1,umac-64@openssh.com,hmac-ripemd160
 #   EscapeChar ~
-#   VersionAddendum DragonFly-20150122
-
-#   XAuthLocation /usr/local/bin/xauth
 #   Tunnel no
 #   TunnelDevice any:any
 #   PermitLocalCommand no

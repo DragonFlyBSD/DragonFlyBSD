@@ -219,7 +219,6 @@ auth_input_request_forwarding(struct passwd * pw)
 		goto authsock_err;
 
 	/* Allocate a channel for the authentication agent socket. */
-	/* this shouldn't matter if its hpn or not - cjr */
 	nc = channel_new("auth socket",
 	    SSH_CHANNEL_AUTH_SOCKET, sock, sock, -1,
 	    CHAN_X11_WINDOW_DEFAULT, CHAN_X11_PACKET_DEFAULT,
@@ -909,24 +908,6 @@ do_motd(void)
 {
 	FILE *f;
 	char buf[256];
-#ifdef HAVE_LOGIN_CAP
-	const char *fname;
-#endif
-
-#ifdef HAVE_LOGIN_CAP
-	fname = login_getcapstr(lc, "copyright", NULL, NULL);
-	if (fname != NULL && (f = fopen(fname, "r")) != NULL) {
-		while (fgets(buf, sizeof(buf), f) != NULL)
-			fputs(buf, stdout);
-			fclose(f);
-	} else
-#endif /* HAVE_LOGIN_CAP */
-		(void)printf("%s\n\t%s %s\n",
-	"Copyright (c) 1980, 1983, 1986, 1988, 1990, 1991, 1993, 1994",
-	"The Regents of the University of California. ",
-	"All rights reserved.");
-
-	(void)printf("\n");
 
 	if (options.print_motd) {
 #ifdef HAVE_LOGIN_CAP
@@ -1161,12 +1142,6 @@ do_setup_env(Session *s, const char *shell)
 	struct passwd *pw = s->pw;
 #if !defined (HAVE_LOGIN_CAP) && !defined (HAVE_CYGWIN)
 	char *path = NULL;
-#else
-	extern char **environ;
-	char **senv;
-#if 0
-	char **var;
-#endif
 #endif
 
 	/* Initialize the environment. */
@@ -1188,9 +1163,6 @@ do_setup_env(Session *s, const char *shell)
 	}
 #endif
 
-	if (getenv("TZ"))
-		child_set_env(&env, &envsize, "TZ", getenv("TZ"));
-
 #ifdef GSSAPI
 	/* Allow any GSSAPI methods that we've used to alter
 	 * the childs environment as they see fit
@@ -1210,28 +1182,11 @@ do_setup_env(Session *s, const char *shell)
 		child_set_env(&env, &envsize, "LOGIN", pw->pw_name);
 #endif
 		child_set_env(&env, &envsize, "HOME", pw->pw_dir);
-		snprintf(buf, sizeof buf, "%.200s/%.50s",
-			 _PATH_MAILDIR, pw->pw_name);
-		child_set_env(&env, &envsize, "MAIL", buf);
 #ifdef HAVE_LOGIN_CAP
-		child_set_env(&env, &envsize, "PATH", _PATH_STDPATH);
-		child_set_env(&env, &envsize, "TERM", "su");
-		senv = environ;
-		environ = xmalloc(sizeof(char *));
-		*environ = NULL;
-		(void) setusercontext(lc, pw, pw->pw_uid,
-		    LOGIN_SETENV|LOGIN_SETPATH);
-		copy_environment(environ, &env, &envsize);
-#if 0
-		/*
-		 * This interferes with libc's management of the environment
-		 * in horrible ways that can cause sshd to crash.
-		 */
-		for (var = environ; *var != NULL; ++var)
-			xfree(*var);
-		xfree(environ);
-#endif
-		environ = senv;
+		if (setusercontext(lc, pw, pw->pw_uid, LOGIN_SETPATH) < 0)
+			child_set_env(&env, &envsize, "PATH", _PATH_STDPATH);
+		else
+			child_set_env(&env, &envsize, "PATH", getenv("PATH"));
 #else /* HAVE_LOGIN_CAP */
 # ifndef HAVE_CYGWIN
 		/*
@@ -1252,9 +1207,15 @@ do_setup_env(Session *s, const char *shell)
 # endif /* HAVE_CYGWIN */
 #endif /* HAVE_LOGIN_CAP */
 
+		snprintf(buf, sizeof buf, "%.200s/%.50s",
+			 _PATH_MAILDIR, pw->pw_name);
+		child_set_env(&env, &envsize, "MAIL", buf);
+
 		/* Normal systems set SHELL by default. */
 		child_set_env(&env, &envsize, "SHELL", shell);
 	}
+	if (getenv("TZ"))
+		child_set_env(&env, &envsize, "TZ", getenv("TZ"));
 
 	/* Set custom environment options from RSA authentication. */
 	if (!options.use_login) {
@@ -2367,16 +2328,10 @@ session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
 	 */
 	if (s->chanid == -1)
 		fatal("no channel for session %d", s->self);
-	if (options.hpn_disabled)
 	channel_set_fds(s->chanid,
 	    fdout, fdin, fderr,
 	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
 	    1, is_tty, CHAN_SES_WINDOW_DEFAULT);
-	else
-		channel_set_fds(s->chanid,
-		    fdout, fdin, fderr,
-	            ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
-		    1, is_tty, options.hpn_buffer_size);
 }
 
 /*

@@ -57,13 +57,6 @@ extern const EVP_CIPHER *evp_ssh1_3des(void);
 extern int ssh1_3des_iv(EVP_CIPHER_CTX *, int, u_char *, int);
 #endif
 
-/* for multi-threaded aes-ctr cipher */
-extern const EVP_CIPHER *evp_aes_ctr_mt(void);
-
-/* no longer needed. replaced by evp pointer swap */
-/* extern void ssh_aes_ctr_thread_destroy(EVP_CIPHER_CTX *ctx); */
-/* extern void ssh_aes_ctr_thread_reconstruction(EVP_CIPHER_CTX *ctx); */
-
 struct sshcipher {
 	char	*name;
 	int	number;		/* for ssh1 only */
@@ -84,7 +77,7 @@ struct sshcipher {
 #endif
 };
 
-static struct sshcipher ciphers[] = {
+static const struct sshcipher ciphers[] = {
 #ifdef WITH_SSH1
 	{ "des",	SSH_CIPHER_DES, 8, 8, 0, 0, 0, 1, EVP_des_cbc },
 	{ "3des",	SSH_CIPHER_3DES, 8, 16, 0, 0, 0, 1, evp_ssh1_3des },
@@ -127,29 +120,6 @@ static struct sshcipher ciphers[] = {
 };
 
 /*--*/
-
-/* used to get the cipher name so when force rekeying to handle the 
- * single to multithreaded ctr cipher swap we only rekey when appropriate
-*/
-char *
-cipher_return_name(const struct sshcipher *c)
-{
-        return (c->name);
-}
-
-/* in order to get around sandbox and forking issues with a threaded cipher
- * we set the initial pre-auth aes-ctr cipher to the default OpenSSH cipher
- * post auth we set them to the new evp as defined by cipher-ctr-mt
-*/
-
-void
-cipher_reset_multithreaded()
-{
-  (cipher_by_name("aes128-ctr"))->evptype = evp_aes_ctr_mt;
-  (cipher_by_name("aes192-ctr"))->evptype = evp_aes_ctr_mt;
-  (cipher_by_name("aes256-ctr"))->evptype = evp_aes_ctr_mt;
-}
-
 
 /* Returns a comma-separated list of supported ciphers. */
 char *
@@ -239,10 +209,10 @@ cipher_mask_ssh1(int client)
 	return mask;
 }
 
-struct sshcipher *
+const struct sshcipher *
 cipher_by_name(const char *name)
 {
-	struct sshcipher *c;
+	const struct sshcipher *c;
 	for (c = ciphers; c->name != NULL; c++)
 		if (strcmp(c->name, name) == 0)
 			return c;
@@ -252,7 +222,7 @@ cipher_by_name(const char *name)
 const struct sshcipher *
 cipher_by_number(int id)
 {
-	struct sshcipher *c;
+	const struct sshcipher *c;
 	for (c = ciphers; c->name != NULL; c++)
 		if (c->number == id)
 			return c;
@@ -274,8 +244,7 @@ ciphers_valid(const char *names)
 	for ((p = strsep(&cp, CIPHER_SEP)); p && *p != '\0';
 	    (p = strsep(&cp, CIPHER_SEP))) {
 		c = cipher_by_name(p);
-		if (c == NULL || (c->number != SSH_CIPHER_SSH2 &&
-				  c->number != SSH_CIPHER_NONE)) {
+		if (c == NULL || c->number != SSH_CIPHER_SSH2) {
 			free(cipher_list);
 			return 0;
 		}
@@ -568,7 +537,6 @@ cipher_get_keyiv(struct sshcipher_ctx *cc, u_char *iv, u_int len)
 
 	switch (c->number) {
 #ifdef WITH_OPENSSL
-	case SSH_CIPHER_NONE:
 	case SSH_CIPHER_SSH2:
 	case SSH_CIPHER_DES:
 	case SSH_CIPHER_BLOWFISH:
@@ -617,7 +585,6 @@ cipher_set_keyiv(struct sshcipher_ctx *cc, const u_char *iv)
 
 	switch (c->number) {
 #ifdef WITH_OPENSSL
-	case SSH_CIPHER_NONE:
 	case SSH_CIPHER_SSH2:
 	case SSH_CIPHER_DES:
 	case SSH_CIPHER_BLOWFISH:

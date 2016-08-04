@@ -79,12 +79,6 @@
 extern char *client_version_string;
 extern char *server_version_string;
 extern Options options;
-extern Kex *xxx_kex;
-
-/* tty_flag is set in ssh.c. use this in ssh_userauth2 */
-/* if it is set then prevent the switch to the null cipher */
-
-extern int tty_flag;
 
 /*
  * SSH2 key exchange
@@ -159,15 +153,11 @@ order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
 	return ret;
 }
 
-static char *myproposal[PROPOSAL_MAX];
-static const char *myproposal_default[PROPOSAL_MAX] = { KEX_CLIENT };
-
 void
 ssh_kex2(char *host, struct sockaddr *hostaddr, u_short port)
 {
+	char *myproposal[PROPOSAL_MAX] = { KEX_CLIENT };
 	Kex *kex;
-
-	memcpy(&myproposal, &myproposal_default, sizeof(myproposal));
 
 	xxx_host = host;
 	xxx_hostaddr = hostaddr;
@@ -423,44 +413,6 @@ ssh_userauth2(const char *local_user, const char *server_user, char *host,
 
 	pubkey_cleanup(&authctxt);
 	dispatch_range(SSH2_MSG_USERAUTH_MIN, SSH2_MSG_USERAUTH_MAX, NULL);
-
-	/* if the user wants to use the none cipher do it */
-	/* post authentication and only if the right conditions are met */
-	/* both of the NONE commands must be true and there must be no */
-	/* tty allocated */
-	if ((options.none_switch == 1) && (options.none_enabled == 1))
-	{
-		if (!tty_flag) /* no null on tty sessions */
-		{
-			debug("Requesting none rekeying...");
-			myproposal[PROPOSAL_ENC_ALGS_STOC] = "none";
-			myproposal[PROPOSAL_ENC_ALGS_CTOS] = "none";
-			kex_prop2buf(&xxx_kex->my,myproposal);
-			packet_request_rekeying();
-			fprintf(stderr, "WARNING: ENABLED NONE CIPHER\n");
-		}
-		else
-		{
-			/* requested NONE cipher when in a tty */
-			debug("Cannot switch to NONE cipher with tty allocated");
-			fprintf(stderr, "NONE cipher switch disabled when a TTY is allocated\n");
-		}
-	}
-        /* if we are using aes-ctr there can be issues in either a fork or sandbox
-         * so the initial aes-ctr is defined to point to the original single process
-         * evp. After authentication we'll be past the fork and the sandboxed privsep
-         * so we repoint the define to the multithreaded evp. To start the threads we
-         * then force a rekey
-         */
-        CipherContext *ccsend;
-        ccsend = (CipherContext*)packet_get_send_context();
-	
-	/* only do this for the ctr cipher. otherwise gcm mode breaks. Don't know why though */
-        if (strstr(cipher_return_name((Cipher*)ccsend->cipher), "ctr")) {
-		debug ("Single to Multithread CTR cipher swap - client request");
-                cipher_reset_multithreaded();
-                packet_request_rekeying();
-        }
 
 	debug("Authentication succeeded (%s).", authctxt.method->name);
 }

@@ -8,7 +8,7 @@ SRCS=	ssherr.c \
 	sshbuf-getput-crypto.c
 SRCS+=	authfd.c authfile.c bufaux.c bufbn.c buffer.c \
 	canohost.c channels.c cipher.c cipher-aes.c \
-	cipher-bf1.c cipher-ctr.c cipher-ctr-mt.c cipher-3des1.c cleanup.c \
+	cipher-bf1.c cipher-ctr.c cipher-3des1.c cleanup.c \
 	compat.c compress.c crc32.c deattack.c fatal.c hostfile.c \
 	log.c match.c md-sha256.c moduli.c nchan.c packet.c \
 	readpass.c rsa.c ttymodes.c xmalloc.c addrmatch.c \

@@ -636,8 +636,8 @@ main(int ac, char **av)
 			}
 			break;
 		case 'V':
-			fprintf(stderr, "%s%s %s, %s\n", SSH_RELEASE,
-			    SSH_VERSION_HPN, SSH_VERSION_DRAGONFLY,
+			fprintf(stderr, "%s, %s\n",
+			    SSH_RELEASE,
 #ifdef WITH_OPENSSL
 			    SSLeay_version(SSLEAY_VERSION)
 #else
@@ -785,10 +785,6 @@ main(int ac, char **av)
 			break;
 		case 'T':
 			options.request_tty = REQUEST_TTY_NO;
-			/* ensure that the user doesn't try to backdoor a */
-			/* null cipher switch on an interactive session */
-			/* so explicitly disable it no matter what */
-			options.none_switch=0;
 			break;
 		case 'o':
 			line = xstrdup(optarg);
@@ -1293,8 +1289,6 @@ control_persist_detach(void)
 	setproctitle("%s [mux]", options.control_path);
 }
 
-extern const EVP_CIPHER *evp_aes_ctr_mt(void);
-
 /* Do fork() after authentication. Used by "ssh -f" */
 static void
 fork_postauth(void)
@@ -1688,9 +1682,6 @@ ssh_session2_open(void)
 {
 	Channel *c;
 	int window, packetmax, in, out, err;
-	int sock;
-	int socksize;
-	int socksizelen = sizeof(int);
 
 	if (stdin_null_flag) {
 		in = open(_PATH_DEVNULL, O_RDONLY);
@@ -1711,74 +1702,9 @@ ssh_session2_open(void)
 	if (!isatty(err))
 		set_nonblock(err);
 
-	/* we need to check to see if what they want to do about buffer */
-	/* sizes here. In a hpn to nonhpn connection we want to limit */
-	/* the window size to something reasonable in case the far side */
-	/* has the large window bug. In hpn to hpn connection we want to */
-	/* use the max window size but allow the user to override it */
-	/* lastly if they disabled hpn then use the ssh std window size */
-
-	/* so why don't we just do a getsockopt() here and set the */
-	/* ssh window to that? In the case of a autotuning receive */
-	/* window the window would get stuck at the initial buffer */
-	/* size generally less than 96k. Therefore we need to set the */
-	/* maximum ssh window size to the maximum hpn buffer size */
-	/* unless the user has specifically set the tcprcvbufpoll */
-	/* to no. In which case we *can* just set the window to the */
-	/* minimum of the hpn buffer size and tcp receive buffer size */
-
-	if (tty_flag)
-		options.hpn_buffer_size = CHAN_SES_WINDOW_DEFAULT;
-	else
-		options.hpn_buffer_size = 2*1024*1024;
-
-	if (datafellows & SSH_BUG_LARGEWINDOW)
-	{
-		debug("HPN to Non-HPN Connection");
-	}
-	else
-	{
-		if (options.tcp_rcv_buf_poll <= 0)
-		{
-			sock = socket(AF_INET, SOCK_STREAM, 0);
-			getsockopt(sock, SOL_SOCKET, SO_RCVBUF,
-				   &socksize, &socksizelen);
-			close(sock);
-			debug("socksize %d", socksize);
-			options.hpn_buffer_size = socksize;
-			debug ("HPNBufferSize set to TCP RWIN: %d", options.hpn_buffer_size);
-		}
-		else
-		{
-			if (options.tcp_rcv_buf > 0)
-			{
-				/*create a socket but don't connect it */
-				/* we use that the get the rcv socket size */
-				sock = socket(AF_INET, SOCK_STREAM, 0);
-				/* if they are using the tcp_rcv_buf option */
-				/* attempt to set the buffer size to that */
-				if (options.tcp_rcv_buf)
-					setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (void *)&options.tcp_rcv_buf,
-						   sizeof(options.tcp_rcv_buf));
-				getsockopt(sock, SOL_SOCKET, SO_RCVBUF,
-					   &socksize, &socksizelen);
-				close(sock);
-				debug("socksize %d", socksize);
-				options.hpn_buffer_size = socksize;
-				debug ("HPNBufferSize set to user TCPRcvBuf: %d", options.hpn_buffer_size);
-			}
-		}
-	}
-
-	debug("Final hpn_buffer_size = %d", options.hpn_buffer_size);
-
-	window = options.hpn_buffer_size;
-
-	channel_set_hpn(options.hpn_disabled, options.hpn_buffer_size);
-
+	window = CHAN_SES_WINDOW_DEFAULT;
 	packetmax = CHAN_SES_PACKET_DEFAULT;
 	if (tty_flag) {
-		window = 4*CHAN_SES_PACKET_DEFAULT;
 		window >>= 1;
 		packetmax >>= 1;
 	}
@@ -1787,10 +1713,6 @@ ssh_session2_open(void)
 	    window, packetmax, CHAN_EXTENDED_WRITE,
 	    "client-session", /*nonblock*/0);
 
-	if ((options.tcp_rcv_buf_poll > 0) && (!options.hpn_disabled)) {
-		c->dynamic_window = 1;
-		debug ("Enabled Dynamic Window Scaling");
-	}
 	debug3("ssh_session2_open: channel_new: %d", c->self);
 
 	channel_send_open(c->self);
@@ -1877,6 +1799,9 @@ ssh_session2(void)
 		} else
 			fork_postauth();
 	}
+
+	if (options.use_roaming)
+		request_roaming();
 
 	return client_loop(tty_flag, tty_flag ?
 	    options.escape_char : SSH_ESCAPECHAR_NONE, id);

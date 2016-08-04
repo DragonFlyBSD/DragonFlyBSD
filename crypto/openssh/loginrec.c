@@ -693,8 +693,8 @@ construct_utmp(struct logininfo *li,
 	strncpy(ut->ut_name, li->username,
 	    MIN_SIZEOF(ut->ut_name, li->username));
 # ifdef HAVE_HOST_IN_UTMP
-	realhostname_sa(ut->ut_host, sizeof ut->ut_host,
-	    &li->hostaddr.sa, li->hostaddr.sa.sa_len);
+	strncpy(ut->ut_host, li->hostname,
+	    MIN_SIZEOF(ut->ut_host, li->hostname));
 # endif
 # ifdef HAVE_ADDR_IN_UTMP
 	/* this is just a 32-bit IP address */

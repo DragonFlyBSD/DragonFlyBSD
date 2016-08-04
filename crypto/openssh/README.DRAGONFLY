@@ -7,9 +7,7 @@ Upgrading notes:
 ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-sandbox=rlimit \
 	--with-pam --with-libedit --with-ssl-engine
 
-Update SSH_VERSION_DRAGONFLY in version.h.
 Update config.h in secure/lib/libssh.
-Update ssh{,d}_config and ssh{,d}_config.5.
 Update ssh_namespace.h
 
 Used in:

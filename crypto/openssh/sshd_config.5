@@ -615,7 +615,7 @@ or
 .Pp
 .Pa /etc/hosts.equiv
 and
-.Pa /etc/ssh/shosts.equiv 
+.Pa /etc/ssh/shosts.equiv
 are still used.
 The default is
 .Dq yes .
@@ -1388,7 +1388,7 @@ restrictions.
 Optionally specifies additional text to append to the SSH protocol banner
 sent by the server upon connection.
 The default is
-.Dq DragonFly-20150122 .
+.Dq none .
 .It Cm X11DisplayOffset
 Specifies the first display number available for
 .Xr sshd 8 Ns 's
@@ -1402,7 +1402,7 @@ The argument must be
 or
 .Dq no .
 The default is
-.Dq yes .
+.Dq no .
 .Pp
 When X11 forwarding is enabled, there may be additional exposure to
 the server and to client displays if the

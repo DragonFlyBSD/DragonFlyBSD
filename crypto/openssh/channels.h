@@ -134,10 +134,8 @@ struct Channel {
 	u_int	local_window_max;
 	u_int	local_consumed;
 	u_int	local_maxpacket;
-	int	dynamic_window;
 	int     extended_usage;
 	int	single_connection;
-	u_int 	tcpwinsz;
 
 	char   *ctype;		/* type */
 
@@ -173,10 +171,8 @@ struct Channel {
 /* default window/packet sizes for tcp/x11-fwd-channel */
 #define CHAN_SES_PACKET_DEFAULT	(32*1024)
 #define CHAN_SES_WINDOW_DEFAULT	(64*CHAN_SES_PACKET_DEFAULT)
-
 #define CHAN_TCP_PACKET_DEFAULT	(32*1024)
 #define CHAN_TCP_WINDOW_DEFAULT	(64*CHAN_TCP_PACKET_DEFAULT)
-
 #define CHAN_X11_PACKET_DEFAULT	(16*1024)
 #define CHAN_X11_WINDOW_DEFAULT	(4*CHAN_X11_PACKET_DEFAULT)
 
@@ -251,7 +247,7 @@ void	 channel_input_status_confirm(int, u_int32_t, void *);
 void	 channel_prepare_select(fd_set **, fd_set **, int *, u_int*,
 	     time_t*, int);
 void     channel_after_select(fd_set *, fd_set *);
-int      channel_output_poll(void);
+void     channel_output_poll(void);
 
 int      channel_not_very_much_buffered_data(void);
 void     channel_close_all(void);
@@ -314,8 +310,5 @@ void	 chan_ibuf_empty(Channel *);
 void	 chan_rcvd_ieof(Channel *);
 void	 chan_write_failed(Channel *);
 void	 chan_obuf_empty(Channel *);
-
-/* hpn handler */
-void     channel_set_hpn(int, int);
 
 #endif

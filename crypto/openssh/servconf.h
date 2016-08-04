@@ -118,7 +118,6 @@ typedef struct {
 						 * authentication. */
 	int     kbd_interactive_authentication;	/* If true, permit */
 	int     challenge_response_authentication;
-	int     permit_blacklisted_keys;	/* If true, permit */
 	int     permit_empty_passwd;	/* If false, do not permit empty
 					 * passwords. */
 	int     permit_user_env;	/* If true, read ~/.ssh/environment */
@@ -167,10 +166,6 @@ typedef struct {
 	char   *adm_forced_command;
 
 	int	use_pam;		/* Enable auth via PAM */
-        int     none_enabled;           /* enable NONE cipher switch */
-        int     tcp_rcv_buf_poll;       /* poll tcp rcv window in autotuning kernels*/
-	int	hpn_disabled;		/* disable hpn functionality. false by default */
-	int	hpn_buffer_size;	/* set the hpn buffer size - default 3MB */
 
 	int	permit_tun;
 

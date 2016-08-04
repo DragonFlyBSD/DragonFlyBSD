@@ -74,9 +74,6 @@ extern Authmethod method_hostbased;
 extern Authmethod method_gssapi;
 #endif
 
-static int log_flag = 0;
-
-
 Authmethod *authmethods[] = {
 	&method_none,
 	&method_pubkey,
@@ -221,13 +218,6 @@ input_userauth_request(int type, u_int32_t seq, void *ctxt)
 	Authmethod *m = NULL;
 	char *user, *service, *method, *style = NULL;
 	int authenticated = 0;
-#ifdef HAVE_LOGIN_CAP
-	login_cap_t *lc;
-	const char *from_host, *from_ip;
-
-        from_host = get_canonical_hostname(options.use_dns);
-        from_ip = get_remote_ipaddr();
-#endif
 
 	if (authctxt == NULL)
 		fatal("input_userauth_request: no authctxt");
@@ -236,11 +226,6 @@ input_userauth_request(int type, u_int32_t seq, void *ctxt)
 	service = packet_get_cstring(NULL);
 	method = packet_get_cstring(NULL);
 	debug("userauth-request for user %s service %s method %s", user, service, method);
-	if (!log_flag) {
-		logit("SSH: Server;Ltype: Authname;Remote: %s-%d;Name: %s",
-		      get_remote_ipaddr(), get_remote_port(), user);
-		log_flag = 1;
-	}
 	debug("attempt %d failures %d", authctxt->attempt, authctxt->failures);
 
 	if ((style = strchr(user, ':')) != NULL)
@@ -279,27 +264,6 @@ input_userauth_request(int type, u_int32_t seq, void *ctxt)
 		    "(%s,%s) -> (%s,%s)",
 		    authctxt->user, authctxt->service, user, service);
 	}
-
-#ifdef HAVE_LOGIN_CAP
-        if (authctxt->pw != NULL) {
-                lc = login_getpwclass(authctxt->pw);
-                if (lc == NULL)
-                        lc = login_getclassbyname(NULL, authctxt->pw);
-                if (!auth_hostok(lc, from_host, from_ip)) {
-                        logit("Denied connection for %.200s from %.200s [%.200s].",
-                            authctxt->pw->pw_name, from_host, from_ip);
-                        packet_disconnect("Sorry, you are not allowed to connect.");
-                }
-                if (!auth_timeok(lc, time(NULL))) {
-                        logit("LOGIN %.200s REFUSED (TIME) FROM %.200s",
-                            authctxt->pw->pw_name, from_host);
-                        packet_disconnect("Logins not available right now.");
-                }
-                login_close(lc);
-                lc = NULL;
-        }
-#endif  /* HAVE_LOGIN_CAP */
-
 	/* reset state */
 	auth2_challenge_stop(authctxt);
 
