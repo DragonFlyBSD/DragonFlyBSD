@@ -1768,9 +1768,9 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 	pid_t *pidp = (pid_t *)arg1;
 	unsigned int arglen = arg2;
 	struct proc *p;
-	struct vnode *vp;
 	char *retbuf, *freebuf;
 	int error = 0;
+	struct nchandle nch;
 
 	if (arglen != 1)
 		return (EINVAL);
@@ -1782,19 +1782,15 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 			return (ESRCH);
 	}
 
-	vp = p->p_textvp;
-	if (vp == NULL)
-		goto done;
-
-	vref(vp);
-	error = vn_fullpath(p, vp, &retbuf, &freebuf, 0);
-	vrele(vp);
+	cache_copy(&p->p_textnch, &nch);
+	error = cache_fullpath(p, &nch, NULL, &retbuf, &freebuf, 0);
+	cache_drop(&nch);
 	if (error)
 		goto done;
 	error = SYSCTL_OUT(req, retbuf, strlen(retbuf) + 1);
 	kfree(freebuf, M_TEMP);
 done:
-	if(*pidp != -1)
+	if (*pidp != -1)
 		PRELE(p);
 
 	return (error);
