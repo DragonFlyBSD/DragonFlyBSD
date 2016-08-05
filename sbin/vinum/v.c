@@ -866,10 +866,7 @@ timestamp(void)
 	}
 	sec = now.tv_sec;
 	date = localtime(&sec);
-	strftime(datetext, MAXDATETEXT, dateformat, date),
-	    fprintf(hist,
-	    "%s.%06ld ",
-	    datetext,
-	    now.tv_usec);
+	strftime(datetext, MAXDATETEXT, dateformat, date);
+	fprintf(hist, "%s.%06ld ", datetext, now.tv_usec);
     }
 }

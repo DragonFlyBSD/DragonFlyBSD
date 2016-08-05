@@ -542,7 +542,7 @@ int main(int argc, char *argv[])
 	memset(&u, 0, sizeof(u));
 	memset(&params, 0, sizeof(params));
 	params.ibp_vers = IEEE80211_BPF_VERSION;
-	params.ibp_len = sizeof(struct ieee80211_bpf_params) - 6,
+	params.ibp_len = sizeof(struct ieee80211_bpf_params) - 6;
 	params.ibp_rate0 = 2;		/* 1 MB/s XXX */
 	params.ibp_try0 = 1;		/* no retransmits */
 	params.ibp_power = 100;		/* nominal max */
