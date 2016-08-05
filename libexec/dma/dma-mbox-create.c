@@ -142,7 +142,7 @@ main(int argc, char **argv)
 		logfail("cannot build mbox path for `%s/%s'", _PATH_MAILDIR, user);
 	}
 
-	f = open(fn, O_RDONLY|O_CREAT, 0600);
+	f = open(fn, O_RDONLY|O_CREAT|O_NOFOLLOW, 0600);
 	if (f < 0)
 		logfail("cannot open mbox `%s'", fn);
 
