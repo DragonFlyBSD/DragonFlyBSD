@@ -28,7 +28,6 @@ HTAGSFLAGS+= -at `awk -F= '/^RELEASE *=/{release=$2}; END {print "FreeBSD", rele
 
 all_sysent:
 	(cd ${.CURDIR}/kern; ${MAKE} sysent)
-	(cd ${.CURDIR}/emulation/linux/i386; ${MAKE} sysent) 
 
 # XXX this may be temporary, should the module build be incorporated
 # into the default build (make the SUBDIR additions above non-conditional)?

@@ -52,8 +52,6 @@
 #include "../cam_debug.h"
 #include "../cam_sim.h"
 
-#include <emulation/linux/linux_ioctl.h>
-
 #include "scsi_all.h"
 #include "scsi_message.h"
 #include "scsi_sg.h"
@@ -448,6 +446,7 @@ sgioctl(struct dev_ioctl_args *ap)
 	error = 0;
 
 	switch (ap->a_cmd) {
+#if 0
 	case LINUX_SCSI_GET_BUS_NUMBER: {
 		int busno;
 
@@ -465,12 +464,11 @@ sgioctl(struct dev_ioctl_args *ap)
 		error = copyout(&idlun, ap->a_data, sizeof(idlun));
 		break;
 	}
+#endif
 	case SG_GET_VERSION_NUM:
-	case LINUX_SG_GET_VERSION_NUM:
 		error = copyout(&sg_version, ap->a_data, sizeof(sg_version));
 		break;
-	case SG_SET_TIMEOUT:
-	case LINUX_SG_SET_TIMEOUT: {
+	case SG_SET_TIMEOUT: {
 		u_int user_timeout;
 
 		error = copyin(ap->a_data, &user_timeout, sizeof(u_int));
@@ -481,7 +479,6 @@ sgioctl(struct dev_ioctl_args *ap)
 		break;
 	}
 	case SG_GET_TIMEOUT:
-	case LINUX_SG_GET_TIMEOUT:
 		/*
 		 * The value is returned directly to the syscall.
 		 */
@@ -489,7 +486,6 @@ sgioctl(struct dev_ioctl_args *ap)
 		error = 0;
 		break;
 	case SG_IO:
-	case LINUX_SG_IO:
 		error = copyin(ap->a_data, &req, sizeof(req));
 		if (error)
 			break;
@@ -567,8 +563,7 @@ sgioctl(struct dev_ioctl_args *ap)
 		xpt_release_ccb(ccb);
 		break;
 
-	case SG_GET_RESERVED_SIZE:
-	case LINUX_SG_GET_RESERVED_SIZE: {
+	case SG_GET_RESERVED_SIZE: {
 		int size = 32768;
 
 		error = copyout(&size, ap->a_data, sizeof(size));
@@ -576,7 +571,6 @@ sgioctl(struct dev_ioctl_args *ap)
 	}
 
 	case SG_GET_SCSI_ID:
-	case LINUX_SG_GET_SCSI_ID:
 	{
 		struct sg_scsi_id id;
 
@@ -613,25 +607,6 @@ sgioctl(struct dev_ioctl_args *ap)
 	case SG_SET_COMMAND_Q:
 	case SG_SET_DEBUG:
 	case SG_NEXT_CMD_LEN:
-	case LINUX_SG_EMULATED_HOST:
-	case LINUX_SG_SET_TRANSFORM:
-	case LINUX_SG_GET_TRANSFORM:
-	case LINUX_SG_GET_NUM_WAITING:
-	case LINUX_SG_SCSI_RESET:
-	case LINUX_SG_GET_REQUEST_TABLE:
-	case LINUX_SG_SET_KEEP_ORPHAN:
-	case LINUX_SG_GET_KEEP_ORPHAN:
-	case LINUX_SG_GET_ACCESS_COUNT:
-	case LINUX_SG_SET_FORCE_LOW_DMA:
-	case LINUX_SG_GET_LOW_DMA:
-	case LINUX_SG_GET_SG_TABLESIZE:
-	case LINUX_SG_SET_FORCE_PACK_ID:
-	case LINUX_SG_GET_PACK_ID:
-	case LINUX_SG_SET_RESERVED_SIZE:
-	case LINUX_SG_GET_COMMAND_Q:
-	case LINUX_SG_SET_COMMAND_Q:
-	case LINUX_SG_SET_DEBUG:
-	case LINUX_SG_NEXT_CMD_LEN:
 	default:
 #ifdef CAMDEBUG
 		kprintf("sgioctl: rejecting cmd 0x%lx\n", ap->a_cmd);

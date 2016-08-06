@@ -43,12 +43,6 @@ extern int setup_and_wait(char **);
 extern int start_tracing(int, int);
 extern void restore_proc(int);
 extern const char *ioctlname(register_t val);
-#ifdef __i386__
-extern void i386_syscall_entry(struct trussinfo *, int);
-extern int i386_syscall_exit(struct trussinfo *, int);
-extern void i386_linux_syscall_entry(struct trussinfo *, int);
-extern int i386_linux_syscall_exit(struct trussinfo *, int);
-#endif
 #ifdef __x86_64__
 extern void x86_64_syscall_entry(struct trussinfo *, int);
 extern int x86_64_syscall_exit(struct trussinfo *, int);

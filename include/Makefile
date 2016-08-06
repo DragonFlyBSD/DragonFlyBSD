@@ -62,7 +62,6 @@ LSUBDIRS= \
 	dev/raid/ciss dev/raid/mfi \
 	dev/smbus/smb \
 	dev/video/bktr dev/video/meteor \
-	emulation/linux \
 	gnu/vfs/ext2fs \
 	libprop \
 	net/bridge net/tap net/tun net/ppp net/ppp_layer net/sl \
