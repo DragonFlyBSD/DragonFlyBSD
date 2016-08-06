@@ -25,10 +25,6 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     @(#)popen.3	8.2 (Berkeley) 5/3/95
-.\" $FreeBSD: src/lib/libc/gen/popen.3,v 1.10.2.4 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/popen.3,v 1.4 2006/04/08 08:17:06 swildner Exp $
-.\"
 .Dd May 3, 1995
 .Dt POPEN 3
 .Os
@@ -81,6 +77,20 @@ for writing, or
 for reading and writing.
 .Pp
 The
+.Fa type
+argument may be augmented by appending an
+.Ql e
+to set the descriptor's close-on-exec flag.
+For example,
+.Ql re
+for reading,
+.Ql we
+for writing, or
+.Ql r+e
+for reading and writing.
+Use of this flag is important when operating in threaded environments.
+.Pp
+The
 .Fa command
 argument is a pointer to a null-terminated string
 containing a shell command line.
@@ -113,6 +123,25 @@ the command's standard input is the same as that of the process that called
 Note that output
 .Fn popen
 streams are fully buffered by default.
+.Pp
+.Fn popen
+automatically interlocks and closes descriptors associated with other
+active
+.Fn popen
+files in any sub-process it creates, preventing file descriptor leakage
+between
+.Fn popen
+calls in a thread-safe manner.
+However,
+.Fn popen
+has no control over fork or fork/exec sequences run by other threads which
+do not use the popen mechanism and in this situation it is likely that
+popen descriptors will leak into those sub-processes.
+It is recommended that the
+.Ql e
+flag be used to prevent descriptor leakages into miscellanious fork/exec
+sequences that might be executed by other threads in a multi-threaded
+program.
 .Pp
 The
 .Fn pclose
