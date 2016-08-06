@@ -399,7 +399,7 @@ hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	KKASSERT(volume->vol_no != HAMMER_ROOT_VOLNO);
 
 	ondisk = volume->ondisk;
-	vol_buf_size = ondisk->vol_buf_end - ondisk->vol_buf_beg;
+	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 	KKASSERT((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) == 0);
 	vol_free_end = HAMMER_ENCODE_RAW_BUFFER(ondisk->vol_no,
 			vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);
@@ -517,7 +517,7 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	KKASSERT(volume->vol_no != HAMMER_ROOT_VOLNO);
 
 	ondisk = volume->ondisk;
-	vol_buf_size = ondisk->vol_buf_end - ondisk->vol_buf_beg;
+	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 	KKASSERT((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) == 0);
 	vol_free_end = HAMMER_ENCODE_RAW_BUFFER(ondisk->vol_no,
 			vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);
@@ -660,7 +660,7 @@ hammer_format_volume_header(hammer_mount_t hmp,
 	ondisk->vol_buf_beg = vol_alloc;
 	ondisk->vol_buf_end = ioc->vol_size & ~(int64_t)HAMMER_BUFMASK;
 
-	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
+	if (HAMMER_VOL_BUF_SIZE(ondisk) < 0) { /* int64_t */
 		hmkprintf(hmp, "volume %d is too small to hold the volume header\n",
 			ondisk->vol_no);
 		return(EFTYPE);
@@ -769,7 +769,7 @@ hammer_count_bigblocks(hammer_mount_t hmp, hammer_volume_t volume,
 	KKASSERT(volume->vol_no != HAMMER_ROOT_VOLNO);
 
 	ondisk = volume->ondisk;
-	vol_buf_size = ondisk->vol_buf_end - ondisk->vol_buf_beg;
+	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 	KKASSERT((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) == 0);
 	vol_free_end = HAMMER_ENCODE_RAW_BUFFER(ondisk->vol_no,
 			vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);

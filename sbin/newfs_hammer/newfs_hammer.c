@@ -493,7 +493,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 */
 	ondisk->vol_buf_beg = vol_alloc;
 	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;
-	vol_buf_size = ondisk->vol_buf_end - ondisk->vol_buf_beg;
+	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 
 	if (vol_buf_size < 0) {
 		errx(1, "volume %d %s is too small to hold the volume header",

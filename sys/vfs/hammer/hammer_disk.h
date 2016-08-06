@@ -743,6 +743,12 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 	 ((zone2_offset) & HAMMER_OFF_SHORT_MASK))
 
 /*
+ * Effective per-volume filesystem capacity including big-blocks for layer1/2
+ */
+#define HAMMER_VOL_BUF_SIZE(volume)			\
+	((volume)->vol_buf_end - (volume)->vol_buf_beg)
+
+/*
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
  */

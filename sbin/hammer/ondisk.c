@@ -735,7 +735,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	 */
 	undo_limit = *undo_buffer_size;
 	if (undo_limit == 0) {
-		undo_limit = (ondisk->vol_buf_end - ondisk->vol_buf_beg) / 1000;
+		undo_limit = HAMMER_VOL_BUF_SIZE(ondisk) / 1000;
 		if (undo_limit < 500*1024*1024)
 			undo_limit = 500*1024*1024;
 	}

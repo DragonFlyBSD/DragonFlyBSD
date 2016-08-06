@@ -210,7 +210,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	volume->vol_no = ondisk->vol_no;
 	volume->vol_flags = ondisk->vol_flags;
 	volume->maxbuf_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
-				    ondisk->vol_buf_end - ondisk->vol_buf_beg);
+				    HAMMER_VOL_BUF_SIZE(ondisk));
 
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
 		hmp->fsid = ondisk->vol_fsid;

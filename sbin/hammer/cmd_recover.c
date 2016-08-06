@@ -82,7 +82,7 @@ hammer_cmd_recover(const char *target_dir)
 		volume = get_volume(scan->vol_no);
 
 		off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
-		off_end = off + (volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg);
+		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 		while (off < off_end) {
 			ptr = get_buffer_data(off, &data_buffer, 0);
 			if (ptr) {
