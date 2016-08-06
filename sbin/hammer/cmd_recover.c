@@ -64,7 +64,6 @@ void
 hammer_cmd_recover(const char *target_dir)
 {
 	struct buffer_info *data_buffer;
-	struct volume_info *scan;
 	struct volume_info *volume;
 	hammer_off_t off;
 	hammer_off_t off_end;
@@ -78,9 +77,7 @@ hammer_cmd_recover(const char *target_dir)
 	mkdir(TargetDir, 0777);
 
 	data_buffer = NULL;
-	TAILQ_FOREACH(scan, &VolList, entry) {
-		volume = get_volume(scan->vol_no);
-
+	TAILQ_FOREACH(volume, &VolList, entry) {
 		off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 		while (off < off_end) {
