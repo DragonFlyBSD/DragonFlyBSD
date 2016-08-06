@@ -160,7 +160,6 @@ void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 hammer_node_ondisk_t get_node(hammer_off_t node_offset,
 				struct buffer_info **bufp);
 
-void rel_volume(struct volume_info *volume);
 void rel_buffer(struct buffer_info *buffer);
 
 hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);

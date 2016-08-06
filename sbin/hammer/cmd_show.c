@@ -138,7 +138,6 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 				zone, blockmap->next_offset);
 		}
 	}
-	rel_volume(volume);
 
 	bzero(&opt, sizeof(opt));
 	opt.filter = filter;

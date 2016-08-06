@@ -261,12 +261,6 @@ get_root_volume(void)
 	return(get_volume(HAMMER_ROOT_VOLNO));
 }
 
-void
-rel_volume(struct volume_info *volume __unused)
-{
-	/* nothing to do */
-}
-
 /*
  * Acquire the specified buffer.  isnew is -1 only when called
  * via get_buffer_readahead() to prevent another readahead.
@@ -389,7 +383,6 @@ rel_buffer(struct buffer_info *buffer)
 			hammer_cache_del(&buffer->cache);
 			free(buffer->ondisk);
 			free(buffer);
-			rel_volume(volume);
 		}
 	}
 }
@@ -668,7 +661,6 @@ initialize_freemap(struct volume_info *vol)
 
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
-	rel_volume(root_vol);
 	return(count);
 }
 

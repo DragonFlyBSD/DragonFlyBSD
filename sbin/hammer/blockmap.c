@@ -93,10 +93,8 @@ alloc_bigblock(struct volume_info *volume, int zone)
 
 		rel_buffer(buffer1);
 		rel_buffer(buffer2);
-		rel_volume(root_vol);
 	}
 
-	rel_volume(volume);
 	return(result_offset);
 }
 
@@ -202,7 +200,6 @@ again:
 
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
-	rel_volume(volume);
 	return(ptr);
 }
 
@@ -319,7 +316,6 @@ blockmap_lookup(hammer_off_t zone_offset,
 done:
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
-	rel_volume(root_volume);
 
 	if (AssertOnFailure && error != 0)
 		errx(1, "blockmap_lookup: error=%d\n", error);

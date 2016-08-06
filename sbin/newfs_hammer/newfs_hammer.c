@@ -565,14 +565,11 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 */
 		ondisk->vol0_btree_root = format_root_directory(label);
 		++ondisk->vol0_stat_inodes;	/* root inode */
-
-		rel_volume(vol);
 	} else {
 		freeblks = initialize_freemap(vol);
 		root_vol = get_root_volume();
 		root_vol->ondisk->vol0_stat_freebigblocks += freeblks;
 		root_vol->ondisk->vol0_stat_bigblocks += freeblks;
-		rel_volume(root_vol);
 	}
 }
 

@@ -221,7 +221,6 @@ dump_blockmap(const char *label, int zone)
 	}
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
-	rel_volume(root_volume);
 
 	if (VerboseOpt) {
 		hammer_print_zone_stat(stats);
@@ -258,7 +257,6 @@ hammer_cmd_checkmap(void)
 		       (intmax_t)((undomap->alloc_offset & HAMMER_OFF_LONG_MASK)
 			/ (1024 * 1024)));
 	}
-	rel_volume(volume);
 
 	AssertOnFailure = (DebugOpt != 0);
 
