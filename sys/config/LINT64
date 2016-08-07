@@ -207,13 +207,6 @@ options 	INVARIANTS
 options 	DIAGNOSTIC
 
 #
-# PERFMON causes the driver for Pentium/Pentium Pro performance counters
-# to be compiled.  See perfmon(4) for more information.
-#
-options 	PERFMON
-
-
-#
 # This option let some drivers co-exist that can't co-exist in a running
 # system.  This is used to be able to compile all kernel code in one go for
 # quality assurance purposes (like this file, which the option takes it name

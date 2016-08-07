@@ -91,9 +91,6 @@
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #include <machine/globaldata.h>		/* CPU_prvspace */
 #include <machine/smp.h>
-#ifdef PERFMON
-#include <machine/perfmon.h>
-#endif
 #include <machine/cputypes.h>
 
 #include <bus/isa/rtc.h>

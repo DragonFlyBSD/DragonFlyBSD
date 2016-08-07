@@ -29,7 +29,6 @@
 
 #ifdef GUPROF
 #include "opt_i586_guprof.h"
-#include "opt_perfmon.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -38,7 +37,6 @@
 #include <sys/sysctl.h>
 
 #include <machine/clock.h>
-#include <machine/perfmon.h>
 #include <machine/profile.h>
 #undef MCOUNT
 #endif
@@ -216,39 +214,13 @@ sysctl_machdep_cputime_clock(SYSCTL_HANDLER_ARGS)
 {
 	int clock;
 	int error;
-#if defined(PERFMON) && defined(I586_PMC_GUPROF)
-	int event;
-	struct pmc pmc;
-#endif
 
 	clock = cputime_clock;
-#if defined(PERFMON) && defined(I586_PMC_GUPROF)
-	if (clock == CPUTIME_CLOCK_I586_PMC) {
-		pmc.pmc_val = cputime_clock_pmc_conf;
-		clock += pmc.pmc_event;
-	}
-#endif
 	error = sysctl_handle_opaque(oidp, &clock, sizeof clock, req);
 	if (error == 0 && req->newptr != NULL) {
-#if defined(PERFMON) && defined(I586_PMC_GUPROF)
-		if (clock >= CPUTIME_CLOCK_I586_PMC) {
-			event = clock - CPUTIME_CLOCK_I586_PMC;
-			if (event >= 256)
-				return (EINVAL);
-			pmc.pmc_num = 0;
-			pmc.pmc_event = event;
-			pmc.pmc_unit = 0;
-			pmc.pmc_flags = PMCF_E | PMCF_OS | PMCF_USR;
-			pmc.pmc_mask = 0;
-			cputime_clock_pmc_conf = pmc.pmc_val;
-			cputime_clock = CPUTIME_CLOCK_I586_PMC;
-		} else
-#endif
-		{
-			if (clock < 0 || clock >= CPUTIME_CLOCK_I586_PMC)
-				return (EINVAL);
-			cputime_clock = clock;
-		}
+		if (clock < 0 || clock >= CPUTIME_CLOCK_I586_PMC)
+			return (EINVAL);
+		cputime_clock = clock;
 	}
 	return (error);
 }
@@ -274,13 +246,6 @@ startguprof(struct gmonparam *gp)
 void
 stopguprof(struct gmonparam *gp)
 {
-#if defined(PERFMON) && defined(I586_PMC_GUPROF)
-	if (cputime_clock_pmc_init) {
-		*gp = saved_gmp;
-		perfmon_fini(0);
-		cputime_clock_pmc_init = FALSE;
-	}
-#endif
 }
 
 #else /* !GUPROF */

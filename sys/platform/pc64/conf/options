@@ -3,7 +3,6 @@ PMAP_SHPGPERPROC	opt_pmap.h
 PPC_PROBE_CHIPSET	opt_ppc.h
 PPC_DEBUG		opt_ppc.h
 MAXMEM
-PERFMON			opt_perfmon.h
 AUTO_EOI_1		opt_auto_eoi.h
 AUTO_EOI_2		opt_auto_eoi.h
 CONSPEED		opt_comconsole.h

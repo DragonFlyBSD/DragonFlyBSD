@@ -108,9 +108,6 @@
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #include <machine/globaldata.h>		/* CPU_prvspace */
 #include <machine/smp.h>
-#ifdef PERFMON
-#include <machine/perfmon.h>
-#endif
 #include <machine/cputypes.h>
 #include <machine/intr_machdep.h>
 #include <machine/framebuffer.h>
@@ -333,9 +330,6 @@ cpu_startup(void *dummy)
 	startrtclock();
 	printcpuinfo();
 	panicifcpuunsupported();
-#ifdef PERFMON
-	perfmon_init();
-#endif
 	kprintf("real memory  = %ju (%ju MB)\n",
 		(intmax_t)Realmem,
 		(intmax_t)Realmem / 1024 / 1024);
