@@ -4,6 +4,10 @@
 
 SRCS=	subs.c config.c cmds.c
 
+# Force -O, -O2 implodes
+#
+CFLAGS+=	-O
+
 # For i386, dloader32/Makefile takes care of the extra CFLAGS
 .if ${MACHINE_ARCH} != "i386"
 CFLAGS+=	-fPIC -mno-red-zone

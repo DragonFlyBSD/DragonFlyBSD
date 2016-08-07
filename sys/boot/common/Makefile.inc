@@ -27,3 +27,7 @@ SRCS+=	do_dloader.c
 .endif
 
 MAN+=	loader.8
+
+# Force -O, -O2 implodes
+#
+CFLAGS+= -O

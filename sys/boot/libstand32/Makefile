@@ -8,4 +8,8 @@ LIB=	stand32
 MAN=
 .PATH:	${LIBSTAND_SRC}
 
+# Force -O, -O2 implodes
+#
+CFLAGS+= -O
+
 .include "${LIBSTAND_SRC}/Makefile"
