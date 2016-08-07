@@ -12,12 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
-CS and EX DRIVERS REMOVED
--------------------------
+CS, EX AND VX DRIVERS REMOVED
+-----------------------------
 
-The cs(4) and ex(4) drivers have been removed. Both were very old and
-its doubtful they ever worked properly in x86_64 but both were in
-X86_64_GENERIC, so custom configurations derived from it have to be
+The cs(4), ex(4) and vx(4) drivers have been removed. They were very
+old and its doubtful they ever worked properly in x86_64 but they were
+in X86_64_GENERIC, so custom configurations derived from it have to be
 adjusted.
 
 +-----------------------------------------------------------------------+

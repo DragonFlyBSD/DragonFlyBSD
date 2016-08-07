@@ -1446,9 +1446,6 @@ options 	AHD_REG_PRETTY_PRINT
 # chips, including the D-Link DFE530TX (see 'rl' for DFE530TX+), the Hawking
 # Technologies PN102TX, and the AOpen/Acer ALN-320.
 #
-# The `vx' device provides support for the 3Com 3C590 and 3C595
-# early support
-#
 # The `wb' device provides support for various fast ethernet adapters
 # based on the Winbond W89C840F chip. Note: this is not the same as
 # the Winbond W89C940F, which is an NE2000 clone.
@@ -1578,7 +1575,6 @@ device		xl		# 3Com 3c90x (``Boomerang'', ``Cyclone'')
 # PCI Ethernet NICs.
 device		de		# DEC/Intel DC21x4x (``Tulip'')
 device		txp		# 3Com 3cR990 (``Typhoon'')
-device		vx		# 3Com 3c590, 3c595 (``Vortex'')
 
 # Gigabit Ethernet NICs.
 device		bge		# Broadcom BCM570x (``Tigon III'')

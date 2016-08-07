@@ -1003,8 +1003,6 @@ dev/raid/ips/ips_disk.c			optional ips
 dev/raid/ips/ips_ioctl.c		optional ips
 dev/raid/ips/ips_pci.c			optional ips
 dev/disk/vn/vn.c			optional vn
-dev/netif/vx/if_vx.c			optional vx
-dev/netif/vx/if_vx_pci.c		optional vx pci
 dev/netif/wi/if_wi.c			optional wi
 dev/netif/wi/if_wi_pccard.c		optional wi pccard
 dev/netif/wi/if_wi_pci.c		optional wi pci
