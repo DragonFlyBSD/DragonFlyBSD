@@ -56,11 +56,6 @@
 int	cputime_bias = 1;	/* initialize for locality of reference */
 
 static int	cputime_clock = CPUTIME_CLOCK_UNINITIALIZED;
-#ifdef I586_PMC_GUPROF
-static u_int	cputime_clock_pmc_conf = I586_PMC_GUPROF;
-static int	cputime_clock_pmc_init;
-static struct gmonparam saved_gmp;
-#endif
 #endif /* GUPROF */
 
 #ifdef __GNUC__
