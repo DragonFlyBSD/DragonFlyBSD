@@ -84,6 +84,17 @@ CWARNFLAGS	+=	-Werror
 . endif
 .endif
 
+.if defined(NO_WARRAY_BOUNDS)
+CWARNFLAGS	+=      -Wno-array-bounds
+.endif
+.if defined(NO_STRICT_OVERFLOW)
+CFLAGS		+=	-fno-strict-overflow
+.endif
+.if defined(NO_STRICT_ALIASING)
+CFLAGS		+=      -fno-strict-aliasing
+.endif
+
+
 # Allow user-specified additional warning flags
 CFLAGS		+=	${CWARNFLAGS}
 
