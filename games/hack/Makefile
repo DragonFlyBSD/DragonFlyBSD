@@ -25,6 +25,7 @@ FILESGRP=	${BINGRP}
 FILESDIR=	/var/games/hackdir
 HIDEGAME=hidegame
 CLEANFILES=hack.onames.h makedefs.nx makedefs.no
+NO_STRICT_ALIASING=
 
 build-tools: makedefs.nx
 
