@@ -134,6 +134,7 @@ void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
 void dump_pfsd(hammer_pseudofs_data_t, int);
 void hammer_check_restrict(const char *path);
 int getyn(void);
+const char *sizetostr(off_t size);
 int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);
 int hammer_fs_to_rootvol(const char *fs, char *buf, int len);
 void hammer_softprune_scandir(struct softprune **basep,

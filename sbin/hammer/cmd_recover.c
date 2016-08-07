@@ -78,6 +78,9 @@ hammer_cmd_recover(const char *target_dir)
 
 	data_buffer = NULL;
 	TAILQ_FOREACH(volume, &VolList, entry) {
+		check_volume(volume);
+		printf("Scanning volume %d size %s\n",
+			volume->vol_no, sizetostr(volume->size));
 		off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 		while (off < off_end) {
