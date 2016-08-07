@@ -679,6 +679,7 @@ nfs_mountroot(struct mount *mp)
 			(l >> 24) & 0xff, (l >> 16) & 0xff,
 			(l >>  8) & 0xff, (l >>  0) & 0xff,nd->swap_hostnam);
 		kprintf("NFS SWAP: %s\n",buf);
+		vp = NULL;	/* avoid gcc warnings */
 		error = nfs_mountdiskless(buf, "/swap", 0, &nd->swap_saddr,
 					  &nd->swap_args, td, &vp, &swap_mp);
 		if (error) {

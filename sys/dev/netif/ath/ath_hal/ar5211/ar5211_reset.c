@@ -1712,6 +1712,8 @@ ar5211GetScaledPower(uint16_t channel, uint16_t pcdacValue,
 		&lrPcdac, &urPcdac);
 
 	/* get the power index for the pcdac value */
+	lPwr = 0;	/* avoid gcc warnings */
+	uPwr = 0;	/* avoid gcc warnings */
 	ar5211FindValueInList(lFreq, llPcdac, pSrcStruct, &lPwr);
 	ar5211FindValueInList(lFreq, ulPcdac, pSrcStruct, &uPwr);
 	lScaledPwr = ar5211GetInterpolatedValue(pcdacValue,
@@ -1816,6 +1818,9 @@ ar5211GetLowerUpperValues(uint16_t value,
 	const uint16_t listEndValue = *(pList + listSize - 1);
 	uint32_t target = value * EEP_SCALE;
 	int i;
+
+	*pLowerValue = 0;	/* avoid gcc warnings */
+	*pUpperValue = 0;	/* avoid gcc warnings */
 
 	/*
 	 * See if value is lower than the first value in the list

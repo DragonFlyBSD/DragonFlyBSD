@@ -275,6 +275,7 @@ parityops(struct vinum_ioctl_msg *data)
     size = imin(DEFAULT_REVIVE_BLOCKSIZE,		    /* one block at a time */
 	plex->stripesize << DEV_BSHIFT);
 
+    errorloc = 0;	/* avoid gcc warnings */
     pbp = parityrebuild(plex, pstripe, size, op, &lock, &errorloc); /* do the grunt work */
     if (pbp == NULL) {					    /* no buffer space */
 	reply->error = ENOMEM;

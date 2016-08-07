@@ -1472,6 +1472,8 @@ _mapping_process_dpm_pg0(struct mps_softc *sc)
 	u64 physical_id;
 	u32 phy_bits = 0;
 
+	start_idx = 0;	/* avoid gcc warnings */
+	end_idx = 0;	/* avoid gcc warnings */
 	if (sc->ir_firmware)
 		_mapping_get_ir_maprange(sc, &start_idx, &end_idx);
 

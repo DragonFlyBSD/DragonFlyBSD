@@ -768,6 +768,9 @@ hammer_count_bigblocks(hammer_mount_t hmp, hammer_volume_t volume,
 
 	KKASSERT(volume->vol_no != HAMMER_ROOT_VOLNO);
 
+	*total_bigblocks = 0;	/* avoid gcc warnings */
+	*empty_bigblocks = 0;	/* avoid gcc warnings */
+
 	ondisk = volume->ondisk;
 	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 	KKASSERT((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) == 0);

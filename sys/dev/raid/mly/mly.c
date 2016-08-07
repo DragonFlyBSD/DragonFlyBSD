@@ -1660,8 +1660,10 @@ mly_alloc_command(struct mly_softc *sc, struct mly_command **mcp)
 
     debug_called(3);
 
-    if ((mc = mly_dequeue_free(sc)) == NULL)
+    if ((mc = mly_dequeue_free(sc)) == NULL) {
+	*mcp = NULL;	/* avoid gcc warning */
 	return(ENOMEM);
+    }
 
     *mcp = mc;
     return(0);

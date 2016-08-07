@@ -571,6 +571,7 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 	struct pf_src_node	k;
 	int cpu = mycpu->gd_cpuid;
 
+	bzero(&k, sizeof(k));	/* avoid gcc warnings */
 	if (*sn == NULL) {
 		k.af = af;
 		PF_ACPY(&k.addr, src, af);
@@ -2676,6 +2677,8 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 	struct pf_src_node	 k;
 	int cpu = mycpu->gd_cpuid;
 	int tblidx;
+
+	bzero(hash, sizeof(hash));	/* avoid gcc warnings */
 
 	/*
 	 * NOTE! rpool->cur and rpool->tblidx can be iterators and thus

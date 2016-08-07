@@ -1224,7 +1224,7 @@ static usb_error_t
 run_do_request(struct run_softc *sc,
     struct usb_device_request *req, void *data)
 {
-	usb_error_t err;
+	usb_error_t err = 0;	/* assign to whack bogus gcc warning */
 	int ntries = 10;
 
 	RUN_LOCK_ASSERT(sc, MA_OWNED);
@@ -1456,6 +1456,7 @@ run_rt3070_rf_read(struct run_softc *sc, uint8_t reg, uint8_t *val)
 	uint32_t tmp;
 	int error, ntries;
 
+	*val = 0;
 	for (ntries = 0; ntries < 100; ntries++) {
 		if ((error = run_read(sc, RT3070_RF_CSR_CFG, &tmp)) != 0)
 			return (error);

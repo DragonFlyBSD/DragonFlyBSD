@@ -665,6 +665,7 @@ getGainF(struct ath_hal *ah, const struct tpcMap *pRD,
 
 	low = high = -1;
 
+	*dBm = 0;	/* avoid gcc warnings */
 	for (i = 0; i < AR_TP_SCALING_ENTRIES; i++) {
 		if(pRD->pcdac[i] == 63)
 			continue;

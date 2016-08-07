@@ -2353,6 +2353,8 @@ s32 e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
 
 	DEBUGFUNC("e1000_phy_has_link_generic");
 
+	*success = FALSE;	/* silence gcc warnings */
+
 	if (!hw->phy.ops.read_reg)
 		return E1000_SUCCESS;
 
@@ -3921,6 +3923,7 @@ s32 e1000_phy_force_speed_duplex_82577(struct e1000_hw *hw)
 
 	usec_delay(1);
 
+	link = FALSE;	/* silence gcc warnings */
 	if (phy->autoneg_wait_to_complete) {
 		DEBUGOUT("Waiting for forced speed/duplex link on 82577 phy\n");
 

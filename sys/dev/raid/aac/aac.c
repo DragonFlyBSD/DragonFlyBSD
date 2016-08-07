@@ -2018,6 +2018,8 @@ aac_sync_command(struct aac_softc *sc, u_int32_t command,
 	time_t then;
 	u_int32_t status;
 
+	if (sp != NULL)
+		*sp = 0;	/* avoid gcc warnings */
 	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 
 	/* populate the mailbox */

@@ -865,6 +865,8 @@ link_elf_symbol_values(linker_file_t lf, c_linker_sym_t sym, linker_symval_t *sy
     elf_file_t	    ef = lf->priv;
     const Elf_Sym  *es = (const Elf_Sym *)sym;
 
+    symval->value = 0;	/* avoid gcc warnings */
+
     if (es >= ef->symtab && es < (ef->symtab + ef->nchains)) {
 	symval->name = ef->strtab + es->st_name;
 	symval->value = ef->address + es->st_value;

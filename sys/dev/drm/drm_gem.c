@@ -369,6 +369,7 @@ drm_gem_handle_create_tail(struct drm_file *file_priv,
 	struct drm_device *dev = obj->dev;
 	int ret;
 
+	*handlep = 0;		/* whack gcc warning */
 	WARN_ON(!mutex_is_locked(&dev->object_name_lock));
 
 	/*

@@ -1213,6 +1213,7 @@ ses_getputstat(ses_softc_t *ssc, int objid, SesComStat *sp, int slp, int in)
 	int err, amt, bufsiz, tidx, oidx;
 	char cdb[6], *sdata;
 
+	bzero(sp, sizeof(*sp));
 	cc = ssc->ses_private;
 	if (cc == NULL) {
 		return (ENXIO);

@@ -88,6 +88,7 @@ static bool sil164_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 		}
 	};
 
+	*ch = 0;	/* silence gcc warnings */
 	out_buf[0] = addr;
 	out_buf[1] = 0;
 

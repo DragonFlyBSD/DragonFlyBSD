@@ -311,6 +311,9 @@ static void ddi_get_encoder_port(struct intel_encoder *intel_encoder,
 {
 	struct drm_encoder *encoder = &intel_encoder->base;
 
+	*dig_port = 0;	/* silence gcc warnings */
+	*port = 0;	/* silence gcc warnings */
+
 	switch (intel_encoder->type) {
 	case INTEL_OUTPUT_DP_MST:
 		*dig_port = enc_to_mst(encoder)->primary;

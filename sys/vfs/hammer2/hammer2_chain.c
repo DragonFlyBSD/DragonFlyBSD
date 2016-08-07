@@ -3497,6 +3497,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 */
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
+	key_next = 0;	/* avoid gcc warnings */
 	cache_index = 0;
 	hammer2_spin_ex(&parent->core.spin);
 	loops = 0;

@@ -1001,6 +1001,7 @@ mxge_change_pause(mxge_softc_t *sc, int pause)
 	mxge_cmd_t cmd;
 	int status;
 
+	bzero(&cmd, sizeof(cmd));	/* silence gcc warning */
 	if (pause)
 		status = mxge_send_cmd(sc, MXGEFW_ENABLE_FLOW_CONTROL, &cmd);
 	else
@@ -1019,6 +1020,7 @@ mxge_change_promisc(mxge_softc_t *sc, int promisc)
 	mxge_cmd_t cmd;
 	int status;
 
+	bzero(&cmd, sizeof(cmd));	/* avoid gcc warning */
 	if (mxge_always_promisc)
 		promisc = 1;
 
@@ -1043,6 +1045,7 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 		return;
 
 	/* Disable multicast filtering while we play with the lists*/
+	bzero(&cmd, sizeof(cmd));	/* silence gcc warning */
 	err = mxge_send_cmd(sc, MXGEFW_ENABLE_ALLMULTI, &cmd);
 	if (err != 0) {
 		if_printf(ifp, "Failed MXGEFW_ENABLE_ALLMULTI, "
@@ -2542,6 +2545,7 @@ mxge_media_probe(mxge_softc_t *sc)
 	 * a millisecond
 	 */
 
+	bzero(&cmd, sizeof(cmd));	/* silence gcc warning */
 	cmd.data0 = 0;	 /* just fetch 1 byte, not all 256 */
 	cmd.data1 = byte;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_I2C_READ, &cmd);
@@ -3242,6 +3246,7 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 	 */
 	err = 0;
 
+	bzero(&cmd, sizeof(cmd));	/* silence gcc warning */
 	if (ss->sc->num_tx_rings == 1) {
 		if (slice == 0) {
 			cmd.data0 = slice;

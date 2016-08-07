@@ -909,6 +909,7 @@ acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid, UINT8 instance,
 	char		string_buffer[size];
 	int		enumbase;
 
+	*sequence = 0;	/* whack gcc warning */
 	outlen = 0;
 	outbuf[0] = 0;	
 	if (ACPI_FAILURE(ACPI_WMI_GET_BLOCK(wmi_dev, guid, instance, &out))) {

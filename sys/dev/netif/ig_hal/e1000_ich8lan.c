@@ -3436,6 +3436,7 @@ static s32 e1000_read_nvm_spt(struct e1000_hw *hw, u16 offset, u16 words,
 			}
 		} else {
 			use_offset = act_offset + i;
+			dword = 0;	/* avoid gcc warnings */
 			if (!(dev_spec->shadow_ram[offset + i].modified) ||
 			    !(dev_spec->shadow_ram[offset + i + 1].modified)) {
 				ret_val =
@@ -3818,6 +3819,8 @@ static s32 e1000_read_flash_data32_ich8lan(struct e1000_hw *hw, u32 offset,
 	u8 count = 0;
 
 	DEBUGFUNC("e1000_read_flash_data32_ich8lan");
+
+	*data = 0;	/* avoid gcc warning */
 
 	if (offset > ICH_FLASH_LINEAR_ADDR_MASK ||
 	    hw->mac.type != e1000_pch_spt)

@@ -216,6 +216,7 @@ static bool ivch_read(struct intel_dvo_device *dvo, int addr, uint16_t *data)
 		}
 	};
 
+	*data = 0;	/* silence gcc warnings */
 	out_buf[0] = addr;
 
 	sc = device_get_softc(adapter);

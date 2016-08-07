@@ -1304,6 +1304,7 @@ void radeon_i2c_get_byte(struct radeon_i2c_chan *i2c_bus,
 		*val = in_buf[0];
 		DRM_DEBUG("val = 0x%02x\n", *val);
 	} else {
+		*val = 0;	/* avoid gcc warning */
 		DRM_DEBUG("i2c 0x%02x 0x%02x read failed\n",
 			  addr, *val);
 	}

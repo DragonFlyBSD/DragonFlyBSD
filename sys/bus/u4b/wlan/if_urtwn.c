@@ -757,6 +757,7 @@ urtwn_do_request(struct urtwn_softc *sc, struct usb_device_request *req,
 
 	URTWN_ASSERT_LOCKED(sc);
 
+	err = 0;	/* whack gcc warning */
 	while (ntries--) {
 		err = usbd_do_request_flags(sc->sc_udev, &sc->sc_mtx,
 		    req, data, 0, NULL, 250 /* ms */);

@@ -4755,6 +4755,8 @@ sppp_get_ip_addrs(struct sppp *sp, u_long *src, u_long *dst, u_long *srcmask)
 
 	sm = NULL;
 	ssrc = ddst = 0L;
+	if (srcmask)
+		*srcmask = 0;	/* avoid gcc warnings */
 	/*
 	 * Pick the first AF_INET address from the list,
 	 * aliases don't make any sense on a p2p link anyway.

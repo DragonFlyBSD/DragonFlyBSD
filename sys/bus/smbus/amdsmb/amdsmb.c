@@ -237,7 +237,7 @@ amdsmb_ec_wait_read(struct amdsmb_softc *sc)
 static int
 amdsmb_ec_read(struct amdsmb_softc *sc, u_char addr, u_char *data)
 {
-
+	*data = 0;
 	AMDSMB_LOCK_ASSERT(sc);
 	if (amdsmb_ec_wait_write(sc))
 		return (1);
@@ -293,6 +293,7 @@ amdsmb_wait(struct amdsmb_softc *sc)
 			return (SMB_ETIMEOUT);
 	}
 
+	sts = 0;
 	amdsmb_ec_read(sc, SMB_STS, &sts);
 	sts &= SMB_STS_STATUS;
 	AMDSMB_DEBUG(kprintf("amdsmb: STS=0x%x\n", sts));

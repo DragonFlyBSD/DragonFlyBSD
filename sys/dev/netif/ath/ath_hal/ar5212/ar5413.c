@@ -293,6 +293,9 @@ GetLowerUpperIndex(int16_t v, const uint16_t *lp, uint16_t listSize,
 	const uint16_t *ep = lp+listSize;
 	const uint16_t *tp;
 
+	*vlo = 0;	/* avoid gcc warnings */
+	*vhi = 0;	/* avoid gcc warnings */
+
 	/*
 	 * Check first and last elements for out-of-bounds conditions.
 	 */

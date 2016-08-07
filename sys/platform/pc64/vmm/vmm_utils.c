@@ -83,6 +83,7 @@ get_pt_entry(struct vmspace *vm, pt_entry_t *pte, vm_offset_t addr, int index)
 	if (err) {
 		kprintf("%s: could not get addr %llx\n",
 		    __func__, (unsigned long long)addr);
+		*pte = 0;	/* avoid gcc warnings */
 		goto error;
 	}
 	lwb = lwbuf_alloc(m, &lwb_cache);

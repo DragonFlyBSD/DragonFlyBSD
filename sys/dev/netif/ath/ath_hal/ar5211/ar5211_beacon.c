@@ -66,6 +66,7 @@ ar5211BeaconInit(struct ath_hal *ah,
 {
 	HAL_BEACON_TIMERS bt;
 
+	bzero(&bt, sizeof(bt));
 	bt.bt_nexttbtt = next_beacon;
 	/* 
 	 * TIMER1: in AP/adhoc mode this controls the DMA beacon

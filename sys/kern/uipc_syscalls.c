@@ -1606,6 +1606,7 @@ sys_sendfile(struct sendfile_args *uap)
 		auio.uio_rw = UIO_WRITE;
 		auio.uio_td = td;
 
+		tbytes = 0;	/* avoid gcc warnings */
 		error = kern_sendmsg(uap->s, NULL, &auio, NULL, 0, &tbytes);
 
 		iovec_free(&iov, aiov);

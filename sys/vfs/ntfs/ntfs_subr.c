@@ -644,6 +644,7 @@ ntfs_uastricmp(struct ntfsmount *ntmp, const wchar *ustr, size_t ustrlen,
 	int res;
 	wchar wc;
 
+	len = 0;	/* avoid gcc warnings */
 	if (ntmp->ntm_ic_l2u) {
 		for (i = 0, j = 0; i < ustrlen && j < astrlen; i++, j++) {
 			if (j < astrlen -1) {

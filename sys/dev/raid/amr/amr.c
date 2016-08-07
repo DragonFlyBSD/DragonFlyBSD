@@ -1020,6 +1020,7 @@ amr_enquiry(struct amr_softc *sc, size_t bufsize, u_int8_t cmd, u_int8_t cmdsub,
 
     debug_called(1);
 
+    *status = 0;	/* avoid gcc warnings */
     error = 1;
     result = NULL;
     

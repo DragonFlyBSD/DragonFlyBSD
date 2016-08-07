@@ -428,6 +428,11 @@ tr_wrch(struct tr_chinfo *ch)
 		cr[2]=((ch->delta>>8)<<24) | (ch->eso);
 		cr[3]|=(ch->alpha<<20) | (ch->fms<<16) | (ch->fmc<<14);
 		break;
+	default:
+		/* shouldn't occur */
+		cr[0] = 0;	/* avoid gcc warnings */
+		cr[2] = 0;	/* avoid gcc warnings */
+		break;
 	}
 	snd_mtxlock(tr->lock);
 	tr_selch(ch);

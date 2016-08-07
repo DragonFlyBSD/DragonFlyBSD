@@ -1087,6 +1087,8 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	int error;
 
+	if_sin = NULL;	/* avoid gcc warnings */
+
 	/* Call inner routine to assign local interface address. */
 	if ((error = in_pcbladdr(inp, nam, &if_sin, td)) != 0)
 		return (error);

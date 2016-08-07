@@ -156,8 +156,11 @@ getchns(struct cdev *dev, struct pcm_channel **rdch, struct pcm_channel **wrch,
 
 	if (PCM_SIMPLEX(dev) != 0) {
 		d = dsp_get_info(dev);
-		if (!PCM_REGISTERED(d))
+		if (!PCM_REGISTERED(d)) {
+			*rdch = NULL;
+			*wrch = NULL;
 			return (ENXIO);
+		}
 		PCM_LOCK(d);
 		PCM_WAIT(d);
 		PCM_ACQUIRE(d);

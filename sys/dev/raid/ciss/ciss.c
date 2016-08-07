@@ -2472,6 +2472,7 @@ ciss_get_bmic_request(struct ciss_softc *sc, struct ciss_request **crp,
 
     debug_called(2);
 
+    *crp = NULL;	/* avoid gcc warnings */
     cr = NULL;
     buf = NULL;
 

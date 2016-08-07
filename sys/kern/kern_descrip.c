@@ -1206,6 +1206,7 @@ fdalloc(struct proc *p, int want, int *result)
 	/*
 	 * Check dtable size limit
 	 */
+	*result = -1;	/* avoid gcc warnings */
 	spin_lock(&p->p_limit->p_spin);
 	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		lim = INT_MAX;

@@ -1065,6 +1065,7 @@ xl_choose_xcvr(struct xl_softc *sc, int verbose)
 	 * This is what's loaded into the PCI device ID register, so it has
 	 * to be correct otherwise we wouldn't have gotten this far.
 	 */
+	devid = 0;	/* silence gcc warnings */
 	xl_read_eeprom(sc, (caddr_t)&devid, XL_EE_PRODID, 1, 0);
 
 	switch(devid) {

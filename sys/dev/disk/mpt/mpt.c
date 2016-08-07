@@ -1636,6 +1636,7 @@ mpt_read_extcfg_header(struct mpt_softc *mpt, int PageVersion, int PageNumber,
 		return (ENOMEM);
 	}
 
+	bzero(&params, sizeof(params));
 	params.Action = MPI_CONFIG_ACTION_PAGE_HEADER;
 	params.PageVersion = PageVersion;
 	params.PageLength = 0;
@@ -1741,6 +1742,7 @@ mpt_read_cfg_header(struct mpt_softc *mpt, int PageType, int PageNumber,
 		return (ENOMEM);
 	}
 
+	bzero(&params, sizeof(params));
 	params.Action = MPI_CONFIG_ACTION_PAGE_HEADER;
 	params.PageVersion = 0;
 	params.PageLength = 0;
@@ -1797,6 +1799,7 @@ mpt_read_cfg_page(struct mpt_softc *mpt, int Action, uint32_t PageAddress,
 		return (-1);
 	}
 
+	bzero(&params, sizeof(params));
 	params.Action = Action;
 	params.PageVersion = hdr->PageVersion;
 	params.PageLength = hdr->PageLength;
@@ -1858,6 +1861,7 @@ mpt_write_cfg_page(struct mpt_softc *mpt, int Action, uint32_t PageAddress,
 	 * if you then mask them going down to issue the request.
 	 */
 
+	bzero(&params, sizeof(params));
 	params.Action = Action;
 	params.PageVersion = hdr->PageVersion;
 	params.PageLength = hdr->PageLength;

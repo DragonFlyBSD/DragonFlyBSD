@@ -2521,6 +2521,7 @@ void evergreen_mc_stop(struct radeon_device *rdev, struct evergreen_mc_save *sav
 	u32 crtc_enabled, tmp, frame_count, blackout;
 	int i, j;
 
+	bzero(save, sizeof(*save));	/* avoid gcc warning */
 	if (!ASIC_IS_NODCE(rdev)) {
 		save->vga_render_control = RREG32(VGA_RENDER_CONTROL);
 		save->vga_hdp_control = RREG32(VGA_HDP_CONTROL);

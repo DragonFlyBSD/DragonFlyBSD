@@ -924,6 +924,8 @@ u32 drm_vblank_count_and_time(struct drm_device *dev, unsigned int pipe,
 	int count = DRM_TIMESTAMP_MAXRETRIES;
 	u32 cur_vblank;
 
+	vblanktime->tv_sec = 0;		/* silence gcc warning */
+	vblanktime->tv_usec = 0;	/* silence gcc warning */
 	if (WARN_ON(pipe >= dev->num_crtcs))
 		return 0;
 

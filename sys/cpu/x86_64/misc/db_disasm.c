@@ -1072,7 +1072,7 @@ db_disasm_esc(db_addr_t loc, int inst, int rex, int short_addr, int size,
 	int		regmodrm;
 	const struct finst *	fp;
 	int		mod;
-	struct i_addr	address;
+	struct i_addr	address = { 0 };
 	const char *	name;
 
 	get_value_inc(regmodrm, loc, 1, FALSE);
@@ -1177,7 +1177,7 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *dummy)
 	int	imm2;
 	long	imm64;
 	int	len;
-	struct i_addr	address;
+	struct i_addr	address = { 0 };
 
 	get_value_inc(inst, loc, 1, FALSE);
 	short_addr = FALSE;

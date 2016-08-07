@@ -10693,6 +10693,7 @@ struct drm_display_mode *intel_crtc_mode_get(struct drm_device *dev,
 	 * Note, if LVDS ever uses a non-1 pixel multiplier, we'll need
 	 * to use a real value here instead.
 	 */
+	bzero(&pipe_config, sizeof(pipe_config));
 	pipe_config.cpu_transcoder = (enum transcoder) pipe;
 	pipe_config.pixel_multiplier = 1;
 	pipe_config.dpll_hw_state.dpll = I915_READ(DPLL(pipe));

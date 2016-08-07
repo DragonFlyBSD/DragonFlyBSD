@@ -759,6 +759,8 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 	kdmsg_state_t sdummy;
 	int error;
 
+	bzero(&sdummy, sizeof(sdummy));	/* avoid gcc warnings */
+
 	/*
 	 * Make sure a state structure is ready to go in case we need a new
 	 * one.  This is the only routine which uses freerd_state so no

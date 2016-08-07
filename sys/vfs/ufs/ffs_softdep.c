@@ -4842,6 +4842,7 @@ clear_inodedeps(struct thread *td)
 	 * We will then gather up all the inodes in its block 
 	 * that have dependencies and flush them out.
 	 */
+	inodedep = NULL;	/* avoid gcc warnings */
 	for (cnt = 0; cnt < inodedep_hash; cnt++) {
 		inodedephd = &inodedep_hashtbl[next++];
 		if (next >= inodedep_hash)

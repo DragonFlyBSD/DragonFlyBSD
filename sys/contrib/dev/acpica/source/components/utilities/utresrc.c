@@ -595,6 +595,10 @@ AcpiUtValidateResource (
      * 1) Validate the ResourceType field (Byte 0)
      */
     ResourceType = ACPI_GET8 (Aml);
+    if (ReturnIndex)
+    {
+        *ReturnIndex = 0;	/* silence bogus gcc warning */
+    }
 
     /*
      * Byte 0 contains the descriptor name (Resource Type)

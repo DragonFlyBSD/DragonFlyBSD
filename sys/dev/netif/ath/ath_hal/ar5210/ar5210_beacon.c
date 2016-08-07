@@ -63,6 +63,7 @@ ar5210BeaconInit(struct ath_hal *ah,
 {
 	HAL_BEACON_TIMERS bt;
 
+	bzero(&bt, sizeof(bt));
 	bt.bt_nexttbtt = next_beacon;
 
 	if (AH_PRIVATE(ah)->ah_opmode != HAL_M_STA) {

@@ -2717,7 +2717,7 @@ ata_raid_jmicron_write_meta(struct ar_softc *rdp)
     strncpy(meta->name, rdp->name, sizeof(meta->name));
     meta->stripe_shift = ffs(rdp->interleave) - 2;
 
-    for (disk = 0; disk < rdp->total_disks; disk++) {
+    for (disk = 0; disk < rdp->total_disks && disk < JM_MAX_DISKS; disk++) {
 	if (rdp->disks[disk].serial[0])
 	    bcopy(rdp->disks[disk].serial,&meta->disks[disk],sizeof(u_int32_t));
 	else

@@ -2198,6 +2198,7 @@ HAL_STATUS ar9300_paprd_create_curve(struct ath_hal * ah,
     if (AH9300(ah)->ah_tx_chainmask & (1 << chain_num)) {
         pa_table = &AH9300(ah)->pa_table[chain_num][0];
         /* Compute PA table and gain index */
+	small_signal_gain = 0;	/* avoid gcc warnings */
         status = ar9300_create_pa_curve(ah, &pa_table[0], &small_signal_gain, 
                     &pa_in[0]);
 

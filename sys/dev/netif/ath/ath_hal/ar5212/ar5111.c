@@ -560,6 +560,8 @@ ar5212GetScaledPower(uint16_t channel, uint16_t pcdacValue,
 	ar5212GetLowerUpperPcdacs(pcdacValue,
 		rFreq, pSrcStruct, &lrPcdac, &urPcdac);
 
+	lPwr = 0;	/* avoid gcc warnings */
+	uPwr = 0;	/* avoid gcc warnings */
 	/* get the power index for the pcdac value */
 	ar5212FindValueInList(lFreq, llPcdac, pSrcStruct, &lPwr);
 	ar5212FindValueInList(lFreq, ulPcdac, pSrcStruct, &uPwr);

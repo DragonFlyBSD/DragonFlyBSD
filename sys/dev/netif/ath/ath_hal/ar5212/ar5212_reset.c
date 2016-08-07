@@ -2630,6 +2630,9 @@ ar5212GetLowerUpperValues(uint16_t v, uint16_t *lp, uint16_t listSize,
 	uint32_t target = v * EEP_SCALE;
 	uint16_t *ep = lp+listSize;
 
+	*vlo = 0;	/* avoid gcc warnings */
+	*vhi = 0;	/* avoid gcc warnings */
+
 	/*
 	 * Check first and last elements for out-of-bounds conditions.
 	 */

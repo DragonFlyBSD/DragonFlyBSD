@@ -831,7 +831,12 @@ disk_dumpcheck(cdev_t dev, u_int64_t *size,
 	struct partinfo pinfo;
 	int error;
 
+	if (size)
+		*size = 0;	/* avoid gcc warnings */
+	if (secsize)
+		*secsize = 512;	/* avoid gcc warnings */
 	bzero(&pinfo, sizeof(pinfo));
+
 	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0,
 			   proc0.p_ucred, NULL, NULL);
 	if (error)

@@ -142,6 +142,7 @@ static int rv6xx_convert_clock_to_stepping(struct radeon_device *rdev,
 	int ret;
 	struct atom_clock_dividers dividers;
 
+	bzero(&dividers, sizeof(dividers));	/* avoid gcc warning */
 	ret = radeon_atom_get_clock_dividers(rdev, COMPUTE_ENGINE_PLL_PARAM,
 					     clock, false, &dividers);
 	if (ret)
@@ -246,6 +247,8 @@ static void rv6xx_generate_steps(struct radeon_device *rdev,
 	bool increasing_vco;
 	u32 step_index = start_index;
 
+	bzero(&cur, sizeof(cur));	/* silence gcc warnings */
+	bzero(&target, sizeof(target));	/* silence gcc warnings */
 	rv6xx_convert_clock_to_stepping(rdev, low, &cur);
 	rv6xx_convert_clock_to_stepping(rdev, high, &target);
 
@@ -299,6 +302,7 @@ static void rv6xx_generate_single_step(struct radeon_device *rdev,
 {
 	struct rv6xx_sclk_stepping step;
 
+	bzero(&step, sizeof(step));	/* silence gcc warnings */
 	rv6xx_convert_clock_to_stepping(rdev, clock, &step);
 	rv6xx_output_stepping(rdev, index, &step);
 }
@@ -658,6 +662,7 @@ static void rv6xx_program_mclk_spread_spectrum_parameters(struct radeon_device *
 	struct radeon_atom_ss ss;
 	u32 vco_freq = 0, clk_v, clk_s;
 
+	bzero(&dividers, sizeof(dividers));	/* avoid gcc warning */
 	rv6xx_enable_memory_spread_spectrum(rdev, false);
 
 	if (pi->mclk_ss) {
@@ -1936,6 +1941,7 @@ int rv6xx_dpm_init(struct radeon_device *rdev)
 	struct rv6xx_power_info *pi;
 	int ret;
 
+	bzero(&dividers, sizeof(dividers));	/* avoid gcc warning */
 	pi = kzalloc(sizeof(struct rv6xx_power_info), GFP_KERNEL);
 	if (pi == NULL)
 		return -ENOMEM;

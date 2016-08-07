@@ -269,6 +269,7 @@ static void rs690_crtc_bandwidth_compute(struct radeon_device *rdev,
 	fixed20_12 sclk, core_bandwidth, max_bandwidth;
 	u32 selected_sclk;
 
+	bzero(wm, sizeof(*wm));	/* avoid gcc warning */
 	if (!crtc->base.enabled) {
 		/* FIXME: wouldn't it better to set priority mark to maximum */
 		wm->lb_request_fifo_depth = 4;

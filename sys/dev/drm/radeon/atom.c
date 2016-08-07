@@ -180,6 +180,10 @@ static uint32_t atom_get_src_int(atom_exec_context *ctx, uint8_t attr,
 	struct atom_context *gctx = ctx->ctx;
 	arg = attr & 7;
 	align = (attr >> 3) & 7;
+
+	if (saved)
+		*saved = 0;	/* avoid bogus gcc warning */
+
 	switch (arg) {
 	case ATOM_ARG_REG:
 		idx = U16(*ptr);
