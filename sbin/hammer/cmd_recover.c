@@ -72,9 +72,15 @@ hammer_cmd_recover(const char *target_dir)
 	AssertOnFailure = 0;
 	TargetDir = target_dir;
 
+	if (mkdir(TargetDir, 0777) == -1) {
+		if (errno != EEXIST) {
+			perror("mkdir");
+			exit(1);
+		}
+	}
+
 	printf("Running raw scan of HAMMER image, recovering to %s\n",
 		TargetDir);
-	mkdir(TargetDir, 0777);
 
 	data_buffer = NULL;
 	TAILQ_FOREACH(volume, &VolList, entry) {
