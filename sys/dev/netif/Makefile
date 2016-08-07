@@ -1,5 +1,5 @@
 SUBDIR= age alc ale bce bfe bge \
-	dc em ep et \
+	dc em et \
 	fwe fxp ic jme lge lnc \
 	mii_layer my msk mxge nfe nge oce pcn \
 	re rl sbsh sf sis sk sln ste stge ti tl tx txp \

@@ -371,8 +371,6 @@ dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons
 dev/raid/dpt/dpt_scsi.c	optional dpt
 dev/raid/dpt/dpt_pci.c	optional dpt pci
-dev/netif/ep/if_ep.c		optional ep
-dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/netif/em/if_em.c		optional em
 dev/netif/emx/if_emx.c		optional emx
 dev/netif/igb/if_igb.c		optional igb
@@ -407,8 +405,6 @@ dev/netif/ig_hal/e1000_osdep.c	optional ig_hal
 dev/netif/ig_hal/e1000_phy.c	optional ig_hal
 dev/netif/ig_hal/e1000_vf.c	optional ig_hal
 dev/netif/et/if_et.c		optional et
-dev/netif/ex/if_ex.c		optional ex
-dev/netif/ex/if_ex_pccard.c	optional ex pccard
 bus/firewire/firewire.c		optional firewire
 bus/firewire/fwcrom.c		optional firewire
 bus/firewire/fwdev.c		optional firewire

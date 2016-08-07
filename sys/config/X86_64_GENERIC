@@ -250,7 +250,6 @@ device		bge		# Broadcom BCM570x (``Tigon III'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
 device		nfe		# NVIDIA nForce MCP 10/100/Gigabit Ethernet
-device		ex
 device		xe		# Xircom Ethernet
 
 # Wireless NIC cards
