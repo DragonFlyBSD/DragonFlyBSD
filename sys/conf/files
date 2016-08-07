@@ -366,8 +366,6 @@ dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_pci.c		optional bt pci
 dev/disk/ccd/ccd.c			optional ccd
 dev/raid/ciss/ciss.c			optional ciss
-dev/netif/cs/if_cs.c			optional cs
-dev/netif/cs/if_cs_pccard.c	optional cs pccard
 dev/misc/dcons/dcons.c		optional dcons
 dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons

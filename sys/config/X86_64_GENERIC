@@ -278,7 +278,6 @@ device		wpi		# Intel 3945ABG Wireless LAN IEEE 802.11 driver
 device		wi
 
 device		lnc0	at isa? disable port 0x280 irq 10 drq 0
-device		cs0	at isa? disable port 0x300
 device		sn0	at isa? disable port 0x300 irq 10
 
 # Pseudo devices - the number indicates how many units to allocate.

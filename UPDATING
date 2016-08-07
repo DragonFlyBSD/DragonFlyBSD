@@ -9,6 +9,17 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+CS DRIVER REMOVED
+-----------------
+
+The cs(4) driver has been removed. It's old and seems to be i386
+specific, but it was in X86_64_GENERIC, so custom configurations
+derived from it have to be adjusted.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 4.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
