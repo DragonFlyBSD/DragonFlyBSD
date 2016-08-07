@@ -75,17 +75,17 @@ and
 .Pa /dev/hpn?
 exist for compatibility with the Dell and HP versions of management tools,
 respectively.
-If the kernel is compiled with the
-.Dv COMPAT_LINUX
-option, or the
-.Pa aac_linux.ko
-and
-.Pa linux.ko
-modules are loaded, the
-Linux-compatible
-.Xr ioctl 2
-interface for the management device will be enabled and will allow
-Linux-based management applications to control the card.
+.\"If the kernel is compiled with the
+.\".Dv COMPAT_LINUX
+.\"option, or the
+.\".Pa aac_linux.ko
+.\"and
+.\".Pa linux.ko
+.\"modules are loaded, the
+.\"Linux-compatible
+.\".Xr ioctl 2
+.\"interface for the management device will be enabled and will allow
+.\"Linux-based management applications to control the card.
 .Sh LOADER TUNABLES
 .Bl -tag -width indent
 .It Va hw.aac.msi.enable
@@ -285,7 +285,7 @@ These messages are printed on the system console,
 and are also queued for retrieval by a management application.
 .Sh SEE ALSO
 .Xr kld 4 ,
-.Xr linux 4 ,
+.\".Xr linux 4 ,
 .Xr scsi 4 ,
 .Xr kldload 8
 .Sh HISTORY

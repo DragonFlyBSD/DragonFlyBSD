@@ -130,7 +130,6 @@ dev/raid/aac/aac.c			optional aac
 dev/raid/aac/aac_cam.c			optional aacp aac
 dev/raid/aac/aac_debug.c		optional aac
 dev/raid/aac/aac_disk.c			optional aac
-dev/raid/aac/aac_linux.c		optional aac compat_linux
 dev/raid/aac/aac_pci.c			optional aac pci
 dev/raid/arcmsr/arcmsr.c		optional arcmsr pci
 
@@ -181,7 +180,6 @@ dev/disk/nata/atapi-tape.c		optional natapist
 dev/raid/amr/amr.c			optional amr
 dev/raid/amr/amr_cam.c			optional amrp amr
 dev/raid/amr/amr_disk.c			optional amr
-#dev/raid/amr/amr_linux.c		optional amr compat_linux
 dev/raid/amr/amr_pci.c			optional amr pci
 dev/disk/aic/aic.c			optional aic
 dev/disk/aic/aic_pccard.c		optional aic pccard
@@ -827,7 +825,6 @@ dev/misc/ipmi/ipmi_smbus.c	optional ipmi smbus
 dev/misc/ipmi/ipmi_smbios.c	optional ipmi
 dev/misc/ipmi/ipmi_ssif.c	optional ipmi smbus
 dev/misc/ipmi/ipmi_pci.c	optional ipmi pci
-#dev/misc/ipmi/ipmi_linux.c	optional ipmi compat_linux
 dev/misc/led/led.c		standard
 dev/disk/md/md.c		optional md
 dev/raid/mfi/mfi.c		optional mfi
@@ -836,7 +833,6 @@ dev/raid/mfi/mfi_pci.c		optional mfi pci
 dev/raid/mfi/mfi_disk.c		optional mfi
 dev/raid/mfi/mfi_syspd.c	optional mfi
 dev/raid/mfi/mfi_tbolt.c	optional mfi
-dev/raid/mfi/mfi_linux.c	optional mfi compat_linux
 dev/raid/mfi/mfi_cam.c		optional mfip scbus
 miidevs.h				optional miibus \
 	dependency		"$S/tools/miidevs2h.awk $S/dev/netif/mii_layer/miidevs" \

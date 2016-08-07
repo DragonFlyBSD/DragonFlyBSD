@@ -215,10 +215,6 @@
             ..
         ..
     ..
-    emulation
-        linux
-        ..
-    ..
     gnu
         vfs
             ext2fs

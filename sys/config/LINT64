@@ -62,8 +62,8 @@ maxusers	10
 makeoptions	CONF_CFLAGS=-fno-builtin  #Don't allow use of memcmp, etc.
 #makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 #makeoptions	KERNEL=foo		#Build kernel "foo" and install "/foo"
-# Only build Linux API modules and plus those parts of the sound system I need.
-#makeoptions	MODULES_OVERRIDE="linux sound/snd sound/pcm"
+# Only build those parts of the sound system I need.
+#makeoptions	MODULES_OVERRIDE="sound/snd sound/pcm"
 #makeoptions	INSTALLSTRIPPED=1
 #makeoptions	INSTALLSTRIPPEDMODULES=1
 
@@ -2244,7 +2244,6 @@ options 	AHC_DUMP_EEPROM
 #options 	BKTR_ALLOC_PAGES=xxx
 options 	CAM_DEBUG_DELAY
 options 	CLUSTERDEBUG
-#options 	COMPAT_LINUX
 options 	DEBUG
 options 	DEBUG_CRIT_SECTIONS
 #options 	DISABLE_PSE
