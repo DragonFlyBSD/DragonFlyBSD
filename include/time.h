@@ -97,7 +97,7 @@ typedef	__pid_t		pid_t;
 #endif
 
 /* These macros are also in sys/time.h. */
-#if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112
+#if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 199309
 #define CLOCK_REALTIME		0
 #ifdef __BSD_VISIBLE
 #define CLOCK_VIRTUAL		1
@@ -114,14 +114,14 @@ typedef	__pid_t		pid_t;
 #define CLOCK_SECOND		13	/* FreeBSD-specific. */
 #define CLOCK_THREAD_CPUTIME_ID	14
 #define	CLOCK_PROCESS_CPUTIME_ID	15
-#endif /* !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112 */
+#endif /* !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 199309 */
 
-#if !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 200112
+#if !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 199309
 #if __BSD_VISIBLE
 #define TIMER_RELTIME	0x0	/* relative timer */
 #endif
 #define TIMER_ABSTIME	0x1	/* absolute timer */
-#endif /* !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 200112 */
+#endif /* !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 199309 */
 
 #if __ISO_C_VISIBLE >= 2011
 /* for timespec_get() */
