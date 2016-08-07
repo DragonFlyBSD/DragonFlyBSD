@@ -154,9 +154,12 @@ ENTRY(reset_dbregs)
 	ret
 
 /*
+ * memcpy(dst:%rdi, src:%rsi, bytes:%rdx)
+ *
  * Note: memcpy does not support overlapping copies
  */
 ENTRY(memcpy)
+	movq	%rdi,%r8
 	movq	%rdx,%rcx
 	shrq	$3,%rcx				/* copy by 64-bit words */
 	cld					/* copy forwards */
@@ -166,6 +169,7 @@ ENTRY(memcpy)
 	andq	$7,%rcx				/* any bytes left? */
 	rep
 	movsb
+	movq	%r8,%rax
 	ret
 
 /* fillw(pat, base, cnt) */  
