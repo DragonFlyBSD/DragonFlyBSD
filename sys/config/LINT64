@@ -313,7 +313,7 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 #  Ethernets; it is MANDATORY when a Ethernet device driver is
 #  configured.
 #  The `sppp' pseudo-device serves a similar role for certain types
-#  of synchronous PPP links (like `ar').
+#  of synchronous PPP links.
 #  The `sl' pseudo-device implements the Serial Line IP (SLIP) service.
 #  The `ppp' pseudo-device implements the Point-to-Point Protocol.
 #  The `bpf' pseudo-device enables the Berkeley Packet Filter.  Be
@@ -1104,7 +1104,7 @@ options 	COM_MULTIPORT		#code for some cards with shared IRQs
 device		puc
 
 #
-# Network interfaces: `ed', `is', `lnc'
+# Network interfaces: `is', `lnc'
 #
 # lnc: Lance/PCnet cards (Isolan, Novell NE2100, NE32-VL, AMD Am7990 & Am79C960)
 # sbsh: Granch SBNI16 SHDSL modem PCI adapters

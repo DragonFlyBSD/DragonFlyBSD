@@ -1,4 +1,5 @@
-.\" Written by Denis I. Timofeev, 2002.
+.\" Copyright (c) 2002 Nicolas Souchu
+.\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -21,54 +22,49 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/man4.i386/sbni.4,v 1.1.2.1 2003/04/15 17:23:32 fjoe Exp $
+.\" $FreeBSD: src/share/man/man4/man4.i386/viapm.4,v 1.1.2.4 2002/10/10 19:17:58 ceri Exp $
 .\"
-.Dd January 8, 2002
-.Dt SBNI 4 i386
+.Dd April 17, 2002
+.Dt VIAPM 4
 .Os
 .Sh NAME
-.Nm sbni
-.Nd Granch SBNI12 leased line modem driver
+.Nm viapm
+.Nd VIA chipsets Power Management controller driver
 .Sh SYNOPSIS
-.Cd "device sbni"
+.Cd device iicbb
+.Cd device iicbus
+.Cd device iicsmb
+.Cd device smbus
+.Cd device smb
+.Cd device viapm
 .Sh DESCRIPTION
-The
-.Nm
-driver provides support for leased line modems of following models:
+This driver provides access to the
+.Tn VIA chipset Power Management Unit family.
+They are VT82C586B, VT82C596A, VT82C596B, VT82C686A and VT8233.
 .Pp
-.Bl -tag -compact -width ".Pa SBNI12-10, SBNI12D-10, PCI"
-.It Pa SBNI12-05, SBNI12D-05, PCI
-.It Pa SBNI12-10, SBNI12D-10, PCI
-.El
+The embedded controller of the VIA chipset may give you access
+to the monitoring facilities of your mainboard.
 .Pp
-and a kit for data link over a voice band
-SBNI12-11, SBNI12D-11, PCI.
-.Sh FILES
-The sources for the driver reside in:
-.Pp
-.Bl -tag -compact -width ".Pa /sys/dev/netif/sbni/if_sbnireg.h"
-.It Pa /sys/dev/netif/sbni/if_sbni.c
-.It Pa /sys/dev/netif/sbni/if_sbnireg.h
-.It Pa /sys/dev/netif/sbni/if_sbnivar.h
-.El
+The 586B support is made by software whereas other controllers support
+the SMBus protocol by hardware.
+See
+.Xr smb 4
+for writing user code to fetch voltages, temperature and so on from the
+monitoring chip of your mainboard.
 .Sh SEE ALSO
-.Xr arp 4 ,
-.Xr netintro 4 ,
-.Xr ifconfig 8
+.Xr iicbb 4 ,
+.Xr iicbus 4 ,
+.Xr iicsmb 4 ,
+.Xr smb 4 ,
+.Xr smbus 4
 .Sh HISTORY
 The
 .Nm
-device driver first appeared in
-.Fx 4.6 .
+manual page first appeared in
+.Fx 4.5 .
 .Sh AUTHORS
-The
-.Nm
-device driver for
-.Fx
-4.x was written by Denis I. Timofeev, partially
-based on David Greenman's
-.Nm ed
-driver. Earlier versions (available on ftp.granch.com) were written by
-Alexey V. Zverev.
-.Pp
-SBNI12 hardware was designed by Alexey V. Chirkov.
+This
+manual page was written by
+.An Nicolas Souchu Aq Mt nsouch@FreeBSD.org
+.Sh BUGS
+Only polling mode is supported.

@@ -79,6 +79,7 @@ MAN=	aac.4 \
 	ddb.4 \
 	de.4 \
 	devctl.4 \
+	digi.4 \
 	disc.4 \
 	divert.4 \
 	dm.4 \
@@ -131,6 +132,7 @@ MAN=	aac.4 \
 	inet6.4 \
 	intpm.4 \
 	intro.4 \
+	io.4 \
 	ip.4 \
 	ip6.4 \
 	ipfirewall.4 \
@@ -336,6 +338,7 @@ MAN=	aac.4 \
 	twa.4 \
 	twe.4 \
 	tws.4 \
+	tx.4 \
 	txp.4 \
 	uark.4 \
 	ubsa.4 \
@@ -382,6 +385,7 @@ MAN=	aac.4 \
 	uvscom.4 \
 	vga.4 \
 	vge.4 \
+	viapm.4 \
 	vinum.4 \
 	virtio.4 \
 	virtio_blk.4 \
@@ -541,6 +545,7 @@ MLINKS+=tap.4 if_tap.4
 MLINKS+=ti.4 if_ti.4
 MLINKS+=tl.4 if_tl.4
 MLINKS+=tun.4 if_tun.4
+MLINKS+=tx.4 if_tx.4
 MLINKS+=txp.4 if_txp.4
 MLINKS+=udav.4 if_udav.4
 MLINKS+=upmap.4 kpmap.4
