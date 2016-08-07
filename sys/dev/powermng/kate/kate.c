@@ -221,7 +221,7 @@ kate_attach(struct device *dev)
 		if ((sc->sc_sensors[0].flags & SENSOR_FINVALID) &&
 		    (sc->sc_sensors[1].flags & SENSOR_FINVALID))
 			sc->sc_ii = 2;
-		if ((sc->sc_sensors[4].flags & SENSOR_FINVALID))
+		if ((sc->sc_sensors[3].flags & SENSOR_FINVALID))
 			sc->sc_in = 3;
 	}
 #else
