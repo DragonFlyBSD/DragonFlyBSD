@@ -8,6 +8,7 @@ SRCS=		commands.c main.c network.c ring.c sys_bsd.c \
 CFLAGS+=	-DKLUDGELINEMODE -DUSE_TERMIO -DENV_HACK -DOPIE \
 		-I${.CURDIR}/../../lib -I${.CURDIR}/../../lib/libtelnet
 WARNS?=		2
+NO_STRICT_ALIASING=
 
 LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a
 

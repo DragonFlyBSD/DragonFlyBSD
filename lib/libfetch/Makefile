@@ -8,6 +8,7 @@ SRCS=		fetch.c common.c ftp.c http.c file.c \
 INCS=		fetch.h
 MAN=		fetch.3
 CLEANFILES=	ftperr.h httperr.h
+NO_STRICT_ALIASING=
 
 .if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
 CFLAGS+=	-DWITH_SSL

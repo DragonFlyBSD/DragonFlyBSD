@@ -4,5 +4,6 @@
 
 PROG=	sysctl
 MAN=	sysctl.8
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

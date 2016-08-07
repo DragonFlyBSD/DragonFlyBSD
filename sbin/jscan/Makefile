@@ -5,5 +5,6 @@ PROG=	jscan
 SRCS=	jscan.c jfile.c jstream.c jsession.c subs.c \
 	dump_debug.c dump_mirror.c dump_record.c dump_output.c
 MAN=	jscan.8
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

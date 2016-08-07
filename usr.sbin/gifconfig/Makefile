@@ -17,6 +17,7 @@
 PROG=	gifconfig
 MAN=	gifconfig.8
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 CFLAGS+=-DINET6
 

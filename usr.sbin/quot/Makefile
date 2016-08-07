@@ -3,5 +3,6 @@
 
 PROG=	quot
 MAN=	quot.8
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

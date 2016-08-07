@@ -57,6 +57,7 @@ LDADD+= -lcrypto
 CFLAGS+= -I${DESTDIR}/usr/include/openssl -DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H
 .endif
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 version.c: VERSION
 	sed -e 's/.*/const char version[] = "&";/' ${.ALLSRC} > ${.TARGET}

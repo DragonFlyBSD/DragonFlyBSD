@@ -20,6 +20,7 @@ PROG=	ndp
 SRCS=	ndp.c gmt2local.c
 MAN=	ndp.8
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 CFLAGS+=-DINET6
 CFLAGS+= -I${.CURDIR}/../tcpdump -I${.CURDIR}/../../contrib/tcpdump

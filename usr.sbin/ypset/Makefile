@@ -5,5 +5,6 @@
 PROG=	ypset
 MAN=	ypset.8
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

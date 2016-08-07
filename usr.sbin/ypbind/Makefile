@@ -7,5 +7,6 @@ PROG=	ypbind
 MAN=	ypbind.8
 CFLAGS+=-DDAEMON
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

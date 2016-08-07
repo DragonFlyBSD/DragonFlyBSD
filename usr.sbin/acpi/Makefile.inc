@@ -15,6 +15,7 @@ CFLAGS+=	\
 		-I${SYSDIR}
 
 WARNS?=		3
+NO_STRICT_ALIASING=
 
 .if exists(${.CURDIR}/../../Makefile.inc)
 .include "${.CURDIR}/../../Makefile.inc"

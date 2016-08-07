@@ -19,5 +19,6 @@ SRCS=	faithd.c tcp.c ftp.c rsh.c prefix.c
 MAN=	faithd.8
 #CFLAGS+= -DFAITH4
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

@@ -2,6 +2,7 @@
 
 PROG=	dconschat
 MAN=	dconschat.8
+NO_STRICT_ALIASING=
 
 CFLAGS+= -I${.CURDIR}/../../sys
 

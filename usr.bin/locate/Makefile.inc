@@ -3,5 +3,6 @@
 
 LIBEXECDIR?=	/usr/libexec
 WARNS?=		2
+NO_STRICT_ALIASING=
 
 .include "../Makefile.inc"

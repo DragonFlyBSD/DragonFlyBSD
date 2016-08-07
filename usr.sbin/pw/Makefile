@@ -10,5 +10,6 @@ MAN=	pw.conf.5 pw.8
 
 LDADD=	-lcrypt -lutil
 DPADD=	${LIBCRYPT} ${LIBUTIL}
+NO_STRICT_OVERFLOW=
 
 .include <bsd.prog.mk>

@@ -7,6 +7,7 @@ INCS=	tcpd.h
 MAN=	hosts_access.3
 MAN+=	hosts_access.5 hosts_options.5
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 .PATH:	${.CURDIR}/../../contrib/tcp_wrappers
 

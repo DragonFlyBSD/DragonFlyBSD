@@ -5,5 +5,6 @@ MAN=	cpucontrol.8
 SRCS=	cpucontrol.c intel.c amd.c via.c
 
 NO_WCAST_ALIGN=
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

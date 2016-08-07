@@ -34,6 +34,7 @@ SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c explicit_bzero.c \
 MAN=	moduli.5
 
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 SHLIBDIR?=	/usr/lib/priv
 LIBDIR?=	${SHLIBDIR}

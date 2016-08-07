@@ -35,5 +35,6 @@ LDADD=	-lbsdxml -lsbuf
 MAN=	ifconfig.8
 
 WARNS=	2
+NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

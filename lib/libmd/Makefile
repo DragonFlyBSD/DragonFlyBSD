@@ -8,6 +8,7 @@ SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
 	sha256c.c sha256hl.c sha512c.c sha512hl.c
 INCS=	md2.h md4.h md5.h ripemd.h sha.h sha256.h sha512.h
 WARNS?=	2
+NO_STRICT_ALIASING=
 
 VERSION_DEF=	${.CURDIR}/../libc/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map

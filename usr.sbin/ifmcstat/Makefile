@@ -4,6 +4,7 @@
 PROG=	ifmcstat
 MAN=	ifmcstat.8
 WARNS?=	3
+NO_STRICT_ALIASING=
 
 BINMODE=550
 LDADD=	-lkvm

@@ -86,4 +86,6 @@ SRCS+=	netgraph.c
 .endif
 .endif
 
+NO_STRICT_ALIASING=
+
 .include <bsd.prog.mk>

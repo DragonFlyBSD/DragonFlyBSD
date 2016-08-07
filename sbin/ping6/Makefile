@@ -10,6 +10,7 @@ BINMODE=4555
 
 LDADD=	-lipsec -lm -lmd
 DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD}
+NO_STRICT_ALIASING=
 
 # kame scopeid hack
 CFLAGS+=-DKAME_SCOPEID

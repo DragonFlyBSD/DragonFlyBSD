@@ -13,6 +13,8 @@ SRCS=		crypt.c crypt-md5.c \
 		deprecated-crypt-sha256.c deprecated-crypt-sha512.c \
 		md5c.c sha256c.c sha512c.c misc.c
 WARNS?=		2
+NO_STRICT_ALIASING=
+
 MAN=		crypt.3
 MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3
 CFLAGS+=	-I${.CURDIR}/../libmd -I${.CURDIR}/../libutil

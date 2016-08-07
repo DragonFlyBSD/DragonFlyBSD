@@ -6,6 +6,7 @@ SRCS=	if.c inet.c inet6.c main.c mbuf.c mroute.c route.c \
 	unix.c netgraph.c mroute6.c ipsec.c
 CFLAGS+=-DIPSEC
 CFLAGS+=-DINET6
+NO_STRICT_ALIASING=
 
 BINGRP=	kmem
 BINMODE=2555

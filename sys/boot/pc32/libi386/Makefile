@@ -12,6 +12,7 @@ SRCS=	biosacpi.c bioscd.c biosdisk.c biosmem.c biospnp.c \
 	smbios.c time.c vidconsole.c x86_64_tramp.S
 
 CFLAGS+=	-ffreestanding
+CFLAGS+=	-fno-strict-aliasing
 BOOT_COMCONSOLE_PORT?= 0x3f8
 CFLAGS+=	-DCOMPORT=${BOOT_COMCONSOLE_PORT}
 

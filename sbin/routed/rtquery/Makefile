@@ -6,5 +6,6 @@ PROG=	rtquery
 MAN=	rtquery.8
 LDADD+=	-lmd
 DPADD+=	${LIBMD}
+NO_WARRAY_BOUNDS=
 
 .include <bsd.prog.mk>
