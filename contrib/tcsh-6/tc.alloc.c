@@ -351,7 +351,12 @@ calloc(size_t i, size_t j)
 
     i *= j;
     cp = xmalloc(i);
-    memset(cp, 0, i);
+    /*
+     * DO NOT USE memset(), it will cause gcc-5 to mis-optimize the
+     * malloc+memset sequence into a call to calloc, which will implode
+     * tcsh.  This is really a GCC bug honestly.
+     */
+    bzero(cp, i);
 
     return ((memalign_t) cp);
 #else
