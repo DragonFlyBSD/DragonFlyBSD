@@ -49,33 +49,33 @@ typedef	__pid_t pid_t;
  */
 #define	VEOF		0	/* ICANON */
 #define	VEOL		1	/* ICANON */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	VEOL2		2	/* ICANON together with IEXTEN */
 #endif
 #define	VERASE		3	/* ICANON */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	VWERASE 	4	/* ICANON together with IEXTEN */
 #endif
 #define	VKILL		5	/* ICANON */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	VREPRINT 	6	/* ICANON together with IEXTEN */
 #define	VERASE2 	7	/* ICANON */
 #endif
 #define	VINTR		8	/* ISIG */
 #define	VQUIT		9	/* ISIG */
 #define	VSUSP		10	/* ISIG */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	VDSUSP		11	/* ISIG together with IEXTEN */
 #endif
 #define	VSTART		12	/* IXON, IXOFF */
 #define	VSTOP		13	/* IXON, IXOFF */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	VLNEXT		14	/* IEXTEN */
 #define	VDISCARD	15	/* IEXTEN */
 #endif
 #define	VMIN		16	/* !ICANON */
 #define	VTIME		17	/* !ICANON */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	VSTATUS		18	/* ICANON together with IEXTEN */
 #define	VCHECKPT	19	/* ICANON together with IEXTEN */
 #endif
@@ -83,7 +83,7 @@ typedef	__pid_t pid_t;
 
 #define	_POSIX_VDISABLE	0xff
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	CCEQ(val, c)	((c) == (val) ? (val) != _POSIX_VDISABLE : 0)
 #endif
 
@@ -101,28 +101,34 @@ typedef	__pid_t pid_t;
 #define	ICRNL		0x00000100	/* map CR to NL (ala CRMOD) */
 #define	IXON		0x00000200	/* enable output flow control */
 #define	IXOFF		0x00000400	/* enable input flow control */
-#ifndef _POSIX_SOURCE
+#if __XSI_VISIBLE || __POSIX_VISIBLE >= 200809
 #define	IXANY		0x00000800	/* any char will restart after stop */
+#endif
+#if __BSD_VISIBLE
 #define	IMAXBEL		0x00002000	/* ring bell on input queue full */
-#endif  /*_POSIX_SOURCE */
+#endif  /*__BSD_VISIBLE */
 
 /*
  * Output flags - software output processing
  */
 #define	OPOST		0x00000001	/* enable following output processing */
-#ifndef _POSIX_SOURCE
+#if __XSI_VISIBLE
 #define	ONLCR		0x00000002	/* map NL to CR-NL (ala CRMOD) */
+#endif
+#if __BSD_VISIBLE
 #define	OXTABS		0x00000004	/* expand tabs to spaces */
 #define	ONOEOT		0x00000008	/* discard EOT's (^D) on output) */
+#endif  /*__BSD_VISIBLE */
+#if __XSI_VISIBLE
 #define	OCRNL		0x00000010	/* map CR to NL on output */
 #define	ONOCR		0x00000020	/* no CR output at column 0 */
 #define	ONLRET		0x00000040	/* NL performs CR function */
-#endif  /*_POSIX_SOURCE */
+#endif
 
 /*
  * Control flags - hardware control of terminal
  */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	CIGNORE		0x00000001	/* ignore control flags */
 #endif
 #define	CSIZE		0x00000300	/* character size mask */
@@ -136,7 +142,7 @@ typedef	__pid_t pid_t;
 #define	PARODD		0x00002000	/* odd parity, else even */
 #define	HUPCL		0x00004000	/* hang up on last close */
 #define	CLOCAL		0x00008000	/* ignore modem status lines */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	CCTS_OFLOW	0x00010000	/* CTS flow control of output */
 #define	CRTSCTS		(CCTS_OFLOW | CRTS_IFLOW)
 #define	CRTS_IFLOW	0x00020000	/* RTS flow control of input */
@@ -155,30 +161,32 @@ typedef	__pid_t pid_t;
  * input flag.
  */
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	ECHOKE		0x00000001	/* visual erase for line kill */
-#endif  /*_POSIX_SOURCE */
+#endif  /*__BSD_VISIBLE */
 #define	ECHOE		0x00000002	/* visually erase chars */
 #define	ECHOK		0x00000004	/* echo NL after line kill */
 #define	ECHO		0x00000008	/* enable echoing */
 #define	ECHONL		0x00000010	/* echo NL even if ECHO is off */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	ECHOPRT		0x00000020	/* visual erase mode for hardcopy */
 #define	ECHOCTL  	0x00000040	/* echo control chars as ^(Char) */
-#endif  /*_POSIX_SOURCE */
+#endif  /*__BSD_VISIBLE */
 #define	ISIG		0x00000080	/* enable signals INTR, QUIT, [D]SUSP */
 #define	ICANON		0x00000100	/* canonicalize input lines */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	ALTWERASE	0x00000200	/* use alternate WERASE algorithm */
-#endif  /*_POSIX_SOURCE */
+#endif  /*__BSD_VISIBLE */
 #define	IEXTEN		0x00000400	/* enable DISCARD and LNEXT */
+#if __BSD_VISIBLE
 #define	EXTPROC         0x00000800      /* external processing */
+#endif	/* __BSD_VISIBLE */
 #define	TOSTOP		0x00400000	/* stop background jobs from output */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	FLUSHO		0x00800000	/* output being flushed (state) */
 #define	NOKERNINFO	0x02000000	/* no kernel output from VSTATUS */
 #define	PENDIN		0x20000000	/* XXX retype pending input (state) */
-#endif  /*_POSIX_SOURCE */
+#endif  /*__BSD_VISIBLE */
 #define	NOFLSH		0x80000000	/* don't flush after interrupt */
 
 typedef	unsigned int	tcflag_t;
@@ -201,7 +209,7 @@ struct termios {
 #define	TCSANOW		0		/* make change immediate */
 #define	TCSADRAIN	1		/* drain output, then change */
 #define	TCSAFLUSH	2		/* drain output, flush input */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	TCSASOFT	0x10		/* flag - don't alter h.w. state */
 #endif
 
@@ -224,7 +232,7 @@ struct termios {
 #define	B9600	9600
 #define	B19200	19200
 #define	B38400	38400
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	B7200	7200
 #define	B14400	14400
 #define	B28800	28800
@@ -234,7 +242,7 @@ struct termios {
 #define	B230400	230400
 #define	EXTA	19200
 #define	EXTB	38400
-#endif  /* !_POSIX_SOURCE */
+#endif  /* __BSD_VISIBLE */
 
 #define	TCIFLUSH	1
 #define	TCOFLUSH	2
@@ -262,13 +270,13 @@ int	tcsendbreak(int, int);
 pid_t	tcgetsid(int);
 #endif	/* __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE */
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 void	cfmakeraw(struct termios *);
 int	cfsetspeed(struct termios *, speed_t);
-#endif /* !_POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 
 /*
  * Include tty ioctl's that aren't just for backwards compatibility
@@ -283,6 +291,6 @@ __END_DECLS
  */
 #endif /* !_SYS_TERMIOS_H_ */
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #include <sys/ttydefaults.h>
 #endif
