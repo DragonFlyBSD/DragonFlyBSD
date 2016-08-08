@@ -1064,8 +1064,22 @@ lwkt_yield(void)
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
 
+    /*
+     * Should never be called with spinlocks held but there is a path
+     * via ACPI where it might happen.
+     */
+    if (gd->gd_spinlocks)
+	return;
+
+    /*
+     * Safe to call splz if we are not too-heavily nested.
+     */
     if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2)
 	splz();
+
+    /*
+     * Caller allows switching
+     */
     if (lwkt_resched_wanted()) {
 	lwkt_schedule_self(curthread);
 	lwkt_switch();
@@ -1115,6 +1129,13 @@ lwkt_user_yield(void)
 {
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
+
+    /*
+     * Should never be called with spinlocks held but there is a path
+     * via ACPI where it might happen.
+     */
+    if (gd->gd_spinlocks)
+	return;
 
     /*
      * Always run any pending interrupts in case we are in a critical
