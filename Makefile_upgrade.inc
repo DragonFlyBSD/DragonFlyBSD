@@ -3122,6 +3122,7 @@ TO_REMOVE+=/usr/share/openssl/man/man3/EVP_PKEY_ctrl.3.gz
 TO_REMOVE+=/usr/share/openssl/man/man3/EVP_PKEY_ctrl_str.3.gz
 TO_REMOVE+=/usr/include/emulation
 TO_REMOVE+=/boot/kernel/if_ep.ko
+TO_REMOVE+=/boot/kernel/if_vx.ko
 TO_REMOVE+=/usr/share/examples/perfmon
 
 .if !defined(WANT_INSTALLER)
