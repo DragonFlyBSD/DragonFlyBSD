@@ -3363,11 +3363,8 @@ restart:
 	 * have a way to re-resolve the disconnected ncp, which will
 	 * result in inconsistencies in the cdir/nch for proc->p_fd.
 	 */
-	if (ncp->nc_flag & NCF_DESTROYED) {
-		kprintf("Warning: cache_resolve: ncp '%s' was unlinked\n",
-			ncp->nc_name);
+	if (ncp->nc_flag & NCF_DESTROYED)
 		return(EINVAL);
-	}
 
 	/*
 	 * Mount points need special handling because the parent does not
