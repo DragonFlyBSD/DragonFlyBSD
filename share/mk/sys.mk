@@ -46,7 +46,7 @@ CC		?=	c89
 CFLAGS		?=	-pipe -O${WORLD_CCOPTLEVEL}
 .else
 CC		?=	cc
-CFLAGS		?=	-pipe -O${WORLD_CCOPTLEVEL}
+CFLAGS		?=	-pipe -O${WORLD_CCOPTLEVEL} ${WORLD_CFLAGS}
 .endif
 CC_LINK		?=	${CC}
 
