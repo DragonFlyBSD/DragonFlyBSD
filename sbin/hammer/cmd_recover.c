@@ -132,7 +132,7 @@ recover_top(char *ptr)
 			maxcount = HAMMER_BTREE_LEAF_ELMS;
 			for (i = 0; i < node->count && i < maxcount; ++i) {
 				elm = &node->elms[i];
-				if (elm->base.btype != 'R')
+				if (elm->base.btype != HAMMER_BTREE_TYPE_RECORD)
 					continue;
 				recover_elm(&elm->leaf);
 			}
