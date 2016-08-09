@@ -69,6 +69,11 @@ CWARNFLAGS	+=	-Wno-unused-local-typedefs
 .  if ${WARNS} == 3 && (${CCVER:Mgcc49} || ${CCVER:Mgcc5*})
 CWARNFLAGS	+=	-Wno-unused-value
 .  endif
+.  if ${WARNS} >= 2 && ${CCVER:Mgcc4[789]}
+CWARNFLAGS	+=	-Wno-error=maybe-uninitialized\
+			-Wno-error=uninitialized\
+			-Wno-error=shadow
+.  endif
 . endif
 
 . if defined(FORMAT_AUDIT)
