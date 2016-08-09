@@ -39,7 +39,7 @@
 
 
 /*
- * In order to properly handle multibyte locales, its easiet to just
+ * In order to properly handle multibyte locales, its easiest to just
  * convert to wide characters and then use wcscoll.  However if an
  * error occurs, we gracefully fall back to simple strcmp.  Caller
  * should check errno.
@@ -51,9 +51,12 @@ strcoll_l(const char *s, const char *s2, locale_t locale)
 	wchar_t *t1 = NULL, *t2 = NULL;
 	wchar_t *w1 = NULL, *w2 = NULL;
 	const char *cs1, *cs2;
-	mbstate_t mbs1 = { 0 };
-	mbstate_t mbs2 = { 0 };
+	mbstate_t mbs1;
+	mbstate_t mbs2;
 	size_t sz1, sz2;
+
+	memset(&mbs1, 0, sizeof(mbstate_t));
+	memset(&mbs2, 0, sizeof(mbstate_t));
 
 	/*
 	 * The mbsrtowcs_l function can set the src pointer to null upon
