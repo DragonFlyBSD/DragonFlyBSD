@@ -50,7 +50,7 @@ struct recover_dict {
 #define DICTF_PARENT	0x04	/* parent attached for real */
 #define DICTF_TRAVERSED	0x80
 
-static void recover_top(char *ptr);
+static void recover_top(char *ptr, hammer_off_t offset);
 static void recover_elm(hammer_btree_leaf_elm_t leaf);
 static struct recover_dict *get_dict(int64_t obj_id, uint16_t pfs_id);
 static char *recover_path(struct recover_dict *dict);
@@ -92,7 +92,7 @@ hammer_cmd_recover(const char *target_dir)
 		while (off < off_end) {
 			ptr = get_buffer_data(off, &data_buffer, 0);
 			if (ptr) {
-				recover_top(ptr);
+				recover_top(ptr, off);
 				off += HAMMER_BUFSIZE;
 			}
 		}
@@ -115,21 +115,32 @@ hammer_cmd_recover(const char *target_dir)
  * object space and creating the dictionary as we go.
  */
 static void
-recover_top(char *ptr)
+recover_top(char *ptr, hammer_off_t offset)
 {
 	struct hammer_node_ondisk *node;
 	hammer_btree_elm_t elm;
 	int maxcount;
 	int i;
+	int isnode;
+	char buf[HAMMER_BTREE_LEAF_ELMS + 1];
 
 	for (node = (void *)ptr; (char *)node < ptr + HAMMER_BUFSIZE; ++node) {
-		if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) ==
-		    node->crc &&
-		    node->type == HAMMER_BTREE_TYPE_LEAF) {
-			/*
-			 * Scan elements
-			 */
-			maxcount = HAMMER_BTREE_LEAF_ELMS;
+		isnode = (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) == node->crc);
+		maxcount = hammer_node_max_elements(node->type);
+
+		if (DebugOpt) {
+			for (i = 0; i < node->count && i < maxcount; ++i)
+				buf[i] = hammer_elm_btype(&node->elms[i]);
+			buf[i] = '\0';
+			if (!isnode && DebugOpt > 1)
+				printf("%016jx -\n", offset);
+			if (isnode)
+				printf("%016jx %c %d %s\n",
+					offset, node->type, node->count, buf);
+		}
+		offset += sizeof(*node);
+
+		if (isnode && node->type == HAMMER_BTREE_TYPE_LEAF) {
 			for (i = 0; i < node->count && i < maxcount; ++i) {
 				elm = &node->elms[i];
 				if (elm->base.btype != HAMMER_BTREE_TYPE_RECORD)
