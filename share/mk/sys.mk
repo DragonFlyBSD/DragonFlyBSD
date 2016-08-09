@@ -1,7 +1,7 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
 
-unix		?=	We run FreeBSD, not UNIX.
+unix		?=	We run DragonFly, not UNIX.
 
 # Set any local definitions first.  Place this early, it needs
 # MACHINE_CPUARCH to be defined
@@ -43,17 +43,19 @@ AWK		?=	awk
 
 .if defined(%POSIX)
 CC		?=	c89
+CFLAGS		?=	-pipe -O${WORLD_CCOPTLEVEL}
 .else
 CC		?=	cc
+CFLAGS		?=	-pipe -O${WORLD_CCOPTLEVEL}
 .endif
 CC_LINK		?=	${CC}
+
 # The system cc frontend is not subject to the path, e.g. when buildworld
 # is doing cross compiles it may still need the native compiler for things.
 #
 NXENV		?=	CCVER=${HOST_CCVER} BINUTILSVER=${HOST_BINUTILSVER} OBJFORMAT_PATH=/ PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/usr/pkg/bin
 NXCC		?=	${NXENV} ${CC}
 NXCC_LINK	?=	${NXENV} ${CC_LINK}
-CFLAGS		?=	-O -pipe
 
 CXX		?=	c++
 CXX_LINK	?=	${CXX}

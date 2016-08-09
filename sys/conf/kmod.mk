@@ -81,6 +81,7 @@ KMODMODE?=	${BINMODE}
 WERROR=-Werror
 .endif
 
+WORLD_CCOPTLEVEL=	# XXX prevent world opt level affecting kernel modules
 CFLAGS+=	${COPTS} -D_KERNEL ${CWARNFLAGS} ${WERROR}
 CFLAGS+=	-DKLD_MODULE
 
