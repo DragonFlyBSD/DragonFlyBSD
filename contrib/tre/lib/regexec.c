@@ -201,10 +201,7 @@ tre_fill_pmatch(size_t nmatch, regmatch_t pmatch[], int cflags,
 	  i++;
 	}
 #ifndef TRE_USE_ALLOCA
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-	if (tags != intags) xfree(tags);
-#pragma GCC diagnostic pop
+	if (tags != intags) xfree(__DECONST(tre_tag_t *,tags));
 #endif /* !TRE_USE_ALLOCA */
     }
 
