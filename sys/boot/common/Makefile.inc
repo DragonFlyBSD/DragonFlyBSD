@@ -28,6 +28,4 @@ SRCS+=	do_dloader.c
 
 MAN+=	loader.8
 
-# Force -O, -O2 implodes
-#
-CFLAGS+= -O
+WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes

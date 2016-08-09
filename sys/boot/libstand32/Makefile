@@ -8,8 +8,6 @@ LIB=	stand32
 MAN=
 .PATH:	${LIBSTAND_SRC}
 
-# Force -O, -O2 implodes
-#
-CFLAGS+= -O
+WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes
 
 .include "${LIBSTAND_SRC}/Makefile"

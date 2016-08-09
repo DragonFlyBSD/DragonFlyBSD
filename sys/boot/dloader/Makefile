@@ -4,9 +4,7 @@
 
 SRCS=	subs.c config.c cmds.c
 
-# Force -O, -O2 implodes
-#
-CFLAGS+=	-O
+WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes
 
 # For i386, dloader32/Makefile takes care of the extra CFLAGS
 .if ${MACHINE_ARCH} != "i386"

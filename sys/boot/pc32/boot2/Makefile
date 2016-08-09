@@ -42,6 +42,7 @@ ORG1D = `${.OBJDIR}/bootasmdef.nx -d MEM_BIOS_LADDR`
 #
 ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
 
+WOLRD_CCOPTLEVEL=	s	# -Os for size constraints in boot2_32
 CFLAGS=	-Os \
 	-fomit-frame-pointer \
 	-fno-unwind-tables \
