@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/defs.c,v 1.31.2.12 2002/09/01 02:12:26 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/defs.c,v 1.4 2005/11/24 23:42:54 swildner Exp $
  */
 
 
@@ -217,7 +216,6 @@ static const struct speeds {
 #ifdef B38400
   { 38400, B38400, },
 #endif
-#ifndef _POSIX_SOURCE
 #ifdef B7200
   { 7200, B7200, },
 #endif
@@ -251,7 +249,6 @@ static const struct speeds {
 #ifdef EXTB
   { 38400, EXTB, },
 #endif
-#endif				/* _POSIX_SOURCE */
   { 0, 0 }
 };
 
