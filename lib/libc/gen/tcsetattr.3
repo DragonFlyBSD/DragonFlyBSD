@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)tcsetattr.3	8.3 (Berkeley) 1/2/94
 .\" $FreeBSD: src/lib/libc/gen/tcsetattr.3,v 1.6.2.4 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/gen/tcsetattr.3,v 1.5 2007/09/08 20:50:49 swildner Exp $
 .\"
-.Dd January 2, 1994
+.Dd August 10, 2016
 .Dt TCSETATTR 3
 .Os
 .Sh NAME
@@ -108,16 +107,23 @@ represented, however, the following symbolic values are defined.
 #define B300	300
 #define B600	600
 #define B1200	1200
-#define	B1800	1800
+#define B1800	1800
 #define B2400	2400
 #define B4800	4800
 #define B9600	9600
 #define B19200	19200
 #define B38400	38400
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
+#define B7200	7200
+#define B14400	14400
+#define B28800	28800
+#define B57600	57600
+#define B76800	76800
+#define B115200	115200
+#define B230400	230400
 #define EXTA	19200
 #define EXTB	38400
-#endif  /*_POSIX_SOURCE */
+#endif  /* __BSD_VISIBLE */
 .Ed
 .Pp
 The
