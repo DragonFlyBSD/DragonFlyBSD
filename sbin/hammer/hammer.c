@@ -59,7 +59,6 @@ uint64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 uint64_t MemoryLimit = 1024LLU * 1024 * 1024;
 const char *SplitupOptStr;
 const char *CyclePath;
-const char *RestrictTarget;
 
 int
 main(int ac, char **av)

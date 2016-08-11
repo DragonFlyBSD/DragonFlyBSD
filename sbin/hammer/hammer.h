@@ -82,6 +82,8 @@ extern uint64_t SplitupOpt;
 extern uint64_t MemoryLimit;
 extern const char *SplitupOptStr;
 extern const char *CyclePath;
+extern const char *ScoreBoardFile;
+extern const char *RestrictTarget;
 
 void hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent);
 void hammer_cmd_show_undo(void);
@@ -132,7 +134,6 @@ void hammer_reset_cycle(void);
 int getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path);
 void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
 void dump_pfsd(hammer_pseudofs_data_t, int);
-void hammer_check_restrict(const char *path);
 int getyn(void);
 const char *sizetostr(off_t size);
 int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);

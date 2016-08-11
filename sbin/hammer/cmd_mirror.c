@@ -45,6 +45,9 @@ typedef struct histogram {
 	uint64_t	bytes;
 } *histogram_t;
 
+const char *ScoreBoardFile;
+const char *RestrictTarget;
+
 static int read_mrecords(int fd, char *buf, u_int size,
 			 hammer_ioc_mrecord_head_t pickup);
 static int generate_histogram(int fd, const char *filesystem,
@@ -64,6 +67,8 @@ static void update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id);
 static ssize_t writebw(int fd, const void *buf, size_t nbytes,
 			uint64_t *bwcount, struct timeval *tv1);
 static int getyntty(void);
+static void score_printf(size_t i, size_t w, const char *ctl, ...);
+static void hammer_check_restrict(const char *filesystem);
 static void mirror_usage(int code);
 
 /*
@@ -1718,6 +1723,71 @@ getyntty(void)
 	}
 	fclose(fp);
 	return(result);
+}
+
+static void
+score_printf(size_t i, size_t w, const char *ctl, ...)
+{
+	va_list va;
+	size_t n;
+	static size_t SSize;
+	static int SFd = -1;
+	static char ScoreBuf[1024];
+
+	if (ScoreBoardFile == NULL)
+		return;
+	assert(i + w < sizeof(ScoreBuf));
+	if (SFd < 0) {
+		SFd = open(ScoreBoardFile, O_RDWR|O_CREAT|O_TRUNC, 0644);
+		if (SFd < 0)
+			return;
+		SSize = 0;
+	}
+	for (n = 0; n < i; ++n) {
+		if (ScoreBuf[n] == 0)
+			ScoreBuf[n] = ' ';
+	}
+	va_start(va, ctl);
+	vsnprintf(ScoreBuf + i, w - 1, ctl, va);
+	va_end(va);
+	n = strlen(ScoreBuf + i);
+	while (n < w - 1) {
+		ScoreBuf[i + n] = ' ';
+		++n;
+	}
+	ScoreBuf[i + n] = '\n';
+	if (SSize < i + w)
+		SSize = i + w;
+	pwrite(SFd, ScoreBuf, SSize, 0);
+}
+
+static void
+hammer_check_restrict(const char *filesystem)
+{
+	size_t rlen;
+	int atslash;
+
+	if (RestrictTarget == NULL)
+		return;
+	rlen = strlen(RestrictTarget);
+	if (strncmp(filesystem, RestrictTarget, rlen) != 0) {
+		fprintf(stderr, "hammer-remote: restricted target\n");
+		exit(1);
+	}
+	atslash = 1;
+	while (filesystem[rlen]) {
+		if (atslash &&
+		    filesystem[rlen] == '.' &&
+		    filesystem[rlen+1] == '.') {
+			fprintf(stderr, "hammer-remote: '..' not allowed\n");
+			exit(1);
+		}
+		if (filesystem[rlen] == '/')
+			atslash = 1;
+		else
+			atslash = 0;
+		++rlen;
+	}
 }
 
 static void

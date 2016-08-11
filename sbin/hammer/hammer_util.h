@@ -138,8 +138,6 @@ struct zone_stat {
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int DebugOpt;
-extern const char *ScoreBoardFile;
-extern const char *RestrictTarget;
 extern struct volume_list VolList;
 extern int UseReadBehind;
 extern int UseReadAhead;
@@ -200,8 +198,6 @@ void hammer_cache_add(struct cache_info *cache);
 void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
-
-void score_printf(size_t i, size_t w, const char *ctl, ...) __printflike(3, 4);
 
 struct zone_stat *hammer_init_zone_stat(void);
 struct zone_stat *hammer_init_zone_stat_bits(void);
