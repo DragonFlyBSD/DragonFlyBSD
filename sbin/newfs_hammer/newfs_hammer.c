@@ -87,8 +87,11 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "fEL:b:m:u:V:")) != -1) {
+	while ((ch = getopt(ac, av, "dfEL:b:m:u:V:")) != -1) {
 		switch(ch) {
+		case 'd':
+			++DebugOpt;
+			break;
 		case 'f':
 			ForceOpt = 1;
 			break;
