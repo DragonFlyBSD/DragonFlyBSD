@@ -139,9 +139,6 @@ extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int DebugOpt;
 extern struct volume_list VolList;
-extern int UseReadBehind;
-extern int UseReadAhead;
-extern int AssertOnFailure;
 
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
@@ -176,11 +173,6 @@ void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 void *alloc_data_element(hammer_off_t *offp, int32_t data_len,
 			 struct buffer_info **data_bufferp);
 
-int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
-void hammer_key_beg_init(hammer_base_elm_t base);
-void hammer_key_end_init(hammer_base_elm_t base);
-int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
-
 void format_blockmap(struct volume_info *vol, int zone, hammer_off_t offset);
 void format_freemap(struct volume_info *root_vol);
 int64_t initialize_freemap(struct volume_info *vol);
@@ -199,6 +191,10 @@ void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
 
+int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
+void hammer_key_beg_init(hammer_base_elm_t base);
+void hammer_key_end_init(hammer_base_elm_t base);
+int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 int getyn(void);
 const char *sizetostr(off_t size);
 int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);
