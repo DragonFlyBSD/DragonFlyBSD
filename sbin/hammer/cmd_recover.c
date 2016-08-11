@@ -91,10 +91,9 @@ hammer_cmd_recover(const char *target_dir)
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 		while (off < off_end) {
 			ptr = get_buffer_data(off, &data_buffer, 0);
-			if (ptr) {
+			if (ptr)
 				recover_top(ptr, off);
-				off += HAMMER_BUFSIZE;
-			}
+			off += HAMMER_BUFSIZE;
 		}
 	}
 	rel_buffer(data_buffer);
