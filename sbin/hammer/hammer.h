@@ -134,10 +134,6 @@ void hammer_reset_cycle(void);
 int getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path);
 void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
 void dump_pfsd(hammer_pseudofs_data_t, int);
-int getyn(void);
-const char *sizetostr(off_t size);
-int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);
-int hammer_fs_to_rootvol(const char *fs, char *buf, int len);
 void hammer_softprune_scandir(struct softprune **basep,
                          struct hammer_ioc_prune *template,
                          const char *dirname);

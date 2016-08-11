@@ -9,6 +9,6 @@ SRCS= newfs_hammer.c
 .PATH: ${.CURDIR}/../../sys/libkern
 SRCS+= crc32.c icrc32.c
 .PATH: ${.CURDIR}/../hammer
-SRCS+= ondisk.c cache.c blockmap.c
+SRCS+= ondisk.c cache.c blockmap.c misc.c
 
 .include <bsd.prog.mk>

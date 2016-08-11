@@ -38,7 +38,6 @@
 #include "hammer_util.h"
 
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
-static const char *sizetostr(off_t size);
 static int trim_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
@@ -277,33 +276,6 @@ usage(void)
 		"                    [-V version] special ...\n"
 	);
 	exit(1);
-}
-
-/*
- * Convert the size in bytes to a human readable string.
- */
-static
-const char *
-sizetostr(off_t size)
-{
-	static char buf[32];
-
-	if (size < 1024 / 2) {
-		snprintf(buf, sizeof(buf), "%6.2f", (double)size);
-	} else if (size < 1024 * 1024 / 2) {
-		snprintf(buf, sizeof(buf), "%6.2fKB",
-			(double)size / 1024);
-	} else if (size < 1024 * 1024 * 1024LL / 2) {
-		snprintf(buf, sizeof(buf), "%6.2fMB",
-			(double)size / (1024 * 1024));
-	} else if (size < 1024 * 1024 * 1024LL * 1024LL / 2) {
-		snprintf(buf, sizeof(buf), "%6.2fGB",
-			(double)size / (1024 * 1024 * 1024LL));
-	} else {
-		snprintf(buf, sizeof(buf), "%6.2fTB",
-			(double)size / (1024 * 1024 * 1024LL * 1024LL));
-	}
-	return(buf);
 }
 
 /*

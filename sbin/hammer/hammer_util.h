@@ -199,6 +199,11 @@ void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
 
+int getyn(void);
+const char *sizetostr(off_t size);
+int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);
+int hammer_fs_to_rootvol(const char *fs, char *buf, int len);
+
 struct zone_stat *hammer_init_zone_stat(void);
 struct zone_stat *hammer_init_zone_stat_bits(void);
 void hammer_cleanup_zone_stat(struct zone_stat *stats);
