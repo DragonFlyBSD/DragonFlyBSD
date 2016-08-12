@@ -59,9 +59,14 @@
 #include <dirent.h>
 #include <uuid.h>
 
-#include <libhammer.h>
-
 #include "hammer_util.h"
+
+/*
+ * WARNING: Do not make the SNAPSHOTS_BASE "/var/snapshots" because
+ * it will interfere with the older HAMMER VERS < 3 snapshots directory
+ * for the /var PFS.
+ */
+#define SNAPSHOTS_BASE	"/var/hammer"	/* HAMMER VERS >= 3 */
 
 extern int RecurseOpt;
 extern int VerboseOpt;

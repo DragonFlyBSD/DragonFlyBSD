@@ -34,6 +34,7 @@
  */
 
 #include <libutil.h>
+#include <libhammer.h>
 
 #include "hammer.h"
 

@@ -34,6 +34,8 @@
  * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.7 2008/07/10 18:47:22 mneumann Exp $
  */
 
+#include <libhammer.h>
+
 #include "hammer.h"
 
 #define DEFAULT_SNAPSHOT_NAME "snap-%Y%m%d-%H%M"

@@ -99,12 +99,6 @@ static int cleanup_dedup(const char *path, const char *snapshots_path,
 
 static void runcmd(int *resp, const char *ctl, ...) __printflike(2, 3);
 
-/*
- * WARNING: Do not make the SNAPSHOTS_BASE "/var/snapshots" because
- * it will interfere with the older HAMMER VERS < 3 snapshots directory
- * for the /var PFS.
- */
-#define SNAPSHOTS_BASE	"/var/hammer"	/* HAMMER VERS >= 3 */
 #define WS	" \t\r\n"
 
 struct didpfs *FirstPFS;
