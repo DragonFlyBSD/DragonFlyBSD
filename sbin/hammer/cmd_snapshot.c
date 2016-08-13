@@ -336,8 +336,6 @@ hammer_cmd_snapshot(char **av, int ac)
 	} else {
 		snapshot_usage(1);
 		/* not reached */
-		softlink_dir = NULL;
-		filesystem = NULL;
 	}
 
 	if (stat(softlink_dir, &st) == 0) {
@@ -479,7 +477,6 @@ static
 void
 snapshot_ls(const char *path)
 {
-	/*struct hammer_ioc_version version;*/
 	struct hammer_ioc_info info;
 	struct hammer_ioc_snapshot snapshot;
 	struct hammer_ioc_pseudofs_rw pfs;
