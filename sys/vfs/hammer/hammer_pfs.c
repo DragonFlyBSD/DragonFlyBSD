@@ -314,35 +314,31 @@ hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 /*
  * Iterate PFS ondisk data.
- * This function basically does the same as hammer_load_pseudofs()
- * except that the purpose of this function is to retrieve data.
+ * This function essentially does the same as hammer_load_pseudofs()
+ * except that this function only retrieves PFS data without touching
+ * hammer_pfs_rb_tree at all.
  *
  * NOTE: The ip used for ioctl is not necessarily related to the PFS
  * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
+ *
+ * NOTE: The API was changed in DragonFly 4.7, due to design issues
+ * this ioctl and libhammer (which is the only caller of this ioctl
+ * within DragonFly source, but no longer maintained by anyone) had.
  */
 int
 hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
-			struct hammer_ioc_pfs_iterate *pi)
+			struct hammer_ioc_pseudofs_rw *pfs)
 {
 	struct hammer_cursor cursor;
-	struct hammer_ioc_pseudofs_rw pfs;
 	hammer_inode_t dip;
 	uint32_t localization;
 	int error;
 
-	/*
-	 * struct hammer_ioc_pfs_iterate was never necessary.
-	 * This ioctl needs extra code only to do conversion.
-	 * The name pi->pos is misleading, but it's been exposed
-	 * to userspace header..
-	 */
-	bzero(&pfs, sizeof(pfs));
-	pfs.pfs_id = pi->pos;
-	pfs.bytes = sizeof(struct hammer_pseudofs_data);  /* dummy */
-	if ((error = hammer_pfs_autodetect(&pfs, ip)) != 0)
+	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
 		return(error);
-	pi->pos = pfs.pfs_id;
-	localization = pfs_to_lo(pi->pos);
+	localization = pfs_to_lo(pfs->pfs_id);
+	pfs->bytes = sizeof(struct hammer_pseudofs_data);
+	pfs->version = HAMMER_IOC_PSEUDOFS_VERSION;
 
 	dip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
 		HAMMER_DEF_LOCALIZATION, 0, &error);
@@ -350,7 +346,7 @@ hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	error = hammer_init_cursor(trans, &cursor,
 		(dip ? &dip->cache[1] : NULL), dip);
 	if (error)
-		goto out;
+		goto fail;
 
 	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION |
 				      HAMMER_LOCALIZE_MISC;
@@ -367,18 +363,18 @@ hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	if (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error == 0) {
-			if (pi->ondisk)
-				copyout(cursor.data, pi->ondisk, cursor.leaf->data_len);
+			if (pfs->ondisk)
+				copyout(cursor.data, pfs->ondisk, cursor.leaf->data_len);
 			localization = cursor.leaf->base.key;
-			pi->pos = lo_to_pfs(localization);
+			pfs->pfs_id = lo_to_pfs(localization);
 			/*
 			 * Caller needs to increment pi->pos each time calling
 			 * this ioctl. This ioctl only restores current PFS id.
 			 */
 		}
 	}
-out:
 	hammer_done_cursor(&cursor);
+fail:
 	if (dip)
 		hammer_rel_inode(dip, 0);
 	return(error);

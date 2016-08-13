@@ -49,7 +49,7 @@ libhammer_fsinfo_t
 libhammer_get_fsinfo(const char *path)
 {
 	struct hammer_pseudofs_data *pfs_od;
-	struct hammer_ioc_pfs_iterate pi;
+	struct hammer_ioc_pseudofs_rw pfs;
 	struct hammer_ioc_info info;
 	libhammer_pfsinfo_t pip;
 	libhammer_fsinfo_t fip;
@@ -78,13 +78,16 @@ libhammer_get_fsinfo(const char *path)
 	fip->freebigblocks = info.freebigblocks;
 	fip->rsvbigblocks = info.rsvbigblocks;
 
-	bzero(&pi, sizeof(pi));
-	pi.ondisk = _libhammer_malloc(sizeof(*pfs_od));
+	bzero(&pfs, sizeof(pfs));
+	pfs.pfs_id = 0;	/* start off with root PFS */
+	pfs.ondisk = _libhammer_malloc(sizeof(*pfs_od));
+	pfs.bytes = sizeof(struct hammer_pseudofs_data);
+
 	while(error == 0) {
-		error = ioctl(fd, HAMMERIOC_PFS_ITERATE, &pi);
-		if (error == 0 && !hammer_is_pfs_deleted(pi.ondisk)) {
+		error = ioctl(fd, HAMMERIOC_PFS_ITERATE, &pfs);
+		if (error == 0 && !hammer_is_pfs_deleted(pfs.ondisk)) {
 			pip = _libhammer_malloc(sizeof(*pip));
-			pfs_od = pi.ondisk;
+			pfs_od = pfs.ondisk;
 			pip->ismaster = hammer_is_pfs_master(pfs_od);
 
 			/*
@@ -92,7 +95,7 @@ libhammer_get_fsinfo(const char *path)
 			 * HAMMER structs but we do fill our own.
 			 */
 			pip->version = fip->version;
-			pip->pfs_id = pi.pos;
+			pip->pfs_id = pfs.pfs_id;
 			pip->mirror_flags = pfs_od->mirror_flags;
 			pip->beg_tid = pfs_od->sync_beg_tid;
 			pip->end_tid = pfs_od->sync_end_tid;
@@ -115,9 +118,9 @@ libhammer_get_fsinfo(const char *path)
 			TAILQ_INSERT_TAIL(&fip->list_pseudo, pip, entries);
 
 		}
-		pi.pos++;
+		pfs.pfs_id++;
 	}
-	free(pi.ondisk);
+	free(pfs.ondisk);
 
 	close (fd);
 
