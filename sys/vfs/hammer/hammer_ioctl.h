@@ -247,7 +247,7 @@ struct hammer_ioc_info {
 /*
  * HAMMERIOC_GET_PSEUDOFS
  * HAMMERIOC_SET_PSEUDOFS
- * HAMMERIOC_PFS_ITERATE
+ * HAMMERIOC_SCAN_PSEUDOFS
  */
 struct hammer_ioc_pseudofs_rw {
 	struct hammer_ioc_head	head;
@@ -502,7 +502,7 @@ struct hammer_ioc_data {
 #define HAMMERIOC_DEDUP		_IOWR('h',25,struct hammer_ioc_dedup)
 #define HAMMERIOC_GET_DATA	_IOWR('h',26,struct hammer_ioc_data)
 #define HAMMERIOC_LIST_VOLUMES	_IOWR('h',27,struct hammer_ioc_volume_list)
-#define HAMMERIOC_PFS_ITERATE	_IOWR('h',28,struct hammer_ioc_pseudofs_rw)
+#define HAMMERIOC_SCAN_PSEUDOFS	_IOWR('h',28,struct hammer_ioc_pseudofs_rw)
 
 #endif /* !VFS_HAMMER_IOCTL_H_ */
 

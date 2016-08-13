@@ -228,8 +228,8 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					&trans, ip, (struct hammer_ioc_data *)data);
 		}
 		break;
-	case HAMMERIOC_PFS_ITERATE:
-		error = hammer_ioc_iterate_pseudofs(
+	case HAMMERIOC_SCAN_PSEUDOFS:
+		error = hammer_ioc_scan_pseudofs(
 				&trans, ip, (struct hammer_ioc_pseudofs_rw *)data);
 		break;
 	default:

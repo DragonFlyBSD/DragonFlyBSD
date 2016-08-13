@@ -326,7 +326,7 @@ hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
  * within DragonFly source, but no longer maintained by anyone) had.
  */
 int
-hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+hammer_ioc_scan_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_pseudofs_rw *pfs)
 {
 	struct hammer_cursor cursor;
@@ -367,10 +367,6 @@ hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 				copyout(cursor.data, pfs->ondisk, cursor.leaf->data_len);
 			localization = cursor.leaf->base.key;
 			pfs->pfs_id = lo_to_pfs(localization);
-			/*
-			 * Caller needs to increment pi->pos each time calling
-			 * this ioctl. This ioctl only restores current PFS id.
-			 */
 		}
 	}
 	hammer_done_cursor(&cursor);

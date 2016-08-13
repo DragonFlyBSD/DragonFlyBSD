@@ -84,7 +84,7 @@ libhammer_get_fsinfo(const char *path)
 	pfs.bytes = sizeof(struct hammer_pseudofs_data);
 
 	while(error == 0) {
-		error = ioctl(fd, HAMMERIOC_PFS_ITERATE, &pfs);
+		error = ioctl(fd, HAMMERIOC_SCAN_PSEUDOFS, &pfs);
 		if (error == 0 && !hammer_is_pfs_deleted(pfs.ondisk)) {
 			pip = _libhammer_malloc(sizeof(*pip));
 			pfs_od = pfs.ondisk;
