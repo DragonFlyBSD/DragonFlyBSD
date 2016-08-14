@@ -41,6 +41,46 @@ static int CacheMax = 16 * 1024 * 1024;
 static int NCache;
 static TAILQ_HEAD(, cache_info) CacheList = TAILQ_HEAD_INITIALIZER(CacheList);
 
+int
+hammer_parse_cache_size(const char *arg)
+{
+	char *ptr;
+	int size = strtol(arg, &ptr, 0);
+
+	switch(*ptr) {
+	case 'm':
+	case 'M':
+		size *= 1024;
+		/* fall through */
+	case 'k':
+	case 'K':
+		size *= 1024;
+		++ptr;
+		break;
+	case '\0':
+	case ':':
+		/* bytes if no suffix */
+		break;
+	default:
+		return(-1);
+	}
+
+	if (*ptr == ':') {
+		UseReadAhead = strtol(ptr + 1, NULL, 0);
+		UseReadBehind = -UseReadAhead;
+	}
+	if (size < 1024 * 1024)
+		size = 1024 * 1024;
+	if (UseReadAhead < 0)
+		return(-1);
+	if (UseReadAhead * HAMMER_BUFSIZE / size / 16) {
+		UseReadAhead = size / 16 / HAMMER_BUFSIZE;
+		UseReadBehind = -UseReadAhead;
+	}
+	hammer_cache_set(size);
+	return(0);
+}
+
 void
 hammer_cache_set(int bytes)
 {

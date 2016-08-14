@@ -82,8 +82,6 @@ extern int DidInterrupt;
 extern int ForceOpt;
 extern int BulkOpt;
 extern int AllPFS;
-extern int UseReadBehind;
-extern int UseReadAhead;
 extern int AssertOnFailure;
 extern uint64_t BandwidthOpt;
 extern uint64_t SplitupOpt;

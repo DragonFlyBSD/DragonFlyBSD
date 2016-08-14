@@ -87,7 +87,7 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "dfEL:b:m:u:V:")) != -1) {
+	while ((ch = getopt(ac, av, "dfEL:b:m:u:C:V:")) != -1) {
 		switch(ch) {
 		case 'd':
 			++DebugOpt;
@@ -125,6 +125,10 @@ main(int ac, char **av)
 					"UNDO/REDO FIFO size less than 500MB,\n"
 					"which may lead to VFS panics.\n");
 			}
+			break;
+		case 'C':
+			if (hammer_parse_cache_size(optarg) == -1)
+				usage();
 			break;
 		case 'V':
 			HammerVersion = strtol(optarg, NULL, 0);
@@ -276,7 +280,7 @@ usage(void)
 {
 	fprintf(stderr,
 		"usage: newfs_hammer -L label [-Ef] [-b bootsize] [-m savesize] [-u undosize]\n"
-		"                    [-V version] special ...\n"
+		"                    [-C cachesize[:readahead]] [-V version] special ...\n"
 	);
 	exit(1);
 }

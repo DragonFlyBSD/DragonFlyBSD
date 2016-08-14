@@ -137,6 +137,8 @@ struct zone_stat {
 
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
+extern int UseReadBehind;
+extern int UseReadAhead;
 extern int DebugOpt;
 extern struct volume_list VolList;
 
@@ -185,6 +187,7 @@ void flush_buffer(struct buffer_info *buf);
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
 int64_t init_mem_area_size(int64_t value, off_t avg_vol_size);
 
+int hammer_parse_cache_size(const char *arg);
 void hammer_cache_set(int bytes);
 void hammer_cache_add(struct cache_info *cache);
 void hammer_cache_del(struct cache_info *cache);
