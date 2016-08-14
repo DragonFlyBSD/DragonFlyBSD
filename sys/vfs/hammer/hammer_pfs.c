@@ -86,8 +86,7 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Copy out to userland.
 	 */
-	error = 0;
-	if (pfs->ondisk && error == 0)
+	if (pfs->ondisk)
 		error = copyout(&pfsm->pfsd, pfs->ondisk, sizeof(pfsm->pfsd));
 	hammer_rel_pseudofs(trans->hmp, pfsm);
 	return(error);
