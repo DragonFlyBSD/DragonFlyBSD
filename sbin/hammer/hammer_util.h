@@ -139,6 +139,7 @@ extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int UseReadBehind;
 extern int UseReadAhead;
+extern int AssertOnFailure;
 extern int DebugOpt;
 extern struct volume_list VolList;
 

@@ -45,13 +45,12 @@ static __inline int readhammerbuf(struct buffer_info *buf);
 static __inline int writehammervol(struct volume_info *vol);
 static __inline int writehammerbuf(struct buffer_info *buf);
 
-int DebugOpt;
-
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
-int	UseReadBehind = -4;
-int	UseReadAhead = 4;
-int	AssertOnFailure = 1;
+int UseReadBehind = -4;
+int UseReadAhead = 4;
+int AssertOnFailure = 1;
+int DebugOpt;
 struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
 static int valid_hammer_volumes;
 
