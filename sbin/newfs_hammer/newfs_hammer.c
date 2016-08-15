@@ -42,7 +42,7 @@ static int trim_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
-static void usage(void);
+static void usage(int exit_code);
 
 static int ForceOpt;
 static int64_t BootAreaSize;
@@ -128,7 +128,7 @@ main(int ac, char **av)
 			break;
 		case 'C':
 			if (hammer_parse_cache_size(optarg) == -1)
-				usage();
+				usage(1);
 			break;
 		case 'V':
 			HammerVersion = strtol(optarg, NULL, 0);
@@ -141,7 +141,7 @@ main(int ac, char **av)
 			}
 			break;
 		default:
-			usage();
+			usage(1);
 			break;
 		}
 	}
@@ -149,7 +149,7 @@ main(int ac, char **av)
 	if (label == NULL) {
 		fprintf(stderr,
 			"newfs_hammer: A filesystem label must be specified\n");
-		usage();
+		usage(1);
 	}
 
 	if (HammerVersion < 0) {
@@ -276,13 +276,13 @@ main(int ac, char **av)
 
 static
 void
-usage(void)
+usage(int exit_code)
 {
 	fprintf(stderr,
 		"usage: newfs_hammer -L label [-Ef] [-b bootsize] [-m savesize] [-u undosize]\n"
 		"                    [-C cachesize[:readahead]] [-V version] special ...\n"
 	);
-	exit(1);
+	exit(exit_code);
 }
 
 /*
