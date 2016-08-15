@@ -39,7 +39,7 @@
 .Sh SYNOPSIS
 .Nm
 .Fl L Ar label
-.Op Fl \&Ef
+.Op Fl \&Efh
 .Op Fl b Ar bootsize
 .Op Fl m Ar savesize
 .Op Fl u Ar undosize
@@ -147,6 +147,8 @@ By default 0.1% of the root
 volume's size is used, with a reasonable minimum and a reasonable cap.
 The UNDO/REDO FIFO is used to sequence meta-data out to the media for
 instant crash recovery.
+.It Fl h
+Show usage.
 .It Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 Refer to the same option in
 .Xr hammer 8 .
