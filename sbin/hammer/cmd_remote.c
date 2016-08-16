@@ -42,8 +42,7 @@
 void
 hammer_cmd_sshremote(const char *cmd, const char *target)
 {
-	char *env;
-	char *str;
+	char *env, *str, *dup;
 	const char *av[REMOTE_MAXARGS + 1];
 	int ac;
 
@@ -51,7 +50,7 @@ hammer_cmd_sshremote(const char *cmd, const char *target)
 		fprintf(stderr, "SSH_ORIGINAL_COMMAND env missing\n");
 		exit(1);
 	}
-	env = strdup(env);
+	dup = env = strdup(env);
 	av[0] = "hammer";
 	av[1] = "-R";
 	av[2] = cmd;
@@ -75,6 +74,7 @@ hammer_cmd_sshremote(const char *cmd, const char *target)
 		if (av[ac - 1] == NULL)
 			break;
 	}
+	free(dup);
 	execv("/sbin/hammer", (void *)av);
 	fprintf(stderr, "hammer-remote: execv failed\n");
 	exit(1);

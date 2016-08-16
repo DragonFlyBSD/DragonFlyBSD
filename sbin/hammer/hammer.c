@@ -233,9 +233,9 @@ main(int ac, char **av)
 	 * commands may be iterated with a comma.
 	 */
 	if (restrictcmd) {
-		char *elm;
+		char *elm, *dup;
 
-		ptr = strdup(restrictcmd);
+		dup = ptr = strdup(restrictcmd);
 		while ((elm = strsep(&ptr, ",")) != NULL) {
 			if (strcmp(av[0], elm) == 0)
 				break;
@@ -245,7 +245,7 @@ main(int ac, char **av)
 					"restricted command\n");
 			exit(1);
 		}
-		free(ptr);
+		free(dup);
 	}
 
 	uuid_name_lookup(&Hammer_FSType, "DragonFly HAMMER", &status);
@@ -498,6 +498,7 @@ main(int ac, char **av)
 
 	if (strcmp(av[0], "show") == 0) {
 		const char *arg = NULL;
+		char *p, *dup;
 		int filter = -1;
 		int obfuscate = 0;
 		int indent = 0;
@@ -508,8 +509,8 @@ main(int ac, char **av)
 		if (ac > 1)
 			arg = av[1];
 		if (ac > 2) {
-			char *p, *buf = strdup(av[2]);
-			while((p = strsep(&buf, ",")) != NULL) {
+			dup = ptr = strdup(av[2]);
+			while ((p = strsep(&ptr, ",")) != NULL) {
 				if (strcmp(p, "filter") == 0) {
 					filter = 1;
 				} else if (strcmp(p, "nofilter") == 0) {
@@ -520,7 +521,7 @@ main(int ac, char **av)
 					indent = 1;
 				}
 			}
-			free(buf);
+			free(dup);
 		}
 		hammer_cmd_show(arg, filter, obfuscate, indent);
 		exit(0);
