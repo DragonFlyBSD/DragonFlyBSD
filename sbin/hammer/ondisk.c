@@ -426,16 +426,13 @@ get_node(hammer_off_t node_offset, struct buffer_info **bufferp)
 static void *
 get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp, int isnew)
 {
-	struct buffer_info *buffer;
-
-	buffer = *bufferp;
-	if (buffer == NULL) {
-		buffer = *bufferp = get_buffer(buf_offset, isnew);
-		if (buffer == NULL)
+	if (*bufferp == NULL) {
+		*bufferp = get_buffer(buf_offset, isnew);
+		if (*bufferp == NULL)
 			return(NULL);
 	}
 
-	return((char *)buffer->ondisk +
+	return(((char *)(*bufferp)->ondisk) +
 		((int32_t)buf_offset & HAMMER_BUFMASK));
 }
 
