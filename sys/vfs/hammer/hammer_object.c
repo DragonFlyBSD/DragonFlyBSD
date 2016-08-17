@@ -1334,9 +1334,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 */
 	if (error == 0) {
 		if (doprop) {
-			hammer_btree_do_propagation(cursor,
-						    record->ip->pfsm,
-						    &record->leaf);
+			hammer_btree_do_propagation(cursor, &record->leaf);
 		}
 		if (record->flags & HAMMER_RECF_CONVERT_DELETE) {
 			/*
@@ -2421,7 +2419,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 	 * 	     do_propagation returns.
 	 */
 	if (error == 0 && doprop)
-		hammer_btree_do_propagation(cursor, NULL, leaf);
+		hammer_btree_do_propagation(cursor, leaf);
 
 failed:
 	/*
@@ -2614,9 +2612,9 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	 */
 	if (doprop) {
 		if (cursor->ip)
-			hammer_btree_do_propagation(cursor, cursor->ip->pfsm, leaf);
+			hammer_btree_do_propagation(cursor, leaf);
 		else
-			hammer_btree_do_propagation(cursor, NULL, leaf);
+			hammer_btree_do_propagation(cursor, leaf);
 	}
 	if (stat_bytes)
 		*stat_bytes = bytes;

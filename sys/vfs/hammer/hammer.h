@@ -1215,7 +1215,6 @@ int	hammer_btree_insert(hammer_cursor_t cursor,
 			    hammer_btree_leaf_elm_t elm, int *doprop);
 int	hammer_btree_delete(hammer_cursor_t cursor, int *ndelete);
 void	hammer_btree_do_propagation(hammer_cursor_t cursor,
-			    hammer_pseudofs_inmem_t pfsm,
 			    hammer_btree_leaf_elm_t leaf);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);

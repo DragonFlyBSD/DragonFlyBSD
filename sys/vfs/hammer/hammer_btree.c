@@ -2333,12 +2333,7 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 }
 
 /*
- * Propagate cursor->trans->tid up the B-Tree starting at the current
- * cursor position using pseudofs info gleaned from the passed inode.
- *
- * The passed inode has no relationship to the cursor position other
- * then being in the same pseudofs as the insertion or deletion we
- * are propagating the mirror_tid for.
+ * Propagate mirror_tid up the B-Tree starting at the current cursor.
  *
  * WARNING!  Because we push and pop the passed cursor, it may be
  *	     modified by other B-Tree operations while it is unlocked
@@ -2347,7 +2342,6 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
  */
 void
 hammer_btree_do_propagation(hammer_cursor_t cursor,
-			    hammer_pseudofs_inmem_t pfsm,
 			    hammer_btree_leaf_elm_t leaf)
 {
 	hammer_cursor_t ncursor;
