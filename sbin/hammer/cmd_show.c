@@ -645,12 +645,11 @@ check_data_crc(hammer_btree_elm_t elm)
 	crc = 0;
 	switch (elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
-		/* this should always match */
-		if (data_len == sizeof(struct hammer_inode_data)) {
-			ptr = get_buffer_data(buf_offset, &data_buffer, 0);
-			crc = crc32(ptr, HAMMER_INODE_CRCSIZE);
-			rel_buffer(data_buffer);
-		}
+		if (data_len != sizeof(struct hammer_inode_data))
+			return("BI");  /* bad inode size*/
+		ptr = get_buffer_data(buf_offset, &data_buffer, 0);
+		crc = crc32(ptr, HAMMER_INODE_CRCSIZE);
+		rel_buffer(data_buffer);
 		break;
 	default:
 		crc = get_buf_crc(buf_offset, data_len);
