@@ -248,15 +248,13 @@ hammer_cmd_checkmap(void)
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	undomap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
-	if (QuietOpt < 3) {
-		printf("Volume header\tnext_tid=%016jx\n",
-		       (uintmax_t)volume->ondisk->vol0_next_tid);
-		printf("\t\tbufoffset=%016jx\n",
-		       (uintmax_t)volume->ondisk->vol_buf_beg);
-		printf("\t\tundosize=%jdMB\n",
-		       (intmax_t)((undomap->alloc_offset & HAMMER_OFF_LONG_MASK)
-			/ (1024 * 1024)));
-	}
+	printf("Volume header\tnext_tid=%016jx\n",
+	       (uintmax_t)volume->ondisk->vol0_next_tid);
+	printf("\t\tbufoffset=%016jx\n",
+	       (uintmax_t)volume->ondisk->vol_buf_beg);
+	printf("\t\tundosize=%jdMB\n",
+	       (intmax_t)((undomap->alloc_offset & HAMMER_OFF_LONG_MASK)
+		/ (1024 * 1024)));
 
 	AssertOnFailure = (DebugOpt != 0);
 

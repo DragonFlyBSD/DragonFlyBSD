@@ -127,16 +127,14 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 
 	volume = get_root_volume();
 	ondisk = volume->ondisk;
-	if (QuietOpt < 3) {
-		printf("Volume header\tnext_tid=%016jx\n",
-		       (uintmax_t)ondisk->vol0_next_tid);
-		printf("\t\tbufoffset=%016jx\n",
-		       (uintmax_t)ondisk->vol_buf_beg);
-		for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
-			blockmap = ondisk->vol0_blockmap + zone;
-			printf("\t\tzone %d\tnext_offset=%016jx\n",
-				zone, blockmap->next_offset);
-		}
+	printf("Volume header\tnext_tid=%016jx\n",
+	       (uintmax_t)ondisk->vol0_next_tid);
+	printf("\t\tbufoffset=%016jx\n",
+	       (uintmax_t)ondisk->vol_buf_beg);
+	for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
+		blockmap = ondisk->vol0_blockmap + zone;
+		printf("\t\tzone %d\tnext_offset=%016jx\n",
+			zone, blockmap->next_offset);
 	}
 
 	bzero(&opt, sizeof(opt));
@@ -237,10 +235,8 @@ print_btree_node(hammer_off_t node_offset,
 	       (node->type ? node->type : '?'),
 	       depth,
 	       (uintmax_t)node->mirror_tid);
-	if (QuietOpt < 3) {
-		printf(" fill=");
-		print_bigblock_fill(node_offset);
-	}
+	printf(" fill=");
+	print_bigblock_fill(node_offset);
 	printf(" {\n");
 
 	if (VerboseOpt)
@@ -371,6 +367,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	char deleted;
 	char rootelm;
 	const char *label;
+	const char *p;
 	int flags;
 	int i = ((char*)elm - (char*)node) / (int)sizeof(*elm) - 1;
 
@@ -425,12 +422,9 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		printf(" suboff=%016jx",
-		       (uintmax_t)elm->internal.subtree_offset);
-		if (QuietOpt < 3) {
-			printf(" mirror=%016jx",
-			       (uintmax_t)elm->internal.mirror_tid);
-		}
+		printf(" suboff=%016jx mirror=%016jx",
+		       (uintmax_t)elm->internal.subtree_offset,
+		       (uintmax_t)elm->internal.mirror_tid);
 		if (ext)
 			printf(" %s", ext);
 		break;
@@ -440,16 +434,14 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			printf(" dataoff=%016jx/%d",
 			       (uintmax_t)elm->leaf.data_offset,
 			       elm->leaf.data_len);
-			if (QuietOpt < 3) {
-				const char *p = check_data_crc(elm);
-				printf(" crc=%08x", elm->leaf.data_crc);
-				if (p) {
-					printf(" error=%s", p);
-					++num_bad_rec;
-				}
-				printf(" fill=");
-				print_bigblock_fill(elm->leaf.data_offset);
+			p = check_data_crc(elm);
+			printf(" crc=%08x", elm->leaf.data_crc);
+			if (p) {
+				printf(" error=%s", p);
+				++num_bad_rec;
 			}
+			printf(" fill=");
+			print_bigblock_fill(elm->leaf.data_offset);
 			if (QuietOpt < 2)
 				print_record(elm);
 			if (VerboseOpt)
@@ -735,23 +727,21 @@ print_record(hammer_btree_elm_t elm)
 		printf("inode size=%jd nlinks=%jd",
 		       (intmax_t)data->inode.size,
 		       (intmax_t)data->inode.nlinks);
-		if (QuietOpt < 1) {
-			printf(" mode=%05o uflags=%08x caps=%02x",
-				data->inode.mode,
-				data->inode.uflags,
-				data->inode.cap_flags);
-			printf(" pobjid=%016jx ot=%02x\n",
-				(uintmax_t)data->inode.parent_obj_id,
-				data->inode.obj_type);
-			printf("%s%17s", INDENT, "");
-			printf("      ctime=%016jx mtime=%016jx atime=%016jx",
-				(uintmax_t)data->inode.ctime,
-				(uintmax_t)data->inode.mtime,
-				(uintmax_t)data->inode.atime);
-			if (data->inode.ext.symlink[0])
-				printf(" symlink=\"%s\"",
-					data->inode.ext.symlink);
-		}
+		printf(" mode=%05o uflags=%08x caps=%02x",
+			data->inode.mode,
+			data->inode.uflags,
+			data->inode.cap_flags);
+		printf(" pobjid=%016jx ot=%02x\n",
+			(uintmax_t)data->inode.parent_obj_id,
+			data->inode.obj_type);
+		printf("%s%17s", INDENT, "");
+		printf("      ctime=%016jx mtime=%016jx atime=%016jx",
+			(uintmax_t)data->inode.ctime,
+			(uintmax_t)data->inode.mtime,
+			(uintmax_t)data->inode.atime);
+		if (data->inode.ext.symlink[0])
+			printf(" symlink=\"%s\"",
+				data->inode.ext.symlink);
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
 		data_len -= HAMMER_ENTRY_NAME_OFF;
