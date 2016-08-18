@@ -1115,14 +1115,11 @@ vop_stdpathconf(struct vop_pathconf_args *ap)
 	int error = 0;
 
 	switch (ap->a_name) {
+	case _PC_CHOWN_RESTRICTED:
+		*ap->a_retval = _POSIX_CHOWN_RESTRICTED;
+		break;
 	case _PC_LINK_MAX:
 		*ap->a_retval = LINK_MAX;
-		break;
-	case _PC_NAME_MAX:
-		*ap->a_retval = NAME_MAX;
-		break;
-	case _PC_PATH_MAX:
-		*ap->a_retval = PATH_MAX;
 		break;
 	case _PC_MAX_CANON:
 		*ap->a_retval = MAX_CANON;
@@ -1130,14 +1127,17 @@ vop_stdpathconf(struct vop_pathconf_args *ap)
 	case _PC_MAX_INPUT:
 		*ap->a_retval = MAX_INPUT;
 		break;
-	case _PC_PIPE_BUF:
-		*ap->a_retval = PIPE_BUF;
-		break;
-	case _PC_CHOWN_RESTRICTED:
-		*ap->a_retval = _POSIX_CHOWN_RESTRICTED;
+	case _PC_NAME_MAX:
+		*ap->a_retval = NAME_MAX;
 		break;
 	case _PC_NO_TRUNC:
 		*ap->a_retval = _POSIX_NO_TRUNC;
+		break;
+	case _PC_PATH_MAX:
+		*ap->a_retval = PATH_MAX;
+		break;
+	case _PC_PIPE_BUF:
+		*ap->a_retval = PIPE_BUF;
 		break;
 	case _PC_VDISABLE:
 		*ap->a_retval = _POSIX_VDISABLE;
