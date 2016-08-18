@@ -44,10 +44,10 @@
 
 struct {
 	struct hammer_base_elm base;
-	int		limit;   /* # of fields to test */
-	int		filter;  /* filter type (default -1) */
-	int		obfuscate;  /* obfuscate direntry name */
-	int		indent;  /* use depth indentation */
+	int limit;	/* # of fields to test */
+	int filter;	/* filter type (default -1) */
+	int obfuscate;	/* obfuscate direntry name */
+	int indent;	/* use depth indentation */
 	struct zone_stat *stats;
 } opt;
 
@@ -605,8 +605,7 @@ print_bigblock_fill(hammer_off_t offset)
 		printf("B%d", error);
 	} else {
 		fill = layer2.bytes_free * 100 / HAMMER_BIGBLOCK_SIZE;
-		fill = 100 - fill;
-		printf("%d%%", fill);
+		printf("%d%%", 100 - fill);
 	}
 }
 
