@@ -402,22 +402,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	bcopy(pfs.ondisk, &pfsd, sizeof(pfsd));
 
 	/*
-	 * Set the sync_beg_tid and sync_end_tid's to 1, once we start the
-	 * RMR the PFS is basically destroyed even if someone ^C's it.
-	 */
-	pfs.ondisk->mirror_flags |= HAMMER_PFSD_SLAVE;
-	pfs.ondisk->reserved01 = -1;
-	pfs.ondisk->sync_beg_tid = 1;
-	pfs.ondisk->sync_end_tid = 1;
-
-	if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) < 0) {
-		fprintf(stderr, "Unable to update the PFS configuration: %s\n",
-			strerror(errno));
-		exit(1);
-	}
-
-	/*
-	 * Ok, do it.  Remove the softlink on success.
+	 * Remove the softlink on success.
 	 */
 	if (ioctl(fd, HAMMERIOC_RMR_PSEUDOFS, &pfs) == 0) {
 		printf("pfs-destroy of PFS#%d succeeded!\n", pfs.pfs_id);
