@@ -24,15 +24,10 @@
  * which is a trade secret).  The same algorithm is used as a stream
  * cipher called "arcfour" in Tatu Ylonen's ssh package.
  *
- * Here the stream cipher has been modified always to include the time
- * when initializing the state.  That makes it impossible to
- * regenerate the same random sequence twice, so this can't be used
- * for encryption, but will generate good random numbers.
- *
  * RC4 is a registered trademark of RSA Laboratories.
  *
+ * $OpenBSD: arc4random.c,v 1.24 2013/06/11 16:59:50 deraadt Exp $
  * $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.25 2008/09/09 09:46:36 ache Exp $
- * $DragonFly: src/lib/libc/gen/arc4random.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -51,19 +46,18 @@
  * Misc constants
  */
 #define	RANDOMDEV	"/dev/random"
-#define KEYSIZE		128
-#define	THREAD_LOCK()						\
+#define	KEYSIZE		128
+#define	_ARC4_LOCK()						\
 	do {							\
 		if (__isthreaded)				\
 			_pthread_mutex_lock(&arc4random_mtx);	\
 	} while (0)
 
-#define	THREAD_UNLOCK()						\
+#define	_ARC4_UNLOCK()						\
 	do {							\
 		if (__isthreaded)				\
 			_pthread_mutex_unlock(&arc4random_mtx);	\
 	} while (0)
-
 
 struct arc4_stream {
 	u_int8_t i;
@@ -111,7 +105,7 @@ arc4_addrandom(u_char *dat, size_t datlen)
 
 struct pray {
 	struct timeval	tv;
-	pid_t 		pid;
+	pid_t		pid;
 };
 
 static void
@@ -224,21 +218,21 @@ arc4_check_stir(void)
 void
 arc4random_stir(void)
 {
-	THREAD_LOCK();
+	_ARC4_LOCK();
 	arc4_check_init();
 	arc4_stir();
 	rs_stired = 1;
-	THREAD_UNLOCK();
+	_ARC4_UNLOCK();
 }
 
 void
 arc4random_addrandom(uint8_t *dat, size_t datlen)
 {
-	THREAD_LOCK();
+	_ARC4_LOCK();
 	arc4_check_init();
 	arc4_check_stir();
 	arc4_addrandom(dat, datlen);
-	THREAD_UNLOCK();
+	_ARC4_UNLOCK();
 }
 
 u_int32_t
@@ -246,12 +240,12 @@ arc4random(void)
 {
 	u_int32_t rnd;
 
-	THREAD_LOCK();
+	_ARC4_LOCK();
 	arc4_check_init();
 	arc4_check_stir();
 	rnd = arc4_getword();
 	arc4_count -= 4;
-	THREAD_UNLOCK();
+	_ARC4_UNLOCK();
 
 	return (rnd);
 }
@@ -261,14 +255,14 @@ arc4random_buf(void *_buf, size_t n)
 {
 	u_char *buf = (u_char *)_buf;
 
-	THREAD_LOCK();
+	_ARC4_LOCK();
 	arc4_check_init();
 	while (n--) {
 		arc4_check_stir();
 		buf[n] = arc4_getbyte();
 		arc4_count--;
 	}
-	THREAD_UNLOCK();
+	_ARC4_UNLOCK();
 }
 
 /*
@@ -287,20 +281,10 @@ arc4random_uniform(u_int32_t upper_bound)
 	u_int32_t r, min;
 
 	if (upper_bound < 2)
-		return (0);
+		return 0;
 
-#if (ULONG_MAX > 0xffffffffUL)
-	min = 0x100000000UL % upper_bound;
-#else
-	/* Calculate (2**32 % upper_bound) avoiding 64-bit math */
-	if (upper_bound > 0x80000000)
-		min = 1 + ~upper_bound;		/* 2**32 - upper_bound */
-	else {
-		/* (2**32 - (x * 2)) % x == 2**32 % x when x <= 2**31 */
-		min = ((0xffffffff - (upper_bound * 2)) + 1) % upper_bound;
-	}
-#endif
-
+	/* 2**32 % x == (2**32 - x) % x */
+	min = -upper_bound % upper_bound;
 	/*
 	 * This could theoretically loop forever but each retry has
 	 * p > 0.5 (worst case, usually far better) of selecting a
