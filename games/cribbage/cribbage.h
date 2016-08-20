@@ -67,7 +67,7 @@ bool	 comphand(CARD [], const char *);
 void	 cremove(CARD, CARD [], int);
 void	 do_wait(void);
 void	 endmsg(void);
-char	*getline(void);
+char	*get_line(void);
 int	 getuchar(void);
 int	 infrom(CARD [], int, const char *);
 void	 instructions(void);

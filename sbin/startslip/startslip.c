@@ -92,7 +92,7 @@ int	debug = 0;
 
 static int carrier(void);
 static void down(int);
-static int getline(char *, int, int, time_t);
+static int get_line(char *, int, int, time_t);
 static void usage(void);
 static void sighup(int);
 static void sigterm(int);
@@ -378,7 +378,7 @@ restart:
 	 */
 	printd("look for login: ");
 	for (;;) {
-		if (getline(buf, BUFSIZ, fd, fintimeout) == 0 || hup || terminate)
+		if (get_line(buf, BUFSIZ, fd, fintimeout) == 0 || hup || terminate)
 			goto restart;
 		if (annex) {
 			if (bcmp(buf, annex, strlen(annex)) == 0) {
@@ -495,7 +495,7 @@ sigterm(int signo __unused)
 }
 
 static int
-getline(char *buf, int size, int this_fd, time_t fintimeout)
+get_line(char *buf, int size, int this_fd, time_t fintimeout)
 {
 	int i;
 	int ret;
@@ -515,11 +515,11 @@ getline(char *buf, int size, int this_fd, time_t fintimeout)
 		tv.tv_usec = 0;
 		if ((ret = select(this_fd + 1, &readfds, NULL, NULL, &tv)) < 0) {
 			if (errno != EINTR)
-				syslog(LOG_ERR, "%s: getline: select: %m", username);
+				syslog(LOG_ERR, "%s: get_line: select: %m", username);
 		} else {
 			if (! ret) {
 			tout:
-				printd("getline: timed out\n");
+				printd("get_line: timed out\n");
 				return (0);
 			}
 			if ((ret = read(this_fd, &buf[i], 1)) == 1) {
@@ -536,7 +536,7 @@ getline(char *buf, int size, int this_fd, time_t fintimeout)
 			}
 			if (ret <= 0) {
 				if (ret < 0) {
-					syslog(LOG_ERR, "%s: getline: read: %m", username);
+					syslog(LOG_ERR, "%s: get_line: read: %m", username);
 				} else
 					syslog(LOG_ERR, "%s: read returned 0", username);
 				buf[i] = '\0';

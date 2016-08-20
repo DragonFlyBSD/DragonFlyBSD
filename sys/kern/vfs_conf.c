@@ -96,7 +96,7 @@ int vfs_mountroot_devfs(void);
 static void	vfs_mountroot(void *junk);
 static int	vfs_mountroot_try(const char *mountfrom);
 static int	vfs_mountroot_ask(void);
-static int	getline(char *cp, int limit);
+static int	get_line(char *cp, int limit);
 
 /* legacy find-root code */
 char		*rootdevnames[2] = {NULL, NULL};
@@ -527,7 +527,7 @@ vfs_mountroot_ask(void)
 	while (llimit--) {
 		kprintf("\nmountroot> ");
 
-		if (getline(name, 128) < 0)
+		if (get_line(name, 128) < 0)
 			break;
 		if (name[0] == 0) {
 			;
@@ -550,7 +550,7 @@ vfs_mountroot_ask(void)
 
 
 static int
-getline(char *cp, int limit)
+get_line(char *cp, int limit)
 {
 	char *lp;
 	int dummy;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fortran.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/usr.bin/ctags/fortran.c 216370 2010-12-11 08:32:16Z joel $
+ * $FreeBSD: head/usr.bin/ctags/fortran.c 299355 2016-05-10 11:11:23Z bapt $
  */
 
 #include <ctype.h>
@@ -118,7 +118,7 @@ PF_funcs(void)
 			continue;
 		*cp = EOS;
 		strlcpy(tok, lbp, sizeof(tok));	/* possible trunc */
-		getline();			/* process line for ex(1) */
+		get_line();			/* process line for ex(1) */
 		pfnote(tok, lineno);
 		pfcnt = YES;
 	}

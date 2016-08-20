@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)print.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/usr.bin/ctags/print.c 216370 2010-12-11 08:32:16Z joel $
+ * $FreeBSD: head/usr.bin/ctags/print.c 299355 2016-05-10 11:11:23Z bapt $
  */
 
 #include <limits.h>
@@ -37,12 +37,12 @@
 #include "ctags.h"
 
 /*
- * getline --
+ * get_line --
  *	get the line the token of interest occurred on,
  *	prepare it for printing.
  */
 void
-getline(void)
+get_line(void)
 {
 	long	saveftell;
 	int	c;

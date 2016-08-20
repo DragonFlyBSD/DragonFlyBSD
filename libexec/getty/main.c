@@ -116,20 +116,20 @@ char partab[] = {
 
 #define	puts	Gputs
 
-static void	dingdong (int);
-static int	getname (void);
-static void	interrupt (int);
-static void	oflush (void);
-static void	prompt (void);
-static void	putchr (int);
-static void	putf (const char *);
-static void	putpad (const char *);
-static void	puts (const char *);
-static void	timeoverrun (int);
-static char	*getline (int);
-static void	setttymode (const char *, int);
-static void	setdefttymode (const char *);
-static int	opentty (const char *, int);
+static void	dingdong(int);
+static int	getname(void);
+static void	interrupt(int);
+static void	oflush(void);
+static void	prompt(void);
+static void	putchr(int);
+static void	putf(const char *);
+static void	putpad(const char *);
+static void	puts(const char *);
+static void	timeoverrun(int);
+static char	*get_line(int);
+static void	setttymode(const char *, int);
+static void	setdefttymode(const char *);
+static int	opentty(const char *, int);
 
 jmp_buf timeout;
 
@@ -307,7 +307,7 @@ main(int argc, char **argv)
 			if ((fd = open(IF, O_RDONLY)) != -1) {
 				char * cp;
 
-				while ((cp = getline(fd)) != NULL) {
+				while ((cp = get_line(fd)) != NULL) {
 					  putf(cp);
 				}
 				close(fd);
@@ -679,7 +679,7 @@ prompt(void)
 
 
 static char *
-getline(int fd)
+get_line(int fd)
 {
 	int i = 0;
 	static char linebuf[512];

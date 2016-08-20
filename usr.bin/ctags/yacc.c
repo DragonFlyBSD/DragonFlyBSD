@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)yacc.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/usr.bin/ctags/yacc.c 216370 2010-12-11 08:32:16Z joel $
+ * $FreeBSD: head/usr.bin/ctags/yacc.c 299355 2016-05-10 11:11:23Z bapt $
  */
 
 #include <ctype.h>
@@ -92,7 +92,7 @@ y_entries(void)
 			while (GETC(!=, EOF) && (intoken(c) || c == '.'))
 				*sp++ = c;
 			*sp = EOS;
-			getline();		/* may change before ':' */
+			get_line();		/* may change before ':' */
 			while (iswhite(c)) {
 				if (c == '\n')
 					SETLINE;

@@ -65,7 +65,7 @@
 
 struct cjprivate {
 	struct cjobinfo pub;
-	char	*cji_buff;		/* buffer for getline */
+	char	*cji_buff;		/* buffer for get_line */
 	char	*cji_eobuff;		/* last byte IN the buffer */
 	FILE	*cji_fstream;
 	int	 cji_buffsize;		/* # bytes in the buffer */

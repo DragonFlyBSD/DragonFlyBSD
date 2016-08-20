@@ -222,7 +222,7 @@ incard(CARD *crd)
 
 	retval = false;
 	rnk = sut = EMPTY;
-	if (!(line = getline()))
+	if (!(line = get_line()))
 		goto gotit;
 	p = p1 = line;
 	while (*p1 != ' ' && *p1 != '\0')
@@ -321,7 +321,7 @@ number(int lo, int hi, const char *prompt)
 
 	for (sum = 0;;) {
 		msg("%s", prompt);
-		if (!(p = getline()) || *p == '\0') {
+		if (!(p = get_line()) || *p == '\0') {
 			msg(quiet ? "Not a number" :
 			    "That doesn't look like a number");
 			continue;
@@ -500,12 +500,12 @@ over:
 }
 
 /*
- * getline:
+ * get_line:
  *      Reads the next line up to '\n' or EOF.  Multiple spaces are
  *	compressed to one space; a space is inserted before a ','
  */
 char *
-getline(void)
+get_line(void)
 {
 	char *sp;
 	int c, oy, ox;

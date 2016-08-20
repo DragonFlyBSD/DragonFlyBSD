@@ -63,12 +63,12 @@ extern uid_t	uid, euid;
 static int compar(const void *_p1, const void *_p2);
 
 /*
- * Getline reads a line from the control file cfp, removes tabs, converts
+ * get_line reads a line from the control file cfp, removes tabs, converts
  *  new-line to null and leaves it in line.
  * Returns 0 at EOF or the number of characters read.
  */
 int
-getline(FILE *cfp)
+get_line(FILE *cfp)
 {
 	int linel = 0;
 	char *lp = line;

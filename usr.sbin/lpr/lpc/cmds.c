@@ -286,7 +286,7 @@ kill_qtask(const char *lf)
 	}
 
 	/* If the lock file is empty, then there is no daemon to kill */
-	if (getline(fp) == 0)
+	if (get_line(fp) == 0)
 		goto killdone;
 
 	/*
@@ -1254,7 +1254,7 @@ doarg(char *job)
 		seteuid(uid);
 		if (fp == NULL)
 			continue;
-		while (getline(fp) > 0)
+		while (get_line(fp) > 0)
 			if (line[0] == 'P')
 				break;
 		fclose(fp);

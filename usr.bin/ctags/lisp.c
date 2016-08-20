@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)lisp.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: head/usr.bin/ctags/lisp.c 216370 2010-12-11 08:32:16Z joel $
+ * $FreeBSD: head/usr.bin/ctags/lisp.c 299355 2016-05-10 11:11:23Z bapt $
  */
 
 #include <ctype.h>
@@ -93,7 +93,7 @@ l_entries(void)
 		*cp = EOS;
 		strlcpy(tok, lbp, sizeof(tok));	/* possible trunc */
 		*cp = savedc;
-		getline();
+		get_line();
 		pfnote(tok, lineno);
 	}
 	/*NOTREACHED*/

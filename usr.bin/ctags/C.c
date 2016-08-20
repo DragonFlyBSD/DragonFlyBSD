@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)C.c	8.4 (Berkeley) 4/2/94
- * $FreeBSD: head/usr.bin/ctags/C.c 216370 2010-12-11 08:32:16Z joel $
+ * $FreeBSD: head/usr.bin/ctags/C.c 299355 2016-05-10 11:11:23Z bapt $
  */
 
 #include <limits.h>
@@ -145,7 +145,7 @@ c_entries(void)
 				 *	foo\n
 				 *	(arg1,
 				 */
-				getline();
+				get_line();
 				curline = lineno;
 				if (func_entry()) {
 					++level;
@@ -174,7 +174,7 @@ c_entries(void)
 		case ';':
 			if (t_def && level == t_level) {
 				t_def = NO;
-				getline();
+				get_line();
 				if (sp != tok)
 					*sp = EOS;
 				pfnote(tok, lineno);
@@ -219,7 +219,7 @@ c_entries(void)
 						 * get line immediately;
 						 * may change before '{'
 						 */
-						getline();
+						get_line();
 						if (str_entry(c))
 							++level;
 						break;
@@ -363,7 +363,7 @@ hash_entry(void)
 	}
 	*sp = EOS;
 	if (dflag || c == '(') {	/* only want macros */
-		getline();
+		get_line();
 		pfnote(tok, curline);
 	}
 skip:	if (c == '\n') {		/* get rid of rest of define */
