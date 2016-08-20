@@ -60,7 +60,7 @@
 #ifndef _WCHAR_H_
 #define _WCHAR_H_
 
-#include <stdio.h> /* for FILE* */
+#include <sys/cdefs.h>
 #include <sys/_null.h>
 #include <sys/types.h>
 #include <machine/limits.h>
@@ -116,6 +116,11 @@ typedef __size_t	size_t;
 #define WCSBIN_SURRO		0x02	/* allow surrogates */
 #define WCSBIN_LONGCODES	0x04	/* allow up to 31-bit WCs */
 #define WCSBIN_STRICT		0x08	/* no escaping, else escapes happen */
+#endif
+
+#ifndef _STDFILE_DECLARED
+#define	_STDFILE_DECLARED
+typedef struct __FILE FILE;
 #endif
 
 struct tm;
