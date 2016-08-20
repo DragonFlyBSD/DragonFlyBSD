@@ -39,6 +39,7 @@
 #include <sys/cdefs.h>
 #include <sys/_null.h>
 #include <sys/types.h>
+#include <machine/stdarg.h> /* for __va_list */
 
 typedef	__off_t		fpos_t;
 
@@ -58,10 +59,15 @@ typedef	__ssize_t	ssize_t;
 #endif
 #endif
 
-#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
+#ifdef __GNUC__
 #ifndef _VA_LIST_DECLARED
-typedef	__va_list	va_list;
 #define	_VA_LIST_DECLARED
+typedef	__va_list	va_list;
+/* __gnuc_va_list is not needed, provided by <machine/stdarg.h> */
+#endif
+#else
+#include <stdarg.h>
 #endif
 #endif
 
