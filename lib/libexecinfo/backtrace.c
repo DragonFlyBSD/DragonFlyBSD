@@ -59,7 +59,7 @@ open_self(int flags)
 	const char *pathname = SELF;
 #ifdef KERN_PROC_PATHNAME
 	static const int name[] = {
-		CTL_KERN, KERN_PROC, -1, KERN_PROC_PATHNAME,
+		CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1,
 	};
 	char path[MAXPATHLEN];
 	size_t len;
@@ -92,7 +92,7 @@ rasprintf(char **buf, size_t *bufsiz, size_t offs, const char *fmt, ...)
 			nbufsiz = MAX(*bufsiz + 512, (size_t)len + 1);
 		} else
 			nbufsiz = MAX(offs, *bufsiz) + 512;
-			
+
 		nbuf = realloc(*buf, nbufsiz);
 		if (nbuf == NULL)
 			return -1;
