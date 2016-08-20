@@ -31,14 +31,13 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)comm.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: head/usr.bin/comm/comm.c 227235 2011-11-06 18:49:10Z ed $
+ * $FreeBSD: head/usr.bin/comm/comm.c 303526 2016-07-30 01:07:47Z bapt $
  */
 
 #include <err.h>
 #include <limits.h>
 #include <locale.h>
 #include <stdint.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

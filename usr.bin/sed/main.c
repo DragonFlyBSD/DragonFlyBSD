@@ -33,7 +33,7 @@
  *
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.2 (Berkeley) 1/3/94
- * $FreeBSD: head/usr.bin/sed/main.c 277811 2015-01-27 19:46:19Z pfg $
+ * $FreeBSD: head/usr.bin/sed/main.c 303662 2016-08-02 15:35:53Z pfg $
  */
 
 #include <sys/types.h>
@@ -48,7 +48,6 @@
 #include <limits.h>
 #include <locale.h>
 #include <stddef.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

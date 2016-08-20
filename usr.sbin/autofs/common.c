@@ -27,6 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: head/usr.sbin/autofs/common.c 303527 2016-07-30 01:10:05Z bapt $
  */
 
 #include <sys/types.h>
@@ -37,7 +38,6 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <paths.h>
-#define	_WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -23,10 +23,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/getline.c,v 1.1 2009/02/28 06:00:58 das Exp $
+ * $FreeBSD: head/lib/libc/stdio/getline.c 303528 2016-07-30 01:13:54Z bapt $
  */
 
-#define	_WITH_GETLINE
 #include <stdio.h>
 
 ssize_t

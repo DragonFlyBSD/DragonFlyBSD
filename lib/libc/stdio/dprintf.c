@@ -23,10 +23,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/dprintf.c,v 1.1 2009/03/04 03:38:51 das Exp $
+ * $FreeBSD: head/lib/libc/stdio/dprintf.c 303529 2016-07-30 01:16:06Z bapt $
  */
 
-#define	_WITH_DPRINTF
 #include "namespace.h"
 #include <stdarg.h>
 #include <stdio.h>

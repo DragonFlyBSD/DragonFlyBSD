@@ -31,7 +31,6 @@
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <assert.h>
-#define _WITH_DPRINTF
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

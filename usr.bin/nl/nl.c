@@ -27,10 +27,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * @(#) Copyright (c) 1999 The NetBSD Foundation, Inc.  All rights reserved.
- * $FreeBSD: head/usr.bin/nl/nl.c 265319 2014-05-04 12:20:40Z pluknet $
+ * $FreeBSD: head/usr.bin/nl/nl.c 303595 2016-07-31 19:02:19Z bapt $
  */
 
-#define	_WITH_GETLINE
 #include <sys/types.h>
 
 #include <err.h>

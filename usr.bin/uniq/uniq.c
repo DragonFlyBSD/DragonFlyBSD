@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uniq.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: head/usr.bin/uniq/uniq.c 263234 2014-03-16 11:04:44Z rwatson $
+ * $FreeBSD: head/usr.bin/uniq/uniq.c 303526 2016-07-30 01:07:47Z bapt $
  */
 
 #include <ctype.h>
@@ -41,7 +41,6 @@
 #include <locale.h>
 #include <nl_types.h>
 #include <stdint.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
