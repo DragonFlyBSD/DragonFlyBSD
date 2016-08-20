@@ -675,13 +675,7 @@ struct hammer_volume_ondisk {
 	uint32_t vol_flags;	/* volume flags */
 	uint32_t vol_rootvol;	/* the root volume number (must be 0) */
 
-	int32_t vol_reserved04;
-	int32_t vol_reserved05;
-	uint32_t vol_reserved06;
-	uint32_t vol_reserved07;
-
-	int64_t vol_reserved08;
-	int64_t vol_reserved09;
+	uint32_t vol_reserved[8];
 
 	/*
 	 * These fields are initialized and space is reserved in every
@@ -812,7 +806,7 @@ struct hammer_inode_data {
 	uint8_t obj_type;
 	uint8_t cap_flags;	/* capability support flags (extension) */
 	uint16_t reserved01;
-	uint32_t reserved02;	/* RESERVED FOR POSSIBLE FUTURE BIRTHTIME */
+	uint32_t reserved02;
 	uint64_t nlinks;	/* hard links */
 	uint64_t size;		/* filesystem object size */
 	union {
