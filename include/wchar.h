@@ -64,7 +64,18 @@
 #include <sys/_null.h>
 #include <sys/types.h>
 #include <machine/limits.h>
+#include <machine/stdarg.h> /* for __va_list */
 #include <ctype.h>
+
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
+#ifndef _VA_LIST_DECLARED
+#define	_VA_LIST_DECLARED
+#ifdef va_start
+/* prevent gcc from fixing this header */
+#endif
+typedef	__va_list	va_list;
+#endif
+#endif
 
 #ifndef __cplusplus
 #ifndef _WCHAR_T_DECLARED
