@@ -77,7 +77,7 @@ __BEGIN_DECLS
 #endif
 extern int __mb_cur_max;
 extern int ___mb_cur_max(void);
-#define	MB_CUR_MAX	(___mb_cur_max())
+#define	MB_CUR_MAX	((size_t)___mb_cur_max())
 
 void	 abort(void) __dead2;
 /* void	 abort2(const char *, int, void **) __dead2; */
@@ -133,7 +133,7 @@ size_t	 wcstombs(char * __restrict, const wchar_t * __restrict, size_t);
  *
  * (The only other extension made by C99 in this header is _Exit().)
  */
-#if __ISO_C_VISIBLE >= 1999
+#if __ISO_C_VISIBLE >= 1999 || defined(__cplusplus)
 #ifdef __LONG_LONG_SUPPORTED
 /* LONGLONG */
 typedef struct {
