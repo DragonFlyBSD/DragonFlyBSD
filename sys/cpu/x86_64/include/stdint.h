@@ -52,21 +52,13 @@ typedef	int		__int32_t;
 typedef	unsigned int	__uint32_t;
 typedef int		__boolean_t;
 
-/*
- * This mess is to override compiler options that might restrict long long
- * and for lint which doesn't understand GNUC attributes.
- */
-#if defined(lint)
+#ifdef __LP64__
 typedef	long		__int64_t;
 typedef	unsigned long	__uint64_t;
-#elif defined(__GNUC__)
-typedef	int __attribute__((__mode__(__DI__)))		__int64_t;
-typedef	unsigned int __attribute__((__mode__(__DI__)))	__uint64_t;
-#elif defined(__x86_64__)
-typedef	long		__int64_t;
-typedef	unsigned long	__uint64_t;
-#elif defined(__i386__)
+#else
+__extension__
 typedef	long long	__int64_t;
+__extension__
 typedef	unsigned long long __uint64_t;
 #endif
 
@@ -76,11 +68,11 @@ typedef	unsigned long long __uint64_t;
 typedef	__int64_t	__intmax_t;
 typedef	__uint64_t	__uintmax_t;
 
-#if defined(__x86_64__)
+#ifdef __LP64__
 typedef	__int64_t	__intptr_t;
 typedef	__uint64_t	__uintptr_t;
 typedef	__int64_t	__ptrdiff_t;		/* ptr1 - ptr2 */
-#elif defined(__i386__)
+#else
 typedef	__int32_t	__intptr_t;
 typedef	__uint32_t	__uintptr_t;
 typedef	__int32_t	__ptrdiff_t;		/* ptr1 - ptr2 */
@@ -110,12 +102,12 @@ typedef	__uint64_t	__uint_least64_t;
  * do not wish to overly pollute their namespaces.
  */
 
-#if defined(__x86_64__)
+#ifdef __LP64__
 typedef __uint64_t	__size_t;
 typedef __int64_t	__ssize_t;
 typedef __int64_t	__register_t;
 typedef __uint64_t	__u_register_t;
-#elif defined(__i386__)
+#else
 typedef __uint32_t	__size_t;
 typedef __int32_t	__ssize_t;
 typedef __int32_t	__register_t;
