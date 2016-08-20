@@ -119,7 +119,12 @@ typedef uint32_t hammer_crc_t;
 
 /*
  * hammer_off_t has several different encodings.  Note that not all zones
- * encode a vol_no.  Zone bits are not a part of filesystem capacity.
+ * encode a vol_no.  Zone bits are not a part of filesystem capacity as
+ * the zone bits aren't directly or indirectly mapped to physical volumes.
+ *
+ * In other words, HAMMER's logical filesystem offset consists of 64 bits,
+ * but the filesystem is considered 60 bits filesystem, not 64 bits.
+ * The maximum filesystem capacity is 1EB, not 16EB.
  *
  * zone 0:		available, a big-block that contains the offset is unused
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
