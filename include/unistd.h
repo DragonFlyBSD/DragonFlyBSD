@@ -58,7 +58,7 @@ typedef	__pid_t		pid_t;
 #endif
 
 #ifndef _SIZE_T_DECLARED
-typedef	__size_t	size_t;
+typedef	__size_t	size_t;		/* _GCC_SIZE_T OK */
 #define	_SIZE_T_DECLARED
 #endif
 

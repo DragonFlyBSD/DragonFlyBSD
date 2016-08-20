@@ -184,7 +184,7 @@ typedef	__clockid_t	clockid_t;
 
 #ifndef _SIZE_T_DECLARED
 #define	_SIZE_T_DECLARED
-typedef	__size_t	size_t;
+typedef	__size_t	size_t;		/* _GCC_SIZE_T OK */
 #endif
 
 #ifndef _SSIZE_T_DECLARED

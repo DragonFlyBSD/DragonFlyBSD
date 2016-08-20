@@ -45,13 +45,13 @@ typedef	__rune_t	rune_t;
 #endif
 
 #ifndef _SIZE_T_DECLARED
-typedef	__size_t	size_t;
+typedef	__size_t	size_t;		/* _GCC_SIZE_T OK */
 #define	_SIZE_T_DECLARED
 #endif
 
 #ifndef	__cplusplus
 #ifndef _WCHAR_T_DECLARED
-typedef	__wchar_t	wchar_t;
+typedef	__wchar_t	wchar_t;	/* _GCC_WCHAR_T OK */
 #define	_WCHAR_T_DECLARED
 #endif
 #endif

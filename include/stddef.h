@@ -42,12 +42,12 @@
 
 #ifndef _SIZE_T_DECLARED
 #define _SIZE_T_DECLARED
-typedef	__size_t	size_t;		/* open group */
+typedef	__size_t	size_t;		/* open group, _GCC_SIZE_T OK */
 #endif
 
 #ifndef _PTRDIFF_T_DECLARED
 #define _PTRDIFF_T_DECLARED
-typedef	__ptrdiff_t	ptrdiff_t;	/* open group */
+typedef	__ptrdiff_t	ptrdiff_t;	/* open group, _GCC_PTRDIFF_T OK */
 #endif
 
 #if __BSD_VISIBLE
@@ -60,7 +60,7 @@ typedef	__rune_t	rune_t;
 #ifndef	__cplusplus
 #ifndef _WCHAR_T_DECLARED
 #define _WCHAR_T_DECLARED
-typedef __wchar_t	wchar_t;	/* open group */
+typedef	__wchar_t	wchar_t;	/* open group, _GCC_WCHAR_T OK */
 #endif
 #endif
 
