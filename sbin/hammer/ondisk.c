@@ -263,7 +263,7 @@ get_root_volume(void)
  * Acquire the specified buffer.  isnew is -1 only when called
  * via get_buffer_readahead() to prevent another readahead.
  */
-struct buffer_info *
+static struct buffer_info *
 get_buffer(hammer_off_t buf_offset, int isnew)
 {
 	struct buffer_info *buf;
