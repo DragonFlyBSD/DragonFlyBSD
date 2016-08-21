@@ -256,8 +256,6 @@ hammer_cmd_checkmap(void)
 	       (intmax_t)((undomap->alloc_offset & HAMMER_OFF_LONG_MASK)
 		/ (1024 * 1024)));
 
-	AssertOnFailure = (DebugOpt != 0);
-
 	printf("Collecting allocation info from freemap: ");
 	fflush(stdout);
 	check_freemap(freemap);
@@ -350,7 +348,7 @@ check_btree_node(hammer_off_t node_offset, int depth)
 				collect_btree_leaf(elm);
 			break;
 		default:
-			assert(!AssertOnFailure);
+			assert(!DebugOpt);
 			break;
 		}
 	}
@@ -375,7 +373,7 @@ check_undo(hammer_blockmap_t undomap)
 			collect_undo(scan_offset, head);
 			break;
 		default:
-			assert(!AssertOnFailure);
+			assert(!DebugOpt);
 			break;
 		}
 		if ((head->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
@@ -486,7 +484,7 @@ collect_blockmap(hammer_off_t offset, int32_t length, int zone)
 	int error;
 
 	result_offset = blockmap_lookup(offset, &layer1, &layer2, &error);
-	if (AssertOnFailure) {
+	if (DebugOpt) {
 		assert(HAMMER_ZONE_DECODE(offset) == zone);
 		assert(HAMMER_ZONE_DECODE(result_offset) ==
 			HAMMER_ZONE_RAW_BUFFER_INDEX);
@@ -606,7 +604,7 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 			continue;
 
 		zone = layer2->zone;
-		if (AssertOnFailure) {
+		if (DebugOpt) {
 			assert((zone == HAMMER_ZONE_UNDO_INDEX) ||
 				(zone == HAMMER_ZONE_FREEMAP_INDEX) ||
 				hammer_is_zone2_mapped_index(zone));

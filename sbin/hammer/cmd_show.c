@@ -120,8 +120,6 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 	struct zone_stat *stats = NULL;
 	int zone;
 
-	AssertOnFailure = (DebugOpt != 0);
-
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat_bits();
 
@@ -638,7 +636,7 @@ check_data_crc(hammer_btree_elm_t elm)
 	switch (elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
 		if (data_len != sizeof(struct hammer_inode_data))
-			return("BI");  /* bad inode size*/
+			return("BI");  /* bad inode size */
 		ptr = get_buffer_data(buf_offset, &data_buffer, 0);
 		crc = crc32(ptr, HAMMER_INODE_CRCSIZE);
 		rel_buffer(data_buffer);

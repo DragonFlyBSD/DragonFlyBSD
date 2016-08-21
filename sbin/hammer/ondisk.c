@@ -49,7 +49,6 @@ uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
 int UseReadBehind = -4;
 int UseReadAhead = 4;
-int AssertOnFailure = 1;
 int DebugOpt;
 struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
 static int valid_hammer_volumes;

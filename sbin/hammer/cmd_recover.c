@@ -69,7 +69,6 @@ hammer_cmd_recover(const char *target_dir)
 	hammer_off_t off_end;
 	char *ptr;
 
-	AssertOnFailure = 0;
 	TargetDir = target_dir;
 
 	if (mkdir(TargetDir, 0777) == -1) {
@@ -104,8 +103,6 @@ hammer_cmd_recover(const char *target_dir)
 		CachedPath = NULL;
 		CachedFd = -1;
 	}
-
-	AssertOnFailure = 1;
 }
 
 /*
