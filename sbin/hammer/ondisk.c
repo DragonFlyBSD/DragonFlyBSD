@@ -800,6 +800,66 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	rel_buffer(buffer);
 }
 
+const char *zone_labels[] = {
+	"",		/* 0 */
+	"raw_volume",	/* 1 */
+	"raw_buffer",	/* 2 */
+	"undo",		/* 3 */
+	"freemap",	/* 4 */
+	"",		/* 5 */
+	"",		/* 6 */
+	"",		/* 7 */
+	"btree",	/* 8 */
+	"meta",		/* 9 */
+	"large_data",	/* 10 */
+	"small_data",	/* 11 */
+	"",		/* 12 */
+	"",		/* 13 */
+	"",		/* 14 */
+	"unavail",	/* 15 */
+};
+
+void
+print_blockmap(const struct volume_info *root_vol)
+{
+	hammer_blockmap_t blockmap;
+	struct hammer_volume_ondisk *ondisk;
+	int64_t size, used;
+	int i;
+
+	ondisk = root_vol->ondisk;
+	printf("vol_label\t%s\n", ondisk->vol_label);
+	printf("vol_count\t%d\n", ondisk->vol_count);
+	printf("vol_bot_beg\t%s\n", sizetostr(ondisk->vol_bot_beg));
+	printf("vol_mem_beg\t%s\n", sizetostr(ondisk->vol_mem_beg));
+	printf("vol_buf_beg\t%s\n", sizetostr(ondisk->vol_buf_beg));
+	printf("vol_buf_end\t%s\n", sizetostr(ondisk->vol_buf_end));
+	printf("next_tid\t%016jx\n",
+	       (uintmax_t)ondisk->vol0_next_tid);
+
+	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	size = blockmap->alloc_offset & HAMMER_OFF_LONG_MASK;
+	if (blockmap->first_offset <= blockmap->next_offset)
+		used = blockmap->next_offset - blockmap->first_offset;
+	else
+		used = blockmap->alloc_offset - blockmap->first_offset +
+			(blockmap->next_offset & HAMMER_OFF_LONG_MASK);
+	printf("undo_size\t%s\n", sizetostr(size));
+	printf("undo_used\t%s\n", sizetostr(used));
+
+	printf("                   "
+	       "phys             first            next             alloc\n");
+	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
+		blockmap = &ondisk->vol0_blockmap[i];
+		printf("zone %-2d %-10s %016jx %016jx %016jx %016jx\n",
+			i, zone_labels[i],
+			(uintmax_t)blockmap->phys_offset,
+			(uintmax_t)blockmap->first_offset,
+			(uintmax_t)blockmap->next_offset,
+			(uintmax_t)blockmap->alloc_offset);
+	}
+}
+
 /*
  * Flush various tracking structures to disk
  */

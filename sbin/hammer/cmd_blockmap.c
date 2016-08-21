@@ -64,7 +64,7 @@ RB_PROTOTYPE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t);
 RB_GENERATE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t,
 	phys_offset);
 
-static void dump_blockmap(const char *label, int zone);
+static void dump_blockmap(int zone);
 static void check_freemap(hammer_blockmap_t freemap);
 static void check_btree_node(hammer_off_t node_offset, int depth);
 static void check_undo(hammer_blockmap_t undomap);
@@ -90,16 +90,15 @@ static int num_bad_node = 0;
 void
 hammer_cmd_blockmap(void)
 {
-	dump_blockmap("freemap", HAMMER_ZONE_FREEMAP_INDEX);
+	dump_blockmap(HAMMER_ZONE_FREEMAP_INDEX);
 }
 
 static
 void
-dump_blockmap(const char *label, int zone)
+dump_blockmap(int zone)
 {
 	struct volume_info *root_volume;
 	hammer_blockmap_t rootmap;
-	hammer_blockmap_t blockmap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
 	struct buffer_info *buffer1 = NULL;
@@ -110,25 +109,12 @@ dump_blockmap(const char *label, int zone)
 	hammer_off_t block_offset;
 	struct zone_stat *stats = NULL;
 	int xerr, aerr, ferr;
-	int i;
 
 	root_volume = get_root_volume();
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
-	printf("                   "
-	       "phys             first            next             alloc\n");
-	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
-		blockmap = &root_volume->ondisk->vol0_blockmap[i];
-		if (VerboseOpt || i == zone) {
-			printf("zone %-2d %-10s %016jx %016jx %016jx %016jx\n",
-				i, (i == zone ? label : ""),
-				(uintmax_t)blockmap->phys_offset,
-				(uintmax_t)blockmap->first_offset,
-				(uintmax_t)blockmap->next_offset,
-				(uintmax_t)blockmap->alloc_offset);
-		}
-	}
+	print_blockmap(root_volume);
 
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat();
@@ -248,13 +234,7 @@ hammer_cmd_checkmap(void)
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	undomap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
-	printf("Volume header\tnext_tid=%016jx\n",
-	       (uintmax_t)volume->ondisk->vol0_next_tid);
-	printf("\t\tbufoffset=%016jx\n",
-	       (uintmax_t)volume->ondisk->vol_buf_beg);
-	printf("\t\tundosize=%jdMB\n",
-	       (intmax_t)((undomap->alloc_offset & HAMMER_OFF_LONG_MASK)
-		/ (1024 * 1024)));
+	print_blockmap(volume);
 
 	printf("Collecting allocation info from freemap: ");
 	fflush(stdout);

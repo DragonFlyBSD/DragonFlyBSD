@@ -116,24 +116,15 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 {
 	struct volume_info *volume;
 	struct hammer_volume_ondisk *ondisk;
-	struct hammer_blockmap *blockmap;
 	struct zone_stat *stats = NULL;
-	int zone;
 
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat_bits();
 
 	volume = get_root_volume();
 	ondisk = volume->ondisk;
-	printf("Volume header\tnext_tid=%016jx\n",
-	       (uintmax_t)ondisk->vol0_next_tid);
-	printf("\t\tbufoffset=%016jx\n",
-	       (uintmax_t)ondisk->vol_buf_beg);
-	for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
-		blockmap = ondisk->vol0_blockmap + zone;
-		printf("\t\tzone %d\tnext_offset=%016jx\n",
-			zone, blockmap->next_offset);
-	}
+
+	print_blockmap(volume);
 
 	bzero(&opt, sizeof(opt));
 	opt.filter = filter;
@@ -982,24 +973,11 @@ hammer_cmd_show_undo(void)
 	hammer_off_t scan_offset;
 	hammer_fifo_any_t head;
 	struct buffer_info *data_buffer = NULL;
-	int64_t bytes;
 
 	volume = get_root_volume();
 	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	if (rootmap->first_offset <= rootmap->next_offset)
-		bytes = rootmap->next_offset - rootmap->first_offset;
-	else
-		bytes = rootmap->alloc_offset - rootmap->first_offset +
-			(rootmap->next_offset & HAMMER_OFF_LONG_MASK);
 
-	printf("Volume header UNDO %016jx-%016jx/%016jx\n",
-		(intmax_t)rootmap->first_offset,
-		(intmax_t)rootmap->next_offset,
-		(intmax_t)rootmap->alloc_offset);
-	printf("UNDO map is %jdMB\n",
-		(intmax_t)((rootmap->alloc_offset & HAMMER_OFF_LONG_MASK) /
-			   (1024 * 1024)));
-	printf("UNDO being used is %jdB\n", (intmax_t)bytes);
+	print_blockmap(volume);
 
 	scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
 	while (scan_offset < rootmap->alloc_offset) {
