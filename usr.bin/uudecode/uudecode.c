@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uudecode.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/uudecode/uudecode.c,v 1.13.2.6 2003/04/07 20:10:33 fanf Exp $
- * $DragonFly: src/usr.bin/uudecode/uudecode.c,v 1.3 2004/12/22 11:25:51 liamfoy Exp $
  */
 
 /*
@@ -54,6 +53,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#ifdef BOOTSTRAPPING
+#define	getline	get_line /* help bootstrap previous stdio.h */
+#endif
 
 static const char *infile, *outfile;
 static FILE *infp, *outfp;

@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/gencat/Makefile,v 1.5 1999/08/28 01:01:40 peter Exp $
-# $DragonFly: src/usr.bin/gencat/Makefile,v 1.4 2007/08/27 16:50:54 pavalos Exp $
 
 PROG=	gencat
 SRCS=	gencat.c
@@ -14,7 +13,7 @@ types.h: ${.CURDIR}/../../sys/sys/types.h
 	cp ${.ALLSRC} sys/${.TARGET}
 
 SRCS+=		nl_types.h types.h
-CFLAGS+=	-I${.OBJDIR}
+CFLAGS+=	-I${.OBJDIR} -DBOOTSTRAPPING
 CLEANFILES+=	nl_types.h
 CLEANDIRS+=	sys
 .endif
