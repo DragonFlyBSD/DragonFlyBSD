@@ -273,12 +273,12 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	int zone;
 	int hi;
 	int dora = 0;
+	int error = 0;
 
 	zone = HAMMER_ZONE_DECODE(buf_offset);
-	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
-		buf_offset = blockmap_lookup(buf_offset, NULL, NULL, NULL);
-	}
-	if (buf_offset == HAMMER_OFF_BAD)
+	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX)
+		buf_offset = blockmap_lookup(buf_offset, NULL, NULL, &error);
+	if (error || buf_offset == HAMMER_OFF_BAD)
 		return(NULL);
 	assert(hammer_is_zone_raw_buffer(buf_offset));
 

@@ -261,9 +261,6 @@ blockmap_lookup(hammer_off_t zone_offset,
 	/*
 	 * The blockmap should match the requested zone (else the volume
 	 * header is mashed).
-	 *
-	 * Note that a valid offset can still be returned if AssertOnFailure
-	 * is zero.
 	 */
 	if (HAMMER_ZONE_FREEMAP_INDEX != zone &&
 	    HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
@@ -317,8 +314,6 @@ done:
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
 
-	if (AssertOnFailure && error != 0)
-		errx(1, "blockmap_lookup: error=%d\n", error);
 	if (errorp)
 		*errorp = error;
 
