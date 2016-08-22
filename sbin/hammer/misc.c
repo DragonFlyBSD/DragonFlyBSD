@@ -157,7 +157,7 @@ sizetostr(off_t size)
 	static char buf[32];
 
 	if (size < 1024 / 2) {
-		snprintf(buf, sizeof(buf), "%6.2f", (double)size);
+		snprintf(buf, sizeof(buf), "%6.2fB", (double)size);
 	} else if (size < 1024 * 1024 / 2) {
 		snprintf(buf, sizeof(buf), "%6.2fKB",
 			(double)size / 1024);
