@@ -134,7 +134,7 @@
 
 /* xauth for X11 forwarding */
 #ifndef _PATH_XAUTH
-#define _PATH_XAUTH			"/usr/local/bin/xauth"
+#define _PATH_XAUTH			"/usr/X11R6/bin/xauth"
 #endif
 
 /* UNIX domain socket for X11 server; displaynum will replace %u */

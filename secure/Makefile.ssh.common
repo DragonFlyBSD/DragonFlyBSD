@@ -1,5 +1,7 @@
 SSHDIR=		${.CURDIR}/../../../crypto/openssh
 
+XAUTH_PATH?=	/usr/local/bin/xauth
+CFLAGS+=	-DXAUTH_PATH=\"${XAUTH_PATH}\"
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR}
 
 .if ${.CURDIR:T} != "libssh"
