@@ -70,6 +70,9 @@ libhammer_pfs_get_snapshots(libhammer_fsinfo_t fip, libhammer_pfsinfo_t pip)
 	 * for the caller to handle the situation.
 	 */
 	pfs0 = libhammer_get_first_pfs(fip);
+	if (pfs0 == NULL)
+		return -1;
+
 	if (pip->mountedon == NULL)
 		libhammer_pfs_canonical_path(pfs0->mountedon, pip, &path);
 	else
