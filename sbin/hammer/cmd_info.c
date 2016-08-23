@@ -181,7 +181,7 @@ show_info(char *path)
 
 	/* Pseudo-filesystem information */
 	printf("PFS information\n");
-	printf("\tPFS ID  Mode    Snaps  Mounted on\n");
+	printf("\tPFS ID  Mode    Snaps\n");
 
 	/* Iterate all the PFSs found */
 	pi_first = libhammer_get_first_pfs(fip);
@@ -190,14 +190,7 @@ show_info(char *path)
 		    pi->pfs_id, (pi->ismaster ? "MASTER" : "SLAVE"));
 
 		snprintf(buf, 6, "%d", pi->snapcount);
-		printf(" %6s  ", (pi->head.error && pi->snapcount == 0) ? "-" : buf);
-
-		if (pi->mountedon)
-			printf("%s", pi->mountedon);
-		else
-			printf("not mounted");
-
-		printf("\n");
+		printf(" %6s\n", (pi->head.error && pi->snapcount == 0) ? "-" : buf);
 	}
 
 	free(fsid);
