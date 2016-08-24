@@ -522,11 +522,19 @@ static void
 acpi_res_set_iorange(device_t dev, void *context, uint64_t low,
 		     uint64_t high, uint64_t length, uint64_t align)
 {
-    struct acpi_res_context	*cp = (struct acpi_res_context *)context;
+    struct acpi_res_context *cp = (struct acpi_res_context *)context;
+    uint64_t base;
 
     if (cp == NULL)
 	return;
-    device_printf(dev, "I/O range not supported\n");
+
+    base = roundup(low, align);
+    if (base + length - 1 <= high) {
+	acpi_res_set_ioport(dev, context, base, length);
+	return;
+    }
+    device_printf(dev, "I/O range [0x%jx,0x%jx,0x%jx,0x%jx] not supported\n",
+	(uintmax_t)low, (uintmax_t)high, (uintmax_t)length, (uintmax_t)align);
 }
 
 static void
@@ -549,7 +557,9 @@ acpi_res_set_memoryrange(device_t dev, void *context, uint64_t low,
 
     if (cp == NULL)
 	return;
-    device_printf(dev, "memory range not supported\n");
+    device_printf(dev, "memory range [0x%jx,0x%jx,0x%jx,0x%jx] "
+        "not supported\n",
+	(uintmax_t)low, (uintmax_t)high, (uintmax_t)length, (uintmax_t)align);
 }
 
 static void
