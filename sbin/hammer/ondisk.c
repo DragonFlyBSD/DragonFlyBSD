@@ -826,15 +826,16 @@ print_blockmap(const struct volume_info *root_vol)
 	struct hammer_volume_ondisk *ondisk;
 	int64_t size, used;
 	int i;
+#define INDENT ""
 
 	ondisk = root_vol->ondisk;
-	printf("vol_label\t%s\n", ondisk->vol_label);
-	printf("vol_count\t%d\n", ondisk->vol_count);
-	printf("vol_bot_beg\t%s\n", sizetostr(ondisk->vol_bot_beg));
-	printf("vol_mem_beg\t%s\n", sizetostr(ondisk->vol_mem_beg));
-	printf("vol_buf_beg\t%s\n", sizetostr(ondisk->vol_buf_beg));
-	printf("vol_buf_end\t%s\n", sizetostr(ondisk->vol_buf_end));
-	printf("next_tid\t%016jx\n",
+	printf(INDENT"vol_label\t%s\n", ondisk->vol_label);
+	printf(INDENT"vol_count\t%d\n", ondisk->vol_count);
+	printf(INDENT"vol_bot_beg\t%s\n", sizetostr(ondisk->vol_bot_beg));
+	printf(INDENT"vol_mem_beg\t%s\n", sizetostr(ondisk->vol_mem_beg));
+	printf(INDENT"vol_buf_beg\t%s\n", sizetostr(ondisk->vol_buf_beg));
+	printf(INDENT"vol_buf_end\t%s\n", sizetostr(ondisk->vol_buf_end));
+	printf(INDENT"vol0_next_tid\t%016jx\n",
 	       (uintmax_t)ondisk->vol0_next_tid);
 
 	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
@@ -844,14 +845,14 @@ print_blockmap(const struct volume_info *root_vol)
 	else
 		used = blockmap->alloc_offset - blockmap->first_offset +
 			(blockmap->next_offset & HAMMER_OFF_LONG_MASK);
-	printf("undo_size\t%s\n", sizetostr(size));
-	printf("undo_used\t%s\n", sizetostr(used));
+	printf(INDENT"undo_size\t%s\n", sizetostr(size));
+	printf(INDENT"undo_used\t%s\n", sizetostr(used));
 
-	printf("                   "
+	printf(INDENT"zone #             "
 	       "phys             first            next             alloc\n");
 	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
 		blockmap = &ondisk->vol0_blockmap[i];
-		printf("zone %-2d %-10s %016jx %016jx %016jx %016jx\n",
+		printf(INDENT"zone %-2d %-10s %016jx %016jx %016jx %016jx\n",
 			i, zone_labels[i],
 			(uintmax_t)blockmap->phys_offset,
 			(uintmax_t)blockmap->first_offset,
