@@ -640,6 +640,8 @@ format_root_directory(const char *label)
 
 	/*
 	 * Create the second node element for the PFS data.
+	 * This is supposed to be a record part of the root ip (inode),
+	 * so it should have the same obj_type value as above.
 	 */
 	elm = &bnode->elms[1];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
@@ -650,7 +652,7 @@ format_root_directory(const char *label)
 	elm->leaf.base.create_tid = create_tid;
 	elm->leaf.base.delete_tid = 0;
 	elm->leaf.base.rec_type = HAMMER_RECTYPE_PFS;
-	elm->leaf.base.obj_type = 0;
+	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
 	elm->leaf.create_ts = (uint32_t)time(NULL);
 
 	elm->leaf.data_offset = pfsd_off;
