@@ -1720,9 +1720,6 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 		if (base->obj_id != ip->obj_id)
 			hpanic("bad record at %p", cursor.node);
 
-		/*
-		 * Convert pseudo-filesystems into softlinks
-		 */
 		dtype = hammer_get_dtype(cursor.leaf->base.obj_type);
 		r = vop_write_dirent(
 			     &error, uio, cursor.data->entry.obj_id,
