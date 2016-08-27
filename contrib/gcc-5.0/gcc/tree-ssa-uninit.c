@@ -159,6 +159,31 @@ warn_uninit (enum opt_code wc, tree t, tree expr, tree var,
   if (!has_undefined_value_p (t))
     return;
 
+  /* Anonymous SSA_NAMEs shouldn't be uninitialized, but ssa_undefined_value_p
+     can return true if the def stmt of anonymous SSA_NAME is COMPLEX_EXPR
+     created for conversion from scalar to complex.  Use the underlying var of
+     the COMPLEX_EXPRs real part in that case.  See PR71581.  */
+  if (expr == NULL_TREE
+      && var == NULL_TREE
+      && SSA_NAME_VAR (t) == NULL_TREE
+      && is_gimple_assign (SSA_NAME_DEF_STMT (t))
+      && gimple_assign_rhs_code (SSA_NAME_DEF_STMT (t)) == COMPLEX_EXPR)
+    {
+      tree v = gimple_assign_rhs1 (SSA_NAME_DEF_STMT (t));
+      if (TREE_CODE (v) == SSA_NAME
+	  && has_undefined_value_p (v)
+	  && (integer_zerop (gimple_assign_rhs2 (SSA_NAME_DEF_STMT (t)))
+	      || real_zerop (gimple_assign_rhs2 (SSA_NAME_DEF_STMT (t)))
+	      || fixed_zerop (gimple_assign_rhs2 (SSA_NAME_DEF_STMT (t)))))
+	{
+	  expr = SSA_NAME_VAR (v);
+	  var = expr;
+	}
+    }
+
+  if (expr == NULL_TREE)
+    return;
+
   /* TREE_NO_WARNING either means we already warned, or the front end
      wishes to suppress the warning.  */
   if ((context
@@ -1118,14 +1143,16 @@ prune_uninit_phi_opnds_in_unrealizable_paths (gphi *phi,
               edge opnd_edge;
               unsigned uninit_opnds2
                   = compute_uninit_opnds_pos (opnd_def_phi);
-              gcc_assert (!MASK_EMPTY (uninit_opnds2));
-              opnd_edge = gimple_phi_arg_edge (phi, i);
-              if (!is_use_properly_guarded (phi,
-                                            opnd_edge->src,
-                                            opnd_def_phi,
-                                            uninit_opnds2,
-                                            visited_phis))
-                  return false;
+              if (!MASK_EMPTY (uninit_opnds2))
+		{
+		  opnd_edge = gimple_phi_arg_edge (phi, i);
+		  if (!is_use_properly_guarded (phi,
+						opnd_edge->src,
+						opnd_def_phi,
+						uninit_opnds2,
+						visited_phis))
+		    return false;
+		}
             }
           else
             return false;
