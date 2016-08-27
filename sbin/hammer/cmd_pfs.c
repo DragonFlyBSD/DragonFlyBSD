@@ -210,32 +210,41 @@ relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs)
 	}
 }
 
+static void
+print_pfs_status(char *path)
+{
+	struct hammer_ioc_pseudofs_rw pfs;
+	int fd;
+
+	fd = getpfs(&pfs, path);
+	printf("%s\t", path);
+	if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
+		printf("Invalid PFS path %s\n", path);
+	} else {
+		printf("PFS #%d {\n", pfs.pfs_id);
+		dump_pfsd(pfs.ondisk, fd);
+		printf("}\n");
+	}
+	if (fd >= 0)
+		close(fd);
+	if (pfs.ondisk)
+		free(pfs.ondisk);
+	relpfs(fd, &pfs);
+}
+
 void
 hammer_cmd_pseudofs_status(char **av, int ac)
 {
-	struct hammer_ioc_pseudofs_rw pfs;
 	int i;
-	int fd;
 
-	if (ac == 0)
-		pseudofs_usage(1);
-
-	for (i = 0; i < ac; ++i) {
-		fd = getpfs(&pfs, av[i]);
-		printf("%s\t", av[i]);
-		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
-			printf("Invalid PFS path %s\n", av[i]);
-		} else {
-			printf("PFS #%d {\n", pfs.pfs_id);
-			dump_pfsd(pfs.ondisk, fd);
-			printf("}\n");
-		}
-		if (fd >= 0)
-			close(fd);
-		if (pfs.ondisk)
-			free(pfs.ondisk);
-		relpfs(fd, &pfs);
+	if (ac == 0) {
+		char buf[2] = "."; /* can't be readonly string */
+		print_pfs_status(buf);
+		return;
 	}
+
+	for (i = 0; i < ac; ++i)
+		print_pfs_status(av[i]);
 }
 
 void
