@@ -311,7 +311,7 @@ static int	iwm_get_nvm_version(const struct iwm_softc *, const uint16_t *);
 static int	iwm_get_radio_cfg(const struct iwm_softc *, const uint16_t *,
 				  const uint16_t *);
 static int	iwm_get_n_hw_addrs(const struct iwm_softc *,
-				   const const uint16_t *);
+				   const uint16_t *);
 static void	iwm_set_radio_cfg(const struct iwm_softc *,
 				  struct iwm_nvm_data *, uint32_t);
 static int	iwm_parse_nvm_sections(struct iwm_softc *,
@@ -2172,7 +2172,7 @@ iwm_get_radio_cfg(const struct iwm_softc *sc, const uint16_t *nvm_sw,
 }
 
 static int
-iwm_get_n_hw_addrs(const struct iwm_softc *sc, const const uint16_t *nvm_sw)
+iwm_get_n_hw_addrs(const struct iwm_softc *sc, const uint16_t *nvm_sw)
 {
 	int n_hw_addr;
 
