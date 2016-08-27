@@ -137,7 +137,7 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 		if (opt.limit > 0)
 			printf(" lo=%08x", opt.base.localization);
 		if (opt.limit > 1)
-			printf(" obj=%016jx", (uintmax_t)opt.base.obj_id);
+			printf(" objid=%016jx", (uintmax_t)opt.base.obj_id);
 		if (opt.limit > 2)
 			printf(" rt=%02x", opt.base.rec_type);
 		if (opt.limit > 3)
@@ -268,7 +268,7 @@ print_btree_node(hammer_off_t node_offset,
 				print_subtree(elm);
 				/*
 				 * Cause show to do normal iteration after
-				 * seeking to the lo:objid:rectype:key:tid
+				 * seeking to the lo:objid:rt:key:tid
 				 * by default
 				 */
 				if (opt.limit && opt.filter == -1)  /* default */
@@ -397,7 +397,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 
 	printf("%s%s %s %2d %c ",
 	       INDENT, flagstr, label, i, hammer_elm_btype(elm));
-	printf("lo=%08x obj=%016jx rt=%02x key=%016jx tid=%016jx\n",
+	printf("lo=%08x objid=%016jx rt=%02x key=%016jx tid=%016jx\n",
 	       elm->base.localization,
 	       (uintmax_t)elm->base.obj_id,
 	       elm->base.rec_type,
@@ -735,7 +735,7 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_DIRENTRY:
 		data_len -= HAMMER_ENTRY_NAME_OFF;
 		printf("\n%s%17s", INDENT, "");
-		printf("dir-entry ino=%016jx lo=%08x",
+		printf("dir-entry objid=%016jx lo=%08x",
 		       (uintmax_t)data->entry.obj_id,
 		       data->entry.localization);
 		if (!opt.obfuscate)
