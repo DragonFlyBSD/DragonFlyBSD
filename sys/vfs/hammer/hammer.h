@@ -628,7 +628,7 @@ typedef struct hammer_io_list *hammer_io_list_t;
 typedef struct hammer_io {
 	struct worklist		worklist; /* must be at offset 0 */
 	struct hammer_lock	lock;
-	enum hammer_io_type	type;
+	hammer_io_type_t	type;
 	struct hammer_mount	*hmp;
 	struct hammer_volume	*volume;
 	RB_ENTRY(hammer_io)	rb_node;     /* if modified */
@@ -1377,7 +1377,7 @@ int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
 
 void hammer_io_init(hammer_io_t io, hammer_volume_t volume,
-			enum hammer_io_type type);
+			hammer_io_type_t type);
 int hammer_io_read(struct vnode *devvp, hammer_io_t io, int limit);
 void hammer_io_advance(hammer_io_t io);
 int hammer_io_new(struct vnode *devvp, hammer_io_t io);

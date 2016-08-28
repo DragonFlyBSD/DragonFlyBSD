@@ -88,7 +88,7 @@ RB_GENERATE(hammer_mod_rb_tree, hammer_io, rb_node, hammer_mod_rb_compare);
  * an existing hammer_io structure which may have switched to another type.
  */
 void
-hammer_io_init(hammer_io_t io, hammer_volume_t volume, enum hammer_io_type type)
+hammer_io_init(hammer_io_t io, hammer_volume_t volume, hammer_io_type_t type)
 {
 	io->volume = volume;
 	io->hmp = volume->io.hmp;
