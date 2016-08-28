@@ -257,7 +257,7 @@ failed:
  */
 static int
 rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor,
-	       struct hammer_node_lock *lcache)
+	       hammer_node_lock_t lcache)
 {
 	struct hammer_node_lock lockroot;
 	hammer_node_lock_t base_item;
