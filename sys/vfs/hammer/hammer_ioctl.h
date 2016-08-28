@@ -284,15 +284,13 @@ struct hammer_ioc_mirror_rw {
  * NOTE: crc is for the data block starting at rec_size, not including the
  * data[] array.
  */
-struct hammer_ioc_mrecord_head {
+typedef struct hammer_ioc_mrecord_head {
 	uint32_t		signature;	/* signature for byte order */
 	uint32_t		rec_crc;
 	uint32_t		rec_size;
 	uint32_t		type;
 	/* extended */
-};
-
-typedef struct hammer_ioc_mrecord_head *hammer_ioc_mrecord_head_t;
+} *hammer_ioc_mrecord_head_t;
 
 struct hammer_ioc_mrecord_rec {
 	struct hammer_ioc_mrecord_head	head;
@@ -349,7 +347,7 @@ struct hammer_ioc_volume_list {
 	int nvols;
 };
 
-union hammer_ioc_mrecord_any {
+typedef union hammer_ioc_mrecord_any {
 	struct hammer_ioc_mrecord_head	head;
 	struct hammer_ioc_mrecord_rec	rec;
 	struct hammer_ioc_mrecord_skip	skip;
@@ -357,9 +355,7 @@ union hammer_ioc_mrecord_any {
 	struct hammer_ioc_mrecord_update sync;
 	struct hammer_ioc_mrecord_pfs	pfs;
 	struct hammer_ioc_version	version;
-};
-
-typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
+} *hammer_ioc_mrecord_any_t;
 
 /*
  * MREC types.  Flags are in the upper 16 bits but some are also included

@@ -53,16 +53,14 @@ RB_GENERATE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
 /*
  * Support structures for the flusher threads.
  */
-struct hammer_flusher_info {
+typedef struct hammer_flusher_info {
 	TAILQ_ENTRY(hammer_flusher_info) entry;
 	hammer_mount_t	hmp;
 	thread_t	td;
 	int		runstate;
 	hammer_flush_group_t flg;
 	struct hammer_transaction trans;        /* per-slave transaction */
-};
-
-typedef struct hammer_flusher_info *hammer_flusher_info_t;
+} *hammer_flusher_info_t;
 
 /*
  * Sync all inodes pending on the flusher.

@@ -95,7 +95,7 @@
  * 4. key
  * 5. create_id
  */
-struct hammer_base_elm {
+typedef struct hammer_base_elm {
 	int64_t	obj_id;		/* 00 object record is associated with */
 	int64_t key;		/* 08 indexing key (offset or namekey) */
 
@@ -107,9 +107,7 @@ struct hammer_base_elm {
 	uint8_t btype;		/* 23 B-Tree element type */
 	uint32_t localization;	/* 24 B-Tree localization parameter */
 				/* 28 */
-};
-
-typedef struct hammer_base_elm *hammer_base_elm_t;
+} *hammer_base_elm_t;
 
 /*
  * Localization has sorting priority over the obj_id,rec_type,key,tid
@@ -149,15 +147,13 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
  *
  * An internal element contains a recursion to another B-Tree node.
  */
-struct hammer_btree_internal_elm {
+typedef struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
 	hammer_tid_t	mirror_tid;		/* mirroring support */
 	hammer_off_t	subtree_offset;
 	int32_t		unused02;
 	int32_t		unused03;
-};
-
-typedef struct hammer_btree_internal_elm *hammer_btree_internal_elm_t;
+} *hammer_btree_internal_elm_t;
 
 /*
  * Leaf B-Tree element (40 + 24 = 64 bytes).
@@ -166,27 +162,23 @@ typedef struct hammer_btree_internal_elm *hammer_btree_internal_elm_t;
  *       used only by userland to present nominal real-time date strings
  *	 to the user.
  */
-struct hammer_btree_leaf_elm {
+typedef struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
 	uint32_t	create_ts;
 	uint32_t	delete_ts;
 	hammer_off_t	data_offset;
 	int32_t		data_len;
 	hammer_crc_t	data_crc;
-};
-
-typedef struct hammer_btree_leaf_elm *hammer_btree_leaf_elm_t;
+} *hammer_btree_leaf_elm_t;
 
 /*
  * Rollup btree leaf element types - 64 byte structure
  */
-union hammer_btree_elm {
+typedef union hammer_btree_elm {
 	struct hammer_base_elm		base;
 	struct hammer_btree_leaf_elm	leaf;
 	struct hammer_btree_internal_elm internal;
-};
-
-typedef union hammer_btree_elm *hammer_btree_elm_t;
+} *hammer_btree_elm_t;
 
 /*
  * B-Tree node (64x64 = 4K structure)
@@ -218,7 +210,7 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 #define HAMMER_BTREE_LEAF_ELMS	63
 #define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
 
-struct hammer_node_ondisk {
+typedef struct hammer_node_ondisk {
 	/*
 	 * B-Tree node header (64 bytes)
 	 */
@@ -245,9 +237,7 @@ struct hammer_node_ondisk {
 	 * boundary elements.
 	 */
 	union hammer_btree_elm elms[HAMMER_BTREE_LEAF_ELMS];
-};
-
-typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
+} *hammer_node_ondisk_t;
 
 #define HAMMER_BTREE_CRCSIZE	\
 	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))

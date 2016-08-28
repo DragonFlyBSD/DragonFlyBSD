@@ -50,7 +50,7 @@
  * The cursor module maintains a shared lock on cursor->node and
  * cursor->parent.
  */
-struct hammer_cursor {
+typedef struct hammer_cursor {
 	/*
 	 * Parent B-Tree node, current B-Tree node, and related element
 	 * indices.
@@ -115,9 +115,7 @@ struct hammer_cursor {
 	 */
 	hammer_inode_t ip;
 	hammer_record_t iprec;
-};
-
-typedef struct hammer_cursor *hammer_cursor_t;
+} *hammer_cursor_t;
 
 #define HAMMER_CURSOR_GET_LEAF		0x0001  /* not used */
 #define HAMMER_CURSOR_GET_DATA		0x0002

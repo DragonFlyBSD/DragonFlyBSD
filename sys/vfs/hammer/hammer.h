@@ -116,7 +116,7 @@ typedef enum hammer_transaction_type {
 /*
  * HAMMER Transaction tracking
  */
-struct hammer_transaction {
+typedef struct hammer_transaction {
 	hammer_transaction_type_t type;
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
@@ -125,9 +125,7 @@ struct hammer_transaction {
 	int		sync_lock_refs;
 	int		flags;
 	struct hammer_volume *rootvol;
-};
-
-typedef struct hammer_transaction *hammer_transaction_t;
+} *hammer_transaction_t;
 
 #define HAMMER_TRANSF_NEWINODE	0x0001
 #define HAMMER_TRANSF_CRCDOM	0x0004	/* EDOM on CRC error, less critical */
@@ -228,7 +226,7 @@ RB_HEAD(hammer_pfs_rb_tree, hammer_pseudofs_inmem);
 RB_PROTOTYPE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
 	      hammer_pfs_rb_compare, uint32_t);
 
-struct hammer_pseudofs_inmem {
+typedef struct hammer_pseudofs_inmem {
 	RB_ENTRY(hammer_pseudofs_inmem)	rb_node;
 	struct hammer_lock	lock;
 	uint32_t		localization;
@@ -236,9 +234,7 @@ struct hammer_pseudofs_inmem {
 	int			flags;
 	udev_t			fsid_udev;
 	struct hammer_pseudofs_data pfsd;
-};
-
-typedef struct hammer_pseudofs_inmem *hammer_pseudofs_inmem_t;
+} *hammer_pseudofs_inmem_t;
 
 /*
  * Cache object ids.  A fixed number of objid cache structures are
@@ -309,7 +305,7 @@ RB_HEAD(hammer_fls_rb_tree, hammer_inode);
 RB_PROTOTYPE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
 	      hammer_ino_rb_compare);
 
-struct hammer_flush_group {
+typedef struct hammer_flush_group {
 	TAILQ_ENTRY(hammer_flush_group)	flush_entry;
 	struct hammer_fls_rb_tree	flush_tree;
 	int				seq;		/* our seq no */
@@ -317,9 +313,7 @@ struct hammer_flush_group {
 	int				running;	/* group is running */
 	int				closed;
 	int				refs;
-};
-
-typedef struct hammer_flush_group *hammer_flush_group_t;
+} *hammer_flush_group_t;
 
 TAILQ_HEAD(hammer_flush_group_list, hammer_flush_group);
 
@@ -355,7 +349,7 @@ RB_PROTOTYPEX(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
 TAILQ_HEAD(hammer_record_list, hammer_record);
 TAILQ_HEAD(hammer_node_list, hammer_node);
 
-struct hammer_inode {
+typedef struct hammer_inode {
 	RB_ENTRY(hammer_inode)	rb_node;
 	hammer_inode_state_t	flush_state;
 	hammer_flush_group_t	flush_group;
@@ -415,9 +409,7 @@ struct hammer_inode {
 	 */
 	hammer_off_t	redo_fifo_start;
 	hammer_off_t	redo_fifo_next;
-};
-
-typedef struct hammer_inode *hammer_inode_t;
+} *hammer_inode_t;
 
 #define VTOI(vp)	((hammer_inode_t)(vp)->v_data)
 
@@ -530,7 +522,7 @@ typedef enum hammer_record_type {
 	HAMMER_MEM_RECORD_DATA		/* bulk-data record w/on-disk ref */
 } hammer_record_type_t;
 
-struct hammer_record {
+typedef struct hammer_record {
 	RB_ENTRY(hammer_record)		rb_node;
 	TAILQ_ENTRY(hammer_record)	target_entry;
 	hammer_inode_state_t		flush_state;
@@ -545,9 +537,7 @@ struct hammer_record {
 	int				flags;
 	int				gflags;
 	hammer_off_t			zone2_offset;	/* direct-write only */
-};
-
-typedef struct hammer_record *hammer_record_t;
+} *hammer_record_t;
 
 /*
  * Record flags.  Note that FE can only be set by the frontend if the
@@ -635,7 +625,7 @@ struct worklist {
 TAILQ_HEAD(hammer_io_list, hammer_io);
 typedef struct hammer_io_list *hammer_io_list_t;
 
-struct hammer_io {
+typedef struct hammer_io {
 	struct worklist		worklist; /* must be at offset 0 */
 	struct hammer_lock	lock;
 	enum hammer_io_type	type;
@@ -675,9 +665,7 @@ struct hammer_io {
 	u_int		reclaim : 1;	/* reclaim requested */
 	u_int		gencrc : 1;	/* crc needs to be generated */
 	u_int		unusedB : 25;
-};
-
-typedef struct hammer_io *hammer_io_t;
+} *hammer_io_t;
 
 #define HAMMER_CLUSTER_SIZE	(64 * 1024)
 #if HAMMER_CLUSTER_SIZE > MAXBSIZE
@@ -688,7 +676,7 @@ typedef struct hammer_io *hammer_io_t;
 /*
  * In-memory volume representing on-disk buffer
  */
-struct hammer_volume {
+typedef struct hammer_volume {
 	struct hammer_io io; /* must be at offset 0 */
 	RB_ENTRY(hammer_volume) rb_node;
 	hammer_volume_ondisk_t ondisk;
@@ -697,16 +685,14 @@ struct hammer_volume {
 	char	*vol_name;
 	struct vnode *devvp;
 	int	vol_flags;
-};
-
-typedef struct hammer_volume *hammer_volume_t;
+} *hammer_volume_t;
 
 #define HAMMER_ITOV(iop) ((hammer_volume_t)(iop))
 
 /*
  * In-memory buffer representing an on-disk buffer.
  */
-struct hammer_buffer {
+typedef struct hammer_buffer {
 	struct hammer_io io; /* must be at offset 0 */
 	RB_ENTRY(hammer_buffer) rb_node;
 	void *ondisk;
@@ -714,9 +700,7 @@ struct hammer_buffer {
 	hammer_off_t zone2_offset;
 	struct hammer_reserve *resv;
 	struct hammer_node_list node_list;
-};
-
-typedef struct hammer_buffer *hammer_buffer_t;
+} *hammer_buffer_t;
 
 #define HAMMER_ITOB(iop) ((hammer_buffer_t)(iop))
 
@@ -727,7 +711,7 @@ typedef struct hammer_buffer *hammer_buffer_t;
  * and used for fine-grained locking of B-Tree nodes in order to
  * properly control lock ordering.
  */
-struct hammer_node {
+typedef struct hammer_node {
 	struct hammer_lock	lock;		/* node-by-node lock */
 	TAILQ_ENTRY(hammer_node) entry;		/* per-buffer linkage */
 	RB_ENTRY(hammer_node)	rb_node;	/* per-mount linkage */
@@ -741,7 +725,7 @@ struct hammer_node {
 #if 0
 	int			cursor_exclreq_count;
 #endif
-};
+} *hammer_node_t;
 
 #define HAMMER_NODE_DELETED	0x0001
 #define HAMMER_NODE_FLUSH	0x0002
@@ -753,8 +737,6 @@ struct hammer_node {
 
 #define HAMMER_NODE_CRCANY	(HAMMER_NODE_CRCGOOD | HAMMER_NODE_CRCBAD)
 
-typedef struct hammer_node	*hammer_node_t;
-
 /*
  * List of locked nodes.  This structure is used to lock potentially large
  * numbers of nodes as an aid for complex B-Tree operations.
@@ -762,7 +744,7 @@ typedef struct hammer_node	*hammer_node_t;
 struct hammer_node_lock;
 TAILQ_HEAD(hammer_node_lock_list, hammer_node_lock);
 
-struct hammer_node_lock {
+typedef struct hammer_node_lock {
 	TAILQ_ENTRY(hammer_node_lock) entry;
 	struct hammer_node_lock_list  list;
 	struct hammer_node_lock	      *parent;
@@ -771,9 +753,7 @@ struct hammer_node_lock {
 	int		index;		/* index of this node in parent */
 	int		count;		/* count children */
 	int		flags;
-};
-
-typedef struct hammer_node_lock *hammer_node_lock_t;
+} *hammer_node_lock_t;
 
 #define HAMMER_NODE_LOCK_UPDATED	0x0001
 #define HAMMER_NODE_LOCK_LCACHE		0x0002
@@ -787,7 +767,7 @@ typedef struct hammer_node_lock *hammer_node_lock_t;
  * big-blocks from the freemap until flush dependancies have
  * been dealt with.
  */
-struct hammer_reserve {
+typedef struct hammer_reserve {
 	RB_ENTRY(hammer_reserve) rb_node;
 	TAILQ_ENTRY(hammer_reserve) delay_entry;
 	int		flg_no;
@@ -797,9 +777,7 @@ struct hammer_reserve {
 	int		append_off;
 	int32_t		bytes_free;
 	hammer_off_t	zone_offset;
-};
-
-typedef struct hammer_reserve *hammer_reserve_t;
+} *hammer_reserve_t;
 
 #define HAMMER_RESF_ONDELAY	0x0001
 #define HAMMER_RESF_LAYER2FREE	0x0002
@@ -815,14 +793,12 @@ typedef struct hammer_reserve *hammer_reserve_t;
 #define HAMMER_MAX_UNDOS		1024
 #define HAMMER_MAX_FLUSHERS		4
 
-struct hammer_undo {
+typedef struct hammer_undo {
 	RB_ENTRY(hammer_undo)	rb_node;
 	TAILQ_ENTRY(hammer_undo) lru_entry;
 	hammer_off_t		offset;
 	int			bytes;
-};
-
-typedef struct hammer_undo *hammer_undo_t;
+} *hammer_undo_t;
 
 struct hammer_flusher_info;
 TAILQ_HEAD(hammer_flusher_info_list, hammer_flusher_info);
@@ -848,7 +824,7 @@ struct hammer_flusher {
 /*
  * Internal hammer mount data structure
  */
-struct hammer_mount {
+typedef struct hammer_mount {
 	struct mount *mp;
 	struct hammer_ino_rb_tree rb_inos_root;
 	struct hammer_redo_rb_tree rb_redo_root;
@@ -938,9 +914,7 @@ struct hammer_mount {
 
 	struct hammer_inostats	inostats[HAMMER_INOSTATS_HSIZE];
 	uint64_t volume_map[4];  /* 256 bits bitfield */
-};
-
-typedef struct hammer_mount	*hammer_mount_t;
+} *hammer_mount_t;
 
 #define HAMMER_MOUNT_CRITICAL_ERROR	0x0001
 #define HAMMER_MOUNT_FLUSH_RECOVERY	0x0002

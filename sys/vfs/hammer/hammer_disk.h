@@ -312,16 +312,14 @@ typedef uint32_t hammer_crc_t;
  * zone:8-15	zone id used to classify big-block only, address is actually
  *		a zone-2 address.
  */
-struct hammer_blockmap {
+typedef struct hammer_blockmap {
 	hammer_off_t	phys_offset;    /* zone-2 physical offset */
 	hammer_off_t	first_offset;	/* zone-X logical offset (zone 3) */
 	hammer_off_t	next_offset;	/* zone-X logical offset */
 	hammer_off_t	alloc_offset;	/* zone-X logical offset */
 	uint32_t	reserved01;
 	hammer_crc_t	entry_crc;
-};
-
-typedef struct hammer_blockmap *hammer_blockmap_t;
+} *hammer_blockmap_t;
 
 #define HAMMER_BLOCKMAP_CRCSIZE	\
 	offsetof(struct hammer_blockmap, entry_crc)
@@ -348,16 +346,14 @@ typedef struct hammer_blockmap *hammer_blockmap_t;
  * A big-block can hold 2^23 / 2^5 = 2^18 layer1 entries,
  * which equals bits assigned for layer1 in zone-2 address.
  */
-struct hammer_blockmap_layer1 {
+typedef struct hammer_blockmap_layer1 {
 	hammer_off_t	blocks_free;	/* big-blocks free */
 	hammer_off_t	phys_offset;	/* UNAVAIL or zone-2 */
 	hammer_off_t	reserved01;
 	hammer_crc_t	layer2_crc;	/* xor'd crc's of HAMMER_BLOCKSIZE */
 					/* (not yet used) */
 	hammer_crc_t	layer1_crc;	/* MUST BE LAST FIELD OF STRUCTURE*/
-};
-
-typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
+} *hammer_blockmap_layer1_t;
 
 #define HAMMER_LAYER1_CRCSIZE	\
 	offsetof(struct hammer_blockmap_layer1, layer1_crc)
@@ -372,16 +368,14 @@ typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
  *	 HAMMER_BIGBLOCK_SIZE.  If exactly HAMMER_BIGBLOCK_SIZE
  *	 the big-block is completely free.
  */
-struct hammer_blockmap_layer2 {
+typedef struct hammer_blockmap_layer2 {
 	uint8_t		zone;		/* typed allocation zone */
 	uint8_t		unused01;
 	uint16_t	unused02;
 	uint32_t	append_off;	/* allocatable space index */
 	int32_t		bytes_free;	/* bytes free within this big-block */
 	hammer_crc_t	entry_crc;
-};
-
-typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
+} *hammer_blockmap_layer2_t;
 
 #define HAMMER_LAYER2_CRCSIZE	\
 	offsetof(struct hammer_blockmap_layer2, entry_crc)
@@ -493,24 +487,21 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_UNDO_MASK		(HAMMER_UNDO_ALIGN - 1)
 #define HAMMER_UNDO_MASK64		(HAMMER_UNDO_ALIGN64 - 1)
 
-struct hammer_fifo_head {
+typedef struct hammer_fifo_head {
 	uint16_t hdr_signature;
 	uint16_t hdr_type;
 	uint32_t hdr_size;	/* Aligned size of the whole mess */
 	uint32_t hdr_seq;	/* Sequence number */
 	hammer_crc_t hdr_crc;	/* XOR crc up to field w/ crc after field */
-};
+} *hammer_fifo_head_t;
 
 #define HAMMER_FIFO_HEAD_CRCOFF	offsetof(struct hammer_fifo_head, hdr_crc)
 
-struct hammer_fifo_tail {
+typedef struct hammer_fifo_tail {
 	uint16_t tail_signature;
 	uint16_t tail_type;
 	uint32_t tail_size;	/* aligned size of the whole mess */
-};
-
-typedef struct hammer_fifo_head *hammer_fifo_head_t;
-typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
+} *hammer_fifo_tail_t;
 
 /*
  * Fifo header types.
@@ -532,13 +523,13 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
  *
  * UNDO - Raw meta-data media updates.
  */
-struct hammer_fifo_undo {
+typedef struct hammer_fifo_undo {
 	struct hammer_fifo_head	head;
 	hammer_off_t		undo_offset;	/* zone-1,2 offset */
 	int32_t			undo_data_bytes;
 	int32_t			undo_reserved01;
 	/* followed by data */
-};
+} *hammer_fifo_undo_t;
 
 /*
  * REDO (HAMMER version 4+) - Logical file writes/truncates.
@@ -578,7 +569,7 @@ struct hammer_fifo_undo {
  *	 TRUNCSs do not always have matching TERMs because several
  *	 truncations may be aggregated together into a single TERM.
  */
-struct hammer_fifo_redo {
+typedef struct hammer_fifo_redo {
 	struct hammer_fifo_head	head;
 	int64_t			redo_objid;	/* file being written */
 	hammer_off_t		redo_offset;	/* logical offset in file */
@@ -587,7 +578,7 @@ struct hammer_fifo_redo {
 	uint32_t		redo_localization;
 	uint32_t		redo_reserved;
 	uint64_t		redo_mtime;	/* set mtime */
-};
+} *hammer_fifo_redo_t;
 
 #define HAMMER_REDO_WRITE	0x00000001
 #define HAMMER_REDO_TRUNC	0x00000002
@@ -595,15 +586,11 @@ struct hammer_fifo_redo {
 #define HAMMER_REDO_TERM_TRUNC	0x00000008
 #define HAMMER_REDO_SYNC	0x00000010
 
-union hammer_fifo_any {
+typedef union hammer_fifo_any {
 	struct hammer_fifo_head	head;
 	struct hammer_fifo_undo	undo;
 	struct hammer_fifo_redo	redo;
-};
-
-typedef struct hammer_fifo_redo *hammer_fifo_redo_t;
-typedef struct hammer_fifo_undo *hammer_fifo_undo_t;
-typedef union hammer_fifo_any *hammer_fifo_any_t;
+} *hammer_fifo_any_t;
 
 /*
  * Volume header types
@@ -656,7 +643,7 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
 #define HAMMER_MEM_NOMBYTES		(1LL*1024*1024*1024)
 #define HAMMER_MEM_MAXBYTES		(64LL*1024*1024*1024)
 
-struct hammer_volume_ondisk {
+typedef struct hammer_volume_ondisk {
 	uint64_t vol_signature;	/* HAMMER_FSBUF_VOLUME for a valid header */
 
 	/*
@@ -708,9 +695,7 @@ struct hammer_volume_ondisk {
 	 * Array of zone-2 addresses for undo FIFO.
 	 */
 	hammer_off_t		vol0_undo_array[HAMMER_UNDO_LAYER2];
-};
-
-typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
+} *hammer_volume_ondisk_t;
 
 #define HAMMER_ROOT_VOLNO		0
 
@@ -974,16 +959,14 @@ struct hammer_config_data {
 /*
  * Rollup various structures embedded as record data
  */
-union hammer_data_ondisk {
+typedef union hammer_data_ondisk {
 	struct hammer_direntry_data entry;
 	struct hammer_inode_data inode;
 	struct hammer_symlink_data symlink;
 	struct hammer_pseudofs_data pfsd;
 	struct hammer_snapshot_data snap;
 	struct hammer_config_data config;
-};
-
-typedef union hammer_data_ondisk *hammer_data_ondisk_t;
+} *hammer_data_ondisk_t;
 
 /*
  * Ondisk layout of B-Tree related structures
