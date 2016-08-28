@@ -115,7 +115,7 @@ void
 hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 {
 	struct volume_info *volume;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	struct zone_stat *stats = NULL;
 
 	if (VerboseOpt)

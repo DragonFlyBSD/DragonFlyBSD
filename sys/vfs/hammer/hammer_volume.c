@@ -39,7 +39,7 @@
 static int
 hammer_format_volume_header(hammer_mount_t hmp,
 	struct hammer_ioc_volume *ioc,
-	struct hammer_volume_ondisk *ondisk,
+	hammer_volume_ondisk_t ondisk,
 	int vol_no);
 
 static int
@@ -379,7 +379,7 @@ static int
 hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
 	struct hammer_mount *hmp = trans->hmp;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t freemap;
 	hammer_off_t alloc_offset;
 	hammer_off_t phys_offset;
@@ -499,7 +499,7 @@ static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
 	struct hammer_mount *hmp = trans->hmp;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t freemap;
 	hammer_off_t phys_offset;
 	hammer_off_t block_offset;
@@ -614,10 +614,10 @@ end:
 static int
 hammer_format_volume_header(hammer_mount_t hmp,
 	struct hammer_ioc_volume *ioc,
-	struct hammer_volume_ondisk *ondisk,
+	hammer_volume_ondisk_t ondisk,
 	int vol_no)
 {
-	struct hammer_volume_ondisk *root_ondisk;
+	hammer_volume_ondisk_t root_ondisk;
 	int64_t vol_alloc;
 
 	KKASSERT(HAMMER_BUFSIZE >= sizeof(struct hammer_volume_ondisk));
@@ -749,7 +749,7 @@ static int
 hammer_count_bigblocks(hammer_mount_t hmp, hammer_volume_t volume,
 	int64_t *total_bigblocks, int64_t *empty_bigblocks)
 {
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t freemap;
 	hammer_off_t phys_offset;
 	hammer_off_t block_offset;

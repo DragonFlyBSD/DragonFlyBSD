@@ -102,7 +102,7 @@ struct volume_info {
 	off_t			device_offset;
 	const char		*type;
 
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 
 	TAILQ_HEAD(, buffer_info) buffer_lists[HAMMER_BUFLISTS];
 };

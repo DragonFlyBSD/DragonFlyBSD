@@ -111,8 +111,8 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 {
 	struct mount *mp;
 	hammer_volume_t volume;
-	struct hammer_volume_ondisk *ondisk;
-	struct hammer_volume_ondisk *img;
+	hammer_volume_ondisk_t ondisk;
+	hammer_volume_ondisk_t img;
 	struct nlookupdata nd;
 	struct buf *bp = NULL;
 	int error;
@@ -186,7 +186,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	 * Initialize the volume header with data if the data is specified.
 	 */
 	if (ronly == 0 && data) {
-		img = (struct hammer_volume_ondisk *)data;
+		img = (hammer_volume_ondisk_t)data;
 		if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
 			hkprintf("Formatting of valid HAMMER volume "
 				"%s denied. Erase with dd!\n", volname);
@@ -297,7 +297,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 {
 	hammer_mount_t hmp = volume->io.hmp;
 	struct buf *bp = NULL;
-	struct hammer_volume_ondisk *img;
+	hammer_volume_ondisk_t img;
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
 	int error;
 
@@ -305,7 +305,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 	 * Clear the volume header with data if the data is specified.
 	 */
 	if (ronly == 0 && data && volume->devvp) {
-		img = (struct hammer_volume_ondisk *)data;
+		img = (hammer_volume_ondisk_t)data;
 		error = bread(volume->devvp, 0LL, HAMMER_BUFSIZE, &bp);
 		if (error || bp->b_bcount < sizeof(*img)) {
 			hmkprintf(hmp, "Failed to read volume header: %d\n", error);

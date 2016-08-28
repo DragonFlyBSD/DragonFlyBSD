@@ -161,7 +161,7 @@ struct volume_info*
 load_volume(const char *filename, int oflags)
 {
 	struct volume_info *vol;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	int n;
 
 	vol = __alloc_volume(filename, oflags);
@@ -706,7 +706,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	const int undo_zone = HAMMER_ZONE_UNDO_INDEX;
 	hammer_off_t undo_limit;
 	hammer_blockmap_t blockmap;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	struct buffer_info *buffer = NULL;
 	hammer_off_t scan;
 	int n;
@@ -823,7 +823,7 @@ void
 print_blockmap(const struct volume_info *root_vol)
 {
 	hammer_blockmap_t blockmap;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	int64_t size, used;
 	int i;
 #define INDENT ""

@@ -691,7 +691,7 @@ typedef struct hammer_io *hammer_io_t;
 struct hammer_volume {
 	struct hammer_io io; /* must be at offset 0 */
 	RB_ENTRY(hammer_volume) rb_node;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	int32_t	vol_no;
 	hammer_off_t maxbuf_off; /* Maximum buffer offset (zone-2) */
 	char	*vol_name;

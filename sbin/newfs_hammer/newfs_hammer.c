@@ -440,7 +440,7 @@ void
 format_volume(struct volume_info *vol, int nvols, const char *label)
 {
 	struct volume_info *root_vol;
-	struct hammer_volume_ondisk *ondisk;
+	hammer_volume_ondisk_t ondisk;
 	int64_t freeblks;
 	int64_t freebytes;
 	int64_t vol_buf_size;

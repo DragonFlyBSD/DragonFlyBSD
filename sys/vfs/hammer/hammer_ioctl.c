@@ -640,7 +640,7 @@ static
 int
 hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info)
 {
-	struct hammer_volume_ondisk	*od = trans->hmp->rootvol->ondisk;
+	hammer_volume_ondisk_t od = trans->hmp->rootvol->ondisk;
 	struct hammer_mount		*hm = trans->hmp;
 
 	/* Fill the structure with the necessary information */
