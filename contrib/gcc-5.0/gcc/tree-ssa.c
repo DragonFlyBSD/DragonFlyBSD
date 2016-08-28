@@ -1354,6 +1354,18 @@ non_rewritable_lvalue_p (tree lhs)
       tree decl = TREE_OPERAND (TREE_OPERAND (lhs, 0), 0);
       if (DECL_P (decl)
 	  && DECL_SIZE (decl) == TYPE_SIZE (TREE_TYPE (lhs))
+	  /* If the dynamic type of the decl has larger precision than
+	     the decl itself we can't use the decls type for SSA rewriting.  */
+	  && ((! INTEGRAL_TYPE_P (TREE_TYPE (decl))
+	       || compare_tree_int (DECL_SIZE (decl),
+				    TYPE_PRECISION (TREE_TYPE (decl))) == 0)
+	      || (INTEGRAL_TYPE_P (TREE_TYPE (lhs))
+		  && (TYPE_PRECISION (TREE_TYPE (decl))
+		      >= TYPE_PRECISION (TREE_TYPE (lhs)))))
+	  /* Make sure we are not re-writing non-float copying into float
+	     copying as that can incur normalization.  */
+	  && (! FLOAT_TYPE_P (TREE_TYPE (decl))
+	      || types_compatible_p (TREE_TYPE (lhs), TREE_TYPE (decl)))
 	  && (TREE_THIS_VOLATILE (decl) == TREE_THIS_VOLATILE (lhs)))
 	return false;
     }
@@ -1448,7 +1460,8 @@ execute_update_addresses_taken (void)
               tree lhs = gimple_get_lhs (stmt);
               if (lhs
 		  && TREE_CODE (lhs) != SSA_NAME
-		  && non_rewritable_lvalue_p (lhs))
+		  && ((code == GIMPLE_CALL && ! DECL_P (lhs))
+		      || non_rewritable_lvalue_p (lhs)))
 		{
 		  decl = get_base_address (lhs);
 		  if (DECL_P (decl))

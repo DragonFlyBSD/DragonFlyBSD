@@ -2609,6 +2609,8 @@ extern unsigned int subreg_highpart_offset (machine_mode,
 					    machine_mode);
 extern int byte_lowpart_offset (machine_mode, machine_mode);
 extern rtx make_safe_from (rtx, rtx);
+extern rtx convert_memory_address_addr_space_1 (machine_mode, rtx,
+						addr_space_t, bool, bool);
 extern rtx convert_memory_address_addr_space (machine_mode, rtx,
 					      addr_space_t);
 #define convert_memory_address(to_mode,x) \
@@ -3521,6 +3523,8 @@ extern int anti_dependence (const_rtx, const_rtx);
 extern int canon_anti_dependence (const_rtx, bool,
 				  const_rtx, machine_mode, rtx);
 extern int output_dependence (const_rtx, const_rtx);
+extern int canon_output_dependence (const_rtx, bool,
+				    const_rtx, machine_mode, rtx);
 extern int may_alias_p (const_rtx, const_rtx);
 extern void init_alias_target (void);
 extern void init_alias_analysis (void);

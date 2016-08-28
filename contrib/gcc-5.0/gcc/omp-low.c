@@ -9123,9 +9123,15 @@ expand_omp_target (struct omp_region *region)
       make_edge (else_bb, new_bb, EDGE_FALLTHRU);
 
       device = tmp_var;
+      gsi = gsi_last_bb (new_bb);
+    }
+  else
+    {
+      gsi = gsi_last_bb (new_bb);
+      device = force_gimple_operand_gsi (&gsi, device, true, NULL_TREE,
+					 true, GSI_SAME_STMT);
     }
 
-  gsi = gsi_last_bb (new_bb);
   t = gimple_omp_target_data_arg (entry_stmt);
   if (t == NULL)
     {
@@ -12779,7 +12785,8 @@ simd_clone_create (struct cgraph_node *old_node)
       DECL_STATIC_CONSTRUCTOR (new_decl) = 0;
       DECL_STATIC_DESTRUCTOR (new_decl) = 0;
       new_node = old_node->create_version_clone (new_decl, vNULL, NULL);
-      symtab->call_cgraph_insertion_hooks (new_node);
+      if (old_node->in_other_partition)
+	new_node->in_other_partition = 1;
     }
   if (new_node == NULL)
     return new_node;

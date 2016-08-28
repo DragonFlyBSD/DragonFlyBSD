@@ -370,24 +370,31 @@ along with GCC; see the file COPYING3.  If not see
   (ne (bit_and:c (bit_not @0) @1) integer_zerop)
   (if (INTEGRAL_TYPE_P (TREE_TYPE (@1))
        && TYPE_PRECISION (TREE_TYPE (@1)) == 1)
-   (lt @0 @1)))
+   (if (TYPE_UNSIGNED (TREE_TYPE (@1)))
+    (lt @0 @1))
+   (gt @0 @1)))
 (simplify
   (ne (bit_ior:c (bit_not @0) @1) integer_zerop)
   (if (INTEGRAL_TYPE_P (TREE_TYPE (@1))
        && TYPE_PRECISION (TREE_TYPE (@1)) == 1)
-   (le @0 @1)))
+   (if (TYPE_UNSIGNED (TREE_TYPE (@1)))
+    (le @0 @1))
+   (ge @0 @1)))
 
 /* ~~x -> x */
 (simplify
   (bit_not (bit_not @0))
   @0)
 
+/* Disable on GENERIC because of PR68513.  */
+#if GIMPLE
 /* (x & ~m) | (y & m) -> ((x ^ y) & m) ^ x */
 (simplify
   (bit_ior:c (bit_and:c@3 @0 (bit_not @2)) (bit_and:c@4 @1 @2))
   (if ((TREE_CODE (@3) != SSA_NAME || has_single_use (@3))
 	&& (TREE_CODE (@4) != SSA_NAME || has_single_use (@4)))
    (bit_xor (bit_and (bit_xor @0 @1) @2) @0)))
+#endif
 
 
 /* Associate (p +p off1) +p off2 as (p +p (off1 + off2)).  */
@@ -747,7 +754,8 @@ along with GCC; see the file COPYING3.  If not see
 
    /* A truncation to an unsigned type (a zero-extension) should be
       canonicalized as bitwise and of a mask.  */
-   (if (final_int && inter_int && inside_int
+   (if (GIMPLE /* PR70366: doing this in GENERIC breaks -Wconversion.  */
+	&& final_int && inter_int && inside_int
 	&& final_prec == inside_prec
 	&& final_prec > inter_prec
 	&& inter_unsignedp)
