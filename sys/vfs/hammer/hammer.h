@@ -103,7 +103,7 @@ typedef struct hammer_inode_info {
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
 	uint32_t	obj_localization; /* (key) pseudo-fs id for upper 16 bits */
 	union {
-		struct hammer_btree_leaf_elm *leaf;
+		hammer_btree_leaf_elm_t leaf;
 	} u;
 } *hammer_inode_info_t;
 

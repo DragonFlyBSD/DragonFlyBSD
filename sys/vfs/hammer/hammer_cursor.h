@@ -101,7 +101,7 @@ struct hammer_cursor {
 	 * information referenced via an in-memory record.
 	 */
 	struct hammer_buffer *data_buffer;	/* extended data */
-	struct hammer_btree_leaf_elm *leaf;
+	hammer_btree_leaf_elm_t leaf;
 	hammer_data_ondisk_t data;
 
 	/*
