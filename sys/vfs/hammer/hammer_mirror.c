@@ -57,7 +57,7 @@ static int hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 				uint32_t localization);
 static int hammer_mirror_delete_to(hammer_cursor_t cursor,
 			        struct hammer_ioc_mirror_rw *mirror);
-static int hammer_mirror_nomirror(struct hammer_base_elm *base);
+static int hammer_mirror_nomirror(hammer_base_elm_t base);
 
 /*
  * All B-Tree records within the specified key range which also conform
@@ -797,7 +797,7 @@ hammer_mirror_check(hammer_cursor_t cursor, struct hammer_ioc_mrecord_rec *mrec)
  */
 static
 int
-hammer_mirror_nomirror(struct hammer_base_elm *base)
+hammer_mirror_nomirror(hammer_base_elm_t base)
 {
 	/*
 	 * Certain types of records are never updated when mirroring.
