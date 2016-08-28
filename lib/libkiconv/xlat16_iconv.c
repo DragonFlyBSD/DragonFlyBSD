@@ -346,7 +346,7 @@ my_iconv_char(iconv_t cd, u_char **ibuf, size_t * ilen, u_char **obuf,
 	sp = ilocal;
 	dp = olocal;
 
-	if ((my_iconv(cd,(char **)&sp, &ir, (char **)&dp, &or)) !=
+	if ((my_iconv(cd, (char **)&sp, &ir, (char **)&dp, &or)) !=
 	    (size_t)-1) {
 		if (olocal[0] != c1)
 			return (ret);
