@@ -1290,8 +1290,6 @@ void		hammer_cache_node(hammer_node_cache_t cache,
 void		hammer_uncache_node(hammer_node_cache_t cache);
 void		hammer_flush_node(hammer_node_t node, int locked);
 
-void hammer_dup_buffer(struct hammer_buffer **bufferp,
-			struct hammer_buffer *buffer);
 hammer_node_t hammer_alloc_btree(hammer_transaction_t trans,
 			hammer_off_t hint, int *errorp);
 void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
@@ -1310,9 +1308,6 @@ void hammer_redo_fifo_end_flush(hammer_inode_t ip);
 
 void hammer_format_undo(void *base, uint32_t seqno);
 int hammer_upgrade_undo_4(hammer_transaction_t trans);
-
-void hammer_put_volume(struct hammer_volume *volume, int flush);
-void hammer_put_buffer(struct hammer_buffer *buffer, int flush);
 
 hammer_off_t hammer_freemap_alloc(hammer_transaction_t trans,
 			hammer_off_t owner, int *errorp);
