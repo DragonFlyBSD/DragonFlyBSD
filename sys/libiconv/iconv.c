@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2000-2001, Boris Popov
+/*-
+ * Copyright (c) 2000-2001 Boris Popov
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,12 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by Boris Popov.
- * 4. Neither the name of the author nor the names of any co-contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -29,17 +23,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/libkern/iconv.c,v 1.12.2.1.2.1 2009/04/15 03:14:26 kensmith Exp $
- * $DragonFly: src/sys/libiconv/iconv.c,v 1.8 2008/01/05 14:02:38 swildner Exp $
+ * $FreeBSD: head/sys/libkern/iconv.c 267291 2014-06-09 19:27:47Z jhb $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/iconv.h>
+#include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/syslog.h>
+
 #include "iconv_converter_if.h"
 
 SYSCTL_DECL(_kern_iconv);
@@ -47,9 +42,11 @@ SYSCTL_DECL(_kern_iconv);
 SYSCTL_NODE(_kern, OID_AUTO, iconv, CTLFLAG_RW, NULL, "kernel iconv interface");
 
 MALLOC_DEFINE(M_ICONV, "iconv", "ICONV structures");
-MALLOC_DEFINE(M_ICONVDATA, "iconv_data", "ICONV data");
+static MALLOC_DEFINE(M_ICONVDATA, "iconv_data", "ICONV data");
 
 MODULE_VERSION(libiconv, 2);
+
+static struct lock iconv_lock;
 
 #ifdef notnow
 /*
@@ -85,13 +82,18 @@ iconv_mod_unload(void)
 {
 	struct iconv_cspair *csp;
 
-	while ((csp = TAILQ_FIRST(&iconv_cslist)) != NULL) {
-		if (csp->cp_refcount)
+	lockmgr(&iconv_lock, LK_EXCLUSIVE);
+	TAILQ_FOREACH(csp, &iconv_cslist, cp_link) {
+		if (csp->cp_refcount) {
+			lockmgr(&iconv_lock, LK_RELEASE);
 			return EBUSY;
+		}
 	}
 
 	while ((csp = TAILQ_FIRST(&iconv_cslist)) != NULL)
 		iconv_unregister_cspair(csp);
+	lockmgr(&iconv_lock, LK_RELEASE);
+	lockuninit(&iconv_lock);
 	return 0;
 }
 
@@ -103,6 +105,7 @@ iconv_mod_handler(module_t mod, int type, void *data)
 	switch (type) {
 	    case MOD_LOAD:
 		error = 0;
+		lockinit(&iconv_lock, "iconv", 0, LK_CANRECURSE);
 		break;
 	    case MOD_UNLOAD:
 		error = iconv_mod_unload();
@@ -162,8 +165,8 @@ iconv_lookupcs(const char *to, const char *from, struct iconv_cspair **cspp)
 	struct iconv_cspair *csp;
 
 	TAILQ_FOREACH(csp, &iconv_cslist, cp_link) {
-		if (strcmp(csp->cp_to, to) == 0 &&
-		    strcmp(csp->cp_from, from) == 0) {
+		if (strcasecmp(csp->cp_to, to) == 0 &&
+		    strcasecmp(csp->cp_from, from) == 0) {
 			if (cspp)
 				*cspp = csp;
 			return 0;
@@ -297,6 +300,18 @@ iconv_convchr_case(void *handle, const char **inbuf,
 	return ICONV_CONVERTER_CONV(handle, inbuf, inbytesleft, outbuf, outbytesleft, 1, casetype);
 }
 
+int
+towlower(int c, void *handle)
+{
+	return ICONV_CONVERTER_TOLOWER(handle, c);
+}
+
+int
+towupper(int c, void *handle)
+{
+	return ICONV_CONVERTER_TOUPPER(handle, c);
+}
+
 /*
  * Give a list of loaded converters. Each name terminated with 0.
  * An empty string terminates the list.
@@ -311,6 +326,7 @@ iconv_sysctl_drvlist(SYSCTL_HANDLER_ARGS)
 
 	error = 0;
 
+	lockmgr(&iconv_lock, LK_SHARED);
 	TAILQ_FOREACH(dcp, &iconv_converters, cc_link) {
 		name = ICONV_CONVERTER_NAME(dcp);
 		if (name == NULL)
@@ -319,6 +335,7 @@ iconv_sysctl_drvlist(SYSCTL_HANDLER_ARGS)
 		if (error)
 			break;
 	}
+	lockmgr(&iconv_lock, LK_RELEASE);
 	if (error)
 		return error;
 	spc = 0;
@@ -343,6 +360,7 @@ iconv_sysctl_cslist(SYSCTL_HANDLER_ARGS)
 	bzero(&csi, sizeof(csi));
 	csi.cs_version = ICONV_CSPAIR_INFO_VER;
 
+	lockmgr(&iconv_lock, LK_SHARED);
 	TAILQ_FOREACH(csp, &iconv_cslist, cp_link) {
 		csi.cs_id = csp->cp_id;
 		csi.cs_refcount = csp->cp_refcount;
@@ -353,11 +371,24 @@ iconv_sysctl_cslist(SYSCTL_HANDLER_ARGS)
 		if (error)
 			break;
 	}
+	lockmgr(&iconv_lock, LK_RELEASE);
 	return error;
 }
 
 SYSCTL_PROC(_kern_iconv, OID_AUTO, cslist, CTLFLAG_RD | CTLTYPE_OPAQUE,
 	    NULL, 0, iconv_sysctl_cslist, "S,xlat", "registered charset pairs");
+
+int
+iconv_add(const char *converter, const char *to, const char *from)
+{
+	struct iconv_converter_class *dcp;
+	struct iconv_cspair *csp;
+
+	if (iconv_lookupconv(converter, &dcp) != 0)
+		return EINVAL;
+
+	return iconv_register_cspair(to, from, dcp, NULL, &csp);
+}
 
 /*
  * Add new charset pair
@@ -378,22 +409,20 @@ iconv_sysctl_add(SYSCTL_HANDLER_ARGS)
 		return EINVAL;
 	if (din.ia_datalen > ICONV_CSMAXDATALEN)
 		return EINVAL;
-
-	/*
-	 * Make sure all user-supplied strings are terminated before
-	 * proceeding.
-	 *
-	 * XXX return EINVAL if strings are not properly terminated
-	 */
-	din.ia_converter[ICONV_CNVNMAXLEN-1] = 0;
-	din.ia_to[ICONV_CSNMAXLEN-1] = 0;
-	din.ia_from[ICONV_CSNMAXLEN-1] = 0;
-
+	if (strlen(din.ia_from) >= ICONV_CSNMAXLEN)
+		return EINVAL;
+	if (strlen(din.ia_to) >= ICONV_CSNMAXLEN)
+		return EINVAL;
+	if (strlen(din.ia_converter) >= ICONV_CNVNMAXLEN)
+		return EINVAL;
 	if (iconv_lookupconv(din.ia_converter, &dcp) != 0)
 		return EINVAL;
+	lockmgr(&iconv_lock, LK_EXCLUSIVE);
 	error = iconv_register_cspair(din.ia_to, din.ia_from, dcp, NULL, &csp);
-	if (error)
+	if (error) {
+		lockmgr(&iconv_lock, LK_RELEASE);
 		return error;
+	}
 	if (din.ia_datalen) {
 		csp->cp_data = kmalloc(din.ia_datalen, M_ICONVDATA, M_WAITOK);
 		error = copyin(din.ia_data, csp->cp_data, din.ia_datalen);
@@ -404,10 +433,12 @@ iconv_sysctl_add(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_OUT(req, &dout, sizeof(dout));
 	if (error)
 		goto bad;
+	lockmgr(&iconv_lock, LK_RELEASE);
 	ICDEBUG("%s => %s, %d bytes\n",din.ia_from, din.ia_to, din.ia_datalen);
 	return 0;
 bad:
 	iconv_unregister_cspair(csp);
+	lockmgr(&iconv_lock, LK_RELEASE);
 	return error;
 }
 
@@ -430,6 +461,12 @@ iconv_converter_donestub(struct iconv_converter_class *dp)
 }
 
 int
+iconv_converter_tolowerstub(int c, void *handle)
+{
+	return (c);
+}
+
+int
 iconv_converter_handler(module_t mod, int type, void *data)
 {
 	struct iconv_converter_class *dcp = data;
@@ -437,16 +474,22 @@ iconv_converter_handler(module_t mod, int type, void *data)
 
 	switch (type) {
 	    case MOD_LOAD:
+		lockmgr(&iconv_lock, LK_EXCLUSIVE);
 		error = iconv_register_converter(dcp);
-		if (error)
+		if (error) {
+			lockmgr(&iconv_lock, LK_RELEASE);
 			break;
+		}
 		error = ICONV_CONVERTER_INIT(dcp);
 		if (error)
 			iconv_unregister_converter(dcp);
+		lockmgr(&iconv_lock, LK_RELEASE);
 		break;
 	    case MOD_UNLOAD:
+		lockmgr(&iconv_lock, LK_EXCLUSIVE);
 		ICONV_CONVERTER_DONE(dcp);
 		error = iconv_unregister_converter(dcp);
+		lockmgr(&iconv_lock, LK_RELEASE);
 		break;
 	    default:
 		error = EINVAL;
@@ -461,8 +504,8 @@ char *
 iconv_convstr(void *handle, char *dst, const char *src)
 {
 	char *p = dst;
-	int error;
 	size_t inlen, outlen;
+	int error;
 
 	if (handle == NULL) {
 		strcpy(dst, src);
@@ -507,9 +550,7 @@ int
 iconv_lookupcp(char **cpp, const char *s)
 {
 	if (cpp == NULL) {
-		ICDEBUG("warning a NULL list passed\n", ""); /* XXX ISO variadic								macros cannot
-								leave out the
-								variadic args */
+		ICDEBUG("warning a NULL list passed\n", "");
 		return ENOENT;
 	}
 	for (; *cpp; cpp++)

@@ -1943,6 +1943,7 @@ libkern/strtouq.c			standard
 #libkern/stack_protector.c		standard
 libiconv/iconv.c			optional libiconv
 libiconv/iconv_converter_if.m		optional libiconv
+libiconv/iconv_ucs.c			optional libiconv
 libiconv/iconv_xlat.c			optional libiconv
 libiconv/iconv_xlat16.c			optional libiconv
 libprop/prop_array.c			standard
