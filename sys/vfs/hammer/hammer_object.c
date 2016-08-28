@@ -656,7 +656,7 @@ hammer_mem_first(hammer_cursor_t cursor)
  * not be terminated.
  */
 int
-hammer_ip_add_direntry(struct hammer_transaction *trans,
+hammer_ip_add_direntry(hammer_transaction_t trans,
 		     struct hammer_inode *dip, const char *name, int bytes,
 		     struct hammer_inode *ip)
 {
@@ -759,7 +759,7 @@ failed:
  * the cursor, any locks, wait on the returned record, and retry.
  */
 int
-hammer_ip_del_direntry(struct hammer_transaction *trans,
+hammer_ip_del_direntry(hammer_transaction_t trans,
 		     hammer_cursor_t cursor, struct hammer_inode *dip,
 		     struct hammer_inode *ip)
 {
@@ -885,7 +885,7 @@ hammer_ip_del_direntry(struct hammer_transaction *trans,
  * record->leaf.base.localization
  */
 int
-hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
+hammer_ip_add_record(hammer_transaction_t trans, hammer_record_t record)
 {
 	hammer_inode_t ip = record->ip;
 	int error;

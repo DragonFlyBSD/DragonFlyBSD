@@ -1347,13 +1347,13 @@ int64_t hammer_undo_space(hammer_transaction_t trans);
 int64_t hammer_undo_max(hammer_mount_t hmp);
 int hammer_undo_reclaim(hammer_io_t io);
 
-void hammer_start_transaction(struct hammer_transaction *trans,
+void hammer_start_transaction(hammer_transaction_t trans,
 			      struct hammer_mount *hmp);
-void hammer_simple_transaction(struct hammer_transaction *trans,
+void hammer_simple_transaction(hammer_transaction_t trans,
 			      struct hammer_mount *hmp);
-void hammer_start_transaction_fls(struct hammer_transaction *trans,
+void hammer_start_transaction_fls(hammer_transaction_t trans,
 			          struct hammer_mount *hmp);
-void hammer_done_transaction(struct hammer_transaction *trans);
+void hammer_done_transaction(hammer_transaction_t trans);
 hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
 
 void hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags);
@@ -1361,7 +1361,7 @@ void hammer_flush_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode_done(hammer_inode_t ip, int error);
 void hammer_wait_inode(hammer_inode_t ip);
 
-int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
+int  hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
 			const char *name, int namelen,
 			hammer_pseudofs_inmem_t pfsm,
@@ -1377,17 +1377,17 @@ void hammer_test_inode(hammer_inode_t dip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
 int hammer_update_atime_quick(hammer_inode_t ip);
 
-int  hammer_ip_add_direntry(struct hammer_transaction *trans,
+int  hammer_ip_add_direntry(hammer_transaction_t trans,
 			hammer_inode_t dip, const char *name, int bytes,
 			hammer_inode_t nip);
-int  hammer_ip_del_direntry(struct hammer_transaction *trans,
+int  hammer_ip_del_direntry(hammer_transaction_t trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,
 			hammer_inode_t ip);
 void hammer_ip_replace_bulk(hammer_mount_t hmp, hammer_record_t record);
 hammer_record_t hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
 			void *data, int bytes, int *errorp);
 int  hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size);
-int  hammer_ip_add_record(struct hammer_transaction *trans,
+int  hammer_ip_add_record(hammer_transaction_t trans,
 			hammer_record_t record);
 int  hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t ran_beg, int64_t ran_end, int truncating);
