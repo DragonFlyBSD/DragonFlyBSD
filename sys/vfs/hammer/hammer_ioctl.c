@@ -640,23 +640,23 @@ static
 int
 hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info)
 {
-	hammer_volume_ondisk_t od = trans->hmp->rootvol->ondisk;
-	struct hammer_mount		*hm = trans->hmp;
+	hammer_volume_ondisk_t ondisk = trans->hmp->rootvol->ondisk;
+	struct hammer_mount *hmp = trans->hmp;
 
 	/* Fill the structure with the necessary information */
-	_hammer_checkspace(hm, HAMMER_CHKSPC_WRITE, &info->rsvbigblocks);
+	_hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE, &info->rsvbigblocks);
 	info->rsvbigblocks = info->rsvbigblocks >> HAMMER_BIGBLOCK_BITS;
-	strlcpy(info->vol_label, od->vol_label, sizeof(od->vol_label));
+	strlcpy(info->vol_label, ondisk->vol_label, sizeof(ondisk->vol_label));
 
-	info->vol_fsid = hm->fsid;
-	info->vol_fstype = od->vol_fstype;
-	info->version = hm->version;
+	info->vol_fsid = hmp->fsid;
+	info->vol_fstype = ondisk->vol_fstype;
+	info->version = hmp->version;
 
-	info->inodes = od->vol0_stat_inodes;
-	info->bigblocks = od->vol0_stat_bigblocks;
-	info->freebigblocks = od->vol0_stat_freebigblocks;
-	info->nvolumes = hm->nvolumes;
-	info->rootvol = od->vol_rootvol;  /* must be 0 */
+	info->inodes = ondisk->vol0_stat_inodes;
+	info->bigblocks = ondisk->vol0_stat_bigblocks;
+	info->freebigblocks = ondisk->vol0_stat_freebigblocks;
+	info->nvolumes = hmp->nvolumes;
+	info->rootvol = ondisk->vol_rootvol;
 
 	return 0;
 }
