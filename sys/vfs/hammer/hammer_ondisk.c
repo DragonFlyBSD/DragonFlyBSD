@@ -414,7 +414,7 @@ hammer_free_volume(hammer_volume_t volume)
 hammer_volume_t
 hammer_get_volume(hammer_mount_t hmp, int32_t vol_no, int *errorp)
 {
-	struct hammer_volume *volume;
+	hammer_volume_t volume;
 
 	/*
 	 * Locate the volume structure
@@ -968,7 +968,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 int
 hammer_unload_buffer(hammer_buffer_t buffer, void *data)
 {
-	struct hammer_volume *volume = (struct hammer_volume *) data;
+	hammer_volume_t volume = (hammer_volume_t)data;
 
 	/*
 	 * If volume != NULL we are only interested in unloading buffers

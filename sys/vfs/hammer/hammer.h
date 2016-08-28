@@ -862,7 +862,7 @@ struct hammer_mount {
 	struct hammer_dedup_crc_rb_tree rb_dedup_crc_root;
 	struct hammer_dedup_off_rb_tree rb_dedup_off_root;
 
-	struct hammer_volume *rootvol;
+	hammer_volume_t rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
 
