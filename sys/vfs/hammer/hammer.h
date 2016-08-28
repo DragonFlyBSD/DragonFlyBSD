@@ -1559,7 +1559,7 @@ hammer_modify_node_noundo(hammer_transaction_t trans, hammer_node_t node)
 }
 
 static __inline void
-hammer_modify_node_all(hammer_transaction_t trans, struct hammer_node *node)
+hammer_modify_node_all(hammer_transaction_t trans, hammer_node_t node)
 {
 	KKASSERT((node->flags & HAMMER_NODE_CRCBAD) == 0);
 	hammer_modify_buffer(trans, node->buffer,
