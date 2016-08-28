@@ -163,8 +163,8 @@ hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
 void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	       struct buffer_info **bufferp);
 hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
-				struct hammer_blockmap_layer1 *layer1,
-				struct hammer_blockmap_layer2 *layer2,
+				hammer_blockmap_layer1_t layer1,
+				hammer_blockmap_layer2_t layer2,
 				int *errorp);
 void format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size);
 
@@ -210,7 +210,7 @@ void hammer_cleanup_zone_stat(struct zone_stat *stats);
 void hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
 			hammer_off_t bytes);
 void hammer_add_zone_stat_layer2(struct zone_stat *stats,
-			struct hammer_blockmap_layer2 *layer2);
+			hammer_blockmap_layer2_t layer2);
 void hammer_print_zone_stat(const struct zone_stat *stats);
 
 #endif /* !HAMMER_UTIL_H_ */

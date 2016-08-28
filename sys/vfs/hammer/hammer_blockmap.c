@@ -42,7 +42,7 @@
 static int hammer_res_rb_compare(hammer_reserve_t res1, hammer_reserve_t res2);
 static void hammer_reserve_setdelay_offset(hammer_mount_t hmp,
 				    hammer_off_t base_offset, int zone,
-				    struct hammer_blockmap_layer2 *layer2);
+				    hammer_blockmap_layer2_t layer2);
 static void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 static int update_bytes_free(hammer_reserve_t resv, int bytes);
 static int hammer_check_volume(hammer_mount_t, hammer_off_t*);
@@ -76,8 +76,8 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone, int bytes,
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
 	hammer_reserve_t resv;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	hammer_buffer_t buffer3 = NULL;
@@ -414,8 +414,8 @@ hammer_blockmap_reserve(hammer_mount_t hmp, int zone, int bytes,
 	hammer_volume_t root_volume;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	hammer_buffer_t buffer3 = NULL;
@@ -655,8 +655,8 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 {
 	hammer_volume_t root_volume;
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
@@ -869,7 +869,7 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
  */
 static void
 hammer_reserve_setdelay_offset(hammer_mount_t hmp, hammer_off_t base_offset,
-			int zone, struct hammer_blockmap_layer2 *layer2)
+			int zone, hammer_blockmap_layer2_t layer2)
 {
 	hammer_reserve_t resv;
 
@@ -950,8 +950,8 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
@@ -1085,8 +1085,8 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 {
 	hammer_mount_t hmp;
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
@@ -1195,8 +1195,8 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
@@ -1329,8 +1329,8 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 	hammer_volume_t root_volume;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
@@ -1417,8 +1417,8 @@ hammer_blockmap_lookup_verify(hammer_mount_t hmp, hammer_off_t zone_offset,
 {
 	hammer_volume_t root_volume;
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
@@ -1531,7 +1531,7 @@ static int
 hammer_check_volume(hammer_mount_t hmp, hammer_off_t *offsetp)
 {
 	hammer_blockmap_t freemap;
-	struct hammer_blockmap_layer1 *layer1;
+	hammer_blockmap_layer1_t layer1;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_off_t layer1_offset;
 	int error = 0;

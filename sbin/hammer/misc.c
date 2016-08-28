@@ -372,7 +372,7 @@ hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
  */
 void
 hammer_add_zone_stat_layer2(struct zone_stat *stats,
-	struct hammer_blockmap_layer2 *layer2)
+	hammer_blockmap_layer2_t layer2)
 {
 	_hammer_add_zone_stat(stats, layer2->zone,
 		HAMMER_BIGBLOCK_SIZE - layer2->bytes_free, 1, 0);

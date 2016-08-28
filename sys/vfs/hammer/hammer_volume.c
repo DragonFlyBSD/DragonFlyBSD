@@ -388,8 +388,8 @@ hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	hammer_off_t layer2_offset;
 	hammer_off_t vol_free_end;
 	hammer_off_t aligned_vol_free_end;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	int64_t vol_buf_size;
@@ -507,8 +507,8 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	hammer_off_t layer2_offset;
 	hammer_off_t vol_free_end;
 	hammer_off_t aligned_vol_free_end;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	int64_t vol_buf_size;
@@ -757,8 +757,8 @@ hammer_count_bigblocks(hammer_mount_t hmp, hammer_volume_t volume,
 	hammer_off_t layer2_offset;
 	hammer_off_t vol_free_end;
 	hammer_off_t aligned_vol_free_end;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_buffer_t buffer1 = NULL;
 	hammer_buffer_t buffer2 = NULL;
 	int64_t vol_buf_size;

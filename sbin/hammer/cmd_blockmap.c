@@ -44,8 +44,8 @@ typedef struct collect {
 	RB_ENTRY(collect) entry;
 	hammer_off_t	phys_offset;  /* layer2 address pointed by layer1 */
 	hammer_off_t	*offsets;  /* big-block offset for layer2[i] */
-	struct hammer_blockmap_layer2 *track2;  /* track of layer2 entries */
-	struct hammer_blockmap_layer2 *layer2;  /* 1<<19 x 16 bytes entries */
+	hammer_blockmap_layer2_t track2;  /* track of layer2 entries */
+	hammer_blockmap_layer2_t layer2;  /* 1<<19 x 16 bytes entries */
 	int error;  /* # of inconsistencies */
 } *collect_t;
 
@@ -72,13 +72,13 @@ static __inline void collect_btree_root(hammer_off_t node_offset);
 static __inline void collect_btree_internal(hammer_btree_elm_t elm);
 static __inline void collect_btree_leaf(hammer_btree_elm_t elm);
 static __inline void collect_freemap_layer1(hammer_blockmap_t freemap);
-static __inline void collect_freemap_layer2(struct hammer_blockmap_layer1 *layer1);
+static __inline void collect_freemap_layer2(hammer_blockmap_layer1_t layer1);
 static __inline void collect_undo(hammer_off_t scan_offset,
 	hammer_fifo_head_t head);
 static void collect_blockmap(hammer_off_t offset, int32_t length, int zone);
-static struct hammer_blockmap_layer2 *collect_get_track(
+static hammer_blockmap_layer2_t collect_get_track(
 	collect_t collect, hammer_off_t offset, int zone,
-	struct hammer_blockmap_layer2 *layer2);
+	hammer_blockmap_layer2_t layer2);
 static collect_t collect_get(hammer_off_t phys_offset);
 static void dump_collect_table(void);
 static void dump_collect(collect_t collect, struct zone_stat *stats);
@@ -99,8 +99,8 @@ dump_blockmap(int zone)
 {
 	struct volume_info *root_volume;
 	hammer_blockmap_t rootmap;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	struct buffer_info *buffer1 = NULL;
 	struct buffer_info *buffer2 = NULL;
 	hammer_off_t layer1_offset;
@@ -259,7 +259,7 @@ check_freemap(hammer_blockmap_t freemap)
 {
 	hammer_off_t offset;
 	struct buffer_info *buffer1 = NULL;
-	struct hammer_blockmap_layer1 *layer1;
+	hammer_blockmap_layer1_t layer1;
 	int i;
 
 	collect_freemap_layer1(freemap);
@@ -386,7 +386,7 @@ collect_freemap_layer1(hammer_blockmap_t freemap)
 
 static __inline
 void
-collect_freemap_layer2(struct hammer_blockmap_layer1 *layer1)
+collect_freemap_layer2(hammer_blockmap_layer1_t layer1)
 {
 	/*
 	 * This translation is necessary to do checkmap properly
@@ -458,7 +458,7 @@ collect_blockmap(hammer_off_t offset, int32_t length, int zone)
 {
 	struct hammer_blockmap_layer1 layer1;
 	struct hammer_blockmap_layer2 layer2;
-	struct hammer_blockmap_layer2 *track2;
+	hammer_blockmap_layer2_t track2;
 	hammer_off_t result_offset;
 	collect_t collect;
 	int error;
@@ -508,11 +508,11 @@ collect_rel(collect_t collect)
 }
 
 static
-struct hammer_blockmap_layer2 *
+hammer_blockmap_layer2_t
 collect_get_track(collect_t collect, hammer_off_t offset, int zone,
-		  struct hammer_blockmap_layer2 *layer2)
+		  hammer_blockmap_layer2_t layer2)
 {
-	struct hammer_blockmap_layer2 *track2;
+	hammer_blockmap_layer2_t track2;
 	size_t i;
 
 	i = HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
@@ -566,8 +566,8 @@ static
 void
 dump_collect(collect_t collect, struct zone_stat *stats)
 {
-	struct hammer_blockmap_layer2 *track2;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer2_t track2;
+	hammer_blockmap_layer2_t layer2;
 	hammer_off_t offset;
 	int i, zone;
 

@@ -528,7 +528,7 @@ format_freemap(struct volume_info *root_vol)
 	struct buffer_info *buffer = NULL;
 	hammer_off_t layer1_offset;
 	hammer_blockmap_t blockmap;
-	struct hammer_blockmap_layer1 *layer1;
+	hammer_blockmap_layer1_t layer1;
 	int i, isnew;
 
 	/* Only root volume needs formatting */
@@ -566,8 +566,8 @@ initialize_freemap(struct volume_info *vol)
 	struct volume_info *root_vol;
 	struct buffer_info *buffer1 = NULL;
 	struct buffer_info *buffer2 = NULL;
-	struct hammer_blockmap_layer1 *layer1;
-	struct hammer_blockmap_layer2 *layer2;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
 	hammer_off_t phys_offset;
