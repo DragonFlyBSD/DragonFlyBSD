@@ -361,7 +361,7 @@ hammer_flush_record_done(hammer_record_t record, int error)
  * goes away.
  */
 void
-hammer_rel_mem_record(struct hammer_record *record)
+hammer_rel_mem_record(hammer_record_t record)
 {
 	hammer_mount_t hmp;
 	hammer_reserve_t resv;

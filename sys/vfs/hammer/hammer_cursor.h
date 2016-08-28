@@ -114,7 +114,7 @@ struct hammer_cursor {
 	 * Merged in-memory/on-disk iterations also use these fields.
 	 */
 	hammer_inode_t ip;
-	struct hammer_record *iprec;
+	hammer_record_t iprec;
 };
 
 typedef struct hammer_cursor *hammer_cursor_t;
