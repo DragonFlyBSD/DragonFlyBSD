@@ -622,9 +622,6 @@ struct worklist {
 	LIST_ENTRY(worklist) node;
 };
 
-TAILQ_HEAD(hammer_io_list, hammer_io);
-typedef struct hammer_io_list *hammer_io_list_t;
-
 typedef struct hammer_io {
 	struct worklist		worklist; /* must be at offset 0 */
 	struct hammer_lock	lock;
