@@ -733,7 +733,7 @@ struct hammer_node {
 	RB_ENTRY(hammer_node)	rb_node;	/* per-mount linkage */
 	hammer_off_t		node_offset;	/* full offset spec */
 	struct hammer_mount	*hmp;
-	struct hammer_buffer	*buffer;	/* backing buffer */
+	hammer_buffer_t		buffer;		/* backing buffer */
 	hammer_node_ondisk_t	ondisk;		/* ptr to on-disk structure */
 	TAILQ_HEAD(, hammer_cursor) cursor_list;  /* deadlock recovery */
 	struct hammer_node_cache_list cache_list; /* passive caches */
@@ -1247,13 +1247,13 @@ void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm);
 
 void	*hammer_bread(hammer_mount_t hmp, hammer_off_t off,
-			int *errorp, struct hammer_buffer **bufferp);
+			int *errorp, hammer_buffer_t *bufferp);
 void	*hammer_bnew(hammer_mount_t hmp, hammer_off_t off,
-			int *errorp, struct hammer_buffer **bufferp);
+			int *errorp, hammer_buffer_t *bufferp);
 void	*hammer_bread_ext(hammer_mount_t hmp, hammer_off_t off, int bytes,
-			int *errorp, struct hammer_buffer **bufferp);
+			int *errorp, hammer_buffer_t *bufferp);
 void	*hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t off, int bytes,
-			int *errorp, struct hammer_buffer **bufferp);
+			int *errorp, hammer_buffer_t *bufferp);
 
 hammer_volume_t hammer_get_root_volume(hammer_mount_t hmp, int *errorp);
 
@@ -1296,7 +1296,7 @@ hammer_node_t hammer_alloc_btree(hammer_transaction_t trans,
 			hammer_off_t hint, int *errorp);
 void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			uint16_t rec_type, hammer_off_t *data_offsetp,
-			struct hammer_buffer **data_bufferp,
+			hammer_buffer_t *data_bufferp,
 			hammer_off_t hint, int *errorp);
 
 int hammer_generate_undo(hammer_transaction_t trans,

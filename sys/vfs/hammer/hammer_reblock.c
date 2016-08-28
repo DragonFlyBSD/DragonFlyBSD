@@ -446,7 +446,7 @@ static int
 hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 		    hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
-	struct hammer_buffer *data_buffer = NULL;
+	hammer_buffer_t data_buffer = NULL;
 	hammer_off_t odata_offset;
 	hammer_off_t ndata_offset;
 	int error;

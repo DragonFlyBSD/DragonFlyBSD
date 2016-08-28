@@ -166,11 +166,11 @@ static void hammer_recover_copy_undo(hammer_off_t undo_offset,
 static hammer_fifo_any_t hammer_recover_scan_fwd(hammer_mount_t hmp,
 			hammer_volume_t root_volume,
 			hammer_off_t *scan_offsetp,
-			int *errorp, struct hammer_buffer **bufferp);
+			int *errorp, hammer_buffer_t *bufferp);
 static hammer_fifo_any_t hammer_recover_scan_rev(hammer_mount_t hmp,
 			hammer_volume_t root_volume,
 			hammer_off_t *scan_offsetp,
-			int *errorp, struct hammer_buffer **bufferp);
+			int *errorp, hammer_buffer_t *bufferp);
 #if 0
 static void hammer_recover_debug_dump(int w, char *buf, int bytes);
 #endif
@@ -774,7 +774,7 @@ fatal:
 hammer_fifo_any_t
 hammer_recover_scan_rev(hammer_mount_t hmp, hammer_volume_t root_volume,
 			hammer_off_t *scan_offsetp,
-			int *errorp, struct hammer_buffer **bufferp)
+			int *errorp, hammer_buffer_t *bufferp)
 {
 	hammer_off_t scan_offset;
 	hammer_blockmap_t rootmap;
@@ -828,7 +828,7 @@ hammer_recover_scan_rev(hammer_mount_t hmp, hammer_volume_t root_volume,
 hammer_fifo_any_t
 hammer_recover_scan_fwd(hammer_mount_t hmp, hammer_volume_t root_volume,
 			hammer_off_t *scan_offsetp,
-			int *errorp, struct hammer_buffer **bufferp)
+			int *errorp, hammer_buffer_t *bufferp)
 {
 	hammer_off_t scan_offset;
 	hammer_blockmap_t rootmap;

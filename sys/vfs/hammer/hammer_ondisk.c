@@ -1137,7 +1137,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int locked)
 static __inline
 void *
 _hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
-	     int isnew, int *errorp, struct hammer_buffer **bufferp)
+	     int isnew, int *errorp, hammer_buffer_t *bufferp)
 {
 	hammer_buffer_t buffer;
 	int32_t xoff = (int32_t)buf_offset & HAMMER_BUFMASK;
@@ -1167,14 +1167,14 @@ _hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
 
 void *
 hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset,
-	     int *errorp, struct hammer_buffer **bufferp)
+	     int *errorp, hammer_buffer_t *bufferp)
 {
 	return(_hammer_bread(hmp, buf_offset, HAMMER_BUFSIZE, 0, errorp, bufferp));
 }
 
 void *
 hammer_bread_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
-	         int *errorp, struct hammer_buffer **bufferp)
+	         int *errorp, hammer_buffer_t *bufferp)
 {
 	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
 	return(_hammer_bread(hmp, buf_offset, bytes, 0, errorp, bufferp));
@@ -1192,14 +1192,14 @@ hammer_bread_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
  */
 void *
 hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset,
-	     int *errorp, struct hammer_buffer **bufferp)
+	     int *errorp, hammer_buffer_t *bufferp)
 {
 	return(_hammer_bread(hmp, buf_offset, HAMMER_BUFSIZE, 1, errorp, bufferp));
 }
 
 void *
 hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
-		int *errorp, struct hammer_buffer **bufferp)
+		int *errorp, hammer_buffer_t *bufferp)
 {
 	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
 	return(_hammer_bread(hmp, buf_offset, bytes, 1, errorp, bufferp));
@@ -1655,7 +1655,7 @@ hammer_alloc_btree(hammer_transaction_t trans, hammer_off_t hint, int *errorp)
 void *
 hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 		  uint16_t rec_type, hammer_off_t *data_offsetp,
-		  struct hammer_buffer **data_bufferp,
+		  hammer_buffer_t *data_bufferp,
 		  hammer_off_t hint, int *errorp)
 {
 	void *data;

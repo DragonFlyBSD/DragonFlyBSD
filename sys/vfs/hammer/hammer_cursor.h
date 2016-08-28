@@ -100,7 +100,7 @@ struct hammer_cursor {
 	 * can be NULL when data and/or record is not, typically indicating
 	 * information referenced via an in-memory record.
 	 */
-	struct hammer_buffer *data_buffer;	/* extended data */
+	hammer_buffer_t data_buffer;	/* extended data */
 	hammer_btree_leaf_elm_t leaf;
 	hammer_data_ondisk_t data;
 
