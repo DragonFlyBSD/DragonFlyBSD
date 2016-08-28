@@ -102,7 +102,7 @@ struct hammer_cursor {
 	 */
 	struct hammer_buffer *data_buffer;	/* extended data */
 	struct hammer_btree_leaf_elm *leaf;
-	union hammer_data_ondisk *data;
+	hammer_data_ondisk_t data;
 
 	/*
 	 * Iteration and extraction control variables

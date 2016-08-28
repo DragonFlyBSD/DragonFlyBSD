@@ -541,7 +541,7 @@ struct hammer_record {
 	struct hammer_inode		*ip;
 	struct hammer_inode		*target_ip;
 	struct hammer_btree_leaf_elm	leaf;
-	union hammer_data_ondisk	*data;
+	hammer_data_ondisk_t		data;
 	int				flags;
 	int				gflags;
 	hammer_off_t			zone2_offset;	/* direct-write only */
