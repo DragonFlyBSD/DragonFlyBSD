@@ -208,7 +208,7 @@ RB_GENERATE2(hammer_dedup_off_rb_tree, hammer_dedup_cache, off_entry,
 		hammer_dedup_off_rb_compare, hammer_off_t, data_offset);
 
 struct hammer_dedup_inval {
-	struct hammer_mount *hmp;
+	hammer_mount_t hmp;
 	hammer_off_t base_offset;
 };
 

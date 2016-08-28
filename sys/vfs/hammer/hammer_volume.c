@@ -63,7 +63,7 @@ int
 hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		struct hammer_ioc_volume *ioc)
 {
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
 	struct hammer_volume_ondisk ondisk;
 	hammer_volume_t volume;
@@ -148,7 +148,7 @@ int
 hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		struct hammer_ioc_volume *ioc)
 {
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
 	struct hammer_volume_ondisk ondisk;
 	hammer_volume_t volume;
@@ -291,7 +291,7 @@ int
 hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
     struct hammer_ioc_volume_list *ioc)
 {
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 	hammer_volume_t volume;
 	int error = 0;
 	int i, len, cnt = 0;
@@ -329,7 +329,7 @@ static
 int
 hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 {
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 	int error;
 	int vol_no;
 
@@ -378,7 +378,7 @@ hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 static int
 hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t freemap;
 	hammer_off_t alloc_offset;
@@ -498,7 +498,7 @@ end:
 static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t freemap;
 	hammer_off_t phys_offset;
@@ -673,7 +673,7 @@ static int
 hammer_update_volumes_header(hammer_transaction_t trans,
 	int64_t total_bigblocks, int64_t empty_bigblocks)
 {
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
 	hammer_volume_t volume;
 	int vol_no;

@@ -1348,11 +1348,11 @@ int64_t hammer_undo_max(hammer_mount_t hmp);
 int hammer_undo_reclaim(hammer_io_t io);
 
 void hammer_start_transaction(hammer_transaction_t trans,
-			      struct hammer_mount *hmp);
+			      hammer_mount_t hmp);
 void hammer_simple_transaction(hammer_transaction_t trans,
-			      struct hammer_mount *hmp);
+			      hammer_mount_t hmp);
 void hammer_start_transaction_fls(hammer_transaction_t trans,
-			          struct hammer_mount *hmp);
+			          hammer_mount_t hmp);
 void hammer_done_transaction(hammer_transaction_t trans);
 hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
 

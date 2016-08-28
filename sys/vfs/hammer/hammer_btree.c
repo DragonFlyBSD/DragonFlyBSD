@@ -1943,7 +1943,7 @@ TAILQ_HEAD(hammer_rhb_list, hammer_rhb);
 int
 hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 {
-	struct hammer_mount *hmp;
+	hammer_mount_t hmp;
 	struct hammer_rhb_list rhb_list;
 	hammer_base_elm_t elm;
 	hammer_node_t orig_node;
@@ -2057,7 +2057,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 	hammer_base_elm_t elm;
 	hammer_base_elm_t cmp;
 	struct hammer_rhb *rhb;
-	struct hammer_mount *hmp;
+	hammer_mount_t hmp;
 	int error;
 
 	TAILQ_INIT(&rhb_list);
@@ -2635,7 +2635,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 	hammer_node_ondisk_t ondisk;
 	hammer_btree_elm_t elm;
 	hammer_node_t child;
-	struct hammer_mount *hmp;
+	hammer_mount_t hmp;
 	int error;
 	int i;
 

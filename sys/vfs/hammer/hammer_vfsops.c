@@ -966,7 +966,7 @@ hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
 		ino_t ino, struct vnode **vpp)
 {
 	struct hammer_transaction trans;
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_mount_t hmp = (void *)mp->mnt_data;
 	hammer_inode_t ip;
 	int error;
 	uint32_t localization;
@@ -1023,7 +1023,7 @@ hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 static int
 hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_mount_t hmp = (void *)mp->mnt_data;
 	hammer_volume_t volume;
 	hammer_volume_ondisk_t ondisk;
 	int error;
@@ -1061,7 +1061,7 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 static int
 hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_mount_t hmp = (void *)mp->mnt_data;
 	hammer_volume_t volume;
 	hammer_volume_ondisk_t ondisk;
 	int error;
@@ -1106,7 +1106,7 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 static int
 hammer_vfs_sync(struct mount *mp, int waitfor)
 {
-	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_mount_t hmp = (void *)mp->mnt_data;
 	int error;
 
 	lwkt_gettoken(&hmp->fs_token);

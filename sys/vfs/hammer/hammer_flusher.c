@@ -55,7 +55,7 @@ RB_GENERATE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
  */
 struct hammer_flusher_info {
 	TAILQ_ENTRY(hammer_flusher_info) entry;
-	struct hammer_mount *hmp;
+	hammer_mount_t	hmp;
 	thread_t	td;
 	int		runstate;
 	hammer_flush_group_t flg;

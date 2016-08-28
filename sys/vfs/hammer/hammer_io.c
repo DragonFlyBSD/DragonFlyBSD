@@ -1004,7 +1004,7 @@ hammer_io_clear_modlist(hammer_io_t io)
 static void
 hammer_io_set_modlist(hammer_io_t io)
 {
-	struct hammer_mount *hmp = io->hmp;
+	hammer_mount_t hmp = io->hmp;
 
 	lwkt_gettoken(&hmp->io_token);
 	KKASSERT(io->mod_root == NULL);
@@ -1069,7 +1069,7 @@ static void
 hammer_io_complete(struct buf *bp)
 {
 	hammer_io_t io = hammer_buf_peek_io(bp);
-	struct hammer_mount *hmp = io->hmp;
+	hammer_mount_t hmp = io->hmp;
 	hammer_io_t ionext;
 
 	lwkt_gettoken(&hmp->io_token);

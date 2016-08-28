@@ -43,7 +43,7 @@ static uint32_t ocp_allocbit(hammer_objid_cache_t ocp, uint32_t n);
  * May be called without fs_token
  */
 void
-hammer_start_transaction(hammer_transaction_t trans, struct hammer_mount *hmp)
+hammer_start_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 {
 	struct timeval tv;
 	int error;
@@ -67,7 +67,7 @@ hammer_start_transaction(hammer_transaction_t trans, struct hammer_mount *hmp)
  * May be called without fs_token
  */
 void
-hammer_simple_transaction(hammer_transaction_t trans, struct hammer_mount *hmp)
+hammer_simple_transaction(hammer_transaction_t trans, hammer_mount_t hmp)
 {
 	struct timeval tv;
 	int error;
@@ -94,7 +94,7 @@ hammer_simple_transaction(hammer_transaction_t trans, struct hammer_mount *hmp)
  * (which the flusher is responsible for).
  */
 void
-hammer_start_transaction_fls(hammer_transaction_t trans, struct hammer_mount *hmp)
+hammer_start_transaction_fls(hammer_transaction_t trans, hammer_mount_t hmp)
 {
 	struct timeval tv;
 	int error;

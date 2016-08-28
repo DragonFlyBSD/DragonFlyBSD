@@ -941,7 +941,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 static void
 hammer_free_inode(hammer_inode_t ip)
 {
-	struct hammer_mount *hmp;
+	hammer_mount_t hmp;
 
 	hmp = ip->hmp;
 	KKASSERT(hammer_oneref(&ip->lock));

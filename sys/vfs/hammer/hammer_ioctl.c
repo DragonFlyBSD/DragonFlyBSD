@@ -641,7 +641,7 @@ int
 hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info)
 {
 	hammer_volume_ondisk_t ondisk = trans->hmp->rootvol->ondisk;
-	struct hammer_mount *hmp = trans->hmp;
+	hammer_mount_t hmp = trans->hmp;
 
 	/* Fill the structure with the necessary information */
 	_hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE, &info->rsvbigblocks);

@@ -2536,7 +2536,7 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 		{ 0, NULL}
 
 	};
-	struct hammer_mount *hmp;
+	hammer_mount_t hmp;
 	struct mount *mp;
 	int usedbytes;
 	int error;
@@ -2545,7 +2545,7 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 	usedbytes = 0;
 	mp = ap->a_head.a_ops->head.vv_mount;
 	KKASSERT(mp->mnt_data != NULL);
-	hmp = (struct hammer_mount *)mp->mnt_data;
+	hmp = (hammer_mount_t)mp->mnt_data;
 
 	lwkt_gettoken(&hmp->fs_token);
 
