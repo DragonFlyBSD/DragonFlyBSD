@@ -1299,7 +1299,7 @@ hammer_recover_redo_exec(hammer_mount_t hmp, hammer_fifo_redo_t redo)
 {
 	struct hammer_transaction trans;
 	struct vattr va;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	struct vnode *vp = NULL;
 	int error;
 

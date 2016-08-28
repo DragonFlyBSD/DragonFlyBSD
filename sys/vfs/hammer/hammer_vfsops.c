@@ -967,7 +967,7 @@ hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
 {
 	struct hammer_transaction trans;
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	int error;
 	uint32_t localization;
 
@@ -1152,7 +1152,7 @@ hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 {
 	hammer_mount_t hmp = (void *)mp->mnt_data;
 	struct hammer_transaction trans;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	struct hammer_inode_info info;
 	int error;
 	uint32_t localization;

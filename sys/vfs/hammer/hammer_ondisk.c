@@ -1773,7 +1773,7 @@ static int
 hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct hammer_sync_info *info = data;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	int error;
 
 	ip = VTOI(vp);

@@ -657,8 +657,8 @@ hammer_mem_first(hammer_cursor_t cursor)
  */
 int
 hammer_ip_add_direntry(hammer_transaction_t trans,
-		     struct hammer_inode *dip, const char *name, int bytes,
-		     struct hammer_inode *ip)
+		     hammer_inode_t dip, const char *name, int bytes,
+		     hammer_inode_t ip)
 {
 	struct hammer_cursor cursor;
 	hammer_record_t record;
@@ -760,8 +760,8 @@ failed:
  */
 int
 hammer_ip_del_direntry(hammer_transaction_t trans,
-		     hammer_cursor_t cursor, struct hammer_inode *dip,
-		     struct hammer_inode *ip)
+		     hammer_cursor_t cursor, hammer_inode_t dip,
+		     hammer_inode_t ip)
 {
 	hammer_record_t record;
 	int error;
@@ -1061,7 +1061,7 @@ hammer_ip_replace_bulk(hammer_mount_t hmp, hammer_record_t record)
  * This code is only called on regular files.
  */
 int
-hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size)
+hammer_ip_frontend_trunc(hammer_inode_t ip, off_t file_size)
 {
 	struct rec_trunc_info info;
 

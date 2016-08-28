@@ -419,7 +419,7 @@ struct hammer_inode {
 
 typedef struct hammer_inode *hammer_inode_t;
 
-#define VTOI(vp)	((struct hammer_inode *)(vp)->v_data)
+#define VTOI(vp)	((hammer_inode_t)(vp)->v_data)
 
 /*
  * NOTE: DDIRTY does not include atime or mtime and does not include
@@ -538,8 +538,8 @@ struct hammer_record {
 	hammer_record_type_t		type;
 	struct hammer_lock		lock;
 	struct hammer_reserve		*resv;
-	struct hammer_inode		*ip;
-	struct hammer_inode		*target_ip;
+	hammer_inode_t			ip;
+	hammer_inode_t			target_ip;
 	struct hammer_btree_leaf_elm	leaf;
 	hammer_data_ondisk_t		data;
 	int				flags;
@@ -1059,26 +1059,26 @@ void	hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 			int error, const char *msg);
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
-int	hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp);
-struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
+int	hammer_get_vnode(hammer_inode_t ip, struct vnode **vpp);
+hammer_inode_t hammer_get_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
 			hammer_tid_t asof, uint32_t localization,
 			int flags, int *errorp);
-struct hammer_inode *hammer_get_dummy_inode(hammer_transaction_t trans,
+hammer_inode_t hammer_get_dummy_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
 			hammer_tid_t asof, uint32_t localization,
 			int flags, int *errorp);
-struct hammer_inode *hammer_find_inode(hammer_transaction_t trans,
+hammer_inode_t hammer_find_inode(hammer_transaction_t trans,
 			int64_t obj_id, hammer_tid_t asof,
 			uint32_t localization);
 void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 			hammer_inode_info_t iinfo,
 			int (*callback)(hammer_inode_t ip, void *data),
 			void *data);
-void	hammer_put_inode(struct hammer_inode *ip);
-void	hammer_put_inode_ref(struct hammer_inode *ip);
+void	hammer_put_inode(hammer_inode_t ip);
+void	hammer_put_inode_ref(hammer_inode_t ip);
 void	hammer_inode_waitreclaims(hammer_transaction_t trans);
-void	hammer_inode_dirty(struct hammer_inode *ip);
+void	hammer_inode_dirty(hammer_inode_t ip);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
@@ -1362,10 +1362,10 @@ void hammer_flush_inode_done(hammer_inode_t ip, int error);
 void hammer_wait_inode(hammer_inode_t ip);
 
 int  hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
-			struct ucred *cred, struct hammer_inode *dip,
+			struct ucred *cred, hammer_inode_t dip,
 			const char *name, int namelen,
 			hammer_pseudofs_inmem_t pfsm,
-			struct hammer_inode **ipp);
+			hammer_inode_t *ipp);
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
@@ -1386,7 +1386,7 @@ int  hammer_ip_del_direntry(hammer_transaction_t trans,
 void hammer_ip_replace_bulk(hammer_mount_t hmp, hammer_record_t record);
 hammer_record_t hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
 			void *data, int bytes, int *errorp);
-int  hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size);
+int  hammer_ip_frontend_trunc(hammer_inode_t ip, off_t file_size);
 int  hammer_ip_add_record(hammer_transaction_t trans,
 			hammer_record_t record);
 int  hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,

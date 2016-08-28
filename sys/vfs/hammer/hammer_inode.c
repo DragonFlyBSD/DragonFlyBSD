@@ -36,7 +36,7 @@
 
 #include "hammer.h"
 
-static int	hammer_unload_inode(struct hammer_inode *ip);
+static int	hammer_unload_inode(hammer_inode_t ip);
 static void	hammer_free_inode(hammer_inode_t ip);
 static void	hammer_flush_inode_core(hammer_inode_t ip,
 					hammer_flush_group_t flg, int flags);
@@ -51,7 +51,7 @@ static int	hammer_setup_parent_inodes_helper(hammer_record_t record,
 static void	hammer_inode_wakereclaims(hammer_inode_t ip);
 static struct hammer_inostats *hammer_inode_inostats(hammer_mount_t hmp,
 					pid_t pid);
-static struct hammer_inode *__hammer_find_inode(hammer_transaction_t trans,
+static hammer_inode_t __hammer_find_inode(hammer_transaction_t trans,
 					int64_t obj_id, hammer_tid_t asof,
 					uint32_t localization);
 
@@ -176,7 +176,7 @@ RB_GENERATE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
 int
 hammer_vop_inactive(struct vop_inactive_args *ap)
 {
-	struct hammer_inode *ip = VTOI(ap->a_vp);
+	hammer_inode_t ip = VTOI(ap->a_vp);
 	hammer_mount_t hmp;
 
 	/*
@@ -223,7 +223,7 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 int
 hammer_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	struct vnode *vp;
 
@@ -259,7 +259,7 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
  * should be stable without having to acquire any new locks.
  */
 void
-hammer_inode_dirty(struct hammer_inode *ip)
+hammer_inode_dirty(hammer_inode_t ip)
 {
 	struct vnode *vp;
 
@@ -278,7 +278,7 @@ hammer_inode_dirty(struct hammer_inode *ip)
  * Called from the frontend.
  */
 int
-hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
+hammer_get_vnode(hammer_inode_t ip, struct vnode **vpp)
 {
 	hammer_mount_t hmp;
 	struct vnode *vp;
@@ -415,7 +415,7 @@ hammer_scan_inode_snapshots(hammer_mount_t hmp, hammer_inode_info_t iinfo,
  *
  * Called from the frontend.
  */
-struct hammer_inode *
+hammer_inode_t
 hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 		 int64_t obj_id, hammer_tid_t asof, uint32_t localization,
 		 int flags, int *errorp)
@@ -423,7 +423,7 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 	hammer_mount_t hmp = trans->hmp;
 	struct hammer_node_cache *cachep;
 	struct hammer_cursor cursor;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 
 
 	/*
@@ -603,13 +603,13 @@ retry:
 /*
  * Get a dummy inode to placemark a broken directory entry.
  */
-struct hammer_inode *
+hammer_inode_t
 hammer_get_dummy_inode(hammer_transaction_t trans, hammer_inode_t dip,
 		 int64_t obj_id, hammer_tid_t asof, uint32_t localization,
 		 int flags, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 
 	/*
 	 * Determine if we already have an inode cached.  If we do then
@@ -710,11 +710,11 @@ loop:
  * Return a referenced inode only if it is in our inode cache.
  * Dummy inodes do not count.
  */
-struct hammer_inode *
+hammer_inode_t
 hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
 		  hammer_tid_t asof, uint32_t localization)
 {
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 
 	ip = __hammer_find_inode(trans, obj_id, asof, localization);
 	if (ip) {
@@ -730,13 +730,13 @@ hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
  * Return a referenced inode only if it is in our inode cache.
  * This function does not reference inode.
  */
-static struct hammer_inode *
+static hammer_inode_t
 __hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
 		  hammer_tid_t asof, uint32_t localization)
 {
 	hammer_mount_t hmp = trans->hmp;
 	struct hammer_inode_info iinfo;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 
 	iinfo.obj_id = obj_id;
 	iinfo.obj_asof = asof;
@@ -758,7 +758,7 @@ int
 hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		    struct ucred *cred,
 		    hammer_inode_t dip, const char *name, int namelen,
-		    hammer_pseudofs_inmem_t pfsm, struct hammer_inode **ipp)
+		    hammer_pseudofs_inmem_t pfsm, hammer_inode_t *ipp)
 {
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
@@ -1479,7 +1479,7 @@ retry:
  * disposition.
  */
 void
-hammer_rel_inode(struct hammer_inode *ip, int flush)
+hammer_rel_inode(hammer_inode_t ip, int flush)
 {
 	/*
 	 * Handle disposition when dropping the last ref.
@@ -1522,7 +1522,7 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
  * The inode must be completely clean.
  */
 static int
-hammer_unload_inode(struct hammer_inode *ip)
+hammer_unload_inode(hammer_inode_t ip)
 {
 	hammer_mount_t hmp = ip->hmp;
 
@@ -1555,7 +1555,7 @@ hammer_unload_inode(struct hammer_inode *ip)
  * release and asserts that the inode is gone.
  */
 int
-hammer_destroy_inode_callback(struct hammer_inode *ip, void *data __unused)
+hammer_destroy_inode_callback(hammer_inode_t ip, void *data __unused)
 {
 	hammer_record_t rec;
 

@@ -490,7 +490,7 @@ int
 hammer_vop_write(struct vop_write_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	thread_t td;
 	struct uio *uio;
@@ -836,7 +836,7 @@ static
 int
 hammer_vop_access(struct vop_access_args *ap)
 {
-	struct hammer_inode *ip = VTOI(ap->a_vp);
+	hammer_inode_t ip = VTOI(ap->a_vp);
 	uid_t uid;
 	gid_t gid;
 	int error;
@@ -904,8 +904,8 @@ int
 hammer_vop_ncreate(struct vop_ncreate_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
-	struct hammer_inode *nip;
+	hammer_inode_t dip;
+	hammer_inode_t nip;
 	struct nchandle *nch;
 	hammer_mount_t hmp;
 	int error;
@@ -987,7 +987,7 @@ static
 int
 hammer_vop_getattr(struct vop_getattr_args *ap)
 {
-	struct hammer_inode *ip = VTOI(ap->a_vp);
+	hammer_inode_t ip = VTOI(ap->a_vp);
 	struct vattr *vap = ap->a_vap;
 
 	/*
@@ -1304,8 +1304,8 @@ int
 hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
-	struct hammer_inode *ip;
+	hammer_inode_t dip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	int64_t parent_obj_id;
 	uint32_t parent_obj_localization;
@@ -1370,8 +1370,8 @@ int
 hammer_vop_nlink(struct vop_nlink_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
-	struct hammer_inode *ip;
+	hammer_inode_t dip;
+	hammer_inode_t ip;
 	struct nchandle *nch;
 	hammer_mount_t hmp;
 	int error;
@@ -1435,8 +1435,8 @@ int
 hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
-	struct hammer_inode *nip;
+	hammer_inode_t dip;
+	hammer_inode_t nip;
 	struct nchandle *nch;
 	hammer_mount_t hmp;
 	int error;
@@ -1512,8 +1512,8 @@ int
 hammer_vop_nmknod(struct vop_nmknod_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
-	struct hammer_inode *nip;
+	hammer_inode_t dip;
+	hammer_inode_t nip;
 	struct nchandle *nch;
 	hammer_mount_t hmp;
 	int error;
@@ -1617,7 +1617,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 {
 	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	struct uio *uio;
 	hammer_base_elm_t base;
@@ -1773,7 +1773,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 {
 	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	char buf[32];
 	uint32_t localization;
@@ -1885,7 +1885,7 @@ int
 hammer_vop_nremove(struct vop_nremove_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
+	hammer_inode_t dip;
 	hammer_mount_t hmp;
 	int error;
 
@@ -1918,9 +1918,9 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	struct hammer_transaction trans;
 	struct namecache *fncp;
 	struct namecache *tncp;
-	struct hammer_inode *fdip;
-	struct hammer_inode *tdip;
-	struct hammer_inode *ip;
+	hammer_inode_t fdip;
+	hammer_inode_t tdip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	struct hammer_cursor cursor;
 	int64_t namekey;
@@ -2088,7 +2088,7 @@ int
 hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
+	hammer_inode_t dip;
 	hammer_mount_t hmp;
 	int error;
 
@@ -2119,7 +2119,7 @@ int
 hammer_vop_markatime(struct vop_markatime_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 
 	ip = VTOI(ap->a_vp);
@@ -2150,7 +2150,7 @@ int
 hammer_vop_setattr(struct vop_setattr_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	struct vattr *vap;
 	hammer_mount_t hmp;
 	int modflags;
@@ -2379,8 +2379,8 @@ int
 hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
-	struct hammer_inode *nip;
+	hammer_inode_t dip;
+	hammer_inode_t nip;
 	hammer_record_t record;
 	struct nchandle *nch;
 	hammer_mount_t hmp;
@@ -2483,7 +2483,7 @@ int
 hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *dip;
+	hammer_inode_t dip;
 	hammer_mount_t hmp;
 	int error;
 
@@ -2513,7 +2513,7 @@ static
 int
 hammer_vop_ioctl(struct vop_ioctl_args *ap)
 {
-	struct hammer_inode *ip = ap->a_vp->v_data;
+	hammer_inode_t ip = ap->a_vp->v_data;
 	hammer_mount_t hmp = ip->hmp;
 	int error;
 
@@ -2639,8 +2639,8 @@ int
 hammer_vop_strategy_read(struct vop_strategy_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *ip;
-	struct hammer_inode *dip;
+	hammer_inode_t ip;
+	hammer_inode_t dip;
 	hammer_mount_t hmp;
 	struct hammer_cursor cursor;
 	hammer_base_elm_t base;
@@ -2974,7 +2974,7 @@ int
 hammer_vop_bmap(struct vop_bmap_args *ap)
 {
 	struct hammer_transaction trans;
-	struct hammer_inode *ip;
+	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	struct hammer_cursor cursor;
 	hammer_base_elm_t base;
