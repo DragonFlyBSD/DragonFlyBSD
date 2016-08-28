@@ -57,7 +57,7 @@ static void hammer_io_deallocate(struct buf *bp);
 static void hammer_indirect_callback(struct bio *bio);
 static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
-static void hammer_io_set_modlist(struct hammer_io *io);
+static void hammer_io_set_modlist(hammer_io_t io);
 static __inline void hammer_io_flush_mark(hammer_volume_t volume);
 static struct bio_ops hammer_bioops;
 
@@ -229,7 +229,7 @@ hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush)
  * its own ref on the buffer.
  */
 void
-hammer_io_clear_error(struct hammer_io *io)
+hammer_io_clear_error(hammer_io_t io)
 {
 	hammer_mount_t hmp = io->hmp;
 
@@ -243,7 +243,7 @@ hammer_io_clear_error(struct hammer_io *io)
 }
 
 void
-hammer_io_clear_error_noassert(struct hammer_io *io)
+hammer_io_clear_error_noassert(hammer_io_t io)
 {
 	hammer_mount_t hmp = io->hmp;
 
@@ -295,7 +295,7 @@ hammer_io_notmeta(hammer_buffer_t buffer)
  * No I/O callbacks can occur while we hold the buffer locked.
  */
 int
-hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
+hammer_io_read(struct vnode *devvp, hammer_io_t io, int limit)
 {
 	struct buf *bp;
 	int   error;
@@ -387,7 +387,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit)
  * No I/O callbacks can occur while we hold the buffer locked.
  */
 int
-hammer_io_new(struct vnode *devvp, struct hammer_io *io)
+hammer_io_new(struct vnode *devvp, hammer_io_t io)
 {
 	struct buf *bp;
 
@@ -420,7 +420,7 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
  * The io->bp cannot go away while the buffer is referenced.
  */
 void
-hammer_io_advance(struct hammer_io *io)
+hammer_io_advance(hammer_io_t io)
 {
 	if (io->bp)
 		buf_act_advance(io->bp);
@@ -508,7 +508,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
  * so we can track when the kernel writes the bp out.
  */
 struct buf *
-hammer_io_release(struct hammer_io *io, int flush)
+hammer_io_release(hammer_io_t io, int flush)
 {
 	struct buf *bp;
 
@@ -657,7 +657,7 @@ hammer_io_release(struct hammer_io *io, int flush)
  * by the kernel.
  */
 void
-hammer_io_flush(struct hammer_io *io, int reclaim)
+hammer_io_flush(hammer_io_t io, int reclaim)
 {
 	struct buf *bp;
 	hammer_mount_t hmp;
@@ -914,7 +914,7 @@ hammer_modify_buffer_done(hammer_buffer_t buffer)
  * buffer to be dereferenced.  The caller must own a reference on io.
  */
 void
-hammer_io_clear_modify(struct hammer_io *io, int inval)
+hammer_io_clear_modify(hammer_io_t io, int inval)
 {
 	hammer_mount_t hmp;
 
@@ -985,7 +985,7 @@ restart:
  * mod_root requires io_token protection.
  */
 void
-hammer_io_clear_modlist(struct hammer_io *io)
+hammer_io_clear_modlist(hammer_io_t io)
 {
 	hammer_mount_t hmp = io->hmp;
 
@@ -1002,7 +1002,7 @@ hammer_io_clear_modlist(struct hammer_io *io)
 }
 
 static void
-hammer_io_set_modlist(struct hammer_io *io)
+hammer_io_set_modlist(hammer_io_t io)
 {
 	struct hammer_mount *hmp = io->hmp;
 
@@ -1070,7 +1070,7 @@ hammer_io_complete(struct buf *bp)
 {
 	hammer_io_t io = hammer_buf_peek_io(bp);
 	struct hammer_mount *hmp = io->hmp;
-	struct hammer_io *ionext;
+	hammer_io_t ionext;
 
 	lwkt_gettoken(&hmp->io_token);
 

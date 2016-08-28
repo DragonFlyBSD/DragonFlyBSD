@@ -1409,14 +1409,14 @@ int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 
 void hammer_io_init(hammer_io_t io, hammer_volume_t volume,
 			enum hammer_io_type type);
-int hammer_io_read(struct vnode *devvp, struct hammer_io *io, int limit);
-void hammer_io_advance(struct hammer_io *io);
-int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
+int hammer_io_read(struct vnode *devvp, hammer_io_t io, int limit);
+void hammer_io_advance(hammer_io_t io);
+int hammer_io_new(struct vnode *devvp, hammer_io_t io);
 int hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
-struct buf *hammer_io_release(struct hammer_io *io, int flush);
-void hammer_io_flush(struct hammer_io *io, int reclaim);
-void hammer_io_wait(struct hammer_io *io);
-void hammer_io_waitdep(struct hammer_io *io);
+struct buf *hammer_io_release(hammer_io_t io, int flush);
+void hammer_io_flush(hammer_io_t io, int reclaim);
+void hammer_io_wait(hammer_io_t io);
+void hammer_io_waitdep(hammer_io_t io);
 void hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush);
 int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 			hammer_btree_leaf_elm_t leaf);
@@ -1428,11 +1428,11 @@ void hammer_io_direct_wait(hammer_record_t record);
 void hammer_io_direct_uncache(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf);
 void hammer_io_write_interlock(hammer_io_t io);
 void hammer_io_done_interlock(hammer_io_t io);
-void hammer_io_clear_modify(struct hammer_io *io, int inval);
-void hammer_io_clear_modlist(struct hammer_io *io);
+void hammer_io_clear_modify(hammer_io_t io, int inval);
+void hammer_io_clear_modlist(hammer_io_t io);
 void hammer_io_flush_sync(hammer_mount_t hmp);
-void hammer_io_clear_error(struct hammer_io *io);
-void hammer_io_clear_error_noassert(struct hammer_io *io);
+void hammer_io_clear_error(hammer_io_t io);
+void hammer_io_clear_error_noassert(hammer_io_t io);
 void hammer_io_notmeta(hammer_buffer_t buffer);
 void hammer_io_limit_backlog(hammer_mount_t hmp);
 
