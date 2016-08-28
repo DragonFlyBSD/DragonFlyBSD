@@ -113,7 +113,7 @@ hammer_cmd_recover(const char *target_dir)
 static void
 recover_top(char *ptr, hammer_off_t offset)
 {
-	struct hammer_node_ondisk *node;
+	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	int maxcount;
 	int i;
