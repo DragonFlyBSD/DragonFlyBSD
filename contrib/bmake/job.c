@@ -1,4 +1,4 @@
-/*	$NetBSD: job.c,v 1.177 2014/07/16 15:33:41 christos Exp $	*/
+/*	$NetBSD: job.c,v 1.187 2016/05/12 20:28:34 sjg Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
@@ -70,14 +70,14 @@
  */
 
 #ifndef MAKE_NATIVE
-static char rcsid[] = "$NetBSD: job.c,v 1.177 2014/07/16 15:33:41 christos Exp $";
+static char rcsid[] = "$NetBSD: job.c,v 1.187 2016/05/12 20:28:34 sjg Exp $";
 #else
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)job.c	8.2 (Berkeley) 3/19/94";
 #else
-__RCSID("$NetBSD: job.c,v 1.177 2014/07/16 15:33:41 christos Exp $");
+__RCSID("$NetBSD: job.c,v 1.187 2016/05/12 20:28:34 sjg Exp $");
 #endif
 #endif /* not lint */
 #endif
@@ -144,7 +144,6 @@ __RCSID("$NetBSD: job.c,v 1.177 2014/07/16 15:33:41 christos Exp $");
 
 #include <assert.h>
 #include <errno.h>
-#include <fcntl.h>
 #if !defined(USE_SELECT) && defined(HAVE_POLL_H)
 #include <poll.h>
 #else
@@ -425,8 +424,8 @@ JobCreatePipe(Job *job, int minfd)
     }
     
     /* Set close-on-exec flag for both */
-    (void)fcntl(job->jobPipe[0], F_SETFD, 1);
-    (void)fcntl(job->jobPipe[1], F_SETFD, 1);
+    (void)fcntl(job->jobPipe[0], F_SETFD, FD_CLOEXEC);
+    (void)fcntl(job->jobPipe[1], F_SETFD, FD_CLOEXEC);
 
     /*
      * We mark the input side of the pipe non-blocking; we poll(2) the
@@ -715,7 +714,7 @@ JobPrintCommand(void *cmdp, void *jobp)
 
     numCommands += 1;
 
-    cmdStart = cmd = Var_Subst(NULL, cmd, job->node, FALSE);
+    cmdStart = cmd = Var_Subst(NULL, cmd, job->node, VARF_WANTRES);
 
     cmdTemplate = "%s\n";
 
@@ -728,7 +727,6 @@ JobPrintCommand(void *cmdp, void *jobp)
 	    shutUp = DEBUG(LOUD) ? FALSE : TRUE;
 	    break;
 	case '-':
-	    job->flags |= JOB_IGNERR;
 	    errOff = TRUE;
 	    break;
 	case '+':
@@ -807,6 +805,7 @@ JobPrintCommand(void *cmdp, void *jobp)
 		 * to ignore errors. Set cmdTemplate to use the weirdness
 		 * instead of the simple "%s\n" template.
 		 */
+		job->flags |= JOB_IGNERR;
 		if (!(job->flags & JOB_SILENT) && !shutUp) {
 			if (commandShell->hasEchoCtl) {
 				DBPRINTF("%s\n", commandShell->echoOff);
@@ -866,8 +865,7 @@ JobPrintCommand(void *cmdp, void *jobp)
     
     DBPRINTF(cmdTemplate, cmd);
     free(cmdStart);
-    if (escCmd)
-        free(escCmd);
+    free(escCmd);
     if (errOff) {
 	/*
 	 * If echoing is already off, there's no point in issuing the
@@ -903,7 +901,7 @@ JobPrintCommand(void *cmdp, void *jobp)
 static int
 JobSaveCommand(void *cmd, void *gn)
 {
-    cmd = Var_Subst(NULL, (char *)cmd, (GNode *)gn, FALSE);
+    cmd = Var_Subst(NULL, (char *)cmd, (GNode *)gn, VARF_WANTRES);
     (void)Lst_AtEnd(postCommands->commands, cmd);
     return(0);
 }
@@ -1058,7 +1056,11 @@ JobFinish (Job *job, WAIT_T status)
 
 #ifdef USE_META
     if (useMeta) {
-	meta_job_finish(job);
+	int x;
+
+	if ((x = meta_job_finish(job)) != 0 && status == 0) {
+	    status = x;
+	}
     }
 #endif
     
@@ -1234,8 +1236,7 @@ Job_CheckCommands(GNode *gn, void (*abortProc)(const char *, ...))
 	     */
 	    Make_HandleUse(DEFAULT, gn);
 	    Var_Set(IMPSRC, Var_Value(TARGET, gn, &p1), gn, 0);
-	    if (p1)
-		free(p1);
+	    free(p1);
 	} else if (Dir_MTime(gn, 0) == 0 && (gn->type & OP_SPECIAL) == 0) {
 	    /*
 	     * The node wasn't the target of an operator we have no .DEFAULT
@@ -1598,7 +1599,7 @@ JobStart(GNode *gn, int flags)
 	if (job->cmdFILE == NULL) {
 	    Punt("Could not fdopen %s", tfile);
 	}
-	(void)fcntl(FILENO(job->cmdFILE), F_SETFD, 1);
+	(void)fcntl(FILENO(job->cmdFILE), F_SETFD, FD_CLOEXEC);
 	/*
 	 * Send the commands to the command file, flush all its buffers then
 	 * rewind and remove the thing.
@@ -1894,16 +1895,16 @@ end_loop:
 		(void)fflush(stdout);
 	    }
 	}
-	if (i < max - 1) {
-	    /* shift the remaining characters down */
-	    (void)memcpy(job->outBuf, &job->outBuf[i + 1], max - (i + 1));
+	/*
+	 * max is the last offset still in the buffer. Move any remaining
+	 * characters to the start of the buffer and update the end marker
+	 * curPos.
+	 */
+	if (i < max) {
+	    (void)memmove(job->outBuf, &job->outBuf[i + 1], max - (i + 1));
 	    job->curPos = max - (i + 1);
-
 	} else {
-	    /*
-	     * We have written everything out, so we just start over
-	     * from the start of the buffer. No copying. No nothing.
-	     */
+	    assert(i == max);
 	    job->curPos = 0;
 	}
     }
@@ -2194,7 +2195,8 @@ Job_SetPrefix(void)
 	Var_Set(MAKE_JOB_PREFIX, "---", VAR_GLOBAL, 0);
     }
 
-    targPrefix = Var_Subst(NULL, "${" MAKE_JOB_PREFIX "}", VAR_GLOBAL, 0);
+    targPrefix = Var_Subst(NULL, "${" MAKE_JOB_PREFIX "}",
+			   VAR_GLOBAL, VARF_WANTRES);
 }
 
 /*-
@@ -2401,8 +2403,7 @@ Job_ParseShell(char *line)
 	line++;
     }
 
-    if (shellArgv)
-	free(UNCONST(shellArgv));
+    free(UNCONST(shellArgv));
 
     memset(&newShell, 0, sizeof(newShell));
 
@@ -2650,8 +2651,7 @@ void
 Job_End(void)
 {
 #ifdef CLEANUP
-    if (shellArgv)
-	free(shellArgv);
+    free(shellArgv);
 #endif
 }
 
@@ -2850,8 +2850,8 @@ Job_ServerStart(int max_tokens, int jp_0, int jp_1)
 	/* Pipe passed in from parent */
 	tokenWaitJob.inPipe = jp_0;
 	tokenWaitJob.outPipe = jp_1;
-	(void)fcntl(jp_0, F_SETFD, 1);
-	(void)fcntl(jp_1, F_SETFD, 1);
+	(void)fcntl(jp_0, F_SETFD, FD_CLOEXEC);
+	(void)fcntl(jp_1, F_SETFD, FD_CLOEXEC);
 	return;
     }
 

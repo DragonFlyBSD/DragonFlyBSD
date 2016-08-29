@@ -77,7 +77,7 @@
 
 
 # RCSid:
-#	$Id: meta2deps.sh,v 1.8 2014/08/30 00:44:58 sjg Exp $
+#	$Id: meta2deps.sh,v 1.10 2016/03/02 18:53:36 sjg Exp $
 
 # Copyright (c) 2010-2013, Juniper Networks, Inc.
 # All rights reserved.
@@ -222,7 +222,20 @@ meta2deps() {
     "") _excludes=cat;;
     *) _excludes=_excludes_f;;
     esac
-    cat /dev/null "$@" |
+    # handle @list files
+    case "$@" in
+    *@[!.]*)
+	for f in "$@"
+	do
+	    case "$f" in
+	    *.meta) cat $f;;
+	    @*) xargs cat < ${f#@};;
+	    *) cat $f;;
+	    esac
+	done
+	;;
+    *) cat /dev/null "$@";;
+    esac 2> /dev/null |
     sed -e 's,^CWD,C C,;/^[CREFLM] /!d' -e "s,',,g" |
     $_excludes |
     while read op pid path junk
@@ -296,7 +309,7 @@ meta2deps() {
 	*)  seen=$dir;;
 	esac
 	case "$dir" in
-	${CURDIR:-.}|${CURDIR:-.}/*|"") continue;;
+	${CURDIR:-.}|"") continue;;
 	$src_re)
 	    # avoid repeating ourselves...
 	    case "$DPDEPS,$seensrc," in
