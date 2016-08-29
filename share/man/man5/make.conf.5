@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd August 12, 2017
+.Dd August 29, 2016
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -417,13 +417,9 @@ Set to not build
 Set to not build
 .Xr lpr 1
 and related programs.
-.It Va NO_OPENSSH
-.Pq Vt bool
-Set to not build OpenSSH.
 .It Va NO_OPENSSL
 .Pq Vt bool
-Set to not build OpenSSL (implies
-.Va NO_OPENSSH ) .
+Set to not build OpenSSL
 .It Va NO_SHARE
 .Pq Vt bool
 Set to not enter the share subdirectory.

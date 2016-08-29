@@ -40,12 +40,10 @@ BIN1+=	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
 .endif
 
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
-.if !defined(NO_OPENSSH)
 DIRS+=	secure/lib/libssh \
 	secure/usr.bin/ssh \
-	secure/usr.sbin/sshd
-.endif
-DIRS+=	secure/usr.bin/openssl
+	secure/usr.sbin/sshd \
+	secure/usr.bin/openssl
 .endif
 
 # Files that should be installed read-only-executable (555) root:wheel
@@ -203,10 +201,8 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
-.if !defined(NO_OPENSSH)
 	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc obj
 	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc install
-.endif
 .if exists(${DESTDIR}/boot)
 .if exists(${DESTDIR}/kernel)
 	chflags noschg ${DESTDIR}/kernel
