@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -234,6 +234,9 @@ is_null_pattern(pattern)
 #if HAVE_V8_REGCOMP
 	return (pattern == NULL);
 #endif
+#if NO_REGEX
+	return (pattern == NULL);
+#endif
 }
 
 /*
@@ -254,9 +257,17 @@ match(pattern, pattern_len, buf, buf_len, pfound, pend)
 
 	for ( ;  buf < buf_end;  buf++)
 	{
-		for (pp = pattern, lp = buf;  *pp == *lp;  pp++, lp++)
+		for (pp = pattern, lp = buf;  ;  pp++, lp++)
+		{
+			char cp = *pp;
+			char cl = *lp;
+			if (caseless == OPT_ONPLUS && ASCII_IS_UPPER(cp))
+				cp = ASCII_TO_LOWER(cp);
+			if (cp != cl)
+				break;
 			if (pp == pattern_end || lp == buf_end)
 				break;
+		}
 		if (pp == pattern_end)
 		{
 			if (pfound != NULL)
@@ -304,6 +315,7 @@ match_pattern(pattern, tpattern, line, line_len, sp, ep, notbol, search_type)
 	struct regexp *spattern = (struct regexp *) pattern;
 #endif
 
+	*sp = *ep = NULL;
 #if NO_REGEX
 	search_type |= SRCH_NO_REGEX;
 #endif

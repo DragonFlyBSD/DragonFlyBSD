@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -1264,7 +1264,7 @@ cmd_char(c)
 			cmd_mbc_buf[cmd_mbc_buf_index++] = c;
 			if (cmd_mbc_buf_index < cmd_mbc_buf_len)
 				return (CC_OK);
-			if (!is_utf8_well_formed(cmd_mbc_buf))
+			if (!is_utf8_well_formed(cmd_mbc_buf, cmd_mbc_buf_index))
 			{
 				/* complete, but not well formed (non-shortest form), sequence */
 				cmd_mbc_buf_len = 0;
@@ -1484,6 +1484,7 @@ read_cmdhist(action, uparam, skip_search, skip_shell)
 	void (*action)(void*,struct mlist*,char*);
 	void *uparam;
 	int skip_search;
+	int skip_shell;
 {
 	read_cmdhist2(action, uparam, skip_search, skip_shell);
 	(*action)(uparam, NULL, NULL); /* signal end of file */

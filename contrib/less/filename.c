@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -821,15 +821,20 @@ lglob(filename)
 num_pct_s(lessopen)
 	char *lessopen;
 {
-	int num;
+	int num = 0;
 
-	for (num = 0;; num++)
+	while (*lessopen != '\0')
 	{
-		lessopen = strchr(lessopen, '%');
-		if (lessopen == NULL)
-			break;
-		if (*++lessopen != 's')
-			return (999);
+		if (*lessopen == '%')
+		{
+			if (lessopen[1] == '%')
+				++lessopen;
+			else if (lessopen[1] == 's')
+				++num;
+			else
+				return (999);
+		}
+		++lessopen;
 	}
 	return (num);
 }
@@ -979,7 +984,7 @@ close_altfile(altfilename, filename, pipefd)
 	     	return;
 	if (num_pct_s(lessclose) > 2) 
 	{
-		error("Invalid LESSCLOSE variable");
+		error("Invalid LESSCLOSE variable", NULL_PARG);
 		return;
 	}
 	len = (int) (strlen(lessclose) + strlen(filename) + strlen(altfilename) + 2);

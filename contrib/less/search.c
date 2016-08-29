@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -74,7 +74,6 @@ struct hilite_node
 	struct hilite_node *prev;
 	struct hilite_node *next;
 	int red;
-
 	struct hilite r;
 };
 struct hilite_storage
@@ -82,13 +81,13 @@ struct hilite_storage
 	int capacity;
 	int used;
 	struct hilite_storage *next;
+	struct hilite_node *nodes;
 };
 struct hilite_tree
 {
 	struct hilite_storage *first;
 	struct hilite_storage *current;
 	struct hilite_node *root;
-
 	struct hilite_node *lookaside;
 };
 #define HILITE_INITIALIZER() { NULL, NULL, NULL, NULL }
@@ -373,6 +372,7 @@ clr_hlist(anchor)
 	for (hls = anchor->first;  hls != NULL;  hls = nexthls)
 	{
 		nexthls = hls->next;
+		free((void*)hls->nodes);
 		free((void*)hls);
 	}
 	anchor->first = NULL;
@@ -651,7 +651,6 @@ hlist_getstorage(anchor)
 	struct hilite_tree *anchor;
 {
 	int capacity = 1;
-	int allocsize = sizeof(struct hilite_storage);
 	struct hilite_storage *s;
 
 	if (anchor->current)
@@ -660,8 +659,9 @@ hlist_getstorage(anchor)
 			return anchor->current;
 		capacity = anchor->current->capacity * 2;
 	}
-	allocsize += capacity * sizeof(struct hilite_node);
-	s = ecalloc(1, allocsize);
+
+	s = (struct hilite_storage *) ecalloc(1, sizeof(struct hilite_storage));
+	s->nodes = (struct hilite_node *) ecalloc(capacity, sizeof(struct hilite_node));
 	s->capacity = capacity;
 	s->used = 0;
 	s->next = NULL;
@@ -682,10 +682,7 @@ hlist_getnode(anchor)
 	struct hilite_tree *anchor;
 {
 	struct hilite_storage *s = hlist_getstorage(anchor);
-
-	struct hilite_node *n = ((struct hilite_node*)(s+1))+s->used;
-	s->used++;
-	return n;
+	return &s->nodes[s->used++];
 }
 
 /*
@@ -987,8 +984,6 @@ hilite_line(linepos, line, line_len, chpos, sp, ep, cvt_ops)
 	char *searchp;
 	char *line_end = line + line_len;
 
-	if (sp == NULL || ep == NULL)
-		return;
 	/*
 	 * sp and ep delimit the first match in the line.
 	 * Mark the corresponding file positions, then
@@ -1001,6 +996,8 @@ hilite_line(linepos, line, line_len, chpos, sp, ep, cvt_ops)
 	 */
 	searchp = line;
 	do {
+		if (sp == NULL || ep == NULL)
+			return;
 		create_hilites(linepos, sp-line, ep-line, chpos);
 		/*
 		 * If we matched more than zero characters,
@@ -1136,11 +1133,10 @@ search_pos(search_type)
 			 * It starts at the jump target (if searching backwards),
 			 * or at the jump target plus one (if forwards).
 			 */
-			linenum = jump_sline;
+			linenum = adjsline(jump_sline);
 			if (search_type & SRCH_FORW) 
 				add_one = 1;
 		}
-		linenum = adjsline(linenum);
 		pos = position(linenum);
 		if (add_one)
 			pos = forw_raw_line(pos, (char **)NULL, (int *)NULL);

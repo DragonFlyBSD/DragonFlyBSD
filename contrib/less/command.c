@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -161,6 +161,7 @@ mca_search()
 		cmd_putstr("/");
 	else
 		cmd_putstr("?");
+	forw_prompt = 0;
 	set_mlist(ml_search, 0);
 }
 
@@ -195,6 +196,7 @@ mca_opt_toggle()
 		cmd_putstr("!");
 		break;
 	}
+	forw_prompt = 0;
 	set_mlist(NULL, 0);
 }
 

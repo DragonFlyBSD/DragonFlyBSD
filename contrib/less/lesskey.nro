@@ -1,4 +1,4 @@
-.TH LESSKEY 1 "Version 471: 14 Dec 2014"
+.TH LESSKEY 1 "Version 481: 31 Aug 2015"
 .SH NAME
 lesskey \- specify key bindings for less
 .SH SYNOPSIS
@@ -178,6 +178,8 @@ default command keys used by less:
 	\ee]		right-scroll
 	\ee(		left-scroll
 	\ee)		right-scroll
+	\ekl		left-scroll
+	\ekr		right-scroll
 	{		forw-bracket {}
 	}		back-bracket {}
 	(		forw-bracket ()
@@ -357,7 +359,7 @@ which start with a NUL character (0).
 This NUL character should be represented as \e340 in a lesskey file.
 
 .SH COPYRIGHT
-Copyright (C) 1984-2014  Mark Nudelman
+Copyright (C) 1984-2015  Mark Nudelman
 .PP
 less is part of the GNU project and is free software.
 You can redistribute it and/or modify it
