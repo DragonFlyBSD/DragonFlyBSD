@@ -986,7 +986,7 @@ brelvp(struct buf *bp)
 	 */
 	if ((vp->v_flag & (VONWORKLST | VISDIRTY | VOBJDIRTY)) == VONWORKLST &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {
-		vn_syncer_remove(vp);
+		vn_syncer_remove(vp, 0);
 	}
 	bp->b_vp = NULL;
 
@@ -1076,7 +1076,7 @@ reassignbuf(struct buf *bp)
 		if ((vp->v_flag & (VONWORKLST | VISDIRTY | VOBJDIRTY)) ==
 		     VONWORKLST &&
 		    RB_EMPTY(&vp->v_rbdirty_tree)) {
-			vn_syncer_remove(vp);
+			vn_syncer_remove(vp, 0);
 		}
 	}
 }
@@ -1473,7 +1473,19 @@ vgone_vxlocked(struct vnode *vp)
 	 * list as syncer/dirty flags cleared during the cleaning.
 	 */
 	vclean_vxlocked(vp, DOCLOSE);
-	KKASSERT((vp->v_flag & VONWORKLST) == 0);
+
+	/*
+	 * Normally panic if the vnode is still dirty, unless we are doing
+	 * a forced unmount (tmpfs typically).
+	 */
+	if (vp->v_flag & VONWORKLST) {
+		if (vp->v_mount->mnt_kern_flag & MNTK_UNMOUNTF) {
+			/* force removal */
+			vn_syncer_remove(vp, 1);
+		} else {
+			panic("vp %p still dirty in vgone after flush", vp);
+		}
+	}
 
 	/*
 	 * Delete from old mount point vnode list, if on one.

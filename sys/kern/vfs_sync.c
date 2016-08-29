@@ -201,10 +201,12 @@ vn_syncer_add(struct vnode *vp, int delay)
  * acquiring the syncer_token we have to [re]check conditions to determine
  * that it is ok to remove the vnode.
  *
+ * Force removal if force != 0.  This can only occur during a forced unmount.
+ *
  * vp->v_token held on call
  */
 void
-vn_syncer_remove(struct vnode *vp)
+vn_syncer_remove(struct vnode *vp, int force)
 {
 	struct syncer_ctx *ctx;
 
@@ -213,6 +215,9 @@ vn_syncer_remove(struct vnode *vp)
 
 	if ((vp->v_flag & (VISDIRTY | VONWORKLST | VOBJDIRTY)) == VONWORKLST &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {
+		vclrflags(vp, VONWORKLST);
+		LIST_REMOVE(vp, v_synclist);
+	} else if (force && (vp->v_flag & VONWORKLST)) {
 		vclrflags(vp, VONWORKLST);
 		LIST_REMOVE(vp, v_synclist);
 	}
@@ -228,7 +233,7 @@ vclrisdirty(struct vnode *vp)
 {
 	vclrflags(vp, VISDIRTY);
 	if (vp->v_flag & VONWORKLST)
-		vn_syncer_remove(vp);
+		vn_syncer_remove(vp, 0);
 }
 
 void
@@ -236,7 +241,7 @@ vclrobjdirty(struct vnode *vp)
 {
 	vclrflags(vp, VOBJDIRTY);
 	if (vp->v_flag & VONWORKLST)
-		vn_syncer_remove(vp);
+		vn_syncer_remove(vp, 0);
 }
 
 /*
