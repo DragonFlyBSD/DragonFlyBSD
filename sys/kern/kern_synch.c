@@ -697,7 +697,17 @@ resume:
 					error = ERESTART;
 			}
 		}
+
 		lp->lwp_flags &= ~LWP_SINTR;
+
+		/*
+		 * Normally we should not be in LSSLEEP here but a pending
+		 * signal related to STOP/CONT or TSTOP/TCONT can cause us
+		 * to skip the sleep.  Make sure we are back in the RUN
+		 * state.
+		 */
+		if (lp->lwp_stat == LSSLEEP)
+			lp->lwp_stat = LSRUN;
 		lwkt_reltoken(&lp->lwp_token);
 	}
 	logtsleep1(tsleep_end);
