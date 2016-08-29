@@ -1,4 +1,4 @@
-.TH LESS 1 "Version 471: 14 Dec 2014"
+.TH LESS 1 "Version 481: 31 Aug 2015"
 .SH NAME
 less \- opposite of more
 .SH SYNOPSIS
@@ -85,6 +85,10 @@ Warning: some systems use ^Y as a special job control character.
 Scroll backward N lines, default one half of the screen size.
 If N is specified, it becomes the new default for
 subsequent d and u commands.
+.IP "J"
+Like j, but continues to scroll beyond the end of the file.
+.IP "K or Y"
+Like k, but continues to scroll beyond the beginning of the file.
 .IP "ESC-) or RIGHTARROW"
 Scroll horizontally right N characters, default half the screen width
 (see the \-# option).
@@ -213,7 +217,8 @@ that is, do a simple textual comparison.
 .RE
 .IP ?pattern
 Search backward in the file for the N-th line containing the pattern.
-The search starts at the line immediately before the top line displayed.
+The search starts at the last line displayed 
+(but see the \-a and \-j options, which change this).
 .sp
 Certain characters are special as in the / command:
 .RS
@@ -1735,7 +1740,7 @@ The name of the editor (used for the v command).
 lesskey(1)
 
 .SH COPYRIGHT
-Copyright (C) 1984-2014  Mark Nudelman
+Copyright (C) 1984-2015  Mark Nudelman
 .PP
 less is part of the GNU project and is free software.
 You can redistribute it and/or modify it

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -506,8 +506,9 @@ utf_len(ch)
  * Does the parameter point to the lead byte of a well-formed UTF-8 character?
  */
 	public int
-is_utf8_well_formed(s)
+is_utf8_well_formed(s, slen)
 	unsigned char *s;
+	int slen;
 {
 	int i;
 	int len;
@@ -516,6 +517,8 @@ is_utf8_well_formed(s)
 		return (0);
 
 	len = utf_len((char) s[0]);
+	if (len > slen)
+		return (0);
 	if (len == 1)
 		return (1);
 	if (len == 2)
@@ -547,7 +550,7 @@ utf_bin_count(data, len)
 	int bin_count = 0;
 	while (len > 0)
 	{
-		if (is_utf8_well_formed(data))
+		if (is_utf8_well_formed(data, len))
 		{
 			int clen = utf_len(*data);
 			data += clen;

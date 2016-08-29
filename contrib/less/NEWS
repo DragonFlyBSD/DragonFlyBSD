@@ -11,11 +11,13 @@
 
 ======================================================================
 
-	Major changes between "less" versions 458 and 471
+	Major changes between "less" versions 458 and 481
 
 * Don't overwrite history file; just append to it.
 
 * New command ESC-G goes to end of currently buffered data in a pipe.
+
+* Disable history feature when compiled with LESSHISTFILE set to "-".
 
 * In more-compatible mode, make the -p option apply to every file opened,
   not just the first one.
@@ -34,9 +36,15 @@
 
 * Fix bug with ++ commands.
 
+* Fix bug where prompt was sometimes not displayed with +G.
+
+* Fix possible memory corruption 
+
 * Fix bugs and improve performance in ampersand filtering.
 
 * Automate construction of Unicode tables from Unicode database.
+
+* Allow %% escape sequence in LESSOPEN variable.
 
 ======================================================================
 

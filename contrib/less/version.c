@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -779,6 +779,18 @@ v469  10/2/14   Allow extra string in command to append to a multichar
 v470  10/5/14   Fix some compiler warnings.
 v471  12/14/14  Fix unget issues with prompt. Allow disabling history
                 when compiled value of LESSHISTFILE = "-".
+v473  12/19/14  Fix prompt bug with stdin and -^P in lesskey extra string.
+v474  1/30/15   Fix bug in backwards search with match on bottom line.
+                Make follow mode reopen file if file shrinks.
+v475  3/2/15    Fix possible buffer overrun with invalid UTF-8; 
+                fix bug when compiled with no regex; fix non-match search.
+v476  5/3/15    Update man pages.
+v477  5/19/15   Fix off-by-one in jump_forw_buffered;
+                don't add FAKE_* files to cmd history.
+v478  5/21/15   Fix nonportable pointer usage in hilite tree.
+v479  7/6/15    Allow %% escapes in LESSOPEN variable.
+v480  7/24/15	Fix bug in no-regex searches; support MSVC v1900.
+v481  8/20/15	Fix broken -g option.
 */
 
-char version[] = "471";
+char version[] = "481";

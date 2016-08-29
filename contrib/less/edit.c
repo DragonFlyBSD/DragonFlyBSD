@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -436,7 +436,8 @@ edit_ifile(ifile)
 #if HILITE_SEARCH
 		clr_hilite();
 #endif
-		cmd_addhist(ml_examine, filename, 1);
+		if (strcmp(filename, FAKE_HELPFILE) && strcmp(filename, FAKE_EMPTYFILE))
+			cmd_addhist(ml_examine, filename, 1);
 		if (no_display && errmsgs > 0)
 		{
 			/*

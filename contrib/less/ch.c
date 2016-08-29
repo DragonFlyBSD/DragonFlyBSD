@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2014  Mark Nudelman
+ * Copyright (C) 1984-2015  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -323,13 +323,16 @@ ch_get()
 #if HAVE_STAT_INO
 			if (follow_mode == FOLLOW_NAME)
 			{
-				/* See whether the file's i-number has changed.
+				/* See whether the file's i-number has changed,
+				 * or the file has shrunk.
 				 * If so, force the file to be closed and
 				 * reopened. */
 				struct stat st;
+				POSITION curr_pos = ch_tell();
 				int r = stat(get_filename(curr_ifile), &st);
 				if (r == 0 && (st.st_ino != curr_ino ||
-					st.st_dev != curr_dev))
+					st.st_dev != curr_dev ||
+					(curr_pos != NULL_POSITION && st.st_size < curr_pos)))
 				{
 					/* screen_trashed=2 causes
 					 * make_display to reopen the file. */
