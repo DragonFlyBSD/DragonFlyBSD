@@ -613,17 +613,7 @@ typedef enum hammer_io_type {
 	HAMMER_STRUCTURE_DUMMY
 } hammer_io_type_t;
 
-/*
- * XXX: struct hammer_io can't directly embed LIST_ENTRY() at offset 0,
- * since a list head in struct buf expects a struct called worklist for
- * list entries.  HAMMER needs to define and use struct worklist.
- */
-struct worklist {
-	LIST_ENTRY(worklist) node;
-};
-
 typedef struct hammer_io {
-	struct worklist		worklist; /* must be at offset 0 */
 	struct hammer_lock	lock;
 	hammer_io_type_t	type;
 	struct hammer_mount	*hmp;
@@ -1643,7 +1633,7 @@ static __inline
 hammer_io_t
 hammer_buf_peek_io(struct buf *bp)
 {
-	return((hammer_io_t)LIST_FIRST(&bp->b_dep));
+	return((hammer_io_t)bp->b_priv);
 }
 
 static __inline
@@ -1652,7 +1642,7 @@ hammer_buf_attach_io(struct buf *bp, hammer_io_t io)
 {
 	/* struct buf and struct hammer_io are 1:1 */
 	KKASSERT(hammer_buf_peek_io(bp) == NULL);
-	LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
+	bp->b_priv = io;
 }
 
 #define hkprintf(format, args...)			\

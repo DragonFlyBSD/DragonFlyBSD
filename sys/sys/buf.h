@@ -176,7 +176,10 @@ struct buf {
 	int	b_refs;			/* FINDBLK_REF/bqhold()/bqdrop() */
 	struct	xio b_xio;  		/* data buffer page list management */
 	struct  bio_ops *b_ops;		/* bio_ops used w/ b_dep */
-	struct	workhead b_dep;		/* List of filesystem dependencies. */
+	union {
+		struct workhead b_dep;	/* List of filesystem dependencies. */
+		void *b_priv;		/* Filesystem private data */
+	};
 };
 
 /*
