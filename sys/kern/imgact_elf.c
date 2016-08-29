@@ -1156,10 +1156,16 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 		if (error) {
 			char *freepath, *fullpath;
 
+			/*
+			 * This is actually a relatively common occurance,
+			 * so don't spew on the console by default.
+			 */
 			if (vn_fullpath(curproc, vp, &fullpath, &freepath, 0)) {
-				kprintf("Warning: coredump, error %d: cannot store file handle for vnode %p\n", error, vp);
+				if (bootverbose)
+					kprintf("Warning: coredump, error %d: cannot store file handle for vnode %p\n", error, vp);
 			} else {
-				kprintf("Warning: coredump, error %d: cannot store file handle for %s\n", error, fullpath);
+				if (bootverbose)
+					kprintf("Warning: coredump, error %d: cannot store file handle for %s\n", error, fullpath);
 				kfree(freepath, M_TEMP);
 			}
 			error = 0;
