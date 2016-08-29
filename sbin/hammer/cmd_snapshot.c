@@ -481,7 +481,7 @@ snapshot_ls(const char *path)
 	struct hammer_ioc_snapshot snapshot;
 	struct hammer_ioc_pseudofs_rw pfs;
 	struct hammer_pseudofs_data pfs_od;
-	struct hammer_snapshot_data *snap;
+	hammer_snapshot_data_t snap;
 	struct tm *tp;
 	time_t t;
 	uint32_t i;

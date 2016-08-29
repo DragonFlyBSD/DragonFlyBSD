@@ -626,7 +626,7 @@ migrate_one_snapshot(int fd, const char *fpath,
 		     struct hammer_ioc_snapshot *snapshot)
 {
 	if (fpath) {
-		struct hammer_snapshot_data *snap;
+		hammer_snapshot_data_t snap;
 		struct tm tm;
 		time_t t;
 		int year;
@@ -935,7 +935,7 @@ cleanup_softlinks(int fd, int new_config,
 	if (new_config) {
 		struct hammer_ioc_snapshot snapshot;
 		struct hammer_ioc_snapshot dsnapshot;
-		struct hammer_snapshot_data *snap;
+		hammer_snapshot_data_t snap;
 		struct tm *tp;
 		time_t t;
 		time_t dt;

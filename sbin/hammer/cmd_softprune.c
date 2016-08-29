@@ -324,7 +324,7 @@ hammer_softprune_scanmeta(int fd, struct softprune *scan, int delete_all)
 	struct hammer_ioc_version	version;
 	struct hammer_ioc_snapshot	snapshot;
 	struct hammer_ioc_snapshot	dsnapshot;
-	struct hammer_snapshot_data	*snap;
+	hammer_snapshot_data_t		snap;
 	time_t ct;
 
 	/*
