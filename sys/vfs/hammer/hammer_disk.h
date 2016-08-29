@@ -782,7 +782,7 @@ typedef struct hammer_volume_ondisk {
  * NOTE: Future note on directory hardlinks.  We can implement a record type
  * which allows us to point to multiple parent directories.
  */
-struct hammer_inode_data {
+typedef struct hammer_inode_data {
 	uint16_t version;	/* inode data version */
 	uint16_t mode;		/* basic unix permissions */
 	uint32_t uflags;	/* chflags */
@@ -804,7 +804,7 @@ struct hammer_inode_data {
 	} ext;
 	uint64_t mtime;	/* mtime must be second-to-last */
 	uint64_t atime;	/* atime must be last */
-};
+} *hammer_inode_data_t;
 
 /*
  * Neither mtime nor atime upates are CRCd by the B-Tree element.
@@ -847,12 +847,12 @@ struct hammer_inode_data {
  *
  * NOTE: name field / the filename data reference is NOT terminated with \0.
  */
-struct hammer_direntry_data {
+typedef struct hammer_direntry_data {
 	int64_t obj_id;			/* object being referenced */
 	uint32_t localization;		/* identify pseudo-filesystem */
 	uint32_t reserved02;
 	char	name[16];		/* name (extended) */
-};
+} *hammer_direntry_data_t;
 
 #define HAMMER_ENTRY_NAME_OFF	offsetof(struct hammer_direntry_data, name[0])
 #define HAMMER_ENTRY_SIZE(nlen)	offsetof(struct hammer_direntry_data, name[nlen])
@@ -861,9 +861,9 @@ struct hammer_direntry_data {
  * Symlink data which does not fit in the inode is stored in a separate
  * FIX type record.
  */
-struct hammer_symlink_data {
+typedef struct hammer_symlink_data {
 	char	name[16];		/* name (extended) */
-};
+} *hammer_symlink_data_t;
 
 #define HAMMER_SYMLINK_NAME_OFF	offsetof(struct hammer_symlink_data, name[0])
 
@@ -938,23 +938,23 @@ typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
  *
  * NOTE: Reserved fields must be zero (as usual)
  */
-struct hammer_snapshot_data {
+typedef struct hammer_snapshot_data {
 	hammer_tid_t	tid;		/* the snapshot TID itself (== key) */
 	uint64_t	ts;		/* real-time when snapshot was made */
 	uint64_t	reserved01;
 	uint64_t	reserved02;
 	char		label[64];	/* user-supplied description */
 	uint64_t	reserved03[4];
-};
+} *hammer_snapshot_data_t;
 
 /*
  * Config meta-data { ObjId = HAMMER_OBJID_ROOT, Key = 0, rectype = CONFIG }.
  *
  * Used to store the hammer cleanup config.  This data is not mirrored.
  */
-struct hammer_config_data {
+typedef struct hammer_config_data {
 	char		text[1024];
-};
+} *hammer_config_data_t;
 
 /*
  * Rollup various structures embedded as record data
