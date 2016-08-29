@@ -271,8 +271,10 @@ killlwps(struct lwp *lp)
 	}
 
 	/*
-	 * Wait for everything to clear out.
+	 * Wait for everything to clear out.  Also make sure any tstop()s
+	 * are signalled (we are holding p_token for the interlock).
 	 */
+	wakeup(p);
 	while (p->p_nthreads > 1)
 		tsleep(&p->p_nthreads, 0, "killlwps", 0);
 }

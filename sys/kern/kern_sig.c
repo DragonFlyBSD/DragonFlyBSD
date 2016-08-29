@@ -2362,7 +2362,9 @@ coredump(struct lwp *lp, int sig)
 		return (EINVAL);
 	error = nlookup_init(&nd, name, UIO_SYSSPACE, NLC_LOCKVP);
 	if (error == 0)
-		error = vn_open(&nd, NULL, O_CREAT | FWRITE | O_NOFOLLOW, S_IRUSR | S_IWUSR);
+		error = vn_open(&nd, NULL,
+				O_CREAT | FWRITE | O_NOFOLLOW,
+				S_IRUSR | S_IWUSR);
 	kfree(name, M_TEMP);
 	if (error) {
 		nlookup_done(&nd);

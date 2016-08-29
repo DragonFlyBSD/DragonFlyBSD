@@ -1198,9 +1198,18 @@ tstop(void)
 			PRELE(q);
 		}
 	}
+
+	/*
+	 * Wait here while in a stopped state, interlocked with lwp_token.
+	 * We must break-out if the whole process is trying to exit.
+	 */
 	while (p->p_stat == SSTOP || p->p_stat == SCORE) {
 		lp->lwp_stat = LSSTOP;
+		if (lp->lwp_mpflags & LWP_MP_WEXIT)
+			break;
 		tsleep(p, 0, "stop", 0);
+		if (lp->lwp_mpflags & LWP_MP_WEXIT)
+			break;
 	}
 	p->p_nstopped--;
 	atomic_clear_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
