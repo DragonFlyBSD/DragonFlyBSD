@@ -567,7 +567,7 @@ format_root_directory(const char *label)
 	hammer_off_t data_off;
 	hammer_tid_t create_tid;
 	hammer_node_ondisk_t bnode;
-	struct hammer_inode_data *idata;
+	hammer_inode_data_t idata;
 	hammer_pseudofs_data_t pfsd;
 	struct buffer_info *data_buffer0 = NULL;
 	struct buffer_info *data_buffer1 = NULL;
