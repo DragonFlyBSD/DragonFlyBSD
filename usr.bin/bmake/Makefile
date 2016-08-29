@@ -15,13 +15,13 @@ SRCS+=	lstAppend.c lstAtEnd.c lstAtFront.c lstClose.c lstConcat.c \
 SRCS += lstPrev.c
 
 SRCS+=	stresep.c
-SRCS+=	meta.c
+SRCS+=	meta.c metachar.c
 
 # you can use this Makefile if you have an earlier version of bmake.
 srcdir= ${.CURDIR}/../../contrib/bmake
 
 # Base version on src date
-MAKE_VERSION= 20141111
+MAKE_VERSION= 20160818
 .if defined(BOOTSTRAPPING)
 DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 .else

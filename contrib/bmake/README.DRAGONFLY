@@ -1,13 +1,13 @@
-BMAKE 2014-11-11
-================
+BSD MAKE
+========
 
 Original source can be downloaded from:
 http://www.crufty.net/ftp/pub/sjg
 
-file = bmake-20141111.tar.gz
-date = 11 November 2014
-size = 524560
-sha1 = a6f670210f9ccde09a0e93a29a766f4726ddfeed
+file = bmake-20160818.tar.gz
+date = 18 August 2016
+size = 543406
+sha1 = bdadeb59583d6f1b115ede4080bc68e8de818702
 
 The file README.DELETED contains a list of deleted files and directories.
 

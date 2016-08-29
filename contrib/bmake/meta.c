@@ -241,7 +241,7 @@ eat_dots(char *buf, size_t bufsz, int dots)
 }
 
 static char *
-meta_name(struct GNode *gn, char *mname, size_t mnamelen,
+meta_name(struct GNode __unused *gn, char *mname, size_t mnamelen,
 	  const char *dname,
 	  const char *tname,
 	  const char *cwd)
@@ -396,7 +396,7 @@ printCMD(void *cmdp, void *mfpp)
  * Do we need/want a .meta file ?
  */
 static Boolean
-meta_needed(GNode *gn, const char *dname, const char *tname,
+meta_needed(GNode *gn, const char *dname, const char __unused *tname,
 	     char *objdir, int verbose)
 {
     struct stat fs;
@@ -689,7 +689,7 @@ meta_job_start(Job *job, GNode *gn)
  * It does not disturb our state.
  */
 void
-meta_job_child(Job *job)
+meta_job_child(Job __unused *job)
 {
 #ifdef USE_FILEMON
     BuildMon *pbm;
@@ -779,7 +779,7 @@ meta_job_output(Job *job, char *cp, const char *nl)
 }
 
 int
-meta_cmd_finish(void *pbmp)
+meta_cmd_finish(void __unused *pbmp)
 {
     int error = 0;
 #ifdef USE_FILEMON
