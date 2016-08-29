@@ -1061,11 +1061,6 @@ cleanup_prune(const char *path, const char *snapshots_path,
 		  int arg1 __unused, int arg2, int snapshots_disabled)
 {
 	const char *path_or_snapshots_path;
-	struct softprune *base = NULL;
-	struct hammer_ioc_prune dummy_template;
-
-	bzero(&dummy_template, sizeof(dummy_template));
-	hammer_softprune_scandir(&base, &dummy_template, snapshots_path);
 
 	/*
 	 * If the snapshots_path (e.g. /var/hammer/...) has no snapshots
@@ -1073,7 +1068,10 @@ cleanup_prune(const char *path, const char *snapshots_path,
 	 * containing the snapshots_path instead of the requested
 	 * filesystem.  De-confuse prune.  We need a better way.
 	 */
-	path_or_snapshots_path = base ? snapshots_path : path;
+	if (hammer_softprune_testdir(snapshots_path))
+		path_or_snapshots_path = snapshots_path;
+	else
+		path_or_snapshots_path = path;
 
 	/*
 	 * If snapshots have been disabled run prune-everything instead

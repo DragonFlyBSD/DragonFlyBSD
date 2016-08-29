@@ -36,7 +36,18 @@
 
 #include "hammer.h"
 
-static void softprune_usage(int code);
+struct softprune {
+	struct softprune *next;
+	struct statfs fs;
+	char *filesystem;
+	struct hammer_ioc_prune prune;
+	int maxelms;
+	int prune_min;
+};
+
+static void hammer_softprune_scandir(struct softprune **basep,
+			struct hammer_ioc_prune *template,
+			const char *dirname);
 static int hammer_softprune_scanmeta(int fd, struct softprune *scan,
 			int delete_all);
 static void hammer_meta_flushdelete(int fd, struct hammer_ioc_snapshot *dsnap);
@@ -48,6 +59,7 @@ static struct softprune *hammer_softprune_addentry(struct softprune **basep,
 static void hammer_softprune_addelm(struct softprune *scan, hammer_tid_t tid,
 			time_t ct, time_t mt);
 static void hammer_softprune_finalize(struct softprune *scan);
+static void softprune_usage(int code);
 
 /*
  * prune <softlink-dir>
@@ -238,7 +250,7 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
  *	 snapshot mechanic we don't have to scan softlinks any more
  *	 and can just use the meta-data.  But for now we do both.
  */
-void
+static void
 hammer_softprune_scandir(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
 			 const char *dirname)
@@ -281,6 +293,24 @@ hammer_softprune_scandir(struct softprune **basep,
 	free(linkbuf);
 	if (path)
 		free(path);
+}
+
+/*
+ * Scan a directory for softlinks representing snapshots.
+ * Return 1 if the directory contains snapshots, otherwise 0.
+ */
+int
+hammer_softprune_testdir(const char *dirname)
+{
+	struct softprune *base = NULL;
+	struct hammer_ioc_prune dummy_template;
+
+	bzero(&dummy_template, sizeof(dummy_template));
+	hammer_softprune_scandir(&base, &dummy_template, dirname);
+
+	if (base)
+		return(1);
+	return(0);
 }
 
 /*

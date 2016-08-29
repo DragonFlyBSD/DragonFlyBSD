@@ -116,15 +116,6 @@ struct buffer_info {
 	void			*ondisk;
 };
 
-struct softprune {
-	struct softprune *next;
-	struct statfs fs;
-	char *filesystem;
-	struct hammer_ioc_prune prune;
-	int maxelms;
-	int prune_min;
-};
-
 /*
  * Data structure for zone statistics.
  */
