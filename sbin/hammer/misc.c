@@ -399,14 +399,14 @@ hammer_print_zone_stat(const struct zone_stat *stats)
 	hammer_off_t total_items = 0;
 	hammer_off_t total_used = 0;
 	const struct zone_stat *p = stats;
-#define INDENT "\t"
+#define INDENT ""
 
 	printf("HAMMER zone statistics\n");
-	printf(INDENT"zone #  blocks       items              used[B]             used[%%]\n");
-
+	printf(INDENT"zone #             "
+		"blocks       items              used[B]             used[%%]\n");
 	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
-		printf(INDENT"zone %-2d %-12ju %-18ju %-19ju %g\n",
-			i, p->blocks, p->items, p->used,
+		printf(INDENT"zone %-2d %-10s %-12ju %-18ju %-19ju %g\n",
+			i, zone_labels[i], p->blocks, p->items, p->used,
 			_calc_used_percentage(p->blocks, p->used));
 		total_blocks += p->blocks;
 		total_items += p->items;
@@ -418,8 +418,8 @@ hammer_print_zone_stat(const struct zone_stat *stats)
 	 * Remember that zone0 is always 0% used and zone15 is
 	 * always 100% used.
 	 */
-	printf(INDENT"----------------------------------------------------------------------\n");
-	printf(INDENT"total   %-12ju %-18ju %-19ju %g\n",
+	printf(INDENT"--------------------------------------------------------------------------------\n");
+	printf(INDENT"total              %-12ju %-18ju %-19ju %g\n",
 		(uintmax_t)total_blocks,
 		(uintmax_t)total_items,
 		(uintmax_t)total_used,
