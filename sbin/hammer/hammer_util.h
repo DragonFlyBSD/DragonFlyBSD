@@ -60,13 +60,9 @@
 /*
  * pidfile management - common definitions so code is more robust
  */
-
 #define PIDFILE_BUFSIZE	64
 static const char pidfile_loc[] = "/var/run";
 
-/*
- * Cache management - so the user code can keep its memory use under control
- */
 struct volume_info;
 struct buffer_info;
 
@@ -84,9 +80,8 @@ struct cache_info {
 #define HAMMER_BUFLISTMASK	(HAMMER_BUFLISTS - 1)
 
 /*
- * These structures are used by newfs_hammer to track the filesystem
- * buffers it constructs while building the filesystem.  No attempt
- * is made to try to make this efficient.
+ * These structures are used by hammer(8) and newfs_hammer(8)
+ * to track the filesystem buffers.
  */
 struct volume_info {
 	TAILQ_ENTRY(volume_info) entry;
@@ -134,6 +129,7 @@ extern int DebugOpt;
 extern struct volume_list VolList;
 extern const char *zone_labels[];
 
+/* prototypes for sys/libkern/crc32.c */
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
