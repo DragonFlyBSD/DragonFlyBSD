@@ -1121,11 +1121,11 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		action = SIG_DFL;
 	} else {
 		/*
-		 * Do not try to deliver signals to an exiting lwp.  Note
-		 * that we must still deliver the signal if P_WEXIT is set
-		 * in the process flags.
+		 * Do not try to deliver signals to an exiting lwp other
+		 * than SIGKILL.  Note that we must still deliver the signal
+		 * if P_WEXIT is set in the process flags.
 		 */
-		if (lp && (lp->lwp_mpflags & LWP_MP_WEXIT)) {
+		if (lp && (lp->lwp_mpflags & LWP_MP_WEXIT) && sig != SIGKILL) {
 			if (lp) {
 				lwkt_reltoken(&lp->lwp_token);
 				LWPRELE(lp);
@@ -1904,7 +1904,7 @@ issignal(struct lwp *lp, int maytrace)
 		/*
 		 * If this process is supposed to stop, stop this thread.
 		 */
-		if (p->p_stat == SSTOP || p->p_stat == SCORE)
+		if (STOPLWP(p, lp))
 			tstop();
 
 		mask = lwp_sigpend(lp);

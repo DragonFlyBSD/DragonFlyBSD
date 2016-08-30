@@ -247,11 +247,14 @@ recheck:
 	/*
 	 * Block here if we are in a stopped state.
 	 */
-	if (p->p_stat == SSTOP || p->p_stat == SCORE || dump_stop_usertds) {
+	if (STOPLWP(p, lp)) {
 		lwkt_gettoken(&p->p_token);
 		tstop();
 		lwkt_reltoken(&p->p_token);
 		goto recheck;
+	}
+	while (dump_stop_usertds) {
+		tsleep(&dump_stop_usertds, 0, "dumpstp", 0);
 	}
 
 	/*
@@ -331,8 +334,7 @@ userexit(struct lwp *lp)
 	 * Handle stop requests at kernel priority.  Any requests queued
 	 * after this loop will generate another AST.
 	 */
-	while (lp->lwp_proc->p_stat == SSTOP ||
-	       lp->lwp_proc->p_stat == SCORE) {
+	while (STOPLWP(lp->lwp_proc, lp)) {
 		lwkt_gettoken(&lp->lwp_proc->p_token);
 		tstop();
 		lwkt_reltoken(&lp->lwp_proc->p_token);

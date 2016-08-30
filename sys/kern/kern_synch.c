@@ -701,13 +701,11 @@ resume:
 		lp->lwp_flags &= ~LWP_SINTR;
 
 		/*
-		 * Normally we should not be in LSSLEEP here but a pending
-		 * signal related to STOP/CONT or TSTOP/TCONT can cause us
-		 * to skip the sleep.  Make sure we are back in the RUN
-		 * state.
+		 * Unconditionally set us to LSRUN on resume.  lwp_stat could
+		 * be in a weird state due to the goto resume, particularly
+		 * when tsleep() is called from tstop().
 		 */
-		if (lp->lwp_stat == LSSLEEP)
-			lp->lwp_stat = LSRUN;
+		lp->lwp_stat = LSRUN;
 		lwkt_reltoken(&lp->lwp_token);
 	}
 	logtsleep1(tsleep_end);
@@ -874,10 +872,14 @@ endtsleep(void *arg)
 
 	if (lp) {
 		/*
-		 * callout timer should never be set in tstop() because
-		 * it passes a timeout of 0.
+		 * callout timer should normally never be set in tstop()
+		 * because it passes a timeout of 0.  However, there is a
+		 * case during thread exit (which SSTOP's all the threads)
+		 * for which tstop() must break out and can (properly) leave
+		 * the thread in LSSTOP.
 		 */
-		KKASSERT(lp->lwp_stat != LSSTOP);
+		KKASSERT(lp->lwp_stat != LSSTOP ||
+			 (lp->lwp_mpflags & LWP_MP_WEXIT));
 		setrunnable(lp);
 		lwkt_reltoken(&lp->lwp_token);
 	} else {
@@ -1203,13 +1205,9 @@ tstop(void)
 	 * Wait here while in a stopped state, interlocked with lwp_token.
 	 * We must break-out if the whole process is trying to exit.
 	 */
-	while (p->p_stat == SSTOP || p->p_stat == SCORE) {
+	while (STOPLWP(p, lp)) {
 		lp->lwp_stat = LSSTOP;
-		if (lp->lwp_mpflags & LWP_MP_WEXIT)
-			break;
 		tsleep(p, 0, "stop", 0);
-		if (lp->lwp_mpflags & LWP_MP_WEXIT)
-			break;
 	}
 	p->p_nstopped--;
 	atomic_clear_int(&lp->lwp_mpflags, LWP_MP_WSTOP);

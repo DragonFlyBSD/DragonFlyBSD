@@ -484,6 +484,10 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 #define PSTALL(p, msg, n) \
 	do { if ((p)->p_lock > (n)) pstall((p), (msg), (n)); } while (0)
 
+#define STOPLWP(p, lp)						\
+	(((p)->p_stat == SSTOP || (p)->p_stat == SCORE) &&	\
+	 ((lp)->lwp_mpflags & LWP_MP_WEXIT) == 0)
+
 /*
  * Hold lwp in memory, don't destruct, normally for ptrace/procfs work
  * atomic ops because they can occur from an IPI.

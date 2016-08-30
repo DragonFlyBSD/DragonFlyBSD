@@ -263,8 +263,8 @@ killlwps(struct lwp *lp)
 		LWPHOLD(tlp);
 		lwkt_gettoken(&tlp->lwp_token);
 		if ((tlp->lwp_mpflags & LWP_MP_WEXIT) == 0) {
-			lwpsignal(p, tlp, SIGKILL);
 			atomic_set_int(&tlp->lwp_mpflags, LWP_MP_WEXIT);
+			lwpsignal(p, tlp, SIGKILL);
 		}
 		lwkt_reltoken(&tlp->lwp_token);
 		LWPRELE(tlp);
@@ -925,7 +925,7 @@ loop:
 	 * the CONT when both are stopped and continued together.  This little
 	 * two-line hack restores this effect.
 	 */
-	while (q->p_stat == SSTOP || q->p_stat == SCORE)
+	if (STOPLWP(q, td->td_lwp))
             tstop();
 
 	nfound = 0;
