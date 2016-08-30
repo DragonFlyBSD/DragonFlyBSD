@@ -68,6 +68,7 @@ hammer_cmd_recover(const char *target_dir)
 	hammer_off_t off;
 	hammer_off_t off_end;
 	char *ptr;
+	int i;
 
 	TargetDir = target_dir;
 
@@ -82,7 +83,10 @@ hammer_cmd_recover(const char *target_dir)
 		TargetDir);
 
 	data_buffer = NULL;
-	TAILQ_FOREACH(volume, &VolList, entry) {
+	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
+		volume = get_volume(i);
+		if (volume == NULL)
+			continue;
 		check_volume(volume);
 		printf("Scanning volume %d size %s\n",
 			volume->vol_no, sizetostr(volume->size));

@@ -66,8 +66,6 @@ static const char pidfile_loc[] = "/var/run";
 struct volume_info;
 struct buffer_info;
 
-TAILQ_HEAD(volume_list, volume_info);
-
 struct cache_info {
 	TAILQ_ENTRY(cache_info) entry;
 	struct buffer_info *buffer;
@@ -126,7 +124,6 @@ extern uuid_t Hammer_FSId;
 extern int UseReadBehind;
 extern int UseReadAhead;
 extern int DebugOpt;
-extern struct volume_list VolList;
 extern const char *zone_labels[];
 
 /* prototypes for sys/libkern/crc32.c */

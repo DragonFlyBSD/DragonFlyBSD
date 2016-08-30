@@ -50,7 +50,9 @@ uuid_t Hammer_FSId;
 int UseReadBehind = -4;
 int UseReadAhead = 4;
 int DebugOpt;
-struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
+
+TAILQ_HEAD(volume_list, volume_info);
+static struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
 static int valid_hammer_volumes;
 
 static __inline
@@ -246,17 +248,19 @@ get_volume(int32_t vol_no)
 		if (vol->vol_no == vol_no)
 			break;
 	}
-	if (vol == NULL)
-		errx(1, "get_volume: Volume %d does not exist!", vol_no);
 
-	/* not added to or removed from hammer cache */
 	return(vol);
 }
 
 struct volume_info *
 get_root_volume(void)
 {
-	return(get_volume(HAMMER_ROOT_VOLNO));
+	struct volume_info *root_vol;
+
+	root_vol = get_volume(HAMMER_ROOT_VOLNO);
+	assert(root_vol != NULL);
+
+	return(root_vol);
 }
 
 /*
@@ -283,6 +287,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
 	volume = get_volume(vol_no);
+	assert(volume != NULL);
 
 	buf_offset &= ~HAMMER_BUFMASK64;
 	buf = find_buffer(volume, buf_offset);
