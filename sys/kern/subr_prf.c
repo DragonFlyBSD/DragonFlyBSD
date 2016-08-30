@@ -1200,8 +1200,6 @@ sysctl_kern_msgbuf(SYSCTL_HANDLER_ARGS)
 			error = sysctl_handle_opaque(oidp, mbp->msg_ptr,
 						     n, req);
 	}
-	if (error)
-		return (error);
 	return (error);
 }
 
