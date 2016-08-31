@@ -135,9 +135,10 @@
  * 400503 - libarchive-3.0.2 import (add bsdcat)
  * 400600 - 4.6 release
  * 400700 - 4.7 development
+ * 400701 - getline() visibility changes
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400700	/* propagated to newvers */
+#define __DragonFly_version 400701	/* propagated to newvers */
 
 #include <sys/_null.h>
 
