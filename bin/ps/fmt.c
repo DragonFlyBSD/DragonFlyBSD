@@ -113,7 +113,7 @@ fmt_argv(char **argv, char *cmd, int maxlen)
 	if ((cp = malloc(len)) == NULL)
 		return (NULL);
 	if (ap == NULL)
-		sprintf(cp, " (%.*s)", maxlen, cmd);
+		sprintf(cp, "(%.*s)", maxlen, cmd);
 	else if (strncmp(cmdpart(argv[0]), cmd, maxlen) != 0)
 		sprintf(cp, "%s (%.*s)", ap, maxlen, cmd);
 	else

@@ -281,8 +281,11 @@ state(const KINFO *k, const struct varent *vent)
 		*cp++ = 'E';
 	if (flag & P_PPWAIT)
 		*cp++ = 'V';
+#if 0
+	/* removed, no longer interesting */
 	if ((flag & P_SYSTEM) || KI_PROC(k, lock) > 0)
 		*cp++ = 'L';
+#endif
 	if (flag & P_JAILED)
 		*cp++ = 'J';
 	if (KI_PROC(k, auxflags) & KI_SLEADER)
