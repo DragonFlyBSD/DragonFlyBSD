@@ -1,8 +1,8 @@
 #	@(#)README	8.1 (Berkeley) 5/31/93
 
-The potentially offensive fortunes are not installed by default on BSD
+The potentially offensive fortunes are installed by default on DragonFly BSD
 systems.  If you're absolutely, *positively*, without-a-shadow-of-a-doubt
-sure that your user community wants them installed, whack the Makefile
+sure that your user community might not want them installed, edit the Makefile
 in the subdirectory datfiles, and do "make all install".
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

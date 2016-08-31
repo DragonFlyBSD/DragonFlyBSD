@@ -29,9 +29,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
- * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.6 2008/07/10 18:29:51 swildner Exp $
- *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strfile.c   8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
@@ -47,6 +44,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
 #include "strfile.h"
 
 /*
@@ -76,7 +74,7 @@
 #define	STORING_PTRS	(Oflag || Rflag)
 #define	CHUNKSIZE	512
 
-#define 	ALLOC(ptr,sz)	do { \
+#define		ALLOC(ptr, sz)	do { \
 			if (ptr == NULL) \
 				ptr = malloc((unsigned int)(CHUNKSIZE * sizeof(*ptr))); \
 			else if (((sz) + 1) % CHUNKSIZE == 0) \
@@ -92,33 +90,33 @@ typedef struct {
 	long	pos;
 } STR;
 
-char	*Infile		= NULL,		/* input file name */
-	Outfile[MAXPATHLEN] = "",	/* output file name */
-	Delimch		= '%';		/* delimiting character */
+static char	*Infile		= NULL;		/* input file name */
+static char	Outfile[MAXPATHLEN] = "";	/* output file name */
+static char	Delimch		= '%';		/* delimiting character */
 
-int	Cflag		= false;	/* embedded comments */
-int	Sflag		= false;	/* silent run flag */
-int	Oflag		= false;	/* ordering flag */
-int	Iflag		= false;	/* ignore case flag */
-int	Rflag		= false;	/* randomize order flag */
-int	Xflag		= false;	/* set rotated bit */
-long	Num_pts		= 0;		/* number of pointers/strings */
+static int	Cflag		= false;	/* embedded comments */
+static int	Sflag		= false;	/* silent run flag */
+static int	Oflag		= false;	/* ordering flag */
+static int	Iflag		= false;	/* ignore case flag */
+static int	Rflag		= false;	/* randomize order flag */
+static int	Xflag		= false;	/* set rotated bit */
+static long	Num_pts		= 0;		/* number of pointers/strings */
 
-long	*Seekpts;
+static long	*Seekpts;
 
-FILE	*Sort_1, *Sort_2;		/* pointers for sorting */
+static FILE	*Sort_1, *Sort_2;		/* pointers for sorting */
 
-STRFILE	Tbl;				/* statistics table */
+static STRFILE	Tbl;				/* statistics table */
 
-STR	*Firstch;			/* first chars of each string */
+static STR	*Firstch;			/* first chars of each string */
 
-void add_offset(FILE *, long);
-int cmp_str(const void *, const void *);
+static void add_offset(FILE *, long);
+static int cmp_str(const void *, const void *);
 static int collate_range_cmp(int, int);
-void do_order(void);
-void getargs(int, char **);
-void randomize(void);
-void usage(void);
+static void do_order(void);
+static void getargs(int, char **);
+static void randomize(void);
+static void usage(void);
 
 /*
  * main:

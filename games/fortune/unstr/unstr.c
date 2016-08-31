@@ -29,9 +29,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/games/fortune/unstr/unstr.c,v 1.5 1999/11/16 02:57:01 billf Exp $
- * $DragonFly: src/games/fortune/unstr/unstr.c,v 1.4 2006/08/08 16:58:59 pavalos Exp $
- *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)unstr.c     8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/fortune/unstr/unstr.c,v 1.5 1999/11/16 02:57:01 billf Exp $
@@ -56,16 +53,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "strfile.h"
 
-char	*Infile,			/* name of input file */
-	Datafile[MAXPATHLEN],		/* name of data file */
-	Delimch;			/* delimiter character */
+static char	*Infile;		/* name of input file */
+static char	Datafile[MAXPATHLEN];	/* name of data file */
+static char	Delimch;		/* delimiter character */
 
-FILE	*Inf, *Dataf;
+static FILE	*Inf, *Dataf;
 
-void getargs(char *[]);
-void order_unstr(STRFILE *);
+static void getargs(char *[]);
+static void order_unstr(STRFILE *);
 
 /* ARGSUSED */
 int
@@ -99,7 +97,7 @@ main(int ac __unused, char *av[])
 	exit(0);
 }
 
-void
+static void
 getargs(char *av[])
 {
 	if (!*++av) {
@@ -111,7 +109,7 @@ getargs(char *av[])
 	strcat(Datafile, ".dat");
 }
 
-void
+static void
 order_unstr(STRFILE *tbl)
 {
 	unsigned int i;
