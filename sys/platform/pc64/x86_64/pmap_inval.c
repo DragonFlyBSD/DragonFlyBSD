@@ -136,6 +136,8 @@ pmap_inval_done(pmap_t pmap)
 	crit_exit_id("inval");
 }
 
+#ifdef LOOPMASK
+
 /*
  * API function - invalidation the pte at (va) and replace *ptep with
  * npte atomically across the pmap's active cpus.
@@ -152,25 +154,39 @@ loopdebug(const char *msg, pmap_inval_info_t *info)
 	int cpu = mycpu->gd_cpuid;
 
 	cpu_lfence();
+#ifdef LOOPMASK
 	atomic_add_long(&smp_smurf_mask.ary[0], 0);
-	kprintf("%s %d mode=%d m=%08jx d=%08jx s=%08jx "
+#endif
+	kprintf("%s %d mode=%d m=%08jx d=%08jx "
+#ifdef LOOPMASK
+		"s=%08jx "
+#endif
 #ifdef LOOPMASK_IN
 		"in=%08jx "
 #endif
-		"smurf=%08jx\n",
-		msg, cpu, info->mode,
-		info->mask.ary[0],
-		info->done.ary[0],
-		info->sigmask.ary[0],
-#ifdef LOOPMASK_IN
-		smp_in_mask.ary[0],
+#ifdef LOOPMASK
+		"smurf=%08jx\n"
 #endif
-		smp_smurf_mask.ary[0]);
+		, msg, cpu, info->mode,
+		info->mask.ary[0],
+		info->done.ary[0]
+#ifdef LOOPMASK
+		, info->sigmask.ary[0]
+#endif
+#ifdef LOOPMASK_IN
+		, smp_in_mask.ary[0]
+#endif
+#ifdef LOOPMASK
+		, smp_smurf_mask.ary[0]
+#endif
+		);
 	kprintf("mdglob ");
 	for (p = 0; p < ncpus; ++p)
 		kprintf(" %d", CPU_prvspace[p]->mdglobaldata.gd_xinvaltlb);
 	kprintf("\n");
 }
+
+#endif
 
 #ifdef CHECKSIG
 
@@ -439,7 +455,9 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	info->ptep = ptep;
 	info->npte = npte;
 	info->opte = opte;
+#ifdef LOOPMASK
 	info->failed = 0;
+#endif
 	info->mode = INVCMPSET;
 	info->success = 0;
 
