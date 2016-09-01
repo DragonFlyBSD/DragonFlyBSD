@@ -138,7 +138,7 @@ hammer_cache_flush(void)
 			cache->refs = 1;
 			cache->delete = 1;
 			--count;
-			rel_buffer(cache->buffer);
+			rel_buffer((struct buffer_info*)cache);
 
 			if (CacheUse < target)
 				break;

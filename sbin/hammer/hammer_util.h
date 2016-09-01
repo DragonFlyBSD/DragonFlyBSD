@@ -63,12 +63,8 @@
 #define PIDFILE_BUFSIZE	64
 static const char pidfile_loc[] = "/var/run";
 
-struct volume_info;
-struct buffer_info;
-
 struct cache_info {
 	TAILQ_ENTRY(cache_info) entry;
-	struct buffer_info *buffer;
 	int refs;	/* structural references */
 	int modified;	/* ondisk modified flag */
 	int delete;	/* delete flag - delete on last ref */
@@ -101,7 +97,7 @@ struct volume_info {
 };
 
 struct buffer_info {
-	struct cache_info	cache;
+	struct cache_info	cache;		/* must be at offset 0 */
 	TAILQ_ENTRY(buffer_info) entry;
 	hammer_off_t		buf_offset;	/* full hammer offset spec */
 	int64_t			raw_offset;	/* physical offset */
