@@ -89,11 +89,11 @@ struct volume_info {
 	hammer_off_t		vol_free_off;	/* zone-2 offset */
 	hammer_off_t		vol_free_end;	/* zone-2 offset */
 
-	char			*name;
+	const char		*name;
+	const char		*type;
 	int			fd;
 	off_t			size;
 	off_t			device_offset;
-	const char		*type;
 
 	hammer_volume_ondisk_t ondisk;
 
