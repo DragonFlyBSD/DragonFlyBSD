@@ -31,7 +31,7 @@
 .\"	@(#)fortune.6	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/games/fortune/fortune/fortune.6,v 1.9.2.6 2001/12/14 14:26:32 ru Exp $
 .\"
-.Dd April 19, 1994
+.Dd September 1, 2016
 .Dt FORTUNE 6
 .Os
 .Sh NAME
@@ -162,6 +162,12 @@ is equivalent to
 .Bd -literal -offset indent
 fortune 50% funny 50% not-funny
 .Ed
+.Sh ENVIRONMENT
+.Bl -tag -width ".Ev FORTUNE_SAVESTATE"
+.It Ev FORTUNE_SAVESTATE
+If set, fortune will save some state about what fortune
+it was up to on disk.
+.El
 .Sh FILES
 .Bl -tag -width Pa -compact
 .It Pa /usr/games/fortune
