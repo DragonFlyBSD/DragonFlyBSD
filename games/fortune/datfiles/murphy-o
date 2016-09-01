@@ -1,7 +1,19 @@
-%%$FreeBSD: src/games/fortune/datfiles/murphy-o,v 1.1.2.2 2001/08/01 17:24:03 obrien Exp $
+%%$FreeBSD: head/usr.bin/fortune/datfiles/murphy-o 174425 2007-12-07 22:41:39Z dougb $
+%
+All probabilities are 50%: either a thing will
+happen or it won't.
+
+This is especially true when dealing with women.
+
+Likelihoods, however, are 90% against you.
+%
+Never sleep with anyone crazier than yourself.
 %
 One's life tends to be like a beaver's,
 one dam thing after another.
+%
+Pity the poor egg;
+It only gets laid once in its life.
 %
 Sow your wild oats on Saturday night - then on
 Sunday pray for crop failure.
