@@ -50,6 +50,7 @@
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <ctype.h>
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,51 +63,38 @@ static char	Delimch;		/* delimiter character */
 
 static FILE	*Inf, *Dataf;
 
-static void getargs(char *[]);
 static void order_unstr(STRFILE *);
 
 /* ARGSUSED */
 int
-main(int ac __unused, char *av[])
+main(int argc, char *argv[])
 {
 	static STRFILE tbl;		/* description table */
 
-	getargs(av);
-	if ((Inf = fopen(Infile, "r")) == NULL) {
-		perror(Infile);
+	if (argc != 2) {
+		fprintf(stderr, "usage: unstr datafile\n");
 		exit(1);
 	}
-	if ((Dataf = fopen(Datafile, "r")) == NULL) {
-		perror(Datafile);
-		exit(1);
-	}
+	Infile = argv[1];
+	strcpy(Datafile, Infile);
+	strcat(Datafile, ".dat");
+	if ((Inf = fopen(Infile, "r")) == NULL)
+		err(1, "%s", Infile);
+	if ((Dataf = fopen(Datafile, "r")) == NULL)
+		err(1, "%s", Datafile);
 	fread((char *)&tbl, sizeof(tbl), 1, Dataf);
 	tbl.str_version = ntohl(tbl.str_version);
 	tbl.str_numstr = ntohl(tbl.str_numstr);
 	tbl.str_longlen = ntohl(tbl.str_longlen);
 	tbl.str_shortlen = ntohl(tbl.str_shortlen);
 	tbl.str_flags = ntohl(tbl.str_flags);
-	if (!(tbl.str_flags & (STR_ORDERED | STR_RANDOM))) {
-		fprintf(stderr, "nothing to do -- table in file order\n");
-		exit(1);
-	}
+	if (!(tbl.str_flags & (STR_ORDERED | STR_RANDOM)))
+		errx(1, "nothing to do -- table in file order");
 	Delimch = tbl.str_delim;
 	order_unstr(&tbl);
 	fclose(Inf);
 	fclose(Dataf);
 	exit(0);
-}
-
-static void
-getargs(char *av[])
-{
-	if (!*++av) {
-		fprintf(stderr, "usage: unstr datafile\n");
-		exit(1);
-	}
-	Infile = *av;
-	strcpy(Datafile, Infile);
-	strcat(Datafile, ".dat");
 }
 
 static void

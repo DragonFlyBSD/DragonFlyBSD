@@ -128,7 +128,7 @@ static void usage(void);
  *	and then seek back to the beginning to write in the table.
  */
 int
-main(int ac, char *av[])
+main(int argc, char *argv[])
 {
 	char *sp, *nsp, dc;
 	FILE *inf, *outf;
@@ -139,7 +139,7 @@ main(int ac, char *av[])
 
 	setlocale(LC_ALL, "");
 
-	getargs(ac, av);		/* evalute arguments */
+	getargs(argc, argv);		/* evalute arguments */
 	dc = Delimch;
 	if ((inf = fopen(Infile, "r")) == NULL) {
 		perror(Infile);
@@ -352,10 +352,6 @@ collate_range_cmp (int c1, int c2)
 	static char s1[2], s2[2];
 	int ret;
 
-	c1 &= UCHAR_MAX;
-	c2 &= UCHAR_MAX;
-	if (c1 == c2)
-		return (0);
 	s1[0] = c1;
 	s2[0] = c2;
 	if ((ret = strcoll(s1, s2)) != 0)

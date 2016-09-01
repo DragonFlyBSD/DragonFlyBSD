@@ -151,7 +151,7 @@ static int maxlen_in_list(FILEDESC *);
 static regex_t Re_pat;
 
 int
-main(int ac, char *av[])
+main(int argc, char *argv[])
 {
 #ifdef OK_TO_WRITE_DISK
 	int fd;
@@ -159,7 +159,7 @@ main(int ac, char *av[])
 
 	setlocale(LC_ALL, "");
 
-	getargs(ac, av);
+	getargs(argc, argv);
 
 	if (Match)
 		exit(find_matches() != 0);
@@ -260,7 +260,7 @@ fortlen(void)
  *	This routine evaluates the arguments on the command line
  */
 static void
-getargs(int argc, char **argv)
+getargs(int argc, char *argv[])
 {
 	int ignore_case;
 	char *pat;
