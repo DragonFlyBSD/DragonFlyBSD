@@ -1,4 +1,5 @@
-%% $FreeBSD: src/games/fortune/datfiles/limerick,v 1.3.2.1 2002/08/09 20:40:29 fanf Exp $
+%% $FreeBSD: head/usr.bin/fortune/datfiles/limerick 221908 2011-05-14 19:03:45Z uqs $
+%
 A bad little girl in Madrid,
 A most reprehensible kid,
 	Told her Tante Louise
@@ -230,7 +231,7 @@ A doctoral student from Buckingham
 Wrote his thesis on cunts and on fucking'em.
 	But a dropout from paree
 	Taught him Gamahuchee
-So he added a footnote on sucking 'em.
+- so he added a footnote on sucking 'em.
 %
 A do-it-yourselfer named Alice,
 Used a dynamite stick for a phallus.
@@ -259,7 +260,7 @@ And white footgear intended for tennis.
 %
 A dulcet-voiced callgirl named Shedd,
 Who's cultured, well-spoken, well-bred,
-	Had achieved some reknown
+	Had achieved some renown
 	For her tone going down--
 There's a nice civil tongue in her head.
 %
@@ -312,9 +313,9 @@ Used a dynamite stick for a phallus.
 And bits of her tits were in Dallas.
 %
 A gay young prince from Morocco
-Made love in a manner rococco.
+Made love in a manner rococo.
 	He painted his penis
-	To resemble a venus
+	To resemble a Venus
 And flavored his semen with cocoa.
 %
 A geneticist living in Delft
@@ -564,11 +565,11 @@ To revise her existence misspent.
 Where she stayed through the following Lent.
 		-- Edward Gorey
 %
-A lady while dining at Crewe
+A lady, while dining in Crewe,
 Found an elephant's whang in her stew.
-	Said the waiter, "Don't shout,
-	And don't wave it about,
-Or the others will all want one too."
+	Said the waiter, "Don't shout
+	Or wave it about
+Or the others will ask for one, too."
 %
 A lady who signs herself "Vexed"
 Writes to say she believes she's been hexed:
@@ -1036,7 +1037,7 @@ Called the umpire blind out of malice.
 And a girl in the bleachers named Alice.
 %
 A teenage protester named Lil
-Cried, "Those watergate spies make me ill
+Cried, "Those Watergate spies make me ill
 	First they bugged our martinis,
 	Our bras and bikinis,
 And now they are bugging the pill."
@@ -1143,7 +1144,7 @@ A wonderful bird is the pelican.
 His mouth can hold more than his belican.
 	He can take in his beak
 	Enough food for a week.
-And I'm darned if I know how the helican.
+I'm darned if I know how the helican.
 %
 A wonderful tribe are the Sweenies,
 Renowned for the length of their peenies.
@@ -2053,10 +2054,10 @@ Who canoed with a girl in Bermuder.
 So McGru took an oar and subduder.
 %
 There once was a man named McSweeny
-Who spilled some raw gin on his weeny.
-	Just to be couth,
+Who spilled lots of gin on his weeney.
+	So just to be couth,
 	He added vermouth,
-And slipped his girlfriend a martini.
+And slipped his best girl a martini.
 %
 There once was a man named Parridge
 With peculiar views on marriage.
@@ -2132,7 +2133,7 @@ Or a breeches-buoy swung from the masthead.
 %
 There once was a Scot named McAmeter
 With a tool of prodigious diameter.
-	It was not the size
+	But it was not the size
 	That caused such surprise;
 'Twas his rhythm -- iambic pentameter.
 %
@@ -3032,7 +3033,7 @@ Whose screams could be heard for a block away.
 Cried, "God! I have cut his whole cock away!"
 %
 There was a young lad from Siam,
-Whose sexlife was caught in a jam.
+Whose sex life was caught in a jam.
 	He loved them real small,
 	'Cause they're funner to ball,
 So he went out and bought him a lamb!
@@ -4163,7 +4164,7 @@ But alas! he was only a eunuch.
 %
 There was a young sportsman named Peel
 Who went for a trip on his wheel;
-	He pedalled for days
+	He pedaled for days
 	Through crepuscular haze,
 And returned feeling somewhat unreal.
 		-- Edward Gorey
@@ -4778,7 +4779,7 @@ His model reclined on a ladder.
 	Suggested coition,
 So he leapt up the ladder and had 'er.
 %
-While travelling in farthest Tibet,
+While traveling in farthest Tibet,
 Lord Irongate found cause to regret
 	The buttered-up tea,
 	A pain in his knee,

@@ -1,5 +1,4 @@
-This fortune brought to you by:
-		The DragonFly BSD Project
+%% $FreeBSD: head/usr.bin/fortune/datfiles/startrek 205995 2010-03-31 18:21:25Z uqs $
 %
 	"... freedom ... is a worship word..."
 	"It is our worship word too."
@@ -81,7 +80,7 @@ you don't."
 	"Not by killing others."
 		-- Deela and Kirk, "Wink of An Eye", stardate 5710.5
 %
-	"What terrible way to die."
+	"What a terrible way to die."
 	"There are no good ways."
 		-- Sulu and Kirk, "That Which Survives", stardate unknown
 %
