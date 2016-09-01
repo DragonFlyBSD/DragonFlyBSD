@@ -299,7 +299,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "strfile [-Ciorsx] [-c char] sourcefile [datafile]\n");
+	    "strfile [-Ciorsx] [-c char] source_file [output_file]\n");
 	exit(1);
 }
 
