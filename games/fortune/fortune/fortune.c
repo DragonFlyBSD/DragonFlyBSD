@@ -113,8 +113,11 @@ static FILEDESC *Fortfile;		/* Fortune file to use */
 
 static STRFILE Noprob_tbl;		/* sum of data for all no prob files */
 
+static const char *Fortune_path;
+static char **Fortune_path_arr;
+
 static bool add_dir(FILEDESC *);
-static bool add_file(int, const char *, const char *,
+static int add_file(int, const char *, const char *,
 		     FILEDESC **, FILEDESC **, FILEDESC *);
 static void all_forts(FILEDESC *, char *);
 static char *copy(const char *, u_int);
@@ -127,6 +130,7 @@ static void get_fort(void);
 static void get_pos(FILEDESC *);
 static void get_tbl(FILEDESC *);
 static void getargs(int, char *[]);
+static void getpath(void);
 static void init_prob(void);
 static bool is_dir(const char *);
 static bool is_fortfile(const char *, char **, char **, int);
@@ -161,6 +165,7 @@ main(int argc, char *argv[])
 
 	setlocale(LC_ALL, "");
 
+	getpath();
 	getargs(argc, argv);
 
 	if (Match)
@@ -347,20 +352,39 @@ getargs(int argc, char *argv[])
 static bool
 form_file_list(char **files, int file_cnt)
 {
-	bool i;
+	int i, k;
 	int percent;
 	const char *sp;
+	char **pstr;
 
 	if (file_cnt == 0) {
 		if (Find_files) {
 			Fortunes_only = true;
-			i = add_file(NO_PROB, FORTDIR, NULL, &File_list,
-					&File_tail, NULL);
+			pstr = Fortune_path_arr;
+			k = 0;
+			while (*pstr) {
+				k += add_file(NO_PROB, *pstr++, NULL,
+					      &File_list, &File_tail, NULL);
+			}
 			Fortunes_only = false;
-			return (i);
-		} else
-			return (add_file(NO_PROB, "fortunes", FORTDIR,
-					&File_list, &File_tail, NULL));
+			if (!k) {
+				fprintf(stderr, "No fortunes found in %s.\n",
+				    Fortune_path);
+			}
+			return (k != 0);
+		} else {
+			pstr = Fortune_path_arr;
+			k = 0;
+			while (*pstr) {
+				k += add_file(NO_PROB, "fortunes", *pstr++,
+					      &File_list, &File_tail, NULL);
+			}
+			if (!k) {
+				fprintf(stderr, "No fortunes found in %s.\n",
+				    Fortune_path);
+			}
+			return (k != 0);
+		}
 	}
 	for (i = 0; i < file_cnt; i++) {
 		percent = NO_PROB;
@@ -395,10 +419,22 @@ form_file_list(char **files, int file_cnt)
 				sp = files[i];
 			}
 		}
-		if (strcmp(sp, "all") == 0)
-			sp = FORTDIR;
-		if (!add_file(percent, sp, NULL, &File_list, &File_tail, NULL))
-			return (false);
+		if (strcmp(sp, "all") == 0) {
+			pstr = Fortune_path_arr;
+			k = 0;
+			while (*pstr) {
+				k += add_file(NO_PROB, *pstr++, NULL,
+					      &File_list, &File_tail, NULL);
+			}
+			if (!k) {
+				fprintf(stderr, "No fortunes found in %s.\n",
+				    Fortune_path);
+				return false;
+			}
+		} else if (!add_file(percent, sp, NULL, &File_list,
+				     &File_tail, NULL)) {
+			return false;
+		}
 	}
 
 	return (true);
@@ -408,7 +444,7 @@ form_file_list(char **files, int file_cnt)
  * add_file:
  *	Add a file to the file list.
  */
-static bool
+static int
 add_file(int percent, const char *file, const char *dir,
     FILEDESC **head, FILEDESC **tail, FILEDESC *parent)
 {
@@ -433,7 +469,7 @@ add_file(int percent, const char *file, const char *dir,
 	if ((isdir = is_dir(path)) && parent != NULL) {
 		if (was_malloc)
 			free(tpath);
-		return (false);	/* don't recurse */
+		return (0);	/* don't recurse */
 	}
 	offensive = NULL;
 	if (!isdir && parent == NULL && (All_forts || Offend) &&
@@ -442,7 +478,7 @@ add_file(int percent, const char *file, const char *dir,
 		if (Offend) {
 			if (was_malloc)
 				free(tpath);
-			path = offensive;
+			path = tpath = offensive;
 			offensive = NULL;
 			was_malloc = true;
 			DPRINTF(1, (stderr, "\ttrying \"%s\"\n", path));
@@ -464,21 +500,34 @@ over:
 		if (All_forts && offensive != NULL) {
 			if (was_malloc)
 				free(tpath);
-			path = offensive;
+			path = tpath = offensive;
 			offensive = NULL;
 			was_malloc = true;
 			DPRINTF(1, (stderr, "\ttrying \"%s\"\n", path));
 			file = off_name(file);
 			goto over;
 		}
-		if (dir == NULL && file[0] != '/')
-			return (add_file(percent, file, FORTDIR, head, tail,
-					parent));
+		if (dir == NULL && file[0] != '/') {
+			int i = 0;
+			char **pstr = Fortune_path_arr;
+
+			while (*pstr) {
+				i += add_file(percent, file, *pstr++,
+					      head, tail, parent);
+			}
+			if (!i) {
+				fprintf(stderr, "No '%s' found in %s.\n",
+				    file, Fortune_path);
+			}
+			return (i);
+		}
+#if 0
 		if (parent == NULL)
 			perror(path);
+#endif
 		if (was_malloc)
 			free(tpath);
-		return (false);
+		return (0);
 	}
 
 	DPRINTF(2, (stderr, "path = \"%s\"\n", path));
@@ -504,7 +553,7 @@ over:
 		do_free(fp->posfile);
 		free(fp);
 		do_free(offensive);
-		return (false);
+		return (0);
 	}
 	/*
 	 * If the user said -a, we need to make this node a pointer to
@@ -529,7 +578,7 @@ over:
 	if (WriteToDisk)
 		fp->was_pos_file = (access(fp->posfile, W_OK) >= 0);
 
-	return (true);
+	return (1);
 }
 
 /*
@@ -656,8 +705,9 @@ add_dir(FILEDESC *fp)
 	DPRINTF(1, (stderr, "adding dir \"%s\"\n", fp->path));
 	fp->num_children = 0;
 	while ((dirent = readdir(dir)) != NULL) {
-		if ((name = strdup(dirent->d_name)) == NULL)
-			err(1, "strdup failed");
+		if (dirent->d_namlen == 0)
+			continue;
+		name = copy(dirent->d_name, dirent->d_namlen);
 		if (add_file(NO_PROB, name, fp->path, &fp->child, &tailp, fp))
 			fp->num_children++;
 		else
@@ -825,10 +875,9 @@ do_free(void *ptr)
 static void
 init_prob(void)
 {
-	FILEDESC *fp, *last;
+	FILEDESC *fp, *last = NULL;
 	int percent, num_noprob, frac;
 
-	last = NULL;
 	/*
 	 * Distribute the residual probability (if any) across all
 	 * files with unspecified probability (i.e., probability of 0)
@@ -866,7 +915,7 @@ init_prob(void)
 			if (num_noprob > 1) {
 				frac = percent / num_noprob;
 				DPRINTF(1, (stderr, ", frac = %d%%", frac));
-				for (fp = File_list; fp != last; fp = fp->next)
+				for (fp = File_tail; fp != last; fp = fp->prev)
 					if (fp->percent == NO_PROB) {
 						fp->percent = frac;
 						percent -= frac;
@@ -874,11 +923,11 @@ init_prob(void)
 			}
 			last->percent = percent;
 			DPRINTF(1, (stderr, ", residual = %d%%", percent));
-		}
-	} else {
+		} else {
 		DPRINTF(1, (stderr,
 			    ", %d%% distributed over remaining fortunes\n",
 			    percent));
+		}
 	}
 	DPRINTF(1, (stderr, "\n"));
 
@@ -1322,4 +1371,53 @@ usage(void)
 	fprintf(stderr, " [-m pattern]");
 	fprintf(stderr, "[[#%%] file/directory/all]\n");
 	exit(1);
+}
+
+/*
+ * getpath
+ * 	Set up file search patch from environment var FORTUNE_PATH;
+ *	if not set, use the compiled in FORTDIR.
+ */
+
+static void
+getpath(void)
+{
+	int nstr, foundenv;
+	char *pch, **ppch, *str, *path;
+
+	foundenv = 1;
+	Fortune_path = getenv("FORTUNE_PATH");
+	if (Fortune_path == NULL) {
+		Fortune_path = FORTDIR;
+		foundenv = 0;
+	}
+	path = strdup(Fortune_path);
+
+	for (nstr = 2, pch = path; *pch != '\0'; pch++) {
+		if (*pch == ':')
+			nstr++;
+	}
+
+	ppch = Fortune_path_arr = (char **)calloc(nstr, sizeof(char *));
+
+	nstr = 0;
+	str = strtok(path, ":");
+	while (str) {
+		if (is_dir(str)) {
+			nstr++;
+			*ppch++ = str;
+		}
+		str = strtok(NULL, ":");
+	}
+
+	if (nstr == 0) {
+		if (foundenv == 1) {
+			fprintf(stderr,
+			    "fortune: FORTUNE_PATH: None of the specified "
+			    "directories found.\n");
+			exit(1);
+		}
+		free(path);
+		Fortune_path_arr[0] = strdup(FORTDIR);
+	}
 }

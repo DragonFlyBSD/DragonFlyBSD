@@ -164,6 +164,14 @@ fortune 50% funny 50% not-funny
 .Ed
 .Sh ENVIRONMENT
 .Bl -tag -width ".Ev FORTUNE_SAVESTATE"
+.It Ev FORTUNE_PATH
+The search path for the data files.
+It is a colon-separated list of directories in which
+.Nm
+looks for data files.
+If not set it will default to
+.Pa /usr/share/games/fortune .
+If none of the directories specified exist, it will print a warning and exit.
 .It Ev FORTUNE_SAVESTATE
 If set, fortune will save some state about what fortune
 it was up to on disk.

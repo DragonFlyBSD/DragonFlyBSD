@@ -29,4 +29,5 @@
  *	@(#)pathnames.h	8.1 (Berkeley) 5/31/93
  */
 
-#define	FORTDIR		"/usr/share/games/fortune"
+#define	FORTDIR		"/usr/share/games/fortune:" \
+			"/usr/local/share/games/fortune"
