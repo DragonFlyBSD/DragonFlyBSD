@@ -421,11 +421,9 @@ cmp_str(const void *s1, const void  *s2)
 void
 randomize(void)
 {
-	int cnt, i;
+	uint32_t cnt, i;
 	long tmp;
 	long *sp;
-
-	srandomdev();
 
 	Tbl.str_flags |= STR_RANDOM;
 	cnt = Tbl.str_numstr;
@@ -435,7 +433,7 @@ randomize(void)
 	 */
 
 	for (sp = Seekpts; cnt > 0; cnt--, sp++) {
-		i = random() % cnt;
+		i = arc4random_uniform(cnt);
 		tmp = sp[0];
 		sp[0] = sp[i];
 		sp[i] = tmp;

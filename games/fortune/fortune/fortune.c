@@ -172,7 +172,6 @@ main(int argc, char *argv[])
 		exit(find_matches() != 0);
 
 	init_prob();
-	srandomdev();
 	do {
 		get_fort();
 	} while ((Short_only && fortlen() > SLEN) ||
@@ -672,7 +671,7 @@ all_forts(FILEDESC *fp, char *offensive)
 	obscene->fd = fd;
 	obscene->inf = NULL;
 	obscene->path = offensive;
-	if ((sp = rindex(offensive, '/')) == NULL)
+	if ((sp = strrchr(offensive, '/')) == NULL)
 		obscene->name = offensive;
 	else
 		obscene->name = ++sp;
@@ -773,7 +772,7 @@ is_fortfile(const char *file, char **datp, char **posp, int check_for_offend)
 		}
 	}
 
-	if ((sp = rindex(file, '/')) == NULL)
+	if ((sp = strrchr(file, '/')) == NULL)
 		sp = file;
 	else
 		sp++;
@@ -785,7 +784,7 @@ is_fortfile(const char *file, char **datp, char **posp, int check_for_offend)
 		DPRINTF(2, (stderr, "false (check fortunes only)\n"));
 		return (false);
 	}
-	if ((sp = rindex(sp, '.')) != NULL) {
+	if ((sp = strrchr(sp, '.')) != NULL) {
 		sp++;
 		for (i = 0; suflist[i] != NULL; i++)
 			if (strcmp(sp, suflist[i]) == 0) {
@@ -950,7 +949,7 @@ get_fort(void)
 	if (File_list->next == NULL || File_list->percent == NO_PROB)
 		fp = File_list;
 	else {
-		choice = random() % 100;
+		choice = arc4random_uniform(100);
 		DPRINTF(1, (stderr, "choice = %d\n", choice));
 		for (fp = File_list; fp->percent != NO_PROB; fp = fp->next)
 			if (choice < fp->percent)
@@ -969,7 +968,7 @@ get_fort(void)
 	else {
 		if (fp->next != NULL) {
 			sum_noprobs(fp);
-			choice = random() % Noprob_tbl.str_numstr;
+			choice = arc4random_uniform(Noprob_tbl.str_numstr);
 			DPRINTF(1, (stderr, "choice = %d (of %ld) \n", choice,
 				    Noprob_tbl.str_numstr));
 			while ((unsigned int)choice >= fp->tbl.str_numstr) {
@@ -1010,7 +1009,7 @@ pick_child(FILEDESC *parent)
 	int choice;
 
 	if (Equal_probs) {
-		choice = random() % parent->num_children;
+		choice = arc4random_uniform(parent->num_children);
 		DPRINTF(1, (stderr, "    choice = %d (of %d)\n",
 			    choice, parent->num_children));
 		for (fp = parent->child; choice--; fp = fp->next)
@@ -1020,7 +1019,7 @@ pick_child(FILEDESC *parent)
 	}
 	else {
 		get_tbl(parent);
-		choice = random() % parent->tbl.str_numstr;
+		choice = arc4random_uniform(parent->tbl.str_numstr);
 		DPRINTF(1, (stderr, "    choice = %d (of %ld)\n",
 			    choice, parent->tbl.str_numstr));
 		for (fp = parent->child; (unsigned int)choice >= fp->tbl.str_numstr;
@@ -1102,13 +1101,13 @@ get_pos(FILEDESC *fp)
 		if (WriteToDisk) {
 			if ((fd = open(fp->posfile, O_RDONLY)) < 0 ||
 			    read(fd, &fp->pos, sizeof fp->pos) != sizeof fp->pos)
-				fp->pos = random() % fp->tbl.str_numstr;
+				fp->pos = arc4random_uniform(fp->tbl.str_numstr);
 			else if ((unsigned int)fp->pos >= fp->tbl.str_numstr)
 				fp->pos %= fp->tbl.str_numstr;
 			if (fd >= 0)
 				close(fd);
 		} else {
-			fp->pos = random() % fp->tbl.str_numstr;
+			fp->pos = arc4random_uniform(fp->tbl.str_numstr);
 		}
 	}
 	if ((unsigned int)++(fp->pos) >= fp->tbl.str_numstr)
