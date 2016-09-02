@@ -62,6 +62,12 @@
 #include "hammer_util.h"
 
 /*
+ * pidfile management - common definitions so code is more robust
+ */
+#define PIDFILE_BUFSIZE	64
+static const char pidfile_loc[] = "/var/run";
+
+/*
  * WARNING: Do not make the SNAPSHOTS_BASE "/var/snapshots" because
  * it will interfere with the older HAMMER VERS < 3 snapshots directory
  * for the /var PFS.

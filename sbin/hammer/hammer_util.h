@@ -57,12 +57,6 @@
 #include <vfs/hammer/hammer_ioctl.h>
 #include <uuid.h>
 
-/*
- * pidfile management - common definitions so code is more robust
- */
-#define PIDFILE_BUFSIZE	64
-static const char pidfile_loc[] = "/var/run";
-
 struct cache_info {
 	TAILQ_ENTRY(cache_info) entry;
 	int refs;	/* structural references */
