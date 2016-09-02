@@ -87,7 +87,6 @@ hammer_cmd_recover(const char *target_dir)
 		volume = get_volume(i);
 		if (volume == NULL)
 			continue;
-		check_volume(volume);
 		printf("Scanning volume %d size %s\n",
 			volume->vol_no, sizetostr(volume->size));
 		off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);

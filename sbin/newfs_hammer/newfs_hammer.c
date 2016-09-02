@@ -202,12 +202,6 @@ main(int ac, char **av)
 	total = 0;
 	for (i = 0; i < nvols; ++i) {
 		vol = init_volume(i, av[i], O_RDWR);
-
-		/*
-		 * Load up information on the volume and initialize
-		 * its remaining fields.
-		 */
-		check_volume(vol);
 		printf("Volume %d %s %-15s size %s\n",
 			vol->vol_no, vol->type, vol->name,
 			sizetostr(vol->size));

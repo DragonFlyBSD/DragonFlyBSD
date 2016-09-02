@@ -37,6 +37,7 @@
 
 #include "hammer_util.h"
 
+static void check_volume(struct volume_info *vol);
 static void get_buffer_readahead(struct buffer_info *base);
 static void *get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
 			int isnew);
@@ -96,10 +97,7 @@ __alloc_volume(const char *volname, int oflags)
 	vol->fd = open(vol->name, oflags);
 	if (vol->fd < 0)
 		err(1, "alloc_volume: Failed to open %s", vol->name);
-
-	vol->size = 0;
-	vol->device_offset = 0;
-	vol->type = NULL;
+	check_volume(vol);
 
 	vol->ondisk = malloc(HAMMER_BUFSIZE);
 	if (vol->ondisk == NULL)
@@ -200,7 +198,7 @@ load_volume(const char *filename, int oflags)
 /*
  * Check basic volume characteristics.
  */
-void
+static void
 check_volume(struct volume_info *vol)
 {
 	struct partinfo pinfo;

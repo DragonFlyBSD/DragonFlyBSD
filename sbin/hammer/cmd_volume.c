@@ -76,7 +76,6 @@ hammer_cmd_volume_add(char **av, int ac)
 	 */
 	vol = init_volume(-1, device, O_RDONLY);
 	assert(vol->vol_no == -1);
-	check_volume(vol);
 	if (strcmp(vol->type, "DEVICE")) {
 		fprintf(stderr, "Not a block device: %s\n", device);
 		exit(1);
