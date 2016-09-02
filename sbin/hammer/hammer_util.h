@@ -70,20 +70,22 @@ struct cache_info {
 /*
  * These structures are used by hammer(8) and newfs_hammer(8)
  * to track the filesystem buffers.
+ *
+ * vol_free_off and vol_free_end are zone-2 offsets.
+ * These two are initialized only when newly creating a filesystem.
  */
 struct volume_info {
 	TAILQ_ENTRY(volume_info) entry;
-	int			vol_no;
-	int			rdonly;
-
-	hammer_off_t		vol_free_off;	/* zone-2 offset */
-	hammer_off_t		vol_free_end;	/* zone-2 offset */
-
 	const char		*name;
 	const char		*type;
+	int			vol_no;
+	int			rdonly;
 	int			fd;
 	off_t			size;
 	off_t			device_offset;
+
+	hammer_off_t		vol_free_off;
+	hammer_off_t		vol_free_end;
 
 	hammer_volume_ondisk_t ondisk;
 
