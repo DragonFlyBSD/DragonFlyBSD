@@ -77,14 +77,9 @@ hammer_parse_cache_size(const char *arg)
 		UseReadAhead = size / 16 / HAMMER_BUFSIZE;
 		UseReadBehind = -UseReadAhead;
 	}
-	hammer_cache_set(size);
-	return(0);
-}
 
-void
-hammer_cache_set(int bytes)
-{
-	CacheMax = bytes;
+	CacheMax = size;
+	return(0);
 }
 
 void
