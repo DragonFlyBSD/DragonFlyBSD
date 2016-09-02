@@ -34,7 +34,7 @@
  * $DragonFly: src/sbin/hammer/misc.c,v 1.5 2008/06/26 04:07:57 dillon Exp $
  */
 
-#include "hammer.h"
+#include "hammer_util.h"
 
 /*
  * (taken from /usr/src/sys/vfs/hammer/hammer_btree.c)

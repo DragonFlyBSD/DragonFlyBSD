@@ -34,7 +34,7 @@
  * $DragonFly: src/sbin/hammer/blockmap.c,v 1.2 2008/06/17 04:03:38 dillon Exp $
  */
 
-#include "hammer.h"
+#include "hammer_util.h"
 
 /*
  * Allocate big-blocks using our poor-man's volume->vol_free_off.
