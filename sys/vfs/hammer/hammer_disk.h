@@ -737,7 +737,6 @@ typedef struct hammer_volume_ondisk {
  * type in its index sort.
  */
 #define HAMMER_RECTYPE_UNKNOWN		0x0000
-#define HAMMER_RECTYPE_LOWEST		0x0001	/* lowest record type avail */
 #define HAMMER_RECTYPE_INODE		0x0001	/* inode in obj_id space */
 #define HAMMER_RECTYPE_DATA		0x0010
 #define HAMMER_RECTYPE_DIRENTRY		0x0011
