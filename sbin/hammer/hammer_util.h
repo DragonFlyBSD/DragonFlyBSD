@@ -105,7 +105,6 @@ struct buffer_info {
  * Data structure for zone statistics.
  */
 struct zone_stat {
-	int			zone;		/* zone index, not used */
 	int64_t			blocks;		/* number of big-blocks */
 	int64_t			items;		/* number of items */
 	int64_t			used;		/* bytes used */
