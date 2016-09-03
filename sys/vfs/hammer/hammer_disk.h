@@ -454,8 +454,8 @@ typedef struct hammer_blockmap_layer2 {
  *
  * In HAMMER version 4 the undo structure alignment is reduced from 16384
  * to 512 bytes in order to ensure that each 512 byte sector begins with
- * a header.  The reserved01 field in the header is now a 32 bit sequence
- * number.  This allows the recovery code to detect missing sectors
+ * a header.  The hdr_seq field in the header is a 32 bit sequence number
+ * which allows the recovery code to detect missing sectors
  * without relying on the 32-bit crc and to definitively identify the current
  * undo sequence space without having to rely on information from the volume
  * header.  In addition, new REDO entries in the undo space are used to
