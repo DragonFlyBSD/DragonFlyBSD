@@ -602,7 +602,6 @@ format_root_directory(const char *label)
 	pfsd->sync_end_tid = 0;	/* overriden by vol0_next_tid on pfs0 */
 	pfsd->shared_uuid = Hammer_FSId;
 	pfsd->unique_uuid = Hammer_FSId;
-	pfsd->reserved01 = 0;
 	pfsd->mirror_flags = 0;
 	snprintf(pfsd->label, sizeof(pfsd->label), "%s", label);
 
