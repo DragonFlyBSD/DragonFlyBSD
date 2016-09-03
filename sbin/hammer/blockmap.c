@@ -58,6 +58,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	if (volume == NULL)
 		volume = get_root_volume();
 
+	assert_volume_offset(volume);
 	result_offset = volume->vol_free_off;
 	if (result_offset >= volume->vol_free_end)
 		errx(1, "alloc_bigblock: Ran out of room, filesystem too small");

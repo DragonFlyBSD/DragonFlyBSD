@@ -125,6 +125,7 @@ uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 struct volume_info *init_volume(int32_t vol_no, const char *filename,
 				int oflags);
 struct volume_info *load_volume(const char *filename, int oflags);
+void assert_volume_offset(struct volume_info *vol);
 struct volume_info *get_volume(int32_t vol_no);
 struct volume_info *get_root_volume(void);
 void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,

@@ -237,6 +237,13 @@ check_volume(struct volume_info *vol)
 	}
 }
 
+void
+assert_volume_offset(struct volume_info *vol)
+{
+	assert(hammer_is_zone_raw_buffer(vol->vol_free_off));
+	assert(hammer_is_zone_raw_buffer(vol->vol_free_end));
+}
+
 struct volume_info *
 get_volume(int32_t vol_no)
 {
@@ -580,6 +587,8 @@ initialize_freemap(struct volume_info *vol)
 	int64_t layer1_count = 0;
 
 	root_vol = get_root_volume();
+
+	assert_volume_offset(vol);
 	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
 				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
 
@@ -674,6 +683,8 @@ count_freemap(struct volume_info *vol)
 	int64_t count = 0;
 
 	vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+
+	assert_volume_offset(vol);
 	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
 				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
 
