@@ -53,7 +53,7 @@
 struct hammer_ioc_head {
 	int32_t		flags;
 	int32_t		error;
-	int32_t		reserved02[4];
+	int32_t		reserved01[4];
 };
 
 #define HAMMER_IOC_HEAD_ERROR	0x00008000
@@ -113,7 +113,7 @@ struct hammer_ioc_prune {
 struct hammer_ioc_rebalance {
 	struct hammer_ioc_head head;
 	int		saturation;	/* saturation pt elements/node */
-	int		reserved02;
+	int		reserved01;
 
 	struct hammer_base_elm key_beg;	/* start forward scan */
 	struct hammer_base_elm key_end; /* stop forward scan (inclusive) */
@@ -124,7 +124,7 @@ struct hammer_ioc_rebalance {
 	int64_t		stat_collisions;/* number of collision retries */
 	int64_t		stat_nrebal;	/* number of btree-nodes rebalanced */
 	int32_t		allpfs;		/* rebalance all PFS if set */
-	int32_t		unused04;
+	int32_t		reserved02;
 };
 
 /*
@@ -156,7 +156,7 @@ struct hammer_ioc_rebalance {
 typedef struct hammer_ioc_hist_entry {
 	hammer_tid_t	tid;
 	uint32_t	time32;
-	uint32_t	unused;
+	uint32_t	reserved01;
 } *hammer_ioc_hist_entry_t;
 
 struct hammer_ioc_history {
@@ -191,18 +191,18 @@ struct hammer_ioc_reblock {
 	struct hammer_base_elm key_cur;		/* scan interruption point */
 
 	int64_t		btree_count;		/* B-Tree nodes checked */
-	int64_t		reserved02a;
+	int64_t		reserved02;
 	int64_t		data_count;		/* Data segments checked */
 	int64_t		data_byte_count;	/* Data bytes checked */
 
 	int64_t		btree_moves;		/* B-Tree nodes moved */
-	int64_t		reserved02b;
+	int64_t		reserved03;
 	int64_t		data_moves;		/* Data segments moved */
 	int64_t		data_byte_moves;	/* Data bytes moved */
 
 	int16_t		allpfs;			/* Reblock all PFS if set */
 	int16_t		vol_no;			/* Volume to reblock if set */
-	int32_t		unused03;
+	int32_t		reserved04;
 };
 
 /*
@@ -234,7 +234,7 @@ struct hammer_ioc_info {
 	int		version;
 	int		nvolumes;
 	int		rootvol;
-	int		reserved02;
+	int		reserved01;
 
 	int64_t		bigblocks;
 	int64_t		freebigblocks;
@@ -413,7 +413,7 @@ typedef union hammer_ioc_mrecord_any {
 
 struct hammer_ioc_snapshot {
 	struct hammer_ioc_head	head;
-	int			unused01;
+	int			reserved01;
 	uint32_t		index;
 	uint32_t		count;
 	struct hammer_snapshot_data snaps[HAMMER_SNAPS_PER_IOCTL];

@@ -370,8 +370,8 @@ typedef struct hammer_blockmap_layer1 {
  */
 typedef struct hammer_blockmap_layer2 {
 	uint8_t		zone;		/* typed allocation zone */
-	uint8_t		unused01;
-	uint16_t	unused02;
+	uint8_t		reserved01;
+	uint16_t	reserved02;
 	uint32_t	append_off;	/* allocatable space index */
 	int32_t		bytes_free;	/* bytes free within this big-block */
 	hammer_crc_t	entry_crc;
@@ -653,7 +653,7 @@ typedef struct hammer_volume_ondisk {
 	int64_t vol_mem_beg;	/* offset of memory log */
 	int64_t vol_buf_beg;	/* offset of the first buffer in volume */
 	int64_t vol_buf_end;	/* offset of volume EOF (on buffer boundary) */
-	int64_t vol_reserved00;
+	int64_t vol_reserved01;
 
 	uuid_t    vol_fsid;	/* identify filesystem */
 	uuid_t    vol_fstype;	/* identify filesystem type */
@@ -678,12 +678,12 @@ typedef struct hammer_volume_ondisk {
 	 */
 	int64_t vol0_stat_bigblocks;	/* total big-blocks when fs is empty */
 	int64_t vol0_stat_freebigblocks;/* number of free big-blocks */
-	int64_t	vol0_reserved00;
+	int64_t	vol0_reserved01;
 	int64_t vol0_stat_inodes;	/* for statfs only */
-	int64_t vol0_reserved01;
+	int64_t vol0_reserved02;
 	hammer_off_t vol0_btree_root;	/* B-Tree root offset in zone-8 */
 	hammer_tid_t vol0_next_tid;	/* highest partially synchronized TID */
-	hammer_off_t vol0_unused03;
+	hammer_off_t vol0_reserved03;
 
 	/*
 	 * Blockmaps for zones.  Not all zones use a blockmap.  Note that
@@ -849,7 +849,7 @@ typedef struct hammer_inode_data {
 typedef struct hammer_direntry_data {
 	int64_t obj_id;			/* object being referenced */
 	uint32_t localization;		/* identify pseudo-filesystem */
-	uint32_t reserved02;
+	uint32_t reserved01;
 	char	name[16];		/* name (extended) */
 } *hammer_direntry_data_t;
 

@@ -151,8 +151,8 @@ typedef struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
 	hammer_tid_t	mirror_tid;		/* mirroring support */
 	hammer_off_t	subtree_offset;
-	int32_t		unused02;
-	int32_t		unused03;
+	int32_t		reserved01;
+	int32_t		reserved02;
 } *hammer_btree_internal_elm_t;
 
 /*
@@ -215,16 +215,16 @@ typedef struct hammer_node_ondisk {
 	 * B-Tree node header (64 bytes)
 	 */
 	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
-	uint32_t	reserved00;
+	uint32_t	reserved01;
 	hammer_off_t	parent;		/* 0 if at root of B-Tree */
 	int32_t		count;		/* maximum 62 for INTERNAL, 63 for LEAF */
 	uint8_t		type;		/* B-Tree node type (INTERNAL or LEAF) */
-	uint8_t		reserved01;
-	uint16_t	reserved02;
-	hammer_off_t	reserved03;
+	uint8_t		reserved02;
+	uint16_t	reserved03;
 	hammer_off_t	reserved04;
 	hammer_off_t	reserved05;
 	hammer_off_t	reserved06;
+	hammer_off_t	reserved07;
 	hammer_tid_t	mirror_tid;	/* mirroring support (aggregator) */
 
 	/*
