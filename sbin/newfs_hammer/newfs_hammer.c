@@ -557,8 +557,8 @@ hammer_off_t
 format_root_directory(const char *label)
 {
 	hammer_off_t btree_off;
+	hammer_off_t idata_off;
 	hammer_off_t pfsd_off;
-	hammer_off_t data_off;
 	hammer_tid_t create_tid;
 	hammer_node_ondisk_t bnode;
 	hammer_inode_data_t idata;
@@ -573,7 +573,7 @@ format_root_directory(const char *label)
 	 * Allocate zero-filled root btree node, inode and pfs
 	 */
 	bnode = alloc_btree_element(&btree_off, &data_buffer0);
-	idata = alloc_meta_element(&data_off, sizeof(*idata), &data_buffer1);
+	idata = alloc_meta_element(&idata_off, sizeof(*idata), &data_buffer1);
 	pfsd = alloc_meta_element(&pfsd_off, sizeof(*pfsd), &data_buffer2);
 	create_tid = createtid();
 	xtime = nowtime();
@@ -609,8 +609,10 @@ format_root_directory(const char *label)
 	 * Create the root of the B-Tree.  The root is a leaf node so we
 	 * do not have to worry about boundary elements.
 	 */
+	bnode->parent = 0;  /* no parent */
 	bnode->count = 2;
 	bnode->type = HAMMER_BTREE_TYPE_LEAF;
+	bnode->mirror_tid = 0;
 
 	/*
 	 * Create the first node element for the inode.
@@ -627,7 +629,7 @@ format_root_directory(const char *label)
 	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
 	elm->leaf.create_ts = (uint32_t)time(NULL);
 
-	elm->leaf.data_offset = data_off;
+	elm->leaf.data_offset = idata_off;
 	elm->leaf.data_len = sizeof(*idata);
 	elm->leaf.data_crc = crc32(idata, HAMMER_INODE_CRCSIZE);
 

@@ -93,7 +93,7 @@
  * 2. obj_id
  * 3. rec_type
  * 4. key
- * 5. create_id
+ * 5. create_tid
  */
 typedef struct hammer_base_elm {
 	int64_t	obj_id;		/* 00 object record is associated with */
