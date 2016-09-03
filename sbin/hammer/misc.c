@@ -329,8 +329,8 @@ hammer_cleanup_zone_stat(struct zone_stat *stats)
 
 static
 void
-_hammer_add_zone_stat(struct zone_stat *stats, int zone,
-	hammer_off_t bytes, int new_block, int new_item)
+_hammer_add_zone_stat(struct zone_stat *stats, int zone, int bytes,
+	int new_block, int new_item)
 {
 	struct zone_stat *sp = stats + zone;
 
@@ -342,8 +342,7 @@ _hammer_add_zone_stat(struct zone_stat *stats, int zone,
 }
 
 void
-hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
-	hammer_off_t bytes)
+hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset, int bytes)
 {
 	int zone, vol, i, j, new_block;
 	uint64_t *p;
@@ -380,7 +379,7 @@ hammer_add_zone_stat_layer2(struct zone_stat *stats,
 
 static __inline
 double
-_calc_used_percentage(hammer_off_t blocks, hammer_off_t used)
+_calc_used_percentage(int64_t blocks, int64_t used)
 {
 	double res;
 
@@ -395,9 +394,9 @@ void
 hammer_print_zone_stat(const struct zone_stat *stats)
 {
 	int i;
-	hammer_off_t total_blocks = 0;
-	hammer_off_t total_items = 0;
-	hammer_off_t total_used = 0;
+	int64_t total_blocks = 0;
+	int64_t total_items = 0;
+	int64_t total_used = 0;
 	const struct zone_stat *p = stats;
 #define INDENT ""
 
