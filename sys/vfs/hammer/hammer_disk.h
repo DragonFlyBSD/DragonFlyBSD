@@ -831,10 +831,10 @@ typedef struct hammer_inode_data {
 
 /*
  * A HAMMER directory entry associates a HAMMER filesystem object with a
- * namespace.  It is possible to hook into a pseudo-filesystem (with its
- * own inode numbering space) in the filesystem by setting the high
- * 16 bits of the localization field.  The low 16 bits must be 0 and
- * are reserved for future use.
+ * namespace.  It is hooked into a pseudo-filesystem (with its own inode
+ * numbering space) in the filesystem by setting the high 16 bits of the
+ * localization field.  The low 16 bits must be 0 and are reserved for
+ * future use.
  *
  * Directory entries are indexed with a 128 bit namekey rather then an
  * offset.  A portion of the namekey is an iterator/randomizer to deal
