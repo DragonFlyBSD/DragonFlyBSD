@@ -55,9 +55,6 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
 
-	if (volume == NULL)
-		volume = get_root_volume();
-
 	assert_volume_offset(volume);
 	result_offset = volume->vol_free_off;
 	if (result_offset >= volume->vol_free_end)
