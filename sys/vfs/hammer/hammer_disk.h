@@ -678,9 +678,9 @@ typedef struct hammer_volume_ondisk {
 	 */
 	int64_t vol0_stat_bigblocks;	/* total big-blocks when fs is empty */
 	int64_t vol0_stat_freebigblocks;/* number of free big-blocks */
-	int64_t	vol0_reserved11;
+	int64_t	vol0_reserved00;
 	int64_t vol0_stat_inodes;	/* for statfs only */
-	int64_t vol0_reserved10;
+	int64_t vol0_reserved01;
 	hammer_off_t vol0_btree_root;	/* B-Tree root offset in zone-8 */
 	hammer_tid_t vol0_next_tid;	/* highest partially synchronized TID */
 	hammer_off_t vol0_unused03;
