@@ -675,10 +675,28 @@ static __inline int
 zoneindex(size_t *bytes, size_t *chunking)
 {
 	size_t n = (unsigned int)*bytes;	/* unsigned for shift opt */
-	if (n < 128) {
+
+	/*
+	 * This used to be 8-byte chunks and 16 zones for n < 128.
+	 * However some instructions may require 16-byte alignment
+	 * (aka SIMD) and programs might not request an aligned size
+	 * (aka GCC-7), so change this as follows:
+	 *
+	 * 0-15 bytes	8-byte alignment in two zones	(0-1)
+	 * 16-127 bytes	16-byte alignment in four zones	(3-10)
+	 * zone index 2 and 11-15 are currently unused.
+	 */
+	if (n < 16) {
 		*bytes = n = (n + 7) & ~7;
 		*chunking = 8;
-		return(n / 8 - 1);		/* 8 byte chunks, 16 zones */
+		return(n / 8 - 1);		/* 8 byte chunks, 2 zones */
+		/* zones 0,1, zone 2 is unused */
+	}
+	if (n < 128) {
+		*bytes = n = (n + 15) & ~15;
+		*chunking = 16;
+		return(n / 16 + 2);		/* 16 byte chunks, 8 zones */
+		/* zones 3-10, zones 11-15 unused */
 	}
 	if (n < 256) {
 		*bytes = n = (n + 15) & ~15;
