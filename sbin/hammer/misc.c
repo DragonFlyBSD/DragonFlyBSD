@@ -356,7 +356,7 @@ hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset, int bytes)
 	j = HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
 
 	if (i > l1_max[vol]) {
-		assert(i < 1024);  /* no >1024 layer1 per volume */
+		assert(i < (HAMMER_BLOCKMAP_RADIX1 / HAMMER_MAX_VOLUMES));
 		hammer_extend_layer1_bits(vol, i + 1, l1_max[vol] + 1);
 		l1_max[vol] = i;
 	}
