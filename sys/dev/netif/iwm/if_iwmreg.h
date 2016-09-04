@@ -1795,11 +1795,9 @@ enum {
 	IWM_REPLY_THERMAL_MNG_BACKOFF = 0x7e,
 
 	/* Scanning */
-	IWM_SCAN_REQUEST_CMD = 0x80,
 	IWM_SCAN_ABORT_CMD = 0x81,
 	IWM_SCAN_START_NOTIFICATION = 0x82,
 	IWM_SCAN_RESULTS_NOTIFICATION = 0x83,
-	IWM_SCAN_COMPLETE_NOTIFICATION = 0x84,
 
 	/* NVM */
 	IWM_NVM_ACCESS_CMD = 0x88,
@@ -4680,53 +4678,8 @@ struct iwm_scd_txq_cfg_rsp {
 
 /* Scan Commands, Responses, Notifications */
 
-/* Masks for iwm_scan_channel.type flags */
-#define IWM_SCAN_CHANNEL_TYPE_ACTIVE	(1 << 0)
-#define IWM_SCAN_CHANNEL_NARROW_BAND	(1 << 22)
-
 /* Max number of IEs for direct SSID scans in a command */
 #define IWM_PROBE_OPTION_MAX		20
-
-/**
- * struct iwm_scan_channel - entry in IWM_REPLY_SCAN_CMD channel table
- * @channel: band is selected by iwm_scan_cmd "flags" field
- * @tx_gain: gain for analog radio
- * @dsp_atten: gain for DSP
- * @active_dwell: dwell time for active scan in TU, typically 5-50
- * @passive_dwell: dwell time for passive scan in TU, typically 20-500
- * @type: type is broken down to these bits:
- *	bit 0: 0 = passive, 1 = active
- *	bits 1-20: SSID direct bit map. If any of these bits is set then
- *		the corresponding SSID IE is transmitted in probe request
- *		(bit i adds IE in position i to the probe request)
- *	bit 22: channel width, 0 = regular, 1 = TGj narrow channel
- *
- * @iteration_count:
- * @iteration_interval:
- * This struct is used once for each channel in the scan list.
- * Each channel can independently select:
- * 1)  SSID for directed active scans
- * 2)  Txpower setting (for rate specified within Tx command)
- * 3)  How long to stay on-channel (behavior may be modified by quiet_time,
- *     quiet_plcp_th, good_CRC_th)
- *
- * To avoid uCode errors, make sure the following are true (see comments
- * under struct iwm_scan_cmd about max_out_time and quiet_time):
- * 1)  If using passive_dwell (i.e. passive_dwell != 0):
- *     active_dwell <= passive_dwell (< max_out_time if max_out_time != 0)
- * 2)  quiet_time <= active_dwell
- * 3)  If restricting off-channel time (i.e. max_out_time !=0):
- *     passive_dwell < max_out_time
- *     active_dwell < max_out_time
- */
-struct iwm_scan_channel {
-	uint32_t type;
-	uint16_t channel;
-	uint16_t iteration_count;
-	uint32_t iteration_interval;
-	uint16_t active_dwell;
-	uint16_t passive_dwell;
-} __packed; /* IWM_SCAN_CHANNEL_CONTROL_API_S_VER_1 */
 
 /**
  * struct iwm_ssid_ie - directed scan network information element
@@ -4758,45 +4711,6 @@ struct iwm_ssid_ie {
 #define IWM_FULL_SCAN_MULTIPLIER 5
 #define IWM_FAST_SCHED_SCAN_ITERATIONS 3
 #define IWM_MAX_SCHED_SCAN_PLANS 2
-
-/**
- * iwm_scan_flags - masks for scan command flags
- *@IWM_SCAN_FLAGS_PERIODIC_SCAN:
- *@IWM_SCAN_FLAGS_P2P_PUBLIC_ACTION_FRAME_TX:
- *@IWM_SCAN_FLAGS_DELAYED_SCAN_LOWBAND:
- *@IWM_SCAN_FLAGS_DELAYED_SCAN_HIGHBAND:
- *@IWM_SCAN_FLAGS_FRAGMENTED_SCAN:
- *@IWM_SCAN_FLAGS_PASSIVE2ACTIVE: use active scan on channels that was active
- *	in the past hour, even if they are marked as passive.
- */
-enum iwm_scan_flags {
-	IWM_SCAN_FLAGS_PERIODIC_SCAN			= (1 << 0),
-	IWM_SCAN_FLAGS_P2P_PUBLIC_ACTION_FRAME_TX	= (1 << 1),
-	IWM_SCAN_FLAGS_DELAYED_SCAN_LOWBAND		= (1 << 2),
-	IWM_SCAN_FLAGS_DELAYED_SCAN_HIGHBAND		= (1 << 3),
-	IWM_SCAN_FLAGS_FRAGMENTED_SCAN			= (1 << 4),
-	IWM_SCAN_FLAGS_PASSIVE2ACTIVE			= (1 << 5),
-};
-
-/**
- * enum iwm_scan_type - Scan types for scan command
- * @IWM_SCAN_TYPE_FORCED:
- * @IWM_SCAN_TYPE_BACKGROUND:
- * @IWM_SCAN_TYPE_OS:
- * @IWM_SCAN_TYPE_ROAMING:
- * @IWM_SCAN_TYPE_ACTION:
- * @IWM_SCAN_TYPE_DISCOVERY:
- * @IWM_SCAN_TYPE_DISCOVERY_FORCED:
- */
-enum iwm_scan_type {
-	IWM_SCAN_TYPE_FORCED		= 0,
-	IWM_SCAN_TYPE_BACKGROUND	= 1,
-	IWM_SCAN_TYPE_OS		= 2,
-	IWM_SCAN_TYPE_ROAMING		= 3,
-	IWM_SCAN_TYPE_ACTION		= 4,
-	IWM_SCAN_TYPE_DISCOVERY		= 5,
-	IWM_SCAN_TYPE_DISCOVERY_FORCED	= 6,
-}; /* IWM_SCAN_ACTIVITY_TYPE_E_VER_1 */
 
 /* Maximal number of channels to scan */
 #define IWM_MAX_NUM_SCAN_CHANNELS 0x24
@@ -4991,52 +4905,6 @@ struct iwm_periodic_scan_complete {
 	uint32_t reserved;
 } __packed;
 
-/* Response to scan request contains only status with one of these values */
-#define IWM_SCAN_RESPONSE_OK	0x1
-#define IWM_SCAN_RESPONSE_ERROR	0x2
-
-/*
- * IWM_SCAN_ABORT_CMD = 0x81
- * When scan abort is requested, the command has no fields except the common
- * header. The response contains only a status with one of these values.
- */
-#define IWM_SCAN_ABORT_POSSIBLE	0x1
-#define IWM_SCAN_ABORT_IGNORED	0x2 /* no pending scans */
-
-/* TODO: complete documentation */
-#define  IWM_SCAN_OWNER_STATUS 0x1
-#define  IWM_MEASURE_OWNER_STATUS 0x2
-
-/**
- * struct iwm_scan_start_notif - notifies start of scan in the device
- * ( IWM_SCAN_START_NOTIFICATION = 0x82 )
- * @tsf_low: TSF timer (lower half) in usecs
- * @tsf_high: TSF timer (higher half) in usecs
- * @beacon_timer: structured as follows:
- *	bits 0:19 - beacon interval in usecs
- *	bits 20:23 - reserved (0)
- *	bits 24:31 - number of beacons
- * @channel: which channel is scanned
- * @band: 0 for 5.2 GHz, 1 for 2.4 GHz
- * @status: one of *_OWNER_STATUS
- */
-struct iwm_scan_start_notif {
-	uint32_t tsf_low;
-	uint32_t tsf_high;
-	uint32_t beacon_timer;
-	uint8_t channel;
-	uint8_t band;
-	uint8_t reserved[2];
-	uint32_t status;
-} __packed; /* IWM_SCAN_START_NTF_API_S_VER_1 */
-
-/* scan results probe_status first bit indicates success */
-#define IWM_SCAN_PROBE_STATUS_OK	0
-#define IWM_SCAN_PROBE_STATUS_TX_FAILED	(1 << 0)
-/* error statuses combined with TX_FAILED */
-#define IWM_SCAN_PROBE_STATUS_FAIL_TTL	(1 << 1)
-#define IWM_SCAN_PROBE_STATUS_FAIL_BT	(1 << 2)
-
 /* How many statistics are gathered for each channel */
 #define IWM_SCAN_RESULTS_STATISTICS 1
 
@@ -5090,27 +4958,6 @@ struct iwm_scan_results_notif {
 	uint32_t duration;
 	uint32_t statistics[IWM_SCAN_RESULTS_STATISTICS];
 } __packed; /* IWM_SCAN_RESULT_NTF_API_S_VER_2 */
-
-/**
- * struct iwm_scan_complete_notif - notifies end of scanning (all channels)
- * ( IWM_SCAN_COMPLETE_NOTIFICATION = 0x84 )
- * @scanned_channels: number of channels scanned (and number of valid results)
- * @status: one of IWM_SCAN_COMP_STATUS_*
- * @bt_status: BT on/off status
- * @last_channel: last channel that was scanned
- * @tsf_low: TSF timer (lower half) in usecs
- * @tsf_high: TSF timer (higher half) in usecs
- * @results: all scan results, only "scanned_channels" of them are valid
- */
-struct iwm_scan_complete_notif {
-	uint8_t scanned_channels;
-	uint8_t status;
-	uint8_t bt_status;
-	uint8_t last_channel;
-	uint32_t tsf_low;
-	uint32_t tsf_high;
-	struct iwm_scan_results_notif results[IWM_MAX_NUM_SCAN_CHANNELS];
-} __packed; /* IWM_SCAN_COMPLETE_NTF_API_S_VER_2 */
 
 enum iwm_scan_framework_client {
 	IWM_SCAN_CLIENT_SCHED_SCAN	= (1 << 0),
