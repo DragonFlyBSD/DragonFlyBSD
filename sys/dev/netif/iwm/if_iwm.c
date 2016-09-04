@@ -346,7 +346,8 @@ static void	iwm_mvm_rx_rx_phy_cmd(struct iwm_softc *,
                                       struct iwm_rx_packet *);
 static int	iwm_get_noise(struct iwm_softc *sc,
 		    const struct iwm_mvm_statistics_rx_non_phy *);
-static void	iwm_mvm_rx_rx_mpdu(struct iwm_softc *, struct mbuf *);
+static boolean_t iwm_mvm_rx_rx_mpdu(struct iwm_softc *, struct mbuf *,
+				    uint32_t, boolean_t);
 static int	iwm_mvm_rx_tx_cmd_single(struct iwm_softc *,
                                          struct iwm_rx_packet *,
 				         struct iwm_node *);
@@ -406,6 +407,7 @@ static const char *
 static void	iwm_nic_error(struct iwm_softc *);
 static void	iwm_nic_umac_error(struct iwm_softc *);
 #endif
+static void	iwm_handle_rxb(struct iwm_softc *, struct mbuf *);
 static void	iwm_notif_intr(struct iwm_softc *);
 static void	iwm_intr(void *);
 static int	iwm_attach(device_t);
@@ -1492,14 +1494,21 @@ iwm_nic_rx_init(struct iwm_softc *sc)
 	IWM_READ(sc, IWM_FH_RSCSR_CHNL0_STTS_WPTR_REG);
 #endif
 
-	/* Enable RX. */
+	/* Enable Rx DMA
+	 * XXX 5000 HW isn't supported by the iwm(4) driver.
+	 * IWM_FH_RCSR_CHNL0_RX_IGNORE_RXF_EMPTY is set because of HW bug in
+	 *      the credit mechanism in 5000 HW RX FIFO
+	 * Direct rx interrupts to hosts
+	 * Rx buffer size 4 or 8k or 12k
+	 * RB timeout 0x10
+	 * 256 RBDs
+	 */
 	IWM_WRITE(sc, IWM_FH_MEM_RCSR_CHNL0_CONFIG_REG,
 	    IWM_FH_RCSR_RX_CONFIG_CHNL_EN_ENABLE_VAL		|
 	    IWM_FH_RCSR_CHNL0_RX_IGNORE_RXF_EMPTY		|  /* HW bug */
 	    IWM_FH_RCSR_CHNL0_RX_CONFIG_IRQ_DEST_INT_HOST_VAL	|
-	    IWM_FH_RCSR_CHNL0_RX_CONFIG_SINGLE_FRAME_MSK	|
-	    (IWM_RX_RB_TIMEOUT << IWM_FH_RCSR_RX_CONFIG_REG_IRQ_RBTH_POS) |
 	    IWM_FH_RCSR_RX_CONFIG_REG_VAL_RB_SIZE_4K		|
+	    (IWM_RX_RB_TIMEOUT << IWM_FH_RCSR_RX_CONFIG_REG_IRQ_RBTH_POS) |
 	    IWM_RX_QUEUE_SIZE_LOG << IWM_FH_RCSR_RX_CONFIG_RBDCB_SIZE_POS);
 
 	IWM_WRITE_1(sc, IWM_CSR_INT_COALESCING, IWM_HOST_INT_TIMEOUT_DEF);
@@ -3230,8 +3239,9 @@ iwm_get_noise(struct iwm_softc *sc,
  *
  * Handles the actual data of the Rx packet from the fw
  */
-static void
-iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m)
+static boolean_t
+iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
+	boolean_t stolen)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
@@ -3240,7 +3250,7 @@ iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m)
 	struct ieee80211_rx_stats rxs;
 	struct iwm_rx_phy_info *phy_info;
 	struct iwm_rx_mpdu_res_start *rx_res;
-	struct iwm_rx_packet *pkt = mtod(m, struct iwm_rx_packet *);
+	struct iwm_rx_packet *pkt = mtodoff(m, struct iwm_rx_packet *, offset);
 	uint32_t len;
 	uint32_t rx_pkt_status;
 	int rssi;
@@ -3255,14 +3265,14 @@ iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m)
 		device_printf(sc->sc_dev,
 		    "dsp size out of range [0,20]: %d\n",
 		    phy_info->cfg_phy_cnt);
-		return;
+		return FALSE;
 	}
 
 	if (!(rx_pkt_status & IWM_RX_MPDU_RES_STATUS_CRC_OK) ||
 	    !(rx_pkt_status & IWM_RX_MPDU_RES_STATUS_OVERRUN_OK)) {
 		IWM_DPRINTF(sc, IWM_DEBUG_RECV,
 		    "Bad CRC or FIFO: 0x%08X.\n", rx_pkt_status);
-		return; /* drop */
+		return FALSE; /* drop */
 	}
 
 	rssi = iwm_mvm_get_signal_strength(sc, phy_info);
@@ -3276,10 +3286,10 @@ iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m)
 	rssi = rssi - sc->sc_noise;
 
 	/* replenish ring for the buffer we're going to feed to the sharks */
-	if (iwm_rx_addbuf(sc, IWM_RBUF_SIZE, sc->rxq.cur) != 0) {
+	if (!stolen && iwm_rx_addbuf(sc, IWM_RBUF_SIZE, sc->rxq.cur) != 0) {
 		device_printf(sc->sc_dev, "%s: unable to add more buffers\n",
 		    __func__);
-		return;
+		return FALSE;
 	}
 
 	m->m_data = pkt->data + sizeof(*rx_res);
@@ -3354,6 +3364,8 @@ iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc, struct mbuf *m)
 		ieee80211_input_mimo_all(ic, m, &rxs);
 	}
 	IWM_LOCK(sc);
+
+	return TRUE;
 }
 
 static int
@@ -5380,54 +5392,46 @@ iwm_nic_error(struct iwm_softc *sc)
 }
 #endif
 
-#define ADVANCE_RXQ(sc) (sc->rxq.cur = (sc->rxq.cur + 1) % IWM_RX_RING_COUNT);
-
-/*
- * Process an IWM_CSR_INT_BIT_FH_RX or IWM_CSR_INT_BIT_SW_RX interrupt.
- * Basic structure from if_iwn
- */
 static void
-iwm_notif_intr(struct iwm_softc *sc)
+iwm_handle_rxb(struct iwm_softc *sc, struct mbuf *m)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
-	uint16_t hw;
+	struct iwm_cmd_response *cresp;
+	struct mbuf *m1;
+	uint32_t offset = 0;
+	uint32_t maxoff = IWM_RBUF_SIZE;
+	uint32_t nextoff;
+	boolean_t stolen = FALSE;
 
-	bus_dmamap_sync(sc->rxq.stat_dma.tag, sc->rxq.stat_dma.map,
-	    BUS_DMASYNC_POSTREAD);
+#define HAVEROOM(a)	\
+    ((a) + sizeof(uint32_t) + sizeof(struct iwm_cmd_header) < maxoff)
 
-	hw = le16toh(sc->rxq.stat->closed_rb_num) & 0xfff;
+	while (HAVEROOM(offset)) {
+		struct iwm_rx_packet *pkt = mtodoff(m, struct iwm_rx_packet *,
+		    offset);
+		int qid, idx, code, len;
 
-	/*
-	 * Process responses
-	 */
-	while (sc->rxq.cur != hw) {
-		struct iwm_rx_ring *ring = &sc->rxq;
-		struct iwm_rx_data *data = &ring->data[ring->cur];
-		struct iwm_rx_packet *pkt;
-		struct iwm_cmd_response *cresp;
-		int qid, idx, code;
-
-		bus_dmamap_sync(ring->data_dmat, data->map,
-		    BUS_DMASYNC_POSTREAD);
-		pkt = mtod(data->m, struct iwm_rx_packet *);
-
-		qid = pkt->hdr.qid & ~0x80;
+		qid = pkt->hdr.qid;
 		idx = pkt->hdr.idx;
 
 		code = IWM_WIDE_ID(pkt->hdr.flags, pkt->hdr.code);
-		IWM_DPRINTF(sc, IWM_DEBUG_INTR,
-		    "rx packet qid=%d idx=%d type=%x %d %d\n",
-		    pkt->hdr.qid & ~0x80, pkt->hdr.idx, code, ring->cur, hw);
 
 		/*
 		 * randomly get these from the firmware, no idea why.
 		 * they at least seem harmless, so just ignore them for now
 		 */
-		if (__predict_false((pkt->hdr.code == 0 && qid == 0 && idx == 0)
-		    || pkt->len_n_flags == htole32(0x55550000))) {
-			ADVANCE_RXQ(sc);
-			continue;
+		if ((pkt->hdr.code == 0 && (qid & ~0x80) == 0 && idx == 0) ||
+		    pkt->len_n_flags == htole32(IWM_FH_RSCSR_FRAME_INVALID)) {
+			break;
 		}
+
+		IWM_DPRINTF(sc, IWM_DEBUG_INTR,
+		    "rx packet qid=%d idx=%d type=%x\n",
+		    qid & ~0x80, pkt->hdr.idx, code);
+
+		len = le32toh(pkt->len_n_flags) & IWM_FH_RSCSR_FRAME_SIZE_MSK;
+		len += sizeof(uint32_t); /* account for status word */
+		nextoff = offset + roundup2(len, IWM_FH_RSCSR_FRAME_ALIGN);
 
 		iwm_notification_wait_notify(sc->sc_notif_wait, code, pkt);
 
@@ -5436,9 +5440,44 @@ iwm_notif_intr(struct iwm_softc *sc)
 			iwm_mvm_rx_rx_phy_cmd(sc, pkt);
 			break;
 
-		case IWM_REPLY_RX_MPDU_CMD:
-			iwm_mvm_rx_rx_mpdu(sc, data->m);
+		case IWM_REPLY_RX_MPDU_CMD: {
+			/*
+			 * If this is the last frame in the RX buffer, we
+			 * can directly feed the mbuf to the sharks here.
+			 */
+			struct iwm_rx_packet *nextpkt = mtodoff(m,
+			    struct iwm_rx_packet *, nextoff);
+			if (!HAVEROOM(nextoff) ||
+			    (nextpkt->hdr.code == 0 &&
+			     (nextpkt->hdr.qid & ~0x80) == 0 &&
+			     nextpkt->hdr.idx == 0) ||
+			    (nextpkt->len_n_flags ==
+			     htole32(IWM_FH_RSCSR_FRAME_INVALID))) {
+				if (iwm_mvm_rx_rx_mpdu(sc, m, offset, stolen)) {
+					stolen = FALSE;
+					/* Make sure we abort the loop */
+					nextoff = maxoff;
+				}
+				break;
+			}
+
+			/*
+			 * Use m_copym instead of m_split, because that
+			 * makes it easier to keep a valid rx buffer in
+			 * the ring, when iwm_mvm_rx_rx_mpdu() fails.
+			 *
+			 * We need to start m_copym() at offset 0, to get the
+			 * M_PKTHDR flag preserved.
+			 */
+			m1 = m_copym(m, 0, M_COPYALL, M_NOWAIT);
+			if (m1) {
+				if (iwm_mvm_rx_rx_mpdu(sc, m1, offset, stolen))
+					stolen = TRUE;
+				else
+					m_freem(m1);
+			}
 			break;
+		}
 
 		case IWM_TX_CMD:
 			iwm_mvm_rx_tx_cmd(sc, pkt);
@@ -5501,7 +5540,7 @@ iwm_notif_intr(struct iwm_softc *sc)
 
 		case IWM_NVM_ACCESS_CMD:
 		case IWM_MCC_UPDATE_CMD:
-			if (sc->sc_wantresp == ((qid << 16) | idx)) {
+			if (sc->sc_wantresp == (((qid & ~0x80) << 16) | idx)) {
 				memcpy(sc->sc_cmd_resp,
 				    pkt, sizeof(sc->sc_cmd_resp));
 			}
@@ -5561,7 +5600,7 @@ iwm_notif_intr(struct iwm_softc *sc)
 		case IWM_BT_CONFIG:
 		case IWM_REPLY_THERMAL_MNG_BACKOFF:
 			cresp = (void *)pkt->data;
-			if (sc->sc_wantresp == ((qid << 16) | idx)) {
+			if (sc->sc_wantresp == (((qid & ~0x80) << 16) | idx)) {
 				memcpy(sc->sc_cmd_resp,
 				    pkt, sizeof(*pkt)+sizeof(*cresp));
 			}
@@ -5645,7 +5684,7 @@ iwm_notif_intr(struct iwm_softc *sc)
 		default:
 			device_printf(sc->sc_dev,
 			    "frame %d/%d %x UNHANDLED (this should "
-			    "not happen)\n", qid, idx,
+			    "not happen)\n", qid & ~0x80, idx,
 			    pkt->len_n_flags);
 			break;
 		}
@@ -5664,20 +5703,55 @@ iwm_notif_intr(struct iwm_softc *sc)
 		 * uses a slightly different format for pkt->hdr, and "qid"
 		 * is actually the upper byte of a two-byte field.
 		 */
-		if (!(pkt->hdr.qid & (1 << 7))) {
+		if (!(qid & (1 << 7)))
 			iwm_cmd_done(sc, pkt);
-		}
 
-		ADVANCE_RXQ(sc);
+		offset = nextoff;
+	}
+	if (stolen)
+		m_freem(m);
+#undef HAVEROOM
+}
+
+/*
+ * Process an IWM_CSR_INT_BIT_FH_RX or IWM_CSR_INT_BIT_SW_RX interrupt.
+ * Basic structure from if_iwn
+ */
+static void
+iwm_notif_intr(struct iwm_softc *sc)
+{
+	uint16_t hw;
+
+	bus_dmamap_sync(sc->rxq.stat_dma.tag, sc->rxq.stat_dma.map,
+	    BUS_DMASYNC_POSTREAD);
+
+	hw = le16toh(sc->rxq.stat->closed_rb_num) & 0xfff;
+
+	/*
+	 * Process responses
+	 */
+	while (sc->rxq.cur != hw) {
+		struct iwm_rx_ring *ring = &sc->rxq;
+		struct iwm_rx_data *data = &ring->data[ring->cur];
+
+		bus_dmamap_sync(ring->data_dmat, data->map,
+		    BUS_DMASYNC_POSTREAD);
+
+		IWM_DPRINTF(sc, IWM_DEBUG_INTR,
+		    "%s: hw = %d cur = %d\n", __func__, hw, ring->cur);
+		iwm_handle_rxb(sc, data->m);
+
+		ring->cur = (ring->cur + 1) % IWM_RX_RING_COUNT;
 	}
 
 	/*
-	 * Tell the firmware what we have processed.
+	 * Tell the firmware that it can reuse the ring entries that
+	 * we have just processed.
 	 * Seems like the hardware gets upset unless we align
 	 * the write by 8??
 	 */
 	hw = (hw == 0) ? IWM_RX_RING_COUNT - 1 : hw - 1;
-	IWM_WRITE(sc, IWM_FH_RSCSR_CHNL0_WPTR, hw & ~7);
+	IWM_WRITE(sc, IWM_FH_RSCSR_CHNL0_WPTR, rounddown2(hw, 8));
 }
 
 static void
