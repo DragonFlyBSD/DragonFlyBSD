@@ -1094,90 +1094,47 @@ hammer_str_to_tid(const char *str, int *ispfsp,
 void
 hammer_crc_set_blockmap(hammer_blockmap_t blockmap)
 {
-	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
+	blockmap->entry_crc = hammer_crc_get_blockmap(blockmap);
 }
 
 void
 hammer_crc_set_volume(hammer_volume_ondisk_t ondisk)
 {
-	ondisk->vol_crc = crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^
-			  crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2);
+	ondisk->vol_crc = hammer_crc_get_volume(ondisk);
 }
 
 int
 hammer_crc_test_blockmap(hammer_blockmap_t blockmap)
 {
-	hammer_crc_t crc;
-
-	crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
-	return (blockmap->entry_crc == crc);
+	return(blockmap->entry_crc == hammer_crc_get_blockmap(blockmap));
 }
 
 int
 hammer_crc_test_volume(hammer_volume_ondisk_t ondisk)
 {
-	hammer_crc_t crc;
-
-	crc = crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^
-	      crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2);
-	return (ondisk->vol_crc == crc);
+	return(ondisk->vol_crc == hammer_crc_get_volume(ondisk));
 }
 
 int
 hammer_crc_test_btree(hammer_node_ondisk_t ondisk)
 {
-	hammer_crc_t crc;
-
-	crc = crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
-	return (ondisk->crc == crc);
+	return(ondisk->crc == hammer_crc_get_btree(ondisk));
 }
 
-/*
- * Test or set the leaf->data_crc field.  Deal with any special cases given
- * a generic B-Tree leaf element and its data.
- *
- * NOTE: Inode-data: the atime and mtime fields are not CRCd, allowing them
- *       to be updated in-place.
- */
 int
 hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf)
 {
-	hammer_crc_t crc;
-
-	if (leaf->data_len == 0) {
-		crc = 0;
-	} else {
-		switch(leaf->base.rec_type) {
-		case HAMMER_RECTYPE_INODE:
-			if (leaf->data_len != sizeof(struct hammer_inode_data))
-				return(0);
-			crc = crc32(data, HAMMER_INODE_CRCSIZE);
-			break;
-		default:
-			crc = crc32(data, leaf->data_len);
-			break;
-		}
-	}
-	return (leaf->data_crc == crc);
+	return(leaf->data_crc == hammer_crc_get_leaf(data, leaf));
 }
 
 void
 hammer_crc_set_leaf(void *data, hammer_btree_leaf_elm_t leaf)
 {
-	if (leaf->data_len == 0) {
-		leaf->data_crc = 0;
-	} else {
-		switch(leaf->base.rec_type) {
-		case HAMMER_RECTYPE_INODE:
-			KKASSERT(leaf->data_len ==
-				  sizeof(struct hammer_inode_data));
-			leaf->data_crc = crc32(data, HAMMER_INODE_CRCSIZE);
-			break;
-		default:
-			leaf->data_crc = crc32(data, leaf->data_len);
-			break;
-		}
-	}
+#if defined INVARIANTS
+	if (leaf->data_len && leaf->base.rec_type == HAMMER_RECTYPE_INODE)
+		KKASSERT(leaf->data_len == sizeof(struct hammer_inode_data));
+#endif
+	leaf->data_crc = hammer_crc_get_leaf(data, leaf);
 }
 
 /*

@@ -1575,10 +1575,57 @@ hammer_btree_extract_data(hammer_cursor_t cursor)
 	return(hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA));
 }
 
+static __inline hammer_crc_t
+hammer_crc_get_blockmap(hammer_blockmap_t blockmap)
+{
+	return(crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE));
+}
+
+static __inline hammer_crc_t
+hammer_crc_get_volume(hammer_volume_ondisk_t ondisk)
+{
+	return(crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^
+		crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2));
+}
+
+static __inline hammer_crc_t
+hammer_crc_get_btree(hammer_node_ondisk_t ondisk)
+{
+	return(crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE));
+}
+
+/*
+ * Get the leaf->data_crc field.  Deal with any special cases given
+ * a generic B-Tree leaf element and its data.
+ *
+ * NOTE: Inode-data: the atime and mtime fields are not CRCd,
+ *       allowing them to be updated in-place.
+ */
+static __inline hammer_crc_t
+hammer_crc_get_leaf(void *data, hammer_btree_leaf_elm_t leaf)
+{
+	hammer_crc_t crc;
+
+	if (leaf->data_len == 0)
+		return(0);
+
+	switch(leaf->base.rec_type) {
+	case HAMMER_RECTYPE_INODE:
+		if (leaf->data_len != sizeof(struct hammer_inode_data))
+			return(0);  /* This shouldn't happen */
+		crc = crc32(data, HAMMER_INODE_CRCSIZE);
+		break;
+	default:
+		crc = crc32(data, leaf->data_len);
+		break;
+	}
+	return(crc);
+}
+
 static __inline void
 hammer_crc_set_btree(hammer_node_ondisk_t ondisk)
 {
-	ondisk->crc = crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
+	ondisk->crc = hammer_crc_get_btree(ondisk);
 }
 
 /*
