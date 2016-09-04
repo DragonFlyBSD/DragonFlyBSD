@@ -1091,52 +1091,6 @@ hammer_str_to_tid(const char *str, int *ispfsp,
 	return(0);
 }
 
-void
-hammer_crc_set_blockmap(hammer_blockmap_t blockmap)
-{
-	blockmap->entry_crc = hammer_crc_get_blockmap(blockmap);
-}
-
-void
-hammer_crc_set_volume(hammer_volume_ondisk_t ondisk)
-{
-	ondisk->vol_crc = hammer_crc_get_volume(ondisk);
-}
-
-int
-hammer_crc_test_blockmap(hammer_blockmap_t blockmap)
-{
-	return(blockmap->entry_crc == hammer_crc_get_blockmap(blockmap));
-}
-
-int
-hammer_crc_test_volume(hammer_volume_ondisk_t ondisk)
-{
-	return(ondisk->vol_crc == hammer_crc_get_volume(ondisk));
-}
-
-int
-hammer_crc_test_btree(hammer_node_ondisk_t ondisk)
-{
-	return(ondisk->crc == hammer_crc_get_btree(ondisk));
-}
-
-int
-hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf)
-{
-	return(leaf->data_crc == hammer_crc_get_leaf(data, leaf));
-}
-
-void
-hammer_crc_set_leaf(void *data, hammer_btree_leaf_elm_t leaf)
-{
-#if defined INVARIANTS
-	if (leaf->data_len && leaf->base.rec_type == HAMMER_RECTYPE_INODE)
-		KKASSERT(leaf->data_len == sizeof(struct hammer_inode_data));
-#endif
-	leaf->data_crc = hammer_crc_get_leaf(data, leaf);
-}
-
 /*
  * Return the block size at the specified file offset.
  */

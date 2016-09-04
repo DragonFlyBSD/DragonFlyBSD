@@ -1456,14 +1456,6 @@ int hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t rootvol);
 void hammer_recover_flush_buffers(hammer_mount_t hmp,
 			hammer_volume_t root_volume, int final);
 
-void hammer_crc_set_blockmap(hammer_blockmap_t blockmap);
-void hammer_crc_set_volume(hammer_volume_ondisk_t ondisk);
-void hammer_crc_set_leaf(void *data, hammer_btree_leaf_elm_t leaf);
-
-int hammer_crc_test_blockmap(hammer_blockmap_t blockmap);
-int hammer_crc_test_volume(hammer_volume_ondisk_t ondisk);
-int hammer_crc_test_btree(hammer_node_ondisk_t ondisk);
-int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 udev_t hammer_fsid_to_udev(uuid_t *uuid);
 
 
@@ -1575,10 +1567,25 @@ hammer_btree_extract_data(hammer_cursor_t cursor)
 	return(hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA));
 }
 
+/*
+ * CRC get/set/test functions
+ */
 static __inline hammer_crc_t
 hammer_crc_get_blockmap(hammer_blockmap_t blockmap)
 {
 	return(crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE));
+}
+
+static __inline void
+hammer_crc_set_blockmap(hammer_blockmap_t blockmap)
+{
+	blockmap->entry_crc = hammer_crc_get_blockmap(blockmap);
+}
+
+static __inline int
+hammer_crc_test_blockmap(hammer_blockmap_t blockmap)
+{
+	return(blockmap->entry_crc == hammer_crc_get_blockmap(blockmap));
 }
 
 static __inline hammer_crc_t
@@ -1588,10 +1595,34 @@ hammer_crc_get_volume(hammer_volume_ondisk_t ondisk)
 		crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2));
 }
 
-static __inline hammer_crc_t
-hammer_crc_get_btree(hammer_node_ondisk_t ondisk)
+static __inline void
+hammer_crc_set_volume(hammer_volume_ondisk_t ondisk)
 {
-	return(crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE));
+	ondisk->vol_crc = hammer_crc_get_volume(ondisk);
+}
+
+static __inline int
+hammer_crc_test_volume(hammer_volume_ondisk_t ondisk)
+{
+	return(ondisk->vol_crc == hammer_crc_get_volume(ondisk));
+}
+
+static __inline hammer_crc_t
+hammer_crc_get_btree(hammer_node_ondisk_t node)
+{
+	return(crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE));
+}
+
+static __inline void
+hammer_crc_set_btree(hammer_node_ondisk_t node)
+{
+	node->crc = hammer_crc_get_btree(node);
+}
+
+static __inline int
+hammer_crc_test_btree(hammer_node_ondisk_t node)
+{
+	return(node->crc == hammer_crc_get_btree(node));
 }
 
 /*
@@ -1623,9 +1654,19 @@ hammer_crc_get_leaf(void *data, hammer_btree_leaf_elm_t leaf)
 }
 
 static __inline void
-hammer_crc_set_btree(hammer_node_ondisk_t ondisk)
+hammer_crc_set_leaf(void *data, hammer_btree_leaf_elm_t leaf)
 {
-	ondisk->crc = hammer_crc_get_btree(ondisk);
+#if defined INVARIANTS
+	if (leaf->data_len && leaf->base.rec_type == HAMMER_RECTYPE_INODE)
+		KKASSERT(leaf->data_len == sizeof(struct hammer_inode_data));
+#endif
+	leaf->data_crc = hammer_crc_get_leaf(data, leaf);
+}
+
+static __inline int
+hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf)
+{
+	return(leaf->data_crc == hammer_crc_get_leaf(data, leaf));
 }
 
 /*
