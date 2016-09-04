@@ -1743,8 +1743,10 @@ const int nvm_to_read[] = {
 #define IWM_NVM_READ_OPCODE 0
 
 /* load nvm chunk response */
-#define IWM_READ_NVM_CHUNK_SUCCEED		0
-#define IWM_READ_NVM_CHUNK_INVALID_ADDRESS	1
+enum {
+	IWM_READ_NVM_CHUNK_SUCCEED = 0,
+	IWM_READ_NVM_CHUNK_NOT_VALID_ADDRESS = 1
+};
 
 static int
 iwm_nvm_read_chunk(struct iwm_softc *sc, uint16_t section,
@@ -1761,12 +1763,10 @@ iwm_nvm_read_chunk(struct iwm_softc *sc, uint16_t section,
 	struct iwm_rx_packet *pkt;
 	struct iwm_host_cmd cmd = {
 		.id = IWM_NVM_ACCESS_CMD,
-		.flags = IWM_CMD_SYNC | IWM_CMD_WANT_SKB |
-		    IWM_CMD_SEND_IN_RFKILL,
+		.flags = IWM_CMD_WANT_SKB | IWM_CMD_SEND_IN_RFKILL,
 		.data = { &nvm_access_cmd, },
 	};
-	int ret, offset_read;
-	size_t bytes_read;
+	int ret, bytes_read, offset_read;
 	uint8_t *resp_data;
 
 	cmd.len[0] = sizeof(struct iwm_nvm_access_cmd);
@@ -1789,15 +1789,31 @@ iwm_nvm_read_chunk(struct iwm_softc *sc, uint16_t section,
 
 	/* Extract NVM response */
 	nvm_resp = (void *)pkt->data;
-
 	ret = le16toh(nvm_resp->status);
 	bytes_read = le16toh(nvm_resp->length);
 	offset_read = le16toh(nvm_resp->offset);
 	resp_data = nvm_resp->data;
 	if (ret) {
-		IWM_DPRINTF(sc, IWM_DEBUG_RESET,
-		    "NVM access command failed with status %d\n", ret);
-		ret = EINVAL;
+		if ((offset != 0) &&
+		    (ret == IWM_READ_NVM_CHUNK_NOT_VALID_ADDRESS)) {
+			/*
+			 * meaning of NOT_VALID_ADDRESS:
+			 * driver try to read chunk from address that is
+			 * multiple of 2K and got an error since addr is empty.
+			 * meaning of (offset != 0): driver already
+			 * read valid data from another chunk so this case
+			 * is not an error.
+			 */
+			IWM_DPRINTF(sc, IWM_DEBUG_EEPROM | IWM_DEBUG_RESET,
+				    "NVM access command failed on offset 0x%x since that section size is multiple 2K\n",
+				    offset);
+			*len = 0;
+			ret = 0;
+		} else {
+			IWM_DPRINTF(sc, IWM_DEBUG_EEPROM | IWM_DEBUG_RESET,
+				    "NVM access command failed with status %d\n", ret);
+			ret = EIO;
+		}
 		goto exit;
 	}
 
@@ -1812,7 +1828,7 @@ iwm_nvm_read_chunk(struct iwm_softc *sc, uint16_t section,
 	if (bytes_read > length) {
 		device_printf(sc->sc_dev,
 		    "NVM ACCESS response with too much data "
-		    "(%d bytes requested, %zd bytes received)\n",
+		    "(%d bytes requested, %d bytes received)\n",
 		    length, bytes_read);
 		ret = EINVAL;
 		goto exit;
