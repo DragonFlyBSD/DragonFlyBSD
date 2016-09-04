@@ -1589,6 +1589,42 @@ hammer_crc_test_blockmap(hammer_blockmap_t blockmap)
 }
 
 static __inline hammer_crc_t
+hammer_crc_get_layer1(hammer_blockmap_layer1_t layer1)
+{
+	return(crc32(layer1, HAMMER_LAYER1_CRCSIZE));
+}
+
+static __inline void
+hammer_crc_set_layer1(hammer_blockmap_layer1_t layer1)
+{
+	layer1->layer1_crc = hammer_crc_get_layer1(layer1);
+}
+
+static __inline int
+hammer_crc_test_layer1(hammer_blockmap_layer1_t layer1)
+{
+	return(layer1->layer1_crc == hammer_crc_get_layer1(layer1));
+}
+
+static __inline hammer_crc_t
+hammer_crc_get_layer2(hammer_blockmap_layer2_t layer2)
+{
+	return(crc32(layer2, HAMMER_LAYER2_CRCSIZE));
+}
+
+static __inline void
+hammer_crc_set_layer2(hammer_blockmap_layer2_t layer2)
+{
+	layer2->entry_crc = hammer_crc_get_layer2(layer2);
+}
+
+static __inline int
+hammer_crc_test_layer2(hammer_blockmap_layer2_t layer2)
+{
+	return(layer2->entry_crc == hammer_crc_get_layer2(layer2));
+}
+
+static __inline hammer_crc_t
 hammer_crc_get_volume(hammer_volume_ondisk_t ondisk)
 {
 	return(crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^

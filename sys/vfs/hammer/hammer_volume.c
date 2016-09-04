@@ -424,7 +424,7 @@ hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 			bzero(layer1, sizeof(*layer1));
 			layer1->phys_offset = alloc_offset;
 			layer1->blocks_free = 0;
-			layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+			hammer_crc_set_layer1(layer1);
 			hammer_modify_buffer_done(buffer1);
 			alloc_offset += HAMMER_BIGBLOCK_SIZE;
 		}
@@ -468,13 +468,13 @@ hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 				layer2->bytes_free = 0;
 			}
 
-			layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
+			hammer_crc_set_layer2(layer2);
 			hammer_modify_buffer_done(buffer2);
 		}
 
 		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
 		layer1->blocks_free += layer1_count;
-		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+		hammer_crc_set_layer1(layer1);
 		hammer_modify_buffer_done(buffer1);
 	}
 
@@ -598,7 +598,7 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
-		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+		hammer_crc_set_layer1(layer1);
 		hammer_modify_buffer_done(buffer1);
 	}
 
