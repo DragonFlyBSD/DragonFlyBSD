@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 13, 2016
+.Dd September 4, 2016
 .Dt IASL 8
 .Os
 .Sh NAME
@@ -87,6 +87,8 @@ Compile custom table that contains generic operators.
 Display the help message.
 .It Fl hc
 Display operators allowed in constant expressions.
+.It Fl hd
+Info for obtaining and disassembling binary ACPI tables.
 .It Fl hf
 Display help for output filename generation.
 .It Fl hr
@@ -161,6 +163,8 @@ Create hex AML table in ASL (*.hex).
 Display compiler version.
 .It Fl va
 Disable all errors/warnings/remarks.
+.It Fl vd
+Display compiler build date and time.
 .It Fl ve
 Report only errors (ignore warnings and remarks).
 .It Fl vi

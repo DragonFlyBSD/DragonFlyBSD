@@ -63,7 +63,7 @@ SRCS+=	utdebug.c utdecode.c utdelete.c uterror.c uteval.c utexcep.c
 SRCS+=	utglobal.c uthex.c utids.c utinit.c utlock.c
 SRCS+=	utmath.c utmisc.c utmutex.c utnonansi.c
 SRCS+=	utobject.c utosi.c utownerid.c utpredef.c
-SRCS+=	utresrc.c utstate.c utstring.c utuuid.c utxface.c
+SRCS+=	utresrc.c utstate.c utstring.c utstrtoul64.c utuuid.c utxface.c
 SRCS+=	utxferror.c utxfinit.c
 
 # OSD layer

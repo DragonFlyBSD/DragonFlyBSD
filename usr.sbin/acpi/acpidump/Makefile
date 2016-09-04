@@ -27,9 +27,11 @@ SRCS+=	\
 	utdebug.c \
 	utexcep.c \
 	utglobal.c \
+	uthex.c \
 	utmath.c \
 	utnonansi.c \
 	utstring.c \
+	utstrtoul64.c \
 	utxferror.c
 
 SRCS+=	\

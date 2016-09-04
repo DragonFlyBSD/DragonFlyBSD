@@ -40,6 +40,7 @@ SRCS=	\
 	aslfiles.c \
 	aslfileio.c \
 	aslfold.c \
+	aslhelp.c \
 	aslhex.c \
 	asllength.c \
 	asllisting.c \
@@ -200,6 +201,7 @@ SRCS=	\
 	utresrc.c \
 	utstate.c \
 	utstring.c \
+	utstrtoul64.c \
 	utuuid.c \
 	utxface.c \
 	utxferror.c
