@@ -303,8 +303,10 @@ sgregister(struct cam_periph *periph, void *arg)
 	 */
 	xpt_register_async(AC_LOST_DEVICE, sgasync, periph, periph->path);
 
+#if 0
 	if (bootverbose)
 		xpt_announce_periph(periph, NULL);
+#endif
 
 	return (CAM_REQ_CMP);
 }
