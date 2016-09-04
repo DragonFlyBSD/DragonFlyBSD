@@ -367,7 +367,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
-		nlen = len - offsetof(struct hammer_direntry_data, name[0]);
+		nlen = len - HAMMER_ENTRY_NAME_OFF;
 		if ((int)nlen < 0)	/* illegal length */
 			break;
 		if (ondisk->entry.obj_id == 0 ||
