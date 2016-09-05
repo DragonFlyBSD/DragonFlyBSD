@@ -77,7 +77,6 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_cursor cursor;
 	union hammer_ioc_mrecord_any mrec;
 	hammer_btree_leaf_elm_t elm;
-	const int crc_start = HAMMER_MREC_CRCOFF;
 	char *uptr;
 	int error;
 	int data_len;
@@ -167,8 +166,7 @@ retry:
 			mrec.head.rec_size = bytes;
 			mrec.skip.skip_beg = cmirror.skip_beg;
 			mrec.skip.skip_end = cmirror.skip_end;
-			mrec.head.rec_crc = crc32(&mrec.head.rec_size,
-						 bytes - crc_start);
+			hammer_crc_set_mrec_head(&mrec.head, bytes);
 			error = copyout(&mrec, uptr, bytes);
 			eatdisk = 0;
 			goto didwrite;
@@ -225,8 +223,7 @@ retry:
 			mrec.head.type = HAMMER_MREC_TYPE_PASS;
 			mrec.head.rec_size = bytes;
 			mrec.rec.leaf = *elm;
-			mrec.head.rec_crc = crc32(&mrec.head.rec_size,
-						 bytes - crc_start);
+			hammer_crc_set_mrec_head(&mrec.head, bytes);
 			error = copyout(&mrec, uptr, bytes);
 			eatdisk = 1;
 			goto didwrite;
@@ -278,8 +275,7 @@ retry:
 
 		if (elm->base.delete_tid > mirror->tid_end)
 			mrec.rec.leaf.base.delete_tid = 0;
-		rec_crc = crc32(&mrec.head.rec_size,
-				sizeof(mrec.rec) - crc_start);
+		rec_crc = hammer_crc_get_mrec_head(&mrec.head, sizeof(mrec.rec));
 		if (data_len)
 			rec_crc = crc32_ext(cursor.data, data_len, rec_crc);
 		mrec.head.rec_crc = rec_crc;
