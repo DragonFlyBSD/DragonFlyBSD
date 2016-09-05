@@ -39,6 +39,7 @@
 #define _KERNEL_STRUCTURES
 #include <sys/vnode.h>
 #include <sys/mount.h>
+#include <stddef.h>
 #include <vfs/hammer/hammer.h>
 #undef _KERNEL_STRUCTURES
 
