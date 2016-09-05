@@ -124,7 +124,7 @@ recover_top(char *ptr, hammer_off_t offset)
 	char buf[HAMMER_BTREE_LEAF_ELMS + 1];
 
 	for (node = (void *)ptr; (char *)node < ptr + HAMMER_BUFSIZE; ++node) {
-		isnode = (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) == node->crc);
+		isnode = hammer_crc_test_btree(node);
 		maxcount = hammer_node_max_elements(node->type);
 
 		if (DebugOpt) {

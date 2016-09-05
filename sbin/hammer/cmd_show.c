@@ -201,7 +201,7 @@ print_btree_node(hammer_off_t node_offset,
 		badc = 'B';
 		badm = 'I';
 	} else {
-		if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) != node->crc)
+		if (!hammer_crc_test_btree(node))
 			badc = 'B';
 		if (node->mirror_tid > mirror_tid) {
 			badc = 'B';
@@ -629,7 +629,7 @@ check_data_crc(hammer_btree_elm_t elm)
 		if (data_len != sizeof(struct hammer_inode_data))
 			return("BI");  /* bad inode size */
 		ptr = get_buffer_data(buf_offset, &data_buffer, 0);
-		crc = crc32(ptr, HAMMER_INODE_CRCSIZE);
+		crc = hammer_crc_get_leaf(ptr, &elm->leaf);
 		rel_buffer(data_buffer);
 		break;
 	default:

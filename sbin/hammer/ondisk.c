@@ -524,7 +524,7 @@ format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset)
 	blockmap->first_offset = zone_base;
 	blockmap->next_offset = zone_base;
 	blockmap->alloc_offset = HAMMER_ENCODE(zone, 255, -1);
-	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
+	hammer_crc_set_blockmap(blockmap);
 }
 
 /*
@@ -550,7 +550,7 @@ format_freemap(struct volume_info *root_vol)
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
 		layer1->blocks_free = 0;
-		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+		hammer_crc_set_layer1(layer1);
 	}
 	assert(i == HAMMER_BIGBLOCK_SIZE);
 	rel_buffer(buffer);
@@ -561,7 +561,7 @@ format_freemap(struct volume_info *root_vol)
 	blockmap->first_offset = 0;
 	blockmap->next_offset = HAMMER_ENCODE_RAW_BUFFER(0, 0);
 	blockmap->alloc_offset = HAMMER_ENCODE_RAW_BUFFER(255, -1);
-	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
+	hammer_crc_set_blockmap(blockmap);
 }
 
 /*
@@ -612,8 +612,7 @@ initialize_freemap(struct volume_info *vol)
 						HAMMER_ZONE_FREEMAP_INDEX);
 			layer1->blocks_free = 0;
 			buffer1->cache.modified = 1;
-			layer1->layer1_crc = crc32(layer1,
-						   HAMMER_LAYER1_CRCSIZE);
+			hammer_crc_set_layer1(layer1);
 		}
 	}
 
@@ -656,12 +655,12 @@ initialize_freemap(struct volume_info *vol)
 				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 				layer2->bytes_free = 0;
 			}
-			layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
+			hammer_crc_set_layer2(layer2);
 			buffer2->cache.modified = 1;
 		}
 
 		layer1->blocks_free += layer1_count;
-		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+		hammer_crc_set_layer1(layer1);
 		buffer1->cache.modified = 1;
 	}
 
@@ -761,7 +760,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	blockmap->first_offset = HAMMER_ZONE_ENCODE(undo_zone, 0);
 	blockmap->next_offset = blockmap->first_offset;
 	blockmap->alloc_offset = HAMMER_ZONE_ENCODE(undo_zone, undo_limit);
-	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
+	hammer_crc_set_blockmap(blockmap);
 
 	limit_index = undo_limit / HAMMER_BIGBLOCK_SIZE;
 	assert(limit_index <= HAMMER_UNDO_LAYER2);
@@ -805,8 +804,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
 		tail->tail_size = bytes;
 
-		head->hdr_crc = crc32(head, HAMMER_FIFO_HEAD_CRCOFF) ^
-				crc32(head + 1, bytes - sizeof(*head));
+		hammer_crc_set_fifo_head(head, bytes);
 
 		scan += bytes;
 	}

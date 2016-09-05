@@ -55,6 +55,7 @@
 
 #include <vfs/hammer/hammer_disk.h>
 #include <vfs/hammer/hammer_ioctl.h>
+#include <vfs/hammer/hammer_crc.h>
 #include <uuid.h>
 
 struct cache_info {
@@ -117,10 +118,6 @@ extern int UseReadAhead;
 extern int DebugOpt;
 extern const char *zone_labels[];
 
-/* prototypes for sys/libkern/crc32.c */
-uint32_t crc32(const void *buf, size_t size);
-uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
-
 struct volume_info *init_volume(int32_t vol_no, const char *filename,
 				int oflags);
 struct volume_info *load_volume(const char *filename, int oflags);
@@ -172,7 +169,6 @@ void hammer_cache_flush(void);
 int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 void hammer_key_beg_init(hammer_base_elm_t base);
 void hammer_key_end_init(hammer_base_elm_t base);
-int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 int getyn(void);
 const char *sizetostr(off_t size);
 int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);

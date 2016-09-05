@@ -109,28 +109,6 @@ hammer_key_end_init(hammer_base_elm_t base)
 }
 
 int
-hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf)
-{
-	hammer_crc_t crc;
-
-	if (leaf->data_len == 0) {
-		crc = 0;
-	} else {
-		switch(leaf->base.rec_type) {
-		case HAMMER_RECTYPE_INODE:
-			if (leaf->data_len != sizeof(struct hammer_inode_data))
-				return(0);
-			crc = crc32(data, HAMMER_INODE_CRCSIZE);
-			break;
-		default:
-			crc = crc32(data, leaf->data_len);
-			break;
-		}
-	}
-	return (leaf->data_crc == crc);
-}
-
-int
 getyn(void)
 {
 	char buf[256];

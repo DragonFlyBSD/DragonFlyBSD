@@ -130,8 +130,7 @@ dump_blockmap(int zone)
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
 		xerr = ' ';  /* good */
-		if (layer1->layer1_crc !=
-		    crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
+		if (!hammer_crc_test_layer1(layer1)) {
 			xerr = 'B';
 			++num_bad_layer1;
 		}
@@ -157,8 +156,7 @@ dump_blockmap(int zone)
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 			xerr = aerr = ferr = ' ';  /* good */
-			if (layer2->entry_crc !=
-			    crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
+			if (!hammer_crc_test_layer2(layer2)) {
 				xerr = 'B';
 				++num_bad_layer2;
 			}
@@ -290,7 +288,7 @@ check_btree_node(hammer_off_t node_offset, int depth)
 	if (node == NULL) {
 		badc = 'B';
 		badm = 'I';
-	} else if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) != node->crc) {
+	} else if (!hammer_crc_test_btree(node)) {
 		badc = 'B';
 	}
 

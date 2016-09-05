@@ -631,7 +631,7 @@ format_root_directory(const char *label)
 
 	elm->leaf.data_offset = idata_off;
 	elm->leaf.data_len = sizeof(*idata);
-	elm->leaf.data_crc = crc32(idata, HAMMER_INODE_CRCSIZE);
+	hammer_crc_set_leaf(idata, &elm->leaf);
 
 	/*
 	 * Create the second node element for the PFS data.
@@ -652,9 +652,9 @@ format_root_directory(const char *label)
 
 	elm->leaf.data_offset = pfsd_off;
 	elm->leaf.data_len = sizeof(*pfsd);
-	elm->leaf.data_crc = crc32(pfsd, sizeof(*pfsd));
+	hammer_crc_set_leaf(pfsd, &elm->leaf);
 
-	bnode->crc = crc32(&bnode->crc + 1, HAMMER_BTREE_CRCSIZE);
+	hammer_crc_set_btree(bnode);
 
 	rel_buffer(data_buffer0);
 	rel_buffer(data_buffer1);

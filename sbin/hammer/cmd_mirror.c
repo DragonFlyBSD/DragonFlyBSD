@@ -1368,9 +1368,7 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 		/*
 		 * Validate the completed record
 		 */
-		if (mrec->head.rec_crc !=
-		    crc32((char *)mrec + HAMMER_MREC_CRCOFF,
-			  mrec->head.rec_size - HAMMER_MREC_CRCOFF)) {
+		if (!hammer_crc_test_mrec_head(&mrec->head, mrec->head.rec_size)) {
 			fprintf(stderr, "read_mrecords: malformed record "
 					"on pipe, bad crc\n");
 			exit(1);
@@ -1467,9 +1465,7 @@ read_mrecord(int fdin, int *errorp, hammer_ioc_mrecord_head_t pickup)
 		*errorp = EPIPE;
 		return(NULL);
 	}
-	if (mrec->head.rec_crc !=
-	    crc32((char *)mrec + HAMMER_MREC_CRCOFF,
-		  mrec->head.rec_size - HAMMER_MREC_CRCOFF)) {
+	if (!hammer_crc_test_mrec_head(&mrec->head, mrec->head.rec_size)) {
 		fprintf(stderr, "read_mrecord: bad CRC\n");
 		*errorp = EINVAL;
 		return(NULL);
@@ -1493,8 +1489,7 @@ write_mrecord(int fdout, uint32_t type, hammer_ioc_mrecord_any_t mrec,
 	mrec->head.signature = HAMMER_IOC_MIRROR_SIGNATURE;
 	mrec->head.type = type;
 	mrec->head.rec_size = bytes;
-	mrec->head.rec_crc = crc32((char *)mrec + HAMMER_MREC_CRCOFF,
-				   bytes - HAMMER_MREC_CRCOFF);
+	hammer_crc_set_mrec_head(&mrec->head, bytes);
 	if (write(fdout, mrec, bytes) != bytes) {
 		fprintf(stderr, "write_mrecord: error %d (%s)\n",
 			errno, strerror(errno));
