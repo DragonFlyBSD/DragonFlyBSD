@@ -468,10 +468,19 @@ RetryFault:
 	/*
 	 * Fail here if not a trivial anonymous page fault and TDF_NOFAULT
 	 * is set.
+	 *
+	 * Unfortunately a deadlock can occur if we are forced to page-in
+	 * from swap, but diving all the way into the vm_pager_get_page()
+	 * function to find out is too much.  Just check the object type.
+	 *
+	 * The deadlock is a CAM deadlock on a busy VM page when trying
+	 * to finish an I/O if another process gets stuck in
+	 * vop_helper_read_shortcut() due to a swap fault.
 	 */
 	if ((curthread->td_flags & TDF_NOFAULT) &&
 	    (retry ||
 	     fs.first_object->type == OBJT_VNODE ||
+	     fs.first_object->type == OBJT_SWAP ||
 	     fs.first_object->backing_object)) {
 		result = KERN_FAILURE;
 		unlock_things(&fs);
@@ -822,10 +831,15 @@ RetryFault:
 	/*
 	 * Fail here if not a trivial anonymous page fault and TDF_NOFAULT
 	 * is set.
+	 *
+	 * Unfortunately a deadlock can occur if we are forced to page-in
+	 * from swap, but diving all the way into the vm_pager_get_page()
+	 * function to find out is too much.  Just check the object type.
 	 */
 	if ((curthread->td_flags & TDF_NOFAULT) &&
 	    (retry ||
 	     fs.first_object->type == OBJT_VNODE ||
+	     fs.first_object->type == OBJT_SWAP ||
 	     fs.first_object->backing_object)) {
 		*errorp = KERN_FAILURE;
 		unlock_things(&fs);
