@@ -5772,6 +5772,7 @@ iwm_attach(device_t dev)
 	int txq_i, i;
 
 	sc->sc_dev = dev;
+	sc->sc_attached = 1;
 	IWM_LOCK_INIT(sc);
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
 #if defined(__DragonFly__)
@@ -6241,6 +6242,9 @@ iwm_detach_local(struct iwm_softc *sc, int do_net80211)
 	device_t dev = sc->sc_dev;
 	int i;
 
+	if (!sc->sc_attached)
+		return 0;
+	sc->sc_attached = 0;
 	if (sc->sc_tq) {
 #if defined(__DragonFly__)
 		/* doesn't exist for DFly, DFly drains tasks on free */

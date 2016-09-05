@@ -377,6 +377,7 @@ struct iwm_node {
 struct iwm_softc {
 	device_t		sc_dev;
 	uint32_t		sc_debug;
+	int			sc_attached;
 
 	struct lock		sc_lk;
 	struct mbufq		sc_snd;
