@@ -126,7 +126,7 @@ The default editor in DragonFly BSD is vi, which is efficient to use when you
 have learned it, but somewhat user-unfriendly.  To use ee (an easier but less
 powerful editor) instead, set the environment variable EDITOR to /usr/bin/ee
 %
-If you accidently end up inside vi, you can quit it by pressing Escape, colon
+If you accidentally end up inside vi, you can quit it by pressing Escape, colon
 (:), q (q), bang (!) and pressing return.
 %
 You can use aliases to decrease the amount of typing you need to do to get
