@@ -1644,6 +1644,25 @@ hammer_crc_test_volume(hammer_volume_ondisk_t ondisk)
 }
 
 static __inline hammer_crc_t
+hammer_crc_get_fifo_head(hammer_fifo_head_t head, int bytes)
+{
+	return(crc32(head, HAMMER_FIFO_HEAD_CRCOFF) ^
+		crc32(head + 1, bytes - sizeof(*head)));
+}
+
+static __inline void
+hammer_crc_set_fifo_head(hammer_fifo_head_t head, int bytes)
+{
+	head->hdr_crc = hammer_crc_get_fifo_head(head, bytes);
+}
+
+static __inline int
+hammer_crc_test_fifo_head(hammer_fifo_head_t head, int bytes)
+{
+	return(head->hdr_crc == hammer_crc_get_fifo_head(head, bytes));
+}
+
+static __inline hammer_crc_t
 hammer_crc_get_btree(hammer_node_ondisk_t node)
 {
 	return(crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE));

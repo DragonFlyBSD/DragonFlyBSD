@@ -249,8 +249,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 		tail->tail_size = bytes;
 
 		KKASSERT(bytes >= sizeof(undo->head));
-		undo->head.hdr_crc = crc32(undo, HAMMER_FIFO_HEAD_CRCOFF) ^
-			     crc32(&undo->head + 1, bytes - sizeof(undo->head));
+		hammer_crc_set_fifo_head(&undo->head, bytes);
 		undomap->next_offset += bytes;
 		hammer_stats_undo += bytes;
 
@@ -336,8 +335,7 @@ hammer_format_undo(void *base, uint32_t seqno)
 		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
 		tail->tail_size = bytes;
 
-		head->hdr_crc = crc32(head, HAMMER_FIFO_HEAD_CRCOFF) ^
-			     crc32(head + 1, bytes - sizeof(*head));
+		hammer_crc_set_fifo_head(head, bytes);
 	}
 }
 
@@ -408,8 +406,7 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
 		tail->tail_size = bytes;
 
-		head->hdr_crc = crc32(head, HAMMER_FIFO_HEAD_CRCOFF) ^
-			     crc32(head + 1, bytes - sizeof(*head));
+		hammer_crc_set_fifo_head(head, bytes);
 		hammer_modify_buffer_done(buffer);
 
 		hammer_stats_undo += bytes;

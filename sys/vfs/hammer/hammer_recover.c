@@ -929,8 +929,7 @@ _hammer_check_signature(hammer_fifo_head_t head, hammer_fifo_tail_t tail,
 	 * least large enough to fit the head and tail.
 	 */
 	if (head->hdr_type != HAMMER_HEAD_TYPE_PAD) {
-		crc = crc32(head, HAMMER_FIFO_HEAD_CRCOFF) ^
-		      crc32(head + 1, head->hdr_size - sizeof(*head));
+		crc = hammer_crc_get_fifo_head(head, head->hdr_size);
 		if (head->hdr_crc != crc) {
 			hkprintf("FIFO record CRC failed %08x %08x at %016jx\n",
 				head->hdr_crc, crc,

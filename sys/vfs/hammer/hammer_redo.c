@@ -242,8 +242,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		tail->tail_size = bytes;
 
 		KKASSERT(bytes >= sizeof(redo->head));
-		redo->head.hdr_crc = crc32(redo, HAMMER_FIFO_HEAD_CRCOFF) ^
-			     crc32(&redo->head + 1, bytes - sizeof(redo->head));
+		hammer_crc_set_fifo_head(&redo->head, bytes);
 		undomap->next_offset += bytes;
 		hammer_stats_redo += bytes;
 
