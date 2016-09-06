@@ -517,7 +517,7 @@ iwm_firmware_store_section(struct iwm_softc *sc,
 		return EINVAL;
 
 	fws = &sc->sc_fw.fw_sects[type];
-	if (fws->fw_count >= IWM_UCODE_SECT_MAX)
+	if (fws->fw_count >= IWM_UCODE_SECTION_MAX)
 		return EINVAL;
 
 	fwone = &fws->fw_sect[fws->fw_count];
@@ -584,7 +584,7 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 	size_t len;
 
 	if (fw->fw_status == IWM_FW_STATUS_DONE &&
-	    ucode_type != IWM_UCODE_TYPE_INIT)
+	    ucode_type != IWM_UCODE_INIT)
 		return 0;
 
 	while (fw->fw_status == IWM_FW_STATUS_INPROGRESS) {
@@ -747,9 +747,9 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 		}
 		case IWM_UCODE_TLV_SEC_RT:
 			if ((error = iwm_firmware_store_section(sc,
-			    IWM_UCODE_TYPE_REGULAR, tlv_data, tlv_len)) != 0) {
+			    IWM_UCODE_REGULAR, tlv_data, tlv_len)) != 0) {
 				device_printf(sc->sc_dev,
-				    "%s: IWM_UCODE_TYPE_REGULAR: iwm_firmware_store_section() failed; %d\n",
+				    "%s: IWM_UCODE_REGULAR: iwm_firmware_store_section() failed; %d\n",
 				    __func__,
 				    error);
 				goto parse_out;
@@ -757,9 +757,9 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 			break;
 		case IWM_UCODE_TLV_SEC_INIT:
 			if ((error = iwm_firmware_store_section(sc,
-			    IWM_UCODE_TYPE_INIT, tlv_data, tlv_len)) != 0) {
+			    IWM_UCODE_INIT, tlv_data, tlv_len)) != 0) {
 				device_printf(sc->sc_dev,
-				    "%s: IWM_UCODE_TYPE_INIT: iwm_firmware_store_section() failed; %d\n",
+				    "%s: IWM_UCODE_INIT: iwm_firmware_store_section() failed; %d\n",
 				    __func__,
 				    error);
 				goto parse_out;
@@ -767,9 +767,9 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 			break;
 		case IWM_UCODE_TLV_SEC_WOWLAN:
 			if ((error = iwm_firmware_store_section(sc,
-			    IWM_UCODE_TYPE_WOW, tlv_data, tlv_len)) != 0) {
+			    IWM_UCODE_WOWLAN, tlv_data, tlv_len)) != 0) {
 				device_printf(sc->sc_dev,
-				    "%s: IWM_UCODE_TYPE_WOW: iwm_firmware_store_section() failed; %d\n",
+				    "%s: IWM_UCODE_WOWLAN: iwm_firmware_store_section() failed; %d\n",
 				    __func__,
 				    error);
 				goto parse_out;
@@ -860,7 +860,7 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 
 		case IWM_UCODE_TLV_SEC_RT_USNIFFER:
 			if ((error = iwm_firmware_store_section(sc,
-			    IWM_UCODE_TYPE_REGULAR_USNIFFER, tlv_data,
+			    IWM_UCODE_REGULAR_USNIFFER, tlv_data,
 			    tlv_len)) != 0)
 				goto parse_out;
 			break;
@@ -2570,7 +2570,7 @@ iwm_load_cpu_sections_8000(struct iwm_softc *sc, struct iwm_fw_sects *fws,
 		(*first_ucode_section)++;
 	}
 
-	for (i = *first_ucode_section; i < IWM_UCODE_SECT_MAX; i++) {
+	for (i = *first_ucode_section; i < IWM_UCODE_SECTION_MAX; i++) {
 		last_read_idx = i;
 		data = fws->fw_sect[i].fws_data;
 		dlen = fws->fw_sect[i].fws_len;
@@ -2841,7 +2841,7 @@ iwm_run_init_mvm_ucode(struct iwm_softc *sc, int justnvm)
 
 	sc->sc_init_complete = 0;
 	if ((error = iwm_mvm_load_ucode_wait_alive(sc,
-	    IWM_UCODE_TYPE_INIT)) != 0) {
+	    IWM_UCODE_INIT)) != 0) {
 		device_printf(sc->sc_dev, "failed to load init firmware\n");
 		return error;
 	}
@@ -4673,7 +4673,7 @@ iwm_init_hw(struct iwm_softc *sc)
 	}
 
 	/* omstart, this time with the regular firmware */
-	error = iwm_mvm_load_ucode_wait_alive(sc, IWM_UCODE_TYPE_REGULAR);
+	error = iwm_mvm_load_ucode_wait_alive(sc, IWM_UCODE_REGULAR);
 	if (error) {
 		device_printf(sc->sc_dev, "could not load firmware\n");
 		goto error;
