@@ -3,10 +3,15 @@
 SUBDIR= libcipher
 .if !defined(NO_OPENSSL)
 SUBDIR+=libcrypto libssl
-SUBDIR+=libssh
+SUBDIR+=libssh	# slated to move to !NO_LIBRESSL block
+.endif
+.if !defined(NO_LIBRESSL)
+SUBDIR+=librecrypto libressl
 .endif
 
 # maximum parallelism
+# Note: libssl depends on libcrypto and libressl depends on librecrypto
+#       This dependency is taken care of by Makefile.inc1
 #
 SUBDIR_ORDERED=
 
