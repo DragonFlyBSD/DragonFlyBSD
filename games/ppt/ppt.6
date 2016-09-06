@@ -1,3 +1,4 @@
+.\"
 .\" Copyright (c) 1988, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -26,49 +27,58 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)bcd.6	8.1 (Berkeley) 5/31/93
-.\" $OpenBSD: bcd.6,v 1.21 2014/11/20 01:35:47 schwarze Exp $
+.\"	$OpenBSD: ppt.6,v 1.2 2014/11/18 02:25:12 schwarze Exp $
 .\"
 .Dd September 6, 2016
-.Dt BCD 6
+.Dt PPT 6
 .Os
 .Sh NAME
-.Nm bcd
-.Nd reformat input as punch cards
+.Nm ppt
+.Nd reformat input as paper tape
 .Sh SYNOPSIS
 .Nm
-.Op Fl l
 .Op Ar string ...
 .Nm
 .Fl d
-.Op Fl l
+.Op Fl b
 .Sh DESCRIPTION
 The
 .Nm
-command reads the given input and reformats it in the form of punched cards.
+command reads the given input and reformats it in the form of paper tape.
 Acceptable input are command line arguments or the standard input.
 .Pp
 The options are as follows:
-.Bl -tag -width Ds
-.It Fl d
-Decode punch cards on the standard input back to ASCII.
-.It Fl l
-Create or decode 80 column punch cards.
-The default is 48 columns.
+.Bl -tag -width 7n
+.It Fl d Op Fl b
+Decode paper tape on the standard input back to ASCII.
+Unprintable characters are visually encoded with
+.Xr vis 3
+unless the
+.Fl b
+option (binary) is also specified.
+A lowercase
+.Sq x
+is printed for undecipherable input lines.
 .El
 .Sh SEE ALSO
-.Xr ppt 6
+.Xr bcd 6
 .Sh STANDARDS
 .Rs
-.%I ISO 1681:1973
-.%R "Information processing--Unpunched paper cards--Specification"
-.Re
-.Pp
-.Rs
-.%I ISO 1682:1973
-.%R "Information processing--80 columns punched paper cards--Dimensions and location of rectangular punched holes"
+.%I ECMA-10
+.%R "ECMA Standard for Data Interchange on Punched Tape"
 .Re
 .Sh HISTORY
 The
 .Nm
 command first appeared in
-.Bx 3 .
+.Bx 4.3 Tahoe .
+The options
+.Fl d
+and
+.Fl b
+first appeared in
+.Ox 3.3 .
+.Sh AUTHORS
+.An Keith Bostic
+.An Paul Janzen Aq Mt pjanzen@foatdi.net
+.An Michael Shalayeff Aq Mt mickey@lucifier.net

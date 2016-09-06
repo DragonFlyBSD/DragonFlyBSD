@@ -28,33 +28,105 @@
  *
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ppt.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/ppt/ppt.c,v 1.7 1999/12/12 06:30:45 billf Exp $
- * $DragonFly: src/games/ppt/ppt.c,v 1.4 2005/03/18 23:20:34 swildner Exp $
+ * $NetBSD: ppt.c,v 1.4 1995/03/23 08:35:40 cgd Exp $
+ * $OpenBSD: ppt.c,v 1.17 2016/03/07 12:07:56 mestre Exp $
  */
 
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <vis.h>
 
+
+#define	EDGE	"___________"
+
+static void	usage(void);
 static void	putppt(int);
+static int	getppt(const char *buf);
+
+void
+usage(void)
+{
+	fprintf(stderr, "usage: %s [string ...]\n", getprogname());
+	fprintf(stderr, "usage: %s -d [-b]\n", getprogname());
+	exit(1);
+}
 
 int
 main(int argc, char **argv)
 {
-	int c;
-	char *p;
+	char *p, buf[132];
+	int c, start, seenl, dflag, bflag;
 
-	puts("___________");
-	if (argc > 1)
-		while ((p = *++argv))
-			for (; *p != '\0'; ++p)
-				putppt((int)*p);
-	else while ((c = getchar()) != EOF)
-		putppt(c);
-	puts("___________");
-	exit(0);
+	/* revoke setgid privileges */
+	setgid(getgid());
+
+	dflag = bflag = 0;
+	while ((c = getopt(argc, argv, "bdh")) != -1)
+		switch(c) {
+		case 'd':
+			dflag = 1;
+			break;
+		case 'b':
+			bflag = 1;
+			break;
+		case 'h':
+		default:
+			usage();
+		}
+	if (bflag && !dflag)
+		usage();
+	argc -= optind;
+	argv += optind;
+
+	if (dflag) {
+		if (argc > 0)
+			usage();
+
+		seenl = start = 0;
+		while (fgets(buf, sizeof(buf), stdin) != NULL) {
+			c = getppt(buf);
+			if (c == -2)
+				continue;
+			if (c == -1) {
+				if (start)
+					/* lost sync */
+					putchar('x');
+				continue;
+			}
+			start = 1;
+			if (bflag)
+				putchar(c);
+			else {
+				char vbuf[5];
+				vis(vbuf, c, VIS_NOSLASH, 0);
+				fputs(vbuf, stdout);
+			}
+			seenl = (c == '\n');
+		}
+		if (!feof(stdin))
+			err(1, "fgets");
+		if (!seenl && !bflag)
+			putchar('\n');
+	} else {
+		puts(EDGE);
+		if (argc > 0)
+			while ((p = *argv++)) {
+				for (; *p != '\0'; ++p)
+					putppt((int)*p);
+				if (*argv)
+					putppt((int)' ');
+			}
+		else while ((c = getchar()) != EOF)
+			putppt(c);
+		puts(EDGE);
+	}
+	return 0;
 }
 
-static void
+void
 putppt(int c)
 {
 	int i;
@@ -70,4 +142,37 @@ putppt(int c)
 	}
 	putchar('|');
 	putchar('\n');
+}
+
+int
+getppt(const char *buf)
+{
+	int c;
+
+	/* Demand left-aligned paper tape, but allow comments to the right */
+	if (strncmp(buf, EDGE, strlen(EDGE)) == 0)
+	    return (-2);
+	if (strlen(buf) < 12 || buf[0] != '|' || buf[10] != '|' ||
+	    buf[6] != '.' || strspn(buf, "| o.") < 11)
+		return (-1);
+
+	c = 0;
+	if (buf[1] != ' ')
+		c |= 0200;
+	if (buf[2] != ' ')
+		c |= 0100;
+	if (buf[3] != ' ')
+		c |= 0040;
+	if (buf[4] != ' ')
+		c |= 0020;
+	if (buf[5] != ' ')
+		c |= 0010;
+	if (buf[7] != ' ')
+		c |= 0004;
+	if (buf[8] != ' ')
+		c |= 0002;
+	if (buf[9] != ' ')
+		c |= 0001;
+
+	return (c);
 }

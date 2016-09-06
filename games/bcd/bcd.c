@@ -31,8 +31,8 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)bcd.c	8.2 (Berkeley) 3/20/94
- * $FreeBSD: src/games/bcd/bcd.c,v 1.8 1999/11/30 03:48:41 billf Exp $
- * $DragonFly: src/games/bcd/bcd.c,v 1.3 2005/08/03 13:26:19 eirikn Exp $
+ * $NetBSD: bcd.c,v 1.6 1995/04/24 12:22:23 cgd Exp $
+ * $OpenBSD: bcd.c,v 1.25 2016/03/07 12:07:55 mestre Exp $
  */
 
 /*
@@ -65,14 +65,13 @@
  * Nov 5, 1993
  */
 
-#include <sys/types.h>
-
-#include <stdio.h>
-#include <string.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-u_short holes[256] = {
+static const u_short holes[256] = {
     0x0,	 0x0,	  0x0,	   0x0,	    0x0,     0x0,     0x0,     0x0,
     0x0,	 0x0,	  0x0,	   0x0,	    0x0,     0x0,     0x0,     0x0,
     0x0,	 0x0,	  0x0,	   0x0,	    0x0,     0x0,     0x0,     0x0,
@@ -112,54 +111,96 @@ u_short holes[256] = {
  */
 #define	bit(w,i)	((w)&(1<<(i)))
 
-static void printcard(char *);
+static void	printonecard(char *, size_t);
+static void	printcard(char *);
+static int	decode(char *buf);
+
+static unsigned int	columns = 48;
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-	char cardline[80];
+	char cardline[1024];
+	int dflag = 0;
+	int ch;
 
 	/* revoke setgid privileges */
 	setgid(getgid());
+
+	while ((ch = getopt(argc, argv, "dl")) != -1) {
+		switch (ch) {
+		case 'd':
+			dflag = 1;
+			break;
+		case 'l':
+			columns = 80;
+			break;
+		default:
+			fprintf(stderr, "usage: %s [-l] [string ...]\n",
+			    getprogname());
+			fprintf(stderr, "usage: %s -d [-l]\n", getprogname());
+			return 1;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (dflag) {
+		while (decode(cardline) == 0) {
+			printf("%s\n", cardline);
+		}
+		return 0;
+	}
+
 
 	/*
 	 * The original bcd prompts with a "%" when reading from stdin,
 	 * but this seems kind of silly.  So this one doesn't.
 	 */
-
-	if (argc > 1) {
-		while (--argc)
-			printcard(*++argv);
-	} else
+	if (argc > 0) {
+		while (argc--) {
+			printcard(*argv);
+			argv++;
+		}
+	} else {
 		while (fgets(cardline, sizeof(cardline), stdin))
 			printcard(cardline);
-	return (0);
+	}
+	return 0;
 }
 
-#define	COLUMNS	48
-
-static void
+void
 printcard(char *str)
 {
-	static char rowchars[] = "   123456789";
-	int i, row;
-	char *p;
+	size_t len = strlen(str);
 
-	/* ruthlessly remove newlines and truncate at 48 characters. */
-	if ((p = index(str, '\n')))
-		*p = '\0';
+	while (len > 0) {
+		size_t amt = len > columns ? columns : len;
+		printonecard(str, amt);
+		str += amt;
+		len -= amt;
+	}
+}
 
-	if (strlen(str) > COLUMNS)
-		str[COLUMNS] = '\0';
+void
+printonecard(char *str, size_t len)
+{
+	static const char rowchars[] = "   123456789";
+	unsigned int i;
+	int row;
+	char *p, *end;
+
+	end = str + len;
 
 	/* make string upper case. */
-	for (p = str; *p; ++p)
+	for (p = str; p < end; ++p) {
 		if (isascii(*p) && islower(*p))
 			*p = toupper(*p);
+	}
 
-	 /* top of card */
+	/* top of card */
 	putchar(' ');
-	for (i = 1; i <= COLUMNS; ++i)
+	for (i = 1; i <= columns; ++i)
 		putchar('_');
 	putchar('\n');
 
@@ -169,12 +210,12 @@ printcard(char *str)
 	 */
 	p = str;
 	putchar('/');
-	for (i = 1; *p; i++, p++)
+	for (i = 1; p < end; i++, p++)
 		if (holes[(int)*p])
 			putchar(*p);
 		else
 			putchar(' ');
-	while (i++ <= COLUMNS)
+	while (i++ <= columns)
 		putchar(' ');
 	putchar('|');
 	putchar('\n');
@@ -187,13 +228,13 @@ printcard(char *str)
 	 */
 	for (row = 0; row <= 11; ++row) {
 		putchar('|');
-		for (i = 0, p = str; *p; i++, p++) {
+		for (i = 0, p = str; p < end; i++, p++) {
 			if (bit(holes[(int)*p], 11 - row))
 				putchar(']');
 			else
 				putchar(rowchars[row]);
 		}
-		while (i++ < COLUMNS)
+		while (i++ < columns)
 			putchar(rowchars[row]);
 		putchar('|');
 		putchar('\n');
@@ -201,8 +242,62 @@ printcard(char *str)
 
 	/* bottom of card */
 	putchar('|');
-	for (i = 1; i <= COLUMNS; i++)
+	for (i = 1; i <= columns; i++)
 		putchar('_');
 	putchar('|');
 	putchar('\n');
+}
+
+#define LINES 12
+
+int
+decode(char *buf)
+{
+	unsigned int i;
+	int col;
+	char lines[LINES][1024];
+	char tmp[1024];
+
+	/* top of card; if missing signal no more input */
+	if (fgets(tmp, sizeof(tmp), stdin) == NULL)
+		return 1;
+	/* text line, ignored */
+	if (fgets(tmp, sizeof(tmp), stdin) == NULL)
+		return -1;
+	/* twelve lines of data */
+	for (i = 0; i < LINES; i++)
+		if (fgets(lines[i], sizeof(lines[i]), stdin) == NULL)
+			return -1;
+	/* bottom of card */
+	if (fgets(tmp, sizeof(tmp), stdin) == NULL)
+		return -1;
+
+	for (i = 0; i < LINES; i++) {
+		if (strlen(lines[i]) < columns + 2)
+			return -1;
+		if (lines[i][0] != '|' || lines[i][columns + 1] != '|')
+			return -1;
+		memmove(&lines[i][0], &lines[i][1], columns);
+		lines[i][columns] = 0;
+	}
+	for (col = 0; col < (int)columns; col++) {
+		unsigned int val = 0;
+		for (i = 0; i < LINES; i++)
+			if (lines[i][col] == ']')
+				val |= 1 << (11 - i);
+		buf[col] = ' ';
+		for (i = 0; i < 256; i++)
+			if (holes[i] == val && holes[i]) {
+				buf[col] = i;
+				break;
+			}
+	}
+	buf[col] = 0;
+	for (col = columns - 1; col >= 0; col--) {
+		if (buf[col] == ' ')
+			buf[col] = '\0';
+		else
+			break;
+	}
+	return 0;
 }
