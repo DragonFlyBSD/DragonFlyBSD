@@ -910,21 +910,9 @@ typedef struct hammer_mount {
 #define HAMMER_MOUNT_REDO_RECOVERY_REQ	0x0008
 #define HAMMER_MOUNT_REDO_RECOVERY_RUN	0x0010
 
-#define HAMMER_VOLUME_NUMBER_ADD(hmp, vol)			\
-	(hmp)->volume_map[(vol)->vol_no >> 6] |=		\
-	((uint64_t)1 << ((vol)->vol_no & ((1 << 6) - 1)))
-
-#define HAMMER_VOLUME_NUMBER_DEL(hmp, vol)			\
-	(hmp)->volume_map[(vol)->vol_no >> 6] &=		\
-	~((uint64_t)1 << ((vol)->vol_no & ((1 << 6) - 1)))
-
-#define HAMMER_VOLUME_NUMBER_IS_SET(hmp, n)			\
-	(((hmp)->volume_map[(n) >> 6] &				\
-	((uint64_t)1 << ((n) & ((1 << 6) - 1)))) != 0)
-
-#define HAMMER_VOLUME_NUMBER_FOREACH(hmp, n)			\
-	for (n = 0; n < HAMMER_MAX_VOLUMES; n++)		\
-		if (HAMMER_VOLUME_NUMBER_IS_SET(hmp, n))
+#define HAMMER_VOLUME_NUMBER_FOREACH(hmp, n)		\
+	for (n = 0; n < HAMMER_MAX_VOLUMES; n++)	\
+		if (hammer_volume_number_test(hmp, n))
 
 /*
  * Minium buffer cache bufs required to rebalance the B-Tree.
@@ -1630,6 +1618,39 @@ hammer_buf_attach_io(struct buf *bp, hammer_io_t io)
 	/* struct buf and struct hammer_io are 1:1 */
 	KKASSERT(hammer_buf_peek_io(bp) == NULL);
 	bp->b_priv = io;
+}
+
+static __inline int
+__hammer_vol_index(int vol_no)
+{
+	return(vol_no >> 6);
+}
+
+static __inline uint64_t
+__hammer_vol_low(int vol_no)
+{
+	return((uint64_t)1 << (vol_no & ((1 << 6) - 1)));
+}
+
+static __inline void
+hammer_volume_number_add(hammer_mount_t hmp, hammer_volume_t vol)
+{
+	int i = __hammer_vol_index(vol->vol_no);
+	hmp->volume_map[i] |= __hammer_vol_low(vol->vol_no);
+}
+
+static __inline void
+hammer_volume_number_del(hammer_mount_t hmp, hammer_volume_t vol)
+{
+	int i = __hammer_vol_index(vol->vol_no);
+	hmp->volume_map[i] &= ~__hammer_vol_low(vol->vol_no);
+}
+
+static __inline int
+hammer_volume_number_test(hammer_mount_t hmp, int n)
+{
+	int i = __hammer_vol_index(n);
+	return((hmp->volume_map[i] & __hammer_vol_low(n)) != 0);
 }
 
 #define hkprintf(format, args...)			\

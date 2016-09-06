@@ -91,7 +91,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Find an unused volume number.
 	 */
 	while (free_vol_no < HAMMER_MAX_VOLUMES &&
-		HAMMER_VOLUME_NUMBER_IS_SET(hmp, free_vol_no)) {
+		hammer_volume_number_test(hmp, free_vol_no)) {
 		++free_vol_no;
 	}
 	if (free_vol_no >= HAMMER_MAX_VOLUMES) {

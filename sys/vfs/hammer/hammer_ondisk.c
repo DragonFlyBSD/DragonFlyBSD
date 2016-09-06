@@ -231,7 +231,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	}
 
 	if (error == 0)
-		HAMMER_VOLUME_NUMBER_ADD(hmp, volume);
+		hammer_volume_number_add(hmp, volume);
 
 	/*
 	 * Set the root volume .  HAMMER special cases rootvol the structure.
@@ -385,7 +385,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 	 * Destroy the structure
 	 */
 	RB_REMOVE(hammer_vol_rb_tree, &hmp->rb_vols_root, volume);
-	HAMMER_VOLUME_NUMBER_DEL(hmp, volume);
+	hammer_volume_number_del(hmp, volume);
 	hammer_free_volume(volume);
 	return(0);
 }
