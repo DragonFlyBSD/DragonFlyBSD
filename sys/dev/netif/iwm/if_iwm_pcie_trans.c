@@ -244,7 +244,7 @@ iwm_nic_lock(struct iwm_softc *sc)
 	IWM_SETBITS(sc, IWM_CSR_GP_CNTRL,
 	    IWM_CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
 
-	if (sc->sc_device_family == IWM_DEVICE_FAMILY_8000)
+	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_8000)
 		DELAY(2);
 
 	if (iwm_poll_bit(sc, IWM_CSR_GP_CNTRL,
@@ -418,7 +418,7 @@ iwm_apm_init(struct iwm_softc *sc)
 	IWM_DPRINTF(sc, IWM_DEBUG_RESET, "iwm apm start\n");
 
 	/* Disable L0S exit timer (platform NMI Work/Around) */
-	if (sc->sc_device_family != IWM_DEVICE_FAMILY_8000) {
+	if (sc->cfg->device_family != IWM_DEVICE_FAMILY_8000) {
 		IWM_SETBITS(sc, IWM_CSR_GIO_CHICKEN_BITS,
 		    IWM_CSR_GIO_CHICKEN_BITS_REG_BIT_DIS_L0S_EXIT_TIMER);
 	}
@@ -469,7 +469,7 @@ iwm_apm_init(struct iwm_softc *sc)
 		goto out;
 	}
 
-	if (sc->host_interrupt_operation_mode) {
+	if (sc->cfg->host_interrupt_operation_mode) {
 		/*
 		 * This is a bit of an abuse - This is needed for 7260 / 3160
 		 * only check host_interrupt_operation_mode even if this is
@@ -498,7 +498,7 @@ iwm_apm_init(struct iwm_softc *sc)
 	 * do not disable clocks.  This preserves any hardware bits already
 	 * set by default in "CLK_CTRL_REG" after reset.
 	 */
-	if (sc->sc_device_family == IWM_DEVICE_FAMILY_7000) {
+	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000) {
 		iwm_write_prph(sc, IWM_APMG_CLK_EN_REG,
 		    IWM_APMG_CLK_VAL_DMA_CLK_RQT);
 		DELAY(20);
