@@ -189,6 +189,9 @@ SYSCTL_INT(_machdep, OID_AUTO, report_invltlb_src, CTLFLAG_RW,
 static int	optimized_invltlb;
 SYSCTL_INT(_machdep, OID_AUTO, optimized_invltlb, CTLFLAG_RW,
 	&optimized_invltlb, 0, "");
+static int	all_but_self_ipi_enable = 1;
+SYSCTL_INT(_machdep, OID_AUTO, all_but_self_ipi_enable, CTLFLAG_RW,
+	&all_but_self_ipi_enable, 0, "");
 
 /* Local data for detecting CPU TOPOLOGY */
 static int core_bits = 0;
@@ -815,7 +818,7 @@ smitest(void)
 
 cpumask_t smp_smurf_mask;
 static cpumask_t smp_invltlb_mask;
-#define LOOPMASK   (/* 32 * */ 16 * 128 * 1024 - 1)
+#define LOOPRECOVER
 #ifdef LOOPMASK_IN
 cpumask_t smp_in_mask;
 #endif
@@ -887,7 +890,7 @@ smp_invltlb(void)
 	struct mdglobaldata *md = mdcpu;
 	cpumask_t mask;
 	unsigned long rflags;
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	uint64_t tsc_base = rdtsc();
 	int repeats = 0;
 #endif
@@ -936,7 +939,8 @@ smp_invltlb(void)
 	 * the critical section count on the target cpus.
 	 */
 	CPUMASK_ORMASK(mask, md->mi.gd_cpumask);
-	if (CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
+	if (all_but_self_ipi_enable &&
+	    CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
 		CPUMASK_NANDMASK(mask, md->mi.gd_cpumask);
@@ -961,7 +965,7 @@ smp_invltlb(void)
 	while (CPUMASK_CMPMASKNEQ(smp_invltlb_mask, mask)) {
 		smp_inval_intr();
 		cpu_pause();
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 		if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
 			kprintf("smp_invltlb %d: waited too long %08jx "
 				"dbg=%08jx %08jx\n",
@@ -970,6 +974,8 @@ smp_invltlb(void)
 				smp_idleinvl_mask.ary[0],
 				smp_idleinvl_reqs.ary[0]);
 			mdcpu->gd_xinvaltlb = 0;
+			ATOMIC_CPUMASK_NANDMASK(smp_smurf_mask,
+						smp_invltlb_mask);
 			smp_invlpg(&smp_active_mask);
 			tsc_base = rdtsc();
 			if (++repeats > 10) {
@@ -1023,7 +1029,8 @@ smp_invlpg(cpumask_t *cmdmask)
 	 *
 	 * We do not include our own cpu when issuing the IPI.
 	 */
-	if (CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
+	if (all_but_self_ipi_enable &&
+	    CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
 		CPUMASK_NANDMASK(mask, md->mi.gd_cpumask);
@@ -1046,6 +1053,9 @@ smp_sniff(void)
 	globaldata_t gd = mycpu;
 	int dummy;
 
+	/*
+	 * Ignore all_but_self_ipi_enable here and just use it.
+	 */
 	all_but_self_ipi(XSNIFF_OFFSET);
 	gd->gd_sample_pc = smp_sniff;
 	gd->gd_sample_sp = &dummy;
@@ -1065,7 +1075,7 @@ smp_inval_intr(void)
 {
 	struct mdglobaldata *md = mdcpu;
 	cpumask_t cpumask;
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	uint64_t tsc_base = rdtsc();
 #endif
 
@@ -1135,7 +1145,7 @@ loop:
 			cpu_mfence();
 		}
 
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 		if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
 			kprintf("smp_inval_intr %d inv=%08jx tlbm=%08jx "
 				"idle=%08jx/%08jx\n",

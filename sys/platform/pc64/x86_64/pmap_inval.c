@@ -62,10 +62,23 @@
 #include <machine/globaldata.h>
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
+#include <machine/clock.h>
 
 #if 1	/* DEBUGGING */
-#define LOOPMASK	(/* 32 * */ 16 * 128 * 1024 - 1)
+#define LOOPRECOVER			/* enable watchdog */
 #endif
+
+/*
+ * Watchdog recovery interval = 1.0 / (1 << radix), or 1/16 second
+ * for the initial watchdog.  If the initial watchdog fails, further
+ * instances occur at 1/2 second intervals.
+ *
+ * The watchdog value is generous for two reasons.  First, because the
+ * situaation is not supposed to happen at all (but does), and second,
+ * because VMs could be very slow at handling IPIs.
+ */
+#define LOOPRECOVER_RADIX1	4	/* initial recovery */
+#define LOOPRECOVER_RADIX2	1	/* repeated recoveries */
 
 #define MAX_INVAL_PAGES		128
 
@@ -79,10 +92,10 @@ struct pmap_inval_info {
 	int		npgs;
 	cpumask_t	done;
 	cpumask_t	mask;
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	cpumask_t	sigmask;
 	int		failed;
-	int		xloops;
+	int64_t		tsc_target;
 #endif
 } __cachealign;
 
@@ -90,7 +103,7 @@ typedef struct pmap_inval_info pmap_inval_info_t;
 
 static pmap_inval_info_t	invinfo[MAXCPU];
 extern cpumask_t		smp_invmask;
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 #ifdef LOOPMASK_IN
 extern cpumask_t		smp_in_mask;
 #endif
@@ -136,16 +149,26 @@ pmap_inval_done(pmap_t pmap)
 	crit_exit_id("inval");
 }
 
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 
 /*
- * API function - invalidation the pte at (va) and replace *ptep with
- * npte atomically across the pmap's active cpus.
- *
- * This is a holy mess.
- *
- * Returns the previous contents of *ptep.
+ * Debugging and lost IPI recovery code.
  */
+static
+__inline
+int
+loopwdog(struct pmap_inval_info *info)
+{
+	int64_t tsc;
+
+	tsc = rdtsc();
+	if (info->tsc_target - tsc < 0 && tsc_frequency) {
+		info->tsc_target = tsc + (tsc_frequency >> LOOPRECOVER_RADIX2);
+		return 1;
+	}
+	return 0;
+}
+
 static
 void
 loopdebug(const char *msg, pmap_inval_info_t *info)
@@ -154,29 +177,29 @@ loopdebug(const char *msg, pmap_inval_info_t *info)
 	int cpu = mycpu->gd_cpuid;
 
 	cpu_lfence();
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	atomic_add_long(&smp_smurf_mask.ary[0], 0);
 #endif
-	kprintf("%s %d mode=%d m=%08jx d=%08jx "
-#ifdef LOOPMASK
+	kprintf("ipilost-%s! %d mode=%d m=%08jx d=%08jx "
+#ifdef LOOPRECOVER
 		"s=%08jx "
 #endif
 #ifdef LOOPMASK_IN
 		"in=%08jx "
 #endif
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 		"smurf=%08jx\n"
 #endif
 		, msg, cpu, info->mode,
 		info->mask.ary[0],
 		info->done.ary[0]
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 		, info->sigmask.ary[0]
 #endif
 #ifdef LOOPMASK_IN
 		, smp_in_mask.ary[0]
 #endif
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 		, smp_smurf_mask.ary[0]
 #endif
 		);
@@ -277,8 +300,12 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	 * We need a critical section to prevent getting preempted while
 	 * we setup our command.  A preemption might execute its own
 	 * pmap_inval*() command and create confusion below.
+	 *
+	 * tsc_target is our watchdog timeout that will attempt to recover
+	 * from a lost IPI.  Set to 1/16 second for now.
 	 */
 	info = &invinfo[cpu];
+	info->tsc_target = rdtsc() + (tsc_frequency >> LOOPRECOVER_RADIX1);
 
 	/*
 	 * We must wait for other cpus which may still be finishing up a
@@ -289,13 +316,10 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	 * act on our command until we set our done bits.
 	 */
 	while (CPUMASK_TESTNZERO(info->done)) {
-#ifdef LOOPMASK
-		int loops;
-
-		loops = ++info->xloops;
-		if ((loops & LOOPMASK) == 0) {
+#ifdef LOOPRECOVER
+		if (loopwdog(info)) {
 			info->failed = 1;
-			loopdebug("orig_waitA", info);
+			loopdebug("A", info);
 			/* XXX recover from possible bug */
 			CPUMASK_ASSZERO(info->done);
 		}
@@ -316,7 +340,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	info->ptep = ptep;
 	info->npte = npte;
 	info->opte = 0;
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	info->failed = 0;
 #endif
 	info->mode = INVSTORE;
@@ -344,7 +368,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	 * cpu clears its mask bit, but other cpus CAN start clearing their
 	 * mask bits).
 	 */
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	info->sigmask = tmpmask;
 	CHECKSIGMASK(info);
 #endif
@@ -428,13 +452,10 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * up a prior operation.
 	 */
 	while (CPUMASK_TESTNZERO(info->done)) {
-#ifdef LOOPMASK
-		int loops;
-
-		loops = ++info->xloops;
-		if ((loops & LOOPMASK) == 0) {
+#ifdef LOOPRECOVER
+		if (loopwdog(info)) {
 			info->failed = 1;
-			loopdebug("orig_waitB", info);
+			loopdebug("B", info);
 			/* XXX recover from possible bug */
 			CPUMASK_ASSZERO(info->done);
 		}
@@ -455,7 +476,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	info->ptep = ptep;
 	info->npte = npte;
 	info->opte = opte;
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	info->failed = 0;
 #endif
 	info->mode = INVCMPSET;
@@ -473,7 +494,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * changing (other cpus can't clear done bits until the originating
 	 * cpu clears its mask bit).
 	 */
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 	info->sigmask = tmpmask;
 	CHECKSIGMASK(info);
 #endif
@@ -604,9 +625,6 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 	int loopme = 0;
 	int cpu;
 	cpumask_t cpumask;
-#ifdef LOOPMASK
-	int loops;
-#endif
 
 	/*
 	 * Check all cpus for invalidations we may need to service.
@@ -618,7 +636,7 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
         while (CPUMASK_TESTNZERO(cpumask)) {
                 int n = BSFCPUMASK(cpumask);
 
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 		KKASSERT(n >= 0 && n < MAXCPU);
 #endif
 
@@ -633,7 +651,7 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 		if (!CPUMASK_TESTBIT(info->done, cpu))
 			continue;
 		cpu_lfence();
-#ifdef LOOPMASK
+#ifdef LOOPRECOVER
 		if (toolong) {
 			kprintf("pminvl %d->%d %08jx %08jx mode=%d\n",
 				cpu, n, info->done.ary[0], info->mask.ary[0],
@@ -708,15 +726,22 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 				/*
 				 * Originator waits for other cpus to enter
 				 * their loop (aka quiesce).
+				 *
+				 * If this bugs out the IPI may have been lost,
+				 * try to reissue by resetting our own
+				 * reentrancy bit and clearing the smurf mask
+				 * for the cpus that did not respond, then
+				 * reissuing the IPI.
 				 */
 				loopme = 1;
-#ifdef LOOPMASK
-				loops = ++info->xloops;
-				if ((loops & LOOPMASK) == 0) {
+#ifdef LOOPRECOVER
+				if (loopwdog(info)) {
 					info->failed = 1;
-					loopdebug("orig_waitC", info);
+					loopdebug("C", info);
 					/* XXX recover from possible bug */
 					mdcpu->gd_xinvaltlb = 0;
+					ATOMIC_CPUMASK_NANDMASK(smp_smurf_mask,
+								info->mask);
 					cpu_disable_intr();
 					smp_invlpg(&smp_active_mask);
 					cpu_enable_intr();
@@ -767,9 +792,7 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 					va += PAGE_SIZE;
 				}
 			}
-#ifdef LOOPMASK
-			info->xloops = 0;
-#endif
+
 			/* leave loopme alone */
 			/* other cpus may still be finishing up */
 			/* can't race originator since that's us */
