@@ -34,12 +34,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $
- * $DragonFly: src/games/caesar/caesar.c,v 1.4 2005/03/01 22:47:10 joerg Exp $
- *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)caesar.c    8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $
+ * $FreeBSD: head/usr.bin/caesar/caesar.c 241846 2012-10-22 03:06:53Z eadler $
  */
 
 #include <ctype.h>
