@@ -17,6 +17,7 @@
 .Op Fl r Ar poll_time
 .Op Fl u Ar trigger_up
 .Op Fl B Ar minimum_battery_life
+.Op Fl H Ar lowtemp:hightemp
 .Op Fl L Ar battery_life_linger
 .Op Fl P Ar battery_poll_interval
 .Op Fl T Ar sample_time
@@ -63,13 +64,15 @@ when the CPU is idle.
 .It Fl h Ar highest_freq
 If CPU power domain frequency adjustment is enabled,
 then frequency of CPU power domains will not be set to a value higher
-than the specified limit.
-(unit: MHz)
+than the specified limit (unit: MHz).
 .It Fl l Ar lowest_freq
 If CPU power domain frequency adjustment is enabled,
 then frequency of CPU power domains will not be set to a value lower
-than the specified limit.
-(unit: MHz)
+than the specified limit (unit: MHz).
+.Pp
+NOTE: This option is ignored if powerd is in temperature management.
+Temperature management will lower the frequency in excess of this value
+if necessary (but usually doesn't have to).
 .It Fl p Ar hysteresis
 Percent of the upper limit to subtract as an hysteresis value to scale
 down to the min performance.
@@ -98,6 +101,35 @@ If battery life is less than or equal to the specified value,
 the machine will start shutting down process.
 Default is 2
 (2% battery life left).
+.It Fl H Ar lowtemp:hightemp
+If the cpu temperature goes above lowtemp, powerd will begin ramping down
+the cpu frequency, reaching the lowest possible cpu frequency when the cpu
+temperature reaches hightemp.
+The default range is 75:85 (in degrees C), which tends to hold a laptop
+to ~80C under heavy load.
+Generally
+speaking, no machine cpu should be allowed to go above 80C even if the
+cpu can handle it, it means something is seriously wrong with your cooling
+system and you are stressing the cpu and mobo if you allow it.
+.Pp
+The default range starts at 75C.  Most desktops with reasonable cooling
+will not exceed this value so it makes for a good default.  Laptops can
+easily exceed 75C, sometimes reaching into the high 80's or even the 90's
+due to poor cooling and vendors tweaking their BIOS/fan-controls to the
+high side to do well in benchmarks.
+If you want your laptop to last, however, you really don't want it to get
+that hot.  For powerd to be able to stabilize, we recommend that a minimum
+of a 10C range be used.  So, for example, 70:80, or 75:85, and so forth.
+The user can change this range when starting powerd by adjusting
+.Va powerd_flags
+in
+.Pa /etc/rc.conf .
+.Pp
+This option can cause cpu fans to oscillate, and you may need to adjust the
+range if the oscillation is annoying to you.  The basic reason for this is
+that small changes to the cpu frequency can have a huge effect on system
+power consumption, causing the BIOS-controlled fan to react, which in turn
+also changes the temperature and causes powerd to react.
 .It Fl L Ar battery_life_linger
 If battery life is less than or equal to the configured value,
 shutting down the machine will be delayed by the specified value.
@@ -127,8 +159,20 @@ a workstation might want to use a value of 30.0.
 .Sh EXIT STATUS
 The
 .Nm
-utility will exit with a non-zero code if the required sysctls are not
+utility will exit with a non-zero code if required sysctls are not
 present.
+If the system is unable to report temperature,
+.Nm
+will still run, but will not be able to do any temperature-based frequency
+management.
+.Pp
+If a new instance of
+.Nm
+is run from the command line, it will automatically kill any previous
+instance running in the background.
+The system operator does not have to manually kill or signal
+.Nm
+when restarting it, simply invoke a new copy.
 .Sh EXAMPLES
 The defaults work well for servers but a workstation user might want
 to use something like the following in their

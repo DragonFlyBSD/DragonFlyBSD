@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2010,2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -47,10 +47,12 @@
 #include <sys/file.h>
 #include <sys/queue.h>
 #include <sys/soundcard.h>
+#include <sys/sensors.h>
 #include <sys/time.h>
 #include <machine/cpufunc.h>
 #include <machine/cpumask.h>
 #include <err.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -82,6 +84,7 @@ struct cpu_state {
 
 static void usage(void);
 static void get_ncpus(void);
+static void mon_cputemp(void);
 
 /* usched cpumask */
 static void get_uschedcpus(void);
@@ -112,6 +115,7 @@ static void get_cputime(double);
 static int get_nstate(struct cpu_state *, double);
 static void add_spare_cpus(const cpumask_t, int);
 static void restore_perf(void);
+static void set_global_freq(int freq);
 
 /* Battery monitoring */
 static int has_battery(void);
@@ -139,6 +143,9 @@ static char cpu_perf_cx[CST_STRLEN];
 static int cpu_perf_cxlen;
 static char cpu_idle_cx[CST_STRLEN];
 static int cpu_idle_cxlen;
+static int FreqAry[MAXFREQ];
+static int NFreq;
+static int SavedPXGlobal;
 
 static int DebugOpt;
 static int TurboOpt = 1;
@@ -152,6 +159,8 @@ static int AdjustCstate = 0;
 static int HighestCpuFreq;
 static int LowestCpuFreq;
 
+static int AdjustCpuFreqOverride;
+
 static volatile int stopped;
 
 /* Battery life monitoring */
@@ -163,6 +172,8 @@ static int BatShutdownLinger = -1;
 static int BatShutdownLingerSet = 60; /* unit: sec */
 static int BatShutdownLingerCnt;
 static int BatShutdownAudioAlert = 1;
+static int MinTemp = 75;
+static int MaxTemp = 85;
 static int BackLightPct = 100;
 static int OldBackLightLevel;
 static int BackLightDown;
@@ -175,13 +186,16 @@ main(int ac, char **av)
 	double srt;
 	double pollrate;
 	int ch;
+	int lowest;
+	int highest;
 	char buf[64];
 	int monbat;
+	char *p2;
 
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "b:cdefh:l:p:r:tu:B:L:P:QT:")) != -1) {
+	while ((ch = getopt(ac, av, "b:cdefh:l:p:r:tu:B:H:L:P:QT:")) != -1) {
 		switch(ch) {
 		case 'b':
 			BackLightPct = strtol(optarg, NULL, 10);
@@ -219,6 +233,15 @@ main(int ac, char **av)
 		case 'B':
 			BatLifeMin = strtol(optarg, NULL, 10);
 			break;
+		case 'H':
+			MaxTemp = strtol(optarg, &p2, 0);
+			if (*p2 == ':') {
+				MinTemp = MaxTemp;
+				MaxTemp = strtol(p2 + 1, NULL, 0);
+			} else {
+				MinTemp = MaxTemp * 9 / 10;
+			}
+			break;
 		case 'L':
 			BatShutdownLingerSet = strtol(optarg, NULL, 10);
 			if (BatShutdownLingerSet < 0)
@@ -246,12 +269,15 @@ main(int ac, char **av)
 	/* Get number of cpus */
 	get_ncpus();
 
-	if (0 > Hysteresis || Hysteresis > 99) {
+	/* Seed FreqAry[] */
+	acpi_get_cpufreq(0, &lowest, &highest);
+
+	if (Hysteresis < 0 || Hysteresis > 99) {
 		fprintf(stderr, "Invalid hysteresis value\n");
 		exit(1);
 	}
 
-	if (0 > TriggerUp || TriggerUp > 1) {
+	if (TriggerUp < 0 || TriggerUp > 1) {
 		fprintf(stderr, "Invalid load limit value\n");
 		exit(1);
 	}
@@ -272,10 +298,27 @@ main(int ac, char **av)
 			"Cannot create /var/run/powerd.pid, "
 			"continuing anyway\n");
 	} else {
-		if (flock(PowerFd, LOCK_EX|LOCK_NB) < 0) {
-			fprintf(stderr, "powerd is already running\n");
-			exit(1);
+		ssize_t r;
+		pid_t pid = -1;
+
+		r = read(PowerFd, buf, sizeof(buf) - 1);
+		if (r > 0) {
+			buf[r] = 0;
+			pid = strtol(buf, NULL, 0);
 		}
+		if (flock(PowerFd, LOCK_EX|LOCK_NB) < 0) {
+			if (pid > 0) {
+				kill(pid, SIGTERM);
+				flock(PowerFd, LOCK_EX);
+				fprintf(stderr, "restarting powerd\n");
+			} else {
+				fprintf(stderr,
+					"powerd is already running, "
+					"unable to kill pid for restart\n");
+				exit(1);
+			}
+		}
+		lseek(PowerFd, 0L, 0);
 	}
 
 	/*
@@ -346,6 +389,7 @@ main(int ac, char **av)
 		 * Monitor performance
 		 */
 		get_cputime(pollrate);
+		mon_cputemp();
 		mon_perf(srt);
 
 		/*
@@ -361,6 +405,8 @@ main(int ac, char **av)
 	 * Set to maximum performance if killed.
 	 */
 	syslog(LOG_INFO, "killed, setting max and exiting");
+	if (SavedPXGlobal)
+		set_global_freq(SavedPXGlobal);
 	restore_perf();
 	restore_backlight();
 
@@ -512,12 +558,13 @@ acpi_getcpufreq_str(int dom_id, int *highest0, int *lowest0)
 	size_t buflen;
 	char *ptr;
 	int v, highest, lowest;
+	int freqidx;
 
 	/*
 	 * Retrieve availability list
 	 */
-	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.available",
-	    dom_id);
+	snprintf(sysid, sizeof(sysid),
+		 "hw.acpi.cpu.px_dom%d.available", dom_id);
 	buflen = sizeof(buf) - 1;
 	if (sysctlbyname(sysid, buf, &buflen, NULL, 0) < 0)
 		return;
@@ -528,6 +575,7 @@ acpi_getcpufreq_str(int dom_id, int *highest0, int *lowest0)
 	 */
 	ptr = buf;
 	highest = lowest = 0;
+	freqidx = 0;
 	while (ptr && (v = strtol(ptr, &ptr, 10)) > 0) {
 		if ((lowest == 0 || lowest > v) &&
 		    (LowestCpuFreq <= 0 || v >= LowestCpuFreq))
@@ -540,6 +588,21 @@ acpi_getcpufreq_str(int dom_id, int *highest0, int *lowest0)
 		 */
 		if (!TurboOpt && highest - v == 1)
 			highest = v;
+		++freqidx;
+	}
+
+	/*
+	 * Frequency array
+	 */
+	NFreq = freqidx;
+	if (NFreq > MAXFREQ)
+		NFreq = MAXFREQ;
+	freqidx = freqidx;
+	ptr = buf;
+	while (ptr && (v = strtol(ptr, &ptr, 10)) > 0) {
+		if (freqidx == 0)
+			break;
+		FreqAry[--freqidx] = v;
 	}
 
 	*highest0 = highest;
@@ -550,7 +613,6 @@ static int
 acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 {
 	char sysid[64];
-	int freq[MAXFREQ];
 	size_t freqlen;
 	int freqcnt, i;
 
@@ -558,30 +620,30 @@ acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 	 * Retrieve availability list
 	 */
 	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.avail", dom_id);
-	freqlen = sizeof(freq);
-	if (sysctlbyname(sysid, freq, &freqlen, NULL, 0) < 0)
+	freqlen = sizeof(FreqAry);
+	if (sysctlbyname(sysid, FreqAry, &freqlen, NULL, 0) < 0)
 		return 0;
 
-	freqcnt = freqlen / sizeof(freq[0]);
+	NFreq = freqcnt = freqlen / sizeof(FreqAry[0]);
 	if (freqcnt == 0)
 		return 0;
 
 	for (i = freqcnt - 1; i >= 0; --i) {
-		*lowest0 = freq[i];
+		*lowest0 = FreqAry[i];
 		if (LowestCpuFreq <= 0 || *lowest0 >= LowestCpuFreq)
 			break;
 	}
 
 	i = 0;
-	*highest0 = freq[0];
-	if (!TurboOpt && freqcnt > 1 && freq[0] - freq[1] == 1) {
+	*highest0 = FreqAry[0];
+	if (!TurboOpt && freqcnt > 1 && FreqAry[0] - FreqAry[1] == 1) {
 		i = 1;
-		*highest0 = freq[1];
+		*highest0 = FreqAry[1];
 	}
 	for (; i < freqcnt; ++i) {
 		if (HighestCpuFreq <= 0 || *highest0 <= HighestCpuFreq)
 			break;
-		*highest0 = freq[i];
+		*highest0 = FreqAry[i];
 	}
 	return 1;
 }
@@ -1076,7 +1138,7 @@ acpi_set_cpufreq(int dom, int inc)
 static void
 adj_cpu_pwrdom(int dom, int inc)
 {
-	if (AdjustCpuFreq)
+	if (AdjustCpuFreq && (inc == 0 || AdjustCpuFreqOverride == 0))
 		acpi_set_cpufreq(dom, inc);
 }
 
@@ -1272,4 +1334,224 @@ restore_backlight(void)
 		sysctlbyname("hw.backlight_level", NULL, NULL,
 		    &OldBackLightLevel, sizeof(OldBackLightLevel));
 	}
+}
+
+/*
+ * get_cputemp() / mon_cputemp()
+ *
+ * This enforces the maximum cpu frequency based on temperature
+ * verses MinTemp and MaxTemp.
+ */
+static int
+get_cputemp(void)
+{
+	char sysid[64];
+	struct sensor sensor;
+	size_t sensor_size;
+	int t;
+	int mt = -1;
+	int n;
+
+	for (n = 0; ; ++n) {
+		t = 0;
+		snprintf(sysid, sizeof(sysid),
+			 "hw.sensors.cpu_node%d.temp0", n);
+		sensor_size = sizeof(sensor);
+		if (sysctlbyname(sysid, &sensor, &sensor_size, NULL, 0) < 0)
+			break;
+		t = -1;
+		if ((sensor.flags & (SENSOR_FINVALID | SENSOR_FUNKNOWN)) == 0) {
+			t = (int)((sensor.value - 273150000) / 1000000);
+			if (mt < t)
+				mt = t;
+		}
+	}
+	if (n)
+		return mt;
+
+	/*
+	 * Missing nodeN for some reason, try cpuN.
+	 */
+	for (n = 0; ; ++n) {
+		t = 0;
+		snprintf(sysid, sizeof(sysid),
+			 "hw.sensors.cpu%d.temp0", n);
+		sensor_size = sizeof(sensor);
+		if (sysctlbyname(sysid, &sensor, &sensor_size, NULL, 0) < 0)
+			break;
+		t = -1;
+		if ((sensor.flags & (SENSOR_FINVALID | SENSOR_FUNKNOWN)) == 0) {
+			t = (int)((sensor.value - 273150000) / 1000000);
+			if (mt < t)
+				mt = t;
+		}
+	}
+	return mt;
+}
+
+static void
+set_global_freq(int freq)
+{
+	if (freq > 0)
+		sysctlbyname("hw.acpi.cpu.px_global",
+			     NULL, NULL, &freq, sizeof(freq));
+}
+
+static int
+get_global_freq(void)
+{
+	int freq;
+	size_t freq_size;
+
+	freq = -1;
+	freq_size = sizeof(freq);
+	sysctlbyname("hw.acpi.cpu.px_global", &freq, &freq_size, NULL, 0);
+
+	return freq;
+}
+
+static void
+mon_cputemp(void)
+{
+	static int last_temp = -1;
+	static int last_idx = -1;
+	int temp = get_cputemp();
+	int idx;
+	int lowest;
+	int highest;
+	static int CurPXGlobal __unused;
+
+	/*
+	 * Reseed FreqAry, it can change w/AC power state
+	 */
+	acpi_get_cpufreq(0, &lowest, &highest);
+
+	/*
+	 * Some cpu frequency steps can cause large shifts in cpu temperature,
+	 * creating an oscillation that min-maxes the temperature in a way
+	 * that is not desireable.  To deal with this, we impose an exponential
+	 * average for any temperature change.
+	 *
+	 * We have to do this in both directions, otherwise (in particular)
+	 * laptop fan responsiveness and temperature sensor response times
+	 * can create major frequency oscillations.
+	 */
+	if (last_temp < 0) {
+		last_temp = temp << 8;
+	} else if (temp < last_temp) {
+		last_temp = (last_temp * 15 + (temp << 8)) / 16;
+		if (DebugOpt) {
+			printf("Falling temp %d (use %d)\n",
+				temp, (last_temp >> 8));
+		}
+	} else {
+		last_temp = (last_temp * 15 + (temp << 8)) / 16;
+		if (DebugOpt) {
+			printf("Rising temp %d (use %d)\n",
+				temp, (last_temp >> 8));
+		}
+	}
+	temp = last_temp >> 8;
+
+	/*
+	 * CPU Temp not available or available frequencies not yet
+	 * probed.
+	 */
+	if (DebugOpt)
+		printf("Temp %d {%d-%d} NFreq=%d)\n",
+		       temp, MinTemp, MaxTemp, NFreq);
+	if (temp <= 0)
+		return;
+	if (NFreq == 0)
+		return;
+
+	/*
+	 * Return to normal operation if under the minimum
+	 */
+	if (temp <= MinTemp) {
+		if (AdjustCpuFreqOverride) {
+			AdjustCpuFreqOverride = 0;
+			CurPXGlobal = 0;
+			last_idx = -1;
+			syslog(LOG_ALERT,
+			       "Temp below %d, returning to normal operation",
+			       MinTemp);
+			if (SavedPXGlobal)
+				set_global_freq(SavedPXGlobal);
+		}
+		return;
+	}
+
+	/*
+	 * Hysteresis before entering temperature control mode
+	 */
+	if (AdjustCpuFreqOverride == 0 &&
+	    temp <= MinTemp + (MaxTemp - MinTemp) / 10 + 1) {
+		return;
+	}
+
+	/*
+	 * Override frequency controls (except for idle -> lowest)
+	 */
+	if (AdjustCpuFreqOverride == 0) {
+		AdjustCpuFreqOverride = 1;
+		SavedPXGlobal = get_global_freq();
+		CurPXGlobal = 0;
+		last_idx = -1;
+		syslog(LOG_ALERT,
+		       "Temp %d {%d-%d}, entering temperature control mode",
+		       temp, MinTemp, MaxTemp);
+	}
+	if (temp > MaxTemp + (MaxTemp - MinTemp) / 10 + 1) {
+		syslog(LOG_ALERT,
+		       "Temp %d {%d-%d}, TOO HOT!!!",
+		       temp, MinTemp, MaxTemp);
+	}
+	idx = (temp - MinTemp) * NFreq / (MaxTemp - MinTemp);
+	if (idx < 0 || idx >= NFreq)	/* overtemp */
+		idx = NFreq - 1;
+
+	/*
+	 * Limit frequency shifts to single steps in both directions.
+	 * Some fans react very quickly, this will reduce oscillations.
+	 */
+	if (DebugOpt)
+		printf("Temp index %d (use %d)\n", idx, last_idx);
+	if (last_idx >= 0 && idx < last_idx)
+		idx = last_idx - 1;
+	else if (last_idx >= 0 && idx > last_idx)
+		idx = last_idx + 1;
+	last_idx = idx;
+
+	/*
+	 * One last thing, make sure our frequency adheres to
+	 * HighestCpuFreq.  However, override LowestCpuFreq for
+	 * temperature control purposes.
+	 */
+	while (HighestCpuFreq > 0 && idx < NFreq &&
+	       FreqAry[idx] > HighestCpuFreq) {
+		++idx;
+	}
+#if 0
+	/*
+	 * Currently ignore LowestCpuFreq if temp control thinks it
+	 * needs to go lower
+	 */
+	while (LowestCpuFreq > 0 && idx > 0 &&
+	       FreqAry[idx] < LowestCpuFreq) {
+		--idx;
+	}
+#endif
+
+	if (FreqAry[idx] != CurPXGlobal) {
+		CurPXGlobal = FreqAry[idx];
+
+#if 0
+		/* this can get noisy so don't log for now */
+		syslog(LOG_ALERT,
+		       "Temp %d {%d-%d}, set frequency %d",
+		       temp, MinTemp, MaxTemp, CurPXGlobal);
+#endif
+	}
+	set_global_freq(CurPXGlobal);
 }
