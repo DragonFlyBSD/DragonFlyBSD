@@ -110,9 +110,12 @@ extern cpumask_t		smp_in_mask;
 extern cpumask_t		smp_smurf_mask;
 #endif
 static long pmap_inval_bulk_count;
+static int pmap_inval_watchdog_print;	/* must always default off */
 
 SYSCTL_LONG(_machdep, OID_AUTO, pmap_inval_bulk_count, CTLFLAG_RW,
 	    &pmap_inval_bulk_count, 0, "");
+SYSCTL_INT(_machdep, OID_AUTO, pmap_inval_watchdog_print, CTLFLAG_RW,
+	    &pmap_inval_watchdog_print, 0, "");
 
 static void
 pmap_inval_init(pmap_t pmap)
@@ -175,6 +178,16 @@ loopdebug(const char *msg, pmap_inval_info_t *info)
 {
 	int p;
 	int cpu = mycpu->gd_cpuid;
+
+	/*
+	 * Don't kprintf() anything if the pmap inval watchdog gets hit.
+	 * DRM can cause an occassional watchdog hit (at least with a 1/16
+	 * second watchdog), and attempting to kprintf to the KVM frame buffer
+	 * from Xinvltlb, which ignores critical sections, can implode the
+	 * system.
+	 */
+	if (pmap_inval_watchdog_print == 0)
+		return;
 
 	cpu_lfence();
 #ifdef LOOPRECOVER
@@ -744,6 +757,12 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 								info->mask);
 					cpu_disable_intr();
 					smp_invlpg(&smp_active_mask);
+
+					/*
+					 * Force outer-loop retest of Xinvltlb
+					 * requests (see mp_machdep.c).
+					 */
+					mdcpu->gd_xinvaltlb = 2;
 					cpu_enable_intr();
 				}
 #endif
