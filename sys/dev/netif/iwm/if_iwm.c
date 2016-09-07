@@ -803,8 +803,14 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 				    (int) tlv_len);
 				goto parse_out;
 			}
-			sc->sc_fw_phy_config =
+			sc->sc_fw.phy_config =
 			    le32toh(*(const uint32_t *)tlv_data);
+			sc->sc_fw.valid_tx_ant = (sc->sc_fw.phy_config &
+						  IWM_FW_PHY_CFG_TX_CHAIN) >>
+						  IWM_FW_PHY_CFG_TX_CHAIN_POS;
+			sc->sc_fw.valid_rx_ant = (sc->sc_fw.phy_config &
+						  IWM_FW_PHY_CFG_RX_CHAIN) >>
+						  IWM_FW_PHY_CFG_RX_CHAIN_POS;
 			break;
 
 		case IWM_UCODE_TLV_API_CHANGES_SET: {
@@ -1473,12 +1479,13 @@ iwm_mvm_nic_config(struct iwm_softc *sc)
 {
 	uint8_t radio_cfg_type, radio_cfg_step, radio_cfg_dash;
 	uint32_t reg_val = 0;
+	uint32_t phy_config = iwm_mvm_get_phy_config(sc);
 
-	radio_cfg_type = (sc->sc_fw_phy_config & IWM_FW_PHY_CFG_RADIO_TYPE) >>
+	radio_cfg_type = (phy_config & IWM_FW_PHY_CFG_RADIO_TYPE) >>
 	    IWM_FW_PHY_CFG_RADIO_TYPE_POS;
-	radio_cfg_step = (sc->sc_fw_phy_config & IWM_FW_PHY_CFG_RADIO_STEP) >>
+	radio_cfg_step = (phy_config & IWM_FW_PHY_CFG_RADIO_STEP) >>
 	    IWM_FW_PHY_CFG_RADIO_STEP_POS;
-	radio_cfg_dash = (sc->sc_fw_phy_config & IWM_FW_PHY_CFG_RADIO_DASH) >>
+	radio_cfg_dash = (phy_config & IWM_FW_PHY_CFG_RADIO_DASH) >>
 	    IWM_FW_PHY_CFG_RADIO_DASH_POS;
 
 	/* SKU control */
@@ -2777,7 +2784,7 @@ iwm_send_phy_cfg_cmd(struct iwm_softc *sc)
 	enum iwm_ucode_type ucode_type = sc->sc_uc_current;
 
 	/* Set parameters */
-	phy_cfg_cmd.phy_cfg = htole32(sc->sc_fw_phy_config);
+	phy_cfg_cmd.phy_cfg = htole32(iwm_mvm_get_phy_config(sc));
 	phy_cfg_cmd.calib_control.event_trigger =
 	    sc->sc_default_calib[ucode_type].event_trigger;
 	phy_cfg_cmd.calib_control.flow_trigger =
@@ -2862,7 +2869,8 @@ iwm_run_init_mvm_ucode(struct iwm_softc *sc, int justnvm)
 		return error;
 
 	/* Send TX valid antennas before triggering calibrations */
-	if ((error = iwm_send_tx_ant_cfg(sc, iwm_fw_valid_tx_ant(sc))) != 0) {
+	error = iwm_send_tx_ant_cfg(sc, iwm_mvm_get_valid_tx_ant(sc));
+	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "failed to send antennas before calibration: %d\n", error);
 		return error;
@@ -4219,7 +4227,7 @@ iwm_setrates(struct iwm_softc *sc, struct iwm_node *in)
 		int nextant;
 
 		if (txant == 0)
-			txant = iwm_fw_valid_tx_ant(sc);
+			txant = iwm_mvm_get_valid_tx_ant(sc);
 		nextant = 1<<(ffs(txant)-1);
 		txant &= ~nextant;
 
@@ -4677,7 +4685,8 @@ iwm_init_hw(struct iwm_softc *sc)
 		goto error;
 	}
 
-	if ((error = iwm_send_tx_ant_cfg(sc, iwm_fw_valid_tx_ant(sc))) != 0) {
+	error = iwm_send_tx_ant_cfg(sc, iwm_mvm_get_valid_tx_ant(sc));
+	if (error != 0) {
 		device_printf(sc->sc_dev, "antenna config failed\n");
 		goto error;
 	}
