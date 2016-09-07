@@ -7,6 +7,7 @@ SHLIBDIR?=	/lib/priv
 LIBDIR?=	/usr/lib/priv
 PROFLIBDIR?=	/usr/lib/priv/profile
 WARNS?=		2
+NO_STRICT_ALIASING=
 
 INCS+=  	aes.h asn1.h asn1_mac.h asn1t.h
 INCS+=  	bio.h blowfish.h bn.h buffer.h
