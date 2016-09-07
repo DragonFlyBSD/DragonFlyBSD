@@ -1175,6 +1175,8 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 
 		so2 = unp2->unp_socket;
 		if (!(so2->so_options & SO_ACCEPTCONN) ||
+		    /* listen is not completed yet */
+		    !(unp2->unp_flags & UNP_HAVEPCCACHED) ||
 		    (so3 = sonewconn_faddr(so2, 0, NULL,
 		     TRUE /* keep ref */)) == NULL) {
 			error = ECONNREFUSED;
