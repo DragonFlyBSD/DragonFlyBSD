@@ -8,8 +8,13 @@ MAN=	keyserv.8
 
 CFLAGS+= -DKEYSERV_RANDOM -DBROKEN_DES -I.
 
-DPADD=	${LIBCRYPTO} ${LIBRPCSVC}
-LDADD=	-lcrypto -lrpcsvc
+DPADD=	${LIBRPCSVC}
+LDADD=	-lrpcsvc
+
+DPADD+=		${LIBRECRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 RPCDIR=	${DESTDIR}/usr/include/rpcsvc
 

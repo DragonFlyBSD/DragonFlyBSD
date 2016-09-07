@@ -1,26 +1,10 @@
 # $FreeBSD: head/usr.sbin/wpa/Makefile.crypto 252726 2013-07-04 21:12:58Z rpaulo $
 
-#.if ${MK_OPENSSL} != "no" && !defined(RELEASE_CRUNCH)
-SRCS+=	crypto_openssl.c random.c sha1-prf.c sha256-prf.c
-DPADD+=	${LIBSSL} ${LIBCRYPTO}
-LDADD+=	-lssl -lcrypto
-CFLAGS+= -DCONFIG_SHA256
-#.else
-#CFLAGS+=-DCONFIG_CRYPTO_INTERNAL
-#SRCS+=	crypto_internal.c random.c
-#CONFIG_INTERNAL_AES=y
-#CONFIG_INTERNAL_DES=y
-#CONFIG_INTERNAL_MD4=y
-#CONFIG_INTERNAL_MD5=y
-#CONFIG_INTERNAL_RC4=y
-#CONFIG_INTERNAL_SHA1=y
-#NEED_SHA256=y
-#CONFIG_INTERNAL_SHA256=y
-#CONFIG_INTERNAL_TLS=y
-#CONFIG_INTERNAL_DH5=y
-#CONFIG_INTERNAL_DH=y
-#NEED_AES_ENC=true
-#.endif
+SRCS+=		crypto_openssl.c random.c sha1-prf.c sha256-prf.c
+DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
+LDADD+=		-lprivate_ssl -lprivate_crypto
+CFLAGS+= 	-DCONFIG_SHA256 -I${.CURDIR}/../../crypto/libressl/include
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .if defined(TLS_FUNCS)
 NEED_TLS_PRF=y

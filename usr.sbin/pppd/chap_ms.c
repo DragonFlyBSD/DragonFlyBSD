@@ -152,19 +152,19 @@ DesEncrypt(u_char *clear, u_char *key, u_char *cipher)
 static void
 DesEncrypt(u_char *clear, u_char *key, u_char *cipher)
 {
-    des_cblock		des_key;
-    des_key_schedule	key_schedule;
+    DES_cblock		des_key;
+    DES_key_schedule	key_schedule;
 
     MakeKey(key, des_key);
 
-    des_set_key(&des_key, key_schedule);
+    DES_set_key(&des_key, &key_schedule);
 
 #if 0
     CHAPDEBUG((LOG_INFO, "DesEncrypt: 8 octet input : %02X%02X%02X%02X%02X%02X%02X%02X",
 	       clear[0], clear[1], clear[2], clear[3], clear[4], clear[5], clear[6], clear[7]));
 #endif
 
-    des_ecb_encrypt((des_cblock *)clear, (des_cblock *)cipher, key_schedule, 1);
+    DES_ecb_encrypt((DES_cblock *)clear, (DES_cblock *)cipher, &key_schedule, 1);
 
 #if 0
     CHAPDEBUG((LOG_INFO, "DesEncrypt: 8 octet output: %02X%02X%02X%02X%02X%02X%02X%02X",
@@ -244,7 +244,7 @@ MakeKey(u_char *key, u_char *des_key)
     des_key[7] = Get7Bits(key, 49);
 
 #ifndef USE_CRYPT
-    des_set_odd_parity((des_cblock *)des_key);
+    DES_set_odd_parity((DES_cblock *)des_key);
 #endif
 
 #if 0

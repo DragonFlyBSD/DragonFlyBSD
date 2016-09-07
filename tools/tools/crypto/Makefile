@@ -33,7 +33,9 @@ all:	${ALL}
 
 # program to test asymmetric crypto functions
 cryptokeytest: cryptokeytest.c
-	${CC} -o cryptokeytest cryptokeytest.c -lcrypto
+	${CC} -o cryptokeytest cryptokeytest.c \
+	 -rpath /lib/priv:/usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv \
+	 -lprivate_crypto
 
 # program to dump statistics kept by the core crypto code
 cryptostats: cryptostats.c

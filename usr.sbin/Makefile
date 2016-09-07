@@ -50,7 +50,6 @@ SUBDIR= 802_11 \
 	kbdcontrol \
 	kbdmap \
 	kernbb \
-	keyserv \
 	lastlogin \
 	mailwrapper \
 	makewhatis \
@@ -76,9 +75,7 @@ SUBDIR= 802_11 \
 	pfctl \
 	pflogd \
 	powerd \
-	ppp \
 	pppctl \
-	pppd \
 	pppstats \
 	prefix \
 	procctl \
@@ -122,7 +119,6 @@ SUBDIR= 802_11 \
 	tcpdchk \
 	tcpdmatch \
 	tcpdrop \
-	tcpdump \
 	timed \
 	traceroute \
 	traceroute6 \
@@ -144,6 +140,15 @@ SUBDIR= 802_11 \
 	ypserv \
 	ypset \
 	zic
+
+# Uses LibreSSL but can build without it
+SUBDIR+=ppp \
+	pppd \
+	tcpdump
+
+.if !defined(NO_LIBRESSL)
+SUBDIR+=keyserv
+.endif
 
 .if !defined(NO_LPR)
 SUBDIR+=lpr

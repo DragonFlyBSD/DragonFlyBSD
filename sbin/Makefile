@@ -9,7 +9,6 @@ SUBDIR=	adjkerntz \
 	ccdconfig \
 	clri \
 	comcontrol \
-	cryptdisks \
 	devattr \
 	devd \
 	devfsctl \
@@ -96,7 +95,6 @@ SUBDIR=	adjkerntz \
 	swapon \
 	sysctl \
 	svc \
-	tcplay \
 	tunefs \
 	udevd \
 	umount \
@@ -117,12 +115,17 @@ SUBDIR+= ${MACHINE}
 SUBDIR+= ${MACHINE_ARCH}
 .endif
 
-# include hammer2 utilities
+.if !defined(NO_LIBRESSL)
+SUBDIR+=cryptdisks \
+	tcplay
+
+# include hammer2 utilities (requires LibreSSL)
 #
-.if defined(WANT_HAMMER2)
+.  if defined(WANT_HAMMER2)
 _mount_hammer2= mount_hammer2
 _newfs_hammer2=	newfs_hammer2
 _hammer2=	hammer2
+.  endif
 .endif
 
 # maximum parallelism

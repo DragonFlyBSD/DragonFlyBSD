@@ -54,12 +54,14 @@ CFLAGS+=-DNOSUID
 SRCS+=	id.c
 .endif
 
-.if !exists(${.CURDIR}/../../secure) || defined(NO_CRYPT) || defined(NO_OPENSSL) || defined(NODES)
+.if defined(NO_CRYPT) || defined(NO_LIBRESSL) || defined(NODES)
 CFLAGS+=-DNODES
 .else
-SRCS+=	chap_ms.c mppe.c
-LDADD+= -lcrypto
-DPADD+= ${LIBCRYPTO}
+SRCS+=		chap_ms.c mppe.c
+LDADD+= 	-lprivate_crypto
+DPADD+= 	${LIBRECRYPTO}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 
 .if defined(NORADIUS)

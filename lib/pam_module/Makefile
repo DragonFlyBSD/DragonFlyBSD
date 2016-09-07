@@ -19,8 +19,15 @@ SUBDIR=	pam_chroot \
 	pam_rootok \
 	pam_securetty \
 	pam_self \
-	pam_ssh \
 	pam_tacplus \
 	pam_unix
+
+.if !defined(NO_LIBRESSL)
+SUBDIR+= pam_ssh
+.endif
+
+# maximum parallelism
+#
+SUBDIR_ORDERED=
 
 .include <bsd.subdir.mk>

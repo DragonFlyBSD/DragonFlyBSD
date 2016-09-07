@@ -12,8 +12,13 @@ DEBUG_FLAGS=-g
 CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+= -pthread
-LDADD=	-ldmsg -lm -lutil -lmd -lcrypto
-DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBMD} ${LIBCRYPTO}
+LDADD=	-ldmsg -lm -lutil -lmd
+DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBMD}
+
+DPADD+=		${LIBRECRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 #.PATH: ${.CURDIR}/../../sys/libkern
 #SRCS+= crc32.c

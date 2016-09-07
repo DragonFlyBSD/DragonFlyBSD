@@ -25,11 +25,13 @@ LDADD+=	-lpcap
 DPADD+=	${LIBPCAP}
 
 # MS-CHAP support.  Requires the DES library.
-.if exists(${.CURDIR}/../../secure) && !defined(NO_CRYPT)  && !defined(NO_OPENSSL)
-CFLAGS+=-DCHAPMS
-SRCS+=	chap_ms.c
-LDADD+=	-lcrypto
-DPADD+=	${LIBCRYPTO}
+.if !defined(NO_CRYPT) && !defined(NO_LIBRESSL)
+CFLAGS+=	-DCHAPMS
+SRCS+=		chap_ms.c
+LDADD+=		-lprivate_crypto
+DPADD+=		${LIBRECRYPTO}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 
 .include <bsd.prog.mk>

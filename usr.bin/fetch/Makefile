@@ -3,9 +3,10 @@
 PROG=		fetch
 DPADD=		${LIBFETCH}
 LDADD=		-lfetch
-.if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-DPADD+=		${LIBSSL} ${LIBCRYPTO}
-LDADD+=		-lssl -lcrypto
-.endif
+
+DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
+LDADD+=		-lprivate_ssl -lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 .include <bsd.prog.mk>

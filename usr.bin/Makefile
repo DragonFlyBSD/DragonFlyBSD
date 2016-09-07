@@ -19,6 +19,7 @@ SUBDIR=	alias \
 	awk \
 	banner \
 	basename \
+	bc \
 	biff \
 	bmake \
 	brandelf \
@@ -35,7 +36,6 @@ SUBDIR=	alias \
 	checknr \
 	checkpt \
 	chflags \
-	chkey \
 	chpass \
 	cksum \
 	cmp \
@@ -52,7 +52,6 @@ SUBDIR=	alias \
 	cut \
 	dfregress \
 	dirname \
-	drill \
 	du \
 	ee \
 	enigma \
@@ -60,7 +59,6 @@ SUBDIR=	alias \
 	evtranalyze \
 	expand \
 	false \
-	fetch \
 	file \
 	file2c \
 	find \
@@ -71,7 +69,6 @@ SUBDIR=	alias \
 	from \
 	fstat \
 	fsync \
-	ftp \
 	gcore \
 	gencat \
 	getconf \
@@ -133,7 +130,6 @@ SUBDIR=	alias \
 	ncal \
 	netstat \
 	newgrp \
-	newkey \
 	nfsstat \
 	nice \
 	nl \
@@ -192,7 +188,6 @@ SUBDIR=	alias \
 	tar \
 	tcopy \
 	tee \
-	telnet \
 	tftp \
 	time \
 	tic \
@@ -252,9 +247,16 @@ SUBDIR=	alias \
 SUBDIR+=hesinfo
 .endif
 
-.if !defined(NO_OPENSSL)
-SUBDIR+=bc \
-	dc
+# Uses LibreSSL but can build without it
+SUBDIR+=ftp \
+	telnet
+
+.if !defined(NO_LIBRESSL)
+SUBDIR+=chkey \
+	dc \
+	drill \
+	fetch \
+	newkey
 .endif
 
 .include <bsd.subdir.mk>

@@ -21,8 +21,13 @@ MAN=		cryptsetup.8
 CFLAGS+=	-I${CRYPTSETUP_SRCDIR} -I${CRYPTSETUP_LIBDIR} \
 		-I${CRYPTSETUP_LUKSDIR} -I. -I${CRYPTSETUP_DIR} -D_BSD_SOURCE
 
-LDADD+=		-ldm -lprop -lcrypto
-DPADD+=		${LIBDM} ${LIBPROP} ${LIBCRYPTO}
+DPADD+=		${LIBDM} ${LIBPROP}
+LDADD+=		-ldm -lprop
+
+DPADD+=		${LIBRECRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
 
 .PATH:	${CRYPTSETUP_SRCDIR}
 .PATH:	${CRYPTSETUP_LUKSDIR}

@@ -12,8 +12,13 @@ SRCS+=		crypto.c generic_xts.c
 SRCS+=		crypto-dev.c pbkdf2-openssl.c
 SRCS+=		main.c
 
-LDADD=	-lcrypto -ldm -lprop -lutil
-DPADD=	${LIBCRYPTO} ${LIBDM} ${LIBPROP} ${LIBUTIL}
+LDADD=		-ldm -lprop -lutil
+DPADD=		${LIBDM} ${LIBPROP} ${LIBUTIL}
+
+DPADD+=		${LIBRECRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 CFLAGS+=	-I${TCPLAY_DIR}
 CFLAGS+=	-DMAJ_VER=${MAJ_VER} -DMIN_VER=${MIN_VER}

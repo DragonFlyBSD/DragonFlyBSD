@@ -10,10 +10,11 @@ MAN=		fetch.3
 CLEANFILES=	ftperr.h httperr.h
 NO_STRICT_ALIASING=
 
-.if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-CFLAGS+=	-DWITH_SSL
-DPADD=		${LIBSSL} ${LIBCRYPTO}
-LDADD=		-lssl -lcrypto
+.if !defined(NO_CRYPT) && !defined(NO_LIBRESSL)
+CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
+DPADD=		${LIBRESSL} ${LIBRECRYPTO}
+LDADD=		-lprivate_ssl -lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .else
 DPADD=		${LIBMD}
 LDADD=		-lmd

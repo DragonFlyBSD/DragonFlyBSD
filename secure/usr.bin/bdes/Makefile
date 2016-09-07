@@ -5,7 +5,8 @@ PROG=	bdes
 
 WARNS?=	2
 
-DPADD=	${LIBCRYPTO}
-LDADD=	-lcrypto
+DPADD=		${LIBRECRYPTO}
+LDADD=		-lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

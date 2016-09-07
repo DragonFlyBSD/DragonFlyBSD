@@ -2,12 +2,13 @@ SSHDIR=		${.CURDIR}/../../../crypto/openssh
 
 XAUTH_PATH?=	/usr/local/bin/xauth
 CFLAGS+=	-DXAUTH_PATH=\"${XAUTH_PATH}\"
+CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR}
 
 .if ${.CURDIR:T} != "libssh"
-DPADD+=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
-LDADD+=	-lprivate_ssh -lcrypto -lutil -lz -lpthread
-LDFLAGS+=	-rpath /usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+DPADD+=		${LIBSSH} ${LIBRECRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
+LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz -lpthread
+LDFLAGS+=	-rpath /lib/priv:/usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 
 .PATH:	${SSHDIR} ${SSHDIR}/openbsd-compat

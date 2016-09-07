@@ -1,17 +1,19 @@
 .PATH: ${.CURDIR}/..
 
-CFLAGS+=-I${.CURDIR}/..
-CFLAGS+= -DHAVE_REALLOCF -DHAVE_STRLCPY -DHAVE_GETPROGNAME
-CFLAGS+=-DCONF_PATH='"/etc/dma"'
-CFLAGS+=-DLIBEXEC_PATH='"/usr/libexec"' -DDMA_VERSION='"v0.9+"'
-
-DPADD=  ${LIBSSL} ${LIBCRYPTO}
-LDADD=  -lssl -lcrypto
-
 PROG=	dma
 SRCS=	aliases_parse.y aliases_scan.l base64.c conf.c crypto.c
 SRCS+=	dma.c dns.c local.c mail.c net.c spool.c util.c
 MAN=	dma.8
+
+CFLAGS+=	-I${.CURDIR}/..
+CFLAGS+=	-DHAVE_REALLOCF -DHAVE_STRLCPY -DHAVE_GETPROGNAME
+CFLAGS+=	-DCONF_PATH='"/etc/dma"'
+CFLAGS+=	-DLIBEXEC_PATH='"/usr/libexec"' -DDMA_VERSION='"v0.9+"'
+
+DPADD=		${LIBRESSL} ${LIBRECRYPTO}
+LDADD=		-lprivate_ssl -lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
 
 BINOWN= root
 BINGRP= mail

@@ -1,15 +1,15 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/factor/Makefile,v 1.2.6.2 2002/10/23 14:59:14 fanf Exp $
-# $DragonFly: src/games/factor/Makefile,v 1.4 2006/10/08 16:22:35 pavalos Exp $
 
 PROG=	factor
 SRCS=	factor.c pr_tbl.c
 CFLAGS+=-I${.CURDIR}/../primes
 
-.if exists(${.CURDIR}/../../crypto) && !defined(NO_OPENSSL)
-CFLAGS+=-DHAVE_OPENSSL
-LDADD+=	-lcrypto
-DPADD+=	${LIBCRYPTO}
+.if !defined(NO_CRYPT) && !defined(NO_LIBRESSL)
+CFLAGS+=	-DHAVE_OPENSSL -I${.CURDIR}/../../crypto/libressl/include
+LDADD=		-lprivate_crypto
+DPADD=		${LIBRECRYPTO}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 
 MAN=	factor.6

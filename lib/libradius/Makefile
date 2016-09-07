@@ -28,10 +28,11 @@ LIB=		radius
 SRCS=		radlib.c
 INCS=		radlib.h radlib_vs.h
 
-.if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-DPADD=		${LIBCRYPTO}
-LDADD=		-lcrypto
-CFLAGS+=	-DWITH_SSL
+.if !defined(NO_CRYPT) && !defined(NO_LIBRESSL)
+DPADD=		${LIBRECRYPTO}
+LDADD=		-lprivate_crypto
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
 .else
 DPADD=		${LIBMD}
 LDADD=		-lmd

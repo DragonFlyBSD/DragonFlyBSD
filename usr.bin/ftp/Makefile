@@ -20,11 +20,11 @@ LDADD=	-lprivate_edit -lprivate_ncurses -lutil
 DPADD=	${LIBEDIT} ${LIBNCURSES} ${LIBUTIL}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
-.if !defined(NO_OPENSSL)
-SRCS+=	ssl.c
-CFLAGS+=-DWITH_SSL
-LDADD+=	-lssl -lcrypto
-DPADD+=	${LIBSSL} ${LIBCRYPTO}
+.if !defined(NO_LIBRESSL)
+SRCS+=		ssl.c
+CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
+LDADD+=		-lprivate_ssl -lprivate_crypto
+DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
 .endif
 
 LINKS=	${BINDIR}/ftp ${BINDIR}/pftp \

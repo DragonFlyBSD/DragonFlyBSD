@@ -10,5 +10,8 @@ SRCS=	ssh.c readconf.c clientloop.c sshtty.c \
 	sshconnect.c sshconnect1.c sshconnect2.c mux.c
 SRCS+=	fmt_scaled.c
 
+XAUTH_PATH?=	/usr/local/bin/xauth
+CFLAGS+=	-DXAUTH_PATH=\"${XAUTH_PATH}\"
+
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

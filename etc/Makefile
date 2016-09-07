@@ -39,7 +39,7 @@ BIN1+=	manpath.config
 BIN1+=	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
 .endif
 
-.if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
+.if !defined(NO_LIBRESSL)
 DIRS+=	secure/lib/libssh \
 	secure/usr.bin/ssh \
 	secure/usr.sbin/sshd \

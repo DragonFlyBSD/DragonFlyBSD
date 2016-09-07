@@ -51,10 +51,12 @@ CFLAGS+=	-DINET6 -DHAVE_GETNAMEINFO
 
 DPADD=	${LIBL} ${LIBPCAP}
 LDADD=	-ll -lpcap
-.if exists(../../secure) && !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-DPADD+= ${LIBCRYPTO}
-LDADD+= -lcrypto
-CFLAGS+= -I${DESTDIR}/usr/include/openssl -DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H
+.if !defined(NO_CRYPT) && !defined(NO_LIBRESSL)
+DPADD+=		${LIBRECRYPTO}
+LDADD+=		-lprivate_crypto
+CFLAGS+=	-DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 WARNS?=	2
 NO_STRICT_ALIASING=

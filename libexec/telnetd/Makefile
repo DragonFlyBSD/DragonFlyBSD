@@ -24,11 +24,12 @@ DPADD=		${LIBUTIL} ${LIBNCURSES} ${LIBTELNET}
 LDADD=		-lutil -lprivate_ncurses ${LIBTELNET}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
-.if !defined(NO_OPENSSL)
+.if !defined(NO_LIBRESSL)
 SRCS+=		authenc.c
 CFLAGS+=	-DAUTHENTICATION -DENCRYPTION
-DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
-LDADD+=		-lcrypto -lcrypt ${MINUSLPAM}
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+DPADD+=		${LIBRECRYPTO} ${LIBCRYPT} ${LIBPAM}
+LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
 .endif
 
 .include <bsd.prog.mk>

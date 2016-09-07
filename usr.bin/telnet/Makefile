@@ -24,11 +24,13 @@ CFLAGS+=	-DIPSEC
 DPADD+=		${LIBIPSEC}
 LDADD+=		-lipsec
 
-.if !defined(NO_OPENSSL)
+.if !defined(NO_LIBRESSL)
 SRCS+=		authenc.c
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION
-DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
-LDADD+=		-lcrypto -lcrypt ${MINUSLPAM}
+DPADD+=		${LIBRECRYPTO} ${LIBCRYPT} ${LIBPAM}
+LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
+LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 
 .include <bsd.prog.mk>
