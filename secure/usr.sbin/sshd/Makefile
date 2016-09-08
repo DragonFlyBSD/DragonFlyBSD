@@ -34,8 +34,5 @@ DPADD+=	${LIBOPIE}
 LDADD+=	-lcrypt -lwrap ${MINUSLPAM}
 DPADD+=	${LIBCRYPT} ${LIBWRAP} ${LIBPAM}
 
-XAUTH_PATH?=	/usr/local/bin/xauth
-CFLAGS+=	-DXAUTH_PATH=\"${XAUTH_PATH}\"
-
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
