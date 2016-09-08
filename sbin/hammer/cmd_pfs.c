@@ -108,13 +108,11 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 				close(fd);
 				fd = -1;
 			}
+		} else {
+			fprintf(stderr, "Cannot access PFS %s: %s\n",
+				path, strerror(errno));
+			exit(1);
 		}
-	}
-
-	if (fd < 0) {
-		fprintf(stderr, "Cannot access PFS %s: %s\n",
-			path, strerror(errno));
-		exit(1);
 	}
 
 	/*
