@@ -94,9 +94,6 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 /*
  * Set mirroring/pseudo-fs information
- *
- * NOTE: The ip used for ioctl is not necessarily related to the PFS
- * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
  */
 int
 hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
