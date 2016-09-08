@@ -131,7 +131,7 @@ corepower_identify(driver_t *driver, device_t parent)
 	cpu = device_get_unit(parent);
 	node = get_cpu_node_by_cpuid(cpu);
 	while (node != NULL) {
-		if (node->type == PACKAGE_LEVEL) {
+		if (node->type == CHIP_LEVEL) {
 			if (node->child_no == 0)
 				node = NULL;
 			break;
