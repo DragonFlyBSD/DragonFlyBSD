@@ -137,7 +137,6 @@ static int
 scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
 	int fd;
-	int n;
 	const char *p;
 	char *dirpath;
 	char buf[64];
@@ -149,17 +148,16 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	} else if (S_ISDIR(st.st_mode)) {
 		/* possibly master or slave PFS */
 	} else {
-		return -1;  /* neither */
+		return(-1);  /* neither */
 	}
 
 	/*
 	 * If the path is a link read the link.
 	 */
 	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
-		n = readlink(path, buf, sizeof(buf) - 1);
-		if (n < 0)
-			n = 0;
-		buf[n] = 0;
+		bzero(buf, sizeof(buf));
+		if (readlink(path, buf, sizeof(buf) - 1) < 0)
+			return(-1);
 		p = buf;
 	} else {
 		p = path;
