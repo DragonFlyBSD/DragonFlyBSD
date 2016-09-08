@@ -51,6 +51,7 @@ INCS+=		buffer.h \
 .PATH:		${LDNS} ${LDNS}/compat ${LDNS}/ldns ${.CURDIR}/ldns
 
 CFLAGS+= 	-I${.CURDIR} -I${LDNS}
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 WARNS?=		2
 

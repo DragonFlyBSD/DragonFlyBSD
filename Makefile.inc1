@@ -1046,11 +1046,11 @@ _generic_libs+=	lib
 .if !defined(NO_CRYPT)
 .if !defined(NO_OPENSSL)
 _prebuild_libs+=	secure/lib/libcrypto secure/lib/libssl
-_prebuild_libs+=	secure/lib/libssh
-secure/lib/libssh__L: secure/lib/libcrypto__L lib/libz__L
 .endif
 .if !defined(NO_LIBRESSL)
 _prebuild_libs+=	secure/lib/librecrypto secure/lib/libressl
+_prebuild_libs+=	secure/lib/libssh
+secure/lib/libssh__L: secure/lib/librecrypto__L lib/libz__L
 .endif
 _generic_libs+=	secure/lib
 .endif

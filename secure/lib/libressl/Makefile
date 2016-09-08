@@ -20,7 +20,7 @@ libssl_la_SOURCES= \
 
 SRCS=	${libssl_la_SOURCES}
 
-INCS=	dtls1.h srtp.h ssl.h ssl2.h ssl23.h tls1.h
+INCS=	dtls1.h srtp.h ssl.h ssl2.h ssl23.h ssl3.h tls1.h
 INCSDIR=	${INCLUDEDIR}/priv/openssl
 
 # We can't use ${LIBRECRYPTO} because of LIBDIR definition, so recreate it

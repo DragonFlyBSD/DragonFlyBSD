@@ -7,10 +7,13 @@ SUBDIR= gcc50
 SUBDIR+= gcc47
 .endif
 
+.if !defined(NO_LIBRESSL)
 SUBDIR+= libcryptsetup
+SUBDIR+= libluks
+.endif
+
 SUBDIR+= libdevmapper
 SUBDIR+= libdialog
-SUBDIR+= libluks
 SUBDIR+= liblvm
 
 SUBDIR_ORDERED=

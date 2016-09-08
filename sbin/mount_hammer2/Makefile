@@ -3,6 +3,7 @@ SRCS=	mount_hammer2.c
 MAN=
 
 CFLAGS+= -I${.CURDIR}/..
+CFLAGS+= -I${.CURDIR}/../../crypto/libressl/include
 LDADD=  -lutil
 DPADD=  ${LIBUTIL}
 

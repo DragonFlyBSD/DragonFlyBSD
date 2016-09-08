@@ -12,6 +12,7 @@ WARNS?=		2
 .if !defined(NO_LIBRESSL)
 SRCS+=		encrypt.c auth.c enc_des.c sra.c pk.c
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION -DSRA
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 
 .include <bsd.lib.mk>

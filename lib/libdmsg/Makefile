@@ -3,7 +3,8 @@
 LIB=	dmsg
 SRCS+=	icrc.c debug.c subs.c crypto.c msg.c msg_lnk.c service.c
 
-CFLAGS+= -pthread
+CFLAGS+=	-pthread
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 INCS=	dmsg.h
 

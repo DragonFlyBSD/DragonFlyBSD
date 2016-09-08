@@ -9,6 +9,7 @@ SRCS+=		backends.c libdevmapper.c setup.c utils.c \
 INCS+=		libcryptsetup.h
 
 CFLAGS+=	-I${CRYPTSETUP_DIR}/lib
+CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
 
 .PATH: ${CRYPTSETUP_DIR}/lib
 

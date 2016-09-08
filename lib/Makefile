@@ -70,7 +70,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libkiconv \
 	libkinfo \
 	libkvm \
-	libldns \
 	libm \
 	libmagic \
 	libmandoc \
@@ -89,7 +88,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	${_libsmdb} \
 	${_libsmutil} \
 	libstand \
-	libtcplay \
 	libtelnet \
 	libu4bhid \
 	libvgl \
@@ -102,8 +100,13 @@ SUBDIR=	${SUBDIR_ORDERED} \
 SUBDIR:=	libc ${SUBDIR:Nlibc}
 .endif
 
-.if defined(WANT_HAMMER2)
+.if !defined(NO_LIBRESSL)
+.  if defined(WANT_HAMMER2)
 _libdmsg=	libdmsg
+.  endif
+
+SUBDIR+=	libldns \
+		libtcplay
 .endif
 
 .if !defined(NO_LIBC_R)
