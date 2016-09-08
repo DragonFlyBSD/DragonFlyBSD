@@ -68,6 +68,7 @@ struct arc4_stream {
 static pthread_mutex_t	arc4random_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 static struct arc4_stream rs;
+static pid_t arc4_stir_pid;
 static int rs_initialized;
 static int rs_stired;
 static int arc4_count;
@@ -209,7 +210,10 @@ arc4_check_init(void)
 static inline void
 arc4_check_stir(void)
 {
-	if (!rs_stired || arc4_count <= 0) {
+	pid_t pid = getpid();	/* optimized by upmap */
+
+	if (!rs_stired || arc4_count <= 0 || arc4_stir_pid != pid) {
+		arc4_stir_pid = pid;
 		arc4_stir();
 		rs_stired = 1;
 	}
