@@ -66,6 +66,12 @@
 #define MAXFREQ		64
 #define CST_STRLEN	16
 
+#define NFREQ_MONPERF	0x0001
+#define NFREQ_ADJPERF	0x0002
+#define NFREQ_CPUTEMP	0x0004
+
+#define NFREQ_ALL	(NFREQ_MONPERF | NFREQ_ADJPERF | NFREQ_CPUTEMP)
+
 struct cpu_pwrdom {
 	TAILQ_ENTRY(cpu_pwrdom)	dom_link;
 	int			dom_id;
@@ -145,6 +151,7 @@ static char cpu_idle_cx[CST_STRLEN];
 static int cpu_idle_cxlen;
 static int FreqAry[MAXFREQ];
 static int NFreq;
+static int NFreqChanged = NFREQ_ALL;
 static int SavedPXGlobal;
 
 static int DebugOpt;
@@ -594,14 +601,18 @@ acpi_getcpufreq_str(int dom_id, int *highest0, int *lowest0)
 	/*
 	 * Frequency array
 	 */
-	NFreq = freqidx;
-	if (NFreq > MAXFREQ)
-		NFreq = MAXFREQ;
-	freqidx = freqidx;
+	if (freqidx > MAXFREQ)
+		freqidx = MAXFREQ;
+	if (NFreq != freqidx) {
+		NFreq = freqidx;
+		NFreqChanged = NFREQ_ALL;
+	}
 	ptr = buf;
 	while (ptr && (v = strtol(ptr, &ptr, 10)) > 0) {
 		if (freqidx == 0)
 			break;
+		if (FreqAry[freqidx - 1] != v)
+			NFreqChanged = NFREQ_ALL;
 		FreqAry[--freqidx] = v;
 	}
 
@@ -615,16 +626,25 @@ acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 	char sysid[64];
 	size_t freqlen;
 	int freqcnt, i;
+	int freqary[MAXFREQ];
 
 	/*
 	 * Retrieve availability list
 	 */
 	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.avail", dom_id);
 	freqlen = sizeof(FreqAry);
-	if (sysctlbyname(sysid, FreqAry, &freqlen, NULL, 0) < 0)
+	bzero(freqary, sizeof(freqary));
+	if (sysctlbyname(sysid, freqary, &freqlen, NULL, 0) < 0)
 		return 0;
 
-	NFreq = freqcnt = freqlen / sizeof(FreqAry[0]);
+	freqcnt = freqlen / sizeof(freqary[0]);
+	if (NFreq != freqcnt) {
+		NFreq = freqcnt;
+		NFreqChanged = NFREQ_ALL;
+	}
+	if (bcmp(freqary, FreqAry, sizeof(FreqAry)) != 0)
+		NFreqChanged = NFREQ_ALL;
+	bcopy(freqary, FreqAry, sizeof(FreqAry));
 	if (freqcnt == 0)
 		return 0;
 
@@ -935,7 +955,6 @@ init_perf(void)
 	 * Assume everything are used and are maxed out, before we
 	 * start.
 	 */
-
 	CPUMASK_ASSBMASK(cpu_used, NCpus);
 	cpu_pwrdom_used = cpu_pwrdom_mask;
 	global_pcpu_limit = NCpus;
@@ -1030,6 +1049,7 @@ mon_perf(double srt)
 	nstate = get_nstate(&global_cpu_state, srt);
 
 	if (nstate == global_cpu_state.cpu_limit &&
+	    (NFreqChanged & NFREQ_MONPERF) == 0 &&
 	    (pnstate == global_pcpu_limit || nstate > pnstate)) {
 		/* Nothing changed; keep the sets */
 		cpu_used = ocpu_used;
@@ -1038,6 +1058,7 @@ mon_perf(double srt)
 		global_pcpu_limit = pnstate;
 		return;
 	}
+	NFreqChanged &= ~NFREQ_MONPERF;
 	global_pcpu_limit = pnstate;
 
 	if (nstate > pnstate) {
@@ -1176,9 +1197,11 @@ adj_perf(cpumask_t xcpu_used, cpumask_t xcpu_pwrdom_used)
 		set_uschedcpus();
 
 	/*
-	 * Adjust per-cpu performance.
+	 * Adjust per-cpu performance for any cpus which changed.
 	 */
 	CPUMASK_XORMASK(xcpu_used, cpu_used);
+	if (NFreqChanged & NFREQ_ADJPERF)
+		CPUMASK_ASSBMASK(xcpu_used, NCpus);
 	while (CPUMASK_TESTNZERO(xcpu_used)) {
 		cpu = BSFCPUMASK(xcpu_used);
 		CPUMASK_NANDBIT(xcpu_used, cpu);
@@ -1198,6 +1221,8 @@ adj_perf(cpumask_t xcpu_used, cpumask_t xcpu_pwrdom_used)
 	 * a set of cpus.
 	 */
 	CPUMASK_XORMASK(xcpu_pwrdom_used, cpu_pwrdom_used);
+	if (NFreqChanged & NFREQ_ADJPERF)
+		CPUMASK_ASSBMASK(xcpu_pwrdom_used, NCpus);
 	while (CPUMASK_TESTNZERO(xcpu_pwrdom_used)) {
 		int dom;
 
@@ -1213,6 +1238,7 @@ adj_perf(cpumask_t xcpu_used, cpumask_t xcpu_pwrdom_used)
 		}
 		adj_cpu_pwrdom(dom, inc);
 	}
+	NFreqChanged &= ~NFREQ_ADJPERF;
 }
 
 static void
@@ -1436,7 +1462,8 @@ mon_cputemp(void)
 	 * laptop fan responsiveness and temperature sensor response times
 	 * can create major frequency oscillations.
 	 */
-	if (last_temp < 0) {
+	if (last_temp < 0 || (NFreqChanged & NFREQ_CPUTEMP)) {
+		NFreqChanged &= ~NFREQ_CPUTEMP;
 		last_temp = temp << 8;
 	} else if (temp < last_temp) {
 		last_temp = (last_temp * 15 + (temp << 8)) / 16;
@@ -1472,6 +1499,7 @@ mon_cputemp(void)
 		if (AdjustCpuFreqOverride) {
 			AdjustCpuFreqOverride = 0;
 			CurPXGlobal = 0;
+			NFreqChanged = NFREQ_ALL;
 			last_idx = -1;
 			syslog(LOG_ALERT,
 			       "Temp below %d, returning to normal operation",
@@ -1497,6 +1525,7 @@ mon_cputemp(void)
 		AdjustCpuFreqOverride = 1;
 		SavedPXGlobal = get_global_freq();
 		CurPXGlobal = 0;
+		NFreqChanged = NFREQ_ALL;
 		last_idx = -1;
 		syslog(LOG_ALERT,
 		       "Temp %d {%d-%d}, entering temperature control mode",
