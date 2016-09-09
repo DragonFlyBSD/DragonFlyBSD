@@ -254,7 +254,7 @@ struct hammer_ioc_pseudofs_rw {
 	int			pfs_id;
 	uint32_t		bytes;
 	uint32_t		version;
-	uint32_t		flags;
+	uint32_t		reserved01;
 	hammer_pseudofs_data_t	ondisk;
 };
 
