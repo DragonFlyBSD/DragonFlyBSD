@@ -172,11 +172,8 @@ do_cleanup(const char *path)
 	int r;
 	int found_rebal = 0;
 
-	bzero(&pfs, sizeof(pfs));
 	bzero(&mrec_tmp, sizeof(mrec_tmp));
-	pfs.ondisk = &mrec_tmp.pfs.pfsd;
-	pfs.bytes = sizeof(mrec_tmp.pfs.pfsd);
-	pfs.pfs_id = -1;
+	clrpfs(&pfs, &mrec_tmp.pfs.pfsd, -1);
 
 	printf("cleanup %-20s -", path);
 	fd = open(path, O_RDONLY);

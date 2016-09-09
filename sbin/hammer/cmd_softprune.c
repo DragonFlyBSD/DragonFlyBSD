@@ -79,11 +79,7 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	if (TimeoutOpt > 0)
 		alarm(TimeoutOpt);
 
-	bzero(&pfs, sizeof(pfs));
-	pfs.bytes = sizeof(*pfs.ondisk);
-	pfs.ondisk = malloc(pfs.bytes);
-	bzero(pfs.ondisk, pfs.bytes);
-	pfs.pfs_id = -1;
+	clrpfs(&pfs, NULL, -1);
 
 	/*
 	 * NOTE: To restrict to a single file XXX we have to set

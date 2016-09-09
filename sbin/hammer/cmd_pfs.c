@@ -44,6 +44,23 @@ static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void pseudofs_usage(int code);
 static int timetosecs(char *str);
 
+void
+clrpfs(struct hammer_ioc_pseudofs_rw *pfs, hammer_pseudofs_data_t pfsd,
+	int pfs_id)
+{
+	bzero(pfs, sizeof(*pfs));
+
+	if (pfsd)
+		pfs->ondisk = pfsd;
+	else
+		pfs->ondisk = malloc(sizeof(*pfs->ondisk));
+	bzero(pfs->ondisk, sizeof(*pfs->ondisk));
+
+	pfs->pfs_id = pfs_id;
+	pfs->bytes = sizeof(*pfs->ondisk);
+	pfs->version = HAMMER_IOC_PSEUDOFS_VERSION;
+}
+
 /*
  * Return a directory that contains path.
  * If '/' is not found in the path then '.' is returned.
@@ -79,10 +96,7 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 	int fd;
 	char *p;
 
-	bzero(pfs, sizeof(*pfs));
-	pfs->ondisk = malloc(sizeof(*pfs->ondisk));
-	bzero(pfs->ondisk, sizeof(*pfs->ondisk));
-	pfs->bytes = sizeof(*pfs->ondisk);
+	clrpfs(pfs, NULL, -1);
 
 	/*
 	 * Trailing '/' must be removed so that upon pfs-destroy
@@ -281,11 +295,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 * via the master filesystem.  Checking it here ensures
 	 * other PFS commands access PFS under the master filesystem.
 	 */
-	bzero(&pfs, sizeof(pfs));
-	bzero(&pfsd, sizeof(pfsd));
-	pfs.pfs_id = -1;
-	pfs.ondisk = &pfsd;
-	pfs.bytes = sizeof(pfsd);
+	clrpfs(&pfs, &pfsd, -1);
 
 	ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs);
 	if (pfs.pfs_id != HAMMER_ROOT_PFSID) {
@@ -300,12 +310,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 
 	error = 0;
 	for (pfs_id = 0; pfs_id < HAMMER_MAX_PFS; ++pfs_id) {
-		bzero(&pfs, sizeof(pfs));
-		bzero(&pfsd, sizeof(pfsd));
-		pfs.pfs_id = pfs_id;
-		pfs.ondisk = &pfsd;
-		pfs.bytes = sizeof(pfsd);
-		pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
+		clrpfs(&pfs, &pfsd, pfs_id);
 		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 			error = errno;
 			break;
@@ -330,11 +335,8 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 * Create the new PFS
 	 */
 	printf("Creating PFS #%d\t", pfs_id);
+	clrpfs(&pfs, &pfsd, pfs_id);
 	init_pfsd(&pfsd, is_slave);
-	pfs.pfs_id = pfs_id;
-	pfs.ondisk = &pfsd;
-	pfs.bytes = sizeof(pfsd);
-	pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
 
 	if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) < 0) {
 		printf("failed: %s\n", strerror(errno));

@@ -495,11 +495,7 @@ snapshot_ls(const char *path)
 		/* not reached */
 	}
 
-	bzero(&pfs, sizeof(pfs));
-	bzero(&pfs_od, sizeof(pfs_od));
-	pfs.pfs_id = -1;
-	pfs.ondisk = &pfs_od;
-	pfs.bytes = sizeof(struct hammer_pseudofs_data);
+	clrpfs(&pfs, &pfs_od, -1);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 		err(2, "hammer snapls: cannot retrieve PFS info on %s", path);
 		/* not reached */

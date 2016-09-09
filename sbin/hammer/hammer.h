@@ -142,6 +142,8 @@ void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
 void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);
 void hammer_reset_cycle(void);
 
+void clrpfs(struct hammer_ioc_pseudofs_rw *pfs, hammer_pseudofs_data_t pfsd,
+	int pfs_id);
 int getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path);
 void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
 void dump_pfsd(hammer_pseudofs_data_t, int);

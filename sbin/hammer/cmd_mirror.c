@@ -1515,11 +1515,9 @@ generate_mrec_header(int fd, int pfs_id,
 {
 	struct hammer_ioc_pseudofs_rw pfs;
 
-	bzero(&pfs, sizeof(pfs));
 	bzero(mrec_tmp, sizeof(*mrec_tmp));
-	pfs.pfs_id = pfs_id;
-	pfs.ondisk = &mrec_tmp->pfs.pfsd;
-	pfs.bytes = sizeof(mrec_tmp->pfs.pfsd);
+	clrpfs(&pfs, &mrec_tmp->pfs.pfsd, pfs_id);
+
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
 		fprintf(stderr, "Mirror-read: not a HAMMER fs/pseudofs!\n");
 		exit(1);
@@ -1550,11 +1548,7 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 	/*
 	 * Get the PFSD info from the target filesystem.
 	 */
-	bzero(&pfs, sizeof(pfs));
-	bzero(&pfsd, sizeof(pfsd));
-	pfs.pfs_id = pfs_id;
-	pfs.ondisk = &pfsd;
-	pfs.bytes = sizeof(pfsd);
+	clrpfs(&pfs, &pfsd, pfs_id);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
 		fprintf(stderr, "mirror-write: not a HAMMER fs/pseudofs!\n");
 		exit(1);
@@ -1618,11 +1612,7 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 	struct hammer_ioc_pseudofs_rw pfs;
 	struct hammer_pseudofs_data pfsd;
 
-	bzero(&pfs, sizeof(pfs));
-	bzero(&pfsd, sizeof(pfsd));
-	pfs.pfs_id = pfs_id;
-	pfs.ondisk = &pfsd;
-	pfs.bytes = sizeof(pfsd);
+	clrpfs(&pfs, &pfsd, pfs_id);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
 		perror("update_pfs_snapshot (read)");
 		exit(1);
