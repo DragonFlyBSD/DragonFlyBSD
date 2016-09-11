@@ -170,7 +170,6 @@ struct iwm_fw_info {
 			uint32_t fws_len;
 			uint32_t fws_devoff;
 		} fw_sect[IWM_UCODE_SECT_MAX];
-		size_t fw_totlen;
 		int fw_count;
 	} fw_sects[IWM_UCODE_TYPE_MAX];
 

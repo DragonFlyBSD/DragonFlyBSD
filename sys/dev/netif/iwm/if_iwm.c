@@ -530,7 +530,6 @@ iwm_firmware_store_section(struct iwm_softc *sc,
 	fwone->fws_len = dlen - sizeof(uint32_t);
 
 	fws->fw_count++;
-	fws->fw_totlen += fwone->fws_len;
 
 	return 0;
 }
