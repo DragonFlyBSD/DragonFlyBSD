@@ -48,8 +48,17 @@ static void	pstr(int fd, const char *s);
 void
 _thread_printf(int fd, const char *fmt, ...)
 {
+	va_list ap;
+
+	va_start(ap, fmt);
+	_thread_vprintf(fd, fmt, ap);
+	va_end(ap);
+}
+
+void
+_thread_vprintf(int fd, const char *fmt, va_list ap)
+{
 	static const char digits[16] = "0123456789abcdef";
-	va_list	 ap;
 	char buf[20];
 	char *s;
 	unsigned long r, u;
@@ -57,13 +66,12 @@ _thread_printf(int fd, const char *fmt, ...)
 	long d;
 	int islong;
 
-	va_start(ap, fmt);
 	while ((c = *fmt++)) {
 		islong = 0;
 		if (c == '%') {
 next:			c = *fmt++;
 			if (c == '\0')
-				goto out;
+				return;
 			switch (c) {
 			case 'c':
 				pchar(fd, va_arg(ap, int));
@@ -107,8 +115,6 @@ next:			c = *fmt++;
 		}
 		pchar(fd, c);
 	}
-out:
-	va_end(ap);
 }
 
 /*

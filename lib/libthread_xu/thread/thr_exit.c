@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,15 +44,27 @@
 #include "thr_private.h"
 
 void
-_thread_exit(const char *fname, int lineno, const char *msg)
+_thread_exitf(const char *fname, int lineno, const char *fmt, ...)
 {
+	va_list ap;
 
 	/* Write an error message to the standard error file descriptor: */
-	_thread_printf(2,
-	    "Fatal error '%s' at line %d in file %s (errno = %d)\n",
-	    msg, lineno, fname, errno);
+	_thread_printf(STDERR_FILENO, "Fatal error '");
+
+	va_start(ap, fmt);
+	_thread_vprintf(STDERR_FILENO, fmt, ap);
+	va_end(ap);
+
+	_thread_printf(STDERR_FILENO, "' at line %d in file %s (errno = %d)\n",
+	    lineno, fname, errno);
 
 	abort();
+}
+
+void
+_thread_exit(const char *fname, int lineno, const char *msg)
+{
+	_thread_exitf(fname, lineno, "%s", msg);
 }
 
 /*
@@ -87,11 +100,9 @@ _pthread_exit(void *status)
 
 	/* Check if this thread is already in the process of exiting: */
 	if ((curthread->cancelflags & THR_CANCEL_EXITING) != 0) {
-		char msg[128];
-		snprintf(msg, sizeof(msg), "Thread %p has called "
+		PANIC("Thread %p has called "
 		    "pthread_exit() from a destructor. POSIX 1003.1 "
 		    "1996 s16.2.5.2 does not allow this!", curthread);
-		PANIC(msg);
 	}
 
 	/* Flag this thread as exiting. */

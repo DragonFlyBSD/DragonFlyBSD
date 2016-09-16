@@ -48,6 +48,7 @@
 #include <limits.h>
 #include <signal.h>
 #include <sys/sched.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <pthread_np.h>
@@ -62,7 +63,7 @@
 /*
  * Kernel fatal error handler macro.
  */
-#define PANIC(string)		_thread_exit(__FILE__,__LINE__,string)
+#define PANIC(args...)		_thread_exitf(__FILE__, __LINE__, ##args)
 
 /* Output debug messages like this: */
 #define stdout_debug(args...)	_thread_printf(STDOUT_FILENO, ##args)
@@ -645,6 +646,8 @@ void	_mutex_unlock_private(struct pthread *);
 void	_libpthread_init(struct pthread *);
 struct pthread *_thr_alloc(struct pthread *);
 void	_thread_exit(const char *, int, const char *) __dead2;
+void	_thread_exitf(const char *, int, const char *, ...) __dead2
+	    __printflike(3, 4);
 void	_thr_exit_cleanup(void);
 int	_thr_ref_add(struct pthread *, struct pthread *, int);
 void	_thr_ref_delete(struct pthread *, struct pthread *);
@@ -659,7 +662,8 @@ void	_thr_free(struct pthread *, struct pthread *);
 void	_thr_gc(struct pthread *);
 void	_thread_cleanupspecific(void);
 void	_thread_dump_info(void);
-void	_thread_printf(int, const char *, ...);
+void	_thread_printf(int, const char *, ...) __printflike(2, 3);
+void	_thread_vprintf(int, const char *, va_list);
 void	_thr_spinlock_init(void);
 int	_thr_cancel_enter(struct pthread *);
 void	_thr_cancel_leave(struct pthread *, int);
