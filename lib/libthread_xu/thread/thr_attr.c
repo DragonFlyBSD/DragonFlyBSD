@@ -392,16 +392,16 @@ _pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *para
 __strong_reference(_pthread_attr_setschedparam, pthread_attr_setschedparam);
 
 int
-_pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy)
+_pthread_attr_setschedpolicy(pthread_attr_t *attr, int pol)
 {
 	int ret = 0;
 
 	if ((attr == NULL) || (*attr == NULL))
 		ret = EINVAL;
-	else if ((policy < SCHED_FIFO) || (policy > SCHED_RR)) {
-		ret = ENOTSUP;
+	else if (pol != SCHED_FIFO && pol != SCHED_OTHER && pol != SCHED_RR) {
+		ret = EINVAL;
 	} else
-		(*attr)->sched_policy = policy;
+		(*attr)->sched_policy = pol;
 
 	return(ret);
 }

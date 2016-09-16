@@ -32,12 +32,12 @@
 #include <pthread.h>
 #include "un-namespace.h"
 
-static int level = 0;
+static int current_concurrency = 0;
 
 int
 _pthread_getconcurrency(void)
 {
-	return (level);
+	return current_concurrency;
 }
 
 int
@@ -45,7 +45,8 @@ _pthread_setconcurrency(int new_level)
 {
 	if (new_level < 0)
 		return (EINVAL);
-	level = new_level;
+
+	current_concurrency = new_level;
 	return 0;
 }
 

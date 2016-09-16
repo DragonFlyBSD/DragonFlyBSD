@@ -57,9 +57,8 @@
  *
  */
 
-#include "namespace.h"
 #include <sys/syscall.h>
-
+#include "namespace.h"
 #include <machine/tls.h>
 #include <errno.h>
 #include <link.h>
