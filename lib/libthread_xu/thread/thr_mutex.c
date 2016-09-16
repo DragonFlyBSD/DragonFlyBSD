@@ -587,6 +587,42 @@ mutex_unlock_common(pthread_mutex_t *mutex)
 }
 
 int
+_pthread_mutex_getprioceiling(pthread_mutex_t *mutex,
+			      int *prioceiling)
+{
+	int ret = 0;
+
+	if ((mutex == NULL) || (*mutex == NULL))
+		ret = EINVAL;
+	else if ((*mutex)->m_protocol != PTHREAD_PRIO_PROTECT)
+		ret = EINVAL;
+	else
+		*prioceiling = (*mutex)->m_prio;
+
+	return(ret);
+}
+
+int
+_pthread_mutex_setprioceiling(pthread_mutex_t *mutex,
+			      int prioceiling, int *old_ceiling)
+{
+	int ret = 0;
+	int tmp;
+
+	if ((mutex == NULL) || (*mutex == NULL))
+		ret = EINVAL;
+	else if ((*mutex)->m_protocol != PTHREAD_PRIO_PROTECT)
+		ret = EINVAL;
+	else if ((ret = _pthread_mutex_lock(mutex)) == 0) {
+		tmp = (*mutex)->m_prio;
+		(*mutex)->m_prio = prioceiling;
+		ret = _pthread_mutex_unlock(mutex);
+		*old_ceiling = tmp;
+	}
+	return(ret);
+}
+
+int
 _mutex_cv_lock(pthread_mutex_t *m, int count)
 {
 	int	ret;
@@ -644,3 +680,5 @@ __strong_reference(__pthread_mutex_trylock, pthread_mutex_trylock);
 /* No difference between libc and application usage of these: */
 __strong_reference(_pthread_mutex_destroy, pthread_mutex_destroy);
 __strong_reference(_pthread_mutex_unlock, pthread_mutex_unlock);
+__strong_reference(_pthread_mutex_getprioceiling, pthread_mutex_getprioceiling);
+__strong_reference(_pthread_mutex_setprioceiling, pthread_mutex_setprioceiling);
