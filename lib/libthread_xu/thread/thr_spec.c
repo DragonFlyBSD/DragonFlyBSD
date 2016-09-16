@@ -50,8 +50,13 @@ umtx_t	_keytable_lock;
 int
 _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 {
-	struct pthread *curthread = tls_get_curthread();
+	struct pthread *curthread;
 	int i;
+
+	/* User program might be preparing to call pthread_create() */
+	_thr_check_init();
+
+	curthread = tls_get_curthread();
 
 	/* Lock the key table: */
 	THR_LOCK_ACQUIRE(curthread, &_keytable_lock);
