@@ -870,7 +870,7 @@ origin_subst_one(char *real, const char *kw, const char *subst,
 	kw_len = strlen(kw);
 
 	/*
-	 * First, count the number of the keyword occurences, to
+	 * First, count the number of the keyword occurrences, to
 	 * preallocate the final string.
 	 */
 	for (p = real, subst_count = 0;; p = p1 + kw_len, subst_count++) {
@@ -1856,6 +1856,7 @@ static void
 init_rtld(caddr_t mapbase, Elf_Auxinfo **aux_info)
 {
     Obj_Entry objtmp;	/* Temporary rtld object */
+    const Elf_Ehdr *ehdr;
     const Elf_Dyn *dyn_rpath;
     const Elf_Dyn *dyn_soname;
     const Elf_Dyn *dyn_runpath;
@@ -1886,6 +1887,9 @@ init_rtld(caddr_t mapbase, Elf_Auxinfo **aux_info)
 
 	relocate_objects(&objtmp, true, &objtmp, 0, NULL);
     }
+    ehdr = (Elf_Ehdr *)mapbase;
+    objtmp.phdr = (Elf_Phdr *)((char *)mapbase + ehdr->e_phoff);
+    objtmp.phsize = ehdr->e_phnum * sizeof(objtmp.phdr[0]);
 
     /* Initialize the object list. */
     obj_tail = &obj_list;
@@ -2542,6 +2546,55 @@ relocate_object_dag(Obj_Entry *root, bool bind_now, Obj_Entry *rtldobj,
 }
 
 /*
+ * Prepare for, or clean after, relocating an object marked with
+ * DT_TEXTREL or DF_TEXTREL.  Before relocating, all read-only
+ * segments are remapped read-write.  After relocations are done, the
+ * segment's permissions are returned back to the modes specified in
+ * the phdrs.  If any relocation happened, or always for wired
+ * program, COW is triggered.
+ */
+static int
+reloc_textrel_prot(Obj_Entry *obj, bool before)
+{
+	const Elf_Phdr *ph;
+	void *base;
+	size_t l, sz;
+	int prot;
+
+	for (l = obj->phsize / sizeof(*ph), ph = obj->phdr; l > 0;
+	    l--, ph++) {
+		if (ph->p_type != PT_LOAD || (ph->p_flags & PF_W) != 0)
+			continue;
+		base = obj->relocbase + trunc_page(ph->p_vaddr);
+		sz = round_page(ph->p_vaddr + ph->p_filesz) -
+		    trunc_page(ph->p_vaddr);
+		prot = convert_prot(ph->p_flags) | (before ? PROT_WRITE : 0);
+	/*
+	 * Make sure modified text segments are included in the
+	 * core dump since we modified it.  This unfortunately causes the
+	 * entire text segment to core-out but we don't have much of a
+	 * choice.  We could try to only reenable core dumps on pages
+	 * in which relocations occured but that is likely most of the text
+	 * pages anyway, and even that would not work because the rest of
+	 * the text pages would wind up as a read-only OBJT_DEFAULT object
+	 * (created due to our modifications) backed by the original OBJT_VNODE
+	 * object, and the ELF coredump code is currently only able to dump
+	 * vnode records for pure vnode-backed mappings, not vnode backings
+	 * to memory objects.
+	 */
+		if (before == false)
+			madvise(base, sz, MADV_CORE);
+		if (mprotect(base, sz, prot) == -1) {
+			_rtld_error("%s: Cannot write-%sable text segment: %s",
+			    obj->path, before ? "en" : "dis",
+			    rtld_strerror(errno));
+			return (-1);
+		}
+	}
+	return (0);
+}
+
+/*
  * Relocate single object.
  * Returns 0 on success, or -1 on failure.
  */
@@ -2563,42 +2616,17 @@ relocate_object(Obj_Entry *obj, bool bind_now, Obj_Entry *rtldobj,
 		return (-1);
 	}
 
-	if (obj->textrel) {
-		/* There are relocations to the write-protected text segment. */
-		if (mprotect(obj->mapbase, obj->textsize,
-		    PROT_READ|PROT_WRITE|PROT_EXEC) == -1) {
-			_rtld_error("%s: Cannot write-enable text segment: %s",
-			    obj->path, rtld_strerror(errno));
-			return (-1);
-		}
-	}
+	/* There are relocations to the write-protected text segment. */
+	if (obj->textrel && reloc_textrel_prot(obj, true) != 0)
+		return (-1);
 
 	/* Process the non-PLT non-IFUNC relocations. */
 	if (reloc_non_plt(obj, rtldobj, flags, lockstate))
 		return (-1);
 
-	/*
-	 * Reprotect the text segment.  Make sure it is included in the
-	 * core dump since we modified it.  This unfortunately causes the
-	 * entire text segment to core-out but we don't have much of a
-	 * choice.  We could try to only reenable core dumps on pages
-	 * in which relocations occured but that is likely most of the text
-	 * pages anyway, and even that would not work because the rest of
-	 * the text pages would wind up as a read-only OBJT_DEFAULT object
-	 * (created due to our modifications) backed by the original OBJT_VNODE
-	 * object, and the ELF coredump code is currently only able to dump
-	 * vnode records for pure vnode-backed mappings, not vnode backings
-	 * to memory objects.
-	 */
-	if (obj->textrel) {
-	    madvise(obj->mapbase, obj->textsize, MADV_CORE);
-		if (mprotect(obj->mapbase, obj->textsize,
-		    PROT_READ|PROT_EXEC) == -1) {
-			_rtld_error("%s: Cannot write-protect text segment: %s",
-			    obj->path, rtld_strerror(errno));
-			return (-1);
-		}
-	}
+	/* Re-protected the text segment. */
+	if (obj->textrel && reloc_textrel_prot(obj, false) != 0)
+		return (-1);
 
 	/* Set the special PLT or GOT entries. */
 	init_pltgot(obj);
