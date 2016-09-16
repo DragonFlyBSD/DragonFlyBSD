@@ -27,12 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_clean.c,v 1.9 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_clean.c,v 1.4 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -75,4 +73,3 @@ _pthread_cleanup_pop(int execute)
 
 __strong_reference(_pthread_cleanup_push, pthread_cleanup_push);
 __strong_reference(_pthread_cleanup_pop, pthread_cleanup_pop);
-

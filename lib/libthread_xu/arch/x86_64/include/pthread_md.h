@@ -35,7 +35,6 @@
 
 #include <stddef.h>
 #include <sys/types.h>
-
 #include <machine/sysarch.h>
 #include <machine/tls.h>
 

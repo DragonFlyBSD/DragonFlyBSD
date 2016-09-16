@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libthr/thread/thr_info.c,v 1.10 2007/04/05 07:20:31 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_info.c,v 1.6 2008/01/19 14:05:29 corecode Exp $
  */
 
 #include "namespace.h"

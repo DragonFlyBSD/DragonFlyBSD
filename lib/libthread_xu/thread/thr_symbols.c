@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_symbols.c,v 1.1 2004/08/16 03:25:07 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_symbols.c,v 1.4 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <stddef.h>

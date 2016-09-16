@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlock.c,v 1.14 2004/01/08 15:37:09 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -35,7 +34,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "un-namespace.h"
-
 #include "thr_private.h"
 
 /* maximum number of times a read lock may be obtained */
@@ -129,14 +127,14 @@ init_static(struct pthread *thread, pthread_rwlock_t *rwlock)
 }
 
 int
-_pthread_rwlock_init (pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr)
+_pthread_rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr)
 {
 	*rwlock = NULL;
 	return (rwlock_init(rwlock, attr));
 }
 
 static int
-rwlock_rdlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
+rwlock_rdlock_common(pthread_rwlock_t *rwlock, const struct timespec *abstime)
 {
 	struct pthread *curthread = tls_get_curthread();
 	pthread_rwlock_t prwlock;
@@ -421,4 +419,3 @@ __strong_reference(_pthread_rwlock_trywrlock, pthread_rwlock_trywrlock);
 __strong_reference(_pthread_rwlock_unlock, pthread_rwlock_unlock);
 __strong_reference(_pthread_rwlock_wrlock, pthread_rwlock_wrlock);
 __strong_reference(_pthread_rwlock_timedwrlock, pthread_rwlock_timedwrlock);
-

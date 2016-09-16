@@ -107,7 +107,7 @@ next:			c = *fmt++;
 		}
 		pchar(fd, c);
 	}
-out:	
+out:
 	va_end(ap);
 }
 

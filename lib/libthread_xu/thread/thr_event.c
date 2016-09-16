@@ -23,7 +23,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_event.c,v 1.2 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include "thr_private.h"

@@ -83,19 +83,21 @@ int
 _pthread_mutexattr_getkind_np(pthread_mutexattr_t attr)
 {
 	int	ret;
+
 	if (attr == NULL) {
 		errno = EINVAL;
 		ret = -1;
 	} else {
 		ret = attr->m_type;
 	}
-	return(ret);
+	return (ret);
 }
 
 int
 _pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
 {
 	int	ret;
+
 	if (attr == NULL || *attr == NULL || type >= PTHREAD_MUTEX_TYPE_MAX) {
 		errno = EINVAL;
 		ret = -1;
@@ -103,7 +105,7 @@ _pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
 		(*attr)->m_type = type;
 		ret = 0;
 	}
-	return(ret);
+	return (ret);
 }
 
 int
@@ -118,7 +120,7 @@ _pthread_mutexattr_gettype(pthread_mutexattr_t *attr, int *type)
 		*type = (*attr)->m_type;
 		ret = 0;
 	}
-	return ret;
+	return (ret);
 }
 
 int
@@ -132,7 +134,7 @@ _pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
 		*attr = NULL;
 		ret = 0;
 	}
-	return(ret);
+	return (ret);
 }
 
 int
@@ -142,7 +144,6 @@ _pthread_mutexattr_getpshared(const pthread_mutexattr_t *attr,
 
 	if (attr == NULL || *attr == NULL)
 		return (EINVAL);
-
 	*pshared = PTHREAD_PROCESS_PRIVATE;
 	return (0);
 }

@@ -27,12 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.9 2007/03/13 00:19:29 corecode Exp $
  */
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -98,7 +96,7 @@ _pthread_exit(void *status)
 
 	/* Flag this thread as exiting. */
 	atomic_set_int(&curthread->cancelflags, THR_CANCEL_EXITING);
-	
+
 	_thr_exit_cleanup();
 
 	/* Save the return value: */

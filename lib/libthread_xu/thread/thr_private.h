@@ -79,7 +79,7 @@
 #endif
 
 #ifdef PIC
-#define	STATIC_LIB_REQUIRE(name)
+#define STATIC_LIB_REQUIRE(name)
 #else
 #define STATIC_LIB_REQUIRE(name)	__asm(".globl " #name)
 #endif
@@ -88,7 +88,7 @@ TAILQ_HEAD(thread_head, pthread)	thread_head;
 TAILQ_HEAD(atfork_head, pthread_atfork)	atfork_head;
 
 #define	TIMESPEC_ADD(dst, src, val)				\
-	do { 							\
+	do {							\
 		(dst)->tv_sec = (src)->tv_sec + (val)->tv_sec;	\
 		(dst)->tv_nsec = (src)->tv_nsec + (val)->tv_nsec; \
 		if ((dst)->tv_nsec >= 1000000000) {		\
@@ -98,7 +98,7 @@ TAILQ_HEAD(atfork_head, pthread_atfork)	atfork_head;
 	} while (0)
 
 #define	TIMESPEC_SUB(dst, src, val)				\
-	do { 							\
+	do {							\
 		(dst)->tv_sec = (src)->tv_sec - (val)->tv_sec;	\
 		(dst)->tv_nsec = (src)->tv_nsec - (val)->tv_nsec; \
 		if ((dst)->tv_nsec < 0) {			\
@@ -124,12 +124,12 @@ struct pthread_mutex {
 	 * Used for priority inheritence and protection.
 	 *
 	 *   m_prio       - For priority inheritence, the highest active
-	 *                  priority (threads locking the mutex inherit
-	 *                  this priority).  For priority protection, the
-	 *                  ceiling priority of this mutex.
+	 *		    priority (threads locking the mutex inherit
+	 *		    this priority).  For priority protection, the
+	 *		    ceiling priority of this mutex.
 	 *   m_saved_prio - mutex owners inherited priority before
-	 *                  taking the mutex, restored when the owner
-	 *                  unlocks the mutex.
+	 *		    taking the mutex, restored when the owner
+	 *		    unlocks the mutex.
 	 */
 	int				m_prio;
 	int				m_saved_prio;
@@ -146,7 +146,7 @@ struct pthread_mutex {
 	{0, PTHREAD_MUTEX_DEFAULT, PTHREAD_PRIO_NONE, TAILQ_INITIALIZER, \
 	NULL, { NULL }, MUTEX_FLAGS_PRIVATE, 0, 0, 0, TAILQ_INITIALIZER }
 /*
- * Flags for mutexes. 
+ * Flags for mutexes.
  */
 #define MUTEX_FLAGS_PRIVATE	0x01
 #define MUTEX_FLAGS_INITED	0x02
@@ -312,7 +312,7 @@ struct pthread_key {
 	volatile int	allocated;
 	volatile int	count;
 	int		seqno;
-	void            (*destructor)(void *);
+	void		(*destructor)(void *);
 };
 
 /*
@@ -374,8 +374,8 @@ struct pthread {
 	void			*arg;
 	struct pthread_attr	attr;
 
- 	/*
-	 * Cancelability flags 
+	/*
+	 * Cancelability flags
 	 */
 #define	THR_CANCEL_DISABLE		0x0001
 #define	THR_CANCEL_EXITING		0x0002
@@ -474,14 +474,14 @@ struct pthread {
 	struct tls_tcb		*tcb;
 
 	/* Cleanup handlers Link List */
-	struct pthread_cleanup *cleanup;
+	struct pthread_cleanup	*cleanup;
 
 	/* Enable event reporting */
 	int			report_events;
-	
+
 	/* Event mask */
 	td_thr_events_t		event_mask;
-	
+
 	/* Event */
 	td_event_msg_t		event_buf;
 };
@@ -579,7 +579,7 @@ do {								\
 #define	THR_IN_SYNCQ(thrd)	(((thrd)->sflags & THR_FLAGS_IN_SYNCQ) != 0)
 
 #define SHOULD_REPORT_EVENT(curthr, e)			\
-	(curthr->report_events && 			\
+	(curthr->report_events &&			\
 	 (((curthr)->event_mask | _thread_event_mask ) & e) != 0)
 
 extern int __isthreaded;
@@ -656,8 +656,8 @@ void	_thr_stack_free(struct pthread_attr *);
 void	_thr_stack_cleanup(void);
 void	_thr_free(struct pthread *, struct pthread *);
 void	_thr_gc(struct pthread *);
-void    _thread_cleanupspecific(void);
-void    _thread_dump_info(void);
+void	_thread_cleanupspecific(void);
+void	_thread_dump_info(void);
 void	_thread_printf(int, const char *, ...);
 void	_thr_spinlock_init(void);
 int	_thr_cancel_enter(struct pthread *);
@@ -689,8 +689,8 @@ int	_rtp_to_schedparam(const struct rtprio *rtp, int *policy,
 	    struct sched_param *param);
 int	_schedparam_to_rtp(int policy, const struct sched_param *param,
 	    struct rtprio *rtp);
-int 	_umtx_sleep_err(volatile const int *, int, int);
-int 	_umtx_wakeup_err(volatile const int *, int);
+int	_umtx_sleep_err(volatile const int *, int, int);
+int	_umtx_wakeup_err(volatile const int *, int);
 
 /* #include <sys/aio.h> */
 #ifdef _SYS_AIO_H_
@@ -751,11 +751,11 @@ int	__sys_nanosleep(const struct timespec *, struct timespec *);
 
 /* #include <unistd.h> */
 #ifdef  _UNISTD_H_
-int     __sys_close(int);
-int     __sys_execve(const char *, char * const *, char * const *);
+int	__sys_close(int);
+int	__sys_execve(const char *, char * const *, char * const *);
 int	__sys_fsync(int);
 pid_t	__sys_getpid(void);
-int     __sys_select(int, fd_set *, fd_set *, fd_set *, struct timeval *);
+int	__sys_select(int, fd_set *, fd_set *, fd_set *, struct timeval *);
 ssize_t __sys_read(int, void *, size_t);
 ssize_t __sys_write(int, const void *, size_t);
 void	__sys_exit(int);
@@ -767,8 +767,8 @@ int	__sys_sigwaitinfo(const sigset_t *set, siginfo_t *info);
 
 /* #include <poll.h> */
 #ifdef _SYS_POLL_H_
-int 	__sys_poll(struct pollfd *, unsigned, int);
-int 	__sys_ppoll(struct pollfd *, unsigned, const struct timespec *,
+int	__sys_poll(struct pollfd *, unsigned, int);
+int	__sys_ppoll(struct pollfd *, unsigned, const struct timespec *,
 		const sigset_t *);
 #endif
 
@@ -793,7 +793,7 @@ static inline void
 _thr_check_init(void)
 {
 	if (_thr_initial == NULL)
-		_libpthread_init(0);
+		_libpthread_init(NULL);
 }
 
 struct dl_phdr_info;

@@ -1,4 +1,3 @@
-# $DragonFly: src/lib/libthread_xu/thread/Makefile.inc,v 1.5 2008/01/19 14:05:29 corecode Exp $
 
 # thr sources
 .PATH: ${.CURDIR}/thread

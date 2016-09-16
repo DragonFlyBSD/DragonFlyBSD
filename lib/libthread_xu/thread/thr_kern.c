@@ -62,7 +62,7 @@ void
 _thr_signal_block(struct pthread *curthread)
 {
 	sigset_t set;
-	
+
 	if (curthread->sigblock > 0) {
 		curthread->sigblock++;
 		return;
@@ -119,8 +119,8 @@ _thr_set_sched_other_prio(struct pthread *pth __unused, int prio)
 	 * case 0: need initialization
 	 * case 1: initialization successful
 	 * case 2: initialization failed. can't happen, but if
-	 * 	   it does, accept all and hope for the best.
-	 * 	   It's not like we use it anyway.
+	 *	   it does, accept all and hope for the best.
+	 *	   It's not like we use it anyway.
 	 */
 	if (!init_status) {
 		int tmp = errno;

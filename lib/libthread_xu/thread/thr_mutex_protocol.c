@@ -29,7 +29,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex_protocol.c,v 1.4 2008/07/15 01:18:53 dillon Exp $
  */
 
 #include "namespace.h"
@@ -69,4 +68,3 @@ _pthread_mutexattr_setprotocol(pthread_mutexattr_t *mattr, int protocol)
 
 __strong_reference(_pthread_mutexattr_getprotocol, pthread_mutexattr_getprotocol);
 __strong_reference(_pthread_mutexattr_setprotocol, pthread_mutexattr_setprotocol);
-

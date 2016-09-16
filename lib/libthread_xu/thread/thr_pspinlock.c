@@ -23,12 +23,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_pspinlock.c,v 1.4 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -45,11 +43,11 @@ _pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 	struct pthread_spinlock	*lck;
 	int ret;
 
-	if (lock == NULL || pshared != PTHREAD_PROCESS_PRIVATE)
+	if (lock == NULL || pshared != PTHREAD_PROCESS_PRIVATE) {
 		ret = EINVAL;
-	else if ((lck = malloc(sizeof(struct pthread_spinlock))) == NULL)
+	} else if ((lck = malloc(sizeof(struct pthread_spinlock))) == NULL) {
 		ret = ENOMEM;
-	else {
+	} else {
 		_thr_umtx_init(&lck->s_lock);
 		*lock = lck;
 		ret = 0;
@@ -63,14 +61,13 @@ _pthread_spin_destroy(pthread_spinlock_t *lock)
 {
 	int ret;
 
-	if (lock == NULL || *lock == NULL)
+	if (lock == NULL || *lock == NULL) {
 		ret = EINVAL;
-	else {
+	} else {
 		free(*lock);
 		*lock = NULL;
 		ret = 0;
 	}
-
 	return (ret);
 }
 
@@ -95,9 +92,9 @@ _pthread_spin_lock(pthread_spinlock_t *lock)
 	struct pthread_spinlock	*lck;
 	int ret, count;
 
-	if (lock == NULL || (lck = *lock) == NULL)
+	if (lock == NULL || (lck = *lock) == NULL) {
 		ret = EINVAL;
-	else {
+	} else {
 		count = SPIN_COUNT;
 		while ((ret = THR_UMTX_TRYLOCK(curthread, &lck->s_lock)) != 0) {
 			while (lck->s_lock) {
@@ -124,9 +121,9 @@ _pthread_spin_unlock(pthread_spinlock_t *lock)
 	struct pthread_spinlock	*lck;
 	int ret;
 
-	if (lock == NULL || (lck = *lock) == NULL)
+	if (lock == NULL || (lck = *lock) == NULL) {
 		ret = EINVAL;
-	else {
+	} else {
 		THR_UMTX_UNLOCK(curthread, &lck->s_lock);
 		ret = 0;
 	}
@@ -138,4 +135,3 @@ __strong_reference(_pthread_spin_destroy, pthread_spin_destroy);
 __strong_reference(_pthread_spin_trylock, pthread_spin_trylock);
 __strong_reference(_pthread_spin_lock, pthread_spin_lock);
 __strong_reference(_pthread_spin_unlock, pthread_spin_unlock);
-

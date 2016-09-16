@@ -26,9 +26,7 @@
 
 #include "namespace.h"
 #include <sys/signalvar.h>
-
 #include <machine/tls.h>
-
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
@@ -261,4 +259,3 @@ __sigwait(const sigset_t *set, int *sig)
 }
 
 __strong_reference(__sigwait, sigwait);
-

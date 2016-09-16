@@ -32,8 +32,8 @@
 
 #define ONCE_NEVER_DONE		PTHREAD_NEEDS_INIT
 #define ONCE_DONE		PTHREAD_DONE_INIT
-#define	ONCE_IN_PROGRESS	0x02
-#define	ONCE_MASK		0x03
+#define ONCE_IN_PROGRESS	0x02
+#define ONCE_MASK		0x03
 
 static pthread_mutex_t		once_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t		once_cv = PTHREAD_COND_INITIALIZER;
@@ -44,7 +44,7 @@ static pthread_cond_t		once_cv = PTHREAD_COND_INITIALIZER;
  * if init_routine is a cancellation point and is canceled, the effect
  * on once_control shall be as if pthread_once() was never called.
  */
- 
+
 static void
 once_cancel_handler(void *arg)
 {

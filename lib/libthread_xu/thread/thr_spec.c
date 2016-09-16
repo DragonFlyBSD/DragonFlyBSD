@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_spec.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -98,7 +97,7 @@ _pthread_key_delete(pthread_key_t key)
 	return (ret);
 }
 
-void 
+void
 _thread_cleanupspecific(void)
 {
 	struct pthread	*curthread = tls_get_curthread();
@@ -122,18 +121,17 @@ _thread_cleanupspecific(void)
 			    (curthread->specific[key].data != NULL)) {
 				if (curthread->specific[key].seqno ==
 				    _thread_keytable[key].seqno) {
-					data = 
-					    curthread->specific[key].data;
+					data = curthread->specific[key].data;
 					destructor = _thread_keytable[key].destructor;
 				}
 				curthread->specific[key].data = NULL;
 				curthread->specific_data_count--;
 			} else if (curthread->specific[key].data != NULL) {
-				/* 
+				/*
 				 * This can happen if the key is deleted via
 				 * pthread_key_delete without first setting the value
-	 			 * to NULL in all threads. POSIX says that the
-	 			 * destructor is not invoked in this case.
+				 * to NULL in all threads. POSIX says that the
+				 * destructor is not invoked in this case.
 				 */
 				curthread->specific[key].data = NULL;
 				curthread->specific_data_count--;
@@ -177,7 +175,7 @@ pthread_key_allocate_data(void)
 	return (new_data);
 }
 
-int 
+int
 _pthread_setspecific(pthread_key_t key, const void *value)
 {
 	struct pthread	*pthread;
@@ -227,7 +225,7 @@ _pthread_getspecific(pthread_key_t key)
 		} else {
 			/*
 			 * This key has not been used before, so return NULL
-			 * instead: 
+			 * instead.
 			 */
 			data = NULL;
 		}
@@ -241,4 +239,3 @@ __strong_reference(_pthread_key_create, pthread_key_create);
 __strong_reference(_pthread_key_delete, pthread_key_delete);
 __strong_reference(_pthread_getspecific, pthread_getspecific);
 __strong_reference(_pthread_setspecific, pthread_setspecific);
-

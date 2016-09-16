@@ -343,14 +343,13 @@ _thr_find_thread(struct pthread *curthread __unused, struct pthread *thread,
 	struct pthread *pthread;
 
 	if (thread == NULL)
-		/* Invalid thread: */
 		return (EINVAL);
 
 	pthread = _thr_hash_find(thread);
 	if (pthread) {
 		if (include_dead == 0 && pthread->state == PS_DEAD) {
 			pthread = NULL;
-		}	
+		}
 	}
 
 	/* Return zero if the thread exists: */

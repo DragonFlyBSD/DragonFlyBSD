@@ -34,13 +34,11 @@
 #include "namespace.h"
 #include <sys/param.h>
 #include <sys/signalvar.h>
-
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/ttycom.h>
 #include <sys/mman.h>
-
 #include <fcntl.h>
 #include <paths.h>
 #include <pthread.h>
@@ -363,7 +361,7 @@ init_private(void)
 		_thr_page_size = getpagesize();
 		_thr_guard_default = _thr_page_size;
 		_pthread_attr_default.guardsize_attr = _thr_guard_default;
-		
+
 		TAILQ_INIT(&_thr_atfork_list);
 #ifdef SYSTEM_SCOPE_ONLY
 		_thread_scope_system = 1;

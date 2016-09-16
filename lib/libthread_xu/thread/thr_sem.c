@@ -35,7 +35,6 @@
 #include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -46,6 +45,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "un-namespace.h"
+
 #include "thr_private.h"
 
 #define container_of(ptr, type, member)				\
@@ -341,7 +341,7 @@ get_path(const char *name, char *path, size_t len, char const **prefix)
 	size_t path_len;
 
 	*prefix = NULL;
-	
+
 	if (name[0] == '/') {
 		*prefix = getenv("LIBTHREAD_SEM_PREFIX");
 
@@ -429,7 +429,7 @@ sem_close_mapping(sem_t *sem)
 	} else {
 		if (ni->inode != 0) {
 			LIST_REMOVE(ni, next);
-		}	
+		}
 		munmap(ni->sem, getpagesize());
 		__sys_close(ni->fd);
 		free(ni);
@@ -487,7 +487,7 @@ retry:
 	fd = __sys_open(path, O_RDWR | O_CLOEXEC);
 
 	if (fd > 0) {
-		
+
 		if ((oflag & O_EXCL) == O_EXCL) {
 			__sys_close(fd);
 			errno = EEXIST;
@@ -533,7 +533,7 @@ retry:
 
 		if (path_len > sizeof(tmppath)) {
 			errno = ENAMETOOLONG;
-			goto error;	
+			goto error;
 		}
 
 
@@ -589,7 +589,7 @@ retry:
 		if (create)
 			unlink(tmppath);
 
-		__sys_close(fd);	
+		__sys_close(fd);
 		goto error;
 	}
 
@@ -691,4 +691,3 @@ __strong_reference(_sem_post, sem_post);
 __strong_reference(_sem_open, sem_open);
 __strong_reference(_sem_close, sem_close);
 __strong_reference(_sem_unlink, sem_unlink);
-

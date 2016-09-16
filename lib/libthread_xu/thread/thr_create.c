@@ -36,7 +36,6 @@
 #include <sys/time.h>
 #include <machine/reg.h>
 #include <machine/tls.h>
-
 #include <pthread.h>
 #include <sys/signalvar.h>
 #include "un-namespace.h"
@@ -49,7 +48,7 @@ static void thread_start(void *);
 
 int
 _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
-       void *(*start_routine) (void *), void *arg)
+    void *(*start_routine) (void *), void *arg)
 {
 	struct lwp_params create_params;
 	void *stack;
@@ -154,7 +153,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		locked = 0;
 	/* Schedule the new thread. */
 	stack = (char *)new_thread->attr.stackaddr_attr +
-		        new_thread->attr.stacksize_attr;
+			new_thread->attr.stacksize_attr;
 	bzero(&create_params, sizeof(create_params));
 	create_params.lwp_func = thread_start;
 	create_params.lwp_arg = new_thread;

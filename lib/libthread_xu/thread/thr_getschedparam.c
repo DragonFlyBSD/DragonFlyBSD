@@ -29,12 +29,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_getschedparam.c,v 1.5 2007/05/03 23:08:34 dillon Exp $
  */
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <pthread.h>
 #include "un-namespace.h"
@@ -42,7 +40,7 @@
 #include "thr_private.h"
 
 int
-_pthread_getschedparam(pthread_t pthread, int *policy, 
+_pthread_getschedparam(pthread_t pthread, int *policy,
 	struct sched_param *param)
 {
 	struct pthread *curthread = tls_get_curthread();

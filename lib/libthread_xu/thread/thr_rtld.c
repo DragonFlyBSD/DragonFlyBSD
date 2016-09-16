@@ -24,10 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rtld.c,v 1.5 2003/11/05 18:19:24 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rtld.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
-#include <machine/tls.h>
 
+#include <machine/tls.h>
 #include <stdlib.h>
 #include <pthread.h>
 

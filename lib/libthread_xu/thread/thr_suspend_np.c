@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_suspend_np.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -79,7 +78,7 @@ _pthread_suspend_all_np(void)
 		if (thread != curthread) {
 			THR_THREAD_LOCK(curthread, thread);
 			if (thread->state != PS_DEAD &&
-	      		   !(thread->flags & THR_FLAGS_SUSPENDED))
+			   !(thread->flags & THR_FLAGS_SUSPENDED))
 			    thread->flags |= THR_FLAGS_NEED_SUSPEND;
 			THR_THREAD_UNLOCK(curthread, thread);
 		}
@@ -140,4 +139,3 @@ suspend_common(struct pthread *curthread, struct pthread *thread,
 
 __strong_reference(_pthread_suspend_np, pthread_suspend_np);
 __strong_reference(_pthread_suspend_all_np, pthread_suspend_all_np);
-

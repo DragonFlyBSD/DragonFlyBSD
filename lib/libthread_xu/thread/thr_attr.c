@@ -33,7 +33,6 @@
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -210,8 +209,8 @@ __strong_reference(_pthread_attr_getscope, pthread_attr_getscope);
 
 int
 _pthread_attr_getstack(const pthread_attr_t * __restrict attr,
-                        void ** __restrict stackaddr,
-                        size_t * __restrict stacksize)
+		       void ** __restrict stackaddr,
+		       size_t * __restrict stacksize)
 {
 	int     ret;
 
@@ -432,7 +431,7 @@ __strong_reference(_pthread_attr_setscope, pthread_attr_setscope);
 
 int
 _pthread_attr_setstack(pthread_attr_t *attr, void *stackaddr,
-                        size_t stacksize)
+		       size_t stacksize)
 {
 	int     ret;
 
@@ -486,4 +485,3 @@ _pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)
 }
 
 __strong_reference(_pthread_attr_setstacksize, pthread_attr_setstacksize);
-

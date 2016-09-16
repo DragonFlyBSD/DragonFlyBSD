@@ -61,7 +61,6 @@
 #include <sys/syscall.h>
 
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <link.h>
 #include <string.h>
@@ -210,7 +209,7 @@ _fork(void)
 		/* reinitalize library. */
 		_libpthread_init(curthread);
 
-		/* Ready to continue, unblock signals. */ 
+		/* Ready to continue, unblock signals. */
 		_thr_signal_unblock(curthread);
 
 		/* Run down atfork child handlers. */
@@ -227,7 +226,7 @@ _fork(void)
 			_spinunlock(__malloc_lock);
 #endif
 
-		/* Ready to continue, unblock signals. */ 
+		/* Ready to continue, unblock signals. */
 		_thr_signal_unblock(curthread);
 
 		/* Run down atfork parent handlers. */
@@ -250,4 +249,3 @@ _fork(void)
 
 __strong_reference(_fork, fork);
 __strong_reference(_pthread_atfork, pthread_atfork);
-

@@ -7,7 +7,7 @@
  * are met:
  * 1. Redistributions of source code must retain the above copyright
  *    notice(s), this list of conditions and the following disclaimer as
- *    the first lines of this file unmodified other than the possible 
+ *    the first lines of this file unmodified other than the possible
  *    addition of one or more copyright notices.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice(s), this list of conditions and the following disclaimer in the
@@ -26,7 +26,6 @@
  * DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_barrierattr.c,v 1.1 2003/09/04 14:06:43 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_barrierattr.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -50,7 +49,7 @@ _pthread_barrierattr_destroy(pthread_barrierattr_t *attr)
 
 int
 _pthread_barrierattr_getpshared(const pthread_barrierattr_t *attr,
-	int *pshared)
+    int *pshared)
 {
 
 	if (attr == NULL || *attr == NULL)
@@ -95,4 +94,3 @@ __strong_reference(_pthread_barrierattr_setpshared,
 	pthread_barrierattr_setpshared);
 __strong_reference(_pthread_barrierattr_getpshared,
 	pthread_barrierattr_getpshared);
-

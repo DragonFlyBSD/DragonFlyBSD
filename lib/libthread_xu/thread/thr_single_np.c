@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_single_np.c,v 1.4 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include "namespace.h"
@@ -34,7 +33,8 @@
 #include <pthread_np.h>
 #include "un-namespace.h"
 
-int _pthread_single_np(void)
+int
+_pthread_single_np(void)
 {
 
 	/* Enter single-threaded (non-POSIX) scheduling mode: */

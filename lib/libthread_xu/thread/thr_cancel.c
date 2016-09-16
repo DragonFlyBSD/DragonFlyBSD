@@ -23,7 +23,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cancel.c,v 1.4 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -163,4 +162,3 @@ __strong_reference(_pthread_cancel, pthread_cancel);
 __strong_reference(_pthread_setcancelstate, pthread_setcancelstate);
 __strong_reference(_pthread_setcanceltype, pthread_setcanceltype);
 __strong_reference(_pthread_testcancel, pthread_testcancel);
-

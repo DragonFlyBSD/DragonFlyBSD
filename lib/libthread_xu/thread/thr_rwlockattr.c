@@ -24,13 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlockattr.c,v 1.8 2002/09/16 08:45:35 mini Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlockattr.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
 #include <errno.h>
 #include <stdlib.h>
-
 #include <pthread.h>
 #include "un-namespace.h"
 
@@ -42,25 +40,20 @@ _pthread_rwlockattr_destroy(pthread_rwlockattr_t *rwlockattr)
 	pthread_rwlockattr_t prwlockattr;
 
 	if (rwlockattr == NULL)
-		return(EINVAL);
-
+		return (EINVAL);
 	prwlockattr = *rwlockattr;
-
 	if (prwlockattr == NULL)
-		return(EINVAL);
-
+		return (EINVAL);
 	free(prwlockattr);
-
-	return(0);
+	return (0);
 }
 
 int
 _pthread_rwlockattr_getpshared(const pthread_rwlockattr_t *rwlockattr,
-	int *pshared)
+    int *pshared)
 {
 	*pshared = (*rwlockattr)->pshared;
-
-	return(0);
+	return (0);
 }
 
 int
@@ -69,18 +62,15 @@ _pthread_rwlockattr_init(pthread_rwlockattr_t *rwlockattr)
 	pthread_rwlockattr_t prwlockattr;
 
 	if (rwlockattr == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
-	prwlockattr = (pthread_rwlockattr_t)
-		malloc(sizeof(struct pthread_rwlockattr));
-
+	prwlockattr = malloc(sizeof(struct pthread_rwlockattr));
 	if (prwlockattr == NULL)
-		return(ENOMEM);
+		return (ENOMEM);
 
-	prwlockattr->pshared 	= PTHREAD_PROCESS_PRIVATE;
-	*rwlockattr		= prwlockattr;
-
-	return(0);
+	prwlockattr->pshared = PTHREAD_PROCESS_PRIVATE;
+	*rwlockattr = prwlockattr;
+	return (0);
 }
 
 int
@@ -89,14 +79,11 @@ _pthread_rwlockattr_setpshared(pthread_rwlockattr_t *rwlockattr, int pshared)
 	/* Only PTHREAD_PROCESS_PRIVATE is supported. */
 	if (pshared != PTHREAD_PROCESS_PRIVATE)
 		return(EINVAL);
-
 	(*rwlockattr)->pshared = pshared;
-
-	return(0);
+	return (0);
 }
 
 __strong_reference(_pthread_rwlockattr_destroy, pthread_rwlockattr_destroy);
 __strong_reference(_pthread_rwlockattr_getpshared, pthread_rwlockattr_getpshared);
 __strong_reference(_pthread_rwlockattr_init, pthread_rwlockattr_init);
 __strong_reference(_pthread_rwlockattr_setpshared, pthread_rwlockattr_setpshared);
-

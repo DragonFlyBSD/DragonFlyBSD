@@ -26,12 +26,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_resume_np.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <pthread.h>
 #include <pthread_np.h>
@@ -90,4 +88,3 @@ resume_common(struct pthread *thread)
 
 __strong_reference(_pthread_resume_np, pthread_resume_np);
 __strong_reference(_pthread_resume_all_np, pthread_resume_all_np);
-

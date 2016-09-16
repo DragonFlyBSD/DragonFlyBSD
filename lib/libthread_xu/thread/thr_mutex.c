@@ -34,7 +34,6 @@
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +44,7 @@
 #include "thr_private.h"
 
 #if defined(_PTHREADS_INVARIANTS)
-#define MUTEX_INIT_LINK(m) 		do {		\
+#define MUTEX_INIT_LINK(m)		do {		\
 	(m)->m_qe.tqe_prev = NULL;			\
 	(m)->m_qe.tqe_next = NULL;			\
 } while (0)
@@ -475,7 +474,7 @@ mutex_self_trylock(pthread_mutex_t m)
 	/* case PTHREAD_MUTEX_DEFAULT: */
 	case PTHREAD_MUTEX_ERRORCHECK:
 	case PTHREAD_MUTEX_NORMAL:
-		ret = EBUSY; 
+		ret = EBUSY;
 		break;
 
 	case PTHREAD_MUTEX_RECURSIVE:
@@ -514,7 +513,7 @@ mutex_self_lock(pthread_mutex_t m, const struct timespec *abstime)
 			 * POSIX specifies that mutexes should return
 			 * EDEADLK if a recursive lock is detected.
 			 */
-			ret = EDEADLK; 
+			ret = EDEADLK;
 		}
 		break;
 

@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_main_np.c,v 1.5 2003/04/18 05:04:16 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_main_np.c,v 1.4 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include "namespace.h"
@@ -36,7 +35,7 @@
 #include "thr_private.h"
 
 /*
- * Provide the equivelant to Solaris thr_main() function
+ * Provide the equivalent to Solaris thr_main() function.
  */
 int
 _pthread_main_np(void)

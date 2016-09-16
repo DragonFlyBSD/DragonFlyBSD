@@ -73,7 +73,7 @@ join_common(pthread_t pthread, void **thread_return,
 	long state;
 	int oldcancel;
 	int ret = 0;
- 
+
 	if (pthread == NULL)
 		return (EINVAL);
 
@@ -142,4 +142,3 @@ join_common(pthread_t pthread, void **thread_return,
 
 __strong_reference(_pthread_join, pthread_join);
 __strong_reference(_pthread_timedjoin_np, pthread_timedjoin_np);
-

@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libpthread/Makefile,v 1.53 2004/10/24 15:32:32 ru Exp $
-# $DragonFly: src/lib/libthread_xu/Makefile,v 1.7 2008/10/28 17:23:46 swildner Exp $
 
 LIB=thread_xu
 SHLIB_MAJOR= 2

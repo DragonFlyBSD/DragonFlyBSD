@@ -44,7 +44,7 @@ _tcb_ctor(struct pthread *thread, int initial)
 	if (initial)
 		tcb = tls_get_tcb();
 	else
-                tcb = _libc_allocate_tls();
+		tcb = _libc_allocate_tls();
 
 	if (tcb == NULL)
 		return (NULL);

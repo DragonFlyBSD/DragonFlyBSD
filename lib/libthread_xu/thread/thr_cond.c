@@ -23,12 +23,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.12 2008/04/15 01:45:22 dillon Exp $
  */
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -39,22 +37,22 @@
 
 umtx_t		_cond_static_lock;
 
-int	__pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
-int	__pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
-		       const struct timespec *abstime);
 /*
  * Prototypes
  */
+int	__pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
+int	__pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
+				 const struct timespec *abstime);
 static int cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
 static int cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
-		    const struct timespec *abstime, int cancel);
+			    const struct timespec *abstime, int cancel);
 static int cond_signal_common(pthread_cond_t *cond, int broadcast);
 
 static int
 cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
 {
-	pthread_cond_t	pcond;
-	int             rval = 0;
+	pthread_cond_t pcond;
+	int rval = 0;
 
 	if ((pcond = (pthread_cond_t)
 	    malloc(sizeof(struct pthread_cond))) == NULL) {
@@ -151,7 +149,7 @@ struct cond_cancel_info
 	pthread_mutex_t	*mutex;
 	pthread_cond_t	*cond;
 	int		seqno;
-	int		count;	
+	int		count;
 };
 
 static void
@@ -267,7 +265,7 @@ __pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 }
 
 int
-_pthread_cond_timedwait(pthread_cond_t * cond, pthread_mutex_t * mutex,
+_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		       const struct timespec * abstime)
 {
 	if (abstime == NULL || abstime->tv_sec < 0 || abstime->tv_nsec < 0 ||
@@ -347,4 +345,3 @@ __strong_reference(_pthread_cond_init, pthread_cond_init);
 __strong_reference(_pthread_cond_destroy, pthread_cond_destroy);
 __strong_reference(_pthread_cond_signal, pthread_cond_signal);
 __strong_reference(_pthread_cond_broadcast, pthread_cond_broadcast);
-

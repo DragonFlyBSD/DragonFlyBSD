@@ -92,8 +92,9 @@ _pthread_condattr_setclock(pthread_condattr_t *attr,
 	if (attr == NULL || *attr == NULL)
 		return (EINVAL);
 	if (clock_id != CLOCK_REALTIME &&
-	    clock_id != CLOCK_MONOTONIC)
+	    clock_id != CLOCK_MONOTONIC) {
 		return (EINVAL);
+	}
 	(*attr)->c_clockid = clock_id;
 	return (0);
 }
@@ -104,7 +105,6 @@ _pthread_condattr_getpshared(const pthread_condattr_t *attr,
 {
 	if (attr == NULL || *attr == NULL)
 		return (EINVAL);
-
 	*pshared = PTHREAD_PROCESS_PRIVATE;
 	return (0);
 }
@@ -126,4 +126,3 @@ __strong_reference(_pthread_condattr_getclock, pthread_condattr_getclock);
 __strong_reference(_pthread_condattr_setclock, pthread_condattr_setclock);
 __strong_reference(_pthread_condattr_getpshared, pthread_condattr_getpshared);
 __strong_reference(_pthread_condattr_setpshared, pthread_condattr_setpshared);
-
