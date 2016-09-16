@@ -40,8 +40,8 @@
 #include <sys/signalvar.h>
 #include "un-namespace.h"
 
-#include "thr_private.h"
 #include "libc_private.h"
+#include "thr_private.h"
 
 static int  create_stack(struct pthread_attr *pattr);
 static void thread_start(void *);

@@ -21,7 +21,7 @@ PRECIOUSLIB=	yes
 LIBDIR=	/usr/lib/thread
 NOPROFILE=	yes
 
-WARNS?=	5
+WARNS?=	5 # keep for -Os, lots of -Winline
 
 .include "${.CURDIR}/arch/${MACHINE_ARCH}/Makefile.inc"
 .include "${.CURDIR}/thread/Makefile.inc"

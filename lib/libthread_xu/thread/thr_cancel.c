@@ -32,8 +32,6 @@
 
 #include "thr_private.h"
 
-int _pthread_setcanceltype(int type, int *oldtype);
-
 int
 _pthread_cancel(pthread_t pthread)
 {

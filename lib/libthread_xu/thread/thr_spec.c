@@ -30,7 +30,6 @@
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>

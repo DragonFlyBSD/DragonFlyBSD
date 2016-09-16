@@ -28,14 +28,12 @@
  *
  */
 
-#include "namespace.h"
 #include <sys/types.h>
 #include <machine/atomic.h>
 #include <machine/tls.h>
 #include <pthread.h>
 #include <libc_private.h>
 #include "spinlock.h"
-#include "un-namespace.h"
 
 #include "thr_private.h"
 

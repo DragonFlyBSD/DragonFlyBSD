@@ -28,7 +28,6 @@
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>

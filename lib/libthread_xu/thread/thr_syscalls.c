@@ -59,6 +59,8 @@
  *
  */
 
+
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/param.h>
@@ -69,9 +71,7 @@
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/wait.h>
-
 #include <machine/tls.h>
-
 #include <aio.h>
 #include <dirent.h>
 #include <errno.h>
@@ -85,6 +85,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "un-namespace.h"
 
 #include "thr_private.h"
 
@@ -157,7 +158,6 @@ int	_tcdrain(int);
 int	_vfork(void);
 #endif
 pid_t	_wait(int *);
-pid_t	_waitpid(pid_t wpid, int *status, int options);
 
 int
 __accept(int s, struct sockaddr *addr, socklen_t *addrlen)

@@ -32,6 +32,8 @@
 #include <pthread.h>
 #include "un-namespace.h"
 
+#include "thr_private.h"
+
 static int current_concurrency = 0;
 
 int

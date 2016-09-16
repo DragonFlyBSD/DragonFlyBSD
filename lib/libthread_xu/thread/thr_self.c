@@ -30,7 +30,6 @@
 
 #include "namespace.h"
 #include <machine/tls.h>
-
 #include <pthread.h>
 #include "un-namespace.h"
 

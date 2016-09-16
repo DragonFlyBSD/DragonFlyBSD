@@ -47,7 +47,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
-#include <stdio.h>
 #include <sys/sched.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -582,7 +581,9 @@ do {								\
 	(curthr->report_events &&			\
 	 (((curthr)->event_mask | _thread_event_mask ) & e) != 0)
 
+#if !defined(_LIBC_PRIVATE_H_) && !defined(_STDIO_H_)
 extern int __isthreaded;
+#endif
 
 /*
  * Global variables for the pthread library.
@@ -692,11 +693,6 @@ int	_schedparam_to_rtp(int policy, const struct sched_param *param,
 int	_umtx_sleep_err(volatile const int *, int, int);
 int	_umtx_wakeup_err(volatile const int *, int);
 
-/* #include <sys/aio.h> */
-#ifdef _SYS_AIO_H_
-int	__sys_aio_suspend(const struct aiocb * const[], int, const struct timespec *);
-#endif
-
 /* #include <fcntl.h> */
 #ifdef  _SYS_FCNTL_H_
 int     __sys_fcntl(int, int, ...);
@@ -725,25 +721,6 @@ int     __sys_sigreturn(ucontext_t *);
 int     __sys_sigaltstack(const struct sigaltstack *, struct sigaltstack *);
 #endif
 
-/* #include <sys/socket.h> */
-#ifdef _SYS_SOCKET_H_
-int	__sys_accept(int, struct sockaddr *, socklen_t *);
-int	__sys_connect(int, const struct sockaddr *, socklen_t);
-ssize_t __sys_recv(int, void *, size_t, int);
-ssize_t __sys_recvfrom(int, void *, size_t, int, struct sockaddr *, socklen_t *);
-ssize_t __sys_recvmsg(int, struct msghdr *, int);
-int	__sys_sendfile(int, int, off_t, size_t, struct sf_hdtr *,
-	    off_t *, int);
-ssize_t __sys_sendmsg(int, const struct msghdr *, int);
-ssize_t __sys_sendto(int, const void *,size_t, int, const struct sockaddr *, socklen_t);
-#endif
-
-/* #include <sys/uio.h> */
-#ifdef  _SYS_UIO_H_
-ssize_t __sys_readv(int, const struct iovec *, int);
-ssize_t __sys_writev(int, const struct iovec *, int);
-#endif
-
 /* #include <time.h> */
 #ifdef	_TIME_H_
 int	__sys_nanosleep(const struct timespec *, struct timespec *);
@@ -753,9 +730,7 @@ int	__sys_nanosleep(const struct timespec *, struct timespec *);
 #ifdef  _UNISTD_H_
 int	__sys_close(int);
 int	__sys_execve(const char *, char * const *, char * const *);
-int	__sys_fsync(int);
 pid_t	__sys_getpid(void);
-int	__sys_select(int, fd_set *, fd_set *, fd_set *, struct timeval *);
 ssize_t __sys_read(int, void *, size_t);
 ssize_t __sys_write(int, const void *, size_t);
 void	__sys_exit(int);
@@ -763,18 +738,6 @@ int	__sys_sigwait(const sigset_t *, int *);
 int	__sys_sigtimedwait(const sigset_t *, siginfo_t *,
 		const struct timespec *);
 int	__sys_sigwaitinfo(const sigset_t *set, siginfo_t *info);
-#endif
-
-/* #include <poll.h> */
-#ifdef _SYS_POLL_H_
-int	__sys_poll(struct pollfd *, unsigned, int);
-int	__sys_ppoll(struct pollfd *, unsigned, const struct timespec *,
-		const sigset_t *);
-#endif
-
-/* #include <sys/mman.h> */
-#ifdef _SYS_MMAN_H_
-int	__sys_msync(void *, size_t, int);
 #endif
 
 static inline int
