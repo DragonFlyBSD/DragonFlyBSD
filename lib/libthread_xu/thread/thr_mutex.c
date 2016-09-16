@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 1995 John Birrell <jb@cimlogic.com.au>.
- * Copyright (c) 2006 David Xu <yfxu@corp.netease.com>.
+ * Copyright (c) 2006 David Xu <davidxu@freebsd.org>.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
