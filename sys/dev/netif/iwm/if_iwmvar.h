@@ -193,13 +193,6 @@ struct iwm_nvm_data {
 	int n_hw_addrs;
 	uint8_t hw_addr[IEEE80211_ADDR_LEN];
 
-	uint16_t calib_voltage;
-
-	uint16_t raw_temperature;
-	uint16_t kelvin_temperature;
-	uint16_t kelvin_voltage;
-	uint16_t xtal_calib[2];
-
 	int sku_cap_band_24GHz_enable;
 	int sku_cap_band_52GHz_enable;
 	int sku_cap_11n_enable;
