@@ -98,10 +98,7 @@ _pthread_spin_lock(pthread_spinlock_t *lock)
 		count = SPIN_COUNT;
 		while ((ret = THR_UMTX_TRYLOCK(curthread, &lck->s_lock)) != 0) {
 			while (lck->s_lock) {
-#ifdef __i386__
-				/* tell cpu we are spinning */
-				__asm __volatile("pause");
-#endif
+				CPU_SPINWAIT;	/* tell cpu we are spinning */
 				if (--count <= 0) {
 					count = SPIN_COUNT;
 					_pthread_yield();
