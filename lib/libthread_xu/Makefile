@@ -8,8 +8,6 @@ CFLAGS+=-I${.CURDIR}/../libc/include -I${.CURDIR}/thread \
 CFLAGS+=-I${.CURDIR}/arch/${MACHINE_ARCH}/include
 CFLAGS+=-I${.CURDIR}/../libthread_db
 
-# CFLAGS+=-DSYSTEM_SCOPE_ONLY
-
 # XXX this breaks threaded applications
 #LDFLAGS=-Wl,-version-script=${.CURDIR}/pthread.map
 

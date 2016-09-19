@@ -85,11 +85,6 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		 */
 	}
 
-	if (_thread_scope_system > 0)
-		new_thread->attr.flags |= PTHREAD_SCOPE_SYSTEM;
-	else if (_thread_scope_system < 0)
-		new_thread->attr.flags &= ~PTHREAD_SCOPE_SYSTEM;
-
 	if (create_stack(&new_thread->attr) != 0) {
 		/* Insufficient memory to create a stack: */
 		new_thread->terminated = 1;

@@ -57,7 +57,7 @@ struct pthread_attr _pthread_attr_default = {
 	.sched_inherit = 0,
 	.prio = THR_DEFAULT_PRIORITY,
 	.suspend = THR_CREATE_RUNNING,
-	.flags = 0,
+	.flags = PTHREAD_SCOPE_SYSTEM,
 	.stackaddr_attr = NULL,
 	.stacksize_attr = THR_STACK_DEFAULT,
 	.guardsize_attr = 0
@@ -168,7 +168,6 @@ STATIC_LIB_REQUIRE(_pthread_yield);
 
 char		*_usrstack;
 struct pthread	*_thr_initial;
-int		_thread_scope_system;
 static void	*_thr_main_redzone;
 
 pid_t		_thr_pid;
@@ -387,16 +386,7 @@ init_private(void)
 		_thr_page_size = getpagesize();
 		_thr_guard_default = _thr_page_size;
 		_pthread_attr_default.guardsize_attr = _thr_guard_default;
-
 		TAILQ_INIT(&_thr_atfork_list);
-#ifdef SYSTEM_SCOPE_ONLY
-		_thread_scope_system = 1;
-#else
-		if (getenv("LIBPTHREAD_SYSTEM_SCOPE") != NULL)
-			_thread_scope_system = 1;
-		else if (getenv("LIBPTHREAD_PROCESS_SCOPE") != NULL)
-			_thread_scope_system = -1;
-#endif
 	}
 	init_once = 1;
 }

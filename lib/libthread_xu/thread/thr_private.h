@@ -591,7 +591,6 @@ extern int __isthreaded;
  */
 extern char		*_usrstack;
 extern struct pthread	*_thr_initial;
-extern int		_thread_scope_system;
 
 /* For debugger */
 extern int		_libthread_xu_debug;
