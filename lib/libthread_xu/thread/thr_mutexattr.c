@@ -39,14 +39,6 @@
 
 #include "thr_private.h"
 
-/* Default mutex attributes. */
-struct pthread_mutex_attr _pthread_mutexattr_default = {
-	.m_type = PTHREAD_MUTEX_DEFAULT,
-	.m_protocol = PTHREAD_PRIO_NONE,
-	.m_ceiling = 0,
-	.m_flags = 0
-};
-
 int
 _pthread_mutexattr_init(pthread_mutexattr_t *attr)
 {

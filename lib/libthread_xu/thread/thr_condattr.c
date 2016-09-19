@@ -36,12 +36,6 @@
 
 #include "thr_private.h"
 
-/* Default condition variable attributes. */
-struct pthread_cond_attr _pthread_condattr_default = {
-	.c_pshared = PTHREAD_PROCESS_PRIVATE,
-	.c_clockid = CLOCK_REALTIME
-};
-
 int
 _pthread_condattr_init(pthread_condattr_t *attr)
 {

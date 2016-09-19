@@ -42,18 +42,6 @@
 
 #include "thr_private.h"
 
-/* Default thread attributes. */
-struct pthread_attr _pthread_attr_default = {
-	.sched_policy = SCHED_OTHER,
-	.sched_inherit = 0,
-	.prio = THR_DEFAULT_PRIORITY,
-	.suspend = THR_CREATE_RUNNING,
-	.flags = 0,
-	.stackaddr_attr = NULL,
-	.stacksize_attr = THR_STACK_DEFAULT,
-	.guardsize_attr = 0
-};
-
 int
 _pthread_attr_destroy(pthread_attr_t *attr)
 {

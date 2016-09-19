@@ -51,6 +51,32 @@
 #include "libc_private.h"
 #include "thr_private.h"
 
+/* Default thread attributes: */
+struct pthread_attr _pthread_attr_default = {
+	.sched_policy = SCHED_OTHER,
+	.sched_inherit = 0,
+	.prio = THR_DEFAULT_PRIORITY,
+	.suspend = THR_CREATE_RUNNING,
+	.flags = 0,
+	.stackaddr_attr = NULL,
+	.stacksize_attr = THR_STACK_DEFAULT,
+	.guardsize_attr = 0
+};
+
+/* Default mutex attributes: */
+struct pthread_mutex_attr _pthread_mutexattr_default = {
+	.m_type = PTHREAD_MUTEX_DEFAULT,
+	.m_protocol = PTHREAD_PRIO_NONE,
+	.m_ceiling = 0,
+	.m_flags = 0
+};
+
+/* Default condition variable attributes: */
+struct pthread_cond_attr _pthread_condattr_default = {
+	.c_pshared = PTHREAD_PROCESS_PRIVATE,
+	.c_clockid = CLOCK_REALTIME
+};
+
 /* thr_attr.c */
 STATIC_LIB_REQUIRE(_pthread_attr_init);
 /* thr_barrier.c */
