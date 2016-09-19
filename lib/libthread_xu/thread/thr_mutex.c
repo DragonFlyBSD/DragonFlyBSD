@@ -91,28 +91,21 @@ int __pthread_mutex_timedlock(pthread_mutex_t *mutex,
 	const struct timespec *abs_timeout);
 
 static int
-mutex_init(pthread_mutex_t *mutex,
-    const pthread_mutexattr_t *mutex_attr, int private)
+mutex_check_attr(const struct pthread_mutex_attr *attr)
 {
-	const struct pthread_mutex_attr *attr;
-	struct pthread_mutex *pmutex;
+	if (attr->m_type < PTHREAD_MUTEX_ERRORCHECK ||
+	    attr->m_type >= PTHREAD_MUTEX_TYPE_MAX)
+		return (EINVAL);
+	if (attr->m_protocol < PTHREAD_PRIO_NONE ||
+	    attr->m_protocol > PTHREAD_PRIO_PROTECT)
+		return (EINVAL);
+	return (0);
+}
 
-	if (mutex_attr == NULL) {
-		attr = &_pthread_mutexattr_default;
-	} else {
-		attr = *mutex_attr;
-		if (attr->m_type < PTHREAD_MUTEX_ERRORCHECK ||
-		    attr->m_type >= PTHREAD_MUTEX_TYPE_MAX)
-			return (EINVAL);
-		if (attr->m_protocol < PTHREAD_PRIO_NONE ||
-		    attr->m_protocol > PTHREAD_PRIO_PROTECT)
-			return (EINVAL);
-	}
-
-	if ((pmutex = (pthread_mutex_t)
-		malloc(sizeof(struct pthread_mutex))) == NULL)
-		return (ENOMEM);
-
+static void
+mutex_init_body(struct pthread_mutex *pmutex,
+    const struct pthread_mutex_attr *attr, int private)
+{
 	_thr_umtx_init(&pmutex->m_lock);
 	pmutex->m_type = attr->m_type;
 	pmutex->m_protocol = attr->m_protocol;
@@ -129,6 +122,28 @@ mutex_init(pthread_mutex_t *mutex,
 		pmutex->m_prio = -1;
 	pmutex->m_saved_prio = 0;
 	MUTEX_INIT_LINK(pmutex);
+}
+
+static int
+mutex_init(pthread_mutex_t *mutex,
+    const pthread_mutexattr_t *mutex_attr, int private)
+{
+	const struct pthread_mutex_attr *attr;
+	struct pthread_mutex *pmutex;
+	int error;
+
+	if (mutex_attr == NULL) {
+		attr = &_pthread_mutexattr_default;
+	} else {
+		attr = *mutex_attr;
+		error = mutex_check_attr(attr);
+		if (error != 0)
+			return (error);
+	}
+	if ((pmutex = (pthread_mutex_t)
+		malloc(sizeof(struct pthread_mutex))) == NULL)
+		return (ENOMEM);
+	mutex_init_body(pmutex, attr, private);
 	*mutex = pmutex;
 	return (0);
 }
@@ -144,7 +159,6 @@ init_static(struct pthread *thread, pthread_mutex_t *mutex)
 		ret = mutex_init(mutex, NULL, 0);
 	else
 		ret = 0;
-
 	THR_LOCK_RELEASE(thread, &_mutex_static_lock);
 
 	return (ret);
