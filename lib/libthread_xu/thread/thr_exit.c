@@ -43,6 +43,8 @@
 
 #include "thr_private.h"
 
+static void	exit_thread(void) __dead2;
+
 void
 _thread_exitf(const char *fname, int lineno, const char *fmt, ...)
 {
@@ -116,6 +118,16 @@ _pthread_exit(void *status)
 		_pthread_cleanup_pop(1);
 	}
 
+	exit_thread();
+}
+
+__strong_reference(_pthread_exit, pthread_exit);
+
+static void
+exit_thread(void)
+{
+	struct pthread *curthread = tls_get_curthread();
+
 	/* Check if there is thread specific data: */
 	if (curthread->specific != NULL) {
 		/* Run the thread-specific data destructors: */
@@ -148,5 +160,3 @@ _pthread_exit(void *status)
 	PANIC("thr_exit() returned");
 	/* Never reach! */
 }
-
-__strong_reference(_pthread_exit, pthread_exit);
