@@ -357,24 +357,29 @@ __strong_reference(_pthread_attr_setinheritsched, pthread_attr_setinheritsched);
 int
 _pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *param)
 {
-	int ret = 0;
+	int policy;
 
 	if ((attr == NULL) || (*attr == NULL))
-		ret = EINVAL;
-	else if (param == NULL) {
-		ret = ENOTSUP;
-	} else {
-		int minv = sched_get_priority_min((*attr)->sched_policy);
-		int maxv = sched_get_priority_max((*attr)->sched_policy);
+		return (EINVAL);
+
+	if (param == NULL)
+		return (ENOTSUP);
+
+	policy = (*attr)->sched_policy;
+
+	{
+		int minv = sched_get_priority_min(policy);
+		int maxv = sched_get_priority_max(policy);
 		if (minv == -1 || maxv == -1 ||
 		    param->sched_priority < minv ||
 		    param->sched_priority > maxv) {
-			ret = ENOTSUP;
-		} else {
-			(*attr)->prio = param->sched_priority;
+			return (ENOTSUP);
 		}
 	}
-	return(ret);
+
+	(*attr)->prio = param->sched_priority;
+
+	return (0);
 }
 
 __strong_reference(_pthread_attr_setschedparam, pthread_attr_setschedparam);

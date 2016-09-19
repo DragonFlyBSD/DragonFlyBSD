@@ -40,19 +40,22 @@
 int
 _pthread_kill(pthread_t pthread, int sig)
 {
-	struct pthread *curthread = tls_get_curthread();
+	struct pthread *curthread;
 	int ret;
 
 	/* Check for invalid signal numbers: */
 	if (sig < 0 || sig > _SIG_MAXSIG)
 		/* Invalid signal: */
-		ret = EINVAL;
+		return (EINVAL);
+
+	curthread = tls_get_curthread();
+
 	/*
 	 * Ensure the thread is in the list of active threads, and the
 	 * signal is valid (signal 0 specifies error checking only) and
 	 * not being ignored:
 	 */
-	else if ((ret = _thr_ref_add(curthread, pthread, /*include dead*/0))
+	if ((ret = _thr_ref_add(curthread, pthread, /*include dead*/0))
 	    == 0) {
 		if (sig > 0)
 			_thr_send_sig(pthread, sig);

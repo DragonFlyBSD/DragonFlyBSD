@@ -68,11 +68,12 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	if ((new_thread = _thr_alloc(curthread)) == NULL)
 		return (EAGAIN);
 
-	if (attr == NULL || *attr == NULL)
+	if (attr == NULL || *attr == NULL) {
 		/* Use the default thread attributes: */
 		new_thread->attr = _pthread_attr_default;
-	else
+	} else {
 		new_thread->attr = *(*attr);
+	}
 	if (new_thread->attr.sched_inherit == PTHREAD_INHERIT_SCHED) {
 		/* inherit scheduling contention scope */
 		if (curthread->attr.flags & PTHREAD_SCOPE_SYSTEM)

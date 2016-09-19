@@ -590,16 +590,12 @@ int
 _pthread_mutex_getprioceiling(pthread_mutex_t *mutex,
 			      int *prioceiling)
 {
-	int ret = 0;
-
 	if ((mutex == NULL) || (*mutex == NULL))
-		ret = EINVAL;
-	else if ((*mutex)->m_protocol != PTHREAD_PRIO_PROTECT)
-		ret = EINVAL;
-	else
-		*prioceiling = (*mutex)->m_prio;
-
-	return(ret);
+		return (EINVAL);
+	if ((*mutex)->m_protocol != PTHREAD_PRIO_PROTECT)
+		return (EINVAL);
+	*prioceiling = (*mutex)->m_prio;
+	return (0);
 }
 
 int

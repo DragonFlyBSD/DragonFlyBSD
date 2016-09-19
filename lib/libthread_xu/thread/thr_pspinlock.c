@@ -41,19 +41,14 @@ int
 _pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 {
 	struct pthread_spinlock	*lck;
-	int ret;
 
-	if (lock == NULL || pshared != PTHREAD_PROCESS_PRIVATE) {
-		ret = EINVAL;
-	} else if ((lck = malloc(sizeof(struct pthread_spinlock))) == NULL) {
-		ret = ENOMEM;
-	} else {
-		_thr_umtx_init(&lck->s_lock);
-		*lock = lck;
-		ret = 0;
-	}
-
-	return (ret);
+	if (lock == NULL || pshared != PTHREAD_PROCESS_PRIVATE)
+		return (EINVAL);
+	if ((lck = malloc(sizeof(struct pthread_spinlock))) == NULL)
+		return (ENOMEM);
+	_thr_umtx_init(&lck->s_lock);
+	*lock = lck;
+	return (0);
 }
 
 int
@@ -76,39 +71,34 @@ _pthread_spin_trylock(pthread_spinlock_t *lock)
 {
 	struct pthread *curthread = tls_get_curthread();
 	struct pthread_spinlock	*lck;
-	int ret;
 
 	if (lock == NULL || (lck = *lock) == NULL)
-		ret = EINVAL;
-	else
-		ret = THR_UMTX_TRYLOCK(curthread, &lck->s_lock);
-	return (ret);
+		return (EINVAL);
+	return (THR_UMTX_TRYLOCK(curthread, &lck->s_lock));
 }
 
 int
 _pthread_spin_lock(pthread_spinlock_t *lock)
 {
-	struct pthread *curthread = tls_get_curthread();
+	struct pthread *curthread;
 	struct pthread_spinlock	*lck;
-	int ret, count;
+	int count;
 
-	if (lock == NULL || (lck = *lock) == NULL) {
-		ret = EINVAL;
-	} else {
-		count = SPIN_COUNT;
-		while ((ret = THR_UMTX_TRYLOCK(curthread, &lck->s_lock)) != 0) {
-			while (lck->s_lock) {
-				CPU_SPINWAIT;	/* tell cpu we are spinning */
-				if (--count <= 0) {
-					count = SPIN_COUNT;
-					_pthread_yield();
-				}
+	if (lock == NULL || (lck = *lock) == NULL)
+		return (EINVAL);
+
+	curthread = tls_get_curthread();
+	count = SPIN_COUNT;
+	while (THR_UMTX_TRYLOCK(curthread, &lck->s_lock) != 0) {
+		while (lck->s_lock) {
+			CPU_SPINWAIT;	/* tell cpu we are spinning */
+			if (--count <= 0) {
+				count = SPIN_COUNT;
+				_pthread_yield();
 			}
 		}
-		ret = 0;
 	}
-
-	return (ret);
+	return (0);
 }
 
 int
@@ -116,15 +106,12 @@ _pthread_spin_unlock(pthread_spinlock_t *lock)
 {
 	struct pthread *curthread = tls_get_curthread();
 	struct pthread_spinlock	*lck;
-	int ret;
 
-	if (lock == NULL || (lck = *lock) == NULL) {
-		ret = EINVAL;
-	} else {
-		THR_UMTX_UNLOCK(curthread, &lck->s_lock);
-		ret = 0;
-	}
-	return (ret);
+	if (lock == NULL || (lck = *lock) == NULL)
+		return (EINVAL);
+	/* XXX: shouldn't return status? */
+	THR_UMTX_UNLOCK(curthread, &lck->s_lock);
+	return (0);
 }
 
 __strong_reference(_pthread_spin_init, pthread_spin_init);

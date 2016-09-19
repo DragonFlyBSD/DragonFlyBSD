@@ -79,7 +79,7 @@ int
 _pthread_setcancelstate(int state, int *oldstate)
 {
 	struct pthread *curthread = tls_get_curthread();
-	int oldval, ret;
+	int oldval;
 
 	oldval = curthread->cancelflags;
 	if (oldstate != NULL)
@@ -88,25 +88,23 @@ _pthread_setcancelstate(int state, int *oldstate)
 	switch (state) {
 	case PTHREAD_CANCEL_DISABLE:
 		atomic_set_int(&curthread->cancelflags, THR_CANCEL_DISABLE);
-		ret = 0;
 		break;
 	case PTHREAD_CANCEL_ENABLE:
 		atomic_clear_int(&curthread->cancelflags, THR_CANCEL_DISABLE);
 		testcancel(curthread);
-		ret = 0;
 		break;
 	default:
-		ret = EINVAL;
+		return (EINVAL);
 	}
 
-	return (ret);
+	return (0);
 }
 
 int
 _pthread_setcanceltype(int type, int *oldtype)
 {
 	struct pthread	*curthread = tls_get_curthread();
-	int oldval, ret;
+	int oldval;
 
 	oldval = curthread->cancelflags;
 	if (oldtype != NULL)
@@ -117,17 +115,15 @@ _pthread_setcanceltype(int type, int *oldtype)
 	case PTHREAD_CANCEL_ASYNCHRONOUS:
 		atomic_set_int(&curthread->cancelflags, THR_CANCEL_AT_POINT);
 		testcancel(curthread);
-		ret = 0;
 		break;
 	case PTHREAD_CANCEL_DEFERRED:
 		atomic_clear_int(&curthread->cancelflags, THR_CANCEL_AT_POINT);
-		ret = 0;
 		break;
 	default:
-		ret = EINVAL;
+		return (EINVAL);
 	}
 
-	return (ret);
+	return (0);
 }
 
 void

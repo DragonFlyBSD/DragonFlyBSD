@@ -44,7 +44,7 @@ _pthread_getschedparam(pthread_t pthread, int *policy,
 	struct sched_param *param)
 {
 	struct pthread *curthread = tls_get_curthread();
-	int ret;
+	int ret = 0;
 
 	if (policy == NULL || param == NULL)
 		return (EINVAL);
@@ -58,7 +58,6 @@ _pthread_getschedparam(pthread_t pthread, int *policy,
 		*policy = curthread->attr.sched_policy;
 		param->sched_priority = curthread->attr.prio;
 		THR_UNLOCK(curthread);
-		ret = 0;
 	}
 	/* Find the thread in the list of active threads. */
 	else if ((ret = _thr_ref_add(curthread, pthread, /*include dead*/0))
