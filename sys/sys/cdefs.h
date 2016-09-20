@@ -200,13 +200,17 @@
 #endif
 
 #if __GNUC_PREREQ__(3, 3)
-#define	__heedresult	__attribute__((__warn_unused_result__))
 #define	__nonnull(x)	__attribute__((__nonnull__(x)))
 #define	__used		__attribute__((__used__))
 #else
-#define	__heedresult
 #define	__nonnull(x)
 #define	__used		__unused
+#endif
+
+#if __GNUC_PREREQ__(3, 4)
+#define	__heedresult	__attribute__((__warn_unused_result__))
+#else
+#define	__heedresult
 #endif
 
 #if __GNUC_PREREQ__(4, 1)
@@ -441,10 +445,6 @@
 #if !__GNUC_PREREQ__(2, 95)
 #define	__alignof(x)	__offsetof(struct { char __a; x __b; }, __b)
 #endif
-
-/*
- * Keywords added in C11.
- */
 
 #if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
 
