@@ -947,8 +947,8 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		*pte = VM_PAGE_TO_PHYS(*m) | VPTE_RW | VPTE_V | VPTE_U;
 		pmap_inval_pte(pte, &kernel_pmap, va);
+		*pte = VM_PAGE_TO_PHYS(*m) | VPTE_RW | VPTE_V | VPTE_U;
 		va += PAGE_SIZE;
 		m++;
 	}
