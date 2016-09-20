@@ -39,7 +39,9 @@
 /*
  * Testing against Clang-specific extensions.
  */
-
+#ifndef	__has_attribute
+#define	__has_attribute(x)	0
+#endif
 #ifndef	__has_extension
 #define	__has_extension		__has_feature
 #endif
@@ -164,6 +166,8 @@
 #define	__unused
 #define	__packed
 #define	__aligned(x)
+#define	__alloc_align(x)
+#define	__alloc_size(x)
 #define	__section(x)
 #define	__always_inline
 #define	__nonnull(x)
@@ -186,8 +190,10 @@
 #endif
 
 #if __GNUC_PREREQ__(2, 96)
+#define	__malloclike	__attribute__((__malloc__))
 #define	__pure		__attribute__((__pure__))
 #else
+#define	__malloclike
 #define	__pure		__pure2
 #endif
 
@@ -217,6 +223,18 @@
 #define	__returns_twice	__attribute__((__returns_twice__))
 #else
 #define	__returns_twice
+#endif
+
+#if __GNUC_PREREQ__(4, 3) || __has_attribute(__alloc_size__)
+#define	__alloc_size(x)	__attribute__((__alloc_size__(x)))
+#else
+#define	__alloc_size(x)
+#endif
+
+#if __GNUC_PREREQ__(4, 9) || __has_attribute(__alloc_align__)
+#define	__alloc_align(x)	__attribute__((__alloc_align__(x)))
+#else
+#define	__alloc_align(x)
 #endif
 
 #endif	/* LINT */
