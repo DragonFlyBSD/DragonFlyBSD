@@ -333,6 +333,14 @@ ap_init(void)
 	mdcpu->gd_fpending = 0;
 	mdcpu->gd_ipending = 0;
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
+
+	/*
+	 * Since we may have cleaned up the interrupt triggers, manually
+	 * process any pending IPIs before exiting our critical section.
+	 * Once the critical section has exited, normal interrupt processing
+	 * may occur.
+	 */
+	atomic_swap_int(&mycpu->gd_npoll, 0);
 	lwkt_process_ipiq();
 
         /*
