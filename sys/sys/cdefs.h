@@ -158,7 +158,6 @@
  * in a different (wrong) way).
  */
 #ifdef lint
-
 #define	__dead2
 #define	__pure
 #define	__pure2
@@ -177,9 +176,9 @@
 #define	__dead2		__attribute__((__noreturn__))
 #define	__pure2		__attribute__((__const__))
 #define	__unused	__attribute__((__unused__))
-#define	__packed        __attribute__((__packed__))
-#define	__aligned(x)    __attribute__((__aligned__(x)))
-#define	__section(x)    __attribute__((__section__(x)))
+#define	__packed	__attribute__((__packed__))
+#define	__aligned(x)	__attribute__((__aligned__(x)))
+#define	__section(x)	__attribute__((__section__(x)))
 #else
 #define	__dead2
 #define	__pure2
@@ -193,7 +192,7 @@
 #endif
 
 #if __GNUC_PREREQ__(3, 1)
-#define	__always_inline __attribute__((__always_inline__))
+#define	__always_inline	__attribute__((__always_inline__))
 #define	__noinline	__attribute__((__noinline__))
 #else
 #define	__always_inline
@@ -202,7 +201,7 @@
 
 #if __GNUC_PREREQ__(3, 3)
 #define	__heedresult	__attribute__((__warn_unused_result__))
-#define	__nonnull(x)    __attribute__((__nonnull__(x)))
+#define	__nonnull(x)	__attribute__((__nonnull__(x)))
 #define	__used		__attribute__((__used__))
 #else
 #define	__heedresult
@@ -211,7 +210,7 @@
 #endif
 
 #if __GNUC_PREREQ__(4, 1)
-#define	__returns_twice __attribute__((__returns_twice__))
+#define	__returns_twice	__attribute__((__returns_twice__))
 #else
 #define	__returns_twice
 #endif
@@ -219,7 +218,7 @@
 #endif	/* LINT */
 
 #if !__GNUC_PREREQ__(2, 7) && __STDC_VERSION < 199901
-#define	__func__        NULL
+#define	__func__	NULL
 #endif
 
 #if (__GNUC_PREREQ__(2, 0) && !defined(__STRICT_ANSI__)) || \
@@ -235,6 +234,20 @@
 #endif
 #ifndef	__STDC_CONSTANT_MACROS
 #define	__STDC_CONSTANT_MACROS
+#endif
+#endif
+
+/*
+ * GCC 2.95 and later provides `__restrict' as an extension to C90 to support
+ * the C99-specific `restrict' type qualifier.  We happen to use `__restrict'
+ * as a way to define the `restrict' type qualifier without disturbing older
+ * software that is unaware of C99 keywords.
+ */
+#if !__GNUC_PREREQ__(2, 95)
+#if __STDC_VERSION__ < 199901
+#define	__restrict
+#else
+#define	__restrict	restrict
 #endif
 #endif
 
@@ -272,20 +285,6 @@
 #else
 #define	__predict_true(exp)     (exp)
 #define	__predict_false(exp)    (exp)
-#endif
-
-/*
- * GCC 2.95 and later provides `__restrict' as an extention to C90 to support
- * the C99-specific `restrict' type qualifier.  We happen to use `__restrict'
- * as a way to define the `restrict' type qualifier without disturbing older
- * software that is unaware of C99 keywords.
- */
-#if !__GNUC_PREREQ__(2, 95)
-#if __STDC_VERSION__ < 199901
-#define	__restrict
-#else
-#define	__restrict	restrict
-#endif
 #endif
 
 /*
@@ -332,7 +331,6 @@
 	    __attribute__((__format__ (__strfmon__, fmtarg, firstvararg)))
 #define	__strftimelike(fmtarg, firstvararg) \
 	    __attribute__((__format__ (__strftime__, fmtarg, firstvararg)))
-
 #endif
 
 #if !__GNUC_PREREQ__(3, 0)
@@ -354,9 +352,9 @@
  * constructors, provide a compatible interface for both.
  */
 #if __GNUC_PREREQ__(4, 3)
-#define	__constructor(prio) __attribute__((constructor(prio)))
+#define	__constructor(prio)	__attribute__((constructor(prio)))
 #else
-#define	__constructor(prio) __attribute__((constructor))
+#define	__constructor(prio)	__attribute__((constructor))
 #endif
 
 /*
@@ -390,7 +388,7 @@
  */
 #ifdef __GNUC__
 #define	__cachealign	__attribute__((__aligned__(__VM_CACHELINE_SIZE)))
-#define	__usereg     	__attribute__((__regparm__(3)))
+#define	__usereg	__attribute__((__regparm__(3)))
 #else
 #define	__cachealign
 #define	__usereg
@@ -398,7 +396,7 @@
 
 #ifdef __GNUC__
 #define	__strong_reference(sym,aliassym)	\
-	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)));
+	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)))
 #define	__weak_reference(sym,alias)	\
 	__asm__(".weak " #alias);	\
 	__asm__(".equ "  #alias ", " #sym)
@@ -612,7 +610,7 @@
  * _POSIX_C_SOURCE, we will assume that it wants the broader compilation
  * environment (and in fact we will never get here).
  */
-#ifdef _ANSI_SOURCE		/* Hide almost everything. */
+#if defined(_ANSI_SOURCE)	/* Hide almost everything. */
 #define	__POSIX_VISIBLE		0
 #define	__XSI_VISIBLE		0
 #define	__BSD_VISIBLE		0
