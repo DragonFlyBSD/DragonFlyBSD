@@ -197,7 +197,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	func(arg1, arg2, NULL);
 	logipiq(send_end, func, arg1, arg2, gd, target);
 	return(0);
-    } 
+    }
     crit_enter();
     ++gd->gd_intr_nesting_level;
 #ifdef INVARIANTS
@@ -297,7 +297,9 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
      *	   just be made pending).
      */
     rflags = read_rflags();
+#ifndef _KERNEL_VIRTUAL
     cpu_disable_intr();
+#endif
 
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_info[windex].func = func;
