@@ -464,7 +464,9 @@
 #define	_Alignof(x)		__alignof(x)
 #endif
 
+#if !defined(_Noreturn)
 #define	_Noreturn		__dead2
+#endif
 
 #if !__has_extension(c_static_assert)
 #if (defined(__cplusplus) && __cplusplus >= 201103L) || \
