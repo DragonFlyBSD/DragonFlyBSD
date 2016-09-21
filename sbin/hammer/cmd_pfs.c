@@ -112,25 +112,19 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 	if (fd < 0) {
 		/*
 		 * Once it comes here the hammer command may fail even if
-		 * this function returns valid file descriptor.
+		 * this function returns valid file descriptor, however this
+		 * open still needs to be here as some PFS commands can take
+		 * a regular file or directory path (e.g. hammer pfs-status).
 		 */
 		fd = open(path, O_RDONLY);
-		if (fd >= 0) {
-			pfs->pfs_id = -1;
-			ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
-			if (pfs->pfs_id == -1) {
-				close(fd);
-				fd = -1;
-			}
-		} else {
-			fprintf(stderr, "Cannot access PFS %s: %s\n",
-				path, strerror(errno));
+		if (fd < 0) {
+			fprintf(stderr, "Failed to open %s\n", path);
 			exit(1);
 		}
 	}
 
 	/*
-	 * pfs.pfs_id should have been set to non -1.  In this case fd
+	 * If pfs.pfs_id has been set to non -1, the file descriptor fd
 	 * could be any fd of HAMMER inodes since HAMMERIOC_GET_PSEUDOFS
 	 * doesn't depend on inode attributes if it's set to a valid id.
 	 */
