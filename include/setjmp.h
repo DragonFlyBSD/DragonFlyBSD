@@ -42,10 +42,6 @@
 /* The size of the jmp_buf is machine dependent: */
 #include <machine/setjmp.h>
 
-#ifndef __returns_twice			/* help with buildworld bootstrap */
-#define __returns_twice
-#endif
-
 __BEGIN_DECLS
 int	setjmp (jmp_buf) __returns_twice;
 void	longjmp (jmp_buf, int) __dead2;

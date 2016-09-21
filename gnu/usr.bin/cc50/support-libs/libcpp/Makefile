@@ -27,6 +27,11 @@ CXX_BUILD=	charset.c \
 
 OBJS=		${CXX_BUILD:.c=.o}
 
+# Helper for bootstrapping over iconv() removal of 'const' (c++ issue)
+.if ${WORLD_VERSION} <= 400301
+CFLAGS+=	-fpermissive
+.endif
+
 # hack to force c++ compiler to compile *.c files to create library
 .for cfile in ${CXX_BUILD}
 ${cfile:.c=.o}: ${cfile} localedir.h

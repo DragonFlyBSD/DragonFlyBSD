@@ -311,6 +311,17 @@ __MAKE_CONF?=/etc/make.conf
 .include "${__MAKE_CONF}"
 .endif
 
+# Helper for bootstrapping in makefiles.
+.if !defined(WORLD_VERSION)
+.if defined(.MAKE.DF.VERSION)
+WORLD_VERSION=	${.MAKE.DF.VERSION}
+.else
+.if exists(/usr/include/sys/param.h)
+WORLD_VERSION!=	${AWK} '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' < /usr/include/sys/param.h
+.endif
+.endif
+.endif
+
 .include <bsd.cpu.mk>
 
 .if exists(/etc/make.conf.local)

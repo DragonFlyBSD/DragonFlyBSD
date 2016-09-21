@@ -38,10 +38,6 @@
 #include <sys/unistd.h>
 #include <sys/_null.h>
 
-#ifndef __returns_twice			/* help with buildworld bootstrap */
-#define __returns_twice
-#endif
-
 #ifndef _GID_T_DECLARED
 typedef	__uint32_t	gid_t;		/* XXX __gid_t */
 #define	_GID_T_DECLARED
