@@ -579,15 +579,11 @@ dmsize(struct dev_psize_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	dm_dev_t *dmv;
-	uint64_t size;
-
-	size = 0;
 
 	if ((dmv = dev->si_drv1) == NULL)
 		return ENXIO;
 
-	size = dm_table_size(&dmv->table_head);
-	ap->a_result = (int64_t)size;
+	ap->a_result = (int64_t)dm_table_size(&dmv->table_head);
 
 	return 0;
 }
