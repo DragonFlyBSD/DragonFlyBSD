@@ -87,8 +87,8 @@ getdir(const char *path)
 }
 
 /*
- * Calculate the pfs_id given a path to a directory or a @@PFS or @@%llx:%d
- * softlink.
+ * Calculate the PFS id given a path to a file/directory or
+ * a @@%llx:%d softlink.
  */
 int
 getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
@@ -144,7 +144,7 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 static int
 scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
-	int fd;
+	int fd = -1;
 	const char *p;
 	char *dirpath;
 	char buf[64];
@@ -186,20 +186,18 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	}
 
 	/*
-	 * Extract the PFS from the link.  HAMMER will automatically
-	 * convert @@PFS%05d links so if actually see one in that
-	 * form the target PFS may not exist or may be corrupt.  But
-	 * we can extract the PFS id anyway.
+	 * Test and extract the PFS id from the link, and then open
+	 * and return fd of the parent directory of that link. fd is
+	 * not so important as long as the right PFS id is extracted.
+	 *
+	 * "@@%jx:%d" convers both "@@-1:%05d" format for master PFS
+	 * and "@@0x%016jx:%05d" format for slave PFS.
 	 */
 	dirpath = getdir(path);
-	if (sscanf(p, "@@PFS%d", &pfs->pfs_id) == 1) {
+	if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2)
 		fd = open(dirpath, O_RDONLY);
-	} else if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
-		fd = open(dirpath, O_RDONLY);
-	} else {
-		fd = -1;  /* Failed to scan PFS id */
-	}
 	free(dirpath);
+
 	return(fd);
 }
 
