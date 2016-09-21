@@ -92,26 +92,45 @@ getdir(const char *path)
 }
 
 /*
+ * If path is a symlink, return strdup'd path.
+ * If it's a directory via symlink, strip trailing /
+ * from strdup'd path and return the symlink.
+ */
+static char*
+getlink(const char *path)
+{
+	int i;
+	char *linkpath;
+	struct stat st;
+
+	if (lstat(path, &st))
+		return(NULL);
+	linkpath = strdup(path);
+
+	if (S_ISDIR(st.st_mode)) {
+		i = strlen(linkpath) - 1;
+		while (i > 0 && linkpath[i] == '/')
+			linkpath[i--] = 0;
+		lstat(linkpath, &st);
+	}
+	if (S_ISLNK(st.st_mode)) {
+		return(linkpath);
+	}
+
+	free(linkpath);
+	return(NULL);
+}
+
+/*
  * Calculate the PFS id given a path to a file/directory or
  * a @@%llx:%d softlink.
  */
 int
-getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
+getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
 	int fd;
-	char *p;
 
 	clrpfs(pfs, NULL, -1);
-
-	/*
-	 * Trailing '/' must be removed so that upon pfs-destroy
-	 * the symlink can be deleted without problems.
-	 * Root directory (/) must be excluded from this.
-	 */
-	p = path + (int)strlen(path) - 1;
-	assert(p >= path);
-	while (p != path && *p == '/')
-		*p-- = 0;
 
 	fd = scanpfsid(pfs, path);
 	if (fd < 0) {
@@ -150,7 +169,8 @@ static int
 scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
 	int fd = -1;
-	const char *p;
+	const char *p = path;
+	char *linkpath;
 	char buf[64];
 	uintmax_t dummy_tid;
 	struct stat st;
@@ -163,16 +183,18 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 		return(-1);  /* neither */
 	}
 
-	/*
-	 * If the path is a link read the link.
-	 */
-	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
+	linkpath = getlink(path);
+	if (linkpath) {
+		/*
+		 * Read the symlink assuming it's a link to PFS.
+		 */
 		bzero(buf, sizeof(buf));
-		if (readlink(path, buf, sizeof(buf) - 1) < 0)
+		if (readlink(linkpath, buf, sizeof(buf) - 1) < 0) {
+			free(linkpath);
 			return(-1);
+		}
+		free(linkpath);
 		p = buf;
-	} else {
-		p = path;
 	}
 
 	/*
@@ -354,7 +376,7 @@ void
 hammer_cmd_pseudofs_destroy(char **av, int ac)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
-	struct stat st;
+	char *linkpath;
 	int fd;
 	int i;
 
@@ -405,13 +427,15 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	 */
 	if (ioctl(fd, HAMMERIOC_RMR_PSEUDOFS, &pfs) == 0) {
 		printf("pfs-destroy of PFS#%d succeeded!\n", pfs.pfs_id);
-		if (lstat(av[0], &st) == 0 && S_ISLNK(st.st_mode)) {
-			if (remove(av[0]) < 0) {
-				fprintf(stderr, "Unable to remove softlink: %s "
-					"(but the PFS has been destroyed)\n",
-					av[0]);
-				/* exit status 0 anyway */
+		linkpath = getlink(av[0]);
+		if (linkpath) {
+			if (remove(linkpath) < 0) {
+				fprintf(stderr,
+					"Unable to remove softlink %s: %s\n",
+					linkpath, strerror(errno));
+					/* exit status 0 anyway */
 			}
+			free(linkpath);
 		}
 	} else {
 		printf("pfs-destroy of PFS#%d failed: %s\n",
