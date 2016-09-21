@@ -62,9 +62,6 @@ static void dm_doinit(void);
 static int dm_cmd_to_fun(prop_dictionary_t);
 static int disk_ioctl_switch(cdev_t, u_long, void *);
 static int dm_ioctl_switch(u_long);
-#if 0
-static void dmminphys(struct buf *);
-#endif
 
 static struct dev_ops dmctl_ops = {
 	{ "dm", 0, D_MPSAFE },
@@ -587,15 +584,6 @@ dmsize(struct dev_psize_args *ap)
 
 	return 0;
 }
-
-#if 0
-static void
-dmminphys(struct buf *bp)
-{
-
-	bp->b_bcount = MIN(bp->b_bcount, MAXPHYS);
-}
-#endif
 
 void
 dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
