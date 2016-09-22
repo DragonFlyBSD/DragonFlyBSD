@@ -161,6 +161,16 @@ void	 _Exit(int) __dead2;
 #endif /* __ISO_C_VISIBLE >= 1999 */
 
 /*
+ * C11 functions.
+ */
+#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
+void	*aligned_alloc(size_t, size_t) __heedresult;
+int	at_quick_exit(void (*)(void));
+_Noreturn void
+	quick_exit(int);
+#endif /* __ISO_C_VISIBLE >= 2011 */
+
+/*
  * Extensions made by POSIX relative to C.  We don't know yet which edition
  * of POSIX made these extensions, so assume they've always been there until
  * research can be done.
@@ -288,7 +298,7 @@ void	 qsort_r(void *, size_t, size_t, void *,
 		 int (*)(void *, const void *, const void *));
 int	 radixsort(const unsigned char **, int, const unsigned char *,
 		   unsigned int);
-void    *reallocf(void *, size_t) __heedresult;
+void	*reallocf(void *, size_t) __heedresult;
 int	 rpmatch(const char *);
 void	 setprogname(const char *);
 int	 sradixsort(const unsigned char **, int, const unsigned char *,
@@ -308,17 +318,6 @@ __uint64_t
 
 extern char *suboptarg;			/* getsubopt(3) external variable */
 #endif /* __BSD_VISIBLE */
-
-/*
- * C11 functions.
- */
-#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
-int 	at_quick_exit(void (*func)(void));
-_Noreturn void
-	quick_exit(int);
-void	*aligned_alloc(size_t, size_t) __heedresult;
-#endif /* __ISO_C_VISIBLE >= 2011 */
-
 __END_DECLS
 
 #endif /* !_STDLIB_H_ */

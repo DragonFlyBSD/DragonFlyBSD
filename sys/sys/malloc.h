@@ -51,15 +51,15 @@
 /*
  * flags to malloc.
  */
-#define	M_RNOWAIT     	0x0001	/* do not block */
-#define	M_WAITOK     	0x0002	/* wait for resources / alloc from cache */
-#define	M_ZERO       	0x0100	/* bzero() the allocation */
+#define	M_RNOWAIT	0x0001	/* do not block */
+#define	M_WAITOK	0x0002	/* wait for resources / alloc from cache */
+#define	M_ZERO		0x0100	/* bzero() the allocation */
 #define	M_USE_RESERVE	0x0200	/* can eat into free list reserve */
 #define	M_NULLOK	0x0400	/* ok to return NULL */
-#define M_PASSIVE_ZERO	0x0800	/* (internal to the slab code only) */
-#define M_USE_INTERRUPT_RESERVE \
+#define	M_PASSIVE_ZERO	0x0800	/* (internal to the slab code only) */
+#define	M_USE_INTERRUPT_RESERVE \
 			0x1000	/* can exhaust free list entirely */
-#define M_POWEROF2	0x2000	/* roundup size to the nearest power of 2 */
+#define	M_POWEROF2	0x2000	/* roundup size to the nearest power of 2 */
 
 /*
  * M_NOWAIT has to be a set of flags for equivalence to prior use. 
@@ -120,21 +120,20 @@ struct malloc_type {
 typedef struct malloc_type	*malloc_type_t;
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
-#define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
-	struct malloc_type type[1] = { 			\
-	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0, { 0 } } \
-	}; 								    \
-	SYSINIT(type##_init, SI_BOOT1_KMALLOC, SI_ORDER_ANY, malloc_init, type); \
-	SYSUNINIT(type##_uninit, SI_BOOT1_KMALLOC, SI_ORDER_ANY, malloc_uninit, type)
-
+#define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
+	struct malloc_type type[1] = {					\
+	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc,	\
+		0, 0, { 0 } }						\
+	};								\
+	SYSINIT(type##_init, SI_BOOT1_KMALLOC, SI_ORDER_ANY,		\
+	    malloc_init, type);						\
+	SYSUNINIT(type##_uninit, SI_BOOT1_KMALLOC, SI_ORDER_ANY,	\
+	    malloc_uninit, type)
 #else
-
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
-	struct malloc_type type[1] = { 			\
+	struct malloc_type type[1] = {			\
 	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
 	}
-
 #endif
 
 #define	MALLOC_DECLARE(type) \
@@ -166,25 +165,24 @@ MALLOC_DECLARE(M_IOV);
 size_t  kmem_lim_size(void);
 void	contigfree(void *addr, unsigned long size, struct malloc_type *type)
 	    __nonnull(1);
-void	*contigmalloc (unsigned long size, struct malloc_type *type,
-			   int flags, vm_paddr_t low, vm_paddr_t high,
-			   unsigned long alignment, unsigned long boundary)
-	    __heedresult;
-void	malloc_init (void *);
-void	malloc_uninit (void *);
+void	*contigmalloc(unsigned long size, struct malloc_type *type, int flags,
+		      vm_paddr_t low, vm_paddr_t high, unsigned long alignment,
+		      unsigned long boundary) __heedresult;
+void	malloc_init(void *);
+void	malloc_uninit(void *);
 void	kmalloc_raise_limit(struct malloc_type *type, size_t bytes);
 void	kmalloc_create(struct malloc_type **typep, const char *descr);
 void	kmalloc_destroy(struct malloc_type **typep);
 
 #ifdef SLAB_DEBUG
-void	*kmalloc_debug (unsigned long size, struct malloc_type *type, int flags,
+void	*kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
 			const char *file, int line) __heedresult;
-void	*krealloc_debug (void *addr, unsigned long size,
+void	*krealloc_debug(void *addr, unsigned long size,
 			struct malloc_type *type, int flags,
 			const char *file, int line) __heedresult;
-char	*kstrdup_debug (const char *, struct malloc_type *,
+char	*kstrdup_debug(const char *, struct malloc_type *,
 			const char *file, int line) __heedresult;
-char	*kstrndup_debug (const char *, size_t maxlen, struct malloc_type *,
+char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 			const char *file, int line) __heedresult;
 #define kmalloc(size, type, flags)		\
 	kmalloc_debug(size, type, flags, __FILE__, __LINE__)
@@ -195,26 +193,28 @@ char	*kstrndup_debug (const char *, size_t maxlen, struct malloc_type *,
 #define kstrndup(str, maxlen, type)			\
 	kstrndup_debug(str, maxlen, type, __FILE__, __LINE__)
 #else
-void	*kmalloc (unsigned long size, struct malloc_type *type, int flags)
-	    __heedresult;
-void	*krealloc (void *addr, unsigned long size,
-		      struct malloc_type *type, int flags) __heedresult;
-char	*kstrdup (const char *, struct malloc_type *) __heedresult;
-char	*kstrndup (const char *, size_t maxlen, struct malloc_type *) __heedresult;
+void	*kmalloc(unsigned long size, struct malloc_type *type, int flags)
+		 __heedresult;
+void	*krealloc(void *addr, unsigned long size, struct malloc_type *type,
+		  int flags) __heedresult;
+char	*kstrdup(const char *, struct malloc_type *)
+		 __heedresult;
+char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
+		  __heedresult;
 #define kmalloc_debug(size, type, flags, file, line)		\
 	kmalloc(size, type, flags)
 #define krealloc_debug(addr, size, type, flags, file, line)	\
 	krealloc(addr, size, type, flags)
 #define kstrdup_debug(str, type, file, line)			\
 	kstrdup(str, type)
-#define kstrndup_debug(str, maxlen, type, file, line)			\
+#define kstrndup_debug(str, maxlen, type, file, line)		\
 	kstrndup(str, maxlen, type)
 #endif
-void	*kmalloc_cachealign (unsigned long size, struct malloc_type *type,
-			   int flags) __heedresult;
+void	*kmalloc_cachealign(unsigned long size, struct malloc_type *type,
+			    int flags) __heedresult;
 void	kfree(void *addr, struct malloc_type *type)
 	    __nonnull(1) __nonnull(2);
-long	kmalloc_limit (struct malloc_type *type);
+long	kmalloc_limit(struct malloc_type *type);
 void	slab_cleanup(void);
 
 #endif /* _KERNEL */
