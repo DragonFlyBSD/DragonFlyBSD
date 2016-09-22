@@ -100,7 +100,6 @@ long	 labs(long) __pure2;
 #endif
 ldiv_t	 ldiv(long, long) __pure2;
 void	*malloc(size_t) __heedresult;
-int	 posix_memalign(void **, size_t, size_t);
 int	 mblen(const char *, size_t);
 size_t	 mbstowcs(wchar_t * __restrict , const char * __restrict, size_t);
 int	 mbtowc(wchar_t * __restrict, const char * __restrict, size_t);
@@ -171,13 +170,13 @@ _Noreturn void
 #endif /* __ISO_C_VISIBLE >= 2011 */
 
 /*
- * Extensions made by POSIX relative to C.  We don't know yet which edition
- * of POSIX made these extensions, so assume they've always been there until
- * research can be done.
+ * Extensions made by POSIX relative to C.
  */
-#if __POSIX_VISIBLE /* >= ??? */
-/*int	 posix_memalign(void **, size_t, size_t); (ADV) */
+#if __POSIX_VISIBLE >= 199506
 int	 rand_r(unsigned *);			/* (TSF) */
+#endif
+#if __POSIX_VISIBLE >= 200112
+int	 posix_memalign(void **, size_t, size_t); /* (ADV) */
 int	 setenv(const char *, const char *, int);
 int	 unsetenv(const char *);
 #endif
