@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_mattr_kind_np.c,v 1.4.2.2 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_mattr_kind_np.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
@@ -67,7 +66,7 @@ int
 _pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
 {
 	int	ret;
-	if (attr == NULL || *attr == NULL || type >= MUTEX_TYPE_MAX) {
+	if (attr == NULL || *attr == NULL || type >= PTHREAD_MUTEX_TYPE_MAX) {
 		errno = EINVAL;
 		ret = -1;
 	} else {
@@ -83,7 +82,7 @@ _pthread_mutexattr_gettype(pthread_mutexattr_t *attr, int *type)
 	int	ret;
 
 	if (attr == NULL || *attr == NULL || (*attr)->m_type >=
-	    MUTEX_TYPE_MAX) {
+	    PTHREAD_MUTEX_TYPE_MAX) {
 		ret = EINVAL;
 	} else {
 		*type = (*attr)->m_type;

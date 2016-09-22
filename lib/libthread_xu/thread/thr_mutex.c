@@ -30,7 +30,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.15 2008/05/09 16:03:27 dillon Exp $
  */
 
 #include "namespace.h"
@@ -104,7 +103,7 @@ mutex_init(pthread_mutex_t *mutex,
 	} else {
 		attr = *mutex_attr;
 		if (attr->m_type < PTHREAD_MUTEX_ERRORCHECK ||
-		    attr->m_type >= MUTEX_TYPE_MAX)
+		    attr->m_type >= PTHREAD_MUTEX_TYPE_MAX)
 			return (EINVAL);
 		if (attr->m_protocol < PTHREAD_PRIO_NONE ||
 		    attr->m_protocol > PTHREAD_PRIO_PROTECT)

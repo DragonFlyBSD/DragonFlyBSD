@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_mutex.c,v 1.20.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_mutex.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
  */
 #include <stdlib.h>
 #include <errno.h>
@@ -128,7 +127,7 @@ _pthread_mutex_init(pthread_mutex_t * mutex,
 
 	/* Check mutex type: */
 	else if (((*mutex_attr)->m_type < PTHREAD_MUTEX_ERRORCHECK) ||
-	    ((*mutex_attr)->m_type >= MUTEX_TYPE_MAX))
+	    ((*mutex_attr)->m_type >= PTHREAD_MUTEX_TYPE_MAX))
 		/* Return an invalid argument error: */
 		ret = EINVAL;
 
