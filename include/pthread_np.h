@@ -10,10 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by John Birrell.
- * 4. Neither the name of the author nor the names of any co-contributors
+ * 3. Neither the name of the author nor the names of any co-contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,27 +34,27 @@
 /*
  * Non-POSIX type definitions:
  */
-typedef void	(*pthread_switch_routine_t) (pthread_t, pthread_t);
+typedef void	(*pthread_switch_routine_t)(pthread_t, pthread_t);
 
 /*
  * Non-POSIX thread function prototype definitions:
  */
 __BEGIN_DECLS
-int pthread_attr_setcreatesuspend_np (pthread_attr_t *);
-int pthread_attr_get_np (pthread_t, pthread_attr_t *);
-int pthread_main_np (void);
-int pthread_multi_np (void);
-int pthread_mutexattr_getkind_np (pthread_mutexattr_t);
-int pthread_mutexattr_setkind_np (pthread_mutexattr_t *, int);
-void pthread_resume_all_np (void);
-int pthread_resume_np (pthread_t);
-void pthread_set_name_np (pthread_t, const char *);
-int pthread_single_np (void);
-void pthread_suspend_all_np (void);
-int pthread_suspend_np (pthread_t);
-int pthread_switch_add_np (pthread_switch_routine_t);
-int pthread_switch_delete_np (pthread_switch_routine_t);
-int pthread_timedjoin_np (pthread_t, void **, const struct timespec *);
+int pthread_attr_setcreatesuspend_np(pthread_attr_t *);
+int pthread_attr_get_np(pthread_t, pthread_attr_t *);
+int pthread_main_np(void);
+int pthread_multi_np(void);
+int pthread_mutexattr_getkind_np(pthread_mutexattr_t);
+int pthread_mutexattr_setkind_np(pthread_mutexattr_t *, int);
+void pthread_resume_all_np(void);
+int pthread_resume_np(pthread_t);
+void pthread_set_name_np(pthread_t, const char *);
+int pthread_single_np(void);
+void pthread_suspend_all_np(void);
+int pthread_suspend_np(pthread_t);
+int pthread_switch_add_np(pthread_switch_routine_t);
+int pthread_switch_delete_np(pthread_switch_routine_t);
+int pthread_timedjoin_np(pthread_t, void **, const struct timespec *);
 __END_DECLS
 
 #endif
