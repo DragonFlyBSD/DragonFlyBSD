@@ -241,9 +241,11 @@ int	pthread_setcancelstate(int, int *);
 int	pthread_setcanceltype(int, int *);
 void	pthread_testcancel(void);
 
+#if __BSD_VISIBLE
 int	pthread_getprio(pthread_t);
 int	pthread_setprio(pthread_t, int);
 void	pthread_yield(void);
+#endif
 
 int	pthread_mutexattr_getprioceiling(pthread_mutexattr_t *, int *);
 int	pthread_mutexattr_setprioceiling(pthread_mutexattr_t *, int);
@@ -264,11 +266,10 @@ int	pthread_attr_setschedpolicy(pthread_attr_t *, int);
 int	pthread_attr_setscope(pthread_attr_t *, int);
 int	pthread_getschedparam(pthread_t pthread, int *, struct sched_param *);
 int	pthread_setschedparam(pthread_t, int, const struct sched_param *);
+#if __XSI_VISIBLE
 int	pthread_getconcurrency(void);
 int	pthread_setconcurrency(int);
-
-int		pthread_attr_setfloatstate(pthread_attr_t *, int);
-int		pthread_attr_getfloatstate(pthread_attr_t *, int *);
+#endif
 __END_DECLS
 
 #endif
