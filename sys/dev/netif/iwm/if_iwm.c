@@ -2761,12 +2761,6 @@ iwm_load_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 		}
 	}
 
-	/*
-	 * Give the firmware some time to initialize.
-	 * Accessing it too early causes errors.
-	 */
-	lksleep(&w, &sc->sc_lk, 0, "iwmfwinit", hz);
-
 	return error;
 }
 
