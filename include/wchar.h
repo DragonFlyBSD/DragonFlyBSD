@@ -249,7 +249,7 @@ size_t	mbsnrtowcs(wchar_t * __restrict, const char ** __restrict, size_t,
 FILE	*open_wmemstream(wchar_t **, size_t *);
 wchar_t	*wcpcpy(wchar_t * __restrict, const wchar_t * __restrict);
 wchar_t	*wcpncpy(wchar_t * __restrict, const wchar_t * __restrict, size_t);
-wchar_t	*wcsdup(const wchar_t *);
+wchar_t	*wcsdup(const wchar_t *) __malloclike;
 int	wcscasecmp(const wchar_t *, const wchar_t *);
 int	wcsncasecmp(const wchar_t *, const wchar_t *, size_t n);
 size_t	wcsnlen(const wchar_t *, size_t) __pure;

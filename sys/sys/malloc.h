@@ -167,7 +167,8 @@ void	contigfree(void *addr, unsigned long size, struct malloc_type *type)
 	    __nonnull(1);
 void	*contigmalloc(unsigned long size, struct malloc_type *type, int flags,
 		      vm_paddr_t low, vm_paddr_t high, unsigned long alignment,
-		      unsigned long boundary) __heedresult;
+		      unsigned long boundary) __malloclike __heedresult
+		      __alloc_size(1) __alloc_align(6);
 void	malloc_init(void *);
 void	malloc_uninit(void *);
 void	kmalloc_raise_limit(struct malloc_type *type, size_t bytes);
@@ -176,14 +177,15 @@ void	kmalloc_destroy(struct malloc_type **typep);
 
 #ifdef SLAB_DEBUG
 void	*kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
-			const char *file, int line) __heedresult;
+			const char *file, int line) __malloclike __heedresult
+			__alloc_size(1);
 void	*krealloc_debug(void *addr, unsigned long size,
 			struct malloc_type *type, int flags,
-			const char *file, int line) __heedresult;
+			const char *file, int line) __heedresult __alloc_size(2);
 char	*kstrdup_debug(const char *, struct malloc_type *,
-			const char *file, int line) __heedresult;
+			const char *file, int line) __malloclike __heedresult;
 char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
-			const char *file, int line) __heedresult;
+			const char *file, int line) __malloclike __heedresult;
 #define kmalloc(size, type, flags)		\
 	kmalloc_debug(size, type, flags, __FILE__, __LINE__)
 #define krealloc(addr, size, type, flags)	\
@@ -194,13 +196,13 @@ char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 	kstrndup_debug(str, maxlen, type, __FILE__, __LINE__)
 #else
 void	*kmalloc(unsigned long size, struct malloc_type *type, int flags)
-		 __heedresult;
+		 __malloclike __heedresult __alloc_size(1);
 void	*krealloc(void *addr, unsigned long size, struct malloc_type *type,
-		  int flags) __heedresult;
+		  int flags) __heedresult __alloc_size(2);
 char	*kstrdup(const char *, struct malloc_type *)
-		 __heedresult;
+		 __malloclike __heedresult;
 char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
-		  __heedresult;
+		  __malloclike __heedresult;
 #define kmalloc_debug(size, type, flags, file, line)		\
 	kmalloc(size, type, flags)
 #define krealloc_debug(addr, size, type, flags, file, line)	\

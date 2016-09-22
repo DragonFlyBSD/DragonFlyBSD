@@ -91,7 +91,7 @@ char	*strcpy(char * __restrict, const char * __restrict);
 #endif
 size_t	 strcspn(const char *, const char *) __pure;
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
-char	*strdup(const char *);
+char	*strdup(const char *) __malloclike;
 #endif
 char	*strerror(int);
 #if __POSIX_VISIBLE >= 200112
@@ -113,7 +113,7 @@ int	 strncmp(const char *, const char *, size_t) __pure;
 char	*strncpy(char * __restrict, const char * __restrict, size_t);
 #endif
 #if __POSIX_VISIBLE >= 200809
-char	*strndup(const char *, size_t);
+char	*strndup(const char *, size_t) __malloclike;
 #if !defined(_KERNEL_VIRTUAL)
 size_t	 strnlen(const char *, size_t) __pure;
 #endif

@@ -90,7 +90,7 @@ int	 atoi(const char *);
 long	 atol(const char *);
 void	*bsearch(const void *, const void *, size_t,
 		 size_t, int (*)(const void *, const void *));
-void	*calloc(size_t, size_t) __heedresult;
+void	*calloc(size_t, size_t) __malloclike __heedresult;
 div_t	 div(int, int) __pure2;
 void	 exit(int) __dead2;
 void	 free(void *);
@@ -99,13 +99,13 @@ char	*getenv(const char *);
 long	 labs(long) __pure2;
 #endif
 ldiv_t	 ldiv(long, long) __pure2;
-void	*malloc(size_t) __heedresult;
+void	*malloc(size_t) __malloclike __heedresult __alloc_size(1);
 int	 mblen(const char *, size_t);
 size_t	 mbstowcs(wchar_t * __restrict , const char * __restrict, size_t);
 int	 mbtowc(wchar_t * __restrict, const char * __restrict, size_t);
 void	 qsort(void *, size_t, size_t, int (*)(const void *, const void *));
 int	 rand(void);
-void	*realloc(void *, size_t) __heedresult;
+void	*realloc(void *, size_t) __heedresult __alloc_size(2);
 void	 srand(unsigned);
 double	 strtod(const char * __restrict, char ** __restrict);
 float	 strtof(const char * __restrict, char ** __restrict);
@@ -163,10 +163,10 @@ void	 _Exit(int) __dead2;
  * C11 functions.
  */
 #if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
-void	*aligned_alloc(size_t, size_t) __heedresult;
-int	at_quick_exit(void (*)(void));
-_Noreturn void
-	quick_exit(int);
+void	*aligned_alloc(size_t, size_t) __malloclike __heedresult
+	    __alloc_align(1) __alloc_size(2);
+int	at_quick_exit(void (*)(void));	/* extra extern case for __cplusplus? */
+void	quick_exit(int) __dead2;
 #endif /* __ISO_C_VISIBLE >= 2011 */
 
 /*
@@ -176,7 +176,7 @@ _Noreturn void
 int	 rand_r(unsigned *);			/* (TSF) */
 #endif
 #if __POSIX_VISIBLE >= 200112
-int	 posix_memalign(void **, size_t, size_t); /* (ADV) */
+int	 posix_memalign(void **, size_t, size_t) __nonnull(1); /* (ADV) */
 int	 setenv(const char *, const char *, int);
 int	 unsetenv(const char *);
 #endif
@@ -297,7 +297,7 @@ void	 qsort_r(void *, size_t, size_t, void *,
 		 int (*)(void *, const void *, const void *));
 int	 radixsort(const unsigned char **, int, const unsigned char *,
 		   unsigned int);
-void	*reallocf(void *, size_t) __heedresult;
+void	*reallocf(void *, size_t) __heedresult __alloc_size(2);
 int	 rpmatch(const char *);
 void	 setprogname(const char *);
 int	 sradixsort(const unsigned char **, int, const unsigned char *,
