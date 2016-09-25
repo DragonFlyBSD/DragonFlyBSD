@@ -414,17 +414,13 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 }
 
 /*
- * Retrieve a pointer to a B-Tree node given a zone offset.  The underlying
- * bufferp is freed if non-NULL and a referenced buffer is loaded into it.
+ * Retrieve a pointer to a B-Tree node given a zone offset.
+ * This function doesn't allocate a new node, it must already exist.
  */
 hammer_node_ondisk_t
 get_node(hammer_off_t node_offset, struct buffer_info **bufferp)
 {
-	if (*bufferp != NULL) {
-		rel_buffer(*bufferp);
-		*bufferp = NULL;
-	}
-	return(get_ondisk(node_offset, bufferp, 0));
+	return(get_buffer_data(node_offset, bufferp, 0));
 }
 
 /*
