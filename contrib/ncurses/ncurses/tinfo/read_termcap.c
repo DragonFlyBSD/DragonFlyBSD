@@ -859,7 +859,7 @@ _nc_tgetent(char *bp, char **sourcename, int *lineno, const char *name)
 	}
     }
 
-    i = _nc_cgetent(&dummy, lineno, pathvec, name);
+    i = _nc_cgetent(&dummy, lineno, __DECONST(char ** ,pathvec), name);
 
     /* ncurses' termcap-parsing routines cannot handle multiple adjacent
      * empty fields, and mistakenly use the last valid cap entry instead of
