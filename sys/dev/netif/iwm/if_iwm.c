@@ -263,9 +263,6 @@ static int	iwm_read_firmware(struct iwm_softc *, enum iwm_ucode_type);
 #if !defined(__DragonFly__)
 static void	iwm_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 #endif
-static int	iwm_dma_contig_alloc(bus_dma_tag_t, struct iwm_dma_info *,
-                                     bus_size_t, bus_size_t);
-static void	iwm_dma_contig_free(struct iwm_dma_info *);
 static int	iwm_alloc_fwmem(struct iwm_softc *);
 static int	iwm_alloc_sched(struct iwm_softc *);
 static int	iwm_alloc_kw(struct iwm_softc *);
@@ -926,88 +923,6 @@ iwm_read_firmware(struct iwm_softc *sc, enum iwm_ucode_type ucode_type)
 /*
  * DMA resource routines
  */
-
-#if !defined(__DragonFly__)
-static void
-iwm_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
-{
-        if (error != 0)
-                return;
-	KASSERT(nsegs == 1, ("too many DMA segments, %d should be 1", nsegs));
-	*(bus_addr_t *)arg = segs[0].ds_addr;
-}
-#endif
-
-static int
-iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
-    bus_size_t size, bus_size_t alignment)
-{
-	int error;
-
-	dma->tag = NULL;
-	dma->map = NULL;
-	dma->size = size;
-	dma->vaddr = NULL;
-
-#if defined(__DragonFly__)
-	bus_dmamem_t dmem;
-	error = bus_dmamem_coherent(tag, alignment, 0,
-				    BUS_SPACE_MAXADDR_32BIT,
-				    BUS_SPACE_MAXADDR,
-				    size, BUS_DMA_NOWAIT, &dmem);
-	if (error != 0)
-		goto fail;
-
-	dma->tag = dmem.dmem_tag;
-	dma->map = dmem.dmem_map;
-	dma->vaddr = dmem.dmem_addr;
-	dma->paddr = dmem.dmem_busaddr;
-#else
-	error = bus_dma_tag_create(tag, alignment,
-            0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, size,
-            1, size, 0, NULL, NULL, &dma->tag);
-        if (error != 0)
-                goto fail;
-
-        error = bus_dmamem_alloc(dma->tag, (void **)&dma->vaddr,
-            BUS_DMA_NOWAIT | BUS_DMA_ZERO | BUS_DMA_COHERENT, &dma->map);
-        if (error != 0)
-                goto fail;
-
-        error = bus_dmamap_load(dma->tag, dma->map, dma->vaddr, size,
-            iwm_dma_map_addr, &dma->paddr, BUS_DMA_NOWAIT);
-        if (error != 0) {
-		bus_dmamem_free(dma->tag, dma->vaddr, dma->map);
-		dma->vaddr = NULL;
-		goto fail;
-	}
-#endif
-
-	bus_dmamap_sync(dma->tag, dma->map, BUS_DMASYNC_PREWRITE);
-
-	return 0;
-
-fail:
-	iwm_dma_contig_free(dma);
-
-	return error;
-}
-
-static void
-iwm_dma_contig_free(struct iwm_dma_info *dma)
-{
-	if (dma->vaddr != NULL) {
-		bus_dmamap_sync(dma->tag, dma->map,
-		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
-		bus_dmamap_unload(dma->tag, dma->map);
-		bus_dmamem_free(dma->tag, dma->vaddr, dma->map);
-		dma->vaddr = NULL;
-	}
-	if (dma->tag != NULL) {
-		bus_dma_tag_destroy(dma->tag);
-		dma->tag = NULL;
-	}
-}
 
 /* fwmem is used to load firmware onto the card */
 static int
