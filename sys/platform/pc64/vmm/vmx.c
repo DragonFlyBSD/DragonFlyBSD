@@ -1127,7 +1127,8 @@ vmx_handle_vmexit(void)
 	int exception_number;
 	int err;
 	int func, regs[4];
-	int fault_type, rv;
+	int rv;
+	int fault_type = VM_PROT_NONE;
 	int fault_flags = 0;
 	struct lwp *lp = curthread->td_lwp;
 
