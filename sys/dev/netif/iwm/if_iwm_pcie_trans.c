@@ -142,6 +142,7 @@ __FBSDID("$FreeBSD$");
 
 #include "if_iwmreg.h"
 #include "if_iwmvar.h"
+#include "if_iwm_config.h"
 #include "if_iwm_debug.h"
 #include "if_iwm_pcie_trans.h"
 

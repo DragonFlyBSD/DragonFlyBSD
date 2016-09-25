@@ -510,6 +510,8 @@ dev/netif/iwm/if_iwm_power.c		optional iwm
 dev/netif/iwm/if_iwm_scan.c		optional iwm
 dev/netif/iwm/if_iwm_time_event.c	optional iwm
 dev/netif/iwm/if_iwm_util.c		optional iwm
+dev/netif/iwm/if_iwm_7000.c		optional iwm
+dev/netif/iwm/if_iwm_8000.c		optional iwm
 iwm3160fw.c				optional iwmfw			\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwm3160.fw:iwm3160fw -miwm3160fw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
