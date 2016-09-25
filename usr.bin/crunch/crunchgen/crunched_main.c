@@ -43,6 +43,7 @@ struct stub {
 
 extern char *__progname;
 extern struct stub entry_points[];
+static int crunched_usage(void);
 
 int
 main(int argc, char **argv, char **envp)
