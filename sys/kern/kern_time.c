@@ -152,22 +152,37 @@ settime(struct timeval *tv)
 }
 
 static void
+get_process_cputime(struct proc *p, struct timespec *ats)
+{
+	struct rusage ru;
+
+	lwkt_gettoken(&p->p_token);
+	calcru_proc(p, &ru);
+	lwkt_reltoken(&p->p_token);
+	timevaladd(&ru.ru_utime, &ru.ru_stime);
+	TIMEVAL_TO_TIMESPEC(&ru.ru_utime, ats);
+}
+
+static void
+get_process_usertime(struct proc *p, struct timespec *ats)
+{
+	struct rusage ru;
+
+	lwkt_gettoken(&p->p_token);
+	calcru_proc(p, &ru);
+	lwkt_reltoken(&p->p_token);
+	TIMEVAL_TO_TIMESPEC(&ru.ru_utime, ats);
+}
+
+static void
 get_curthread_cputime(struct timespec *ats)
 {
 	struct thread *td = curthread;
+	struct timeval sys, user;
 
-	crit_enter();
-	/*
-	 * These are 64-bit fields but the actual values should never reach
-	 * the limit. We don't care about overflows.
-	 */
-	ats->tv_sec = td->td_uticks / 1000000;
-	ats->tv_sec += td->td_sticks / 1000000;
-	ats->tv_sec += td->td_iticks / 1000000;
-	ats->tv_nsec = (td->td_uticks % 1000000) * 1000;
-	ats->tv_nsec += (td->td_sticks % 1000000) * 1000;
-	ats->tv_nsec += (td->td_iticks % 1000000) * 1000;
-	crit_exit();
+	calcru(td->td_lwp, &user, &sys);
+	timevaladd(&user, &sys);
+	TIMEVAL_TO_TIMESPEC(&user, ats);
 }
 
 /*
@@ -176,9 +191,9 @@ get_curthread_cputime(struct timespec *ats)
 int
 kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 {
-	int error = 0;
 	struct proc *p;
 
+	p = curproc;
 	switch(clock_id) {
 	case CLOCK_REALTIME:
 	case CLOCK_REALTIME_PRECISE:
@@ -198,17 +213,11 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 		getnanouptime(ats);
 		break;
 	case CLOCK_VIRTUAL:
-		p = curproc;
-		ats->tv_sec = p->p_timer[ITIMER_VIRTUAL].it_value.tv_sec;
-		ats->tv_nsec = p->p_timer[ITIMER_VIRTUAL].it_value.tv_usec *
-			       1000;
+		get_process_usertime(p, ats);
 		break;
 	case CLOCK_PROF:
 	case CLOCK_PROCESS_CPUTIME_ID:
-		p = curproc;
-		ats->tv_sec = p->p_timer[ITIMER_PROF].it_value.tv_sec;
-		ats->tv_nsec = p->p_timer[ITIMER_PROF].it_value.tv_usec *
-			       1000;
+		get_process_cputime(p, ats);
 		break;
 	case CLOCK_SECOND:
 		ats->tv_sec = time_second;
@@ -218,10 +227,9 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 		get_curthread_cputime(ats);
 		break;
 	default:
-		error = EINVAL;
-		break;
+		return (EINVAL);
 	}
-	return (error);
+	return (0);
 }
 
 /*
@@ -283,8 +291,7 @@ sys_clock_settime(struct clock_settime_args *uap)
 int
 kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 {
-	int error;
-
+	ts->tv_sec = 0;
 	switch(clock_id) {
 	case CLOCK_REALTIME:
 	case CLOCK_REALTIME_FAST:
@@ -295,36 +302,32 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 	case CLOCK_UPTIME:
 	case CLOCK_UPTIME_FAST:
 	case CLOCK_UPTIME_PRECISE:
-	case CLOCK_THREAD_CPUTIME_ID:
-	case CLOCK_PROCESS_CPUTIME_ID:
 		/*
 		 * Round up the result of the division cheaply
 		 * by adding 1.  Rounding up is especially important
 		 * if rounding down would give 0.  Perfect rounding
 		 * is unimportant.
 		 */
-		ts->tv_sec = 0;
 		ts->tv_nsec = 1000000000 / sys_cputimer->freq + 1;
-		error = 0;
 		break;
 	case CLOCK_VIRTUAL:
 	case CLOCK_PROF:
 		/* Accurately round up here because we can do so cheaply. */
-		ts->tv_sec = 0;
 		ts->tv_nsec = (1000000000 + hz - 1) / hz;
-		error = 0;
 		break;
 	case CLOCK_SECOND:
 		ts->tv_sec = 1;
 		ts->tv_nsec = 0;
-		error = 0;
+		break;
+	case CLOCK_THREAD_CPUTIME_ID:
+	case CLOCK_PROCESS_CPUTIME_ID:
+		ts->tv_nsec = 1000;
 		break;
 	default:
-		error = EINVAL;
-		break;
+		return (EINVAL);
 	}
 
-	return(error);
+	return (0);
 }
 
 /*
