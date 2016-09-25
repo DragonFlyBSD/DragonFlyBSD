@@ -137,7 +137,7 @@ static struct deferred_opt
 } *deferred_opts;
 
 
-extern const unsigned int 
+const unsigned int
 c_family_lang_mask = (CL_C | CL_CXX | CL_ObjC | CL_ObjCXX);
 
 /* Defer option CODE with argument ARG.  */
