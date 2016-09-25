@@ -25,6 +25,8 @@ CFLAGS+=	-I${.CURDIR}/../include
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 
+WARNS?=	5
+
 .PATH:	${NCURSESDIR}/include ${.CURDIR}/../include
 .if defined(ZPANEL)
 .PATH:	${NCURSESDIR}/panel
@@ -53,3 +55,5 @@ curses.h: $(TERMINFO_CAPS) curses.head curses.tail MKkey_defs.sh
 .endif
 	cat ${NCURSESDIR}/include/curses.tail >> ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
+
+.include "../Makefile.inc"
