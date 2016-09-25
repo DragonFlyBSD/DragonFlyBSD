@@ -215,7 +215,7 @@ ls_file(const char *name, const struct stat *st, int remote, int si_units)
 {
 	int ulen, glen, sz = 0;
 	struct tm *ltime = localtime(&st->st_mtime);
-	char *user, *group;
+	const char *user, *group;
 	char buf[1024], mode[11+1], tbuf[12+1], ubuf[11+1], gbuf[11+1];
 	char sbuf[FMT_SCALED_STRSIZE];
 	time_t now;
