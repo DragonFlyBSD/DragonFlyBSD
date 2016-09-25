@@ -1120,6 +1120,7 @@ purged_acs(TERMTYPE *tterm)
     return result;
 }
 
+#ifndef BOOTSTRAPPING
 static void
 encode_b64(char *target, char *source, unsigned state, int *saved)
 {
@@ -1147,6 +1148,7 @@ encode_b64(char *target, char *source, unsigned state, int *saved)
     }
     *target = '\0';
 }
+#endif
 
 /*
  * Dump a single entry.
