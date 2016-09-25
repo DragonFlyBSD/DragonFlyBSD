@@ -60,6 +60,7 @@
 #include "buffer.h"
 #include "misc.h"
 #include "servconf.h"
+#include "sshlogin.h"
 
 extern Buffer loginmsg;
 extern ServerOptions options;

@@ -14,7 +14,7 @@ SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 	sftp-server.c sftp-common.c \
 	sandbox-rlimit.c
 
-WARNS?=	0
+WARNS?=	3
 
 # Portability layer
 SRCS+=	fmt_scaled.c xmmap.c
