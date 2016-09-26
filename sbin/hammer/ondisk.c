@@ -422,15 +422,15 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 /*
  * Allocate HAMMER elements - B-Tree nodes
  */
-void *
-alloc_btree_element(hammer_off_t *offp, struct buffer_info **data_bufferp)
+hammer_node_ondisk_t
+alloc_btree_node(hammer_off_t *offp, struct buffer_info **data_bufferp)
 {
 	hammer_node_ondisk_t node;
 
 	node = alloc_blockmap(HAMMER_ZONE_BTREE_INDEX, sizeof(*node),
 			      offp, data_bufferp);
 	bzero(node, sizeof(*node));
-	return (node);
+	return(node);
 }
 
 /*
@@ -445,7 +445,7 @@ alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 	data = alloc_blockmap(HAMMER_ZONE_META_INDEX, data_len,
 			      offp, data_bufferp);
 	bzero(data, data_len);
-	return (data);
+	return(data);
 }
 
 /*

@@ -572,7 +572,7 @@ format_root_directory(const char *label)
 	/*
 	 * Allocate zero-filled root btree node, inode and pfs
 	 */
-	bnode = alloc_btree_element(&btree_off, &data_buffer0);
+	bnode = alloc_btree_node(&btree_off, &data_buffer0);
 	idata = alloc_meta_element(&idata_off, sizeof(*idata), &data_buffer1);
 	pfsd = alloc_meta_element(&pfsd_off, sizeof(*pfsd), &data_buffer2);
 	create_tid = createtid();
