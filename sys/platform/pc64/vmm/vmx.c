@@ -951,6 +951,7 @@ vmx_vmdestroy(void)
 			kfree(p->p_vmm, M_TEMP);
 			p->p_vmm = NULL;
 		}
+		lwkt_reltoken(&p->p_token);
 	}
 	return error;
 }
