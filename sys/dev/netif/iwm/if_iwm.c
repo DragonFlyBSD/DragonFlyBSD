@@ -344,8 +344,7 @@ static int	iwm_mvm_calc_rssi(struct iwm_softc *, struct iwm_rx_phy_info *);
 static int	iwm_mvm_get_signal_strength(struct iwm_softc *,
 					    struct iwm_rx_phy_info *);
 static void	iwm_mvm_rx_rx_phy_cmd(struct iwm_softc *,
-                                      struct iwm_rx_packet *,
-                                      struct iwm_rx_data *);
+                                      struct iwm_rx_packet *);
 static int	iwm_get_noise(struct iwm_softc *sc,
 		    const struct iwm_mvm_statistics_rx_non_phy *);
 static void	iwm_mvm_rx_rx_mpdu(struct iwm_softc *, struct iwm_rx_packet *,
@@ -353,8 +352,7 @@ static void	iwm_mvm_rx_rx_mpdu(struct iwm_softc *, struct iwm_rx_packet *,
 static int	iwm_mvm_rx_tx_cmd_single(struct iwm_softc *,
                                          struct iwm_rx_packet *,
 				         struct iwm_node *);
-static void	iwm_mvm_rx_tx_cmd(struct iwm_softc *, struct iwm_rx_packet *,
-                                  struct iwm_rx_data *);
+static void	iwm_mvm_rx_tx_cmd(struct iwm_softc *, struct iwm_rx_packet *);
 static void	iwm_cmd_done(struct iwm_softc *, struct iwm_rx_packet *);
 #if 0
 static void	iwm_update_sched(struct iwm_softc *, int, int, uint8_t,
@@ -3169,13 +3167,11 @@ iwm_mvm_get_signal_strength(struct iwm_softc *sc, struct iwm_rx_phy_info *phy_in
 }
 
 static void
-iwm_mvm_rx_rx_phy_cmd(struct iwm_softc *sc,
-	struct iwm_rx_packet *pkt, struct iwm_rx_data *data)
+iwm_mvm_rx_rx_phy_cmd(struct iwm_softc *sc, struct iwm_rx_packet *pkt)
 {
 	struct iwm_rx_phy_info *phy_info = (void *)pkt->data;
 
 	IWM_DPRINTF(sc, IWM_DEBUG_RECV, "received PHY stats\n");
-	bus_dmamap_sync(sc->rxq.data_dmat, data->map, BUS_DMASYNC_POSTREAD);
 
 	memcpy(&sc->sc_last_phy_info, phy_info, sizeof(sc->sc_last_phy_info));
 }
@@ -3232,8 +3228,6 @@ iwm_mvm_rx_rx_mpdu(struct iwm_softc *sc,
 	uint32_t len;
 	uint32_t rx_pkt_status;
 	int rssi;
-
-	bus_dmamap_sync(sc->rxq.data_dmat, data->map, BUS_DMASYNC_POSTREAD);
 
 	phy_info = &sc->sc_last_phy_info;
 	rx_res = (struct iwm_rx_mpdu_res_start *)pkt->data;
@@ -3388,8 +3382,7 @@ iwm_mvm_rx_tx_cmd_single(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 }
 
 static void
-iwm_mvm_rx_tx_cmd(struct iwm_softc *sc,
-	struct iwm_rx_packet *pkt, struct iwm_rx_data *data)
+iwm_mvm_rx_tx_cmd(struct iwm_softc *sc, struct iwm_rx_packet *pkt)
 {
 	struct iwm_cmd_header *cmd_hdr = &pkt->hdr;
 	int idx = cmd_hdr->idx;
@@ -3403,8 +3396,6 @@ iwm_mvm_rx_tx_cmd(struct iwm_softc *sc,
 	KASSERT(txd->done == 0, ("txd not done"));
 	KASSERT(txd->in != NULL, ("txd without node"));
 	KASSERT(txd->m != NULL, ("txd without mbuf"));
-
-	bus_dmamap_sync(ring->data_dmat, data->map, BUS_DMASYNC_POSTREAD);
 
 	sc->sc_tx_timer = 0;
 
@@ -5404,7 +5395,7 @@ iwm_notif_intr(struct iwm_softc *sc)
 
 		switch (code) {
 		case IWM_REPLY_RX_PHY_CMD:
-			iwm_mvm_rx_rx_phy_cmd(sc, pkt, data);
+			iwm_mvm_rx_rx_phy_cmd(sc, pkt);
 			break;
 
 		case IWM_REPLY_RX_MPDU_CMD:
@@ -5412,7 +5403,7 @@ iwm_notif_intr(struct iwm_softc *sc)
 			break;
 
 		case IWM_TX_CMD:
-			iwm_mvm_rx_tx_cmd(sc, pkt, data);
+			iwm_mvm_rx_tx_cmd(sc, pkt);
 			break;
 
 		case IWM_MISSED_BEACONS_NOTIFICATION: {
