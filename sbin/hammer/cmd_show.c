@@ -936,16 +936,16 @@ test_btree_search(hammer_btree_elm_t elm)
 	int limit = opt.limit;
 
 	if (base1->localization < base2->localization)
-		return(-1);
+		return(-5);
 	if (base1->localization > base2->localization)
-		return(1);
+		return(5);
 	if (limit == 1)
 		return(0);  /* ignore below */
 
 	if (base1->obj_id < base2->obj_id)
-		return(-2);
+		return(-4);
 	if (base1->obj_id > base2->obj_id)
-		return(2);
+		return(4);
 	if (limit == 2)
 		return(0);  /* ignore below */
 
@@ -957,23 +957,23 @@ test_btree_search(hammer_btree_elm_t elm)
 		return(0);  /* ignore below */
 
 	if (base1->key < base2->key)
-		return(-4);
+		return(-2);
 	if (base1->key > base2->key)
-		return(4);
+		return(2);
 	if (limit == 4)
 		return(0);  /* ignore below */
 
 	if (base1->create_tid == 0) {
 		if (base2->create_tid == 0)
 			return(0);
-		return(5);
+		return(1);
 	}
 	if (base2->create_tid == 0)
-		return(-5);
+		return(-1);
 	if (base1->create_tid < base2->create_tid)
-		return(-5);
+		return(-1);
 	if (base1->create_tid > base2->create_tid)
-		return(5);
+		return(1);
 	return(0);
 }
 
