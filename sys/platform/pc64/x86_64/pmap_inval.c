@@ -69,16 +69,14 @@
 #endif
 
 /*
- * Watchdog recovery interval = 1.0 / (1 << radix), or 1/16 second
- * for the initial watchdog.  If the initial watchdog fails, further
- * instances occur at 1/2 second intervals.
+ * Watchdog recovery interval, in seconds.
  *
  * The watchdog value is generous for two reasons.  First, because the
- * situaation is not supposed to happen at all (but does), and second,
+ * situation is not supposed to happen at all (but does), and second,
  * because VMs could be very slow at handling IPIs.
  */
-#define LOOPRECOVER_RADIX1	4	/* initial recovery */
-#define LOOPRECOVER_RADIX2	1	/* repeated recoveries */
+#define LOOPRECOVER_TIMEOUT1	2	/* initial recovery */
+#define LOOPRECOVER_TIMEOUT2	1	/* repeated recoveries */
 
 #define MAX_INVAL_PAGES		128
 
@@ -166,7 +164,7 @@ loopwdog(struct pmap_inval_info *info)
 
 	tsc = rdtsc();
 	if (info->tsc_target - tsc < 0 && tsc_frequency) {
-		info->tsc_target = tsc + (tsc_frequency >> LOOPRECOVER_RADIX2);
+		info->tsc_target = tsc + (tsc_frequency * LOOPRECOVER_TIMEOUT2);
 		return 1;
 	}
 	return 0;
@@ -318,7 +316,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	 * from a lost IPI.  Set to 1/16 second for now.
 	 */
 	info = &invinfo[cpu];
-	info->tsc_target = rdtsc() + (tsc_frequency >> LOOPRECOVER_RADIX1);
+	info->tsc_target = rdtsc() + (tsc_frequency * LOOPRECOVER_TIMEOUT1);
 
 	/*
 	 * We must wait for other cpus which may still be finishing up a
@@ -459,6 +457,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * pmap_inval*() command and create confusion below.
 	 */
 	info = &invinfo[cpu];
+	info->tsc_target = rdtsc() + (tsc_frequency * LOOPRECOVER_TIMEOUT1);
 
 	/*
 	 * We must wait for other cpus which may still be finishing
