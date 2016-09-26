@@ -237,6 +237,10 @@ typedef struct synapticspacket {
 #define SYNAPTICS_QUEUE_CURSOR(x)					\
 	(x + SYNAPTICS_PACKETQUEUE) % SYNAPTICS_PACKETQUEUE
 
+#define	SYNAPTICS_VERSION_GE(synhw, major, minor)			\
+    ((synhw).infoMajor > (major) ||					\
+     ((synhw).infoMajor == (major) && (synhw).infoMinor >= (minor)))
+
 typedef struct synapticsaction {
 	synapticspacket_t	queue[SYNAPTICS_PACKETQUEUE];
 	int			queue_len;
@@ -880,7 +884,8 @@ doopen(struct psm_softc *sc, int command_byte)
 	if (sc->hw.model == MOUSE_MODEL_SYNAPTICS) {
 		mouse_ext_command(sc->kbdc, 1);
 		get_mouse_status(sc->kbdc, stat, 0, 3);
-		if (stat[1] == 0x47 && stat[2] == 0x40) {
+		if ((SYNAPTICS_VERSION_GE(sc->synhw, 7, 5) || stat[1] == 0x47)
+		    && stat[2] == 0x40) {
 			/* Set the mode byte -- request wmode where
 			 * available */
 			if (sc->synhw.capExtended)
@@ -888,7 +893,7 @@ doopen(struct psm_softc *sc, int command_byte)
 			else
 				mouse_ext_command(sc->kbdc, 0xc0);
 			set_mouse_sampling_rate(sc->kbdc, 20);
-			VLOG(5, (LOG_DEBUG, "psm%d: Synaptis Absolute Mode "
+			VLOG(5, (LOG_DEBUG, "psm%d: Synaptics Absolute Mode "
 			    "hopefully restored\n",
 			    sc->unit));
 		}
@@ -4392,7 +4397,7 @@ enable_synaptics(struct psm_softc *sc)
 		return (FALSE);
 	if (get_mouse_status(kbdc, status, 0, 3) != 3)
 		return (FALSE);
-	if (status[1] != 0x47) {
+	if (!SYNAPTICS_VERSION_GE(sc->synhw, 7, 5) && status[1] != 0x47) {
 		kprintf("  Failed to read extended capability bits\n");
 		return (FALSE);
 	}
@@ -4452,7 +4457,7 @@ enable_synaptics(struct psm_softc *sc)
 		return (FALSE);
 	if (get_mouse_status(kbdc, status, 0, 3) != 3)
 		return (FALSE);
-	if (status[1] != 0x47) {
+	if (!SYNAPTICS_VERSION_GE(sc->synhw, 7, 5) && status[1] != 0x47) {
 		kprintf("  Failed to read mode byte\n");
 		return (FALSE);
 	}
