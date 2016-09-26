@@ -537,6 +537,47 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	return(flags);
 }
 
+/*
+ * Taken from /usr/src/sys/vfs/hammer/hammer_btree.c.
+ */
+static
+int
+hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
+{
+	if (key1->localization < key2->localization)
+		return(-5);
+	if (key1->localization > key2->localization)
+		return(5);
+
+	if (key1->obj_id < key2->obj_id)
+		return(-4);
+	if (key1->obj_id > key2->obj_id)
+		return(4);
+
+	if (key1->rec_type < key2->rec_type)
+		return(-3);
+	if (key1->rec_type > key2->rec_type)
+		return(3);
+
+	if (key1->key < key2->key)
+		return(-2);
+	if (key1->key > key2->key)
+		return(2);
+
+	if (key1->create_tid == 0) {
+		if (key2->create_tid == 0)
+			return(0);
+		return(1);
+	}
+	if (key2->create_tid == 0)
+		return(-1);
+	if (key1->create_tid < key2->create_tid)
+		return(-1);
+	if (key1->create_tid > key2->create_tid)
+		return(1);
+	return(0);
+}
+
 static
 int
 test_lr(hammer_btree_elm_t elm,

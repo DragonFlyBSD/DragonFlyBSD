@@ -36,54 +36,6 @@
 
 #include "hammer_util.h"
 
-/*
- * (taken from /usr/src/sys/vfs/hammer/hammer_btree.c)
- *
- * Compare two B-Tree elements, return -N, 0, or +N (e.g. similar to strcmp).
- *
- * Note that for this particular function a return value of -1, 0, or +1
- * can denote a match if delete_tid is otherwise discounted.  A delete_tid
- * of zero is considered to be 'infinity' in comparisons.
- *
- * See also hammer_rec_rb_compare() and hammer_rec_cmp() in hammer_object.c.
- */
-int
-hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
-{
-	if (key1->localization < key2->localization)
-		return(-5);
-	if (key1->localization > key2->localization)
-		return(5);
-
-	if (key1->obj_id < key2->obj_id)
-		return(-4);
-	if (key1->obj_id > key2->obj_id)
-		return(4);
-
-	if (key1->rec_type < key2->rec_type)
-		return(-3);
-	if (key1->rec_type > key2->rec_type)
-		return(3);
-
-	if (key1->key < key2->key)
-		return(-2);
-	if (key1->key > key2->key)
-		return(2);
-
-	if (key1->create_tid == 0) {
-		if (key2->create_tid == 0)
-			return(0);
-		return(1);
-	}
-	if (key2->create_tid == 0)
-		return(-1);
-	if (key1->create_tid < key2->create_tid)
-		return(-1);
-	if (key1->create_tid > key2->create_tid)
-		return(1);
-	return(0);
-}
-
 void
 hammer_key_beg_init(hammer_base_elm_t base)
 {

@@ -163,7 +163,6 @@ void hammer_cache_del(struct cache_info *cache);
 void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
 
-int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 void hammer_key_beg_init(hammer_base_elm_t base);
 void hammer_key_end_init(hammer_base_elm_t base);
 int getyn(void);
