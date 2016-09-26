@@ -248,6 +248,9 @@ main(int ac, char **av)
 		free(dup);
 	}
 
+	/*
+	 * Lookup the filesystem type
+	 */
 	uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING, &status);
 	if (status != uuid_s_ok) {
 		errx(1, "uuids file does not have the DragonFly "

@@ -75,16 +75,6 @@ main(int ac, char **av)
 	assert(sizeof(struct hammer_blockmap_layer2) == 16);
 
 	/*
-	 * Generate a filesystem id and lookup the filesystem type
-	 */
-	uuidgen(&Hammer_FSId, 1);
-	uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING, &status);
-	if (status != uuid_s_ok) {
-		errx(1, "uuids file does not have the DragonFly "
-			"HAMMER filesystem type");
-	}
-
-	/*
 	 * Parse arguments
 	 */
 	while ((ch = getopt(ac, av, "dfEL:b:m:u:hC:V:")) != -1) {
@@ -148,6 +138,9 @@ main(int ac, char **av)
 			break;
 		}
 	}
+	ac -= optind;
+	av += optind;
+	nvols = ac;
 
 	if (label == NULL) {
 		fprintf(stderr,
@@ -178,13 +171,6 @@ main(int ac, char **av)
 		}
 	}
 
-	/*
-	 * Collect volume information
-	 */
-	ac -= optind;
-	av += optind;
-	nvols = ac;
-
 	if (nvols == 0) {
 		fprintf(stderr,
 			"newfs_hammer: You must specify at least one "
@@ -197,6 +183,16 @@ main(int ac, char **av)
 			"newfs_hammer: The maximum number of volumes is %d\n",
 			HAMMER_MAX_VOLUMES);
 		exit(1);
+	}
+
+	/*
+	 * Generate a filesystem id and lookup the filesystem type
+	 */
+	uuidgen(&Hammer_FSId, 1);
+	uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING, &status);
+	if (status != uuid_s_ok) {
+		errx(1, "uuids file does not have the DragonFly "
+			"HAMMER filesystem type");
 	}
 
 	total = 0;
