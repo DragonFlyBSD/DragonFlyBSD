@@ -449,34 +449,6 @@ alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 }
 
 /*
- * Allocate HAMMER elements - data storage
- *
- * The only data_len supported by HAMMER userspace for large data zone
- * (zone 10) is HAMMER_BUFSIZE which is 16KB.  >16KB data does not fit
- * in a buffer allocated by get_buffer().  Also alloc_blockmap() does
- * not consider >16KB buffer size.
- */
-void *
-alloc_data_element(hammer_off_t *offp, int32_t data_len,
-		   struct buffer_info **data_bufferp)
-{
-	void *data;
-	int zone;
-
-	if (data_len == 0)
-		return(NULL);
-
-	zone = hammer_data_zone_index(data_len);
-	assert(data_len <= HAMMER_BUFSIZE); /* just one buffer */
-	assert(zone == HAMMER_ZONE_LARGE_DATA_INDEX ||
-	       zone == HAMMER_ZONE_SMALL_DATA_INDEX);
-
-	data = alloc_blockmap(zone, data_len, offp, data_bufferp);
-	bzero(data, data_len);
-	return(data);
-}
-
-/*
  * Format a new blockmap.  This is mostly a degenerate case because
  * all allocations are now actually done from the freemap.
  */

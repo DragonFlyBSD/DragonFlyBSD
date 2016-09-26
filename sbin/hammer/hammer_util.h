@@ -141,8 +141,6 @@ hammer_node_ondisk_t alloc_btree_node(hammer_off_t *offp,
 			 struct buffer_info **data_bufferp);
 void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 			 struct buffer_info **data_bufferp);
-void *alloc_data_element(hammer_off_t *offp, int32_t data_len,
-			 struct buffer_info **data_bufferp);
 
 void format_blockmap(struct volume_info *vol, int zone, hammer_off_t offset);
 void format_freemap(struct volume_info *root_vol);
