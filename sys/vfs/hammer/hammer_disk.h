@@ -632,6 +632,11 @@ typedef union hammer_fifo_any {
  */
 
 /*
+ * Filesystem type string
+ */
+#define HAMMER_FSTYPE_STRING		"DragonFly HAMMER"
+
+/*
  * These macros are only used by userspace when userspace commands either
  * initialize or add a new HAMMER volume.
  */
