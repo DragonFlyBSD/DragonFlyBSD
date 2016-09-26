@@ -37,7 +37,7 @@
 #include "pthread_private.h"
 
 int
-_pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy)
+_pthread_attr_setschedpolicy(pthread_attr_t *attr, int pol)
 {
 	int ret = 0;
 
@@ -46,7 +46,7 @@ _pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy)
 	else if (pol != SCHED_FIFO && pol != SCHED_OTHER && pol != SCHED_RR)
 		ret = EINVAL;
 	else
-		(*attr)->sched_policy = policy;
+		(*attr)->sched_policy = pol;
 
 	return(ret);
 }
