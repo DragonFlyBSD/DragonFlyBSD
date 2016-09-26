@@ -195,7 +195,7 @@ print_btree_node(hammer_off_t node_offset,
 	const char *ext;
 
 	depth++;
-	node = get_node(node_offset, &buffer);
+	node = get_buffer_data(node_offset, &buffer, 0);
 
 	if (node == NULL) {
 		badc = 'B';
@@ -296,7 +296,7 @@ test_node_count(hammer_node_ondisk_t node, char *badmp)
 		*badmp = 'C';
 		return(-1);
 	} else if (node->count == 0) {
-		parent_node = get_node(node->parent, &buffer);
+		parent_node = get_buffer_data(node->parent, &buffer, 0);
 		if (parent_node->count != 1) {
 			*badmp = 'C';
 			rel_buffer(buffer);
@@ -483,7 +483,7 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			} else {
 				struct buffer_info *buffer = NULL;
 				hammer_node_ondisk_t subnode;
-				subnode = get_node(child_offset, &buffer);
+				subnode = get_buffer_data(child_offset, &buffer, 0);
 				if (subnode == NULL)
 					flags |= FLAG_BADCHILDPARENT;
 				else if (subnode->parent != node_offset)

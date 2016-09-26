@@ -414,16 +414,6 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 }
 
 /*
- * Retrieve a pointer to a B-Tree node given a zone offset.
- * This function doesn't allocate a new node, it must already exist.
- */
-hammer_node_ondisk_t
-get_node(hammer_off_t node_offset, struct buffer_info **bufferp)
-{
-	return(get_buffer_data(node_offset, bufferp, 0));
-}
-
-/*
  * Return a pointer to a buffer data given a buffer offset.
  * If *bufferp is NULL acquire the buffer otherwise use that buffer.
  */

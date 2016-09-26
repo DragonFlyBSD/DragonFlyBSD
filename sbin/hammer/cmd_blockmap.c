@@ -283,7 +283,7 @@ check_btree_node(hammer_off_t node_offset, int depth)
 
 	if (depth == 0)
 		collect_btree_root(node_offset);
-	node = get_node(node_offset, &buffer);
+	node = get_buffer_data(node_offset, &buffer, 0);
 
 	if (node == NULL) {
 		badc = 'B';

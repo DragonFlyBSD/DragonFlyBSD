@@ -126,9 +126,6 @@ struct volume_info *get_volume(int32_t vol_no);
 struct volume_info *get_root_volume(void);
 void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 				int isnew);
-hammer_node_ondisk_t get_node(hammer_off_t node_offset,
-				struct buffer_info **bufp);
-
 void rel_buffer(struct buffer_info *buffer);
 
 hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
