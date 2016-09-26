@@ -93,7 +93,8 @@ cpuctl_ioctl(struct dev_ioctl_args *ap)
 		return (ENXIO);
 	}
 	/* Require write flag for "write" requests. */
-	if ((cmd == CPUCTL_WRMSR || cmd == CPUCTL_UPDATE) &&
+	if ((cmd == CPUCTL_WRMSR || cmd == CPUCTL_UPDATE ||
+	     cmd == CPUCTL_MSRSBIT || cmd == CPUCTL_MSRCBIT) &&
 	    ((flags & FWRITE) == 0))
 		return (EPERM);
 	switch (cmd) {
