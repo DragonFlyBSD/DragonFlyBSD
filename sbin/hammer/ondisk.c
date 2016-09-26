@@ -39,8 +39,6 @@
 
 static void check_volume(struct volume_info *vol);
 static void get_buffer_readahead(struct buffer_info *base);
-static void *get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
-			int isnew);
 static __inline int readhammervol(struct volume_info *vol);
 static __inline int readhammerbuf(struct buffer_info *buf);
 static __inline int writehammervol(struct volume_info *vol);
@@ -410,16 +408,7 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 			*bufferp = NULL;
 		}
 	}
-	return(get_ondisk(buf_offset, bufferp, isnew));
-}
 
-/*
- * Return a pointer to a buffer data given a buffer offset.
- * If *bufferp is NULL acquire the buffer otherwise use that buffer.
- */
-static void *
-get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp, int isnew)
-{
 	if (*bufferp == NULL) {
 		*bufferp = get_buffer(buf_offset, isnew);
 		if (*bufferp == NULL)
