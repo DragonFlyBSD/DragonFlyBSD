@@ -391,9 +391,9 @@ _pthread_attr_setschedpolicy(pthread_attr_t *attr, int pol)
 
 	if ((attr == NULL) || (*attr == NULL))
 		ret = EINVAL;
-	else if (pol != SCHED_FIFO && pol != SCHED_OTHER && pol != SCHED_RR) {
+	else if (pol != SCHED_FIFO && pol != SCHED_OTHER && pol != SCHED_RR)
 		ret = EINVAL;
-	} else
+	else
 		(*attr)->sched_policy = pol;
 
 	return(ret);

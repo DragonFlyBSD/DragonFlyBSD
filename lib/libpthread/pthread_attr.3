@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_attr.3,v 1.18 2007/10/22 10:08:00 ru Exp $
 .\"
-.Dd July 10, 2009
+.Dd September 26, 2016
 .Dt PTHREAD_ATTR 3
 .Os
 .Sh NAME
@@ -204,10 +204,9 @@ function will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 Invalid value for
+.Fa policy
+or uninitialized
 .Fa attr .
-.It Bq Er ENOTSUP
-Invalid or unsupported value for
-.Fa policy .
 .El
 .Pp
 The
