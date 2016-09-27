@@ -1153,6 +1153,7 @@ syscall2(struct trapframe *frame)
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
+		callp = NULL;
 		goto out;
 	}
 
@@ -1210,8 +1211,6 @@ syscall2(struct trapframe *frame)
 		if (error) {
 #ifdef KTRACE
 			if (KTRPOINT(td, KTR_SYSCALL)) {
-				MAKEMPSAFE(have_mplock);
-
 				ktrsyscall(lp, code, narg,
 					(void *)(&args.nosys.sysmsg + 1));
 			}
@@ -1222,7 +1221,6 @@ syscall2(struct trapframe *frame)
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
-		MAKEMPSAFE(have_mplock);
 		ktrsyscall(lp, code, narg, (void *)(&args.nosys.sysmsg + 1));
 	}
 #endif
@@ -1306,10 +1304,9 @@ bad:
 	}
 
 	/*
-	 * Traced syscall.  trapsignal() is not MP aware.
+	 * Traced syscall.  trapsignal() should now be MP aware
 	 */
 	if (orig_tf_rflags & PSL_T) {
-		MAKEMPSAFE(have_mplock);
 		frame->tf_rflags &= ~PSL_T;
 		trapsignal(lp, SIGTRAP, TRAP_TRACE);
 	}
@@ -1321,7 +1318,6 @@ bad:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
-		MAKEMPSAFE(have_mplock);
 		ktrsysret(lp, code, error, args.sysmsg_result);
 	}
 #endif
@@ -1345,8 +1341,9 @@ bad:
 		("syscall: critical section count mismatch! %d/%d",
 		crit_count, td->td_pri));
 	KASSERT(&td->td_toks_base == td->td_toks_stop,
-		("syscall: extra tokens held after trap! %ld",
-		td->td_toks_stop - &td->td_toks_base));
+		("syscall: %ld extra tokens held after trap! syscall %p",
+		td->td_toks_stop - &td->td_toks_base,
+		callp->sy_call));
 #endif
 }
 

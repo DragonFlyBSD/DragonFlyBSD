@@ -243,9 +243,11 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 			if (curthread->td_vmm == NULL)
 				atomic_subtract_int(&ve->refs, 1);
 		} else {
-			/* If it's a VMM thread just set the CR3. We also set the
-			 * vklp->ve to a key to be able to distinguish when a
-			 * vkernel user process runs and when not (when it's NULL)
+			/*
+			 * If it's a VMM thread just set the CR3. We also set
+			 * the vklp->ve to a key to be able to distinguish
+			 * when a vkernel user process runs and when not
+			 * (when it's NULL)
 			 */
 			if (curthread->td_vmm == NULL) {
 				vklp->ve = ve;

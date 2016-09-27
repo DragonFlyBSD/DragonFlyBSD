@@ -309,9 +309,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
-			get_mplock();
 			ktrgenio(td->td_lwp, fd, UIO_READ, &ktruio, error);
-			rel_mplock();
 		}
 		kfree(ktriov, M_TEMP);
 	}
@@ -522,9 +520,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
-			get_mplock();
 			ktrgenio(lp, fd, UIO_WRITE, &ktruio, error);
-			rel_mplock();
 		}
 		kfree(ktriov, M_TEMP);
 	}
