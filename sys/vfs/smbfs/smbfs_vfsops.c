@@ -101,7 +101,7 @@ MODULE_DEPEND(smbfs, netsmb, NSMB_VERSION, NSMB_VERSION, NSMB_VERSION);
 MODULE_DEPEND(smbfs, libiconv, 1, 1, 2);
 MODULE_DEPEND(smbfs, libmchain, 1, 1, 1);
 
-long smbfs_pbuf_freecnt = -1;	/* start out unlimited */
+int smbfs_pbuf_freecnt = -1;	/* start out unlimited */
 
 static int
 smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
