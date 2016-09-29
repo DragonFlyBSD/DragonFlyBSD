@@ -5,6 +5,7 @@ SUBDIR_ORDERED=		# maximum parallelism
 SUBDIR+=	cc1
 SUBDIR+=	cc1plus
 SUBDIR+=	cc1obj
+SUBDIR+=	collect2
 SUBDIR+=	lto1
 
 .if ! defined (BOOTSTRAPPING)
