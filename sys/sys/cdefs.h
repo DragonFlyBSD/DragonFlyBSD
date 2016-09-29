@@ -172,6 +172,7 @@
 #define	__always_inline
 #define	__nonnull(x)
 #define	__heedresult
+#define	__malloclike
 #define	__returns_twice
 
 #else
