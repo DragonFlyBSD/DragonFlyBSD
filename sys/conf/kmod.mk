@@ -430,7 +430,7 @@ assym.s: @/kern/genassym.sh
 genassym.o: @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c          
 .endif
 genassym.o: @ ${SRCS:Mopt_*.h}
-	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} ${WERROR} \
+	${CC} -c ${CFLAGS:N-fno-common:N-flto:N-mcmodel=small} ${WERROR} \
 	@/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
 
