@@ -585,7 +585,7 @@ initialize_freemap(struct volume_info *vol)
 
 			if (phys_offset + block_offset < vol->vol_free_off) {
 				/*
-				 * Fixups XXX - big-blocks already allocated as part
+				 * Big-blocks already allocated as part
 				 * of the freemap bootstrap.
 				 */
 				layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
