@@ -305,8 +305,8 @@ struct cxm_iic_softc {
 /*
  * Decoder / encoder firmware
  */
-extern const char cxm_dec_fw[];
-extern const char cxm_enc_fw[];
+extern const uint8_t cxm_dec_fw[] __aligned(4);
+extern const uint8_t cxm_enc_fw[] __aligned(4);
 
 #define CXM_FW_SIZE (256 * 1024)
 
