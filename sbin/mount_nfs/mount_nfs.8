@@ -29,7 +29,7 @@
 .\"
 .\" $FreeBSD: src/sbin/mount_nfs/mount_nfs.8,v 1.18.2.10 2003/05/13 14:45:40 trhodes Exp $
 .\""
-.Dd May 12, 2016
+.Dd September 13, 2016
 .Dt MOUNT_NFS 8
 .Os
 .Sh NAME
@@ -331,6 +331,11 @@ Set the retransmit timeout count for soft mounts to the specified value.
 .Xr nfsd 8 ,
 .Xr showmount 8 ,
 .Xr swapcache 8
+.Sh HISTORY
+A version  of the
+.Nm
+utility appeared in
+.Bx 4.4 .
 .Sh BUGS
 Due to the way that Sun RPC is implemented on top of UDP (unreliable datagram)
 transport, tuning such mounts is really a black art that can only be expected

@@ -1,6 +1,6 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
 .\"
-.Dd October 7, 2011
+.Dd September 29, 2016
 .Dt FDISK 8
 .Os
 .Sh NAME
@@ -507,6 +507,21 @@ Some OSs will require that slices are located at cylinder boundaries.
 .Xr disklabel 8 ,
 .Xr gpt 8 ,
 .Xr newfs 8
+.Sh HISTORY
+A version of
+.Nm
+first appeared in the Mach Operating System.
+It was subsequently ported to
+.Bx 386 .
+.Sh AUTHORS
+.An -nosplit
+.Nm
+for Mach Operating System was written by
+.An Robert Baron Aq Mt rvb@cs.cmu.edu .
+It was ported to
+.Bx 386
+by
+.An Julian Elischer Aq Mt julian@tfs.com .
 .Sh BUGS
 Only slices s1-s4
 .Pq primary DOS partitions

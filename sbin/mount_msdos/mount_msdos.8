@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/sbin/mount_msdos/mount_msdos.8,v 1.19.2.1 2000/12/08 14:03:59 ru Exp $
 .\"
-.Dd September 12, 2009
+.Dd September 29, 2016
 .Dt MOUNT_MSDOS 8
 .Os
 .Sh NAME
@@ -154,17 +154,24 @@ file name conversions for DOS names.
 .Xr fstab 5 ,
 .Xr mount 8
 .Sh HISTORY
-The
+The predecessor to
 .Nm
-utility first appeared in
-.Fx 2.0 .
-Its predecessor, the
+utility named
 .Nm mount_pcfs
-utility appeared in
-.Fx 1.0 ,
-and was abandoned in favor
-of the more aptly-named
-.Nm .
+appeared in
+.Bx 386 .
+It was rewritten in
+.Nx 1.0
+and first appeared in
+.Fx 2.0 .
+.Sh AUTHORS
+Initial implimintation as
+.Nm mount_pcfs
+was written by
+.An -nosplit
+.An Paul Popelka Aq Mt paulp@uts.amdahl.com .
+It was rewritten by
+.An Christopher G. Demetriou Aq Mt cgd@NetBSD.org .
 .Sh CAVEATS
 The use of the
 .Fl 9

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/iscontrol/iscontrol.8,v 1.3 2008/11/25 07:17:11 scottl Exp $
 .\"
-.Dd September 23, 2009
+.Dd September 29, 2016
 .Dt ISCONTROL 8
 .Os
 .Sh NAME
@@ -117,7 +117,14 @@ whatever options are specified, and start an iscsi-session.
 .Xr camcontrol 8
 .Sh STANDARDS
 RFC 3720
-.\"Sh HISTORY
+.Sh HISTORY
+The
+.Nm
+utility appeared in
+.Fx 7.0 .
+.Nm
+utility first appeared in
+.Dx 2.3 .
 .Sh BUGS
 Not all functions/specifications have been implemented yet, noticeably
 missing are the Task Management Functions.
