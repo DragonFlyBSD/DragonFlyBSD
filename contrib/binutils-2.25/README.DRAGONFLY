@@ -13,5 +13,6 @@ A list of files and directories removed is in README.DELETED
 Local modifications applied to following files:
 	bfd/bfdver.h (new)
 	bfd/elf64-x86-64.c
+	bfd/plugin.c
 	gold/x86_64.cc
 	ld/ldlex.l

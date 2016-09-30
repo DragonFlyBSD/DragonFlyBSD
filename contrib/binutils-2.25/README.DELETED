@@ -399,7 +399,6 @@ bfd/pei-mcore.c
 bfd/pei-mips.c
 bfd/pei-ppc.c
 bfd/pei-sh.c
-bfd/plugin.c
 bfd/po/
 bfd/ppcboot.c
 bfd/ptrace-core.c

@@ -279,7 +279,7 @@ load_plugin (bfd *abfd)
   if (plugin_program_name == NULL)
     return 0;
 
-  plugin_dir = concat (BINDIR, "/../lib/bfd-plugins", NULL);
+  plugin_dir = concat (BINDIR, RELPLUGINDIR, NULL);
   p = make_relative_prefix (plugin_program_name,
 			    BINDIR,
 			    plugin_dir);
