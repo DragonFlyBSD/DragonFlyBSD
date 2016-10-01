@@ -1,3 +1,4 @@
+.include "../../Makefile.inc1"
 .include "../Makefile.block1"
 
 LIB=		bfd
@@ -8,7 +9,7 @@ CONTRIBDIR=	${SRCDIR}/bfd
 
 CFLAGS+=	-I${SRCDIR}/include -I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DDEBUGDIR='"/usr/lib/debug"'  # no clue why this is needed
-FLAGS_GROUPS=	target
+FLAGS_GROUPS=	target plugins
 
 # BFD32_LIBS_CFILES 
 SRCS=	archive.c archures.c bfd.c bfdio.c bfdwin.c \
@@ -39,6 +40,13 @@ VECTORS=	x86_64_elf64_vec \
 		elf64_be_vec \
 		elf32_le_vec \
 		elf32_be_vec 
+
+# plugin support mainly for LTO ar, nm, ranlib # XXX how dlopen() is behaving in -static case???
+SRCS+=		plugin.c
+VECTORS+=	plugin_vec
+plugins_FLAGS+=	-DBINDIR=\"${TOOLS_PREFIX}${BINDIR}\"
+plugins_FLAGS+=	-DRELPLUGINDIR=\"/../bfd-plugins\" # standard one uses lib/bfd-plugins
+plugins_FLAGS_FILES=	plugin.c
 
 DEFAULT_VECTOR=	x86_64_elf64_vec
 ARCHITECTURES=	bfd_i386_arch bfd_l1om_arch bfd_k1om_arch

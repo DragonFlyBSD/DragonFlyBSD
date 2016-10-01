@@ -25,7 +25,7 @@ BFD_ARCH_SIZE?=			64
 BFD_DEFAULT_TARGET_SIZE?=	64
 
 bfd.h: 	${SRCDIR}/bfd/bfd-in2.h
-	sed -e "s/@supports_plugins@/0/g" \
+	sed -e "s/@supports_plugins@/1/g" \
 	    -e "s/@wordsize@/${BFD_ARCH_SIZE}/g" \
 	    -e "s/@bfd_default_target_size@/${BFD_DEFAULT_TARGET_SIZE}/g" \
 	    -e "s/@BFD_HOST_64BIT_LONG@/${BFD_HOST_64BIT_LONG}/g" \

@@ -10,7 +10,6 @@ MFILE=	ranlib${MANPAGEVER}.1
 MAN=	${MFILE}
 LDADD=	${STD_LDADD} -lfl -lz
 
-NOSHARED?=	yes
 CFLAGS+=	-I${SRCDIR}/binutils \
 		-Dbin_dummy_emulation=bin_vanilla_emulation
 
