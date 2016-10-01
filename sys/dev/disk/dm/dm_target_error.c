@@ -98,9 +98,6 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		if (err == 0)
 			kprintf("dm_target_error: unloaded\n");
 		break;
-
-	default:
-		break;
 	}
 
 	return err;

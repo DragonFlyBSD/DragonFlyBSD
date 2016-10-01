@@ -168,9 +168,6 @@ dm_modcmd(module_t mod, int cmd, void *unused)
 			break;
 		kprintf("Device Mapper unloaded\n");
 		break;
-
-	default:
-		break;
 	}
 
 	return error;

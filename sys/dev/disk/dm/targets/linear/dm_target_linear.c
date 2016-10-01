@@ -201,9 +201,6 @@ dmtl_mod_handler(module_t mod, int type, void *unused)
 		if (err == 0)
 			kprintf("dm_target_linear: unloaded\n");
 		break;
-
-	default:
-		break;
 	}
 
 	return err;

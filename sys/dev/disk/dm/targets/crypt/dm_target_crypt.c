@@ -1442,9 +1442,6 @@ dmtc_mod_handler(module_t mod, int type, void *unused)
 			kprintf("dm_target_crypt: unloaded\n");
 		}
 		break;
-
-	default:
-		break;
 	}
 
 	return err;
