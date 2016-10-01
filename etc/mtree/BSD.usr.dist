@@ -95,6 +95,8 @@
             ..
         ..
         binutils225
+            bfd-plugins
+            ..
             ldscripts
             ..
             elf
