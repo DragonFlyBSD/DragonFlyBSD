@@ -80,6 +80,8 @@ static struct command commands[] = {
 	{"c++filt",		BINUTILS},
 	{"elfedit",		BINUTILS},
 	{"gprof",       	BINUTILS},
+	{"ld.bfd",       	BINUTILS},
+	{"ld.gold",       	BINUTILS},
 	{"nm",			BINUTILS},
 	{"objcopy",		BINUTILS},
 	{"objdump",		BINUTILS},
