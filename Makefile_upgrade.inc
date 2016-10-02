@@ -3125,6 +3125,7 @@ TO_REMOVE+=/boot/kernel/if_ep.ko
 TO_REMOVE+=/boot/kernel/if_vx.ko
 TO_REMOVE+=/usr/share/examples/perfmon
 TO_REMOVE+=/usr/lib/libkiconv.so.3
+TO_REMOVE+=/usr/share/zoneinfo/Asia/Rangoon
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
