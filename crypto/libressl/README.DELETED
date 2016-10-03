@@ -1,5 +1,4 @@
 CMakeLists.txt
-INSTALL
 Makefile.am
 Makefile.am.common
 Makefile.in
