@@ -28,7 +28,6 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/extern.h,v 1.3.2.2 2000/06/28 02:33:17 joe Exp $
- * $DragonFly: src/usr.sbin/mtree/extern.h,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #ifdef MAXPATHLEN
@@ -37,7 +36,7 @@ extern char fullpath[MAXPATHLEN];
 extern int dflag, eflag, iflag, nflag, qflag, rflag, sflag, uflag;
 extern int ftsoptions;
 extern int lineno;
-extern long int crc_total;
+extern uint32_t crc_total;
 extern u_int keys;
 
 int	 compare(NODE *, FTSENT *);

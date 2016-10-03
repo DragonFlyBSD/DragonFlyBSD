@@ -28,7 +28,6 @@
  *
  * @(#)verify.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/verify.c,v 1.10.2.2 2001/01/12 19:17:18 phk Exp $
- * $DragonFly: src/usr.sbin/mtree/verify.c,v 1.5 2004/03/15 16:24:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -140,7 +139,7 @@ extra:
 	}
 	fts_close(t);
 	if (sflag)
-		warnx("%s checksum: %lu", fullpath, crc_total);
+		warnx("%s checksum: %u", fullpath, crc_total);
 	return (rval);
 }
 
