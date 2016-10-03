@@ -743,7 +743,7 @@ ENTRY(wrmsr_safe)
 	movq	PCPU(curthread),%r8
 	movq	TD_PCB(%r8), %r8
 	movq	$msr_onfault,PCB_ONFAULT(%r8)
-	movq    %rsp,PCB_ONFAULT_SP(%rcx)
+	movq    %rsp,PCB_ONFAULT_SP(%r8)
 	movl	%edi,%ecx
 	movl	%esi,%eax
 	sarq	$32,%rsi
