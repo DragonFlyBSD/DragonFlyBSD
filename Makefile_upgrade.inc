@@ -3126,6 +3126,14 @@ TO_REMOVE+=/boot/kernel/if_vx.ko
 TO_REMOVE+=/usr/share/examples/perfmon
 TO_REMOVE+=/usr/lib/libkiconv.so.3
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Rangoon
+TO_REMOVE+=/usr/lib/libprivate_panel.a
+TO_REMOVE+=/usr/lib/libprivate_panel.so
+TO_REMOVE+=/usr/lib/libprivate_panel.so.59
+TO_REMOVE+=/usr/lib/libprivate_panel.so.60
+TO_REMOVE+=/usr/lib/libprivate_panelw.a
+TO_REMOVE+=/usr/lib/libprivate_panelw.so
+TO_REMOVE+=/usr/lib/libprivate_panelw.so.59
+TO_REMOVE+=/usr/lib/libprivate_panelw.so.60
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
