@@ -3116,6 +3116,14 @@ TO_REMOVE+=/usr/share/man/man8/mk-amd-map.8.gz
 TO_REMOVE+=/usr/share/man/man8/wire-test.8.gz
 TO_REMOVE+=/usr/include/varargs.h
 TO_REMOVE+=/usr/include/bus/pci/pcibus.h
+TO_REMOVE+=/usr/lib/libprivate_panel.a
+TO_REMOVE+=/usr/lib/libprivate_panel.so
+TO_REMOVE+=/usr/lib/libprivate_panel.so.59
+TO_REMOVE+=/usr/lib/libprivate_panel.so.60
+TO_REMOVE+=/usr/lib/libprivate_panelw.a
+TO_REMOVE+=/usr/lib/libprivate_panelw.so
+TO_REMOVE+=/usr/lib/libprivate_panelw.so.59
+TO_REMOVE+=/usr/lib/libprivate_panelw.so.60
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
