@@ -13,6 +13,10 @@ LDADD=	${STD_LDADD} -lfl -lz
 CFLAGS+=	-I${SRCDIR}/binutils \
 		-Dbin_dummy_emulation=bin_vanilla_emulation
 
+# link-time optimization requires dlopen() which means ar cannot be built
+# statically and also support -plugin, not even for cross-tools.
+.undef NOSHARED
+
 ${MFILE}: ${SRCDIR}/binutils/doc/ar.1
 	cp ${.ALLSRC} ${.TARGET}
 

@@ -9,6 +9,10 @@ MFILE=	nm${MANPAGEVER}.1
 MAN=	${MFILE}
 LDADD=	${STD_LDADD} -lz
 
+# link-time optimization requires dlopen() which means nm cannot be built
+# statically and also support -plugin, not even for cross-tools.
+.undef NOSHARED
+
 ${MFILE}: ${SRCDIR}/binutils/doc/nm.1
 	cp ${.ALLSRC} ${.TARGET}
 
