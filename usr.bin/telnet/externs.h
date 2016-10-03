@@ -28,7 +28,6 @@
  *
  *	@(#)externs.h	8.3 (Berkeley) 5/30/95
  *	$FreeBSD: src/crypto/telnet/telnet/externs.h,v 1.4.2.2 2002/04/13 10:59:08 markm Exp $
- *	$DragonFly: src/crypto/telnet/telnet/externs.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #ifndef	BSD
@@ -54,7 +53,7 @@
 #include <errno.h>
 #ifdef	USE_TERMIO
 # ifndef	VINTR
-#  include <sys/termios.h>
+#  include <termios.h>
 # endif
 # define termio termios
 #endif

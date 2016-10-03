@@ -44,7 +44,6 @@
 
 #include <sys/ioctl.h>         /* for TIOCHPCL */
 #include <sys/filio.h>    /* for FIONREAD */
-#include <sys/termios.h>
 
 #include <signal.h>
 #include <stdio.h>
@@ -53,6 +52,7 @@
 #include <pwd.h>
 #include <ctype.h>
 #include <setjmp.h>
+#include <termios.h>
 #include <unistd.h>
 #include <errno.h>
 

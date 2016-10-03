@@ -40,7 +40,6 @@
 #include <sys/conf.h>
 #include <sys/cons.h>
 #include <sys/tty.h>
-#include <sys/termios.h>
 #include <sys/fcntl.h>
 #include <sys/signalvar.h>
 #include <sys/eventhandler.h>
