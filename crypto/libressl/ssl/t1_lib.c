@@ -1,4 +1,4 @@
-/* $OpenBSD: t1_lib.c,v 1.86 2016/03/10 23:21:46 mmcc Exp $ */
+/* $OpenBSD: t1_lib.c,v 1.87 2016/05/30 13:42:54 beck Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -1438,10 +1438,28 @@ ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d,
 				/* Read in responder_id_list */
 				n2s(data, dsize);
 				size -= 2;
-				if (dsize > size  ) {
+				if (dsize > size) {
 					*al = SSL_AD_DECODE_ERROR;
 					return 0;
 				}
+
+				/*
+				 * We remove any OCSP_RESPIDs from a
+				 * previous handshake to prevent
+				 * unbounded memory growth.
+				 */
+				sk_OCSP_RESPID_pop_free(s->tlsext_ocsp_ids,
+				    OCSP_RESPID_free);
+				s->tlsext_ocsp_ids = NULL;
+				if (dsize > 0) {
+					s->tlsext_ocsp_ids =
+					    sk_OCSP_RESPID_new_null();
+					if (s->tlsext_ocsp_ids == NULL) {
+						*al = SSL_AD_INTERNAL_ERROR;
+						return 0;
+					}
+				}
+
 				while (dsize > 0) {
 					OCSP_RESPID *id;
 					int idsize;
@@ -1467,13 +1485,6 @@ ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d,
 					if (data != sdata) {
 						OCSP_RESPID_free(id);
 						*al = SSL_AD_DECODE_ERROR;
-						return 0;
-					}
-					if (!s->tlsext_ocsp_ids &&
-					    !(s->tlsext_ocsp_ids =
-					    sk_OCSP_RESPID_new_null())) {
-						OCSP_RESPID_free(id);
-						*al = SSL_AD_INTERNAL_ERROR;
 						return 0;
 					}
 					if (!sk_OCSP_RESPID_push(
