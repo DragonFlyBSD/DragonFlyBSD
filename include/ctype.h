@@ -80,7 +80,10 @@ __END_DECLS
 #ifdef _EXTERNALIZE_CTYPE_INLINES_
 #define	_USE_CTYPE_INLINE_
 #define	static
+#undef	__inline
 #define	__inline
+#undef	__always_inline
+#define	__always_inline
 #endif
 
 extern int __mb_sb_limit;
@@ -93,68 +96,68 @@ extern int __mb_sb_limit;
 
 #include <runetype.h>
 
-static __inline int
+static __inline __always_inline int
 __maskrune(__ct_rune_t _c, unsigned long _f)
 {
 	return ((_c < 0 || _c >= _CACHED_RUNES) ? ___runetype(_c) :
 		_CurrentRuneLocale->__runetype[_c]) & _f;
 }
 
-static __inline int
+static __inline __always_inline int
 __sbmaskrune(__ct_rune_t _c, unsigned long _f)
 {
 	return (_c < 0 || _c >= __mb_sb_limit) ? 0 :
 	       _CurrentRuneLocale->__runetype[_c] & _f;
 }
 
-static __inline int
+static __inline __always_inline int
 __istype(__ct_rune_t _c, unsigned long _f)
 {
 	return (!!__maskrune(_c, _f));
 }
 
-static __inline int
+static __inline __always_inline int
 __sbistype(__ct_rune_t _c, unsigned long _f)
 {
 	return (!!__sbmaskrune(_c, _f));
 }
 
-static __inline int
+static __inline __always_inline int
 __isctype(__ct_rune_t _c, unsigned long _f)
 {
 	return (_c < 0 || _c >= 128) ? 0 :
 	       !!(_DefaultRuneLocale.__runetype[_c] & _f);
 }
 
-static __inline __ct_rune_t
+static __inline __always_inline __ct_rune_t
 __toupper(__ct_rune_t _c)
 {
 	return (_c < 0 || _c >= _CACHED_RUNES) ? ___toupper(_c) :
 	       _CurrentRuneLocale->__mapupper[_c];
 }
 
-static __inline __ct_rune_t
+static __inline __always_inline __ct_rune_t
 __sbtoupper(__ct_rune_t _c)
 {
 	return (_c < 0 || _c >= __mb_sb_limit) ? _c :
 	       _CurrentRuneLocale->__mapupper[_c];
 }
 
-static __inline __ct_rune_t
+static __inline __always_inline __ct_rune_t
 __tolower(__ct_rune_t _c)
 {
 	return (_c < 0 || _c >= _CACHED_RUNES) ? ___tolower(_c) :
 	       _CurrentRuneLocale->__maplower[_c];
 }
 
-static __inline __ct_rune_t
+static __inline __always_inline __ct_rune_t
 __sbtolower(__ct_rune_t _c)
 {
 	return (_c < 0 || _c >= __mb_sb_limit) ? _c :
 	       _CurrentRuneLocale->__maplower[_c];
 }
 
-static __inline int
+static __inline __always_inline int
 __wcwidth(__ct_rune_t _c)
 {
 	unsigned int _x;

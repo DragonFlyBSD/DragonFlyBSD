@@ -373,7 +373,7 @@ int	__swbuf(int, FILE *);
  * The __sfoo functions are here so that we can
  * define real function versions in the C library.
  */
-static __inline int
+static __inline __always_inline int
 __sgetc(FILE *_fp)
 {
 	struct __FILE_public *_p = (struct __FILE_public *)_fp;
@@ -384,7 +384,7 @@ __sgetc(FILE *_fp)
 		return (*_p->_p++);
 }
 
-static __inline int
+static __inline __always_inline int
 __sputc(int _c, FILE *_fp)
 {
 	struct __FILE_public *_p = (struct __FILE_public *)_fp;
@@ -395,7 +395,7 @@ __sputc(int _c, FILE *_fp)
 		return (__swbuf(_c, _fp));
 }
 
-static __inline int
+static __inline __always_inline int
 __sfeof(FILE *_fp)
 {
 	struct __FILE_public *_p = (struct __FILE_public *)_fp;
@@ -403,7 +403,7 @@ __sfeof(FILE *_fp)
 	return ((_p->_flags & __SEOF) != 0);
 }
 
-static __inline int
+static __inline __always_inline int
 __sferror(FILE *_fp)
 {
 	struct __FILE_public *_p = (struct __FILE_public *)_fp;
@@ -411,7 +411,7 @@ __sferror(FILE *_fp)
 	return ((_p->_flags & __SERR) != 0);
 }
 
-static __inline void
+static __inline __always_inline void
 __sclearerr(FILE *_fp)
 {
 	struct __FILE_public *_p = (struct __FILE_public *)_fp;
@@ -419,7 +419,7 @@ __sclearerr(FILE *_fp)
 	_p->_flags &= ~(__SERR|__SEOF);
 }
 
-static __inline int
+static __inline __always_inline int
 __sfileno(FILE *_fp)
 {
 	struct __FILE_public *_p = (struct __FILE_public *)_fp;
