@@ -103,6 +103,8 @@ main(int argc, char *argv[])
 	const char *group, *owner, *to_name;
 	const char *etcdir;
 
+	fclr = 0;
+	fset = 0;
 	iflags = 0;
 	trysys = 0;
 	group = NULL;
