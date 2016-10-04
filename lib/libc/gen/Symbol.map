@@ -53,7 +53,6 @@ DF404.0 {
     pthread_barrierattr_getpshared;
     pthread_barrierattr_init;
     pthread_barrierattr_setpshared;
-    pthread_cancel;
     pthread_cleanup_pop;
     pthread_cleanup_push;
     pthread_cond_broadcast;

@@ -39,6 +39,8 @@
  * latter can't be allowed to exit/terminate).
  */
 
+#define WRlc(f, n)			\
+    __weak_reference(f, _ ## n);
 #define WR(f, n)			\
     __weak_reference(f, _ ## n);	\
     __weak_reference(f, n)
@@ -73,7 +75,7 @@ WR(stub_zero, pthread_barrierattr_destroy);
 WR(stub_zero, pthread_barrierattr_getpshared);
 WR(stub_zero, pthread_barrierattr_init);
 WR(stub_zero, pthread_barrierattr_setpshared);
-WR(stub_zero, pthread_cancel);
+WRlc(stub_zero, pthread_cancel);
 WR(stub_zero, pthread_cleanup_pop);
 WR(stub_zero, pthread_cleanup_push);
 WR(stub_zero, pthread_cond_broadcast);
