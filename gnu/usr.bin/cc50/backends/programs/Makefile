@@ -8,7 +8,7 @@ SUBDIR+=	cc1obj
 SUBDIR+=	collect2
 SUBDIR+=	lto1
 
-.if ! defined (BOOTSTRAPPING)
+.if ! defined (BOOTSTRAPPING) || ${CFLAGS:M-flto}
 SUBDIR+=	lto-wrapper
 .endif
 
