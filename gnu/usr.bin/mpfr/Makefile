@@ -40,20 +40,32 @@ SRCS = mpfr.h mpf2mpfr.h mpfr-gmp.h mpfr-impl.h mpfr-intmax.h \
 	expm1.c log2.c log10.c ui_pow.c	ui_pow_ui.c minmax.c dim.c signbit.c \
 	copysign.c setsign.c gmp_op.c init2.c acos.c sin_cos.c set_nan.c \
 	set_inf.c set_zero.c powerof2.c	gamma.c set_ld.c get_ld.c cbrt.c \
-	volatile.c fits_s.h fits_sshort.c fits_sint.c fits_slong.c fits_u.h \
+	fits_s.h fits_sshort.c fits_sint.c fits_slong.c fits_u.h \
 	fits_ushort.c fits_uint.c fits_ulong.c fits_uintmax.c fits_intmax.c \
 	get_si.c get_ui.c zeta.c cmp_d.c erf.c inits.c inits2.c clears.c \
-	sgn.c check.c sub1sp.c version.c mpn_exp.c mpfr-gmp.c mp_clz_tab.c \
+	sgn.c check.c sub1sp.c version.c mpn_exp.c mpfr-gmp.c \
 	sum.c add1sp.c free_cache.c si_op.c cmp_ld.c set_ui_2exp.c \
 	set_si_2exp.c set_uj.c set_sj.c get_sj.c get_uj.c get_z.c iszero.c \
-	cache.c sqr.c int_ceil_log2.c isqrt.c strtofr.c pow_z.c logging.c \
+	cache.c sqr.c int_ceil_log2.c isqrt.c strtofr.c pow_z.c \
 	mulders.c get_f.c round_p.c erfc.c atan2.c subnormal.c \
 	const_catalan.c root.c gen_inverse.h sec.c csc.c cot.c eint.c sech.c \
 	csch.c coth.c round_near_x.c constant.c abort_prec_max.c \
-	stack_interface.c lngamma.c zeta_ui.c set_d64.c get_d64.c jn.c yn.c \
+	stack_interface.c lngamma.c zeta_ui.c jn.c yn.c \
 	rem1.c get_patches.c add_d.c sub_d.c d_sub.c mul_d.c div_d.c d_div.c \
 	li2.c rec_sqrt.c min_prec.c buildopt.c digamma.c bernoulli.c \
 	isregular.c set_flt.c get_flt.c	scale2.c set_z_exp.c ai.c \
 	gammaonethird.c ieee_floats.h grandom.c
+
+# only when COUNT_LEADING_ZEROS_NEED_CLZ_TAB
+#SRCS+= mp_clz_tab.c
+
+# only when WANT_GMPFR_LONGDOUBLE_VOLATILE
+#SRCS+= volatile.c
+
+# only when MPFR_USE_LOGGING
+#SRCS+= logging.c
+
+# only when MPFR_WANT_DECIMAL_FLOATS
+#SRCS+= set_d64.c get_d64.c
 
 .include <bsd.lib.mk>
