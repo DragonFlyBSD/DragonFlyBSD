@@ -100,12 +100,18 @@ PRINTF_OBJECTS =							\
   printf/asprintf$U.lo printf/asprntffuns$U.lo				\
   printf/doprnt$U.lo printf/doprntf$U.lo printf/doprnti$U.lo		\
   printf/fprintf$U.lo							\
-  printf/obprintf$U.lo printf/obvprintf$U.lo printf/obprntffuns$U.lo	\
   printf/printf$U.lo printf/printffuns$U.lo				\
   printf/snprintf$U.lo printf/snprntffuns$U.lo				\
   printf/sprintf$U.lo printf/sprintffuns$U.lo				\
   printf/vasprintf$U.lo printf/vfprintf$U.lo printf/vprintf$U.lo	\
-  printf/vsnprintf$U.lo printf/vsprintf$U.lo				\
+  printf/vsnprintf$U.lo printf/vsprintf$U.lo
+
+# only when HAVE_OBSTACK_VPRINTF
+#PRINTF_OBJECTS +=							\
+  printf/obprintf$U.lo printf/obvprintf$U.lo printf/obprntffuns$U.lo
+
+# only when ! HAVE_VSNPRINTF (when don't have vsnprintf)
+#PRINTF_OBJECTS += 							\
   printf/repl-vsnprintf$U.lo
 
 SCANF_OBJECTS =							\
@@ -115,10 +121,13 @@ SCANF_OBJECTS =							\
 
 libgmp_la_SOURCES = gmp-impl.h longlong.h randmt.h			\
   assert.c compat.c errno.c extract-dbl.c invalid.c memory.c		\
-  mp_bpl.c mp_clz_tab.c mp_dv_tab.c mp_minv_tab.c mp_get_fns.c mp_set_fns.c \
+  mp_bpl.c mp_dv_tab.c mp_minv_tab.c mp_get_fns.c mp_set_fns.c		\
   rand.c randclr.c randdef.c randiset.c randlc2s.c randlc2x.c randmt.c	\
   randmts.c rands.c randsd.c randsdui.c randbui.c randmui.c version.c	\
   nextprime.c
+
+# only when COUNT_LEADING_ZEROS_NEED_CLZ_TAB
+#libgmp_la_SOURCES = mp_clz_tab.c
 
 # From configure.in
 gmp_mpn_functions_optional=umul udiv					\
