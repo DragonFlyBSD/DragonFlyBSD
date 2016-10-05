@@ -23,7 +23,6 @@ BACKEND_OBJS= \
 	insn-modes.o \
 	insn-opinit.o \
 	insn-output.o \
-	insn-peep.o \
 	insn-preds.o \
 	insn-recog.o \
 	insn-enums.o \
@@ -121,17 +120,8 @@ BACKEND_OBJS= \
 	graph.o \
 	graphds.o \
 	graphite.o \
-	graphite-blocking.o \
-	graphite-isl-ast-to-gimple.o \
-	graphite-dependences.o \
-	graphite-interchange.o \
-	graphite-optimize-isl.o \
-	graphite-poly.o \
-	graphite-scop-detection.o \
-	graphite-sese-to-poly.o \
 	gtype-desc.o \
 	haifa-sched.o \
-	hw-doloop.o \
 	hwint.o \
 	ifcvt.o \
 	ree.o \
@@ -169,7 +159,6 @@ BACKEND_OBJS= \
 	langhooks.o \
 	lcm.o \
 	lists.o \
-	loop-doloop.o \
 	loop-init.o \
 	loop-invariant.o \
 	loop-iv.o \
@@ -347,13 +336,39 @@ BACKEND_OBJS= \
 	var-tracking.o \
 	varasm.o \
 	varpool.o \
-	vmsdbgout.o \
 	vtable-verify.o \
 	web.o \
-	xcoffout.o \
 	$(out_object_file) \
 	$(EXTRA_OBJS) \
 	$(host_hook_obj)
+
+# only when HAVE_peephole (newer gcc will need it)
+#BACKEND_OBJS+= \
+	insn-peep.o
+
+# only when HAVE_doloop_end
+#BACKEND_OBJS+= \
+	hw-doloop.o \
+	loop-doloop.o
+
+# only whwn HAVE_isl
+#BACKEND_OBJS+= \
+	graphite-blocking.o \
+	graphite-isl-ast-to-gimple.o \
+	graphite-dependences.o \
+	graphite-interchange.o \
+	graphite-optimize-isl.o \
+	graphite-poly.o \
+	graphite-scop-detection.o \
+	graphite-sese-to-poly.o
+
+# only when VMS_DEBUGGING_INFO
+#BACKEND_OBJS+= \
+	vmsdbgout.o
+
+# only when XCOFF_DEBUGGING_INFO
+#BACKEND_OBJS+= \
+	xcoffout.o
 
 OBJS=	${BACKEND_OBJS}
 SRCS=	wide-int.cc wide-int-print.cc

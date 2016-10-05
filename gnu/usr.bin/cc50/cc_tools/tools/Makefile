@@ -100,7 +100,11 @@ _MD: .USE
 simple_rtl_generated_h=	insn-attr.h insn-attr-common.h insn-codes.h \
 			insn-config.h insn-flags.h
 simple_rtl_generated_c=	insn-automata.c insn-emit.c insn-extract.c \
-			insn-output.c insn-peep.c insn-recog.c
+			insn-output.c insn-recog.c
+
+# only when HAVE_peephole (newer gcc will need it)
+#simple_rtl_generated_c+= insn-peep.c
+
 simple_generated_h=	$(simple_rtl_generated_h) insn-constants.h
 simple_generated_c=	$(simple_rtl_generated_c) insn-enums.c insn-preds.c
 

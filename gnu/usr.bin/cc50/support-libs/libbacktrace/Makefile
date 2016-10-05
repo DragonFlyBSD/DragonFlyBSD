@@ -10,7 +10,7 @@ INTERNALLIB=	YES
 
 CFLAGS+=	-I${GCCDIR}/libbacktrace
 
-SRCS=		atomic.c \
+SRCS=			 \
 		dwarf.c \
 		fileline.c \
 		posix.c \
@@ -22,6 +22,9 @@ SRCS=		atomic.c \
 		elf.c \
 		mmapio.c \
 		mmap.c
+
+# only when ! HAVE_ATOMIC_FUNCTIONS
+#SRCS=		atomic.c
 
 backtrace.o:	unwind.h
 
