@@ -11,9 +11,6 @@ CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
 
 SRCS=		argmatch.c \
-		binary-io.c \
-		bitrotate.c \
-		c-ctype.c \
 		c-strcasecmp.c \
 		c-strncasecmp.c \
 		cloexec.c \
@@ -29,7 +26,6 @@ SRCS=		argmatch.c \
 		creat-safer.c \
 		open-safer.c \
 		fcntl.c \
-		fd-hook.c \
 		filenamecat-lgpl.c \
 		hash.c \
 		i-ring.c \
@@ -37,11 +33,9 @@ SRCS=		argmatch.c \
 		lock.c \
 		malloca.c \
 		mbchar.c \
-		mbiter.c \
 		mbscasecmp.c \
 		mbslen.c \
 		mbsstr.c \
-		mbuiter.c \
 		memchr2.c \
 		openat-die.c \
 		openat-safer.c \
@@ -52,15 +46,12 @@ SRCS=		argmatch.c \
 		save-cwd.c \
 		striconv.c \
 		strnlen1.c \
-		threadlib.c \
 		trim.c \
-		unistd.c \
 		dup-safer.c \
 		dup2.c \
 		fd-safer.c \
 		pipe-safer.c \
 		u8-mbtoucr.c \
-		u8-uctomb.c \
 		u8-uctomb-aux.c \
 		width.c \
 		version-etc.c \
@@ -84,5 +75,16 @@ SRCS=		argmatch.c \
 		strstr.c \
 		strerror.c \
 		strerror-override.c
+
+# sources that produces empty objects
+#SRCS+=		binary-io.c \
+		bitrotate.c \
+		c-ctype.c \
+		fd-hook.c \
+		mbiter.c \
+		mbuiter.c \
+		threadlib.c \
+		unistd.c \
+		u8-uctomb.c
 
 .include <bsd.lib.mk>
