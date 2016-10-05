@@ -63,8 +63,8 @@ clrpfs(struct hammer_ioc_pseudofs_rw *pfs, hammer_pseudofs_data_t pfsd,
 
 /*
  * Return a directory that contains path.
- * If '/' is not found in the path then '.' is returned.
  * A caller need to free the returned pointer.
+ * This behaves differently from dirname(3) with trailing /.
  */
 static char*
 getdir(const char *path)
@@ -72,15 +72,20 @@ getdir(const char *path)
 	char *dirpath;
 
 	dirpath = strdup(path);
-	if (strrchr(dirpath, '/')) {
+
+	if (dirpath[strlen(dirpath) - 1] == '/') {
+		while (dirpath[strlen(dirpath) - 1] == '/')
+			dirpath[strlen(dirpath) - 1] = 0;
+	} else if (strrchr(dirpath, '/')) {
 		*strrchr(dirpath, '/') = 0;
-		if (strlen(dirpath) == 0) {
-			free(dirpath);
-			dirpath = strdup("/");
-		}
 	} else {
 		free(dirpath);
 		dirpath = strdup(".");
+	}
+
+	if (strlen(dirpath) == 0) {
+		free(dirpath);
+		dirpath = strdup("/");
 	}
 
 	return(dirpath);
