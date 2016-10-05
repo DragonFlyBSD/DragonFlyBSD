@@ -12,12 +12,15 @@ CFLAGS+=	-DDEBUGDIR='"/usr/lib/debug"'  # no clue why this is needed
 FLAGS_GROUPS=	target plugins
 
 # BFD32_LIBS_CFILES 
-SRCS=	archive.c archures.c bfd.c bfdio.c bfdwin.c \
+SRCS=	archive.c archures.c bfd.c bfdio.c \
 	cache.c coffgen.c corefile.c \
 	format.c init.c libbfd.c opncls.c reloc.c \
 	section.c syms.c targets.c hash.c linker.c \
 	srec.c binary.c tekhex.c ihex.c stabs.c stab-syms.c \
 	merge.c dwarf2.c simple.c compress.c verilog.c
+
+# only when USE_MMAP (--with-mmap)
+#SRCS+= bfdwin.c
 
 # from Makefile, BFD64_BACKENDS_CFILES  (x86-64 specific)
 SRCS+=	elf64-x86-64.c elf-ifunc.c elf-nacl.c elf64.c elf.c elflink.c \

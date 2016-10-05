@@ -49,8 +49,10 @@ SRCS=	archive.cc \
 	target-select.cc \
 	timer.cc \
 	version.cc \
-	workqueue.cc \
-	workqueue-threads.cc 
+	workqueue.cc
+
+# only when ENABLE_THREADS
+#SRCS+=	workqueue-threads.cc
 
 # extra sources
 SRCS+=	yyscript.c mremap.c
