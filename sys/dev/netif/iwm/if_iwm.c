@@ -3087,7 +3087,7 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 	struct iwm_rx_ring *ring = &sc->rxq;
 	struct iwm_rx_data *data = &ring->data[idx];
 	struct mbuf *m;
-	bus_dmamap_t dmamap = NULL;
+	bus_dmamap_t dmamap;
 	bus_dma_segment_t seg;
 	int nsegs, error;
 
@@ -3106,7 +3106,8 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: can't map mbuf, error %d\n", __func__, error);
-		goto fail;
+		m_freem(m);
+		return error;
 	}
 
 	if (data->m != NULL)
@@ -3127,9 +3128,6 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 	    BUS_DMASYNC_PREWRITE);
 
 	return 0;
-fail:
-	m_freem(m);
-	return error;
 }
 
 /*
