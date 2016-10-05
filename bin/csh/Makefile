@@ -51,6 +51,12 @@ LDADD=	-lprivate_ncurses -lcrypt
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 
+.if defined(BOOTSTRAPPING)
+. if ${CFLAGS:M-flto}
+LDFLAGS+=	-Wl,--allow-multiple-definition
+. endif
+.endif
+
 LINKS=	${BINDIR}/csh ${BINDIR}/tcsh
 
 CLEANFILES= ${GENHDRS} gethost.nx csh.1
