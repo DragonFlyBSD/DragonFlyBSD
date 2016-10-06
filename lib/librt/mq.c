@@ -52,27 +52,6 @@ extern int	__sys_mq_timedsend(int, const char *, size_t, unsigned,
     const struct timespec *);
 extern int	__sys_mq_unlink(const char *);
 
-__weak_reference(__mq_open, mq_open);
-__weak_reference(__mq_open, _mq_open);
-__weak_reference(__mq_close, mq_close);
-__weak_reference(__mq_close, _mq_close);
-__weak_reference(__mq_notify, mq_notify);
-__weak_reference(__mq_notify, _mq_notify);
-__weak_reference(__mq_getattr, mq_getattr);
-__weak_reference(__mq_getattr, _mq_getattr);
-__weak_reference(__mq_setattr, mq_setattr);
-__weak_reference(__mq_setattr, _mq_setattr);
-__weak_reference(__mq_timedreceive, mq_timedreceive);
-__weak_reference(__mq_timedreceive, _mq_timedreceive);
-__weak_reference(__mq_timedsend, mq_timedsend);
-__weak_reference(__mq_timedsend, _mq_timedsend);
-__weak_reference(__mq_unlink, mq_unlink);
-__weak_reference(__mq_unlink, _mq_unlink);
-__weak_reference(__mq_send, mq_send);
-__weak_reference(__mq_send, _mq_send);
-__weak_reference(__mq_receive, mq_receive);
-__weak_reference(__mq_receive, _mq_receive);
-
 mqd_t
 __mq_open(const char *name, int oflag, mode_t mode,
 	const struct mq_attr *attr)
@@ -135,3 +114,24 @@ __mq_unlink(const char *path)
 {
 	return (__sys_mq_unlink(path));
 }
+
+__weak_reference(__mq_open, mq_open);
+__weak_reference(__mq_open, _mq_open);
+__weak_reference(__mq_close, mq_close);
+__weak_reference(__mq_close, _mq_close);
+__weak_reference(__mq_notify, mq_notify);
+__weak_reference(__mq_notify, _mq_notify);
+__weak_reference(__mq_getattr, mq_getattr);
+__weak_reference(__mq_getattr, _mq_getattr);
+__weak_reference(__mq_setattr, mq_setattr);
+__weak_reference(__mq_setattr, _mq_setattr);
+__weak_reference(__mq_timedreceive, mq_timedreceive);
+__weak_reference(__mq_timedreceive, _mq_timedreceive);
+__weak_reference(__mq_timedsend, mq_timedsend);
+__weak_reference(__mq_timedsend, _mq_timedsend);
+__weak_reference(__mq_unlink, mq_unlink);
+__weak_reference(__mq_unlink, _mq_unlink);
+__weak_reference(__mq_send, mq_send);
+__weak_reference(__mq_send, _mq_send);
+__weak_reference(__mq_receive, mq_receive);
+__weak_reference(__mq_receive, _mq_receive);

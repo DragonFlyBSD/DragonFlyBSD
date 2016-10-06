@@ -26,6 +26,7 @@
  * $FreeBSD: src/lib/libc/gen/_pthread_stubs.c,v 1.5 2001/06/11 23:18:22 iedowse Exp $
  */
 
+#include <sys/cdefs.h>
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -40,11 +41,12 @@
  */
 
 #define WRlc(f, n)			\
-    __weak_reference(f, _ ## n);
+    __weak_reference_asm(f, _ ## n);
 #define WR(f, n)			\
-    __weak_reference(f, _ ## n);	\
-    __weak_reference(f, n)
+    __weak_reference_asm(f, _ ## n);	\
+    __weak_reference_asm(f, n)
 
+/* XXX this needs something more clever, should not some of these return errors? */
 WR(__atfork, pthread_atfork);
 WR(stub_zero, pthread_attr_destroy);
 WR(stub_zero, pthread_attr_get_np);

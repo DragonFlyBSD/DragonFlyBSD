@@ -36,10 +36,6 @@
 #include <signal.h>
 #include "un-namespace.h"
 
-/* Prototypes */
-__weak_reference(_swapcontext, swapcontext);
-__weak_reference(_setcontext, setcontext);
-
 /*
  * We need to block most signals during a context switch so we do not
  * dispatch a signal vector during a context switch.
@@ -85,11 +81,15 @@ _swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
  * avoid making a system call :-(
  */
 int
-_setcontext(ucontext_t *ucp)
+_setcontext(const ucontext_t *ucp)
 {
 	int ret;
 
-	ret = sigreturn(ucp);
+	/* XXX: shouldn't sigreturn() take const? or does it modify ucp? */
+	ret = sigreturn(__DECONST(ucontext_t *, ucp));
 
 	return(ret);
 }
+
+__weak_reference(_swapcontext, swapcontext);
+__weak_reference(_setcontext, setcontext);

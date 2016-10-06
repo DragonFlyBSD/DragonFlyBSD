@@ -174,9 +174,11 @@
 #define	__heedresult
 #define	__malloclike
 #define	__returns_twice
+#define	__weak_symbol
 
 #else
 
+#define	__weak_symbol	__attribute__((__weak__))
 #if __GNUC_PREREQ__(2, 7)
 #define	__dead2		__attribute__((__noreturn__))
 #define	__pure2		__attribute__((__const__))
@@ -420,7 +422,9 @@
 #ifdef __GNUC__
 #define	__strong_reference(sym,aliassym)	\
 	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)))
-#define	__weak_reference(sym,alias)	\
+#define	__weak_reference(sym,aliassym)	\
+	__strong_reference(sym,aliassym) __attribute__ ((__weak__))
+#define	__weak_reference_asm(sym,alias)	\
 	__asm__(".weak " #alias);	\
 	__asm__(".equ "  #alias ", " #sym)
 #define	__warn_references(sym,msg)	\

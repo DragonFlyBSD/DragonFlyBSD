@@ -41,8 +41,6 @@
 
 static void makectx_quick_wrapper(ucontext_t *ucp, uint64_t *stack_top);
 
-__weak_reference(_makecontext_quick, makecontext_quick);
-
 /*
  * makecontext_quick() associates a stack with a user thread context
  * setup to execute a cofunc sequence.  The caller only initializes the
@@ -92,6 +90,8 @@ _makecontext_quick(ucontext_t *ucp)
 	ucp->uc_mcontext.mc_cs = GSEL(GUCODE_SEL, SEL_UPL);
 	ucp->uc_mcontext.mc_ss = GSEL(GUDATA_SEL, SEL_UPL);
 }
+
+__weak_reference(_makecontext_quick, makecontext_quick);
 
 /*
  * If the cofunc call returns set the context up to re-execute the

@@ -29,8 +29,6 @@
 #include <stddef.h>
 #include <string.h>
 
-__weak_reference(__strchrnul, strchrnul);
-
 char *
 __strchrnul(const char *p, int ch)
 {
@@ -44,3 +42,4 @@ __strchrnul(const char *p, int ch)
 	/* NOTREACHED */
 }
 
+__weak_reference(__strchrnul, strchrnul);

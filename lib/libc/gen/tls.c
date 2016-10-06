@@ -46,13 +46,6 @@
 
 #include "libc_private.h"
 
-__weak_reference(__libc_allocate_tls, _rtld_allocate_tls);
-__weak_reference(__libc_free_tls, _rtld_free_tls);
-__weak_reference(__libc_call_init, _rtld_call_init);
-__weak_reference(__libc_tls_get_addr, __tls_get_addr);
-__weak_reference(__libc_tls_get_addr_tcb, __tls_get_addr_tcb);
-__weak_reference(_libc_init_tls, _init_tls);
-
 struct tls_tcb *__libc_allocate_tls(void);
 void __libc_free_tls(struct tls_tcb *tcb);
 
@@ -277,3 +270,9 @@ _libc_allocate_tls(void)
 	return(tcb);
 }
 
+__weak_reference(__libc_allocate_tls, _rtld_allocate_tls);
+__weak_reference(__libc_free_tls, _rtld_free_tls);
+__weak_reference(__libc_call_init, _rtld_call_init);
+__weak_reference(__libc_tls_get_addr, __tls_get_addr);
+__weak_reference(__libc_tls_get_addr_tcb, __tls_get_addr_tcb);
+__weak_reference(_libc_init_tls, _init_tls);

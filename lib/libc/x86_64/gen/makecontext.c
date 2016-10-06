@@ -46,8 +46,6 @@ typedef void (*func_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_
 /* Prototypes */
 static void makectx_wrapper(ucontext_t *ucp, func_t func, uint64_t *args);
 
-__weak_reference(_makecontext, makecontext);
-
 /*
  * makecontext() associates a stack with a user thread context and sets
  * up to call the start function when switched to.  The start function
@@ -123,6 +121,8 @@ _makecontext(ucontext_t *ucp, void (*start)(void), int argc, ...)
 		ucp->uc_mcontext.mc_err = 0;
 	}
 }
+
+__weak_reference(_makecontext, makecontext);
 
 /* */
 static void

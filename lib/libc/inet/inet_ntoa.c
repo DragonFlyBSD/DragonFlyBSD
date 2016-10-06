@@ -72,6 +72,7 @@ inet_ntoa_r(struct in_addr in, char *buf, socklen_t size)
 */
 #undef inet_ntoa
 __weak_reference(__inet_ntoa, inet_ntoa);
+#undef inet_ntoa_r
 __weak_reference(__inet_ntoa_r, inet_ntoa_r);
 #endif
 /*! \file */

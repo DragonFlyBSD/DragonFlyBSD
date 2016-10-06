@@ -43,15 +43,6 @@
 
 #include "local.h"
 
-
-/*
- * Weak symbols for externally visible functions in this file:
- */
-__weak_reference(_flockfile, flockfile);
-__weak_reference(_flockfile_debug_stub, _flockfile_debug);
-__weak_reference(_ftrylockfile, ftrylockfile);
-__weak_reference(_funlockfile, funlockfile);
-
 void
 _flockfile(FILE *fp)
 {
@@ -131,3 +122,11 @@ _funlockfile(FILE *fp)
 		}
 	}
 }
+
+/*
+ * Weak symbols for externally visible functions in this file:
+ */
+__weak_reference(_flockfile, flockfile);
+__weak_reference(_flockfile_debug_stub, _flockfile_debug);
+__weak_reference(_ftrylockfile, ftrylockfile);
+__weak_reference(_funlockfile, funlockfile);

@@ -23,15 +23,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/gen/_thread_init.c,v 1.2 2005/04/26 14:21:22 joerg Exp $
  */
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
 
 void	_thread_init_stub(void);
-
-__weak_reference(_thread_init_stub, _thread_init);
-__weak_reference(_thread_autoinit_dummy_decl_stub, _thread_autoinit_dummy_decl);
 
 int	_thread_autoinit_dummy_decl_stub = 0;
 
@@ -40,3 +37,6 @@ _thread_init_stub(void)
 {
 	/* This is just a stub; there is nothing to do. */
 }
+
+__weak_reference(_thread_init_stub, _thread_init);
+__weak_reference(_thread_autoinit_dummy_decl_stub, _thread_autoinit_dummy_decl);

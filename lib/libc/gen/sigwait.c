@@ -30,8 +30,6 @@
 
 extern int __sys_sigwaitinfo(const sigset_t *, siginfo_t *);
 
-__weak_reference(_sigwait, sigwait);
-
 int
 _sigwait(const sigset_t *set, int *sig)
 {
@@ -44,3 +42,5 @@ _sigwait(const sigset_t *set, int *sig)
 	}
 	return (errno);
 }
+
+__weak_reference(_sigwait, sigwait);
