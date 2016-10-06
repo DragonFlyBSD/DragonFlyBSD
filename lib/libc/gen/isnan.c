@@ -35,9 +35,6 @@
  *     binary compat until we can bump libm's major version number.
  */
 
-__weak_reference(__isnan, isnan);
-__weak_reference(__isnanf, isnanf);
-
 int
 __isnan(double d)
 {
@@ -55,3 +52,6 @@ __isnanf(float f)
 	u.f = f;
 	return (u.bits.exp == 255 && u.bits.man != 0);
 }
+
+__weak_reference(__isnan, isnan);
+__weak_reference(__isnanf, isnanf);

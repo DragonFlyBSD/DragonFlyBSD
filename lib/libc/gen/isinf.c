@@ -35,8 +35,6 @@
  *     binary compat until we can bump libm's major version number.
  */
 
-__weak_reference(__isinf, isinf);
-
 int
 __isinf(double d)
 {
@@ -45,6 +43,8 @@ __isinf(double d)
 	u.d = d;
 	return (u.bits.exp == 2047 && u.bits.manl == 0 && u.bits.manh == 0);
 }
+
+__weak_reference(__isinf, isinf);
 
 int
 __isinff(float f)

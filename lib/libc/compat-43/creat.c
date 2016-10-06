@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/compat-43/creat.c,v 1.4.2.2 2001/03/05 07:28:35 obrien Exp $
- * $DragonFly: src/lib/libc/compat-43/creat.c,v 1.4 2005/04/26 10:25:55 joerg Exp $
  *
  * @(#)creat.c	8.1 (Berkeley) 6/2/93
  */

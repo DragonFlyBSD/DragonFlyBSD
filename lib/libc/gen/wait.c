@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/wait.c,v 1.3.2.1 2000/03/18 23:13:25 jasone Exp $
- * $DragonFly: src/lib/libc/gen/wait.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)wait.c	8.1 (Berkeley) 6/4/93
  */

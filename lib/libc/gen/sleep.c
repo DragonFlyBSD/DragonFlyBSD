@@ -28,7 +28,6 @@
  *
  * @(#)sleep.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/sleep.c,v 1.28.2.1 2000/03/18 23:13:24 jasone Exp $
- * $DragonFly: src/lib/libc/gen/sleep.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"

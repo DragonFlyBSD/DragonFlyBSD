@@ -28,7 +28,6 @@
  *
  * @(#)system.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/system.c,v 1.11 2007/01/09 00:28:10 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/system.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
  */
 
 #include "namespace.h"

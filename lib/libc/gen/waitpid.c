@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/waitpid.c,v 1.3.2.1 2000/03/18 23:13:26 jasone Exp $
- * $DragonFly: src/lib/libc/gen/waitpid.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  *
  * @(#)waitpid.c	8.1 (Berkeley) 6/4/93
  */

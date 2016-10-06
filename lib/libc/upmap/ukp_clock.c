@@ -53,8 +53,6 @@
 extern int __sys_clock_gettime(clockid_t clock_id, struct timespec *ts);
 int __clock_gettime(clockid_t clock_id, struct timespec *ts);
 
-__weak_reference(__clock_gettime, clock_gettime);
-
 static int fast_clock;
 static int fast_count;
 static int *upticksp;
@@ -109,3 +107,5 @@ __clock_gettime(clockid_t clock_id, struct timespec *ts)
 	}
 	return res;
 }
+
+__weak_reference(__clock_gettime, clock_gettime);

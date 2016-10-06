@@ -102,8 +102,6 @@ static const u_char *__sccl(char *, const u_char *);
 static int parsefloat(FILE *, char *, char *, locale_t);
 #endif
 
-__weak_reference(__vfscanf, vfscanf);
-
 /*
  * Conversion functions are passed a pointer to this object instead of
  * a real parameter to indicate that the assignment-suppression (*)
@@ -446,6 +444,9 @@ __vfscanf(FILE *fp, char const *fmt0, va_list ap)
 	FUNLOCKFILE(fp);
 	return (ret);
 }
+
+__weak_reference(__vfscanf, vfscanf);
+
 int
 vfscanf_l(FILE *fp, locale_t locale, char const *fmt0, va_list ap)
 {

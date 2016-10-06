@@ -598,8 +598,6 @@ nss_method_lookup(const char *source, const char *database,
 }
 
 
-__weak_reference(_nsdispatch, nsdispatch);
-
 int
 _nsdispatch(void *retval, const ns_dtab disp_tab[], const char *database,
 	    const char *method_name, const ns_src defaults[], ...)
@@ -742,3 +740,5 @@ fin:
 	errno = serrno;
 	return (result);
 }
+
+__weak_reference(_nsdispatch, nsdispatch);

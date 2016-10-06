@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/pause.c,v 1.3.2.1 2000/03/18 23:13:23 jasone Exp $
- * $DragonFly: src/lib/libc/gen/pause.c,v 1.4 2005/04/26 08:29:52 joerg Exp $
  *
  * @(#)pause.c	8.1 (Berkeley) 6/4/93
  */

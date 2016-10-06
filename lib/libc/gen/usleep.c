@@ -28,7 +28,6 @@
  *
  * @(#)usleep.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/usleep.c,v 1.25 2000/01/27 23:06:22 jasone Exp $
- * $DragonFly: src/lib/libc/gen/usleep.c,v 1.4 2005/10/25 12:14:15 davidxu Exp $
  */
 
 #include "namespace.h"

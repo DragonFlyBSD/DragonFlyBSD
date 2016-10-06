@@ -49,8 +49,6 @@
 extern pid_t __sys_getpid(void);
 int __getpid(void);
 
-__weak_reference(__getpid, getpid);
-
 static int fast_getpid_state;
 static int fast_getpid_count;
 static pid_t *pidp;
@@ -74,6 +72,8 @@ __getpid(void)
 	else
 		return(__sys_getpid());
 }
+
+__weak_reference(__getpid, getpid);
 
 #if 0 /* DEBUG */
 pid_t xxx_getpid(void);

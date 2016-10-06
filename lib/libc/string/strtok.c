@@ -43,8 +43,6 @@
 
 char	*__strtok_r(char *, const char *, char **);
 
-__weak_reference(__strtok_r, strtok_r);
-
 char *
 __strtok_r(char *s, const char *delim, char **last)
 {
@@ -90,6 +88,8 @@ cont:
 	}
 	/* NOTREACHED */
 }
+
+__weak_reference(__strtok_r, strtok_r);
 
 char *
 strtok(char *s, const char *delim)

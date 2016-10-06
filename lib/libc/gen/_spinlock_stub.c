@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/_spinlock_stub.c,v 1.4 1999/08/27 23:58:27 peter Exp $
- * $DragonFly: src/lib/libc/gen/_spinlock_stub.c,v 1.6 2005/04/26 10:08:41 joerg Exp $
  *
  */
 
@@ -44,16 +43,6 @@ void	_spinlock_stub(spinlock_t *);
 int	_spintrylock_stub(spinlock_t *);
 void	_spinunlock_stub(spinlock_t *);
 void	_spinlock_debug_stub(spinlock_t *, char *, int);
-
-/*
- * Declare weak definitions in case the application is not linked
- * with libpthread.
- */
-__weak_reference(_atomic_lock_stub,_atomic_lock);
-__weak_reference(_spinlock_stub,_spinlock);
-__weak_reference(_spintrylock_stub,_spintrylock);
-__weak_reference(_spinunlock_stub,_spinunlock);
-__weak_reference(_spinlock_debug_stub,_spinlock_debug);
 
 /*
  * This function is a stub for the _atomic_lock function in libpthread.
@@ -98,3 +87,13 @@ _spinlock_debug_stub(spinlock_t *lck __unused, char *fname __unused,
 		     int lineno __unused)
 {
 }
+
+/*
+ * Declare weak definitions in case the application is not linked
+ * with libpthread.
+ */
+__weak_reference(_atomic_lock_stub,_atomic_lock);
+__weak_reference(_spinlock_stub,_spinlock);
+__weak_reference(_spintrylock_stub,_spintrylock);
+__weak_reference(_spinunlock_stub,_spinunlock);
+__weak_reference(_spinlock_debug_stub,_spinlock_debug);
