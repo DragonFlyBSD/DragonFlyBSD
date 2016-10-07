@@ -116,6 +116,7 @@ static driver_t ecc_x3400_driver = {
 static devclass_t ecc_devclass;
 DRIVER_MODULE(ecc_x3400, hostb, ecc_x3400_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc_x3400, pci, 1, 1, 1);
+MODULE_VERSION(ecc_x3400, 1);
 
 static int
 ecc_x3400_probe(device_t dev)

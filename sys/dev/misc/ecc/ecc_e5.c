@@ -138,6 +138,7 @@ static devclass_t ecc_devclass;
 DRIVER_MODULE(ecc_e5, pci, ecc_e5_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc_e5, pci, 1, 1, 1);
 MODULE_DEPEND(ecc_e5, dimm, 1, 1, 1);
+MODULE_VERSION(ecc_e5, 1);
 
 static int
 ecc_e5_probe(device_t dev)

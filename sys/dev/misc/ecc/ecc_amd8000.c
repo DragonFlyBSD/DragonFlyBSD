@@ -93,6 +93,7 @@ static driver_t ecc_amd8000_driver = {
 static devclass_t ecc_devclass;
 DRIVER_MODULE(ecc_amd8000, pci, ecc_amd8000_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc_amd8000, pci, 1, 1, 1);
+MODULE_VERSION(ecc_amd8000, 1);
 
 static int
 ecc_amd8000_probe(device_t dev)

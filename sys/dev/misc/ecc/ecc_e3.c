@@ -155,6 +155,7 @@ static devclass_t ecc_devclass;
 DRIVER_MODULE(ecc_e3, coremctl, ecc_e3_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc_e3, pci, 1, 1, 1);
 MODULE_DEPEND(ecc_e3, coremctl, 1, 1, 1);
+MODULE_VERSION(ecc_e3, 1);
 
 static __inline uint32_t
 CSR_READ_4(struct ecc_e3_softc *sc, int ofs)
