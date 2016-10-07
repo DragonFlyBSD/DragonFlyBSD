@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/include/xlocale/_locale.h 231673 2012-02-14 12:03:23Z theraven $
+ * $FreeBSD: head/include/xlocale/_locale.h 304703 2016-08-23 20:33:56Z ache $
  */
 
 #ifndef _XLOCALE_LOCALE_H
@@ -49,7 +49,7 @@ typedef struct	_xlocale *locale_t;
 #endif
 
 locale_t	 duplocale(locale_t base);
-int		 freelocale(locale_t loc);
+void		 freelocale(locale_t loc);
 locale_t	 newlocale(int mask, const char *locale, locale_t base);
 const char	*querylocale(int mask, locale_t loc);
 locale_t	 uselocale(locale_t loc);
