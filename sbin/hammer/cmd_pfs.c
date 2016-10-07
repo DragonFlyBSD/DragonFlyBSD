@@ -389,14 +389,18 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		}
 	}
 
-	printf("Destroying PFS #%d (%s) in ", pfs.pfs_id, pfs.ondisk->label);
-	for (i = 5; i; --i) {
-		printf(" %d", i);
-		fflush(stdout);
-		sleep(1);
+	printf("Destroying PFS #%d (%s)", pfs.pfs_id, pfs.ondisk->label);
+	if (DebugOpt) {
+		printf("\n");
+	} else {
+		printf(" in");
+		for (i = 5; i; --i) {
+			printf(" %d", i);
+			fflush(stdout);
+			sleep(1);
+		}
+		printf(".. starting destruction pass\n");
 	}
-	printf(".. starting destruction pass\n");
-	fflush(stdout);
 
 	/*
 	 * Remove the softlink on success.
