@@ -34,6 +34,10 @@
  */
 
 #include "namespace.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,15 +45,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <assert.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
 #include "un-namespace.h"
 
 #include "collate.h"
 #include "setlocale.h"
 #include "ldpart.h"
+#include "libc_private.h"
 
 struct xlocale_collate __xlocale_global_collate = {
 	{{0}, "C"}, 1, 0, 0, 0
@@ -59,9 +60,7 @@ struct xlocale_collate __xlocale_C_collate = {
 	{{0}, "C"}, 1, 0, 0, 0
 };
 
-#include "libc_private.h"
-
-int
+static int
 __collate_load_tables_l(const char *encoding, struct xlocale_collate *table);
 
 static void
@@ -313,7 +312,7 @@ _collate_lookup(struct xlocale_collate *table, const wchar_t *t, int *len,
 	*len = 1;
 
 	/*
-	 * Check for composites such as dipthongs that collate as a
+	 * Check for composites such as diphthongs that collate as a
 	 * single element (aka chains or collating-elements).
 	 */
 	if (((p2 = chainsearch(table, t, &l)) != NULL) &&

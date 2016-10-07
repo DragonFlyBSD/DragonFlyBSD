@@ -1,5 +1,5 @@
-/*
- * Copyright 2010 Nexenta Systmes, Inc.  All rights reserved.
+/*-
+ * Copyright 2010 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 1995 Alex Tatmanjants <alex@elvisti.kiev.ua>
  *		at Electronni Visti IA, Kiev, Ukraine.
  *			All rights reserved.
@@ -42,7 +42,7 @@
 #include "xlocale_private.h"
 
 /*
- * Work around buildworld bootstrapping from older systems whos limits.h
+ * Work around buildworld bootstrapping from older systems whose limits.h
  * sets COLL_WEIGHTS_MAX to 0.
  */
 #if COLL_WEIGHTS_MAX == 0
