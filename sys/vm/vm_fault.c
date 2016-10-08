@@ -1395,7 +1395,12 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 				unlock_and_deallocate(fs);
 				if (allow_nofault == 0 ||
 				    (curthread->td_flags & TDF_NOFAULT) == 0) {
+					thread_t td;
+
 					vm_wait_pfault();
+					td = curthread;
+					if (td->td_proc && (td->td_proc->p_flags & P_LOWMEMKILL))
+						return (KERN_PROTECTION_FAILURE);
 				}
 				return (KERN_TRY_AGAIN);
 			}
@@ -1492,7 +1497,12 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 				unlock_and_deallocate(fs);
 				if (allow_nofault == 0 ||
 				    (curthread->td_flags & TDF_NOFAULT) == 0) {
+					thread_t td;
+
 					vm_wait_pfault();
+					td = curthread;
+					if (td->td_proc && (td->td_proc->p_flags & P_LOWMEMKILL))
+						return (KERN_PROTECTION_FAILURE);
 				}
 				return (KERN_TRY_AGAIN);
 			}

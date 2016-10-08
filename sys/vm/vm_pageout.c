@@ -1534,6 +1534,7 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 			info.bigproc->p_nice = PRIO_MIN;
 			info.bigproc->p_usched->resetpriority(
 				FIRST_LWP_IN_PROC(info.bigproc));
+			atomic_set_int(&info.bigproc->p_flags, P_LOWMEMKILL);
 			killproc(info.bigproc, "out of swap space");
 			wakeup(&vmstats.v_free_count);
 			PRELE(info.bigproc);
