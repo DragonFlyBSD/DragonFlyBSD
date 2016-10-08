@@ -2066,12 +2066,22 @@ vm_wait_pfault(void)
 		lwkt_gettoken(&vm_token);
 		while (vm_page_count_severe()) {
 			if (vm_page_count_target()) {
+				thread_t td;
+
 				if (vm_pages_needed == 0) {
 					vm_pages_needed = 1;
 					wakeup(&vm_pages_needed);
 				}
 				++vm_pages_waiting;	/* SMP race ok */
 				tsleep(&vmstats.v_free_count, 0, "pfault", hz);
+
+				/*
+				 * Do not stay stuck in the loop if the system is trying
+				 * to kill the process.
+				 */
+				td = curthread;
+				if (td->td_proc && (td->td_proc->p_flags & P_LOWMEMKILL))
+					break;
 			}
 		}
 		lwkt_reltoken(&vm_token);

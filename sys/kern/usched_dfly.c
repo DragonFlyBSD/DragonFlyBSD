@@ -754,7 +754,7 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 * Spinlocks also hold a critical section so there should not be
 	 * any active.
 	 */
-	KKASSERT(gd->gd_spinlocks == 0);
+	KKASSERT(gd->gd_spinlocks == 0 || dumping);
 
 	/*
 	 * If lp is NULL we might be contended and lwkt_switch() may have
