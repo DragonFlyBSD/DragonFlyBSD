@@ -674,13 +674,23 @@ vkernel_lwp_exit(struct lwp *lp)
 	struct vmspace_entry *ve;
 
 	if ((vklp = lp->lwp_vkernel) != NULL) {
-		if ((ve = vklp->ve) != NULL) {
-			kprintf("Warning, pid %d killed with "
-				"active VC!\n", lp->lwp_proc->p_pid);
-			pmap_setlwpvm(lp, lp->lwp_proc->p_vmspace);
+		if (lp->lwp_thread->td_vmm == NULL) {
+			/*
+			 * vkernel thread
+			 */
+			if ((ve = vklp->ve) != NULL) {
+				kprintf("Warning, pid %d killed with "
+					"active VC!\n", lp->lwp_proc->p_pid);
+				pmap_setlwpvm(lp, lp->lwp_proc->p_vmspace);
+				vklp->ve = NULL;
+				KKASSERT(ve->refs > 0);
+				atomic_subtract_int(&ve->refs, 1);
+			}
+		} else {
+			/*
+			 * guest thread
+			 */
 			vklp->ve = NULL;
-			KKASSERT(ve->refs > 0);
-			atomic_subtract_int(&ve->refs, 1);
 		}
 		lp->lwp_vkernel = NULL;
 		kfree(vklp, M_VKERNEL);
@@ -724,6 +734,7 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 		vklp->ve = NULL;
 		vmm_vm_set_guest_cr3(p->p_vkernel->vkernel_cr3);
 	}
+
 	/*
 	 * Copy the emulated process frame to the virtual kernel process.
 	 * The emulated process cannot change TLS descriptors so don't

@@ -301,6 +301,8 @@ struct pmap {
 
 #define PMAP_FLAG_SIMPLE	0x00000001
 #define PMAP_EMULATE_AD_BITS	0x00000002
+#define PMAP_HVM		0x00000004
+#define PMAP_SEGSHARED		0x00000008	/* segment shared opt */
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 

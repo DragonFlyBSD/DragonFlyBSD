@@ -90,4 +90,11 @@ struct vmm_proc {
 struct vmm_ctl* get_ctl_intel(void);
 struct vmm_ctl* get_ctl_amd(void);
 
+#ifdef _KERNEL
+
+extern int vmm_enabled;
+extern int vmm_debug;
+
+#endif
+
 #endif
