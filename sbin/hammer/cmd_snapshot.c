@@ -504,7 +504,7 @@ snapshot_ls(const char *path)
 		/* not reached */
         }
 
-	printf("Snapshots on %s\tPFS #%d\n", path, pfs.pfs_id);
+	printf("Snapshots on %s\tPFS#%d\n", path, pfs.pfs_id);
 	printf("Transaction ID\t\tTimestamp\t\tNote\n");
 
 	bzero(&snapshot, sizeof(snapshot));

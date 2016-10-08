@@ -212,7 +212,7 @@ do_cleanup(const char *path)
 	 */
 	for (didpfs = FirstPFS; didpfs; didpfs = didpfs->next) {
 		if (bcmp(&didpfs->uuid, &mrec_tmp.pfs.pfsd.unique_uuid, sizeof(uuid_t)) == 0) {
-			printf(" PFS #%d already handled\n", pfs.pfs_id);
+			printf(" PFS#%d already handled\n", pfs.pfs_id);
 			close(fd);
 			return;
 		}
@@ -374,14 +374,14 @@ do_cleanup(const char *path)
 	 */
 	if (flock(fd, LOCK_EX|LOCK_NB) == -1) {
 		if (errno == EWOULDBLOCK)
-			printf(" PFS #%d locked by other process\n", pfs.pfs_id);
+			printf(" PFS#%d locked by other process\n", pfs.pfs_id);
 		else
 			printf(" can not lock %s: %s\n", config_path, strerror(errno));
 		close(fd);
 		return;
 	}
 
-	printf(" handle PFS #%d using %s\n", pfs.pfs_id, snapshots_path);
+	printf(" handle PFS#%d using %s\n", pfs.pfs_id, snapshots_path);
 
 	struct pidfh	*pfh = NULL;
 	static char	pidfile[PIDFILE_BUFSIZE];

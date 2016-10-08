@@ -228,7 +228,7 @@ print_pfs_status(char *path)
 	if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 		printf("Invalid PFS path %s\n", path);
 	} else {
-		printf("PFS #%d {\n", pfs.pfs_id);
+		printf("PFS#%d {\n", pfs.pfs_id);
 		dump_pfsd(pfs.ondisk, fd);
 		printf("}\n");
 	}
@@ -331,7 +331,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	/*
 	 * Create the new PFS
 	 */
-	printf("Creating PFS #%d\t", pfs_id);
+	printf("Creating PFS#%d\t", pfs_id);
 	clrpfs(&pfs, &pfsd, pfs_id);
 	init_pfsd(&pfsd, is_slave);
 
@@ -389,7 +389,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		}
 	}
 
-	printf("Destroying PFS #%d (%s)", pfs.pfs_id, pfs.ondisk->label);
+	printf("Destroying PFS#%d (%s)", pfs.pfs_id, pfs.ondisk->label);
 	if (DebugOpt) {
 		printf("\n");
 	} else {
