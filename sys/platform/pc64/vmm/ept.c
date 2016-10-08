@@ -48,13 +48,14 @@
 #include "vmx.h"
 #include "ept.h"
 #include "vmm_utils.h"
+#include "vmm.h"
 
 static uint64_t pmap_bits_ept[PG_BITS_SIZE];
 static pt_entry_t pmap_cache_bits_ept[PAT_INDEX_SIZE];
 static int ept_protection_codes[PROTECTION_CODES_SIZE];
 static pt_entry_t pmap_cache_mask_ept;
 
-static int pmap_pm_flags_ept;
+static int pmap_pm_flags_ept = PMAP_HVM;
 static int eptp_bits;
 
 extern uint64_t vmx_ept_vpid_cap;
@@ -79,7 +80,7 @@ vmx_ept_init(void)
 	if (EPT_AD_BITS_SUPPORTED(vmx_ept_vpid_cap)) {
 		eptp_bits |= EPTP_AD_ENABLE;
 	} else {
-		pmap_pm_flags_ept = PMAP_EMULATE_AD_BITS;
+		pmap_pm_flags_ept |= PMAP_EMULATE_AD_BITS;
 	}
 
 	/* Initialize EPT bits
@@ -165,8 +166,10 @@ ept_copyin(const void *udaddr, void *kaddr, size_t len)
 		m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
 		    VM_PROT_READ, VM_FAULT_NORMAL, &err);
 		if (err) {
-			kprintf("%s: could not fault in vm map, gpa: %llx\n",
-			    __func__, (unsigned long long) gpa);
+			if (vmm_debug) {
+				kprintf("%s: could not fault in vm map, gpa: %llx\n",
+					__func__, (unsigned long long) gpa);
+			}
 			break;
 		}
 
@@ -213,8 +216,10 @@ ept_copyout(const void *kaddr, void *udaddr, size_t len)
 		    VM_PROT_READ | VM_PROT_WRITE,
 		    VM_FAULT_NORMAL, &err);
 		if (err) {
-			kprintf("%s: could not fault in vm map, gpa: %llx\n",
-			    __func__, (unsigned long long) gpa);
+			if (vmm_debug) {
+				kprintf("%s: could not fault in vm map, gpa: %llx\n",
+				    __func__, (unsigned long long) gpa);
+			}
 			break;
 		}
 

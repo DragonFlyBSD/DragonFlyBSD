@@ -50,6 +50,7 @@ struct sysctl_ctx_list vmm_sysctl_ctx;
 struct sysctl_oid *vmm_sysctl_tree;
 
 int vmm_enabled;
+int vmm_debug;
 
 static int
 sysctl_vmm_enable(SYSCTL_HANDLER_ARGS)
@@ -125,6 +126,11 @@ vmm_init(void)
 		    OID_AUTO, "enable", CTLTYPE_INT | CTLFLAG_WR,
 		    NULL, sizeof vmm_enabled, sysctl_vmm_enable, "I",
 		    "Control the state of the VMM");
+		SYSCTL_ADD_INT(&vmm_sysctl_ctx,
+		    SYSCTL_CHILDREN(vmm_sysctl_tree),
+		    OID_AUTO, "debug", CTLTYPE_INT | CTLFLAG_RW,
+		    &vmm_debug, 0,
+		    "vmm debugging");
 
 		if (ctl->enable()) {
 			kprintf("VMM: vmm enable() failed\n");

@@ -2124,6 +2124,7 @@ retry:
 	 */
 	if (entry == NULL ||
 	    pmap_mmu_optimize == 0 ||			/* not enabled */
+	    (pmap->pm_flags & PMAP_HVM) ||		/* special pmap */
 	    ptepindex >= pmap_pd_pindex(0) ||		/* not terminal or pt */
 	    entry->inheritance != VM_INHERIT_SHARE ||	/* not shared */
 	    entry->maptype != VM_MAPTYPE_NORMAL ||	/* weird map type */
@@ -2190,6 +2191,7 @@ retry:
 			obpmap = *obpmapp; /* safety */
 		} else {
 			obpmap->pm_active = smp_active_mask;
+			obpmap->pm_flags |= PMAP_SEGSHARED;
 			*obpmapp = obpmap;
 			spin_unlock(&pmap_spin);
 		}

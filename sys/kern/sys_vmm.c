@@ -63,58 +63,58 @@ sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
 	clear_quickret();
 
 	switch (uap->op) {
-		case VMM_GUEST_RUN:
-			error = copyin(uap->options, &options,
-			    sizeof(struct vmm_guest_options));
+	case VMM_GUEST_RUN:
+		error = copyin(uap->options, &options,
+			       sizeof(struct vmm_guest_options));
+		if (error) {
+			kprintf("%s: error copyin vmm_guest_options\n",
+				__func__);
+			goto out;
+		}
+
+		while(stack_limit > tf->tf_sp) {
+			stack_limit -= PAGE_SIZE;
+			options.new_stack -= PAGE_SIZE;
+
+			error = copyin((const void *)stack_limit,
+				       (void *)stack_page, PAGE_SIZE);
 			if (error) {
-				kprintf("%s: error copyin vmm_guest_options\n",
-				    __func__);
+				kprintf("%s: error copyin stack\n",
+					__func__);
 				goto out;
 			}
 
-			while(stack_limit > tf->tf_sp) {
-				stack_limit -= PAGE_SIZE;
-				options.new_stack -= PAGE_SIZE;
-
-				error = copyin((const void *)stack_limit,
-				    (void *)stack_page, PAGE_SIZE);
-				if (error) {
-					kprintf("%s: error copyin stack\n",
-					    __func__);
-					goto out;
-				}
-
-				error = copyout((const void *)stack_page,
-				    (void *)options.new_stack, PAGE_SIZE);
-				if (error) {
-					kprintf("%s: error copyout stack\n",
-					    __func__);
-					goto out;
-				}
-			}
-
-			bcopy(tf, &options.tf, sizeof(struct trapframe));
-
-			error = vmm_vminit(&options);
+			error = copyout((const void *)stack_page,
+					(void *)options.new_stack, PAGE_SIZE);
 			if (error) {
-				if (error == ENODEV) {
-					kprintf("%s: vmm_vminit failed - "
-					    "no VMM available \n", __func__);
-					goto out;
-				}
-				kprintf("%s: vmm_vminit failed\n", __func__);
-				goto out_exit;
+				kprintf("%s: error copyout stack\n",
+				    __func__);
+				goto out;
 			}
+		}
 
-			generic_lwp_return(curthread->td_lwp, tf);
+		bcopy(tf, &options.tf, sizeof(struct trapframe));
 
-			error = vmm_vmrun();
+		error = vmm_vminit(&options);
+		if (error) {
+			if (error == ENODEV) {
+				kprintf("%s: vmm_vminit failed - "
+					"no VMM available \n", __func__);
+				goto out;
+			}
+			kprintf("%s: vmm_vminit failed\n", __func__);
+			goto out_exit;
+		}
 
-			break;
-		default:
-			kprintf("%s: INVALID op\n", __func__);
-			error = EINVAL;
-			goto out;
+		generic_lwp_return(curthread->td_lwp, tf);
+
+		error = vmm_vmrun();
+
+		break;
+	default:
+		kprintf("%s: INVALID op\n", __func__);
+		error = EINVAL;
+		goto out;
 	}
 out_exit:
 	exit1(W_EXITCODE(error, 0));

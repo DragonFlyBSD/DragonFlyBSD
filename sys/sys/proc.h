@@ -369,7 +369,7 @@ struct	proc {
 #define	P_EXEC		0x04000	/* Process called exec */
 #define	P_CONTINUED	0x08000	/* Proc has continued from a stopped state */
 
-#define P_UNUSED16	0x00010000
+#define P_LOWMEMKILL	0x00010000 /* trying to kill due to low memory */
 #define	P_UNUSED17	0x00020000
 
 #define	P_SWAPWAIT	0x00040000 /* Waiting for a swapin */

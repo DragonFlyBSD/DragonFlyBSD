@@ -154,52 +154,47 @@ vmx_set_ctl_setting(struct vmx_ctl_info *vmx_ctl, uint32_t bit_no, setting_t val
 
 	/* Check if the value is known by VMM or set on DEFAULT */
 	switch(value) {
-		case DEFAULT:
-			/* Both settings are allowd
-			 * - step b.iii)
-			 *   or
-			 * - c.iii), c.iv)
-			 */
-			if (IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no)
-			    && IS_ONE_SETTING_ALLOWED(ctl_val, bit_no)) {
+	case DEFAULT:
+		/*
+		 * Both settings are allowd
+		 * - step b.iii)
+		 *   or
+		 * - c.iii), c.iv)
+		 */
+		if (IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no) &&
+		    IS_ONE_SETTING_ALLOWED(ctl_val, bit_no)) {
+			/* For c.iii) and c.iv) */
+			if (IS_TRUE_CTL_AVAIL(vmx_basic))
+				ctl_val = rdmsr(vmx_ctl->msr_addr);
 
-				/* For c.iii) and c.iv) */
-				if(IS_TRUE_CTL_AVAIL(vmx_basic))
-					ctl_val = rdmsr(vmx_ctl->msr_addr);
-
-				if (IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no))
-					vmx_ctl->ctls &= ~BIT(bit_no);
-				else if (IS_ONE_SETTING_ALLOWED(ctl_val, bit_no))
-					vmx_ctl->ctls |= BIT(bit_no);
-
-			} else if (IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no)) {
-				/* b.i), c.i) */
+			if (IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no))
 				vmx_ctl->ctls &= ~BIT(bit_no);
-
-			} else if (IS_ONE_SETTING_ALLOWED(ctl_val, bit_no)) {
-				/* b.i), c.i) */
+			else if (IS_ONE_SETTING_ALLOWED(ctl_val, bit_no))
 				vmx_ctl->ctls |= BIT(bit_no);
-
-			} else {
-				return (EINVAL);
-			}
-			break;
-		case ZERO:
-			/* For b.ii) or c.ii) */
-			if (!IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no))
-				return (EINVAL);
-
+		} else if (IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no)) {
+			/* b.i), c.i) */
 			vmx_ctl->ctls &= ~BIT(bit_no);
-
-			break;
-		case ONE:
-			/* For b.ii) or c.ii) */
-			if (!IS_ONE_SETTING_ALLOWED(ctl_val, bit_no))
-				return (EINVAL);
-
+		} else if (IS_ONE_SETTING_ALLOWED(ctl_val, bit_no)) {
+			/* b.i), c.i) */
 			vmx_ctl->ctls |= BIT(bit_no);
+		} else {
+			return (EINVAL);
+		}
+		break;
+	case ZERO:
+		/* For b.ii) or c.ii) */
+		if (!IS_ZERO_SETTING_ALLOWED(ctl_val, bit_no))
+			return (EINVAL);
+		vmx_ctl->ctls &= ~BIT(bit_no);
+		break;
+	case ONE:
+		/* For b.ii) or c.ii) */
+		if (!IS_ONE_SETTING_ALLOWED(ctl_val, bit_no))
+			return (EINVAL);
 
-			break;
+		vmx_ctl->ctls |= BIT(bit_no);
+
+		break;
 	}
 	return 0;
 }
@@ -209,7 +204,7 @@ vmx_set_default_settings(struct vmx_ctl_info *vmx_ctl)
 {
 	int i;
 
-	for(i = 0; i < 32; i++) {
+	for (i = 0; i < 32; i++) {
 		vmx_set_ctl_setting(vmx_ctl, i, DEFAULT);
 	}
 }
@@ -645,59 +640,59 @@ static int vmx_set_guest_descriptor(descriptor_t type,
 	}
 
 	switch(type) {
-		case ES:
-			selector_enc = VMCS_GUEST_ES_SELECTOR;
-			rights_enc = VMCS_GUEST_ES_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_ES_BASE;
-			limit_enc = VMCS_GUEST_ES_LIMIT;
-			break;
-		case CS:
-			selector_enc = VMCS_GUEST_CS_SELECTOR;
-			rights_enc = VMCS_GUEST_CS_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_CS_BASE;
-			limit_enc = VMCS_GUEST_CS_LIMIT;
-			break;
-		case SS:
-			selector_enc = VMCS_GUEST_SS_SELECTOR;
-			rights_enc = VMCS_GUEST_SS_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_SS_BASE;
-			limit_enc = VMCS_GUEST_SS_LIMIT;
-			break;
-		case DS:
-			selector_enc = VMCS_GUEST_DS_SELECTOR;
-			rights_enc = VMCS_GUEST_DS_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_DS_BASE;
-			limit_enc = VMCS_GUEST_DS_LIMIT;
-			break;
-		case FS:
-			selector_enc = VMCS_GUEST_FS_SELECTOR;
-			rights_enc = VMCS_GUEST_FS_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_FS_BASE;
-			limit_enc = VMCS_GUEST_FS_LIMIT;
-			break;
-		case GS:
-			selector_enc = VMCS_GUEST_GS_SELECTOR;
-			rights_enc = VMCS_GUEST_GS_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_GS_BASE;
-			limit_enc = VMCS_GUEST_GS_LIMIT;
-			break;
-		case LDTR:
-			selector_enc = VMCS_GUEST_LDTR_SELECTOR;
-			rights_enc = VMCS_GUEST_LDTR_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_LDTR_BASE;
-			limit_enc = VMCS_GUEST_LDTR_LIMIT;
-			break;
-		case TR:
-			selector_enc = VMCS_GUEST_TR_SELECTOR;
-			rights_enc = VMCS_GUEST_TR_ACCESS_RIGHTS;
-			base_enc = VMCS_GUEST_TR_BASE;
-			limit_enc = VMCS_GUEST_TR_LIMIT;
-			break;
-		default:
-			kprintf("VMM: vmx_set_guest_descriptor: unknown descriptor\n");
-			err = -1;
-			goto error;
-			break;
+	case ES:
+		selector_enc = VMCS_GUEST_ES_SELECTOR;
+		rights_enc = VMCS_GUEST_ES_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_ES_BASE;
+		limit_enc = VMCS_GUEST_ES_LIMIT;
+		break;
+	case CS:
+		selector_enc = VMCS_GUEST_CS_SELECTOR;
+		rights_enc = VMCS_GUEST_CS_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_CS_BASE;
+		limit_enc = VMCS_GUEST_CS_LIMIT;
+		break;
+	case SS:
+		selector_enc = VMCS_GUEST_SS_SELECTOR;
+		rights_enc = VMCS_GUEST_SS_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_SS_BASE;
+		limit_enc = VMCS_GUEST_SS_LIMIT;
+		break;
+	case DS:
+		selector_enc = VMCS_GUEST_DS_SELECTOR;
+		rights_enc = VMCS_GUEST_DS_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_DS_BASE;
+		limit_enc = VMCS_GUEST_DS_LIMIT;
+		break;
+	case FS:
+		selector_enc = VMCS_GUEST_FS_SELECTOR;
+		rights_enc = VMCS_GUEST_FS_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_FS_BASE;
+		limit_enc = VMCS_GUEST_FS_LIMIT;
+		break;
+	case GS:
+		selector_enc = VMCS_GUEST_GS_SELECTOR;
+		rights_enc = VMCS_GUEST_GS_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_GS_BASE;
+		limit_enc = VMCS_GUEST_GS_LIMIT;
+		break;
+	case LDTR:
+		selector_enc = VMCS_GUEST_LDTR_SELECTOR;
+		rights_enc = VMCS_GUEST_LDTR_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_LDTR_BASE;
+		limit_enc = VMCS_GUEST_LDTR_LIMIT;
+		break;
+	case TR:
+		selector_enc = VMCS_GUEST_TR_SELECTOR;
+		rights_enc = VMCS_GUEST_TR_ACCESS_RIGHTS;
+		base_enc = VMCS_GUEST_TR_BASE;
+		limit_enc = VMCS_GUEST_TR_LIMIT;
+		break;
+	default:
+		kprintf("VMM: vmx_set_guest_descriptor: unknown descriptor\n");
+		err = -1;
+		goto error;
+		break;
 	}
 
 	ERROR_IF(vmwrite(selector_enc, selector));
@@ -1139,183 +1134,220 @@ vmx_handle_vmexit(void)
 
 	exit_reason = VMCS_BASIC_EXIT_REASON(vti->vmexit_reason);
 	switch (exit_reason) {
-		case EXIT_REASON_EXCEPTION:
-			dkprintf("VMM: handle_vmx_vmexit: EXIT_REASON_EXCEPTION with qualification "
-			    "%llx, interruption info %llx, interruption error %llx, instruction "
-			    "length %llx\n",
-			    (long long) vti->vmexit_qualification,
-			    (long long) vti->vmexit_interruption_info,
-			    (long long) vti->vmexit_interruption_error,
-			    (long long) vti->vmexit_instruction_length);
+	case EXIT_REASON_EXCEPTION:
+		dkprintf("VMM: handle_vmx_vmexit: "
+			 "EXIT_REASON_EXCEPTION with qualification "
+			 "%llx, interruption info %llx, "
+			 "interruption error %llx, instruction "
+			 "length %llx\n",
+			 (long long) vti->vmexit_qualification,
+			 (long long) vti->vmexit_interruption_info,
+			 (long long) vti->vmexit_interruption_error,
+			 (long long) vti->vmexit_instruction_length);
 
-			dkprintf("VMM: handle_vmx_vmexit: rax: %llx, rip: %llx, "
-			    "rsp: %llx,  rdi: %llx, rsi: %llx, %d, vti: %p, master: %p\n",
-			    (long long)vti->guest.tf_rax,
-			    (long long)vti->guest.tf_rip,
-			    (long long)vti->guest.tf_rsp,
-			    (long long)vti->guest.tf_rdi,
-			    (long long)vti->guest.tf_rsi, exit_reason, vti, curproc->p_vmm);
+		dkprintf("VMM: handle_vmx_vmexit: rax: %llx, rip: %llx, "
+			 "rsp: %llx,  rdi: %llx, "
+			 "rsi: %llx, %d, "
+			 "vti: %p, master: %p\n",
+			 (long long)vti->guest.tf_rax,
+			 (long long)vti->guest.tf_rip,
+			 (long long)vti->guest.tf_rsp,
+			 (long long)vti->guest.tf_rdi,
+			 (long long)vti->guest.tf_rsi,
+			 exit_reason, vti, curproc->p_vmm);
 
-			exception_type = VMCS_EXCEPTION_TYPE(vti->vmexit_interruption_info);
-			exception_number = VMCS_EXCEPTION_NUMBER(vti->vmexit_interruption_info);
+		exception_type =
+			VMCS_EXCEPTION_TYPE(vti->vmexit_interruption_info);
+		exception_number =
+			VMCS_EXCEPTION_NUMBER(vti->vmexit_interruption_info);
 
-			if (exception_type == VMCS_EXCEPTION_HARDWARE) {
-				switch (exception_number) {
-					case IDT_UD:
-						/*
-						 * Disabled "syscall" instruction and
-						 * now we catch it for executing
-						 */
-						dkprintf("VMM: handle_vmx_vmexit: VMCS_EXCEPTION_HARDWARE IDT_UD\n");
+		if (exception_type == VMCS_EXCEPTION_HARDWARE) {
+			switch (exception_number) {
+			case IDT_UD:
+				/*
+				 * Disabled "syscall" instruction and
+				 * now we catch it for executing
+				 */
+				dkprintf("VMM: handle_vmx_vmexit: "
+					 "VMCS_EXCEPTION_HARDWARE IDT_UD\n");
 #ifdef VMM_DEBUG
-						/* Check to see if its syscall asm instuction */
-						uint8_t instr[INSTRUCTION_MAX_LENGTH];
-						if (copyin((const void *) vti->guest.tf_rip, instr, vti->vmexit_instruction_length) &&
-						    instr_check(&syscall_asm,(void *) instr, (uint8_t) vti->vmexit_instruction_length)) {
-							kprintf("VMM: handle_vmx_vmexit: UD different from syscall: ");
-							db_disasm((db_addr_t) instr, FALSE, NULL);
-						}
+				/* Check to see if its syscall asm instuction */
+				uint8_t instr[INSTRUCTION_MAX_LENGTH];
+				if (copyin((const void *)vti->guest.tf_rip,
+					   instr,
+					   vti->vmexit_instruction_length) &&
+				    instr_check(&syscall_asm,(void *)instr,
+						(uint8_t)vti->vmexit_instruction_length)) {
+					kprintf("VMM: handle_vmx_vmexit: "
+						"UD different from syscall: ");
+					db_disasm((db_addr_t)instr, FALSE, NULL);
+				}
 #endif
-						/* Called to force a VMEXIT and invalidate TLB */
-						if (vti->guest.tf_rax == -1) {
-							vti->guest.tf_rip += vti->vmexit_instruction_length;
-							break;
-						}
-
-						vti->guest.tf_err = 2;
-						vti->guest.tf_trapno = T_FAST_SYSCALL;
-						vti->guest.tf_xflags = 0;
-
-						vti->guest.tf_rip += vti->vmexit_instruction_length;
-
-						syscall2(&vti->guest);
-
-						break;
-					case IDT_PF:
-						dkprintf("VMM: handle_vmx_vmexit: VMCS_EXCEPTION_HARDWARE IDT_PF at %llx\n",
-						    (long long) vti->guest.tf_rip);
-
-						if (vti->guest.tf_rip == 0) {
-							kprintf("VMM: handle_vmx_vmexit: Terminating...\n");
-							err = -1;
-							goto error;
-						}
-
-						vti->guest.tf_err = vti->vmexit_interruption_error;
-						vti->guest.tf_addr = vti->vmexit_qualification;
-						vti->guest.tf_xflags = 0;
-						vti->guest.tf_trapno = T_PAGEFLT;
-
-						/*
-						 * If we are a user process in the vkernel
-						 * pass the PF to the vkernel and will trigger
-						 * the user_trap()
-						 *
-						 * If we are the vkernel, send a SIGSEGV signal
-						 * to us that will trigger the execution of
-						 * kern_trap()
-						 *
-						 */
-
-						if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-							vkernel_trap(lp, &vti->guest);
-						} else {
-							trapsignal(lp, SIGSEGV, SEGV_MAPERR);
-						}
-
-						break;
-					default:
-						kprintf("VMM: handle_vmx_vmexit: VMCS_EXCEPTION_HARDWARE unknown "
-						    "number %d rip: %llx, rsp: %llx\n", exception_number,
-						    (long long)vti->guest.tf_rip, (long long)vti->guest.tf_rsp);
-						err = -1;
-						goto error;
+				/* Called to force a VMEXIT and invalidate TLB */
+				if (vti->guest.tf_rax == -1) {
+					vti->guest.tf_rip +=
+						vti->vmexit_instruction_length;
+					break;
 				}
-			} else if (exception_type == VMCS_EXCEPTION_SOFTWARE) {
-				switch (exception_number) {
-					case 3:
-						dkprintf("VMM: handle_vmx_vmexit: VMCS_EXCEPTION_SOFTWARE "
-						    "number %d rip: %llx, rsp: %llx\n", exception_number,
-						    (long long)vti->guest.tf_rip, (long long)vti->guest.tf_rsp);
 
-						vti->guest.tf_trapno = T_BPTFLT;
-						vti->guest.tf_xflags = 0;
-						vti->guest.tf_err = 0;
-						vti->guest.tf_addr = 0;
+				vti->guest.tf_err = 2;
+				vti->guest.tf_trapno = T_FAST_SYSCALL;
+				vti->guest.tf_xflags = 0;
 
-						vti->guest.tf_rip += vti->vmexit_instruction_length;
+				vti->guest.tf_rip +=
+					vti->vmexit_instruction_length;
 
-						trap(&vti->guest);
+				syscall2(&vti->guest);
+				break;
+			case IDT_PF:
+				dkprintf("VMM: handle_vmx_vmexit: "
+					 "VMCS_EXCEPTION_HARDWARE IDT_PF "
+					 "at %llx\n",
+					 (long long) vti->guest.tf_rip);
 
-						break;
-					default:
-						kprintf("VMM: handle_vmx_vmexit: VMCS_EXCEPTION_SOFTWARE unknown "
-						    "number %d rip: %llx, rsp: %llx\n", exception_number,
-						    (long long)vti->guest.tf_rip, (long long)vti->guest.tf_rsp);
-						err = -1;
-						goto error;
+#if 0
+				if (vti->guest.tf_rip == 0) {
+					kprintf("VMM: handle_vmx_vmexit: "
+						"Terminating...\n");
+					err = -1;
+					goto error;
 				}
-			} else {
-				kprintf("VMM: handle_vmx_vmexit: VMCS_EXCEPTION_ %d unknown\n", exception_type);
+#endif
+
+				vti->guest.tf_err =
+					vti->vmexit_interruption_error;
+				vti->guest.tf_addr =
+					vti->vmexit_qualification;
+				vti->guest.tf_xflags = 0;
+				vti->guest.tf_trapno = T_PAGEFLT;
+
+				/*
+				 * If we are a user process in the vkernel
+				 * pass the PF to the vkernel and will trigger
+				 * the user_trap()
+				 *
+				 * If we are the vkernel, send a SIGSEGV signal
+				 * to us that will trigger the execution of
+				 * kern_trap()
+				 *
+				 */
+
+				if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
+					vkernel_trap(lp, &vti->guest);
+				} else {
+					trapsignal(lp, SIGSEGV, SEGV_MAPERR);
+				}
+
+				break;
+			default:
+				kprintf("VMM: handle_vmx_vmexit: "
+					"VMCS_EXCEPTION_HARDWARE unknown "
+					"number %d rip: %llx, rsp: %llx\n",
+					exception_number,
+					(long long)vti->guest.tf_rip,
+					(long long)vti->guest.tf_rsp);
 				err = -1;
 				goto error;
 			}
-			break;
-		case EXIT_REASON_EXT_INTR:
-			dkprintf("VMM: handle_vmx_vmexit: EXIT_REASON_EXT_INTR\n");
-			break;
-		case EXIT_REASON_CPUID:
-			dkprintf("VMM: handle_vmx_vmexit: EXIT_REASON_CPUID\n");
+		} else if (exception_type == VMCS_EXCEPTION_SOFTWARE) {
+			switch (exception_number) {
+			case 3:
+				dkprintf("VMM: handle_vmx_vmexit: "
+					 "VMCS_EXCEPTION_SOFTWARE "
+					 "number %d rip: %llx, rsp: %llx\n",
+					 exception_number,
+					 (long long)vti->guest.tf_rip,
+					 (long long)vti->guest.tf_rsp);
 
-			/*
-			 * Execute CPUID instruction and pass
-			 * the result to the vkernel
-			 */
+				vti->guest.tf_trapno = T_BPTFLT;
+				vti->guest.tf_xflags = 0;
+				vti->guest.tf_err = 0;
+				vti->guest.tf_addr = 0;
 
-			func = vti->guest.tf_rax;
-			do_cpuid(func, regs);
+				vti->guest.tf_rip +=
+					vti->vmexit_instruction_length;
 
-			vti->guest.tf_rax = regs[0];
-			vti->guest.tf_rbx = regs[1];
-			vti->guest.tf_rcx = regs[2];
-			vti->guest.tf_rdx = regs[3];
-
-			vti->guest.tf_rip += vti->vmexit_instruction_length;
-
-			break;
-		case EXIT_REASON_EPT_FAULT:
-			/*
-			 * EPT_FAULT are resolved like normal PFs. Nothing special
-			 * - get the fault type
-			 * - get the fault address (which is a GPA)
-			 * - execute vm_fault on the vm_map
-			 */
-			dkprintf("VMM: handle_vmx_vmexit: EXIT_REASON_EPT_FAULT with qualification %lld,"
-			    "GPA: %llx, fault_Type: %d\n",(long long) vti->vmexit_qualification,
-			    (unsigned long long) vti->guest_physical_address, fault_type);
-
-			fault_type = vmx_ept_fault_type(vti->vmexit_qualification);
-
-			if (fault_type & VM_PROT_WRITE)
-				fault_flags = VM_FAULT_DIRTY;
-			else
-				fault_flags = VM_FAULT_NORMAL;
-
-			rv = vm_fault(&curthread->td_lwp->lwp_vmspace->vm_map,
-			    trunc_page(vti->guest_physical_address), fault_type, fault_flags);
-
-			if (rv != KERN_SUCCESS) {
-				kprintf("VMM: handle_vmx_vmexit: EXIT_REASON_EPT_FAULT couldn't resolve %llx\n",
-				    (unsigned long long) vti->guest_physical_address);
+				trap(&vti->guest);
+				break;
+			default:
+				kprintf("VMM: handle_vmx_vmexit: "
+					"VMCS_EXCEPTION_SOFTWARE unknown "
+					"number %d rip: %llx, rsp: %llx\n",
+					exception_number,
+					(long long)vti->guest.tf_rip,
+					(long long)vti->guest.tf_rsp);
 				err = -1;
 				goto error;
 			}
-			break;
-		default:
-			kprintf("VMM: handle_vmx_vmexit: unknown exit reason: %d with qualification %lld\n",
-			    exit_reason, (long long) vti->vmexit_qualification);
+		} else {
+			kprintf("VMM: handle_vmx_vmexit: "
+				"VMCS_EXCEPTION_ %d unknown\n",
+				exception_type);
 			err = -1;
 			goto error;
+		}
+		break;
+	case EXIT_REASON_EXT_INTR:
+		dkprintf("VMM: handle_vmx_vmexit: EXIT_REASON_EXT_INTR\n");
+		break;
+	case EXIT_REASON_CPUID:
+		dkprintf("VMM: handle_vmx_vmexit: EXIT_REASON_CPUID\n");
+
+		/*
+		 * Execute CPUID instruction and pass
+		 * the result to the vkernel
+		 */
+		func = vti->guest.tf_rax;
+		do_cpuid(func, regs);
+
+		vti->guest.tf_rax = regs[0];
+		vti->guest.tf_rbx = regs[1];
+		vti->guest.tf_rcx = regs[2];
+		vti->guest.tf_rdx = regs[3];
+
+		vti->guest.tf_rip += vti->vmexit_instruction_length;
+
+		break;
+	case EXIT_REASON_EPT_FAULT:
+		/*
+		 * EPT_FAULT are resolved like normal PFs. Nothing special
+		 * - get the fault type
+		 * - get the fault address (which is a GPA)
+		 * - execute vm_fault on the vm_map
+		 */
+		dkprintf("VMM: handle_vmx_vmexit: "
+			 "EXIT_REASON_EPT_FAULT with qualification %lld,"
+			 "GPA: %llx, fault_Type: %d\n",
+			 (long long)vti->vmexit_qualification,
+			 (unsigned long long)vti->guest_physical_address,
+			 fault_type);
+
+		fault_type = vmx_ept_fault_type(vti->vmexit_qualification);
+
+		if (fault_type & VM_PROT_WRITE)
+			fault_flags = VM_FAULT_DIRTY;
+		else
+			fault_flags = VM_FAULT_NORMAL;
+
+		rv = vm_fault(&curthread->td_lwp->lwp_vmspace->vm_map,
+			      trunc_page(vti->guest_physical_address),
+			      fault_type, fault_flags);
+
+		if (rv != KERN_SUCCESS) {
+			kprintf("VMM: handle_vmx_vmexit: "
+				"EXIT_REASON_EPT_FAULT couldn't resolve %jx\n",
+				(intmax_t)vti->guest_physical_address);
+			err = -1;
+			goto error;
+		}
+		break;
+	default:
+		kprintf("VMM: handle_vmx_vmexit: "
+			"unknown exit reason: %d with qualification %lld\n",
+			exit_reason,
+			(long long)vti->vmexit_qualification);
+		err = -1;
+		goto error;
 	}
 	return 0;
 error:
@@ -1340,6 +1372,7 @@ vmx_vmrun(void)
 	save_frame = td->td_lwp->lwp_md.md_regs;
 	td->td_lwp->lwp_md.md_regs = &vti->guest;
 restart:
+	lwkt_user_yield();
 	crit_enter();
 
 	/*
@@ -1358,8 +1391,14 @@ restart:
 	 * - check for ASTFLTs
 	 * - loop again until there are no ASTFLTs
 	 */
+#if 0
+	{
+		static int xcounter;
+		if ((++xcounter & 65535) == 0)
+			kprintf("x");
+	}
+#endif
 	cpu_disable_intr();
-	splz();
 	if (gd->gd_reqflags & RQF_AST_MASK) {
 		atomic_clear_int(&gd->gd_reqflags, RQF_AST_SIGNAL);
 		cpu_enable_intr();
