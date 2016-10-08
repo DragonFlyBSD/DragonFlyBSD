@@ -151,7 +151,6 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
 	int fd = -1;
 	const char *p;
-	char *dirpath;
 	char buf[64];
 	uintmax_t dummy_tid;
 	struct stat st;
@@ -198,10 +197,9 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	 * "@@%jx:%d" convers both "@@-1:%05d" format for master PFS
 	 * and "@@0x%016jx:%05d" format for slave PFS.
 	 */
-	dirpath = getdir(path);
-	if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2)
-		fd = open(dirpath, O_RDONLY);
-	free(dirpath);
+	if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+		fd = open(dirname(path), O_RDONLY);
+	}
 
 	return(fd);
 }
