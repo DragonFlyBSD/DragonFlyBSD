@@ -132,19 +132,22 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 
 	clrpfs(pfs, NULL, -1);
 
-	fd = scanpfsid(pfs, path);
+	/*
+	 * Extract the PFS id.
+	 * dirname(path) is supposed to be a directory in PFS#0.
+	 */
+	if (scanpfsid(pfs, path) == 0) {
+		path = dirname(path); /* strips trailing / first if any */
+	}
+
+	/*
+	 * Open the path regardless of scanpfsid() result, since some
+	 * commands can take a regular file/directory (e.g. pfs-status).
+	 */
+	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		/*
-		 * Once it comes here the hammer command may fail even if
-		 * this function returns valid file descriptor, however this
-		 * open still needs to be here as some PFS commands can take
-		 * a regular file or directory path (e.g. hammer pfs-status).
-		 */
-		fd = open(path, O_RDONLY);
-		if (fd < 0) {
-			fprintf(stderr, "Failed to open %s\n", path);
-			exit(1);
-		}
+		fprintf(stderr, "Failed to open %s\n", path);
+		exit(1);
 	}
 
 	/*
@@ -153,7 +156,7 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	 * doesn't depend on inode attributes if it's set to a valid id.
 	 */
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs) < 0) {
-		fprintf(stderr, "Cannot access PFS %s: %s\n",
+		fprintf(stderr, "Cannot access %s: %s\n",
 			path, strerror(errno));
 		exit(1);
 	}
@@ -161,15 +164,11 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 }
 
 /*
- * Extract the PFS id from path.  Return a file descriptor of
- * the parent directory which is expected to be located under
- * the root filesystem (not another PFS).
+ * Extract the PFS id from path.
  */
 static int
 scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
-	int fd = -1;
-	const char *p = path;
 	char *linkpath;
 	char buf[64];
 	uintmax_t dummy_tid;
@@ -194,7 +193,7 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 			return(-1);
 		}
 		free(linkpath);
-		p = buf;
+		path = buf;
 	}
 
 	/*
@@ -205,25 +204,23 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	 * One could also directly use the PFS and results the same.
 	 * Get rid of it before we extract the PFS id.
 	 */
-	if (strchr(p, '/')) {
-		p = basename(p);
-		if (p == NULL)
+	if (strchr(path, '/')) {
+		path = basename(path); /* strips trailing / first if any */
+		if (path == NULL)
 			err(1, "basename");
 	}
 
 	/*
-	 * Test and extract the PFS id from the link, and then open
-	 * and return fd of the parent directory of that link. fd is
-	 * not so important as long as the right PFS id is extracted.
-	 *
+	 * Test and extract the PFS id from the link.
 	 * "@@%jx:%d" convers both "@@-1:%05d" format for master PFS
 	 * and "@@0x%016jx:%05d" format for slave PFS.
 	 */
-	if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
-		fd = open(dirname(path), O_RDONLY);
+	if (sscanf(path, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+		assert(pfs->pfs_id > 0);
+		return(0);
 	}
 
-	return(fd);
+	return(-1);
 }
 
 void
