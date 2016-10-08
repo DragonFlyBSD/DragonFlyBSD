@@ -62,36 +62,6 @@ clrpfs(struct hammer_ioc_pseudofs_rw *pfs, hammer_pseudofs_data_t pfsd,
 }
 
 /*
- * Return a directory that contains path.
- * A caller need to free the returned pointer.
- * This behaves differently from dirname(3) with trailing /.
- */
-static char*
-getdir(const char *path)
-{
-	char *dirpath;
-
-	dirpath = strdup(path);
-
-	if (dirpath[strlen(dirpath) - 1] == '/') {
-		while (dirpath[strlen(dirpath) - 1] == '/')
-			dirpath[strlen(dirpath) - 1] = 0;
-	} else if (strrchr(dirpath, '/')) {
-		*strrchr(dirpath, '/') = 0;
-	} else {
-		free(dirpath);
-		dirpath = strdup(".");
-	}
-
-	if (strlen(dirpath) == 0) {
-		free(dirpath);
-		dirpath = strdup("/");
-	}
-
-	return(dirpath);
-}
-
-/*
  * If path is a symlink, return strdup'd path.
  * If it's a directory via symlink, strip trailing /
  * from strdup'd path and return the symlink.
@@ -290,13 +260,16 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	if (lstat(path, &st) == 0) {
 		fprintf(stderr, "Cannot create %s, file exists!\n", path);
 		exit(1);
+	} else if (path[strlen(path) - 1] == '/') {
+		fprintf(stderr, "Invalid PFS path %s with trailing /\n", path);
+		exit(1);
 	}
 
 	/*
 	 * Figure out the directory prefix, taking care of degenerate
 	 * cases.
 	 */
-	dirpath = getdir(path);
+	dirpath = dirname(path);
 	fd = open(dirpath, O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr, "Cannot open directory %s\n", dirpath);
