@@ -213,7 +213,9 @@ static void
 alloc_vmxon_regions(void)
 {
 	int cpu;
-	pcpu_info = kmalloc(ncpus * sizeof(struct vmx_pcpu_info), M_TEMP, M_WAITOK | M_ZERO);
+
+	pcpu_info = kmalloc(ncpus * sizeof(struct vmx_pcpu_info),
+			    M_TEMP, M_WAITOK | M_ZERO);
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
 
@@ -495,8 +497,10 @@ execute_vmxoff(void *dummy)
 {
 	invept_desc_t desc = { 0 };
 
-	if (invept(INVEPT_TYPE_ALL_CONTEXTS, (uint64_t*) &desc))
-		kprintf("VMM: execute_vmxoff: invet failed on cpu%d\n", mycpu->gd_cpuid);
+	if (invept(INVEPT_TYPE_ALL_CONTEXTS, (uint64_t*) &desc)) {
+		kprintf("VMM: execute_vmxoff: "
+			"invet failed on cpu%d\n", mycpu->gd_cpuid);
+	}
 
 	vmxoff();
 
@@ -511,37 +515,35 @@ execute_vmclear(void *data)
 	int err;
 	globaldata_t gd = mycpu;
 
-	if (pcpu_info[gd->gd_cpuid].loaded_vmx == vti) {
-		/*
-		 * Must set vti->launched to zero after vmclear'ing to
-		 * force a vmlaunch the next time.
-		 *
-		 * Must not clear the loaded_vmx field until after we call
-		 * vmclear on the region.  This field triggers the interlocked
-		 * cpusync from another cpu trying to destroy or reuse
-		 * the vti.  If we clear the field first, the other cpu will
-		 * not interlock and may race our vmclear() on the underlying
-		 * memory.
-		 */
+	/*
+	 * Must set vti->launched to zero after vmclear'ing to
+	 * force a vmlaunch the next time.
+	 *
+	 * Must not clear the loaded_vmx field until after we call
+	 * vmclear on the region.  This field triggers the interlocked
+	 * cpusync from another cpu trying to destroy or reuse
+	 * the vti.  If we clear the field first, the other cpu will
+	 * not interlock and may race our vmclear() on the underlying
+	 * memory.
+	 */
+	if (vti->last_cpu != -1) {
+		invept(INVEPT_TYPE_SINGLE_CONTEXT,
+		       (uint64_t*)&vti->invept_desc);
 		ERROR_IF(vmclear(vti->vmcs_region));
-error:
-		pcpu_info[gd->gd_cpuid].loaded_vmx = NULL;
-		vti->launched = 0;
 	}
-	return;
+error:
+	if (pcpu_info[gd->gd_cpuid].loaded_vmx == vti) {
+		pcpu_info[gd->gd_cpuid].loaded_vmx = NULL;
+	}
+	vti->launched = 0;
+	vti->last_cpu = -1;
 }
 
 static int
 execute_vmptrld(struct vmx_thread_info *vti)
 {
 	globaldata_t gd = mycpu;
-
-	/*
-	 * Must vmclear previous active vcms if it is different.
-	 */
-	if (pcpu_info[gd->gd_cpuid].loaded_vmx &&
-	    pcpu_info[gd->gd_cpuid].loaded_vmx != vti)
-		execute_vmclear(pcpu_info[gd->gd_cpuid].loaded_vmx);
+	int error;
 
 	/*
 	 * Make this the current VMCS.  Must set loaded_vmx field
@@ -551,12 +553,14 @@ execute_vmptrld(struct vmx_thread_info *vti)
 	 * a vmlaunch.
 	 */
 	if (pcpu_info[gd->gd_cpuid].loaded_vmx != vti) {
-		vti->launched = 0;
+		/* current launched state does not change */
+		vti->last_cpu = gd->gd_cpuid;
+		error = vmptrld(vti->vmcs_region);
 		pcpu_info[gd->gd_cpuid].loaded_vmx = vti;
-		return (vmptrld(vti->vmcs_region));
 	} else {
-		return (0);
+		error = 0;
 	}
+	return error;
 }
 
 static int
@@ -757,14 +761,14 @@ vmx_vminit_master(struct vmm_guest_options *options)
 static int
 vmx_vminit(struct vmm_guest_options *options)
 {
-	struct vmx_thread_info * vti;
-	int err;
+	struct vmx_thread_info *vti;
 	struct tls_info guest_fs = curthread->td_tls.info[0];
 	struct tls_info guest_gs = curthread->td_tls.info[1];
+	globaldata_t gd;
+	int err;
 
-
-	vti = kmalloc(sizeof(struct vmx_thread_info), M_TEMP, M_WAITOK | M_ZERO);
-	curthread->td_vmm = (void*) vti;
+	vti = kmalloc(sizeof(*vti), M_TEMP, M_WAITOK | M_ZERO);
+	curthread->td_vmm = (void *)vti;
 
 	if (options->master) {
 		vmx_vminit_master(options);
@@ -779,11 +783,10 @@ vmx_vminit(struct vmm_guest_options *options)
 	vti->guest.tf_rflags &= ~PSL_C;
 
 	vti->vmcs_region_na = kmalloc(vmx_region_size + VMXON_REGION_ALIGN_SIZE,
-		    M_TEMP,
-		    M_WAITOK | M_ZERO);
+				      M_TEMP, M_WAITOK | M_ZERO);
 
 	/* Align address */
-	vti->vmcs_region = (unsigned char*) VMXON_REGION_ALIGN(vti->vmcs_region_na);
+	vti->vmcs_region = (unsigned char*)VMXON_REGION_ALIGN(vti->vmcs_region_na);
 	vti->last_cpu = -1;
 
 	vti->guest_cr3 = options->guest_cr3;
@@ -795,10 +798,9 @@ vmx_vminit(struct vmm_guest_options *options)
 	/*
 	 * vmclear the vmcs to initialize it.
 	 */
-	ERROR_IF(vmclear(vti->vmcs_region));
-
 	crit_enter();
 
+	ERROR_IF(vmclear(vti->vmcs_region));
 	ERROR_IF(execute_vmptrld(vti));
 
 	/* Load the VMX controls */
@@ -903,9 +905,29 @@ vmx_vminit(struct vmm_guest_options *options)
 	 */
 	ERROR_IF(vmwrite(VMCS_LINK_POINTER, ~0ULL));
 
-	/* The pointer to the EPT pagetable */
+	/*
+	 * The pointer to the EPT pagetable
+	 */
 	ERROR_IF(vmwrite(VMCS_EPTP, vmx_eptp(vti->vmm_cr3)));
 
+	/*
+	 * pcpu fields.  These change if the vti migrates between host
+	 * cpus.  Since we've already set vti->last_cpu, we must also
+	 * initialize the pcpu fields.
+	 */
+	gd = mycpu;
+	ERROR_IF(vmwrite(VMCS_HOST_GS_BASE, (uint64_t)gd));
+	ERROR_IF(vmwrite(VMCS_HOST_TR_BASE, (uint64_t)&gd->gd_prvspace->mdglobaldata.gd_common_tss));
+
+	ERROR_IF(vmwrite(VMCS_HOST_GDTR_BASE, (uint64_t)&gdt[gd->gd_cpuid * NGDT]));
+	ERROR_IF(vmwrite(VMCS_HOST_IDTR_BASE, (uint64_t)r_idt_arr[gd->gd_cpuid].rd_base));
+
+	ERROR_IF(vmwrite(VMCS_GUEST_GDTR_BASE, (uint64_t)&gdt[gd->gd_cpuid * NGDT]));
+	ERROR_IF(vmwrite(VMCS_GUEST_GDTR_LIMIT, (uint64_t)(NGDT * sizeof(gdt[0]) - 1)));
+
+	/*
+	 * Finally, the ept descriptor.
+	 */
 	vti->invept_desc.eptp = vmx_eptp(vti->vmm_cr3);
 
 	crit_exit();
@@ -931,16 +953,23 @@ vmx_vmdestroy(void)
 
 	if (vti != NULL) {
 		vmx_check_cpu_migration();
-		if (vti->vmcs_region &&
-		    pcpu_info[mycpu->gd_cpuid].loaded_vmx == vti)
-			execute_vmclear(vti);
+		execute_vmclear(vti);
+#if 0
+		{
+		    invept_desc_t desc = { 0 };
+
+		    invept(INVEPT_TYPE_ALL_CONTEXTS, (uint64_t*) &desc);
+		}
+#endif
 
 		if (vti->vmcs_region_na != NULL) {
 			kfree(vti->vmcs_region_na, M_TEMP);
-			kfree(vti, M_TEMP);
 			error = 0;
 		}
+
 		curthread->td_vmm = NULL;
+		kfree(vti, M_TEMP);
+
 		lwkt_gettoken(&p->p_token);
 		if (p->p_nthreads == 1) {
 			kfree(p->p_vmm, M_TEMP);
@@ -959,29 +988,28 @@ vmx_vmdestroy(void)
 static int
 vmx_check_cpu_migration(void)
 {
-	struct vmx_thread_info * vti;
+	struct vmx_thread_info *vti;
 	struct globaldata *gd;
 	cpumask_t mask;
 	int err;
 
 	gd = mycpu;
-	vti = (struct vmx_thread_info *) curthread->td_vmm;
+	vti = (struct vmx_thread_info *)curthread->td_vmm;
 	ERROR_IF(vti == NULL);
 
-	if (vti->last_cpu != -1 && vti->last_cpu != gd->gd_cpuid &&
-	    pcpu_info[vti->last_cpu].loaded_vmx == vti) {
+	if (vti->last_cpu != -1 && vti->last_cpu != gd->gd_cpuid) {
 		/*
-		 * Do not reset last_cpu to -1 here, leave it caching
-		 * the cpu whos per-cpu fields the VMCS is synchronized
-		 * with.  The pcpu_info[] check prevents unecessary extra
-		 * cpusyncs.
+		 * Clear the context on the remote cpu if it is still
+		 * holding it (can race, we check again in the callback).
 		 */
-		dkprintf("VMM: cpusync from %d to %d\n",
-			 gd->gd_cpuid, vti->last_cpu);
-
-		/* Clear the VMCS area if ran on another CPU */
 		CPUMASK_ASSBIT(mask, vti->last_cpu);
 		lwkt_cpusync_simple(mask, execute_vmclear, (void *)vti);
+
+		/*
+		 * Remote cpu may have raced us, we must make sure that
+		 * any reads were not reordered before the check.
+		 */
+		cpu_lfence();
 	}
 	return 0;
 error:
@@ -997,12 +1025,12 @@ error:
 static inline int
 vmx_handle_cpu_migration(void)
 {
-	struct vmx_thread_info * vti;
+	struct vmx_thread_info *vti;
 	struct globaldata *gd;
 	int err;
 
 	gd = mycpu;
-	vti = (struct vmx_thread_info *) curthread->td_vmm;
+	vti = (struct vmx_thread_info *)curthread->td_vmm;
 	ERROR_IF(vti == NULL);
 
 	if (vti->last_cpu != gd->gd_cpuid) {
@@ -1021,17 +1049,9 @@ vmx_handle_cpu_migration(void)
 		ERROR_IF(vmwrite(VMCS_HOST_GDTR_BASE, (uint64_t) &gdt[gd->gd_cpuid * NGDT]));
 		ERROR_IF(vmwrite(VMCS_HOST_IDTR_BASE, (uint64_t) r_idt_arr[gd->gd_cpuid].rd_base));
 
-
 		/* Guest related register */
 		ERROR_IF(vmwrite(VMCS_GUEST_GDTR_BASE, (uint64_t) &gdt[gd->gd_cpuid * NGDT]));
 		ERROR_IF(vmwrite(VMCS_GUEST_GDTR_LIMIT, (uint64_t) (NGDT * sizeof(gdt[0]) - 1)));
-
-		/*
-		 * Indicates which cpu the per-cpu fields are synchronized
-		 * with.  Does not indicate whether the vmcs is active on
-		 * that particular cpu.
-		 */
-		vti->last_cpu = gd->gd_cpuid;
 	} else if (pcpu_info[gd->gd_cpuid].loaded_vmx != vti) {
 		/*
 		 * We only need to vmptrld
@@ -1039,7 +1059,6 @@ vmx_handle_cpu_migration(void)
 		dkprintf("VMM: vmx_handle_cpu_migration: vmcs is not loaded\n");
 
 		ERROR_IF(execute_vmptrld(vti));
-
 	} /* else we don't need to do anything */
 	return 0;
 error:
@@ -1047,7 +1066,8 @@ error:
 	return err;
 }
 
-/* Load information about VMexit
+/*
+ * Load information about VMexit
  *
  * We still are with interrupts disabled/critical secion
  * because we must operate with the VMCS on the CPU
@@ -1357,7 +1377,7 @@ error:
 static int
 vmx_vmrun(void)
 {
-	struct vmx_thread_info * vti;
+	struct vmx_thread_info *vti;
 	struct globaldata *gd;
 	int err;
 	int ret;
@@ -1368,7 +1388,7 @@ vmx_vmrun(void)
 	struct trapframe *save_frame;
 	thread_t td = curthread;
 
-	vti = (struct vmx_thread_info *) td->td_vmm;
+	vti = (struct vmx_thread_info *)td->td_vmm;
 	save_frame = td->td_lwp->lwp_md.md_regs;
 	td->td_lwp->lwp_md.md_regs = &vti->guest;
 restart:
@@ -1376,12 +1396,11 @@ restart:
 	crit_enter();
 
 	/*
-	 * This can change the cpu we are running on.
+	 * The userexit can change the cpu we are running on.
 	 */
 	trap_handle_userexit(&vti->guest, sticks);
 	gd = mycpu;
 
-	ERROR2_IF(vti == NULL);
 	ERROR2_IF(vmx_check_cpu_migration());
 	ERROR2_IF(vmx_handle_cpu_migration());
 
@@ -1391,13 +1410,6 @@ restart:
 	 * - check for ASTFLTs
 	 * - loop again until there are no ASTFLTs
 	 */
-#if 0
-	{
-		static int xcounter;
-		if ((++xcounter & 65535) == 0)
-			kprintf("x");
-	}
-#endif
 	cpu_disable_intr();
 	if (gd->gd_reqflags & RQF_AST_MASK) {
 		atomic_clear_int(&gd->gd_reqflags, RQF_AST_SIGNAL);
@@ -1408,6 +1420,10 @@ restart:
 		/* CURRENT CPU CAN CHANGE */
 		goto restart;
 	}
+
+	/*
+	 * shouldn't be possible - REMOVE ME
+	 */
 	if (vti->last_cpu != gd->gd_cpuid) {
 		cpu_enable_intr();
 		crit_exit();
@@ -1443,17 +1459,20 @@ restart:
 		}
 
 		/*
-		 * More complex.  After sleeping we have to re-test
-		 * everything.
+		 * More complex, another thread has locked the VMM
+		 * (probably to do an EPT invalidation).  We have to
+		 * sleep or busy-wait until it is no longer locked.
 		 */
 		ATOMIC_CPUMASK_NANDBIT(td->td_proc->p_vmm_cpumask,
 				       gd->gd_cpuid);
 		cpu_enable_intr();
+#if 0
 		tsleep_interlock(&td->td_proc->p_vmm_cpulock, 0);
 		if (td->td_proc->p_vmm_cpulock & CPULOCK_EXCL) {
 			tsleep(&td->td_proc->p_vmm_cpulock, PINTERLOCKED,
 			       "vmminvl", hz);
 		}
+#endif
 		crit_exit();
 		goto restart;
 	}
@@ -1501,14 +1520,26 @@ restart:
 		vti->eptgen = td->td_proc->p_vmspace->vm_pmap.pm_invgen;
 
 		ERROR_IF(invept(INVEPT_TYPE_SINGLE_CONTEXT,
-		    (uint64_t*)&vti->invept_desc));
+				(uint64_t*)&vti->invept_desc));
 	}
+#if 0
+		{
+		    invept_desc_t desc = { 0 };
 
-	if (vti->launched) { /* vmresume called from vmx_trap.s */
+		    invept(INVEPT_TYPE_ALL_CONTEXTS, (uint64_t*) &desc);
+		}
+#endif
+
+	if (vti->launched) {
+		/*
+		 * vmresume called from vmx_trap.s
+		 */
 		dkprintf("\n\nVMM: vmx_vmrun: vmx_resume\n");
 		ret = vmx_resume(vti);
-
-	} else { /* vmlaunch called from vmx_trap.s */
+	} else {
+		/*
+		 * vmlaunch called from vmx_trap.s
+		 */
 		dkprintf("\n\nVMM: vmx_vmrun: vmx_launch\n");
 		vti->launched = 1;
 		ret = vmx_launch(vti);
@@ -1517,11 +1548,13 @@ restart:
 	/*
 	 * This is our return point from the vmlaunch/vmresume
 	 * There are two situations:
-	 * - the vmlaunch/vmresume executed successfully and they
+	 *
+	 * - The vmlaunch/vmresume executed successfully and they
 	 *   would return through "vmx_vmexit" which will restore
 	 *   the state (registers) and return here with the ret
 	 *   set to VM_EXIT (ret is actually %rax)
-	 * - the vmlaunch/vmresume failed to execute and will return
+	 *
+	 * - The vmlaunch/vmresume failed to execute and will return
 	 *   immediately with ret set to the error code
 	 */
 	if (ret == VM_EXIT) {
@@ -1540,8 +1573,12 @@ restart:
 
 		/*
 		 * Handle the VMEXIT reason
-		 * - if successful we VMENTER again
-		 * - if not, we exit
+		 * - if not successful, we exit
+		 * - otherwise we loop up and VMENTER again
+		 *
+		 * NOTE: current cpu can change (e.g. vmexit reason is
+		 *	 syscall by vkernel kernel to run a vkernel user
+		 *	 thread).
 		 */
 		if (vmx_handle_vmexit())
 			goto done;
@@ -1551,7 +1588,6 @@ restart:
 		 * VM execution
 		 */
 		goto restart;
-
 	} else {
 		vti->launched = 0;
 
@@ -1589,6 +1625,7 @@ error2:
 	/*atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);*/
 	crit_exit();
 	kprintf("VMM: vmx_vmrun failed\n");
+
 	return err;
 }
 

@@ -122,6 +122,11 @@ out:
 	return (error);
 }
 
+/*
+ * The remote IPI will force the cpu out of any VMM mode it is
+ * in.  When combined with bumping pm_invgen we can ensure that
+ * INVEPT will be called when it returns.
+ */
 static void
 vmm_exit_vmm(void *dummy __unused)
 {
@@ -143,7 +148,8 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	crit_enter_id("vmm_inval");
 
 	/*
-	 * Acquire CPULOCK_EXCL, spin while we wait.
+	 * Acquire CPULOCK_EXCL, spin while we wait.  This will prevent
+	 * any other cpu trying to use related VMMs to wait for us.
 	 */
 	KKASSERT(CPUMASK_TESTMASK(p->p_vmm_cpumask, mycpu->gd_cpumask) == 0);
 	for (;;) {
@@ -177,6 +183,15 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 		}
 	}
 
+#ifndef _KERNEL_VIRTUAL
+	/*
+	 * Ensure that any new entries into VMM mode using
+	 * vmm's managed under this process will issue a
+	 * INVEPT before resuming.
+	 */
+	atomic_add_acq_long(&p->p_vmspace->vm_pmap.pm_invgen, 1);
+#endif
+
 	/*
 	 * Make the requested modification, wakeup any waiters.
 	 */
@@ -185,8 +200,14 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 		copyout(&val, uap->dstaddr, sizeof(long));
 	}
 
+	/*
+	 * VMMs on remote cpus will not be re-entered until we
+	 * clear the lock.
+	 */
 	atomic_clear_int(&p->p_vmm_cpulock, CPULOCK_EXCL);
+#if 0
 	wakeup(&p->p_vmm_cpulock);
+#endif
 
 	crit_exit_id("vmm_inval");
 

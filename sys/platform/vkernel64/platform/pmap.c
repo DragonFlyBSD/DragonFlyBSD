@@ -800,7 +800,9 @@ pmap_kextract(vm_offset_t va)
  * are not managed.  Mappings must be immediately accessible on all cpus.
  *
  * Call pmap_inval_pte() to invalidate the virtual pte and clean out the
- * real pmap and handle related races before storing the new vpte.
+ * real pmap and handle related races before storing the new vpte.  The
+ * new semantics for kenter require use to do an UNCONDITIONAL invalidation,
+ * because the entry may have previously been cleared without an invalidation.
  */
 void
 pmap_kenter(vm_offset_t va, vm_paddr_t pa)
@@ -811,8 +813,14 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 	npte = pa | VPTE_RW | VPTE_V | VPTE_U;
 	pte = vtopte(va);
+
+#if 1
+	*pte = 0;
+	pmap_inval_pte(pte, &kernel_pmap, va);
+#else
 	if (*pte & VPTE_V)
 		pmap_inval_pte(pte, &kernel_pmap, va);
+#endif
 	*pte = npte;
 }
 
@@ -882,9 +890,8 @@ pmap_kremove(vm_offset_t va)
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
 	pte = vtopte(va);
-	if (*pte & VPTE_V)
-		pmap_inval_pte(pte, &kernel_pmap, va);
 	*pte = 0;
+	pmap_inval_pte(pte, &kernel_pmap, va);
 }
 
 /*
@@ -903,9 +910,8 @@ pmap_kremove_quick(vm_offset_t va)
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
 	pte = vtopte(va);
-	if (*pte & VPTE_V)
-		pmap_inval_pte(pte, &kernel_pmap, va); /* NOT _quick */
 	*pte = 0;
+	pmap_inval_pte(pte, &kernel_pmap, va); /* NOT _quick */
 }
 
 void
@@ -947,6 +953,7 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
+		*pte = 0;
 		pmap_inval_pte(pte, &kernel_pmap, va);
 		*pte = VM_PAGE_TO_PHYS(*m) | VPTE_RW | VPTE_V | VPTE_U;
 		va += PAGE_SIZE;
