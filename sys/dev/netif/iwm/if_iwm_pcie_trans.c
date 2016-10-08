@@ -494,11 +494,13 @@ iwm_apm_init(struct iwm_softc *sc)
 		if (iwm_nic_lock(sc)) {
 			iwm_read_prph(sc, IWM_OSC_CLK);
 			iwm_read_prph(sc, IWM_OSC_CLK);
+			iwm_nic_unlock(sc);
 		}
 		iwm_set_bits_prph(sc, IWM_OSC_CLK, IWM_OSC_CLK_FORCE_CONTROL);
 		if (iwm_nic_lock(sc)) {
 			iwm_read_prph(sc, IWM_OSC_CLK);
 			iwm_read_prph(sc, IWM_OSC_CLK);
+			iwm_nic_unlock(sc);
 		}
 	}
 
@@ -513,6 +515,7 @@ iwm_apm_init(struct iwm_softc *sc)
 		if (iwm_nic_lock(sc)) {
 			iwm_write_prph(sc, IWM_APMG_CLK_EN_REG,
 			    IWM_APMG_CLK_VAL_DMA_CLK_RQT);
+			iwm_nic_unlock(sc);
 		}
 		DELAY(20);
 
@@ -524,6 +527,7 @@ iwm_apm_init(struct iwm_softc *sc)
 		if (iwm_nic_lock(sc)) {
 			iwm_write_prph(sc, IWM_APMG_RTC_INT_STT_REG,
 			    IWM_APMG_RTC_INT_STT_RFKILL);
+			iwm_nic_unlock(sc);
 		}
 	}
  out:
