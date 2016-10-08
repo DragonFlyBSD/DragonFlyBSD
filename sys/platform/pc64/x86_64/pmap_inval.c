@@ -144,8 +144,8 @@ static void
 pmap_inval_done(pmap_t pmap)
 {
 	if (pmap != &kernel_pmap) {
-		atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
 		atomic_add_acq_long(&pmap->pm_invgen, 1);
+		atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
 	}
 	crit_exit_id("inval");
 }

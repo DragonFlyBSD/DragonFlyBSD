@@ -25,7 +25,9 @@ static vm_offset_t vm_hsave_va[MAXCPU];
  *
  *	Called in early boot. Detects AMD SVM support and extended features.
  */
-static int svm_init(void) {
+static int
+svm_init(void)
+{
 	uint64_t vm_cr;
 
 	/* Not fully implemented and will break vkernel64 bootstrap */
@@ -48,7 +50,9 @@ static int svm_init(void) {
 /*
  * svm_enable() - Called to enable SVM extensions on every processor.
  */
-static int svm_enable(void) {
+static int
+svm_enable(void)
+{
 	uint64_t efer;
 	int origcpu;
 	int i;
@@ -85,7 +89,9 @@ static int svm_enable(void) {
 /*
  * svm_disable() - Called to disable SVM extensions on every processor.
  */
-static int svm_disable(void) {
+static int
+svm_disable(void)
+{
 	uint64_t efer;
 	int origcpu;
 	int i;
@@ -120,14 +126,18 @@ static int svm_disable(void) {
  *	Allocates a VMCB for the current thread and flags the thread to return
  *	to usermode via svm_vmrun().
  */
-static int svm_vminit(struct vmm_guest_options *options) {
+static int
+svm_vminit(struct vmm_guest_options *options)
+{
 	return (ENODEV);
 }
 
 /*
  * svm_vmdestroy() -
  */
-static int svm_vmdestroy(void) {
+static int
+svm_vmdestroy(void)
+{
 	return (ENODEV);
 }
 
@@ -138,7 +148,9 @@ static int svm_vmdestroy(void) {
  *	a VMM thread. svm_vmrun() continues in a loop around VMRUN/#VMEXIT
  *	handling until we are no longer a VMM thread.
  */
-static int svm_vmrun(void) {
+static int
+svm_vmrun(void)
+{
 	return (ENODEV);
 }
 

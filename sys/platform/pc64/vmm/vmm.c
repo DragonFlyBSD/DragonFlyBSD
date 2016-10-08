@@ -160,7 +160,6 @@ vmm_vmdestroy(void)
 	if (!vmm_enabled) {
 		return ENODEV;
 	}
-
 	return ctl->vmdestroy();
 }
 

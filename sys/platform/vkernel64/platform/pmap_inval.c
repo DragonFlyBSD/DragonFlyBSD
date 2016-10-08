@@ -82,12 +82,15 @@ static __inline
 void
 vmm_cpu_invltlb(void)
 {
+	vmm_guest_sync_addr(NULL, NULL);
+#if 0
 	/* For VMM mode forces vmmexit/resume */
 	uint64_t rax = -1;
 	__asm __volatile("syscall;"
 			:
 			: "a" (rax)
 			:);
+#endif
 }
 
 /*
@@ -154,7 +157,7 @@ guest_sync_addr(struct pmap *pmap,
 	 */
 	if (CPUMASK_TESTZERO(pmap->pm_active) ||
 	    CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
-		if (src_ptep)
+		if (dst_ptep && src_ptep)
 			*dst_ptep = *src_ptep;
 		vmm_cpu_invltlb();
 	} else {
