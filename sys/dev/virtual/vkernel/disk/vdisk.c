@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2006,2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -64,6 +64,9 @@ struct vkd_softc {
 	cdev_t dev;
 	int unit;
 	int fd;
+	int flags;
+	off_t	size;		/* in bytes */
+	char	*map_buf;	/* COW mode only */
 };
 
 static void vkd_io_thread(cothread_t cotd);
@@ -113,6 +116,8 @@ vkdinit(void *dummy __unused)
 		sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 		sc->unit = dsk->unit;
 		sc->fd = dsk->fd;
+		sc->size = st.st_size;
+		sc->flags = dsk->flags;
 		bioq_init(&sc->bio_queue);
 		devstat_add_entry(&sc->stats, "vkd", sc->unit, DEV_BSIZE,
 				  DEVSTAT_NO_ORDERED_TAGS,
@@ -122,10 +127,25 @@ vkdinit(void *dummy __unused)
 		sc->dev->si_drv1 = sc;
 		sc->dev->si_iosize_max = min(MAXPHYS,256*1024);
 
+		/*
+		 * Use a private mmap if COW mode is requested.
+		 */
+		if (sc->flags & 1) {
+			sc->map_buf = mmap(NULL, sc->size,
+					   PROT_READ|PROT_WRITE,
+					   MAP_PRIVATE,
+					   sc->fd, 0);
+			if ((void *)sc->map_buf == MAP_FAILED) {
+				panic("vkd: cannot mmap %jd bytes\n",
+				      (intmax_t)sc->size);
+			}
+			kprintf("vkd%d: COW disk\n", sc->unit);
+		}
+
 		TAILQ_INIT(&sc->cotd_queue);
 		TAILQ_INIT(&sc->cotd_done);
-		sc->cotd = cothread_create(vkd_io_thread, vkd_io_intr, sc,
-					   "vkd");
+		sc->cotd = cothread_create(vkd_io_thread, vkd_io_intr,
+					   sc, "vkd");
 
 		bzero(&info, sizeof(info));
 		info.d_media_blksize = DEV_BSIZE;
@@ -137,7 +157,8 @@ vkdinit(void *dummy __unused)
 		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 
 		if (dsk->serno) {
-			info.d_serialno = kmalloc(SERNOLEN, M_TEMP, M_WAITOK | M_ZERO);
+			info.d_serialno =
+				kmalloc(SERNOLEN, M_TEMP, M_WAITOK | M_ZERO);
 			strlcpy(info.d_serialno, dsk->serno, SERNOLEN);
 		}
 		disk_setdiskinfo(&sc->disk, &info);
@@ -147,7 +168,8 @@ vkdinit(void *dummy __unused)
 		if (info.d_serialno)
 			kprintf("Serial Number %s", info.d_serialno);
 		kprintf("\nvkd%d: %dMB (%ju %d byte sectors)\n",
-		    i, (int)(st.st_size / 1024 / 1024), info.d_media_blocks, info.d_media_blksize);
+			i, (int)(st.st_size / 1024 / 1024),
+			info.d_media_blocks, info.d_media_blksize);
 	}
 }
 
@@ -285,14 +307,30 @@ vkd_doio(struct vkd_softc *sc, struct bio *bio)
 
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
-		n = pread(sc->fd, bp->b_data, bp->b_bcount, bio->bio_offset);
+		if (sc->map_buf) {
+			bcopy(sc->map_buf + bio->bio_offset,
+			      bp->b_data,
+			      bp->b_bcount);
+			n = bp->b_bcount;
+		} else {
+			n = pread(sc->fd, bp->b_data, bp->b_bcount,
+				  bio->bio_offset);
+		}
 		break;
 	case BUF_CMD_WRITE:
 		/* XXX HANDLE SHORT WRITE XXX */
-		n = pwrite(sc->fd, bp->b_data, bp->b_bcount, bio->bio_offset);
+		if (sc->map_buf) {
+			bcopy(bp->b_data,
+			      sc->map_buf + bio->bio_offset,
+			      bp->b_bcount);
+			n = bp->b_bcount;
+		} else {
+			n = pwrite(sc->fd, bp->b_data, bp->b_bcount,
+				   bio->bio_offset);
+		}
 		break;
 	case BUF_CMD_FLUSH:
-		if (fsync(sc->fd) < 0)
+		if (sc->map_buf == NULL && fsync(sc->fd) < 0)
 			n = -1;
 		else
 			n = bp->b_bcount;
@@ -301,7 +339,7 @@ vkd_doio(struct vkd_softc *sc, struct bio *bio)
 		panic("vkd: bad b_cmd %d", bp->b_cmd);
 		break; /* not reached */
 	}
-	if (n != bp->b_bcount) {
+	if (bp->b_bcount != n) {
 		bp->b_error = EIO;
 		bp->b_flags |= B_ERROR;
 	}

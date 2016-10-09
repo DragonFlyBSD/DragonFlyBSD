@@ -55,6 +55,7 @@
 .Op Fl n Ar numcpus Ns Op Ar :lbits Ns Oo Ar :cbits Oc
 .Op Fl p Ar pidfile
 .Op Fl r Ar file Ns Op Ar :serno
+.Op Fl R Ar file Ns Op Ar :serno
 .Sh DESCRIPTION
 The
 .Nm
@@ -75,7 +76,8 @@ the second one
 .Li vcd1 ,
 and so on.
 The first
-.Fl r
+.Fl r ,
+.Fl R ,
 or
 .Fl c
 option specified on the command line will be the boot disk.
@@ -252,6 +254,24 @@ The first
 or
 .Fl c
 option specified on the command line will be the boot disk.
+.It Fl R Ar file Ns Op Ar :serno
+Works like
+.Fl r
+but treats the disk image as copy-on-write.  This allows
+a private copy of the image to be modified but does not
+modify the image file.  The image file will not be locked
+in this situation and multiple vkernels can run off the
+same image file if desired.
+.Pp
+Since modifications are thrown away, any data you wish
+to retain across invocations needs to be exported over
+the network prior to shutdown.
+This gives you the flexibility to mount the disk image
+either read-only or read-write depending on what is
+convenient.
+However, keep in mind that when mounting a COW image
+read-write, modifications will eat system memory and
+swap space until the vkernel is shut down.
 .It Fl s
 Boot into single-user mode.
 .It Fl U
@@ -367,6 +387,17 @@ sendmail_enable="NO"
 #syslog_enable="NO"
 blanktime="NO"
 .Ed
+.Sh BOOT DRIVE SELECTION
+You can override the default boot drive selection and filesystem
+using a kernel environment variable.  Note that the filesystem
+selected must be compiled into the vkernel and not loaded as
+a module.  You need to escape some quotes around the variable data
+to avoid mis-interpretation of the colon in the
+.Fl e
+option.  For example:
+.Pp
+.Fl e
+vfs.root.mountfrom=\\"hammer:vkd0s1d\\"
 .Sh DISKLESS OPERATION
 To boot a
 .Nm

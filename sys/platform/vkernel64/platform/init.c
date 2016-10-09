@@ -135,7 +135,7 @@ static void init_kern_memory(void);
 static void init_kern_memory_vmm(void);
 static void init_globaldata(void);
 static void init_vkernel(void);
-static void init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type);
+static void init_disk(char **diskExp, int *diskFlags, int diskFileNum, enum vkdisk_type type);
 static void init_netif(char *netifExp[], int netifFileNum);
 static void writepid(void);
 static void cleanpid(void);
@@ -153,7 +153,9 @@ static char **save_av;
 /*
  * Kernel startup for virtual kernels - standard main()
  */
-int main(int ac, char **av) {
+int
+main(int ac, char **av)
+{
 	char *memImageFile = NULL;
 	char *netifFile[VKNETIF_MAX];
 	char *diskFile[VKDISK_MAX];
@@ -162,6 +164,7 @@ int main(int ac, char **av) {
 	char *endp;
 	char *tmp;
 	char *tok;
+	int diskFlags[VKDISK_MAX];
 	int netifFileNum = 0;
 	int diskFileNum = 0;
 	int cdFileNum = 0;
@@ -257,7 +260,7 @@ int main(int ac, char **av) {
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:Ud")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvl:m:n:r:R:e:i:p:I:Ud")) != -1) {
 		switch(c) {
 		case 'd':
 			dflag = 1;
@@ -316,10 +319,14 @@ int main(int ac, char **av) {
 				netifFile[netifFileNum++] = strdup(optarg);
 			break;
 		case 'r':
+		case 'R':
 			if (bootOnDisk < 0)
 				bootOnDisk = 1;
-			if (diskFileNum + cdFileNum < VKDISK_MAX)
-				diskFile[diskFileNum++] = strdup(optarg);
+			if (diskFileNum + cdFileNum < VKDISK_MAX) {
+				diskFile[diskFileNum] = strdup(optarg);
+				diskFlags[diskFileNum] = (c == 'R');
+				++diskFileNum;
+			}
 			break;
 		case 'c':
 			if (bootOnDisk < 0)
@@ -464,11 +471,11 @@ int main(int ac, char **av) {
 	 * We boot from the first installed disk.
 	 */
 	if (bootOnDisk == 1) {
-		init_disk(diskFile, diskFileNum, VKD_DISK);
-		init_disk(cdFile, cdFileNum, VKD_CD);
+		init_disk(diskFile, diskFlags, diskFileNum, VKD_DISK);
+		init_disk(cdFile, NULL, cdFileNum, VKD_CD);
 	} else {
-		init_disk(cdFile, cdFileNum, VKD_CD);
-		init_disk(diskFile, diskFileNum, VKD_DISK);
+		init_disk(cdFile, NULL, cdFileNum, VKD_CD);
+		init_disk(diskFile, diskFlags, diskFileNum, VKD_DISK);
 	}
 
 	init_netif(netifFile, netifFileNum);
@@ -723,6 +730,7 @@ init_kern_memory_vmm(void)
 		err(1, "Unable to mmap() RAM region!");
 		/* NOT REACHED */
 	}
+	/* bzero(dmap_address, Maxmem_bytes); */
 
 	/* Alloc a new stack in the lowmem */
 	vkernel_stack = mmap(NULL, KERNEL_STACK_SIZE,
@@ -932,7 +940,7 @@ init_vkernel(void)
  */
 static
 void
-init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
+init_disk(char **diskExp, int *diskFlags, int diskFileNum, enum vkdisk_type type)
 {
 	char *serno;
 	int i;
@@ -940,7 +948,7 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
         if (diskFileNum == 0)
                 return;
 
-	for(i=0; i < diskFileNum; i++){
+	for (i=0; i < diskFileNum; i++){
 		char *fname;
 		fname = diskExp[i];
 
@@ -957,7 +965,7 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 
 		if (DiskNum < VKDISK_MAX) {
 			struct stat st;
-			struct vkdisk_info* info = NULL;
+			struct vkdisk_info *info = NULL;
 			int fd;
 			size_t l = 0;
 
@@ -969,7 +977,7 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 				err(1, "Unable to open/create %s", fname);
 				/* NOT REACHED */
 			}
-			if (S_ISREG(st.st_mode)) {
+			if (S_ISREG(st.st_mode) && (diskFlags[i] & 1) == 0) {
 				if (flock(fd, LOCK_EX|LOCK_NB) < 0) {
 					errx(1, "Disk image %s is already "
 						"in use\n", fname);
@@ -983,6 +991,7 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 			info->unit = i;
 			info->fd = fd;
 			info->type = type;
+			info->flags = diskFlags[i];
 			memcpy(info->fname, fname, l);
 			info->serno = NULL;
 			if (serno) {
@@ -994,10 +1003,10 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 
 			if (DiskNum == 0) {
 				if (type == VKD_CD) {
-				    rootdevnames[0] = "cd9660:vcd0";
+					rootdevnames[0] = "cd9660:vcd0";
 				} else if (type == VKD_DISK) {
-				    rootdevnames[0] = "ufs:vkd0s0a";
-				    rootdevnames[1] = "ufs:vkd0s1a";
+					rootdevnames[0] = "ufs:vkd0s0a";
+					rootdevnames[1] = "ufs:vkd0s1a";
 				}
 			}
 
@@ -1548,7 +1557,8 @@ usage_help(_Bool help)
 		    "\t\t\t        Controls the number of cores/package:\n"
 		    "\t\t\t        (0 bits - 1 core, 1 bit - 2 cores).\n"
 		    "\t-p\tSpecify a file in which to store the process ID.\n"
-		    "\t-r\tSpecify a R/W disk image file to be used by the kernel.\n"
+		    "\t-r\tSpecify a R/W disk image file, iterates vkd0..n\n"
+		    "\t-R\tSpecify a COW disk image file, iterates vkd0..n\n"
 		    "\t-s\tBoot into single-user mode.\n"
 		    "\t-U\tEnable writing to kernel memory and module loading.\n"
 		    "\t-v\tTurn on verbose booting.\n");

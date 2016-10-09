@@ -64,6 +64,8 @@ struct vknetif_info {
 struct vkdisk_info {
         int fd;
         int unit;
+	int flags;
+	int reserved01;
 	enum vkdisk_type { VKD_EMPTY, VKD_DISK, VKD_CD } type;
 	char fname[MAXPATHLEN];
 	char *serno;
