@@ -134,7 +134,7 @@ dm_table_destroy(dm_table_head_t *head, uint8_t table_id)
 
 	lockmgr(&head->table_mtx, LK_EXCLUSIVE);
 
-	dmdebug("dm_table_destroy called with %d--%d\n", table_id, head->io_cnt);
+	dmdebug("table_id=%d io_cnt=%d\n", table_id, head->io_cnt);
 
 	if (table_id == DM_TABLE_ACTIVE)
 		id = head->cur_active_table;

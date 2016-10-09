@@ -289,8 +289,8 @@ _flakey_write(dm_target_flakey_config_t *tfc, struct buf *bp)
 	struct bio *bio = &bp->b_bio1;
 
 	if (tfc->drop_writes) {
-		dmdebug("%s: bio=%p drop_writes offset=%ju\n",
-			__func__, bio, bio->bio_offset);
+		dmdebug("bio=%p drop_writes offset=%ju\n",
+			bio, bio->bio_offset);
 		biodone(bio);
 		return 0;
 	}
@@ -326,8 +326,7 @@ _flakey_corrupt_buf(dm_target_flakey_config_t *tfc, struct bio *bio)
 		return 1;
 
 	bp->b_data[tfc->corrupt_buf_byte - 1] = tfc->corrupt_buf_value;
-	dmdebug("%s: bio=%p dir=%c offset=%ju Nth=%u value=%u\n",
-		__func__,
+	dmdebug("bio=%p dir=%c offset=%ju Nth=%u value=%u\n",
 		bio,
 		FLAKEY_CORRUPT_DIR(tfc),
 		bio->bio_offset,

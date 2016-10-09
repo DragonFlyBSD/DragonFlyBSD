@@ -724,8 +724,6 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 	dm_dbg_print_flags(dmv->flags);
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_INACTIVE);
 
-	dmdebug("dmv->name = %s\n", dmv->name);
-
 	prop_dictionary_set_uint32(dm_dict, DM_IOCTL_MINOR, dmv->minor);
 
 	while ((target_dict = prop_object_iterator_next(iter)) != NULL) {
@@ -753,10 +751,9 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		prop_dictionary_get_uint64(target_dict, DM_TABLE_LENGTH,
 		    &table_en->length);
 
-		dmdebug("dm_ioctl.c... table_en->start = %ju, "
-			     "table_en->length = %ju\n",
-			     (uintmax_t)table_en->start,
-			     (uintmax_t)table_en->length);
+		dmdebug("table_en->start = %ju, table_en->length = %ju\n",
+			(uintmax_t)table_en->start,
+			(uintmax_t)table_en->length);
 
 		table_en->target = target;
 		table_en->dev = dmv;
@@ -780,7 +777,7 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 		 * therfore I have to pass it to target init
 		 * routine and parse parameters there.
 		 */
-		dmdebug("DM: str passed in is: \"%s\"\n", str);
+		dmdebug("String passed in is: \"%s\"\n", str);
 
 		if ((ret = dm_table_init(target, table_en, str)) != 0) {
 			dm_table_release(&dmv->table_head, DM_TABLE_INACTIVE);

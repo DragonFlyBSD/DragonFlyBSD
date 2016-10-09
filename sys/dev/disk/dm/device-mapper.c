@@ -213,8 +213,7 @@ dmopen(struct dev_open_args *ap)
 	dmv->is_open = 1;
 	dm_dev_unbusy(dmv);
 
-	dmdebug("dm open routine called %" PRIu32 "\n",
-	    minor(ap->a_head.a_dev));
+	dmdebug("minor=%" PRIu32 "\n", minor(ap->a_head.a_dev));
 	return 0;
 }
 
@@ -234,8 +233,7 @@ dmclose(struct dev_close_args *ap)
 	dmv->is_open = 0;
 	dm_dev_unbusy(dmv);
 
-	dmdebug("dm close routine called %" PRIu32 "\n",
-	    minor(ap->a_head.a_dev));
+	dmdebug("minor=%" PRIu32 "\n", minor(ap->a_head.a_dev));
 	return 0;
 }
 
@@ -252,8 +250,6 @@ dmioctl(struct dev_ioctl_args *ap)
 	prop_dictionary_t dm_dict_in;
 
 	err = r = 0;
-
-	dmdebug("dmioctl called\n");
 	KKASSERT(data != NULL);
 
 	if ((r = disk_ioctl_switch(dev, cmd, data)) != ENOTTY)
@@ -321,10 +317,10 @@ dm_ioctl_switch(u_long cmd)
 
 	switch(cmd) {
 	case NETBSD_DM_IOCTL:
-		dmdebug("dm NETBSD_DM_IOCTL called\n");
+		dmdebug("NETBSD_DM_IOCTL called\n");
 		break;
 	default:
-		dmdebug("dm unknown ioctl called\n");
+		dmdebug("Unknown ioctl %lu called\n", cmd);
 		return ENOTTY;
 		break; /* NOT REACHED */
 	}
@@ -362,10 +358,11 @@ disk_ioctl_switch(cdev_t dev, u_long cmd, void *data)
 			dpart->media_blksize = DEV_BSIZE;
 			dpart->fstype = FS_BSDFFS;
 		}
+		dmdebug("DIOCGPART called\n");
 		break;
 
 	default:
-		dmdebug("unknown disk_ioctl called\n");
+		dmdebug("Unknown disk ioctl %lu called\n", cmd);
 		return ENOTTY;
 		break; /* NOT REACHED */
 	}

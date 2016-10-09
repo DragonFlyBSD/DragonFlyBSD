@@ -274,7 +274,7 @@ int dm_pdev_init(void);
 int dm_pdev_uninit(void);
 
 #define dmdebug(format, ...)	\
-    do { if (dm_debug_level) kprintf(format, ## __VA_ARGS__); } while(0)
+    do { if (dm_debug_level) kprintf("%s: "format, __func__, ## __VA_ARGS__); } while(0)
 
 #define DM_TARGET_MODULE(name, evh)				\
     static moduledata_t name##_mod = {				\

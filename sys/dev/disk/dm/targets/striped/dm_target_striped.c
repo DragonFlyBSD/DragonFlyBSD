@@ -247,8 +247,7 @@ dm_target_stripe_iodone(struct bio *bio)
 		KKASSERT(devnr < MAX_STRIPES);
 		tsc->stripe_devs[devnr].num_error++;
 
-		dmdebug("stripe_iodone: device=%d error=%d\n",
-			devnr, bp->b_error);
+		dmdebug("device=%d error=%d\n", devnr, bp->b_error);
 	}
 
 	obio = pop_bio(bio);
