@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/iwm.4 286441 2015-08-08 06:06:48Z rpaulo $
 .\"
-.Dd June 5, 2016
+.Dd October 9, 2016
 .Dt IWM 4
 .Os
 .Sh NAME
@@ -48,6 +48,7 @@ You also need to select a firmware for your device.
 .\".Cd "device iwm3160fw"
 .\".Cd "device iwm7260fw"
 .\".Cd "device iwm7265fw"
+.\".Cd "device iwm7265Dfw"
 .\".Cd "device iwm8000Cfw"
 .\".Ed
 .\".Pp
@@ -67,6 +68,7 @@ if_iwm_load="YES"
 iwm3160fw_load="YES"
 iwm7260fw_load="YES"
 iwm7265fw_load="YES"
+iwm7265Dfw_load="YES"
 iwm8000Cfw_load="YES"
 .Ed
 .Sh DESCRIPTION
@@ -134,25 +136,22 @@ This should not happen.
 The onboard microcontroller crashed for some reason.
 The driver will reset the hardware.
 This should not happen.
-.It "iwm%d: timeout waiting for firmware initialization to complete"
-The onboard microcontroller failed to initialize in time.
+.It "iwm%d: fw chunk addr 0x%x len %d failed to load"
+Timed out waiting for a segment of the firmware to load.
 This should not happen.
-.It "iwm%d: could not load firmware image '%s'"
+.It "iwm%d: could not read firmware %s (error %d)"
 The driver failed to load the firmware image using the
 .Xr firmware 9
 subsystem.
 Verify the
 .Xr iwmfw 4
 firmware module is present.
-.It "iwm%d: could not load boot firmware"
-An attempt to upload the boot firmware image to the onboard microcontroller
+.It "iwm%d: Failed to start INIT ucode: %d"
+An attempt to upload the INIT firmware image to the onboard microcontroller
 failed.
 This should not happen.
-.It "iwm%d: could not load microcode"
-An attempt to upload the microcode image to the onboard microcontroller failed.
-This should not happen.
-.It "iwm%d: could not load main firmware"
-An attempt to upload the main firmware image to the onboard microcontroller
+.It "iwm%d: could not load firmware"
+An attempt to upload the REGULAR firmware image to the onboard microcontroller
 failed.
 This should not happen.
 .El
@@ -165,3 +164,8 @@ This should not happen.
 .Xr wlan_wep 4 ,
 .Xr ifconfig 8 ,
 .Xr wpa_supplicant 8
+.Sh HISTORY
+The
+.Nm
+device driver first appeared in
+.Ox 5.7 .
