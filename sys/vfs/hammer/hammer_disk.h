@@ -37,6 +37,8 @@
 #ifndef VFS_HAMMER_DISK_H_
 #define VFS_HAMMER_DISK_H_
 
+#include <sys/endian.h>
+
 #ifndef _SYS_UUID_H_
 #include <sys/uuid.h>
 #endif
@@ -44,8 +46,8 @@
 /*
  * The structures below represent the on-disk format for a HAMMER
  * filesystem.  Note that all fields for on-disk structures are naturally
- * aligned.  The host endian format is used - compatibility is possible
- * if the implementation detects reversed endian and adjusts data accordingly.
+ * aligned.  HAMMER uses little endian for fields in on-disk structures.
+ * HAMMER doesn't support big endian arch, but is planned.
  *
  * Most of HAMMER revolves around the concept of an object identifier.  An
  * obj_id is a 64 bit quantity which uniquely identifies a filesystem object
