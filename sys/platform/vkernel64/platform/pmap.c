@@ -226,28 +226,24 @@ pmap_pde_pindex(vm_offset_t va)
 static __inline vm_pindex_t
 pmap_pte_index(vm_offset_t va)
 {
-
 	return ((va >> PAGE_SHIFT) & ((1ul << NPTEPGSHIFT) - 1));
 }
 
 static __inline vm_pindex_t
 pmap_pde_index(vm_offset_t va)
 {
-
 	return ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
 }
 
 static __inline vm_pindex_t
 pmap_pdpe_index(vm_offset_t va)
 {
-
 	return ((va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1));
 }
 
 static __inline vm_pindex_t
 pmap_pml4e_index(vm_offset_t va)
 {
-
 	return ((va >> PML4SHIFT) & ((1ul << NPML4EPGSHIFT) - 1));
 }
 
@@ -255,7 +251,6 @@ pmap_pml4e_index(vm_offset_t va)
 static __inline pml4_entry_t *
 pmap_pml4e(pmap_t pmap, vm_offset_t va)
 {
-
 	return (&pmap->pm_pml4[pmap_pml4e_index(va)]);
 }
 
@@ -541,7 +536,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	create_pagetables(firstaddr, ptov_offset);
 
 	/* Create the DMAP for the VMM */
-	if(vmm_enabled) {
+	if (vmm_enabled) {
 		create_dmap_vmm(firstaddr);
 	}
 

@@ -1425,15 +1425,30 @@ go_user(struct intrframe *frame)
 	 * user_trap() when we break out of it (usually due to a signal).
 	 */
 	for (;;) {
+#if 1
+		/*
+		 * Always make the FPU state correct.  This should generally
+		 * be faster because the cost of taking a #NM fault through
+		 * the vkernel to the real kernel is astronomical.
+		 */
+		tf->tf_xflags &= ~PGEX_FPFAULT;
+		if (mdcpu->gd_npxthread != curthread) {
+			if (mdcpu->gd_npxthread)
+				npxsave(mdcpu->gd_npxthread->td_savefpu);
+			npxdna(tf);
+		}
+#else
 		/*
 		 * Tell the real kernel whether it is ok to use the FP
-		 * unit or not.
+		 * unit or not, allowing us to take a T_DNA exception
+		 * if the context tries to use the FP.
 		 */
 		if (mdcpu->gd_npxthread == curthread) {
 			tf->tf_xflags &= ~PGEX_FPFAULT;
 		} else {
 			tf->tf_xflags |= PGEX_FPFAULT;
 		}
+#endif
 
 		/*
 		 * Run emulated user process context.  This call interlocks
