@@ -12,5 +12,9 @@ NOMAN=	noman
 
 .PATH:	${.CURDIR}/../common_source
 
+# XXX: mismatches between types for static init
+init.o:	init.c
+	${CC} ${CFLAGS:N-flto} -c -o ${.TARGET} ${.IMPSRC}
+
 .include "../../Makefile.inc"
 .include <bsd.prog.mk>
