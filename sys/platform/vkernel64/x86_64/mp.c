@@ -460,8 +460,8 @@ start_all_aps(u_int boot_addr)
 
 		if (vmm_enabled) {
 			stack = mmap(NULL, KERNEL_STACK_SIZE,
-			    PROT_READ|PROT_WRITE|PROT_EXEC,
-			    MAP_ANON, -1, 0);
+				     PROT_READ|PROT_WRITE|PROT_EXEC,
+				     MAP_ANON, -1, 0);
 			if (stack == MAP_FAILED) {
 				panic("Unable to allocate stack for thread %d\n", x);
 			}

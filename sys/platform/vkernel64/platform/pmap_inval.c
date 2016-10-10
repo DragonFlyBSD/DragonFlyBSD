@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -78,6 +78,11 @@
 
 extern int vmm_enabled;
 
+/*
+ * Invalidate the TLB on the current cpu
+ *
+ * (VMM enabled only)
+ */
 static __inline
 void
 vmm_cpu_invltlb(void)
@@ -95,6 +100,8 @@ vmm_cpu_invltlb(void)
 
 /*
  * Invalidate va in the TLB on the current cpu
+ *
+ * (VMM disabled only)
  */
 static __inline
 void
@@ -189,7 +196,7 @@ pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	vpte_t pte;
 
 	if (vmm_enabled == 0) {
-		*ptep = 0;
+		atomic_swap_long(ptep, 0);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 	} else {
 		pte = 0;
@@ -218,7 +225,7 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 void
 pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-	*ptep = 0;
+	atomic_swap_long(ptep, 0);
 	if (vmm_enabled)
 		vmm_cpu_invltlb();
 	else
@@ -267,7 +274,8 @@ pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
  * setro: clear VPTE_RW
  * load&clear: clear entire field
  */
-#include<stdio.h>
+#include <stdio.h>
+
 vpte_t
 pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
@@ -275,7 +283,7 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_RW);  /* XXX */
+		atomic_clear_long(ptep, VPTE_RW);
 		if (vmm_enabled == 0) {
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);
 			pte = *ptep;
@@ -351,13 +359,14 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 		atomic_clear_long(ptep, VPTE_RW);
 		if (vmm_enabled == 0) {
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);
-			pte |= *ptep & (VPTE_A | VPTE_M);
+			pte = (pte & VPTE_RW) | *ptep;
 		} else {
 			guest_sync_addr(pmap, &npte, ptep);
-			pte |= npte & (VPTE_A | VPTE_M);
+			pte = (pte & VPTE_RW) | npte;
 		}
 	}
-	*ptep = 0;
+	atomic_swap_long(ptep, 0);
+
 	return(pte);
 }
 

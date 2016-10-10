@@ -427,8 +427,8 @@ vmx_init(void)
 	/* XXX - to implement in the feature */
 	/* Enable VPID feature */
 	err = vmx_set_ctl_setting(&vmx_procbased2,
-	    PROCBASED2_ENABLE_VPID,
-	    ONE);
+				  PROCBASED2_ENABLE_VPID,
+				  ONE);
 	if (err) {
 		kprintf("VMM: PROCBASED2_ENABLE_VPID not "
 			"supported by this CPU\n");
@@ -542,6 +542,7 @@ error:
 static int
 execute_vmptrld(struct vmx_thread_info *vti)
 {
+	struct vmx_thread_info *loaded_vmx;
 	globaldata_t gd = mycpu;
 	int error;
 
@@ -551,8 +552,18 @@ execute_vmptrld(struct vmx_thread_info *vti)
 	 *
 	 * Must set vti->launched to zero after the vmptrld to force
 	 * a vmlaunch.
+	 *
+	 * NOTE! We should NOT vmclear the previous vmx, the spec allows
+	 *	 it to remain active (just not current).  vmclear()ing
+	 *	 it would really mess up performance.
 	 */
-	if (pcpu_info[gd->gd_cpuid].loaded_vmx != vti) {
+	loaded_vmx = pcpu_info[gd->gd_cpuid].loaded_vmx;
+	if (loaded_vmx != vti) {
+#if 0
+		/* this is not needed and messes up performance */
+		if (loaded_vmx)
+			execute_vmclear(loaded_vmx);
+#endif
 		/* current launched state does not change */
 		vti->last_cpu = gd->gd_cpuid;
 		error = vmptrld(vti->vmcs_region);
@@ -762,6 +773,7 @@ static int
 vmx_vminit(struct vmm_guest_options *options)
 {
 	struct vmx_thread_info *vti;
+	struct vmx_thread_info *loaded_vmx;
 	struct tls_info guest_fs = curthread->td_tls.info[0];
 	struct tls_info guest_gs = curthread->td_tls.info[1];
 	globaldata_t gd;
@@ -792,8 +804,16 @@ vmx_vminit(struct vmm_guest_options *options)
 	vti->guest_cr3 = options->guest_cr3;
 	vti->vmm_cr3 = options->vmm_cr3;
 
-	/* In the first 31 bits put the vmx revision*/
+	/* In the first 31 bits put the vmx revision */
 	*((uint32_t *)vti->vmcs_region) = vmx_revision;
+
+	/*
+	 * Clear the currenetly loaded vmx, if any, so
+	 * we can initialize a new one right now.
+	 */
+	loaded_vmx = pcpu_info[mycpu->gd_cpuid].loaded_vmx;
+	if (loaded_vmx)
+		execute_vmclear(loaded_vmx);
 
 	/*
 	 * vmclear the vmcs to initialize it.
@@ -810,8 +830,10 @@ vmx_vminit(struct vmm_guest_options *options)
 	ERROR_IF(vmwrite(VMCS_VMEXIT_CTLS, vmx_exit.ctls));
 	ERROR_IF(vmwrite(VMCS_VMENTRY_CTLS, vmx_entry.ctls));
 
-	/* Load HOST CRs */
-	ERROR_IF(vmwrite(VMCS_HOST_CR0, rcr0()));
+	/*
+	 * Load HOST CRs
+	 */
+	ERROR_IF(vmwrite(VMCS_HOST_CR0, rcr0() & ~CR0_TS));
 	ERROR_IF(vmwrite(VMCS_HOST_CR4, rcr4()));
 
 	/* Load HOST EFER and PAT */
@@ -877,10 +899,10 @@ vmx_vminit(struct vmm_guest_options *options)
 	ERROR_IF(vmx_set_guest_descriptor(LDTR, 0, VMCS_SEG_UNUSABLE, 0, 0));
 
 	/* Set the CR0/CR4 registers, removing the unsupported bits */
-	ERROR_IF(vmwrite(VMCS_GUEST_CR0, (CR0_PE | CR0_PG |
-	    cr0_fixed_to_1) & ~cr0_fixed_to_0));
+	vti->guest_cr0 = (CR0_PE | CR0_PG | cr0_fixed_to_1) & ~cr0_fixed_to_0;
+	ERROR_IF(vmwrite(VMCS_GUEST_CR0, vti->guest_cr0));
 	ERROR_IF(vmwrite(VMCS_GUEST_CR4, (CR4_PAE | CR4_FXSR | CR4_XMM | CR4_XSAVE |
-	    cr4_fixed_to_1) & ~ cr4_fixed_to_0));
+	    cr4_fixed_to_1) & ~cr4_fixed_to_0));
 
 	/* Don't set EFER_SCE for catching "syscall" instructions */
 	ERROR_IF(vmwrite(VMCS_GUEST_IA32_EFER, (EFER_LME | EFER_LMA)));
@@ -941,9 +963,14 @@ error:
 
 	kfree(vti->vmcs_region_na, M_TEMP);
 	kfree(vti, M_TEMP);
+
 	return err;
 }
 
+/*
+ * Destroy a context.  Make sure the context has been cleared and that
+ * no TLB translations are stlil cached for its EPT.
+ */
 static int
 vmx_vmdestroy(void)
 {
@@ -954,13 +981,8 @@ vmx_vmdestroy(void)
 	if (vti != NULL) {
 		vmx_check_cpu_migration();
 		execute_vmclear(vti);
-#if 0
-		{
-		    invept_desc_t desc = { 0 };
-
-		    invept(INVEPT_TYPE_ALL_CONTEXTS, (uint64_t*) &desc);
-		}
-#endif
+		invept(INVEPT_TYPE_SINGLE_CONTEXT,
+		       (uint64_t*)&vti->invept_desc);
 
 		if (vti->vmcs_region_na != NULL) {
 			kfree(vti->vmcs_region_na, M_TEMP);
@@ -1036,11 +1058,15 @@ vmx_handle_cpu_migration(void)
 	if (vti->last_cpu != gd->gd_cpuid) {
 		/*
 		 * We need to synchronize the per-cpu fields after changing
-		 * cpus.
+		 * cpus.  Also make sure there are no stale EPT translations
+		 * cached.
 		 */
 		dkprintf("VMM: vmx_handle_cpu_migration init per CPU data\n");
 
 		ERROR_IF(execute_vmptrld(vti));
+
+		invept(INVEPT_TYPE_SINGLE_CONTEXT,
+		       (uint64_t*)&vti->invept_desc);
 
 		/* Host related registers */
 		ERROR_IF(vmwrite(VMCS_HOST_GS_BASE, (uint64_t) gd)); /* mycpu points to %gs:0 */
@@ -1137,7 +1163,7 @@ error:
 static int
 vmx_handle_vmexit(void)
 {
-	struct vmx_thread_info * vti;
+	struct vmx_thread_info *vti;
 	int exit_reason;
 	int exception_type;
 	int exception_number;
@@ -1186,7 +1212,7 @@ vmx_handle_vmexit(void)
 			case IDT_UD:
 				/*
 				 * Disabled "syscall" instruction and
-				 * now we catch it for executing
+				 * now we catch it for execution
 				 */
 				dkprintf("VMM: handle_vmx_vmexit: "
 					 "VMCS_EXCEPTION_HARDWARE IDT_UD\n");
@@ -1225,15 +1251,6 @@ vmx_handle_vmexit(void)
 					 "at %llx\n",
 					 (long long) vti->guest.tf_rip);
 
-#if 0
-				if (vti->guest.tf_rip == 0) {
-					kprintf("VMM: handle_vmx_vmexit: "
-						"Terminating...\n");
-					err = -1;
-					goto error;
-				}
-#endif
-
 				vti->guest.tf_err =
 					vti->vmexit_interruption_error;
 				vti->guest.tf_addr =
@@ -1251,13 +1268,24 @@ vmx_handle_vmexit(void)
 				 * kern_trap()
 				 *
 				 */
-
 				if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 					vkernel_trap(lp, &vti->guest);
 				} else {
 					trapsignal(lp, SIGSEGV, SEGV_MAPERR);
 				}
-
+				break;
+			case IDT_NM:
+				vti->guest.tf_err =
+					vti->vmexit_interruption_error;
+				vti->guest.tf_addr =
+					vti->vmexit_qualification;
+				vti->guest.tf_xflags = 0;
+				vti->guest.tf_trapno = T_DNA;
+				if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
+					vkernel_trap(lp, &vti->guest);
+				} else {
+					/* XXX */
+				}
 				break;
 			default:
 				kprintf("VMM: handle_vmx_vmexit: "
@@ -1462,6 +1490,11 @@ restart:
 		 * More complex, another thread has locked the VMM
 		 * (probably to do an EPT invalidation).  We have to
 		 * sleep or busy-wait until it is no longer locked.
+		 *
+		 * NOTE: For now we busy wait.  Sleeping messes up
+		 *	 performance when the vkernel has to synchronize
+		 *	 multiple cpu threads.  The thread will still
+		 *	 be subject to its user process priority.
 		 */
 		ATOMIC_CPUMASK_NANDBIT(td->td_proc->p_vmm_cpumask,
 				       gd->gd_cpuid);
@@ -1488,13 +1521,30 @@ restart:
 	ERROR_IF(vmwrite(VMCS_GUEST_SS_SELECTOR, vti->guest.tf_ss));
 	ERROR_IF(vmwrite(VMCS_GUEST_CR3, (uint64_t) vti->guest_cr3));
 
-	/*
-	 * FPU
-	 */
-	if (mdcpu->gd_npxthread != td) {
-		if (mdcpu->gd_npxthread)
-			npxsave(mdcpu->gd_npxthread->td_savefpu);
-		npxdna();
+	if (vti->guest.tf_xflags & PGEX_FPFAULT) {
+		if ((vti->guest_cr0 & CR0_TS) == 0) {
+			vti->guest_cr0 |= CR0_TS;
+			ERROR_IF(vmwrite(VMCS_GUEST_CR0,
+					 (uint64_t)vti->guest_cr0));
+		}
+	} else {
+		if (vti->guest_cr0 & CR0_TS) {
+			vti->guest_cr0 &= ~(long)CR0_TS;
+			ERROR_IF(vmwrite(VMCS_GUEST_CR0,
+					 (uint64_t)vti->guest_cr0));
+		}
+
+		/*
+		 * Make sure the correct FPU state is loaded for the guest.
+		 *
+		 * HOST_CR0 always clears CR0_TS so make sure this matches
+		 * regardless of the guest_cr0.
+		 */
+		if (mdcpu->gd_npxthread != td) {
+			if (mdcpu->gd_npxthread)
+				npxsave(mdcpu->gd_npxthread->td_savefpu);
+			npxdna();
+		}
 	}
 
 	/*
@@ -1522,13 +1572,6 @@ restart:
 		ERROR_IF(invept(INVEPT_TYPE_SINGLE_CONTEXT,
 				(uint64_t*)&vti->invept_desc));
 	}
-#if 0
-		{
-		    invept_desc_t desc = { 0 };
-
-		    invept(INVEPT_TYPE_ALL_CONTEXTS, (uint64_t*) &desc);
-		}
-#endif
 
 	if (vti->launched) {
 		/*
