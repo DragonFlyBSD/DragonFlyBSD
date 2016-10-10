@@ -253,7 +253,7 @@ load(void)
 static int
 users(void)
 {
-	struct utmpentry *ep;
+	struct utmpentry *ep = NULL;	/* avoid gcc warnings */
 	int nusers = 0;
 
 	getutentries(NULL, &ep);
