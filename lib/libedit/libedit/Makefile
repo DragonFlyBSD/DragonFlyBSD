@@ -39,9 +39,6 @@ SRCS+=		chared.c \
 		tty.c \
 		vi.c \
 		fgetln.c \
-		strlcat.c \
-		strlcpy.c \
-		unvis.c \
 		vis.c \
 		wcsdup.c \
 		tokenizer.c \
@@ -49,6 +46,11 @@ SRCS+=		chared.c \
 		filecomplete.c \
 		readline.c \
 		eln.c
+
+# only when 1) !HAVE_STRLCAT  2) !HAVE_STRLCPY  3) !HAVE_VIS
+#SRCS+=		strlcat.c \
+		strlcpy.c \
+		unvis.c
 
 SRCS+=		common.h emacs.h fcns.h help.h vi.h
 SRCS+=  	fcns.c help.c tokenizern.c historyn.c
