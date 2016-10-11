@@ -78,7 +78,7 @@ static u_int pp_port;
 static caddr_t pp_key;
 
 extern u_char m_buf[BUFSIZ];
-extern int m_len;
+extern u_int m_len;
 extern char cmdarg[8192];
 extern int f_debug;
 
