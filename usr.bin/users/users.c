@@ -48,7 +48,7 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	struct utmpentry *ep;
+	struct utmpentry *ep = NULL;	/* avoid gcc warnings */
 	namebuf *names = NULL;
 	int ncnt = 0;
 	int nmax = 0;
