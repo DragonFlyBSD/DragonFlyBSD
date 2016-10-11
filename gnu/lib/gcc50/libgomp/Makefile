@@ -22,13 +22,16 @@ DPADD=		${LIBPTHREAD}
 #am__append_2 = openacc.f90
 libgomp_la_SOURCES = alloc.c barrier.c critical.c env.c error.c iter.c \
 	iter_ull.c loop.c loop_ull.c ordered.c parallel.c sections.c \
-	single.c task.c team.c work.c lock.c mutex.c proc.c sem.c \
-	bar.c ptrlock.c time.c fortran.c affinity.c target.c \
+	single.c task.c team.c work.c lock.c proc.c sem.c \
+	bar.c time.c fortran.c affinity.c target.c \
 	splay-tree.c libgomp-plugin.c oacc-parallel.c oacc-host.c \
 	oacc-init.c oacc-mem.c oacc-async.c oacc-plugin.c oacc-cuda.c \
 	$(am__append_2)
 
 SRCS=	${libgomp_la_SOURCES}
+
+# empty sources (Everything is in the header.)
+#SRCS+=	mutex.c ptrlock.c
 
 # On gcc47 this is from Makefile.x86-64, but there is only one platform now
 # Values recorded in <build-dir>/libgomp/config.log
