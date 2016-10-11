@@ -32,7 +32,6 @@ SRCS=	openpam_borrow_cred.c \
 	openpam_restore_cred.c \
 	openpam_set_option.c \
 	openpam_set_feature.c \
-	openpam_static.c \
 	openpam_straddch.c \
 	openpam_subst.c \
 	openpam_ttyconv.c \
@@ -63,6 +62,9 @@ SRCS=	openpam_borrow_cred.c \
 	pam_vprompt.c
 # Local files
 SRCS+=	pam_debug_log.c
+
+# only when OPENPAM_STATIC_MODULES
+#SRCS+=	openpam_static.c
 
 PAMINCS=openpam.h \
 	openpam_attr.h \
