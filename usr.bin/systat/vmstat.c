@@ -712,7 +712,7 @@ cmdkre(const char *cmd, char *args)
 static int
 ucount(void)
 {
-	struct utmpentry *ep;
+	struct utmpentry *ep = NULL;	/* avoid gcc warnings */
 	int nusers = 0;
 
 	getutentries(NULL, &ep);

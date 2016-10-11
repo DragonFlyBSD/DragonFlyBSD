@@ -32,7 +32,7 @@
 #include "extern.h"
 #include "convtbl.h"
 
-int curscale = SC_AUTO;
+u_int curscale = SC_AUTO;
 
 int
 ifcmd(const char *cmd, const char *args)
