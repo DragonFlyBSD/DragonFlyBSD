@@ -319,11 +319,11 @@ is_root_btree_beg(uint8_t type, int i, hammer_btree_elm_t elm)
 	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		i == 0 &&
 		elm->base.localization == 0 &&
-		elm->base.obj_id == (int64_t)-0x8000000000000000LL &&
-		elm->base.key == (int64_t)-0x8000000000000000LL &&
+		elm->base.obj_id == (int64_t)HAMMER_MIN_OBJID &&
+		elm->base.key == (int64_t)HAMMER_MIN_KEY &&
 		elm->base.create_tid == 1 &&
 		elm->base.delete_tid == 1 &&
-		elm->base.rec_type == 0 &&
+		elm->base.rec_type == HAMMER_MIN_RECTYPE &&
 		elm->base.obj_type == 0 &&
 		elm->base.btype != HAMMER_BTREE_TYPE_NONE);
 }
@@ -335,11 +335,11 @@ is_root_btree_end(uint8_t type, int i, hammer_btree_elm_t elm)
 	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		i != 0 &&
 		elm->base.localization == 0xFFFFFFFFU &&
-		elm->base.obj_id == 0x7FFFFFFFFFFFFFFFLL &&
-		elm->base.key == 0x7FFFFFFFFFFFFFFFLL &&
-		elm->base.create_tid == 0xFFFFFFFFFFFFFFFFULL &&
+		elm->base.obj_id == HAMMER_MAX_OBJID &&
+		elm->base.key == HAMMER_MAX_KEY &&
+		elm->base.create_tid == HAMMER_MAX_TID &&
 		elm->base.delete_tid == 0 &&
-		elm->base.rec_type == 0xFFFFU &&
+		elm->base.rec_type == HAMMER_MAX_RECTYPE &&
 		elm->base.obj_type == 0 &&
 		elm->base.btype == HAMMER_BTREE_TYPE_NONE);
 }

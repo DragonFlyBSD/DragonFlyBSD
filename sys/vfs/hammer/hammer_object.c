@@ -1988,7 +1988,7 @@ retry:
 	} else {
 		tmp64 = ran_end + MAXPHYS + 1;	/* work around GCC-4 bug */
 		if (tmp64 < ran_end)
-			cursor->key_end.key = 0x7FFFFFFFFFFFFFFFLL;
+			cursor->key_end.key = HAMMER_MAX_KEY;
 		else
 			cursor->key_end.key = ran_end + MAXPHYS + 1;
 	}

@@ -2724,7 +2724,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DB;
-		cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
+		cursor.key_end.key = HAMMER_MAX_KEY;
 	} else
 #endif
 	{
@@ -2733,7 +2733,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
 		tmp64 = ran_end + MAXPHYS + 1;	/* work-around GCC-4 bug */
 		if (tmp64 < ran_end)
-			cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
+			cursor.key_end.key = HAMMER_MAX_KEY;
 		else
 			cursor.key_end.key = ran_end + MAXPHYS + 1;
 	}
@@ -3045,7 +3045,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	cursor.key_end.rec_type = HAMMER_RECTYPE_DATA;
 	tmp64 = ran_end + MAXPHYS + 1;	/* work-around GCC-4 bug */
 	if (tmp64 < ran_end)
-		cursor.key_end.key = 0x7FFFFFFFFFFFFFFFLL;
+		cursor.key_end.key = HAMMER_MAX_KEY;
 	else
 		cursor.key_end.key = ran_end + MAXPHYS + 1;
 

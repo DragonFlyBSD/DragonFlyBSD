@@ -3013,7 +3013,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 		 */
 		error = hammer_ip_delete_range(&cursor, ip,
 						aligned_trunc_off,
-						0x7FFFFFFFFFFFFFFFLL, 2);
+						HAMMER_MAX_KEY, 2);
 		if (error == EWOULDBLOCK) {
 			ip->flags |= HAMMER_INODE_WOULDBLOCK;
 			error = 0;

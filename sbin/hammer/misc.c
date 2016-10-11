@@ -46,6 +46,7 @@ hammer_key_beg_init(hammer_base_elm_t base)
 	base->key = HAMMER_MIN_KEY;
 	base->create_tid = 1;
 	base->rec_type = HAMMER_MIN_RECTYPE;
+	base->obj_type = 0;
 }
 
 void
@@ -58,6 +59,7 @@ hammer_key_end_init(hammer_base_elm_t base)
 	base->key = HAMMER_MAX_KEY;
 	base->create_tid = HAMMER_MAX_TID;
 	base->rec_type = HAMMER_MAX_RECTYPE;
+	base->obj_type = 0;
 }
 
 int

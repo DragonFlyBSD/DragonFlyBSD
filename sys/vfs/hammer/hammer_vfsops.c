@@ -453,20 +453,20 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		kmalloc_raise_limit(hmp->m_inodes, 0);	/* unlimited */
 
 		hmp->root_btree_beg.localization = 0x00000000U;
-		hmp->root_btree_beg.obj_id = -0x8000000000000000LL;
-		hmp->root_btree_beg.key = -0x8000000000000000LL;
+		hmp->root_btree_beg.obj_id = HAMMER_MIN_OBJID;
+		hmp->root_btree_beg.key = HAMMER_MIN_KEY;
 		hmp->root_btree_beg.create_tid = 1;
 		hmp->root_btree_beg.delete_tid = 1;
-		hmp->root_btree_beg.rec_type = 0;
+		hmp->root_btree_beg.rec_type = HAMMER_MIN_RECTYPE;
 		hmp->root_btree_beg.obj_type = 0;
 		hmp->root_btree_beg.btype = HAMMER_BTREE_TYPE_NONE;
 
 		hmp->root_btree_end.localization = 0xFFFFFFFFU;
-		hmp->root_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
-		hmp->root_btree_end.key = 0x7FFFFFFFFFFFFFFFLL;
-		hmp->root_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;
+		hmp->root_btree_end.obj_id = HAMMER_MAX_OBJID;
+		hmp->root_btree_end.key = HAMMER_MAX_KEY;
+		hmp->root_btree_end.create_tid = HAMMER_MAX_TID;
 		hmp->root_btree_end.delete_tid = 0;   /* special case */
-		hmp->root_btree_end.rec_type = 0xFFFFU;
+		hmp->root_btree_end.rec_type = HAMMER_MAX_RECTYPE;
 		hmp->root_btree_end.obj_type = 0;
 		hmp->root_btree_end.btype = HAMMER_BTREE_TYPE_NONE;
 
