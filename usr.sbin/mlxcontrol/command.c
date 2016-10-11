@@ -185,7 +185,8 @@ static void
 status_print(int unit, void *arg)
 {
     int				verbosity = *(int *)arg;
-    int				fd, result, ctrlr, sysdrive, statvalid;
+    int				fd, result, statvalid;
+    int				ctrlr = -1, sysdrive = -1;
     
     /* Find which controller and what system drive we are */
     statvalid = 0;
