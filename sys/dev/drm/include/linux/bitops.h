@@ -510,4 +510,12 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 	     (bit) < (size);					\
 	     (bit) = find_next_bit((addr), (size), (bit) + 1))
 
+
+static inline int64_t
+sign_extend64(uint64_t value, int index)
+{
+	uint8_t shift = 63 - index;
+	return (int64_t)(value << shift) >> shift;
+}
+
 #endif	/* _LINUX_BITOPS_H_ */
