@@ -331,7 +331,7 @@ open_client(bdaddr_t *laddr, bdaddr_t *raddr, int lm, const char *service)
 	struct linger l;
 	char *ep;
 	int fd;
-	uint8_t channel;
+	uint8_t channel = 0;	/* avoid gcc warnings */
 
 	for (s = services ; ; s++) {
 		if (s->name == NULL) {
