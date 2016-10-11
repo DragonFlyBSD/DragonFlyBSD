@@ -10,14 +10,14 @@ SRCS=	ssh_api.c \
 	krl.c \
 	bitmap.c
 SRCS+=	authfd.c authfile.c bufaux.c bufbn.c bufec.c buffer.c \
-	canohost.c channels.c cipher.c cipher-aes.c \
-	cipher-bf1.c cipher-ctr.c cipher-3des1.c cleanup.c \
+	canohost.c channels.c cipher.c \
+	cipher-bf1.c cipher-3des1.c cleanup.c \
 	compat.c crc32.c deattack.c fatal.c hostfile.c \
-	log.c match.c md-sha256.c moduli.c nchan.c packet.c opacket.c \
+	log.c match.c moduli.c nchan.c packet.c opacket.c \
 	readpass.c rsa.c ttymodes.c xmalloc.c addrmatch.c \
 	atomicio.c key.c dispatch.c mac.c uidswap.c uuencode.c misc.c utf8.c \
 	monitor_fdpass.c rijndael.c ssh-dss.c ssh-ecdsa.c ssh-rsa.c dh.c \
-	msg.c progressmeter.c dns.c entropy.c gss-genr.c umac.c umac128.c \
+	msg.c progressmeter.c dns.c entropy.c umac.c umac128.c \
 	ssh-pkcs11.c smult_curve25519_ref.c \
 	poly1305.c chacha.c cipher-chachapoly.c \
 	ssh-ed25519.c digest-openssl.c hmac.c \
@@ -30,6 +30,18 @@ SRCS+=	authfd.c authfile.c bufaux.c bufbn.c bufec.c buffer.c \
 SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c explicit_bzero.c \
 	getrrsetbyname.c glob.c openssl-compat.c \
 	port-tun.c reallocarray.c realpath.c timingsafe_bcmp.c vis.c
+
+# only when USE_BUILTIN_RIJNDAEL
+#SRCS+=	cipher-aes.c
+
+# only when GSSAPI
+#SRCS+=	gss-genr.c
+
+# only when !OPENSSL_HAVE_EVPCTR
+#SRCS+=	cipher-ctr.c
+
+# only when !HAVE_EVP_SHA256
+#SRCS+=	md-sha256.c
 
 MAN=	moduli.5
 
