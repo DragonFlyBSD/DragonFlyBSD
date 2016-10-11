@@ -20,8 +20,10 @@ SRCS=	ncurses_def.h \
 	p_top.c \
 	p_update.c \
 	p_user.c \
-	p_win.c \
-	panel.c
+	p_win.c
+
+# only when TRACE
+#SRCS+=	panel.c
 
 ${SRCS:M*.c}: curses.h
 
