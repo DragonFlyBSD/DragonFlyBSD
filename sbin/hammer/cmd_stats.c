@@ -75,7 +75,7 @@ struct io_stats {
 	int64_t redo;
 };
 
-static __inline
+static __inline __always_inline
 int
 _sysctl(const char *name, int64_t *p)
 {
@@ -83,7 +83,7 @@ _sysctl(const char *name, int64_t *p)
 	return(sysctlbyname(name, p, &len, NULL, 0));
 }
 
-static __inline
+static __inline __always_inline
 void
 collect_bstats(struct btree_stats *p)
 {
@@ -99,7 +99,7 @@ collect_bstats(struct btree_stats *p)
 	_sysctl(_HAMMER"record_iterations", &p->record_iterations);
 }
 
-static __inline
+static __inline __always_inline
 void
 collect_iostats(struct io_stats *p)
 {
@@ -116,7 +116,7 @@ collect_iostats(struct io_stats *p)
 	_sysctl(_HAMMER"redo", &p->redo);
 }
 
-static __inline
+static __inline __always_inline
 void
 print_bstats(const struct btree_stats *p1, const struct btree_stats *p2)
 {
@@ -133,7 +133,7 @@ print_bstats(const struct btree_stats *p1, const struct btree_stats *p2)
 		/* no trailing \n */
 }
 
-static __inline
+static __inline __always_inline
 void
 print_iostats(const struct io_stats *p1, const struct io_stats *p2)
 {
