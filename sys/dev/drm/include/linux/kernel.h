@@ -139,4 +139,12 @@ static inline int64_t abs64(int64_t x)
 #define	be32_to_cpu(x)	be32toh(x)
 #define	be32_to_cpup(x)	be32toh(*x)
 
+static inline int __must_check
+kstrtouint(const char *s, unsigned int base, unsigned int *res)
+{
+	*(res) = strtol(s,0,base);
+
+	return 0;
+}
+
 #endif	/* _LINUX_KERNEL_H_ */
