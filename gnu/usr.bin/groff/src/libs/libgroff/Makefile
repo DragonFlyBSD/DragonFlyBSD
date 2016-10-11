@@ -13,8 +13,15 @@ SRCS=		assert.cpp change_lf.cpp cmap.cpp color.cpp cset.cpp device.cpp\
 		ptable.cpp searchpath.cpp string.cpp strsave.cpp symbol.cpp\
 		tmpfile.cpp tmpname.cpp unicode.cpp uniglyph.cpp uniuni.cpp\
 		version.cpp
-SRCS+=		iftoa.c itoa.c matherr.c progname.c quotearg.c spawnvp.c
+SRCS+=		iftoa.c itoa.c progname.c quotearg.c
 SRCS+=		${PATCHES}
+
+# only when HAVE_STRUCT_EXCEPTION && TLOSS
+#SRCS+=	matherr.c
+
+# only when __MSDOS__ || __EMX__
+#SRCS+=	spawnvp.c
+
 CLEANFILES=	version.cpp
 
 .include <bsd.lib.mk>
