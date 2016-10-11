@@ -65,7 +65,7 @@ union {
 } un;
 #define	sblock	un.sblk
 long dev_bsize = 1;
-ino_t maxino;
+ino_t quotamaxino;
 
 struct quotaname {
 	long	flags;
@@ -250,7 +250,7 @@ chkquota(char *fsname, char *mntpt, struct quotaname *qnp)
 	dev_bsize = 1;
 	bread(SBOFF, (char *)&sblock, (long)SBSIZE);
 	dev_bsize = sblock.fs_fsize / fsbtodb(&sblock, 1);
-	maxino = sblock.fs_ncg * sblock.fs_ipg;
+	quotamaxino = sblock.fs_ncg * sblock.fs_ipg;
 	resetinodebuf();
 	for (ino = 0, cg = 0; cg < sblock.fs_ncg; cg++) {
 		for (i = 0; i < sblock.fs_ipg; i++, ino++) {
@@ -516,7 +516,7 @@ getnextinode(ino_t inumber)
 	daddr_t dblk;
 	static struct ufs1_dinode *dp;
 
-	if (inumber != nextino++ || inumber > maxino) {
+	if (inumber != nextino++ || inumber > quotamaxino) {
 		errx(1, "bad inode number %ju to nextinode",
 			(intmax_t)inumber);
 	}
