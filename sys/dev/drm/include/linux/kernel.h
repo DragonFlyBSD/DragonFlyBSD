@@ -147,4 +147,7 @@ kstrtouint(const char *s, unsigned int base, unsigned int *res)
 	return 0;
 }
 
+#define kvasprintf drm_vasprintf
+#define kasprintf drm_asprintf
+
 #endif	/* _LINUX_KERNEL_H_ */
