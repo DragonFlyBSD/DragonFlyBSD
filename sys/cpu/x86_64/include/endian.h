@@ -158,21 +158,21 @@ __extension__ ({ register __uint16_t __X = (x); \
 
 #endif	/* __OPTIMIZE__ */
 
-static __inline __uint64_t
+static __inline __always_inline __uint64_t
 __bswap64(__uint64_t _x)
 {
 
 	return (__byte_swap_long(_x));
 }
 
-static __inline __uint32_t
+static __inline __always_inline __uint32_t
 __bswap32(__uint32_t _x)
 {
 
 	return (__byte_swap_int(_x));
 }
 
-static __inline __uint16_t
+static __inline __always_inline __uint16_t
 __bswap16(__uint16_t _x)
 {
 
