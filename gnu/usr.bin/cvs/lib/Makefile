@@ -37,7 +37,6 @@ SRCS=	config.h \
 	strftime.c  \
 	canon-host.c \
 	canonicalize.c  \
-	mempcpy.c \
 	closeout.c \
 	dirname.c \
 	exitfail.c \
@@ -64,6 +63,9 @@ SRCS=	config.h \
 	xmalloc.c \
 	xgetcwd.c \
 	yesno.c
+
+# use mempcpy() from libc
+#SRCS+=	mempcpy.c
 
 config.h: config.h.proto
 	sed -e "s,@VERSION@,${CVSVERSION}-DragonFly,g" \
