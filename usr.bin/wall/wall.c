@@ -72,7 +72,7 @@ int
 main(int argc, char *argv[])
 {
 	struct iovec iov;
-	struct utmpentry *ep;
+	struct utmpentry *ep = NULL;	/* avoid gcc warnings */
 	int ch;
 	int ingroup;
 	struct wallgroup *g;
