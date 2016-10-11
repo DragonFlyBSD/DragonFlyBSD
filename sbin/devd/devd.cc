@@ -489,7 +489,7 @@ config::parse(void)
 void
 config::open_pidfile()
 {
-	pid_t otherpid;
+	pid_t otherpid = -1;
 
 	if (_pidfile.empty())
 		return;

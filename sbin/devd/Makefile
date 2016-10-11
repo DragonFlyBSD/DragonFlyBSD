@@ -20,6 +20,12 @@ CFLAGS+=-I. -I${.CURDIR}
 CXXFLAGS+=-Wno-unused-local-typedefs
 .endif
 
+# c++ headers are very noisy under -flto (-Wodr)
+.if (${CCVER:Mgcc5*} && ${CFLAGS:M-flto})
+CXXFLAGS+=-Wno-error=odr
+.endif
+
+
 CLEANFILES= y.output
 
 .include <bsd.prog.mk>
