@@ -107,7 +107,7 @@ int
 
 char *prompt = NULL;
 #ifdef ENCRYPTION
-char *line;		/* hack around breakage in sra.c :-( !! */
+char line[16];		/* hack around breakage in sra.c :-( !! */
 #endif
 
 cc_t escape;

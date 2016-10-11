@@ -59,7 +59,7 @@ IdeaData ik;
 #define PASS_SIZE	256
 
 extern int auth_debug_mode;
-extern char line[];
+extern char line[16];
 
 static int sra_valid = 0;
 static int passwd_sent = 0;
