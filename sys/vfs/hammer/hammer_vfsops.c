@@ -452,7 +452,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 		kmalloc_raise_limit(hmp->m_inodes, 0);	/* unlimited */
 
-		hmp->root_btree_beg.localization = 0x00000000U;
+		hmp->root_btree_beg.localization =
+			HAMMER_MIN_ONDISK_LOCALIZATION;
 		hmp->root_btree_beg.obj_id = HAMMER_MIN_OBJID;
 		hmp->root_btree_beg.key = HAMMER_MIN_KEY;
 		hmp->root_btree_beg.create_tid = 1;
@@ -461,7 +462,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_beg.obj_type = 0;
 		hmp->root_btree_beg.btype = HAMMER_BTREE_TYPE_NONE;
 
-		hmp->root_btree_end.localization = 0xFFFFFFFFU;
+		hmp->root_btree_end.localization =
+			HAMMER_MAX_ONDISK_LOCALIZATION;
 		hmp->root_btree_end.obj_id = HAMMER_MAX_OBJID;
 		hmp->root_btree_end.key = HAMMER_MAX_KEY;
 		hmp->root_btree_end.create_tid = HAMMER_MAX_TID;

@@ -318,7 +318,7 @@ is_root_btree_beg(uint8_t type, int i, hammer_btree_elm_t elm)
 	 */
 	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		i == 0 &&
-		elm->base.localization == 0 &&
+		elm->base.localization == HAMMER_MIN_ONDISK_LOCALIZATION &&
 		elm->base.obj_id == (int64_t)HAMMER_MIN_OBJID &&
 		elm->base.key == (int64_t)HAMMER_MIN_KEY &&
 		elm->base.create_tid == 1 &&
@@ -334,7 +334,7 @@ is_root_btree_end(uint8_t type, int i, hammer_btree_elm_t elm)
 {
 	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		i != 0 &&
-		elm->base.localization == 0xFFFFFFFFU &&
+		elm->base.localization == HAMMER_MAX_ONDISK_LOCALIZATION &&
 		elm->base.obj_id == HAMMER_MAX_OBJID &&
 		elm->base.key == HAMMER_MAX_KEY &&
 		elm->base.create_tid == HAMMER_MAX_TID &&
