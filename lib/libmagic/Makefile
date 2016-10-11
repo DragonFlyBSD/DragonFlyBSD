@@ -10,10 +10,13 @@ SHLIB_MAJOR=	2
 DPADD=	${LIBZ}
 LDADD=	-lz
 
-SRCS=	apprentice.c apptype.c ascmagic.c cdf.c cdf_time.c \
+SRCS=	apprentice.c ascmagic.c cdf.c cdf_time.c \
 	compress.c encoding.c fsmagic.c funcs.c \
 	is_tar.c magic.c print.c readcdf.c readelf.c softmagic.c
 INCS=	magic.h
+
+# only when __EMX__ (prog env for DOS and OS/2)
+#SRCS+=	apptype.c
 
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
 CFLAGS+= -I${.CURDIR} -I${CONTRIBDIR}
