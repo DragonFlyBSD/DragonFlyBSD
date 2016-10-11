@@ -2,7 +2,6 @@
 
 sources = \
 	array_type_info.cc \
-	atexit_arm.cc \
 	atexit_thread.cc \
 	bad_alloc.cc \
 	bad_array_length.cc \
@@ -18,7 +17,6 @@ sources = \
 	del_opvnt.cc \
 	dyncast.cc \
 	eh_alloc.cc \
-	eh_arm.cc \
 	eh_aux_runtime.cc \
 	eh_call.cc \
 	eh_catch.cc \
@@ -54,6 +52,9 @@ sources = \
 	vec.cc \
 	vmi_class_type_info.cc \
 	vterminate.cc
+
+# only when __arm__
+#sources+=	atexit_arm.cc eh_arm.cc
 
 c_sources = \
 	cp-demangle.c
