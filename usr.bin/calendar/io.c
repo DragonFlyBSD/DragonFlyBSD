@@ -84,7 +84,7 @@ cal(void)
 	int ch, l;
 	int month;
 	int day;
-	int var;
+	int var = 0;	/* avoid gcc warnings */
 	static int d_first = -1;
 	char buf[2048 + 1];
 	struct event *events = NULL;
