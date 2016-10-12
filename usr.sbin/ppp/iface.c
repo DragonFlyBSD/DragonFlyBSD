@@ -648,6 +648,8 @@ iface_Show(struct cmdargs const *arg)
 #endif
   struct in_addr mask;
 
+  mask.s_addr = 0;	/* avoid gcc warnings */
+
   current = iface_Create(iface->name);
   flags = iface->flags = current->flags;
   iface_Destroy(current);

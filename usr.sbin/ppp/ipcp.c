@@ -613,6 +613,8 @@ ipcp_proxyarp(struct ipcp *ipcp,
   struct in_addr peer, mask, ip;
   int n, ret;
 
+  mask.s_addr = 0;	/* avoid gcc warnings */
+
   if (!ncpaddr_getip4(&addr->peer, &peer)) {
     log_Printf(LogERROR, "Oops, ipcp_proxyarp() called with unexpected addr\n");
     return 0;
