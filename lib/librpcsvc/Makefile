@@ -7,8 +7,11 @@ LIB=    rpcsvc
 WARNS?=	2
 
 RPCSRCS= klm_prot.x mount.x nfs_prot.x nlm_prot.x rex.x rnusers.x \
-	rquota.x rstat.x rwall.x sm_inter.x spray.x yppasswd.x ypxfrd.x \
+	rquota.x rstat.x sm_inter.x spray.x yppasswd.x ypxfrd.x \
 	ypupdate_prot.x
+
+# produces empty objects
+#RPCSRCS+=	rwall.x
 
 OTHERSRCS=  rnusers.c rstat.c rwall.c yp_passwd.c yp_update.c
 SECRPCSRCS= secretkey.c xcrypt.c
