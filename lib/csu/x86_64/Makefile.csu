@@ -12,27 +12,32 @@ CFLAGS+=	-I${CSUDIR}/../common \
 CFLAGS+=	-fno-omit-frame-pointer
 CFLAGS+=	-fno-asynchronous-unwind-tables
 
+# explictly do not let the use of -flto (ld.gold blows away os version elf note)
+.if ${CFLAGS:M-flto}
+CFLAGS+=        -fno-lto
+.endif
+
 .PATH:		${CSUDIR} ${CSUDIR}/../common
 
 # See the comment in lib/csu/common/crtbrand.c for the reason crt1.c is not
 # directly compiled to .o files.
 
 crt1.s: crt1.c
-	${CC} ${CFLAGS} -S -o ${.TARGET} ${CSUDIR}/crt1.c
+	${CC} ${CFLAGS:N-flto} -S -o ${.TARGET} ${CSUDIR}/crt1.c
 	sed ${SED_FIX_NOTE} ${.TARGET}
 
 crt1.o: crt1.s
 	${CC} -c -o ${.TARGET} crt1.s
 
 gcrt1.s: crt1.c
-	${CC} ${CFLAGS} -DGCRT -S -o ${.TARGET} ${CSUDIR}/crt1.c
+	${CC} ${CFLAGS:N-flto} -DGCRT -S -o ${.TARGET} ${CSUDIR}/crt1.c
 	sed ${SED_FIX_NOTE} ${.TARGET}
 
 gcrt1.o: gcrt1.s
 	${CC} -c -o ${.TARGET} gcrt1.s
 
 Scrt1.s: crt1.c
-	${CC} ${CFLAGS} -fPIC -DPIC -S -o ${.TARGET} ${CSUDIR}/crt1.c
+	${CC} ${CFLAGS:N-flto} -fPIC -DPIC -S -o ${.TARGET} ${CSUDIR}/crt1.c
 	sed ${SED_FIX_NOTE} ${.TARGET}
 
 Scrt1.o: Scrt1.s
