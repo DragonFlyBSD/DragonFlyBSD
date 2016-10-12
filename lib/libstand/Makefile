@@ -22,6 +22,10 @@ LIBSTAND_ARCH?=	${MACHINE_ARCH}
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding
 
+.if (${CFLAGS:M-flto} && ${CCVER:Mgcc*})
+CFLAGS+=	-fno-builtin	# LTO exposes too much stuff
+.endif
+
 .if ${LIBSTAND_ARCH} == "x86_64"
 CFLAGS+=	-mno-red-zone -fPIC
 .endif
@@ -53,6 +57,10 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
 	strpbrk.c strrchr.c strsep.c strspn.c strstr.c strtok.c swab.c
+
+# math stuff, thus no -flto!
+qdivrem.o:	qdivrem.c
+	${CC} ${CFLAGS:N-flto} -c -o ${.TARGET} ${.IMPSRC}
 .endif
 .PATH:	${LIBSTAND_SRC}/../../sys/libkern
 SRCS+=  icrc32.c
