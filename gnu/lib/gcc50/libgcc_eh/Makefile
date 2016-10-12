@@ -17,6 +17,12 @@ CFLAGS+=	-DIN_LIBGCC2
 CFLAGS+=	-DHAVE_CC_TLS
 CFLAGS+=	-DHIDE_EXPORTS
 
+# for now do not let the use of -flto
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 # LIB2ADDEH, gcc/Makefile
 SRCS+=	unwind-dw2.c \
 	unwind-dw2-fde-dip.c \

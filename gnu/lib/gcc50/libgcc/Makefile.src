@@ -36,6 +36,12 @@ SOFTFUNCS+=	enable-execute-stack cpuinfo
 SOFTFUNCS+=	${nowsoft}
 FUNCS=		${lib2funcs} ${LIB2_DIVMOD_FUNCS} ${LIB2FUNCS_ST}
 
+# for now do not let the use of -flto
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 #stack_FLAGS=		-D__LIBGCC_TRAMPOLINE_SIZE__=${TRAMPSIZE}
 #stack_FLAGS_FILES=	enable-execute-stack.c
 
