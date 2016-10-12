@@ -12,6 +12,12 @@ NOASM=
 
 WARNS=2
 
+# for now do not let the use of -flto (check -plugin-opt=-pass-through=-lc !)
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc"
 
 .include "${.CURDIR}/../libc/citrus/Makefile.inc"

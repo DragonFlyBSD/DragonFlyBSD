@@ -114,6 +114,12 @@ PAST_SRCS = imprecise.c frexp.c isfinite.c isnanf.c isnormal.c signbit.c
 SRCS=	${COMMON_SRCS} ${PURE_SRCS}
 SRCS+=	${PAST_SRCS}
 
+# for now do not let the use of -flto
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 .if (${MACHINE_ARCH} == "x86_64")
 .PATH:		${OPENSRC}/src/ld80
 .PATH:		${.CURDIR}/src/amd64

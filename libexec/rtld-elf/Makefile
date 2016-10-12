@@ -13,6 +13,12 @@ WARNS?=		2
 # To activate LD_DEBUG functionality, define ENABLE_DEBUG
 # e.g. make -DENABLE_DEBUG
 
+# for now do not let the use of -flto
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 CFLAGS+=	-DIN_RTLD
 CFLAGS+=	-I${.CURDIR}/${MACHINE_ARCH} -I${.CURDIR} -D__thread=
 CFLAGS+=	-I${.CURDIR}/../../lib/csu/common

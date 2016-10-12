@@ -2,6 +2,13 @@
 
 LIB=thread_xu
 SHLIB_MAJOR= 2
+
+# for now do not let the use of -flto
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 CFLAGS+=-DPTHREAD_KERNEL -D_THREAD_SAFE
 CFLAGS+=-I${.CURDIR}/../libc/include -I${.CURDIR}/thread \
 	-I${.CURDIR}/../../include
