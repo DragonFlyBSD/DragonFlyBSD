@@ -78,7 +78,11 @@ int	unlimited;	/* if set, write to end of medium */
 extern int	cachesize;	/* size of block cache */
 extern int	density;	/* density in 0.1" units */
 extern int	dokerberos;
+#ifdef NTREC_LONG
+extern long	ntrec;		/* used by sbin/restore */
+#else
 extern int	ntrec;		/* blocking factor on tape */
+#endif
 extern int	cartridge;
 extern const char *host;
 extern long	blocksperfile;	/* number of blocks per output file */

@@ -677,7 +677,7 @@ getfile(void (*fill)(char *, size_t), void (*skip)(char *, size_t))
 {
 	int i;
 	volatile int curblk = 0;	/* avoid -Wclobbered */
-	quad_t size = spcl.c_dinode.di_size;
+	volatile quad_t size = spcl.c_dinode.di_size;
 	static char clearedbuf[MAXBSIZE];
 	char buf[MAXBSIZE / TP_BSIZE][TP_BSIZE];
 	char junk[TP_BSIZE];
@@ -1104,7 +1104,7 @@ good:
 		buf->c_dinode.di_size = buf->c_count * TP_BSIZE;
 		if (buf->c_count > TP_NINDIR)
 			readmapflag = 1;
-		else 
+		else
 			for (i = 0; i < buf->c_count; i++)
 				buf->c_addr[i]++;
 		break;
