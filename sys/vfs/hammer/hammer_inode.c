@@ -472,7 +472,7 @@ loop:
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
-		0x7FFFFFFFFFFFFFFFLL;
+		HAMMER_MAX_KEY;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
 	hammer_ref(&ip->lock);
@@ -653,7 +653,7 @@ loop:
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
-		0x7FFFFFFFFFFFFFFFLL;
+		HAMMER_MAX_KEY;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
 	hammer_ref(&ip->lock);
@@ -809,7 +809,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
 
-	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+	ip->trunc_off = HAMMER_MAX_KEY;
 	/* ip->save_trunc_off = 0; (already zero) */
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
@@ -2208,7 +2208,7 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	if (ip->flags & HAMMER_INODE_TRUNCATED) {
 		KKASSERT((ip->sync_flags & HAMMER_INODE_TRUNCATED) == 0);
 		ip->sync_trunc_off = ip->trunc_off;
-		ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+		ip->trunc_off = HAMMER_MAX_KEY;
 		ip->flags &= ~HAMMER_INODE_TRUNCATED;
 		ip->sync_flags |= HAMMER_INODE_TRUNCATED;
 
@@ -3052,7 +3052,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 		 * offset of the record.
 		 */
 		ip->sync_flags &= ~HAMMER_INODE_TRUNCATED;
-		/* ip->sync_trunc_off = 0x7FFFFFFFFFFFFFFFLL; */
+		/* ip->sync_trunc_off = HAMMER_MAX_KEY; */
 	} else {
 		error = 0;
 	}
