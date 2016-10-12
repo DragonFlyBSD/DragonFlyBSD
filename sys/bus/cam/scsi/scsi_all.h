@@ -1312,7 +1312,7 @@ static __inline u_int32_t scsi_2btoul(u_int8_t *bytes);
 static __inline u_int32_t scsi_3btoul(u_int8_t *bytes);
 static __inline int32_t scsi_3btol(u_int8_t *bytes);
 static __inline u_int32_t scsi_4btoul(u_int8_t *bytes);
-static __inline u_int64_t scsi_8btou64(u_int8_t *bytes);
+static __inline __always_inline u_int64_t scsi_8btou64(u_int8_t *bytes);
 static __inline void *find_mode_page_6(struct scsi_mode_header_6 *mode_header);
 static __inline void *find_mode_page_10(struct scsi_mode_header_10 *mode_header);
 
@@ -1376,7 +1376,7 @@ scsi_2btoul(u_int8_t *bytes)
 	return (rv);
 }
 
-static __inline uint64_t
+static __inline __always_inline uint64_t
 scsi_8btou64(uint8_t *bytes)
 {
 	uint64_t rv;
