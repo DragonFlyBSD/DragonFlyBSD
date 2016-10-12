@@ -25,7 +25,6 @@ SRCS=	allocator.c \
 	stripslash.c \
 	exclude.c \
 	exitfail.c \
-	fd-hook.c \
 	file-type.c \
 	filenamecat.c \
 	filenamecat-lgpl.c \
@@ -59,14 +58,12 @@ SRCS=	allocator.c \
 	tempname.c \
 	timespec.c \
 	trim.c \
-	unistd.c \
 	u8-mbtoucr.c \
 	u8-uctomb.c \
 	u8-uctomb-aux.c \
 	width.c \
 	version-etc.c \
 	version-etc-fsf.c \
-	wctype-h.c \
 	xmalloc.c \
 	xalloc-die.c \
 	xfreopen.c \
@@ -97,5 +94,11 @@ SRCS=	allocator.c \
 	strerror-override.c \
 	vasnprintf.c \
 	wcwidth.c
+
+# sources that produces empty objects
+#SRCS+=	\
+	fd-hook.c \
+	unistd.c \
+	wctype-h.c
 
 .include <bsd.lib.mk>
