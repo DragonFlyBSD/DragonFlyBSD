@@ -425,6 +425,7 @@ struct nfs_iodesc {
 	off_t	off;
 	u_char	fh[NFS_FHSIZE];
 	/* structure truncated here */
+/* XXX: this does not match one in libstand/nfs.c and causes issues with LTO. */
 };
 extern struct	nfs_iodesc nfs_root_node;
 
