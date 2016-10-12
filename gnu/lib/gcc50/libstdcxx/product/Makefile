@@ -10,6 +10,12 @@ SHLIB_MAJOR=	9
 .PATH:	${SRCDIR}/src/c++98
 .PATH:	${SRCDIR}/src/c++11
 
+# for now do not let the use of -flto (-Wodr...)
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 CFLAGS+=	-I${.OBJDIR}
 CXXFLAGS+=	-fno-implicit-templates
 CXXFLAGS+=	-fdiagnostics-show-location=once

@@ -12,6 +12,12 @@ INSTALL_PIC_ARCHIVE=	yes
 .PATH:	${GCCDIR}/libgcc
 .PATH:	${SRCDIR}/libsupc++
 
+# for now do not let the use of -flto (-Wodr...)
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 CFLAGS+=		-I${.OBJDIR}
 CFLAGS+=		-I${GCCDIR}/libgcc
 CXXFLAGS+=		-fno-implicit-templates

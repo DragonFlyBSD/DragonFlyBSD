@@ -15,6 +15,12 @@ INSTALL_PIC_ARCHIVE=	yes
 .PATH:	${SRCDIR}/config/locale/dragonfly
 .PATH:	${SRCDIR}/config/locale/generic
 
+# for now do not let the use of -flto (-Wodr...)
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 CFLAGS+=	-I${.OBJDIR}
 CXXFLAGS+=	-std=gnu++11 -fdiagnostics-show-location=once
 CXXFLAGS+=	-ffunction-sections -fdata-sections
