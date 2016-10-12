@@ -3,7 +3,10 @@
 LIB=	gnu
 INTERNALLIB=	YES
 
-SRCS=	fnmatch.c localcharset.c memmem.c strnlen1.c wctype-h.c
+SRCS=	fnmatch.c localcharset.c memmem.c strnlen1.c
+
+# sources that produces empty objects
+#SRCS+=	wctype-h.c
 
 .PATH:	${BASEDIR}/gdb/gnulib/import
 
