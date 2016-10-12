@@ -73,13 +73,13 @@ genmatch.nx: ${BUILD_MATCH} vec.no
 
 .for f in ${GENTOOLS}
 $f: ${f:.nx=.no} ${BUILD_LIBS_${f:R}} ${BUILD_LIBS}
-	${NXCXX} ${NXCXXFLAGS} ${NXLDFLAGS} ${.ALLSRC:M*.n[oa]} \
+	${NXCXX} ${NXCXXFLAGS:N-flto} ${NXLDFLAGS} ${.ALLSRC:M*.n[oa]} \
 		${NXLD_${f:R}} -o ${.TARGET}
 .endfor
 
 .for nofile in ${NO_LIST}
 ${nofile}: ${nofile:.no=.c}
-	${NXCXX} ${NXCXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCXX} ${NXCXXFLAGS:N-flto} -c ${.IMPSRC} -o ${.TARGET}
 .endfor
 
 gencheck.no: tm.h insn-constants.h
