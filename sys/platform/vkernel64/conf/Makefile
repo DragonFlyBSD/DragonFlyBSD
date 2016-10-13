@@ -20,9 +20,9 @@ S=	../..
 # Additionally, the max-page-size is set to 0x200000 regardless of the ld
 # default setting.
 #
-SYSTEM_LD= @${CC} ${DEBUG} ${PROF} -export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o -pthread
+SYSTEM_LD= @${CC} ${DEBUG} ${PROF} -Wl,--export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o -pthread
 SYSTEM_LD+= -Wl,--hash-style=sysv
-SYSTEM_LD+= -z max-page-size=0x200000
+SYSTEM_LD+= -Wl,-z,max-page-size=0x200000
 
 %BEFORE_DEPEND
 

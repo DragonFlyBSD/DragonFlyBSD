@@ -94,9 +94,10 @@ SYSTEM_CFILES= ioconf.c config.c
 SYSTEM_SFILES= $S/platform/$P/$M/locore.s
 SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
 SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
-SYSTEM_LD= @${LD} -Bdynamic -T $S/platform/$P/conf/ldscript.$M \
-	-export-dynamic -dynamic-linker /red/herring \
-	-o ${.TARGET} -X ${SYSTEM_OBJS} vers.o
+SYSTEM_LD= @${CC} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
+	-Wl,-Bdynamic -Wl,-T,$S/platform/$P/conf/ldscript.$M \
+	-Wl,--export-dynamic -Wl,--dynamic-linker,/red/herring \
+	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o
 
 # The max-page-size for gnu ld is 0x200000 on x86_64
 # For the gold linker, it is only 0x1000 on both x86_64 and i386
@@ -107,7 +108,7 @@ SYSTEM_LD= @${LD} -Bdynamic -T $S/platform/$P/conf/ldscript.$M \
 # page size as an exception.
 #
 .if ${P} == "pc64"
-SYSTEM_LD+= -z max-page-size=0x200000
+SYSTEM_LD+= -Wl,-z,max-page-size=0x200000
 .endif
 
 SYSTEM_LD_TAIL= @${OBJCOPY} --strip-symbol gcc2_compiled. ${.TARGET} ; \

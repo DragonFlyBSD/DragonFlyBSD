@@ -185,15 +185,18 @@ PROG=	${KMOD}.ko
 
 .if ${MACHINE_ARCH} != x86_64
 ${PROG}: ${KMOD}.kld
-	${LD} -Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
+	${CC} -nostdlib -Wl,--hash-style=sysv \
+	-Wl,-Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
 .endif
 
 .if ${MACHINE_ARCH} != x86_64
 ${KMOD}.kld: ${OBJS}
-	${LD} ${LDFLAGS} -r -o ${.TARGET} ${OBJS}
+	${CC} -nostdlib -Wl,--hash-style=sysv \
+	${LDFLAGS} -r -o ${.TARGET} ${OBJS}
 .else
 ${PROG}: ${OBJS}
-	${LD} ${LDFLAGS} -r -d -o ${.TARGET} ${OBJS}
+	${CC} -nostdlib -Wl,--hash-style=sysv \
+	${LDFLAGS} -r -Wl,-d -o ${.TARGET} ${OBJS}
 .endif
 
 # links to platform and cpu architecture include files.  If we are
