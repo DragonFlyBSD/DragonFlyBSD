@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,29 @@
 static inline void mark_page_accessed(struct vm_page *m)
 {
 	vm_page_flag_set(m, PG_REFERENCED);
+}
+
+/* from vm/swap_pager.h */
+#include <sys/conf.h>
+extern int nswdev;
+extern struct swdevt *swdevt;
+
+static inline long
+get_nr_swap_pages(void)
+{
+	int n;
+	struct swdevt *sp;
+	long total_pages = 0;
+	long used_pages = 0;
+
+	for (n = 0; n < nswdev; n++) {
+		sp = &swdevt[n];
+
+		total_pages += sp->sw_nblks;
+		used_pages  += sp->sw_nused;
+	}
+
+	return (total_pages - used_pages);
 }
 
 #endif	/* _LINUX_SWAP_H_ */
