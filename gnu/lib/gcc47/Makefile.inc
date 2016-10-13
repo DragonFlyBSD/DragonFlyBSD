@@ -24,6 +24,12 @@ TARGET_SHLIBDIR=	${LIBDIR}/${CCVER}
 
 LIBSUPCPP=		${.OBJDIR}/../libsupc++/libsupc++.a
 
+# for now do not let the use of -flto
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 CFLAGS+=	-I${CCDIR}/cc_prep
 CFLAGS+=	-I${CCDIR}/cc_prep/config
 CFLAGS+=	-I${OCCDIR}/cc_prep

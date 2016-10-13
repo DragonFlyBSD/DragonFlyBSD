@@ -21,6 +21,12 @@ STOPDIR=	${.CURDIR}/${TOP_PREFIX}..
 
 TOOLDIR=	${OTOPDIR}/cc_tools/tools
 
+# for now do not let the use of -flto
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+LDFLAGS+=	-flto
+.endif
+
 .if defined(LOCAL_CONFIG)
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
