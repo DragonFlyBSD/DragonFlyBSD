@@ -351,7 +351,6 @@ sys___semctl(struct __semctl_args *uap)
 	int i, rval, eval;
 	struct semid_ds sbuf;
 	struct semid_pool *semaptr;
-	struct semid_pool *semakptr;
 	struct sem *semptr;
 
 #ifdef SEM_DEBUG
@@ -361,33 +360,6 @@ sys___semctl(struct __semctl_args *uap)
 	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
 		return (ENOSYS);
 
-	switch (cmd) {
-	case SEM_STAT:
-		/*
-		 * For this command we assume semid is an array index
-		 * rather than an IPC id.
-		 */
-		if (semid < 0 || semid >= seminfo.semmni) {
-			eval = EINVAL;
-			break;
-		}
-		semakptr = &sema[semid];
-		lockmgr(&semakptr->lk, LK_EXCLUSIVE);
-		if ((semakptr->ds.sem_perm.mode & SEM_ALLOC) == 0) {
-			eval = EINVAL;
-			lockmgr(&semakptr->lk, LK_RELEASE);
-			break;
-		}
-		if ((eval = ipcperm(td->td_proc, &semakptr->ds.sem_perm, IPC_R))) {
-			lockmgr(&semakptr->lk, LK_RELEASE);
-			break;
-		}
-		bcopy(&semakptr->ds, arg->buf, sizeof(struct semid_ds));
-		rval = IXSEQ_TO_IPCID(semid, semakptr->ds.sem_perm);
-		lockmgr(&semakptr->lk, LK_RELEASE);
-		break;
-	}
-	
 	semid = IPCID_TO_IX(semid);
 	if (semid < 0 || semid >= seminfo.semmni) {
 		return(EINVAL);
@@ -452,6 +424,26 @@ sys___semctl(struct __semctl_args *uap)
 			break;
 		eval = copyout(&semaptr->ds, real_arg.buf,
 			       sizeof(struct semid_ds));
+		break;
+	case SEM_STAT:
+		/*
+		 * For this command we assume semid is an array index
+		 * rather than an IPC id.  However, the conversion is
+		 * just a mask so just validate that the passed-in semid
+		 * matches the masked semid.
+		 */
+		if (uap->semid != semid) {
+			eval = EINVAL;
+			break;
+		}
+		eval = ipcperm(td->td_proc, &semaptr->ds.sem_perm, IPC_R);
+		if (eval)
+			break;
+		if ((eval = copyin(arg, &real_arg, sizeof(real_arg))) != 0)
+			break;
+		eval = copyout(&semaptr->ds, real_arg.buf,
+			       sizeof(struct semid_ds));
+		rval = IXSEQ_TO_IPCID(semid, semaptr->ds.sem_perm);
 		break;
 
 	case GETNCNT:
