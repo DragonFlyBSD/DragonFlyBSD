@@ -35,6 +35,7 @@
 #include "hammer.h"
 
 static void hammer_parsedevs(const char *blkdevs);
+static void hammer_parsedevs_noverify(const char *blkdevs);
 static void sigalrm(int signo);
 static void sigintr(int signo);
 static void usage(int exit_code);
@@ -535,7 +536,7 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "recover") == 0) {
-		hammer_parsedevs(blkdevs);
+		hammer_parsedevs_noverify(blkdevs);
 		if (ac <= 1)
 			errx(1, "hammer recover required target directory");
 		hammer_cmd_recover(av[1]);
@@ -566,7 +567,7 @@ main(int ac, char **av)
  */
 static
 void
-hammer_parsedevs(const char *blkdevs)
+__hammer_parsedevs(const char *blkdevs, int verify)
 {
 	struct volume_info *vol = NULL;
 	char *copy;
@@ -586,7 +587,7 @@ hammer_parsedevs(const char *blkdevs)
 		if (strchr(volname, ':'))
 			hammer_parsedevs(volname);
 		else {
-			vol = load_volume(volname, O_RDONLY, 1);
+			vol = load_volume(volname, O_RDONLY, verify);
 			assert(vol);
 			++volnum;
 		}
@@ -604,6 +605,20 @@ hammer_parsedevs(const char *blkdevs)
 
 	if (get_root_volume() == NULL)
 		errx(1, "No root volume found");
+}
+
+static __inline
+void
+hammer_parsedevs(const char *blkdevs)
+{
+	__hammer_parsedevs(blkdevs, 1);
+}
+
+static __inline
+void
+hammer_parsedevs_noverify(const char *blkdevs)
+{
+	__hammer_parsedevs(blkdevs, 0);
 }
 
 static

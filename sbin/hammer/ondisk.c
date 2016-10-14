@@ -263,12 +263,7 @@ get_volume(int32_t vol_no)
 struct volume_info *
 get_root_volume(void)
 {
-	struct volume_info *root_vol;
-
-	root_vol = get_volume(HAMMER_ROOT_VOLNO);
-	assert(root_vol != NULL);
-
-	return(root_vol);
+	return(get_volume(HAMMER_ROOT_VOLNO));
 }
 
 /*
