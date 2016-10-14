@@ -132,84 +132,60 @@
 .rm #[ #] #H #V #F C
 .\" ========================================================================
 .\"
-.IX Title "RAND_set_rand_method 3"
-.TH RAND_set_rand_method 3 "2016-95223" "1.0.ut" "OpenSSL"
+.IX Title "d2i_PrivateKey 3"
+.TH d2i_PrivateKey 3 "2016-95223" "1.0.ut" "OpenSSL"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
 .nh
 .SH "NAME"
-RAND_set_rand_method, RAND_get_rand_method, RAND_SSLeay \- select RAND method
+d2i_Private_key, d2i_AutoPrivateKey, i2d_PrivateKey \- decode and encode
+functions for reading and saving EVP_PKEY structures.
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
 .Vb 1
-\& #include <openssl/rand.h>
+\& #include <openssl/evp.h>
 \&
-\& void RAND_set_rand_method(const RAND_METHOD *meth);
-\&
-\& const RAND_METHOD *RAND_get_rand_method(void);
-\&
-\& RAND_METHOD *RAND_SSLeay(void);
+\& EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **a, const unsigned char **pp,
+\&                          long length);
+\& EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **a, const unsigned char **pp,
+\&                              long length);
+\& int i2d_PrivateKey(EVP_PKEY *a, unsigned char **pp);
 .Ve
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-A \fB\s-1RAND_METHOD\s0\fR specifies the functions that OpenSSL uses for random number
-generation. By modifying the method, alternative implementations such as
-hardware RNGs may be used. \s-1IMPORTANT:\s0 See the \s-1NOTES\s0 section for important
-information about how these \s-1RAND API\s0 functions are affected by the use of
-\&\fB\s-1ENGINE\s0\fR \s-1API\s0 calls.
+\&\fId2i_PrivateKey()\fR decodes a private key using algorithm \fBtype\fR. It attempts to
+use any key specific format or PKCS#8 unencrypted PrivateKeyInfo format. The
+\&\fBtype\fR parameter should be a public key algorithm constant such as
+\&\fB\s-1EVP_PKEY_RSA\s0\fR. An error occurs if the decoded key does not match \fBtype\fR.
 .PP
-Initially, the default \s-1RAND_METHOD\s0 is the OpenSSL internal implementation, as
-returned by \fIRAND_SSLeay()\fR.
+\&\fId2i_AutoPrivateKey()\fR is similar to \fId2i_PrivateKey()\fR except it attempts to
+automatically detect the private key format.
 .PP
-\&\fIRAND_set_default_method()\fR makes \fBmeth\fR the method for \s-1PRNG\s0 use. \fB\s-1NB\s0\fR: This is
-true only whilst no \s-1ENGINE\s0 has been set as a default for \s-1RAND,\s0 so this function
-is no longer recommended.
+\&\fIi2d_PrivateKey()\fR encodes \fBkey\fR. It uses a key specific format or, if none is
+defined for that key type, PKCS#8 unencrypted PrivateKeyInfo format.
 .PP
-\&\fIRAND_get_default_method()\fR returns a pointer to the current \s-1RAND_METHOD.\s0
-However, the meaningfulness of this result is dependent on whether the \s-1ENGINE
-API\s0 is being used, so this function is no longer recommended.
-.SH "THE RAND_METHOD STRUCTURE"
-.IX Header "THE RAND_METHOD STRUCTURE"
-.Vb 9
-\& typedef struct rand_meth_st
-\& {
-\&        void (*seed)(const void *buf, int num);
-\&        int (*bytes)(unsigned char *buf, int num);
-\&        void (*cleanup)(void);
-\&        void (*add)(const void *buf, int num, int entropy);
-\&        int (*pseudorand)(unsigned char *buf, int num);
-\&        int (*status)(void);
-\& } RAND_METHOD;
-.Ve
-.PP
-The components point to the implementation of \fIRAND_seed()\fR,
-\&\fIRAND_bytes()\fR, \fIRAND_cleanup()\fR, \fIRAND_add()\fR, \fIRAND_pseudo_rand()\fR
-and \fIRAND_status()\fR.
-Each component may be \s-1NULL\s0 if the function is not implemented.
-.SH "RETURN VALUES"
-.IX Header "RETURN VALUES"
-\&\fIRAND_set_rand_method()\fR returns no value. \fIRAND_get_rand_method()\fR and
-\&\fIRAND_SSLeay()\fR return pointers to the respective methods.
+These functions are similar to the \fId2i_X509()\fR functions, and you should refer to
+that page for a detailed description (see \fId2i_X509\fR\|(3)).
 .SH "NOTES"
 .IX Header "NOTES"
-As of version 0.9.7, \s-1RAND_METHOD\s0 implementations are grouped together with other
-algorithmic APIs (eg. \s-1RSA_METHOD, EVP_CIPHER,\s0 etc) in \fB\s-1ENGINE\s0\fR modules. If a
-default \s-1ENGINE\s0 is specified for \s-1RAND\s0 functionality using an \s-1ENGINE API\s0 function,
-that will override any \s-1RAND\s0 defaults set using the \s-1RAND API \s0(ie.
-\&\fIRAND_set_rand_method()\fR). For this reason, the \s-1ENGINE API\s0 is the recommended way
-to control default implementations for use in \s-1RAND\s0 and other cryptographic
-algorithms.
+All these functions use \s-1DER\s0 format and unencrypted keys. Applications wishing
+to encrypt or decrypt private keys should use other functions such as
+\&\fId2i_PKC8PrivateKey()\fR instead.
+.PP
+If the \fB*a\fR is not \s-1NULL\s0 when calling \fId2i_PrivateKey()\fR or \fId2i_AutoPrivateKey()\fR
+(i.e. an existing structure is being reused) and the key format is PKCS#8
+then \fB*a\fR will be freed and replaced on a successful call.
+.SH "RETURN VALUES"
+.IX Header "RETURN VALUES"
+\&\fId2i_PrivateKey()\fR and \fId2i_AutoPrivateKey()\fR return a valid \fB\s-1EVP_KEY\s0\fR structure
+or \fB\s-1NULL\s0\fR if an error occurs. The error code can be obtained by calling
+\&\fIERR_get_error\fR\|(3).
+.PP
+\&\fIi2d_PrivateKey()\fR returns the number of bytes successfully encoded or a
+negative value if an error occurs. The error code can be obtained by calling
+\&\fIERR_get_error\fR\|(3).
 .SH "SEE ALSO"
 .IX Header "SEE ALSO"
-\&\fIrand\fR\|(3), \fIengine\fR\|(3)
-.SH "HISTORY"
-.IX Header "HISTORY"
-\&\fIRAND_set_rand_method()\fR, \fIRAND_get_rand_method()\fR and \fIRAND_SSLeay()\fR are
-available in all versions of OpenSSL.
-.PP
-In the engine version of version 0.9.6, \fIRAND_set_rand_method()\fR was altered to
-take an \s-1ENGINE\s0 pointer as its argument. As of version 0.9.7, that has been
-reverted as the \s-1ENGINE API\s0 transparently overrides \s-1RAND\s0 defaults if used,
-otherwise \s-1RAND API\s0 functions work as before. \fIRAND_set_rand_engine()\fR was also
-introduced in version 0.9.7.
+\&\fIcrypto\fR\|(3),
+\&\fId2i_PKCS8PrivateKey\fR\|(3)
