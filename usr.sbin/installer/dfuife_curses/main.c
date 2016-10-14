@@ -144,7 +144,7 @@ main(int argc, char **argv)
 	struct curses_widget *pbar = NULL, *plab = NULL, *pcan = NULL;
 	struct curses_widget *w;
 
-	void *payload;
+	void *payload = NULL;
 	int done = 0;
 	char msgtype;
 	int opt;
