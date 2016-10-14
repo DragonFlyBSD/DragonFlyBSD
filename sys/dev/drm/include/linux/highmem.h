@@ -36,6 +36,12 @@
 
 #include <asm/cacheflush.h>
 
+static inline struct vm_page *
+kmap_to_page(void *addr)
+{
+	return PHYS_TO_VM_PAGE(vtophys(addr));
+}
+
 static inline void *kmap(struct vm_page *pg)
 {
 	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
