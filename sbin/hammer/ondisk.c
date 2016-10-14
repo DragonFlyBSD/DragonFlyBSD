@@ -136,6 +136,25 @@ __add_volume(struct volume_info *vol)
 	TAILQ_INSERT_TAIL(&VolList, vol, entry);
 }
 
+static void
+__verify_volume(struct volume_info *vol)
+{
+	hammer_volume_ondisk_t ondisk = vol->ondisk;
+
+	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
+		errx(1, "verify_volume: Invalid root volume# %d",
+			ondisk->vol_rootvol);
+	}
+	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
+		errx(1, "verify_volume: %s: Header does not indicate "
+			"that this is a hammer volume", vol->name);
+	}
+	if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
+		errx(1, "verify_volume: %s: FSId does match other volumes!",
+			vol->name);
+	}
+}
+
 /*
  * Initialize a volume structure and ondisk vol_no field.
  */
@@ -156,10 +175,9 @@ init_volume(int32_t vol_no, const char *filename, int oflags)
  * Initialize a volume structure and read ondisk volume header.
  */
 struct volume_info*
-load_volume(const char *filename, int oflags)
+load_volume(const char *filename, int oflags, int verify)
 {
 	struct volume_info *vol;
-	hammer_volume_ondisk_t ondisk;
 	int n;
 
 	vol = __alloc_volume(filename, oflags);
@@ -168,25 +186,12 @@ load_volume(const char *filename, int oflags)
 	if (n == -1) {
 		err(1, "load_volume: %s: Read failed at offset 0", vol->name);
 	}
-	ondisk = vol->ondisk;
-	vol->vol_no = ondisk->vol_no;
+	vol->vol_no = vol->ondisk->vol_no;
 
-	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
-		errx(1, "load_volume: Invalid root volume# %d",
-			ondisk->vol_rootvol);
-	}
-
-	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
-		errx(1, "load_volume: %s: Header does not indicate "
-			"that this is a hammer volume", vol->name);
-	}
-
-	if (valid_hammer_volumes++ == 0) {
-		Hammer_FSId = ondisk->vol_fsid;
-	} else if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
-		errx(1, "load_volume: %s: FSId does match other volumes!",
-			vol->name);
-	}
+	if (valid_hammer_volumes++ == 0)
+		Hammer_FSId = vol->ondisk->vol_fsid;
+	if (verify)
+		__verify_volume(vol);
 
 	__add_volume(vol);
 
