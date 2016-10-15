@@ -118,8 +118,7 @@ extern int UseReadAhead;
 extern int DebugOpt;
 extern const char *zone_labels[];
 
-struct volume_info *init_volume(int32_t vol_no, const char *filename,
-				int oflags);
+struct volume_info *init_volume(const char *filename, int oflags, int32_t vol_no);
 struct volume_info *load_volume(const char *filename, int oflags, int verify);
 void assert_volume_offset(struct volume_info *vol);
 struct volume_info *get_volume(int32_t vol_no);

@@ -159,7 +159,7 @@ __verify_volume(struct volume_info *vol)
  * Initialize a volume structure and ondisk vol_no field.
  */
 struct volume_info *
-init_volume(int32_t vol_no, const char *filename, int oflags)
+init_volume(const char *filename, int oflags, int32_t vol_no)
 {
 	struct volume_info *vol;
 
