@@ -60,6 +60,25 @@ static const char *TargetDir;
 static int CachedFd = -1;
 static char *CachedPath;
 
+/*
+ * XXX There is a hidden bug here while iterating zone-2 offset as
+ * shown in an example below.
+ *
+ * If a volume was once used as HAMMER filesystem which consists of
+ * multiple volumes whose usage has reached beyond the first volume,
+ * and then later re-formatted only using 1 volume, hammer recover is
+ * likely to hit assertion in get_buffer() due to having access to
+ * invalid volume (vol1,2,...) from old filesystem data.
+ *
+ * |-----vol0-----|-----vol1-----|-----vol2-----| old filesystem
+ * <-----------------------> used by old filesystem
+ *
+ * |-----vol0-----| new filesystem
+ * <-----> used by new filesystem
+ *        <-------> unused, invalid data from old filesystem
+ *              <-> B-Tree nodes likely to point to vol1
+ */
+
 void
 hammer_cmd_recover(const char *target_dir)
 {
