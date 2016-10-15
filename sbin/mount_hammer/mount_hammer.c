@@ -244,7 +244,8 @@ test_volumes(struct hammer_mount_info *info)
 		ondisk = (hammer_volume_ondisk_t)buf;
 		if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 			fprintf(stderr,
-				"%s: Not a valid HAMMER filesystem\n", vol);
+				"%s: Invalid volume signature %016jx\n",
+				vol, ondisk->vol_signature);
 			goto next;
 		}
 		if (ondisk->vol_count != info->nvolumes) {

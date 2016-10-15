@@ -141,6 +141,10 @@ __verify_volume(struct volume_info *vol)
 {
 	hammer_volume_ondisk_t ondisk = vol->ondisk;
 
+	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
+		errx(1, "verify_volume: Invalid volume signature %016jx",
+			ondisk->vol_signature);
+	}
 	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
 		errx(1, "verify_volume: Invalid root volume# %d",
 			ondisk->vol_rootvol);
