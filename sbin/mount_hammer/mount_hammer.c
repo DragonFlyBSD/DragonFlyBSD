@@ -175,6 +175,9 @@ static void test_master_id(const char *progname, int master_id)
 			"equivalent to -o nomirror option\n",
 			progname);
 		break;
+	case 1 ... 15: /* gcc */
+		/* Expected values via -o master= option */
+		break;
 	default:
 		/* This will eventually fail in hammer_vfs_mount() */
 		fprintf(stderr,
