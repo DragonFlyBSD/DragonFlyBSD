@@ -241,6 +241,7 @@ struct mount {
 	struct nchandle mnt_ncmountpt;		/* mount point */
 	struct nchandle mnt_ncmounton;		/* mounted on */
 	int		mnt_refs;		/* nchandle references */
+	int		mnt_hold;		/* prevent kfree */
 	struct lwkt_token mnt_token;		/* token lock if not MPSAFE */
 	struct journallst mnt_jlist;		/* list of active journals */
 	u_int8_t	*mnt_jbitmap;		/* streamid bitmap */
@@ -706,6 +707,8 @@ extern	char *mountrootfsname;
 /*
  * exported vnode operations
  */
+void	mount_hold(struct mount *);
+void	mount_drop(struct mount *);
 int	dounmount (struct mount *, int);
 int	vfs_setpublicfs			    /* set publicly exported fs */
 	  (struct mount *, struct netexport *, const struct export_args *);

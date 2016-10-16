@@ -333,8 +333,22 @@ mount_init(struct mount *mp)
 	TAILQ_INIT(&mp->mnt_jlist);
 	mp->mnt_nvnodelistsize = 0;
 	mp->mnt_flag = 0;
+	mp->mnt_hold = 1;
 	mp->mnt_iosize_max = MAXPHYS;
 	vn_syncer_thr_create(mp);
+}
+
+void
+mount_hold(struct mount *mp)
+{
+	atomic_add_int(&mp->mnt_hold, 1);
+}
+
+void
+mount_drop(struct mount *mp)
+{
+	if (atomic_fetchadd_int(&mp->mnt_hold, -1) == 1)
+		kfree(mp, M_MOUNT);
 }
 
 /*
@@ -452,9 +466,9 @@ vnlru_proc(void)
 		 *
 		 * (long) -> deal with 64 bit machines, intermediate overflow
 		 */
-		if (numvnodes >= desiredvnodes * 9 / 10 &&
-		    cachedvnodes + inactivevnodes >= desiredvnodes * 5 / 10) {
-			int count = numvnodes - desiredvnodes * 9 / 10;
+		if (numvnodes >= maxvnodes * 9 / 10 &&
+		    cachedvnodes + inactivevnodes >= maxvnodes * 5 / 10) {
+			int count = numvnodes - maxvnodes * 9 / 10;
 
 			if (count > (cachedvnodes + inactivevnodes) / 100)
 				count = (cachedvnodes + inactivevnodes) / 100;
@@ -474,8 +488,8 @@ vnlru_proc(void)
 		 * Nothing to do if most of our vnodes are already on
 		 * the free list.
 		 */
-		if (numvnodes <= desiredvnodes * 9 / 10 ||
-		    cachedvnodes + inactivevnodes <= desiredvnodes * 5 / 10) {
+		if (numvnodes <= maxvnodes * 9 / 10 ||
+		    cachedvnodes + inactivevnodes <= maxvnodes * 5 / 10) {
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
@@ -605,6 +619,11 @@ mountlist_exists(struct mount *mp)
  * MNTSCAN_REVERSE	- the mountlist is scanned in reverse
  * MNTSCAN_NOBUSY	- the scanner will make the callback without busying
  *			  the mount node.
+ *
+ * NOTE: mount_hold()/mount_drop() sequence primarily helps us avoid
+ *	 confusion for the unbusy check, particularly if a kfree/kmalloc
+ *	 occurs quickly (lots of processes mounting and unmounting at the
+ *	 same time).
  */
 int
 mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
@@ -625,6 +644,7 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 	if (how & MNTSCAN_FORWARD) {
 		info.msi_node = TAILQ_FIRST(&mountlist);
 		while ((mp = info.msi_node) != NULL) {
+			mount_hold(mp);
 			if (how & MNTSCAN_NOBUSY) {
 				count = callback(mp, data);
 			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
@@ -634,6 +654,7 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 			} else {
 				count = 0;
 			}
+			mount_drop(mp);
 			if (count < 0)
 				break;
 			res += count;
@@ -643,6 +664,7 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 	} else if (how & MNTSCAN_REVERSE) {
 		info.msi_node = TAILQ_LAST(&mountlist, mntlist);
 		while ((mp = info.msi_node) != NULL) {
+			mount_hold(mp);
 			if (how & MNTSCAN_NOBUSY) {
 				count = callback(mp, data);
 			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
@@ -652,6 +674,7 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 			} else {
 				count = 0;
 			}
+			mount_drop(mp);
 			if (count < 0)
 				break;
 			res += count;

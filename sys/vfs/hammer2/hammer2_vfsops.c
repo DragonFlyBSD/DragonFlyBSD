@@ -288,7 +288,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 	TAILQ_INIT(&hammer2_mntlist);
 	TAILQ_INIT(&hammer2_pfslist);
 
-	hammer2_limit_dirty_chains = desiredvnodes / 10;
+	hammer2_limit_dirty_chains = maxvnodes / 10;
 
 	return (error);
 }

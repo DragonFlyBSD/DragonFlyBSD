@@ -118,10 +118,11 @@ int
 msdosfs_init(struct vfsconf *vfsp)
 {
 	dehash = 16;
-	while (dehash < desiredvnodes)
+	while (dehash < maxvnodes)
 		dehash <<= 1;
-	dehashtbl = kmalloc(sizeof(void *) * dehash, M_MSDOSFSMNT,
-			   M_WAITOK|M_ZERO);
+	dehashtbl = kmalloc(sizeof(void *) * dehash,
+			    M_MSDOSFSMNT,
+			    M_WAITOK|M_ZERO);
 	--dehash;
 	lwkt_token_init(&dehash_token, "msdosihash");
 	return (0);

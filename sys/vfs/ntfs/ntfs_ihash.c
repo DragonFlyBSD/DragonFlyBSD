@@ -63,7 +63,7 @@ void
 ntfs_nthashinit(void)
 {
 	lockinit(&ntfs_hashlock, "ntfs_nthashlock", 0, 0);
-	ntfs_nthashtbl = hashinit(desiredvnodes, M_NTFSNTHASH, &ntfs_nthash);
+	ntfs_nthashtbl = hashinit(maxvnodes, M_NTFSNTHASH, &ntfs_nthash);
 	lwkt_token_init(&ntfs_nthash_slock, "ntfsihash");
 }
 

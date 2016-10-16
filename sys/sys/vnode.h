@@ -344,7 +344,7 @@ struct objcache;
 
 extern	struct vnode *rootvnode;	/* root (i.e. "/") vnode */
 extern  struct nchandle rootnch;	/* root (i.e. "/") namecache */
-extern	int desiredvnodes;		/* number of vnodes desired */
+extern	int maxvnodes;			/* nominal maximum number of vnodes */
 extern	time_t syncdelay;		/* max time to delay syncing data */
 extern	time_t filedelay;		/* time to delay syncing files */
 extern	time_t dirdelay;		/* time to delay syncing directories */

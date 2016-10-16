@@ -116,9 +116,9 @@ int	nfs_mount_type = -1;
 static struct lwkt_token spechash_token;
 struct nfs_public nfs_pub;	/* publicly exported FS */
 
-int desiredvnodes;
+int maxvnodes;
 SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW, 
-		&desiredvnodes, 0, "Maximum number of vnodes");
+		&maxvnodes, 0, "Maximum number of vnodes");
 
 static struct radix_node_head *vfs_create_addrlist_af(int af,
 		    struct netexport *nep);
@@ -171,10 +171,9 @@ vfs_subr_init(void)
 	 */
 	factor1 = 20 * (sizeof(struct vm_object) + sizeof(struct vnode));
 	factor2 = 25 * (sizeof(struct vm_object) + sizeof(struct vnode));
-	desiredvnodes =
-		imin((int64_t)vmstats.v_page_count * PAGE_SIZE / factor1,
-		     KvaSize / factor2);
-	desiredvnodes = imax(desiredvnodes, maxproc * 8);
+	maxvnodes = imin((int64_t)vmstats.v_page_count * PAGE_SIZE / factor1,
+			 KvaSize / factor2);
+	maxvnodes = imax(maxvnodes, maxproc * 8);
 
 	lwkt_token_init(&spechash_token, "spechash");
 }
@@ -1832,8 +1831,14 @@ vfs_mountedon(struct vnode *vp)
 /*
  * Unmount all filesystems. The list is traversed in reverse order
  * of mounting to avoid dependencies.
+ *
+ * We want the umountall to be able to break out of its loop if a
+ * failure occurs, after scanning all possible mounts, so the callback
+ * returns 0 on error.
+ *
+ * NOTE: Do not call mountlist_remove(mp) on error any more, this will
+ *	 confuse mountlist_scan()'s unbusy check.
  */
-
 static int vfs_umountall_callback(struct mount *mp, void *data);
 
 void
@@ -1855,15 +1860,16 @@ vfs_umountall_callback(struct mount *mp, void *data)
 
 	error = dounmount(mp, MNT_FORCE);
 	if (error) {
-		mountlist_remove(mp);
 		kprintf("unmount of filesystem mounted from %s failed (", 
 			mp->mnt_stat.f_mntfromname);
 		if (error == EBUSY)
 			kprintf("BUSY)\n");
 		else
 			kprintf("%d)\n", error);
+		return 0;
+	} else {
+		return 1;
 	}
-	return(1);
 }
 
 /*

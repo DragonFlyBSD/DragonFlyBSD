@@ -73,7 +73,7 @@ static struct Info {
 	long	nchpathcount;
 	long	*intrcnt;
 	long	bufspace;
-	int	desiredvnodes;
+	int	maxvnodes;
 	int	cachedvnodes;
 	int	inactivevnodes;
 	int	activevnodes;
@@ -145,7 +145,7 @@ static struct nlist namelist[] = {
 #define	X_NCHSTATS	1
 	{ .n_name = "_nchstats" },
 #define	X_DESIREDVNODES	2
-	{ .n_name = "_desiredvnodes" },
+	{ .n_name = "_maxvnodes" },
 #define	X_CACHEDVNODES	3
 	{ .n_name = "_cachedvnodes" },
 #define	X_INACTIVEVNODES 4
@@ -903,7 +903,7 @@ getinfo(struct Info *ls)
 	if (kinfo_get_sched_cputime(&cp_time))
 		err(1, "kinfo_get_sched_cputime");
 	NREAD(X_BUFFERSPACE, &ls->bufspace, sizeof(ls->bufspace));
-	NREAD(X_DESIREDVNODES, &ls->desiredvnodes, sizeof(ls->desiredvnodes));
+	NREAD(X_DESIREDVNODES, &ls->maxvnodes, sizeof(ls->maxvnodes));
 	NREAD(X_CACHEDVNODES, &ls->cachedvnodes, sizeof(ls->cachedvnodes));
 	NREAD(X_INACTIVEVNODES, &ls->inactivevnodes,
 						sizeof(ls->inactivevnodes));

@@ -351,7 +351,7 @@ hammer_vfs_init(struct vfsconf *conf)
 	 * memory pool blowout.
 	 */
 	if (hammer_limit_reclaims == 0)
-		hammer_limit_reclaims = desiredvnodes / 10;
+		hammer_limit_reclaims = maxvnodes / 10;
 
 	return(0);
 }

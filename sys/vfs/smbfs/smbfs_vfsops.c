@@ -144,7 +144,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	smp = kmalloc(sizeof(*smp), M_SMBFSDATA, M_WAITOK | M_USE_RESERVE | M_ZERO);
 	mp->mnt_data = (qaddr_t)smp;
 	smp->sm_cred = crhold(cred);
-	smp->sm_hash = hashinit(desiredvnodes, M_SMBFSHASH, &smp->sm_hashlen);
+	smp->sm_hash = hashinit(maxvnodes, M_SMBFSHASH, &smp->sm_hashlen);
 	if (smp->sm_hash == NULL)
 		goto bad;
 	lockinit(&smp->sm_hashlock, "smbfsh", 0, 0);

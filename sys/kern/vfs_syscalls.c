@@ -768,12 +768,12 @@ dounmount(struct mount *mp, int flags)
 		if ((flags & MNT_FORCE) == 0) {
 			mount_warning(mp, "Cannot unmount: "
 					  "%d mount refs still present",
-					  mp->mnt_refs);
+					  mp->mnt_refs - 1);
 			error = EBUSY;
 		} else {
 			mount_warning(mp, "Forced unmount: "
 					  "%d mount refs still present",
-					  mp->mnt_refs);
+					  mp->mnt_refs - 1);
 			freeok = 0;
 		}
 	}
@@ -865,7 +865,7 @@ dounmount(struct mount *mp, int flags)
 			tsleep(&mp->mnt_refs, 0, "umntrwait", hz / 10 + 1);
 		}
 		lwkt_reltoken(&mp->mnt_token);
-		kfree(mp, M_MOUNT);
+		mount_drop(mp);
 		mp = NULL;
 	}
 	error = 0;

@@ -55,12 +55,13 @@ static MALLOC_DEFINE(M_UFSIHASH, "UFS ihash", "UFS Inode hash tables");
 void
 ufs_ihashinit(struct ufsmount *ump)
 {
-	u_long target = desiredvnodes / 4 + 1;
+	u_long target = maxvnodes / 4 + 1;
 
 	ump->um_ihash = 16;
 	while (ump->um_ihash < target)
 		ump->um_ihash <<= 1;
-	ump->um_ihashtbl = kmalloc(sizeof(void *) * ump->um_ihash, M_UFSIHASH,
+	ump->um_ihashtbl = kmalloc(sizeof(void *) * ump->um_ihash,
+				   M_UFSIHASH,
 				   M_WAITOK|M_ZERO);
 	--ump->um_ihash;
 }

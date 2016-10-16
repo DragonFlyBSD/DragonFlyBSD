@@ -2624,7 +2624,7 @@ void
 cache_hysteresis(int critpath)
 {
 	int poslimit;
-	int neglimit = desiredvnodes / ncnegfactor;
+	int neglimit = maxvnodes / ncnegfactor;
 	int xnumcache = numcache;
 
 	if (critpath == 0)
@@ -2669,7 +2669,7 @@ cache_hysteresis(int critpath)
 	 * into infinity).
 	 */
 	if ((poslimit = ncposlimit) == 0)
-		poslimit = desiredvnodes * 2;
+		poslimit = maxvnodes * 2;
 	if (critpath == 0)
 		poslimit = poslimit * 8 / 10;
 
@@ -3698,7 +3698,7 @@ nchinit(void)
 	}
 	TAILQ_INIT(&ncneglist);
 	spin_init(&ncspin, "nchinit");
-	nchashtbl = hashinit_ext(desiredvnodes / 2,
+	nchashtbl = hashinit_ext(maxvnodes / 2,
 				 sizeof(struct nchash_head),
 				 M_VFSCACHE, &nchash);
 	for (i = 0; i <= (int)nchash; ++i) {

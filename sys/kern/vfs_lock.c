@@ -852,8 +852,8 @@ allocvnode(int lktimeout, int lkflags)
 	 * process to handle the cleaning (at 9/10's) before we are forced
 	 * to flag it here at 11/10's for userexit path processing.
 	 */
-	if (numvnodes >= desiredvnodes * 11 / 10 &&
-	    cachedvnodes + inactivevnodes >= desiredvnodes * 5 / 10) {
+	if (numvnodes >= maxvnodes * 11 / 10 &&
+	    cachedvnodes + inactivevnodes >= maxvnodes * 5 / 10) {
 		struct thread *td = curthread;
 		if (td->td_lwp)
 			atomic_set_int(&td->td_lwp->lwp_mpflags, LWP_MP_VNLRU);
@@ -917,8 +917,8 @@ allocvnode(int lktimeout, int lkflags)
 void
 allocvnode_gc(void)
 {
-	if (numvnodes >= desiredvnodes &&
-	    cachedvnodes + inactivevnodes >= desiredvnodes * 5 / 10) {
+	if (numvnodes >= maxvnodes &&
+	    cachedvnodes + inactivevnodes >= maxvnodes * 5 / 10) {
 		freesomevnodes(batchfreevnodes);
 	}
 }

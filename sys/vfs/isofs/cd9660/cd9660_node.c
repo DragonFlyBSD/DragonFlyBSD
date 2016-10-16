@@ -73,7 +73,7 @@ cd9660_init(struct vfsconf *vfsp)
 {
 	int hlimit;
 
-	if ((hlimit = desiredvnodes) < CD9660_HASH_SIZE_LIMIT)
+	if ((hlimit = maxvnodes) < CD9660_HASH_SIZE_LIMIT)
 		hlimit = CD9660_HASH_SIZE_LIMIT;
 
 	isohash = 16;

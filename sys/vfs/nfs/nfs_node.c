@@ -72,7 +72,7 @@ void
 nfs_nhinit(void)
 {
 	nfsnode_objcache = objcache_create_simple(M_NFSNODE, sizeof(struct nfsnode));
-	nfsnodehashtbl = hashinit(desiredvnodes, M_NFSHASH, &nfsnodehash);
+	nfsnodehashtbl = hashinit(maxvnodes, M_NFSHASH, &nfsnodehash);
 	lockinit(&nfsnhash_lock, "nfsnht", 0, 0);
 }
 
