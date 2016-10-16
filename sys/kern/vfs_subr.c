@@ -169,8 +169,8 @@ vfs_subr_init(void)
 	 *	     taking up significantly more memory per-vnode vs UFS.
 	 *	     We want around ~5800 on a 128M machine.
 	 */
-	factor1 = 20 * (sizeof(struct vm_object) + sizeof(struct vnode));
-	factor2 = 25 * (sizeof(struct vm_object) + sizeof(struct vnode));
+	factor1 = 25 * (sizeof(struct vm_object) + sizeof(struct vnode));
+	factor2 = 30 * (sizeof(struct vm_object) + sizeof(struct vnode));
 	maxvnodes = imin((int64_t)vmstats.v_page_count * PAGE_SIZE / factor1,
 			 KvaSize / factor2);
 	maxvnodes = imax(maxvnodes, maxproc * 8);
