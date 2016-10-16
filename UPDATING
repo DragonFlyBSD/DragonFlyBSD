@@ -12,6 +12,26 @@
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+OPENSSL REMOVED
+---------------
+
+OpenSSL has been removed from base and replaced with a private version of
+LibreSSL.  The previously installed OpenSSL libraries, headers, and man
+pages will remain on the system unless the "make upgrade" command is
+specifically instructed to remove them.  To do this, define
+REMOVE_OPENSSL_FILES for the upgrade command, e.g.
+"make upgrade REMOVE_OPENSSL_FILES=yes"
+
+It is recommended that the OpenSSL files be removed to avoid configuration
+scripts from using the stale and potentially vulnerable version, but all
+binaries that are dynamically linked to the OpenSSL libraries should be
+rebuilt first to avoid breakage.
+
+16 Oct 2016: The OpenSSL sources and makefiles haven't been removed yet.
+They can still be built by putting "FORCE_OPENSSL=yes" in make.conf.
+This feature will likely be removed within a month, and definitely
+before the release of DF 4.8.
+
 CS, EX AND VX DRIVERS REMOVED
 -----------------------------
 

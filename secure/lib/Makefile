@@ -1,7 +1,7 @@
 # $FreeBSD: src/secure/lib/Makefile,v 1.19.2.5 2003/04/04 21:33:15 ru Exp $
 
 SUBDIR= libcipher
-.if !defined(NO_OPENSSL)
+.if defined(FORCE_OPENSSL) # to be removed during 4.8 development
 SUBDIR+=libcrypto libssl
 .endif
 .if !defined(NO_LIBRESSL)

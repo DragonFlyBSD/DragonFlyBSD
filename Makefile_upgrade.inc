@@ -3145,5 +3145,17 @@ TO_REMOVE+=/usr/share/installer/sources.conf
 TO_REMOVE+=/usr/share/man/man8/installer.8.gz
 .endif
 
+.if defined(REMOVE_OPENSSL_FILES)
+TO_REMOVE+=/lib/libcrypto.so.5
+TO_REMOVE+=/usr/lib/libssl.a
+TO_REMOVE+=/usr/lib/libssl.so
+TO_REMOVE+=/usr/lib/libssl.so.5
+TO_REMOVE+=/usr/lib/engines
+TO_REMOVE+=/usr/lib/libcrypto.so
+TO_REMOVE+=/usr/lib/libcrypto.a
+TO_REMOVE+=/usr/include/openssl
+TO_REMOVE+=/usr/share/openssl
+.endif
+
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
