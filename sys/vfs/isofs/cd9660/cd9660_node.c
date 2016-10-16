@@ -71,18 +71,21 @@ static unsigned	cd9660_chars2ui(unsigned char *begin, int len);
 int
 cd9660_init(struct vfsconf *vfsp)
 {
-	int hlimit;
+	int hsize;
 
-	if ((hlimit = maxvnodes) < CD9660_HASH_SIZE_LIMIT)
-		hlimit = CD9660_HASH_SIZE_LIMIT;
+	hsize = vfs_inodehashsize();
+
+	if (hsize < CD9660_HASH_SIZE_LIMIT)
+		hsize = CD9660_HASH_SIZE_LIMIT;
 
 	isohash = 16;
-	while (isohash < hlimit)
+	while (isohash < hsize)
 		isohash <<= 1;
 	isohashtbl = kmalloc(sizeof(void *) * isohash,
-			    M_ISOFSMNT, M_WAITOK|M_ZERO);
+			     M_ISOFSMNT, M_WAITOK|M_ZERO);
 	--isohash;
 	lwkt_token_init(&cd9660_ihash_token, "cd9660ihash");
+
 	return (0);
 }
 

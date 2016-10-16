@@ -59,10 +59,10 @@ static struct lwkt_token ext2_ihash_token;
 void
 ext2_ihashinit(void)
 {
-	ext2_ihash = 16;
-	while (ext2_ihash < maxvnodes)
-		ext2_ihash <<= 1;
-	ext2_ihashtbl = kmalloc(sizeof(void *) * ext2_ihash, M_EXT2IHASH, M_WAITOK|M_ZERO);
+	ext2_ihash = vfs_inodehashsize();
+	ext2_ihashtbl = kmalloc(sizeof(void *) * ext2_ihash,
+				M_EXT2IHASH,
+				M_WAITOK|M_ZERO);
 	--ext2_ihash;
 	lwkt_token_init(&ext2_ihash_token, "ext2ihash");
 }

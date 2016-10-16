@@ -118,7 +118,7 @@ struct nfs_public nfs_pub;	/* publicly exported FS */
 
 int maxvnodes;
 SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW, 
-		&maxvnodes, 0, "Maximum number of vnodes");
+	   &maxvnodes, 0, "Maximum number of vnodes");
 
 static struct radix_node_head *vfs_create_addrlist_af(int af,
 		    struct netexport *nep);
@@ -2477,4 +2477,32 @@ vn_mark_atime(struct vnode *vp, struct thread *td)
 	if ((vp->v_mount->mnt_flag & (MNT_NOATIME | MNT_RDONLY)) == 0) {
 		VOP_MARKATIME(vp, cred);
 	}
+}
+
+/*
+ * Calculate the number of entries in an inode-related chained hash table.
+ * With today's memory sizes, maxvnodes can wind up being a very large
+ * number.  There is no reason to waste memory, so tolerate some stacking.
+ */
+int
+vfs_inodehashsize(void)
+{
+	int hsize;
+
+	hsize = 32;
+	while (hsize < maxvnodes)
+		hsize <<= 1;
+	while (hsize > maxvnodes * 2)
+		hsize >>= 1;		/* nominal 2x stacking */
+
+	if (maxvnodes > 1024 * 1024)
+		hsize >>= 1;		/* nominal 8x stacking */
+
+	if (maxvnodes > 128 * 1024)
+		hsize >>= 1;		/* nominal 4x stacking */
+
+	if (hsize < 16)
+		hsize = 16;
+
+	return hsize;
 }

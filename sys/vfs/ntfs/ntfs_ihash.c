@@ -62,8 +62,10 @@ struct lock ntfs_hashlock;
 void
 ntfs_nthashinit(void)
 {
+	int hsize = vfs_inodehashsize();
+
 	lockinit(&ntfs_hashlock, "ntfs_nthashlock", 0, 0);
-	ntfs_nthashtbl = hashinit(maxvnodes, M_NTFSNTHASH, &ntfs_nthash);
+	ntfs_nthashtbl = hashinit(hsize, M_NTFSNTHASH, &ntfs_nthash);
 	lwkt_token_init(&ntfs_nthash_slock, "ntfsihash");
 }
 

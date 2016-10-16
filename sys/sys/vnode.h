@@ -507,6 +507,7 @@ cdev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
 size_t	vfs_flagstostr(int flags, const struct mountctl_opt *optp, char *buf, size_t len, int *errorp);
 void	vn_mark_atime(struct vnode *vp, struct thread *td);
+int	vfs_inodehashsize(void);
 int	vn_writechk (struct vnode *vp, struct nchandle *nch);
 int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);

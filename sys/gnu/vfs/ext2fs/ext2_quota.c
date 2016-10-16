@@ -695,7 +695,9 @@ static long ext2_numdquot, ext2_desireddquot = DQUOTINC;
 void
 ext2_dqinit(void)
 {
-	ext2_dqhashtbl = hashinit(maxvnodes, M_EXT2DQUOT, &ext2_dqhash);
+	int hsize = vfs_inodehashsize();
+
+	ext2_dqhashtbl = hashinit(hsize, M_EXT2DQUOT, &ext2_dqhash);
 	TAILQ_INIT(&ext2_dqfreelist);
 }
 
@@ -737,6 +739,7 @@ ext2_dqget(struct vnode *vp, u_long id, struct ext2_mount *ump, int type,
 		*dqp = dq;
 		return (0);
 	}
+
 	/*
 	 * Not in cache, allocate a new one.
 	 */
@@ -745,7 +748,7 @@ ext2_dqget(struct vnode *vp, u_long id, struct ext2_mount *ump, int type,
 		ext2_desireddquot += DQUOTINC;
 	}
 	if (ext2_numdquot < ext2_desireddquot) {
-		dq = (struct ext2_dquot *)kmalloc(sizeof *dq, M_EXT2DQUOT, M_WAITOK | M_ZERO);
+		dq = kmalloc(sizeof *dq, M_EXT2DQUOT, M_WAITOK | M_ZERO);
 		ext2_numdquot++;
 	} else {
 		if ((dq = TAILQ_FIRST(&ext2_dqfreelist)) == NULL) {

@@ -3691,14 +3691,20 @@ nchinit(void)
 	int i;
 	globaldata_t gd;
 
-	/* initialise per-cpu namecache effectiveness statistics. */
+	/*
+	 * Initialise per-cpu namecache effectiveness statistics.
+	 */
 	for (i = 0; i < ncpus; ++i) {
 		gd = globaldata_find(i);
 		gd->gd_nchstats = &nchstats[i];
 	}
+
+	/*
+	 * Create a generous namecache hash table
+	 */
 	TAILQ_INIT(&ncneglist);
 	spin_init(&ncspin, "nchinit");
-	nchashtbl = hashinit_ext(maxvnodes / 2,
+	nchashtbl = hashinit_ext(vfs_inodehashsize(),
 				 sizeof(struct nchash_head),
 				 M_VFSCACHE, &nchash);
 	for (i = 0; i <= (int)nchash; ++i) {

@@ -71,8 +71,11 @@ static struct lock nfsnhash_lock;
 void
 nfs_nhinit(void)
 {
-	nfsnode_objcache = objcache_create_simple(M_NFSNODE, sizeof(struct nfsnode));
-	nfsnodehashtbl = hashinit(maxvnodes, M_NFSHASH, &nfsnodehash);
+	int hsize = vfs_inodehashsize();
+
+	nfsnode_objcache = objcache_create_simple(M_NFSNODE,
+						  sizeof(struct nfsnode));
+	nfsnodehashtbl = hashinit(hsize, M_NFSHASH, &nfsnodehash);
 	lockinit(&nfsnhash_lock, "nfsnht", 0, 0);
 }
 

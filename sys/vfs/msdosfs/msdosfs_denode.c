@@ -117,14 +117,12 @@ static struct denode *
 int 
 msdosfs_init(struct vfsconf *vfsp)
 {
-	dehash = 16;
-	while (dehash < maxvnodes)
-		dehash <<= 1;
+	dehash = vfs_inodehashsize();
 	dehashtbl = kmalloc(sizeof(void *) * dehash,
-			    M_MSDOSFSMNT,
-			    M_WAITOK|M_ZERO);
+			    M_MSDOSFSMNT, M_WAITOK|M_ZERO);
 	--dehash;
 	lwkt_token_init(&dehash_token, "msdosihash");
+
 	return (0);
 }
 

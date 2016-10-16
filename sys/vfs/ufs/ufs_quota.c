@@ -736,7 +736,9 @@ static long ufs_numdquot, ufs_desireddquot = DQUOTINC;
 void
 ufs_dqinit(void)
 {
-	ufs_dqhashtbl = hashinit(maxvnodes, M_DQUOT, &ufs_dqhash);
+	int hsize = vfs_inodehashsize();
+
+	ufs_dqhashtbl = hashinit(hsize, M_DQUOT, &ufs_dqhash);
 	TAILQ_INIT(&ufs_dqfreelist);
 }
 

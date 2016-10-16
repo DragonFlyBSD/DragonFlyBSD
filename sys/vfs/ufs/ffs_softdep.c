@@ -1042,14 +1042,17 @@ top:
 void 
 softdep_initialize(void)
 {
+	size_t idsize = sizeof(struct inodedep);
+	int hsize = vfs_inodehashsize();
+
 	LIST_INIT(&mkdirlisthd);
 	LIST_INIT(&softdep_workitem_pending);
-	max_softdeps = min(maxvnodes * 8,
-		M_INODEDEP->ks_limit / (2 * sizeof(struct inodedep)));
-	pagedep_hashtbl = hashinit(maxvnodes / 5, M_PAGEDEP, &pagedep_hash);
+	max_softdeps = min(maxvnodes * 8, M_INODEDEP->ks_limit / (2 * idsize));
+
+	pagedep_hashtbl = hashinit(hsize / 4, M_PAGEDEP, &pagedep_hash);
 	lockinit(&lk, "ffs_softdep", 0, LK_CANRECURSE);
 	sema_init(&pagedep_in_progress, "pagedep", 0);
-	inodedep_hashtbl = hashinit(maxvnodes, M_INODEDEP, &inodedep_hash);
+	inodedep_hashtbl = hashinit(hsize, M_INODEDEP, &inodedep_hash);
 	sema_init(&inodedep_in_progress, "inodedep", 0);
 	newblk_hashtbl = hashinit(64, M_NEWBLK, &newblk_hash);
 	sema_init(&newblk_in_progress, "newblk", 0);
