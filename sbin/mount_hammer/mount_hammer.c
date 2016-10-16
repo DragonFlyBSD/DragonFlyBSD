@@ -48,6 +48,7 @@
 #include <err.h>
 #include <mntopts.h>
 
+static void test_master_id(const char *progname, int master_id);
 static void extract_volumes(struct hammer_mount_info *info, char **av, int ac);
 static void free_volumes(struct hammer_mount_info *info);
 static void test_volumes(struct hammer_mount_info *info);
@@ -90,11 +91,7 @@ main(int ac, char **av)
 				ptr = strstr(optarg, "master=");
 				if (ptr) {
 					info.master_id = strtol(ptr + 7, NULL, 0);
-					if (info.master_id == 0) {
-						fprintf(stderr,
-	"mount_hammer: Warning: a master id of 0 is the default, explicit\n"
-	"settings should probably use 1-15\n");
-					}
+					test_master_id("mount_hammer", info.master_id);
 				}
 			}
 			if (info.hflags & HMNT_NOMIRROR) {
@@ -161,6 +158,30 @@ main(int ac, char **av)
 	}
 	free_volumes(&info);
 	exit(0);
+}
+
+static void test_master_id(const char *progname, int master_id)
+{
+	switch (master_id) {
+	case 0:
+		fprintf(stderr,
+			"%s: Warning: a master id of 0 is the default, "
+			"explicit settings should use 1-15\n",
+			progname);
+		break;
+	case -1:
+		fprintf(stderr,
+			"%s: Warning: a master id of -1 is nomirror mode, "
+			"equivalent to -o nomirror option\n",
+			progname);
+		break;
+	default:
+		/* This will eventually fail in hammer_vfs_mount() */
+		fprintf(stderr,
+			"%s: Warning: A master id of %d is not supported\n",
+			progname, master_id);
+		break;
+	}
 }
 
 /*
