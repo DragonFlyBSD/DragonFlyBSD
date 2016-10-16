@@ -333,7 +333,8 @@ mount_tmpfs(int argc, char *argv[])
 	int mntflags;
 	struct vfsconf vfc;
 	int error;
-	fsnode_t copyroot = NULL, copyhlinks;
+	fsnode_t copyroot = NULL;
+	fsnode_t copyhlinks = NULL;
 
 	mount_tmpfs_parseargs(argc, argv, &args, &mntflags,
 	    canon_dev, canon_dir);
