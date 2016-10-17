@@ -3134,6 +3134,8 @@ TO_REMOVE+=/usr/lib/libprivate_panelw.a
 TO_REMOVE+=/usr/lib/libprivate_panelw.so
 TO_REMOVE+=/usr/lib/libprivate_panelw.so.59
 TO_REMOVE+=/usr/lib/libprivate_panelw.so.60
+TO_REMOVE+=/usr/lib/profile/libprivate_panel.a
+TO_REMOVE+=/usr/lib/profile/libprivate_panelw.a
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
@@ -3153,6 +3155,8 @@ TO_REMOVE+=/usr/lib/libssl.so.5
 TO_REMOVE+=/usr/lib/engines
 TO_REMOVE+=/usr/lib/libcrypto.so
 TO_REMOVE+=/usr/lib/libcrypto.a
+TO_REMOVE+=/usr/lib/profile/libssl.a
+TO_REMOVE+=/usr/lib/profile/libcrypto.a
 TO_REMOVE+=/usr/include/openssl
 TO_REMOVE+=/usr/share/openssl
 .endif
