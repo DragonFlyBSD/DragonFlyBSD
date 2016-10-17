@@ -1341,7 +1341,6 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	info.limit = flags;
 	info.pagerflags = pagerflags;
 	info.object = object;
-	info.count = 0;
 
 	/*
 	 * If cleaning the entire object do a pass to mark the pages read-only.
@@ -1350,6 +1349,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 */
 	if (wholescan) {
 		info.error = 0;
+		info.count = 0;
 		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 					vm_object_page_clean_pass1, &info);
 		if (info.error == 0) {
@@ -1374,6 +1374,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 */
 	do {
 		info.error = 0;
+		info.count = 0;
 		generation = object->generation;
 		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
 					vm_object_page_clean_pass2, &info);
@@ -2025,6 +2026,7 @@ vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 	info.object = object;
 	info.backing_object = backing_object;
 	info.limit = op;
+	info.count = 0;
 	do {
 		info.error = 1;
 		vm_page_rb_tree_RB_SCAN(&backing_object->rb_memq, NULL,
@@ -2672,6 +2674,7 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	else
 		info.end_pindex = end - 1;
 	info.limit = clean_only;
+	info.count = 0;
 	all = (start == 0 && info.end_pindex >= object->size - 1);
 
 	/*
@@ -2703,7 +2706,11 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 }
 
 /*
- * The caller must hold the object
+ * The caller must hold the object.
+ *
+ * NOTE: User yields are allowed when removing more than one page, but not
+ *	 allowed if only removing one page (the path for single page removals
+ *	 might hold a spinlock).
  */
 static int
 vm_object_page_remove_callback(vm_page_t p, void *data)
