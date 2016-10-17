@@ -17,6 +17,7 @@ SIZE?=		size
 OBJCOPY?=	objcopy
 
 COPTFLAGS?=-O -pipe
+#COPTFLAGS?=-O -pipe -flto -fno-fat-lto-objects
 #COPTFLAGS?=-O -fthread-jumps -fcse-follow-jumps -fcrossjumping -frerun-cse-after-loop -fno-guess-branch-probability --param min-crossjump-insns=1 -pipe
 #COPTFLAGS?=-O -fcrossjumping -pipe
 #COPTFLAGS?=-Os -fno-strict-aliasing -pipe
@@ -59,7 +60,7 @@ COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_
 CFLAGS=	${COPTFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}
 
 # XXX LOCORE means "don't declare C stuff" not "for locore.s".
-ASM_CFLAGS= -x assembler-with-cpp -DLOCORE ${CFLAGS}
+ASM_CFLAGS= -x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto}
 
 DEFINED_PROF=	${PROF}
 .if defined(PROF)
@@ -98,6 +99,16 @@ SYSTEM_LD= @${CC} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
 	-Wl,-Bdynamic -Wl,-T,$S/platform/$P/conf/ldscript.$M \
 	-Wl,--export-dynamic -Wl,--dynamic-linker,/red/herring \
 	-o ${.TARGET} -Wl,-X ${SYSTEM_OBJS} vers.o
+
+# In case of LTO provide all standard CFLAGS!
+.if ${CFLAGS:M-flto}
+SYSTEM_LD+= ${CFLAGS}
+# XXX this one eats a lot of ram, but needed to correctly link the kernel.
+# Default "balanced" might create kernel that "Fatal trap 12" on boot!!!
+. if !${CFLAGS:M-flto-partition=*}
+SYSTEM_LD+= -flto-partition=one -flto-report-wpa
+. endif
+.endif
 
 # The max-page-size for gnu ld is 0x200000 on x86_64
 # For the gold linker, it is only 0x1000 on both x86_64 and i386
