@@ -104,7 +104,7 @@ addfile(char *name, ufs1_ino_t ino, int type)
  */
 /* ARGSUSED */
 long
-deletefile(char *name, ufs1_ino_t ino, int type)
+deletefile(char *name, ufs1_ino_t ino, int type __unused)
 {
 	long descend = hflag ? GOOD : FAIL;
 	struct entry *ep;
@@ -579,7 +579,7 @@ removeoldnodes(void)
  * Extract new leaves.
  */
 void
-createleaves(char *symtabfile)
+createleaves(const char *symtabfile)
 {
 	struct entry *ep;
 	ufs1_ino_t first;

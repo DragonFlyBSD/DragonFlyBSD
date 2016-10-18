@@ -76,8 +76,8 @@ static void	 formatf(struct afile *, int);
 static void	 getcmd(char *, char *, char *, size_t, struct arglist *);
 struct dirent	*glob_readdir(RST_DIR *dirp);
 static int	 glob_stat(const char *, struct stat *);
-static void	 mkentry(char *, struct direct *, struct afile *);
-static void	 printlist(char *, char *);
+static void	 mkentry(const char *, struct direct *, struct afile *);
+static void	 printlist(const char *, char *);
 
 /*
  * Read and execute commands from the terminal.
@@ -425,7 +425,7 @@ copynext(char *input, char *output)
  * remove any embedded "." and ".." components.
  */
 void
-canon(char *rawname, char *canonname, size_t len)
+canon(const char *rawname, char *canonname, size_t len)
 {
 	char *cp, *np;
 
@@ -479,7 +479,7 @@ canon(char *rawname, char *canonname, size_t len)
  * Do an "ls" style listing of a directory
  */
 static void
-printlist(char *name, char *basename)
+printlist(const char *name, char *basename)
 {
 	struct afile *fp, *list, *listp = NULL;
 	struct direct *dp;
@@ -560,7 +560,7 @@ printlist(char *name, char *basename)
  * Read the contents of a directory.
  */
 static void
-mkentry(char *name, struct direct *dp, struct afile *fp)
+mkentry(const char *name, struct direct *dp, struct afile *fp)
 {
 	char *cp;
 	struct entry *np;
@@ -744,15 +744,15 @@ glob_stat(const char *name, struct stat *stp)
 static int
 fcmp(const void *f1, const void *f2)
 {
-	return (strcmp(((struct afile *)f1)->fname,
-	    ((struct afile *)f2)->fname));
+	return (strcmp(((const struct afile *)f1)->fname,
+	    ((const struct afile *)f2)->fname));
 }
 
 /*
  * respond to interrupts
  */
 void
-onintr(int signo)
+onintr(int signo __unused)
 {
 	if (command == 'i' && runshell)
 		longjmp(reset, 1);

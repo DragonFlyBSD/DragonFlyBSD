@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 	int ch;
 	ufs1_ino_t ino;
 	char *inputdev;
-	char *symtbl = "./restoresymtable";
+	const char *symtbl = "./restoresymtable";
 	char *p, name[MAXPATHLEN];
 
 	/* Temp files should *not* be readable.  We set permissions later. */
@@ -81,7 +81,7 @@ main(int argc, char *argv[])
 		usage();
 
 	if ((inputdev = getenv("TAPE")) == NULL)
-		inputdev = _PATH_DEFTAPE;
+		inputdev = __DECONST(char *, _PATH_DEFTAPE);
 	obsolete(&argc, &argv);
 #ifdef KERBEROS
 #define	optlist "b:cdf:hikmNRrs:tuvxy"
@@ -169,7 +169,7 @@ main(int argc, char *argv[])
 
 	if (argc == 0) {
 		argc = 1;
-		*--argv = ".";
+		*--argv = __DECONST(char *, ".");
 	}
 
 	switch (command) {
@@ -196,7 +196,7 @@ main(int argc, char *argv[])
 			extractdirs(1);
 			removeoldleaves();
 			vprintf(stdout, "Calculate node updates.\n");
-			treescan(".", ROOTINO, nodeupdates);
+			treescan(__DECONST(char *, "."), ROOTINO, nodeupdates);
 			findunreflinks();
 			removeoldnodes();
 		} else {
@@ -207,7 +207,7 @@ main(int argc, char *argv[])
 			initsymtable(NULL);
 			extractdirs(1);
 			vprintf(stdout, "Calculate extraction list.\n");
-			treescan(".", ROOTINO, nodeupdates);
+			treescan(__DECONST(char *, "."), ROOTINO, nodeupdates);
 		}
 		createleaves(symtbl);
 		createlinks();
@@ -215,7 +215,7 @@ main(int argc, char *argv[])
 		checkrestore();
 		if (dflag) {
 			vprintf(stdout, "Verify the directory structure\n");
-			treescan(".", ROOTINO, verifyfile);
+			treescan(__DECONST(char *, "."), ROOTINO, verifyfile);
 		}
 		dumpsymtable(symtbl, (long)1);
 		break;

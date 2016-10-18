@@ -114,7 +114,7 @@ gentempname(struct entry *ep)
  * Rename a file or directory.
  */
 void
-renameit(char *from, char *to)
+renameit(const char *from, const char *to)
 {
 	if (!Nflag && rename(from, to) < 0) {
 		fprintf(stderr, "warning: cannot rename %s to %s: %s\n",
@@ -311,7 +311,7 @@ upperbnd(ufs1_ino_t start)
  * report on a badly formed entry
  */
 void
-badentry(struct entry *ep, char *msg)
+badentry(struct entry *ep, const char *msg)
 {
 
 	fprintf(stderr, "bad entry: %s\n", msg);
@@ -377,7 +377,7 @@ dirlookup(const char *name)
  * Elicit a reply.
  */
 int
-reply(char *question)
+reply(const char *question)
 {
 	int c;
 

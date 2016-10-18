@@ -66,7 +66,7 @@ static struct entry **entry;
 static long entrytblsize;
 
 static void		 addino(ufs1_ino_t, struct entry *);
-static struct entry	*lookupparent(char *);
+static struct entry	*lookupparent(const char *);
 static void		 removeentry(struct entry *);
 
 /*
@@ -132,10 +132,11 @@ deleteino(ufs1_ino_t inum)
  * Look up an entry by name
  */
 struct entry *
-lookupname(char *name)
+lookupname(const char *name)
 {
 	struct entry *ep;
-	char *np, *cp;
+	const char *cp;
+	char *np;
 	char buf[MAXPATHLEN];
 
 	cp = name;
@@ -161,7 +162,7 @@ lookupname(char *name)
  * Look up the parent of a pathname
  */
 static struct entry *
-lookupparent(char *name)
+lookupparent(const char *name)
 {
 	struct entry *ep;
 	char *tailindex;
@@ -210,7 +211,7 @@ static struct entry *freelist = NULL;
  * add an entry to the symbol table
  */
 struct entry *
-addentry(char *name, ufs1_ino_t inum, int type)
+addentry(const char *name, ufs1_ino_t inum, int type)
 {
 	struct entry *np, *ep;
 
@@ -301,7 +302,7 @@ freeentry(struct entry *ep)
  * Relocate an entry in the tree structure
  */
 void
-moveentry(struct entry *ep, char *newname)
+moveentry(struct entry *ep, const char *newname)
 {
 	struct entry *np;
 	char *cp;
@@ -374,7 +375,7 @@ static struct strhdr strtblhdr[allocsize(NAME_MAX) / STRTBLINCR];
  * has an appropriate sized entry, and if not allocates a new one.
  */
 char *
-savename(char *name)
+savename(const char *name)
 {
 	struct strhdr *np;
 	long len;
@@ -428,7 +429,7 @@ struct symtableheader {
  * dump a snapshot of the symbol table
  */
 void
-dumpsymtable(char *filename, long checkpt)
+dumpsymtable(const char *filename, long checkpt)
 {
 	struct entry *ep, *tep;
 	ufs1_ino_t i;
@@ -514,7 +515,7 @@ dumpsymtable(char *filename, long checkpt)
  * Initialize a symbol table from a file
  */
 void
-initsymtable(char *filename)
+initsymtable(const char *filename)
 {
 	char *base;
 	long tblsize;

@@ -749,7 +749,7 @@ xtrfile(char *buf, size_t size)
  */
 /* ARGSUSED */
 static void
-xtrskip(char *buf, size_t size)
+xtrskip(char *buf __unused, size_t size)
 {
 
 	if (lseek(ofile, size, SEEK_CUR) == -1) {
@@ -781,7 +781,7 @@ xtrlnkfile(char *buf, size_t size)
  */
 /* ARGSUSED */
 static void
-xtrlnkskip(char *buf, size_t size)
+xtrlnkskip(char *buf __unused, size_t size __unused)
 {
 
 	fprintf(stderr, "unallocated block in symbolic link %s\n",
@@ -805,7 +805,7 @@ xtrmap(char *buf, size_t size)
  */
 /* ARGSUSED */
 static void
-xtrmapskip(char *buf, size_t size)
+xtrmapskip(char *buf __unused, size_t size)
 {
 
 	panic("hole in map\n");
@@ -817,7 +817,7 @@ xtrmapskip(char *buf, size_t size)
  */
 /* ARGSUSED */
 void
-xtrnull(char *buf, size_t size)
+xtrnull(char *buf __unused, size_t size __unused)
 {
 
 	return;
@@ -1043,9 +1043,9 @@ gethead(struct s_spcl *buf)
 		if (checksum((int *)buf) == FAIL)
 			return (FAIL);
 		if (Bcvt) {
-			swabst((u_char *)"8l4s31l", (u_char *)buf);
-			swabst((u_char *)"l",(u_char *) &buf->c_level);
-			swabst((u_char *)"2l",(u_char *) &buf->c_flags);
+			swabst("8l4s31l", (u_char *)buf);
+			swabst("l",(u_char *) &buf->c_level);
+			swabst("2l",(u_char *) &buf->c_flags);
 		}
 		goto good;
 	}
@@ -1337,7 +1337,7 @@ swablong(u_char *sp, int n)
 }
 
 void
-swabst(u_char *cp, u_char *sp)
+swabst(const char *cp, u_char *sp)
 {
 	int n = 0;
 
@@ -1374,6 +1374,6 @@ swabst(u_char *cp, u_char *sp)
 static u_long
 swabl(u_long x)
 {
-	swabst((u_char *)"l", (u_char *)&x);
+	swabst("l", (u_char *)&x);
 	return (x);
 }
