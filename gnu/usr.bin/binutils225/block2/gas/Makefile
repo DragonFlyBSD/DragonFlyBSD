@@ -39,8 +39,13 @@ SRCS+=	app.c \
 	write.c
 LDADD=	${STD_LDADD} ${LDADD_OPCODE} -lz
 
-CFLAGS+=	-I${SRCDIR}/gas -I${SRCDIR}/gas/config -I${SRCDIR}
+# We need to change CFLAGS, so that not to pick up bulibs's config.h first.
+BULIBS_INC:=	# empty
+
+CFLAGS+=	-I${SRCDIR}/gas -I${SRCDIR}/gas/config
+CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${SRCDIR}
 CFLAGS+=	-I${.CURDIR}/x86_64-dragonfly
+CFLAGS+=	${_BULIBS_INC}	# for bfd.h
 
 CFLAGS+=	-DTARGET_ALIAS=\"${TARGET_ALIAS}\"
 CFLAGS+=	-DTARGET_CANONICAL=\"${TARGET_CANONICAL}\"

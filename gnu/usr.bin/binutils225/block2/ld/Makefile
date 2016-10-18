@@ -30,10 +30,12 @@ ELF_SCR_EXT=		x xbn xc xd xdc xdw xn xr xs xsc xsw xu xw
 
 .include "Makefile.x86_64"
 
-# We need to overwrite CFLAGS, it's picking up bulibs's config.h first
-CFLAGS=		-I${SRCDIR}/include -I${SRCDIR}/bfd
+# We need to change CFLAGS, so that not to pick up bulibs's config.h first.
+BULIBS_INC:=	# empty
+
+CFLAGS+=	-I${SRCDIR}/include -I${SRCDIR}/bfd
 CFLAGS+=	-I${SRCDIR}/ld -I${.OBJDIR} -I${.CURDIR}
-CFLAGS+=	-I${OBJTOP}/block1/bulibs -I${BINTOP}/block1/bulibs
+CFLAGS+=	${_BULIBS_INC}	# for bfd.h
 
 CFLAGS+=	-DSCRIPTDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 CFLAGS+=	-DBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"

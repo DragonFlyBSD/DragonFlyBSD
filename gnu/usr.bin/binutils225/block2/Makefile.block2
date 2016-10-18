@@ -13,8 +13,11 @@ SRCDIR=	${.CURDIR}/${RELSRC}
 BINTOP=	${.CURDIR}/${RELTOP}
 OBJTOP=	${.OBJDIR}/${RELTOP}
 
-CFLAGS+=	-I${OBJTOP}/block1/bulibs
-CFLAGS+=	-I${BINTOP}/block1/bulibs
+# Keep these, block2/ld and block2/gas will want to override BULIBS_INC.
+_BULIBS_INC=	-I${OBJTOP}/block1/bulibs -I${BINTOP}/block1/bulibs
+BULIBS_INC=	${_BULIBS_INC}
+
+CFLAGS+=	${BULIBS_INC}
 CFLAGS+=	-I${SRCDIR}/include
 CFLAGS+=	-I${SRCDIR}/bfd
 
