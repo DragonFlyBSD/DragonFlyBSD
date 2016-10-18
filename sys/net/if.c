@@ -30,7 +30,6 @@
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
  */
 
-#include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_inet.h"
 #include "opt_ifpoll.h"
@@ -86,10 +85,6 @@
 #include <netinet6/in6_ifattach.h>
 #endif
 #endif
-
-#if defined(COMPAT_43)
-#include <emulation/43bsd/43bsd_socket.h>
-#endif /* COMPAT_43 */
 
 struct netmsg_ifaddr {
 	struct netmsg_base base;
@@ -1785,9 +1780,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	int error;
 	short oif_flags;
 	int new_flags;
-#ifdef COMPAT_43
-	int ocmd;
-#endif
 	size_t namelen, onamelen;
 	char new_name[IFNAMSIZ];
 	struct ifaddr *ifa;
@@ -2134,54 +2126,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			error = EOPNOTSUPP;
 			break;
 		}
-#ifndef COMPAT_43
 		error = so_pru_control_direct(so, cmd, data, ifp);
-#else
-		ocmd = cmd;
-
-		switch (cmd) {
-		case SIOCSIFDSTADDR:
-		case SIOCSIFADDR:
-		case SIOCSIFBRDADDR:
-		case SIOCSIFNETMASK:
-#if BYTE_ORDER != BIG_ENDIAN
-			if (ifr->ifr_addr.sa_family == 0 &&
-			    ifr->ifr_addr.sa_len < 16) {
-				ifr->ifr_addr.sa_family = ifr->ifr_addr.sa_len;
-				ifr->ifr_addr.sa_len = 16;
-			}
-#else
-			if (ifr->ifr_addr.sa_len == 0)
-				ifr->ifr_addr.sa_len = 16;
-#endif
-			break;
-		case OSIOCGIFADDR:
-			cmd = SIOCGIFADDR;
-			break;
-		case OSIOCGIFDSTADDR:
-			cmd = SIOCGIFDSTADDR;
-			break;
-		case OSIOCGIFBRDADDR:
-			cmd = SIOCGIFBRDADDR;
-			break;
-		case OSIOCGIFNETMASK:
-			cmd = SIOCGIFNETMASK;
-			break;
-		default:
-			break;
-		}
-
-		error = so_pru_control_direct(so, cmd, data, ifp);
-
-		switch (ocmd) {
-		case OSIOCGIFADDR:
-		case OSIOCGIFDSTADDR:
-		case OSIOCGIFBRDADDR:
-		case OSIOCGIFNETMASK:
-			*(u_short *)&ifr->ifr_addr = ifr->ifr_addr.sa_family;
-			break;
-		}
-#endif /* COMPAT_43 */
 
 		if ((oif_flags ^ ifp->if_flags) & IFF_UP) {
 #ifdef INET6
@@ -2324,16 +2269,6 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 			 * the userland, which could block.
 			 */
 			IFAREF(ifa);
-#ifdef COMPAT_43
-			if (cmd == OSIOCGIFCONF) {
-				struct osockaddr *osa =
-					 (struct osockaddr *)&ifr.ifr_addr;
-				ifr.ifr_addr = *sa;
-				osa->sa_family = sa->sa_family;
-				error = copyout(&ifr, ifrp, sizeof ifr);
-				ifrp++;
-			} else
-#endif
 			if (sa->sa_len <= sizeof(*sa)) {
 				ifr.ifr_addr = *sa;
 				error = copyout(&ifr, ifrp, sizeof ifr);

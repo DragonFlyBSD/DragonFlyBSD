@@ -37,7 +37,6 @@ __FBSDID("$FreeBSD: head/sys/dev/usb/input/ukbd.c 262972 2014-03-10 08:52:30Z hs
  * HID spec: http://www.usb.org/developers/devclass_docs/HID1_11.pdf
  */
 
-#include "opt_compat.h"
 #include "opt_kbd.h"
 #include "opt_ukbd.h"
 
@@ -1788,27 +1787,11 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
 	int i;
-#if 0 /* XXX */
-#if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
-    defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
-	int ival;
-
-#endif
-#endif
 
 	switch (cmd) {
 	case KDGKBMODE:		/* get keyboard mode */
 		*(int *)arg = sc->sc_mode;
 		break;
-#if 0 /* XXX */
-#if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
-    defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
-	case _IO('K', 7):
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
-#endif
 	case KDSKBMODE:		/* set keyboard mode */
 		switch (*(int *)arg) {
 		case K_XLATE:
@@ -1834,15 +1817,6 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDGETLED:			/* get keyboard LED */
 		*(int *)arg = KBD_LED_VAL(kbd);
 		break;
-#if 0 /* XXX */
-#if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
-    defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
-	case _IO('K', 66):
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
-#endif
 	case KDSETLED:			/* set keyboard LED */
 		/* NOTE: lock key state in "sc_state" won't be changed */
 		if (*(int *)arg & ~LOCK_MASK)
@@ -1866,15 +1840,6 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	case KDGKBSTATE:		/* get lock key state */
 		*(int *)arg = sc->sc_state & LOCK_MASK;
 		break;
-#if 0 /* XXX */
-#if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
-    defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
-	case _IO('K', 20):
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
-#endif
 	case KDSKBSTATE:		/* set lock key state */
 		if (*(int *)arg & ~LOCK_MASK) {
 			return (EINVAL);
@@ -1903,15 +1868,6 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		kbd->kb_delay2 = ((int *)arg)[1];
 		return (0);
 
-#if 0 /* XXX */
-#if defined(COMPAT_FREEBSD6) || defined(COMPAT_FREEBSD5) || \
-    defined(COMPAT_FREEBSD4) || defined(COMPAT_43)
-	case _IO('K', 67):
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
-#endif
 	case KDSETRAD:			/* set keyboard repeat rate (old
 					 * interface) */
 		return (ukbd_set_typematic(kbd, *(int *)arg));

@@ -5,26 +5,16 @@
  *               by running make sysent in the same directory.
  */
 
-#include "opt_compat.h"
-
 #include <sys/param.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
 #include <sys/statvfs.h>
-#include <emulation/43bsd/stat.h>
 
 #define AS(name) ((sizeof(struct name) - sizeof(struct sysmsg)) / sizeof(register_t))
-
-#ifdef COMPAT_43
-#define compat(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(o,name))
-#else
 #define compat(n, name) 0, (sy_call_t *)sys_nosys
-#endif
 
 /* The casts are bogus but will do for now. */
 struct sysent sysent[] = {
-#ifdef COMPAT_43
-#endif
 	{ 0, (sy_call_t *)sys_nosys },			/* 0 = syscall */
 	{ AS(exit_args), (sy_call_t *)sys_exit },	/* 1 = exit */
 	{ 0, (sy_call_t *)sys_fork },			/* 2 = fork */

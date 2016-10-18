@@ -1288,18 +1288,6 @@ rpioctl(struct dev_ioctl_args *ap)
 
 	tp = rp->rp_tty;
 
-#if defined(COMPAT_43)
-	term = tp->t_termios;
-	oldcmd = cmd;
-	error = ttsetcompat(tp, &cmd, data, &term);
-	if(error != 0) {
-		lwkt_reltoken(&tty_token);
-		return(error);
-	}
-	if(cmd != oldcmd) {
-		data = (caddr_t)&term;
-	}
-#endif
 	if((cmd == TIOCSETA) || (cmd == TIOCSETAW) || (cmd == TIOCSETAF)) {
 		int	cc;
 		struct	termios *dt = (struct termios *)data;

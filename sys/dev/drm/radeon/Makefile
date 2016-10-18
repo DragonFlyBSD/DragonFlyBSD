@@ -134,7 +134,6 @@ SRCS	+=								\
 
 SRCS	+=								\
 	opt_acpi.h							\
-	opt_compat.h							\
 	opt_drm.h							\
 	opt_ktr.h							\
 	acpi_if.h							\

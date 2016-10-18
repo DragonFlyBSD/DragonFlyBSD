@@ -38,7 +38,6 @@ awk -v x="$ioctl_includes" 'BEGIN {print x}' |
 	awk -v ioctl_includes="$ioctl_includes" -v use_switch="$use_switch" '
 BEGIN {
 	print "/* XXX obnoxious prerequisites. */"
-	print "#define COMPAT_43"
 	print "#define _KERNEL_STRUCTURES"
 	print "#include <sys/tty.h>"
 	print "#include <net/if_arp.h>"

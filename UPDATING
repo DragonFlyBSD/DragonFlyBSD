@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+COMPAT_43 KERNEL OPTION REMOVED
+-------------------------------
+
+It was commented out in our default configs for several years now, but
+might still be present in custom configs created before Nov. 2011.
+
 OPENSSL REMOVED
 ---------------
 

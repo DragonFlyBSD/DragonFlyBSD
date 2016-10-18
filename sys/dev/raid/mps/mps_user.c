@@ -59,8 +59,6 @@
  * $FreeBSD: src/sys/dev/mps/mps_user.c,v 1.10 2012/01/26 18:17:21 ken Exp $
  */
 
-#include "opt_compat.h"
-
 /* TODO Move headers to mpsvar */
 #include <sys/types.h>
 #include <sys/param.h>

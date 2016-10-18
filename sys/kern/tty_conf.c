@@ -37,8 +37,6 @@
  * $FreeBSD: src/sys/kern/tty_conf.c,v 1.16.2.1 2002/03/11 01:14:55 dd Exp $
  */
 
-#include "opt_compat.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/tty.h>
@@ -69,13 +67,7 @@ struct	linesw linesw[MAXLDISC] =
 	{ ttyopen,	ttylclose,	ttread,		ttwrite,
 	  l_nullioctl,	ttyinput,	ttstart,	ttymodem },
 	NODISC(1),		/* 1- defunct */
-	  			/* 2- NTTYDISC */
-#ifdef COMPAT_43
-	{ ttyopen,	ttylclose,	ttread,		ttwrite,
-	  l_nullioctl,	ttyinput,	ttstart,	ttymodem },
-#else
-	NODISC(2),
-#endif
+	NODISC(2),	  	/* 2- NTTYDISC */
 	NODISC(3),		/* loadable */
 	NODISC(4),		/* SLIPDISC */
 	NODISC(5),		/* PPPDISC */

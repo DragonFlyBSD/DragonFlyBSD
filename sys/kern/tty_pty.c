@@ -45,13 +45,8 @@
  * (Actually two drivers, requiring two dev_ops structures)
  */
 
-#include "opt_compat.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(COMPAT_43)
-#include <sys/ioctl_compat.h>
-#endif
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/tty.h>
@@ -1142,10 +1137,6 @@ ptyioctl(struct dev_ioctl_args *ap)
 		}
 
 		switch (ap->a_cmd) {
-#ifdef COMPAT_43
-		case TIOCSETP:
-		case TIOCSETN:
-#endif
 		case TIOCSETD:
 		case TIOCSETA:
 		case TIOCSETAW:
@@ -1221,15 +1212,6 @@ ptyioctl(struct dev_ioctl_args *ap)
 		case TIOCSETA:
 		case TIOCSETAW:
 		case TIOCSETAF:
-#ifdef COMPAT_43
-		case TIOCSETP:
-		case TIOCSETN:
-		case TIOCSETC:
-		case TIOCSLTC:
-		case TIOCLBIS:
-		case TIOCLBIC:
-		case TIOCLSET:
-#endif
 			pti->pt_send |= TIOCPKT_IOCTL;
 			ptcwakeup(tp, FREAD);
 		default:

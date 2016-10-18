@@ -39,8 +39,6 @@
  * System calls related to processes and protection
  */
 
-#include "opt_compat.h"
-
 #include <sys/param.h>
 #include <sys/acct.h>
 #include <sys/systm.h>
@@ -67,11 +65,6 @@ sys_getpid(struct getpid_args *uap)
 	struct proc *p = curproc;
 
 	uap->sysmsg_fds[0] = p->p_pid;
-#if defined(COMPAT_43)
-	lwkt_gettoken_shared(&p->p_token);
-	uap->sysmsg_fds[1] = p->p_pptr->p_pid;
-	lwkt_reltoken(&p->p_token);
-#endif
 	return (0);
 }
 
@@ -177,9 +170,6 @@ sys_getuid(struct getuid_args *uap)
 	struct ucred *cred = curthread->td_ucred;
 
 	uap->sysmsg_fds[0] = cred->cr_ruid;
-#if defined(COMPAT_43)
-	uap->sysmsg_fds[1] = cred->cr_uid;
-#endif
 	return (0);
 }
 
@@ -204,9 +194,6 @@ sys_getgid(struct getgid_args *uap)
 	struct ucred *cred = curthread->td_ucred;
 
 	uap->sysmsg_fds[0] = cred->cr_rgid;
-#if defined(COMPAT_43)
-	uap->sysmsg_fds[1] = cred->cr_groups[0];
-#endif
 	return (0);
 }
 

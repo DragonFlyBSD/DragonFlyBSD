@@ -36,8 +36,8 @@
 
 #if 0 /* JG */
 #include "opt_atpic.h"
-#endif
 #include "opt_compat.h"
+#endif
 
 #include <machine/asmacros.h>
 #include <machine/psl.h>

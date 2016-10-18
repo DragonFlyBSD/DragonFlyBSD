@@ -1192,7 +1192,6 @@ kern/sysv_msg.c		standard
 kern/sysv_sem.c		standard
 kern/sysv_shm.c		standard
 kern/tty.c		standard
-kern/tty_compat.c	optional compat_43
 kern/tty_conf.c		standard
 kern/tty_cons.c		standard
 kern/tty_pty.c		optional pty
@@ -2241,14 +2240,6 @@ dev/powermng/lm/lm78.c			optional lm isa
 dev/powermng/lm/lm78_isa.c		optional lm isa
 dev/powermng/uguru/uguru.c		optional uguru isa
 dev/powermng/wbsio/wbsio.c		optional wbsio isa
-emulation/43bsd/43bsd_socket.c		optional compat_43
-emulation/43bsd/43bsd_stats.c		optional compat_43
-emulation/43bsd/43bsd_file.c		optional compat_43
-emulation/43bsd/43bsd_signal.c		optional compat_43
-emulation/43bsd/43bsd_exit.c		optional compat_43
-emulation/43bsd/43bsd_resource.c	optional compat_43
-emulation/43bsd/43bsd_hostinfo.c	optional compat_43
-emulation/43bsd/43bsd_vm.c		optional compat_43
 
 # OS ACPI MI code
 ${OSACPI_MI_DIR}/acpi.c			optional acpi

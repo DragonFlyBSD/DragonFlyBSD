@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opt_compat.h"
 #include "opt_sysvipc.h"
 
 #include <sys/param.h>

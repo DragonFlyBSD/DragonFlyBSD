@@ -4,9 +4,6 @@
 
 set -e
 
-# name of compat option:
-compat=COMPAT_43
-
 # output files:
 sysnames="syscalls.c"
 sysproto="../sys/sysproto.h"
@@ -95,8 +92,6 @@ s/\$//g
 		printf "#include <sys/procctl.h>\n\n" > sysarg
 		printf "#define\tPAD_(t)\t(sizeof(register_t) <= sizeof(t) ? \\\n" > sysarg
 		printf "\t\t0 : sizeof(register_t) - sizeof(t))\n\n" > sysarg
-
-		printf "\n#ifdef %s\n\n", compat > syscompat
 
 		printf "/*\n * System call names.\n *\n" > sysnames
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysnames
@@ -333,9 +328,6 @@ s/\$//g
 		ncompat++
 		parseline()
 		if (argc != 0 && $2 != "CPT_NOA") {
-			printf("#ifdef %s\n", compat) > sysun
-			printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
-			printf("#endif\n") > sysun
 			printf("struct\t%s {\n", argalias) > syscompat
 			printf("#ifdef _KERNEL\n") > syscompat
 			printf("\tstruct sysmsg sysmsg;\n") > syscompat
@@ -411,17 +403,10 @@ s/\$//g
 	}
 	END {
 		printf "\n#define AS(name) ((sizeof(struct name) - sizeof(struct sysmsg)) / sizeof(register_t))\n" > sysinc
-		if (ncompat != 0) {
-			printf "#include \"opt_compat.h\"\n\n" > syssw
-			printf "\n#ifdef %s\n", compat > sysinc
-			printf "#define compat(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(o,name))\n" > sysinc
-			printf "#else\n" > sysinc
+		if (ncompat != 0)
 			printf "#define compat(n, name) 0, (sy_call_t *)sys_nosys\n" > sysinc
-			printf "#endif\n" > sysinc
-		}
 
 		printf("\n#endif /* _KERNEL */\n") > syscompatdcl
-		printf("\n#endif /* %s */\n\n", compat) > syscompatdcl
 
 		printf("\n") > sysmk
 		printf("};\n") > sysent

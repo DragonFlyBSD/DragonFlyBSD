@@ -41,14 +41,10 @@ static const char si_copyright1[] =  "@(#) Copyright (C) Specialix International
 		  si_copyright3[] =  "@(#) Copyright (C) Peter Wemm 2000";
 #endif	/* not lint */
 
-#include "opt_compat.h"
 #include "opt_debug_si.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(COMPAT_43)
-#include <sys/ioctl_compat.h>
-#endif
 #include <sys/tty.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
@@ -970,10 +966,6 @@ siioctl(struct dev_ioctl_args *ap)
 	int error;
 	int mynor = minor(dev);
 	int blocked = 0;
-#if defined(COMPAT_43)
-	u_long oldcmd;
-	struct termios term;
-#endif
 
 	if (IS_SI_IOCTL(cmd))
 		return(si_Sioctl(dev, cmd, data, ap->a_fflag, ap->a_cred));
@@ -1026,20 +1018,6 @@ siioctl(struct dev_ioctl_args *ap)
 		}
 	}
 	/*
-	 * Do the old-style ioctl compat routines...
-	 */
-#if defined(COMPAT_43)
-	term = tp->t_termios;
-	oldcmd = cmd;
-	error = ttsetcompat(tp, &cmd, data, &term);
-	if (error != 0) {
-		lwkt_reltoken(&tty_token);
-		return (error);
-	}
-	if (cmd != oldcmd)
-		data = (caddr_t)&term;
-#endif
-	/*
 	 * Do the initial / lock state business
 	 */
 	if (cmd == TIOCSETA || cmd == TIOCSETAW || cmd == TIOCSETAF) {
@@ -1074,9 +1052,6 @@ siioctl(struct dev_ioctl_args *ap)
 	case TIOCSETAW:
 	case TIOCSETAF:
 	case TIOCDRAIN:
-#ifdef COMPAT_43
-	case TIOCSETP:
-#endif
 		blocked++;	/* block writes for ttywait() and siparam() */
 		si_write_enable(pp, 0);
 	}

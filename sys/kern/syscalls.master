@@ -33,10 +33,6 @@
 #include <sys/sysproto.h>
 #include <sys/statvfs.h>
 
-#ifdef COMPAT_43
-#include <emulation/43bsd/stat.h>
-#endif
-
 ; Reserved/unimplemented system calls in the range 0-150 inclusive
 ; are reserved for use in future Berkeley releases.
 ; Additional system calls implemented in vendor and other

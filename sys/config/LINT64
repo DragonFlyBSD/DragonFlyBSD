@@ -119,13 +119,6 @@ options 	CPU_DISABLE_AVX
 #####################################################################
 # COMPATIBILITY OPTIONS
 
-#
-# Implement system calls compatible with 4.3BSD and older versions of
-# FreeBSD.  You probably do NOT want to remove this as much current code
-# still relies on the 4.3 emulation.
-#
-options 	COMPAT_43
-
 # Enable NDIS binary driver support
 options 	NDISAPI
 device		ndis

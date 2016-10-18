@@ -2,9 +2,5 @@
 
 KMOD=	nmdm
 SRCS=	nmdm.c
-SRCS+=	opt_compat.h
-
-opt_compat.h:
-	echo "#define COMPAT_43 1" >${.TARGET}
 
 .include <bsd.kmod.mk>

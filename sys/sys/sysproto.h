@@ -23,8 +23,6 @@
 #define	PAD_(t)	(sizeof(register_t) <= sizeof(t) ? \
 		0 : sizeof(register_t) - sizeof(t))
 
-#ifdef COMPAT_43
-#endif
 struct	nosys_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2333,11 +2331,6 @@ struct	ppoll_args {
 	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
 	const sigset_t *	sigmask;	char sigmask_[PAD_(const sigset_t *)];
 };
-
-#ifdef COMPAT_43
-
-#ifdef COMPAT_43
-#endif
 struct	ocreat_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2572,13 +2565,8 @@ int	sys_ogetdirentries (struct ogetdirentries_args *);
 
 #endif /* _KERNEL */
 
-#endif /* COMPAT_43 */
-
-
 #ifdef _KERNEL
 
-#ifdef COMPAT_43
-#endif
 int	sys_nosys (struct nosys_args *);
 int	sys_exit (struct exit_args *);
 int	sys_fork (struct fork_args *);

@@ -39,12 +39,8 @@
 /*
  * Pseudo-nulmodem Driver
  */
-#include "opt_compat.h"
 #include <sys/param.h>
 #include <sys/systm.h>
-#if defined(COMPAT_43)
-#include <sys/ioctl_compat.h>
-#endif
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/thread2.h>

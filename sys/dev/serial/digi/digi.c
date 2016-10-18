@@ -37,8 +37,6 @@
  *	Test with *LOTS* more cards - I only have a PCI8r and an ISA Xem.
  */
 
-#include "opt_compat.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
@@ -1090,10 +1088,6 @@ digiioctl(struct dev_ioctl_args *ap)
 	struct digi_softc *sc;
 	struct digi_p *port;
 	struct tty *tp;
-#if defined(COMPAT_43)
-	int oldcmd;
-	struct termios term;
-#endif
 
 	mynor = minor(dev);
 	unit = MINOR_TO_UNIT(mynor);
@@ -1271,17 +1265,6 @@ digiioctl(struct dev_ioctl_args *ap)
 	}
 
 	tp = port->tp;
-#if defined(COMPAT_43)
-	term = tp->t_termios;
-	oldcmd = cmd;
-	error = ttsetcompat(tp, &cmd, data, &term);
-	if (error != 0) {
-		lwkt_reltoken(&tty_token);
-		return (error);
-	}
-	if (cmd != oldcmd)
-		data = (caddr_t) & term;
-#endif
 	if (cmd == TIOCSETA || cmd == TIOCSETAW || cmd == TIOCSETAF) {
 		int cc;
 		struct termios *dt;

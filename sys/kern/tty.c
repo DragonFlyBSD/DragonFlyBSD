@@ -71,15 +71,11 @@
  *	  only when _all_ openers leave open().
  */
 
-#include "opt_compat.h"
 #include "opt_uconsole.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/filio.h>
-#if defined(COMPAT_43)
-#include <sys/ioctl_compat.h>
-#endif
 #include <sys/proc.h>
 #include <sys/priv.h>
 #define	TTYDEFCHARS
@@ -880,16 +876,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	case  TIOCSTI:
 	case  TIOCSTOP:
 	case  TIOCSWINSZ:
-#if defined(COMPAT_43)
-	case  TIOCLBIC:
-	case  TIOCLBIS:
-	case  TIOCLSET:
-	case  TIOCSETC:
-	case OTIOCSETD:
-	case  TIOCSETN:
-	case  TIOCSETP:
-	case  TIOCSLTC:
-#endif
 		while (isbackground(p, tp) && !(p->p_flags & P_PPWAIT) &&
 		    !SIGISMEMBER(p->p_sigignore, SIGTTOU) &&
 		    !SIGISMEMBER(lp->lwp_sigmask, SIGTTOU)) {
@@ -1282,11 +1268,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	default:
 		lwkt_reltoken(&p->p_token);
 		lwkt_reltoken(&tty_token);
-#if defined(COMPAT_43)
-		return (ttcompat(tp, cmd, data, flag));
-#else
 		return (ENOIOCTL);
-#endif
 	}
 	lwkt_reltoken(&p->p_token);
 	lwkt_reltoken(&tty_token);

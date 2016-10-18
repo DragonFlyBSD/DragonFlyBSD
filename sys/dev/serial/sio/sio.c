@@ -34,7 +34,6 @@
  */
 
 #include "opt_comconsole.h"
-#include "opt_compat.h"
 #include "opt_ddb.h"
 #include "opt_sio.h"
 #include "use_pci.h"
@@ -2011,10 +2010,7 @@ sioioctl(struct dev_ioctl_args *ap)
 	int		error;
 	int		mynor;
 	struct tty	*tp;
-#if defined(COMPAT_43)
-	u_long		oldcmd;
-	struct termios	term;
-#endif
+
 	lwkt_gettoken(&tty_token);
 	mynor = minor(dev);
 
@@ -2065,17 +2061,6 @@ sioioctl(struct dev_ioctl_args *ap)
 		}
 	}
 	tp = com->tp;
-#if defined(COMPAT_43)
-	term = tp->t_termios;
-	oldcmd = ap->a_cmd;
-	error = ttsetcompat(tp, &ap->a_cmd, data, &term);
-	if (error != 0) {
-		lwkt_reltoken(&tty_token);
-		return (error);
-	}
-	if (ap->a_cmd != oldcmd)
-		data = (caddr_t)&term;
-#endif
 	if (ap->a_cmd == TIOCSETA || ap->a_cmd == TIOCSETAW ||
 	    ap->a_cmd == TIOCSETAF) {
 		int	cc;

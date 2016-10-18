@@ -26,8 +26,6 @@
  * $FreeBSD: src/sys/dev/pci/pci_user.c,v 1.22.2.4.2.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
-#include "opt_compat.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>

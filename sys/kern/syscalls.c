@@ -6,8 +6,6 @@
  */
 
 const char *syscallnames[] = {
-#ifdef COMPAT_43
-#endif
 	"syscall",			/* 0 = syscall */
 	"exit",			/* 1 = exit */
 	"fork",			/* 2 = fork */

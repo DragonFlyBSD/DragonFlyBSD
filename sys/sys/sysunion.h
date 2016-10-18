@@ -10,8 +10,6 @@ union sysunion {
 	struct	lwkt_msg lmsg;
 	struct	sysmsg sysmsg;
 #endif
-#ifdef COMPAT_43
-#endif
 	struct	nosys_args nosys;
 	struct	exit_args exit;
 	struct	fork_args fork;
@@ -20,9 +18,6 @@ union sysunion {
 	struct	open_args open;
 	struct	close_args close;
 	struct	wait_args wait4;
-#ifdef COMPAT_43
-	struct	ocreat_args sys_ocreat;
-#endif
 	struct	link_args link;
 	struct	unlink_args unlink;
 	struct	chdir_args chdir;
@@ -32,9 +27,6 @@ union sysunion {
 	struct	chown_args chown;
 	struct	obreak_args obreak;
 	struct	getfsstat_args getfsstat;
-#ifdef COMPAT_43
-	struct	olseek_args sys_olseek;
-#endif
 	struct	getpid_args getpid;
 	struct	mount_args mount;
 	struct	unmount_args unmount;
@@ -53,13 +45,7 @@ union sysunion {
 	struct	fchflags_args fchflags;
 	struct	sync_args sync;
 	struct	kill_args kill;
-#ifdef COMPAT_43
-	struct	ostat_args sys_ostat;
-#endif
 	struct	getppid_args getppid;
-#ifdef COMPAT_43
-	struct	olstat_args sys_olstat;
-#endif
 	struct	dup_args dup;
 	struct	pipe_args pipe;
 	struct	getegid_args getegid;
@@ -78,23 +64,11 @@ union sysunion {
 	struct	execve_args execve;
 	struct	umask_args umask;
 	struct	chroot_args chroot;
-#ifdef COMPAT_43
-	struct	ofstat_args sys_ofstat;
-#endif
-#ifdef COMPAT_43
-	struct	getkerninfo_args getkerninfo;
-#endif
 	struct	getpagesize_args getpagesize;
 	struct	msync_args msync;
 	struct	vfork_args vfork;
 	struct	sbrk_args sbrk;
 	struct	sstk_args sstk;
-#ifdef COMPAT_43
-	struct	ommap_args sys_ommap;
-#endif
-#ifdef COMPAT_43
-	struct	ovadvise_args vadvise;
-#endif
 	struct	munmap_args munmap;
 	struct	mprotect_args mprotect;
 	struct	madvise_args madvise;
@@ -107,12 +81,6 @@ union sysunion {
 	struct	owait_args sys_owait;
 	struct	swapon_args swapon;
 	struct	getitimer_args getitimer;
-#ifdef COMPAT_43
-	struct	gethostname_args gethostname;
-#endif
-#ifdef COMPAT_43
-	struct	sethostname_args sethostname;
-#endif
 	struct	getdtablesize_args getdtablesize;
 	struct	dup2_args dup2;
 	struct	fcntl_args fcntl;
@@ -122,33 +90,9 @@ union sysunion {
 	struct	socket_args socket;
 	struct	connect_args connect;
 	struct	getpriority_args getpriority;
-#ifdef COMPAT_43
-	struct	osend_args sys_osend;
-#endif
-#ifdef COMPAT_43
-	struct	orecv_args sys_orecv;
-#endif
 	struct	bind_args bind;
 	struct	setsockopt_args setsockopt;
 	struct	listen_args listen;
-#ifdef COMPAT_43
-	struct	osigvec_args sys_osigvec;
-#endif
-#ifdef COMPAT_43
-	struct	osigblock_args sys_osigblock;
-#endif
-#ifdef COMPAT_43
-	struct	osigsetmask_args sys_osigsetmask;
-#endif
-#ifdef COMPAT_43
-	struct	osigstack_args sys_osigstack;
-#endif
-#ifdef COMPAT_43
-	struct	orecvmsg_args sys_orecvmsg;
-#endif
-#ifdef COMPAT_43
-	struct	osendmsg_args sys_osendmsg;
-#endif
 	struct	gettimeofday_args gettimeofday;
 	struct	getrusage_args getrusage;
 	struct	getsockopt_args getsockopt;
@@ -160,12 +104,6 @@ union sysunion {
 	struct	setreuid_args setreuid;
 	struct	setregid_args setregid;
 	struct	rename_args rename;
-#ifdef COMPAT_43
-	struct	otruncate_args sys_otruncate;
-#endif
-#ifdef COMPAT_43
-	struct	oftruncate_args sys_oftruncate;
-#endif
 	struct	flock_args flock;
 	struct	mkfifo_args mkfifo;
 	struct	sendto_args sendto;
@@ -175,29 +113,11 @@ union sysunion {
 	struct	rmdir_args rmdir;
 	struct	utimes_args utimes;
 	struct	adjtime_args adjtime;
-#ifdef COMPAT_43
-	struct	ogetpeername_args sys_ogetpeername;
-#endif
 	struct	ogethostid_args sys_ogethostid;
-#ifdef COMPAT_43
-	struct	osethostid_args sys_osethostid;
-#endif
-#ifdef COMPAT_43
-	struct	ogetrlimit_args sys_ogetrlimit;
-#endif
-#ifdef COMPAT_43
-	struct	osetrlimit_args sys_osetrlimit;
-#endif
-#ifdef COMPAT_43
-	struct	okillpg_args sys_okillpg;
-#endif
 	struct	setsid_args setsid;
 	struct	quotactl_args quotactl;
 	struct	oquota_args sys_oquota;
 	struct	nfssvc_args nfssvc;
-#ifdef COMPAT_43
-	struct	ogetdirentries_args sys_ogetdirentries;
-#endif
 	struct	statfs_args statfs;
 	struct	fstatfs_args fstatfs;
 	struct	getfh_args getfh;
