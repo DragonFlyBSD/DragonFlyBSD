@@ -739,8 +739,8 @@ xtrfile(char *buf, long size)
 		return;
 	if (write(ofile, buf, (int) size) == -1) {
 		fprintf(stderr,
-		    "write error extracting inode %d, name %s\nwrite: %s\n",
-			curfile.ino, curfile.name, strerror(errno));
+		    "write error extracting inode %ju, name %s\nwrite: %s\n",
+		    (uintmax_t)curfile.ino, curfile.name, strerror(errno));
 	}
 }
 
@@ -754,8 +754,8 @@ xtrskip(char *buf, long size)
 
 	if (lseek(ofile, size, SEEK_CUR) == -1) {
 		fprintf(stderr,
-		    "seek error extracting inode %d, name %s\nlseek: %s\n",
-			curfile.ino, curfile.name, strerror(errno));
+		    "seek error extracting inode %ju, name %s\nlseek: %s\n",
+		    (uintmax_t)curfile.ino, curfile.name, strerror(errno));
 		done(1);
 	}
 }
@@ -899,8 +899,8 @@ getmore:
 			fprintf(stderr, "restoring %s\n", curfile.name);
 			break;
 		case SKIP:
-			fprintf(stderr, "skipping over inode %d\n",
-				curfile.ino);
+			fprintf(stderr, "skipping over inode %ju\n",
+			    (uintmax_t)curfile.ino);
 			break;
 		}
 		if (!yflag && !reply("continue"))
@@ -934,7 +934,7 @@ getmore:
 			return;
 		}
 		if (rd % TP_BSIZE != 0)
-			panic("partial block read: %d should be %d\n",
+			panic("partial block read: %ld should be %ld\n",
 				rd, ntrec * TP_BSIZE);
 		terminateinput();
 		memmove(&tapebuf[rd], &endoftapemark, (long)TP_BSIZE);

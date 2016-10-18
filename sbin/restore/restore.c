@@ -833,7 +833,7 @@ verifyfile(char *name, ufs1_ino_t ino, int type)
 		if (np == ep)
 			break;
 	if (np == NULL)
-		panic("missing inumber %d\n", ino);
+		panic("missing inumber %ju\n", (uintmax_t)ino);
 	if (ep->e_type == LEAF && type != LEAF)
 		badentry(ep, "type should be LEAF");
 	return (descend);

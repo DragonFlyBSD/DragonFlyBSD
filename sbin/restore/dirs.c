@@ -262,7 +262,7 @@ treescan(char *pname, ufs1_ino_t ino, long (*todo)(char *, ufs1_ino_t, int))
 	while (dp != NULL) {
 		locname[namelen] = '\0';
 		if (namelen + dp->d_namlen >= sizeof(locname)) {
-			fprintf(stderr, "%s%s: name exceeds %d char\n",
+			fprintf(stderr, "%s%s: name exceeds %zu char\n",
 				locname, dp->d_name, sizeof(locname) - 1);
 		} else {
 			strncat(locname, dp->d_name, (int)dp->d_namlen);
@@ -359,20 +359,25 @@ putdir(char *buf, long size)
 			i = DIRBLKSIZ - (loc & (DIRBLKSIZ - 1));
 			if ((dp->d_reclen & 0x3) != 0 ||
 			    dp->d_reclen > i ||
-			    dp->d_reclen < DIRSIZ(0, dp) ||
-			    dp->d_namlen > NAME_MAX) {
+			    dp->d_reclen < DIRSIZ(0, dp)
+#if NAME_MAX < 255
+			    || dp->d_namlen > NAME_MAX
+#endif
+			    ) {
 				vprintf(stdout, "Mangled directory: ");
 				if ((dp->d_reclen & 0x3) != 0)
 					vprintf(stdout,
 					   "reclen not multiple of 4 ");
 				if (dp->d_reclen < DIRSIZ(0, dp))
 					vprintf(stdout,
-					   "reclen less than DIRSIZ (%d < %d) ",
+					   "reclen less than DIRSIZ (%u < %zu) ",
 					   dp->d_reclen, DIRSIZ(0, dp));
+#if NAME_MAX < 255
 				if (dp->d_namlen > NAME_MAX)
 					vprintf(stdout,
-					   "reclen name too big (%d > %d) ",
+					   "reclen name too big (%u > %u) ",
 					   dp->d_namlen, NAME_MAX);
+#endif
 				vprintf(stdout, "\n");
 				loc += i;
 				continue;
