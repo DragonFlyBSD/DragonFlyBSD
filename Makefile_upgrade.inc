@@ -3136,6 +3136,7 @@ TO_REMOVE+=/usr/lib/libprivate_panelw.so.59
 TO_REMOVE+=/usr/lib/libprivate_panelw.so.60
 TO_REMOVE+=/usr/lib/profile/libprivate_panel.a
 TO_REMOVE+=/usr/lib/profile/libprivate_panelw.a
+TO_REMOVE+=/usr/include/compat
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

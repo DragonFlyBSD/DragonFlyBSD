@@ -135,7 +135,6 @@ INCSLINKS+=	vfs ${INCLUDEDIR}/fs
 # It is hopefully a temporary hack until we have environments working.
 INCSLINKS+=	vfs ${INCLUDEDIR}/ufs
 INCSLINKS+=	ufs ${INCLUDEDIR}/vfs/ffs
-INCSLINKS+=	emulation ${INCLUDEDIR}/compat
 INCSLINKS+=	netproto/ipsec ${INCLUDEDIR}/netipsec
 INCSLINKS+=	netproto/key ${INCLUDEDIR}/netkey
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
