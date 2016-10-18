@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * @(#)restore.h 8.3 (Berkeley) 9/13/94
- * $DragonFly: src/sbin/restore/restore.h,v 1.3 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -41,7 +40,7 @@
 extern int	cvtflag;	/* convert from old to new tape format */
 extern int	bflag;		/* set input block size */
 extern int	dflag;		/* print out debugging info */
-extern int	hflag;		/* restore heirarchies */
+extern int	hflag;		/* restore hierarchies */
 extern int	mflag;		/* restore by name instead of inode number */
 extern int	Nflag;		/* do not write the disk */
 extern int	uflag;		/* unlink symlink targets */

@@ -28,7 +28,6 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/restore/extern.h,v 1.5 1999/08/28 00:14:05 peter Exp $
- * $DragonFly: src/sbin/restore/extern.h,v 1.4 2005/08/28 04:35:14 dillon Exp $
  */
 
 struct entry	*addentry(char *, ufs1_ino_t, int);

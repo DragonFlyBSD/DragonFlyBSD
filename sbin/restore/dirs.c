@@ -33,7 +33,6 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.10 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -215,7 +214,7 @@ skipdirs(void)
  *	pname and pass them off to be processed.
  */
 void
-treescan(char *pname, ufs1_ino_t ino, long (*todo) (char *, ufs1_ino_t, int))
+treescan(char *pname, ufs1_ino_t ino, long (*todo)(char *, ufs1_ino_t, int))
 {
 	struct inotab *itp;
 	struct direct *dp;

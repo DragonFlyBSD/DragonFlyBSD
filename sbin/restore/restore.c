@@ -28,7 +28,6 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.9 2008/06/05 18:06:31 swildner Exp $
  */
 
 #include <sys/types.h>

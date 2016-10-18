@@ -33,7 +33,6 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.9 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>

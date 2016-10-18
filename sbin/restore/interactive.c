@@ -33,16 +33,15 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <dirent.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
+#include <protocols/dumprestore.h>
+
 #include <setjmp.h>
 #include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <vfs/ufs/dinode.h>
-#include <vfs/ufs/dir.h>
-#include <protocols/dumprestore.h>
 
 #include "restore.h"
 #include "extern.h"
@@ -688,6 +687,8 @@ formatf(struct afile *list, int nentry)
  * First have to get definition of a dirent.
  */
 #undef DIRBLKSIZ
+#include <dirent.h>
+#undef d_ino
 
 struct dirent *
 glob_readdir(RST_DIR *dirp)
@@ -711,7 +712,7 @@ glob_readdir(RST_DIR *dirp)
 	if (dp == NULL)
 		return (NULL);
 	adp = (struct dirent *)&adirent;
-	adp->d_ino = dp->d_ino;
+	adp->d_fileno = dp->d_ino;
 	adp->d_namlen = dp->d_namlen;
 	strcpy(adp->d_name, dp->d_name);
 	return (adp);
