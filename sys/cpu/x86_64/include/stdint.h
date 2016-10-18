@@ -41,6 +41,8 @@
 #ifndef _CPU_STDINT_H_
 #define	_CPU_STDINT_H_
 
+#include <sys/cdefs.h>
+
 /*
  * Basic types upon which most other types are built.
  */
@@ -50,7 +52,11 @@ typedef	short		__int16_t;
 typedef	unsigned short	__uint16_t;
 typedef	int		__int32_t;
 typedef	unsigned int	__uint32_t;
-typedef int		__boolean_t;
+#if __STDC_VERSION < 199901L && !__GNUC_PREREQ__(3, 0) || defined (__cplusplus)
+typedef	int		__boolean_t;
+#else
+typedef	_Bool		__boolean_t;
+#endif
 
 #ifdef __LP64__
 typedef	long		__int64_t;

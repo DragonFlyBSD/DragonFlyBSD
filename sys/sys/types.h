@@ -125,7 +125,19 @@ typedef	__boolean_t	boolean_t;
 
 typedef	u_int64_t	uoff_t;
 
+#ifdef _KERNEL
+#if !defined(__bool_true_false_are_defined) && !defined(__cplusplus)
+#define	__bool_true_false_are_defined	1
+#define	false	0
+#define	true	1
+#if __STDC_VERSION__ < 199901L && __GNUC__ < 3
+typedef	int	_Bool;
 #endif
+typedef	_Bool	bool;
+#endif /* !__bool_true_false_are_defined && !__cplusplus */
+#endif /* _KERNEL */
+
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
  * XXX cdev_t has different meanings for userland vs kernel compiles.  What

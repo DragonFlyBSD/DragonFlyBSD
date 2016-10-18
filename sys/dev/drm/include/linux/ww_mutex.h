@@ -39,7 +39,6 @@
 #include <machine/atomic.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
-#include <sys/stdbool.h>
 
 struct ww_class {
 	volatile u_long			stamp;

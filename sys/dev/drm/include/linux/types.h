@@ -30,7 +30,6 @@
 #define	_LINUX_TYPES_H_
 
 #include <sys/types.h>
-#include <sys/stdbool.h>
 #include <linux/compiler.h>
 #include <asm/types.h>
 
@@ -42,11 +41,6 @@ typedef __u32 __le32;
 typedef __u32 __be32;
 typedef __u64 __le64;
 typedef __u64 __be64;
-#ifndef __bool_true_false_are_defined
-typedef _Bool bool;
-#define	true	TRUE
-#define	false	FALSE
-#endif
 
 typedef u64 phys_addr_t;
 
