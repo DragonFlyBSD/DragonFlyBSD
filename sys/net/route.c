@@ -959,6 +959,8 @@ makeroute:
 				}
 			}
 		}
+		/* NOTE: rt_ifa may have been changed */
+		ifa = rt->rt_ifa;
 
 		/*
 		 * If it still failed to go into the tree,
