@@ -143,7 +143,7 @@ extractdirs(int genmode)
 		tmpdir = _PATH_TMP;
 	sprintf(dirfile, "%s/rstdir%ld", tmpdir, (long)dumpdate);
 	if (command != 'r' && command != 'R') {
-		(void *) strcat(dirfile, "-XXXXXX");
+		strcat(dirfile, "-XXXXXX");
 		fd = mkstemp(dirfile);
 	} else
 		fd = open(dirfile, O_RDWR|O_CREAT|O_EXCL, 0666);
@@ -156,7 +156,7 @@ extractdirs(int genmode)
 	if (genmode != 0) {
 		sprintf(modefile, "%s/rstmode%ld", tmpdir, (long)dumpdate);
 		if (command != 'r' && command != 'R') {
-			(void *) strcat(modefile, "-XXXXXX");
+			strcat(modefile, "-XXXXXX");
 			fd = mkstemp(modefile);
 		} else
 			fd = open(modefile, O_RDWR|O_CREAT|O_EXCL, 0666);
