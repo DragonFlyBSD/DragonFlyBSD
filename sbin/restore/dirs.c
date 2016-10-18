@@ -116,7 +116,7 @@ static void		 dcvt(struct odirect *, struct direct *);
 static void		 flushent(void);
 static struct inotab	*inotablookup(ufs1_ino_t);
 static RST_DIR		*opendirfile(const char *);
-static void		 putdir(char *, long);
+static void		 putdir(char *, size_t);
 static void		 putent(struct direct *);
 static void		 rst_seekdir(RST_DIR *, long, long);
 static long		 rst_telldir(RST_DIR *);
@@ -261,7 +261,7 @@ treescan(char *pname, ufs1_ino_t ino, long (*todo)(char *, ufs1_ino_t, int))
 	 */
 	while (dp != NULL) {
 		locname[namelen] = '\0';
-		if (namelen + dp->d_namlen >= sizeof(locname)) {
+		if ((size_t)(namelen + dp->d_namlen) >= sizeof(locname)) {
 			fprintf(stderr, "%s%s: name exceeds %zu char\n",
 				locname, dp->d_name, sizeof(locname) - 1);
 		} else {
@@ -326,13 +326,13 @@ searchdir(ufs1_ino_t inum, char *name)
  * Put the directory entries in the directory file
  */
 static void
-putdir(char *buf, long size)
+putdir(char *buf, size_t size)
 {
 	struct direct cvtbuf;
 	struct odirect *odp;
 	struct odirect *eodp;
 	struct direct *dp;
-	long loc, i;
+	size_t loc, i;
 
 	if (cvtflag) {
 		eodp = (struct odirect *)&buf[size];

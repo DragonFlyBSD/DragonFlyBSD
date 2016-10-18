@@ -73,7 +73,7 @@ struct arglist {
 static char	*copynext(char *, char *);
 static int	 fcmp(const void *, const void *);
 static void	 formatf(struct afile *, int);
-static void	 getcmd(char *, char *, char *, int, struct arglist *);
+static void	 getcmd(char *, char *, char *, size_t, struct arglist *);
 struct dirent	*glob_readdir(RST_DIR *dirp);
 static int	 glob_stat(const char *, struct stat *);
 static void	 mkentry(char *, struct direct *, struct afile *);
@@ -291,7 +291,7 @@ loop:
  * eliminate any embedded ".." components.
  */
 static void
-getcmd(char *curdir, char *cmd, char *name, int size, struct arglist *ap)
+getcmd(char *curdir, char *cmd, char *name, size_t size, struct arglist *ap)
 {
 	char *cp;
 	static char input[BUFSIZ];
@@ -425,7 +425,7 @@ copynext(char *input, char *output)
  * remove any embedded "." and ".." components.
  */
 void
-canon(char *rawname, char *canonname, int len)
+canon(char *rawname, char *canonname, size_t len)
 {
 	char *cp, *np;
 
@@ -497,7 +497,7 @@ printlist(char *name, char *basename)
 		list = &single;
 		mkentry(name, dp, list);
 		len = strlen(basename) + 1;
-		if (strlen(name) - len > single.len) {
+		if (strlen(name) - len > (unsigned short)single.len) {
 			freename(single.fname);
 			single.fname = savename(&name[len]);
 			single.len = strlen(single.fname);
@@ -623,7 +623,8 @@ static void
 formatf(struct afile *list, int nentry)
 {
 	struct afile *fp, *endlist;
-	int width, bigino, haveprefix, havepostfix;
+	unsigned int bigino;
+	int width, haveprefix, havepostfix;
 	int i, j, w, precision = 0, columns, lines;
 
 	width = 0;

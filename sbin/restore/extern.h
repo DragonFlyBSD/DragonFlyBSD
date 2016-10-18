@@ -34,7 +34,7 @@ struct entry	*addentry(char *, ufs1_ino_t, int);
 long		 addfile(char *, ufs1_ino_t, int);
 int		 addwhiteout(char *);
 void		 badentry(struct entry *, char *);
-void	 	 canon(char *, char *, int);
+void	 	 canon(char *, char *, size_t);
 void		 checkrestore(void);
 void		 closemt(void);
 void		 createfiles(void);
@@ -54,7 +54,7 @@ void		 freeentry(struct entry *);
 void		 freename(char *);
 int	 	 genliteraldir(char *, ufs1_ino_t);
 char		*gentempname(struct entry *);
-void		 getfile(void (*)(char *, long), void (*)(char *, long));
+void		 getfile(void (*)(char *, size_t), void (*)(char *, size_t));
 void		 getvol(long);
 void		 initsymtable(char *);
 int	 	 inodetype(ufs1_ino_t);
@@ -96,7 +96,7 @@ void		 swabst(u_char *, u_char *);
 void	 	 treescan(char *, ufs1_ino_t, long (*)(char *, ufs1_ino_t, int));
 ufs1_ino_t	 upperbnd(ufs1_ino_t);
 long		 verifyfile(char *, ufs1_ino_t, int);
-void		 xtrnull(char *, long);
+void		 xtrnull(char *, size_t);
 
 /* From ../dump/dumprmt.c */
 void		rmtclose(void);
