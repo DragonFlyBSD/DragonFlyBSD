@@ -57,6 +57,12 @@ CFLAGS+= -DCROSS_COMPILE
 CWARNFLAGS+=	-Wno-switch-bool
 .endif
 
+# only gcc 4.8 and later has support for -Og
+.if defined(WORLD_CCOPTLEVEL) && ${WORLD_CCOPTLEVEL:Mg} && ${CCVER:Mgcc47}
+WORLD_CCOPTLEVEL:=	1
+.MAKEFLAGS: WORLD_CCOPTLEVEL=1
+.endif
+
 .if defined(GCC_LANG_DIR)
 .PATH: ${GCCDIR}/${GCC_LANG_DIR}
 .endif

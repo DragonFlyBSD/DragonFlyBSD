@@ -33,3 +33,9 @@ CFLAGS+=	-I${GCCDIR}/gcc
 CFLAGS+=	-I${GCCDIR}/gcc/config
 CFLAGS+=	-I${GCCDIR}/gcc/config/${GCC_CPU}
 CFLAGS+=	-I${CCDIR}/../gmp
+
+# only gcc 4.8 and later has support for -Og
+.if defined(WORLD_CCOPTLEVEL) && ${WORLD_CCOPTLEVEL:Mg} && ${CCVER:Mgcc47}
+WORLD_CCOPTLEVEL:=	1
+.MAKEFLAGS: WORLD_CCOPTLEVEL=1
+.endif
