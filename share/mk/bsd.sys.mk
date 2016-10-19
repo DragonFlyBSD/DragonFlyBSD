@@ -74,6 +74,17 @@ CWARNFLAGS	+=	-Wno-error=maybe-uninitialized\
 			-Wno-error=uninitialized\
 			-Wno-error=shadow
 .  endif
+# Disable -Werror selectively for -Os and -Og compilations.  Both -Winline and
+# -Wmaybe-uninitialized are noisy and should be caught by standard -O and -O2.
+# These are still useful diagnostics while investigating compilation issues.
+.  if defined(WORLD_CCOPTLEVEL) && (${WORLD_CCOPTLEVEL:Mg} || ${WORLD_CCOPTLEVEL:Ms})
+.   if ${WARNS} >= 6
+CWARNFLAGS	+=	-Wno-error=inline
+.   endif
+.   if ${WARNS} >= 5 && ${CCVER:Mgcc*}
+CWARNFLAGS	+=	-Wno-error=maybe-uninitialized
+.   endif
+.  endif
 . endif
 
 . if defined(FORMAT_AUDIT)
