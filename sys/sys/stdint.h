@@ -24,10 +24,14 @@
  * Keeping wchar_t and rune_t as ``int'' instead of the more natural
  * ``long'' helps ANSI conformance. ISO 10646 will most likely end up
  * as 31 bit standard and all supported architectures have
- * sizeof(int) >= 4.
+ * sizeof(int) >= 4. Unless compiler has overriden it with -fshort-wchar.
  */
 #ifndef __cplusplus
+#if defined(__SIZEOF_WCHAR_T__) && __SIZEOF_WCHAR_T__ == 2
+typedef	unsigned short	__wchar_t;
+#else
 typedef	int		__wchar_t;
+#endif
 #endif
 #ifndef ___WINT_T_DECLARED
 typedef	int		__wint_t;
