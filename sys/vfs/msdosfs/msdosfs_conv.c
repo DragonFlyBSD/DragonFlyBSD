@@ -506,7 +506,7 @@ int
 dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 {
 	size_t i;
-	int thislong = 1;
+	int thislong = 0;
 	u_char c;
 
 	/*
@@ -551,11 +551,7 @@ dos2unixfn(u_char dn[11], u_char *un, int lower, struct msdosfsmount *pmp)
 		}
 	}
 	*un++ = 0;
-/*
-	for(i = 0; un[i] != 0; i++)
-		kprintf("0x%x", un[i]);
-	kprintf(" ->%s\n", dn);
-*/
+
 	return (thislong);
 }
 
