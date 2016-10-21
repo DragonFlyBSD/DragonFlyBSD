@@ -320,6 +320,8 @@ WORLD_VERSION=	${.MAKE.DF.VERSION}
 WORLD_VERSION!=	${AWK} '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' < /usr/include/sys/param.h
 .endif
 .endif
+# Export it to ensure it will stay constant from initial make invoke.
+.MAKEFLAGS: WORLD_VERSION=${WORLD_VERSION}
 .endif
 
 .include <bsd.cpu.mk>
