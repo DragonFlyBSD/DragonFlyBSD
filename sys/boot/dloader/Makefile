@@ -2,7 +2,7 @@
 #
 #
 
-SRCS=	subs.c config.c cmds.c
+SRCS=	subs.c cmds.c
 
 WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes
 
