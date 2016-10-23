@@ -509,6 +509,7 @@ dev/netif/iwm/if_iwm_phy_ctxt.c		optional iwm
 dev/netif/iwm/if_iwm_phy_db.c		optional iwm
 dev/netif/iwm/if_iwm_power.c		optional iwm
 dev/netif/iwm/if_iwm_scan.c		optional iwm
+dev/netif/iwm/if_iwm_sta.c		optional iwm
 dev/netif/iwm/if_iwm_time_event.c	optional iwm
 dev/netif/iwm/if_iwm_util.c		optional iwm
 dev/netif/iwm/if_iwm_7000.c		optional iwm
