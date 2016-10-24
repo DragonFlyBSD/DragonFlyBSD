@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mtree.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/mtree.c,v 1.8.2.3 2003/05/07 17:55:17 tobez Exp $
- * $DragonFly: src/usr.sbin/mtree/mtree.c,v 1.5 2004/03/15 16:24:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +140,7 @@ main(int argc, char *argv[])
 	if (dir && chdir(dir))
 		err(1, "%s", dir);
 
-	if ((cflag || sflag) && !getwd(fullpath))
+	if ((cflag || sflag) && !getcwd(fullpath, sizeof(fullpath)))
 		errx(1, "%s", fullpath);
 
 	if (cflag) {
