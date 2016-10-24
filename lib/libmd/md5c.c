@@ -23,7 +23,6 @@
  * documentation and/or software.
  *
  * $FreeBSD: src/lib/libmd/md5c.c,v 1.17 2006/01/17 15:35:56 phk Exp $
- * $DragonFly: src/lib/libmd/md5c.c,v 1.5 2008/09/30 16:57:05 swildner Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.
@@ -51,7 +50,7 @@ static void MD5Transform(u_int32_t [4], const unsigned char [64]);
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define Encode memcpy
 #define Decode memcpy
-#else 
+#else
 
 /*
  * Encodes input (u_int32_t) into output (unsigned char). Assumes len is

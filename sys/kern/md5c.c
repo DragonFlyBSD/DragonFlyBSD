@@ -23,12 +23,14 @@
  * documentation and/or software.
  *
  * $FreeBSD: src/sys/kern/md5c.c,v 1.27 2006/03/30 18:45:50 pjd Exp $
- * $DragonFly: src/sys/kern/md5c.c,v 1.5 2008/09/11 20:25:34 swildner Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.
  */
 
+/*
+ * This file should be kept in sync with src/lib/libmd/md5c.c
+ */
 #include <sys/types.h>
 
 #ifdef _KERNEL
@@ -40,6 +42,8 @@
 #include <machine/endian.h>
 #include <sys/endian.h>
 #include <sys/md5.h>
+
+static void MD5Transform(u_int32_t [4], const unsigned char [64]);
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define Encode memcpy
@@ -184,7 +188,7 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
  * MD5 padding. Adds padding followed by original length.
  */
 
-void
+static void
 MD5Pad (MD5_CTX *context)
 {
 	unsigned char bits[8];
@@ -222,7 +226,7 @@ MD5Final (unsigned char digest[16], MD5_CTX *context)
 
 /* MD5 basic transformation. Transforms state based on block. */
 
-void
+static void
 MD5Transform (u_int32_t state[4], const unsigned char block[64])
 {
 	u_int32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];

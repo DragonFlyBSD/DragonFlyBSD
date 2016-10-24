@@ -1,6 +1,5 @@
 /* MD5.H - header file for MD5C.C
  * $FreeBSD: src/sys/sys/md5.h,v 1.20 2006/03/15 19:47:12 andre Exp $
- * $DragonFly: src/sys/sys/md5.h,v 1.5 2008/09/11 20:25:34 swildner Exp $
  */
 
 /*-
@@ -47,16 +46,19 @@ typedef struct MD5Context {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
+#ifdef _KERNEL
+void  MD5Init (MD5_CTX *);
+#else
 int   MD5Init (MD5_CTX *);
+#endif
 void   MD5Update (MD5_CTX *, const void *, unsigned int);
-void   MD5Pad (MD5_CTX *);
 void   MD5Final (unsigned char [16], MD5_CTX *);
+#ifndef _KERNEL
+void   MD5Pad(MD5_CTX *);
 char * MD5End(MD5_CTX *, char *);
 char * MD5File(const char *, char *);
 char * MD5FileChunk(const char *, char *, off_t, off_t);
 char * MD5Data(const void *, unsigned int, char *);
-#ifdef _KERNEL
-void MD5Transform (u_int32_t [4], const unsigned char [64]);
 #endif
 __END_DECLS
 
