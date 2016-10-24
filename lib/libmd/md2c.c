@@ -85,13 +85,14 @@ static unsigned char *PADDING[] = {
 
 /* MD2 initialization. Begins an MD2 operation, writing a new context.
  */
-void
+int
 MD2Init (MD2_CTX *context)
 {
   context->count = 0;
   memset ((POINTER)context->state, 0, sizeof (context->state));
   memset
     ((POINTER)context->checksum, 0, sizeof (context->checksum));
+  return 1;
 }
 
 /* MD2 block update operation. Continues an MD2 message-digest

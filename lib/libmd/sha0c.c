@@ -99,7 +99,7 @@ char *SHA_version="SHA part of SSLeay 0.9.0b 11-Oct-1998";
 #define	M_p_c2nl_p	p_c2nl_p
 #define	M_nl2c		nl2c
 
-void
+int
 SHA_Init(SHA_CTX *c)
 	{
 	c->h0=INIT_DATA_h0;
@@ -110,6 +110,7 @@ SHA_Init(SHA_CTX *c)
 	c->Nl=0;
 	c->Nh=0;
 	c->num=0;
+	return 1;
 	}
 
 void

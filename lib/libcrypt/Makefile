@@ -31,9 +31,10 @@ CFLAGS+=	-I${.CURDIR} -DHAS_DES -DHAS_BLOWFISH
 SRCS+=		auth.c property.c
 .for sym in MD5Init MD5Final MD5Update MD5Pad auth_getval \
 	    property_find properties_read properties_free \
-	    SHA256_Init SHA256_Update SHA256_Final \
-	    SHA512_Init SHA512_Update SHA512_Final
-CFLAGS+=	-D${sym}=__${sym}
+	    SHA256_Init SHA256_Update SHA256_Final SHA256_Transform \
+	    SHA384_Init SHA384_Update SHA384_Final SHA384_Transform \
+	    SHA512_Init SHA512_Update SHA512_Final SHA512_Transform
+CFLAGS+=	-D${sym}=_libcrypt_${sym}
 .endfor
 PRECIOUSLIB=	yes
 

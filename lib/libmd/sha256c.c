@@ -219,7 +219,7 @@ SHA256_Pad(SHA256_CTX * ctx)
 }
 
 /* SHA-256 initialization.  Begins a SHA-256 operation. */
-void
+int
 SHA256_Init(SHA256_CTX * ctx)
 {
 
@@ -235,6 +235,7 @@ SHA256_Init(SHA256_CTX * ctx)
 	ctx->state[5] = 0x9B05688C;
 	ctx->state[6] = 0x1F83D9AB;
 	ctx->state[7] = 0x5BE0CD19;
+	return 1;
 }
 
 /* Add bytes into the hash */

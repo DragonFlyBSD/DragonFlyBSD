@@ -126,7 +126,7 @@ char *SHA1_version="SHA1 part of SSLeay 0.9.0b 11-Oct-1998";
 #  define	M_nl2c		nl2c
 #endif
 
-void
+int
 SHA1_Init(SHA_CTX *c)
 	{
 	c->h0=INIT_DATA_h0;
@@ -137,6 +137,7 @@ SHA1_Init(SHA_CTX *c)
 	c->Nl=0;
 	c->Nh=0;
 	c->num=0;
+	return 1;
 	}
 
 void

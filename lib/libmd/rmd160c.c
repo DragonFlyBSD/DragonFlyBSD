@@ -85,7 +85,7 @@ void ripemd160_block_x86(RIPEMD160_CTX *c, const u_int32_t *p,int num);
 void ripemd160_block(RIPEMD160_CTX *c, const u_int32_t *p,int num);
 #endif
 
-void
+int
 RIPEMD160_Init(RIPEMD160_CTX *c)
 	{
 	c->A=RIPEMD160_A;
@@ -96,6 +96,7 @@ RIPEMD160_Init(RIPEMD160_CTX *c)
 	c->Nl=0;
 	c->Nh=0;
 	c->num=0;
+	return 1;
 	}
 
 void

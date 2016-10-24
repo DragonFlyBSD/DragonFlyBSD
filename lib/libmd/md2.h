@@ -34,7 +34,7 @@ typedef struct MD2Context {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-void   MD2Init(MD2_CTX *);
+int   MD2Init(MD2_CTX *);
 void   MD2Update(MD2_CTX *, const void *, unsigned int);
 void   MD2Pad(MD2_CTX *);
 void   MD2Final(unsigned char [16], MD2_CTX *);

@@ -80,14 +80,14 @@ typedef struct SHAstate_st {
 #define	SHA1_CTX	SHA_CTX
 
 __BEGIN_DECLS
-void	SHA_Init(SHA_CTX *c);
+int	SHA_Init(SHA_CTX *c);
 void	SHA_Update(SHA_CTX *c, const void *data, size_t len);
 void	SHA_Final(unsigned char *md, SHA_CTX *c);
 char   *SHA_End(SHA_CTX *, char *);
 char   *SHA_File(const char *, char *);
 char   *SHA_FileChunk(const char *, char *, off_t, off_t);
 char   *SHA_Data(const void *, unsigned int, char *);
-void	SHA1_Init(SHA_CTX *c);
+int	SHA1_Init(SHA_CTX *c);
 void	SHA1_Update(SHA_CTX *c, const void *data, size_t len);
 void	SHA1_Final(unsigned char *md, SHA_CTX *c);
 char   *SHA1_End(SHA_CTX *, char *);

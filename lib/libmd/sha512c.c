@@ -170,13 +170,14 @@ static const sha2_word64 K512[80] = {
 	0x5fcb6fab3ad6faecULL, 0x6c44198c4a475817ULL
 };
 /*** SHA-512: *********************************************************/
-void SHA512_Init(SHA512_CTX* context) {
+int SHA512_Init(SHA512_CTX* context) {
 	if (context == NULL) {
-		return;
+		return 0;
 	}
 	bcopy(sha512_initial_hash_value, context->state, SHA512_DIGEST_LENGTH);
 	bzero(context->buffer, SHA512_BLOCK_LENGTH);
 	context->bitcount[0] = context->bitcount[1] =  0;
+	return 1;
 }
 
 /* Unrolled SHA-512 round macros: */
@@ -422,13 +423,14 @@ char* SHA512_Data(const void *data, size_t len, char *digest) {
 
 
 /*** SHA-384: *********************************************************/
-void SHA384_Init(SHA384_CTX* context) {
+int SHA384_Init(SHA384_CTX* context) {
 	if (context == NULL) {
-		return;
+		return 0;
 	}
 	bcopy(sha384_initial_hash_value, context->state, SHA512_DIGEST_LENGTH);
 	bzero(context->buffer, SHA384_BLOCK_LENGTH);
 	context->bitcount[0] = context->bitcount[1] = 0;
+	return 1;
 }
 
 void SHA384_Update(SHA384_CTX* context, const sha2_byte* data, size_t len) {

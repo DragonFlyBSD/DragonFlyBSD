@@ -126,7 +126,7 @@ static unsigned char PADDING[64] = {
 
 /* MD5 initialization. Begins an MD5 operation, writing a new context. */
 
-void
+int
 MD5Init (MD5_CTX *context)
 {
 
@@ -137,6 +137,7 @@ MD5Init (MD5_CTX *context)
 	context->state[1] = 0xefcdab89;
 	context->state[2] = 0x98badcfe;
 	context->state[3] = 0x10325476;
+	return 1;
 }
 
 /* 

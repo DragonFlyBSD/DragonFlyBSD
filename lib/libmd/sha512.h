@@ -47,10 +47,10 @@ typedef struct _SHA512_CTX {
 typedef SHA512_CTX SHA384_CTX;
 
 __BEGIN_DECLS
-void	SHA384_Init(SHA384_CTX *);
+int	SHA384_Init(SHA384_CTX *);
 void	SHA384_Update(SHA384_CTX *, const u_int8_t *, size_t);
 void	SHA384_Final(u_int8_t[SHA384_DIGEST_LENGTH], SHA384_CTX *);
-void	SHA512_Init(SHA512_CTX*);
+int	SHA512_Init(SHA512_CTX*);
 void	SHA512_Update(SHA512_CTX*, const void *, size_t);
 void	SHA512_Final(unsigned char [SHA512_DIGEST_LENGTH], SHA512_CTX *);
 char*	SHA512_End(SHA512_CTX *, char *);

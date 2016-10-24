@@ -89,7 +89,7 @@ static unsigned char PADDING[64] = {
 
 /* MD4 initialization. Begins an MD4 operation, writing a new context.
  */
-void
+int
 MD4Init (MD4_CTX *context)
 {
   context->count[0] = context->count[1] = 0;
@@ -100,6 +100,7 @@ MD4Init (MD4_CTX *context)
   context->state[1] = 0xefcdab89;
   context->state[2] = 0x98badcfe;
   context->state[3] = 0x10325476;
+  return 1;
 }
 
 /* MD4 block update operation. Continues an MD4 message-digest

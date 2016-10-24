@@ -39,7 +39,7 @@ typedef struct SHA256Context {
 } SHA256_CTX;
 
 __BEGIN_DECLS
-void	SHA256_Init(SHA256_CTX *);
+int	SHA256_Init(SHA256_CTX *);
 void	SHA256_Update(SHA256_CTX *, const void *, size_t);
 void	SHA256_Final(unsigned char [32], SHA256_CTX *);
 char   *SHA256_End(SHA256_CTX *, char *);

@@ -36,7 +36,7 @@ typedef struct MD4Context {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-void   MD4Init(MD4_CTX *);
+int   MD4Init(MD4_CTX *);
 void   MD4Update(MD4_CTX *, const void *, unsigned int);
 void   MD4Pad(MD4_CTX *);
 void   MD4Final(unsigned char [16], MD4_CTX *);
