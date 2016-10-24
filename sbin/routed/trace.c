@@ -36,17 +36,12 @@
 #include <sys/signal.h>
 #include <fcntl.h>
 
-#if !defined(sgi) && !defined(__NetBSD__)
+#if !defined(__NetBSD__)
 static char sccsid[] __attribute__((unused)) = "@(#)trace.c	8.1 (Berkeley) 6/5/93";
 #elif defined(__NetBSD__)
 __RCSID("$NetBSD$");
 #endif
 
-
-#ifdef sgi
-/* use *stat64 for files on large filesystems */
-#define stat	stat64
-#endif
 
 #define	NRECORDS	50		/* size of circular trace buffer */
 
@@ -147,12 +142,8 @@ ts(time_t secs) {
 	static char s[20];
 
 	secs += epoch.tv_sec;
-#ifdef sgi
-	cftime(s, "%T", &secs);
-#else
 	memcpy(s, ctime(&secs)+11, 8);
 	s[8] = '\0';
-#endif
 	return s;
 }
 

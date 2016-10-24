@@ -31,7 +31,7 @@
 
 #include "defs.h"
 
-#if !defined(sgi) && !defined(__NetBSD__)
+#if !defined(__NetBSD__)
 static char sccsid[] __attribute__((unused)) = "@(#)input.c	8.1 (Berkeley) 6/5/93";
 #elif defined(__NetBSD__)
 #include <sys/cdefs.h>

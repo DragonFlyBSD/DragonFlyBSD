@@ -29,12 +29,7 @@
  *	@(#)defs.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/routed/defs.h,v 1.13 1999/09/05 17:49:11 peter Exp $
- * $DragonFly: src/sbin/routed/defs.h,v 1.2 2003/06/17 04:27:34 dillon Exp $
  */
-
-#ifdef  sgi
-#ident "$FreeBSD: src/sbin/routed/defs.h,v 1.13 1999/09/05 17:49:11 peter Exp $"
-#endif
 
 /* Definitions for RIPv2 routing process.
  *
@@ -67,10 +62,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#ifdef sgi
-#include <strings.h>
-#include <bstring.h>
-#endif
 #include <stdarg.h>
 #include <syslog.h>
 #include <time.h>
@@ -81,14 +72,9 @@
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
-#ifdef sgi
-#define _USER_ROUTE_TREE
-#include <net/radix.h>
-#else
 #include "radix.h"
 #define UNUSED __attribute__((unused))
 #define PATTRIB(f,l) __attribute__((format (printf,f,l)))
-#endif
 #include <net/if.h>
 #include <net/route.h>
 #include <net/if_dl.h>
@@ -104,9 +90,7 @@
  * So define it here so it can be changed for the target system.
  * It should be defined somewhere netinet/in.h, but it is not.
  */
-#ifdef sgi
-#define naddr u_int32_t
-#elif defined (__NetBSD__)
+#if defined (__NetBSD__)
 #define naddr u_int32_t
 #define _HAVE_SA_LEN
 #define _HAVE_SIN_LEN
@@ -145,9 +129,7 @@
 
 
 /* Router Discovery parameters */
-#ifndef sgi
 #define INADDR_ALLROUTERS_GROUP		0xe0000002  /* 224.0.0.2 */
-#endif
 #define	MaxMaxAdvertiseInterval		1800
 #define	MinMaxAdvertiseInterval		4
 #define	DefMaxAdvertiseInterval		600
@@ -293,9 +275,6 @@ struct interface {
 		u_int	ierrors;
 		u_int	opackets;
 		u_int	oerrors;
-#ifdef sgi
-		u_int	odrops;
-#endif
 		time_t	ts;		/* timestamp on network stats */
 	} int_data;
 #	define MAX_AUTH_KEYS 5
@@ -500,11 +479,6 @@ extern char inittracename[MAXPATHLEN+1];
 
 extern struct radix_node_head *rhead;
 
-
-#ifdef sgi
-/* Fix conflicts */
-#define	dup2(x,y)		BSDdup2(x,y)
-#endif /* sgi */
 
 extern void fix_sock(int, const char *);
 extern void fix_select(void);

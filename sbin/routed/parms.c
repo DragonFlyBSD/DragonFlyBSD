@@ -33,7 +33,7 @@
 #include "pathnames.h"
 #include <sys/stat.h>
 
-#if !defined(sgi) && !defined(__NetBSD__)
+#if !defined(__NetBSD__)
 static char sccsid[] __attribute__((unused)) = "@(#)if.c	8.1 (Berkeley) 6/5/93";
 #elif defined(__NetBSD__)
 __RCSID("$NetBSD$");
@@ -431,7 +431,7 @@ parse_ts(time_t *tp,
 	 u_int bufsize)
 {
 	struct tm tm;
-#if defined(sgi) || defined(__NetBSD__)
+#if defined(__NetBSD__)
 	char *ptr;
 #endif
 
@@ -444,7 +444,7 @@ parse_ts(time_t *tp,
 	}
 	strcat(buf,"\n");
 	memset(&tm, 0, sizeof(tm));
-#if defined(sgi) || defined(__NetBSD__)
+#if defined(__NetBSD__)
 	ptr = strptime(buf, "%y/%m/%d@%H:%M\n", &tm);
 	if (ptr == NULL || *ptr != '\0') {
 		sprintf(buf,"bad timestamp %.25s", val0);

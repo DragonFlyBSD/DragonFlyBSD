@@ -31,14 +31,11 @@
 
 #include "defs.h"
 #include "pathnames.h"
-#ifdef sgi
-#include "math.h"
-#endif
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/file.h>
 
-#if !defined(sgi) && !defined(__NetBSD__)
+#if !defined(__NetBSD__)
 char copyright[] =
 "@(#) Copyright (c) 1983, 1988, 1993\n\
 	The Regents of the University of California.  All rights reserved.\n";
@@ -282,14 +279,8 @@ usage:
 	signal(SIGUSR2, sigtrace_off);
 
 	/* get into the background */
-#ifdef sgi
-	if (0 > _daemonize(background ? 0 : (_DF_NOCHDIR|_DF_NOFORK),
-			   STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO))
-		BADERR(0, "_daemonize()");
-#else
 	if (background && daemon(0, 1) < 0)
 		BADERR(0,"daemon()");
-#endif
 
 	mypid = getpid();
 	srandom((int)(clk.tv_sec ^ clk.tv_usec ^ mypid));
