@@ -13,7 +13,7 @@
 #define	SYS_open	5
 #define	SYS_close	6
 #define	SYS_wait4	7
-				/* 8 is old creat */
+				/* 8 is obsolete 4.3 creat */
 #define	SYS_link	9
 #define	SYS_unlink	10
 				/* 11 is obsolete execv */
@@ -111,9 +111,9 @@
 #define	SYS_setsockopt	105
 #define	SYS_listen	106
 				/* 107 is obsolete vtimes */
-				/* 108 is old sigvec */
-				/* 109 is old sigblock */
-				/* 110 is old sigsetmask */
+				/* 108 is obsolete 4.3 sigvec */
+				/* 109 is obsolete 4.3 sigblock */
+				/* 110 is obsolete 4.3 sigsetmask */
 				/* 111 is obsolete freebsd3_sigsuspend */
 				/* 112 is old sigstack */
 				/* 113 is old recvmsg */
@@ -144,11 +144,11 @@
 				/* 139 is obsolete 4.2 sigreturn */
 #define	SYS_adjtime	140
 				/* 141 is old getpeername */
-				/* 142 is old gethostid */
-				/* 143 is old sethostid */
+				/* 142 is obsolete 4.3 gethostid */
+				/* 143 is obsolete 4.3 sethostid */
 				/* 144 is old getrlimit */
 				/* 145 is old setrlimit */
-				/* 146 is old killpg */
+				/* 146 is obsolete 4.3 killpg */
 #define	SYS_setsid	147
 #define	SYS_quotactl	148
 				/* 149 is old quota */

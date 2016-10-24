@@ -113,7 +113,6 @@ union sysunion {
 	struct	rmdir_args rmdir;
 	struct	utimes_args utimes;
 	struct	adjtime_args adjtime;
-	struct	ogethostid_args sys_ogethostid;
 	struct	setsid_args setsid;
 	struct	quotactl_args quotactl;
 	struct	oquota_args sys_oquota;

@@ -766,12 +766,6 @@ struct	adjtime_args {
 	struct timeval *	delta;	char delta_[PAD_(struct timeval *)];
 	struct timeval *	olddelta;	char olddelta_[PAD_(struct timeval *)];
 };
-struct	ogethostid_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	register_t dummy;
-};
 struct	setsid_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2331,13 +2325,6 @@ struct	ppoll_args {
 	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
 	const sigset_t *	sigmask;	char sigmask_[PAD_(const sigset_t *)];
 };
-struct	ocreat_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	path;	char path_[PAD_(char *)];
-	int	mode;	char mode_[PAD_(int)];
-};
 struct	olseek_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2425,26 +2412,6 @@ struct	orecv_args {
 	int	len;	char len_[PAD_(int)];
 	int	flags;	char flags_[PAD_(int)];
 };
-struct	osigvec_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	signum;	char signum_[PAD_(int)];
-	struct sigvec *	nsv;	char nsv_[PAD_(struct sigvec *)];
-	struct sigvec *	osv;	char osv_[PAD_(struct sigvec *)];
-};
-struct	osigblock_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	mask;	char mask_[PAD_(int)];
-};
-struct	osigsetmask_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	mask;	char mask_[PAD_(int)];
-};
 struct	osigstack_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2490,12 +2457,6 @@ struct	ogetpeername_args {
 	caddr_t	asa;	char asa_[PAD_(caddr_t)];
 	int *	alen;	char alen_[PAD_(int *)];
 };
-struct	osethostid_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	long	hostid;	char hostid_[PAD_(long)];
-};
 struct	ogetrlimit_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2510,13 +2471,6 @@ struct	osetrlimit_args {
 	u_int	which;	char which_[PAD_(u_int)];
 	struct orlimit *	rlp;	char rlp_[PAD_(struct orlimit *)];
 };
-struct	okillpg_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	pgid;	char pgid_[PAD_(int)];
-	int	signum;	char signum_[PAD_(int)];
-};
 struct	ogetdirentries_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2529,7 +2483,6 @@ struct	ogetdirentries_args {
 
 #ifdef _KERNEL
 
-int	sys_ocreat (struct ocreat_args *);
 int	sys_olseek (struct olseek_args *);
 int	sys_ostat (struct ostat_args *);
 int	sys_olstat (struct olstat_args *);
@@ -2544,9 +2497,6 @@ int	sys_osethostname (struct sethostname_args *);
 int	sys_oaccept (struct accept_args *);
 int	sys_osend (struct osend_args *);
 int	sys_orecv (struct orecv_args *);
-int	sys_osigvec (struct osigvec_args *);
-int	sys_osigblock (struct osigblock_args *);
-int	sys_osigsetmask (struct osigsetmask_args *);
 int	sys_osigstack (struct osigstack_args *);
 int	sys_orecvmsg (struct orecvmsg_args *);
 int	sys_osendmsg (struct osendmsg_args *);
@@ -2554,11 +2504,8 @@ int	sys_orecvfrom (struct recvfrom_args *);
 int	sys_otruncate (struct otruncate_args *);
 int	sys_oftruncate (struct oftruncate_args *);
 int	sys_ogetpeername (struct ogetpeername_args *);
-int	sys_ogethostid (struct ogethostid_args *);
-int	sys_osethostid (struct osethostid_args *);
 int	sys_ogetrlimit (struct ogetrlimit_args *);
 int	sys_osetrlimit (struct osetrlimit_args *);
-int	sys_okillpg (struct okillpg_args *);
 int	sys_oquota (struct oquota_args *);
 int	sys_ogetsockname (struct getsockname_args *);
 int	sys_ogetdirentries (struct ogetdirentries_args *);

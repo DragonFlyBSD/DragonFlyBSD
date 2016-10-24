@@ -51,7 +51,7 @@
 6	STD	{ int close(int fd); }
 7	STD	{ int wait4(int pid, int *status, int options, \
 			    struct rusage *rusage); } wait4 wait_args int
-8	COMPAT	{ int creat(char *path, int mode); }
+8	OBSOL	4.3 creat
 9	STD	{ int link(char *path, char *link); }
 10	STD	{ int unlink(char *path); }
 11	OBSOL	execv
@@ -174,10 +174,9 @@
 			    caddr_t val, int valsize); }
 106	STD	{ int listen(int s, int backlog); }
 107	OBSOL	vtimes
-108	COMPAT	{ int sigvec(int signum, struct sigvec *nsv, \
-			    struct sigvec *osv); }
-109	COMPAT	{ int sigblock(int mask); }
-110	COMPAT	{ int sigsetmask(int mask); }
+108	OBSOL	4.3 sigvec
+109	OBSOL	4.3 sigblock
+110	OBSOL	4.3 sigsetmask
 111	OBSOL	freebsd3_sigsuspend
 ; XXX note nonstandard (bogus) calling convention - the libc stub passes
 ; us the mask, not a pointer to it.
@@ -221,11 +220,11 @@
 140	STD	{ int adjtime(struct timeval *delta, \
 			    struct timeval *olddelta); }
 141	COMPAT	{ int getpeername(int fdes, caddr_t asa, int *alen); }
-142	COMPAT	{ long gethostid(void); }
-143	COMPAT	{ int sethostid(long hostid); }
+142	OBSOL	4.3 gethostid
+143	OBSOL	4.3 sethostid
 144	COMPAT	{ int getrlimit(u_int which, struct orlimit *rlp); }
 145	COMPAT	{ int setrlimit(u_int which, struct orlimit *rlp); }
-146	COMPAT	{ int killpg(int pgid, int signum); }
+146	OBSOL	4.3 killpg
 147	STD	{ int setsid(void); }
 148	STD	{ int quotactl(char *path, int cmd, int uid, \
 			    caddr_t arg); }
