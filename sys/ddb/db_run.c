@@ -294,7 +294,7 @@ db_clear_single_step(db_regs_t *regs)
 
 #endif /* SOFTWARE_SSTEP */
 
-extern int	db_cmd_loop_done;
+extern boolean_t	db_cmd_loop_done;
 
 /* single-step */
 /*ARGSUSED*/
@@ -317,7 +317,7 @@ db_single_step_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = 1;
+	db_cmd_loop_done = true;
 }
 
 /* trace and print until call/return */
@@ -337,7 +337,7 @@ db_trace_until_call_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = 1;
+	db_cmd_loop_done = true;
 }
 
 /*ARGSUSED*/
@@ -357,7 +357,7 @@ db_trace_until_matching_cmd(db_expr_t addr, boolean_t have_addr,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = 1;
+	db_cmd_loop_done = true;
 }
 
 /* continue */
@@ -374,5 +374,5 @@ db_continue_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = 1;
+	db_cmd_loop_done = true;
 }
