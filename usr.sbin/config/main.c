@@ -77,10 +77,13 @@ main(int argc, char *argv[])
 {
 	struct stat buf;
 	int ch, len;
-	unsigned int i;
 	char *p;
-	char linksrc[64], linkdest[MAXPATHLEN];
+	char linkdest[MAXPATHLEN];
+#if 0
+	unsigned int i;
+	char linksrc[64];
 	static const char *emus[] = { "linux" };
+#endif
 
 	while ((ch = getopt(argc, argv, "d:gpr")) != -1)
 		switch (ch) {
@@ -210,6 +213,7 @@ main(int argc, char *argv[])
 	 * XXX check directory structure for architecture subdirectories and
 	 * create the symlinks automatically XXX
 	 */
+#if 0
 	for (i = 0; i < sizeof(emus) / sizeof(emus[0]); ++i) {
 		if (*srcdir == 0)  {
 			snprintf(linkdest, sizeof(linkdest),
@@ -223,6 +227,7 @@ main(int argc, char *argv[])
 		snprintf(linksrc, sizeof(linksrc), "arch_%s", emus[i]);
 		symlink(linkdest, path(linksrc));
 	}
+#endif
 
 	options();			/* make options .h files */
 	makefile();			/* build Makefile */
