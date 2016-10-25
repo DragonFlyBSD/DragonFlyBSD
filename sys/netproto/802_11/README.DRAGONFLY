@@ -11,7 +11,6 @@
 
       remove <machine/bus.h>
       remove <machine/resource.h>
-      add    <sys/stdbool.h>
       add    <net/ifq_var.h>
 
     * Simple API changes

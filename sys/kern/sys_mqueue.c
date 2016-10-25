@@ -61,7 +61,6 @@
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/stat.h>
-#include <sys/stdbool.h>
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
 #include <sys/systm.h>

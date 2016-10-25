@@ -37,7 +37,6 @@
 #include <sys/module.h>
 #include <sys/types.h>
 #include <sys/systm.h>
-#include <sys/stdbool.h>
 #include <sys/malloc.h>
 #include <sys/objcache.h>
 #include <sys/tree.h>

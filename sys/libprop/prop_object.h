@@ -34,7 +34,9 @@
 
 #include <sys/types.h>
 
-#include <sys/stdbool.h>
+#ifndef _KERNEL
+#include <stdbool.h>
+#endif
 
 typedef void *prop_object_t;
 
