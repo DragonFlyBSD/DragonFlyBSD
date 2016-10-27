@@ -654,7 +654,7 @@ fn_install_os(struct i_fn_args *a)
 	 */
 	for (j = 0; nullfs_mountpt[j] != NULL; j++) {
 		if (subpartition_find(storage_get_selected_slice(a->s),
-				      "%s", nullfs_mountpt[i]) != NULL) {
+				      "%s", nullfs_mountpt[j]) != NULL) {
 			continue;
 		}
 		command_add(cmds,
