@@ -689,8 +689,10 @@ found_aliased:
 	case HAMMER_ZONE_UNDO_INDEX:
 		iotype = HAMMER_STRUCTURE_UNDO_BUFFER;
 		break;
+	case HAMMER_ZONE_RAW_BUFFER_INDEX:
+	case HAMMER_ZONE_FREEMAP_INDEX:
+	case HAMMER_ZONE_BTREE_INDEX:
 	case HAMMER_ZONE_META_INDEX:
-	default:
 		/*
 		 * NOTE: inode data and directory entries are placed in this
 		 * zone.  inode atime/mtime is updated in-place and thus
@@ -698,6 +700,12 @@ found_aliased:
 		 * meta-buffers, same as buffers containing B-Tree info.
 		 */
 		iotype = HAMMER_STRUCTURE_META_BUFFER;
+		break;
+	case HAMMER_ZONE_RAW_VOLUME_INDEX: /* invalid */
+		iotype = HAMMER_STRUCTURE_VOLUME;
+		break;
+	default: /* invalid */
+		iotype = HAMMER_STRUCTURE_DUMMY;
 		break;
 	}
 

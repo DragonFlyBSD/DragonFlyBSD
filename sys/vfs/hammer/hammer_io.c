@@ -330,17 +330,20 @@ hammer_io_read(struct vnode *devvp, hammer_io_t io, int limit)
 				break;
 			case HAMMER_STRUCTURE_META_BUFFER:
 				switch(HAMMER_ZONE(HAMMER_ITOB(io)->zoneX_offset)) {
+				case HAMMER_ZONE_RAW_BUFFER:
+					metatype = "buffer";
+					break;
+				case HAMMER_ZONE_FREEMAP:
+					metatype = "freemap";
+					break;
 				case HAMMER_ZONE_BTREE:
 					metatype = "btree";
 					break;
 				case HAMMER_ZONE_META:
 					metatype = "meta";
 					break;
-				case HAMMER_ZONE_FREEMAP:
-					metatype = "freemap";
-					break;
 				default:
-					metatype = "meta?";
+					metatype = "unknown";
 					break;
 				}
 				break;
@@ -350,8 +353,11 @@ hammer_io_read(struct vnode *devvp, hammer_io_t io, int limit)
 			case HAMMER_STRUCTURE_UNDO_BUFFER:
 				metatype = "undo";
 				break;
+			case HAMMER_STRUCTURE_DUMMY:
+				metatype = "dummy";
+				break;
 			default:
-				metatype = "unknown";
+				hpanic("bad io type");
 				break;
 			}
 			hdkprintf("zone2_offset %016jx %s\n",
