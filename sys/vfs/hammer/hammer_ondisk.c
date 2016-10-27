@@ -597,7 +597,6 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
 	hammer_off_t	zone2_offset;
-	hammer_io_type_t iotype;
 	int vol_no;
 	int zone;
 
@@ -677,41 +676,9 @@ found_aliased:
 	}
 
 	/*
-	 * What is the buffer class?
-	 */
-	zone = HAMMER_ZONE_DECODE(buf_offset);
-
-	switch(zone) {
-	case HAMMER_ZONE_LARGE_DATA_INDEX:
-	case HAMMER_ZONE_SMALL_DATA_INDEX:
-		iotype = HAMMER_STRUCTURE_DATA_BUFFER;
-		break;
-	case HAMMER_ZONE_UNDO_INDEX:
-		iotype = HAMMER_STRUCTURE_UNDO_BUFFER;
-		break;
-	case HAMMER_ZONE_RAW_BUFFER_INDEX:
-	case HAMMER_ZONE_FREEMAP_INDEX:
-	case HAMMER_ZONE_BTREE_INDEX:
-	case HAMMER_ZONE_META_INDEX:
-		/*
-		 * NOTE: inode data and directory entries are placed in this
-		 * zone.  inode atime/mtime is updated in-place and thus
-		 * buffers containing inodes must be synchronized as
-		 * meta-buffers, same as buffers containing B-Tree info.
-		 */
-		iotype = HAMMER_STRUCTURE_META_BUFFER;
-		break;
-	case HAMMER_ZONE_RAW_VOLUME_INDEX: /* invalid */
-		iotype = HAMMER_STRUCTURE_VOLUME;
-		break;
-	default: /* invalid */
-		iotype = HAMMER_STRUCTURE_DUMMY;
-		break;
-	}
-
-	/*
 	 * Handle blockmap offset translations
 	 */
+	zone = HAMMER_ZONE_DECODE(buf_offset);
 	if (hammer_is_zone2_mapped_index(zone)) {
 		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
@@ -746,7 +713,7 @@ found_aliased:
 	buffer->zone2_offset = zone2_offset;
 	buffer->zoneX_offset = buf_offset;
 
-	hammer_io_init(&buffer->io, volume, iotype);
+	hammer_io_init(&buffer->io, volume, hammer_zone_to_iotype(zone));
 	buffer->io.offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
 	buffer->io.bytes = bytes;
 	TAILQ_INIT(&buffer->node_list);

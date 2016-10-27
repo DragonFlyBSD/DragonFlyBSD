@@ -95,6 +95,85 @@ hammer_io_init(hammer_io_t io, hammer_volume_t volume, hammer_io_type_t type)
 	io->type = type;
 }
 
+hammer_io_type_t
+hammer_zone_to_iotype(int zone)
+{
+	hammer_io_type_t iotype;
+
+	switch(zone) {
+	case HAMMER_ZONE_RAW_VOLUME_INDEX:
+		iotype = HAMMER_STRUCTURE_VOLUME;
+		break;
+	case HAMMER_ZONE_RAW_BUFFER_INDEX:
+	case HAMMER_ZONE_FREEMAP_INDEX:
+	case HAMMER_ZONE_BTREE_INDEX:
+	case HAMMER_ZONE_META_INDEX:
+		iotype = HAMMER_STRUCTURE_META_BUFFER;
+		break;
+	case HAMMER_ZONE_UNDO_INDEX:
+		iotype = HAMMER_STRUCTURE_UNDO_BUFFER;
+		break;
+	case HAMMER_ZONE_LARGE_DATA_INDEX:
+	case HAMMER_ZONE_SMALL_DATA_INDEX:
+		iotype = HAMMER_STRUCTURE_DATA_BUFFER;
+		break;
+	default:
+		iotype = HAMMER_STRUCTURE_DUMMY;
+		break;
+	}
+
+	return(iotype);
+}
+
+static const char*
+hammer_io_to_iostring(hammer_io_t io)
+{
+	const char *iostr = NULL;
+
+	switch(io->type) {
+	case HAMMER_STRUCTURE_VOLUME:
+		iostr = "volume";
+		break;
+	case HAMMER_STRUCTURE_META_BUFFER:
+		switch(HAMMER_ZONE(HAMMER_ITOB(io)->zoneX_offset)) {
+		case HAMMER_ZONE_RAW_BUFFER:
+			iostr = "meta/raw_buffer";
+			break;
+		case HAMMER_ZONE_FREEMAP:
+			iostr = "meta/freemap";
+			break;
+		case HAMMER_ZONE_BTREE:
+			iostr = "meta/btree";
+			break;
+		case HAMMER_ZONE_META:
+			iostr = "meta/meta";
+			break;
+		}
+		break;
+	case HAMMER_STRUCTURE_UNDO_BUFFER:
+		iostr = "undo";
+		break;
+	case HAMMER_STRUCTURE_DATA_BUFFER:
+		switch(HAMMER_ZONE(HAMMER_ITOB(io)->zoneX_offset)) {
+		case HAMMER_ZONE_LARGE_DATA:
+			iostr = "data/large_data";
+			break;
+		case HAMMER_ZONE_SMALL_DATA:
+			iostr = "data/small_data";
+			break;
+		}
+		break;
+	case HAMMER_STRUCTURE_DUMMY:
+		iostr = "dummy";
+		break;
+	default:
+		hpanic("bad io type");
+		break;
+	}
+
+	return(iostr);
+}
+
 /*
  * Helper routine to disassociate a buffer cache buffer from an I/O
  * structure.  The io must be interlocked and marked appropriately for
@@ -322,47 +401,9 @@ hammer_io_read(struct vnode *devvp, hammer_io_t io, int limit)
 		 */
 		bp = io->bp;
 		if ((hammer_debug_io & 0x0001) && (bp->b_flags & B_IOISSUED)) {
-			const char *metatype;
-
-			switch(io->type) {
-			case HAMMER_STRUCTURE_VOLUME:
-				metatype = "volume";
-				break;
-			case HAMMER_STRUCTURE_META_BUFFER:
-				switch(HAMMER_ZONE(HAMMER_ITOB(io)->zoneX_offset)) {
-				case HAMMER_ZONE_RAW_BUFFER:
-					metatype = "buffer";
-					break;
-				case HAMMER_ZONE_FREEMAP:
-					metatype = "freemap";
-					break;
-				case HAMMER_ZONE_BTREE:
-					metatype = "btree";
-					break;
-				case HAMMER_ZONE_META:
-					metatype = "meta";
-					break;
-				default:
-					metatype = "unknown";
-					break;
-				}
-				break;
-			case HAMMER_STRUCTURE_DATA_BUFFER:
-				metatype = "data";
-				break;
-			case HAMMER_STRUCTURE_UNDO_BUFFER:
-				metatype = "undo";
-				break;
-			case HAMMER_STRUCTURE_DUMMY:
-				metatype = "dummy";
-				break;
-			default:
-				hpanic("bad io type");
-				break;
-			}
 			hdkprintf("zone2_offset %016jx %s\n",
 				(intmax_t)bp->b_bio2.bio_offset,
-				metatype);
+				hammer_io_to_iostring(io));
 		}
 		bp->b_flags &= ~B_IOISSUED;
 		bp->b_ops = &hammer_bioops;

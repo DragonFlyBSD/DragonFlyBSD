@@ -1354,6 +1354,7 @@ int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 
 void hammer_io_init(hammer_io_t io, hammer_volume_t volume,
 			hammer_io_type_t type);
+hammer_io_type_t hammer_zone_to_iotype(int zone);
 int hammer_io_read(struct vnode *devvp, hammer_io_t io, int limit);
 void hammer_io_advance(hammer_io_t io);
 int hammer_io_new(struct vnode *devvp, hammer_io_t io);
