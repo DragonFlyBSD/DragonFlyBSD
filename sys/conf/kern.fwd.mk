@@ -51,7 +51,8 @@ ${_FWDHDRS}:
 	echo "#define _MACHINE_${.TARGET:T:S/./_/g:tu}_" ; \
 	echo "#include <cpu/${.TARGET:T}>" ; \
 	echo "#endif" ; \
-	echo) > ${.TARGET}
+	echo) > ${.TARGET}.${.MAKE.PID}
+	@mv -f ${.TARGET}.${.MAKE.PID} ${.TARGET}
 
 ${_LHDRS}:
 	@(echo "creating sys/ forwarding header ${.TARGET}" 1>&2; \
@@ -63,4 +64,5 @@ ${_LHDRS}:
 	echo "#define _${.TARGET:T:S/./_/g:tu}_" ; \
 	echo "#include <sys/${.TARGET:T}>" ; \
 	echo "#endif" ; \
-	echo) > ${.TARGET}
+	echo) > ${.TARGET}.${.MAKE.PID}
+	@mv -f ${.TARGET}.${.MAKE.PID} ${.TARGET}
