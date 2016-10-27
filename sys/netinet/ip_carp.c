@@ -327,7 +327,7 @@ TAILQ_HEAD(carp_if, carp_softc_container);
 
 SYSCTL_DECL(_net_inet_carp);
 
-static int carp_opts[CARPCTL_MAXID] = { 0, 1, 0, 1, 0, 0 }; /* XXX for now */
+static int carp_opts[CARPCTL_MAXID] = { 0, 1, 0, 1, 0, 0, 1 }; /* XXX for now */
 SYSCTL_INT(_net_inet_carp, CARPCTL_ALLOW, allow, CTLFLAG_RW,
     &carp_opts[CARPCTL_ALLOW], 0, "Accept incoming CARP packets");
 SYSCTL_INT(_net_inet_carp, CARPCTL_PREEMPT, preempt, CTLFLAG_RW,
@@ -336,6 +336,8 @@ SYSCTL_INT(_net_inet_carp, CARPCTL_LOG, log, CTLFLAG_RW,
     &carp_opts[CARPCTL_LOG], 0, "log bad carp packets");
 SYSCTL_INT(_net_inet_carp, CARPCTL_ARPBALANCE, arpbalance, CTLFLAG_RW,
     &carp_opts[CARPCTL_ARPBALANCE], 0, "balance arp responses");
+SYSCTL_INT(_net_inet_carp, CARPCTL_SETROUTE, setroute, CTLFLAG_RW,
+    &carp_opts[CARPCTL_SETROUTE], 0, "set route");
 
 static int carp_suppress_preempt = 0;
 SYSCTL_INT(_net_inet_carp, OID_AUTO, suppress_preempt, CTLFLAG_RD,
@@ -1172,7 +1174,8 @@ carp_proto_input_c(struct carp_softc *sc, struct mbuf *m,
 			   cifp->if_xname);
 			carp_set_state(sc, BACKUP);
 			carp_setrun(sc, 0);
-			carp_setroute(sc, RTM_DELETE);
+			if (carp_opts[CARPCTL_SETROUTE])
+				carp_setroute(sc, RTM_DELETE);
 		}
 		break;
 
@@ -1751,7 +1754,8 @@ carp_master_down(struct carp_softc *sc)
 		carp_send_na(sc);
 #endif /* INET6 */
 		carp_setrun(sc, 0);
-		carp_setroute(sc, RTM_ADD);
+		if (carp_opts[CARPCTL_SETROUTE])
+			carp_setroute(sc, RTM_ADD);
 		break;
 	}
 }
@@ -1775,7 +1779,8 @@ carp_setrun(struct carp_softc *sc, sa_family_t af)
 	    (sc->sc_naddrs || sc->sc_naddrs6)) {
 		/* Nothing */
 	} else {
-		carp_setroute(sc, RTM_DELETE);
+		if (carp_opts[CARPCTL_SETROUTE])
+			carp_setroute(sc, RTM_DELETE);
 		return;
 	}
 
@@ -1790,11 +1795,13 @@ carp_setrun(struct carp_softc *sc, sa_family_t af)
 			CARP_DEBUG("%s: INIT -> MASTER (preempting)\n",
 				   cifp->if_xname);
 			carp_set_state(sc, MASTER);
-			carp_setroute(sc, RTM_ADD);
+			if (carp_opts[CARPCTL_SETROUTE])
+				carp_setroute(sc, RTM_ADD);
 		} else {
 			CARP_DEBUG("%s: INIT -> BACKUP\n", cifp->if_xname);
 			carp_set_state(sc, BACKUP);
-			carp_setroute(sc, RTM_DELETE);
+			if (carp_opts[CARPCTL_SETROUTE])
+				carp_setroute(sc, RTM_DELETE);
 			carp_setrun(sc, 0);
 		}
 		break;
@@ -2413,7 +2420,8 @@ carp_ioctl_setvh_dispatch(netmsg_t msg)
 			callout_stop(&sc->sc_ad_tmo);
 			carp_set_state(sc, BACKUP);
 			carp_setrun(sc, 0);
-			carp_setroute(sc, RTM_DELETE);
+			if (carp_opts[CARPCTL_SETROUTE])
+				carp_setroute(sc, RTM_DELETE);
 			break;
 
 		case MASTER:

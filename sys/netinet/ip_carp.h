@@ -157,7 +157,8 @@ struct ifcarpvhaddr {
 #define	CARPCTL_LOG		3	/* log bad packets */
 #define	CARPCTL_STATS		4	/* statistics (read-only) */
 #define	CARPCTL_ARPBALANCE	5	/* balance arp responses */
-#define	CARPCTL_MAXID		6
+#define	CARPCTL_SETROUTE	6	/* change routes */
+#define	CARPCTL_MAXID		7
 
 #define	CARPCTL_NAMES { \
 	{ 0, 0 }, \
@@ -166,6 +167,7 @@ struct ifcarpvhaddr {
 	{ "log", CTLTYPE_INT }, \
 	{ "stats", CTLTYPE_STRUCT }, \
 	{ "arpbalance", CTLTYPE_INT }, \
+	{ "setroute", CTLTYPE_INT }, \
 }
 
 #ifdef _KERNEL
