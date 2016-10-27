@@ -30,7 +30,6 @@
 // Written by Benjamin Kosnik <bkoz@redhat.com>
 
 #include <locale>
-#include <bits/c++locale_internal.h>
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
