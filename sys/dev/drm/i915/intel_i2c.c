@@ -564,7 +564,7 @@ gmbus_xfer_index_read(struct drm_i915_private *dev_priv, struct i2c_msg *msgs)
 }
 
 static int
-gmbus_xfer(struct device *adapter,
+gmbus_xfer(struct i2c_adapter *adapter,
 	   struct i2c_msg *msgs,
 	   int num)
 {

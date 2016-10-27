@@ -1014,7 +1014,7 @@ intel_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
 }
 
 static int
-intel_dp_i2c_aux_ch(struct device *adapter, int mode,
+intel_dp_i2c_aux_ch(device_t adapter, int mode,
 		    uint8_t write_byte, uint8_t *read_byte)
 {
 	struct i2c_algo_dp_aux_data *data = device_get_softc(adapter);

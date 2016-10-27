@@ -102,7 +102,7 @@ char *drm_asprintf(int flags, const char *format, ...)
  * Only for usage in *_driver_[un]load()
  */
 
-static void drm_fill_pdev(struct device *dev, struct pci_dev *pdev)
+static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 {
 	pdev->dev = dev;
 	pdev->vendor = pci_get_vendor(dev);
@@ -113,7 +113,7 @@ static void drm_fill_pdev(struct device *dev, struct pci_dev *pdev)
 	pdev->revision = pci_get_revid(dev) & 0xff;
 }
 
-void drm_init_pdev(struct device *dev, struct pci_dev **pdev)
+void drm_init_pdev(device_t dev, struct pci_dev **pdev)
 {
 	BUG_ON(*pdev != NULL);
 

@@ -469,7 +469,7 @@ static enum intel_pch intel_virt_detect_pch(struct drm_device *dev)
 void intel_detect_pch(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct device *pch = NULL;
+	device_t pch = NULL;
 	struct pci_devinfo *di;
 
 	/* In all current cases, num_pipes is equivalent to the PCH_NOP setting

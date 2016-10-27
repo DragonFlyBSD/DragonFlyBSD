@@ -1206,7 +1206,7 @@ char *drm_vasprintf(int flags, const char *format, __va_list ap) __printflike(2,
 char *drm_asprintf(int flags, const char *format, ...) __printflike(2, 3);
 
 /* XXX glue logic, should be done in drm_pci_init(), pending drm update */
-void drm_init_pdev(struct device *dev, struct pci_dev **pdev);
+void drm_init_pdev(device_t dev, struct pci_dev **pdev);
 void drm_fini_pdev(struct pci_dev **pdev);
 void drm_print_pdev(struct pci_dev *pdev);
 

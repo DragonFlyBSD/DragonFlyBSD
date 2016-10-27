@@ -1361,7 +1361,7 @@ out:
  * Return: True on success, false on failure.
  */
 bool
-drm_probe_ddc(struct device *adapter)
+drm_probe_ddc(struct i2c_adapter *adapter)
 {
 	unsigned char out;
 
@@ -1380,7 +1380,7 @@ EXPORT_SYMBOL(drm_probe_ddc);
  * Return: Pointer to valid EDID or NULL if we couldn't find any.
  */
 struct edid *drm_get_edid(struct drm_connector *connector,
-			  struct device *adapter)
+			  struct i2c_adapter *adapter)
 {
 	if (!drm_probe_ddc(adapter))
 		return NULL;

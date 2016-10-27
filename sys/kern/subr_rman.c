@@ -183,7 +183,7 @@ rman_fini(struct rman *rm)
 
 struct resource *
 rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
-		      u_int flags, struct device *dev)
+		      u_int flags, device_t dev)
 {
 	u_int	want_activate;
 	struct	resource *r, *s, *rv;

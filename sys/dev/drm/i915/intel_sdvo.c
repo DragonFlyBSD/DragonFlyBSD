@@ -71,7 +71,7 @@ static const char * const tv_format_names[] = {
 struct intel_sdvo {
 	struct intel_encoder base;
 
-	struct device *i2c;
+	device_t i2c;
 	u8 slave_addr;
 
 	device_t ddc_iic_bus, ddc;
@@ -2965,7 +2965,7 @@ intel_sdvo_ddc_proxy_reset(device_t idev, u_char speed, u_char addr,
 	    oldaddr));
 }
 
-static int intel_sdvo_ddc_proxy_xfer(struct device *adapter,
+static int intel_sdvo_ddc_proxy_xfer(struct i2c_adapter *adapter,
 				     struct i2c_msg *msgs,
 				     int num)
 {

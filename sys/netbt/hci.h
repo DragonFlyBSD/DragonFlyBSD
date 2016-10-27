@@ -2447,19 +2447,19 @@ struct hci_memo {
  * The Bluetooth HCI interface attachment structure
  */
 struct hci_if {
-	int	(*enable)(struct device *);
-	void	(*disable)(struct device *);
-	void	(*output_cmd)(struct device *, struct mbuf *);
-	void	(*output_acl)(struct device *, struct mbuf *);
-	void	(*output_sco)(struct device *, struct mbuf *);
-	void	(*get_stats)(struct device *, struct bt_stats *, int);
+	int	(*enable)(device_t);
+	void	(*disable)(device_t);
+	void	(*output_cmd)(device_t, struct mbuf *);
+	void	(*output_acl)(device_t, struct mbuf *);
+	void	(*output_sco)(device_t, struct mbuf *);
+	void	(*get_stats)(device_t, struct bt_stats *, int);
 };
 
 /*
  * The Bluetooth HCI device unit structure
  */
 struct hci_unit {
-	struct device	*hci_dev;		/* bthci handle */
+	device_t	 hci_dev;		/* bthci handle */
 #if 0 /* not yet */
 	device_t	 hci_bthub;		/* bthub(4) handle */
 #endif
@@ -2552,7 +2552,7 @@ void hci_ctloutput(union netmsg *);
 void hci_mtap(struct mbuf *, struct hci_unit *);
 
 /* hci_unit.c */
-struct hci_unit *hci_attach(const struct hci_if *, struct device *, uint16_t);
+struct hci_unit *hci_attach(const struct hci_if *, device_t, uint16_t);
 void hci_detach(struct hci_unit *);
 int hci_enable(struct hci_unit *);
 void hci_disable(struct hci_unit *);

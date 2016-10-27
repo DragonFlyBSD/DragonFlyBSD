@@ -149,7 +149,7 @@ static devclass_t sln_devclass;
 DRIVER_MODULE(sln, pci, sln_driver, sln_devclass, NULL, NULL);
 
 static int
-sln_probe(struct device *dev)
+sln_probe(device_t dev)
 {
 	const struct sln_dev *d;
 	uint16_t did, vid;

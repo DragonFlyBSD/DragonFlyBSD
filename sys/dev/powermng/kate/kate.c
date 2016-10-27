@@ -65,7 +65,7 @@ static const struct {
 
 
 struct kate_softc {
-	struct device		*sc_dev;
+	device_t		sc_dev;
 
 	struct ksensor		sc_sensors[4];
 	struct ksensordev	sc_sensordev;
@@ -77,10 +77,10 @@ struct kate_softc {
 #define	KATE_FLAG_ALT_OFFSET	0x04	/* CurTmp starts at -28C. */
 };
 
-static void	kate_identify(driver_t *, struct device *);
-static int	kate_probe(struct device *);
-static int	kate_attach(struct device *);
-static int	kate_detach(struct device *);
+static void	kate_identify(driver_t *, device_t);
+static int	kate_probe(device_t);
+static int	kate_attach(device_t);
+static int	kate_detach(device_t);
 static void	kate_refresh(void *);
 
 static device_method_t kate_methods[] = {
@@ -103,7 +103,7 @@ DRIVER_MODULE(kate, hostb, kate_driver, kate_devclass, NULL, NULL);
 
 
 static void
-kate_identify(driver_t *driver, struct device *parent)
+kate_identify(driver_t *driver, device_t parent)
 {
 	if (kate_probe(parent) == ENXIO)
 		return;
@@ -113,7 +113,7 @@ kate_identify(driver_t *driver, struct device *parent)
 }
 
 static int
-kate_probe(struct device *dev)
+kate_probe(device_t dev)
 {
 #ifndef KATE_STRICT
 	struct kate_softc	ks;
@@ -159,7 +159,7 @@ kate_probe(struct device *dev)
 }
 
 static int
-kate_attach(struct device *dev)
+kate_attach(device_t dev)
 {
 	struct kate_softc	*sc;
 	uint32_t		c, d;
@@ -244,7 +244,7 @@ kate_attach(struct device *dev)
 }
 
 static int
-kate_detach(struct device *dev)
+kate_detach(device_t dev)
 {
 	struct kate_softc	*sc = device_get_softc(dev);
 

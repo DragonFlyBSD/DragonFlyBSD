@@ -54,9 +54,9 @@
 #define RFACT_NONE	10000
 #define RFACT(x, y)	(RFACT_NONE * ((x) + (y)) / (y))
 
-int it_probe(struct device *);
-int it_attach(struct device *);
-int it_detach(struct device *);
+int it_probe(device_t);
+int it_attach(device_t);
+int it_detach(device_t);
 u_int8_t it_readreg(struct it_softc *, int);
 void it_writereg(struct it_softc *, int, int);
 void it_setup_volt(struct it_softc *, int, int);
@@ -104,7 +104,7 @@ const int it_vrfact[] = {
 };
 
 int
-it_probe(struct device *dev)
+it_probe(device_t dev)
 {
 	struct resource *iores;
 	int iorid = 0;
@@ -133,7 +133,7 @@ it_probe(struct device *dev)
 }
 
 int
-it_attach(struct device *dev)
+it_attach(device_t dev)
 {
 	struct it_softc *sc = device_get_softc(dev);
 	int i;
@@ -173,7 +173,7 @@ it_attach(struct device *dev)
 }
 
 int
-it_detach(struct device *dev)
+it_detach(device_t dev)
 {
 	struct it_softc *sc = device_get_softc(dev);
 	int error;

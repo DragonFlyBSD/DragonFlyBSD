@@ -3,6 +3,8 @@
 
 #ifdef _KERNEL
 
+#include <sys/bus.h>
+
 struct fb_info {
 	vm_offset_t vaddr;
 	vm_paddr_t paddr;
@@ -13,7 +15,7 @@ struct fb_info {
 	int is_vga_boot_display;
 	void *cookie;
 	void (*restore)(void *);
-	struct device *device;
+	device_t device;
 };
 
 int probe_efi_fb(int early);

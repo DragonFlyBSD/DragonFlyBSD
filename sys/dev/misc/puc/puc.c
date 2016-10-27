@@ -111,7 +111,7 @@ struct puc_softc {
 
 	/* per-port dynamic data */
         struct {
-		struct device	*dev;
+		device_t	dev;
 		/* filled in by bus_setup_intr() */
 		void		(*ihand) (void *);
 		void		*ihandarg;

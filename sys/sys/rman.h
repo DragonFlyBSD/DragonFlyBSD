@@ -105,7 +105,7 @@ struct	resource {
 	void	*r_virtual;	/* virtual address of this resource */
 	bus_space_tag_t r_bustag; /* bus_space tag */
 	bus_space_handle_t r_bushandle;	/* bus_space handle */
-	struct	device *r_dev;	/* device which has allocated this resource */
+	device_t r_dev;		/* device which has allocated this resource */
 	struct	rman *r_rm;	/* resource manager from whence this came */
 	int     r_rid;          /* optional rid for this resource. */
 };
@@ -135,7 +135,7 @@ int	rman_manage_region(struct rman *rm, u_long start, u_long end);
 int	rman_release_resource(struct resource *r);
 struct	resource *rman_reserve_resource(struct rman *rm, u_long start,
 					u_long end, u_long count,
-					u_int flags, struct device *dev);
+					u_int flags, device_t dev);
 uint32_t rman_make_alignment_flags(uint32_t size);
 
 #define rman_get_start(r)	((r)->r_start)

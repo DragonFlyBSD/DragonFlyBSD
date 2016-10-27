@@ -166,7 +166,7 @@ static const struct {
 #define SIO_VREF	1235	/* 1000.0 * VREF */
 
 struct nsclpcsio_softc {
-	struct device* sc_dev;
+	device_t sc_dev;
 	struct resource *sc_iores;
 	int sc_iorid;
 	bus_space_tag_t sc_iot;
@@ -204,8 +204,8 @@ struct nsclpcsio_softc {
 	bus_space_read_1((sc)->sc_iot,				\
 	    (sc)->sc_ld_ioh[SIO_LDN_VLM], (reg))
 
-int	 nsclpcsio_isa_probe(struct device *);
-int	 nsclpcsio_isa_attach(struct device *);
+int	 nsclpcsio_isa_probe(device_t);
+int	 nsclpcsio_isa_attach(device_t);
 
 
 static device_method_t nsclpcsio_isa_methods[] = {
@@ -257,7 +257,7 @@ nswrite(bus_space_tag_t iot, bus_space_handle_t ioh, int idx, u_int8_t data)
 }
 
 int
-nsclpcsio_isa_probe(struct device *dev)
+nsclpcsio_isa_probe(device_t dev)
 {
 	struct resource *iores;
 	int iorid = 0;
@@ -284,7 +284,7 @@ nsclpcsio_isa_probe(struct device *dev)
 }
 
 int
-nsclpcsio_isa_attach(struct  device *dev)
+nsclpcsio_isa_attach(device_t dev)
 {
 	int iobase;
 	struct nsclpcsio_softc *sc = device_get_softc(dev);

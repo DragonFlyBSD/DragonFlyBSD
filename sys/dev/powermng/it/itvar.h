@@ -76,7 +76,7 @@
 #define IT_VREF		(4096) /* Vref = 4.096 V */
 
 struct it_softc {
-	struct device *sc_dev;
+	device_t sc_dev;
 
 	struct resource *sc_iores;
 	int sc_iorid;

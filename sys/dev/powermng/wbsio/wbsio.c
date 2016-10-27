@@ -34,10 +34,10 @@
 #include "wbsioreg.h"
 #include "wbsiovar.h"
 
-static void	wbsio_identify(driver_t *, struct device *);
-static int	wbsio_probe(struct device *);
-static int	wbsio_attach(struct device *);
-static int	wbsio_detach(struct device *);
+static void	wbsio_identify(driver_t *, device_t);
+static int	wbsio_probe(device_t);
+static int	wbsio_attach(device_t);
+static int	wbsio_detach(device_t);
 
 static device_method_t wbsio_methods[] = {
 	/* Device interface */
@@ -97,10 +97,10 @@ wbsio_conf_write(bus_space_tag_t iot, bus_space_handle_t ioh, u_int8_t index,
 }
 
 static void
-wbsio_identify(driver_t *driver, struct device *parent)
+wbsio_identify(driver_t *driver, device_t parent)
 {
 #ifdef KLD_MODULE
-	struct device *child[2];
+	device_t child[2];
 	const int port[2] = { 0x2e, 0x4e };
 
 	for (int i = 0; i < 2; i++) {
@@ -124,7 +124,7 @@ wbsio_identify(driver_t *driver, struct device *parent)
 }
 
 static int
-wbsio_probe(struct device *dev)
+wbsio_probe(device_t dev)
 {
 	struct resource *iores;
 	int iorid = 0;
@@ -207,12 +207,12 @@ wbsio_probe(struct device *dev)
 }
 
 static int
-wbsio_attach(struct device *dev)
+wbsio_attach(device_t dev)
 {
 	struct wbsio_softc *sc = device_get_softc(dev);
 	uint8_t reg0, reg1;
 	uint16_t iobase;
-	struct device *child;
+	device_t child;
 
 	/* Map ISA I/O space */
 	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid,
@@ -266,7 +266,7 @@ wbsio_attach(struct device *dev)
 }
 
 static int
-wbsio_detach(struct device *dev)
+wbsio_detach(device_t dev)
 {
 	struct wbsio_softc *sc = device_get_softc(dev);
 

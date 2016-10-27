@@ -52,9 +52,9 @@ struct lm_isa_softc {
 	bus_space_handle_t sc_ioh;
 };
 
-static int lm_isa_probe(struct device *);
-static int lm_isa_attach(struct device *);
-static int lm_isa_detach(struct device *);
+static int lm_isa_probe(device_t);
+static int lm_isa_attach(device_t);
+static int lm_isa_detach(device_t);
 u_int8_t lm_isa_readreg(struct lm_softc *, int);
 void lm_isa_writereg(struct lm_softc *, int, int);
 
@@ -80,7 +80,7 @@ DRIVER_MODULE(lm, isa, lm_isa_driver, lm_devclass, NULL, NULL);
 DRIVER_MODULE(lm, wbsio, lm_isa_driver, lm_devclass, NULL, NULL);
 
 static int
-lm_isa_probe(struct device *dev)
+lm_isa_probe(device_t dev)
 {
 	struct lm_isa_softc *sc = device_get_softc(dev);
 	struct wbsio_softc *wbsc = NULL;
@@ -177,7 +177,7 @@ lm_isa_probe(struct device *dev)
 }
 
 static int
-lm_isa_attach(struct device *dev)
+lm_isa_attach(device_t dev)
 {
 	struct lm_isa_softc *sc = device_get_softc(dev);
 #ifdef notyet
@@ -225,7 +225,7 @@ lm_isa_attach(struct device *dev)
 }
 
 static int
-lm_isa_detach(struct device *dev)
+lm_isa_detach(device_t dev)
 {
 	struct lm_isa_softc *sc = device_get_softc(dev);
 	int error;

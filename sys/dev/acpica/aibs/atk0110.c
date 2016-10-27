@@ -52,7 +52,7 @@ struct aibs_sensor {
 };
 
 struct aibs_softc {
-	struct device		*sc_dev;
+	device_t		sc_dev;
 	ACPI_HANDLE		sc_ah;
 
 	struct aibs_sensor	*sc_asens_volt;
@@ -63,9 +63,9 @@ struct aibs_softc {
 };
 
 
-static int aibs_probe(struct device *);
-static int aibs_attach(struct device *);
-static int aibs_detach(struct device *);
+static int aibs_probe(device_t);
+static int aibs_attach(device_t);
+static int aibs_detach(device_t);
 static void aibs_refresh(void *);
 
 static void aibs_attach_sif(struct aibs_softc *, enum sensor_type);
@@ -96,7 +96,7 @@ static char* aibs_hids[] = {
 };
 
 static int
-aibs_probe(struct device *dev)
+aibs_probe(device_t dev)
 {
 
 	if (acpi_disabled("aibs") ||
@@ -108,7 +108,7 @@ aibs_probe(struct device *dev)
 }
 
 static int
-aibs_attach(struct device *dev)
+aibs_attach(device_t dev)
 {
 	struct aibs_softc	*sc;
 
@@ -261,7 +261,7 @@ aibs_attach_sif(struct aibs_softc *sc, enum sensor_type st)
 }
 
 static int
-aibs_detach(struct device *dev)
+aibs_detach(device_t dev)
 {
 	struct aibs_softc	*sc = device_get_softc(dev);
 

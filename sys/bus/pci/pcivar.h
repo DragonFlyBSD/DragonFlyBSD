@@ -133,7 +133,7 @@ struct pcicfg_pcix {
 
 /* config header information common to all header types */
 typedef struct pcicfg {
-    struct device *dev;		/* device which owns this */
+    device_t	dev;		/* device which owns this */
 
     uint32_t	bar[PCI_MAXMAPS_0]; /* BARs */
     uint32_t	bios;		/* BIOS mapping */

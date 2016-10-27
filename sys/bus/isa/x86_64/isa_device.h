@@ -58,7 +58,7 @@ struct isa_device {
 	int	id_flags;	/* flags */
 	int	id_enabled;	/* is device enabled */
 	struct isa_device *id_next; /* used in isa_devlist in userconfig() */
-	struct device *id_device; /* new-bus wrapper device */
+	device_t id_device; /* new-bus wrapper device */
 };
 
 /*

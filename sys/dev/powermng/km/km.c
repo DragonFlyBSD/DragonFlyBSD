@@ -46,15 +46,15 @@
 
 
 struct km_softc {
-	struct device		*sc_dev;
+	device_t		sc_dev;
 	struct ksensor		sc_sensor;
 	struct ksensordev	sc_sensordev;
 };
 
-static void	km_identify(driver_t *, struct device *);
-static int	km_probe(struct device *);
-static int	km_attach(struct device *);
-static int	km_detach(struct device *);
+static void	km_identify(driver_t *, device_t);
+static int	km_probe(device_t);
+static int	km_attach(device_t);
+static int	km_detach(device_t);
 static void	km_refresh(void *);
 
 static device_method_t km_methods[] = {
@@ -77,7 +77,7 @@ DRIVER_MODULE(km, hostb, km_driver, km_devclass, NULL, NULL);
 
 
 static void
-km_identify(driver_t *driver, struct device *parent)
+km_identify(driver_t *driver, device_t parent)
 {
 	if (km_probe(parent) == ENXIO)
 		return;
@@ -87,7 +87,7 @@ km_identify(driver_t *driver, struct device *parent)
 }
 
 static int
-km_probe(struct device *dev)
+km_probe(device_t dev)
 {
 	char *desc;
 
@@ -129,7 +129,7 @@ km_probe(struct device *dev)
 }
 
 static int
-km_attach(struct device *dev)
+km_attach(device_t dev)
 {
 	struct km_softc	*sc;
 
@@ -149,7 +149,7 @@ km_attach(struct device *dev)
 }
 
 static int
-km_detach(struct device *dev)
+km_detach(device_t dev)
 {
 	struct km_softc	*sc = device_get_softc(dev);
 

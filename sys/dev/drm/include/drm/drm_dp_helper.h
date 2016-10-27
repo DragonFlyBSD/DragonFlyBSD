@@ -579,7 +579,7 @@
 struct i2c_algo_dp_aux_data {
 	bool running;
 	u16 address;
-	int (*aux_ch) (struct i2c_adapter *adapter,
+	int (*aux_ch) (device_t adapter,
 		       int mode, uint8_t write_byte,
 		       uint8_t *read_byte);
 	void *priv;

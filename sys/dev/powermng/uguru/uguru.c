@@ -93,7 +93,7 @@ int	uguru_dbg = 0;
 #define RFACT2(x, y)		(RFACT_NONE2 * ((x) + (y)) / (y))
 
 struct uguru_softc {
-	struct device		*sc_dev;
+	device_t		 sc_dev;
 
 	struct resource		*sc_iores;
 	int			 sc_iorid;
@@ -637,10 +637,10 @@ struct uguru_sensor abitin_sensors[] = {
 	{ NULL }
 };
 
-static void	 uguru_identify(driver_t *driver, struct device *parent);
-static int	 uguru_match(struct device *);
-static int	 uguru_attach(struct device *);
-static int	 uguru_detach(struct device *dev);
+static void	 uguru_identify(driver_t *driver, device_t parent);
+static int	 uguru_match(device_t);
+static int	 uguru_attach(device_t);
+static int	 uguru_detach(device_t dev);
 static void	 uguru_refresh(void *);
 static int	 uguru_read_sensor(struct uguru_softc *, int);
 static int	 uguru_ac5_read_sensor(struct uguru_softc *, int);
@@ -671,10 +671,10 @@ static devclass_t uguru_devclass;
 DRIVER_MODULE(uguru, isa, uguru_driver, uguru_devclass, NULL, NULL);
 
 static void
-uguru_identify(driver_t *driver, struct device *parent)
+uguru_identify(driver_t *driver, device_t parent)
 {
 #ifdef KLD_MODULE
-	struct device *child;
+	device_t child;
 	const int port = 0xe0;
 
 	child = device_find_child(parent, driver->name, 0);
@@ -687,7 +687,7 @@ uguru_identify(driver_t *driver, struct device *parent)
 }
 
 static int
-uguru_match(struct device *dev)
+uguru_match(device_t dev)
 {
 	struct resource *iores;
 	int iorid = 0;
@@ -721,7 +721,7 @@ uguru_match(struct device *dev)
 }
 
 static int
-uguru_attach(struct device *dev)
+uguru_attach(device_t dev)
 {
 	struct uguru_softc *sc = device_get_softc(dev);
 	struct uguru_sensor *sensors;
@@ -883,7 +883,7 @@ done:
 }
 
 static int
-uguru_detach(struct device *dev)
+uguru_detach(device_t dev)
 {
 	struct uguru_softc *sc = device_get_softc(dev);
 

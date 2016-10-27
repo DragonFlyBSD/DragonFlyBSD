@@ -448,7 +448,7 @@ void intel_dvo_init(struct drm_device *dev)
 	for (i = 0; i < ARRAY_SIZE(intel_dvo_devices); i++) {
 		struct drm_connector *connector = &intel_connector->base;
 		const struct intel_dvo_device *dvo = &intel_dvo_devices[i];
-		struct device *i2c;
+		struct i2c_adapter *i2c;
 		int gpio;
 		bool dvoinit;
 		enum i915_pipe pipe;

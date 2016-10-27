@@ -80,7 +80,7 @@ static const uint8_t hci_cmds_v10[HCI_COMMANDS_SIZE] = {
  */
 
 struct hci_unit *
-hci_attach(const struct hci_if *hci_if, struct device *dev, uint16_t flags)
+hci_attach(const struct hci_if *hci_if, device_t dev, uint16_t flags)
 {
 	struct hci_unit *unit;
 
