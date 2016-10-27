@@ -46,9 +46,12 @@ __targets+=	mandiff # XXX temporary target
 
 _SUBDIR_${__target}: ${SUBDIR:S/^/_SUBDIR_${__target}_/}
 
+# order subdirectories for each target, set up dependency
+#
+.ORDER: ${SUBDIR_ORDERED:S/^/_SUBDIR_${__target}_/}
+
 # Now create the command set for each subdirectory and target
 #
-
 .for entry in ${SUBDIR}
 _SUBDIR_${__target}_${entry}:
 		@(if test -d ${.CURDIR}/${entry}.${MACHINE_ARCH}; then \
@@ -61,13 +64,10 @@ _SUBDIR_${__target}_${entry}:
 			cd ${.CURDIR}/$${edir}; \
 		fi; \
 		${MAKE} ${__target:realinstall=install} \
-		    DIRPRFX=${DIRPRFX}$$edir/;)
+			DIRPRFX=${DIRPRFX}$$edir/;)
+		@${ECHODIR} "<=== ${DIRPRFX}${entry}"
 
 .endfor
-
-# order subdirectories for each target, set up dependency
-#
-.ORDER: ${SUBDIR_ORDERED:S/^/_SUBDIR_${__target}_/}
 
 .else
 

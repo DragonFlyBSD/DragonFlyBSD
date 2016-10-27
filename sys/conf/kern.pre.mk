@@ -45,6 +45,10 @@ INCLUDES+= -I$S/../include
 INCLUDES+= -I/usr/include
 .endif
 
+# For <openssl/headerfile>
+#
+INCLUDES+= -I$S/../crypto/libressl/include
+
 # This hack lets us use the Intel ACPICA code without spamming a new
 # include path into 100+ source files.
 .include "$S/conf/acpi.mk"

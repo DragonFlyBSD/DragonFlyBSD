@@ -12,8 +12,9 @@ DEBUG_FLAGS=-g
 CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+= -pthread
-LDADD=	-ldmsg -lm -lutil -lmd
-DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBMD}
+LDADD=	-ldmsg -lm -lutil -lprivate_crypto
+DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBCRYPTO}
+LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 DPADD+=		${LIBRECRYPTO}
 LDADD+=		-lprivate_crypto

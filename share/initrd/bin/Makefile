@@ -54,11 +54,8 @@ CRUNCH_ALIAS_rm= unlink
 
 
 CRUNCH_SRCDIRS+= usr.bin
-CRUNCH_PROGS_usr.bin= du less undo
+CRUNCH_PROGS_usr.bin= du less undo ssh
 CRUNCH_ALIAS_less= more
-
-CRUNCH_SRCDIRS+= secure/usr.bin
-CRUNCH_PROGS_secure/usr.bin= ssh
 CRUNCH_ALIAS_ssh= scp
 
 CRUNCH_KEEP_ssh= roaming_write roaming_read add_recv_bytes

@@ -2,8 +2,9 @@
 
 SRCS= iscontrol.c pdu.c fsm.c config.c login.c auth_subr.c misc.c
 PROG= iscontrol
-DPADD= ${LIBCAM} ${LIBMD}
-LDADD= -lcam -lmd
+DPADD= ${LIBCAM} ${LIBMD} ${LIBCRYPTO}
+LDADD= -lcam -lmd -lprivate_crypto
+LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 CFLAGS += -I${.CURDIR}/../../sys/dev/disk/iscsi/initiator
 #CFLAGS += -g -DDEBUG

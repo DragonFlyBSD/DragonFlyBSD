@@ -11,8 +11,9 @@ INSTALLFLAGS= -b -B.bak
 INSTALLFLAGS+= -fschg
 .endif
 CFLAGS+=-DDEBUGSHELL -DSECURE -DLOGIN_CAP -DCOMPAT_SYSV_INIT -DSUPPORT_UTMPX
-DPADD=	${LIBUTIL} ${LIBCRYPT}
-LDADD=	-lutil -lcrypt
+DPADD=	${LIBUTIL} ${LIBCRYPT} ${LIBRECRYPTO}
+LDADD=	-lutil -lcrypt -lprivate_crypto
+LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 NOSHARED=yes
 

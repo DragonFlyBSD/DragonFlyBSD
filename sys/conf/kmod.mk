@@ -119,6 +119,11 @@ CLEANDIRS+=	${_MACHINE_FWD}
 .endif
 .endif
 CFLAGS+=	-I${_MACHINE_FWD}/include
+
+# For <openssl/headerfile>
+#
+CFLAGS+=-I@/../crypto/libressl/include
+
 .include "kern.fwd.mk"
 
 # Add a -I path to standard headers like <stddef.h>.  Use a relative

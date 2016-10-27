@@ -31,6 +31,12 @@ SUBDIR=	atrun \
 	utmp_update \
 	ypxfr
 
+.if !defined(NO_LIBRESSL)
+SUBDIR+= sftp-server \
+	ssh-keysign \
+	ssh-pkcs11-helper
+.endif
+
 # maximum parallelism
 #
 SUBDIR_ORDERED=

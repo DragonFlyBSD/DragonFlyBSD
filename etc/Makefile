@@ -40,7 +40,7 @@ BIN1+=	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
 .endif
 
 .if !defined(NO_LIBRESSL)
-DIRS+=	secure/lib/libssh \
+DIRS+=	lib/libssh \
 	secure/usr.bin/ssh \
 	secure/usr.sbin/sshd \
 	secure/usr.bin/openssl
@@ -201,8 +201,8 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
-	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc obj
-	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc install
+	cd ${.CURDIR}/../lib/libssh; ${MAKE} -f Makefile.etc obj
+	cd ${.CURDIR}/../lib/libssh; ${MAKE} -f Makefile.etc install
 .if exists(${DESTDIR}/boot)
 .if exists(${DESTDIR}/kernel)
 	chflags noschg ${DESTDIR}/kernel

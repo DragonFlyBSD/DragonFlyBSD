@@ -62,9 +62,6 @@ SUBDIR+= gnu
 .if exists(${.CURDIR}/sbin)
 SUBDIR+= sbin
 .endif
-.if exists(${.CURDIR}/secure) && !defined(NO_CRYPT)
-SUBDIR+= secure
-.endif
 .if exists(${.CURDIR}/share) && !defined(NO_SHARE)
 SUBDIR+= share
 .endif
@@ -1045,14 +1042,13 @@ _generic_libs+=	lib
 
 .if !defined(NO_CRYPT)
 .if defined(FORCE_OPENSSL)
-_prebuild_libs+=	secure/lib/libcrypto secure/lib/libssl
+_prebuild_libs+=	lib/libcrypto lib/libssl
 .endif
 .if !defined(NO_LIBRESSL)
-_prebuild_libs+=	secure/lib/librecrypto secure/lib/libressl
-_prebuild_libs+=	secure/lib/libssh
-secure/lib/libssh__L: secure/lib/librecrypto__L lib/libz__L
+_prebuild_libs+=	lib/librecrypto lib/libressl
+_prebuild_libs+=	lib/libssh
+lib/libssh__L: lib/librecrypto__L lib/libz__L
 .endif
-_generic_libs+=	secure/lib
 .endif
 
 _prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \

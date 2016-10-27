@@ -11,13 +11,14 @@ SHLIBDIR?=	/lib
 SRCS=		crypt.c crypt-md5.c \
 		crypt-sha256.c crypt-sha512.c \
 		deprecated-crypt-sha256.c deprecated-crypt-sha512.c \
-		md5c.c sha256c.c sha512c.c misc.c
+		md5c.c misc.c
 WARNS?=		2
 NO_STRICT_ALIASING=
 
 MAN=		crypt.3
 MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3
 CFLAGS+=	-I${.CURDIR}/../libmd -I${.CURDIR}/../libutil
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+=	-D_CTYPE_H_DISABLE_MACROS_ 
 # Pull in the crypt-des.c source, assuming it is present.
 .if exists(${.CURDIR}/../../secure/lib/libcrypt/crypt-des.c) && \
@@ -30,10 +31,7 @@ CFLAGS+=	-I${.CURDIR} -DHAS_DES -DHAS_BLOWFISH
 .PATH:		${.CURDIR}/../libutil
 SRCS+=		auth.c property.c
 .for sym in MD5Init MD5Final MD5Update MD5Pad auth_getval \
-	    property_find properties_read properties_free \
-	    SHA256_Init SHA256_Update SHA256_Final SHA256_Transform \
-	    SHA384_Init SHA384_Update SHA384_Final SHA384_Transform \
-	    SHA512_Init SHA512_Update SHA512_Final SHA512_Transform
+	    property_find properties_read properties_free
 CFLAGS+=	-D${sym}=_libcrypt_${sym}
 .endfor
 PRECIOUSLIB=	yes

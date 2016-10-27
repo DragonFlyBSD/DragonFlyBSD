@@ -50,7 +50,7 @@ typedef u_int32_t UINT4;
 #define S33 11
 #define S34 15
 
-static void MD4Transform PROTO_LIST ((UINT4 [4], const unsigned char [64]));
+static void MD4Transform PROTO_LIST ((UINT4 *, const unsigned char *));
 static void Encode PROTO_LIST
   ((unsigned char *, UINT4 *, unsigned int));
 static void Decode PROTO_LIST
@@ -92,14 +92,14 @@ static unsigned char PADDING[64] = {
 int
 MD4Init (MD4_CTX *context)
 {
-  context->count[0] = context->count[1] = 0;
+  context->Nl = context->Nh = 0;
 
   /* Load magic initialization constants.
    */
-  context->state[0] = 0x67452301;
-  context->state[1] = 0xefcdab89;
-  context->state[2] = 0x98badcfe;
-  context->state[3] = 0x10325476;
+  context->A = 0x67452301;
+  context->B = 0xefcdab89;
+  context->C = 0x98badcfe;
+  context->D = 0x10325476;
   return 1;
 }
 
@@ -114,23 +114,23 @@ MD4Update (MD4_CTX *context, const void *in, unsigned int inputLen)
   const unsigned char *input = in;
 
   /* Compute number of bytes mod 64 */
-  idx = (unsigned int)((context->count[0] >> 3) & 0x3F);
+  idx = (unsigned int)((context->Nl >> 3) & 0x3F);
   /* Update number of bits */
-  if ((context->count[0] += ((UINT4)inputLen << 3))
+  if ((context->Nl += ((UINT4)inputLen << 3))
       < ((UINT4)inputLen << 3))
-    context->count[1]++;
-  context->count[1] += ((UINT4)inputLen >> 29);
+    context->Nh++;
+  context->Nh += ((UINT4)inputLen >> 29);
 
   partLen = 64 - idx;
   /* Transform as many times as possible.
    */
   if (inputLen >= partLen) {
     memcpy
-      ((POINTER)&context->buffer[idx], (CONST_POINTER)input, partLen);
-    MD4Transform (context->state, context->buffer);
+      ((POINTER)&((char *)context->data)[idx], (CONST_POINTER)input, partLen);
+    MD4Transform (&context->A, (unsigned char *)context->data);
 
     for (i = partLen; i + 63 < inputLen; i += 64)
-      MD4Transform (context->state, &input[i]);
+      MD4Transform (&context->A, &input[i]);
 
     idx = 0;
   }
@@ -139,7 +139,7 @@ MD4Update (MD4_CTX *context, const void *in, unsigned int inputLen)
 
   /* Buffer remaining input */
   memcpy
-    ((POINTER)&context->buffer[idx], (CONST_POINTER)&input[i],
+    ((POINTER)&((char *)context->data)[idx], (CONST_POINTER)&input[i],
      inputLen-i);
 }
 
@@ -151,11 +151,11 @@ MD4Pad (MD4_CTX *context)
   unsigned int idx, padLen;
 
   /* Save number of bits */
-  Encode (bits, context->count, 8);
+  Encode (bits, &context->Nl, 8);
 
   /* Pad out to 56 mod 64.
    */
-  idx = (unsigned int)((context->count[0] >> 3) & 0x3f);
+  idx = (unsigned int)((context->Nl >> 3) & 0x3f);
   padLen = (idx < 56) ? (56 - idx) : (120 - idx);
   MD4Update (context, PADDING, padLen);
 
@@ -173,7 +173,7 @@ MD4Final (unsigned char digest[16], MD4_CTX *context)
   MD4Pad (context);
 
   /* Store state in digest */
-  Encode (digest, context->state, 16);
+  Encode (digest, &context->A, 16);
 
   /* Zeroize sensitive information.
    */
@@ -183,7 +183,7 @@ MD4Final (unsigned char digest[16], MD4_CTX *context)
 /* MD4 basic transformation. Transforms state based on block.
  */
 static void
-MD4Transform (UINT4 state[4], const unsigned char block[64])
+MD4Transform (UINT4 *state, const unsigned char *block)
 {
   UINT4 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 

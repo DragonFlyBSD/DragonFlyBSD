@@ -37,7 +37,6 @@ LIBS="
 	gnu/lib
 	gnu/usr.bin/perl/libperl
 	kerberos5/lib
-	secure/lib
 	usr.bin/lex/lib
 "				# where to scan for libraries
 
@@ -49,7 +48,6 @@ sed -E
     -e's;$;!;'
     -e's;-lm!;lib/msun;g'
     -e's;-l(asn1|gssapi|krb5|roken)!;kerberos5/lib/lib\1;g'
-    -e's;-l(crypto|ssh)!;secure/lib/lib\1;g'
     -e's;-l([^!]+)!;lib/lib\1;g'
 "
 

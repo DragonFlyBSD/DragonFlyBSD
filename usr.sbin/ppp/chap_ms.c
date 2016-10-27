@@ -31,8 +31,10 @@
 
 #include <ctype.h>
 #ifdef __DragonFly__
+#include <sys/types.h>
 #include <openssl/des.h>
 #include <sha.h>
+#include <stdlib.h>
 #else
 #include <sys/types.h>
 #include <stdlib.h>
@@ -187,7 +189,6 @@ GenerateNTResponse(char *AuthenticatorChallenge, char *PeerChallenge,
   ChallengeResponse(Challenge, PasswordHash, Response);
 }
 
-#ifndef __DragonFly__
 #define LENGTH 20
 static char *
 SHA1_End(SHA_CTX *ctx, char *buf)
@@ -208,7 +209,6 @@ SHA1_End(SHA_CTX *ctx, char *buf)
     buf[i+i] = '\0';
     return buf;
 }
-#endif
 
 void
 GenerateAuthenticatorResponse(char *Password, int PasswordLen,

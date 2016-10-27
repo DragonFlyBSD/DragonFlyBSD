@@ -9,8 +9,9 @@ SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c \
 MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys
-LDADD=	-lm -lutil -lmd -lhammer
-DPADD=	${LIBM} ${LIBUTIL} ${LIBMD} ${LIBHAMMER}
+LDADD=	-lm -lutil -lhammer -lprivate_crypto
+DPADD=	${LIBM} ${LIBUTIL} ${LIBHAMMER} ${LIBCRYPTO}
+LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .PATH: ${.CURDIR}/../../sys/libkern
 SRCS+= crc32.c icrc32.c

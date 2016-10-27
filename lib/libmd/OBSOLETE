@@ -1,0 +1,7 @@
+
+				LIBMD IS OBSOLETE
+
+    LIBMD contains old crypto hash APIs and is considered obsolete, meaning
+    that it is our desire to vector any remaining code dependencies away
+    from this library.
+

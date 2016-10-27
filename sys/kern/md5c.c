@@ -129,17 +129,19 @@ static unsigned char PADDING[64] = {
 
 /* MD5 initialization. Begins an MD5 operation, writing a new context. */
 
-void
+int
 MD5Init (MD5_CTX *context)
 {
 
-	context->count[0] = context->count[1] = 0;
+	context->Nl = context->Nh = 0;
 
 	/* Load magic initialization constants.  */
-	context->state[0] = 0x67452301;
-	context->state[1] = 0xefcdab89;
-	context->state[2] = 0x98badcfe;
-	context->state[3] = 0x10325476;
+	context->A = 0x67452301;
+	context->B = 0xefcdab89;
+	context->C = 0x98badcfe;
+	context->D = 0x10325476;
+
+	return 1;
 }
 
 /* 
@@ -155,24 +157,24 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
 	const unsigned char *input = in;
 
 	/* Compute number of bytes mod 64 */
-	index = (unsigned int)((context->count[0] >> 3) & 0x3F);
+	index = (unsigned int)((context->Nl >> 3) & 0x3F);
 
 	/* Update number of bits */
-	if ((context->count[0] += ((u_int32_t)inputLen << 3))
+	if ((context->Nl += ((u_int32_t)inputLen << 3))
 	    < ((u_int32_t)inputLen << 3))
-		context->count[1]++;
-	context->count[1] += ((u_int32_t)inputLen >> 29);
+		context->Nh++;
+	context->Nh += ((u_int32_t)inputLen >> 29);
 
 	partLen = 64 - index;
 
 	/* Transform as many times as possible. */
 	if (inputLen >= partLen) {
-		memcpy((void *)&context->buffer[index], (const void *)input,
+		memcpy((void *)&((char *)context->data)[index], (const void *)input,
 		    partLen);
-		MD5Transform (context->state, context->buffer);
+		MD5Transform (&context->A, (char *)context->data);
 
 		for (i = partLen; i + 63 < inputLen; i += 64)
-			MD5Transform (context->state, &input[i]);
+			MD5Transform (&context->A, &input[i]);
 
 		index = 0;
 	}
@@ -180,7 +182,7 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
 		i = 0;
 
 	/* Buffer remaining input */
-	memcpy ((void *)&context->buffer[index], (const void *)&input[i],
+	memcpy ((void *)&((char *)context->data)[index], (const void *)&input[i],
 	    inputLen-i);
 }
 
@@ -195,10 +197,10 @@ MD5Pad (MD5_CTX *context)
 	unsigned int index, padLen;
 
 	/* Save number of bits */
-	Encode (bits, context->count, 8);
+	Encode (bits, &context->Nl, 8);
 
 	/* Pad out to 56 mod 64. */
-	index = (unsigned int)((context->count[0] >> 3) & 0x3f);
+	index = (unsigned int)((context->Nl >> 3) & 0x3f);
 	padLen = (index < 56) ? (56 - index) : (120 - index);
 	MD5Update (context, PADDING, padLen);
 
@@ -218,7 +220,7 @@ MD5Final (unsigned char digest[16], MD5_CTX *context)
 	MD5Pad (context);
 
 	/* Store state in digest */
-	Encode (digest, context->state, 16);
+	Encode (digest, &context->A, 16);
 
 	/* Zeroize sensitive information. */
 	memset ((void *)context, 0, sizeof (*context));

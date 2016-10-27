@@ -4,6 +4,8 @@
 
 PROG=	md5
 
+SRCS=	md5.c sha1hl.c
+
 LINKS=	${BINDIR}/md5 ${BINDIR}/rmd160 \
 	${BINDIR}/md5 ${BINDIR}/sha1 \
 	${BINDIR}/md5 ${BINDIR}/sha256
@@ -12,7 +14,8 @@ MLINKS=	md5.1 rmd160.1 \
 	md5.1 sha1.1 \
 	md5.1 sha256.1
 
-DPADD=	${LIBMD}
-LDADD=	-lmd
+DPADD=	${LIBMD} ${LIBCRYPTO}
+LDADD=	-lmd -lprivate_crypto
+LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.prog.mk>

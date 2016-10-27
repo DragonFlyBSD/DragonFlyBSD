@@ -256,7 +256,16 @@ SUBDIR+=chkey \
 	dc \
 	drill \
 	fetch \
-	newkey
+	newkey \
+	bdes \
+	openssl \
+	scp \
+	sftp \
+	ssh \
+	ssh-add \
+	ssh-agent \
+	ssh-keygen \
+	ssh-keyscan
 .endif
 
 .include <bsd.subdir.mk>

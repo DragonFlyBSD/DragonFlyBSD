@@ -9,16 +9,22 @@ PROG=	sbin.libcrypto
 BINDIR=	/usr/share/initrd/sbin
 
 CRUNCH_SRCDIRS+= sbin
-CRUNCH_PROGS_sbin= tcplay
+CRUNCH_PROGS_sbin= tcplay	\
+		    md5		\
+		    hammer	\
+		    ping	\
+		    ping6
 
 CRUNCH_SRCDIRS+= gnu/sbin
 CRUNCH_PROGS_gnu/sbin= cryptsetup
 
-CRUNCH_LIBS+= -ldm -lprop -lutil
+CRUNCH_LIBS+= -ldm -lprop -lutil -lhammer -lm
+CRUNCH_ALIAS_md5= rmd160
 
 CRUNCH_SRCDIRS+= usr.sbin/802_11
 CRUNCH_PROGS_usr.sbin/802_11= wpa_supplicant
-CRUNCH_LIBS+= -lpcap -lprivate_ssl -lprivate_crypto
+CRUNCH_LIBS+= -lpcap -lprivate_ssl -lmd -lprivate_crypto
+CRUNCH_LIBS+= -lipsec
 CRUNCH_LIBS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .include <bsd.crunchgen.mk>

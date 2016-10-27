@@ -152,6 +152,8 @@ struct hammer_lock {
 #define HAMMER_LOCKF_EXCLUSIVE	0x40000000
 #define HAMMER_LOCKF_WANTED	0x20000000
 
+#define HAMMER_LIMIT_RECLAIMS	16384		/* maximum reclaims in-prog */
+
 static __inline int
 hammer_notlocked(struct hammer_lock *lock)
 {

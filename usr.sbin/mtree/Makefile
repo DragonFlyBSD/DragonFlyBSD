@@ -3,6 +3,7 @@
 # $DragonFly: src/usr.sbin/mtree/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
 
 .PATH: ${.CURDIR}/../../usr.bin/cksum
+.PATH: ${.CURDIR}/../../sbin/md5
 
 PROG=	mtree
 MAN=	mtree.8
@@ -12,9 +13,11 @@ SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c verify.c
 .PATH: ${.CURDIR}/../../lib/libc/gen
 SRCS+=	strtofflags.c
 .else
-CFLAGS+= -DMD5 -DSHA1 -DRMD160
-DPADD=	${LIBMD}
-LDADD=	-lmd
+SRCS+=	sha1hl.c
+CFLAGS+= -DUSE_MD5 -DUSE_SHA1 -DUSE_RMD160
+DPADD=  ${LIBMD} ${LIBCRYPTO}
+LDADD=  -lmd -lprivate_crypto
+LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 .endif
 
 .include <bsd.prog.mk>

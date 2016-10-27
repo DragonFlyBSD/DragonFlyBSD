@@ -35,8 +35,9 @@
 
 #include <sys/types.h>
 #include <string.h>
-#include <sha512.h>
+
 #include "crypt.h"
+#include "local.h"
 
 /*
  * New password crypt.
@@ -62,7 +63,7 @@ crypt_deprecated_sha512(const char *pw, const char *salt)
 	static const char *sp, *ep;
 	unsigned char final[SHA512_SIZE];
 	int sl, i;
-	SHA512_CTX ctx;
+	struct sha512_ctx ctx;
 	unsigned long l;
 
 	/* Refine the salt. */
@@ -79,23 +80,23 @@ crypt_deprecated_sha512(const char *pw, const char *salt)
 	/* Get the actual salt length. */
 	sl = ep - sp;
 	
-	SHA512_Init(&ctx);
+	__crypt__sha512_init_ctx(&ctx);
 	
 	/* Hash in the password first. */
-	SHA512_Update(&ctx, pw, strlen(pw));
+	__crypt__sha512_process_bytes(pw, strlen(pw), &ctx);
 	
 	/*
 	 * Then the magic string
 	 *
 	 * XXX: sizeof instead of strlen, must retain
 	 */
-	SHA512_Update(&ctx, magic, sizeof(magic));
+	__crypt__sha512_process_bytes(magic, sizeof(magic), &ctx);
 	
 	/* Then the raw salt. */
-	SHA512_Update(&ctx, sp, sl);
+	__crypt__sha512_process_bytes(sp, sl, &ctx);
 	
 	/* Finish and create the output string. */
-	SHA512_Final(final, &ctx);
+	__crypt__sha512_finish_ctx(&ctx, final);
 	strcpy(passwd, magic);
 	strncat(passwd, sp, sl);
 	strcat(passwd, "$");

@@ -289,6 +289,8 @@ hammer2_vfs_init(struct vfsconf *conf)
 	TAILQ_INIT(&hammer2_pfslist);
 
 	hammer2_limit_dirty_chains = maxvnodes / 10;
+	if (hammer2_limit_dirty_chains > HAMMER2_LIMIT_DIRTY_CHAINS)
+		hammer2_limit_dirty_chains = HAMMER2_LIMIT_DIRTY_CHAINS;
 
 	return (error);
 }

@@ -1,0 +1,11 @@
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile.etc,v 1.2 2008/04/08 12:12:53 swildner Exp $
+#
+
+FILES=		sshd_config
+FILESDIR=	/etc/ssh
+FILESMODE=	644
+FILESOWN=	${BINOWN}
+FILESGRP=	${BINGRP}
+
+.include "../../../Makefile.ssh.common"
+.include <bsd.prog.mk>

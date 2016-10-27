@@ -350,8 +350,11 @@ hammer_vfs_init(struct vfsconf *conf)
 	 * This limits the number of inodes in this state to prevent a
 	 * memory pool blowout.
 	 */
-	if (hammer_limit_reclaims == 0)
+	if (hammer_limit_reclaims == 0) {
 		hammer_limit_reclaims = maxvnodes / 10;
+		if (hammer_limit_reclaims > HAMMER_LIMIT_RECLAIMS)
+			hammer_limit_reclaims = HAMMER_LIMIT_RECLAIMS;
+	}
 
 	return(0);
 }

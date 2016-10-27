@@ -142,9 +142,14 @@ SUBDIR= 802_11 \
 	zic
 
 # Uses LibreSSL but can build without it
+#
 SUBDIR+=ppp \
 	pppd \
 	tcpdump
+
+# from old secure/
+#
+SUBDIR+=sshd
 
 .if !defined(NO_LIBRESSL)
 SUBDIR+=keyserv

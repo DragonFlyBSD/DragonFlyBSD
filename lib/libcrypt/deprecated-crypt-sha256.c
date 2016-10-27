@@ -35,8 +35,9 @@
 
 #include <sys/types.h>
 #include <string.h>
-#include <sha256.h>
+
 #include "crypt.h"
+#include "local.h"
 
 /*
  * New password crypt.
@@ -62,7 +63,7 @@ crypt_deprecated_sha256(const char *pw, const char *salt)
 	static const char *sp, *ep;
 	unsigned char final[SHA256_SIZE];
 	int sl;
-	SHA256_CTX ctx;
+	struct sha256_ctx ctx;
 	unsigned long l;
 
 	/* Refine the salt. */
@@ -79,23 +80,23 @@ crypt_deprecated_sha256(const char *pw, const char *salt)
 	/* Get the actual salt length. */
 	sl = ep - sp;
 	
-	SHA256_Init(&ctx);
+	__crypt__sha256_init_ctx(&ctx);
 
 	/* Hash in the password first. */
-	SHA256_Update(&ctx, pw, strlen(pw));
+	__crypt__sha256_process_bytes(pw, strlen(pw), &ctx);
 	
         /*
          * Then the magic string
          *
          * XXX: sizeof instead of strlen, must retain
          */
-	SHA256_Update(&ctx, magic, sizeof(magic));
+	__crypt__sha256_process_bytes(magic, sizeof(magic), &ctx);
 	
 	/* Then the raw salt. */
-	SHA256_Update(&ctx, sp, sl);
+	__crypt__sha256_process_bytes(sp, sl, &ctx);
 	
 	/* Finish and create the output string. */
-	SHA256_Final(final, &ctx);
+	__crypt__sha256_finish_ctx(&ctx, final);
 	strcpy(passwd, magic);
 	strncat(passwd, sp, sl);
 	strcat(passwd, "$");

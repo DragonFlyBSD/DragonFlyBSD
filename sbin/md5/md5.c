@@ -37,6 +37,8 @@
 #include <unistd.h>
 #include <sysexits.h>
 
+#include "sha1hl.h"
+
 /*
  * Length of test block, number of test blocks.
  */
@@ -68,7 +70,6 @@ typedef struct Algorithm_t {
 	char *(*File)(const char *, char *);
 } Algorithm_t;
 
-static void MD5_Update(MD5_CTX *, const unsigned char *, size_t);
 static void MDString(Algorithm_t *, const char *);
 static void MDTimeTrial(Algorithm_t *);
 static void MDTestSuite(Algorithm_t *);
@@ -102,12 +103,6 @@ struct Algorithm_t Algorithm[] = {
 		(DIGEST_Init*)&RIPEMD160_Init, (DIGEST_Update*)&RIPEMD160_Update,
 		(DIGEST_End*)&RIPEMD160_End, &RIPEMD160_Data, &RIPEMD160_File }
 };
-
-static void
-MD5_Update(MD5_CTX *c, const unsigned char *data, size_t len)
-{
-	MD5Update(c, data, len);
-}
 
 /*
  * There is no need to use a huge mmap, just pick something

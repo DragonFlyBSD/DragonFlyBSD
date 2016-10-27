@@ -27,13 +27,11 @@ CRUNCH_PROGS_sbin=	\
 	fsck_msdosfs	\
 	gpt		\
 	growfs		\
-	hammer		\
 	ifconfig	\
 	kldconfig	\
 	kldload		\
 	kldstat		\
 	kldunload	\
-	md5		\
 	mount		\
 	mount_cd9660	\
 	mount_hammer	\
@@ -47,8 +45,6 @@ CRUNCH_PROGS_sbin=	\
 	newfs		\
 	newfs_hammer	\
 	newfs_msdos	\
-	ping		\
-	ping6		\
 	rconfig		\
 	reboot		\
 	route		\
@@ -61,13 +57,12 @@ CRUNCH_PROGS_sbin=	\
 	vinum
 
 CRUNCH_ALIAS_disklabel64= disklabel
-CRUNCH_ALIAS_md5= rmd160
 CRUNCH_ALIAS_newfs= mount_mfs
 CRUNCH_ALIAS_reboot= halt
 CRUNCH_ALIAS_shutdown= poweroff
 CRUNCH_ALIAS_swapon= swapoff swapctl
 
-CRUNCH_LIBS+= -lcam -lsbuf -lutil -lkvm -lm -lmd -lhammer -lkiconv
+CRUNCH_LIBS+= -lcam -lsbuf -lutil -lkvm -lm -lhammer -lkiconv
 CRUNCH_LIBS+= -lprivate_edit -lprivate_ncurses -ldevstat -lprop -lpthread
 CRUNCH_LIBS+= -lbsdxml -lipsec
 CRUNCH_LIBS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv

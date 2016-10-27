@@ -12,7 +12,7 @@
 #    libpam must be built before pam_module
 #
 # libmd must be built before libfetch, libarchive.
-# libcrypt must be built before libfetch and libradius.
+# libcrypt must be built before libfetch, libarchive, and libradius.
 # libz must be built before libarchive, libmagic.
 # libbz2 must be built before libarchive
 # libncurses must be built before libedit.
@@ -23,8 +23,18 @@
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
-SUBDIR_ORDERED=	${_libc_r} \
+SUBDIR_ORDERED=	${_libc_r}
+
+.if defined(FORCE_OPENSSL) # to be removed during 4.8 development
+SUBDIR_ORDERED+=libcrypto libssl
+.endif
+.if !defined(NO_LIBRESSL)
+SUBDIR_ORDERED+=librecrypto libressl libssh
+.endif
+
+SUBDIR_ORDERED+= \
 	libcrypt \
+	libarchive \
 	libz \
 	libmd \
 	libncurses \
@@ -35,7 +45,6 @@ SUBDIR_ORDERED=	${_libc_r} \
 	libutil \
 	libpthread \
 	liblzma \
-	libarchive \
 	libfetch \
 	libedit \
 	libcam \
@@ -43,7 +52,9 @@ SUBDIR_ORDERED=	${_libc_r} \
 	libusb \
 	libelf \
 	libexecinfo
+
 SUBDIR=	${SUBDIR_ORDERED} \
+	libcipher \
 	csu \
 	i18n_module \
 	libalias \

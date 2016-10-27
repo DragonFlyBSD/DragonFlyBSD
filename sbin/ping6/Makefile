@@ -8,8 +8,9 @@ CFLAGS+=-DINET6 -DIPSEC -DHAVE_POLL_H -DHAVE_ARC4RANDOM -DUSE_RFC3542
 BINOWN=	root
 BINMODE=4555
 
-LDADD=	-lipsec -lm -lmd
-DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD}
+LDADD=	-lipsec -lm -lmd -lprivate_crypto
+DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD} ${LIBCRYPTO}
+LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 NO_STRICT_ALIASING=
 
 # kame scopeid hack

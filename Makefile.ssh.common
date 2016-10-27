@@ -1,0 +1,27 @@
+# SSH common setup
+#
+
+# Bad hack because .INCLUDEDFROMDIR does not work.
+#
+.if exists(${.CURDIR}/../../Makefile.inc1)
+SSHC_SYSDIR=${.CURDIR}/../..
+.elif exists(${.CURDIR}/../../../Makefile.inc1)
+SSHC_SYSDIR=${.CURDIR}/../../..
+.else
+.error "Cannot find soure base"
+.endif
+
+SSHDIR=		${SSHC_SYSDIR}/crypto/openssh
+
+XAUTH_PATH?=	/usr/local/bin/xauth
+CFLAGS+=	-DXAUTH_PATH=\"${XAUTH_PATH}\"
+CFLAGS+=	-I${SSHC_SYSDIR}/crypto/libressl/include
+CFLAGS+=	-I${SSHC_SYSDIR}/lib/libssh -I${SSHDIR}
+
+.if ${.CURDIR:T} != "libssh"
+DPADD+=		${LIBSSH} ${LIBRECRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
+LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz -lpthread
+LDFLAGS+=	-rpath /lib/priv:/usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+.endif
+
+.PATH:	${SSHDIR} ${SSHDIR}/openbsd-compat

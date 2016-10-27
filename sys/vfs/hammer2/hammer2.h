@@ -159,8 +159,10 @@ hammer2_mtx_upgrade_try(hammer2_mtx_t *mtx)
  */
 typedef uint32_t hammer2_xid_t;
 
-#define HAMMER2_XID_MIN	0x00000000U
-#define HAMMER2_XID_MAX 0x7FFFFFFFU
+#define HAMMER2_XID_MIN			0x00000000U
+#define HAMMER2_XID_MAX			0x7FFFFFFFU
+
+#define HAMMER2_LIMIT_DIRTY_CHAINS	(65536)
 
 /*
  * The chain structure tracks a portion of the media topology from the
