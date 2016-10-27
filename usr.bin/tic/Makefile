@@ -43,7 +43,12 @@ parametrized.h:
 	  ${TERMINFO_CAPS} > ${.TARGET}
 
 # Hack: It's really termsort.c, but bootstrap stage chokes on it
-termsort.h:
+.if defined(BOOTSTRAPPING)
+_termsortc=	termsort.h
+.else
+_termsortc=	termsort.c
+.endif
+${_termsortc}:
 	sh ${PROGSDIR}/MKtermsort.sh awk ${TERMINFO_CAPS} > termsort.c
 
 tic.o: ${PROGSDIR}/tic.c
@@ -52,12 +57,15 @@ tic.o: ${PROGSDIR}/tic.c
 transform.o: ${PROGSDIR}/transform.c
 	${CC} ${CFLAGS} -c ${PROGSDIR}/transform.c -o ${.TARGET}
 
-dump_entry.o: ${PROGSDIR}/dump_entry.c termsort.h
+dump_entry.o: ${PROGSDIR}/dump_entry.c ${_termsortc}
 	${CC} ${CFLAGS} -c ${PROGSDIR}/dump_entry.c -o ${.TARGET}
 
 CLEANFILES=	ncurses_def.h parametrized.h termsort.c
 
-SRCS=	ncurses_def.h parametrized.h termsort.h
+SRCS=	ncurses_def.h parametrized.h
+.if defined(BOOTSTRAPPING)
+SRCS+=	termsort.h
+.endif
 SRCS+=	tic.c dump_entry.c tparm_type.c transform.c
 
 .include <bsd.prog.mk>
