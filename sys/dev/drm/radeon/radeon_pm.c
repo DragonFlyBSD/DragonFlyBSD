@@ -702,7 +702,7 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 		    sizeof(*rdev->pm.int_sensordev), M_DRM,
 		    M_ZERO | M_WAITOK);
 		strlcpy(rdev->pm.int_sensordev->xname,
-		    device_get_nameunit(rdev->dev),
+		    device_get_nameunit(rdev->dev->bsddev),
 		    sizeof(rdev->pm.int_sensordev->xname));
 		rdev->pm.int_sensor->type = SENSOR_TEMP;
 		rdev->pm.int_sensor->flags |= SENSOR_FINVALID;

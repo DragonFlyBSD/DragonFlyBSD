@@ -27,10 +27,10 @@
 #ifndef _LINUX_I2C_H_
 #define _LINUX_I2C_H_
 
-#include <sys/bus.h>
-#include <sys/bus_private.h>
-
-#include <linux/sched.h>
+#include <linux/mod_devicetable.h>
+#include <linux/device.h>	/* for struct device */
+#include <linux/sched.h>	/* for completion */
+#include <linux/mutex.h>
 
 #include <bus/iicbus/iic.h>
 #include <bus/iicbus/iiconf.h>

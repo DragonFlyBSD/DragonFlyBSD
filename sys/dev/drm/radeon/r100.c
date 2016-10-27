@@ -1025,7 +1025,7 @@ static int r100_cp_init_microcode(struct radeon_device *rdev)
 		fw_name = FIRMWARE_R520;
 	}
 
-	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev->bsddev);
 	if (err) {
 		printk(KERN_ERR "radeon_cp: Failed to load firmware \"%s\"\n",
 		       fw_name);
@@ -1206,7 +1206,7 @@ int r100_cp_init(struct radeon_device *rdev, unsigned ring_size)
 	WREG32(RADEON_CP_CSQ_CNTL, RADEON_CSQ_PRIBM_INDBM);
 
 	/* at this point everything should be setup correctly to enable master */
-	pci_enable_busmaster(rdev->dev);
+	pci_enable_busmaster(rdev->dev->bsddev);
 
 	radeon_ring_start(rdev, RADEON_RING_TYPE_GFX_INDEX, &rdev->ring[RADEON_RING_TYPE_GFX_INDEX]);
 	r = radeon_ring_test(rdev, RADEON_RING_TYPE_GFX_INDEX, ring);
@@ -2561,7 +2561,7 @@ void r100_bm_disable(struct radeon_device *rdev)
 	WREG32(R_000030_BUS_CNTL, (tmp & 0xFFFFFFFF) | 0x00000040);
 	tmp = RREG32(RADEON_BUS_CNTL);
 	mdelay(1);
-	pci_disable_busmaster(rdev->dev);
+	pci_disable_busmaster(rdev->dev->bsddev);
 	mdelay(1);
 }
 
@@ -2586,7 +2586,7 @@ int r100_asic_reset(struct radeon_device *rdev)
 	WREG32(RADEON_CP_RB_WPTR, 0);
 	WREG32(RADEON_CP_RB_CNTL, tmp);
 	/* save PCI state */
-	pci_save_state(device_get_parent(rdev->dev));
+	pci_save_state(device_get_parent(rdev->dev->bsddev));
 	/* disable bus mastering */
 	r100_bm_disable(rdev);
 	WREG32(R_0000F0_RBBM_SOFT_RESET, S_0000F0_SOFT_RESET_SE(1) |
@@ -2608,7 +2608,7 @@ int r100_asic_reset(struct radeon_device *rdev)
 	status = RREG32(R_000E40_RBBM_STATUS);
 	dev_info(rdev->dev, "(%s:%d) RBBM_STATUS=0x%08X\n", __func__, __LINE__, status);
 	/* restore PCI & busmastering */
-	pci_restore_state(device_get_parent(rdev->dev));
+	pci_restore_state(device_get_parent(rdev->dev->bsddev));
 	r100_enable_bm(rdev);
 	/* Check if GPU is idle */
 	if (G_000E40_SE_BUSY(status) || G_000E40_RE_BUSY(status) ||
@@ -2765,7 +2765,7 @@ static u32 r100_get_accessible_vram(struct radeon_device *rdev)
 	 * check if it's a multifunction card by reading the PCI config
 	 * header type... Limit those to one aperture size
 	 */
-	byte = pci_read_config(rdev->dev, 0xe, 1);
+	byte = pci_read_config(rdev->dev->bsddev, 0xe, 1);
 	if (byte & 0x80) {
 		DRM_INFO("Generation 1 PCI interface in multifunction mode\n");
 		DRM_INFO("Limiting VRAM to one aperture\n");

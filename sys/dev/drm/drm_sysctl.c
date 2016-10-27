@@ -71,7 +71,7 @@ int drm_sysctl_init(struct drm_device *dev)
 		return 1;
 	dev->sysctl = info;
 
-	unit = device_get_unit(dev->dev);
+	unit = device_get_unit(dev->dev->bsddev);
 	if (unit > 9)
 		return 1;
 

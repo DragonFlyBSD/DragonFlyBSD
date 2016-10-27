@@ -643,7 +643,7 @@ static int i915_drm_suspend(struct drm_device *dev)
 
 	error = i915_gem_suspend(dev);
 	if (error) {
-		dev_err(dev->pdev->dev,
+		dev_err(dev->dev,
 			"GEM idle failed, resume might fail\n");
 		return error;
 	}

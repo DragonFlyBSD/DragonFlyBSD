@@ -27,7 +27,7 @@
 #ifndef _LINUX_PWM_H_
 #define _LINUX_PWM_H_
 
-#include <sys/bus.h>
+#include <linux/device.h>
 
 struct pwm_device;
 

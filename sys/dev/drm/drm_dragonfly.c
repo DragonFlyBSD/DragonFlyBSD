@@ -104,7 +104,7 @@ char *drm_asprintf(int flags, const char *format, ...)
 
 static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 {
-	pdev->dev = dev;
+	pdev->dev.bsddev = dev;
 	pdev->vendor = pci_get_vendor(dev);
 	pdev->device = pci_get_device(dev);
 	pdev->subsystem_vendor = pci_get_subvendor(dev);
@@ -170,7 +170,7 @@ static int drm_alloc_resource(struct drm_device *dev, int resource)
 
 	DRM_UNLOCK(dev);
 	rid = PCIR_BAR(resource);
-	res = bus_alloc_resource_any(dev->dev, SYS_RES_MEMORY, &rid,
+	res = bus_alloc_resource_any(dev->dev->bsddev, SYS_RES_MEMORY, &rid,
 	    RF_SHAREABLE);
 	DRM_LOCK(dev);
 	if (res == NULL) {

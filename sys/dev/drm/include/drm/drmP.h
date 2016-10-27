@@ -97,6 +97,7 @@
 #include <linux/mm.h>
 #include <linux/moduleparam.h>
 #include <linux/mutex.h>
+#include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/scatterlist.h>
 #include <linux/timer.h>
@@ -1239,7 +1240,7 @@ static __inline__ int drm_pci_device_is_agp(struct drm_device *dev)
 		}
 	}
 
-	return (pci_find_extcap(dev->dev, PCIY_AGP, NULL) == 0);
+	return (pci_find_extcap(dev->pdev->dev.bsddev, PCIY_AGP, NULL) == 0);
 }
 
 #define DRM_PCIE_SPEED_25 1

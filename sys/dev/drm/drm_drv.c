@@ -1000,16 +1000,19 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	unit = device_get_unit(kdev);
 	dev = device_get_softc(kdev);
 
-	if (!strcmp(device_get_name(kdev), "drmsub"))
-		dev->dev = device_get_parent(kdev);
-	else
-		dev->dev = kdev;
+	/* Initialize Linux struct device */
+	dev->dev = kzalloc(sizeof(struct device), GFP_KERNEL);
 
-	dev->pci_domain = pci_get_domain(dev->dev);
-	dev->pci_bus = pci_get_bus(dev->dev);
-	dev->pci_slot = pci_get_slot(dev->dev);
-	dev->pci_func = pci_get_function(dev->dev);
-	drm_init_pdev(dev->dev, &dev->pdev);
+	if (!strcmp(device_get_name(kdev), "drmsub"))
+		dev->dev->bsddev = device_get_parent(kdev);
+	else
+		dev->dev->bsddev = kdev;
+
+	dev->pci_domain = pci_get_domain(dev->dev->bsddev);
+	dev->pci_bus = pci_get_bus(dev->dev->bsddev);
+	dev->pci_slot = pci_get_slot(dev->dev->bsddev);
+	dev->pci_func = pci_get_function(dev->dev->bsddev);
+	drm_init_pdev(dev->dev->bsddev, &dev->pdev);
 
 	id_entry = drm_find_description(dev->pdev->vendor,
 	    dev->pdev->device, idlist);
@@ -1018,10 +1021,10 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {
 		msi_enable = 1;
 
-		dev->irq_type = pci_alloc_1intr(dev->dev, msi_enable,
+		dev->irq_type = pci_alloc_1intr(dev->dev->bsddev, msi_enable,
 		    &dev->irqrid, &irq_flags);
 
-		dev->irqr = bus_alloc_resource_any(dev->dev, SYS_RES_IRQ,
+		dev->irqr = bus_alloc_resource_any(dev->dev->bsddev, SYS_RES_IRQ,
 		    &dev->irqrid, irq_flags);
 
 		if (!dev->irqr) {
@@ -1051,11 +1054,11 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	return (error);
 error:
 	if (dev->irqr) {
-		bus_release_resource(dev->dev, SYS_RES_IRQ,
+		bus_release_resource(dev->dev->bsddev, SYS_RES_IRQ,
 		    dev->irqrid, dev->irqr);
 	}
 	if (dev->irq_type == PCI_INTR_TYPE_MSI) {
-		pci_release_msi(dev->dev);
+		pci_release_msi(dev->dev->bsddev);
 	}
 	return (error);
 }
@@ -1141,7 +1144,7 @@ static int drm_load(struct drm_device *dev)
 		/* Shared code returns -errno. */
 		retcode = -dev->driver->load(dev,
 		    dev->id_entry->driver_private);
-		if (pci_enable_busmaster(dev->dev))
+		if (pci_enable_busmaster(dev->dev->bsddev))
 			DRM_ERROR("Request to enable bus-master failed.\n");
 		DRM_UNLOCK(dev);
 		if (retcode != 0)
@@ -1221,7 +1224,7 @@ void drm_cdevpriv_dtor(void *cd)
 	 */
 
 	atomic_inc(&dev->counts[_DRM_STAT_CLOSES]);
-	device_unbusy(dev->dev);
+	device_unbusy(dev->dev->bsddev);
 	if (--dev->open_count == 0) {
 		retcode = drm_lastclose(dev);
 	}

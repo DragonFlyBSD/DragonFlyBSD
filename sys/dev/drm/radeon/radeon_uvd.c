@@ -129,7 +129,7 @@ int radeon_uvd_init(struct radeon_device *rdev)
 		return -EINVAL;
 	}
 
-	r = request_firmware(&rdev->uvd_fw, fw_name, rdev->dev);
+	r = request_firmware(&rdev->uvd_fw, fw_name, rdev->dev->bsddev);
 	if (r) {
 		dev_err(rdev->dev, "radeon_uvd: Can't load firmware \"%s\"\n",
 			fw_name);

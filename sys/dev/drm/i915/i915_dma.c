@@ -164,8 +164,8 @@ static int i915_get_bridge_dev(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	static struct pci_dev i915_bridge_dev;
 
-	i915_bridge_dev.dev = pci_find_dbsf(0, 0, 0, 0);
-	if (!i915_bridge_dev.dev) {
+	i915_bridge_dev.dev.bsddev = pci_find_dbsf(0, 0, 0, 0);
+	if (!i915_bridge_dev.dev.bsddev) {
 		DRM_ERROR("bridge device not found\n");
 		return -1;
 	}
@@ -204,10 +204,10 @@ intel_alloc_mchbar_resource(struct drm_device *dev)
 #endif
 
 	/* Get some space for it */
-	vga = device_get_parent(dev->dev);
+	vga = device_get_parent(dev->dev->bsddev);
 	dev_priv->mch_res_rid = 0x100;
 	dev_priv->mch_res = BUS_ALLOC_RESOURCE(device_get_parent(vga),
-	    dev->dev, SYS_RES_MEMORY, &dev_priv->mch_res_rid, 0, ~0UL,
+	    dev->dev->bsddev, SYS_RES_MEMORY, &dev_priv->mch_res_rid, 0, ~0UL,
 	    MCHBAR_SIZE, RF_ACTIVE | RF_SHAREABLE, -1);
 	if (dev_priv->mch_res == NULL) {
 		DRM_ERROR("failed mchbar resource alloc\n");
@@ -285,10 +285,10 @@ intel_teardown_mchbar(struct drm_device *dev)
 	}
 
 	if (dev_priv->mch_res != NULL) {
-		vga = device_get_parent(dev->dev);
-		BUS_DEACTIVATE_RESOURCE(device_get_parent(vga), dev->dev,
+		vga = device_get_parent(dev->dev->bsddev);
+		BUS_DEACTIVATE_RESOURCE(device_get_parent(vga), dev->dev->bsddev,
 		    SYS_RES_MEMORY, dev_priv->mch_res_rid, dev_priv->mch_res);
-		BUS_RELEASE_RESOURCE(device_get_parent(vga), dev->dev,
+		BUS_RELEASE_RESOURCE(device_get_parent(vga), dev->dev->bsddev,
 		    SYS_RES_MEMORY, dev_priv->mch_res_rid, dev_priv->mch_res);
 		dev_priv->mch_res = NULL;
 	}

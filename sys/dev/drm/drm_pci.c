@@ -137,7 +137,7 @@ int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 
 	*mask = 0;
 
-	root = device_get_parent(dev->dev);
+	root = device_get_parent(dev->dev->bsddev);
 
 	/* we've been informed via and serverworks don't make the cut */
 	if (pci_get_vendor(root) == PCI_VENDOR_ID_VIA ||

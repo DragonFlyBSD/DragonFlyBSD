@@ -692,7 +692,7 @@ int radeon_acpi_init(struct radeon_device *rdev)
 	int ret;
 
 	/* Get the device handle */
-	handle = acpi_get_handle(rdev->dev);
+	handle = acpi_get_handle(rdev->dev->bsddev);
 
 	/* No need to proceed if we're sure that ATIF is not supported */
 	if (!ASIC_IS_AVIVO(rdev) || !rdev->bios || !handle)

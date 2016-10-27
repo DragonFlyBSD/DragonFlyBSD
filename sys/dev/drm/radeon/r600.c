@@ -1769,7 +1769,7 @@ static void r600_gpu_pci_config_reset(struct radeon_device *rdev)
 	if (rdev->family >= CHIP_RV770)
 		rv770_set_clk_bypass_mode(rdev);
 	/* disable BM */
-	pci_disable_busmaster(rdev->pdev->dev);
+	pci_disable_busmaster(rdev->pdev->dev.bsddev);
 	/* disable mem access */
 	rv515_mc_stop(rdev, &save);
 	if (r600_mc_wait_for_idle(rdev)) {
@@ -2466,7 +2466,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	DRM_INFO("Loading %s Microcode\n", chip_name);
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev->bsddev);
 	if (err)
 		goto out;
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
@@ -2478,7 +2478,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev->bsddev);
 	if (err)
 		goto out;
 	if (rdev->me_fw->datasize != me_req_size) {
@@ -2489,7 +2489,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc", rlc_chip_name);
-	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev->bsddev);
 	if (err)
 		goto out;
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
@@ -2501,7 +2501,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 
 	if ((rdev->family >= CHIP_RV770) && (rdev->family <= CHIP_HEMLOCK)) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", smc_chip_name);
-		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev->bsddev);
 		if (err) {
 			printk(KERN_ERR
 			       "smc: error loading firmware \"%s\"\n",
@@ -3651,7 +3651,7 @@ int r600_irq_init(struct radeon_device *rdev)
 		r600_disable_interrupt_state(rdev);
 
 	/* at this point everything should be setup correctly to enable master */
-	pci_enable_busmaster(rdev->dev);
+	pci_enable_busmaster(rdev->dev->bsddev);
 
 	/* enable irqs */
 	r600_enable_interrupts(rdev);

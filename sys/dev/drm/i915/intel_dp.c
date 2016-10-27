@@ -1208,7 +1208,7 @@ intel_dp_aux_init(struct intel_dp *intel_dp, struct intel_connector *connector)
 
 	DRM_DEBUG_KMS("i2c_init %s\n", name);
 
-	ret = iic_dp_aux_add_bus(connector->base.dev->dev, name,
+	ret = iic_dp_aux_add_bus(connector->base.dev->dev->bsddev, name,
 	    intel_dp_i2c_aux_ch, intel_dp, &intel_dp->dp_iic_bus,
 	    &intel_dp->aux.ddc);
 	WARN(ret, "intel_dp_i2c_init failed with error %d for port %c\n",

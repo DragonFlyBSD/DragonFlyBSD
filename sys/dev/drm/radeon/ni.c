@@ -728,7 +728,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	DRM_INFO("Loading %s Microcode\n", chip_name);
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev->bsddev);
 	if (err)
 		goto out;
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
@@ -740,7 +740,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev->bsddev);
 	if (err)
 		goto out;
 	if (rdev->me_fw->datasize != me_req_size) {
@@ -752,7 +752,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc",
 		  rlc_chip_name);
-	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev->bsddev);
 	if (err)
 		goto out;
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
@@ -765,7 +765,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	/* no MC ucode on TN */
 	if (!(rdev->flags & RADEON_IS_IGP)) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", chip_name);
-		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev->bsddev);
 		if (err)
 			goto out;
 		if (rdev->mc_fw->datasize != mc_req_size) {
@@ -778,7 +778,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 
 	if ((rdev->family >= CHIP_BARTS) && (rdev->family <= CHIP_CAYMAN)) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", chip_name);
-		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev->bsddev);
 		if (err) {
 			printk(KERN_ERR
 			       "smc: error loading firmware \"%s\"\n",

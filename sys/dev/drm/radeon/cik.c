@@ -1971,10 +1971,10 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	DRM_INFO("Loading %s Microcode\n", new_chip_name);
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", new_chip_name);
-	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev->bsddev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-		err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev->bsddev);
 		if (err)
 			goto out;
 		if (rdev->pfp_fw->datasize != pfp_req_size) {
@@ -1997,10 +1997,10 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", new_chip_name);
-	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev->bsddev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-		err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->me_fw, fw_name, rdev->dev->bsddev);
 		if (err)
 			goto out;
 		if (rdev->me_fw->datasize != me_req_size) {
@@ -2022,10 +2022,10 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_ce", new_chip_name);
-	err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev->bsddev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_ce", chip_name);
-		err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev->bsddev);
 		if (err)
 			goto out;
 		if (rdev->ce_fw->datasize != ce_req_size) {
@@ -2047,10 +2047,10 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mec", new_chip_name);
-	err = request_firmware(&rdev->mec_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->mec_fw, fw_name, rdev->dev->bsddev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mec", chip_name);
-		err = request_firmware(&rdev->mec_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->mec_fw, fw_name, rdev->dev->bsddev);
 		if (err)
 			goto out;
 		if (rdev->mec_fw->datasize != mec_req_size) {
@@ -2073,7 +2073,7 @@ static int cik_init_microcode(struct radeon_device *rdev)
 
 	if (rdev->family == CHIP_KAVERI) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mec2", new_chip_name);
-		err = request_firmware(&rdev->mec2_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->mec2_fw, fw_name, rdev->dev->bsddev);
 		if (err) {
 			goto out;
 		} else {
@@ -2087,10 +2087,10 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc", new_chip_name);
-	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev->bsddev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc", chip_name);
-		err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev->bsddev);
 		if (err)
 			goto out;
 		if (rdev->rlc_fw->datasize != rlc_req_size) {
@@ -2112,10 +2112,10 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_sdma", new_chip_name);
-	err = request_firmware(&rdev->sdma_fw, fw_name, rdev->dev);
+	err = request_firmware(&rdev->sdma_fw, fw_name, rdev->dev->bsddev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_sdma", chip_name);
-		err = request_firmware(&rdev->sdma_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->sdma_fw, fw_name, rdev->dev->bsddev);
 		if (err)
 			goto out;
 		if (rdev->sdma_fw->datasize != sdma_req_size) {
@@ -2139,13 +2139,13 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	/* No SMC, MC ucode on APUs */
 	if (!(rdev->flags & RADEON_IS_IGP)) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", new_chip_name);
-		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev->bsddev);
 		if (err) {
 			ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc2", chip_name);
-			err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
+			err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev->bsddev);
 			if (err) {
 				ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", chip_name);
-				err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
+				err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev->bsddev);
 				if (err)
 					goto out;
 			}
@@ -2170,10 +2170,10 @@ static int cik_init_microcode(struct radeon_device *rdev)
 		}
 
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", new_chip_name);
-		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
+		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev->bsddev);
 		if (err) {
 			ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", chip_name);
-			err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
+			err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev->bsddev);
 			if (err) {
 				printk(KERN_ERR
 				       "smc: error loading firmware \"%s\"\n",
@@ -5482,7 +5482,7 @@ static void cik_gpu_pci_config_reset(struct radeon_device *rdev)
 		kv_save_regs_for_reset(rdev, &kv_save);
 
 	/* disable BM */
-	pci_disable_busmaster(rdev->pdev->dev);
+	pci_disable_busmaster(rdev->pdev->dev.bsddev);
 	/* reset */
 	radeon_pci_config_reset(rdev);
 
@@ -7279,7 +7279,7 @@ static int cik_irq_init(struct radeon_device *rdev)
 	/* force the active interrupt state to all disabled */
 	cik_disable_interrupt_state(rdev);
 
-	pci_enable_busmaster(rdev->pdev->dev);
+	pci_enable_busmaster(rdev->pdev->dev.bsddev);
 
 	/* enable irqs */
 	cik_enable_interrupts(rdev);
@@ -9611,11 +9611,11 @@ static void cik_pcie_gen3_enable(struct radeon_device *rdev)
 		DRM_INFO("enabling PCIE gen 2 link speeds, disable with radeon.pcie_gen2=0\n");
 	}
 
-	bridge_pos = pci_get_pciecap_ptr(root->dev);
+	bridge_pos = pci_get_pciecap_ptr(root->dev.bsddev);
 	if (!bridge_pos)
 		return;
 
-	gpu_pos = pci_get_pciecap_ptr(rdev->pdev->dev);
+	gpu_pos = pci_get_pciecap_ptr(rdev->pdev->dev.bsddev);
 	if (!gpu_pos)
 		return;
 

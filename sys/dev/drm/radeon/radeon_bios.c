@@ -83,7 +83,7 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 
 	DRM_INFO("%s: ===> Try PCI Expansion ROM...\n", __func__);
 
-	vga_dev = device_get_parent(rdev->dev);
+	vga_dev = device_get_parent(rdev->dev->bsddev);
 	rdev->bios = NULL;
 	/* XXX: some cards may return 0 for rom size? ddx has a workaround */
 	bios = vga_pci_map_bios(vga_dev, &size);

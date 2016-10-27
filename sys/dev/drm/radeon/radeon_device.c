@@ -1253,7 +1253,7 @@ int radeon_device_init(struct radeon_device *rdev,
 #endif
 
 	rdev->shutdown = false;
-	rdev->dev = pdev->dev;
+	rdev->dev = &pdev->dev;
 	rdev->ddev = ddev;
 	rdev->pdev = pdev;
 	rdev->flags = flags;
@@ -1374,7 +1374,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	} else {
 		rdev->rmmio_rid = PCIR_BAR(2);
 	}
-	rdev->rmmio = bus_alloc_resource_any(rdev->dev, SYS_RES_MEMORY,
+	rdev->rmmio = bus_alloc_resource_any(rdev->dev->bsddev, SYS_RES_MEMORY,
 	    &rdev->rmmio_rid, RF_ACTIVE | RF_SHAREABLE);
 	if (rdev->rmmio == NULL) {
 		return -ENOMEM;
@@ -1392,10 +1392,10 @@ int radeon_device_init(struct radeon_device *rdev,
 	for (i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
 		uint32_t data;
 
-		data = pci_read_config(rdev->dev, PCIR_BAR(i), 4);
+		data = pci_read_config(rdev->dev->bsddev, PCIR_BAR(i), 4);
 		if (PCI_BAR_IO(data)) {
 			rdev->rio_rid = PCIR_BAR(i);
-			rdev->rio_mem = bus_alloc_resource_any(rdev->dev,
+			rdev->rio_mem = bus_alloc_resource_any(rdev->dev->bsddev,
 			    SYS_RES_IOPORT, &rdev->rio_rid,
 			    RF_ACTIVE | RF_SHAREABLE);
 			break;
@@ -1422,7 +1422,7 @@ int radeon_device_init(struct radeon_device *rdev,
 		runtime = true;
 	vga_switcheroo_register_client(rdev->pdev, &radeon_switcheroo_ops, runtime);
 	if (runtime)
-		vga_switcheroo_init_domain_pm_ops(rdev->dev, &rdev->vga_pm_domain);
+		vga_switcheroo_init_domain_pm_ops(rdev->dev->bsddev, &rdev->vga_pm_domain);
 #endif
 #endif /* DUMBBELL_WIP */
 
@@ -1533,10 +1533,10 @@ void radeon_device_fini(struct radeon_device *rdev)
 	}
 
 	if (rdev->rio_mem)
-		bus_release_resource(rdev->dev, SYS_RES_IOPORT, rdev->rio_rid,
+		bus_release_resource(rdev->dev->bsddev, SYS_RES_IOPORT, rdev->rio_rid,
 		    rdev->rio_mem);
 	rdev->rio_mem = NULL;
-	bus_release_resource(rdev->dev, SYS_RES_MEMORY, rdev->rmmio_rid,
+	bus_release_resource(rdev->dev->bsddev, SYS_RES_MEMORY, rdev->rmmio_rid,
 	    rdev->rmmio);
 	rdev->rmmio = NULL;
 	if (rdev->family >= CHIP_BONAIRE)
@@ -1622,13 +1622,13 @@ int radeon_suspend_kms(struct drm_device *dev, bool suspend, bool fbcon)
 
 	radeon_agp_suspend(rdev);
 
-	pci_save_state(device_get_parent(rdev->dev));
+	pci_save_state(device_get_parent(rdev->dev->bsddev));
 #ifdef DUMBBELL_WIP
 	if (suspend) {
 		/* Shut down the device */
 		pci_disable_device(dev->pdev);
 #endif /* DUMBBELL_WIP */
-		pci_set_powerstate(dev->dev, PCI_POWERSTATE_D3);
+		pci_set_powerstate(dev->dev->bsddev, PCI_POWERSTATE_D3);
 #ifdef DUMBBELL_WIP
 	}
 #endif
@@ -1668,8 +1668,8 @@ int radeon_resume_kms(struct drm_device *dev, bool resume, bool fbcon)
 	}
 #endif /* DUMBBELL_WIP */
 	if (resume) {
-		pci_set_powerstate(dev->dev, PCI_POWERSTATE_D0);
-		pci_restore_state(device_get_parent(rdev->dev));
+		pci_set_powerstate(dev->dev->bsddev, PCI_POWERSTATE_D0);
+		pci_restore_state(device_get_parent(rdev->dev->bsddev));
 #ifdef DUMBBELL_WIP
 		if (pci_enable_device(dev->pdev)) {
 			if (fbcon)

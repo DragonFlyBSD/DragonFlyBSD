@@ -27,17 +27,29 @@
 #ifndef	_LINUX_DEVICE_H_
 #define	_LINUX_DEVICE_H_
 
+#include <linux/list.h>
 #include <linux/lockdep.h>
+#include <linux/compiler.h>
+#include <linux/types.h>
+#include <linux/mutex.h>
+#include <linux/atomic.h>
+#include <linux/gfp.h>
+
+#include <sys/bus.h>
+
+struct device {
+	device_t	bsddev;
+};
 
 #define	dev_dbg(dev, fmt, ...)						\
-	device_printf((dev), "debug: " fmt, ## __VA_ARGS__)
+	device_printf((dev)->bsddev, "debug: " fmt, ## __VA_ARGS__)
 #define	dev_err(dev, fmt, ...)						\
-	device_printf((dev), "error: " fmt, ## __VA_ARGS__)
+	device_printf((dev)->bsddev, "error: " fmt, ## __VA_ARGS__)
 #define	dev_warn(dev, fmt, ...)						\
-	device_printf((dev), "warning: " fmt, ## __VA_ARGS__)
+	device_printf((dev)->bsddev, "warning: " fmt, ## __VA_ARGS__)
 #define	dev_info(dev, fmt, ...)						\
-	device_printf((dev), "info: " fmt, ## __VA_ARGS__)
+	device_printf((dev)->bsddev, "info: " fmt, ## __VA_ARGS__)
 #define	dev_printk(level, dev, fmt, ...)				\
-	device_printf((dev), "%s: " fmt, level, ## __VA_ARGS__)
+	device_printf((dev)->bsddev, "%s: " fmt, level, ## __VA_ARGS__)
 
 #endif	/* _LINUX_DEVICE_H_ */

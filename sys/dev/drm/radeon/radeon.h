@@ -1044,7 +1044,7 @@ struct radeon_cs_chunk {
 };
 
 struct radeon_cs_parser {
-	device_t		dev;
+	struct device		*dev;
 	struct radeon_device	*rdev;
 	struct drm_file		*filp;
 	/* chunks */
@@ -2253,7 +2253,7 @@ typedef uint32_t (*radeon_rreg_t)(struct radeon_device*, uint32_t);
 typedef void (*radeon_wreg_t)(struct radeon_device*, uint32_t, uint32_t);
 
 struct radeon_device {
-	device_t			dev;
+	struct device			*dev;
 	struct drm_device		*ddev;
 	struct pci_dev			*pdev;
 	struct lock			exclusive_lock;

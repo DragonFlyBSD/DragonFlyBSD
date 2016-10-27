@@ -235,7 +235,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	ifbdev->helper.fb = fb;
 
 #ifdef __DragonFly__
-	vga_dev = device_get_parent(dev->dev);
+	vga_dev = device_get_parent(dev->dev->bsddev);
 	info->width = sizes->fb_width;
 	info->height = sizes->fb_height;
 	info->stride = fb->pitches[0];

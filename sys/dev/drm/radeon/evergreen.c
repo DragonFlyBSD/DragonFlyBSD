@@ -3875,7 +3875,7 @@ void evergreen_gpu_pci_config_reset(struct radeon_device *rdev)
 	/* set mclk/sclk to bypass */
 	rv770_set_clk_bypass_mode(rdev);
 	/* disable BM */
-	pci_disable_busmaster(rdev->pdev->dev);
+	pci_disable_busmaster(rdev->pdev->dev.bsddev);
 	/* disable mem access */
 	evergreen_mc_stop(rdev, &save);
 	if (evergreen_mc_wait_for_idle(rdev)) {

@@ -308,7 +308,7 @@ static gen6_pte_t iris_pte_encode(dma_addr_t addr,
 static int __setup_page_dma(struct drm_device *dev,
 			    struct i915_page_dma *p, gfp_t flags)
 {
-	struct device *device = dev->pdev->dev;
+	struct device *device = dev->dev;
 
 	p->page = alloc_page(flags);
 	if (!p->page)
@@ -335,7 +335,7 @@ static void cleanup_page_dma(struct drm_device *dev, struct i915_page_dma *p)
 	if (WARN_ON(!p->page))
 		return;
 
-	dma_unmap_page(dev->pdev->dev, p->daddr, 4096, PCI_DMA_BIDIRECTIONAL);
+	dma_unmap_page(&dev->pdev->dev, p->daddr, 4096, PCI_DMA_BIDIRECTIONAL);
 	__free_page(p->page);
 	memset(p, 0, sizeof(*p));
 }
@@ -2340,7 +2340,7 @@ void i915_gem_suspend_gtt_mappings(struct drm_device *dev)
 
 int i915_gem_gtt_prepare_object(struct drm_i915_gem_object *obj)
 {
-	if (!dma_map_sg(obj->base.dev->pdev->dev,
+	if (!dma_map_sg(&obj->base.dev->pdev->dev,
 			obj->pages->sgl, obj->pages->nents,
 			PCI_DMA_BIDIRECTIONAL))
 		return -ENOSPC;
@@ -2617,7 +2617,7 @@ void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj)
 
 	interruptible = do_idling(dev_priv);
 
-	dma_unmap_sg(dev->pdev->dev, obj->pages->sgl, obj->pages->nents,
+	dma_unmap_sg(&dev->pdev->dev, obj->pages->sgl, obj->pages->nents,
 		     PCI_DMA_BIDIRECTIONAL);
 
 	undo_idling(dev_priv, interruptible);
@@ -2710,7 +2710,7 @@ static int i915_gem_setup_global_gtt(struct drm_device *dev,
 	}
 
 #ifdef __DragonFly__
-	device_printf(dev->dev,
+	device_printf(dev->dev->bsddev,
 	    "taking over the fictitious range 0x%lx-0x%lx\n",
 	    dev_priv->gtt.mappable_base + start, dev_priv->gtt.mappable_base + start + mappable);
 	error = -vm_phys_fictitious_reg_range(dev_priv->gtt.mappable_base + start,

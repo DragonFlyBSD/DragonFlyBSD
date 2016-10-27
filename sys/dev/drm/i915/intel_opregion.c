@@ -679,7 +679,7 @@ static void intel_didl_outputs(struct drm_device *dev)
 	u32 temp, max_outputs;
 	int i = 0;
 
-	handle = acpi_get_handle(dev->dev);
+	handle = acpi_get_handle(dev->dev->bsddev);
 	if (!handle)
 		return;
 

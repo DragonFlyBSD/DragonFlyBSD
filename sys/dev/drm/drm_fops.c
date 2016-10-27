@@ -116,7 +116,7 @@ drm_open(struct dev_open_args *ap)
 	if (retcode == 0) {
 		atomic_inc(&dev->counts[_DRM_STAT_OPENS]);
 		DRM_LOCK(dev);
-		device_busy(dev->dev);
+		device_busy(dev->dev->bsddev);
 		if (!dev->open_count++)
 			retcode = drm_setup(dev);
 		DRM_UNLOCK(dev);
@@ -287,7 +287,7 @@ int drm_release(device_t kdev)
 	for (i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
 		if (dev->pcir[i] == NULL)
 			continue;
-		bus_release_resource(dev->dev, SYS_RES_MEMORY,
+		bus_release_resource(dev->dev->bsddev, SYS_RES_MEMORY,
 		    dev->pcirid[i], dev->pcir[i]);
 		dev->pcir[i] = NULL;
 	}
@@ -303,7 +303,7 @@ int drm_release(device_t kdev)
 		DRM_UNLOCK(dev);
 	}
 
-	if (pci_disable_busmaster(dev->dev))
+	if (pci_disable_busmaster(dev->dev->bsddev))
 		DRM_ERROR("Request to disable bus-master failed.\n");
 
 	lockuninit(&dev->vbl_lock);
@@ -316,10 +316,10 @@ int drm_release(device_t kdev)
 	 */
 
 	if (dev->irqr) {
-		bus_release_resource(dev->dev, SYS_RES_IRQ, dev->irqrid,
+		bus_release_resource(dev->dev->bsddev, SYS_RES_IRQ, dev->irqrid,
 		    dev->irqr);
 		if (dev->irq_type == PCI_INTR_TYPE_MSI) {
-			pci_release_msi(dev->dev);
+			pci_release_msi(dev->dev->bsddev);
 			DRM_INFO("MSI released\n");
 		}
 	}

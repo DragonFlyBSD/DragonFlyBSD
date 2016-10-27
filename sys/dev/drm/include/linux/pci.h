@@ -60,7 +60,7 @@ struct pci_device_id {
 
 struct pci_dev {
 	struct pci_bus *bus;		/* bus device is nailed to */
-	struct device *dev;		/* NOTE the star */
+	struct device dev;
 
 	uint16_t vendor;		/* vendor ID */
 	uint16_t device;		/* device ID */
@@ -94,42 +94,42 @@ struct pci_bus {
 static inline int
 pci_read_config_byte(struct pci_dev *pdev, int where, u8 *val)
 {
-	*val = (u16)pci_read_config(pdev->dev, where, 1);
+	*val = (u8)pci_read_config(pdev->dev.bsddev, where, 1);
 	return 0;
 }
 
 static inline int
 pci_read_config_word(struct pci_dev *pdev, int where, u16 *val)
 {
-	*val = (u16)pci_read_config(pdev->dev, where, 2);
+	*val = (u16)pci_read_config(pdev->dev.bsddev, where, 2);
 	return 0;
 }
 
 static inline int
 pci_read_config_dword(struct pci_dev *pdev, int where, u32 *val)
 {
-	*val = (u32)pci_read_config(pdev->dev, where, 4);
+	*val = (u32)pci_read_config(pdev->dev.bsddev, where, 4);
 	return 0;
 }
 
 static inline int
 pci_write_config_byte(struct pci_dev *pdev, int where, u8 val)
 {
-	pci_write_config(pdev->dev, where, val, 1);
+	pci_write_config(pdev->dev.bsddev, where, val, 1);
 	return 0;
 }
 
 static inline int
 pci_write_config_word(struct pci_dev *pdev, int where, u16 val)
 {
-	pci_write_config(pdev->dev, where, val, 2);
+	pci_write_config(pdev->dev.bsddev, where, val, 2);
 	return 0;
 }
 
 static inline int
 pci_write_config_dword(struct pci_dev *pdev, int where, u32 val)
 {
-	pci_write_config(pdev->dev, where, val, 4);
+	pci_write_config(pdev->dev.bsddev, where, val, 4);
 	return 0;
 }
 
@@ -140,11 +140,11 @@ pcie_get_readrq(struct pci_dev *pdev)
 	u16 ctl;
 	int err, cap;
 
-	err = pci_find_extcap(pdev->dev, PCIY_EXPRESS, &cap);
+	err = pci_find_extcap(pdev->dev.bsddev, PCIY_EXPRESS, &cap);
 
 	cap += PCIER_DEVCTRL;
 
-	ctl = pci_read_config(pdev->dev, cap, 2);
+	ctl = pci_read_config(pdev->dev.bsddev, cap, 2);
 
 	return 128 << ((ctl & PCIEM_DEVCTL_MAX_READRQ_MASK) >> 12);
 }
@@ -159,16 +159,16 @@ pcie_set_readrq(struct pci_dev *pdev, int rq)
 	if (rq < 128 || rq > 4096 || !is_power_of_2(rq))
 		return -EINVAL;
 
-	err = pci_find_extcap(pdev->dev, PCIY_EXPRESS, &cap);
+	err = pci_find_extcap(pdev->dev.bsddev, PCIY_EXPRESS, &cap);
 	if (err)
 		return (-1);
 
 	cap += PCIER_DEVCTRL;
 
-	ctl = pci_read_config(pdev->dev, cap, 2);
+	ctl = pci_read_config(pdev->dev.bsddev, cap, 2);
 	ctl &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
 	ctl |= ((ffs(rq) - 8) << 12);
-	pci_write_config(pdev->dev, cap, ctl, 2);
+	pci_write_config(pdev->dev.bsddev, cap, ctl, 2);
 	return 0;
 }
 
@@ -213,7 +213,7 @@ static inline struct resource_list_entry*
 _pci_get_rle(struct pci_dev *pdev, int bar)
 {
 	struct pci_devinfo *dinfo;
-	struct device *dev = pdev->dev;
+	device_t dev = pdev->dev.bsddev;
 	struct resource_list_entry *rle;
 
 	dinfo = device_get_ivars(dev);
@@ -250,10 +250,9 @@ pci_resource_start(struct pci_dev *pdev, int bar)
 	int rid;
 
 	rid = PCIR_BAR(bar);
-	res = bus_alloc_resource_any(pdev->dev, SYS_RES_MEMORY, &rid, RF_SHAREABLE);
+	res = bus_alloc_resource_any(pdev->dev.bsddev, SYS_RES_MEMORY, &rid, RF_SHAREABLE);
 	if (res == NULL) {
-		kprintf("pci_resource_start(0x%x, 0x%x) failed\n",
-			pdev->device, PCIR_BAR(bar));
+		kprintf("pci_resource_start(0x%p, 0x%x) failed\n", pdev, PCIR_BAR(bar));
 		return -1;
 	}
 

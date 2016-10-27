@@ -451,7 +451,7 @@ int drm_irq_install(struct drm_device *dev, int irq)
 		dev->driver->irq_preinstall(dev);
 
 	/* Install handler */
-	ret = -bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
+	ret = -bus_setup_intr(dev->dev->bsddev, dev->irqr, INTR_MPSAFE,
 	    dev->driver->irq_handler, dev, &dev->irqh, &dev->irq_lock);
 
 	if (ret != 0) {
@@ -465,7 +465,7 @@ int drm_irq_install(struct drm_device *dev, int irq)
 
 	if (ret < 0) {
 		dev->irq_enabled = false;
-		bus_teardown_intr(dev->dev, dev->irqr, dev->irqh);
+		bus_teardown_intr(dev->dev->bsddev, dev->irqr, dev->irqh);
 	} else {
 		dev->irq = irq;
 	}
@@ -532,7 +532,7 @@ int drm_irq_uninstall(struct drm_device *dev)
 	if (dev->driver->irq_uninstall)
 		dev->driver->irq_uninstall(dev);
 
-	bus_teardown_intr(dev->dev, dev->irqr, dev->irqh);
+	bus_teardown_intr(dev->dev->bsddev, dev->irqr, dev->irqh);
 
 	return 0;
 }

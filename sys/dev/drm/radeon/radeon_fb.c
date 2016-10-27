@@ -199,7 +199,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 #ifdef DUMBBELL_WIP
 	device_t device = rdev->dev;
 #endif /* DUMBBELL_WIP */
-	device_t vga_dev = device_get_parent(rdev->dev);
+	device_t vga_dev = device_get_parent(rdev->dev->bsddev);
 	int ret;
 	unsigned long tmp;
 
