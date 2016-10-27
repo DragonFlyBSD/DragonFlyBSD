@@ -1013,126 +1013,6 @@ intel_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
 	return ret;
 }
 
-static int
-intel_dp_i2c_aux_ch(device_t adapter, int mode,
-		    uint8_t write_byte, uint8_t *read_byte)
-{
-	struct i2c_algo_dp_aux_data *data = device_get_softc(adapter);
-	struct intel_dp *intel_dp = data->priv;
-	uint16_t address = data->address;
-	uint8_t msg[5];
-	uint8_t reply[2];
-	unsigned retry;
-	int msg_bytes;
-	int reply_bytes;
-	int ret;
-
-	intel_edp_panel_vdd_on(intel_dp);
-	intel_dp_check_edp(intel_dp);
-	/* Set up the command byte */
-	if (mode & MODE_I2C_READ)
-		msg[0] = DP_AUX_I2C_READ << 4;
-	else
-		msg[0] = DP_AUX_I2C_WRITE << 4;
-
-	if (!(mode & MODE_I2C_STOP))
-		msg[0] |= DP_AUX_I2C_MOT << 4;
-
-	msg[1] = address >> 8;
-	msg[2] = address;
-
-	switch (mode) {
-	case MODE_I2C_WRITE:
-		msg[3] = 0;
-		msg[4] = write_byte;
-		msg_bytes = 5;
-		reply_bytes = 1;
-		break;
-	case MODE_I2C_READ:
-		msg[3] = 0;
-		msg_bytes = 4;
-		reply_bytes = 2;
-		break;
-	default:
-		msg_bytes = 3;
-		reply_bytes = 1;
-		break;
-	}
-
-	/*
-	 * DP1.2 sections 2.7.7.1.5.6.1 and 2.7.7.1.6.6.1: A DP Source device is
-	 * required to retry at least seven times upon receiving AUX_DEFER
-	 * before giving up the AUX transaction.
-	 */
-	for (retry = 0; retry < 7; retry++) {
-		ret = intel_dp_aux_ch(intel_dp,
-				      msg, msg_bytes,
-				      reply, reply_bytes);
-		if (ret < 0) {
-			DRM_DEBUG_KMS("aux_ch failed %d\n", ret);
-			goto out;
-		}
-
-		switch ((reply[0] >> 4) & DP_AUX_NATIVE_REPLY_MASK) {
-		case DP_AUX_NATIVE_REPLY_ACK:
-			/* I2C-over-AUX Reply field is only valid
-			 * when paired with AUX ACK.
-			 */
-			break;
-		case DP_AUX_NATIVE_REPLY_NACK:
-			DRM_DEBUG_KMS("aux_ch native nack\n");
-			ret = -EREMOTEIO;
-			goto out;
-		case DP_AUX_NATIVE_REPLY_DEFER:
-			/*
-			 * For now, just give more slack to branch devices. We
-			 * could check the DPCD for I2C bit rate capabilities,
-			 * and if available, adjust the interval. We could also
-			 * be more careful with DP-to-Legacy adapters where a
-			 * long legacy cable may force very low I2C bit rates.
-			 */
-			if (intel_dp->dpcd[DP_DOWNSTREAMPORT_PRESENT] &
-			    DP_DWN_STRM_PORT_PRESENT)
-				usleep_range(500, 600);
-			else
-				usleep_range(300, 400);
-			continue;
-		default:
-			DRM_ERROR("aux_ch invalid native reply 0x%02x\n",
-				  reply[0]);
-			ret = -EREMOTEIO;
-			goto out;
-		}
-
-		switch ((reply[0] >> 4) & DP_AUX_I2C_REPLY_MASK) {
-		case DP_AUX_I2C_REPLY_ACK:
-			if (mode == MODE_I2C_READ) {
-				*read_byte = reply[1];
-			}
-			ret = 0;	/* reply_bytes - 1 */
-			goto out;
-		case DP_AUX_I2C_REPLY_NACK:
-			DRM_DEBUG_KMS("aux_i2c nack\n");
-			ret = -EREMOTEIO;
-			goto out;
-		case DP_AUX_I2C_REPLY_DEFER:
-			DRM_DEBUG_KMS("aux_i2c defer\n");
-			udelay(100);
-			break;
-		default:
-			DRM_ERROR("aux_i2c invalid reply 0x%02x\n", reply[0]);
-			ret = -EREMOTEIO;
-			goto out;
-		}
-	}
-
-	DRM_ERROR("too many retries, giving up\n");
-	ret = -EREMOTEIO;
-
-out:
-	return ret;
-}
-
 static void
 intel_dp_aux_init(struct intel_dp *intel_dp, struct intel_connector *connector)
 {
@@ -1206,13 +1086,17 @@ intel_dp_aux_init(struct intel_dp *intel_dp, struct intel_connector *connector)
 	intel_dp->aux.dev = dev->dev;
 	intel_dp->aux.transfer = intel_dp_aux_transfer;
 
-	DRM_DEBUG_KMS("i2c_init %s\n", name);
+#if 0
+	DRM_DEBUG_KMS("registering %s bus for %s\n", name,
+		      connector->base.kdev->kobj.name);
+#endif
 
-	ret = iic_dp_aux_add_bus(connector->base.dev->dev->bsddev, name,
-	    intel_dp_i2c_aux_ch, intel_dp, &intel_dp->dp_iic_bus,
-	    &intel_dp->aux.ddc);
-	WARN(ret, "intel_dp_i2c_init failed with error %d for port %c\n",
-	     ret, port_name(port));
+	ret = drm_dp_aux_register(&intel_dp->aux);
+	if (ret < 0) {
+		DRM_ERROR("drm_dp_aux_register() for %s failed (%d)\n",
+			  name, ret);
+		return;
+	}
 
 #if 0
 	ret = sysfs_create_link(&connector->base.kdev->kobj,
@@ -4653,7 +4537,7 @@ intel_dp_detect_dpcd(struct intel_dp *intel_dp)
 	}
 
 	/* If no HPD, poke DDC gently */
-	if (drm_probe_ddc(intel_dp->aux.ddc))
+	if (drm_probe_ddc(&intel_dp->aux.ddc))
 		return connector_status_connected;
 
 	/* Well we tried, say unknown for unreliable port types */
@@ -4884,7 +4768,7 @@ intel_dp_get_edid(struct intel_dp *intel_dp)
 		return drm_edid_duplicate(intel_connector->edid);
 	} else
 		return drm_get_edid(&intel_connector->base,
-				    intel_dp->aux.ddc);
+				    &intel_dp->aux.ddc);
 }
 
 static void
@@ -6075,7 +5959,7 @@ static bool intel_edp_init_connector(struct intel_dp *intel_dp,
 	pps_unlock(intel_dp);
 
 	mutex_lock(&dev->mode_config.mutex);
-	edid = drm_get_edid(connector, intel_dp->aux.ddc);
+	edid = drm_get_edid(connector, &intel_dp->aux.ddc);
 	if (edid) {
 		if (drm_add_edid_modes(connector, edid)) {
 			drm_mode_connector_update_edid_property(connector,

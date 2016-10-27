@@ -590,6 +590,10 @@ int iic_dp_aux_add_bus(device_t dev, const char *name,
     int (*ch)(device_t idev, int mode, uint8_t write_byte, uint8_t *read_byte),
     void *priv, device_t *bus, device_t *adapter);
 
+/* DP 1.2 MST PORTs - Section 2.5.1 v1.2a spec */
+#define DP_MST_PHYSICAL_PORT_0 0
+#define DP_MST_LOGICAL_PORT_0 8
+
 #define DP_LINK_STATUS_SIZE	   6
 bool drm_dp_channel_eq_ok(const u8 link_status[DP_LINK_STATUS_SIZE],
 			  int lane_count);
@@ -679,7 +683,7 @@ struct drm_dp_aux_msg {
 	unsigned int address;
 	u8 request;
 	u8 reply;
-	void *buffer;
+	char *buffer;
 	size_t size;
 };
 
@@ -722,7 +726,7 @@ struct drm_dp_aux_msg {
  */
 struct drm_dp_aux {
 	const char *name;
-	device_t ddc;
+	struct i2c_adapter ddc;
 	struct device *dev;
 	struct lock hw_mutex;
 	ssize_t (*transfer)(struct drm_dp_aux *aux,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 François Tigeot
+ * Copyright (c) 2013-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,16 +31,37 @@
 #include <linux/device.h>	/* for struct device */
 #include <linux/sched.h>	/* for completion */
 #include <linux/mutex.h>
+#include <uapi_linux/i2c.h>
 
 #include <bus/iicbus/iic.h>
 #include <bus/iicbus/iiconf.h>
 #include "iicbus_if.h"
 
-#define i2c_msg iic_msg
-
 #define I2C_M_RD	IIC_M_RD
 #define I2C_M_NOSTART	IIC_M_NOSTART
 
-#define i2c_adapter	bsd_device
+struct i2c_adapter {
+	const struct i2c_algorithm *algo;
+	void *algo_data;
+
+	int timeout;
+	int retries;
+	struct device dev;
+
+	char name[48];
+};
+
+extern int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs,
+			int num);
+
+struct i2c_algorithm {
+	int (*master_xfer)(struct i2c_adapter *adap, struct i2c_msg *msgs,
+			   int num);
+
+	u32 (*functionality) (struct i2c_adapter *);
+};
+
+extern int i2c_add_adapter(struct i2c_adapter *);
+extern void i2c_del_adapter(struct i2c_adapter *);
 
 #endif	/* _LINUX_I2C_H_ */

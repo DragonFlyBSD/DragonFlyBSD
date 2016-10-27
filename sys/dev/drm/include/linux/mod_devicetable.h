@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,8 @@
 
 #include <linux/types.h>
 typedef unsigned long kernel_ulong_t;
+
+#define I2C_NAME_SIZE	20
 
 #define DMI_MATCH(a, b)		{(a), (b)}
 #define DMI_EXACT_MATCH(a, b)	{(a), (b)}

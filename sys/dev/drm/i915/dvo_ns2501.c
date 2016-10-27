@@ -391,7 +391,6 @@ struct ns2501_priv {
 */
 static bool ns2501_readb(struct intel_dvo_device *dvo, int addr, uint8_t * ch)
 {
-	struct intel_iic_softc *sc;
 	struct ns2501_priv *ns = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	u8 out_buf[2];
@@ -399,13 +398,13 @@ static bool ns2501_readb(struct intel_dvo_device *dvo, int addr, uint8_t * ch)
 
 	struct i2c_msg msgs[] = {
 		{
-		 .slave = dvo->slave_addr << 1,
+		 .addr = dvo->slave_addr,
 		 .flags = 0,
 		 .len = 1,
 		 .buf = out_buf,
 		 },
 		{
-		 .slave = dvo->slave_addr << 1,
+		 .addr = dvo->slave_addr,
 		 .flags = I2C_M_RD,
 		 .len = 1,
 		 .buf = in_buf,
@@ -415,9 +414,7 @@ static bool ns2501_readb(struct intel_dvo_device *dvo, int addr, uint8_t * ch)
 	out_buf[0] = addr;
 	out_buf[1] = 0;
 
-	sc = device_get_softc(adapter);
-
-	if (iicbus_transfer(adapter, msgs, 2) == 0) {
+	if (i2c_transfer(adapter, msgs, 2) == 2) {
 		*ch = in_buf[0];
 		return true;
 	}
@@ -425,7 +422,7 @@ static bool ns2501_readb(struct intel_dvo_device *dvo, int addr, uint8_t * ch)
 	if (!ns->quiet) {
 		DRM_DEBUG_KMS
 		    ("Unable to read register 0x%02x from %s:0x%02x.\n", addr,
-		     sc->name, dvo->slave_addr);
+		     adapter->name, dvo->slave_addr);
 	}
 
 	return false;
@@ -439,13 +436,12 @@ static bool ns2501_readb(struct intel_dvo_device *dvo, int addr, uint8_t * ch)
 */
 static bool ns2501_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 {
-	struct intel_iic_softc *sc;
 	struct ns2501_priv *ns = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	uint8_t out_buf[2];
 
 	struct i2c_msg msg = {
-		.slave = dvo->slave_addr << 1,
+		.addr = dvo->slave_addr,
 		.flags = 0,
 		.len = 2,
 		.buf = out_buf,
@@ -454,15 +450,13 @@ static bool ns2501_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 	out_buf[0] = addr;
 	out_buf[1] = ch;
 
-	sc = device_get_softc(adapter);
-
-	if (iicbus_transfer(adapter, &msg, 1) == 0) {
+	if (i2c_transfer(adapter, &msg, 1) == 1) {
 		return true;
 	}
 
 	if (!ns->quiet) {
 		DRM_DEBUG_KMS("Unable to write register 0x%02x to %s:%d\n",
-			      addr, sc->name, dvo->slave_addr);
+			      addr, adapter->name, dvo->slave_addr);
 	}
 
 	return false;
@@ -477,12 +471,9 @@ static bool ns2501_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 static bool ns2501_init(struct intel_dvo_device *dvo,
 			struct i2c_adapter *adapter)
 {
-	struct intel_iic_softc *sc;
 	/* this will detect the NS2501 chip on the specified i2c bus */
 	struct ns2501_priv *ns;
 	unsigned char ch;
-
-	sc = device_get_softc(adapter);
 
 	ns = kzalloc(sizeof(struct ns2501_priv), GFP_KERNEL);
 	if (ns == NULL)
@@ -497,7 +488,7 @@ static bool ns2501_init(struct intel_dvo_device *dvo,
 
 	if (ch != (NS2501_VID & 0xff)) {
 		DRM_DEBUG_KMS("ns2501 not detected got %d: from %s Slave %d.\n",
-			      ch, sc->name, dvo->slave_addr);
+			      ch, adapter->name, dvo->slave_addr);
 		goto out;
 	}
 
@@ -506,7 +497,7 @@ static bool ns2501_init(struct intel_dvo_device *dvo,
 
 	if (ch != (NS2501_DID & 0xff)) {
 		DRM_DEBUG_KMS("ns2501 not detected got %d: from %s Slave %d.\n",
-			      ch, sc->name, dvo->slave_addr);
+			      ch, adapter->name, dvo->slave_addr);
 		goto out;
 	}
 	ns->quiet = false;

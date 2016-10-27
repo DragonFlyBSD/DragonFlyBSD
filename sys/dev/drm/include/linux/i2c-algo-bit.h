@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,40 +24,23 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef	_LINUX_DEVICE_H_
-#define	_LINUX_DEVICE_H_
+#ifndef _LINUX_I2C_ALGO_BIT_H_
+#define _LINUX_I2C_ALGO_BIT_H_
 
-#include <linux/list.h>
-#include <linux/lockdep.h>
-#include <linux/compiler.h>
-#include <linux/types.h>
-#include <linux/mutex.h>
-#include <linux/atomic.h>
-#include <linux/gfp.h>
+struct i2c_algo_bit_data {
+	void *data;
+	void (*setsda) (void *data, int state);
+	void (*setscl) (void *data, int state);
+	int  (*getsda) (void *data);
+	int  (*getscl) (void *data);
+	int  (*pre_xfer)  (struct i2c_adapter *);
+	void (*post_xfer) (struct i2c_adapter *);
 
-#include <sys/bus.h>
-
-struct device {
-	struct device	*parent;
-
-	device_t	bsddev;
+	int udelay;
+	int timeout;
 };
 
-#define	dev_dbg(dev, fmt, ...)						\
-	device_printf((dev)->bsddev, "debug: " fmt, ## __VA_ARGS__)
-#define	dev_err(dev, fmt, ...)						\
-	device_printf((dev)->bsddev, "error: " fmt, ## __VA_ARGS__)
-#define	dev_warn(dev, fmt, ...)						\
-	device_printf((dev)->bsddev, "warning: " fmt, ## __VA_ARGS__)
-#define	dev_info(dev, fmt, ...)						\
-	device_printf((dev)->bsddev, "info: " fmt, ## __VA_ARGS__)
-#define	dev_printk(level, dev, fmt, ...)				\
-	device_printf((dev)->bsddev, "%s: " fmt, level, ## __VA_ARGS__)
+int i2c_bit_add_bus(struct i2c_adapter *);
+extern const struct i2c_algorithm i2c_bit_algo;
 
-static inline const char *
-dev_name(const struct device *dev)
-{
-	return("dev_name");
-}
-
-#endif	/* _LINUX_DEVICE_H_ */
+#endif	/* _LINUX_I2C_ALGO_BIT_H_ */

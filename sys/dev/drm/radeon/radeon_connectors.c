@@ -307,7 +307,7 @@ static void radeon_connector_get_edid(struct radeon_connector *radeon_connector)
 		struct radeon_connector_atom_dig *dig = radeon_connector->con_priv;
 
 		if (dig->dp_i2c_bus)
-			radeon_connector->edid = drm_get_edid(&radeon_connector->base,
+			radeon_connector->edid = drm_get_edid_iic(&radeon_connector->base,
 							      dig->dp_i2c_bus->adapter);
 	} else if ((radeon_connector->base.connector_type == DRM_MODE_CONNECTOR_DisplayPort) ||
 		   (radeon_connector->base.connector_type == DRM_MODE_CONNECTOR_eDP)) {
@@ -315,13 +315,13 @@ static void radeon_connector_get_edid(struct radeon_connector *radeon_connector)
 
 		if ((dig->dp_sink_type == CONNECTOR_OBJECT_ID_DISPLAYPORT ||
 		     dig->dp_sink_type == CONNECTOR_OBJECT_ID_eDP) && dig->dp_i2c_bus)
-			radeon_connector->edid = drm_get_edid(&radeon_connector->base,
+			radeon_connector->edid = drm_get_edid_iic(&radeon_connector->base,
 							      dig->dp_i2c_bus->adapter);
 		else if (radeon_connector->ddc_bus && !radeon_connector->edid)
-			radeon_connector->edid = drm_get_edid(&radeon_connector->base,
+			radeon_connector->edid = drm_get_edid_iic(&radeon_connector->base,
 							      radeon_connector->ddc_bus->adapter);
 	} else if (radeon_connector->ddc_bus) {
-		radeon_connector->edid = drm_get_edid(&radeon_connector->base,
+		radeon_connector->edid = drm_get_edid_iic(&radeon_connector->base,
 						      radeon_connector->ddc_bus->adapter);
 	}
 
@@ -857,7 +857,7 @@ radeon_lvds_detect(struct drm_connector *connector, bool force)
 		ret = connector_status_connected;
 	else {
 		if (radeon_connector->ddc_bus) {
-			radeon_connector->edid = drm_get_edid(&radeon_connector->base,
+			radeon_connector->edid = drm_get_edid_iic(&radeon_connector->base,
 							      radeon_connector->ddc_bus->adapter);
 			if (radeon_connector->edid)
 				ret = connector_status_connected;

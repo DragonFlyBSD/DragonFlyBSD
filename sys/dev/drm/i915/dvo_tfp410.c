@@ -92,7 +92,6 @@ struct tfp410_priv {
 
 static bool tfp410_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 {
-	struct intel_iic_softc *sc;
 	struct tfp410_priv *tfp = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	u8 out_buf[2];
@@ -100,13 +99,13 @@ static bool tfp410_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 
 	struct i2c_msg msgs[] = {
 		{
-			.slave = dvo->slave_addr << 1,
+			.addr = dvo->slave_addr,
 			.flags = 0,
 			.len = 1,
 			.buf = out_buf,
 		},
 		{
-			.slave = dvo->slave_addr << 1,
+			.addr = dvo->slave_addr,
 			.flags = I2C_M_RD,
 			.len = 1,
 			.buf = in_buf,
@@ -117,28 +116,25 @@ static bool tfp410_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 	out_buf[0] = addr;
 	out_buf[1] = 0;
 
-	sc = device_get_softc(adapter);
-
-	if (iicbus_transfer(adapter, msgs, 2) == 0) {
+	if (i2c_transfer(adapter, msgs, 2) == 2) {
 		*ch = in_buf[0];
 		return true;
 	}
 
 	if (!tfp->quiet) {
 		DRM_DEBUG_KMS("Unable to read register 0x%02x from %s:%02x.\n",
-			  addr, sc->name, dvo->slave_addr);
+			  addr, adapter->name, dvo->slave_addr);
 	}
 	return false;
 }
 
 static bool tfp410_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 {
-	struct intel_iic_softc *sc;
 	struct tfp410_priv *tfp = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	uint8_t out_buf[2];
 	struct i2c_msg msg = {
-		.slave = dvo->slave_addr << 1,
+		.addr = dvo->slave_addr,
 		.flags = 0,
 		.len = 2,
 		.buf = out_buf,
@@ -147,14 +143,12 @@ static bool tfp410_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 	out_buf[0] = addr;
 	out_buf[1] = ch;
 
-	sc = device_get_softc(adapter);
-
-	if (iicbus_transfer(adapter, &msg, 1) == 0)
+	if (i2c_transfer(adapter, &msg, 1) == 1)
 		return true;
 
 	if (!tfp->quiet) {
 		DRM_DEBUG_KMS("Unable to write register 0x%02x to %s:%d.\n",
-			  addr, sc->name, dvo->slave_addr);
+			  addr, adapter->name, dvo->slave_addr);
 	}
 
 	return false;
@@ -175,12 +169,9 @@ static int tfp410_getid(struct intel_dvo_device *dvo, int addr)
 static bool tfp410_init(struct intel_dvo_device *dvo,
 			struct i2c_adapter *adapter)
 {
-	struct intel_iic_softc *sc;
 	/* this will detect the tfp410 chip on the specified i2c bus */
 	struct tfp410_priv *tfp;
 	int id;
-
-	sc = device_get_softc(adapter);
 
 	tfp = kzalloc(sizeof(struct tfp410_priv), GFP_KERNEL);
 	if (tfp == NULL)
@@ -193,14 +184,14 @@ static bool tfp410_init(struct intel_dvo_device *dvo,
 	if ((id = tfp410_getid(dvo, TFP410_VID_LO)) != TFP410_VID) {
 		DRM_DEBUG_KMS("tfp410 not detected got VID %X: from %s "
 				"Slave %d.\n",
-			  id, sc->name, dvo->slave_addr);
+			  id, adapter->name, dvo->slave_addr);
 		goto out;
 	}
 
 	if ((id = tfp410_getid(dvo, TFP410_DID_LO)) != TFP410_DID) {
 		DRM_DEBUG_KMS("tfp410 not detected got DID %X: from %s "
 				"Slave %d.\n",
-			  id, sc->name, dvo->slave_addr);
+			  id, adapter->name, dvo->slave_addr);
 		goto out;
 	}
 	tfp->quiet = false;

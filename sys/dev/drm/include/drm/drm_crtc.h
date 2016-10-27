@@ -1188,6 +1188,9 @@ extern int drm_crtc_init_with_planes(struct drm_device *dev,
 				     struct drm_plane *primary,
 				     struct drm_plane *cursor,
 				     const struct drm_crtc_funcs *funcs);
+extern int drm_crtc_init(struct drm_device *dev,
+			 struct drm_crtc *crtc,
+			 const struct drm_crtc_funcs *funcs);
 extern void drm_crtc_cleanup(struct drm_crtc *crtc);
 extern unsigned int drm_crtc_index(struct drm_crtc *crtc);
 
@@ -1292,6 +1295,8 @@ extern void drm_property_destroy_user_blobs(struct drm_device *dev,
 extern bool drm_probe_ddc(struct i2c_adapter *adapter);
 extern struct edid *drm_get_edid(struct drm_connector *connector,
 				 struct i2c_adapter *adapter);
+extern struct edid *drm_get_edid_iic(struct drm_connector *connector,
+				     device_t adapter);
 extern struct edid *drm_edid_duplicate(const struct edid *edid);
 extern int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid);
 extern void drm_mode_config_init(struct drm_device *dev);

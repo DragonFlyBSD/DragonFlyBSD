@@ -41,6 +41,7 @@
 #include "i915_gem_render_state.h"
 #include <linux/io-mapping.h>
 #include <linux/i2c.h>
+#include <linux/i2c-algo-bit.h>
 #include <drm/intel-gtt.h>
 #include <drm/drm_legacy.h> /* for struct drm_dma_handle */
 #include <drm/drm_gem.h>
@@ -1023,22 +1024,12 @@ struct intel_fbdev;
 struct intel_fbc_work;
 
 struct intel_gmbus {
-#if 0
 	struct i2c_adapter adapter;
-#endif
 	u32 force_bit;
 	u32 reg0;
 	u32 gpio_reg;
+	struct i2c_algo_bit_data bit_algo;
 	struct drm_i915_private *dev_priv;
-};
-
-struct intel_iic_softc {
-	struct drm_device *drm_dev;
-	device_t iic_dev;
-	bool force_bit_dev;
-	char name[32];
-	uint32_t reg;
-	uint32_t reg0;
 };
 
 struct i915_suspend_saved_registers {
@@ -1726,10 +1717,6 @@ struct drm_i915_private {
 
 	int relative_constants_mode;
 
-	device_t *gmbus_bridge;
-	device_t *bbbus_bridge;
-	device_t *bbbus;
-
 	char __iomem *regs;
 
 	struct intel_uncore uncore;
@@ -1743,7 +1730,7 @@ struct drm_i915_private {
 	/* Display CSR-related protection */
 	struct lock csr_lock;
 
-	device_t *gmbus;
+	struct intel_gmbus gmbus[GMBUS_NUM_PINS];
 
 	/** gmbus_mutex protects against concurrent usage of the single hw gmbus
 	 * controller on different i2c buses. */
@@ -1813,7 +1800,6 @@ struct drm_i915_private {
 	struct lock pps_mutex;
 
 	struct drm_i915_fence_reg fence_regs[I915_MAX_NUM_FENCES]; /* assume 965 */
-	int fence_reg_start; /* 4 if userland hasn't ioctl'd us yet */
 	int num_fence_regs; /* 8 on pre-965, 16 otherwise */
 
 	unsigned int fsb_freq, mem_freq, is_ddr3;
@@ -3336,10 +3322,7 @@ extern void intel_gmbus_set_speed(struct i2c_adapter *adapter, int speed);
 extern void intel_gmbus_force_bit(struct i2c_adapter *adapter, bool force_bit);
 static inline bool intel_gmbus_is_forced_bit(struct i2c_adapter *adapter)
 {
-	struct intel_iic_softc *sc;
-	sc = device_get_softc(device_get_parent(adapter));
-
-	return sc->force_bit_dev;
+	return container_of(adapter, struct intel_gmbus, adapter)->force_bit;
 }
 extern void intel_i2c_reset(struct drm_device *dev);
 

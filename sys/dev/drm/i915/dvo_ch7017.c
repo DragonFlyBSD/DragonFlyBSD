@@ -169,43 +169,40 @@ static bool ch7017_read(struct intel_dvo_device *dvo, u8 addr, u8 *val)
 {
 	struct i2c_msg msgs[] = {
 		{
-			.slave = dvo->slave_addr << 1,
+			.addr = dvo->slave_addr,
 			.flags = 0,
 			.len = 1,
 			.buf = &addr,
 		},
 		{
-			.slave = dvo->slave_addr << 1,
+			.addr = dvo->slave_addr,
 			.flags = I2C_M_RD,
 			.len = 1,
 			.buf = val,
 		}
 	};
-	return iicbus_transfer(dvo->i2c_bus, msgs, 2) == 0;
+	return i2c_transfer(dvo->i2c_bus, msgs, 2) == 2;
 }
 
 static bool ch7017_write(struct intel_dvo_device *dvo, u8 addr, u8 val)
 {
 	uint8_t buf[2] = { addr, val };
 	struct i2c_msg msg = {
-		.slave = dvo->slave_addr << 1,
+		.addr = dvo->slave_addr,
 		.flags = 0,
 		.len = 2,
 		.buf = buf,
 	};
-	return iicbus_transfer(dvo->i2c_bus, &msg, 1) == 0;
+	return i2c_transfer(dvo->i2c_bus, &msg, 1) == 1;
 }
 
 /** Probes for a CH7017 on the given bus and slave address. */
 static bool ch7017_init(struct intel_dvo_device *dvo,
 			struct i2c_adapter *adapter)
 {
-	struct intel_iic_softc *sc;
 	struct ch7017_priv *priv;
 	const char *str;
 	u8 val;
-
-	sc = device_get_softc(adapter);
 
 	priv = kzalloc(sizeof(struct ch7017_priv), GFP_KERNEL);
 	if (priv == NULL)
@@ -230,12 +227,12 @@ static bool ch7017_init(struct intel_dvo_device *dvo,
 	default:
 		DRM_DEBUG_KMS("ch701x not detected, got %d: from %s "
 			      "slave %d.\n",
-			      val, sc->name, dvo->slave_addr);
+			      val, adapter->name, dvo->slave_addr);
 		goto fail;
 	}
 
 	DRM_DEBUG_KMS("%s detected on %s, addr %d\n",
-		      str, sc->name, dvo->slave_addr);
+		      str, adapter->name, dvo->slave_addr);
 	return true;
 
 fail:
