@@ -607,11 +607,11 @@ RB_PROTOTYPE2(hammer_mod_rb_tree, hammer_io, rb_node,
  * Clean buffers can be passively released.
  */
 typedef enum hammer_io_type {
-	HAMMER_STRUCTURE_VOLUME,
-	HAMMER_STRUCTURE_META_BUFFER,
-	HAMMER_STRUCTURE_UNDO_BUFFER,
-	HAMMER_STRUCTURE_DATA_BUFFER,
-	HAMMER_STRUCTURE_DUMMY
+	HAMMER_IOTYPE_VOLUME,
+	HAMMER_IOTYPE_META_BUFFER,
+	HAMMER_IOTYPE_UNDO_BUFFER,
+	HAMMER_IOTYPE_DATA_BUFFER,
+	HAMMER_IOTYPE_DUMMY
 } hammer_io_type_t;
 
 typedef struct hammer_io {

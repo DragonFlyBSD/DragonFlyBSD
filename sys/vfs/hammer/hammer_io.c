@@ -102,23 +102,23 @@ hammer_zone_to_iotype(int zone)
 
 	switch(zone) {
 	case HAMMER_ZONE_RAW_VOLUME_INDEX:
-		iotype = HAMMER_STRUCTURE_VOLUME;
+		iotype = HAMMER_IOTYPE_VOLUME;
 		break;
 	case HAMMER_ZONE_RAW_BUFFER_INDEX:
 	case HAMMER_ZONE_FREEMAP_INDEX:
 	case HAMMER_ZONE_BTREE_INDEX:
 	case HAMMER_ZONE_META_INDEX:
-		iotype = HAMMER_STRUCTURE_META_BUFFER;
+		iotype = HAMMER_IOTYPE_META_BUFFER;
 		break;
 	case HAMMER_ZONE_UNDO_INDEX:
-		iotype = HAMMER_STRUCTURE_UNDO_BUFFER;
+		iotype = HAMMER_IOTYPE_UNDO_BUFFER;
 		break;
 	case HAMMER_ZONE_LARGE_DATA_INDEX:
 	case HAMMER_ZONE_SMALL_DATA_INDEX:
-		iotype = HAMMER_STRUCTURE_DATA_BUFFER;
+		iotype = HAMMER_IOTYPE_DATA_BUFFER;
 		break;
 	default:
-		iotype = HAMMER_STRUCTURE_DUMMY;
+		iotype = HAMMER_IOTYPE_DUMMY;
 		break;
 	}
 
@@ -131,10 +131,10 @@ hammer_io_to_iostring(hammer_io_t io)
 	const char *iostr = NULL;
 
 	switch(io->type) {
-	case HAMMER_STRUCTURE_VOLUME:
+	case HAMMER_IOTYPE_VOLUME:
 		iostr = "volume";
 		break;
-	case HAMMER_STRUCTURE_META_BUFFER:
+	case HAMMER_IOTYPE_META_BUFFER:
 		switch(HAMMER_ZONE(HAMMER_ITOB(io)->zoneX_offset)) {
 		case HAMMER_ZONE_RAW_BUFFER:
 			iostr = "meta/raw_buffer";
@@ -150,10 +150,10 @@ hammer_io_to_iostring(hammer_io_t io)
 			break;
 		}
 		break;
-	case HAMMER_STRUCTURE_UNDO_BUFFER:
+	case HAMMER_IOTYPE_UNDO_BUFFER:
 		iostr = "undo";
 		break;
-	case HAMMER_STRUCTURE_DATA_BUFFER:
+	case HAMMER_IOTYPE_DATA_BUFFER:
 		switch(HAMMER_ZONE(HAMMER_ITOB(io)->zoneX_offset)) {
 		case HAMMER_ZONE_LARGE_DATA:
 			iostr = "data/large_data";
@@ -163,7 +163,7 @@ hammer_io_to_iostring(hammer_io_t io)
 			break;
 		}
 		break;
-	case HAMMER_STRUCTURE_DUMMY:
+	case HAMMER_IOTYPE_DUMMY:
 		iostr = "dummy";
 		break;
 	default:
@@ -219,15 +219,15 @@ hammer_io_disassociate(hammer_io_t io)
 	}
 
 	switch(io->type) {
-	case HAMMER_STRUCTURE_VOLUME:
+	case HAMMER_IOTYPE_VOLUME:
 		HAMMER_ITOV(io)->ondisk = NULL;
 		break;
-	case HAMMER_STRUCTURE_DATA_BUFFER:
-	case HAMMER_STRUCTURE_META_BUFFER:
-	case HAMMER_STRUCTURE_UNDO_BUFFER:
+	case HAMMER_IOTYPE_DATA_BUFFER:
+	case HAMMER_IOTYPE_META_BUFFER:
+	case HAMMER_IOTYPE_UNDO_BUFFER:
 		HAMMER_ITOB(io)->ondisk = NULL;
 		break;
-	case HAMMER_STRUCTURE_DUMMY:
+	case HAMMER_IOTYPE_DUMMY:
 		hpanic("bad io type");
 		break;
 	}
@@ -279,7 +279,7 @@ hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush)
 		return;
 	}
 	bzero(&iodummy, sizeof(iodummy));
-	iodummy.type = HAMMER_STRUCTURE_DUMMY;
+	iodummy.type = HAMMER_IOTYPE_DUMMY;
 
 	/*
 	 * Add placemarker and then wait until it becomes the head of
@@ -295,7 +295,7 @@ hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush)
 	 */
 	TAILQ_REMOVE(&hmp->iorun_list, &iodummy, iorun_entry);
 	io = TAILQ_FIRST(&hmp->iorun_list);
-	if (io && io->type == HAMMER_STRUCTURE_DUMMY)
+	if (io && io->type == HAMMER_IOTYPE_DUMMY)
 		wakeup(io);
 	lwkt_reltoken(&hmp->io_token);
 
@@ -575,10 +575,10 @@ hammer_io_release(hammer_io_t io, int flush)
 			hammer_io_flush(io, 0);
 		} else if (bp->b_flags & B_LOCKED) {
 			switch(io->type) {
-			case HAMMER_STRUCTURE_DATA_BUFFER:
+			case HAMMER_IOTYPE_DATA_BUFFER:
 				hammer_io_flush(io, 0);
 				break;
-			case HAMMER_STRUCTURE_UNDO_BUFFER:
+			case HAMMER_IOTYPE_UNDO_BUFFER:
 				hammer_io_flush(io, hammer_undo_reclaim(io));
 				break;
 			default:
@@ -624,8 +624,8 @@ hammer_io_release(hammer_io_t io, int flush)
 		 * flushed by HAMMER.
 		 */
 		switch(io->type) {
-		case HAMMER_STRUCTURE_DATA_BUFFER:
-		case HAMMER_STRUCTURE_UNDO_BUFFER:
+		case HAMMER_IOTYPE_DATA_BUFFER:
+		case HAMMER_IOTYPE_UNDO_BUFFER:
 			if (io->released == 0) {
 				io->released = 1;
 				bp->b_flags |= B_CLUSTEROK;
@@ -1004,7 +1004,7 @@ hammer_io_clear_modify(hammer_io_t io, int inval)
 	 * on the node (& underlying buffer).  Release the node after clearing
 	 * the flag.
 	 */
-	if (io->type == HAMMER_STRUCTURE_META_BUFFER) {
+	if (io->type == HAMMER_IOTYPE_META_BUFFER) {
 		hammer_buffer_t buffer = HAMMER_ITOB(io);
 		hammer_node_t node;
 
@@ -1057,23 +1057,23 @@ hammer_io_set_modlist(hammer_io_t io)
 	KKASSERT(io->mod_root == NULL);
 
 	switch(io->type) {
-	case HAMMER_STRUCTURE_VOLUME:
+	case HAMMER_IOTYPE_VOLUME:
 		io->mod_root = &hmp->volu_root;
 		hmp->locked_dirty_space += io->bytes;
 		atomic_add_long(&hammer_count_dirtybufspace, io->bytes);
 		break;
-	case HAMMER_STRUCTURE_META_BUFFER:
+	case HAMMER_IOTYPE_META_BUFFER:
 		io->mod_root = &hmp->meta_root;
 		hmp->locked_dirty_space += io->bytes;
 		atomic_add_long(&hammer_count_dirtybufspace, io->bytes);
 		break;
-	case HAMMER_STRUCTURE_UNDO_BUFFER:
+	case HAMMER_IOTYPE_UNDO_BUFFER:
 		io->mod_root = &hmp->undo_root;
 		break;
-	case HAMMER_STRUCTURE_DATA_BUFFER:
+	case HAMMER_IOTYPE_DATA_BUFFER:
 		io->mod_root = &hmp->data_root;
 		break;
-	case HAMMER_STRUCTURE_DUMMY:
+	case HAMMER_IOTYPE_DUMMY:
 		hpanic("bad io type");
 		break; /* NOT REACHED */
 	}
@@ -1147,7 +1147,7 @@ hammer_io_complete(struct buf *bp)
 			lwkt_reltoken(&hmp->fs_token);
 
 			switch(io->type) {
-			case HAMMER_STRUCTURE_UNDO_BUFFER:
+			case HAMMER_IOTYPE_UNDO_BUFFER:
 				break;
 			default:
 				if (io->ioerror == 0) {
@@ -1174,7 +1174,7 @@ hammer_io_complete(struct buf *bp)
 		 */
 		if (TAILQ_FIRST(&hmp->iorun_list) == io) {
 			ionext = TAILQ_NEXT(io, iorun_entry);
-			if (ionext && ionext->type == HAMMER_STRUCTURE_DUMMY)
+			if (ionext && ionext->type == HAMMER_IOTYPE_DUMMY)
 				wakeup(ionext);
 		}
 		TAILQ_REMOVE(&hmp->iorun_list, io, iorun_entry);
@@ -1253,7 +1253,7 @@ hammer_io_deallocate(struct buf *bp)
 		 * in a released state.
 		 */
 		hammer_io_disassociate(io);
-		if (io->type != HAMMER_STRUCTURE_VOLUME) {
+		if (io->type != HAMMER_IOTYPE_VOLUME) {
 			KKASSERT(io->bp == NULL);
 			KKASSERT(io->mod_root == NULL);
 			io->mod_root = &hmp->lose_root;
@@ -1338,8 +1338,8 @@ hammer_io_checkwrite(struct buf *bp)
 	 * This shouldn't happen under normal operation.
 	 */
 	lwkt_gettoken(&hmp->io_token);
-	if (io->type == HAMMER_STRUCTURE_VOLUME ||
-	    io->type == HAMMER_STRUCTURE_META_BUFFER) {
+	if (io->type == HAMMER_IOTYPE_VOLUME ||
+	    io->type == HAMMER_IOTYPE_META_BUFFER) {
 		if (!panicstr)
 			hpanic("illegal buffer");
 		if ((bp->b_flags & B_LOCKED) == 0) {
@@ -1385,7 +1385,7 @@ hammer_io_checkwrite(struct buf *bp)
 		hammer_io_clear_modify(io, 0);
 		hammer_rel(&io->lock);
 	} else if (io->modified) {
-		KKASSERT(io->type == HAMMER_STRUCTURE_DATA_BUFFER);
+		KKASSERT(io->type == HAMMER_IOTYPE_DATA_BUFFER);
 	}
 
 	/*

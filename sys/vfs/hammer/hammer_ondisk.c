@@ -130,7 +130,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	volume = kmalloc(sizeof(*volume), hmp->m_misc, M_WAITOK|M_ZERO);
 	volume->vol_name = kstrdup(volname, hmp->m_misc);
 	volume->io.hmp = hmp;	/* bootstrap */
-	hammer_io_init(&volume->io, volume, HAMMER_STRUCTURE_VOLUME);
+	hammer_io_init(&volume->io, volume, HAMMER_IOTYPE_VOLUME);
 	volume->io.offset = 0LL;
 	volume->io.bytes = HAMMER_BUFSIZE;
 

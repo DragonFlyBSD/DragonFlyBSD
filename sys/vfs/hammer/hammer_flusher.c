@@ -659,7 +659,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			break;
 		hammer_ref(&io->lock);
 		hammer_io_write_interlock(io);
-		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		KKASSERT(io->type != HAMMER_IOTYPE_VOLUME);
 		hammer_io_flush(io, 0);
 		hammer_io_done_interlock(io);
 		hammer_rel_buffer(HAMMER_ITOB(io), 0);
@@ -803,7 +803,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			break;
 		KKASSERT(io->modify_refs == 0);
 		hammer_ref(&io->lock);
-		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		KKASSERT(io->type != HAMMER_IOTYPE_VOLUME);
 		hammer_io_flush(io, 0);
 		hammer_rel_buffer(HAMMER_ITOB(io), 0);
 		hammer_io_limit_backlog(hmp);
@@ -894,7 +894,7 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 		if (io->ioerror)
 			break;
 		hammer_ref(&io->lock);
-		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		KKASSERT(io->type != HAMMER_IOTYPE_VOLUME);
 		hammer_io_write_interlock(io);
 		hammer_io_flush(io, hammer_undo_reclaim(io));
 		hammer_io_done_interlock(io);
