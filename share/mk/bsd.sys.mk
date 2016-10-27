@@ -125,5 +125,6 @@ PHONY_NOTMAIN = afterdepend afterinstall all beforedepend beforeinstall \
 	realinstall regress subdir-all subdir-depend subdir-install \
 	tags whereobj
 
-.PHONY: ${PHONY_NOTMAIN}
+# if given PROG matches anything in the PHONY list, exclude it.
+.PHONY: ${PHONY_NOTMAIN:N${PROG:U}}
 .NOTMAIN: ${PHONY_NOTMAIN}
