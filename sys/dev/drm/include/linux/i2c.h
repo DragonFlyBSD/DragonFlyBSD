@@ -41,6 +41,6 @@
 #define I2C_M_RD	IIC_M_RD
 #define I2C_M_NOSTART	IIC_M_NOSTART
 
-#define i2c_adapter	device
+#define i2c_adapter	bsd_device
 
 #endif	/* _LINUX_I2C_H_ */

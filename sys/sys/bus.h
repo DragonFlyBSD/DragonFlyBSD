@@ -53,7 +53,7 @@
 /*
  * Forward declarations
  */
-typedef struct device		*device_t;
+typedef struct bsd_device	*device_t;
 typedef struct kobj_class	driver_t;
 typedef struct devclass		*devclass_t;
 #define	device_method_t		kobj_method_t

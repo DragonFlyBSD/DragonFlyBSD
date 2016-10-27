@@ -693,7 +693,7 @@ sysctl_devctl_disable(SYSCTL_HANDLER_ARGS)
 
 /* End of /dev/devctl code */
 
-TAILQ_HEAD(,device)	bus_data_devices;
+TAILQ_HEAD(,bsd_device)	bus_data_devices;
 static int bus_data_generation = 1;
 
 kobj_method_t null_methods[] = {
@@ -1146,7 +1146,7 @@ make_device(device_t parent, const char *name, int unit)
 	} else
 		dc = NULL;
 
-	dev = kmalloc(sizeof(struct device), M_BUS, M_INTWAIT | M_ZERO);
+	dev = kmalloc(sizeof(struct bsd_device), M_BUS, M_INTWAIT | M_ZERO);
 	if (!dev)
 		return(0);
 

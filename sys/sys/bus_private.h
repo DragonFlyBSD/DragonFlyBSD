@@ -56,7 +56,7 @@ struct driverlink {
  */
 typedef TAILQ_HEAD(devclass_list, devclass) devclass_list_t;
 typedef TAILQ_HEAD(driver_list, driverlink) driver_list_t;
-typedef TAILQ_HEAD(device_list, device) device_list_t;
+typedef TAILQ_HEAD(device_list, bsd_device) device_list_t;
 
 struct devclass {
 	TAILQ_ENTRY(devclass) link;
@@ -97,7 +97,7 @@ struct config_device {
 /*
  * Implementation of device.
  */
-struct device {
+struct bsd_device {
 	/*
 	 * A device is a kernel object. The first field must be the
 	 * current ops table for the object.
@@ -107,8 +107,8 @@ struct device {
 	/*
 	 * Device hierarchy.
 	 */
-	TAILQ_ENTRY(device)	link;		/* list of devices in parent */
-	TAILQ_ENTRY(device)	devlink;	/* global device list membership */
+	TAILQ_ENTRY(bsd_device)	link;		/* list of devices in parent */
+	TAILQ_ENTRY(bsd_device)	devlink;	/* global device list membership */
 	device_t		parent;
 	device_list_t		children;	/* list of subordinate devices */
 
