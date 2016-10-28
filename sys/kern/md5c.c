@@ -43,7 +43,7 @@
 #include <sys/endian.h>
 #include <sys/md5.h>
 
-static void MD5Transform(u_int32_t [4], const unsigned char [64]);
+static void __kern__MD5Transform(u_int32_t [4], const unsigned char [64]);
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define Encode memcpy
@@ -171,10 +171,10 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
 	if (inputLen >= partLen) {
 		memcpy((void *)&((char *)context->data)[index], (const void *)input,
 		    partLen);
-		MD5Transform (&context->A, (char *)context->data);
+		__kern__MD5Transform (&context->A, (char *)context->data);
 
 		for (i = partLen; i + 63 < inputLen; i += 64)
-			MD5Transform (&context->A, &input[i]);
+			__kern__MD5Transform (&context->A, &input[i]);
 
 		index = 0;
 	}
@@ -191,7 +191,7 @@ MD5Update (MD5_CTX *context, const void *in, unsigned int inputLen)
  */
 
 static void
-MD5Pad (MD5_CTX *context)
+__kern__MD5Pad (MD5_CTX *context)
 {
 	unsigned char bits[8];
 	unsigned int index, padLen;
@@ -217,7 +217,7 @@ void
 MD5Final (unsigned char digest[16], MD5_CTX *context)
 {
 	/* Do padding. */
-	MD5Pad (context);
+	__kern__MD5Pad (context);
 
 	/* Store state in digest */
 	Encode (digest, &context->A, 16);
@@ -229,7 +229,7 @@ MD5Final (unsigned char digest[16], MD5_CTX *context)
 /* MD5 basic transformation. Transforms state based on block. */
 
 static void
-MD5Transform (u_int32_t state[4], const unsigned char block[64])
+__kern__MD5Transform (u_int32_t state[4], const unsigned char block[64])
 {
 	u_int32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
