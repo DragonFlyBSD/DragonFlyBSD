@@ -9,7 +9,7 @@ BINOWN=	root
 BINMODE=4555
 
 LDADD=	-lipsec -lm -lmd -lprivate_crypto
-DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD} ${LIBCRYPTO}
+DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD} ${LIBRECRYPTO}
 LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 NO_STRICT_ALIASING=
 

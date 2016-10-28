@@ -13,7 +13,7 @@ CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
 SHARED_CFLAGS+=	-DHAVE_ICONV=1 -DHAVE_ICONV_H=1
 WARNS?=	2
 
-DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBCRYPTO} ${LIBZ}
+DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBRECRYPTO} ${LIBZ}
 LDADD=	-lbz2 -llzma -lmd -lprivate_crypto -lz
 LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 

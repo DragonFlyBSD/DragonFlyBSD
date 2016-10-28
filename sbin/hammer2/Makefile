@@ -13,7 +13,7 @@ CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+= -pthread
 LDADD=	-ldmsg -lm -lutil -lprivate_crypto
-DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBCRYPTO}
+DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBRECRYPTO}
 LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 DPADD+=		${LIBRECRYPTO}
