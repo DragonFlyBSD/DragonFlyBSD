@@ -56,7 +56,9 @@
  * [including the GNU Public Licence.]
  */
 
+#ifndef _KERNEL	/* for DFly kernel compile */
 #include <stddef.h>
+#endif
 
 #ifndef HEADER_MD5_H
 #define HEADER_MD5_H
