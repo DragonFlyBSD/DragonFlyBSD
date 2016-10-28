@@ -25,7 +25,7 @@ LDADD+=	-lpcap
 DPADD+=	${LIBPCAP}
 
 # MS-CHAP support.  Requires the DES library.
-.if !defined(NO_CRYPT) && !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 CFLAGS+=	-DCHAPMS
 SRCS+=		chap_ms.c
 LDADD+=		-lprivate_crypto

@@ -1041,15 +1041,10 @@ lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
 _generic_libs+=	lib
 
 .if !defined(NO_CRYPT)
-.if defined(FORCE_OPENSSL)
-_prebuild_libs+=	lib/libcrypto lib/libssl
-.endif
-.if !defined(NO_LIBRESSL)
 _prebuild_libs+=	lib/librecrypto lib/libressl
 _prebuild_libs+=	lib/libssh
 lib/libssh__L: lib/librecrypto__L lib/libz__L
 lib/libopie__L: lib/librecrypto__L
-.endif
 .endif
 
 _prebuild_libs+= lib/libopie

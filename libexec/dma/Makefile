@@ -1,6 +1,6 @@
 SUBDIR=	dma-mbox-create default-conf mailer-conf
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+= dma
 .endif
 

@@ -7,7 +7,7 @@ SUBDIR= gcc50
 SUBDIR+= gcc47
 .endif
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+= libcryptsetup
 SUBDIR+= libluks
 .endif

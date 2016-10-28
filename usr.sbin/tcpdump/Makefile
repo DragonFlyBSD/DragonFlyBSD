@@ -51,7 +51,7 @@ CFLAGS+=	-DINET6 -DHAVE_GETNAMEINFO
 
 DPADD=	${LIBL} ${LIBPCAP}
 LDADD=	-ll -lpcap
-.if !defined(NO_CRYPT) && !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 DPADD+=		${LIBRECRYPTO}
 LDADD+=		-lprivate_crypto
 CFLAGS+=	-DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H

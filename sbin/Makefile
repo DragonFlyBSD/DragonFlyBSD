@@ -115,7 +115,7 @@ SUBDIR+= ${MACHINE}
 SUBDIR+= ${MACHINE_ARCH}
 .endif
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+=cryptdisks \
 	tcplay
 

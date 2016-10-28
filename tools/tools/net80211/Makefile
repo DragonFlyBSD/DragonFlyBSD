@@ -2,7 +2,7 @@
 
 SUBDIR=	stumbler wesside wlaninject wlanstats wlantxtime wlanwatch wlanwds
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+= w00t
 .endif
 

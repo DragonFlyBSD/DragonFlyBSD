@@ -22,7 +22,7 @@ SUBDIR=	pam_chroot \
 	pam_tacplus \
 	pam_unix
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+= pam_ssh
 .endif
 

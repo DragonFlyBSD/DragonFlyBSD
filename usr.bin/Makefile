@@ -247,11 +247,13 @@ SUBDIR=	alias \
 SUBDIR+=hesinfo
 .endif
 
-# Uses LibreSSL but can build without it
+# Uses lib[re]ssl but can build without it
 SUBDIR+=ftp \
 	telnet
 
-.if !defined(NO_LIBRESSL)
+# Requires lib[re]ssl
+#
+.if !defined(NO_CRYPT)
 SUBDIR+=chkey \
 	dc \
 	drill \

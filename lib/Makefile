@@ -25,10 +25,7 @@
 
 SUBDIR_ORDERED=	${_libc_r}
 
-.if defined(FORCE_OPENSSL) # to be removed during 4.8 development
-SUBDIR_ORDERED+=libcrypto libssl
-.endif
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR_ORDERED+=librecrypto libressl libssh
 .endif
 
@@ -111,7 +108,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 SUBDIR:=	libc ${SUBDIR:Nlibc}
 .endif
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 .  if defined(WANT_HAMMER2)
 _libdmsg=	libdmsg
 .  endif

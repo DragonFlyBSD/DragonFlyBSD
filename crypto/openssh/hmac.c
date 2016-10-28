@@ -136,7 +136,9 @@ ssh_hmac_free(struct ssh_hmac_ctx *ctx)
 
 #ifdef TEST
 
-/* cc -DTEST hmac.c digest.c buffer.c cleanup.c fatal.c log.c xmalloc.c -lcrypto */
+/*
+ * cc -DTEST hmac.c digest.c buffer.c cleanup.c fatal.c log.c xmalloc.c -lprivate_crypto
+ */
 static void
 hmac_test(void *key, size_t klen, void *m, size_t mlen, u_char *e, size_t elen)
 {

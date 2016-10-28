@@ -1,6 +1,6 @@
 SUBDIR=	ndis_events wpa_cli wpa_passphrase
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+= wpa_supplicant
 .endif
 

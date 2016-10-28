@@ -141,7 +141,7 @@ SUBDIR= 802_11 \
 	ypset \
 	zic
 
-# Uses LibreSSL but can build without it
+# Uses lib[re]ssl but can build without it
 #
 SUBDIR+=ppp \
 	pppd \
@@ -151,7 +151,7 @@ SUBDIR+=ppp \
 #
 SUBDIR+=sshd
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+=keyserv
 .endif
 

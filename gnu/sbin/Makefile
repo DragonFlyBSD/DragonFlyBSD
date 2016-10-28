@@ -2,7 +2,7 @@
 
 SUBDIR= dmsetup lvm
 
-.if !defined(NO_LIBRESSL)
+.if !defined(NO_CRYPT)
 SUBDIR+= cryptsetup
 .endif
 
