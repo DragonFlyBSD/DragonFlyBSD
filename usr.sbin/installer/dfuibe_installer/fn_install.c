@@ -67,7 +67,7 @@
 #include "fn.h"
 
 /*
- * NOTE: Even though /var/run doesn't need to be backedup, nearly all
+ * NOTE: Even though /var/run doesn't need to be backed up, nearly all
  *	 services depend on it so it is best to leave it on the root.
  */
 static const char *nullfs_mountpt[] = {
