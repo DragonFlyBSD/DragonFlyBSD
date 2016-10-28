@@ -34,4 +34,3 @@ void *__crypt__sha512_finish_ctx (struct sha512_ctx *ctx, void *resbuf);
 void __crypt__sha512_process_bytes (const void *buffer, size_t len, struct sha512_ctx *ctx);
 void __crypt__sha512_process_block (const void *buffer, size_t len, struct sha512_ctx *ctx);
 void __crypt__sha512_init_ctx (struct sha512_ctx *ctx);
-
