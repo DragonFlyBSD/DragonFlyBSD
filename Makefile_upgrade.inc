@@ -3138,6 +3138,10 @@ TO_REMOVE+=/usr/lib/profile/libprivate_panel.a
 TO_REMOVE+=/usr/lib/profile/libprivate_panelw.a
 TO_REMOVE+=/usr/include/compat
 TO_REMOVE+=/usr/include/sys/stdbool.h
+TO_REMOVE+=/usr/share/man/man3/ascftime.3.gz
+TO_REMOVE+=/usr/share/man/man3/cfree.3.gz
+TO_REMOVE+=/usr/share/man/man3/cftime.3.gz
+TO_REMOVE+=/usr/share/man/man3/getpw.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
