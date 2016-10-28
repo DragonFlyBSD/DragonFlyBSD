@@ -1034,7 +1034,7 @@ _prebuild_libs+=	lib/libpcap
 _generic_libs=	gnu/lib
 
 _prebuild_libs+= lib/libcrypt lib/libmd \
-		lib/libncurses/libncurses lib/libopie
+		lib/libncurses/libncurses
 
 lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
 
@@ -1048,8 +1048,11 @@ _prebuild_libs+=	lib/libcrypto lib/libssl
 _prebuild_libs+=	lib/librecrypto lib/libressl
 _prebuild_libs+=	lib/libssh
 lib/libssh__L: lib/librecrypto__L lib/libz__L
+lib/libopie__L: lib/librecrypto__L
 .endif
 .endif
+
+_prebuild_libs+= lib/libopie
 
 _prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \
 		lib/libpam lib/libypclnt lib/lib${THREAD_LIB} \
@@ -1063,9 +1066,13 @@ ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
 	${ECHODIR} "===> ${_lib}"; \
 		cd ${.CURDIR}/${_lib}; \
+		echo "STEP DEP ${_lib}"; \
 		make DIRPRFX=${_lib}/ depend; \
+		echo "STEP ALL ${_lib}"; \
 		make DIRPRFX=${_lib}/ all; \
-		make DIRPRFX=${_lib}/ install
+		echo "STEP INSTALL ${_lib}"; \
+		make DIRPRFX=${_lib}/ install; \
+		echo "STEP DONE ${_lib}";
 .endif
 .endfor
 
