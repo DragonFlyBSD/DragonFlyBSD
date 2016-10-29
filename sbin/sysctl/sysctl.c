@@ -306,23 +306,23 @@ parse(const char *string)
 /* These functions will dump out various interesting structures. */
 
 static int
-S_clockinfo(int l2, void *p)
+S_clockinfo(size_t l2, void *p)
 {
 	struct clockinfo *ci = (struct clockinfo*)p;
 	if (l2 != sizeof(*ci))
-		err(1, "S_clockinfo %d != %zu", l2, sizeof(*ci));
+		err(1, "S_clockinfo %zu != %zu", l2, sizeof(*ci));
 	printf("{ hz = %d, tick = %d, tickadj = %d, profhz = %d, stathz = %d }",
 		ci->hz, ci->tick, ci->tickadj, ci->profhz, ci->stathz);
 	return (0);
 }
 
 static int
-S_loadavg(int l2, void *p)
+S_loadavg(size_t l2, void *p)
 {
 	struct loadavg *tv = (struct loadavg*)p;
 
 	if (l2 != sizeof(*tv))
-		err(1, "S_loadavg %d != %zu", l2, sizeof(*tv));
+		err(1, "S_loadavg %zu != %zu", l2, sizeof(*tv));
 
 	printf("{ %.2f %.2f %.2f }",
 		(double)tv->ldavg[0]/(double)tv->fscale,
@@ -332,14 +332,14 @@ S_loadavg(int l2, void *p)
 }
 
 static int
-S_timespec(int l2, void *p)
+S_timespec(size_t l2, void *p)
 {
 	struct timespec *ts = (struct timespec*)p;
 	time_t tv_sec;
 	char *p1, *p2;
 
 	if (l2 != sizeof(*ts))
-		err(1, "S_timespec %d != %zu", l2, sizeof(*ts));
+		err(1, "S_timespec %zu != %zu", l2, sizeof(*ts));
 	printf("{ sec = %ld, nsec = %ld } ",
 		ts->tv_sec, ts->tv_nsec);
 	tv_sec = ts->tv_sec;
@@ -352,14 +352,14 @@ S_timespec(int l2, void *p)
 }
 
 static int
-S_timeval(int l2, void *p)
+S_timeval(size_t l2, void *p)
 {
 	struct timeval *tv = (struct timeval*)p;
 	time_t tv_sec;
 	char *p1, *p2;
 
 	if (l2 != sizeof(*tv))
-		err(1, "S_timeval %d != %zu", l2, sizeof(*tv));
+		err(1, "S_timeval %zu != %zu", l2, sizeof(*tv));
 	printf("{ sec = %ld, usec = %ld } ",
 		tv->tv_sec, tv->tv_usec);
 	tv_sec = tv->tv_sec;
@@ -372,12 +372,12 @@ S_timeval(int l2, void *p)
 }
 
 static int
-S_sensor(int l2, void *p)
+S_sensor(size_t l2, void *p)
 {
 	struct sensor *s = (struct sensor *)p;
 
 	if (l2 != sizeof(*s)) {
-		warnx("S_sensor %d != %zu", l2, sizeof(*s));
+		warnx("S_sensor %zu != %zu", l2, sizeof(*s));
 		return (1);
 	}
 
@@ -516,11 +516,11 @@ S_sensor(int l2, void *p)
 }
 
 static int
-T_dev_t(int l2, void *p)
+T_dev_t(size_t l2, void *p)
 {
 	dev_t *d = (dev_t *)p;
 	if (l2 != sizeof(*d))
-		err(1, "T_dev_T %d != %zu", l2, sizeof(*d));
+		err(1, "T_dev_T %zu != %zu", l2, sizeof(*d));
 	if ((int)(*d) != -1) {
 		if (minor(*d) > 255 || minor(*d) < 0)
 			printf("{ major = %d, minor = 0x%x }",
@@ -640,7 +640,7 @@ show_var(int *oid, size_t nlen)
 	int i;
 	size_t j, len;
 	u_int kind;
-	int (*func)(int, void *);
+	int (*func)(size_t, void *);
 	int error = 0;
 
 	qoid[0] = 0;
