@@ -918,9 +918,9 @@ int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
 		value = HAMMER_BOOT_NOMBYTES;
 		while (value > avg_vol_size / HAMMER_MAX_VOLUMES)
 			value >>= 1;
-		if (value < HAMMER_BOOT_MINBYTES)
-			value = 0;
-	} else if (value < HAMMER_BOOT_MINBYTES) {
+	}
+
+	if (value < HAMMER_BOOT_MINBYTES) {
 		value = HAMMER_BOOT_MINBYTES;
 	} else if (value > HAMMER_BOOT_MAXBYTES) {
 		value = HAMMER_BOOT_MAXBYTES;
@@ -935,9 +935,9 @@ int64_t init_mem_area_size(int64_t value, off_t avg_vol_size)
 		value = HAMMER_MEM_NOMBYTES;
 		while (value > avg_vol_size / HAMMER_MAX_VOLUMES)
 			value >>= 1;
-		if (value < HAMMER_MEM_MINBYTES)
-			value = 0;
-	} else if (value < HAMMER_MEM_MINBYTES) {
+	}
+
+	if (value < HAMMER_MEM_MINBYTES) {
 		value = HAMMER_MEM_MINBYTES;
 	} else if (value > HAMMER_MEM_MAXBYTES) {
 		value = HAMMER_MEM_MAXBYTES;
