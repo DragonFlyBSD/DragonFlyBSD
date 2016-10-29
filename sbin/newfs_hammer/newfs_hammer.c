@@ -43,6 +43,7 @@ static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
 static void usage(int exit_code);
+static void test_undo_buffer_size(int64_t size);
 
 static int ForceOpt;
 static int64_t BootAreaSize;
@@ -106,15 +107,7 @@ main(int ac, char **av)
 					 HAMMER_BIGBLOCK_SIZE,
 					 HAMMER_BIGBLOCK_SIZE *
 					 HAMMER_MAX_UNDO_BIGBLOCKS, 2);
-			if (UndoBufferSize < 500*1024*1024 && ForceOpt == 0)
-				errx(1, "The minimum UNDO/REDO FIFO size is "
-					"500MB\n");
-			if (UndoBufferSize < 500*1024*1024) {
-				fprintf(stderr,
-					"WARNING: you have specified an "
-					"UNDO/REDO FIFO size less than 500MB,\n"
-					"which may lead to VFS panics.\n");
-			}
+			test_undo_buffer_size(UndoBufferSize);
 			break;
 		case 'h':
 			usage(0);
@@ -252,7 +245,7 @@ main(int ac, char **av)
 		"'daily_clean_hammer_enable' can be unset to disable this.\n"
 		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
 	if (total < 10*GIG) {
-		printf("\nWARNING: The minimum UNDO/REDO FIFO is 500MB, you "
+		printf("\nWARNING: The minimum UNDO/REDO FIFO is 512MB, you "
 		       "really should not\n"
 		       "try to format a HAMMER filesystem this small.\n");
 	}
@@ -276,6 +269,21 @@ usage(int exit_code)
 		"                    [-C cachesize[:readahead]] [-V version] special ...\n"
 	);
 	exit(exit_code);
+}
+
+static void
+test_undo_buffer_size(int64_t size)
+{
+	if (size < HAMMER_BIGBLOCK_SIZE * HAMMER_MIN_UNDO_BIGBLOCKS) {
+		if (ForceOpt == 0) {
+			errx(1, "The minimum UNDO/REDO FIFO size is 512MB\n");
+		} else {
+			fprintf(stderr,
+				"WARNING: you have specified an "
+				"UNDO/REDO FIFO size less than 512MB,\n"
+				"which may lead to VFS panics.\n");
+		}
+	}
 }
 
 /*
