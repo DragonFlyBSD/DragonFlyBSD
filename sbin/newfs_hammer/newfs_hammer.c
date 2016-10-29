@@ -94,12 +94,12 @@ main(int ac, char **av)
 			break;
 		case 'b':
 			BootAreaSize = getsize(optarg,
-					 HAMMER_BUFSIZE,
+					 HAMMER_BOOT_MINBYTES,
 					 HAMMER_BOOT_MAXBYTES, 2);
 			break;
 		case 'm':
 			MemAreaSize = getsize(optarg,
-					 HAMMER_BUFSIZE,
+					 HAMMER_MEM_MINBYTES,
 					 HAMMER_MEM_MAXBYTES, 2);
 			break;
 		case 'u':
