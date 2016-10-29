@@ -1665,9 +1665,6 @@ add_smap_entries(int *physmap_idx)
 	}
 }
 
-#define efi_next_descriptor(ptr, size) \
-	((struct efi_md *)(((uint8_t *) ptr) + size))
-
 static void
 add_efi_map_entries(int *physmap_idx)
 {
