@@ -119,7 +119,7 @@ main(int ac, char **av)
 			    HammerVersion >= HAMMER_VOL_VERSION_WIP) {
 				errx(1,
 				     "I don't understand how to format "
-				     "HAMMER version %d\n",
+				     "HAMMER version %d",
 				     HammerVersion);
 			}
 			break;
@@ -273,7 +273,7 @@ test_undo_buffer_size(int64_t size)
 {
 	if (size < HAMMER_BIGBLOCK_SIZE * HAMMER_MIN_UNDO_BIGBLOCKS) {
 		if (ForceOpt == 0) {
-			errx(1, "The minimum UNDO/REDO FIFO size is 512MB\n");
+			errx(1, "The minimum UNDO/REDO FIFO size is 512MB");
 		} else {
 			fprintf(stderr,
 				"WARNING: you have specified an "
@@ -281,7 +281,7 @@ test_undo_buffer_size(int64_t size)
 				"which may lead to VFS panics.\n");
 		}
 	} else if (size > HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS) {
-		errx(1, "The maximum UNDO/REDO FIFO size is 1GB\n");
+		errx(1, "The maximum UNDO/REDO FIFO size is 1GB");
 	}
 }
 
@@ -313,25 +313,25 @@ getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 		val *= 1024;
 		break;
 	default:
-		errx(1, "Unknown suffix in number '%s'\n", str);
+		errx(1, "Unknown suffix in number '%s'", str);
 		/* not reached */
 	}
 	if (ptr[1]) {
-		errx(1, "Unknown suffix in number '%s'\n", str);
+		errx(1, "Unknown suffix in number '%s'", str);
 		/* not reached */
 	}
 	if (minval != -1 && val < minval) {
-		errx(1, "Value too small: %s, min is %s\n",
+		errx(1, "Value too small: %s, min is %s",
 		     str, sizetostr(minval));
 		/* not reached */
 	}
 	if (maxval != -1 && val > maxval) {
-		errx(1, "Value too large: %s, max is %s\n",
+		errx(1, "Value too large: %s, max is %s",
 		     str, sizetostr(maxval));
 		/* not reached */
 	}
 	if ((powerof2 & 1) && (val ^ (val - 1)) != ((val << 1) - 1)) {
-		errx(1, "Value not power of 2: %s\n", str);
+		errx(1, "Value not power of 2: %s", str);
 		/* not reached */
 	}
 	if ((powerof2 & 2) && (val & HAMMER_BUFMASK)) {
@@ -503,7 +503,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 			errx(1, "Cannot create a HAMMER filesystem less than 10GB "
 				"unless you use -f\n(for the size of Volume %d).  "
 				"HAMMER filesystems less than 50GB are not "
-				"recommended.\n", HAMMER_ROOT_VOLNO);
+				"recommended.", HAMMER_ROOT_VOLNO);
 		}
 
 		/*
