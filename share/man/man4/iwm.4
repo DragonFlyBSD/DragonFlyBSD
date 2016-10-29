@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/iwm.4 286441 2015-08-08 06:06:48Z rpaulo $
 .\"
-.Dd October 9, 2016
+.Dd October 29, 2016
 .Dt IWM 4
 .Os
 .Sh NAME
@@ -103,6 +103,9 @@ This behavior can be turned off by setting this tunable to 0.
 .It Va hw.iwm.power_scheme
 Power management scheme:
 1 = active, 2 = balanced (default), 3 = low power
+.It Va hw.iwm.lar.disable
+Allows disabling LAR (Location Aware Regulatory) feature:
+0 = LAR enabled if available (default), 1 = LAR disabled
 .El
 .Sh EXAMPLES
 Join an existing BSS network (i.e., connect to an access point):
