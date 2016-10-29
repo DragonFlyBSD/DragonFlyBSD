@@ -36,12 +36,15 @@
 #include <stdbool.h>
 #include <sys/cdefs.h>
 #include <sys/param.h>
+#include <sys/disklabel64.h>
+#include <sys/dtype.h>
 #include <efi.h>
 
 #include "boot_module.h"
 
 static dev_info_t *devinfo;
 static dev_info_t *devices;
+static u_int64_t label_off;
 
 static int
 dskread(void *buf, u_int64_t lba, int nblk)
@@ -49,6 +52,7 @@ dskread(void *buf, u_int64_t lba, int nblk)
 	int size;
 	EFI_STATUS status;
 
+	lba += label_off / DEV_BSIZE;	/* adjust for disklabel partition */
 	lba = lba / (devinfo->dev->Media->BlockSize / DEV_BSIZE);
 	size = nblk * DEV_BSIZE;
 
@@ -82,10 +86,25 @@ static struct ufs_dmadat *boot2_dmadat;
 static int
 init_dev(dev_info_t* dev)
 {
-
 	devinfo = dev;
 	boot2_dmadat = &__dmadat;
+	struct disklabel64 *label;
+	EFI_STATUS status;
+	size_t label_size;
 
+	label_size = (sizeof(*label) + 2047) & ~(size_t)2047;
+
+	label_off = 0;
+	status = bs->AllocatePool(EfiLoaderData, label_size, (void **)&label);
+	if (status == EFI_SUCCESS) {
+		if (dskread(label, 0, label_size / DEV_BSIZE) == 0 &&
+		    label->d_magic == DISKMAGIC64 &&
+		    label->d_npartitions > 0 &&
+		    label->d_partitions[0].p_fstype == FS_BSDFFS) {
+			label_off = label->d_partitions[0].p_boffset;
+		}
+		bs->FreePool(label);
+	}
 	return fsread(0, NULL, 0);
 }
 

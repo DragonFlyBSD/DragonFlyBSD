@@ -50,6 +50,7 @@ struct efi_devdesc
 	    int		slice;
 	    int		partition;
 	    void	*data;
+	    u_int64_t	label_offset;
 	} efidisk;
 	struct
 	{

@@ -29,6 +29,8 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/libefi/efipart.c 293724 2016-01-12 02:17:3
 
 #include <sys/param.h>
 #include <sys/time.h>
+#include <sys/disklabel64.h>
+#include <sys/dtype.h>
 #include <stddef.h>
 #include <stdarg.h>
 
@@ -180,7 +182,11 @@ efipart_open(struct open_file *f, ...)
 	struct efi_devdesc *dev;
 	EFI_BLOCK_IO *blkio;
 	EFI_HANDLE h;
+        struct disklabel64 *label;
 	EFI_STATUS status;
+	size_t label_size;
+
+	label_size = (sizeof(*label) + 2047) & ~(size_t)2047;
 
 	va_start(args, f);
 	dev = va_arg(args, struct efi_devdesc*);
@@ -198,6 +204,27 @@ efipart_open(struct open_file *f, ...)
 		return (EAGAIN);
 
 	dev->d_kind.efidisk.data = blkio;
+	dev->d_kind.efidisk.label_offset = 0;
+
+	/*
+	 * If this is a DragonFlyBSD label64 automatically dive partition 'a'
+	 * for the UFS /boot.
+	 */
+        status = BS->AllocatePool(EfiLoaderData, label_size, (void **)&label);
+        if (status == EFI_SUCCESS) {
+		label->d_magic = -1;
+		label->d_npartitions = -1;
+		label->d_partitions[0].p_fstype = -1;
+		if (efipart_strategy(dev, F_READ, 0, label_size,
+				     (char *)label, NULL) == 0 &&
+		    label->d_magic == DISKMAGIC64 &&
+		    label->d_npartitions > 0 &&
+		    label->d_partitions[0].p_fstype == FS_BSDFFS) {
+			dev->d_kind.efidisk.label_offset =
+				 label->d_partitions[0].p_boffset;
+		}
+		BS->FreePool(label);
+	}
 	return (0);
 }
 
@@ -277,6 +304,11 @@ efipart_strategy(void *devdata, int rw, daddr_t blk, size_t size, char *buf,
 
 	if (rsize != NULL)
 		*rsize = size;
+
+	/*
+	 * Adjust for disklabel64
+	 */
+	blk += dev->d_kind.efidisk.label_offset / DEV_BSIZE;
 
 	if (blkio->Media->BlockSize == 512)
 		return (efipart_readwrite(blkio, rw, blk, size / 512, buf));
