@@ -922,6 +922,8 @@ int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
 			value = 0;
 	} else if (value < HAMMER_BOOT_MINBYTES) {
 		value = HAMMER_BOOT_MINBYTES;
+	} else if (value > HAMMER_BOOT_MAXBYTES) {
+		value = HAMMER_BOOT_MAXBYTES;
 	}
 
 	return(value);
@@ -937,6 +939,8 @@ int64_t init_mem_area_size(int64_t value, off_t avg_vol_size)
 			value = 0;
 	} else if (value < HAMMER_MEM_MINBYTES) {
 		value = HAMMER_MEM_MINBYTES;
+	} else if (value > HAMMER_MEM_MAXBYTES) {
+		value = HAMMER_MEM_MAXBYTES;
 	}
 
 	return(value);
