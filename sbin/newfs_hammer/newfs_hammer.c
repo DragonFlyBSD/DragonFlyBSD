@@ -37,7 +37,7 @@
 
 #include "hammer_util.h"
 
-static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
+static int64_t getsize(const char *str, int pw);
 static int trim_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
@@ -95,15 +95,15 @@ main(int ac, char **av)
 			label = optarg;
 			break;
 		case 'b':
-			BootAreaSize = getsize(optarg, -1, -1, 2);
+			BootAreaSize = getsize(optarg, 2);
 			test_boot_area_size(BootAreaSize);
 			break;
 		case 'm':
-			MemoryLogSize = getsize(optarg, -1, -1, 2);
+			MemoryLogSize = getsize(optarg, 2);
 			test_memory_log_size(MemoryLogSize);
 			break;
 		case 'u':
-			UndoBufferSize = getsize(optarg, -1, -1, 2);
+			UndoBufferSize = getsize(optarg, 2);
 			test_undo_buffer_size(UndoBufferSize);
 			break;
 		case 'h':
@@ -313,7 +313,7 @@ test_undo_buffer_size(int64_t size)
  * Convert a string to a 64 bit signed integer with various requirements.
  */
 static int64_t
-getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
+getsize(const char *str, int powerof2)
 {
 	int64_t val;
 	char *ptr;
@@ -340,18 +340,9 @@ getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 		errx(1, "Unknown suffix in number '%s'", str);
 		/* not reached */
 	}
+
 	if (ptr[1]) {
 		errx(1, "Unknown suffix in number '%s'", str);
-		/* not reached */
-	}
-	if (minval != -1 && val < minval) {
-		errx(1, "Value too small: %s, min is %s",
-		     str, sizetostr(minval));
-		/* not reached */
-	}
-	if (maxval != -1 && val > maxval) {
-		errx(1, "Value too large: %s, max is %s",
-		     str, sizetostr(maxval));
 		/* not reached */
 	}
 	if ((powerof2 & 1) && (val ^ (val - 1)) != ((val << 1) - 1)) {
