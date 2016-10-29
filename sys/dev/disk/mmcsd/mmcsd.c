@@ -536,6 +536,8 @@ mmcsd_task(void *arg)
 			bp->b_error = EIO;
 			bp->b_resid = (end - block) * sz;
 			bp->b_flags |= B_ERROR;
+		} else {
+			bp->b_resid = 0;
 		}
 		devstat_end_transaction_buf(&sc->device_stats, bp);
 		biodone(bio);

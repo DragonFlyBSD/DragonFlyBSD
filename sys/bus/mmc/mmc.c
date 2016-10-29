@@ -78,6 +78,7 @@ struct mmc_softc {
 	uint32_t last_rca;
 	int	 squelched; /* suppress reporting of (expected) errors */
 	int	 log_count;
+	int	 retries;   /* retries @ 10ms */
 	struct timeval log_time;
 };
 
@@ -205,8 +206,14 @@ static void mmc_wakeup(struct mmc_request *req);
 static void
 mmc_ms_delay(int ms)
 {
+	int timo;
+	int dummy;
 
-	DELAY(1000 * ms);	/* XXX BAD */
+	timo = ms * hz / 1000;
+	if (timo > 0)
+		tsleep(&dummy, 0, "mmcslp", timo);
+	else
+		DELAY(1000 * ms);
 }
 
 static int
@@ -224,6 +231,7 @@ mmc_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	sc->dev = dev;
+	sc->retries = 1000;	/* 10 seconds worth */
 	MMC_LOCK_INIT(sc);
 
 	/* We'll probe and attach our children later, but before / mount */
@@ -540,7 +548,7 @@ mmc_send_app_op_cond(struct mmc_softc *sc, uint32_t ocr, uint32_t *rocr)
 	cmd.flags = MMC_RSP_R3 | MMC_CMD_BCR;
 	cmd.data = NULL;
 
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < sc->retries; i++) {
 		err = mmc_wait_for_app_cmd(sc, 0, &cmd, CMD_RETRIES);
 		if (err != MMC_ERR_NONE)
 			break;
@@ -550,8 +558,15 @@ mmc_send_app_op_cond(struct mmc_softc *sc, uint32_t ocr, uint32_t *rocr)
 		err = MMC_ERR_TIMEOUT;
 		mmc_ms_delay(10);
 	}
+
 	if (rocr && err == MMC_ERR_NONE)
 		*rocr = cmd.resp[0];
+
+	if (err == MMC_ERR_TIMEOUT)
+		sc->retries = 100;	/* 1 second */
+	else
+		sc->retries = 1000;	/* 10 seconds */
+
 	return (err);
 }
 
@@ -567,7 +582,7 @@ mmc_send_op_cond(struct mmc_softc *sc, uint32_t ocr, uint32_t *rocr)
 	cmd.flags = MMC_RSP_R3 | MMC_CMD_BCR;
 	cmd.data = NULL;
 
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < sc->retries; i++) {
 		err = mmc_wait_for_cmd(sc, &cmd, CMD_RETRIES);
 		if (err != MMC_ERR_NONE)
 			break;
@@ -577,8 +592,15 @@ mmc_send_op_cond(struct mmc_softc *sc, uint32_t ocr, uint32_t *rocr)
 		err = MMC_ERR_TIMEOUT;
 		mmc_ms_delay(10);
 	}
+
 	if (rocr && err == MMC_ERR_NONE)
 		*rocr = cmd.resp[0];
+
+	if (err == MMC_ERR_TIMEOUT)
+		sc->retries = 100;	/* 1 second */
+	else
+		sc->retries = 1000;	/* 10 seconds */
+
 	return (err);
 }
 
