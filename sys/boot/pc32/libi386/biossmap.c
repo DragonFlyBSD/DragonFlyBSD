@@ -33,6 +33,7 @@
 #include <sys/param.h>
 #include <sys/linker.h>
 #include <machine/metadata.h>
+#include <machine/pc/bios.h>
 #include <machine/psl.h>
 #include "bootstrap.h"
 #include "libi386.h"
@@ -97,7 +98,7 @@ bios_getsmap(void)
 		 *
 		 * This wastes a little memory.
 		 */
-		if (smap.type == 1 &&
+		if (smap.type == SMAP_TYPE_MEMORY &&
 		    smap.base + smap.length > heapbase &&
 		    smap.base < memtop) {
 			if (smap.base <= heapbase) {

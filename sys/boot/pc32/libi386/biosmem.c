@@ -29,6 +29,7 @@
  * Obtain memory configuration information from the BIOS
  */
 #include <stand.h>
+#include <machine/pc/bios.h>
 #include <machine/psl.h>
 #include "libi386.h"
 #include "btxv86.h"
@@ -77,12 +78,13 @@ bios_getmem(void)
 	if ((v86.efl & PSL_C) || (v86.eax != SMAPSIG))
 	    break;
 	/* look for a low-memory segment that's large enough */
-	if ((smap.type == 1) && (smap.base == 0) && (smap.length >= (512 * 1024))) {
+	if ((smap.type == SMAP_TYPE_MEMORY) && (smap.base == 0) &&
+	    (smap.length >= (512 * 1024))) {
 	    bios_basemem = smap.length;
 	    bios_howmem = 1;
 	}
 	/* look for the first segment in 'extended' memory */
-	if ((smap.type == 1) && (smap.base == 0x100000)) {
+	if ((smap.type == SMAP_TYPE_MEMORY) && (smap.base == 0x100000)) {
 	    bios_extmem = smap.length;
 	}
     } while (v86.ebx != 0);
