@@ -48,8 +48,8 @@ static void test_memory_log_size(int64_t size);
 static void test_undo_buffer_size(int64_t size);
 
 static int ForceOpt;
-static int64_t BootAreaSize;
-static int64_t MemoryLogSize;
+static int64_t BootAreaSize = -1;
+static int64_t MemoryLogSize = -1;
 static int64_t UndoBufferSize;
 static int HammerVersion = -1;
 
@@ -201,11 +201,14 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Calculate defaults for the boot and memory area sizes.
+	 * Calculate defaults for the boot and memory area sizes,
+	 * only if not specified by -b or -m option.
 	 */
 	avg_vol_size = total / nvols;
-	BootAreaSize = init_boot_area_size(BootAreaSize, avg_vol_size);
-	MemoryLogSize = init_memory_log_size(MemoryLogSize, avg_vol_size);
+	if (BootAreaSize == -1)
+		BootAreaSize = init_boot_area_size(BootAreaSize, avg_vol_size);
+	if (MemoryLogSize == -1)
+		MemoryLogSize = init_memory_log_size(MemoryLogSize, avg_vol_size);
 
 	/*
 	 * Format the volumes.  Format the root volume first so we can
@@ -272,8 +275,15 @@ static void
 test_boot_area_size(int64_t size)
 {
 	if (size < HAMMER_BOOT_MINBYTES) {
-		errx(1, "The minimum boot area size is %s",
-			sizetostr(HAMMER_BOOT_MINBYTES));
+		if (ForceOpt == 0) {
+			errx(1, "The minimum boot area size is %s",
+				sizetostr(HAMMER_BOOT_MINBYTES));
+		} else {
+			fprintf(stderr,
+				"WARNING: you have specified "
+				"boot area size less than %s.\n",
+				sizetostr(HAMMER_BOOT_MINBYTES));
+		}
 	} else if (size > HAMMER_BOOT_MAXBYTES) {
 		errx(1, "The maximum boot area size is %s",
 			sizetostr(HAMMER_BOOT_MAXBYTES));
@@ -284,8 +294,15 @@ static void
 test_memory_log_size(int64_t size)
 {
 	if (size < HAMMER_MEM_MINBYTES) {
-		errx(1, "The minimum memory log size is %s",
-			sizetostr(HAMMER_MEM_MINBYTES));
+		if (ForceOpt == 0) {
+			errx(1, "The minimum memory log size is %s",
+				sizetostr(HAMMER_MEM_MINBYTES));
+		} else {
+			fprintf(stderr,
+				"WARNING: you have specified "
+				"memory log size less than %s.\n",
+				sizetostr(HAMMER_MEM_MINBYTES));
+		}
 	} else if (size > HAMMER_MEM_MAXBYTES) {
 		errx(1, "The maximum memory log size is %s",
 			sizetostr(HAMMER_MEM_MAXBYTES));
