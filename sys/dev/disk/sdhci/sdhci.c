@@ -645,6 +645,7 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	}
 
 	slot->timeout = 10;
+	slot->failures = 0;
 	SYSCTL_ADD_INT(device_get_sysctl_ctx(slot->bus),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(slot->bus)), OID_AUTO,
 	    "timeout", CTLFLAG_RW, &slot->timeout, 0,
@@ -762,6 +763,8 @@ sdhci_req_done(struct sdhci_slot *slot)
 
 	if (slot->req != NULL && slot->curcmd != NULL) {
 		callout_stop(&slot->timeout_callout);
+		if (slot->curcmd->error != MMC_ERR_TIMEOUT)
+			slot->failures = 0;
 		req = slot->req;
 		slot->req = NULL;
 		slot->curcmd = NULL;
@@ -904,9 +907,19 @@ sdhci_start_command(struct sdhci_slot *slot, struct mmc_command *cmd)
 	sdhci_set_transfer_mode(slot, cmd->data);
 	/* Start command. */
 	WR2(slot, SDHCI_COMMAND_FLAGS, (cmd->opcode << 8) | (flags & 0xff));
-	/* Start timeout callout. */
-	callout_reset(&slot->timeout_callout, slot->timeout * hz,
-	    sdhci_timeout, slot);
+
+	/*
+	 * Start timeout callout.  Timeout is dropped to 2 seconds with
+	 * repeated controller timeouts.
+	 */
+	if (slot->failures)
+		timeout = slot->timeout / 5;
+	else
+		timeout = slot->timeout;
+	if (timeout < 2)
+		timeout = 2;
+	callout_reset(&slot->timeout_callout, timeout * hz,
+		      sdhci_timeout, slot);
 }
 
 static void

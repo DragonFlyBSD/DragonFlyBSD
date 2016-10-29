@@ -68,7 +68,6 @@
 #include <sys/spinlock.h>
 
 #include <sys/buf2.h>
-#include <sys/mplock2.h>
 
 #include <bus/mmc/mmcvar.h>
 #include <bus/mmc/mmcreg.h>
@@ -209,7 +208,8 @@ mmcsd_detach(device_t dev)
 	}
 	MMCSD_UNLOCK(sc);
 
-	/* Flush the request queue.
+	/*
+	 * Flush the request queue.
 	 *
 	 * XXX: Return all queued I/O with ENXIO. Is this correct?
 	 */
@@ -355,8 +355,7 @@ mmcsd_rw(struct mmcsd_softc *sc, struct bio *bio)
 		}
 //		kprintf("Len %d  %lld-%lld flags %#x sz %d\n",
 //		    (int)data.len, (long long)block, (long long)end, data.flags, sz);
-		MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev,
-		    &req);
+		MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev, &req);
 		if (req.cmd->error != MMC_ERR_NONE)
 			break;
 		block += numblocks;
@@ -407,8 +406,7 @@ mmcsd_delete(struct mmcsd_softc *sc, struct bio *bio)
 	if (!mmc_get_high_cap(dev))
 		cmd.arg <<= 9;
 	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
-	MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev,
-	    &req);
+	MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev, &req);
 	if (req.cmd->error != MMC_ERR_NONE) {
 	    kprintf("erase err1: %d\n", req.cmd->error);
 	    return (block);
@@ -426,8 +424,7 @@ mmcsd_delete(struct mmcsd_softc *sc, struct bio *bio)
 		cmd.arg <<= 9;
 	cmd.arg--;
 	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
-	MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev,
-	    &req);
+	MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev, &req);
 	if (req.cmd->error != MMC_ERR_NONE) {
 	    kprintf("erase err2: %d\n", req.cmd->error);
 	    return (block);
@@ -439,8 +436,7 @@ mmcsd_delete(struct mmcsd_softc *sc, struct bio *bio)
 	cmd.opcode = MMC_ERASE;
 	cmd.arg = 0;
 	cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;
-	MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev,
-	    &req);
+	MMCBUS_WAIT_FOR_REQUEST(device_get_parent(dev), dev, &req);
 	if (req.cmd->error != MMC_ERR_NONE) {
 	    kprintf("erase err3 %d\n", req.cmd->error);
 	    return (block);
@@ -496,7 +492,6 @@ mmcsd_task(void *arg)
 	daddr_t block, end;
 	device_t dev;
 
-	get_mplock();
 	dev = sc->dev;
 
 	while (1) {
@@ -547,8 +542,6 @@ out:
 	sc->running = -1;
 	MMCSD_UNLOCK(sc);
 	wakeup(sc);
-
-	rel_mplock();
 }
 
 static const char *

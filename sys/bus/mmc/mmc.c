@@ -562,11 +562,6 @@ mmc_send_app_op_cond(struct mmc_softc *sc, uint32_t ocr, uint32_t *rocr)
 	if (rocr && err == MMC_ERR_NONE)
 		*rocr = cmd.resp[0];
 
-	if (err == MMC_ERR_TIMEOUT)
-		sc->retries = 100;	/* 1 second */
-	else
-		sc->retries = 1000;	/* 10 seconds */
-
 	return (err);
 }
 
@@ -595,11 +590,6 @@ mmc_send_op_cond(struct mmc_softc *sc, uint32_t ocr, uint32_t *rocr)
 
 	if (rocr && err == MMC_ERR_NONE)
 		*rocr = cmd.resp[0];
-
-	if (err == MMC_ERR_TIMEOUT)
-		sc->retries = 100;	/* 1 second */
-	else
-		sc->retries = 1000;	/* 10 seconds */
 
 	return (err);
 }

@@ -273,6 +273,7 @@ struct sdhci_slot {
 #define SDHCI_PLATFORM_TRANSFER		2
 	u_char		version;
 	int		timeout;	/* Transfer timeout */
+	int		failures;	/* N Failures in a row */
 	uint32_t	max_clk;	/* Max possible freq */
 	uint32_t	timeout_clk;	/* Timeout freq */
 	bus_dma_tag_t 	dmatag;
