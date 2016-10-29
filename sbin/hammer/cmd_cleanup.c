@@ -722,7 +722,7 @@ strtosecs(char *ptr)
 	case 's':
 		break;
 	default:
-		errx(1, "illegal suffix converting %s\n", ptr);
+		errx(1, "illegal suffix converting %s", ptr);
 		break;
 	}
 	return(val);

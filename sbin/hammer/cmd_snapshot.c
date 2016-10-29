@@ -90,7 +90,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		dirpath = strdup(av[0]);
 		asprintf(&tsym, "%s/%s", dirpath, extbuf);
 	} else {
-		err(2, "hammer snap: File %s exists and is not a directory\n",
+		err(2, "hammer snap: File %s exists and is not a directory",
 		    av[0]);
 		/* not reached */
 	}
@@ -101,7 +101,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	 */
 	fsfd = open(dirpath, O_RDONLY);
 	if (fsfd < 0) {
-		err(2, "hammer snap: Cannot open directory %s\n", dirpath);
+		err(2, "hammer snap: Cannot open directory %s", dirpath);
 		/* not reached */
 	}
 
@@ -454,7 +454,7 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
 			err(2, "Unable to create snapshot");
 		} else if (snapshot.head.error &&
 			   snapshot.head.error != EEXIST) {
-			errx(2, "Unable to create snapshot: %s\n",
+			errx(2, "Unable to create snapshot: %s",
 				strerror(snapshot.head.error));
 		}
         }
