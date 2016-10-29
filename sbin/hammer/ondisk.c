@@ -682,8 +682,8 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 
 	/*
 	 * Size the undo buffer in multiples of HAMMER_BIGBLOCK_SIZE,
-	 * up to HAMMER_UNDO_LAYER2 big-blocks.  Size to approximately
-	 * 0.1% of the disk.
+	 * up to HAMMER_MAX_UNDO_BIGBLOCKS big-blocks.
+	 * Size to approximately 0.1% of the disk.
 	 *
 	 * The minimum UNDO fifo size is 500MB, or approximately 1% of
 	 * the recommended 50G disk.
@@ -701,8 +701,8 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 		     ~HAMMER_BIGBLOCK_MASK64;
 	if (undo_limit < HAMMER_BIGBLOCK_SIZE)
 		undo_limit = HAMMER_BIGBLOCK_SIZE;
-	if (undo_limit > HAMMER_BIGBLOCK_SIZE * HAMMER_UNDO_LAYER2)
-		undo_limit = HAMMER_BIGBLOCK_SIZE * HAMMER_UNDO_LAYER2;
+	if (undo_limit > HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS)
+		undo_limit = HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS;
 	*undo_buffer_size = undo_limit;
 
 	blockmap = &ondisk->vol0_blockmap[undo_zone];
@@ -714,13 +714,13 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	hammer_crc_set_blockmap(blockmap);
 
 	limit_index = undo_limit / HAMMER_BIGBLOCK_SIZE;
-	assert(limit_index <= HAMMER_UNDO_LAYER2);
+	assert(limit_index <= HAMMER_MAX_UNDO_BIGBLOCKS);
 
 	for (n = 0; n < limit_index; ++n) {
 		ondisk->vol0_undo_array[n] = alloc_bigblock(root_vol,
 							HAMMER_ZONE_UNDO_INDEX);
 	}
-	while (n < HAMMER_UNDO_LAYER2) {
+	while (n < HAMMER_MAX_UNDO_BIGBLOCKS) {
 		ondisk->vol0_undo_array[n++] = HAMMER_BLOCKMAP_UNAVAIL;
 	}
 

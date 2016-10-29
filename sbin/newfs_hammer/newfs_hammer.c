@@ -105,7 +105,7 @@ main(int ac, char **av)
 			UndoBufferSize = getsize(optarg,
 					 HAMMER_BIGBLOCK_SIZE,
 					 HAMMER_BIGBLOCK_SIZE *
-					 HAMMER_UNDO_LAYER2, 2);
+					 HAMMER_MAX_UNDO_BIGBLOCKS, 2);
 			if (UndoBufferSize < 500*1024*1024 && ForceOpt == 0)
 				errx(1, "The minimum UNDO/REDO FIFO size is "
 					"500MB\n");

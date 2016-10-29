@@ -423,11 +423,11 @@ typedef struct hammer_blockmap_layer2 {
 
 /*
  * HAMMER UNDO parameters.  The UNDO fifo is mapped directly in the volume
- * header with an array of layer2 structures.  A maximum of (128x8MB) = 1GB
+ * header with an array of zone-2 offsets.  A maximum of (128x8MB) = 1GB
  * may be reserved.  The size of the undo fifo is usually set a newfs time
  * but can be adjusted if the filesystem is taken offline.
  */
-#define HAMMER_UNDO_LAYER2	128	/* max layer2 undo mapping entries */
+#define HAMMER_MAX_UNDO_BIGBLOCKS		128
 
 /*
  * All on-disk HAMMER structures which make up elements of the UNDO FIFO
@@ -701,7 +701,7 @@ typedef struct hammer_volume_ondisk {
 	/*
 	 * Array of zone-2 addresses for undo FIFO.
 	 */
-	hammer_off_t		vol0_undo_array[HAMMER_UNDO_LAYER2];
+	hammer_off_t		vol0_undo_array[HAMMER_MAX_UNDO_BIGBLOCKS];
 } *hammer_volume_ondisk_t;
 
 #define HAMMER_ROOT_VOLNO		0
