@@ -43,6 +43,8 @@ static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
 static void usage(int exit_code);
+static void test_boot_area_size(int64_t size);
+static void test_memory_log_size(int64_t size);
 static void test_undo_buffer_size(int64_t size);
 
 static int ForceOpt;
@@ -93,14 +95,12 @@ main(int ac, char **av)
 			label = optarg;
 			break;
 		case 'b':
-			BootAreaSize = getsize(optarg,
-					 HAMMER_BOOT_MINBYTES,
-					 HAMMER_BOOT_MAXBYTES, 2);
+			BootAreaSize = getsize(optarg, -1, -1, 2);
+			test_boot_area_size(BootAreaSize);
 			break;
 		case 'm':
-			MemoryLogSize = getsize(optarg,
-					 HAMMER_MEM_MINBYTES,
-					 HAMMER_MEM_MAXBYTES, 2);
+			MemoryLogSize = getsize(optarg, -1, -1, 2);
+			test_memory_log_size(MemoryLogSize);
 			break;
 		case 'u':
 			UndoBufferSize = getsize(optarg, -1, -1, 2);
@@ -266,6 +266,30 @@ usage(int exit_code)
 		"                    [-C cachesize[:readahead]] [-V version] special ...\n"
 	);
 	exit(exit_code);
+}
+
+static void
+test_boot_area_size(int64_t size)
+{
+	if (size < HAMMER_BOOT_MINBYTES) {
+		errx(1, "The minimum boot area size is %s",
+			sizetostr(HAMMER_BOOT_MINBYTES));
+	} else if (size > HAMMER_BOOT_MAXBYTES) {
+		errx(1, "The maximum boot area size is %s",
+			sizetostr(HAMMER_BOOT_MAXBYTES));
+	}
+}
+
+static void
+test_memory_log_size(int64_t size)
+{
+	if (size < HAMMER_MEM_MINBYTES) {
+		errx(1, "The minimum memory log size is %s",
+			sizetostr(HAMMER_MEM_MINBYTES));
+	} else if (size > HAMMER_MEM_MAXBYTES) {
+		errx(1, "The maximum memory log size is %s",
+			sizetostr(HAMMER_MEM_MAXBYTES));
+	}
 }
 
 static void
