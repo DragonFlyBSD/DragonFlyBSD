@@ -103,10 +103,7 @@ main(int ac, char **av)
 					 HAMMER_MEM_MAXBYTES, 2);
 			break;
 		case 'u':
-			UndoBufferSize = getsize(optarg,
-					 HAMMER_BIGBLOCK_SIZE,
-					 HAMMER_BIGBLOCK_SIZE *
-					 HAMMER_MAX_UNDO_BIGBLOCKS, 2);
+			UndoBufferSize = getsize(optarg, -1, -1, 2);
 			test_undo_buffer_size(UndoBufferSize);
 			break;
 		case 'h':
@@ -283,6 +280,8 @@ test_undo_buffer_size(int64_t size)
 				"UNDO/REDO FIFO size less than 512MB,\n"
 				"which may lead to VFS panics.\n");
 		}
+	} else if (size > HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS) {
+		errx(1, "The maximum UNDO/REDO FIFO size is 1GB\n");
 	}
 }
 
@@ -321,12 +320,12 @@ getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 		errx(1, "Unknown suffix in number '%s'\n", str);
 		/* not reached */
 	}
-	if (val < minval) {
+	if (minval != -1 && val < minval) {
 		errx(1, "Value too small: %s, min is %s\n",
 		     str, sizetostr(minval));
 		/* not reached */
 	}
-	if (val > maxval) {
+	if (maxval != -1 && val > maxval) {
 		errx(1, "Value too large: %s, max is %s\n",
 		     str, sizetostr(maxval));
 		/* not reached */
