@@ -337,7 +337,7 @@ struct hammer_ioc_volume {
 	uint8_t			reserved[3];
 	int64_t			vol_size;
 	int64_t			boot_area_size;
-	int64_t			mem_area_size;
+	int64_t			memory_log_size;
 };
 
 #define HAMMER_IOC_VOLUME_REBLOCK	1

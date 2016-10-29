@@ -47,7 +47,7 @@ static void test_undo_buffer_size(int64_t size);
 
 static int ForceOpt;
 static int64_t BootAreaSize;
-static int64_t MemAreaSize;
+static int64_t MemoryLogSize;
 static int64_t UndoBufferSize;
 static int HammerVersion = -1;
 
@@ -98,7 +98,7 @@ main(int ac, char **av)
 					 HAMMER_BOOT_MAXBYTES, 2);
 			break;
 		case 'm':
-			MemAreaSize = getsize(optarg,
+			MemoryLogSize = getsize(optarg,
 					 HAMMER_MEM_MINBYTES,
 					 HAMMER_MEM_MAXBYTES, 2);
 			break;
@@ -205,7 +205,7 @@ main(int ac, char **av)
 	 */
 	avg_vol_size = total / nvols;
 	BootAreaSize = init_boot_area_size(BootAreaSize, avg_vol_size);
-	MemAreaSize = init_mem_area_size(MemAreaSize, avg_vol_size);
+	MemoryLogSize = init_memory_log_size(MemoryLogSize, avg_vol_size);
 
 	/*
 	 * Format the volumes.  Format the root volume first so we can
@@ -229,7 +229,7 @@ main(int ac, char **av)
 		sizetostr(total), HammerVersion);
 	printf("root-volume:         %s\n", vol->name);
 	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
-	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
+	printf("memory-log-size:     %s\n", sizetostr(MemoryLogSize));
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
 	printf("total-pre-allocated: %s\n",
 		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
@@ -465,7 +465,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += BootAreaSize;
 	ondisk->vol_mem_beg = vol_alloc;
-	vol_alloc += MemAreaSize;
+	vol_alloc += MemoryLogSize;
 
 	/*
 	 * The remaining area is the zone 2 buffer allocation area.

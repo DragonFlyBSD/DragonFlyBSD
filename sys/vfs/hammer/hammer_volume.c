@@ -652,7 +652,7 @@ hammer_format_volume_header(hammer_mount_t hmp,
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += ioc->boot_area_size;
 	ondisk->vol_mem_beg = vol_alloc;
-	vol_alloc += ioc->mem_area_size;
+	vol_alloc += ioc->memory_log_size;
 
 	/*
 	 * The remaining area is the zone 2 buffer allocation area.

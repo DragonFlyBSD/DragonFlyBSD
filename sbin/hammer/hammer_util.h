@@ -152,7 +152,7 @@ void flush_volume(struct volume_info *vol);
 void flush_buffer(struct buffer_info *buf);
 
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
-int64_t init_mem_area_size(int64_t value, off_t avg_vol_size);
+int64_t init_memory_log_size(int64_t value, off_t avg_vol_size);
 
 int hammer_parse_cache_size(const char *arg);
 void hammer_cache_add(struct cache_info *cache);

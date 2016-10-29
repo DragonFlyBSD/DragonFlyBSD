@@ -929,7 +929,7 @@ int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
 	return(value);
 }
 
-int64_t init_mem_area_size(int64_t value, off_t avg_vol_size)
+int64_t init_memory_log_size(int64_t value, off_t avg_vol_size)
 {
 	if (value == 0) {
 		value = HAMMER_MEM_NOMBYTES;

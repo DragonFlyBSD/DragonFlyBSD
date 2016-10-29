@@ -89,7 +89,7 @@ hammer_cmd_volume_add(char **av, int ac)
 	strncpy(ioc.device_name, device, MAXPATHLEN);
 	ioc.vol_size = vol->size;
 	ioc.boot_area_size = init_boot_area_size(0, ioc.vol_size);
-	ioc.mem_area_size = init_mem_area_size(0, ioc.vol_size);
+	ioc.memory_log_size = init_memory_log_size(0, ioc.vol_size);
 
 	if (ioctl(fd, HAMMERIOC_ADD_VOLUME, &ioc) < 0) {
 		fprintf(stderr, "hammer volume-add ioctl: %s\n",
