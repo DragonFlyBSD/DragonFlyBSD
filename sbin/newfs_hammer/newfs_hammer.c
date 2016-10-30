@@ -43,11 +43,13 @@ static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
 static void usage(int exit_code);
+static void test_header_junk_size(int64_t size);
 static void test_boot_area_size(int64_t size);
 static void test_memory_log_size(int64_t size);
 static void test_undo_buffer_size(int64_t size);
 
 static int ForceOpt;
+static int64_t HeaderJunkSize = -1;
 static int64_t BootAreaSize = -1;
 static int64_t MemoryLogSize = -1;
 static int64_t UndoBufferSize;
@@ -81,7 +83,7 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "dfEL:b:m:u:hC:V:")) != -1) {
+	while ((ch = getopt(ac, av, "dfEL:j:b:m:u:hC:V:")) != -1) {
 		switch(ch) {
 		case 'd':
 			++DebugOpt;
@@ -94,6 +96,10 @@ main(int ac, char **av)
 			break;
 		case 'L':
 			label = optarg;
+			break;
+		case 'j': /* Not mentioned in newfs_hammer(8) */
+			HeaderJunkSize = getsize(optarg, 2);
+			test_header_junk_size(HeaderJunkSize);
 			break;
 		case 'b':
 			BootAreaSize = getsize(optarg, 2);
@@ -202,6 +208,17 @@ main(int ac, char **av)
 	}
 
 	/*
+	 * Reserve space for (future) header junk, setup our poor-man's
+	 * big-block allocator.  Note that the header junk space includes
+	 * volume header which is 1928 bytes.
+	 */
+	if (HeaderJunkSize == -1)
+		HeaderJunkSize = HAMMER_VOL_ALLOC;
+	else if (HeaderJunkSize < (int64_t)sizeof(struct hammer_volume_ondisk))
+		HeaderJunkSize = sizeof(struct hammer_volume_ondisk);
+	HeaderJunkSize = (HeaderJunkSize + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
+
+	/*
 	 * Calculate defaults for the boot and memory area sizes,
 	 * only if not specified by -b or -m option.
 	 */
@@ -270,6 +287,26 @@ usage(int exit_code)
 		"                    [-C cachesize[:readahead]] [-V version] special ...\n"
 	);
 	exit(exit_code);
+}
+
+static void
+test_header_junk_size(int64_t size)
+{
+	if (size < HAMMER_VOL_ALLOC) {
+		if (ForceOpt == 0) {
+			errx(1, "The minimum header junk size is %s",
+				sizetostr(HAMMER_VOL_ALLOC));
+		} else {
+			fprintf(stderr,
+				"WARNING: you have specified "
+				"header junk size less than %s.\n",
+				sizetostr(HAMMER_VOL_ALLOC));
+		}
+	} else if (size > HAMMER_VOL_ALLOC) {
+		/* low limit equals high limit */
+		errx(1, "The maximum header junk size is %s",
+			sizetostr(HAMMER_VOL_ALLOC));
+	}
 }
 
 static void
@@ -489,12 +526,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_count = nvols;
 	ondisk->vol_version = HammerVersion;
 
-	/*
-	 * Reserve space for (future) header junk, setup our poor-man's
-	 * big-block allocator.
-	 */
-	vol_alloc = HAMMER_VOL_ALLOC;
-
+	vol_alloc = HeaderJunkSize;
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += BootAreaSize;
 	ondisk->vol_mem_beg = vol_alloc;

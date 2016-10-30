@@ -648,7 +648,6 @@ hammer_format_volume_header(hammer_mount_t hmp,
 	 * Reserve space for (future) header junk.
 	 */
 	vol_alloc = root_ondisk->vol_bot_beg;
-	KKASSERT(vol_alloc == HAMMER_VOL_ALLOC);
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += ioc->boot_area_size;
 	ondisk->vol_mem_beg = vol_alloc;
