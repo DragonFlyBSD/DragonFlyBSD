@@ -42,6 +42,7 @@ static int trim_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
+static void print_volume(const struct volume_info *vol);
 static void usage(int exit_code);
 static void test_header_junk_size(int64_t size);
 static void test_boot_area_size(int64_t size);
@@ -69,7 +70,6 @@ main(int ac, char **av)
 	int eflag = 0;
 	const char *label = NULL;
 	struct volume_info *vol;
-	char *fsidstr;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -238,20 +238,47 @@ main(int ac, char **av)
 			format_volume(get_volume(i), nvols, label);
 	}
 
-	/*
-	 * Print information stored in the root volume header.
-	 */
-	vol = get_root_volume();
+	print_volume(get_root_volume());
+
+	flush_all_volumes();
+	return(0);
+}
+
+static
+void
+print_volume(const struct volume_info *vol)
+{
+	hammer_volume_ondisk_t ondisk;
+	hammer_blockmap_t blockmap;
+	hammer_off_t total = 0;
+	int i, nvols;
+	uint32_t status;
+	char *fsidstr;
+
+	ondisk = vol->ondisk;
+	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+
+	nvols = ondisk->vol_count;
+	for (i = 0; i < nvols; ++i)
+		total += get_volume(i)->size;
+
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s version %d\n",
 		nvols, (nvols == 1 ? "" : "s"),
 		sizetostr(total), HammerVersion);
-	printf("root-volume:         %s\n", vol->name);
-	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
-	printf("memory-log-size:     %s\n", sizetostr(MemoryLogSize));
-	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
+	if (vol->vol_no == HAMMER_ROOT_VOLNO)
+		printf("root-volume:         %s\n", vol->name);
+	if (DebugOpt)
+		printf("header-junk-size:    %s\n",
+			sizetostr(ondisk->vol_bot_beg));
+	printf("boot-area-size:      %s\n",
+		sizetostr(ondisk->vol_mem_beg - ondisk->vol_bot_beg));
+	printf("memory-log-size:     %s\n",
+		sizetostr(ondisk->vol_buf_beg - ondisk->vol_mem_beg));
+	printf("undo-buffer-size:    %s\n",
+		sizetostr(HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset)));
 	printf("total-pre-allocated: %s\n",
 		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
 	printf("fsid:                %s\n", fsidstr);
@@ -264,9 +291,9 @@ main(int ac, char **av)
 		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
 	if (total < 10*GIG) {
 		printf("\nWARNING: The minimum UNDO/REDO FIFO is %s, "
-		       "you really should not\n"
-		       "try to format a HAMMER filesystem this small.\n",
-		       sizetostr(HAMMER_BIGBLOCK_SIZE *
+			"you really should not\n"
+			"try to format a HAMMER filesystem this small.\n",
+			sizetostr(HAMMER_BIGBLOCK_SIZE *
 			       HAMMER_MIN_UNDO_BIGBLOCKS));
 	}
 	if (total < 50*GIG) {
@@ -276,8 +303,6 @@ main(int ac, char **av)
 			"'hammer reblock'\n"
 			"quite often, even if using a nohistory mount.\n");
 	}
-	flush_all_volumes();
-	return(0);
 }
 
 static
