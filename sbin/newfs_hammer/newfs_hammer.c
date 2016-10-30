@@ -263,9 +263,11 @@ main(int ac, char **av)
 		"'daily_clean_hammer_enable' can be unset to disable this.\n"
 		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
 	if (total < 10*GIG) {
-		printf("\nWARNING: The minimum UNDO/REDO FIFO is 512MB, you "
-		       "really should not\n"
-		       "try to format a HAMMER filesystem this small.\n");
+		printf("\nWARNING: The minimum UNDO/REDO FIFO is %s, "
+		       "you really should not\n"
+		       "try to format a HAMMER filesystem this small.\n",
+		       sizetostr(HAMMER_BIGBLOCK_SIZE *
+			       HAMMER_MIN_UNDO_BIGBLOCKS));
 	}
 	if (total < 50*GIG) {
 		printf("\nWARNING: HAMMER filesystems less than 50GB are "
@@ -349,17 +351,25 @@ test_memory_log_size(int64_t size)
 static void
 test_undo_buffer_size(int64_t size)
 {
-	if (size < HAMMER_BIGBLOCK_SIZE * HAMMER_MIN_UNDO_BIGBLOCKS) {
+	int64_t minbuf, maxbuf;
+
+	minbuf = HAMMER_BIGBLOCK_SIZE * HAMMER_MIN_UNDO_BIGBLOCKS;
+	maxbuf = HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS;
+
+	if (size < minbuf) {
 		if (ForceOpt == 0) {
-			errx(1, "The minimum UNDO/REDO FIFO size is 512MB");
+			errx(1, "The minimum UNDO/REDO FIFO size is %s",
+				sizetostr(minbuf));
 		} else {
 			fprintf(stderr,
 				"WARNING: you have specified an "
-				"UNDO/REDO FIFO size less than 512MB,\n"
-				"which may lead to VFS panics.\n");
+				"UNDO/REDO FIFO size less than %s,\n"
+				"which may lead to VFS panics.\n",
+				sizetostr(minbuf));
 		}
-	} else if (size > HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS) {
-		errx(1, "The maximum UNDO/REDO FIFO size is 1GB");
+	} else if (size > maxbuf) {
+		errx(1, "The maximum UNDO/REDO FIFO size is %s",
+			sizetostr(maxbuf));
 	}
 }
 
