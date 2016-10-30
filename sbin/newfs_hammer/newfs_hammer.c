@@ -74,6 +74,7 @@ main(int ac, char **av)
 	 * if it gets broken!
 	 */
 	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_BUFSIZE);
+	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_VOL_ALLOC);
 	assert(sizeof(struct hammer_blockmap_layer1) == 32);
 	assert(sizeof(struct hammer_blockmap_layer2) == 16);
 
