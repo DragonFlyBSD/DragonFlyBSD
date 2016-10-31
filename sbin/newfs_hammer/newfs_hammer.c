@@ -219,7 +219,7 @@ main(int ac, char **av)
 	HeaderJunkSize = (HeaderJunkSize + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
 
 	/*
-	 * Calculate defaults for the boot and memory area sizes,
+	 * Calculate defaults for the boot area and memory log sizes,
 	 * only if not specified by -b or -m option.
 	 */
 	avg_vol_size = total / nvols;
