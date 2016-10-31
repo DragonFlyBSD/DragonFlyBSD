@@ -89,7 +89,6 @@
 
 #include <sys/poll.h>
 #include <sys/signalvar.h>
-#include "bitcount.h"
 #include <sys/filio.h>
 
 
@@ -3983,7 +3982,7 @@ proc_elantech(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 		 */
 
 		mask = pb->ipacket[1] & 0x1f;
-		nfingers = bitcount(mask);
+		nfingers = bitcount32(mask);
 
 		/* Skip "new finger is on touchpad" packets */
 		if ((sc->elanaction.mask & mask) == sc->elanaction.mask &&
@@ -4010,7 +4009,7 @@ proc_elantech(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 		 * 2. Next after status packet to tell new finger positions.
 		 */
 		mask = sc->elanaction.mask;
-		nfingers = bitcount(mask);
+		nfingers = bitcount32(mask);
 		id = ((pb->ipacket[3] & 0xe0) >> 5) - 1;
 
 		if (id >= 0 && id < ELANTECH_MAX_FINGERS) {
@@ -4038,7 +4037,7 @@ proc_elantech(struct psm_softc *sc, packetbuf_t *pb, mousestatus_t *ms,
 		 * byte 3 ~ 5 for another finger
 		 */
 		mask = sc->elanaction.mask;
-		nfingers = bitcount(mask);
+		nfingers = bitcount32(mask);
 
 		scale = (pb->ipacket[0] & 0x10) ? 5 : 1;
 		for (i = 0; i <= 3; i += 3) {
