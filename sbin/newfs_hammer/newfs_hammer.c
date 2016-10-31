@@ -76,7 +76,7 @@ main(int ac, char **av)
 	 * if it gets broken!
 	 */
 	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_BUFSIZE);
-	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_VOL_ALLOC);
+	assert(sizeof(struct hammer_volume_ondisk) <= HAMMER_MIN_VOL_JUNK);
 	assert(sizeof(struct hammer_blockmap_layer1) == 32);
 	assert(sizeof(struct hammer_blockmap_layer2) == 16);
 
@@ -213,7 +213,7 @@ main(int ac, char **av)
 	 * volume header which is 1928 bytes.
 	 */
 	if (HeaderJunkSize == -1)
-		HeaderJunkSize = HAMMER_VOL_ALLOC;
+		HeaderJunkSize = HAMMER_VOL_JUNK_SIZE;
 	else if (HeaderJunkSize < (int64_t)sizeof(struct hammer_volume_ondisk))
 		HeaderJunkSize = sizeof(struct hammer_volume_ondisk);
 	HeaderJunkSize = (HeaderJunkSize + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
@@ -292,20 +292,19 @@ usage(int exit_code)
 static void
 test_header_junk_size(int64_t size)
 {
-	if (size < HAMMER_VOL_ALLOC) {
+	if (size < HAMMER_MIN_VOL_JUNK) {
 		if (ForceOpt == 0) {
 			errx(1, "The minimum header junk size is %s",
-				sizetostr(HAMMER_VOL_ALLOC));
+				sizetostr(HAMMER_MIN_VOL_JUNK));
 		} else {
 			fprintf(stderr,
 				"WARNING: you have specified "
 				"header junk size less than %s.\n",
-				sizetostr(HAMMER_VOL_ALLOC));
+				sizetostr(HAMMER_MIN_VOL_JUNK));
 		}
-	} else if (size > HAMMER_VOL_ALLOC) {
-		/* low limit equals high limit */
+	} else if (size > HAMMER_MAX_VOL_JUNK) {
 		errx(1, "The maximum header junk size is %s",
-			sizetostr(HAMMER_VOL_ALLOC));
+			sizetostr(HAMMER_MAX_VOL_JUNK));
 	}
 }
 

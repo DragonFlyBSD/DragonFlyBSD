@@ -94,7 +94,9 @@
 /*
  * Reserved space for (future) header junk after the volume header.
  */
-#define HAMMER_VOL_ALLOC	(HAMMER_BUFSIZE * 16)
+#define HAMMER_MIN_VOL_JUNK	(HAMMER_BUFSIZE * 16)	/* 256 KB */
+#define HAMMER_MAX_VOL_JUNK	HAMMER_MIN_VOL_JUNK
+#define HAMMER_VOL_JUNK_SIZE	HAMMER_MIN_VOL_JUNK
 
 /*
  * Hammer transaction ids are 64 bit unsigned integers and are usually
