@@ -128,6 +128,7 @@ static int
 acpi_cst_cx_mwait_setup(struct acpi_cst_cx *cx)
 {
 	uint32_t eax_hint;
+	int error;
 
 	if (bootverbose) {
 		kprintf("C%d: BitWidth(vendor) %d, BitOffset(class) %d, "
@@ -159,12 +160,15 @@ acpi_cst_cx_mwait_setup(struct acpi_cst_cx *cx)
 
 	if (!cpu_mwait_hint_valid(eax_hint)) {
 		kprintf("C%d: invalid mwait hint 0x%08x\n", cx->type, eax_hint);
-		return EINVAL;
+		error = EINVAL;
+		goto done;
 	}
 
 	cx->md_arg0 = eax_hint;
 	cx->enter = acpi_cst_cx_mwait_enter;
+	error = 0;
 
+done:
 	if ((cx->gas.AccessWidth & ACPI_GAS_INTEL_ARG1_BM_STS) == 0 &&
 	    !acpi_cst_force_bmsts) {
 		cpu_mwait_cx_no_bmsts();
@@ -185,7 +189,7 @@ acpi_cst_cx_mwait_setup(struct acpi_cst_cx *cx)
 			cpu_mwait_cx_no_bmarb();
 	}
 
-	return 0;
+	return error;
 }
 
 static void
