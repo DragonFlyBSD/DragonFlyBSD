@@ -265,9 +265,9 @@ print_volume(const struct volume_info *vol)
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
 	printf("---------------------------------------------\n");
-	printf("%d volume%s total size %s version %d\n",
-		nvols, (nvols == 1 ? "" : "s"),
-		sizetostr(total), HammerVersion);
+	printf("HAMMER version %d\n", HammerVersion);
+	printf("%d volume%s total size %s\n",
+		nvols, (nvols == 1 ? "" : "s"), sizetostr(total));
 	if (vol->vol_no == HAMMER_ROOT_VOLNO)
 		printf("root-volume:         %s\n", vol->name);
 	if (DebugOpt)
