@@ -106,6 +106,42 @@ static int wait_for_kbd_ack(atkbdc_softc_t *kbdc);
 static int wait_for_aux_data(atkbdc_softc_t *kbdc);
 static int wait_for_aux_ack(atkbdc_softc_t *kbdc);
 
+struct atkbdc_quirks {
+    const char* bios_vendor;
+    const char* maker;
+    const char* product;
+    int		quirk;
+};
+
+static struct atkbdc_quirks quirks[] = {
+    {"coreboot", "Acer", "Peppy",
+	KBDC_QUIRK_KEEP_ACTIVATED | KBDC_QUIRK_IGNORE_PROBE_RESULT |
+	KBDC_QUIRK_RESET_AFTER_PROBE | KBDC_QUIRK_SETLEDS_ON_INIT},
+
+    {NULL, NULL, NULL, 0}
+};
+
+#define QUIRK_STR_MATCH(s1, s2) (s1 == NULL || \
+    (s2 != NULL && !strcmp(s1, s2)))
+
+static int
+atkbdc_getquirks(void)
+{
+    int i;
+    char* bios_vendor = kgetenv("smbios.bios.vendor");
+    char* maker = kgetenv("smbios.system.maker");
+    char* product = kgetenv("smbios.system.product");
+
+    for (i=0; quirks[i].quirk != 0; ++i)
+	if (QUIRK_STR_MATCH(quirks[i].bios_vendor, bios_vendor) &&
+	    QUIRK_STR_MATCH(quirks[i].maker, maker) &&
+	    QUIRK_STR_MATCH(quirks[i].product, product))
+                return (quirks[i].quirk);
+
+    return (0);
+}
+
+
 atkbdc_softc_t *
 atkbdc_get_softc(int unit)
 {
@@ -215,6 +251,9 @@ atkbdc_setup(atkbdc_softc_t *sc, bus_space_tag_t tag, bus_space_handle_t h0,
 	sc->iot = tag;
 	sc->ioh0 = h0;
 	sc->ioh1 = h1;
+
+        sc->quirks = atkbdc_getquirks();
+
 	return 0;
 }
 
@@ -844,6 +883,7 @@ empty_both_buffers(KBDC p, int wait)
     int c2 = 0;
 #endif
     int delta = 2;
+    int waited = 0;
 
     for (t = wait; t > 0; ) { 
         if ((f = read_status(kbdcp(p))) & KBDS_ANY_BUFFER_FULL) {
@@ -859,6 +899,15 @@ empty_both_buffers(KBDC p, int wait)
 	} else {
 	    t -= delta;
 	}
+        /*
+         * Some systems (Intel/IBM blades) do not have keyboard devices and
+         * will thus hang in this procedure. Time out after delta seconds to
+         * avoid this hang -- the keyboard attach will fail later on.
+         */
+        waited += (delta * 1000);
+        if (waited == (delta * 1000000))
+            return;
+
 	DELAY(delta*1000);
     }
 #if KBDIO_DEBUG >= 2
@@ -1039,6 +1088,20 @@ test_aux_port(KBDC p)
     if (verbose || bootverbose)
         log(LOG_DEBUG, "kbdc: TEST_AUX_PORT status:%04x\n", c);
     return c;
+}
+
+int
+kbdc_get_device_mask(KBDC p)
+{
+    return kbdcp(p)->command_mask;
+}
+
+void
+kbdc_set_device_mask(KBDC p, int mask)
+{
+    kbdcp(p)->command_mask =
+        mask & (((kbdcp(p)->quirks & KBDC_QUIRK_KEEP_ACTIVATED)
+            ? 0 : KBD_KBD_CONTROL_BITS) | KBD_AUX_CONTROL_BITS);
 }
 
 int

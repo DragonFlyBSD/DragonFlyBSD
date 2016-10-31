@@ -21,6 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mouse.h,v 1.15.2.2 2002/04/15 00:52:08 will Exp $
+ *  $FreeBSD: stable/11/sys/sys/mouse.h 307576 2016-10-18 20:17:57Z gonzo $
  */
 
 #ifndef _SYS_MOUSE_H_
@@ -107,6 +108,34 @@ typedef struct synapticshw {
 	int capMultiFinger;
 	int capPalmDetect;
 	int capPassthrough;
+	int capMiddle;
+	int capLowPower;
+	int capMultiFingerReport;
+	int capBallistics;
+	int nExtendedButtons;
+	int nExtendedQueries;
+	int capClickPad;
+	int capDeluxeLEDs;
+	int noAbsoluteFilter;
+	int capReportsV;
+	int capUniformClickPad;
+	int capReportsMin;
+	int capInterTouch;
+	int capReportsMax;
+	int capClearPad;
+	int capAdvancedGestures;
+	int multiFingerMode;
+	int capCoveredPad;
+	int verticalScroll;
+	int horizontalScroll;
+	int verticalWheel;
+	int capEWmode;
+	int minimumXCoord;
+	int minimumYCoord;
+	int maximumXCoord;
+	int maximumYCoord;
+	int infoXupmm;
+	int infoYupmm;
 } synapticshw_t;
 
 /* iftype */
@@ -141,6 +170,8 @@ typedef struct synapticshw {
 #define MOUSE_MODEL_4D			11
 #define MOUSE_MODEL_4DPLUS		12
 #define MOUSE_MODEL_SYNAPTICS		13
+#define MOUSE_MODEL_TRACKPOINT		14
+#define MOUSE_MODEL_ELANTECH		15
 
 typedef struct mousemode {
 	int protocol;		/* MOUSE_PROTO_XXX */
@@ -181,6 +212,7 @@ typedef struct mousemode {
 #define MOUSE_PROTO_KIDSPAD	14	/* Genius Kidspad */
 #define MOUSE_PROTO_VERSAPAD	15	/* Interlink VersaPad, 6 bytes */
 #define	MOUSE_PROTO_JOGDIAL	16	/* Vaio's JogDial */
+#define MOUSE_PROTO_GTCO_DIGIPAD        17
 
 #define MOUSE_RES_UNKNOWN	(-1)
 #define MOUSE_RES_DEFAULT	0
@@ -209,6 +241,9 @@ typedef struct mousevar {
 
 /* Synaptics Touchpad */
 #define MOUSE_SYNAPTICS_PACKETSIZE 6	/* '3' works better */
+
+/* Elantech Touchpad */
+#define MOUSE_ELANTECH_PACKETSIZE       6
 
 /* Microsoft Serial mouse data packet */
 #define MOUSE_MSS_PACKETSIZE	3
