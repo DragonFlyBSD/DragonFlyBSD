@@ -253,14 +253,21 @@ print_volume(const struct volume_info *vol)
 	hammer_off_t total = 0;
 	int i, nvols;
 	uint32_t status;
+	const char *name = NULL;
 	char *fsidstr;
 
 	ondisk = vol->ondisk;
 	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	nvols = ondisk->vol_count;
-	for (i = 0; i < nvols; ++i)
-		total += get_volume(i)->size;
+	for (i = 0; i < nvols; ++i) {
+		struct volume_info *p = get_volume(i);
+		total += p->size;
+		if (p->vol_no == HAMMER_ROOT_VOLNO) {
+			assert(name == NULL);
+			name = p->name;
+		}
+	}
 
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
@@ -268,8 +275,7 @@ print_volume(const struct volume_info *vol)
 	printf("HAMMER version %d\n", HammerVersion);
 	printf("%d volume%s total size %s\n",
 		nvols, (nvols == 1 ? "" : "s"), sizetostr(total));
-	if (vol->vol_no == HAMMER_ROOT_VOLNO)
-		printf("root-volume:         %s\n", vol->name);
+	printf("root-volume:         %s\n", name);
 	if (DebugOpt)
 		printf("header-junk-size:    %s\n",
 			sizetostr(ondisk->vol_bot_beg));
