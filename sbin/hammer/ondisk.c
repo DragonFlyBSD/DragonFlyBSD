@@ -728,7 +728,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	 * Pre-initialize the UNDO blocks (HAMMER version 4+)
 	 */
 	printf("initializing the undo map (%jd MB)\n",
-		(intmax_t)(blockmap->alloc_offset & HAMMER_OFF_LONG_MASK) /
+		(intmax_t)HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset) /
 		(1024 * 1024));
 
 	scan = blockmap->first_offset;
@@ -801,12 +801,12 @@ print_blockmap(const struct volume_info *vol)
 	       (uintmax_t)ondisk->vol0_next_tid);
 
 	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	size = blockmap->alloc_offset & HAMMER_OFF_LONG_MASK;
+	size = HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset);
 	if (blockmap->first_offset <= blockmap->next_offset)
 		used = blockmap->next_offset - blockmap->first_offset;
 	else
 		used = blockmap->alloc_offset - blockmap->first_offset +
-			(blockmap->next_offset & HAMMER_OFF_LONG_MASK);
+			HAMMER_OFF_LONG_ENCODE(blockmap->next_offset);
 	printf(INDENT"undo_size\t%s\n", sizetostr(size));
 	printf(INDENT"undo_used\t%s\n", sizetostr(used));
 

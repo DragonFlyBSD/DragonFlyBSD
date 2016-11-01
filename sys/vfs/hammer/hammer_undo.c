@@ -75,7 +75,7 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 	 * big-block offset of zone-3 address
 	 * which results zone-2 address
 	 */
-	i = (zone3_off & HAMMER_OFF_SHORT_MASK) / HAMMER_BIGBLOCK_SIZE;
+	i = HAMMER_OFF_SHORT_ENCODE(zone3_off) / HAMMER_BIGBLOCK_SIZE;
 	result_offset = root_volume->ondisk->vol0_undo_array[i] +
 			(zone3_off & HAMMER_BIGBLOCK_MASK64);
 
@@ -500,9 +500,9 @@ hammer_undo_used(hammer_transaction_t trans)
 		bytes = cundomap->next_offset - dundomap->first_offset;
 	} else {
 		bytes = cundomap->alloc_offset - dundomap->first_offset +
-		        (cundomap->next_offset & HAMMER_OFF_LONG_MASK);
+			HAMMER_OFF_LONG_ENCODE(cundomap->next_offset);
 	}
-	max_bytes = cundomap->alloc_offset & HAMMER_OFF_SHORT_MASK;
+	max_bytes = HAMMER_OFF_SHORT_ENCODE(cundomap->alloc_offset);
 	KKASSERT(bytes <= max_bytes);
 	return(bytes);
 }
@@ -517,7 +517,7 @@ hammer_undo_space(hammer_transaction_t trans)
 	int64_t max_bytes;
 
 	rootmap = &trans->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	max_bytes = rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK;
+	max_bytes = HAMMER_OFF_SHORT_ENCODE(rootmap->alloc_offset);
 	return(max_bytes - hammer_undo_used(trans));
 }
 
@@ -528,7 +528,7 @@ hammer_undo_max(hammer_mount_t hmp)
 	int64_t max_bytes;
 
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	max_bytes = rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK;
+	max_bytes = HAMMER_OFF_SHORT_ENCODE(rootmap->alloc_offset);
 
 	return(max_bytes);
 }

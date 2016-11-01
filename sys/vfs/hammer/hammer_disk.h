@@ -733,8 +733,7 @@ typedef struct hammer_volume_ondisk {
  * Translate a zone-2 address to physical address
  */
 #define hammer_xlate_to_phys(volume, zone2_offset)	\
-	((volume)->vol_buf_beg +			\
-	 ((zone2_offset) & HAMMER_OFF_SHORT_MASK))
+	((volume)->vol_buf_beg + HAMMER_OFF_SHORT_ENCODE(zone2_offset))
 
 /*
  * Effective per-volume filesystem capacity including big-blocks for layer1/2

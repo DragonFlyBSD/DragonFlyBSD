@@ -283,7 +283,7 @@ hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset, int bytes)
 	zone = HAMMER_ZONE_DECODE(offset);
 	vol = HAMMER_VOL_DECODE(offset);
 
-	offset &= HAMMER_OFF_SHORT_MASK;  /* cut off volume bits from layer1 */
+	offset = HAMMER_OFF_SHORT_ENCODE(offset); /* cut off volume bits */
 	i = HAMMER_BLOCKMAP_LAYER1_INDEX(offset);
 	j = HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
 

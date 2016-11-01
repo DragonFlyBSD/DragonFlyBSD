@@ -243,8 +243,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	if (zone == HAMMER_ZONE_RAW_BUFFER_INDEX) {
 		result_offset = zone_offset;
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
-		i = (zone_offset & HAMMER_OFF_SHORT_MASK) /
-		    HAMMER_BIGBLOCK_SIZE;
+		i = HAMMER_OFF_SHORT_ENCODE(zone_offset) / HAMMER_BIGBLOCK_SIZE;
 		if (zone_offset >= blockmap->alloc_offset) {
 			error = -3;
 			result_offset = HAMMER_OFF_BAD;

@@ -286,7 +286,7 @@ print_volume(const struct volume_info *vol)
 	printf("undo-buffer-size:    %s\n",
 		sizetostr(HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset)));
 	printf("total-pre-allocated: %s\n",
-		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
+		sizetostr(HAMMER_OFF_SHORT_ENCODE(vol->vol_free_off)));
 	printf("fsid:                %s\n", fsidstr);
 	printf("\n");
 	printf("NOTE: Please remember that you may have to manually set up a\n"

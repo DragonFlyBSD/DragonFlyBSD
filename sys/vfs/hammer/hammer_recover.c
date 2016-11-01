@@ -319,10 +319,10 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 				bytes = last_offset - scan_offset;
 			} else {
 				bytes = rootmap->alloc_offset - scan_offset +
-					(last_offset & HAMMER_OFF_LONG_MASK);
+					HAMMER_OFF_LONG_ENCODE(last_offset);
 			}
 			if (bytes >
-			    (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK) *
+			    HAMMER_OFF_LONG_ENCODE(rootmap->alloc_offset) *
 			    4 / 5) {
 				hvkprintf(root_volume,
 					"recovery forward scan is "
@@ -365,7 +365,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 		bytes = last_offset - first_offset;
 	} else {
 		bytes = rootmap->alloc_offset - first_offset +
-			(last_offset & HAMMER_OFF_LONG_MASK);
+			HAMMER_OFF_LONG_ENCODE(last_offset);
 	}
 	if (bytes == 0) {
 		degenerate_case = 1;
@@ -379,7 +379,7 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 		(intmax_t)last_offset,
 		(intmax_t)bytes,
 		(hmp->ronly ? " (RO)" : "(RW)"));
-	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
+	if (bytes > HAMMER_OFF_LONG_ENCODE(rootmap->alloc_offset)) {
 		hkprintf("Undo size is absurd, unable to mount\n");
 		error = EIO;
 		goto done;
@@ -585,7 +585,7 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		bytes = last_offset - first_offset;
 	} else {
 		bytes = rootmap->alloc_offset - first_offset +
-			(last_offset & HAMMER_OFF_LONG_MASK);
+			HAMMER_OFF_LONG_ENCODE(last_offset);
 	}
 	hvkprintf(root_volume,
 		"recovery redo  %016jx-%016jx (%jd bytes)%s\n",
@@ -594,7 +594,7 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		(intmax_t)bytes,
 		(hmp->ronly ? " (RO)" : "(RW)"));
 	verbose = 1;
-	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
+	if (bytes > HAMMER_OFF_LONG_ENCODE(rootmap->alloc_offset)) {
 		hkprintf("Undo size is absurd, unable to mount\n");
 		error = EIO;
 		goto fatal;
@@ -620,7 +620,7 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		} else if (ext_offset > last_offset) {
 			dorscan = 1;
 			ext_bytes = (rootmap->alloc_offset - ext_offset) +
-				    (first_offset & HAMMER_OFF_LONG_MASK);
+				    HAMMER_OFF_LONG_ENCODE(first_offset);
 		} else {
 			ext_bytes = -(ext_offset - first_offset);
 			dorscan = 0;
@@ -631,7 +631,7 @@ hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t root_volume)
 		 */
 		if (ext_offset < last_offset) {
 			ext_bytes = -((rootmap->alloc_offset - first_offset) +
-				    (ext_offset & HAMMER_OFF_LONG_MASK));
+				    HAMMER_OFF_LONG_ENCODE(ext_offset));
 			dorscan = 0;
 		} else if (ext_offset > first_offset) {
 			ext_bytes = -(ext_offset - first_offset);
