@@ -145,7 +145,7 @@ void format_blockmap(struct volume_info *vol, int zone, hammer_off_t offset);
 void format_freemap(struct volume_info *root_vol);
 int64_t initialize_freemap(struct volume_info *vol);
 int64_t count_freemap(struct volume_info *vol);
-void print_blockmap(const struct volume_info *root_vol);
+void print_blockmap(const struct volume_info *vol);
 
 void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);

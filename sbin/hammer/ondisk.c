@@ -782,7 +782,7 @@ const char *zone_labels[] = {
 };
 
 void
-print_blockmap(const struct volume_info *root_vol)
+print_blockmap(const struct volume_info *vol)
 {
 	hammer_blockmap_t blockmap;
 	hammer_volume_ondisk_t ondisk;
@@ -790,7 +790,7 @@ print_blockmap(const struct volume_info *root_vol)
 	int i;
 #define INDENT ""
 
-	ondisk = root_vol->ondisk;
+	ondisk = vol->ondisk;
 	printf(INDENT"vol_label\t%s\n", ondisk->vol_label);
 	printf(INDENT"vol_count\t%d\n", ondisk->vol_count);
 	printf(INDENT"vol_bot_beg\t%s\n", sizetostr(ondisk->vol_bot_beg));
