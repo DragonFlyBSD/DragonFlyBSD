@@ -438,15 +438,23 @@
 #endif
 
 #ifndef	__RCSID
-#define	__RCSID(s)	__IDSTRING(rcsid,s)
+#define	__RCSID(s)		struct __hack
 #endif
 
 #ifndef	__RCSID_SOURCE
-#define	__RCSID_SOURCE(s) __IDSTRING(rcsid_source,s)
+#define	__RCSID_SOURCE(s)	struct __hack
+#endif
+
+#ifndef	__SCCSID
+#define	__SCCSID(s)		struct __hack
+#endif
+
+#ifndef	__FBSDID
+#define	__FBSDID(s)		struct __hack
 #endif
 
 #ifndef	__COPYRIGHT
-#define	__COPYRIGHT(s)	__IDSTRING(copyright,s)
+#define	__COPYRIGHT(s)  	struct __hack
 #endif
 
 #ifndef	__DECONST
@@ -665,29 +673,5 @@
 
 #define	__GLOBL1(sym)	__asm__(".globl " #sym)
 #define	__GLOBL(sym)	__GLOBL1(sym)
-
-/*
- * Ignore the rcs id of a source file.
- */
-
-#ifndef __FBSDID
-#define	__FBSDID(s)	struct __hack
-#endif
-
-#ifndef __RCSID
-#define	__RCSID(s)	struct __hack
-#endif
-
-#ifndef __RCSID_SOURCE
-#define	__RCSID_SOURCE(s)	struct __hack
-#endif
-
-#ifndef __SCCSID
-#define	__SCCSID(s)	struct __hack
-#endif
-
-#ifndef __COPYRIGHT
-#define	__COPYRIGHT(s)  struct __hack
-#endif
 
 #endif /* !_SYS_CDEFS_H_ */
