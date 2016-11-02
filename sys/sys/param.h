@@ -137,9 +137,10 @@
  * 400700 - 4.7 development
  * 400701 - getline() visibility changes
  * 400702 - private library: libressl
+ * 400703 - resolved conflicts of md, crypt and ressl libraries
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400702	/* propagated to newvers */
+#define __DragonFly_version 400703	/* propagated to newvers */
 
 #include <sys/_null.h>
 
