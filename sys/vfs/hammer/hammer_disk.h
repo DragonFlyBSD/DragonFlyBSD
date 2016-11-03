@@ -143,9 +143,9 @@ typedef uint32_t hammer_crc_t;
  *
  * layer1/layer2 direct map:
  *	     Maximum HAMMER filesystem capacity from volume aspect
- *	     2^8(max volumes) * 2^52(max volume size) = 2^60 = 1EB
+ *	     2^8(max volumes) * 2^52(max volume size) = 2^60 = 1EB (long offset)
  *	    <------------------------------------------------------------->
- *	     8bits   52bits
+ *	     8bits   52bits (short offset)
  *	    <------><----------------------------------------------------->
  *	zzzzvvvvvvvvoooo oooooooooooooooo oooooooooooooooo oooooooooooooooo
  *	----111111111111 1111112222222222 222222222ooooooo oooooooooooooooo
@@ -154,6 +154,57 @@ typedef uint32_t hammer_crc_t;
  *	    <------------------------------------------------------------->
  *	     2^18(layer1) * 2^19(layer2) * 2^23(big-block) = 2^60 = 1EB
  *	     Maximum HAMMER filesystem capacity from blockmap aspect
+ *
+ * volume#0 layout
+ *	+-------------------------> offset 0 of a device/partition
+ *	| volume header (1928 bytes)
+ *	| the rest of header junk space (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> vol_bot_beg
+ *	| boot area (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> vol_mem_beg
+ *	| memory log (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> vol_buf_beg (physical offset of zone-2)
+ *	| zone-4 big-block for layer1
+ *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE
+ *	| zone-4 big-blocks for layer2
+ *	| ... (1 big-block per 4GB space)
+ *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE * ...
+ *	| zone-3 big-blocks for UNDO/REDO FIFO
+ *	| ... (max 128 big-blocks)
+ *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE * ...
+ *	| zone-8 big-block for root B-Tree node/etc
+ *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE * ...
+ *	| zone-9 big-block for root inode/PFS#0/etc
+ *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE * ...
+ *	| zone-X big-blocks
+ *	| ... (big-blocks for new zones after newfs_hammer)
+ *	| ...
+ *	| ...
+ *	| ...
+ *	| ...
+ *	+-------------------------> vol_buf_end (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> end of a device/partition
+ *
+ * volume#N layout (N>0)
+ *	+-------------------------> offset 0 of a device/partition
+ *	| volume header (1928 bytes)
+ *	| the rest of header junk space (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> vol_bot_beg
+ *	| boot area (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> vol_mem_beg
+ *	| memory log (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> vol_buf_beg (physical offset of zone-2)
+ *	| zone-4 big-blocks for layer2
+ *	| ... (1 big-block per 4GB space)
+ *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE * ...
+ *	| zone-X big-blocks
+ *	| ... (unused until volume#(N-1) runs out of space)
+ *	| ...
+ *	| ...
+ *	| ...
+ *	| ...
+ *	+-------------------------> vol_buf_end (HAMMER_BUFSIZE aligned)
+ *	+-------------------------> end of a device/partition
  */
 
 #define HAMMER_ZONE_RAW_VOLUME		0x1000000000000000ULL
