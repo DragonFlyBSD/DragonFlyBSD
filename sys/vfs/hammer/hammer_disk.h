@@ -296,6 +296,8 @@ typedef uint32_t hammer_crc_t;
 	HAMMER_ENCODE(HAMMER_ZONE_RAW_VOLUME_INDEX, vol_no, offset)
 #define HAMMER_ENCODE_RAW_BUFFER(vol_no, offset)	\
 	HAMMER_ENCODE(HAMMER_ZONE_RAW_BUFFER_INDEX, vol_no, offset)
+#define HAMMER_ENCODE_UNDO(offset)			\
+	HAMMER_ENCODE(HAMMER_ZONE_UNDO_INDEX, HAMMER_ROOT_VOLNO, offset)
 #define HAMMER_ENCODE_FREEMAP(vol_no, offset)		\
 	HAMMER_ENCODE(HAMMER_ZONE_FREEMAP_INDEX, vol_no, offset)
 

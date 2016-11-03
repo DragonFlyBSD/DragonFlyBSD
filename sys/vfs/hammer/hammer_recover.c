@@ -786,10 +786,9 @@ hammer_recover_scan_rev(hammer_mount_t hmp, hammer_volume_t root_volume,
 
 	if (hammer_debug_general & 0x0080)
 		hdkprintf("rev scan_offset %016jx\n", (intmax_t)scan_offset);
-	if (scan_offset == HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0))
+	if (scan_offset == HAMMER_ENCODE_UNDO(0))
 		scan_offset = rootmap->alloc_offset;
-	if (scan_offset - sizeof(*tail) <
-	    HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0)) {
+	if (scan_offset - sizeof(*tail) < HAMMER_ENCODE_UNDO(0)) {
 		hvkprintf(root_volume,
 			"UNDO record at %016jx FIFO underflow\n",
 			(intmax_t)scan_offset);
@@ -840,7 +839,7 @@ hammer_recover_scan_fwd(hammer_mount_t hmp, hammer_volume_t root_volume,
 	if (hammer_debug_general & 0x0080)
 		hdkprintf("fwd scan_offset %016jx\n", (intmax_t)scan_offset);
 	if (scan_offset == rootmap->alloc_offset)
-		scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
+		scan_offset = HAMMER_ENCODE_UNDO(0);
 
 	head = hammer_bread(hmp, scan_offset, errorp, bufferp);
 	if (*errorp) {
@@ -859,7 +858,7 @@ hammer_recover_scan_fwd(hammer_mount_t hmp, hammer_volume_t root_volume,
 	}
 	scan_offset += head->head.hdr_size;
 	if (scan_offset == rootmap->alloc_offset)
-		scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
+		scan_offset = HAMMER_ENCODE_UNDO(0);
 	*scan_offsetp = scan_offset;
 
 	return (head);

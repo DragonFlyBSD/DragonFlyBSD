@@ -340,7 +340,7 @@ check_undo(hammer_blockmap_t undomap)
 	hammer_off_t scan_offset;
 	hammer_fifo_head_t head;
 
-	scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
+	scan_offset = HAMMER_ENCODE_UNDO(0);
 	while (scan_offset < undomap->alloc_offset) {
 		head = get_buffer_data(scan_offset, &buffer, 0);
 		switch (head->hdr_type) {

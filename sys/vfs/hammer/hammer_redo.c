@@ -99,10 +99,8 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		 * Fetch the layout offset in the UNDO FIFO, wrap it as
 		 * necessary.
 		 */
-		if (undomap->next_offset == undomap->alloc_offset) {
-			undomap->next_offset =
-				HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
-		}
+		if (undomap->next_offset == undomap->alloc_offset)
+			undomap->next_offset = HAMMER_ENCODE_UNDO(0);
 		next_offset = undomap->next_offset;
 
 		/*

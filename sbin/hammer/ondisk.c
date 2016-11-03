@@ -666,7 +666,6 @@ count_freemap(struct volume_info *vol)
 void
 format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 {
-	const int undo_zone = HAMMER_ZONE_UNDO_INDEX;
 	hammer_off_t undo_limit;
 	hammer_blockmap_t blockmap;
 	hammer_volume_ondisk_t ondisk;
@@ -705,12 +704,12 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 		undo_limit = HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS;
 	*undo_buffer_size = undo_limit;
 
-	blockmap = &ondisk->vol0_blockmap[undo_zone];
+	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	bzero(blockmap, sizeof(*blockmap));
 	blockmap->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
-	blockmap->first_offset = HAMMER_ZONE_ENCODE(undo_zone, 0);
+	blockmap->first_offset = HAMMER_ENCODE_UNDO(0);
 	blockmap->next_offset = blockmap->first_offset;
-	blockmap->alloc_offset = HAMMER_ZONE_ENCODE(undo_zone, undo_limit);
+	blockmap->alloc_offset = HAMMER_ENCODE_UNDO(undo_limit);
 	hammer_crc_set_blockmap(blockmap);
 
 	limit_index = undo_limit / HAMMER_BIGBLOCK_SIZE;

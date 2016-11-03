@@ -152,10 +152,8 @@ hammer_generate_undo(hammer_transaction_t trans,
 		 * Fetch the layout offset in the UNDO FIFO, wrap it as
 		 * necessary.
 		 */
-		if (undomap->next_offset == undomap->alloc_offset) {
-			undomap->next_offset =
-				HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
-		}
+		if (undomap->next_offset == undomap->alloc_offset)
+			undomap->next_offset = HAMMER_ENCODE_UNDO(0);
 		next_offset = undomap->next_offset;
 
 		/*
@@ -372,7 +370,7 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 	/*
 	 * Adjust the in-core undomap and the on-disk undomap.
 	 */
-	next_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
+	next_offset = HAMMER_ENCODE_UNDO(0);
 	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	undomap->next_offset = next_offset;
 	undomap->first_offset = next_offset;

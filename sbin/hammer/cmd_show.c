@@ -1020,7 +1020,7 @@ hammer_cmd_show_undo(void)
 
 	print_blockmap(volume);
 
-	scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
+	scan_offset = HAMMER_ENCODE_UNDO(0);
 	while (scan_offset < rootmap->alloc_offset) {
 		head = get_buffer_data(scan_offset, &data_buffer, 0);
 		printf("%016jx ", scan_offset);
