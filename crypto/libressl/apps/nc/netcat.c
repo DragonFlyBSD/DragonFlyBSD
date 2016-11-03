@@ -342,6 +342,7 @@ main(int argc, char *argv[])
 			err(1, "setrtable");
 #endif
 
+#ifdef __OpenBSD__
 	if (family == AF_UNIX) {
 		if (pledge("stdio rpath wpath cpath tmppath unix", NULL) == -1)
 			err(1, "pledge");
@@ -359,6 +360,7 @@ main(int argc, char *argv[])
 			err(1, "pledge");
 	} else if (pledge("stdio inet dns", NULL) == -1)
 		err(1, "pledge");
+#endif
 
 	/* Cruft to make sure options are clean, and used properly. */
 	if (argv[0] && !argv[1] && family == AF_UNIX) {
@@ -463,11 +465,13 @@ main(int argc, char *argv[])
 		if (Kflag && (privkey = tls_load_file(Kflag, &privkeylen, NULL)) == NULL)
 			errx(1, "unable to load TLS key file %s", Kflag);
 
+#ifdef __OpenBSD__
 		if (Pflag) {
 			if (pledge("stdio inet dns tty", NULL) == -1)
 				err(1, "pledge");
 		} else if (pledge("stdio inet dns", NULL) == -1)
 			err(1, "pledge");
+#endif
 
 		if (tls_init() == -1)
 			errx(1, "unable to initialize TLS");
@@ -1328,7 +1332,7 @@ atelnet(int nfd, unsigned char *buf, unsigned int size)
 }
 
 
-int
+static int
 strtoport(char *portstr, int udp)
 {
 	struct servent *entry;
