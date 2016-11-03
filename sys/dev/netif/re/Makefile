@@ -1,6 +1,6 @@
 KMOD	= if_re
-SRCS	= if_re.c
-SRCS	+= device_if.h bus_if.h pci_if.h pcidevs.h miibus_if.h
+SRCS	= if_re.c re.c
+SRCS	+= device_if.h bus_if.h pci_if.h pcidevs.h
 SRCS	+= opt_ifpoll.h
 
 .ifndef BUILDING_WITH_KERNEL

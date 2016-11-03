@@ -1725,6 +1725,7 @@ dev/netif/de/if_de.c		optional de
 dev/netif/pcn/if_pcn.c		optional pcn
 dev/netif/mn/if_mn.c		optional mn
 dev/netif/re/if_re.c		optional re
+dev/netif/re/re.c		optional re
 dev/netif/rl/if_rl.c		optional rl
 dev/netif/sf/if_sf.c		optional sf
 dev/netif/sis/if_sis.c		optional sis

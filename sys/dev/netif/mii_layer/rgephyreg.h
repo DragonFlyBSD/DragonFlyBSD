@@ -147,4 +147,17 @@
 
 #define RGEPHY_EXT_CR		0x14
 
+/*
+ * Gigabit media status (8169 only)
+ */
+#define RE_GMEDIASTAT		0x006C	/* 8 bits */
+#define RE_GMEDIASTAT_FDX	0x01	/* full duplex */
+#define RE_GMEDIASTAT_LINK	0x02	/* link up */
+#define RE_GMEDIASTAT_10MBPS	0x04	/* 10mps link */
+#define RE_GMEDIASTAT_100MBPS	0x08	/* 100mbps link */
+#define RE_GMEDIASTAT_1000MBPS	0x10	/* gigE link */
+#define RE_GMEDIASTAT_RXFLOW	0x20	/* RX flow control on */
+#define RE_GMEDIASTAT_TXFLOW	0x40	/* TX flow control on */
+#define RE_GMEDIASTAT_TBI	0x80	/* TBI enabled */
+
 #endif /* !_DEV_RGEPHY_MIIREG_H_ */

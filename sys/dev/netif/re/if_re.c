@@ -36,7 +36,7 @@
  */
 
 /*
- * RealTek 8139C+/8169/8169S/8110S/8168/8111/8101E PCI NIC driver
+ * RealTek 8169S/8110S/8168/8111/8101E PCI NIC driver
  *
  * Written by Bill Paul <wpaul@windriver.com>
  * Senior Networking Software Engineer
@@ -46,68 +46,48 @@
 /*
  * This driver is designed to support RealTek's next generation of
  * 10/100 and 10/100/1000 PCI ethernet controllers. There are currently
- * seven devices in this family: the RTL8139C+, the RTL8169, the RTL8169S,
- * RTL8110S, the RTL8168, the RTL8111 and the RTL8101E.
+ * seven devices in this family: the the RTL8169, the RTL8169S, RTL8110S,
+ * the RTL8168, the RTL8111 and the RTL8101E.
  *
- * The 8139C+ is a 10/100 ethernet chip. It is backwards compatible
- * with the older 8139 family, however it also supports a special
- * C+ mode of operation that provides several new performance enhancing
- * features. These include:
+ * The 8169 is a 64-bit 10/100/1000 gigabit ethernet MAC:
  *
- *	o Descriptor based DMA mechanism. Each descriptor represents
+ *	o Descriptor based DMA mechanism.  Each descriptor represents
  *	  a single packet fragment. Data buffers may be aligned on
  *	  any byte boundary.
  *
- *	o 64-bit DMA
+ *	o 64-bit DMA.
  *
- *	o TCP/IP checksum offload for both RX and TX
+ *	o TCP/IP checksum offload for both RX and TX.
  *
- *	o High and normal priority transmit DMA rings
+ *	o High and normal priority transmit DMA rings.
  *
- *	o VLAN tag insertion and extraction
+ *	o VLAN tag insertion and extraction.
  *
- *	o TCP large send (segmentation offload)
+ *	o TCP large send (segmentation offload).
  *
- * Like the 8139, the 8139C+ also has a built-in 10/100 PHY. The C+
- * programming API is fairly straightforward. The RX filtering, EEPROM
- * access and PHY access is the same as it is on the older 8139 series
- * chips.
+ *	o 1000Mbps mode.
  *
- * The 8169 is a 64-bit 10/100/1000 gigabit ethernet MAC. It has almost the
- * same programming API and feature set as the 8139C+ with the following
- * differences and additions:
- *
- *	o 1000Mbps mode
- *
- *	o Jumbo frames
+ *	o Jumbo frames.
  *
  * 	o GMII and TBI ports/registers for interfacing with copper
- *	  or fiber PHYs
+ *	  or fiber PHYs.
  *
- *      o RX and TX DMA rings can have up to 1024 descriptors
- *        (the 8139C+ allows a maximum of 64)
+ *      o RX and TX DMA rings can have up to 1024 descriptors.
  *
- *	o Slight differences in register layout from the 8139C+
- *
- * The TX start and timer interrupt registers are at different locations
- * on the 8169 than they are on the 8139C+. Also, the status word in the
- * RX descriptor has a slightly different bit layout. The 8169 does not
- * have a built-in PHY. Most reference boards use a Marvell 88E1000 'Alaska'
- * copper gigE PHY.
+ * The 8169 does not have a built-in PHY.  Most reference boards use a
+ * Marvell 88E1000 'Alaska' copper gigE PHY.  8169/8110 is _no longer_
+ * supported.
  *
  * The 8169S/8110S 10/100/1000 devices have built-in copper gigE PHYs
- * (the 'S' stands for 'single-chip'). These devices have the same
+ * (the 'S' stands for 'single-chip').  These devices have the same
  * programming API as the older 8169, but also have some vendor-specific
- * registers for the on-board PHY. The 8110S is a LAN-on-motherboard
+ * registers for the on-board PHY.  The 8110S is a LAN-on-motherboard
  * part designed to be pin-compatible with the RealTek 8100 10/100 chip.
  * 
  * This driver takes advantage of the RX and TX checksum offload and
- * VLAN tag insertion/extraction features. It also implements TX
+ * VLAN tag insertion/extraction features.  It also implements
  * interrupt moderation using the timer interrupt registers, which
- * significantly reduces TX interrupt load. There is also support
- * for jumbo frames, however the 8169/8169S/8110S can not transmit
- * jumbo frames larger than 7440, so the max MTU possible with this
- * driver is 7422 bytes.
+ * significantly reduces interrupt load.
  */
 
 #define _IP_VHL
@@ -142,18 +122,14 @@
 
 #include <netinet/ip.h>
 
-#include <dev/netif/mii_layer/mii.h>
-#include <dev/netif/mii_layer/miivar.h>
-
 #include "pcidevs.h"
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-/* "device miibus" required.  See GENERIC if you get errors here. */
-#include "miibus_if.h"
-
 #include <dev/netif/re/if_rereg.h>
 #include <dev/netif/re/if_revar.h>
+#include <dev/netif/re/re.h>
+#include <dev/netif/re/re_dragonfly.h>
 
 /*
  * Various supported device vendors/types and their names.
@@ -166,17 +142,22 @@ static const struct re_type {
 	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE528T,
 	  "D-Link DGE-528(T) Gigabit Ethernet Adapter" },
 
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139,
-	  "RealTek 8139C+ 10/100BaseTX" },
-
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8101E,
 	  "RealTek 810x PCIe 10/100baseTX" },
 
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168,
 	  "RealTek 8111/8168 PCIe Gigabit Ethernet" },
 
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168_1,
+	  "RealTek 8168 PCIe Gigabit Ethernet" },
+
+#ifdef notyet
+	/*
+	 * This driver now only supports built-in PHYs.
+	 */
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169,
 	  "RealTek 8110/8169 Gigabit Ethernet" },
+#endif
 
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169SC,
 	  "RealTek 8169SC/8110SC Single-chip Gigabit Ethernet" },
@@ -196,116 +177,6 @@ static const struct re_type {
 	{ 0, 0, NULL }
 };
 
-static const struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_8139CP | RE_C_FASTE },
-
-	{ RE_HWREV_8169,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_8169 },
-
-	{ RE_HWREV_8110S,	RE_MTU_6K,
-	  RE_C_HWCSUM | RE_C_8169 },
-
-	{ RE_HWREV_8169S,	RE_MTU_6K,
-	  RE_C_HWCSUM | RE_C_8169 },
-
-	{ RE_HWREV_8169SB,	RE_MTU_6K,
-	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
-
-	{ RE_HWREV_8169SC,	RE_MTU_6K,
-	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
-
-	{ RE_HWREV_8168B1,	RE_MTU_6K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT },
-
-	{ RE_HWREV_8168B2,	RE_MTU_6K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_AUTOPAD },
-
-	{ RE_HWREV_8168C,	RE_MTU_6K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8168CP,	RE_MTU_6K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8168D,	RE_MTU_9K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX | RE_C_PHYPMCH },
-
-	{ RE_HWREV_8168DP,	RE_MTU_9K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8168E,	RE_MTU_9K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX | RE_C_PHYPMCH },
-
-	{ RE_HWREV_8168F,	RE_MTU_9K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8111F,	RE_MTU_9K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8411,	ETHERMTU,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8168G,	ETHERMTU,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8168EP,	ETHERMTU,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8168GU,	ETHERMTU,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8168H,	ETHERMTU,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8411B,	ETHERMTU,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
-
-	{ RE_HWREV_8100E,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_FASTE },
-
-	{ RE_HWREV_8101E,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_FASTE },
-
-	{ RE_HWREV_8102E,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX |
-	  RE_C_FASTE },
-
-	{ RE_HWREV_8102EL,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX |
-	  RE_C_FASTE },
-
-	{ RE_HWREV_8105E,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
-
-	{ RE_HWREV_8401E,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
-
-	{ RE_HWREV_8402,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
-
-	{ RE_HWREV_8106E,	ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
-	  RE_C_STOP_RXTX | RE_C_FASTE | RE_C_PHYPMCH },
-
-	{ RE_HWREV_NULL, 0, 0 }
-};
-
 static int	re_probe(device_t);
 static int	re_attach(device_t);
 static int	re_detach(device_t);
@@ -318,7 +189,9 @@ static void	re_freemem(device_t);
 static void	re_freebufmem(struct re_softc *, int, int);
 static int	re_encap(struct re_softc *, struct mbuf **, int *);
 static int	re_newbuf_std(struct re_softc *, int, int);
+#ifdef RE_JUMBO
 static int	re_newbuf_jumbo(struct re_softc *, int, int);
+#endif
 static void	re_setup_rxdesc(struct re_softc *, int);
 static int	re_rx_list_init(struct re_softc *);
 static int	re_tx_list_init(struct re_softc *);
@@ -329,30 +202,14 @@ static void	re_intr(void *);
 static void	re_tick(void *);
 static void	re_tick_serialized(void *);
 static void	re_disable_aspm(device_t);
+static void	re_link_up(struct re_softc *);
+static void	re_link_down(struct re_softc *);
 
 static void	re_start(struct ifnet *, struct ifaltq_subque *);
 static int	re_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	re_init(void *);
-static void	re_stop(struct re_softc *);
+static void	re_stop(struct re_softc *, boolean_t);
 static void	re_watchdog(struct ifnet *);
-static int	re_ifmedia_upd(struct ifnet *);
-static void	re_ifmedia_sts(struct ifnet *, struct ifmediareq *);
-
-static void	re_eeprom_putbyte(struct re_softc *, int);
-static void	re_eeprom_getword(struct re_softc *, int, u_int16_t *);
-static void	re_read_eeprom(struct re_softc *, caddr_t, int, int);
-static void	re_get_eewidth(struct re_softc *);
-
-static int	re_gmii_readreg(device_t, int, int);
-static int	re_gmii_writereg(device_t, int, int, int);
-
-static int	re_miibus_readreg(device_t, int, int);
-static int	re_miibus_writereg(device_t, int, int, int);
-static void	re_miibus_statchg(device_t);
-
-static void	re_setmulti(struct re_softc *);
-static void	re_reset(struct re_softc *, int);
-static void	re_get_eaddr(struct re_softc *, uint8_t *);
 
 static void	re_setup_hw_im(struct re_softc *);
 static void	re_setup_sim_im(struct re_softc *);
@@ -369,12 +226,10 @@ static int	re_sysctl_imtype(SYSCTL_HANDLER_ARGS);
 
 static int	re_jpool_alloc(struct re_softc *);
 static void	re_jpool_free(struct re_softc *);
+#ifdef RE_JUMBO
 static struct re_jbuf *re_jbuf_alloc(struct re_softc *);
 static void	re_jbuf_free(void *);
 static void	re_jbuf_ref(void *);
-
-#ifdef RE_DIAG
-static int	re_diag(struct re_softc *);
 #endif
 
 #ifdef IFPOLL_ENABLE
@@ -390,16 +245,6 @@ static device_method_t re_methods[] = {
 	DEVMETHOD(device_suspend,	re_suspend),
 	DEVMETHOD(device_resume,	re_resume),
 	DEVMETHOD(device_shutdown,	re_shutdown),
-
-	/* bus interface */
-	DEVMETHOD(bus_print_child,	bus_generic_print_child),
-	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
-
-	/* MII interface */
-	DEVMETHOD(miibus_readreg,	re_miibus_readreg),
-	DEVMETHOD(miibus_writereg,	re_miibus_writereg),
-	DEVMETHOD(miibus_statchg,	re_miibus_statchg),
-
 	DEVMETHOD_END
 };
 
@@ -412,24 +257,16 @@ static driver_t re_driver = {
 static devclass_t re_devclass;
 
 DECLARE_DUMMY_MODULE(if_re);
-MODULE_DEPEND(if_re, miibus, 1, 1, 1);
 DRIVER_MODULE(if_re, pci, re_driver, re_devclass, NULL, NULL);
 DRIVER_MODULE(if_re, cardbus, re_driver, re_devclass, NULL, NULL);
-DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, NULL, NULL);
 
 static int	re_rx_desc_count = RE_RX_DESC_CNT_DEF;
 static int	re_tx_desc_count = RE_TX_DESC_CNT_DEF;
-static int	re_msi_enable = 0;
+static int	re_msi_enable = 1;
 
 TUNABLE_INT("hw.re.rx_desc_count", &re_rx_desc_count);
 TUNABLE_INT("hw.re.tx_desc_count", &re_tx_desc_count);
 TUNABLE_INT("hw.re.msi.enable", &re_msi_enable);
-
-#define EE_SET(x)	\
-	CSR_WRITE_1(sc, RE_EECMD, CSR_READ_1(sc, RE_EECMD) | (x))
-
-#define EE_CLR(x)	\
-	CSR_WRITE_1(sc, RE_EECMD, CSR_READ_1(sc, RE_EECMD) & ~(x))
 
 static __inline void
 re_free_rxchain(struct re_softc *sc)
@@ -440,537 +277,10 @@ re_free_rxchain(struct re_softc *sc)
 	}
 }
 
-/*
- * Send a read command and address to the EEPROM, check for ACK.
- */
-static void
-re_eeprom_putbyte(struct re_softc *sc, int addr)
-{
-	int d, i;
-
-	d = addr | (RE_9346_READ << sc->re_eewidth);
-
-	/*
-	 * Feed in each bit and strobe the clock.
-	 */
-	for (i = 1 << (sc->re_eewidth + 3); i; i >>= 1) {
-		if (d & i)
-			EE_SET(RE_EE_DATAIN);
-		else
-			EE_CLR(RE_EE_DATAIN);
-		DELAY(100);
-		EE_SET(RE_EE_CLK);
-		DELAY(150);
-		EE_CLR(RE_EE_CLK);
-		DELAY(100);
-	}
-}
-
-/*
- * Read a word of data stored in the EEPROM at address 'addr.'
- */
-static void
-re_eeprom_getword(struct re_softc *sc, int addr, uint16_t *dest)
-{
-	int i;
-	uint16_t word = 0;
-
-	/*
-	 * Send address of word we want to read.
-	 */
-	re_eeprom_putbyte(sc, addr);
-
-	/*
-	 * Start reading bits from EEPROM.
-	 */
-	for (i = 0x8000; i != 0; i >>= 1) {
-		EE_SET(RE_EE_CLK);
-		DELAY(100);
-		if (CSR_READ_1(sc, RE_EECMD) & RE_EE_DATAOUT)
-			word |= i;
-		EE_CLR(RE_EE_CLK);
-		DELAY(100);
-	}
-
-	*dest = word;
-}
-
-/*
- * Read a sequence of words from the EEPROM.
- */
-static void
-re_read_eeprom(struct re_softc *sc, caddr_t dest, int off, int cnt)
-{
-	int i;
-	uint16_t word = 0, *ptr;
-
-	CSR_SETBIT_1(sc, RE_EECMD, RE_EEMODE_PROGRAM);
-	DELAY(100);
-
-	for (i = 0; i < cnt; i++) {
-		CSR_SETBIT_1(sc, RE_EECMD, RE_EE_SEL);
-		re_eeprom_getword(sc, off + i, &word);
-		CSR_CLRBIT_1(sc, RE_EECMD, RE_EE_SEL);
-		ptr = (uint16_t *)(dest + (i * 2));
-		*ptr = word;
-	}
-
-	CSR_CLRBIT_1(sc, RE_EECMD, RE_EEMODE_PROGRAM);
-}
-
-static void
-re_get_eewidth(struct re_softc *sc)
-{
-	uint16_t re_did = 0;
-
-	sc->re_eewidth = 6;
-	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
-	if (re_did != 0x8129)
-		sc->re_eewidth = 8;
-}
-
-static int
-re_gmii_readreg(device_t dev, int phy, int reg)
-{
-	struct re_softc *sc = device_get_softc(dev);
-	u_int32_t rval;
-	int i;
-
-	if (phy != 1)
-		return(0);
-
-	/* Let the rgephy driver read the GMEDIASTAT register */
-
-	if (reg == RE_GMEDIASTAT)
-		return(CSR_READ_1(sc, RE_GMEDIASTAT));
-
-	CSR_WRITE_4(sc, RE_PHYAR, reg << 16);
-
-	for (i = 0; i < RE_PHY_TIMEOUT; i++) {
-		rval = CSR_READ_4(sc, RE_PHYAR);
-		if (rval & RE_PHYAR_BUSY)
-			break;
-		DELAY(25);
-	}
-
-	if (i == RE_PHY_TIMEOUT) {
-		device_printf(dev, "PHY read failed\n");
-		return(0);
-	}
-
-	/*
-	 * Controller requires a 20us delay to process next MDIO request.
-	 */
-	DELAY(20);
-
-	return(rval & RE_PHYAR_PHYDATA);
-}
-
-static int
-re_gmii_writereg(device_t dev, int phy, int reg, int data)
-{
-	struct re_softc *sc = device_get_softc(dev);
-	uint32_t rval;
-	int i;
-
-	CSR_WRITE_4(sc, RE_PHYAR,
-		    (reg << 16) | (data & RE_PHYAR_PHYDATA) | RE_PHYAR_BUSY);
-
-	for (i = 0; i < RE_PHY_TIMEOUT; i++) {
-		rval = CSR_READ_4(sc, RE_PHYAR);
-		if ((rval & RE_PHYAR_BUSY) == 0)
-			break;
-		DELAY(25);
-	}
-
-	if (i == RE_PHY_TIMEOUT) {
-		device_printf(dev, "PHY write failed\n");
-		return(0);
-	}
-
-	/*
-	 * Controller requires a 20us delay to process next MDIO request.
-	 */
-	DELAY(20);
-
-	return(0);
-}
-
-static int
-re_miibus_readreg(device_t dev, int phy, int reg)
-{
-	struct re_softc	*sc = device_get_softc(dev);
-	uint16_t rval = 0;
-	uint16_t re8139_reg = 0;
-
-	if (!RE_IS_8139CP(sc)) {
-		rval = re_gmii_readreg(dev, phy, reg);
-		return(rval);
-	}
-
-	/* Pretend the internal PHY is only at address 0 */
-	if (phy)
-		return(0);
-
-	switch(reg) {
-	case MII_BMCR:
-		re8139_reg = RE_BMCR;
-		break;
-	case MII_BMSR:
-		re8139_reg = RE_BMSR;
-		break;
-	case MII_ANAR:
-		re8139_reg = RE_ANAR;
-		break;
-	case MII_ANER:
-		re8139_reg = RE_ANER;
-		break;
-	case MII_ANLPAR:
-		re8139_reg = RE_LPAR;
-		break;
-	case MII_PHYIDR1:
-	case MII_PHYIDR2:
-		return(0);
-	/*
-	 * Allow the rlphy driver to read the media status
-	 * register. If we have a link partner which does not
-	 * support NWAY, this is the register which will tell
-	 * us the results of parallel detection.
-	 */
-	case RE_MEDIASTAT:
-		return(CSR_READ_1(sc, RE_MEDIASTAT));
-	default:
-		device_printf(dev, "bad phy register\n");
-		return(0);
-	}
-	rval = CSR_READ_2(sc, re8139_reg);
-	if (re8139_reg == RE_BMCR) {
-		/* 8139C+ has different bit layout. */
-		rval &= ~(BMCR_LOOP | BMCR_ISO);
-	}
-	return(rval);
-}
-
-static int
-re_miibus_writereg(device_t dev, int phy, int reg, int data)
-{
-	struct re_softc *sc= device_get_softc(dev);
-	u_int16_t re8139_reg = 0;
-
-	if (!RE_IS_8139CP(sc))
-		return(re_gmii_writereg(dev, phy, reg, data));
-
-	/* Pretend the internal PHY is only at address 0 */
-	if (phy)
-		return(0);
-
-	switch(reg) {
-	case MII_BMCR:
-		re8139_reg = RE_BMCR;
-		/* 8139C+ has different bit layout. */
-		data &= ~(BMCR_LOOP | BMCR_ISO);
-		break;
-	case MII_BMSR:
-		re8139_reg = RE_BMSR;
-		break;
-	case MII_ANAR:
-		re8139_reg = RE_ANAR;
-		break;
-	case MII_ANER:
-		re8139_reg = RE_ANER;
-		break;
-	case MII_ANLPAR:
-		re8139_reg = RE_LPAR;
-		break;
-	case MII_PHYIDR1:
-	case MII_PHYIDR2:
-		return(0);
-	default:
-		device_printf(dev, "bad phy register\n");
-		return(0);
-	}
-	CSR_WRITE_2(sc, re8139_reg, data);
-	return(0);
-}
-
-static void
-re_miibus_statchg(device_t dev)
-{
-}
-
-/*
- * Program the 64-bit multicast hash filter.
- */
-static void
-re_setmulti(struct re_softc *sc)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int h = 0;
-	uint32_t hashes[2] = { 0, 0 };
-	struct ifmultiaddr *ifma;
-	uint32_t rxfilt;
-	int mcnt = 0;
-
-	rxfilt = CSR_READ_4(sc, RE_RXCFG);
-
-	/* Set the individual bit to receive frames for this host only. */
-	rxfilt |= RE_RXCFG_RX_INDIV;
-	/* Set capture broadcast bit to capture broadcast frames. */
-	rxfilt |= RE_RXCFG_RX_BROAD;
-
-	rxfilt &= ~(RE_RXCFG_RX_ALLPHYS | RE_RXCFG_RX_MULTI);
-	if ((ifp->if_flags & IFF_ALLMULTI) || (ifp->if_flags & IFF_PROMISC)) {
-		rxfilt |= RE_RXCFG_RX_MULTI;
-
-		/* If we want promiscuous mode, set the allframes bit. */
-		if (ifp->if_flags & IFF_PROMISC)
-			rxfilt |= RE_RXCFG_RX_ALLPHYS;
-
-		CSR_WRITE_4(sc, RE_RXCFG, rxfilt);
-		CSR_WRITE_4(sc, RE_MAR0, 0xFFFFFFFF);
-		CSR_WRITE_4(sc, RE_MAR4, 0xFFFFFFFF);
-		return;
-	}
-
-	/* first, zot all the existing hash bits */
-	CSR_WRITE_4(sc, RE_MAR0, 0);
-	CSR_WRITE_4(sc, RE_MAR4, 0);
-
-	/* now program new ones */
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
-		if (ifma->ifma_addr->sa_family != AF_LINK)
-			continue;
-		h = ether_crc32_be(LLADDR((struct sockaddr_dl *)
-		    ifma->ifma_addr), ETHER_ADDR_LEN) >> 26;
-		if (h < 32)
-			hashes[0] |= (1 << h);
-		else
-			hashes[1] |= (1 << (h - 32));
-		mcnt++;
-	}
-
-	if (mcnt)
-		rxfilt |= RE_RXCFG_RX_MULTI;
-	else
-		rxfilt &= ~RE_RXCFG_RX_MULTI;
-
-	CSR_WRITE_4(sc, RE_RXCFG, rxfilt);
-
-	/*
-	 * For some unfathomable reason, RealTek decided to reverse
-	 * the order of the multicast hash registers in the PCI Express
-	 * parts. This means we have to write the hash pattern in reverse
-	 * order for those devices.
-	 */
-	if (sc->re_caps & RE_C_PCIE) {
-		CSR_WRITE_4(sc, RE_MAR0, bswap32(hashes[1]));
-		CSR_WRITE_4(sc, RE_MAR4, bswap32(hashes[0]));
-	} else {
-		CSR_WRITE_4(sc, RE_MAR0, hashes[0]);
-		CSR_WRITE_4(sc, RE_MAR4, hashes[1]);
-	}
-}
-
-static void
-re_reset(struct re_softc *sc, int running)
-{
-	int i;
-
-	if ((sc->re_caps & RE_C_STOP_RXTX) && running) {
-		CSR_WRITE_1(sc, RE_COMMAND,
-			    RE_CMD_STOPREQ | RE_CMD_TX_ENB | RE_CMD_RX_ENB);
-		DELAY(100);
-	}
-
-	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_RESET);
-
-	for (i = 0; i < RE_TIMEOUT; i++) {
-		DELAY(10);
-		if ((CSR_READ_1(sc, RE_COMMAND) & RE_CMD_RESET) == 0)
-			break;
-	}
-	if (i == RE_TIMEOUT)
-		if_printf(&sc->arpcom.ac_if, "reset never completed!\n");
-}
-
-#ifdef RE_DIAG
-/*
- * The following routine is designed to test for a defect on some
- * 32-bit 8169 cards. Some of these NICs have the REQ64# and ACK64#
- * lines connected to the bus, however for a 32-bit only card, they
- * should be pulled high. The result of this defect is that the
- * NIC will not work right if you plug it into a 64-bit slot: DMA
- * operations will be done with 64-bit transfers, which will fail
- * because the 64-bit data lines aren't connected.
- *
- * There's no way to work around this (short of talking a soldering
- * iron to the board), however we can detect it. The method we use
- * here is to put the NIC into digital loopback mode, set the receiver
- * to promiscuous mode, and then try to send a frame. We then compare
- * the frame data we sent to what was received. If the data matches,
- * then the NIC is working correctly, otherwise we know the user has
- * a defective NIC which has been mistakenly plugged into a 64-bit PCI
- * slot. In the latter case, there's no way the NIC can work correctly,
- * so we print out a message on the console and abort the device attach.
- */
-
-static int
-re_diag(struct re_softc *sc)
-{
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mbuf *m0;
-	struct ether_header *eh;
-	struct re_desc *cur_rx;
-	uint16_t status;
-	int total_len, i, error = 0, phyaddr;
-	uint8_t dst[ETHER_ADDR_LEN] = { 0x00, 'h', 'e', 'l', 'l', 'o' };
-	uint8_t src[ETHER_ADDR_LEN] = { 0x00, 'w', 'o', 'r', 'l', 'd' };
-	char ethstr[2][ETHER_ADDRSTRLEN + 1];
-
-	/* Allocate a single mbuf */
-
-	MGETHDR(m0, M_NOWAIT, MT_DATA);
-	if (m0 == NULL)
-		return(ENOBUFS);
-
-	/*
-	 * Initialize the NIC in test mode. This sets the chip up
-	 * so that it can send and receive frames, but performs the
-	 * following special functions:
-	 * - Puts receiver in promiscuous mode
-	 * - Enables digital loopback mode
-	 * - Leaves interrupts turned off
-	 */
-
-	ifp->if_flags |= IFF_PROMISC;
-	sc->re_flags |= RE_F_TESTMODE;
-	re_init(sc);
-	sc->re_flags |= RE_F_LINKED;
-	if (!RE_IS_8139CP(sc))
-		phyaddr = 1;
-	else
-		phyaddr = 0;
-
-	re_miibus_writereg(sc->re_dev, phyaddr, MII_BMCR, BMCR_RESET);
-	for (i = 0; i < RE_TIMEOUT; i++) {
-		status = re_miibus_readreg(sc->re_dev, phyaddr, MII_BMCR);
-		if (!(status & BMCR_RESET))
-			break;
-	}
-
-	re_miibus_writereg(sc->re_dev, phyaddr, MII_BMCR, BMCR_LOOP);
-	CSR_WRITE_2(sc, RE_ISR, RE_INTRS_DIAG);
-
-	DELAY(100000);
-
-	/* Put some data in the mbuf */
-
-	eh = mtod(m0, struct ether_header *);
-	bcopy (dst, eh->ether_dhost, ETHER_ADDR_LEN);
-	bcopy (src, eh->ether_shost, ETHER_ADDR_LEN);
-	eh->ether_type = htons(ETHERTYPE_IP);
-	m0->m_pkthdr.len = m0->m_len = ETHER_MIN_LEN - ETHER_CRC_LEN;
-
-	/*
-	 * Queue the packet, start transmission.
-	 * Note: ifq_handoff() ultimately calls re_start() for us.
-	 */
-
-	CSR_WRITE_2(sc, RE_ISR, 0xFFFF);
-	error = ifq_handoff(ifp, m0, NULL);
-	if (error) {
-		m0 = NULL;
-		goto done;
-	}
-	m0 = NULL;
-
-	/* Wait for it to propagate through the chip */
-
-	DELAY(100000);
-	for (i = 0; i < RE_TIMEOUT; i++) {
-		status = CSR_READ_2(sc, RE_ISR);
-		CSR_WRITE_2(sc, RE_ISR, status);
-		if ((status & (RE_ISR_TIMEOUT_EXPIRED|RE_ISR_RX_OK)) ==
-		    (RE_ISR_TIMEOUT_EXPIRED|RE_ISR_RX_OK))
-			break;
-		DELAY(10);
-	}
-
-	if (i == RE_TIMEOUT) {
-		if_printf(ifp, "diagnostic failed to receive packet "
-			  "in loopback mode\n");
-		error = EIO;
-		goto done;
-	}
-
-	/*
-	 * The packet should have been dumped into the first
-	 * entry in the RX DMA ring. Grab it from there.
-	 */
-
-	bus_dmamap_sync(sc->re_ldata.re_rx_mtag, sc->re_ldata.re_rx_dmamap[0],
-			BUS_DMASYNC_POSTREAD);
-	bus_dmamap_unload(sc->re_ldata.re_rx_mtag,
-			  sc->re_ldata.re_rx_dmamap[0]);
-
-	m0 = sc->re_ldata.re_rx_mbuf[0];
-	sc->re_ldata.re_rx_mbuf[0] = NULL;
-	eh = mtod(m0, struct ether_header *);
-
-	cur_rx = &sc->re_ldata.re_rx_list[0];
-	total_len = RE_RXBYTES(cur_rx);
-
-	if (total_len != ETHER_MIN_LEN) {
-		if_printf(ifp, "diagnostic failed, received short packet\n");
-		error = EIO;
-		goto done;
-	}
-
-	/* Test that the received packet data matches what we sent. */
-
-	if (bcmp(eh->ether_dhost, dst, ETHER_ADDR_LEN) ||
-	    bcmp(eh->ether_shost, &src, ETHER_ADDR_LEN) ||
-	    be16toh(eh->ether_type) != ETHERTYPE_IP) {
-		if_printf(ifp, "WARNING, DMA FAILURE!\n");
-		if_printf(ifp, "expected TX data: %s/%s/0x%x\n",
-		    kether_ntoa(dst, ethstr[0]), kether_ntoa(src, ethstr[1]), ETHERTYPE_IP);
-		if_printf(ifp, "received RX data: %s/%s/0x%x\n",
-		    kether_ntoa(eh->ether_dhost, ethstr[0]),
-		    kether_ntoa(eh->ether_shost, ethstr[1]),
-		    ntohs(eh->ether_type));
-		if_printf(ifp, "You may have a defective 32-bit NIC plugged "
-		    "into a 64-bit PCI slot.\n");
-		if_printf(ifp, "Please re-install the NIC in a 32-bit slot "
-		    "for proper operation.\n");
-		if_printf(ifp, "Read the re(4) man page for more details.\n");
-		error = EIO;
-	}
-
-done:
-	/* Turn interface off, release resources */
-
-	sc->re_flags &= ~(RE_F_LINKED | RE_F_TESTMODE);
-	ifp->if_flags &= ~IFF_PROMISC;
-	re_stop(sc);
-	if (m0 != NULL)
-		m_freem(m0);
-
-	return (error);
-}
-#endif	/* RE_DIAG */
-
-/*
- * Probe for a RealTek 8139C+/8169/8110 chip. Check the PCI vendor and device
- * IDs against our list and return a device name if we find a match.
- */
 static int
 re_probe(device_t dev)
 {
 	const struct re_type *t;
-	const struct re_hwrev *hw_rev;
-	struct re_softc *sc;
-	int rid;
-	uint32_t hwrev, macmode, txcfg;
 	uint16_t vendor, product;
 
 	vendor = pci_get_vendor(dev);
@@ -985,132 +295,15 @@ re_probe(device_t dev)
 	    pci_get_subdevice(dev) != PCI_SUBDEVICE_LINKSYS_EG1032_REV3)
 		return ENXIO;
 
-	if (vendor == PCI_VENDOR_REALTEK &&
-	    product == PCI_PRODUCT_REALTEK_RT8139 &&
-	    pci_get_revid(dev) != PCI_REVID_REALTEK_RT8139CP) {
-		/* Poor 8139 */
-		return ENXIO;
-	}
-
 	for (t = re_devs; t->re_name != NULL; t++) {
 		if (product == t->re_did && vendor == t->re_vid)
 			break;
 	}
-
-	/*
-	 * Check if we found a RealTek device.
-	 */
 	if (t->re_name == NULL)
 		return ENXIO;
 
-	/*
-	 * Temporarily map the I/O space so we can read the chip ID register.
-	 */
-	sc = kmalloc(sizeof(*sc), M_TEMP, M_WAITOK | M_ZERO);
-	rid = RE_PCI_LOIO;
-	sc->re_res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid,
-					    RF_ACTIVE);
-	if (sc->re_res == NULL) {
-		device_printf(dev, "couldn't map ports/memory\n");
-		kfree(sc, M_TEMP);
-		return ENXIO;
-	}
-
-	sc->re_btag = rman_get_bustag(sc->re_res);
-	sc->re_bhandle = rman_get_bushandle(sc->re_res);
-
-	txcfg = CSR_READ_4(sc, RE_TXCFG);
-	hwrev = txcfg & RE_TXCFG_HWREV;
-	macmode = txcfg & RE_TXCFG_MACMODE;
-	bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOIO, sc->re_res);
-	kfree(sc, M_TEMP);
-
-	/*
-	 * and continue matching for the specific chip...
-	 */
-	for (hw_rev = re_hwrevs; hw_rev->re_hwrev != RE_HWREV_NULL; hw_rev++) {
-		if (hw_rev->re_hwrev == hwrev) {
-			sc = device_get_softc(dev);
-
-			sc->re_hwrev = hw_rev->re_hwrev;
-			sc->re_caps = hw_rev->re_caps;
-			sc->re_maxmtu = hw_rev->re_maxmtu;
-
-			/*
-			 * Apply chip property fixup
-			 */
-			switch (sc->re_hwrev) {
-			case RE_HWREV_8168GU:
-				if (vendor == PCI_VENDOR_REALTEK &&
-				    product == PCI_PRODUCT_REALTEK_RT8101E) {
-					/* 8106EUS */
-					sc->re_caps = RE_C_HWCSUM | RE_C_MAC2 |
-					    RE_C_PHYPMGT | RE_C_AUTOPAD |
-					    RE_C_STOP_RXTX | RE_C_FASTE;
-					sc->re_maxmtu = ETHERMTU;
-					device_printf(dev, "8106EUS fixup\n");
-				} else {
-					/* 8168GU */
-					goto ee_eaddr1;
-				}
-				break;
-
-			case RE_HWREV_8168E:
-				if (vendor == PCI_VENDOR_REALTEK &&
-				    product == PCI_PRODUCT_REALTEK_RT8101E) {
-					/* 8105E */
-					sc->re_caps = RE_C_HWCSUM | RE_C_MAC2 |
-					    RE_C_PHYPMGT | RE_C_AUTOPAD |
-					    RE_C_STOP_RXTX | RE_C_FASTE |
-					    RE_C_PHYPMCH;
-					sc->re_maxmtu = ETHERMTU;
-					device_printf(dev, "8105E fixup\n");
-					goto ee_eaddr0;
-				}
-				/* 8168E */
-				break;
-
-			case RE_HWREV_8101E:
-			case RE_HWREV_8102E:
-			case RE_HWREV_8102EL:
-			case RE_HWREV_8401E:
-			case RE_HWREV_8105E:
-			case RE_HWREV_8106E:
-ee_eaddr0:
-				sc->re_caps |= RE_C_EE_EADDR;
-				sc->re_ee_eaddr = RE_EE_EADDR0;
-				break;
-
-			case RE_HWREV_8168F:
-			case RE_HWREV_8111F:
-			case RE_HWREV_8168G:
-				if (macmode == 0 ||
-				    macmode == 0x100000) {
-					sc->re_caps |= RE_C_EE_EADDR;
-					sc->re_ee_eaddr = RE_EE_EADDR1;
-				}
-				break;
-
-			case RE_HWREV_8411:
-			case RE_HWREV_8168EP:
-			case RE_HWREV_8168H:
-			case RE_HWREV_8411B:
-ee_eaddr1:
-				sc->re_caps |= RE_C_EE_EADDR;
-				sc->re_ee_eaddr = RE_EE_EADDR1;
-				break;
-			}
-			if (pci_is_pcie(dev))
-				sc->re_caps |= RE_C_PCIE;
-
-			device_set_desc(dev, t->re_name);
-			return 0;
-		}
-	}
-	device_printf(dev, "unknown hwrev 0x%08x, macmode 0x%08x\n",
-	    hwrev, macmode);
-
-	return ENXIO;
+	device_set_desc(dev, t->re_name);
+	return 0;
 }
 
 static int
@@ -1255,8 +448,10 @@ re_allocmem(device_t dev)
 		error = re_jpool_alloc(sc);
 		if (error) {
 			re_jpool_free(sc);
+#ifdef RE_JUMBO
 			/* Disable jumbo frame support */
 			sc->re_maxmtu = ETHERMTU;
+#endif
 		}
 	}
 	return(0);
@@ -1344,6 +539,24 @@ re_freemem(device_t dev)
 		kfree(sc->re_ldata.re_rx_dmamap, M_DEVBUF);
 }
 
+static boolean_t
+re_is_faste(struct re_softc *sc)
+{
+	if (pci_get_vendor(sc->dev) == PCI_VENDOR_REALTEK) {
+		switch (sc->re_device_id) {
+		case PCI_PRODUCT_REALTEK_RT8169:
+		case PCI_PRODUCT_REALTEK_RT8169SC:
+		case PCI_PRODUCT_REALTEK_RT8168:
+		case PCI_PRODUCT_REALTEK_RT8168_1:
+			return FALSE;
+		default:
+			return TRUE;
+		}
+	} else {
+		return FALSE;
+	}
+}
+
 /*
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
@@ -1352,29 +565,28 @@ static int
 re_attach(device_t dev)
 {
 	struct re_softc	*sc = device_get_softc(dev);
-	struct mii_probe_args mii_args;
 	struct ifnet *ifp;
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
-	uint8_t eaddr[ETHER_ADDR_LEN], cfg;
-	int error = 0, qlen, msi_enable, cfg5_reg;
+	uint8_t eaddr[ETHER_ADDR_LEN];
+	int error = 0, qlen, msi_enable;
 	u_int irq_flags;
 
 	callout_init_mp(&sc->re_timer);
-	sc->re_dev = dev;
+	sc->dev = dev;
+	sc->re_device_id = pci_get_device(dev);
+	sc->re_unit = device_get_unit(dev);
+	ifmedia_init(&sc->media, IFM_IMASK, rtl_ifmedia_upd, rtl_ifmedia_sts);
 
-	if (RE_IS_8139CP(sc)) {
-		sc->re_rx_desc_cnt = RE_RX_DESC_CNT_8139CP;
-		sc->re_tx_desc_cnt = RE_TX_DESC_CNT_8139CP;
-	} else {
-		sc->re_rx_desc_cnt = re_rx_desc_count;
-		if (sc->re_rx_desc_cnt > RE_RX_DESC_CNT_MAX)
-			sc->re_rx_desc_cnt = RE_RX_DESC_CNT_MAX;
+	sc->re_caps = RE_C_HWIM;
 
-		sc->re_tx_desc_cnt = re_tx_desc_count;
-		if (sc->re_tx_desc_cnt > RE_TX_DESC_CNT_MAX)
-			sc->re_tx_desc_cnt = RE_TX_DESC_CNT_MAX;
-	}
+	sc->re_rx_desc_cnt = re_rx_desc_count;
+	if (sc->re_rx_desc_cnt > RE_RX_DESC_CNT_MAX)
+		sc->re_rx_desc_cnt = RE_RX_DESC_CNT_MAX;
+
+	sc->re_tx_desc_cnt = re_tx_desc_count;
+	if (sc->re_tx_desc_cnt > RE_TX_DESC_CNT_MAX)
+		sc->re_tx_desc_cnt = RE_TX_DESC_CNT_MAX;
 
 	qlen = RE_IFQ_MAXLEN;
 	if (sc->re_tx_desc_cnt > qlen)
@@ -1383,18 +595,18 @@ re_attach(device_t dev)
 	sc->re_rxbuf_size = MCLBYTES;
 	sc->re_newbuf = re_newbuf_std;
 
+	/*
+	 * Hardware interrupt moderation settings.
+	 * XXX does not seem correct, undocumented.
+	 */
 	sc->re_tx_time = 5;		/* 125us */
 	sc->re_rx_time = 2;		/* 50us */
-	if (sc->re_caps & RE_C_PCIE)
-		sc->re_sim_time = 75;	/* 75us */
-	else
-		sc->re_sim_time = 125;	/* 125us */
-	if (!RE_IS_8139CP(sc)) {
-		/* simulated interrupt moderation */
-		sc->re_imtype = RE_IMTYPE_SIM;
-	} else {
-		sc->re_imtype = RE_IMTYPE_NONE;
-	}
+
+	/* Simulated interrupt moderation setting. */
+	sc->re_sim_time = 150;		/* 150us */
+
+	/* Use simulated interrupt moderation by default. */
+	sc->re_imtype = RE_IMTYPE_SIM;
 	re_config_imtype(sc, sc->re_imtype);
 
 	ctx = device_get_sysctl_ctx(dev);
@@ -1476,10 +688,26 @@ re_attach(device_t dev)
 	sc->re_btag = rman_get_bustag(sc->re_res);
 	sc->re_bhandle = rman_get_bushandle(sc->re_res);
 
+	error = rtl_check_mac_version(sc);
+	if (error) {
+		device_printf(dev, "check mac version failed\n");
+		goto fail;
+	}
+
+	rtl_init_software_variable(sc);
+	if (pci_is_pcie(dev))
+		sc->re_if_flags |= RL_FLAG_PCIE;
+	else
+		sc->re_if_flags &= ~RL_FLAG_PCIE;
+	device_printf(dev, "MAC version 0x%08x, MACFG %u%s%s\n",
+	    (CSR_READ_4(sc, RE_TXCFG) & 0xFCF00000), sc->re_type,
+	    sc->re_coalesce_tx_pkt ? ", software TX defrag" : "",
+	    sc->re_hw_enable_msi_msix ? ", support MSI" : "");
+
 	/*
 	 * Allocate interrupt
 	 */
-	if (pci_is_pcie(dev))
+	if (pci_is_pcie(dev) && sc->re_hw_enable_msi_msix)
 		msi_enable = re_msi_enable;
 	else
 		msi_enable = 0;
@@ -1497,12 +725,22 @@ re_attach(device_t dev)
 	/* Disable ASPM */
 	re_disable_aspm(dev);
 
-	/* Reset the adapter. */
-	re_reset(sc, 0);
+	rtl_exit_oob(sc);
+	rtl_hw_init(sc);
 
-	if (RE_IS_8139CP(sc)) {
-		sc->re_bus_speed = 33; /* XXX */
-	} else if (sc->re_caps & RE_C_PCIE) {
+	/* Reset the adapter. */
+	rtl_reset(sc);
+
+	rtl_get_hw_mac_address(sc, eaddr);
+	if (sc->re_type == MACFG_3)	/* Change PCI Latency time*/
+		pci_write_config(dev, PCIR_LATTIMER, 0x40, 1);
+
+	/* Allocate DMA stuffs */
+	error = re_allocmem(dev);
+	if (error)
+		goto fail;
+
+	if (pci_is_pcie(dev)) {
 		sc->re_bus_speed = 125;
 	} else {
 		uint8_t cfg2;
@@ -1520,105 +758,19 @@ re_attach(device_t dev)
 			sc->re_bus_speed = 33;
 			break;
 		}
-		if (cfg2 & RE_CFG2_PCI64)
-			sc->re_caps |= RE_C_PCI64;
 	}
-	device_printf(dev, "Hardware rev. 0x%08x; PCI%s %dMHz\n",
-		      sc->re_hwrev,
-		      (sc->re_caps & RE_C_PCIE) ?
-		      "-E" : ((sc->re_caps & RE_C_PCI64) ? "64" : "32"),
-		      sc->re_bus_speed);
+	device_printf(dev, "bus speed %dMHz\n", sc->re_bus_speed);
 
-	/*
-	 * Enable PME.
-	 */
-	if (RE_IS_8139CP(sc))
-		cfg5_reg = RE_CFG5_8139CP;
-	else
-		cfg5_reg = RE_CFG5;
-	CSR_WRITE_1(sc, RE_EECMD, RE_EE_MODE);
-	cfg = CSR_READ_1(sc, RE_CFG1);
-	cfg |= RE_CFG1_PME;
-	CSR_WRITE_1(sc, RE_CFG1, cfg);
-	cfg = CSR_READ_1(sc, cfg5_reg);
-	cfg &= RE_CFG5_PME_STS;
-	CSR_WRITE_1(sc, cfg5_reg, cfg);
-	CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_OFF);
+	rtl_phy_power_up(sc);
+	rtl_hw_phy_config(sc);
+	rtl_clrwol(sc);
 
-	re_get_eaddr(sc, eaddr);
+	/* TODO: jumbo frame */
+	CSR_WRITE_2(sc, RE_RxMaxSize, sc->re_rxbuf_size);
 
-	if (!RE_IS_8139CP(sc)) {
-		/* Set RX length mask */
-		sc->re_rxlenmask = RE_RDESC_STAT_GFRAGLEN;
-		sc->re_txstart = RE_GTXSTART;
-	} else {
-		/* Set RX length mask */
-		sc->re_rxlenmask = RE_RDESC_STAT_FRAGLEN;
-		sc->re_txstart = RE_TXSTART;
-	}
-
-	/* Allocate DMA stuffs */
-	error = re_allocmem(dev);
-	if (error)
-		goto fail;
-
-	/*
-	 * Apply some magic PCI settings from Realtek ...
-	 */
-	if (RE_IS_8169(sc)) {
-		CSR_WRITE_1(sc, 0x82, 1);
-		pci_write_config(dev, PCIR_CACHELNSZ, 0x8, 1);
-	}
-	pci_write_config(dev, PCIR_LATTIMER, 0x40, 1);
-
-	if (sc->re_caps & RE_C_MAC2) {
-		/*
-		 * Following part is extracted from Realtek BSD driver v176.
-		 * However, this does _not_ make much/any sense:
-		 * 8168C's PCI Express device control is located at 0x78,
-		 * so the reading from 0x79 (higher part of 0x78) and setting
-		 * the 4~6bits intend to enlarge the "max read request size"
-		 * (we will do it).  The content of the rest part of this
-		 * register is not meaningful to other PCI registers, so
-		 * writing the value to 0x54 could be completely wrong.
-		 * 0x80 is the lower part of PCI Express device status, non-
-		 * reserved bits are RW1C, writing 0 to them will not have
-		 * any effect at all.
-		 */
-#ifdef foo
-		uint8_t val;
-
-		val = pci_read_config(dev, 0x79, 1);
-		val = (val & ~0x70) | 0x50;
-		pci_write_config(dev, 0x54, val, 1);
-		pci_write_config(dev, 0x80, 0, 1);
-#endif
-	}
-
-	/*
-	 * Apply some PHY fixup from Realtek ...
-	 */
-	if (sc->re_caps & RE_C_PHYPMCH) {
-		CSR_WRITE_1(sc, RE_PMCH, CSR_READ_1(sc, RE_PMCH) | 0x80);
-		if (sc->re_hwrev == RE_HWREV_8401E)
-			CSR_WRITE_1(sc, 0xD1, CSR_READ_1(sc, 0xD1) & ~0x08);
-	}
-	if (sc->re_caps & RE_C_PHYPMGT) {
-		/* Power up PHY */
-		re_miibus_writereg(dev, 1, 0x1f, 0);
-		re_miibus_writereg(dev, 1, 0xe, 0);
-	}
-
-	/* Do MII setup */
-	mii_probe_args_init(&mii_args, re_ifmedia_upd, re_ifmedia_sts);
-	mii_args.mii_probemask = 1 << 0;
-	if (!RE_IS_8139CP(sc))
-		mii_args.mii_probemask = 1 << 1;
-	if (mii_probe(dev, &sc->re_miibus, &mii_args)) {
-		device_printf(dev, "MII without any phy!\n");
-		error = ENXIO;
-		goto fail;
-	}
+	/* Enable hardware checksum if available. */
+	sc->re_tx_cstag = 1;
+	sc->re_rx_cstag = 1;
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
@@ -1631,7 +783,7 @@ re_attach(device_t dev)
 #endif
 	ifp->if_watchdog = re_watchdog;
 	ifp->if_init = re_init;
-	if (!RE_IS_8139CP(sc)) /* XXX */
+	if (!re_is_faste(sc))
 		ifp->if_baudrate = 1000000000;
 	else
 		ifp->if_baudrate = 100000000;
@@ -1639,23 +791,10 @@ re_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, qlen);
 	ifq_set_ready(&ifp->if_snd);
 
-	ifp->if_capabilities = IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
-	if (sc->re_caps & RE_C_HWCSUM)
-		ifp->if_capabilities |= IFCAP_HWCSUM;
-
+	ifp->if_capabilities = IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING |
+	    IFCAP_RXCSUM | IFCAP_TXCSUM;
 	ifp->if_capenable = ifp->if_capabilities;
-	if (ifp->if_capabilities & IFCAP_HWCSUM) {
-		/*
-		 * RTL8168/8111C generates wrong IP checksummed frame if the
-		 * packet has IP options so disable TX IP checksum offloading.
-		 */ 
-		if (sc->re_hwrev == RE_HWREV_8168CP ||
-		    sc->re_hwrev == RE_HWREV_8168C)
-			sc->re_hwassist = CSUM_TCP | CSUM_UDP;
-		else
-			sc->re_hwassist = CSUM_IP | CSUM_TCP | CSUM_UDP;
-	}
-	ifp->if_hwassist = sc->re_hwassist;
+	/* NOTE: if_hwassist will be setup after the interface is up. */
 
 	/*
 	 * Call MI attach routine.
@@ -1669,34 +808,26 @@ re_attach(device_t dev)
 	    device_get_unit(dev), ifp->if_serializer);
 #endif
 
-#ifdef RE_DIAG
-	/*
-	 * Perform hardware diagnostic on the original RTL8169.
-	 * Some 32-bit cards were incorrectly wired and would
-	 * malfunction if plugged into a 64-bit slot.
-	 */
-	if (sc->re_hwrev == RE_HWREV_8169) {
-		lwkt_serialize_enter(ifp->if_serializer);
-		error = re_diag(sc);
-		lwkt_serialize_exit(ifp->if_serializer);
-
-		if (error) {
-			device_printf(dev, "hardware diagnostic failure\n");
-			ether_ifdetach(ifp);
-			goto fail;
-		}
-	}
-#endif	/* RE_DIAG */
-
 	/* Hook interrupt last to avoid having to lock softc */
-	error = bus_setup_intr(dev, sc->re_irq, INTR_MPSAFE, re_intr, sc,
-			       &sc->re_intrhand, ifp->if_serializer);
-
+	error = bus_setup_intr(dev, sc->re_irq, INTR_MPSAFE | INTR_HIFREQ,
+	    re_intr, sc, &sc->re_intrhand, ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
 		ether_ifdetach(ifp);
 		goto fail;
 	}
+
+	ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T, 0, NULL);
+	ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T | IFM_FDX, 0, NULL);
+	ifmedia_add(&sc->media, IFM_ETHER | IFM_100_TX, 0, NULL);
+	ifmedia_add(&sc->media, IFM_ETHER | IFM_100_TX | IFM_FDX, 0, NULL);
+	if (!re_is_faste(sc)) {
+		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T | IFM_FDX,
+		    0, NULL);
+	}
+	ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
+	ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
+	rtl_ifmedia_upd(ifp);
 
 fail:
 	if (error)
@@ -1721,15 +852,13 @@ re_detach(device_t dev)
 	/* These should only be active if attach succeeded */
 	if (device_is_attached(dev)) {
 		lwkt_serialize_enter(ifp->if_serializer);
-		re_stop(sc);
+		re_stop(sc, TRUE);
 		bus_teardown_intr(dev, sc->re_irq, sc->re_intrhand);
 		lwkt_serialize_exit(ifp->if_serializer);
 
 		ether_ifdetach(ifp);
 	}
-	if (sc->re_miibus)
-		device_delete_child(dev, sc->re_miibus);
-	bus_generic_detach(dev);
+	ifmedia_removeall(&sc->media);
 
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->re_irq_rid,
@@ -1826,6 +955,7 @@ back:
 	return error;
 }
 
+#ifdef RE_JUMBO
 static int
 re_newbuf_jumbo(struct re_softc *sc, int idx, int init)
 {
@@ -1879,6 +1009,7 @@ back:
 	re_setup_rxdesc(sc, idx);
 	return error;
 }
+#endif	/* RE_JUMBO */
 
 static int
 re_tx_list_init(struct re_softc *sc)
@@ -1920,7 +1051,7 @@ re_packet_type(struct re_softc *sc, uint32_t rxstat, uint32_t rxctrl)
 {
 	uint8_t packet_type = 0;
 
-	if (sc->re_caps & RE_C_MAC2) {
+	if (sc->re_if_flags & RL_FLAG_DESCV2) {
 		if (rxctrl & RE_RDESC_CTL_PROTOIP4)
 			packet_type |= RE_IP4_PACKET;
 	} else {
@@ -1996,25 +1127,7 @@ re_rxeof(struct re_softc *sc)
 			continue;
 		}
 
-		/*
-		 * NOTE: for the 8139C+, the frame length field
-		 * is always 12 bits in size, but for the gigE chips,
-		 * it is 13 bits (since the max RX frame length is 16K).
-		 * Unfortunately, all 32 bits in the status word
-		 * were already used, so to make room for the extra
-		 * length bit, RealTek took out the 'frame alignment
-		 * error' bit and shifted the other status bits
-		 * over one slot. The OWN, EOR, FS and LS bits are
-		 * still in the same places. We have already extracted
-		 * the frame length and checked the OWN bit, so rather
-		 * than using an alternate bit mapping, we shift the
-		 * status bits one space to the right so we can evaluate
-		 * them using the 8169 status as though it was in the
-		 * same format as that of the 8139C+.
-		 */
-		if (!RE_IS_8139CP(sc))
-			rxstat >>= 1;
-
+		rxstat >>= 1;
 		if (rxstat & RE_RDESC_STAT_RXERRSUM) {
 			IFNET_STAT_INC(ifp, ierrors, 1);
 			/*
@@ -2170,7 +1283,7 @@ re_txeof(struct re_softc *sc)
 	 * to be required with the PCIe devices.
 	 */
 	if (sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt)
-		CSR_WRITE_1(sc, sc->re_txstart, RE_TXSTART_START);
+		CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
 	else
 		ifp->if_timer = 0;
 
@@ -2192,24 +1305,18 @@ re_tick_serialized(void *xsc)
 {
 	struct re_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mii_data *mii;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	mii = device_get_softc(sc->re_miibus);
-	mii_tick(mii);
-	if (sc->re_flags & RE_F_LINKED) {
-		if (!(mii->mii_media_status & IFM_ACTIVE))
-			sc->re_flags &= ~RE_F_LINKED;
-	} else {
-		if (mii->mii_media_status & IFM_ACTIVE &&
-		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
-			sc->re_flags |= RE_F_LINKED;
-			if (!ifq_is_empty(&ifp->if_snd))
-				if_devstart(ifp);
-		}
-	}
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
+		return;
 
+	if (rtl_link_ok(sc)) {
+		if ((sc->re_flags & RE_F_LINKED) == 0)
+			re_link_up(sc);
+	} else if (sc->re_flags & RE_F_LINKED) {
+		re_link_down(sc);
+	}
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
 }
 
@@ -2223,13 +1330,11 @@ re_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->re_npoll.ifpc_stcount-- == 0) {
-		uint16_t       status;
+		uint16_t status;
 
 		sc->re_npoll.ifpc_stcount = sc->re_npoll.ifpc_stfrac;
 
 		status = CSR_READ_2(sc, RE_ISR);
-		if (status == 0xffff)
-			return;
 		if (status)
 			CSR_WRITE_2(sc, RE_ISR, status);
 
@@ -2237,8 +1342,12 @@ re_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 		 * XXX check behaviour on receiver stalls.
 		 */
 
-		if (status & RE_ISR_SYSTEM_ERR)
+		if (status & RE_ISR_SYSTEM_ERR) {
+			rtl_reset(sc);
 			re_init(sc);
+			/* Done! */
+			return;
+		}
 	}
 
 	sc->rxcycles = count;
@@ -2280,7 +1389,7 @@ re_intr(void *arg)
 	struct re_softc	*sc = arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t status;
-	int rx, tx;
+	int proc;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -2288,39 +1397,33 @@ re_intr(void *arg)
 	    (ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
-	rx = tx = 0;
+	/* Disable interrupts. */
+	CSR_WRITE_2(sc, RE_IMR, 0);
 
 	status = CSR_READ_2(sc, RE_ISR);
-	/* If the card has gone away the read returns 0xffff. */
-	if (status == 0xffff)
-		goto reload;
+again:
+	proc = 0;
 	if (status)
 		CSR_WRITE_2(sc, RE_ISR, status);
-
-	if ((status & sc->re_intrs) == 0)
-		goto reload;
-
-	if (status & (sc->re_rx_ack | RE_ISR_RX_ERR))
-		rx |= re_rxeof(sc);
-
-	if (status & (sc->re_tx_ack | RE_ISR_TX_ERR))
-		tx |= re_txeof(sc);
-
-	if (status & RE_ISR_SYSTEM_ERR)
-		re_init(sc);
-
-	if (status & RE_ISR_LINKCHG) {
-		callout_stop(&sc->re_timer);
-		re_tick_serialized(sc);
+	if (status & sc->re_intrs) {
+		if (status & RE_ISR_SYSTEM_ERR) {
+			rtl_reset(sc);
+			re_init(sc);
+			/* Done! */
+			return;
+		}
+		proc |= re_rxeof(sc);
+		proc |= re_txeof(sc);
 	}
 
-reload:
 	if (sc->re_imtype == RE_IMTYPE_SIM) {
 		if ((sc->re_flags & RE_F_TIMER_INTR)) {
-			if ((tx | rx) == 0) {
+			if (!proc) {
 				/*
 				 * Nothing needs to be processed, fallback
 				 * to use TX/RX interrupts.
+				 *
+				 * NOTE: This will re-enable interrupts.
 				 */
 				re_setup_intr(sc, 1, RE_IMTYPE_NONE);
 
@@ -2330,21 +1433,38 @@ reload:
 				 * masks.
 				 */
 				re_rxeof(sc);
-				tx = re_txeof(sc);
+				re_txeof(sc);
 			} else {
+				/* Re-enable interrupts. */
+				CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
 				CSR_WRITE_4(sc, RE_TIMERCNT, 1); /* reload */
 			}
-		} else if (tx | rx) {
+		} else if (proc) {
 			/*
 			 * Assume that using simulated interrupt moderation
 			 * (hardware timer based) could reduce the interript
 			 * rate.
+			 *
+			 * NOTE: This will re-enable interrupts.
 			 */
 			re_setup_intr(sc, 1, RE_IMTYPE_SIM);
+		} else {
+			/* Re-enable interrupts. */
+			CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
 		}
+	} else {
+		status = CSR_READ_2(sc, RE_ISR);
+		if (status & sc->re_intrs) {
+			if (!ifq_is_empty(&ifp->if_snd))
+				if_devstart(ifp);
+			/* NOTE: Interrupts are still disabled. */
+			goto again;
+		}
+		/* Re-enable interrupts. */
+		CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
 	}
 
-	if (tx && !ifq_is_empty(&ifp->if_snd))
+	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
 }
 
@@ -2360,6 +1480,23 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 
 	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
 		("not enough free TX desc"));
+
+	if (sc->re_coalesce_tx_pkt && m->m_pkthdr.len != m->m_len) {
+		struct mbuf *m_new;
+
+		m_new = m_defrag(m, M_NOWAIT);
+		if (m_new == NULL) {
+			error = ENOBUFS;
+			goto back;
+		} else {
+			*m_head = m = m_new;
+			if (m->m_pkthdr.len != m->m_len) {
+				/* Still not configuous; give up. */
+				error = ENOBUFS;
+				goto back;
+			}
+		}
+	}
 
 	map = sc->re_ldata.re_tx_dmamap[*idx0];
 
@@ -2383,35 +1520,32 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		ctl_csum |= RE_TDESC_CTL_UDPCSUM;
 	}
 
-	/* For MAC2 chips, csum flags are set on re_control */
-	if (sc->re_caps & RE_C_MAC2)
+	/* For version2 descriptor, csum flags are set on re_control */
+	if (sc->re_if_flags & RL_FLAG_DESCV2)
 		cmd_csum = 0;
 	else
 		ctl_csum = 0;
 
-	if ((sc->re_caps & RE_C_AUTOPAD) == 0) {
-		/*
-		 * With some of the RealTek chips, using the checksum offload
-		 * support in conjunction with the autopadding feature results
-		 * in the transmission of corrupt frames. For example, if we
-		 * need to send a really small IP fragment that's less than 60
-		 * bytes in size, and IP header checksumming is enabled, the
-		 * resulting ethernet frame that appears on the wire will
-		 * have garbled payload. To work around this, if TX checksum
-		 * offload is enabled, we always manually pad short frames out
-		 * to the minimum ethernet frame size.
-		 *
-		 * Note: this appears unnecessary for TCP, and doing it for TCP
-		 * with PCIe adapters seems to result in bad checksums.
-		 */
-		if ((m->m_pkthdr.csum_flags &
-		     (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
-		    (m->m_pkthdr.csum_flags & CSUM_TCP) == 0 &&
-		    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
-			error = m_devpad(m, RE_MIN_FRAMELEN);
-			if (error)
-				goto back;
-		}
+	/*
+	 * With some of the RealTek chips, using the checksum offload
+	 * support in conjunction with the autopadding feature results
+	 * in the transmission of corrupt frames. For example, if we
+	 * need to send a really small IP fragment that's less than 60
+	 * bytes in size, and IP header checksumming is enabled, the
+	 * resulting ethernet frame that appears on the wire will
+	 * have garbled payload. To work around this, if TX checksum
+	 * offload is enabled, we always manually pad short frames out
+	 * to the minimum ethernet frame size.
+	 *
+	 * Note: this appears unnecessary for TCP, and doing it for TCP
+	 * with PCIe adapters seems to result in bad checksums.
+	 */
+	if ((m->m_pkthdr.csum_flags & (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
+	    (m->m_pkthdr.csum_flags & CSUM_TCP) == 0 &&
+	    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
+		error = m_devpad(m, RE_MIN_FRAMELEN);
+		if (error)
+			goto back;
 	}
 
 	vlantag = 0;
@@ -2583,7 +1717,7 @@ re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	 * RealTek put the TX poll request register in a different
 	 * location on the 8169 gigE chip. I don't know why.
 	 */
-	CSR_WRITE_1(sc, sc->re_txstart, RE_TXSTART_START);
+	CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -2592,91 +1726,25 @@ re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 }
 
 static void
-re_init(void *xsc)
+re_link_up(struct re_softc *sc)
 {
-	struct re_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mii_data *mii;
-	int error, framelen;
+	int error;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	mii = device_get_softc(sc->re_miibus);
+	rtl_link_on_patch(sc);
+	re_stop(sc, FALSE);
+	rtl_set_eaddr(sc);
 
-	/*
-	 * Cancel pending I/O and free all RX/TX buffers.
-	 */
-	re_stop(sc);
-
-	if (sc->re_caps & RE_C_CONTIGRX) {
-		if (ifp->if_mtu > ETHERMTU) {
-			KKASSERT(sc->re_ldata.re_jbuf != NULL);
-			sc->re_flags |= RE_F_USE_JPOOL;
-			sc->re_rxbuf_size = RE_FRAMELEN_MAX;
-			sc->re_newbuf = re_newbuf_jumbo;
-		} else {
-			sc->re_flags &= ~RE_F_USE_JPOOL;
-			sc->re_rxbuf_size = MCLBYTES;
-			sc->re_newbuf = re_newbuf_std;
-		}
-	}
-
-	/*
-	 * Adjust max read request size according to MTU; mainly to
-	 * improve TX performance for common case (ETHERMTU) on GigE
-	 * NICs.  However, this could _not_ be done on 10/100 only
-	 * NICs; their DMA engines will malfunction using non-default
-	 * max read request size.
-	 */
-	if ((sc->re_caps & (RE_C_PCIE | RE_C_FASTE)) == RE_C_PCIE) {
-		if (ifp->if_mtu > ETHERMTU) {
-			/*
-			 * 512 seems to be the only value that works
-			 * reliably with jumbo frame
-			 */
-			pcie_set_max_readrq(sc->re_dev,
-				PCIEM_DEVCTL_MAX_READRQ_512);
-		} else {
-			pcie_set_max_readrq(sc->re_dev,
-				PCIEM_DEVCTL_MAX_READRQ_4096);
-		}
-	}
-
-	/*
-	 * Enable C+ RX and TX mode, as well as VLAN stripping and
-	 * RX checksum offload. We must configure the C+ register
-	 * before all others.
-	 */
-	CSR_WRITE_2(sc, RE_CPLUS_CMD, RE_CPLUSCMD_RXENB | RE_CPLUSCMD_TXENB |
-		    RE_CPLUSCMD_PCI_MRW |
-		    (ifp->if_capenable & IFCAP_VLAN_HWTAGGING ?
-		     RE_CPLUSCMD_VLANSTRIP : 0) |
-		    (ifp->if_capenable & IFCAP_RXCSUM ?
-		     RE_CPLUSCMD_RXCSUM_ENB : 0));
-
-	/*
-	 * Init our MAC address.  Even though the chipset
-	 * documentation doesn't mention it, we need to enter "Config
-	 * register write enable" mode to modify the ID registers.
-	 */
-	CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_WRITECFG);
-	CSR_WRITE_4(sc, RE_IDR0,
-	    htole32(*(uint32_t *)(&sc->arpcom.ac_enaddr[0])));
-	CSR_WRITE_2(sc, RE_IDR4,
-	    htole16(*(uint16_t *)(&sc->arpcom.ac_enaddr[4])));
-	CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_OFF);
-
-	/*
-	 * For C+ mode, initialize the RX descriptors and mbufs.
-	 */
 	error = re_rx_list_init(sc);
 	if (error) {
-		re_stop(sc);
+		re_stop(sc, TRUE);
 		return;
 	}
 	error = re_tx_list_init(sc);
 	if (error) {
-		re_stop(sc);
+		re_stop(sc, TRUE);
 		return;
 	}
 
@@ -2693,36 +1761,7 @@ re_init(void *xsc)
 	CSR_WRITE_4(sc, RE_TXLIST_ADDR_LO,
 	    RE_ADDR_LO(sc->re_ldata.re_tx_list_addr));
 
-	/*
-	 * Enable transmit and receive.
-	 */
-	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB|RE_CMD_RX_ENB);
-
-	/*
-	 * Set the initial TX and RX configuration.
-	 */
-	if (sc->re_flags & RE_F_TESTMODE) {
-		if (!RE_IS_8139CP(sc))
-			CSR_WRITE_4(sc, RE_TXCFG,
-				    RE_TXCFG_CONFIG | RE_LOOPTEST_ON);
-		else
-			CSR_WRITE_4(sc, RE_TXCFG,
-				    RE_TXCFG_CONFIG | RE_LOOPTEST_ON_CPLUS);
-	} else
-		CSR_WRITE_4(sc, RE_TXCFG, RE_TXCFG_CONFIG);
-
-	framelen = RE_FRAMELEN(ifp->if_mtu);
-	if (framelen < MCLBYTES)
-		CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, howmany(MCLBYTES, 128));
-	else
-		CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, howmany(framelen, 128));
-
-	CSR_WRITE_4(sc, RE_RXCFG, RE_RXCFG_CONFIG);
-
-	/*
-	 * Program the multicast filter, if necessary.
-	 */
-	re_setmulti(sc);
+	rtl_hw_start(sc);
 
 #ifdef IFPOLL_ENABLE
 	/*
@@ -2735,37 +1774,50 @@ re_init(void *xsc)
 	/*
 	 * Enable interrupts.
 	 */
-	if (sc->re_flags & RE_F_TESTMODE)
-		CSR_WRITE_2(sc, RE_IMR, 0);
-	else
-		re_setup_intr(sc, 1, sc->re_imtype);
+	re_setup_intr(sc, 1, sc->re_imtype);
 	CSR_WRITE_2(sc, RE_ISR, sc->re_intrs);
 
-	/* Start RX/TX process. */
-	CSR_WRITE_4(sc, RE_MISSEDPKT, 0);
+	sc->re_flags |= RE_F_LINKED;
+	ifp->if_link_state = LINK_STATE_UP;
+	if_link_state_change(ifp);
 
-#ifdef notdef
-	/* Enable receiver and transmitter. */
-	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB|RE_CMD_RX_ENB);
-#endif
+	if (bootverbose)
+		if_printf(ifp, "link UP\n");
 
-	/*
-	 * For 8169 gigE NICs, set the max allowed RX packet
-	 * size so we can receive jumbo frames.
-	 */
-	if (!RE_IS_8139CP(sc)) {
-		if (sc->re_caps & RE_C_CONTIGRX)
-			CSR_WRITE_2(sc, RE_MAXRXPKTLEN, sc->re_rxbuf_size);
-		else
-			CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static void
+re_link_down(struct re_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	/* NOTE: re_stop() will reset RE_F_LINKED. */
+	ifp->if_link_state = LINK_STATE_DOWN;
+	if_link_state_change(ifp);
+
+	re_stop(sc, FALSE);
+	rtl_ifmedia_upd(ifp);
+
+	if (bootverbose)
+		if_printf(ifp, "link DOWN\n");
+}
+
+static void
+re_init(void *xsc)
+{
+	struct re_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	re_stop(sc, TRUE);
+	if (rtl_link_ok(sc)) {
+		if (bootverbose)
+			if_printf(ifp, "link is UP in if_init\n");
+		re_link_up(sc);
 	}
-
-	if (sc->re_flags & RE_F_TESTMODE)
-		return;
-
-	mii_mediachg(mii);
-
-	CSR_WRITE_1(sc, RE_CFG1, RE_CFG1_DRVLOAD|RE_CFG1_FULLDUPLEX);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
@@ -2773,53 +1825,18 @@ re_init(void *xsc)
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
 }
 
-/*
- * Set media options.
- */
-static int
-re_ifmedia_upd(struct ifnet *ifp)
-{
-	struct re_softc *sc = ifp->if_softc;
-	struct mii_data *mii;
-
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	mii = device_get_softc(sc->re_miibus);
-	mii_mediachg(mii);
-
-	return(0);
-}
-
-/*
- * Report current media status.
- */
-static void
-re_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
-{
-	struct re_softc *sc = ifp->if_softc;
-	struct mii_data *mii;
-
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	mii = device_get_softc(sc->re_miibus);
-
-	mii_pollstat(mii);
-	ifmr->ifm_active = mii->mii_media_active;
-	ifmr->ifm_status = mii->mii_media_status;
-}
-
 static int
 re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct re_softc *sc = ifp->if_softc;
-	struct ifreq *ifr = (struct ifreq *) data;
-	struct mii_data *mii;
+	struct ifreq *ifr = (struct ifreq *)data;
 	int error = 0, mask;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch(command) {
 	case SIOCSIFMTU:
+#ifdef RE_JUMBO
 		if (ifr->ifr_mtu > sc->re_maxmtu) {
 			error = EINVAL;
 		} else if (ifp->if_mtu != ifr->ifr_mtu) {
@@ -2827,32 +1844,34 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			if (ifp->if_flags & IFF_RUNNING)
 				ifp->if_init(sc);
 		}
+#else
+		error = EOPNOTSUPP;
+#endif
 		break;
 
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (ifp->if_flags & IFF_RUNNING) {
-				if ((ifp->if_flags ^ sc->re_if_flags) &
+				if ((ifp->if_flags ^ sc->re_saved_ifflags) &
 				    (IFF_PROMISC | IFF_ALLMULTI))
-					re_setmulti(sc);
+					rtl_set_rx_packet_filter(sc);
 			} else {
 				re_init(sc);
 			}
 		} else if (ifp->if_flags & IFF_RUNNING) {
-			re_stop(sc);
+			re_stop(sc, TRUE);
 		}
-		sc->re_if_flags = ifp->if_flags;
+		sc->re_saved_ifflags = ifp->if_flags;
 		break;
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		re_setmulti(sc);
+		rtl_set_rx_packet_filter(sc);
 		break;
 
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
-		mii = device_get_softc(sc->re_miibus);
-		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
+		error = ifmedia_ioctl(ifp, ifr, &sc->media, command);
 		break;
 
 	case SIOCSIFCAP:
@@ -2860,12 +1879,19 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		       ifp->if_capabilities;
 		ifp->if_capenable ^= mask;
 
-		if (mask & IFCAP_HWCSUM) {
-			if (ifp->if_capenable & IFCAP_TXCSUM)
-				ifp->if_hwassist = sc->re_hwassist;
-			else
-				ifp->if_hwassist = 0;
-		}
+		/* NOTE: re_init will setup if_hwassist. */
+		ifp->if_hwassist = 0;
+
+		/* Setup flags for the backend. */
+		if (ifp->if_capenable & IFCAP_RXCSUM)
+			sc->re_rx_cstag = 1;
+		else
+			sc->re_rx_cstag = 0;
+		if (ifp->if_capenable & IFCAP_TXCSUM)
+			sc->re_tx_cstag = 1;
+		else
+			sc->re_rx_cstag = 0;
+
 		if (mask && (ifp->if_flags & IFF_RUNNING))
 			re_init(sc);
 		break;
@@ -2884,17 +1910,17 @@ re_watchdog(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if_printf(ifp, "watchdog timeout\n");
-
 	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	re_txeof(sc);
 	re_rxeof(sc);
 
-	re_init(sc);
-
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+	if (sc->re_ldata.re_tx_free != sc->re_tx_desc_cnt) {
+		if_printf(ifp, "watchdog timeout, txd free %d\n",
+		    sc->re_ldata.re_tx_free);
+		rtl_reset(sc);
+		re_init(sc);
+	}
 }
 
 /*
@@ -2902,26 +1928,23 @@ re_watchdog(struct ifnet *ifp)
  * RX and TX lists.
  */
 static void
-re_stop(struct re_softc *sc)
+re_stop(struct re_softc *sc, boolean_t full_stop)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	/* Reset the adapter. */
-	re_reset(sc, ifp->if_flags & IFF_RUNNING);
+	/* Stop the adapter. */
+	rtl_stop(sc);
 
 	ifp->if_timer = 0;
-	callout_stop(&sc->re_timer);
-
-	ifp->if_flags &= ~IFF_RUNNING;
+	if (full_stop) {
+		callout_stop(&sc->re_timer);
+		ifp->if_flags &= ~IFF_RUNNING;
+	}
 	ifq_clr_oactive(&ifp->if_snd);
 	sc->re_flags &= ~(RE_F_TIMER_INTR | RE_F_DROP_RXFRAG | RE_F_LINKED);
-
-	CSR_WRITE_1(sc, RE_COMMAND, 0x00);
-	CSR_WRITE_2(sc, RE_IMR, 0x0000);
-	CSR_WRITE_2(sc, RE_ISR, 0xFFFF);
 
 	re_free_rxchain(sc);
 
@@ -2964,7 +1987,7 @@ re_suspend(device_t dev)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	re_stop(sc);
+	re_stop(sc, TRUE);
 
 #ifndef BURN_BRIDGES
 	for (i = 0; i < 5; i++)
@@ -3034,7 +2057,9 @@ re_shutdown(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	lwkt_serialize_enter(ifp->if_serializer);
-	re_stop(sc);
+	re_stop(sc, TRUE);
+	rtl_hw_d3_para(sc);
+	rtl_phy_power_down(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
@@ -3110,19 +2135,13 @@ re_sysctl_simtime(SYSCTL_HANDLER_ARGS)
 		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
 		    IFF_RUNNING && sc->re_imtype == RE_IMTYPE_SIM) {
 #ifdef foo
-			int reg;
-
 			/*
 			 * Following code causes various strange
 			 * performance problems.  Hmm ...
 			 */
 			CSR_WRITE_2(sc, RE_IMR, 0);
-			if (!RE_IS_8139CP(sc))
-				reg = RE_TIMERINT_8169;
-			else
-				reg = RE_TIMERINT;
-			CSR_WRITE_4(sc, reg, 0);
-			CSR_READ_4(sc, reg); /* flush */
+			CSR_WRITE_4(sc, RE_TIMERINT, 0);
+			CSR_READ_4(sc, RE_TIMERINT); /* flush */
 
 			CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
 			re_setup_sim_im(sc);
@@ -3218,19 +2237,20 @@ re_disable_hw_im(struct re_softc *sc)
 static void
 re_setup_sim_im(struct re_softc *sc)
 {
-	if (!RE_IS_8139CP(sc)) {
-		uint32_t ticks;
+	uint32_t ticks;
 
+	if (sc->re_if_flags & RL_FLAG_PCIE) {
+		ticks = sc->re_sim_time * sc->re_bus_speed;
+	} else {
 		/*
 		 * Datasheet says tick decreases at bus speed,
 		 * but it seems the clock runs a little bit
 		 * faster, so we do some compensation here.
 		 */
 		ticks = (sc->re_sim_time * sc->re_bus_speed * 8) / 5;
-		CSR_WRITE_4(sc, RE_TIMERINT_8169, ticks);
-	} else {
-		CSR_WRITE_4(sc, RE_TIMERINT, 0x400); /* XXX */
 	}
+	CSR_WRITE_4(sc, RE_TIMERINT, ticks);
+
 	CSR_WRITE_4(sc, RE_TIMERCNT, 1); /* reload */
 	sc->re_flags |= RE_F_TIMER_INTR;
 }
@@ -3238,10 +2258,7 @@ re_setup_sim_im(struct re_softc *sc)
 static void
 re_disable_sim_im(struct re_softc *sc)
 {
-	if (!RE_IS_8139CP(sc))
-		CSR_WRITE_4(sc, RE_TIMERINT_8169, 0);
-	else
-		CSR_WRITE_4(sc, RE_TIMERINT, 0);
+	CSR_WRITE_4(sc, RE_TIMERINT, 0);
 	sc->re_flags &= ~RE_F_TIMER_INTR;
 }
 
@@ -3261,8 +2278,8 @@ re_config_imtype(struct re_softc *sc, int imtype)
 
 	case RE_IMTYPE_SIM:
 		sc->re_intrs = RE_INTRS_TIMER;
-		sc->re_rx_ack = RE_ISR_TIMEOUT_EXPIRED;
-		sc->re_tx_ack = RE_ISR_TIMEOUT_EXPIRED;
+		sc->re_rx_ack = RE_ISR_PCS_TIMEOUT;
+		sc->re_tx_ack = RE_ISR_PCS_TIMEOUT;
 		break;
 
 	default:
@@ -3306,37 +2323,6 @@ re_setup_intr(struct re_softc *sc, int enable_intrs, int imtype)
 	}
 }
 
-static void
-re_get_eaddr(struct re_softc *sc, uint8_t *eaddr)
-{
-	int i;
-
-	if (sc->re_caps & RE_C_EE_EADDR) {
-		uint16_t re_did;
-
-		re_get_eewidth(sc);
-		re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
-		if (re_did == 0x8128) {
-			uint16_t as[ETHER_ADDR_LEN / 2];
-
-			/*
-			 * Get station address from the EEPROM.
-			 */
-			re_read_eeprom(sc, (caddr_t)as, sc->re_ee_eaddr, 3);
-			for (i = 0; i < ETHER_ADDR_LEN / 2; i++)
-				as[i] = le16toh(as[i]);
-			bcopy(as, eaddr, ETHER_ADDR_LEN);
-			return;
-		}
-	}
-
-	/*
-	 * Get station address from IDRx.
-	 */
-	for (i = 0; i < ETHER_ADDR_LEN; ++i)
-		eaddr[i] = CSR_READ_1(sc, RE_IDR0 + i);
-}
-
 static int
 re_jpool_alloc(struct re_softc *sc)
 {
@@ -3360,7 +2346,7 @@ re_jpool_alloc(struct re_softc *sc)
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			jpool_size, BUS_DMA_WAITOK, &dmem);
 	if (error) {
-		device_printf(sc->re_dev, "could not allocate jumbo memory\n");
+		device_printf(sc->dev, "could not allocate jumbo memory\n");
 		return error;
 	}
 	ldata->re_jpool_tag = dmem.dmem_tag;
@@ -3408,6 +2394,7 @@ re_jpool_free(struct re_softc *sc)
 	}
 }
 
+#ifdef RE_JUMBO
 static struct re_jbuf *
 re_jbuf_alloc(struct re_softc *sc)
 {
@@ -3465,6 +2452,7 @@ re_jbuf_ref(void *arg)
 	}
 	atomic_add_int(&jbuf->re_inuse, 1);
 }
+#endif	/* RE_JUMBO */
 
 static void
 re_disable_aspm(device_t dev)

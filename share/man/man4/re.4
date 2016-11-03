@@ -30,12 +30,12 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd November 28, 2014
+.Dd November 14, 2016
 .Dt RE 4
 .Os
 .Sh NAME
 .Nm re
-.Nd "RealTek 8139C+/8169/816xS/811xS/8101E/8105E PCI/PCIe Ethernet adapter driver"
+.Nd "RealTek 816xS/811xS/8101E/8105E PCI/PCIe Ethernet adapter driver"
 .Sh SYNOPSIS
 .Cd "device miibus"
 .Cd "device re"
@@ -50,15 +50,13 @@ if_re_load="YES"
 The
 .Nm
 driver provides support for various NICs based on the RealTek
-RTL8139C+, RTL8169, RTL8169S, RTL8110S, RTL8168S, RTL8111S and RTL8101E
+RTL8169S, RTL8110S, RTL8168S, RTL8111S and RTL8101E
 PCI and PCIe ethernet controllers.
 .Pp
 NICs based on the
-8139C+ and 8101E
-are capable of 10 and 100Mbps speeds over CAT5 cable.
+8101E are capable of 10 and 100Mbps speeds over CAT5 cable.
 NICs based on the
-8169, 816xS and 811xS
-are capable of 10, 100 and 1000Mbps operation.
+816xS and 811xS are capable of 10, 100 and 1000Mbps operation.
 .Pp
 All NICs supported by the
 .Nm
@@ -66,21 +64,19 @@ driver have TCP/IP checksum offload and hardware VLAN tagging/insertion
 features, and use a descriptor-based DMA mechanism. They are also
 capable of TCP large send (TCP segmentation offload).
 .Pp
-The 8139C+ is a single-chip solution combining both a 10/100 MAC and PHY.
-The 8169 is a 10/100/1000 MAC only, requiring a GMII or TBI external PHY.
 The 8169S and 8110S are single-chip devices containing both a 10/100/1000
 MAC and 10/100/1000 copper PHY. Standalone 10/100/1000 cards are available
 in both 32-bit PCI and 64-bit PCI models. The 8110S is designed for
 embedded LAN-on-motherboard applications.
 .Pp
-The 8169, 8169S and 8110S also support jumbo frames, which can be configured
-via the interface MTU setting.
-Selecting an MTU larger than 1500 bytes with the
-.Xr ifconfig 8
-utility configures the adapter to receive and transmit jumbo frames.
-The maximum MTU setting for Jumbo Frames is 7426.
-This value coincides with the maximum Jumbo Frames size of 7440.
-.Pp
+.\"The 8169S and 8110S also support jumbo frames, which can be configured
+.\"via the interface MTU setting.
+.\"Selecting an MTU larger than 1500 bytes with the
+.\".Xr ifconfig 8
+.\"utility configures the adapter to receive and transmit jumbo frames.
+.\"The maximum MTU setting for Jumbo Frames is 7426.
+.\"This value coincides with the maximum Jumbo Frames size of 7440.
+.\".Pp
 The
 .Nm
 driver supports the following media types:
@@ -174,8 +170,7 @@ It will not have any effect,
 if
 .Va imtype
 is 0 or 2.
-By default, it is set to 75us for PCIe controllers and
-125us for PCI controllers.
+By default, it is set to 150us.
 .It Va hw_txtime
 If the controller does not support hardware interrupt moderation,
 then this sysctl node will not exist.
@@ -208,15 +203,11 @@ it may not work reliably.
 .Sh HARDWARE
 The
 .Nm
-driver supports RealTek RTL8139C+, RTL8169, RTL816xS, RTL811xS,
+driver supports RealTek RTL816xS, RTL811xS,
 RTL8105E, and RTL8101E based Fast Ethernet and Gigabit Ethernet adapters
 including:
 .Pp
 .Bl -bullet -compact
-.It
-Alloy Computer Products EtherGOLD 1439E 10/100 (8139C+)
-.It
-Compaq Evo N1015v Integrated Ethernet (8139C+)
 .It
 Corega CG-LAPCIGT Gigabit Ethernet (8169S)
 .It
@@ -229,32 +220,19 @@ LevelOne GNC-0105T (8169S)
 LinkSys EG1032 (32-bit PCI)
 .It
 PLANEX COMMUNICATIONS Inc.\& GN-1200TC (8169S)
-.It
-Xterasys XN-152 10/100/1000 NIC (8169)
-.El
-.Sh DIAGNOSTICS
-.Bl -diag
-.It "re%d: couldn't map ports"
-A fatal initialization error has occurred.
-.It "re%d: couldn't map interrupt"
-A fatal initialization error has occurred.
-.It "re%d: watchdog timeout"
-The device has stopped responding to the network, or there is a problem with
-the network connection (cable).
 .El
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr ifmedia 4 ,
-.Xr miibus 4 ,
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
 .Xr polling 4 ,
 .Xr vlan 4 ,
 .Xr ifconfig 8
-.Rs
-.%T RealTek Semiconductor RTL8139C+, RTL8169, RTL8169S and RTL8110S datasheets
-.%O http://www.realtek.com.tw
-.Re
+.\".Rs
+.\".%T RealTek Semiconductor RTL8169S and RTL8110S datasheets
+.\".%O http://www.realtek.com.tw
+.\".Re
 .Sh HISTORY
 The
 .Nm
@@ -267,23 +245,3 @@ The
 .Nm
 driver was written by
 .An Bill Paul Aq Mt wpaul@windriver.com .
-.Sh BUGS
-The Xterasys XN-152 32-bit PCI NIC, which uses the RTL8169 MAC and
-Marvell 88E1000 PHY, has a defect that causes DMA corruption
-if the board is plugged into a 64-bit PCI slot. The defect
-lies in the board design, not the chip itself: the PCI REQ64# and ACK64#
-lines should be pulled high, but they are not. The result is that the
-8169 chip is tricked into performing 64-bit DMA transfers even though
-a 64-bit data path between the NIC and the bus does not actually exist.
-.Pp
-Unfortunately, it is not possible to correct this problem in software,
-however it is possible to detect it. When the
-.Nm
-driver is loaded, it will run a diagnostic routine designed to
-validate DMA operation by placing the chip in digital loopback mode
-and initiating a packet transmission. If the card functions properly,
-the transmitted data will
-be echoed back unmodified. If the echoed data is corrupt, the driver
-will print an error message on the console and abort the device attach. The
-user should insure the NIC is installed in a 32-bit PCI slot to
-avoid this problem.

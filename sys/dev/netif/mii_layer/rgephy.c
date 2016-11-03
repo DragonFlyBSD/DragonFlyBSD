@@ -53,8 +53,6 @@
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
-
-#include <dev/netif/re/if_rereg.h>
 #include <dev/netif/mii_layer/rgephyreg.h>
 
 #include "miibus_if.h"

@@ -35,9 +35,6 @@
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
  */
 
-#define RE_RX_DESC_CNT_8139CP	64
-#define RE_TX_DESC_CNT_8139CP	64
-
 #define RE_RX_DESC_CNT_DEF	256
 #define RE_TX_DESC_CNT_DEF	256
 #define RE_RX_DESC_CNT_MAX	1024
@@ -54,7 +51,7 @@
 #define RE_RXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_rx_desc_cnt)
 #define RE_TXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_tx_desc_cnt)
 #define RE_OWN(x)		(le32toh((x)->re_cmdstat) & RE_RDESC_STAT_OWN)
-#define RE_RXBYTES(x)		(le32toh((x)->re_cmdstat) & sc->re_rxlenmask)
+#define RE_RXBYTES(x)		(le32toh((x)->re_cmdstat) & RE_RDESC_STAT_GFRAGLEN)
 #define RE_PKTSZ(x)		((x)/* >> 3*/)
 
 #define RE_ADDR_LO(y)		((uint64_t) (y) & 0xFFFFFFFF)
@@ -72,15 +69,6 @@
 
 #define RE_RXBUF_ALIGN		8
 #define RE_JBUF_SIZE		roundup2(RE_FRAMELEN_MAX, RE_RXBUF_ALIGN)
-
-#define	RE_TIMEOUT		1000
-#define	RE_PHY_TIMEOUT		2000
-
-struct re_hwrev {
-	uint32_t		re_hwrev;
-	int			re_maxmtu;
-	uint32_t		re_caps;	/* see RE_C_ */
-};
 
 struct re_softc;
 struct re_jbuf {
@@ -128,7 +116,7 @@ struct re_list_data {
 
 struct re_softc {
 	struct arpcom		arpcom;		/* interface info */
-	device_t		re_dev;
+	device_t		dev;
 	bus_space_handle_t	re_bhandle;	/* bus space handle */
 	bus_space_tag_t		re_btag;	/* bus space tag */
 	int			re_res_rid;
@@ -136,21 +124,14 @@ struct re_softc {
 	struct resource		*re_res;
 	struct resource		*re_irq;
 	void			*re_intrhand;
-	device_t		re_miibus;
 	bus_dma_tag_t		re_parent_tag;
 	bus_dma_tag_t		re_tag;
-	uint32_t		re_hwrev;
 	struct ifpoll_compat	re_npoll;
 	struct re_list_data	re_ldata;
 	struct callout		re_timer;
 	struct mbuf		*re_head;
 	struct mbuf		*re_tail;
 	uint32_t		re_caps;	/* see RE_C_ */
-	uint32_t		re_rxlenmask;
-	int			re_txstart;
-	int			re_eewidth;
-	int			re_ee_eaddr;
-	int			re_maxmtu;
 	int			re_rx_desc_cnt;
 	int			re_tx_desc_cnt;
 	int			re_bus_speed;
@@ -161,9 +142,8 @@ struct re_softc {
 	int			re_irq_rid;
 
 	uint32_t		re_flags;	/* see RE_F_ */
-	int			re_if_flags;	/* saved ifnet.if_flags */
+	int			re_saved_ifflags;
 
-	u_long			re_hwassist;
 	uint16_t		re_intrs;
 	uint16_t		re_tx_ack;
 	uint16_t		re_rx_ack;
@@ -177,25 +157,33 @@ struct re_softc {
 	uint8_t			saved_intline;
 	uint8_t			saved_cachelnsz;
 	uint8_t			saved_lattimer;
+
+	/*
+	 * Used by Realtek re(4) backend.
+	 */
+	int			re_if_flags;
+	uint8_t			re_type;
+	u_int16_t		re_device_id;
+	u_int8_t		re_hw_supp_now_is_oob_ver;
+	int			max_jumbo_frame_size;
+	int			re_rx_mbuf_sz;
+	u_int8_t		RequireAdcBiasPatch;
+	u_int16_t		AdcBiasPatchIoffset;
+	u_int16_t		SwrCnt1msIni;
+	u_int8_t		RequireAdjustUpsTxLinkPulseTiming;
+	u_int8_t		re_hw_enable_msi_msix;
+	u_int8_t		re_coalesce_tx_pkt;
+	u_int8_t		re_8169_MacVersion;
+	u_int8_t		re_8169_PhyVersion;
+	int 			re_tx_cstag;
+	int			re_rx_cstag;
+	struct ifmedia		media;
+	u_int16_t		cur_page;
+	u_int8_t		re_unit;
 };
 
-#define RE_C_PCIE		0x1	/* PCI-E */
-#define RE_C_PCI64		0x2	/* PCI64 */
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
-#define RE_C_HWCSUM		0x8	/* hardware csum offload */
-#define RE_C_PHYPMCH		0x10	/* XXX PHY needs power change? */
-#define RE_C_8139CP		0x20	/* is 8139C+ */
-#define RE_C_MAC2		0x40	/* MAC style 2 */
-#define RE_C_PHYPMGT		0x80	/* PHY supports power mgmt */
-#define RE_C_8169		0x100	/* is 8110/8169 */
-#define RE_C_AUTOPAD		0x200	/* hardware auto-pad short frames */
 #define RE_C_CONTIGRX		0x400	/* need contig buf to RX jumbo frames */
-#define RE_C_STOP_RXTX		0x800	/* could stop RX/TX engine */
-#define RE_C_FASTE		0x1000	/* 10/100 only NIC */
-#define RE_C_EE_EADDR		0x2000	/* ethernet address in EEPROM */
-
-#define RE_IS_8139CP(sc)	((sc)->re_caps & RE_C_8139CP)
-#define RE_IS_8169(sc)		((sc)->re_caps & RE_C_8169)
 
 /* Interrupt moderation types */
 #define RE_IMTYPE_NONE		0
@@ -207,7 +195,6 @@ struct re_softc {
 #define RE_F_DROP_RXFRAG	0x4
 #define RE_F_LINKED		0x8
 #define RE_F_SUSPENDED		0x10
-#define RE_F_TESTMODE		0x20
 
 /*
  * register space access macros
