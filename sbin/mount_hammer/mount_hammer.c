@@ -244,10 +244,10 @@ static
 void
 test_volumes(struct hammer_mount_info *info)
 {
-	int i, fd, ret;
+	int i, fd;
 	const char *vol;
-	char buf[HAMMER_BUFSIZE];
-	hammer_volume_ondisk_t ondisk;
+	char buf[2048]; /* sizeof(*ondisk) is 1928 */
+	hammer_volume_ondisk_t ondisk = (hammer_volume_ondisk_t)buf;
 
 	for (i = 0; i < info->nvolumes; i++) {
 		vol = info->volumes[i];
@@ -257,15 +257,13 @@ test_volumes(struct hammer_mount_info *info)
 			goto next;
 		}
 
-		bzero(buf, HAMMER_BUFSIZE);
-		ret = pread(fd, buf, HAMMER_BUFSIZE, 0);
-		if (ret != HAMMER_BUFSIZE) {
+		bzero(buf, sizeof(buf));
+		if (pread(fd, buf, sizeof(buf), 0) != sizeof(buf)) {
 			fprintf(stderr,
 				"%s: Failed to read volume header\n", vol);
 			goto next;
 		}
 
-		ondisk = (hammer_volume_ondisk_t)buf;
 		if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 			fprintf(stderr,
 				"%s: Invalid volume signature %016jx\n",
