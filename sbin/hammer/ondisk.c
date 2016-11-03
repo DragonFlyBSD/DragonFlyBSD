@@ -151,10 +151,10 @@ __verify_volume(struct volume_info *vol)
 	}
 	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
 		errx(1, "verify_volume: %s: Header does not indicate "
-			"that this is a hammer volume", vol->name);
+			"that this is a HAMMER volume", vol->name);
 	}
 	if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
-		errx(1, "verify_volume: %s: FSId does match other volumes!",
+		errx(1, "verify_volume: %s: FSId does not match other volumes!",
 			vol->name);
 	}
 }
