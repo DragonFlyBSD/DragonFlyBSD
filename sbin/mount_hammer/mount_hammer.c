@@ -240,17 +240,44 @@ free_volumes(struct hammer_mount_info *info)
 	free(info->volumes);
 }
 
+/*
+ * This function is based on __verify_volume() in sbin/hammer/ondisk.c.
+ */
+static
+void
+__verify_volume(hammer_volume_ondisk_t ondisk,
+	const char *vol_name, int vol_count)
+{
+	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
+		errx(1, "%s: Invalid volume signature %016jx",
+			vol_name, ondisk->vol_signature);
+	}
+	if (ondisk->vol_count != vol_count) {
+		errx(1, "%s: Invalid volume count %d, "
+			"volume header says %d volumes",
+			vol_name, vol_count, ondisk->vol_count);
+	}
+	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
+		errx(1, "%s: Invalid root volume# %d",
+			vol_name, ondisk->vol_rootvol);
+	}
+}
+
+/*
+ * This function prints a possible reason that mount(2) failed,
+ * which isn't really necessary as the real reason is likely to
+ * be in dmesg anyway, but was originally added by 1a607e3e.
+ */
 static
 void
 test_volumes(struct hammer_mount_info *info)
 {
 	int i, fd;
-	const char *vol;
 	char buf[2048]; /* sizeof(*ondisk) is 1928 */
 	hammer_volume_ondisk_t ondisk = (hammer_volume_ondisk_t)buf;
 
 	for (i = 0; i < info->nvolumes; i++) {
-		vol = info->volumes[i];
+		const char *vol = info->volumes[i];
 		fd = open(vol, O_RDONLY);
 		if (fd < 0) {
 			fprintf(stderr, "%s: Failed to open\n", vol);
@@ -259,23 +286,12 @@ test_volumes(struct hammer_mount_info *info)
 
 		bzero(buf, sizeof(buf));
 		if (pread(fd, buf, sizeof(buf), 0) != sizeof(buf)) {
-			fprintf(stderr,
-				"%s: Failed to read volume header\n", vol);
+			fprintf(stderr, "%s: Failed to read volume header\n",
+				vol);
 			goto next;
 		}
 
-		if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
-			fprintf(stderr,
-				"%s: Invalid volume signature %016jx\n",
-				vol, ondisk->vol_signature);
-			goto next;
-		}
-		if (ondisk->vol_count != info->nvolumes) {
-			fprintf(stderr,
-				"%s: Volume header says %d volumes\n",
-				vol, ondisk->vol_count);
-			goto next;
-		}
+		__verify_volume(ondisk, vol, info->nvolumes);
 next:
 		close(fd);
 	}
