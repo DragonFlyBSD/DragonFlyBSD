@@ -388,7 +388,7 @@ option.
 .It Cm checkmap
 Check the blockmap allocation count.
 .Nm
-will scan the freemap, B-Tree, UNDO FIFO, then collect allocation information,
+will scan the freemap, B-Tree, UNDO/REDO FIFO, then collect allocation information,
 and construct a blockmap in-memory.
 It will then check that blockmap against the on-disk blockmap.
 .Pp
@@ -798,7 +798,7 @@ as it contains
 .Ar filesystem
 meta data such as
 .Nm HAMMER Ns 's
-layer1 blockmap and UNDO FIFO.
+layer1 blockmap and UNDO/REDO FIFO.
 .Pp
 This command may
 .Cm reblock

@@ -133,7 +133,7 @@ typedef uint32_t hammer_crc_t;
  * zone 0:		available, a big-block that contains the offset is unused
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
  * zone 2 (z,v,o):	raw buffer relative (offset 0 is the first buffer)
- * zone 3 (z,o):	undo fifo	- actually zone-2 address, fixed phys array in vol hdr
+ * zone 3 (z,o):	undo/redo fifo	- fixed zone-2 offset array in volume header
  * zone 4 (z,v,o):	freemap		- only real blockmap
  * zone 8 (z,v,o):	B-Tree		- actually zone-2 address
  * zone 9 (z,v,o):	meta		- actually zone-2 address

@@ -142,7 +142,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 
 	/* undo had better not roll over (loose test) */
 	if (hammer_undo_space(trans) < len + HAMMER_BUFSIZE*3)
-		hpanic("insufficient undo FIFO space!");
+		hpanic("insufficient UNDO/REDO FIFO space for undo!");
 
 	/*
 	 * Loop until the undo for the entire range has been laid down.
