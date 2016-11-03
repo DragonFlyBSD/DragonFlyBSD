@@ -127,6 +127,7 @@ SUBDIR=	alias \
 	monitor \
 	msgs \
 	mt \
+	nc \
 	ncal \
 	netstat \
 	newgrp \
