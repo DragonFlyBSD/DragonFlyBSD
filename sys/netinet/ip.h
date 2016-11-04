@@ -31,7 +31,7 @@
  */
 
 #ifndef _NETINET_IP_H_
-#define _NETINET_IP_H_
+#define	_NETINET_IP_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -89,7 +89,7 @@ struct ip {
 #define	IP_MAXPACKET	65535		/* maximum packet size */
 
 /*
- * Definitions for IP type of service (ip_tos)
+ * Definitions for IP type of service (ip_tos).
  */
 #define	IPTOS_LOWDELAY		0x10
 #define	IPTOS_THROUGHPUT	0x08
@@ -100,7 +100,6 @@ struct ip {
 #define	IPTOS_CE		0x01	/* congestion experienced */
 #define	IPTOS_ECT		0x02	/* ECN-capable transport */
 #endif
-
 
 /*
  * Definitions for IP precedence (also in ip_tos) (deprecated).
@@ -178,7 +177,7 @@ struct ip {
  */
 #define	IPOPT_OPTVAL		0		/* option ID */
 #define	IPOPT_OLEN		1		/* option length */
-#define IPOPT_OFFSET		2		/* offset within option */
+#define	IPOPT_OFFSET		2		/* offset within option */
 #define	IPOPT_MINOFF		4		/* min value of above */
 
 /*
@@ -206,12 +205,12 @@ struct	ip_timestamp {
 	} ipt_timestamp;
 };
 
-/* flag bits for ipt_flg */
+/* Flag bits for ipt_flg. */
 #define	IPOPT_TS_TSONLY		0		/* timestamps only */
 #define	IPOPT_TS_TSANDADDR	1		/* timestamps and addresses */
 #define	IPOPT_TS_PRESPEC	3		/* specified modules only */
 
-/* bits for security (not byte swapped) */
+/* Bits for security (not byte swapped). */
 #define	IPOPT_SECUR_UNCLASS	0x0000
 #define	IPOPT_SECUR_CONFID	0xf135
 #define	IPOPT_SECUR_EFTO	0x789a
@@ -227,7 +226,6 @@ struct	ip_timestamp {
 #define	IPDEFTTL	64		/* default ttl, from RFC 1340 */
 #define	IPFRAGTTL	60		/* time to live for frags, slowhz */
 #define	IPTTLDEC	1		/* subtracted when forwarding */
-
 #define	IP_MSS		576		/* default maximum segment size */
 
 /*
