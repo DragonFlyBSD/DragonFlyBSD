@@ -91,7 +91,7 @@ typedef union {
 
 struct Algorithm_t Algorithm[] = {
 	{ "md5", "MD5", &MD5TestOutput, (DIGEST_Init*)&MD5Init,
-		(DIGEST_Update*)&MD5_Update, (DIGEST_End*)&MD5End,
+		(DIGEST_Update*)&MD5Update, (DIGEST_End*)&MD5End,
 		&MD5Data, &MD5File },
 	{ "sha1", "SHA1", &SHA1_TestOutput, (DIGEST_Init*)&SHA1_Init,
 		(DIGEST_Update*)&SHA1_Update, (DIGEST_End*)&SHA1_End,
