@@ -32,7 +32,7 @@ LIB2FUNCS_ST = _eprintf __gcc_bcmp
 
 # softfp functions and enable-execute-stack don't use L_ definitions
 SOFTFUNCS=	addtf3 divtf3 eqtf2 getf2 letf2 multf3 negtf2 subtf3 unordtf2 
-SOFTFUNCS+=	enable-execute-stack cpuinfo
+SOFTFUNCS+=	enable-execute-stack cpuinfo sfp-exceptions
 SOFTFUNCS+=	${nowsoft}
 FUNCS=		${lib2funcs} ${LIB2_DIVMOD_FUNCS} ${LIB2FUNCS_ST}
 
