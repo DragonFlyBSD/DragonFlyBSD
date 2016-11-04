@@ -41,9 +41,15 @@ MLINKS= csh.1 tcsh.1
 DPADD=	/usr/lib/libtermcap.a ${LIBCRYPT}
 LDADD=	-ltermcap -lcrypt
 .  else
+.  if exists(/usr/lib/priv/libprivate_crypto.a)
 DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
 LDADD=	-lprivate_ncurses -lcrypt -lprivate_crypto
 LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
+.  else
+DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
+LDADD=	-lprivate_ncurses -lcrypt -lcrypto
+LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
+.  endif
 .  endif
 .else
 DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
