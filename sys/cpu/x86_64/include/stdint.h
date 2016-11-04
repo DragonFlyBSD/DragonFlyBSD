@@ -52,7 +52,7 @@ typedef	short		__int16_t;
 typedef	unsigned short	__uint16_t;
 typedef	int		__int32_t;
 typedef	unsigned int	__uint32_t;
-#if __STDC_VERSION < 199901L && !__GNUC_PREREQ__(3, 0) || defined (__cplusplus)
+#if __STDC_VERSION__ < 199901L && !__GNUC_PREREQ__(3, 0) || defined (__cplusplus)
 typedef	int		__boolean_t;
 #else
 typedef	_Bool		__boolean_t;

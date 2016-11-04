@@ -242,7 +242,7 @@
 
 #endif	/* LINT */
 
-#if !__GNUC_PREREQ__(2, 7) && __STDC_VERSION < 199901
+#if !__GNUC_PREREQ__(2, 7) && __STDC_VERSION__ < 199901
 #define	__func__	NULL
 #endif
 
