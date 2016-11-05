@@ -41,8 +41,10 @@
 #include <err.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #define NEEDS_DFUI_STRUCTURE_DEFINITIONS
+#define NEEDS_DISKUTIL_STRUCTURE_DEFINITIONS
 #include "libdfui/dfui.h"
 
 #include "libinstaller/functions.h"
@@ -54,6 +56,8 @@
 #endif
 #include "libaura/fspred.h"
 
+#define TMPDIR "/tmp/installer/temp"
+
 void test_storage(struct i_fn_args *);
 void libinstaller_backend(struct i_fn_args **);
 void libinstaller_frontend(struct dfui_connection **);
@@ -62,12 +66,40 @@ void libinstaller_form_dump(struct dfui_form *);
 void (*tstate)(struct i_fn_args *) = NULL;
 
 void
+check_user(void)
+{
+	if (getuid() != 0) {
+		warnx(
+			"\n--------------------------------------------------\n"
+			"It is not recommended that you run this program\n"
+			"as a regular user since many of the tasks the\n"
+			"installer performs must be run as root\n"
+			"(such as fdisk, disklabel, ...)\n"
+			"Please run as root to get correct results.\n"
+			"--------------------------------------------------\n"
+			);
+		sleep(2);
+	}
+}
+
+void
 test_storage(struct i_fn_args *a)
 {
+	struct disk *dsk, *dsk_next;
 	int r;
 
 	r = survey_storage(a);
-	printf("Return code: %d\n", r);
+	printf("survey_storage rc=%d\n", r);
+
+	printf("Found disks:\n");
+
+	dsk = a->s->disk_head;
+	while (dsk != NULL) {
+		dsk_next = dsk->next;
+		printf("%s %ld MB\n",
+		       dsk->device, dsk->capacity);
+		dsk = dsk_next;
+	}
 	tstate = NULL;
 }
 
@@ -76,8 +108,11 @@ libinstaller_backend(struct i_fn_args **a)
 {
 	struct i_fn_args *ap = *a;
 
-	ap = i_fn_args_new("/", "/tmp/installer/temp",
+	ap = i_fn_args_new("/", TMPDIR,
 	    DFUI_TRANSPORT_TCP, "9999");
+
+	if (ap == NULL)
+		errx(1, "Failed to start the installer backend");
 
 	tstate = test_storage;
 
@@ -135,14 +170,17 @@ libinstaller_frontend(struct dfui_connection **c) {
 int
 main(int argc __unused, char **argv __unused)
 {
-        struct dfui_connection *c;
+	struct dfui_connection *c;
 	struct i_fn_args *a;
+	int error;
+	char *path;
 	int r;
 
-	if (!is_dir("/tmp/installer") ||
-	    !is_dir("/tmp/installer/temp"))
-		errx(1, "Please run 'mkdir -p /tmp/installer/temp'");
+	check_user();
 
+	asprintf(&path, "mkdir -p %s", TMPDIR);
+	system(path);
+	free(path);
 
 	r = fork();
 	switch(r) {
