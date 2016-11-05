@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/boot.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/boot.c,v 1.4 2005/12/10 00:39:48 swildner Exp $
  */
 
 /*
@@ -63,7 +62,8 @@ command_boot(int argc, char *argv[])
 	
 	/* XXX maybe we should discard everything and start again? */
 	if (file_findfile(NULL, NULL) != NULL) {
-	    sprintf(command_errbuf, "can't boot '%s', kernel module already loaded", argv[1]);
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"can't boot '%s', kernel module already loaded", argv[1]);
 	    return(CMD_ERROR);
 	}
 	
@@ -157,7 +157,8 @@ command_autoboot(int argc, char *argv[])
     case 2:
 	howlong = strtol(argv[1], &cp, 0);
 	if (*cp != 0) {
-	    sprintf(command_errbuf, "bad delay '%s'", argv[1]);
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"bad delay '%s'", argv[1]);
 	    return(CMD_ERROR);
 	}
 	/* FALLTHROUGH */

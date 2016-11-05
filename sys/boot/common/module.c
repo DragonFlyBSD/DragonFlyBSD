@@ -164,16 +164,20 @@ command_load(int argc, char *argv[])
      */
     if (dokld || file_havepath(argv[1])) {
 	error = mod_loadkld(argv[1], argc - 2, argv + 2);
-	if (error == EEXIST)
-	    sprintf(command_errbuf, "warning: KLD '%s' already loaded", argv[1]);
+	if (error == EEXIST) {
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"warning: KLD '%s' already loaded", argv[1]);
+	}
 	return (error == 0 ? CMD_OK : CMD_ERROR);
     }
     /*
      * Looks like a request for a module.
      */
     error = mod_load(argv[1], NULL, argc - 2, argv + 2);
-    if (error == EEXIST)
-	sprintf(command_errbuf, "warning: module '%s' already loaded", argv[1]);
+    if (error == EEXIST) {
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "warning: module '%s' already loaded", argv[1]);
+    }
     return (error == 0 ? CMD_OK : CMD_ERROR);
 }
 
@@ -222,16 +226,16 @@ command_crc(int argc, char *argv[])
 	    /* locate the file on the load path */
 	    cp = file_search(argv[i], NULL);
 	    if (cp == NULL) {
-		sprintf(command_errbuf, "can't find '%s'", argv[i]);
+		snprintf(command_errbuf, sizeof(command_errbuf),
+		    "can't find '%s'", argv[i]);
 		error = CMD_ERROR;
 		break;
 	    }
 	    name = cp;
 
 	    if ((fd = rel_open(name, NULL, O_RDONLY)) < 0) {
-		sprintf(command_errbuf,
-			"can't open '%s': %s",
-			name, strerror(errno));
+		snprintf(command_errbuf, sizeof(command_errbuf),
+		    "can't open '%s': %s", name, strerror(errno));
 		free(name);
 		error = CMD_ERROR;
 		break;
@@ -340,8 +344,8 @@ file_load(char *filename, vm_offset_t dest, struct preloaded_file **result)
 	if (error == EFTYPE)
 	    continue;		/* Unknown to this handler? */
 	if (error) {
-	    sprintf(command_errbuf, "can't load file '%s': %s",
-		filename, strerror(error));
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"can't load file '%s': %s", filename, strerror(error));
 	    break;
 	}
     }
@@ -377,8 +381,8 @@ file_load_dependencies(struct preloaded_file *base_file)
 	     */
 	    mp = file_findmodule(NULL, dmodname, verinfo);
 	    if (mp == NULL) {
-		sprintf(command_errbuf, "module '%s' exists but with wrong version",
-		    dmodname);
+		snprintf(command_errbuf, sizeof(command_errbuf),
+		    "module '%s' exists but with wrong version", dmodname);
 		error = ENOENT;
 		break;
 	    }
@@ -417,13 +421,15 @@ file_loadraw(char *type, char *name)
     /* locate the file on the load path */
     cp = file_search(name, NULL);
     if (cp == NULL) {
-	sprintf(command_errbuf, "can't find '%s'", name);
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "can't find '%s'", name);
 	return(CMD_ERROR);
     }
     name = cp;
 
     if ((fd = rel_open(name, NULL, O_RDONLY)) < 0) {
-	sprintf(command_errbuf, "can't open '%s': %s", name, strerror(errno));
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "can't open '%s': %s", name, strerror(errno));
 	free(name);
 	return(CMD_ERROR);
     }
@@ -433,8 +439,8 @@ file_loadraw(char *type, char *name)
 	/* read in 4k chunks; size is not really important */
 #ifndef EFI
 	if (laddr + 4096 > heapbase) {
-	    sprintf(command_errbuf, "error reading '%s': out of load memory",
-		    name);
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"error reading '%s': out of load memory", name);
 	    free(name);
 	    close(fd);
 	    return(CMD_ERROR);
@@ -444,8 +450,8 @@ file_loadraw(char *type, char *name)
 	if (got == 0)				/* end of file */
 	    break;
 	if (got < 0) {				/* error */
-	    sprintf(command_errbuf, "error reading '%s': %s",
-		    name, strerror(errno));
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"error reading '%s': %s", name, strerror(errno));
 	    free(name);
 	    close(fd);
 	    return(CMD_ERROR);
@@ -496,13 +502,15 @@ mod_load(char *modname, struct mod_depend *verinfo, int argc, char *argv[])
 	    free(mp->m_args);
 	mp->m_args = unargv(argc, argv);
 #endif
-	sprintf(command_errbuf, "warning: module '%s' already loaded", mp->m_name);
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "warning: module '%s' already loaded", mp->m_name);
 	return (0);
     }
     /* locate file with the module on the search path */
     filename = mod_searchmodule(modname, verinfo);
     if (filename == NULL) {
-	sprintf(command_errbuf, "can't find '%s'", modname);
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "can't find '%s'", modname);
 	return (ENOENT);
     }
     err = mod_loadkld(filename, argc, argv);
@@ -525,7 +533,8 @@ mod_loadkld(const char *kldname, int argc, char *argv[])
      */
     filename = file_search(kldname, kld_ext_list);
     if (filename == NULL) {
-	sprintf(command_errbuf, "can't find '%s'", kldname);
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "can't find '%s'", kldname);
 	return (ENOENT);
     }
     /*
@@ -533,7 +542,8 @@ mod_loadkld(const char *kldname, int argc, char *argv[])
      */
     fp = file_findfile(filename, NULL);
     if (fp) {
-	sprintf(command_errbuf, "warning: KLD '%s' already loaded", filename);
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "warning: KLD '%s' already loaded", filename);
 	free(filename);
 	return (0);
     }
@@ -558,7 +568,8 @@ mod_loadkld(const char *kldname, int argc, char *argv[])
 	}
     } while(0);
     if (err == EFTYPE)
-	sprintf(command_errbuf, "don't know how to load module '%s'", filename);
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "don't know how to load module '%s'", filename);
     if (err && fp)
 	file_discard(fp);
     free(filename);

@@ -32,7 +32,7 @@
 #include "bootstrap.h"
 
 char		*command_errmsg;
-char		command_errbuf[256];
+char		command_errbuf[COMMAND_ERRBUFSZ];
 int		CurrentCondition = 1;
 
 static int page_file(char *filename);
@@ -197,7 +197,8 @@ command_help(int argc, char *argv[])
     pager_close();
     close(hfd);
     if (!matched) {
-	sprintf(command_errbuf, "no help available for '%s'", topic);
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "no help available for '%s'", topic);
 	free(topic);
 	if (subtopic)
 	    free(subtopic);
@@ -264,7 +265,8 @@ command_show(int argc, char *argv[])
 	if ((cp = getenv(argv[1])) != NULL) {
 	    printf("%s\n", cp);
 	} else {
-	    sprintf(command_errbuf, "variable '%s' not found", argv[1]);
+	    snprintf(command_errbuf, sizeof(command_errbuf),
+		"variable '%s' not found", argv[1]);
 	    return(CMD_ERROR);
 	}
     }
@@ -370,7 +372,8 @@ command_read(int argc, char *argv[])
 	case 't':
 	    timeout = strtol(optarg, &cp, 0);
 	    if (cp == optarg) {
-		sprintf(command_errbuf, "bad timeout '%s'", optarg);
+		snprintf(command_errbuf, sizeof(command_errbuf),
+		    "bad timeout '%s'", optarg);
 		return(CMD_ERROR);
 	    }
 	    break;
@@ -449,8 +452,10 @@ page_file(char *filename)
     } else {
 	result = -1;
     }
-    if (result == -1)
-	sprintf(command_errbuf, "error showing %s", filename);
+    if (result == -1) {
+	snprintf(command_errbuf, sizeof(command_errbuf),
+	    "error showing %s", filename);
+    }
 
     return result;
 }   
