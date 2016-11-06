@@ -41,9 +41,9 @@ BIN1+=	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
 
 .if !defined(NO_CRYPT)
 DIRS+=	lib/libssh \
-	secure/usr.bin/ssh \
-	secure/usr.sbin/sshd \
-	secure/usr.bin/openssl
+	usr.bin/openssl \
+	usr.bin/ssh \
+	usr.sbin/sshd
 .endif
 
 # Files that should be installed read-only-executable (555) root:wheel

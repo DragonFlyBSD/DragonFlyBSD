@@ -36,10 +36,7 @@
 "/usr/src/gnu/bin:/usr/src/gnu/usr.bin:"		\
 "/usr/src/gnu/sbin:/usr/src/gnu/usr.sbin:"		\
 "/usr/src/gnu/libexec:/usr/src/contrib:"		\
-"/usr/src/secure/bin:/usr/src/secure/usr.bin:"		\
-"/usr/src/secure/sbin:/usr/src/secure/usr.sbin:"	\
-"/usr/src/secure/libexec:/usr/src/crypto:"		\
-"/usr/src/games"
+"/usr/src/crypto:/usr/src/games"
 
 /* Each subdirectory of PATH_DPORTS will be appended to PATH_SOURCES. */
 #define PATH_DPORTS "/usr/dports"

@@ -8,7 +8,7 @@ SSHC_SYSDIR=${.CURDIR}/../..
 .elif exists(${.CURDIR}/../../../Makefile.inc1)
 SSHC_SYSDIR=${.CURDIR}/../../..
 .else
-.error "Cannot find soure base"
+.error "Cannot find source base"
 .endif
 
 SSHDIR=		${SSHC_SYSDIR}/crypto/openssh

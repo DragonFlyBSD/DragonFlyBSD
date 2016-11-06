@@ -1,17 +1,9 @@
-# $DragonFly: src/secure/usr.bin/openssl/Makefile.etc,v 1.1 2005/07/07 12:18:30 corecode Exp $
-#
-
 FILES=		openssl.cnf
 FILESDIR=	/etc/ssl
 FILESOWN=	${BINOWN}
 FILESGRP=	${BINGRP}
 FILESMODE=	644
 
-SCRIPTS=	CA.pl CA.sh
-SCRIPTSNAME_CA.pl=	CA.pl
-SCRIPTSNAME_CA.sh=	CA.sh
-SCRIPTSDIR=	/etc/ssl
-
-.include "../../lib/libcrypto/Makefile.inc"
-.PATH: ${LCRYPTO_SRC}/apps
+.include "../../lib/librecrypto/Makefile.inc"
+.PATH: ${LIBRESSL_SRC}/apps/openssl
 .include <bsd.prog.mk>

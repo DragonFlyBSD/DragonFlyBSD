@@ -7,19 +7,19 @@ Upgrading notes:
 ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-sandbox=rlimit \
 	--with-pam --with-libedit --with-ssl-engine
 
-Update config.h in secure/lib/libssh.
+Update config.h in lib/libssh.
 Update version in sshd_config, sshd_config.5, version.h.
 
 Used in:
+lib/libssh/
 lib/pam_module/pam_ssh/
-secure/lib/libssh/
-secure/libexec/sftp-server/
-secure/libexec/ssh-keysign/
-secure/usr.bin/scp/
-secure/usr.bin/sftp/
-secure/usr.bin/ssh/
-secure/usr.bin/ssh-add/
-secure/usr.bin/ssh-agent/
-secure/usr.bin/ssh-keygen/
-secure/usr.bin/ssh-keyscan/
-secure/usr.sbin/sshd/
+libexec/sftp-server/
+libexec/ssh-keysign/
+usr.bin/scp/
+usr.bin/sftp/
+usr.bin/ssh-add/
+usr.bin/ssh-agent/
+usr.bin/ssh-keygen/
+usr.bin/ssh-keyscan/
+usr.bin/ssh/
+usr.sbin/sshd/
