@@ -713,8 +713,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	assert(limit_index <= HAMMER_MAX_UNDO_BIGBLOCKS);
 
 	for (n = 0; n < limit_index; ++n) {
-		ondisk->vol0_undo_array[n] = alloc_bigblock(root_vol,
-							HAMMER_ZONE_UNDO_INDEX);
+		ondisk->vol0_undo_array[n] = alloc_undo_bigblock(root_vol);
 	}
 	while (n < HAMMER_MAX_UNDO_BIGBLOCKS) {
 		ondisk->vol0_undo_array[n++] = HAMMER_BLOCKMAP_UNAVAIL;

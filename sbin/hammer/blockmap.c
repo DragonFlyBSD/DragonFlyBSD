@@ -56,13 +56,11 @@ bootstrap_bigblock(struct volume_info *volume)
 }
 
 /*
- * Directly allocate a whole big-block.
- * This is actually only needed by zone-3 for UNDO/REDO FIFO.
+ * Allocate a big-block for zone-3 for UNDO/REDO FIFO.
  */
 hammer_off_t
-alloc_bigblock(struct volume_info *volume, int zone)
+alloc_undo_bigblock(struct volume_info *volume)
 {
-	struct volume_info *root_vol;
 	hammer_blockmap_t freemap;
 	struct buffer_info *buffer1 = NULL;
 	struct buffer_info *buffer2 = NULL;
@@ -72,11 +70,15 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
 
+	/* Only root volume needs formatting */
+	assert(volume->vol_no == HAMMER_ROOT_VOLNO);
+
 	result_offset = bootstrap_bigblock(volume);
+	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
-	root_vol = get_root_volume();
-	freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
-
+	/*
+	 * Dive layer 1.
+	 */
 	layer1_offset = freemap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
@@ -85,17 +87,20 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	hammer_crc_set_layer1(layer1);
 	buffer1->cache.modified = 1;
 
+	/*
+	 * Dive layer 2, each entry represents a big-block.
+	 */
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 	assert(layer2->zone == 0);
-	layer2->zone = zone;
+	layer2->zone = HAMMER_ZONE_UNDO_INDEX;
 	layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 	layer2->bytes_free = 0;
 	hammer_crc_set_layer2(layer2);
 	buffer2->cache.modified = 1;
 
-	--root_vol->ondisk->vol0_stat_freebigblocks;
+	--volume->ondisk->vol0_stat_freebigblocks;
 
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);

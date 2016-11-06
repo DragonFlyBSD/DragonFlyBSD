@@ -128,7 +128,7 @@ void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 void rel_buffer(struct buffer_info *buffer);
 
 hammer_off_t bootstrap_bigblock(struct volume_info *volume);
-hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
+hammer_off_t alloc_undo_bigblock(struct volume_info *volume);
 void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	       struct buffer_info **bufferp);
 hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
