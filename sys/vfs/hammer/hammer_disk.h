@@ -905,6 +905,11 @@ typedef struct hammer_inode_data {
 #define HAMMER_INODE_CAP_DIRHASH_ALG3	0x03
 #define HAMMER_INODE_CAP_DIR_LOCAL_INO	0x04	/* use inode localization */
 
+#define HAMMER_DATA_DOALIGN(offset)				\
+	(((offset) + 15) & ~15)
+#define HAMMER_DATA_DOALIGN_WITH(type, offset)			\
+	(((type)(offset) + 15) & (~(type)15))
+
 /*
  * A HAMMER directory entry associates a HAMMER filesystem object with a
  * namespace.  It is hooked into a pseudo-filesystem (with its own inode

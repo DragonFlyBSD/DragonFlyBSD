@@ -439,7 +439,7 @@ collect_btree_leaf(hammer_btree_elm_t elm)
 		break;
 	}
 	collect_blockmap(elm->leaf.data_offset,
-		(elm->leaf.data_len + 15) & ~15, zone);
+		HAMMER_DATA_DOALIGN(elm->leaf.data_len), zone);
 }
 
 static __inline

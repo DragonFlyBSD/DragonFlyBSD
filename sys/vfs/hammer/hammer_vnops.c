@@ -1061,7 +1061,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 		vap->va_bytes = (ip->ino_data.size + HAMMER_BUFMASK64) &
 				~HAMMER_BUFMASK64;
 	} else {
-		vap->va_bytes = (ip->ino_data.size + 15) & ~15;
+		vap->va_bytes = HAMMER_DATA_DOALIGN(ip->ino_data.size);
 	}
 
 	vap->va_type = hammer_get_vnode_type(ip->ino_data.obj_type);
@@ -3268,7 +3268,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	if (bio->bio_offset || ip->ino_data.size > HAMMER_HBUFSIZE)
 		bytes = bp->b_bufsize;
 	else
-		bytes = ((int)ip->ino_data.size + 15) & ~15;
+		bytes = HAMMER_DATA_DOALIGN_WITH(int, ip->ino_data.size);
 
 	record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
 				    bytes, &error);

@@ -99,7 +99,7 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone, int bytes,
 	 * Be careful, certain primary alignments are used below to allocate
 	 * new blockmap blocks.
 	 */
-	bytes = (bytes + 15) & ~15;
+	bytes = HAMMER_DATA_DOALIGN(bytes);
 	KKASSERT(bytes > 0 && bytes <= HAMMER_XBUFSIZE);
 	KKASSERT(hammer_is_zone2_mapped_index(zone));
 
@@ -116,7 +116,7 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone, int bytes,
 	 * Use the hint if we have one.
 	 */
 	if (hint && HAMMER_ZONE_DECODE(hint) == zone) {
-		next_offset = (hint + 15) & ~(hammer_off_t)15;
+		next_offset = HAMMER_DATA_DOALIGN_WITH(hammer_off_t, hint);
 		use_hint = 1;
 	} else {
 		next_offset = blockmap->next_offset;
@@ -446,7 +446,7 @@ hammer_blockmap_reserve(hammer_mount_t hmp, int zone, int bytes,
 	 * Be careful, certain primary alignments are used below to allocate
 	 * new blockmap blocks.
 	 */
-	bytes = (bytes + 15) & ~15;
+	bytes = HAMMER_DATA_DOALIGN(bytes);
 	KKASSERT(bytes > 0 && bytes <= HAMMER_XBUFSIZE);
 
 	next_offset = blockmap->next_offset;
@@ -675,7 +675,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	KKASSERT(freemap->phys_offset != 0);
 
-	bytes = (bytes + 15) & ~15;
+	bytes = HAMMER_DATA_DOALIGN(bytes);
 	KKASSERT(bytes > 0 && bytes <= HAMMER_XBUFSIZE);
 
 	/*
@@ -967,7 +967,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	/*
 	 * Alignment
 	 */
-	bytes = (bytes + 15) & ~15;
+	bytes = HAMMER_DATA_DOALIGN(bytes);
 	KKASSERT(bytes <= HAMMER_XBUFSIZE);
 	KKASSERT(((zone_offset ^ (zone_offset + (bytes - 1))) &
 		  ~HAMMER_BIGBLOCK_MASK64) == 0);
@@ -1101,7 +1101,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	/*
 	 * Alignment
 	 */
-	bytes = (bytes + 15) & ~15;
+	bytes = HAMMER_DATA_DOALIGN(bytes);
 	KKASSERT(bytes <= HAMMER_BIGBLOCK_SIZE);
 	KKASSERT(((zone_offset ^ (zone_offset + (bytes - 1))) &
 		  ~HAMMER_BIGBLOCK_MASK64) == 0);
@@ -1211,7 +1211,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	/*
 	 * Alignment
 	 */
-	bytes = (bytes + 15) & ~15;
+	bytes = HAMMER_DATA_DOALIGN(bytes);
 	KKASSERT(bytes <= HAMMER_XBUFSIZE);
 
 	/*

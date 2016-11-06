@@ -126,7 +126,7 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	 * Alignment and buffer-boundary issues.  If the allocation would
 	 * cross a buffer boundary we have to skip to the next buffer.
 	 */
-	bytes = (bytes + 15) & ~15;
+	bytes = HAMMER_DATA_DOALIGN(bytes);
 	assert(bytes > 0 && bytes <= HAMMER_BUFSIZE);  /* not HAMMER_XBUFSIZE */
 	assert(hammer_is_zone2_mapped_index(zone));
 
