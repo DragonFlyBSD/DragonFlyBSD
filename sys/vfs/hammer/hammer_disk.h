@@ -452,6 +452,10 @@ typedef struct hammer_blockmap_layer2 {
 #define HAMMER_BLOCKMAP_LAYER1_MASK	(HAMMER_BLOCKMAP_LAYER1 - 1)
 #define HAMMER_BLOCKMAP_LAYER2_MASK	(HAMMER_BLOCKMAP_LAYER2 - 1)
 
+#define HAMMER_BLOCKMAP_LAYER2_DOALIGN(offset)			\
+	(((offset) + HAMMER_BLOCKMAP_LAYER2_MASK) &		\
+	 ~HAMMER_BLOCKMAP_LAYER2_MASK)
+
 /*
  * Index within layer1 or layer2 big-block for the entry representing
  * a zone-2 physical offset.

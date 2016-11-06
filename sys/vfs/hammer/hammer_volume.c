@@ -403,8 +403,7 @@ hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	KKASSERT((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) == 0);
 	vol_free_end = HAMMER_ENCODE_RAW_BUFFER(ondisk->vol_no,
 			vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);
-	aligned_vol_free_end = (vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
-			& ~HAMMER_BLOCKMAP_LAYER2_MASK;
+	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(vol_free_end);
 
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	alloc_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
@@ -521,8 +520,7 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	KKASSERT((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) == 0);
 	vol_free_end = HAMMER_ENCODE_RAW_BUFFER(ondisk->vol_no,
 			vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);
-	aligned_vol_free_end = (vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
-			& ~HAMMER_BLOCKMAP_LAYER2_MASK;
+	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(vol_free_end);
 
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
@@ -775,8 +773,7 @@ hammer_count_bigblocks(hammer_mount_t hmp, hammer_volume_t volume,
 	KKASSERT((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) == 0);
 	vol_free_end = HAMMER_ENCODE_RAW_BUFFER(ondisk->vol_no,
 			vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);
-	aligned_vol_free_end = (vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
-			& ~HAMMER_BLOCKMAP_LAYER2_MASK;
+	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(vol_free_end);
 
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 

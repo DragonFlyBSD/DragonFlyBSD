@@ -540,8 +540,7 @@ initialize_freemap(struct volume_info *vol)
 	root_vol = get_root_volume();
 
 	assert_volume_offset(vol);
-	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
-				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
+	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(vol->vol_free_end);
 
 	printf("initialize freemap volume %d\n", vol->vol_no);
 
@@ -635,8 +634,7 @@ count_freemap(struct volume_info *vol)
 	vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 
 	assert_volume_offset(vol);
-	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
-				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
+	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(vol->vol_free_end);
 
 	if (vol->vol_no == HAMMER_ROOT_VOLNO)
 		vol_free_off += HAMMER_BIGBLOCK_SIZE;
