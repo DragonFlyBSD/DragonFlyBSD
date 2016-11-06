@@ -110,6 +110,15 @@ hammer_cmd_recover(const char *target_dir)
 			volume->vol_no, sizetostr(volume->size));
 		off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
+
+		/*
+		 * It should somehow implement reverse mapping from
+		 * zone-2 to zone-X, so the command doesn't just try
+		 * every zone-2 offset assuming it's a B-Tree node.
+		 * Since we know most big-blocks are not for zone-8,
+		 * we don't want to spend extra I/O for other zones
+		 * as well as possible misinterpretation of nodes.
+		 */
 		while (off < off_end) {
 			ptr = get_buffer_data(off, &data_buffer, 0);
 			if (ptr)
