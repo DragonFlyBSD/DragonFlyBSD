@@ -494,7 +494,7 @@ format_freemap(struct volume_info *root_vol)
 	/* Only root volume needs formatting */
 	assert(root_vol->vol_no == HAMMER_ROOT_VOLNO);
 
-	layer1_offset = alloc_bigblock(root_vol, HAMMER_ZONE_FREEMAP_INDEX);
+	layer1_offset = bootstrap_bigblock(root_vol);
 	for (i = 0; i < HAMMER_BIGBLOCK_SIZE; i += sizeof(*layer1)) {
 		isnew = ((i % HAMMER_BUFSIZE) == 0);
 		layer1 = get_buffer_data(layer1_offset + i, &buffer, isnew);
@@ -558,8 +558,7 @@ initialize_freemap(struct volume_info *vol)
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-			layer1->phys_offset = alloc_bigblock(vol,
-						HAMMER_ZONE_FREEMAP_INDEX);
+			layer1->phys_offset = bootstrap_bigblock(vol);
 			layer1->blocks_free = 0;
 			buffer1->cache.modified = 1;
 			hammer_crc_set_layer1(layer1);

@@ -38,9 +38,26 @@
 
 /*
  * Allocate big-blocks using our poor-man's volume->vol_free_off.
- *
- * If the zone is HAMMER_ZONE_FREEMAP_INDEX we are bootstrapping the freemap
- * itself and cannot update it yet.
+ * We are bootstrapping the freemap itself and cannot update it yet.
+ */
+hammer_off_t
+bootstrap_bigblock(struct volume_info *volume)
+{
+	hammer_off_t result_offset;
+
+	assert_volume_offset(volume);
+	result_offset = volume->vol_free_off;
+	if (result_offset >= volume->vol_free_end)
+		errx(1, "alloc_bigblock: Ran out of room, filesystem too small");
+
+	volume->vol_free_off += HAMMER_BIGBLOCK_SIZE;
+
+	return(result_offset);
+}
+
+/*
+ * Directly allocate a whole big-block.
+ * This is actually only needed by zone-3 for UNDO/REDO FIFO.
  */
 hammer_off_t
 alloc_bigblock(struct volume_info *volume, int zone)
@@ -55,43 +72,33 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
 
-	assert_volume_offset(volume);
-	result_offset = volume->vol_free_off;
-	if (result_offset >= volume->vol_free_end)
-		errx(1, "alloc_bigblock: Ran out of room, filesystem too small");
+	result_offset = bootstrap_bigblock(volume);
 
-	volume->vol_free_off += HAMMER_BIGBLOCK_SIZE;
+	root_vol = get_root_volume();
+	freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
-	/*
-	 * Update the freemap if not zone4.
-	 */
-	if (zone != HAMMER_ZONE_FREEMAP_INDEX) {
-		root_vol = get_root_volume();
-		freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	layer1_offset = freemap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
+	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
+	--layer1->blocks_free;
+	hammer_crc_set_layer1(layer1);
+	buffer1->cache.modified = 1;
 
-		layer1_offset = freemap->phys_offset +
-			        HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
-		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-		--layer1->blocks_free;
-		hammer_crc_set_layer1(layer1);
-		buffer1->cache.modified = 1;
+	layer2_offset = layer1->phys_offset +
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
+	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
+	assert(layer2->zone == 0);
+	layer2->zone = zone;
+	layer2->append_off = HAMMER_BIGBLOCK_SIZE;
+	layer2->bytes_free = 0;
+	hammer_crc_set_layer2(layer2);
+	buffer2->cache.modified = 1;
 
-		layer2_offset = layer1->phys_offset +
-			        HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
-		layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
-		assert(layer2->zone == 0);
-		layer2->zone = zone;
-		layer2->append_off = HAMMER_BIGBLOCK_SIZE;
-		layer2->bytes_free = 0;
-		hammer_crc_set_layer2(layer2);
-		buffer2->cache.modified = 1;
+	--root_vol->ondisk->vol0_stat_freebigblocks;
 
-		--root_vol->ondisk->vol0_stat_freebigblocks;
-
-		rel_buffer(buffer1);
-		rel_buffer(buffer2);
-	}
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
 
 	return(result_offset);
 }
