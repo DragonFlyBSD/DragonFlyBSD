@@ -47,6 +47,7 @@ parametrized.h:
 _termsortc=	termsort.h
 .else
 _termsortc=	termsort.c
+beforedepend:	termsort.c
 .endif
 ${_termsortc}:
 	sh ${PROGSDIR}/MKtermsort.sh awk ${TERMINFO_CAPS} > termsort.c
