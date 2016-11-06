@@ -47,8 +47,6 @@ bootstrap_bigblock(struct volume_info *volume)
 
 	assert_volume_offset(volume);
 	result_offset = volume->vol_free_off;
-	if (result_offset >= volume->vol_free_end)
-		errx(1, "alloc_bigblock: Ran out of room, filesystem too small");
 
 	volume->vol_free_off += HAMMER_BIGBLOCK_SIZE;
 

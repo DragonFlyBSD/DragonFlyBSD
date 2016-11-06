@@ -249,6 +249,8 @@ assert_volume_offset(struct volume_info *vol)
 {
 	assert(hammer_is_zone_raw_buffer(vol->vol_free_off));
 	assert(hammer_is_zone_raw_buffer(vol->vol_free_end));
+	if (vol->vol_free_off >= vol->vol_free_end)
+		errx(1, "Ran out of room, filesystem too small");
 }
 
 struct volume_info *
