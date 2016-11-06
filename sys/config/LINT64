@@ -1010,6 +1010,10 @@ device	ips
 #
 device		ahci
 
+# NVME driver
+#
+device          nvme
+
 # SiI3124/3132 driver
 #
 device		sili

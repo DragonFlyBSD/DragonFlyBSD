@@ -67,6 +67,10 @@ device		pci
 #
 device		ahci
 
+# NVME driver, direct PCIe-attached SSD cards
+#
+device		nvme
+
 # SiI3124/3132 driver
 #
 device		sili
