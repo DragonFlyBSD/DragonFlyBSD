@@ -58,6 +58,8 @@ EFI_TARGET=	pei-x86-64
 EFI_TARGET=	binary
 .endif
 
+all:	boot1.efi
+
 boot1.efi: ${PROG}
 	if ${NM} ${.ALLSRC} | grep ' U '; then \
 		echo "Undefined symbols in ${.ALLSRC}"; \
