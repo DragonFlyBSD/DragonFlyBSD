@@ -1151,7 +1151,7 @@ void *
 hammer_bread_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
 	         int *errorp, hammer_buffer_t *bufferp)
 {
-	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
+	bytes = HAMMER_BUFSIZE_DOALIGN(bytes);
 	return(_hammer_bread(hmp, buf_offset, bytes, 0, errorp, bufferp));
 }
 
@@ -1176,7 +1176,7 @@ void *
 hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
 		int *errorp, hammer_buffer_t *bufferp)
 {
-	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
+	bytes = HAMMER_BUFSIZE_DOALIGN(bytes);
 	return(_hammer_bread(hmp, buf_offset, bytes, 1, errorp, bufferp));
 }
 

@@ -86,6 +86,16 @@
 
 #define HAMMER_OFF_BAD		((hammer_off_t)-1)
 
+#define HAMMER_BUFSIZE_DOALIGN(offset)				\
+	(((offset) + HAMMER_BUFMASK) & ~HAMMER_BUFMASK)
+#define HAMMER_BUFSIZE64_DOALIGN(offset)			\
+	(((offset) + HAMMER_BUFMASK64) & ~HAMMER_BUFMASK64)
+
+#define HAMMER_XBUFSIZE_DOALIGN(offset)				\
+	(((offset) + HAMMER_XBUFMASK) & ~HAMMER_XBUFMASK)
+#define HAMMER_XBUFSIZE64_DOALIGN(offset)			\
+	(((offset) + HAMMER_XBUFMASK64) & ~HAMMER_XBUFMASK64)
+
 /*
  * The current limit of volumes that can make up a HAMMER FS
  */

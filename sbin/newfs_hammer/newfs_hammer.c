@@ -216,7 +216,7 @@ main(int ac, char **av)
 		HeaderJunkSize = HAMMER_VOL_JUNK_SIZE;
 	else if (HeaderJunkSize < (int64_t)sizeof(struct hammer_volume_ondisk))
 		HeaderJunkSize = sizeof(struct hammer_volume_ondisk);
-	HeaderJunkSize = (HeaderJunkSize + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
+	HeaderJunkSize = HAMMER_BUFSIZE_DOALIGN(HeaderJunkSize);
 
 	/*
 	 * Calculate defaults for the boot area and memory log sizes,
