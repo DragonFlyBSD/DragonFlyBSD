@@ -42,15 +42,18 @@ CRUNCH_GENERATE_LINKS?=	yes
 
 CLEANFILES+= ${CONF} *.o *.lo *.c *.mk *.cache *.a *.h
 
+# Set a default SRCDIR for each for simpler handling below.
+.for D in ${CRUNCH_SRCDIRS}
+.for P in ${CRUNCH_PROGS_${D}}
+CRUNCH_SRCDIR_${P}?=	${.CURDIR}/../../../${D}/${P}
+.endfor
+.endfor
+
 # Program names and their aliases contribute hardlinks to 'rescue' executable,
 # except for those that get suppressed.
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
-.ifdef CRUNCH_SRCDIR_${P}
 ${OUTPUTS}: ${CRUNCH_SRCDIR_${P}}/Makefile
-.else
-${OUTPUTS}: ${.CURDIR}/../../../${D}/${P}/Makefile
-.endif
 .if ${CRUNCH_GENERATE_LINKS} == "yes"
 .ifndef CRUNCH_SUPPRESS_LINK_${P}
 LINKS+= ${BINDIR}/${PROG} ${BINDIR}/${P}
@@ -81,11 +84,7 @@ ${CONF}: Makefile
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
 	echo progs ${P} >>${.TARGET}
-.ifdef CRUNCH_SRCDIR_${P}
 	echo special ${P} srcdir ${CRUNCH_SRCDIR_${P}} >>${.TARGET}
-.else
-	echo special ${P} srcdir ${.CURDIR}/../../../${D}/${P} >>${.TARGET}
-.endif
 .ifdef CRUNCH_BUILDOPTS_${P}
 	echo special ${P} buildopts DIRPRFX=${DIRPRFX}${P}/ \
 	    ${CRUNCH_BUILDOPTS_${P}} >>${.TARGET}
@@ -132,15 +131,9 @@ build-tools:
 cleandepend cleandir obj objlink:
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
-.ifdef CRUNCH_SRCDIR_${P}
 	cd ${CRUNCH_SRCDIR_${P}} && \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
-.else
-	cd ${.CURDIR}/../../../${D}/${P} && \
-	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
-	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
-.endif
 .endfor
 .endfor
 
@@ -152,14 +145,8 @@ clean:
 	fi
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
-.ifdef CRUNCH_SRCDIR_${P}
 	cd ${CRUNCH_SRCDIR_${P}} && \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
-.else
-	cd ${.CURDIR}/../../../${D}/${P} && \
-	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
-	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
-.endif
 .endfor
 .endfor
