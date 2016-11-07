@@ -156,12 +156,8 @@ again:
 	layer1_offset = freemap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(blockmap->next_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	assert(!(chunk_offset == 0 && layer1->blocks_free == 0));
-
-	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-		fprintf(stderr, "alloc_blockmap: ran out of space!\n");
-		exit(1);
-	}
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
@@ -171,7 +167,7 @@ again:
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 	if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
-		fprintf(stderr, "alloc_blockmap: ran out of space!\n");
+		fprintf(stderr, "alloc_blockmap: layer2 ran out of space!\n");
 		exit(1);
 	}
 
