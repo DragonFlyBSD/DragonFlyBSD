@@ -1055,11 +1055,9 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_gen = 1;	/* hammer inums are unique for all time */
 	vap->va_blocksize = HAMMER_BUFSIZE;
 	if (ip->ino_data.size >= HAMMER_XDEMARC) {
-		vap->va_bytes = (ip->ino_data.size + HAMMER_XBUFMASK64) &
-				~HAMMER_XBUFMASK64;
+		vap->va_bytes = HAMMER_XBUFSIZE64_DOALIGN(ip->ino_data.size);
 	} else if (ip->ino_data.size > HAMMER_HBUFSIZE) {
-		vap->va_bytes = (ip->ino_data.size + HAMMER_BUFMASK64) &
-				~HAMMER_BUFMASK64;
+		vap->va_bytes = HAMMER_BUFSIZE64_DOALIGN(ip->ino_data.size);
 	} else {
 		vap->va_bytes = HAMMER_DATA_DOALIGN(ip->ino_data.size);
 	}

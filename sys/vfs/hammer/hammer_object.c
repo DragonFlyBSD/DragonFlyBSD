@@ -1186,8 +1186,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (record->type == HAMMER_MEM_RECORD_DATA &&
 	    hammer_record_needs_overwrite_delete(record)) {
 		file_offset = record->leaf.base.key - record->leaf.data_len;
-		bytes = (record->leaf.data_len + HAMMER_BUFMASK) &
-			~HAMMER_BUFMASK;
+		bytes = HAMMER_BUFSIZE_DOALIGN(record->leaf.data_len);
 		KKASSERT((file_offset & HAMMER_BUFMASK) == 0);
 		error = hammer_ip_delete_range(
 				cursor, record->ip,

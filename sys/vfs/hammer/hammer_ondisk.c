@@ -1657,8 +1657,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			zone = hammer_data_zone_index(data_len);
 			if (zone == HAMMER_ZONE_LARGE_DATA_INDEX) {
 				/* round up */
-				data_len = (data_len + HAMMER_BUFMASK) &
-					   ~HAMMER_BUFMASK;
+				data_len = HAMMER_BUFSIZE_DOALIGN(data_len);
 			}
 			break;
 		default:
