@@ -111,26 +111,28 @@ ${CONF}: Makefile
 .endfor
 .endfor
 
-# XXX Make sure we don't pass -P to crunchgen(1).
-.MAKEFLAGS:= ${.MAKEFLAGS:N-P}
+CRUNCHGEN?= crunchgen
+CRUNCHENV?=	# empty
 .ORDER: ${OUTPUTS} objs
 ${OUTPUTS}: ${CONF}
-	MAKE=${MAKE} MAKEOBJDIRPREFIX=${CRUNCHOBJS} crunchgen -fq -m ${OUTMK} \
-	    -c ${OUTC} ${CONF}
+	MAKE=${MAKE} ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
+	    ${CRUNCHGEN} -fq -m ${OUTMK} -c ${OUTC} ${CONF}
 
 ${PROG}: ${OUTPUTS} objs
-	MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} -f ${OUTMK} exe
+	${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
+	    ${MAKE} -f ${OUTMK} exe
 
 objs: ${OUTMK}
-	MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} -f ${OUTMK} objs
+	${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
+	    ${MAKE} -f ${OUTMK} objs
 
 # <sigh> Someone should replace the bin/csh and bin/sh build-tools with
 # shell scripts so we can remove this nonsense.
 build-tools:
 .for _tool in ${CRUNCH_BUILDTOOLS}
 	cd ${.CURDIR}/../../../${_tool}; \
-	MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} obj; \
-	MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} build-tools
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} obj; \
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} build-tools
 .endfor
 
 # Use a separate build tree to hold files compiled for this crunchgen binary
@@ -142,11 +144,11 @@ cleandepend cleandir obj objlink:
 .for P in ${CRUNCH_PROGS_${D}}
 .ifdef CRUNCH_SRCDIR_${P}
 	cd ${CRUNCH_SRCDIR_${P}} && \
-	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .else
 	cd ${.CURDIR}/../../../${D}/${P} && \
-	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .endif
 .endfor
@@ -154,18 +156,19 @@ cleandepend cleandir obj objlink:
 
 clean:
 	rm -f ${CLEANFILES}
-	if [ -e ${.OBJDIR}/${OUTMK} ]; then				\
-		MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} -f ${OUTMK} clean;	\
+	if [ -e ${.OBJDIR}/${OUTMK} ]; then			\
+		${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS}	\
+		    ${MAKE} -f ${OUTMK} clean;			\
 	fi
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
 .ifdef CRUNCH_SRCDIR_${P}
 	cd ${CRUNCH_SRCDIR_${P}} && \
-	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .else
 	cd ${.CURDIR}/../../../${D}/${P} && \
-	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .endif
 .endfor
