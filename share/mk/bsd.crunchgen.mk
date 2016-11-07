@@ -117,36 +117,33 @@ objs: ${OUTMK}
 
 # <sigh> Someone should replace the bin/csh and bin/sh build-tools with
 # shell scripts so we can remove this nonsense.
-build-tools:
 .for _tool in ${CRUNCH_BUILDTOOLS}
-	cd ${.CURDIR}/../../../${_tool}; \
+build-tools-${_tool}:
+	${_+_}cd ${.CURDIR}/../../../${_tool}; \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} obj; \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} build-tools
+build-tools: build-tools-${_tool}
 .endfor
 
 # Use a separate build tree to hold files compiled for this crunchgen binary
 # Yes, this does seem to partly duplicate bsd.subdir.mk, but I can't
 # get that to cooperate with bsd.prog.mk.  Besides, many of the standard
 # targets should NOT be propagated into the components.
-cleandepend cleandir obj objlink:
+.for __target in clean cleandepend cleandir obj objlink
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
-	cd ${CRUNCH_SRCDIR_${P}} && \
+${__target}_crunchdir_${P}: .PHONY .MAKE
+	${_+_}cd ${CRUNCH_SRCDIR_${P}} && \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
-	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
+	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${__target}
+${__target}: ${__target}_crunchdir_${P}
+.endfor
 .endfor
 .endfor
 
 clean:
 	rm -f ${CLEANFILES}
-	if [ -e ${.OBJDIR}/${OUTMK} ]; then			\
+	${_+_}if [ -e ${.OBJDIR}/${OUTMK} ]; then		\
 		${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS}	\
 		    ${MAKE} -f ${OUTMK} clean;			\
 	fi
-.for D in ${CRUNCH_SRCDIRS}
-.for P in ${CRUNCH_PROGS_${D}}
-	cd ${CRUNCH_SRCDIR_${P}} && \
-	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
-	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
-.endfor
-.endfor
