@@ -289,8 +289,7 @@ again:
 	 * The big-block might be reserved by another zone.  If it is reserved
 	 * by our zone we may have to move next_offset past the append_off.
 	 */
-	base_off = hammer_xlate_to_zone2(next_offset &
-					~HAMMER_BIGBLOCK_MASK64);
+	base_off = hammer_xlate_to_zone2(next_offset & ~HAMMER_BIGBLOCK_MASK64);
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_off);
 	if (resv) {
 		if (resv->zone != zone) {
@@ -570,8 +569,7 @@ again:
 	 * The big-block might be reserved by another zone.  If it is reserved
 	 * by our zone we may have to move next_offset past the append_off.
 	 */
-	base_off = hammer_xlate_to_zone2(next_offset &
-					~HAMMER_BIGBLOCK_MASK64);
+	base_off = hammer_xlate_to_zone2(next_offset & ~HAMMER_BIGBLOCK_MASK64);
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_off);
 	if (resv) {
 		if (resv->zone != zone) {
@@ -734,8 +732,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 		goto failed;
 	}
 
-	base_off = hammer_xlate_to_zone2(zone_offset &
-					~HAMMER_BIGBLOCK_MASK64);
+	base_off = hammer_xlate_to_zone2(zone_offset & ~HAMMER_BIGBLOCK_MASK64);
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_off);
 	if (resv) {
 		if (resv->zone != zone) {
