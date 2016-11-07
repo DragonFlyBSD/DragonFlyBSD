@@ -1581,8 +1581,7 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 
 		hce = hammer_cluster_enable;
 		if (hce > 0) {
-			limit = (zone2_offset + HAMMER_BIGBLOCK_MASK64) &
-				~HAMMER_BIGBLOCK_MASK64;
+			limit = HAMMER_BIGBLOCK_DOALIGN(zone2_offset);
 			limit -= zone2_offset;
 			cluster_readcb(volume->devvp, limit, buf_offset,
 				       bp->b_bufsize,

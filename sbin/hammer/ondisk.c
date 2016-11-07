@@ -695,8 +695,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 		if (undo_limit < HAMMER_BIGBLOCK_SIZE * HAMMER_MIN_UNDO_BIGBLOCKS)
 			undo_limit = HAMMER_BIGBLOCK_SIZE * HAMMER_MIN_UNDO_BIGBLOCKS;
 	}
-	undo_limit = (undo_limit + HAMMER_BIGBLOCK_MASK64) &
-		     ~HAMMER_BIGBLOCK_MASK64;
+	undo_limit = HAMMER_BIGBLOCK_DOALIGN(undo_limit);
 	if (undo_limit < HAMMER_BIGBLOCK_SIZE)
 		undo_limit = HAMMER_BIGBLOCK_SIZE;
 	if (undo_limit > HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS)

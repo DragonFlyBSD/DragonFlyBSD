@@ -909,9 +909,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 		} else {
 			hammer_off_t limit;
 
-			limit = (buffer->zone2_offset +
-				 HAMMER_BIGBLOCK_MASK64) &
-				~HAMMER_BIGBLOCK_MASK64;
+			limit = HAMMER_BIGBLOCK_DOALIGN(buffer->zone2_offset);
 			limit -= buffer->zone2_offset;
 			error = hammer_io_read(volume->devvp, &buffer->io,
 					       limit);

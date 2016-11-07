@@ -361,6 +361,9 @@ typedef uint32_t hammer_crc_t;
 #define HAMMER_BUFFERS_PER_BIGBLOCK_MASK64		\
 	((hammer_off_t)HAMMER_BUFFERS_PER_BIGBLOCK_MASK)
 
+#define HAMMER_BIGBLOCK_DOALIGN(offset)				\
+	(((offset) + HAMMER_BIGBLOCK_MASK64) & ~HAMMER_BIGBLOCK_MASK64)
+
 /*
  * Maximum number of mirrors operating in master mode (multi-master
  * clustering and mirroring). Note that HAMMER1 does not support
