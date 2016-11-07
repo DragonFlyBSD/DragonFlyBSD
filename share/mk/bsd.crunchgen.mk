@@ -27,7 +27,7 @@
 # If CRUNCH_GENERATE_LINKS is set to no, no links will be generated.
 #
 
-# $FreeBSD: head/share/mk/bsd.crunchgen.mk 251512 2013-06-07 21:40:02Z emaste $
+# $FreeBSD: head/share/mk/bsd.crunchgen.mk 305257 2016-09-01 23:52:20Z bdrewery $
 
 ##################################################################
 #  The following is pretty nearly a generic crunchgen-handling makefile
@@ -67,7 +67,9 @@ LINKS+= ${BINDIR}/${PROG} ${BINDIR}/${A}
 .endfor
 .endfor
 
+.if !defined(_SKIP_BUILD)
 all: ${PROG}
+.endif
 exe: ${PROG}
 
 ${CONF}: Makefile
@@ -103,15 +105,24 @@ ${CONF}: Makefile
 CRUNCHGEN?= crunchgen
 CRUNCHENV?=	# empty
 .ORDER: ${OUTPUTS} objs
+${OUTPUTS:[1]}: .META
+${OUTPUTS:[2..-1]}: .NOMETA
 ${OUTPUTS}: ${CONF}
 	MAKE=${MAKE} ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
 	    ${CRUNCHGEN} -fq -m ${OUTMK} -c ${OUTC} ${CONF}
+	# Avoid redundantly calling 'make objs' which we've done by our
+	# own dependencies.
+	sed -i '' -e "s/^\(${PROG}:.*\) \$$(SUBMAKE_TARGETS)/\1/" ${OUTMK}
 
-${PROG}: ${OUTPUTS} objs
+# These 2 targets cannot use .MAKE since they depend on the generated
+# ${OUTMK} above.
+${PROG}: ${OUTPUTS} objs .NOMETA .PHONY
 	${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
-	    ${MAKE} -f ${OUTMK} exe
+	    ${MAKE} .MAKE.MODE="${.MAKE.MODE} curdirOk=yes" \
+	    .MAKE.META.IGNORE_PATHS="${.MAKE.META.IGNORE_PATHS}" \
+	    -f ${OUTMK} exe
 
-objs: ${OUTMK}
+objs: ${OUTMK} .META
 	${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
 	    ${MAKE} -f ${OUTMK} objs
 
