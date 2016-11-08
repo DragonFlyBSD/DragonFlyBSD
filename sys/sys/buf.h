@@ -374,6 +374,12 @@ struct cluster_save {
 #define B_CLRBUF	0x01		/* Cleared invalid areas of buffer. */
 #define B_SYNC		0x02		/* Do all allocations synchronously. */
 
+/*
+ * Split nswbuf_kva by N, allowing each block device or mounted filesystem
+ * to use up to (nswbuf_kva / N) pbufs.
+ */
+#define NSWBUF_SPLIT	10		/* split nswbuf_kva by N */
+
 #ifdef _KERNEL
 extern long	nbuf;			/* The number of buffer headers */
 extern long	maxswzone;		/* Max KVA for swap structures */

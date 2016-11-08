@@ -106,9 +106,11 @@
 #define	O_FOFFSET	0x00200000	/* force specific offset */
 #define	O_FSYNCWRITE	0x00400000	/* force synchronous write */
 #define	O_FASYNCWRITE	0x00800000	/* force asynchronous write */
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	O_UNUSED24	0x01000000
 #define	O_UNUSED25	0x02000000
-#define	O_MAPONREAD	0x04000000	/* memory map read buffer */
+#define	O_UNUSED26	0x04000000
+#endif
 
 #if __POSIX_VISIBLE >= 200809
 #define	O_DIRECTORY	0x08000000	/* error if not a directory */
@@ -122,7 +124,7 @@
 #endif
 
 #define	O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
-			 O_FSYNCWRITE|O_FASYNCWRITE|O_MAPONREAD)
+			 O_FSYNCWRITE|O_FASYNCWRITE)
 
 #ifdef _KERNEL
 /* convert from open() flags to/from fflags; convert O_RD/WR to FREAD/FWRITE */
@@ -133,10 +135,10 @@
  * Bits to save after open from the ap.  Remaining bits are retained.
  */
 #define	FMASK		(FREAD|FWRITE|FAPPEND|FASYNC|FFSYNC|FNONBLOCK|\
-			 FAPPENDONLY|FREVOKED|O_DIRECT|O_MAPONREAD)
+			 FAPPENDONLY|FREVOKED|O_DIRECT)
 /* bits settable by fcntl(F_SETFL, ...) */
 #define	FCNTLFLAGS	(FAPPEND|FASYNC|FFSYNC|FNONBLOCK|FPOSIXSHM|\
-			 O_DIRECT|O_MAPONREAD)
+			 O_DIRECT)
 #endif
 
 /*

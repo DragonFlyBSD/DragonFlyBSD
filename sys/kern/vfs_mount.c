@@ -178,6 +178,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
 	 * operations vector.
 	 */
 	vp->v_ops = &mp->mnt_vn_use_ops;
+	vp->v_pbuf_count = nswbuf_kva / NSWBUF_SPLIT;
 
 	/*
 	 * Placing the vnode on the mount point's queue makes it visible.
@@ -308,6 +309,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	vfs_busy(mp, 0);
 	mp->mnt_vfc = vfsp;
 	mp->mnt_op = vfsp->vfc_vfsops;
+	mp->mnt_pbuf_count = nswbuf_kva / NSWBUF_SPLIT;
 	vfsp->vfc_refcount++;
 	mp->mnt_stat.f_type = vfsp->vfc_typenum;
 	mp->mnt_flag |= MNT_RDONLY;

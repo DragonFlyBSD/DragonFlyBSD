@@ -881,6 +881,7 @@ allocvnode(int lktimeout, int lkflags)
 	atomic_add_int(&numvnodes, 1);
 	vp->v_refcnt = 1;
 	vp->v_flag = VAGE0 | VAGE1;
+	vp->v_pbuf_count = nswbuf_kva / NSWBUF_SPLIT;
 
 	KKASSERT(TAILQ_EMPTY(&vp->v_namecache));
 	/* exclusive lock still held */

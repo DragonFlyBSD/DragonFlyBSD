@@ -208,7 +208,7 @@ struct mount {
 	struct vfsops	*mnt_op;		/* operations on fs */
 	struct vfsconf	*mnt_vfc;		/* configuration info */
 	u_int		mnt_namecache_gen;	/* ++ to clear negative hits */
-	u_int		mnt_unused01;
+	u_int		mnt_pbuf_count;		/* pbuf usage limit */
 	struct vnode	*mnt_syncer;		/* syncer vnode */
 	struct syncer_ctx *mnt_syncer_ctx;	/* syncer process context */
 	struct vnodelst	mnt_nvnodelist;		/* list of vnodes this mount */

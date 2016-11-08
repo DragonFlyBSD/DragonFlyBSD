@@ -152,6 +152,7 @@ struct vnode {
 	int	v_opencount;			/* number of explicit opens */
 	int	v_auxrefs;			/* auxiliary references */
 	int	v_refcnt;
+	int	v_pbuf_count;			/* (device nodes only) */
 	struct bio_track v_track_read;		/* track I/O's in progress */
 	struct bio_track v_track_write;		/* track I/O's in progress */
 	struct mount *v_mount;			/* ptr to vfs we are in */

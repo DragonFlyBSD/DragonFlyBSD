@@ -121,8 +121,6 @@ SYSCTL_INT(_vfs, OID_AUTO, max_readahead, CTLFLAG_RW, &max_readahead, 0,
 
 extern vm_page_t	bogus_page;
 
-extern int cluster_pbuf_freecnt;
-
 /*
  * nblks is our cluster_rbuild request size.  The approximate number of
  * physical read-ahead requests is maxra / nblks.  The physical request
@@ -909,10 +907,18 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 		return tbp;
 	}
 
-	bp = trypbuf_kva(&cluster_pbuf_freecnt);
-	if (bp == NULL) {
+	/*
+	 * Get a pbuf, limit cluster I/O on a per-device basis.  If
+	 * doing cluster I/O for a file, limit cluster I/O on a
+	 * per-mount basis.
+	 */
+	if (vp->v_type == VCHR || vp->v_type == VBLK)
+		bp = trypbuf_kva(&vp->v_pbuf_count);
+	else
+		bp = trypbuf_kva(&vp->v_mount->mnt_pbuf_count);
+
+	if (bp == NULL)
 		return tbp;
-	}
 
 	/*
 	 * We are synthesizing a buffer out of vm_page_t's, but
@@ -920,6 +926,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 	 * address may not be either.  Inherit the b_data offset
 	 * from the original buffer.
 	 */
+	bp->b_vp = vp;
 	bp->b_data = (char *)((vm_offset_t)bp->b_data |
 	    ((vm_offset_t)tbp->b_data & PAGE_MASK));
 	bp->b_flags |= B_CLUSTER | B_VMIO;
@@ -1096,6 +1103,7 @@ cluster_callback(struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
 	struct buf *tbp;
+	struct vnode *vp;
 	int error = 0;
 
 	/*
@@ -1143,7 +1151,12 @@ cluster_callback(struct bio *bio)
 		}
 		biodone(&tbp->b_bio1);
 	}
-	relpbuf(bp, &cluster_pbuf_freecnt);
+	vp = bp->b_vp;
+	bp->b_vp = NULL;
+	if (vp->v_type == VCHR || vp->v_type == VBLK)
+		relpbuf(bp, &vp->v_pbuf_count);
+	else
+		relpbuf(bp, &vp->v_mount->mnt_pbuf_count);
 }
 
 /*
@@ -1455,14 +1468,27 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 		if (((tbp->b_flags & (B_CLUSTEROK|B_MALLOC)) != B_CLUSTEROK) ||
 		    (tbp->b_bcount != tbp->b_bufsize) ||
 		    (tbp->b_bcount != blksize) ||
-		    (bytes == blksize) ||
-		    ((bp = getpbuf_kva(&cluster_pbuf_freecnt)) == NULL)) {
+		    (bytes == blksize)) {
 			totalwritten += tbp->b_bufsize;
 			bawrite(tbp);
 			start_loffset += blksize;
 			bytes -= blksize;
 			continue;
 		}
+
+		/*
+		 * Get a pbuf, limit cluster I/O on a per-device basis.  If
+		 * doing cluster I/O for a file, limit cluster I/O on a
+		 * per-mount basis.
+		 *
+		 * HAMMER and other filesystems may attempt to queue a massive
+		 * amount of write I/O, using trypbuf() here easily results in
+		 * situation where the I/O stream becomes non-clustered.
+		 */
+		if (vp->v_type == VCHR || vp->v_type == VBLK)
+			bp = getpbuf_kva(&vp->v_pbuf_count);
+		else
+			bp = getpbuf_kva(&vp->v_mount->mnt_pbuf_count);
 
 		/*
 		 * Set up the pbuf.  Track our append point with b_bcount
@@ -1475,6 +1501,7 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 		bp->b_xio.xio_npages = 0;
 		bp->b_loffset = tbp->b_loffset;
 		bp->b_bio2.bio_offset = tbp->b_bio2.bio_offset;
+		bp->b_vp = vp;
 
 		/*
 		 * We are synthesizing a buffer out of vm_page_t's, but

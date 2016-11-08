@@ -64,10 +64,6 @@ void ffs_rawread_setup(void);
 
 SYSCTL_DECL(_vfs_ffs);
 
-static int ffsrawbufcnt = 4;
-SYSCTL_INT(_vfs_ffs, OID_AUTO, ffsrawbufcnt, CTLFLAG_RD, &ffsrawbufcnt, 0,
-	   "Buffers available for raw reads");
-
 static int allowrawread = 1;
 SYSCTL_INT(_vfs_ffs, OID_AUTO, allowrawread, CTLFLAG_RW, &allowrawread, 0,
 	   "Flag to enable raw reads");
@@ -80,8 +76,6 @@ SYSCTL_INT(_vfs_ffs, OID_AUTO, rawreadahead, CTLFLAG_RW, &rawreadahead, 0,
 void
 ffs_rawread_setup(void)
 {
-	ffsrawbufcnt = (nswbuf_kva > 100 ) ?
-		(nswbuf_kva - (nswbuf_kva >> 4)) : nswbuf_kva - 8;
 }
 
 
@@ -232,7 +226,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 		
 		if (bp == NULL) { /* Setup first read */
 			/* XXX: Leave some bufs for swap */
-			bp = getpbuf_kva(&ffsrawbufcnt);
+			bp = getpbuf_kva(&vp->v_mount->mnt_pbuf_count);
 			error = ffs_rawread_readahead(vp, udata, offset,
 						      resid, bp);
 			if (error != 0)
@@ -241,7 +235,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			if (resid > bp->b_bufsize) { /* Setup fist readahead */
 				/* XXX: Leave bufs for swap */
 				if (rawreadahead != 0) 
-					nbp = trypbuf_kva(&ffsrawbufcnt);
+					nbp = trypbuf_kva(&vp->v_mount->mnt_pbuf_count);
 				else
 					nbp = NULL;
 				if (nbp != NULL) {
@@ -252,7 +246,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 							resid - bp->b_bufsize,
 							nbp);
 					if (nerror) {
-						relpbuf(nbp, &ffsrawbufcnt);
+						relpbuf(nbp, &vp->v_mount->mnt_pbuf_count);
 						nbp = NULL;
 					}
 				}
@@ -293,7 +287,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			clearbiocache(&nbp->b_bio2);
 			
 			if (resid <= bp->b_bufsize) { /* No more readaheads */
-				relpbuf(nbp, &ffsrawbufcnt);
+				relpbuf(nbp, &vp->v_mount->mnt_pbuf_count);
 				nbp = NULL;
 			} else { /* Setup next readahead */
 				nerror = ffs_rawread_readahead(
@@ -302,7 +296,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 						resid - bp->b_bufsize,
 						nbp);
 				if (nerror != 0) {
-					relpbuf(nbp, &ffsrawbufcnt);
+					relpbuf(nbp, &vp->v_mount->mnt_pbuf_count);
 					nbp = NULL;
 				}
 			}
@@ -317,11 +311,11 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	}
 	
 	if (bp != NULL)
-		relpbuf(bp, &ffsrawbufcnt);
+		relpbuf(bp, &vp->v_mount->mnt_pbuf_count);
 	if (nbp != NULL) {			/* Run down readahead buffer */
 		biowait(&nbp->b_bio1, "rawrd");
 		vunmapbuf(nbp);
-		relpbuf(nbp, &ffsrawbufcnt);
+		relpbuf(nbp, &vp->v_mount->mnt_pbuf_count);
 	}
 	
 	if (error == 0)

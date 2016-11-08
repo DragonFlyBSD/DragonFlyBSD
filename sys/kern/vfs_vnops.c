@@ -617,7 +617,7 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 
 		if (chunk > len)
 			chunk = len;
-		if (vp->v_type == VREG) {
+		if (vp->v_type == VREG && (ioflg & IO_RECURSE) == 0) {
 			switch(rw) {
 			case UIO_READ:
 				bwillread(chunk);

@@ -95,8 +95,6 @@ extern struct pagerops vnodepagerops;
 extern struct pagerops devicepagerops;
 extern struct pagerops physpagerops;
 
-int cluster_pbuf_freecnt = -1;	/* unlimited to begin with */
-
 static int dead_pager_getpage (vm_object_t, vm_page_t *, int);
 static void dead_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
 static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t);
@@ -327,11 +325,6 @@ vm_pager_bufferinit(void *dummy __unused)
 		TAILQ_INSERT_HEAD(&bswlist_raw[i & BSWHMASK], bp, b_freelist);
 		atomic_add_int(&pbuf_raw_count, 1);
 	}
-
-	/*
-	 * Allow the clustering code to use half of our pbufs.
-	 */
-	cluster_pbuf_freecnt = nswbuf_kva / 2;
 }
 
 SYSINIT(do_vmpg, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, vm_pager_bufferinit, NULL);
@@ -402,27 +395,18 @@ initpbuf(struct buf *bp)
 /*
  * Allocate a physical buffer
  *
- *	There are a limited number of physical buffers.  We need to make
- *	sure that no single subsystem is able to hog all of them,
- *	so each subsystem implements a counter which is typically initialized
- *	to 1/2 nswbuf.  getpbuf() decrements this counter in allocation and
- *	increments it on release, and blocks if the counter hits zero.  A
- *	subsystem may initialize the counter to -1 to disable the feature,
- *	but it must still be sure to match up all uses of getpbuf() with 
- *	relpbuf() using the same variable.
+ * If (pfreecnt != NULL) then *pfreecnt will be decremented on return and
+ * the function will block while it is <= 0.
  *
- *	NOTE: pfreecnt can be NULL, but this 'feature' will be removed
- *	relatively soon when the rest of the subsystems get smart about it. XXX
- *
- *	Physical buffers can be with or without KVA space reserved.  There
- *	are severe limitations on the ones with KVA reserved, and fewer
- *	limitations on the ones without.  getpbuf() gets one without,
- *	getpbuf_kva() gets one with.
+ * Physical buffers can be with or without KVA space reserved.  There
+ * are severe limitations on the ones with KVA reserved, and fewer
+ * limitations on the ones without.  getpbuf() gets one without,
+ * getpbuf_kva() gets one with.
  *
  * No requirements.
  */
 struct buf *
-getpbuf(int *pfreecnt)	/* raw */
+getpbuf(int *pfreecnt)
 {
 	struct buf *bp;
 	int iter;
@@ -438,7 +422,7 @@ getpbuf(int *pfreecnt)	/* raw */
 			tsleep_interlock(&pbuf_raw_count, 0);
 			if ((int)atomic_fetchadd_int(&pbuf_raw_count, 0) <= 0)
 				tsleep(&pbuf_raw_count, PINTERLOCKED,
-				       "wswbuf0", 0);
+				       "wswbuf1", 0);
 			continue;
 		}
 		iter = mycpuid & BSWHMASK;
@@ -477,13 +461,13 @@ getpbuf_kva(int *pfreecnt)
 		while (pfreecnt && *pfreecnt <= 0) {
 			tsleep_interlock(pfreecnt, 0);
 			if ((int)atomic_fetchadd_int(pfreecnt, 0) <= 0)
-				tsleep(pfreecnt, PINTERLOCKED, "wswbuf0", 0);
+				tsleep(pfreecnt, PINTERLOCKED, "wswbuf2", 0);
 		}
 		if (pbuf_kva_count <= 0) {
 			tsleep_interlock(&pbuf_kva_count, 0);
 			if ((int)atomic_fetchadd_int(&pbuf_kva_count, 0) <= 0)
 				tsleep(&pbuf_kva_count, PINTERLOCKED,
-				       "wswbuf0", 0);
+				       "wswbuf3", 0);
 			continue;
 		}
 		iter = mycpuid & BSWHMASK;
@@ -526,13 +510,13 @@ getpbuf_mem(int *pfreecnt)
 		while (pfreecnt && *pfreecnt <= 0) {
 			tsleep_interlock(pfreecnt, 0);
 			if ((int)atomic_fetchadd_int(pfreecnt, 0) <= 0)
-				tsleep(pfreecnt, PINTERLOCKED, "wswbuf0", 0);
+				tsleep(pfreecnt, PINTERLOCKED, "wswbuf4", 0);
 		}
 		if (pbuf_mem_count <= 0) {
 			tsleep_interlock(&pbuf_mem_count, 0);
 			if ((int)atomic_fetchadd_int(&pbuf_mem_count, 0) <= 0)
 				tsleep(&pbuf_mem_count, PINTERLOCKED,
-				       "wswbuf0", 0);
+				       "wswbuf5", 0);
 			continue;
 		}
 		iter = mycpuid & BSWHMASK;
@@ -564,12 +548,12 @@ getpbuf_mem(int *pfreecnt)
  * Allocate a physical buffer, if one is available.
  *
  * Note that there is no NULL hack here - all subsystems using this
- * call understand how to use pfreecnt.
+ * call are required to use a non-NULL pfreecnt.
  *
  * No requirements.
  */
 struct buf *
-trypbuf(int *pfreecnt)		/* raw */
+trypbuf(int *pfreecnt)
 {
 	struct buf *bp;
 	int iter = mycpuid & BSWHMASK;
