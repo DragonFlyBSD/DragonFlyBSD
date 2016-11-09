@@ -8,7 +8,8 @@ SRCS=	ar.c not-ranlib.c arsup.c rename.c binemul.c emul_vanilla.c \
 	arparse.y arlex.l
 MFILE=	ar${MANPAGEVER}.1
 MAN=	${MFILE}
-LDADD=	${STD_LDADD} -lfl -lz
+DPADD=	${LIBL} ${LIBZ}
+LDADD=	${STD_LDADD} -ll -lz
 
 CFLAGS+=	-I${SRCDIR}/binutils \
 		-Dbin_dummy_emulation=bin_vanilla_emulation
