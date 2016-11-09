@@ -570,6 +570,8 @@ typedef struct hammer_blockmap_layer2 {
 #define HAMMER_UNDO_ALIGN64		((uint64_t)512)
 #define HAMMER_UNDO_MASK		(HAMMER_UNDO_ALIGN - 1)
 #define HAMMER_UNDO_MASK64		(HAMMER_UNDO_ALIGN64 - 1)
+#define HAMMER_UNDO_DOALIGN(offset)	\
+	(((offset) + HAMMER_UNDO_MASK) & ~HAMMER_UNDO_MASK64)
 
 typedef struct hammer_fifo_head {
 	uint16_t hdr_signature;

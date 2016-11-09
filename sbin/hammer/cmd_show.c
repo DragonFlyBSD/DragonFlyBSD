@@ -1069,8 +1069,7 @@ hammer_cmd_show_undo(void)
 				    ((u_int)scan_offset & HAMMER_UNDO_MASK)) {
 			printf("Illegal size field, skipping to "
 			       "next boundary\n");
-			scan_offset = (scan_offset + HAMMER_UNDO_MASK) &
-					~HAMMER_UNDO_MASK64;
+			scan_offset = HAMMER_UNDO_DOALIGN(scan_offset);
 		} else {
 			scan_offset += head->head.hdr_size;
 		}

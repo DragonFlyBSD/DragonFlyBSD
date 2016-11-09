@@ -359,8 +359,7 @@ check_undo(hammer_blockmap_t undomap)
 		     head->hdr_size > HAMMER_UNDO_ALIGN -
 			((u_int)scan_offset & HAMMER_UNDO_MASK)) {
 			printf("Illegal size, skipping to next boundary\n");
-			scan_offset = (scan_offset + HAMMER_UNDO_MASK) &
-					~HAMMER_UNDO_MASK64;
+			scan_offset = HAMMER_UNDO_DOALIGN(scan_offset);
 		} else {
 			scan_offset += head->hdr_size;
 		}
