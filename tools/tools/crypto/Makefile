@@ -28,13 +28,14 @@
 ALL=	cryptotest cryptokeytest cryptostats \
 	ubsecstats hifnstats ipsecstats
 BINDIR=	/usr/local/bin
+PRIVATELIB_LDFLAGS?= -rpath /lib/priv:/usr/lib/priv -L /usr/lib/priv
 
 all:	${ALL}
 
 # program to test asymmetric crypto functions
 cryptokeytest: cryptokeytest.c
 	${CC} -o cryptokeytest cryptokeytest.c \
-	 -rpath /lib/priv:/usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv \
+	 -rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS} \
 	 -lprivate_crypto
 
 # program to dump statistics kept by the core crypto code

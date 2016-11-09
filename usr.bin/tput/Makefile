@@ -4,7 +4,7 @@
 PROG=	tput
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 SCRIPTS=clear.sh
 MLINKS=	tput.1 clear.1
 

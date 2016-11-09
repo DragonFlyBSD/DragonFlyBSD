@@ -10,7 +10,7 @@ SRCS=	main.c screen.c brac.c ch.c charset.c cmdbuf.c \
 CFLAGS+=	-I${.CURDIR} -DSYSDIR=\"/etc\"
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 SCRIPTS= lesspipe.sh
 SCRIPTSNAME= lesspipe.sh

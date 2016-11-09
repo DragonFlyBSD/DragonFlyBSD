@@ -31,7 +31,7 @@ CFLAGS+=	-DINSECURE_OVERRIDE -DPATH_ACCESS_FILE=${ACCESSFILE}
 
 LDADD+=	-lmd -lprivate_crypto
 DPADD+=	${LIBMD} ${LIBRECRYPTO}
-LDFLAGS+=  -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 MAN=	${OPIE_DIST}/opie.4 ${OPIE_DIST}/opiekeys.5 ${OPIE_DIST}/opieaccess.5
 

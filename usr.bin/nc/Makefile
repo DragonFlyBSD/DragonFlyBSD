@@ -22,6 +22,6 @@ CFLAGS+=-DHAVE_ARC4RANDOM_BUF -DHAVE_STRTONUM	\
 
 DPADD=	${LIBRECRYPTO} ${LIBRESSL}
 LDADD=	-lprivate_ssl -lprivate_crypto
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

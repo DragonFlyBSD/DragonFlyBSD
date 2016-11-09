@@ -8,7 +8,7 @@ SRCS=	allow.c board.c check.c extra.c fancy.c init.c main.c move.c \
 MAN=	backgammon.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .PATH:	${.CURDIR}/../common_source
 HIDEGAME=hidegame
 

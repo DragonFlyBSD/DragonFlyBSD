@@ -4,7 +4,7 @@
 PROG=	cribbage
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 SRCS=	extern.c crib.c cards.c instr.c io.c score.c support.c
 FILES=	cribbage.n
 FILESNAME_cribbage.n=	cribbage.instr

@@ -6,6 +6,6 @@ FILESDIR=	${SHAREDIR}/misc
 
 LDADD+=	-lprivate_edit -lprivate_ncurses
 DPADD+=	${LIBEDIT} ${LIBNCURSES}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

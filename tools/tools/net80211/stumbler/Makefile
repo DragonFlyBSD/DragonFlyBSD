@@ -4,7 +4,7 @@ PROG=	stumbler
 BINDIR=	/usr/local/bin
 DPADD=	${LIBPCAP} ${LIBNCURSES}
 LDADD=	-lpcap -lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS=-g
 NOMAN=
 

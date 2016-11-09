@@ -25,7 +25,7 @@ INCSDIR=	${INCLUDEDIR}/priv/openssl
 
 LDADD=		-lprivate_crypto
 DPADD=		${LIBRECRYPTO}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .PATH:	${LSSL_SRC} ${LIBRESSL_SRC}/include/openssl
 

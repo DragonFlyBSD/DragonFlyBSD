@@ -6,7 +6,7 @@ SRCS=	snake.c
 MAN=	snake.6
 DPADD=	${LIBM} ${LIBNCURSES}
 LDADD=	-lm -lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 HIDEGAME=hidegame
 MLINKS=	snake.6 snscore.6
 

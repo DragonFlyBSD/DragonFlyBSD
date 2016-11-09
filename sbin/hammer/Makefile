@@ -11,7 +11,7 @@ MAN=	hammer.8
 CFLAGS+= -I${.CURDIR}/../../sys
 LDADD=	-lm -lutil -lhammer -lprivate_crypto
 DPADD=	${LIBM} ${LIBUTIL} ${LIBHAMMER} ${LIBRECRYPTO}
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .PATH: ${.CURDIR}/../../sys/libkern
 SRCS+= crc32.c icrc32.c

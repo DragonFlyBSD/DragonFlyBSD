@@ -8,7 +8,7 @@ SRCS=	hit.c init.c inventory.c level.c machdep.c main.c \
 	room.c save.c score.c spec_hit.c throw.c trap.c use.c zap.c
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 HIDEGAME=hidegame
 MAN=	rogue.6
 

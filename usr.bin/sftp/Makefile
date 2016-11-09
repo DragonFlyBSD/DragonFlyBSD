@@ -10,7 +10,7 @@ SRCS+=	fmt_scaled.c
 DPADD+=	${LIBEDIT} ${LIBNCURSES}
 LDADD+=	-lprivate_edit -lprivate_ncurses
 # LDFLAGS is set to same value by Makefile.ssh.common so avoid duplication
-#LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+#LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

@@ -82,7 +82,7 @@ SYMLINKS+=	lvm ${BINDIR}/lvchange \
 LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -lprivate_ncurses -ldevattr
 DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBNCURSES}
 DPADD+=		${LIBDEVATTR}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .PATH:	${LVM2_DISTDIR}/tools
 

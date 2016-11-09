@@ -9,7 +9,7 @@ CFLAGS+=-I${.CURDIR}/../primes
 CFLAGS+=	-DHAVE_OPENSSL -I${.CURDIR}/../../crypto/libressl/include
 LDADD=		-lprivate_crypto
 DPADD=		${LIBRECRYPTO}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 MAN=	factor.6

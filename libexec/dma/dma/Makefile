@@ -12,7 +12,7 @@ CFLAGS+=	-DLIBEXEC_PATH='"/usr/libexec"' -DDMA_VERSION='"v0.9+"'
 
 DPADD=		${LIBRESSL} ${LIBRECRYPTO}
 LDADD=		-lprivate_ssl -lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
 
 BINOWN= root

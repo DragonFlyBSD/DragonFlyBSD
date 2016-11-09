@@ -7,7 +7,7 @@ WARNS?=		3
 
 DPADD=		${LIBEDIT} ${LIBNCURSES}
 LDADD=		-lprivate_edit -lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 SCRIPTS=	bc.library
 SCRIPTSMODE=	444

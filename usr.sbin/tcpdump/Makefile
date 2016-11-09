@@ -56,7 +56,7 @@ DPADD+=		${LIBRECRYPTO}
 LDADD+=		-lprivate_crypto
 CFLAGS+=	-DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 WARNS?=	2
 NO_STRICT_ALIASING=

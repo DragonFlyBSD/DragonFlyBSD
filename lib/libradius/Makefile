@@ -31,7 +31,7 @@ INCS=		radlib.h radlib_vs.h
 .if !defined(NO_CRYPT)
 DPADD=		${LIBRECRYPTO}
 LDADD=		-lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
 .else
 DPADD=		${LIBMD}

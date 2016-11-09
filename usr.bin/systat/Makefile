@@ -17,7 +17,7 @@ BINMODE=2555
 
 DPADD+=	${LIBUTIL}
 LDADD+=	-lutil
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CFLAGS+= -I${.CURDIR}/../../usr.bin/who -DSUPPORT_UTMP -DSUPPORT_UTMPX
 

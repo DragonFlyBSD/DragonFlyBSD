@@ -18,7 +18,7 @@ CFLAGS+=	-DINET6
 
 DPADD=		${LIBNCURSES} ${LIBTELNET}
 LDADD=		-lprivate_ncurses ${LIBTELNET}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CFLAGS+=	-DIPSEC
 DPADD+=		${LIBIPSEC}
@@ -29,7 +29,6 @@ SRCS+=		authenc.c
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION
 DPADD+=		${LIBRECRYPTO} ${LIBCRYPT} ${LIBPAM}
 LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 

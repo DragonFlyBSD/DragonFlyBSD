@@ -5,7 +5,7 @@ PROG=	canfield
 MAN=	canfield.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 HIDEGAME=hidegame
 MLINKS=	canfield.6 cfscores.6
 

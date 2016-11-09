@@ -4,7 +4,7 @@ PROG= ncal
 
 DPADD+=		${LIBCALENDAR} ${LIBNCURSES}
 LDADD+=		-lcalendar -lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 LINKS=		${BINDIR}/ncal ${BINDIR}/cal
 MLINKS=		ncal.1 cal.1

@@ -12,13 +12,12 @@ DEBUG_FLAGS=-g
 CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+= -pthread
-LDADD=	-ldmsg -lm -lutil -lprivate_crypto
-DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL} ${LIBRECRYPTO}
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDADD=	-ldmsg -lm -lutil
+DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL}
 
 DPADD+=		${LIBRECRYPTO}
 LDADD+=		-lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 #.PATH: ${.CURDIR}/../../sys/libkern

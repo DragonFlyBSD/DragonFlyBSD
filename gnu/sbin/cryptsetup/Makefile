@@ -26,7 +26,7 @@ LDADD+=		-ldm -lprop
 
 DPADD+=		${LIBRECRYPTO}
 LDADD+=		-lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
 
 .PATH:	${CRYPTSETUP_SRCDIR}

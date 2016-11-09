@@ -14,7 +14,7 @@ NO_STRICT_ALIASING=
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
 DPADD=		${LIBRESSL} ${LIBRECRYPTO}
 LDADD=		-lprivate_ssl -lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .else
 DPADD=		${LIBMD}
 LDADD=		-lmd

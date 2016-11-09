@@ -65,7 +65,7 @@ CRUNCH_ALIAS_swapon= swapoff swapctl
 CRUNCH_LIBS+= -lcam -lsbuf -lutil -lkvm -lm -lhammer -lkiconv
 CRUNCH_LIBS+= -lprivate_edit -lprivate_ncurses -ldevstat -lprop -lpthread
 CRUNCH_LIBS+= -lbsdxml -lipsec
-CRUNCH_LIBS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CRUNCH_LIBS+= ${PRIVATELIB_LDFLAGS}
 
 CRUNCH_SRCDIRS+= usr.sbin
 CRUNCH_PROGS_usr.sbin= boot0cfg chroot

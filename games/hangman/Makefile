@@ -6,6 +6,6 @@ SRCS=	endgame.c extern.c getguess.c getsym.c getword.c main.c playgame.c \
 MAN=	hangman.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

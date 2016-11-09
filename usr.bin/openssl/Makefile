@@ -8,7 +8,7 @@ WARNS?=	2
 
 DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
 LDADD+=		-lprivate_ssl -lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+= 	-DMONOLITH -I${.CURDIR}
 

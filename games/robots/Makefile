@@ -8,7 +8,7 @@ SRCS=	extern.c init_field.c main.c make_level.c move.c move_robs.c \
 MAN=	robots.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 HIDEGAME=hidegame
 
 beforeinstall:

@@ -10,7 +10,7 @@ MLINKS=	ed.1 red.1
 CFLAGS+=	-DDES -I${.CURDIR}/../../crypto/libressl/include
 DPADD=		${LIBRECRYPTO}
 LDADD=		-lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 .include <bsd.prog.mk>

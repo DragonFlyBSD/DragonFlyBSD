@@ -25,7 +25,7 @@ CRUNCH_SRCDIRS+= usr.sbin/802_11
 CRUNCH_PROGS_usr.sbin/802_11= wpa_supplicant
 CRUNCH_LIBS+= -lpcap -lprivate_ssl -lmd -lprivate_crypto
 CRUNCH_LIBS+= -lipsec
-CRUNCH_LIBS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+CRUNCH_LIBS+= ${PRIVATELIB_LDFLAGS}
 
 .include <bsd.crunchgen.mk>
 .include <bsd.prog.mk>

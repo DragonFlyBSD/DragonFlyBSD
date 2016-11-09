@@ -18,6 +18,6 @@ SRCS=	char.c cmd.c cmd1.c cmd2.c cmd3.c cmd4.c cmd5.c cmd6.c cmd7.c \
 
 DPADD=	${LIBNCURSES} ${LIBUTIL}
 LDADD=	-lprivate_ncurses -lutil
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

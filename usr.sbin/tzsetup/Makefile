@@ -5,6 +5,6 @@ MAN=	tzsetup.8
 
 DPADD=	${LIBDIALOG} ${LIBM} ${LIBNCURSESW}
 LDADD=	-ldialog -lm -lprivate_ncursesw
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

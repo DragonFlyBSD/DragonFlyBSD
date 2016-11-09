@@ -5,6 +5,6 @@ MAN=	watch.8
 
 LDADD=	-lprivate_ncurses
 DPADD=	${LIBNCURSES}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

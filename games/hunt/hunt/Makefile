@@ -6,7 +6,7 @@ SRCS=	connect.c hunt.c otto.c playit.c display.c list.c
 MAN=	hunt.6
 LDADD=	-lprivate_ncurses
 DPADD=	${LIBNCURSES}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CFLAGS+=-I${.CURDIR}/../huntd
 

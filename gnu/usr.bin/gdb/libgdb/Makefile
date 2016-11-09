@@ -175,7 +175,7 @@ DPADD=	${LIBKVM} ${LIBNCURSES} ${LIBM}
 DPADD+=	../libbfd/libbfd.a ../libopcodes/libopcodes.a ../libiberty/libiberty.a
 LDADD=	-lprivate_ncurses -lm
 LDADD+=	-L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include "Makefile.${TARGET_ARCH}"
 

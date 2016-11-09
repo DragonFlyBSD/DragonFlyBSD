@@ -15,7 +15,7 @@ WARNS?=	2
 
 DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBRECRYPTO} ${LIBZ}
 LDADD=	-lbz2 -llzma -lmd -lprivate_crypto -lz
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 INCS=	archive.h archive_entry.h
 

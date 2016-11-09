@@ -10,7 +10,7 @@ MAN=	battlestar.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
 HIDEGAME=hidegame
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/battlestar.log)
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 664 /dev/null \

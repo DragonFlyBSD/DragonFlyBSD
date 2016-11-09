@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
 # $FreeBSD: src/sbin/init/Makefile,v 1.20.2.4 2001/08/01 06:37:01 obrien Exp $
-# $DragonFly: src/sbin/init/Makefile,v 1.5 2006/10/17 00:55:41 pavalos Exp $
 
 PROG=	init
 MAN=	init.8
@@ -13,7 +12,7 @@ INSTALLFLAGS+= -fschg
 CFLAGS+=-DDEBUGSHELL -DSECURE -DLOGIN_CAP -DCOMPAT_SYSV_INIT -DSUPPORT_UTMPX
 DPADD=	${LIBUTIL} ${LIBCRYPT} ${LIBRECRYPTO}
 LDADD=	-lutil -lcrypt -lprivate_crypto
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 NOSHARED=yes
 

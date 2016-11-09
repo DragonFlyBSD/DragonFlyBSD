@@ -16,7 +16,7 @@ SRCS+=	sha1hl.c
 CFLAGS+= -DUSE_MD5 -DUSE_SHA1 -DUSE_RMD160
 DPADD=  ${LIBMD} ${LIBRECRYPTO}
 LDADD=  -lmd -lprivate_crypto
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 .include <bsd.prog.mk>

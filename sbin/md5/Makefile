@@ -15,6 +15,6 @@ MLINKS=	md5.1 rmd160.1 \
 
 DPADD=	${LIBMD} ${LIBRECRYPTO}
 LDADD=	-lmd -lprivate_crypto
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

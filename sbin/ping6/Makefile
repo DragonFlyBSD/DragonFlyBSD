@@ -10,7 +10,7 @@ BINMODE=4555
 
 LDADD=	-lipsec -lm -lmd -lprivate_crypto
 DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD} ${LIBRECRYPTO}
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 NO_STRICT_ALIASING=
 
 # kame scopeid hack

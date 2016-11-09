@@ -6,7 +6,7 @@ SRCS=	allow.c board.c check.c data.c fancy.c init.c odds.c one.c save.c \
 	subs.c table.c teach.c ttext1.c ttext2.c tutor.c
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 HIDEGAME=hidegame
 NOMAN=	noman
 

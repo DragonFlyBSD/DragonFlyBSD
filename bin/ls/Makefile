@@ -6,7 +6,7 @@ SRCS=	cmp.c ls.c print.c util.c
 
 DPADD=	${LIBUTIL} ${LIBNCURSES}
 LDADD=	-lutil -lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CFLAGS+= -DCOLORLS
 

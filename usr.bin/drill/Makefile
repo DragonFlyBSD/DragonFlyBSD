@@ -11,7 +11,6 @@ LDADD=		-lprivate_ldns -lprivate_crypto
 DPADD=		${LIBLDNS} ${LIBRECRYPTO}
 CFLAGS+=	-I${.CURDIR} -I${LDNS} -I${LDNS}/drill -I${LDNSBASE}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-LDFLAGS+=	-rpath /lib/priv:/usr/lib/priv -L \
-		${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

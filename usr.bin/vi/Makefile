@@ -38,7 +38,7 @@ LDADD=		-lutil
 
 DPADD+=		${LIBNCURSESW}
 LDADD+=		-lprivate_ncursesw
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CLEANFILES+=${EX}
 

@@ -44,17 +44,17 @@ LDADD=	-ltermcap -lcrypt
 .  if exists(/usr/lib/priv/libprivate_crypto.a)
 DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
 LDADD=	-lprivate_ncurses -lcrypt -lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
 .  else
 DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
 LDADD=	-lprivate_ncurses -lcrypt -lcrypto
-LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
 .  endif
 .  endif
 .else
 DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
 LDADD=	-lprivate_ncurses -lcrypt -lprivate_crypto
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 .if defined(BOOTSTRAPPING)

@@ -8,6 +8,6 @@ DPADD=		${LIBSSH} ${LIBRECRYPTO} ${LIBCRYPT}
 
 CFLAGS+=	-I${.CURDIR}/../../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
-LDFLAGS+=	-rpath /lib/priv:/usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
 
 .include <bsd.lib.mk>

@@ -60,7 +60,7 @@ CFLAGS+=-DNODES
 SRCS+=		chap_ms.c mppe.c
 LDADD+= 	-lprivate_crypto
 DPADD+= 	${LIBRECRYPTO}
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 

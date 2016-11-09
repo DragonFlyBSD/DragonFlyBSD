@@ -21,7 +21,7 @@ CFLAGS+=	-I${SSHC_SYSDIR}/lib/libssh -I${SSHDIR}
 .if ${.CURDIR:T} != "libssh"
 DPADD+=		${LIBSSH} ${LIBRECRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
 LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz -lpthread
-LDFLAGS+=	-rpath /lib/priv:/usr/lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
 .endif
 
 .PATH:	${SSHDIR} ${SSHDIR}/openbsd-compat

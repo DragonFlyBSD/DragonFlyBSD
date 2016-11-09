@@ -37,7 +37,7 @@ LDADD= -lprivate_edit
 .  else
 DPADD= ${LIBEDIT}
 LDADD= -lprivate_edit
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
 .  endif
 .  if exists(/usr/lib/libtermcap.a)
 DPADD+= /usr/lib/libtermcap.a
@@ -45,12 +45,12 @@ LDADD+= -ltermcap
 .  else
 DPADD+= ${LIBNCURSES}
 LDADD+= -lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
 .  endif
 .else
 DPADD= ${LIBEDIT} ${LIBNCURSES}
 LDADD= -lprivate_edit -lprivate_ncurses
-LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 
