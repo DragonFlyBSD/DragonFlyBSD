@@ -3,9 +3,9 @@
 
 LIB=		private_ssl
 SHLIB_MAJOR=	39
-SHLIBDIR?=	/lib/priv
-LIBDIR?=	/usr/lib/priv
-PROFLIBDIR?=	/usr/lib/priv/profile
+PRIVATELIB=
+
+SHLIBDIR?=	/lib
 WARNS?=		2
 
 # from vendor makefile
@@ -23,9 +23,8 @@ SRCS=	${libssl_la_SOURCES}
 INCS=	dtls1.h srtp.h ssl.h ssl2.h ssl23.h ssl3.h tls1.h
 INCSDIR=	${INCLUDEDIR}/priv/openssl
 
-# We can't use ${LIBRECRYPTO} because of LIBDIR definition, so recreate it
 LDADD=		-lprivate_crypto
-DPADD=		${DESTDIR}${LIBDIR}/libprivate_crypto.a
+DPADD=		${LIBRECRYPTO}
 LDFLAGS+=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .PATH:	${LSSL_SRC} ${LIBRESSL_SRC}/include/openssl

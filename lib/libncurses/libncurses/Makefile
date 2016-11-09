@@ -1,8 +1,7 @@
 LIB=    private_ncurses${LIB_SUFFIX}
+PRIVATELIB=
 
-SHLIBDIR?=	/lib/priv
-LIBDIR?=	/usr/lib/priv
-PROFLIBDIR?=	/usr/lib/priv/profile
+SHLIBDIR?=	/lib
 
 NCURSESBASEDIR=		${NCURSESDIR}/ncurses/base
 NCURSESSERIALDIR=	${NCURSESDIR}/ncurses/tty

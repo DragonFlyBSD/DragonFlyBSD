@@ -3,9 +3,9 @@
 
 LIB=            private_crypto
 SHLIB_MAJOR=    38
-SHLIBDIR?=	/lib/priv
-LIBDIR?=	/usr/lib/priv
-PROFLIBDIR?=	/usr/lib/priv/profile
+PRIVATELIB=
+
+SHLIBDIR?=	/lib
 WARNS?=		2
 NO_STRICT_ALIASING=
 

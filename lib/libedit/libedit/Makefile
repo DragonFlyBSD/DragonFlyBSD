@@ -3,9 +3,8 @@
 
 LIB=		private_edit
 SHLIB_MAJOR=	5
-SHLIBDIR?=	/lib/priv
-LIBDIR?=	/usr/lib/priv
-PROFLIBDIR?=	/usr/lib/priv/profile
+SHLIBDIR?=	/lib
+PRIVATELIB=
 
 SRCDIR= 	${BASEDIR}/src
 .PATH:		${SRCDIR}

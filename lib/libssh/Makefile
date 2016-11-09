@@ -1,5 +1,7 @@
 LIB=	private_ssh
 SHLIB_MAJOR= 4
+PRIVATELIB=
+
 SRCS=	ssh_api.c \
 	ssherr.c \
 	sshbuf.c \
@@ -47,10 +49,6 @@ MAN=	moduli.5
 
 WARNS?=	2
 NO_STRICT_ALIASING=
-
-SHLIBDIR?=	/usr/lib/priv
-LIBDIR?=	${SHLIBDIR}
-PROFLIBDIR?=	${SHLIBDIR}/profile
 
 .include "../../Makefile.ssh.common"
 .include <bsd.lib.mk>

@@ -1,10 +1,9 @@
 ZPANEL=	yes
 
 LIB=    private_panel${LIB_SUFFIX}
+PRIVATELIB=
 
-SHLIBDIR?=	/lib/priv
-LIBDIR?=	/usr/lib/priv
-PROFLIBDIR?=	/usr/lib/priv/profile
+SHLIBDIR?=	/lib
 
 SRCS=	ncurses_def.h \
 	p_above.c \

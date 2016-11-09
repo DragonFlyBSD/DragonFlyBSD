@@ -29,10 +29,17 @@ STRIP?=	-s
 
 .include <bsd.libnames.mk>
 
+.if !defined(PRIVATELIB)
 TARGET_LIBDIR?=		${LIBDIR}
 TARGET_DEBUGLIBDIR?=	${DEBUGLIBDIR}
 TARGET_PROFLIBDIR?=	${PROFLIBDIR}
 TARGET_SHLIBDIR?=	${SHLIBDIR}
+.else
+TARGET_LIBDIR?=		${LIBDIR}/priv
+TARGET_DEBUGLIBDIR?=	${DEBUGLIBDIR:S!/debug$!/priv/debug!}
+TARGET_PROFLIBDIR?=	${PROFLIBDIR:S!/profile$!/priv/profile!}
+TARGET_SHLIBDIR?=	${SHLIBDIR}/priv
+.endif
 
 # prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
 # .So used for PIC object files
