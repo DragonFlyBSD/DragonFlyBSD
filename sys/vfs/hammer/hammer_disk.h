@@ -499,6 +499,9 @@ typedef struct hammer_blockmap_layer2 {
 #define HAMMER_ZONE_LAYER1_NEXT_OFFSET(offset)			\
 	(((offset) + HAMMER_BLOCKMAP_LAYER2) & ~HAMMER_BLOCKMAP_LAYER2_MASK)
 
+#define HAMMER_ZONE_LAYER2_NEXT_OFFSET(offset)			\
+	(((offset) + HAMMER_BIGBLOCK_SIZE) & ~HAMMER_BIGBLOCK_MASK64)
+
 /*
  * HAMMER UNDO parameters.  The UNDO fifo is mapped directly in the volume
  * header with an array of zone-2 offsets.  A maximum of (128x8MB) = 1GB,

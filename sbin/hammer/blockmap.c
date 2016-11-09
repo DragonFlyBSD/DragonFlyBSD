@@ -184,8 +184,8 @@ again:
 		assert(layer2->append_off == 0);
 	}
 	if (layer2->zone != zone) {
-		blockmap->next_offset = (blockmap->next_offset + HAMMER_BIGBLOCK_SIZE) &
-					~HAMMER_BIGBLOCK_MASK64;
+		blockmap->next_offset =
+			HAMMER_ZONE_LAYER2_NEXT_OFFSET(blockmap->next_offset);
 		goto again;
 	}
 

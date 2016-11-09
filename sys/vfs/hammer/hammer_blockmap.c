@@ -293,8 +293,7 @@ again:
 	if (resv) {
 		if (resv->zone != zone) {
 			hammer_unlock(&hmp->blkmap_lock);
-			next_offset = (next_offset + HAMMER_BIGBLOCK_SIZE) &
-				      ~HAMMER_BIGBLOCK_MASK64;
+			next_offset = HAMMER_ZONE_LAYER2_NEXT_OFFSET(next_offset);
 			goto again;
 		}
 		if (offset < resv->append_off) {
@@ -572,8 +571,7 @@ again:
 	if (resv) {
 		if (resv->zone != zone) {
 			hammer_unlock(&hmp->blkmap_lock);
-			next_offset = (next_offset + HAMMER_BIGBLOCK_SIZE) &
-				      ~HAMMER_BIGBLOCK_MASK64;
+			next_offset = HAMMER_ZONE_LAYER2_NEXT_OFFSET(next_offset);
 			goto again;
 		}
 		if (offset < resv->append_off) {
