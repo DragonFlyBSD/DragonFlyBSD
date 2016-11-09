@@ -494,6 +494,12 @@ typedef struct hammer_blockmap_layer2 {
 	 sizeof(struct hammer_blockmap_layer2))
 
 /*
+ * Move on to offset 0 of the next layer1 or layer2.
+ */
+#define HAMMER_ZONE_LAYER1_NEXT_OFFSET(offset)			\
+	(((offset) + HAMMER_BLOCKMAP_LAYER2) & ~HAMMER_BLOCKMAP_LAYER2_MASK)
+
+/*
  * HAMMER UNDO parameters.  The UNDO fifo is mapped directly in the volume
  * header with an array of zone-2 offsets.  A maximum of (128x8MB) = 1GB,
  * and minimum of (64x8MB) = 512MB may be reserved.  The size of the undo

@@ -192,8 +192,7 @@ again:
 	 * layer2, skip to the next layer1 entry.
 	 */
 	if (offset == 0 && layer1->blocks_free == 0) {
-		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2) &
-			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
+		next_offset = HAMMER_ZONE_LAYER1_NEXT_OFFSET(next_offset);
 		if (hammer_check_volume(hmp, &next_offset)) {
 			result_offset = 0;
 			goto failed;
@@ -508,8 +507,7 @@ again:
 	 */
 	if ((next_offset & HAMMER_BIGBLOCK_MASK) == 0 &&
 	    layer1->blocks_free == 0) {
-		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2) &
-			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
+		next_offset = HAMMER_ZONE_LAYER1_NEXT_OFFSET(next_offset);
 		if (hammer_check_volume(hmp, &next_offset))
 			goto failed;
 		goto again;
