@@ -114,27 +114,29 @@ ${DEPENDFILE}: ${_DEPENDFILES}
 _ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
 
 .  for _FG in _ ${FLAGS_GROUPS}
-.   depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES} ${_ALL_DEPENDS}
-	-rm -f ${DEPENDFILE}
-	-> ${DEPENDFILE}
+.depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES} ${_ALL_DEPENDS}
+	-rm -f ${.TARGET}
+	-> ${.TARGET}
 .   if ${${_FG}_FLAGS_FILES:M*.[sS]} != ""
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
 	    ${${_FG}_FLAGS} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
 	    ${CFLAGS:M-std=*} \
 	    ${.ALLSRC:M*.[sS]}
 .   endif
 .   if ${${_FG}_FLAGS_FILES:M*.cc} != "" || \
-    ${${_FG}_FLAGS_FILES:M*.[Cc]} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.C} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.c} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cpp} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cxx} != ""
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
 	    ${${_FG}_FLAGS} \
 	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
-	    ${.ALLSRC:M*.cc} ${.ALLSRC:M*.[Cc]} ${.ALLSRC:M*.cpp} ${.ALLSRC:M*.cxx}
+	    ${.ALLSRC:M*.c} \
+	    ${.ALLSRC:M*.cc} ${.ALLSRC:M*.C} ${.ALLSRC:M*.cpp} ${.ALLSRC:M*.cxx}
 .   endif
 .   if ${${_FG}_FLAGS_FILES:M*.m} != ""
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
 	    ${${_FG}_FLAGS} \
 	    ${OBJCFLAGS:M-nostdinc*} ${OBJCFLAGS:M-[BID]*} \
 	    ${OBJCFLAGS:M-Wno-import*} \
