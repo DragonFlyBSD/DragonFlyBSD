@@ -154,6 +154,7 @@ survey_storage(struct i_fn_args *a)
 	struct disk *d = NULL;
 	int number = 0;
 	int failure = 0;
+	int ndisks = 0;
 	int fd;
 	size_t len;
 	struct aura_dict *di;
@@ -191,18 +192,33 @@ survey_storage(struct i_fn_args *a)
 			continue;
 
 		aura_dict_store(di, disk, strlen(disk) + 1, "", 1);
+		ndisks++;
 	}
+
+	if (ndisks == 0)
+		failure |= 1;
 
 	cmds = commands_new();
 	cmd = command_add(cmds, "%s%s -n '' >%ssurvey.txt",
 	    a->os_root, cmd_name(a, "ECHO"), a->tmp);
 	command_set_log_mode(cmd, COMMAND_LOG_SILENT);
 
-	aura_dict_rewind(di);
-	while (!aura_dict_eof(di)) {
-		aura_dict_get_current_key(di, &rk, &rk_len),
-
+	for (aura_dict_rewind(di); !aura_dict_eof(di); aura_dict_next(di) ) {
+		aura_dict_get_current_key(di, &rk, &rk_len);
 		disk = (char *)rk;
+
+		/*
+		 * Attempt to get media information from the disk. This information
+		 * might be used later on for partitioning. Any disk that does not
+		 * provide the information will be discarded as not suitable for
+		 * an installation.
+		 */
+		bzero(&diskpart, sizeof(diskpart));
+		snprintf(diskpath, PATH_MAX, "/dev/%s", disk);
+		if ((fd = open(diskpath, O_RDONLY)) < 0)
+			continue;
+		if (ioctl(fd, DIOCGPART, &diskpart) < 0)
+			continue;
 
 		cmd = command_add(cmds, "%s%s '@DISK' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
@@ -217,12 +233,6 @@ survey_storage(struct i_fn_args *a)
 		cmd = command_add(cmds, "%s%s '@DESC' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
 		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
-		snprintf(diskpath, PATH_MAX, "/dev/%s", disk);
-		if ((fd = open(diskpath, O_RDONLY)) < 0)
-			failure |= 1;
-		bzero(&diskpart, sizeof(diskpart));
-		if (ioctl(fd, DIOCGPART, &diskpart) < 0)
-			failure |= 1;
 		cmd = command_add(cmds, "%s%s '%s: %luMB' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"),
 		    disk,
@@ -267,8 +277,6 @@ survey_storage(struct i_fn_args *a)
 		cmd = command_add(cmds, "%s%s '@END' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
 		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
-
-		aura_dict_next(di);
 	}
 
 	cmd = command_add(cmds, "%s%s '.' >>%ssurvey.txt",
