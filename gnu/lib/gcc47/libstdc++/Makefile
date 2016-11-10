@@ -179,8 +179,7 @@ gnu11_FLAGS_FILES=	chrono.cc \
 #generated sources
 SRCS+=	unwind.h \
 	unwind-cxx.h \
-	cxxabi_forced.h \
-	${CONF_HEADERS:T}
+	cxxabi_forced.h
 
 HD=	${INCLUDEDIR}/c++/${GCCPOINTVER}
 
@@ -226,9 +225,6 @@ host_headers_extraNAME_c_locale.h=		c++locale.h
 host_headers_extraNAME_c_io_stdio.h+=		c++io.h
 host_headers_extraNAME_new_allocator_base.h=	c++allocator.h
 
-CONF_HEADERS=	locale/generic/c++locale_internal.h \
-		abi/compatibility.h
-
 atomicity.cc: ${SRCDIR}/config/cpu/generic/atomicity_builtins/atomicity.h
 	cp ${.ALLSRC} ${.TARGET}
 
@@ -250,14 +246,6 @@ unwind-cxx.h: ${SRCDIR}/libsupc++/unwind-cxx.h
 cxxabi_forced.h: ${SRCDIR}/libsupc++/cxxabi_forced.h
 	cp ${.ALLSRC} ${.TARGET}
 
-copybits:
-	mkdir -p bits
-
-.for F in ${CONF_HEADERS}
-${F:T}: copybits
-	cp ${SRCDIR}/config/${F} bits/
-.endfor
-
 # We can't add libiberty to the PATH because it will take the regex.o there
 # before compiling regex.cc into an object file.  Just recompile
 
@@ -274,7 +262,6 @@ tree-cxx.cc: ${SRCDIR}/src/c++98/tree.cc
 vec-cxx.cc: ${SRCDIR}/libsupc++/vec.cc
 	cp ${.ALLSRC} ${.TARGET}
 
-CLEANDIRS+=	bits
 CLEANFILES+=	atomicity.cc basic_file.cc c++locale.cc \
 		ctype_configure_char.cc unwind.h unwind-cxx.h \
 		cp-demangle.c debug-cxx.cc tree-cxx.cc vec-cxx.cc \
