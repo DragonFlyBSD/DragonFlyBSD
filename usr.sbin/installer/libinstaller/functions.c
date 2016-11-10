@@ -57,7 +57,8 @@
 /*** INSTALLER CONTEXT CONSTRUCTOR ***/
 
 struct i_fn_args *
-i_fn_args_new(const char *os_root, const char *def_tmp_dir, int transport, const char *rendezvous)
+i_fn_args_new(const char *os_root, const char *def_tmp_dir,
+	      const char *def_cmds_file, int transport, const char *rendezvous)
 {
 	struct i_fn_args *a;
 	char *filename;
@@ -113,8 +114,8 @@ i_fn_args_new(const char *os_root, const char *def_tmp_dir, int transport, const
 	a->tmp = def_tmp_dir;	/* XXX temporarily set to this */
 	a->temp_files = aura_dict_new(23, AURA_DICT_HASH);
 	a->cmd_names = config_vars_new();
-	if (!config_vars_read(a, a->cmd_names, CONFIG_TYPE_SH,
-	    "usr/share/installer/cmdnames.conf")) {
+	if (!config_vars_read(a, a->cmd_names, CONFIG_TYPE_SH, "%s",
+		def_cmds_file)) {
 		i_log(a, "! ERROR: Couldn't read cmdnames config file");
 		i_fn_args_free(a);
 		return(NULL);

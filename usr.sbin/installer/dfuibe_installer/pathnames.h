@@ -30,6 +30,16 @@
 #endif
 
 /*
+ * Default file that contains command names to be used
+ * by the installer.
+ * File syntax must be Bourne Shell compatible, all paths
+ * should be relative to the installation media.
+ */
+#ifndef DEFAULT_CMDNAMES_FILE
+#define DEFAULT_CMDNAMES_FILE	"usr/share/installer/cmdnames.conf"
+#endif
+
+/*
  * Directory from which to copy 'pristine' files over the
  * installed files after the main installation phase is done.
  * This is actually something of a misnomer now, as these

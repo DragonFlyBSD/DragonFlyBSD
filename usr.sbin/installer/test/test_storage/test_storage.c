@@ -108,7 +108,7 @@ libinstaller_backend(struct i_fn_args **a)
 {
 	struct i_fn_args *ap = *a;
 
-	ap = i_fn_args_new("/", TMPDIR,
+	ap = i_fn_args_new("/", TMPDIR, "tmp/cmdnames.conf",
 	    DFUI_TRANSPORT_TCP, "9999");
 
 	if (ap == NULL)

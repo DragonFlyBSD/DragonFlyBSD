@@ -1459,7 +1459,8 @@ flow(int transport, char *rendezvous, char *os_root,
 	rc_conf = config_vars_new();
 
 	if ((a = i_fn_args_new(os_root, DEFAULT_INSTALLER_TEMP,
-			       transport, rendezvous)) == NULL) {
+			       DEFAULT_CMDNAMES_FILE, transport,
+			       rendezvous)) == NULL) {
 		return(0);
 	}
 
