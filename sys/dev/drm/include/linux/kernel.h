@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2013-2016 Mellanox Technologies, Ltd.
  * Copyright (c) 2014-2016 François Tigeot
  * All rights reserved.
  *
@@ -73,6 +74,7 @@
 
 #define clamp_t(type, _x, min, max)	min_t(type, max_t(type, _x, min), max)
 #define clamp(x, lo, hi)		min( max(x,lo), hi)
+#define clamp_val(val, lo, hi)		clamp_t(typeof(val), val, lo, hi)
 
 /*
  * This looks more complex than it should be. But we need to
