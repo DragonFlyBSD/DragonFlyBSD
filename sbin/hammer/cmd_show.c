@@ -148,7 +148,7 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 	}
 	print_btree(ondisk->vol0_btree_root);
 
-	if (VerboseOpt) {
+	if (stats) {
 		hammer_print_zone_stat(stats);
 		hammer_cleanup_zone_stat(stats);
 	}
@@ -228,7 +228,7 @@ print_btree_node(hammer_off_t node_offset,
 	print_bigblock_fill(node_offset);
 	printf(" {\n");
 
-	if (VerboseOpt)
+	if (opt.stats)
 		hammer_add_zone_stat(opt.stats, node_offset, sizeof(*node));
 
 	for (i = 0; i < node->count; ++i) {
@@ -433,7 +433,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			print_bigblock_fill(elm->leaf.data_offset);
 			if (QuietOpt < 2)
 				print_record(elm);
-			if (VerboseOpt)
+			if (opt.stats)
 				hammer_add_zone_stat(opt.stats,
 					elm->leaf.data_offset,
 					elm->leaf.data_len);
@@ -1066,7 +1066,7 @@ hammer_cmd_show_undo(void)
 			printf(" <");
 		printf("\n");
 
-		if (VerboseOpt)
+		if (stats)
 			hammer_add_zone_stat(stats, scan_offset, hdr->hdr_size);
 
 		if ((hdr->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
@@ -1082,7 +1082,7 @@ hammer_cmd_show_undo(void)
 	}
 	rel_buffer(data_buffer);
 
-	if (VerboseOpt) {
+	if (stats) {
 		hammer_print_zone_stat(stats);
 		hammer_cleanup_zone_stat(stats);
 	}

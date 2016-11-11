@@ -199,14 +199,14 @@ dump_blockmap(int zone)
 				printf("\n");
 			}
 
-			if (VerboseOpt)
+			if (stats)
 				hammer_add_zone_stat_layer2(stats, layer2);
 		}
 	}
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
 
-	if (VerboseOpt) {
+	if (stats) {
 		hammer_print_zone_stat(stats);
 		hammer_cleanup_zone_stat(stats);
 	}
@@ -546,7 +546,7 @@ dump_collect_table(void)
 	}
 	assert(RB_EMPTY(&CollectTree));
 
-	if (VerboseOpt) {
+	if (stats) {
 		hammer_print_zone_stat(stats);
 		hammer_cleanup_zone_stat(stats);
 	}
@@ -586,7 +586,7 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 				(zone == HAMMER_ZONE_FREEMAP_INDEX) ||
 				hammer_is_zone2_mapped_index(zone));
 		}
-		if (VerboseOpt)
+		if (stats)
 			hammer_add_zone_stat_layer2(stats, layer2);
 
 		if (track2->zone != layer2->zone) {
