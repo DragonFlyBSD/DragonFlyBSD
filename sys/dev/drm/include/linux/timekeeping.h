@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,19 @@ static inline ktime_t ktime_get_real(void)
 
 	kt.tv64 = ktime_get_raw_ns();
 	return kt;
+}
+
+/* Include time spent in suspend state */
+static inline ktime_t
+ktime_get_boottime(void)
+{
+	return ktime_get_real();
+}
+
+static inline s64
+ktime_ms_delta(const ktime_t later, const ktime_t earlier)
+{
+	return (later.tv64 - earlier.tv64) / NSEC_PER_MSEC;
 }
 
 #endif	/* _LINUX_TIMEKEEPING_H_ */
