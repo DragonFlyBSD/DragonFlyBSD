@@ -20,6 +20,8 @@ LIB=		lto_plugin
 SHLIB_MAJOR=	0
 NOPROFILE=	yes
 NOINSTALLLIB=	yes
+# For gcc -print-prog-name=liblto_plugin.so to work
+LIBMODE=	555
 
 # GCC driver looks for LTO plugin library in libexec, not lib
 TARGET_SHLIBDIR=	/usr/libexec/gcc50
