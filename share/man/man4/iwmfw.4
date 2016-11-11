@@ -43,10 +43,12 @@ devices inside the kernel.
 .\"of the following:
 .\".Bd -ragged -offset indent
 .\".Cd "device iwm3160fw"
+.\".Cd "device iwm3168fw"
 .\".Cd "device iwm7260fw"
 .\".Cd "device iwm7265fw"
 .\".Cd "device iwm7265Dfw"
 .\".Cd "device iwm8000Cfw"
+.\".Cd "device iwm8265fw"
 .\".Ed
 .Pp
 Alternatively, to load the firmware as a
@@ -54,15 +56,17 @@ module at boot time, place (one of) the following lines in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 iwm3160fw_load="YES"
+iwm3168fw_load="YES"
 iwm7260fw_load="YES"
 iwm7265fw_load="YES"
 iwm7265Dfw_load="YES"
 iwm8000Cfw_load="YES"
+iwm8265fw_load="YES"
 .Ed
 .Sh DESCRIPTION
 This module provides access to firmware sets for the
-Intel Dual Band Wireless WiFi 3160, 3165, 7260, 7265 and 8260 series of
-IEEE 802.11n/11ac adapters.
+Intel Dual Band Wireless WiFi 3160, 3165, 3168, 7260, 7265, 8260 and 8265
+series of IEEE 802.11n/11ac adapters.
 It may be
 statically linked into the kernel, or loaded as a module.
 .Sh SEE ALSO

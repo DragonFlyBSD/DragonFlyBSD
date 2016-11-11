@@ -1167,7 +1167,7 @@ options		WPI_DEBUG	# turn on debugging output
 # IEEE 802.11 adapter firmware modules
 
 # iwifw:	Intel PRO/Wireless 2200BG/2225BG/2915ABG firmware
-# iwmfw		Intel Dual Band Wireless AC 3160/3165/7260/7265/8260
+# iwmfw		Intel Dual Band Wireless AC 3160/3165/3168/7260/7265/8260/8265
 # iwnfw:	Intel WiFi Link 4965/1000/5000/5150/5300/6000/6050
 # ralfw:	Ralink Technology RT25xx and RT26xx firmware
 # wpifw:	Intel 3945ABG Wireless LAN Controller firmware
