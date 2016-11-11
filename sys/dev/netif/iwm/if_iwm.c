@@ -5706,12 +5706,14 @@ iwm_intr(void *arg)
 #define	PCI_PRODUCT_INTEL_WL_3160_2	0x08b4
 #define	PCI_PRODUCT_INTEL_WL_3165_1	0x3165
 #define	PCI_PRODUCT_INTEL_WL_3165_2	0x3166
+#define	PCI_PRODUCT_INTEL_WL_3168	0x24fb
 #define	PCI_PRODUCT_INTEL_WL_7260_1	0x08b1
 #define	PCI_PRODUCT_INTEL_WL_7260_2	0x08b2
 #define	PCI_PRODUCT_INTEL_WL_7265_1	0x095a
 #define	PCI_PRODUCT_INTEL_WL_7265_2	0x095b
 #define	PCI_PRODUCT_INTEL_WL_8260_1	0x24f3
 #define	PCI_PRODUCT_INTEL_WL_8260_2	0x24f4
+#define	PCI_PRODUCT_INTEL_WL_8265	0x24fd
 
 static const struct iwm_devices {
 	uint16_t		device;
@@ -5721,12 +5723,14 @@ static const struct iwm_devices {
 	{ PCI_PRODUCT_INTEL_WL_3160_2, &iwm3160_cfg },
 	{ PCI_PRODUCT_INTEL_WL_3165_1, &iwm3165_cfg },
 	{ PCI_PRODUCT_INTEL_WL_3165_2, &iwm3165_cfg },
+	{ PCI_PRODUCT_INTEL_WL_3168,   &iwm3168_cfg },
 	{ PCI_PRODUCT_INTEL_WL_7260_1, &iwm7260_cfg },
 	{ PCI_PRODUCT_INTEL_WL_7260_2, &iwm7260_cfg },
 	{ PCI_PRODUCT_INTEL_WL_7265_1, &iwm7265_cfg },
 	{ PCI_PRODUCT_INTEL_WL_7265_2, &iwm7265_cfg },
 	{ PCI_PRODUCT_INTEL_WL_8260_1, &iwm8260_cfg },
 	{ PCI_PRODUCT_INTEL_WL_8260_2, &iwm8260_cfg },
+	{ PCI_PRODUCT_INTEL_WL_8265,   &iwm8265_cfg },
 };
 
 static int
