@@ -1059,7 +1059,7 @@ _generic_libs+=	usr.bin/flex/lib
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
-	${ECHODIR} "===> ${_lib}"; \
+	@${ECHODIR} "===> ${_lib}"; \
 		cd ${.CURDIR}/${_lib}; \
 		echo "STEP DEP ${_lib}"; \
 		make DIRPRFX=${_lib}/ depend; \
