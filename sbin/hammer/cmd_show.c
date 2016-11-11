@@ -1014,11 +1014,15 @@ hammer_cmd_show_undo(void)
 	hammer_off_t scan_offset;
 	hammer_fifo_any_t head;
 	struct buffer_info *data_buffer = NULL;
+	struct zone_stat *stats = NULL;
 
 	volume = get_root_volume();
 	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	print_blockmap(volume);
+
+	if (VerboseOpt)
+		stats = hammer_init_zone_stat_bits();
 
 	scan_offset = HAMMER_ENCODE_UNDO(0);
 	while (scan_offset < rootmap->alloc_offset) {
@@ -1063,6 +1067,10 @@ hammer_cmd_show_undo(void)
 			printf(" <");
 		printf("\n");
 
+		if (VerboseOpt)
+			hammer_add_zone_stat(stats, scan_offset,
+				head->head.hdr_size);
+
 		if ((head->head.hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
 		    head->head.hdr_size == 0 ||
 		    head->head.hdr_size > HAMMER_UNDO_ALIGN -
@@ -1075,4 +1083,9 @@ hammer_cmd_show_undo(void)
 		}
 	}
 	rel_buffer(data_buffer);
+
+	if (VerboseOpt) {
+		hammer_print_zone_stat(stats);
+		hammer_cleanup_zone_stat(stats);
+	}
 }
