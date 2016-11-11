@@ -118,13 +118,13 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 	hammer_volume_ondisk_t ondisk;
 	struct zone_stat *stats = NULL;
 
-	if (VerboseOpt)
-		stats = hammer_init_zone_stat_bits();
-
 	volume = get_root_volume();
 	ondisk = volume->ondisk;
 
 	print_blockmap(volume);
+
+	if (VerboseOpt)
+		stats = hammer_init_zone_stat_bits();
 
 	bzero(&opt, sizeof(opt));
 	opt.filter = filter;
@@ -1013,6 +1013,7 @@ hammer_cmd_show_undo(void)
 	hammer_blockmap_t rootmap;
 	hammer_off_t scan_offset;
 	hammer_fifo_any_t head;
+	hammer_fifo_head_t hdr;
 	struct buffer_info *data_buffer = NULL;
 	struct zone_stat *stats = NULL;
 
@@ -1027,27 +1028,27 @@ hammer_cmd_show_undo(void)
 	scan_offset = HAMMER_ENCODE_UNDO(0);
 	while (scan_offset < rootmap->alloc_offset) {
 		head = get_buffer_data(scan_offset, &data_buffer, 0);
+		hdr = &head->head;
 		printf("%016jx ", scan_offset);
 
-		switch(head->head.hdr_type) {
+		switch(hdr->hdr_type) {
 		case HAMMER_HEAD_TYPE_PAD:
-			printf("PAD(%04x)", head->head.hdr_size);
+			printf("PAD(%04x)", hdr->hdr_size);
 			break;
 		case HAMMER_HEAD_TYPE_DUMMY:
 			printf("DUMMY(%04x) seq=%08x",
-				head->head.hdr_size, head->head.hdr_seq);
+				hdr->hdr_size, hdr->hdr_seq);
 			break;
 		case HAMMER_HEAD_TYPE_UNDO:
-			printf("UNDO(%04x) seq=%08x "
-			       "dataoff=%016jx bytes=%d",
-				head->head.hdr_size, head->head.hdr_seq,
+			printf("UNDO(%04x) seq=%08x dataoff=%016jx bytes=%d",
+				hdr->hdr_size, hdr->hdr_seq,
 				(intmax_t)head->undo.undo_offset,
 				head->undo.undo_data_bytes);
 			break;
 		case HAMMER_HEAD_TYPE_REDO:
 			printf("REDO(%04x) seq=%08x flags=%08x "
 			       "objid=%016jx logoff=%016jx bytes=%d",
-				head->head.hdr_size, head->head.hdr_seq,
+				hdr->hdr_size, hdr->hdr_seq,
 				head->redo.redo_flags,
 				(intmax_t)head->redo.redo_objid,
 				(intmax_t)head->redo.redo_offset,
@@ -1055,9 +1056,7 @@ hammer_cmd_show_undo(void)
 			break;
 		default:
 			printf("UNKNOWN(%04x,%04x) seq=%08x",
-				head->head.hdr_type,
-				head->head.hdr_size,
-				head->head.hdr_seq);
+				hdr->hdr_type, hdr->hdr_size, hdr->hdr_seq);
 			break;
 		}
 
@@ -1068,18 +1067,17 @@ hammer_cmd_show_undo(void)
 		printf("\n");
 
 		if (VerboseOpt)
-			hammer_add_zone_stat(stats, scan_offset,
-				head->head.hdr_size);
+			hammer_add_zone_stat(stats, scan_offset, hdr->hdr_size);
 
-		if ((head->head.hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
-		    head->head.hdr_size == 0 ||
-		    head->head.hdr_size > HAMMER_UNDO_ALIGN -
+		if ((hdr->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
+		    hdr->hdr_size == 0 ||
+		    hdr->hdr_size > HAMMER_UNDO_ALIGN -
 				    ((u_int)scan_offset & HAMMER_UNDO_MASK)) {
 			printf("Illegal size field, skipping to "
 			       "next boundary\n");
 			scan_offset = HAMMER_UNDO_DOALIGN(scan_offset);
 		} else {
-			scan_offset += head->head.hdr_size;
+			scan_offset += hdr->hdr_size;
 		}
 	}
 	rel_buffer(data_buffer);
