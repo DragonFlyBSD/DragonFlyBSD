@@ -12,12 +12,10 @@ SCAN=	${V}/cl/*.c ${V}/common/*.c ${V}/ex/*.c ${V}/vi/*.c
 
 .PATH: ${V}/catalog
 
-all:		dump
-
-build-tools:	dump
+buildfiles:
 
 # Helper since iconv is non trivial to make a build tool
-utf8convert:
+utf8convert: .PHONY
 .for c in dutch french german spanish swedish
 	iconv -f ISO8859-1 -t UTF-8 $V/catalog/$c.base > $c.UTF-8.base
 .endfor
@@ -25,16 +23,18 @@ utf8convert:
 	iconv -f GB2312 -t UTF-8 $V/catalog/zh_CN.GB2312.base > zh_CN.UTF-8.base
 	iconv -f KOI8-R -t UTF-8 $V/catalog/ru_RU.KOI8-R.base > ru_RU.UTF-8.base
 	iconv -f KOI8-U -t UTF-8 $V/catalog/uk_UA.KOI8-U.base > uk_UA.UTF-8.base
-	
+
 .for c in dutch french german polish spanish swedish zh_CN ru_RU uk_UA
 CAT+=	$c.UTF-8
 .endfor
 
+all:	${CAT}
+
 .for c in ${CAT}
-${c}:	${c}.base 
+${c}:	${c}.base
 	@echo "... $c";							\
 	rm -f $c;							\
-	sort -u ${.ALLSRC} |						\
+	env LANG=C sort -u ${.ALLSRC} |					\
 	awk '{								\
 		if ($$1 == 1) {						\
 			print "\nMESSAGE NUMBER 1 IS NOT LEGAL";	\
@@ -44,7 +44,7 @@ ${c}:	${c}.base
 			print "DUPLICATE MESSAGE NUMBER " $$1;		\
 			exit 1;						\
 		}							\
-		print $0;						\
+		print $$0;						\
 	}' |								\
 	sed -e '1s/^/$$set 1~$$quote "~/; 1y/~/\n/' |			\
 	gencat $c /dev/stdin;						\
@@ -92,18 +92,11 @@ ${c}.check: ${c}.base
 	echo =========================) > $c
 .endfor
 
-english.base: dump ${SCAN} #Makefile
-	./dump ${SCAN} |\
-	sed -e '/|/!d' \
-	    -e 's/|/ "/' \
-	    -e 's/^"//' |\
-	sort -nu > $@
+english.base: ${SCAN}
+	${.OBJDIR}/../vidump/vidump.nx ${SCAN} | \
+	    sed -e '/|/!d' -e 's/|/ "/' -e 's/^"//' | sort -nu > $@
 
-
-dump: dump.c
-	${CC} -o ${.TARGET} ${.ALLSRC}
-
-CLEANFILES+= dump ${CAT} english.base *.check __ck1 __ck2
+CLEANFILES+= ${CAT} english.base *.check __ck1 __ck2
 
 CATALOGS= ${CAT}
 NLLINKS= nl_NL
@@ -115,7 +108,8 @@ SVLINKS= sv_SE
 PLLINKS= pl_PL
 
 FILES=	${CATALOGS}
-FILESDIR= /usr/share/vi/catalog
+FILESFROUPS=	FILES
+FILESDIR= ${SHAREDIR}/vi/catalog
 SYMLINKS=
 .for l in ${NLLINKS}
 SYMLINKS+= dutch ${FILESDIR}/$l.ISO8859-1

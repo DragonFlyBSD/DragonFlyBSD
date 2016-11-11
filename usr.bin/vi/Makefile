@@ -5,7 +5,7 @@
 .include <bsd.own.mk>
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi2
-SUBDIR+=	catalog
+SUBDIR+=	vidump catalog
 
 WARNS?=	1
 
