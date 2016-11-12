@@ -1014,20 +1014,20 @@ hammer_cmd_show_undo(void)
 
 		switch(hdr->hdr_type) {
 		case HAMMER_HEAD_TYPE_PAD:
-			printf("PAD(%04x)", hdr->hdr_size);
+			printf("PAD(%d)", hdr->hdr_size);
 			break;
 		case HAMMER_HEAD_TYPE_DUMMY:
-			printf("DUMMY(%04x) seq=%08x",
+			printf("DUMMY(%d)\tseq=%08x",
 				hdr->hdr_size, hdr->hdr_seq);
 			break;
 		case HAMMER_HEAD_TYPE_UNDO:
-			printf("UNDO(%04x) seq=%08x dataoff=%016jx bytes=%d",
+			printf("UNDO(%d)\tseq=%08x dataoff=%016jx bytes=%d",
 				hdr->hdr_size, hdr->hdr_seq,
 				(intmax_t)head->undo.undo_offset,
 				head->undo.undo_data_bytes);
 			break;
 		case HAMMER_HEAD_TYPE_REDO:
-			printf("REDO(%04x) seq=%08x flags=%08x "
+			printf("REDO(%d)\tseq=%08x flags=%08x "
 			       "objid=%016jx logoff=%016jx bytes=%d",
 				hdr->hdr_size, hdr->hdr_seq,
 				head->redo.redo_flags,
@@ -1036,7 +1036,7 @@ hammer_cmd_show_undo(void)
 				head->redo.redo_data_bytes);
 			break;
 		default:
-			printf("UNKNOWN(%04x,%04x) seq=%08x",
+			printf("%04x(%d)\tseq=%08x",
 				hdr->hdr_type, hdr->hdr_size, hdr->hdr_seq);
 			break;
 		}
