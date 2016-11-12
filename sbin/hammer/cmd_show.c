@@ -53,26 +53,15 @@ struct {
 
 static __inline void print_btree(hammer_off_t node_offset);
 static __inline void print_subtree(hammer_btree_elm_t elm);
-static void print_btree_node(hammer_off_t node_offset,
-			hammer_tid_t mirror_tid,
-			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound);
+static void print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
+	hammer_btree_elm_t lbe);
 static int test_node_count(hammer_node_ondisk_t node, char *badmp);
 static void print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
-			hammer_btree_elm_t elm,
-			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound,
-			const char *ext);
+	hammer_btree_elm_t elm, hammer_btree_elm_t lbe, const char *ext);
 static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
-			hammer_btree_elm_t elm,
-			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound);
-static int test_lr(hammer_btree_elm_t elm,
-			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound);
-static int test_rbn_lr(hammer_btree_elm_t elm,
-			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound);
+	hammer_btree_elm_t elm, hammer_btree_elm_t lbe);
+static int test_lr(hammer_btree_elm_t elm, hammer_btree_elm_t lbe);
+static int test_rbn_lr(hammer_btree_elm_t elm, hammer_btree_elm_t lbe);
 static void print_bigblock_fill(hammer_off_t offset);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static uint32_t get_buf_crc(hammer_off_t buf_offset, int32_t buf_len);
@@ -169,7 +158,7 @@ void
 print_btree(hammer_off_t node_offset)
 {
 	depth = -1;
-	print_btree_node(node_offset, HAMMER_MAX_TID, NULL, NULL);
+	print_btree_node(node_offset, HAMMER_MAX_TID, NULL);
 	assert(depth == -1);
 }
 
@@ -177,14 +166,13 @@ static __inline
 void
 print_subtree(hammer_btree_elm_t elm)
 {
-	print_btree_node(elm->internal.subtree_offset,
-			 elm->internal.mirror_tid, &elm[0].base, &elm[1].base);
+	hammer_btree_internal_elm_t i = &elm->internal;
+	print_btree_node(i->subtree_offset, i->mirror_tid, elm);
 }
 
 static void
-print_btree_node(hammer_off_t node_offset,
-		 hammer_tid_t mirror_tid,
-		 hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
+	hammer_btree_elm_t lbe)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
@@ -246,14 +234,12 @@ print_btree_node(hammer_off_t node_offset,
 				break;
 			}
 		}
-		print_btree_elm(node, node_offset,
-				elm, left_bound, right_bound, ext);
+		print_btree_elm(node, node_offset, elm, lbe, ext);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		assert(i == node->count);  /* boundary */
 		elm = &node->elms[i];
-		print_btree_elm(node, node_offset,
-				elm, left_bound, right_bound, NULL);
+		print_btree_elm(node, node_offset, elm, lbe, NULL);
 	}
 	printf("%s     }\n", INDENT);
 
@@ -347,10 +333,7 @@ is_root_btree_end(uint8_t type, int i, hammer_btree_elm_t elm)
 static
 void
 print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
-		hammer_btree_elm_t elm,
-		hammer_base_elm_t left_bound,
-		hammer_base_elm_t right_bound,
-		const char *ext)
+	hammer_btree_elm_t elm, hammer_btree_elm_t lbe, const char *ext)
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 	char deleted;
@@ -360,7 +343,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	int flags;
 	int i = ((char*)elm - (char*)node) / (int)sizeof(*elm) - 1;
 
-	flags = get_elm_flags(node, node_offset, elm, left_bound, right_bound);
+	flags = get_elm_flags(node, node_offset, elm, lbe);
 	flagstr[0] = flags ? 'B' : 'G';
 	if (flags & FLAG_TOOFARLEFT)
 		flagstr[2] = 'L';
@@ -452,9 +435,7 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 static
 int
 get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
-		hammer_btree_elm_t elm,
-		hammer_base_elm_t left_bound,
-		hammer_base_elm_t right_bound)
+	hammer_btree_elm_t elm, hammer_btree_elm_t lbe)
 {
 	hammer_off_t child_offset;
 	int flags = 0;
@@ -471,7 +452,7 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 				flags |= FLAG_BADCHILDPARENT;
 			switch(elm->base.btype) {
 			case HAMMER_BTREE_TYPE_NONE:
-				flags |= test_rbn_lr(elm, left_bound, right_bound);
+				flags |= test_rbn_lr(elm, lbe);
 				break;
 			default:
 				flags |= FLAG_BADTYPE;
@@ -493,7 +474,7 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			switch(elm->base.btype) {
 			case HAMMER_BTREE_TYPE_INTERNAL:
 			case HAMMER_BTREE_TYPE_LEAF:
-				flags |= test_lr(elm, left_bound, right_bound);
+				flags |= test_lr(elm, lbe);
 				break;
 			default:
 				flags |= FLAG_BADTYPE;
@@ -523,7 +504,7 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		}
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
-			flags |= test_lr(elm, left_bound, right_bound);
+			flags |= test_lr(elm, lbe);
 			break;
 		default:
 			flags |= FLAG_BADTYPE;
@@ -580,29 +561,29 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 
 static
 int
-test_lr(hammer_btree_elm_t elm,
-	hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+test_lr(hammer_btree_elm_t elm, hammer_btree_elm_t lbe)
 {
-	if (left_bound == NULL || right_bound == NULL)
-		return(0);
-	if (hammer_btree_cmp(&elm->base, left_bound) < 0)
-		return(FLAG_TOOFARLEFT);
-	if (hammer_btree_cmp(&elm->base, right_bound) >= 0)
-		return(FLAG_TOOFARRIGHT);
+	if (lbe) {
+		hammer_btree_elm_t rbe = lbe + 1;
+		if (hammer_btree_cmp(&elm->base, &lbe->base) < 0)
+			return(FLAG_TOOFARLEFT);
+		if (hammer_btree_cmp(&elm->base, &rbe->base) >= 0)
+			return(FLAG_TOOFARRIGHT);
+	}
 	return(0);
 }
 
 static
 int
-test_rbn_lr(hammer_btree_elm_t rbn,
-	hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+test_rbn_lr(hammer_btree_elm_t rbn, hammer_btree_elm_t lbe)
 {
-	if (left_bound == NULL || right_bound == NULL)
-		return(0);
-	if (hammer_btree_cmp(&rbn->base, left_bound) < 0)
-		return(FLAG_TOOFARLEFT);
-	if (hammer_btree_cmp(&rbn->base, right_bound) > 0)
-		return(FLAG_TOOFARRIGHT);
+	if (lbe) {
+		hammer_btree_elm_t rbe = lbe + 1;
+		if (hammer_btree_cmp(&rbn->base, &lbe->base) < 0)
+			return(FLAG_TOOFARLEFT);
+		if (hammer_btree_cmp(&rbn->base, &rbe->base) > 0)
+			return(FLAG_TOOFARRIGHT);
+	}
 	return(0);
 }
 
