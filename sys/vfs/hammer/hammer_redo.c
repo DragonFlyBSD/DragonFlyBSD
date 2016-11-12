@@ -214,7 +214,6 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		redo->head.hdr_size = bytes;
 		redo->head.hdr_seq = hmp->undo_seqno++;
 		redo->head.hdr_crc = 0;
-		redo->redo_mtime = trans->time;
 		redo->redo_offset = file_off;
 		redo->redo_flags = flags;
 

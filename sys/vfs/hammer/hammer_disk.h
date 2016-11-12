@@ -662,8 +662,9 @@ typedef struct hammer_fifo_redo {
 	int32_t			redo_data_bytes;
 	uint32_t		redo_flags;
 	uint32_t		redo_localization;
-	uint32_t		redo_reserved;
-	uint64_t		redo_mtime;	/* set mtime */
+	uint32_t		redo_reserved01;
+	uint64_t		redo_reserved02;
+	/* followed by data */
 } *hammer_fifo_redo_t;
 
 #define HAMMER_REDO_WRITE	0x00000001
