@@ -1021,19 +1021,20 @@ hammer_cmd_show_undo(void)
 				hdr->hdr_size, hdr->hdr_seq);
 			break;
 		case HAMMER_HEAD_TYPE_UNDO:
-			printf("UNDO(%d)\tseq=%08x dataoff=%016jx bytes=%d",
+			printf("UNDO(%d)\tseq=%08x offset=%016jx bytes=%d",
 				hdr->hdr_size, hdr->hdr_seq,
 				(intmax_t)head->undo.undo_offset,
 				head->undo.undo_data_bytes);
 			break;
 		case HAMMER_HEAD_TYPE_REDO:
-			printf("REDO(%d)\tseq=%08x flags=%08x "
-			       "objid=%016jx logoff=%016jx bytes=%d",
+			printf("REDO(%d)\tseq=%08x offset=%016jx bytes=%d "
+				"objid=%016jx flags=%08x lo=%08x",
 				hdr->hdr_size, hdr->hdr_seq,
-				head->redo.redo_flags,
-				(intmax_t)head->redo.redo_objid,
 				(intmax_t)head->redo.redo_offset,
-				head->redo.redo_data_bytes);
+				head->redo.redo_data_bytes,
+				(intmax_t)head->redo.redo_objid,
+				head->redo.redo_flags,
+				head->redo.redo_localization);
 			break;
 		default:
 			printf("%04x(%d)\tseq=%08x",
