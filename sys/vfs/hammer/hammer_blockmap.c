@@ -613,11 +613,6 @@ again:
 		}
 	}
 
-	/*
-	 * Adjust our iterator and alloc_offset.  The layer1 and layer2
-	 * space beyond alloc_offset is uninitialized.  alloc_offset must
-	 * be big-block aligned.
-	 */
 	blockmap->next_offset = next_offset + bytes;
 	hammer_unlock(&hmp->blkmap_lock);
 
