@@ -200,8 +200,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		} else if (n > len) {
 			n = len;
 		}
-		bytes = ((n + HAMMER_HEAD_ALIGN_MASK) &
-			 ~HAMMER_HEAD_ALIGN_MASK) +
+		bytes = HAMMER_HEAD_DOALIGN(n) +
 			(int)sizeof(struct hammer_fifo_redo) +
 			(int)sizeof(struct hammer_fifo_tail);
 		if (hammer_debug_general & 0x0080) {

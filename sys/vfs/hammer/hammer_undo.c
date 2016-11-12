@@ -214,8 +214,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 		 */
 		if (n > len) {
 			n = len;
-			bytes = ((n + HAMMER_HEAD_ALIGN_MASK) &
-				 ~HAMMER_HEAD_ALIGN_MASK) +
+			bytes = HAMMER_HEAD_DOALIGN(n) +
 				(int)sizeof(struct hammer_fifo_undo) +
 				(int)sizeof(struct hammer_fifo_tail);
 		}
