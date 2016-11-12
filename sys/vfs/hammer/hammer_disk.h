@@ -383,10 +383,10 @@ typedef uint32_t hammer_crc_t;
  *		a zone-2 address.
  */
 typedef struct hammer_blockmap {
-	hammer_off_t	phys_offset;    /* zone-2 physical offset */
-	hammer_off_t	first_offset;	/* zone-X logical offset (zone 3) */
-	hammer_off_t	next_offset;	/* zone-X logical offset */
-	hammer_off_t	alloc_offset;	/* zone-X logical offset */
+	hammer_off_t	phys_offset;  /* zone-2 offset only used by zone-4 */
+	hammer_off_t	first_offset; /* zone-X offset only used by zone-3 */
+	hammer_off_t	next_offset;  /* zone-X offset for allocation */
+	hammer_off_t	alloc_offset; /* zone-X offset only used by zone-3 */
 	uint32_t	reserved01;
 	hammer_crc_t	entry_crc;
 } *hammer_blockmap_t;

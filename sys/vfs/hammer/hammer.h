@@ -839,7 +839,7 @@ typedef struct hammer_mount {
 	int	hflags;
 	int	ronly;
 	int	nvolumes;
-	int	master_id;	/* default 0, no-mirror -1, otherwise 0-15 */
+	int	master_id;	/* default 0, no-mirror -1, otherwise 1-15 */
 	int	version;	/* hammer filesystem version to use */
 	int	rsv_inodes;	/* reserved space due to dirty inodes */
 	int64_t	rsv_databytes;	/* reserved space due to record data */
