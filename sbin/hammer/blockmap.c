@@ -214,6 +214,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 		int *errorp)
 {
 	struct volume_info *root_volume = NULL;
+	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
 	hammer_blockmap_layer1_t layer1;
@@ -224,7 +225,6 @@ blockmap_lookup(hammer_off_t zone_offset,
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
 	int zone;
-	int i;
 	int error = 0;
 
 	if (save_layer1)
@@ -244,19 +244,18 @@ blockmap_lookup(hammer_off_t zone_offset,
 	}
 
 	root_volume = get_root_volume();
-	blockmap = &root_volume->ondisk->vol0_blockmap[zone];
+	ondisk = root_volume->ondisk;
+	blockmap = &ondisk->vol0_blockmap[zone];
 
 	if (zone == HAMMER_ZONE_RAW_BUFFER_INDEX) {
 		result_offset = zone_offset;
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
-		i = HAMMER_OFF_SHORT_ENCODE(zone_offset) / HAMMER_BIGBLOCK_SIZE;
 		if (zone_offset >= blockmap->alloc_offset) {
 			error = -3;
 			result_offset = HAMMER_OFF_BAD;
 			goto done;
 		}
-		result_offset = root_volume->ondisk->vol0_undo_array[i] +
-				(zone_offset & HAMMER_BIGBLOCK_MASK64);
+		result_offset = hammer_xlate_to_undo(ondisk, zone_offset);
 	} else {
 		result_offset = hammer_xlate_to_zone2(zone_offset);
 	}
@@ -276,7 +275,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 * assign save_layer{1,2}.
 	 */
 
-	freemap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	freemap = &ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	/*
 	 * Dive layer 1.
 	 */

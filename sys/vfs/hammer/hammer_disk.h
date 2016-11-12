@@ -817,6 +817,16 @@ typedef struct hammer_volume_ondisk {
 	((volume)->vol_buf_beg + HAMMER_OFF_SHORT_ENCODE(zone2_offset))
 
 /*
+ * Translate a zone-3 address to zone-2 address
+ */
+#define HAMMER_UNDO_INDEX(zone3_offset)			\
+	(HAMMER_OFF_SHORT_ENCODE(zone3_offset) / HAMMER_BIGBLOCK_SIZE)
+
+#define hammer_xlate_to_undo(volume, zone3_offset)			\
+	((volume)->vol0_undo_array[HAMMER_UNDO_INDEX(zone3_offset)] +	\
+	 (zone3_offset & HAMMER_BIGBLOCK_MASK64))
+
+/*
  * Effective per-volume filesystem capacity including big-blocks for layer1/2
  */
 #define HAMMER_VOL_BUF_SIZE(volume)			\
