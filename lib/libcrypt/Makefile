@@ -9,7 +9,6 @@ SHLIBDIR?=	/lib
 .PATH:		${.CURDIR}/../libmd
 SRCS=		crypt.c crypt-md5.c \
 		crypt-sha256.c crypt-sha512.c \
-		crypt-des.c crypt-blowfish.c blowfish.c \
 		deprecated-crypt-sha256.c deprecated-crypt-sha512.c \
 		md5c.c misc.c
 WARNS?=		2
@@ -20,7 +19,10 @@ MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3
 CFLAGS+=	-I${.CURDIR}/../libmd -I${.CURDIR}/../libutil
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+=	-D_CTYPE_H_DISABLE_MACROS_ 
+.if !defined(NO_CRYPT)
+SRCS+=		crypt-des.c crypt-blowfish.c blowfish.c
 CFLAGS+=	-I${.CURDIR} -DHAS_DES -DHAS_BLOWFISH
+.endif
 # And the auth_getval() code and support.
 .PATH:		${.CURDIR}/../libutil
 SRCS+=		auth.c property.c
