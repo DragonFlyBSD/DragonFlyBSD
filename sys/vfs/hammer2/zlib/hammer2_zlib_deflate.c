@@ -767,7 +767,7 @@ longest_match(deflate_state *s, IPos cur_match) /* cur_match = current match */
  */
 local
 void
-check_match(deflate_state *s, IPos start, match, int length)
+check_match(deflate_state *s, IPos start, IPos match, int length)
 {
     /* check that the match is indeed a match */
     if (zmemcmp(s->window + match,

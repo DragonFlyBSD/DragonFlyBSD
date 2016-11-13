@@ -127,8 +127,12 @@ int ZLIB_INTERNAL z_verbose = verbose;
 
 void ZLIB_INTERNAL z_error (char *m)
 {
+#if defined(_KERNEL)
+    panic("h2 %s: %s", __func__, m);
+#else
     fprintf(stderr, "%s\n", m);
     exit(1);
+#endif
 }
 #endif
 
