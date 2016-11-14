@@ -489,7 +489,7 @@ client_manage_polling_mode(struct server_info *info, int *didreconnect)
 	    ) {
 		logdebuginfo(info, 2, 
 		    "WARNING: Unable to shift this source to "
-		    "maintenance mode.  Target correlation is aweful\n");
+		    "maintenance mode.  Target correlation is awful\n");
 	    }
 	    break;
 	}
