@@ -1,9 +1,5 @@
-/*-
- * Copyright (c) 2010 Isilon Systems, Inc.
- * Copyright (c) 2010 iX Systems, Inc.
- * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2016 François Tigeot <ftigeot@wolfpond.org>
+/*
+ * Copyright (c) 2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,25 +23,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef	_LINUX_MODULE_H_
-#define	_LINUX_MODULE_H_
 
-#include <linux/list.h>
-#include <linux/compiler.h>
-#include <linux/cache.h>
-#include <linux/moduleparam.h>
-#include <linux/jump_label.h>
-#include <linux/export.h>
+#ifndef _LINUX_CACHE_H_
+#define _LINUX_CACHE_H_
 
-#define MODULE_AUTHOR(name)
-#define MODULE_DESCRIPTION(name)
+#include <sys/cdefs.h>
 
-#ifndef MODULE_VERSION
-#define MODULE_VERSION(name)
-#endif
+#define cache_line_size()	__VM_CACHELINE_SIZE
 
-#define	THIS_MODULE	((struct module *)0)
-
-#define MODULE_FIRMWARE(name)
-
-#endif	/* _LINUX_MODULE_H_ */
+#endif	/* _LINUX_CACHE_H_ */

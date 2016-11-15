@@ -27,6 +27,7 @@
 #ifndef _LINUX_FS_H_
 #define _LINUX_FS_H_
 
+#include <linux/cache.h>
 #include <linux/rculist.h>
 #include <linux/lockdep.h>
 

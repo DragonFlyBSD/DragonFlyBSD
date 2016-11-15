@@ -27,6 +27,8 @@
 #ifndef _LINUX_PRINTK_H_
 #define _LINUX_PRINTK_H_
 
+#include <linux/cache.h>
+
 #include <sys/types.h>
 #include <sys/systm.h>
 
