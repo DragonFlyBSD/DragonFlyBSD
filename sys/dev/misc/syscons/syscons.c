@@ -332,7 +332,7 @@ register_framebuffer(struct fb_info *info)
     if (sc->fbi != NULL) {
 	sc_update_render(sc->cur_scp);
 	if (sc->fbi->restore != NULL)
-	    sc->fbi->restore(sc->fbi->cookie);
+	    sc->fbi->restore(sc->fbi);
     }
 
     lwkt_reltoken(&tty_token);
@@ -2865,7 +2865,7 @@ exchange_scr(sc_softc_t *sc)
 
     mark_all(scp);
     if (scp->sc->fbi != NULL && scp->sc->fbi->restore != NULL)
-	scp->sc->fbi->restore(scp->sc->fbi->cookie);
+	scp->sc->fbi->restore(scp->sc->fbi);
     lwkt_reltoken(&tty_token);
 }
 

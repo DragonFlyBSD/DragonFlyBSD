@@ -221,20 +221,24 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	rbo = gem_to_radeon_bo(gobj);
 
-	/* XXX let it leak in M_TEMP */
-	info = kmalloc(sizeof(*info), M_TEMP, M_WAITOK | M_ZERO);
+	info = drm_fb_helper_alloc_fbi(helper);
+	if (IS_ERR(info)) {
+		ret = PTR_ERR(info);
+		goto out_unref;
+	}
+
+	info->par = rfbdev;
 
 	ret = radeon_framebuffer_init(rdev->ddev, &rfbdev->rfb, &mode_cmd, gobj);
 	if (ret) {
 		DRM_ERROR("failed to initialize framebuffer %d\n", ret);
-		goto out_unref;
+		goto out_destroy_fbi;
 	}
 
 	fb = &rfbdev->rfb.base;
 
 	/* setup helper */
 	rfbdev->helper.fb = fb;
-	rfbdev->helper.fbdev = info;
 
 	memset(rbo->kptr, 0, radeon_bo_size(rbo));
 	tmp = radeon_bo_gpu_offset(rbo) - rdev->mc.vram_start;
@@ -253,6 +257,8 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
 	return 0;
 
+out_destroy_fbi:
+	drm_fb_helper_release_fbi(helper);
 out_unref:
 	if (rbo) {
 

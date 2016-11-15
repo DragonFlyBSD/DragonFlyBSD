@@ -226,9 +226,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		goto out_unpin;
 	}
 
-#if 0
 	info->par = helper;
-#endif
 
 	fb = &ifbdev->fb->base;
 

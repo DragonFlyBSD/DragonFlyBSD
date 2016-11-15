@@ -742,7 +742,11 @@ struct fb_info *drm_fb_helper_alloc_fbi(struct drm_fb_helper *fb_helper)
 {
 	struct fb_info *info;
 
-	info = kmalloc(sizeof(struct fb_info), M_DRM, M_WAITOK | M_ZERO);
+#ifdef __DragonFly__
+	info = kzalloc(sizeof(struct fb_info), GFP_KERNEL);
+#else
+	info = framebuffer_alloc(0, dev);
+#endif
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
@@ -786,6 +790,7 @@ void drm_fb_helper_unregister_fbi(struct drm_fb_helper *fb_helper)
 		unregister_framebuffer(fb_helper->fbdev);
 }
 EXPORT_SYMBOL(drm_fb_helper_unregister_fbi);
+#endif
 
 /**
  * drm_fb_helper_release_fbi - dealloc fb_info and its members
@@ -800,16 +805,19 @@ void drm_fb_helper_release_fbi(struct drm_fb_helper *fb_helper)
 		struct fb_info *info = fb_helper->fbdev;
 
 		if (info) {
+#ifdef __DragonFly__
+			kfree(info);
+#else
 			if (info->cmap.len)
 				fb_dealloc_cmap(&info->cmap);
 			framebuffer_release(info);
+#endif
 		}
 
 		fb_helper->fbdev = NULL;
 	}
 }
 EXPORT_SYMBOL(drm_fb_helper_release_fbi);
-#endif
 
 void drm_fb_helper_fini(struct drm_fb_helper *fb_helper)
 {
@@ -1349,9 +1357,9 @@ do_restore_fbdev_mode(void *context, int pending)
 }
 
 static void
-sc_restore_fbdev_mode(void *cookie)
+sc_restore_fbdev_mode(struct fb_info *info)
 {
-	struct drm_fb_helper *fb_helper = cookie;
+	struct drm_fb_helper *fb_helper = info->par;
 
 	if (!fb_helper->fb)
 		return;
@@ -1495,8 +1503,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	if (kms_console) {
 		TASK_INIT(&fb_helper->fb_mode_task, 0, do_restore_fbdev_mode,
 		    fb_helper);
-		info->cookie = fb_helper;
-		info->restore = (void *)&sc_restore_fbdev_mode;
+		info->restore = &sc_restore_fbdev_mode;
 		if (register_framebuffer(info) < 0)
 			return -EINVAL;
 	}
