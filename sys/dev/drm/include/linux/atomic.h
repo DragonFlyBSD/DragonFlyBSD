@@ -57,6 +57,9 @@ typedef struct {
 
 #define atomic_cmpset(p, o, n)		atomic_cmpset_32(&((p)->counter), o, n)
 
+#define atomic64_cmpxchg(p, o, n)						\
+	(atomic_cmpset_long((volatile uint64_t *)(p),(o),(n)) ? (o) : (0))
+
 static inline int
 atomic_add_return(int i, atomic_t *v)
 {
