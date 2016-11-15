@@ -27,6 +27,7 @@
  *
  * $FreeBSD: head/sys/compat/linuxkpi/common/include/linux/math64.h 290135 2015-10-29 08:28:39Z hselasky $
  */
+
 #ifndef _LINUX_MATH64_H
 #define _LINUX_MATH64_H
 
@@ -71,5 +72,11 @@ div_s64(int64_t dividend, int32_t divisor)
 	return (dividend / divisor);
 }
 
+static inline uint64_t
+div64_u64_rem(uint64_t dividend, uint64_t divisor, uint64_t *remainder)
+{
+	*remainder = dividend % divisor;
+	return (dividend / divisor);
+}
 
-#endif					/* _LINUX_MATH64_H */
+#endif	/* _LINUX_MATH64_H */
