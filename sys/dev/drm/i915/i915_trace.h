@@ -28,7 +28,12 @@
 #ifndef _I915_TRACE_H_
 #define _I915_TRACE_H_
 
+#include <linux/types.h>
+
+#include <drm/drmP.h>
 #include "i915_drv.h"
+#include "intel_drv.h"
+#include "intel_ringbuffer.h"
 
 
 #define trace_i915_flip_complete(a,b)
