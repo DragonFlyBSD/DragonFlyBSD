@@ -30,8 +30,6 @@
 #include <sys/bus.h>
 #include <sys/firmware.h>
 
-#define MODULE_FIRMWARE(name)
-
 static inline int
 request_firmware(const struct firmware **fw, const char *name, __unused device_t dev) {
 	*fw = firmware_get(name);

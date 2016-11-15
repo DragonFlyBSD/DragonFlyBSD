@@ -3,6 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2016 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,5 +44,7 @@
 #endif
 
 #define	THIS_MODULE	((struct module *)0)
+
+#define MODULE_FIRMWARE(name)
 
 #endif	/* _LINUX_MODULE_H_ */
