@@ -73,4 +73,22 @@ ida_destroy(struct ida *ida)
 	}
 }
 
+static inline int
+ida_simple_get(struct ida *ida, unsigned int start, unsigned int end, gfp_t gfp_mask)
+{
+	int id;
+	unsigned int lim;
+
+	if ((end == 0) || (end > 0x80000000))
+		lim = 0x80000000;
+	else
+		lim = end - 1;
+
+	idr_preload(gfp_mask);
+	id = idr_alloc(&ida->idr, NULL, start, lim, gfp_mask);
+	idr_preload_end();
+
+	return id;
+}
+
 #endif	/* _LINUX_IDR_H_ */
