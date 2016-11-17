@@ -50,10 +50,13 @@ SRCS=	main.c object.c create.c tok.c display.c global.c data.c io.c \
 	signal.c moreobj.c movem.c regen.c fortune.c savelev.c
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-FILES=	larnmaze larnopts larn.help
+
+FILES=		larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn
-HIDEGAME=hidegame
+HIDEGAME=	hidegame
 
 .PATH: ${.CURDIR}/datfiles
 

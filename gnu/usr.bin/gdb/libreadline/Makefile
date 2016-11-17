@@ -6,6 +6,7 @@ INTERNALLIB=	YES
 .PATH:		${BASEDIR}/readline
 CFLAGS+=	-I${.CURDIR} -I${.OBJDIR} -I${BASEDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 
 SRCS+=		readline.c \
 		vi_mode.c \

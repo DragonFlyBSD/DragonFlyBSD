@@ -19,7 +19,10 @@ SRCS=	commands.c getopt.c screen.c username.c version.c \
 
 DPADD=  ${LIBNCURSES} ${LIBM} ${LIBKVM} ${LIBKINFO}
 LDADD=  -lprivate_ncurses -lm -lkvm -lkinfo
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+
 BINGRP= kmem
 BINMODE=2555
 

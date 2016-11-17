@@ -18,6 +18,8 @@ CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 	-D__dead=__dead2 -DUSE_GLOB_H
 LDADD=	-lprivate_edit -lprivate_ncurses -lutil
 DPADD=	${LIBEDIT} ${LIBNCURSES} ${LIBUTIL}
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .if !defined(NO_CRYPT)

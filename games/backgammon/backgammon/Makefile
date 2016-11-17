@@ -8,9 +8,12 @@ SRCS=	allow.c board.c check.c extra.c fancy.c init.c main.c move.c \
 MAN=	backgammon.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+HIDEGAME=	hidegame
+
 .PATH:	${.CURDIR}/../common_source
-HIDEGAME=hidegame
 
 # XXX: mismatches between types for static init
 init.o:	init.c

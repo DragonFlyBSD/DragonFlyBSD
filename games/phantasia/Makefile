@@ -2,15 +2,19 @@
 # $FreeBSD: src/games/phantasia/Makefile,v 1.16.2.2 2002/08/07 16:31:42 ru Exp $
 
 PROG=	phantasia
+MAN=	phantasia.6
 SRCS=	main.c fight.c io.c interplayer.c gamesupport.c misc.c phantglobs.c
 DPADD=	${LIBM} ${LIBNCURSES}
 LDADD=	-lm -lprivate_ncurses
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-NXLDLIBS= -lm
-DATAFILES=characs gold lastdead mess monsters motd scoreboard void
-HIDEGAME=hidegame
-MAN=	phantasia.6
-CLEANFILES=${DATAFILES} cross-phantglobs.no map setup.nx setup.no stamp.setuprun
+
+NXLDLIBS=	-lm
+DATAFILES=	characs gold lastdead mess monsters motd scoreboard void
+HIDEGAME=	hidegame
+CLEANFILES=	${DATAFILES} cross-phantglobs.no map setup.nx setup.no \
+		stamp.setuprun
 
 all: stamp.setuprun
 

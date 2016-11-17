@@ -4,7 +4,9 @@ PROG=	bs
 MAN=	bs.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
+
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-HIDEGAME=hidegame
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
+HIDEGAME=	hidegame
 
 .include <bsd.prog.mk>

@@ -14,4 +14,6 @@ SRCS=	argv.c arrows.c buildlist.c buttons.c \
 	ui_getc.c util.c version.c yesno.c
 WARNS?=	3
 
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
+
 .include <bsd.lib.mk>

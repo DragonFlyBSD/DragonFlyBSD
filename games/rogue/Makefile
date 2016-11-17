@@ -2,15 +2,17 @@
 # $FreeBSD: src/games/rogue/Makefile,v 1.4.2.5 2002/08/07 16:31:42 ru Exp $
 
 PROG=	rogue
-CFLAGS+=-DUNIX
+MAN=	rogue.6
 SRCS=	hit.c init.c inventory.c level.c machdep.c main.c \
 	message.c monster.c move.c object.c pack.c play.c random.c ring.c \
 	room.c save.c score.c spec_hit.c throw.c trap.c use.c zap.c
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
+
+CFLAGS+=	-DUNIX
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-HIDEGAME=hidegame
-MAN=	rogue.6
+HIDEGAME=	hidegame
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/rogue.scores)

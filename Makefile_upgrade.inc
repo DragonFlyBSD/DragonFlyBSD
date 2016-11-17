@@ -3142,6 +3142,13 @@ TO_REMOVE+=/usr/share/man/man3/ascftime.3.gz
 TO_REMOVE+=/usr/share/man/man3/cfree.3.gz
 TO_REMOVE+=/usr/share/man/man3/cftime.3.gz
 TO_REMOVE+=/usr/share/man/man3/getpw.3.gz
+TO_REMOVE+=/usr/include/readline
+TO_REMOVE+=/usr/include/curses.h
+TO_REMOVE+=/usr/include/ncurses.h
+TO_REMOVE+=/usr/include/ncurses_dll.h
+TO_REMOVE+=/usr/include/termcap.h
+TO_REMOVE+=/usr/include/term.h
+TO_REMOVE+=/usr/include/unctrl.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

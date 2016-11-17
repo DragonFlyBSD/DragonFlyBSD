@@ -8,8 +8,10 @@ SRCS=	main.c pl_main.c pl_1.c pl_2.c pl_3.c pl_4.c pl_5.c pl_6.c pl_7.c \
 MAN=	sail.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-HIDEGAME=hidegame
+HIDEGAME=	hidegame
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/saillog)

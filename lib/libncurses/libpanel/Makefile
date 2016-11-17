@@ -28,6 +28,12 @@ ${SRCS:M*.c}: curses.h
 
 INCS=	panel.h
 
+.if defined(ENABLE_WIDEC)	# for term.h
+CFLAGS+=	-I${.OBJDIR}/../libncursesw
+.else
+CFLAGS+=	-I${.OBJDIR}/../libncurses
+.endif
+
 CLEANFILES=	ncurses_def.h curses.h curses.h.new
 
 .include <bsd.lib.mk>

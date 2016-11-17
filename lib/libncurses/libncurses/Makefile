@@ -245,7 +245,8 @@ NCDYN=		libprivate_ncurses${LIB_SUFFIX}.so
 
 .if defined(ENABLE_WIDEC)
 INCS=		${HEADERS} ${SRCHDRS}
-INCSLINKS=	curses.h ${INCLUDEDIR}/ncurses.h
+INCSDIR=	${INCLUDEDIR}/priv/ncurses
+INCSLINKS=	curses.h ${INCLUDEDIR}/priv/ncurses/ncurses.h
 
 SRCS+=	charable.c \
 	lib_add_wch.c \

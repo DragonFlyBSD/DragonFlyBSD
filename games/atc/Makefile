@@ -8,10 +8,12 @@ SRCS=	extern.c grammar.y graphics.c input.c lex.l list.c log.c \
 MAN=	atc.6
 DPADD=	${LIBL} ${LIBM} ${LIBNCURSES}
 LDADD=	-ll -lm -lprivate_ncurses
-LDFLAGS+=      ${PRIVATELIB_LDFLAGS}
-FILES=  Game_List Killer crossover default easy game_2
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+FILES=		Game_List Killer crossover default easy game_2
 FILESDIR=	${SHAREDIR}/games/atc
-HIDEGAME=hidegame
+HIDEGAME=	hidegame
 
 .PATH: ${.CURDIR}/games
 

@@ -10,6 +10,7 @@ SRCDIR= 	${BASEDIR}/src
 .PATH:		${SRCDIR}
 
 CFLAGS+=	-I${SRCDIR} -I${.CURDIR} -I${.OBJDIR}
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 
 DPADD=		${LIBNCURSES}
 LDADD=		-lprivate_ncurses

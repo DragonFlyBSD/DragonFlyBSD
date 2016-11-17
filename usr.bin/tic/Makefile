@@ -26,11 +26,13 @@ LDADD=		-lncurses
 .  else
 DPADD=		${LIBNCURSES}
 LDADD=		-lprivate_ncurses
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
 .  endif
 .else
 DPADD=		${LIBNCURSES}
 LDADD=		-lprivate_ncurses
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 

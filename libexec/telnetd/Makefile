@@ -23,6 +23,7 @@ LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a
 DPADD=		${LIBUTIL} ${LIBNCURSES} ${LIBTELNET}
 LDADD=		-lutil -lprivate_ncurses ${LIBTELNET}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 
 .if !defined(NO_CRYPT)
 SRCS+=		authenc.c

@@ -9,8 +9,11 @@ SRCS=	battlestar.c command1.c command2.c command3.c command4.c \
 MAN=	battlestar.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
-HIDEGAME=hidegame
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+HIDEGAME=	hidegame
+
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/battlestar.log)
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 664 /dev/null \

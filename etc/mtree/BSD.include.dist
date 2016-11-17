@@ -398,7 +398,11 @@
     pcap
     ..
     priv
+        ncurses
+        ..
         openssl
+        ..
+        readline
         ..
     ..
     protocols

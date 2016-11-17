@@ -38,6 +38,8 @@ LDADD=		-lutil
 
 DPADD+=		${LIBNCURSESW}
 LDADD+=		-lprivate_ncursesw
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CLEANFILES+=${EX}

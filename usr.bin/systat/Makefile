@@ -17,6 +17,8 @@ BINMODE=2555
 
 DPADD+=	${LIBUTIL}
 LDADD+=	-lutil
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CFLAGS+= -I${.CURDIR}/../../usr.bin/who -DSUPPORT_UTMP -DSUPPORT_UTMPX

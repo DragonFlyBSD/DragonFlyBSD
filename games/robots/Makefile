@@ -8,8 +8,10 @@ SRCS=	extern.c init_field.c main.c make_level.c move.c move_robs.c \
 MAN=	robots.6
 DPADD=	${LIBNCURSES}
 LDADD=	-lprivate_ncurses
+
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-HIDEGAME=hidegame
+HIDEGAME=	hidegame
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/robots_roll)
