@@ -188,8 +188,12 @@ static void scrn_update(scr_stat *scp, int show_cursor, int flags);
 static void scrn_update_thread(void *arg);
 
 static void sc_fb_set_par(void *context, int pending);
+#if NSPLASH > 0
+static void sc_fb_blank(void *context, int pending);
+#endif /* NSPLASH */
 
 #if NSPLASH > 0
+static void scframebuffer_saver(sc_softc_t *sc, int show);
 static int scsplash_callback(int event, void *arg);
 static void scsplash_saver(sc_softc_t *sc, int show);
 static int add_scrn_saver(void (*this_saver)(sc_softc_t *, int));
@@ -343,6 +347,13 @@ register_framebuffer(struct fb_info *info)
 		    M_SYSCONS, M_WAITOK | M_ZERO);
 	}
 	TASK_INIT(sc->fb_set_par_task, 0, sc_fb_set_par, sc);
+#if NSPLASH > 0
+	if (sc->fb_blank_task == NULL) {
+		sc->fb_blank_task = kmalloc(sizeof(struct task),
+		    M_SYSCONS, M_WAITOK | M_ZERO);
+	}
+	TASK_INIT(sc->fb_blank_task, 0, sc_fb_blank, sc);
+#endif /* NSPLASH */
 
 	/*
 	 * Make sure that console messages don't interfere too much with
@@ -363,6 +374,11 @@ register_framebuffer(struct fb_info *info)
 	if (info->fbops.fb_set_par != NULL)
 		info->fbops.fb_set_par(info);
 	atomic_add_int(&sc->videoio_in_progress, -1);
+
+#if NSPLASH > 0
+	if (info->fbops.fb_blank != NULL)
+		add_scrn_saver(scframebuffer_saver);
+#endif /* NSPLASH */
 
 	lockmgr(&sc_asynctd_lk, LK_RELEASE);
 	lwkt_reltoken(&tty_token);
@@ -388,10 +404,21 @@ unregister_framebuffer(struct fb_info *info)
 		return;
 	}
 
+#if NSPLASH > 0
+	if (info->fbops.fb_blank != NULL)
+		remove_scrn_saver(scframebuffer_saver);
+#endif /* NSPLASH */
+
 	if (sc->fb_set_par_task != NULL &&
 	    taskqueue_cancel(taskqueue_thread[0], sc->fb_set_par_task, NULL)) {
 		taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
 	}
+#if NSPLASH > 0
+	if (sc->fb_blank_task != NULL &&
+	    taskqueue_cancel(taskqueue_thread[0], sc->fb_blank_task, NULL)) {
+		taskqueue_drain(taskqueue_thread[0], sc->fb_blank_task);
+	}
+#endif /* NSPLASH */
 
 	if (sc->dummy_fb_info == NULL) {
 		sc->dummy_fb_info = kmalloc(sizeof(struct fb_info),
@@ -2370,6 +2397,52 @@ sc_fb_set_par(void *context, int pending)
 }
 
 #if NSPLASH > 0
+static void
+sc_fb_blank(void *context, int pending)
+{
+	sc_softc_t *sc = context;
+
+	lwkt_gettoken(&tty_token);
+	if (sc->fbi != NULL && sc->fbi->fbops.fb_blank != NULL) {
+		/* 0 == FB_BLANK_UNBLANK and 4 == FB_BLANK_POWERDOWN */
+		if (sc->flags & SC_SCRN_BLANKED)
+			sc->fbi->fbops.fb_blank(4, sc->fbi);
+		else
+			sc->fbi->fbops.fb_blank(0, sc->fbi);
+	}
+	lwkt_reltoken(&tty_token);
+}
+
+static void
+scframebuffer_saver(sc_softc_t *sc, int show)
+{
+	scr_stat *scp = sc->cur_scp;
+
+	if (panicstr)
+		return;
+
+	/*
+	 * Gets called on every screen update while screensaver is active,
+	 * so we need to check the SC_SCRN_BLANKED flag ourselves.
+	 */
+	if ((sc->flags & SC_SCRN_BLANKED) && show)
+		return;
+
+	taskqueue_cancel(taskqueue_thread[0], sc->fb_blank_task, NULL);
+	crit_enter();
+	if (show) {
+		scp->status |= SAVER_RUNNING;
+		sc->flags |= SC_SCRN_BLANKED;
+		++scrn_blanked;
+	} else {
+		scp->status &= ~SAVER_RUNNING;
+		sc->flags &= ~SC_SCRN_BLANKED;
+		--scrn_blanked;
+	}
+	crit_exit();
+	taskqueue_enqueue(taskqueue_thread[0], sc->fb_blank_task);
+}
+
 static int
 scsplash_callback(int event, void *arg)
 {

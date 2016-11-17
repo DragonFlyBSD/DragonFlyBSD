@@ -203,6 +203,7 @@ typedef struct sc_softc {
 	struct fb_info	*fbi;
 	struct fb_info	*dummy_fb_info;
 	struct task	*fb_set_par_task;
+	struct task	*fb_blank_task;
 
 	int		first_vty;
 	int		vtys;
