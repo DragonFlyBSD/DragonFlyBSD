@@ -32,6 +32,7 @@
 #ifndef	_LINUX_SCATTERLIST_H_
 #define	_LINUX_SCATTERLIST_H_
 
+#include <linux/highmem.h>
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/bug.h>
@@ -459,5 +460,97 @@ sg_page_iter_dma_address(struct sg_page_iter *spi)
 
 #define	for_each_sg(sglist, sg, sgmax, _itr)				\
 	for (_itr = 0, sg = (sglist); _itr < (sgmax); _itr++, sg = sg_next(sg))
+
+/*
+ *
+ * XXX please review these
+ */
+static inline size_t
+sg_pcopy_from_buffer(struct scatterlist *sgl, unsigned int nents,
+		      const void *buf, size_t buflen, off_t skip)
+{
+	off_t off;
+	int len, curlen, curoff;
+	struct sg_page_iter iter;
+	struct scatterlist *sg;
+	struct vm_page *page;
+	char *vaddr;
+
+	off = 0;
+	for_each_sg_page(sgl, &iter, nents, 0) {
+		sg = iter.sg;
+		curlen = sg->length;
+		curoff = sg->offset;
+		if (skip && curlen >= skip) {
+			skip -= curlen;
+			continue;
+		}
+		if (skip) {
+			curlen -= skip;
+			curoff += skip;
+			skip = 0;
+		}
+		len = min(curlen, buflen - off);
+		page = sg_page_iter_page(&iter);
+		vaddr = (char *)kmap(page) + sg->offset;
+		memcpy(vaddr, (const char *)buf + off, len);
+		off += len;
+		kunmap(page);
+	}
+
+	return (off);
+}
+
+
+static inline size_t
+sg_copy_from_buffer(struct scatterlist *sgl, unsigned int nents,
+		     const char *buf, size_t buflen)
+{
+	return (sg_pcopy_from_buffer(sgl, nents, buf, buflen, 0));
+}
+
+static inline size_t
+sg_pcopy_to_buffer(struct scatterlist *sgl, unsigned int nents,
+		   void *buf, size_t buflen, off_t skip)
+{
+	off_t off;
+	int len, curlen, curoff;
+	struct sg_page_iter iter;
+	struct scatterlist *sg;
+	struct vm_page *page;
+	char *vaddr;
+
+	off = 0;
+	for_each_sg_page(sgl, &iter, nents, 0) {
+		sg = iter.sg;
+		curlen = sg->length;
+		curoff = sg->offset;
+		if (skip && curlen >= skip) {
+			skip -= curlen;
+			continue;
+		}
+		if (skip) {
+			curlen -= skip;
+			curoff += skip;
+			skip = 0;
+		}
+		len = min(curlen, buflen - off);
+		page = sg_page_iter_page(&iter);
+		vaddr = (char *)kmap(page) + sg->offset;
+		memcpy((char *)buf + off, vaddr, len);
+		off += len;
+		kunmap(page);
+	}
+
+	return (off);
+}
+
+static inline size_t
+sg_copy_to_buffer(struct scatterlist *sgl, unsigned int nents,
+		  char *buf, size_t buflen)
+{
+
+	return (sg_pcopy_to_buffer(sgl, nents, buf, buflen, 0));
+}
 
 #endif	/* _LINUX_SCATTERLIST_H_ */
