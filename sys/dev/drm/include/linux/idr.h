@@ -29,6 +29,8 @@
 
 #include <sys/idr.h>
 
+MALLOC_DECLARE(M_IDR);
+
 #define	IDA_CHUNK_SIZE		128	/* 128 bytes per chunk */
 #define	IDA_BITMAP_LONGS	(IDA_CHUNK_SIZE / sizeof(long) - 1)
 #define	IDA_BITMAP_BITS 	(IDA_BITMAP_LONGS * sizeof(long) * 8)
@@ -50,10 +52,25 @@ ida_init(struct ida *ida)
 }
 
 static inline void
+ida_simple_remove(struct ida *ida, unsigned int id)
+{
+	idr_remove(&ida->idr, id);
+}
+
+static inline void
+ida_remove(struct ida *ida, int id)
+{
+	idr_remove(&ida->idr, id);
+}
+
+static inline void
 ida_destroy(struct ida *ida)
 {
 	idr_destroy(&ida->idr);
-	kfree(ida->free_bitmap);
+	if (ida->free_bitmap != NULL) {
+		/* kfree() is a linux macro! Work around the cpp pass */
+		(kfree)(ida->free_bitmap, M_IDR);
+	}
 }
 
 #endif	/* _LINUX_IDR_H_ */
