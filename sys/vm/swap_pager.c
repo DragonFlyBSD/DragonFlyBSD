@@ -494,13 +494,13 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 		blk = blist_allocat(swapblist, npages, 0);
 	if (blk == SWAPBLK_NONE) {
 		if (swap_pager_full != 2) {
-			if (vm_swap_size == 0)
+			if (vm_swap_max == 0)
 				kprintf("Warning: The system would like to "
 					"page to swap but no swap space "
 					"is configured!\n");
 			else
 				kprintf("swap_pager_getswapspace: "
-					"unable to allocate=%d pages\n",
+					"swap full allocating %d pages\n",
 					npages);
 			swap_pager_full = 2;
 			if (swap_pager_almost_full == 0)
