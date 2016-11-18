@@ -177,7 +177,7 @@ typedef uint32_t hammer_crc_t;
  *	| zone-4 big-block for layer1
  *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE
  *	| zone-4 big-blocks for layer2
- *	| ... (1 big-block per 4GB space)
+ *	| ... (1 big-block per 4TB space)
  *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE * ...
  *	| zone-3 big-blocks for UNDO/REDO FIFO
  *	| ... (max 128 big-blocks)
@@ -195,7 +195,7 @@ typedef uint32_t hammer_crc_t;
  *	+-------------------------> vol_buf_end (HAMMER_BUFSIZE aligned)
  *	+-------------------------> end of a device/partition
  *
- * volume#N layout (N>0)
+ * volume#N layout (0<N<256)
  *	+-------------------------> offset 0 of a device/partition
  *	| volume header (1928 bytes)
  *	| the rest of header junk space (HAMMER_BUFSIZE aligned)
@@ -205,7 +205,7 @@ typedef uint32_t hammer_crc_t;
  *	| memory log (HAMMER_BUFSIZE aligned)
  *	+-------------------------> vol_buf_beg (physical offset of zone-2)
  *	| zone-4 big-blocks for layer2
- *	| ... (1 big-block per 4GB space)
+ *	| ... (1 big-block per 4TB space)
  *	+-------------------------> vol_buf_beg + HAMMER_BIGBLOCK_SIZE * ...
  *	| zone-X big-blocks
  *	| ... (unused until volume#(N-1) runs out of space)
