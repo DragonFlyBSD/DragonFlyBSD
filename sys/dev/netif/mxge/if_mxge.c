@@ -77,7 +77,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 #include <vm/vm.h>		/* for pmap_mapdev() */
 #include <vm/pmap.h>
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 #include <machine/specialreg.h>
 #endif
 
@@ -196,7 +196,7 @@ mxge_probe(device_t dev)
 static void
 mxge_enable_wc(mxge_softc_t *sc)
 {
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	vm_offset_t len;
 
 	sc->wc = 1;
@@ -292,7 +292,7 @@ abort:
 	return ENXIO;
 }
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 
 static void
 mxge_enable_nvidia_ecrc(mxge_softc_t *sc)
@@ -416,7 +416,7 @@ mxge_enable_nvidia_ecrc(mxge_softc_t *sc)
 	}
 }
 
-#else	/* __i386__ || __x86_64__ */
+#else	/* __x86_64__ */
 
 static void
 mxge_enable_nvidia_ecrc(mxge_softc_t *sc)

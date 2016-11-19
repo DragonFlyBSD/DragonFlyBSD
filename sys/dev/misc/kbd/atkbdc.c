@@ -185,7 +185,7 @@ atkbdc_configure(void)
 	bus_space_handle_t h1;
 	int port0;
 	int port1;
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	int i;
 #endif
 
@@ -211,7 +211,7 @@ atkbdc_configure(void)
 	h1 = (bus_space_handle_t)port1;
 #endif
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	/*
 	 * Check if we really have AT keyboard controller. Poll status
 	 * register until we get "all clear" indication. If no such

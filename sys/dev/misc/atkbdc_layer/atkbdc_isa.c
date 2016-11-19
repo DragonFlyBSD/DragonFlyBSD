@@ -108,7 +108,7 @@ atkbdc_probe(device_t dev)
 	struct resource	*port1;
 	int		error;
 	int		rid;
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	bus_space_tag_t	tag;
 	bus_space_handle_t ioh1;
 	volatile int	i;
@@ -138,7 +138,7 @@ atkbdc_probe(device_t dev)
 		return ENXIO;
 	}
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	/*
 	 * Check if we really have AT keyboard controller. Poll status
 	 * register until we get "all clear" indication. If no such
