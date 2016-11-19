@@ -3152,6 +3152,22 @@ TO_REMOVE+=/usr/include/unctrl.h
 TO_REMOVE+=/usr/include/sys/link_aout.h
 TO_REMOVE+=/usr/lib/libdevstat.so.3
 TO_REMOVE+=/usr/lib/libsmb.so.2
+TO_REMOVE+=/usr/libexec/binutils224
+TO_REMOVE+=/usr/share/man/man1/addr2line224.1.gz
+TO_REMOVE+=/usr/share/man/man1/ar224.1.gz
+TO_REMOVE+=/usr/share/man/man1/as224.1.gz
+TO_REMOVE+=/usr/share/man/man1/c++filt224.1.gz
+TO_REMOVE+=/usr/share/man/man1/elfedit224.1.gz
+TO_REMOVE+=/usr/share/man/man1/gprof224.1.gz
+TO_REMOVE+=/usr/share/man/man1/ld224.1.gz
+TO_REMOVE+=/usr/share/man/man1/nm224.1.gz
+TO_REMOVE+=/usr/share/man/man1/objcopy224.1.gz
+TO_REMOVE+=/usr/share/man/man1/objdump224.1.gz
+TO_REMOVE+=/usr/share/man/man1/ranlib224.1.gz
+TO_REMOVE+=/usr/share/man/man1/readelf224.1.gz
+TO_REMOVE+=/usr/share/man/man1/size224.1.gz
+TO_REMOVE+=/usr/share/man/man1/strings224.1.gz
+TO_REMOVE+=/usr/share/man/man1/strip224.1.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
