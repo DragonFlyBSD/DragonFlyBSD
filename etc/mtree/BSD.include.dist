@@ -407,8 +407,6 @@
     ..
     protocols
     ..
-    readline
-    ..
     rpc
     ..
     rpcsvc
