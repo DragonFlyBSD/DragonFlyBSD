@@ -13,7 +13,6 @@ Local modifications applied to following files:
 	dma.8		(typo)
 	dma.c		(typos, byacc fix, period script integration)
 	dma.h		(byacc fix)
-	spool.c		(fixed i386 build)
 
 Not imported:
 	get-version.sh
