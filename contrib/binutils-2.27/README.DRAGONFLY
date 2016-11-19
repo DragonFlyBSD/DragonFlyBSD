@@ -1,0 +1,28 @@
+GNU BINUTILS
+============
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/binutils
+
+file = binutils-2.27.tar.bz2
+date = 3 August 2016
+size = 26099568
+sha1 = 6e472ddae565a2b1447e6f2393809bb8799982cf
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	bfd/config.bfd (x86_64_pei_vec)
+	bfd/bfdver.h (new)
+	bfd/elf64-x86-64.c (linker path)
+	bfd/plugin.c (plugin dir path)
+	bfd/sysdep.h (offsetof)
+	gold/x86_64.cc (linker path)
+	ld/ldlex.l (sysdep.h)
+
+Configured with:
+(export CFLAGS="-I/usr/local/include" && export LDFLAGS="-L/usr/local/lib" && \
+./configure --with-system-zlib  --with-gmp=/usr/local  --with-mpfr=/usr/local \
+--disable-werror  --with-lib-path=/lib:/usr/lib  \
+--enable-deterministic-archives --disable-nls \
+--enable-gold=default --enable-bfd --enable-plugins \
+--enable-targets="x86_64-pc-dragonfly" --prefix=/usr/local && gmake -j8)

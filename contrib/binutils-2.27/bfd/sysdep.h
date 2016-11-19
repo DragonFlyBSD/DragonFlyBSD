@@ -174,11 +174,6 @@ extern int fseeko64 (FILE *stream, off64_t offset, int whence);
 size_t strnlen (const char *, size_t);
 #endif
 
-/* Define offsetof for those systems which lack it */
-
-#ifndef offsetof
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#endif
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
