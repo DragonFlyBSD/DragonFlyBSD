@@ -84,11 +84,6 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#ifdef __sparc64__
-#include <dev/ofw/openfirm.h>
-#include <machine/ofw_machdep.h>
-#endif
-
 #include <sys/rman.h>
 
 #include <bus/cam/cam.h>
@@ -127,12 +122,6 @@ typedef	u_int32_t u32;
 
 #if	defined __x86_64__
 #define MEMORY_BARRIER()	do { ; } while(0)
-#elif	defined	__powerpc__
-#define MEMORY_BARRIER()	__asm__ volatile("eieio; sync" : : : "memory")
-#elif	defined	__ia64__
-#define MEMORY_BARRIER()	__asm__ volatile("mf.a; mf" : : : "memory")
-#elif	defined	__sparc64__
-#define MEMORY_BARRIER()	__asm__ volatile("membar #Sync" : : : "memory")
 #else
 #error	"Not supported platform"
 #endif
@@ -2678,9 +2667,6 @@ static int sym_prepare_setting(hcb_p np, struct sym_nvram *nvram)
 	 */
 	np->myaddr = 255;
 	sym_nvram_setup_host (np, nvram);
-#ifdef __sparc64__
-	np->myaddr = OF_getscsinitid(np->device);
-#endif
 
 	/*
 	 *  Get SCSI addr of host adapter (set by bios?).

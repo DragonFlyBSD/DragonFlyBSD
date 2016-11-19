@@ -1490,12 +1490,7 @@ vfmtmsg(char *buf, int buflen, char *fmt, va_list args)
 	    break;
 	case 'r':
 	    f = va_arg(args, char *);
-#if !defined(__powerpc__) && !defined(__x86_64__)
-	    n = vfmtmsg(buf, buflen + 1, f, va_arg(args, va_list));
-#else
-	    /* On the powerpc, a va_list is an array of 1 structure */
 	    n = vfmtmsg(buf, buflen + 1, f, va_arg(args, void *));
-#endif
 	    buf += n;
 	    buflen -= n;
 	    continue;

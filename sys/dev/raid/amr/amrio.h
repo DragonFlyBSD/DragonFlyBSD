@@ -108,7 +108,7 @@ struct amr_user_ioctl {
 
 #define AMR_IO_COMMAND	_IOWR('A', 0x201, struct amr_user_ioctl)
 
-#if defined(__x86_64__) || defined(__ia64__)
+#if defined(__x86_64__)
 
 struct amr_user_ioctl32 {
     unsigned char	au_cmd[32];	/* command text from userspace */

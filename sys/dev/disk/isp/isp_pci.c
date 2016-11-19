@@ -530,11 +530,7 @@ isp_get_specific_options(device_t dev, int chan, ispsoftc_t *isp)
 		if (IS_FC(isp)) {
 			ISP_FC_PC(isp, chan)->default_id = 109 - chan;
 		} else {
-#ifdef __sparc64__
-			ISP_SPI_PC(isp, chan)->iid = OF_getscsinitid(dev);
-#else
 			ISP_SPI_PC(isp, chan)->iid = 7;
-#endif
 		}
 	} else {
 		if (IS_FC(isp)) {

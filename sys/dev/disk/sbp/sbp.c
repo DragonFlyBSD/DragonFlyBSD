@@ -136,11 +136,8 @@ TUNABLE_INT("hw.firewire.sbp.tags", &sbp_tags);
 #define NEED_RESPONSE 0
 
 #define SBP_SEG_MAX rounddown(0xffff, PAGE_SIZE)
-#ifdef __sparc64__ /* iommu */
-#define SBP_IND_MAX howmany(SBP_MAXPHYS, SBP_SEG_MAX)
-#else
 #define SBP_IND_MAX howmany(SBP_MAXPHYS, PAGE_SIZE)
-#endif
+
 struct sbp_ocb {
 	STAILQ_ENTRY(sbp_ocb)	ocb;
 	union ccb	*ccb;

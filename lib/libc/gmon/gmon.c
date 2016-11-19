@@ -46,7 +46,7 @@
 
 #include "libc_private.h"
 
-#if defined(__i386__) || defined(__sparc64__) || defined(__x86_64__) || defined(__powerpc__)
+#if defined(__i386__) || defined(__x86_64__)
 extern char *minbrk __asm (".minbrk");
 #else
 extern char *minbrk __asm ("minbrk");
@@ -105,22 +105,9 @@ monstartup(u_long lowpc, u_long highpc)
 	p->tos[0].link = 0;
 
 	o = p->highpc - p->lowpc;
-	if (p->kcountsize < o) {
-#ifndef hp300
+	if (p->kcountsize < o)
 		s_scale = ((float)p->kcountsize / o ) * SCALE_1_TO_1;
-#else /* avoid floating point */
-		int quot = o / p->kcountsize;
-
-		if (quot >= 0x10000)
-			s_scale = 1;
-		else if (quot >= 0x100)
-			s_scale = 0x10000 / quot;
-		else if (o >= 0x800000)
-			s_scale = 0x1000000 / (o / (p->kcountsize >> 8));
-		else
-			s_scale = 0x1000000 / ((o << 8) / p->kcountsize);
-#endif
-	} else
+	else
 		s_scale = SCALE_1_TO_1;
 
 	moncontrol(1);
