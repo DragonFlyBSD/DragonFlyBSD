@@ -3149,6 +3149,7 @@ TO_REMOVE+=/usr/include/ncurses_dll.h
 TO_REMOVE+=/usr/include/termcap.h
 TO_REMOVE+=/usr/include/term.h
 TO_REMOVE+=/usr/include/unctrl.h
+TO_REMOVE+=/usr/include/sys/link_aout.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
