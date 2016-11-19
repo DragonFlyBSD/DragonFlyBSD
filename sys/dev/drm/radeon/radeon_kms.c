@@ -569,7 +569,7 @@ static int radeon_info_ioctl(struct drm_device *dev, void *data, struct drm_file
  * Outdated mess for old drm with Xorg being in charge (void function now).
  */
 /**
- * radeon_driver_firstopen_kms - drm callback for last close
+ * radeon_driver_lastclose_kms - drm callback for last close
  *
  * @dev: drm dev pointer
  *
@@ -577,6 +577,9 @@ static int radeon_info_ioctl(struct drm_device *dev, void *data, struct drm_file
  */
 void radeon_driver_lastclose_kms(struct drm_device *dev)
 {
+	struct radeon_device *rdev = dev->dev_private;
+
+	radeon_fbdev_restore_mode(rdev);
 #ifdef DUMBBELL_WIP
 	vga_switcheroo_process_delayed_switch();
 #endif /* DUMBBELL_WIP */
