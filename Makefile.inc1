@@ -642,8 +642,8 @@ maybe_bk_tools:
 
 bk_build_list:
 .if empty(BUILDKERNELS)
-	@echo ">>> ERROR: Missing kernel configuration file(s) (${KERNCONF})."
-	@echo ">>> Did you move your kernel configs from i386/conf to config/?"
+	@echo ">>> ERROR: Missing kernel configuration file(s)."
+	@echo ">>> ${KERNCONF} not found in ${KERNCONFDIR}."
 	@false
 .endif
 
