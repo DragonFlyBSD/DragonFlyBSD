@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd November 6, 2016
+.Dd November 24, 2016
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -304,7 +304,9 @@ system daemons & system utilities (executed by other programs)
 .Bl -tag -width ".Pa binutils225/" -compact
 .It Pa binutils225/
 .Pp
-.Bl -tag -width ".Pa ldscripts/" -compact
+.Bl -tag -width ".Pa bfd-plugins/" -compact
+.It Pa bfd-plugins/
+linker plugins
 .It Pa ldscripts/
 linker scripts;
 see
@@ -313,7 +315,9 @@ see
 .Pp
 .It Pa binutils227/
 .Pp
-.Bl -tag -width ".Pa ldscripts/" -compact
+.Bl -tag -width ".Pa bfd-plugins/" -compact
+.It Pa bfd-plugins/
+linker plugins
 .It Pa ldscripts/
 linker scripts;
 see
