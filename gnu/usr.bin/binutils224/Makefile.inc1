@@ -1,2 +1,0 @@
-BUVERSION=	binutils224
-.include "../Makefile.buo"
