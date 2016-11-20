@@ -144,10 +144,6 @@ struct drm_fb_helper {
 	 * does not require ASYNC commits).
 	 */
 	bool atomic;
-
-#ifdef __DragonFly__
-	struct task fb_mode_task;
-#endif
 };
 
 #define CONFIG_DRM_FBDEV_EMULATION 1

@@ -1845,7 +1845,9 @@ probe_efi_fb(int early)
 	} else {
 		efi_fb_init_vaddr(0);
 	}
-	efi_fb_info.restore = NULL;
+	efi_fb_info.fbops.fb_set_par = NULL;
+	efi_fb_info.fbops.fb_blank = NULL;
+	efi_fb_info.fbops.fb_debug_enter = NULL;
 	efi_fb_info.device = NULL;
 
 	return 0;

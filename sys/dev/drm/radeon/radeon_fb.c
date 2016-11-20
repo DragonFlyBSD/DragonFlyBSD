@@ -45,21 +45,27 @@ struct radeon_fbdev {
 	struct radeon_device *rdev;
 };
 
-#ifdef DUMBBELL_WIP
 static struct fb_ops radeonfb_ops = {
+#if 0
 	.owner = THIS_MODULE,
 	.fb_check_var = drm_fb_helper_check_var,
+#endif
 	.fb_set_par = drm_fb_helper_set_par,
+#if 0
 	.fb_fillrect = cfb_fillrect,
 	.fb_copyarea = cfb_copyarea,
 	.fb_imageblit = cfb_imageblit,
 	.fb_pan_display = drm_fb_helper_pan_display,
+#endif
 	.fb_blank = drm_fb_helper_blank,
+#if 0
 	.fb_setcmap = drm_fb_helper_setcmap,
+#endif
 	.fb_debug_enter = drm_fb_helper_debug_enter,
+#if 0
 	.fb_debug_leave = drm_fb_helper_debug_leave,
+#endif
 };
-#endif /* DUMBBELL_WIP */
 
 
 int radeon_align_pitch(struct radeon_device *rdev, int width, int bpp, bool tiled)
@@ -249,6 +255,11 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	info->stride = fb->pitches[0];
 	info->depth = sizes->surface_bpp;
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
+#ifdef __DragonFly__
+	info->fbops = radeonfb_ops;
+#else
+	info->fbops = &radeonfb_ops;
+#endif
 
 	DRM_INFO("fb mappable at 0x%jX\n",  info->paddr);
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)rdev->mc.aper_base);
@@ -279,27 +290,13 @@ void radeon_fb_output_poll_changed(struct radeon_device *rdev)
 
 static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfbdev)
 {
-	/* XXX unconfigure fb_info from syscons */
-#ifdef DUMBBELL_WIP
-	struct fb_info *info;
-#endif /* DUMBBELL_WIP */
 	struct radeon_framebuffer *rfb = &rfbdev->rfb;
 
-#ifdef DUMBBELL_WIP
-	if (rfbdev->helper.fbdev) {
-		info = rfbdev->helper.fbdev;
-
-		unregister_framebuffer(info);
-		if (info->cmap.len)
-			fb_dealloc_cmap(&info->cmap);
-		framebuffer_release(info);
-	}
-#endif /* DUMBBELL_WIP */
+	drm_fb_helper_unregister_fbi(&rfbdev->helper);
+	drm_fb_helper_release_fbi(&rfbdev->helper);
 
 	if (rfb->obj) {
-		DRM_UNLOCK(dev); /* Work around lock recursion. dumbbell@ */
 		radeonfb_destroy_pinned_object(rfb->obj);
-		DRM_LOCK(dev);
 		rfb->obj = NULL;
 	}
 	drm_fb_helper_fini(&rfbdev->helper);

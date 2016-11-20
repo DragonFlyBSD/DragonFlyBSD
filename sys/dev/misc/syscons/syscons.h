@@ -199,7 +199,10 @@ typedef struct sc_softc {
 	struct video_adapter *adp;
 	int		initial_mode;		/* initial video mode */
 
+	uint64_t	fbi_generation;		/* increment on fbi update */
 	struct fb_info	*fbi;
+	struct fb_info	*dummy_fb_info;
+	struct task	*fb_set_par_task;
 
 	int		first_vty;
 	int		vtys;
@@ -255,7 +258,7 @@ typedef struct scr_stat {
 	struct sc_rndr_sw *rndr;		/* renderer */
 	sc_vtb_t	scr;
 	sc_vtb_t	vtb;
-	struct fb_info	*fbi;
+	uint64_t	fbi_generation;		/* track fb_info updates */
 
 	int 		xpos;			/* current X position */
 	int 		ypos;			/* current Y position */

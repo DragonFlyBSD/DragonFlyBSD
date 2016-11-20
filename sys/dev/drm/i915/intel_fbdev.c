@@ -41,7 +41,6 @@
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 
-#if 0
 static int intel_fbdev_set_par(struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -78,6 +77,7 @@ static int intel_fbdev_blank(int blank, struct fb_info *info)
 	return ret;
 }
 
+#if 0
 static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 				   struct fb_info *info)
 {
@@ -96,21 +96,29 @@ static int intel_fbdev_pan_display(struct fb_var_screeninfo *var,
 
 	return ret;
 }
+#endif
 
 static struct fb_ops intelfb_ops = {
+#if 0
 	.owner = THIS_MODULE,
 	.fb_check_var = drm_fb_helper_check_var,
+#endif
 	.fb_set_par = intel_fbdev_set_par,
+#if 0
 	.fb_fillrect = drm_fb_helper_cfb_fillrect,
 	.fb_copyarea = drm_fb_helper_cfb_copyarea,
 	.fb_imageblit = drm_fb_helper_cfb_imageblit,
 	.fb_pan_display = intel_fbdev_pan_display,
-	.fb_blank = intel_fbdev_blank,
-	.fb_setcmap = drm_fb_helper_setcmap,
-	.fb_debug_enter = drm_fb_helper_debug_enter,
-	.fb_debug_leave = drm_fb_helper_debug_leave,
-};
 #endif
+	.fb_blank = intel_fbdev_blank,
+#if 0
+	.fb_setcmap = drm_fb_helper_setcmap,
+#endif
+	.fb_debug_enter = drm_fb_helper_debug_enter,
+#if 0
+	.fb_debug_leave = drm_fb_helper_debug_leave,
+#endif
+};
 
 static int intelfb_alloc(struct drm_fb_helper *helper,
 			 struct drm_fb_helper_surface_size *sizes)
@@ -240,10 +248,9 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->depth = sizes->surface_bpp;
 	info->paddr = dev_priv->gtt.mappable_base + i915_gem_obj_ggtt_offset(obj);
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
-	info->vaddr =
-	    (vm_offset_t)pmap_mapdev_attr(info->paddr,
-		sizes->surface_height * info->stride,
+	info->vaddr = (vm_offset_t)pmap_mapdev_attr(info->paddr, size,
 		VM_MEMATTR_WRITE_COMBINING);
+	info->fbops = intelfb_ops;
 #else
 	strcpy(info->fix.id, "inteldrmfb");
 
@@ -537,10 +544,8 @@ static const struct drm_fb_helper_funcs intel_fb_helper_funcs = {
 static void intel_fbdev_destroy(struct drm_device *dev,
 				struct intel_fbdev *ifbdev)
 {
-#if 0
 	drm_fb_helper_unregister_fbi(&ifbdev->helper);
 	drm_fb_helper_release_fbi(&ifbdev->helper);
-#endif
 
 	drm_fb_helper_fini(&ifbdev->helper);
 

@@ -433,7 +433,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
     if (scp == NULL)		/* tp == SC_MOUSE */
 	return ENOIOCTL;
     adp = scp->sc->adp;
-    if (adp == NULL && scp->fbi == NULL)	/* shouldn't happen??? */
+    if (adp == NULL && scp->sc->fbi == NULL)	/* shouldn't happen??? */
 	return ENODEV;
 
     lwkt_gettoken(&tty_token);
@@ -441,7 +441,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
     case CONS_CURRENTADP:	/* get current adapter index */
     case FBIO_ADAPTER:
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    ret = ENODEV;
 	} else {
 	    ret = fb_ioctl(adp, FBIO_ADAPTER, data);
@@ -451,7 +451,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
     case CONS_CURRENT:  	/* get current adapter type */
     case FBIO_ADPTYPE:
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    ret = ENODEV;
 	} else {
 	    ret = fb_ioctl(adp, FBIO_ADPTYPE, data);
@@ -461,7 +461,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
     case CONS_ADPINFO:		/* adapter information */
     case FBIO_ADPINFO:
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    lwkt_reltoken(&tty_token);
 	    return ENODEV;
 	}
@@ -485,7 +485,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 #ifndef SC_NO_MODE_CHANGE
     case CONS_SET:
     case FBIO_SETMODE:		/* set video mode */
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 		lwkt_reltoken(&tty_token);
 		if (*(int *)data != 0)
 			return ENODEV;
@@ -513,7 +513,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
     case CONS_MODEINFO:		/* get mode information */
     case FBIO_MODEINFO:
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    /* Fabricate some mode information for KMS framebuffer */
 	    video_info_t *vinfo = (video_info_t *)data;
 	    vinfo->vi_mode = 0;
@@ -536,7 +536,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
     case CONS_FINDMODE:		/* find a matching video mode */
     case FBIO_FINDMODE:
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    ret = ENODEV;
 	} else {
 	    ret = fb_ioctl(adp, FBIO_FINDMODE, data);
@@ -550,7 +550,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
 	}
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    lwkt_reltoken(&tty_token);
 	    return ENODEV;
 	}
@@ -563,7 +563,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
 	}
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    ret = ENODEV;
 	} else {
 	    ret = fb_ioctl(adp, FBIO_GETWINORG, data);
@@ -579,7 +579,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
 	}
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    ret = ENODEV;
 	} else {
 	    ret = fb_ioctl(adp, cmd, data);
@@ -604,7 +604,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    lwkt_reltoken(&tty_token);
 	    return ENODEV;	/* XXX */
 	}
-	if (scp->fbi != NULL) {
+	if (scp->sc->fbi != NULL) {
 	    ret = ENODEV;
 	} else {
 	    ret = fb_ioctl(adp, cmd, data);
@@ -626,7 +626,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    /* restore fonts & palette ! */
 #if 0
 #ifndef SC_NO_FONT_LOADING
-	    if (scp->fbi == NULL && ISFONTAVAIL(adp->va_flags)
+	    if (scp->sc->fbi == NULL && ISFONTAVAIL(adp->va_flags)
 		&& !(scp->status & (GRAPHICS_MODE | PIXEL_MODE))) {
 		/*
 		 * FONT KLUDGE
@@ -643,12 +643,12 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 #endif
 
 #ifndef SC_NO_PALETTE_LOADING
-	    if (scp->fbi == NULL)
+	    if (scp->sc->fbi == NULL)
 		load_palette(adp, scp->sc->palette);
 #endif
 
 	    /* move hardware cursor out of the way */
-	    if (scp->fbi == NULL)
+	    if (scp->sc->fbi == NULL)
 		(*vidsw[adp->va_index]->set_hw_cursor)(adp, -1, -1);
 	    /* FALL THROUGH */
 
@@ -683,7 +683,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	        lwkt_reltoken(&tty_token);
 		return EINVAL;
             }
-	    if (scp->fbi != NULL) {
+	    if (scp->sc->fbi != NULL) {
 		lwkt_reltoken(&tty_token);
 		return ENODEV;
 	    }
@@ -732,7 +732,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
 #ifdef SC_PIXEL_MODE
     case KDRASTER:		/* set pixel (raster) display mode */
-	if (scp->fbi != NULL || ISUNKNOWNSC(scp) || ISTEXTSC(scp)) {
+	if (scp->sc->fbi != NULL || ISUNKNOWNSC(scp) || ISTEXTSC(scp)) {
 	    lwkt_reltoken(&tty_token);
 	    return ENODEV;
 	}
@@ -834,11 +834,11 @@ sc_update_render(scr_stat *scp)
 	if (scp->rndr == NULL)
 		return;
 
-	if (scp->fbi == scp->sc->fbi)
+	if (scp->fbi_generation == scp->sc->fbi_generation)
 		return;
 
 	crit_enter();
-	scp->fbi = scp->sc->fbi;
+	scp->fbi_generation = scp->sc->fbi_generation;
 	/* Needed in case we are implicitly leaving PIXEL_MODE here */
 	if (scp->model != V_INFO_MM_OTHER)
 		scp->model = V_INFO_MM_TEXT;
@@ -887,8 +887,8 @@ sc_update_render(scr_stat *scp)
 	}
 	/* Implicitly leave PIXEL_MODE, but stay in UNKNOWN mode */
 	scp->status &= ~(PIXEL_MODE | MOUSE_VISIBLE);
-	scp->xpixel = scp->fbi->width;
-	scp->ypixel = scp->fbi->height;
+	scp->xpixel = scp->sc->fbi->width;
+	scp->ypixel = scp->sc->fbi->height;
 
 	/*
 	 * Assume square pixels for now

@@ -252,6 +252,7 @@ static void drm_fb_helper_restore_lut_atomic(struct drm_crtc *crtc)
 
 	crtc->funcs->gamma_set(crtc, r_base, g_base, b_base, 0, crtc->gamma_size);
 }
+#endif
 
 /**
  * drm_fb_helper_debug_enter - implementation for ->fb_debug_enter
@@ -272,7 +273,9 @@ int drm_fb_helper_debug_enter(struct fb_info *info)
 				continue;
 
 			funcs =	mode_set->crtc->helper_private;
+#if 0
 			drm_fb_helper_save_lut_atomic(mode_set->crtc, helper);
+#endif
 			funcs->mode_set_base_atomic(mode_set->crtc,
 						    mode_set->fb,
 						    mode_set->x,
@@ -285,6 +288,7 @@ int drm_fb_helper_debug_enter(struct fb_info *info)
 }
 EXPORT_SYMBOL(drm_fb_helper_debug_enter);
 
+#if 0
 /* Find the real fb for a given fb helper CRTC */
 static struct drm_framebuffer *drm_mode_config_fb(struct drm_crtc *crtc)
 {
@@ -553,6 +557,7 @@ static struct sysrq_key_op sysrq_drm_fb_helper_restore_op = {
 #else
 static struct sysrq_key_op sysrq_drm_fb_helper_restore_op = { };
 #endif
+#endif
 
 static void drm_fb_helper_dpms(struct fb_info *info, int dpms_mode)
 {
@@ -595,14 +600,20 @@ static void drm_fb_helper_dpms(struct fb_info *info, int dpms_mode)
  */
 int drm_fb_helper_blank(int blank, struct fb_info *info)
 {
+#ifdef __DragonFly__
+	if (panicstr)
+		return -EBUSY;
+#else
 	if (oops_in_progress)
 		return -EBUSY;
+#endif
 
 	switch (blank) {
 	/* Display: On; HSync: On, VSync: On */
 	case FB_BLANK_UNBLANK:
 		drm_fb_helper_dpms(info, DRM_MODE_DPMS_ON);
 		break;
+#if 0
 	/* Display: Off; HSync: On, VSync: On */
 	case FB_BLANK_NORMAL:
 		drm_fb_helper_dpms(info, DRM_MODE_DPMS_STANDBY);
@@ -615,6 +626,7 @@ int drm_fb_helper_blank(int blank, struct fb_info *info)
 	case FB_BLANK_VSYNC_SUSPEND:
 		drm_fb_helper_dpms(info, DRM_MODE_DPMS_SUSPEND);
 		break;
+#endif
 	/* Display: Off; HSync: Off, VSync: Off */
 	case FB_BLANK_POWERDOWN:
 		drm_fb_helper_dpms(info, DRM_MODE_DPMS_OFF);
@@ -623,7 +635,6 @@ int drm_fb_helper_blank(int blank, struct fb_info *info)
 	return 0;
 }
 EXPORT_SYMBOL(drm_fb_helper_blank);
-#endif
 
 static void drm_fb_helper_crtc_free(struct drm_fb_helper *helper)
 {
@@ -776,7 +787,6 @@ err_release:
 }
 EXPORT_SYMBOL(drm_fb_helper_alloc_fbi);
 
-#if 0
 /**
  * drm_fb_helper_unregister_fbi - unregister fb_info framebuffer device
  * @fb_helper: driver-allocated fbdev helper
@@ -790,7 +800,6 @@ void drm_fb_helper_unregister_fbi(struct drm_fb_helper *fb_helper)
 		unregister_framebuffer(fb_helper->fbdev);
 }
 EXPORT_SYMBOL(drm_fb_helper_unregister_fbi);
-#endif
 
 /**
  * drm_fb_helper_release_fbi - dealloc fb_info and its members
@@ -1207,6 +1216,7 @@ int drm_fb_helper_check_var(struct fb_var_screeninfo *var,
 	return 0;
 }
 EXPORT_SYMBOL(drm_fb_helper_check_var);
+#endif
 
 /**
  * drm_fb_helper_set_par - implementation for ->fb_set_par
@@ -1219,15 +1229,24 @@ EXPORT_SYMBOL(drm_fb_helper_check_var);
 int drm_fb_helper_set_par(struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
+#if 0
 	struct fb_var_screeninfo *var = &info->var;
+#endif
 
+#ifdef __DragonFly__
+	if (panicstr)
+		return -EBUSY;
+#else
 	if (oops_in_progress)
 		return -EBUSY;
+#endif
 
+#if 0
 	if (var->pixclock != 0) {
 		DRM_ERROR("PIXEL CLOCK SET\n");
 		return -EINVAL;
 	}
+#endif
 
 	drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
 
@@ -1235,6 +1254,7 @@ int drm_fb_helper_set_par(struct fb_info *info)
 }
 EXPORT_SYMBOL(drm_fb_helper_set_par);
 
+#if 0
 static int pan_display_atomic(struct fb_var_screeninfo *var,
 			      struct fb_info *info)
 {
@@ -1342,30 +1362,6 @@ unlock:
 	return ret;
 }
 EXPORT_SYMBOL(drm_fb_helper_pan_display);
-#endif
-
-#ifdef __DragonFly__
-static void
-do_restore_fbdev_mode(void *context, int pending)
-{
-	struct drm_fb_helper *fb_helper = context;
-
-	if (!fb_helper->fb)
-		return;
-
-	drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
-}
-
-static void
-sc_restore_fbdev_mode(struct fb_info *info)
-{
-	struct drm_fb_helper *fb_helper = info->par;
-
-	if (!fb_helper->fb)
-		return;
-
-	taskqueue_enqueue(taskqueue_thread[0], &fb_helper->fb_mode_task);
-}
 #endif
 
 /*
@@ -1501,15 +1497,12 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 #ifdef __DragonFly__
 	TUNABLE_INT_FETCH("kern.kms_console", &kms_console);
 	if (kms_console) {
-		TASK_INIT(&fb_helper->fb_mode_task, 0, do_restore_fbdev_mode,
-		    fb_helper);
-		info->restore = &sc_restore_fbdev_mode;
 		if (register_framebuffer(info) < 0)
 			return -EINVAL;
-	}
-#endif
 
-#if 0
+		list_add(&fb_helper->kernel_fb_list, &kernel_fb_helper_list);
+	}
+#else
 	info->var.pixclock = 0;
 	if (register_framebuffer(info) < 0)
 		return -EINVAL;
@@ -2221,9 +2214,7 @@ int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper)
 	drm_modeset_lock_all(dev);
 	drm_setup_crtcs(fb_helper);
 	drm_modeset_unlock_all(dev);
-#if 0
 	drm_fb_helper_set_par(fb_helper->fbdev);
-#endif
 
 	return 0;
 }

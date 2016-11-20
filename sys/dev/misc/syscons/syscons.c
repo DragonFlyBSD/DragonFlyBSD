@@ -46,6 +46,7 @@
 #include <sys/priv.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
+#include <sys/taskqueue.h>
 #include <sys/tty.h>
 #include <sys/kernel.h>
 #include <sys/cons.h>
@@ -126,6 +127,12 @@ static	void		none_saver(sc_softc_t *sc, int blank) { }
 static	void		(*current_saver)(sc_softc_t *, int) = none_saver;
 #endif
 
+/*
+ * Lock for asynchronous screen update thread, needed to safely modify the
+ * framebuffer information.
+ */
+static struct lock	sc_asynctd_lk;
+
 #if !defined(SC_NO_FONT_LOADING) && defined(SC_DFLT_FONT)
 #include "font.h"
 #endif
@@ -179,6 +186,8 @@ static timeout_t scrn_timer;
 static int and_region(int *s1, int *e1, int s2, int e2);
 static void scrn_update(scr_stat *scp, int show_cursor, int flags);
 static void scrn_update_thread(void *arg);
+
+static void sc_fb_set_par(void *context, int pending);
 
 #if NSPLASH > 0
 static int scsplash_callback(int event, void *arg);
@@ -323,19 +332,85 @@ register_framebuffer(struct fb_info *info)
 	}
 
 	/* Ignore this framebuffer if we already switched to KMS framebuffer */
-	if (sc->fbi != NULL && sc->fbi != &efi_fb_info) {
+	if (sc->fbi != NULL && sc->fbi != &efi_fb_info &&
+	    sc->fbi != sc->dummy_fb_info) {
 		lwkt_reltoken(&tty_token);
 		return 0;
 	}
 
+	if (sc->fb_set_par_task == NULL) {
+		sc->fb_set_par_task = kmalloc(sizeof(struct task),
+		    M_SYSCONS, M_WAITOK | M_ZERO);
+	}
+	TASK_INIT(sc->fb_set_par_task, 0, sc_fb_set_par, sc);
+
+	/*
+	 * Make sure that console messages don't interfere too much with
+	 * modesetting.
+	 */
+	atomic_add_int(&sc->videoio_in_progress, 1);
+
+	/* Lock against synchronous and asynchronous screen updates */
+	lockmgr(&sc_asynctd_lk, LK_EXCLUSIVE);
+	syscons_lock();
 	sc->fbi = info;
+	sc->fbi_generation++;
+	syscons_unlock();
 
 	sc_update_render(sc->cur_scp);
-	if (sc->fbi->restore != NULL)
-	    sc->fbi->restore(sc->fbi);
+	if (info->fbops.fb_set_par != NULL)
+		info->fbops.fb_set_par(info);
+	atomic_add_int(&sc->videoio_in_progress, -1);
 
+	lockmgr(&sc_asynctd_lk, LK_RELEASE);
 	lwkt_reltoken(&tty_token);
 	return 0;
+}
+
+void
+unregister_framebuffer(struct fb_info *info)
+{
+	sc_softc_t *sc;
+
+	lwkt_gettoken(&tty_token);
+	sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+	if (sc == NULL) {
+		lwkt_reltoken(&tty_token);
+		kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
+		    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+		return;
+	}
+
+	if (sc->fbi != info) {
+		lwkt_reltoken(&tty_token);
+		return;
+	}
+
+	if (sc->fb_set_par_task != NULL &&
+	    taskqueue_cancel(taskqueue_thread[0], sc->fb_set_par_task, NULL)) {
+		taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
+	}
+
+	if (sc->dummy_fb_info == NULL) {
+		sc->dummy_fb_info = kmalloc(sizeof(struct fb_info),
+		    M_SYSCONS, M_WAITOK | M_ZERO);
+	} else {
+		memset(sc->dummy_fb_info, 0, sizeof(struct fb_info));
+	}
+	*sc->dummy_fb_info = *sc->fbi;
+	sc->dummy_fb_info->vaddr = 0;
+	sc->dummy_fb_info->fbops.fb_set_par = NULL;
+	sc->dummy_fb_info->fbops.fb_blank = NULL;
+	sc->dummy_fb_info->fbops.fb_debug_enter = NULL;
+
+	/* Lock against synchronous and asynchronous screen updates */
+	lockmgr(&sc_asynctd_lk, LK_EXCLUSIVE);
+	syscons_lock();
+	sc->fbi = sc->dummy_fb_info;
+	syscons_unlock();
+	lockmgr(&sc_asynctd_lk, LK_RELEASE);
+
+	lwkt_reltoken(&tty_token);
 }
 
 void
@@ -2270,10 +2345,26 @@ scrn_update_thread(void *arg)
 				tsleep(&scp->asynctd, PINTERLOCKED, "wait", 0);
 		}
 		scp->queue_update_td = 0;
+		lockmgr(&sc_asynctd_lk, LK_EXCLUSIVE);
 		atomic_add_int(&scp->sc->videoio_in_progress, 1);
 		scrn_update(scp, scp->show_cursor, SCRN_BULKUNLOCK);
 		atomic_add_int(&scp->sc->videoio_in_progress, -1);
+		lockmgr(&sc_asynctd_lk, LK_RELEASE);
 	}
+}
+
+static void
+sc_fb_set_par(void *context, int pending)
+{
+	sc_softc_t *sc = context;
+	scr_stat *scp = sc->cur_scp;
+
+	lwkt_gettoken(&tty_token);
+	if (ISTEXTSC(scp) &&
+	    sc->fbi != NULL && sc->fbi->fbops.fb_set_par != NULL) {
+		sc->fbi->fbops.fb_set_par(sc->fbi);
+	}
+	lwkt_reltoken(&tty_token);
 }
 
 #if NSPLASH > 0
@@ -2418,12 +2509,12 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
     }
     scp->mode = mode;
     if (set_mode(scp) == 0) {
-	if (scp->fbi == NULL &&
+	if (scp->sc->fbi == NULL &&
 	    scp->sc->adp->va_info.vi_flags & V_INFO_GRAPHICS) {
 	    scp->status |= GRAPHICS_MODE;
 	}
 #ifndef SC_NO_PALETTE_LOADING
-	if (scp->fbi == NULL && pal != NULL)
+	if (scp->sc->fbi == NULL && pal != NULL)
 	    load_palette(scp->sc->adp, pal);
 #endif
 	sc_set_border(scp, border);
@@ -2462,7 +2553,7 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
     }
     if (set_mode(scp) == 0) {
 #ifndef SC_NO_PALETTE_LOADING
-	if (scp->fbi == NULL)
+	if (scp->sc->fbi == NULL)
 	    load_palette(scp->sc->adp, scp->sc->palette);
 #endif
 	--scrn_blanked;
@@ -2869,8 +2960,19 @@ exchange_scr(sc_softc_t *sc)
     update_kbd_state(scp, scp->status, LOCK_MASK, TRUE);
 
     mark_all(scp);
-    if (scp->sc->fbi != NULL && scp->sc->fbi->restore != NULL)
-	scp->sc->fbi->restore(scp->sc->fbi);
+
+    /*
+     * Restore DRM framebuffer console mode if necessary.
+     * Especially avoid modesetting when switching to a vt which is in
+     * graphics mode, because the fb_set_par() from the taskqueue thread
+     * might race with the modesetting ioctl from the userland application.
+     */
+    if (ISTEXTSC(scp) && !ISTEXTSC(sc->old_scp) &&
+	sc->fbi != NULL && sc->fbi->fbops.fb_set_par != NULL &&
+	sc->fb_set_par_task != NULL) {
+	taskqueue_enqueue(taskqueue_thread[0], sc->fb_set_par_task);
+    }
+
     lwkt_reltoken(&tty_token);
 }
 
@@ -2997,6 +3099,7 @@ scinit(int unit, int flags)
 	/* Don't replace already registered drm framebuffer here */
 	if (sc->fbi == NULL) {
 	    sc->fbi = &efi_fb_info;
+	    sc->fbi_generation++;
 	}
     } else if (sc->adapter >= 0) {
 	vid_release(sc->adp, (void *)&sc->adapter);
@@ -3085,7 +3188,7 @@ scinit(int unit, int flags)
 	sc->cur_scp = scp;
 
 	/* copy screen to temporary buffer */
-	if (scp->fbi == NULL) {
+	if (scp->sc->fbi == NULL) {
 	    sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
 			(void *)scp->sc->adp->va_window, FALSE);
 	    if (ISTEXTSC(scp))
@@ -3360,16 +3463,16 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->sc = sc;
     scp->status = 0;
     scp->mode = sc->initial_mode;
-    scp->fbi = sc->fbi;
+    scp->fbi_generation = sc->fbi_generation;
     callout_init_mp(&scp->blink_screen_ch);
-    if (scp->fbi == NULL) {
+    if (scp->sc->fbi == NULL) {
 	lwkt_gettoken(&tty_token);
 	(*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
 	lwkt_reltoken(&tty_token);
     }
-    if (scp->fbi != NULL) {
-	scp->xpixel = scp->fbi->width;
-	scp->ypixel = scp->fbi->height;
+    if (scp->sc->fbi != NULL) {
+	scp->xpixel = sc->fbi->width;
+	scp->ypixel = sc->fbi->height;
 	scp->font_width = 8;
 	scp->font_height = 16;
 

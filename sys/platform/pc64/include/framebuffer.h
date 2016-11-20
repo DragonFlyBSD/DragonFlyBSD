@@ -5,6 +5,14 @@
 
 #include <sys/bus.h>
 
+struct fb_info;
+
+struct fb_ops {
+	int (*fb_set_par)(struct fb_info *);
+	int (*fb_blank)(int, struct fb_info *);
+	int (*fb_debug_enter)(struct fb_info *);
+};
+
 struct fb_info {
 	vm_offset_t vaddr;
 	vm_paddr_t paddr;
@@ -14,13 +22,14 @@ struct fb_info {
 	uint16_t depth;
 	int is_vga_boot_display;
 	void *par;
-	void (*restore)(struct fb_info *);
+	struct fb_ops fbops;
 	device_t device;
 };
 
 int probe_efi_fb(int early);
 
 int register_framebuffer(struct fb_info *fb_info);
+void unregister_framebuffer(struct fb_info *fb_info);
 
 extern struct fb_info efi_fb_info;
 
