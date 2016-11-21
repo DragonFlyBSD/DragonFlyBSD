@@ -22,6 +22,9 @@ CFLAGS+=	-DIN_LIBGCC2
 CFLAGS+=	-DHAVE_CC_TLS
 CFLAGS+=	-DSHARED
 
+# XXX: workaround for ld.gold issue
+CFLAGS+=	-D_AVOID_WEAKREF
+
 # FUNCS and SOFTFUNCS defined in Makefile.src
 OBJS=		${FUNCS:S/$/.o/}
 SRCS=		${SOFTFUNCS:S/$/.c/}
