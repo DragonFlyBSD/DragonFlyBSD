@@ -3150,6 +3150,7 @@ TO_REMOVE+=/usr/include/termcap.h
 TO_REMOVE+=/usr/include/term.h
 TO_REMOVE+=/usr/include/unctrl.h
 TO_REMOVE+=/usr/include/sys/link_aout.h
+TO_REMOVE+=/usr/lib/libdevstat.so.3
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -1,6 +1,7 @@
 # $FreeBSD: src/lib/libdevstat/Makefile,v 1.4.2.1 2001/04/25 10:04:27 ru Exp $
 
 LIB=	devstat
+SHLIBDIR?= /lib
 SRCS=	devstat.c
 INCS=	devstat.h
 MAN=	devstat.3
