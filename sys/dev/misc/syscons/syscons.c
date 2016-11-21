@@ -357,6 +357,8 @@ register_framebuffer(struct fb_info *info)
 	sc->fbi_generation++;
 	syscons_unlock();
 
+	kprintf("kms console: xpixels %d ypixels %d\n",
+	    sc->fbi->width, sc->fbi->height);
 	sc_update_render(sc->cur_scp);
 	if (info->fbops.fb_set_par != NULL)
 		info->fbops.fb_set_par(info);
