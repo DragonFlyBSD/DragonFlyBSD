@@ -5,6 +5,7 @@ LIB=		smb
 WARNS?=		2
 
 SHLIB_MAJOR=	2
+SHLIBDIR?=	/lib
 
 NOMAN=
 
