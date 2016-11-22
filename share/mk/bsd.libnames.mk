@@ -30,6 +30,7 @@ LIBDIALOG?=	${DESTDIR}${LIBDIR}/libdialog.a
 LIBDM?=		${DESTDIR}${LIBDIR}/libdm.a
 #LIBDMSG?=	${DESTDIR}${LIBDIR}/libdmsg.a
 LIBEDIT?=	${DESTDIR}${LIBDIR}/priv/libprivate_edit.a
+LIBEFIVAR?=	${DESTDIR}${LIBDIR}/libefivar.a
 LIBEVTR?=	${DESTDIR}${LIBDIR}/libevtr.a
 LIBEXECINFO?=	${DESTDIR}${LIBDIR}/libexecinfo.a
 LIBFETCH?=	${DESTDIR}${LIBDIR}/libfetch.a

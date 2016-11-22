@@ -67,6 +67,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libdl \
 	libdm \
 	${_libdmsg} \
+	libefivar \
 	libevtr \
 	libexpat \
 	libfsid \

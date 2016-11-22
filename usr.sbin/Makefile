@@ -32,6 +32,7 @@ SUBDIR= 802_11 \
 	dev_mkdb \
 	dntpd \
 	edquota \
+	efivar \
 	faithd \
 	fdcontrol \
 	fdformat \
@@ -124,6 +125,7 @@ SUBDIR= 802_11 \
 	traceroute6 \
 	trpt \
 	tzsetup \
+	uefisign \
 	usbconfig \
 	usbdump \
 	vidcontrol \

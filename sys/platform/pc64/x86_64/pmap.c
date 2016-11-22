@@ -437,17 +437,6 @@ pmap_pml4_pindex(void)
 /*
  * Return various clipped indexes for a given VA
  *
- * Returns the index of a pte in a page table, representing a terminal
- * page.
- */
-static __inline
-vm_pindex_t
-pmap_pte_index(vm_offset_t va)
-{
-	return ((va >> PAGE_SHIFT) & ((1ul << NPTEPGSHIFT) - 1));
-}
-
-/*
  * Returns the index of a pt in a page directory, representing a page
  * table.
  */

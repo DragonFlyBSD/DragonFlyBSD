@@ -377,6 +377,40 @@ pmap_emulate_ad_bits(pmap_t pmap) {
 	return pmap->pm_flags & PMAP_EMULATE_AD_BITS;
 }
 
+/* Return various clipped indexes for a given VA */
+
+/*
+ * Returns the index of a pte in a page table, representing a terminal
+ * page.
+ */
+static __inline vm_pindex_t
+pmap_pte_index(vm_offset_t va)
+{
+
+	return ((va >> PAGE_SHIFT) & ((1ul << NPTEPGSHIFT) - 1));
+}
+
+static __inline vm_pindex_t
+pmap_pde_index(vm_offset_t va)
+{
+
+	return ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
+}
+
+static __inline vm_pindex_t
+pmap_pdpe_index(vm_offset_t va)
+{
+
+	return ((va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1));
+}
+
+static __inline vm_pindex_t
+pmap_pml4e_index(vm_offset_t va)
+{
+
+	return ((va >> PML4SHIFT) & ((1ul << NPML4EPGSHIFT) - 1));
+}
+
 #endif /* _KERNEL */
 
 #endif /* !LOCORE */
