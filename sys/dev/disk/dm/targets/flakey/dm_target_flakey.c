@@ -253,6 +253,14 @@ _submit(dm_target_flakey_config_t *tfc, struct bio *bio)
 	vn_strategy(tfc->pdev->pdev_vnode, bio);
 }
 
+static __inline
+void
+_flakey_eio_buf(struct buf *bp)
+{
+	bp->b_error = EIO;
+	bp->b_resid = 0;
+}
+
 static void
 _flakey_read_iodone(struct bio *bio)
 {
@@ -262,8 +270,14 @@ _flakey_read_iodone(struct bio *bio)
 	tfc = bio->bio_caller_info1.ptr;
 	obio = pop_bio(bio);
 
+	/*
+	 * Linux dm-flakey has changed its read behavior in 2016.
+	 * This conditional is to sync with that change.
+	 */
 	if (tfc->corrupt_buf_byte && tfc->corrupt_buf_rw == BUF_CMD_READ)
 		_flakey_corrupt_buf(tfc, obio);
+	else if (!tfc->drop_writes)
+		_flakey_eio_buf(bio->bio_buf);
 
 	biodone(obio);
 }
@@ -271,9 +285,20 @@ _flakey_read_iodone(struct bio *bio)
 static int
 _flakey_read(dm_target_flakey_config_t *tfc, struct buf *bp)
 {
+	struct bio *bio = &bp->b_bio1;
 	struct bio *nbio;
 
-	nbio = push_bio(&bp->b_bio1);
+	/*
+	 * Linux dm-flakey has changed its read behavior in 2016.
+	 * This conditional is to sync with that change.
+	 */
+	if (!tfc->corrupt_buf_byte && !tfc->drop_writes) {
+		_flakey_eio_buf(bp);
+		biodone(bio);
+		return 0;
+	}
+
+	nbio = push_bio(bio);
 	nbio->bio_done = _flakey_read_iodone;
 	nbio->bio_caller_info1.ptr = tfc;
 	nbio->bio_offset = pop_bio(nbio)->bio_offset;
@@ -302,8 +327,7 @@ _flakey_write(dm_target_flakey_config_t *tfc, struct buf *bp)
 	}
 
 	/* Error all I/Os if neither of the above two */
-	bp->b_error = EIO;
-	bp->b_resid = 0;
+	_flakey_eio_buf(bp);
 	biodone(bio);
 
 	return 0;
