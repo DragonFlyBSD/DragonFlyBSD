@@ -1591,7 +1591,13 @@ out:
 	if (msg->connect.nm_flags & PRUC_HELDTD)
 		lwkt_rele(td);
 	if (error && (msg->connect.nm_flags & PRUC_ASYNC)) {
-		so->so_error = error;
+		if (inp->inp_lport == 0) {
+			/*
+			 * As long as we have the local port, it is fine
+			 * for connect to fail, e.g. disconnect.
+			 */
+			so->so_error = error;
+		}
 		soclrstate(so, SS_ISCONNECTED);
 		/*
 		 * Wake up callers blocked on this socket to make sure
