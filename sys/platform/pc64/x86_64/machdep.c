@@ -163,6 +163,7 @@ extern vm_offset_t ksym_start, ksym_end;
 struct privatespace CPU_prvspace_bsp __aligned(4096);
 struct privatespace *CPU_prvspace[MAXCPU] = { &CPU_prvspace_bsp };
 
+vm_paddr_t efi_systbl_phys;
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
 int64_t tsc_offsets[MAXCPU];
@@ -2244,6 +2245,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	ksym_start = MD_FETCH(kmdp, MODINFOMD_SSYM, uintptr_t);
 	ksym_end = MD_FETCH(kmdp, MODINFOMD_ESYM, uintptr_t);
 #endif
+	efi_systbl_phys = MD_FETCH(kmdp, MODINFOMD_FW_HANDLE, vm_paddr_t);
 
 	if (boothowto & RB_VERBOSE)
 		bootverbose++;
