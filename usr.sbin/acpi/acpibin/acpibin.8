@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 8, 2016
+.Dd November 23, 2016
 .Dt ACPIBIN 8
 .Os
 .Sh NAME
@@ -40,8 +40,10 @@
 .Sh DESCRIPTION
 The following options are supported:
 .Bl -tag -width indent
+.It Fl a Ar file1 Ar file2
+Compare two binary AML files, dump all mismatches.
 .It Fl c Ar file1 Ar file2
-Compare two binary AML files.
+Compare two binary AML files, dump first 100 mismatches.
 .It Fl d Ar in Ar out
 Dump AML binary to text file.
 .It Fl e Ar sig Ar in ar out
@@ -50,6 +52,8 @@ Extract binary AML table from
 file.
 .It Fl h Ar file
 Display table header for binary AML file.
+.It Fl o Ar value
+Start comparison at this offset into second file.
 .It Fl s Ar file
 Update checksum for binary AML file.
 .It Fl t
