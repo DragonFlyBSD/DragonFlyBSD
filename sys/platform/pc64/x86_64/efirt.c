@@ -611,12 +611,8 @@ MODULE_VERSION(efirt, 1);
 static int
 efi_time_sysctl_handler(SYSCTL_HANDLER_ARGS)
 {
-	union {
-		struct efi_tm tm;
-		char buf[256];
-	} u;
+	struct efi_tm tm;
 	int error, val;
-#define tm	u.tm
 
 	val = 0;
 	error = sysctl_handle_int(oidp, &val, 0, req);
@@ -630,8 +626,6 @@ efi_time_sysctl_handler(SYSCTL_HANDLER_ARGS)
 	}
 	return (error);
 }
-
-#undef tm
 
 SYSCTL_PROC(_debug, OID_AUTO, efi_time, CTLTYPE_INT | CTLFLAG_RW, NULL, 0,
 	    efi_time_sysctl_handler, "I", "");
