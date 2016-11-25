@@ -129,7 +129,7 @@ iwm_free_fw_paging(struct iwm_softc *sc)
 }
 
 static int
-iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
+iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_img *image)
 {
 	int sec_idx, idx;
 	uint32_t offset = 0;
@@ -146,7 +146,7 @@ iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
 	 * CPU2 paging image (including instruction and data)
 	 */
 	for (sec_idx = 0; sec_idx < IWM_UCODE_SECTION_MAX; sec_idx++) {
-		if (image->fw_sect[sec_idx].offset == IWM_PAGING_SEPARATOR_SECTION) {
+		if (image->sec[sec_idx].offset == IWM_PAGING_SEPARATOR_SECTION) {
 			sec_idx++;
 			break;
 		}
@@ -156,7 +156,7 @@ iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
 	 * If paging is enabled there should be at least 2 more sections left
 	 * (one for CSS and one for Paging data)
 	 */
-	if (sec_idx >= NELEM(image->fw_sect) - 1) {
+	if (sec_idx >= NELEM(image->sec) - 1) {
 		device_printf(sc->sc_dev,
 		    "Paging: Missing CSS and/or paging sections\n");
 		iwm_free_fw_paging(sc);
@@ -169,7 +169,7 @@ iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
 		    sec_idx);
 
 	memcpy(sc->fw_paging_db[0].fw_paging_block.vaddr,
-	       image->fw_sect[sec_idx].data,
+	       image->sec[sec_idx].data,
 	       sc->fw_paging_db[0].fw_paging_size);
 
 	IWM_DPRINTF(sc, IWM_DEBUG_FW,
@@ -186,7 +186,7 @@ iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
 	 */
 	for (idx = 1; idx < sc->num_of_paging_blk; idx++) {
 		memcpy(sc->fw_paging_db[idx].fw_paging_block.vaddr,
-		       (const char *)image->fw_sect[sec_idx].data + offset,
+		       (const char *)image->sec[sec_idx].data + offset,
 		       sc->fw_paging_db[idx].fw_paging_size);
 
 		IWM_DPRINTF(sc, IWM_DEBUG_FW,
@@ -200,7 +200,7 @@ iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
 	/* copy the last paging block */
 	if (sc->num_of_pages_in_last_blk > 0) {
 		memcpy(sc->fw_paging_db[idx].fw_paging_block.vaddr,
-		       (const char *)image->fw_sect[sec_idx].data + offset,
+		       (const char *)image->sec[sec_idx].data + offset,
 		       IWM_FW_PAGING_SIZE * sc->num_of_pages_in_last_blk);
 
 		IWM_DPRINTF(sc, IWM_DEBUG_FW,
@@ -212,7 +212,7 @@ iwm_fill_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
 }
 
 static int
-iwm_alloc_fw_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
+iwm_alloc_fw_paging_mem(struct iwm_softc *sc, const struct iwm_fw_img *image)
 {
 	int blk_idx = 0;
 	int error, num_of_pages;
@@ -286,7 +286,7 @@ iwm_alloc_fw_paging_mem(struct iwm_softc *sc, const struct iwm_fw_sects *image)
 }
 
 int
-iwm_save_fw_paging(struct iwm_softc *sc, const struct iwm_fw_sects *fw)
+iwm_save_fw_paging(struct iwm_softc *sc, const struct iwm_fw_img *fw)
 {
 	int ret;
 
@@ -299,7 +299,7 @@ iwm_save_fw_paging(struct iwm_softc *sc, const struct iwm_fw_sects *fw)
 
 /* send paging cmd to FW in case CPU2 has paging image */
 int
-iwm_send_paging_cmd(struct iwm_softc *sc, const struct iwm_fw_sects *fw)
+iwm_send_paging_cmd(struct iwm_softc *sc, const struct iwm_fw_img *fw)
 {
 	int blk_idx;
 	uint32_t dev_phy_addr;
