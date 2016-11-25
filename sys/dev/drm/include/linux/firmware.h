@@ -29,9 +29,13 @@
 
 #include <sys/bus.h>
 #include <sys/firmware.h>
+#include <linux/types.h>
+#include <linux/compiler.h>
+#include <linux/gfp.h>
+#include <linux/device.h>
 
 static inline int
-request_firmware(const struct firmware **fw, const char *name, __unused device_t dev) {
+request_firmware(const struct firmware **fw, const char *name, __unused struct device *dev) {
 	*fw = firmware_get(name);
 	if (*fw) {
 		return 0;

@@ -1674,10 +1674,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 	DRM_INFO("Loading %s Microcode\n", new_chip_name);
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", new_chip_name);
-	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev->bsddev);
+	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-		err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev->bsddev);
+		err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
 		if (rdev->pfp_fw->datasize != pfp_req_size) {
@@ -1700,10 +1700,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", new_chip_name);
-	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev->bsddev);
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-		err = request_firmware(&rdev->me_fw, fw_name, rdev->dev->bsddev);
+		err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
 		if (rdev->me_fw->datasize != me_req_size) {
@@ -1725,10 +1725,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_ce", new_chip_name);
-	err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev->bsddev);
+	err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_ce", chip_name);
-		err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev->bsddev);
+		err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
 		if (rdev->ce_fw->datasize != ce_req_size) {
@@ -1750,10 +1750,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc", new_chip_name);
-	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev->bsddev);
+	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc", chip_name);
-		err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev->bsddev);
+		err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
 		if (err)
 			goto out;
 		if (rdev->rlc_fw->datasize != rlc_req_size) {
@@ -1775,13 +1775,13 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", new_chip_name);
-	err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev->bsddev);
+	err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc2", chip_name);
-		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev->bsddev);
+		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
 		if (err) {
 			ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", chip_name);
-			err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev->bsddev);
+			err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
 			if (err)
 				goto out;
 		}
@@ -1806,10 +1806,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", new_chip_name);
-	err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev->bsddev);
+	err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
 	if (err) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", chip_name);
-		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev->bsddev);
+		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
 		if (err) {
 			printk(KERN_ERR
 			       "smc: error loading firmware \"%s\"\n",
