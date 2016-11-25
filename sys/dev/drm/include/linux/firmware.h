@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015 Michael Neumann
+ * Copyright (c) 2016 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,6 +42,23 @@ request_firmware(const struct firmware **fw, const char *name, __unused struct d
 		return 0;
 	}
 	return -ENOENT;
+}
+
+static inline int
+request_firmware_nowait(struct module *module, bool uevent,
+    const char *name, struct device *device, gfp_t gfp, void *context,
+    void (*cont)(const struct firmware *fw, void *context))
+{
+	const struct firmware *fw;
+
+	fw = firmware_get(name);
+	if (fw == NULL) {
+		return -ENOENT;
+	}
+
+	cont(fw, context);
+
+	return 0;
 }
 
 static inline void
