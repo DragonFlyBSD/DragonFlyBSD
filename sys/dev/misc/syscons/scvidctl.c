@@ -839,6 +839,9 @@ sc_update_render(scr_stat *scp)
 
 	crit_enter();
 	scp->fbi = scp->sc->fbi;
+	/* Needed in case we are implicitly leaving PIXEL_MODE here */
+	if (scp->model != V_INFO_MM_OTHER)
+		scp->model = V_INFO_MM_TEXT;
 	rndr = NULL;
 	if (strcmp(sw->te_renderer, "*") != 0) {
 		rndr = sc_render_match(scp, sw->te_renderer, scp->model);
@@ -873,9 +876,17 @@ sc_update_render(scr_stat *scp)
 	}
 #endif
 	prev_ysize = scp->ysize;
-	scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
-	scp->status &= ~(GRAPHICS_MODE | PIXEL_MODE | MOUSE_VISIBLE);
-	scp->model = V_INFO_MM_TEXT;
+	scp->status |= MOUSE_HIDDEN;
+	if (scp->status & GRAPHICS_MODE) {
+		/*
+		 * We don't handle GRAPHICS_MODE at all when using a KMS
+		 * framebuffer, so silently switch to UNKNOWN_MODE then.
+		 */
+		scp->status |= UNKNOWN_MODE;
+		scp->status &= ~GRAPHICS_MODE;
+	}
+	/* Implicitly leave PIXEL_MODE, but stay in UNKNOWN mode */
+	scp->status &= ~(PIXEL_MODE | MOUSE_VISIBLE);
 	scp->xpixel = scp->fbi->width;
 	scp->ypixel = scp->fbi->height;
 
@@ -904,7 +915,6 @@ sc_update_render(scr_stat *scp)
 	}
 #endif
 	crit_exit();
-	scp->status &= ~UNKNOWN_MODE;
 	tp = VIRTUAL_TTY(scp->sc, scp->index);
 	if (tp == NULL)
 		return;
