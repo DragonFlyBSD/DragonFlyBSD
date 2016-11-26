@@ -322,7 +322,7 @@ register_framebuffer(struct fb_info *info)
 	}
 
 	/* Ignore this framebuffer if we already switched to KMS framebuffer */
-	if (sc->fbi != NULL && !(sc->config & SC_EFI_FB)) {
+	if (sc->fbi != NULL && sc->fbi != &efi_fb_info) {
 		lwkt_reltoken(&tty_token);
 		return 0;
 	}
@@ -2987,7 +2987,10 @@ scinit(int unit, int flags)
     sc = sc_get_softc(unit, flags & SC_KERNEL_CONSOLE);
     adp = NULL;
     if (flags & SC_EFI_FB) {
-	sc->fbi = &efi_fb_info;
+	/* Don't replace already registered drm framebuffer here */
+	if (sc->fbi == NULL) {
+	    sc->fbi = &efi_fb_info;
+	}
     } else if (sc->adapter >= 0) {
 	vid_release(sc->adp, (void *)&sc->adapter);
 	adp = sc->adp;
@@ -3018,7 +3021,7 @@ scinit(int unit, int flags)
 
     if (!(sc->flags & SC_INIT_DONE) || (adp != sc->adp)) {
 
-	if (flags & SC_EFI_FB)
+	if (sc->fbi != NULL)
 		sc->initial_mode = 0;
 	else
 		sc->initial_mode = sc->adp->va_initial_mode;
@@ -3036,7 +3039,7 @@ scinit(int unit, int flags)
 	}
 #endif
 
-	if (flags & SC_EFI_FB) {
+	if (sc->fbi != NULL) {
 	    col = 0;
 	    row = 0;
 	} else {
@@ -3089,7 +3092,7 @@ scinit(int unit, int flags)
 	    row = scp->ysize - 1;
 	scp->xpos = col;
 	scp->ypos = row;
-	if (flags & SC_EFI_FB) {
+	if (sc->fbi != NULL) {
 	    scp->cursor_pos = 0;
 	    sc->cursor_base = 0;
 	    sc->cursor_height = scp->font_height;
