@@ -306,37 +306,35 @@ sc_probe_unit(int unit, int flags)
 int
 register_framebuffer(struct fb_info *info)
 {
-    sc_softc_t *sc;
+	sc_softc_t *sc;
 
-    /* For now ignore framebuffers, which don't replace the vga display */
-    if (!info->is_vga_boot_display)
-	return 0;
+	/* For now ignore framebuffers, which don't replace the vga display */
+	if (!info->is_vga_boot_display)
+		return 0;
 
-    lwkt_gettoken(&tty_token);
-    sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
-    if (sc == NULL) {
-	lwkt_reltoken(&tty_token);
-        kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
-	    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
-	return 0;
-    }
+	lwkt_gettoken(&tty_token);
+	sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+	if (sc == NULL) {
+		lwkt_reltoken(&tty_token);
+		kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
+		    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+		return 0;
+	}
 
-    /* Ignore this framebuffer if we already switched to a KMS framebuffer */
-    if (sc->fbi != NULL && !(sc->config & SC_EFI_FB)) {
-	lwkt_reltoken(&tty_token);
-	return 0;
-    }
+	/* Ignore this framebuffer if we already switched to KMS framebuffer */
+	if (sc->fbi != NULL && !(sc->config & SC_EFI_FB)) {
+		lwkt_reltoken(&tty_token);
+		return 0;
+	}
 
-    sc->fbi = info;
+	sc->fbi = info;
 
-    if (sc->fbi != NULL) {
 	sc_update_render(sc->cur_scp);
 	if (sc->fbi->restore != NULL)
 	    sc->fbi->restore(sc->fbi);
-    }
 
-    lwkt_reltoken(&tty_token);
-    return 0;
+	lwkt_reltoken(&tty_token);
+	return 0;
 }
 
 void
