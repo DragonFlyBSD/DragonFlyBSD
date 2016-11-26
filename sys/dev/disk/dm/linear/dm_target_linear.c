@@ -63,9 +63,6 @@ dm_target_linear_init(dm_table_entry_t *table_en, int argc, char **argv)
 		return EINVAL;
 	}
 
-	dmdebug("Linear target init function called %s--%s!!\n",
-	    argv[0], argv[1]);
-
 	/* Insert dmp to global pdev list */
 	if ((dmp = dm_pdev_insert(argv[0])) == NULL)
 		return ENOENT;
@@ -96,8 +93,6 @@ dm_target_linear_table(void *target_config)
 	char *params;
 	tlc = target_config;
 
-	dmdebug("Linear target table function called\n");
-
 	params = dm_alloc_string(DM_MAX_PARAMS_SIZE);
 
 	ksnprintf(params, DM_MAX_PARAMS_SIZE, "%s %" PRIu64,
@@ -115,9 +110,6 @@ dm_target_linear_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	dm_target_linear_config_t *tlc;
 
 	tlc = table_en->target_config;
-
-/*	kprintf("Linear target read function called %" PRIu64 "!!\n",
-	tlc->offset);*/
 
 	bp->b_bio1.bio_offset += tlc->offset * DEV_BSIZE;
 

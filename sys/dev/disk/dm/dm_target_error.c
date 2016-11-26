@@ -38,9 +38,6 @@
 static int
 dm_target_error_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
-
-	kprintf("Error target init function called!!\n");
-
 	dm_table_init_target(table_en, NULL);
 
 	return 0;
@@ -50,9 +47,6 @@ dm_target_error_init(dm_table_entry_t *table_en, int argc, char **argv)
 static int
 dm_target_error_strategy(dm_table_entry_t *table_en, struct buf *bp)
 {
-
-	/* kprintf("Error target read function called!!\n"); */
-
 	bp->b_error = EIO;
 	bp->b_resid = 0;
 
