@@ -85,11 +85,11 @@ dev/disk/dm/dm_table.c			optional dm
 dev/disk/dm/dm_target.c			optional dm
 dev/disk/dm/dm_target_error.c		optional dm
 dev/disk/dm/dm_target_zero.c		optional dm
-dev/disk/dm/targets/crypt/dm_target_crypt.c	optional dm_target_crypt
-dev/disk/dm/targets/linear/dm_target_linear.c	optional dm_target_linear
-dev/disk/dm/targets/striped/dm_target_striped.c	optional dm_target_striped
-dev/disk/dm/targets/delay/dm_target_delay.c	optional dm_target_delay
-dev/disk/dm/targets/flakey/dm_target_flakey.c	optional dm_target_flakey
+dev/disk/dm/crypt/dm_target_crypt.c	optional dm_target_crypt
+dev/disk/dm/linear/dm_target_linear.c	optional dm_target_linear
+dev/disk/dm/striped/dm_target_striped.c	optional dm_target_striped
+dev/disk/dm/delay/dm_target_delay.c	optional dm_target_delay
+dev/disk/dm/flakey/dm_target_flakey.c	optional dm_target_flakey
 
 dev/disk/iscsi/initiator/isc_cam.c	optional iscsi_initiator scbus
 dev/disk/iscsi/initiator/isc_sm.c	optional iscsi_initiator scbus
