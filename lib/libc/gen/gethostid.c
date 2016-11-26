@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * @(#)gethostid.c	8.1 (Berkeley) 6/2/93
- * $DragonFly: src/lib/libc/compat-43/gethostid.c,v 1.3 2005/04/26 10:26:41 joerg Exp $
  */
 
 #include <sys/types.h>

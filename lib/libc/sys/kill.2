@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)kill.2	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/sys/kill.2,v 1.10.2.7 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/kill.2,v 1.4 2007/12/08 23:20:29 swildner Exp $
 .\"
-.Dd April 19, 1994
+.Dd November 26, 2016
 .Dt KILL 2
 .Os
 .Sh NAME
@@ -80,7 +79,7 @@ is sent to all processes whose group ID is equal
 to the process group ID of the sender, and for which the
 process has permission;
 this is a variant of
-.Xr killpg 2 .
+.Xr killpg 3 .
 .It \&If Fa pid No \&is -1 :
 If the user has super-user privileges,
 the signal is sent to all processes excluding
@@ -102,7 +101,7 @@ if the process number is negative but not -1,
 the signal is sent to all processes whose process group ID
 is equal to the absolute value of the process number.
 This is a variant of
-.Xr killpg 2 .
+.Xr killpg 3 .
 .Sh RETURN VALUES
 .Rv -std kill
 .Sh ERRORS
@@ -127,9 +126,9 @@ of the group could not be signaled.
 .Sh SEE ALSO
 .Xr getpgrp 2 ,
 .Xr getpid 2 ,
-.Xr killpg 2 ,
 .Xr lwp_kill 2 ,
 .Xr sigaction 2 ,
+.Xr killpg 3 ,
 .Xr raise 3 ,
 .Xr init 8
 .Sh STANDARDS

@@ -25,60 +25,55 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     @(#)sigblock.2	8.1 (Berkeley) 6/2/93
-.\" $FreeBSD: src/lib/libc/compat-43/sigblock.2,v 1.5.2.2 2001/12/21 10:07:08 ru Exp $
-.\" $DragonFly: src/lib/libc/compat-43/sigblock.2,v 1.2 2003/06/17 04:26:41 dillon Exp $
+.\"     @(#)sigpause.2	8.1 (Berkeley) 6/2/93
+.\" $FreeBSD: src/lib/libc/compat-43/sigpause.2,v 1.5.2.6 2003/03/15 15:11:05 trhodes Exp $
 .\"
-.Dd June 2, 1993
-.Dt SIGBLOCK 2
+.Dd November 26, 2016
+.Dt SIGPAUSE 3
 .Os
 .Sh NAME
-.Nm sigblock
-.Nd block signals
+.Nm sigpause
+.Nd atomically release blocked signals and wait for interrupt
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In signal.h
 .Ft int
-.Fn sigblock "int mask"
-.Ft int
-.Fn sigmask signum
+.Fn sigpause "int sigmask"
 .Sh DESCRIPTION
-.Bf -symbolic
-This interface is made obsolete by
-.Xr sigprocmask 2 .
-.Ef
+.Sy This interface is made obsolete by
+.Xr sigsuspend 2 .
 .Pp
-.Fn Sigblock
-adds the signals specified in
-.Fa mask
-to the set of signals currently
-being blocked from delivery.
-Signals are blocked if the
-corresponding bit in
-.Fa mask
-is a 1; the macro
-.Fn sigmask
-is provided to construct the mask for a given
-.Fa signum .
-.Pp
-It is not possible to block
-.Dv SIGKILL
-or
-.Dv SIGSTOP ;
-this restriction is silently
-imposed by the system.
-.Sh RETURN VALUES
-The previous set of masked signals is returned.
+The
+.Fn sigpause
+function
+assigns
+.Fa sigmask
+to the set of masked signals
+and then waits for a signal to arrive;
+on return the set of masked signals is restored.
+The
+.Fa sigmask
+argument
+is usually 0 to indicate that no
+signals are to be blocked.
+The
+.Fn sigpause
+function
+always terminates by being interrupted, returning -1 with
+.Va errno
+set to
+.Er EINTR
 .Sh SEE ALSO
 .Xr kill 2 ,
 .Xr sigaction 2 ,
 .Xr sigprocmask 2 ,
-.Xr sigsetmask 2 ,
-.Xr sigsetops 3
+.Xr sigsuspend 2 ,
+.Xr sigblock 3
+.Xr sigvec 3
 .Sh HISTORY
 The
-.Fn sigblock
-function call appeared in
+.Fn sigpause
+function appeared in
 .Bx 4.2
 and has been deprecated.

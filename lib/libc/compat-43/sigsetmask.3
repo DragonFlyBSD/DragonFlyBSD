@@ -27,10 +27,9 @@
 .\"
 .\"     @(#)sigsetmask.2	8.1 (Berkeley) 6/2/93
 .\" $FreeBSD: src/lib/libc/compat-43/sigsetmask.2,v 1.7.2.4 2001/12/14 18:33:49 ru Exp $
-.\" $DragonFly: src/lib/libc/compat-43/sigsetmask.2,v 1.2 2003/06/17 04:26:41 dillon Exp $
 .\"
-.Dd June 2, 1993
-.Dt SIGSETMASK 2
+.Dd November 26, 2016
+.Dt SIGSETMASK 3
 .Os
 .Sh NAME
 .Nm sigsetmask
@@ -69,11 +68,11 @@ The previous set of masked signals is returned.
 .Sh SEE ALSO
 .Xr kill 2 ,
 .Xr sigaction 2 ,
-.Xr sigblock 2 ,
 .Xr sigprocmask 2 ,
 .Xr sigsuspend 2 ,
-.Xr sigvec 2 ,
-.Xr sigsetops 3
+.Xr sigblock 3 ,
+.Xr sigsetops 3 ,
+.Xr sigvec 3
 .Sh HISTORY
 The
 .Fn sigsetmask

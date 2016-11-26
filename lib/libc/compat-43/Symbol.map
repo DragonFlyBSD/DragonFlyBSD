@@ -1,8 +1,4 @@
 DF404.0 {
-    creat;
-    gethostid;
-    getwd;
-    killpg;
     sethostid;
     setpgrp;
     setrgid;
@@ -11,9 +7,4 @@ DF404.0 {
     sigpause;
     sigsetmask;
     sigvec;
-};
-
-DFprivate_1.0 {
-    __creat;
-    _creat;
 };

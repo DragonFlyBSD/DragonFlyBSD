@@ -27,13 +27,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcwd.c,v 1.18 1999/09/28 13:24:13 marcel Exp $
- * $DragonFly: src/lib/libc/gen/getcwd.c,v 1.6 2005/04/26 06:04:56 joerg Exp $
  *
  * @(#)getcwd.c	8.5 (Berkeley) 2/7/95
  */
 
 #include <sys/param.h>
+#include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 int	__getcwd(char *pt, size_t size);
@@ -58,4 +59,15 @@ getcwd(char *pt, size_t size)
 	if (allocated)
 		free(pt);
 	return (NULL);
+}
+
+char *
+getwd(char *buf)
+{
+	char *p;
+
+	if ((p = getcwd(buf, MAXPATHLEN)) != 0)
+		return(p);
+	strcpy(buf, strerror(errno));
+	return(NULL);
 }

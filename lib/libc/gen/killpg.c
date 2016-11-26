@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * @(#)killpg.c	8.1 (Berkeley) 6/2/93
- * $DragonFly: src/lib/libc/compat-43/killpg.c,v 1.3 2005/11/12 22:35:01 swildner Exp $
  */
 
 #include <sys/types.h>

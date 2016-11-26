@@ -27,10 +27,9 @@
 .\"
 .\"     @(#)sigvec.2	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/compat-43/sigvec.2,v 1.9.2.8 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/compat-43/sigvec.2,v 1.4 2006/05/26 19:39:36 swildner Exp $
 .\"
-.Dd April 19, 1994
-.Dt SIGVEC 2
+.Dd November 26, 2016
+.Dt SIGVEC 3
 .Os
 .Sh NAME
 .Nm sigvec
@@ -82,9 +81,9 @@ defines the set of signals currently blocked from delivery
 to a process.  The signal mask for a process is initialized
 from that of its parent (normally 0).  It
 may be changed with a
-.Xr sigblock 2
+.Xr sigblock 3
 or
-.Xr sigsetmask 2
+.Xr sigsetmask 3
 call, or when a signal is delivered to the process.
 .Pp
 When a signal
@@ -104,9 +103,9 @@ must arrange to restore the previous context itself.
 When a signal is delivered to a process a new signal mask is
 installed for the duration of the process' signal handler
 (or until a
-.Xr sigblock 2
+.Xr sigblock 3
 or
-.Xr sigsetmask 2
+.Xr sigsetmask 3
 call is made).
 This mask is formed by taking the current signal mask,
 adding the signal to be delivered, and
@@ -321,14 +320,14 @@ or
 .Xr ptrace 2 ,
 .Xr sigaction 2 ,
 .Xr sigaltstack 2 ,
-.Xr sigblock 2 ,
-.Xr sigpause 2 ,
 .Xr sigprocmask 2 ,
-.Xr sigsetmask 2 ,
 .Xr sigsuspend 2 ,
 .Xr setjmp 3 ,
+.Xr sigblock 3 ,
 .Xr siginterrupt 3 ,
 .Xr signal 3 ,
+.Xr sigpause 3 ,
+.Xr sigsetmask 3 ,
 .Xr sigsetops 3 ,
 .Xr tty 4
 .Sh BUGS

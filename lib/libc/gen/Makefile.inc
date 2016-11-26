@@ -10,19 +10,19 @@ CMAPS+=	${.CURDIR}/gen/Symbol.map
 
 SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
 	_thread_init.c alarm.c arc4random.c assert.c basename.c \
-	clock.c closedir.c confstr.c \
+	clock.c closedir.c confstr.c creat.c \
 	ctermid.c daemon.c devname.c dirfd.c dirname.c disklabel.c disktab.c \
 	dlfcn.c drand48.c elf_utils.c erand48.c err.c errlst.c exec.c \
 	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassify.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdevpath.c getdomainname.c \
-	getgrent.c getgrouplist.c \
-	gethostname.c getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
+	getgrent.c getgrouplist.c gethostid.c gethostname.c \
+	getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
 	getpeereid.c getprogname.c getpwent.c getttyent.c \
 	getusershell.c getvfsbyname.c getvfsent.c glob.c \
 	initgroups.c isatty.c isinf.c isfinite.c isnan.c isnormal.c \
-	jrand48.c lcong48.c ldexp.c libc_dlopen.c \
+	jrand48.c killpg.c lcong48.c ldexp.c libc_dlopen.c \
 	lockf.c lrand48.c modf.c mrand48.c sysvipc_msgctl.c \
 	sysvipc_msgget.c sysvipc_msgrcv.c sysvipc_msgsnd.c nftw.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
@@ -53,21 +53,20 @@ SRCS+=	tls.c
 .if ${LIB} == "c"
 MAN+=	alarm.3 arc4random.3 clock.3 \
 	basename.3 \
-	confstr.3 ctermid.3 daemon.3 \
+	confstr.3 creat.3 ctermid.3 daemon.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
 	dlclose.3 dlerror.3 dlfcn.3 dlsym.3 dlvsym.3 dl_iterate_phdr.3 \
 	endutxent.3 err.3 exec.3 \
 	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
-	getdevpath.3 \
-	getdiskbyname.3 getdisktabbyname.3 getdomainname.3 getfsent.3 \
-	getgrent.3 getgrouplist.3 gethostname.3 getlastlogx.3 getloadavg.3 \
+	getdevpath.3 getdiskbyname.3 getdisktabbyname.3 getdomainname.3 \
+	getfsent.3 getgrent.3 getgrouplist.3 \
+	gethostid.3 gethostname.3 getlastlogx.3 getloadavg.3 \
 	getmntinfo.3 getnetgrent.3 getobjformat.3 getosreldate.3 \
 	getpagesize.3 getpass.3 getpeereid.3 getprogname.3 getpwent.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
-	glob.3 initgroups.3 \
-	isgreater.3 \
+	glob.3 initgroups.3 isgreater.3 killpg.3 \
 	ldexp.3 lockf.3 makecontext.3 makecontext_quick.3 modf.3 \
 	nice.3 nlist.3 pause.3 popen.3 posix_spawn.3 \
 	posix_spawn_file_actions_addopen.3 posix_spawn_file_actions_init.3 \
@@ -124,6 +123,7 @@ MLINKS+=getfsent.3 endfsent.3 getfsent.3 getfsfile.3 getfsent.3 getfsspec.3 \
 MLINKS+=getgrent.3 endgrent.3 getgrent.3 getgrent_r.3 getgrent.3 getgrgid.3 \
 	getgrent.3 getgrgid_r.3 getgrent.3 getgrnam.3 getgrent.3 getgrnam_r.3 \
 	getgrent.3 setgrent.3 getgrent.3 setgroupent.3
+MLINKS+=gethostid.3 sethostid.3
 MLINKS+=gethostname.3 sethostname.3
 MLINKS+=getlastlogx.3 updlastlogx.3 getlastlogx.3 getutmp.3 \
 	getlastlogx.3 getutmpx.3 getlastlogx.3 updwtmpx.3 \

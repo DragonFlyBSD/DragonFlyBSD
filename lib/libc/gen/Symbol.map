@@ -213,6 +213,7 @@ DF404.0 {
     closedir;
     closelog;
     confstr;
+    creat;
     ctermid;
     ctermid_r;
     daemon;
@@ -279,6 +280,7 @@ DF404.0 {
     getgrnam;
     getgrnam_r;
     getgrouplist;
+    gethostid;
     gethostname;
     getloadavg;
     getlogin_r;
@@ -304,6 +306,7 @@ DF404.0 {
     getvfsbyname;
     getvfsbytype;
     getvfsent;
+    getwd;
     glob;
     globfree;
     group_from_gid;
@@ -316,6 +319,7 @@ DF404.0 {
     isnanf;
     isnettty;
     jrand48;
+    killpg;
     lcong48;
     ldexp;
     lockf;
@@ -617,6 +621,7 @@ DFprivate_1.0 {
     _rtld_free_tls;
 
 	/* remaining private functions */
+    __creat;
     __elf_phdr_match_addr;
     __fdnlist;
     __fdopendir2;
@@ -629,6 +634,7 @@ DFprivate_1.0 {
     __usleep;
     __wait;
     __waitpid;
+    _creat;
     _err;
     _readdir_unlocked;
     _reclaim_telldir;

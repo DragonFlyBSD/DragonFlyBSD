@@ -3168,6 +3168,13 @@ TO_REMOVE+=/usr/share/man/man1/readelf224.1.gz
 TO_REMOVE+=/usr/share/man/man1/size224.1.gz
 TO_REMOVE+=/usr/share/man/man1/strings224.1.gz
 TO_REMOVE+=/usr/share/man/man1/strip224.1.gz
+TO_REMOVE+=/usr/share/man/man2/creat.2.gz
+TO_REMOVE+=/usr/share/man/man2/killpg.2.gz
+TO_REMOVE+=/usr/share/man/man2/setpgrp.2.gz
+TO_REMOVE+=/usr/share/man/man2/sigblock.2.gz
+TO_REMOVE+=/usr/share/man/man2/sigpause.2.gz
+TO_REMOVE+=/usr/share/man/man2/sigsetmask.2.gz
+TO_REMOVE+=/usr/share/man/man2/sigvec.2.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
