@@ -67,7 +67,7 @@ parse_tcpflag(ipfw_insn **cmd, int *ac, char **av[])
 {
 	(*cmd)->opcode = O_LAYER4_TCPFLAG;
 	(*cmd)->module = MODULE_LAYER4_ID;
-	(*cmd)->len =  ((*cmd)->len&(F_NOT|F_OR))|LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	/* XXX TODO parse the tcpflag value and store in arg1 or arg3 */
 	NEXT_ARG1;
 }
@@ -90,7 +90,7 @@ parse_uid(ipfw_insn **cmd, int *ac, char **av[])
 
 	(*cmd)->opcode = O_LAYER4_UID;
 	(*cmd)->module = MODULE_LAYER4_ID;
-	(*cmd)->len = F_INSN_SIZE(ipfw_insn_u32);
+	(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
 	NEXT_ARG1;
 }
 
@@ -112,7 +112,7 @@ parse_gid(ipfw_insn **cmd, int *ac, char **av[])
 
 	(*cmd)->opcode = O_LAYER4_GID;
 	(*cmd)->module = MODULE_LAYER4_ID;
-	(*cmd)->len = F_INSN_SIZE(ipfw_insn_u32);
+	(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
 	NEXT_ARG1;
 }
 
@@ -159,7 +159,10 @@ parse_bpf(ipfw_insn **cmd, int *ac, char **av[])
 void
 show_tcpflag(ipfw_insn *cmd, int show_or)
 {
-	printf(" tcpflag %d", cmd->arg1);
+	char *word = "tcpflag";
+	if (show_or)
+		word = "or";
+	printf(" %s %d", word, cmd->arg1);
 }
 
 void
@@ -167,10 +170,13 @@ show_uid(ipfw_insn *cmd, int show_or)
 {
 	ipfw_insn_u32 *cmd32 = (ipfw_insn_u32 *)cmd;
 	struct passwd *pwd = getpwuid(cmd32->d[0]);
+	char *word = "uid";
+	if (show_or)
+		word = "or";
 	if (pwd){
-		printf(" uid %s", pwd->pw_name);
+		printf(" %s %s", word, pwd->pw_name);
 	}else{
-		printf(" uid %u", cmd32->d[0]);
+		printf(" %s %u", word, cmd32->d[0]);
 	}
 }
 
@@ -179,10 +185,13 @@ show_gid(ipfw_insn *cmd, int show_or)
 {
 	ipfw_insn_u32 *cmd32 = (ipfw_insn_u32 *)cmd;
 	struct group *grp = getgrgid(cmd32->d[0]);
+	char *word = "gid";
+	if (show_or)
+		word = "or";
 	if (grp){
-		printf(" gid %s", grp->gr_name);
+		printf(" %s %s", word, grp->gr_name);
 	}else{
-		printf(" gid %u", cmd32->d[0]);
+		printf(" %s %u", word, cmd32->d[0]);
 	}
 }
 

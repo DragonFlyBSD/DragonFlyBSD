@@ -221,7 +221,8 @@ contigmask(u_char *p, int len)
 	return i;
 }
 
-static ipfw_insn *add_proto(ipfw_insn *cmd, char *av)
+static ipfw_insn
+*add_proto(ipfw_insn *cmd, char *av)
 {
 	struct protoent *pe;
 	u_char proto = 0;
@@ -237,7 +238,7 @@ static ipfw_insn *add_proto(ipfw_insn *cmd, char *av)
 	if (proto != IPPROTO_IP) {
 		cmd->opcode = O_BASIC_PROTO;
 		cmd->module = MODULE_BASIC_ID;
-		cmd->len = cmd->len|LEN_OF_IPFWINSN;
+		cmd->len |= LEN_OF_IPFWINSN;
 		cmd->arg1 = proto;
 	}
 	return cmd;
@@ -248,7 +249,7 @@ parse_count(ipfw_insn **cmd, int *ac, char **av[])
 {
 	(*cmd)->opcode = O_BASIC_COUNT;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	NEXT_ARG1;
 }
 
@@ -258,7 +259,7 @@ parse_skipto(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_BASIC_SKIPTO;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	NEXT_ARG1;
 }
@@ -328,7 +329,7 @@ parse_in(ipfw_insn **cmd, int *ac, char **av[])
 {
 	(*cmd)->opcode = O_BASIC_IN;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = 0;
 	NEXT_ARG1;
 }
@@ -338,7 +339,7 @@ parse_out(ipfw_insn **cmd, int *ac, char **av[])
 {
 	(*cmd)->opcode = O_BASIC_OUT;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = 0;
 	NEXT_ARG1;
 }
@@ -348,7 +349,7 @@ void
 parse_via(ipfw_insn **cmd, int *ac, char **av[])
 {
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	if (strcmp(*av[0], "via")==0) {
 		(*cmd)->opcode = O_BASIC_VIA;
 	} else if (strcmp(*av[0], "xmit")==0) {
@@ -364,30 +365,29 @@ parse_via(ipfw_insn **cmd, int *ac, char **av[])
 void
 parse_src_port(ipfw_insn **cmd, int *ac, char **av[])
 {
-
-        NEXT_ARG1;
-        (*cmd)->opcode = O_BASIC_IP_SRCPORT;
-        (*cmd)->module = MODULE_BASIC_ID;
-        (*cmd)->len = LEN_OF_IPFWINSN;
-        double v = strtol(**av, NULL, 0);
-        if (v <= 0 || v >= 65535)
-                errx(EX_NOHOST, "port `%s' invalid", **av);
-        (*cmd)->arg1 = v;
-        NEXT_ARG1;
+	NEXT_ARG1;
+	(*cmd)->opcode = O_BASIC_IP_SRCPORT;
+	(*cmd)->module = MODULE_BASIC_ID;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
+	double v = strtol(**av, NULL, 0);
+	if (v <= 0 || v >= 65535)
+		errx(EX_NOHOST, "port `%s' invalid", **av);
+	(*cmd)->arg1 = v;
+	NEXT_ARG1;
 }
 
 void
 parse_dst_port(ipfw_insn **cmd, int *ac, char **av[])
 {
-        NEXT_ARG1;
-        (*cmd)->opcode = O_BASIC_IP_DSTPORT;
-        (*cmd)->module = MODULE_BASIC_ID;
-        (*cmd)->len = LEN_OF_IPFWINSN;
-        double v = strtol(**av, NULL, 0);
-        if (v <= 0 || v >= 65535)
-                errx(EX_NOHOST, "port `%s' invalid", **av);
-        (*cmd)->arg1 = v;
-        NEXT_ARG1;
+	NEXT_ARG1;
+	(*cmd)->opcode = O_BASIC_IP_DSTPORT;
+	(*cmd)->module = MODULE_BASIC_ID;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
+	double v = strtol(**av, NULL, 0);
+	if (v <= 0 || v >= 65535)
+		errx(EX_NOHOST, "port `%s' invalid", **av);
+	(*cmd)->arg1 = v;
+	NEXT_ARG1;
 }
 
 /*
@@ -410,7 +410,7 @@ parse_from(ipfw_insn **cmd, int *ac, char **av[])
 	if (strcmp(**av, "table") == 0) {
 		NEXT_ARG1;
 		NEED(*ac, 1, "table id missing");
-		(*cmd)->len = F_INSN_SIZE(ipfw_insn);
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
 		(*cmd)->opcode = O_BASIC_IP_SRC_LOOKUP;
 		(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	} else if (strcmp(**av, "any") == 0) {
@@ -472,7 +472,7 @@ parse_to(ipfw_insn **cmd, int *ac, char **av[])
 	if (strcmp(**av, "table") == 0) {
 		NEXT_ARG1;
 		NEED(*ac, 1, "table id missing");
-		(*cmd)->len = F_INSN_SIZE(ipfw_insn);
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
 		(*cmd)->opcode = O_BASIC_IP_DST_LOOKUP;
 		(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	} else if (strcmp(**av, "any") == 0) {
@@ -536,7 +536,7 @@ parse_prob(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_BASIC_PROB;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	NEXT_ARG1;
 }
@@ -547,7 +547,7 @@ parse_keep_state(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_BASIC_KEEP_STATE;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	if (strcmp(**av, "limit") == 0) {
 		NEXT_ARG1;
 		(*cmd)->arg3 = match_token(limit_types, **av);
@@ -574,7 +574,7 @@ parse_check_state(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_BASIC_CHECK_STATE;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 }
 
 void
@@ -583,7 +583,7 @@ parse_tagged(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_BASIC_TAGGED;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	NEXT_ARG1;
 }
@@ -609,7 +609,7 @@ parse_comment(ipfw_insn **cmd, int *ac, char **av[])
 		NEXT_ARG1;
 	}
 	l = 1 + (l + 3) / 4;
-	(*cmd)->len = l;
+	(*cmd)->len |= l;
 	*(--p) = '\0';
 }
 
@@ -619,7 +619,7 @@ parse_tag(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_BASIC_TAG;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	NEXT_ARG1;
 }
@@ -630,7 +630,7 @@ parse_untag(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_BASIC_UNTAG;
 	(*cmd)->module = MODULE_BASIC_ID;
-	(*cmd)->len = LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = strtoul(**av, NULL, 10);
 	NEXT_ARG1;
 }
@@ -712,13 +712,19 @@ show_via(ipfw_insn *cmd, int show_or)
 void
 show_src_port(ipfw_insn *cmd, int show_or)
 {
-        printf(" src-port %d", cmd->arg1);
+	char *word = "src-port";
+	if (show_or)
+		word = "or";
+	printf(" %s %d", word, cmd->arg1);
 }
 
 void
 show_dst_port(ipfw_insn *cmd, int show_or)
 {
-        printf(" dst-port %d", cmd->arg1);
+	char *word = "dst-port";
+	if (show_or)
+		word = "or";
+	printf(" %s %d", word, cmd->arg1);
 }
 
 void
@@ -840,7 +846,10 @@ show_proto(ipfw_insn *cmd, int show_or)
 void
 show_prob(ipfw_insn *cmd, int show_or)
 {
-	printf(" prob %d%%", cmd->arg1);
+	char *word = "prob";
+	if (show_or)
+		word = "or";
+	printf(" %s %d%%", word, cmd->arg1);
 }
 
 void

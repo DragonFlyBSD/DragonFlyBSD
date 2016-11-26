@@ -135,7 +135,7 @@ parse_layer2(ipfw_insn **cmd, int *ac, char **av[])
 {
 	(*cmd)->opcode = O_LAYER2_LAYER2;
 	(*cmd)->module = MODULE_LAYER2_ID;
-	(*cmd)->len =  ((*cmd)->len&(F_NOT|F_OR))|LEN_OF_IPFWINSN;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
 	NEXT_ARG1;
 }
 
@@ -144,23 +144,23 @@ parse_mac_from(ipfw_insn **cmd, int *ac, char **av[])
 {
 	NEED(*ac, 2, "mac-from src");
 	NEXT_ARG1;
-        if (strcmp(**av, "table") == 0) {
-                NEED(*ac, 2, "mac-from table N");
-                NEXT_ARG1;
-                (*cmd)->opcode = O_LAYER2_MAC_SRC_LOOKUP;
-                (*cmd)->module = MODULE_LAYER2_ID;
-                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn);
-                (*cmd)->arg1 = strtoul(**av, NULL, 10);
-                NEXT_ARG1;
-        } else {
-                (*cmd)->opcode = O_LAYER2_MAC_SRC;
-                (*cmd)->module = MODULE_LAYER2_ID;
-                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn_mac);
-                ipfw_insn_mac *mac = (ipfw_insn_mac *)(*cmd);
+	if (strcmp(**av, "table") == 0) {
+		NEED(*ac, 2, "mac-from table N");
+		NEXT_ARG1;
+		(*cmd)->opcode = O_LAYER2_MAC_SRC_LOOKUP;
+		(*cmd)->module = MODULE_LAYER2_ID;
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
+		(*cmd)->arg1 = strtoul(**av, NULL, 10);
+		NEXT_ARG1;
+	} else {
+		(*cmd)->opcode = O_LAYER2_MAC_SRC;
+		(*cmd)->module = MODULE_LAYER2_ID;
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn_mac);
+		ipfw_insn_mac *mac = (ipfw_insn_mac *)(*cmd);
 		/* src */
-                get_mac_addr_mask(**av, &(mac->addr[6]), &(mac->mask[6]));
-                NEXT_ARG1;
-        }
+		get_mac_addr_mask(**av, &(mac->addr[6]), &(mac->mask[6]));
+		NEXT_ARG1;
+	}
 }
 
 void
@@ -168,23 +168,23 @@ parse_mac_to(ipfw_insn **cmd, int *ac, char **av[])
 {
 	NEED(*ac, 2, "mac-to dst");
 	NEXT_ARG1;
-        if (strcmp(**av, "table") == 0) {
-                NEED(*ac, 2, "mac-to table N");
-                NEXT_ARG1;
-                (*cmd)->opcode = O_LAYER2_MAC_DST_LOOKUP;
-                (*cmd)->module = MODULE_LAYER2_ID;
-                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn);
-                (*cmd)->arg1 = strtoul(**av, NULL, 10);
-                NEXT_ARG1;
-        } else {
-                (*cmd)->opcode = O_LAYER2_MAC_DST;
-                (*cmd)->module = MODULE_LAYER2_ID;
-                (*cmd)->len =  (*cmd)->len | F_INSN_SIZE(ipfw_insn_mac);
-                ipfw_insn_mac *mac = (ipfw_insn_mac *)(*cmd);
+	if (strcmp(**av, "table") == 0) {
+		NEED(*ac, 2, "mac-to table N");
+		NEXT_ARG1;
+		(*cmd)->opcode = O_LAYER2_MAC_DST_LOOKUP;
+		(*cmd)->module = MODULE_LAYER2_ID;
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
+		(*cmd)->arg1 = strtoul(**av, NULL, 10);
+		NEXT_ARG1;
+	} else {
+		(*cmd)->opcode = O_LAYER2_MAC_DST;
+		(*cmd)->module = MODULE_LAYER2_ID;
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn_mac);
+		ipfw_insn_mac *mac = (ipfw_insn_mac *)(*cmd);
 		/* dst */
-                get_mac_addr_mask(**av, mac->addr, mac->mask);
-                NEXT_ARG1;
-        }
+		get_mac_addr_mask(**av, mac->addr, mac->mask);
+		NEXT_ARG1;
+	}
 }
 
 
@@ -195,7 +195,7 @@ parse_mac(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 	(*cmd)->opcode = O_LAYER2_MAC;
 	(*cmd)->module = MODULE_LAYER2_ID;
-	(*cmd)->len =  ((*cmd)->len&(F_NOT|F_OR))|F_INSN_SIZE(ipfw_insn_mac);
+	(*cmd)->len |= F_INSN_SIZE(ipfw_insn_mac);
 	ipfw_insn_mac *mac = (ipfw_insn_mac *)(*cmd);
 	get_mac_addr_mask(**av, mac->addr, mac->mask);	/* dst */
 	NEXT_ARG1;
@@ -213,7 +213,10 @@ void
 show_mac(ipfw_insn *cmd, int show_or)
 {
 	ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
-	printf(" mac");
+	if (show_or)
+		printf(" or");
+	else
+		printf(" mac");
 	print_mac( m->addr, m->mask);
 	print_mac( m->addr + 6, m->mask + 6);
 }
@@ -221,8 +224,11 @@ show_mac(ipfw_insn *cmd, int show_or)
 void
 show_mac_from(ipfw_insn *cmd, int show_or)
 {
-        ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
-	printf(" mac-from");
+	ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
+	if (show_or)
+		printf(" or");
+	else
+		printf(" mac-from");
 	print_mac( m->addr + 6, m->mask + 6);
 }
 
@@ -235,8 +241,11 @@ show_mac_from_lookup(ipfw_insn *cmd, int show_or)
 void
 show_mac_to(ipfw_insn *cmd, int show_or)
 {
-        ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
-	printf(" mac-to");
+	ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
+	if (show_or)
+		printf(" or");
+	else
+		printf(" mac-to");
 	print_mac( m->addr, m->mask);
 }
 
