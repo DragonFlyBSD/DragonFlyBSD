@@ -377,28 +377,22 @@ static int
 dmstrategy(struct dev_strategy_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct bio *bio = ap->a_bio;
-	struct buf *bp = bio->bio_buf;
-	int bypass;
-
-	dm_dev_t *dmv;
+	dm_dev_t *dmv = dev->si_drv1;
 	dm_table_t *tbl;
 	dm_table_entry_t *table_en;
+
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
 	struct buf *nestbuf;
 
 	uint64_t buf_start, buf_len, issued_len;
 	uint64_t table_start, table_end;
 	uint64_t start, end;
+	int bypass;
 
 	buf_start = bio->bio_offset;
 	buf_len = bp->b_bcount;
-
-	tbl = NULL;
-
-	table_end = 0;
 	issued_len = 0;
-
-	dmv = dev->si_drv1;
 
 	switch(bp->b_cmd) {
 	case BUF_CMD_READ:
@@ -471,11 +465,11 @@ dmstrategy(struct dev_strategy_args *ap)
 			nestbuf->b_flags |= bio->bio_buf->b_flags & B_HASBOGUS;
 
 			nestiobuf_add(bio, nestbuf,
-				      start - buf_start, (end - start),
+				      start - buf_start, end - start,
 				      &dmv->stats);
 			issued_len += end - start;
 
-			nestbuf->b_bio1.bio_offset = (start - table_start);
+			nestbuf->b_bio1.bio_offset = start - table_start;
 			table_en->target->strategy(table_en, nestbuf);
 		}
 	}
@@ -492,25 +486,18 @@ static int
 dmdump(struct dev_dump_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	dm_dev_t *dmv;
-	dm_table_t  *tbl;
+	dm_dev_t *dmv = dev->si_drv1;
+	dm_table_t *tbl;
 	dm_table_entry_t *table_en;
+
 	uint64_t buf_start, buf_len, issued_len;
 	uint64_t table_start, table_end;
-	uint64_t start, end, data_offset;
-	off_t offset;
-	size_t length;
+	uint64_t start, end;
 	int error = 0;
 
 	buf_start = ap->a_offset;
 	buf_len = ap->a_length;
-
-	tbl = NULL;
-
-	table_end = 0;
 	issued_len = 0;
-
-	dmv = dev->si_drv1;
 
 	/* Select active table */
 	tbl = dm_table_get_entry(&dmv->table_head, DM_TABLE_ACTIVE);
@@ -539,18 +526,14 @@ dmdump(struct dev_dump_args *ap)
 
 			table_en->target->dump(table_en, NULL, 0, 0);
 		} else if (start < end) {
-			data_offset = start - buf_start;
-			offset = start - table_start;
-			length = end - start;
-
 			if (table_en->target->dump == NULL) {
 				error = ENXIO;
 				goto out;
 			}
 
 			table_en->target->dump(table_en,
-			    (char *)ap->a_virtual + data_offset,
-			    length, offset);
+			    (char *)ap->a_virtual + start - buf_start,
+			    end - start, start - table_start);
 
 			issued_len += end - start;
 		}
