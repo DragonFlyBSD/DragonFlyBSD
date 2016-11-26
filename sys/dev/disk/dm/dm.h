@@ -140,7 +140,6 @@ typedef struct dm_dev {
 	/* uint32_t event_nr; */
 	uint32_t ref_cnt;
 
-	uint32_t dev_type; /* DM_XXX_DEV, but not used  */
 	uint32_t is_open;
 
 	dm_table_head_t table_head;
@@ -151,20 +150,6 @@ typedef struct dm_dev {
 
 	TAILQ_ENTRY(dm_dev) next_devlist; /* Major device list. */
 } dm_dev_t;
-
-#define DM_ZERO_DEV            (1 << 0)
-#define DM_ERROR_DEV           (1 << 1)
-#define DM_LINEAR_DEV          (1 << 2)
-#define DM_MIRROR_DEV          (1 << 3)
-#define DM_STRIPE_DEV          (1 << 4)
-#define DM_SNAPSHOT_DEV        (1 << 5)
-#define DM_SNAPSHOT_ORIG_DEV   (1 << 6)
-#define DM_RESERVED1_DEV       (1 << 7)
-#define DM_RESERVED2_DEV       (1 << 8)
-#define DM_CRYPTO_DEV          (1 << 9)
-#define DM_RAID1_DEV           (1 << 10)
-#define DM_DELAY_DEV           (1 << 11)
-#define DM_FLAKEY_DEV          (1 << 12)
 
 /*
  * Target config is initiated with dm_target_init function.
@@ -245,7 +230,7 @@ uint64_t dm_inactive_table_size(dm_table_head_t *);
 int dm_table_get_target_count(dm_table_head_t *, uint8_t);
 void dm_table_head_init(dm_table_head_t *);
 void dm_table_head_destroy(dm_table_head_t *);
-void dm_table_init_target(dm_table_entry_t *table_en, uint32_t type, void *cfg);
+void dm_table_init_target(dm_table_entry_t *table_en, void *cfg);
 int dm_table_add_deps(dm_table_entry_t *table_en, dm_pdev_t *pdev);
 void dm_table_free_deps(dm_table_entry_t *table_en);
 

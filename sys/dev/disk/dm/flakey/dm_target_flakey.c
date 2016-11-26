@@ -109,7 +109,7 @@ dm_target_flakey_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	dm_table_add_deps(table_en, dmp);
 
-	dm_table_init_target(table_en, DM_FLAKEY_DEV, tfc);
+	dm_table_init_target(table_en, tfc);
 
 	return 0;
 fail:

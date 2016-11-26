@@ -79,7 +79,7 @@ dm_target_linear_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	dm_table_add_deps(table_en, dmp);
 
-	dm_table_init_target(table_en, DM_LINEAR_DEV, tlc);
+	dm_table_init_target(table_en, tlc);
 
 	return 0;
 }

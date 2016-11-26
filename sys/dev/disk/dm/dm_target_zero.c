@@ -44,7 +44,7 @@ dm_target_zero_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	kprintf("Zero target init function called!!\n");
 
-	dm_table_init_target(table_en, DM_ZERO_DEV, NULL);
+	dm_table_init_target(table_en, NULL);
 
 	return 0;
 }

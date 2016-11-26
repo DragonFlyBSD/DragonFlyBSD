@@ -261,9 +261,8 @@ dm_table_head_destroy(dm_table_head_t *head)
 }
 
 void
-dm_table_init_target(dm_table_entry_t *table_en, uint32_t type, void *cfg)
+dm_table_init_target(dm_table_entry_t *table_en, void *cfg)
 {
-	table_en->dev->dev_type = type;
 	table_en->target_config = cfg;
 }
 

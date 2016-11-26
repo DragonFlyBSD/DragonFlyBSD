@@ -142,7 +142,7 @@ dm_target_stripe_init(dm_table_entry_t *table_en, int argc, char **argv)
 		return (ENOENT);
 	}
 
-	dm_table_init_target(table_en, DM_STRIPE_DEV, tsc);
+	dm_table_init_target(table_en, tsc);
 
 	return 0;
 }

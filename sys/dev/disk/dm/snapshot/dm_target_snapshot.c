@@ -147,7 +147,7 @@ dm_target_snapshot_init(dm_table_entry_t *table_en, int argc, char **argv)
 	dm_table_add_deps(table_en, dmp_snap);
 	dm_table_add_deps(table_en, dmp_cow);
 
-	dm_table_init_target(table_en, DM_SNAPSHOT_DEV, tsc);
+	dm_table_init_target(table_en, tsc);
 
 	return 0;
 }
@@ -279,7 +279,7 @@ dm_target_snapshot_orig_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	dm_table_add_deps(table_en, dmp_real);
 
-	dm_table_init_target(table_en, DM_SNAPSHOT_ORIG_DEV, tsoc);
+	dm_table_init_target(table_en, tsoc);
 
 	return 0;
 }
