@@ -113,6 +113,7 @@ static	void		*kernel_console_ts;
 static  char        	init_done = COLD;
 static  char		shutdown_in_progress = FALSE;
 static	char		sc_malloc = FALSE;
+static	char		sc_filled_border = FALSE; /* filled initial VT border */
 
 static	int		saver_mode = CONS_NO_SAVER; /* LKM/user saver */
 static	int		run_scrn_saver = FALSE;	/* should run the saver? */
@@ -559,6 +560,12 @@ scmeminit(void *arg)
     /* initialize history buffer & pointers */
     sc_alloc_history_buffer(sc_console, 0, 0, TRUE);
 #endif
+
+    /* Fill initial terminal border, efi_fb_info.vaddr should be non-NULL now */
+    if (!sc_filled_border) {
+	sc_filled_border = TRUE;
+	sc_set_border(sc_console, sc_console->border);
+    }
 }
 
 SYSINIT(sc_mem, SI_BOOT1_POST, SI_ORDER_ANY, scmeminit, NULL);
@@ -3111,6 +3118,11 @@ scinit(int unit, int flags)
 	if (!ISGRAPHSC(scp)) {
     	    sc_set_cursor_image(scp);
     	    sc_draw_cursor_image(scp);
+	    /* If framebuffer vaddr is still 0, we can't draw the border yet */
+	    if (scp->sc->fbi != NULL && scp->sc->fbi->vaddr != 0) {
+		sc_filled_border = TRUE;
+		sc_set_border(scp, scp->border);
+	    }
 	}
 
 	/* save font and palette */
