@@ -377,6 +377,7 @@ dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons
 dev/raid/dpt/dpt_scsi.c	optional dpt
 dev/raid/dpt/dpt_pci.c	optional dpt pci
+dev/misc/efirt/efidev.c		optional efirt
 dev/netif/em/if_em.c		optional em
 dev/netif/emx/if_emx.c		optional emx
 dev/netif/igb/if_igb.c		optional igb

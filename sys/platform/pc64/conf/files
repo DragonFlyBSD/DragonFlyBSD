@@ -195,6 +195,7 @@ platform/pc64/acpica/acpi_fadt.c	standard
 platform/pc64/acpica/acpi_madt.c	standard
 dev/misc/atkbd/atkbd_isa.c		optional	atkbd
 dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
+platform/pc64/x86_64/efirt.c		optional	efirt
 dev/misc/ppc/ppc.c			optional	ppc
 dev/misc/psm/psm.c			optional	psm
 dev/serial/sio/sio.c			optional	sio
