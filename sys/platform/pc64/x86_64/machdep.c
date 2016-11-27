@@ -1808,9 +1808,6 @@ efi_fb_init_vaddr(int direct_map)
 		efi_fb_info.vaddr = (vm_offset_t)pmap_mapdev_attr(
 		    efi_fb_info.paddr, sz, PAT_WRITE_COMBINING);
 	}
-
-	if (v == 0 && efi_fb_info.vaddr != 0)
-		memset((void *)efi_fb_info.vaddr, 0x77, sz);
 }
 
 int
