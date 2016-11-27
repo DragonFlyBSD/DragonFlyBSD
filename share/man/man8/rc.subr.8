@@ -523,6 +523,13 @@ to before running
 Only supported after
 .Pa /usr
 is mounted.
+.It Va ${name}_env
+A list of environment variables to run
+.Va command
+with.
+This will be passed as arguments to
+.Xr env 1
+utility.
 .It Sy ${name}_flags
 Arguments to call
 .Sy command
@@ -564,6 +571,13 @@ as.
 Comma separated list of supplementary groups to run the chrooted
 .Sy command
 with.
+.It Va ${name}_prepend
+Commands to be prepended to
+.Va command .
+This is a generic version of
+.Va ${name}_env
+or
+.Va ${name}_nice .
 .It Ar argument Ns Sy _cmd
 Shell commands which override the default method for
 .Ar argument .
