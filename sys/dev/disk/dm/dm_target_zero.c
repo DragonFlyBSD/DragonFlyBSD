@@ -41,8 +41,6 @@
 static int
 dm_target_zero_init(dm_table_entry_t *table_en, int argc, char **argv)
 {
-	dm_table_init_target(table_en, NULL);
-
 	return 0;
 }
 

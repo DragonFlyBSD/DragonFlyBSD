@@ -63,8 +63,6 @@ dm_target_mirror_init(dm_table_entry_t *table_en, int argc, char **argv)
 
 	kprintf("Mirror target init function called!!\n");
 
-	dm_table_init_target(table_en, NULL);
-
 	return ENOSYS;
 }
 
