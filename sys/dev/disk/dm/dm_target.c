@@ -140,14 +140,6 @@ dm_target_insert(dm_target_t *dm_target)
 {
 	dm_target_t *dmt;
 
-	if (dm_target->init == NULL) {
-		kprintf("dm: %s missing init\n", dm_target->name);
-		return EINVAL;
-	}
-	if (dm_target->destroy == NULL) {
-		kprintf("dm: %s missing destroy\n", dm_target->name);
-		return EINVAL;
-	}
 	if (dm_target->strategy == NULL) {
 		kprintf("dm: %s missing strategy\n", dm_target->name);
 		return EINVAL;

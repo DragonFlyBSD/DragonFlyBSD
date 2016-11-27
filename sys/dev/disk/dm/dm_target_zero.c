@@ -35,16 +35,6 @@
 #include <dev/disk/dm/dm.h>
 
 /*
- * Zero target init function. This target doesn't need
- * target specific config area.
- */
-static int
-dm_target_zero_init(dm_table_entry_t *table_en, int argc, char **argv)
-{
-	return 0;
-}
-
-/*
  * This routine does IO operations.
  */
 static int
@@ -54,13 +44,6 @@ dm_target_zero_strategy(dm_table_entry_t *table_en, struct buf *bp)
 	bp->b_resid = 0;
 	biodone(&bp->b_bio1);
 
-	return 0;
-}
-
-/* Doesn't not need to do anything here. */
-static int
-dm_target_zero_destroy(dm_table_entry_t *table_en)
-{
 	return 0;
 }
 
@@ -80,8 +63,6 @@ dmtz_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[0] = 1;
 		dmt->version[1] = 0;
 		dmt->version[2] = 0;
-		dmt->init = &dm_target_zero_init;
-		dmt->destroy = &dm_target_zero_destroy;
 		dmt->strategy = &dm_target_zero_strategy;
 
 		err = dm_target_insert(dmt);

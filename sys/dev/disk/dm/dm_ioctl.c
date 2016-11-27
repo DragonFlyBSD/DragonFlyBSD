@@ -806,7 +806,8 @@ dm_table_load_ioctl(prop_dictionary_t dm_dict)
 static int
 dm_table_init(dm_target_t *target, dm_table_entry_t *table_en, char *params)
 {
-	int i, n, ret, argc;
+	int i, n, argc;
+	int ret = 0;
 	char **ap, **argv;
 
 	if (params == NULL)
@@ -833,8 +834,8 @@ dm_table_init(dm_target_t *target, dm_table_entry_t *table_en, char *params)
 			kprintf("DM: argv[%d] = \"%s\"\n", i, argv[i]);
 	}
 
-	KKASSERT(target->init);
-	ret = target->init(table_en, argc, argv);
+	if (target->init)
+		ret = target->init(table_en, argc, argv);
 
 	kfree(argv, M_DM);
 

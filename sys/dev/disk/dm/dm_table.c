@@ -146,8 +146,9 @@ dm_table_destroy(dm_table_head_t *head, uint8_t table_id)
 	while ((table_en = TAILQ_FIRST(tbl)) != NULL) {
 		TAILQ_REMOVE(tbl, table_en, next);
 
-		if (table_en->target->destroy(table_en) == 0)
-			table_en->target_config = NULL;
+		if (table_en->target->destroy)
+			table_en->target->destroy(table_en);
+		table_en->target_config = NULL;
 
 		dm_table_free_deps(table_en);
 

@@ -159,16 +159,9 @@ typedef struct dm_dev {
 typedef struct dm_target {
 	char name[DM_MAX_TYPE_NAME];
 
-	/*
-	 * Mandatory handlers
-	 */
 	int (*init)(dm_table_entry_t *, int, char **);
 	int (*destroy)(dm_table_entry_t *);
-	int (*strategy)(dm_table_entry_t *, struct buf *);
-
-	/*
-	 * Optional handlers
-	 */
+	int (*strategy)(dm_table_entry_t *, struct buf *); /* Mandatory */
 	char *(*table)(void *);	/* DM_STATUS_TABLE_FLAG */
 	char *(*info)(void *);	/* !DM_STATUS_TABLE_FLAG */
 	int (*dump)(dm_table_entry_t *, void *data, size_t length, off_t offset);

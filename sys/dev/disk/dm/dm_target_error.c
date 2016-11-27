@@ -34,13 +34,6 @@
  */
 #include <dev/disk/dm/dm.h>
 
-/* Init function called from dm_table_load_ioctl. */
-static int
-dm_target_error_init(dm_table_entry_t *table_en, int argc, char **argv)
-{
-	return 0;
-}
-
 /* Strategy routine called from dm_strategy. */
 static int
 dm_target_error_strategy(dm_table_entry_t *table_en, struct buf *bp)
@@ -50,13 +43,6 @@ dm_target_error_strategy(dm_table_entry_t *table_en, struct buf *bp)
 
 	biodone(&bp->b_bio1);
 
-	return 0;
-}
-
-/* Doesn't do anything here. */
-static int
-dm_target_error_destroy(dm_table_entry_t *table_en)
-{
 	return 0;
 }
 
@@ -76,8 +62,6 @@ dmte_mod_handler(module_t mod, int type, void *unused)
 		dmt->version[0] = 1;
 		dmt->version[1] = 0;
 		dmt->version[2] = 0;
-		dmt->init = &dm_target_error_init;
-		dmt->destroy = &dm_target_error_destroy;
 		dmt->strategy = &dm_target_error_strategy;
 
 		err = dm_target_insert(dmt);
