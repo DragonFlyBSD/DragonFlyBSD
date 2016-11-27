@@ -46,6 +46,4 @@ MLINKS+=efivar.3 efi_set_variables_supported.3 \
 	efivar.3 efi_guid_to_symbol.3 \
 	efivar.3 libefivar.3
 
-WARNS?=		6
-
 .include <bsd.lib.mk>
