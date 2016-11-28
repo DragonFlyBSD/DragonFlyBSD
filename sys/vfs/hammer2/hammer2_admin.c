@@ -145,12 +145,11 @@ hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 	thr->pmp = pmp;
 	thr->clindex = clindex;
 	thr->repidx = repidx;
+	TAILQ_INIT(&thr->xopq);
 	if (repidx >= 0) {
-		thr->xopq = &pmp->xopq[clindex][repidx];
 		lwkt_create(func, thr, &thr->td, NULL, 0, repidx % ncpus,
 			    "%s-%s.%02d", id, pmp->pfs_names[clindex], repidx);
 	} else {
-		thr->xopq = &pmp->xopq[clindex][HAMMER2_XOPGROUPS-repidx];
 		lwkt_create(func, thr, &thr->td, NULL, 0, -1,
 			    "%s-%s", id, pmp->pfs_names[clindex]);
 	}
@@ -171,7 +170,7 @@ hammer2_thr_delete(hammer2_thread_t *thr)
 	hammer2_thr_signal(thr, HAMMER2_THREAD_STOP);
 	hammer2_thr_wait(thr, HAMMER2_THREAD_STOPPED);
 	thr->pmp = NULL;
-	thr->xopq = NULL;
+	KKASSERT(TAILQ_EMPTY(&thr->xopq));
 }
 
 /*
@@ -254,6 +253,7 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 	xop->head.state = 0;
 	xop->head.error = 0;
 	xop->head.collect_key = 0;
+	xop->head.check_counter = 0;
 	if (flags & HAMMER2_XOP_MODIFYING)
 		xop->head.mtid = hammer2_trans_sub(ip->pmp);
 	else
@@ -374,11 +374,8 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 			 int notidx)
 {
 	hammer2_inode_t *ip1;
-#if 0
-	hammer2_xop_group_t *xgrp;
-	hammer2_thread_t *thr;
-#endif
 	hammer2_pfs_t *pmp;
+	hammer2_thread_t *thr;
 	int i;
 	int ng;
 	int nchains;
@@ -388,28 +385,35 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	if (pmp->has_xop_threads == 0)
 		hammer2_xop_helper_create(pmp);
 
-	if (xop->flags & HAMMER2_XOP_ITERATOR) {
+	/*
+	 * The intent of the XOP sequencer is to ensure that ops on the same inode
+	 * execute in the same order.  This is necessary when issuing modifying operations
+	 * to multiple targets because some targets might get behind and the frontend is
+	 * allowed to complete the moment a quorum of targets succeed.
+	 *
+	 * Strategy operations must be segregated from non-strategy operations to avoid
+	 * a deadlock.  For example, if a vfsync and a bread/bwrite were queued to
+	 * the same worker thread, the locked buffer in the strategy operation can deadlock
+	 * the vfsync's buffer list scan.
+	 *
+	 * TODO - RENAME fails here because it is potentially modifying three different
+	 *	  inodes.
+	 */
+	if (xop->flags & HAMMER2_XOP_STRATEGY) {
+		hammer2_xop_strategy_t *xopst;
+
+		xopst = &((hammer2_xop_t *)xop)->xop_strategy;
 		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)) ^
-			   pmp->xop_iterator++);
+			   hammer2_icrc32(&xopst->lbase, sizeof(xopst->lbase)));
+		ng = ng & (HAMMER2_XOPGROUPS_MASK >> 1);
+		ng += HAMMER2_XOPGROUPS / 2;
 	} else {
-		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)) ^
-			   hammer2_icrc32(&func, sizeof(func)));
+		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)));
+		ng = ng & (HAMMER2_XOPGROUPS_MASK >> 1);
 	}
-	ng = ng & HAMMER2_XOPGROUPS_MASK;
-#if 0
-	g = pmp->xop_iterator++;
-	g = g & HAMMER2_XOPGROUPS_MASK;
-	xgrp = &pmp->xop_groups[g];
-	xop->xgrp = xgrp;
-#endif
 	xop->func = func;
 
 	/*
-	 * The XOP sequencer is based on ip1, ip2, and ip3.  Because ops can
-	 * finish early and unlock the related inodes, some targets may get
-	 * behind.  The sequencer ensures that ops on the same inode execute
-	 * in the same order.
-	 *
 	 * The instant xop is queued another thread can pick it off.  In the
 	 * case of asynchronous ops, another thread might even finish and
 	 * deallocate it.
@@ -425,21 +429,22 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 		 *     might NULL-out a chain.
 		 */
 		if (i != notidx && ip1->cluster.array[i].chain) {
+			thr = &pmp->xop_groups[ng].thrs[i];
 			atomic_set_int(&xop->run_mask, 1U << i);
 			atomic_set_int(&xop->chk_mask, 1U << i);
-			TAILQ_INSERT_TAIL(&pmp->xopq[i][ng], xop, collect[i].entry);
+			TAILQ_INSERT_TAIL(&thr->xopq, xop, collect[i].entry);
 		}
 	}
 	hammer2_spin_unex(&pmp->xop_spin);
 	/* xop can become invalid at this point */
 
 	/*
-	 * Try to wakeup just one xop thread for each cluster node.
+	 * Each thread has its own xopq
 	 */
 	for (i = 0; i < nchains; ++i) {
 		if (i != notidx) {
-			hammer2_thr_signal(&pmp->xop_groups[ng].thrs[i],
-					   HAMMER2_THREAD_XOPQ);
+			thr = &pmp->xop_groups[ng].thrs[i];
+			hammer2_thr_signal(thr, HAMMER2_THREAD_XOPQ);
 		}
 	}
 }
@@ -640,8 +645,11 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	fifo->array[fifo->wi & HAMMER2_XOPFIFO_MASK] = chain;
 	cpu_sfence();
 	++fifo->wi;
-	atomic_add_int(&xop->check_counter, 1);
-	wakeup(&xop->check_counter);	/* XXX optimize */
+	if (atomic_fetchadd_int(&xop->check_counter, HAMMER2_XOP_CHKINC) &
+	    HAMMER2_XOP_CHKWAIT) {
+		atomic_clear_int(&xop->check_counter, HAMMER2_XOP_CHKWAIT);
+		wakeup(&xop->check_counter);
+	}
 	error = 0;
 
 	/*
@@ -781,15 +789,14 @@ loop:
 		error = hammer2_cluster_check(&xop->cluster, lokey, keynull);
 	}
 	if (error == EINPROGRESS) {
-		if (xop->check_counter == check_counter) {
+		if ((flags & HAMMER2_XOP_COLLECT_NOWAIT) == 0)
+			tsleep_interlock(&xop->check_counter, 0);
+		if (atomic_cmpset_int(&xop->check_counter,
+				      check_counter,
+				      check_counter | HAMMER2_XOP_CHKWAIT)) {
 			if (flags & HAMMER2_XOP_COLLECT_NOWAIT)
 				goto done;
-			tsleep_interlock(&xop->check_counter, 0);
-			cpu_lfence();
-			if (xop->check_counter == check_counter) {
-				tsleep(&xop->check_counter, PINTERLOCKED,
-					"h2coll", hz*60);
-			}
+			tsleep(&xop->check_counter, PINTERLOCKED, "h2coll", hz*60);
 		}
 		goto loop;
 	}
@@ -874,7 +881,7 @@ hammer2_xop_next(hammer2_thread_t *thr)
 	hammer2_xop_head_t *xop;
 
 	hammer2_spin_ex(&pmp->xop_spin);
-	TAILQ_FOREACH(xop, thr->xopq, collect[clindex].entry) {
+	TAILQ_FOREACH(xop, &thr->xopq, collect[clindex].entry) {
 		/*
 		 * Check dependency
 		 */
@@ -920,10 +927,12 @@ hammer2_xop_dequeue(hammer2_thread_t *thr, hammer2_xop_head_t *xop)
 	int clindex = thr->clindex;
 
 	hammer2_spin_ex(&pmp->xop_spin);
-	TAILQ_REMOVE(thr->xopq, xop, collect[clindex].entry);
+	TAILQ_REMOVE(&thr->xopq, xop, collect[clindex].entry);
 	atomic_clear_int(&xop->collect[clindex].flags,
 			 HAMMER2_XOP_FIFO_RUN);
 	hammer2_spin_unex(&pmp->xop_spin);
+	if (TAILQ_FIRST(&thr->xopq))
+		hammer2_thr_signal(thr, HAMMER2_THREAD_XOPQ);
 }
 
 /*

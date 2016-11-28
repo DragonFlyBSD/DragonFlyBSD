@@ -522,6 +522,10 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	*diop = NULL;
 	hmp = dio->hmp;
 
+	while (dio->unused01) {
+		tsleep(&dio->unused01, 0, "h2DEBUG", hz);
+	}
+
 	/*
 	 * Drop refs.
 	 *

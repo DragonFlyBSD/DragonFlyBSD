@@ -750,10 +750,17 @@ hammer2_vop_write(struct vop_write_args *ap)
 	}
 
 	/*
-	 * The transaction interlocks against flushes initiations
+	 * The transaction interlocks against flush initiations
 	 * (note: but will run concurrently with the actual flush).
+	 *
+	 * To avoid deadlocking against the VM system, we must flag any
+	 * transaction related to the buffer cache or other direct
+	 * VM page manipulation.
 	 */
-	hammer2_trans_init(ip->pmp, 0);
+	if (uio->uio_segflg == UIO_NOCOPY)
+		hammer2_trans_init(ip->pmp, HAMMER2_TRANS_BUFCACHE);
+	else
+		hammer2_trans_init(ip->pmp, 0);
 	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
 	hammer2_trans_done(ip->pmp);
 

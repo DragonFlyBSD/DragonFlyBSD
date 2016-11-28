@@ -763,7 +763,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 
 #define HAMMER2_TRANS_ISFLUSH		0x80000000	/* flush code */
 #define HAMMER2_TRANS_BUFCACHE		0x40000000	/* bio strategy */
-#define HAMMER2_TRANS_PREFLUSH		0x20000000	/* preflush state */
+#define HAMMER2_TRANS_UNUSED20		0x20000000
 #define HAMMER2_TRANS_FPENDING		0x10000000	/* flush pending */
 #define HAMMER2_TRANS_WAITING		0x08000000	/* someone waiting */
 #define HAMMER2_TRANS_MASK		0x00FFFFFF	/* count mask */
@@ -796,7 +796,7 @@ typedef struct hammer2_trans hammer2_trans_t;
  */
 struct hammer2_thread {
 	struct hammer2_pfs *pmp;
-	hammer2_xop_list_t *xopq;	/* points into pmp->xopq[] */
+	hammer2_xop_list_t xopq;
 	thread_t	td;
 	uint32_t	flags;
 	int		depth;
@@ -884,6 +884,9 @@ struct hammer2_xop_head {
 };
 
 typedef struct hammer2_xop_head hammer2_xop_head_t;
+
+#define HAMMER2_XOP_CHKWAIT	0x00000001U
+#define HAMMER2_XOP_CHKINC	0x00000002U
 
 struct hammer2_xop_ipcluster {
 	hammer2_xop_head_t	head;
@@ -1036,7 +1039,7 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
  * MODIFYING	- This is a modifying transaction, allocate a mtid.
  */
 #define HAMMER2_XOP_MODIFYING		0x00000001
-#define HAMMER2_XOP_ITERATOR		0x00000002
+#define HAMMER2_XOP_STRATEGY		0x00000002
 
 /*
  * Global (per partition) management structure, represents a hard block
@@ -1162,7 +1165,7 @@ struct hammer2_pfs {
 	uint8_t			pfs_mode;	/* operating mode PFSMODE */
 	uint8_t			unused01;
 	uint8_t			unused02;
-	int			xop_iterator;
+	int			unused03;
 	long			inmem_inodes;
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
@@ -1173,8 +1176,6 @@ struct hammer2_pfs {
 	int			has_xop_threads;
 	struct spinlock		xop_spin;	/* xop sequencer */
 	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
-	hammer2_xop_list_t	xopq[HAMMER2_MAXCLUSTER][HAMMER2_XOPGROUPS+
-							 HAMMER2_SPECTHREADS];
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
@@ -1470,7 +1471,6 @@ void hammer2_delayed_flush(hammer2_chain_t *chain);
  */
 void hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags);
 hammer2_tid_t hammer2_trans_sub(hammer2_pfs_t *pmp);
-void hammer2_trans_clear_preflush(hammer2_pfs_t *pmp);
 void hammer2_trans_done(hammer2_pfs_t *pmp);
 hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);

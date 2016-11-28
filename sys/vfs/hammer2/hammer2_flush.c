@@ -133,6 +133,8 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			/*
 			 * Requesting flush transaction.  Wait for all
 			 * currently running transactions to finish.
+			 * Afterwords, normal transactions will be
+			 * interlocked.
 			 */
 			if (oflags & HAMMER2_TRANS_MASK) {
 				nflags = oflags | HAMMER2_TRANS_FPENDING |
@@ -143,9 +145,16 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			}
 		} else if (flags & HAMMER2_TRANS_BUFCACHE) {
 			/*
-			 * Requesting strategy transaction.  Generally
-			 * allowed in all situations unless a flush
-			 * is running without the preflush flag.
+			 * Requesting strategy transaction from buffer-cache,
+			 * or a VM getpages/putpages through the buffer cache.
+			 * We must allow such transactions in all situations
+			 * to avoid deadlocks.
+			 */
+			nflags = (oflags | flags) + 1;
+#if 0
+			/*
+			 * (old) previous code interlocked against the main
+			 *	 flush pass.
 			 */
 			if ((oflags & (HAMMER2_TRANS_ISFLUSH |
 				       HAMMER2_TRANS_PREFLUSH)) ==
@@ -155,10 +164,13 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			} else {
 				nflags = (oflags | flags) + 1;
 			}
+#endif
 		} else {
 			/*
-			 * Requesting normal transaction.  Wait for any
-			 * flush to finish before allowing.
+			 * Requesting normal modifying transaction (read-only
+			 * operations do not use transactions).  Waits for
+			 * any flush to finish before allowing.  Multiple
+			 * modifying transactions can run concurrently.
 			 */
 			if (oflags & HAMMER2_TRANS_ISFLUSH) {
 				nflags = oflags | HAMMER2_TRANS_WAITING;
@@ -202,16 +214,6 @@ hammer2_trans_sub(hammer2_pfs_t *pmp)
 	return (mtid);
 }
 
-/*
- * Clears the PREFLUSH stage, called during a flush transaction after all
- * logical buffer I/O has completed.
- */
-void
-hammer2_trans_clear_preflush(hammer2_pfs_t *pmp)
-{
-	atomic_clear_int(&pmp->trans.flags, HAMMER2_TRANS_PREFLUSH);
-}
-
 void
 hammer2_trans_done(hammer2_pfs_t *pmp)
 {
@@ -228,7 +230,6 @@ hammer2_trans_done(hammer2_pfs_t *pmp)
 			 */
 			nflags = (oflags - 1) & ~(HAMMER2_TRANS_ISFLUSH |
 						  HAMMER2_TRANS_BUFCACHE |
-						  HAMMER2_TRANS_PREFLUSH |
 						  HAMMER2_TRANS_FPENDING |
 						  HAMMER2_TRANS_WAITING);
 		} else {
@@ -264,16 +265,18 @@ hammer2_trans_newinum(hammer2_pfs_t *pmp)
 }
 
 /*
- * Assert that a strategy call is ok here.  Strategy calls are legal
- *
- * (1) In a normal transaction.
- * (2) In a flush transaction only if PREFLUSH is also set.
+ * Assert that a strategy call is ok here.  Currently we allow strategy
+ * calls in all situations, including during flushes.  Previously:
+ *	(old) (1) In a normal transaction.
+ *	(old) (2) In a flush transaction only if PREFLUSH is also set.
  */
 void
 hammer2_trans_assert_strategy(hammer2_pfs_t *pmp)
 {
+#if 0
 	KKASSERT((pmp->trans.flags & HAMMER2_TRANS_ISFLUSH) == 0 ||
 		 (pmp->trans.flags & HAMMER2_TRANS_PREFLUSH));
+#endif
 }
 
 

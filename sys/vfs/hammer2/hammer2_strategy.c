@@ -71,11 +71,6 @@ struct objcache *cache_buffer_write;
 /*
  * Strategy code (async logical file buffer I/O from system)
  *
- * It should only be possible for this to be called outside of a flush,
- * or during the PREFLUSH stage of a flush.  A transaction must be used
- * to interlock against a new flush starting up to avoid corrupting the
- * flush.
- *
  * Except for the transaction init (which should normally not block),
  * we essentially run the strategy operation asynchronously via a XOP.
  *
@@ -279,11 +274,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	lbase = bio->bio_offset;
 	KKASSERT(((int)lbase & HAMMER2_PBUFMASK) == 0);
 
-	if (bp->b_bio1.bio_flags & BIO_SYNC) {
-		xop = hammer2_xop_alloc(ip, 0);
-	} else {
-		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_ITERATOR);
-	}
+	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_STRATEGY);
 	xop->finished = 0;
 	xop->bio = bio;
 	xop->lbase = lbase;
@@ -539,7 +530,8 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	hammer2_trans_assert_strategy(pmp);
 	hammer2_trans_init(pmp, HAMMER2_TRANS_BUFCACHE);
 
-	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
+	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
+				    HAMMER2_XOP_STRATEGY);
 	xop->finished = 0;
 	xop->bio = bio;
 	xop->lbase = bio->bio_offset;

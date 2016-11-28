@@ -369,12 +369,6 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		/*
 		 * Distribute backend operations to threads
 		 */
-		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
-			for (j = 0; j < HAMMER2_XOPGROUPS +
-					HAMMER2_SPECTHREADS; ++j) {
-				TAILQ_INIT(&pmp->xopq[i][j]);
-			}
-		}
 		for (i = 0; i < HAMMER2_XOPGROUPS; ++i)
 			hammer2_xop_group_init(pmp, &pmp->xop_groups[i]);
 
@@ -2055,18 +2049,21 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-#if 1
 	/*
 	 * Preflush the vnodes using a normal transaction before interlocking
 	 * with a flush transaction.  We do this to try to run as much of
 	 * the compression as possible outside the flush transaction.
+	 *
+	 * For efficiency do an async pass before making sure with a
+	 * synchronous pass on all related buffer cache buffers.
 	 */
 	hammer2_trans_init(pmp, 0);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
+	info.waitfor = MNT_WAIT;
+	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 	hammer2_trans_done(pmp);
-#endif
 
 	/*
 	 * Start our flush transaction.  This does not return until all
@@ -2074,13 +2071,11 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * new transactions from running concurrently, except for the
 	 * buffer cache transactions.
 	 *
-	 * For efficiency do an async pass before making sure with a
-	 * synchronous pass on all related buffer cache buffers.  It
-	 * should theoretically not be possible for any new file buffers
-	 * to be instantiated during this sequence.
+	 * NOTE!  It is still possible for the paging code to push pages
+	 *	  out via a UIO_NOCOPY hammer2_vop_write() during the main
+	 *	  flush.
 	 */
-	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH |
-			        HAMMER2_TRANS_PREFLUSH);
+	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
 	hammer2_inode_run_sideq(pmp);
 
 	info.error = 0;
@@ -2088,14 +2083,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-
-	/*
-	 * Clear PREFLUSH.  This prevents (or asserts on) any new logical
-	 * buffer cache flushes which occur during the flush.  Device buffers
-	 * are not affected.
-	 */
 	hammer2_bioq_sync(pmp);
-	hammer2_trans_clear_preflush(pmp);
 
 	/*
 	 * Use the XOP interface to concurrently flush all nodes to
