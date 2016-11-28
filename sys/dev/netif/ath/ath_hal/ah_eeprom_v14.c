@@ -285,7 +285,7 @@ v14EepromReadCTLInfo(struct ath_hal *ah, HAL_EEPROM_v14 *ee)
 	
 	HALASSERT(AR5416_NUM_CTLS <= sizeof(ee->ee_rdEdgesPower)/NUM_EDGES);
 
-	for (i = 0; ee->ee_base.ctlIndex[i] != 0 && i < AR5416_NUM_CTLS; i++) {
+	for (i = 0; i < AR5416_NUM_CTLS && ee->ee_base.ctlIndex[i] != 0; i++) {
 		for (j = 0; j < NUM_EDGES; j ++) {
 			/* XXX Confirm this is the right thing to do when an invalid channel is stored */
 			if (ee->ee_base.ctlData[i].ctlEdges[CTL_CHAIN][j].bChannel == AR5416_BCHAN_UNUSED) {

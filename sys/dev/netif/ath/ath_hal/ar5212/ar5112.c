@@ -617,7 +617,7 @@ getFullPwrTable(uint16_t numPcdacs, uint16_t *pcdacs, int16_t *power, int16_t ma
 		return AH_FALSE;
 	}
 	for (ii = 0; ii < 64; ii++) {
-		if (ii>pcdacs[idxR] && idxR < numPcdacs-1) {
+		if (idxR < numPcdacs-1 && ii>pcdacs[idxR]) {
 			idxL++;
 			idxR++;
 		}

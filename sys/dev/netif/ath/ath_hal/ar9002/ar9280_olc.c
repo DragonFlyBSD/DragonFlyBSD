@@ -84,8 +84,8 @@ ar9280olcGetTxGainIndex(struct ath_hal *ah,
 		*pwr = (rawDatasetOpLoop[idxL].pwrPdg[0][0] +
 				rawDatasetOpLoop[idxR].pwrPdg[0][0])/2;
 	}
-	while (pcdac > AH9280(ah)->originalGain[i] &&
-			i < (AR9280_TX_GAIN_TABLE_SIZE - 1))
+	while (i < (AR9280_TX_GAIN_TABLE_SIZE - 1) &&
+			pcdac > AH9280(ah)->originalGain[i])
 		i++;
 
 	*pcdacIdx = i;

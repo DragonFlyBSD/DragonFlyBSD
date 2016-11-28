@@ -1081,7 +1081,7 @@ ar9300_spur_mitigate_ofdm(struct ath_hal *ah, struct ieee80211_channel *chan)
     OS_REG_RMW_FIELD(ah, AR_PHY_SPUR_REG, AR_PHY_SPUR_REG_MASK_RATE_CNTL, 0);
 
     i = 0;
-    while (spur_chans_ptr[i] && i < 5) {
+    while (i < 5 && spur_chans_ptr[i]) {
         freq_offset = FBIN2FREQ(spur_chans_ptr[i], mode) - synth_freq;
         if (abs(freq_offset) < range) {
             /*
