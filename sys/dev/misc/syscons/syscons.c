@@ -3536,7 +3536,7 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->tsw = NULL;
     scp->ts = NULL;
     scp->rndr = NULL;
-    scp->border = BG_BLACK;
+    scp->border = SC_BORDER_COLOR;
     scp->cursor_base = sc->cursor_base;
     scp->cursor_height = imin(sc->cursor_height, scp->font_height);
     scp->mouse_cut_start = scp->xsize * scp->ysize;

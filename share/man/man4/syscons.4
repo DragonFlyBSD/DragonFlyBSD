@@ -51,6 +51,7 @@
 .Cd "options SC_NORM_REV_ATTR=_attribute_"
 .Cd "options SC_KERNEL_CONS_ATTR=_attribute_"
 .Cd "options SC_KERNEL_CONS_REV_ATTR=_attribute_"
+.Cd "options SC_BORDER_COLOR=_attribute_"
 .Cd "options SC_DFLT_FONT"
 .Cd "makeoptions SC_DFLT_FONT=_font_name_"
 .Cd "device sc0 at isa?" Op flags Ar flags
@@ -362,6 +363,7 @@ above.
 .It Dv SC_NORM_REV_ATTR=_attribute_
 .It Dv SC_KERNEL_CONS_ATTR=_attribute_
 .It Dv SC_KERNEL_CONS_REV_ATTR=_attribute_
+.It Dv SC_BORDER_COLOR=_attribute_
 These options will set the default colors.
 Available colors are defined in
 .In machine/pc/display.h .
@@ -780,6 +782,17 @@ The reversed message will be black on red background.
 .Pp
 .D1 Cd "options SC_KERNEL_CONS_ATTR=(FG_LIGHTRED|BG_BLACK)"
 .D1 Cd "options SC_KERNEL_CONS_REV_ATTR=(FG_BLACK|BG_RED)"
+.Pp
+The following line will set the default border color of the terminal.
+If the console is in framebuffer mode, or in raster (pixel) text mode,
+a thin green border will be visible around the terminal if the screen
+size is not an exact multiple of the font size.
+This border area can be much larger if the column or row count is
+explicitly specified (for example when using the
+.Va kern.kms_columns
+tunable).
+.Pp
+.D1 Cd "options SC_BORDER_COLOR=FG_GREEN"
 .Pp
 The following example adds the font files
 .Pa cp850-8x16.fnt ,

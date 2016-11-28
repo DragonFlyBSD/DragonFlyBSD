@@ -908,6 +908,7 @@ options 	SC_NORM_ATTR="(FG_GREEN|BG_BLACK)"
 options 	SC_NORM_REV_ATTR="(FG_YELLOW|BG_GREEN)"
 options 	SC_KERNEL_CONS_ATTR="(FG_RED|BG_BLACK)"
 options 	SC_KERNEL_CONS_REV_ATTR="(FG_BLACK|BG_RED)"
+options 	SC_BORDER_COLOR="FG_BLACK"
 
 # If you have a two button mouse, you may want to add the following option
 # to use the right button of the mouse to paste text.

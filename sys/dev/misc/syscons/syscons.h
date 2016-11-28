@@ -343,6 +343,9 @@ typedef struct scr_stat {
 #ifndef SC_KERNEL_CONS_REV_ATTR
 #define SC_KERNEL_CONS_REV_ATTR	(FG_BLACK | BG_LIGHTGREY)
 #endif
+#ifndef SC_BORDER_COLOR
+#define SC_BORDER_COLOR		FG_BLACK
+#endif
 
 /* terminal emulator */
 
