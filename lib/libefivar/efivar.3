@@ -57,9 +57,9 @@
 .Ft int
 .Fn efi_set_variable "efi_guid_t guid" "const char *name" "void *data" "size_t data_size" "uint32_t attributes"
 .Ft int
-.Fn efi_str_to_guid "const char *s" "efi_guid_t *guid";
+.Fn efi_str_to_guid "const char *s" "efi_guid_t *guid"
 .Ft int
-.Fn efi_variables_supported "void";
+.Fn efi_variables_supported "void"
 .Sh DESCRIPTION
 The
 .Nm
@@ -91,10 +91,12 @@ and
 .Fn efi_guid_to_name
 .Fn efi_guid_to_symbol
 This function is not actually implemented.
-.Sh BUGS
-No facilities exist to process the strings as native UTF.
-This is a limitation in the Linux libefivar library interface.
+.Sh SEE ALSO
+.Xr efivar 8
 .Sh AUTHORS
 .An -nosplit
 This software was originally written by
 .An Warner Losh .
+.Sh BUGS
+No facilities exist to process the strings as native UTF.
+This is a limitation in the Linux libefivar library interface.
