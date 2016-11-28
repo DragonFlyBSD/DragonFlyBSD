@@ -69,6 +69,7 @@
 #define	INT_MAX		0x7fffffff	/* max value for an int */
 #define	INT_MIN		(-0x7fffffff - 1)	/* min value for an int */
 
+#if defined(__x86_64__)
 #define	ULONG_MAX	0xffffffffffffffffUL	/* max for an unsigned long */
 #define	LONG_MAX	0x7fffffffffffffffL	/* max for a long */
 #define	LONG_MIN	(-0x7fffffffffffffffL - 1) /* min for a long */
@@ -77,6 +78,17 @@
 #define	ULLONG_MAX	0xffffffffffffffffULL	/* max value for an unsigned long long */
 #define	LLONG_MAX	0x7fffffffffffffffLL	/* max value for a long long */
 #define	LLONG_MIN	(-0x7fffffffffffffffLL - 1)  /* min for a long long */
+#endif
+#elif defined(__i386__)
+#define	ULONG_MAX	0xffffffffUL		/* max for an unsigned long */
+#define	LONG_MAX	0x7fffffffUL		/* max for a long */
+#define	LONG_MIN	(-0x7fffffffL - 1)	/* min for a long */
+
+#ifdef __LONG_LONG_SUPPORTED
+#define	ULLONG_MAX	0xffffffffULL		/* max value for an unsigned long long */
+#define	LLONG_MAX	0x7fffffffLL		/* max value for a long long */
+#define	LLONG_MIN	(-0x7fffffffLL - 1)	/* min for a long long */
+#endif
 #endif
 
 #if __POSIX_VISIBLE || __XSI_VISIBLE
@@ -101,7 +113,11 @@
 #endif
 
 #if __XSI_VISIBLE || __POSIX_VISIBLE >= 200809
+#if defined(__x86_64__)
 #define	LONG_BIT	64
+#elif defined(__i386__)
+#define	LONG_BIT	32
+#endif
 #define	WORD_BIT	32
 #endif
 
