@@ -1632,12 +1632,12 @@ creat_f(int opno, long r)
 {
 	int		e;
 	int		e1;
-	int		extsize;
+	int		extsize __unused;
 	pathname_t	f;
 	int		fd;
 	fent_t		*fep;
 	int		id;
-	int		parid;
+	int		parid __unused;
 	int		type;
 	int		v;
 	int		v1;
