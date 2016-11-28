@@ -731,8 +731,14 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 					((info.skippedbufs > 1) ? "s" : ""));
 			}
 		}
+#if 0
+		/*
+		 * This case can occur normally because vnode lock might
+		 * not be held.
+		 */
 		if (!RB_EMPTY(&vp->v_rbdirty_tree))
 			kprintf("dirty bufs left after final pass\n");
+#endif
 		break;
 	}
 	lwkt_reltoken(&vp->v_token);
