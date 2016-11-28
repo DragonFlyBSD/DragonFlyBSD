@@ -427,7 +427,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 #endif
     int error, ret;
 
-	KKASSERT(tp->t_dev);
+    KKASSERT(tp->t_dev);
 
     scp = SC_STAT(tp->t_dev);
     if (scp == NULL)		/* tp == SC_MOUSE */
@@ -751,7 +751,12 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	return 0;
 
     case KDSBORDER:     	/* set border color of this (virtual) console */
-	scp->border = *data;
+	/* Only values in the range [0..15] allowed */
+	if (*(int *)data < 0 || *(int *)data > 15) {
+		lwkt_reltoken(&tty_token);
+		return EINVAL;
+	}
+	scp->border = *(int *)data;
 	if (scp == scp->sc->cur_scp)
 	    sc_set_border(scp, scp->border);
 	lwkt_reltoken(&tty_token);
