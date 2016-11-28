@@ -1235,8 +1235,19 @@ vm_page_repurpose(struct vm_object *object, vm_pindex_t pindex,
 		  int *must_reenter, int *iswired)
 {
 	if (m) {
-		vm_page_busy_wait(m, TRUE, "biodep");
-		if ((m->flags & (PG_UNMANAGED | PG_MAPPED | PG_FICTITIOUS)) ||
+		/*
+		 * Do not mess with pages in a complex state, such as pages
+		 * which are mapped, as repurposing such pages can be more
+		 * expensive than simply allocatin a new one.
+		 *
+		 * NOTE: Soft-busying can deadlock against putpages or I/O
+		 *	 so we only allow hard-busying here.
+		 */
+		KKASSERT(also_m_busy == FALSE);
+		vm_page_busy_wait(m, also_m_busy, "biodep");
+
+		if ((m->flags & (PG_UNMANAGED | PG_MAPPED |
+				 PG_FICTITIOUS | PG_SBUSY)) ||
 		    m->busy || m->wire_count != 1 || m->hold_count) {
 			vm_page_unwire(m, 0);
 			vm_page_wakeup(m);
@@ -1266,6 +1277,11 @@ vm_page_repurpose(struct vm_object *object, vm_pindex_t pindex,
 			/* fall through to normal lookup */
 		}
 	}
+
+	/*
+	 * Cannot repurpose page, attempt to locate the desired page.  May
+	 * return NULL.
+	 */
 	*must_reenter = 1;
 	*iswired = 0;
 	m = vm_page_lookup_busy_try(object, pindex, also_m_busy, errorp);
