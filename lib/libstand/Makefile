@@ -18,6 +18,7 @@ NO_STRICT_ALIASING=
 
 LIBSTAND_SRC?=	${.CURDIR}
 LIBSTAND_ARCH?=	${MACHINE_ARCH}
+LIBC_SRC=	${LIBSTAND_SRC}/../libc
 
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding
@@ -94,6 +95,13 @@ ${file}: ${BZ2DIR}/${file} ${file}.diff
 # io routines
 SRCS+=	closeall.c dev.c ioctl.c nullfs.c stat.c \
 	fstat.c close.c lseek.c open.c read.c write.c readdir.c
+
+# uuid routines
+SRCS+=	uuid_from_string.c uuid_to_string.c
+
+# uuid routines from libc
+.PATH: ${LIBC_SRC}/uuid
+SRCS+=	uuid_create_nil.c
 
 # network routines
 SRCS+=	arp.c ether.c inet_ntoa.c in_cksum.c net.c udp.c netif.c rpc.c
