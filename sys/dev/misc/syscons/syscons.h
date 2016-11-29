@@ -526,7 +526,7 @@ void		sc_touch_scrn_saver(void);
 void		sc_draw_cursor_image(scr_stat *scp);
 void		sc_remove_cursor_image(scr_stat *scp);
 void		sc_set_cursor_image(scr_stat *scp);
-int		sc_clean_up(scr_stat *scp);
+int		sc_clean_up(scr_stat *scp, int need_unlock);
 int		sc_switch_scr(sc_softc_t *sc, u_int next_scr);
 void		sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard);
 int		sc_init_emulator(scr_stat *scp, char *name);

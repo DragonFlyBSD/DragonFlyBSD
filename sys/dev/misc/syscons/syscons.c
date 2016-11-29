@@ -197,7 +197,7 @@ static int remove_scrn_saver(void (*this_saver)(sc_softc_t *, int));
 static int set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border);
 static int restore_scrn_saver_mode(scr_stat *scp, int changemode);
 static void stop_scrn_saver(sc_softc_t *sc, void (*saver)(sc_softc_t *, int));
-static int wait_scrn_saver_stop(sc_softc_t *sc);
+static int wait_scrn_saver_stop(sc_softc_t *sc, int need_unlock);
 #define scsplash_stick(stick)		(sticky_splash = (stick))
 #else /* !NSPLASH */
 #define scsplash_stick(stick)
@@ -1082,7 +1082,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    scsplash_stick(FALSE);
 	    saver_mode = *(int *)data;
 #if NSPLASH > 0
-	    if ((error = wait_scrn_saver_stop(NULL))) {
+	    if ((error = wait_scrn_saver_stop(NULL, TRUE))) {
 		syscons_unlock();
 		lwkt_reltoken(&tty_token);
 		return error;
@@ -1248,7 +1248,7 @@ scioctl(struct dev_ioctl_args *ap)
     case VT_ACTIVATE:   	/* switch to screen *data */
 	i = (*(int *)data == 0) ? scp->index : (*(int *)data - 1);
 	syscons_lock();
-	sc_clean_up(sc->cur_scp);
+	sc_clean_up(sc->cur_scp, TRUE);
 	error = sc_switch_scr(sc, i);
 	syscons_unlock();
 	lwkt_reltoken(&tty_token);
@@ -1261,7 +1261,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    return EINVAL;
 	}
 	syscons_lock();
-	error = sc_clean_up(sc->cur_scp);
+	error = sc_clean_up(sc->cur_scp, TRUE);
 	syscons_unlock();
 	if (error) {
 	    lwkt_reltoken(&tty_token);
@@ -2482,7 +2482,7 @@ remove_scrn_saver(void (*this_saver)(sc_softc_t *, int))
         stop_scrn_saver(this_saver);
 #endif
     /* unblank all blanked screens */
-    wait_scrn_saver_stop(NULL);
+    wait_scrn_saver_stop(NULL, FALSE);
     if (scrn_blanked) {
 	return EBUSY;
     }
@@ -2583,11 +2583,11 @@ stop_scrn_saver(sc_softc_t *sc, void (*saver)(sc_softc_t *, int))
     mark_all(sc->cur_scp);
     if (sc->delayed_next_scr)
 	sc_switch_scr(sc, sc->delayed_next_scr - 1);
-    wakeup((caddr_t)&scrn_blanked);
+    wakeup(&scrn_blanked);
 }
 
 static int
-wait_scrn_saver_stop(sc_softc_t *sc)
+wait_scrn_saver_stop(sc_softc_t *sc, int need_unlock)
 {
     int error = 0;
 
@@ -2597,7 +2597,14 @@ wait_scrn_saver_stop(sc_softc_t *sc)
 	    error = 0;
 	    break;
 	}
-	error = tsleep((caddr_t)&scrn_blanked, PCATCH, "scrsav", 0);
+	if (need_unlock) {
+	    tsleep_interlock(&scrn_blanked, PCATCH);
+	    syscons_unlock();
+	    error = tsleep(&scrn_blanked, PCATCH | PINTERLOCKED, "scrsav", 0);
+	    syscons_lock();
+	} else {
+	    error = tsleep(&scrn_blanked, PCATCH, "scrsav", 0);
+	}
 	/* May return ERESTART */
 	if (error)
 		break;
@@ -3374,7 +3381,7 @@ scshutdown(void *arg, int howto)
 }
 
 int
-sc_clean_up(scr_stat *scp)
+sc_clean_up(scr_stat *scp, int need_unlock)
 {
 #if NSPLASH > 0
     int error;
@@ -3384,7 +3391,7 @@ sc_clean_up(scr_stat *scp)
     if (scp->sc->flags & SC_SCRN_BLANKED) {
 	sc_touch_scrn_saver();
 #if NSPLASH > 0
-	if ((error = wait_scrn_saver_stop(scp->sc))) {
+	if ((error = wait_scrn_saver_stop(scp->sc, need_unlock))) {
 	    lwkt_reltoken(&tty_token);
 	    return error;
 	}

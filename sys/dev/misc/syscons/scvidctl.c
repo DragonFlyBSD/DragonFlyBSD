@@ -106,7 +106,7 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
 
     /* stop screen saver, etc */
     crit_enter();
-    if ((error = sc_clean_up(scp))) {
+    if ((error = sc_clean_up(scp, FALSE))) {
 	crit_exit();
 	return error;
     }
@@ -196,7 +196,7 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
 
     /* stop screen saver, etc */
     crit_enter();
-    if ((error = sc_clean_up(scp))) {
+    if ((error = sc_clean_up(scp, FALSE))) {
 	crit_exit();
 	return error;
     }
@@ -345,7 +345,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 
     /* stop screen saver, etc */
     crit_enter();
-    if ((error = sc_clean_up(scp))) {
+    if ((error = sc_clean_up(scp, FALSE))) {
 	crit_exit();
 	return error;
     }
@@ -662,7 +662,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 		return EINVAL;
 	    }
 	    crit_enter();
-	    if ((error = sc_clean_up(scp))) {
+	    if ((error = sc_clean_up(scp, FALSE))) {
 		crit_exit();
 		lwkt_reltoken(&tty_token);
 		return error;
@@ -693,7 +693,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 					 scp->font_height);
 	    }
 	    crit_enter();
-	    if ((error = sc_clean_up(scp))) {
+	    if ((error = sc_clean_up(scp, FALSE))) {
 		crit_exit();
 		lwkt_reltoken(&tty_token);
 		return error;
@@ -714,7 +714,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
 	case KD_GRAPHICS:	/* switch to GRAPHICS (unknown) mode */
 	    crit_enter();
-	    if ((error = sc_clean_up(scp))) {
+	    if ((error = sc_clean_up(scp, FALSE))) {
 		crit_exit();
 		lwkt_reltoken(&tty_token);
 		return error;
@@ -864,7 +864,7 @@ sc_update_render(scr_stat *scp)
 
 	scp->rndr = rndr;
 	/* Mostly copied from sc_set_text_mode */
-	if ((error = sc_clean_up(scp))) {
+	if ((error = sc_clean_up(scp, FALSE))) {
 		crit_exit();
 		return;
 	}
