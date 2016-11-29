@@ -724,6 +724,7 @@ static void
 intel_logical_ring_advance_and_submit(struct drm_i915_gem_request *request)
 {
 	struct intel_engine_cs *ring = request->ring;
+	struct drm_i915_private *dev_priv = request->i915;
 
 	intel_logical_ring_advance(request->ringbuf);
 
@@ -732,11 +733,9 @@ intel_logical_ring_advance_and_submit(struct drm_i915_gem_request *request)
 	if (intel_ring_stopped(ring))
 		return;
 
-#if 0
 	if (dev_priv->guc.execbuf_client)
 		i915_guc_submit(dev_priv->guc.execbuf_client, request);
 	else
-#endif
 		execlists_context_queue(request);
 }
 

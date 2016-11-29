@@ -96,7 +96,6 @@ static void direct_interrupts_to_host(struct drm_i915_private *dev_priv)
 	I915_WRITE(GUC_WD_VECS_IER, 0);
 }
 
-#if 0
 static void direct_interrupts_to_guc(struct drm_i915_private *dev_priv)
 {
 	struct intel_engine_cs *ring;
@@ -186,7 +185,6 @@ static void set_guc_init_params(struct drm_i915_private *dev_priv)
 	for (i = 0; i < GUC_CTL_MAX_DWORDS; i++)
 		I915_WRITE(SOFT_SCRATCH(1 + i), params[i]);
 }
-#endif
 
 /*
  * Read the GuC status register (GUC_STATUS) and store it in the
@@ -234,7 +232,6 @@ static inline bool guc_ucode_response(struct drm_i915_private *dev_priv,
 #define UOS_CSS_HEADER_SIZE		0x80
 #define UOS_RSA_SIG_SIZE		0x100
 
-#if 0
 static int guc_ucode_xfer_dma(struct drm_i915_private *dev_priv)
 {
 	struct intel_guc_fw *guc_fw = &dev_priv->guc.guc_fw;
@@ -459,7 +456,7 @@ fail:
 static void guc_fw_fetch(struct drm_device *dev, struct intel_guc_fw *guc_fw)
 {
 	struct drm_i915_gem_object *obj;
-	const struct firmware *fw;
+	const struct firmware *fw = NULL;
 	const u8 *css_header;
 	const size_t minsize = UOS_CSS_HEADER_SIZE + UOS_RSA_SIG_SIZE;
 	const size_t maxsize = GUC_WOPCM_SIZE_VALUE + UOS_RSA_SIG_SIZE
@@ -478,10 +475,10 @@ static void guc_fw_fetch(struct drm_device *dev, struct intel_guc_fw *guc_fw)
 	DRM_DEBUG_DRIVER("fetch GuC fw from %s succeeded, fw %p\n",
 		guc_fw->guc_fw_path, fw);
 	DRM_DEBUG_DRIVER("firmware file size %zu (minimum %zu, maximum %zu)\n",
-		fw->size, minsize, maxsize);
+		fw->datasize, minsize, maxsize);
 
 	/* Check the size of the blob befoe examining buffer contents */
-	if (fw->size < minsize || fw->size > maxsize)
+	if (fw->datasize < minsize || fw->datasize > maxsize)
 		goto fail;
 
 	/*
@@ -490,9 +487,9 @@ static void guc_fw_fetch(struct drm_device *dev, struct intel_guc_fw *guc_fw)
 	 * TWO bytes each (i.e. u16), although all pointers and offsets are defined
 	 * in terms of bytes (u8).
 	 */
-	css_header = fw->data + UOS_CSS_HEADER_OFFSET;
-	guc_fw->guc_fw_major_found = *(u16 *)(css_header + UOS_VER_MAJOR_OFFSET);
-	guc_fw->guc_fw_minor_found = *(u16 *)(css_header + UOS_VER_MINOR_OFFSET);
+	css_header = (const uint8_t *)fw->data + UOS_CSS_HEADER_OFFSET;
+	guc_fw->guc_fw_major_found = *(const u16 *)(css_header + UOS_VER_MAJOR_OFFSET);
+	guc_fw->guc_fw_minor_found = *(const u16 *)(css_header + UOS_VER_MINOR_OFFSET);
 
 	if (guc_fw->guc_fw_major_found != guc_fw->guc_fw_major_wanted ||
 	    guc_fw->guc_fw_minor_found < guc_fw->guc_fw_minor_wanted) {
@@ -508,7 +505,7 @@ static void guc_fw_fetch(struct drm_device *dev, struct intel_guc_fw *guc_fw)
 			guc_fw->guc_fw_major_wanted, guc_fw->guc_fw_minor_wanted);
 
 	mutex_lock(&dev->struct_mutex);
-	obj = i915_gem_object_create_from_data(dev, fw->data, fw->size);
+	obj = i915_gem_object_create_from_data(dev, fw->data, fw->datasize);
 	mutex_unlock(&dev->struct_mutex);
 	if (IS_ERR_OR_NULL(obj)) {
 		err = obj ? PTR_ERR(obj) : -ENOMEM;
@@ -516,7 +513,7 @@ static void guc_fw_fetch(struct drm_device *dev, struct intel_guc_fw *guc_fw)
 	}
 
 	guc_fw->guc_fw_obj = obj;
-	guc_fw->guc_fw_size = fw->size;
+	guc_fw->guc_fw_size = fw->datasize;
 
 	DRM_DEBUG_DRIVER("GuC fw fetch status SUCCESS, obj %p\n",
 			guc_fw->guc_fw_obj);
@@ -588,7 +585,6 @@ void intel_guc_ucode_init(struct drm_device *dev)
 	guc_fw_fetch(dev, guc_fw);
 	/* status must now be FAIL or SUCCESS */
 }
-#endif
 
 /**
  * intel_guc_ucode_fini() - clean up all allocated resources

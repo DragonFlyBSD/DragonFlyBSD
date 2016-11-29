@@ -28,13 +28,13 @@
 
 #include <linux/async.h>
 #include <drm/drmP.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_legacy.h>
 #include "intel_drv.h"
 #include <drm/i915_drm.h>
-#include <drm/drm_legacy.h>
 #include "i915_drv.h"
 #include "i915_vgpu.h"
-#include "intel_ringbuffer.h"
-#include <linux/workqueue.h>
 
 
 static int i915_getparam(struct drm_device *dev, void *data,
@@ -392,12 +392,7 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	 * working irqs for e.g. gmbus and dp aux transfers. */
 	intel_modeset_init(dev);
 
-	/* intel_guc_ucode_init() needs the mutex to allocate GEM objects */
-	mutex_lock(&dev->struct_mutex);
-#if 0
 	intel_guc_ucode_init(dev);
-#endif
-	mutex_unlock(&dev->struct_mutex);
 
 	ret = i915_gem_init(dev);
 	if (ret)
@@ -858,7 +853,7 @@ static void intel_init_dpio(struct drm_i915_private *dev_priv)
  */
 int i915_driver_load(struct drm_device *dev, unsigned long flags)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv;
 	struct intel_device_info *info, *device_info;
 	int ret = 0, mmio_bar, mmio_size;
 	uint32_t aperture_size;
@@ -1218,9 +1213,6 @@ int i915_driver_unload(struct drm_device *dev)
 #if 0
 	if (dev_priv->regs != NULL)
 		pci_iounmap(dev->pdev, dev_priv->regs);
-
-	if (dev_priv->slab)
-		kmem_cache_destroy(dev_priv->slab);
 #endif
 
 	pci_dev_put(dev_priv->bridge_dev);

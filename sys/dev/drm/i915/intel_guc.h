@@ -89,7 +89,7 @@ struct intel_guc {
 
 	struct i915_guc_client *execbuf_client;
 
-	struct spinlock host2guc_lock;	/* Protects all data below	*/
+	struct lock host2guc_lock;	/* Protects all data below	*/
 
 	DECLARE_BITMAP(doorbell_bitmap, GUC_MAX_DOORBELLS);
 	uint32_t db_cacheline;		/* Cyclic counter mod pagesize	*/

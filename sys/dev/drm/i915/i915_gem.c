@@ -4952,11 +4952,7 @@ i915_gem_init_hw(struct drm_device *dev)
 
 	/* We can't enable contexts until all firmware is loaded */
 	if (HAS_GUC_UCODE(dev)) {
-#ifndef __DragonFly__
 		ret = intel_guc_ucode_load(dev);
-#else
-		ret = -ENOEXEC;
-#endif
 		if (ret) {
 			/*
 			 * If we got an error and GuC submission is enabled, map
@@ -5386,7 +5382,6 @@ bool i915_gem_obj_is_pinned(struct drm_i915_gem_object *obj)
 	return false;
 }
 
-#if 0
 /* Allocate a new GEM object and fill it with the supplied data */
 struct drm_i915_gem_object *
 i915_gem_object_create_from_data(struct drm_device *dev,
@@ -5411,7 +5406,7 @@ i915_gem_object_create_from_data(struct drm_device *dev,
 
 	i915_gem_object_pin_pages(obj);
 	sg = obj->pages;
-	bytes = sg_copy_from_buffer(sg->sgl, sg->nents, (void *)data, size);
+	bytes = sg_copy_from_buffer(sg->sgl, sg->nents, data, size);
 	i915_gem_object_unpin_pages(obj);
 
 	if (WARN_ON(bytes != size)) {
@@ -5426,4 +5421,3 @@ fail:
 	drm_gem_object_unreference(&obj->base);
 	return ERR_PTR(ret);
 }
-#endif

@@ -24,7 +24,6 @@
 #include <linux/firmware.h>
 #include "i915_drv.h"
 #include "i915_reg.h"
-#include "intel_drv.h"
 
 /**
  * DOC: csr support for dmc
@@ -184,7 +183,6 @@ static const struct stepping_info skl_stepping_info[] = {
 		{'G', '0'}, {'H', '0'}, {'I', '0'}
 };
 
-#if 0
 static struct stepping_info bxt_stepping_info[] = {
 	{'A', '0'}, {'A', '1'}, {'A', '2'},
 	{'B', '0'}, {'B', '1'}, {'B', '2'}
@@ -213,7 +211,6 @@ static char intel_get_substepping(struct drm_device *dev)
 	else
 		return -ENODATA;
 }
-#endif
 
 /**
  * intel_csr_load_status_get() - to get firmware loading status.
@@ -291,14 +288,13 @@ void intel_csr_load_program(struct drm_device *dev)
 	mutex_unlock(&dev_priv->csr_lock);
 }
 
-#if 0
 static void finish_csr_load(const struct firmware *fw, void *context)
 {
 	struct drm_i915_private *dev_priv = context;
 	struct drm_device *dev = dev_priv->dev;
-	struct intel_css_header *css_header;
-	struct intel_package_header *package_header;
-	struct intel_dmc_header *dmc_header;
+	const struct intel_css_header *css_header;
+	const struct intel_package_header *package_header;
+	const struct intel_dmc_header *dmc_header;
 	struct intel_csr *csr = &dev_priv->csr;
 	char stepping = intel_get_stepping(dev);
 	char substepping = intel_get_substepping(dev);
@@ -318,7 +314,7 @@ static void finish_csr_load(const struct firmware *fw, void *context)
 	}
 
 	/* Extract CSS Header information*/
-	css_header = (struct intel_css_header *)fw->data;
+	css_header = (const struct intel_css_header *)fw->data;
 	if (sizeof(struct intel_css_header) !=
 		(css_header->header_len * 4)) {
 		DRM_ERROR("Firmware has wrong CSS header length %u bytes\n",
@@ -328,7 +324,7 @@ static void finish_csr_load(const struct firmware *fw, void *context)
 	readcount += sizeof(struct intel_css_header);
 
 	/* Extract Package Header information*/
-	package_header = (struct intel_package_header *)
+	package_header = (const struct intel_package_header *)
 					&fw->data[readcount];
 	if (sizeof(struct intel_package_header) !=
 		(package_header->header_len * 4)) {
@@ -359,7 +355,7 @@ static void finish_csr_load(const struct firmware *fw, void *context)
 	readcount += dmc_offset;
 
 	/* Extract dmc_header information. */
-	dmc_header = (struct intel_dmc_header *)&fw->data[readcount];
+	dmc_header = (const struct intel_dmc_header *)&fw->data[readcount];
 	if (sizeof(struct intel_dmc_header) != (dmc_header->header_len)) {
 		DRM_ERROR("Firmware has wrong dmc header length %u bytes\n",
 				(dmc_header->header_len));
@@ -415,7 +411,6 @@ out:
 
 	release_firmware(fw);
 }
-#endif
 
 /**
  * intel_csr_ucode_init() - initialize the firmware loading.
@@ -426,7 +421,6 @@ out:
  */
 void intel_csr_ucode_init(struct drm_device *dev)
 {
-#if 0
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_csr *csr = &dev_priv->csr;
 	int ret;
@@ -461,7 +455,6 @@ void intel_csr_ucode_init(struct drm_device *dev)
 		i915_firmware_load_error_print(csr->fw_path, ret);
 		intel_csr_load_status_set(dev_priv, FW_FAILED);
 	}
-#endif
 }
 
 /**
@@ -473,7 +466,6 @@ void intel_csr_ucode_init(struct drm_device *dev)
  */
 void intel_csr_ucode_fini(struct drm_device *dev)
 {
-#if 0
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	if (!HAS_CSR(dev))
@@ -481,7 +473,6 @@ void intel_csr_ucode_fini(struct drm_device *dev)
 
 	intel_csr_load_status_set(dev_priv, FW_FAILED);
 	kfree(dev_priv->csr.dmc_payload);
-#endif
 }
 
 void assert_csr_loaded(struct drm_i915_private *dev_priv)

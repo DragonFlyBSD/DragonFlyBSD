@@ -22,6 +22,7 @@
  *
  */
 #include <linux/firmware.h>
+#include <linux/circ_buf.h>
 #include "i915_drv.h"
 #include "intel_guc.h"
 
@@ -74,7 +75,6 @@ static inline bool host2guc_action_response(struct drm_i915_private *dev_priv,
 	return GUC2HOST_IS_RESPONSE(val);
 }
 
-#if 0
 static int host2guc_action(struct intel_guc *guc, u32 *data, u32 len)
 {
 	struct drm_i915_private *dev_priv = guc_to_i915(guc);
@@ -86,7 +86,7 @@ static int host2guc_action(struct intel_guc *guc, u32 *data, u32 len)
 		return -EINVAL;
 
 	intel_uncore_forcewake_get(dev_priv, FORCEWAKE_ALL);
-	spin_lock(&dev_priv->guc.host2guc_lock);
+	lockmgr(&dev_priv->guc.host2guc_lock, LK_EXCLUSIVE);
 
 	dev_priv->guc.action_count += 1;
 	dev_priv->guc.action_cmd = data[0];
@@ -119,7 +119,7 @@ static int host2guc_action(struct intel_guc *guc, u32 *data, u32 len)
 	}
 	dev_priv->guc.action_status = status;
 
-	spin_unlock(&dev_priv->guc.host2guc_lock);
+	lockmgr(&dev_priv->guc.host2guc_lock, LK_RELEASE);
 	intel_uncore_forcewake_put(dev_priv, FORCEWAKE_ALL);
 
 	return ret;
@@ -292,7 +292,7 @@ static uint32_t select_doorbell_cacheline(struct intel_guc *guc)
 	const uint32_t cacheline_size = cache_line_size();
 	uint32_t offset;
 
-	spin_lock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_EXCLUSIVE);
 
 	/* Doorbell uses a single cache line within a page */
 	offset = offset_in_page(guc->db_cacheline);
@@ -300,7 +300,7 @@ static uint32_t select_doorbell_cacheline(struct intel_guc *guc)
 	/* Moving to next cache line to reduce contention */
 	guc->db_cacheline += cacheline_size;
 
-	spin_unlock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_RELEASE);
 
 	DRM_DEBUG_DRIVER("selected doorbell cacheline 0x%x, next 0x%x, linesize %u\n",
 			offset, guc->db_cacheline, cacheline_size);
@@ -322,13 +322,13 @@ static uint16_t assign_doorbell(struct intel_guc *guc, uint32_t priority)
 	const uint16_t end = start + half;
 	uint16_t id;
 
-	spin_lock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_EXCLUSIVE);
 	id = find_next_zero_bit(guc->doorbell_bitmap, end, start);
 	if (id == end)
 		id = GUC_INVALID_DOORBELL_ID;
 	else
 		bitmap_set(guc->doorbell_bitmap, id, 1);
-	spin_unlock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_RELEASE);
 
 	DRM_DEBUG_DRIVER("assigned %s priority doorbell id 0x%x\n",
 			hi_pri ? "high" : "normal", id);
@@ -338,9 +338,9 @@ static uint16_t assign_doorbell(struct intel_guc *guc, uint32_t priority)
 
 static void release_doorbell(struct intel_guc *guc, uint16_t id)
 {
-	spin_lock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_EXCLUSIVE);
 	bitmap_clear(guc->doorbell_bitmap, id, 1);
-	spin_unlock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_RELEASE);
 }
 
 /*
@@ -490,7 +490,7 @@ static int guc_get_workqueue_space(struct i915_guc_client *gc, u32 *offset)
 	int ret = 0, timeout_counter = 200;
 
 	base = kmap_atomic(i915_gem_object_get_page(gc->client_obj, 0));
-	desc = base + gc->proc_desc_offset;
+	desc = (struct guc_process_desc *)((char *)base + gc->proc_desc_offset);
 
 	while (timeout_counter-- > 0) {
 		ret = wait_for_atomic(CIRC_SPACE(gc->wq_tail, desc->head,
@@ -570,7 +570,7 @@ static void lr_context_update(struct drm_i915_gem_request *rq)
 	enum intel_ring_id ring_id = rq->ring->id;
 	struct drm_i915_gem_object *ctx_obj = rq->ctx->engine[ring_id].state;
 	struct drm_i915_gem_object *rb_obj = rq->ringbuf->obj;
-	struct page *page;
+	struct vm_page *page;
 	uint32_t *reg_state;
 
 	BUG_ON(!ctx_obj);
@@ -623,10 +623,10 @@ int i915_guc_submit(struct i915_guc_client *client,
 	}
 	spin_unlock_irqrestore(&client->wq_lock, flags);
 
-	spin_lock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_EXCLUSIVE);
 	guc->submissions[ring_id] += 1;
 	guc->last_seqno[ring_id] = rq->seqno;
-	spin_unlock(&guc->host2guc_lock);
+	lockmgr(&guc->host2guc_lock, LK_RELEASE);
 
 	return q_ret;
 }
@@ -674,7 +674,6 @@ static struct drm_i915_gem_object *gem_allocate_guc_obj(struct drm_device *dev,
 
 	return obj;
 }
-#endif
 
 /**
  * gem_release_guc_obj() - Release gem object allocated for GuC usage
@@ -691,7 +690,6 @@ static void gem_release_guc_obj(struct drm_i915_gem_object *obj)
 	drm_gem_object_unreference(&obj->base);
 }
 
-#if 0
 static void guc_client_free(struct drm_device *dev,
 			    struct i915_guc_client *client)
 {
@@ -770,7 +768,7 @@ static struct i915_guc_client *guc_client_alloc(struct drm_device *dev,
 	client->client_obj = obj;
 	client->wq_offset = GUC_DB_SIZE;
 	client->wq_size = GUC_WQ_SIZE;
-	spin_lock_init(&client->wq_lock);
+	lockinit(&client->wq_lock, "i915cwql", 0, LK_CANRECURSE);
 
 	client->doorbell_offset = select_doorbell_cacheline(guc);
 
@@ -873,7 +871,7 @@ int i915_guc_submission_init(struct drm_device *dev)
 	if (!guc->ctx_pool_obj)
 		return -ENOMEM;
 
-	spin_lock_init(&dev_priv->guc.host2guc_lock);
+	lockinit(&dev_priv->guc.host2guc_lock, "i915gh2g", 0, LK_CANRECURSE);
 
 	ida_init(&guc->ctx_ids);
 
@@ -911,7 +909,6 @@ void i915_guc_submission_disable(struct drm_device *dev)
 	guc_client_free(dev, guc->execbuf_client);
 	guc->execbuf_client = NULL;
 }
-#endif
 
 void i915_guc_submission_fini(struct drm_device *dev)
 {
@@ -933,7 +930,6 @@ void i915_guc_submission_fini(struct drm_device *dev)
  */
 int intel_guc_suspend(struct drm_device *dev)
 {
-#if 0
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_guc *guc = &dev_priv->guc;
 	struct intel_context *ctx;
@@ -951,7 +947,6 @@ int intel_guc_suspend(struct drm_device *dev)
 	data[2] = i915_gem_obj_ggtt_offset(ctx->engine[RCS].state);
 
 	return host2guc_action(guc, data, ARRAY_SIZE(data));
-#endif
 	return -EIO;
 }
 
@@ -962,7 +957,6 @@ int intel_guc_suspend(struct drm_device *dev)
  */
 int intel_guc_resume(struct drm_device *dev)
 {
-#if 0
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_guc *guc = &dev_priv->guc;
 	struct intel_context *ctx;
@@ -979,6 +973,5 @@ int intel_guc_resume(struct drm_device *dev)
 	data[2] = i915_gem_obj_ggtt_offset(ctx->engine[RCS].state);
 
 	return host2guc_action(guc, data, ARRAY_SIZE(data));
-#endif
 	return -EIO;
 }
