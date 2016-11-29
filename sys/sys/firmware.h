@@ -50,7 +50,7 @@
  */
 struct firmware {
 	const char	*name;		/* system-wide name */
-	const void	*data;		/* location of image */
+	const uint8_t	*data;		/* location of image */
 	size_t		 datasize;	/* size of image in bytes */
 	unsigned int	 version;	/* version of the image */
 };

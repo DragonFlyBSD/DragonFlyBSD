@@ -1150,7 +1150,7 @@ run_load_microcode(struct run_softc *sc)
 	}
 
 	/* cheap sanity check */
-	temp = fw->data;
+	temp = (const void *)fw->data;
 	bytes = *temp;
 	if (bytes != be64toh(0xffffff0210280210ULL)) {
 		device_printf(sc->sc_dev, "firmware checksum failed\n");
