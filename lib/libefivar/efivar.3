@@ -35,11 +35,11 @@
 .Sh SYNOPSIS
 .In efivar.h
 .Ft int
-.Fn efi_append_variable "efi_guid_t guid" "const char *name" "void *data" "size_t data_size" "uint32_t attributes"
+.Fn efi_append_variable "efi_guid_t guid" "const char *name" "uint8_t *data" "size_t data_size" "uint32_t attributes"
 .Ft int
 .Fn efi_del_variable "efi_guid_t guid" "const char *name"
 .Ft int
-.Fn efi_get_variable "efi_guid_t guid" "const char *name" "void **data" "ssize_t *data_size" "uint32_t *attributes"
+.Fn efi_get_variable "efi_guid_t guid" "const char *name" "uint8_t **data" "size_t *data_size" "uint32_t *attributes"
 .Ft int
 .Fn efi_get_variable_attributes "efi_guid_t guid" "const char *name" "uint32_t *attributes"
 .Ft int
@@ -55,7 +55,7 @@
 .Ft int
 .Fn efi_name_to_guid "const char *name" "efi_guid_t *guid"
 .Ft int
-.Fn efi_set_variable "efi_guid_t guid" "const char *name" "void *data" "size_t data_size" "uint32_t attributes"
+.Fn efi_set_variable "efi_guid_t guid" "const char *name" "uint8_t *data" "size_t data_size" "uint32_t attributes" "mode_t mode"
 .Ft int
 .Fn efi_str_to_guid "const char *s" "efi_guid_t *guid"
 .Ft int
