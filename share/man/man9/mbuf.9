@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
 .\"
-.Dd February 19, 2015
+.Dd November 29, 2016
 .Dt MBUF 9
 .Os
 .\"
@@ -90,7 +90,6 @@
 .Fa "int len"
 .Fa "int offset"
 .Fa "struct ifnet *ifp"
-.Fa "void (*copy)(volatile const void *from, volatile void *to, size_t len)"
 .Fc
 .Ft void
 .Fn m_cat "struct mbuf *m" "struct mbuf *n"
@@ -418,18 +417,11 @@ It's safe to set
 beyond the current chain end: zeroed mbufs will be allocated to fill the
 space.
 .\"
-.It Fn m_devget buf len offset ifp copy
+.It Fn m_devget buf len offset ifp
 Copy data from a device local memory pointed to by
 .Fa buf
-to an mbuf chain.
-The copy is done using a specified copy routine
-.Fa copy ,
-or
-.Fn bcopy
-if
-.Fa copy
-is
-.Dv NULL .
+to an mbuf chain, using
+.Fn bcopy .
 .\"
 .It Fn m_cat m n
 Concatenate
