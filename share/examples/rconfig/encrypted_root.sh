@@ -22,7 +22,7 @@ set disk = "ad0"
 
 # For safety this only runs on a CD- or PXE-booted machine
 #
-df / | egrep -q '^(*.cd|.+:)'
+df / | egrep -q '^(.*cd|.+:)'
 if ( $status > 0 ) then
     echo "This program formats your disk and you didn't run it from"
     echo "a CD or NFS boot!"
