@@ -229,7 +229,7 @@ The default value is 200 megabytes (209715200), which means that the
 system will try harder to cache data coming off a slower hard drive
 and less hard trying to cache data coming off a fast SSD.
 This parameter is particularly important if you have NVMe drives in
-your system as these storage devices are capable of transfering
+your system as these storage devices are capable of transferring
 well over 2GBytes/sec into the system.
 .Pp
 There are various other buffer-cache and VM page cache related sysctls.
@@ -589,7 +589,7 @@ The primary sources of kernel memory usage are:
 .Bl -tag
 .It Va kern.maxvnodes
 The maximum number of cached vnodes in the system.
-These can eat quite a bit of kernel memory, primarily due to auxillary
+These can eat quite a bit of kernel memory, primarily due to auxiliary
 structures tracked by the HAMMER filesystem.
 It is relatively easy to configure a smaller value, but we do not
 recommend reducing this parameter below 100000.
