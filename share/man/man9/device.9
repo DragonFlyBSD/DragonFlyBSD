@@ -25,16 +25,15 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/device.9,v 1.7.2.4 2001/08/17 13:08:54 ru Exp $
-.\" $DragonFly: src/share/man/man9/device.9,v 1.4 2004/06/01 11:36:53 hmp Exp $
 .\"
-.Dd June 16, 1998
+.Dd November 29, 2016
 .Dt DEVICE 9
 .Os
 .Sh NAME
 .Nm device
 .Nd an abstract representation of a device
 .Sh SYNOPSIS
-.Vt typedef struct device *device_t ;
+.Vt typedef struct bsd_device *device_t ;
 .Sh DESCRIPTION
 The device object represents a piece of hardware attached to the
 system such as an expansion card, the bus which that card is plugged

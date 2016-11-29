@@ -57,7 +57,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/rman.9,v 1.2 2003/05/30 21:13:32 ru Exp $
 .\"
-.Dd May 12, 2003
+.Dd November 29, 2016
 .Dt RMAN 9
 .Os
 .Sh NAME
@@ -106,12 +106,12 @@
 .Ft "struct resource *"
 .Fo rman_reserve_resource
 .Fa "struct rman *rm" "u_long start" "u_long end" "u_long count"
-.Fa "u_int flags" "struct device *dev"
+.Fa "u_int flags" "device_t dev"
 .Fc
 .\".Ft "struct resource *"
 .\".Fo rman_reserve_resource_bound
 .\".Fa "struct rman *rm" "u_long start" "u_long end" "u_long count"
-.\".Fa "u_long bound" "u_int flags" "struct device *dev"
+.\".Fa "u_long bound" "u_int flags" "device_t dev"
 .\".Fc
 .Ft uint32_t
 .Fn rman_make_alignment_flags "uint32_t size"
@@ -120,7 +120,7 @@
 .Fn rman_get_start "struct resource *r"
 .Ft u_long
 .Fn rman_get_end "struct resource *r"
-.Ft "struct device *"
+.Ft device_t
 .Fn rman_get_device "struct resource *r"
 .Ft u_long
 .Fn rman_get_size "struct resource *r"
