@@ -1607,7 +1607,9 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 	fp->f_ops = &socketops;
 	fp->f_data = so;
 	fsetfd(td->td_lwp->lwp_proc->p_fd, fp, fd);
+	fsetfdflags(td->td_proc->p_fd, fd, UF_EXCLOSE);
 
+	bzero(&kq, sizeof(kq));
 	kqueue_init(&kq, td->td_lwp->lwp_proc->p_fd);
 	EV_SET(&kev, fd, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, NULL);
 	if ((error = kqueue_register(&kq, &kev)) != 0) {
@@ -1618,7 +1620,7 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 	error = kern_kevent(&kq, 1, res, NULL, socket_wait_copyin,
 			    socket_wait_copyout, ts, 0);
 
-	EV_SET(&kev, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	EV_SET(&kev, fd, EVFILT_READ, EV_DELETE|EV_DISABLE, 0, 0, NULL);
 	kqueue_register(&kq, &kev);
 	fp->f_ops = &badfileops;
 	fdrop(fp);
