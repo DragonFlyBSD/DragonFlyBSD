@@ -324,16 +324,16 @@ ssb_preallocstream(struct signalsockbuf *ssb, struct mbuf *m)
 #define ssb_appendcontrol(ssb, m, control)				\
 	((ssb_space(ssb) <= 0) ? 0 : sbappendcontrol(&(ssb)->sb, m, control))
 
-#define ssb_insert_knote(ssb, kn) {					\
+#define ssb_insert_knote(ssb, kn) do {					\
 	knote_insert(&(ssb)->ssb_kq.ki_note, kn);			\
 	atomic_set_int(&(ssb)->ssb_flags, SSB_KNOTE);			\
-}
+} while(0)
 
-#define ssb_remove_knote(ssb, kn) {					\
+#define ssb_remove_knote(ssb, kn) do {					\
 	knote_remove(&(ssb)->ssb_kq.ki_note, kn);			\
 	if (SLIST_EMPTY(&(ssb)->ssb_kq.ki_note))			\
 		atomic_clear_int(&(ssb)->ssb_flags, SSB_KNOTE);		\
-}
+} while(0)
 
 #define	sorwakeup(so)	sowakeup((so), &(so)->so_rcv)
 #define	sowwakeup(so)	sowakeup((so), &(so)->so_snd)
