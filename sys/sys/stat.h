@@ -223,7 +223,6 @@ struct stat {
 #endif
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 int	chmod(const char *, mode_t);

@@ -100,8 +100,6 @@ int	ipcperm(struct proc *, struct ipc_perm *, int);
 
 /* XXX doesn't really belong here, but has been historical practice in SysV. */
 
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 key_t	ftok(const char *, int);
 __END_DECLS
