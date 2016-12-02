@@ -234,6 +234,9 @@ smbfs_unmount(struct mount *mp, int mntflags)
 	if (error)
 		return error;
 	smb_makescred(&scred, curthread, smp->sm_cred);
+	error = smb_share_lock(smp->sm_share, LK_EXCLUSIVE);
+	if (error)
+		goto out;
 	smb_share_put(smp->sm_share, &scred);
 	mp->mnt_data = (qaddr_t)0;
 
@@ -244,6 +247,7 @@ smbfs_unmount(struct mount *mp, int mntflags)
 	lockdestroy(&smp->sm_hashlock);
 	kfree(smp, M_SMBFSDATA);
 	mp->mnt_flag &= ~MNT_LOCAL;
+out:
 	return error;
 }
 

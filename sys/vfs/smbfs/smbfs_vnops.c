@@ -714,7 +714,7 @@ smbfs_readdir(struct vop_readdir_args *ap)
 	}
 #endif
 	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
-	if (error) {
+	if (error == 0) {
 		error = smbfs_readvnode(vp, uio, ap->a_cred);
 		vn_unlock(vp);
 	}
