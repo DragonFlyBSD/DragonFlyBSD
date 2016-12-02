@@ -445,6 +445,9 @@ smb_vc_create(struct smb_vcspec *vcspec,
 	vcp->vc_mode = vcspec->rights & SMBM_MASK;
 	vcp->obj.co_flags = vcspec->flags & (SMBV_PRIVATE | SMBV_SINGLESHARE);
 	vcp->vc_tdesc = &smb_tran_nbtcp_desc;
+	vcp->vc_seqno = 0;
+	vcp->vc_mackey = NULL;
+	vcp->vc_mackeylen = 0;
 
 	if (uid == SMBM_ANY_OWNER)
 		uid = realuid;
@@ -523,6 +526,8 @@ smb_vc_free(struct smb_connobj *cp)
 	SMB_STRFREE(vcp->vc_srvname);
 	SMB_STRFREE(vcp->vc_pass);
 	SMB_STRFREE(vcp->vc_domain);
+	if (vcp->vc_mackey)
+		kfree(vcp->vc_mackey, M_SMBTEMP);
 	if (vcp->vc_paddr)
 		kfree(vcp->vc_paddr, M_SONAME);
 	if (vcp->vc_laddr)
