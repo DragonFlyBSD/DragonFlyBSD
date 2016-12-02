@@ -53,6 +53,8 @@
 #include "smb_conn.h"
 #include "smb_tran.h"
 
+#include "opt_netsmb.h"
+
 struct smb_dialect {
 	int		d_id;
 	const char *	d_name;
@@ -162,6 +164,10 @@ smb_smb_negotiate(struct smb_vc *vcp, struct smb_cred *scred)
 				vcp->vc_chlen = sblen;
 				vcp->obj.co_flags |= SMBV_ENCRYPT;
 			}
+#ifdef NETSMBCRYPTO
+			if (sp->sv_sm & SMB_SM_SIGS_REQUIRE)
+				vcp->vc_hflags2 |= SMB_FLAGS2_SECURITY_SIGNATURE;
+#endif
 			vcp->vc_hflags2 |= SMB_FLAGS2_KNOWS_LONG_NAMES;
 			if (dp->d_id == SMB_DIALECT_NTLM0_12 &&
 			    sp->sv_maxtx < 4096 &&
@@ -319,6 +325,8 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 	smb_rq_bend(rqp);
 	if (ntencpass)
 		kfree(ntencpass, M_SMBTEMP);
+	if (vcp->vc_hflags2 & SMB_FLAGS2_SECURITY_SIGNATURE)
+		smb_calcmackey(vcp);
 	error = smb_rq_simple(rqp);
 	SMBSDEBUG("%d\n", error);
 	if (error) {

@@ -99,6 +99,8 @@ enum smb_dialects {
  */
 #define SMB_SM_USER		0x01		/* server in the user security mode */
 #define	SMB_SM_ENCRYPT		0x02		/* use challenge/response */
+#define	SMB_SM_SIGS		0x04
+#define	SMB_SM_SIGS_REQUIRE	0x08
 
 /*
  * NTLM capabilities
