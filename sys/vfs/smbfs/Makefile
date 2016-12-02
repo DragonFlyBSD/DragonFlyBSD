@@ -16,13 +16,7 @@ SRCS=	opt_inet.h \
 	smbfs_vfsops.c smbfs_node.c smbfs_io.c smbfs_vnops.c \
 	smbfs_subr.c smbfs_smb.c
 
-.if exists(${.CURDIR}/../../crypto/des/des.h)
-NETSMBCRYPTO=yes
-.endif
-
-.if defined(NETSMBCRYPTO)
 SRCS+=	des_ecb.c des_enc.c des_setkey.c
-.endif
 
 # Build with INET support (1|0)
 SMB_INET?=	1
@@ -36,9 +30,6 @@ opt_inet.h:
 
 opt_netsmb.h:
 	echo "#define NETSMB	1"  > ${.TARGET}
-.if defined(NETSMBCRYPTO)
-	echo "#define NETSMBCRYPTO 1" >> ${.TARGET}
-.endif
 .endif
 
 .include <bsd.kmod.mk>
