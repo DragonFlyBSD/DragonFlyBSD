@@ -1670,9 +1670,9 @@ netproto/smb/smb_smb.c		optional netsmb
 netproto/smb/smb_subr.c		optional netsmb
 netproto/smb/smb_trantcp.c	optional netsmb
 netproto/smb/smb_usr.c		optional netsmb
-crypto/des/des_ecb.c		optional netsmbcrypto
-crypto/des/des_enc.c		optional netsmbcrypto
-crypto/des/des_setkey.c		optional netsmbcrypto
+crypto/des/des_ecb.c		optional netsmb
+crypto/des/des_enc.c		optional netsmb
+crypto/des/des_setkey.c		optional netsmb
 vfs/nfs/nfs_bio.c		optional nfs
 vfs/nfs/nfs_node.c		optional nfs
 vfs/nfs/nfs_serv.c		optional nfs

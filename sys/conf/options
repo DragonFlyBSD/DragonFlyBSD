@@ -151,7 +151,6 @@ NTFS_ICONV	opt_dontuse.h
 
 # SMB/CIFS requester
 NETSMB		opt_netsmb.h
-NETSMBCRYPTO	opt_netsmb.h
 
 # If you are following the conditions in the copyright,
 # you can enable soft-updates which will speed up a lot of things
