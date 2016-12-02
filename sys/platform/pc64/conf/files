@@ -205,7 +205,6 @@ bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard
 platform/pc64/isa/isa_intr.c		optional	isa
 platform/pc64/x86_64/spinlock.s		standard
-dev/netif/elink_layer/elink.c		optional	ep
 
 vmx_genassym.o				standard					\
 	dependency 	" $S/platform/$P/vmm/vmx_genassym.c ${FORWARD_HEADERS_COOKIE}"	\
