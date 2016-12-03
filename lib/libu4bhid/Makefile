@@ -21,10 +21,6 @@ MLINKS=	usbhid.3 libusbhid.3 usbhid.3 hid_get_report_desc.3 \
 	usbhid.3 hid_use_report_desc.3
 
 SRCS=	descr.c parse.c usage.c data.c
-
-# only when HID_COMPAT7 (FreeBSD 7 compat)
-#SRCS+=	descr_compat.c
-
 INCS=	usbhid.h
 
 .if defined(COMPAT_32BIT)

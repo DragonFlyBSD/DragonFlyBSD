@@ -39,12 +39,6 @@ struct report_desc {
 
 /* internal backwards compatibility functions */
 
-#ifdef HID_COMPAT7
-int	hid_set_immed_compat7(int fd, int enable);
-int	hid_get_report_id_compat7(int fd);
-report_desc_t	hid_get_report_desc_compat7(int fd);
-#endif
-
 #ifdef COMPAT_32BIT
 #define	hid_pass_ptr(ptr)	((uint64_t)(uintptr_t)(ptr))
 #else

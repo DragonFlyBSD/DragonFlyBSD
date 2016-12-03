@@ -47,10 +47,6 @@ hid_set_immed(int fd, int enable)
 {
 	int ret;
 	ret = ioctl(fd, USB_SET_IMMED, &enable);
-#ifdef HID_COMPAT7
-	if (ret < 0)
-		ret = hid_set_immed_compat7(fd, enable);
-#endif
 	return (ret);
 }
 
@@ -82,12 +78,7 @@ hid_get_report_id(int fd)
 
 use_ioctl:
 	ret = ioctl(fd, USB_GET_REPORT_ID, &temp);
-#ifdef HID_COMPAT7
-	if (ret < 0)
-		ret = hid_get_report_id_compat7(fd);
-	else
-#endif
-		ret = temp;
+	ret = temp;
 
 	return (ret);
 }
@@ -104,15 +95,8 @@ hid_get_report_desc(int fd)
 	/* get actual length first */
 	ugd.ugd_data = hid_pass_ptr(NULL);
 	ugd.ugd_maxlen = 65535;
-	if (ioctl(fd, USB_GET_REPORT_DESC, &ugd) < 0) {
-#ifdef HID_COMPAT7
-		/* could not read descriptor */
-		/* try FreeBSD 7 compat code */
-		return (hid_get_report_desc_compat7(fd));
-#else
+	if (ioctl(fd, USB_GET_REPORT_DESC, &ugd) < 0)
 		return (NULL);
-#endif
-	}
 
 	/*
 	 * NOTE: The kernel will return a failure if 
