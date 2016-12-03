@@ -1,9 +1,8 @@
 #
 #
 PROG=           nvmectl
-#MAN=            nvmectl.8
-NOMAN=TRUE
 SRCS=		nvmectl.c subs.c
+MAN=            nvmectl.8
 
 CFLAGS+=	-I${.CURDIR}/../../sys
 LDADD=		-lutil
