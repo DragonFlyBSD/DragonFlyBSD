@@ -181,19 +181,21 @@ kdb_trap(int type, int code, struct x86_64_saved_state *regs)
 	/* vcons_set_mode(0); */
 	db_global_jmpbuf_valid = FALSE;
 
-	db_printf("\nCPU%d restarting CPUs: 0x%016jx\n",
-		  mycpu->gd_cpuid,
-		  (uintmax_t)CPUMASK_LOWMASK(stopped_cpus));
-
-	/* Restart all the CPUs we previously stopped */
-	if (CPUMASK_CMPMASKNEQ(stopped_cpus, mycpu->gd_other_cpus)) {
-		db_printf("whoa, other_cpus: 0x%016jx, "
-			  "stopped_cpus: 0x%016jx\n",
-			  (uintmax_t)CPUMASK_LOWMASK(mycpu->gd_other_cpus),
+	if (panicstr == NULL) {
+		db_printf("\nCPU%d restarting CPUs: 0x%016jx\n",
+			  mycpu->gd_cpuid,
 			  (uintmax_t)CPUMASK_LOWMASK(stopped_cpus));
-		panic("stop_cpus() failed");
+
+		/* Restart all the CPUs we previously stopped */
+		if (CPUMASK_CMPMASKNEQ(stopped_cpus, mycpu->gd_other_cpus)) {
+			db_printf("whoa, other_cpus: 0x%016jx, "
+				  "stopped_cpus: 0x%016jx\n",
+				  (uintmax_t)CPUMASK_LOWMASK(mycpu->gd_other_cpus),
+				  (uintmax_t)CPUMASK_LOWMASK(stopped_cpus));
+			panic("stop_cpus() failed");
+		}
+		restart_cpus(stopped_cpus);
 	}
-	restart_cpus(stopped_cpus);
 
 	db_printf(" restarted\n");
 	crit_exit();
@@ -351,8 +353,15 @@ Debugger(const char *msg)
 	 * OK if the call is for the debugger hotkey but not if the call
 	 * is a weak form of panicing.
 	 */
-	if (cons_unavail && !(boothowto & RB_GDB))
-	    return;
+	if (cons_unavail && !(boothowto & RB_GDB)) {
+		/*
+		 * If we are panicing, panic() expects cpus to be stopped
+		 * when Debugger() returns.
+		 */
+		if (panicstr != NULL)
+			stop_cpus(mycpu->gd_other_cpus);
+		return;
+	}
 
 	if (!in_Debugger) {
 	    in_Debugger = 1;
