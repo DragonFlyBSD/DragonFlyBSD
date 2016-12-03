@@ -375,6 +375,9 @@ register_framebuffer(struct fb_info *info)
 		info->fbops.fb_set_par(info);
 	atomic_add_int(&sc->videoio_in_progress, -1);
 
+	sc->fb_blanked = FALSE;
+	if (sc->unit == sc_console_unit && sc->cur_scp->smode.mode != VT_AUTO)
+		cons_unavail = FALSE;
 #if NSPLASH > 0
 	if (info->fbops.fb_blank != NULL)
 		add_scrn_saver(scframebuffer_saver);
@@ -419,6 +422,9 @@ unregister_framebuffer(struct fb_info *info)
 		taskqueue_drain(taskqueue_thread[0], sc->fb_blank_task);
 	}
 #endif /* NSPLASH */
+	sc->fb_blanked = TRUE;
+	if (sc->unit == sc_console_unit)
+		cons_unavail = TRUE;
 
 	if (sc->dummy_fb_info == NULL) {
 		sc->dummy_fb_info = kmalloc(sizeof(struct fb_info),
@@ -779,8 +785,10 @@ scclose(struct dev_close_args *ap)
 	scp = SC_STAT(tp->t_dev);
 	/* were we in the middle of the VT switching process? */
 	DPRINTF(5, ("sc%d: scclose(), ", scp->sc->unit));
-	if ((scp == scp->sc->cur_scp) && (scp->sc->unit == sc_console_unit))
+	if ((scp == scp->sc->cur_scp) && (scp->sc->unit == sc_console_unit) &&
+	    !scp->sc->fb_blanked) {
 	    cons_unavail = FALSE;
+	}
 	if (finish_vt_rel(scp, TRUE) == 0)	/* force release */
 	    DPRINTF(5, ("reset WAIT_REL, "));
 	if (finish_vt_acq(scp) == 0)		/* force acknowledge */
@@ -1190,8 +1198,10 @@ scioctl(struct dev_ioctl_args *ap)
 	    scp->proc = NULL;
 	    scp->pid = 0;
 	    DPRINTF(5, ("VT_AUTO, "));
-	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit))
+	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit) &&
+		!sc->fb_blanked) {
 		cons_unavail = FALSE;
+	    }
 	    if (finish_vt_rel(scp, TRUE) == 0)
 		DPRINTF(5, ("reset WAIT_REL, "));
 	    if (finish_vt_acq(scp) == 0)
@@ -2405,10 +2415,18 @@ sc_fb_blank(void *context, int pending)
 	lwkt_gettoken(&tty_token);
 	if (sc->fbi != NULL && sc->fbi->fbops.fb_blank != NULL) {
 		/* 0 == FB_BLANK_UNBLANK and 4 == FB_BLANK_POWERDOWN */
-		if (sc->flags & SC_SCRN_BLANKED)
+		if (sc->flags & SC_SCRN_BLANKED) {
 			sc->fbi->fbops.fb_blank(4, sc->fbi);
-		else
+			sc->fb_blanked = TRUE;
+			if (sc->unit == sc_console_unit)
+				cons_unavail = TRUE;
+		} else {
 			sc->fbi->fbops.fb_blank(0, sc->fbi);
+			sc->fb_blanked = FALSE;
+			if (sc->unit == sc_console_unit &&
+			    sc->cur_scp->smode.mode == VT_AUTO)
+				cons_unavail = FALSE;
+		}
 	}
 	lwkt_reltoken(&tty_token);
 }
@@ -2887,7 +2905,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     }
 
     sc->switch_in_progress = 0;
-    if (sc->unit == sc_console_unit)
+    if (sc->unit == sc_console_unit && !sc->fb_blanked)
 	cons_unavail = FALSE;
     DPRINTF(5, ("switch done\n"));
 
@@ -2907,7 +2925,7 @@ do_switch_scr(sc_softc_t *sc)
     /* wait for the controlling process to acknowledge, if necessary */
     if (!signal_vt_acq(sc->cur_scp)) {
 	sc->switch_in_progress = 0;
-	if (sc->unit == sc_console_unit)
+	if (sc->unit == sc_console_unit && !sc->fb_blanked)
 	    cons_unavail = FALSE;
     }
     lwkt_reltoken(&tty_token);
