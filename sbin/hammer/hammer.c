@@ -34,8 +34,8 @@
 
 #include "hammer.h"
 
-static void hammer_parsedevs(const char *blkdevs);
-static void hammer_parsedevs_noverify(const char *blkdevs);
+static void hammer_parsedevs(const char *blkdevs, int oflags);
+static void hammer_parsedevs_noverify(const char *blkdevs, int oflags);
 static void sigalrm(int signo);
 static void sigintr(int signo);
 static void usage(int exit_code);
@@ -507,7 +507,7 @@ main(int ac, char **av)
 		int obfuscate = 0;
 		int indent = 0;
 
-		hammer_parsedevs(blkdevs);
+		hammer_parsedevs(blkdevs, O_RDONLY);
 		if (ac > 3)
 			errx(1, "Too many options specified");
 		if (ac > 1)
@@ -531,24 +531,24 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "show-undo") == 0) {
-		hammer_parsedevs(blkdevs);
+		hammer_parsedevs(blkdevs, O_RDONLY);
 		hammer_cmd_show_undo();
 		exit(0);
 	}
 	if (strcmp(av[0], "recover") == 0) {
-		hammer_parsedevs_noverify(blkdevs);
+		hammer_parsedevs_noverify(blkdevs, O_RDONLY);
 		if (ac <= 1)
 			errx(1, "hammer recover required target directory");
 		hammer_cmd_recover(av[1]);
 		exit(0);
 	}
 	if (strcmp(av[0], "blockmap") == 0) {
-		hammer_parsedevs(blkdevs);
+		hammer_parsedevs(blkdevs, O_RDONLY);
 		hammer_cmd_blockmap();
 		exit(0);
 	}
 	if (strcmp(av[0], "checkmap") == 0) {
-		hammer_parsedevs(blkdevs);
+		hammer_parsedevs(blkdevs, O_RDONLY);
 		hammer_cmd_checkmap();
 		exit(0);
 	}
@@ -567,7 +567,7 @@ main(int ac, char **av)
  */
 static
 void
-__hammer_parsedevs(const char *blkdevs, int verify)
+__hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 {
 	struct volume_info *vol = NULL;
 	char *copy;
@@ -585,9 +585,9 @@ __hammer_parsedevs(const char *blkdevs, int verify)
 			*copy++ = 0;
 		volname = getdevpath(volname, 0);
 		if (strchr(volname, ':'))
-			__hammer_parsedevs(volname, verify);
+			__hammer_parsedevs(volname, oflags, verify);
 		else {
-			vol = load_volume(volname, O_RDONLY, verify);
+			vol = load_volume(volname, oflags, verify);
 			assert(vol);
 			++volnum;
 		}
@@ -609,16 +609,16 @@ __hammer_parsedevs(const char *blkdevs, int verify)
 
 static __inline
 void
-hammer_parsedevs(const char *blkdevs)
+hammer_parsedevs(const char *blkdevs, int oflags)
 {
-	__hammer_parsedevs(blkdevs, 1);
+	__hammer_parsedevs(blkdevs, oflags, 1);
 }
 
 static __inline
 void
-hammer_parsedevs_noverify(const char *blkdevs)
+hammer_parsedevs_noverify(const char *blkdevs, int oflags)
 {
-	__hammer_parsedevs(blkdevs, 0);
+	__hammer_parsedevs(blkdevs, oflags, 0);
 }
 
 static
