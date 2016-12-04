@@ -495,7 +495,7 @@ smb_ctx_resolve(struct smb_ctx *ctx)
 	if (error)
 		return error;
 	if (ssn->ioc_localcs[0] == 0)
-		strcpy(ssn->ioc_localcs, "default");	/* XXX: locale name ? */
+		strcpy(ssn->ioc_localcs, "ISO8859-1");
 	error = smb_addiconvtbl("tolower", ssn->ioc_localcs, nls_lower);
 	if (error)
 		return error;
