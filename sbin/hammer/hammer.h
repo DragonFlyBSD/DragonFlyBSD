@@ -137,6 +137,7 @@ void hammer_cmd_volume_blkdevs(char **av, int ac);
 void hammer_cmd_dedup_simulate(char **av, int ac);
 void hammer_cmd_dedup(char **av, int ac);
 void hammer_cmd_abort_cleanup(char **av, int ac);
+void hammer_cmd_strip(void);
 
 void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
 void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);

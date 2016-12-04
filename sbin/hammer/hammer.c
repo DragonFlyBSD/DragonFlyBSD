@@ -552,6 +552,12 @@ main(int ac, char **av)
 		hammer_cmd_checkmap();
 		exit(0);
 	}
+	if (strcmp(av[0], "strip") == 0) {
+		hammer_parsedevs(blkdevs, O_RDWR);
+		hammer_cmd_strip();
+		exit(0);
+	}
+
 	usage(1);
 	/* not reached */
 	return(0);
@@ -712,6 +718,7 @@ usage(int exit_code)
 		"hammer -f blkdevs [-qqq] show [lo:objid]\n"
 		"hammer -f blkdevs show-undo\n"
 		"hammer -f blkdevs recover <target_dir>\n"
+		"hammer -f blkdevs strip\n"
 	);
 
 	fprintf(stderr, "\nHAMMER utility version 5+ commands:\n");

@@ -5,7 +5,8 @@ SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c \
 	cmd_synctid.c cmd_stats.c cmd_remote.c \
 	cmd_pfs.c cmd_snapshot.c cmd_mirror.c \
 	cmd_cleanup.c cmd_info.c cmd_version.c cmd_volume.c \
-	cmd_config.c cmd_recover.c cmd_dedup.c cmd_abort.c
+	cmd_config.c cmd_recover.c cmd_dedup.c cmd_abort.c \
+	cmd_strip.c
 MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys

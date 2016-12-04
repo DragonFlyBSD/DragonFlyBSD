@@ -188,8 +188,8 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	if (ronly == 0 && data) {
 		img = (hammer_volume_ondisk_t)data;
 		if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
-			hkprintf("Formatting of valid HAMMER volume "
-				"%s denied. Erase with dd!\n", volname);
+			hkprintf("Formatting of valid HAMMER volume %s denied. "
+				"Erase with hammer strip or dd!\n", volname);
 			error = EFTYPE;
 			goto late_failure;
 		}

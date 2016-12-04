@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 9, 2016
+.Dd December 4, 2016
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -488,6 +488,31 @@ considerably amount of memory while operating.
 .Pp
 This command is literally the last line of defense when it comes to
 recovering data from a dead filesystem.
+.Pp
+This command needs the
+.Fl f Ar blkdevs
+option.
+.\" ==== strip ====
+.It Cm strip
+Strip
+.Nm HAMMER
+filesystem volume header and other meta-data by overwriting them with irrelevant data.
+.Nm HAMMER
+volumes need to be unmounted.
+.Pp
+This is a fast way to make
+.Nm HAMMER
+filesystem unmountable and unrecoverable.
+After running this command,
+.Nm HAMMER
+filesystem data is no longer recoverable using
+.Cm recover
+command, although the data still exists within the
+.Nm HAMMER
+volumes.
+As safety measure the
+.Fl y
+flag have no effect on this directive.
 .Pp
 This command needs the
 .Fl f Ar blkdevs
