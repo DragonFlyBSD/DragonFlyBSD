@@ -841,7 +841,6 @@ hammer_vop_access(struct vop_access_args *ap)
 	gid_t gid;
 	int error;
 
-	++hammer_stats_file_iopsr;
 	uid = hammer_to_unix_xid(&ip->ino_data.uid);
 	gid = hammer_to_unix_xid(&ip->ino_data.gid);
 
@@ -924,7 +923,6 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 */
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -1004,7 +1002,6 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	 * by stat is different from the more involved fsid used in the
 	 * mount structure.
 	 */
-	++hammer_stats_file_iopsr;
 	hammer_lock_sh(&ip->lock);
 	vap->va_fsid = ip->pfsm->fsid_udev ^ (uint32_t)ip->obj_asof ^
 		       (uint32_t)(ip->obj_asof >> 32);
@@ -1126,7 +1123,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_simple_transaction(&trans, hmp);
-	++hammer_stats_file_iopsr;
 
 	for (i = 0; i < nlen; ++i) {
 		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
@@ -1344,7 +1340,6 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	}
 
 	hammer_simple_transaction(&trans, hmp);
-	++hammer_stats_file_iopsr;
 
 	ip = hammer_get_inode(&trans, dip, parent_obj_id,
 			      asof, parent_obj_localization,
@@ -1397,7 +1392,6 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 
 	/*
 	 * Add the filesystem object to the directory.  Note that neither
@@ -1453,7 +1447,6 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 */
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -1530,7 +1523,6 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 */
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -1588,7 +1580,6 @@ hammer_vop_open(struct vop_open_args *ap)
 {
 	hammer_inode_t ip;
 
-	++hammer_stats_file_iopsr;
 	ip = VTOI(ap->a_vp);
 
 	if ((ap->a_mode & FWRITE) && (ip->flags & HAMMER_INODE_RO))
@@ -1627,7 +1618,6 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	int r;
 	int dtype;
 
-	++hammer_stats_file_iopsr;
 	ip = VTOI(ap->a_vp);
 	uio = ap->a_uio;
 	saveoff = uio->uio_offset;
@@ -1839,7 +1829,6 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	 * Long version
 	 */
 	hammer_simple_transaction(&trans, hmp);
-	++hammer_stats_file_iopsr;
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 
 	/*
@@ -1897,7 +1886,6 @@ hammer_vop_nremove(struct vop_nremove_args *ap)
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0, 0);
 	hammer_done_transaction(&trans);
 	if (error == 0)
@@ -1955,7 +1943,6 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 
 	/*
 	 * Remove tncp from the target directory and then link ip as
@@ -2100,7 +2087,6 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0, 1);
 	hammer_done_transaction(&trans);
 	if (error == 0)
@@ -2130,7 +2116,6 @@ hammer_vop_markatime(struct vop_markatime_args *ap)
 		return (0);
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 
 	ip->ino_data.atime = trans.time;
 	hammer_modify_inode(&trans, ip, HAMMER_INODE_ATIME);
@@ -2178,7 +2163,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 	error = 0;
 
 	if (vap->va_flags != VNOVAL) {
@@ -2401,7 +2385,6 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -2495,7 +2478,6 @@ hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 
 	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
-	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp,
 				ap->a_cred, ap->a_flags, -1);
 	hammer_done_transaction(&trans);
@@ -2515,7 +2497,6 @@ hammer_vop_ioctl(struct vop_ioctl_args *ap)
 	hammer_mount_t hmp = ip->hmp;
 	int error;
 
-	++hammer_stats_file_iopsr;
 	lwkt_gettoken(&hmp->fs_token);
 	error = hammer_ioctl(ip, ap->a_command, ap->a_data,
 			     ap->a_fflag, ap->a_cred);
@@ -2988,7 +2969,6 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	int	error;
 	int	blksize;
 
-	++hammer_stats_file_iopsr;
 	ip = ap->a_vp->v_data;
 	hmp = ip->hmp;
 

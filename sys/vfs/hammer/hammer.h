@@ -973,8 +973,6 @@ extern int64_t hammer_stats_btree_root_iterations;
 extern int64_t hammer_stats_record_iterations;
 extern int64_t hammer_stats_file_read;
 extern int64_t hammer_stats_file_write;
-extern int64_t hammer_stats_file_iopsr;
-extern int64_t hammer_stats_file_iopsw;
 extern int64_t hammer_stats_disk_read;
 extern int64_t hammer_stats_disk_write;
 extern int64_t hammer_stats_inode_flushes;

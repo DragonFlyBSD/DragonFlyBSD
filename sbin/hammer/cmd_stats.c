@@ -45,7 +45,7 @@ static void loaddelay(struct timespec *ts, const char *arg);
 #define bstats_title	\
 "   lookups   searches    inserts    deletes   elements     splits iterations  rootiters   reciters"
 #define iostats_title	\
-"   f_read   f_write   f_iopsr   f_iopsw    d_read   d_write i_flushes   commits      undo      redo"
+"   f_read   f_write   d_read   d_write i_flushes   commits      undo      redo"
 
 /*
  * Taken from sys/vfs/hammer/hammer_vfsops.c
@@ -65,8 +65,6 @@ struct btree_stats {
 struct io_stats {
 	int64_t file_read;
 	int64_t file_write;
-	int64_t file_iopsr;
-	int64_t file_iopsw;
 	int64_t disk_read;
 	int64_t disk_write;
 	int64_t inode_flushes;
@@ -106,8 +104,6 @@ collect_iostats(struct io_stats *p)
 	/* sysctls must exist, so ignore return values */
 	_sysctl(_HAMMER"file_read", &p->file_read);
 	_sysctl(_HAMMER"file_write", &p->file_write);
-	_sysctl(_HAMMER"file_iopsr", &p->file_iopsr);
-	_sysctl(_HAMMER"file_iopsw", &p->file_iopsw);
 	_sysctl(_HAMMER"disk_read", &p->disk_read);
 	_sysctl(_HAMMER"disk_write", &p->disk_write);
 	_sysctl(_HAMMER"inode_flushes", &p->inode_flushes);
@@ -137,11 +133,9 @@ static __inline __always_inline
 void
 print_iostats(const struct io_stats *p1, const struct io_stats *p2)
 {
-	printf("%9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd",
+	printf("%9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd",
 		(intmax_t)(p1->file_read - p2->file_read),
 		(intmax_t)(p1->file_write - p2->file_write),
-		(intmax_t)(p1->file_iopsr - p2->file_iopsr),
-		(intmax_t)(p1->file_iopsw - p2->file_iopsw),
 		(intmax_t)(p1->disk_read - p2->disk_read),
 		(intmax_t)(p1->disk_write - p2->disk_write),
 		(intmax_t)(p1->inode_flushes - p2->inode_flushes),

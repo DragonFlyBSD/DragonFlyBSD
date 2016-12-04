@@ -73,8 +73,6 @@ int64_t hammer_stats_record_iterations;
 
 int64_t hammer_stats_file_read;
 int64_t hammer_stats_file_write;
-int64_t hammer_stats_file_iopsr;
-int64_t hammer_stats_file_iopsw;
 int64_t hammer_stats_disk_read;
 int64_t hammer_stats_disk_write;
 int64_t hammer_stats_inode_flushes;
@@ -207,10 +205,6 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_read, CTLFLAG_RD,
 	   &hammer_stats_file_read, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_write, CTLFLAG_RD,
 	   &hammer_stats_file_write, 0, "");
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_iopsr, CTLFLAG_RD,
-	   &hammer_stats_file_iopsr, 0, "");
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_iopsw, CTLFLAG_RD,
-	   &hammer_stats_file_iopsw, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_disk_read, CTLFLAG_RD,
 	   &hammer_stats_disk_read, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_disk_write, CTLFLAG_RD,
