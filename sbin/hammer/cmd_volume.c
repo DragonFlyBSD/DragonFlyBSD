@@ -138,7 +138,7 @@ retry:
 		error = errno;
 		if ((error == ENOTEMPTY) && (retried++ == 0)) {
 			printf("%s is not empty, ", device);
-			printf("do you want to reblock %s? [y/n]\n", device);
+			printf("do you want to reblock %s? [y/n] ", device);
 			fflush(stdout);
 			if (getyn() == 1) {
 				ioc.flag |= HAMMER_IOC_VOLUME_REBLOCK;

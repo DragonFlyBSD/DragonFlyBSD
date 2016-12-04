@@ -709,7 +709,7 @@ create_pfs(const char *filesystem, uuid_t *s_uuid)
 
 	} else {
 		fprintf(stderr, "PFS slave %s does not exist.\n"
-			"Do you want to create a new slave PFS? (yes|no) ",
+			"Do you want to create a new slave PFS? [y/n] ",
 			filesystem);
 		fflush(stderr);
 		if (getyntty() != 1) {

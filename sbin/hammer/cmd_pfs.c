@@ -361,7 +361,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	printf("You have requested that PFS#%d (%s) be destroyed\n",
 		pfs.pfs_id, pfs.ondisk->label);
 	printf("This will irrevocably destroy all data on this PFS!!!!!\n");
-	printf("Do you really want to do this? ");
+	printf("Do you really want to do this? [y/n] ");
 	fflush(stdout);
 	if (getyn() == 0) {
 		fprintf(stderr, "No action taken on PFS#%d\n", pfs.pfs_id);
@@ -370,7 +370,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 
 	if (hammer_is_pfs_master(pfs.ondisk)) {
 		printf("This PFS is currently setup as a MASTER!\n");
-		printf("Are you absolutely sure you want to destroy it? ");
+		printf("Are you absolutely sure you want to destroy it? [y/n] ");
 		fflush(stdout);
 		if (getyn() == 0) {
 			fprintf(stderr, "No action taken on PFS#%d\n",
