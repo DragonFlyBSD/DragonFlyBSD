@@ -10,11 +10,13 @@
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 void start_timing(void);
 int stop_timing(long long count, const char *ctl, ...);
