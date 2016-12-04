@@ -130,13 +130,18 @@ static int spin_indefinite_check(struct spinlock *spin,
  * We contested due to another exclusive lock holder.  We lose.
  *
  * We have to unwind the attempt and may acquire the spinlock
- * anyway while doing so.  countb was incremented on our behalf.
+ * anyway while doing so.
  */
 int
 spin_trylock_contested(struct spinlock *spin)
 {
 	globaldata_t gd = mycpu;
 
+	/*
+	 * Handle degenerate case, else fail.
+	 */
+	if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED|0, 1))
+		return TRUE;
 	/*atomic_add_int(&spin->counta, -1);*/
 	--gd->gd_spinlocks;
 	--gd->gd_curthread->td_critcount;
@@ -144,7 +149,8 @@ spin_trylock_contested(struct spinlock *spin)
 }
 
 /*
- * The spin_lock() inline was unable to acquire the lock.
+ * The spin_lock() inline was unable to acquire the lock and calls this
+ * function with spin->counta already incremented.
  *
  * atomic_swap_int() is the absolute fastest spinlock instruction, at
  * least on multi-socket systems.  All instructions seem to be about
@@ -188,6 +194,12 @@ _spin_lock_contested(struct spinlock *spin, const char *ident)
 	int i;
 
 	/*
+	 * Handle degenerate case.
+	 */
+	if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED|0, 1))
+		return;
+
+	/*
 	 * Transfer our count to the high bits, then loop until we can
 	 * acquire the low counter (== 1).  No new shared lock can be
 	 * acquired while we hold the EXCLWAIT bits.
@@ -202,15 +214,6 @@ _spin_lock_contested(struct spinlock *spin, const char *ident)
 	long j;
 	for (j = spinlocks_add_latency; j > 0; --j)
 		cpu_ccfence();
-#endif
-#if defined(INVARIANTS)
-	if (spin_lock_test_mode > 10 &&
-	    spin->countb > spin_lock_test_mode &&
-	    (spin_lock_test_mode & 0xFF) == mycpu->gd_cpuid) {
-		spin->countb = 0;
-		print_backtrace(-1);
-	}
-	++spin->countb;
 #endif
 	i = 0;
 
@@ -243,9 +246,6 @@ _spin_lock_contested(struct spinlock *spin, const char *ident)
 				ident,
 				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
 			++mycpu->gd_cnt.v_lock_colls;
-#if defined(INVARIANTS)
-			++spin->countb;
-#endif
 			if (spin_indefinite_check(spin, &info))
 				break;
 		}
@@ -271,15 +271,6 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 	long j;
 	for (j = spinlocks_add_latency; j > 0; --j)
 		cpu_ccfence();
-#endif
-#if defined(INVARIANTS)
-	if (spin_lock_test_mode > 10 &&
-	    spin->countb > spin_lock_test_mode &&
-	    (spin_lock_test_mode & 0xFF) == mycpu->gd_cpuid) {
-		spin->countb = 0;
-		print_backtrace(-1);
-	}
-	++spin->countb;
 #endif
 	i = 0;
 
@@ -320,9 +311,6 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 				ident,
 				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
 			++mycpu->gd_cnt.v_lock_colls;
-#if defined(INVARIANTS)
-			++spin->countb;
-#endif
 			if (spin_indefinite_check(spin, &info))
 				break;
 		}

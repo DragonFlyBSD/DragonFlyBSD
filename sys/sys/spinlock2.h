@@ -100,11 +100,13 @@ spin_trylock(struct spinlock *spin)
 static __inline int
 spin_held(struct spinlock *spin)
 {
-	return(spin->counta != 0);
+	return((spin->counta & ~SPINLOCK_SHARED) != 0);
 }
 
 /*
- * Obtain an exclusive spinlock and return.
+ * Obtain an exclusive spinlock and return.  It is possible for the
+ * SPINLOCK_SHARED bit to already be set, in which case the contested
+ * code is called to fix it up.
  */
 static __inline void
 _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
@@ -112,8 +114,7 @@ _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
-	atomic_add_int(&spin->counta, 1);
-	if (spin->counta != 1)
+	if (atomic_fetchadd_int(&spin->counta, 1) != 0)
 		_spin_lock_contested(spin, ident);
 #ifdef DEBUG_LOCKS
 	int i;
@@ -180,17 +181,26 @@ spin_unlock(struct spinlock *spin)
 }
 
 /*
- * Shared spinlocks
+ * Shared spinlock.  Acquire a count, if SPINLOCK_SHARED is not already
+ * set then set it.  The bit will already be set in the unmixed critical
+ * path.
  */
 static __inline void
 _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 			const char *ident)
 {
+	int counta;
+
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
-	if (atomic_cmpset_int(&spin->counta, 0, SPINLOCK_SHARED | 1) == 0)
+	counta = atomic_fetchadd_int(&spin->counta, 1);
+	if (counta == 0) {
+		atomic_set_int(&spin->counta, SPINLOCK_SHARED);
+	} else if ((counta & SPINLOCK_SHARED) == 0) {
+		atomic_add_int(&spin->counta, -1);
 		_spin_lock_shared_contested(spin, ident);
+	}
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -205,6 +215,11 @@ _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 #endif
 }
 
+/*
+ * Unlock a shared lock.  For convenience we allow the last transition
+ * to be to (SPINLOCK_SHARED|0), leaving the SPINLOCK_SHARED bit set
+ * with a count to 0 which will optimize the next shared lock obtained.
+ */
 static __inline void
 spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 {
@@ -226,16 +241,6 @@ spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 	cpu_sfence();
 	atomic_add_int(&spin->counta, -1);
 
-	/*
-	 * Make sure SPINLOCK_SHARED is cleared.  If another cpu tries to
-	 * get a shared or exclusive lock this loop will break out.  We're
-	 * only talking about a very trivial edge case here.
-	 */
-	while (spin->counta == SPINLOCK_SHARED) {
-		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED, 0))
-			break;
-	}
-	cpu_sfence();
 #ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks > 0);
 #endif
