@@ -176,6 +176,7 @@ struct componentname;
 struct nlcomponent;
 struct mount;
 
+void	cache_clearmntcache(void);
 void	cache_lock(struct nchandle *nch);
 void	cache_lock_maybe_shared(struct nchandle *nch, int excl);
 void	cache_relock(struct nchandle *nch1, struct ucred *cred1,
@@ -216,6 +217,7 @@ void	cache_copy(struct nchandle *nch, struct nchandle *target);
 void	cache_changemount(struct nchandle *nch, struct mount *mp);
 void	cache_put(struct nchandle *nch);
 void	cache_drop(struct nchandle *nch);
+void	cache_drop_and_cache(struct nchandle *nch);
 void	cache_zero(struct nchandle *nch);
 void	cache_rename(struct nchandle *fnch, struct nchandle *tnch);
 void	cache_unlink(struct nchandle *nch);

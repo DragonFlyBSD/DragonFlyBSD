@@ -39,6 +39,8 @@
 /*
  * Statistics on the usefulness of namei caches.
  * (per-cpu)
+ *
+ * Allocated in an array so make sure this is cache-aligned.
  */
 struct	nchstats {
 	unsigned long	ncs_goodhits;	/* hits that we can really use */
@@ -49,6 +51,6 @@ struct	nchstats {
 	unsigned long	ncs_longhits;  	/* path lookup hits */
 	unsigned long	ncs_longmiss;	/* path lookup misses */
 	unsigned long	ncs_unused;	/* number of times we attempt it */
-};
+} __cachealign;
 
 #endif /* _SYS_NCHSTATS_H_ */

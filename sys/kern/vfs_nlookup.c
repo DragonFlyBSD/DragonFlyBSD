@@ -117,12 +117,14 @@ nlookup_init(struct nlookupdata *nd,
 	    cache_copy(&p->p_fd->fd_nrdir, &nd->nl_rootnch);
 	    if (p->p_fd->fd_njdir.ncp)
 		cache_copy(&p->p_fd->fd_njdir, &nd->nl_jailnch);
-	    nd->nl_cred = crhold(p->p_ucred);
+	    nd->nl_cred = td->td_ucred;
+	    nd->nl_flags |= NLC_BORROWCRED;
 	} else {
 	    cache_copy(&rootnch, &nd->nl_nch);
 	    cache_copy(&nd->nl_nch, &nd->nl_rootnch);
 	    cache_copy(&nd->nl_nch, &nd->nl_jailnch);
-	    nd->nl_cred = crhold(proc0.p_ucred);
+	    nd->nl_cred = proc0.p_ucred;
+	    nd->nl_flags |= NLC_BORROWCRED;
 	}
 	nd->nl_td = td;
 	nd->nl_flags |= flags;
@@ -271,6 +273,7 @@ nlookup_init_root(struct nlookupdata *nd,
     return(error);
 }
 
+#if 0
 /*
  * Set a different credential; this credential will be used by future
  * operations performed on nd.nl_open_vp and nlookupdata structure.
@@ -282,10 +285,13 @@ nlookup_set_cred(struct nlookupdata *nd, struct ucred *cred)
 
 	if (nd->nl_cred != cred) {
 		cred = crhold(cred);
-		crfree(nd->nl_cred);
+		if ((nd->nl_flags & NLC_BORROWCRED) == 0)
+			crfree(nd->nl_cred);
+		nd->nl_flags &= ~NLC_BORROWCRED;
 		nd->nl_cred = cred;
 	}
 }
+#endif
 
 /*
  * Cleanup a nlookupdata structure after we are through with it.  This may
@@ -305,16 +311,18 @@ nlookup_done(struct nlookupdata *nd)
 	cache_drop(&nd->nl_nch);	/* NULL's out the nch */
     }
     if (nd->nl_rootnch.ncp)
-	cache_drop(&nd->nl_rootnch);
+	cache_drop_and_cache(&nd->nl_rootnch);
     if (nd->nl_jailnch.ncp)
-	cache_drop(&nd->nl_jailnch);
+	cache_drop_and_cache(&nd->nl_jailnch);
     if ((nd->nl_flags & NLC_HASBUF) && nd->nl_path) {
 	objcache_put(namei_oc, nd->nl_path);
 	nd->nl_path = NULL;
     }
     if (nd->nl_cred) {
-	crfree(nd->nl_cred);
+	if ((nd->nl_flags & NLC_BORROWCRED) == 0)
+	    crfree(nd->nl_cred);
 	nd->nl_cred = NULL;
+	nd->nl_flags &= ~NLC_BORROWCRED;
     }
     if (nd->nl_open_vp) {
 	if (nd->nl_flags & NLC_LOCKVP) {

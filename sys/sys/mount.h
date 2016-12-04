@@ -240,6 +240,7 @@ struct mount {
 	struct vop_ops	*mnt_vn_fifo_ops;	/* for use by the VFS */
 	struct nchandle mnt_ncmountpt;		/* mount point */
 	struct nchandle mnt_ncmounton;		/* mounted on */
+	char		mnt_pad[24];		/* (try to cache-align refs) */
 	int		mnt_refs;		/* nchandle references */
 	int		mnt_hold;		/* prevent kfree */
 	struct lwkt_token mnt_token;		/* token lock if not MPSAFE */

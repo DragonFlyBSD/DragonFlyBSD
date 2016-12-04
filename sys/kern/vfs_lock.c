@@ -280,6 +280,28 @@ vref(struct vnode *vp)
 }
 
 /*
+ * Count number of cached vnodes.  This is middling expensive so be
+ * careful not to make this call in the critical path, particularly
+ * not updating the global.  Each cpu tracks its own accumulator.
+ * The individual accumulators are not accurate and must be summed
+ * together.
+ */
+int
+countcachedvnodes(int gupdate)
+{
+	int i;
+	int n = 0;
+
+	for (i = 0; i < ncpus; ++i) {
+		globaldata_t gd = globaldata_find(i);
+		n += gd->gd_cachedvnodes;
+	}
+	if (gupdate)
+		cachedvnodes = n;
+	return n;
+}
+
+/*
  * Release a ref on an active or inactive vnode.
  *
  * Caller has no other requirements.
@@ -331,7 +353,7 @@ vrele(struct vnode *vp)
 			vx_unlock(vp);
 		} else {
 			if (atomic_cmpset_int(&vp->v_refcnt, count, 0)) {
-				atomic_add_int(&cachedvnodes, 1);
+				atomic_add_int(&mycpu->gd_cachedvnodes, 1);
 				break;
 			}
 		}
@@ -469,7 +491,7 @@ vget(struct vnode *vp, int flags)
 	 *	 not protect our access to the refcnt or other fields.
 	 */
 	if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
-		atomic_add_int(&cachedvnodes, -1);
+		atomic_add_int(&mycpu->gd_cachedvnodes, -1);
 
 	if ((error = vn_lock(vp, flags | LK_FAILRECLAIM)) != 0) {
 		/*
@@ -593,7 +615,7 @@ void
 vx_get(struct vnode *vp)
 {
 	if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
-		atomic_add_int(&cachedvnodes, -1);
+		atomic_add_int(&mycpu->gd_cachedvnodes, -1);
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 }
 
@@ -607,7 +629,7 @@ vx_get_nonblock(struct vnode *vp)
 	error = lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT);
 	if (error == 0) {
 		if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
-			atomic_add_int(&cachedvnodes, -1);
+			atomic_add_int(&mycpu->gd_cachedvnodes, -1);
 	}
 	return(error);
 }
@@ -649,7 +671,7 @@ cleanfreevnode(int maxcount)
 	/*
 	 * Try to deactivate some vnodes cached on the active list.
 	 */
-	if (cachedvnodes < inactivevnodes)
+	if (countcachedvnodes(0) < inactivevnodes)
 		goto skip;
 
 	for (count = 0; count < maxcount * 2; count++) {
@@ -698,7 +720,7 @@ cleanfreevnode(int maxcount)
 		 * Try to deactivate the vnode.
 		 */
 		if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
-			atomic_add_int(&cachedvnodes, -1);
+			atomic_add_int(&mycpu->gd_cachedvnodes, -1);
 		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 
 		spin_unlock(&vfs_spin);
@@ -919,7 +941,7 @@ void
 allocvnode_gc(void)
 {
 	if (numvnodes >= maxvnodes &&
-	    cachedvnodes + inactivevnodes >= maxvnodes * 5 / 10) {
+	    countcachedvnodes(0) + inactivevnodes >= maxvnodes * 5 / 10) {
 		freesomevnodes(batchfreevnodes);
 	}
 }

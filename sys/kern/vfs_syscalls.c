@@ -713,11 +713,13 @@ dounmount(struct mount *mp, int flags)
 		cache_inval(&mp->mnt_ncmountpt, CINV_DESTROY|CINV_CHILDREN);
 		cache_unlock(&mp->mnt_ncmountpt);
 
+		cache_clearmntcache();
 		if ((ncp = mp->mnt_ncmountpt.ncp) != NULL &&
 		    (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list))) {
 			allproc_scan(&unmount_allproc_cb, mp);
 		}
 
+		cache_clearmntcache();
 		if ((ncp = mp->mnt_ncmountpt.ncp) != NULL &&
 		    (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list))) {
 
@@ -761,9 +763,12 @@ dounmount(struct mount *mp, int flags)
 	 * Scans can get temporary refs on a mountpoint (thought really
 	 * heavy duty stuff like cache_findmount() do not).
 	 */
+	if (mp->mnt_refs != 1)
+		cache_clearmntcache();
 	for (retry = 0; retry < 10 && mp->mnt_refs != 1; ++retry) {
 		cache_unmounting(mp);
 		tsleep(&mp->mnt_refs, 0, "mntbsy", hz / 10 + 1);
+		cache_clearmntcache();
 	}
 	if (mp->mnt_refs != 1) {
 		if ((flags & MNT_FORCE) == 0) {
@@ -860,10 +865,13 @@ dounmount(struct mount *mp, int flags)
 	 * to busy the mount after we decided to do the unmount.
 	 */
 	if (freeok) {
+		if (mp->mnt_refs > 1)
+			cache_clearmntcache();
 		while (mp->mnt_refs > 1) {
 			cache_unmounting(mp);
 			wakeup(mp);
 			tsleep(&mp->mnt_refs, 0, "umntrwait", hz / 10 + 1);
+			cache_clearmntcache();
 		}
 		lwkt_reltoken(&mp->mnt_token);
 		mount_drop(mp);

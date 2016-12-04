@@ -130,7 +130,7 @@ struct nlookupdata {
 #define NLC_EXEC		0x01000000	/* require execute access */
 #define NLC_EXCL		0x02000000	/* open check: exclusive */
 #define NLC_OWN			0x04000000	/* open check: owner override */
-#define NLC_UNUSED08000000	0x08000000
+#define NLC_BORROWCRED		0x08000000	/* cred ref borrowed */
 #define NLC_STICKY		0x10000000	/* indicate sticky case */
 #define NLC_APPENDONLY		0x20000000	/* indicate append-only */
 #define NLC_IMMUTABLE		0x40000000	/* indicate immutable set */
@@ -151,7 +151,6 @@ int nlookup_init_at(struct nlookupdata *, struct file **, int, const char *,
 		enum uio_seg, int);
 int nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct nchandle *);
 int nlookup_init_root(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct nchandle *, struct nchandle *);
-void nlookup_set_cred(struct nlookupdata *nd, struct ucred *cred);
 void nlookup_zero(struct nlookupdata *);
 void nlookup_done(struct nlookupdata *);
 void nlookup_done_at(struct nlookupdata *, struct file *);

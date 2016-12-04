@@ -356,7 +356,6 @@ extern	struct vattr va_null;		/* predefined null vattr structure */
 extern	int numvnodes;
 extern	int inactivevnodes;
 extern	int activevnodes;
-extern	int cachedvnodes;
 
 /*
  * This macro is very helpful in defining those offsets in the vdesc struct.
@@ -565,6 +564,7 @@ void	vfs_subr_init(void);
 void	vfs_mount_init(void);
 void	vfs_lock_init(void);
 void	mount_init(struct mount *mp);
+int	countcachedvnodes(int gupdate);
 
 void	vn_syncer_add(struct vnode *, int);
 void	vn_syncer_remove(struct vnode *, int);

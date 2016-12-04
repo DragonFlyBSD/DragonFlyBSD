@@ -459,6 +459,8 @@ vnlru_proc(void)
 			      SHUTDOWN_PRI_FIRST);
 
 	for (;;) {
+		int ncached;
+
 		kproc_suspend_loop();
 
 		/*
@@ -468,12 +470,13 @@ vnlru_proc(void)
 		 *
 		 * (long) -> deal with 64 bit machines, intermediate overflow
 		 */
+		ncached = countcachedvnodes(1);
 		if (numvnodes >= maxvnodes * 9 / 10 &&
-		    cachedvnodes + inactivevnodes >= maxvnodes * 5 / 10) {
+		    ncached + inactivevnodes >= maxvnodes * 5 / 10) {
 			int count = numvnodes - maxvnodes * 9 / 10;
 
-			if (count > (cachedvnodes + inactivevnodes) / 100)
-				count = (cachedvnodes + inactivevnodes) / 100;
+			if (count > (ncached + inactivevnodes) / 100)
+				count = (ncached + inactivevnodes) / 100;
 			if (count < 5)
 				count = 5;
 			freesomevnodes(count);
@@ -490,8 +493,9 @@ vnlru_proc(void)
 		 * Nothing to do if most of our vnodes are already on
 		 * the free list.
 		 */
+		ncached = countcachedvnodes(1);
 		if (numvnodes <= maxvnodes * 9 / 10 ||
-		    cachedvnodes + inactivevnodes <= maxvnodes * 5 / 10) {
+		    ncached + inactivevnodes <= maxvnodes * 5 / 10) {
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
