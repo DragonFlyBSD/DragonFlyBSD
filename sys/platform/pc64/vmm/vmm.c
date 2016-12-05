@@ -90,7 +90,7 @@ sysctl_vmm_enable(SYSCTL_HANDLER_ARGS)
 static void
 vmm_shutdown(void)
 {
-	if(vmm_enabled)
+	if (vmm_enabled && panicstr == NULL)
 		ctl->disable();
 }
 
