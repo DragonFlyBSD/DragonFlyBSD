@@ -1251,6 +1251,28 @@ cpu_idle(void)
 }
 
 /*
+ * Called in a loop indirectly via Xcpustop
+ */
+void
+cpu_smp_stopped(void)
+{
+	globaldata_t gd = mycpu;
+	volatile __uint64_t *ptr;
+	__uint64_t ovalue;
+
+	ptr = CPUMASK_ADDR(started_cpus, gd->gd_cpuid);
+	ovalue = *ptr;
+	if ((ovalue & CPUMASK_SIMPLE(gd->gd_cpuid & 63)) == 0) {
+		if (cpu_mi_feature & CPU_MI_MONITOR) {
+			cpu_mmw_pause_long(__DEVOLATILE(void *, ptr), ovalue,
+					   cpu_mwait_hints[CPU_MWAIT_C1], 0);
+		} else {
+			cpu_halt();	/* depend on lapic timer */
+		}
+	}
+}
+
+/*
  * This routine is called if a spinlock has been held through the
  * exponential backoff period and is seriously contested.  On a real cpu
  * we let it spin.

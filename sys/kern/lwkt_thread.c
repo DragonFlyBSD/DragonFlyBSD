@@ -1712,4 +1712,5 @@ lwkt_smp_stopped(void)
     } else {
 	lwkt_process_ipiq();
     }
+    cpu_smp_stopped();
 }

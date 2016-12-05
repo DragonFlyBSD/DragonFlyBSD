@@ -337,6 +337,7 @@ void		splz (void);
 void		splz_check (void);
 void		cpu_mmw_pause_int(int*, int, int, int);
 void		cpu_mmw_pause_long(long*, long, int, int);
+void		cpu_smp_stopped(void);
 #endif /* __x86_64__ */
 
 /*
