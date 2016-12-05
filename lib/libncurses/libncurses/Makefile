@@ -64,7 +64,7 @@ comp_captab.c: make_hash MKcaptab.sh MKcaptab.awk Caps
 make_hash: make_hash.c hashsize.h ncurses_def.h ${HEADERS}
 	${NXCC} ${NXCFLAGS} -static -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/make_hash.c
 
-expanded.c: MKexpanded.sh
+expanded.c: MKexpanded.sh ${GENHDRS}
 	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${CFLAGS} > ${.TARGET}
 
 fallback.c: MKfallback.sh
