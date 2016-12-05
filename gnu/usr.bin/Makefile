@@ -22,12 +22,14 @@ SUBDIR+= mpfr
 SUBDIR+= mpc
 SUBDIR+= cc50
 
-.if defined(NO_ALTCOMPILER)
-.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc50
-.else
+.if !defined(NO_ALTCOMPILER)
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
 SUBDIR+= cc47
-.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc50 cc47
+_altcompiler_dirs+= cc47
+. endif
 .endif
+
+.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc50 ${_altcompiler_dirs}
 
 # maximum parallelism
 #

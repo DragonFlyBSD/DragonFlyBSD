@@ -918,24 +918,42 @@ bstrap-${_tool}!
 _share=	share/syscons/scrnmaps
 .endif
 
+# XXX we should separate this into new Makefile.inc2.
+# Just to prepare for reduction of ORDER: that slows down parallel crossworld.
+
+# Make sure Makefile.inc1 logic is intact.
+.if !defined(WORLD_ALTCOMPILER)
+.error undefined WORLD_ALTCOMPILER
+.endif)
+
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 _gcc50_cross= gnu/usr.bin/cc50
 _gcc50_tools= gnu/usr.bin/cc50/cc_prep gnu/usr.bin/cc50/cc_tools
 .if !defined(NO_ALTCOMPILER)
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
 _gcc47_cross= gnu/usr.bin/cc47
 _gcc47_tools= gnu/usr.bin/cc47/cc_prep gnu/usr.bin/cc47/cc_tools
+_altcompiler_cross+= ${_gcc47_cross}
+_altcompiler_tools+= _gcc47_tools
+. endif
 .endif
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
-BTOOLSDIRS= ${_gcc47_tools} ${_gcc50_tools} ${_share}
+.for _atools in ${_altcompiler_tools}
+BTOOLSDIRS+=	${${_atools}}
+.endfor
+BTOOLSDIRS+=	${_gcc50_tools}
+BTOOLSDIRS+=	${_share}
 
 build-tools: build-tools-targets
 	touch ${BTOOLSDEST}/.build_done
 
 build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
 
-.ORDER: ${_gcc47_tools:S/^/btools-/}
+.for _atools in ${_altcompiler_tools}
+.ORDER: ${${_atools}:C/^/btools-/}
+.endfor
 .ORDER: ${_gcc50_tools:S/^/btools-/}
 
 .for _tool in ${BTOOLSDIRS}
@@ -958,7 +976,8 @@ _btxld=	usr.sbin/btxld
 CTOOLSDIRS= ${_btxld} ${_binutils} \
 		usr.bin/objformat usr.bin/crunch/crunchide \
 		${_gcc_common_cross} \
-		${_gcc47_cross} ${_gcc50_cross} ${_custom_cross}
+		${_altcompiler_cross} \
+		${_gcc50_cross} ${_custom_cross}
 
 cross-tools: cross-tools-targets
 	touch ${CTOOLSDEST}/.cross_done
@@ -996,9 +1015,11 @@ libraries:
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc50 \
 		make -f Makefile.inc1 _startup_libs50 -DSYSBUILD;
 .if !defined(NO_ALTCOMPILER)
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
 		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
+. endif
 .endif
 	cd ${.CURDIR}; \
 	    make -f Makefile.inc1 _startup_libs -DSYSBUILD; \
@@ -1012,12 +1033,17 @@ libraries:
 # shared libraries for ELF.  The target for _startup_libsXX is
 # specifically built using gccXX.
 #
+.if !defined(NO_ALTCOMPILER)
 _startup_libs47=	gnu/usr.bin/cc47/cc_prep \
 			gnu/usr.bin/cc47/cc_tools \
 			gnu/lib/gcc47/csu \
 			gnu/lib/gcc47/libgcc \
 			gnu/lib/gcc47/libgcc_eh \
 			gnu/lib/gcc47/libgcc_pic
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
+_startup_libs_alt+=	_startup_libs47
+. endif
+.endif
 _startup_libs50=	gnu/usr.bin/cc50/cc_prep \
 			gnu/usr.bin/cc50/cc_tools \
 			gnu/lib/gcc50/csu \
@@ -1055,7 +1081,11 @@ _prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \
 
 _generic_libs+=	usr.bin/flex/lib
 
-.for _lib in ${_startup_libs47} ${_startup_libs50} \
+.for _alib in ${_startup_libs_alt}
+__startup_alibs+= ${${_alib}}
+.endfor
+
+.for _lib in ${__startup_alibs} ${_startup_libs50} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
@@ -1068,11 +1098,15 @@ ${_lib}__L: .PHONY
 		echo "STEP INSTALL ${_lib}"; \
 		make DIRPRFX=${_lib}/ install; \
 		echo "STEP DONE ${_lib}";
+.else
+.warning missing ${.CURDIR}/${_lib} directory.
 .endif
 .endfor
 
 _startup_libs: ${_startup_libs:S/$/__L/}
-_startup_libs47: ${_startup_libs47:S/$/__L/}
+.for _alib in ${_startup_libs_alt}
+${_alib}: ${${_alib}:C/$/__L/}
+.endfor
 _startup_libs50: ${_startup_libs50:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
@@ -1080,7 +1114,9 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 # library targets must be ordered because there are inter-library
 # races (e.g. generation of tconfig.h)
 #
-.ORDER: ${_startup_libs47:S/$/__L/}
+.for _alib in ${_startup_libs_alt}
+.ORDER: ${${_alib}:C/$/__L/}
+.endfor
 .ORDER: ${_startup_libs50:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}
@@ -1100,8 +1136,8 @@ ${entry}.${__target}__D: .PHONY
 	fi; \
 	make ${__target} DIRPRFX=${DIRPRFX}$${edir}/
 .endfor
-par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
-.ORDER: ${SUBDIR:S/$/.${__target}__D/}
+par-${__target}: ${SUBDIR:C/$/.${__target}__D/}
+.ORDER: ${SUBDIR:C/$/.${__target}__D/}
 .endfor
 .ORDER: par-clean par-cleandepend par-cleandir par-obj par-depend par-includes
 
@@ -1192,6 +1228,7 @@ MAKE_PRINT_VAR_ON_ERROR= \
 	MACHINE_ARCH \
 	MACHINE \
 	MAKEFILE \
+	WORLD_ALTCOMPILER \
 	.TARGETS \
 	.ERROR_TARGET \
 	.MAKE.LEVEL

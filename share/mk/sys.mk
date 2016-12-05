@@ -302,10 +302,19 @@ MACHINE_PLATFORM!=sysctl -n hw.platform
 
 .endif
 
+# Include base system defaults.
 .if exists(/etc/defaults/make.conf)
 .include </etc/defaults/make.conf>
 .endif
 
+# XXX we should some how include src tree etc/defaults/make.conf too. Changes
+# to default/make.conf only applies after installworld so might produce world
+# that no longer can bootstrap itself.
+
+# Private helper for handling alternative compilers and Makefile.inc1 tester.
+WORLD_ALTCOMPILER?= gcc47
+
+# Include global user settings.
 __MAKE_CONF?=/etc/make.conf
 .if exists(${__MAKE_CONF})
 .include "${__MAKE_CONF}"
@@ -335,7 +344,7 @@ WORLD_VERSION!=	${AWK} '/^\#define[[:blank:]]__DragonFly_version/ {print $$3}' <
 # XXX hint for bsd.port.mk
 OBJFORMAT?=	elf
 
-# Tell bmake to expand -V VAR be default
+# Tell bmake to expand -V VAR by default
 .MAKE.EXPAND_VARIABLES= yes
 
 .if !defined(.PARSEDIR)
