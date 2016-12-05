@@ -188,7 +188,7 @@ spin_trylock_contested(struct spinlock *spin)
  *	as well (no difference).
  */
 void
-_spin_lock_contested(struct spinlock *spin, const char *ident)
+_spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 {
 	struct indefinite_info info = { 0, 0, ident };
 	int i;
@@ -196,8 +196,10 @@ _spin_lock_contested(struct spinlock *spin, const char *ident)
 	/*
 	 * Handle degenerate case.
 	 */
-	if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED|0, 1))
-		return;
+	if (value == SPINLOCK_SHARED) {
+		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED|0, 1))
+			return;
+	}
 
 	/*
 	 * Transfer our count to the high bits, then loop until we can
@@ -208,7 +210,8 @@ _spin_lock_contested(struct spinlock *spin, const char *ident)
 	 * understands that this may occur.
 	 */
 	atomic_add_int(&spin->counta, SPINLOCK_EXCLWAIT - 1);
-	atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
+	if (value & SPINLOCK_SHARED)
+		atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
 
 #ifdef DEBUG_LOCKS_LATENCY
 	long j;
@@ -262,7 +265,7 @@ _spin_lock_contested(struct spinlock *spin, const char *ident)
  * The caller has not modified counta.
  */
 void
-_spin_lock_shared_contested(struct spinlock *spin, const char *ident)
+_spin_lock_shared_contested(struct spinlock *spin, const char *ident, int value)
 {
 	struct indefinite_info info = { 0, 0, ident };
 	int i;

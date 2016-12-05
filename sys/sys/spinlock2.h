@@ -54,8 +54,9 @@
 extern struct spinlock pmap_spin;
 
 int spin_trylock_contested(struct spinlock *spin);
-void _spin_lock_contested(struct spinlock *spin, const char *ident);
-void _spin_lock_shared_contested(struct spinlock *spin, const char *ident);
+void _spin_lock_contested(struct spinlock *spin, const char *ident, int count);
+void _spin_lock_shared_contested(struct spinlock *spin, const char *ident,
+			int count);
 void _spin_pool_lock(void *chan, const char *ident);
 void _spin_pool_unlock(void *chan);
 
@@ -111,11 +112,13 @@ spin_held(struct spinlock *spin)
 static __inline void
 _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 {
+	int count;
+
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
-	if (atomic_fetchadd_int(&spin->counta, 1) != 0)
-		_spin_lock_contested(spin, ident);
+	if ((count = atomic_fetchadd_int(&spin->counta, 1)) != 0)
+		_spin_lock_contested(spin, ident, count + 1);
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -199,7 +202,7 @@ _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 		atomic_set_int(&spin->counta, SPINLOCK_SHARED);
 	} else if ((counta & SPINLOCK_SHARED) == 0) {
 		atomic_add_int(&spin->counta, -1);
-		_spin_lock_shared_contested(spin, ident);
+		_spin_lock_shared_contested(spin, ident, counta);
 	}
 #ifdef DEBUG_LOCKS
 	int i;

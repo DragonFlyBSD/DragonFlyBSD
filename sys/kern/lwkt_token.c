@@ -331,14 +331,13 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 			oref = tok->t_ref;	/* can be NULL */
 			cpu_ccfence();
 			if ((count & (TOK_EXCLUSIVE/*|TOK_EXCLREQ*/)) == 0) {
-				/* XXX EXCLREQ should work */
 				/*
-				 * It is possible to get the token shared.
+				 * It may be possible to get the token shared.
 				 */
-				if (atomic_cmpset_long(&tok->t_count, count,
-						       count + TOK_INCR)) {
+				if ((atomic_fetchadd_long(&tok->t_count, TOK_INCR) & TOK_EXCLUSIVE) == 0) {
 					return TRUE;
 				}
+				atomic_fetchadd_long(&tok->t_count, -TOK_INCR);
 				/* retry */
 			} else if ((count & TOK_EXCLUSIVE) &&
 				   oref >= &td->td_toks_base &&

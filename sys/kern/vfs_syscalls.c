@@ -1643,11 +1643,13 @@ sys_fchdir(struct fchdir_args *uap)
 		cache_dropmount(mp);
 	}
 	if (error == 0) {
+		spin_lock(&fdp->fd_spin);
 		ovp = fdp->fd_cdir;
 		onch = fdp->fd_ncdir;
-		vn_unlock(vp);		/* leave ref intact */
 		fdp->fd_cdir = vp;
 		fdp->fd_ncdir = nch;
+		spin_unlock(&fdp->fd_spin);
+		vn_unlock(vp);		/* leave ref intact */
 		cache_drop(&onch);
 		vrele(ovp);
 	} else {
@@ -1682,11 +1684,13 @@ kern_chdir(struct nlookupdata *nd)
 	error = checkvp_chdir(vp, td);
 	vn_unlock(vp);
 	if (error == 0) {
+		spin_lock(&fdp->fd_spin);
 		ovp = fdp->fd_cdir;
 		onch = fdp->fd_ncdir;
-		cache_unlock(&nd->nl_nch);	/* leave reference intact */
 		fdp->fd_ncdir = nd->nl_nch;
 		fdp->fd_cdir = vp;
+		spin_unlock(&fdp->fd_spin);
+		cache_unlock(&nd->nl_nch);	/* leave reference intact */
 		cache_drop(&onch);
 		vrele(ovp);
 		cache_zero(&nd->nl_nch);
