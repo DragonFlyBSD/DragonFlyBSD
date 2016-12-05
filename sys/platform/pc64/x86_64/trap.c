@@ -1384,8 +1384,6 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 	 * KILL signal.
 	 */
 	if (p->p_flags & P_WEXIT) {
-		kprintf("pid %d (%s) exit race handled\n",
-			p->p_pid, p->p_comm);
 		lwpsignal(p, lp, SIGKILL);
 	}
 
