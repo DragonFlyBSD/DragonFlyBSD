@@ -786,14 +786,26 @@ dointr(void)
 
 #define	MAX_KMSTATS	1024
 
+enum ksuse { KSINUSE, KSMEMUSE };
+
 static long
-cpuagg(size_t *ary)
+cpuagg(struct malloc_type *ks, enum ksuse use)
 {
     int i;
     long ttl;
 
-    for (i = ttl = 0; i < SMP_MAXCPU; ++i)
-	ttl += ary[i];
+    ttl = 0;
+
+    switch(use) {
+    case KSINUSE:
+	for (i = 0; i < SMP_MAXCPU; ++i)
+	    ttl += ks->ks_use[i].inuse;
+	break;
+    case KSMEMUSE:
+	for (i = 0; i < SMP_MAXCPU; ++i)
+	    ttl += ks->ks_use[i].memuse;
+	break;
+    }
     return(ttl);
 }
 
@@ -832,7 +844,7 @@ domem(void)
 			continue;
 		printf("%19s%7ld%7ldK%7ldK%11zuK%10jd%5u%6u",
 		    ks->ks_shortdesc,
-		    cpuagg(ks->ks_inuse), (cpuagg(ks->ks_memuse) + 1023) / 1024,
+		    cpuagg(ks, KSINUSE), (cpuagg(ks, KSMEMUSE) + 1023) / 1024,
 		    (ks->ks_maxused + 1023) / 1024,
 		    (ks->ks_limit + 1023) / 1024, (intmax_t)ks->ks_calls,
 		    ks->ks_limblocks, ks->ks_mapblocks);
@@ -851,7 +863,7 @@ domem(void)
 			first = 0;
 		}
 		printf("\n");
-		totuse += cpuagg(ks->ks_memuse);
+		totuse += cpuagg(ks, KSMEMUSE);
 		totreq += ks->ks_calls;
 	}
 	printf("\nMemory Totals:  In Use    Free    Requests\n");

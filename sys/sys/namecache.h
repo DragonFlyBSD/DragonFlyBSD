@@ -143,7 +143,7 @@ struct nchandle {
 };
 
 /*
- * Flags in namecache.nc_flag (u_char)
+ * Flags in namecache.nc_flag (u_short)
  */
 #define NCF_UNUSED01	0x0001
 #define NCF_WHITEOUT	0x0002	/* negative entry corresponds to whiteout */
@@ -157,6 +157,7 @@ struct nchandle {
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
 #define NCF_DEFEREDZAP	0x0800	/* zap defered due to lock unavailability */
+#define NCF_WXOK	0x1000	/* world-searchable (nlookup shortcut) */
 
 #define NC_EXLOCK_REQ	0x80000000	/* nc_lockstatus state flag */
 #define NC_SHLOCK_REQ	0x40000000	/* nc_lockstatus state flag */
@@ -202,6 +203,7 @@ void	cache_unmounting(struct mount *mp);
 int	cache_inval(struct nchandle *nch, int flags);
 int	cache_inval_vp(struct vnode *vp, int flags);
 int	cache_inval_vp_nonblock(struct vnode *vp);
+void	cache_inval_wxok(struct vnode *vp);
 void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 
 int	cache_resolve(struct nchandle *nch, struct ucred *cred);
@@ -214,10 +216,12 @@ void	cache_get_maybe_shared(struct nchandle *nch,
 			struct nchandle *target, int excl);
 struct nchandle *cache_hold(struct nchandle *nch);
 void	cache_copy(struct nchandle *nch, struct nchandle *target);
+void	cache_copy_ncdir(struct proc *p, struct nchandle *target);
 void	cache_changemount(struct nchandle *nch, struct mount *mp);
 void	cache_put(struct nchandle *nch);
 void	cache_drop(struct nchandle *nch);
 void	cache_drop_and_cache(struct nchandle *nch);
+void	cache_drop_ncdir(struct nchandle *nch);
 void	cache_zero(struct nchandle *nch);
 void	cache_rename(struct nchandle *fnch, struct nchandle *tnch);
 void	cache_unlink(struct nchandle *nch);

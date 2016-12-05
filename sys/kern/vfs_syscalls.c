@@ -3176,6 +3176,7 @@ setfmode(struct vnode *vp, int mode)
 		VATTR_NULL(&vattr);
 		vattr.va_mode = mode & ALLPERMS;
 		error = VOP_SETATTR(vp, &vattr, td->td_ucred);
+		cache_inval_wxok(vp);
 		vput(vp);
 	}
 	return error;

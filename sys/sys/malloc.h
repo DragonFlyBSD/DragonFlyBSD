@@ -101,13 +101,17 @@
  * SMP_MAXCPU is used so modules which use malloc remain compatible
  * between UP and SMP.
  */
+struct malloc_use {
+	size_t	memuse;
+	size_t	inuse;
+} __cachealign;
+
 struct malloc_type {
 	struct malloc_type *ks_next;	/* next in list */
-	size_t 	ks_memuse[SMP_MAXCPU];	/* total memory held in bytes */
 	size_t	ks_loosememuse;		/* (inaccurate) aggregate memuse */
 	size_t	ks_limit;	/* most that are allowed to exist */
 	long	ks_size;	/* sizes of this thing that are allocated */
-	size_t	ks_inuse[SMP_MAXCPU]; /* # of allocs currently in use */
+	struct malloc_use  ks_use[SMP_MAXCPU];
 	__int64_t ks_calls;	/* total packets of this type ever allocated */
 	long	ks_maxused;	/* maximum number ever used */
 	__uint32_t ks_magic;	/* if it's not magic, don't touch it */
@@ -122,7 +126,7 @@ typedef struct malloc_type	*malloc_type_t;
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
 	struct malloc_type type[1] = {					\
-	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc,	\
+	    { NULL, 0, 0, 0, { { 0, 0 } }, 0, 0, M_MAGIC, shortdesc,	\
 		0, 0, { 0 } }						\
 	};								\
 	SYSINIT(type##_init, SI_BOOT1_KMALLOC, SI_ORDER_ANY,		\
@@ -132,7 +136,7 @@ typedef struct malloc_type	*malloc_type_t;
 #else
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
 	struct malloc_type type[1] = {			\
-	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
+	    { NULL, 0, 0, 0, { { 0, 0 } }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
 	}
 #endif
 

@@ -123,7 +123,7 @@ struct nlookupdata {
 #define NLC_REFDVP		0x00040000	/* set ref'd/unlocked nl_dvp */
 
 #define NLC_APPEND		0x00100000	/* open check: append */
-#define NLC_UNUSED00200000	0x00200000
+#define NLC_NCDIR		0x00200000	/* nd->nl_nch is ncdir */
 
 #define NLC_READ		0x00400000	/* require read access */
 #define NLC_WRITE		0x00800000	/* require write access */

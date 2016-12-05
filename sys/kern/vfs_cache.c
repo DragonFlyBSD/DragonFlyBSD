@@ -278,6 +278,7 @@ struct mntcache {
 	struct mount	*mntary[MNTCACHE_COUNT];
 	struct namecache *ncp1;
 	struct namecache *ncp2;
+	struct nchandle  ncdir;
 	int		iter;
 	int		unused01;
 } __cachealign;
@@ -353,6 +354,16 @@ cache_clearmntcache(void)
 			ncp = atomic_swap_ptr((void *)&cache->ncp2, NULL);
 			if (ncp)
 				_cache_drop(ncp);
+		}
+		if (cache->ncdir.ncp) {
+			ncp = atomic_swap_ptr((void *)&cache->ncdir.ncp, NULL);
+			if (ncp)
+				_cache_drop(ncp);
+		}
+		if (cache->ncdir.mount) {
+			mp = atomic_swap_ptr((void *)&cache->ncdir.mount, NULL);
+			if (mp)
+				atomic_add_int(&mp->mnt_refs, -1);
 		}
 	}
 }
@@ -1032,6 +1043,40 @@ cache_copy(struct nchandle *nch, struct nchandle *target)
 	}
 }
 
+/*
+ * Caller wants to copy the current directory, copy it out from our
+ * pcpu cache if possible (the entire critical path is just two localized
+ * cmpset ops).  If the pcpu cache has a snapshot at all it will be a
+ * valid one, so we don't have to lock p->p_fd even though we are loading
+ * two fields.
+ *
+ * This has a limited effect since nlookup must still ref and shlock the
+ * vnode to check perms.  We do avoid the per-proc spin-lock though, which
+ * can aid threaded programs.
+ */
+void
+cache_copy_ncdir(struct proc *p, struct nchandle *target)
+{
+	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+
+	*target = p->p_fd->fd_ncdir;
+	if (target->ncp == cache->ncdir.ncp &&
+	    target->mount == cache->ncdir.mount) {
+		if (atomic_cmpset_ptr((void *)&cache->ncdir.ncp,
+				      target->ncp, NULL)) {
+			if (atomic_cmpset_ptr((void *)&cache->ncdir.mount,
+					      target->mount, NULL)) {
+				/* CRITICAL PATH */
+				return;
+			}
+			_cache_drop(target->ncp);
+		}
+	}
+	spin_lock_shared(&p->p_fd->fd_spin);
+	cache_copy(&p->p_fd->fd_ncdir, target);
+	spin_unlock_shared(&p->p_fd->fd_spin);
+}
+
 void
 cache_changemount(struct nchandle *nch, struct mount *mp)
 {
@@ -1078,6 +1123,26 @@ cache_drop_and_cache(struct nchandle *nch)
 	if (ncp)
 		_cache_drop(ncp);
 done:
+	nch->ncp = NULL;
+	nch->mount = NULL;
+}
+
+/*
+ * We are dropping what the caller believes is the current directory,
+ * unconditionally store it in our pcpu cache.  Anything already in
+ * the cache will be discarded.
+ */
+void
+cache_drop_ncdir(struct nchandle *nch)
+{
+	struct mntcache *cache = &pcpu_mntcache[mycpu->gd_cpuid];
+
+	nch->ncp = atomic_swap_ptr((void *)&cache->ncdir.ncp, nch->ncp);
+	nch->mount = atomic_swap_ptr((void *)&cache->ncdir.mount, nch->mount);
+	if (nch->ncp)
+		_cache_drop(nch->ncp);
+	if (nch->mount)
+		_cache_mntrel(nch->mount);
 	nch->ncp = NULL;
 	nch->mount = NULL;
 }
@@ -1863,6 +1928,24 @@ cache_inval_vp_nonblock(struct vnode *vp)
 	spin_unlock(&vp->v_spin);
 done:
 	return(TAILQ_FIRST(&vp->v_namecache) != NULL);
+}
+
+/*
+ * Clears the universal directory search 'ok' flag.  This flag allows
+ * nlookup() to bypass normal vnode checks.  This flag is a cached flag
+ * so clearing it simply forces revalidation.
+ */
+void
+cache_inval_wxok(struct vnode *vp)
+{
+	struct namecache *ncp;
+
+	spin_lock(&vp->v_spin);
+	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+		if (ncp->nc_flag & NCF_WXOK)
+			atomic_clear_short(&ncp->nc_flag, NCF_WXOK);
+	}
+	spin_unlock(&vp->v_spin);
 }
 
 /*

@@ -373,7 +373,7 @@ malloc_uninit(void *data)
      * negative or positive (canceling each other out).
      */
     for (i = ttl = 0; i < ncpus; ++i)
-	ttl += type->ks_memuse[i];
+	ttl += type->ks_use[i].memuse;
     if (ttl) {
 	kprintf("malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
 	    ttl, type->ks_shortdesc, i);
@@ -658,14 +658,14 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
      *
      * ks_loosememuse is an up-only limit that is NOT MP-synchronized, used
      * to determine if a more complete limit check should be done.  The
-     * actual memory use is tracked via ks_memuse[cpu].
+     * actual memory use is tracked via ks_use[cpu].memuse.
      */
     while (type->ks_loosememuse >= type->ks_limit) {
 	int i;
 	long ttl;
 
 	for (i = ttl = 0; i < ncpus; ++i)
-	    ttl += type->ks_memuse[i];
+	    ttl += type->ks_use[i].memuse;
 	type->ks_loosememuse = ttl;	/* not MP synchronized */
 	if ((ssize_t)ttl < 0)		/* deal with occassional race */
 		ttl = 0;
@@ -935,8 +935,8 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     }
 
 done:
-    ++type->ks_inuse[gd->gd_cpuid];
-    type->ks_memuse[gd->gd_cpuid] += size;
+    ++type->ks_use[gd->gd_cpuid].inuse;
+    type->ks_use[gd->gd_cpuid].memuse += size;
     type->ks_loosememuse += size;	/* not MP synchronized */
     crit_exit();
 
@@ -1244,8 +1244,8 @@ kfree(void *ptr, struct malloc_type *type)
 	 * primarily until we can fix softupdate's assumptions about free().
 	 */
 	crit_enter();
-	--type->ks_inuse[gd->gd_cpuid];
-	type->ks_memuse[gd->gd_cpuid] -= size;
+	--type->ks_use[gd->gd_cpuid].inuse;
+	type->ks_use[gd->gd_cpuid].memuse -= size;
 	if (mycpu->gd_intr_nesting_level ||
 	    (gd->gd_curthread->td_flags & TDF_INTTHREAD))
 	{
@@ -1289,13 +1289,13 @@ kfree(void *ptr, struct malloc_type *type)
     if (z->z_CpuGd != gd) {
 	/*
 	 * Making these adjustments now allow us to avoid passing (type)
-	 * to the remote cpu.  Note that ks_inuse/ks_memuse is being
+	 * to the remote cpu.  Note that inuse/memuse is being
 	 * adjusted on OUR cpu, not the zone cpu, but it should all still
 	 * sum up properly and cancel out.
 	 */
 	crit_enter();
-	--type->ks_inuse[gd->gd_cpuid];
-	type->ks_memuse[gd->gd_cpuid] -= z->z_ChunkSize;
+	--type->ks_use[gd->gd_cpuid].inuse;
+	type->ks_use[gd->gd_cpuid].memuse -= z->z_ChunkSize;
 	crit_exit();
 
 	/*
@@ -1402,8 +1402,8 @@ kfree(void *ptr, struct malloc_type *type)
 		TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
-    --type->ks_inuse[z->z_Cpu];
-    type->ks_memuse[z->z_Cpu] -= z->z_ChunkSize;
+    --type->ks_use[z->z_Cpu].inuse;
+    type->ks_use[z->z_Cpu].memuse -= z->z_ChunkSize;
 
     check_zone_free(slgd, z);
     logmemory_quick(free_end);

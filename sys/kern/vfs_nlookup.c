@@ -113,12 +113,12 @@ nlookup_init(struct nlookupdata *nd,
 
     if (error == 0) {
 	if (p && p->p_fd) {
-	    cache_copy(&p->p_fd->fd_ncdir, &nd->nl_nch);
+	    cache_copy_ncdir(p, &nd->nl_nch);
 	    cache_copy(&p->p_fd->fd_nrdir, &nd->nl_rootnch);
 	    if (p->p_fd->fd_njdir.ncp)
 		cache_copy(&p->p_fd->fd_njdir, &nd->nl_jailnch);
 	    nd->nl_cred = td->td_ucred;
-	    nd->nl_flags |= NLC_BORROWCRED;
+	    nd->nl_flags |= NLC_BORROWCRED | NLC_NCDIR;
 	} else {
 	    cache_copy(&rootnch, &nd->nl_nch);
 	    cache_copy(&nd->nl_nch, &nd->nl_rootnch);
@@ -172,7 +172,12 @@ nlookup_init_at(struct nlookupdata *nd, struct file **fpp, int fd,
 			error = ENOTDIR;
 			goto done;
 		}
-		cache_drop(&nd->nl_nch);
+		if (nd->nl_flags & NLC_NCDIR) {
+			cache_drop_ncdir(&nd->nl_nch);
+			nd->nl_flags &= ~NLC_NCDIR;
+		} else {
+			cache_drop(&nd->nl_nch);
+		}
 		cache_copy(&fp->f_nchandle, &nd->nl_nch);
 		*fpp = fp;
 	}
@@ -308,7 +313,12 @@ nlookup_done(struct nlookupdata *nd)
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	    cache_unlock(&nd->nl_nch);
 	}
-	cache_drop(&nd->nl_nch);	/* NULL's out the nch */
+	if (nd->nl_flags & NLC_NCDIR) {
+		cache_drop_ncdir(&nd->nl_nch);
+		nd->nl_flags &= ~NLC_NCDIR;
+	} else {
+		cache_drop(&nd->nl_nch);	/* NULL's out the nch */
+	}
     }
     if (nd->nl_rootnch.ncp)
 	cache_drop_and_cache(&nd->nl_rootnch);
@@ -467,7 +477,7 @@ nlookup(struct nlookupdata *nd)
     int len;
     int dflags;
     int hit = 1;
-    int saveflag = nd->nl_flags;
+    int saveflag = nd->nl_flags & ~NLC_NCDIR;
     boolean_t doretry = FALSE;
     boolean_t inretry = FALSE;
 
@@ -517,7 +527,12 @@ nlookup_start:
 	    cache_unlock(&nd->nl_nch);
 	    cache_get_maybe_shared(&nd->nl_rootnch, &nch,
 				   wantsexcllock(nd, ptr));
-	    cache_drop(&nd->nl_nch);
+	    if (nd->nl_flags & NLC_NCDIR) {
+		    cache_drop_ncdir(&nd->nl_nch);
+		    nd->nl_flags &= ~NLC_NCDIR;
+	    } else {
+		    cache_drop(&nd->nl_nch);
+	    }
 	    nd->nl_nch = nch;		/* remains locked */
 
 	    /*
@@ -904,7 +919,12 @@ double_break:
 	 * element is a directory.
 	 */
 	if (*ptr && (nch.ncp->nc_flag & NCF_ISDIR)) {
-	    cache_drop(&nd->nl_nch);
+	    if (nd->nl_flags & NLC_NCDIR) {
+		    cache_drop_ncdir(&nd->nl_nch);
+		    nd->nl_flags &= ~NLC_NCDIR;
+	    } else {
+		    cache_drop(&nd->nl_nch);
+	    }
 	    cache_unlock(&nch);
 	    KKASSERT((nd->nl_flags & NLC_NCPISLOCKED) == 0);
 	    nd->nl_nch = nch;
@@ -956,7 +976,12 @@ double_break:
 			break;
 		}
 	}
-	cache_drop(&nd->nl_nch);
+	if (nd->nl_flags & NLC_NCDIR) {
+		cache_drop_ncdir(&nd->nl_nch);
+		nd->nl_flags &= ~NLC_NCDIR;
+	} else {
+		cache_drop(&nd->nl_nch);
+	}
 	nd->nl_nch = nch;
 	nd->nl_flags |= NLC_NCPISLOCKED;
 	error = 0;
@@ -978,7 +1003,8 @@ double_break:
      */
     if (doretry && !inretry) {
 	inretry = TRUE;
-	nd->nl_flags = saveflag;
+	nd->nl_flags &= NLC_NCDIR;
+	nd->nl_flags |= saveflag;
 	goto nlookup_start;
     }
 
@@ -1096,6 +1122,9 @@ fail:
  * The passed ncp must be referenced and locked.  If it is already resolved
  * it may be locked shared but otherwise should be locked exclusively.
  */
+
+#define S_WXOK_MASK	(S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
+
 static int
 naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 {
@@ -1147,6 +1176,16 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
      */
     if (error == 0 && (nflags & NLC_EXCL) && ncp->nc_vp != NULL)
 	error = EEXIST;
+
+    /*
+     * Try to short-cut the vnode operation for intermediate directory
+     * components.  This is a major SMP win because it avoids having
+     * to execute a lot of code for intermediate directory components,
+     * including shared refs and locks on intermediate directory vnodes.
+     */
+    if (error == 0 && nflags == NLC_EXEC && (ncp->nc_flag & NCF_WXOK)) {
+	return 0;
+    }
 
     /*
      * Get the vnode attributes so we can do the rest of our checks.
@@ -1227,6 +1266,19 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		}
 
 		/*
+		 * NCF_WXOK can be set for world-searchable directories.
+		 *
+		 * XXX When we implement capabilities this code would also
+		 * need a cap check, or only set the flag if there are no
+		 * capabilities.
+		 */
+		cflags = 0;
+		if (va.va_type == VDIR &&
+		    (va.va_mode & S_WXOK_MASK) == S_WXOK_MASK) {
+			cflags |= NCF_WXOK;
+		}
+
+		/*
 		 * Track swapcache management flags in the namecache.
 		 *
 		 * Calculate the flags based on the current vattr info
@@ -1234,7 +1286,6 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		 * (the original cache linkage may have occurred without
 		 * getattrs and thus have stale flags).
 		 */
-		cflags = 0;
 		if (va.va_flags & SF_NOCACHE)
 			cflags |= NCF_SF_NOCACHE;
 		if (va.va_flags & UF_CACHE)
@@ -1259,7 +1310,8 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		 */
 		atomic_clear_short(&ncp->nc_flag,
 				   (NCF_SF_NOCACHE | NCF_UF_CACHE |
-				   NCF_SF_PNOCACHE | NCF_UF_PCACHE) & ~cflags);
+				   NCF_SF_PNOCACHE | NCF_UF_PCACHE |
+				   NCF_WXOK) & ~cflags);
 		atomic_set_short(&ncp->nc_flag, cflags);
 
 		/*
