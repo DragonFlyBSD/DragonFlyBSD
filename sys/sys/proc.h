@@ -421,6 +421,14 @@ struct	proc {
 	RB_FOREACH(lp, lwp_rb_tree, &(p)->p_lwp_tree)
 #define	ONLY_LWP_IN_PROC(p)		_only_lwp_in_proc(p, __func__)
 
+struct procglob {
+	struct lwkt_token proc_token;
+	struct proclist allproc;	/* locked by proc_token */
+	struct pgrplist allpgrp;	/* locked by proc_token */
+	struct sesslist allsess;	/* locked by proc_token */
+	void    *pad01;			/* pad for clarity */
+} __cachealign;
+
 #ifdef _KERNEL
 static inline struct lwp *
 _only_lwp_in_proc(struct proc *p, const char *caller)

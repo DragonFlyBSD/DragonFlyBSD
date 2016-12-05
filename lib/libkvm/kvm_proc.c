@@ -55,6 +55,7 @@
 #include <sys/jail.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <unistd.h>
 #include <nlist.h>
 #include <kvm.h>
@@ -422,7 +423,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
  * We reallocate kd->procbase as necessary.
  */
 static int
-kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
+kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_procglob,
 	      int allproc_hsize)
 {
 	struct kinfo_proc *bp;
@@ -430,6 +431,7 @@ kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
 	struct proclist **pl;
 	int cnt, partcnt, n;
 	u_long nextoff;
+	u_long a_allproc;
 
 	cnt = partcnt = 0;
 	nextoff = 0;
@@ -441,7 +443,9 @@ kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
 	pl = _kvm_malloc(kd, allproc_hsize * sizeof(struct proclist *));
 	for (n = 0; n < allproc_hsize; n++) {
 		pl[n] = _kvm_malloc(kd, sizeof(struct proclist));
-		nextoff = a_allproc + (n * sizeof(struct proclist));
+		a_allproc = sizeof(struct procglob) * n +
+			    offsetof(struct procglob, allproc);
+		nextoff = a_allproc;
 		if (KREAD(kd, (u_long)nextoff, pl[n])) {
 			_kvm_err(kd, kd->program, "can't read proclist at 0x%lx",
 				a_allproc);
@@ -516,7 +520,7 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 		struct nlist nl[4], *p;
 
 		nl[0].n_name = "_nprocs";
-		nl[1].n_name = "_allprocs";
+		nl[1].n_name = "_procglob";
 		nl[2].n_name = "_allproc_hsize";
 		nl[3].n_name = 0;
 

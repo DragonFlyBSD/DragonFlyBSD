@@ -108,12 +108,11 @@ static void orphanpg(struct pgrp *pg);
 static void proc_makepid(struct proc *p, int random_offset);
 
 /*
- * Other process lists
+ * Process related lists (for proc_token, allproc, allpgrp, and allsess)
  */
-static struct lwkt_token proc_tokens[ALLPROC_HSIZE];
-static struct proclist allprocs[ALLPROC_HSIZE];	/* locked by proc_tokens */
-static struct pgrplist allpgrps[ALLPROC_HSIZE];	/* locked by proc_tokens */
-static struct sesslist allsessn[ALLPROC_HSIZE];	/* locked by proc_tokens */
+typedef struct procglob procglob_t;
+
+static procglob_t	procglob[ALLPROC_HSIZE];
 
 /*
  * We try our best to avoid recycling a PID too quickly.  We do this by
@@ -185,10 +184,11 @@ procinit(void)
 	 * Other misc init.
 	 */
 	for (i = 0; i < ALLPROC_HSIZE; ++i) {
-		LIST_INIT(&allprocs[i]);
-		LIST_INIT(&allsessn[i]);
-		LIST_INIT(&allpgrps[i]);
-		lwkt_token_init(&proc_tokens[i], "allproc");
+		procglob_t *prg = &procglob[i];
+		LIST_INIT(&prg->allproc);
+		LIST_INIT(&prg->allsess);
+		LIST_INIT(&prg->allpgrp);
+		lwkt_token_init(&prg->proc_token, "allproc");
 	}
 	uihashinit();
 }
@@ -196,19 +196,22 @@ procinit(void)
 void
 procinsertinit(struct proc *p)
 {
-	LIST_INSERT_HEAD(&allprocs[ALLPROC_HASH(p->p_pid)], p, p_list);
+	LIST_INSERT_HEAD(&procglob[ALLPROC_HASH(p->p_pid)].allproc,
+			 p, p_list);
 }
 
 void
 pgrpinsertinit(struct pgrp *pg)
 {
-	LIST_INSERT_HEAD(&allpgrps[ALLPROC_HASH(pg->pg_id)], pg, pg_list);
+	LIST_INSERT_HEAD(&procglob[ALLPROC_HASH(pg->pg_id)].allpgrp,
+			 pg, pg_list);
 }
 
 void
 sessinsertinit(struct session *sess)
 {
-	LIST_INSERT_HEAD(&allsessn[ALLPROC_HASH(sess->s_sid)], sess, s_list);
+	LIST_INSERT_HEAD(&procglob[ALLPROC_HASH(sess->s_sid)].allsess,
+			 sess, s_list);
 }
 
 /*
@@ -433,6 +436,7 @@ struct proc *
 pfind(pid_t pid)
 {
 	struct proc *p = curproc;
+	procglob_t *prg;
 	int n;
 
 	/*
@@ -447,18 +451,19 @@ pfind(pid_t pid)
 	 * Otherwise find it in the hash table.
 	 */
 	n = ALLPROC_HASH(pid);
+	prg = &procglob[n];
 
-	lwkt_gettoken_shared(&proc_tokens[n]);
-	LIST_FOREACH(p, &allprocs[n], p_list) {
+	lwkt_gettoken_shared(&prg->proc_token);
+	LIST_FOREACH(p, &prg->allproc, p_list) {
 		if (p->p_stat == SZOMB)
 			continue;
 		if (p->p_pid == pid) {
 			PHOLD(p);
-			lwkt_reltoken(&proc_tokens[n]);
+			lwkt_reltoken(&prg->proc_token);
 			return (p);
 		}
 	}
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 
 	return (NULL);
 }
@@ -474,6 +479,7 @@ struct proc *
 pfindn(pid_t pid)
 {
 	struct proc *p = curproc;
+	procglob_t *prg;
 	int n;
 
 	/*
@@ -486,17 +492,18 @@ pfindn(pid_t pid)
 	 * Otherwise find it in the hash table.
 	 */
 	n = ALLPROC_HASH(pid);
+	prg = &procglob[n];
 
-	lwkt_gettoken_shared(&proc_tokens[n]);
-	LIST_FOREACH(p, &allprocs[n], p_list) {
+	lwkt_gettoken_shared(&prg->proc_token);
+	LIST_FOREACH(p, &prg->allproc, p_list) {
 		if (p->p_stat == SZOMB)
 			continue;
 		if (p->p_pid == pid) {
-			lwkt_reltoken(&proc_tokens[n]);
+			lwkt_reltoken(&prg->proc_token);
 			return (p);
 		}
 	}
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 
 	return (NULL);
 }
@@ -512,6 +519,7 @@ struct proc *
 zpfind(pid_t pid)
 {
 	struct proc *p = curproc;
+	procglob_t *prg;
 	int n;
 
 	/*
@@ -526,18 +534,19 @@ zpfind(pid_t pid)
 	 * Otherwise find it in the hash table.
 	 */
 	n = ALLPROC_HASH(pid);
+	prg = &procglob[n];
 
-	lwkt_gettoken_shared(&proc_tokens[n]);
-	LIST_FOREACH(p, &allprocs[n], p_list) {
+	lwkt_gettoken_shared(&prg->proc_token);
+	LIST_FOREACH(p, &prg->allproc, p_list) {
 		if (p->p_stat != SZOMB)
 			continue;
 		if (p->p_pid == pid) {
 			PHOLD(p);
-			lwkt_reltoken(&proc_tokens[n]);
+			lwkt_reltoken(&prg->proc_token);
 			return (p);
 		}
 	}
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 
 	return (NULL);
 }
@@ -552,19 +561,22 @@ pgref(struct pgrp *pgrp)
 void
 pgrel(struct pgrp *pgrp)
 {
+	procglob_t *prg;
 	int count;
 	int n;
 
 	n = PGRP_HASH(pgrp->pg_id);
+	prg = &procglob[n];
+
 	for (;;) {
 		count = pgrp->pg_refs;
 		cpu_ccfence();
 		KKASSERT(count > 0);
 		if (count == 1) {
-			lwkt_gettoken(&proc_tokens[n]);
+			lwkt_gettoken(&prg->proc_token);
 			if (atomic_cmpset_int(&pgrp->pg_refs, 1, 0))
 				break;
-			lwkt_reltoken(&proc_tokens[n]);
+			lwkt_reltoken(&prg->proc_token);
 			/* retry */
 		} else {
 			if (atomic_cmpset_int(&pgrp->pg_refs, count, count - 1))
@@ -589,7 +601,7 @@ pgrel(struct pgrp *pgrp)
 	    pgrp->pg_session->s_ttyp->t_pgrp == pgrp) {
 		pgrp->pg_session->s_ttyp->t_pgrp = NULL;
 	}
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 
 	sess_rele(pgrp->pg_session);
 	kfree(pgrp, M_PGRP);
@@ -606,19 +618,21 @@ struct pgrp *
 pgfind(pid_t pgid)
 {
 	struct pgrp *pgrp;
+	procglob_t *prg;
 	int n;
 
 	n = PGRP_HASH(pgid);
-	lwkt_gettoken_shared(&proc_tokens[n]);
+	prg = &procglob[n];
+	lwkt_gettoken_shared(&prg->proc_token);
 
-	LIST_FOREACH(pgrp, &allpgrps[n], pg_list) {
+	LIST_FOREACH(pgrp, &prg->allpgrp, pg_list) {
 		if (pgrp->pg_id == pgid) {
 			refcount_acquire(&pgrp->pg_refs);
-			lwkt_reltoken(&proc_tokens[n]);
+			lwkt_reltoken(&prg->proc_token);
 			return (pgrp);
 		}
 	}
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 	return (NULL);
 }
 
@@ -644,6 +658,7 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 	if (pgrp == NULL) {
 		pid_t savepid = p->p_pid;
 		struct proc *np;
+		procglob_t *prg;
 		int n;
 
 		/*
@@ -661,15 +676,16 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 		lockinit(&pgrp->pg_lock, "pgwt", 0, 0);
 
 		n = PGRP_HASH(pgid);
+		prg = &procglob[n];
 
 		if ((np = pfindn(savepid)) == NULL || np != p) {
-			lwkt_reltoken(&proc_tokens[n]);
+			lwkt_reltoken(&prg->proc_token);
 			error = ESRCH;
 			kfree(pgrp, M_PGRP);
 			goto fatal;
 		}
 
-		lwkt_gettoken(&proc_tokens[n]);
+		lwkt_gettoken(&prg->proc_token);
 		if (mksess) {
 			struct session *sess;
 
@@ -690,7 +706,7 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			KASSERT(p == curproc,
 				("enterpgrp: mksession and p != curproc"));
 			p->p_flags &= ~P_CONTROLT;
-			LIST_INSERT_HEAD(&allsessn[n], sess, s_list);
+			LIST_INSERT_HEAD(&prg->allsess, sess, s_list);
 			lwkt_reltoken(&p->p_token);
 		} else {
 			lwkt_gettoken(&p->p_token);
@@ -698,9 +714,9 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			sess_hold(pgrp->pg_session);
 			lwkt_reltoken(&p->p_token);
 		}
-		LIST_INSERT_HEAD(&allpgrps[n], pgrp, pg_list);
+		LIST_INSERT_HEAD(&prg->allpgrp, pgrp, pg_list);
 
-		lwkt_reltoken(&proc_tokens[n]);
+		lwkt_reltoken(&prg->proc_token);
 	} else if (pgrp == p->p_pgrp) {
 		pgrel(pgrp);
 		goto done;
@@ -796,21 +812,24 @@ sess_hold(struct session *sp)
 void
 sess_rele(struct session *sess)
 {
+	procglob_t *prg;
 	struct tty *tp;
 	int count;
 	int n;
 
 	n = SESS_HASH(sess->s_sid);
+	prg = &procglob[n];
+
 	for (;;) {
 		count = sess->s_count;
 		cpu_ccfence();
 		KKASSERT(count > 0);
 		if (count == 1) {
 			lwkt_gettoken(&tty_token);
-			lwkt_gettoken(&proc_tokens[n]);
+			lwkt_gettoken(&prg->proc_token);
 			if (atomic_cmpset_int(&sess->s_count, 1, 0))
 				break;
-			lwkt_reltoken(&proc_tokens[n]);
+			lwkt_reltoken(&prg->proc_token);
 			lwkt_reltoken(&tty_token);
 			/* retry */
 		} else {
@@ -841,7 +860,7 @@ sess_rele(struct session *sess)
 		sess->s_ttyp = NULL;
 		ttyunhold(tp);
 	}
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 	lwkt_reltoken(&tty_token);
 
 	kfree(sess, M_SESSION);
@@ -966,6 +985,7 @@ void
 proc_makepid(struct proc *p, int random_offset)
 {
 	static pid_t nextpid = 1;	/* heuristic, allowed to race */
+	procglob_t *prg;
 	struct pgrp *pg;
 	struct proc *ps;
 	struct session *sess;
@@ -1018,36 +1038,37 @@ retry:
 	 * PID at the same pid_doms[] index as well as the same hash index.
 	 */
 	n = ALLPROC_HASH(base);
-	lwkt_gettoken(&proc_tokens[n]);
+	prg = &procglob[n];
+	lwkt_gettoken(&prg->proc_token);
 
 restart1:
-	LIST_FOREACH(ps, &allprocs[n], p_list) {
+	LIST_FOREACH(ps, &prg->allproc, p_list) {
 		if (ps->p_pid == base) {
 			base += ALLPROC_HSIZE;
 			if (base >= PID_MAX) {
-				lwkt_reltoken(&proc_tokens[n]);
+				lwkt_reltoken(&prg->proc_token);
 				goto retry;
 			}
 			++pid_inner_skips;
 			goto restart1;
 		}
 	}
-	LIST_FOREACH(pg, &allpgrps[n], pg_list) {
+	LIST_FOREACH(pg, &prg->allpgrp, pg_list) {
 		if (pg->pg_id == base) {
 			base += ALLPROC_HSIZE;
 			if (base >= PID_MAX) {
-				lwkt_reltoken(&proc_tokens[n]);
+				lwkt_reltoken(&prg->proc_token);
 				goto retry;
 			}
 			++pid_inner_skips;
 			goto restart1;
 		}
 	}
-	LIST_FOREACH(sess, &allsessn[n], s_list) {
+	LIST_FOREACH(sess, &prg->allsess, s_list) {
 		if (sess->s_sid == base) {
 			base += ALLPROC_HSIZE;
 			if (base >= PID_MAX) {
-				lwkt_reltoken(&proc_tokens[n]);
+				lwkt_reltoken(&prg->proc_token);
 				goto retry;
 			}
 			++pid_inner_skips;
@@ -1059,8 +1080,8 @@ restart1:
 	 * Assign the pid and insert the process.
 	 */
 	p->p_pid = base;
-	LIST_INSERT_HEAD(&allprocs[n], p, p_list);
-	lwkt_reltoken(&proc_tokens[n]);
+	LIST_INSERT_HEAD(&prg->allproc, p, p_list);
+	lwkt_reltoken(&prg->proc_token);
 }
 
 /*
@@ -1075,16 +1096,18 @@ restart1:
 void
 proc_move_allproc_zombie(struct proc *p)
 {
+	procglob_t *prg;
 	int n;
 
 	n = ALLPROC_HASH(p->p_pid);
+	prg = &procglob[n];
 	PSTALL(p, "reap1", 0);
-	lwkt_gettoken(&proc_tokens[n]);
+	lwkt_gettoken(&prg->proc_token);
 
 	PSTALL(p, "reap1a", 0);
 	p->p_stat = SZOMB;
 
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 	dsched_exit_proc(p);
 }
 
@@ -1100,18 +1123,20 @@ proc_move_allproc_zombie(struct proc *p)
 void
 proc_remove_zombie(struct proc *p)
 {
+	procglob_t *prg;
 	int n;
 
 	n = ALLPROC_HASH(p->p_pid);
+	prg = &procglob[n];
 
 	PSTALL(p, "reap2", 0);
-	lwkt_gettoken(&proc_tokens[n]);
+	lwkt_gettoken(&prg->proc_token);
 	PSTALL(p, "reap2a", 0);
 	LIST_REMOVE(p, p_list);		/* from remove master list */
 	LIST_REMOVE(p, p_sibling);	/* and from sibling list */
 	p->p_pptr = NULL;
 	pid_doms[p->p_pid % PIDSEL_DOMAINS] = (uint8_t)time_second;
-	lwkt_reltoken(&proc_tokens[n]);
+	lwkt_reltoken(&prg->proc_token);
 }
 
 /*
@@ -1222,15 +1247,16 @@ allproc_scan(int (*callback)(struct proc *, void *), void *data)
 	int n;
 
 	/*
-	 * proc_tokens[n] protects the allproc list and PHOLD() prevents the
+	 * prg->proc_token protects the allproc list and PHOLD() prevents the
 	 * process from being removed from the allproc list or the zombproc
 	 * list.
 	 */
 	for (n = 0; n < ALLPROC_HSIZE; ++n) {
-		if (LIST_FIRST(&allprocs[n]) == NULL)
+		procglob_t *prg = &procglob[n];
+		if (LIST_FIRST(&prg->allproc) == NULL)
 			continue;
-		lwkt_gettoken(&proc_tokens[n]);
-		LIST_FOREACH(p, &allprocs[n], p_list) {
+		lwkt_gettoken(&prg->proc_token);
+		LIST_FOREACH(p, &prg->allproc, p_list) {
 			if (p->p_stat == SZOMB)
 				continue;
 			PHOLD(p);
@@ -1241,7 +1267,7 @@ allproc_scan(int (*callback)(struct proc *, void *), void *data)
 			if (--limit < 0)
 				break;
 		}
-		lwkt_reltoken(&proc_tokens[n]);
+		lwkt_reltoken(&prg->proc_token);
 
 		/*
 		 * Check if asked to stop early
@@ -1268,10 +1294,12 @@ alllwp_scan(int (*callback)(struct lwp *, void *), void *data)
 	int n;
 
 	for (n = 0; n < ALLPROC_HSIZE; ++n) {
-		if (LIST_FIRST(&allprocs[n]) == NULL)
+		procglob_t *prg = &procglob[n];
+
+		if (LIST_FIRST(&prg->allproc) == NULL)
 			continue;
-		lwkt_gettoken(&proc_tokens[n]);
-		LIST_FOREACH(p, &allprocs[n], p_list) {
+		lwkt_gettoken(&prg->proc_token);
+		LIST_FOREACH(p, &prg->allproc, p_list) {
 			if (p->p_stat == SZOMB)
 				continue;
 			PHOLD(p);
@@ -1286,7 +1314,7 @@ alllwp_scan(int (*callback)(struct lwp *, void *), void *data)
 			if (r < 0)
 				break;
 		}
-		lwkt_reltoken(&proc_tokens[n]);
+		lwkt_reltoken(&prg->proc_token);
 
 		/*
 		 * Asked to exit early
@@ -1311,15 +1339,17 @@ zombproc_scan(int (*callback)(struct proc *, void *), void *data)
 	int n;
 
 	/*
-	 * proc_tokens[n] protects the allproc list and PHOLD() prevents the
+	 * prg->proc_token protects the allproc list and PHOLD() prevents the
 	 * process from being removed from the allproc list or the zombproc
 	 * list.
 	 */
 	for (n = 0; n < ALLPROC_HSIZE; ++n) {
-		if (LIST_FIRST(&allprocs[n]) == NULL)
+		procglob_t *prg = &procglob[n];
+
+		if (LIST_FIRST(&prg->allproc) == NULL)
 			continue;
-		lwkt_gettoken(&proc_tokens[n]);
-		LIST_FOREACH(p, &allprocs[n], p_list) {
+		lwkt_gettoken(&prg->proc_token);
+		LIST_FOREACH(p, &prg->allproc, p_list) {
 			if (p->p_stat != SZOMB)
 				continue;
 			PHOLD(p);
@@ -1328,7 +1358,7 @@ zombproc_scan(int (*callback)(struct proc *, void *), void *data)
 			if (r < 0)
 				break;
 		}
-		lwkt_reltoken(&proc_tokens[n]);
+		lwkt_reltoken(&prg->proc_token);
 
 		/*
 		 * Check if asked to stop early
@@ -1349,13 +1379,16 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 {
 	struct pgrp *pgrp;
 	struct proc *p;
+	procglob_t *prg;
 	int i;
 
 	for (i = 0; i < ALLPROC_HSIZE; ++i) {
-		if (LIST_EMPTY(&allpgrps[i]))
+		prg = &procglob[i];
+
+		if (LIST_EMPTY(&prg->allpgrp))
 			continue;
 		kprintf("\tindx %d\n", i);
-		LIST_FOREACH(pgrp, &allpgrps[i], pg_list) {
+		LIST_FOREACH(pgrp, &prg->allpgrp, pg_list) {
 			kprintf("\tpgrp %p, pgid %ld, sess %p, "
 				"sesscnt %d, mem %p\n",
 				(void *)pgrp, (long)pgrp->pg_id,
@@ -1474,10 +1507,12 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	}
 
 	for (n = 0; n < ALLPROC_HSIZE; ++n) {
-		if (LIST_EMPTY(&allprocs[n]))
+		procglob_t *prg = &procglob[n];
+
+		if (LIST_EMPTY(&prg->allproc))
 			continue;
-		lwkt_gettoken_shared(&proc_tokens[n]);
-		LIST_FOREACH(p, &allprocs[n], p_list) {
+		lwkt_gettoken_shared(&prg->proc_token);
+		LIST_FOREACH(p, &prg->allproc, p_list) {
 			/*
 			 * Show a user only their processes.
 			 */
@@ -1530,11 +1565,11 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			error = sysctl_out_proc(p, req, flags);
 			PRELE(p);
 			if (error) {
-				lwkt_reltoken(&proc_tokens[n]);
+				lwkt_reltoken(&prg->proc_token);
 				goto post_threads;
 			}
 		}
-		lwkt_reltoken(&proc_tokens[n]);
+		lwkt_reltoken(&prg->proc_token);
 	}
 
 	/*
