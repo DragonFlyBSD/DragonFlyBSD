@@ -826,7 +826,6 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 	imgp->entry_addr = entry;
 
 	imgp->proc->p_sysent = brand_info->sysvec;
-	EVENTHANDLER_INVOKE(process_exec, imgp);
 
 	if (interp != NULL) {
 		int have_interp = FALSE;

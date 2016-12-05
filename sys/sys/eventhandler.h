@@ -181,8 +181,6 @@ typedef void (*exit_list_fn)(void *, struct proc *);
 EVENTHANDLER_DECLARE(shutdown_pre_sync, shutdown_fn);	/* before fs sync */
 EVENTHANDLER_DECLARE(shutdown_post_sync, shutdown_fn);	/* after fs sync */
 EVENTHANDLER_DECLARE(shutdown_final, shutdown_fn);
-EVENTHANDLER_DECLARE(process_exec, execlist_fn);
-EVENTHANDLER_DECLARE(process_exit, exit_list_fn);
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 #endif	/* !_SYS_EVENTHANDLER_H_ */

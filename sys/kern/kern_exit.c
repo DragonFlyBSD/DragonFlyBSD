@@ -349,7 +349,6 @@ exit1(int rv)
 	 * XXX what if one of these generates an error?
 	 */
 	p->p_xstat = rv;
-	EVENTHANDLER_INVOKE(process_exit, p);
 
 	/*
 	 * XXX: imho, the eventhandler stuff is much cleaner than this.
