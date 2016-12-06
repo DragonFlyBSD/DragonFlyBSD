@@ -138,6 +138,14 @@ retry:
 		}
 
 		/*
+		 * Filesystem went read-only during rebalancing
+		 */
+		if (trans->hmp->ronly) {
+			error = EROFS;
+			break;
+		}
+
+		/*
 		 * We only care about internal nodes visited for the last
 		 * time on the way up... that is, a trailing scan of the
 		 * internal node after all of its children have been recursed

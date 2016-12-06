@@ -66,14 +66,18 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	     struct ucred *cred)
 {
 	struct hammer_transaction trans;
+	struct hammer_mount *hmp;
 	int error;
 
 	error = priv_check_cred(cred, PRIV_HAMMER_IOCTL, 0);
+	hmp = ip->hmp;
 
-	hammer_start_transaction(&trans, ip->hmp);
+	hammer_start_transaction(&trans, hmp);
 
 	switch(com) {
 	case HAMMERIOC_PRUNE:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_prune(&trans, ip,
 					(struct hammer_ioc_prune *)data);
@@ -84,6 +88,8 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					(struct hammer_ioc_history *)data);
 		break;
 	case HAMMERIOC_REBLOCK:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_reblock(&trans, ip,
 					(struct hammer_ioc_reblock *)data);
@@ -95,6 +101,8 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		 * children and children's children.  Systems with very
 		 * little memory will not be able to do it.
 		 */
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0 && nbuf < HAMMER_REBALANCE_MIN_BUFS) {
 			hkprintf("System has insufficient buffers "
 				"to rebalance the tree.  nbuf < %d\n",
@@ -115,24 +123,32 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 				    (struct hammer_ioc_pseudofs_rw *)data);
 		break;
 	case HAMMERIOC_SET_PSEUDOFS:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_set_pseudofs(&trans, ip, cred,
 				    (struct hammer_ioc_pseudofs_rw *)data);
 		}
 		break;
 	case HAMMERIOC_UPG_PSEUDOFS:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_upgrade_pseudofs(&trans, ip,
 				    (struct hammer_ioc_pseudofs_rw *)data);
 		}
 		break;
 	case HAMMERIOC_DGD_PSEUDOFS:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_downgrade_pseudofs(&trans, ip,
 				    (struct hammer_ioc_pseudofs_rw *)data);
 		}
 		break;
 	case HAMMERIOC_RMR_PSEUDOFS:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_destroy_pseudofs(&trans, ip,
 				    (struct hammer_ioc_pseudofs_rw *)data);
@@ -151,6 +167,8 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		}
 		break;
 	case HAMMERIOC_MIRROR_WRITE:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_mirror_write(&trans, ip,
 				    (struct hammer_ioc_mirror_rw *)data);
@@ -165,12 +183,16 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 				    (struct hammer_ioc_info *)data);
 		break;
 	case HAMMERIOC_SET_VERSION:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_set_version(&trans, ip,
 					    (struct hammer_ioc_version *)data);
 		}
 		break;
 	case HAMMERIOC_ADD_VOLUME:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = priv_check_cred(cred, PRIV_HAMMER_VOLUME, 0);
 			if (error == 0)
@@ -179,6 +201,8 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		}
 		break;
 	case HAMMERIOC_DEL_VOLUME:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = priv_check_cred(cred, PRIV_HAMMER_VOLUME, 0);
 			if (error == 0)
@@ -191,12 +215,16 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		    (struct hammer_ioc_volume_list *)data);
 		break;
 	case HAMMERIOC_ADD_SNAPSHOT:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_add_snapshot(
 					&trans, ip, (struct hammer_ioc_snapshot *)data);
 		}
 		break;
 	case HAMMERIOC_DEL_SNAPSHOT:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_del_snapshot(
 					&trans, ip, (struct hammer_ioc_snapshot *)data);
@@ -211,12 +239,16 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					&trans, ip, (struct hammer_ioc_config *)data);
 		break;
 	case HAMMERIOC_SET_CONFIG:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_set_config(
 					&trans, ip, (struct hammer_ioc_config *)data);
 		}
 		break;
 	case HAMMERIOC_DEDUP:
+		if (error == 0 && hmp->ronly)
+			error = EROFS;
 		if (error == 0) {
 			error = hammer_ioc_dedup(
 					&trans, ip, (struct hammer_ioc_dedup *)data);

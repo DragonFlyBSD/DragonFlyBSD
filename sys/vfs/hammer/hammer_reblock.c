@@ -149,6 +149,14 @@ retry:
 		reblock->key_cur.localization = elm->base.localization;
 
 		/*
+		 * Filesystem went read-only during rebalancing
+		 */
+		if (trans->hmp->ronly) {
+			error = EROFS;
+			break;
+		}
+
+		/*
 		 * Yield to more important tasks
 		 */
 		if ((error = hammer_signal_check(trans->hmp)) != 0)
