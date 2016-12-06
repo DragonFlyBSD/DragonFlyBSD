@@ -1567,13 +1567,17 @@ usage_help(_Bool help)
 }
 
 void
+cpu_smp_stopped(void)
+{
+}
+
+void
 cpu_reset(void)
 {
 	kprintf("cpu reset, rebooting vkernel\n");
 	closefrom(3);
 	cleanpid();
 	exit(EX_VKERNEL_REBOOT);
-
 }
 
 void
