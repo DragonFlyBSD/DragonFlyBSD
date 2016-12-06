@@ -405,6 +405,14 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		name[nlen] = 0;
 		sanitize_string(name);
 
+		if (VerboseOpt) {
+			printf("dir %016jx:%05d entry %016jx \"%s\"\n",
+				(uintmax_t)leaf->base.obj_id,
+				pfs_id,
+				(uintmax_t)ondisk->entry.obj_id,
+				name);
+		}
+
 		/*
 		 * We can't deal with hardlinks so if the object already
 		 * has a name assigned to it we just keep using that name.
@@ -443,12 +451,6 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		}
 		free(path1);
 		free(path2);
-
-		printf("dir %016jx:%05d entry %016jx \"%s\"\n",
-			(uintmax_t)leaf->base.obj_id,
-			pfs_id,
-			(uintmax_t)ondisk->entry.obj_id,
-			name);
 		break;
 	default:
 		/*
