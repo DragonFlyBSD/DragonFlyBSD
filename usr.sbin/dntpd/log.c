@@ -103,6 +103,7 @@ _logdebuginfo(server_info_t info, int level, const char *ctl, ...)
 			  ipstrpad, ipstrpad, "",
 			  info->ipstr, str);
 	    }
+	    free(str);
 	}
 	va_end(va);
     }
