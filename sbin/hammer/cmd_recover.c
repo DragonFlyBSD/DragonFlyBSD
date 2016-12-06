@@ -170,9 +170,8 @@ recover_top(char *ptr, hammer_off_t offset)
 		if (isnode && node->type == HAMMER_BTREE_TYPE_LEAF) {
 			for (i = 0; i < node->count && i < maxcount; ++i) {
 				elm = &node->elms[i];
-				if (elm->base.btype != HAMMER_BTREE_TYPE_RECORD)
-					continue;
-				recover_elm(&elm->leaf);
+				if (elm->base.btype == HAMMER_BTREE_TYPE_RECORD)
+					recover_elm(&elm->leaf);
 			}
 		}
 	}
@@ -445,7 +444,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		free(path1);
 		free(path2);
 
-		printf("dir  %016jx:%05d entry %016jx \"%s\"\n",
+		printf("dir %016jx:%05d entry %016jx \"%s\"\n",
 			(uintmax_t)leaf->base.obj_id,
 			pfs_id,
 			(uintmax_t)ondisk->entry.obj_id,
@@ -521,17 +520,24 @@ recover_path(struct recover_dict *dict)
 {
 	struct path_info info;
 
+	/* Find info.len first */
 	bzero(&info, sizeof(info));
-	info.pfs_id = dict->pfs_id;
 	info.state = PI_FIGURE;
 	recover_path_helper(dict, &info);
+
+	/* Fill in the path */
+	info.pfs_id = dict->pfs_id;
 	info.base = malloc(info.len);
 	info.next = info.base;
 	info.state = PI_LOAD;
 	recover_path_helper(dict, &info);
 
+	/* Return the path */
 	return(info.base);
 }
+
+#define STRLEN_OBJID	22	/* "obj_0x%016jx" */
+#define STRLEN_PFSID	8	/* "PFS%05d" */
 
 static
 void
@@ -545,11 +551,11 @@ recover_path_helper(struct recover_dict *dict, struct path_info *info)
 	switch(info->state) {
 	case PI_FIGURE:
 		if (dict->obj_id == HAMMER_OBJID_ROOT)
-			info->len += 8;
+			info->len += STRLEN_PFSID;
 		else if (dict->name)
 			info->len += strlen(dict->name);
 		else
-			info->len += 6 + 16;
+			info->len += STRLEN_OBJID;
 		++info->len;
 
 		if (dict->parent &&
@@ -570,12 +576,13 @@ recover_path_helper(struct recover_dict *dict, struct path_info *info)
 
 		*info->next++ = '/';
 		if (dict->obj_id == HAMMER_OBJID_ROOT) {
-			snprintf(info->next, 8+1, "PFS%05d", info->pfs_id);
+			snprintf(info->next, STRLEN_PFSID + 1,
+				"PFS%05d", info->pfs_id);
 		} else if (dict->name) {
 			strcpy(info->next, dict->name);
 		} else {
-			snprintf(info->next, 6+16+1, "obj_0x%016jx",
-				(uintmax_t)dict->obj_id);
+			snprintf(info->next, STRLEN_OBJID + 1,
+				"obj_0x%016jx", (uintmax_t)dict->obj_id);
 		}
 		info->next += strlen(info->next);
 		break;
