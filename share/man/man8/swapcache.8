@@ -110,7 +110,7 @@ the SSD in order to avoid wearing it out too quickly.
 Even though SSDs have limited write endurance, there is massive
 cost/performance benefit to using one in a swapcache configuration.
 .Pp
-Let's use the Intel X25V 40GB MLC SATA SSD as an example.
+Let's use the old Intel X25V 40GB MLC SATA SSD as an example.
 This device has approximately a
 40TB (40 terabyte) write endurance, but see later
 notes on this, it is more a minimum value.
@@ -124,6 +124,11 @@ MLC SSDs have a 1000-10000x write endurance, while the lower density
 higher-cost SLC SSDs have a 10000-100000x write endurance, approximately.
 MLC SSDs can be used for the swapcache (and swap) as long as the system
 manager is cognizant of its limitations.
+However, over the years tests have shown the SLC SSDs do not really live
+up to their hype and are no more reliable than MLC SSDs.  Instead of
+worrying about SLC vs MLC, just use MLC (or TLC or whateve), leave
+more space unpartitioned which the SSD can utilize to improve durability,
+and be cognizant of the SSDs rate of wear.
 .Pp
 .It Va vm.swapcache.meta_enable
 Turning on just
@@ -153,12 +158,13 @@ In almost all cases you will want to leave chflags mode enabled
 and use 'chflags cache' on governing directories to control which
 directory subtrees file data should be cached for.
 .Pp
-Vnode recycling can also cause problems.
-32-bit systems are typically limited to 100,000 cached vnodes and
-64-bit systems are typically limited to around 400,000 cached vnodes.
-When operating on a filesystem containing a large number of files
-vnode recycling by the kernel will cause related swapcache data
-to be lost and also cause potential thrashing of the swapcache.
+DragonFly uses generously large kern.maxvnodes values,
+typically in excess of 400K vnodes, but large numbers
+of small files can still cause problems for swapcache.
+When operating on a filesystem containing a large number of
+small files, vnode recycling by the kernel will cause related
+swapcache data to be lost and also cause the swapcache to
+potentially thrash.
 Cache thrashing due to vnode recyclement can occur whether chflags
 mode is used or not.
 .Pp
@@ -173,9 +179,9 @@ that
 .Nm
 will only cache the data blocks via the block device when
 double_buffer mode is used and since the block device is associated
-with the mount it will not get recycled.
+with the mount, vnode recycling will not mess with it.
 This allows the data for any number (potentially millions) of files to
-be cached.
+be swapcached.
 You still should use chflags mode to control the size of the dataset
 being cached to remain under 75% of configured swap space.
 .Pp
@@ -185,7 +191,7 @@ If not carefully managed the swapcache may exhaust its burst and smack
 against the long term average bandwidth limit, causing the SSD to wear
 out at the maximum rate you programmed.
 Data caching is far less wasteful and more efficient
-if (on a 64-bit system only) you provide a sufficiently large SSD.
+if you provide a sufficiently large SSD.
 .Pp
 When caching large data sets you may want to use a medium-sized SSD
 with good write performance instead of a small SSD to accommodate
@@ -200,16 +206,18 @@ For example, an Intel X25-V only has 40MB/s in write performance
 and burst writing by swapcache will seriously interfere with
 concurrent read operation on the SSD.
 The 80GB X25-M on the otherhand has double the write performance.
+Higher-capacity and larger form-factor SSDs tend to have better
+write-performance.
 But the Intel 310 series SSDs use flash chips with a smaller feature
 size so an 80G 310 series SSD will wind up with a durability relative
 close to the older 40G X25-V.
 .Pp
-When data caching is turned on you generally always want swapcache's
-chflags mode enabled and use
+When data caching is turned on you can fine-tune what gets swapcached
+by also turning on swapcache's chflags mode and using
 .Xr chflags 1
 with the
 .Va cache
-flag to enable data caching on a directory.
+flag to enable data caching on a directory-tree (recursive) basis.
 This flag is tracked by the namecache and does not need to be
 recursively set in the directory tree.
 Simply setting the flag in a top level directory or mount point
@@ -222,9 +230,13 @@ A typical setup is something like this:
 .Pp
 It is possible to tell
 .Nm
-to ignore the cache flag by setting
+to ignore the cache flag by leaving
 .Va vm.swapcache.use_chflags
-to zero, but it is not recommended.
+set to zero.
+In many situations it is convenient to simply not use chflags mode, but
+if you have numerous mixed SSDs and HDDs you may want to use this flag
+to enable swapcache on the HDDs and disable it on the SSDs even if
+you do not care about fine-grained control.
 .Nm chflag Ns 'ing .
 .Pp
 Filesystems such as NFS which do not support flags generally
@@ -260,17 +272,16 @@ The default is 75%, leaving the remaining 25% of swap available for normal
 paging operations.
 .El
 .Pp
-It is important to note that you should always use
-.Xr disklabel64 8
-to label your SSD.
-Disklabel64 will properly align the base of the
-partition space relative to the physical drive regardless of how badly
-aligned the fdisk slice is.
-This will significantly reduce write amplification and write combining
-inefficiencies on the SSD.
+It is important to ensure that your swap partition is nicely aligned.
+The standard DragonFly
+.Xr disklabel 8
+program guarantees high alignment (~1MB) automatically.
+Swap-on HDDs benefit because HDDs tend to use a larger physical sector size
+than 512 bytes, and proper alignment for SSDs will reduce write amplification
+and write-combining inefficiencies.
 .Pp
 Finally, interleaved swap (multiple SSDs) may be used to increase
-performance even further.
+swap and swapcache performance even further.
 A single SATA-II SSD is typically capable of reading 120-220MB/sec.
 Configuring two SSDs for your swap will
 improve aggregate swapcache read performance by 1.5x to 1.8x.
@@ -278,21 +289,14 @@ In tests with two Intel 40GB SSDs 300MB/sec was easily achieved.
 With two SATA-III SSDs it is possible to achieve 600MB/sec or better
 and well over 400MB/sec random-read performance (versus the ~3MB/sec
 random read performance a hard drive gives you).
+Faster SATA interfaces or newer NVMe technologies have significantly
+more read bandwidth (3GB/sec+ for NVMe), but may still lag on the
+write bandwidth.
+With newer technologies, one swap device is usually plenty.
 .Pp
-At this point you will be configuring more swap space than a 32 bit
-.Dx
-kernel can handle (due to KVM limitations).
-By default, 32 bit
-.Dx
-systems only support 32GB of configured swap and while this limit
-can be increased somewhat by using
-.Va kern.maxswzone
-in
-.Pa /boot/loader.conf
-(a setting of 96m == a maximum of 96GB of swap),
-you will quickly run out of KVM.
-Running a 64-bit system with its 512G maximum swap space default
-is preferable at that point.
+.Dx defaults to a maximum of 512G of configured swap.
+Keep in mind that each 1GB of actually configured swap requires
+approximately 1MB of wired ram to manage.
 .Pp
 In addition there will be periods of time where the system is in
 steady state and not writing to the swapcache.
@@ -331,12 +335,22 @@ hard drive will result in excessive seeking on the hard drive.
 .Sh SWAPCACHE SIZE & MANAGEMENT
 The swapcache feature will use up to 75% of configured swap space
 by default.
-The remaining 25% is reserved for normal paging operation.
+The remaining 25% is reserved for normal paging operations.
 The system operator should configure at least 4 times the SWAP space
 versus main memory and no less than 8GB of swap space.
-If a 40GB SSD is used the recommendation is to configure 16GB to 32GB of
-swap (note: 32-bit is limited to 32GB of swap by default, for 64-bit
-it is 512GB of swap), and to leave the remainder unwritten and unused.
+A typical 128GB SSD might use 64GB for boot + base and 56GB for
+swap, with 8GB left unpartitioned.  The system might then have a large
+additional hard drive for bulk data.
+Even with many packages installed, 64GB is comfortable for
+boot + base.
+.Pp
+When configuring a SSD that will be used for swap or swapcache
+it is a good idea to leave around 10% unpartitioned to improve
+the SSDs durability.
+.Pp
+You do not need to use swapcache if you have no hard drives in the
+system, though in fact swapcache can help if you use NFS heavily
+as a client.
 .Pp
 The
 .Va vm_swapcache.maxswappct
@@ -358,7 +372,7 @@ which new data is written and this rate in turn is often limited by
 resulting in an orderly replacement of cached data and meta-data.
 The limit is typically only reached when doing full data+meta-data
 caching with no file size limitations and serving primarily large
-files, or (on a 64-bit system) bumping
+files, or bumping
 .Va kern.maxvnodes
 up to very high values.
 .Sh NORMAL SWAP PAGING ACTIVITY WITH SSD SWAP
@@ -385,20 +399,18 @@ configured swap.
 Heavy paging activity is not governed by
 .Nm
 bandwidth control parameters and can lead to excessive uncontrolled
-writing to the MLC SSD, causing premature wearout.
-You would have to use the lower density, more expensive SLC SSD
-technology (which has 10x the durability).
+writing to the SSD, causing premature wearout.
 This isn't to say that
 .Nm
 would be ineffective, just that the aggregate write bandwidth required
-to support the system would be too large for MLC flash technologies.
+to support the system might be too large to be cost-effective for a SSD.
 .Pp
 With this caveat in mind, SSD based paging on systems with insufficient
 RAM can be extremely effective in extending the useful life of the system.
 For example, a system with a measly 192MB of RAM and SSD swap can run
 a -j 8 parallel build world in a little less than twice the time it
 would take if the system had 2GB of RAM, whereas it would take 5x to 10x
-as long with normal HD based swap.
+as long with normal HDD based swap.
 .Sh USING SWAPCACHE WITH NORMAL HARD DRIVES
 Although
 .Nm
@@ -426,15 +438,6 @@ actually distributing the filesystem itself across multiple drives.
 For the purposes of offloading while a SSD would be the most effective
 from a performance standpoint, a second medium sized HD with its much lower
 cost and higher capacity might actually be more cost effective.
-.Pp
-In cases where you might desire to use
-.Nm
-with a normal hard drive you should probably consider running a 64-bit
-.Dx
-instead of a 32-bit system.
-The 64-bit build is capable of supporting much larger swap configurations
-(upwards of 512G) and would be a more suitable match against a medium-sized
-HD.
 .Sh EXPLANATION OF STATIC VS DYNAMIC WEARING LEVELING, AND WRITE-COMBINING
 Modern SSDs keep track of space that has never been written to.
 This would also include space freed up via TRIM, but simply not
@@ -615,29 +618,44 @@ In contrast, filesystems directly stored on a SSD could have
 fairly severe write amplification effects and will have durabilities
 ranging closer to the vendor-specified limit.
 .Pp
-Power-on hours, power cycles, and read operations do not really affect wear.
-There is something called read-disturb but it is unclear what sort of
-ratio would be needed.  Since the data is cached in ram and thus not
-re-read at a high rate there is no expectation of a practical effect.
-For all intents and purposes only write operations effect wear.
+Tests have shown that power cycling (with proper shutdown) and read
+operations do not adversely effect a SSD.  Writing within the wearout
+constraints provided by the vendor also does not make a powered SSD any
+less reliable over time.  Time itself seems to be a factor as the SSD
+encounters defects and weak cells in the flash chips.  Writes to a SSD
+will effect cold durability (a typical flash chip has 10 years of cold
+data retention when fresh and less than 1 year of cold data retention near
+the end of its wear life).  Keeping a SSD cool improves its data retention.
 .Pp
-SSD's with MLC-based flash technology are high-density, low-cost solutions
-with limited write durability.
-SLC-based flash technology is a low-density,
-higher-cost solution with 10x the write durability as MLC.
-The durability also scales with the amount of flash storage.
-SLC based flash is typically
-twice as expensive per gigabyte.
-From a cost perspective, SLC based flash
-is at least 5x more cost effective in situations where high write
-bandwidths are required (because it lasts 10x longer).
-MLC is at least 2x more cost effective in situations where high
-write bandwidth is not required.
+Beware the standard comparison between SLC, MLC, and TLC-based flash
+in terms of wearout and durability.  Over the years, tests have shown
+that SLC is not actually any more reliable than MLC, despite having a
+significantly larger theoretical durability.  Cell and chip failures seem
+to trump theoretical wear limitations in terms of device reliability.
+With that in mind, we do not recommend using SLC for anything any more.
+Instead we recommend that the flash simply be over-provisioned to provide
+the needed durability.
+This is already done in numerous NVMe solutions for the vendor to be able
+to provide certain minimum wear guarantees.
+Durability scales with the amount of flash storage (but the fab process
+typically scales the opposite... smaller feature sizes for flash cells
+greatly reduce their durability).
 When wear calculations are in years, these differences become huge, but
 often the quantity of storage needed trumps the wear life so we expect most
 people will be using MLC.
-.Nm
-is usable with both technologies.
+.Pp
+Beware the huge difference between larger (e.g. 2.5") form-factor SSDs
+and smaller SSDs such as USB sticks are very small M.2 storage.  Smaller
+form-factor devices have fewer flash chips and, much lower write bandwidths,
+less ram for caching and write-combining, and usb sticks in particular will
+usually have unsophisticated wear-leveling algorithms compared to a 2.5"
+SSD.  It is generally not a good idea to make a USB stick your primary
+storage.  Long-form-factor NGFF/M.2 devices will be better, and 2.5"
+form factor devices even better.  The read-bandwidth for a SATA SSD caps
+out more quickly than the read-bandwidth for a NVMe SSD, but the larger
+form factor of a 2.5" SATA SSD will often have superior write performance
+to a NGFF NVMe device.  There are 2.5" NVMe devices as well, requiring a
+special connector or PCIe adapter, which give you the best of both worlds.
 .Sh SEE ALSO
 .Xr chflags 1 ,
 .Xr fstab 5 ,
