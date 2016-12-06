@@ -74,7 +74,9 @@
  */
 #define PIDDOM_COUNT	10	/* 10 pids per domain - reduce array size */
 #define PIDDOM_DELAY	10	/* min 10 seconds after exit before reuse */
-#define PIDSEL_DOMAINS	(PID_MAX / PIDDOM_COUNT / ALLPROC_HSIZE * ALLPROC_HSIZE)
+#define PIDDOM_SCALE	10	/* (10,000*SCALE)/sec performance guarantee */
+#define PIDSEL_DOMAINS	(PID_MAX * PIDDOM_SCALE / PIDDOM_COUNT /	\
+			 ALLPROC_HSIZE * ALLPROC_HSIZE)
 
 /* Used by libkvm */
 int allproc_hsize = ALLPROC_HSIZE;
@@ -120,11 +122,14 @@ static procglob_t	procglob[ALLPROC_HSIZE];
  * using that to skip-over the domain on-allocate.
  *
  * This array has to be fairly large to support a high fork/exec rate.
- * We want ~100,000 entries or so to support a 10-second reuse latency
- * at 10,000 execs/second, worst case.  Best-case multiply by PIDDOM_COUNT
+ * A ~100,000 entry array will support a 10-second reuse latency at
+ * 10,000 execs/second, worst case.  Best-case multiply by PIDDOM_COUNT
  * (approximately 100,000 execs/second).
+ *
+ * Currently we allocate around a megabyte, making the worst-case fork
+ * rate around 100,000/second.
  */
-static uint8_t pid_doms[PIDSEL_DOMAINS];	/* ~100,000 entries */
+static uint8_t *pid_doms;
 
 /*
  * Random component to nextpid generation.  We mix in a random factor to make
@@ -171,6 +176,13 @@ void
 procinit(void)
 {
 	u_long i;
+
+	/*
+	 * Allocate dynamically.  This array can be large (~1MB) so don't
+	 * waste boot loader space.
+	 */
+	pid_doms = kmalloc(sizeof(pid_doms[0]) * PIDSEL_DOMAINS,
+			   M_PROC, M_WAITOK | M_ZERO);
 
 	/*
 	 * Avoid unnecessary stalls due to pid_doms[] values all being
@@ -589,7 +601,8 @@ pgrel(struct pgrp *pgrp)
 	 * Successful 1->0 transition, pghash_spin is held.
 	 */
 	LIST_REMOVE(pgrp, pg_list);
-	pid_doms[pgrp->pg_id % PIDSEL_DOMAINS] = (uint8_t)time_second;
+	if (pid_doms[pgrp->pg_id % PIDSEL_DOMAINS] != (uint8_t)time_second)
+		pid_doms[pgrp->pg_id % PIDSEL_DOMAINS] = (uint8_t)time_second;
 
 	/*
 	 * Reset any sigio structures pointing to us as a result of
@@ -843,7 +856,8 @@ sess_rele(struct session *sess)
 	 * Successful 1->0 transition and tty_token is held.
 	 */
 	LIST_REMOVE(sess, s_list);
-	pid_doms[sess->s_sid % PIDSEL_DOMAINS] = (uint8_t)time_second;
+	if (pid_doms[sess->s_sid % PIDSEL_DOMAINS] != (uint8_t)time_second)
+		pid_doms[sess->s_sid % PIDSEL_DOMAINS] = (uint8_t)time_second;
 
 	if (sess->s_ttyp && sess->s_ttyp->t_session) {
 #ifdef TTY_DO_FULL_CLOSE
@@ -1135,7 +1149,8 @@ proc_remove_zombie(struct proc *p)
 	LIST_REMOVE(p, p_list);		/* from remove master list */
 	LIST_REMOVE(p, p_sibling);	/* and from sibling list */
 	p->p_pptr = NULL;
-	pid_doms[p->p_pid % PIDSEL_DOMAINS] = (uint8_t)time_second;
+	if (pid_doms[p->p_pid % PIDSEL_DOMAINS] != (uint8_t)time_second)
+		pid_doms[p->p_pid % PIDSEL_DOMAINS] = (uint8_t)time_second;
 	lwkt_reltoken(&prg->proc_token);
 }
 
