@@ -228,7 +228,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		 * or directory is in the directory hierarchy.
 		 */
 		if (VerboseOpt) {
-			printf("file %016jx:%05d inode found\n",
+			printf("inode %016jx:%05d found\n",
 				(uintmax_t)leaf->base.obj_id, pfs_id);
 		}
 		path1 = recover_path(dict);
@@ -290,7 +290,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		if (leaf->base.obj_id == 0)
 			break;
 		if (VerboseOpt) {
-			printf("file %016jx:%05d data %016jx,%d\n",
+			printf("inode %016jx:%05d data %016jx,%d\n",
 				(uintmax_t)leaf->base.obj_id,
 				pfs_id,
 				(uintmax_t)leaf->base.key - len,
