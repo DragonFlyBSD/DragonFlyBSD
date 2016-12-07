@@ -219,6 +219,12 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 
 	pfs_id = lo_to_pfs(leaf->base.localization);
 
+	/*
+	 * Note that meaning of leaf->base.obj_id differs depending
+	 * on record type.  For a direntry, leaf->base.obj_id points
+	 * to its parent inode that this entry is a part of, but not
+	 * its corresponding inode.
+	 */
 	dict = get_dict(leaf->base.obj_id, pfs_id);
 
 	switch(leaf->base.rec_type) {
@@ -501,7 +507,7 @@ get_dict(int64_t obj_id, uint16_t pfs_id)
 		 * real parent directory object is.
 		 */
 		if (dict->obj_id != HAMMER_OBJID_ROOT)
-			dict->parent = get_dict(1, pfs_id);
+			dict->parent = get_dict(HAMMER_OBJID_ROOT, pfs_id);
 	}
 	return(dict);
 }
