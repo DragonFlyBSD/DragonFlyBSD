@@ -45,7 +45,7 @@ static void loaddelay(struct timespec *ts, const char *arg);
 #define bstats_title	\
 "   lookups   searches    inserts    deletes   elements     splits iterations  rootiters   reciters"
 #define iostats_title	\
-"   f_read   f_write   d_read   d_write i_flushes   commits      undo      redo"
+"   f_read   f_write    d_read   d_write i_flushes   commits      undo      redo"
 
 /*
  * Taken from sys/vfs/hammer/hammer_vfsops.c
