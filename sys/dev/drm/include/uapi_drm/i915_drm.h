@@ -700,12 +700,8 @@ struct drm_i915_gem_exec_object2 {
 #define EXEC_OBJECT_NEEDS_GTT	(1<<1)
 #define EXEC_OBJECT_WRITE	(1<<2)
 #define EXEC_OBJECT_SUPPORTS_48B_ADDRESS (1<<3)
-#ifdef __DragonFly__
-#define __EXEC_OBJECT_UNKNOWN_FLAGS -(EXEC_OBJECT_SUPPORTS_48B_ADDRESS<<1)
-#else /* Linux 4.6 */
 #define EXEC_OBJECT_PINNED	(1<<4)
 #define __EXEC_OBJECT_UNKNOWN_FLAGS -(EXEC_OBJECT_PINNED<<1)
-#endif
 	__u64 flags;
 
 	__u64 rsvd1;
@@ -1180,8 +1176,8 @@ struct drm_i915_gem_context_param {
 	__u32 ctx_id;
 	__u32 size;
 	__u64 param;
-#define I915_CONTEXT_PARAM_BAN_PERIOD 0x1
-#define I915_CONTEXT_PARAM_NO_ZEROMAP 0x2
+#define I915_CONTEXT_PARAM_BAN_PERIOD	0x1
+#define I915_CONTEXT_PARAM_NO_ZEROMAP	0x2
 #define I915_CONTEXT_PARAM_GTT_SIZE	0x3
 	__u64 value;
 };

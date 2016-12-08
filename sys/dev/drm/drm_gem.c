@@ -292,8 +292,9 @@ drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
  * @filp: drm file-private structure to use for the handle look up
  * @handle: userspace handle to delete
  *
- * Removes the GEM handle from the @filp lookup table and if this is the last
- * handle also cleans up linked resources like GEM names.
+ * Removes the GEM handle from the @filp lookup table which has been added with
+ * drm_gem_handle_create(). If this is the last handle also cleans up linked
+ * resources like GEM names.
  */
 int
 drm_gem_handle_delete(struct drm_file *filp, u32 handle)
@@ -360,6 +361,10 @@ EXPORT_SYMBOL(drm_gem_dumb_destroy);
  * This expects the dev->object_name_lock to be held already and will drop it
  * before returning. Used to avoid races in establishing new handles when
  * importing an object from either an flink name or a dma-buf.
+ *
+ * Handles must be release again through drm_gem_handle_delete(). This is done
+ * when userspace closes @file_priv for all attached handles, or through the
+ * GEM_CLOSE ioctl for individual handles.
  */
 int
 drm_gem_handle_create_tail(struct drm_file *file_priv,
@@ -511,7 +516,17 @@ int drm_gem_create_mmap_offset(struct drm_gem_object *obj)
 }
 EXPORT_SYMBOL(drm_gem_create_mmap_offset);
 
-/** Returns a reference to the object named by the handle. */
+/**
+ * drm_gem_object_lookup - look up a GEM object from it's handle
+ * @dev: DRM device
+ * @filp: DRM file private date
+ * @handle: userspace handle
+ *
+ * Returns:
+ *
+ * A reference to the object named by the handle if such exists on @filp, NULL
+ * otherwise.
+ */
 struct drm_gem_object *
 drm_gem_object_lookup(struct drm_device *dev, struct drm_file *filp,
 		      u32 handle)

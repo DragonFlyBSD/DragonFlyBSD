@@ -725,7 +725,7 @@ struct drm_dp_aux_msg {
  * retry logic and i2c helpers assume this is the case.
  */
 struct drm_dp_aux {
-	const char *name;
+	char *name;
 	struct i2c_adapter ddc;
 	struct device *dev;
 	struct lock hw_mutex;

@@ -69,6 +69,7 @@ SRCS += \
 	dvo_tfp410.c \
 	intel_crt.c \
 	intel_ddi.c \
+	intel_dp_link_training.c \
 	intel_dp_mst.c \
 	intel_dp.c \
 	intel_dsi.c \

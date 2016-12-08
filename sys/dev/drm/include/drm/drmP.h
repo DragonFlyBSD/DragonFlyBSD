@@ -1253,4 +1253,8 @@ extern int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *speed_mask);
 #define	drm_can_sleep()	(HZ & 1)
 
 #endif /* __KERNEL__ */
+
+/* helper for handling conditionals in various for_each macros */
+#define for_each_if(condition) if (!(condition)) {} else
+
 #endif /* _DRM_P_H_ */

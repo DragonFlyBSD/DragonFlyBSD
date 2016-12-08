@@ -2057,10 +2057,12 @@ dev/drm/drm_crtc_helper.c		optional drm
 dev/drm/drm_dma.c			optional drm
 dev/drm/drm_dp_helper.c			optional drm
 dev/drm/drm_dp_iic_helper.c		optional drm
+dev/drm/drm_dp_mst_topology.c		optional drm
 dev/drm/drm_dragonfly.c			optional drm
 dev/drm/drm_drv.c			optional drm
 dev/drm/drm_edid.c			optional drm
 dev/drm/drm_edid_load.c			optional drm
+dev/drm/drm_encoder_slave.c		optional drm
 dev/drm/drm_fb_helper.c			optional drm
 dev/drm/drm_fops.c			optional drm
 dev/drm/drm_gem.c			optional drm
@@ -2139,6 +2141,7 @@ dev/drm/i915/intel_csr.c		optional i915 drm
 dev/drm/i915/intel_ddi.c		optional i915 drm
 dev/drm/i915/intel_display.c		optional i915 drm
 dev/drm/i915/intel_dp.c			optional i915 drm
+dev/drm/i915/intel_dp_link_training.c	optional i915 drm
 dev/drm/i915/intel_dp_mst.c		optional i915 drm
 dev/drm/i915/intel_dsi.c		optional i915 drm
 dev/drm/i915/intel_dsi_panel_vbt.c	optional i915 drm

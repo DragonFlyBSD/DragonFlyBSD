@@ -552,10 +552,10 @@ EXPORT_SYMBOL(drm_gtf_mode_complex);
  * drivers/video/fbmon.c
  *
  * Standard GTF parameters:
- * M = 600
- * C = 40
- * K = 128
- * J = 20
+ *     M = 600
+ *     C = 40
+ *     K = 128
+ *     J = 20
  *
  * Returns:
  * The modeline based on the GTF algorithm stored in a drm_display_mode object.
@@ -704,7 +704,8 @@ void drm_mode_set_name(struct drm_display_mode *mode)
 }
 EXPORT_SYMBOL(drm_mode_set_name);
 
-/** drm_mode_hsync - get the hsync of a mode
+/**
+ * drm_mode_hsync - get the hsync of a mode
  * @mode: mode
  *
  * Returns:
@@ -913,13 +914,30 @@ bool drm_mode_equal(const struct drm_display_mode *mode1, const struct drm_displ
 	} else if (mode1->clock != mode2->clock)
 		return false;
 
+	return drm_mode_equal_no_clocks(mode1, mode2);
+}
+EXPORT_SYMBOL(drm_mode_equal);
+
+/**
+ * drm_mode_equal_no_clocks - test modes for equality
+ * @mode1: first mode
+ * @mode2: second mode
+ *
+ * Check to see if @mode1 and @mode2 are equivalent, but
+ * don't check the pixel clocks.
+ *
+ * Returns:
+ * True if the modes are equal, false otherwise.
+ */
+bool drm_mode_equal_no_clocks(const struct drm_display_mode *mode1, const struct drm_display_mode *mode2)
+{
 	if ((mode1->flags & DRM_MODE_FLAG_3D_MASK) !=
 	    (mode2->flags & DRM_MODE_FLAG_3D_MASK))
 		return false;
 
 	return drm_mode_equal_no_clocks_no_stereo(mode1, mode2);
 }
-EXPORT_SYMBOL(drm_mode_equal);
+EXPORT_SYMBOL(drm_mode_equal_no_clocks);
 
 /**
  * drm_mode_equal_no_clocks_no_stereo - test modes for equality
@@ -1013,6 +1031,62 @@ drm_mode_validate_size(const struct drm_display_mode *mode,
 }
 EXPORT_SYMBOL(drm_mode_validate_size);
 
+#define MODE_STATUS(status) [MODE_ ## status + 3] = #status
+
+static const char * const drm_mode_status_names[] = {
+	MODE_STATUS(OK),
+	MODE_STATUS(HSYNC),
+	MODE_STATUS(VSYNC),
+	MODE_STATUS(H_ILLEGAL),
+	MODE_STATUS(V_ILLEGAL),
+	MODE_STATUS(BAD_WIDTH),
+	MODE_STATUS(NOMODE),
+	MODE_STATUS(NO_INTERLACE),
+	MODE_STATUS(NO_DBLESCAN),
+	MODE_STATUS(NO_VSCAN),
+	MODE_STATUS(MEM),
+	MODE_STATUS(VIRTUAL_X),
+	MODE_STATUS(VIRTUAL_Y),
+	MODE_STATUS(MEM_VIRT),
+	MODE_STATUS(NOCLOCK),
+	MODE_STATUS(CLOCK_HIGH),
+	MODE_STATUS(CLOCK_LOW),
+	MODE_STATUS(CLOCK_RANGE),
+	MODE_STATUS(BAD_HVALUE),
+	MODE_STATUS(BAD_VVALUE),
+	MODE_STATUS(BAD_VSCAN),
+	MODE_STATUS(HSYNC_NARROW),
+	MODE_STATUS(HSYNC_WIDE),
+	MODE_STATUS(HBLANK_NARROW),
+	MODE_STATUS(HBLANK_WIDE),
+	MODE_STATUS(VSYNC_NARROW),
+	MODE_STATUS(VSYNC_WIDE),
+	MODE_STATUS(VBLANK_NARROW),
+	MODE_STATUS(VBLANK_WIDE),
+	MODE_STATUS(PANEL),
+	MODE_STATUS(INTERLACE_WIDTH),
+	MODE_STATUS(ONE_WIDTH),
+	MODE_STATUS(ONE_HEIGHT),
+	MODE_STATUS(ONE_SIZE),
+	MODE_STATUS(NO_REDUCED),
+	MODE_STATUS(NO_STEREO),
+	MODE_STATUS(STALE),
+	MODE_STATUS(BAD),
+	MODE_STATUS(ERROR),
+};
+
+#undef MODE_STATUS
+
+static const char *drm_get_mode_status_name(enum drm_mode_status status)
+{
+	int index = status + 3;
+
+	if (WARN_ON(index < 0 || index >= ARRAY_SIZE(drm_mode_status_names)))
+		return "";
+
+	return drm_mode_status_names[index];
+}
+
 /**
  * drm_mode_prune_invalid - remove invalid modes from mode list
  * @dev: DRM device
@@ -1034,8 +1108,9 @@ void drm_mode_prune_invalid(struct drm_device *dev,
 			list_del(&mode->head);
 			if (verbose) {
 				drm_mode_debug_printmodeline(mode);
-				DRM_DEBUG_KMS("Not using %s mode %d\n",
-					mode->name, mode->status);
+				DRM_DEBUG_KMS("Not using %s mode: %s\n",
+					      mode->name,
+					      drm_get_mode_status_name(mode->status));
 			}
 			drm_mode_destroy(dev, mode);
 		}
@@ -1093,7 +1168,6 @@ EXPORT_SYMBOL(drm_mode_sort);
 /**
  * drm_mode_connector_list_update - update the mode list for the connector
  * @connector: the connector to update
- * @merge_type_bits: whether to merge or overwrite type bits
  *
  * This moves the modes from the @connector probed_modes list
  * to the actual mode list. It compares the probed mode against the current
@@ -1102,33 +1176,48 @@ EXPORT_SYMBOL(drm_mode_sort);
  * This is just a helper functions doesn't validate any modes itself and also
  * doesn't prune any invalid modes. Callers need to do that themselves.
  */
-void drm_mode_connector_list_update(struct drm_connector *connector,
-				    bool merge_type_bits)
+void drm_mode_connector_list_update(struct drm_connector *connector)
 {
-	struct drm_display_mode *mode;
 	struct drm_display_mode *pmode, *pt;
-	int found_it;
 
 	WARN_ON(!mutex_is_locked(&connector->dev->mode_config.mutex));
 
-	list_for_each_entry_safe(pmode, pt, &connector->probed_modes,
-				 head) {
-		found_it = 0;
+	list_for_each_entry_safe(pmode, pt, &connector->probed_modes, head) {
+		struct drm_display_mode *mode;
+		bool found_it = false;
+
 		/* go through current modes checking for the new probed mode */
 		list_for_each_entry(mode, &connector->modes, head) {
-			if (drm_mode_equal(pmode, mode)) {
-				found_it = 1;
-				/* if equal delete the probed mode */
-				mode->status = pmode->status;
-				/* Merge type bits together */
-				if (merge_type_bits)
-					mode->type |= pmode->type;
-				else
-					mode->type = pmode->type;
-				list_del(&pmode->head);
-				drm_mode_destroy(connector->dev, pmode);
-				break;
+			if (!drm_mode_equal(pmode, mode))
+				continue;
+
+			found_it = true;
+
+			/*
+			 * If the old matching mode is stale (ie. left over
+			 * from a previous probe) just replace it outright.
+			 * Otherwise just merge the type bits between all
+			 * equal probed modes.
+			 *
+			 * If two probed modes are considered equal, pick the
+			 * actual timings from the one that's marked as
+			 * preferred (in case the match isn't 100%). If
+			 * multiple or zero preferred modes are present, favor
+			 * the mode added to the probed_modes list first.
+			 */
+			if (mode->status == MODE_STALE) {
+				drm_mode_copy(mode, pmode);
+			} else if ((mode->type & DRM_MODE_TYPE_PREFERRED) == 0 &&
+				   (pmode->type & DRM_MODE_TYPE_PREFERRED) != 0) {
+				pmode->type |= mode->type;
+				drm_mode_copy(mode, pmode);
+			} else {
+				mode->type |= pmode->type;
 			}
+
+			list_del(&pmode->head);
+			drm_mode_destroy(connector->dev, pmode);
+			break;
 		}
 
 		if (!found_it) {
@@ -1151,7 +1240,7 @@ EXPORT_SYMBOL(drm_mode_connector_list_update);
  * This uses the same parameters as the fb modedb.c, except for an extra
  * force-enable, force-enable-digital and force-disable bit at the end:
  *
- *	<xres>x<yres>[M][R][-<bpp>][@<refresh>][i][m][eDd]
+ * <xres>x<yres>[M][R][-<bpp>][@<refresh>][i][m][eDd]
  *
  * The intermediate drm_cmdline_mode structure is required to store additional
  * options from the command line modline like the force-enable/disable flag.

@@ -12,10 +12,12 @@ SRCS	= \
 	drm_dma.c \
 	drm_dp_helper.c \
 	drm_dp_iic_helper.c \
+	drm_dp_mst_topology.c \
 	drm_dragonfly.c \
 	drm_drv.c \
 	drm_edid.c \
 	drm_edid_load.c \
+	drm_encoder_slave.c \
 	drm_fb_helper.c \
 	drm_fops.c \
 	drm_gem.c \
