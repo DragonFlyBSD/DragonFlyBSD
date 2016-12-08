@@ -537,9 +537,7 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "recover") == 0) {
 		hammer_parsedevs_noverify(blkdevs, O_RDONLY);
-		if (ac <= 1)
-			errx(1, "hammer recover required target directory");
-		hammer_cmd_recover(av[1]);
+		hammer_cmd_recover(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "blockmap") == 0) {
@@ -717,7 +715,7 @@ usage(int exit_code)
 		"hammer -f blkdevs checkmap\n"
 		"hammer -f blkdevs [-qqq] show [lo:objid]\n"
 		"hammer -f blkdevs show-undo\n"
-		"hammer -f blkdevs recover <target_dir>\n"
+		"hammer -f blkdevs recover <target_dir> [quick]\n"
 		"hammer -f blkdevs strip\n"
 	);
 

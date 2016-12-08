@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 4, 2016
+.Dd December 8, 2016
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -470,7 +470,7 @@ or
 .Fl f
 options to be passed in.
 .\" ==== recover ====
-.It Cm recover Ar targetdir
+.It Cm recover Ar targetdir Op Cm quick
 Recover data from a corrupted
 .Nm HAMMER
 filesystem.
@@ -488,6 +488,13 @@ considerably amount of memory while operating.
 .Pp
 This command is literally the last line of defense when it comes to
 recovering data from a dead filesystem.
+.Pp
+If the
+.Cm quick
+keyword is specified, this command only scans big-blocks that contain
+B-Tree nodes and associated records, without linearly scanning the entire image.
+This may speed up the recovery process provided that big-blocks for
+B-Tree nodes are not corrupted.
 .Pp
 This command needs the
 .Fl f Ar blkdevs

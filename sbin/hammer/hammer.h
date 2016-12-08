@@ -99,7 +99,7 @@ extern const char *RestrictTarget;
 void hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent);
 void hammer_cmd_show_undo(void);
 void hammer_cmd_sshremote(const char *cmd, const char *target);
-void hammer_cmd_recover(const char *target_dir);
+void hammer_cmd_recover(char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_checkmap(void);
 void hammer_cmd_softprune(char **av, int ac, int everything_opt);

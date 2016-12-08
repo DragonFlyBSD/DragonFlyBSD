@@ -55,10 +55,34 @@ static void recover_elm(hammer_btree_leaf_elm_t leaf);
 static struct recover_dict *get_dict(int64_t obj_id, uint16_t pfs_id);
 static char *recover_path(struct recover_dict *dict);
 static void sanitize_string(char *str);
+static void scan_bigblocks(int target_zone);
+static void free_bigblocks(void);
+static void add_bigblock_entry(hammer_off_t offset);
+static int test_bigblock_entry(hammer_off_t offset);
 
 static const char *TargetDir;
 static int CachedFd = -1;
 static char *CachedPath;
+
+typedef struct bigblock {
+	RB_ENTRY(bigblock) entry;
+	hammer_off_t phys_offset; /* zone-2 */
+} *bigblock_t;
+
+static int
+bigblock_cmp(bigblock_t b1, bigblock_t b2)
+{
+	if (b1->phys_offset < b2->phys_offset)
+		return(-1);
+	if (b1->phys_offset > b2->phys_offset)
+		return(1);
+	return(0);
+}
+
+RB_HEAD(bigblock_rb_tree, bigblock) ZoneTree = RB_INITIALIZER(&ZoneTree);
+RB_PROTOTYPE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t);
+RB_GENERATE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t,
+	phys_offset);
 
 /*
  * XXX There is a hidden bug here while iterating zone-2 offset as
@@ -80,16 +104,28 @@ static char *CachedPath;
  */
 
 void
-hammer_cmd_recover(const char *target_dir)
+hammer_cmd_recover(char **av, int ac)
 {
 	struct buffer_info *data_buffer;
 	struct volume_info *volume;
+	bigblock_t b;
 	hammer_off_t off;
 	hammer_off_t off_end;
+	hammer_off_t limit = 0;
 	char *ptr;
 	int i;
+	int quick = 0;
 
-	TargetDir = target_dir;
+	if (ac < 1) {
+		fprintf(stderr, "hammer recover <target_dir> [quick]\n");
+		exit(1);
+	}
+
+	TargetDir = av[0];
+	if (ac > 1) {
+		if (!strcmp(av[1], "quick"))
+			quick = 1;
+	}
 
 	if (mkdir(TargetDir, 0777) == -1) {
 		if (errno != EEXIST) {
@@ -98,35 +134,57 @@ hammer_cmd_recover(const char *target_dir)
 		}
 	}
 
-	printf("Running raw scan of HAMMER image, recovering to %s\n",
+	printf("Running %sraw scan of HAMMER image, recovering to %s\n",
+		quick ? "quick " : "",
 		TargetDir);
+
+	scan_bigblocks(HAMMER_ZONE_BTREE_INDEX);
+	if (quick) {
+		b = RB_MAX(bigblock_rb_tree, &ZoneTree);
+		assert(b);
+		limit = b->phys_offset + HAMMER_BIGBLOCK_SIZE;
+	}
+
+	if (VerboseOpt) {
+		printf("Found B-Tree big-blocks at\n");
+		RB_FOREACH(b, bigblock_rb_tree, &ZoneTree)
+			printf("%016jx\n", b->phys_offset);
+		if (limit)
+			printf("Scanning till %016jx\n", (uintmax_t)limit);
+	}
 
 	data_buffer = NULL;
 	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
 		volume = get_volume(i);
 		if (volume == NULL)
 			continue;
+
 		printf("Scanning volume %d size %s\n",
 			volume->vol_no, sizetostr(volume->size));
 		off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 
-		/*
-		 * It should somehow implement reverse mapping from
-		 * zone-2 to zone-X, so the command doesn't just try
-		 * every zone-2 offset assuming it's a B-Tree node.
-		 * Since we know most big-blocks are not for zone-8,
-		 * we don't want to spend extra I/O for other zones
-		 * as well as possible misinterpretation of nodes.
-		 */
 		while (off < off_end) {
+			if (limit) {
+				if (off >= limit) {
+					printf("Done\n");
+					goto end;
+				}
+				if (!test_bigblock_entry(off)) {
+					off = HAMMER_ZONE_LAYER2_NEXT_OFFSET(off);
+					continue;
+				}
+			}
+
 			ptr = get_buffer_data(off, &data_buffer, 0);
 			if (ptr)
 				recover_top(ptr, off);
 			off += HAMMER_BUFSIZE;
 		}
 	}
+end:
 	rel_buffer(data_buffer);
+	free_bigblocks();
 
 	if (CachedPath) {
 		free(CachedPath);
@@ -607,4 +665,103 @@ sanitize_string(char *str)
 			*str = 'x';
 		++str;
 	}
+}
+
+static
+void
+scan_bigblocks(int target_zone)
+{
+	struct volume_info *vol;
+	hammer_blockmap_t rootmap;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
+	struct buffer_info *buffer1 = NULL;
+	struct buffer_info *buffer2 = NULL;
+	hammer_off_t layer1_offset;
+	hammer_off_t layer2_offset;
+	hammer_off_t phys_offset;
+	hammer_off_t block_offset;
+	hammer_off_t offset = 0;
+	int zone = HAMMER_ZONE_FREEMAP_INDEX;
+
+	vol = get_root_volume();
+	rootmap = &vol->ondisk->vol0_blockmap[zone];
+	assert(rootmap->phys_offset != 0);
+
+	for (phys_offset = HAMMER_ZONE_ENCODE(zone, 0);
+	     phys_offset < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
+	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
+		/*
+		 * Dive layer 1.
+		 */
+		layer1_offset = rootmap->phys_offset +
+				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
+		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+
+		/* hammer_crc_test_layer1(layer1); */
+		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
+			continue;
+
+		for (block_offset = 0;
+		     block_offset < HAMMER_BLOCKMAP_LAYER2;
+		     block_offset += HAMMER_BIGBLOCK_SIZE) {
+			offset = phys_offset + block_offset;
+			/*
+			 * Dive layer 2, each entry represents a big-block.
+			 */
+			layer2_offset = layer1->phys_offset +
+					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
+			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
+
+			/* hammer_crc_test_layer2(layer2); */
+			if (layer2->zone == target_zone) {
+				add_bigblock_entry(offset);
+			} else if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
+				break;
+			}
+		}
+	}
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
+}
+
+static
+void
+free_bigblocks(void)
+{
+	bigblock_t b;
+
+	while ((b = RB_ROOT(&ZoneTree)) != NULL) {
+		RB_REMOVE(bigblock_rb_tree, &ZoneTree, b);
+		free(b);
+	}
+	assert(RB_EMPTY(&ZoneTree));
+}
+
+static
+void
+add_bigblock_entry(hammer_off_t offset)
+{
+	bigblock_t b;
+
+	b = calloc(sizeof(*b), 1);
+	b->phys_offset = hammer_xlate_to_zone2(offset);
+	assert((b->phys_offset & HAMMER_BIGBLOCK_MASK64) == 0);
+
+	RB_INSERT(bigblock_rb_tree, &ZoneTree, b);
+}
+
+static
+int
+test_bigblock_entry(hammer_off_t offset)
+{
+	bigblock_t b;
+
+	offset = hammer_xlate_to_zone2(offset);
+	offset &= ~HAMMER_BIGBLOCK_MASK64;
+
+	b = RB_LOOKUP(bigblock_rb_tree, &ZoneTree, offset);
+	if (b)
+		return(1);
+	return(0);
 }
