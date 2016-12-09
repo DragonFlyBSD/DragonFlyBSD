@@ -413,3 +413,29 @@ smbfs_attr_cachelookup(struct vnode *vp, struct vattr *va)
 	va->va_vaflags = 0;		/* operations flags */
 	return 0;
 }
+
+void
+smbfs_attr_cacherename(struct vnode *vp, const char *name, int nmlen)
+{
+	struct smbnode_hashhead *nhpp;
+	struct smbmount *smp = VTOSMBFS(vp);
+	struct smbnode *np;
+	u_long hashval;
+
+        hashval = smbfs_hash(name, nmlen);
+
+        smbfs_hash_lock(smp, td);
+
+	np = VTOSMB(vp);
+	if (np->n_hash.le_prev)
+		LIST_REMOVE(np, n_hash);
+
+	smbfs_name_free(np->n_name);
+	np->n_nmlen = nmlen;
+	np->n_name = smbfs_name_alloc(name, nmlen);
+
+        nhpp = SMBFS_NOHASH(smp, hashval);
+	LIST_INSERT_HEAD(nhpp, np, n_hash);
+
+	smbfs_hash_unlock(smp, td);
+}
