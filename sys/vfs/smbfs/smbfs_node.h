@@ -95,6 +95,7 @@ int  smbfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred);
 int  smbfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred, int ioflag);
 void smbfs_attr_cacheenter(struct vnode *vp, struct smbfattr *fap);
 int  smbfs_attr_cachelookup(struct vnode *vp ,struct vattr *va);
+void smbfs_attr_cacherename(struct vnode *vp, const char *name, int nmlen);
 
 #define smbfs_attr_cacheremove(vp)	VTOSMB(vp)->n_attrage = 0
 

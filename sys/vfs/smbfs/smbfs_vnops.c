@@ -570,7 +570,13 @@ smbfs_rename(struct vop_old_rename_args *ap)
 				goto out_cacherem;
 		}
 		error = smbfs_smb_rename(VTOSMB(fvp), VTOSMB(tdvp),
-		    tcnp->cn_nameptr, tcnp->cn_namelen, &scred);
+					 tcnp->cn_nameptr, tcnp->cn_namelen,
+					 &scred);
+		if (error == 0) {
+			smbfs_attr_cacherename(fvp,
+					       tcnp->cn_nameptr,
+					       tcnp->cn_namelen);
+		}
 	}
 
 out_cacherem:
