@@ -221,7 +221,6 @@ vga_pci_attach(device_t dev)
 
 	/* Always create a drm child for now to make it easier on drm. */
 	device_add_child(dev, "drm", -1);
-	device_add_child(dev, "drmn", -1);
 	bus_generic_attach(dev);
 
 	if (vga_pci_is_boot_display(dev))
