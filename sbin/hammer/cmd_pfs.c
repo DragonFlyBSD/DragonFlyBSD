@@ -182,7 +182,7 @@ scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 
 	/*
 	 * Test and extract the PFS id from the link.
-	 * "@@%jx:%d" convers both "@@-1:%05d" format for master PFS
+	 * "@@%jx:%d" covers both "@@-1:%05d" format for master PFS
 	 * and "@@0x%016jx:%05d" format for slave PFS.
 	 */
 	if (sscanf(path, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
