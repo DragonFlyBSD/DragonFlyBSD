@@ -111,9 +111,10 @@ hammer_cmd_recover(char **av, int ac)
 	bigblock_t b;
 	hammer_off_t off;
 	hammer_off_t off_end;
-	hammer_off_t limit = 0;
+	hammer_off_t zone_limit = 0;
 	char *ptr;
 	int i;
+	int target_zone = HAMMER_ZONE_BTREE_INDEX;
 	int quick = 0;
 
 	if (ac < 1) {
@@ -138,19 +139,19 @@ hammer_cmd_recover(char **av, int ac)
 		quick ? "quick " : "",
 		TargetDir);
 
-	scan_bigblocks(HAMMER_ZONE_BTREE_INDEX);
 	if (quick) {
-		b = RB_MAX(bigblock_rb_tree, &ZoneTree);
-		assert(b);
-		limit = b->phys_offset + HAMMER_BIGBLOCK_SIZE;
-	}
+		scan_bigblocks(target_zone);
+		if (!RB_EMPTY(&ZoneTree)) {
+			printf("Found zone-%d big-blocks at\n", target_zone);
+			RB_FOREACH(b, bigblock_rb_tree, &ZoneTree)
+				printf("%016jx\n", b->phys_offset);
 
-	if (VerboseOpt) {
-		printf("Found B-Tree big-blocks at\n");
-		RB_FOREACH(b, bigblock_rb_tree, &ZoneTree)
-			printf("%016jx\n", b->phys_offset);
-		if (limit)
-			printf("Scanning till %016jx\n", (uintmax_t)limit);
+			b = RB_MAX(bigblock_rb_tree, &ZoneTree);
+			zone_limit = b->phys_offset + HAMMER_BIGBLOCK_SIZE;
+			assert(hammer_is_zone_raw_buffer(zone_limit));
+			printf("Scanning zone-%d big-blocks till %016jx\n",
+				target_zone, (uintmax_t)zone_limit);
+		}
 	}
 
 	data_buffer = NULL;
@@ -165,8 +166,8 @@ hammer_cmd_recover(char **av, int ac)
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 
 		while (off < off_end) {
-			if (limit) {
-				if (off >= limit) {
+			if (zone_limit) {
+				if (off >= zone_limit) {
 					printf("Done\n");
 					goto end;
 				}
