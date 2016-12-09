@@ -1,8 +1,7 @@
-# $FreeBSD: src/sbin/newfs_msdos/Makefile,v 1.2.2.2 2001/04/25 10:58:42 ru Exp $
-# $DragonFly: src/sbin/newfs_msdos/Makefile,v 1.4 2006/10/17 00:55:43 pavalos Exp $
+# $FreeBSD: head/sbin/newfs_msdos/Makefile 298107 2016-04-16 07:45:30Z gjb $
 
 PROG=	newfs_msdos
+SRCS=	newfs_msdos.c mkfs_msdos.c
 MAN=	newfs_msdos.8
-WARNS?=	2
 
 .include <bsd.prog.mk>
