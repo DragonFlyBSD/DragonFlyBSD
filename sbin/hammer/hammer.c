@@ -715,7 +715,7 @@ usage(int exit_code)
 		"hammer -f blkdevs checkmap\n"
 		"hammer -f blkdevs [-qqq] show [lo:objid]\n"
 		"hammer -f blkdevs show-undo\n"
-		"hammer -f blkdevs recover <target_dir> [quick]\n"
+		"hammer -f blkdevs recover <target_dir> [full|quick]\n"
 		"hammer -f blkdevs strip\n"
 	);
 

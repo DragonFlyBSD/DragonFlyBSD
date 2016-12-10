@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 8, 2016
+.Dd December 10, 2016
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -470,7 +470,7 @@ or
 .Fl f
 options to be passed in.
 .\" ==== recover ====
-.It Cm recover Ar targetdir Op Cm quick
+.It Cm recover Ar targetdir Op Cm full|quick
 Recover data from a corrupted
 .Nm HAMMER
 filesystem.
@@ -488,6 +488,13 @@ considerably amount of memory while operating.
 .Pp
 This command is literally the last line of defense when it comes to
 recovering data from a dead filesystem.
+.Pp
+If the
+.Cm full
+keyword is specified, this command scans all the big-blocks within the
+entire image, regardless of whether big-blocks contain active data or meta-data.
+By default, it linearly scans only upto the last big-block that contains
+active data or meta-data, if such big-block is detectable.
 .Pp
 If the
 .Cm quick

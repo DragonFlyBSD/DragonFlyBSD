@@ -117,23 +117,27 @@ hammer_cmd_recover(char **av, int ac)
 	bigblock_t b;
 	hammer_off_t off;
 	hammer_off_t off_end;
-	hammer_off_t raw_limit;
+	hammer_off_t raw_limit = 0;
 	hammer_off_t zone_limit = 0;
 	char *ptr;
 	int i;
 	int target_zone = HAMMER_ZONE_BTREE_INDEX;
+	int full = 0;
 	int quick = 0;
 
 	if (ac < 1) {
-		fprintf(stderr, "hammer recover <target_dir> [quick]\n");
+		fprintf(stderr, "hammer recover <target_dir> [full|quick]\n");
 		exit(1);
 	}
 
 	TargetDir = av[0];
 	if (ac > 1) {
+		if (!strcmp(av[1], "full"))
+			full = 1;
 		if (!strcmp(av[1], "quick"))
 			quick = 1;
 	}
+	assert(!full || !quick);
 
 	if (mkdir(TargetDir, 0777) == -1) {
 		if (errno != EEXIST) {
@@ -143,13 +147,15 @@ hammer_cmd_recover(char **av, int ac)
 	}
 
 	printf("Running %sraw scan of HAMMER image, recovering to %s\n",
-		quick ? "quick " : "",
+		full ? "full " : quick ? "quick " : "",
 		TargetDir);
 
-	raw_limit = scan_raw_limit();
-	if (raw_limit) {
-		raw_limit += HAMMER_BIGBLOCK_SIZE;
-		assert(hammer_is_zone_raw_buffer(raw_limit));
+	if (!full) {
+		raw_limit = scan_raw_limit();
+		if (raw_limit) {
+			raw_limit += HAMMER_BIGBLOCK_SIZE;
+			assert(hammer_is_zone_raw_buffer(raw_limit));
+		}
 	}
 
 	if (quick) {
