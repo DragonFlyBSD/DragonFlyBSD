@@ -173,15 +173,14 @@ hammer_cmd_recover(char **av, int ac)
 
 	if (raw_limit || zone_limit) {
 #define _fmt "Scanning zone-%d big-blocks till %016jx"
-		if (!raw_limit) { /* unlikely */
+		if (!raw_limit) /* unlikely */
 			printf(_fmt" ???", target_zone, zone_limit);
-		} else if (!zone_limit) {
+		else if (!zone_limit)
 			printf(_fmt, HAMMER_ZONE_RAW_BUFFER_INDEX, raw_limit);
-		} else if (raw_limit >= zone_limit) {
+		else if (raw_limit >= zone_limit)
 			printf(_fmt, target_zone, zone_limit);
-		} else { /* unlikely */
+		else /* unlikely */
 			printf(_fmt" ???", HAMMER_ZONE_RAW_BUFFER_INDEX, raw_limit);
-		}
 		printf("\n");
 	}
 
@@ -232,6 +231,21 @@ end:
 	}
 }
 
+static __inline
+void
+print_node(hammer_node_ondisk_t node, hammer_off_t offset)
+{
+	char buf[HAMMER_BTREE_LEAF_ELMS + 1];
+	int maxcount = hammer_node_max_elements(node->type);
+	int i;
+
+	for (i = 0; i < node->count && i < maxcount; ++i)
+		buf[i] = hammer_elm_btype(&node->elms[i]);
+	buf[i] = '\0';
+
+	printf("%016jx %c %d %s\n", offset, node->type, node->count, buf);
+}
+
 /*
  * Top level recovery processor.  Assume the data is a B-Tree node.
  * If the CRC is good we attempt to process the node, building the
@@ -245,21 +259,16 @@ recover_top(char *ptr, hammer_off_t offset)
 	int maxcount;
 	int i;
 	int isnode;
-	char buf[HAMMER_BTREE_LEAF_ELMS + 1];
 
 	for (node = (void *)ptr; (char *)node < ptr + HAMMER_BUFSIZE; ++node) {
 		isnode = hammer_crc_test_btree(node);
 		maxcount = hammer_node_max_elements(node->type);
 
 		if (DebugOpt) {
-			for (i = 0; i < node->count && i < maxcount; ++i)
-				buf[i] = hammer_elm_btype(&node->elms[i]);
-			buf[i] = '\0';
-			if (!isnode && DebugOpt > 1)
-				printf("%016jx -\n", offset);
 			if (isnode)
-				printf("%016jx %c %d %s\n",
-					offset, node->type, node->count, buf);
+				print_node(node, offset);
+			else if (DebugOpt > 1)
+				printf("%016jx -\n", offset);
 		}
 		offset += sizeof(*node);
 
@@ -802,7 +811,10 @@ scan_bigblocks(int target_zone)
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
-		/* hammer_crc_test_layer1(layer1); */
+		/*
+		if (!hammer_crc_test_layer1(layer1)) {
+		}
+		*/
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
 			continue;
 
@@ -817,7 +829,10 @@ scan_bigblocks(int target_zone)
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
-			/* hammer_crc_test_layer2(layer2); */
+			/*
+			if (!hammer_crc_test_layer2(layer2)) {
+			}
+			*/
 			if (layer2->zone == target_zone) {
 				add_bigblock_entry(offset);
 			} else if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
