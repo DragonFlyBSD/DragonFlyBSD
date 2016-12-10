@@ -85,7 +85,6 @@ static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_cursor_t cursor, int *ndelete);
 static __inline int btree_node_is_full(hammer_node_ondisk_t node);
-static __inline int btree_max_elements(uint8_t type);
 static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,
 			hammer_tid_t mirror_tid);
 static void hammer_make_separator(hammer_base_elm_t key1,
@@ -2942,19 +2941,13 @@ static __inline
 int
 btree_node_is_full(hammer_node_ondisk_t node)
 {
-	return(btree_max_elements(node->type) == node->count);
-}
-
-static __inline
-int
-btree_max_elements(uint8_t type)
-{
 	int n;
 
-	n = hammer_node_max_elements(type);
+	n = hammer_node_max_elements(node->type);
 	if (n == -1)
-		hpanic("bad type %d", type);
-	return(n);
+		hpanic("bad type %d", node->type);
+
+	return(n == node->count);
 }
 
 void
