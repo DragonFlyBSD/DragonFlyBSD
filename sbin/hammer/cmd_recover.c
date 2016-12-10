@@ -55,6 +55,7 @@ static void recover_elm(hammer_btree_leaf_elm_t leaf);
 static struct recover_dict *get_dict(int64_t obj_id, uint16_t pfs_id);
 static char *recover_path(struct recover_dict *dict);
 static void sanitize_string(char *str);
+static hammer_off_t scan_raw_limit(void);
 static void scan_bigblocks(int target_zone);
 static void free_bigblocks(void);
 static void add_bigblock_entry(hammer_off_t offset);
@@ -94,6 +95,11 @@ RB_GENERATE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t,
  * likely to hit assertion in get_buffer() due to having access to
  * invalid volume (vol1,2,...) from old filesystem data.
  *
+ * To avoid this, now the command only scans upto the last big-block
+ * that's actually used for filesystem data or meta-data at the moment,
+ * if all layer1/2 entries have correct CRC values. This also avoids
+ * recovery of irrelevant files from old filesystem.
+ *
  * |-----vol0-----|-----vol1-----|-----vol2-----| old filesystem
  * <-----------------------> used by old filesystem
  *
@@ -111,6 +117,7 @@ hammer_cmd_recover(char **av, int ac)
 	bigblock_t b;
 	hammer_off_t off;
 	hammer_off_t off_end;
+	hammer_off_t raw_limit;
 	hammer_off_t zone_limit = 0;
 	char *ptr;
 	int i;
@@ -139,6 +146,12 @@ hammer_cmd_recover(char **av, int ac)
 		quick ? "quick " : "",
 		TargetDir);
 
+	raw_limit = scan_raw_limit();
+	if (raw_limit) {
+		raw_limit += HAMMER_BIGBLOCK_SIZE;
+		assert(hammer_is_zone_raw_buffer(raw_limit));
+	}
+
 	if (quick) {
 		scan_bigblocks(target_zone);
 		if (!RB_EMPTY(&ZoneTree)) {
@@ -149,9 +162,21 @@ hammer_cmd_recover(char **av, int ac)
 			b = RB_MAX(bigblock_rb_tree, &ZoneTree);
 			zone_limit = b->phys_offset + HAMMER_BIGBLOCK_SIZE;
 			assert(hammer_is_zone_raw_buffer(zone_limit));
-			printf("Scanning zone-%d big-blocks till %016jx\n",
-				target_zone, (uintmax_t)zone_limit);
 		}
+	}
+
+	if (raw_limit || zone_limit) {
+#define _fmt "Scanning zone-%d big-blocks till %016jx"
+		if (!raw_limit) { /* unlikely */
+			printf(_fmt" ???", target_zone, zone_limit);
+		} else if (!zone_limit) {
+			printf(_fmt, HAMMER_ZONE_RAW_BUFFER_INDEX, raw_limit);
+		} else if (raw_limit >= zone_limit) {
+			printf(_fmt, target_zone, zone_limit);
+		} else { /* unlikely */
+			printf(_fmt" ???", HAMMER_ZONE_RAW_BUFFER_INDEX, raw_limit);
+		}
+		printf("\n");
 	}
 
 	data_buffer = NULL;
@@ -166,9 +191,15 @@ hammer_cmd_recover(char **av, int ac)
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 
 		while (off < off_end) {
+			if (raw_limit) {
+				if (off >= raw_limit) {
+					printf("Done %016jx\n", (uintmax_t)off);
+					goto end;
+				}
+			}
 			if (zone_limit) {
 				if (off >= zone_limit) {
-					printf("Done\n");
+					printf("Done %016jx\n", (uintmax_t)off);
 					goto end;
 				}
 				if (!test_bigblock_entry(off)) {
@@ -666,6 +697,72 @@ sanitize_string(char *str)
 			*str = 'x';
 		++str;
 	}
+}
+
+static
+hammer_off_t
+scan_raw_limit(void)
+{
+	struct volume_info *vol;
+	hammer_blockmap_t rootmap;
+	hammer_blockmap_layer1_t layer1;
+	hammer_blockmap_layer2_t layer2;
+	struct buffer_info *buffer1 = NULL;
+	struct buffer_info *buffer2 = NULL;
+	hammer_off_t layer1_offset;
+	hammer_off_t layer2_offset;
+	hammer_off_t phys_offset;
+	hammer_off_t block_offset;
+	hammer_off_t offset = 0;
+	int zone = HAMMER_ZONE_FREEMAP_INDEX;
+
+	vol = get_root_volume();
+	rootmap = &vol->ondisk->vol0_blockmap[zone];
+	assert(rootmap->phys_offset != 0);
+
+	for (phys_offset = HAMMER_ZONE_ENCODE(zone, 0);
+	     phys_offset < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
+	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
+		/*
+		 * Dive layer 1.
+		 */
+		layer1_offset = rootmap->phys_offset +
+				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
+		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+
+		if (!hammer_crc_test_layer1(layer1)) {
+			offset = 0; /* failed */
+			goto end;
+		}
+		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
+			continue;
+
+		for (block_offset = 0;
+		     block_offset < HAMMER_BLOCKMAP_LAYER2;
+		     block_offset += HAMMER_BIGBLOCK_SIZE) {
+			/*
+			 * Dive layer 2, each entry represents a big-block.
+			 */
+			layer2_offset = layer1->phys_offset +
+					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
+			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
+
+			if (!hammer_crc_test_layer2(layer2)) {
+				offset = 0; /* failed */
+				goto end;
+			}
+			if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
+				break;
+			} else if (layer2->zone && layer2->zone != zone) {
+				offset = phys_offset + block_offset;
+			}
+		}
+	}
+end:
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
+
+	return(hammer_xlate_to_zone2(offset));
 }
 
 static
