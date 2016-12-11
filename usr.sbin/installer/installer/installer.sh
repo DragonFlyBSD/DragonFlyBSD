@@ -65,7 +65,7 @@ installer_start()
 
 	if [ "X$pfi_frontend" = "Xauto" ]; then
 		if [ "X$TTY_INST" = "X" ]; then
-		    if $(is_livecd); then
+		    if $(is_installmedia); then
 				TTY=/dev/ttyv1
 				pfi_frontend="cursesvty"
 			else
@@ -172,13 +172,13 @@ installer_start()
 	esac
 }
 
-is_livecd()
+is_installmedia()
 {
     local _ttyv1=$(grep -w "^ttyv1" /etc/ttys)
     local guest=$(sysctl -n kern.vmm_guest)
 
     #
-    # ttyv1 isn't configured for the LiveCD/DVD so use
+    # ttyv1 isn't configured for the install media so use
     # that as a clue for now. Vkernels will be forced
     # to use 'curseslog' to avoid polluting its only
     # terminal.
@@ -186,7 +186,7 @@ is_livecd()
     [ "${guest}" = "vkernel" ] && return 1;
 
     if [ -z "${_ttyv1}" ]; then
-	return 0	# Return success, it's a LiveCD
+	return 0	# Return success, it's a USB image, ISO etc.
     else
 	return 1
     fi
