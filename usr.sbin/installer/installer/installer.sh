@@ -9,7 +9,11 @@ background_backend()
 {
 	RENDEZVOUS=$1
 	TRANSPORT=$2
-	$pfi_backend -r $RENDEZVOUS -t $TRANSPORT >/dev/null 2>&1
+	$pfi_backend \
+	    -o $SOURCE_DIR \
+	    -r $RENDEZVOUS \
+	    -t $TRANSPORT \
+	    >/dev/null 2>&1
 	RESULT=$?
 	case "$RESULT" in
 	0)
@@ -79,11 +83,17 @@ installer_start()
 
 	case "X$pfi_frontend" in
 	Xqt)
-		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
+		$pfi_backend \
+		    -o $SOURCE_DIR \
+		    -r $RENDEZVOUS \
+		    -t $pfi_dfui_transport
 		RESULT=$?
 		;;
 	Xcgi)
-		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
+		$pfi_backend \
+		    -o $SOURCE_DIR \
+		    -r $RENDEZVOUS \
+		    -t $pfi_dfui_transport
 		RESULT=$?
 		;;
 	Xcursesvty)
@@ -147,7 +157,10 @@ installer_start()
 		fi
 		rm -f /tmp/ps.txt
 		sleep 1
-		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
+		$pfi_backend \
+		    -o $SOURCE_DIR \
+		    -r $RENDEZVOUS \
+		    -t $pfi_dfui_transport
 		RESULT=$?
 		sleep 1
 		killall dfuife_curses
@@ -197,12 +210,19 @@ is_installmedia()
 if [ $# -gt 1 ]; then
 	echo "usage: installer [source_directory]"
 	exit 1
+elif [ $# = 1 -a ! -d $1 ]; then
+	echo "source_directory does not exist or is no directory"
+	exit 1
 fi
 
 #
 # Source directory for the installation
 #
-SOURCE_DIR=${sdir}/
+if [ $# = 1 ]; then
+	SOURCE_DIR=$1
+else
+	SOURCE_DIR=/
+fi
 
 ps auwwwxxx > /tmp/ps.txt
 if grep -q dfuibe_installer /tmp/ps.txt; then
