@@ -333,7 +333,7 @@ kbd_unregister(keyboard_t *kbd)
 	return 0;
 }
 
-/* find a function table by the driver name */
+/* find a funciton table by the driver name */
 keyboard_switch_t *
 kbd_get_switch(char *driver)
 {
@@ -795,7 +795,7 @@ genkbdread(struct dev_read_args *ap)
 		return ENXIO;
 	}
 	while (sc->gkb_q_length == 0) {
-		if (ap->a_ioflag & O_NONBLOCK) { /* used to be IO_NDELAY */
+		if (ap->a_ioflag & IO_NDELAY) { /* O_NONBLOCK? */
 			lwkt_reltoken(&tty_token);
 			crit_exit();
 			return EWOULDBLOCK;
@@ -923,15 +923,15 @@ genkbdfilter(struct knote *kn, long hint)
 	crit_enter();
 	lwkt_gettoken(&tty_token);
 	sc = dev->si_drv1;
-	kbd = kbd_get_keyboard(KBD_INDEX(dev));
+        kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
 		/* The keyboard has gone */
 		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		ready = 1;
 	} else {
 		if (sc->gkb_q_length > 0)
-			ready = 1;
-	}
+                        ready = 1;
+        }
 	lwkt_reltoken(&tty_token);
 	crit_exit();
 
@@ -1405,13 +1405,7 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 			state &= ~NLKDOWN;
 			break;
 		case CLK:
-#ifndef PC98
 			state &= ~CLKDOWN;
-#else
-			state &= ~CLKED;
-			i = state & LOCK_MASK;
-			(void)kbdd_ioctl(kbd, KDSETLED, (caddr_t)&i);
-#endif
 			break;
 		case SLK:
 			state &= ~SLKDOWN;

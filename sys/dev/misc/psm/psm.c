@@ -498,8 +498,6 @@ enum {
 #define	PSM_FLAGS_FINGERDOWN	0x0001	/* VersaPad finger down */
 
 #define kbdcp(p)                        ((atkbdc_softc_t *)(p))
-#define ALWAYS_RESTORE_CONTROLLER(kbdc) !(kbdcp(kbdc)->quirks \
-    & KBDC_QUIRK_KEEP_ACTIVATED)
 
 /* Tunables */
 static int tap_enabled = -1;
@@ -1155,8 +1153,7 @@ doopen(struct psm_softc *sc, int command_byte)
 
 	/* enable the aux port and interrupt */
 	if (!set_controller_command_byte(sc->kbdc,
-	    kbdc_get_device_mask(sc->kbdc),
-	    (command_byte & KBD_KBD_CONTROL_BITS) |
+	    KBD_AUX_CONTROL_BITS,
 	    KBD_ENABLE_AUX_PORT | KBD_ENABLE_AUX_INT)) {
 		/* CONTROLLER ERROR */
 		disable_aux_dev(sc->kbdc);
@@ -1201,9 +1198,8 @@ reinitialize(struct psm_softc *sc, int doinit)
 	/* enable the aux port but disable the aux interrupt and the keyboard */
 	if ((c == -1) ||
 	    !set_controller_command_byte(sc->kbdc,
-	    kbdc_get_device_mask(sc->kbdc),
-	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
-	    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
+		    KBD_AUX_CONTROL_BITS,
+		    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* CONTROLLER ERROR */
 		crit_exit();
 		kbdc_lock(sc->kbdc, FALSE);
@@ -1309,13 +1305,14 @@ psmidentify(driver_t *driver, device_t parent)
 
 	bus_delete_resource(psmc, SYS_RES_IRQ, 0);
 	bus_set_resource(psm, SYS_RES_IRQ, KBDC_RID_AUX, irq, 1,
-	machintr_legacy_intr_cpuid(irq));
+			 machintr_legacy_intr_cpuid(irq));
 }
 
 #define endprobe(v)	do {			\
 	if (bootverbose)			\
 		--verbose;			\
-	kbdc_set_device_mask(sc->kbdc, mask);	\
+	set_controller_command_byte(sc->kbdc,	\
+    KBD_AUX_CONTROL_BITS, KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT); \
 	kbdc_lock(sc->kbdc, FALSE);		\
 	return (v);				\
 } while (0)
@@ -1329,7 +1326,6 @@ psmprobe(device_t dev)
 	int stat[3];
 	int command_byte;
 /*	int rid; */
-	int mask;
 	int i;
 	uintptr_t irq;
 	uintptr_t flags;
@@ -1377,7 +1373,6 @@ psmprobe(device_t dev)
 	empty_both_buffers(sc->kbdc, 10);
 
 	/* save the current command byte; it will be used later */
-	mask = kbdc_get_device_mask(sc->kbdc) & ~KBD_AUX_CONTROL_BITS;
 	command_byte = get_controller_command_byte(sc->kbdc);
 	if (verbose)
 		kprintf("psm%d: current command byte:%04x\n", unit,
@@ -1410,15 +1405,12 @@ psmprobe(device_t dev)
 	 * enabled during this routine
 	 */
 	if (!set_controller_command_byte(sc->kbdc,
-	    KBD_KBD_CONTROL_BITS | KBD_AUX_CONTROL_BITS,
-	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
+	    KBD_AUX_CONTROL_BITS,
 	    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/*
 		 * this is CONTROLLER ERROR; I don't know how to recover
 		 * from this error...
 		 */
-		if (ALWAYS_RESTORE_CONTROLLER(sc->kbdc))
-			restore_controller(sc->kbdc, command_byte);
 		kprintf("psm%d: unable to set the command byte.\n", unit);
 		endprobe(ENXIO);
 	}
@@ -1464,8 +1456,6 @@ psmprobe(device_t dev)
 		recover_from_error(sc->kbdc);
 		if (sc->config & PSM_CONFIG_IGNPORTERROR)
 			break;
-		if (ALWAYS_RESTORE_CONTROLLER(sc->kbdc))
-			restore_controller(sc->kbdc, command_byte);
 
 		if (verbose)
 			kprintf("psm%d: the aux port is not "
@@ -1490,8 +1480,6 @@ psmprobe(device_t dev)
 		 */
 		if (!reset_aux_dev(sc->kbdc)) {
 			recover_from_error(sc->kbdc);
-			if (ALWAYS_RESTORE_CONTROLLER(sc->kbdc))
-				restore_controller(sc->kbdc, command_byte);
 			if (verbose)
 				kprintf("psm%d: failed to reset the aux "
 				    "device.\n", unit);
@@ -1513,8 +1501,6 @@ psmprobe(device_t dev)
 	if (!enable_aux_dev(sc->kbdc) || !disable_aux_dev(sc->kbdc)) {
 		/* MOUSE ERROR */
 		recover_from_error(sc->kbdc);
-		if (ALWAYS_RESTORE_CONTROLLER(sc->kbdc))
-			restore_controller(sc->kbdc, command_byte);
 		if (verbose)
 			kprintf("psm%d: failed to enable the aux device.\n",
 			    unit);
@@ -1536,8 +1522,6 @@ psmprobe(device_t dev)
 	/* verify the device is a mouse */
 	sc->hw.hwid = get_aux_id(sc->kbdc);
 	if (!is_a_mouse(sc->hw.hwid)) {
-		if (ALWAYS_RESTORE_CONTROLLER(sc->kbdc))
-			restore_controller(sc->kbdc, command_byte);
 		if (verbose)
 			kprintf("psm%d: unknown device type (%d).\n", unit,
 			    sc->hw.hwid);
@@ -1636,22 +1620,17 @@ psmprobe(device_t dev)
 
 	/* disable the aux port for now... */
 	if (!set_controller_command_byte(sc->kbdc,
-	    KBD_KBD_CONTROL_BITS | KBD_AUX_CONTROL_BITS,
-	    (command_byte & KBD_KBD_CONTROL_BITS) |
+	    KBD_AUX_CONTROL_BITS,
 	    KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/*
 		 * this is CONTROLLER ERROR; I don't know the proper way to
 		 * recover from this error...
 		 */
-		 if (ALWAYS_RESTORE_CONTROLLER(sc->kbdc))
-			restore_controller(sc->kbdc, command_byte);
-
 		kprintf("psm%d: unable to set the command byte.\n", unit);
 		endprobe(ENXIO);
 	}
 
 	/* done */
-	kbdc_set_device_mask(sc->kbdc, mask | KBD_AUX_CONTROL_BITS);
 	kbdc_lock(sc->kbdc, FALSE);
 	return (0);
 }
@@ -1811,10 +1790,10 @@ psmopen(struct dev_open_args *ap)
 	command_byte = get_controller_command_byte(sc->kbdc);
 
 	/* enable the aux port and temporalily disable the keyboard */
-	if (command_byte == -1 || !set_controller_command_byte(sc->kbdc,
-	    kbdc_get_device_mask(sc->kbdc),
-	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
-	    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
+	if (command_byte == -1 ||
+	    !set_controller_command_byte(sc->kbdc,
+		KBD_AUX_CONTROL_BITS,
+		KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* CONTROLLER ERROR; do you know how to get out of this? */
 		kbdc_lock(sc->kbdc, FALSE);
 		crit_exit();
@@ -1866,9 +1845,8 @@ psmclose(struct dev_close_args *ap)
 
 	/* disable the aux interrupt and temporalily disable the keyboard */
 	if (!set_controller_command_byte(sc->kbdc,
-	    kbdc_get_device_mask(sc->kbdc),
-	    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
-	    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
+		KBD_AUX_CONTROL_BITS,
+		KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		log(LOG_ERR,
 		    "psm%d: failed to disable the aux int (psmclose).\n",
 		    sc->unit);
@@ -1908,9 +1886,8 @@ psmclose(struct dev_close_args *ap)
 	}
 
 	if (!set_controller_command_byte(sc->kbdc,
-	    kbdc_get_device_mask(sc->kbdc),
-	    (command_byte & KBD_KBD_CONTROL_BITS) |
-	    KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
+		KBD_AUX_CONTROL_BITS,
+		KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/*
 		 * CONTROLLER ERROR;
 		 * we shall ignore this error; see the above comment.
@@ -2064,8 +2041,7 @@ block_mouse_data(struct psm_softc *sc, int *c)
 	*c = get_controller_command_byte(sc->kbdc);
 	if ((*c == -1) ||
 	    !set_controller_command_byte(sc->kbdc,
-		    kbdc_get_device_mask(sc->kbdc),
-		    KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT |
+		    KBD_AUX_CONTROL_BITS,
 		    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* this is CONTROLLER ERROR */
 		crit_exit();
@@ -2129,8 +2105,7 @@ unblock_mouse_data(struct psm_softc *sc, int c)
 
 	/* restore ports and interrupt */
 	if (!set_controller_command_byte(sc->kbdc,
-	    kbdc_get_device_mask(sc->kbdc),
-	    c & (KBD_KBD_CONTROL_BITS | KBD_AUX_CONTROL_BITS))) {
+		KBD_AUX_CONTROL_BITS, c & KBD_AUX_CONTROL_BITS)) {
 		/*
 		 * CONTROLLER ERROR; this is serious, we may have
 		 * been left with the inaccessible keyboard and
@@ -6631,7 +6606,8 @@ create_a_copy(device_t atkbdc, device_t me)
 	/* move our resource to the found device */
 	irq = bus_get_resource_start(me, SYS_RES_IRQ, 0);
 	bus_delete_resource(me, SYS_RES_IRQ, 0);
-	bus_set_resource(psm, SYS_RES_IRQ, KBDC_RID_AUX, irq, 1);
+	bus_set_resource(psm, SYS_RES_IRQ, KBDC_RID_AUX, irq, 1,
+			 machintr_legacy_intr_cpuid(irq));
 
 	/* ...then probe and attach it */
 	return (device_probe_and_attach(psm));
@@ -6662,9 +6638,10 @@ psmcpnp_probe(device_t dev)
 			irq = 12;       /* XXX */
 		device_printf(dev, "irq resource info is missing; "
 		    "assuming irq %ld\n", irq);
-		bus_set_resource(dev, SYS_RES_IRQ, rid, irq, 1);
+		bus_set_resource(dev, SYS_RES_IRQ, rid, irq, 1,
+				 machintr_legacy_intr_cpuid(irq));
 	}
-	res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, 0);
+	res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_SHAREABLE);
 	bus_release_resource(dev, SYS_RES_IRQ, rid, res);
 
 	/* keep quiet */
@@ -6682,14 +6659,23 @@ psmcpnp_attach(device_t dev)
 	/* find the keyboard controller, which may be on acpi* or isa* bus */
 	atkbdc = devclass_get_device(devclass_find(ATKBDC_DRIVER_NAME),
 	    device_get_unit(dev));
-	if ((atkbdc != NULL) && (device_get_state(atkbdc) == DS_ATTACHED))
+	if ((atkbdc != NULL) && (device_get_state(atkbdc) == DS_ATTACHED)) {
 		create_a_copy(atkbdc, dev);
+	} else {
+		/*
+		 * If we don't have the AT keyboard controller yet,
+		 * just reserve the IRQ for later use...
+		 * (See psmidentify() above.)
+		 */
+		rid = 0;
+		bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_SHAREABLE);
+	}
 
 	return (0);
 }
 
-DRIVER_MODULE(psmcpnp, isa, psmcpnp_driver, psmcpnp_devclass, 0, 0);
-DRIVER_MODULE(psmcpnp, acpi, psmcpnp_driver, psmcpnp_devclass, 0, 0);
+DRIVER_MODULE(psmcpnp, isa, psmcpnp_driver, psmcpnp_devclass, NULL, NULL);
+DRIVER_MODULE(psmcpnp, acpi, psmcpnp_driver, psmcpnp_devclass, NULL, NULL);
 
 #endif
 #endif /* DEV_ISA */
