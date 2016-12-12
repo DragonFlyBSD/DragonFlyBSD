@@ -50,6 +50,8 @@ struct recover_dict {
 #define DICTF_PARENT	0x04	/* parent attached for real */
 #define DICTF_TRAVERSED	0x80
 
+typedef struct bigblock *bigblock_t;
+
 static void recover_top(char *ptr, hammer_off_t offset);
 static void recover_elm(hammer_btree_leaf_elm_t leaf);
 static struct recover_dict *get_dict(int64_t obj_id, uint16_t pfs_id);
@@ -58,8 +60,9 @@ static void sanitize_string(char *str);
 static hammer_off_t scan_raw_limit(void);
 static void scan_bigblocks(int target_zone);
 static void free_bigblocks(void);
-static void add_bigblock_entry(hammer_off_t offset);
-static int test_bigblock_entry(hammer_off_t offset);
+static void add_bigblock_entry(hammer_off_t offset,
+	hammer_blockmap_layer1_t layer1, hammer_blockmap_layer2_t layer2);
+static bigblock_t get_bigblock_entry(hammer_off_t offset);
 
 static const char *TargetDir;
 static int CachedFd = -1;
@@ -68,6 +71,8 @@ static char *CachedPath;
 typedef struct bigblock {
 	RB_ENTRY(bigblock) entry;
 	hammer_off_t phys_offset; /* zone-2 */
+	struct hammer_blockmap_layer1 layer1;
+	struct hammer_blockmap_layer2 layer2;
 } *bigblock_t;
 
 static int
@@ -86,7 +91,7 @@ RB_GENERATE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t,
 	phys_offset);
 
 /*
- * XXX There is a hidden bug here while iterating zone-2 offset as
+ * There was a hidden bug here while iterating zone-2 offset as
  * shown in an example below.
  *
  * If a volume was once used as HAMMER filesystem which consists of
@@ -99,6 +104,10 @@ RB_GENERATE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t,
  * that's actually used for filesystem data or meta-data at the moment,
  * if all layer1/2 entries have correct CRC values. This also avoids
  * recovery of irrelevant files from old filesystem.
+ *
+ * It also doesn't scan beyond append offset of big-blocks in B-Tree
+ * zone to avoid recovery of irrelevant files from old filesystem,
+ * if layer1/2 entries for those big-blocks have correct CRC values.
  *
  * |-----vol0-----|-----vol1-----|-----vol2-----| old filesystem
  * <-----------------------> used by old filesystem
@@ -114,9 +123,10 @@ hammer_cmd_recover(char **av, int ac)
 {
 	struct buffer_info *data_buffer;
 	struct volume_info *volume;
-	bigblock_t b;
+	bigblock_t b = NULL;
 	hammer_off_t off;
 	hammer_off_t off_end;
+	hammer_off_t off_blk;
 	hammer_off_t raw_limit = 0;
 	hammer_off_t zone_limit = 0;
 	char *ptr;
@@ -151,6 +161,7 @@ hammer_cmd_recover(char **av, int ac)
 		TargetDir);
 
 	if (!full) {
+		scan_bigblocks(target_zone);
 		raw_limit = scan_raw_limit();
 		if (raw_limit) {
 			raw_limit += HAMMER_BIGBLOCK_SIZE;
@@ -159,7 +170,7 @@ hammer_cmd_recover(char **av, int ac)
 	}
 
 	if (quick) {
-		scan_bigblocks(target_zone);
+		assert(!full);
 		if (!RB_EMPTY(&ZoneTree)) {
 			printf("Found zone-%d big-blocks at\n", target_zone);
 			RB_FOREACH(b, bigblock_rb_tree, &ZoneTree)
@@ -196,6 +207,10 @@ hammer_cmd_recover(char **av, int ac)
 		off_end = off + HAMMER_VOL_BUF_SIZE(volume->ondisk);
 
 		while (off < off_end) {
+			off_blk = off & HAMMER_BIGBLOCK_MASK64;
+			if (off_blk == 0)
+				b = get_bigblock_entry(off);
+
 			if (raw_limit) {
 				if (off >= raw_limit) {
 					printf("Done %016jx\n", (uintmax_t)off);
@@ -207,7 +222,16 @@ hammer_cmd_recover(char **av, int ac)
 					printf("Done %016jx\n", (uintmax_t)off);
 					goto end;
 				}
-				if (!test_bigblock_entry(off)) {
+				if (b == NULL) {
+					off = HAMMER_ZONE_LAYER2_NEXT_OFFSET(off);
+					continue;
+				}
+			}
+
+			if (b) {
+				if (hammer_crc_test_layer1(&b->layer1) &&
+				    hammer_crc_test_layer2(&b->layer2) &&
+				    off_blk >= b->layer2.append_off) {
 					off = HAMMER_ZONE_LAYER2_NEXT_OFFSET(off);
 					continue;
 				}
@@ -834,7 +858,7 @@ scan_bigblocks(int target_zone)
 			}
 			*/
 			if (layer2->zone == target_zone) {
-				add_bigblock_entry(offset);
+				add_bigblock_entry(offset, layer1, layer2);
 			} else if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
 				break;
 			}
@@ -859,20 +883,23 @@ free_bigblocks(void)
 
 static
 void
-add_bigblock_entry(hammer_off_t offset)
+add_bigblock_entry(hammer_off_t offset,
+	hammer_blockmap_layer1_t layer1, hammer_blockmap_layer2_t layer2)
 {
 	bigblock_t b;
 
 	b = calloc(sizeof(*b), 1);
 	b->phys_offset = hammer_xlate_to_zone2(offset);
 	assert((b->phys_offset & HAMMER_BIGBLOCK_MASK64) == 0);
+	bcopy(layer1, &b->layer1, sizeof(*layer1));
+	bcopy(layer2, &b->layer2, sizeof(*layer2));
 
 	RB_INSERT(bigblock_rb_tree, &ZoneTree, b);
 }
 
 static
-int
-test_bigblock_entry(hammer_off_t offset)
+bigblock_t
+get_bigblock_entry(hammer_off_t offset)
 {
 	bigblock_t b;
 
@@ -881,6 +908,6 @@ test_bigblock_entry(hammer_off_t offset)
 
 	b = RB_LOOKUP(bigblock_rb_tree, &ZoneTree, offset);
 	if (b)
-		return(1);
-	return(0);
+		return(b);
+	return(NULL);
 }
