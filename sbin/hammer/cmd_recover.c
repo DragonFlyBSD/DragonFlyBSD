@@ -402,7 +402,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 				/* chmod(path1, 0666); */
 			}
 			if (strcmp(path1, path2)) {
-				printf("Rename %s -> %s\n", path1, path2);
+				printf("Rename (inode) %s -> %s\n", path1, path2);
 				rename(path1, path2);
 			}
 		} else if (ondisk->inode.obj_type == HAMMER_OBJTYPE_REGFILE) {
@@ -581,7 +581,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		}
 		path2 = recover_path(dict2);
 		if (strcmp(path1, path2) != 0 && lstat(path1, &st) == 0) {
-			printf("Rename %s -> %s\n", path1, path2);
+			printf("Rename (entry) %s -> %s\n", path1, path2);
 			rename(path1, path2);
 		}
 		free(path1);
