@@ -223,7 +223,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	struct buffer_info *buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
-	hammer_off_t result_offset;
+	hammer_off_t result_offset = HAMMER_OFF_BAD;;
 	int zone;
 	int error = 0;
 
@@ -234,12 +234,12 @@ blockmap_lookup(hammer_off_t zone_offset,
 
 	zone = HAMMER_ZONE_DECODE(zone_offset);
 
-	if (zone <= HAMMER_ZONE_RAW_VOLUME_INDEX)
+	if (zone <= HAMMER_ZONE_RAW_VOLUME_INDEX) {
 		error = -1;
-	if (zone >= HAMMER_MAX_ZONES)
+		goto done;
+	}
+	if (zone >= HAMMER_MAX_ZONES) {
 		error = -2;
-	if (error) {
-		result_offset = HAMMER_OFF_BAD;
 		goto done;
 	}
 
@@ -252,7 +252,6 @@ blockmap_lookup(hammer_off_t zone_offset,
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
 		if (zone_offset >= blockmap->alloc_offset) {
 			error = -3;
-			result_offset = HAMMER_OFF_BAD;
 			goto done;
 		}
 		result_offset = hammer_xlate_to_undo(ondisk, zone_offset);
@@ -264,7 +263,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 * The blockmap should match the requested zone (else the volume
 	 * header is mashed).
 	 */
-	if (HAMMER_ZONE_FREEMAP_INDEX != zone &&
+	if (hammer_is_zone2_mapped_index(zone) &&
 	    HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
 		error = -4;
 		goto done;
@@ -272,16 +271,17 @@ blockmap_lookup(hammer_off_t zone_offset,
 
 	/*
 	 * Validate that the big-block is assigned to the zone.  Also
-	 * assign save_layer{1,2}.
+	 * assign save_layer{1,2} if not NULL.
 	 */
-
 	freemap = &ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+
 	/*
 	 * Dive layer 1.
 	 */
 	layer1_offset = freemap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+
 	if (layer1 == NULL) {
 		error = -5;
 		goto done;
@@ -290,7 +290,6 @@ blockmap_lookup(hammer_off_t zone_offset,
 		error = -6;
 		goto done;
 	}
-
 	if (save_layer1)
 		*save_layer1 = *layer1;
 
