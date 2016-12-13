@@ -276,6 +276,24 @@ get_root_volume(void)
 	return(get_volume(HAMMER_ROOT_VOLNO));
 }
 
+static hammer_off_t
+__blockmap_xlate_to_zone2(hammer_off_t zone_offset)
+{
+	hammer_off_t buf_offset;
+	int error = 0;
+
+	if (hammer_is_zone_raw_buffer(zone_offset))
+		buf_offset = zone_offset;
+	else
+		buf_offset = blockmap_lookup(zone_offset, NULL, NULL, &error);
+
+	if (error)
+		return(HAMMER_OFF_BAD);
+	assert(hammer_is_zone_raw_buffer(buf_offset));
+
+	return(buf_offset);
+}
+
 static struct buffer_info *
 __alloc_buffer(hammer_off_t buf_offset, int isnew)
 {
@@ -309,23 +327,18 @@ __alloc_buffer(hammer_off_t buf_offset, int isnew)
 }
 
 /*
- * Acquire the specified buffer.  isnew is -1 only when called
- * via get_buffer_readahead() to prevent another readahead.
+ * Acquire the 16KB buffer for specified zone offset.
  */
 static struct buffer_info *
-get_buffer(hammer_off_t buf_offset, int isnew)
+get_buffer(hammer_off_t zone_offset, int isnew)
 {
 	struct buffer_info *buf;
-	int zone;
+	hammer_off_t buf_offset;
 	int dora = 0;
-	int error = 0;
 
-	zone = HAMMER_ZONE_DECODE(buf_offset);
-	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX)
-		buf_offset = blockmap_lookup(buf_offset, NULL, NULL, &error);
-	if (error || buf_offset == HAMMER_OFF_BAD)
+	buf_offset = __blockmap_xlate_to_zone2(zone_offset);
+	if (buf_offset == HAMMER_OFF_BAD)
 		return(NULL);
-	assert(hammer_is_zone_raw_buffer(buf_offset));
 
 	buf_offset &= ~HAMMER_BUFMASK64;
 	buf = find_buffer(buf_offset);
@@ -377,6 +390,7 @@ get_buffer_readahead(struct buffer_info *base)
 			raw_offset - vol->ondisk->vol_buf_beg);
 		buf = find_buffer(buf_offset);
 		if (buf == NULL) {
+			/* call with -1 to prevent another readahead */
 			buf = get_buffer(buf_offset, -1);
 			rel_buffer(buf);
 		}
