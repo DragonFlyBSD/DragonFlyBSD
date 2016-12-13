@@ -331,7 +331,16 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 	 */
 	if (leaf->delete_ts)
 		return;
-	if ((data_offset = leaf->data_offset) != 0)
+
+	/*
+	 * If we're running full scan, it's possible that data_offset
+	 * refers to old filesystem data that we can't physically access.
+	 */
+	data_offset = leaf->data_offset;
+	if (get_volume(HAMMER_VOL_DECODE(data_offset)) == NULL)
+		return;
+
+	if (data_offset != 0)
 		ondisk = get_buffer_data(data_offset, &data_buffer, 0);
 	else
 		ondisk = NULL;
