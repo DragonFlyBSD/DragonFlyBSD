@@ -65,10 +65,14 @@ buffer_hash(hammer_off_t buf_offset)
 }
 
 static struct buffer_info*
-find_buffer(struct volume_info *volume, hammer_off_t buf_offset)
+find_buffer(hammer_off_t buf_offset)
 {
-	int hi;
+	struct volume_info *volume;
 	struct buffer_info *buf;
+	int hi;
+
+	volume = get_volume(HAMMER_VOL_DECODE(buf_offset));
+	assert(volume);
 
 	hi = buffer_hash(buf_offset);
 	TAILQ_FOREACH(buf, &volume->buffer_lists[hi], entry)
@@ -299,7 +303,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	assert(volume != NULL);
 
 	buf_offset &= ~HAMMER_BUFMASK64;
-	buf = find_buffer(volume, buf_offset);
+	buf = find_buffer(buf_offset);
 
 	if (buf == NULL) {
 		buf = malloc(sizeof(*buf));
@@ -365,7 +369,7 @@ get_buffer_readahead(struct buffer_info *base)
 		}
 		buf_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
 			raw_offset - vol->ondisk->vol_buf_beg);
-		buf = find_buffer(vol, buf_offset);
+		buf = find_buffer(buf_offset);
 		if (buf == NULL) {
 			buf = get_buffer(buf_offset, -1);
 			rel_buffer(buf);
