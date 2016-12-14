@@ -66,7 +66,7 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 	if (*errorp)
 		return(0);
 	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	KKASSERT(HAMMER_ZONE_DECODE(undomap->alloc_offset) == HAMMER_ZONE_UNDO_INDEX);
+	KKASSERT(hammer_is_zone_undo(undomap->alloc_offset));
 	KKASSERT(zone3_off < undomap->alloc_offset);
 
 	result_offset = hammer_xlate_to_undo(root_volume->ondisk, zone3_off);

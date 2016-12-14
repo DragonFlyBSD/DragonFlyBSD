@@ -463,8 +463,7 @@ collect_blockmap(hammer_off_t offset, int32_t length, int zone)
 	result_offset = blockmap_lookup(offset, &layer1, &layer2, &error);
 	if (DebugOpt) {
 		assert(HAMMER_ZONE_DECODE(offset) == zone);
-		assert(HAMMER_ZONE_DECODE(result_offset) ==
-			HAMMER_ZONE_RAW_BUFFER_INDEX);
+		assert(hammer_is_zone_raw_buffer(result_offset));
 		assert(error == 0);
 	}
 	collect = collect_get(layer1.phys_offset); /* layer2 address */
