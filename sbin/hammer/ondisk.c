@@ -276,6 +276,38 @@ get_root_volume(void)
 	return(get_volume(HAMMER_ROOT_VOLNO));
 }
 
+static struct buffer_info *
+__alloc_buffer(hammer_off_t buf_offset, int isnew)
+{
+	struct volume_info *volume;
+	struct buffer_info *buf;
+	int hi;
+
+	volume = get_volume(HAMMER_VOL_DECODE(buf_offset));
+	assert(volume != NULL);
+
+	buf = calloc(sizeof(*buf), 1);
+	buf->buf_offset = buf_offset;
+	buf->raw_offset = hammer_xlate_to_phys(volume->ondisk, buf_offset);
+	buf->volume = volume;
+	buf->ondisk = calloc(HAMMER_BUFSIZE, 1);
+
+	if (isnew <= 0) {
+		if (readhammerbuf(buf) == -1) {
+			err(1, "Failed to read %s:%016jx at %016jx",
+			    volume->name,
+			    (intmax_t)buf->buf_offset,
+			    (intmax_t)buf->raw_offset);
+		}
+	}
+
+	hi = buffer_hash(buf_offset);
+	TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
+	hammer_cache_add(&buf->cache);
+
+	return(buf);
+}
+
 /*
  * Acquire the specified buffer.  isnew is -1 only when called
  * via get_buffer_readahead() to prevent another readahead.
@@ -284,10 +316,7 @@ static struct buffer_info *
 get_buffer(hammer_off_t buf_offset, int isnew)
 {
 	struct buffer_info *buf;
-	struct volume_info *volume;
-	int vol_no;
 	int zone;
-	int hi;
 	int dora = 0;
 	int error = 0;
 
@@ -298,40 +327,17 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		return(NULL);
 	assert(hammer_is_zone_raw_buffer(buf_offset));
 
-	vol_no = HAMMER_VOL_DECODE(buf_offset);
-	volume = get_volume(vol_no);
-	assert(volume != NULL);
-
 	buf_offset &= ~HAMMER_BUFMASK64;
 	buf = find_buffer(buf_offset);
 
 	if (buf == NULL) {
-		buf = malloc(sizeof(*buf));
-		bzero(buf, sizeof(*buf));
-		buf->buf_offset = buf_offset;
-		buf->raw_offset = hammer_xlate_to_phys(volume->ondisk,
-							buf_offset);
-		buf->volume = volume;
-		buf->ondisk = malloc(HAMMER_BUFSIZE);
-		if (isnew <= 0) {
-			if (readhammerbuf(buf) == -1) {
-				err(1, "get_buffer: %s:%016jx "
-				    "Read failed at offset %016jx",
-				    volume->name,
-				    (intmax_t)buf->buf_offset,
-				    (intmax_t)buf->raw_offset);
-			}
-		}
-
-		hi = buffer_hash(buf_offset);
-		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
-		hammer_cache_add(&buf->cache);
+		buf = __alloc_buffer(buf_offset, isnew);
 		dora = (isnew == 0);
 	} else {
-		assert(buf->ondisk != NULL);
 		assert(isnew != -1);
 		hammer_cache_used(&buf->cache);
 	}
+	assert(buf->ondisk != NULL);
 
 	++buf->cache.refs;
 	hammer_cache_flush();
