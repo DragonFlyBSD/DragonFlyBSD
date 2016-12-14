@@ -208,7 +208,13 @@ again:
 }
 
 hammer_off_t
-blockmap_lookup(hammer_off_t zone_offset,
+blockmap_lookup(hammer_off_t zone_offset, int *errorp)
+{
+	return(blockmap_lookup_save(zone_offset, NULL, NULL, errorp));
+}
+
+hammer_off_t
+blockmap_lookup_save(hammer_off_t zone_offset,
 		hammer_blockmap_layer1_t save_layer1,
 		hammer_blockmap_layer2_t save_layer2,
 		int *errorp)

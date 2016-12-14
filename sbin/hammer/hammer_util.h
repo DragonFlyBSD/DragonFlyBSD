@@ -131,7 +131,8 @@ hammer_off_t bootstrap_bigblock(struct volume_info *volume);
 hammer_off_t alloc_undo_bigblock(struct volume_info *volume);
 void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	       struct buffer_info **bufferp);
-hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
+hammer_off_t blockmap_lookup(hammer_off_t bmap_off, int *errorp);
+hammer_off_t blockmap_lookup_save(hammer_off_t bmap_off,
 				hammer_blockmap_layer1_t layer1,
 				hammer_blockmap_layer2_t layer2,
 				int *errorp);

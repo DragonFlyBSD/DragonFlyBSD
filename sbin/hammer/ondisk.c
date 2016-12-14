@@ -285,7 +285,7 @@ __blockmap_xlate_to_zone2(hammer_off_t zone_offset)
 	if (hammer_is_zone_raw_buffer(zone_offset))
 		buf_offset = zone_offset;
 	else
-		buf_offset = blockmap_lookup(zone_offset, NULL, NULL, &error);
+		buf_offset = blockmap_lookup(zone_offset, &error);
 
 	if (error)
 		return(HAMMER_OFF_BAD);

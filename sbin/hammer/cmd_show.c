@@ -596,7 +596,7 @@ print_bigblock_fill(hammer_off_t offset)
 	int fill;
 	int error;
 
-	blockmap_lookup(offset, &layer1, &layer2, &error);
+	blockmap_lookup_save(offset, &layer1, &layer2, &error);
 	printf("z%d:v%d:%d:%d:%lu=",
 		HAMMER_ZONE_DECODE(offset),
 		HAMMER_VOL_DECODE(offset),
@@ -638,7 +638,7 @@ check_data_crc(hammer_btree_elm_t elm)
 		return("ZO");  /* zero offset or length */
 
 	error = 0;
-	buf_offset = blockmap_lookup(data_offset, NULL, NULL, &error);
+	buf_offset = blockmap_lookup(data_offset, &error);
 	if (error) {
 		bzero(bo, sizeof(bo));
 		snprintf(bo, sizeof(bo), "BO%d", -error);

@@ -460,7 +460,7 @@ collect_blockmap(hammer_off_t offset, int32_t length, int zone)
 	collect_t collect;
 	int error;
 
-	result_offset = blockmap_lookup(offset, &layer1, &layer2, &error);
+	result_offset = blockmap_lookup_save(offset, &layer1, &layer2, &error);
 	if (DebugOpt) {
 		assert(HAMMER_ZONE_DECODE(offset) == zone);
 		assert(hammer_is_zone_raw_buffer(result_offset));
