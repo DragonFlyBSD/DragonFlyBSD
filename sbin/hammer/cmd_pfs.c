@@ -252,7 +252,6 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	char *linkpath;
 	int pfs_id;
 	int fd;
-	int error;
 
 	if (ac == 0)
 		pseudofs_usage(1);
@@ -295,11 +294,14 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 		exit(1);
 	}
 
-	error = 0;
 	for (pfs_id = 0; pfs_id < HAMMER_MAX_PFS; ++pfs_id) {
 		clrpfs(&pfs, &pfsd, pfs_id);
 		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
-			error = errno;
+			if (errno != ENOENT) {
+				fprintf(stderr, "Cannot create %s, got %s during scan\n",
+					path, strerror(errno));
+				exit(1);
+			}
 			break;
 		}
 	}
@@ -309,12 +311,6 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	} else if (pfs_id == HAMMER_ROOT_PFSID) {
 		fprintf(stderr, "Fatal error: PFS#%d must exist\n",
 			HAMMER_ROOT_PFSID);
-		exit(1);
-	}
-
-	if (error != ENOENT) {
-		fprintf(stderr, "Cannot create %s, got %s during scan\n",
-			path, strerror(error));
 		exit(1);
 	}
 
