@@ -157,7 +157,8 @@ main(int ac, char **av)
 		exit(1);
 	}
 	free_volumes(&info);
-	exit(0);
+
+	return(0);
 }
 
 static void test_master_id(const char *progname, int master_id)
@@ -279,20 +280,14 @@ test_volumes(struct hammer_mount_info *info)
 	for (i = 0; i < info->nvolumes; i++) {
 		const char *vol = info->volumes[i];
 		fd = open(vol, O_RDONLY);
-		if (fd < 0) {
-			fprintf(stderr, "%s: Failed to open\n", vol);
-			goto next;
-		}
+		if (fd < 0)
+			err(1, "%s: Failed to open", vol);
 
 		bzero(buf, sizeof(buf));
-		if (pread(fd, buf, sizeof(buf), 0) != sizeof(buf)) {
-			fprintf(stderr, "%s: Failed to read volume header\n",
-				vol);
-			goto next;
-		}
+		if (pread(fd, buf, sizeof(buf), 0) != sizeof(buf))
+			err(1, "%s: Failed to read volume header", vol);
 
 		__verify_volume(ondisk, vol, info->nvolumes);
-next:
 		close(fd);
 	}
 }
