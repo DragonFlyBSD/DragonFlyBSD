@@ -917,25 +917,18 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 		mirror.count = 0;
 		mirror.pfs_id = glob_pfs.pfs_id;
 		mirror.shared_uuid = glob_pfs.ondisk->shared_uuid;
-		if (ioctl(glob_fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
-			fprintf(stderr, "Mirror-read %s failed: %s\n",
-				filesystem, strerror(errno));
-			exit(1);
-		}
-		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
-			fprintf(stderr, "Mirror-read %s fatal error %d\n",
+		if (ioctl(glob_fd, HAMMERIOC_MIRROR_READ, &mirror) < 0)
+			err(1, "Mirror-read %s failed", filesystem);
+		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR)
+			errx(1, "Mirror-read %s fatal error %d",
 				filesystem, mirror.head.error);
-			exit(1);
-		}
 		if (mirror.count) {
 			offset = 0;
 			while (offset < mirror.count) {
 				mrec = (void *)((char *)buf + offset);
 				bytes = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
-				if (offset + bytes > mirror.count) {
-					fprintf(stderr, "Misaligned record\n");
-					exit(1);
-				}
+				if (offset + bytes > mirror.count)
+					errx(1, "Misaligned record");
 				assert((mrec->head.type &
 				       HAMMER_MRECF_TYPE_MASK) ==
 				       HAMMER_MREC_TYPE_REC);

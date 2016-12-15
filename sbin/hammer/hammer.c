@@ -241,11 +241,9 @@ main(int ac, char **av)
 			if (strcmp(av[0], elm) == 0)
 				break;
 		}
-		if (elm == NULL) {
-			fprintf(stderr, "hammer-remote: request does not match "
-					"restricted command\n");
-			exit(1);
-		}
+		if (elm == NULL)
+			errx(1, "hammer-remote: request does not match "
+				"restricted command");
 		free(dup);
 	}
 

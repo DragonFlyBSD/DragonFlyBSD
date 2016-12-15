@@ -52,21 +52,17 @@ hammer_cmd_get_version(char **av, int ac)
 	if (ac != 1)
 		errx(1, "hammer version - expected a single <fs> path arg");
         fd = open(av[0], O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "hammer version: unable to access %s: %s\n",
-			av[0], strerror(errno));
-		exit(1);
-	}
+	if (fd < 0)
+		err(1, "hammer version: unable to access %s", av[0]);
 
 	/*
 	 * version.cur_version must be set to 0 to retrieve current version
 	 * info.
 	 */
 	bzero(&version, sizeof(version));
-	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0) {
-		fprintf(stderr, "hammer version ioctl: %s\n", strerror(errno));
-		exit(1);
-	}
+	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
+		err(1, "hammer version ioctl");
+
 	snprintf(wip, 16, "%d", version.wip_version);
 	printf("min=%d wip=%s max=%d current=%d description=\"%s\"\n",
 		version.min_version,
@@ -105,49 +101,32 @@ hammer_cmd_set_version(char **av, int ac)
 	int overs;
 	int nvers;
 
-	if (ac < 2 || ac > 3 || (ac == 3 && strcmp(av[2], "force") != 0)) {
-		fprintf(stderr,
-			"hammer version-upgrade: expected <fs> vers# [force]\n");
-		exit(1);
-	}
+	if (ac < 2 || ac > 3 || (ac == 3 && strcmp(av[2], "force") != 0))
+		errx(1, "hammer version-upgrade: expected <fs> vers# [force]");
 
         fd = open(av[0], O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "hammer version-upgrade: unable to access %s: %s\n",
-			av[0], strerror(errno));
-		exit(1);
-	}
+	if (fd < 0)
+		err(1, "hammer version-upgrade: unable to access %s", av[0]);
 
 	bzero(&version, sizeof(version));
-	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0) {
-		fprintf(stderr, "hammer ioctl: %s\n", strerror(errno));
-		exit(1);
-	}
+	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
+		err(1, "hammer ioctl");
 	overs = version.cur_version;
 
 	version.cur_version = strtol(av[1], NULL, 0);
 	nvers = version.cur_version;
 
-	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0) {
-		fprintf(stderr, "hammer ioctl: %s\n", strerror(errno));
-		exit(1);
-	}
-	if (version.cur_version >= version.wip_version && ac != 3) {
-		fprintf(stderr,
-			"The requested version is a work-in-progress"
-			" and requires the 'force' directive\n");
-		exit(1);
-	}
-	if (ioctl(fd, HAMMERIOC_SET_VERSION, &version) < 0) {
-		fprintf(stderr, "hammer version-upgrade ioctl: %s\n",
-			strerror(errno));
-		exit(1);
-	}
-	if (version.head.error) {
-		fprintf(stderr, "hammer version-upgrade ioctl: %s\n",
-			strerror(version.head.error));
-		exit(1);
-	}
+	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
+		err(1, "hammer ioctl");
+	if (version.cur_version >= version.wip_version && ac != 3)
+		errx(1, "The requested version is a work-in-progress"
+			" and requires the 'force' directive");
+
+	if (ioctl(fd, HAMMERIOC_SET_VERSION, &version) < 0)
+		err(1, "hammer version-upgrade ioctl");
+	if (version.head.error)
+		errx(1, "hammer version-upgrade ioctl");
+
 	printf("hammer version-upgrade: succeeded\n");
 	if (overs < 3 && nvers >= 3) {
 		printf("NOTE!  Please run 'hammer cleanup' to convert the\n"

@@ -168,19 +168,11 @@ main(int ac, char **av)
 		}
 	}
 
-	if (nvols == 0) {
-		fprintf(stderr,
-			"newfs_hammer: You must specify at least one "
-			"special file (volume)\n");
-		exit(1);
-	}
-
-	if (nvols > HAMMER_MAX_VOLUMES) {
-		fprintf(stderr,
-			"newfs_hammer: The maximum number of volumes is %d\n",
+	if (nvols == 0)
+		errx(1, "You must specify at least one special file (volume)");
+	if (nvols > HAMMER_MAX_VOLUMES)
+		errx(1, "The maximum number of volumes is %d",
 			HAMMER_MAX_VOLUMES);
-		exit(1);
-	}
 
 	/*
 	 * Generate a filesystem id and lookup the filesystem type

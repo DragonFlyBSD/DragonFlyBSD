@@ -115,21 +115,17 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	 * commands can take a regular file/directory (e.g. pfs-status).
 	 */
 	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "Failed to open %s\n", path);
-		exit(1);
-	}
+	if (fd < 0)
+		err(1, "Failed to open %s", path);
 
 	/*
 	 * If pfs.pfs_id has been set to non -1, the file descriptor fd
 	 * could be any fd of HAMMER inodes since HAMMERIOC_GET_PSEUDOFS
 	 * doesn't depend on inode attributes if it's set to a valid id.
 	 */
-	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs) < 0) {
-		fprintf(stderr, "Cannot access %s: %s\n",
-			path, strerror(errno));
-		exit(1);
-	}
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs) < 0)
+		err(1, "Cannot access %s", path);
+
 	return(fd);
 }
 
@@ -257,11 +253,9 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 		pseudofs_usage(1);
 	path = av[0];
 	if (lstat(path, &st) == 0) {
-		fprintf(stderr, "Cannot create %s, file exists!\n", path);
-		exit(1);
+		errx(1, "Cannot create %s, file exists!", path);
 	} else if (path[strlen(path) - 1] == '/') {
-		fprintf(stderr, "Invalid PFS path %s with trailing /\n", path);
-		exit(1);
+		errx(1, "Invalid PFS path %s with trailing /", path);
 	}
 
 	/*
@@ -270,10 +264,8 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 */
 	dirpath = dirname(path);
 	fd = open(dirpath, O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "Cannot open directory %s\n", dirpath);
-		exit(1);
-	}
+	if (fd < 0)
+		err(1, "Cannot open directory %s", dirpath);
 
 	/*
 	 * Avoid foot-shooting.  Don't let the user create a PFS
@@ -297,21 +289,15 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	for (pfs_id = 0; pfs_id < HAMMER_MAX_PFS; ++pfs_id) {
 		clrpfs(&pfs, &pfsd, pfs_id);
 		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
-			if (errno != ENOENT) {
-				fprintf(stderr, "Cannot create %s, got %s during scan\n",
-					path, strerror(errno));
-				exit(1);
-			}
+			if (errno != ENOENT)
+				err(1, "Cannot create %s", path);
 			break;
 		}
 	}
 	if (pfs_id == HAMMER_MAX_PFS) {
-		fprintf(stderr, "Cannot create %s, all PFSs in use\n", path);
-		exit(1);
+		errx(1, "Cannot create %s, all PFSs in use", path);
 	} else if (pfs_id == HAMMER_ROOT_PFSID) {
-		fprintf(stderr, "Fatal error: PFS#%d must exist\n",
-			HAMMER_ROOT_PFSID);
-		exit(1);
+		errx(1, "Fatal error: PFS#%d must exist", HAMMER_ROOT_PFSID);
 	}
 
 	/*
@@ -350,29 +336,23 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		pseudofs_usage(1);
 	fd = getpfs(&pfs, av[0]);
 
-	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
-		fprintf(stderr, "You cannot destroy PFS#0\n");
-		exit(1);
-	}
+	if (pfs.pfs_id == HAMMER_ROOT_PFSID)
+		errx(1, "You cannot destroy PFS#0");
+
 	printf("You have requested that PFS#%d (%s) be destroyed\n",
 		pfs.pfs_id, pfs.ondisk->label);
 	printf("This will irrevocably destroy all data on this PFS!!!!!\n");
 	printf("Do you really want to do this? [y/n] ");
 	fflush(stdout);
-	if (getyn() == 0) {
-		fprintf(stderr, "No action taken on PFS#%d\n", pfs.pfs_id);
-		exit(1);
-	}
+	if (getyn() == 0)
+		errx(1, "No action taken on PFS#%d", pfs.pfs_id);
 
 	if (hammer_is_pfs_master(pfs.ondisk)) {
 		printf("This PFS is currently setup as a MASTER!\n");
 		printf("Are you absolutely sure you want to destroy it? [y/n] ");
 		fflush(stdout);
-		if (getyn() == 0) {
-			fprintf(stderr, "No action taken on PFS#%d\n",
-				pfs.pfs_id);
-			exit(1);
-		}
+		if (getyn() == 0)
+			errx(1, "No action taken on PFS#%d", pfs.pfs_id);
 	}
 
 	printf("Destroying PFS#%d (%s)", pfs.pfs_id, pfs.ondisk->label);
@@ -421,12 +401,10 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
-		fprintf(stderr, "You cannot upgrade PFS#0"
-				" (It should already be a master)\n");
-		exit(1);
+		errx(1, "You cannot upgrade PFS#0"
+			" (It should already be a master)");
 	} else if (hammer_is_pfs_master(pfs.ondisk)) {
-		printf("It is already a master\n");
-		exit(1);
+		errx(1, "It is already a master");
 	}
 
 	if (ioctl(fd, HAMMERIOC_UPG_PSEUDOFS, &pfs) == 0) {
@@ -450,11 +428,9 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
-		fprintf(stderr, "You cannot downgrade PFS#0\n");
-		exit(1);
+		errx(1, "You cannot downgrade PFS#0");
 	} else if (hammer_is_pfs_slave(pfs.ondisk)) {
-		printf("It is already a slave\n");
-		exit(1);
+		errx(1, "It is already a slave");
 	}
 
 	if (ioctl(fd, HAMMERIOC_DGD_PSEUDOFS, &pfs) == 0) {
@@ -484,25 +460,20 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 		parse_pfsd_options(av + 1, ac - 1, pfs.ondisk);
 		if (hammer_is_pfs_slave(pfs.ondisk) &&
 		    pfs.pfs_id == HAMMER_ROOT_PFSID) {
-			printf("The real mount point cannot be made a PFS "
+			errx(1, "The real mount point cannot be made a PFS "
 			       "slave, only PFS sub-directories can be made "
-			       "slaves\n");
-			exit(1);
+			       "slaves");
 		}
 		pfs.bytes = sizeof(*pfs.ondisk);
 		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) == 0) {
 			if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 				dump_pfsd(pfs.ondisk, fd);
 			} else {
-				printf("Unable to retrieve PFS configuration "
-					"after successful update: %s\n",
-					strerror(errno));
-				exit(1);
+				err(1, "Unable to retrieve PFS configuration "
+					"after successful update");
 			}
 		} else {
-			printf("Unable to adjust PFS configuration: %s\n",
-				strerror(errno));
-			exit(1);
+			err(1, "Unable to adjust PFS configuration");
 		}
 	}
 	relpfs(fd, &pfs);
@@ -604,12 +575,8 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 		/*
 		 * Basic assignment value test
 		 */
-		if (ptr == NULL) {
-			fprintf(stderr,
-				"option %s requires an assignment\n",
-				cmd);
-			exit(1);
-		}
+		if (ptr == NULL)
+			errx(1, "option %s requires an assignment", cmd);
 
 		status = uuid_s_ok;
 		if (strcmp(cmd, "sync-beg-tid") == 0) {
@@ -626,10 +593,7 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 				ptr[len-1] = 0;
 				++ptr;
 			} else if (ptr[0] == '"') {
-				fprintf(stderr,
-					"option %s: malformed string\n",
-					cmd);
-				exit(1);
+				errx(1, "option %s: malformed string", cmd);
 			}
 			snprintf(pfsd->label, sizeof(pfsd->label), "%s", ptr);
 		} else if (strcmp(cmd, "snapshots") == 0) {
@@ -646,10 +610,8 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 				exit(1);
 			}
 			if (len >= (int)sizeof(pfsd->snapshots)) {
-				fprintf(stderr,
-					"option %s: path too long, %d "
-					"character limit\n", cmd, len);
-				exit(1);
+				errx(1, "option %s: path too long, %d "
+					"character limit", cmd, len);
 			}
 			snprintf(pfsd->snapshots, sizeof(pfsd->snapshots),
 				 "%s", ptr);
@@ -658,19 +620,14 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 		} else if (strcmp(cmd, "prune-min") == 0) {
 			pfsd->prune_min = timetosecs(ptr);
 			if (pfsd->prune_min < 0) {
-				fprintf(stderr,
-					"option %s: illegal time spec, "
-					"use Nd or [Nd/]hh[:mm[:ss]]\n", ptr);
-				exit(1);
+				errx(1, "option %s: illegal time spec, "
+					"use Nd or [Nd/]hh[:mm[:ss]]", ptr);
 			}
 		} else {
-			fprintf(stderr, "invalid option: %s\n", cmd);
-			exit(1);
+			errx(1, "invalid option: %s", cmd);
 		}
 		if (status != uuid_s_ok) {
-			fprintf(stderr, "option %s: error parsing uuid %s\n",
-				cmd, ptr);
-			exit(1);
+			errx(1, "option %s: error parsing uuid %s", cmd, ptr);
 		}
 		--ac;
 		++av;

@@ -132,11 +132,9 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	/*
 	 * XXX future (need to store separate cycles for each filesystem)
 	 */
-	if (base->next) {
-		fprintf(stderr, "Currently only one HAMMER filesystem may "
-				"be specified in the softlink scan\n");
-		exit(1);
-	}
+	if (base->next)
+		errx(1, "Currently only one HAMMER filesystem may "
+			"be specified in the softlink scan");
 
 	/*
 	 * Issue the prunes

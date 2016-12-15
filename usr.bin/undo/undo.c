@@ -48,6 +48,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <err.h>
 #include <vfs/hammer/hammer_disk.h>
 #include <vfs/hammer/hammer_ioctl.h>
 
@@ -495,10 +496,8 @@ dogenerate(const char *filename, int flags,
 	switch(type) {
 	case TYPE_FILE:
 		buf = malloc(8192);
-		if (buf == NULL) {
-			perror("malloc");
-			exit(1);
-		}
+		if (buf == NULL)
+			err(1, "malloc");
 		if ((fi = fopen(ipath1, "r")) != NULL) {
 			while ((n = fread(buf, 1, 8192, fi)) > 0)
 				fwrite(buf, 1, n, fp);
@@ -661,10 +660,8 @@ _fopen(const char *filename, const char *mode)
 	FILE *fp;
 
 	fp = fopen(filename, mode);
-	if (fp == NULL) {
-		perror(filename);
-		exit(1);
-	}
+	if (fp == NULL)
+		err(1, "%s", filename);
 	return(fp);
 }
 
@@ -690,8 +687,7 @@ runcmd(int fd, const char *cmd, ...)
 	av[i] = NULL;
 
 	if ((pid = fork()) < 0) {
-		perror("fork");
-		exit(1);
+		err(1, "fork");
 	} else if (pid == 0) {
 		if (fd != 1) {
 			dup2(fd, 1);

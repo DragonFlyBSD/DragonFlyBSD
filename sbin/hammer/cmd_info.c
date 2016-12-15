@@ -100,25 +100,19 @@ show_info(char *path)
 	usedbytes = totalbytes = rsvbytes = freebytes = 0;
 
 	fip = libhammer_get_fsinfo(path);
-	if (fip == NULL) {
-		perror("libhammer_get_fsinfo");
-		exit(EXIT_FAILURE);
-	}
+	if (fip == NULL)
+		errx(1, "libhammer_get_fsinfo");
 
 	/* Find out the UUID strings */
 	uuid_to_string(&fip->vol_fsid, &fsid, NULL);
 
 	/* Get the volume paths */
-	if (hammer_fs_to_vol(path, &ioc) == -1) {
-		fprintf(stderr, "Failed to get volume paths\n");
-		exit(1);
-	}
+	if (hammer_fs_to_vol(path, &ioc) == -1)
+		errx(1, "Failed to get volume paths");
 
 	/* Get the root volume path */
-	if (hammer_fs_to_rootvol(path, rootvol, sizeof(rootvol)) == -1) {
-		fprintf(stderr, "Failed to get root volume path\n");
-		exit(1);
-	}
+	if (hammer_fs_to_rootvol(path, rootvol, sizeof(rootvol)) == -1)
+		errx(1, "Failed to get root volume path");
 
 	/* Volume information */
 	printf("Volume identification\n");
