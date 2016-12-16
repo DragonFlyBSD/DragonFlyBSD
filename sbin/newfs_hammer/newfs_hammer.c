@@ -139,26 +139,20 @@ main(int ac, char **av)
 	av += optind;
 	nvols = ac;
 
-	if (label == NULL) {
-		hwarnx("A filesystem label must be specified");
-		usage(1);
-	}
-
 	if (HammerVersion < 0) {
 		size_t olen = sizeof(HammerVersion);
 		HammerVersion = HAMMER_VOL_VERSION_DEFAULT;
+
 		if (sysctlbyname("vfs.hammer.supported_version",
-				 &HammerVersion, &olen, NULL, 0) == 0) {
-			if (HammerVersion >= HAMMER_VOL_VERSION_WIP) {
-				HammerVersion = HAMMER_VOL_VERSION_WIP - 1;
-				hwarn("HAMMER VFS supports higher version than "
-					"I understand, using version %d",
-					HammerVersion);
-			}
-		} else {
+				 &HammerVersion, &olen, NULL, 0)) {
 			hwarn("HAMMER VFS not loaded, cannot get version info, "
 				"using version %d",
-				HAMMER_VOL_VERSION_DEFAULT);
+				HammerVersion);
+		} else if (HammerVersion >= HAMMER_VOL_VERSION_WIP) {
+			HammerVersion = HAMMER_VOL_VERSION_WIP - 1;
+			hwarn("HAMMER VFS supports higher version than "
+				"I understand, using version %d",
+				HammerVersion);
 		}
 	}
 
@@ -167,6 +161,11 @@ main(int ac, char **av)
 	if (nvols > HAMMER_MAX_VOLUMES)
 		errx(1, "The maximum number of volumes is %d",
 			HAMMER_MAX_VOLUMES);
+
+	if (label == NULL) {
+		hwarnx("A filesystem label must be specified");
+		usage(1);
+	}
 
 	/*
 	 * Generate a filesystem id and lookup the filesystem type
@@ -186,9 +185,8 @@ main(int ac, char **av)
 			sizetostr(vol->size));
 
 		if (eflag) {
-			int res = trim_volume(vol);
-			if (res == -1 || (res == 1 && ForceOpt == 0))
-				exit(1);
+			if (trim_volume(vol) == -1 && ForceOpt == 0)
+				errx(1, "Use -f option to proceed");
 		}
 		total += vol->size;
 	}
@@ -473,11 +471,11 @@ trim_volume(struct volume_info *vol)
 
 	if (strcmp(vol->type, "DEVICE")) {
 		hwarnx("Cannot TRIM regular file %s", vol->name);
-		return(1);
+		return(-1);
 	}
 	if (strncmp(vol->name, "/dev/da", 7)) {
 		hwarnx("%s does not support the TRIM command", vol->name);
-		return(1);
+		return(-1);
 	}
 
 	/* Extract a number from /dev/da?s? */
@@ -492,12 +490,12 @@ trim_volume(struct volume_info *vol)
 	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) == -1) {
 		hwarnx("%s (%s) does not support the TRIM command",
 			vol->name, sysctl_name);
-		return(1);
+		return(-1);
 	}
 	if (!trim_enabled) {
 		hwarnx("Erase device option selected, but sysctl (%s) "
 			"is not enabled", sysctl_name);
-		return(1);
+		return(-1);
 	}
 
 	ioarg[0] = vol->device_offset;
@@ -508,10 +506,8 @@ trim_volume(struct volume_info *vol)
 		(unsigned long long)ioarg[0] / 512,
 		(unsigned long long)ioarg[1] / 512);
 
-	if (ioctl(vol->fd, IOCTLTRIM, ioarg) == -1) {
-		fprintf(stderr, "Device trim failed\n");
-		return(-1);
-	}
+	if (ioctl(vol->fd, IOCTLTRIM, ioarg) == -1)
+		err(1, "Trimming %s failed", vol->name);
 
 	return(0);
 }
@@ -556,11 +552,10 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;
 	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 
-	if (vol_buf_size < 0) {
+	if (vol_buf_size < (int64_t)sizeof(*ondisk)) {
 		errx(1, "volume %d %s is too small to hold the volume header",
 		     vol->vol_no, vol->name);
 	}
-
 	if ((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) != 0) {
 		errx(1, "volume %d %s is too large", vol->vol_no, vol->name);
 	}
