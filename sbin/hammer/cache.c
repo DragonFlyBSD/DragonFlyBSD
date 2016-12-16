@@ -38,7 +38,6 @@
 
 static int CacheUse;
 static int CacheMax = HAMMER_BUFSIZE * 1024;
-static int NCache;
 static TAILQ_HEAD(, cache_info) CacheList = TAILQ_HEAD_INITIALIZER(CacheList);
 
 int
@@ -87,7 +86,6 @@ hammer_cache_add(struct cache_info *cache)
 {
 	TAILQ_INSERT_HEAD(&CacheList, cache, entry);
 	CacheUse += HAMMER_BUFSIZE;
-	++NCache;
 }
 
 void
@@ -95,7 +93,6 @@ hammer_cache_del(struct cache_info *cache)
 {
 	TAILQ_REMOVE(&CacheList, cache, entry);
 	CacheUse -= HAMMER_BUFSIZE;
-	--NCache;
 }
 
 void
@@ -125,7 +122,7 @@ hammer_cache_flush(void)
 				hammer_cache_used(cache);
 				continue;
 			}
-			if (count >= NCache) {
+			if (count >= (CacheUse / HAMMER_BUFSIZE)) {
 				CacheMax += HAMMER_BUFSIZE * 512;
 				target = CacheMax / 2;
 				count = 1;
