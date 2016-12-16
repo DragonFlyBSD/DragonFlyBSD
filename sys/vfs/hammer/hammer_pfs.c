@@ -397,7 +397,7 @@ hammer_pfs_autodetect(struct hammer_ioc_pseudofs_rw *pfs, hammer_inode_t ip)
  *
  * This is typically used to remove any partial syncs when upgrading a
  * slave to a master.  It can theoretically also be used to rollback
- * any PFS, including PFS#0, BUT ONLY TO POINTS THAT HAVE NOT YET BEEN
+ * any PFS, including root PFS, BUT ONLY TO POINTS THAT HAVE NOT YET BEEN
  * PRUNED, and to points that are older only if they are on a retained
  * (pruning softlink) boundary.
  *

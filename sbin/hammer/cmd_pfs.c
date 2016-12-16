@@ -104,7 +104,7 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 
 	/*
 	 * Extract the PFS id.
-	 * dirname(path) is supposed to be a directory in PFS#0.
+	 * dirname(path) is supposed to be a directory in root PFS.
 	 */
 	if (scanpfsid(pfs, path) == 0) {
 		path = dirname(path); /* strips trailing / first if any */
@@ -337,7 +337,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID)
-		errx(1, "You cannot destroy PFS#0");
+		errx(1, "You cannot destroy PFS#%d", HAMMER_ROOT_PFSID);
 
 	printf("You have requested that PFS#%d (%s) be destroyed\n",
 		pfs.pfs_id, pfs.ondisk->label);
@@ -401,8 +401,9 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
-		errx(1, "You cannot upgrade PFS#0"
-			" (It should already be a master)");
+		errx(1, "You cannot upgrade PFS#%d"
+			" (It should already be a master)",
+			HAMMER_ROOT_PFSID);
 	} else if (hammer_is_pfs_master(pfs.ondisk)) {
 		errx(1, "It is already a master");
 	}
@@ -428,7 +429,7 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
-		errx(1, "You cannot downgrade PFS#0");
+		errx(1, "You cannot downgrade PFS#%d", HAMMER_ROOT_PFSID);
 	} else if (hammer_is_pfs_slave(pfs.ondisk)) {
 		errx(1, "It is already a slave");
 	}

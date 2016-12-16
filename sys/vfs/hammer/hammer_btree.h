@@ -126,7 +126,7 @@ typedef struct hammer_base_elm {
  *
  * The root inode (not the PFS root inode but the real root) uses
  * HAMMER_DEF_LOCALIZATION for its incore ip->obj_localization.
- * HAMMER_DEF_LOCALIZATION implies PFS 0 and no localization type.
+ * HAMMER_DEF_LOCALIZATION implies PFS#0 and no localization type.
  */
 #define HAMMER_LOCALIZE_INODE		0x00000001
 #define HAMMER_LOCALIZE_MISC		0x00000002  /* not inode */

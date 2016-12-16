@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 10, 2016
+.Dd December 16, 2016
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -1210,12 +1210,11 @@ A PFS can only be truly destroyed with the
 directive.
 Removing the softlink will not destroy the underlying PFS.
 .Pp
-A PFS can only be created in the root PFS (PFS# 0),
+A PFS can only be created in the root PFS,
 not in a PFS created by
 .Cm pfs-master
 or
-.Cm pfs-slave
-(PFS# >0).
+.Cm pfs-slave .
 .Pp
 It is recommended that
 .Ar dirpath
@@ -1262,12 +1261,11 @@ A PFS can only be truly destroyed with the
 directive.
 Removing the softlink will not destroy the underlying PFS.
 .Pp
-A PFS can only be created in the root PFS (PFS# 0),
+A PFS can only be created in the root PFS,
 not in a PFS created by
 .Cm pfs-master
 or
-.Cm pfs-slave
-(PFS# >0).
+.Cm pfs-slave .
 .Pp
 It is recommended that
 .Ar dirpath
@@ -1920,7 +1918,7 @@ data must be copied separately.
 At last the PFS can be upgraded to master using
 .Cm pfs-upgrade .
 .Pp
-It is not possible to restore the root PFS (PFS# 0) by using mirroring,
+It is not possible to restore the root PFS by using mirroring,
 as the root PFS is always a master PFS.
 A normal copy (e.g.\& using
 .Xr cpdup 1 )

@@ -699,7 +699,7 @@ format_root_directory(const char *label)
 	 */
 	pfsd->sync_low_tid = 1;
 	pfsd->sync_beg_tid = 0;
-	pfsd->sync_end_tid = 0;	/* overriden by vol0_next_tid on pfs0 */
+	pfsd->sync_end_tid = 0;	/* overriden by vol0_next_tid on root PFS */
 	pfsd->shared_uuid = Hammer_FSId;
 	pfsd->unique_uuid = Hammer_FSId;
 	pfsd->mirror_flags = 0;
