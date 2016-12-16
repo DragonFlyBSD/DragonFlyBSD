@@ -48,11 +48,13 @@
 #include <err.h>
 #include <mntopts.h>
 
-static void test_master_id(const char *progname, int master_id);
+static void test_master_id(int master_id);
 static void extract_volumes(struct hammer_mount_info *info, char **av, int ac);
 static void free_volumes(struct hammer_mount_info *info);
 static void test_volumes(struct hammer_mount_info *info);
 static void usage(void);
+
+#define hwarnx(format, args...)	warnx("WARNING: "format,## args)
 
 #define MOPT_HAMMEROPTS		\
 	{ "history", 1, HMNT_NOHISTORY, 1 },	\
@@ -91,7 +93,7 @@ main(int ac, char **av)
 				ptr = strstr(optarg, "master=");
 				if (ptr) {
 					info.master_id = strtol(ptr + 7, NULL, 0);
-					test_master_id("mount_hammer", info.master_id);
+					test_master_id(info.master_id);
 				}
 			}
 			if (info.hflags & HMNT_NOMIRROR) {
@@ -161,29 +163,23 @@ main(int ac, char **av)
 	return(0);
 }
 
-static void test_master_id(const char *progname, int master_id)
+static void test_master_id(int master_id)
 {
 	switch (master_id) {
 	case 0:
-		fprintf(stderr,
-			"%s: Warning: a master id of 0 is the default, "
-			"explicit settings should use 1-15\n",
-			progname);
+		hwarnx("A master id of 0 is the default, "
+			"explicit settings should use 1-15");
 		break;
 	case -1:
-		fprintf(stderr,
-			"%s: Warning: a master id of -1 is nomirror mode, "
-			"equivalent to -o nomirror option\n",
-			progname);
+		hwarnx("A master id of -1 is nomirror mode, "
+			"equivalent to -o nomirror option");
 		break;
 	case 1 ... 15: /* gcc */
 		/* Expected values via -o master= option */
 		break;
 	default:
 		/* This will eventually fail in hammer_vfs_mount() */
-		fprintf(stderr,
-			"%s: Warning: A master id of %d is not supported\n",
-			progname, master_id);
+		hwarnx("A master id of %d is not supported", master_id);
 		break;
 	}
 }
