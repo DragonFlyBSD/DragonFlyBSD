@@ -46,10 +46,15 @@ vmap(struct vm_page **pages, unsigned int count,
 	return (void *)off;
 }
 
+/*
+ * DragonFly note: kmem_free() requires a page count, linux code augmented
+ * to provide it.
+ */
 static inline void
-vunmap(const void *addr)
+vunmap(const void *addr, unsigned int count)
 {
-	/* Nothing to do on systems with a direct memory map */
+	pmap_qremove((vm_offset_t)addr, count);
+	kmem_free(&kernel_map, (vm_offset_t)addr, IDX_TO_OFF(count));
 }
 
 #endif	/* _LINUX_VMALLOC_H_ */

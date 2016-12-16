@@ -1986,14 +1986,14 @@ static int init_phys_status_page(struct intel_engine_cs *ring)
 void intel_unpin_ringbuffer_obj(struct intel_ringbuffer *ringbuf)
 {
 	if (HAS_LLC(ringbuf->obj->base.dev) && !ringbuf->obj->stolen)
-		vunmap(ringbuf->virtual_start);
+		vunmap(ringbuf->virtual_start, ringbuf->virtual_count);
 	else
 		iounmap(ringbuf->virtual_start);
 	ringbuf->virtual_start = NULL;
 	i915_gem_object_ggtt_unpin(ringbuf->obj);
 }
 
-static u32 *vmap_obj(struct drm_i915_gem_object *obj)
+static u32 *vmap_obj(struct drm_i915_gem_object *obj, unsigned int *countp)
 {
 	struct sg_page_iter sg_iter;
 	struct vm_page **pages;
@@ -2007,6 +2007,7 @@ static u32 *vmap_obj(struct drm_i915_gem_object *obj)
 	i = 0;
 	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents, 0)
 		pages[i++] = sg_page_iter_page(&sg_iter);
+	*countp = i;
 
 	addr = vmap(pages, i, 0, PAGE_KERNEL);
 	drm_free_large(pages);
@@ -2032,7 +2033,8 @@ int intel_pin_and_map_ringbuffer_obj(struct drm_device *dev,
 			return ret;
 		}
 
-		ringbuf->virtual_start = (char *)vmap_obj(obj);
+		ringbuf->virtual_start = (char *)vmap_obj(obj,
+						    &ringbuf->virtual_count);
 		if (ringbuf->virtual_start == NULL) {
 			i915_gem_object_ggtt_unpin(obj);
 			return -ENOMEM;
