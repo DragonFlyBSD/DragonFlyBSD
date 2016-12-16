@@ -195,10 +195,7 @@ parse_attr_path(const char *s, cmd_attr_t *ca)
 	ret = parse_attr(p, ca);
 
 	length = p - s + 1;
-	ca->path = malloc(length);
-	if (ca->path == NULL)
-		err(1, "malloc");
-	bzero(ca->path, length);
+	ca->path = calloc(1, length);
 	strncpy(ca->path, s, length - 1);
 
 	return(ret);

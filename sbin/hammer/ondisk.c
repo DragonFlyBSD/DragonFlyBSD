@@ -88,11 +88,7 @@ __alloc_volume(const char *volname, int oflags)
 	struct volume_info *vol;
 	int i;
 
-	vol = malloc(sizeof(*vol));
-	if (vol == NULL)
-		err(1, "alloc_volume");
-	bzero(vol, sizeof(*vol));
-
+	vol = calloc(1, sizeof(*vol));
 	vol->vol_no = -1;
 	vol->rdonly = (oflags == O_RDONLY);
 	vol->name = strdup(volname);
@@ -101,10 +97,7 @@ __alloc_volume(const char *volname, int oflags)
 		err(1, "alloc_volume: Failed to open %s", vol->name);
 	check_volume(vol);
 
-	vol->ondisk = malloc(HAMMER_BUFSIZE);
-	if (vol->ondisk == NULL)
-		err(1, "alloc_volume");
-	bzero(vol->ondisk, HAMMER_BUFSIZE);
+	vol->ondisk = calloc(1, HAMMER_BUFSIZE);
 
 	for (i = 0; i < HAMMER_BUFLISTS; ++i)
 		TAILQ_INIT(&vol->buffer_lists[i]);
