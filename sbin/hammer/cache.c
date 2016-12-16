@@ -37,7 +37,7 @@
 #include "hammer_util.h"
 
 static int CacheUse;
-static int CacheMax = 16 * 1024 * 1024;
+static int CacheMax = HAMMER_BUFSIZE * 1024;
 static int NCache;
 static TAILQ_HEAD(, cache_info) CacheList = TAILQ_HEAD_INITIALIZER(CacheList);
 
@@ -126,7 +126,7 @@ hammer_cache_flush(void)
 				continue;
 			}
 			if (count >= NCache) {
-				CacheMax += 8 * 1024 * 1024;
+				CacheMax += HAMMER_BUFSIZE * 512;
 				target = CacheMax / 2;
 				count = 1;
 			}
