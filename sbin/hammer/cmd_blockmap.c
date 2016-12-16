@@ -481,10 +481,10 @@ collect_get(hammer_off_t phys_offset)
 	if (collect)
 		return(collect);
 
-	collect = calloc(sizeof(*collect), 1);
-	collect->track2 = calloc(HAMMER_BIGBLOCK_SIZE, 1);  /* 1<<23 bytes */
-	collect->layer2 = calloc(HAMMER_BIGBLOCK_SIZE, 1);  /* 1<<23 bytes */
-	collect->offsets = calloc(sizeof(hammer_off_t), HAMMER_BLOCKMAP_RADIX2);
+	collect = calloc(1, sizeof(*collect));
+	collect->track2 = calloc(1, HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
+	collect->layer2 = calloc(1, HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
+	collect->offsets = calloc(HAMMER_BLOCKMAP_RADIX2, sizeof(hammer_off_t));
 	collect->phys_offset = phys_offset;
 	RB_INSERT(collect_rb_tree, &CollectTree, collect);
 

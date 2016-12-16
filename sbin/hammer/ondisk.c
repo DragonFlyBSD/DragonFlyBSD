@@ -304,11 +304,11 @@ __alloc_buffer(hammer_off_t buf_offset, int isnew)
 	volume = get_volume(HAMMER_VOL_DECODE(buf_offset));
 	assert(volume != NULL);
 
-	buf = calloc(sizeof(*buf), 1);
+	buf = calloc(1, sizeof(*buf));
 	buf->buf_offset = buf_offset;
 	buf->raw_offset = hammer_xlate_to_phys(volume->ondisk, buf_offset);
 	buf->volume = volume;
-	buf->ondisk = calloc(HAMMER_BUFSIZE, 1);
+	buf->ondisk = calloc(1, HAMMER_BUFSIZE);
 
 	if (isnew <= 0) {
 		if (readhammerbuf(buf) == -1) {

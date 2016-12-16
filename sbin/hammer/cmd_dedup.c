@@ -430,7 +430,7 @@ collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 			   scan_leaf->data_crc);
 
 	if (sim_de == NULL) {
-		sim_de = calloc(sizeof(*sim_de), 1);
+		sim_de = calloc(1, sizeof(*sim_de));
 		sim_de->crc = scan_leaf->data_crc;
 		RB_INSERT(sim_dedup_entry_rb_tree, &sim_dedup_tree, sim_de);
 		MemoryUse += sizeof(*sim_de);
@@ -550,7 +550,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 	 */
 	de = RB_LOOKUP(dedup_entry_rb_tree, &dedup_tree, scan_leaf->data_crc);
 	if (de == NULL) {
-		de = calloc(sizeof(*de), 1);
+		de = calloc(1, sizeof(*de));
 		de->leaf = *scan_leaf;
 		RB_INSERT(dedup_entry_rb_tree, &dedup_tree, de);
 		MemoryUse += sizeof(*de);
@@ -601,7 +601,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 		 * 'dataset'. Insert new entry into SHA subtree.
 		 */
 		if (sha_de == NULL) {
-			sha_de = calloc(sizeof(*sha_de), 1);
+			sha_de = calloc(1, sizeof(*sha_de));
 			sha_de->leaf = *scan_leaf;
 			memcpy(sha_de->sha_hash, temp.sha_hash,
 			       SHA256_DIGEST_LENGTH);
@@ -719,7 +719,7 @@ crc_failure:
 		 * candidate into Pass2 list and return - keep both trees
 		 * unmodified.
 		 */
-		sha_de = calloc(sizeof(*sha_de), 1);
+		sha_de = calloc(1, sizeof(*sha_de));
 		sha_de->leaf = de->leaf;
 		sha_de->ref_blks = de->u.de.ref_blks;
 		sha_de->ref_size = de->u.de.ref_size;
@@ -760,7 +760,7 @@ crc_failure:
 			 */
 			goto sha256_failure;
 
-		sha_de = calloc(sizeof(*sha_de), 1);
+		sha_de = calloc(1, sizeof(*sha_de));
 		sha_de->leaf = *scan_leaf;
 		memcpy(sha_de->sha_hash, temp.sha_hash, SHA256_DIGEST_LENGTH);
 		RB_INSERT(sha_dedup_entry_rb_tree, &de->u.fict_root, sha_de);
@@ -784,7 +784,7 @@ pass2_insert:
 	 * terminate_early
 	 */
 	if ((flags & DEDUP_PASS2) == 0) {
-		pass2_de = calloc(sizeof(*pass2_de), 1);
+		pass2_de = calloc(1, sizeof(*pass2_de));
 		pass2_de->leaf = *scan_leaf;
 		STAILQ_INSERT_TAIL(&pass2_dedup_queue, pass2_de, sq_entry);
 		dedup_skipped_size += scan_leaf->data_len;

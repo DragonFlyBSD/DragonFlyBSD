@@ -893,7 +893,7 @@ add_bigblock_entry(hammer_off_t offset,
 {
 	bigblock_t b;
 
-	b = calloc(sizeof(*b), 1);
+	b = calloc(1, sizeof(*b));
 	b->phys_offset = hammer_xlate_to_zone2(offset);
 	assert((b->phys_offset & HAMMER_BIGBLOCK_MASK64) == 0);
 	bcopy(layer1, &b->layer1, sizeof(*layer1));
