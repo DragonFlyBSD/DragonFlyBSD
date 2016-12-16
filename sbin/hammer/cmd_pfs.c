@@ -375,12 +375,8 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		printf("pfs-destroy of PFS#%d succeeded!\n", pfs.pfs_id);
 		linkpath = getlink(av[0]);
 		if (linkpath) {
-			if (remove(linkpath) < 0) {
-				fprintf(stderr,
-					"Unable to remove softlink %s: %s\n",
-					linkpath, strerror(errno));
-					/* exit status 0 anyway */
-			}
+			if (remove(linkpath) < 0)
+				err(1, "Unable to remove softlink %s", linkpath);
 			free(linkpath);
 		}
 	} else {
@@ -412,8 +408,8 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 		printf("pfs-upgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
 	} else {
-		fprintf(stderr, "pfs-upgrade of PFS#%d (%s) failed: %s\n",
-			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
+		err(1, "pfs-upgrade of PFS#%d (%s) failed",
+			pfs.pfs_id, pfs.ondisk->label);
 	}
 	relpfs(fd, &pfs);
 }
@@ -438,8 +434,8 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 		printf("pfs-downgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
 	} else {
-		fprintf(stderr, "pfs-downgrade of PFS#%d (%s) failed: %s\n",
-			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
+		err(1, "pfs-downgrade of PFS#%d (%s) failed",
+			pfs.pfs_id, pfs.ondisk->label);
 	}
 	relpfs(fd, &pfs);
 }
