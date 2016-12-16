@@ -178,4 +178,7 @@ void hammer_add_zone_stat_layer2(struct zone_stat *stats,
 			hammer_blockmap_layer2_t layer2);
 void hammer_print_zone_stat(const struct zone_stat *stats);
 
+#define hwarn(format, args...)	warn("WARNING: "format,## args)
+#define hwarnx(format, args...)	warnx("WARNING: "format,## args)
+
 #endif /* !HAMMER_UTIL_H_ */

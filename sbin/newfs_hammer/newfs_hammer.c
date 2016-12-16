@@ -140,8 +140,7 @@ main(int ac, char **av)
 	nvols = ac;
 
 	if (label == NULL) {
-		fprintf(stderr,
-			"newfs_hammer: A filesystem label must be specified\n");
+		hwarnx("A filesystem label must be specified");
 		usage(1);
 	}
 
@@ -152,18 +151,13 @@ main(int ac, char **av)
 				 &HammerVersion, &olen, NULL, 0) == 0) {
 			if (HammerVersion >= HAMMER_VOL_VERSION_WIP) {
 				HammerVersion = HAMMER_VOL_VERSION_WIP - 1;
-				fprintf(stderr,
-					"newfs_hammer: WARNING: HAMMER VFS "
-					"supports higher version than I "
-					"understand,\n"
-					"using version %d\n",
+				hwarn("HAMMER VFS supports higher version than "
+					"I understand, using version %d",
 					HammerVersion);
 			}
 		} else {
-			fprintf(stderr,
-				"newfs_hammer: WARNING: HAMMER VFS not "
-				"loaded, cannot get version info.\n"
-				"Using version %d\n",
+			hwarn("HAMMER VFS not loaded, cannot get version info, "
+				"using version %d",
 				HAMMER_VOL_VERSION_DEFAULT);
 		}
 	}
@@ -322,9 +316,7 @@ test_header_junk_size(int64_t size)
 			errx(1, "The minimum header junk size is %s",
 				sizetostr(HAMMER_MIN_VOL_JUNK));
 		} else {
-			fprintf(stderr,
-				"WARNING: you have specified "
-				"header junk size less than %s.\n",
+			hwarnx("You have specified header junk size less than %s",
 				sizetostr(HAMMER_MIN_VOL_JUNK));
 		}
 	} else if (size > HAMMER_MAX_VOL_JUNK) {
@@ -341,9 +333,7 @@ test_boot_area_size(int64_t size)
 			errx(1, "The minimum boot area size is %s",
 				sizetostr(HAMMER_BOOT_MINBYTES));
 		} else {
-			fprintf(stderr,
-				"WARNING: you have specified "
-				"boot area size less than %s.\n",
+			hwarnx("You have specified boot area size less than %s",
 				sizetostr(HAMMER_BOOT_MINBYTES));
 		}
 	} else if (size > HAMMER_BOOT_MAXBYTES) {
@@ -360,9 +350,7 @@ test_memory_log_size(int64_t size)
 			errx(1, "The minimum memory log size is %s",
 				sizetostr(HAMMER_MEM_MINBYTES));
 		} else {
-			fprintf(stderr,
-				"WARNING: you have specified "
-				"memory log size less than %s.\n",
+			hwarnx("You have specified memory log size less than %s",
 				sizetostr(HAMMER_MEM_MINBYTES));
 		}
 	} else if (size > HAMMER_MEM_MAXBYTES) {
@@ -384,10 +372,8 @@ test_undo_buffer_size(int64_t size)
 			errx(1, "The minimum UNDO/REDO FIFO size is %s",
 				sizetostr(minbuf));
 		} else {
-			fprintf(stderr,
-				"WARNING: you have specified an "
-				"UNDO/REDO FIFO size less than %s,\n"
-				"which may lead to VFS panics.\n",
+			hwarnx("You have specified an UNDO/REDO FIFO size less "
+				"than %s, which may lead to VFS panics",
 				sizetostr(minbuf));
 		}
 	} else if (size > maxbuf) {
@@ -486,12 +472,11 @@ trim_volume(struct volume_info *vol)
 	off_t ioarg[2];
 
 	if (strcmp(vol->type, "DEVICE")) {
-		fprintf(stderr, "Cannot TRIM regular file %s\n", vol->name);
+		hwarnx("Cannot TRIM regular file %s", vol->name);
 		return(1);
 	}
 	if (strncmp(vol->name, "/dev/da", 7)) {
-		fprintf(stderr, "%s does not support the TRIM command\n",
-			vol->name);
+		hwarnx("%s does not support the TRIM command", vol->name);
 		return(1);
 	}
 
@@ -505,13 +490,13 @@ trim_volume(struct volume_info *vol)
 	olen = sizeof(trim_enabled);
 
 	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) == -1) {
-		fprintf(stderr, "%s (%s) does not support the TRIM command\n",
+		hwarnx("%s (%s) does not support the TRIM command",
 			vol->name, sysctl_name);
 		return(1);
 	}
 	if (!trim_enabled) {
-		fprintf(stderr, "Erase device option selected, but sysctl (%s) "
-			"is not enabled\n", sysctl_name);
+		hwarnx("Erase device option selected, but sysctl (%s) "
+			"is not enabled", sysctl_name);
 		return(1);
 	}
 
