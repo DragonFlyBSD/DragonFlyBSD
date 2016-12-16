@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 31, 2016
+.Dd December 16, 2016
 .Dt NEWFS_HAMMER 8
 .Os
 .Sh NAME
@@ -65,7 +65,8 @@ file system is built on.
 The first
 .Ar special
 specified becomes the
-.Ar root-volume .
+.Ar root-volume
+with volume# 0.
 .Nm HAMMER
 file systems are sector-size agnostic, however the
 .Dx
