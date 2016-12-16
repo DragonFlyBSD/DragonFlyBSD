@@ -106,33 +106,31 @@ void
 hammer_cache_flush(void)
 {
 	struct cache_info *cache;
-	struct cache_info *p = NULL;
-	int target;
+	struct cache_info *first = NULL;
 	int count = 0;
 
 	if (CacheUse >= CacheMax) {
-		target = CacheMax / 2;
 		while ((cache = TAILQ_FIRST(&CacheList)) != NULL) {
-			if (cache == p)
-				break;  /* seen this before */
-			++count;
+			if (cache == first)
+				break; /* seen this ref'd before */
+
 			if (cache->refs) {
-				if (p == NULL)
-					p = cache;
+				if (first == NULL)
+					first = cache;
 				hammer_cache_used(cache);
+				count++;
 				continue;
 			}
 			if (count >= (CacheUse / HAMMER_BUFSIZE)) {
 				CacheMax += HAMMER_BUFSIZE * 512;
-				target = CacheMax / 2;
-				count = 1;
+				count = 0;
 			}
+
 			cache->refs = 1;
 			cache->delete = 1;
-			--count;
 			rel_buffer((struct buffer_info*)cache);
 
-			if (CacheUse < target)
+			if (CacheUse < CacheMax / 2)
 				break;
 		}
 	}
