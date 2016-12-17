@@ -37,7 +37,8 @@ vmap(struct vm_page **pages, unsigned int count,
 	size_t size;
 
 	size = count * PAGE_SIZE;
-	off = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
+	off = kmem_alloc_nofault(&kernel_map, size,
+				 VM_SUBSYS_DRM_VMAP, PAGE_SIZE);
 	if (off == 0)
 		return (NULL);
 

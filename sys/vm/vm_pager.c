@@ -232,10 +232,12 @@ vm_pager_bufferinit(void *dummy __unused)
 	/*
 	 * Reserve KVM space for pbuf data.
 	 */
-	swapbkva_mem = kmem_alloc_pageable(&pager_map, nswbuf_mem * MAXPHYS);
+	swapbkva_mem = kmem_alloc_pageable(&pager_map, nswbuf_mem * MAXPHYS,
+					   VM_SUBSYS_BUFDATA);
 	if (!swapbkva_mem)
 		panic("Not enough pager_map VM space for physical buffers");
-	swapbkva_kva = kmem_alloc_pageable(&pager_map, nswbuf_kva * MAXPHYS);
+	swapbkva_kva = kmem_alloc_pageable(&pager_map, nswbuf_kva * MAXPHYS,
+					   VM_SUBSYS_BUFDATA);
 	if (!swapbkva_kva)
 		panic("Not enough pager_map VM space for physical buffers");
 
@@ -315,6 +317,7 @@ vm_pager_bufferinit(void *dummy __unused)
 	nswbuf_raw = nbuf * 2;
 	swbuf_raw = (void *)kmem_alloc3(&kernel_map,
 				round_page(nswbuf_raw * sizeof(struct buf)),
+				VM_SUBSYS_BUFDATA,
 				KM_NOTLBSYNC);
 	smp_invltlb();
 	bp = swbuf_raw;

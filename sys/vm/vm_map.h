@@ -132,6 +132,45 @@ union vm_map_aux {
 };
 
 /*
+ * vm_map_entry identifiers, used as a debugging aid
+ */
+typedef enum {
+	VM_SUBSYS_UNKNOWN,
+	VM_SUBSYS_KMALLOC,
+	VM_SUBSYS_STACK,
+	VM_SUBSYS_IMGACT,
+	VM_SUBSYS_EFI,
+	VM_SUBSYS_RESERVED,
+	VM_SUBSYS_INIT,
+	VM_SUBSYS_PIPE,
+	VM_SUBSYS_PROC,
+	VM_SUBSYS_SHMEM,
+	VM_SUBSYS_SYSMAP,
+	VM_SUBSYS_MMAP,
+	VM_SUBSYS_BRK,
+	VM_SUBSYS_BOGUS,
+	VM_SUBSYS_BUF,
+	VM_SUBSYS_BUFDATA,
+	VM_SUBSYS_GD,
+	VM_SUBSYS_IPIQ,
+	VM_SUBSYS_PVENTRY,
+	VM_SUBSYS_PML4,
+	VM_SUBSYS_MAPDEV,
+	VM_SUBSYS_ZALLOC,
+
+	VM_SUBSYS_DM,
+	VM_SUBSYS_CONTIG,
+	VM_SUBSYS_DRM,
+	VM_SUBSYS_DRM_GEM,
+	VM_SUBSYS_DRM_SCAT,
+	VM_SUBSYS_DRM_VMAP,
+	VM_SUBSYS_DRM_TTM,
+	VM_SUBSYS_HAMMER,
+
+	VM_SUBSYS_LIMIT		/* end of list */
+} vm_subsys_t;
+
+/*
  *	Address map entries consist of start and end addresses,
  *	a VM object (or sharing map) and offset into that object,
  *	and user-exported inheritance and protection information.
@@ -158,6 +197,7 @@ struct vm_map_entry {
 	vm_prot_t max_protection;	/* maximum protection */
 	vm_inherit_t inheritance;	/* inheritance */
 	int wired_count;		/* can be paged if = 0 */
+	vm_subsys_t id;			/* subsystem id */
 };
 
 #define MAP_ENTRY_NOSYNC		0x0001
@@ -535,8 +575,8 @@ vm_map_t vm_map_create (vm_map_t, struct pmap *, vm_offset_t, vm_offset_t);
 int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t, int *);
 int vm_map_find (vm_map_t, void *, void *,
 		 vm_ooffset_t, vm_offset_t *, vm_size_t,
-		 vm_size_t,
-		 boolean_t, vm_maptype_t,
+		 vm_size_t, boolean_t,
+		 vm_maptype_t, vm_subsys_t id,
 		 vm_prot_t, vm_prot_t, int);
 int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_size_t,
 		      int, vm_offset_t *);
@@ -545,7 +585,7 @@ int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t, pmap_t);
 int vm_map_insert (vm_map_t, int *, void *, void *,
 		   vm_ooffset_t, vm_offset_t, vm_offset_t,
-		   vm_maptype_t,
+		   vm_maptype_t, vm_subsys_t id,
 		   vm_prot_t, vm_prot_t, int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_object_t *,
     vm_pindex_t *, vm_prot_t *, boolean_t *);

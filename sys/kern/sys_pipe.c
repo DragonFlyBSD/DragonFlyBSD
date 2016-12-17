@@ -346,8 +346,8 @@ pipespace(struct pipe *cpipe, int size)
 
 		error = vm_map_find(&kernel_map, object, NULL,
 				    0, (vm_offset_t *)&buffer, size,
-				    PAGE_SIZE,
-				    1, VM_MAPTYPE_NORMAL,
+				    PAGE_SIZE, TRUE,
+				    VM_MAPTYPE_NORMAL, VM_SUBSYS_PIPE,
 				    VM_PROT_ALL, VM_PROT_ALL, 0);
 
 		if (error != KERN_SUCCESS) {

@@ -396,8 +396,7 @@ swap_pager_swap_init(void)
 			"SWAPMETA", 
 			sizeof(struct swblock), 
 			n,
-			ZONE_INTERRUPT, 
-			1);
+			ZONE_INTERRUPT);
 		if (swap_zone != NULL)
 			break;
 		/*

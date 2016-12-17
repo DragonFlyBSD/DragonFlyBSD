@@ -244,7 +244,7 @@ static long zone_kmem_kvaspace;
  */
 int
 zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
-	int nentries, int flags, int zalloc)
+	int nentries, int flags)
 {
 	size_t totsize;
 
@@ -291,7 +291,8 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		totsize = round_page((size_t)z->zsize * nentries);
 		atomic_add_long(&zone_kmem_kvaspace, totsize);
 
-		z->zkva = kmem_alloc_pageable(&kernel_map, totsize);
+		z->zkva = kmem_alloc_pageable(&kernel_map, totsize,
+					      VM_SUBSYS_ZALLOC);
 		if (z->zkva == 0) {
 			LIST_REMOVE(z, zlink);
 			return 0;
@@ -320,10 +321,11 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		z->zfreemin = PAGE_SIZE / z->zsize;
 
 	z->zpagecount = 0;
-	if (zalloc)
-		z->zalloc = zalloc;
-	else
-		z->zalloc = 1;
+
+	/*
+	 * Reduce kernel_map spam by allocating in chunks of 4 pages.
+	 */
+	z->zalloc = 4;
 
 	/*
 	 * Populate the interrrupt zone at creation time rather than
@@ -349,7 +351,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
  * No requirements.
  */
 vm_zone_t
-zinit(char *name, int size, int nentries, int flags, int zalloc)
+zinit(char *name, int size, int nentries, int flags)
 {
 	vm_zone_t z;
 
@@ -359,7 +361,7 @@ zinit(char *name, int size, int nentries, int flags, int zalloc)
 
 	z->zflags = 0;
 	if (zinitna(z, NULL, name, size, nentries,
-	            flags & ~ZONE_DESTROYABLE, zalloc) == 0) {
+	            flags & ~ZONE_DESTROYABLE) == 0) {
 		kfree(z, M_ZONE);
 		return NULL;
 	}
@@ -467,7 +469,7 @@ zdestroy(vm_zone_t z)
 		vm_object_drop(z->zobj);
 		atomic_subtract_int(&zone_kmem_pages, z->zpagecount);
 	} else {
-		for (i=0; i < z->zkmcur; i++) {
+		for (i = 0; i < z->zkmcur; i++) {
 			kmem_free(&kernel_map, z->zkmvec[i],
 				  (size_t)z->zalloc * PAGE_SIZE);
 			atomic_subtract_int(&zone_kern_pages, z->zalloc);
@@ -564,11 +566,12 @@ zget(vm_zone_t z)
 		 */
 		nbytes = (size_t)z->zalloc * PAGE_SIZE;
 
-		item = (void *)kmem_alloc3(&kernel_map, nbytes, KM_KRESERVE);
+		item = (void *)kmem_alloc3(&kernel_map, nbytes,
+					   VM_SUBSYS_ZALLOC, KM_KRESERVE);
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {
-			zone_kern_pages += z->zalloc;	/* not MP-safe XXX */
+			atomic_add_int(&zone_kern_pages, z->zalloc);
 			bzero(item, nbytes);
 		} else {
 			nbytes = 0;
@@ -580,11 +583,12 @@ zget(vm_zone_t z)
 		 */
 		nbytes = (size_t)z->zalloc * PAGE_SIZE;
 
-		item = (void *)kmem_alloc3(&kernel_map, nbytes, 0);
+		item = (void *)kmem_alloc3(&kernel_map, nbytes,
+					   VM_SUBSYS_ZALLOC, 0);
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {
-			zone_kern_pages += z->zalloc;	/* not MP-safe XXX */
+			atomic_add_int(&zone_kern_pages, z->zalloc);
 			bzero(item, nbytes);
 
 			if (z->zflags & ZONE_DESTROYABLE) {

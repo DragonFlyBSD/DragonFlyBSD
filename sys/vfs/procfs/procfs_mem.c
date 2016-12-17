@@ -104,7 +104,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	if (writing)
 		reqprot |= VM_PROT_WRITE | VM_PROT_OVERRIDE_WRITE;
 
-	kva = kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
+	kva = kmem_alloc_pageable(&kernel_map, PAGE_SIZE, VM_SUBSYS_PROC);
 
 	/*
 	 * Only map in one page at a time.  We don't have to, but it

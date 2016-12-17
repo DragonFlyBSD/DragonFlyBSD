@@ -168,9 +168,15 @@ cpu_startup(void *dummy)
 	/*
 	 * Allocate memory for the buffer cache
 	 */
-	buf = (void *)kmem_alloc(&kernel_map, nbuf * sizeof(struct buf));
-	swbuf_mem = (void *)kmem_alloc(&kernel_map, nswbuf_mem * sizeof(struct buf));
-	swbuf_kva = (void *)kmem_alloc(&kernel_map, nswbuf_kva * sizeof(struct buf));
+	buf = (void *)kmem_alloc(&kernel_map,
+				 nbuf * sizeof(struct buf),
+				 VM_SUBSYS_BUF);
+	swbuf_mem = (void *)kmem_alloc(&kernel_map,
+				       nswbuf_mem * sizeof(struct buf),
+				       VM_SUBSYS_BUF);
+	swbuf_kva = (void *)kmem_alloc(&kernel_map,
+				       nswbuf_kva * sizeof(struct buf),
+				       VM_SUBSYS_BUF);
 
 #ifdef DIRECTIO
         ffs_rawread_setup();

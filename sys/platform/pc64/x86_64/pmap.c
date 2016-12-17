@@ -1107,7 +1107,8 @@ pmap_init(void)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
 	pvinit = (void *)kmem_alloc(&kernel_map,
-				    initial_pvs * sizeof (struct pv_entry));
+				    initial_pvs * sizeof (struct pv_entry),
+				    VM_SUBSYS_PVENTRY);
 	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry),
 		  pvinit, initial_pvs);
 
@@ -1140,7 +1141,7 @@ pmap_init2(void)
 	if (entry_max <= 0)
 		entry_max = 1;
 
-	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT, 1);
+	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT);
 }
 
 /*
@@ -1759,7 +1760,9 @@ pmap_pinit(struct pmap *pmap)
 	 */
 	if (pmap->pm_pml4 == NULL) {
 		pmap->pm_pml4 =
-		    (pml4_entry_t *)kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
+		    (pml4_entry_t *)kmem_alloc_pageable(&kernel_map,
+							PAGE_SIZE,
+							VM_SUBSYS_PML4);
 	}
 
 	/*
@@ -5029,7 +5032,7 @@ pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
 	offset = pa & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 
-	va = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
+	va = kmem_alloc_nofault(&kernel_map, size, VM_SUBSYS_MAPDEV, PAGE_SIZE);
 	if (va == 0)
 		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
 

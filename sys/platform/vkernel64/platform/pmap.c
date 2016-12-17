@@ -648,8 +648,10 @@ pmap_init(void)
 	if (initial_pvs < MINPV)
 		initial_pvs = MINPV;
 	pvzone = &pvzone_store;
-	pvinit = (struct pv_entry *) kmem_alloc(&kernel_map,
-		initial_pvs * sizeof (struct pv_entry));
+	pvinit = (struct pv_entry *)
+		kmem_alloc(&kernel_map,
+			   initial_pvs * sizeof (struct pv_entry),
+			   VM_SUBSYS_PVENTRY);
 	zbootinit(pvzone, "PV ENTRY", sizeof (struct pv_entry), pvinit,
 		initial_pvs);
 
@@ -673,7 +675,7 @@ pmap_init2(void)
 	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
 	TUNABLE_INT_FETCH("vm.pmap.pv_entries", &pv_entry_max);
 	pv_entry_high_water = 9 * (pv_entry_max / 10);
-	zinitna(pvzone, &pvzone_obj, NULL, 0, pv_entry_max, ZONE_INTERRUPT, 1);
+	zinitna(pvzone, &pvzone_obj, NULL, 0, pv_entry_max, ZONE_INTERRUPT);
 }
 
 
@@ -1212,8 +1214,9 @@ pmap_pinit(struct pmap *pmap)
 	 * page directory table.
 	 */
 	if (pmap->pm_pml4 == NULL) {
-		pmap->pm_pml4 =
-		    (pml4_entry_t *)kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
+		pmap->pm_pml4 = (pml4_entry_t *)
+			kmem_alloc_pageable(&kernel_map, PAGE_SIZE,
+					    VM_SUBSYS_PML4);
 	}
 
 	/*

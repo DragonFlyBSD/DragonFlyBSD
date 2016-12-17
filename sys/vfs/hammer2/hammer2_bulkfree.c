@@ -307,7 +307,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	size = (bfi->size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
 	cbinfo.hmp = hmp;
-	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size);
+	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size, VM_SUBSYS_HAMMER);
 	cbinfo.saved_mirror_tid = hmp->voldata.mirror_tid;
 
 	cbinfo.dedup = kmalloc(sizeof(*cbinfo.dedup) * HAMMER2_DEDUP_HEUR_SIZE,

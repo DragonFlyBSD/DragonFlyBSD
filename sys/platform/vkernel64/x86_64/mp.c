@@ -173,7 +173,8 @@ mp_start(void)
 	 * cpu0 initialization
 	 */
 	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size,
+					    VM_SUBSYS_IPIQ);
 	bzero(mycpu->gd_ipiq, ipiq_size);
 
 	/*
@@ -439,7 +440,8 @@ start_all_aps(u_int boot_addr)
 #endif
 
 		ipiq_size = sizeof(struct lwkt_ipiq) * (mp_naps + 1);
-                gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+                gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size,
+						    VM_SUBSYS_IPIQ);
                 bzero(gd->mi.gd_ipiq, ipiq_size);
 
                 /*

@@ -536,8 +536,11 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 			ttm_io_prot(mem->placement);
 		map->bo_kmap_type = ttm_bo_map_vmap;
 		map->num_pages = num_pages;
-		map->virtual = (void *)kmem_alloc_nofault(&kernel_map,
-		    num_pages * PAGE_SIZE, PAGE_SIZE);
+		map->virtual =
+			(void *)kmem_alloc_nofault(&kernel_map,
+						   num_pages * PAGE_SIZE,
+						   VM_SUBSYS_DRM_TTM,
+						   PAGE_SIZE);
 		if (map->virtual != NULL) {
 			for (i = 0; i < num_pages; i++) {
 				/* XXXKIB hack */

@@ -159,7 +159,8 @@ void
 rfcomm_init(void)
 {
 	rfcomm_credit_pool = zinit("rfcomm_credit",
-	    sizeof(struct rfcomm_credit), 0, 0, 0);
+				   sizeof(struct rfcomm_credit),
+				   0, 0);
 }
 
 /*

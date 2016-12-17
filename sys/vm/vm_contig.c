@@ -482,7 +482,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 	if (size == 0)
 		panic("vm_contig_pg_kmap: size must not be 0");
 	size = round_page(size);
-	addr = kmem_alloc_pageable(&kernel_map, size);
+	addr = kmem_alloc_pageable(&kernel_map, size, VM_SUBSYS_CONTIG);
 	if (addr) {
 		pa = VM_PAGE_TO_PHYS(&pga[start]);
 		for (offset = 0; offset < size; offset += PAGE_SIZE)

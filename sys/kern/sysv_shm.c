@@ -337,7 +337,7 @@ again:
 			 0, &attach_va, size,
 			 align,
 			 ((flags & MAP_FIXED) ? 0 : 1), 
-			 VM_MAPTYPE_NORMAL,
+			 VM_MAPTYPE_NORMAL, VM_SUBSYS_SHMEM,
 			 prot, prot, 0);
 	vm_object_drop(shm_handle->shm_object);
 	if (rv != KERN_SUCCESS) {

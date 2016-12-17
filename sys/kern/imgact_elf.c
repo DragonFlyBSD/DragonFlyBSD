@@ -319,8 +319,8 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 				      map_addr,		/* virtual start */
 				      map_addr + map_len,/* virtual end */
 				      VM_MAPTYPE_NORMAL,
-				      prot, VM_PROT_ALL,
-				      cow);
+				      VM_SUBSYS_IMGACT,
+				      prot, VM_PROT_ALL, cow);
 		vm_map_unlock(&vmspace->vm_map);
 		vm_map_entry_release(count);
 
@@ -361,8 +361,8 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 					map_addr,
 					map_addr + map_len,
 					VM_MAPTYPE_NORMAL,
-					VM_PROT_ALL, VM_PROT_ALL,
-					0);
+					VM_SUBSYS_IMGACT,
+					VM_PROT_ALL, VM_PROT_ALL, 0);
 		vm_map_unlock(&vmspace->vm_map);
 		vm_map_entry_release(count);
 		if (rv != KERN_SUCCESS) {

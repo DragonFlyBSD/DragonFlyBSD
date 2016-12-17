@@ -74,8 +74,10 @@ int drm_legacy_sg_alloc(struct drm_device *dev, void *data,
 	entry->busaddr = kmalloc(entry->pages * sizeof(*entry->busaddr),
 	    M_DRM, M_WAITOK | M_ZERO);
 
-	entry->vaddr = kmem_alloc_attr(&kernel_map, size, M_WAITOK | M_ZERO,
-	    0, BUS_SPACE_MAXADDR_32BIT, VM_MEMATTR_WRITE_COMBINING);
+	entry->vaddr = kmem_alloc_attr(&kernel_map, size,
+				       VM_SUBSYS_DRM_SCAT, M_WAITOK | M_ZERO,
+				       0, BUS_SPACE_MAXADDR_32BIT,
+				       VM_MEMATTR_WRITE_COMBINING);
 	if (entry->vaddr == 0) {
 		drm_sg_cleanup(entry);
 		return (-ENOMEM);

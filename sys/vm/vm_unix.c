@@ -114,8 +114,8 @@ sys_obreak(struct obreak_args *uap)
 		}
 		rv = vm_map_find(&vm->vm_map, NULL, NULL,
 				 0, &old, diff,
-				 PAGE_SIZE,
-				 FALSE, VM_MAPTYPE_NORMAL,
+				 PAGE_SIZE, FALSE,
+				 VM_MAPTYPE_NORMAL, VM_SUBSYS_BRK,
 				 VM_PROT_ALL, VM_PROT_ALL, 0);
 		if (rv != KERN_SUCCESS) {
 			error = ENOMEM;

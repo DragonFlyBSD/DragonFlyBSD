@@ -1745,7 +1745,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 			 args->offset, &addr, args->size,
 			 256 * 1024, /* align */
 			 TRUE, /* fitit */
-			 VM_MAPTYPE_NORMAL, /* maptype */
+			 VM_MAPTYPE_NORMAL, VM_SUBSYS_DRM_GEM,
 			 VM_PROT_READ | VM_PROT_WRITE, /* prot */
 			 VM_PROT_READ | VM_PROT_WRITE, /* max */
 			 MAP_SHARED /* cow */);

@@ -1423,8 +1423,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	if (uksmap) {
 		rv = vm_map_find(map, uksmap, vp->v_rdev,
 				 foff, addr, size,
-				 align,
-				 fitit, VM_MAPTYPE_UKSMAP,
+				 align, fitit,
+				 VM_MAPTYPE_UKSMAP, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
 	} else if (flags & MAP_STACK) {
 		rv = vm_map_stack(map, *addr, size, flags,
@@ -1432,14 +1432,14 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	} else if (flags & MAP_VPAGETABLE) {
 		rv = vm_map_find(map, object, NULL,
 				 foff, addr, size,
-				 align,
-				 fitit, VM_MAPTYPE_VPAGETABLE,
+				 align, fitit,
+				 VM_MAPTYPE_VPAGETABLE, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
 	} else {
 		rv = vm_map_find(map, object, NULL,
 				 foff, addr, size,
-				 align,
-				 fitit, VM_MAPTYPE_NORMAL,
+				 align, fitit,
+				 VM_MAPTYPE_NORMAL, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
 	}
 

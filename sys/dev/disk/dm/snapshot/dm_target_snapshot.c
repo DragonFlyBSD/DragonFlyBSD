@@ -125,8 +125,9 @@ dm_target_snapshot_init(dm_table_entry_t *table_en, int argc, char **argv)
 	if ((dmp_snap = dm_pdev_insert(argv[0])) == NULL)
 		return ENOENT;
 
-	if ((tsc = kmem_alloc(sizeof(dm_target_snapshot_config_t), KM_NOSLEEP))
-	    == NULL)
+	tsc = kmem_alloc(sizeof(dm_target_snapshot_config_t),
+			 VM_SUBSYS_DM, KM_NOSLEEP);
+	if (tsc == NULL)
 		return 1;
 
 	tsc->tsc_persistent_dev = 0;
@@ -271,8 +272,9 @@ dm_target_snapshot_orig_init(dm_table_entry_t *table_en, int argc, char **argv)
 	if ((dmp_real = dm_pdev_insert(argv[0])) == NULL)
 		return ENOENT;
 
-	if ((tsoc = kmem_alloc(sizeof(dm_target_snapshot_origin_config_t), KM_NOSLEEP))
-	    == NULL)
+	tsoc = kmem_alloc(sizeof(dm_target_snapshot_origin_config_t),
+			  VM_SUBSYS_DM, KM_NOSLEEP);
+	if (tsoc == NULL)
 		return 1;
 
 	tsoc->tsoc_real_dev = dmp_real;
@@ -308,7 +310,8 @@ dm_target_snapshot_orig_table(void *target_config)
 
 	kprintf("real_dev name %s\n", tsoc->tsoc_real_dev->name);
 
-	if ((params = kmem_alloc(prm_len, KM_NOSLEEP)) == NULL)
+	params = kmem_alloc(prm_len, VM_SUBSYS_DM, KM_NOSLEEP);
+	if (params == NULL)
 		return NULL;
 
 	kprintf("%s\n", tsoc->tsoc_real_dev->name);

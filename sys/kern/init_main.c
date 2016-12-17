@@ -588,8 +588,8 @@ start_init(void *dummy, struct trapframe *frame)
 	addr = trunc_page(USRSTACK - PAGE_SIZE);
 	error = vm_map_find(&p->p_vmspace->vm_map, NULL, NULL,
 			    0, &addr, PAGE_SIZE,
-			    PAGE_SIZE,
-			    FALSE, VM_MAPTYPE_NORMAL,
+			    PAGE_SIZE, FALSE,
+			    VM_MAPTYPE_NORMAL, VM_SUBSYS_INIT,
 			    VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (error)
 		panic("init: couldn't allocate argument space");

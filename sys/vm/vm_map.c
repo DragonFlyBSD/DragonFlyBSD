@@ -198,8 +198,8 @@ vm_init2(void)
 						vmspace_ctor, vmspace_dtor,
 						NULL);
 	zinitna(mapentzone, &mapentobj, NULL, 0, 0, 
-		ZONE_USE_RESERVE | ZONE_SPECIAL, 1);
-	zinitna(mapzone, &mapobj, NULL, 0, 0, 0, 1);
+		ZONE_USE_RESERVE | ZONE_SPECIAL);
+	zinitna(mapzone, &mapobj, NULL, 0, 0, 0);
 	pmap_init2();
 	vm_object_init2();
 }
@@ -986,7 +986,7 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
 int
 vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	      vm_ooffset_t offset, vm_offset_t start, vm_offset_t end,
-	      vm_maptype_t maptype,
+	      vm_maptype_t maptype, vm_subsys_t id,
 	      vm_prot_t prot, vm_prot_t max, int cow)
 {
 	vm_map_entry_t new_entry;
@@ -1070,6 +1070,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		 (prev_entry->eflags == protoeflags) &&
 		 (prev_entry->end == start) &&
 		 (prev_entry->wired_count == 0) &&
+		 (prev_entry->id == id) &&
 		 prev_entry->maptype == maptype &&
 		 maptype == VM_MAPTYPE_NORMAL &&
 		 ((prev_entry->object.vm_object == NULL) ||
@@ -1125,6 +1126,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	new_entry = vm_map_entry_create(map, countp);
 	new_entry->start = start;
 	new_entry->end = end;
+	new_entry->id = id;
 
 	new_entry->maptype = maptype;
 	new_entry->eflags = protoeflags;
@@ -1337,11 +1339,9 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 int
 vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 	    vm_ooffset_t offset, vm_offset_t *addr,
-	    vm_size_t length, vm_size_t align,
-	    boolean_t fitit,
-	    vm_maptype_t maptype,
-	    vm_prot_t prot, vm_prot_t max,
-	    int cow)
+	    vm_size_t length, vm_size_t align, boolean_t fitit,
+	    vm_maptype_t maptype, vm_subsys_t id,
+	    vm_prot_t prot, vm_prot_t max, int cow)
 {
 	vm_offset_t start;
 	vm_object_t object;
@@ -1371,7 +1371,7 @@ vm_map_find(vm_map_t map, void *map_object, void *map_aux,
 	}
 	result = vm_map_insert(map, &count, map_object, map_aux,
 			       offset, start, start + length,
-			       maptype, prot, max, cow);
+			       maptype, id, prot, max, cow);
 	if (object)
 		vm_object_drop(object);
 	vm_map_unlock(map);
@@ -1419,6 +1419,7 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		     (prev->protection == entry->protection) &&
 		     (prev->max_protection == entry->max_protection) &&
 		     (prev->inheritance == entry->inheritance) &&
+		     (prev->id == entry->id) &&
 		     (prev->wired_count == entry->wired_count)) {
 			if (map->first_free == prev)
 				map->first_free = entry;
@@ -1445,6 +1446,7 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		    (next->protection == entry->protection) &&
 		    (next->max_protection == entry->max_protection) &&
 		    (next->inheritance == entry->inheritance) &&
+		    (next->id == entry->id) &&
 		    (next->wired_count == entry->wired_count)) {
 			if (map->first_free == next)
 				map->first_free = entry;
@@ -3677,7 +3679,7 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 			   0, addrbos + max_ssize - init_ssize,
 	                   addrbos + max_ssize,
 			   VM_MAPTYPE_NORMAL,
-			   prot, max, cow);
+			   VM_SUBSYS_STACK, prot, max, cow);
 
 	/* Now set the avail_ssize amount */
 	if (rv == KERN_SUCCESS) {
@@ -3830,7 +3832,7 @@ Retry:
 	rv = vm_map_insert(map, &count, NULL, NULL,
 			   0, addr, stack_entry->start,
 			   VM_MAPTYPE_NORMAL,
-			   VM_PROT_ALL, VM_PROT_ALL, 0);
+			   VM_SUBSYS_STACK, VM_PROT_ALL, VM_PROT_ALL, 0);
 
 	/* Adjust the available stack space by the amount we grew. */
 	if (rv == KERN_SUCCESS) {

@@ -145,15 +145,16 @@ static void
 netbt_init(void)
 {
 	l2cap_pdu_pool = zinit("l2cap_pdu", sizeof(struct l2cap_pdu), 1,
-	    ZONE_DESTROYABLE, 1);
+			       ZONE_DESTROYABLE);
 	if (l2cap_pdu_pool == NULL)
 		goto fail;
 	l2cap_req_pool = zinit("l2cap_req", sizeof(struct l2cap_req), 1,
-	    ZONE_DESTROYABLE, 1);
+			       ZONE_DESTROYABLE);
 	if (l2cap_req_pool == NULL)
 		goto fail;
 	rfcomm_credit_pool = zinit("rfcomm_credit",
-	    sizeof(struct rfcomm_credit), 1, ZONE_DESTROYABLE, 1);
+				   sizeof(struct rfcomm_credit), 1,
+				   ZONE_DESTROYABLE);
 	if (rfcomm_credit_pool == NULL)
 		goto fail;
 	return;

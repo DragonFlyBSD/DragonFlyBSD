@@ -74,12 +74,12 @@ int swapon (struct proc *, void *, int *);
 
 int grow (struct proc *, size_t);
 int kernacc(c_caddr_t, int, int);
-vm_offset_t kmem_alloc3 (vm_map_t, vm_size_t, int flags);
-vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t, vm_size_t);
-vm_offset_t kmem_alloc_pageable (vm_map_t, vm_size_t);
-vm_offset_t kmem_alloc_wait (vm_map_t, vm_size_t);
-vm_offset_t kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags,
-	vm_paddr_t low, vm_paddr_t high, vm_memattr_t memattr);
+vm_offset_t kmem_alloc3 (vm_map_t, vm_size_t, vm_subsys_t id, int flags);
+vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t, vm_subsys_t id, vm_size_t);
+vm_offset_t kmem_alloc_pageable (vm_map_t, vm_size_t, vm_subsys_t id);
+vm_offset_t kmem_alloc_wait (vm_map_t, vm_size_t, vm_subsys_t id);
+vm_offset_t kmem_alloc_attr(vm_map_t map, vm_size_t size, vm_subsys_t id,
+	int flags, vm_paddr_t low, vm_paddr_t high, vm_memattr_t memattr);
 void kmem_free (vm_map_t, vm_offset_t, vm_size_t);
 void kmem_free_wakeup (vm_map_t, vm_offset_t, vm_size_t);
 void kmem_init (void);
@@ -114,7 +114,8 @@ void vmspace_ref (struct vmspace *);
 void vmspace_rel (struct vmspace *);
 void vmspace_relexit (struct vmspace *);
 void vmspace_exitfree (struct proc *);
-void *kmem_alloc_swapbacked(kmem_anon_desc_t *kp, vm_size_t size);
+void *kmem_alloc_swapbacked(kmem_anon_desc_t *kp, vm_size_t size,
+			vm_subsys_t id);
 void kmem_free_swapbacked(kmem_anon_desc_t *kp);
 
 struct vmspace *vmspace_fork (struct vmspace *);
@@ -127,16 +128,16 @@ void vm_object_print (/* db_expr_t */ long, boolean_t, /* db_expr_t */ long,
 
 static __inline
 vm_offset_t
-kmem_alloc (vm_map_t map, vm_size_t size)
+kmem_alloc (vm_map_t map, vm_size_t size, vm_subsys_t id)
 {
-	return(kmem_alloc3(map, size, 0));
+	return(kmem_alloc3(map, size, id, 0));
 }
 
 static __inline
 vm_offset_t
 kmem_alloc_stack (vm_map_t map, vm_size_t size)
 {
-	return(kmem_alloc3(map, size, KM_STACK));
+	return(kmem_alloc3(map, size, VM_SUBSYS_STACK, KM_STACK));
 }
 
 #endif				/* _KERNEL */

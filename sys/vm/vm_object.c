@@ -437,7 +437,7 @@ vm_object_init(void)
 void
 vm_object_init2(void)
 {
-	zinitna(obj_zone, NULL, NULL, 0, 0, ZONE_PANICFAIL, 1);
+	zinitna(obj_zone, NULL, NULL, 0, 0, ZONE_PANICFAIL);
 }
 
 /*

@@ -249,7 +249,8 @@ do_aout_hdr(struct imgact_gzip * gz)
 		error = vm_map_find(&vmspace->vm_map,
 				    NULL, NULL,
 				    0, &vmaddr, gz->bss_size, PAGE_SIZE,
-				    FALSE, VM_MAPTYPE_NORMAL,
+				    FALSE,
+				    VM_MAPTYPE_NORMAL, VM_SUBSYS_IMGACT,
 				    VM_PROT_ALL, VM_PROT_ALL, 0);
 		if (error) {
 			gz->where = __LINE__;

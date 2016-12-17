@@ -66,10 +66,9 @@ typedef struct vm_zone {
 
 
 void		zerror (int) __dead2;
-vm_zone_t	zinit (char *name, int size, int nentries, int flags,
-			   int zalloc);
+vm_zone_t	zinit (char *name, int size, int nentries, int flags);
 int		zinitna (vm_zone_t z, struct vm_object *obj, char *name,
-			     int size, int nentries, int flags, int zalloc);
+			     int size, int nentries, int flags);
 void *		zalloc (vm_zone_t z);
 void		zfree (vm_zone_t z, void *item);
 void		zbootinit (vm_zone_t z, char *name, int size, void *item,

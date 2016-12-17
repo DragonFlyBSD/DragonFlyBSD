@@ -87,8 +87,8 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	/* Find space in kernel_map for the page we're interested in */
 	rv = vm_map_find (&kernel_map, object, NULL,
 			  IDX_TO_OFF(pindex), &kva, PAGE_SIZE,
-			  PAGE_SIZE,
-			  0, VM_MAPTYPE_NORMAL,
+			  PAGE_SIZE, FALSE,
+			  VM_MAPTYPE_NORMAL, VM_SUBSYS_PROC,
 			  VM_PROT_ALL, VM_PROT_ALL, 0);
 
 	if (!rv) {
@@ -173,8 +173,8 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	/* Find space in kernel_map for the page we're interested in */
 	rv = vm_map_find (&kernel_map, object, NULL,
 			  IDX_TO_OFF(pindex), &kva, PAGE_SIZE,
-			  PAGE_SIZE,
-			  0, VM_MAPTYPE_NORMAL,
+			  PAGE_SIZE, FALSE,
+			  VM_MAPTYPE_NORMAL, VM_SUBSYS_PROC,
 			  VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (!rv) {
 		vm_object_reference XXX (object);
