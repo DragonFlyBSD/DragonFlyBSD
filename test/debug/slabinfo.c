@@ -1,7 +1,7 @@
 /*
  * SLABINFO.C
  *
- * cc -I/usr/src/sys slabinfo.c -o /usr/local/bin/slabinfo -lkvm
+ * cc -I/usr/src/sys slabinfo.c -o ~/bin/slabinfo -lkvm
  *
  * slabinfo
  *
@@ -76,7 +76,7 @@ struct nlist Nl[] = {
 int debugopt;
 int verboseopt;
 
-int slzonedump(kvm_t *kd, SLZone *kslz);
+int slzonedump(kvm_t *kd, SLZoneList *list);
 void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
 int
@@ -92,6 +92,7 @@ main(int ac, char **av)
     int totalzones;
     int totalfree;
     struct globaldata gd;
+    struct privatespace **psary;
 
     while ((ch = getopt(ac, av, "M:N:dv")) != -1) {
 	switch(ch) {
@@ -127,24 +128,28 @@ main(int ac, char **av)
     kkread(kd, Nl[1].n_value, &ncpus, sizeof(int));
     totalzones = 0;
     totalfree = 0;
+
+    psary = malloc(sizeof(void *) * ncpus);
+    kkread(kd, Nl[0].n_value, psary, sizeof(void *) * ncpus);
+
     for (i = 0; i < ncpus; ++i) {
-	kkread(kd, Nl[0].n_value + i * sizeof(struct privatespace), &gd, sizeof(gd));
+	kkread(kd, (long)psary[i], &gd, sizeof(gd));
 	printf("CPU %02d (NFreeZones=%d) {\n",
 		i, gd.gd_slab.NFreeZones);
 	totalfree += gd.gd_slab.NFreeZones;
 
 	for (j = 0; j < NZONES; ++j) {
 		printf("    Zone %02d {\n", j);
-		totalzones += slzonedump(kd, gd.gd_slab.ZoneAry[j]);
+		totalzones += slzonedump(kd, &gd.gd_slab.ZoneAry[j]);
 		printf("    }\n");
 	}
 
 	printf("    FreeZone {\n");
-	totalzones += slzonedump(kd, gd.gd_slab.FreeZones);
+	totalzones += slzonedump(kd, &gd.gd_slab.FreeZones);
 	printf("    }\n");
 
 	printf("    FreeOVZon {\n");
-	totalzones += slzonedump(kd, gd.gd_slab.FreeOvZones);
+	totalzones += slzonedump(kd, &gd.gd_slab.FreeOvZones);
 	printf("    }\n");
 
 	printf("}\n");
@@ -157,17 +162,20 @@ main(int ac, char **av)
 }
 
 int
-slzonedump(kvm_t *kd, SLZone *kslz)
+slzonedump(kvm_t *kd, SLZoneList *list)
 {
     SLZone slz;
+    SLZone *kslz;
     int count = 0;
+
+    kslz = TAILQ_FIRST(list);
 
     while (kslz) {
 	kkread(kd, (u_long)kslz, &slz, sizeof(slz));
 	printf("\t{ magic=%08x cpu=%d chunking=%d NFree=%d/%d RCnt=%d}\n",
 		slz.z_Magic, slz.z_Cpu, slz.z_ChunkSize,
 		slz.z_NFree, slz.z_NMax, slz.z_RCount);
-	kslz = slz.z_Next;
+	kslz = TAILQ_NEXT(&slz, z_Entry);
 	++count;
     }
     return(count);
