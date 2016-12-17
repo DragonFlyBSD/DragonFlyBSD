@@ -210,10 +210,8 @@ they belong to processes which are running or have run in the last 20
 seconds.
 .Pp
 .Bl -tag -width indent -compact
-.It avm
-active virtual pages
 .It fre
-size of the free list
+Approximate free and easily-freeable memory.
 .El
 .It page
 Information about page faults and paging activity.
@@ -234,8 +232,6 @@ pages paged out
 pages freed per second
 .\" .It de
 .\" anticipated short term memory shortfall
-.It sr
-pages scanned by clock algorithm, per-second
 .El
 .It disks
 Disk operations per second (this field is system dependent).
@@ -263,11 +259,11 @@ and will not randomly select other devices in the system.
 Trap/interrupt rate averages per second over last 5 seconds.
 .Pp
 .Bl -tag -width indent -compact
-.It in
+.It int
 device interrupts per interval (including clock interrupts)
-.It sy
+.It sys
 system calls per interval
-.It cs
+.It ctx
 cpu context switch rate (switches/interval)
 .El
 .It cpu

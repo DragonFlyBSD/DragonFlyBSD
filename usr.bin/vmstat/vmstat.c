@@ -596,7 +596,7 @@ printhdr(void)
 			printf(" %c%c%d ", dev_select[i].device_name[0],
 				     dev_select[i].device_name[1],
 				     dev_select[i].unit_number);
-	printf("   in    sy    cs us sy id\n");
+	printf("  int   sys   ctx us sy id\n");
 	hdrcnt = winlines - 2;
 }
 
