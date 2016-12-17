@@ -555,6 +555,13 @@ void		mbuftrackid(struct mbuf *, int);
 
 #endif
 
+static __inline void
+m_sethash(struct mbuf *m, uint16_t hash)
+{
+	m->m_flags |= M_HASH;
+	m->m_pkthdr.hash = hash;
+}
+
 /*
  * Allocate the right type of mbuf for the desired total length.
  * The mbuf returned does not necessarily cover the entire requested length.

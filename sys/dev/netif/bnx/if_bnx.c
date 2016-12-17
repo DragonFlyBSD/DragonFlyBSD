@@ -2856,11 +2856,8 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 		if (ifp->if_capenable & IFCAP_RSS) {
 			pi = bnx_rss_info(&pi0, cur_rx);
 			if (pi != NULL &&
-			    (cur_rx->bge_flags & BGE_RXBDFLAG_RSS_HASH)) {
-				m->m_flags |= M_HASH;
-				m->m_pkthdr.hash =
-				    toeplitz_hash(cur_rx->bge_hash);
-			}
+			    (cur_rx->bge_flags & BGE_RXBDFLAG_RSS_HASH))
+				m_sethash(m, toeplitz_hash(cur_rx->bge_hash));
 		}
 
 		/*

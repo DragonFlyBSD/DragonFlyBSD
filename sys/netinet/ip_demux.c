@@ -313,8 +313,7 @@ ip_hashfn(struct mbuf **mptr, int hoff)
 		break;
 	}
 back:
-	m->m_flags |= M_HASH;
-	m->m_pkthdr.hash = hash;
+	m_sethash(m, hash);
 }
 
 /*

@@ -462,8 +462,7 @@ netisr_characterize(int num, struct mbuf **mp, int hoff)
 
 	if (num < 0 || num >= NETISR_MAX) {
 		if (num == NETISR_MAX) {
-			m->m_flags |= M_HASH;
-			m->m_pkthdr.hash = 0;
+			m_sethash(m, 0);
 			return;
 		}
 		panic("Bad isr %d", num);
@@ -566,10 +565,8 @@ cpu0_ctlport(int cmd __unused, struct sockaddr *sa __unused,
 static void
 netisr_hashfn0(struct mbuf **mp, int hoff __unused)
 {
-	struct mbuf *m = *mp;
 
-	m->m_flags |= M_HASH;
-	m->m_pkthdr.hash = 0;
+	m_sethash(*mp, 0);
 }
 
 /*

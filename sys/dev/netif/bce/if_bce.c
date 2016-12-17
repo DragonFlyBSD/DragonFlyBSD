@@ -4495,9 +4495,8 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 				pi = bce_rss_pktinfo(&pi0, status, l2fhdr);
 				if (pi != NULL &&
 				    (status & L2_FHDR_STATUS_RSS_HASH)) {
-					m->m_flags |= M_HASH;
-					m->m_pkthdr.hash =
-					    toeplitz_hash(l2fhdr->l2_fhdr_hash);
+					m_sethash(m,
+					    toeplitz_hash(l2fhdr->l2_fhdr_hash));
 				}
 			}
 

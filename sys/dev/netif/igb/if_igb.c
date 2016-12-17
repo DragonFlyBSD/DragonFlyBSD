@@ -349,8 +349,7 @@ igb_rssinfo(struct mbuf *m, struct pktinfo *pi,
 		return NULL;
 	}
 
-	m->m_flags |= M_HASH;
-	m->m_pkthdr.hash = toeplitz_hash(hash);
+	m_sethash(m, toeplitz_hash(hash));
 	return pi;
 }
 
