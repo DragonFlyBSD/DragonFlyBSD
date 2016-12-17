@@ -45,6 +45,7 @@
 #include <sys/interrupt.h>
 
 #include <vm/vm_param.h>
+#include <vm/vm_zone.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -89,6 +90,8 @@ static struct nlist namelist[] = {
 	{ "", 0, 0, 0, 0 },
 };
 
+LIST_HEAD(zlist, vm_zone);
+
 struct statinfo cur, last;
 int num_devices, maxshowdevs;
 long generation;
@@ -124,7 +127,7 @@ static void cpustats(void);
 static void dointr(void);
 static void domem(void);
 static void dosum(void);
-static void dozmem(void);
+static void dozmem(u_int interval, int reps);
 static void dovmstat(u_int, int);
 static void kread(int, void *, size_t);
 static void usage(void);
@@ -138,7 +141,8 @@ static void dotimes(void); /* Not implemented */
 static void doforkst(void);
 #endif
 static void printhdr(void);
-static void devstats(void);
+static const char *formatnum(intmax_t value, int width);
+static void devstats(int dooutput);
 
 int
 main(int argc, char **argv)
@@ -283,7 +287,7 @@ main(int argc, char **argv)
 	if (todo & MEMSTAT)
 		domem();
 	if (todo & ZMEMSTAT)
-		dozmem();
+		dozmem(interval, reps);
 	if (todo & SUMSTAT)
 		dosum();
 #ifdef notyet
@@ -388,8 +392,11 @@ dovmstat(u_int interval, int reps)
 	size_t vms_size = sizeof(vms);
 	size_t vmt_size = sizeof(total);
 	int initial = 1;
+	int dooutput = 1;
 
 	signal(SIGCONT, needhdr);
+	if (reps != 0)
+		dooutput = 0;
 
 	for (hdrcnt = 1;;) {
 		if (!--hdrcnt)
@@ -453,46 +460,119 @@ dovmstat(u_int interval, int reps)
 			perror("sysctlbyname: vm.vmtotal");
 			exit(1);
 		} 
-		printf("%2ld %1ld %1ld",
-		    total.t_rq - 1, total.t_dw + total.t_pw, total.t_sw);
+		if (dooutput) {
+			printf("%3ld %2ld %2ld",
+			       total.t_rq - 1,
+			       total.t_dw + total.t_pw,
+			       total.t_sw);
+		}
 
-#define vmstat_pgtok(a)	\
-	(intmax_t)(((intmax_t)(a) * vms.v_page_size) >> 10)
 #define rate(x)		\
 	(intmax_t)(initial ? (x) : ((intmax_t)(x) * 1000 + interval / 2) \
 				   / interval)
 
-		printf(" %7jd %6jd ",
-		       vmstat_pgtok(total.t_avm),
-		       vmstat_pgtok(total.t_free));
-		printf("%4ju ",
-		       rate(vmm.v_vm_faults - ovmm.v_vm_faults));
-		printf("%3ju ",
-		       rate(vmm.v_reactivated - ovmm.v_reactivated));
-		printf("%3ju ",
-		       rate(vmm.v_swapin + vmm.v_vnodein -
-			    (ovmm.v_swapin + ovmm.v_vnodein)));
-		printf("%3ju ",
-		       rate(vmm.v_swapout + vmm.v_vnodeout -
-			    (ovmm.v_swapout + ovmm.v_vnodeout)));
-		printf("%3ju ",
-		       rate(vmm.v_tfree - ovmm.v_tfree));
-		printf("%3ju ",
-		       rate(vmm.v_pdpages - ovmm.v_pdpages));
-		devstats();
-		printf("%4ju %4ju %3ju ",
-		       rate(vmm.v_intr - ovmm.v_intr),
-		       rate(vmm.v_syscall - ovmm.v_syscall),
-		       rate(vmm.v_swtch - ovmm.v_swtch));
-		cpustats();
-		printf("\n");
-		fflush(stdout);
+		if (dooutput) {
+			printf(" %s ",
+			       formatnum((int64_t)total.t_free *
+					 vms.v_page_size, 4));
+			printf("%s ",
+			       formatnum(rate(vmm.v_vm_faults -
+					      ovmm.v_vm_faults), 5));
+			printf("%s ",
+			       formatnum(rate(vmm.v_reactivated -
+					      ovmm.v_reactivated), 4));
+			printf("%s ",
+			       formatnum(rate(vmm.v_swapin + vmm.v_vnodein -
+				      (ovmm.v_swapin + ovmm.v_vnodein)), 4));
+			printf("%s ",
+			       formatnum(rate(vmm.v_swapout + vmm.v_vnodeout -
+				    (ovmm.v_swapout + ovmm.v_vnodeout)), 4));
+			printf("%s ",
+			       formatnum(rate(vmm.v_tfree -
+					      ovmm.v_tfree), 4));
+		}
+		devstats(dooutput);
+		if (dooutput) {
+			printf("%s ",
+			       formatnum(rate(vmm.v_intr -
+					      ovmm.v_intr), 5));
+			printf("%s ",
+			       formatnum(rate(vmm.v_syscall -
+					      ovmm.v_syscall), 5));
+			printf("%s ",
+			       formatnum(rate(vmm.v_swtch -
+					      ovmm.v_swtch), 5));
+			cpustats();
+			printf("\n");
+			fflush(stdout);
+		}
 		if (reps >= 0 && --reps <= 0)
 			break;
 		ovmm = vmm;
 		usleep(interval * 1000);
 		initial = 0;
+		dooutput = 1;
 	}
+}
+
+static const char *
+formatnum(intmax_t value, int width)
+{
+	static char buf[64];
+	const char *fmt;
+	double d;
+
+	d = (double)value;
+	fmt = "n/a";
+
+	switch(width) {
+	case 4:
+		if (value < 1024) {
+			fmt = "%4.0f";
+		} else if (value < 10*1024) {
+			fmt = "%3.1fK";
+			d = d / 1024;
+		} else if (value < 1000*1024) {
+			fmt = "%3.0fK";
+			d = d / 1024;
+		} else if (value < 10*1024*1024) {
+			fmt = "%3.1fM";
+			d = d / (1024 * 1024);
+		} else if (value < 1000*1024*1024) {
+			fmt = "%3.0fM";
+			d = d / (1024 * 1024);
+		} else {
+			fmt = "%3.1fG";
+			d = d / (1024.0 * 1024.0 * 1024.0);
+		}
+		break;
+	case 5:
+		if (value < 1024) {
+			fmt = "%5.0f";
+		} else if (value < 10*1024) {
+			fmt = "%4.2fK";
+			d = d / 1024;
+		} else if (value < 1000*1024) {
+			fmt = "%4.0fK";
+			d = d / 1024;
+		} else if (value < 10*1024*1024) {
+			fmt = "%4.2fM";
+			d = d / (1024 * 1024);
+		} else if (value < 1000*1024*1024) {
+			fmt = "%4.0fM";
+			d = d / (1024 * 1024);
+		} else {
+			fmt = "%4.2fG";
+			d = d / (1024.0 * 1024.0 * 1024.0);
+		}
+		break;
+	default:
+		fprintf(stderr, "formatnum: unsupported width %d\n", width);
+		exit(1);
+		break;
+	}
+	snprintf(buf, sizeof(buf), fmt, d);
+	return buf;
 }
 
 static void
@@ -501,20 +581,22 @@ printhdr(void)
 	int i, num_shown;
 
 	num_shown = (num_selected < maxshowdevs) ? num_selected : maxshowdevs;
-	printf(" procs      memory      page%*s", 19, "");
+	printf("--procs-- ---memory-- -------paging------ ");
 	if (num_shown > 1)
-		printf(" disks %*s", num_shown * 4 - 7, "");
+		printf("--disks%.*s",
+		       num_shown * 4 - 6,
+		       "---------------------------------");
 	else if (num_shown == 1)
 		printf("disk");
-	printf("   faults      cpu\n");
-	printf(" r b w     avm    fre  flt  re  pi  po  fr  sr ");
+	printf(" -----faults------ ---cpu---\n");
+	printf("  r  b  w   fre   flt   re   pi   po   fr ");
 	for (i = 0; i < num_devices; i++)
 		if ((dev_select[i].selected)
 		 && (dev_select[i].selected <= maxshowdevs))
-			printf("%c%c%d ", dev_select[i].device_name[0],
+			printf(" %c%c%d ", dev_select[i].device_name[0],
 				     dev_select[i].device_name[1],
 				     dev_select[i].unit_number);
-	printf("  in   sy  cs us sy id\n");
+	printf("   in    sy    cs us sy id\n");
 	hdrcnt = winlines - 2;
 }
 
@@ -652,7 +734,7 @@ doforkst(void)
 #endif
 
 static void
-devstats(void)
+devstats(int dooutput)
 {
 	int dn;
 	long double transfers_per_second;
@@ -683,7 +765,8 @@ devstats(void)
 				  NULL, NULL) != 0)
 			errx(1, "%s", devstat_errbuf);
 
-		printf("%3.0Lf ", transfers_per_second);
+		if (dooutput)
+			printf("%s ", formatnum(transfers_per_second, 4));
 	}
 }
 
@@ -871,26 +954,75 @@ domem(void)
 	     (totuse + 1023) / 1024, (totfree + 1023) / 1024, totreq);
 }
 
-static void
-dozmem(void)
-{
-	char *buf;
-	size_t bufsize;
+#define MAXSAVE	16
 
-	buf = NULL;
-	bufsize = 1024;
-	for (;;) {
-		if ((buf = realloc(buf, bufsize)) == NULL)
-			err(1, "realloc()");
-		if (sysctlbyname("vm.zone", buf, &bufsize, NULL, 0) == 0)
+static void
+dozmem(u_int interval, int reps)
+{
+	struct zlist	zlist;
+	struct vm_zone	*kz;
+	struct vm_zone	zone;
+	struct vm_zone	copy;
+	struct vm_zone	save[MAXSAVE];
+	char name[64];
+	size_t namesz;
+	int i;
+	int first = 1;
+
+	bzero(save, sizeof(save));
+
+again:
+	kread(X_ZLIST, &zlist, sizeof(zlist));
+	kz = LIST_FIRST(&zlist);
+	i = 0;
+
+	while (kz) {
+		if (kvm_read(kd, (intptr_t)kz, &zone, sizeof(zone)) !=
+		    (ssize_t)sizeof(zone)) {
+			perror("kvm_read");
 			break;
-		if (errno != ENOMEM)
-			err(1, "sysctl()");
-		bufsize *= 2;
+		}
+		copy = zone;
+		zone.znalloc -= save[i].znalloc;
+		save[i] = copy;
+		namesz = sizeof(name);
+		if (kvm_readstr(kd, (intptr_t)zone.zname, name, &namesz) == NULL) {
+			perror("kvm_read");
+			break;
+		}
+		if (first && interval) {
+			/* do nothing */
+		} else if (zone.zmax) {
+			printf("%-10s %9ld/%9ld %5ldM used"
+			       " use=%-9lu %6.2f%%\n",
+				name,
+				(long)(zone.ztotal - zone.zfreecnt),
+				(long)zone.zmax,
+				(long)(zone.ztotal - zone.zfreecnt) *
+					zone.zsize / (1024 * 1024),
+				(unsigned long)zone.znalloc,
+				(double)(zone.ztotal - zone.zfreecnt) *
+					100.0 / (double)zone.zmax);
+		} else {
+			printf("%-10s %9ld           %5ldM used"
+			       " use=%-9lu\n",
+				name,
+				(long)(zone.ztotal - zone.zfreecnt),
+				(long)(zone.ztotal - zone.zfreecnt) *
+					zone.zsize / (1024 * 1024),
+				(unsigned long)zone.znalloc);
+		}
+		kz = LIST_NEXT(&zone, zlink);
+		++i;
 	}
-	buf[bufsize] = '\0'; /* play it safe */
-	printf("%s\n\n", buf);
-	free(buf);
+	if (reps) {
+		first = 0;
+		fflush(stdout);
+		usleep(interval * 1000);
+		--reps;
+		printf("\n");
+		goto again;
+	}
 }
 
 /*
