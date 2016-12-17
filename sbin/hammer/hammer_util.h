@@ -96,7 +96,7 @@ struct volume_info {
 struct buffer_info {
 	struct cache_info	cache;		/* must be at offset 0 */
 	TAILQ_ENTRY(buffer_info) entry;
-	hammer_off_t		buf_offset;	/* full hammer offset spec */
+	hammer_off_t		zone2_offset;	/* zone-2 offset */
 	int64_t			raw_offset;	/* physical offset */
 	struct volume_info	*volume;
 	void			*ondisk;
