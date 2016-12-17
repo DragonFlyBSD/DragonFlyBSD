@@ -427,13 +427,10 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 	hammer_off_t xor;
 
 	if (*bufferp != NULL) {
-		if (hammer_is_zone_direct_xlated(buf_offset)) {
-			xor = HAMMER_OFF_LONG_ENCODE(buf_offset) ^
-			      HAMMER_OFF_LONG_ENCODE((*bufferp)->zone2_offset);
-			if (isnew > 0 || (xor & ~HAMMER_BUFMASK64)) {
-				rel_buffer(*bufferp);
-				*bufferp = NULL;
-			}
+		xor = (*bufferp)->zone2_offset ^ buf_offset;
+		if (isnew > 0 || (xor & ~HAMMER_BUFMASK64)) {
+			rel_buffer(*bufferp);
+			*bufferp = NULL;
 		}
 	}
 
