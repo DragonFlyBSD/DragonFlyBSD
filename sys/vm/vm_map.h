@@ -571,7 +571,6 @@ int vm_map_entry_reserve(int);
 int vm_map_entry_kreserve(int);
 void vm_map_entry_release(int);
 void vm_map_entry_krelease(int);
-vm_map_t vm_map_create (vm_map_t, struct pmap *, vm_offset_t, vm_offset_t);
 int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t, int *);
 int vm_map_find (vm_map_t, void *, void *,
 		 vm_ooffset_t, vm_offset_t *, vm_size_t,

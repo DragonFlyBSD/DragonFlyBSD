@@ -128,14 +128,13 @@ static struct objcache *vmspace_cache;
 #define MAPENTRYBSP_CACHE	(MAXCPU+1)
 #define MAPENTRYAP_CACHE	8
 
-static struct vm_zone mapentzone_store, mapzone_store;
-static vm_zone_t mapentzone, mapzone;
-static struct vm_object mapentobj, mapobj;
+static struct vm_zone mapentzone_store;
+static vm_zone_t mapentzone;
+static struct vm_object mapentobj;
 
 static struct vm_map_entry map_entry_init[MAX_MAPENT];
 static struct vm_map_entry cpu_map_entry_init_bsp[MAPENTRYBSP_CACHE];
 static struct vm_map_entry cpu_map_entry_init_ap[MAXCPU][MAPENTRYAP_CACHE];
-static struct vm_map map_init[MAX_KMAP];
 
 static int randomize_mmap;
 SYSCTL_INT(_vm, OID_AUTO, randomize_mmap, CTLFLAG_RW, &randomize_mmap, 0,
@@ -175,9 +174,6 @@ static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_of
 void
 vm_map_startup(void)
 {
-	mapzone = &mapzone_store;
-	zbootinit(mapzone, "MAP", sizeof (struct vm_map),
-		map_init, MAX_KMAP);
 	mapentzone = &mapentzone_store;
 	zbootinit(mapentzone, "MAP ENTRY", sizeof (struct vm_map_entry),
 		  map_entry_init, MAX_MAPENT);
@@ -199,7 +195,6 @@ vm_init2(void)
 						NULL);
 	zinitna(mapentzone, &mapentobj, NULL, 0, 0, 
 		ZONE_USE_RESERVE | ZONE_SPECIAL);
-	zinitna(mapzone, &mapobj, NULL, 0, 0, 0);
 	pmap_init2();
 	vm_object_init2();
 }
@@ -562,21 +557,6 @@ vmspace_anonymous_count(struct vmspace *vm)
 	vmspace_drop(vm);
 
 	return(count);
-}
-
-/*
- * Creates and returns a new empty VM map with the given physical map
- * structure, and having the given lower and upper address bounds.
- *
- * No requirements.
- */
-vm_map_t
-vm_map_create(vm_map_t result, pmap_t pmap, vm_offset_t min, vm_offset_t max)
-{
-	if (result == NULL)
-		result = zalloc(mapzone);
-	vm_map_init(result, min, max, pmap);
-	return (result);
 }
 
 /*
