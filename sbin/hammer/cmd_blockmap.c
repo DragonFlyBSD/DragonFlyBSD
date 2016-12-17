@@ -581,7 +581,7 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 		if (DebugOpt) {
 			assert((zone == HAMMER_ZONE_UNDO_INDEX) ||
 				(zone == HAMMER_ZONE_FREEMAP_INDEX) ||
-				hammer_is_zone2_mapped_index(zone));
+				hammer_is_index_record(zone));
 		}
 		if (stats)
 			hammer_add_zone_stat_layer2(stats, layer2);

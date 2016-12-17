@@ -268,20 +268,20 @@ typedef uint32_t hammer_crc_t;
 #define hammer_is_zone_data(offset)			\
 	(hammer_is_zone_large_data(offset) || hammer_is_zone_small_data(offset))
 
-/*
- * Test if the zone is directly mapped to zone-2 offset via freemap.
- */
-#define hammer_is_zone2_mapped_index(zone)		\
+#define hammer_is_index_record(zone)			\
 	((zone) >= HAMMER_ZONE_BTREE_INDEX &&		\
 	 (zone) < HAMMER_MAX_ZONES)
-/*
- * Test if the zone is directly mapped to zone-2 offset. The word
- * directly here means the zone is neither RAW_VOLUME nor UNDO zone.
- */
-#define hammer_is_direct_mapped_index(zone)		\
+
+#define hammer_is_zone_record(offset)			\
+	hammer_is_index_record(HAMMER_ZONE_DECODE(offset))
+
+#define hammer_is_index_direct_xlated(zone)		\
 	(((zone) == HAMMER_ZONE_RAW_BUFFER_INDEX) ||	\
 	 ((zone) == HAMMER_ZONE_FREEMAP_INDEX) ||	\
-	 hammer_is_zone2_mapped_index(zone))
+	 hammer_is_index_record(zone))
+
+#define hammer_is_zone_direct_xlated(offset)		\
+	hammer_is_index_direct_xlated(HAMMER_ZONE_DECODE(offset))
 
 #define HAMMER_ZONE_ENCODE(zone, ham_off)		\
 	(((hammer_off_t)(zone) << 60) | (ham_off))

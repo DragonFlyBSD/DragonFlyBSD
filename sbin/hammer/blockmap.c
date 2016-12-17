@@ -139,7 +139,7 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	 */
 	bytes = HAMMER_DATA_DOALIGN(bytes);
 	assert(bytes > 0 && bytes <= HAMMER_BUFSIZE);  /* not HAMMER_XBUFSIZE */
-	assert(hammer_is_zone2_mapped_index(zone));
+	assert(hammer_is_index_record(zone));
 
 again:
 	assert(blockmap->next_offset != HAMMER_ZONE_ENCODE(zone + 1, 0));
@@ -251,8 +251,11 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 	ondisk = root_volume->ondisk;
 	blockmap = &ondisk->vol0_blockmap[zone];
 
-	if (zone == HAMMER_ZONE_RAW_BUFFER_INDEX) {
-		result_offset = zone_offset;
+	/*
+	 * Handle blockmap offset translations.
+	 */
+	if (hammer_is_index_record(zone)) {
+		result_offset = hammer_xlate_to_zone2(zone_offset);
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
 		if (zone_offset >= blockmap->alloc_offset) {
 			error = -3;
@@ -260,14 +263,15 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 		}
 		result_offset = hammer_xlate_to_undo(ondisk, zone_offset);
 	} else {
-		result_offset = hammer_xlate_to_zone2(zone_offset);
+		/* assert(zone == HAMMER_ZONE_RAW_BUFFER_INDEX); */
+		result_offset = zone_offset;
 	}
 
 	/*
 	 * The blockmap should match the requested zone (else the volume
 	 * header is mashed).
 	 */
-	if (hammer_is_zone2_mapped_index(zone) &&
+	if (hammer_is_index_record(zone) &&
 	    HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
 		error = -4;
 		goto done;

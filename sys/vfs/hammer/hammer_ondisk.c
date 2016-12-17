@@ -585,9 +585,7 @@ hammer_get_installed_volumes(hammer_mount_t hmp)
 static __inline int
 hammer_direct_zone(hammer_off_t buf_offset)
 {
-	int zone = HAMMER_ZONE_DECODE(buf_offset);
-
-	return(hammer_is_direct_mapped_index(zone));
+	return(hammer_is_zone_direct_xlated(buf_offset));
 }
 
 hammer_buffer_t
@@ -679,7 +677,7 @@ found_aliased:
 	 * Handle blockmap offset translations
 	 */
 	zone = HAMMER_ZONE_DECODE(buf_offset);
-	if (hammer_is_zone2_mapped_index(zone)) {
+	if (hammer_is_index_record(zone)) {
 		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
 		zone2_offset = hammer_undo_lookup(hmp, buf_offset, errorp);

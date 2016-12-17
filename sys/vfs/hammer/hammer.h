@@ -1565,8 +1565,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 			int *errorp)
 {
 #if defined INVARIANTS
-	int zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_zone_record(zone_offset));
 #endif
 
 	/*

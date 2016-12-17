@@ -484,7 +484,7 @@ format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset)
 	/* Only root volume needs formatting */
 	assert(root_vol->vol_no == HAMMER_ROOT_VOLNO);
 
-	assert(hammer_is_zone2_mapped_index(zone));
+	assert(hammer_is_index_record(zone));
 
 	blockmap = &root_vol->ondisk->vol0_blockmap[zone];
 	zone_base = HAMMER_ZONE_ENCODE(zone, offset);

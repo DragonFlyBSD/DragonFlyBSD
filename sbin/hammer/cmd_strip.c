@@ -117,7 +117,7 @@ hammer_strip_bigblock(int zone, hammer_off_t offset)
 	struct buffer_info *buffer = NULL;
 	int i;
 
-	assert(hammer_is_zone2_mapped_index(zone));
+	assert(hammer_is_index_record(zone));
 	assert((offset & HAMMER_BIGBLOCK_MASK64) == 0);
 	assert((offset & HAMMER_BUFMASK) == 0);
 	offset = hammer_xlate_to_zoneX(zone, offset);

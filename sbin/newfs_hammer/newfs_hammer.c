@@ -601,7 +601,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 * Format zones that are mapped to zone-2.
 		 */
 		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
-			if (hammer_is_zone2_mapped_index(i))
+			if (hammer_is_index_record(i))
 				format_blockmap(vol, i, 0);
 		}
 

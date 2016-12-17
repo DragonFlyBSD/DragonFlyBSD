@@ -101,7 +101,7 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone, int bytes,
 	 */
 	bytes = HAMMER_DATA_DOALIGN(bytes);
 	KKASSERT(bytes > 0 && bytes <= HAMMER_XBUFSIZE);
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_index_record(zone));
 
 	/*
 	 * Setup
@@ -429,7 +429,7 @@ hammer_blockmap_reserve(hammer_mount_t hmp, int zone, int bytes,
 	/*
 	 * Setup
 	 */
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_index_record(zone));
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp)
 		return(NULL);
@@ -657,7 +657,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 	/*
 	 * Setup
 	 */
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_index_record(zone));
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp)
 		return (NULL);
@@ -964,7 +964,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	 * Basic zone validation & locking
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_index_record(zone));
 	root_volume = trans->rootvol;
 	error = 0;
 
@@ -1098,7 +1098,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	 * Basic zone validation & locking
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_index_record(zone));
 	error = 0;
 
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
@@ -1206,7 +1206,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	 * Basic zone validation & locking
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_index_record(zone));
 	root_volume = trans->rootvol;
 	error = 0;
 
@@ -1325,7 +1325,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 	int zone;
 
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(hammer_is_zone2_mapped_index(zone));
+	KKASSERT(hammer_is_index_record(zone));
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp) {
 		*curp = 0;
