@@ -624,12 +624,9 @@ check_data_crc(hammer_btree_elm_t elm)
 {
 	struct buffer_info *data_buffer;
 	hammer_off_t data_offset;
-	hammer_off_t buf_offset;
 	int32_t data_len;
 	uint32_t crc;
-	int error;
 	char *ptr;
-	static char bo[5];
 
 	data_offset = elm->leaf.data_offset;
 	data_len = elm->leaf.data_len;
@@ -637,25 +634,17 @@ check_data_crc(hammer_btree_elm_t elm)
 	if (data_offset == 0 || data_len == 0)
 		return("ZO");  /* zero offset or length */
 
-	error = 0;
-	buf_offset = blockmap_lookup(data_offset, &error);
-	if (error) {
-		bzero(bo, sizeof(bo));
-		snprintf(bo, sizeof(bo), "BO%d", -error);
-		return(bo);
-	}
-
 	crc = 0;
 	switch (elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
 		if (data_len != sizeof(struct hammer_inode_data))
 			return("BI");  /* bad inode size */
-		ptr = get_buffer_data(buf_offset, &data_buffer, 0);
+		ptr = get_buffer_data(data_offset, &data_buffer, 0);
 		crc = hammer_crc_get_leaf(ptr, &elm->leaf);
 		rel_buffer(data_buffer);
 		break;
 	default:
-		crc = get_buf_crc(buf_offset, data_len);
+		crc = get_buf_crc(data_offset, data_len);
 		break;
 	}
 
