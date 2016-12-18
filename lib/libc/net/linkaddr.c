@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)linkaddr.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/net/linkaddr.c,v 1.4 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/linkaddr.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
+ * $FreeBSD: head/lib/libc/net/linkaddr.c 309688 2016-12-07 23:18:00Z glebius $
  */
 
 #include <sys/types.h>
@@ -115,7 +114,7 @@ link_addr(const char *addr, struct sockaddr_dl *sdl)
 	return;
 }
 
-static char hexlist[] = "0123456789abcdef";
+static const char hexlist[] = "0123456789abcdef";
 
 char *
 link_ntoa(const struct sockaddr_dl *sdl)
@@ -123,7 +122,7 @@ link_ntoa(const struct sockaddr_dl *sdl)
 	static char obuf[64];
 	_Static_assert(sizeof(obuf) >= IFNAMSIZ + 20, "obuf is too small");
 	char *out;
-	const char *in, *inlim;
+	const u_char *in, *inlim;
 	int namelen, i, rem;
 
 	namelen = (sdl->sdl_nlen <= IFNAMSIZ) ? sdl->sdl_nlen : IFNAMSIZ;
@@ -140,11 +139,11 @@ link_ntoa(const struct sockaddr_dl *sdl)
 		}
 	}
 
-	in = (const char *)sdl->sdl_data + sdl->sdl_nlen;
+	in = (const u_char *)sdl->sdl_data + sdl->sdl_nlen;
 	inlim = in + sdl->sdl_alen;
 
 	while (in < inlim && rem > 1) {
-		if (in != (const char *)sdl->sdl_data + sdl->sdl_nlen) {
+		if (in != (const u_char *)sdl->sdl_data + sdl->sdl_nlen) {
 			*out++ = '.';
 			rem--;
 		}
@@ -152,15 +151,14 @@ link_ntoa(const struct sockaddr_dl *sdl)
 		if (i > 0xf) {
 			if (rem < 3)
 				break;
+			*out++ = hexlist[i >> 4];
 			*out++ = hexlist[i & 0xf];
-			i >>= 4;
-			*out++ = hexlist[i];
 			rem -= 2;
 		} else {
 			if (rem < 2)
 				break;
 			*out++ = hexlist[i];
-			rem++;
+			rem--;
 		}
 	}
 	*out = 0;
