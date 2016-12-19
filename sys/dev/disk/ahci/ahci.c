@@ -314,7 +314,7 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	 * Sec 10.1.2 - deinitialise port if it is already running
 	 */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD);
-	kprintf("%s: Caps %b\n", PORTNAME(ap), cmd, AHCI_PFMT_CMD);
+	kprintf("%s: Cmdreg %b\n", PORTNAME(ap), cmd, AHCI_PFMT_CMD);
 
 	if ((cmd & (AHCI_PREG_CMD_ST | AHCI_PREG_CMD_CR |
 		    AHCI_PREG_CMD_FRE | AHCI_PREG_CMD_FR)) ||
@@ -343,9 +343,11 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 
 	/* Setup RFIS base address */
 	ap->ap_rfis = (struct ahci_rfis *) AHCI_DMA_KVA(ap->ap_dmamem_rfis);
+	bzero(ap->ap_rfis, sc->sc_rfis_size);
+
 	dva = AHCI_DMA_DVA(ap->ap_dmamem_rfis);
-	ahci_pwrite(ap, AHCI_PREG_FBU, (u_int32_t)(dva >> 32));
 	ahci_pwrite(ap, AHCI_PREG_FB, (u_int32_t)dva);
+	ahci_pwrite(ap, AHCI_PREG_FBU, (u_int32_t)(dva >> 32));
 
 	/* Clear SERR before starting FIS reception or ST or anything */
 	ahci_flush_tfd(ap);
@@ -389,12 +391,14 @@ nomem:
 
 	/* Setup command list base address */
 	dva = AHCI_DMA_DVA(ap->ap_dmamem_cmd_list);
-	ahci_pwrite(ap, AHCI_PREG_CLBU, (u_int32_t)(dva >> 32));
 	ahci_pwrite(ap, AHCI_PREG_CLB, (u_int32_t)dva);
+	ahci_pwrite(ap, AHCI_PREG_CLBU, (u_int32_t)(dva >> 32));
 
 	/* Split CCB allocation into CCBs and assign to command header/table */
 	hdr = AHCI_DMA_KVA(ap->ap_dmamem_cmd_list);
 	table = AHCI_DMA_KVA(ap->ap_dmamem_cmd_table);
+	bzero(hdr, sc->sc_cmdlist_size);
+
 	for (i = 0; i < sc->sc_ncmds; i++) {
 		ccb = &ap->ap_ccbs[i];
 

@@ -1173,9 +1173,13 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		xa->datalen = csio->dxfer_len;
 		xa->timeout = ccbh->timeout*50;	/* milliseconds */
 
-		fis->sector_count =(u_int8_t)(xa->datalen/512);
-		fis->sector_count_exp =(u_int8_t)((xa->datalen/512)>>8);
+		fis->sector_count = (u_int8_t)(xa->datalen/512);
+		fis->sector_count_exp = (u_int8_t)((xa->datalen/512)>>8);
 
+		/*
+		 * lba field is reserved and must be 0.  LBAs are encoded
+		 * in the range/length array passed as data.
+		 */
 		lba = 0;
 		fis->lba_low = (u_int8_t)lba;
 		fis->lba_mid = (u_int8_t)(lba >> 8);
@@ -1386,6 +1390,7 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 			fis->sector_count = (u_int8_t)count;
 		}
 
+		xa->lba = lba;
 		xa->data = csio->data_ptr;
 		xa->datalen = csio->dxfer_len;
 		xa->complete = ahci_ata_complete_disk_rw;
@@ -1711,6 +1716,7 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 	union ccb *ccb = xa->atascsi_private;
 	struct ccb_hdr *ccbh = &ccb->ccb_h;
 	struct ahci_port *ap = ccb->ccb_h.sim_priv.entries[0].ptr;
+	struct ata_fis_h2d *fis;
 
 	switch(xa->state) {
 	case ATA_S_COMPLETE:
@@ -1718,7 +1724,12 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 		ccb->csio.scsi_status = SCSI_STATUS_OK;
 		break;
 	case ATA_S_ERROR:
-		kprintf("%s: disk_rw: error\n", ATANAME(ap, xa->at));
+		fis = xa->fis;
+		kprintf("%s: disk_rw: error fiscmd=0x%02x @off=0x%016jx, %zu\n",
+			ATANAME(ap, xa->at),
+			fis->command,
+			(intmax_t)xa->lba * 512,
+			xa->datalen);
 		ccbh->status = CAM_SCSI_STATUS_ERROR | CAM_AUTOSNS_VALID;
 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
 		ahci_ata_dummy_sense(&ccb->csio.sense_data);

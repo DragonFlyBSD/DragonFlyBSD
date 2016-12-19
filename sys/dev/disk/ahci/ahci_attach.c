@@ -309,19 +309,23 @@ ahci_pci_attach(device_t dev)
 	fbs = (cap & AHCI_REG_CAP_FBSS) ? 16 : 1;
 	error = 0;
 
+	sc->sc_rfis_size = sizeof(struct ahci_rfis) * fbs;
+
 	error += bus_dma_tag_create(
 			NULL,				/* parent tag */
-			256 * fbs,			/* alignment */
+			sc->sc_rfis_size,		/* alignment */
 			PAGE_SIZE,			/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
 			NULL,				/* filter */
 			NULL,				/* filterarg */
-			sizeof(struct ahci_rfis) * fbs,	/* [max]size */
+			sc->sc_rfis_size,		/* [max]size */
 			1,				/* maxsegs */
-			sizeof(struct ahci_rfis) * fbs,	/* maxsegsz */
+			sc->sc_rfis_size,		/* maxsegsz */
 			0,				/* flags */
 			&sc->sc_tag_rfis);		/* return tag */
+
+	sc->sc_cmdlist_size = sc->sc_ncmds * sizeof(struct ahci_cmd_hdr);
 
 	error += bus_dma_tag_create(
 			NULL,				/* parent tag */
@@ -331,9 +335,9 @@ ahci_pci_attach(device_t dev)
 			BUS_SPACE_MAXADDR,		/* hiaddr */
 			NULL,				/* filter */
 			NULL,				/* filterarg */
-			sc->sc_ncmds * sizeof(struct ahci_cmd_hdr),
+			sc->sc_cmdlist_size,
 			1,				/* maxsegs */
-			sc->sc_ncmds * sizeof(struct ahci_cmd_hdr),
+			sc->sc_cmdlist_size,
 			0,				/* flags */
 			&sc->sc_tag_cmdh);		/* return tag */
 

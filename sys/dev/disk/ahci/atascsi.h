@@ -316,6 +316,7 @@ struct ata_xfer {
 	struct ata_fis_d2h	rfis;
 	u_int8_t		*packetcmd;
 	u_int8_t		tag;
+	u_int64_t		lba;		/* diagnostic only */
 
 	void			*data;
 	size_t			datalen;

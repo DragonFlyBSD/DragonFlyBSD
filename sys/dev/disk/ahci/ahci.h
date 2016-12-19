@@ -538,6 +538,9 @@ struct ahci_softc {
 	bus_dma_tag_t		sc_tag_cmdt;
 	bus_dma_tag_t		sc_tag_data;
 
+	size_t			sc_rfis_size;
+	size_t			sc_cmdlist_size;
+
 	int			sc_flags;
 #define AHCI_F_NO_NCQ			0x00000001
 #define AHCI_F_IGN_FR			0x00000002
