@@ -585,8 +585,7 @@ has a very good fair-share queueing algorithm for QOS in
 .Xr pf 4 .
 .Sh SOURCE OF KERNEL MEMORY USAGE
 The primary sources of kernel memory usage are:
-.Pp
-.Bl -tag
+.Bl -tag -width ".Va kern.maxvnodes"
 .It Va kern.maxvnodes
 The maximum number of cached vnodes in the system.
 These can eat quite a bit of kernel memory, primarily due to auxiliary
@@ -595,8 +594,7 @@ It is relatively easy to configure a smaller value, but we do not
 recommend reducing this parameter below 100000.
 Smaller values directly impact the number of discrete files the
 kernel can cache data for at once.
-.It Va kern.ipc.nmbclusters
-.It Va kern.ipc.nmbjclusters
+.It Va kern.ipc.nmbclusters , Va kern.ipc.nmbjclusters
 Calculate approximately 2KB per normal cluster and 4KB per jumbo
 cluster.
 Do not make these values too low or you risk deadlocking the network
