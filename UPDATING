@@ -12,6 +12,17 @@
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+BINUTILS 2.27 REPLACES 2.24, PRIMARY
+------------------------------------
+
+The oldest of the two versions of Binutils, version 2.24, was removed
+and replaced with Binutils 2.27.  It becomes the primary version version
+of binutils and version 2.25 becomes the alternate.
+
+The accepted values of BINUTILSVER are now "binutils227" (default) and
+"binutils225".  The building of Binutils 2.25 can be prevented by setting
+NO_ALTBINUTILS=yes in make.conf.
+
 COMPAT_43 KERNEL OPTION REMOVED
 -------------------------------
 
