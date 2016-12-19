@@ -455,6 +455,7 @@ struct ahci_port {
 #define AP_F_EXCLUSIVE_ACCESS	0x0200
 #define AP_F_ERR_CCB_RESERVED	0x0400
 #define AP_F_HARSH_REINIT	0x0800
+#define AP_F_FBSS_ENABLED	0x1000
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
 	struct lock		ap_lock;	/* os per-port lock */
@@ -548,6 +549,7 @@ struct ahci_softc {
 #define AHCI_F_FORCE_FBSS		0x00000008
 #define AHCI_F_IGN_CR			0x00000010
 #define AHCI_F_CYCLE_FR			0x00000020
+#define AHCI_F_FORCE_SCLO		0x00000040
 
 	u_int			sc_ncmds;
 
@@ -603,6 +605,7 @@ int	ahci_pwait_eq(struct ahci_port *, int, bus_size_t,
 void	ahci_intr(void *);
 void	ahci_port_intr(struct ahci_port *ap, int blockable);
 
+int	ahci_comreset(struct ahci_port *ap, int *pmdetectp);
 int	ahci_port_start(struct ahci_port *ap);
 int	ahci_port_stop(struct ahci_port *ap, int stop_fis_rx);
 int	ahci_port_clo(struct ahci_port *ap);

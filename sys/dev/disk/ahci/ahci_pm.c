@@ -66,10 +66,16 @@ ahci_pm_port_probe(struct ahci_port *ap, int orig_error)
 	u_int32_t	cmd;
 	u_int32_t	fbs;
 	int		count;
+	int		rstcount;
 	int		i;
+	int		fbsmode;
+	int		sig;
 
 	count = 2;
+	rstcount = 2;
 retry:
+	fbsmode = 0;
+
 	/*
 	 * This code is only called from hardreset, which does not
 	 * high level command processing.  The port should be stopped.
@@ -87,11 +93,9 @@ retry:
 	}
 
 	/*
-	 * Try to enable FIS-Based switching.  We have to probe PREG_FBS
-	 *
-	 * XXX I'm still trying to find an AHCI chipset that actually
-	 *     supports FBSS so I can finish implementing support, so
-	 *     this doesn't do a whole lot right now.
+	 * Check to see if FBS is supported by checking the cap and the
+	 * support bit in the port CMD register.  If it looks good, try
+	 * to write to the FBS register.
 	 */
 	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_FBSS) {
 		const char *str1 = "";
@@ -112,14 +116,27 @@ retry:
 			fbs = ahci_pread(ap, AHCI_PREG_FBS);
 			if (fbs & AHCI_PREG_FBS_EN) {
 				str2 = ", enable succeeded";
-				str3 = ", (driver support not yet implemented)";
+				fbsmode = 1;
 			} else {
 				str2 = ", enable failed";
 			}
+
+			/*
+			 * Must be off during the PM probe, we will enable
+			 * it at the end.
+			 */
 			ahci_pwrite(ap, AHCI_PREG_FBS, fbs & ~AHCI_PREG_FBS_EN);
 		}
-		kprintf("%s: Port multiplier: FIS-Based Sw: %s%s%s\n",
+		kprintf("%s: FBS Cap detected: %s%s%s\n",
 			PORTNAME(ap), str1, str2, str3);
+	}
+
+	/*
+	 * If the probe fails, cleanup any previous state.
+	 */
+	if (fbsmode == 0 && (ap->ap_flags & AP_F_FBSS_ENABLED)) {
+		ap->ap_flags &= ~AP_F_FBSS_ENABLED;
+		ahci_pwrite(ap, AHCI_PREG_FBS, 0);
 	}
 
 	/*
@@ -129,21 +146,30 @@ retry:
 	ahci_flush_tfd(ap);
 	ahci_port_clo(ap);
 	if (ahci_port_start(ap)) {
-		kprintf("%s: PMPROBE failed to start port, cannot softreset\n",
+		kprintf("%s: PMPROBE cannot start port\n",
 		        PORTNAME(ap));
 		error = EIO;
 		goto err;
 	}
 
 	/*
-	 * Check whether CLO worked
+	 * When a PM is present the port is often sometimes busy.  If the
+	 * CLO above didn't work (for example, if there is no CLO support),
+	 * do another hard COMRESET to try to clear the busy condition.
 	 */
 	if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
 			       AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
-		kprintf("%s: PMPROBE CLO %s, need port reset\n",
-			PORTNAME(ap),
-			(ahci_read(ap->ap_sc, AHCI_REG_CAP) & AHCI_REG_CAP_SCLO)
-			? "failed" : "unsupported");
+		if (--rstcount) {
+			int pmdetect;
+
+			kprintf("%s: PMPROBE BUSY, comreset and retry\n",
+				PORTNAME(ap));
+			ahci_comreset(ap, &pmdetect);
+			if (pmdetect)
+				goto retry;
+		}
+		kprintf("%s: PMPROBE BUSY, giving up\n",
+			PORTNAME(ap));
 		error = EBUSY;
 		goto err;
 	}
@@ -180,6 +206,12 @@ retry:
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
 
+	if (bootverbose) {
+		kprintf("%s: PMPROBE PreStatus 0x%b\n",
+			PORTNAME(ap),
+			ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
+	}
+
 	/*
 	 * The only way one can determine if a port multiplier is on the
 	 * port is to probe target 15, and of course this will fail if
@@ -195,10 +227,11 @@ retry:
 	 * If there is no PM here this command can still succeed due to
 	 * the _C_
 	 */
-	if (ahci_poll(ccb, 500, ahci_quick_timeout) != ATA_S_COMPLETE) {
+	if (ahci_poll(ccb, 1000, ahci_quick_timeout) != ATA_S_COMPLETE) {
 		kprintf("%s: PMPROBE(1) No Port Multiplier was found.\n",
 			PORTNAME(ap));
 		if (--count) {
+			rstcount = 2;
 			ahci_put_err_ccb(ccb);
 			goto retry;
 		}
@@ -206,9 +239,16 @@ retry:
 		goto err;
 	}
 
+	if (bootverbose) {
+		kprintf("%s: PMPROBE PosStatus 0x%b\n",
+			PORTNAME(ap),
+			ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
+	}
 	if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
 			       AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
 		kprintf("%s: PMPROBE Busy after first FIS\n", PORTNAME(ap));
+	} else if (bootverbose) {
+		kprintf("%s: PMPROBE Clean after first FIS\n", PORTNAME(ap));
 	}
 
 	/*
@@ -217,6 +257,7 @@ retry:
 	ahci_flush_tfd(ap);
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 	/* ahci_pm_phy_status(ap, 15, &cmd); */
+	ahci_port_signature_detect(ap, NULL);
 
 	/*
 	 * Prep second D2H command to read status and complete reset sequence
@@ -255,6 +296,7 @@ retry:
 		kprintf("%s: PMPROBE(2) No Port Multiplier was found.\n",
 			PORTNAME(ap));
 		if (--count) {
+			rstcount = 2;
 			ahci_put_err_ccb(ccb);
 			goto retry;
 		}
@@ -268,20 +310,46 @@ retry:
 	 * behind the PM), and I don't know how to clear the condition
 	 * other then by retrying the whole reset sequence.
 	 */
-	if (--count) {
+	sig = ahci_port_signature_detect(ap, NULL);
+	if (sig == ATA_PORT_T_PM) {
+		kprintf("%s: PMPROBE PM Signature detected\n",
+			PORTNAME(ap));
+		ap->ap_ata[15]->at_probe = ATA_PROBE_GOOD;
+		error = 0;
+	} else if (--count == 0) {
+		kprintf("%s: PMPROBE PM Signature not detected\n",
+			PORTNAME(ap));
+		error = EBUSY;
+	} else {
+		rstcount = 2;
 		fis[15] = 0;
 		ahci_put_err_ccb(ccb);
+		if (bootverbose) {
+			kprintf("%s: PMPROBE retry on count\n",
+				PORTNAME(ap));
+		}
 		goto retry;
 	}
 
 	/*
-	 * Get the signature.  The caller sets the ap fields.
+	 * Turn on FBS mode, clear any stale error.  Enforce a 1/10 second
+	 * delay primarily for the IGN_CR quirk.
 	 */
-	if (ahci_port_signature_detect(ap, NULL) == ATA_PORT_T_PM) {
-		ap->ap_ata[15]->at_probe = ATA_PROBE_GOOD;
-		error = 0;
-	} else {
-		error = EBUSY;
+	if (error == 0 && fbsmode) {
+		ahci_port_stop(ap, 0);
+		ap->ap_flags |= AP_F_FBSS_ENABLED;
+		fbs = ahci_pread(ap, AHCI_PREG_FBS);
+		fbs &= ~AHCI_PREG_FBS_DEV;
+		fbs |= AHCI_PREG_FBS_DEC;
+		ahci_pwrite(ap, AHCI_PREG_FBS, fbs | AHCI_PREG_FBS_EN);
+		ahci_os_sleep(100);
+		if (ahci_port_start(ap)) {
+			kprintf("%s: PMPROBE failed to restart port "
+				"after FBS enable\n",
+				PORTNAME(ap));
+			ahci_pwrite(ap, AHCI_PREG_FBS, fbs & ~AHCI_PREG_FBS_EN);
+			ap->ap_flags &= ~AP_F_FBSS_ENABLED;
+		}
 	}
 
 	/*

@@ -302,11 +302,14 @@ ahci_pci_attach(device_t dev)
 	 * command tags and set up the DMA tags.  Adjust the saved
 	 * sc_cap according to override flags.
 	 */
-	cap = sc->sc_cap = ahci_read(sc, AHCI_REG_CAP);
+	cap = ahci_read(sc, AHCI_REG_CAP);
 	if (sc->sc_flags & AHCI_F_NO_NCQ)
-		sc->sc_cap &= ~AHCI_REG_CAP_SNCQ;
+		cap &= ~AHCI_REG_CAP_SNCQ;
 	if (sc->sc_flags & AHCI_F_FORCE_FBSS)
-		sc->sc_cap |= AHCI_REG_CAP_FBSS;
+		cap |= AHCI_REG_CAP_FBSS;
+	if (sc->sc_flags & AHCI_F_FORCE_SCLO)
+		cap |= AHCI_REG_CAP_SCLO;
+	sc->sc_cap = cap;
 
 	/*
 	 * We assume at least 4 commands.

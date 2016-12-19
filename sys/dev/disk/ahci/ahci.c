@@ -1062,8 +1062,10 @@ ahci_port_stop(struct ahci_port *ap, int stop_fis_rx)
 	 * Turn off ST, then wait for CR to go off.
 	 */
 	r = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
-	r &= ~AHCI_PREG_CMD_ST;
-	ahci_pwrite(ap, AHCI_PREG_CMD, r);
+	if (r & AHCI_PREG_CMD_ST) {
+		r &= ~AHCI_PREG_CMD_ST;
+		ahci_pwrite(ap, AHCI_PREG_CMD, r);
+	}
 
 	if (ahci_pwait_clr(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_CR)) {
 		kprintf("%s: Port bricked, unable to stop (ST)\n",
@@ -1104,7 +1106,7 @@ ahci_port_clo(struct ahci_port *ap)
 	u_int32_t			cmd;
 
 	/* Only attempt CLO if supported by controller */
-	if ((ahci_read(sc, AHCI_REG_CAP) & AHCI_REG_CAP_SCLO) == 0)
+	if ((sc->sc_cap & AHCI_REG_CAP_SCLO) == 0)
 		return (1);
 
 	/* Issue CLO */
@@ -1364,7 +1366,7 @@ err:
  *
  * NOTE: Only called by ahci_port_hardreset().
  */
-static int
+int
 ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 {
 	u_int32_t cmd;
@@ -1385,6 +1387,18 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 		ahci_port_stop(ap, 0);
 	ap->ap_state = AP_S_NORMAL;
 	ahci_os_sleep(10);
+
+	/*
+	 * FIS-based switching must be turned off when doing a hardware
+	 * reset, and will be turned on again during the PM probe.
+	 */
+	if (ap->ap_flags & AP_F_FBSS_ENABLED) {
+		ap->ap_flags &= ~AP_F_FBSS_ENABLED;
+		cmd = ahci_pread(ap, AHCI_PREG_FBS);
+		cmd &= ~AHCI_PREG_FBS_EN;
+		cmd |= AHCI_PREG_FBS_DEC;
+		ahci_pwrite(ap, AHCI_PREG_FBS, cmd);
+	}
 
 	/*
 	 * The port may have been quiescent with its SUD bit cleared, so
@@ -2180,8 +2194,9 @@ ahci_end_exclusive_access(struct ahci_port *ap, struct ata_port *at)
 void
 ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 {
-	u_int32_t		mask;
-	int			limit;
+	u_int32_t	mask;
+	int		limit;
+	struct ata_port	*ccb_at;
 
 	/*
 	 * Enqueue the ccb.
@@ -2267,6 +2282,23 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 			ccb->ccb_xa.state = ATA_S_ONCHIP;
 			ahci_start_timeout(ccb);
 			ap->ap_run_flags = ccb->ccb_xa.flags;
+
+			ccb_at = ccb->ccb_xa.at;
+			if (ap->ap_flags & AP_F_FBSS_ENABLED) {
+				ap->ap_sactive |= mask;
+				ahci_pwrite(ap, AHCI_PREG_SACT, mask);
+				if (ccb_at) {
+					ahci_pwrite(ap, AHCI_PREG_FBS,
+						(ccb_at->at_target <<
+						 AHCI_PREG_FBS_DEV_SHIFT) |
+						AHCI_PREG_FBS_EN);
+				} else {
+					ahci_pwrite(ap, AHCI_PREG_FBS,
+						AHCI_PREG_FBS_EN);
+				}
+				ahci_pwrite(ap, AHCI_PREG_CI, mask);
+				mask = 0;
+			}
 			ccb = TAILQ_FIRST(&ap->ap_ccb_pending);
 		} while (ccb && (ccb->ccb_xa.flags & ATA_F_NCQ) &&
 			 (ap->ap_run_flags &
@@ -2274,9 +2306,11 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 
 		KKASSERT(((ap->ap_active | ap->ap_sactive) & mask) == 0);
 
-		ap->ap_sactive |= mask;
-		ahci_pwrite(ap, AHCI_PREG_SACT, mask);
-		ahci_pwrite(ap, AHCI_PREG_CI, mask);
+		if (mask) {
+			ap->ap_sactive |= mask;
+			ahci_pwrite(ap, AHCI_PREG_SACT, mask);
+			ahci_pwrite(ap, AHCI_PREG_CI, mask);
+		}
 	} else {
 		/*
 		 * The next command is a standard command and can be issued
@@ -2293,15 +2327,18 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 		 */
 		if (ap->ap_sactive)
 			return;
-		if (ap->ap_type == ATA_PORT_T_PM)
+		if (ap->ap_type == ATA_PORT_T_PM &&
+		    (ap->ap_flags & AP_F_FBSS_ENABLED) == 0) {
 			limit = 1;
-		else if (ap->ap_sc->sc_ncmds > 4)
+		} else if (ap->ap_sc->sc_ncmds > 4) {
 			limit = 4;
-		else
+		} else {
 			limit = 2;
+		}
 
 		while (ap->ap_active_cnt < limit && ccb &&
 		       (ccb->ccb_xa.flags & ATA_F_NCQ) == 0) {
+			ccb_at = ccb->ccb_xa.at;
 			TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
 			KKASSERT(((ap->ap_active | ap->ap_sactive) &
 				  (1 << ccb->ccb_slot)) == 0);
@@ -2310,6 +2347,17 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 			ap->ap_run_flags = ccb->ccb_xa.flags;
 			ccb->ccb_xa.state = ATA_S_ONCHIP;
 			ahci_start_timeout(ccb);
+			if (ap->ap_flags & AP_F_FBSS_ENABLED) {
+				if (ccb_at) {
+					ahci_pwrite(ap, AHCI_PREG_FBS,
+						(ccb_at->at_target <<
+						 AHCI_PREG_FBS_DEV_SHIFT) |
+						AHCI_PREG_FBS_EN);
+				} else {
+					ahci_pwrite(ap, AHCI_PREG_FBS,
+						AHCI_PREG_FBS_EN);
+				}
+			}
 			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
 			if ((ap->ap_run_flags &
 			    (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE)) == 0) {
@@ -2601,13 +2649,43 @@ process_error:
 			 * Copy received taskfile data from the RFIS.
 			 */
 			if (ccb->ccb_xa.state == ATA_S_ONCHIP) {
+				int fis_target;
+				uint32_t bytes;
+				intmax_t offset;
+				struct ata_fis_d2h *rfis;
+
 				ccb_at = ccb->ccb_xa.at;
-				memcpy(&ccb->ccb_xa.rfis, ap->ap_rfis->rfis,
+				if (ccb_at &&
+				    (ap->ap_flags & AP_F_FBSS_ENABLED))
+					fis_target = ccb_at->at_target;
+				else
+					fis_target = 0;
+
+				memcpy(&ccb->ccb_xa.rfis,
+				       ap->ap_rfis[fis_target].rfis,
 				       sizeof(struct ata_fis_d2h));
-				if (bootverbose) {
-					kprintf("%s: Copying rfis slot %d\n",
-						ATANAME(ap, ccb_at), err_slot);
-				}
+				rfis = &ccb->ccb_xa.rfis;
+
+				offset = (intmax_t)rfis->lba_low |
+					((intmax_t)rfis->lba_mid << 8) |
+					((intmax_t)rfis->lba_high << 16) |
+					((intmax_t)rfis->lba_low_exp << 24) |
+					((intmax_t)rfis->lba_mid_exp << 32) |
+					((intmax_t)rfis->lba_high_exp << 40);
+				offset *= 512;
+				bytes = rfis->sector_count * 512;
+
+				/* NOTE: expect type == 0x34 */
+				kprintf("%s: TFES RFIS-%02x flg=%02x "
+					"st=%02x err=%02x dev=%02x "
+					"off=%jd/%d\n",
+					PORTNAME(ap),
+					rfis->type,
+					rfis->flags,
+					rfis->status,
+					rfis->error,
+					rfis->device,
+					offset, bytes);
 			} else {
 				kprintf("%s: Cannot copy rfis, CCB slot "
 					"%d is not on-chip (state=%d)\n",
@@ -3030,9 +3108,17 @@ failall:
 			if (ccb->ccb_xa.state == ATA_S_ONCHIP) {
 				ccb->ccb_xa.state = ATA_S_COMPLETE;
 				if (ccb->ccb_xa.flags & ATA_F_AUTOSENSE) {
+					int fis_target;
+
+					ccb_at = ccb->ccb_xa.at;
+					if (ccb_at &&
+					    (ap->ap_flags & AP_F_FBSS_ENABLED))
+						fis_target = ccb_at->at_target;
+					else
+						fis_target = 0;
 					memcpy(&ccb->ccb_xa.rfis,
-					    ap->ap_rfis->rfis,
-					    sizeof(struct ata_fis_d2h));
+					       ap->ap_rfis[fis_target].rfis,
+					       sizeof(struct ata_fis_d2h));
 					if (ccb->ccb_xa.state == ATA_S_TIMEOUT)
 						ccb->ccb_xa.state = ATA_S_ERROR;
 				}
@@ -3787,13 +3873,34 @@ ahci_ata_cmd_timeout(struct ahci_ccb *ccb)
 void
 ahci_issue_saved_commands(struct ahci_port *ap, u_int32_t ci_saved)
 {
-	if (ci_saved) {
+	if (ci_saved && (ap->ap_flags & AP_F_FBSS_ENABLED) == 0) {
 		KKASSERT(!((ap->ap_active & ci_saved) &&
 			   (ap->ap_sactive & ci_saved)));
 		KKASSERT((ci_saved & ap->ap_expired) == 0);
 		if (ap->ap_sactive & ci_saved)
 			ahci_pwrite(ap, AHCI_PREG_SACT, ci_saved);
 		ahci_pwrite(ap, AHCI_PREG_CI, ci_saved);
+	} else if (ci_saved) {
+		struct ata_port *ccb_at;
+		int i;
+		int fis_target;
+
+		for (i = 0; i < 32; ++i) {
+			if ((ci_saved & (1 << i)) == 0)
+				continue;
+			ccb_at = ap->ap_ccbs[i].ccb_xa.at;
+			if (ccb_at)
+				fis_target = ccb_at->at_target;
+			else
+				fis_target = 0;
+			ahci_pwrite(ap, AHCI_PREG_FBS,
+				    (fis_target <<
+				     AHCI_PREG_FBS_DEV_SHIFT) |
+				    AHCI_PREG_FBS_EN);
+			if (ap->ap_sactive & (1 << i))
+				ahci_pwrite(ap, AHCI_PREG_SACT, (1 << i));
+			ahci_pwrite(ap, AHCI_PREG_CI, 1 << i);
+		}
 	}
 }
 
