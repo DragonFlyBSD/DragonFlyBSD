@@ -138,9 +138,10 @@
  * 400701 - getline() visibility changes
  * 400702 - private library: libressl
  * 400703 - resolved conflicts of md, crypt and ressl libraries
+ * 400704 - binutils update to 2.27
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400703	/* propagated to newvers */
+#define __DragonFly_version 400704	/* propagated to newvers */
 
 #include <sys/_null.h>
 
