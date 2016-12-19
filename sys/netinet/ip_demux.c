@@ -71,6 +71,14 @@ static __inline int
 INP_MPORT_HASH_UDP(in_addr_t faddr, in_addr_t laddr,
 		   in_port_t fport, in_port_t lport)
 {
+	/*
+	 * NOTE: laddr could be multicast, since UDP socket could be
+	 * bound to multicast address.
+	 */
+	if (IN_MULTICAST(ntohl(faddr)) || IN_MULTICAST(ntohl(laddr))) {
+		/* XXX handle multicast on CPU0 for now */
+		return 0;
+	}
 	return toeplitz_hash(toeplitz_rawhash_addr(faddr, laddr));
 }
 
@@ -94,14 +102,6 @@ tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	/*
-	 * NOTE: laddr could be multicast, since UDP socket could be
-	 * bound to multicast address.
-	 */
-	if (IN_MULTICAST(ntohl(faddr)) || IN_MULTICAST(ntohl(laddr))) {
-		/* XXX handle multicast on CPU0 for now */
-		return 0;
-	}
 	return (netisr_hashcpu(INP_MPORT_HASH_UDP(faddr, laddr, fport, lport)));
 }
 
@@ -298,11 +298,6 @@ ip_hashfn(struct mbuf **mptr, int hoff)
 		break;
 
 	case IPPROTO_UDP:
-		if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
-			/* XXX handle multicast on CPU0 for now */
-			hash = 0;
-			break;
-		}
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 		hash = INP_MPORT_HASH_UDP(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    uh->uh_sport, uh->uh_dport);
