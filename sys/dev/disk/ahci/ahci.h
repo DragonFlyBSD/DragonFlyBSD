@@ -258,10 +258,10 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_SCTL_IPM_NOSLUMBER	0x200
 #define  AHCI_PREG_SCTL_IPM_NODEVSLP	0x400
 #define	 AHCI_PREG_SCTL_SPM		0xf000	/* Select Power Management */
-#define	 AHCI_PREG_SCTL_SPM_NONE	0x0000
-#define	 AHCI_PREG_SCTL_SPM_NOPARTIAL	0x1000
-#define	 AHCI_PREG_SCTL_SPM_NOSLUMBER	0x2000
-#define	 AHCI_PREG_SCTL_SPM_DISABLED	0x3000
+#define	 AHCI_PREG_SCTL_SPM_NONE	0x0000	/* not used by AHCI */
+#define	 AHCI_PREG_SCTL_SPM_NOPARTIAL	0x1000	/* not used by AHCI */
+#define	 AHCI_PREG_SCTL_SPM_NOSLUMBER	0x2000	/* not used by AHCI */
+#define	 AHCI_PREG_SCTL_SPM_DISABLED	0x3000	/* not used by AHCI */
 #define  AHCI_PREG_SCTL_PMP		0xf0000	/* Set PM port for xmit FISes */
 #define  AHCI_PREG_SCTL_PMP_SHIFT	16
 
@@ -546,6 +546,8 @@ struct ahci_softc {
 #define AHCI_F_IGN_FR			0x00000002
 #define AHCI_F_INT_GOOD			0x00000004
 #define AHCI_F_FORCE_FBSS		0x00000008
+#define AHCI_F_IGN_CR			0x00000010
+#define AHCI_F_CYCLE_FR			0x00000020
 
 	u_int			sc_ncmds;
 

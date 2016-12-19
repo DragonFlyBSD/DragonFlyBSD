@@ -353,19 +353,15 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	ahci_flush_tfd(ap);
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 
-	/* Enable FIS reception and activate port. */
+	/*
+	 * Power up any device sitting on the port.  Leave FIS reception
+	 * turned off.  Don't make the ICC ACTIVE here, it will be handled
+	 * in port_init.
+	 */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	cmd &= ~(AHCI_PREG_CMD_CLO | AHCI_PREG_CMD_PMA);
-	cmd |= AHCI_PREG_CMD_FRE | AHCI_PREG_CMD_POD | AHCI_PREG_CMD_SUD;
-	ahci_pwrite(ap, AHCI_PREG_CMD, cmd | AHCI_PREG_CMD_ICC_ACTIVE);
-
-	/* Check whether port activated.  Skip it if not. */
-	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
-	if ((cmd & AHCI_PREG_CMD_FRE) == 0) {
-		kprintf("%s: NOT-ACTIVATED\n", PORTNAME(ap));
-		rc = ENXIO;
-		goto freeport;
-	}
+	cmd |= AHCI_PREG_CMD_POD | AHCI_PREG_CMD_SUD;
+	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
 	/* Allocate a CCB for each command slot */
 	ap->ap_ccbs = kmalloc(sizeof(struct ahci_ccb) * sc->sc_ncmds, M_DEVBUF,
@@ -522,15 +518,10 @@ ahci_port_init(struct ahci_port *ap)
 
 		cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 		cmd &= ~(AHCI_PREG_CMD_CLO | AHCI_PREG_CMD_PMA);
-		cmd |= AHCI_PREG_CMD_FRE | AHCI_PREG_CMD_POD |
-		       AHCI_PREG_CMD_SUD;
-		ahci_pwrite(ap, AHCI_PREG_CMD, cmd | AHCI_PREG_CMD_ICC_ACTIVE);
-		cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
-		if ((cmd & AHCI_PREG_CMD_FRE) == 0) {
-			kprintf("%s: Warning: FRE did not come up during "
-				"harsh reinitialization\n",
-				PORTNAME(ap));
-		}
+		cmd |= AHCI_PREG_CMD_POD | AHCI_PREG_CMD_SUD;
+		cmd |= AHCI_PREG_CMD_ICC_ACTIVE;
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+		ahci_pwait_clr(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_ICC);
 		ahci_os_sleep(1000);
 	}
 
@@ -617,7 +608,6 @@ ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
 		cmd |= AHCI_PREG_CMD_ASP;
 		cmd |= AHCI_PREG_CMD_ALPE;
 		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-
 	} else if (link_pwr_mgmt == AHCI_LINK_PWR_MGMT_MEDIUM &&
 	           (ap->ap_sc->sc_cap & AHCI_REG_CAP_PSC)) {
 		kprintf("%s: enabling medium link power management.\n",
@@ -1011,7 +1001,9 @@ ahci_port_start(struct ahci_port *ap)
 	 */
 	r |= AHCI_PREG_CMD_ST;
 	ahci_pwrite(ap, AHCI_PREG_CMD, r);
-	if (ahci_pwait_set_to(ap, 2000, AHCI_PREG_CMD, AHCI_PREG_CMD_CR)) {
+
+	if ((ap->ap_sc->sc_flags & AHCI_F_IGN_CR) == 0 &&
+	    ahci_pwait_set_to(ap, 2000, AHCI_PREG_CMD, AHCI_PREG_CMD_CR)) {
 		s = ahci_pread(ap, AHCI_PREG_SERR);
 		is = ahci_pread(ap, AHCI_PREG_IS);
 		tfd = ahci_pread(ap, AHCI_PREG_TFD);
@@ -1099,7 +1091,6 @@ ahci_port_stop(struct ahci_port *ap, int stop_fis_rx)
 			return (2);
 		}
 	}
-
 	return (0);
 }
 
@@ -1383,25 +1374,47 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	int retries = 0;
 
 	/*
-	 * Idle the port,
+	 * Idle the port.  We must cycle FRE for certain chips that silently
+	 * clear FR on disconnect.  Normally we do not want to cycle FRE
+	 * because other chipsets might react badly to that.
 	 */
 	*pmdetectp = 0;
-	ahci_port_stop(ap, 0);
+	if (ap->ap_sc->sc_flags & AHCI_F_CYCLE_FR)
+		ahci_port_stop(ap, 1);
+	else
+		ahci_port_stop(ap, 0);
 	ap->ap_state = AP_S_NORMAL;
 	ahci_os_sleep(10);
 
 	/*
 	 * The port may have been quiescent with its SUD bit cleared, so
-	 * set the SUD (spin up device).
+	 * set the SUD (spin up device).  Also POD (Power up device),
+	 * and issue an ICC_ACTIVE request to bring up communications.
 	 *
 	 * NOTE: I do not know if SUD is a hardware pin/low-level signal
 	 *	 or if it is messaged.
 	 */
-	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
+	r = ap->ap_sc->sc_ipm_disable;
+	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 
+	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	cmd |= AHCI_PREG_CMD_SUD | AHCI_PREG_CMD_POD;
+	cmd |= AHCI_PREG_CMD_ICC_ACTIVE;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-	ahci_os_sleep(10);
+	ahci_pwait_clr(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_ICC);
+
+	/*
+	 * Some parts need FIS reception enabled to be able to COMINIT at
+	 * all, so we can't delay FRE until port-start.  Even though that
+	 * isn't what the spec says.
+	 *
+	 * This is typically the first enablement of FRE, but in most cases
+	 * we never turn it off making this a NOP for later calls.
+	 */
+	cmd |= AHCI_PREG_CMD_FRE;
+	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	if ((ap->ap_sc->sc_flags & AHCI_F_IGN_FR) == 0)
+		ahci_pwait_set(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_FR);
 
 	/*
 	 * Make sure that all power management is disabled.
@@ -1411,9 +1424,6 @@ ahci_comreset(struct ahci_port *ap, int *pmdetectp)
 	 *	  the whole PC.  Never use it.
 	 */
 	ap->ap_type = ATA_PORT_T_NONE;
-
-	r = ap->ap_sc->sc_ipm_disable | AHCI_PREG_SCTL_SPM_DISABLED;
-	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 
 retry:
 	/*
@@ -1716,17 +1726,6 @@ ahci_port_hardstop(struct ahci_port *ap)
 	}
 
 	/*
-	 * Make sure FRE is active.  There isn't anything we can do if it
-	 * fails so just ignore errors.
-	 */
-	if ((cmd & AHCI_PREG_CMD_FRE) == 0) {
-		cmd |= AHCI_PREG_CMD_FRE;
-		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-		if ((ap->ap_sc->sc_flags & AHCI_F_IGN_FR) == 0)
-			ahci_pwait_set(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_FR);
-	}
-
-	/*
 	 * 10.10.1 place us in the Listen state.
 	 *
 	 * 10.10.3 DET must be set to 0 and found to be 0 before
@@ -1735,10 +1734,15 @@ ahci_port_hardstop(struct ahci_port *ap)
 	 * Deactivating SUD only applies if the controller supports SUD, it
 	 * is a bit unclear what happens w/regards to detecting hotplug
 	 * if it doesn't.
+	 *
+	 * NOTE: AHCI_PREG_SCTL_SPM_* bits are not implemented by the spec
+	 *	 and must be zero.
 	 */
-	r = ap->ap_sc->sc_ipm_disable | AHCI_PREG_SCTL_SPM_DISABLED;
+	r = ap->ap_sc->sc_ipm_disable;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 	ahci_os_sleep(10);
+
+	cmd = ahci_pread(ap, AHCI_PREG_CMD);
 	cmd &= ~AHCI_PREG_CMD_SUD;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 	ahci_os_sleep(10);
@@ -1758,7 +1762,7 @@ ahci_port_hardstop(struct ahci_port *ap)
 	       AHCI_PREG_CMD_SUD |
 	       AHCI_PREG_CMD_ICC_ACTIVE;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
-	ahci_os_sleep(10);
+	ahci_pwait_clr(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_ICC);
 
 	/*
 	 * Flush SERR_DIAG_X so the TFD can update.
@@ -2662,8 +2666,15 @@ finish_error:
 		cmd = ahci_pread(ap, AHCI_PREG_CMD);
 
 		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_DHRS);
+
+		/*
+		 * If command processing is turned off we can process the
+		 * error immediately.  Use the ST bit here instead of the
+		 * CR bit in case the CR bit is not implemented via the
+		 * F_IGN_CR quirk.
+		 */
 		if ((tfd & AHCI_PREG_TFD_STS_ERR) &&
-		    (cmd & AHCI_PREG_CMD_CR) == 0) {
+		    (cmd & AHCI_PREG_CMD_ST) == 0) {
 			err_slot = AHCI_PREG_CMD_CCS(
 						ahci_pread(ap, AHCI_PREG_CMD));
 			ccb = &ap->ap_ccbs[err_slot];
@@ -3683,13 +3694,15 @@ ahci_ata_cmd_timeout(struct ahci_ccb *ccb)
 	 * Ok, we can only get this command off the chip if CR is inactive
 	 * or if the only commands running on the chip are all expired.
 	 * Otherwise we have to wait until the port is in a safe state.
+	 * Use the ST bit here instead of the CR bit in case the CR bit is
+	 * not implemented via the F_IGN_CR quirk.
 	 *
 	 * Do not set state here, it will cause polls to return when the
 	 * ccb is not yet off the chip.
 	 */
 	ap->ap_expired |= 1 << ccb->ccb_slot;
 
-	if ((ahci_pread(ap, AHCI_PREG_CMD) & AHCI_PREG_CMD_CR) &&
+	if ((ahci_pread(ap, AHCI_PREG_CMD) & AHCI_PREG_CMD_ST) &&
 	    (ap->ap_active | ap->ap_sactive) != ap->ap_expired) {
 		/*
 		 * If using FBSS or NCQ we can't safely stop the port

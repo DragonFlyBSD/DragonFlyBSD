@@ -204,6 +204,7 @@ ahci_pci_attach(device_t dev)
 	uint16_t vid, did;
 	u_int32_t pi, reg;
 	u_int32_t cap, cap2;
+	u_int32_t chip;
 	u_int irq_flags;
 	bus_addr_t addr;
 	int i, error, msi_enable, rev, fbs;
@@ -216,12 +217,34 @@ ahci_pci_attach(device_t dev)
 			pci_read_config(dev, PCIR_COMMAND, 2) & ~0x0400, 2);
 	}
 
+	/*
+	 * Chip quirks.  Sigh.  The AHCI spec is not in the least confusing
+	 * when it comes to how the FR and CR bits work, but some AHCI
+	 * chipsets (aka Marvell) either don't have the bits at all or they
+	 * implement them poorly.
+	 */
+	chip = ((uint16_t)pci_get_device(dev) << 16) |
+		(uint16_t)pci_get_vendor(dev);
+
+	switch(chip) {
+	case 0x91721b4b:
+		device_printf(dev,
+			      "Enable 88SE9172 workarounds for broken chip\n");
+		sc->sc_flags |= AHCI_F_IGN_FR;
+		sc->sc_flags |= AHCI_F_IGN_CR;
+		break;
+	case 0x92301b4b:
+		device_printf(dev,
+			      "Enable 88SE9230 workarounds for broken chip\n");
+		sc->sc_flags |= AHCI_F_CYCLE_FR;
+		break;
+	}
+
 	sc->sc_dev = dev;
 
 	/*
 	 * Map the AHCI controller's IRQ and BAR(5) (hardware registers)
 	 */
-
 	msi_enable = ahci_msi_enable;
 
 	vid = pci_get_vendor(dev);
