@@ -470,7 +470,7 @@ ip_input(struct mbuf *m)
 	 */
 	ip = mtod(m, struct ip *);
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
-	    ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
+	    (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))) {
 		/*
 		 * Force hash recalculation for fragments and multicast
 		 * packets; hardware may not do it correctly.
