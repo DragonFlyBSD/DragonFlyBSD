@@ -25,8 +25,43 @@
  */
 
 #include <sys/param.h>
+#include <sys/systimer.h>
+#include <sys/systm.h>
+
+#include <machine/cpufunc.h>
+#include <machine/specialreg.h>
 #include <machine/msi_machdep.h>
+
+#include <dev/virtual/hyperv/include/hyperv_busdma.h>
+#include <dev/virtual/hyperv/vmbus/hyperv_reg.h>
+#include <dev/virtual/hyperv/vmbus/hyperv_var.h>
 #include <dev/virtual/hyperv/vmbus/hyperv_machdep.h>
+
+struct hyperv_reftsc_ctx {
+	struct hyperv_reftsc	*tsc_ref;
+	struct hyperv_dma	tsc_ref_dma;
+};
+
+static void		hyperv_tsc_cputimer_construct(struct cputimer *,
+			    sysclock_t);
+static sysclock_t	hyperv_tsc_cputimer_count_mfence(void);
+static sysclock_t	hyperv_tsc_cputimer_count_lfence(void);
+
+static struct hyperv_reftsc_ctx	hyperv_ref_tsc;
+
+static struct cputimer	hyperv_tsc_cputimer = {
+	SLIST_ENTRY_INITIALIZER,
+	"Hyper-V-TSC",
+	CPUTIMER_PRI_VMM_HI,
+	CPUTIMER_VMM1,
+	NULL,				/* based on CPU types. */
+	cputimer_default_fromhz,
+	cputimer_default_fromus,
+	hyperv_tsc_cputimer_construct,
+	cputimer_default_destruct,
+	HYPERV_TIMER_FREQ,
+	0, 0, 0
+};
 
 uint64_t
 hypercall_md(volatile void *hc_addr, uint64_t in_val,
@@ -44,4 +79,130 @@ int
 hyperv_msi2vector(uint64_t msi_addr __unused, uint32_t msi_data)
 {
 	return (msi_data & MSI_X86_DATA_INTVEC);
+}
+
+#define HYPERV_TSC(fence)					\
+static uint64_t							\
+hyperv_tsc_##fence(void)					\
+{								\
+	struct hyperv_reftsc *tsc_ref = hyperv_ref_tsc.tsc_ref;	\
+	uint32_t seq;						\
+								\
+	while ((seq = tsc_ref->tsc_seq) != 0) {			\
+		uint64_t disc, ret, tsc;			\
+		uint64_t scale;					\
+		int64_t ofs;					\
+								\
+		cpu_ccfence();					\
+		scale = tsc_ref->tsc_scale;			\
+		ofs = tsc_ref->tsc_ofs;				\
+								\
+		cpu_##fence();					\
+		tsc = rdtsc();					\
+								\
+		/* ret = ((tsc * scale) >> 64) + ofs */		\
+		__asm__ __volatile__ ("mulq %3" :		\
+		    "=d" (ret), "=a" (disc) :			\
+		    "a" (tsc), "r" (scale));			\
+		ret += ofs;					\
+								\
+		cpu_ccfence();					\
+		if (tsc_ref->tsc_seq == seq)			\
+			return (ret);				\
+								\
+		/* Sequence changed; re-sync. */		\
+	}							\
+	/* Fallback to the generic rdmsr. */			\
+	return (rdmsr(MSR_HV_TIME_REF_COUNT));			\
+}								\
+struct __hack
+
+HYPERV_TSC(lfence);
+HYPERV_TSC(mfence);
+
+static sysclock_t
+hyperv_tsc_cputimer_count_lfence(void)
+{
+	uint64_t val;
+
+	val = hyperv_tsc_lfence();
+	return (val + hyperv_tsc_cputimer.base);
+}
+
+static sysclock_t
+hyperv_tsc_cputimer_count_mfence(void)
+{
+	uint64_t val;
+
+	val = hyperv_tsc_mfence();
+	return (val + hyperv_tsc_cputimer.base);
+}
+
+static void
+hyperv_tsc_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
+{
+	timer->base = 0;
+	timer->base = oldclock - timer->count();
+}
+
+void
+hyperv_md_init(void)
+{
+	uint64_t val, orig;
+
+	if ((hyperv_features &
+	     (CPUID_HV_MSR_TIME_REFCNT | CPUID_HV_MSR_REFERENCE_TSC)) !=
+	    (CPUID_HV_MSR_TIME_REFCNT | CPUID_HV_MSR_REFERENCE_TSC) ||
+	    (cpu_feature & CPUID_SSE2) == 0)	/* SSE2 for mfence/lfence */
+		return;
+
+	switch (cpu_vendor_id) {
+	case CPU_VENDOR_AMD:
+		hyperv_tsc_cputimer.count = hyperv_tsc_cputimer_count_mfence;
+		break;
+
+	case CPU_VENDOR_INTEL:
+		hyperv_tsc_cputimer.count = hyperv_tsc_cputimer_count_lfence;
+		break;
+
+	default:
+		/* Unsupport CPU vendors. */
+		return;
+	}
+
+	hyperv_ref_tsc.tsc_ref = hyperv_dmamem_alloc(NULL, PAGE_SIZE, 0,
+	    sizeof(struct hyperv_reftsc), &hyperv_ref_tsc.tsc_ref_dma,
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO);
+	if (hyperv_ref_tsc.tsc_ref == NULL) {
+		kprintf("hyperv: reftsc page allocation failed\n");
+		return;
+	}
+
+	orig = rdmsr(MSR_HV_REFERENCE_TSC);
+	val = MSR_HV_REFTSC_ENABLE | (orig & MSR_HV_REFTSC_RSVD_MASK) |
+	    ((hyperv_ref_tsc.tsc_ref_dma.hv_paddr >> PAGE_SHIFT) <<
+	     MSR_HV_REFTSC_PGSHIFT);
+	wrmsr(MSR_HV_REFERENCE_TSC, val);
+
+	/* Register Hyper-V reference TSC systimer. */
+	cputimer_register(&hyperv_tsc_cputimer);
+	cputimer_select(&hyperv_tsc_cputimer, 0);
+}
+
+void
+hyperv_md_uninit(void)
+{
+	if (hyperv_ref_tsc.tsc_ref != NULL) {
+		uint64_t val;
+
+		/* Deregister Hyper-V reference TSC systimer. */
+		cputimer_deregister(&hyperv_tsc_cputimer);
+
+		val = rdmsr(MSR_HV_REFERENCE_TSC);
+		wrmsr(MSR_HV_REFERENCE_TSC, val & MSR_HV_REFTSC_RSVD_MASK);
+
+		hyperv_dmamem_free(&hyperv_ref_tsc.tsc_ref_dma,
+		    hyperv_ref_tsc.tsc_ref);
+		hyperv_ref_tsc.tsc_ref = NULL;
+	}
 }

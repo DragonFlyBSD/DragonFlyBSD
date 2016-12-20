@@ -300,6 +300,9 @@ hyperv_init(void *dummy __unused)
 		/* Can't perform any Hyper-V specific actions */
 		vmm_guest = VMM_GUEST_UNKNOWN;
 	}
+
+	/* Machine dependent initialization. */
+	hyperv_md_init();
 }
 SYSINIT(hyperv_initialize, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
     hyperv_init, NULL);
@@ -307,6 +310,9 @@ SYSINIT(hyperv_initialize, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
 static void
 hyperv_uninit(void *dummy __unused)
 {
+	/* Machine dependent uninitialization. */
+	hyperv_md_uninit();
+
 	if (hyperv_features & CPUID_HV_MSR_TIME_REFCNT) {
 		/* Deregister Hyper-V systimer */
 		cputimer_deregister(&hyperv_cputimer);

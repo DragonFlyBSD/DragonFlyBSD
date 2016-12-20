@@ -58,6 +58,11 @@
 
 #define MSR_HV_TIME_REF_COUNT		0x40000020
 
+#define MSR_HV_REFERENCE_TSC		0x40000021
+#define MSR_HV_REFTSC_ENABLE		0x0001ULL
+#define MSR_HV_REFTSC_RSVD_MASK		0x0ffeULL
+#define MSR_HV_REFTSC_PGSHIFT		12
+
 #define MSR_HV_SCONTROL			0x40000080
 #define MSR_HV_SCTRL_ENABLE		0x0001ULL
 #define MSR_HV_SCTRL_RSVD_MASK		0xfffffffffffffffeULL
@@ -113,6 +118,7 @@
 #define CPUID_HV_MSR_HYPERCALL		0x0020	/* MSR_HV_GUEST_OS_ID
 						 * MSR_HV_HYPERCALL */
 #define CPUID_HV_MSR_VP_INDEX		0x0040	/* MSR_HV_VP_INDEX */
+#define CPUID_HV_MSR_REFERENCE_TSC	0x0200	/* MSR_HV_REFERENCE_TSC */
 #define CPUID_HV_MSR_GUEST_IDLE		0x0400	/* MSR_HV_GUEST_IDLE */
 /* ECX: power management features */
 #define CPUPM_HV_CSTATE_MASK		0x000f	/* deepest C-state */
@@ -131,6 +137,17 @@
 #define CPUID_LEAF_HV_RECOMMENDS	0x40000004
 #define CPUID_LEAF_HV_LIMITS		0x40000005
 #define CPUID_LEAF_HV_HWFEATURES	0x40000006
+
+/*
+ * Hyper-V Reference TSC
+ */
+struct hyperv_reftsc {
+	volatile uint32_t		tsc_seq;
+	volatile uint32_t		tsc_rsvd1;
+	volatile uint64_t		tsc_scale;
+	volatile int64_t		tsc_ofs;
+} __packed __aligned(PAGE_SIZE);
+CTASSERT(sizeof(struct hyperv_reftsc) == PAGE_SIZE);
 
 /*
  * Hyper-V message types

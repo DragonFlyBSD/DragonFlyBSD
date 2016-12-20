@@ -34,5 +34,7 @@
 uint64_t	hypercall_md(volatile void *hc_addr, uint64_t in_val,
 		    uint64_t in_paddr, uint64_t out_paddr);
 int		hyperv_msi2vector(uint64_t msi_addr, uint32_t msi_data);
+void		hyperv_md_init(void);
+void		hyperv_md_uninit(void);
 
 #endif	/* !_HYPERV_MACHDEP_H_ */
