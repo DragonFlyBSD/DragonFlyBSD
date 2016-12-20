@@ -29,7 +29,7 @@ HOST_CCVER?= ${_DEFAULT_CCVER}
 HOST_BINUTILSVER?=	${_DEFAULT_BINUTILSVER}
 .else
 _NEXTAS!=		find -s /usr/libexec/binutils* -name as -print0 -quit
-HOST_BINUTILSVER?=	${_NEXTAS:H:H}
+HOST_BINUTILSVER?=	${_NEXTAS:H:H:T}
 .endif
 
 .if defined(FORCE_CPUTYPE)
