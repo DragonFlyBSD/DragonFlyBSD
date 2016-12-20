@@ -40,7 +40,7 @@
 #include <machine/intr_machdep.h>
 #include <machine/smp.h>
 
-#include <dev/virtual/hyperv/include/hyperv_busdma.h>
+#include <dev/virtual/hyperv/hyperv_busdma.h>
 #include <dev/virtual/hyperv/vmbus/hyperv_machdep.h>
 #include <dev/virtual/hyperv/vmbus/hyperv_reg.h>
 #include <dev/virtual/hyperv/vmbus/hyperv_var.h>

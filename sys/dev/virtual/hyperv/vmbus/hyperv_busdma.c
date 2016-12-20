@@ -28,7 +28,7 @@
 #include <sys/systm.h>
 #include <sys/bus.h>
 
-#include <dev/virtual/hyperv/include/hyperv_busdma.h>
+#include <dev/virtual/hyperv/hyperv_busdma.h>
 
 void
 hyperv_dma_map_paddr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
