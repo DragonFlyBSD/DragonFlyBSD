@@ -28,7 +28,8 @@ HOST_CCVER?= ${_DEFAULT_CCVER}
 .if exists(/usr/libexec/${_DEFAULT_BINUTILSVER}/elf/as)
 HOST_BINUTILSVER?=	${_DEFAULT_BINUTILSVER}
 .else
-HOST_BINUTILSVER!=	basename `find -s /usr/libexec/binutils* -depth 0 | tail -1`
+_NEXTAS!=		find -s /usr/libexec/binutils* -name as -print0 -quit
+HOST_BINUTILSVER?=	${_NEXTAS:H:H}
 .endif
 
 .if defined(FORCE_CPUTYPE)
