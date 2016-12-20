@@ -69,12 +69,15 @@ static boolean_t	hyperv_identify(void);
 static int		hypercall_create(void);
 static void		hypercall_destroy(void);
 static void		hypercall_memfree(void);
+static uint64_t		hyperv_tc64_rdmsr(void);
 
 u_int			hyperv_features;
 static u_int		hyperv_recommends;
 
 static u_int		hyperv_pm_features;
 static u_int		hyperv_features3;
+
+hyperv_tc64_t		hyperv_tc64;
 
 static struct cputimer	hyperv_cputimer = {
 	SLIST_ENTRY_INITIALIZER,
@@ -179,6 +182,13 @@ hypercall_destroy(void)
 
 	if (bootverbose)
 		kprintf("hyperv: Hypercall destroyed\n");
+}
+
+static uint64_t
+hyperv_tc64_rdmsr(void)
+{
+
+	return (rdmsr(MSR_HV_TIME_REF_COUNT));
 }
 
 static boolean_t
@@ -293,6 +303,7 @@ hyperv_init(void *dummy __unused)
 		/* Register Hyper-V systimer */
 		cputimer_register(&hyperv_cputimer);
 		cputimer_select(&hyperv_cputimer, 0);
+		hyperv_tc64 = hyperv_tc64_rdmsr;
 	}
 
 	error = hypercall_create();

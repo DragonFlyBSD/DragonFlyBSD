@@ -35,8 +35,11 @@
 #define HYPERV_TIMER_NS_FACTOR	100ULL
 #define HYPERV_TIMER_FREQ	(NANOSEC / HYPERV_TIMER_NS_FACTOR)
 
-extern u_int	hyperv_features;
+typedef	uint64_t	(*hyperv_tc64_t)(void);
 
-uint64_t	hypercall_post_message(bus_addr_t);
+extern u_int		hyperv_features;
+extern hyperv_tc64_t	hyperv_tc64;
+
+uint64_t		hypercall_post_message(bus_addr_t);
 
 #endif	/* !_HYPERV_VAR_H_ */

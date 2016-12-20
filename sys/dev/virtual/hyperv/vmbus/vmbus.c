@@ -362,7 +362,7 @@ vmbus_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 	uint64_t current;
 
 	reload = (uint64_t)reload * cti->freq / sys_cputimer->freq;
-	current = rdmsr(MSR_HV_TIME_REF_COUNT) + reload;
+	current = hyperv_tc64() + reload;
 
 	if (gd->gd_timer_running) {
 		if (current < psc->timer_last)
@@ -912,7 +912,7 @@ vmbus_timer_restart(void *xsc)
 
 	crit_enter();
 	vmbus_timer_msgintr(psc);
-	vmbus_timer_oneshot(psc, rdmsr(MSR_HV_TIME_REF_COUNT) + 1);
+	vmbus_timer_oneshot(psc, hyperv_tc64() + 1);
 	crit_exit();
 }
 

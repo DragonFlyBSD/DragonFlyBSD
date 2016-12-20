@@ -48,6 +48,7 @@ static sysclock_t	hyperv_tsc_cputimer_count_mfence(void);
 static sysclock_t	hyperv_tsc_cputimer_count_lfence(void);
 
 static struct hyperv_reftsc_ctx	hyperv_ref_tsc;
+static hyperv_tc64_t	hyperv_tc64_saved;
 
 static struct cputimer	hyperv_tsc_cputimer = {
 	SLIST_ENTRY_INITIALIZER,
@@ -156,25 +157,31 @@ hyperv_md_init(void)
 	    (cpu_feature & CPUID_SSE2) == 0)	/* SSE2 for mfence/lfence */
 		return;
 
-	switch (cpu_vendor_id) {
-	case CPU_VENDOR_AMD:
-		hyperv_tsc_cputimer.count = hyperv_tsc_cputimer_count_mfence;
-		break;
-
-	case CPU_VENDOR_INTEL:
-		hyperv_tsc_cputimer.count = hyperv_tsc_cputimer_count_lfence;
-		break;
-
-	default:
-		/* Unsupport CPU vendors. */
-		return;
-	}
-
 	hyperv_ref_tsc.tsc_ref = hyperv_dmamem_alloc(NULL, PAGE_SIZE, 0,
 	    sizeof(struct hyperv_reftsc), &hyperv_ref_tsc.tsc_ref_dma,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO);
 	if (hyperv_ref_tsc.tsc_ref == NULL) {
 		kprintf("hyperv: reftsc page allocation failed\n");
+		return;
+	}
+
+	hyperv_tc64_saved = hyperv_tc64;
+	switch (cpu_vendor_id) {
+	case CPU_VENDOR_AMD:
+		hyperv_tsc_cputimer.count = hyperv_tsc_cputimer_count_mfence;
+		hyperv_tc64 = hyperv_tsc_mfence;
+		break;
+
+	case CPU_VENDOR_INTEL:
+		hyperv_tsc_cputimer.count = hyperv_tsc_cputimer_count_lfence;
+		hyperv_tc64 = hyperv_tsc_lfence;
+		break;
+
+	default:
+		/* Unsupport CPU vendors. */
+		hyperv_dmamem_free(&hyperv_ref_tsc.tsc_ref_dma,
+		    hyperv_ref_tsc.tsc_ref);
+		hyperv_ref_tsc.tsc_ref = NULL;
 		return;
 	}
 
@@ -197,6 +204,8 @@ hyperv_md_uninit(void)
 
 		/* Deregister Hyper-V reference TSC systimer. */
 		cputimer_deregister(&hyperv_tsc_cputimer);
+		/* Revert tc64 change. */
+		hyperv_tc64 = hyperv_tc64_saved;
 
 		val = rdmsr(MSR_HV_REFERENCE_TSC);
 		wrmsr(MSR_HV_REFERENCE_TSC, val & MSR_HV_REFTSC_RSVD_MASK);
