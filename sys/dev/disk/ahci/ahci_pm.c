@@ -87,10 +87,12 @@ retry:
 	ahci_port_stop(ap, 0);
 	ap->ap_state = AP_S_NORMAL;
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
+#if 1
 	if ((cmd & AHCI_PREG_CMD_PMA) == 0) {
 		cmd |= AHCI_PREG_CMD_PMA;
 		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 	}
+#endif
 
 	/*
 	 * Check to see if FBS is supported by checking the cap and the
@@ -153,9 +155,11 @@ retry:
 	}
 
 	/*
-	 * When a PM is present the port is often sometimes busy.  If the
-	 * CLO above didn't work (for example, if there is no CLO support),
-	 * do another hard COMRESET to try to clear the busy condition.
+	 * When a PM is present and the cable or driver cycles, the PM may
+	 * hang in BSY and require another COMRESET sequence to clean it up.
+	 * The CLO above didn't work (for example, if there is no CLO
+	 * support), so do another hard COMRESET to try to clear the busy
+	 * condition.
 	 */
 	if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
 			       AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
@@ -244,12 +248,18 @@ retry:
 			PORTNAME(ap),
 			ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
 	}
+#if 0
+	/*
+	 * REMOVED - Ignore a BSY condition between the first and second
+	 *	     FIS in the PM probe.  Seems to work better.
+	 */
 	if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
 			       AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
 		kprintf("%s: PMPROBE Busy after first FIS\n", PORTNAME(ap));
 	} else if (bootverbose) {
 		kprintf("%s: PMPROBE Clean after first FIS\n", PORTNAME(ap));
 	}
+#endif
 
 	/*
 	 * The device may have muffed up the PHY when it reset.
@@ -257,7 +267,6 @@ retry:
 	ahci_flush_tfd(ap);
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 	/* ahci_pm_phy_status(ap, 15, &cmd); */
-	ahci_port_signature_detect(ap, NULL);
 
 	/*
 	 * Prep second D2H command to read status and complete reset sequence
@@ -305,6 +314,12 @@ retry:
 	}
 
 	/*
+	 * Some controllers return completion for the second FIS before
+	 * updating the signature register.  Sleep a bit to allow for it.
+	 */
+	ahci_os_sleep(500);
+
+	/*
 	 * What? We succeeded?  Yup, but for some reason the signature
 	 * is still latched from the original detect (that saw target 0
 	 * behind the PM), and I don't know how to clear the condition
@@ -332,6 +347,25 @@ retry:
 	}
 
 	/*
+	 * Fall through / clean up the CCB and perform error processing.
+	 */
+err:
+	if (ccb != NULL)
+		ahci_put_err_ccb(ccb);
+
+	if (error == 0 && ahci_pm_identify(ap)) {
+		ahci_os_sleep(500);
+		if (ahci_pm_identify(ap)) {
+			kprintf("%s: PM - cannot identify port multiplier\n",
+				PORTNAME(ap));
+			error = EBUSY;
+		} else {
+			kprintf("%s: PM - Had to identify twice\n",
+				PORTNAME(ap));
+		}
+	}
+
+	/*
 	 * Turn on FBS mode, clear any stale error.  Enforce a 1/10 second
 	 * delay primarily for the IGN_CR quirk.
 	 */
@@ -352,18 +386,6 @@ retry:
 		}
 	}
 
-	/*
-	 * Fall through / clean up the CCB and perform error processing.
-	 */
-err:
-	if (ccb != NULL)
-		ahci_put_err_ccb(ccb);
-
-	if (error == 0 && ahci_pm_identify(ap)) {
-		kprintf("%s: PM - cannot identify port multiplier\n",
-			PORTNAME(ap));
-		error = EBUSY;
-	}
 
 	/*
 	 * If we probed the PM reset the state for the targets behind
@@ -385,9 +407,11 @@ err:
 	 */
 	ahci_port_stop(ap, 0);
 	ahci_port_clo(ap);
+#if 1
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	cmd &= ~AHCI_PREG_CMD_PMA;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+#endif
 	if (orig_error == 0) {
 		if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
 			    AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
@@ -422,6 +446,13 @@ ahci_pm_identify(struct ahci_port *ap)
 		goto err;
 	nports &= 0x0000000F;	/* only the low 4 bits */
 	ap->ap_probe = ATA_PROBE_GOOD;
+
+	if ((rev & SATA_PMREV_MASK) == 0) {
+		if (bootverbose)
+			kprintf("%s: PM identify register empty!\n",
+				PORTNAME(ap));
+		return EIO;
+	}
 
 	/*
 	 * Ignore fake port on PMs which have it.  We can probe it but the
@@ -577,9 +608,11 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 		goto err;
 
 	/*
-	 * Try to determine if there is a device on the port.
+	 * Try to determine if there is a device on the port.  This
+	 * operation usually runs sequentially on the PM, use a short
+	 * 3/10 second timeout.  The disks should already be sufficiently
+	 * powered.
 	 *
-	 * Give the device 3/10 second to at least be detected.
 	 * If we fail clear any pending status since we may have
 	 * cycled the phy and probably caused another PRCS interrupt.
 	 */

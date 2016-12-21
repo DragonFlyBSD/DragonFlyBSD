@@ -110,7 +110,9 @@
  */
 #define SATA_PMREV_PM1_0	0x00000002
 #define SATA_PMREV_PM1_1	0x00000004
-#define SATA_PFMT_PM_REV	"\20" "\003PM1.1" "\002PM1.0"
+#define SATA_PMREV_PM1_2	0x00000008
+#define SATA_PMREV_MASK		0x0000000F
+#define SATA_PFMT_PM_REV	"\20" "\004PM1.2" "\003PM1.1" "\002PM1.0"
 
 /*
  * GSCR[64] and GSCR[96] - Port Multiplier features available and features

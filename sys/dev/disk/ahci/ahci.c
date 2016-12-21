@@ -314,7 +314,6 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	 * Sec 10.1.2 - deinitialise port if it is already running
 	 */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD);
-	kprintf("%s: Cmdreg %b\n", PORTNAME(ap), cmd, AHCI_PFMT_CMD);
 
 	if ((cmd & (AHCI_PREG_CMD_ST | AHCI_PREG_CMD_CR |
 		    AHCI_PREG_CMD_FRE | AHCI_PREG_CMD_FR)) ||
@@ -354,13 +353,22 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 
 	/*
-	 * Power up any device sitting on the port.  Leave FIS reception
-	 * turned off.  Don't make the ICC ACTIVE here, it will be handled
-	 * in port_init.
+	 * Power up any device sitting on the port.
+	 *
+	 * Don't turn on FIS reception here, it will be handled in the first
+	 * ahci_port_start().
+	 *
+	 * Don't make the ICC ACTIVE here, it will be handled in port_init.
 	 */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	cmd &= ~(AHCI_PREG_CMD_CLO | AHCI_PREG_CMD_PMA);
 	cmd |= AHCI_PREG_CMD_POD | AHCI_PREG_CMD_SUD;
+#if 0
+	/* this will be done in ahci_pm_port_probe() */
+	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SPM)
+		cmd |= AHCI_PREG_CMD_PMA;
+#endif
+
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
 	/* Allocate a CCB for each command slot */
@@ -1502,13 +1510,23 @@ retry:
 	ahci_os_sleep(1000);
 
 	/*
-	 * Try to determine if there is a device on the port.
+	 * Try to determine if there is a device on the port.  This operation
+	 * typically runs in parallel on all ports belonging to an AHCI
+	 * controller.
 	 *
-	 * Give the device 3/10 second to at least be detected.
+	 * 3/10 of a second (loop = 300) is plenty for directly attached
+	 * devices, but not enough for some port multipliers, particularly
+	 * if powered-on cold.  Since this operation runs in parallel,
+	 * give us 2 seconds to detect.
+	 *
+	 * NOTE: The 10-second hot-swap delay prior to the COMRESET is not
+	 *	 sufficient, since the first COMRESET after a cold power-on
+	 *	 of a port-multiplier can take extra time.
+	 *
 	 * If we fail clear PRCS (phy detect) since we may cycled
 	 * the phy and probably caused another PRCS interrupt.
 	 */
-	loop = 300;
+	loop = 2000;
 	while (loop > 0) {
 		r = ahci_pread(ap, AHCI_PREG_SSTS);
 		if (r & AHCI_PREG_SSTS_DET)
@@ -1548,8 +1566,14 @@ retry:
 	 * the device time to send us its first D2H FIS.  Waiting for
 	 * BSY to clear accomplishes this.
 	 *
+	 * The target device might be hung in a BSY state depending on
+	 * the order things are power cycled.  We want to retry the COMRESET
+	 * at least once if we find the device BSY for reliable operation.
+	 *
 	 * NOTE: A port multiplier may or may not clear BSY here,
-	 *	 depending on what is sitting in target 0 behind it.
+	 *	 particularly if it was previously configured and now
+	 *	 its cable has been unplugged and plugged back in,
+	 *	 and also depending on what is sitting in target 0 behind it.
 	 *
 	 * NOTE: Intel SSDs seem to have compatibility problems with Intel
 	 *	 mobo's on cold boots and may leave BSY set.  A single
@@ -1571,6 +1595,9 @@ retry:
 		}
 		error = EBUSY;
 	} else {
+		if (retries)
+			kprintf("%s: Device Unbusied after retry\n",
+				PORTNAME(ap));
 		error = 0;
 	}
 
@@ -1902,7 +1929,7 @@ ahci_port_signature_detect(struct ahci_port *ap, struct ata_port *at)
 
 	sig = ahci_pread(ap, AHCI_PREG_SIG);
 	if (bootverbose)
-		kprintf("%s: sig %08x\n", ATANAME(ap, at), sig);
+		kprintf("%s: SIG %08x\n", ATANAME(ap, at), sig);
 	if ((sig & 0xffff0000) == (SATA_SIGNATURE_ATAPI & 0xffff0000)) {
 		return(ATA_PORT_T_ATAPI);
 	} else if ((sig & 0xffff0000) ==
