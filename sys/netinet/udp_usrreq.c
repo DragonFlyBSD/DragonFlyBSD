@@ -189,7 +189,7 @@ static void udp_append(struct inpcb *last, struct ip *ip,
     struct mbuf *n, int off, struct sockaddr_in *udp_in);
 
 static int udp_connect_oncpu(struct inpcb *inp, struct sockaddr_in *sin,
-    struct sockaddr_in *if_sin);
+    struct sockaddr_in *if_sin, uint16_t hash);
 
 static boolean_t udp_inswildcardhash(struct inpcb *inp,
     struct netmsg_base *msg, int error);
@@ -931,6 +931,7 @@ udp_send(netmsg_t msg)
 	int pru_flags = msg->send.nm_flags;
 	struct inpcb *inp = so->so_pcb;
 	struct thread *td = msg->send.nm_td;
+	uint16_t hash;
 	int flags;
 
 	struct udpiphdr *ui;
@@ -1096,11 +1097,16 @@ udp_send(netmsg_t msg)
 		 * For connected socket, this datagram has already
 		 * been in the correct netisr; no need to rehash.
 		 */
+		KASSERT(inp->inp_flags & INP_HASH, ("inpcb has no hash"));
+		m_sethash(m, inp->inp_hashval);
 		goto sendit;
 	}
 
-	cpu = udp_addrcpu(ui->ui_dst.s_addr, ui->ui_dport,
+	hash = udp_addrhash(ui->ui_dst.s_addr, ui->ui_dport,
 	    ui->ui_src.s_addr, ui->ui_sport);
+	m_sethash(m, hash);
+
+	cpu = netisr_hashcpu(hash);
 	if (cpu != mycpuid) {
 		struct mbuf *m_opt = NULL;
 		struct netmsg_pru_send *smsg;
@@ -1489,6 +1495,7 @@ udp_connect(netmsg_t msg)
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 	struct sockaddr_in *if_sin;
 	struct lwkt_port *port;
+	uint16_t hash;
 	int error;
 
 	KKASSERT(msg->connect.nm_m == NULL);
@@ -1531,9 +1538,10 @@ udp_connect(netmsg_t msg)
 		goto out;
 	}
 
-	port = udp_addrport(sin->sin_addr.s_addr, sin->sin_port,
+	hash = udp_addrhash(sin->sin_addr.s_addr, sin->sin_port,
 	    inp->inp_laddr.s_addr != INADDR_ANY ?
 	    inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr, inp->inp_lport);
+	port = netisr_hashport(hash);
 	if (port != &curthread->td_msgport) {
 		lwkt_msg_t lmsg = &msg->connect.base.lmsg;
 		int nm_flags = PRUC_RECONNECT;
@@ -1586,7 +1594,7 @@ udp_connect(netmsg_t msg)
 		/* msg invalid now */
 		return;
 	}
-	error = udp_connect_oncpu(inp, sin, if_sin);
+	error = udp_connect_oncpu(inp, sin, if_sin, hash);
 out:
 	if (msg->connect.nm_flags & PRUC_HELDTD)
 		lwkt_rele(td);
@@ -1652,7 +1660,7 @@ udp_remwildcardhash(struct inpcb *inp)
 
 static int
 udp_connect_oncpu(struct inpcb *inp, struct sockaddr_in *sin,
-    struct sockaddr_in *if_sin)
+    struct sockaddr_in *if_sin, uint16_t hash)
 {
 	struct socket *so = inp->inp_socket;
 	struct inpcb *oinp;
@@ -1679,6 +1687,9 @@ udp_connect_oncpu(struct inpcb *inp, struct sockaddr_in *sin,
 	inp->inp_faddr = sin->sin_addr;
 	inp->inp_fport = sin->sin_port;
 	in_pcbinsconnhash(inp);
+
+	inp->inp_flags |= INP_HASH;
+	inp->inp_hashval = hash;
 
 	soisconnected(so);
 
@@ -1852,6 +1863,7 @@ udp_disconnect(netmsg_t msg)
 	soclrstate(so, SS_ISCONNECTED);		/* XXX */
 
 	in_pcbdisconnect(inp);
+	inp->inp_flags &= ~INP_HASH;
 
 	/*
 	 * Follow traditional BSD behavior and retain the local port

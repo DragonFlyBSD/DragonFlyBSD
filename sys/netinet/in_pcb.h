@@ -196,7 +196,9 @@ struct inpcb {
 	struct	inpcbinfo *inp_pcbinfo;	/* PCB list info */
 	struct	socket *inp_socket;	/* back pointer to socket */
 					/* list for this PCB's local port */
-	int	inp_flags;		/* generic IP/datagram flags */
+	int		inp_flags;	/* generic IP/datagram flags */
+	uint16_t	inp_hashval;	/* valid iff INP_HASH */
+	uint16_t	inp_pad;	/* explicit padding */
 
 	struct	inpcbpolicy *inp_sp; /* for IPSEC */
 	u_char	inp_af;			/* AF_INET or AF_INET6 */
@@ -340,8 +342,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_CONNECTED		0x1000	/* exact match */
 #define	INP_FLAG_PROTO1		0x2000	/* protocol specific */
 #define INP_PLACEMARKER		0x4000	/* skip this pcb, its a placemarker */
-
-/* 0x008000 unused */
+#define INP_HASH		0x8000	/* inp_hashval is valid */
 
 #define	IN6P_PKTINFO		0x010000 /* receive IP6 dst and I/F */
 #define	IN6P_HOPLIMIT		0x020000 /* receive hoplimit */

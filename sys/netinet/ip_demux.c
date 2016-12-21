@@ -91,6 +91,21 @@ INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
 }
 
 /*
+ * Hash for the network address.
+ */
+int
+tcp_addrhash(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
+{
+	return (INP_MPORT_HASH_TCP(faddr, laddr, fport, lport));
+}
+
+int
+udp_addrhash(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
+{
+	return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
+}
+
+/*
  * Map a network address to a processor.
  */
 int

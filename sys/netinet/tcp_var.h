@@ -504,6 +504,8 @@ struct syncache {
 #define sc_route	sc_inc.inc_route
 #define sc_route6	sc_inc.inc6_route
 	u_int32_t	sc_tsrecent;
+	uint16_t	sc_hashval;		/* connection hash */
+	uint16_t	sc_pad;			/* explicit padding */
 	tcp_seq		sc_irs;			/* seq from peer */
 	tcp_seq		sc_iss;			/* our ISS */
 	u_long		sc_rxttime;		/* retransmit time */
@@ -516,7 +518,7 @@ struct syncache {
 #define SCF_NOOPT		0x01		/* no TCP options */
 #define SCF_WINSCALE		0x02		/* negotiated window scaling */
 #define SCF_TIMESTAMP		0x04		/* negotiated timestamps */
-#define SCF_UNUSED		0x08		/* unused */
+#define SCF_HASH		0x08		/* sc_hashval is valid */
 #define SCF_UNREACH		0x10		/* icmp unreachable received */
 #define	SCF_SACK_PERMITTED	0x20		/* saw SACK permitted option */
 #define SCF_SIGNATURE		0x40		/* send MD5 digests */
@@ -644,6 +646,8 @@ struct ip;
 union netmsg;
 
 int	 tcp_addrcpu(in_addr_t faddr, in_port_t fport,
+	    in_addr_t laddr, in_port_t lport);
+int	 tcp_addrhash(in_addr_t faddr, in_port_t fport,
 	    in_addr_t laddr, in_port_t lport);
 struct lwkt_port *
 	tcp_addrport(in_addr_t faddr, in_port_t fport,

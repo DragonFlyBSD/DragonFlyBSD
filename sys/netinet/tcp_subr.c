@@ -561,6 +561,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 	struct route_in6 *ro6 = NULL;
 	struct route_in6 sro6;
 	struct ip6_hdr *ip6 = ipgen;
+	struct inpcb *inp = NULL;
 	boolean_t use_tmpro = TRUE;
 #ifdef INET6
 	boolean_t isipv6 = (IP_VHL_V(ip->ip_vhl) == 6);
@@ -569,8 +570,9 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 #endif
 
 	if (tp != NULL) {
+		inp = tp->t_inpcb;
 		if (!(flags & TH_RST)) {
-			win = ssb_space(&tp->t_inpcb->inp_socket->so_rcv);
+			win = ssb_space(&inp->inp_socket->so_rcv);
 			if (win < 0)
 				win = 0;
 			if (win > (long)TCP_MAXWIN << tp->rcv_scale)
@@ -582,9 +584,9 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		 */
 		if (tp->t_state != TCPS_LISTEN) {
 			if (isipv6)
-				ro6 = &tp->t_inpcb->in6p_route;
+				ro6 = &inp->in6p_route;
 			else
-				ro = &tp->t_inpcb->inp_route;
+				ro = &inp->inp_route;
 			use_tmpro = FALSE;
 		}
 	}
@@ -669,9 +671,8 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		nth->th_sum = in6_cksum(m, IPPROTO_TCP,
 					sizeof(struct ip6_hdr),
 					tlen - sizeof(struct ip6_hdr));
-		ip6->ip6_hlim = in6_selecthlim(tp ? tp->t_inpcb : NULL,
-					       (ro6 && ro6->ro_rt) ?
-						ro6->ro_rt->rt_ifp : NULL);
+		ip6->ip6_hlim = in6_selecthlim(inp,
+		    (ro6 && ro6->ro_rt) ? ro6->ro_rt->rt_ifp : NULL);
 	} else {
 		nth->th_sum = in_pseudo(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    htons((u_short)(tlen - sizeof(struct ip) + ip->ip_p)));
@@ -680,19 +681,20 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		m->m_pkthdr.csum_thlen = sizeof(struct tcphdr);
 	}
 #ifdef TCPDEBUG
-	if (tp == NULL || (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
+	if (tp == NULL || (inp->inp_socket->so_options & SO_DEBUG))
 		tcp_trace(TA_OUTPUT, 0, tp, mtod(m, void *), th, 0);
 #endif
 	if (isipv6) {
-		ip6_output(m, NULL, ro6, ipflags, NULL, NULL,
-			   tp ? tp->t_inpcb : NULL);
+		ip6_output(m, NULL, ro6, ipflags, NULL, NULL, inp);
 		if ((ro6 == &sro6) && (ro6->ro_rt != NULL)) {
 			RTFREE(ro6->ro_rt);
 			ro6->ro_rt = NULL;
 		}
 	} else {
+		if (inp != NULL && (inp->inp_flags & INP_HASH))
+			m_sethash(m, inp->inp_hashval);
 		ipflags |= IP_DEBUGROUTE;
-		ip_output(m, NULL, ro, ipflags, NULL, tp ? tp->t_inpcb : NULL);
+		ip_output(m, NULL, ro, ipflags, NULL, inp);
 		if ((ro == &sro) && (ro->ro_rt != NULL)) {
 			RTFREE(ro->ro_rt);
 			ro->ro_rt = NULL;

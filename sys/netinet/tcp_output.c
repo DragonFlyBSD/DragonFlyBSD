@@ -1255,6 +1255,9 @@ after_th:
 			    !(rt->rt_rmx.rmx_locks & RTV_MTU))
 				ip->ip_off |= IP_DF;
 
+			KASSERT(inp->inp_flags & INP_HASH,
+			    ("inpcb has no hash"));
+			m_sethash(m, inp->inp_hashval);
 			error = ip_output(m, inp->inp_options, &inp->inp_route,
 					  (so->so_options & SO_DONTROUTE) |
 					  IP_DEBUGROUTE, NULL, inp);

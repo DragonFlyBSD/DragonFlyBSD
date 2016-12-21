@@ -1027,7 +1027,8 @@ struct pr_usrreqs tcp6_usrreqs = {
 
 static int
 tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
-		  struct sockaddr_in *sin, struct sockaddr_in *if_sin)
+		  struct sockaddr_in *sin, struct sockaddr_in *if_sin,
+		  uint16_t hash)
 {
 	struct inpcb *inp = tp->t_inpcb, *oinp;
 	struct socket *so = inp->inp_socket;
@@ -1050,6 +1051,9 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	inp->inp_faddr = sin->sin_addr;
 	inp->inp_fport = sin->sin_port;
 	in_pcbinsconnhash(inp);
+
+	inp->inp_flags |= INP_HASH;
+	inp->inp_hashval = hash;
 
 	/*
 	 * We are now on the inpcb's owner CPU, if the cached route was
@@ -1132,6 +1136,7 @@ tcp_connect(netmsg_t msg)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	int error;
+	uint16_t hash;
 	lwkt_port_t port;
 
 	COMMON_START(so, inp, 0);
@@ -1182,10 +1187,11 @@ tcp_connect(netmsg_t msg)
 	}
 	KKASSERT(inp->inp_socket == so);
 
-	port = tcp_addrport(sin->sin_addr.s_addr, sin->sin_port,
+	hash = tcp_addrhash(sin->sin_addr.s_addr, sin->sin_port,
 			    (inp->inp_laddr.s_addr != INADDR_ANY ?
 			     inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr),
 			    inp->inp_lport);
+	port = netisr_hashport(hash);
 
 	if (port != &curthread->td_msgport) {
 		lwkt_msg_t lmsg = &msg->connect.base.lmsg;
@@ -1258,7 +1264,7 @@ tcp_connect(netmsg_t msg)
 		msg->connect.nm_flags &= ~PRUC_HELDTD;
 	}
 	error = tcp_connect_oncpu(tp, msg->connect.nm_sndflags,
-				  msg->connect.nm_m, sin, if_sin);
+				  msg->connect.nm_m, sin, if_sin, hash);
 	msg->connect.nm_m = NULL;
 out:
 	if (msg->connect.nm_m) {

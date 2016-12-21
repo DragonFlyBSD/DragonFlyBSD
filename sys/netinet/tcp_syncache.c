@@ -710,6 +710,8 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	struct sockaddr_in6 sin6_faddr;
 	struct sockaddr *faddr;
 
+	KASSERT(m->m_flags & M_HASH, ("mbuf has no hash"));
+
 	if (isipv6) {
 		faddr = (struct sockaddr *)&sin6_faddr;
 		sin6_faddr.sin6_family = AF_INET6;
@@ -817,6 +819,9 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 			inp->inp_laddr = laddr;
 			goto abort;
 		}
+
+		inp->inp_flags |= INP_HASH;
+		inp->inp_hashval = m->m_pkthdr.hash;
 	}
 
 	/*
@@ -975,6 +980,8 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	struct mbuf *ipopts = NULL;
 	int win;
 
+	KASSERT(m->m_flags & M_HASH, ("mbuf has no hash"));
+
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 	tp = sototcpcb(so);
 
@@ -996,6 +1003,10 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	 */
 	sc = syncache_lookup(inc, &sch);
 	if (sc != NULL) {
+		KASSERT(sc->sc_flags & SCF_HASH, ("syncache has no hash"));
+		KASSERT(sc->sc_hashval == m->m_pkthdr.hash,
+		    ("syncache/mbuf hash mismatches"));
+
 		tcpstat.tcps_sc_dupsyn++;
 		if (ipopts) {
 			/*
@@ -1059,7 +1070,8 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 		sc->sc_route.ro_rt = NULL;
 	}
 	sc->sc_irs = th->th_seq;
-	sc->sc_flags = 0;
+	sc->sc_flags = SCF_HASH;
+	sc->sc_hashval = m->m_pkthdr.hash;
 	sc->sc_peer_mss = to->to_flags & TOF_MSS ? to->to_mss : 0;
 	if (tcp_syncookies)
 		sc->sc_iss = syncookie_generate(sc);
@@ -1312,6 +1324,8 @@ no_options:
 		m->m_pkthdr.csum_flags = CSUM_TCP;
 		m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
 		m->m_pkthdr.csum_thlen = sizeof(struct tcphdr) + optlen;
+		KASSERT(sc->sc_flags & SCF_HASH, ("syncache has no hash"));
+		m_sethash(m, sc->sc_hashval);
 		error = ip_output(m, sc->sc_ipopts, &sc->sc_route,
 				  IP_DEBUGROUTE, NULL, sc->sc_tp->t_inpcb);
 	}
