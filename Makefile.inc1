@@ -923,8 +923,8 @@ _share=	share/syscons/scrnmaps
 
 # Make sure Makefile.inc1 logic is intact.
 .if !defined(WORLD_ALTCOMPILER)
-.error undefined WORLD_ALTCOMPILER
-.endif)
+.warning undefined WORLD_ALTCOMPILER
+.endif
 
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 _gcc50_cross= gnu/usr.bin/cc50
