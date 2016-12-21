@@ -233,6 +233,12 @@ ahci_pci_attach(device_t dev)
 		sc->sc_flags |= AHCI_F_IGN_FR;
 		sc->sc_flags |= AHCI_F_IGN_CR;
 		break;
+	case 0x92151b4b:
+		device_printf(dev,
+			      "Enable 88SE9215 workarounds for broken chip\n");
+		sc->sc_flags |= AHCI_F_IGN_FR;
+		sc->sc_flags |= AHCI_F_IGN_CR;
+		break;
 	case 0x92301b4b:
 		device_printf(dev,
 			      "Enable 88SE9230 workarounds for broken chip\n");
