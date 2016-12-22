@@ -1220,7 +1220,7 @@ static const struct bdb_header *get_bdb_header(const struct vbt_header *vbt)
 {
 	const char *_vbt = (const char *)vbt;
 
-	return (const struct bdb_header *)_vbt + vbt->bdb_offset;
+	return (const struct bdb_header *)(_vbt + vbt->bdb_offset);
 }
 
 /**
