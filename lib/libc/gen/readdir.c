@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "un-namespace.h"
 
 #include "libc_private.h"
