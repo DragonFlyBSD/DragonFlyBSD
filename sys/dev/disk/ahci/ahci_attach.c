@@ -109,7 +109,9 @@ static const struct ahci_pciid ahci_msi_blacklist[] = {
 };
 
 static int	ahci_msi_enable = 1;
+int	ahci_synchronous_boot = 1;
 TUNABLE_INT("hw.ahci.msi.enable", &ahci_msi_enable);
+TUNABLE_INT("hw.ahci.synchronous_boot", &ahci_synchronous_boot);
 
 /*
  * Match during probe and attach.  The device does not yet have a softc.
@@ -564,11 +566,13 @@ noccc:
 	ahci_intr(sc);
 
 	/*
+	 * Synchronously wait for some of the AHCI devices to initialize.
+	 *
 	 * All ports are probing in parallel.  Wait for them to finish
 	 * and then issue the cam attachment and bus scan serially so
 	 * the 'da' assignments are deterministic.
 	 */
-	for (i = 0; i < AHCI_MAX_PORTS; i++) {
+	for (i = 0; i < AHCI_MAX_PORTS && ahci_synchronous_boot; i++) {
 		if ((ap = sc->sc_ports[i]) != NULL) {
 			while (ap->ap_signal & AP_SIGF_INIT)
 				tsleep(&ap->ap_signal, 0, "ahprb2", hz);
@@ -577,7 +581,7 @@ noccc:
 				ahci_cam_changed(ap, NULL, -1);
 				ahci_os_unlock_port(ap);
 				while ((ap->ap_flags & AP_F_SCAN_COMPLETED) == 0) {
-					tsleep(&ap->ap_flags, 0, "ahprb2", hz);
+					tsleep(&ap->ap_flags, 0, "ahprb3", hz);
 				}
 			} else {
 				ahci_os_unlock_port(ap);

@@ -145,10 +145,10 @@ ahci_init(struct ahci_softc *sc)
 		return (1);
 	}
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
-	ahci_os_sleep(500);
+	ahci_os_sleep(250);
 	ahci_read(sc, AHCI_REG_GHC);		/* flush */
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE | AHCI_REG_GHC_HR);
-	ahci_os_sleep(500);
+	ahci_os_sleep(250);
 	ahci_read(sc, AHCI_REG_GHC);		/* flush */
 	if (ahci_wait_ne(sc, AHCI_REG_GHC,
 			 AHCI_REG_GHC_HR, AHCI_REG_GHC_HR) != 0) {
@@ -158,7 +158,7 @@ ahci_init(struct ahci_softc *sc)
 	if (ahci_read(sc, AHCI_REG_GHC) & AHCI_REG_GHC_AE) {
 		device_printf(sc->sc_dev, "AE did not auto-clear!\n");
 		ahci_write(sc, AHCI_REG_GHC, 0);
-		ahci_os_sleep(500);
+		ahci_os_sleep(250);
 	}
 
 	/*
@@ -167,9 +167,9 @@ ahci_init(struct ahci_softc *sc)
 	 * Restore saved parameters.  Avoid pci transaction burst write
 	 * by issuing dummy reads.
 	 */
-	ahci_os_sleep(500);
+	ahci_os_sleep(10);
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
-	ahci_os_sleep(500);
+	ahci_os_sleep(10);
 
 	ahci_read(sc, AHCI_REG_GHC);		/* flush */
 
@@ -1466,6 +1466,7 @@ retry:
 	 * take longer when plugged into a SATA-3 port.
 	 */
 	r |= AHCI_PREG_SCTL_DET_INIT;
+
 	switch(AhciForceGen) {
 	case 0:
 		r |= AHCI_PREG_SCTL_SPD_ANY;
@@ -2090,7 +2091,7 @@ ahci_poll(struct ahci_ccb *ccb, int timeout,
 			timeout -= ahci_os_softsleep();
 			break;
 		case ATA_S_PENDING:
-			ahci_os_softsleep();
+			timeout -= ahci_os_softsleep();
 			ahci_check_active_timeouts(ap);
 			break;
 		default:

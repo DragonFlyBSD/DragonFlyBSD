@@ -456,6 +456,7 @@ struct ahci_port {
 #define AP_F_ERR_CCB_RESERVED	0x0400
 #define AP_F_HARSH_REINIT	0x0800
 #define AP_F_FBSS_ENABLED	0x1000
+#define AP_F_BOOT_SYNCHRONOUS	0x2000
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
 	struct lock		ap_lock;	/* os per-port lock */
@@ -657,6 +658,7 @@ void	ahci_os_unlock_port(struct ahci_port *ap);
 
 extern u_int32_t AhciForceGen;
 extern u_int32_t AhciNoFeatures;
+extern int ahci_synchronous_boot;
 
 enum {AHCI_LINK_PWR_MGMT_NONE, AHCI_LINK_PWR_MGMT_MEDIUM,
       AHCI_LINK_PWR_MGMT_AGGR};

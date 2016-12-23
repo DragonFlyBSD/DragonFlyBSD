@@ -375,9 +375,20 @@ ahci_port_thread(void *arg)
 	atomic_clear_int(&ap->ap_signal, AP_SIGF_THREAD_SYNC);
 	wakeup(&ap->ap_signal);
 	ahci_port_state_machine(ap, 1);
-	ahci_os_unlock_port(ap);
 	atomic_clear_int(&ap->ap_signal, AP_SIGF_INIT);
-	wakeup(&ap->ap_signal);
+
+	/*
+	 * If attaching synchronous wakeup the frontend (device attach code),
+	 * otherwise attach asynchronously.  We haven't probed anything yet
+	 * so the ahci_cam_attach() won't try to probe.
+	 */
+	if (ahci_synchronous_boot) {
+		wakeup(&ap->ap_signal);
+	} else {
+		if (ahci_cam_attach(ap) == 0)
+			ahci_cam_changed(ap, NULL, -1);
+	}
+	ahci_os_unlock_port(ap);
 
 	/*
 	 * Then loop on the helper core.
