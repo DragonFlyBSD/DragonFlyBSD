@@ -156,10 +156,6 @@ static struct tcpcb *
 #define	TCPDEBUG2(req)
 #endif
 
-static int	tcp_lport_extension = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, lportext, CTLFLAG_RW,
-    &tcp_lport_extension, 0, "");
-
 /*
  * For some ill optimized programs, which try to use TCP_NOPUSH
  * to improve performance, will have small amount of data sits
@@ -1151,27 +1147,20 @@ tcp_connect(netmsg_t msg)
 	}
 
 	/*
-	 * Bind if we have to
+	 * Select local port, if it is not yet selected.
 	 */
 	if (inp->inp_lport == 0) {
-		if (tcp_lport_extension) {
-			KKASSERT(inp->inp_laddr.s_addr == INADDR_ANY);
+		KKASSERT(inp->inp_laddr.s_addr == INADDR_ANY);
 
-			error = in_pcbladdr(inp, nam, &if_sin, td);
-			if (error)
-				goto out;
-			inp->inp_laddr.s_addr = if_sin->sin_addr.s_addr;
+		error = in_pcbladdr(inp, nam, &if_sin, td);
+		if (error)
+			goto out;
+		inp->inp_laddr.s_addr = if_sin->sin_addr.s_addr;
+		msg->connect.nm_flags |= PRUC_HASLADDR;
 
-			error = in_pcbbind_remote(inp, nam, td);
-			if (error)
-				goto out;
-
-			msg->connect.nm_flags |= PRUC_HASLADDR;
-		} else {
-			error = in_pcbbind(inp, NULL, td);
-			if (error)
-				goto out;
-		}
+		error = in_pcbbind_remote(inp, nam, td);
+		if (error)
+			goto out;
 	}
 
 	if ((msg->connect.nm_flags & PRUC_HASLADDR) == 0) {
