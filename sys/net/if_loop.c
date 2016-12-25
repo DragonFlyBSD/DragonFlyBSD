@@ -102,7 +102,7 @@ loopattach(void *dummy)
 		if_initname(ifp, "lo", i);
 		ifp->if_mtu = LOMTU;
 		ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
-		ifp->if_capabilities = IFCAP_HWCSUM;
+		ifp->if_capabilities = IFCAP_HWCSUM | IFCAP_RSS;
 		ifp->if_hwassist = LO_CSUM_FEATURES;
 		ifp->if_capenable = ifp->if_capabilities;
 		ifp->if_ioctl = loioctl;
@@ -156,6 +156,8 @@ looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		if (csum_flags & CSUM_DATA_VALID)
 			m->m_pkthdr.csum_data = 0xffff;
 	}
+	if ((ifp->if_capenable & IFCAP_RSS) == 0)
+		m->m_flags &= ~M_HASH;
 	return (if_simloop(ifp, m, dst->sa_family, 0));
 }
 
@@ -369,14 +371,16 @@ loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFCAP:
-		mask = (ifr->ifr_reqcap ^ ifp->if_capenable) & IFCAP_HWCSUM;
-		if (mask) {
-			ifp->if_capenable ^= mask;
+		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
+		if (mask & IFCAP_HWCSUM) {
+			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
 			if (IFCAP_TXCSUM & ifp->if_capenable)
 				ifp->if_hwassist = LO_CSUM_FEATURES;
 			else
 				ifp->if_hwassist = 0;
 		}
+		if (mask & IFCAP_RSS)
+			ifp->if_capenable ^= IFCAP_RSS;
 		break;
 
 	default:
