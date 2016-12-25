@@ -801,6 +801,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 			inp->in6p_laddr = laddr6;
 			goto abort;
 		}
+		port = tcp6_addrport();
 	} else {
 		struct in_addr laddr;
 
@@ -822,18 +823,13 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 
 		inp->inp_flags |= INP_HASH;
 		inp->inp_hashval = m->m_pkthdr.hash;
+		port = netisr_hashport(inp->inp_hashval);
 	}
 
 	/*
 	 * The current port should be in the context of the SYN+ACK and
 	 * so should match the tcp address port.
 	 */
-	if (isipv6) {
-		port = tcp6_addrport();
-	} else {
-		port = tcp_addrport(inp->inp_faddr.s_addr, inp->inp_fport,
-				    inp->inp_laddr.s_addr, inp->inp_lport);
-	}
 	KASSERT(port == &curthread->td_msgport,
 	    ("TCP PORT MISMATCH %p vs %p\n", port, &curthread->td_msgport));
 
