@@ -1044,8 +1044,10 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	}
 	if (inp->inp_laddr.s_addr == INADDR_ANY)
 		inp->inp_laddr = if_sin->sin_addr;
-	inp->inp_faddr = sin->sin_addr;
-	inp->inp_fport = sin->sin_port;
+	KASSERT(inp->inp_faddr.s_addr == sin->sin_addr.s_addr,
+	    ("faddr mismatch for reconnect"));
+	KASSERT(inp->inp_fport == sin->sin_port,
+	    ("fport mismatch for reconnect"));
 	in_pcbinsconnhash(inp);
 
 	inp->inp_flags |= INP_HASH;
@@ -1141,9 +1143,30 @@ tcp_connect(netmsg_t msg)
 	 * Reconnect our pcb if we have to
 	 */
 	if (msg->connect.nm_flags & PRUC_RECONNECT) {
+		KASSERT(inp->inp_faddr.s_addr == sin->sin_addr.s_addr,
+		    ("faddr mismatch for reconnect"));
+		KASSERT(inp->inp_fport == sin->sin_port,
+		    ("fport mismatch for reconnect"));
 		msg->connect.nm_flags &= ~PRUC_RECONNECT;
 		TCP_STATE_MIGRATE_END(tp);
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
+	} else {
+		if (inp->inp_faddr.s_addr != INADDR_ANY) {
+			kprintf("inpcb %p, reconnect\n", inp);
+			error = EISCONN;
+			if (so->so_state & SS_ISCONNECTING)
+				error = EALREADY;
+			goto out;
+		}
+		KASSERT(inp->inp_fport == 0, ("invalid fport"));
+
+		/*
+		 * Install faddr/fport earlier, so that when this
+		 * inpcb is installed on to the lport hash, the
+		 * 4-tuple contains correct value.
+		 */
+		inp->inp_faddr = sin->sin_addr;
+		inp->inp_fport = sin->sin_port;
 	}
 
 	/*
