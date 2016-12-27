@@ -100,7 +100,12 @@ del_timer(struct timer_list *timer)
 	lwkt_token_uninit(&(timer)->timer_token);
 }
 
-#define del_timer_sync(timer)			callout_drain(&(timer)->timer_callout)
+static inline int
+del_timer_sync(struct timer_list *timer)
+{
+	return callout_drain(&(timer)->timer_callout) == 0;
+}
+
 #define del_singleshot_timer_sync(timer)	del_timer_sync(timer)
 
 #define	timer_pending(timer)	callout_pending(&(timer)->timer_callout)
