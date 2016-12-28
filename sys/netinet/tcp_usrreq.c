@@ -1023,7 +1023,7 @@ struct pr_usrreqs tcp6_usrreqs = {
 
 static int
 tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
-		  struct sockaddr_in *sin, struct sockaddr_in *if_sin,
+		  const struct sockaddr_in *sin, struct sockaddr_in *if_sin,
 		  uint16_t hash)
 {
 	struct inpcb *inp = tp->t_inpcb, *oinp;
@@ -1143,30 +1143,18 @@ tcp_connect(netmsg_t msg)
 	 * Reconnect our pcb if we have to
 	 */
 	if (msg->connect.nm_flags & PRUC_RECONNECT) {
-		KASSERT(inp->inp_faddr.s_addr == sin->sin_addr.s_addr,
-		    ("faddr mismatch for reconnect"));
-		KASSERT(inp->inp_fport == sin->sin_port,
-		    ("fport mismatch for reconnect"));
 		msg->connect.nm_flags &= ~PRUC_RECONNECT;
 		TCP_STATE_MIGRATE_END(tp);
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	} else {
 		if (inp->inp_faddr.s_addr != INADDR_ANY) {
-			kprintf("inpcb %p, reconnect\n", inp);
+			kprintf("inpcb %p, double-connect race\n", inp);
 			error = EISCONN;
 			if (so->so_state & SS_ISCONNECTING)
 				error = EALREADY;
 			goto out;
 		}
 		KASSERT(inp->inp_fport == 0, ("invalid fport"));
-
-		/*
-		 * Install faddr/fport earlier, so that when this
-		 * inpcb is installed on to the lport hash, the
-		 * 4-tuple contains correct value.
-		 */
-		inp->inp_faddr = sin->sin_addr;
-		inp->inp_fport = sin->sin_port;
 	}
 
 	/*
@@ -1181,6 +1169,17 @@ tcp_connect(netmsg_t msg)
 		inp->inp_laddr.s_addr = if_sin->sin_addr.s_addr;
 		msg->connect.nm_flags |= PRUC_HASLADDR;
 
+		/*
+		 * Install faddr/fport earlier, so that when this
+		 * inpcb is installed on to the lport hash, the
+		 * 4-tuple contains correct value.
+		 *
+		 * NOTE: The faddr/fport will have to be installed
+		 * after the in_pcbladdr(), which may change them.
+		 */
+		inp->inp_faddr = sin->sin_addr;
+		inp->inp_fport = sin->sin_port;
+
 		error = in_pcbbind_remote(inp, nam, td);
 		if (error)
 			goto out;
@@ -1188,15 +1187,28 @@ tcp_connect(netmsg_t msg)
 
 	if ((msg->connect.nm_flags & PRUC_HASLADDR) == 0) {
 		/*
-		 * Calculate the correct protocol processing thread.  The
-		 * connect operation must run there.  Set the forwarding
-		 * port before we forward the message or it will get bounced
-		 * right back to us.
+		 * Rarely used path:
+		 * This inpcb was bound before this connect.
 		 */
 		error = in_pcbladdr(inp, nam, &if_sin, td);
 		if (error)
 			goto out;
+
+		/*
+		 * Save or refresh the faddr/fport, since they may
+		 * be changed by in_pcbladdr().
+		 */
+		inp->inp_faddr = sin->sin_addr;
+		inp->inp_fport = sin->sin_port;
 	}
+#ifdef INVARIANTS
+	else {
+		KASSERT(inp->inp_faddr.s_addr == sin->sin_addr.s_addr,
+		    ("faddr mismatch for reconnect"));
+		KASSERT(inp->inp_fport == sin->sin_port,
+		    ("fport mismatch for reconnect"));
+	}
+#endif
 	KKASSERT(inp->inp_socket == so);
 
 	hash = tcp_addrhash(sin->sin_addr.s_addr, sin->sin_port,
