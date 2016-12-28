@@ -103,14 +103,14 @@
  *
  * The kernel address space can be up to (I think) 511 page directory
  * pages.  Each one represents 1G.  NKPDPE defines the size of the kernel
- * address space, curently set to 128G.
+ * address space.  The recommended value is between 128 and 511.
  *
  * The ending address is non-inclusive of the per-cpu data array
  * which starts at MPPTDI (-16MB mark).  MPPTDI is the page directory
  * index in the last PD of the kernel address space and is typically
  * set to (NPDEPG - 8) = (512 - 8).
  */
-#define NKPDPE			128
+#define NKPDPE			511
 #define	VM_MIN_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG - NKPDPE, 0, 0)
 #define	VM_MAX_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG - 1, MPPTDI, NPTEPG - 1)
 

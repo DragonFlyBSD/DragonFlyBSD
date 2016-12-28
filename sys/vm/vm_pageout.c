@@ -616,7 +616,6 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 			vm_object_drop(info.object);
 		}
 		info.object = object;
-		kprintf("X");
 	}
 
 	/*
