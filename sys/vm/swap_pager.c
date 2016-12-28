@@ -393,7 +393,7 @@ swap_pager_swap_init(void)
 
 	/*
 	 * The zone is dynamically allocated so generally size it to
-	 * maxswzone (32MB to 512MB of KVM).  Set a minimum size based
+	 * maxswzone (32MB to 256GB of KVM).  Set a minimum size based
 	 * on physical memory of around 8x (each swblock can hold 16 pages).
 	 *
 	 * With the advent of SSDs (vs HDs) the practical (swap:memory) ratio

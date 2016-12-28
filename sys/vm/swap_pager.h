@@ -61,9 +61,10 @@
 #define SWB_NPAGES	16
 
 /*
- * Piecemeal swap metadata structure.  Swap is stored in a hash table.
+ * Piecemeal swap metadata structure.  Swap is stored in a RBTREE.  Swap
+ * blocks are page-sized.  e.g. block 1 is offset +4096 from block 0.
  *
- * Storage use is ~1:16384 or so.
+ * ram:swap is around 1:341
  *
  * Overall memory utilization is about the same as the old swap structure.
  */
