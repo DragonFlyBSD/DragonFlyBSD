@@ -38,8 +38,9 @@
 #ifndef _SYS_ERRNO_H_
 #define	_SYS_ERRNO_H_
 
-#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 #include <sys/cdefs.h>
+
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 __BEGIN_DECLS
 extern __thread int	errno;
 __END_DECLS
