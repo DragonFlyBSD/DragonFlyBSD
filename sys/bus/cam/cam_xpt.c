@@ -3341,7 +3341,8 @@ xpt_action(union ccb *start_ccb)
 			if (csa->event_enable == 0) {
 				SLIST_REMOVE(async_head, cur_entry,
 					     async_node, links);
-				csa->ccb_h.path->device->refcount--;
+				atomic_add_int(
+					&csa->ccb_h.path->device->refcount, -1);
 				kfree(cur_entry, M_CAMXPT);
 			} else {
 				cur_entry->event_enable = csa->event_enable;
@@ -3353,7 +3354,7 @@ xpt_action(union ccb *start_ccb)
 			cur_entry->callback_arg = csa->callback_arg;
 			cur_entry->callback = csa->callback;
 			SLIST_INSERT_HEAD(async_head, cur_entry, links);
-			csa->ccb_h.path->device->refcount++;
+			atomic_add_int(&csa->ccb_h.path->device->refcount, 1);
 		}
 
 		/*
@@ -4301,7 +4302,7 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	TAILQ_INIT(&new_bus->et_entries);
 	new_bus->path_id = sim->path_id;
 	new_bus->sim = sim;
-	++sim->refcount;
+	atomic_add_int(&sim->refcount, 1);
 	timevalclear(&new_bus->last_reset);
 	new_bus->flags = 0;
 	new_bus->refcount = 1;	/* Held until a bus_deregister event */
@@ -4434,6 +4435,7 @@ again:
 	 * and/or peripherals and may attempt to use the sim pointer cached
 	 * in some of these structures during close.
 	 */
+	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	bus_path.bus->sim = &cam_dead_sim;
 	TAILQ_FOREACH(target, &bus_path.bus->et_entries, links) {
 		TAILQ_FOREACH(device, &target->ed_entries, links) {
@@ -4443,6 +4445,7 @@ again:
 			}
 		}
 	}
+	lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
 
 	/*
 	 * Repeat the async's for the benefit of any new devices, such as
@@ -4951,14 +4954,28 @@ xpt_get_ccb(struct cam_ed *device)
 static void
 xpt_release_bus(struct cam_eb *bus)
 {
+	for (;;) {
+		int count = bus->refcount;
 
-	if ((--bus->refcount == 0)
-	 && (TAILQ_FIRST(&bus->et_entries) == NULL)) {
-		lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
-		TAILQ_REMOVE(&xsoftc.xpt_busses, bus, links);
-		xsoftc.bus_generation++;
-		lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
-		kfree(bus, M_CAMXPT);
+		cpu_ccfence();
+		if (count == 1) {
+			lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
+			if (atomic_cmpset_int(&bus->refcount, 1, 0)) {
+				if (TAILQ_EMPTY(&bus->et_entries)) {
+					TAILQ_REMOVE(&xsoftc.xpt_busses,
+						     bus, links);
+					xsoftc.bus_generation++;
+					kfree(bus, M_CAMXPT);
+				}
+				lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+				return;
+			}
+			lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+		} else {
+			if (atomic_cmpset_int(&bus->refcount, count, count-1)) {
+				return;
+			}
+		}
 	}
 }
 
@@ -4976,12 +4993,14 @@ xpt_alloc_target(struct cam_eb *bus, target_id_t target_id)
 	target->refcount = 1;
 	target->generation = 0;
 	timevalclear(&target->last_reset);
+
 	/*
 	 * Hold a reference to our parent bus so it
 	 * will not go away before we do.
 	 */
-	bus->refcount++;
+	atomic_add_int(&bus->refcount, 1);
 
+	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	/* Insertion sort into our bus's target list */
 	cur_target = TAILQ_FIRST(&bus->et_entries);
 	while (cur_target != NULL && cur_target->target_id < target_id)
@@ -4993,21 +5012,36 @@ xpt_alloc_target(struct cam_eb *bus, target_id_t target_id)
 		TAILQ_INSERT_TAIL(&bus->et_entries, target, links);
 	}
 	bus->generation++;
+	lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+
 	return (target);
 }
 
 static void
 xpt_release_target(struct cam_eb *bus, struct cam_et *target)
 {
-	if (target->refcount == 1) {
-		KKASSERT(TAILQ_FIRST(&target->ed_entries) == NULL);
-		TAILQ_REMOVE(&bus->et_entries, target, links);
-		bus->generation++;
-		xpt_release_bus(bus);
-		KKASSERT(target->refcount == 1);
-		kfree(target, M_CAMXPT);
-	} else {
-		--target->refcount;
+	for (;;) {
+		int count = target->refcount;
+
+		cpu_ccfence();
+		if (count == 1) {
+			lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
+			if (atomic_cmpset_int(&target->refcount, 1, 0)) {
+				KKASSERT(TAILQ_EMPTY(&target->ed_entries));
+				TAILQ_REMOVE(&bus->et_entries, target, links);
+				bus->generation++;
+				kfree(target, M_CAMXPT);
+				lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+				xpt_release_bus(bus);
+				return;
+			}
+			lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+		} else {
+			if (atomic_cmpset_int(&target->refcount,
+					      count, count - 1)) {
+				return;
+			}
+		}
 	}
 }
 
@@ -5028,10 +5062,14 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 	/*
 	 * Make space for us in the device queue on our bus
 	 */
+	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	devq = bus->sim->devq;
-	if (devq == NULL)
+	if (devq == NULL) {
+		lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
 		return(NULL);
+	}
 	status = cam_devq_resize(devq, devq->alloc_queue.array_size + 1);
+	lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
 
 	if (status != CAM_REQ_CMP) {
 		device = NULL;
@@ -5085,7 +5123,7 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 		 * Hold a reference to our parent target so it
 		 * will not go away before we do.
 		 */
-		target->refcount++;
+		atomic_add_int(&target->refcount, 1);
 
 		/*
 		 * XXX should be limited by number of CCBs this bus can
@@ -5118,7 +5156,7 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 static void
 xpt_reference_device(struct cam_ed *device)
 {
-	++device->refcount;
+	atomic_add_int(&device->refcount, 1);
 }
 
 static void
@@ -5127,32 +5165,46 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 {
 	struct cam_devq *devq;
 
-	if (device->refcount == 1) {
-		KKASSERT(device->flags & CAM_DEV_UNCONFIGURED);
+	for (;;) {
+		int count = device->refcount;
 
-		if (device->alloc_ccb_entry.pinfo.index != CAM_UNQUEUED_INDEX
-		 || device->send_ccb_entry.pinfo.index != CAM_UNQUEUED_INDEX)
-			panic("Removing device while still queued for ccbs");
+		if (count == 1) {
+			lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
+			if (atomic_cmpset_int(&device->refcount, 1, 0)) {
+				KKASSERT(device->flags & CAM_DEV_UNCONFIGURED);
+				if (device->alloc_ccb_entry.pinfo.index !=
+				     CAM_UNQUEUED_INDEX ||
+				    device->send_ccb_entry.pinfo.index !=
+				     CAM_UNQUEUED_INDEX) {
+					panic("Removing device while "
+					      "still queued for ccbs");
+				}
+				if ((device->flags & CAM_DEV_REL_TIMEOUT_PENDING) != 0) {
+					device->flags &= ~CAM_DEV_REL_TIMEOUT_PENDING;
+					callout_stop(&device->callout);
+				}
+				TAILQ_REMOVE(&target->ed_entries, device, links);
+				target->generation++;
+				bus->sim->max_ccbs -= device->ccbq.devq_openings;
+				if ((devq = bus->sim->devq) != NULL) {
+					/* Release our slot in the devq */
+					cam_devq_resize(devq, devq->alloc_queue.array_size - 1);
+				}
+				lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
 
-		if ((device->flags & CAM_DEV_REL_TIMEOUT_PENDING) != 0) {
-			device->flags &= ~CAM_DEV_REL_TIMEOUT_PENDING;
-			callout_stop(&device->callout);
+				camq_fini(&device->drvq);
+				camq_fini(&device->ccbq.queue);
+				xpt_release_target(bus, target);
+				kfree(device, M_CAMXPT);
+				return;
+			}
+			lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+		} else {
+			if (atomic_cmpset_int(&device->refcount,
+					      count, count - 1)) {
+				return;
+			}
 		}
-
-		TAILQ_REMOVE(&target->ed_entries, device,links);
-		target->generation++;
-		bus->sim->max_ccbs -= device->ccbq.devq_openings;
-		if ((devq = bus->sim->devq) != NULL) {
-			/* Release our slot in the devq */
-			cam_devq_resize(devq, devq->alloc_queue.array_size - 1);
-		}
-		camq_fini(&device->drvq);
-		camq_fini(&device->ccbq.queue);
-		xpt_release_target(bus, target);
-		KKASSERT(device->refcount == 1);
-		kfree(device, M_CAMXPT);
-	} else {
-		--device->refcount;
 	}
 }
 
@@ -5186,11 +5238,12 @@ xpt_find_bus(path_id_t path_id)
 	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH(bus, &xsoftc.xpt_busses, links) {
 		if (bus->path_id == path_id) {
-			bus->refcount++;
+			atomic_add_int(&bus->refcount, 1);
 			break;
 		}
 	}
 	lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+
 	return (bus);
 }
 
@@ -5199,12 +5252,15 @@ xpt_find_target(struct cam_eb *bus, target_id_t	target_id)
 {
 	struct cam_et *target;
 
+	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH(target, &bus->et_entries, links) {
 		if (target->target_id == target_id) {
-			target->refcount++;
+			atomic_add_int(&target->refcount, 1);
 			break;
 		}
 	}
+	lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+
 	return (target);
 }
 
@@ -5213,12 +5269,15 @@ xpt_find_device(struct cam_et *target, lun_id_t lun_id)
 {
 	struct cam_ed *device;
 
+	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH(device, &target->ed_entries, links) {
 		if (device->lun_id == lun_id) {
-			device->refcount++;
+			atomic_add_int(&device->refcount, 1);
 			break;
 		}
 	}
+	lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
+
 	return (device);
 }
 
