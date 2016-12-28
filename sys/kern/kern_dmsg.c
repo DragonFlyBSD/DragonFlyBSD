@@ -86,6 +86,7 @@ static void kdmsg_state_free(kdmsg_state_t *state);
 #define kdmsg_state_hold(state)	_kdmsg_state_hold(state, __FILE__, __LINE__)
 #define kdmsg_state_drop(state)	_kdmsg_state_drop(state, __FILE__, __LINE__)
 #else
+#define KDMSG_DEBUG 0
 #define KDMSG_DEBUG_ARGS
 #define kdmsg_state_hold(state)	_kdmsg_state_hold(state)
 #define kdmsg_state_drop(state)	_kdmsg_state_drop(state)
