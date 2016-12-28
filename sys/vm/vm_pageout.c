@@ -146,6 +146,7 @@ static int vm_swap_idle_enabled=0;
 static int vm_swap_enabled=1;
 static int vm_swap_idle_enabled=0;
 #endif
+int vm_pageout_memuse_mode=1;	/* 0-disable, 1-passive, 2-active swp*/
 
 SYSCTL_UINT(_vm, VM_PAGEOUT_ALGORITHM, anonmem_decline,
 	CTLFLAG_RW, &vm_anonmem_decline, 0, "active->inactive anon memory");
@@ -171,6 +172,8 @@ SYSCTL_INT(_vm, OID_AUTO, pageout_stats_interval,
 
 SYSCTL_INT(_vm, OID_AUTO, pageout_stats_free_max,
 	CTLFLAG_RW, &vm_pageout_stats_free_max, 0, "Not implemented");
+SYSCTL_INT(_vm, OID_AUTO, pageout_memuse_mode,
+	CTLFLAG_RW, &vm_pageout_memuse_mode, 0, "memoryuse resource mode");
 
 #if defined(NO_SWAPPING)
 SYSCTL_INT(_vm, VM_SWAPPING_ENABLED, swap_enabled,
@@ -769,10 +772,17 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 		if (swap_user_async == 0)
 			vmflush_flags |= VM_PAGER_PUT_SYNC;
 
-		vm_page_protect(p, VM_PROT_NONE);
-		vm_page_flag_set(p, PG_WINATCFLS);
-		info->count += vm_pageout_page(p, &max_launder, &vnodes_skipped,
-					       &vpfailed, 1, vmflush_flags);
+		if (vm_pageout_memuse_mode >= 1)
+			vm_page_protect(p, VM_PROT_NONE);
+		if (vm_pageout_memuse_mode >= 2) {
+			vm_page_flag_set(p, PG_WINATCFLS);
+			info->count += vm_pageout_page(p, &max_launder,
+						       &vnodes_skipped,
+						       &vpfailed, 1, vmflush_flags);
+		} else {
+			++info->count;
+			vm_page_wakeup(p);
+		}
 	} else {
 		vm_page_wakeup(p);
 	}
@@ -785,6 +795,8 @@ done:
 /*
  * Deactivate some number of pages in a map due to set RLIMIT_RSS limits.
  * that is relatively difficult to do.
+ *
+ * Called when vm_pageout_memuse_mode is >= 1.
  */
 void
 vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t limit)
@@ -843,6 +855,9 @@ again:
 	 * satisfied or we run out of retries.  Note that the map remains
 	 * locked, so the program is not going to be taking any faults
 	 * while we are doing this.
+	 *
+	 * Only circle around in this particular function when the
+	 * memuse_mode is >= 2.
 	 */
 	if (obj)  {
 		vm_object_hold(obj);
@@ -853,15 +868,11 @@ again:
 			pgout_offset = tmpe_end;
 			goto again;
 		}
-
-		/*
-		 * Early termination.
-		 */
 		pgout_offset += count << PAGE_SHIFT;
 	} else {
 		pgout_offset = 0;
 		if (pmap_resident_tlnw_count(vm_map_pmap(map)) > limit) {
-			if (retries) {
+			if (retries && vm_pageout_memuse_mode >= 2) {
 				--retries;
 				goto again;
 			}
@@ -2388,7 +2399,7 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	vm = p->p_vmspace;
 	vmspace_hold(vm);
 	size = pmap_resident_tlnw_count(&vm->vm_pmap);
-	if (limit >= 0 && size >= limit) {
+	if (limit >= 0 && size >= limit && vm_pageout_memuse_mode >= 1) {
 		vm_pageout_map_deactivate_pages(&vm->vm_map, limit);
 	}
 	vmspace_drop(vm);

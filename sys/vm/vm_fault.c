@@ -688,7 +688,8 @@ done2:
 	 */
 	p = td->td_proc;
 	if ((fault_flags & VM_FAULT_USERMODE) && lp &&
-	    p->p_limit && map->pmap && map != &kernel_map) {
+	    p->p_limit && map->pmap && vm_pageout_memuse_mode >= 1 &&
+	    map != &kernel_map) {
 		vm_pindex_t limit;
 		vm_pindex_t size;
 

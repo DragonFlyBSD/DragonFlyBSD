@@ -81,6 +81,7 @@ extern int vm_pages_needed;	/* should be some "event" structure */
 extern int vm_pageout_pages_needed;
 extern int vm_pageout_deficit;
 extern int vm_page_free_hysteresis;
+extern int vm_pageout_memuse_mode;
 
 #define VM_PAGEOUT_ASYNC 0
 #define VM_PAGEOUT_SYNC 1
