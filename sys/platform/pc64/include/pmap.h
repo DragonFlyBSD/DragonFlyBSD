@@ -304,7 +304,9 @@ struct pmap {
 #define PMAP_HVM		0x00000004
 #define PMAP_SEGSHARED		0x00000008	/* segment shared opt */
 
-#define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
+#define pmap_resident_count(pmap) ((pmap)->pm_stats.resident_count)
+#define pmap_resident_tlnw_count(pmap) ((pmap)->pm_stats.resident_count - \
+					(pmap)->pm_stats.wired_count)
 
 typedef struct pmap	*pmap_t;
 

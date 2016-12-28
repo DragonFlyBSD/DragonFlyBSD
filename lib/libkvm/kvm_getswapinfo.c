@@ -274,10 +274,10 @@ scanradix(
 	 * Terminator
 	 */
 	if (meta.bm_bighint == (swblk_t)-1) {
-		printf("%*.*s(0x%06x,%lld) Terminator\n",
+		printf("%*.*s(0x%06jx,%jd) Terminator\n",
 		    TABME,
-		    blk,
-		    (long long)radix
+		    (intmax_t)blk,
+		    (intmax_t)radix
 		);
 		return(-1);
 	}
@@ -286,12 +286,12 @@ scanradix(
 		/*
 		 * Leaf bitmap
 		 */
-		printf("%*.*s(0x%06x,%lld) Bitmap %08x big=%d\n",
+		printf("%*.*s(0x%06jx,%jd) Bitmap %016jx big=%jd\n",
 		    TABME,
-		    blk,
-		    (long long)radix,
-		    (int)meta.u.bmu_bitmap,
-		    meta.bm_bighint
+		    (intmax_t)blk,
+		    (intmax_t)radix,
+		    (intmax_t)meta.u.bmu_bitmap,
+		    (intmax_t)meta.bm_bighint
 		);
 
 		if (meta.u.bmu_bitmap) {
@@ -304,22 +304,22 @@ scanradix(
 		/*
 		 * Meta node if all free
 		 */
-		printf("%*.*s(0x%06x,%lld) Submap ALL-FREE (big=%d) {\n",
+		printf("%*.*s(0x%06jx,%jd) Submap ALL-FREE (big=%jd) {\n",
 		    TABME,
-		    blk,
-		    (long long)radix,
-		    meta.bm_bighint
+		    (intmax_t)blk,
+		    (intmax_t)radix,
+		    (intmax_t)meta.bm_bighint
 		);
 		*availp += radix;
 	} else if (meta.u.bmu_avail == 0) {
 		/*
 		 * Meta node if all used
 		 */
-		printf("%*.*s(0x%06x,%lld) Submap ALL-ALLOCATED (big=%d)\n",
+		printf("%*.*s(0x%06jx,%jd) Submap ALL-ALLOCATED (big=%jd)\n",
 		    TABME,
-		    blk,
-		    (long long)radix,
-		    meta.bm_bighint
+		    (intmax_t)blk,
+		    (intmax_t)radix,
+		    (intmax_t)meta.bm_bighint
 		);
 	} else {
 		/*
@@ -329,12 +329,12 @@ scanradix(
 		int next_skip;
 		int64_t avail_tmp = 0;
 
-		printf("%*.*s(0x%06x,%lld) Submap avail=%d big=%d {\n",
+		printf("%*.*s(0x%06jx,%jd) Submap avail=%jd big=%jd {\n",
 		    TABME,
-		    blk,
-		    (long long)radix,
-		    (int)meta.u.bmu_avail,
-		    meta.bm_bighint
+		    (intmax_t)blk,
+		    (intmax_t)radix,
+		    (intmax_t)meta.u.bmu_avail,
+		    (intmax_t)meta.bm_bighint
 		);
 
 		radix /= BLIST_META_RADIX;
@@ -390,11 +390,11 @@ dump_blist(kvm_t *kd)
 
 	KGET2(swapblist, &blcopy, sizeof(blcopy), "*swapblist");
 
-	printf("radix tree: %d/%d/%lld blocks, %dK wired\n",
-		blcopy.bl_free,
-		blcopy.bl_blocks,
-		(long long)blcopy.bl_radix,
-		(int)((blcopy.bl_rootblks * sizeof(blmeta_t) + 1023)/
+	printf("radix tree: %jd/%jd/%jd blocks, %jdK wired\n",
+		(intmax_t)blcopy.bl_free,
+		(intmax_t)blcopy.bl_blocks,
+		(intmax_t)blcopy.bl_radix,
+		(intmax_t)((blcopy.bl_rootblks * sizeof(blmeta_t) + 1023)/
 		    1024)
 	);
 

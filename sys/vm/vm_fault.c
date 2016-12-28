@@ -304,6 +304,8 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	vm_pindex_t first_pindex;
 	struct faultstate fs;
 	struct lwp *lp;
+	struct proc *p;
+	thread_t td;
 	int growstack;
 	int retry = 0;
 	int inherit_prot;
@@ -321,7 +323,8 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	/*
 	 * vm_map interactions
 	 */
-	if ((lp = curthread->td_lwp) != NULL)
+	td = curthread;
+	if ((lp = td->td_lwp) != NULL)
 		lp->lwp_flags |= LWP_PAGING;
 	lwkt_gettoken(&map->token);
 
@@ -476,7 +479,7 @@ RetryFault:
 	 * to finish an I/O if another process gets stuck in
 	 * vop_helper_read_shortcut() due to a swap fault.
 	 */
-	if ((curthread->td_flags & TDF_NOFAULT) &&
+	if ((td->td_flags & TDF_NOFAULT) &&
 	    (retry ||
 	     fs.first_object->type == OBJT_VNODE ||
 	     fs.first_object->type == OBJT_SWAP ||
@@ -509,7 +512,7 @@ RetryFault:
 	 */
 	if (fs.first_shared && fs.first_object->backing_object &&
 	    LIST_EMPTY(&fs.first_object->shadow_head) &&
-	    curthread->td_proc && curthread->td_proc->p_nthreads == 1) {
+	    td->td_proc && td->td_proc->p_nthreads == 1) {
 		fs.first_shared = 0;
 	}
 
@@ -644,19 +647,19 @@ RetryFault:
 
 done_success:
 	mycpu->gd_cnt.v_vm_faults++;
-	if (curthread->td_lwp)
-		++curthread->td_lwp->lwp_ru.ru_minflt;
+	if (td->td_lwp)
+		++td->td_lwp->lwp_ru.ru_minflt;
 
 	/*
 	 * Unlock everything, and return
 	 */
 	unlock_things(&fs);
 
-	if (curthread->td_lwp) {
+	if (td->td_lwp) {
 		if (fs.hardfault) {
-			curthread->td_lwp->lwp_ru.ru_majflt++;
+			td->td_lwp->lwp_ru.ru_majflt++;
 		} else {
-			curthread->td_lwp->lwp_ru.ru_minflt++;
+			td->td_lwp->lwp_ru.ru_minflt++;
 		}
 	}
 
@@ -674,6 +677,30 @@ done2:
 		lp->lwp_flags &= ~LWP_PAGING;
 	if (vm_shared_fault && fs.shared == 0)
 		++vm_shared_miss;
+
+#if !defined(NO_SWAPPING)
+	/*
+	 * Check the process RSS limit and force deactivation and
+	 * (asynchronous) paging if necessary.  This is a complex operation,
+	 * only do it for direct user-mode faults, for now.
+	 *
+	 * To reduce overhead implement approximately a ~16MB hysteresis.
+	 */
+	p = td->td_proc;
+	if ((fault_flags & VM_FAULT_USERMODE) && lp &&
+	    p->p_limit && map->pmap && map != &kernel_map) {
+		vm_pindex_t limit;
+		vm_pindex_t size;
+
+		limit = OFF_TO_IDX(qmin(p->p_rlimit[RLIMIT_RSS].rlim_cur,
+					p->p_rlimit[RLIMIT_RSS].rlim_max));
+		size = pmap_resident_tlnw_count(map->pmap);
+		if (limit >= 0 && size > 4096 && size - 4096 >= limit) {
+			vm_pageout_map_deactivate_pages(map, limit);
+		}
+	}
+#endif
+
 	return (result);
 }
 

@@ -74,8 +74,8 @@ struct swdevt *swdevt = should_be_malloced;	/* exported to pstat/systat */
 static swblk_t nswap;		/* first block after the interleaved devs */
 static struct mtx swap_mtx = MTX_INITIALIZER("swpmtx");
 int nswdev = NSWAPDEV;				/* exported to pstat/systat */
-int vm_swap_size;
-int vm_swap_max;
+swblk_t vm_swap_size;
+swblk_t vm_swap_max;
 
 static int swapoff_one(int index);
 struct vnode *swapdev_vp;
@@ -94,10 +94,11 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
-	int sz, off, seg, index, blkno, nblkno;
+	swblk_t sz, off, seg, blkno, nblkno;
+	int index;
 	struct swdevt *sp;
 	sz = howmany(bp->b_bcount, PAGE_SIZE);
-	blkno = (int)(bio->bio_offset >> PAGE_SHIFT);
+	blkno = (swblk_t)(bio->bio_offset >> PAGE_SHIFT);
 
 	/*
 	 * Convert interleaved swap into per-device swap.  Note that
@@ -121,7 +122,7 @@ swapdev_strategy(struct vop_strategy_args *ap)
 		index = 0;
 		nbio->bio_offset = bio->bio_offset;
 	}
-	nblkno = (int)(nbio->bio_offset >> PAGE_SHIFT);
+	nblkno = (swblk_t)(nbio->bio_offset >> PAGE_SHIFT);
 	sp = &swdevt[index];
 	if (nblkno + sz > sp->sw_nblks) {
 		bp->b_error = EINVAL;
@@ -337,8 +338,8 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	 * this test also ensures.
 	 */
 	if (nblks > BLIST_MAXBLKS / nswdev) {
-		kprintf("exceeded maximum of %d blocks per swap unit\n",
-			(int)BLIST_MAXBLKS / nswdev);
+		kprintf("exceeded maximum of %ld blocks per swap unit\n",
+			(long)BLIST_MAXBLKS / nswdev);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		VOP_CLOSE(vp, FREAD | FWRITE, NULL);
 		vn_unlock(vp);
@@ -587,7 +588,7 @@ void
 swapacctspace(swblk_t base, swblk_t count)
 {
 	int index;
-	int seg;
+	swblk_t seg;
 
 	vm_swap_size += count;
 	seg = base / dmmax;

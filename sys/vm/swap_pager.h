@@ -82,10 +82,11 @@ struct swblock {
 extern int swap_pager_full;
 extern int swap_pager_almost_full;
 extern int swap_fail_ticks;
-extern int vm_swap_size;
-extern int vm_swap_max;
-extern int vm_swap_cache_use;
-extern int vm_swap_anon_use;
+extern int swap_user_async;
+extern swblk_t vm_swap_size;
+extern swblk_t vm_swap_max;
+extern swblk_t vm_swap_cache_use;
+extern swblk_t vm_swap_anon_use;
 extern int vm_swapcache_read_enable;
 extern int vm_swapcache_inactive_heuristic;
 extern int vm_swapcache_use_chflags;

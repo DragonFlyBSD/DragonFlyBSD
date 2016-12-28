@@ -1749,14 +1749,14 @@ loop:
 		if (vmstats.v_cache_count > 0)
 			kprintf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
 #endif
-		vm_pageout_deficit++;
+		atomic_add_int(&vm_pageout_deficit, 1);
 		pagedaemon_wakeup();
 		return (NULL);
 	} else {
 		/*
 		 * No pages available, wakeup the pageout daemon and give up.
 		 */
-		vm_pageout_deficit++;
+		atomic_add_int(&vm_pageout_deficit, 1);
 		pagedaemon_wakeup();
 		return (NULL);
 	}

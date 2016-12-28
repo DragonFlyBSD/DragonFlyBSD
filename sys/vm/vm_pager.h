@@ -84,6 +84,8 @@ struct pagerops {
 #define	VM_PAGER_PUT_INVAL		0x0002
 #define	VM_PAGER_IGNORE_CLEANCHK	0x0004
 #define	VM_PAGER_CLUSTER_OK		0x0008
+#define	VM_PAGER_TRY_TO_CACHE		0x0010
+#define	VM_PAGER_ALLOW_ACTIVE		0x0020
 
 #ifdef _KERNEL
 

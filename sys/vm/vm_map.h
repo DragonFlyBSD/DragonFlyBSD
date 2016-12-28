@@ -274,6 +274,7 @@ struct vm_map {
 	u_int president_cache;		/* Remember president count */
 	u_int president_ticks;		/* Save ticks for cache */
 	struct lwkt_token token;	/* Soft serializer */
+	vm_ooffset_t pgout_offset;	/* for RLIMIT_RSS scans */
 #define	min_offset		header.start
 #define max_offset		header.end
 };
@@ -558,6 +559,7 @@ vmspace_president_count(struct vmspace *vmspace)
 #define VM_FAULT_UNSWAP		0x10	/* Remove backing store from the page */
 #define VM_FAULT_BURST_QUICK	0x20	/* Special case shared vm_object */
 #define VM_FAULT_WIRE_MASK	(VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
+#define VM_FAULT_USERMODE	0x40
 
 #ifdef _KERNEL
 
@@ -604,8 +606,8 @@ int vm_uiomove (vm_map_t, vm_object_t, off_t, int, vm_offset_t, int *);
 int vm_map_stack (vm_map_t, vm_offset_t, vm_size_t, int,
 		  vm_prot_t, vm_prot_t, int);
 int vm_map_growstack (struct proc *p, vm_offset_t addr);
-int vmspace_swap_count (struct vmspace *vmspace);
-int vmspace_anonymous_count (struct vmspace *vmspace);
+vm_offset_t vmspace_swap_count (struct vmspace *vmspace);
+vm_offset_t vmspace_anonymous_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
 void vm_map_transition_wait(vm_map_t map);
 

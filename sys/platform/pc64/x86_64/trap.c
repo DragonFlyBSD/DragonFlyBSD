@@ -913,7 +913,7 @@ trap_pfault(struct trapframe *frame, int usermode)
 		 */
 		fault_flags = 0;
 		if (usermode)
-			fault_flags |= VM_FAULT_BURST;
+			fault_flags |= VM_FAULT_BURST | VM_FAULT_USERMODE;
 		if (ftype & VM_PROT_WRITE)
 			fault_flags |= VM_FAULT_DIRTY;
 		else

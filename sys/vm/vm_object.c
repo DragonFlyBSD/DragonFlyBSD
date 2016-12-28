@@ -1214,7 +1214,7 @@ vm_object_terminate(vm_object_t object)
 		if (RB_ROOT(&object->rb_memq) == NULL)
 			break;
 		kprintf("vm_object_terminate: Warning, object %p "
-			"still has %d pages\n",
+			"still has %ld pages\n",
 			object, object->resident_page_count);
 		vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
 					vm_object_terminate_callback, &info);
@@ -3101,7 +3101,7 @@ DB_SHOW_COMMAND(object, vm_object_print_static)
 		return;
 
 	db_iprintf(
-	    "Object %p: type=%d, size=0x%lx, res=%d, ref=%d, flags=0x%x\n",
+	    "Object %p: type=%d, size=0x%lx, res=%ld, ref=%d, flags=0x%x\n",
 	    object, (int)object->type, (u_long)object->size,
 	    object->resident_page_count, object->ref_count, object->flags);
 	/*

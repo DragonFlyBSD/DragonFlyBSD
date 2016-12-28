@@ -166,7 +166,9 @@ struct pmap {
 	struct lwkt_token	pm_token;
 };
 
-#define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
+#define pmap_resident_count(pmap) ((pmap)->pm_stats.resident_count)
+#define pmap_resident_tlnw_count(pmap) ((pmap)->pm_stats.resident_count - \
+					(pmap)->pm_stats.wired_count)
 
 typedef struct pmap	*pmap_t;
 

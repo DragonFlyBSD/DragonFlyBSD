@@ -132,6 +132,7 @@
 #define SWBIO_READ	0x01
 #define SWBIO_WRITE	0x02
 #define SWBIO_SYNC	0x04
+#define SWBIO_TTC	0x08	/* for VM_PAGER_TRY_TO_CACHE */
 
 struct swfreeinfo {
 	vm_object_t	object;
@@ -154,8 +155,8 @@ struct swswapoffinfo {
 int swap_pager_full;		/* swap space exhaustion (task killing) */
 int swap_fail_ticks;		/* when we became exhausted */
 int swap_pager_almost_full;	/* swap space exhaustion (w/ hysteresis)*/
-int vm_swap_cache_use;
-int vm_swap_anon_use;
+swblk_t vm_swap_cache_use;
+swblk_t vm_swap_anon_use;
 static int vm_report_swap_allocs;
 
 static int nsw_rcount;		/* free read buffers			*/
@@ -168,6 +169,7 @@ struct blist *swapblist;
 static int swap_async_max = 4;	/* maximum in-progress async I/O's	*/
 static int swap_burst_read = 0;	/* allow burst reading */
 static swblk_t swapiterator;	/* linearize allocations */
+int swap_user_async = 0;	/* user swap pager operation can be async */
 
 static struct spinlock swapbp_spin = SPINLOCK_INITIALIZER(&swapbp_spin, "swapbp_spin");
 
@@ -182,13 +184,24 @@ SYSCTL_INT(_vm, OID_AUTO, swap_async_max,
         CTLFLAG_RW, &swap_async_max, 0, "Maximum running async swap ops");
 SYSCTL_INT(_vm, OID_AUTO, swap_burst_read,
         CTLFLAG_RW, &swap_burst_read, 0, "Allow burst reads for pageins");
+SYSCTL_INT(_vm, OID_AUTO, swap_user_async,
+        CTLFLAG_RW, &swap_user_async, 0, "Allow async uuser swap write I/O");
 
+#if SWBLK_BITS == 64
+SYSCTL_LONG(_vm, OID_AUTO, swap_cache_use,
+        CTLFLAG_RD, &vm_swap_cache_use, 0, "");
+SYSCTL_LONG(_vm, OID_AUTO, swap_anon_use,
+        CTLFLAG_RD, &vm_swap_anon_use, 0, "");
+SYSCTL_LONG(_vm, OID_AUTO, swap_size,
+        CTLFLAG_RD, &vm_swap_size, 0, "");
+#else
 SYSCTL_INT(_vm, OID_AUTO, swap_cache_use,
         CTLFLAG_RD, &vm_swap_cache_use, 0, "");
 SYSCTL_INT(_vm, OID_AUTO, swap_anon_use,
         CTLFLAG_RD, &vm_swap_anon_use, 0, "");
 SYSCTL_INT(_vm, OID_AUTO, swap_size,
         CTLFLAG_RD, &vm_swap_size, 0, "");
+#endif
 SYSCTL_INT(_vm, OID_AUTO, report_swap_allocs,
         CTLFLAG_RW, &vm_report_swap_allocs, 0, "");
 
@@ -1296,7 +1309,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	blk = swp_pager_meta_ctl(mreq->object, mreq->pindex, 0);
 	marray[0] = mreq;
 
-	for (i = 1; swap_burst_read &&
+	for (i = 1; i <= swap_burst_read &&
 		    i < XIO_INTERNAL_PAGES &&
 		    mreq->pindex + i < object->size; ++i) {
 		swblk_t iblk;
@@ -1483,7 +1496,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 void
 swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
-		    int sync, int *rtvals)
+		    int flags, int *rtvals)
 {
 	int i;
 	int n = 0;
@@ -1501,16 +1514,24 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	 * Step 1
 	 *
 	 * Turn object into OBJT_SWAP
-	 * check for bogus sysops
-	 * force sync if not pageout process
+	 * Check for bogus sysops
+	 *
+	 * Force sync if not pageout process, we don't want any single
+	 * non-pageout process to be able to hog the I/O subsystem!  This
+	 * can be overridden by setting.
 	 */
 	if (object->type == OBJT_DEFAULT) {
 		if (object->type == OBJT_DEFAULT)
 			swp_pager_meta_convert(object);
 	}
 
-	if (curthread != pagethread)
-		sync = TRUE;
+	/*
+	 * Normally we force synchronous swap I/O if this is not the
+	 * pageout daemon to prevent any single user process limited
+	 * via RLIMIT_RSS from hogging swap write bandwidth.
+	 */
+	if (curthread != pagethread && swap_user_async == 0)
+		flags |= VM_PAGER_PUT_SYNC;
 
 	/*
 	 * Step 2
@@ -1607,7 +1628,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * All I/O parameters have been satisfied, build the I/O
 		 * request and assign the swap space.
 		 */
-		if (sync == TRUE)
+		if ((flags & VM_PAGER_PUT_SYNC))
 			bp = getpbuf_kva(&nsw_wcount_sync);
 		else
 			bp = getpbuf_kva(&nsw_wcount_async);
@@ -1645,7 +1666,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		/*
 		 * asynchronous
 		 */
-		if (sync == FALSE) {
+		if ((flags & VM_PAGER_PUT_SYNC) == 0) {
 			bio->bio_done = swp_pager_async_iodone;
 			BUF_KERNPROC(bp);
 			vn_strategy(swapdev_vp, bio);
@@ -1664,6 +1685,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * double-free.
 		 */
 		bio->bio_caller_info1.index |= SWBIO_SYNC;
+		if (flags & VM_PAGER_TRY_TO_CACHE)
+			bio->bio_caller_info1.index |= SWBIO_TTC;
 		bio->bio_done = biodone_sync;
 		bio->bio_flags |= BIO_SYNC;
 		vn_strategy(swapdev_vp, bio);
@@ -1689,9 +1712,15 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 void
 swap_pager_newswap(void)
 {
+	/*
+	 * NOTE: vm_swap_max cannot exceed 1 billion blocks, which is the
+	 *	 limitation imposed by the blist code.  Remember that this
+	 *	 will be divided by NSWAP_MAX (4), so each swap device is
+	 *	 limited to around a terrabyte.
+	 */
 	if (vm_swap_max) {
-		nswap_lowat = vm_swap_max * 4 / 100;	/* 4% left */
-		nswap_hiwat = vm_swap_max * 6 / 100;	/* 6% left */
+		nswap_lowat = (int64_t)vm_swap_max * 4 / 100;	/* 4% left */
+		nswap_hiwat = (int64_t)vm_swap_max * 6 / 100;	/* 6% left */
 		kprintf("swap low/high-water marks set to %d/%d\n",
 			nswap_lowat, nswap_hiwat);
 	} else {
@@ -1908,12 +1937,10 @@ swp_pager_async_iodone(struct bio *bio)
 			vm_page_flag_set(m, PG_SWAPPED);
 			if (vm_page_count_severe())
 				vm_page_deactivate(m);
-#if 0
-			if (!vm_page_count_severe() || !vm_page_try_to_cache(m))
-				vm_page_protect(m, VM_PROT_READ);
-#endif
 			vm_page_io_finish(m);
 			vm_page_wakeup(m);
+			if (bio->bio_caller_info1.index & SWBIO_TTC)
+				vm_page_try_to_cache(m);
 		}
 	}
 

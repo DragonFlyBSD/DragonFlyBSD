@@ -491,14 +491,14 @@ vmspace_terminate(struct vmspace *vm, int final)
  *
  * No requirements.
  */
-int
+vm_offset_t
 vmspace_swap_count(struct vmspace *vm)
 {
 	vm_map_t map = &vm->vm_map;
 	vm_map_entry_t cur;
 	vm_object_t object;
-	int count = 0;
-	int n;
+	vm_offset_t count = 0;
+	vm_offset_t n;
 
 	vmspace_hold(vm);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
@@ -529,13 +529,13 @@ vmspace_swap_count(struct vmspace *vm)
  *
  * No requirements.
  */
-int
+vm_offset_t
 vmspace_anonymous_count(struct vmspace *vm)
 {
 	vm_map_t map = &vm->vm_map;
 	vm_map_entry_t cur;
 	vm_object_t object;
-	int count = 0;
+	vm_offset_t count = 0;
 
 	vmspace_hold(vm);
 	for (cur = map->header.next; cur != &map->header; cur = cur->next) {

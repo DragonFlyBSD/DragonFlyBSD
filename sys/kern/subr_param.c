@@ -231,11 +231,15 @@ init_param2(int physpages)
 	size_t limsize;
 
 	/*
-	 * Calculate manually becaus the VM page queues / system is not set up yet
+	 * Calculate manually becaus the VM page queues / system is not set
+	 * up yet.
 	 */
 	limsize = (size_t)physpages * PAGE_SIZE;
 	if (limsize > KvaSize)
 		limsize = KvaSize;
+	if (maxswzone > limsize / 2)	/* maxswzone size (1/2 of phys mem) */
+		maxswzone = limsize / 2;
+
 	limsize /= 1024 * 1024;		/* smaller of KVM or physmem in MB */
 
 	/* Base parameters */

@@ -105,9 +105,10 @@ extern void vm_wait (int timo);
 extern void vm_wait_pfault (void);
 
 #ifdef _KERNEL
-void vm_pageout_page (vm_page_t, vm_object_t);
 void vm_pageout_cluster (vm_page_t, vm_object_t);
 int vm_pageout_flush (vm_page_t *, int, int);
+int vm_pageout_clean (vm_page_t);
+void vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t limit);
 
 #endif
 

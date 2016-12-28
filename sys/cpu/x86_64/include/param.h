@@ -144,16 +144,16 @@
 /*
  * Ceiling on amount of swblock kva space, can be changed via
  * kern.maxswzone /boot/loader.conf variable.  On 64 bit machines
- * the kernel has a 512G address space so reserving 512M of KVM
- * is not a big deal.
+ * the kernel has a 512G address space, and we do not want to allow
+ * more than half of that to be used for this purpose.
  *
- * Approximately (size / 160 x 32 x PAGE_SIZE) bytes of swap.  This
+ * Approximately (size / 192 x 16 x PAGE_SIZE) bytes of swap.  This
  * comes to approximately 1GB of swap space per 1MB of kernel memory.
  * Actually using 512G of swap will tie up a big chunk (512M) of physical
  * memory.
  */
 #ifndef VM_SWZONE_SIZE_MAX
-#define VM_SWZONE_SIZE_MAX	(512L * 1024 * 1024)
+#define VM_SWZONE_SIZE_MAX	(256L * 1024L * 1024 * 1024)
 #endif
 
 /*
