@@ -2765,24 +2765,16 @@ ifq_set_methods(struct ifaltq *ifq, altq_mapsubq_t mapsubq,
 static void
 ifsq_norm_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m)
 {
-	m->m_nextpkt = NULL;
-	if (ifsq->ifsq_norm_tail == NULL)
-		ifsq->ifsq_norm_head = m;
-	else
-		ifsq->ifsq_norm_tail->m_nextpkt = m;
-	ifsq->ifsq_norm_tail = m;
+
+	classq_add(&ifsq->ifsq_norm, m);
 	ALTQ_SQ_CNTR_INC(ifsq, m->m_pkthdr.len);
 }
 
 static void
 ifsq_prio_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m)
 {
-	m->m_nextpkt = NULL;
-	if (ifsq->ifsq_prio_tail == NULL)
-		ifsq->ifsq_prio_head = m;
-	else
-		ifsq->ifsq_prio_tail->m_nextpkt = m;
-	ifsq->ifsq_prio_tail = m;
+
+	classq_add(&ifsq->ifsq_prio, m);
 	ALTQ_SQ_CNTR_INC(ifsq, m->m_pkthdr.len);
 	ALTQ_SQ_PRIO_CNTR_INC(ifsq, m->m_pkthdr.len);
 }
@@ -2792,14 +2784,10 @@ ifsq_norm_dequeue(struct ifaltq_subque *ifsq)
 {
 	struct mbuf *m;
 
-	m = ifsq->ifsq_norm_head;
-	if (m != NULL) {
-		if ((ifsq->ifsq_norm_head = m->m_nextpkt) == NULL)
-			ifsq->ifsq_norm_tail = NULL;
-		m->m_nextpkt = NULL;
+	m = classq_get(&ifsq->ifsq_norm);
+	if (m != NULL)
 		ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
-	}
-	return m;
+	return (m);
 }
 
 static struct mbuf *
@@ -2807,15 +2795,12 @@ ifsq_prio_dequeue(struct ifaltq_subque *ifsq)
 {
 	struct mbuf *m;
 
-	m = ifsq->ifsq_prio_head;
+	m = classq_get(&ifsq->ifsq_prio);
 	if (m != NULL) {
-		if ((ifsq->ifsq_prio_head = m->m_nextpkt) == NULL)
-			ifsq->ifsq_prio_tail = NULL;
-		m->m_nextpkt = NULL;
 		ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
 		ALTQ_SQ_PRIO_CNTR_DEC(ifsq, m->m_pkthdr.len);
 	}
-	return m;
+	return (m);
 }
 
 int
@@ -2868,9 +2853,9 @@ ifsq_classic_dequeue(struct ifaltq_subque *ifsq, int op)
 
 	switch (op) {
 	case ALTDQ_POLL:
-		m = ifsq->ifsq_prio_head;
+		m = classq_head(&ifsq->ifsq_prio);
 		if (m == NULL)
-			m = ifsq->ifsq_norm_head;
+			m = classq_head(&ifsq->ifsq_norm);
 		break;
 
 	case ALTDQ_REMOVE:

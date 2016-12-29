@@ -28,9 +28,9 @@
 #ifndef _NET_ALTQ_IF_ALTQ_H_
 #define	_NET_ALTQ_IF_ALTQ_H_
 
-#ifndef _SYS_SERIALIZE_H_
+#include <sys/mbuf.h>
 #include <sys/serialize.h>
-#endif
+#include <net/altq/if_classq.h>
 
 /* Default subqueue */
 #define ALTQ_SUBQ_INDEX_DEFAULT	0
@@ -67,10 +67,8 @@ struct ifaltq_subque {
 	struct ifnet	*ifsq_ifp;
 	void		*ifsq_hw_priv;	/* hw private data */
 
-	struct mbuf	*ifsq_prio_head;
-	struct mbuf	*ifsq_prio_tail;
-	struct mbuf	*ifsq_norm_head;
-	struct mbuf	*ifsq_norm_tail;
+	struct if_classq ifsq_norm;
+	struct if_classq ifsq_prio;
 	int		ifsq_prio_len;
 	int		ifsq_prio_bcnt;
 	int		ifsq_len;	/* packet counter */

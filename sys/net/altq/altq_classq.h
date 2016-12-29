@@ -39,6 +39,8 @@
 #ifndef _ALTQ_ALTQ_CLASSQ_H_
 #define	_ALTQ_ALTQ_CLASSQ_H_
 
+#include <net/altq/if_classq.h>
+
 /*
  * Packet Queue types: RED or DROPHEAD.
  */
@@ -53,7 +55,7 @@
  * Packet Queue structures and macros to manipulate them.
  */
 struct _class_queue_ {
-	struct mbuf	*tail_;	/* Tail of packet queue */
+	struct if_classq que_;
 	int	qlen_;		/* Queue length (in number of packets) */
 	int	qlim_;		/* Queue limit (in number of packets*) */
 	int	qtype_;		/* Queue type */
@@ -64,8 +66,8 @@ typedef struct _class_queue_	class_queue_t;
 #define	qtype(q)	(q)->qtype_		/* Get queue type */
 #define	qlimit(q)	(q)->qlim_		/* Max packets to be queued */
 #define	qlen(q)		(q)->qlen_		/* Current queue length. */
-#define	qtail(q)	(q)->tail_		/* Tail of the queue */
-#define	qhead(q)	((q)->tail_ ? (q)->tail_->m_nextpkt : NULL)
+#define	qtail(q)	classq_tail(&(q)->que_)	/* Tail of the queue */
+#define	qhead(q)	classq_head(&(q)->que_)
 
 #define	qempty(q)	((q)->qlen_ == 0)	/* Is the queue empty?? */
 #define	q_is_red(q)	((q)->qtype_ == Q_RED)	/* Is the queue a red queue */
@@ -75,31 +77,19 @@ typedef struct _class_queue_	class_queue_t;
 static __inline void
 _addq(class_queue_t *q, struct mbuf *m)
 {
-        struct mbuf *m0;
-
-	if ((m0 = qtail(q)) != NULL)
-		m->m_nextpkt = m0->m_nextpkt;
-	else
-		m0 = m;
-	m0->m_nextpkt = m;
-	qtail(q) = m;
+	classq_add(&q->que_, m);
 	qlen(q)++;
 }
 
 static __inline struct mbuf *
 _getq(class_queue_t *q)
 {
-	struct mbuf  *m, *m0;
+	struct mbuf *m;
 
-	if ((m = qtail(q)) == NULL)
-		return (NULL);
-	if ((m0 = m->m_nextpkt) != m)
-		m->m_nextpkt = m0->m_nextpkt;
-	else
-		qtail(q) = NULL;
-	qlen(q)--;
-	m0->m_nextpkt = NULL;
-	return (m0);
+	m = classq_get(&q->que_);
+	if (m != NULL)
+		qlen(q)--;
+	return (m);
 }
 
 /* drop a packet at the tail of the queue */
