@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
 .\"
-.Dd January 27, 2001
+.Dd December 30, 2016
 .Dt ZONE 9
 .Os
 .Sh NAME
@@ -43,9 +43,9 @@
 .Ft void
 .Fn zbootinit "vm_zone_t z" "char *name" "int size" "void *item" "int nitems"
 .Ft int
-.Fn zinitna "vm_zone_t z" "struct vm_object *obj" "char *name" "int size" "int nentries" "int flags" "int zalloc"
+.Fn zinitna "vm_zone_t z" "struct vm_object *obj" "char *name" "int size" "int nentries" "int flags"
 .Ft vm_zone_t
-.Fn zinit "char *name" "int size" "int nentries" "int flags" "int zalloc"
+.Fn zinit "char *name" "int size" "int nentries" "int flags"
 .Ft void
 .Fn zdestroy "vm_zone_t z"
 .Ft void *
@@ -122,10 +122,6 @@ argument should have the
 .Dv ZONE_DESTROYABLE
 bit set if the zone is to be destroyed with
 .Fn zdestroy .
-The final argument,
-.Fa zalloc ,
-indicates the number of VM pages by which the zone should grow every
-time it fills up.
 .Pp
 If the VM system is not yet fully initialized, the zone allocator
 cannot dynamically allocate VM pages from which to dole out items, so
