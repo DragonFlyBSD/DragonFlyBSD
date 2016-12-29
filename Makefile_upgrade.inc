@@ -3177,6 +3177,7 @@ TO_REMOVE+=/usr/share/man/man2/sigsetmask.2.gz
 TO_REMOVE+=/usr/share/man/man2/sigvec.2.gz
 TO_REMOVE+=/usr/share/man/man3/efi_set_variables_supported.3.gz
 TO_REMOVE+=/usr/share/man/man9/cpumask.9.gz
+TO_REMOVE+=/usr/share/man/man9/nlookup_set_cred.9.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
