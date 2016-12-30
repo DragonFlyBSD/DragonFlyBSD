@@ -2,7 +2,7 @@
 
 PROG=	sftp
 SRCS=	progressmeter.c sftp.c sftp-client.c sftp-common.c sftp-glob.c
-WARNS?=	0
+WARNS?=	3
 
 # Portability layer
 SRCS+=	fmt_scaled.c
