@@ -2232,6 +2232,59 @@ pmap_remove_all(vm_page_t m)
 }
 
 /*
+ * Removes the page from a particular pmap
+ */
+void
+pmap_remove_specific(pmap_t pmap, vm_page_t m)
+{
+	pt_entry_t *pte, tpte;
+	pv_entry_t pv;
+
+	lwkt_gettoken(&vm_token);
+again:
+	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
+		if (pv->pv_pmap != pmap)
+			continue;
+
+		KKASSERT(pv->pv_pmap->pm_stats.resident_count > 0);
+		--pv->pv_pmap->pm_stats.resident_count;
+
+		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
+		KKASSERT(pte != NULL);
+
+		tpte = pmap_inval_loadandclear(pte, pv->pv_pmap, pv->pv_va);
+		if (tpte & VPTE_WIRED)
+			pv->pv_pmap->pm_stats.wired_count--;
+		KKASSERT(pv->pv_pmap->pm_stats.wired_count >= 0);
+
+		if (tpte & VPTE_A)
+			vm_page_flag_set(m, PG_REFERENCED);
+
+		/*
+		 * Update the vm_page_t clean and reference bits.
+		 */
+		if (tpte & VPTE_M) {
+			if (pmap_track_modified(pv->pv_pmap, pv->pv_va))
+				vm_page_dirty(m);
+		}
+		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+		TAILQ_REMOVE(&pv->pv_pmap->pm_pvlist, pv, pv_plist);
+		++pv->pv_pmap->pm_generation;
+		m->md.pv_list_count--;
+		atomic_add_int(&m->object->agg_pv_list_count, -1);
+		KKASSERT(m->md.pv_list_count >= 0);
+		if (TAILQ_EMPTY(&m->md.pv_list))
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+		vm_object_hold(pv->pv_pmap->pm_pteobj);
+		pmap_unuse_pt(pv->pv_pmap, pv->pv_va, pv->pv_ptem);
+		vm_object_drop(pv->pv_pmap->pm_pteobj);
+		free_pv_entry(pv);
+		goto again;
+	}
+	lwkt_reltoken(&vm_token);
+}
+
+/*
  * Set the physical protection on the specified range of this map
  * as requested.
  *
@@ -3475,4 +3528,86 @@ void
 pmap_object_free(vm_object_t object)
 {
 	/* empty */
+}
+
+void
+pmap_pgscan(struct pmap_pgscan_info *pginfo)
+{
+	pmap_t pmap = pginfo->pmap;
+	vm_offset_t sva = pginfo->beg_addr;
+	vm_offset_t eva = pginfo->end_addr;
+	vm_offset_t va_next;
+	pml4_entry_t *pml4e;
+	pdp_entry_t *pdpe;
+	pd_entry_t ptpaddr, *pde;
+	pt_entry_t *pte;
+	int stop = 0;
+
+	lwkt_gettoken(&vm_token);
+
+	for (; sva < eva; sva = va_next) {
+		if (stop)
+			break;
+
+		pml4e = pmap_pml4e(pmap, sva);
+		if ((*pml4e & VPTE_V) == 0) {
+			va_next = (sva + NBPML4) & ~PML4MASK;
+			if (va_next < sva)
+				va_next = eva;
+			continue;
+		}
+
+		pdpe = pmap_pml4e_to_pdpe(pml4e, sva);
+		if ((*pdpe & VPTE_V) == 0) {
+			va_next = (sva + NBPDP) & ~PDPMASK;
+			if (va_next < sva)
+				va_next = eva;
+			continue;
+		}
+
+		va_next = (sva + NBPDR) & ~PDRMASK;
+		if (va_next < sva)
+			va_next = eva;
+
+		pde = pmap_pdpe_to_pde(pdpe, sva);
+		ptpaddr = *pde;
+
+		/*
+		 * Check for large page (ignore).
+		 */
+		if ((ptpaddr & VPTE_PS) != 0) {
+#if 0
+			pmap_clean_pde(pde, pmap, sva);
+			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
+#endif
+			continue;
+		}
+
+		/*
+		 * Weed out invalid mappings. Note: we assume that the page
+		 * directory table is always allocated, and in kernel virtual.
+		 */
+		if (ptpaddr == 0)
+			continue;
+
+		if (va_next > eva)
+			va_next = eva;
+
+		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
+		    sva += PAGE_SIZE) {
+			vm_page_t m;
+
+			if (stop)
+				break;
+			if ((*pte & VPTE_MANAGED) == 0)
+				continue;
+
+			m = PHYS_TO_VM_PAGE(*pte & VPTE_FRAME);
+			if (vm_page_busy_try(m, TRUE) == 0) {
+				if (pginfo->callback(pginfo, sva, m) < 0)
+					stop = 1;
+			}
+		}
+	}
+	lwkt_reltoken(&vm_token);
 }

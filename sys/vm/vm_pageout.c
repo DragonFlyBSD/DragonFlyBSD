@@ -200,9 +200,6 @@ SYSCTL_INT(_vm, OID_AUTO, pageout_lock_miss,
 int vm_page_max_wired;		/* XXX max # of wired pages system-wide */
 
 #if !defined(NO_SWAPPING)
-static vm_pindex_t vm_pageout_object_deactivate_pages(vm_map_t map,
-			vm_object_t object, vm_pindex_t limit,
-			vm_pindex_t obj_beg, vm_pindex_t obj_end);
 static void vm_req_vmdaemon (void);
 #endif
 static void vm_pageout_page_stats(int q);
@@ -528,136 +525,14 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 #if !defined(NO_SWAPPING)
 
 /*
- * Deactivate pages until the map RSS falls below the specified limit.
- *
- * This code is part of the process rlimit and vm_daemon handler and not
- * part of the normal demand-paging code.  We only check the top-level
- * object.
- *
- * The map must be locked.
- * The caller must hold the vm_object.
- */
-static int vm_pageout_object_deactivate_pages_callback(vm_page_t, void *);
-static int vm_pageout_object_deactivate_pages_cmp(vm_page_t, void *);
-
-static vm_pindex_t
-vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
-				   vm_pindex_t limit,
-				   vm_pindex_t obj_beg,
-				   vm_pindex_t obj_end)
-{
-	struct rb_vm_page_scan_info info;
-	int remove_mode;
-
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-
-	info.count = 0;
-	info.backing_offset_index = obj_beg;
-	info.backing_object = object;
-
-	for (;;) {
-		vm_pindex_t advance;
-
-		if (pmap_resident_tlnw_count(vm_map_pmap(map)) <= limit)
-			break;
-		if (object->type == OBJT_DEVICE ||
-		    object->type == OBJT_MGTDEVICE ||
-		    object->type == OBJT_PHYS) {
-			break;
-		}
-#if 0
-		if (object->paging_in_progress)
-			break;
-#endif
-
-		remove_mode = 0;
-		if (object->shadow_count > 1)
-			remove_mode = 1;
-
-		/*
-		 * scan the objects entire memory queue.  We hold the
-		 * object's token so the scan should not race anything.
-		 *
-		 * The callback will adjust backing_offset_index past the
-		 * last index scanned.  This value only matters if we
-		 * terminate early.
-		 */
-		info.limit = remove_mode;
-		info.map = map;
-		info.desired = limit;
-		info.start_pindex = obj_beg;
-		info.end_pindex = obj_end;
-		info.object = object;
-
-		vm_page_rb_tree_RB_SCAN(&object->rb_memq,
-				vm_pageout_object_deactivate_pages_cmp,
-				vm_pageout_object_deactivate_pages_callback,
-				&info);
-
-		/*
-		 * Backing object recursion (we will loop up).
-		 */
-		while ((object = info.object->backing_object) != NULL) {
-			vm_object_hold(object);
-			if (object != info.object->backing_object) {
-				vm_object_drop(object);
-				continue;
-			}
-			break;
-		}
-		if (object == NULL) {
-			if (info.object != info.backing_object)
-				vm_object_drop(info.object);
-			break;
-		}
-		advance = OFF_TO_IDX(info.object->backing_object_offset);
-		info.start_pindex += advance;
-		info.end_pindex += advance;
-		info.backing_offset_index += advance;
-		if (info.object != info.backing_object) {
-			vm_object_lock_swap();
-			vm_object_drop(info.object);
-		}
-		info.object = object;
-	}
-
-	/*
-	 * Return how far we want the caller to advance.  The caller will
-	 * ignore this value and use obj_end if the RSS limit is still not
-	 * satisfied.
-	 */
-	return (info.backing_offset_index - info.start_pindex);
-}
-
-/*
- * Only page indices above start_pindex
+ * Callback function, page busied for us.  We must dispose of the busy
+ * condition.  Any related pmap pages may be held but will not be locked.
  */
 static
 int
-vm_pageout_object_deactivate_pages_cmp(vm_page_t p, void *data)
+vm_pageout_mdp_callback(struct pmap_pgscan_info *info, vm_offset_t va,
+			vm_page_t p)
 {
-	struct rb_vm_page_scan_info *info = data;
-
-	if (p->pindex < info->start_pindex)
-		return -1;
-	if (p->pindex >= info->end_pindex)
-		return +1;
-	return 0;
-}
-
-/*
- * The caller must hold the vm_object.
- *
- * info->count is bumped for every page removed from the process pmap.
- *
- * info->backing_offset_index is updated past the last scanned page.
- * This value will be ignored and the scan forced to the mapent boundary
- * by the caller if the resident count remains too high.
- */
-static int
-vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
-{
-	struct rb_vm_page_scan_info *info = data;
 	int actcount;
 	int cleanit = 0;
 
@@ -666,30 +541,24 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 	 *		 once the RSS is below the required level.
 	 */
 	KKASSERT((p->flags & PG_MARKER) == 0);
-	if (pmap_resident_tlnw_count(vm_map_pmap(info->map)) <=
-	    info->desired) {
+	if (pmap_resident_tlnw_count(info->pmap) <= info->limit) {
+		vm_page_wakeup(p);
 		return(-1);
 	}
 
 	mycpu->gd_cnt.v_pdpages++;
-	info->backing_offset_index = p->pindex + 1;
 
-	if (vm_page_busy_try(p, TRUE))
-		return(0);
-
-	if (p->object != info->object) {
-		vm_page_wakeup(p);
-		return(0);
-	}
 	if (p->wire_count || p->hold_count || (p->flags & PG_UNMANAGED)) {
 		vm_page_wakeup(p);
 		goto done;
 	}
-	if (!pmap_page_exists_quick(vm_map_pmap(info->map), p)) {
-		vm_page_wakeup(p);
-		goto done;
-	}
 
+	++info->actioncount;
+
+	/*
+	 * Check if the page has been referened recently.  If it has,
+	 * activate it and skip.
+	 */
 	actcount = pmap_ts_referenced(p);
 	if (actcount) {
 		vm_page_flag_set(p, PG_REFERENCED);
@@ -697,59 +566,52 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 		actcount = 1;
 	}
 
-	vm_page_and_queue_spin_lock(p);
-	if (p->queue - p->pc != PQ_ACTIVE && (p->flags & PG_REFERENCED)) {
-		vm_page_and_queue_spin_unlock(p);
-		vm_page_activate(p);
-		p->act_count += actcount;
-		vm_page_flag_clear(p, PG_REFERENCED);
-	} else if (p->queue - p->pc == PQ_ACTIVE) {
-		if ((p->flags & PG_REFERENCED) == 0) {
-			/* use ACT_ADVANCE for a faster decline */
-			p->act_count -= min(p->act_count, ACT_ADVANCE);
-			if (!info->limit &&
-			    (vm_pageout_algorithm || (p->act_count == 0))) {
+	if (actcount) {
+		if (p->queue - p->pc != PQ_ACTIVE) {
+			vm_page_and_queue_spin_lock(p);
+			if (p->queue - p->pc != PQ_ACTIVE) {
 				vm_page_and_queue_spin_unlock(p);
-				vm_page_deactivate(p);
-				cleanit = 1;
+				vm_page_activate(p);
 			} else {
-				TAILQ_REMOVE(&vm_page_queues[p->queue].pl,
-					     p, pageq);
-				TAILQ_INSERT_TAIL(&vm_page_queues[p->queue].pl,
-						  p, pageq);
 				vm_page_and_queue_spin_unlock(p);
 			}
 		} else {
-			vm_page_and_queue_spin_unlock(p);
-			vm_page_activate(p);
-			vm_page_flag_clear(p, PG_REFERENCED);
-
-			vm_page_and_queue_spin_lock(p);
-			if (p->queue - p->pc == PQ_ACTIVE) {
-				if (p->act_count < (ACT_MAX - ACT_ADVANCE))
-					p->act_count += ACT_ADVANCE;
-				TAILQ_REMOVE(&vm_page_queues[p->queue].pl,
-					     p, pageq);
-				TAILQ_INSERT_TAIL(&vm_page_queues[p->queue].pl,
-						  p, pageq);
-			}
-			vm_page_and_queue_spin_unlock(p);
+			p->act_count += actcount;
+			if (p->act_count > ACT_MAX)
+				p->act_count = ACT_MAX;
 		}
-	} else if (p->queue - p->pc == PQ_INACTIVE) {
-#if 0
-		TAILQ_REMOVE(&vm_page_queues[p->queue].pl,
-			     p, pageq);
-		TAILQ_INSERT_HEAD(&vm_page_queues[p->queue].pl,
-				  p, pageq);
-#endif
-		/* use ACT_ADVANCE for a faster decline */
-		p->act_count -= min(p->act_count, ACT_ADVANCE);
-		vm_page_and_queue_spin_unlock(p);
-		if (p->act_count == 0) {
+		vm_page_flag_clear(p, PG_REFERENCED);
+		vm_page_wakeup(p);
+		goto done;
+	}
+
+	/*
+	 * Remove the page from this particular pmap.  Once we do this, our
+	 * pmap scans will not see it again (unless it gets faulted in), so
+	 * we must actively dispose of or deal with the page.
+	 */
+	pmap_remove_specific(info->pmap, p);
+
+	/*
+	 * If the page is not mapped to another process (i.e. as would be
+	 * typical if this were a shared page from a library) then deactivate
+	 * the page and clean it in two passes only.
+	 *
+	 * If the page hasn't been referenced since the last check, remove it
+	 * from the pmap.  If it is no longer mapped, deactivate it
+	 * immediately, accelerating the normal decline.
+	 *
+	 * Once the page has been removed from the pmap the RSS code no
+	 * longer tracks it so we have to make sure that it is staged for
+	 * potential flush action.
+	 */
+	if ((p->flags & PG_MAPPED) == 0) {
+		if (p->queue - p->pc == PQ_ACTIVE) {
+			vm_page_deactivate(p);
+		}
+		if (p->queue - p->pc == PQ_INACTIVE) {
 			cleanit = 1;
 		}
-	} else {
-		vm_page_and_queue_spin_unlock(p);
 	}
 
 	/*
@@ -768,120 +630,78 @@ vm_pageout_object_deactivate_pages_callback(vm_page_t p, void *data)
 		int vmflush_flags;
 		struct vnode *vpfailed = NULL;
 
-		vmflush_flags = VM_PAGER_TRY_TO_CACHE | VM_PAGER_ALLOW_ACTIVE;
-		if (swap_user_async == 0)
-			vmflush_flags |= VM_PAGER_PUT_SYNC;
+		info->offset = va;
 
-		if (vm_pageout_memuse_mode >= 1)
-			vm_page_protect(p, VM_PROT_NONE);
 		if (vm_pageout_memuse_mode >= 2) {
+			vmflush_flags = VM_PAGER_TRY_TO_CACHE |
+					VM_PAGER_ALLOW_ACTIVE;
+			if (swap_user_async == 0)
+				vmflush_flags |= VM_PAGER_PUT_SYNC;
 			vm_page_flag_set(p, PG_WINATCFLS);
-			info->count += vm_pageout_page(p, &max_launder,
-						       &vnodes_skipped,
-						       &vpfailed, 1, vmflush_flags);
+			info->cleancount +=
+				vm_pageout_page(p, &max_launder,
+						&vnodes_skipped,
+						&vpfailed, 1, vmflush_flags);
 		} else {
-			++info->count;
 			vm_page_wakeup(p);
+			++info->cleancount;
 		}
 	} else {
 		vm_page_wakeup(p);
 	}
-
 done:
 	lwkt_user_yield();
-	return(0);
+	return 0;
 }
 
 /*
  * Deactivate some number of pages in a map due to set RLIMIT_RSS limits.
- * that is relatively difficult to do.
+ * that is relatively difficult to do.  We try to keep track of where we
+ * left off last time to reduce scan overhead.
  *
  * Called when vm_pageout_memuse_mode is >= 1.
  */
 void
 vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t limit)
 {
-	vm_map_entry_t tmpe;
-	vm_object_t obj;
-	vm_ooffset_t pgout_offset;
-	vm_ooffset_t tmpe_end;
-	vm_pindex_t obj_beg;
-	vm_pindex_t obj_end;
-	vm_pindex_t count;
+	vm_offset_t pgout_offset;
+	struct pmap_pgscan_info info;
 	int retries = 3;
 
-	lockmgr(&map->lock, LK_EXCLUSIVE);
-
-	/*
-	 * Scan the map incrementally.
-	 */
 	pgout_offset = map->pgout_offset;
 again:
-	tmpe = map->header.next;
-	obj_beg = 0;
-	obj_end = 0;
-	tmpe_end = 0;
-	obj = NULL;
-
-	while (tmpe != &map->header) {
-		if (tmpe->end <= pgout_offset) {
-			tmpe = tmpe->next;
-			continue;
-		}
-		if (tmpe->maptype == VM_MAPTYPE_NORMAL ||
-		    tmpe->maptype == VM_MAPTYPE_VPAGETABLE) {
-			obj = tmpe->object.vm_object;
-			if (obj && obj->shadow_count <= 1) {
-				if (pgout_offset < tmpe->start) {
-					obj_beg = tmpe->offset >> PAGE_SHIFT;
-					obj_end = ((tmpe->end - tmpe->start) +
-						   tmpe->offset) >> PAGE_SHIFT;
-				} else {
-					obj_beg = (pgout_offset - tmpe->start +
-						   tmpe->offset) >> PAGE_SHIFT;
-					obj_end = (tmpe->end - tmpe->start +
-						   tmpe->offset) >> PAGE_SHIFT;
-				}
-				tmpe_end = tmpe->end;
-				break;
-			}
-			obj = NULL;
-		}
-		tmpe = tmpe->next;
-	}
-
-	/*
-	 * Attempt to continue where we left off until the RLIMIT is
-	 * satisfied or we run out of retries.  Note that the map remains
-	 * locked, so the program is not going to be taking any faults
-	 * while we are doing this.
-	 *
-	 * Only circle around in this particular function when the
-	 * memuse_mode is >= 2.
-	 */
-	if (obj)  {
-		vm_object_hold(obj);
-		count = vm_pageout_object_deactivate_pages(map, obj, limit,
-						   obj_beg, obj_end);
-		vm_object_drop(obj);
-		if (pmap_resident_tlnw_count(vm_map_pmap(map)) > limit) {
-			pgout_offset = tmpe_end;
-			goto again;
-		}
-		pgout_offset += count << PAGE_SHIFT;
-	} else {
+#if 0
+	kprintf("%016jx ", pgout_offset);
+#endif
+	if (pgout_offset < VM_MIN_USER_ADDRESS)
+		pgout_offset = VM_MIN_USER_ADDRESS;
+	if (pgout_offset >= VM_MAX_USER_ADDRESS)
 		pgout_offset = 0;
-		if (pmap_resident_tlnw_count(vm_map_pmap(map)) > limit) {
-			if (retries && vm_pageout_memuse_mode >= 2) {
-				--retries;
-				goto again;
-			}
-		}
+	info.pmap = vm_map_pmap(map);
+	info.limit = limit;
+	info.beg_addr = pgout_offset;
+	info.end_addr = VM_MAX_USER_ADDRESS;
+	info.callback = vm_pageout_mdp_callback;
+	info.cleancount = 0;
+	info.actioncount = 0;
+	info.busycount = 0;
+
+	pmap_pgscan(&info);
+	pgout_offset = info.offset;
+#if 0
+	kprintf("%016jx %08lx %08lx\n", pgout_offset,
+		info.cleancount, info.actioncount);
+#endif
+
+	if (pgout_offset != VM_MAX_USER_ADDRESS &&
+	    pmap_resident_tlnw_count(vm_map_pmap(map)) > limit) {
+		goto again;
+	} else if (retries &&
+		   pmap_resident_tlnw_count(vm_map_pmap(map)) > limit) {
+		--retries;
+		goto again;
 	}
-
 	map->pgout_offset = pgout_offset;
-
-	vm_map_unlock(map);
 }
 #endif
 
@@ -2399,7 +2219,8 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	vm = p->p_vmspace;
 	vmspace_hold(vm);
 	size = pmap_resident_tlnw_count(&vm->vm_pmap);
-	if (limit >= 0 && size >= limit && vm_pageout_memuse_mode >= 1) {
+	if (limit >= 0 && size > 4096 &&
+	    size - 4096 >= limit && vm_pageout_memuse_mode >= 1) {
 		vm_pageout_map_deactivate_pages(&vm->vm_map, limit);
 	}
 	vmspace_drop(vm);

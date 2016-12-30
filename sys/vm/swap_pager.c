@@ -178,7 +178,7 @@ extern struct vnode *swapdev_vp;
 extern struct swdevt *swdevt;
 extern int nswdev;
 
-#define BLK2DEVIDX(blk) (nswdev > 1 ? blk / dmmax % nswdev : 0)
+#define BLK2DEVIDX(blk) (nswdev > 1 ? blk / SWB_DMMAX % nswdev : 0)
 
 SYSCTL_INT(_vm, OID_AUTO, swap_async_max,
         CTLFLAG_RW, &swap_async_max, 0, "Maximum running async swap ops");
@@ -267,15 +267,13 @@ struct pagerops swappagerops = {
 };
 
 /*
- * dmmax is in page-sized chunks with the new swap system.  It was
- * dev-bsized chunks in the old.  dmmax is always a power of 2.
+ * SWB_DMMAX is in page-sized chunks with the new swap system.  It was
+ * dev-bsized chunks in the old.  SWB_DMMAX is always a power of 2.
  *
  * swap_*() routines are externally accessible.  swp_*() routines are
  * internal.
  */
 
-int dmmax;
-static int dmmax_mask;
 int nswap_lowat = 128;		/* in pages, swap_pager_almost_full warn */
 int nswap_hiwat = 512;		/* in pages, swap_pager_almost_full warn */
 
@@ -340,11 +338,6 @@ swp_sizecheck(void)
 static void
 swap_pager_init(void *arg __unused)
 {
-	/*
-	 * Device Stripe, in PAGE_SIZE'd blocks
-	 */
-	dmmax = SWB_NPAGES * 2;
-	dmmax_mask = ~(dmmax - 1);
 }
 SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_THIRD, swap_pager_init, NULL);
 
@@ -539,9 +532,6 @@ swp_pager_getswapspace(vm_object_t object, int npages)
  *
  *	Note:  This routine may not block (it could in the old swap code),
  *	and through the use of the new blist routines it does not block.
- *
- *	We must be called at splvm() to avoid races with bitmap frees from
- *	vm_page_remove() aka swap_pager_page_removed().
  *
  * This routine may not block.
  */
@@ -1032,7 +1022,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 */
 		if (
 		    biox && (biox_blkno + btoc(bufx->b_bcount) != blk ||
-		     ((biox_blkno ^ blk) & dmmax_mask)
+		     ((biox_blkno ^ blk) & ~SWB_DMMASK)
 		    )
 		) {
 			if (bp->b_cmd == BUF_CMD_READ) {
@@ -1060,9 +1050,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 */
 		if (blk == SWAPBLK_NONE) {
 			/*
-			 * We can only get here if we are reading.  Since
-			 * we are at splvm() we can safely modify b_resid,
-			 * even if chain ops are in progress.
+			 * We can only get here if we are reading.
 			 */
 			bzero(data, PAGE_SIZE);
 			bp->b_resid -= PAGE_SIZE;
@@ -1317,7 +1305,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		iblk = swp_pager_meta_ctl(object, mreq->pindex + i, 0);
 		if (iblk != blk + i)
 			break;
-		if ((blk ^ iblk) & dmmax_mask)
+		if ((blk ^ iblk) & ~SWB_DMMASK)
 			break;
 		m = vm_page_lookup_busy_try(object, mreq->pindex + i,
 					    TRUE, &error);
@@ -1615,11 +1603,10 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 
 		/*
 		 * The I/O we are constructing cannot cross a physical
-		 * disk boundry in the swap stripe.  Note: we are still
-		 * at splvm().
+		 * disk boundry in the swap stripe.
 		 */
-		if ((blk ^ (blk + n)) & dmmax_mask) {
-			j = ((blk + dmmax) & dmmax_mask) - blk;
+		if ((blk ^ (blk + n)) & ~SWB_DMMASK) {
+			j = ((blk + SWB_DMMAX) & ~SWB_DMMASK) - blk;
 			swp_pager_freeswapspace(object, blk + j, n - j);
 			n = j;
 		}
@@ -1770,7 +1757,7 @@ swp_pager_async_iodone(struct bio *bio)
 	}
 
 	/*
-	 * set object, raise to splvm().
+	 * set object.
 	 */
 	if (bp->b_xio.xio_npages)
 		object = bp->b_xio.xio_pages[0]->object;
@@ -2122,9 +2109,7 @@ swp_pager_swapoff_callback(struct swblock *swap, void *data)
  ************************************************************************
  *
  *	These routines manipulate the swap metadata stored in the 
- *	OBJT_SWAP object.  All swp_*() routines must be called at
- *	splvm() because swap can be freed up by the low level vm_page
- *	code which might be called from interrupts beyond what splbio() covers.
+ *	OBJT_SWAP object.
  *
  *	Swap metadata is implemented with a global hash and not directly
  *	linked into the object.  Instead the object simply contains

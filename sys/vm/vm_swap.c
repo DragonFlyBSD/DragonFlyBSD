@@ -107,17 +107,17 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	 */
 	nbio = push_bio(bio);
 	if (nswdev > 1) {
-		off = blkno % dmmax;
-		if (off + sz > dmmax) {
+		off = blkno % SWB_DMMAX;
+		if (off + sz > SWB_DMMAX) {
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR;
 			biodone(bio);
 			return 0;
 		}
-		seg = blkno / dmmax;
+		seg = blkno / SWB_DMMAX;
 		index = seg % nswdev;
 		seg /= nswdev;
-		nbio->bio_offset = (off_t)(seg * dmmax + off) << PAGE_SHIFT;
+		nbio->bio_offset = (off_t)(seg * SWB_DMMAX + off) << PAGE_SHIFT;
 	} else {
 		index = 0;
 		nbio->bio_offset = bio->bio_offset;
@@ -237,7 +237,7 @@ sys_swapon(struct swapon_args *uap)
 /*
  * Swfree(index) frees the index'th portion of the swap map.
  * Each of the nswdev devices provides 1/nswdev'th of the swap
- * space, which is laid out with blocks of dmmax pages circularly
+ * space, which is laid out with blocks of SWB_DMMAX pages circularly
  * among the devices.
  *
  * The new swap code uses page-sized blocks.  The old swap code used
@@ -354,11 +354,12 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	sp->sw_nused = 0;
 
 	/*
-	 * nblks, nswap, and dmmax are PAGE_SIZE'd parameters now, not
+	 * nblks, nswap, and SWB_DMMAX are PAGE_SIZE'd parameters now, not
 	 * DEV_BSIZE'd.   aligned_nblks is used to calculate the
 	 * size of the swap bitmap, taking into account the stripe size.
 	 */
-	aligned_nblks = (swblk_t)((nblks + (dmmax - 1)) & ~(u_long)(dmmax - 1));
+	aligned_nblks = (swblk_t)((nblks + SWB_DMMASK) &
+				  ~(u_swblk_t)SWB_DMMASK);
 	sp->sw_nblks = aligned_nblks;
 
 	if (aligned_nblks * nswdev > nswap)
@@ -369,9 +370,9 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	else
 		blist_resize(&swapblist, nswap, 0);
 
-	for (dvbase = dmmax; dvbase < aligned_nblks; dvbase += dmmax) {
-		blk = min(aligned_nblks - dvbase, dmmax);
-		vsbase = index * dmmax + dvbase * nswdev;
+	for (dvbase = SWB_DMMAX; dvbase < aligned_nblks; dvbase += SWB_DMMAX) {
+		blk = min(aligned_nblks - dvbase, SWB_DMMAX);
+		vsbase = index * SWB_DMMAX + dvbase * nswdev;
 		blist_free(swapblist, vsbase, blk);
 		vm_swap_size += blk;
 		vm_swap_max += blk;
@@ -532,9 +533,9 @@ swapoff_one(int index)
 	 * Prevent further allocations on this device
 	 */
 	sp->sw_flags |= SW_CLOSING;
-	for (dvbase = dmmax; dvbase < aligned_nblks; dvbase += dmmax) {
-		blk = min(aligned_nblks - dvbase, dmmax);
-		vsbase = index * dmmax + dvbase * nswdev;
+	for (dvbase = SWB_DMMAX; dvbase < aligned_nblks; dvbase += SWB_DMMAX) {
+		blk = min(aligned_nblks - dvbase, SWB_DMMAX);
+		vsbase = index * SWB_DMMAX + dvbase * nswdev;
 		vm_swap_size -= blist_fill(swapblist, vsbase, blk);
 		vm_swap_max -= blk;
 	}
@@ -591,7 +592,7 @@ swapacctspace(swblk_t base, swblk_t count)
 	swblk_t seg;
 
 	vm_swap_size += count;
-	seg = base / dmmax;
+	seg = base / SWB_DMMAX;
 	index = seg % nswdev;
 	swdevt[index].sw_nused -= count;
 }

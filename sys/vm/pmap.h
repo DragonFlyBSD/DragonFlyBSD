@@ -94,6 +94,20 @@ struct vmspace;
 struct vmspace_entry;
 struct vm_map_entry;
 
+struct pmap_pgscan_info {
+	struct pmap	*pmap;
+	vm_offset_t	beg_addr;
+	vm_offset_t	end_addr;
+	vm_offset_t	offset;
+	vm_pindex_t	limit;
+	vm_pindex_t	busycount;
+	vm_pindex_t	cleancount;
+	vm_pindex_t	actioncount;
+	int		(*callback)(struct pmap_pgscan_info *,
+				    vm_offset_t va,
+				    struct vm_page *);
+};
+
 /*
  * Most of these variables represent parameters set up by low level MD kernel
  * boot code to be used by higher level MI initialization code to identify
@@ -121,6 +135,11 @@ extern vm_offset_t virtual_end;
 extern vm_offset_t virtual2_start;
 extern vm_offset_t virtual2_end;
 extern vm_paddr_t phys_avail[];	
+
+/*
+ * High-level pmap scan
+ */
+void pmap_pgscan(struct pmap_pgscan_info *info);
 
 /*
  * Return true if the passed address is in the kernel address space.
@@ -170,6 +189,7 @@ void		 pmap_puninit (pmap_t);
 void		 pmap_pinit0 (pmap_t);
 void		 pmap_pinit2 (pmap_t);
 void		 pmap_protect (pmap_t, vm_offset_t, vm_offset_t, vm_prot_t);
+void		 pmap_remove_specific (pmap_t, vm_page_t);
 void		 pmap_qenter (vm_offset_t, struct vm_page **, int);
 void		 pmap_qremove (vm_offset_t, int);
 void		 pmap_qremove_quick (vm_offset_t, int);

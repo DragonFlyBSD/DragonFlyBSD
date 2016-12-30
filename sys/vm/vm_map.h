@@ -274,7 +274,7 @@ struct vm_map {
 	u_int president_cache;		/* Remember president count */
 	u_int president_ticks;		/* Save ticks for cache */
 	struct lwkt_token token;	/* Soft serializer */
-	vm_ooffset_t pgout_offset;	/* for RLIMIT_RSS scans */
+	vm_offset_t pgout_offset;	/* for RLIMIT_RSS scans */
 #define	min_offset		header.start
 #define max_offset		header.end
 };

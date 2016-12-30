@@ -54,11 +54,18 @@
 #endif
 
 /*
- * SWB_NPAGES must be a power of 2.  It may be set to 1, 2, 4, 8, or 16
- * pages per allocation.  We recommend you stick with the default of 8.
- * The 16-page limit is due to the radix code (kern/subr_blist.c).
+ * SWB_NPAGES must be a power of 2.  Note that DMMAX may not exceed
+ * SWBLK_BITS, so the limit for SWB_NPAGES is (SWBLK_BITS / 2).
  */
 #define SWB_NPAGES	16
+
+/*
+ * DMMAX is the stripe size and must be a power of 2 >= SWBLK_BITS to ensure
+ * that the blist code does not allocate a contiguous range that crosses a
+ * stripe.
+ */
+#define SWB_DMMAX	SWBLK_BITS
+#define SWB_DMMASK	(SWB_DMMAX - 1)
 
 /*
  * Piecemeal swap metadata structure.  Swap is stored in a RBTREE.  Swap

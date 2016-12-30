@@ -51,9 +51,6 @@ struct dmap {
 	swblk_t dm_alloc;	/* amount of physical swap space allocated */
 	swblk_t dm_map[NDMAP];	/* first disk block number in each chunk */
 };
-#ifdef _KERNEL
-extern int dmmax;
-#endif
 
 /* The following structure is that ``returned'' from a call to vstodb(). */
 struct dblock {
