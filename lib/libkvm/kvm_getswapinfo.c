@@ -121,7 +121,7 @@ kvm_getswapinfo(
 	int flags
 ) {
 	int i, ti, swi;
-	int ttl;
+	swblk_t ttl;
 	struct swdevt *sw;
 	struct swdevt swinfo;
 

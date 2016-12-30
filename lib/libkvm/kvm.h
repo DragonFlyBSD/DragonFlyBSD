@@ -51,11 +51,11 @@ struct nchstats;
 
 struct kvm_swap {
 	char	ksw_devname[32];
-	int	ksw_used;
-	int	ksw_total;
+	u_int	ksw_used;
+	u_int	ksw_total;
 	int	ksw_flags;
-	int	ksw_reserved1;
-	int	ksw_reserved2;
+	u_int	ksw_reserved1;
+	u_int	ksw_reserved2;
 };
 
 #define SWIF_DUMP_TREE	0x0001

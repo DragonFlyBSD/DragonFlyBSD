@@ -59,9 +59,9 @@ structure.  This structure contains the following fields:
 .It
 .Va char ksw_devname[] ;
 .It
-.Va int ksw_total ;
+.Va u_int ksw_total ;
 .It
-.Va int ksw_used ;
+.Va u_int ksw_used ;
 .It
 .Va int ksw_flags ;
 .El
@@ -73,6 +73,10 @@ chunks (see
 .Va ksw_flags
 contains
 a copy of the swap device flags.
+.Sh WARNING
+At the current juncture this structure can only represent up to 16TB of
+swap per device, and the totalizer field will overflow at 16TB (4TB per
+device).  The fields need to be converted to long's.
 .Sh CACHING
 This function caches the nlist values for various kernel variables which
 it reuses in successive calls.
