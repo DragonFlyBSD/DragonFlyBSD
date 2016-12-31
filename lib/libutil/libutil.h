@@ -181,6 +181,7 @@ __END_DECLS
 #define	HN_B			0x04
 #define	HN_DIVISOR_1000		0x08
 #define	HN_IEC_PREFIXES		0x10
+#define HN_FRACTIONAL		0x20
 
 /* Values for humanize_number(3)'s scale parameter. */
 #define	HN_GETSCALE		0x10

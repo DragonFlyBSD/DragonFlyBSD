@@ -156,23 +156,49 @@ humanize_number(char *buf, size_t len, int64_t quotient,
 		}
 	}
 
-	/* If a value <= 9.9 after rounding and ... */
 	/*
-	 * XXX - should we make sure there is enough space for the decimal
-	 * place and if not, don't do HN_DECIMAL?
+	 * Generate base output
 	 */
-	if (((quotient == 9 && remainder < divisordeccut) || quotient < 9) &&
-	    i > 0 && flags & HN_DECIMAL) {
+	r = snprintf(buf, len, "%" PRId64 "%s%s%s",
+	    sign * (quotient + (remainder + divisor / 2) / divisor),
+	    sep, SCALE2PREFIX(i), suffix);
+
+	if ((flags & HN_FRACTIONAL) && (u_int)r + 3 <= len && i) {
+		/*
+		 * If FRACTIONAL is specified output up to two fractional
+		 * digits, unless the value was not divided out.
+		 */
+		int64_t frac;
+		int n;
+
+		n = (int)len - r - 2;
+		frac = 1;
+		if (n > 2)	/* max 2 fractional digits */
+			n = 2;
+
+		while (n) {
+			frac = frac * 10;
+			--n;
+		}
+		s1 = (int)quotient + ((remainder * frac + divisor / 2) /
+		    divisor / frac);
+		s2 = ((remainder * frac + divisor / 2) / divisor) % frac;
+		r = snprintf(buf, len, "%d%s%d%s%s%s",
+		    sign * s1, localeconv()->decimal_point, s2,
+		    sep, SCALE2PREFIX(i), suffix);
+	} else if ((flags & HN_DECIMAL) && (u_int)r + 3 <= len &&
+		(((quotient == 9 && remainder < divisordeccut) ||
+		    quotient < 9) && i > 0)) {
+		/*
+		 * If DECIMAL is specified and the value is <= 9.9 after
+		 * rounding, and it fits, add one fractional digit.
+		 */
 		s1 = (int)quotient + ((remainder * 10 + divisor / 2) /
 		    divisor / 10);
 		s2 = ((remainder * 10 + divisor / 2) / divisor) % 10;
 		r = snprintf(buf, len, "%d%s%d%s%s%s",
 		    sign * s1, localeconv()->decimal_point, s2,
 		    sep, SCALE2PREFIX(i), suffix);
-	} else
-		r = snprintf(buf, len, "%" PRId64 "%s%s%s",
-		    sign * (quotient + (remainder + divisor / 2) / divisor),
-		    sep, SCALE2PREFIX(i), suffix);
-
+	}
 	return (r);
 }

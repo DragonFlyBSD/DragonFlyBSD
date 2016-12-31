@@ -143,6 +143,10 @@ must be divided to fit) instead of formatting it to the buffer.
 The following flags may be passed in
 .Fa flags :
 .Bl -tag -width ".Dv HN_DIVISOR_1000" -offset indent
+.It Dv HN_FRACTIOANL
+Display up to two additional fractional digits if they would fit, unless
+the value was so small (i.e. less than 1000 or less than 1024) that it
+wouldn't make sense.
 .It Dv HN_DECIMAL
 If the final result is less than 10, display it using one decimal place.
 .It Dv HN_NOSPACE
