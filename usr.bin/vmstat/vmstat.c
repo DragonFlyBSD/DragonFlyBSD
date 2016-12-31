@@ -90,6 +90,9 @@ static struct nlist namelist[] = {
 	{ "", 0, 0, 0, 0 },
 };
 
+#define ONEMB	(1024L * 1024L)
+#define ONEKB	(1024L)
+
 LIST_HEAD(zlist, vm_zone);
 
 struct statinfo cur, last;
@@ -923,14 +926,34 @@ domem(void)
 	printf(
 "              Type   InUse  MemUse HighUse       Limit  Requests  Limit Limit\n");
 	for (i = 0, ks = &kmemstats[0]; i < nkms; i++, ks++) {
+		long ks_inuse;
+		long ks_memuse;
+
 		if (ks->ks_calls == 0)
 			continue;
-		printf("%19s%7ld%7ldK%7ldK%11zuK%10jd%5u%6u",
-		    ks->ks_shortdesc,
-		    cpuagg(ks, KSINUSE), (cpuagg(ks, KSMEMUSE) + 1023) / 1024,
-		    (ks->ks_maxused + 1023) / 1024,
-		    (ks->ks_limit + 1023) / 1024, (intmax_t)ks->ks_calls,
-		    ks->ks_limblocks, ks->ks_mapblocks);
+
+		ks_inuse = cpuagg(ks, KSINUSE);
+		ks_memuse = cpuagg(ks, KSMEMUSE);
+
+		if (ks->ks_maxused > 99*ONEMB ||
+		    ks_inuse > 99*ONEMB ||
+		    ks_memuse > 99*ONEMB) {
+			printf("%19s%7ld%7ldM%7ldM%11zuM%10jd%5u%6u",
+			    ks->ks_shortdesc,
+			    ks_inuse, (ks_memuse + ONEMB - 1) / ONEMB,
+			    (ks->ks_maxused + ONEMB - 1) / ONEMB,
+			    (ks->ks_limit + ONEMB - 1) / ONEMB,
+			    (intmax_t)ks->ks_calls,
+			    ks->ks_limblocks, ks->ks_mapblocks);
+		} else {
+			printf("%19s%7ld%7ldK%7ldK%11zuM%10jd%5u%6u",
+			    ks->ks_shortdesc,
+			    ks_inuse, (ks_memuse + ONEKB - 1) / ONEKB,
+			    (ks->ks_maxused + ONEKB - 1) / ONEKB,
+			    (ks->ks_limit + ONEMB) / ONEMB,
+			    (intmax_t)ks->ks_calls,
+			    ks->ks_limblocks, ks->ks_mapblocks);
+		}
 		first = 1;
 		for (j =  1 << MINBUCKET; j < 1 << (MINBUCKET + 16); j <<= 1) {
 			if ((ks->ks_size & j) == 0)
@@ -950,8 +973,16 @@ domem(void)
 		totreq += ks->ks_calls;
 	}
 	printf("\nMemory Totals:  In Use    Free    Requests\n");
-	printf("              %7ldK %6ldK    %8ld\n",
-	     (totuse + 1023) / 1024, (totfree + 1023) / 1024, totreq);
+
+	if (totuse > 99*ONEMB || totfree > 99*ONEMB) {
+		printf("              %7ldM %6ldM    %8ld\n",
+		       (totuse + ONEMB - 1) / ONEMB,
+		       (totfree + ONEMB - 1) / ONEMB, totreq);
+	} else {
+		printf("              %7ldK %6ldK    %8ld\n",
+		       (totuse + ONEKB - 1) / ONEKB,
+		       (totfree + ONEKB - 1) / ONEKB, totreq);
+	}
 }
 
 #define MAXSAVE	16
