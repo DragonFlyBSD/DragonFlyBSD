@@ -59,6 +59,10 @@
 #define UNITS_SI 1
 #define UNITS_2 2
 
+#ifndef HN_FRACTIONAL
+#define HN_FRACTIONAL	HN_DECIMAL
+#endif
+
 /* Maximum widths of various fields. */
 struct maxwidths {
 	int mntfrom;
@@ -329,10 +333,10 @@ prthuman(struct statvfs *vsfsp, int64_t used)
 static void
 prthumanval(int64_t bytes)
 {
-	char buf[6];
+	char buf[7];
 	int flags;
 
-	flags = HN_B | HN_NOSPACE | HN_DECIMAL;
+	flags = HN_B | HN_NOSPACE | HN_FRACTIONAL;
 	if (hflag == UNITS_SI)
 		flags |= HN_DIVISOR_1000;
 
@@ -351,7 +355,7 @@ prthumanvalinode(int64_t bytes)
 	char buf[6];
 	int flags;
 
-	flags = HN_NOSPACE | HN_DECIMAL | HN_DIVISOR_1000;
+	flags = HN_NOSPACE | HN_FRACTIONAL | HN_DIVISOR_1000;
 
 	humanize_number(buf, sizeof(buf) - (bytes < 0 ? 0 : 1),
 	    bytes, "", HN_AUTOSCALE, flags);

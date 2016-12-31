@@ -74,6 +74,13 @@
 #  include <kinfo.h>
 #endif
 
+/*
+ * Backoff to DECIMAL mode if humanize_number does not have FRACTIONAL mode.
+ */
+#ifndef HN_FRACTIONAL
+#define HN_FRACTIONAL	HN_DECIMAL
+#endif
+
 enum {
 	NL_MOUNTLIST,
 	NL_NUMVNODES,
@@ -957,11 +964,13 @@ swapmode(void)
 			humanize_number(buf1, sizeof(buf1),
 					CONVERTB(kswap[n].ksw_used),
 					"",
-					HN_AUTOSCALE, HN_NOSPACE | HN_DECIMAL);
+					HN_AUTOSCALE, HN_NOSPACE |
+						      HN_FRACTIONAL);
 			humanize_number(buf2, sizeof(buf2),
 					CONVERTB(kswap[n].ksw_total),
 					"",
-					HN_AUTOSCALE, HN_NOSPACE | HN_DECIMAL);
+					HN_AUTOSCALE, HN_NOSPACE |
+						      HN_FRACTIONAL);
 			printf("%s/%s swap space\n", buf1, buf2);
 		} else {
 			blocksize = 1024 * 1024;
@@ -987,18 +996,18 @@ Output(const char *name, int hlen, struct kvm_swap *kswap, int flags)
 				CONVERTB(kswap->ksw_total),
 				"",
 				HN_AUTOSCALE,
-				HN_NOSPACE | HN_DECIMAL);
+				HN_NOSPACE | HN_FRACTIONAL);
 		humanize_number(buf2, 6,
 				CONVERTB(kswap->ksw_used),
 				"",
 				HN_AUTOSCALE,
-				HN_NOSPACE | HN_DECIMAL);
+				HN_NOSPACE | HN_FRACTIONAL);
 		humanize_number(buf3, 6,
 				CONVERTB(kswap->ksw_total -
 					 kswap->ksw_used),
 				"",
 				HN_AUTOSCALE,
-				HN_NOSPACE | HN_DECIMAL);
+				HN_NOSPACE | HN_FRACTIONAL);
 	} else {
 		snprintf(buf1, sizeof(buf1), "%*ld",
 			 hlen,
