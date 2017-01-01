@@ -2403,21 +2403,17 @@ vm_page_deactivate_locked(vm_page_t m)
 }
 
 /*
- * Attempt to move a page to PQ_CACHE.
+ * Attempt to move a busied page to PQ_CACHE, then unconditionally unbusy it.
  *
- * Returns 0 on failure, 1 on success
+ * This function returns non-zero if it successfully moved the page to
+ * PQ_CACHE.
  *
- * The page should NOT be busied by the caller.  This function will validate
- * whether the page can be safely moved to the cache.
+ * This function unconditionally unbusies the page on return.
  */
 int
 vm_page_try_to_cache(vm_page_t m)
 {
 	vm_page_spin_lock(m);
-	if (vm_page_busy_try(m, TRUE)) {
-		vm_page_spin_unlock(m);
-		return(0);
-	}
 	if (m->dirty || m->hold_count || m->wire_count ||
 	    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT))) {
 		if (_vm_page_wakeup(m)) {

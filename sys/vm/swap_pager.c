@@ -1925,9 +1925,10 @@ swp_pager_async_iodone(struct bio *bio)
 			if (vm_page_count_severe())
 				vm_page_deactivate(m);
 			vm_page_io_finish(m);
-			vm_page_wakeup(m);
 			if (bio->bio_caller_info1.index & SWBIO_TTC)
 				vm_page_try_to_cache(m);
+			else
+				vm_page_wakeup(m);
 		}
 	}
 

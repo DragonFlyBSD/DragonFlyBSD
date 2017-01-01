@@ -5615,6 +5615,7 @@ pmap_pgscan_callback(pmap_t pmap, struct pmap_scan_info *info,
 				if (pt_pv)
 					pv_lock(pt_pv);
 			} else {
+				vm_page_wakeup(m);
 				pv_put(pte_pv);
 			}
 		} else {

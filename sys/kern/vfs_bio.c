@@ -1868,7 +1868,6 @@ vfs_vmio_release(struct buf *bp)
 				 * in order to avoid a low memory deadlock.
 				 */
 				m->act_count = bp->b_act_count;
-				vm_page_wakeup(m);
 				vm_page_try_to_cache(m);
 			} else {
 				/*
