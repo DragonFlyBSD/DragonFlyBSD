@@ -11,7 +11,9 @@ PROG=	acpihelp
 MAN=	acpihelp.8
 
 SRCS=	\
+	ahaml.c \
 	ahamlops.c \
+	ahasl.c \
 	ahaslkey.c \
 	ahaslops.c \
 	ahdecode.c \

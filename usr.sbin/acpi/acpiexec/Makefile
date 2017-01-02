@@ -137,6 +137,7 @@ SRCS+=	\
 	nsxfeval.c \
 	nsxfname.c \
 	nsxfobj.c \
+	osgendbg.c \
 	osunixxf.c \
 	psargs.c \
 	psloop.c \
