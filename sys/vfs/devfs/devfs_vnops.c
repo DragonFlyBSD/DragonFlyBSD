@@ -1890,17 +1890,21 @@ devfs_spec_freeblks(struct vop_freeblks_args *ap)
 	struct buf *bp;
 
 	/*
-	 * XXX: This assumes that strategy does the deed right away.
-	 * XXX: this may not be TRTTD.
+	 * Must be a synchronous operation
 	 */
 	KKASSERT(ap->a_vp->v_rdev != NULL);
 	if ((ap->a_vp->v_rdev->si_flags & SI_CANFREE) == 0)
 		return (0);
 	bp = geteblk(ap->a_length);
 	bp->b_cmd = BUF_CMD_FREEBLKS;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bio1.bio_offset = ap->a_offset;
+	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bcount = ap->a_length;
 	dev_dstrategy(ap->a_vp->v_rdev, &bp->b_bio1);
+	biowait(&bp->b_bio1, "TRIM");
+	brelse(bp);
+
 	return (0);
 }
 

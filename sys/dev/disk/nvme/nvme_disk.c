@@ -278,6 +278,10 @@ nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)
 			nobytes = 1;
 			break;
 		}
+		if (nlba > 65536) {
+			/* will cause INVAL error */
+			break;
+		}
 		subq = &sc->subqueues[sc->qmap[mycpuid][NVME_QMAP_WR]];
 		/* get_request does not need the subq lock */
 		req = nvme_get_request(subq, NVME_IOCMD_WRITEZ, NULL, 0);

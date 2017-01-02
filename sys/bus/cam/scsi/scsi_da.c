@@ -489,6 +489,7 @@ daioctl(struct dev_ioctl_args *ap)
 		
 			if (biowait(&bp->b_bio1, "TRIM")) {
 				kprintf("Error:%d\n", bp->b_error);
+				brelse(bp);
 				return(bp->b_error ? bp->b_error : EIO);
 			}
 			brelse(bp);
