@@ -86,7 +86,7 @@
 
 #include <netinet/in.h>
 
-static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
+static MALLOC_DEFINE(M_NETCRED, "Export Host", "Export host address structure");
 
 int numvnodes;
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0,
@@ -2003,7 +2003,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 		return (EINVAL);
 
 	i = sizeof(struct netcred) + argp->ex_addrlen + argp->ex_masklen;
-	np = (struct netcred *) kmalloc(i, M_NETADDR, M_WAITOK | M_ZERO);
+	np = (struct netcred *)kmalloc(i, M_NETCRED, M_WAITOK | M_ZERO);
 	saddr = (struct sockaddr *) (np + 1);
 	if ((error = copyin(argp->ex_addr, (caddr_t) saddr, argp->ex_addrlen)))
 		goto out;
@@ -2024,14 +2024,14 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 			goto out;
 		}
 	}
-	if((rnh = vfs_create_addrlist_af(saddr->sa_family, nep)) == NULL) {
+	if ((rnh = vfs_create_addrlist_af(saddr->sa_family, nep)) == NULL) {
 		error = ENOBUFS;
 		goto out;
 	}
-	rn = (*rnh->rnh_addaddr) ((char *) saddr, (char *) smask, rnh,
-	    np->netc_rnodes);
+	rn = (*rnh->rnh_addaddr)((char *)saddr, (char *)smask, rnh,
+				 np->netc_rnodes);
 	NE_UNLOCK(nep);
-	if (rn == NULL || np != (struct netcred *) rn) {	/* already exists */
+	if (rn == NULL || np != (struct netcred *)rn) {	/* already exists */
 		error = EPERM;
 		goto out;
 	}
@@ -2039,19 +2039,39 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 	np->netc_anon = argp->ex_anon;
 	np->netc_anon.cr_ref = 1;
 	return (0);
+
 out:
-	kfree(np, M_NETADDR);
+	kfree(np, M_NETCRED);
 	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * Free netcred structures installed in the netexport
+ */
 static int
 vfs_free_netcred(struct radix_node *rn, void *w)
 {
-	struct radix_node_head *rnh = (struct radix_node_head *) w;
+	struct radix_node_head *rnh = (struct radix_node_head *)w;
 
 	(*rnh->rnh_deladdr) (rn->rn_key, rn->rn_mask, rnh);
-	kfree((caddr_t) rn, M_NETADDR);
+	kfree(rn, M_NETCRED);
+
+	return (0);
+}
+
+/*
+ * callback to free an element of the mask table installed in the
+ * netexport.  These may be created indirectly and are not netcred
+ * structures.
+ */
+static int
+vfs_free_netcred_mask(struct radix_node *rn, void *w)
+{
+	struct radix_node_head *rnh = (struct radix_node_head *)w;
+
+	(*rnh->rnh_deladdr) (rn->rn_key, rn->rn_mask, rnh);
+	kfree(rn, M_RTABLE);
+
 	return (0);
 }
 
@@ -2091,12 +2111,28 @@ vfs_create_addrlist_af(int af, struct netexport *nep)
 	return (rnh);
 }
 
+/*
+ * helper function for freeing netcred elements
+ */
 static void
 vfs_free_addrlist_af(struct radix_node_head **prnh)
 {
 	struct radix_node_head *rnh = *prnh;
 
 	(*rnh->rnh_walktree) (rnh, vfs_free_netcred, rnh);
+	kfree(rnh, M_RTABLE);
+	*prnh = NULL;
+}
+
+/*
+ * helper function for freeing mask elements
+ */
+static void
+vfs_free_addrlist_masks(struct radix_node_head **prnh)
+{
+	struct radix_node_head *rnh = *prnh;
+
+	(*rnh->rnh_walktree) (rnh, vfs_free_netcred_mask, rnh);
 	kfree(rnh, M_RTABLE);
 	*prnh = NULL;
 }
@@ -2113,7 +2149,7 @@ vfs_free_addrlist(struct netexport *nep)
 	if (nep->ne_inet6head != NULL)
 		vfs_free_addrlist_af(&nep->ne_inet6head);
 	if (nep->ne_maskhead)
-		vfs_free_addrlist_af(&nep->ne_maskhead);
+		vfs_free_addrlist_masks(&nep->ne_maskhead);
 	NE_UNLOCK(nep);
 }
 
