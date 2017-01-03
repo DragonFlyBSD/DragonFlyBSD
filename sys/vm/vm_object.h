@@ -230,7 +230,7 @@ struct vm_object {
 
 #define VMOBJ_HSIZE	64
 #define VMOBJ_HMASK	(VMOBJ_HSIZE - 1)
-#define VMOBJ_HASH(obj)	(((intptr_t)(obj) >> 8) & VMOBJ_HMASK)
+#define VMOBJ_HASH(obj)	(&vm_object_hash[((intptr_t)(obj) >> 8) & VMOBJ_HMASK])
 
 #ifdef	_KERNEL
 
@@ -248,9 +248,12 @@ struct vm_object_dealloc_list {
 
 TAILQ_HEAD(object_q, vm_object);
 
-extern struct object_q vm_object_lists[VMOBJ_HSIZE];
-extern struct lwkt_token vmobj_tokens[VMOBJ_HSIZE];
+struct vm_object_hash {
+	struct object_q		list;
+	struct lwkt_token	token;
+} __cachealign;
 
+extern struct vm_object_hash vm_object_hash[VMOBJ_HSIZE];
 
  /* lock for object list and count */
 

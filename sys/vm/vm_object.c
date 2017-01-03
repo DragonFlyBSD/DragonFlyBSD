@@ -130,17 +130,12 @@ static void	vm_object_lock_init(vm_object_t);
 
 struct vm_object kernel_object;
 
-static long vm_object_count;
-
 static long object_collapses;
 static long object_bypasses;
-static vm_zone_t obj_zone;
-static struct vm_zone obj_zone_store;
-#define VM_OBJECTS_INIT 256
-static struct vm_object vm_objects_init[VM_OBJECTS_INIT];
 
-struct object_q vm_object_lists[VMOBJ_HSIZE];
-struct lwkt_token vmobj_tokens[VMOBJ_HSIZE];
+struct vm_object_hash vm_object_hash[VMOBJ_HSIZE];
+
+MALLOC_DEFINE(M_VM_OBJECT, "vm_object", "vm_object structures");
 
 #if defined(DEBUG_LOCKS)
 
@@ -296,7 +291,7 @@ VMOBJDEBUG(vm_object_hold_try)(vm_object_t obj VMOBJDBARGS)
 	if (vm_object_lock_try(obj) == 0) {
 		if (refcount_release(&obj->hold_count)) {
 			if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD))
-				zfree(obj_zone, obj);
+				kfree(obj, M_VM_OBJECT);
 		}
 		return(0);
 	}
@@ -349,7 +344,7 @@ VMOBJDEBUG(vm_object_drop)(vm_object_t obj VMOBJDBARGS)
 
 		if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD)) {
 			vm_object_unlock(obj);
-			zfree(obj_zone, obj);
+			kfree(obj, M_VM_OBJECT);
 		} else {
 			vm_object_unlock(obj);
 		}
@@ -371,7 +366,7 @@ VMOBJDEBUG(vm_object_drop)(vm_object_t obj VMOBJDBARGS)
 void
 _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 {
-	int n;
+	struct vm_object_hash *hash;
 
 	RB_INIT(&object->rb_memq);
 	LIST_INIT(&object->shadow_head);
@@ -403,17 +398,17 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 
 	vm_object_hold(object);
 
-	n = VMOBJ_HASH(object);
-	atomic_add_long(&vm_object_count, 1);
-	lwkt_gettoken(&vmobj_tokens[n]);
-	TAILQ_INSERT_TAIL(&vm_object_lists[n], object, object_list);
-	lwkt_reltoken(&vmobj_tokens[n]);
+	hash = VMOBJ_HASH(object);
+	lwkt_gettoken(&hash->token);
+	TAILQ_INSERT_TAIL(&hash->list, object, object_list);
+	lwkt_reltoken(&hash->token);
 }
 
 /*
  * Initialize the VM objects module.
  *
- * Called from the low level boot code only.
+ * Called from the low level boot code only.  Note that this occurs before
+ * kmalloc is initialized so we cannot allocate any VM objects.
  */
 void
 vm_object_init(void)
@@ -421,23 +416,19 @@ vm_object_init(void)
 	int i;
 
 	for (i = 0; i < VMOBJ_HSIZE; ++i) {
-		TAILQ_INIT(&vm_object_lists[i]);
-		lwkt_token_init(&vmobj_tokens[i], "vmobjlst");
+		TAILQ_INIT(&vm_object_hash[i].list);
+		lwkt_token_init(&vm_object_hash[i].token, "vmobjlst");
 	}
 	
 	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaEnd),
 			    &kernel_object);
 	vm_object_drop(&kernel_object);
-
-	obj_zone = &obj_zone_store;
-	zbootinit(obj_zone, "VM OBJECT", sizeof (struct vm_object),
-		vm_objects_init, VM_OBJECTS_INIT);
 }
 
 void
 vm_object_init2(void)
 {
-	zinitna(obj_zone, NULL, NULL, 0, 0, ZONE_PANICFAIL);
+	kmalloc_set_unlimited(M_VM_OBJECT);
 }
 
 /*
@@ -448,14 +439,13 @@ vm_object_init2(void)
 vm_object_t
 vm_object_allocate(objtype_t type, vm_pindex_t size)
 {
-	vm_object_t result;
+	vm_object_t obj;
 
-	result = (vm_object_t) zalloc(obj_zone);
+	obj = kmalloc(sizeof(*obj), M_VM_OBJECT, M_INTWAIT|M_ZERO);
+	_vm_object_allocate(type, size, obj);
+	vm_object_drop(obj);
 
-	_vm_object_allocate(type, size, result);
-	vm_object_drop(result);
-
-	return (result);
+	return (obj);
 }
 
 /*
@@ -465,13 +455,12 @@ vm_object_allocate(objtype_t type, vm_pindex_t size)
 vm_object_t
 vm_object_allocate_hold(objtype_t type, vm_pindex_t size)
 {
-	vm_object_t result;
+	vm_object_t obj;
 
-	result = (vm_object_t) zalloc(obj_zone);
+	obj = kmalloc(sizeof(*obj), M_VM_OBJECT, M_INTWAIT|M_ZERO);
+	_vm_object_allocate(type, size, obj);
 
-	_vm_object_allocate(type, size, result);
-
-	return (result);
+	return (obj);
 }
 
 /*
@@ -1131,7 +1120,7 @@ void
 vm_object_terminate(vm_object_t object)
 {
 	struct rb_vm_page_scan_info info;
-	int n;
+	struct vm_object_hash *hash;
 
 	/*
 	 * Make sure no one uses us.  Once we set OBJ_DEAD we should be
@@ -1228,11 +1217,10 @@ vm_object_terminate(vm_object_t object)
 	/*
 	 * Remove the object from the global object list.
 	 */
-	n = VMOBJ_HASH(object);
-	lwkt_gettoken(&vmobj_tokens[n]);
-	TAILQ_REMOVE(&vm_object_lists[n], object, object_list);
-	lwkt_reltoken(&vmobj_tokens[n]);
-	atomic_add_long(&vm_object_count, -1);
+	hash = VMOBJ_HASH(object);
+	lwkt_gettoken(&hash->token);
+	TAILQ_REMOVE(&hash->list, object, object_list);
+	lwkt_reltoken(&hash->token);
 
 	if (object->ref_count != 0) {
 		panic("vm_object_terminate2: object with references, "
@@ -1240,7 +1228,7 @@ vm_object_terminate(vm_object_t object)
 	}
 
 	/*
-	 * NOTE: The object hold_count is at least 1, so we cannot zfree()
+	 * NOTE: The object hold_count is at least 1, so we cannot kfree()
 	 *	 the object here.  See vm_object_drop().
 	 */
 }
@@ -1982,7 +1970,7 @@ static __inline int
 vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 {
 	struct rb_vm_page_scan_info info;
-	int n;
+	struct vm_object_hash *hash;
 
 	vm_object_assert_held(object);
 	vm_object_assert_held(backing_object);
@@ -2010,11 +1998,10 @@ vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 		KKASSERT((backing_object->flags & OBJ_DEAD) == 0);
 		vm_object_set_flag(backing_object, OBJ_DEAD);
 
-		n = VMOBJ_HASH(backing_object);
-		lwkt_gettoken(&vmobj_tokens[n]);
-		TAILQ_REMOVE(&vm_object_lists[n], backing_object, object_list);
-		lwkt_reltoken(&vmobj_tokens[n]);
-		atomic_add_long(&vm_object_count, -1);
+		hash = VMOBJ_HASH(backing_object);
+		lwkt_gettoken(&hash->token);
+		TAILQ_REMOVE(&hash->list, backing_object, object_list);
+		lwkt_reltoken(&hash->token);
 	}
 
 	/*
@@ -3046,6 +3033,7 @@ vm_object_in_map_callback(struct proc *p, void *data)
 
 DB_SHOW_COMMAND(vmochk, vm_object_check)
 {
+	struct vm_object_hash *hash;
 	vm_object_t object;
 	int n;
 
@@ -3054,7 +3042,8 @@ DB_SHOW_COMMAND(vmochk, vm_object_check)
 	 * and none have zero ref counts.
 	 */
 	for (n = 0; n < VMOBJ_HSIZE; ++n) {
-		for (object = TAILQ_FIRST(&vm_object_lists[n]);
+		hash = &vm_object_hash[n];
+		for (object = TAILQ_FIRST(&hash->list);
 				object != NULL;
 				object = TAILQ_NEXT(object, object_list)) {
 			if (object->type == OBJT_MARKER)
@@ -3158,13 +3147,15 @@ vm_object_print(/* db_expr_t */ long addr,
  */
 DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 {
+	struct vm_object_hash *hash;
 	vm_object_t object;
 	int nl = 0;
 	int c;
 	int n;
 
 	for (n = 0; n < VMOBJ_HSIZE; ++n) {
-		for (object = TAILQ_FIRST(&vm_object_lists[n]);
+		hash = &vm_object_hash[n];
+		for (object = TAILQ_FIRST(&hash->list);
 				object != NULL;
 				object = TAILQ_NEXT(object, object_list)) {
 			vm_pindex_t idx, fidx;

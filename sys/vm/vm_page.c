@@ -2507,9 +2507,11 @@ vm_page_try_to_free(vm_page_t m)
 void
 vm_page_cache(vm_page_t m)
 {
+	/*
+	 * Not suitable for the cache
+	 */
 	if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
 	    m->busy || m->wire_count || m->hold_count) {
-		kprintf("vm_page_cache: attempting to cache busy/held page\n");
 		vm_page_wakeup(m);
 		return;
 	}

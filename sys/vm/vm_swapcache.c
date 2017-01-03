@@ -84,9 +84,10 @@ static int vm_swapcached_flush (vm_page_t m, int isblkdev);
 static int vm_swapcache_test(vm_page_t m);
 static int vm_swapcache_writing_heuristic(void);
 static int vm_swapcache_writing(vm_page_t marker, int count, int scount);
-static void vm_swapcache_cleaning(vm_object_t marker, int *swindexp);
-static void vm_swapcache_movemarker(vm_object_t marker, int swindex,
-				vm_object_t object);
+static void vm_swapcache_cleaning(vm_object_t marker,
+			struct vm_object_hash **swindexp);
+static void vm_swapcache_movemarker(vm_object_t marker,
+			struct vm_object_hash *swindex, vm_object_t object);
 struct thread *swapcached_thread;
 
 SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
@@ -173,7 +174,7 @@ vm_swapcached_thread(void)
 	enum { SWAPB_BURSTING, SWAPB_RECOVERING } burst = SWAPB_BURSTING;
 	static struct vm_page page_marker[PQ_L2_SIZE];
 	static struct vm_object swmarker;
-	static int swindex;
+	static struct vm_object_hash *swindex;
 	int q;
 
 	/*
@@ -210,11 +211,10 @@ vm_swapcached_thread(void)
 	 */
 	bzero(&swmarker, sizeof(swmarker));
 	swmarker.type = OBJT_MARKER;
-	swindex = 0;
-	lwkt_gettoken(&vmobj_tokens[swindex]);
-	TAILQ_INSERT_HEAD(&vm_object_lists[swindex],
-			  &swmarker, object_list);
-	lwkt_reltoken(&vmobj_tokens[swindex]);
+	swindex = &vm_object_hash[0];
+	lwkt_gettoken(&swindex->token);
+	TAILQ_INSERT_HEAD(&swindex->list, &swmarker, object_list);
+	lwkt_reltoken(&swindex->token);
 
 	for (;;) {
 		int reached_end;
@@ -324,9 +324,9 @@ vm_swapcached_thread(void)
 		vm_page_queues_spin_unlock(PQ_INACTIVE + q);
 	}
 
-	lwkt_gettoken(&vmobj_tokens[swindex]);
-	TAILQ_REMOVE(&vm_object_lists[swindex], &swmarker, object_list);
-	lwkt_reltoken(&vmobj_tokens[swindex]);
+	lwkt_gettoken(&swindex->token);
+	TAILQ_REMOVE(&swindex->list, &swmarker, object_list);
+	lwkt_reltoken(&swindex->token);
 }
 
 static struct kproc_desc swpc_kp = {
@@ -688,7 +688,7 @@ vm_swapcache_test(vm_page_t m)
  */
 static
 void
-vm_swapcache_cleaning(vm_object_t marker, int *swindexp)
+vm_swapcache_cleaning(vm_object_t marker, struct vm_object_hash **swindexp)
 {
 	vm_object_t object;
 	struct vnode *vp;
@@ -702,7 +702,7 @@ vm_swapcache_cleaning(vm_object_t marker, int *swindexp)
 	/*
 	 * Look for vnode objects
 	 */
-	lwkt_gettoken(&vmobj_tokens[*swindexp]);
+	lwkt_gettoken(&(*swindexp)->token);
 
 outerloop:
 	while ((object = TAILQ_NEXT(marker, object_list)) != NULL) {
@@ -771,13 +771,13 @@ outerloop:
 		 * tree leafs.
 		 */
 		lwkt_token_swap();
-		lwkt_reltoken(&vmobj_tokens[*swindexp]);
+		lwkt_reltoken(&(*swindexp)->token);
 
 		n = swap_pager_condfree(object, &marker->size,
 				    (count + SWAP_META_MASK) & ~SWAP_META_MASK);
 
 		vm_object_drop(object);		/* object may be invalid now */
-		lwkt_gettoken(&vmobj_tokens[*swindexp]);
+		lwkt_gettoken(&(*swindexp)->token);
 
 		/*
 		 * If we have exhausted the object or deleted our per-pass
@@ -801,18 +801,18 @@ outerloop:
 	/*
 	 * Iterate vm_object_lists[] hash table
 	 */
-	TAILQ_REMOVE(&vm_object_lists[*swindexp], marker, object_list);
-	lwkt_reltoken(&vmobj_tokens[*swindexp]);
-	if (++*swindexp >= VMOBJ_HSIZE)
-		*swindexp = 0;
-	lwkt_gettoken(&vmobj_tokens[*swindexp]);
-	TAILQ_INSERT_HEAD(&vm_object_lists[*swindexp], marker, object_list);
+	TAILQ_REMOVE(&(*swindexp)->list, marker, object_list);
+	lwkt_reltoken(&(*swindexp)->token);
+	if (++*swindexp >= &vm_object_hash[VMOBJ_HSIZE])
+		*swindexp = &vm_object_hash[0];
+	lwkt_gettoken(&(*swindexp)->token);
+	TAILQ_INSERT_HEAD(&(*swindexp)->list, marker, object_list);
 
-	if (*swindexp != 0)
+	if (*swindexp != &vm_object_hash[0])
 		goto outerloop;
 
 breakout:
-	lwkt_reltoken(&vmobj_tokens[*swindexp]);
+	lwkt_reltoken(&(*swindexp)->token);
 }
 
 /*
@@ -822,11 +822,11 @@ breakout:
  * the marker past it.
  */
 static void
-vm_swapcache_movemarker(vm_object_t marker, int swindex, vm_object_t object)
+vm_swapcache_movemarker(vm_object_t marker, struct vm_object_hash *swindex,
+			vm_object_t object)
 {
 	if (TAILQ_NEXT(marker, object_list) == object) {
-		TAILQ_REMOVE(&vm_object_lists[swindex], marker, object_list);
-		TAILQ_INSERT_AFTER(&vm_object_lists[swindex], object,
-				   marker, object_list);
+		TAILQ_REMOVE(&swindex->list, marker, object_list);
+		TAILQ_INSERT_AFTER(&swindex->list, object, marker, object_list);
 	}
 }

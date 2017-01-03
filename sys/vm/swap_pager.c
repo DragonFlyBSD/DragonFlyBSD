@@ -2014,6 +2014,7 @@ static int swp_pager_swapoff_callback(struct swblock *swap, void *data);
 int
 swap_pager_swapoff(int devidx)
 {
+	struct vm_object_hash *hash;
 	struct swswapoffinfo info;
 	struct vm_object marker;
 	vm_object_t object;
@@ -2023,8 +2024,10 @@ swap_pager_swapoff(int devidx)
 	marker.type = OBJT_MARKER;
 
 	for (n = 0; n < VMOBJ_HSIZE; ++n) {
-		lwkt_gettoken(&vmobj_tokens[n]);
-		TAILQ_INSERT_HEAD(&vm_object_lists[n], &marker, object_list);
+		hash = &vm_object_hash[n];
+
+		lwkt_gettoken(&hash->token);
+		TAILQ_INSERT_HEAD(&hash->list, &marker, object_list);
 
 		while ((object = TAILQ_NEXT(&marker, object_list)) != NULL) {
 			if (object->type == OBJT_MARKER)
@@ -2047,14 +2050,13 @@ swap_pager_swapoff(int devidx)
 			vm_object_drop(object);
 skip:
 			if (object == TAILQ_NEXT(&marker, object_list)) {
-				TAILQ_REMOVE(&vm_object_lists[n],
-					     &marker, object_list);
-				TAILQ_INSERT_AFTER(&vm_object_lists[n], object,
+				TAILQ_REMOVE(&hash->list, &marker, object_list);
+				TAILQ_INSERT_AFTER(&hash->list, object,
 						   &marker, object_list);
 			}
 		}
-		TAILQ_REMOVE(&vm_object_lists[n], &marker, object_list);
-		lwkt_reltoken(&vmobj_tokens[n]);
+		TAILQ_REMOVE(&hash->list, &marker, object_list);
+		lwkt_reltoken(&hash->token);
 	}
 
 	/*
