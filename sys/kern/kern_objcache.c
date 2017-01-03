@@ -44,7 +44,7 @@
 #include <sys/spinlock2.h>
 
 static MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
-static MALLOC_DEFINE(M_OBJMAG, "objcache magazine", "Object Cache Magazine");
+static MALLOC_DEFINE(M_OBJMAG, "objcache mag", "Object Cache Magazine");
 
 #define	INITIAL_MAG_CAPACITY	64
 

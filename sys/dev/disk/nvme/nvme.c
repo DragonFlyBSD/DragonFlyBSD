@@ -39,7 +39,7 @@
 
 #include "nvme.h"
 
-MALLOC_DEFINE(M_NVME, "NVMe Storage Device", "NVME");
+MALLOC_DEFINE(M_NVME, "NVMe Driver", "NVME");
 
 /*
  * DMA mapping callbacks.
