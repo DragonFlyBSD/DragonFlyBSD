@@ -157,15 +157,13 @@ controller (the flash in both cases is directly connected to the controller,
 so there is no SATA Phy to get in the way).  Of course, if you actually want
 an AHCI card, then these might be the way to go, and you might even be able
 to boot from them.
-.Pp
 .Sh HINTS ON CONFIGURING MACHINES (BIOS)
 If nvme locks up while trying to probe the BIOS did something horrible to
 the PCIe card.  If you have enabled your BIOS's FastBoot option, turn it
 off, this may fix the issue.
 .Pp
-Most BIOSes cannot boot from an NVME card, or if they can it generally
-requires doing a UEFI boot for which DragonFly support is a bit of a headache
-configuring.  So take this into consideration as well.
+Not all BIOSes can boot from a NVMe card.  Those that can typically require
+booting via EFI.
 .Sh SEE ALSO
 .Xr ahci 4 ,
 .Xr intro 4 ,
