@@ -4294,6 +4294,11 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	sim->bus_id = bus;
 	new_bus = kmalloc(sizeof(*new_bus), M_CAMXPT, M_INTWAIT);
 
+	/*
+	 * Must hold topo lock across xptpathid() through installation of
+	 * new_bus to avoid duplication due to SMP races.
+	 */
+	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	if (strcmp(sim->sim_name, "xpt") != 0) {
 		sim->path_id =
 		    xptpathid(sim->sim_name, sim->unit_number, sim->bus_id);
@@ -4308,10 +4313,8 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	new_bus->refcount = 1;	/* Held until a bus_deregister event */
 	new_bus->generation = 0;
 	new_bus->counted_to_config = 0;
-	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	old_bus = TAILQ_FIRST(&xsoftc.xpt_busses);
-	while (old_bus != NULL
-	    && old_bus->path_id < new_bus->path_id)
+	while (old_bus != NULL && old_bus->path_id < new_bus->path_id)
 		old_bus = TAILQ_NEXT(old_bus, links);
 	if (old_bus != NULL)
 		TAILQ_INSERT_BEFORE(old_bus, new_bus, links);
@@ -4469,6 +4472,9 @@ again:
 	return (CAM_REQ_CMP);
 }
 
+/*
+ * Must be called with xpt_topo_lock held.
+ */
 static path_id_t
 xptnextfreepathid(void)
 {
@@ -4477,7 +4483,6 @@ xptnextfreepathid(void)
 	const char *strval;
 
 	pathid = 0;
-	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	bus = TAILQ_FIRST(&xsoftc.xpt_busses);
 retry:
 	/* Find an unoccupied pathid */
@@ -4486,7 +4491,6 @@ retry:
 			pathid++;
 		bus = TAILQ_NEXT(bus, links);
 	}
-	lockmgr(&xsoftc.xpt_topo_lock, LK_RELEASE);
 
 	/*
 	 * Ensure that this pathid is not reserved for
@@ -4495,12 +4499,14 @@ retry:
 	if (resource_string_value("scbus", pathid, "at", &strval) == 0) {
 		++pathid;
 		/* Start the search over */
-		lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 		goto retry;
 	}
 	return (pathid);
 }
 
+/*
+ * Must be called with xpt_topo_lock held.
+ */
 static path_id_t
 xptpathid(const char *sim_name, int sim_unit, int sim_bus)
 {
