@@ -521,11 +521,13 @@ dovmstat(u_int interval, int reps)
 static const char *
 formatnum(intmax_t value, int width)
 {
-	static char buf[64];
+	static char buf[16][64];
+	static int bi;
 	const char *fmt;
 	double d;
 
 	d = (double)value;
+	bi = (bi + 1) % 16;
 	fmt = "n/a";
 
 	switch(width) {
@@ -564,9 +566,15 @@ formatnum(intmax_t value, int width)
 		} else if (value < 1000*1024*1024) {
 			fmt = "%4.0fM";
 			d = d / (1024 * 1024);
-		} else {
+		} else if (value < 10LL*1024*1024*1024) {
 			fmt = "%4.2fG";
 			d = d / (1024.0 * 1024.0 * 1024.0);
+		} else if (value < 1000LL*1024*1024*1024) {
+			fmt = "%4.0fG";
+			d = d / (1024.0 * 1024.0 * 1024.0);
+		} else {
+			fmt = "%4.2fT";
+			d = d / (1024.0 * 1024.0 * 1024.0 * 1024.0);
 		}
 		break;
 	default:
@@ -574,8 +582,8 @@ formatnum(intmax_t value, int width)
 		exit(1);
 		break;
 	}
-	snprintf(buf, sizeof(buf), fmt, d);
-	return buf;
+	snprintf(buf[bi], sizeof(buf[bi]), fmt, d);
+	return buf[bi];
 }
 
 static void
@@ -899,9 +907,9 @@ static void
 domem(void)
 {
 	struct malloc_type *ks;
-	int i, j;
-	int first, nkms;
-	long totuse = 0, totfree = 0, totreq = 0;
+	int i;
+	int nkms;
+	long totuse = 0, totreq = 0;
 	struct malloc_type kmemstats[MAX_KMSTATS], *kmsp;
 	char buf[1024];
 
@@ -922,9 +930,8 @@ domem(void)
 		warnx("truncated to the first %d memory types", nkms);
 
 	printf(
-	    "\nMemory statistics by type                          Type  Kern\n");
-	printf(
-"              Type   InUse  MemUse HighUse       Limit  Requests  Limit Limit\n");
+	    "\nMemory statistics by type\n");
+	printf("               Type   Count  MemUse   Limit Requests\n");
 	for (i = 0, ks = &kmemstats[0]; i < nkms; i++, ks++) {
 		long ks_inuse;
 		long ks_memuse;
@@ -935,54 +942,20 @@ domem(void)
 		ks_inuse = cpuagg(ks, KSINUSE);
 		ks_memuse = cpuagg(ks, KSMEMUSE);
 
-		if (ks->ks_maxused > 99*ONEMB ||
-		    ks_inuse > 99*ONEMB ||
-		    ks_memuse > 99*ONEMB) {
-			printf("%19s%7ld%7ldM%7ldM%11zuM%10jd%5u%6u",
-			    ks->ks_shortdesc,
-			    ks_inuse, (ks_memuse + ONEMB - 1) / ONEMB,
-			    (ks->ks_maxused + ONEMB - 1) / ONEMB,
-			    (ks->ks_limit + ONEMB - 1) / ONEMB,
-			    (intmax_t)ks->ks_calls,
-			    ks->ks_limblocks, ks->ks_mapblocks);
-		} else {
-			printf("%19s%7ld%7ldK%7ldK%11zuM%10jd%5u%6u",
-			    ks->ks_shortdesc,
-			    ks_inuse, (ks_memuse + ONEKB - 1) / ONEKB,
-			    (ks->ks_maxused + ONEKB - 1) / ONEKB,
-			    (ks->ks_limit + ONEMB) / ONEMB,
-			    (intmax_t)ks->ks_calls,
-			    ks->ks_limblocks, ks->ks_mapblocks);
-		}
-		first = 1;
-		for (j =  1 << MINBUCKET; j < 1 << (MINBUCKET + 16); j <<= 1) {
-			if ((ks->ks_size & j) == 0)
-				continue;
-			if (first)
-				printf("  ");
-			else
-				printf(",");
-			if(j<1024)
-				printf("%d",j);
-			else
-				printf("%dK",j>>10);
-			first = 0;
-		}
-		printf("\n");
+		printf("%19s   %s   %s   %s    %s\n",
+			ks->ks_shortdesc,
+			formatnum(ks_inuse, 5),
+			formatnum(ks_memuse, 5),
+			formatnum(ks->ks_limit, 5),
+			formatnum(ks->ks_calls, 5));
+
 		totuse += cpuagg(ks, KSMEMUSE);
 		totreq += ks->ks_calls;
 	}
-	printf("\nMemory Totals:  In Use    Free    Requests\n");
-
-	if (totuse > 99*ONEMB || totfree > 99*ONEMB) {
-		printf("              %7ldM %6ldM    %8ld\n",
-		       (totuse + ONEMB - 1) / ONEMB,
-		       (totfree + ONEMB - 1) / ONEMB, totreq);
-	} else {
-		printf("              %7ldK %6ldK    %8ld\n",
-		       (totuse + ONEKB - 1) / ONEKB,
-		       (totfree + ONEKB - 1) / ONEKB, totreq);
-	}
+	printf("\nMemory Totals:  In Use  Requests\n");
+	printf("                 %s  %s\n",
+		formatnum(totuse, 5),
+		formatnum(totreq, 5));
 }
 
 #define MAXSAVE	16
