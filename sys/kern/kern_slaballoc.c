@@ -408,6 +408,12 @@ kmalloc_raise_limit(struct malloc_type *type, size_t bytes)
 	type->ks_limit = bytes;
 }
 
+void
+kmalloc_set_unlimited(struct malloc_type *type)
+{
+    type->ks_limit = kmem_lim_size() * (1024 * 1024);
+}
+
 /*
  * Dynamically create a malloc pool.  This function is a NOP if *typep is
  * already non-NULL.
