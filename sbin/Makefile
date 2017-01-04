@@ -59,7 +59,6 @@ SUBDIR=	adjkerntz \
 	mount_nfs \
 	mount_ntfs \
 	mount_null \
-	mount_portal \
 	mount_std \
 	mount_tmpfs \
 	mount_udf \

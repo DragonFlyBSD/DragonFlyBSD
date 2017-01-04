@@ -478,11 +478,6 @@ options		IFPOLL_ENABLE
 # cannot currently be demand-loaded.)  Some people still prefer
 # to statically compile other filesystems as well.
 #
-# NB: The PORTAL filesystem is known to be
-# buggy, and WILL panic your system if you attempt to do anything with
-# it.  It is included here as an incentive for some enterprising
-# soul to sit down and fix it.
-#
 
 # One of these is mandatory:
 options 	FFS			#Fast filesystem
@@ -498,7 +493,6 @@ options 	HPFS			#OS/2 File system
 options 	MSDOSFS			#MS DOS filesystem
 options 	NTFS			#NT filesystem
 options 	NULLFS			#NULL filesystem
-options 	PORTAL			#Portal filesystem
 options 	PROCFS			#Process filesystem
 options		PUFFS			#Userspace file systems (e.g. ntfs-3g & sshfs)
 options 	SMBFS			#SMB/CIFS filesystem

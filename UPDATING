@@ -12,6 +12,11 @@
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+PORTAL FILE SYSTEM REMOVED
+--------------------------
+
+It has been broken for a long time now.
+
 BINUTILS 2.27 REPLACES 2.24, PRIMARY
 ------------------------------------
 

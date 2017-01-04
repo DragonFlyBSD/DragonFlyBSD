@@ -1,7 +1,7 @@
 # Makefile for vfs modules
 #
 
-SUBDIR=fifofs msdosfs portal nfs procfs puffs \
+SUBDIR=fifofs msdosfs nfs procfs puffs \
 	hpfs ntfs smbfs isofs mfs udf \
 	nullfs hammer tmpfs autofs
 
