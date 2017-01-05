@@ -80,14 +80,14 @@ static const struct sdhci_device {
 	u_int		quirks;
 } sdhci_devices[] = {
 	{ 0x08221180, 	0xffff,	"RICOH R5C822 SD",
-	    SDHCI_QUIRK_FORCE_DMA },
+	    SDHCI_QUIRK_FORCE_SDMA },
 	{ 0xe8221180, 	0xffff,	"RICOH R5CE822 SD",
-	    SDHCI_QUIRK_FORCE_DMA |
+	    SDHCI_QUIRK_FORCE_SDMA |
 	    SDHCI_QUIRK_LOWER_FREQUENCY },
 	{ 0xe8231180, 	0xffff,	"RICOH R5CE823 SD",
 	    SDHCI_QUIRK_LOWER_FREQUENCY },
 	{ 0x8034104c, 	0xffff, "TI XX21/XX11 SD",
-	    SDHCI_QUIRK_FORCE_DMA },
+	    SDHCI_QUIRK_FORCE_SDMA },
 	{ 0x05501524, 	0xffff, "ENE CB712 SD",
 	    SDHCI_QUIRK_BROKEN_TIMINGS },
 	{ 0x05511524, 	0xffff, "ENE CB712 SD 2",

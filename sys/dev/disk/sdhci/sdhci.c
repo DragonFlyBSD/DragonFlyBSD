@@ -99,16 +99,6 @@ static void sdhci_card_task(void *, int);
 #define BCM577XX_CTRL_CLKSEL_64MHZ	0x3
 
 
-static void
-sdhci_getaddr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
-{
-	if (error != 0) {
-		kprintf("getaddr: error %d\n", error);
-		return;
-	}
-	*(bus_addr_t *)arg = segs[0].ds_addr;
-}
-
 static int
 slot_printf(struct sdhci_slot *slot, const char * fmt, ...)
 {
@@ -130,8 +120,8 @@ sdhci_dumpregs(struct sdhci_slot *slot)
 	slot_printf(slot,
 	    "============== REGISTER DUMP ==============\n");
 
-	slot_printf(slot, "Sys addr: 0x%08x | Version:  0x%08x\n",
-	    RD4(slot, SDHCI_DMA_ADDRESS), RD2(slot, SDHCI_HOST_VERSION));
+	slot_printf(slot, "SDMA addr: 0x%08x | Version:  0x%08x\n",
+	    RD4(slot, SDHCI_SDMA_ADDRESS), RD2(slot, SDHCI_HOST_VERSION));
 	slot_printf(slot, "Blk size: 0x%08x | Blk cnt:  0x%08x\n",
 	    RD2(slot, SDHCI_BLOCK_SIZE), RD2(slot, SDHCI_BLOCK_COUNT));
 	slot_printf(slot, "Argument: 0x%08x | Trn mode: 0x%08x\n",
@@ -517,37 +507,15 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	slot->num = num;
 	slot->bus = dev;
 
-	/* Allocate DMA tag. */
-	err = bus_dma_tag_create(bus_get_dma_tag(dev),
-	   DMA_BLOCK_SIZE, 0, BUS_SPACE_MAXADDR_32BIT,
-	   BUS_SPACE_MAXADDR, NULL, NULL,
-	   DMA_BLOCK_SIZE, 1, DMA_BLOCK_SIZE,
-	   BUS_DMA_ALLOCNOW, 
-	   &slot->dmatag);
+	/* Allocate DMA memory for SDMA. */
+	err = bus_dmamem_coherent(bus_get_dma_tag(dev),
+	    DMA_BLOCK_SIZE, 0, BUS_SPACE_MAXADDR_32BIT,
+	    BUS_SPACE_MAXADDR, DMA_BLOCK_SIZE, BUS_DMA_NOWAIT,
+	    &slot->sdma_mem);
 	if (err != 0) {
-		device_printf(dev, "Can't create DMA tag\n");
+		device_printf(dev, "Can't alloc DMA memory for SDMA\n");
 		SDHCI_LOCK_DESTROY(slot);
 		return (err);
-	}
-	/* Allocate DMA memory. */
-	err = bus_dmamem_alloc(slot->dmatag, (void **)&slot->dmamem,
-	    BUS_DMA_NOWAIT, &slot->dmamap);
-	if (err != 0) {
-		device_printf(dev, "Can't alloc DMA memory\n");
-		SDHCI_LOCK_DESTROY(slot);
-		return (err);
-	}
-	/* Map the memory. */
-	err = bus_dmamap_load(slot->dmatag, slot->dmamap,
-	    (void *)slot->dmamem, DMA_BLOCK_SIZE,
-	    sdhci_getaddr, &slot->paddr, 0);
-	if (err != 0 || slot->paddr == 0) {
-		device_printf(dev, "Can't load DMA memory\n");
-		SDHCI_LOCK_DESTROY(slot);
-		if(err)
-			return (err);
-		else
-			return (EFAULT);
 	}
 
 	/* Initialize slot. */
@@ -617,19 +585,19 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 		slot->host.caps |= MMC_CAP_HSPEED;
 	/* Decide if we have usable DMA. */
 	if (caps & SDHCI_CAN_DO_DMA)
-		slot->opt |= SDHCI_HAVE_DMA;
+		slot->opt |= SDHCI_HAVE_SDMA;
 
 	if (slot->quirks & SDHCI_QUIRK_BROKEN_DMA)
-		slot->opt &= ~SDHCI_HAVE_DMA;
-	if (slot->quirks & SDHCI_QUIRK_FORCE_DMA)
-		slot->opt |= SDHCI_HAVE_DMA;
+		slot->opt &= ~SDHCI_HAVE_SDMA;
+	if (slot->quirks & SDHCI_QUIRK_FORCE_SDMA)
+		slot->opt |= SDHCI_HAVE_SDMA;
 
 	/* 
 	 * Use platform-provided transfer backend
 	 * with PIO as a fallback mechanism
 	 */
 	if (slot->opt & SDHCI_PLATFORM_TRANSFER)
-		slot->opt &= ~SDHCI_HAVE_DMA;
+		slot->opt &= ~SDHCI_HAVE_SDMA;
 
 	if (bootverbose || sdhci_debug) {
 		slot_printf(slot, "%uMHz%s %s%s%s%s %s\n",
@@ -640,7 +608,7 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 		    (caps & SDHCI_CAN_VDD_330) ? " 3.3V" : "",
 		    (caps & SDHCI_CAN_VDD_300) ? " 3.0V" : "",
 		    (caps & SDHCI_CAN_VDD_180) ? " 1.8V" : "",
-		    (slot->opt & SDHCI_HAVE_DMA) ? "DMA" : "PIO");
+		    (slot->opt & SDHCI_HAVE_SDMA) ? "SDMA" : "PIO");
 		sdhci_dumpregs(slot);
 	}
 
@@ -666,6 +634,7 @@ int
 sdhci_cleanup_slot(struct sdhci_slot *slot)
 {
 	device_t d;
+	bus_dmamem_t *sdma;
 
 	callout_drain(&slot->timeout_callout);
 	callout_drain(&slot->card_callout);
@@ -681,9 +650,11 @@ sdhci_cleanup_slot(struct sdhci_slot *slot)
 	SDHCI_LOCK(slot);
 	sdhci_reset(slot, SDHCI_RESET_ALL);
 	SDHCI_UNLOCK(slot);
-	bus_dmamap_unload(slot->dmatag, slot->dmamap);
-	bus_dmamem_free(slot->dmatag, slot->dmamem, slot->dmamap);
-	bus_dma_tag_destroy(slot->dmatag);
+
+	sdma = &slot->sdma_mem;
+	bus_dmamap_unload(sdma->dmem_tag, sdma->dmem_map);
+	bus_dmamem_free(sdma->dmem_tag, sdma->dmem_addr, sdma->dmem_map);
+	bus_dma_tag_destroy(sdma->dmem_tag);
 
 	SDHCI_LOCK_DESTROY(slot);
 
@@ -804,7 +775,7 @@ sdhci_set_transfer_mode(struct sdhci_slot *slot,
 		mode |= SDHCI_TRNS_READ;
 	if (slot->req->stop)
 		mode |= SDHCI_TRNS_ACMD12;
-	if (slot->flags & SDHCI_USE_DMA)
+	if (slot->flags & SDHCI_USE_SDMA)
 		mode |= SDHCI_TRNS_DMA;
 
 	WR2(slot, SDHCI_TRANSFER_MODE, mode);
@@ -1000,29 +971,31 @@ sdhci_start_data(struct sdhci_slot *slot, struct mmc_data *data)
 		return;
 
 	/* Use DMA if possible. */
-	if ((slot->opt & SDHCI_HAVE_DMA))
-		slot->flags |= SDHCI_USE_DMA;
-	/* If data is small, broken DMA may return zeroes instead of data, */
+	if ((slot->opt & SDHCI_HAVE_SDMA))
+		slot->flags |= SDHCI_USE_SDMA;
+	/* If data is small, broken DMA may return zeroes instead of data. */
 	if ((slot->quirks & SDHCI_QUIRK_BROKEN_TIMINGS) &&
 	    (data->len <= 512))
-		slot->flags &= ~SDHCI_USE_DMA;
+		slot->flags &= ~SDHCI_USE_SDMA;
 	/* Some controllers require even block sizes. */
 	if ((slot->quirks & SDHCI_QUIRK_32BIT_DMA_SIZE) &&
 	    ((data->len) & 0x3))
-		slot->flags &= ~SDHCI_USE_DMA;
+		slot->flags &= ~SDHCI_USE_SDMA;
 	/* Load DMA buffer. */
-	if (slot->flags & SDHCI_USE_DMA) {
+	if (slot->flags & SDHCI_USE_SDMA) {
+		bus_dmamem_t *sdma = &slot->sdma_mem;
+
 		if (data->flags & MMC_DATA_READ) {
-			bus_dmamap_sync(slot->dmatag, slot->dmamap,
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_PREREAD);
 		} else {
-			memcpy(slot->dmamem, data->data,
+			memcpy(sdma->dmem_addr, data->data,
 			    (data->len < DMA_BLOCK_SIZE) ?
 			    data->len : DMA_BLOCK_SIZE);
-			bus_dmamap_sync(slot->dmatag, slot->dmamap,
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_PREWRITE);
 		}
-		WR4(slot, SDHCI_DMA_ADDRESS, slot->paddr);
+		WR4(slot, SDHCI_SDMA_ADDRESS, sdma->dmem_busaddr);
 		/* Interrupt aggregation: Mask border interrupt
 		 * for the last page and unmask else. */
 		if (data->len == DMA_BLOCK_SIZE)
@@ -1053,15 +1026,18 @@ sdhci_finish_data(struct sdhci_slot *slot)
 		    slot->intmask |= SDHCI_INT_RESPONSE);
 	}
 	/* Unload rest of data from DMA buffer. */
-	if (!slot->data_done && (slot->flags & SDHCI_USE_DMA)) {
+	if (!slot->data_done && (slot->flags & SDHCI_USE_SDMA)) {
+		bus_dmamem_t *sdma = &slot->sdma_mem;
+
 		if (data->flags & MMC_DATA_READ) {
 			size_t left = data->len - slot->offset;
-			bus_dmamap_sync(slot->dmatag, slot->dmamap, 
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_POSTREAD);
-			memcpy((u_char*)data->data + slot->offset, slot->dmamem,
+			memcpy((u_char*)data->data + slot->offset,
+			    sdma->dmem_addr,
 			    (left < DMA_BLOCK_SIZE)?left:DMA_BLOCK_SIZE);
 		} else
-			bus_dmamap_sync(slot->dmatag, slot->dmamap, 
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_POSTWRITE);
 	}
 	slot->data_done = 1;
@@ -1247,29 +1223,32 @@ sdhci_data_irq(struct sdhci_slot *slot, uint32_t intmask)
 	/* Handle DMA border. */
 	if (intmask & SDHCI_INT_DMA_END) {
 		struct mmc_data *data = slot->curcmd->data;
+		bus_dmamem_t *sdma = &slot->sdma_mem;
 		size_t left;
 
 		/* Unload DMA buffer... */
 		left = data->len - slot->offset;
 		if (data->flags & MMC_DATA_READ) {
-			bus_dmamap_sync(slot->dmatag, slot->dmamap,
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_POSTREAD);
-			memcpy((u_char*)data->data + slot->offset, slot->dmamem,
+			memcpy((u_char*)data->data + slot->offset,
+			    sdma->dmem_addr,
 			    (left < DMA_BLOCK_SIZE)?left:DMA_BLOCK_SIZE);
 		} else {
-			bus_dmamap_sync(slot->dmatag, slot->dmamap,
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_POSTWRITE);
 		}
 		/* ... and reload it again. */
 		slot->offset += DMA_BLOCK_SIZE;
 		left = data->len - slot->offset;
 		if (data->flags & MMC_DATA_READ) {
-			bus_dmamap_sync(slot->dmatag, slot->dmamap,
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_PREREAD);
 		} else {
-			memcpy(slot->dmamem, (u_char*)data->data + slot->offset,
+			memcpy(sdma->dmem_addr,
+			    (u_char*)data->data + slot->offset,
 			    (left < DMA_BLOCK_SIZE)?left:DMA_BLOCK_SIZE);
-			bus_dmamap_sync(slot->dmatag, slot->dmamap,
+			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_PREWRITE);
 		}
 		/* Interrupt aggregation: Mask border interrupt
@@ -1279,7 +1258,7 @@ sdhci_data_irq(struct sdhci_slot *slot, uint32_t intmask)
 			WR4(slot, SDHCI_SIGNAL_ENABLE, slot->intmask);
 		}
 		/* Restart DMA. */
-		WR4(slot, SDHCI_DMA_ADDRESS, slot->paddr);
+		WR4(slot, SDHCI_SDMA_ADDRESS, sdma->dmem_busaddr);
 	}
 	/* We have got all data. */
 	if (intmask & SDHCI_INT_DATA_END) {

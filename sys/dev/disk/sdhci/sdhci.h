@@ -33,8 +33,8 @@
 
 /* Controller doesn't honor resets unless we touch the clock register */
 #define SDHCI_QUIRK_CLOCK_BEFORE_RESET			(1<<0)
-/* Controller really supports DMA */
-#define SDHCI_QUIRK_FORCE_DMA				(1<<1)
+/* Controller really supports SDMA */
+#define SDHCI_QUIRK_FORCE_SDMA				(1<<1)
 /* Controller has unusable DMA engine */
 #define SDHCI_QUIRK_BROKEN_DMA				(1<<2)
 /* Controller doesn't like to be reset when there is no card inserted. */
@@ -69,7 +69,7 @@
 /*
  * Controller registers
  */
-#define SDHCI_DMA_ADDRESS	0x00
+#define SDHCI_SDMA_ADDRESS	0x00
 
 #define SDHCI_BLOCK_SIZE	0x04
 #define  SDHCI_MAKE_BLKSZ(dma, blksz) (((dma & 0x7) << 12) | (blksz & 0xFFF))
@@ -269,17 +269,14 @@ struct sdhci_slot {
 	device_t	dev;		/* Slot device */
 	u_char		num;		/* Slot number */
 	u_char		opt;		/* Slot options */
-#define SDHCI_HAVE_DMA			1
+#define SDHCI_HAVE_SDMA			1
 #define SDHCI_PLATFORM_TRANSFER		2
 	u_char		version;
 	int		timeout;	/* Transfer timeout */
 	int		failures;	/* N Failures in a row */
 	uint32_t	max_clk;	/* Max possible freq */
 	uint32_t	timeout_clk;	/* Timeout freq */
-	bus_dma_tag_t 	dmatag;
-	bus_dmamap_t 	dmamap;
-	u_char		*dmamem;
-	bus_addr_t	paddr;		/* DMA buffer address */
+	bus_dmamem_t	sdma_mem;	/* DMA block for SDMA */
 	struct task	card_task;	/* Card presence check task */
 	struct callout	card_callout;	/* Card insert delay callout */
 	struct callout	timeout_callout;/* Card command/data response timeout */
@@ -298,7 +295,7 @@ struct sdhci_slot {
 	u_char		flags;		/* Request execution flags */
 #define CMD_STARTED		1
 #define STOP_STARTED		2
-#define SDHCI_USE_DMA		4	/* Use DMA for this req. */
+#define SDHCI_USE_SDMA		4	/* Use SDMA for this req. */
 #define PLATFORM_DATA_STARTED	8	/* Data transfer is handled by platform */
 	struct lock	lock;		/* Slot mutex */
 };
