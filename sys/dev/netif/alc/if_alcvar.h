@@ -240,6 +240,7 @@ struct alc_softc {
 #define	ALC_FLAG_LINK_WAR	0x4000
 #define	ALC_FLAG_LINK		0x8000
 #define	ALC_FLAG_DETACH		0x10000
+#define	ALC_FLAG_E2X00		0x20000
 
 	struct callout		alc_tick_ch;
 	struct alc_hw_stats	alc_stats;

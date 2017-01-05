@@ -117,13 +117,15 @@ static struct alc_ident alc_ident_table[] = {
 	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_AR8161, 9 * 1024,
 		"Atheros AR8161 PCIe Gigabit Ethernet" },
 	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_AR8162, 9 * 1024,
-		"Atheros AR8161 PCIe Fast Ethernet" },
+		"Atheros AR8162 PCIe Fast Ethernet" },
 	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_AR8171, 9 * 1024,
-		"Atheros AR8161 PCIe Gigabit Ethernet" },
+		"Atheros AR8171 PCIe Gigabit Ethernet" },
 	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_AR8172, 9 * 1024,
-		"Atheros AR8161 PCIe Fast Ethernet" },
+		"Atheros AR8172 PCIe Fast Ethernet" },
 	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_E2200, 9 * 1024,
 		"Killer E2200 Gigabit Ethernet" },
+	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_E2400, 9 * 1024,
+		"Killer E2400 Gigabit Ethernet" },
 	{ 0, 0, 0, NULL}
 };
 
@@ -231,7 +233,8 @@ DECLARE_DUMMY_MODULE(if_alc);
 DRIVER_MODULE(if_alc, pci, alc_driver, alc_devclass, NULL, NULL);
 DRIVER_MODULE(miibus, alc, miibus_driver, miibus_devclass, NULL, NULL);
 
-static const uint32_t alc_dma_burst[] = { 128, 256, 512, 1024, 2048, 4096, 0 };
+static const uint32_t alc_dma_burst[] =
+    { 128, 256, 512, 1024, 2048, 4096, 0, 0 };
 
 static int
 alc_miibus_readreg(device_t dev, int phy, int reg)
@@ -1055,6 +1058,7 @@ alc_phy_down(struct alc_softc *sc)
 	switch (sc->alc_ident->deviceid) {
 	case DEVICEID_ATHEROS_AR8161:
 	case DEVICEID_ATHEROS_E2200:
+	case DEVICEID_ATHEROS_E2400:
 	case DEVICEID_ATHEROS_AR8162:
 	case DEVICEID_ATHEROS_AR8171:
 	case DEVICEID_ATHEROS_AR8172:
@@ -1371,12 +1375,15 @@ alc_attach(device_t dev)
 	 * shows the same PHY model/revision number of AR8131.
 	 */
 	switch (sc->alc_ident->deviceid) {
+	case DEVICEID_ATHEROS_E2200:
+	case DEVICEID_ATHEROS_E2400:
+		sc->alc_flags |= ALC_FLAG_E2X00;
+		/* FALLTHROUGH */
 	case DEVICEID_ATHEROS_AR8161:
 		if (pci_get_subvendor(dev) == VENDORID_ATHEROS &&
 		    pci_get_subdevice(dev) == 0x0091 && sc->alc_rev == 0)
 			sc->alc_flags |= ALC_FLAG_LINK_WAR;
 		/* FALLTHROUGH */
-	case DEVICEID_ATHEROS_E2200:
 	case DEVICEID_ATHEROS_AR8171:
 		sc->alc_flags |= ALC_FLAG_AR816X_FAMILY;
 		break;
@@ -1448,6 +1455,12 @@ alc_attach(device_t dev)
 			sc->alc_dma_rd_burst = 3;
 		if (alc_dma_burst[sc->alc_dma_wr_burst] > 1024)
 			sc->alc_dma_wr_burst = 3;
+		/*
+		 * Force maximum payload size to 128 bytes for E2200/E2400.
+		 * Otherwise it triggers DMA write error.
+		 */
+		if ((sc->alc_flags & ALC_FLAG_E2X00) != 0)
+			sc->alc_dma_wr_burst = 0;
 		alc_init_pcie(sc);
 	}
 
@@ -1472,7 +1485,7 @@ alc_attach(device_t dev)
 	/* Create device sysctl node. */
 	alc_sysctl_node(sc);
 
-	if ((error = alc_dma_alloc(sc) != 0))
+	if ((error = alc_dma_alloc(sc)) != 0)
 		goto fail;
 
 	/* Load station address. */
@@ -3993,13 +4006,17 @@ alc_init(void *xsc)
 	reg = (RXQ_CFG_RD_BURST_DEFAULT << RXQ_CFG_RD_BURST_SHIFT) &
 	    RXQ_CFG_RD_BURST_MASK;
 	reg |= RXQ_CFG_RSS_MODE_DIS;
-	if ((sc->alc_flags & ALC_FLAG_AR816X_FAMILY) != 0)
+	if ((sc->alc_flags & ALC_FLAG_AR816X_FAMILY) != 0) {
 		reg |= (RXQ_CFG_816X_IDT_TBL_SIZE_DEFAULT <<
 		    RXQ_CFG_816X_IDT_TBL_SIZE_SHIFT) &
 		    RXQ_CFG_816X_IDT_TBL_SIZE_MASK;
-	if ((sc->alc_flags & ALC_FLAG_FASTETHER) == 0 &&
-	    sc->alc_ident->deviceid != DEVICEID_ATHEROS_AR8151_V2)
-		reg |= RXQ_CFG_ASPM_THROUGHPUT_LIMIT_1M;
+		if ((sc->alc_flags & ALC_FLAG_FASTETHER) == 0)
+			reg |= RXQ_CFG_ASPM_THROUGHPUT_LIMIT_100M;
+	} else {
+		if ((sc->alc_flags & ALC_FLAG_FASTETHER) == 0 &&
+		    sc->alc_ident->deviceid != DEVICEID_ATHEROS_AR8151_V2)
+			reg |= RXQ_CFG_ASPM_THROUGHPUT_LIMIT_100M;
+	}
 	CSR_WRITE_4(sc, ALC_RXQ_CFG, reg);
 
 	/* Configure DMA parameters. */
@@ -4023,12 +4040,12 @@ alc_init(void *xsc)
 		switch (AR816X_REV(sc->alc_rev)) {
 		case AR816X_REV_A0:
 		case AR816X_REV_A1:
-			reg |= DMA_CFG_RD_CHNL_SEL_1;
+			reg |= DMA_CFG_RD_CHNL_SEL_2;
 			break;
 		case AR816X_REV_B0:
 			/* FALLTHROUGH */
 		default:
-			reg |= DMA_CFG_RD_CHNL_SEL_3;
+			reg |= DMA_CFG_RD_CHNL_SEL_4;
 			break;
 		}
 	}
