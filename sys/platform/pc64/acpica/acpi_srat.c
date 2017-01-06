@@ -68,6 +68,17 @@ srat_probe(void)
 	srat_entry_t *mem;
 	srat_entry_t *cpu;
 	int error = 0;
+	int enabled = 1;
+	int disabled = 0;
+
+	/*
+	 * Allow NUMA to be disabled by either setting kern.numa_disable
+	 * to 1 or by setting hw.acpi.srat.enabled to 0.
+	 */
+	kgetenv_int("kern.numa_disable", &disabled);
+	kgetenv_int("hw.acpi.srat.enabled", &enabled);
+	if (disabled || enabled == 0)
+		return;
 
 	/*
 	 * Map the SRAT if it exists

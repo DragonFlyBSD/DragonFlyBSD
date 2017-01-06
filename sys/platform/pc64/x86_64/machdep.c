@@ -2003,7 +2003,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	da_indx = 0;
 	phys_avail[pa_indx].phys_beg = physmap[0];
 	phys_avail[pa_indx].phys_end = physmap[0];
-	dump_avail[da_indx].phys_beg = physmap[0];
+	dump_avail[da_indx].phys_beg = 0;
 	dump_avail[da_indx].phys_end = physmap[0];
 	pte = CMAP1;
 

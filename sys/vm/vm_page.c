@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1991 Regents of the University of California.
  * All rights reserved.
  *
@@ -344,7 +342,7 @@ vm_page_startup(void)
 	vm_page_dump_size = round_page(roundup2(page_range, NBBY) / NBBY);
 	end -= vm_page_dump_size;
 	vm_page_dump = (void *)pmap_map(&vaddr, end, end + vm_page_dump_size,
-	    VM_PROT_READ | VM_PROT_WRITE);
+					VM_PROT_READ | VM_PROT_WRITE);
 	bzero((void *)vm_page_dump, vm_page_dump_size);
 #endif
 	/*
@@ -436,6 +434,10 @@ vm_page_startup(void)
  * Reorganize VM pages based on numa data.  May be called as many times as
  * necessary.  Will reorganize the vm_page_t page color and related queue(s)
  * to allow vm_page_alloc() to choose pages based on socket affinity.
+ *
+ * NOTE: This function is only called while we are still in UP mode, so
+ *	 we only need a critical section to protect the queues (which
+ *	 saves a lot of time, there are likely a ton of pages).
  */
 void
 vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
@@ -445,6 +447,7 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 	vm_paddr_t ran_end;
 	struct vpgqueues *vpq;
 	vm_page_t m;
+	vm_page_t mend;
 	int i;
 	int socket_mod;
 	int socket_value;
@@ -468,6 +471,9 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 
 	socket_mod = PQ_L2_SIZE / cpu_topology_phys_ids;
 	socket_value = physid * socket_mod;
+	mend = &vm_page_array[vm_page_array_size];
+
+	crit_enter();
 
 	/*
 	 * Adjust vm_page->pc and requeue all affected pages.  The
@@ -485,14 +491,18 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 			scan_beg = ran_beg;
 		if (scan_end > ran_end)
 			scan_end = ran_end;
-		if (atop(scan_end) >= first_page + vm_page_array_size)
+		if (atop(scan_end) > first_page + vm_page_array_size)
 			scan_end = ptoa(first_page + vm_page_array_size);
 
 		m = PHYS_TO_VM_PAGE(scan_beg);
 		while (scan_beg < scan_end) {
+			KKASSERT(m < mend);
 			if (m->queue != PQ_NONE) {
 				vpq = &vm_page_queues[m->queue];
 				TAILQ_REMOVE(&vpq->pl, m, pageq);
+				--vpq->lcnt;
+				/* queue doesn't change, no need to adj cnt */
+				/* atomic_add_int(vpq->cnt, -1); */
 				m->queue -= m->pc;
 				m->pc %= socket_mod;
 				m->pc += socket_value;
@@ -500,6 +510,9 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 				m->queue += m->pc;
 				vpq = &vm_page_queues[m->queue];
 				TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
+				++vpq->lcnt;
+				/* queue doesn't change, no need to adj cnt */
+				/* atomic_add_int(vpq->cnt, 1); */
 			} else {
 				m->pc %= socket_mod;
 				m->pc += socket_value;
@@ -509,6 +522,7 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 			++m;
 		}
 	}
+	crit_exit();
 }
 
 /*
@@ -764,8 +778,7 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		pq->lcnt--;
 		m->queue = PQ_NONE;
 		oqueue = queue;
-		if ((queue - m->pc) == PQ_CACHE || (queue - m->pc) == PQ_FREE)
-			queue -= m->pc;
+		queue -= m->pc;
 		vm_page_queues_spin_unlock(oqueue);	/* intended */
 	}
 	return queue;

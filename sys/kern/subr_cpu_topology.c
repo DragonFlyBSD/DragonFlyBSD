@@ -180,17 +180,21 @@ build_cpu_topology(int assumed_ncpus)
 	cpu_node_t *root = &cpu_topology_nodes[0];
 	cpu_node_t *last_free_node = root + 1;
 
-	/* Assume that the topology is uniform.
+	/*
+	 * Assume that the topology is uniform.
 	 * Find the number of siblings within chip
-	 * and witin core to build up the topology
+	 * and witin core to build up the topology.
 	 */
 	for (i = 0; i < assumed_ncpus; i++) {
 		cpumask_t mask;
 
 		CPUMASK_ASSBIT(mask, i);
 
+#if 0
+		/* smp_active_mask has not been initialized yet, ignore */
 		if (CPUMASK_TESTMASK(mask, smp_active_mask) == 0)
 			continue;
+#endif
 
 		if (get_chip_ID(BSPID) == get_chip_ID(i))
 			cores_per_chip++;
