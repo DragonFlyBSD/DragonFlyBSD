@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #ifndef _LINUX_TIME_H_
 #define _LINUX_TIME_H_
 
+#define USEC_PER_MSEC	1000L
 #define USEC_PER_SEC	1000000L
 
 #define NSEC_PER_USEC	1000L
