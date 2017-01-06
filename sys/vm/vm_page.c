@@ -222,12 +222,14 @@ vm_add_new_page(vm_paddr_t pa)
 	m->flags = 0;
 	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
 	m->pat_mode = PAT_WRITE_BACK;
+
 	/*
 	 * Twist for cpu localization in addition to page coloring, so
 	 * different cpus selecting by m->queue get different page colors.
 	 */
 	m->pc ^= ((pa >> PAGE_SHIFT) / PQ_L2_SIZE) & PQ_L2_MASK;
 	m->pc ^= ((pa >> PAGE_SHIFT) / (PQ_L2_SIZE * PQ_L2_SIZE)) & PQ_L2_MASK;
+
 	/*
 	 * Reserve a certain number of contiguous low memory pages for
 	 * contigmalloc() to use.
@@ -428,6 +430,85 @@ vm_page_startup(void)
 		virtual2_start = vaddr;
 	else
 		virtual_start = vaddr;
+}
+
+/*
+ * Reorganize VM pages based on numa data.  May be called as many times as
+ * necessary.  Will reorganize the vm_page_t page color and related queue(s)
+ * to allow vm_page_alloc() to choose pages based on socket affinity.
+ */
+void
+vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
+{
+	vm_paddr_t scan_beg;
+	vm_paddr_t scan_end;
+	vm_paddr_t ran_end;
+	struct vpgqueues *vpq;
+	vm_page_t m;
+	int i;
+	int socket_mod;
+	int socket_value;
+
+	/*
+	 * Check if no physical information, or there was only one socket
+	 * (so don't waste time doing nothing!).
+	 */
+	if (cpu_topology_phys_ids <= 1 ||
+	    cpu_topology_core_ids == 0) {
+		return;
+	}
+
+	/*
+	 * Setup for our iteration.  Note that ACPI may iterate CPU
+	 * sockets starting at 0 or 1 or some other number.  The
+	 * cpu_topology code mod's it against the socket count.
+	 */
+	ran_end = ran_beg + bytes;
+	physid %= cpu_topology_phys_ids;
+
+	socket_mod = PQ_L2_SIZE / cpu_topology_phys_ids;
+	socket_value = physid * socket_mod;
+
+	/*
+	 * Adjust vm_page->pc and requeue all affected pages.  The
+	 * allocator will then be able to localize memory allocations
+	 * to some degree.
+	 */
+	for (i = 0; phys_avail[i].phys_end; ++i) {
+		scan_beg = phys_avail[i].phys_beg;
+		scan_end = phys_avail[i].phys_end;
+		if (scan_end <= ran_beg)
+			continue;
+		if (scan_beg >= ran_end)
+			continue;
+		if (scan_beg < ran_beg)
+			scan_beg = ran_beg;
+		if (scan_end > ran_end)
+			scan_end = ran_end;
+		if (atop(scan_end) >= first_page + vm_page_array_size)
+			scan_end = ptoa(first_page + vm_page_array_size);
+
+		m = PHYS_TO_VM_PAGE(scan_beg);
+		while (scan_beg < scan_end) {
+			if (m->queue != PQ_NONE) {
+				vpq = &vm_page_queues[m->queue];
+				TAILQ_REMOVE(&vpq->pl, m, pageq);
+				m->queue -= m->pc;
+				m->pc %= socket_mod;
+				m->pc += socket_value;
+				m->pc &= PQ_L2_MASK;
+				m->queue += m->pc;
+				vpq = &vm_page_queues[m->queue];
+				TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
+			} else {
+				m->pc %= socket_mod;
+				m->pc += socket_value;
+				m->pc &= PQ_L2_MASK;
+			}
+			scan_beg += PAGE_SIZE;
+			++m;
+		}
+	}
 }
 
 /*

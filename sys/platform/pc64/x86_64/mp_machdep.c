@@ -1764,6 +1764,12 @@ get_chip_ID(int cpuid)
 }
 
 int
+get_chip_ID_from_APICID(int apicid)
+{
+	return apicid >> (logical_CPU_bits + core_bits);
+}
+
+int
 get_core_number_within_chip(int cpuid)
 {
 	return (get_apicid_from_cpuid(cpuid) >> logical_CPU_bits) &

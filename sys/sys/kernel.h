@@ -149,6 +149,8 @@ enum sysinit_sub_id {
 	SI_BOOT2_PRESMP		= 0x1a00000,	/* register SMP configs */
 	SI_BOOT2_START_CPU	= 0x1a40000,	/* start CPU (BSP) */
 	SI_BOOT2_LAPIC		= 0x1a50000,	/* configure Local APIC */
+	SI_BOOT2_CPU_TOPOLOGY	= 0x1e58000,
+	SI_BOOT2_NUMA		= 0x1e5c000,
 	SI_BOOT2_START_APS	= 0x1a60000,	/* start all APs */
 	SI_BOOT2_IOAPIC		= 0x1a70000,	/* configure I/O APIC */
 	SI_BOOT2_FINISH_PIC	= 0x1a80000,	/* finish PIC configure */
@@ -168,7 +170,6 @@ enum sysinit_sub_id {
 	SI_BOOT2_BIOS		= 0x1d00000,
 	SI_BOOT2_MACHDEP	= 0x1d80000,
 	SI_BOOT2_KLD		= 0x1e00000,
-	SI_BOOT2_CPU_TOPOLOGY	= 0x1e40000,
 	SI_BOOT2_USCHED		= 0x1e80000,
 	SI_BOOT2_PROC0		= 0x1f00000,
 

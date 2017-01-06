@@ -165,7 +165,7 @@ migrate_elements(cpu_node_t **a, int n, int pos)
  * BSP. When we found a match, at that level the CPUs are siblings.
  */
 static void
-build_cpu_topology(void)
+build_cpu_topology(int assumed_ncpus)
 {
 	detect_cpu_topology();
 	int i;
@@ -184,7 +184,7 @@ build_cpu_topology(void)
 	 * Find the number of siblings within chip
 	 * and witin core to build up the topology
 	 */
-	for (i = 0; i < ncpus; i++) {
+	for (i = 0; i < assumed_ncpus; i++) {
 		cpumask_t mask;
 
 		CPUMASK_ASSBIT(mask, i);
@@ -203,7 +203,7 @@ build_cpu_topology(void)
 	}
 
 	cores_per_chip /= threads_per_core;
-	chips_per_package = ncpus / (cores_per_chip * threads_per_core);
+	chips_per_package = assumed_ncpus / (cores_per_chip * threads_per_core);
 	
 	if (bootverbose)
 		kprintf("CPU Topology: cores_per_chip: %d; threads_per_core: %d; chips_per_package: %d;\n",
@@ -278,7 +278,7 @@ build_cpu_topology(void)
 
 		bzero(visited, MAXCPU * sizeof(int));
 
-		for (i = 0; i < ncpus; i++) {
+		for (i = 0; i < assumed_ncpus; i++) {
 			if (visited[i] == 0) {
 				pos = 0;
 				visited[i] = 1;
@@ -537,7 +537,7 @@ get_cpu_node_by_chipid(int chip_id)
 
 /* init pcpu_sysctl structure info */
 static void
-init_pcpu_topology_sysctl(void)
+init_pcpu_topology_sysctl(int assumed_ncpus)
 {
 	struct sbuf sb;
 	cpumask_t mask;
@@ -549,7 +549,7 @@ init_pcpu_topology_sysctl(void)
 	pcpu_sysctl = kmalloc(sizeof(*pcpu_sysctl) * MAXCPU, M_PCPUSYS,
 			      M_INTWAIT | M_ZERO);
 
-	for (i = 0; i < ncpus; i++) {
+	for (i = 0; i < assumed_ncpus; i++) {
 		sbuf_new(&sb, pcpu_sysctl[i].cpu_name,
 		    sizeof(pcpu_sysctl[i].cpu_name), SBUF_FIXEDLEN);
 		sbuf_printf(&sb,"cpu%d", i);
@@ -602,7 +602,7 @@ init_pcpu_topology_sysctl(void)
 	cpu_topology_phys_ids = max_id - min_id + 1;
 	if (cpu_topology_phys_ids <= 0)		/* don't crash */
 		cpu_topology_phys_ids = 1;
-	for (i = 0; i < ncpus; i++) {
+	for (i = 0; i < assumed_ncpus; i++) {
 		pcpu_sysctl[i].physical_id %= cpu_topology_phys_ids;
 	}
 }
@@ -611,7 +611,7 @@ init_pcpu_topology_sysctl(void)
  * the CPU Topology to user-space.
  */
 static void
-build_sysctl_cpu_topology(void)
+build_sysctl_cpu_topology(int assumed_ncpus)
 {
 	int i;
 	struct sbuf sb;
@@ -651,7 +651,7 @@ build_sysctl_cpu_topology(void)
 	    "Members of the CPU Topology");
 
 	/* SYSCTL per_cpu info */
-	for (i = 0; i < ncpus; i++) {
+	for (i = 0; i < assumed_ncpus; i++) {
 		/* New leaf : hw.cpu_topology.cpux */
 		sysctl_ctx_init(&pcpu_sysctl[i].sysctl_ctx); 
 		pcpu_sysctl[i].sysctl_tree = SYSCTL_ADD_NODE(&pcpu_sysctl[i].sysctl_ctx,
@@ -759,14 +759,19 @@ get_cpu_phys_id(int cpuid)
 	return(0);
 }
 
+extern int naps;
+
 /* Build the CPU Topology and SYSCTL Topology tree */
 static void
 init_cpu_topology(void)
 {
-	build_cpu_topology();
+	int assumed_ncpus;
 
-	init_pcpu_topology_sysctl();
-	build_sysctl_cpu_topology();
+	assumed_ncpus = naps + 1;
+
+	build_cpu_topology(assumed_ncpus);
+	init_pcpu_topology_sysctl(assumed_ncpus);
+	build_sysctl_cpu_topology(assumed_ncpus);
 }
 SYSINIT(cpu_topology, SI_BOOT2_CPU_TOPOLOGY, SI_ORDER_FIRST,
     init_cpu_topology, NULL);

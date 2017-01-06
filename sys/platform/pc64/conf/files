@@ -193,6 +193,7 @@ platform/pc64/x86_64/mptable.c		standard
 platform/pc64/acpica/acpi_sdt.c	standard
 platform/pc64/acpica/acpi_fadt.c	standard
 platform/pc64/acpica/acpi_madt.c	standard
+platform/pc64/acpica/acpi_srat.c	standard
 dev/misc/atkbd/atkbd_isa.c		optional	atkbd
 dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
 platform/pc64/x86_64/efirt.c		optional	efirt

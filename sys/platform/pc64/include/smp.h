@@ -86,6 +86,7 @@ int fix_amd_topology(void);
 
 /* Interface functions for IDs calculation */
 int get_chip_ID(int cpuid);
+int get_chip_ID_from_APICID(int apicid);
 int get_core_number_within_chip(int cpuid);
 int get_logical_CPU_number_within_core(int cpuid);
 

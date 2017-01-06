@@ -416,6 +416,7 @@ vm_page_t vm_page_repurpose(struct vm_object *, vm_pindex_t, int, int *,
 void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
 void vm_page_startup (void);
+void vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid);
 void vm_page_unmanage (vm_page_t);
 void vm_page_unwire (vm_page_t, int);
 void vm_page_wire (vm_page_t);
