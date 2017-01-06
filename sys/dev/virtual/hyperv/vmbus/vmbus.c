@@ -56,13 +56,10 @@
 	 MSR_HV_STIMER_CFG_SINT_MASK)
 
 /*
- * Two additionally required features:
+ * Additionally required feature:
  * - SynIC is needed for interrupt generation.
- * - Time reference counter is needed to set ABS reference count to
- *   STIMER0_COUNT.
  */
-#define CPUID_HV_TIMER_MASK		(CPUID_HV_MSR_TIME_REFCNT |	\
-					 CPUID_HV_MSR_SYNIC |		\
+#define CPUID_HV_TIMER_MASK		(CPUID_HV_MSR_SYNIC |		\
 					 CPUID_HV_MSR_SYNTIMER)
 
 /*
@@ -228,7 +225,8 @@ vmbus_attach(device_t dev)
 	 */
 	use_timer = 0;
 	if (device_get_unit(dev) == 0 &&
-	    (hyperv_features & CPUID_HV_TIMER_MASK) == CPUID_HV_TIMER_MASK)
+	    (hyperv_features & CPUID_HV_TIMER_MASK) == CPUID_HV_TIMER_MASK &&
+	    hyperv_tc64 != NULL)
 		use_timer = 1;
 
 	/*

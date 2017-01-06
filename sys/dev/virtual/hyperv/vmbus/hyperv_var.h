@@ -38,6 +38,7 @@
 typedef	uint64_t	(*hyperv_tc64_t)(void);
 
 extern u_int		hyperv_features;
+/* NOTE: This could be NULL, if there were no suitable Hyper-V time counter. */
 extern hyperv_tc64_t	hyperv_tc64;
 
 uint64_t		hypercall_post_message(bus_addr_t);
