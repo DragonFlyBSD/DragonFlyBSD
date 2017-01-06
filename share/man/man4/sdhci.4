@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/sdhci.4,v 1.2 2009/01/16 19:28:25 mav Exp $
 .\"
-.Dd September 9, 2014
+.Dd May 13, 2017
 .Dt SDHCI 4
 .Os
 .Sh NAME
@@ -72,6 +72,18 @@ RICOH R5C822
 RICOH R5CE823
 .It
 TI PCIXX21/XX11
+.El
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.sdhci.debug
+Set verbose debugging level.
+Levels 0 to 3 are currently used.
+.It Va hw.sdhci.adma2_test
+Set to 1 to allow using ADMA2 transfer mode on untested controller models.
+.It Va hw.sdhci.sdma_disable
+Set to 1 to disable the SDMA transfer mode.
+.It Va hw.sdhci.adma2_disable
+Set to 1 to disable the ADMA2 transfer mode.
 .El
 .Sh SEE ALSO
 .Xr mmc 4 ,

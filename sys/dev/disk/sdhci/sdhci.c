@@ -53,6 +53,15 @@ int	sdhci_debug = 0;
 TUNABLE_INT("hw.sdhci.debug", &sdhci_debug);
 SYSCTL_INT(_hw_sdhci, OID_AUTO, debug, CTLFLAG_RW, &sdhci_debug, 0, "Debug level");
 
+static int sdhci_sdma_disable = 0;
+TUNABLE_INT("hw.sdhci.sdma_disable", &sdhci_sdma_disable);
+
+static int sdhci_adma2_disable = 0;
+TUNABLE_INT("hw.sdhci.adma2_disable", &sdhci_adma2_disable);
+
+static int sdhci_adma2_test = 0;
+TUNABLE_INT("hw.sdhci.adma2_test", &sdhci_adma2_test);
+
 #define RD1(slot, off) SDHCI_READ_1((slot)->bus, (slot), (off))
 #define RD2(slot, off) SDHCI_READ_2((slot)->bus, (slot), (off))
 #define RD4(slot, off) SDHCI_READ_4((slot)->bus, (slot), (off))
@@ -702,12 +711,23 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	if (caps & SDHCI_CAN_DO_ADMA2)
 		slot->opt |= SDHCI_HAVE_ADMA2;
 
+	/* Use ADMA2 only on whitelisted models, or when explicitly enabled. */
+	if (sdhci_adma2_test == 0 &&
+	    (slot->quirks & SDHCI_QUIRK_WHITELIST_ADMA2) == 0) {
+		slot->opt &= ~SDHCI_HAVE_ADMA2;
+	}
+
 	if (slot->quirks & SDHCI_QUIRK_BROKEN_DMA) {
 		slot->opt &= ~SDHCI_HAVE_SDMA;
 		slot->opt &= ~SDHCI_HAVE_ADMA2;
 	}
 	if (slot->quirks & SDHCI_QUIRK_FORCE_SDMA)
 		slot->opt |= SDHCI_HAVE_SDMA;
+
+	if (sdhci_sdma_disable)
+		slot->opt &= ~SDHCI_HAVE_SDMA;
+	if (sdhci_adma2_disable)
+		slot->opt &= ~SDHCI_HAVE_ADMA2;
 
 	/* 
 	 * Use platform-provided transfer backend
