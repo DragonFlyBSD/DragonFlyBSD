@@ -141,7 +141,7 @@ vmm_init(void)
 		EVENTHANDLER_REGISTER(shutdown_pre_sync, vmm_shutdown, NULL, SHUTDOWN_PRI_DEFAULT-1);
 	}
 }
-SYSINIT(vmm_init, SI_BOOT2_CPU_TOPOLOGY, SI_ORDER_ANY, vmm_init, NULL);
+SYSINIT(vmm_init, SI_BOOT2_VMM, SI_ORDER_ANY, vmm_init, NULL);
 
 
 int

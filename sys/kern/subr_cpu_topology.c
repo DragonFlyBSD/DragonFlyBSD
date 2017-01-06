@@ -167,7 +167,6 @@ migrate_elements(cpu_node_t **a, int n, int pos)
 static void
 build_cpu_topology(int assumed_ncpus)
 {
-	detect_cpu_topology();
 	int i;
 	int BSPID = 0;
 	int threads_per_core = 0;
@@ -176,9 +175,10 @@ build_cpu_topology(int assumed_ncpus)
 	int children_no_per_level[LEVEL_NO];
 	uint8_t level_types[LEVEL_NO];
 	int apicid = -1;
-
 	cpu_node_t *root = &cpu_topology_nodes[0];
 	cpu_node_t *last_free_node = root + 1;
+
+	detect_cpu_topology();
 
 	/*
 	 * Assume that the topology is uniform.

@@ -832,8 +832,6 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 	struct magazinelist tmplist;
 	int i, count;
 
-	kprintf("objcache_reclaimlist\n");
-
 	SLIST_INIT(&tmplist);
 
 	for (i = 0; i < nlist; i++) {
