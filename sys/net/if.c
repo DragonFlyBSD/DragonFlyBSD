@@ -2822,33 +2822,42 @@ int
 ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
     struct altq_pktattr *pa __unused)
 {
+
 	M_ASSERTPKTHDR(m);
+again:
 	if (ifsq->ifsq_len >= ifsq->ifsq_maxlen ||
 	    ifsq->ifsq_bcnt >= ifsq->ifsq_maxbcnt) {
-		if ((m->m_flags & M_PRIO) &&
-		    ifsq->ifsq_prio_len < (ifsq->ifsq_maxlen / 2) &&
-		    ifsq->ifsq_prio_bcnt < (ifsq->ifsq_maxbcnt / 2)) {
-			struct mbuf *m_drop;
+		struct mbuf *m_drop;
 
-			/*
-			 * Perform drop-head on normal queue
-			 */
-			m_drop = ifsq_norm_dequeue(ifsq);
-			if (m_drop != NULL) {
-				m_freem(m_drop);
-				ifsq_prio_enqueue(ifsq, m);
-				return 0;
+		if (m->m_flags & M_PRIO) {
+			m_drop = NULL;
+			if (ifsq->ifsq_prio_len < (ifsq->ifsq_maxlen >> 1) &&
+			    ifsq->ifsq_prio_bcnt < (ifsq->ifsq_maxbcnt >> 1)) {
+				/* Try dropping some from normal queue. */
+				m_drop = ifsq_norm_dequeue(ifsq);
 			}
-			/* XXX nothing could be dropped? */
+			if (m_drop == NULL)
+				m_drop = ifsq_prio_dequeue(ifsq);
+		} else {
+			m_drop = ifsq_norm_dequeue(ifsq);
 		}
+		if (m_drop != NULL) {
+			IFNET_STAT_INC(ifsq->ifsq_ifp, oqdrops, 1);
+			m_freem(m_drop);
+			goto again;
+		}
+		/*
+		 * No old packets could be dropped!
+		 * NOTE: Caller increases oqdrops.
+		 */
 		m_freem(m);
-		return ENOBUFS;
+		return (ENOBUFS);
 	} else {
 		if (m->m_flags & M_PRIO)
 			ifsq_prio_enqueue(ifsq, m);
 		else
 			ifsq_norm_enqueue(ifsq, m);
-		return 0;
+		return (0);
 	}
 }
 
