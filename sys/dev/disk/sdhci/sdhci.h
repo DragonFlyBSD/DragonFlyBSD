@@ -292,6 +292,32 @@
 #define	SDHCI_SPEC_400		3
 
 
+/*
+ * ADMA2 descriptors
+ */
+#define SDHCI_ADMA2_ATTR_VALID	0x0001
+#define SDHCI_ADMA2_ATTR_END	0x0002
+#define SDHCI_ADMA2_ATTR_INT	0x0004
+#define SDHCI_ADMA2_ATTR_OP_MASK 0x0030
+#define SDHCI_ADMA2_ATTR_OP_NOP	0x0000
+#define SDHCI_ADMA2_ATTR_OP_TRAN 0x0020
+#define SDHCI_ADMA2_ATTR_OP_LINK 0x0030
+
+/* The maximum data length for one descriptor entry */
+#define SDHCI_ADMA2_MAX_SEGSIZE	32768	/* 65536 is broken on some chipsets */
+
+struct sdhci_adma2_desc32 {
+	uint16_t attribute;
+	uint16_t length;
+	uint32_t address;
+} __packed;
+
+struct sdhci_adma2_desc64 {
+	uint16_t attribute;
+	uint16_t length;
+	uint64_t address;
+} __packed;
+
 struct sdhci_slot {
 	u_int		quirks;		/* Chip specific quirks */
 	u_int		caps;		/* Override SDHCI_CAPABILITIES */
