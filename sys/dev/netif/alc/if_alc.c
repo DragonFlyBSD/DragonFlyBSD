@@ -126,6 +126,8 @@ static struct alc_ident alc_ident_table[] = {
 		"Killer E2200 Gigabit Ethernet" },
 	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_E2400, 9 * 1024,
 		"Killer E2400 Gigabit Ethernet" },
+	{ VENDORID_ATHEROS, DEVICEID_ATHEROS_E2500, 9 * 1024,
+		"Killer E2500 Gigabit Ethernet" },
 	{ 0, 0, 0, NULL}
 };
 
@@ -1059,6 +1061,7 @@ alc_phy_down(struct alc_softc *sc)
 	case DEVICEID_ATHEROS_AR8161:
 	case DEVICEID_ATHEROS_E2200:
 	case DEVICEID_ATHEROS_E2400:
+	case DEVICEID_ATHEROS_E2500:
 	case DEVICEID_ATHEROS_AR8162:
 	case DEVICEID_ATHEROS_AR8171:
 	case DEVICEID_ATHEROS_AR8172:
@@ -1377,6 +1380,7 @@ alc_attach(device_t dev)
 	switch (sc->alc_ident->deviceid) {
 	case DEVICEID_ATHEROS_E2200:
 	case DEVICEID_ATHEROS_E2400:
+	case DEVICEID_ATHEROS_E2500:
 		sc->alc_flags |= ALC_FLAG_E2X00;
 		/* FALLTHROUGH */
 	case DEVICEID_ATHEROS_AR8161:
