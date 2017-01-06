@@ -302,14 +302,12 @@ vm_paddr_t Realmem;
  * physical address that is accessible by ISA DMA is split into two
  * PHYSSEG entries.
  */
-#define	PHYSMAP_SIZE	(2 * (VM_PHYSSEG_MAX - 1))
+vm_phystable_t phys_avail[VM_PHYSSEG_MAX + 1];
+vm_phystable_t dump_avail[VM_PHYSSEG_MAX + 1];
 
-vm_paddr_t phys_avail[PHYSMAP_SIZE + 2];
-vm_paddr_t dump_avail[PHYSMAP_SIZE + 2];
-
-/* must be 2 less so 0 0 can signal end of chunks */
-#define PHYS_AVAIL_ARRAY_END (NELEM(phys_avail) - 2)
-#define DUMP_AVAIL_ARRAY_END (NELEM(dump_avail) - 2)
+/* must be 1 less so 0 0 can signal end of chunks */
+#define PHYS_AVAIL_ARRAY_END (NELEM(phys_avail) - 1)
+#define DUMP_AVAIL_ARRAY_END (NELEM(dump_avail) - 1)
 
 static vm_offset_t buffer_sva, buffer_eva;
 vm_offset_t clean_sva, clean_eva;
@@ -340,12 +338,15 @@ cpu_startup(void *dummy)
 		int indx;
 
 		kprintf("Physical memory chunk(s):\n");
-		for (indx = 0; phys_avail[indx + 1] != 0; indx += 2) {
-			vm_paddr_t size1 = phys_avail[indx + 1] - phys_avail[indx];
+		for (indx = 0; phys_avail[indx].phys_end != 0; ++indx) {
+			vm_paddr_t size1;
+
+			size1 = phys_avail[indx].phys_end -
+				phys_avail[indx].phys_beg;
 
 			kprintf("0x%08jx - 0x%08jx, %ju bytes (%ju pages)\n",
-				(intmax_t)phys_avail[indx],
-				(intmax_t)phys_avail[indx + 1] - 1,
+				(intmax_t)phys_avail[indx].phys_beg,
+				(intmax_t)phys_avail[indx].phys_end - 1,
 				(intmax_t)size1,
 				(intmax_t)(size1 / PAGE_SIZE));
 		}
@@ -1652,10 +1653,13 @@ ssdtosyssd(struct soft_segment_descriptor *ssd,
 
 #define PHYSMAP_ALIGN		(vm_paddr_t)(128 * 1024)
 #define PHYSMAP_ALIGN_MASK	(vm_paddr_t)(PHYSMAP_ALIGN - 1)
-	vm_paddr_t physmap[PHYSMAP_SIZE];
-	struct bios_smap *smapbase, *smap, *smapend;
-	struct efi_map_header *efihdrbase;
-	u_int32_t smapsize;
+#define PHYSMAP_SIZE		VM_PHYSSEG_MAX
+
+vm_paddr_t physmap[PHYSMAP_SIZE];
+struct bios_smap *smapbase, *smap, *smapend;
+struct efi_map_header *efihdrbase;
+u_int32_t smapsize;
+
 #define PHYSMAP_HANDWAVE	(vm_paddr_t)(2 * 1024 * 1024)
 #define PHYSMAP_HANDWAVE_MASK	(PHYSMAP_HANDWAVE - 1)
 
@@ -1906,9 +1910,9 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	 * ie: an int32_t immediately precedes smap.
 	 */
 	efihdrbase = (struct efi_map_header *)preload_search_info(kmdp,
-	    MODINFO_METADATA | MODINFOMD_EFI_MAP);
+		     MODINFO_METADATA | MODINFOMD_EFI_MAP);
 	smapbase = (struct bios_smap *)preload_search_info(kmdp,
-	    MODINFO_METADATA | MODINFOMD_SMAP);
+		   MODINFO_METADATA | MODINFOMD_SMAP);
 	if (smapbase == NULL && efihdrbase == NULL)
 		panic("No BIOS smap or EFI map info from loader!");
 
@@ -1996,10 +2000,11 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	 * Size up each available chunk of physical memory.
 	 */
 	pa_indx = 0;
-	da_indx = 1;
-	phys_avail[pa_indx++] = physmap[0];
-	phys_avail[pa_indx] = physmap[0];
-	dump_avail[da_indx] = physmap[0];
+	da_indx = 0;
+	phys_avail[pa_indx].phys_beg = physmap[0];
+	phys_avail[pa_indx].phys_end = physmap[0];
+	dump_avail[da_indx].phys_beg = physmap[0];
+	dump_avail[da_indx].phys_end = physmap[0];
 	pte = CMAP1;
 
 	/*
@@ -2122,32 +2127,32 @@ handwaved:
 			 * so that we keep going. The first bad page
 			 * will terminate the loop.
 			 */
-			if (phys_avail[pa_indx] == pa) {
-				phys_avail[pa_indx] += incr;
+			if (phys_avail[pa_indx].phys_end == pa) {
+				phys_avail[pa_indx].phys_end += incr;
 			} else {
-				pa_indx++;
+				++pa_indx;
 				if (pa_indx == PHYS_AVAIL_ARRAY_END) {
 					kprintf(
 		"Too many holes in the physical address space, giving up\n");
-					pa_indx--;
+					--pa_indx;
 					full = TRUE;
 					goto do_dump_avail;
 				}
-				phys_avail[pa_indx++] = pa;
-				phys_avail[pa_indx] = pa + incr;
+				phys_avail[pa_indx].phys_beg = pa;
+				phys_avail[pa_indx].phys_end = pa + incr;
 			}
 			physmem += incr / PAGE_SIZE;
 do_dump_avail:
-			if (dump_avail[da_indx] == pa) {
-				dump_avail[da_indx] += incr;
+			if (dump_avail[da_indx].phys_end == pa) {
+				dump_avail[da_indx].phys_end += incr;
 			} else {
-				da_indx++;
+				++da_indx;
 				if (da_indx == DUMP_AVAIL_ARRAY_END) {
-					da_indx--;
+					--da_indx;
 					goto do_next;
 				}
-				dump_avail[da_indx++] = pa;
-				dump_avail[da_indx] = pa + incr;
+				dump_avail[da_indx].phys_beg = pa;
+				dump_avail[da_indx].phys_end = pa + incr;
 			}
 do_next:
 			if (full)
@@ -2165,24 +2170,25 @@ do_next:
 	 */
 	msgbuf_size = (MSGBUF_SIZE + PHYSMAP_ALIGN_MASK) & ~PHYSMAP_ALIGN_MASK;
 
-	while (phys_avail[pa_indx - 1] + PHYSMAP_ALIGN +
-	       msgbuf_size >= phys_avail[pa_indx]) {
-		physmem -= atop(phys_avail[pa_indx] - phys_avail[pa_indx - 1]);
-		phys_avail[pa_indx--] = 0;
-		phys_avail[pa_indx--] = 0;
+	while (phys_avail[pa_indx].phys_beg + PHYSMAP_ALIGN + msgbuf_size >=
+	       phys_avail[pa_indx].phys_end) {
+		physmem -= atop(phys_avail[pa_indx].phys_end -
+				phys_avail[pa_indx].phys_beg);
+		phys_avail[pa_indx].phys_beg = 0;
+		phys_avail[pa_indx].phys_end = 0;
+		--pa_indx;
 	}
 
-	Maxmem = atop(phys_avail[pa_indx]);
+	Maxmem = atop(phys_avail[pa_indx].phys_end);
 
 	/* Trim off space for the message buffer. */
-	phys_avail[pa_indx] -= msgbuf_size;
+	phys_avail[pa_indx].phys_end -= msgbuf_size;
 
-	avail_end = phys_avail[pa_indx];
+	avail_end = phys_avail[pa_indx].phys_end;
 
 	/* Map the message buffer. */
 	for (off = 0; off < msgbuf_size; off += PAGE_SIZE) {
-		pmap_kenter((vm_offset_t)msgbufp + off,
-			    phys_avail[pa_indx] + off);
+		pmap_kenter((vm_offset_t)msgbufp + off, avail_end + off);
 	}
 	/* Try to get EFI framebuffer working as early as possible */
 	if (have_efi_framebuffer)

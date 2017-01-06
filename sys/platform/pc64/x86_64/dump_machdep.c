@@ -40,6 +40,7 @@
 #include <machine/elf.h>
 #include <machine/md_var.h>
 #include <machine/thread.h>
+#include <machine/vmparam.h>
 #include <sys/thread2.h>
 
 CTASSERT(sizeof(struct kerneldumpheader) == 512);
@@ -72,21 +73,20 @@ static off_t dumplo, fileofs;
 static char buffer[DEV_BSIZE];
 static size_t fragsz;
 
-/* 20 phys_avail entry pairs correspond to 10 md_pa's */
-static struct md_pa dump_map[10];
+static struct md_pa dump_map[VM_PHYSSEG_MAX+1];
 
 static void
 md_pa_init(void)
 {
-	int n, idx;
+	int n;
 
 	bzero(dump_map, sizeof(dump_map));
 	for (n = 0; n < NELEM(dump_map); n++) {
-		idx = n * 2;
-		if (dump_avail[idx] == 0 && dump_avail[idx + 1] == 0)
+		if (dump_avail[n].phys_beg == 0 && dump_avail[n].phys_end == 0)
 			break;
-		dump_map[n].md_start = dump_avail[idx];
-		dump_map[n].md_size = dump_avail[idx + 1] - dump_avail[idx];
+		dump_map[n].md_start = dump_avail[n].phys_beg;
+		dump_map[n].md_size = dump_avail[n].phys_end -
+				      dump_avail[n].phys_beg;
 	}
 }
 

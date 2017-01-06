@@ -84,7 +84,7 @@
 
 #define EX_VKERNEL_REBOOT	32
 
-vm_paddr_t phys_avail[16];
+vm_phystable_t phys_avail[16];
 vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 long physmem;
@@ -635,9 +635,10 @@ init_kern_memory(void)
 	 * phys_avail[] represents unallocated physical memory.  MI code
 	 * will use phys_avail[] to create the vm_page array.
 	 */
-	phys_avail[0] = (vm_paddr_t)firstfree;
-	phys_avail[0] = (phys_avail[0] + PAGE_MASK) & ~(vm_paddr_t)PAGE_MASK;
-	phys_avail[1] = Maxmem_bytes;
+	phys_avail[0].phys_beg = (vm_paddr_t)firstfree;
+	phys_avail[0].phys_beg = (phys_avail[0].phys_beg + PAGE_MASK) &
+				 ~(vm_paddr_t)PAGE_MASK;
+	phys_avail[0].phys_end = Maxmem_bytes;
 
 #if JGV
 	/*
@@ -659,9 +660,9 @@ init_kern_memory(void)
 	 */
 	proc0paddr = (void *)virtual_start;
 	for (i = 0; i < UPAGES; ++i) {
-		pmap_kenter_quick(virtual_start, phys_avail[0]);
+		pmap_kenter_quick(virtual_start, phys_avail[0].phys_beg);
 		virtual_start += PAGE_SIZE;
-		phys_avail[0] += PAGE_SIZE;
+		phys_avail[0].phys_beg += PAGE_SIZE;
 	}
 
 	/*
@@ -676,9 +677,9 @@ init_kern_memory(void)
 	assert((MSGBUF_SIZE & PAGE_MASK) == 0);
 	msgbufp = (void *)virtual_start;
 	for (i = 0; i < (MSGBUF_SIZE >> PAGE_SHIFT); ++i) {
-		pmap_kenter_quick(virtual_start, phys_avail[0]);
+		pmap_kenter_quick(virtual_start, phys_avail[0].phys_beg);
 		virtual_start += PAGE_SIZE;
-		phys_avail[0] += PAGE_SIZE;
+		phys_avail[0].phys_beg += PAGE_SIZE;
 	}
 	msgbufinit(msgbufp, MSGBUF_SIZE);
 
@@ -761,9 +762,10 @@ init_kern_memory_vmm(void)
 	 * phys_avail[] represents unallocated physical memory.  MI code
 	 * will use phys_avail[] to create the vm_page array.
 	 */
-	phys_avail[0] = (vm_paddr_t)firstfree;
-	phys_avail[0] = (phys_avail[0] + PAGE_MASK) & ~(vm_paddr_t)PAGE_MASK;
-	phys_avail[1] = (vm_paddr_t)dmap_address + Maxmem_bytes;
+	phys_avail[0].phys_beg = (vm_paddr_t)firstfree;
+	phys_avail[0].phys_beg = (phys_avail[0].phys_beg + PAGE_MASK) &
+				 ~(vm_paddr_t)PAGE_MASK;
+	phys_avail[0].phys_end = (vm_paddr_t)dmap_address + Maxmem_bytes;
 
 	/*
 	 * pmap_growkernel() will set the correct value.
@@ -775,9 +777,9 @@ init_kern_memory_vmm(void)
 	 */
 	proc0paddr = (void *)virtual_start;
 	for (i = 0; i < UPAGES; ++i) {
-		pmap_kenter_quick(virtual_start, phys_avail[0]);
+		pmap_kenter_quick(virtual_start, phys_avail[0].phys_beg);
 		virtual_start += PAGE_SIZE;
-		phys_avail[0] += PAGE_SIZE;
+		phys_avail[0].phys_beg += PAGE_SIZE;
 	}
 
 	/*
@@ -793,9 +795,9 @@ init_kern_memory_vmm(void)
 	msgbufp = (void *)virtual_start;
 	for (i = 0; i < (MSGBUF_SIZE >> PAGE_SHIFT); ++i) {
 
-		pmap_kenter_quick(virtual_start, phys_avail[0]);
+		pmap_kenter_quick(virtual_start, phys_avail[0].phys_beg);
 		virtual_start += PAGE_SIZE;
-		phys_avail[0] += PAGE_SIZE;
+		phys_avail[0].phys_beg += PAGE_SIZE;
 	}
 
 	msgbufinit(msgbufp, MSGBUF_SIZE);
@@ -837,16 +839,16 @@ init_globaldata(void)
 	 * into KVA.  For cpu #0 only.
 	 */
 	for (i = 0; i < sizeof(struct mdglobaldata); i += PAGE_SIZE) {
-		pa = phys_avail[0];
+		pa = phys_avail[0].phys_beg;
 		va = (vm_offset_t)&CPU_prvspace[0].mdglobaldata + i;
 		pmap_kenter_quick(va, pa);
-		phys_avail[0] += PAGE_SIZE;
+		phys_avail[0].phys_beg += PAGE_SIZE;
 	}
 	for (i = 0; i < sizeof(CPU_prvspace[0].idlestack); i += PAGE_SIZE) {
-		pa = phys_avail[0];
+		pa = phys_avail[0].phys_beg;
 		va = (vm_offset_t)&CPU_prvspace[0].idlestack + i;
 		pmap_kenter_quick(va, pa);
-		phys_avail[0] += PAGE_SIZE;
+		phys_avail[0].phys_beg += PAGE_SIZE;
 	}
 
 	/*
@@ -913,7 +915,8 @@ init_vkernel(void)
 #if 0
 	initializecpu();	/* Initialize CPU registers */
 #endif
-	init_param2((phys_avail[1] - phys_avail[0]) / PAGE_SIZE);
+	init_param2((phys_avail[0].phys_end -
+		     phys_avail[0].phys_beg) / PAGE_SIZE);
 
 #if 0
 	/*

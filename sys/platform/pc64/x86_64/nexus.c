@@ -656,7 +656,7 @@ ram_attach(device_t dev)
 {
 	struct bios_smap *smapbase, *smap, *smapend;
 	struct resource *res;
-	vm_paddr_t *p;
+	vm_phystable_t *p;
 	caddr_t kmdp;
 	uint32_t smapsize;
 	int error, rid;
@@ -710,16 +710,18 @@ ram_attach(device_t dev)
 	 * instead of the start since the start address for the first
 	 * segment is 0.
 	 */
-	for (rid = 0, p = dump_avail; p[1] != 0; rid++, p += 2) {
-		error = bus_set_resource(dev, SYS_RES_MEMORY, rid, p[0],
-		    p[1] - p[0], -1);
+	for (rid = 0, p = &dump_avail[0]; p->phys_end; ++rid, ++p) {
+		error = bus_set_resource(dev, SYS_RES_MEMORY, rid,
+					 p->phys_beg,
+					 p->phys_end - p->phys_beg,
+					 -1);
 		if (error)
 			panic("%s: resource %d failed set with %d", __func__,
-			    rid, error);
+			      rid, error);
 		res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, 0);
 		if (res == NULL)
 			panic("%s: resource %d failed to attach", __func__,
-			    rid);
+			      rid);
 	}
 	return (0);
 }

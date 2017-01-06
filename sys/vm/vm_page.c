@@ -280,7 +280,6 @@ vm_page_startup(void)
 	vm_paddr_t new_end;
 	int i;
 	vm_paddr_t pa;
-	int nblocks;
 	vm_paddr_t last_pa;
 	vm_paddr_t end;
 	vm_paddr_t biggestone, biggestsize;
@@ -289,26 +288,33 @@ vm_page_startup(void)
 	total = 0;
 	biggestsize = 0;
 	biggestone = 0;
-	nblocks = 0;
 	vaddr = round_page(vaddr);
 
-	for (i = 0; phys_avail[i + 1]; i += 2) {
-		phys_avail[i] = round_page64(phys_avail[i]);
-		phys_avail[i + 1] = trunc_page64(phys_avail[i + 1]);
+	/*
+	 * Make sure ranges are page-aligned.
+	 */
+	for (i = 0; phys_avail[i].phys_end; ++i) {
+		phys_avail[i].phys_beg = round_page64(phys_avail[i].phys_beg);
+		phys_avail[i].phys_end = trunc_page64(phys_avail[i].phys_end);
+		if (phys_avail[i].phys_end < phys_avail[i].phys_beg)
+			phys_avail[i].phys_end = phys_avail[i].phys_beg;
 	}
 
-	for (i = 0; phys_avail[i + 1]; i += 2) {
-		vm_paddr_t size = phys_avail[i + 1] - phys_avail[i];
+	/*
+	 * Locate largest block
+	 */
+	for (i = 0; phys_avail[i].phys_end; ++i) {
+		vm_paddr_t size = phys_avail[i].phys_end -
+				  phys_avail[i].phys_beg;
 
 		if (size > biggestsize) {
 			biggestone = i;
 			biggestsize = size;
 		}
-		++nblocks;
 		total += size;
 	}
 
-	end = phys_avail[biggestone+1];
+	end = phys_avail[biggestone].phys_end;
 	end = trunc_page(end);
 
 	/*
@@ -332,7 +338,7 @@ vm_page_startup(void)
 	 * minidump code.  In theory, they are not needed on i386, but are
 	 * included should the sf_buf code decide to use them.
 	 */
-	page_range = phys_avail[(nblocks - 1) * 2 + 1] / PAGE_SIZE;
+	page_range = phys_avail[i-1].phys_end / PAGE_SIZE;
 	vm_page_dump_size = round_page(roundup2(page_range, NBBY) / NBBY);
 	end -= vm_page_dump_size;
 	vm_page_dump = (void *)pmap_map(&vaddr, end, end + vm_page_dump_size,
@@ -344,8 +350,8 @@ vm_page_startup(void)
 	 * use (taking into account the overhead of a page structure per
 	 * page).
 	 */
-	first_page = phys_avail[0] / PAGE_SIZE;
-	page_range = phys_avail[(nblocks - 1) * 2 + 1] / PAGE_SIZE - first_page;
+	first_page = phys_avail[0].phys_beg / PAGE_SIZE;
+	page_range = phys_avail[i-1].phys_end / PAGE_SIZE - first_page;
 	npages = (total - (page_range * sizeof(struct vm_page))) / PAGE_SIZE;
 
 #ifndef _KERNEL_VIRTUAL
@@ -386,8 +392,11 @@ vm_page_startup(void)
 	 * we have to manually add these pages to the minidump tracking so
 	 * that they can be dumped, including the vm_page_array.
 	 */
-	for (pa = new_end; pa < phys_avail[biggestone + 1]; pa += PAGE_SIZE)
+	for (pa = new_end;
+	     pa < phys_avail[biggestone].phys_end;
+	     pa += PAGE_SIZE) {
 		dump_add_page(pa);
+	}
 #endif
 
 	/*
@@ -404,12 +413,12 @@ vm_page_startup(void)
 	 */
 	vmstats.v_page_count = 0;
 	vmstats.v_free_count = 0;
-	for (i = 0; phys_avail[i + 1] && npages > 0; i += 2) {
-		pa = phys_avail[i];
+	for (i = 0; phys_avail[i].phys_end && npages > 0; ++i) {
+		pa = phys_avail[i].phys_beg;
 		if (i == biggestone)
 			last_pa = new_end;
 		else
-			last_pa = phys_avail[i + 1];
+			last_pa = phys_avail[i].phys_end;
 		while (pa < last_pa && npages-- > 0) {
 			vm_add_new_page(pa);
 			pa += PAGE_SIZE;

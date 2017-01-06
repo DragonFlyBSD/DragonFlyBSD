@@ -108,6 +108,13 @@ struct pmap_pgscan_info {
 				    struct vm_page *);
 };
 
+typedef struct vm_phystable {
+	vm_paddr_t	phys_beg;
+	vm_paddr_t	phys_end;
+	uint32_t	flags;
+	uint32_t	affinity;
+} vm_phystable_t;
+
 /*
  * Most of these variables represent parameters set up by low level MD kernel
  * boot code to be used by higher level MI initialization code to identify
@@ -134,7 +141,8 @@ extern vm_offset_t virtual_start;
 extern vm_offset_t virtual_end;
 extern vm_offset_t virtual2_start;
 extern vm_offset_t virtual2_end;
-extern vm_paddr_t phys_avail[];	
+extern vm_phystable_t phys_avail[];
+extern vm_phystable_t dump_avail[];
 
 /*
  * High-level pmap scan

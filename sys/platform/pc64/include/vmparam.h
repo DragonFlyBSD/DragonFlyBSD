@@ -93,7 +93,7 @@
  * largest physical address that is accessible by ISA DMA is split
  * into two PHYSSEG entries. 
  */
-#define	VM_PHYSSEG_MAX		31
+#define	VM_PHYSSEG_MAX		127
 
 /*
  * Virtual addresses of things.  Derived from the page directory and

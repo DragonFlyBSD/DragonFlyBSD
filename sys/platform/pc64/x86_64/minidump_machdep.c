@@ -77,8 +77,8 @@ is_dumpable(vm_paddr_t pa)
 {
 	int i;
 
-	for (i = 0; dump_avail[i] != 0 || dump_avail[i + 1] != 0; i += 2) {
-		if (pa >= dump_avail[i] && pa < dump_avail[i + 1])
+	for (i = 0; dump_avail[i].phys_beg || dump_avail[i].phys_end; ++i) {
+		if (pa >= dump_avail[i].phys_beg && pa < dump_avail[i].phys_end)
 			return (1);
 	}
 	return (0);

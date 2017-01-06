@@ -75,9 +75,10 @@ void iounmap(void __iomem *ptr)
 
 	paddr_end = imp->paddr + (imp->npages * PAGE_SIZE) - 1;
 	/* Is this address space range backed by regular memory ? */
-	for (indx = 0; phys_avail[indx + 1] != 0; indx += 2) {
-		vm_paddr_t range_start = phys_avail[indx];
-		vm_paddr_t size = phys_avail[indx + 1] - phys_avail[indx];
+	for (indx = 0; phys_avail[indx].phys_end != 0; ++indx) {
+		vm_paddr_t range_start = phys_avail[indx].phys_beg;
+		vm_paddr_t size = phys_avail[indx].phys_end -
+				  phys_avail[indx].phys_beg;
 		vm_paddr_t range_end = range_start + size - 1;
 
 		if ((imp->paddr >= range_start) && (paddr_end <= range_end)) {
