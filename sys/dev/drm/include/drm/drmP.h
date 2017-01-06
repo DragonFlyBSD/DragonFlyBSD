@@ -487,8 +487,11 @@ struct drm_file {
 	struct list_head blobs;
 
 	wait_queue_head_t event_wait;
+	struct list_head pending_event_list;
 	struct list_head event_list;
 	int event_space;
+
+	struct lock event_read_lock;
 
 	struct drm_prime_file_private prime;
 };
@@ -1087,6 +1090,18 @@ extern int		drm_open_helper(struct cdev *kdev, int flags, int fmt,
 					 DRM_STRUCTPROC *p,
 					struct drm_device *dev,
 					struct file *fp);
+int drm_event_reserve_init_locked(struct drm_device *dev,
+				  struct drm_file *file_priv,
+				  struct drm_pending_event *p,
+				  struct drm_event *e);
+int drm_event_reserve_init(struct drm_device *dev,
+			   struct drm_file *file_priv,
+			   struct drm_pending_event *p,
+			   struct drm_event *e);
+void drm_event_cancel_free(struct drm_device *dev,
+			   struct drm_pending_event *p);
+void drm_send_event_locked(struct drm_device *dev, struct drm_pending_event *e);
+void drm_send_event(struct drm_device *dev, struct drm_pending_event *e);
 
 /* Misc. IOCTL support (drm_ioctl.c) */
 int drm_noop(struct drm_device *dev, void *data,

@@ -2123,6 +2123,7 @@ dev/drm/i915/i915_gem_render_state.c	optional i915 drm
 dev/drm/i915/i915_gem_shrinker.c	optional i915 drm
 dev/drm/i915/i915_gem_tiling.c		optional i915 drm
 dev/drm/i915/i915_gem_userptr.c		optional i915 drm
+dev/drm/i915/i915_gpu_error.c		optional i915 drm
 dev/drm/i915/i915_guc_submission.c	optional i915 drm
 dev/drm/i915/i915_irq.c			optional i915 drm
 dev/drm/i915/i915_params.c		optional i915 drm

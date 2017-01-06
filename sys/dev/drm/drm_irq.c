@@ -1031,18 +1031,12 @@ static void send_vblank_event(struct drm_device *dev,
 		struct drm_pending_vblank_event *e,
 		unsigned long seq, struct timeval *now)
 {
-	assert_spin_locked(&dev->event_lock);
-
 	e->event.sequence = seq;
 	e->event.tv_sec = now->tv_sec;
 	e->event.tv_usec = now->tv_usec;
 
-	list_add_tail(&e->base.link,
-		      &e->base.file_priv->event_list);
-	wake_up_interruptible(&e->base.file_priv->event_wait);
-#ifdef __DragonFly__
-	KNOTE(&e->base.file_priv->dkq.ki_note, 0);
-#endif
+	drm_send_event_locked(dev, &e->base);
+
 	trace_drm_vblank_event_delivered(e->base.pid, e->pipe,
 					 e->event.sequence);
 }
@@ -1639,18 +1633,6 @@ int drm_modeset_ctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-#ifdef __DragonFly__
-/*
- * The Linux layer version of kfree() is a macro and can't be called
- * directly via a function pointer
- */
-static void
-drm_vblank_event_destroy(struct drm_pending_event *e)
-{
-	kfree(e);
-}
-#endif
-
 static int drm_queue_vblank_event(struct drm_device *dev, unsigned int pipe,
 				  union drm_wait_vblank *vblwait,
 				  struct drm_file *file_priv)
@@ -1673,13 +1655,6 @@ static int drm_queue_vblank_event(struct drm_device *dev, unsigned int pipe,
 	e->event.base.type = DRM_EVENT_VBLANK;
 	e->event.base.length = sizeof(e->event);
 	e->event.user_data = vblwait->request.signal;
-	e->base.event = &e->event.base;
-	e->base.file_priv = file_priv;
-#ifdef __DragonFly__
-	e->base.destroy = drm_vblank_event_destroy;
-#else
-	e->base.destroy = (void (*) (struct drm_pending_event *)) kfree;
-#endif
 
 	spin_lock_irqsave(&dev->event_lock, flags);
 
@@ -1695,12 +1670,12 @@ static int drm_queue_vblank_event(struct drm_device *dev, unsigned int pipe,
 		goto err_unlock;
 	}
 
-	if (file_priv->event_space < sizeof(e->event)) {
-		ret = -EBUSY;
-		goto err_unlock;
-	}
+	ret = drm_event_reserve_init_locked(dev, file_priv, &e->base,
+					    &e->event.base);
 
-	file_priv->event_space -= sizeof(e->event);
+	if (ret)
+		goto err_unlock;
+
 	seq = drm_vblank_count_and_time(dev, pipe, &now);
 
 	if ((vblwait->request.type & _DRM_VBLANK_NEXTONMISS) &&

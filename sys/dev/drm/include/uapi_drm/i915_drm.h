@@ -683,10 +683,6 @@ struct drm_i915_gem_exec_object2 {
 	__u64 alignment;
 
 	/**
-	 * Current DragonFly behavior: 
-	 * Returned value of the updated offset of the object, for future
-	 * presumed_offset writes.
-	 * Future Linux 4.6 compatible behavior:
 	 * When the EXEC_OBJECT_PINNED flag is specified this is populated by
 	 * the user with the GTT offset at which this object will be pinned.
 	 * When the I915_EXEC_NO_RELOC flag is specified this must contain the
@@ -818,14 +814,6 @@ struct drm_i915_gem_busy {
 	/** Handle of the buffer to check for busy */
 	__u32 handle;
 
-	/** Current DragonFly behavior: */
-	/** Return busy status (1 if busy, 0 if idle).
-	 * The high word is used to indicate on which rings the object
-	 * currently resides:
-	 *  16:31 - busy (r or r/w) rings (16 render, 17 bsd, 18 blt, etc)
-	 */
-
-	/** Future Linux 4.6 compatible behavior */
 	/** Return busy status
 	 *
 	 * A return of 0 implies that the object is idle (after

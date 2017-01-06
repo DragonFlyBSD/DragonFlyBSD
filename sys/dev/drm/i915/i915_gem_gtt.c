@@ -99,9 +99,11 @@
 static int
 i915_get_ggtt_vma_pages(struct i915_vma *vma);
 
-const struct i915_ggtt_view i915_ggtt_view_normal;
+const struct i915_ggtt_view i915_ggtt_view_normal = {
+	.type = I915_GGTT_VIEW_NORMAL,
+};
 const struct i915_ggtt_view i915_ggtt_view_rotated = {
-        .type = I915_GGTT_VIEW_ROTATED
+	.type = I915_GGTT_VIEW_ROTATED,
 };
 
 static int sanitize_enable_ppgtt(struct drm_device *dev, int enable_ppgtt)
@@ -1275,8 +1277,6 @@ static int gen8_alloc_va_range_3lvl(struct i915_address_space *vm,
 		gen8_for_each_pde(pt, pd, pd_start, pd_len, pde) {
 			/* Same reasoning as pd */
 			WARN_ON(!pt);
-			if (pt == NULL)		/* XXX dillon hack */
-				continue;	/* XXX dillon hack */
 			WARN_ON(!pd_len);
 			WARN_ON(!gen8_pte_count(pd_start, pd_len));
 
@@ -2135,6 +2135,25 @@ static void i915_address_space_init(struct i915_address_space *vm,
 	list_add_tail(&vm->global_link, &dev_priv->vm_list);
 }
 
+static void gtt_write_workarounds(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	/* This function is for gtt related workarounds. This function is
+	 * called on driver load and after a GPU reset, so you can place
+	 * workarounds here even if they get overwritten by GPU reset.
+	 */
+	/* WaIncreaseDefaultTLBEntries:chv,bdw,skl,bxt */
+	if (IS_BROADWELL(dev))
+		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN8_L3_LRA_1_GPGPU_DEFAULT_VALUE_BDW);
+	else if (IS_CHERRYVIEW(dev))
+		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN8_L3_LRA_1_GPGPU_DEFAULT_VALUE_CHV);
+	else if (IS_SKYLAKE(dev))
+		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN9_L3_LRA_1_GPGPU_DEFAULT_VALUE_SKL);
+	else if (IS_BROXTON(dev))
+		I915_WRITE(GEN8_L3_LRA_1_GPGPU, GEN9_L3_LRA_1_GPGPU_DEFAULT_VALUE_BXT);
+}
+
 int i915_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -2151,6 +2170,8 @@ int i915_ppgtt_init(struct drm_device *dev, struct i915_hw_ppgtt *ppgtt)
 
 int i915_ppgtt_init_hw(struct drm_device *dev)
 {
+	gtt_write_workarounds(dev);
+
 	/* In the case of execlists, PPGTT is enabled by the context descriptor
 	 * and the PDPs are contained within the context itself.  We don't
 	 * need to do anything here. */
@@ -2753,7 +2774,7 @@ static int i915_gem_setup_global_gtt(struct drm_device *dev,
 		}
 		vma->bound |= GLOBAL_BIND;
 		__i915_vma_set_map_and_fenceable(vma);
-		list_add_tail(&vma->mm_list, &ggtt_vm->inactive_list);
+		list_add_tail(&vma->vm_link, &ggtt_vm->inactive_list);
 	}
 
 	/* Clear any non-preallocated blocks */
@@ -2832,6 +2853,8 @@ void i915_global_gtt_cleanup(struct drm_device *dev)
 
 		ppgtt->base.cleanup(&ppgtt->base);
 	}
+
+	i915_gem_cleanup_stolen(dev);
 
 	if (drm_mm_initialized(&vm->mm)) {
 		if (intel_vgpu_active(dev))
@@ -3205,11 +3228,20 @@ int i915_gem_gtt_init(struct drm_device *dev)
 	}
 
 	gtt->base.dev = dev;
+	gtt->base.is_ggtt = true;
 
 	ret = gtt->gtt_probe(dev, &gtt->base.total, &gtt->stolen_size,
 			     &gtt->mappable_base, &gtt->mappable_end);
 	if (ret)
 		return ret;
+
+	/*
+	 * Initialise stolen early so that we may reserve preallocated
+	 * objects for the BIOS to KMS transition.
+	 */
+	ret = i915_gem_init_stolen(dev);
+	if (ret)
+		goto out_gtt_cleanup;
 
 	/* GMADR is the PCI mmio aperture into the global GTT. */
 	DRM_INFO("Memory usable by graphics device = %luM\n",
@@ -3230,6 +3262,11 @@ int i915_gem_gtt_init(struct drm_device *dev)
 	DRM_DEBUG_DRIVER("ppgtt mode: %i\n", i915.enable_ppgtt);
 
 	return 0;
+
+out_gtt_cleanup:
+	gtt->base.cleanup(&dev_priv->gtt.base);
+
+	return ret;
 }
 
 void i915_gem_restore_gtt_mappings(struct drm_device *dev)
@@ -3252,7 +3289,7 @@ void i915_gem_restore_gtt_mappings(struct drm_device *dev)
 	vm = &dev_priv->gtt.base;
 	list_for_each_entry(obj, &dev_priv->mm.bound_list, global_list) {
 		flush = false;
-		list_for_each_entry(vma, &obj->vma_list, vma_link) {
+		list_for_each_entry(vma, &obj->vma_list, obj_link) {
 			if (vma->vm != vm)
 				continue;
 
@@ -3308,18 +3345,19 @@ __i915_gem_vma_create(struct drm_i915_gem_object *obj,
 	if (vma == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	INIT_LIST_HEAD(&vma->vma_link);
-	INIT_LIST_HEAD(&vma->mm_list);
+	INIT_LIST_HEAD(&vma->vm_link);
+	INIT_LIST_HEAD(&vma->obj_link);
 	INIT_LIST_HEAD(&vma->exec_list);
 	vma->vm = vm;
 	vma->obj = obj;
+	vma->is_ggtt = i915_is_ggtt(vm);
 
 	if (i915_is_ggtt(vm))
 		vma->ggtt_view = *ggtt_view;
-
-	list_add_tail(&vma->vma_link, &obj->vma_list);
-	if (!i915_is_ggtt(vm))
+	else
 		i915_ppgtt_get(i915_vm_to_ppgtt(vm));
+
+	list_add_tail(&vma->obj_link, &obj->vma_list);
 
 	return vma;
 }
@@ -3361,8 +3399,9 @@ i915_gem_obj_lookup_or_create_ggtt_vma(struct drm_i915_gem_object *obj,
 }
 
 static struct scatterlist *
-rotate_pages(dma_addr_t *in, unsigned int offset,
+rotate_pages(const dma_addr_t *in, unsigned int offset,
 	     unsigned int width, unsigned int height,
+	     unsigned int stride,
 	     struct sg_table *st, struct scatterlist *sg)
 {
 	unsigned int column, row;
@@ -3374,7 +3413,7 @@ rotate_pages(dma_addr_t *in, unsigned int offset,
 	}
 
 	for (column = 0; column < width; column++) {
-		src_idx = width * (height - 1) + column;
+		src_idx = stride * (height - 1) + column;
 		for (row = 0; row < height; row++) {
 			st->nents++;
 			/* We don't need the pages, but need to initialize
@@ -3385,7 +3424,7 @@ rotate_pages(dma_addr_t *in, unsigned int offset,
 			sg_dma_address(sg) = in[offset + src_idx];
 			sg_dma_len(sg) = PAGE_SIZE;
 			sg = sg_next(sg);
-			src_idx -= width;
+			src_idx -= stride;
 		}
 	}
 
@@ -3393,10 +3432,9 @@ rotate_pages(dma_addr_t *in, unsigned int offset,
 }
 
 static struct sg_table *
-intel_rotate_fb_obj_pages(struct i915_ggtt_view *ggtt_view,
+intel_rotate_fb_obj_pages(struct intel_rotation_info *rot_info,
 			  struct drm_i915_gem_object *obj)
 {
-	struct intel_rotation_info *rot_info = &ggtt_view->params.rotation_info;
 	unsigned int size_pages = rot_info->size >> PAGE_SHIFT;
 	unsigned int size_pages_uv;
 	struct sg_page_iter sg_iter;
@@ -3438,6 +3476,7 @@ intel_rotate_fb_obj_pages(struct i915_ggtt_view *ggtt_view,
 	/* Rotate the pages. */
 	sg = rotate_pages(page_addr_list, 0,
 		     rot_info->width_pages, rot_info->height_pages,
+		     rot_info->width_pages,
 		     st, NULL);
 
 	/* Append the UV plane if NV12. */
@@ -3453,6 +3492,7 @@ intel_rotate_fb_obj_pages(struct i915_ggtt_view *ggtt_view,
 		rotate_pages(page_addr_list, uv_start_page,
 			     rot_info->width_pages_uv,
 			     rot_info->height_pages_uv,
+			     rot_info->width_pages_uv,
 			     st, sg);
 	}
 
@@ -3534,7 +3574,7 @@ i915_get_ggtt_vma_pages(struct i915_vma *vma)
 		vma->ggtt_view.pages = vma->obj->pages;
 	else if (vma->ggtt_view.type == I915_GGTT_VIEW_ROTATED)
 		vma->ggtt_view.pages =
-			intel_rotate_fb_obj_pages(&vma->ggtt_view, vma->obj);
+			intel_rotate_fb_obj_pages(&vma->ggtt_view.params.rotated, vma->obj);
 	else if (vma->ggtt_view.type == I915_GGTT_VIEW_PARTIAL)
 		vma->ggtt_view.pages =
 			intel_partial_pages(&vma->ggtt_view, vma->obj);
@@ -3590,13 +3630,9 @@ int i915_vma_bind(struct i915_vma *vma, enum i915_cache_level cache_level,
 		return 0;
 
 	if (vma->bound == 0 && vma->vm->allocate_va_range) {
-		trace_i915_va_alloc(vma->vm,
-				    vma->node.start,
-				    vma->node.size,
-				    VM_TO_TRACE_NAME(vma->vm));
-
 		/* XXX: i915_vma_pin() will fix this +- hack */
 		vma->pin_count++;
+		trace_i915_va_alloc(vma);
 		ret = vma->vm->allocate_va_range(vma->vm,
 						 vma->node.start,
 						 vma->node.size);
@@ -3628,7 +3664,7 @@ i915_ggtt_view_size(struct drm_i915_gem_object *obj,
 	if (view->type == I915_GGTT_VIEW_NORMAL) {
 		return obj->base.size;
 	} else if (view->type == I915_GGTT_VIEW_ROTATED) {
-		return view->params.rotation_info.size;
+		return view->params.rotated.size;
 	} else if (view->type == I915_GGTT_VIEW_PARTIAL) {
 		return view->params.partial.size << PAGE_SHIFT;
 	} else {

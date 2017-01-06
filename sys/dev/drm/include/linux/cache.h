@@ -31,4 +31,8 @@
 
 #define cache_line_size()	__VM_CACHELINE_SIZE
 
+#ifndef __read_mostly
+#define __read_mostly
+#endif
+
 #endif	/* _LINUX_CACHE_H_ */

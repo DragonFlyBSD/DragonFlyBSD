@@ -91,7 +91,7 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 #define trace_i915_page_table_entry_alloc(a,b,c,d)
 #define trace_i915_page_table_entry_map(a,b,c,d,e,f)
 
-#define trace_i915_va_alloc(a,b,c,d)
+#define trace_i915_va_alloc(a)
 
 #define trace_i915_page_directory_entry_alloc(vm, pdpe, start, shift)
 #define trace_i915_page_directory_pointer_entry_alloc(vm, pdpe, start, shift)

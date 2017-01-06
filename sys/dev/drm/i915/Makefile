@@ -24,6 +24,7 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_stolen.c \
 	i915_gem_tiling.c \
 	i915_gem_userptr.c \
+	i915_gpu_error.c \
 	intel_lrc.c \
 	intel_mocs.c \
 	intel_ringbuffer.c \

@@ -354,10 +354,14 @@ static void output_poll_execute(struct work_struct *work)
 	struct drm_device *dev = container_of(delayed_work, struct drm_device, mode_config.output_poll_work);
 	struct drm_connector *connector;
 	enum drm_connector_status old_status;
-	bool repoll = false, changed = false;
+	bool repoll = false, changed;
+
+	/* Pick up any changes detected by the probe functions. */
+	changed = dev->mode_config.delayed_event;
+	dev->mode_config.delayed_event = false;
 
 	if (!drm_kms_helper_poll)
-		return;
+		goto out;
 
 	mutex_lock(&dev->mode_config.mutex);
 	drm_for_each_connector(connector, dev) {
@@ -384,6 +388,24 @@ static void output_poll_execute(struct work_struct *work)
 		if (old_status != connector->status) {
 			const char *old, *new;
 
+			/*
+			 * The poll work sets force=false when calling detect so
+			 * that drivers can avoid to do disruptive tests (e.g.
+			 * when load detect cycles could cause flickering on
+			 * other, running displays). This bears the risk that we
+			 * flip-flop between unknown here in the poll work and
+			 * the real state when userspace forces a full detect
+			 * call after receiving a hotplug event due to this
+			 * change.
+			 *
+			 * Hence clamp an unknown detect status to the old
+			 * value.
+			 */
+			if (connector->status == connector_status_unknown) {
+				connector->status = old_status;
+				continue;
+			}
+
 			old = drm_get_connector_status_name(old_status);
 			new = drm_get_connector_status_name(connector->status);
 
@@ -399,6 +421,7 @@ static void output_poll_execute(struct work_struct *work)
 
 	mutex_unlock(&dev->mode_config.mutex);
 
+out:
 	if (changed)
 		drm_kms_helper_hotplug_event(dev);
 
