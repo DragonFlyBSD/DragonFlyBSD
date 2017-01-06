@@ -1910,23 +1910,27 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	 * for this pv.
 	 *
 	 * Note that pt_pv's are only returned for user VAs. We assert that
-	 * a pt_pv is not being requested for kernel VAs.
+	 * a pt_pv is not being requested for kernel VAs.  The kernel
+	 * pre-wires all higher-level page tables so don't overload managed
+	 * higher-level page tables on top of it!
 	 */
 	if (ptepindex < pmap_pt_pindex(0)) {
-		if (ptepindex >= NUPTE_USER)
+		if (ptepindex >= NUPTE_USER) {
+			/* kernel manages this manually for KVM */
 			KKASSERT(pvpp == NULL);
-		else
-			KKASSERT(pvpp != NULL);
-		pt_pindex = NUPTE_TOTAL + (ptepindex >> NPTEPGSHIFT);
-		pvp = pmap_allocpte(pmap, pt_pindex, NULL);
-		if (isnew) {
-			vm_page_wire_quick(pvp->pv_m);
-			if (pvpp)
-				*pvpp = pvp;
-			else
-				pv_put(pvp);
 		} else {
-			*pvpp = pvp;
+			KKASSERT(pvpp != NULL);
+			pt_pindex = NUPTE_TOTAL + (ptepindex >> NPTEPGSHIFT);
+			pvp = pmap_allocpte(pmap, pt_pindex, NULL);
+			if (isnew) {
+				vm_page_wire_quick(pvp->pv_m);
+				if (pvpp)
+					*pvpp = pvp;
+				else
+					pv_put(pvp);
+			} else {
+				*pvpp = pvp;
+			}
 		}
 		return(pv);
 	}
@@ -2778,8 +2782,14 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		if (pvp->pv_m &&
 		    pvp->pv_m->wire_count == 1 &&
 		    pvp->pv_pindex != pmap_pml4_pindex()) {
-			pmap_remove_pv_pte(pvp, NULL, bulk, 1);
-			pvp = NULL;	/* safety */
+			if (pmap != &kernel_pmap) {
+				pmap_remove_pv_pte(pvp, NULL, bulk, 1);
+				pvp = NULL;	/* safety */
+			} else {
+				kprintf("Attempt to remove kernel_pmap pindex "
+					"%jd\n", pvp->pv_pindex);
+				pv_put(pvp);
+			}
 		} else {
 			pv_put(pvp);
 		}
@@ -2869,7 +2879,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	while (kstart < kend) {
 		pt = pmap_pt(&kernel_pmap, kstart);
 		if (pt == NULL) {
-			/* We need a new PDP entry */
+			/* We need a new PD entry */
 			nkpg = vm_page_alloc(NULL, nkpt,
 			                     VM_ALLOC_NORMAL |
 					     VM_ALLOC_SYSTEM |
@@ -2901,6 +2911,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		}
 
 		/*
+		 * We need a new PT
+		 *
 		 * This index is bogus, but out of the way
 		 */
 		nkpg = vm_page_alloc(NULL, nkpt,
