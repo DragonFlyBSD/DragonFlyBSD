@@ -1777,7 +1777,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	struct ifnet *ifp;
 	struct ifreq *ifr;
 	struct ifstat *ifs;
-	int error;
+	int error, do_ifup = 0;
 	short oif_flags;
 	int new_flags;
 	size_t namelen, onamelen;
@@ -1881,7 +1881,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			if_down(ifp);
 		} else if (new_flags & IFF_UP &&
 		    (ifp->if_flags & IFF_UP) == 0) {
-			if_up(ifp);
+			do_ifup = 1;
 		}
 
 #ifdef IFPOLL_ENABLE
@@ -1906,6 +1906,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			ifp->if_ioctl(ifp, cmd, data, cred);
 			ifnet_deserialize_all(ifp);
 		}
+		if (do_ifup)
+			if_up(ifp);
 		getmicrotime(&ifp->if_lastchange);
 		break;
 
