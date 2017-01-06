@@ -1878,14 +1878,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			/* Smart drivers twiddle their own routes */
 		} else if (ifp->if_flags & IFF_UP &&
 		    (new_flags & IFF_UP) == 0) {
-			crit_enter();
 			if_down(ifp);
-			crit_exit();
 		} else if (new_flags & IFF_UP &&
 		    (ifp->if_flags & IFF_UP) == 0) {
-			crit_enter();
 			if_up(ifp);
-			crit_exit();
 		}
 
 #ifdef IFPOLL_ENABLE
