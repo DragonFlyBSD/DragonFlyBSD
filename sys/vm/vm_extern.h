@@ -135,9 +135,9 @@ kmem_alloc (vm_map_t map, vm_size_t size, vm_subsys_t id)
 
 static __inline
 vm_offset_t
-kmem_alloc_stack (vm_map_t map, vm_size_t size)
+kmem_alloc_stack (vm_map_t map, vm_size_t size, int kmflags)
 {
-	return(kmem_alloc3(map, size, VM_SUBSYS_STACK, KM_STACK));
+	return(kmem_alloc3(map, size, VM_SUBSYS_STACK, kmflags|KM_STACK));
 }
 
 #endif				/* _KERNEL */

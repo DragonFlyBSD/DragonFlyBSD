@@ -88,6 +88,15 @@ struct vm_map kernel_map;
 struct vm_map clean_map;
 struct vm_map buffer_map;
 
+static __inline
+int
+KMVMCPU(int kmflags)
+{
+	if ((kmflags & KM_CPU_SPEC) == 0)
+		return 0;
+	return VM_ALLOC_CPU(KM_GETCPU(kmflags));
+}
+
 /*
  * Allocate pageable swap-backed anonymous memory
  */
@@ -273,7 +282,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, vm_subsys_t id, int kmflags)
 
 		mem = vm_page_grab(&kernel_object, OFF_TO_IDX(addr + i),
 				   VM_ALLOC_FORCE_ZERO | VM_ALLOC_NORMAL |
-				   VM_ALLOC_RETRY);
+				   VM_ALLOC_RETRY | KMVMCPU(kmflags));
 		vm_page_unqueue_nowakeup(mem);
 		vm_page_wakeup(mem);
 	}

@@ -864,15 +864,15 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
  * WARNING! The caller must mask the returned value with PQ_L2_MASK.
  */
 u_short
-vm_get_pg_color(globaldata_t gd, vm_object_t object, vm_pindex_t pindex)
+vm_get_pg_color(int cpuid, vm_object_t object, vm_pindex_t pindex)
 {
 	u_short pg_color;
 	int phys_id;
 	int core_id;
 	int object_pg_color;
 
-	phys_id = get_cpu_phys_id(gd->gd_cpuid);
-	core_id = get_cpu_core_id(gd->gd_cpuid);
+	phys_id = get_cpu_phys_id(cpuid);
+	core_id = get_cpu_core_id(cpuid);
 	object_pg_color = object ? object->pg_color : 0;
 
 	if (cpu_topology_phys_ids && cpu_topology_core_ids) {
@@ -906,7 +906,7 @@ vm_get_pg_color(globaldata_t gd, vm_object_t object, vm_pindex_t pindex)
 		/*
 		 * Unknown topology, distribute things evenly.
 		 */
-		pg_color = gd->gd_cpuid * PQ_L2_SIZE / ncpus;
+		pg_color = cpuid * PQ_L2_SIZE / ncpus;
 		pg_color += pindex + object_pg_color;
 	}
 	return pg_color;
@@ -1726,6 +1726,8 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
  *				(see vm_page_grab())
  *	VM_ALLOC_USE_GD		ok to use per-gd cache
  *
+ *	VM_ALLOC_CPU(n)		allocate using specified cpu localization
+ *
  * The object must be held if not NULL
  * This routine may not block
  *
@@ -1736,10 +1738,10 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 vm_page_t
 vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
-	globaldata_t gd = mycpu;
 	vm_object_t obj;
 	vm_page_t m;
 	u_short pg_color;
+	int cpuid_local;
 
 #if 0
 	/*
@@ -1768,8 +1770,16 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	 * This is nowhere near perfect, for example the last pindex in a
 	 * subgroup will overflow into the next cpu or package.  But this
 	 * should get us good page reuse locality in heavy mixed loads.
+	 *
+	 * (may be executed before the APs are started, so other GDs might
+	 *  not exist!)
 	 */
-	pg_color = vm_get_pg_color(gd, object, pindex);
+	if (page_req & VM_ALLOC_CPU_SPEC)
+		cpuid_local = VM_ALLOC_GETCPU(page_req);
+	else
+		cpuid_local = mycpu->gd_cpuid;
+
+	pg_color = vm_get_pg_color(cpuid_local, object, pindex);
 
 	KKASSERT(page_req & 
 		(VM_ALLOC_NORMAL|VM_ALLOC_QUICK|

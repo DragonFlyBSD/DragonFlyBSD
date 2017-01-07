@@ -88,10 +88,15 @@ typedef struct kmem_anon_desc kmem_anon_desc_t;
 /*
  * kmem_alloc3() flags
  */
-#define KM_PAGEABLE	0x0001
-#define KM_KRESERVE	0x0002
-#define KM_STACK	0x0004
-#define KM_NOTLBSYNC	0x0008
+#define KM_PAGEABLE	0x00000001
+#define KM_KRESERVE	0x00000002
+#define KM_STACK	0x00000004
+#define KM_NOTLBSYNC	0x00000008
+#define KM_CPU_SPEC	0x00000010
+
+#define KM_CPU_SHIFT	16
+#define KM_CPU(n)	(((n) << KM_CPU_SHIFT) | KM_CPU_SPEC)
+#define KM_GETCPU(flags) ((flags) >> KM_CPU_SHIFT)
 
 /* Kernel memory management definitions. */
 extern struct vm_map buffer_map;

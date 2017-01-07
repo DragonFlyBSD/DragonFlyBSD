@@ -370,6 +370,12 @@ extern long first_page;			/* first physical page number */
 #define VM_ALLOC_NULL_OK	0x0040	/* ok to return NULL on collision */
 #define	VM_ALLOC_RETRY		0x0080	/* indefinite block (vm_page_grab()) */
 #define VM_ALLOC_USE_GD		0x0100	/* use per-gd cache */
+#define VM_ALLOC_CPU_SPEC	0x0200
+
+#define VM_ALLOC_CPU_SHIFT	16
+#define VM_ALLOC_CPU(n)		(((n) << VM_ALLOC_CPU_SHIFT) | \
+				 VM_ALLOC_CPU_SPEC)
+#define VM_ALLOC_GETCPU(flags)	((flags) >> VM_ALLOC_CPU_SHIFT)
 
 void vm_page_queue_spin_lock(vm_page_t);
 void vm_page_queues_spin_lock(u_short);
@@ -446,8 +452,7 @@ void VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m,
 			int also_m_busy, const char *wmsg VM_PAGE_DEBUG_ARGS);
 int VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m,
 			int also_m_busy VM_PAGE_DEBUG_ARGS);
-u_short vm_get_pg_color(globaldata_t gd, vm_object_t object,
-			vm_pindex_t pindex);
+u_short vm_get_pg_color(int cpuid, vm_object_t object, vm_pindex_t pindex);
 
 #ifdef VM_PAGE_DEBUG
 

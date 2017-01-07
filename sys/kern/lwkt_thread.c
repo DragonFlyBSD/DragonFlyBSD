@@ -370,7 +370,11 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 	}
     }
     if (stack == NULL) {
-	stack = (void *)kmem_alloc_stack(&kernel_map, stksize);
+	if (cpu < 0)
+		stack = (void *)kmem_alloc_stack(&kernel_map, stksize, 0);
+	else
+		stack = (void *)kmem_alloc_stack(&kernel_map, stksize,
+						 KM_CPU(cpu));
 	flags |= TDF_ALLOCATED_STACK;
     }
     if (cpu < 0) {

@@ -126,7 +126,7 @@ vm_page_zero_check(int *zero_countp, int *zero_statep)
 	if (idlezero_enable == 0)
 		return (0);
 
-	base = vm_get_pg_color(mycpu, NULL, 0) & PQ_L2_MASK;
+	base = vm_get_pg_color(mycpu->gd_cpuid, NULL, 0) & PQ_L2_MASK;
 	count = 16;
 	while (count < PQ_L2_SIZE / ncpus)
 		count <<= 1;
