@@ -126,7 +126,7 @@
 #define  SDHCI_CTRL_LED		0x01
 #define  SDHCI_CTRL_4BITBUS	0x02
 #define  SDHCI_CTRL_HISPD	0x04
-#define  SDHCI_CTRL_SDMA	0x08
+#define  SDHCI_CTRL_SDMA	0x00
 #define  SDHCI_CTRL_ADMA2	0x10
 #define  SDHCI_CTRL_ADMA264	0x18
 #define  SDHCI_CTRL_DMA_MASK	0x18
@@ -303,6 +303,11 @@
 #define SDHCI_ADMA2_ATTR_OP_TRAN 0x0020
 #define SDHCI_ADMA2_ATTR_OP_LINK 0x0030
 
+/* DMA buffer constants for our ADMA2 descriptor table */
+#define SDHCI_ADMA2_DESCBUF_SIZE	PAGE_SIZE
+#define SDHCI_ADMA2_DESC_COUNT	\
+	(SDHCI_ADMA2_DESCBUF_SIZE / sizeof(struct sdhci_adma2_desc32))
+
 /* The maximum data length for one descriptor entry */
 #define SDHCI_ADMA2_MAX_SEGSIZE	32768	/* 65536 is broken on some chipsets */
 
@@ -318,6 +323,9 @@ struct sdhci_adma2_desc64 {
 	uint64_t address;
 } __packed;
 
+_Static_assert(SDHCI_ADMA2_DESC_COUNT >= MAXPHYS / PAGE_SIZE + 1,
+    "SDHCI_ADMA2_DESC_COUNT is not big enough");
+
 struct sdhci_slot {
 	u_int		quirks;		/* Chip specific quirks */
 	u_int		caps;		/* Override SDHCI_CAPABILITIES */
@@ -327,12 +335,16 @@ struct sdhci_slot {
 	u_char		opt;		/* Slot options */
 #define SDHCI_HAVE_SDMA			1
 #define SDHCI_PLATFORM_TRANSFER		2
+#define SDHCI_HAVE_ADMA2		4
 	u_char		version;
 	int		timeout;	/* Transfer timeout */
 	int		failures;	/* N Failures in a row */
 	uint32_t	max_clk;	/* Max possible freq */
 	uint32_t	timeout_clk;	/* Timeout freq */
 	bus_dmamem_t	sdma_mem;	/* DMA block for SDMA */
+	bus_dmamem_t	adma2_descs;	/* DMA block for ADMA2 descriptors */
+	bus_dma_tag_t	adma2_tag;	/* DMA tag for ADMA2 data buffer */
+	bus_dmamap_t	adma2_map;	/* DMA map for ADMA2 data buffer */
 	struct task	card_task;	/* Card presence check task */
 	struct callout	card_callout;	/* Card insert delay callout */
 	struct callout	timeout_callout;/* Card command/data response timeout */
@@ -353,6 +365,7 @@ struct sdhci_slot {
 #define STOP_STARTED		2
 #define SDHCI_USE_SDMA		4	/* Use SDMA for this req. */
 #define PLATFORM_DATA_STARTED	8	/* Data transfer is handled by platform */
+#define SDHCI_USE_ADMA2		16	/* Use ADMA2 for this req. */
 	struct lock	lock;		/* Slot mutex */
 };
 

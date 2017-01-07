@@ -73,6 +73,12 @@ static void sdhci_start_data(struct sdhci_slot *slot, struct mmc_data *data);
 
 static void sdhci_card_task(void *, int);
 
+static int  sdhci_dma_alloc(struct sdhci_slot *slot);
+static void sdhci_dmamem_free(bus_dmamem_t *mem);
+static void sdhci_dma_free(struct sdhci_slot *slot);
+static void sdhci_adma2_getaddr(void *arg, bus_dma_segment_t *segs, int nsegs,
+		int error);
+
 /* helper routines */
 #define SDHCI_LOCK(_slot)		lockmgr(&(_slot)->lock, LK_EXCLUSIVE)
 #define	SDHCI_UNLOCK(_slot)		lockmgr(&(_slot)->lock, LK_RELEASE)
@@ -499,6 +505,116 @@ sdhci_card_task(void *arg, int pending)
 	}
 }
 
+static int
+sdhci_dma_alloc(struct sdhci_slot *slot)
+{
+	int err;
+
+	/* Allocate DMA memory for SDMA. */
+	err = bus_dmamem_coherent(bus_get_dma_tag(slot->bus),
+	    DMA_BLOCK_SIZE, 0, BUS_SPACE_MAXADDR_32BIT,
+	    BUS_SPACE_MAXADDR, DMA_BLOCK_SIZE, BUS_DMA_NOWAIT,
+	    &slot->sdma_mem);
+	if (err != 0) {
+		device_printf(slot->bus, "Can't alloc DMA memory for SDMA\n");
+		goto done;
+	}
+
+	/* Allocate DMA memory for 32bit ADMA2 descriptors. */
+	err = bus_dmamem_coherent(bus_get_dma_tag(slot->bus),
+	    4, 0, BUS_SPACE_MAXADDR_32BIT,
+	    BUS_SPACE_MAXADDR, SDHCI_ADMA2_DESCBUF_SIZE, BUS_DMA_NOWAIT,
+	    &slot->adma2_descs);
+	if (err != 0) {
+		device_printf(slot->bus,
+		    "Can't alloc DMA memory for ADMA2 descriptors\n");
+		goto error1;
+	}
+
+	/* Allocate DMA tag for 32bit ADMA2 data buffer */
+	err = bus_dma_tag_create(bus_get_dma_tag(slot->bus),
+	    4, 0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
+	    MAXPHYS, SDHCI_ADMA2_DESC_COUNT,
+	    MIN(MAXPHYS, SDHCI_ADMA2_MAX_SEGSIZE),
+	    BUS_DMA_ALLOCNOW | BUS_DMA_ALLOCALL,
+	    &slot->adma2_tag);
+	if (err != 0) {
+		device_printf(slot->bus, "Can't create DMA tag for ADMA2\n");
+		goto error2;
+	}
+
+	/* Allocate DMA map for ADMA2 data buffer */
+	err = bus_dmamap_create(slot->adma2_tag, BUS_DMA_NOWAIT,
+	    &slot->adma2_map);
+	if (err != 0) {
+		device_printf(slot->bus, "Can't create DMA map for ADMA2\n");
+		goto error3;
+	}
+
+	return (0);
+
+error3:
+	bus_dma_tag_destroy(slot->adma2_tag);
+error2:
+	sdhci_dmamem_free(&slot->adma2_descs);
+error1:
+	sdhci_dmamem_free(&slot->sdma_mem);
+done:
+	return (err);
+}
+
+static void
+sdhci_dmamem_free(bus_dmamem_t *dma)
+{
+	bus_dmamap_unload(dma->dmem_tag, dma->dmem_map);
+	bus_dmamem_free(dma->dmem_tag, dma->dmem_addr, dma->dmem_map);
+	bus_dma_tag_destroy(dma->dmem_tag);
+}
+
+static void
+sdhci_dma_free(struct sdhci_slot *slot)
+{
+	bus_dmamap_destroy(slot->adma2_tag, slot->adma2_map);
+	bus_dma_tag_destroy(slot->adma2_tag);
+	sdhci_dmamem_free(&slot->sdma_mem);
+	sdhci_dmamem_free(&slot->adma2_descs);
+}
+
+static void
+sdhci_adma2_getaddr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
+{
+	struct sdhci_slot *slot = arg;
+	bus_dmamem_t *descmem = &slot->adma2_descs;
+	struct sdhci_adma2_desc32 *descs = (void *)descmem->dmem_addr;
+	int i;
+
+	if (error != 0) {
+		/* This signals, that loading was unsuccessful */
+		memset(&descs[0], 0, sizeof(*descs));
+		return;
+	}
+
+	for (i = 0; i < nsegs; i++) {
+		descs[i].address = segs[i].ds_addr;
+		/*
+		 * The 65536 segment length case is broken in some sdhc host
+		 * controllers, so we actually use a maximum segment length
+		 * of 32768 for the DMA mapping and ds_len should be at most
+		 * 32768 here.
+		 */
+		if (segs[i].ds_len == 65536)
+			descs[i].length = 0;
+		else
+			descs[i].length = segs[i].ds_len;
+		descs[i].attribute =
+		    SDHCI_ADMA2_ATTR_VALID | SDHCI_ADMA2_ATTR_OP_TRAN;
+	}
+	descs[nsegs-1].attribute |= SDHCI_ADMA2_ATTR_END;
+	/* If there is room left, explicitly add an invalid descriptor. */
+	if (nsegs < SDHCI_ADMA2_DESC_COUNT)
+		memset(&descs[nsegs], 0, sizeof(*descs));
+}
+
 int
 sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 {
@@ -509,13 +625,8 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	slot->num = num;
 	slot->bus = dev;
 
-	/* Allocate DMA memory for SDMA. */
-	err = bus_dmamem_coherent(bus_get_dma_tag(dev),
-	    DMA_BLOCK_SIZE, 0, BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, DMA_BLOCK_SIZE, BUS_DMA_NOWAIT,
-	    &slot->sdma_mem);
+	err = sdhci_dma_alloc(slot);
 	if (err != 0) {
-		device_printf(dev, "Can't alloc DMA memory for SDMA\n");
 		SDHCI_LOCK_DESTROY(slot);
 		return (err);
 	}
@@ -588,9 +699,13 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	/* Decide if we have usable DMA. */
 	if (caps & SDHCI_CAN_DO_DMA)
 		slot->opt |= SDHCI_HAVE_SDMA;
+	if (caps & SDHCI_CAN_DO_ADMA2)
+		slot->opt |= SDHCI_HAVE_ADMA2;
 
-	if (slot->quirks & SDHCI_QUIRK_BROKEN_DMA)
+	if (slot->quirks & SDHCI_QUIRK_BROKEN_DMA) {
 		slot->opt &= ~SDHCI_HAVE_SDMA;
+		slot->opt &= ~SDHCI_HAVE_ADMA2;
+	}
 	if (slot->quirks & SDHCI_QUIRK_FORCE_SDMA)
 		slot->opt |= SDHCI_HAVE_SDMA;
 
@@ -598,8 +713,10 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	 * Use platform-provided transfer backend
 	 * with PIO as a fallback mechanism
 	 */
-	if (slot->opt & SDHCI_PLATFORM_TRANSFER)
+	if (slot->opt & SDHCI_PLATFORM_TRANSFER) {
 		slot->opt &= ~SDHCI_HAVE_SDMA;
+		slot->opt &= ~SDHCI_HAVE_ADMA2;
+	}
 
 	if (bootverbose || sdhci_debug) {
 		slot_printf(slot, "%uMHz%s %s%s%s%s %s\n",
@@ -611,7 +728,8 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 		    (caps & SDHCI_CAN_VDD_330) ? " 3.3V" : "",
 		    (caps & SDHCI_CAN_VDD_300) ? " 3.0V" : "",
 		    (caps & SDHCI_CAN_VDD_180) ? " 1.8V" : "",
-		    (slot->opt & SDHCI_HAVE_SDMA) ? "SDMA" : "PIO");
+		    (slot->opt & SDHCI_HAVE_ADMA2) ? "ADMA2" :
+			(slot->opt & SDHCI_HAVE_SDMA) ? "SDMA" : "PIO");
 		sdhci_dumpregs(slot);
 	}
 
@@ -637,7 +755,6 @@ int
 sdhci_cleanup_slot(struct sdhci_slot *slot)
 {
 	device_t d;
-	bus_dmamem_t *sdma;
 
 	callout_drain(&slot->timeout_callout);
 	callout_drain(&slot->card_callout);
@@ -654,10 +771,7 @@ sdhci_cleanup_slot(struct sdhci_slot *slot)
 	sdhci_reset(slot, SDHCI_RESET_ALL);
 	SDHCI_UNLOCK(slot);
 
-	sdma = &slot->sdma_mem;
-	bus_dmamap_unload(sdma->dmem_tag, sdma->dmem_map);
-	bus_dmamem_free(sdma->dmem_tag, sdma->dmem_addr, sdma->dmem_map);
-	bus_dma_tag_destroy(sdma->dmem_tag);
+	sdhci_dma_free(slot);
 
 	SDHCI_LOCK_DESTROY(slot);
 
@@ -785,7 +899,7 @@ sdhci_set_transfer_mode(struct sdhci_slot *slot,
 		mode |= SDHCI_TRNS_READ;
 	if (slot->req->stop)
 		mode |= SDHCI_TRNS_ACMD12;
-	if (slot->flags & SDHCI_USE_SDMA)
+	if (slot->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA2))
 		mode |= SDHCI_TRNS_DMA;
 
 	WR2(slot, SDHCI_TRANSFER_MODE, mode);
@@ -977,19 +1091,70 @@ sdhci_start_data(struct sdhci_slot *slot, struct mmc_data *data)
 	if (data == NULL)
 		return;
 
-	/* Use DMA if possible. */
-	if ((slot->opt & SDHCI_HAVE_SDMA))
+	/* Use DMA if possible. Prefer ADMA2 over SDMA. */
+	if ((slot->opt & SDHCI_HAVE_ADMA2)) {
+		slot->flags |= SDHCI_USE_ADMA2;
+		slot->flags &= ~SDHCI_USE_SDMA;
+	} else if ((slot->opt & SDHCI_HAVE_SDMA)) {
 		slot->flags |= SDHCI_USE_SDMA;
+		slot->flags &= ~SDHCI_USE_ADMA2;
+	}
 	/* If data is small, broken DMA may return zeroes instead of data. */
 	if ((slot->quirks & SDHCI_QUIRK_BROKEN_TIMINGS) &&
-	    (data->len <= 512))
+	    (data->len <= 512)) {
 		slot->flags &= ~SDHCI_USE_SDMA;
+		slot->flags &= ~SDHCI_USE_ADMA2;
+	}
 	/* Some controllers require even block sizes. */
 	if ((slot->quirks & SDHCI_QUIRK_32BIT_DMA_SIZE) &&
-	    ((data->len) & 0x3))
+	    ((data->len) & 0x3)) {
 		slot->flags &= ~SDHCI_USE_SDMA;
+		slot->flags &= ~SDHCI_USE_ADMA2;
+	}
 	/* Load DMA buffer. */
-	if (slot->flags & SDHCI_USE_SDMA) {
+	if (slot->flags & SDHCI_USE_ADMA2) {
+		bus_dmamem_t *descmem = &slot->adma2_descs;
+		struct sdhci_adma2_desc32 *descs = (void *)descmem->dmem_addr;
+		int err;
+
+		/* It shouldn't really be possible for this to fail */
+		err = bus_dmamap_load(slot->adma2_tag, slot->adma2_map,
+		    data->data, data->len, sdhci_adma2_getaddr, slot,
+		    dumping ? BUS_DMA_NOWAIT : BUS_DMA_WAITOK);
+		if (err != 0) {
+			device_printf(slot->bus,
+			    "Dma load for ADMA2 fail: %d\n", err);
+		} else if (descs[0].address == 0) {
+			device_printf(slot->bus,
+			    "Dma load for ADMA2 fail, segment constraints\n");
+		}
+		if (err != 0 || descs[0].address == 0) {
+			/* fallback to PIO for this request */
+			slot->flags &= ~SDHCI_USE_ADMA2;
+			goto pio_fallback;
+		}
+		/* sync dma descriptors */
+		bus_dmamap_sync(descmem->dmem_tag, descmem->dmem_map,
+		    BUS_DMASYNC_PREWRITE);
+		/* sync data buffers */
+		if (data->flags & MMC_DATA_READ) {
+			bus_dmamap_sync(slot->adma2_tag, slot->adma2_map,
+			    BUS_DMASYNC_PREREAD);
+		} else {
+			bus_dmamap_sync(slot->adma2_tag, slot->adma2_map,
+			    BUS_DMASYNC_PREWRITE);
+		}
+		WR4(slot, SDHCI_ADMA_ADDRESS_LOW, descmem->dmem_busaddr);
+		if ((slot->hostctrl & SDHCI_CTRL_DMA_MASK) !=
+		    SDHCI_CTRL_ADMA2) {
+			slot->hostctrl &= ~SDHCI_CTRL_DMA_MASK;
+			slot->hostctrl |= SDHCI_CTRL_ADMA2;
+			WR1(slot, SDHCI_HOST_CONTROL, slot->hostctrl);
+		}
+		/* We don't expect any DMA_END interrupts with ADMA2 */
+		WR4(slot, SDHCI_SIGNAL_ENABLE,
+		    slot->intmask &= ~SDHCI_INT_DMA_END);
+	} else if (slot->flags & SDHCI_USE_SDMA) {
 		bus_dmamem_t *sdma = &slot->sdma_mem;
 
 		if (data->flags & MMC_DATA_READ) {
@@ -1003,6 +1168,12 @@ sdhci_start_data(struct sdhci_slot *slot, struct mmc_data *data)
 			    BUS_DMASYNC_PREWRITE);
 		}
 		WR4(slot, SDHCI_SDMA_ADDRESS, sdma->dmem_busaddr);
+		if ((slot->hostctrl & SDHCI_CTRL_DMA_MASK) !=
+		    SDHCI_CTRL_SDMA) {
+			slot->hostctrl &= ~SDHCI_CTRL_DMA_MASK;
+			slot->hostctrl |= SDHCI_CTRL_SDMA;
+			WR1(slot, SDHCI_HOST_CONTROL, slot->hostctrl);
+		}
 		/* Interrupt aggregation: Mask border interrupt
 		 * for the last page and unmask else. */
 		if (data->len == DMA_BLOCK_SIZE)
@@ -1011,9 +1182,10 @@ sdhci_start_data(struct sdhci_slot *slot, struct mmc_data *data)
 			slot->intmask |= SDHCI_INT_DMA_END;
 		WR4(slot, SDHCI_SIGNAL_ENABLE, slot->intmask);
 	}
-	/* Current data offset for both PIO and DMA. */
+pio_fallback:
+	/* Current data offset for both PIO and SDMA. */
 	slot->offset = 0;
-	/* Set block size and request IRQ on 4K border. */
+	/* Set block size and for SDMA request IRQ on 4K border. */
 	WR2(slot, SDHCI_BLOCK_SIZE,
 	    SDHCI_MAKE_BLKSZ(DMA_BOUNDARY, (data->len < 512)?data->len:512));
 	/* Set block count. */
@@ -1033,7 +1205,20 @@ sdhci_finish_data(struct sdhci_slot *slot)
 		    slot->intmask |= SDHCI_INT_RESPONSE);
 	}
 	/* Unload rest of data from DMA buffer. */
-	if (!slot->data_done && (slot->flags & SDHCI_USE_SDMA)) {
+	if (!slot->data_done && (slot->flags & SDHCI_USE_ADMA2)) {
+		bus_dmamem_t *descmem = &slot->adma2_descs;
+
+		bus_dmamap_sync(descmem->dmem_tag, descmem->dmem_map,
+		    BUS_DMASYNC_POSTWRITE);
+		if (data->flags & MMC_DATA_READ) {
+			bus_dmamap_sync(slot->adma2_tag, slot->adma2_map,
+			    BUS_DMASYNC_POSTREAD);
+		} else {
+			bus_dmamap_sync(slot->adma2_tag, slot->adma2_map,
+			    BUS_DMASYNC_POSTWRITE);
+		}
+		bus_dmamap_unload(slot->adma2_tag, slot->adma2_map);
+	} else if (!slot->data_done && (slot->flags & SDHCI_USE_SDMA)) {
 		bus_dmamem_t *sdma = &slot->sdma_mem;
 
 		if (data->flags & MMC_DATA_READ) {
@@ -1043,12 +1228,13 @@ sdhci_finish_data(struct sdhci_slot *slot)
 			memcpy((u_char*)data->data + slot->offset,
 			    sdma->dmem_addr,
 			    (left < DMA_BLOCK_SIZE)?left:DMA_BLOCK_SIZE);
-		} else
+		} else {
 			bus_dmamap_sync(sdma->dmem_tag, sdma->dmem_map,
 			    BUS_DMASYNC_POSTWRITE);
+		}
 	}
 	slot->data_done = 1;
-	/* If there was error - reset the host. */
+	/* If there was an error - reset the host. */
 	if (slot->curcmd->error) {
 		sdhci_reset(slot, SDHCI_RESET_CMD);
 		sdhci_reset(slot, SDHCI_RESET_DATA);
@@ -1281,8 +1467,9 @@ done:
 		if (slot->flags & PLATFORM_DATA_STARTED) {
 			slot->flags &= ~PLATFORM_DATA_STARTED;
 			SDHCI_PLATFORM_FINISH_TRANSFER(slot->bus, slot);
-		} else
+		} else {
 			sdhci_finish_data(slot);
+		}
 		return;
 	}
 }
