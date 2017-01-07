@@ -228,7 +228,7 @@ sdhci_init(struct sdhci_slot *slot)
 	    SDHCI_INT_CARD_REMOVE | SDHCI_INT_CARD_INSERT |
 	    SDHCI_INT_DATA_AVAIL | SDHCI_INT_SPACE_AVAIL |
 	    SDHCI_INT_DMA_END | SDHCI_INT_DATA_END | SDHCI_INT_RESPONSE |
-	    SDHCI_INT_ACMD12ERR;
+	    SDHCI_INT_ACMD12ERR | SDHCI_INT_ADMAERR;
 	WR4(slot, SDHCI_INT_ENABLE, slot->intmask);
 	WR4(slot, SDHCI_SIGNAL_ENABLE, slot->intmask);
 }
@@ -1478,7 +1478,7 @@ static void
 sdhci_acmd_irq(struct sdhci_slot *slot)
 {
 	uint16_t err;
-	
+
 	err = RD4(slot, SDHCI_ACMD12_ERR);
 	if (!slot->curcmd) {
 		slot_printf(slot, "Got AutoCMD12 error 0x%04x, but "
@@ -1488,6 +1488,56 @@ sdhci_acmd_irq(struct sdhci_slot *slot)
 	}
 	slot_printf(slot, "Got AutoCMD12 error 0x%04x\n", err);
 	sdhci_reset(slot, SDHCI_RESET_CMD);
+}
+
+static void
+sdhci_adma_irq(struct sdhci_slot *slot)
+{
+	bus_dmamem_t *descmem = &slot->adma2_descs;
+	struct sdhci_adma2_desc32 *desc;
+	bus_addr_t addr = 0;
+	uint8_t err, adma_state;
+
+	err = RD1(slot, SDHCI_ADMA_ERR);
+	if (slot->curcmd && (slot->flags & SDHCI_USE_ADMA2)) {
+		slot_printf(slot, "Got ADMA2 error 0x%02x\n", err);
+	} else {
+		slot_printf(slot, "Got ADMA2 error 0x%02x, but "
+		    "there is no active command.\n", err);
+		sdhci_dumpregs(slot);
+	}
+
+	/* Try to print the erronous ADMA2 descriptor */
+	adma_state = err & SDHCI_ADMA_ERR_STATE_MASK;
+	if (adma_state == SDHCI_ADMA_ERR_STATE_STOP) {
+		addr = RD4(slot, SDHCI_ADMA_ADDRESS_LOW);
+		if (addr > sizeof(*desc))
+			addr -= sizeof(*desc);
+		else
+			addr = 0;
+	} else if (adma_state == SDHCI_ADMA_ERR_STATE_FDS) {
+		addr = RD4(slot, SDHCI_ADMA_ADDRESS_LOW);
+	} else if (adma_state == SDHCI_ADMA_ERR_STATE_TFR) {
+		addr = RD4(slot, SDHCI_ADMA_ADDRESS_LOW);
+		if (addr > sizeof(*desc))
+			addr -= sizeof(*desc);
+		else
+			addr = 0;
+	} else {
+		slot_printf(slot, "Invalid ADMA2 state 0x%02x\n", adma_state);
+	}
+	if (addr >= descmem->dmem_busaddr &&
+	    addr < descmem->dmem_busaddr + SDHCI_ADMA2_DESCBUF_SIZE) {
+		desc = (void *) ((char *)descmem->dmem_addr +
+		    (addr - descmem->dmem_busaddr));
+		slot_printf(slot,
+		    "Descriptor: Addr=0x%08x Length=0x%04x Attr=0x%04x\n",
+		    desc->address, desc->length, desc->attribute);
+	}
+
+	if (slot->curcmd && (slot->flags & SDHCI_USE_ADMA2)) {
+		sdhci_reset(slot, SDHCI_RESET_CMD);
+	}
 }
 
 void
@@ -1541,8 +1591,14 @@ sdhci_generic_intr(struct sdhci_slot *slot)
 		WR4(slot, SDHCI_INT_STATUS, SDHCI_INT_ACMD12ERR);
 		sdhci_acmd_irq(slot);
 	}
+	/* Handle ADMA2 error interrupt. */
+	if (intmask & SDHCI_INT_ADMAERR) {
+		WR4(slot, SDHCI_INT_STATUS, SDHCI_INT_ADMAERR);
+		sdhci_adma_irq(slot);
+	}
 	intmask &= ~(SDHCI_INT_CMD_MASK | SDHCI_INT_DATA_MASK);
 	intmask &= ~SDHCI_INT_ACMD12ERR;
+	intmask &= ~SDHCI_INT_ADMAERR;
 	intmask &= ~SDHCI_INT_ERROR;
 	/* Handle bus power interrupt. */
 	if (intmask & SDHCI_INT_BUS_POWER) {
