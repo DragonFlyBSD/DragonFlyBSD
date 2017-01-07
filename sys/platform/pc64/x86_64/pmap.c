@@ -2700,6 +2700,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		if (ptepindex >= NUPTE_USER) {
 			ptep = vtopte(ptepindex << PAGE_SHIFT);
 			KKASSERT(pvp == NULL);
+			/* pvp remains NULL */
 		} else {
 			if (pvp == NULL) {
 				pt_pindex = NUPTE_TOTAL +
@@ -2774,7 +2775,8 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		vm_page_free(p);
 	} else if (destroy == 2) {
 		/*
-		 * Normal page (leave page untouched)
+		 * Normal page, remove from pmap and leave the underlying
+		 * page untouched.
 		 */
 		pmap_remove_pv_page(pv);
 		pv_free(pv, pvp, 1);
@@ -2791,11 +2793,18 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		 *
 		 * This is optional.  If we do not, they will still
 		 * be destroyed when the process exits.
+		 *
+		 * NOTE: Do not destroy pv_entry's with extra hold refs,
+		 *	 a caller may have unlocked it and intends to
+		 *	 continue to use it.
 		 */
 		if (pmap_dynamic_delete &&
 		    pvp->pv_m &&
 		    pvp->pv_m->wire_count == 1 &&
+		    (pvp->pv_hold & PV_HOLD_MASK) == 2 &&
 		    pvp->pv_pindex != pmap_pml4_pindex()) {
+			if (pmap_dynamic_delete == 2)
+				kprintf("A %jd %08x\n", pvp->pv_pindex, pvp->pv_hold);
 			if (pmap != &kernel_pmap) {
 				pmap_remove_pv_pte(pvp, NULL, bulk, 1);
 				pvp = NULL;	/* safety */
@@ -4058,12 +4067,19 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		 *
 		 * This is optional.  If we do not, they will still
 		 * be destroyed when the process exits.
+		 *
+		 * NOTE: Do not destroy pv_entry's with extra hold refs,
+		 *	 a caller may have unlocked it and intends to
+		 *	 continue to use it.
 		 */
 		if (pmap_dynamic_delete &&
 		    pt_pv &&
 		    pt_pv->pv_m &&
 		    pt_pv->pv_m->wire_count == 1 &&
+		    (pt_pv->pv_hold & PV_HOLD_MASK) == 2 &&
 		    pt_pv->pv_pindex != pmap_pml4_pindex()) {
+			if (pmap_dynamic_delete == 2)
+				kprintf("B %jd %08x\n", pt_pv->pv_pindex, pt_pv->pv_hold);
 			pv_hold(pt_pv);
 			pmap_remove_pv_pte(pt_pv, NULL, info->bulk, 1);
 			pv_lock(pt_pv);
