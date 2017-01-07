@@ -247,6 +247,9 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_mmu_optimize, CTLFLAG_RW,
 int pmap_fast_kernel_cpusync = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_fast_kernel_cpusync, CTLFLAG_RW,
     &pmap_fast_kernel_cpusync, 0, "Share page table pages when possible");
+int pmap_dynamic_delete = 1;
+SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
+    &pmap_dynamic_delete, 0, "Dynamically delete PT/PD/PDPs");
 
 #define DISABLE_PSE
 
@@ -1936,6 +1939,11 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	}
 
 	/*
+	 * The kernel never uses managed PT/PD/PDP pages.
+	 */
+	KKASSERT(pmap != &kernel_pmap);
+
+	/*
 	 * Non-terminal PVs allocate a VM page to represent the page table,
 	 * so we have to resolve pvp and calculate ptepindex for the pvp
 	 * and then for the page table entry index in the pvp for
@@ -2670,7 +2678,9 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		pmap_inval_bulk(bulk, (vm_offset_t)-1, pt, 0);
 	} else {
 		/*
-		 * Remove a PTE from the PT page
+		 * Remove a managed PTE from the PT page.  Userland pmaps
+		 * manage PT/PD/PDP page tables pages but the kernel_pmap
+		 * does not.
 		 *
 		 * NOTE: pv's must be locked bottom-up to avoid deadlocking.
 		 *	 pv is a pte_pv so we can safely lock pt_pv.
@@ -2708,12 +2718,15 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		/*
 		 * Now update the vm_page_t
 		 */
-		if ((pte & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) !=
-		    (pmap->pmap_bits[PG_MANAGED_IDX]|pmap->pmap_bits[PG_V_IDX])) {
+		if ((pte & (pmap->pmap_bits[PG_MANAGED_IDX] |
+			    pmap->pmap_bits[PG_V_IDX])) !=
+		    (pmap->pmap_bits[PG_MANAGED_IDX] |
+		     pmap->pmap_bits[PG_V_IDX])) {
 			kprintf("remove_pte badpte %016lx %016lx %d\n",
 				pte, pv->pv_pindex,
 				pv->pv_pindex < pmap_pt_pindex(0));
 		}
+
 		/* PHYS_TO_VM_PAGE() will not work for FICTITIOUS pages */
 		/*KKASSERT((pte & (PG_MANAGED|PG_V)) == (PG_MANAGED|PG_V));*/
 		if (pte & pmap->pmap_bits[PG_DEVICE_IDX])
@@ -2779,7 +2792,8 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		 * This is optional.  If we do not, they will still
 		 * be destroyed when the process exits.
 		 */
-		if (pvp->pv_m &&
+		if (pmap_dynamic_delete &&
+		    pvp->pv_m &&
 		    pvp->pv_m->wire_count == 1 &&
 		    pvp->pv_pindex != pmap_pml4_pindex()) {
 			if (pmap != &kernel_pmap) {
@@ -4045,7 +4059,10 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		 * This is optional.  If we do not, they will still
 		 * be destroyed when the process exits.
 		 */
-		if (pt_pv && pt_pv->pv_m && pt_pv->pv_m->wire_count == 1 &&
+		if (pmap_dynamic_delete &&
+		    pt_pv &&
+		    pt_pv->pv_m &&
+		    pt_pv->pv_m->wire_count == 1 &&
 		    pt_pv->pv_pindex != pmap_pml4_pindex()) {
 			pv_hold(pt_pv);
 			pmap_remove_pv_pte(pt_pv, NULL, info->bulk, 1);
@@ -4742,6 +4759,11 @@ pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
 /*
  * Change the wiring attribute for a pmap/va pair.  The mapping must already
  * exist in the pmap.  The mapping may or may not be managed.
+ *
+ * Wiring is not a hardware characteristic so there is no need to invalidate
+ * TLB.  However, in an SMP environment we must use a locked bus cycle to
+ * update the pte (if we are not using the pmap_inval_*() API that is)...
+ * it's ok to do this for simple wiring changes.
  */
 void
 pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
@@ -4752,27 +4774,44 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
 
 	if (pmap == NULL)
 		return;
+
 	lwkt_gettoken(&pmap->pm_token);
-	pv = pmap_allocpte_seg(pmap, pmap_pt_pindex(va), NULL, entry, va);
-	ptep = pv_pte_lookup(pv, pmap_pte_index(va));
+	if (pmap == &kernel_pmap) {
+		/*
+		 * The kernel may have managed pages, but not managed
+		 * page tables.
+		 */
+		ptep = pmap_pte_quick(pmap, va);
 
-	if (wired && !pmap_pte_w(pmap, ptep))
-		atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, 1);
-	else if (!wired && pmap_pte_w(pmap, ptep))
-		atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, -1);
+		if (wired && !pmap_pte_w(pmap, ptep))
+			atomic_add_long(&pmap->pm_stats.wired_count, 1);
+		else if (!wired && pmap_pte_w(pmap, ptep))
+			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 
-	/*
-	 * Wiring is not a hardware characteristic so there is no need to
-	 * invalidate TLB.  However, in an SMP environment we must use
-	 * a locked bus cycle to update the pte (if we are not using 
-	 * the pmap_inval_*() API that is)... it's ok to do this for simple
-	 * wiring changes.
-	 */
-	if (wired)
-		atomic_set_long(ptep, pmap->pmap_bits[PG_W_IDX]);
-	else
-		atomic_clear_long(ptep, pmap->pmap_bits[PG_W_IDX]);
-	pv_put(pv);
+		if (wired)
+			atomic_set_long(ptep, pmap->pmap_bits[PG_W_IDX]);
+		else
+			atomic_clear_long(ptep, pmap->pmap_bits[PG_W_IDX]);
+	} else {
+		/*
+		 * Userland, the pmap of the possibly shared segment might
+		 * not be (pmap).
+		 */
+		pv = pmap_allocpte_seg(pmap, pmap_pt_pindex(va), NULL,
+				       entry, va);
+		ptep = pv_pte_lookup(pv, pmap_pte_index(va));
+
+		if (wired && !pmap_pte_w(pmap, ptep))
+			atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, 1);
+		else if (!wired && pmap_pte_w(pmap, ptep))
+			atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, -1);
+
+		if (wired)
+			atomic_set_long(ptep, pmap->pmap_bits[PG_W_IDX]);
+		else
+			atomic_clear_long(ptep, pmap->pmap_bits[PG_W_IDX]);
+		pv_put(pv);
+	}
 	lwkt_reltoken(&pmap->pm_token);
 }
 
