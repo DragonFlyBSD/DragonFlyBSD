@@ -136,7 +136,6 @@ static pd_entry_t *pmap_pde(pmap_t pmap, vm_offset_t va);
 static int protection_codes[8];
 
 struct pmap kernel_pmap;
-static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
 
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 
@@ -1286,21 +1285,11 @@ pmap_puninit(pmap_t pmap)
 }
 
 /*
- * Wire in kernel global address entries.  To avoid a race condition
- * between pmap initialization and pmap_growkernel, this procedure
- * adds the pmap to the master list (which growkernel scans to update),
- * then copies the template.
- *
- * In a virtual kernel there are no kernel global address entries.
- *
- * No requirements.
+ * This function is now unused (used to add the pmap to the pmap_list)
  */
 void
 pmap_pinit2(struct pmap *pmap)
 {
-	spin_lock(&pmap_spin);
-	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
-	spin_unlock(&pmap_spin);
 }
 
 /*
@@ -1627,10 +1616,6 @@ pmap_release(struct pmap *pmap)
 		("pmap %p still active! %016jx",
 		pmap,
 		(uintmax_t)CPUMASK_LOWMASK(pmap->pm_active)));
-
-	spin_lock(&pmap_spin);
-	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
-	spin_unlock(&pmap_spin);
 
 	vm_object_hold(object);
 	do {

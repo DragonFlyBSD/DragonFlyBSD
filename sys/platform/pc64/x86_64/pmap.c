@@ -152,7 +152,6 @@
 static int protection_codes[PROTECTION_CODES_SIZE];
 
 struct pmap kernel_pmap;
-static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
 
 MALLOC_DEFINE(M_OBJPMAP, "objpmap", "pmaps associated with VM objects");
 
@@ -1695,8 +1694,7 @@ pmap_pinit_defaults(struct pmap *pmap)
 	pmap->suword32 = std_suword32;
 }
 /*
- * Initialize pmap0/vmspace0.  This pmap is not added to pmap_list because
- * it, and IdlePTD, represents the template used to update all other pmaps.
+ * Initialize pmap0/vmspace0.
  *
  * On architectures where the kernel pmap is not integrated into the user
  * process pmap, this pmap represents the process pmap, not the kernel pmap.
@@ -1860,17 +1858,11 @@ pmap_puninit(pmap_t pmap)
 }
 
 /*
- * Wire in kernel global address entries.  To avoid a race condition
- * between pmap initialization and pmap_growkernel, this procedure
- * adds the pmap to the master list (which growkernel scans to update),
- * then copies the template.
+ * This function is now unused (used to add the pmap to the pmap_list)
  */
 void
 pmap_pinit2(struct pmap *pmap)
 {
-	spin_lock(&pmap_spin);
-	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
-	spin_unlock(&pmap_spin);
 }
 
 /*
@@ -2376,9 +2368,10 @@ pmap_release(struct pmap *pmap)
 		("pmap still active! %016jx",
 		(uintmax_t)CPUMASK_LOWMASK(pmap->pm_active)));
 
-	spin_lock(&pmap_spin);
-	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
-	spin_unlock(&pmap_spin);
+	/*
+	 * There is no longer a pmap_list, if there were we would remove the
+	 * pmap from it here.
+	 */
 
 	/*
 	 * Pull pv's off the RB tree in order from low to high and release
