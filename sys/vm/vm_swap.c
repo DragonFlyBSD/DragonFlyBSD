@@ -58,7 +58,6 @@
 #include <vm/vm_param.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 #include <sys/mutex2.h>
 #include <sys/spinlock2.h>
 
@@ -202,7 +201,6 @@ sys_swapon(struct swapon_args *uap)
 		return (error);
 
 	mtx_lock(&swap_mtx);
-	get_mplock();
 	vp = NULL;
 	error = nlookup_init(&nd, uap->name, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -211,7 +209,6 @@ sys_swapon(struct swapon_args *uap)
 		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error) {
-		rel_mplock();
 		mtx_unlock(&swap_mtx);
 		return (error);
 	}
@@ -228,7 +225,6 @@ sys_swapon(struct swapon_args *uap)
 	}
 	if (error)
 		vrele(vp);
-	rel_mplock();
 	mtx_unlock(&swap_mtx);
 
 	return (error);
@@ -408,7 +404,6 @@ sys_swapoff(struct swapoff_args *uap)
 		return (error);
 
 	mtx_lock(&swap_mtx);
-	get_mplock();
 	vp = NULL;
 	error = nlookup_init(&nd, uap->name, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -430,7 +425,6 @@ found:
 	swap_pager_newswap();
 
 done:
-	rel_mplock();
 	mtx_unlock(&swap_mtx);
 	return (error);
 }
