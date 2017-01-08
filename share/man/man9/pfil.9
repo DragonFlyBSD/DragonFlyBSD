@@ -120,15 +120,13 @@ and
 .Fn pfil_remove_hook
 functions, indicates when the filter should be called.
 The flags are:
-.Bl -tag -offset indent -width ".Dv PFIL_MPSAFE" -compact
+.Bl -tag -offset indent -width ".Dv PFIL_OUT" -compact
 .It Dv PFIL_IN
 call me on incoming packets
 .It Dv PFIL_OUT
 call me on outgoing packets
 .It Dv PFIL_ALL
 call me on all of the above
-.It Dv PFIL_MPSAFE
-call me without BGL
 .El
 .Sh SEE ALSO
 .Xr bpf 4
