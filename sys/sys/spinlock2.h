@@ -262,11 +262,13 @@ spin_unlock_shared(struct spinlock *spin)
 }
 
 static __inline void
-spin_init(struct spinlock *spin, const char *descr)
+spin_init(struct spinlock *spin, const char *descr __unused)
 {
 	spin->counta = 0;
 	spin->countb = 0;
+#if 0
 	spin->descr  = descr;
+#endif
 }
 
 static __inline void
