@@ -246,7 +246,7 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_mmu_optimize, CTLFLAG_RW,
 int pmap_fast_kernel_cpusync = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_fast_kernel_cpusync, CTLFLAG_RW,
     &pmap_fast_kernel_cpusync, 0, "Share page table pages when possible");
-int pmap_dynamic_delete = 1;
+int pmap_dynamic_delete = -1;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
     &pmap_dynamic_delete, 0, "Dynamically delete PT/PD/PDPs");
 
@@ -1147,6 +1147,20 @@ pmap_init2(void)
 		entry_max = 1;
 
 	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT);
+
+	/*
+	 * Enable dynamic deletion of empty higher-level page table pages
+	 * by default only if system memory is < 8GB (use 7GB for slop).
+	 * This can save a little memory, but imposes significant
+	 * performance overhead for things like bulk builds, and for programs
+	 * which do a lot of memory mapping and memory unmapping.
+	 */
+	if (pmap_dynamic_delete < 0) {
+		if (vmstats.v_page_count < 7LL * 1024 * 1024 * 1024 / PAGE_SIZE)
+			pmap_dynamic_delete = 1;
+		else
+			pmap_dynamic_delete = 0;
+	}
 }
 
 /*
