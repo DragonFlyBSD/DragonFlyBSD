@@ -3209,3 +3209,6 @@ TO_REMOVE+=/usr/share/openssl
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
+TO_REMOVE+=/boot/kernel/ncv.ko
+TO_REMOVE+=/boot/kernel/nsp.ko
+TO_REMOVE+=/boot/kernel/stg.ko
