@@ -50,7 +50,6 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #endif /* _KERNEL */
 
@@ -1040,10 +1039,8 @@ dasysctlinit(void *context, int pending)
 	struct da_softc *softc;
 	char tmpstr[80], tmpstr2[80];
 
-	get_mplock();
 	periph = (struct cam_periph *)context;
 	if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
-		rel_mplock();
 		return;
 	}
 
@@ -1062,7 +1059,6 @@ dasysctlinit(void *context, int pending)
 	if (softc->sysctl_tree == NULL) {
 		kprintf("%s: unable to allocate sysctl tree\n", __func__);
 		cam_periph_release(periph);
-		rel_mplock();
 		return;
 	}
 
@@ -1088,7 +1084,6 @@ dasysctlinit(void *context, int pending)
 	}
 
 	cam_periph_release(periph);
-	rel_mplock();
 }
 
 static int
