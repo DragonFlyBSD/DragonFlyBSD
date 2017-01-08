@@ -109,20 +109,6 @@ SYSCTL_LONG(_debug, OID_AUTO, spinlocks_add_latency, CTLFLAG_RW,
 
 #endif
 
-
-/*
- * We need a fairly large pool to avoid contention on large SMP systems,
- * particularly multi-chip systems.
- */
-/*#define SPINLOCK_NUM_POOL	8101*/
-#define SPINLOCK_NUM_POOL	8192
-#define SPINLOCK_NUM_POOL_MASK	(SPINLOCK_NUM_POOL - 1)
-
-static __cachealign struct {
-	struct spinlock	spin;
-	char filler[32 - sizeof(struct spinlock)];
-} pool_spinlocks[SPINLOCK_NUM_POOL];
-
 static int spin_indefinite_check(struct spinlock *spin,
 				  struct indefinite_info *info);
 
@@ -323,38 +309,6 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident, int value)
 	}
 	/*logspin(end, spin, 'w');*/
 }
-
-/*
- * Pool functions (SHARED SPINLOCKS NOT SUPPORTED)
- */
-static __inline int
-_spin_pool_hash(void *ptr)
-{
-	int i;
-
-	i = ((int)(uintptr_t) ptr >> 5) ^ ((int)(uintptr_t)ptr >> 12);
-	i &= SPINLOCK_NUM_POOL_MASK;
-	return (i);
-}
-
-void
-_spin_pool_lock(void *chan, const char *ident)
-{
-	struct spinlock *sp;
-
-	sp = &pool_spinlocks[_spin_pool_hash(chan)].spin;
-	_spin_lock(sp, ident);
-}
-
-void
-_spin_pool_unlock(void *chan)
-{
-	struct spinlock *sp;
-
-	sp = &pool_spinlocks[_spin_pool_hash(chan)].spin;
-	spin_unlock(sp);
-}
-
 
 static
 int

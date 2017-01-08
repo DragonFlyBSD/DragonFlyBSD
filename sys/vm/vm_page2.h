@@ -204,14 +204,14 @@ static __inline
 void
 vm_page_spin_lock(vm_page_t m)
 {
-    spin_pool_lock(m);
+    spin_lock(&m->spin);
 }
 
 static __inline
 void
 vm_page_spin_unlock(vm_page_t m)
 {
-    spin_pool_unlock(m);
+    spin_unlock(&m->spin);
 }
 
 /*

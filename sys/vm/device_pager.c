@@ -293,6 +293,8 @@ dev_pager_getfake(vm_paddr_t paddr, int pat_mode)
 	m->phys_addr = paddr;
 	m->pat_mode = pat_mode;
 
+	spin_init(&m->spin, "dev_page");
+
 	return (m);
 }
 

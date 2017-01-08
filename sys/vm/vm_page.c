@@ -284,6 +284,7 @@ vm_page_startup(void)
 	vm_paddr_t end;
 	vm_paddr_t biggestone, biggestsize;
 	vm_paddr_t total;
+	vm_page_t m;
 
 	total = 0;
 	biggestsize = 0;
@@ -313,6 +314,7 @@ vm_page_startup(void)
 		}
 		total += size;
 	}
+	--i;	/* adjust to last entry for use down below */
 
 	end = phys_avail[biggestone].phys_end;
 	end = trunc_page(end);
@@ -338,7 +340,7 @@ vm_page_startup(void)
 	 * minidump code.  In theory, they are not needed on i386, but are
 	 * included should the sf_buf code decide to use them.
 	 */
-	page_range = phys_avail[i-1].phys_end / PAGE_SIZE;
+	page_range = phys_avail[i].phys_end / PAGE_SIZE;
 	vm_page_dump_size = round_page(roundup2(page_range, NBBY) / NBBY);
 	end -= vm_page_dump_size;
 	vm_page_dump = (void *)pmap_map(&vaddr, end, end + vm_page_dump_size,
@@ -351,7 +353,7 @@ vm_page_startup(void)
 	 * page).
 	 */
 	first_page = phys_avail[0].phys_beg / PAGE_SIZE;
-	page_range = phys_avail[i-1].phys_end / PAGE_SIZE - first_page;
+	page_range = phys_avail[i].phys_end / PAGE_SIZE - first_page;
 	npages = (total - (page_range * sizeof(struct vm_page))) / PAGE_SIZE;
 
 #ifndef _KERNEL_VIRTUAL
@@ -400,10 +402,21 @@ vm_page_startup(void)
 #endif
 
 	/*
-	 * Clear all of the page structures
+	 * Clear all of the page structures, run basic initialization so
+	 * PHYS_TO_VM_PAGE() operates properly even on pages not in the
+	 * map.
 	 */
 	bzero((caddr_t) vm_page_array, page_range * sizeof(struct vm_page));
 	vm_page_array_size = page_range;
+
+	m = &vm_page_array[0];
+	pa = ptoa(first_page);
+	for (i = 0; i < page_range; ++i) {
+		spin_init(&m->spin, "vm_page");
+		m->phys_addr = pa;
+		pa += PAGE_SIZE;
+		++m;
+	}
 
 	/*
 	 * Construct the free queue(s) in ascending order (by physical
@@ -1100,6 +1113,7 @@ vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr)
 	/* Fictitious pages don't use "order" or "pool". */
 	m->flags = PG_FICTITIOUS | PG_UNMANAGED | PG_BUSY;
 	m->wire_count = 1;
+	spin_init(&m->spin, "fake_page");
 	pmap_page_init(m);
 memattr:
 	pmap_page_set_memattr(m, memattr);

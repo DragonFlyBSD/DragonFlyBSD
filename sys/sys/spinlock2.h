@@ -57,14 +57,11 @@ int spin_trylock_contested(struct spinlock *spin);
 void _spin_lock_contested(struct spinlock *spin, const char *ident, int count);
 void _spin_lock_shared_contested(struct spinlock *spin, const char *ident,
 			int count);
-void _spin_pool_lock(void *chan, const char *ident);
-void _spin_pool_unlock(void *chan);
 
 #define spin_lock(spin)			_spin_lock(spin, __func__)
 #define spin_lock_quick(spin)		_spin_lock_quick(spin, __func__)
 #define spin_lock_shared(spin)		_spin_lock_shared(spin, __func__)
 #define spin_lock_shared_quick(spin)	_spin_lock_shared_quick(spin, __func__)
-#define spin_pool_lock(chan)		_spin_pool_lock(chan, __func__)
 
 /*
  * Attempt to obtain an exclusive spinlock.  Returns FALSE on failure,
@@ -262,12 +259,6 @@ static __inline void
 spin_unlock_shared(struct spinlock *spin)
 {
 	spin_unlock_shared_quick(mycpu, spin);
-}
-
-static __inline void
-spin_pool_unlock(void *chan)
-{
-	_spin_pool_unlock(chan);
 }
 
 static __inline void

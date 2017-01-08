@@ -86,6 +86,9 @@
 #ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
 #endif
@@ -150,6 +153,7 @@ RB_PROTOTYPE2(vm_page_rb_tree, vm_page, rb_entry, rb_vm_page_compare, vm_pindex_
 struct vm_page {
 	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/
 	RB_ENTRY(vm_page) rb_entry;	/* Red-Black tree based at object */
+	struct spinlock	spin;
 
 	struct vm_object *object;	/* which object am I in (O,P)*/
 	vm_pindex_t pindex;		/* offset into object (O,P) */
