@@ -65,12 +65,6 @@ bus/cam/scsi/scsi_pt.c			optional pt
 bus/cam/scsi/scsi_sa.c			optional sa
 bus/cam/scsi/scsi_cd.c			optional cd
 bus/cam/scsi/scsi_ch.c			optional ch
-bus/cam/scsi/scsi_low.c			optional ncv
-bus/cam/scsi/scsi_low.c			optional nsp
-bus/cam/scsi/scsi_low.c			optional stg
-bus/cam/scsi/scsi_low_pisa.c		optional ncv
-bus/cam/scsi/scsi_low_pisa.c		optional nsp
-bus/cam/scsi/scsi_low_pisa.c		optional stg
 bus/cam/scsi/scsi_pass.c		optional pass
 bus/cam/scsi/scsi_ses.c			optional ses
 bus/cam/scsi/scsi_sg.c			optional sg
@@ -947,12 +941,8 @@ dev/netif/mxge/fw/rss_ethp_z8e/mxge_rss_ethp_z8e.c	optional mxge pci
 net/zlib.c			optional mxge pci
 dev/netif/my/if_my.c		optional my
 dev/misc/musycc/musycc.c	optional musycc
-dev/disk/ncv/ncr53c500.c	optional ncv
-dev/disk/ncv/ncr53c500_pccard.c	optional ncv pccard
 dev/netif/nge/if_nge.c		optional nge
 dev/misc/nmdm/nmdm.c		optional nmdm
-dev/disk/nsp/nsp.c		optional nsp
-dev/disk/nsp/nsp_pccard.c	optional nsp pccard
 dev/netif/oce/oce_hw.c		optional oce pci
 dev/netif/oce/oce_if.c		optional oce pci
 dev/netif/oce/oce_mbox.c	optional oce pci
@@ -1009,8 +999,6 @@ dev/netif/sln/if_sln.c		optional sln pci
 dev/netif/sn/if_sn.c		optional sn
 dev/netif/sn/if_sn_pccard.c	optional sn pccard
 dev/misc/snp/snp.c		optional snp
-dev/disk/stg/tmc18c30.c		optional stg
-dev/disk/stg/tmc18c30_pccard.c	optional stg pccard
 dev/crypto/tpm/tpm.c		optional tpm
 dev/crypto/tpm/tpm_acpi.c	optional tpm acpi
 dev/crypto/tpm/tpm_isa.c	optional tpm isa

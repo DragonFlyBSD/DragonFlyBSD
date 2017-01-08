@@ -920,9 +920,6 @@ options 	SC_TWOBUTTON_MOUSE
 # ahc: Adaptec 274x/284x/294x
 # aic: Adaptec 1460
 # bt: Most Buslogic controllers
-# ncv: NCR 53C500 based SCSI host adapters.
-# nsp: Workbit Ninja SCSI-3 based PC Card SCSI host adapters.
-# stg: TMC 18C30, 18C50 based PC Card SCSI host adapters.
 #
 # Note that the order is important in order for Buslogic cards to be
 # probed correctly.
@@ -932,9 +929,6 @@ device		bt
 device		adv
 device		adw
 device		aic
-device		ncv
-device		nsp
-device		stg
 
 #
 # Adaptec FSA RAID controllers, including integrated DELL controller,
