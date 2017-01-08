@@ -4250,8 +4250,8 @@ ipfw_hook(void)
 	if (pfh == NULL)
 		return;
 
-	pfil_add_hook(ipfw_check_in, NULL, PFIL_IN | PFIL_MPSAFE, pfh);
-	pfil_add_hook(ipfw_check_out, NULL, PFIL_OUT | PFIL_MPSAFE, pfh);
+	pfil_add_hook(ipfw_check_in, NULL, PFIL_IN, pfh);
+	pfil_add_hook(ipfw_check_out, NULL, PFIL_OUT, pfh);
 }
 
 static void

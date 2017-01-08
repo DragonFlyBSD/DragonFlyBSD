@@ -50,7 +50,6 @@ typedef int	(*pfil_func_t)(void *, struct mbuf **, struct ifnet *, int);
 
 #define PFIL_IN		0x00000001
 #define PFIL_OUT	0x00000002
-#define PFIL_MPSAFE	0x00000004
 #define PFIL_ALL	(PFIL_IN|PFIL_OUT)
 
 typedef	TAILQ_HEAD(pfil_list, packet_filter_hook) pfil_list_t;
