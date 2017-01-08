@@ -1949,6 +1949,7 @@ vm_pageout_thread(void)
 		 *	 RLIMIT_RSS and may also see small values when
 		 *	 processes block due to low memory.
 		 */
+		vmstats_rollup();
 		avail_shortage = vm_paging_target() + vm_pageout_deficit;
 		vm_pageout_deficit = 0;
 
@@ -1974,6 +1975,7 @@ vm_pageout_thread(void)
 		 * scan above we limit the number of active pages we
 		 * deactivate to reduce unnecessary work.
 		 */
+		vmstats_rollup();
 		inactive_shortage = vmstats.v_inactive_target -
 				    vmstats.v_inactive_count;
 
@@ -2037,6 +2039,7 @@ vm_pageout_thread(void)
 		 * requirement and take more drastic measures if we are
 		 * still in trouble.
 		 */
+		vmstats_rollup();
 		vm_pageout_scan_cache(avail_shortage, pass,
 				      vnodes_skipped, recycle_count);
 

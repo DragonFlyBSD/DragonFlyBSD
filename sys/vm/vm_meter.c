@@ -245,19 +245,6 @@ vcnt(SYSCTL_HANDLER_ARGS)
 	return(SYSCTL_OUT(req, &count, sizeof(int)));
 }
 
-static
-int
-vzerocnt(SYSCTL_HANDLER_ARGS)
-{
-	int count = 0;
-	int i;
-
-	for (i = 0; i < PQ_L2_SIZE; ++i) {
-		count += vm_page_queues[PQ_FREE+i].zero_count;
-	}
-	return(SYSCTL_OUT(req, &count, sizeof(int)));
-}
-
 /*
  * No requirements.
  */
@@ -420,8 +407,6 @@ SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 	v_interrupt_free_min, CTLFLAG_RD, &vmstats.v_interrupt_free_min, 0,
 	"Reserved number of pages for int code");
-SYSCTL_PROC(_vm_stats_misc, OID_AUTO, zero_page_count, CTLTYPE_UINT|CTLFLAG_RD,
-	0, 0, vzerocnt, "IU", "Pre-zerod VM pages");
 
 /*
  * No requirements.
@@ -473,3 +458,47 @@ vmmeter_init(void *dummy __unused)
 	}
 }
 SYSINIT(vmmeter, SI_SUB_PSEUDO, SI_ORDER_ANY, vmmeter_init, 0);
+
+/*
+ * Rolls up accumulated adjustments to vmstats counts into the global
+ * structure.
+ *
+ * This is somewhat expensive and only called when needed, and by the
+ * hardclock.
+ */
+void
+vmstats_rollup(void)
+{
+	int cpu;
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		vmstats_rollup_cpu(globaldata_find(cpu));
+	}
+}
+
+void
+vmstats_rollup_cpu(globaldata_t gd)
+{
+	int value;
+
+	if (gd->gd_vmstats.v_free_count) {
+		value = atomic_swap_int(&gd->gd_vmstats.v_free_count, 0);
+		atomic_add_int(&vmstats.v_free_count, value);
+	}
+	if (gd->gd_vmstats.v_cache_count) {
+		value = atomic_swap_int(&gd->gd_vmstats.v_cache_count, 0);
+		atomic_add_int(&vmstats.v_cache_count, value);
+	}
+	if (gd->gd_vmstats.v_inactive_count) {
+		value = atomic_swap_int(&gd->gd_vmstats.v_inactive_count, 0);
+		atomic_add_int(&vmstats.v_inactive_count, value);
+	}
+	if (gd->gd_vmstats.v_active_count) {
+		value = atomic_swap_int(&gd->gd_vmstats.v_active_count, 0);
+		atomic_add_int(&vmstats.v_active_count, value);
+	}
+	if (gd->gd_vmstats.v_wire_count) {
+		value = atomic_swap_int(&gd->gd_vmstats.v_wire_count, 0);
+		atomic_add_int(&vmstats.v_wire_count, value);
+	}
+}

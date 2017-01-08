@@ -38,6 +38,8 @@
 #include <sys/types.h>
 #endif
 
+struct globaldata;
+
 /*
  * System wide statistics counters.
  */
@@ -105,30 +107,37 @@ struct vmmeter {
 #define vmmeter_uint_end	v_reserved7
 };
 
+/*
+ * vmstats structure, global vmstats is the rollup, pcpu vmstats keeps
+ * track of minor (generally positive) adjustments.  For moving targets,
+ * the global vmstats structure represents the smallest likely value.
+ */
 struct vmstats {
 	/*
 	 * Distribution of page usages.
 	 */
 	u_int v_page_size;	/* page size in bytes */
-	u_int v_page_count;	/* total number of pages in system */
-	u_int v_free_reserved;	/* number of pages reserved for deadlock */
-	u_int v_free_target;	/* number of pages desired free */
-	u_int v_free_min;	/* minimum number of pages desired free */
-	u_int v_free_count;	/* number of pages free */
-	u_int v_wire_count;	/* number of pages wired down */
-	u_int v_active_count;	/* number of pages active */
-	u_int v_inactive_target; /* number of pages desired inactive */
-	u_int v_inactive_count;	/* number of pages inactive */
-	u_int v_cache_count;	/* number of pages on buffer cache queue */
-	u_int v_cache_min;	/* min number of pages desired on cache queue */
-	u_int v_cache_max;	/* max number of pages in cached obj */
-	u_int v_pageout_free_min;   /* min number pages reserved for kernel */
-	u_int v_interrupt_free_min; /* reserved number of pages for int code */
-	u_int v_free_severe;	/* severe depletion of pages below this pt */
-	u_int v_dma_avail;	/* free dma-reserved pages */
-	u_int v_dma_pages;	/* total dma-reserved pages */
-	u_int v_unused[8];
+	int v_page_count;	/* total number of pages in system */
+	int v_free_reserved;	/* number of pages reserved for deadlock */
+	int v_free_target;	/* number of pages desired free */
+	int v_free_min;		/* minimum number of pages desired free */
+	int v_free_count;	/* number of pages free */
+	int v_wire_count;	/* number of pages wired down */
+	int v_active_count;	/* number of pages active */
+	int v_inactive_target;	/* number of pages desired inactive */
+	int v_inactive_count;	/* number of pages inactive */
+	int v_cache_count;	/* number of pages on buffer cache queue */
+	int v_cache_min;	/* min number of pages desired on cache queue */
+	int v_cache_max;	/* max number of pages in cached obj */
+	int v_pageout_free_min;	/* min number pages reserved for kernel */
+	int v_interrupt_free_min; /* reserved number of pages for int code */
+	int v_free_severe;	/* severe depletion of pages below this pt */
+	int v_dma_avail;	/* free dma-reserved pages */
+	int v_dma_pages;	/* total dma-reserved pages */
+	int v_unused[8];
 };
+
+#define VMMETER_SLOP_COUNT	10
 
 #ifdef _KERNEL
 
@@ -193,4 +202,11 @@ u_int rectime;		/* accumulator for reclaim times */
 u_int pgintime;		/* accumulator for page in times */
 
 #endif	/* PGINPROF */
+
+#ifdef _KERNEL
+
+void vmstats_rollup(void);
+void vmstats_rollup_cpu(struct globaldata *gd);
+
+#endif
 #endif

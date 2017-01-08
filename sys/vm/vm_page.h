@@ -246,12 +246,12 @@ int rb_vm_page_scancmp(struct vm_page *, void *);
 
 struct vpgqueues {
 	struct pglist pl;
-	int	*cnt;
+	int	cnt_offset;	/* offset into vmstats structure (int) */
 	int	lcnt;
 	int	flipflop;	/* probably not the best place */
 	struct spinlock spin;
-	int	zero_count;	/* only applies to PQ_FREE queues */
 	int	unused00;
+	int	unused01;
 	char	unused[64 - sizeof(struct pglist) -
 			sizeof(int *) - sizeof(int) * 4];
 };

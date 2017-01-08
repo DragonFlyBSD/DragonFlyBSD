@@ -637,6 +637,11 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	hardclock_softtick(gd);
 
 	/*
+	 * Rollup accumulated vmstats
+	 */
+	vmstats_rollup_cpu(gd);
+
+	/*
 	 * ITimer handling is per-tick, per-cpu.
 	 *
 	 * We must acquire the per-process token in order for ksignal()

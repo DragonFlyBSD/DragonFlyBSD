@@ -61,28 +61,31 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>	/* __int types */
+#include <sys/stdint.h>		/* __int types */
 #endif
 #ifndef _SYS_TIME_H_
-#include <sys/time.h>	/* struct timeval */
+#include <sys/time.h>		/* struct timeval */
 #endif
 #ifndef _SYS_VMMETER_H_
-#include <sys/vmmeter.h> /* struct vmmeter */
+#include <sys/vmmeter.h>	/* struct vmmeter */
 #endif
 #ifndef _SYS_THREAD_H_
-#include <sys/thread.h>	/* struct thread */
+#include <sys/thread.h>		/* struct thread */
 #endif
 #ifndef _SYS_SLABALLOC_H_
-#include <sys/slaballoc.h> /* SLGlobalData */
+#include <sys/slaballoc.h>	/* SLGlobalData */
 #endif
 #ifndef _SYS_SYSTIMER_H_
-#include <sys/systimer.h> /* fine-grained system timers */
+#include <sys/systimer.h>	/* fine-grained system timers */
 #endif
 #ifndef _SYS_NCHSTATS_H_
 #include <sys/nchstats.h>
 #endif
 #ifndef _SYS_SYSID_H_
-#include <sys/sysid.h>	  /* sysid_t */
+#include <sys/sysid.h>		/* sysid_t */
+#endif
+#ifndef _SYS_VMMETER_H_
+#include <sys/vmmeter.h>	/* pcpu vmstats adj */
 #endif
 
 /*
@@ -179,6 +182,7 @@ struct globaldata {
 	void		*gd_sample_sp;		/* sample stack pointer */
 	uint64_t	gd_cpumask_simple;
 	uint64_t	gd_cpumask_offset;
+	struct vmstats	gd_vmstats;		/* pcpu adj for vmstats */
 	uint64_t	gd_reserved64[1];
 	void		*gd_preserved[4];	/* future fields */
 	/* extended by <machine/globaldata.h> */

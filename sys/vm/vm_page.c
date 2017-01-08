@@ -153,15 +153,20 @@ vm_page_queue_init(void)
 	int i;
 
 	for (i = 0; i < PQ_L2_SIZE; i++)
-		vm_page_queues[PQ_FREE+i].cnt = &vmstats.v_free_count;
+		vm_page_queues[PQ_FREE+i].cnt_offset =
+			offsetof(struct vmstats, v_free_count);
 	for (i = 0; i < PQ_L2_SIZE; i++)
-		vm_page_queues[PQ_CACHE+i].cnt = &vmstats.v_cache_count;
+		vm_page_queues[PQ_CACHE+i].cnt_offset =
+			offsetof(struct vmstats, v_cache_count);
 	for (i = 0; i < PQ_L2_SIZE; i++)
-		vm_page_queues[PQ_INACTIVE+i].cnt = &vmstats.v_inactive_count;
+		vm_page_queues[PQ_INACTIVE+i].cnt_offset =
+			offsetof(struct vmstats, v_inactive_count);
 	for (i = 0; i < PQ_L2_SIZE; i++)
-		vm_page_queues[PQ_ACTIVE+i].cnt = &vmstats.v_active_count;
+		vm_page_queues[PQ_ACTIVE+i].cnt_offset =
+			offsetof(struct vmstats, v_active_count);
 	for (i = 0; i < PQ_L2_SIZE; i++)
-		vm_page_queues[PQ_HOLD+i].cnt = &vmstats.v_active_count;
+		vm_page_queues[PQ_HOLD+i].cnt_offset =
+			offsetof(struct vmstats, v_active_count);
 	/* PQ_NONE has no queue */
 
 	for (i = 0; i < PQ_COUNT; i++) {
@@ -515,7 +520,6 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 				TAILQ_REMOVE(&vpq->pl, m, pageq);
 				--vpq->lcnt;
 				/* queue doesn't change, no need to adj cnt */
-				/* atomic_add_int(vpq->cnt, -1); */
 				m->queue -= m->pc;
 				m->pc %= socket_mod;
 				m->pc += socket_value;
@@ -525,7 +529,6 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 				TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
 				++vpq->lcnt;
 				/* queue doesn't change, no need to adj cnt */
-				/* atomic_add_int(vpq->cnt, 1); */
 			} else {
 				m->pc %= socket_mod;
 				m->pc += socket_value;
@@ -782,12 +785,31 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 	struct vpgqueues *pq;
 	u_short queue;
 	u_short oqueue;
+	int *cnt;
 
 	queue = m->queue;
 	if (queue != PQ_NONE) {
 		pq = &vm_page_queues[queue];
 		TAILQ_REMOVE(&pq->pl, m, pageq);
-		atomic_add_int(pq->cnt, -1);
+
+		/*
+		 * Adjust our pcpu stats.  In order for the nominal low-memory
+		 * algorithms to work properly we don't let any pcpu stat get
+		 * too negative before we force it to be rolled-up into the
+		 * global stats.  Otherwise our pageout and vm_wait tests
+		 * will fail badly.
+		 *
+		 * The idea here is to reduce unnecessary SMP cache
+		 * mastership changes in the global vmstats, which can be
+		 * particularly bad in multi-socket systems.
+		 */
+		cnt = (int *)((char *)&mycpu->gd_vmstats + pq->cnt_offset);
+		atomic_add_int(cnt, -1);
+		if (*cnt < -VMMETER_SLOP_COUNT) {
+			u_int copy = atomic_swap_int(cnt, 0);
+			cnt = (int *)((char *)&vmstats + pq->cnt_offset);
+			atomic_add_int(cnt, copy);
+		}
 		pq->lcnt--;
 		m->queue = PQ_NONE;
 		oqueue = queue;
@@ -807,6 +829,7 @@ static __inline void
 _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 {
 	struct vpgqueues *pq;
+	u_int *cnt;
 
 	KKASSERT(m->queue == PQ_NONE);
 
@@ -814,13 +837,20 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 		vm_page_queues_spin_lock(queue);
 		pq = &vm_page_queues[queue];
 		++pq->lcnt;
-		atomic_add_int(pq->cnt, 1);
-		m->queue = queue;
+
+		/*
+		 * Adjust our pcpu stats.  If a system entity really needs
+		 * to incorporate the count it will call vmstats_rollup()
+		 * to roll it all up into the global vmstats strufture.
+		 */
+		cnt = (int *)((char *)&mycpu->gd_vmstats + pq->cnt_offset);
+		atomic_add_int(cnt, 1);
 
 		/*
 		 * PQ_FREE is always handled LIFO style to try to provide
 		 * cache-hot pages to programs.
 		 */
+		m->queue = queue;
 		if (queue - m->pc == PQ_FREE) {
 			TAILQ_INSERT_HEAD(&pq->pl, m, pageq);
 		} else if (athead) {
@@ -2408,7 +2438,7 @@ vm_page_wire(vm_page_t m)
 		if (atomic_fetchadd_int(&m->wire_count, 1) == 0) {
 			if ((m->flags & PG_UNMANAGED) == 0)
 				vm_page_unqueue(m);
-			atomic_add_int(&vmstats.v_wire_count, 1);
+			atomic_add_int(&mycpu->gd_vmstats.v_wire_count, 1);
 		}
 		KASSERT(m->wire_count != 0,
 			("vm_page_wire: wire_count overflow m=%p", m));
@@ -2453,7 +2483,7 @@ vm_page_unwire(vm_page_t m, int activate)
 		panic("vm_page_unwire: invalid wire count: %d", m->wire_count);
 	} else {
 		if (atomic_fetchadd_int(&m->wire_count, -1) == 1) {
-			atomic_add_int(&vmstats.v_wire_count, -1);
+			atomic_add_int(&mycpu->gd_vmstats.v_wire_count, -1);
 			if (m->flags & PG_UNMANAGED) {
 				;
 			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
