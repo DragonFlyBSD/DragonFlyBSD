@@ -199,6 +199,12 @@ struct vfs_acct {
  *		 mnt_token interlocks operations which adjust the mount
  *		 structure and will also be held through VFS operations
  *		 for VFSes not flagged MPSAFE.
+ *
+ *		 The VFS should pre-set VFCF_MPSAFE in the VFS_SET() to
+ *		 avoid use of the mplock during mounting.  This will also
+ *		 cause MNTK_ALL_MPSAFE to be set in mnt_kern_flags.  If the
+ *		 VFS does not set VFCF_MPSAFE then it can set individual
+ *		 MNTK_*_MPSAFE flags in mnt_kern_flags.
  */
 TAILQ_HEAD(vnodelst, vnode);
 TAILQ_HEAD(journallst, journal);
@@ -484,6 +490,7 @@ struct ovfsconf {
 #define VFCF_SYNTHETIC	0x00080000	/* data does not represent real files */
 #define	VFCF_LOOPBACK	0x00100000	/* aliases some other mounted FS */
 #define	VFCF_UNICODE	0x00200000	/* stores file names as Unicode*/
+#define VFCF_MPSAFE	0x00400000	/* VFS is fully MPSAFE */
 
 /* vfsquery flags */
 #define VQ_NOTRESP	0x0001	/* server down */

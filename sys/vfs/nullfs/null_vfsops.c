@@ -406,5 +406,5 @@ static struct vfsops null_vfsops = {
 	.vfs_checkexp =  	nullfs_checkexp
 };
 
-VFS_SET(null_vfsops, null, VFCF_LOOPBACK);
+VFS_SET(null_vfsops, null, VFCF_LOOPBACK | VFCF_MPSAFE);
 MODULE_VERSION(null, 1);

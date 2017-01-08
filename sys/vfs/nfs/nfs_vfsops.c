@@ -135,7 +135,7 @@ static struct vfsops nfs_vfsops = {
 	.vfs_init =     	nfs_init,
 	.vfs_uninit =    	nfs_uninit
 };
-VFS_SET(nfs_vfsops, nfs, VFCF_NETWORK);
+VFS_SET(nfs_vfsops, nfs, VFCF_NETWORK | VFCF_MPSAFE);
 MODULE_VERSION(nfs, 1);
 
 /*

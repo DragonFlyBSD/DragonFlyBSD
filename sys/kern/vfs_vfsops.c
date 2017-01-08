@@ -284,9 +284,7 @@ vfs_init(struct vfsconf *vfc)
 {
 	int error;
 
-	get_mplock();
 	error = (vfc->vfc_vfsops->vfs_init)(vfc);
-	rel_mplock();
 
 	return (error);
 }
@@ -299,9 +297,7 @@ vfs_uninit(struct vfsconf *vfc, struct vfsconf *vfsp)
 {
 	int error;
 
-	get_mplock();
 	error = (vfc->vfc_vfsops->vfs_uninit)(vfsp);
-	rel_mplock();
 
 	return (error);
 }

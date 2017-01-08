@@ -302,7 +302,7 @@ static struct vfsops hammer_vfsops = {
 
 MALLOC_DEFINE(M_HAMMER, "HAMMER-mount", "");
 
-VFS_SET(hammer_vfsops, hammer, 0);
+VFS_SET(hammer_vfsops, hammer, VFCF_MPSAFE);
 MODULE_VERSION(hammer, 1);
 
 static int

@@ -260,6 +260,7 @@ sys_mount(struct mount_args *uap)
 		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
 		lwkt_gettoken(&mp->mnt_token);
 		vn_unlock(vp);
+		vfsp = mp->mnt_vfc;
 		goto update;
 	}
 
@@ -364,6 +365,14 @@ update:
 	    MNT_NOSYMFOLLOW | MNT_IGNORE | MNT_TRIM |
 	    MNT_NOATIME | MNT_NOCLUSTERR | MNT_NOCLUSTERW | MNT_SUIDDIR |
 	    MNT_AUTOMOUNTED);
+
+	/*
+	 * Pre-set the mount's ALL_MPSAFE flags if specified in the vfsconf.
+	 * This way the initial VFS_MOUNT() call will also be MPSAFE.
+	 */
+	if (vfsp->vfc_flags & VFCF_MPSAFE)
+		mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
+
 	/*
 	 * Mount the filesystem.
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they

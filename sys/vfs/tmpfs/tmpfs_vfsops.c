@@ -596,5 +596,5 @@ static struct vfsops tmpfs_vfsops = {
 	.vfs_checkexp =			tmpfs_checkexp,
 };
 
-VFS_SET(tmpfs_vfsops, tmpfs, 0);
+VFS_SET(tmpfs_vfsops, tmpfs, VFCF_MPSAFE);
 MODULE_VERSION(tmpfs, 1);

@@ -277,5 +277,5 @@ static struct vfsops devfs_vfsops = {
 	.vfs_ncpgen_test	= devfs_vfs_ncpgen_test
 };
 
-VFS_SET(devfs_vfsops, devfs, VFCF_SYNTHETIC);
+VFS_SET(devfs_vfsops, devfs, VFCF_SYNTHETIC | VFCF_MPSAFE);
 MODULE_VERSION(devfs, 1);

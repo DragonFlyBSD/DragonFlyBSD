@@ -150,5 +150,5 @@ static struct vfsops procfs_vfsops = {
 	.vfs_statfs =    	procfs_statfs,
 };
 
-VFS_SET(procfs_vfsops, procfs, VFCF_SYNTHETIC);
+VFS_SET(procfs_vfsops, procfs, VFCF_SYNTHETIC | VFCF_MPSAFE);
 MODULE_VERSION(procfs, 1);
