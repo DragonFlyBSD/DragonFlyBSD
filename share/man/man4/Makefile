@@ -194,7 +194,6 @@ MAN=	aac.4 \
 	natapicam.4 \
 	nataraid.4 \
 	ncr.4 \
-	ncv.4 \
 	ndis.4 \
 	netgraph.4 \
 	netintro.4 \
@@ -227,7 +226,6 @@ MAN=	aac.4 \
 	ng_vjc.4 \
 	nmdm.4 \
 	nsclpcsio.4 \
-	nsp.4 \
 	null.4 \
 	nvme.4 \
 	oce.4 \
@@ -319,7 +317,6 @@ MAN=	aac.4 \
 	st.4 \
 	ste.4 \
 	stf.4 \
-	stg.4 \
 	stge.4 \
 	sym.4 \
 	syncer.4 \

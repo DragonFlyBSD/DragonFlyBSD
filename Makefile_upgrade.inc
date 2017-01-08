@@ -3182,6 +3182,15 @@ TO_REMOVE+=/boot/kernel/portal.ko
 TO_REMOVE+=/sbin/mount_portal
 TO_REMOVE+=/usr/share/examples/portal
 TO_REMOVE+=/usr/share/man/man8/mount_portal.8.gz
+TO_REMOVE+=/boot/kernel/ncv.ko
+TO_REMOVE+=/boot/kernel/nsp.ko
+TO_REMOVE+=/boot/kernel/stg.ko
+TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_dvcfg.h
+TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_low.h
+TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_low_pisa.h
+TO_REMOVE+=/usr/share/man/man4/ncv.4.gz
+TO_REMOVE+=/usr/share/man/man4/nsp.4.gz
+TO_REMOVE+=/usr/share/man/man4/stg.4.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
@@ -3209,6 +3218,3 @@ TO_REMOVE+=/usr/share/openssl
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
-TO_REMOVE+=/boot/kernel/ncv.ko
-TO_REMOVE+=/boot/kernel/nsp.ko
-TO_REMOVE+=/boot/kernel/stg.ko
