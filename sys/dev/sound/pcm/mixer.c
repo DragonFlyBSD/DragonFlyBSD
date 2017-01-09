@@ -101,7 +101,7 @@ static d_close_t mixer_close;
 static d_ioctl_t mixer_ioctl;
 
 struct dev_ops mixer_ops = {
-	{ "mixer", 0, D_TRACKCLOSE },
+	{ "mixer", 0, D_TRACKCLOSE | D_MPSAFE },
 	.d_open =	mixer_open,
 	.d_close =	mixer_close,
 	.d_ioctl =	mixer_ioctl,

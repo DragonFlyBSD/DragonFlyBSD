@@ -55,7 +55,7 @@ static d_close_t mdclose;
 static d_ioctl_t mdioctl;
 
 static struct dev_ops md_ops = {
-	{ "md", 0, D_DISK | D_CANFREE | D_MEMDISK | D_TRACKCLOSE},
+	{ "md", 0, D_DISK | D_CANFREE | D_MEMDISK | D_TRACKCLOSE | D_MPSAFE},
         .d_open =	mdopen,
         .d_close =	mdclose,
         .d_read =	physread,
@@ -65,6 +65,7 @@ static struct dev_ops md_ops = {
 };
 
 struct md_s {
+	struct lwkt_token tok;
 	int unit;
 	struct devstat stats;
 	struct bio_queue_head bio_queue;
@@ -124,15 +125,18 @@ mdopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct md_s *sc;
 
-	if (md_debug)
+	if (md_debug) {
 		kprintf("mdopen(%s %x %x)\n",
 			devtoname(dev), ap->a_oflags, ap->a_devtype);
+	}
 
 	sc = dev->si_drv1;
+	lwkt_gettoken(&sc->tok);
 	if (sc->unit + 1 == mdunits)
 		mdcreate_malloc();
-
 	atomic_add_int(&refcnt, 1);
+	lwkt_reltoken(&sc->tok);
+
 	return (0);
 }
 
@@ -140,11 +144,16 @@ static int
 mdclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	struct md_s *sc;
 
-	if (md_debug)
+	if (md_debug) {
 		kprintf("mdclose(%s %x %x)\n",
 			devtoname(dev), ap->a_fflag, ap->a_devtype);
+	}
+	sc = dev->si_drv1;
+	lwkt_gettoken(&sc->tok);
 	atomic_add_int(&refcnt, -1);
+	lwkt_reltoken(&sc->tok);
 
 	return (0);
 }
@@ -154,9 +163,10 @@ mdioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 
-	if (md_debug)
+	if (md_debug) {
 		kprintf("mdioctl(%s %lx %p %x)\n",
 			devtoname(dev), ap->a_cmd, ap->a_data, ap->a_fflag);
+	}
 
 	return (ENOIOCTL);
 }
@@ -177,11 +187,13 @@ mdstrategy(struct dev_strategy_args *ap)
 	}
 	bio->bio_driver_info = dev;
 	sc = dev->si_drv1;
+	lwkt_gettoken(&sc->tok);
 	if (sc->type == MD_MALLOC) {
 		mdstrategy_malloc(ap);
 	} else {
 		mdstrategy_preload(ap);
 	}
+	lwkt_reltoken(&sc->tok);
 	return(0);
 }
 
@@ -394,6 +406,7 @@ mdcreate(unsigned length)
 	struct disk_info info;
 
 	sc = kmalloc(sizeof(*sc), M_MD, M_WAITOK | M_ZERO);
+	lwkt_token_init(&sc->tok, "md");
 	sc->unit = mdunits++;
 	bioq_init(&sc->bio_queue);
 	devstat_add_entry(&sc->stats, "md", sc->unit, DEV_BSIZE,

@@ -1187,7 +1187,8 @@ determined_type: ;
 	kprintf("\n");
 
 	if (!sio_registered) {
-		register_swi(SWI_TTY, siopoll, NULL ,"swi_siopoll", NULL, -1);
+		register_swi_mp(SWI_TTY, siopoll, NULL,
+				"swi_siopoll", NULL, -1);
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);

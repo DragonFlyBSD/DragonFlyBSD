@@ -36,7 +36,6 @@
 #include <sys/proc.h>
 #include <sys/tty.h>
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <machine/console.h>
 #include <sys/mouse.h>
@@ -74,6 +73,8 @@ static void mouse_cut_line(scr_stat *scp);
 static void mouse_cut_extend(scr_stat *scp);
 static void mouse_paste(scr_stat *scp);
 #endif /* SC_NO_CUTPASTE */
+
+static struct lwkt_token scmouse_tok = LWKT_TOKEN_INITIALIZER(scmouse_tok);
 
 #ifndef SC_NO_CUTPASTE
 /* allocate a cut buffer */
@@ -581,14 +582,14 @@ sc_mouse_exit1_proc(struct proc *p)
     scp = p->p_drv_priv;
     KKASSERT(scp != NULL);
 
-    get_mplock();
+    lwkt_gettoken(&scmouse_tok);
     KKASSERT(scp->mouse_proc == p);
     KKASSERT(scp->mouse_pid == p->p_pid);
 
     scp->mouse_signal = 0;
     scp->mouse_proc = NULL;
     scp->mouse_pid = 0;
-    rel_mplock();
+    lwkt_reltoken(&scmouse_tok);
 
     PRELE(p);
     p->p_flags &= ~P_SCMOUSE;
@@ -638,28 +639,28 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	 * Setup a process to receive signals on mouse events.
 	 */
 	case MOUSE_MODE:
-	    get_mplock();
+	    lwkt_gettoken(&scmouse_tok);
 
 	    if (!ISSIGVALID(mouse->u.mode.signal)) {
 		/* Setting MOUSE_MODE w/ an invalid signal is used to disarm */
 		if (scp->mouse_proc == curproc) {
 		    sc_mouse_exit1_proc(curproc);
-		    rel_mplock();
+		    lwkt_reltoken(&scmouse_tok);
 		    return 0;
 		} else {
-		    rel_mplock();
+		    lwkt_reltoken(&scmouse_tok);
 		    return EINVAL;
 		}
 	    } else {
 		/* Only one mouse process per syscons */
 		if (scp->mouse_proc) {
-		    rel_mplock();
+		    lwkt_reltoken(&scmouse_tok);
 		    return EINVAL;
 		}
 
 		/* Only one syscons signal source per process */
 		if (curproc->p_flags & P_SCMOUSE) {
-		    rel_mplock();
+		    lwkt_reltoken(&scmouse_tok);
 		    return EINVAL;
 		}
 
@@ -676,7 +677,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	        curproc->p_drv_priv = scp;
 	        PHOLD(curproc);
 
-	        rel_mplock();
+		lwkt_reltoken(&scmouse_tok);
 	        return 0;
             }
 	    /*NOTREACHED*/
@@ -770,14 +771,14 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
 	    cur_scp->status &= ~MOUSE_HIDDEN;
 
-	    get_mplock();
+	    lwkt_gettoken(&scmouse_tok);
 	    if (cur_scp->mouse_signal) {
 		KKASSERT(cur_scp->mouse_proc != NULL);
 		ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
-		rel_mplock();
+		lwkt_reltoken(&scmouse_tok);
 	        break;
 	    }
-	    rel_mplock();
+	    lwkt_reltoken(&scmouse_tok);
 
 	    if (ISGRAPHSC(cur_scp) || (cut_buffer == NULL))
 		break;
@@ -820,14 +821,14 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 
 	    cur_scp->status &= ~MOUSE_HIDDEN;
 
-	    get_mplock();
+	    lwkt_gettoken(&scmouse_tok);
 	    if (cur_scp->mouse_signal) {
 		KKASSERT(cur_scp->mouse_proc != NULL);
 		ksignal(cur_scp->mouse_proc, cur_scp->mouse_signal);
-		rel_mplock();
+		lwkt_reltoken(&scmouse_tok);
 	        break;
 	    }
-	    rel_mplock();
+	    lwkt_reltoken(&scmouse_tok);
 
 	    if (ISGRAPHSC(cur_scp) || (cut_buffer == NULL))
 		break;

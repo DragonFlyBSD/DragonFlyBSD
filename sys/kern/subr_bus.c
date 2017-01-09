@@ -52,7 +52,6 @@
 #include <machine/stdarg.h>	/* for device_printf() */
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 SYSCTL_NODE(_hw, OID_AUTO, bus, CTLFLAG_RW, NULL, NULL);
 SYSCTL_NODE(, OID_AUTO, dev, CTLFLAG_RW, NULL, NULL);
@@ -282,7 +281,7 @@ static d_ioctl_t	devioctl;
 static d_kqfilter_t	devkqfilter;
 
 static struct dev_ops devctl_ops = {
-	{ "devctl", 0, 0 },
+	{ "devctl", 0, D_MPSAFE },
 	.d_open =	devopen,
 	.d_close =	devclose,
 	.d_read =	devread,
@@ -307,30 +306,48 @@ static struct dev_softc
 	struct proc *async_proc;
 } devsoftc;
 
+/*
+ * Chicken-and-egg problem with devfs, get the queue operational early.
+ */
+static void
+predevinit(void)
+{
+	lockinit(&devsoftc.lock, "dev mtx", 0, 0);
+	TAILQ_INIT(&devsoftc.devq);
+}
+SYSINIT(predevinit, SI_SUB_CREATE_INIT, SI_ORDER_ANY, predevinit, 0);
+
 static void
 devinit(void)
 {
+	/*
+	 * WARNING! make_dev() can call back into devctl_queue_data()
+	 *	    immediately.
+	 */
 	make_dev(&devctl_ops, 0, UID_ROOT, GID_WHEEL, 0600, "devctl");
-	lockinit(&devsoftc.lock, "dev mtx", 0, 0);
-	TAILQ_INIT(&devsoftc.devq);
 }
 
 static int
 devopen(struct dev_open_args *ap)
 {
-	if (devsoftc.inuse)
+	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+	if (devsoftc.inuse) {
+		lockmgr(&devsoftc.lock, LK_RELEASE);
 		return (EBUSY);
+	}
 	/* move to init */
 	devsoftc.inuse = 1;
 	devsoftc.async_proc = NULL;
+	lockmgr(&devsoftc.lock, LK_RELEASE);
+
 	return (0);
 }
 
 static int
 devclose(struct dev_close_args *ap)
 {
-	devsoftc.inuse = 0;
 	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+	devsoftc.inuse = 0;
 	wakeup(&devsoftc);
 	lockmgr(&devsoftc.lock, LK_RELEASE);
 
@@ -409,7 +426,8 @@ static void dev_filter_detach(struct knote *);
 static int dev_filter_read(struct knote *, long);
 
 static struct filterops dev_filtops =
-	{ FILTEROP_ISFD, NULL, dev_filter_detach, dev_filter_read };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL,
+	  dev_filter_detach, dev_filter_read };
 
 static int
 devkqfilter(struct dev_kqfilter_args *ap)

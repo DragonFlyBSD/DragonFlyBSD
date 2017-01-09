@@ -68,7 +68,7 @@ static int cnintercept(struct dev_generic_args *ap);
 
 #define	CDEV_MAJOR	0
 static struct dev_ops cn_ops = {
-	{ "console", 0, D_TTY },
+	{ "console", 0, D_TTY | D_MPSAFE },
 	.d_open =	cnopen,
 	.d_close =	cnclose,
 	.d_read =	cnread,
@@ -78,7 +78,7 @@ static struct dev_ops cn_ops = {
 };
 
 static struct dev_ops cn_iops = {
-	{ "intercept", 0, D_TTY },
+	{ "intercept", 0, D_TTY | D_MPSAFE },
 	.d_default =    cnintercept
 };
 

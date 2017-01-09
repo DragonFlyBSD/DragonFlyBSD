@@ -57,7 +57,7 @@ static d_close_t	smclose;
 static d_ioctl_t	smioctl;
 
 static struct dev_ops sm_ops = {
-	{ "sysmouse", 0, D_TTY },
+	{ "sysmouse", 0, D_TTY | D_MPSAFE },
 	.d_open =	smopen,
 	.d_close =	smclose,
 	.d_read =	ttyread,

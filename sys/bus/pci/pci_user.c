@@ -55,6 +55,7 @@
 /*
  * This is the user interface to PCI configuration space.
  */
+static struct lwkt_token pci_token = LWKT_TOKEN_INITIALIZER(pci_token);
 
 static d_open_t 	pci_open;
 static d_close_t	pci_close;
@@ -63,7 +64,7 @@ static int	pci_conf_match(struct pci_match_conf *matches, int num_matches,
 static d_ioctl_t	pci_ioctl;
 
 struct dev_ops pci_ops = {
-	{ "pci", 0, 0 },
+	{ "pci", 0, D_MPSAFE },
 	.d_open =       pci_open,
 	.d_close =      pci_close,
 	.d_ioctl =      pci_ioctl,
@@ -320,6 +321,8 @@ pci_ioctl(struct dev_ioctl_args *ap)
 	if (!(ap->a_fflag & FWRITE) && ap->a_cmd != PCIOCGETBAR && ap->a_cmd != PCIOCGETCONF)
 		return EPERM;
 #endif
+
+	lwkt_gettoken(&pci_token);
 
 	switch(ap->a_cmd) {
 #ifdef PRE7_COMPAT
@@ -740,6 +743,7 @@ getconfexit:
 		error = ENOTTY;
 		break;
 	}
+	lwkt_reltoken(&pci_token);
 
 	return (error);
 }

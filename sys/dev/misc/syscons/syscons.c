@@ -285,7 +285,7 @@ static	d_ioctl_t	scioctl;
 static	d_mmap_t	scmmap;
 
 static struct dev_ops sc_ops = {
-	{ "sc", 0, D_TTY },
+	{ "sc", 0, D_TTY | D_MPSAFE },
 	.d_open =	scopen,
 	.d_close =	scclose,
 	.d_read =	scread,

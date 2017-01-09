@@ -582,7 +582,7 @@ static void genkbdfiltdetach(struct knote *);
 static int genkbdfilter(struct knote *, long);
 
 static struct dev_ops kbd_ops = {
-	{ "kbd", 0, 0 },
+	{ "kbd", 0, D_MPSAFE },
 	.d_open =	genkbdopen,
 	.d_close =	genkbdclose,
 	.d_read =	genkbdread,

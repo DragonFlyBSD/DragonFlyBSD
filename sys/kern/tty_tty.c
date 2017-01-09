@@ -62,7 +62,7 @@ static int cttyfilt_write(struct knote *, long);
 
 #define	CDEV_MAJOR	1
 static struct dev_ops ctty_ops = {
-	{ "ctty", 0, D_TTY },
+	{ "ctty", 0, D_TTY | D_MPSAFE },
 	.d_open =	cttyopen,
 	.d_close =	cttyclose,
 	.d_read =	cttyread,
@@ -263,9 +263,11 @@ cttyioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops cttyfiltops_read =
-	{ FILTEROP_ISFD, NULL, cttyfilt_detach, cttyfilt_read };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL,
+	  cttyfilt_detach, cttyfilt_read };
 static struct filterops cttyfiltops_write =
-	{ FILTEROP_ISFD, NULL, cttyfilt_detach, cttyfilt_write };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL,
+	  cttyfilt_detach, cttyfilt_write };
 
 static int
 cttykqfilter(struct dev_kqfilter_args *ap)
@@ -331,5 +333,5 @@ ctty_drvinit(void *unused __unused)
 	make_dev(&ctty_ops, 0, 0, 0, 0666, "tty");
 }
 
-SYSINIT(cttydev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, ctty_drvinit,
-    NULL);
+SYSINIT(cttydev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR,
+	ctty_drvinit, NULL);

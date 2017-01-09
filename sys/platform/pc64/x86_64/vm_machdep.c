@@ -358,7 +358,7 @@ swi_vm(void *arg, void *frame)
 static void
 swi_vm_setup(void *arg)
 {
-	register_swi(SWI_VM, swi_vm, NULL, "swi_vm", NULL, 0);
+	register_swi_mp(SWI_VM, swi_vm, NULL, "swi_vm", NULL, 0);
 }
 
 SYSINIT(vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);

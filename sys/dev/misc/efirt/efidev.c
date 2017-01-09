@@ -39,12 +39,14 @@
 #include <machine/efi.h>
 #include <sys/efiio.h>
 
+static struct lock efidev_lock = LOCK_INITIALIZER("efidev", 0, 0);
+
 static d_ioctl_t efidev_ioctl;
 static d_open_t efidev_open;
 static d_close_t efidev_close;
 
 static struct dev_ops efi_ops = {
-	{ "efi", 0, 0 },
+	{ "efi", 0, D_MPSAFE },
 	.d_open = efidev_open,
 	.d_close = efidev_close,
 	.d_ioctl = efidev_ioctl,
@@ -68,6 +70,8 @@ efidev_ioctl(struct dev_ioctl_args *ap)
 	u_long cmd = ap->a_cmd;
 	caddr_t addr = ap->a_data;
 	int error;
+
+	lockmgr(&efidev_lock, LK_EXCLUSIVE);
 
 	switch (cmd) {
 	case EFIIOC_GET_TABLE:
@@ -184,6 +188,8 @@ vs_out:
 		error = ENOTTY;
 		break;
 	}
+
+	lockmgr(&efidev_lock, LK_RELEASE);
 
 	return (error);
 }

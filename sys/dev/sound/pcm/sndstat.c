@@ -48,7 +48,7 @@ static d_close_t sndstat_close;
 static d_read_t sndstat_read;
 
 static struct dev_ops sndstat_cdevsw = {
-	{ "sndstat", 0, 0 },
+	{ "sndstat", 0, D_MPSAFE },
 	.d_open =	sndstat_open,
 	.d_close =	sndstat_close,
 	.d_read =	sndstat_read,

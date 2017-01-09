@@ -566,7 +566,7 @@ nfs_curusec(void)
 int
 nfs_init(struct vfsconf *vfsp)
 {
-	callout_init(&nfs_timer_handle);
+	callout_init_mp(&nfs_timer_handle);
 	nfsmount_objcache = objcache_create_simple(M_NFSMOUNT, sizeof(struct nfsmount));
 
 	nfs_mount_type = vfsp->vfc_typenum;

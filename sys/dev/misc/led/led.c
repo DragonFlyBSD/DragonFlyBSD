@@ -277,7 +277,7 @@ led_set(char const *name, char const *cmd)
 }
 
 static struct dev_ops led_ops = {
-	{ "LED", 0, 0 },
+	{ "LED", 0, D_MPSAFE },
 	.d_open =	led_open,
 	.d_close =	led_close,
 	.d_write =	led_write,

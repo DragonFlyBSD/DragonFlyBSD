@@ -72,11 +72,12 @@ static int update_via(int cpu, cpuctl_update_args_t *args);
 
 static cdev_t *cpuctl_devs;
 static MALLOC_DEFINE(M_CPUCTL, "cpuctl", "CPUCTL buffer");
+static struct lock cpuctl_lock = LOCK_INITIALIZER("cpuctl", 0, 0);
 
 static struct dev_ops cpuctl_cdevsw = {
+        .head = { .name = "cpuctl", .flags = D_MPSAFE },
         .d_open =       cpuctl_open,
         .d_ioctl =      cpuctl_ioctl,
-        .head = { .name =       "cpuctl" },
 };
 
 int
@@ -97,6 +98,9 @@ cpuctl_ioctl(struct dev_ioctl_args *ap)
 	     cmd == CPUCTL_MSRSBIT || cmd == CPUCTL_MSRCBIT) &&
 	    ((flags & FWRITE) == 0))
 		return (EPERM);
+
+	lockmgr(&cpuctl_lock, LK_EXCLUSIVE);
+
 	switch (cmd) {
 	case CPUCTL_RDMSR:
 		ret = cpuctl_do_msr(cpu, (cpuctl_msr_args_t *)data, cmd);
@@ -128,6 +132,8 @@ cpuctl_ioctl(struct dev_ioctl_args *ap)
 		break;
 	}
 fail:
+	lockmgr(&cpuctl_lock, LK_RELEASE);
+
 	return (ret);
 }
 
