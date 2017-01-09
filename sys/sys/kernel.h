@@ -178,7 +178,9 @@ enum sysinit_sub_id {
 	 * Continue with miscellanious system initialization
 	 */
 	SI_SUB_CREATE_INIT	= 0x2300000,	/* create the init process */
-	SI_SUB_PRE_DRIVERS	= 0x2380000,
+	SI_SUB_PROP		= 0x2340000,
+	SI_SUB_DEVFS_CORE	= 0x2380000,
+	SI_SUB_PRE_DRIVERS	= 0x23C0000,
 	SI_SUB_DRIVERS		= 0x2400000,	/* Let Drivers initialize */
 	SI_SUB_CONFIGURE	= 0x3800000,	/* Configure devices */
 	SI_SUB_ISWARM		= 0x3c00000,	/* No longer in cold boot */

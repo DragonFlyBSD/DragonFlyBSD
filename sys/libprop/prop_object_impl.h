@@ -275,12 +275,12 @@ struct prop_pool_init {
 #define _PROP_POOL_INIT(pp, size, wchan)				\
 MALLOC_DEFINE(M_##pp, wchan, wchan);					\
 struct objcache *pp;							\
-static void									\
+static void								\
 pp##_init(void)								\
 {									\
 	pp = objcache_create_simple(M_##pp, size);			\
 }									\
-SYSINIT(pp##_init, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, pp##_init, NULL)
+SYSINIT(pp##_init, SI_SUB_PROP, SI_ORDER_ANY, pp##_init, NULL)
 
 #define	_PROP_MALLOC_DEFINE(t, s, l)					\
 		MALLOC_DEFINE(t, s, l);

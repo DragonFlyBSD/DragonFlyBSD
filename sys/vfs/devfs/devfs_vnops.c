@@ -67,7 +67,6 @@
 
 #include <sys/buf2.h>
 #include <sys/sysref2.h>
-#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 #ifndef SPEC_CHAIN_DEBUG
@@ -1165,8 +1164,6 @@ devfs_fo_close(struct file *fp)
  *
  * This bypasses the VOP table and talks directly to the device.  Most
  * filesystems just route to specfs and can make this optimization.
- *
- * MPALMOSTSAFE - acquires mplock
  */
 static int
 devfs_fo_read(struct file *fp, struct uio *uio,
@@ -1430,9 +1427,6 @@ done:
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE - acquires mplock
- */
 static int
 devfs_fo_ioctl(struct file *fp, u_long com, caddr_t data,
 		  struct ucred *ucred, struct sysmsg *msg)

@@ -58,7 +58,7 @@ static void devfs_rule_create_link(struct devfs_node *, struct devfs_rule *);
 static int devfs_rule_checkname(struct devfs_rule *, struct devfs_node *);
 
 static struct objcache	*devfs_rule_cache;
-static struct lock 		devfs_rule_lock;
+static struct lock	devfs_rule_lock;
 
 static struct objcache_malloc_args devfs_rule_malloc_args = {
 	sizeof(struct devfs_rule), M_DEVFS };
@@ -68,7 +68,7 @@ static struct devfs_rule_head devfs_rule_list =
 		TAILQ_HEAD_INITIALIZER(devfs_rule_list);
 
 static struct dev_ops devfs_dev_ops = {
-	{ "devfs", 0, 0 },
+	{ "devfs", 0, D_MPSAFE },
 	.d_open = devfs_dev_open,
 	.d_close = devfs_dev_close,
 	.d_ioctl = devfs_dev_ioctl
@@ -399,7 +399,8 @@ devfs_dev_open(struct dev_open_args *ap)
 	 * We don't allow nonblocking access.
 	 */
 	if ((ap->a_oflags & O_NONBLOCK) != 0) {
-		devfs_debug(DEVFS_DEBUG_SHOW, "devfs_dev: can't do nonblocking access\n");
+		devfs_debug(DEVFS_DEBUG_SHOW,
+			    "devfs_dev: can't do nonblocking access\n");
 		return(ENODEV);
 	}
 

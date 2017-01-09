@@ -49,7 +49,6 @@
 
 #include <sys/msgport2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 #include <sys/sysref2.h>
 
 MALLOC_DEFINE(M_DEVFS, "devfs", "Device File System (devfs) allocations");
@@ -99,6 +98,7 @@ static struct devfs_dev_ops_head devfs_dev_ops_list =
 		TAILQ_HEAD_INITIALIZER(devfs_dev_ops_list);
 
 struct lock 		devfs_lock;
+struct lwkt_token	devfs_token;
 static struct lwkt_port devfs_dispose_port;
 static struct lwkt_port devfs_msg_port;
 static struct thread 	*td_core;
@@ -1165,7 +1165,7 @@ devfs_msg_core(void *arg)
 	wakeup(td_core);
 	lockmgr(&devfs_lock, LK_RELEASE);
 
-	get_mplock();	/* mpsafe yet? */
+	lwkt_gettoken(&devfs_token);
 
 	while (devfs_run) {
 		msg = (devfs_msg_t)lwkt_waitport(&devfs_msg_port, 0);
@@ -1176,7 +1176,7 @@ devfs_msg_core(void *arg)
 		lwkt_replymsg(&msg->hdr, 0);
 	}
 
-	rel_mplock();
+	lwkt_reltoken(&devfs_token);
 	wakeup(td_core);
 
 	lwkt_exit();
@@ -2614,6 +2614,7 @@ devfs_init(void)
 
 	/* Initialize *THE* devfs lock */
 	lockinit(&devfs_lock, "devfs_core lock", 0, 0);
+	lwkt_token_init(&devfs_token, "devfs_core");
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	lwkt_create(devfs_msg_core, /*args*/NULL, &td_core, NULL,
@@ -2684,9 +2685,9 @@ TUNABLE_INT("vfs.devfs.debug", &devfs_debug_enable);
 SYSCTL_INT(_vfs_devfs, OID_AUTO, debug, CTLFLAG_RW, &devfs_debug_enable,
 		0, "Enable DevFS debugging");
 
-SYSINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
+SYSINIT(vfs_devfs_register, SI_SUB_DEVFS_CORE, SI_ORDER_FIRST,
 		devfs_init, NULL);
-SYSUNINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY,
+SYSUNINIT(vfs_devfs_register, SI_SUB_DEVFS_CORE, SI_ORDER_ANY,
 		devfs_uninit, NULL);
 
 /*
