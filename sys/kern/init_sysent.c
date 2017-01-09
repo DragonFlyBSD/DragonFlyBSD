@@ -9,6 +9,7 @@
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
 #include <sys/statvfs.h>
+#include <machine/cpumask.h>
 
 #define AS(name) ((sizeof(struct name) - sizeof(struct sysmsg)) / sizeof(register_t))
 #define compat(n, name) 0, (sy_call_t *)sys_nosys
@@ -559,4 +560,6 @@ struct sysent sysent[] = {
 	{ AS(accept4_args), (sy_call_t *)sys_accept4 },	/* 541 = accept4 */
 	{ AS(lwp_setname_args), (sy_call_t *)sys_lwp_setname },	/* 542 = lwp_setname */
 	{ AS(ppoll_args), (sy_call_t *)sys_ppoll },	/* 543 = ppoll */
+	{ AS(lwp_setaffinity_args), (sy_call_t *)sys_lwp_setaffinity },	/* 544 = lwp_setaffinity */
+	{ AS(lwp_getaffinity_args), (sy_call_t *)sys_lwp_getaffinity },	/* 545 = lwp_getaffinity */
 };

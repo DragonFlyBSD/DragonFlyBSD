@@ -550,4 +550,6 @@ const char *syscallnames[] = {
 	"accept4",			/* 541 = accept4 */
 	"lwp_setname",			/* 542 = lwp_setname */
 	"ppoll",			/* 543 = ppoll */
+	"lwp_setaffinity",			/* 544 = lwp_setaffinity */
+	"lwp_getaffinity",			/* 545 = lwp_getaffinity */
 };

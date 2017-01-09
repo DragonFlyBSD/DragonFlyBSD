@@ -316,4 +316,6 @@ union sysunion {
 	struct	accept4_args accept4;
 	struct	lwp_setname_args lwp_setname;
 	struct	ppoll_args ppoll;
+	struct	lwp_setaffinity_args lwp_setaffinity;
+	struct	lwp_getaffinity_args lwp_getaffinity;
 };

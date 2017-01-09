@@ -143,9 +143,11 @@ DF404.0 {
     lstat;
     lutimes;
     lwp_create;
+    lwp_getaffinity;
     lwp_gettid;
     lwp_kill;
     lwp_rtprio;
+    lwp_setaffinity;
     lwp_setname;
     madvise;
     mcontrol;
@@ -446,9 +448,11 @@ DFprivate_1.0 {
     __sys_lstat;
     __sys_lutimes;
     __sys_lwp_create;
+    __sys_lwp_getaffinity;
     __sys_lwp_gettid;
     __sys_lwp_kill;
     __sys_lwp_rtprio;
+    __sys_lwp_setaffinity;
     __sys_lwp_setname;
     __sys_madvise;
     __sys_mcontrol;
@@ -741,9 +745,11 @@ DFprivate_1.0 {
     _lstat;
     _lutimes;
     _lwp_create;
+    _lwp_getaffinity;
     _lwp_gettid;
     _lwp_kill;
     _lwp_rtprio;
+    _lwp_setaffinity;
     _lwp_setname;
     _madvise;
     _mcontrol;

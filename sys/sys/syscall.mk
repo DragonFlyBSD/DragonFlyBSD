@@ -307,4 +307,6 @@ MIASM =  \
 	futimens.o \
 	accept4.o \
 	lwp_setname.o \
-	ppoll.o
+	ppoll.o \
+	lwp_setaffinity.o \
+	lwp_getaffinity.o

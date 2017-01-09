@@ -356,3 +356,115 @@ sys_usched_set(struct usched_set_args *uap)
 	return (error);
 }
 
+int
+sys_lwp_getaffinity(struct lwp_getaffinity_args *uap)
+{
+	struct proc *p;
+	cpumask_t mask;
+	struct lwp *lp;
+	int error = 0;
+
+	if (uap->pid < 0) {
+		return (EINVAL);
+	} else if (uap->pid == 0) {
+		p = curproc;
+		PHOLD(p);
+	} else {
+		p = pfind(uap->pid);
+		if (p == NULL)
+			return (ESRCH);
+		/* pfind PHOLDs 'p'. */
+	}
+
+	get_mplock();
+	lwkt_gettoken(&p->p_token);
+
+	if (uap->tid < 0)
+		lp = curthread->td_lwp;
+	else
+		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
+	if (lp == NULL) {
+		error = ESRCH;
+	} else {
+		/* Take a snapshot for copyout, which may block. */
+		mask = lp->lwp_cpumask;
+		CPUMASK_ANDMASK(mask, smp_active_mask);
+	}
+
+	lwkt_reltoken(&p->p_token);
+	rel_mplock();
+	PRELE(p);
+
+	if (!error)
+		error = copyout(&mask, uap->mask, sizeof(cpumask_t));
+	return (error);
+}
+
+int
+sys_lwp_setaffinity(struct lwp_setaffinity_args *uap)
+{
+	struct proc *p;
+	cpumask_t mask;
+	struct lwp *lp;
+	int error;
+
+	if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+		return (error);
+
+	error = copyin(uap->mask, &mask, sizeof(mask));
+	if (error)
+		return (error);
+
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	if (CPUMASK_TESTZERO(mask))
+		return (EPERM);
+
+	if (uap->pid < 0) {
+		return (EINVAL);
+	} else if (uap->pid == 0) {
+		p = curproc;
+		PHOLD(p);
+	} else {
+		p = pfind(uap->pid);
+		if (p == NULL)
+			return (ESRCH);
+		/* pfind PHOLDs 'p'. */
+	}
+
+	get_mplock();
+	lwkt_gettoken(&p->p_token);
+
+	if (uap->tid < 0)
+		lp = curthread->td_lwp;
+	else
+		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
+	if (lp == NULL) {
+		error = ESRCH;
+	} else {
+		/* Commit the new cpumask. */
+		lp->lwp_cpumask = mask;
+
+		if (lp == curthread->td_lwp) {
+			/*
+			 * Self migration can be done immediately,
+			 * if necessary.
+			 */
+			if (CPUMASK_TESTBIT(lp->lwp_cpumask,
+			    mycpu->gd_cpuid) == 0) {
+				lwkt_migratecpu(BSFCPUMASK(lp->lwp_cpumask));
+				p->p_usched->changedcpu(lp);
+			}
+		} else {
+			/*
+			 * NOTE:
+			 * Real migration happens upon next rescheduling.
+			 */
+		}
+	}
+
+	lwkt_reltoken(&p->p_token);
+	rel_mplock();
+	PRELE(p);
+
+	return (error);
+}

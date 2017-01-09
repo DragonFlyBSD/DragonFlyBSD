@@ -139,9 +139,10 @@
  * 400702 - private library: libressl
  * 400703 - resolved conflicts of md, crypt and ressl libraries
  * 400704 - binutils update to 2.27
+ * 400705 - lwp_{set,get}affinity()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400704	/* propagated to newvers */
+#define __DragonFly_version 400705	/* propagated to newvers */
 
 #include <sys/_null.h>
 

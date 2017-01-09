@@ -20,6 +20,7 @@
 #ifndef _SYS_SYSTIMER_H_
 #include <sys/systimer.h>
 #endif
+#include <machine/cpumask.h>
 
 #define NAME_LENGTH 32
 
@@ -114,6 +115,8 @@ void usched_schedulerclock(struct lwp *, sysclock_t, sysclock_t);
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 int usched_set(pid_t, int, void *, int);
+int lwp_setaffinity(pid_t, lwpid_t, const cpumask_t *);
+int lwp_getaffinity(pid_t, lwpid_t, cpumask_t *);
 
 #endif
 

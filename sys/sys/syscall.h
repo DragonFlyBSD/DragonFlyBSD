@@ -378,4 +378,6 @@
 #define	SYS_accept4	541
 #define	SYS_lwp_setname	542
 #define	SYS_ppoll	543
-#define	SYS_MAXSYSCALL	544
+#define	SYS_lwp_setaffinity	544
+#define	SYS_lwp_getaffinity	545
+#define	SYS_MAXSYSCALL	546

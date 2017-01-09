@@ -76,7 +76,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	jail.2 jail_attach.2 kenv.2 kill.2 \
 	kldfind.2 kldfirstmod.2 kldload.2 kldnext.2 kldstat.2 kldsym.2 \
 	kldunload.2 ktrace.2 kqueue.2 link.2 listen.2 lseek.2 \
-	lwp_create.2 lwp_gettid.2 lwp_kill.2 lwp_setname.2 \
+	lwp_create.2 lwp_gettid.2 lwp_kill.2 lwp_setname.2 lwp_setaffinity.2 \
 	madvise.2 mincore.2 minherit.2 mkdir.2 mkfifo.2 mknod.2 mlock.2 \
 	mlockall.2 mmap.2 \
 	modfind.2 modnext.2 modstat.2 \
@@ -141,6 +141,7 @@ MLINKS+=kqueue.2 EV_SET.2 \
 	kqueue.2 kevent.2
 MLINKS+=link.2 linkat.2
 MLINKS+=lseek.2 seek.2
+MLINKS+=lwp_setaffinity.2 lwp_getaffinity.2
 MLINKS+=madvise.2 mcontrol.2 \
 	madvise.2 posix_madvise.3
 MLINKS+=mkdir.2 mkdirat.2

@@ -32,6 +32,7 @@
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
 #include <sys/statvfs.h>
+#include <machine/cpumask.h>
 
 ; Reserved/unimplemented system calls in the range 0-150 inclusive
 ; are reserved for use in future Berkeley releases.
@@ -743,3 +744,5 @@
 542	STD	{ int lwp_setname(lwpid_t tid, const char *name); }
 543	STD	{ int ppoll(struct pollfd *fds, u_int nfds, \
 			const struct timespec *ts, const sigset_t *sigmask); }
+544	STD	{ int lwp_setaffinity(pid_t pid, lwpid_t tid, const cpumask_t *mask); }
+545	STD	{ int lwp_getaffinity(pid_t pid, lwpid_t tid, cpumask_t *mask); }

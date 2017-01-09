@@ -2325,6 +2325,22 @@ struct	ppoll_args {
 	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
 	const sigset_t *	sigmask;	char sigmask_[PAD_(const sigset_t *)];
 };
+struct	lwp_setaffinity_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	pid_t	pid;	char pid_[PAD_(pid_t)];
+	lwpid_t	tid;	char tid_[PAD_(lwpid_t)];
+	const cpumask_t *	mask;	char mask_[PAD_(const cpumask_t *)];
+};
+struct	lwp_getaffinity_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	pid_t	pid;	char pid_[PAD_(pid_t)];
+	lwpid_t	tid;	char tid_[PAD_(lwpid_t)];
+	cpumask_t *	mask;	char mask_[PAD_(cpumask_t *)];
+};
 struct	olseek_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2818,6 +2834,8 @@ int	sys_futimens (struct futimens_args *);
 int	sys_accept4 (struct accept4_args *);
 int	sys_lwp_setname (struct lwp_setname_args *);
 int	sys_ppoll (struct ppoll_args *);
+int	sys_lwp_setaffinity (struct lwp_setaffinity_args *);
+int	sys_lwp_getaffinity (struct lwp_getaffinity_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_
