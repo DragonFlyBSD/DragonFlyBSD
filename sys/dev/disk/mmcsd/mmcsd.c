@@ -111,7 +111,7 @@ static int mmcsd_bus_bit_width(device_t dev);
 #define MMCSD_ASSERT_UNLOCKED(_sc) KKASSERT(lockstatus(&(_sc)->sc_lock, curthread) == 0);
 
 static struct dev_ops mmcsd_ops = {
-	{ "mmcsd", 0, D_DISK },
+	{ "mmcsd", 0, D_DISK | D_MPSAFE },
 	.d_open = mmcsd_open,
 	.d_close = mmcsd_close,
 	.d_strategy = mmcsd_strategy,
@@ -288,7 +288,6 @@ mmcsd_strategy(struct dev_strategy_args *ap)
 	MMCSD_LOCK(sc);
 	if (sc->running > 0 || sc->suspend > 0) {
 		bioqdisksort(&sc->bio_queue, bio);
-		devstat_start_transaction(&sc->device_stats);
 		MMCSD_UNLOCK(sc);
 		wakeup(sc);
 	} else {
@@ -503,8 +502,9 @@ mmcsd_task(void *arg)
 			if (bio == NULL)
 				lksleep(sc, &sc->sc_lock, 0, "jobqueue", 0);
 		} while (bio == NULL);
-		bp = bio->bio_buf;
 		MMCSD_UNLOCK(sc);
+		bp = bio->bio_buf;
+		devstat_start_transaction(&sc->device_stats);
 		if (bp->b_cmd != BUF_CMD_READ && mmc_get_read_only(dev)) {
 			bp->b_error = EROFS;
 			bp->b_resid = bp->b_bcount;
