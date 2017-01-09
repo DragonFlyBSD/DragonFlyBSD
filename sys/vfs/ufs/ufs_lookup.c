@@ -887,7 +887,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 			bdwrite(bp);
 			error = 0;
 		} else {
-			error = bowrite(bp);
+			error = bwrite(bp);
 		}
 	}
 	dp->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -999,8 +999,9 @@ out:
 		else if (DOINGASYNC(dvp) && dp->i_count != 0) {
 			bdwrite(bp);
 			error = 0;
-		} else
-			error = bowrite(bp);
+		} else {
+			error = bwrite(bp);
+		}
 	}
 	dp->i_flag |= IN_CHANGE | IN_UPDATE;
 	return (error);
@@ -1038,7 +1039,7 @@ ufs_dirrewrite(struct inode *dp, struct inode *oip, ino_t newinum, int newtype,
 			bdwrite(bp);
 			error = 0;
 		} else {
-			error = bowrite(bp);
+			error = bwrite(bp);
 		}
 	}
 	dp->i_flag |= IN_CHANGE | IN_UPDATE;
