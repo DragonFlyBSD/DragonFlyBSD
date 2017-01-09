@@ -72,10 +72,13 @@ led_open(struct dev_open_args *ap)
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 
-	if (sc->opened)
+	lockmgr(&led_lock, LK_EXCLUSIVE);
+	if (sc->opened) {
+		lockmgr(&led_lock, LK_RELEASE);
 		return EBUSY;
-
+	}
 	sc->opened = 1;
+	lockmgr(&led_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -89,8 +92,10 @@ led_close(struct dev_close_args *ap)
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 
+	lockmgr(&led_lock, LK_EXCLUSIVE);
 	if (sc->opened)
 		sc->opened = 0;
+	lockmgr(&led_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -122,7 +127,9 @@ led_write(struct dev_write_args *ap)
 	if (data >= '0')
 		data -= '0';
 
+	lockmgr(&led_lock, LK_EXCLUSIVE);
 	gpio_pin_write(sc->gp, sc->gp_map, 0, data);
+	lockmgr(&led_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -141,7 +148,9 @@ led_read(struct dev_read_args *ap)
 	if (ap->a_uio->uio_resid < sizeof(int))
 		return EINVAL;
 
+	lockmgr(&led_lock, LK_EXCLUSIVE);
 	data = gpio_pin_read(sc->gp, sc->gp_map, 0);
+	lockmgr(&led_lock, LK_RELEASE);
 
 	error = uiomove((void *)&data,
 	    (ap->a_uio->uio_resid > sizeof(int))?(sizeof(int)):(ap->a_uio->uio_resid),
@@ -154,11 +163,13 @@ static int
 led_ioctl(struct dev_ioctl_args *ap)
 {
 	/* XXX: set a name */
+	lockmgr(&led_lock, LK_EXCLUSIVE);
+	lockmgr(&led_lock, LK_RELEASE);
 	return 0;
 }
 
 static struct dev_ops nled_ops = {
-	{ "gpio", 0, 0 },
+	{ "gpio", 0, D_MPSAFE },
 	.d_open  =	led_open,
 	.d_close =	led_close,
 	.d_write = 	led_write,

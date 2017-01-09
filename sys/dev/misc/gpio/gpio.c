@@ -78,6 +78,7 @@ static LIST_HEAD(, gpio_consumer) gpio_conslist = LIST_HEAD_INITIALIZER(&gpio_co
 static LIST_HEAD(, gpio_driver) gpio_driverlist = LIST_HEAD_INITIALIZER(&gpio_driverlist);
 DEVFS_DEFINE_CLONE_BITMAP(gpio);
 static struct lock gpio_lock;
+static struct lock gpiodev_lock;
 
 void
 gpio_consumer_register(struct gpio_consumer *gcp)
@@ -301,13 +302,17 @@ gpio_open(struct dev_open_args *ap)
 	gpio_pin_t	*pin;
 	cdev_t	dev;
 
+	lockmgr(&gpiodev_lock, LK_EXCLUSIVE);
 	dev = ap->a_head.a_dev;
 	pin = dev->si_drv2;
 
-	if (pin->pin_opened || pin->pin_mapped)
+	if (pin->pin_opened || pin->pin_mapped) {
+		lockmgr(&gpiodev_lock, LK_RELEASE);
 		return EBUSY;
+	}
 
 	pin->pin_opened = 1;
+	lockmgr(&gpiodev_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -318,11 +323,13 @@ gpio_close(struct dev_close_args *ap)
 	gpio_pin_t	*pin;
 	cdev_t	dev;
 
+	lockmgr(&gpiodev_lock, LK_EXCLUSIVE);
 	dev = ap->a_head.a_dev;
 	pin = dev->si_drv2;
 
 	if (pin->pin_opened)
 		pin->pin_opened = 0;
+	lockmgr(&gpiodev_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -350,8 +357,10 @@ gpio_write(struct dev_write_args *ap)
 	if (data != GPIO_PIN_LOW && data != GPIO_PIN_HIGH)
 		return EINVAL;
 
+	lockmgr(&gpiodev_lock, LK_EXCLUSIVE);
 	gp->pin_write(gp->arg, pin->pin_num, data);
 	pin->pin_state = data;
+	lockmgr(&gpiodev_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -372,7 +381,9 @@ gpio_read(struct dev_read_args *ap)
 	if (ap->a_uio->uio_resid < sizeof(char))
 		return EINVAL;
 
+	lockmgr(&gpiodev_lock, LK_EXCLUSIVE);
 	data = gp->pin_read(gp->arg, pin->pin_num);
+	lockmgr(&gpiodev_lock, LK_RELEASE);
 
 	error = uiomove((void *)&data,
 	    (ap->a_uio->uio_resid > sizeof(int))?(sizeof(int)):(ap->a_uio->uio_resid),
@@ -388,22 +399,30 @@ gpio_ioctl(struct dev_ioctl_args *ap)
 	struct gpio	*gp;
 	gpio_pin_t	*pin;
 	cdev_t		dev;
+	int		error;
 
 	dev = ap->a_head.a_dev;
 	gpsa = (struct gpio_pin_set_args *)ap->a_data;
 	gp = dev->si_drv1;
 	pin = dev->si_drv2;
+	error = 0;
+
+	lockmgr(&gpiodev_lock, LK_EXCLUSIVE);
 
 	switch(ap->a_cmd) {
 	case GPIOPINSET:
-		if (pin->pin_opened || pin->pin_mapped)
-			return EBUSY;
+		if (pin->pin_opened || pin->pin_mapped) {
+			error = EBUSY;
+			break;
+		}
 
 		gpsa->caps = pin->pin_caps;
 		gpsa->flags = pin->pin_flags;
 
-		if ((gpsa->flags & pin->pin_caps) != gpsa->flags)
-			return ENODEV;
+		if ((gpsa->flags & pin->pin_caps) != gpsa->flags) {
+			error = ENODEV;
+			break;
+		}
 
 		if (gpsa->flags > 0) {
 			gp->pin_ctl(gp->arg, pin->pin_num, gpsa->flags);
@@ -412,13 +431,16 @@ gpio_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case GPIOPINUNSET:
-		return EINVAL;
+		error = EINVAL;
 		break;
 
 	default:
-		return EINVAL;
+		error = EINVAL;
+		break;
 	}
-	return 0;
+	lockmgr(&gpiodev_lock, LK_RELEASE);
+
+	return error;
 }
 
 static int
@@ -434,6 +456,8 @@ gpio_master_ioctl(struct dev_ioctl_args *ap)
 
 	dev = ap->a_head.a_dev;
 	gp = dev->si_drv1;
+
+	lockmgr(&gpiodev_lock, LK_EXCLUSIVE);
 
 	switch(ap->a_cmd) {
 	case GPIOINFO:
@@ -462,19 +486,25 @@ gpio_master_ioctl(struct dev_ioctl_args *ap)
 
 	case GPIOPINSET:
 		gpsa = (struct gpio_pin_set_args *)ap->a_data;
-		if (gpsa->pin < 0 || gpsa->pin >= gp->npins)
-			return EINVAL;
+		if (gpsa->pin < 0 || gpsa->pin >= gp->npins) {
+			error = EINVAL;
+			break;
+		}
 
 		pin = &gp->pins[gpsa->pin];
 
-		if (pin->pin_opened || pin->pin_mapped)
-			return EBUSY;
+		if (pin->pin_opened || pin->pin_mapped) {
+			error = EBUSY;
+			break;
+		}
 
 		gpsa->caps = pin->pin_caps;
 		gpsa->flags = pin->pin_flags;
 
-		if ((gpsa->flags & pin->pin_caps) != gpsa->flags)
-			return ENODEV;
+		if ((gpsa->flags & pin->pin_caps) != gpsa->flags) {
+			error = ENODEV;
+			break;
+		}
 
 		if (gpsa->flags > 0) {
 			gp->pin_ctl(gp->arg, gpsa->pin, gpsa->flags);
@@ -488,14 +518,16 @@ gpio_master_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	default:
-		return EINVAL;
+		error = EINVAL;
+		break;
 	}
+	lockmgr(&gpiodev_lock, LK_RELEASE);
 
 	return error;
 }
 
 static struct dev_ops gpio_ops = {
-	{ "gpio", 0, 0 },
+	{ "gpio", 0, D_MPSAFE },
 	.d_open  =	gpio_open,
 	.d_close =	gpio_close,
 	.d_write = 	gpio_write,
@@ -504,7 +536,7 @@ static struct dev_ops gpio_ops = {
 };
 
 static struct dev_ops gpio_master_ops = {
-	{ "gpio", 0, 0 },
+	{ "gpio", 0, D_MPSAFE },
 	.d_ioctl =	gpio_master_ioctl,
 };
 
@@ -589,6 +621,7 @@ static void
 gpio_drvinit(void *unused)
 {
 	lockinit(&gpio_lock, "gpio_lock", 0, 0);
+	lockinit(&gpiodev_lock, "gpiodev_lock", 0, 0);
 	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(gpio));
 }
 
