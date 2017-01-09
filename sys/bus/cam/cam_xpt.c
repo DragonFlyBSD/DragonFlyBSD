@@ -685,7 +685,7 @@ static d_close_t xptclose;
 static d_ioctl_t xptioctl;
 
 static struct dev_ops xpt_ops = {
-	{ "xpt", 0, 0 },
+	{ "xpt", 0, D_MPSAFE },
 	.d_open = xptopen,
 	.d_close = xptclose,
 	.d_ioctl = xptioctl

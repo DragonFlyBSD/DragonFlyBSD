@@ -314,7 +314,7 @@ struct buf {
 #define	B_VNCLEAN	0x01000000	/* On vnode clean list */
 #define	B_VNDIRTY	0x02000000	/* On vnode dirty list */
 #define	B_PAGING	0x04000000	/* volatile paging I/O -- bypass VMIO */
-#define	B_ORDERED	0x08000000	/* Must guarantee I/O ordering */
+#define	B_UNUSED27	0x08000000
 #define B_RAM		0x10000000	/* Read ahead mark (flag) */
 #define B_VMIO		0x20000000	/* VMIO flag */
 #define B_CLUSTER	0x40000000	/* pagein op, so swap() can count it */
@@ -425,7 +425,6 @@ void	bawrite (struct buf *);
 void	bdirty (struct buf *);
 void	bheavy (struct buf *);
 void	bundirty (struct buf *);
-int	bowrite (struct buf *);
 void	brelse (struct buf *);
 void	bqrelse (struct buf *);
 int	cluster_awrite (struct buf *);

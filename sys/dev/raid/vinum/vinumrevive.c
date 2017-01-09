@@ -174,7 +174,6 @@ revive_block(int sdno)
     {
 	dev = SD[sdno].sd_dev;
 	KKASSERT(dev != NULL);
-	bp->b_flags |= B_ORDERED;		    /* and make this an ordered write */
 	bp->b_cmd = BUF_CMD_WRITE;
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)sd->revived << DEV_BSHIFT;		    /* write it to here */

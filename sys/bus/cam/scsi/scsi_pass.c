@@ -108,7 +108,7 @@ static struct periph_driver passdriver =
 PERIPHDRIVER_DECLARE(pass, passdriver);
 
 static struct dev_ops pass_ops = {
-	{ "pass", 0, 0 },
+	{ "pass", 0, D_MPSAFE },
 	.d_open =	passopen,
 	.d_close =	passclose,
 	.d_ioctl =	passioctl,

@@ -89,8 +89,6 @@ typedef enum {
 	DA_FLAG_PACK_LOCKED	= 0x004,
 	DA_FLAG_PACK_REMOVABLE	= 0x008,
 	DA_FLAG_TAGGED_QUEUING	= 0x010,
-	DA_FLAG_NEED_OTAG	= 0x020,
-	DA_FLAG_WENT_IDLE	= 0x040,
 	DA_FLAG_RETRY_UA	= 0x080,
 	DA_FLAG_OPEN		= 0x100,
 	DA_FLAG_SCTX_INIT	= 0x200,
@@ -147,7 +145,6 @@ struct da_softc {
 	da_flags flags;	
 	da_quirks quirks;
 	int	 minimum_cmd_size;
-	int	 ordered_tag_count;
 	int	 outstanding_cmds_rd;
 	int	 outstanding_cmds_wr;
 	int      trim_max_ranges;
@@ -159,7 +156,6 @@ struct da_softc {
 	struct task		sysctl_task;
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
-	struct callout		sendordered_c;
 	struct trim_request     trim_req;
 };
 
@@ -355,7 +351,6 @@ static int		dacheckmedia(struct cam_periph *periph);
 static void		dasetgeom(struct cam_periph *periph, uint32_t block_len,
 				  uint64_t maxsector);
 static void		daflushbioq(struct bio_queue_head *bioq, int error);
-static timeout_t	dasendorderedtag;
 static void		dashutdown(void *arg, int howto);
 
 #ifndef DA_DEFAULT_TIMEOUT
@@ -366,14 +361,8 @@ static void		dashutdown(void *arg, int howto);
 #define	DA_DEFAULT_RETRY	4
 #endif
 
-#ifndef	DA_DEFAULT_SEND_ORDERED
-#define	DA_DEFAULT_SEND_ORDERED	1
-#endif
-
 static int da_retry_count = DA_DEFAULT_RETRY;
 static int da_default_timeout = DA_DEFAULT_TIMEOUT;
-static int da_send_ordered = DA_DEFAULT_SEND_ORDERED;
-static struct callout dasendorderedtag_ch;
 
 SYSCTL_NODE(_kern_cam, OID_AUTO, da, CTLFLAG_RD, 0,
             "CAM Direct Access Disk driver");
@@ -383,25 +372,6 @@ TUNABLE_INT("kern.cam.da.retry_count", &da_retry_count);
 SYSCTL_INT(_kern_cam_da, OID_AUTO, default_timeout, CTLFLAG_RW,
            &da_default_timeout, 0, "Normal I/O timeout (in seconds)");
 TUNABLE_INT("kern.cam.da.default_timeout", &da_default_timeout);
-SYSCTL_INT(_kern_cam_da, OID_AUTO, da_send_ordered, CTLFLAG_RW,
-           &da_send_ordered, 0, "Send Ordered Tags");
-TUNABLE_INT("kern.cam.da.da_send_ordered", &da_send_ordered);
-
-/*
- * DA_ORDEREDTAG_INTERVAL determines how often, relative
- * to the default timeout, we check to see whether an ordered
- * tagged transaction is appropriate to prevent simple tag
- * starvation.  Since we'd like to ensure that there is at least
- * 1/2 of the timeout length left for a starved transaction to
- * complete after we've sent an ordered tag, we must poll at least
- * four times in every timeout period.  This takes care of the worst
- * case where a starved transaction starts during an interval that
- * meets the requirement "don't send an ordered tag" test so it takes
- * us two intervals to determine that a tag must be sent.
- */
-#ifndef DA_ORDEREDTAG_INTERVAL
-#define DA_ORDEREDTAG_INTERVAL 4
-#endif
 
 static struct periph_driver dadriver =
 {
@@ -873,8 +843,6 @@ dainit(void)
 		return;
 	}
 
-	callout_init(&dasendorderedtag_ch);
-
 	/*
 	 * Install a global async callback.  This callback will
 	 * receive async callbacks like "new device found".
@@ -884,8 +852,7 @@ dainit(void)
 	if (status != CAM_REQ_CMP) {
 		kprintf("da: Failed to attach master async callback "
 		       "due to status 0x%x!\n", status);
-	} else if (da_send_ordered) {
-
+	} else {
 		/* Register our shutdown event handler */
 		if ((EVENTHANDLER_REGISTER(shutdown_post_sync, dashutdown, 
 					   NULL, SHUTDOWN_PRI_DEFAULT)) == NULL)
@@ -959,7 +926,6 @@ dacleanup(struct cam_periph *periph)
 		cam_periph_lock(periph);
 	}
 
-	callout_stop(&softc->sendordered_c);
 	kfree(softc, M_DEVBUF);
 }
 
@@ -1278,17 +1244,6 @@ daregister(struct cam_periph *periph, void *arg)
 	cam_periph_hold(periph, 0);
 	xpt_schedule(periph, /*priority*/5);
 
-	/*
-	 * Schedule a periodic event to occasionally send an
-	 * ordered tag to a device.
-	 */
-	callout_init(&softc->sendordered_c);
-	callout_reset(&softc->sendordered_c,
-	    (DA_DEFAULT_TIMEOUT * hz) / DA_ORDEREDTAG_INTERVAL,
-	    dasendorderedtag, softc);
-
-	
-
 	return(CAM_REQ_CMP);
 }
 
@@ -1460,14 +1415,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 
 		devstat_start_transaction(&softc->device_stats);
 
-		if ((bp->b_flags & B_ORDERED) != 0 ||
-		    (softc->flags & DA_FLAG_NEED_OTAG) != 0) {
-			softc->flags &= ~DA_FLAG_NEED_OTAG;
-			softc->ordered_tag_count++;
-			tag_code = MSG_ORDERED_Q_TAG;
-		} else {
-			tag_code = MSG_SIMPLE_Q_TAG;
-		}
+		tag_code = MSG_SIMPLE_Q_TAG;
 
 		switch(bp->b_cmd) {
 		case BUF_CMD_READ:
@@ -1752,10 +1700,6 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				softc->flags &= ~DA_FLAG_RD_LIMIT;
 				mustsched = 1;
 			}
-		}
-		if (softc->outstanding_cmds_rd +
-		    softc->outstanding_cmds_wr == 0) {
-			softc->flags |= DA_FLAG_WENT_IDLE;
 		}
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
@@ -2283,27 +2227,6 @@ dasetgeom(struct cam_periph *periph, uint32_t block_len, uint64_t maxsector)
 		dp->secs_per_track = ccg.secs_per_track;
 		dp->cylinders = ccg.cylinders;
 	}
-}
-
-static void
-dasendorderedtag(void *arg)
-{
-	struct da_softc *softc = arg;
-
-	if (da_send_ordered) {
-		if ((softc->ordered_tag_count == 0)
-		 && ((softc->flags & DA_FLAG_WENT_IDLE) == 0)) {
-			softc->flags |= DA_FLAG_NEED_OTAG;
-		}
-		if (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr)
-			softc->flags &= ~DA_FLAG_WENT_IDLE;
-
-		softc->ordered_tag_count = 0;
-	}
-	/* Queue us up again */
-	callout_reset(&softc->sendordered_c,
-	    (DA_DEFAULT_TIMEOUT * hz) / DA_ORDEREDTAG_INTERVAL,
-	    dasendorderedtag, softc);
 }
 
 /*

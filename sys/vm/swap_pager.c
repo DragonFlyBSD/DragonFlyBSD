@@ -1061,7 +1061,6 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 				bufx = getpbuf(NULL);
 				biox = &bufx->b_bio1;
 				cluster_append(nbio, bufx);
-				bufx->b_flags |= (bp->b_flags & B_ORDERED);
 				bufx->b_cmd = bp->b_cmd;
 				biox->bio_done = swap_chain_iodone;
 				biox->bio_offset = (off_t)blk << PAGE_SHIFT;

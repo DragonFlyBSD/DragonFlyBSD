@@ -136,7 +136,7 @@ static struct periph_driver sgdriver =
 PERIPHDRIVER_DECLARE(sg, sgdriver);
 
 static struct dev_ops sg_ops = {
-	{ "sg", 0, D_DISK },
+	{ "sg", 0, D_DISK | D_MPSAFE },
 	.d_open =	sgopen,
 	.d_close =	sgclose,
 	.d_read =	sgread,

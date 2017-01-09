@@ -804,7 +804,7 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
 
     /* Initialize the buf struct */
     /* copy these flags from user bp */
-    bp->b_flags = ubp->b_flags & (B_ORDERED | B_NOCACHE);
+    bp->b_flags = ubp->b_flags & B_NOCACHE;
     bp->b_cmd = ubp->b_cmd;
 #ifdef VINUMDEBUG
     if (rqe->flags & XFR_BUFLOCKED)			    /* paranoia */

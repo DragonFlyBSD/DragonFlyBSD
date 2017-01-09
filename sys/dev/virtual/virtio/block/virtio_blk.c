@@ -747,12 +747,14 @@ vtblk_bio_request(struct vtblk_softc *sc)
 		break;
 	}
 
+#if 0
 	if (bp->b_flags & B_ORDERED) {
 		if ((sc->vtblk_flags & VTBLK_FLAG_BARRIER) == 0)
 			req->vbr_barrier = 1;
 		else
 			req->vbr_hdr.type |= VIRTIO_BLK_T_BARRIER;
 	}
+#endif
 
 	return (req);
 }

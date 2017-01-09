@@ -1069,22 +1069,6 @@ bawrite(struct buf *bp)
 }
 
 /*
- * bowrite:
- *
- *	Ordered write.  Start output on a buffer, and flag it so that the
- *	device will write it in the order it was queued.  The buffer is
- *	released when the output completes.  bwrite() ( or the VOP routine
- *	anyway ) is responsible for handling B_INVAL buffers.
- */
-int
-bowrite(struct buf *bp)
-{
-	bp->b_flags |= B_ORDERED;
-	bawrite(bp);
-	return (0);
-}
-
-/*
  * bdwrite:
  *
  *	Delayed write. (Buffer is marked dirty).  Do not bother writing
@@ -1664,7 +1648,7 @@ brelse(struct buf *bp)
 	/*
 	 * Clean up temporary flags and unlock the buffer.
 	 */
-	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF | B_DIRECT);
+	bp->b_flags &= ~(B_NOCACHE | B_RELBUF | B_DIRECT);
 	BUF_UNLOCK(bp);
 }
 
@@ -1752,7 +1736,7 @@ bqrelse(struct buf *bp)
 	 * Final cleanup and unlock.  Clear bits that are only used while a
 	 * buffer is actively locked.
 	 */
-	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF);
+	bp->b_flags &= ~(B_NOCACHE | B_RELBUF);
 	dsched_buf_exit(bp);
 	BUF_UNLOCK(bp);
 }
