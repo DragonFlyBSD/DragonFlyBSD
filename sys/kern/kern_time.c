@@ -49,8 +49,10 @@
 #include <vm/vm_extern.h>
 
 #include <sys/msgport2.h>
+#include <sys/spinlock2.h>
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
+
+extern struct spinlock ntp_spin;
 
 struct timezone tz;
 
@@ -85,6 +87,8 @@ SYSCTL_INT(_kern, OID_AUTO, nanosleep_hard_us, CTLFLAG_RW,
 	   &nanosleep_hard_us, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, gettimeofday_quick, CTLFLAG_RW,
 	   &gettimeofday_quick, 0, "");
+
+static struct lock masterclock_lock = LOCK_INITIALIZER("mstrclk", 0, 0);
 
 static int
 settime(struct timeval *tv)
@@ -262,8 +266,11 @@ kern_clock_settime(clockid_t clock_id, struct timespec *ats)
 	if (ats->tv_nsec < 0 || ats->tv_nsec >= 1000000000)
 		return (EINVAL);
 
+	lockmgr(&masterclock_lock, LK_EXCLUSIVE);
 	TIMESPEC_TO_TIMEVAL(&atv, ats);
 	error = settime(&atv);
+	lockmgr(&masterclock_lock, LK_RELEASE);
+
 	return (error);
 }
 
@@ -279,9 +286,8 @@ sys_clock_settime(struct clock_settime_args *uap)
 	if ((error = copyin(uap->tp, &ats, sizeof(ats))) != 0)
 		return (error);
 
-	get_mplock();
 	error = kern_clock_settime(uap->clock_id, &ats);
-	rel_mplock();
+
 	return (error);
 }
 
@@ -530,17 +536,21 @@ sys_settimeofday(struct settimeofday_args *uap)
 	    (error = copyin((caddr_t)uap->tzp, (caddr_t)&atz, sizeof(atz))))
 		return (error);
 
-	get_mplock();
+	lockmgr(&masterclock_lock, LK_EXCLUSIVE);
 	if (uap->tv && (error = settime(&atv))) {
-		rel_mplock();
+		lockmgr(&masterclock_lock, LK_RELEASE);
 		return (error);
 	}
-	rel_mplock();
+	lockmgr(&masterclock_lock, LK_RELEASE);
+
 	if (uap->tzp)
 		tz = atz;
 	return (0);
 }
 
+/*
+ * WARNING! Run with ntp_spin held
+ */
 static void
 kern_adjtime_common(void)
 {
@@ -560,68 +570,34 @@ kern_adjtime_common(void)
 void
 kern_adjtime(int64_t delta, int64_t *odelta)
 {
-	int origcpu;
-
-	if ((origcpu = mycpu->gd_cpuid) != 0)
-		lwkt_setcpu_self(globaldata_find(0));
-
-	crit_enter();
+	spin_lock(&ntp_spin);
 	*odelta = ntp_delta;
 	ntp_delta = delta;
 	kern_adjtime_common();
-	crit_exit();
-
-	if (origcpu != 0)
-		lwkt_setcpu_self(globaldata_find(origcpu));
+	spin_unlock(&ntp_spin);
 }
 
 static void
 kern_get_ntp_delta(int64_t *delta)
 {
-	int origcpu;
-
-	if ((origcpu = mycpu->gd_cpuid) != 0)
-		lwkt_setcpu_self(globaldata_find(0));
-
-	crit_enter();
 	*delta = ntp_delta;
-	crit_exit();
-
-	if (origcpu != 0)
-		lwkt_setcpu_self(globaldata_find(origcpu));
 }
 
 void
 kern_reladjtime(int64_t delta)
 {
-	int origcpu;
-
-	if ((origcpu = mycpu->gd_cpuid) != 0)
-		lwkt_setcpu_self(globaldata_find(0));
-
-	crit_enter();
+	spin_lock(&ntp_spin);
 	ntp_delta += delta;
 	kern_adjtime_common();
-	crit_exit();
-
-	if (origcpu != 0)
-		lwkt_setcpu_self(globaldata_find(origcpu));
+	spin_unlock(&ntp_spin);
 }
 
 static void
 kern_adjfreq(int64_t rate)
 {
-	int origcpu;
-
-	if ((origcpu = mycpu->gd_cpuid) != 0)
-		lwkt_setcpu_self(globaldata_find(0));
-
-	crit_enter();
+	spin_lock(&ntp_spin);
 	ntp_tick_permanent = rate;
-	crit_exit();
-
-	if (origcpu != 0)
-		lwkt_setcpu_self(globaldata_find(origcpu));
+	spin_unlock(&ntp_spin);
 }
 
 /*
@@ -649,9 +625,7 @@ sys_adjtime(struct adjtime_args *uap)
 	 * overshoot and start taking us away from the desired final time.
 	 */
 	ndelta = (int64_t)atv.tv_sec * 1000000000 + atv.tv_usec * 1000;
-	get_mplock();
 	kern_adjtime(ndelta, &odelta);
-	rel_mplock();
 
 	if (uap->olddelta) {
 		atv.tv_sec = odelta / 1000000000;

@@ -95,6 +95,7 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
 #include <machine/limits.h>
@@ -271,6 +272,7 @@ int32_t	ntp_tick_delta;		/* current adjustment rate */
 int32_t	ntp_default_tick_delta;	/* adjustment rate for ntp_delta */
 time_t	ntp_leap_second;	/* time of next leap second */
 int	ntp_leap_insert;	/* whether to insert or remove a second */
+struct spinlock ntp_spin;
 
 /*
  * Finish initializing clock frequencies and start all clocks running.
@@ -280,6 +282,7 @@ static void
 initclocks(void *dummy)
 {
 	/*psratio = profhz / stathz;*/
+	spin_init(&ntp_spin, "ntp");
 	initclocks_pcpu();
 	clocks_running = 1;
 	if (kpmap) {
@@ -401,6 +404,7 @@ set_timeofday(struct timespec *ts)
 	 * suitable for use in the boottime calculation.  It is already taken
 	 * into account in the basetime calculation above.
 	 */
+	spin_lock(&ntp_spin);
 	boottime.tv_sec = nbt->tv_sec;
 	ntp_delta = 0;
 
@@ -410,6 +414,7 @@ set_timeofday(struct timespec *ts)
 	 */
 	cpu_sfence();
 	basetime_index = ni;
+	spin_unlock(&ntp_spin);
 
 	crit_exit();
 }
@@ -501,6 +506,12 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	    *nbt = basetime[basetime_index];
 
 	    /*
+	     * ntp adjustments only occur on cpu 0 and are protected by
+	     * ntp_spin.  This spinlock virtually never conflicts.
+	     */
+	    spin_lock(&ntp_spin);
+
+	    /*
 	     * Apply adjtime corrections.  (adjtime() API)
 	     *
 	     * adjtime() only runs on cpu #0 so our critical section is
@@ -558,6 +569,7 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		    --nbt->tv_sec;
 		}
 	    }
+	    spin_unlock(&ntp_spin);
 
 	    /************************************************************
 	     *			LEAP SECOND CORRECTION			*

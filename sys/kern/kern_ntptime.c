@@ -45,7 +45,6 @@
 #include <sys/sysctl.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 /*
  * Single-precision macros for 64-bit machines
@@ -153,6 +152,8 @@ static l_fp time_offset;		/* time offset (ns) */
 static l_fp time_freq;			/* frequency offset (ns/s) */
 static l_fp time_adj;			/* tick adjust (ns/s) */
 
+static struct lock ntp_lock = LOCK_INITIALIZER("ntplk", 0, 0);
+
 #ifdef PPS_SYNC
 /*
  * The following variables are used when a pulse-per-second (PPS) signal
@@ -206,6 +207,9 @@ ntp_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	struct ntptimeval ntv;	/* temporary structure */
 	struct timespec atv;	/* nanosecond time */
+	int error;
+
+	lockmgr(&ntp_lock, LK_EXCLUSIVE);
 
 	nanotime(&atv);
 	ntv.time.tv_sec = atv.tv_sec;
@@ -243,9 +247,14 @@ ntp_sysctl(SYSCTL_HANDLER_ARGS)
 	 * synchronization requested
 	 */
 	    (time_status & STA_PPSFREQ &&
-	    time_status & (STA_PPSWANDER | STA_PPSERROR)))
+	    time_status & (STA_PPSWANDER | STA_PPSERROR))) {
 		ntv.time_state = TIME_ERROR;
-	return (sysctl_handle_opaque(oidp, &ntv, sizeof ntv, req));
+	}
+
+	error = sysctl_handle_opaque(oidp, &ntv, sizeof ntv, req);
+	lockmgr(&ntp_lock, LK_RELEASE);
+
+	return error;
 }
 
 SYSCTL_NODE(_kern, OID_AUTO, ntp_pll, CTLFLAG_RW, 0, "");
@@ -297,7 +306,7 @@ sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 	if (error)
 		return (error);
 
-	get_mplock();
+	lockmgr(&ntp_lock, LK_EXCLUSIVE);
 	crit_enter();
 	if (modes & MOD_MAXERROR)
 		time_maxerror = ntv.maxerror;
@@ -400,7 +409,7 @@ sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 	ntv.stbcnt = pps_stbcnt;
 #endif /* PPS_SYNC */
 	crit_exit();
-	rel_mplock();
+	lockmgr(&ntp_lock, LK_RELEASE);
 
 	error = copyout((caddr_t)&ntv, (caddr_t)uap->tp, sizeof(ntv));
 	if (error)
