@@ -91,7 +91,8 @@ union usched_data {
 #define USCHED_ADD_CPU		2
 #define USCHED_DEL_CPU		3
 #define USCHED_GET_CPU		4
-#define USCHED_GET_CPUMASK	5  /* appeared in DragonFly 4.5 */
+#define USCHED_GET_CPUMASK	5	/* since DragonFly 4.5 */
+#define USCHED_SET_CPUMASK	6	/* since DragonFly 4.7 */
 
 /*
  * Kernel variables and procedures, or user system calls.

@@ -322,6 +322,32 @@ sys_usched_set(struct usched_set_args *uap)
 			}
 		}
 		break;
+	case USCHED_SET_CPUMASK:
+		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+			break;
+		if (uap->bytes != sizeof(mask)) {
+			error = EINVAL;
+			break;
+		}
+		error = copyin(uap->data, &mask, sizeof(mask));
+		if (error)
+			break;
+
+		CPUMASK_ANDMASK(mask, smp_active_mask);
+		if (CPUMASK_TESTZERO(mask)) {
+			error = EPERM;
+			break;
+		}
+		/* Commit the new cpumask. */
+		lp->lwp_cpumask = mask;
+
+		/* Migrate if necessary. */
+		if (CPUMASK_TESTMASK(lp->lwp_cpumask, mycpu->gd_cpumask) == 0) {
+			cpuid = BSFCPUMASK(lp->lwp_cpumask);
+			lwkt_migratecpu(cpuid);
+			p->p_usched->changedcpu(lp);
+		}
+		break;
 	default:
 		error = EINVAL;
 		break;
