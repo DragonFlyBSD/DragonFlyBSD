@@ -154,6 +154,7 @@ struct acpi_prw_data {
  *     GPE -> EC runs _Qxx -> _Qxx reads EC space -> GPE
  */
 extern struct lock acpi_lock;
+extern struct lwkt_token acpi_token;
 /* acpi_thermal does lock recurs on purpose */
 /* I bet I should use some other locks here */
 #define ACPI_LOCK(sys)                  lockmgr(&sys##_lock, LK_EXCLUSIVE|LK_RETRY|LK_CANRECURSE)

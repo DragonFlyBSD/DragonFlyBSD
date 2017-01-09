@@ -46,7 +46,6 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
-#include <sys/mplock2.h>
 
 #include "acpi.h"
 #include "accommon.h"
@@ -103,14 +102,14 @@ acpi_task_thread(void *arg)
     ACPI_OSD_EXEC_CALLBACK func;
     struct acpi_task *at;
 
-    get_mplock();
+    lwkt_gettoken(&acpi_token);
     for (;;) {
 	at = (void *)lwkt_waitport(&curthread->td_msgport, 0);
 	func = at->at_function;
 	func(at->at_context);
 	lwkt_replymsg(&at->at_msg, 0);
     }
-    rel_mplock();
+    lwkt_reltoken(&acpi_token);
 }
 
 /*

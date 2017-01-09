@@ -158,7 +158,7 @@ static d_read_t acpi_wmi_wmistat_read;
 
 /* handler /dev/wmistat device */
 static struct dev_ops wmistat_ops = {
-	{ .name = "wmistat" },
+	{ "wmistat", 0, D_MPSAFE },
 	.d_open = acpi_wmi_wmistat_open,
 	.d_close = acpi_wmi_wmistat_close,
 	.d_read = acpi_wmi_wmistat_read,

@@ -101,7 +101,7 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
 	device_printf(sc->acpi_dev, "could not allocate interrupt\n");
 	goto error;
     }
-    if (bus_setup_intr(sc->acpi_dev, sc->acpi_irq, 0,
+    if (bus_setup_intr(sc->acpi_dev, sc->acpi_irq, INTR_MPSAFE,
 		    InterruptWrapper, Context, &sc->acpi_irq_handle, NULL)) {
 	device_printf(sc->acpi_dev, "could not set up interrupt\n");
 	goto error;
@@ -154,7 +154,7 @@ AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRou
 static void
 InterruptWrapper(void *arg)
 {
-    crit_enter();
+    lwkt_gettoken(&acpi_token);
     InterruptHandler(arg);
-    crit_exit();
+    lwkt_reltoken(&acpi_token);
 }

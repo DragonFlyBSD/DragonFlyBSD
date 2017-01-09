@@ -79,7 +79,7 @@ static d_close_t	acpiclose;
 static d_ioctl_t	acpiioctl;
 
 static struct dev_ops acpi_ops = {
-        { "acpi", 0, 0 },
+        { "acpi", 0, D_MPSAFE },
         .d_open = acpiopen,
         .d_close = acpiclose,
         .d_ioctl = acpiioctl
@@ -92,6 +92,7 @@ struct acpi_interface {
 
 /* Global mutex for locking access to the ACPI subsystem. */
 struct lock acpi_lock;
+struct lwkt_token acpi_token = LWKT_TOKEN_INITIALIZER(acpi_token);
 
 /* Bitmap of device quirks. */
 int		acpi_quirks;
@@ -2475,6 +2476,7 @@ acpi_EnterSleepState(struct acpi_softc *sc, int state)
      * drivers need this.
      */
     //get_mplock();
+
     slp_state = ACPI_SS_NONE;
     switch (state) {
     case ACPI_STATE_S1:
@@ -2582,6 +2584,7 @@ acpi_EnterSleepState(struct acpi_softc *sc, int state)
     acpi_UserNotify("Resume", ACPI_ROOT_OBJECT, state);
 
     //rel_mplock();
+
     return_ACPI_STATUS (status);
 }
 
@@ -3173,6 +3176,7 @@ acpiioctl(struct dev_ioctl_args *ap)
     /*
      * Scan the list of registered ioctls, looking for handlers.
      */
+    lwkt_gettoken(&acpi_token);
     ACPI_LOCK(acpi);
     if (acpi_ioctl_hooks_initted)
 	TAILQ_FOREACH(hp, &acpi_ioctl_hooks, link) {
@@ -3180,16 +3184,21 @@ acpiioctl(struct dev_ioctl_args *ap)
 		break;
 	}
     ACPI_UNLOCK(acpi);
-    if (hp)
-	return (hp->fn(ap->a_cmd, ap->a_data, hp->arg));
+    if (hp) {
+	error = hp->fn(ap->a_cmd, ap->a_data, hp->arg);
+	lwkt_reltoken(&acpi_token);
+	return error;
+    }
 
     /*
      * Core ioctls are not permitted for non-writable user.
      * Currently, other ioctls just fetch information.
      * Not changing system behavior.
      */
-    if ((ap->a_fflag & FWRITE) == 0)
+    if ((ap->a_fflag & FWRITE) == 0) {
+	lwkt_reltoken(&acpi_token);
 	return (EPERM);
+    }
 
     /* Core system ioctls. */
     switch (ap->a_cmd) {
@@ -3263,6 +3272,8 @@ acpiioctl(struct dev_ioctl_args *ap)
 	error = ENXIO;
 	break;
     }
+    lwkt_reltoken(&acpi_token);
+
     return (error);
 }
 

@@ -312,7 +312,7 @@ static d_read_t	acpi_hp_hpcmi_read;
 
 /* handler /dev/hpcmi device */
 static struct dev_ops hpcmi_ops = {
-	{ .name = "hpcmi" },
+	{ "hpcmi", 0, D_MPSAFE },
 	.d_open = acpi_hp_hpcmi_open,
 	.d_close = acpi_hp_hpcmi_close,
 	.d_read = acpi_hp_hpcmi_read,
