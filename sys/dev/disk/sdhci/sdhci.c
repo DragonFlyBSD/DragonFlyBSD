@@ -471,7 +471,7 @@ sdhci_card_delay(void *arg)
 {
 	struct sdhci_slot *slot = arg;
 
-	taskqueue_enqueue(taskqueue_swi, &slot->card_task);
+	taskqueue_enqueue(taskqueue_swi_mp, &slot->card_task);
 }
  
 static void
@@ -623,7 +623,7 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	    "timeout", CTLFLAG_RW, &slot->timeout, 0,
 	    "Maximum timeout for SDHCI transfers (in secs)");
 	TASK_INIT(&slot->card_task, 0, sdhci_card_task, slot);
-	callout_init(&slot->card_callout);
+	callout_init_mp(&slot->card_callout);
 	callout_init_lk(&slot->timeout_callout, &slot->lock);
 	return (0);
 }
@@ -642,7 +642,7 @@ sdhci_cleanup_slot(struct sdhci_slot *slot)
 
 	callout_drain(&slot->timeout_callout);
 	callout_drain(&slot->card_callout);
-	taskqueue_drain(taskqueue_swi, &slot->card_task);
+	taskqueue_drain(taskqueue_swi_mp, &slot->card_task);
  
 	SDHCI_LOCK(slot);
 	d = slot->dev;
@@ -1324,8 +1324,7 @@ sdhci_generic_intr(struct sdhci_slot *slot)
 			if (bootverbose || sdhci_debug)
 				slot_printf(slot, "Card removed\n");
 			callout_stop(&slot->card_callout);
-			taskqueue_enqueue(taskqueue_swi,
-			    &slot->card_task);
+			taskqueue_enqueue(taskqueue_swi_mp, &slot->card_task);
 		}
 		if (intmask & SDHCI_INT_CARD_INSERT) {
 			if (bootverbose || sdhci_debug)
