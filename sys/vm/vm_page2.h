@@ -52,6 +52,21 @@
 #endif
 
 /*
+ * SMP NOTE
+ *
+ * VM fault rates are highly dependent on SMP locking conflicts and, on
+ * multi-socket systems, cache mastership changes for globals due to atomic
+ * ops (even simple atomic_add_*() calls).  Cache mastership changes can
+ * limit the aggregate fault rate.
+ *
+ * For this reason we go through some hoops to access VM statistics for
+ * low-memory handling, pageout, and other triggers.  Each cpu collects
+ * adjustments in gd->gd_vmstats_adj.  These get rolled up into the global
+ * vmstats structure.  The global vmstats structure is then pulled into
+ * gd->gd_vmstats by each cpu when it needs it.  Critical path checks always
+ * use the pcpu gd->gd_vmstats structure.
+ */
+/*
  * Return TRUE if we are under our severe low-free-pages threshold
  *
  * This causes user processes to stall to avoid exhausting memory that
@@ -63,9 +78,11 @@ static __inline
 int
 vm_page_count_severe(void)
 {
-    return (vmstats.v_free_severe >
-	    vmstats.v_free_count + vmstats.v_cache_count ||
-	    vmstats.v_free_reserved > vmstats.v_free_count);
+    globaldata_t gd = mycpu;
+
+    return (gd->gd_vmstats.v_free_severe >
+	    gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count ||
+	    gd->gd_vmstats.v_free_reserved > gd->gd_vmstats.v_free_count);
 }
 
 /*
@@ -79,9 +96,11 @@ static __inline
 int
 vm_page_count_min(int donotcount)
 {
-    return (vmstats.v_free_min + donotcount >
-	    (vmstats.v_free_count + vmstats.v_cache_count) ||
-	    vmstats.v_free_reserved > vmstats.v_free_count);
+    globaldata_t gd = mycpu;
+
+    return (gd->gd_vmstats.v_free_min + donotcount >
+	    (gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count) ||
+	    gd->gd_vmstats.v_free_reserved > gd->gd_vmstats.v_free_count);
 }
 
 /*
@@ -96,9 +115,11 @@ static __inline
 int
 vm_page_count_target(void)
 {
-    return (vmstats.v_free_target >
-	    (vmstats.v_free_count + vmstats.v_cache_count) ||
-	    vmstats.v_free_reserved > vmstats.v_free_count);
+    globaldata_t gd = mycpu;
+
+    return (gd->gd_vmstats.v_free_target >
+	    (gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count) ||
+	    gd->gd_vmstats.v_free_reserved > gd->gd_vmstats.v_free_count);
 }
 
 /*
@@ -116,10 +137,10 @@ static __inline
 int
 vm_paging_target(void)
 {
-    return (
-	(vmstats.v_free_target + vmstats.v_cache_min) - 
-	(vmstats.v_free_count + vmstats.v_cache_count)
-    );
+    globaldata_t gd = mycpu;
+
+    return ((gd->gd_vmstats.v_free_target + gd->gd_vmstats.v_cache_min) -
+	    (gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count));
 }
 
 /*
@@ -134,11 +155,13 @@ static __inline
 int
 vm_paging_needed(void)
 {
-    if (vmstats.v_free_min + vmstats.v_cache_min >
-	vmstats.v_free_count + vmstats.v_cache_count) {
+    globaldata_t gd = mycpu;
+
+    if (gd->gd_vmstats.v_free_min + gd->gd_vmstats.v_cache_min >
+	gd->gd_vmstats.v_free_count + gd->gd_vmstats.v_cache_count) {
 		return 1;
     }
-    if (vmstats.v_free_min > vmstats.v_free_count)
+    if (gd->gd_vmstats.v_free_min > gd->gd_vmstats.v_free_count)
 		return 1;
     return 0;
 }

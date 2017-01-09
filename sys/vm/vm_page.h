@@ -208,7 +208,7 @@ typedef struct vm_page *vm_page_t;
 
 #define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_L2_SIZE 256	/* A number of colors opt for 1M cache */
+#define PQ_L2_SIZE 512	/* A number of colors opt for 1M cache */
 #define PQ_L2_MASK	(PQ_L2_SIZE - 1)
 
 #define PQ_NONE		0

@@ -50,6 +50,18 @@
 #include <vm/vm_object.h>
 #include <sys/sysctl.h>
 
+/*
+ * WARNING: vmstats represents the final say, but individual cpu's may
+ *	    accumulative adjustments in gd->gd_vmstats_adj.  These are
+ *	    synchronized to the global vmstats in hardclock.
+ *
+ *	    In addition, most individual cpus check vmstats using a local
+ *	    copy of the global vmstats in gd->gd_vmstats.  Hardclock also
+ *	    sychronizes the copy.  The pageout code and vm_page_alloc will
+ *	    also synchronize their local copies as necessary.
+ *
+ *	    Other consumers should not expect perfect values.
+ */
 __cachealign struct vmstats vmstats;
 
 static int maxslp = MAXSLP;
@@ -460,8 +472,9 @@ vmmeter_init(void *dummy __unused)
 SYSINIT(vmmeter, SI_SUB_PSEUDO, SI_ORDER_ANY, vmmeter_init, 0);
 
 /*
- * Rolls up accumulated adjustments to vmstats counts into the global
- * structure.
+ * Rolls up accumulated pcpu adjustments to vmstats counts into the global
+ * structure, copy the global structure into our pcpu structure.  Critical
+ * path checks will use our pcpu structure.
  *
  * This is somewhat expensive and only called when needed, and by the
  * hardclock.
@@ -474,6 +487,7 @@ vmstats_rollup(void)
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		vmstats_rollup_cpu(globaldata_find(cpu));
 	}
+	mycpu->gd_vmstats = vmstats;
 }
 
 void
@@ -481,24 +495,24 @@ vmstats_rollup_cpu(globaldata_t gd)
 {
 	int value;
 
-	if (gd->gd_vmstats.v_free_count) {
-		value = atomic_swap_int(&gd->gd_vmstats.v_free_count, 0);
+	if (gd->gd_vmstats_adj.v_free_count) {
+		value = atomic_swap_int(&gd->gd_vmstats_adj.v_free_count, 0);
 		atomic_add_int(&vmstats.v_free_count, value);
 	}
-	if (gd->gd_vmstats.v_cache_count) {
-		value = atomic_swap_int(&gd->gd_vmstats.v_cache_count, 0);
+	if (gd->gd_vmstats_adj.v_cache_count) {
+		value = atomic_swap_int(&gd->gd_vmstats_adj.v_cache_count, 0);
 		atomic_add_int(&vmstats.v_cache_count, value);
 	}
-	if (gd->gd_vmstats.v_inactive_count) {
-		value = atomic_swap_int(&gd->gd_vmstats.v_inactive_count, 0);
+	if (gd->gd_vmstats_adj.v_inactive_count) {
+		value =atomic_swap_int(&gd->gd_vmstats_adj.v_inactive_count, 0);
 		atomic_add_int(&vmstats.v_inactive_count, value);
 	}
-	if (gd->gd_vmstats.v_active_count) {
-		value = atomic_swap_int(&gd->gd_vmstats.v_active_count, 0);
+	if (gd->gd_vmstats_adj.v_active_count) {
+		value = atomic_swap_int(&gd->gd_vmstats_adj.v_active_count, 0);
 		atomic_add_int(&vmstats.v_active_count, value);
 	}
-	if (gd->gd_vmstats.v_wire_count) {
-		value = atomic_swap_int(&gd->gd_vmstats.v_wire_count, 0);
+	if (gd->gd_vmstats_adj.v_wire_count) {
+		value = atomic_swap_int(&gd->gd_vmstats_adj.v_wire_count, 0);
 		atomic_add_int(&vmstats.v_wire_count, value);
 	}
 }

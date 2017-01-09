@@ -182,7 +182,8 @@ struct globaldata {
 	void		*gd_sample_sp;		/* sample stack pointer */
 	uint64_t	gd_cpumask_simple;
 	uint64_t	gd_cpumask_offset;
-	struct vmstats	gd_vmstats;		/* pcpu adj for vmstats */
+	struct vmstats	gd_vmstats;		/* pcpu local copy of vmstats */
+	struct vmstats	gd_vmstats_adj;		/* pcpu adj for vmstats */
 	uint64_t	gd_reserved64[1];
 	void		*gd_preserved[4];	/* future fields */
 	/* extended by <machine/globaldata.h> */

@@ -223,15 +223,16 @@ vm_add_new_page(vm_paddr_t pa)
 	m = PHYS_TO_VM_PAGE(pa);
 	m->phys_addr = pa;
 	m->flags = 0;
-	m->pc = (pa >> PAGE_SHIFT) & PQ_L2_MASK;
 	m->pat_mode = PAT_WRITE_BACK;
+	m->pc = (pa >> PAGE_SHIFT);
 
 	/*
 	 * Twist for cpu localization in addition to page coloring, so
 	 * different cpus selecting by m->queue get different page colors.
 	 */
-	m->pc ^= ((pa >> PAGE_SHIFT) / PQ_L2_SIZE) & PQ_L2_MASK;
-	m->pc ^= ((pa >> PAGE_SHIFT) / (PQ_L2_SIZE * PQ_L2_SIZE)) & PQ_L2_MASK;
+	m->pc ^= ((pa >> PAGE_SHIFT) / PQ_L2_SIZE);
+	m->pc ^= ((pa >> PAGE_SHIFT) / (PQ_L2_SIZE * PQ_L2_SIZE));
+	m->pc &= PQ_L2_MASK;
 
 	/*
 	 * Reserve a certain number of contiguous low memory pages for
@@ -446,6 +447,7 @@ vm_page_startup(void)
 		virtual2_start = vaddr;
 	else
 		virtual_start = vaddr;
+	mycpu->gd_vmstats = vmstats;
 }
 
 /*
@@ -803,11 +805,14 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		 * mastership changes in the global vmstats, which can be
 		 * particularly bad in multi-socket systems.
 		 */
-		cnt = (int *)((char *)&mycpu->gd_vmstats + pq->cnt_offset);
+		cnt = (int *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
 		atomic_add_int(cnt, -1);
 		if (*cnt < -VMMETER_SLOP_COUNT) {
 			u_int copy = atomic_swap_int(cnt, 0);
 			cnt = (int *)((char *)&vmstats + pq->cnt_offset);
+			atomic_add_int(cnt, copy);
+			cnt = (int *)((char *)&mycpu->gd_vmstats +
+				      pq->cnt_offset);
 			atomic_add_int(cnt, copy);
 		}
 		pq->lcnt--;
@@ -843,7 +848,7 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 		 * to incorporate the count it will call vmstats_rollup()
 		 * to roll it all up into the global vmstats strufture.
 		 */
-		cnt = (int *)((char *)&mycpu->gd_vmstats + pq->cnt_offset);
+		cnt = (int *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
 		atomic_add_int(cnt, 1);
 
 		/*
@@ -919,31 +924,32 @@ vm_get_pg_color(int cpuid, vm_object_t object, vm_pindex_t pindex)
 	object_pg_color = object ? object->pg_color : 0;
 
 	if (cpu_topology_phys_ids && cpu_topology_core_ids) {
-		int grpsize = PQ_L2_SIZE / cpu_topology_phys_ids;
+		int grpsize;
 
-		if (grpsize / cpu_topology_core_ids >= PQ_SET_ASSOC) {
-			/*
-			 * Enough space for a full break-down.
-			 */
-			pg_color = phys_id * grpsize;
-			pg_color += core_id * grpsize / cpu_topology_core_ids;
-			pg_color += (pindex + object_pg_color) %
-				    (grpsize / cpu_topology_core_ids);
+		/*
+		 * Break us down by socket and cpu
+		 */
+		pg_color = phys_id * PQ_L2_SIZE / cpu_topology_phys_ids;
+		pg_color += core_id * PQ_L2_SIZE /
+			    (cpu_topology_core_ids * cpu_topology_phys_ids);
+
+		/*
+		 * Calculate remaining component for object/queue color
+		 */
+		grpsize = PQ_L2_SIZE / (cpu_topology_core_ids *
+					cpu_topology_phys_ids);
+		if (grpsize >= 8) {
+			pg_color += (pindex + object_pg_color) % grpsize;
 		} else {
-			/*
-			 * Not enough space, split up by physical package,
-			 * then split up by core id but only down to a
-			 * 16-set.  If all else fails, force a 16-set.
-			 */
-			pg_color = phys_id * grpsize;
-			if (grpsize > 16) {
-				pg_color += 16 * (core_id % (grpsize / 16));
-				grpsize = 16;
+			if (grpsize <= 2) {
+				grpsize = 8;
 			} else {
-				grpsize = 16;
+				/* 3->9, 4->8, 5->10, 6->12, 7->14 */
+				grpsize += grpsize;
+				if (grpsize < 8)
+					grpsize += grpsize;
 			}
-			pg_color += (pindex + object_pg_color) %
-				    grpsize;
+			pg_color += (pindex + object_pg_color) % grpsize;
 		}
 	} else {
 		/*
@@ -952,7 +958,7 @@ vm_get_pg_color(int cpuid, vm_object_t object, vm_pindex_t pindex)
 		pg_color = cpuid * PQ_L2_SIZE / ncpus;
 		pg_color += pindex + object_pg_color;
 	}
-	return pg_color;
+	return (pg_color & PQ_L2_MASK);
 }
 
 /*
@@ -1782,6 +1788,7 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 vm_page_t
 vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
+	globaldata_t gd;
 	vm_object_t obj;
 	vm_page_t m;
 	u_short pg_color;
@@ -1842,10 +1849,14 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	 * livelocks, be careful.
 	 */
 loop:
-	if (vmstats.v_free_count >= vmstats.v_free_reserved ||
-	    ((page_req & VM_ALLOC_INTERRUPT) && vmstats.v_free_count > 0) ||
-	    ((page_req & VM_ALLOC_SYSTEM) && vmstats.v_cache_count == 0 &&
-		vmstats.v_free_count > vmstats.v_interrupt_free_min)
+	gd = mycpu;
+	if (gd->gd_vmstats.v_free_count >= gd->gd_vmstats.v_free_reserved ||
+	    ((page_req & VM_ALLOC_INTERRUPT) &&
+	     gd->gd_vmstats.v_free_count > 0) ||
+	    ((page_req & VM_ALLOC_SYSTEM) &&
+	     gd->gd_vmstats.v_cache_count == 0 &&
+		gd->gd_vmstats.v_free_count >
+		gd->gd_vmstats.v_interrupt_free_min)
 	) {
 		/*
 		 * The free queue has sufficient free pages to take one out.
@@ -1902,10 +1913,6 @@ loop:
 		/*
 		 * On failure return NULL
 		 */
-#if defined(DIAGNOSTIC)
-		if (vmstats.v_cache_count > 0)
-			kprintf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
-#endif
 		atomic_add_int(&vm_pageout_deficit, 1);
 		pagedaemon_wakeup();
 		return (NULL);
@@ -1922,8 +1929,10 @@ loop:
 	 * v_free_count can race so loop if we don't find the expected
 	 * page.
 	 */
-	if (m == NULL)
+	if (m == NULL) {
+		vmstats_rollup();
 		goto loop;
+	}
 
 	/*
 	 * Good page found.  The page has already been busied for us and
@@ -2247,13 +2256,15 @@ vm_page_activate(vm_page_t m)
 static __inline void
 vm_page_free_wakeup(void)
 {
+	globaldata_t gd = mycpu;
+
 	/*
 	 * If the pageout daemon itself needs pages, then tell it that
 	 * there are some free.
 	 */
 	if (vm_pageout_pages_needed &&
-	    vmstats.v_cache_count + vmstats.v_free_count >= 
-	    vmstats.v_pageout_free_min
+	    gd->gd_vmstats.v_cache_count + gd->gd_vmstats.v_free_count >=
+	    gd->gd_vmstats.v_pageout_free_min
 	) {
 		vm_pageout_pages_needed = 0;
 		wakeup(&vm_pageout_pages_needed);
@@ -2438,7 +2449,7 @@ vm_page_wire(vm_page_t m)
 		if (atomic_fetchadd_int(&m->wire_count, 1) == 0) {
 			if ((m->flags & PG_UNMANAGED) == 0)
 				vm_page_unqueue(m);
-			atomic_add_int(&mycpu->gd_vmstats.v_wire_count, 1);
+			atomic_add_int(&mycpu->gd_vmstats_adj.v_wire_count, 1);
 		}
 		KASSERT(m->wire_count != 0,
 			("vm_page_wire: wire_count overflow m=%p", m));
@@ -2483,7 +2494,7 @@ vm_page_unwire(vm_page_t m, int activate)
 		panic("vm_page_unwire: invalid wire count: %d", m->wire_count);
 	} else {
 		if (atomic_fetchadd_int(&m->wire_count, -1) == 1) {
-			atomic_add_int(&mycpu->gd_vmstats.v_wire_count, -1);
+			atomic_add_int(&mycpu->gd_vmstats_adj.v_wire_count, -1);
 			if (m->flags & PG_UNMANAGED) {
 				;
 			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
@@ -3335,25 +3346,25 @@ DB_SHOW_COMMAND(pageq, vm_page_print_pageq_info)
 {
 	int i;
 	db_printf("PQ_FREE:");
-	for(i=0;i<PQ_L2_SIZE;i++) {
+	for (i = 0; i < PQ_L2_SIZE; i++) {
 		db_printf(" %d", vm_page_queues[PQ_FREE + i].lcnt);
 	}
 	db_printf("\n");
 		
 	db_printf("PQ_CACHE:");
-	for(i=0;i<PQ_L2_SIZE;i++) {
+	for(i = 0; i < PQ_L2_SIZE; i++) {
 		db_printf(" %d", vm_page_queues[PQ_CACHE + i].lcnt);
 	}
 	db_printf("\n");
 
 	db_printf("PQ_ACTIVE:");
-	for(i=0;i<PQ_L2_SIZE;i++) {
+	for(i = 0; i < PQ_L2_SIZE; i++) {
 		db_printf(" %d", vm_page_queues[PQ_ACTIVE + i].lcnt);
 	}
 	db_printf("\n");
 
 	db_printf("PQ_INACTIVE:");
-	for(i=0;i<PQ_L2_SIZE;i++) {
+	for(i = 0; i < PQ_L2_SIZE; i++) {
 		db_printf(" %d", vm_page_queues[PQ_INACTIVE + i].lcnt);
 	}
 	db_printf("\n");

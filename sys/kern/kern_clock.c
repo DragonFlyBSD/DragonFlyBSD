@@ -637,9 +637,10 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	hardclock_softtick(gd);
 
 	/*
-	 * Rollup accumulated vmstats
+	 * Rollup accumulated vmstats, copy-back for critical path checks.
 	 */
 	vmstats_rollup_cpu(gd);
+	mycpu->gd_vmstats = vmstats;
 
 	/*
 	 * ITimer handling is per-tick, per-cpu.
