@@ -13,6 +13,9 @@
 
 #define TEST_FILENAME	"/tmp/passdesc"
 
+static int	test_buflen;
+static void	*test_buf;
+
 static void
 test_send_desc(int s, int fd)
 {
@@ -25,8 +28,8 @@ test_send_desc(int s, int fd)
 	struct cmsghdr *cm;
 	int n;
 
-	iov.iov_base = &fd;
-	iov.iov_len = sizeof(fd);
+	iov.iov_base = test_buf;
+	iov.iov_len = test_buflen;
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = &iov;
@@ -44,7 +47,7 @@ test_send_desc(int s, int fd)
 	n = sendmsg(s, &msg, 0);
 	if (n < 0)
 		err(1, "sendmsg failed");
-	else if (n != sizeof(fd))
+	else if (n != test_buflen)
 		errx(1, "sendmsg sent %d", n);
 	close(fd);
 }
@@ -59,11 +62,11 @@ test_recv_desc(int s)
 		uint8_t data[CMSG_SPACE(sizeof(int))];
 	} ctrl;
 	struct cmsghdr *cm;
-	int buf, n, fd;
+	int n, fd;
 	char data[16];
 
-	iov.iov_base = &buf;
-	iov.iov_len = sizeof(buf);
+	iov.iov_base = test_buf;
+	iov.iov_len = test_buflen;
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = &iov;
@@ -71,10 +74,10 @@ test_recv_desc(int s)
 	msg.msg_control = ctrl.data;
 	msg.msg_controllen = sizeof(ctrl.data);
 
-	n = recvmsg(s, &msg, 0);
+	n = recvmsg(s, &msg, MSG_WAITALL);
 	if (n < 0)
 		err(1, "recvmsg failed");
-	else if (n != sizeof(buf))
+	else if (n != test_buflen)
 		errx(1, "recvmsg received %d", n);
 
 	cm = CMSG_FIRSTHDR(&msg);
@@ -100,7 +103,7 @@ test_recv_desc(int s)
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s [-d] [-s]\n", cmd);
+	fprintf(stderr, "%s [-d] [-s] [-p payload_len]\n", cmd);
 	exit(1);
 }
 
@@ -113,10 +116,14 @@ main(int argc, char *argv[])
 
 	discard = 0;
 	skipfd = 0;
-	while ((opt = getopt(argc, argv, "ds")) != -1) {
+	while ((opt = getopt(argc, argv, "dp:s")) != -1) {
 		switch (opt) {
 		case 'd':
 			discard = 1;
+			break;
+
+		case 'p':
+			test_buflen = strtoul(optarg, NULL, 10);
 			break;
 
 		case 's':
@@ -127,6 +134,12 @@ main(int argc, char *argv[])
 			usage(argv[0]);
 		}
 	}
+
+	if (test_buflen <= 0)
+		test_buflen = sizeof(int);
+	test_buf = malloc(test_buflen);
+	if (test_buf == NULL)
+		err(1, "malloc %d failed", test_buflen);
 
 	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, s) < 0)
 		err(1, "socketpair(LOCAL, STREAM) failed");
