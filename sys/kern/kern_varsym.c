@@ -51,8 +51,6 @@
 #include <sys/varsym.h>
 #include <sys/sysproto.h>
 
-#include <sys/mplock2.h>
-
 MALLOC_DEFINE(M_VARSYM, "varsym", "variable sets for variant symlinks");
 
 struct varsymset	varsymset_sys;
@@ -128,8 +126,6 @@ varsymreplace(char *cp, int linklen, int maxlen)
  * varsym_set() system call
  *
  * (int level, const char *name, const char *data)
- *
- * MPALMOSTSAFE
  */
 int
 sys_varsym_set(struct varsym_set_args *uap)
@@ -152,12 +148,11 @@ sys_varsym_set(struct varsym_set_args *uap)
 	goto done1;
     }
 
-    get_mplock();
-
     switch(uap->level) {
     case VARSYM_SYS:
 	if (lp != NULL && td->td_ucred->cr_prison != NULL)
 	    uap->level = VARSYM_PRISON;
+	/* fall through */
     case VARSYM_PRISON:
 	if (lp != NULL &&
 	    (error = priv_check_cred(td->td_ucred, PRIV_VARSYM_SYS, 0)) != 0)
@@ -175,7 +170,6 @@ sys_varsym_set(struct varsym_set_args *uap)
 	}
 	break;
     }
-    rel_mplock();
 done1:
     kfree(buf, M_TEMP);
 done2:
@@ -197,7 +191,6 @@ sys_varsym_get(struct varsym_get_args *uap)
     int error;
     int dlen;
 
-    get_mplock();
     if ((error = copyinstr(uap->wild, wild, sizeof(wild), NULL)) != 0)
 	goto done;
     sym = varsymfind(uap->mask, wild, strlen(wild));
@@ -214,7 +207,7 @@ sys_varsym_get(struct varsym_get_args *uap)
     uap->sysmsg_result = dlen + 1;
     varsymdrop(sym);
 done:
-    rel_mplock();
+
     return(error);
 }
 
@@ -242,7 +235,6 @@ sys_varsym_list(struct varsym_list_args *uap)
 	/*
 	 * Get the marker from userspace.
 	 */
-	get_mplock();
 	if ((error = copyin(uap->marker, &marker, sizeof(marker))) != 0)
 		goto done;
 
@@ -342,7 +334,6 @@ sys_varsym_list(struct varsym_list_args *uap)
 		error = copyout(&marker, uap->marker, sizeof(marker));
 	uap->sysmsg_result = bytes;
 done:
-	rel_mplock();
 	return(error);
 }
 
