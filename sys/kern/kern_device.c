@@ -51,26 +51,6 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-static int mpsafe_writes;
-static int mplock_writes;
-static int mpsafe_reads;
-static int mplock_reads;
-static int mpsafe_strategies;
-static int mplock_strategies;
-
-SYSCTL_INT(_kern, OID_AUTO, mpsafe_writes, CTLFLAG_RD, &mpsafe_writes,
-	   0, "mpsafe writes");
-SYSCTL_INT(_kern, OID_AUTO, mplock_writes, CTLFLAG_RD, &mplock_writes,
-	   0, "non-mpsafe writes");
-SYSCTL_INT(_kern, OID_AUTO, mpsafe_reads, CTLFLAG_RD, &mpsafe_reads,
-	   0, "mpsafe reads");
-SYSCTL_INT(_kern, OID_AUTO, mplock_reads, CTLFLAG_RD, &mplock_reads,
-	   0, "non-mpsafe reads");
-SYSCTL_INT(_kern, OID_AUTO, mpsafe_strategies, CTLFLAG_RD, &mpsafe_strategies,
-	   0, "mpsafe strategies");
-SYSCTL_INT(_kern, OID_AUTO, mplock_strategies, CTLFLAG_RD, &mplock_strategies,
-	   0, "non-mpsafe strategies");
-
 /*
  * system link descriptors identify the command in the
  * arguments structure.
@@ -203,12 +183,8 @@ dev_dread(cdev_t dev, struct uio *uio, int ioflag, struct file *fp)
 	ap.a_ioflag = ioflag;
 	ap.a_fp = fp;
 
-	if (needmplock) {
+	if (needmplock)
 		get_mplock();
-		++mplock_reads;
-	} else {
-		++mpsafe_reads;
-	}
 	error = dev->si_ops->d_read(&ap);
 	if (needmplock)
 		rel_mplock();
@@ -231,12 +207,8 @@ dev_dwrite(cdev_t dev, struct uio *uio, int ioflag, struct file *fp)
 	ap.a_ioflag = ioflag;
 	ap.a_fp = fp;
 
-	if (needmplock) {
+	if (needmplock)
 		get_mplock();
-		++mplock_writes;
-	} else {
-		++mpsafe_writes;
-	}
 	error = dev->si_ops->d_write(&ap);
 	if (needmplock)
 		rel_mplock();
@@ -383,12 +355,8 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 	dsched_buf_enter(bio->bio_buf);	/* might stack */
 
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
-	if (needmplock) {
+	if (needmplock)
 		get_mplock();
-		++mplock_strategies;
-	} else {
-		++mpsafe_strategies;
-	}
 	(void)dev->si_ops->d_strategy(&ap);
 	if (needmplock)
 		rel_mplock();
