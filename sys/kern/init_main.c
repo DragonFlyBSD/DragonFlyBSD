@@ -64,7 +64,6 @@
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 
@@ -553,11 +552,6 @@ start_init(void *dummy, struct trapframe *frame)
 	if (env != NULL)
 		strlcpy(kernelname, env, sizeof(kernelname));
 
-	/*
-	 * The MP lock is not held on entry.  We release it before
-	 * returning to userland.
-	 */
-	get_mplock();
 	p = curproc;
 
 	lp = ONLY_LWP_IN_PROC(p);
@@ -674,7 +668,6 @@ start_init(void *dummy, struct trapframe *frame)
 		 * release it.
 		 */
 		if ((error = sys_execve(&args)) == 0) {
-			rel_mplock();
 			lp->lwp_proc->p_usched->acquire_curproc(lp);
 			return;
 		}
