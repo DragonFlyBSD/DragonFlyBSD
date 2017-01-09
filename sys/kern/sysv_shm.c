@@ -43,8 +43,6 @@
 #include <sys/sysent.h>
 #include <sys/jail.h>
 
-#include <sys/mplock2.h>
-
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <sys/lock.h>
@@ -67,6 +65,7 @@ static int shmget_existing (struct proc *p, struct shmget_args *uap, int mode, i
 static int shm_last_free, shm_committed, shmalloced;
 int shm_nused;
 static struct shmid_ds	*shmsegs;
+static struct lwkt_token shm_token = LWKT_TOKEN_INITIALIZER(shm_token);
 
 struct shm_handle {
 	/* vm_offset_t kva; */
@@ -217,7 +216,7 @@ sys_shmdt(struct shmdt_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
+	lwkt_gettoken(&shm_token);
 	shmmap_s = (struct shmmap_state *)p->p_vmspace->vm_shm;
 	if (shmmap_s == NULL) {
 		error = EINVAL;
@@ -233,7 +232,8 @@ sys_shmdt(struct shmdt_args *uap)
 	else
 		error = shm_delete_mapping(p->p_vmspace, shmmap_s);
 done:
-	rel_mplock();
+	lwkt_reltoken(&shm_token);
+
 	return (error);
 }
 
@@ -259,7 +259,7 @@ sys_shmat(struct shmat_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
+	lwkt_gettoken(&shm_token);
 again:
 	shmmap_s = (struct shmmap_state *)p->p_vmspace->vm_shm;
 	if (shmmap_s == NULL) {
@@ -357,7 +357,8 @@ again:
 	uap->sysmsg_resultp = (void *)attach_va;
 	error = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&shm_token);
+
 	return error;
 }
 
@@ -376,7 +377,7 @@ sys_shmctl(struct shmctl_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
+	lwkt_gettoken(&shm_token);
 	shmseg = shm_find_segment_by_shmid(uap->shmid);
 	if (shmseg == NULL) {
 		error = EINVAL;
@@ -422,7 +423,8 @@ sys_shmctl(struct shmctl_args *uap)
 		break;
 	}
 done:
-	rel_mplock();
+	lwkt_reltoken(&shm_token);
+
 	return error;
 }
 
@@ -581,7 +583,8 @@ sys_shmget(struct shmget_args *uap)
 		return (ENOSYS);
 
 	mode = uap->shmflg & ACCESSPERMS;
-	get_mplock();
+
+	lwkt_gettoken(&shm_token);
 
 	if (uap->key != IPC_PRIVATE) {
 	again:
@@ -599,7 +602,8 @@ sys_shmget(struct shmget_args *uap)
 	}
 	error = shmget_allocate_segment(p, uap, mode);
 done:
-	rel_mplock();
+	lwkt_reltoken(&shm_token);
+
 	return (error);
 }
 
@@ -610,7 +614,7 @@ shmfork(struct proc *p1, struct proc *p2)
 	size_t size;
 	int i;
 
-	get_mplock();
+	lwkt_gettoken(&shm_token);
 	size = shminfo.shmseg * sizeof(struct shmmap_state);
 	shmmap_s = kmalloc(size, M_SHM, M_WAITOK);
 	bcopy((caddr_t)p1->p_vmspace->vm_shm, (caddr_t)shmmap_s, size);
@@ -619,7 +623,7 @@ shmfork(struct proc *p1, struct proc *p2)
 		if (shmmap_s->shmid != -1)
 			shmsegs[IPCID_TO_IX(shmmap_s->shmid)].shm_nattch++;
 	}
-	rel_mplock();
+	lwkt_reltoken(&shm_token);
 }
 
 void
@@ -630,13 +634,13 @@ shmexit(struct vmspace *vm)
 
 	if ((base = (struct shmmap_state *)vm->vm_shm) != NULL) {
 		vm->vm_shm = NULL;
-		get_mplock();
+		lwkt_gettoken(&shm_token);
 		for (i = 0, shm = base; i < shminfo.shmseg; i++, shm++) {
 			if (shm->shmid != -1)
 				shm_delete_mapping(vm, shm);
 		}
 		kfree(base, M_SHM);
-		rel_mplock();
+		lwkt_reltoken(&shm_token);
 	}
 }
 

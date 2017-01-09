@@ -37,8 +37,6 @@
 #include <sys/linker.h>
 #include <sys/proc.h>
 
-#include <sys/mplock2.h>
-
 MALLOC_DEFINE(M_MODULE, "module", "module data structures");
 
 typedef TAILQ_HEAD(, module) modulelist_t;
@@ -57,6 +55,7 @@ struct module {
 #define MOD_EVENT(mod, type) (mod)->handler((mod), (type), (mod)->arg)
 
 static modulelist_t modules = TAILQ_HEAD_INITIALIZER(modules);
+static struct lwkt_token mod_token = LWKT_TOKEN_INITIALIZER(mod_token);
 static int nextid = 1;
 
 static void module_shutdown(void*, int);
@@ -251,7 +250,7 @@ sys_modnext(struct modnext_args *uap)
     int error;
 
     error = 0;
-    get_mplock();
+    lwkt_gettoken(&mod_token);
     uap->sysmsg_result = -1;
     if (uap->modid == 0) {
 	mod = TAILQ_FIRST(&modules);
@@ -273,7 +272,8 @@ sys_modnext(struct modnext_args *uap)
     else
 	uap->sysmsg_result = 0;
 done:
-    rel_mplock();
+    lwkt_reltoken(&mod_token);
+
     return error;
 }
 
@@ -286,7 +286,7 @@ sys_modfnext(struct modfnext_args *uap)
     module_t mod;
     int error;
 
-    get_mplock();
+    lwkt_gettoken(&mod_token);
     uap->sysmsg_result = -1;
 
     mod = module_lookupbyid(uap->modid);
@@ -301,7 +301,8 @@ sys_modfnext(struct modfnext_args *uap)
 	uap->sysmsg_result = 0;
     error = 0;
 done:
-    rel_mplock();
+    lwkt_reltoken(&mod_token);
+
     return error;
 }
 
@@ -324,7 +325,7 @@ sys_modstat(struct modstat_args *uap)
     int version;
     struct module_stat* stat;
 
-    get_mplock();
+    lwkt_gettoken(&mod_token);
     mod = module_lookupbyid(uap->modid);
     if (!mod) {
 	error = ENOENT;
@@ -366,7 +367,8 @@ sys_modstat(struct modstat_args *uap)
     uap->sysmsg_result = 0;
 
 out:
-    rel_mplock();
+    lwkt_reltoken(&mod_token);
+
     return error;
 }
 
@@ -380,7 +382,7 @@ sys_modfind(struct modfind_args *uap)
     char name[MAXMODNAME];
     module_t mod;
 
-    get_mplock();
+    lwkt_gettoken(&mod_token);
     if ((error = copyinstr(uap->name, name, sizeof name, 0)) != 0)
 	goto out;
 
@@ -391,6 +393,7 @@ sys_modfind(struct modfind_args *uap)
 	uap->sysmsg_result = mod->id;
 
 out:
-    rel_mplock();
+    lwkt_reltoken(&mod_token);
+
     return error;
 }

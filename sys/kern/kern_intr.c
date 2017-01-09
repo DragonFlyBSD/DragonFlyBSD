@@ -239,7 +239,7 @@ register_swi_mp(int intr, inthand2_t *handler, void *arg, const char *name,
     if (cpuid < 0)
 	cpuid = intr % ncpus;
     return(register_int(intr, handler, arg, name, serializer,
-        INTR_MPSAFE, cpuid));
+			INTR_MPSAFE, cpuid));
 }
 
 void *
@@ -333,8 +333,10 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      * Set i_mplock_required if any handler in the chain requires
      * the MP lock to operate.
      */
-    if ((intr_flags & INTR_MPSAFE) == 0)
+    if ((intr_flags & INTR_MPSAFE) == 0) {
 	info->i_mplock_required = 1;
+	kprintf("interrupt uses mplock: %s\n", name);
+    }
     if (intr_flags & INTR_CLOCK)
 	++info->i_fast;
     else

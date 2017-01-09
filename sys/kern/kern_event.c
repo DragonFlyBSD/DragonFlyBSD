@@ -137,7 +137,7 @@ static struct filterops file_filtops =
 static struct filterops kqread_filtops =
 	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, filt_kqdetach, filt_kqueue };
 static struct filterops proc_filtops =
-	{ 0, filt_procattach, filt_procdetach, filt_proc };
+	{ FILTEROP_MPSAFE, filt_procattach, filt_procdetach, filt_proc };
 static struct filterops timer_filtops =
 	{ FILTEROP_MPSAFE, filt_timerattach, filt_timerdetach, filt_timer };
 static struct filterops user_filtops =

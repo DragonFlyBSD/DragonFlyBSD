@@ -148,8 +148,6 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
-
 
 struct csprng_state csprng_state;
 

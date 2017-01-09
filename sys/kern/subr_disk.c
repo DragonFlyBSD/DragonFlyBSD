@@ -105,7 +105,6 @@
 #include <sys/uuid.h>
 
 #include <sys/buf2.h>
-#include <sys/mplock2.h>
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
 
@@ -132,6 +131,7 @@ static d_dump_t diskdump;
 
 static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 static struct lwkt_token disklist_token;
+static struct lwkt_token ds_token;
 
 static struct dev_ops disk_ops = {
 	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE },
@@ -458,7 +458,7 @@ disk_msg_core(void *arg)
 	wakeup(curthread);	/* synchronous startup */
 	lwkt_reltoken(&disklist_token);
 
-	get_mplock();	/* not mpsafe yet? */
+	lwkt_gettoken(&ds_token);
 	run = 1;
 
 	while (run) {
@@ -544,6 +544,7 @@ disk_msg_core(void *arg)
 		}
 		lwkt_replymsg(&msg->hdr, 0);
 	}
+	lwkt_reltoken(&ds_token);
 	lwkt_exit();
 }
 
@@ -1015,12 +1016,12 @@ diskopen(struct dev_open_args *ap)
 	/*
 	 * Deal with open races
 	 */
-	get_mplock();
+	lwkt_gettoken(&ds_token);
 	while (dp->d_flags & DISKFLAG_LOCK) {
 		dp->d_flags |= DISKFLAG_WANTED;
 		error = tsleep(dp, PCATCH, "diskopen", hz);
 		if (error) {
-			rel_mplock();
+			lwkt_reltoken(&ds_token);
 			return (error);
 		}
 	}
@@ -1051,7 +1052,7 @@ out:
 		dp->d_flags &= ~DISKFLAG_WANTED;
 		wakeup(dp);
 	}
-	rel_mplock();
+	lwkt_reltoken(&ds_token);
 
 	KKASSERT(dp->d_opencount >= 0);
 	/* If the open was successful, bump open count */
@@ -1087,12 +1088,13 @@ diskclose(struct dev_close_args *ap)
 	KKASSERT(dp->d_opencount >= 1);
 	lcount = atomic_fetchadd_int(&dp->d_opencount, -1);
 
-	get_mplock();
+	lwkt_gettoken(&ds_token);
 	dsclose(dev, ap->a_devtype, dp->d_slice);
 	if (lcount <= 1 && !dsisopen(dp->d_slice)) {
 		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype, NULL);
 	}
-	rel_mplock();
+	lwkt_reltoken(&ds_token);
+
 	return (error);
 }
 
@@ -1135,10 +1137,10 @@ diskioctl(struct dev_ioctl_args *ap)
 	     dkslice(dev) == WHOLE_DISK_SLICE)) {
 		error = ENOIOCTL;
 	} else {
-		get_mplock();
+		lwkt_gettoken(&ds_token);
 		error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag,
 				&dp->d_slice, &dp->d_info);
-		rel_mplock();
+		lwkt_reltoken(&ds_token);
 	}
 
 	if (error == ENOIOCTL) {
@@ -1286,6 +1288,7 @@ SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_minor_bytes,
 void
 bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 {
+#if 0
 	/*
 	 * The BIO wants to be ordered.  Adding to the tail also
 	 * causes transition to be set to NULL, forcing the ordering
@@ -1295,6 +1298,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		bioq_insert_tail(bioq, bio);
 		return;
 	}
+#endif
 
 	switch(bio->bio_buf->b_cmd) {
 	case BUF_CMD_READ:
@@ -1480,6 +1484,7 @@ disk_init(void)
 					 &disk_msg_malloc_args);
 
 	lwkt_token_init(&disklist_token, "disks");
+	lwkt_token_init(&ds_token, "ds");
 
 	/*
 	 * Initialize the reply-only port which acts as a message drain

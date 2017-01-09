@@ -59,7 +59,6 @@
 #include <sys/sysctl.h>
 
 #include <sys/signal2.h>
-#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -95,6 +94,7 @@ static struct dev_ops mem_ops = {
 static int rand_bolt;
 static caddr_t	zbuf;
 static cdev_t	zerodev = NULL;
+static struct lock mem_lock = LOCK_INITIALIZER("memlk", 0, 0);
 
 MALLOC_DEFINE(M_MEMDESC, "memdesc", "memory range descriptors");
 static int mem_ioctl (cdev_t, u_long, caddr_t, int, struct ucred *);
@@ -441,7 +441,7 @@ mmioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	int error;
 
-	get_mplock();
+	lockmgr(&mem_lock, LK_EXCLUSIVE);
 
 	switch (minor(dev)) {
 	case 0:
@@ -458,7 +458,8 @@ mmioctl(struct dev_ioctl_args *ap)
 		break;
 	}
 
-	rel_mplock();
+	lockmgr(&mem_lock, LK_RELEASE);
+
 	return (error);
 }
 
