@@ -316,7 +316,15 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	copystr(devname, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, 0);
+
+	/*
+	 * Pre-set MPSAFE flags for VFS_MOUNT() call.
+	 */
+	if (vfsp->vfc_flags & VFCF_MPSAFE)
+		mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
+
 	*mpp = mp;
+
 	return (0);
 }
 

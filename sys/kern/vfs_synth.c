@@ -69,10 +69,9 @@ getsynthvnode(const char *devname)
 		++synth_synced;
 	}
 
-	error = nlookup_init_root(&nd,
-	     devname, UIO_SYSSPACE, NLC_FOLLOW,
-	     cred, &synth_mp->mnt_ncmountpt,
-	     &synth_mp->mnt_ncmountpt);
+	error = nlookup_init_root(&nd, devname, UIO_SYSSPACE, NLC_FOLLOW,
+				  cred, &synth_mp->mnt_ncmountpt,
+				  &synth_mp->mnt_ncmountpt);
 
 	if (error) {
 		panic("synth: nlookup_init_root failed with %d", error);

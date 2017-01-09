@@ -67,7 +67,6 @@
 #include <sys/buf2.h>
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -594,7 +593,6 @@ sys_unmount(struct unmount_args *uap)
 	int error;
 
 	KKASSERT(p);
-	get_mplock();
 	if (td->td_ucred->cr_prison != NULL) {
 		error = EPERM;
 		goto done;
@@ -639,7 +637,6 @@ out:
 	if (error == 0)
 		error = dounmount(mp, uap->flags);
 done:
-	rel_mplock();
 	return (error);
 }
 
@@ -995,7 +992,6 @@ sys_quotactl(struct quotactl_args *uap)
 	struct mount *mp;
 	int error;
 
-	get_mplock();
 	td = curthread;
 	if (td->td_ucred->cr_prison && !prison_quotas) {
 		error = EPERM;
@@ -1012,7 +1008,6 @@ sys_quotactl(struct quotactl_args *uap)
 	}
 	nlookup_done(&nd);
 done:
-	rel_mplock();
 	return (error);
 }
 
@@ -1092,9 +1087,7 @@ sys_mountctl(struct mountctl_args *uap)
 	/*
 	 * Execute the internal kernel function and clean up.
 	 */
-	get_mplock();
 	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen, buf, uap->buflen, &uap->sysmsg_result);
-	rel_mplock();
 	if (fp)
 		fdrop(fp);
 	if (error == 0 && uap->sysmsg_result > 0)
@@ -1880,9 +1873,7 @@ sys_chroot_kernel(struct chroot_kernel_args *uap)
 		goto error_out;
 
 	kprintf("chroot_kernel: set new rootnch/rootvnode to %s\n", uap->path);
-	get_mplock();
 	vfs_cache_setroot(vp, cache_hold(nch));
-	rel_mplock();
 
 error_out:
 	nlookup_done(&nd);

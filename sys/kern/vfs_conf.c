@@ -235,16 +235,19 @@ vfs_mountroot_devfs(void)
 	/*
 	 * Lookup the requested path and extract the nch and vnode.
 	 */
-	error = nlookup_init_raw(&nd,
-	     devfs_path, UIO_SYSSPACE, NLC_FOLLOW,
-	     cred, &rootnch);
+	error = nlookup_init_raw(&nd, devfs_path, UIO_SYSSPACE,
+				 NLC_FOLLOW, cred, &rootnch);
 
 	if (error == 0) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "vfs_mountroot_devfs: nlookup_init is ok...\n");
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "vfs_mountroot_devfs: nlookup_init is ok...\n");
 		if ((error = nlookup(&nd)) == 0) {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "vfs_mountroot_devfs: nlookup is ok...\n");
+			devfs_debug(DEVFS_DEBUG_DEBUG,
+				    "vfs_mountroot_devfs: nlookup is ok...\n");
 			if (nd.nl_nch.ncp->nc_vp == NULL) {
-				devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: nlookup: simply not found\n");
+				devfs_debug(DEVFS_DEBUG_SHOW,
+					    "vfs_mountroot_devfs: nlookup: "
+					    "simply not found\n");
 				error = ENOENT;
 			}
 		}
@@ -254,7 +257,9 @@ vfs_mountroot_devfs(void)
 	devfs_path = NULL;
 	if (error) {
 		nlookup_done(&nd);
-		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: nlookup failed, error: %d\n", error);
+		devfs_debug(DEVFS_DEBUG_SHOW,
+			    "vfs_mountroot_devfs: nlookup failed, error: %d\n",
+			    error);
 		return (error);
 	}
 
@@ -271,7 +276,8 @@ vfs_mountroot_devfs(void)
 	vp = nch.ncp->nc_vp;
 	if ((error = vget(vp, LK_EXCLUSIVE)) != 0) {
 		cache_put(&nch);
-		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vget failed\n");
+		devfs_debug(DEVFS_DEBUG_SHOW,
+			    "vfs_mountroot_devfs: vget failed\n");
 		return (error);
 	}
 	cache_unlock(&nch);
@@ -279,13 +285,15 @@ vfs_mountroot_devfs(void)
 	if ((error = vinvalbuf(vp, V_SAVE, 0, 0)) != 0) {
 		cache_drop(&nch);
 		vput(vp);
-		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vinvalbuf failed\n");
+		devfs_debug(DEVFS_DEBUG_SHOW,
+			    "vfs_mountroot_devfs: vinvalbuf failed\n");
 		return (error);
 	}
 	if (vp->v_type != VDIR) {
 		cache_drop(&nch);
 		vput(vp);
-		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vp is not VDIR\n");
+		devfs_debug(DEVFS_DEBUG_SHOW,
+			    "vfs_mountroot_devfs: vp is not VDIR\n");
 		return (ENOTDIR);
 	}
 
@@ -303,6 +311,8 @@ vfs_mountroot_devfs(void)
 	vfsp->vfc_refcount++;
 	mp->mnt_stat.f_type = vfsp->vfc_typenum;
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
+	if (vfsp->vfc_flags & VFCF_MPSAFE)
+		mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	mp->mnt_stat.f_owner = cred->cr_uid;
 	vn_unlock(vp);
@@ -349,7 +359,9 @@ vfs_mountroot_devfs(void)
 		//checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
 		error = vfs_allocate_syncvnode(mp);
 		if (error) {
-			devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vfs_allocate_syncvnode failed\n");
+			devfs_debug(DEVFS_DEBUG_SHOW,
+				    "vfs_mountroot_devfs: "
+				    "vfs_allocate_syncvnode failed\n");
 		}
 		vfs_unbusy(mp);
 		error = VFS_START(mp, 0);
@@ -366,10 +378,12 @@ vfs_mountroot_devfs(void)
 		kfree(mp, M_MOUNT);
 		cache_drop(&nch);
 		vput(vp);
-		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: mount failed\n");
+		devfs_debug(DEVFS_DEBUG_SHOW,
+			    "vfs_mountroot_devfs: mount failed\n");
 	}
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "rootmount_devfs done with error: %d\n", error);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "rootmount_devfs done with error: %d\n", error);
 	return (error);
 }
 
