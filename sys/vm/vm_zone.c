@@ -60,6 +60,7 @@ void *
 zalloc(vm_zone_t z)
 {
 	globaldata_t gd = mycpu;
+	vm_zpcpu_t *zpcpu;
 	void *item;
 	int n;
 
@@ -67,14 +68,15 @@ zalloc(vm_zone_t z)
 	if (z == NULL)
 		zerror(ZONE_ERROR_INVALID);
 #endif
+	zpcpu = &z->zpcpu[gd->gd_cpuid];
 retry:
 	/*
 	 * Avoid spinlock contention by allocating from a per-cpu queue
 	 */
-	if (z->zfreecnt_pcpu[gd->gd_cpuid] > 0) {
+	if (zpcpu->zfreecnt > 0) {
 		crit_enter_gd(gd);
-		if (z->zfreecnt_pcpu[gd->gd_cpuid] > 0) {
-			item = z->zitems_pcpu[gd->gd_cpuid];
+		if (zpcpu->zfreecnt > 0) {
+			item = zpcpu->zitems;
 #ifdef INVARIANTS
 			KASSERT(item != NULL,
 				("zitems_pcpu unexpectedly NULL"));
@@ -82,10 +84,11 @@ retry:
 				zerror(ZONE_ERROR_NOTFREE);
 			((void **)item)[1] = NULL;
 #endif
-			z->zitems_pcpu[gd->gd_cpuid] = ((void **) item)[0];
-			--z->zfreecnt_pcpu[gd->gd_cpuid];
-			z->znalloc++;
+			zpcpu->zitems = ((void **) item)[0];
+			--zpcpu->zfreecnt;
+			++zpcpu->znalloc;
 			crit_exit_gd(gd);
+
 			return item;
 		}
 		crit_exit_gd(gd);
@@ -106,10 +109,10 @@ retry:
 				zerror(ZONE_ERROR_NOTFREE);
 #endif
 			z->zitems = ((void **)item)[0];
-			z->zfreecnt--;
-			((void **)item)[0] = z->zitems_pcpu[gd->gd_cpuid];
-			z->zitems_pcpu[gd->gd_cpuid] = item;
-			++z->zfreecnt_pcpu[gd->gd_cpuid];
+			--z->zfreecnt;
+			((void **)item)[0] = zpcpu->zitems;
+			zpcpu->zitems = item;
+			++zpcpu->zfreecnt;
 		} while (--n > 0 && z->zfreecnt > z->zfreemin);
 		spin_unlock(&z->zlock);
 		goto retry;
@@ -135,32 +138,34 @@ void
 zfree(vm_zone_t z, void *item)
 {
 	globaldata_t gd = mycpu;
+	vm_zpcpu_t *zpcpu;
 	void *tail_item;
 	int count;
 	int zmax;
 
+	zpcpu = &z->zpcpu[gd->gd_cpuid];
+
 	/*
 	 * Avoid spinlock contention by freeing into a per-cpu queue
 	 */
-	if ((zmax = z->zmax) != 0)
-		zmax = zmax / ncpus / 16;
-	if (zmax < 64)
-		zmax = 64;
+	zmax = z->zmax_pcpu;
+	if (zmax < 1024)
+		zmax = 1024;
 
 	/*
 	 * Add to pcpu cache
 	 */
 	crit_enter_gd(gd);
-	((void **)item)[0] = z->zitems_pcpu[gd->gd_cpuid];
+	((void **)item)[0] = zpcpu->zitems;
 #ifdef INVARIANTS
 	if (((void **)item)[1] == (void *)ZENTRY_FREE)
 		zerror(ZONE_ERROR_ALREADYFREE);
 	((void **)item)[1] = (void *)ZENTRY_FREE;
 #endif
-	z->zitems_pcpu[gd->gd_cpuid] = item;
-	++z->zfreecnt_pcpu[gd->gd_cpuid];
+	zpcpu->zitems = item;
+	++zpcpu->zfreecnt;
 
-	if (z->zfreecnt_pcpu[gd->gd_cpuid] < zmax) {
+	if (zpcpu->zfreecnt < zmax) {
 		crit_exit_gd(gd);
 		return;
 	}
@@ -178,9 +183,8 @@ zfree(vm_zone_t z, void *item)
 		tail_item = ((void **)tail_item)[0];
 		++count;
 	}
-
-	z->zitems_pcpu[gd->gd_cpuid] = ((void **)tail_item)[0];
-	z->zfreecnt_pcpu[gd->gd_cpuid] -= count;
+	zpcpu->zitems = ((void **)tail_item)[0];
+	zpcpu->zfreecnt -= count;
 
 	/*
 	 * Per-zone spinlock for the remainder.
@@ -192,8 +196,8 @@ zfree(vm_zone_t z, void *item)
 	((void **)tail_item)[0] = z->zitems;
 	z->zitems = item;
 	z->zfreecnt += count;
-
 	spin_unlock(&z->zlock);
+
 	crit_exit_gd(gd);
 }
 
@@ -265,15 +269,13 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		z->ztotal = 0;
 		z->zmax = 0;
 		z->zname = name;
-		z->znalloc = 0;
 		z->zitems = NULL;
 
 		lwkt_gettoken(&vm_token);
 		LIST_INSERT_HEAD(&zlist, z, zlink);
 		lwkt_reltoken(&vm_token);
 
-		bzero(z->zitems_pcpu, sizeof(z->zitems_pcpu));
-		bzero(z->zfreecnt_pcpu, sizeof(z->zfreecnt_pcpu));
+		bzero(z->zpcpu, sizeof(z->zpcpu));
 	}
 
 	z->zkmvec = NULL;
@@ -309,9 +311,13 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 		z->zallocflag = VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT |
 				VM_ALLOC_NORMAL | VM_ALLOC_RETRY;
 		z->zmax += nentries;
+		z->zmax_pcpu = z->zmax / ncpus / 16;
+		if (z->zmax_pcpu < 1024)
+			z->zmax_pcpu = 1024;
 	} else {
 		z->zallocflag = VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM;
 		z->zmax = 0;
+		z->zmax_pcpu = 8192;
 	}
 
 
@@ -383,9 +389,8 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 {
 	int i;
 
-	bzero(z->zitems_pcpu, sizeof(z->zitems_pcpu));
-	bzero(z->zfreecnt_pcpu, sizeof(z->zfreecnt_pcpu));
-
+	spin_init(&z->zlock, "zbootinit");
+	bzero(z->zpcpu, sizeof(z->zpcpu));
 	z->zname = name;
 	z->zsize = size;
 	z->zpagemax = 0;
@@ -395,8 +400,6 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->zallocflag = 0;
 	z->zpagecount = 0;
 	z->zalloc = 0;
-	z->znalloc = 0;
-	spin_init(&z->zlock, "zbootinit");
 
 	bzero(item, (size_t)nitems * z->zsize);
 	z->zitems = NULL;
@@ -609,6 +612,7 @@ zget(vm_zone_t z)
 
 	spin_lock(&z->zlock);
 	z->ztotal += nitems;
+
 	/*
 	 * Save one for immediate allocation
 	 */
@@ -623,7 +627,7 @@ zget(vm_zone_t z)
 			item = (uint8_t *)item + z->zsize;
 		}
 		z->zfreecnt += nitems;
-		z->znalloc++;
+		++z->znalloc;
 	} else if (z->zfreecnt > 0) {
 		item = z->zitems;
 		z->zitems = ((void **)item)[0];
@@ -632,8 +636,8 @@ zget(vm_zone_t z)
 			zerror(ZONE_ERROR_NOTFREE);
 		((void **) item)[1] = NULL;
 #endif
-		z->zfreecnt--;
-		z->znalloc++;
+		--z->zfreecnt;
+		++z->znalloc;
 	} else {
 		item = NULL;
 	}
@@ -674,6 +678,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 		int len;
 		int offset;
 		int freecnt;
+		int znalloc;
 
 		len = strlen(curzone->zname);
 		if (len >= (sizeof(tmpname) - 1))
@@ -689,14 +694,17 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 			tmpbuf[0] = '\n';
 		}
 		freecnt = curzone->zfreecnt;
-		for (n = 0; n < ncpus; ++n)
-			freecnt += curzone->zfreecnt_pcpu[n];
+		znalloc = curzone->znalloc;
+		for (n = 0; n < ncpus; ++n) {
+			freecnt += curzone->zpcpu[n].zfreecnt;
+			znalloc += curzone->zpcpu[n].znalloc;
+		}
 
 		ksnprintf(tmpbuf + offset, sizeof(tmpbuf) - offset,
 			"%s %6.6u, %8.8u, %6.6u, %6.6u, %8.8u\n",
 			tmpname, curzone->zsize, curzone->zmax,
 			(curzone->ztotal - freecnt),
-			freecnt, curzone->znalloc);
+			freecnt, znalloc);
 
 		len = strlen((char *)tmpbuf);
 		if (LIST_NEXT(curzone, zlink) == NULL)

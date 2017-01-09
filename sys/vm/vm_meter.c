@@ -50,7 +50,7 @@
 #include <vm/vm_object.h>
 #include <sys/sysctl.h>
 
-struct vmstats vmstats;
+__cachealign struct vmstats vmstats;
 
 static int maxslp = MAXSLP;
 

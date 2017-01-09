@@ -111,6 +111,9 @@ struct vmmeter {
  * vmstats structure, global vmstats is the rollup, pcpu vmstats keeps
  * track of minor (generally positive) adjustments.  For moving targets,
  * the global vmstats structure represents the smallest likely value.
+ *
+ * This structure is cache sensitive, separate nominal read-only elements
+ * from variable elements.
  */
 struct vmstats {
 	/*
@@ -121,23 +124,28 @@ struct vmstats {
 	int v_free_reserved;	/* number of pages reserved for deadlock */
 	int v_free_target;	/* number of pages desired free */
 	int v_free_min;		/* minimum number of pages desired free */
+
+	int v_cache_min;	/* min number of pages desired on cache queue */
+	int v_cache_max;	/* max number of pages in cached obj */
+	int v_pageout_free_min;	/* min number pages reserved for kernel */
+	int v_interrupt_free_min; /* reserved number of pages for int code */
+	int v_free_severe;	/* severe depletion of pages below this pt */
+	int v_dma_pages;	/* total dma-reserved pages */
+
+	int v_unused_fixed[5];
+
 	int v_free_count;	/* number of pages free */
 	int v_wire_count;	/* number of pages wired down */
 	int v_active_count;	/* number of pages active */
 	int v_inactive_target;	/* number of pages desired inactive */
 	int v_inactive_count;	/* number of pages inactive */
 	int v_cache_count;	/* number of pages on buffer cache queue */
-	int v_cache_min;	/* min number of pages desired on cache queue */
-	int v_cache_max;	/* max number of pages in cached obj */
-	int v_pageout_free_min;	/* min number pages reserved for kernel */
-	int v_interrupt_free_min; /* reserved number of pages for int code */
-	int v_free_severe;	/* severe depletion of pages below this pt */
 	int v_dma_avail;	/* free dma-reserved pages */
-	int v_dma_pages;	/* total dma-reserved pages */
-	int v_unused[8];
+
+	int v_unused_variable[9];
 };
 
-#define VMMETER_SLOP_COUNT	10
+#define VMMETER_SLOP_COUNT	128
 
 #ifdef _KERNEL
 

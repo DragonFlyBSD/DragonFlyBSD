@@ -245,11 +245,11 @@ struct rb_vm_page_scan_info {
 int rb_vm_page_scancmp(struct vm_page *, void *);
 
 struct vpgqueues {
+	struct spinlock spin;
 	struct pglist pl;
 	int	cnt_offset;	/* offset into vmstats structure (int) */
 	int	lcnt;
 	int	flipflop;	/* probably not the best place */
-	struct spinlock spin;
 	int	unused00;
 	int	unused01;
 	char	unused[64 - sizeof(struct pglist) -

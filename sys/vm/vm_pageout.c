@@ -1788,6 +1788,13 @@ vm_pageout_free_page_calc(vm_size_t count)
 		vmstats.v_free_min = 64 + (vmstats.v_page_count - 1024) / 200;
 	else
 		vmstats.v_free_min = 64;
+
+	/*
+	 * Make sure the vmmeter slop can't blow out our global minimums.
+	 */
+	if (vmstats.v_free_min < VMMETER_SLOP_COUNT * ncpus * 10)
+		vmstats.v_free_min = VMMETER_SLOP_COUNT * ncpus * 10;
+
 	vmstats.v_free_reserved = vmstats.v_free_min * 4 / 8 + 7;
 	vmstats.v_free_severe = vmstats.v_free_min * 4 / 8 + 0;
 	vmstats.v_pageout_free_min = vmstats.v_free_min * 2 / 8 + 7;

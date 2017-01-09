@@ -156,15 +156,6 @@ int vm_shared_fault = 1;
 TUNABLE_INT("vm.shared_fault", &vm_shared_fault);
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW, &vm_shared_fault, 0,
 	   "Allow shared token on vm_object");
-static long vm_shared_hit = 0;
-SYSCTL_LONG(_vm, OID_AUTO, shared_hit, CTLFLAG_RW, &vm_shared_hit, 0,
-	   "Successful shared faults");
-static long vm_shared_count = 0;
-SYSCTL_LONG(_vm, OID_AUTO, shared_count, CTLFLAG_RW, &vm_shared_count, 0,
-	   "Shared fault attempts");
-static long vm_shared_miss = 0;
-SYSCTL_LONG(_vm, OID_AUTO, shared_miss, CTLFLAG_RW, &vm_shared_miss, 0,
-	   "Unsuccessful shared faults");
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t, int);
 static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *,
@@ -317,8 +308,6 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	fs.shared = vm_shared_fault;
 	fs.first_shared = vm_shared_fault;
 	growstack = 1;
-	if (vm_shared_fault)
-		++vm_shared_count;
 
 	/*
 	 * vm_map interactions
@@ -675,8 +664,6 @@ done2:
 	lwkt_reltoken(&map->token);
 	if (lp)
 		lp->lwp_flags &= ~LWP_PAGING;
-	if (vm_shared_fault && fs.shared == 0)
-		++vm_shared_miss;
 
 #if !defined(NO_SWAPPING)
 	/*

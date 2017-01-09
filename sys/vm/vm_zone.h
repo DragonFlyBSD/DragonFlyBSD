@@ -34,18 +34,26 @@
  * Zones are not thread-safe; the mp lock must be held while calling
  * zone functions.
  */
+struct vm_zpcpu {
+	void	*zitems;
+	int	zfreecnt;
+	int	znalloc;		/* allocations from pcpu */
+} __cachealign;
+
+typedef struct vm_zpcpu vm_zpcpu_t;
+
 typedef struct vm_zone {
-	struct spinlock zlock;		/* lock for data structure */
-	void		*zitems_pcpu[SMP_MAXCPU];
-	int		zfreecnt_pcpu[SMP_MAXCPU];
+	struct spinlock zlock;		/* lock for global portion */
+	vm_zpcpu_t	zpcpu[SMP_MAXCPU];
 	void		*zitems;	/* linked list of items */
 	int		zfreecnt;	/* free entries */
 	int		zfreemin;	/* minimum number of free entries */
-	int		znalloc;	/* number of allocations */
+	int		znalloc;	/* allocations from global */
 	vm_offset_t	zkva;		/* Base kva of zone */
 	int		zpagecount;	/* Total # of allocated pages */
 	int		zpagemax;	/* Max address space */
 	int		zmax;		/* Max number of entries allocated */
+	int		zmax_pcpu;	/* Max pcpu cache */
 	int		ztotal;		/* Total entries allocated now */
 	int		zsize;		/* size of each entry */
 	int		zalloc;		/* hint for # of pages to alloc */
