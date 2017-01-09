@@ -53,7 +53,6 @@
 
 #include <sys/file2.h>
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/xform.h>
@@ -79,6 +78,7 @@ struct csession {
 	struct iovec	iovec;
 	struct uio	uio;
 	int		error;
+	uint32_t	busy;
 };
 
 struct fcrypt {
@@ -104,7 +104,8 @@ static struct fileops cryptofops = {
     .fo_shutdown = nofo_shutdown
 };
 
-static struct csession *csefind(struct fcrypt *, u_int);
+static struct csession *csefind(struct fcrypt *, u_int, int *);
+static void csedrop(struct csession *);
 static int csedelete(struct fcrypt *, struct csession *);
 static struct csession *cseadd(struct fcrypt *, struct csession *);
 static struct csession *csecreate(struct fcrypt *, u_int64_t, caddr_t,
@@ -115,6 +116,8 @@ static int csefree(struct csession *);
 static	int cryptodev_op(struct csession *, struct crypt_op *, struct ucred *);
 static	int cryptodev_key(struct crypt_kop *);
 static	int cryptodev_find(struct crypt_find_op *);
+
+static struct lock cryptodev_lock = LOCK_INITIALIZER("cryptodev", 0, 0);
 
 static int
 cryptof_rw(
@@ -305,9 +308,11 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		if (error)
 			goto bail;
 
+		lockmgr(&cryptodev_lock, LK_EXCLUSIVE);
 		cse = csecreate(fcr, sid, crie.cri_key, crie.cri_klen,
-		    cria.cri_key, cria.cri_klen, sop->cipher, sop->mac, txform,
-		    thash);
+				cria.cri_key, cria.cri_klen, sop->cipher,
+				sop->mac, txform, thash);
+		lockmgr(&cryptodev_lock, LK_RELEASE);
 
 		if (cse == NULL) {
 			crypto_freesession(sid);
@@ -332,25 +337,30 @@ bail:
 		}
 		break;
 	case CIOCFSESSION:
+		lockmgr(&cryptodev_lock, LK_EXCLUSIVE);
 		ses = *(u_int32_t *)data;
-		cse = csefind(fcr, ses);
-		if (cse == NULL)
-			return (EINVAL);
-		csedelete(fcr, cse);
-		error = csefree(cse);
+		cse = csefind(fcr, ses, &error);
+		if (cse) {
+			csedelete(fcr, cse);
+			error = csefree(cse);
+		}
+		lockmgr(&cryptodev_lock, LK_RELEASE);
 		break;
 	case CIOCCRYPT:
 		cop = (struct crypt_op *)data;
-		cse = csefind(fcr, cop->ses);
-		if (cse == NULL)
-			return (EINVAL);
-		error = cryptodev_op(cse, cop, cred);
+		lockmgr(&cryptodev_lock, LK_EXCLUSIVE);
+		cse = csefind(fcr, cop->ses, &error);
+		lockmgr(&cryptodev_lock, LK_RELEASE);
+		if (cse) {
+			error = cryptodev_op(cse, cop, cred);
+			csedrop(cse);
+		}
 		break;
 	case CIOCKEY:
 	case CIOCKEY2:
 		if (!crypto_userasymcrypto)
 			return (EPERM);		/* XXX compat? */
-		get_mplock();
+		lockmgr(&cryptodev_lock, LK_EXCLUSIVE);
 		kop = (struct crypt_kop *)data;
 		if (cmd == CIOCKEY) {
 			/* NB: crypto core enforces s/w driver use */
@@ -358,7 +368,7 @@ bail:
 			    CRYPTOCAP_F_HARDWARE | CRYPTOCAP_F_SOFTWARE;
 		}
 		error = cryptodev_key(kop);
-		rel_mplock();
+		lockmgr(&cryptodev_lock, LK_RELEASE);
 		break;
 	case CIOCASYMFEAT:
 		if (!crypto_userasymcrypto) {
@@ -369,8 +379,9 @@ bail:
 			 * fallback to doing them in software.
 			 */
 			*(int *)data = 0;
-		} else
+		} else {
 			error = crypto_getfeat((int *)data);
+		}
 		break;
 	case CIOCFINDDEV:
 		error = cryptodev_find((struct crypt_find_op *)data);
@@ -385,10 +396,9 @@ bail:
 
 static int cryptodev_cb(void *);
 
-
 static int
 cryptodev_op(struct csession *cse, struct crypt_op *cop,
-    struct ucred *active_cred)
+	     struct ucred *active_cred)
 {
 	struct cryptop *crp = NULL;
 	struct cryptodesc *crde = NULL, *crda = NULL;
@@ -417,7 +427,7 @@ cryptodev_op(struct csession *cse, struct crypt_op *cop,
 		cse->uio.uio_resid += cse->thash->hashsize;
 	}
 	cse->uio.uio_iov[0].iov_base = kmalloc(cse->uio.uio_iov[0].iov_len,
-	    M_XDATA, M_WAITOK);
+					       M_XDATA, M_WAITOK);
 
 	crp = crypto_getreq((cse->txform != NULL) + (cse->thash != NULL));
 	if (crp == NULL) {
@@ -714,37 +724,49 @@ cryptof_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 	return (EOPNOTSUPP);
 }
 
-/*
- * MPALMOSTSAFE - acquires mplock
- */
 static int
 cryptof_close(struct file *fp)
 {
 	struct fcrypt *fcr = fp->f_data;
 	struct csession *cse;
 
-	get_mplock();
+	lockmgr(&cryptodev_lock, LK_EXCLUSIVE);
 	fcr = (struct fcrypt *)fp->f_data;
 	while ((cse = TAILQ_FIRST(&fcr->csessions))) {
 		TAILQ_REMOVE(&fcr->csessions, cse, next);
 		(void)csefree(cse);
 	}
 	fp->f_data = NULL;
-	rel_mplock();
+	lockmgr(&cryptodev_lock, LK_RELEASE);
 
 	kfree(fcr, M_XDATA);
 	return (0);
 }
 
 static struct csession *
-csefind(struct fcrypt *fcr, u_int ses)
+csefind(struct fcrypt *fcr, u_int ses, int *errorp)
 {
 	struct csession *cse;
 
-	TAILQ_FOREACH(cse, &fcr->csessions, next)
-		if (cse->ses == ses)
+	TAILQ_FOREACH(cse, &fcr->csessions, next) {
+		if (cse->ses == ses) {
+			if (cse->busy) {
+				kprintf("csefind: cse %p BUSY\n", cse);
+				*errorp = EBUSY;
+				return NULL;
+			}
+			cse->busy = 1;
 			return (cse);
+		}
+	}
+	*errorp = EINVAL;
 	return (NULL);
+}
+
+static void
+csedrop(struct csession *cse)
+{
+	cse->busy = 0;
 }
 
 static int

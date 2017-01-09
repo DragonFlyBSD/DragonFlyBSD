@@ -69,7 +69,6 @@
 #include <sys/objcache.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <ddb/ddb.h>
 
@@ -1458,7 +1457,6 @@ crypto_ret_proc(void *dummy __unused)
 	struct cryptop *crpt;
 	struct cryptkop *krpt;
 
-	get_mplock();
 	CRYPTO_RETQ_LOCK();
 	for (;;) {
 		/* Harvest return q's for completed ops */
@@ -1499,8 +1497,8 @@ crypto_ret_proc(void *dummy __unused)
 			 * Nothing more to be processed.  Sleep until we're
 			 * woken because there are more returns to process.
 			 */
-			lksleep (&crp_ret_q, &crypto_ret_q_lock,
-				 0, "crypto_ret_wait", 0);
+			lksleep(&crp_ret_q, &crypto_ret_q_lock,
+				0, "crypto_ret_wait", 0);
 			if (cryptoretthread == NULL)
 				break;
 			cryptostats.cs_rets++;
