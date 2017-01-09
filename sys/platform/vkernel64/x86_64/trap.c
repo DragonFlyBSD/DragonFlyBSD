@@ -92,12 +92,6 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#define MAKEMPSAFE(have_mplock)			\
-	if (have_mplock == 0) {			\
-		get_mplock();			\
-		have_mplock = 1;		\
-	}
-
 int (*pmath_emulate) (struct trapframe *);
 
 extern int trapwrite (unsigned addr);
@@ -373,7 +367,6 @@ user_trap(struct trapframe *frame)
 	struct proc *p;
 	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
-	int have_mplock = 0;
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
@@ -407,7 +400,6 @@ user_trap(struct trapframe *frame)
 	if (db_active) {
 		eva = (frame->tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		++gd->gd_trap_nesting_level;
-		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, TRUE, eva);
 		--gd->gd_trap_nesting_level;
 		goto out2;
@@ -494,7 +486,6 @@ user_trap(struct trapframe *frame)
 
 #if NISA > 0
 	case T_NMI:
-		MAKEMPSAFE(have_mplock);
 		/* machine/parity/power fail/"kitchen sink" faults */
 		if (isa_nmi(code) == 0) {
 #ifdef DDB
@@ -592,7 +583,6 @@ user_trap(struct trapframe *frame)
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
-	MAKEMPSAFE(have_mplock);
 	trapsignal(lp, i, ucode);
 
 #ifdef DEBUG
@@ -609,8 +599,6 @@ out:
 	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
-	if (have_mplock)
-		rel_mplock();
 	KTR_LOG(kernentry_trap_ret, lp->lwp_proc->p_pid, lp->lwp_tid);
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
@@ -631,7 +619,6 @@ kern_trap(struct trapframe *frame)
 	struct lwp *lp;
 	struct proc *p;
 	int i = 0, ucode = 0, type, code;
-	int have_mplock = 0;
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
@@ -649,7 +636,6 @@ kern_trap(struct trapframe *frame)
 #ifdef DDB
 	if (db_active) {
 		++gd->gd_trap_nesting_level;
-		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, FALSE, eva);
 		--gd->gd_trap_nesting_level;
 		goto out2;
@@ -765,17 +751,14 @@ kernel_trap:
 		 * Otherwise, debugger traps "can't happen".
 		 */
 #ifdef DDB
-		MAKEMPSAFE(have_mplock);
 		if (kdb_trap (type, 0, frame))
 			goto out2;
 #endif
 		break;
 	case T_DIVIDE:
-		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, FALSE, eva);
 		goto out2;
 	case T_NMI:
-		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, FALSE, eva);
 		goto out2;
 	case T_SYSCALL80:
@@ -797,7 +780,6 @@ kernel_trap:
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
-	MAKEMPSAFE(have_mplock);
 	trapsignal(lp, i, ucode);
 
 #ifdef DEBUG
@@ -812,8 +794,6 @@ kernel_trap:
 
 out2:
 	;
-	if (have_mplock)
-		rel_mplock();
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
 		("trap: critical section count mismatch! %d/%d",
@@ -1114,7 +1094,6 @@ syscall2(struct trapframe *frame)
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
 #endif
-	int have_mplock = 0;
 	register_t *argp;
 	u_int code;
 	int reg, regcnt;
@@ -1201,8 +1180,6 @@ syscall2(struct trapframe *frame)
 		if (error) {
 #ifdef KTRACE
 			if (KTRPOINT(td, KTR_SYSCALL)) {
-				MAKEMPSAFE(have_mplock);
-
 				ktrsyscall(lp, code, narg,
 					(void *)(&args.nosys.sysmsg + 1));
 			}
@@ -1213,7 +1190,6 @@ syscall2(struct trapframe *frame)
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
-		MAKEMPSAFE(have_mplock);
 		ktrsyscall(lp, code, narg, (void *)(&args.nosys.sysmsg + 1));
 	}
 #endif
@@ -1291,7 +1267,6 @@ bad:
 	 * Traced syscall.  trapsignal() is not MP aware.
 	 */
 	if (orig_tf_rflags & PSL_T) {
-		MAKEMPSAFE(have_mplock);
 		frame->tf_rflags &= ~PSL_T;
 		trapsignal(lp, SIGTRAP, 0);
 	}
@@ -1303,7 +1278,6 @@ bad:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
-		MAKEMPSAFE(have_mplock);
 		ktrsysret(lp, code, error, args.sysmsg_result);
 	}
 #endif
@@ -1316,11 +1290,6 @@ bad:
 	STOPEVENT(p, S_SCX, code);
 
 	userexit(lp);
-	/*
-	 * Release the MP lock if we had to get it
-	 */
-	if (have_mplock)
-		rel_mplock();
 	KTR_LOG(kernentry_syscall_ret, lp->lwp_proc->p_pid, lp->lwp_tid, error);
 #ifdef INVARIANTS
 	KASSERT(&td->td_toks_base == td->td_toks_stop,

@@ -87,14 +87,7 @@
 #include <ddb/ddb.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 #include <sys/spinlock2.h>
-
-#define MAKEMPSAFE(have_mplock)			\
-	if (have_mplock == 0) {			\
-		get_mplock();			\
-		have_mplock = 1;		\
-	}
 
 extern void trap(struct trapframe *frame);
 
@@ -295,13 +288,11 @@ recheck:
 	 */
 	if (p->p_flags & P_SWAPPEDOUT) {
 		lwkt_gettoken(&p->p_token);
-		get_mplock();
 		p->p_flags |= P_SWAPWAIT;
 		swapin_request();
 		if (p->p_flags & P_SWAPWAIT)
 			tsleep(p, PCATCH, "SWOUT", 0);
 		p->p_flags &= ~P_SWAPWAIT;
-		rel_mplock();
 		lwkt_reltoken(&p->p_token);
 		goto recheck;
 	}
@@ -382,16 +373,12 @@ KTR_INFO(KTR_KERNENTRY, kernentry, fork_ret, 0, "FORKRET(pid %d, tid %d)",
  * This function is also called from doreti in an interlock to handle ASTs.
  * For example:  hardwareint->INTROUTINE->(set ast)->doreti->trap
  *
- * NOTE!  We have to retrieve the fault address prior to obtaining the
- * MP lock because get_mplock() may switch out.  YYY cr2 really ought
- * to be retrieved by the assembly code, not here.
+ * NOTE!  We have to retrieve the fault address prior to potentially
+ *	  blocking, including blocking on any token.
  *
  * XXX gd_trap_nesting_level currently prevents lwkt_switch() from panicing
- * if an attempt is made to switch from a fast interrupt or IPI.  This is
- * necessary to properly take fatal kernel traps on SMP machines if
- * get_mplock() has to block.
+ * if an attempt is made to switch from a fast interrupt or IPI.
  */
-
 void
 trap(struct trapframe *frame)
 {
@@ -401,7 +388,6 @@ trap(struct trapframe *frame)
 	struct proc *p;
 	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
-	int have_mplock = 0;
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 	lwkt_tokref_t curstop = td->td_toks_stop;
@@ -420,7 +406,6 @@ trap(struct trapframe *frame)
 	if (db_active && frame->tf_trapno != T_DNA) {
 		eva = (frame->tf_trapno == T_PAGEFLT ? frame->tf_addr : 0);
 		++gd->gd_trap_nesting_level;
-		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, eva);
 		--gd->gd_trap_nesting_level;
 		goto out2;
@@ -438,18 +423,16 @@ trap(struct trapframe *frame)
 		 */
 		type = frame->tf_trapno;
 		if (ISPL(frame->tf_cs) == SEL_UPL) {
-			MAKEMPSAFE(have_mplock);
 			/* JG curproc can be NULL */
 			kprintf(
 			    "pid %ld (%s): trap %d with interrupts disabled\n",
 			    (long)curproc->p_pid, curproc->p_comm, type);
 		} else if (type != T_NMI && type != T_BPTFLT &&
-		    type != T_TRCTRAP) {
+			   type != T_TRCTRAP) {
 			/*
 			 * XXX not quite right, since this may be for a
 			 * multiple fault in user mode.
 			 */
-			MAKEMPSAFE(have_mplock);
 			kprintf("kernel trap %d (%s @ 0x%016jx) with "
 				"interrupts disabled\n",
 				type,
@@ -546,7 +529,6 @@ trap(struct trapframe *frame)
 
 #if NISA > 0
 		case T_NMI:
-			MAKEMPSAFE(have_mplock);
 			/* machine/parity/power fail/"kitchen sink" faults */
 			if (isa_nmi(code) == 0) {
 #ifdef DDB
@@ -734,7 +716,6 @@ trap(struct trapframe *frame)
 			 */
 			ucode = TRAP_BRKPT;
 #ifdef DDB
-			MAKEMPSAFE(have_mplock);
 			if (kdb_trap(type, 0, frame))
 				goto out2;
 #endif
@@ -742,7 +723,6 @@ trap(struct trapframe *frame)
 
 #if NISA > 0
 		case T_NMI:
-			MAKEMPSAFE(have_mplock);
 			/* machine/parity/power fail/"kitchen sink" faults */
 			if (isa_nmi(code) == 0) {
 #ifdef DDB
@@ -761,7 +741,6 @@ trap(struct trapframe *frame)
 			/* FALL THROUGH */
 #endif /* NISA > 0 */
 		}
-		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, 0);
 		goto out2;
 	}
@@ -780,7 +759,6 @@ trap(struct trapframe *frame)
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
-	MAKEMPSAFE(have_mplock);
 	trapsignal(lp, i, ucode);
 
 #ifdef DEBUG
@@ -797,8 +775,6 @@ out:
 	userret(lp, frame, sticks);
 	userexit(lp);
 out2:	;
-	if (have_mplock)
-		rel_mplock();
 	if (p != NULL && lp != NULL)
 		KTR_LOG(kernentry_trap_ret, p->p_pid, lp->lwp_tid);
 #ifdef INVARIANTS
@@ -1116,7 +1092,6 @@ syscall2(struct trapframe *frame)
 #ifdef INVARIANTS
 	int crit_count = td->td_critcount;
 #endif
-	int have_mplock = 0;
 	register_t *argp;
 	u_int code;
 	int reg, regcnt;
@@ -1127,7 +1102,6 @@ syscall2(struct trapframe *frame)
 
 #ifdef DIAGNOSTIC
 	if (ISPL(frame->tf_cs) != SEL_UPL) {
-		get_mplock();
 		panic("syscall");
 		/* NOT REACHED */
 	}
@@ -1332,11 +1306,6 @@ bad:
 	STOPEVENT(p, S_SCX, code);
 
 	userexit(lp);
-	/*
-	 * Release the MP lock if we had to get it
-	 */
-	if (have_mplock)
-		rel_mplock();
 	KTR_LOG(kernentry_syscall_ret, p->p_pid, lp->lwp_tid, error);
 #ifdef INVARIANTS
 	KASSERT(crit_count == td->td_critcount,
@@ -1349,9 +1318,6 @@ bad:
 #endif
 }
 
-/*
- * NOTE: mplock not held at any point
- */
 void
 fork_return(struct lwp *lp, struct trapframe *frame)
 {
@@ -1369,8 +1335,6 @@ fork_return(struct lwp *lp, struct trapframe *frame)
  *
  * This code will return back into the fork trampoline code which then
  * runs doreti.
- *
- * NOTE: The mplock is not held at any point.
  */
 void
 generic_lwp_return(struct lwp *lp, struct trapframe *frame)
