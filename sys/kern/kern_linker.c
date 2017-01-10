@@ -99,7 +99,7 @@ static void
 linker_init(void* arg)
 {
     lockinit(&llf_lock, "klink", 0, 0);
-    lockinit(&kld_lock, "kldlk", 0, 0);
+    lockinit(&kld_lock, "kldlk", 0, LK_CANRECURSE);
     TAILQ_INIT(&classes);
     TAILQ_INIT(&linker_files);
 }
@@ -402,9 +402,10 @@ linker_find_file_by_id(int fileid)
     linker_file_t lf = NULL;
 
     lockmgr(&llf_lock, LK_SHARED);
-    TAILQ_FOREACH(lf, &linker_files, link)
+    TAILQ_FOREACH(lf, &linker_files, link) {
 	if (lf->id == fileid)
 	    break;
+    }
     lockmgr(&llf_lock, LK_RELEASE);
 
     return lf;
@@ -1111,9 +1112,9 @@ linker_reference_module(const char *modname, struct mod_depend *verinfo,
     }
 
     lockmgr(&llf_lock, LK_RELEASE);
-    lockmgr(&kld_lock, LK_EXCLUSIVE);
+    /*lockmgr(&kld_lock, LK_EXCLUSIVE);*/
     error = linker_load_module(NULL, modname, NULL, verinfo, result);
-    lockmgr(&kld_lock, LK_RELEASE);
+    /*lockmgr(&kld_lock, LK_RELEASE);*/
 
     return (error);
 }
@@ -1139,9 +1140,9 @@ linker_release_module(const char *modname, struct mod_depend *verinfo,
         KASSERT(modname == NULL && verinfo == NULL,
             ("linker_release_module: both file and name"));
     lockmgr(&llf_lock, LK_RELEASE);
-    lockmgr(&kld_lock, LK_EXCLUSIVE);
+    /*lockmgr(&kld_lock, LK_EXCLUSIVE);*/
     error = linker_file_unload(lf);
-    lockmgr(&kld_lock, LK_RELEASE);
+    /*lockmgr(&kld_lock, LK_RELEASE);*/
 
     return (error);
 }
