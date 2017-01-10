@@ -147,6 +147,20 @@ mmcsd_attach(device_t dev)
 	    DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_DISK);
 
+	bioq_init(&sc->bio_queue);
+
+	sc->running = 1;
+	sc->suspend = 0;
+	sc->eblock = sc->eend = 0;
+	kthread_create(mmcsd_task, sc, &sc->td, "mmc/sd card task");
+
+	/*
+	 * Probe capacity
+	 */
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = sector_size;
+	info.d_media_blocks = mmc_get_media_size(dev);
+
 	/*
 	 * Display in most natural units.  There's no cards < 1MB.
 	 * The SD standard goes to 2GiB, but the data format supports
@@ -165,22 +179,16 @@ mmcsd_attach(device_t dev)
 		mb /= 1024;
 	}
 
-	bioq_init(&sc->bio_queue);
-
-	sc->running = 1;
-	sc->suspend = 0;
-	sc->eblock = sc->eend = 0;
-	kthread_create(mmcsd_task, sc, &sc->td, "mmc/sd card task");
-
-	/*
-	 * SC fully initialized, we can attach the drive now.
-	 */
 	device_printf(dev, "%ju%cB <%s Memory Card>%s at %s %dMHz/%dbit\n",
 	    mb, unit, mmcsd_card_name(dev),
 	    mmc_get_read_only(dev) ? " (read-only)" : "",
 	    device_get_nameunit(device_get_parent(dev)),
 	    mmc_get_tran_speed(dev) / 1000000, mmcsd_bus_bit_width(dev));
 
+	/*
+	 * SC is fully initialized, we can attach the drive now.  The
+	 * instant we do the kernel will start probing it.
+	 */
 	dsk = disk_create(device_get_unit(dev), &sc->disk, &mmcsd_ops);
 	dsk->si_drv1 = sc;
 	sc->dev_t = dsk;
@@ -188,9 +196,6 @@ mmcsd_attach(device_t dev)
 	/* Maximum defined SD card AU size. */
 	dsk->si_iosize_max = 4*1024*1024;
 
-	bzero(&info, sizeof(info));
-	info.d_media_blksize = sector_size;
-	info.d_media_blocks = mmc_get_media_size(dev);
 	disk_setdiskinfo(&sc->disk, &info);
 
 	return (0);
