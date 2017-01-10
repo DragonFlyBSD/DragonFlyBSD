@@ -396,6 +396,10 @@ int i915_gem_init_stolen(struct drm_device *dev)
 	unsigned long stolen_top;
 
 	lockinit(&dev_priv->mm.stolen_lock, "i915msl", 0, LK_CANRECURSE);
+#ifdef __DragonFly__
+	/* Stolen memory support is still incomplete */
+	return 0;
+#endif
 
 #ifdef CONFIG_INTEL_IOMMU
 	if (intel_iommu_gfx_mapped && INTEL_INFO(dev)->gen < 8) {
