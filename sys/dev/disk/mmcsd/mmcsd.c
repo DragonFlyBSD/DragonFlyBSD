@@ -147,17 +147,6 @@ mmcsd_attach(device_t dev)
 	    DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_DISK);
 
-	dsk = disk_create(device_get_unit(dev), &sc->disk, &mmcsd_ops);
-	dsk->si_drv1 = sc;
-	sc->dev_t = dsk;
-
-	dsk->si_iosize_max = 4*1024*1024;	/* Maximum defined SD card AU size. */
-
-	bzero(&info, sizeof(info));
-	info.d_media_blksize = sector_size;
-	info.d_media_blocks = mmc_get_media_size(dev);
-	disk_setdiskinfo(&sc->disk, &info);
-
 	/*
 	 * Display in most natural units.  There's no cards < 1MB.
 	 * The SD standard goes to 2GiB, but the data format supports
@@ -166,18 +155,15 @@ mmcsd_attach(device_t dev)
 	 * SDHC is good to 2TiB however, which isn't too ugly at
 	 * 2048GiBm, so we note it in passing here and don't add the
 	 * code to print TiB).
+	 *
+	 * 1MiB == 1 << 20
 	 */
-	mb = (info.d_media_blksize * info.d_media_blocks) >> 20;	/* 1MiB == 1 << 20 */
+	mb = (info.d_media_blksize * info.d_media_blocks) >> 20;
 	unit = 'M';
 	if (mb >= 10240) {		/* 1GiB = 1024 MiB */
 		unit = 'G';
 		mb /= 1024;
 	}
-	device_printf(dev, "%ju%cB <%s Memory Card>%s at %s %dMHz/%dbit\n",
-	    mb, unit, mmcsd_card_name(dev),
-	    mmc_get_read_only(dev) ? " (read-only)" : "",
-	    device_get_nameunit(device_get_parent(dev)),
-	    mmc_get_tran_speed(dev) / 1000000, mmcsd_bus_bit_width(dev));
 
 	bioq_init(&sc->bio_queue);
 
@@ -185,6 +171,27 @@ mmcsd_attach(device_t dev)
 	sc->suspend = 0;
 	sc->eblock = sc->eend = 0;
 	kthread_create(mmcsd_task, sc, &sc->td, "mmc/sd card task");
+
+	/*
+	 * SC fully initialized, we can attach the drive now.
+	 */
+	device_printf(dev, "%ju%cB <%s Memory Card>%s at %s %dMHz/%dbit\n",
+	    mb, unit, mmcsd_card_name(dev),
+	    mmc_get_read_only(dev) ? " (read-only)" : "",
+	    device_get_nameunit(device_get_parent(dev)),
+	    mmc_get_tran_speed(dev) / 1000000, mmcsd_bus_bit_width(dev));
+
+	dsk = disk_create(device_get_unit(dev), &sc->disk, &mmcsd_ops);
+	dsk->si_drv1 = sc;
+	sc->dev_t = dsk;
+
+	/* Maximum defined SD card AU size. */
+	dsk->si_iosize_max = 4*1024*1024;
+
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = sector_size;
+	info.d_media_blocks = mmc_get_media_size(dev);
+	disk_setdiskinfo(&sc->disk, &info);
 
 	return (0);
 }
