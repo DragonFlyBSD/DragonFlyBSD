@@ -336,6 +336,20 @@ dfly_acquire_curproc(struct lwp *lp)
 
 		spin_lock(&dd->spin);
 
+		/* This lwp is an outcast; force reschedule. */
+		if (__predict_false(
+		    CPUMASK_TESTBIT(lp->lwp_cpumask, gd->gd_cpuid) == 0) &&
+		    (rdd = dfly_choose_best_queue(lp)) != dd) {
+			dfly_changeqcpu_locked(lp, dd, rdd);
+			spin_unlock(&dd->spin);
+			lwkt_deschedule(lp->lwp_thread);
+			dfly_setrunqueue_dd(rdd, lp);
+			lwkt_switch();
+			gd = mycpu;
+			dd = &dfly_pcpu[gd->gd_cpuid];
+			continue;
+		}
+
 		if (force_resched &&
 		   (usched_dfly_features & 0x08) &&
 		   (rdd = dfly_choose_best_queue(lp)) != dd) {
@@ -1617,6 +1631,9 @@ dfly_choose_best_queue(struct lwp *lp)
 		}
 		cpup = cpub;
 	}
+	/* Dispatch this outcast to a proper CPU. */
+	if (__predict_false(CPUMASK_TESTBIT(lp->lwp_cpumask, rdd->cpuid) == 0))
+		rdd = &dfly_pcpu[BSFCPUMASK(lp->lwp_cpumask)];
 	if (usched_dfly_chooser > 0) {
 		--usched_dfly_chooser;		/* only N lines */
 		kprintf("lp %02d->%02d %s\n",
@@ -1866,7 +1883,9 @@ dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp)
 	 * set the user resched flag because
 	 */
 	cpuid = cpubase;
-	if (CPUMASK_TESTBIT(usched_global_cpumask, cpuid) == 0)
+	if (CPUMASK_TESTBIT(lp->lwp_cpumask, cpuid) == 0)
+		cpuid = BSFCPUMASK(lp->lwp_cpumask);
+	else if (CPUMASK_TESTBIT(usched_global_cpumask, cpuid) == 0)
 		cpuid = 0;
 	rdd = &dfly_pcpu[cpuid];
 found:

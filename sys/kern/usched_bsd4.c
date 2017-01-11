@@ -379,6 +379,13 @@ bsd4_acquire_curproc(struct lwp *lp)
 		 */
 		lwkt_yield();
 
+		/* This lwp is an outcast; force reschedule. */
+		if (__predict_false(
+		    CPUMASK_TESTBIT(lp->lwp_cpumask, gd->gd_cpuid) == 0)) {
+			bsd4_release_curproc(lp);
+			goto resched;
+		}
+
 		/*
 		 * Become the currently scheduled user thread for this cpu
 		 * if we can do so trivially.
@@ -412,6 +419,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 			bsd4_setrunqueue(olp);
 			*/
 		} else {
+resched:
 			/*
 			 * We cannot become the current lwp, place the lp
 			 * on the bsd4 run-queue and deschedule ourselves.
@@ -856,7 +864,9 @@ bsd4_setrunqueue(struct lwp *lp)
 	 * set the user resched flag because
 	 */
 	cpuid = (bsd4_scancpu & 0xFFFF) % ncpus;
-	if (CPUMASK_TESTBIT(usched_global_cpumask, cpuid) == 0)
+	if (CPUMASK_TESTBIT(lp->lwp_cpumask, cpuid) == 0)
+		cpuid = BSFCPUMASK(lp->lwp_cpumask);
+	else if (CPUMASK_TESTBIT(usched_global_cpumask, cpuid) == 0)
 		cpuid = 0;
 	gd = globaldata_find(cpuid);
 	dd = &bsd4_pcpu[cpuid];
