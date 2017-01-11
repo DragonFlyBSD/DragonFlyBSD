@@ -63,15 +63,14 @@ then the pid of the calling LWP's process is used.
 If the
 .Fa tid
 is less than zero,
-then the tid of the calling LWP is used.
+then all threads of the calling LWP are affected.
 If the LWP specified by the
 .Fa pid
 and the
 .Fa tid
-is not currently running on one of the CPUs specified in the
-.Fa mask ,
-then that LWP is migrated to one of the CPUs specified in the
-.Fa mask .
+is the current thread it will be migrated immediately,
+if necessary, otherwise it will be migrated by the scheduler
+later.
 .Pp
 A process created by
 .Xr fork 2 ,
@@ -99,7 +98,7 @@ then the pid of the calling LWP's process is used.
 If the
 .Fa tid
 is less than zero,
-then the tid of the calling LWP is used.
+then the first thread of specified process is used.
 .Sh RETURN VALUES
 These system calls return \-1 on error and
 0 upon successful completion.

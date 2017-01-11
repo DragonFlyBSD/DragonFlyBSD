@@ -41,14 +41,14 @@
 #include <sys/systm.h>			/* strcmp() */
 #include <sys/usched.h>	
 
-#include <sys/mplock2.h>
-
 #include <machine/cpumask.h>
 #include <machine/smp.h>
 
 static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);
 
 cpumask_t usched_mastermask = CPUMASK_INITIALIZER_ALLONES;
+
+static int setaffinity_lp(struct lwp *lp, cpumask_t *mask);
 
 /*
  * Called from very low level boot code, i386/i386/machdep.c/init386().
@@ -195,7 +195,7 @@ sys_usched_set(struct usched_set_args *uap)
 		return (EINVAL);
 
 	lp = curthread->td_lwp;
-	get_mplock();
+	lwkt_gettoken(&lp->lwp_token);
 
 	switch (uap->cmd) {
 	case USCHED_SET_SCHEDULER:
@@ -354,7 +354,8 @@ sys_usched_set(struct usched_set_args *uap)
 		error = EINVAL;
 		break;
 	}
-	rel_mplock();
+	lwkt_reltoken(&lp->lwp_token);
+
 	return (error);
 }
 
@@ -366,39 +367,42 @@ sys_lwp_getaffinity(struct lwp_getaffinity_args *uap)
 	struct lwp *lp;
 	int error = 0;
 
-	if (uap->pid < 0) {
+	if (uap->pid < 0)
 		return (EINVAL);
-	} else if (uap->pid == 0) {
+
+	if (uap->pid == 0) {
 		p = curproc;
 		PHOLD(p);
 	} else {
-		p = pfind(uap->pid);
+		p = pfind(uap->pid);	/* pfind() holds (p) */
 		if (p == NULL)
 			return (ESRCH);
-		/* pfind PHOLDs 'p'. */
 	}
-
-	get_mplock();
 	lwkt_gettoken(&p->p_token);
 
-	if (uap->tid < 0)
-		lp = curthread->td_lwp;
-	else
+	if (uap->tid < 0) {
+		lp = RB_FIRST(lwp_rb_tree, &p->p_lwp_tree);
+	} else {
 		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
+	}
 	if (lp == NULL) {
 		error = ESRCH;
 	} else {
 		/* Take a snapshot for copyout, which may block. */
+		LWPHOLD(lp);
+		lwkt_gettoken(&lp->lwp_token);
 		mask = lp->lwp_cpumask;
 		CPUMASK_ANDMASK(mask, smp_active_mask);
+		lwkt_reltoken(&lp->lwp_token);
+		LWPRELE(lp);
 	}
 
 	lwkt_reltoken(&p->p_token);
-	rel_mplock();
 	PRELE(p);
 
-	if (!error)
+	if (error == 0)
 		error = copyout(&mask, uap->mask, sizeof(cpumask_t));
+
 	return (error);
 }
 
@@ -420,53 +424,64 @@ sys_lwp_setaffinity(struct lwp_setaffinity_args *uap)
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 	if (CPUMASK_TESTZERO(mask))
 		return (EPERM);
-
-	if (uap->pid < 0) {
+	if (uap->pid < 0)
 		return (EINVAL);
-	} else if (uap->pid == 0) {
+
+	/*
+	 * Locate the process
+	 */
+	if (uap->pid == 0) {
 		p = curproc;
 		PHOLD(p);
 	} else {
-		p = pfind(uap->pid);
+		p = pfind(uap->pid);	/* pfind() holds (p) */
 		if (p == NULL)
 			return (ESRCH);
-		/* pfind PHOLDs 'p'. */
 	}
-
-	get_mplock();
 	lwkt_gettoken(&p->p_token);
 
-	if (uap->tid < 0)
-		lp = curthread->td_lwp;
-	else
-		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
-	if (lp == NULL) {
-		error = ESRCH;
-	} else {
-		/* Commit the new cpumask. */
-		lp->lwp_cpumask = mask;
-
-		if (lp == curthread->td_lwp) {
-			/*
-			 * Self migration can be done immediately,
-			 * if necessary.
-			 */
-			if (CPUMASK_TESTBIT(lp->lwp_cpumask,
-			    mycpu->gd_cpuid) == 0) {
-				lwkt_migratecpu(BSFCPUMASK(lp->lwp_cpumask));
-				p->p_usched->changedcpu(lp);
-			}
-		} else {
-			/*
-			 * NOTE:
-			 * Real migration happens upon next rescheduling.
-			 */
+	if (uap->tid < 0) {
+		FOREACH_LWP_IN_PROC(lp, p) {
+			error = setaffinity_lp(lp, &mask);
 		}
+		/* not an error if no LPs left in process */
+	} else {
+		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
+		error = setaffinity_lp(lp, &mask);
 	}
-
 	lwkt_reltoken(&p->p_token);
-	rel_mplock();
 	PRELE(p);
 
 	return (error);
+}
+
+static int
+setaffinity_lp(struct lwp *lp, cpumask_t *mask)
+{
+	if (lp == NULL)
+		return ESRCH;
+
+	LWPHOLD(lp);
+	lwkt_gettoken(&lp->lwp_token);
+	lp->lwp_cpumask = *mask;
+
+	/*
+	 * NOTE: When adjusting a thread that is not our own the migration
+	 *	 will occur at the next reschedule.
+	 */
+	if (lp == curthread->td_lwp) {
+		/*
+		 * Self migration can be done immediately,
+		 * if necessary.
+		 */
+		if (CPUMASK_TESTBIT(lp->lwp_cpumask,
+		    mycpu->gd_cpuid) == 0) {
+			lwkt_migratecpu(BSFCPUMASK(lp->lwp_cpumask));
+			lp->lwp_proc->p_usched->changedcpu(lp);
+		}
+	}
+	lwkt_reltoken(&lp->lwp_token);
+	LWPRELE(lp);
+
+	return 0;
 }

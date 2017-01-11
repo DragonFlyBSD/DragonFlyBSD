@@ -43,7 +43,6 @@
 #include <sys/cpu_topology.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 #include <sys/ktr.h>
 

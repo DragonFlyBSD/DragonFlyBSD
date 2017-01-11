@@ -48,7 +48,6 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 #define MAXPRI			128
 #define PRIBASE_REALTIME	0
