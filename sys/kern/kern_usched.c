@@ -269,7 +269,9 @@ sys_usched_set(struct usched_set_args *uap)
 			error = EINVAL;
 			break;
 		}
-		error = copyout(&lp->lwp_cpumask, uap->data, sizeof(cpumask_t));
+		mask = lp->lwp_cpumask;
+		CPUMASK_ANDMASK(mask, smp_active_mask);
+		error = copyout(&mask, uap->data, sizeof(cpumask_t));
 		break;
 	case USCHED_ADD_CPU:
 		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
