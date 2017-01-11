@@ -477,7 +477,7 @@ acpi_attach(device_t dev)
 
     if ((error = acpi_task_thread_init())) {
         device_printf(dev, "Could not start task thread.\n");
-        goto out;
+        goto out2;
     }
 
     error = ENXIO;
@@ -499,6 +499,8 @@ acpi_attach(device_t dev)
     /* Initialise the ACPI mutex */
     ACPI_LOCK_INIT(acpi, "acpi");
     ACPI_SERIAL_INIT(acpi);
+
+    ACPI_LOCK(acpi);
 
     /*
      * Set the globals from our tunables.  This is needed because ACPICA
@@ -716,8 +718,11 @@ acpi_attach(device_t dev)
     error = 0;
 
  out:
+    ACPI_UNLOCK(acpi);
+ out2:
     cputimer_intr_pmfixup();
     acpi_task_thread_schedule();
+
     return_VALUE (error);
 }
 
@@ -2364,6 +2369,7 @@ acpi_ReqSleepState(struct acpi_softc *sc, int state)
      */
     callout_reset(&sc->susp_force_to, 10 * hz, acpi_sleep_force, sc);
     ACPI_UNLOCK(acpi);
+
     return (0);
 }
 
@@ -3178,11 +3184,12 @@ acpiioctl(struct dev_ioctl_args *ap)
      */
     lwkt_gettoken(&acpi_token);
     ACPI_LOCK(acpi);
-    if (acpi_ioctl_hooks_initted)
+    if (acpi_ioctl_hooks_initted) {
 	TAILQ_FOREACH(hp, &acpi_ioctl_hooks, link) {
 	    if (hp->cmd == ap->a_cmd)
 		break;
 	}
+    }
     ACPI_UNLOCK(acpi);
     if (hp) {
 	error = hp->fn(ap->a_cmd, ap->a_data, hp->arg);

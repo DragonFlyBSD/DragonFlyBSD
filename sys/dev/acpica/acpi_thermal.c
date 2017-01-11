@@ -214,6 +214,8 @@ acpi_tz_attach(device_t dev)
     if (device_get_unit(dev) == 0)
 	ACPI_LOCK_INIT(thermal, "acpitz");
 
+    ACPI_LOCK(thermal);
+
     sc = device_get_softc(dev);
     sc->tz_dev = dev;
     sc->tz_handle = acpi_get_handle(dev);
@@ -231,8 +233,10 @@ acpi_tz_attach(device_t dev)
      * structures.  We don't need to worry about interference with the
      * control thread since we haven't fully attached this device yet.
      */
-    if ((error = acpi_tz_establish(sc)) != 0)
+    if ((error = acpi_tz_establish(sc)) != 0) {
+	ACPI_UNLOCK(thermal);
 	return (error);
+    }
 
     /*
      * Register for any Notify events sent to this zone.
@@ -325,7 +329,7 @@ acpi_tz_attach(device_t dev)
      * our power profile event handler.
      */
     sc->tz_event = EVENTHANDLER_REGISTER(power_profile_change,
-	acpi_tz_power_profile, sc, 0);
+					 acpi_tz_power_profile, sc, 0);
     if (acpi_tz_td == NULL) {
 	error = kthread_create(acpi_tz_thread, NULL, &acpi_tz_td,
 	    "acpi_thermal");
@@ -380,6 +384,8 @@ out:
 	    acpi_tz_notify_handler);
 	sysctl_ctx_free(&sc->tz_sysctl_ctx);
     }
+    ACPI_UNLOCK(thermal);
+
     return_VALUE (error);
 }
 
@@ -1014,6 +1020,9 @@ acpi_tz_thread(void *arg)
     devcount = 0;
     sc = NULL;
 
+    ACPI_LOCK(acpi);		/* wait for ACPI to finish nominal attach */
+    ACPI_UNLOCK(acpi);
+
     lwkt_gettoken(&acpi_token);
     for (;;) {
 	/* If the number of devices has changed, re-evaluate. */
@@ -1051,7 +1060,7 @@ acpi_tz_thread(void *arg)
 	if (i == devcount) {
 	    tsleep_interlock(&acpi_tz_td, 0);
 	    ACPI_UNLOCK(thermal);
-	    tsleep(&acpi_tz_td, 0, "tzpoll",
+	    tsleep(&acpi_tz_td, PINTERLOCKED, "tzpoll",
 		(acpi_tz_polling_rate <= 0 ? 0 : hz * acpi_tz_polling_rate));
 	} else {
 	    ACPI_UNLOCK(thermal);
@@ -1197,6 +1206,9 @@ acpi_tz_cooling_thread(void *arg)
 #endif
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+    ACPI_LOCK(acpi);		/* wait for ACPI to finish nominal attach */
+    ACPI_UNLOCK(acpi);
 
     sc = (struct acpi_tz_softc *)arg;
     lwkt_gettoken(&acpi_token);
