@@ -283,7 +283,12 @@ sdhci_pci_attach(device_t dev)
 	struct sdhci_pci_softc *sc = device_get_softc(dev);
 	uint32_t model;
 	uint16_t subvendor;
-	int bar, count, err, rid, slots, i;
+	int bar, err, rid, slots, i;
+#if defined(__DragonFly__)
+	int irq_flags;
+#else
+	int count;
+#endif
 
 	model = (uint32_t)pci_get_device(dev) << 16;
 	model |= (uint32_t)pci_get_vendor(dev) & 0x0000ffff;
@@ -310,8 +315,12 @@ sdhci_pci_attach(device_t dev)
 		return (EINVAL);
 	}
 	/* Allocate IRQ. */
-	i = 1;
 	rid = 0;
+#if defined(__DragonFly__)
+	pci_alloc_1intr(dev, sdhci_enable_msi, &rid, &irq_flags);
+	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, irq_flags);
+#else
+	i = 1;
 	if (sdhci_enable_msi != 0) {
 		count = pci_msi_count(dev);
 		if (count >= 1) {
@@ -325,6 +334,7 @@ sdhci_pci_attach(device_t dev)
 	}
 	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 		RF_ACTIVE | (rid != 0 ? 0 : RF_SHAREABLE));
+#endif
 	if (sc->irq_res == NULL) {
 		device_printf(dev, "Can't allocate IRQ\n");
 		pci_release_msi(dev);
