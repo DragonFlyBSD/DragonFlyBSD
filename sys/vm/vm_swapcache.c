@@ -102,7 +102,7 @@ static int vm_swapcache_meta_enable = 0;
 static int vm_swapcache_maxswappct = 75;
 static int vm_swapcache_hysteresis;
 static int vm_swapcache_min_hysteresis;
-int vm_swapcache_use_chflags = 1;	/* require chflags cache */
+int vm_swapcache_use_chflags = 0;	/* require chflags cache */
 static int64_t vm_swapcache_minburst = 10000000LL;	/* 10MB */
 static int64_t vm_swapcache_curburst = 4000000000LL;	/* 4G after boot */
 static int64_t vm_swapcache_maxburst = 2000000000LL;	/* 2G nominal max */
