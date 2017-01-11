@@ -60,7 +60,6 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 #include <vm/vm_page2.h>
 
 #include "opt_ddb.h"

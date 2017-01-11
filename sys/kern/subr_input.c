@@ -49,7 +49,6 @@
 #include <machine/stdarg.h>	/* for device_printf() */
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 #include <sys/input.h>
 
 MALLOC_DEFINE(M_INPUT, "input", "Input Event");

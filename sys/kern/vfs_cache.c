@@ -83,7 +83,6 @@
 
 #include <sys/sysref2.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 #define MAX_RECURSION_DEPTH	64
 

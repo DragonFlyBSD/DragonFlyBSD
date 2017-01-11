@@ -67,7 +67,6 @@
 #include <vm/vm_page.h>
 
 #include <sys/file2.h>
-#include <sys/mplock2.h>
 #include <sys/spinlock2.h>
 
 #include <machine/limits.h>

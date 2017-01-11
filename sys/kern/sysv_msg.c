@@ -33,8 +33,6 @@
 #include <sys/malloc.h>
 #include <sys/jail.h>
 
-#include <sys/mplock2.h>
-
 static MALLOC_DEFINE(M_MSG, "msg", "SVID compatible message queues");
 
 static void msginit (void *);
@@ -118,6 +116,7 @@ static char *msgpool;		/* MSGMAX byte long msg buffer pool */
 static struct msgmap *msgmaps;	/* MSGSEG msgmap structures */
 static struct msg *msghdrs;	/* MSGTQL msg headers */
 static struct msqid_ds *msqids;	/* MSGMNI msqid_ds struct's */
+static struct lwkt_token msg_token = LWKT_TOKEN_INITIALIZER(msg_token);
 
 static void
 msginit(void *dummy)
@@ -219,7 +218,7 @@ sys_msgctl(struct msgctl_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
+	lwkt_gettoken(&msg_token);
 	msqid = IPCID_TO_IX(msqid);
 
 	if (msqid < 0 || msqid >= msginfo.msgmni) {
@@ -332,7 +331,7 @@ sys_msgctl(struct msgctl_args *uap)
 		break;
 	}
 done:
-	rel_mplock();
+	lwkt_reltoken(&msg_token);
 	if (eval == 0)
 		uap->sysmsg_result = rval;
 	return(eval);
@@ -358,7 +357,7 @@ sys_msgget(struct msgget_args *uap)
 		return (ENOSYS);
 
 	eval = 0;
-	get_mplock();
+	lwkt_gettoken(&msg_token);
 
 	if (key != IPC_PRIVATE) {
 		for (msqid = 0; msqid < msginfo.msgmni; msqid++) {
@@ -441,7 +440,7 @@ sys_msgget(struct msgget_args *uap)
 	}
 
 done:
-	rel_mplock();
+	lwkt_reltoken(&msg_token);
 	/* Construct the unique msqid */
 	if (eval == 0)
 		uap->sysmsg_result = IXSEQ_TO_IPCID(msqid, msqptr->msg_perm);
@@ -472,7 +471,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
+	lwkt_gettoken(&msg_token);
 	msqid = IPCID_TO_IX(msqid);
 
 	if (msqid < 0 || msqid >= msginfo.msgmni) {
@@ -773,7 +772,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 	wakeup((caddr_t)msqptr);
 	eval = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&msg_token);
 	if (eval == 0)
 		uap->sysmsg_result = 0;
 	return (eval);
@@ -805,7 +804,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	get_mplock();
+	lwkt_gettoken(&msg_token);
 	msqid = IPCID_TO_IX(msqid);
 
 	if (msqid < 0 || msqid >= msginfo.msgmni) {
@@ -1060,7 +1059,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 	wakeup((caddr_t)msqptr);
 	eval = 0;
 done:
-	rel_mplock();
+	lwkt_reltoken(&msg_token);
 	if (eval == 0)
 		uap->sysmsg_result = msgsz;
 	return(eval);
@@ -1069,9 +1068,8 @@ done:
 static int
 sysctl_msqids(SYSCTL_HANDLER_ARGS)
 {
-
 	return (SYSCTL_OUT(req, msqids,
-	    sizeof(struct msqid_ds) * msginfo.msgmni));
+		sizeof(struct msqid_ds) * msginfo.msgmni));
 }
 
 TUNABLE_INT("kern.ipc.msgseg", &msginfo.msgseg);

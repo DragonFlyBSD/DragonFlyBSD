@@ -34,8 +34,6 @@
 #include <sys/systm.h>
 #include <sys/eventhandler.h>
 
-#include <sys/mplock2.h>
-
 MALLOC_DEFINE(M_EVENTHANDLER, "eventhandler", "Event handler records");
 
 /* List of 'slow' lists */

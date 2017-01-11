@@ -48,8 +48,6 @@
 
 #include <vm/vm_zone.h>
 
-#include <sys/mplock2.h>
-
 static MALLOC_DEFINE(M_KTRACE, "KTRACE", "KTRACE");
 
 #ifdef KTRACE
@@ -270,8 +268,9 @@ sys_ktrace(struct ktrace_args *uap)
 	struct nlookupdata nd;
 	ktrace_node_t tracenode = NULL;
 
-	get_mplock();
+	lwkt_gettoken(&curp->p_token);
 	curp->p_traceflag |= KTRFAC_ACTIVE;
+
 	if (ops != KTROP_CLEAR) {
 		/*
 		 * an operation which requires a file argument.
@@ -359,7 +358,7 @@ done:
 	if (tracenode)
 		ktrdestroy(&tracenode);
 	curp->p_traceflag &= ~KTRFAC_ACTIVE;
-	rel_mplock();
+	lwkt_reltoken(&curp->p_token);
 	return (error);
 #else
 	return ENOSYS;

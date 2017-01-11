@@ -51,7 +51,6 @@
 
 #include <sys/refcount.h>
 #include <sys/spinlock2.h>
-#include <sys/mplock2.h>
 
 /*
  * Hash table size must be a power of two and is not currently dynamically

@@ -94,7 +94,6 @@
 #include <sys/sysctl.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 #include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
@@ -1077,6 +1076,8 @@ tstohz_low(struct timespec *ts)
 
 /*
  * Start profiling on a process.
+ *
+ * Caller must hold p->p_token();
  *
  * Kernel profiling passes proc0 which never exits and hence
  * keeps the profile clock running constantly.

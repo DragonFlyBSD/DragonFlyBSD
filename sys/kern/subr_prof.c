@@ -39,7 +39,6 @@
 #include <sys/sysctl.h>
 
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 
@@ -351,7 +350,7 @@ sys_profil(struct profil_args *uap)
 
 	if (uap->scale > (1 << 16))
 		return (EINVAL);
-	get_mplock();
+	lwkt_gettoken(&p->p_token);
 	if (uap->scale == 0) {
 		stopprofclock(p);
 	} else {
@@ -366,7 +365,8 @@ sys_profil(struct profil_args *uap)
 		startprofclock(p);
 		crit_exit();
 	}
-	rel_mplock();
+	lwkt_reltoken(&p->p_token);
+
 	return (0);
 }
 

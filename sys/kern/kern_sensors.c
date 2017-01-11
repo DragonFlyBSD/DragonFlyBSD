@@ -35,8 +35,6 @@
 #include <sys/sysctl.h>
 #include <sys/sensors.h>
 
-#include <sys/mplock2.h>
-
 static int		sensordev_idmax;
 static TAILQ_HEAD(sensordev_list, ksensordev) sensordev_list =
     TAILQ_HEAD_INITIALIZER(sensordev_list);

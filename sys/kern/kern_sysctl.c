@@ -48,8 +48,6 @@
 #include <sys/lock.h>
 #include <sys/sbuf.h>
 
-#include <sys/mplock2.h>
-
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 

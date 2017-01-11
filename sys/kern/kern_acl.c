@@ -47,8 +47,6 @@
 #include <sys/stat.h>
 #include <sys/acl.h>
 
-#include <sys/mplock2.h>
-
 static int vacl_set_acl(struct vnode *vp, acl_type_t type, struct acl *aclp);
 static int vacl_get_acl(struct vnode *vp, acl_type_t type, struct acl *aclp);
 static int vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp);
