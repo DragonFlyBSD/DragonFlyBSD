@@ -27,8 +27,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
- * $FreeBSD$
- * $DragonFly: src/sys/sys/diskmbr.h,v 1.4 2007/06/17 03:51:11 dillon Exp $
  */
 
 #ifndef _SYS_DISKMBR_H_
@@ -55,7 +53,7 @@
 #define	DOSPTYP_LINSWP	0x82	/* Linux swap partition */
 #define	DOSPTYP_LINUX	0x83	/* Linux partition */
 #define	DOSPTYP_PMBR	0xee	/* GPT Protective MBR */
-#define	DOSPTYP_GPT	0xef	/* GPT Native EFI */
+#define	DOSPTYP_EFI	0xef	/* EFI system partition */
 #define	DOSPTYP_EXT	5	/* DOS extended partition */
 #define	DOSPTYP_EXTLBA	15	/* DOS extended partition */
 
