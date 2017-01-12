@@ -166,8 +166,7 @@ reread_mbr:
 	 * to GPT processing.
 	 */
 	for (dospart = 0, dp = dp0; dospart < NDOSPART; dospart++, dp++) {
-		if (dospart == 0 &&
-		    (dp->dp_typ == DOSPTYP_PMBR || dp->dp_typ == DOSPTYP_GPT)) {
+		if (dospart == 0 && dp->dp_typ == DOSPTYP_PMBR) {
 			if (bootverbose)
 				kprintf(
 	    "%s: Found GPT in slice #%d\n", sname, dospart + 1);
