@@ -10,3 +10,6 @@ size = 3014463
 sha1 = 5daaf33f5cc382e1c9dd7375a67e26aad1d0b2ed
 
 The file README.DELETED contains a list of deleted files and directories.
+
+Local modifications applied to following files:
+	crypto/ecdsa/ecs_ossl.c
