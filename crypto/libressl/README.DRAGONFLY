@@ -4,9 +4,9 @@ LIBRESSL
 Original source can be downloaded from:
 http://www.libressl.org
 
-file = libressl-2.4.3.tar.gz
-date = 23 September 2016
-size = 3014721
-sha1 = c0e35dfd83983a717a95b8e415686a88da4dc854
+file = libressl-2.4.4.tar.gz
+date = 6 November 2016
+size = 3014463
+sha1 = 5daaf33f5cc382e1c9dd7375a67e26aad1d0b2ed
 
 The file README.DELETED contains a list of deleted files and directories.
