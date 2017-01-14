@@ -68,10 +68,13 @@ typedef	__wchar_t	wchar_t;	/* open group, _GCC_WCHAR_T OK */
 
 #if (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) || \
     (defined(__cplusplus) && __cplusplus >= 201103L))
+#ifndef _MAX_ALIGN_T_DECLARED
+#define _MAX_ALIGN_T_DECLARED
 typedef struct {
 	long long __max_align_nonce1 __aligned(__alignof(long long));
 	long double __max_align_nonce2 __aligned(__alignof(long double));
 } max_align_t;
+#endif
 #endif
 
 #endif /* _STDDEF_H_ */
