@@ -115,7 +115,7 @@ int sched_getparam (pid_t, struct sched_param *);
 int sched_setscheduler (pid_t, int, const struct sched_param *);
 int sched_getscheduler (pid_t);
 
-int sched_setaffinity (pid_t, size_t, cpu_set_t *);
+int sched_setaffinity (pid_t, size_t, const cpu_set_t *);
 int sched_getaffinity (pid_t, size_t, cpu_set_t *);
 
 int sched_yield (void);

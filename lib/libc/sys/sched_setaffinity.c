@@ -38,7 +38,7 @@
 #include <string.h>
 
 int
-sched_setaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask)
+sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask)
 {
 	size_t cplen = cpusetsize;
 	cpu_set_t mask1;
