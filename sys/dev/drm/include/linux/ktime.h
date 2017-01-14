@@ -75,8 +75,6 @@ static inline ktime_t ktime_sub_ns(ktime_t kt, int64_t ns)
 	return kt;
 }
 
-#define NSEC_PER_SEC	1000000000L
-
 static inline ktime_t ktime_get(void)
 {
 	struct timespec ts;
