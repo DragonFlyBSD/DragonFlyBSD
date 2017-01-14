@@ -562,4 +562,5 @@ struct sysent sysent[] = {
 	{ AS(ppoll_args), (sy_call_t *)sys_ppoll },	/* 543 = ppoll */
 	{ AS(lwp_setaffinity_args), (sy_call_t *)sys_lwp_setaffinity },	/* 544 = lwp_setaffinity */
 	{ AS(lwp_getaffinity_args), (sy_call_t *)sys_lwp_getaffinity },	/* 545 = lwp_getaffinity */
+	{ AS(lwp_create2_args), (sy_call_t *)sys_lwp_create2 },	/* 546 = lwp_create2 */
 };

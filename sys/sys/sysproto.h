@@ -2341,6 +2341,13 @@ struct	lwp_getaffinity_args {
 	lwpid_t	tid;	char tid_[PAD_(lwpid_t)];
 	cpumask_t *	mask;	char mask_[PAD_(cpumask_t *)];
 };
+struct	lwp_create2_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	struct lwp_params *	params;	char params_[PAD_(struct lwp_params *)];
+	const cpumask_t *	mask;	char mask_[PAD_(const cpumask_t *)];
+};
 struct	olseek_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2836,6 +2843,7 @@ int	sys_lwp_setname (struct lwp_setname_args *);
 int	sys_ppoll (struct ppoll_args *);
 int	sys_lwp_setaffinity (struct lwp_setaffinity_args *);
 int	sys_lwp_getaffinity (struct lwp_getaffinity_args *);
+int	sys_lwp_create2 (struct lwp_create2_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

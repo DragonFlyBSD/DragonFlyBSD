@@ -37,6 +37,7 @@
 #include <sys/types.h>			/* XXX adds too much pollution. */
 #include <sys/unistd.h>
 #include <sys/_null.h>
+#include <machine/cpumask.h>
 
 #ifndef _GID_T_DECLARED
 typedef	__uint32_t	gid_t;		/* XXX __gid_t */
@@ -552,6 +553,7 @@ int	 iruserok_sa(const void *, int, int, const char *, const char *);
 int	 issetugid(void);
 long	 lpathconf(const char *, int);
 int	 lwp_create(struct lwp_params *);
+int	 lwp_create2(struct lwp_params *, const cpumask_t *);
 lwpid_t	 lwp_gettid(void);
 int	 lwp_setname(lwpid_t, const char *);
 #ifndef	_MKNOD_DECLARED

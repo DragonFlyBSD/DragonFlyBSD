@@ -142,9 +142,10 @@
  * 400705 - lwp_{set,get}affinity()
  * 400706 - sched_{set,get}affinity()
  * 400707 - pthread_{set,get}affinity_np()
+ * 400708 - lwp_create2()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400707	/* propagated to newvers */
+#define __DragonFly_version 400708	/* propagated to newvers */
 
 #include <sys/_null.h>
 

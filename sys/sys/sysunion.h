@@ -318,4 +318,5 @@ union sysunion {
 	struct	ppoll_args ppoll;
 	struct	lwp_setaffinity_args lwp_setaffinity;
 	struct	lwp_getaffinity_args lwp_getaffinity;
+	struct	lwp_create2_args lwp_create2;
 };

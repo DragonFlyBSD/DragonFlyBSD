@@ -1262,6 +1262,8 @@ dfly_forking(struct lwp *plp, struct lwp *lp)
 	lp->lwp_qcpu = ++save_cpu % ncpus;
 #else
 	lp->lwp_qcpu = plp->lwp_qcpu;
+	if (CPUMASK_TESTBIT(lp->lwp_cpumask, lp->lwp_qcpu) == 0)
+		lp->lwp_qcpu = BSFCPUMASK(lp->lwp_cpumask);
 #endif
 
 	/*

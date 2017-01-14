@@ -81,7 +81,10 @@ struct forklist {
 TAILQ_HEAD(forklist_head, forklist);
 static struct forklist_head fork_list = TAILQ_HEAD_INITIALIZER(fork_list);
 
-static struct lwp *lwp_fork(struct lwp *, struct proc *, int flags);
+static struct lwp	*lwp_fork(struct lwp *, struct proc *, int flags,
+			    const cpumask_t *mask);
+static int		lwp_create1(struct lwp_params *params,
+			    const cpumask_t *mask);
 
 int forksleep; /* Place for fork1() to sleep on. */
 
@@ -180,24 +183,31 @@ sys_rfork(struct rfork_args *uap)
 	return error;
 }
 
-/*
- * Low level thread create used by pthreads.
- */
-int
-sys_lwp_create(struct lwp_create_args *uap)
+static int
+lwp_create1(struct lwp_params *uprm, const cpumask_t *umask)
 {
 	struct proc *p = curproc;
 	struct lwp *lp;
 	struct lwp_params params;
+	cpumask_t *mask = NULL, mask0;
 	int error;
 
-	error = copyin(uap->params, &params, sizeof(params));
+	error = copyin(uprm, &params, sizeof(params));
 	if (error)
 		goto fail2;
 
+	if (umask != NULL) {
+		error = copyin(umask, &mask0, sizeof(mask0));
+		if (error)
+			goto fail2;
+		CPUMASK_ANDMASK(mask0, smp_active_mask);
+		if (CPUMASK_TESTNZERO(mask0))
+			mask = &mask0;
+	}
+
 	lwkt_gettoken(&p->p_token);
 	plimit_lwp_fork(p);	/* force exclusive access */
-	lp = lwp_fork(curthread->td_lwp, p, RFPROC | RFMEM);
+	lp = lwp_fork(curthread->td_lwp, p, RFPROC | RFMEM, mask);
 	error = cpu_prepare_lwp(lp, &params);
 	if (error)
 		goto fail;
@@ -241,6 +251,23 @@ fail:
 	lwkt_reltoken(&p->p_token);
 fail2:
 	return (error);
+}
+
+/*
+ * Low level thread create used by pthreads.
+ */
+int
+sys_lwp_create(struct lwp_create_args *uap)
+{
+
+	return (lwp_create1(uap->params, NULL));
+}
+
+int
+sys_lwp_create2(struct lwp_create2_args *uap)
+{
+
+	return (lwp_create1(uap->params, uap->mask));
 }
 
 int	nprocs = 1;		/* process 0 */
@@ -601,7 +628,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * into userland, after it was put on the runq by
 	 * start_forked_proc().
 	 */
-	lwp_fork(lp1, p2, flags);
+	lwp_fork(lp1, p2, flags, NULL);
 
 	if (flags == (RFFDG | RFPROC | RFPGLOCK)) {
 		mycpu->gd_cnt.v_forks++;
@@ -659,7 +686,8 @@ done:
 }
 
 static struct lwp *
-lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
+lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
+    const cpumask_t *mask)
 {
 	globaldata_t gd = mycpu;
 	struct lwp *lp;
@@ -673,6 +701,8 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	bcopy(&origlp->lwp_startcopy, &lp->lwp_startcopy,
 	    (unsigned) ((caddr_t)&lp->lwp_endcopy -
 			(caddr_t)&lp->lwp_startcopy));
+	if (mask != NULL)
+		lp->lwp_cpumask = *mask;
 
 	/*
 	 * Reset the sigaltstack if memory is shared, otherwise inherit

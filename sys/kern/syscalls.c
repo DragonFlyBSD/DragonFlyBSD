@@ -552,4 +552,5 @@ const char *syscallnames[] = {
 	"ppoll",			/* 543 = ppoll */
 	"lwp_setaffinity",			/* 544 = lwp_setaffinity */
 	"lwp_getaffinity",			/* 545 = lwp_getaffinity */
+	"lwp_create2",			/* 546 = lwp_create2 */
 };

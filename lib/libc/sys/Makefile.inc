@@ -142,6 +142,7 @@ MLINKS+=kqueue.2 EV_SET.2 \
 	kqueue.2 kevent.2
 MLINKS+=link.2 linkat.2
 MLINKS+=lseek.2 seek.2
+MLINKS+=lwp_create.2 lwp_create2.2
 MLINKS+=lwp_setaffinity.2 lwp_getaffinity.2
 MLINKS+=madvise.2 mcontrol.2 \
 	madvise.2 posix_madvise.3

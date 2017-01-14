@@ -746,3 +746,4 @@
 			const struct timespec *ts, const sigset_t *sigmask); }
 544	STD	{ int lwp_setaffinity(pid_t pid, lwpid_t tid, const cpumask_t *mask); }
 545	STD	{ int lwp_getaffinity(pid_t pid, lwpid_t tid, cpumask_t *mask); }
+546	STD	{ int lwp_create2(struct lwp_params *params, const cpumask_t *mask); }

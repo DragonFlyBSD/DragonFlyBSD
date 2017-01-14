@@ -32,11 +32,12 @@
 .\"
 .\" $DragonFly: src/lib/libc/sys/lwp_create.2,v 1.2 2007/03/13 10:16:56 swildner Exp $
 .\"
-.Dd March 12, 2007
+.Dd January 14, 2017
 .Dt LWP_CREATE 2
 .Os
 .Sh NAME
-.Nm lwp_create
+.Nm lwp_create,
+.Nm lwp_create2
 .Nd spawn a new lwp
 .Sh LIBRARY
 .Lb libc
@@ -44,17 +45,25 @@
 .In unistd.h
 .Ft int
 .Fn lwp_create "struct lwp_params *params"
+.Ft int
+.Fn lwp_create2 "struct lwp_params *params" "const cpumask_t *mask"
 .Sh DESCRIPTION
 The
 .Fn lwp_create
-function spawns a new lwp in the current process.
+and the
+.Fn lwp_create2
+function spawn a new lwp in the current process.
 In a way,
 .Fn lwp_create
-is similar to
+and
+.Fn lwp_create2
+are similar to
 .Xr fork 2 .
 However,
 .Fn lwp_create
-does not return twice as parent and child.
+and
+.Fn lwp_create2
+do not return twice as parent and child.
 Instead, the new lwp will execute a function provided by the
 .Fa params
 argument which is a pointer to a
@@ -104,6 +113,14 @@ point to variables where the tid of the new lwp shall be stored.
 Two parameters are provided so that storage for both parent
 and child can be specified separately.
 Setting any of these to NULL causes the respective tid not to be copied out.
+.Pp
+The
+.Fa mask
+argument to
+.Fn lwp_create2
+specifies the new lwp's CPU affinity mask.
+.Va NULL
+means no special CPU affinity settings.
 .Sh RETURN VALUES
 .Rv -std
 .Sh SEE ALSO
@@ -115,3 +132,7 @@ The
 .Fn lwp_create
 function first appeared in
 .Dx 1.9 .
+The
+.Fn lwp_create2
+function first appeared in
+.Dx 4.7 .

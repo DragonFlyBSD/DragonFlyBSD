@@ -309,4 +309,5 @@ MIASM =  \
 	lwp_setname.o \
 	ppoll.o \
 	lwp_setaffinity.o \
-	lwp_getaffinity.o
+	lwp_getaffinity.o \
+	lwp_create2.o
