@@ -40,7 +40,18 @@
 int
 sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask)
 {
+	cpu_set_t mask1;
+	int ret;
 
-	memset(mask, 0, cpusetsize);
-	return (lwp_getaffinity(pid, -1, mask));
+	ret = lwp_getaffinity(pid, -1, &mask1);
+	if (ret < 0)
+		return (ret);
+
+	if (cpusetsize > sizeof(mask1)) {
+		memset(mask, 0, cpusetsize);
+		memcpy(mask, &mask1, sizeof(mask1));
+	} else {
+		memcpy(mask, &mask1, cpusetsize);
+	}
+	return (0);
 }
