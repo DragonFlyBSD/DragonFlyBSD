@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,8 @@
 #include <sys/sched.h>
 #include <sys/signal2.h>
 
+#include <linux/time.h>
+
 #define	TASK_RUNNING		0
 #define	TASK_INTERRUPTIBLE	1
 #define	TASK_UNINTERRUPTIBLE	2
@@ -59,5 +61,17 @@ schedule_timeout(signed long timeout)
 #define TASK_COMM_LEN	MAXCOMLEN
 
 #define signal_pending(lp)	CURSIG(lp)
+
+/*
+ * local_clock: fast time source, monotonic on the same cpu
+ */
+static inline uint64_t
+local_clock(void)
+{
+	struct timespec ts;
+
+	getnanouptime(&ts);
+	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
+}
 
 #endif	/* _LINUX_SCHED_H_ */
