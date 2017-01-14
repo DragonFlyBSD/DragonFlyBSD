@@ -60,6 +60,7 @@ MAN+=	\
 	pthread_schedparam.3 \
 	pthread_self.3 \
 	pthread_set_name_np.3 \
+	pthread_setaffinity_np.3 \
 	pthread_setspecific.3 \
 	pthread_sigmask.3 \
 	pthread_spin_init.3 \
@@ -122,6 +123,7 @@ MLINKS+= \
 	pthread_rwlock_wrlock.3 pthread_rwlock_trywrlock.3 \
 	pthread_schedparam.3 pthread_getschedparam.3 \
 	pthread_schedparam.3 pthread_setschedparam.3 \
+	pthread_setaffinity_np.3 pthread_getaffinity_np.3 \
 	pthread_spin_init.3 pthread_spin_destroy.3 \
 	pthread_spin_lock.3 pthread_spin_trylock.3 \
 	pthread_spin_lock.3 pthread_spin_unlock.3 \

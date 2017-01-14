@@ -105,6 +105,8 @@ STATIC_LIB_REQUIRE(_pthread_exit);
 /* thr_fork.c */
 STATIC_LIB_REQUIRE(_pthread_atfork);
 STATIC_LIB_REQUIRE(_fork);
+/* thr_affinity.c */
+STATIC_LIB_REQUIRE(_pthread_getaffinity_np);
 /* thr_getprio.c */
 STATIC_LIB_REQUIRE(_pthread_getprio);
 /* thr_getschedparam.c */
@@ -143,6 +145,8 @@ STATIC_LIB_REQUIRE(_pthread_rwlockattr_init);
 STATIC_LIB_REQUIRE(_pthread_self);
 /* thr_sem.c */
 STATIC_LIB_REQUIRE(_sem_init);
+/* thr_affinity.c */
+STATIC_LIB_REQUIRE(_pthread_setaffinity_np);
 /* thr_setprio.c */
 STATIC_LIB_REQUIRE(_pthread_setprio);
 /* thr_setschedparam.c */

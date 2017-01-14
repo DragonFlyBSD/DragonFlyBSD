@@ -70,6 +70,7 @@ DF404.0 {
     pthread_detach;
     pthread_equal;
     pthread_exit;
+    pthread_getaffinity_np;
     pthread_getconcurrency;
     pthread_getprio;
     pthread_getschedparam;
@@ -120,6 +121,7 @@ DF404.0 {
     pthread_rwlockattr_setpshared;
     pthread_self;
     pthread_set_name_np;
+    pthread_setaffinity_np;
     pthread_setcancelstate;
     pthread_setcanceltype;
     pthread_setconcurrency;
@@ -505,6 +507,7 @@ DFprivate_1.0 {
     _pthread_detach;
     _pthread_equal;
     _pthread_exit;
+    _pthread_getaffinity_np;
     _pthread_getconcurrency;
     _pthread_getprio;
     _pthread_getschedparam;
@@ -555,6 +558,7 @@ DFprivate_1.0 {
     _pthread_rwlockattr_setpshared;
     _pthread_self;
     _pthread_set_name_np;
+    _pthread_setaffinity_np;
     _pthread_setcancelstate;
     _pthread_setcanceltype;
     _pthread_setconcurrency;
