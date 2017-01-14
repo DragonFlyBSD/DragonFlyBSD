@@ -60,11 +60,63 @@ struct sched_param
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
+#include <machine/cpumask.h>
+
+typedef cpumask_t		cpu_set_t;
+
+#define CPU_SETSIZE		(sizeof(cpumask_t) * 8)
+
+#define CPU_ZERO(set)		CPUMASK_ASSZERO(*set)
+#define CPU_SET(cpu, set)	CPUMASK_ORBIT(*set, cpu)
+#define CPU_CLR(cpu, set)	CPUMASK_NANDBIT(*set, cpu)
+#define CPU_ISSET(cpu, set)	CPUMASK_TESTBIT(*set, cpu)
+
+#define CPU_COUNT(set)				\
+	(__builtin_popcountl((set)->ary[0]) +	\
+	 __builtin_popcountl((set)->ary[1]) +	\
+	 __builtin_popcountl((set)->ary[2]) +	\
+	 __builtin_popcountl((set)->ary[3]))
+
+#define CPU_AND(dst, set1, set2)		\
+do {						\
+	if (dst == set1) {			\
+		CPUMASK_ANDMASK(*dst, *set2);	\
+	} else {				\
+		*dst = *set2;			\
+		CPUMASK_ANDMASK(*dst, *set1);	\
+	}					\
+} while (0)
+
+#define CPU_OR(dst, set1, set2)			\
+do {						\
+	if (dst == set1) {			\
+		CPUMASK_ORMASK(*dst, *set2);	\
+	} else {				\
+		*dst = *set2;			\
+		CPUMASK_ORMASK(*dst, *set1);	\
+	}					\
+} while (0)
+
+#define CPU_XOR(dst, set1, set2)		\
+do {						\
+	if (dst == set1) {			\
+		CPUMASK_XORMASK(*dst, *set2);	\
+	} else {				\
+		*dst = *set2;			\
+		CPUMASK_XORMASK(*dst, *set1);	\
+	}					\
+} while (0)
+
+#define CPU_EQUAL(set1, set2)	CPUMASK_CMPMASKEQ(*set1, *set2)
+
 int sched_setparam (pid_t, const struct sched_param *);
 int sched_getparam (pid_t, struct sched_param *);
 
 int sched_setscheduler (pid_t, int, const struct sched_param *);
 int sched_getscheduler (pid_t);
+
+int sched_setaffinity (pid_t, size_t, cpu_set_t *);
+int sched_getaffinity (pid_t, size_t, cpu_set_t *);
 
 int sched_yield (void);
 int sched_get_priority_max (int);

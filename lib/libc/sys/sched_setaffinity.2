@@ -1,0 +1,220 @@
+.\" Copyright (c) 2017 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Sepherosa Ziehau <sepherosa@gmail.com>.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd January 14, 2017
+.Dt SCHED_SETAFFINITY 2
+.Os
+.Sh NAME
+.Nm sched_setaffinity,
+.Nm sched_getaffinity
+.Nd set and get a process's CPU affinity mask
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/types.h
+.In sys/sched.h
+.Ft int
+.Fn sched_setaffinity "pid_t pid" "size_t cpusetsize" "cpu_set_t *mask"
+.Ft int
+.Fn sched_getaffinity "pid_t pid" "size_t cpusetsize" "cpu_set_t *mask"
+.Fn CPU_ZERO &mask
+.Fn CPU_SET cpu &mask
+.Fn CPU_CLR cpu &mask
+.Fn CPU_ISSET cpu &mask
+.Fn CPU_COUNT &mask
+.Fn CPU_AND &dstmask &srcmask1 &srcmask2
+.Fn CPU_OR &dstmask &srcmask1 srcmask2
+.Fn CPU_XOR &dstmask &srcmask1 &srcmask2
+.Fn CPU_EQUAL &mask1 &mask2
+.Sh DESCRIPTION
+.Pp
+The
+.Fn sched_setaffinity
+sets the CPU affinity mask of the process,
+which is identified by the
+.Fa pid
+to the value specified by the
+.Fa mask .
+The
+.Fa cpusetsize
+is the length (in bytes) of the data pointed to by
+.Fa mask .
+Normally this argument would be specified as sizeof(cpu_set_t).
+If the
+.Fa pid
+is zero,
+then the pid of the calling process is used.
+All threads of the process identified by
+.Fa pid
+are affected.
+If the calling thread is one of the target process's threads,
+then the calling thread will be migrated immediately,
+if necessary,
+while other threads of the targt process will be migrated
+by the scheduler later.
+.Pp
+A process created by
+.Xr fork 2 ,
+.Xr vfork 2 ,
+and
+.Xr rfork 2
+inherits the calling thread's CPU affinity mask.
+Same applies to the threads created by
+.Xr lwp_create 2 ,
+and the threads created by
+.Xr pthread_create 3 .
+.Pp
+.Fn sched_getaffinity
+writes the affinity mask of the process
+identified by the
+.Fa pid
+to the cpu_set_t structure pointed to by
+.Fa mask .
+If the
+.Fa pid
+is zero,
+then the pid of the calling process is used.
+If the process is multithreaded,
+then the CPU affinity mask of the first thread will be returned.
+.Pp
+The cpu_set_t data structure represents a set of CPUs.
+The first available CPU on the system corresponds to a cpu value of 0,
+the next CPU corresponds to a cpu value of 1,
+and so on and so forth.
+The constant
+.Va CPU_SETSIZE
+specifies a value one greater than the maximum
+CPU number that can be stored in cpu_set_t.
+The cpu_set_t should be treated as opaque data structure;
+all manipulation of cpu_set_t should be done via the following macros:
+.Bl -tag -width "CPU_COUNTxxx"
+.It Fn CPU_ZERO
+Reset the
+.Fa mask ,
+so that it contains no CPUs.
+.It Fn CPU_SET
+Add the
+.Fa cpu
+to the
+.Fa mask .
+.It Fn CPU_CLR
+Remove the
+.Fa cpu
+from the
+.Fa mask .
+.It Fn CPU_ISSET
+Test to see whether the
+.Fa cpu
+is a member of the
+.Fa mask .
+.It Fn CPU_COUNT
+Return the number of CPUs in the
+.Fa mask .
+.It Fn CPU_AND
+Store the intersection of the
+.Fa srcmask1
+and the
+.Fa srcmask2
+in the
+.Fa dstmask .
+The
+.Fa dstmask
+could be one of the source masks.
+.It Fn CPU_OR
+Store the union of the
+.Fa srcmask1
+and the
+.Fa srcmask2
+in the
+.Fa dstmask .
+The
+.Fa dstmask
+could be one of the source masks.
+.It Fn CPU_XOR
+Store the XOR of the
+.Fa srcmask1
+and the
+.Fa srcmask2
+in the
+.Fa dstmask .
+The
+.Fa dstmask
+could be one of the source masks.
+.It Fn CPU_EQUAL
+Test whether the
+.Fa mask1
+and the
+.Fa mask2
+contain the same CPUs.
+.El
+.Sh RETURN VALUES
+These system calls return \-1 on error and
+0 upon successful completion.
+.Sh ERRORS
+The
+.Fn sched_setaffinity
+and
+.Fn sched_getaffinity
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EFAULT
+The
+.Fa mask
+parameter is outside the process's allocated address space.
+.It Bq Er EINVAL
+The
+.Fa pid
+parameter is negative.
+.It Bq Er ESRCH
+The process identified by the
+.Fa pid
+does not exist.
+.It Bq Er EPERM
+The
+.Fa mask
+does not contain a valid CPU.
+.El
+.Sh SEE ALSO
+.Xr fork 2
+.Xr lwp_create 2
+.Xr lwp_getaffinity 2
+.Xr lwp_setaffinity 2
+.Xr pthread_create 3
+.Xr rfork 2
+.Xr vfork 2
+.Sh HISTORY
+The
+.Fn sched_setaffinity
+and
+.Fn sched_getaffinity
+functions first appeared in
+.Dx 4.7 .

@@ -36,7 +36,9 @@
 #define	_CPU_CPUMASK_H_
 
 #include <cpu/types.h>
+#ifdef _KERNEL
 #include <cpu/atomic.h>
+#endif
 
 #if _CPUMASK_ELEMENTS != 4
 #error "CPUMASK macros incompatible with cpumask_t"
@@ -210,6 +212,7 @@
 					(mask).ary[3] ^= -1L;		\
 					} while(0)
 
+#ifdef _KERNEL
 #define ATOMIC_CPUMASK_ORBIT(mask, i)					  \
 			atomic_set_cpumask(&(mask).ary[((i) >> 6) & 3],	  \
 					   CPUMASK_SIMPLE((i) & 63))
@@ -244,5 +247,6 @@
 			atomic_store_rel_cpumask(&(mask).ary[2], (val).ary[2]);\
 			atomic_store_rel_cpumask(&(mask).ary[3], (val).ary[3]);\
 					 } while(0)
+#endif
 
 #endif /* !_CPU_CPUMASK_H_ */
