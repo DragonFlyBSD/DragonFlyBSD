@@ -44,6 +44,7 @@
 #include <sys/queue.h>
 #include <sys/rtprio.h>
 #include <machine/atomic.h>
+#include <machine/cpumask.h>
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
@@ -237,10 +238,12 @@ struct pthread_attr {
 	int	prio;
 	int	suspend;
 #define	THR_STACK_USER		0x100	/* 0xFF reserved for <pthread.h> */
+#define THR_CPUMASK		0x200	/* cpumask is valid */
 	int	flags;
 	void	*stackaddr_attr;
 	size_t	stacksize_attr;
 	size_t	guardsize_attr;
+	cpumask_t cpumask;
 };
 
 /*

@@ -12,6 +12,7 @@ SRCS+= \
 	uthread_attr_destroy.c \
 	uthread_attr_get_np.c \
 	uthread_attr_init.c \
+	uthread_attr_getaffinity_np.c \
 	uthread_attr_getdetachstate.c \
 	uthread_attr_getinheritsched.c \
 	uthread_attr_getschedparam.c \
@@ -20,6 +21,7 @@ SRCS+= \
 	uthread_attr_getstack.c \
 	uthread_attr_getstackaddr.c \
 	uthread_attr_getstacksize.c \
+	uthread_attr_setaffinity_np.c \
 	uthread_attr_setcreatesuspend_np.c \
 	uthread_attr_setdetachstate.c \
 	uthread_attr_setinheritsched.c \

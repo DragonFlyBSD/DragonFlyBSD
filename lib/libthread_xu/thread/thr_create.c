@@ -54,6 +54,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	void *stack;
 	sigset_t sigmask, oldsigmask;
 	struct pthread *curthread, *new_thread;
+	const cpu_set_t *cpumask = NULL;
 	int ret = 0, locked;
 
 	_thr_check_init();
@@ -85,6 +86,8 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		 * inherited in following code.
 		 */
 	}
+	if (new_thread->attr.flags & THR_CPUMASK)
+		cpumask = &new_thread->attr.cpumask;
 
 	if (create_stack(&new_thread->attr) != 0) {
 		/* Insufficient memory to create a stack: */
@@ -165,7 +168,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	SIGFILLSET(sigmask);
 	__sys_sigprocmask(SIG_SETMASK, &sigmask, &oldsigmask);
 	new_thread->sigmask = oldsigmask;
-	ret = lwp_create(&create_params);
+	ret = lwp_create2(&create_params, cpumask);
 	__sys_sigprocmask(SIG_SETMASK, &oldsigmask, NULL);
 	if (ret != 0) {
 		if (!locked)

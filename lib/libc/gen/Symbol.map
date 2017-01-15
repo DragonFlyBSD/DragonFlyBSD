@@ -26,6 +26,7 @@ DF404.0 {
     pthread_atfork;
     pthread_attr_destroy;
     pthread_attr_get_np;
+    pthread_attr_getaffinity_np;
     pthread_attr_getdetachstate;
     pthread_attr_getguardsize;
     pthread_attr_getinheritsched;
@@ -36,6 +37,7 @@ DF404.0 {
     pthread_attr_getstackaddr;
     pthread_attr_getstacksize;
     pthread_attr_init;
+    pthread_attr_setaffinity_np;
     pthread_attr_setcreatesuspend_np;
     pthread_attr_setdetachstate;
     pthread_attr_setguardsize;
@@ -462,6 +464,7 @@ DFprivate_1.0 {
     _pthread_atfork;
     _pthread_attr_destroy;
     _pthread_attr_get_np;
+    _pthread_attr_getaffinity_np;
     _pthread_attr_getdetachstate;
     _pthread_attr_getguardsize;
     _pthread_attr_getinheritsched;
@@ -472,6 +475,7 @@ DFprivate_1.0 {
     _pthread_attr_getstackaddr;
     _pthread_attr_getstacksize;
     _pthread_attr_init;
+    _pthread_attr_setaffinity_np;
     _pthread_attr_setcreatesuspend_np;
     _pthread_attr_setdetachstate;
     _pthread_attr_setguardsize;

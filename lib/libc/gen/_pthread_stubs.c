@@ -50,6 +50,7 @@
 WR(__atfork, pthread_atfork);
 WR(stub_zero, pthread_attr_destroy);
 WR(stub_zero, pthread_attr_get_np);
+WR(stub_zero, pthread_attr_getaffinity_np);
 WR(stub_zero, pthread_attr_getdetachstate);
 WR(stub_zero, pthread_attr_getguardsize);
 WR(stub_zero, pthread_attr_getinheritsched);
@@ -60,6 +61,7 @@ WR(stub_zero, pthread_attr_getstack);
 WR(stub_zero, pthread_attr_getstackaddr);
 WR(stub_zero, pthread_attr_getstacksize);
 WR(stub_zero, pthread_attr_init);
+WR(stub_zero, pthread_attr_setaffinity_np);
 WR(stub_zero, pthread_attr_setcreatesuspend_np);
 WR(stub_zero, pthread_attr_setdetachstate);
 WR(stub_zero, pthread_attr_setguardsize);

@@ -32,6 +32,8 @@
  */
 
 #include "namespace.h"
+#include <sys/types.h>
+#include <sys/sysctl.h>
 #include <machine/tls.h>
 #include <errno.h>
 #include <pthread.h>
@@ -90,6 +92,39 @@ _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
 }
 
 __strong_reference(_pthread_attr_get_np, pthread_attr_get_np);
+
+int
+_pthread_attr_getaffinity_np(const pthread_attr_t *attr, size_t cpusetsize,
+    cpu_set_t *mask)
+{
+	const cpu_set_t *ret;
+	cpu_set_t mask1;
+
+	if (attr == NULL || *attr == NULL || mask == NULL)
+		return (EINVAL);
+
+	if (((*attr)->flags & THR_CPUMASK) == 0) {
+		size_t len;
+
+		len = sizeof(mask1);
+		if (sysctlbyname("machdep.smp_active", &mask1, &len,
+		    NULL, 0) < 0)
+			return (errno);
+		ret = &mask1;
+	} else {
+		ret = &(*attr)->cpumask;
+	}
+
+	if (cpusetsize > sizeof(*ret)) {
+		memset(mask, 0, cpusetsize);
+		memcpy(mask, ret, sizeof(*ret));
+	} else {
+		memcpy(mask, ret, cpusetsize);
+	}
+	return (0);
+}
+
+__strong_reference(_pthread_attr_getaffinity_np, pthread_attr_getaffinity_np);
 
 int
 _pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate)
@@ -276,6 +311,36 @@ _pthread_attr_init(pthread_attr_t *attr)
 }
 
 __strong_reference(_pthread_attr_init, pthread_attr_init);
+
+int
+_pthread_attr_setaffinity_np(pthread_attr_t *attr, size_t cpusetsize,
+    const cpu_set_t *mask)
+{
+	cpu_set_t active, mask1;
+	size_t len, cplen = cpusetsize;
+
+	if (attr == NULL || *attr == NULL || mask == NULL)
+		return (EINVAL);
+
+	if (cplen > sizeof(mask1))
+		cplen = sizeof(mask1);
+	CPU_ZERO(&mask1);
+	memcpy(&mask1, mask, cplen);
+
+	len = sizeof(active);
+	if (sysctlbyname("machdep.smp_active", &active, &len, NULL, 0) < 0)
+		return (errno);
+
+	CPUMASK_ANDMASK(mask1, active);
+	if (CPUMASK_TESTZERO(mask1))
+		return (EPERM);
+
+	(*attr)->cpumask = mask1;
+	(*attr)->flags |= THR_CPUMASK;
+	return (0);
+}
+
+__strong_reference(_pthread_attr_setaffinity_np, pthread_attr_setaffinity_np);
 
 int
 _pthread_attr_setcreatesuspend_np(pthread_attr_t *attr)

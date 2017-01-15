@@ -59,6 +59,7 @@
 #undef		pthread_atfork
 #undef		pthread_attr_destroy
 #undef		pthread_attr_get_np
+#undef		pthread_attr_getaffinity_np
 #undef		pthread_attr_getdetachstate
 #undef		pthread_attr_getguardsize
 #undef		pthread_attr_getinheritsched
@@ -69,6 +70,7 @@
 #undef		pthread_attr_getstackaddr
 #undef		pthread_attr_getstacksize
 #undef		pthread_attr_init
+#undef		pthread_attr_setaffinity_np
 #undef		pthread_attr_setcreatesuspend_np
 #undef		pthread_attr_setdetachstate
 #undef		pthread_attr_setguardsize
