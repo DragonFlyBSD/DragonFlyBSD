@@ -36,7 +36,7 @@
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
 .\"
-.Dd July 23, 2015
+.Dd January 14, 2017
 .Dt BOOT 8
 .Os
 .Sh NAME
@@ -55,6 +55,10 @@ devices.
 Usually, BIOSes allow
 you to change this default sequence, and typically also include a CD-ROM
 drive as a boot device.
+.Pp
+Newer PCs boot using UEFI firmware, not legacy BIOS.
+That process is described in
+.Xr uefi 8 .
 .Pp
 By default, a three-stage bootstrap is employed, and control is
 automatically passed from the boot blocks (bootstrap stages one and
@@ -287,7 +291,8 @@ requirement has not been adhered to.
 .Xr halt 8 ,
 .Xr loader 8 ,
 .Xr reboot 8 ,
-.Xr shutdown 8
+.Xr shutdown 8 ,
+.Xr uefi 8
 .Sh BUGS
 The
 .Xr disklabel 5

@@ -11,6 +11,7 @@ MAN=	adding_user.8 \
 	rc.subr.8 \
 	sticky.8 \
 	swapcache.8 \
+	${_uefi.8} \
 	yp.8
 
 MLINKS=	rc.8 rc.d.8 \
@@ -21,5 +22,9 @@ MLINKS=	rc.8 rc.d.8 \
 MLINKS+=yp.8 nis.8 \
 	yp.8 NIS.8 \
 	yp.8 YP.8
+
+.if ${MACHINE_ARCH} == "x86_64"
+_uefi.8= uefi.8
+.endif
 
 .include <bsd.prog.mk>
