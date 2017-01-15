@@ -409,8 +409,6 @@ static int
 vga_pci_set_powerstate(device_t dev, device_t child, int state)
 {
 
-	device_printf(dev, "child %s requested pci_set_powerstate\n",
-	    device_get_nameunit(child));
 	return (pci_set_powerstate(dev, state));
 }
 
@@ -418,8 +416,6 @@ static int
 vga_pci_get_powerstate(device_t dev, device_t child)
 {
 
-	device_printf(dev, "child %s requested pci_get_powerstate\n",
-	    device_get_nameunit(child));
 	return (pci_get_powerstate(dev));
 }
 
