@@ -178,7 +178,8 @@ static cpumask_t smp_lapic_mask = CPUMASK_INITIALIZER_ONLYONE;
 cpumask_t smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
 cpumask_t smp_finalize_mask = CPUMASK_INITIALIZER_ONLYONE;
 
-SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
+SYSCTL_OPAQUE(_machdep, OID_AUTO, smp_active, CTLFLAG_RD,
+	      &smp_active_mask, sizeof(smp_active_mask), "LU", "");
 static u_int	bootMP_size;
 static u_int	report_invlpg_src;
 SYSCTL_INT(_machdep, OID_AUTO, report_invlpg_src, CTLFLAG_RW,
