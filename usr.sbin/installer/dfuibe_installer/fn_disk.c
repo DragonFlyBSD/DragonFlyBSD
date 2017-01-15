@@ -203,6 +203,10 @@ fn_format_disk_mbr(struct i_fn_args *a)
 	    "LAST CHANCE to cancel!"), disk_get_desc(storage_get_selected_disk(a->s)))) {
 		cmds = commands_new();
 
+		command_add(cmds,
+		    "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
+		    a->os_root, cmd_name(a, "DD"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
 		command_add(cmds, "%s%s -BI %s",
 		    a->os_root, cmd_name(a, "FDISK"),
 		    disk_get_device_name(storage_get_selected_disk(a->s)));
