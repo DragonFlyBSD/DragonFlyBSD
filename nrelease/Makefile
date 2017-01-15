@@ -141,7 +141,6 @@ quick:		quickrel
 
 realquick:	realquickrel
 
-
 #########################################################################
 #			   CORE SUPPORT TARGETS 			#
 #########################################################################
@@ -325,9 +324,22 @@ customizeiso:
 	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
 
 mkiso:
-	( cd ${ISOROOT}; mkisofs -b boot/cdboot -no-emul-boot \
-		-R -J -o ${ISOFILE} \
+	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
+	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
+	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
+	newfs_msdos -C 400k -F 12 -L EFI -m 0xf8 ${ISOROOT}/boot/efiboot.img
+	vnconfig -l | grep "not in use" | head -n 1 | 			\
+	    cut -f 1 -d: > ${ISODIR}/vn.which
+	vnconfig -e -s labels `cat ${ISODIR}/vn.which` ${ISOROOT}/boot/efiboot.img
+	mount_msdos /dev/`cat ${ISODIR}/vn.which` ${IMGMNT}
+	mkdir -p ${IMGMNT}/EFI/BOOT
+	cp ${ISOROOT}/boot/loader.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
+	umount ${IMGMNT}
+	( cd ${ISOROOT}; mkisofs -R -J -o ${ISOFILE} \
+		-b boot/cdboot -no-emul-boot \
+		-eltorito-alt-boot -eltorito-platform efi -eltorito-boot boot/efiboot.img -no-emul-boot \
 		-V "DragonFly `${.CURDIR}/../tools/gitrev.sh | cut -c -22`" . )
+	rm -f ${ISOROOT}/boot/efiboot.img
 
 mkimg:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
@@ -347,29 +359,42 @@ mkimg:
 	    rm -f ${IMGFILE};						\
 	    truncate -s $${sz}M ${IMGFILE};
 .endif
-	fdisk -IB -p ${IMGFILE}
 	@echo "STEP: determine free vn device"
 	vnconfig -l | grep "not in use" | head -n 1 | 			\
 	    cut -f 1 -d: > ${ISODIR}/vn.which
 	vnconfig -e -s labels `cat ${ISODIR}/vn.which` ${IMGFILE}
+	@echo "STEP: set up legacy MBR"
+	fdisk -IB `cat ${ISODIR}/vn.which`
+	fdisk -s `cat ${ISODIR}/vn.which` >${ISODIR}/fdisk.dat
+	awk '(NR==1){printf("g c%s h%s s%s\n", $$2, $$4, $$6);}' \
+	    ${ISODIR}/fdisk.dat >${ISODIR}/fdisk.conf
+	echo "p 1 239 63 257985" >>${ISODIR}/fdisk.conf
+	awk '($$1=="1:"){printf("p 2 165 258048 %lu\n", $$3 - 258528);}' \
+	    ${ISODIR}/fdisk.dat >>${ISODIR}/fdisk.conf
+	echo "a 2" >>${ISODIR}/fdisk.conf
+	fdisk -iv -f ${ISODIR}/fdisk.conf `cat ${ISODIR}/vn.which`
+	rm ${ISODIR}/fdisk.conf ${ISODIR}/fdisk.dat
+	newfs_msdos -F 32 -c 2 -L EFI -m 0xf8 `cat ${ISODIR}/vn.which`s1
+	mount_msdos /dev/`cat ${ISODIR}/vn.which`s1 ${IMGMNT}
+	mkdir -p ${IMGMNT}/EFI/BOOT
+	cp ${ISOROOT}/boot/boot1.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
+	umount ${IMGMNT}
 	@echo "STEP: write standard disklabel"
-	disklabel -w -r `cat ${ISODIR}/vn.which`s1 auto
+	disklabel -w -r `cat ${ISODIR}/vn.which`s2 auto
 	@echo "STEP: read disklabel back"
-	disklabel -r `cat ${ISODIR}/vn.which`s1 > ${IMGFILE}.label
+	disklabel -r `cat ${ISODIR}/vn.which`s2 > ${IMGFILE}.label
 	@echo "STEP: determine number of sectors of whole disk"
 	secs=`tail -n 1 ${IMGFILE}.label | cut -f 3 -w`;		\
 	    echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label;
 	@echo "STEP: write modified disklabel back"
-	disklabel -R -r `cat ${ISODIR}/vn.which`s1 ${IMGFILE}.label
+	disklabel -R -r `cat ${ISODIR}/vn.which`s2 ${IMGFILE}.label
 	rm ${IMGFILE}.label
-	@echo "STEP: write bootsector"
-	disklabel -B `cat ${ISODIR}/vn.which`s1
-	boot0cfg -B -o noupdate `cat ${ISODIR}/vn.which`
-	newfs /dev/`cat ${ISODIR}/vn.which`s1a
-	mount /dev/`cat ${ISODIR}/vn.which`s1a ${IMGMNT}
+	disklabel -B `cat ${ISODIR}/vn.which`s2
+	newfs /dev/`cat ${ISODIR}/vn.which`s2a
+	mount /dev/`cat ${ISODIR}/vn.which`s2a ${IMGMNT}
 	cpdup ${ISOROOT} ${IMGMNT}
 	@echo "STEP: fixup ${IMGMNT}/etc/fstab"
-	echo "/dev/${IMGUSBDEV}s1a / ufs rw,noatime 0 1" > ${IMGMNT}/etc/fstab
+	echo "/dev/${IMGUSBDEV}s2a / ufs rw,noatime 0 1" > ${IMGMNT}/etc/fstab
 	echo "dummy /tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "dummy /var/tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "dummy /var/run tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
@@ -377,7 +402,7 @@ mkimg:
 	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
 	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new
-	echo 'vfs.root.mountfrom="ufs:${IMGUSBDEV}s1a"' >> ${IMGMNT}/boot/loader.conf.new
+	echo 'vfs.root.mountfrom="ufs:${IMGUSBDEV}s2a"' >> ${IMGMNT}/boot/loader.conf.new
 	mv ${IMGMNT}/boot/loader.conf.new ${IMGMNT}/boot/loader.conf
 	@echo "STEP: cleanup"
 	df ${IMGMNT}
