@@ -50,6 +50,7 @@
 
 struct i_fn_args;
 int use_hammer;
+int use_uefi;
 int during_install;
 /*** PROTOTYPES ***/
 
@@ -71,6 +72,7 @@ void 		 state_diskutil_menu(struct i_fn_args *);
 
 void		 state_begin_install(struct i_fn_args *);
 void		 state_begin_upgrade(struct i_fn_args *);
+void		 state_ask_uefi(struct i_fn_args *);
 void		 state_select_disk(struct i_fn_args *);
 void		 state_ask_fs(struct i_fn_args *);
 void		 state_format_disk(struct i_fn_args *);

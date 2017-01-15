@@ -86,7 +86,8 @@ char		*fn_select_file(const char *, const char *, const char *,
 				const char *, const char *, const char *,
 				const struct i_fn_args *);
 
-void		 fn_format_disk(struct i_fn_args *);
+void		 fn_format_disk_mbr(struct i_fn_args *);
+void		 fn_format_disk_uefi(struct i_fn_args *);
 void		 fn_install_bootblocks(struct i_fn_args *, const char *device);
 void		 fn_wipe_start_of_disk(struct i_fn_args *);
 void		 fn_wipe_start_of_slice(struct i_fn_args *);

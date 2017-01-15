@@ -781,7 +781,10 @@ state_diskutil_menu(struct i_fn_args *a)
 		if (strcmp(dfui_response_get_action_id(r), "format_hdd") == 0) {
 			storage_set_selected_disk(a->s, NULL);
 			storage_set_selected_slice(a->s, NULL);
-			fn_format_disk(a);
+			if (use_uefi)
+				fn_format_disk_uefi(a);
+			else
+				fn_format_disk_mbr(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "wipe_start_of_disk") == 0) {
 			fn_wipe_start_of_disk(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "wipe_start_of_slice") == 0) {
@@ -921,7 +924,7 @@ state_begin_install(struct i_fn_args *a)
 			inform(a->c, _("Errors occurred while probing "
 			    "the system for its storage capabilities."));
 		}
-		state = state_select_disk;
+		state = state_ask_uefi;
 	} else if (strcmp(dfui_response_get_action_id(r), "livecd") == 0) {
 		state = NULL;
 	} else if (strcmp(dfui_response_get_action_id(r), "cancel") == 0) {
@@ -930,6 +933,38 @@ state_begin_install(struct i_fn_args *a)
 
 	dfui_form_free(f);
 	dfui_response_free(r);
+}
+
+/*
+ * state_ask_uefi: ask the user if they want a UEFI installation
+ */
+void
+state_ask_uefi(struct i_fn_args *a)
+{
+	use_uefi = 0;
+
+	switch (dfui_be_present_dialog(a->c, _("UEFI or legacy BIOS?"),
+	    _("UEFI|Legacy BIOS|Return to Begin Installation"),
+	    _("Do you wish to set up %s for a UEFI or legacy BIOS system?"),
+	    OPERATING_SYSTEM_NAME))
+	{
+	case 1:
+		/* UEFI */
+		use_uefi = 1;
+		break;
+	case 2:
+		/* MBR */
+		break;
+	case 3:
+		state = state_begin_install;
+		return;
+		/* NOTREACHED */
+		break;
+	default:
+		abort_backend();
+		break;
+	}
+	state = state_select_disk;
 }
 
 /*
@@ -1017,6 +1052,17 @@ state_ask_fs(struct i_fn_args *a)
 void
 state_format_disk(struct i_fn_args *a)
 {
+
+	if (use_uefi) {
+		fn_format_disk_uefi(a);
+		if (a->result)
+			state = state_ask_fs;
+		else
+			state = state_format_disk;
+		return;
+	}
+
+	/* XXX Using part of the disk is only supported for MBR installs */
 	switch (dfui_be_present_dialog(a->c, _("How Much Disk?"),
 	    _("Use Entire Disk|Use Part of Disk|Return to Select Disk"),
 	    _("Select how much of this disk you want to use for %s.\n\n%s"),
@@ -1032,7 +1078,7 @@ state_format_disk(struct i_fn_args *a)
 			}
 		}
 
-		fn_format_disk(a);
+		fn_format_disk_mbr(a);
 		if (a->result)
 			state = state_ask_fs;
 		else
@@ -1218,8 +1264,12 @@ state_install_os(struct i_fn_args *a)
 		state = state_create_subpartitions;
 	} else {
 		fn_install_os(a);
-		if (a->result)
-			state = state_install_bootstrap;
+		if (a->result) {
+			if (use_uefi)
+				state = state_finish_install;
+			else
+				state = state_install_bootstrap;
+		}
 	}
 
 	dfui_form_free(f);

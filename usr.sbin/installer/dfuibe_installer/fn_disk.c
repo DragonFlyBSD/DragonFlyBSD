@@ -181,7 +181,7 @@ fn_select_slice(struct i_fn_args *a)
  * If it was, ss->selected_disk and ss->selected_slice are set to it.
  */
 void
-fn_format_disk(struct i_fn_args *a)
+fn_format_disk_mbr(struct i_fn_args *a)
 {
 	struct commands *cmds;
 	char *selected_disk_string;
@@ -256,6 +256,108 @@ fn_format_disk(struct i_fn_args *a)
 			a->result = 0;
 			return;
 		}
+
+		inform(a->c, _("The disk\n\n%s\n\nwas formatted."),
+		    disk_get_desc(storage_get_selected_disk(a->s)));
+		a->result = 1;
+	} else {
+		inform(a->c, _("Action cancelled - no disks were formatted."));
+		a->result = 0;
+	}
+}
+
+void
+fn_format_disk_uefi(struct i_fn_args *a)
+{
+	struct commands *cmds;
+	char *selected_disk_string;
+
+	if (storage_get_selected_disk(a->s) == NULL) {
+		a->short_desc = _("Select a disk to format.");
+		a->cancel_desc = _("Return to Utilities Menu");
+		fn_select_disk(a);
+		if (!a->result || storage_get_selected_disk(a->s) == NULL) {
+			a->result = 0;
+			return;
+		}
+	}
+
+	if (confirm_dangerous_action(a->c,
+	    _("WARNING!  ALL data in ALL partitions on the disk\n\n"
+	    "%s\n\nwill be IRREVOCABLY ERASED!\n\nAre you ABSOLUTELY "
+	    "SURE you wish to take this action?  This is your "
+	    "LAST CHANCE to cancel!"), disk_get_desc(storage_get_selected_disk(a->s)))) {
+		cmds = commands_new();
+
+		command_add(cmds,
+		    "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
+		    a->os_root, cmd_name(a, "DD"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		command_add(cmds, "%s%s destroy %s",
+		    a->os_root, cmd_name(a, "GPT"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		command_add(cmds, "%s%s create -f %s",
+		    a->os_root, cmd_name(a, "GPT"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		command_add(cmds, "%s%s add -i 0 -s 262144 -t efi %s",
+		    a->os_root, cmd_name(a, "GPT"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		command_add(cmds, "%s%s add -i 1 -t dragonfly %s",
+		    a->os_root, cmd_name(a, "GPT"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		command_add(cmds, "%s%s -F 32 -c 2 -L EFI -m 0xf8 %ss0",
+		    a->os_root, cmd_name(a, "NEWFS_MSDOS"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		command_add(cmds, "%s%s /dev/%ss0 %smnt",
+		    a->os_root, cmd_name(a, "MOUNT_MSDOS"),
+		    disk_get_device_name(storage_get_selected_disk(a->s)),
+		    a->os_root);
+		command_add(cmds, "%s%s -p %smnt/EFI/BOOT",
+		    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
+		command_add(cmds,
+		    "%s%s %s/boot/boot1.efi %smnt/EFI/BOOT/BOOTX64.EFI",
+		    a->os_root, cmd_name(a, "CP"),
+		    a->os_root, a->os_root);
+		command_add(cmds, "%s%s %smnt",
+		    a->os_root, cmd_name(a, "UMOUNT"), a->os_root);
+
+		if (!commands_execute(a, cmds)) {
+			inform(a->c, _("The disk\n\n%s\n\nwas "
+			    "not correctly formatted, and may "
+			    "now be in an inconsistent state. "
+			    "We recommend re-formatting it "
+			    "before attempting to install "
+			    "%s on it."),
+			    disk_get_desc(storage_get_selected_disk(a->s)),
+			    OPERATING_SYSTEM_NAME);
+			commands_free(cmds);
+			a->result = 0;
+			return;
+		}
+		commands_free(cmds);
+
+		/*
+		 * Since one of the disks has now changed, we must
+		 * refresh our view of them and re-select the disk
+		 * since the selected_disk pointer will be invalidated.
+		 */
+		selected_disk_string = aura_strdup(
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		if (!survey_storage(a)) {
+			inform(a->c, _("Errors occurred while probing "
+			    "the system for its storage capabilities."));
+		}
+		storage_set_selected_disk(a->s,
+		    disk_find(a->s, selected_disk_string));
+		free(selected_disk_string);
+
+		/*
+		 * Note that we formatted this disk and that we want
+		 * to use the first (and only) slice of it.
+		 */
+		disk_set_formatted(storage_get_selected_disk(a->s), 1);
+		storage_set_selected_slice(a->s,
+		    disk_slice_first(storage_get_selected_disk(a->s)));
 
 		inform(a->c, _("The disk\n\n%s\n\nwas formatted."),
 		    disk_get_desc(storage_get_selected_disk(a->s)));
