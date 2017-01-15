@@ -710,7 +710,6 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 
 /* PCI Express link capabilities, 32bits */
 #define PCIER_LINKCAP			0x0c
-#define PCIER_LINK_CAP2			0x2c
 #define PCIEM_LNKCAP_SPEED_MASK		0x000f	/* Supported link speeds */
 #define PCIEM_LNKCAP_SPEED_2_5		0x1	/* 2.5GT/s */
 #define PCIEM_LNKCAP_SPEED_5		0x2	/* 5.0GT/s and 2.5GT/s */
@@ -768,6 +767,36 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIE_HPINTR_MRL_SNS		0x0004	/* MRL sensor changed intr */
 #define PCIE_HPINTR_PRSN_DETECT		0x0008	/* Presence detect intr */
 #define PCIE_HPINTR_CMD_COMPL		0x0010	/* Command completed intr */
+
+/* PCI Express device capabilities 2, 32bits */
+#define PCIER_DEVCAP2			0x24
+#define PCIEM_DEVCAP2_COMP_TIMO_RANGES	0x0000000f
+#define PCIEM_DEVCAP2_COMP_TIMO_RANGE_A	0x00000001
+#define PCIEM_DEVCAP2_COMP_TIMO_RANGE_B	0x00000002
+#define PCIEM_DEVCAP2_COMP_TIMO_RANGE_C	0x00000004
+#define PCIEM_DEVCAP2_COMP_TIMO_RANGE_D	0x00000008
+#define PCIEM_DEVCAP2_COMP_TIMO_DISABLE	0x00000010
+#define PCIEM_DEVCAP2_ALT_RID_SUPP	0x00000020
+#define PCIEM_DEVCAP2_LTR_SUPP		0x00000800
+
+/* PCI Express device control 2, 16bits */
+#define PCIER_DEVCTRL2			0x28
+#define PCIEM_DEVCTL2_COMP_TIMO_MASK	0x000f
+#define PCIEM_DEVCTL2_COMP_TIMO_50MS	0x0000
+#define PCIEM_DEVCTL2_COMP_TIMO_100US	0x0001
+#define PCIEM_DEVCTL2_COMP_TIMO_10MS	0x0002
+#define PCIEM_DEVCTL2_COMP_TIMO_55MS	0x0005
+#define PCIEM_DEVCTL2_COMP_TIMO_210MS	0x0006
+#define PCIEM_DEVCTL2_COMP_TIMO_900MS	0x0009
+#define PCIEM_DEVCTL2_COMP_TIMO_3500MS	0x000a
+#define PCIEM_DEVCTL2_COMP_TIMO_13S	0x000d
+#define PCIEM_DEVCTL2_COMP_TIMO_64S	0x000e
+#define PCIEM_DEVCTL2_COMP_TIMO_DISABLE	0x0010
+#define PCIEM_DEVCTL2_ALT_RID_ENABLE	0x0020
+#define PCIEM_DEVCTL2_LTR_ENABLE	0x0400
+
+/* PCI Express link capabilities 2, 32bits */
+#define PCIER_LINK_CAP2			0x2c
 
 /* PCI Advanced Features definitions */
 #define	PCIR_PCIAF_CAP		0x3
