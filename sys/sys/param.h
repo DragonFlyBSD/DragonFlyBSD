@@ -146,7 +146,7 @@
  * 400709 - pthread_attr_{set,get}affinity_np()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400708	/* propagated to newvers */
+#define __DragonFly_version 400709	/* propagated to newvers */
 
 #include <sys/_null.h>
 
