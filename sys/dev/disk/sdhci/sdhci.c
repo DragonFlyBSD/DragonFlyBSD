@@ -607,8 +607,9 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 		slot_printf(slot, "%uMHz%s %s%s%s%s %s\n",
 		    slot->max_clk / 1000000,
 		    (caps & SDHCI_CAN_DO_HISPD) ? " HS" : "",
-		    (caps & MMC_CAP_8_BIT_DATA) ? "8bits" :
-			((caps & MMC_CAP_4_BIT_DATA) ? "4bits" : "1bit"),
+		    (slot->host.caps & MMC_CAP_8_BIT_DATA) ? "8bits" :
+			((slot->host.caps & MMC_CAP_4_BIT_DATA) ? "4bits" :
+			"1bit"),
 		    (caps & SDHCI_CAN_VDD_330) ? " 3.3V" : "",
 		    (caps & SDHCI_CAN_VDD_300) ? " 3.0V" : "",
 		    (caps & SDHCI_CAN_VDD_180) ? " 1.8V" : "",
