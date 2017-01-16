@@ -30,6 +30,7 @@
  */
 
 #include "namespace.h"
+#include <sys/lwp.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

@@ -32,8 +32,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/usched.h>
+#include <sys/lwp.h>
 #include <sched.h>
 #include <string.h>
 

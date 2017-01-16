@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/usched.h>
+#include <sys/lwp.h>
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>

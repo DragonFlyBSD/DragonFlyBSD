@@ -37,6 +37,7 @@
  * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include <sys/lwp.h>
 #include <machine/atomic.h>
 #include <machine/tls.h>
 #include <errno.h>

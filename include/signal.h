@@ -91,7 +91,6 @@ void	psignal(unsigned int, const char *); /* XXX signum should be int */
 #endif
 
 #if __BSD_VISIBLE
-int	lwp_kill(__pid_t, lwpid_t, int);
 int	sigblock(int);
 int	sigreturn(ucontext_t *);
 int	sigsetmask(int);

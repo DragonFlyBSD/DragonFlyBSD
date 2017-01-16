@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/signalvar.h>
 #include <sys/rtprio.h>
+#include <sys/lwp.h>
 #include <pthread.h>
 
 #include "thr_private.h"

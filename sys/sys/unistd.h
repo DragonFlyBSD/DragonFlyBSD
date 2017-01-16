@@ -201,18 +201,6 @@
 #define	EXTEXIT_LWP	(1<<16)
 #define	EXTEXIT_WHO(f)	((f) & (0xffff<<16))
 
-
-/*
- * Parameters for the creation of a new lwp.
- */
-struct lwp_params {
-	void (*lwp_func)(void *); /* Function to start execution */
-	void *lwp_arg;		/* Parameter to this function */
-	void *lwp_stack;	/* Stack address to use */
-	lwpid_t *lwp_tid1;	/* Address to copy out new tid */
-	lwpid_t *lwp_tid2;	/* Same */
-};
-
 #endif /* __BSD_VISIBLE */
 
 #endif /* !_SYS_UNISTD_H_ */

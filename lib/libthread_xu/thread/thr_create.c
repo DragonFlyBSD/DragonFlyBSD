@@ -38,6 +38,7 @@
 #include <machine/tls.h>
 #include <pthread.h>
 #include <sys/signalvar.h>
+#include <sys/lwp.h>
 #include "un-namespace.h"
 
 #include "libc_private.h"

@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/lwp.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <stdio.h>

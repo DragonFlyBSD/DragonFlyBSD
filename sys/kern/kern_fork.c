@@ -51,6 +51,7 @@
 #include <sys/ktrace.h>
 #include <sys/unistd.h>
 #include <sys/jail.h>
+#include <sys/lwp.h>
 
 #include <vm/vm.h>
 #include <sys/lock.h>
