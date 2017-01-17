@@ -116,6 +116,7 @@ struct send_globctx {
 
 	volatile u_int		g_nwait;
 	int			g_readto_ms;	/* unit: ms */
+	int			g_buflen;
 	bool			g_sendfile;
 };
 
@@ -153,7 +154,8 @@ static void
 usage(const char *cmd)
 {
 	fprintf(stderr, "%s -4 addr4 [-4 addr4 ...] [-p port] "
-	    "-c conns [-t nthreads] [-l sec] [-r readto_ms] [-S] [-E]\n", cmd);
+	    "-c conns [-t nthreads] [-l sec] [-r readto_ms] [-S] [-E] "
+	    "[-b buflen]\n", cmd);
 	exit(2);
 }
 
@@ -172,7 +174,7 @@ main(int argc, char *argv[])
 	sigset_t sigset;
 	int opt, i;
 	int in_arr_cnt, in_arr_sz, ndaddr;
-	int nthr, nconn, dur, readto_ms;
+	int nthr, nconn, dur, readto_ms, buflen;
 	int log_err, err_cnt, has_minmax;
 	u_short port = RECV_PORT;
 	uint32_t idx;
@@ -198,8 +200,9 @@ main(int argc, char *argv[])
 	nconn = 0;
 	dur = SEND_DUR;
 	readto_ms = SEND_READTO_MS;
+	buflen = SEND_BUFLEN;
 
-	while ((opt = getopt(argc, argv, "4:ESc:l:p:r:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:ESb:c:l:p:r:t:")) != -1) {
 		switch (opt) {
 		case '4':
 			if (in_arr_cnt == in_arr_sz) {
@@ -224,6 +227,12 @@ main(int argc, char *argv[])
 
 		case 'S':
 			do_sendfile = true;
+			break;
+
+		case 'b':
+			buflen = strtol(optarg, NULL, 10);
+			if (buflen <= 0)
+				errx(1, "invalid -b");
 			break;
 
 		case 'c':
@@ -278,6 +287,7 @@ main(int argc, char *argv[])
 	glob.g_dur = dur;
 	glob.g_readto_ms = readto_ms;
 	glob.g_sendfile = do_sendfile;
+	glob.g_buflen = buflen;
 	pthread_mutex_init(&glob.g_lock, NULL);
 	pthread_cond_init(&glob.g_cond, NULL);
 
@@ -601,15 +611,16 @@ send_thread(void *xctx)
 	struct conn_ctx *timeo;
 	struct kevent chg_evt;
 	uint8_t *buf;
-	int nconn = 0, kq, n, fd = -1;
+	int nconn = 0, kq, n, fd = -1, buflen;
 	char name[32];
 
 	snprintf(name, sizeof(name), "snd%d", ctx->t_id);
 	pthread_set_name_np(pthread_self(), name);
 
-	buf = malloc(SEND_BUFLEN);
+	buflen = ctx->t_glob->g_buflen;
+	buf = malloc(buflen);
 	if (buf == NULL)
-		err(1, "malloc failed");
+		err(1, "malloc(%d) failed", buflen);
 
 	if (ctx->t_glob->g_sendfile) {
 		char filename[] = "sendtmpXXX";
@@ -617,7 +628,7 @@ send_thread(void *xctx)
 		fd = mkstemp(filename);
 		if (fd < 0)
 			err(1, "mkstemp failed");
-		if (write(fd, buf, SEND_BUFLEN) != SEND_BUFLEN)
+		if (write(fd, buf, buflen) != buflen)
 			err(1, "write to file failed");
 		unlink(filename);
 		free(buf);
@@ -774,15 +785,15 @@ again:
 				off_t m, off;
 				size_t len;
 
-				off = conn->c_stat % SEND_BUFLEN;
-				len = SEND_BUFLEN - off;
+				off = conn->c_stat % buflen;
+				len = buflen - off;
 
 				n = sendfile(fd, conn->c_s, off, len, NULL,
 				    &m, 0);
 				if (n == 0 || (n < 0 && errno == EAGAIN))
 					n = m;
 			} else {
-				n = write(conn->c_s, buf, SEND_BUFLEN);
+				n = write(conn->c_s, buf, buflen);
 			}
 
 			if (n < 0) {
