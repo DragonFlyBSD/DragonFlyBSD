@@ -35,10 +35,13 @@ struct recv_thrctx {
 
 static void	*recv_thread(void *);
 
+static int	recv_buflen = RECV_BUFLEN;
+
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s [-4 addr4] [-p port] [-t nthreads] [-D]\n", cmd);
+	fprintf(stderr, "%s [-4 addr4] [-p port] [-t nthreads] [-D] "
+	    "[-b buflen]\n", cmd);
 	exit(2);
 }
 
@@ -68,7 +71,7 @@ main(int argc, char *argv[])
 
 	do_daemon = 1;
 
-	while ((opt = getopt(argc, argv, "4:Dp:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:Db:p:t:")) != -1) {
 		switch (opt) {
 		case '4':
 			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0)
@@ -77,6 +80,12 @@ main(int argc, char *argv[])
 
 		case 'D':
 			do_daemon = 0;
+			break;
+
+		case 'b':
+			recv_buflen = strtol(optarg, NULL, 10);
+			if (recv_buflen <= 0)
+				errx(1, "invalid -b");
 			break;
 
 		case 'p':
@@ -219,9 +228,9 @@ recv_thread(void *xctx)
 	if (kq < 0)
 		err(1, "kqueue failed");
 
-	buf = malloc(RECV_BUFLEN);
+	buf = malloc(recv_buflen);
 	if (buf == NULL)
-		err(1, "malloc %d failed", RECV_BUFLEN);
+		err(1, "malloc %d failed", recv_buflen);
 
 	memset(&ack, 0, sizeof(ack));
 
@@ -277,7 +286,7 @@ recv_thread(void *xctx)
 					++nchange;
 				}
 			} else {
-				n = read(evt[i].ident, buf, RECV_BUFLEN);
+				n = read(evt[i].ident, buf, recv_buflen);
 				if (n <= 0) {
 					if (n == 0 || errno != EAGAIN)
 						close(evt[i].ident);
