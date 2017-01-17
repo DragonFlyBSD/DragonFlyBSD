@@ -20,6 +20,7 @@
 #include <pthread.h>
 #include <pthread_np.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -115,6 +116,7 @@ struct send_globctx {
 
 	volatile u_int		g_nwait;
 	int			g_readto_ms;	/* unit: ms */
+	bool			g_sendfile;
 };
 
 struct send_thrctx {
@@ -151,7 +153,7 @@ static void
 usage(const char *cmd)
 {
 	fprintf(stderr, "%s -4 addr4 [-4 addr4 ...] [-p port] "
-	    "-c conns [-t nthreads] [-l sec] [-r readto_ms] [-E]\n", cmd);
+	    "-c conns [-t nthreads] [-l sec] [-r readto_ms] [-S] [-E]\n", cmd);
 	exit(2);
 }
 
@@ -175,6 +177,7 @@ main(int argc, char *argv[])
 	u_short port = RECV_PORT;
 	uint32_t idx;
 	size_t sz;
+	bool do_sendfile = false;
 
 	sigemptyset(&sigset);
 	sigaddset(&sigset, SIGPIPE);
@@ -196,7 +199,7 @@ main(int argc, char *argv[])
 	dur = SEND_DUR;
 	readto_ms = SEND_READTO_MS;
 
-	while ((opt = getopt(argc, argv, "4:Ec:l:p:r:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:ESc:l:p:r:t:")) != -1) {
 		switch (opt) {
 		case '4':
 			if (in_arr_cnt == in_arr_sz) {
@@ -217,6 +220,10 @@ main(int argc, char *argv[])
 
 		case 'E':
 			log_err = 1;
+			break;
+
+		case 'S':
+			do_sendfile = true;
 			break;
 
 		case 'c':
@@ -252,7 +259,7 @@ main(int argc, char *argv[])
 		}
 	}
 	if (in_arr_cnt == 0 || nconn == 0)
-		errx(1, "neither -4 nor -c are specified");
+		errx(1, "either -4 or -c are specified");
 
 	if (nthr > nconn)
 		nthr = nconn;
@@ -270,6 +277,7 @@ main(int argc, char *argv[])
 	glob.g_nwait = 1; /* count self in */
 	glob.g_dur = dur;
 	glob.g_readto_ms = readto_ms;
+	glob.g_sendfile = do_sendfile;
 	pthread_mutex_init(&glob.g_lock, NULL);
 	pthread_cond_init(&glob.g_cond, NULL);
 
@@ -593,7 +601,7 @@ send_thread(void *xctx)
 	struct conn_ctx *timeo;
 	struct kevent chg_evt;
 	uint8_t *buf;
-	int nconn = 0, kq, n;
+	int nconn = 0, kq, n, fd = -1;
 	char name[32];
 
 	snprintf(name, sizeof(name), "snd%d", ctx->t_id);
@@ -602,6 +610,19 @@ send_thread(void *xctx)
 	buf = malloc(SEND_BUFLEN);
 	if (buf == NULL)
 		err(1, "malloc failed");
+
+	if (ctx->t_glob->g_sendfile) {
+		char filename[] = "sendtmpXXX";
+
+		fd = mkstemp(filename);
+		if (fd < 0)
+			err(1, "mkstemp failed");
+		if (write(fd, buf, SEND_BUFLEN) != SEND_BUFLEN)
+			err(1, "write to file failed");
+		unlink(filename);
+		free(buf);
+		buf = NULL;
+	}
 
 	kq = kqueue();
 	if (kq < 0)
@@ -749,7 +770,21 @@ again:
 				continue;
 			}
 
-			n = write(conn->c_s, buf, SEND_BUFLEN);
+			if (fd >= 0) {
+				off_t m, off;
+				size_t len;
+
+				off = conn->c_stat % SEND_BUFLEN;
+				len = SEND_BUFLEN - off;
+
+				n = sendfile(fd, conn->c_s, off, len, NULL,
+				    &m, 0);
+				if (n == 0 || (n < 0 && errno == EAGAIN))
+					n = m;
+			} else {
+				n = write(conn->c_s, buf, SEND_BUFLEN);
+			}
+
 			if (n < 0) {
 				if (errno != EAGAIN) {
 					conn->c_err = errno;
@@ -765,5 +800,10 @@ again:
 	}
 done:
 	clock_gettime(CLOCK_MONOTONIC_PRECISE, &ctx->t_end);
+
+	if (fd >= 0)
+		close(fd);
+	if (buf != NULL)
+		free(buf);
 	return NULL;
 }
