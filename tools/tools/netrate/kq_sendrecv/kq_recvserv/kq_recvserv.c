@@ -36,11 +36,12 @@ struct recv_thrctx {
 static void	*recv_thread(void *);
 
 static int	recv_buflen = RECV_BUFLEN;
+static int	recv_reuseport = 0;
 
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s [-4 addr4] [-p port] [-t nthreads] [-D] "
+	fprintf(stderr, "%s [-4 addr4] [-p port] [-t nthreads] [-D] [-R] "
 	    "[-b buflen]\n", cmd);
 	exit(2);
 }
@@ -71,7 +72,7 @@ main(int argc, char *argv[])
 
 	do_daemon = 1;
 
-	while ((opt = getopt(argc, argv, "4:Db:p:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:DRb:p:t:")) != -1) {
 		switch (opt) {
 		case '4':
 			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0)
@@ -80,6 +81,14 @@ main(int argc, char *argv[])
 
 		case 'D':
 			do_daemon = 0;
+			break;
+
+		case 'R':
+#ifdef __DragonFly__
+			recv_reuseport = 1;
+#else
+			/* Not supported on other BSDs */
+#endif
 			break;
 
 		case 'b':
@@ -191,7 +200,10 @@ recv_thread(void *xctx)
 	/*
 	 * Select a proper data port and create a listen socket on it.
 	 */
-	port = RECV_PORT + ctx->t_id;
+	if (recv_reuseport)
+		port = RECV_PORT;
+	else
+		port = RECV_PORT + ctx->t_id;
 	for (;;) {
 		struct sockaddr_in in = ctx->t_in;
 		int on;
@@ -206,8 +218,15 @@ recv_thread(void *xctx)
 			err(1, "socket failed");
 
 		on = 1;
-		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
-			err(1, "setsockopt(REUSEADDR) failed");
+		if (recv_reuseport) {
+			if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT, &on,
+			    sizeof(on)))
+				err(1, "setsockopt(REUSEPORT) failed");
+		} else {
+			if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on,
+			    sizeof(on)))
+				err(1, "setsockopt(REUSEADDR) failed");
+		}
 
 		on = 1;
 		if (ioctl(s, FIONBIO, &on, sizeof(on)) < 0)
