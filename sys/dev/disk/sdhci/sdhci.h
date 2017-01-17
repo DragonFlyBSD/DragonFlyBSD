@@ -338,6 +338,7 @@ struct sdhci_slot {
 #define SDHCI_HAVE_SDMA			1
 #define SDHCI_PLATFORM_TRANSFER		2
 #define SDHCI_HAVE_ADMA2		4
+#define SDHCI_SLOT_EMBEDDED		8
 	u_char		version;
 	int		timeout;	/* Transfer timeout */
 	int		failures;	/* N Failures in a row */

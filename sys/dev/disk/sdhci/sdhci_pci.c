@@ -355,8 +355,10 @@ sdhci_pci_attach(device_t dev)
 
 		slot->quirks = sc->quirks;
 
-		if (sdhci_init_slot(dev, slot, i) != 0)
+		if (sdhci_init_slot(dev, slot, i) != 0) {
+			memset(slot, 0, sizeof(*slot));
 			continue;
+		}
 
 		sc->num_slots++;
 	}

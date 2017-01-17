@@ -234,10 +234,11 @@ sdhci_init(struct sdhci_slot *slot)
 	slot->intmask = SDHCI_INT_BUS_POWER | SDHCI_INT_DATA_END_BIT |
 	    SDHCI_INT_DATA_CRC | SDHCI_INT_DATA_TIMEOUT | SDHCI_INT_INDEX |
 	    SDHCI_INT_END_BIT | SDHCI_INT_CRC | SDHCI_INT_TIMEOUT |
-	    SDHCI_INT_CARD_REMOVE | SDHCI_INT_CARD_INSERT |
 	    SDHCI_INT_DATA_AVAIL | SDHCI_INT_SPACE_AVAIL |
 	    SDHCI_INT_DMA_END | SDHCI_INT_DATA_END | SDHCI_INT_RESPONSE |
 	    SDHCI_INT_ACMD12ERR | SDHCI_INT_ADMAERR;
+	if (!(slot->opt & SDHCI_SLOT_EMBEDDED))
+		slot->intmask |= SDHCI_INT_CARD_REMOVE | SDHCI_INT_CARD_INSERT;
 	WR4(slot, SDHCI_INT_ENABLE, slot->intmask);
 	WR4(slot, SDHCI_SIGNAL_ENABLE, slot->intmask);
 }
@@ -648,6 +649,19 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 		caps = slot->caps;
 	else
 		caps = RD4(slot, SDHCI_CAPABILITIES);
+	if (slot->version >= SDHCI_SPEC_300) {
+		if ((caps & SDHCI_SLOTTYPE_MASK) != SDHCI_SLOTTYPE_REMOVABLE &&
+		    (caps & SDHCI_SLOTTYPE_MASK) != SDHCI_SLOTTYPE_EMBEDDED) {
+			device_printf(dev,
+			    "Driver doesn't support shared bus slots\n");
+			sdhci_dma_free(slot);
+			SDHCI_LOCK_DESTROY(slot);
+			return (1);
+		} else if ((caps & SDHCI_SLOTTYPE_MASK) ==
+		    SDHCI_SLOTTYPE_EMBEDDED) {
+			slot->opt |= SDHCI_SLOT_EMBEDDED;
+		}
+	}
 	/* Calculate base clock frequency. */
 	if (slot->version >= SDHCI_SPEC_300)
 		freq = (caps & SDHCI_CLOCK_V3_BASE_MASK) >>
@@ -739,7 +753,7 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 	}
 
 	if (bootverbose || sdhci_debug) {
-		slot_printf(slot, "%uMHz%s %s%s%s%s %s\n",
+		slot_printf(slot, "%uMHz%s %s%s%s%s %s%s\n",
 		    slot->max_clk / 1000000,
 		    (caps & SDHCI_CAN_DO_HISPD) ? " HS" : "",
 		    (slot->host.caps & MMC_CAP_8_BIT_DATA) ? "8bits" :
@@ -749,7 +763,10 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 		    (caps & SDHCI_CAN_VDD_300) ? " 3.0V" : "",
 		    (caps & SDHCI_CAN_VDD_180) ? " 1.8V" : "",
 		    (slot->opt & SDHCI_HAVE_ADMA2) ? "ADMA2" :
-			(slot->opt & SDHCI_HAVE_SDMA) ? "SDMA" : "PIO");
+			(slot->opt & SDHCI_HAVE_SDMA) ? "SDMA" : "PIO",
+		    (slot->version < SDHCI_SPEC_300) ? "" :
+			(slot->opt & SDHCI_SLOT_EMBEDDED) ? " (embedded)" :
+			" (removable)");
 		sdhci_dumpregs(slot);
 	}
 
@@ -826,6 +843,8 @@ sdhci_generic_min_freq(device_t brdev, struct sdhci_slot *slot)
 boolean_t
 sdhci_generic_get_card_present(device_t brdev, struct sdhci_slot *slot)
 {
+	if (slot->opt & SDHCI_SLOT_EMBEDDED)
+		return 1;
 
 	return (RD4(slot, SDHCI_PRESENT_STATE) & SDHCI_CARD_PRESENT);
 }
