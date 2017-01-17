@@ -155,7 +155,7 @@ usage(const char *cmd)
 {
 	fprintf(stderr, "%s -4 addr4 [-4 addr4 ...] [-p port] "
 	    "-c conns [-t nthreads] [-l sec] [-r readto_ms] [-S] [-E] "
-	    "[-b buflen]\n", cmd);
+	    "[-b buflen] [-B]\n", cmd);
 	exit(2);
 }
 
@@ -172,23 +172,24 @@ main(int argc, char *argv[])
 	int jain_cnt;
 	struct conn_ctx *conn;
 	sigset_t sigset;
-	int opt, i;
+	int opt, i, ncpus;
 	int in_arr_cnt, in_arr_sz, ndaddr;
 	int nthr, nconn, dur, readto_ms, buflen;
 	int log_err, err_cnt, has_minmax;
 	u_short port = RECV_PORT;
 	uint32_t idx;
 	size_t sz;
-	bool do_sendfile = false;
+	bool do_sendfile = false, bindcpu = false;
 
 	sigemptyset(&sigset);
 	sigaddset(&sigset, SIGPIPE);
 	if (sigprocmask(SIG_BLOCK, &sigset, NULL) < 0)
 		err(1, "sigprocmask failed");
 
-	sz = sizeof(nthr);
-	if (sysctlbyname("hw.ncpu", &nthr, &sz, NULL, 0) < 0)
+	sz = sizeof(ncpus);
+	if (sysctlbyname("hw.ncpu", &ncpus, &sz, NULL, 0) < 0)
 		err(1, "sysctl hw.ncpu failed");
+	nthr = ncpus;
 
 	in_arr_sz = 4;
 	in_arr_cnt = 0;
@@ -202,7 +203,7 @@ main(int argc, char *argv[])
 	readto_ms = SEND_READTO_MS;
 	buflen = SEND_BUFLEN;
 
-	while ((opt = getopt(argc, argv, "4:ESb:c:l:p:r:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:BESb:c:l:p:r:t:")) != -1) {
 		switch (opt) {
 		case '4':
 			if (in_arr_cnt == in_arr_sz) {
@@ -219,6 +220,10 @@ main(int argc, char *argv[])
 			in->sin_family = AF_INET;
 			if (inet_pton(AF_INET, optarg, &in->sin_addr) <= 0)
 				errx(1, "inet_pton failed %s", optarg);
+			break;
+
+		case 'B':
+			bindcpu = true;
 			break;
 
 		case 'E':
@@ -300,6 +305,7 @@ main(int argc, char *argv[])
 	 * Start senders.
 	 */
 	for (i = 0; i < nthr; ++i) {
+		pthread_attr_t attr;
 		int error;
 
 		ctx = &ctx_arr[i];
@@ -309,9 +315,24 @@ main(int argc, char *argv[])
 		pthread_mutex_init(&ctx->t_lock, NULL);
 		pthread_cond_init(&ctx->t_cond, NULL);
 
-		error = pthread_create(&ctx->t_tid, NULL, send_thread, ctx);
+		pthread_attr_init(&attr);
+		if (bindcpu) {
+			cpu_set_t mask;
+
+			CPU_ZERO(&mask);
+			CPU_SET(i % ncpus, &mask);
+			error = pthread_attr_setaffinity_np(&attr,
+			    sizeof(mask), &mask);
+			if (error) {
+				errc(1, error, "pthread_attr_setaffinity_np "
+				    "failed");
+			}
+		}
+
+		error = pthread_create(&ctx->t_tid, &attr, send_thread, ctx);
 		if (error)
 			errc(1, error, "pthread_create failed");
+		pthread_attr_destroy(&attr);
 	}
 
 	/*
