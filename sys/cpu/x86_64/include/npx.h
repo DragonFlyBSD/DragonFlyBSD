@@ -42,39 +42,30 @@
 #ifndef _CPU_NPX_H_
 #define	_CPU_NPX_H_
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
+#include <stdint.h>
 
 /* Environment information of floating point unit */
 struct	env87 {
-	int32_t	en_cw;		/* control word (16bits) */
-	int32_t	en_sw;		/* status word (16bits) */
-	int32_t	en_tw;		/* tag word (16bits) */
-	int32_t	en_fip;		/* floating point instruction pointer */
-	u_short	en_fcs;		/* floating code segment selector */
-	u_short	en_opcode;	/* opcode last executed (11 bits ) */
-	int32_t	en_foo;		/* floating operand offset */
-	int32_t	en_fos;		/* floating operand segment selector */
+	int32_t		en_cw;		/* control word (16bits) */
+	int32_t		en_sw;		/* status word (16bits) */
+	int32_t		en_tw;		/* tag word (16bits) */
+	int32_t		en_fip;		/* floating point instruction pointer */
+	uint16_t	en_fcs;		/* floating code segment selector */
+	uint16_t	en_opcode;	/* opcode last executed (11 bits ) */
+	int32_t		en_foo;		/* floating operand offset */
+	int32_t		en_fos;		/* floating operand segment selector */
 };
 
-/* Contents of each floating point accumulator */
+/* Contents of each x87 floating point accumulator */
 struct	fpacc87 {
-#ifdef dontdef /* too unportable */
-	u_int32_t fp_mantlo;	/* mantissa low (31:0) */
-	u_int32_t fp_manthi;	/* mantissa high (63:32) */
-	int	fp_exp:15;	/* exponent */
-	int	fp_sgn:1;	/* mantissa sign */
-#else
-	u_char	fp_bytes[10];
-#endif
+	uint8_t		fp_bytes[10];
 };
 
-/* Floating point context */
+/* Floating point context (i386 fnsave/frstor) */
 struct	save87 {
 	struct	env87 sv_env;	/* floating point control/status */
 	struct	fpacc87	sv_ac[8];	/* accumulator contents, 0-7 */
-	u_int32_t	sv_unused001;
+	uint8_t		sv_pad0[4];	/* saved status word (now unused) */
 	/*
 	 * Bogus padding for emulators.  Emulators should use their own
 	 * struct and arrange to store into this struct (ending here)
@@ -83,51 +74,119 @@ struct	save87 {
 	 * knowing how much padding to leave.  Leave just enough for the
 	 * GPL emulator's i387_union (176 bytes total).
 	 */
-	u_char	sv_pad[64];	/* padding; used by emulators */
+	uint8_t		sv_pad[64];
 };
 
-struct  envxmm {
-	u_int16_t	en_cw;		/* control word (16bits) */
-	u_int16_t	en_sw;		/* status word (16bits) */
-	u_int16_t	en_tw;		/* tag word (16bits) */
-	u_int16_t	en_opcode;	/* opcode last executed (11 bits ) */
-	u_int32_t	en_fip;		/* floating point instruction pointer */
-	u_int16_t	en_fcs;		/* floating code segment selector */
-	u_int16_t	en_pad0;	/* padding */
-	u_int32_t	en_foo;		/* floating operand offset */
-	u_int16_t	en_fos;		/* floating operand segment selector */
-	u_int16_t	en_pad1;	/* padding */
-	u_int32_t	en_mxcsr;	/* SSE sontorol/status register */
-	u_int32_t	en_pad2;	/* padding */
+struct envxmm {
+	uint16_t	en_cw;		/* control word (16bits) */
+	uint16_t	en_sw;		/* status word (16bits) */
+	uint16_t	en_tw;		/* tag word (16bits) */
+	uint16_t	en_opcode;	/* opcode last executed (11 bits) */
+	uint32_t	en_fip;		/* fp instruction pointer */
+	uint16_t	en_fcs;		/* fp code segment selector */
+	uint16_t	en_pad0;	/* padding */
+	uint32_t	en_foo;		/* fp operand offset */
+	uint16_t	en_fos;		/* fp operand segment selector */
+	uint16_t	en_pad1;	/* padding */
+	uint32_t	en_mxcsr;	/* SSE control/status register */
+	uint32_t	en_mxcsr_mask;	/* valid bits in mxcsr */
+};
+
+struct envxmm64 {
+	uint16_t	en_cw;		/* control word (16bits) */
+	uint16_t	en_sw;		/* status word (16bits) */
+	uint8_t		en_tw;		/* tag word (8bits) */
+	uint8_t		en_zero;
+	uint16_t	en_opcode;	/* opcode last executed (11 bits ) */
+	uint64_t	en_rip;		/* fp instruction pointer */
+	uint64_t	en_rdp;		/* fp operand pointer */
+	uint32_t	en_mxcsr;	/* SSE control/status register */
+	uint32_t	en_mxcsr_mask;	/* valid bits in mxcsr */
 };
 
 /* Contents of each SSE extended accumulator */
 struct  xmmacc {
-	u_char	xmm_bytes[16];
+	uint8_t		xmm_bytes[16];
+};
+
+/* Contents of the upper 16 bytes of each AVX extended accumulator */
+struct ymmacc {
+	uint8_t		ymm_bytes[16];
 };
 
 /*
+ * Floating point context. (i386 fxsave/fxrstor)
  * savexmm is a 512-byte structure
  */
 struct  savexmm {
-	struct	envxmm	sv_env;			/* 32 */
+	struct	envxmm	sv_env;			/*  32 */
 	struct {
-		struct fpacc87	fp_acc;		/* 10 */
-		u_char		fp_pad[6];      /* 6  (padding) */
-	} sv_fp[8];
+		struct fpacc87	fp_acc;		/*     -- 10 */
+		uint8_t		fp_pad[6];      /*     -- 6  */
+	} sv_fp[8];						/* 128 */
 	struct xmmacc	sv_xmm[8];		/* 128 */
-	u_int32_t	sv_unused001;
-	u_char sv_pad[220];
+	uint8_t			sv_pad[224];	/* 224 (padding) */
 } __attribute__((aligned(16)));
 
+/*
+ * Floating point context. (amd64 fxsave/fxrstor)
+ * savexmm64 is a 512-byte structure
+ */
+struct	savexmm64 {
+	struct	envxmm64	sv_env;		/*  32 */
+	struct {
+		struct fpacc87	fp_acc;
+		uint8_t		fp_pad[6];
+	} sv_fp[8];						/* 128 */
+	struct xmmacc	sv_xmm[8];		/* 128 */
+	uint8_t			sv_pad[224];	/* 224 */
+} __attribute__((aligned(16)));
+
+/* xstate_hdr is a 64-byte structure */
+struct	xstate_hdr {
+	uint64_t	xstate_bv;
+	uint64_t	xstate_xcomp_bv;
+	uint8_t		xstate_rsrv0[8];
+	uint8_t		xstate_rsrv[40];
+};
+#define	XSTATE_XCOMP_BV_COMPACT	(1ULL << 63)
+
+/* savexmm_xstate is a 320-byte structure (64 + 256) */
+struct	savexmm_xstate {
+	struct xstate_hdr	sx_hd;
+	struct ymmacc		sx_ymm[16];
+};
+
+/* saveymm is a 832-byte structure (i386) */
 struct	saveymm {
-	u_char xsavedata[832];
+	struct envxmm	sv_env;				/*  32 */
+	struct {
+		struct fpacc87	fp_acc;
+		uint8_t		fp_pad[6];
+	} sv_fp[8];							/* 128 */
+	struct xmmacc	sv_xmm[16];			/* 256 */
+	uint8_t			sv_pad[96];			/*  96 */
+	struct savexmm_xstate	sv_xstate;	/* 320 */
+} __attribute__((aligned(64)));
+
+/* saveymm64 is a 832-byte structure (amd64) */
+struct	saveymm64 {
+	struct envxmm64	sv_env;				/*  32 */
+	struct {
+		struct fpacc87	fp_acc;
+		int8_t		fp_pad[6];
+	} sv_fp[8];							/* 128 */
+	struct xmmacc	sv_xmm[16];			/* 256 */
+	uint8_t			sv_pad[96];			/*  96 */
+	struct savexmm_xstate	sv_xstate;	/* 320 */
 } __attribute__((aligned(64)));
 
 union	savefpu {
 	struct	save87	sv_87;
 	struct	savexmm	sv_xmm;
 	struct  saveymm sv_ymm;
+	struct	savexmm64	sv_xmm64;
+	struct	saveymm64	sv_ymm64;
 	char		sv_savearea[1024];	/* see mcontext_t */
 };
 
