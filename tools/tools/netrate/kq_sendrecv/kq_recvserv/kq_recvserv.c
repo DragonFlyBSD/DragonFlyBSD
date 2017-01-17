@@ -37,11 +37,12 @@ static void	*recv_thread(void *);
 
 static int	recv_buflen = RECV_BUFLEN;
 static int	recv_reuseport = 0;
+static int	recv_bindcpu = 0;
 
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s [-4 addr4] [-p port] [-t nthreads] [-D] [-R] "
+	fprintf(stderr, "%s [-4 addr4] [-p port] [-t nthreads] [-D] [-R] [-B] "
 	    "[-b buflen]\n", cmd);
 	exit(2);
 }
@@ -72,11 +73,15 @@ main(int argc, char *argv[])
 
 	do_daemon = 1;
 
-	while ((opt = getopt(argc, argv, "4:DRb:p:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:BDRb:p:t:")) != -1) {
 		switch (opt) {
 		case '4':
 			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0)
 				errx(1, "inet_pton failed %s", optarg);
+			break;
+
+		case 'B':
+			recv_bindcpu = 1;
 			break;
 
 		case 'D':
@@ -240,6 +245,40 @@ recv_thread(void *xctx)
 		if (listen(s, -1) < 0)
 			err(1, "listen failed");
 
+		if (recv_bindcpu) {
+			int cpu = -1, error;
+			cpu_set_t mask;
+
+#ifdef __DragonFly__
+			if (recv_reuseport) {
+				socklen_t olen;
+
+				olen = sizeof(cpu);
+				if (getsockopt(s, SOL_SOCKET, SO_CPUHINT,
+				    &cpu, &olen) < 0)
+					err(1, "getsockopt(CPUHINT) failed");
+			}
+#endif
+			if (cpu < 0) {
+				int ncpus;
+				size_t len;
+
+				len = sizeof(ncpus);
+				if (sysctlbyname("hw.ncpu", &ncpus, &len,
+				    NULL, 0) < 0)
+					err(1, "sysctlbyname hw.ncpu failed");
+				cpu = ctx->t_id % ncpus;
+			}
+
+			CPU_ZERO(&mask);
+			CPU_SET(cpu, &mask);
+			error = pthread_setaffinity_np(pthread_self(),
+			    sizeof(mask), &mask);
+			if (error) {
+				errc(1, error, "pthread_setaffinity_np cpu%d "
+				    "failed", cpu);
+			}
+		}
 		break;
 	}
 
