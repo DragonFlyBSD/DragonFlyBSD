@@ -236,6 +236,9 @@ static int SlabFreeToTail;
 SYSCTL_INT(_kern, OID_AUTO, slab_freetotail, CTLFLAG_RW,
 	    &SlabFreeToTail, 0, "");
 
+static struct spinlock kmemstat_spin =
+			SPINLOCK_INITIALIZER(&kmemstat_spin, "malinit");
+
 /*
  * Returns the kernel memory size limit for the purposes of initializing
  * various subsystem caches.  The smaller of available memory and the KVM
@@ -340,8 +343,10 @@ malloc_init(void *data)
     limsize = kmem_lim_size() * (1024 * 1024);
     type->ks_limit = limsize / 10;
 
+    spin_lock(&kmemstat_spin);
     type->ks_next = kmemstatistics;
     kmemstatistics = type;
+    spin_unlock(&kmemstat_spin);
 }
 
 void
@@ -379,6 +384,7 @@ malloc_uninit(void *data)
 	    ttl, type->ks_shortdesc, i);
     }
 #endif
+    spin_lock(&kmemstat_spin);
     if (type == kmemstatistics) {
 	kmemstatistics = type->ks_next;
     } else {
@@ -391,6 +397,7 @@ malloc_uninit(void *data)
     }
     type->ks_next = NULL;
     type->ks_limit = 0;
+    spin_unlock(&kmemstat_spin);
 }
 
 /*
