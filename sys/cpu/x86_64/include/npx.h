@@ -123,7 +123,7 @@ struct  savexmm {
 	struct {
 		struct fpacc87	fp_acc;		/*     -- 10 */
 		uint8_t		fp_pad[6];      /*     -- 6  */
-	} sv_fp[8];						/* 128 */
+	} sv_fp[8];				/* 128 */
 	struct xmmacc	sv_xmm[8];		/* 128 */
 	uint8_t			sv_pad[224];	/* 224 (padding) */
 } __attribute__((aligned(16)));
@@ -137,7 +137,7 @@ struct	savexmm64 {
 	struct {
 		struct fpacc87	fp_acc;
 		uint8_t		fp_pad[6];
-	} sv_fp[8];						/* 128 */
+	} sv_fp[8];				/* 128 */
 	struct xmmacc	sv_xmm[8];		/* 128 */
 	uint8_t			sv_pad[224];	/* 224 */
 } __attribute__((aligned(16)));
@@ -159,25 +159,25 @@ struct	savexmm_xstate {
 
 /* saveymm is a 832-byte structure (i386) */
 struct	saveymm {
-	struct envxmm	sv_env;				/*  32 */
+	struct envxmm	sv_env;			/*  32 */
 	struct {
 		struct fpacc87	fp_acc;
 		uint8_t		fp_pad[6];
-	} sv_fp[8];							/* 128 */
-	struct xmmacc	sv_xmm[16];			/* 256 */
-	uint8_t			sv_pad[96];			/*  96 */
+	} sv_fp[8];				/* 128 */
+	struct xmmacc	sv_xmm[16];		/* 256 */
+	uint8_t			sv_pad[96];	/*  96 */
 	struct savexmm_xstate	sv_xstate;	/* 320 */
 } __attribute__((aligned(64)));
 
 /* saveymm64 is a 832-byte structure (amd64) */
 struct	saveymm64 {
-	struct envxmm64	sv_env;				/*  32 */
+	struct envxmm64	sv_env;			/*  32 */
 	struct {
 		struct fpacc87	fp_acc;
 		int8_t		fp_pad[6];
-	} sv_fp[8];							/* 128 */
-	struct xmmacc	sv_xmm[16];			/* 256 */
-	uint8_t			sv_pad[96];			/*  96 */
+	} sv_fp[8];				/* 128 */
+	struct xmmacc	sv_xmm[16];		/* 256 */
+	uint8_t			sv_pad[96];	/*  96 */
 	struct savexmm_xstate	sv_xstate;	/* 320 */
 } __attribute__((aligned(64)));
 
