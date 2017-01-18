@@ -538,7 +538,7 @@ emx_attach(device_t dev)
 	    (sc->hw.mac.type == e1000_82571 ||
 	     sc->hw.mac.type == e1000_82572))
 		msi_enable = 0;
-
+again:
 	/*
 	 * Allocate interrupt
 	 */
@@ -563,8 +563,14 @@ emx_attach(device_t dev)
 	sc->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->intr_rid,
 	    intr_flags);
 	if (sc->intr_res == NULL) {
-		device_printf(dev, "Unable to allocate bus resource: "
-		    "interrupt\n");
+		device_printf(dev, "Unable to allocate bus resource: %s\n",
+		    sc->intr_type == PCI_INTR_TYPE_MSI ? "MSI" : "legacy intr");
+		if (!msi_enable) {
+			/* Retry with MSI. */
+			msi_enable = 1;
+			sc->flags &= ~EMX_FLAG_SHARED_INTR;
+			goto again;
+		}
 		error = ENXIO;
 		goto fail;
 	}

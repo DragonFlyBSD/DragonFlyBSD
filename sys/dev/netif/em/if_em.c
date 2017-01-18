@@ -2334,7 +2334,7 @@ em_alloc_pci_res(struct adapter *adapter)
 	     adapter->hw.mac.type == e1000_82571 ||
 	     adapter->hw.mac.type == e1000_82572))
 		msi_enable = 0;
-
+again:
 	adapter->intr_type = pci_alloc_1intr(dev, msi_enable,
 	    &adapter->intr_rid, &intr_flags);
 
@@ -2356,8 +2356,15 @@ em_alloc_pci_res(struct adapter *adapter)
 	adapter->intr_res = bus_alloc_resource_any(dev, SYS_RES_IRQ,
 	    &adapter->intr_rid, intr_flags);
 	if (adapter->intr_res == NULL) {
-		device_printf(dev, "Unable to allocate bus resource: "
-		    "interrupt\n");
+		device_printf(dev, "Unable to allocate bus resource: %s\n",
+		    adapter->intr_type == PCI_INTR_TYPE_MSI ?
+		    "MSI" : "legacy intr");
+		if (!msi_enable) {
+			/* Retry with MSI. */
+			msi_enable = 1;
+			adapter->flags &= ~EM_FLAG_SHARED_INTR;
+			goto again;
+		}
 		return (ENXIO);
 	}
 
