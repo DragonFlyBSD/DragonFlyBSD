@@ -14,7 +14,7 @@ struct lwp_params {
 	lwpid_t *lwp_tid2;	/* Same */
 };
 
-#ifndef _KERNEL
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 #include <machine/cpumask.h>
 
