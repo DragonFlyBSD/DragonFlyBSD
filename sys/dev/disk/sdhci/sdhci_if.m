@@ -151,3 +151,8 @@ METHOD uint32_t min_freq {
 	device_t		brdev;
 	struct sdhci_slot	*slot;
 } DEFAULT sdhci_generic_min_freq;
+
+METHOD boolean_t get_card_present {
+	device_t		brdev;
+	struct sdhci_slot	*slot;
+} DEFAULT sdhci_generic_get_card_present;

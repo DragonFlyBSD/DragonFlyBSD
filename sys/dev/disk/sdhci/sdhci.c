@@ -98,7 +98,6 @@ static void sdhci_card_task(void *, int);
 #define BCM577XX_CTRL_CLKSEL_DEFAULT	0x0
 #define BCM577XX_CTRL_CLKSEL_64MHZ	0x3
 
-
 static int
 slot_printf(struct sdhci_slot *slot, const char * fmt, ...)
 {
@@ -155,8 +154,7 @@ sdhci_reset(struct sdhci_slot *slot, uint8_t mask)
 	int timeout;
 
 	if (slot->quirks & SDHCI_QUIRK_NO_CARD_NO_RESET) {
-		if (!(RD4(slot, SDHCI_PRESENT_STATE) &
-			SDHCI_CARD_PRESENT))
+		if (!SDHCI_GET_CARD_PRESENT(slot->bus, slot))
 			return;
 	}
 
@@ -480,7 +478,7 @@ sdhci_card_task(void *arg, int pending)
 	struct sdhci_slot *slot = arg;
 
 	SDHCI_LOCK(slot);
-	if (RD4(slot, SDHCI_PRESENT_STATE) & SDHCI_CARD_PRESENT) {
+	if (SDHCI_GET_CARD_PRESENT(slot->bus, slot)) {
 		if (slot->dev == NULL) {
 			/* If card is present - attach mmc bus. */
 			slot->dev = device_add_child(slot->bus, "mmc", -1);
@@ -691,6 +689,13 @@ sdhci_generic_min_freq(device_t brdev, struct sdhci_slot *slot)
 		return (slot->max_clk / SDHCI_200_MAX_DIVIDER);
 }
 
+boolean_t
+sdhci_generic_get_card_present(device_t brdev, struct sdhci_slot *slot)
+{
+
+	return (RD4(slot, SDHCI_PRESENT_STATE) & SDHCI_CARD_PRESENT);
+}
+
 int
 sdhci_generic_update_ios(device_t brdev, device_t reqdev)
 {
@@ -809,7 +814,7 @@ sdhci_start_command(struct sdhci_slot *slot, struct mmc_command *cmd)
 	state = RD4(slot, SDHCI_PRESENT_STATE);
 	/* Do not issue command if there is no card, clock or power.
 	 * Controller will not detect timeout without clock active. */
-	if ((state & SDHCI_CARD_PRESENT) == 0 ||
+	if (!SDHCI_GET_CARD_PRESENT(slot->bus, slot) ||
 	    slot->power == 0 ||
 	    slot->clock == 0) {
 		cmd->error = MMC_ERR_FAILED;
