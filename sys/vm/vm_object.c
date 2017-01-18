@@ -359,7 +359,7 @@ VMOBJDEBUG(vm_object_drop)(vm_object_t obj VMOBJDBARGS)
 /*
  * Initialize a freshly allocated object, returning a held object.
  *
- * Used only by vm_object_allocate() and zinitna().
+ * Used only by vm_object_allocate(), zinitna() and vm_object_init().
  *
  * No requirements.
  */
@@ -402,6 +402,16 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	lwkt_gettoken(&hash->token);
 	TAILQ_INSERT_TAIL(&hash->list, object, object_list);
 	lwkt_reltoken(&hash->token);
+}
+
+/*
+ * Initialize a VM object.
+ */
+void
+vm_object_init(vm_object_t object, vm_pindex_t size)
+{
+	_vm_object_allocate(OBJT_DEFAULT, size, object);
+	vm_object_drop(object);
 }
 
 /*
