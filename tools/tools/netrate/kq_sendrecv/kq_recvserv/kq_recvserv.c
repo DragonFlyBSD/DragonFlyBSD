@@ -247,7 +247,11 @@ recv_thread(void *xctx)
 
 		if (recv_bindcpu) {
 			int cpu = -1, error;
+#ifdef __FreeBSD__
+			cpuset_t mask;
+#else
 			cpu_set_t mask;
+#endif
 
 #ifdef __DragonFly__
 			if (recv_reuseport) {

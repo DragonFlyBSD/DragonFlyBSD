@@ -317,7 +317,11 @@ main(int argc, char *argv[])
 
 		pthread_attr_init(&attr);
 		if (bindcpu) {
+#ifdef __FreeBSD__
+			cpuset_t mask;
+#else
 			cpu_set_t mask;
+#endif
 
 			CPU_ZERO(&mask);
 			CPU_SET(i % ncpus, &mask);
