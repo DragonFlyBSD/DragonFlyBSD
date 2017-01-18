@@ -411,7 +411,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
  * kmalloc is initialized so we cannot allocate any VM objects.
  */
 void
-vm_object_init(void)
+vm_object_init1(void)
 {
 	int i;
 
@@ -419,7 +419,7 @@ vm_object_init(void)
 		TAILQ_INIT(&vm_object_hash[i].list);
 		lwkt_token_init(&vm_object_hash[i].token, "vmobjlst");
 	}
-	
+
 	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaEnd),
 			    &kernel_object);
 	vm_object_drop(&kernel_object);
