@@ -944,6 +944,8 @@ relink:
 			/* Note that we should not set skipdir = 1 here. */
 		    }
 		}
+		if (VerboseOpt)
+		    logstd("%-32s mkdir-ok\n", (dpath ? dpath : spath));
 		CountCopiedItems++;
 	    } else {
 		/*
