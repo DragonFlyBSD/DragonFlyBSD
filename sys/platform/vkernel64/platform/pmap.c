@@ -139,7 +139,7 @@ struct pmap kernel_pmap;
 
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 
-static vm_object_t kptobj;
+static struct vm_object kptobj;
 
 static int nkpt;
 
@@ -625,8 +625,8 @@ pmap_init(void)
 	 * object for kernel page table pages
 	 */
 	/* JG I think the number can be arbitrary */
-	kptobj = vm_object_allocate(OBJT_DEFAULT, 5);
-	kernel_pmap.pm_pteobj = kptobj;
+	vm_object_init(&kptobj, 5);
+	kernel_pmap.pm_pteobj = &kptobj;
 
 	/*
 	 * Allocate memory for random pmap data structures.  Includes the
@@ -1671,7 +1671,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 
 	addr = kend;
 
-	vm_object_hold(kptobj);
+	vm_object_hold(&kptobj);
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = KvaStart;
 		nkpt = 0;
@@ -1691,7 +1691,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		pde = pmap_pde(&kernel_pmap, kernel_vm_end);
 		if (pde == NULL) {
 			/* We need a new PDP entry */
-			nkpg = vm_page_alloc(kptobj, nkpt,
+			nkpg = vm_page_alloc(&kptobj, nkpt,
 			                     VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM
 					     | VM_ALLOC_INTERRUPT);
 			if (nkpg == NULL) {
@@ -1720,7 +1720,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		/*
 		 * This index is bogus, but out of the way
 		 */
-		nkpg = vm_page_alloc(kptobj, nkpt,
+		nkpg = vm_page_alloc(&kptobj, nkpt,
 				     VM_ALLOC_NORMAL |
 				     VM_ALLOC_SYSTEM |
 				     VM_ALLOC_INTERRUPT);
@@ -1743,7 +1743,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			break;
 		}
 	}
-	vm_object_drop(kptobj);
+	vm_object_drop(&kptobj);
 }
 
 /*
