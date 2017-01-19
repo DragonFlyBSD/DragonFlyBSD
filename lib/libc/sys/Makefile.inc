@@ -22,7 +22,7 @@ SRCS+= fork.c
 # Sources common to both syscall interfaces:
 SRCS+=	ftruncate.c lseek.c mmap.c truncate.c
 SRCS+=	pread.c pwrite.c preadv.c pwritev.c
-SRCS+=	sched_getaffinity.c sched_setaffinity.c
+SRCS+=	sched_getaffinity.c sched_getcpu.c sched_setaffinity.c
 
 # Add machine dependent asm sources:
 SRCS+=${MDASM}
@@ -101,8 +101,8 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	varsym.2 vfork.2 vmm.2 vquotactl.2 wait.2 write.2
 
 .if !defined(NO_P1003_1B)
-MAN+=	sched_get_priority_max.2 sched_setaffinity.2 sched_setparam.2 \
-	sched_setscheduler.2 sched_yield.2
+MAN+=	sched_get_priority_max.2 sched_getcpu.2 sched_setaffinity.2 \
+	sched_setparam.2 sched_setscheduler.2 sched_yield.2
 .endif
 
 MLINKS+=accept.2 accept4.2

@@ -8,6 +8,7 @@ DF404.0 {
     pwrite;
     pwritev;
     sched_getaffinity;
+    sched_getcpu;
     sched_setaffinity;
     truncate;
 

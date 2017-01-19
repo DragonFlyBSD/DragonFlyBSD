@@ -122,6 +122,7 @@ int sched_yield (void);
 int sched_get_priority_max (int);
 int sched_get_priority_min (int);
 int sched_rr_get_interval (pid_t, struct timespec *);
+int sched_getcpu (void);
 __END_DECLS
 
 #endif

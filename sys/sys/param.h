@@ -144,9 +144,10 @@
  * 400707 - pthread_{set,get}affinity_np()
  * 400708 - lwp_create2()
  * 400709 - pthread_attr_{set,get}affinity_np()
+ * 400710 - sched_getcpu();
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400709	/* propagated to newvers */
+#define __DragonFly_version 400710	/* propagated to newvers */
 
 #include <sys/_null.h>
 
