@@ -88,6 +88,7 @@ vm_phystable_t phys_avail[16];
 vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 long physmem;
+int naps = 0; /* # of Applications processors */
 int MemImageFd = -1;
 struct vkdisk_info DiskInfo[VKDISK_MAX];
 int DiskNum;

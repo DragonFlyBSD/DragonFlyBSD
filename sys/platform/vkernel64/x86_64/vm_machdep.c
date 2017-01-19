@@ -53,6 +53,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
+#include <sys/lwp.h>
 
 #include <machine/clock.h>
 #include <machine/cpu.h>

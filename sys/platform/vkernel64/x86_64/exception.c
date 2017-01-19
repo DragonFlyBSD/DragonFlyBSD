@@ -42,6 +42,7 @@
 #include <ddb/ddb.h>
 
 #include <sys/thread2.h>
+#include <sys/lwp.h>
 
 #include <machine/trap.h>
 #include <machine/md_var.h>
@@ -148,7 +149,7 @@ infosig(int nada, siginfo_t *info, void *ctxp)
 	char buf[256];
 
 	snprintf(buf, sizeof(buf), "lwp %d pc=%p sp=%p\n",
-		(int)lwp_gettid(),
+		(lwpid_t)lwp_gettid(),
 		(void *)(intptr_t)ctx->uc_mcontext.mc_rip,
 		(void *)(intptr_t)ctx->uc_mcontext.mc_rsp);
 	write(2, buf, strlen(buf));
