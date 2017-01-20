@@ -521,7 +521,7 @@ ifconfig bridge0 up
 Finally, the virtual kernel can be run:
 .Bd -literal
 cd /var/vkernel
-\&./boot/kernel/kernel -m 64m -r rootimg.01 -I auto:bridge0
+\&./boot/kernel/kernel -m 1g -r rootimg.01 -I auto:bridge0
 .Ed
 .Pp
 You can issue the
@@ -534,20 +534,46 @@ After doing a clean shutdown the
 .Xr reboot 8
 command will re-exec the virtual kernel binary while the other two will
 cause the virtual kernel to exit.
-.Ss Diskless operation
+.Ss Diskless operation (vkernel as a NFS client)
 Booting a
 .Nm
 with a
 .Xr vknetd 8
-network configuration:
+network configuration.  The line continuation backslashes have been
+omitted.  For convenience and to reduce confusion I recommend mounting
+the server's remote vkernel root onto the host running the vkernel binary
+using the same path as the NFS mount.  It is assumed that a full system
+install has been made to /var/vkernel/root using a kernel KERNCONF=VKERNEL64
+for the kernel build.
 .Bd -literal
-\&./boot/kernel/kernel -m 64m -m -i memimg.0000 -I /var/run/vknet
-	-e boot.netif.ip=172.1.0.4
+\&/var/vkernel/root/boot/kernel/kernel
+	-m 1g -n 4 -I /var/run/vknet
+	-e boot.netif.ip=10.100.0.2
 	-e boot.netif.netmask=255.255.0.0
+	-e boot.netif.gateway=10.100.0.1
 	-e boot.netif.name=vke0
-	-e boot.nfsroot.server=172.1.0.1
-	-e boot.nfsroot.path=/home/vkernel/vkdiskless
+	-e boot.nfsroot.server=10.0.0.55
+	-e boot.nfsroot.path=/var/vkernel/root
 .Ed
+.Pp
+In this example vknetd is assumed to have been started as shown below, before
+running the vkernel, using an unbridged TAP configuration routed through
+the host.
+IP forwarding must be turned on, and in this example the server resides
+on a different network accessible to the host executing the vkernel but not
+directly on the vkernel's subnet.
+.Bd -literal
+kldload if_tap
+sysctl net.inet.ip.forwarding=1
+vknetd -t tap0 10.100.0.1/16
+.Ed
+.Pp
+You can run multiple vkernels trivially with the same NFS root as long as
+you assign each one a different IP on the subnet (2, 3, 4, etc).  You
+should also be careful with certain directories, particularly /var/run
+and possibly also /var/db depending on what your vkernels are going to be
+doing.
+This can complicate matters with /var/db/pkg.
 .Sh BUILDING THE WORLD UNDER A VKERNEL
 The virtual kernel platform does not have all the header files expected
 by a world build, so the easiest thing to do right now is to specify a
