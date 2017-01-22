@@ -2939,6 +2939,11 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	int error;
 
 	/*
+	 * Force finalization so the VOP_INACTIVE() call is not delayed.
+	 */
+	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+
+	/*
 	 * We previously purged dvp instead of vp.  I don't know why, it
 	 * completely destroys performance.  We can't do it anyway with the
 	 * new VFS API since we would be breaking the namecache topology.
