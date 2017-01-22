@@ -144,21 +144,28 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 		      ((timeout % 1000000) * hz + 999999) / 1000000;
 	}
 	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
+
+	/*
+	 * Wake us up if the memory location COWs while we are sleeping.
+	 */
 	crit_enter();
+	vm_page_init_action(m, &action, umtx_sleep_page_action_cow, waddr);
+	vm_page_register_action(&action, VMEVENT_COW);
+
+	/*
+	 * We must interlock just before sleeping.  If we interlock before
+	 * registration the lock operations done by the registration can
+	 * interfere with it.
+	 */
 	tsleep_interlock(waddr, PCATCH | PDOMAIN_UMTX);
-	if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
-	    vm_page_init_action(m, &action, umtx_sleep_page_action_cow, waddr);
-	    vm_page_register_action(&action, VMEVENT_COW);
-	    if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
-		    error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
-				   "umtxsl", timeout);
-	    } else {
-		    error = EBUSY;
-	    }
-	    vm_page_unregister_action(&action);
+	if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value &&
+	    action.event == VMEVENT_COW) {
+		error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
+			       "umtxsl", timeout);
 	} else {
-	    error = EBUSY;
+		error = EBUSY;
 	}
+	vm_page_unregister_action(&action);
 	crit_exit();
 	/* Always break out in case of signal, even if restartable */
 	if (error == ERESTART)

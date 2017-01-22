@@ -127,7 +127,13 @@ static void _vm_page_deactivate_locked(vm_page_t m, int athead);
 __cachealign struct vpgqueues vm_page_queues[PQ_COUNT];
 
 LIST_HEAD(vm_page_action_list, vm_page_action);
-struct vm_page_action_list	action_list[VMACTION_HSIZE];
+
+struct vm_page_action_hash {
+	struct vm_page_action_list list;
+	struct lock	lk;
+} __cachealign;
+
+struct vm_page_action_hash	action_hash[VMACTION_HSIZE];
 static volatile int vm_pages_waiting;
 
 static struct alist vm_contig_alist;
@@ -174,8 +180,14 @@ vm_page_queue_init(void)
 		spin_init(&vm_page_queues[i].spin, "vm_page_queue_init");
 	}
 
-	for (i = 0; i < VMACTION_HSIZE; i++)
-		LIST_INIT(&action_list[i]);
+	/*
+	 * NOTE: Action lock might recurse due to callback, so allow
+	 *	 recursion.
+	 */
+	for (i = 0; i < VMACTION_HSIZE; i++) {
+		LIST_INIT(&action_hash[i].list);
+		lockinit(&action_hash[i].lk, "actlk", 0, LK_CANRECURSE);
+	}
 }
 
 /*
@@ -3054,13 +3066,11 @@ vm_page_set_valid(vm_page_t m, int base, int size)
 /*
  * Set valid bits and clear dirty bits.
  *
+ * Page must be busied by caller.
+ *
  * NOTE: This function does not clear the pmap modified bit.
  *	 Also note that e.g. NFS may use a byte-granular base
  *	 and size.
- *
- * WARNING: Page must be busied?  But vfs_clean_one_page() will call
- *	    this without necessarily busying the page (via bdwrite()).
- *	    So for now vm_token must also be held.
  *
  * No other requirements.
  */
@@ -3082,11 +3092,7 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 /*
  * Set valid & dirty.  Used by buwrite()
  *
- * WARNING: Page must be busied?  But vfs_dirty_one_page() will
- *	    call this function in buwrite() so for now vm_token must
- *	    be held.
- *
- * No other requirements.
+ * Page must be busied by caller.
  */
 void
 vm_page_set_validdirty(vm_page_t m, int base, int size)
@@ -3249,17 +3255,17 @@ vm_page_test_dirty(vm_page_t m)
 void
 vm_page_register_action(vm_page_action_t action, vm_page_event_t event)
 {
-	struct vm_page_action_list *list;
+	struct vm_page_action_hash *hash;
 	int hv;
 
 	hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
-	list = &action_list[hv];
+	hash = &action_hash[hv];
 
-	lwkt_gettoken(&vm_token);
+	lockmgr(&hash->lk, LK_EXCLUSIVE);
 	vm_page_flag_set(action->m, PG_ACTIONLIST);
 	action->event = event;
-	LIST_INSERT_HEAD(list, action, entry);
-	lwkt_reltoken(&vm_token);
+	LIST_INSERT_HEAD(&hash->list, action, entry);
+	lockmgr(&hash->lk, LK_RELEASE);
 }
 
 /*
@@ -3268,20 +3274,20 @@ vm_page_register_action(vm_page_action_t action, vm_page_event_t event)
 void
 vm_page_unregister_action(vm_page_action_t action)
 {
-	struct vm_page_action_list *list;
+	struct vm_page_action_hash *hash;
 	int hv;
 
-	lwkt_gettoken(&vm_token);
+	hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
+	hash = &action_hash[hv];
+	lockmgr(&hash->lk, LK_EXCLUSIVE);
 	if (action->event != VMEVENT_NONE) {
 		action->event = VMEVENT_NONE;
 		LIST_REMOVE(action, entry);
 
-		hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
-		list = &action_list[hv];
-		if (LIST_EMPTY(list))
+		if (LIST_EMPTY(&hash->list))
 			vm_page_flag_clear(action->m, PG_ACTIONLIST);
 	}
-	lwkt_reltoken(&vm_token);
+	lockmgr(&hash->lk, LK_RELEASE);
 }
 
 /*
@@ -3294,18 +3300,18 @@ vm_page_unregister_action(vm_page_action_t action)
 void
 vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 {
-	struct vm_page_action_list *list;
+	struct vm_page_action_hash *hash;
 	struct vm_page_action *scan;
 	struct vm_page_action *next;
 	int hv;
 	int all;
 
 	hv = (int)((intptr_t)m >> 8) & VMACTION_HMASK;
-	list = &action_list[hv];
+	hash = &action_hash[hv];
 	all = 1;
 
-	lwkt_gettoken(&vm_token);
-	LIST_FOREACH_MUTABLE(scan, list, entry, next) {
+	lockmgr(&hash->lk, LK_EXCLUSIVE);
+	LIST_FOREACH_MUTABLE(scan, &hash->list, entry, next) {
 		if (scan->m == m) {
 			if (scan->event == event) {
 				scan->event = VMEVENT_NONE;
@@ -3319,7 +3325,7 @@ vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 	}
 	if (all)
 		vm_page_flag_clear(m, PG_ACTIONLIST);
-	lwkt_reltoken(&vm_token);
+	lockmgr(&hash->lk, LK_RELEASE);
 }
 
 #include "opt_ddb.h"
