@@ -63,6 +63,7 @@ __BEGIN_DECLS
 #include <machine/cpumask.h>
 
 typedef cpumask_t		cpu_set_t;
+typedef cpumask_t		cpuset_t;	/* FreeBSD compat */
 
 #define CPU_SETSIZE		(sizeof(cpumask_t) * 8)
 
