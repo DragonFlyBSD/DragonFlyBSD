@@ -2858,6 +2858,8 @@ pmap_remove_pv_page(pv_entry_t pv)
  * This routine is always called to validate any address space
  * beyond KERNBASE (for kldloads).  kernel_vm_end only governs the address
  * space below KERNBASE.
+ *
+ * kernel_map must be locked exclusively by the caller.
  */
 void
 pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)

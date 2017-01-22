@@ -140,7 +140,6 @@ struct pmap kernel_pmap;
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 
 static struct vm_object kptobj;
-
 static int nkpt;
 
 static uint64_t	KPDphys;	/* phys addr of kernel level 2 */
@@ -1658,7 +1657,7 @@ pmap_release_callback(struct vm_page *p, void *data)
 /*
  * Grow the number of kernel page table entries, if needed.
  *
- * No requirements.
+ * kernel_map must be locked exclusively by the caller.
  */
 void
 pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)

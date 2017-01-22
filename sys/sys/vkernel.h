@@ -61,6 +61,7 @@
 
 struct vmspace_rb_tree;
 struct vmspace_entry;
+struct lwp;
 RB_PROTOTYPE(vmspace_rb_tree, vmspace_entry, rb_entry, rb_vmspace_compare);
 
 /*
@@ -74,6 +75,7 @@ struct vkernel_lwp {
 	struct trapframe *user_trapframe;	/* copyback to vkernel */
 	struct vextframe *user_vextframe;
 	struct vmspace_entry *ve;
+	struct vmspace_entry *ve_cache;
 };
 
 struct vkernel_proc {
@@ -86,8 +88,10 @@ struct vkernel_proc {
 struct vmspace_entry {
 	void *id;
 	struct vmspace *vmspace;
+	struct lwkt_token token;
 	int flags;
 	int refs;				/* current LWP assignments */
+	int cache_refs;
 	RB_ENTRY(vmspace_entry) rb_entry;
 };
 
