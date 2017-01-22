@@ -171,13 +171,14 @@ vke_txfifo_done_enqueue(struct vke_softc *sc, struct mbuf *m)
 {
 	fifo_t fifo = sc->sc_txfifo_done;
 
-	while (NETFIFOINDEX(fifo->windex + 1, sc) == NETFIFOINDEX(fifo->rindex, sc)) {
+	while (NETFIFOINDEX(fifo->windex + 1, sc) ==
+	       NETFIFOINDEX(fifo->rindex, sc)) {
 		usleep(20000);
 	}
-
 	fifo->array[NETFIFOINDEX(fifo->windex, sc)] = m;
 	cpu_sfence();
 	++fifo->windex;
+
 	return (0);
 }
 
@@ -193,10 +194,11 @@ vke_txfifo_done_dequeue(struct vke_softc *sc, struct mbuf *nm)
 	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
+	cpu_lfence();
 	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
 	fifo->array[NETFIFOINDEX(fifo->rindex, sc)] = nm;
-	cpu_lfence();
 	++fifo->rindex;
+
 	return (m);
 }
 
@@ -208,8 +210,10 @@ vke_txfifo_enqueue(struct vke_softc *sc, struct mbuf *m)
 {
 	fifo_t fifo = sc->sc_txfifo;
 
-	if (NETFIFOINDEX(fifo->windex + 1, sc) == NETFIFOINDEX(fifo->rindex, sc))
+	if (NETFIFOINDEX(fifo->windex + 1, sc) ==
+	    NETFIFOINDEX(fifo->rindex, sc)) {
 		return (-1);
+	}
 
 	fifo->array[NETFIFOINDEX(fifo->windex, sc)] = m;
 	cpu_sfence();
@@ -231,11 +235,12 @@ vke_txfifo_dequeue(struct vke_softc *sc)
 	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
+	cpu_lfence();
 	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
 	fifo->array[NETFIFOINDEX(fifo->rindex, sc)] = NULL;
-
-	cpu_lfence();
+	cpu_sfence();
 	++fifo->rindex;
+
 	return (m);
 }
 
@@ -263,10 +268,12 @@ vke_rxfifo_dequeue(struct vke_softc *sc, struct mbuf *newm)
 	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
+	cpu_lfence();
 	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
 	fifo->array[NETFIFOINDEX(fifo->rindex, sc)] = newm;
-	cpu_lfence();
+	cpu_sfence();
 	++fifo->rindex;
+
 	return (m);
 }
 
@@ -282,8 +289,9 @@ vke_rxfifo_sniff(struct vke_softc *sc)
 	if (NETFIFOINDEX(fifo->rindex, sc) == NETFIFOINDEX(fifo->windex, sc))
 		return (NULL);
 
-	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
 	cpu_lfence();
+	m = fifo->array[NETFIFOINDEX(fifo->rindex, sc)];
+
 	return (m);
 }
 
@@ -306,14 +314,17 @@ vke_init(void *xsc)
 	 * Allocate memory for FIFO structures and mbufs.
 	 */
 	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+				M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
+				M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_rxfifo = kmalloc(sizeof(*sc->sc_rxfifo),
-	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->sc_txfifo->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->sc_txfifo_done->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->sc_rxfifo->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
+				M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->sc_txfifo->array = kmalloc(ringsize,
+				M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->sc_txfifo_done->array = kmalloc(ringsize,
+				M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->sc_rxfifo->array = kmalloc(ringsize,
+				M_DEVBUF, M_WAITOK | M_ZERO);
 
 	for (i = 0; i < sc->sc_ringsize; i++) {
 		sc->sc_rxfifo->array[i] = m_getcl(M_WAITOK, MT_DATA, M_PKTHDR);
@@ -415,9 +426,12 @@ vke_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 		len = strlen(ifs->ascii);
 		if (len < sizeof(ifs->ascii)) {
-			if (sc->sc_tap_unit >= 0)
-				ksnprintf(ifs->ascii + len, sizeof(ifs->ascii) - len,
-				    "\tBacked by tap%d\n", sc->sc_tap_unit);
+			if (sc->sc_tap_unit >= 0) {
+				ksnprintf(ifs->ascii + len,
+					  sizeof(ifs->ascii) - len,
+					  "\tBacked by tap%d\n",
+					  sc->sc_tap_unit);
+			}
 		}
 		break;
 	}
@@ -617,6 +631,7 @@ vke_rx_thread(cothread_t cotd)
 	struct timeval tv;
 	int count;
 	int n;
+	int r;
 
 	/* Select timeout cannot be infinite since we need to check for
 	 * the exit flag sc->cotd_rx_exit.
@@ -641,9 +656,14 @@ vke_rx_thread(cothread_t cotd)
 		/*
 		 * Load data into the rx fifo
 		 */
+		cpu_lfence();
 		m = fifo->array[NETFIFOINDEX(fifo->windex, sc)];
-		if (m == NULL)
-			continue;
+		if (m == NULL) {
+			fprintf(stderr,
+				VKE_DEVNAME "%d: NULL rxring mbuf\n",
+				sc->sc_unit);
+			*(int *)0 = 1;
+		}
 		n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
 		if (n > 0) {
 			/* no mycpu in cothread */
@@ -663,8 +683,8 @@ vke_rx_thread(cothread_t cotd)
 				count = 0;
 			}
 			FD_SET(sc->sc_fd, &fdset);
-
-			if (select(sc->sc_fd + 1, &fdset, NULL, NULL, &tv) == -1) {
+			r = select(sc->sc_fd + 1, &fdset, NULL, NULL, &tv);
+			if (r == -1) {
 				fprintf(stderr,
 					VKE_DEVNAME "%d: select failed for "
 					"TAP device\n", sc->sc_unit);
