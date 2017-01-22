@@ -156,7 +156,9 @@ extern void *vkernel_stack;
 static vm_zone_t pvzone;
 static struct vm_zone pvzone_store;
 static struct vm_object pvzone_obj;
-static int pv_entry_count=0, pv_entry_max=0, pv_entry_high_water=0;
+static int pv_entry_count = 0;
+static int pv_entry_max = 0;
+static int pv_entry_high_water = 0;
 static int pmap_pagedaemon_waken = 0;
 static struct pv_entry *pvinit;
 
@@ -1824,7 +1826,7 @@ cpu_vmspace_free(struct vmspace *vm)
 static __inline void
 free_pv_entry(pv_entry_t pv)
 {
-	pv_entry_count--;
+	atomic_add_int(&pv_entry_count, -1);
 	KKASSERT(pv_entry_count >= 0);
 	zfree(pvzone, pv);
 }
@@ -1836,11 +1838,10 @@ free_pv_entry(pv_entry_t pv)
 static pv_entry_t
 get_pv_entry(void)
 {
-	pv_entry_count++;
+	atomic_add_int(&pv_entry_count, 1);
 	if (pv_entry_high_water &&
-		(pv_entry_count > pv_entry_high_water) &&
-		(pmap_pagedaemon_waken == 0)) {
-		pmap_pagedaemon_waken = 1;
+	    (pv_entry_count > pv_entry_high_water) &&
+	    atomic_swap_int(&pmap_pagedaemon_waken, 1) == 0) {
 		wakeup(&vm_pages_needed);
 	}
 	return zalloc(pvzone);
