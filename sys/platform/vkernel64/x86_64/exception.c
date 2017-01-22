@@ -80,6 +80,7 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
 
 	if (td->td_critcount == 0) {
 		++td->td_critcount;
+		++gd->gd_cnt.v_ipi;
 		++gd->gd_intr_nesting_level;
 		atomic_swap_int(&gd->gd_npoll, 0);
 		lwkt_process_ipiq();
@@ -112,6 +113,7 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	sigemptyset(&ss);
 	sigaddset(&ss, SIGALRM);
 	sigaddset(&ss, SIGIO);
+	sigaddset(&ss, SIGURG);
 	sigaddset(&ss, SIGQUIT);
 	sigaddset(&ss, SIGUSR1);
 	sigaddset(&ss, SIGUSR2);
@@ -127,19 +129,52 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	--td->td_critcount;
 }
 
-#if 0
-
 /*
  * SIGIO is used by cothreads to signal back into the virtual kernel.
  */
 static
 void
-iosig(int nada, siginfo_t *info, void *ctxp)
+kqueuesig(int nada, siginfo_t *info, void *ctxp)
 {
-	signalintr(4);
+	globaldata_t gd = mycpu;
+	thread_t td = gd->gd_curthread;
+
+	if (td->td_critcount == 0) {
+		++td->td_critcount;
+		++gd->gd_intr_nesting_level;
+		kqueue_intr(NULL);
+		--gd->gd_intr_nesting_level;
+		--td->td_critcount;
+	} else {
+		need_kqueue();
+	}
 }
 
-#endif
+static
+void
+timersig(int nada, siginfo_t *info, void *ctxp)
+{
+	globaldata_t gd = mycpu;
+	thread_t td = gd->gd_curthread;
+
+	if (td->td_critcount == 0) {
+		++td->td_critcount;
+		++gd->gd_intr_nesting_level;
+		vktimer_intr(NULL);
+		--gd->gd_intr_nesting_level;
+		--td->td_critcount;
+	} else {
+		need_timer();
+	}
+}
+
+static
+void
+cosig(int nada, siginfo_t *info, void *ctxp)
+{
+	/* handles critical section checks */
+	signalintr(1);
+}
 
 static
 void
@@ -177,12 +212,19 @@ init_exceptions(void)
 #endif
 	sa.sa_sigaction = ipisig;
 	sigaction(SIGUSR1, &sa, NULL);
+
 	sa.sa_sigaction = stopsig;
 	sigaction(SIGXCPU, &sa, NULL);
-#if 0
-	sa.sa_sigaction = iosig;
+
+	sa.sa_sigaction = kqueuesig;
 	sigaction(SIGIO, &sa, NULL);
-#endif
+
+	sa.sa_sigaction = timersig;
+	sigaction(SIGURG, &sa, NULL);
+
+	sa.sa_sigaction = cosig;
+	sigaction(SIGALRM, &sa, NULL);
+
 	sa.sa_sigaction = infosig;
 	sigaction(SIGINFO, &sa, NULL);
 }

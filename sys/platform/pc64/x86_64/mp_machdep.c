@@ -1658,12 +1658,10 @@ static void
 detect_amd_topology(int count_htt_cores)
 {
 	int shift = 0;
-	if ((cpu_feature & CPUID_HTT)
-			&& (amd_feature2 & AMDID2_CMP)) {
-		
+	if ((cpu_feature & CPUID_HTT) && (amd_feature2 & AMDID2_CMP)) {
 		if (cpu_procinfo2 & AMDID_COREID_SIZE) {
-			core_bits = (cpu_procinfo2 & AMDID_COREID_SIZE)
-			    >> AMDID_COREID_SIZE_SHIFT;
+			core_bits = (cpu_procinfo2 & AMDID_COREID_SIZE) >>
+				    AMDID_COREID_SIZE_SHIFT;
 		} else {
 			core_bits = (cpu_procinfo2 & AMDID_CMP_CORES) + 1;
 			for (shift = 0; (1 << shift) < core_bits; ++shift)
@@ -1690,6 +1688,7 @@ amd_get_compute_unit_id(void *arg)
 
 	do_cpuid(0x8000001e, regs);
 	cpu_node_t * mynode = get_cpu_node_by_cpuid(mycpuid);
+
 	/* 
 	 * AMD - CPUID Specification September 2010
 	 * page 34 - //ComputeUnitID = ebx[0:7]//
@@ -1716,11 +1715,11 @@ fix_amd_topology(void)
 		kprintf("%d-%d; \n",
 			i, get_cpu_node_by_cpuid(i)->compute_unit_id);
 	}
-
 	return 0;
 }
 
-/* Calculate
+/*
+ * Calculate
  * - logical_CPU_bits
  * - core_bits
  * With the values above (for AMD or INTEL) we are able to generally
@@ -1750,12 +1749,15 @@ detect_cpu_topology(void)
 	topology_detected = 1;
 
 OUT:
-	if (bootverbose)
-		kprintf("Bits within APICID: logical_CPU_bits: %d; core_bits: %d\n",
-		    logical_CPU_bits, core_bits);
+	if (bootverbose) {
+		kprintf("Bits within APICID: logical_CPU_bits: %d; "
+			"core_bits: %d\n",
+			logical_CPU_bits, core_bits);
+	}
 }
 
-/* Interface functions to calculate chip_ID,
+/*
+ * Interface functions to calculate chip_ID,
  * core_number and logical_number
  * Ref: http://wiki.osdev.org/Detecting_CPU_Topology_(80x86)
  */
@@ -1775,13 +1777,13 @@ get_chip_ID_from_APICID(int apicid)
 int
 get_core_number_within_chip(int cpuid)
 {
-	return (get_apicid_from_cpuid(cpuid) >> logical_CPU_bits) &
-	    ( (1 << core_bits) -1);
+	return ((get_apicid_from_cpuid(cpuid) >> logical_CPU_bits) &
+		((1 << core_bits) - 1));
 }
 
 int
 get_logical_CPU_number_within_core(int cpuid)
 {
-	return get_apicid_from_cpuid(cpuid) &
-	    ( (1 << logical_CPU_bits) -1);
+	return (get_apicid_from_cpuid(cpuid) &
+		((1 << logical_CPU_bits) - 1));
 }

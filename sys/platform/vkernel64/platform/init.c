@@ -88,7 +88,6 @@ vm_phystable_t phys_avail[16];
 vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 long physmem;
-int naps = 0; /* # of Applications processors */
 int MemImageFd = -1;
 struct vkdisk_info DiskInfo[VKDISK_MAX];
 int DiskNum;
@@ -118,6 +117,7 @@ int tsc_invariant;
 int tsc_mpsync;
 int64_t tsc_frequency;
 int optcpus;		/* number of cpus - see mp_start() */
+int cpu_bits;
 int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
 int real_ncpus;		/* number of real CPUs */
 int next_cpu;		/* next real CPU to lock a virtual CPU to */
@@ -236,11 +236,13 @@ main(int ac, char **av)
 	eflag = 0;
 	pos = 0;
 	kenv_size = 0;
+
 	/*
 	 * Process options
 	 */
 	kernel_mem_readonly = 1;
 	optcpus = 2;
+	cpu_bits = 1;
 	vkernel_b_arg = 0;
 	vkernel_B_arg = 0;
 	lwp_cpu_lock = LCL_NONE;
@@ -392,18 +394,31 @@ main(int ac, char **av)
 			optcpus = strtol(tok, NULL, 0);
 			if (optcpus < 1 || optcpus > MAXCPU)
 				usage_err("Bad ncpus, valid range is 1-%d", MAXCPU);
+			cpu_bits = 1;
+			while ((1 << cpu_bits) < optcpus)
+				++cpu_bits;
 
-			/* :lbits argument */
+			/*
+			 * By default assume simple hyper-threading
+			 */
+			vkernel_b_arg = 1;
+			vkernel_B_arg = cpu_bits - vkernel_b_arg;
+
+			/*
+			 * [:lbits[:cbits]] override # of cpu bits
+			 * for logical and core extraction, supplying
+			 * defaults for any omission.
+			 */
 			tok = strtok(NULL, ":");
 			if (tok != NULL) {
 				vkernel_b_arg = strtol(tok, NULL, 0);
+				vkernel_B_arg = cpu_bits - vkernel_b_arg;
 
 				/* :cbits argument */
 				tok = strtok(NULL, ":");
 				if (tok != NULL) {
 					vkernel_B_arg = strtol(tok, NULL, 0);
 				}
-
 			}
 			break;
 		case 'p':

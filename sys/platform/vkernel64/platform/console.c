@@ -52,6 +52,7 @@
 
 static int console_stolen_by_kernel;
 static struct kqueue_info *kqueue_console_info;
+static struct tty *kqueue_console_tty;
 
 /************************************************************************
  *			    CONSOLE DEVICE				*
@@ -61,7 +62,7 @@ static struct kqueue_info *kqueue_console_info;
 
 static int vcons_tty_param(struct tty *tp, struct termios *tio);
 static void vcons_tty_start(struct tty *tp);
-static void vcons_intr(void *tpx, struct intrframe *frame __unused);
+static void vcons_hardintr(void *tpx, struct intrframe *frame __unused);
 
 static d_open_t         vcons_open;
 static d_close_t        vcons_close;
@@ -109,8 +110,10 @@ vcons_open(struct dev_open_args *ap)
 		error = (*linesw[tp->t_line].l_open)(dev, tp);
 		ioctl(0, TIOCGWINSZ, &tp->t_winsize);
 
-		if (kqueue_console_info == NULL)
-			kqueue_console_info = kqueue_add(0, vcons_intr, tp);
+		if (kqueue_console_info == NULL) {
+			kqueue_console_tty = tp;
+			kqueue_console_info = kqueue_add(0, vcons_hardintr, tp);
+		}
 	} else {
 		/* dummy up other minors so the installer will run */
 		error = 0;
@@ -196,34 +199,10 @@ vcons_tty_start(struct tty *tp)
 
 static
 void
-vcons_intr(void *tpx, struct intrframe *frame __unused)
+vcons_hardintr(void *tpx, struct intrframe *frame __unused)
 {
-	struct tty *tp = tpx;
-	unsigned char buf[32];
-	int i;
-	int n;
-
-	lwkt_gettoken(&tty_token);
-	/*
-	 * If we aren't open we only have synchronous traffic via the
-	 * debugger and do not need to poll.
-	 */
-	if ((tp->t_state & TS_ISOPEN) == 0) {
-		lwkt_reltoken(&tty_token);
-		return;
-	}
-
-	/*
-	 * Only poll if we are open and haven't been stolen by the debugger.
-	 */
-	if (console_stolen_by_kernel == 0 && (tp->t_state & TS_ISOPEN)) {
-		do {
-			n = extpread(0, buf, sizeof(buf), O_FNONBLOCKING, -1LL);
-			for (i = 0; i < n; ++i)
-				(*linesw[tp->t_line].l_rint)(buf[i], tp);
-		} while (n > 0);
-	}
-	lwkt_reltoken(&tty_token);
+	if (console_stolen_by_kernel == 0)
+		signalintr(4);
 }
 
 /************************************************************************
@@ -306,6 +285,47 @@ vconswinch_intr(void *arg __unused, void *frame __unused)
 	}
 }
 
+/*
+ * This has to be an interrupt thread and not a hard interrupt.
+ */
+static
+void
+vconsvirt_intr(void *arg __unused, void *frame __unused)
+{
+	struct tty *tp;
+	unsigned char buf[32];
+	int i;
+	int n;
+
+	if (kqueue_console_info == NULL)
+		return;
+	tp = kqueue_console_tty;
+
+	lwkt_gettoken(&tty_token);
+	/*
+	 * If we aren't open we only have synchronous traffic via the
+	 * debugger and do not need to poll.
+	 */
+	if ((tp->t_state & TS_ISOPEN) == 0) {
+		lwkt_reltoken(&tty_token);
+		return;
+	}
+
+	/*
+	 * Only poll if we are open and haven't been stolen by the debugger.
+	 */
+	if (console_stolen_by_kernel == 0 && (tp->t_state & TS_ISOPEN)) {
+		do {
+			n = extpread(0, buf, sizeof(buf), O_FNONBLOCKING, -1LL);
+			for (i = 0; i < n; ++i)
+				(*linesw[tp->t_line].l_rint)(buf[i], tp);
+		} while (n > 0);
+	}
+	lwkt_reltoken(&tty_token);
+}
+
+
+
 static void
 vconscleanup(void)
 {
@@ -346,7 +366,9 @@ vconsinit_fini(struct consdev *cp)
 	 * to use the interrupt subsystem.
 	 */
 	register_int_virtual(3, vconswinch_intr, NULL, "swinch", NULL,
-	    INTR_MPSAFE);
+			     INTR_MPSAFE);
+	register_int_virtual(4, vconsvirt_intr, NULL, "vintr", NULL,
+			     INTR_MPSAFE);
 	bzero(&sa, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = vconswinchsig;

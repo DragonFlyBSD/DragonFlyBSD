@@ -125,7 +125,8 @@ splz(void)
 	thread_t td = gd->mi.gd_curthread;
 	int irq;
 
-	while (gd->mi.gd_reqflags & (RQF_IPIQ|RQF_INTPEND)) {
+	while (gd->mi.gd_reqflags & (RQF_IPIQ|RQF_INTPEND|
+				     RQF_TIMER|RQF_KQUEUE)) {
 		crit_enter_quick(td);
 		if (gd->mi.gd_reqflags & RQF_IPIQ) {
 			atomic_clear_int(&gd->mi.gd_reqflags, RQF_IPIQ);
@@ -145,6 +146,14 @@ splz(void)
 				atomic_clear_int(&gd->gd_fpending, 1 << irq);
 				sched_ithd_hard_virtual(irq);
 			}
+		}
+		if (gd->mi.gd_reqflags & RQF_TIMER) {
+			atomic_clear_int(&gd->mi.gd_reqflags, RQF_TIMER);
+			vktimer_intr(NULL);
+		}
+		if (gd->mi.gd_reqflags & RQF_KQUEUE) {
+			atomic_clear_int(&gd->mi.gd_reqflags, RQF_KQUEUE);
+			kqueue_intr(NULL);
 		}
 		crit_exit_noyield(td);
 	}
@@ -180,7 +189,8 @@ signalintr(int intr)
 void
 cpu_disable_intr(void)
 {
-	sigblock(sigmask(SIGALRM)|sigmask(SIGIO)|sigmask(SIGUSR1));
+	sigblock(sigmask(SIGALRM)|sigmask(SIGIO)|sigmask(SIGUSR1)|
+		 sigmask(SIGURG));
 }
 
 void
@@ -194,7 +204,7 @@ cpu_mask_all_signals(void)
 {
 	sigblock(sigmask(SIGALRM)|sigmask(SIGIO)|sigmask(SIGQUIT)|
 		 sigmask(SIGUSR1)|sigmask(SIGTERM)|sigmask(SIGWINCH)|
-		 sigmask(SIGUSR2));
+		 sigmask(SIGUSR2)|sigmask(SIGURG));
 }
 
 void

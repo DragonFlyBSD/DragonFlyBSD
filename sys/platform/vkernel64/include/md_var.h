@@ -77,6 +77,7 @@ extern	vpte_t	*KernelPTA;	/* NOTE: Offset for direct VA translation */
 extern	vpte_t	*KernelPTD;
 extern	vm_offset_t crashdumpmap;
 extern  int	cpu_fxsr;
+extern  pthread_t ap_tids[MAXCPU];
 
 extern  char    cpu_vendor[];	/* XXX belongs in i386 */
 extern  u_int   cpu_vendor_id;	/* XXX belongs in i386 */
@@ -119,14 +120,13 @@ void vcons_set_mode(int);
 int npxdna(struct trapframe *);
 void npxpush(struct __mcontext *mctx);
 void npxpop(struct __mcontext *mctx);
+void kqueue_intr(struct intrframe *);
+void vktimer_intr(struct intrframe *);
 
 void signalintr(int intr);
 
 struct kqueue_info;
 struct kqueue_info *kqueue_add(int, void (*)(void *, struct intrframe *), void *);
 void kqueue_del(struct kqueue_info *);
-struct kqueue_info *kqueue_add_timer(void (*func)(void *, struct intrframe *), void *data);
-void kqueue_reload_timer(struct kqueue_info *info, int ms);
-
 
 #endif

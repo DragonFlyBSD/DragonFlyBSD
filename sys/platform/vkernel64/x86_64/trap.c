@@ -1378,6 +1378,7 @@ void
 go_user(struct intrframe *frame)
 {
 	struct trapframe *tf = (void *)&frame->if_rdi;
+	globaldata_t gd;
 	int r;
 	void *id;
 
@@ -1429,7 +1430,15 @@ go_user(struct intrframe *frame)
 		else
 			id = &curproc->p_vmspace->vm_pmap;
 
-		r = vmspace_ctl(id, VMSPACE_CTL_RUN, tf, &curthread->td_savevext);
+		/*
+		 * The GDF_VIRTUSER hack helps statclock() figure out who
+		 * the tick belongs to.
+		 */
+		gd = mycpu;
+		gd->gd_flags |= GDF_VIRTUSER;
+		r = vmspace_ctl(id, VMSPACE_CTL_RUN, tf,
+				&curthread->td_savevext);
+		gd->gd_flags &= ~GDF_VIRTUSER;
 
 		frame->if_xflags |= PGEX_U;
 #if 0

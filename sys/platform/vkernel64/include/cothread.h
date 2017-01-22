@@ -62,4 +62,7 @@ void cothread_wait(cothread_t cotd);
 void cothread_lock(cothread_t cotd, int is_cotd);
 void cothread_unlock(cothread_t cotd, int is_cotd);
 
+void cothread_sleep(cothread_t cotd, struct timespec *ts);
+void cothread_wakeup(cothread_t cotd, struct timespec *ts);
+
 #endif

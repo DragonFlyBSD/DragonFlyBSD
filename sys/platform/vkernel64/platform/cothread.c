@@ -47,6 +47,7 @@
 #include <sys/tls.h>
 #include <sys/types.h>
 #include <sys/bus.h>
+#include <time.h>
 
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
@@ -95,8 +96,11 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 
 	cotd->pintr = pthread_self();
 
-	cotd->intr_id = register_int_virtual(1, (void *)thr_intr, cotd, name,
-	    NULL, INTR_MPSAFE);
+	if (thr_intr) {
+		cotd->intr_id = register_int_virtual(1, (void *)thr_intr,
+						     cotd, name,
+						     NULL, INTR_MPSAFE);
+	}
 
 	/*
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want
@@ -105,8 +109,8 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	pthread_attr_init(&attr);
 	if (vmm_enabled) {
 		stack = mmap(NULL, KERNEL_STACK_SIZE,
-		    PROT_READ|PROT_WRITE|PROT_EXEC,
-		    MAP_ANON, -1, 0);
+			     PROT_READ|PROT_WRITE|PROT_EXEC,
+			     MAP_ANON, -1, 0);
 		if (stack == MAP_FAILED) {
 			panic("Unable to allocate stack for cothread\n");
 		}
@@ -132,7 +136,8 @@ cothread_delete(cothread_t *cotdp)
 	cothread_t cotd;
 
 	if ((cotd = *cotdp) != NULL) {
-		unregister_int_virtual(cotd->intr_id);
+		if (cotd->thr_intr)
+			unregister_int_virtual(cotd->intr_id);
 		crit_enter();
 		pthread_join(cotd->pthr, NULL);
 		crit_exit();
@@ -162,7 +167,7 @@ cothread_thread(void *arg)
 void
 cothread_intr(cothread_t cotd)
 {
-	pthread_kill(cotd->pintr, SIGIO);
+	pthread_kill(cotd->pintr, SIGALRM);
 }
 
 /*
@@ -183,6 +188,23 @@ void
 cothread_wait(cothread_t cotd)
 {
 	pthread_cond_wait(&cotd->cond, &cotd->mutex);
+}
+
+/*
+ * Used for systimer support
+ */
+void
+cothread_sleep(cothread_t cotd, struct timespec *ts)
+{
+	nanosleep(ts, NULL);
+}
+
+void
+cothread_wakeup(cothread_t cotd, struct timespec *ts)
+{
+	ts->tv_sec = 0;
+	ts->tv_nsec = 0;
+	pthread_kill(cotd->pthr, SIGINT);
 }
 
 /*

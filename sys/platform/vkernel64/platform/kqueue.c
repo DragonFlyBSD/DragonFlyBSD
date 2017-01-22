@@ -59,11 +59,7 @@ struct kqueue_info {
 	int fd;
 };
 
-static void kqueuesig(int signo);
-static void kqueue_intr(void *arg __unused, void *frame __unused);
-
 static int KQueueFd = -1;
-static void *VIntr1;
 
 /*
  * Initialize kqueue based I/O
@@ -76,14 +72,15 @@ static void *VIntr1;
 void
 init_kqueue(void)
 {
+#if 0
 	struct sigaction sa;
-
 	bzero(&sa, sizeof(sa));
 	/*sa.sa_mailbox = &mdcpu->gd_mailbox;*/
 	sa.sa_flags = 0;
 	sa.sa_handler = kqueuesig;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGIO, &sa, NULL);
+#endif
 	KQueueFd = kqueue();
 	if (fcntl(KQueueFd, F_SETOWN, getpid()) < 0)
 		panic("Cannot configure kqueue for SIGIO, update your kernel");
@@ -91,6 +88,7 @@ init_kqueue(void)
 		panic("Cannot configure kqueue for SIGIO, update your kernel");
 }
 
+#if 0
 /*
  * Signal handler dispatches interrupt thread.  Use interrupt #1
  */
@@ -99,6 +97,8 @@ kqueuesig(int signo)
 {
 	signalintr(1);
 }
+
+#endif
 
 /*
  * Generic I/O event support
@@ -110,11 +110,6 @@ kqueue_add(int fd, void (*func)(void *, struct intrframe *), void *data)
 	struct kqueue_info *info;
 	struct kevent kev;
 
-	if (VIntr1 == NULL) {
-		VIntr1 = register_int_virtual(1, kqueue_intr, NULL, "kqueue",
-		    NULL, INTR_MPSAFE);
-	}
-
 	info = kmalloc(sizeof(*info), M_DEVBUF, M_ZERO|M_INTWAIT);
 	info->func = func;
 	info->data = data;
@@ -125,6 +120,7 @@ kqueue_add(int fd, void (*func)(void *, struct intrframe *), void *data)
 	return(info);
 }
 
+#if 0
 /*
  * Medium resolution timer support
  */
@@ -133,15 +129,11 @@ kqueue_add_timer(void (*func)(void *, struct intrframe *), void *data)
 {
 	struct kqueue_info *info;
 
-	if (VIntr1 == NULL) {
-		VIntr1 = register_int_virtual(1, kqueue_intr, NULL, "kqueue",
-		    NULL, INTR_MPSAFE);
-	}
-
 	info = kmalloc(sizeof(*info), M_DEVBUF, M_ZERO|M_INTWAIT);
 	info->func = func;
 	info->data = data;
 	info->fd = (uintptr_t)info;
+
 	return(info);
 }
 
@@ -158,6 +150,7 @@ kqueue_reload_timer(struct kqueue_info *info, int ms)
 	if (kevent(KQueueFd, &kev, 1, NULL, 0, &ts) < 0)
 		panic("kqueue_reload_timer: Failed");
 }
+#endif
 
 /*
  * Destroy a previously added kqueue event
@@ -182,9 +175,8 @@ kqueue_del(struct kqueue_info *info)
  * Calleld with the MP lock held.  Note that this is still an interrupt
  * thread context.
  */
-static
 void
-kqueue_intr(void *arg __unused, void *frame __unused)
+kqueue_intr(struct intrframe *frame)
 {
 	struct timespec ts;
 	struct kevent kevary[8];

@@ -71,7 +71,6 @@ cpumask_t	smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
 static int	boot_address;
 /* which cpus have been started */
 static cpumask_t smp_startup_mask = CPUMASK_INITIALIZER_ONLYONE;
-int		mp_naps;                /* # of Applications processors */
 static int  mp_finish;
 
 /* Local data for detecting CPU TOPOLOGY */
@@ -145,6 +144,8 @@ start_ap(void *arg __unused)
 /* storage for AP thread IDs */
 pthread_t ap_tids[MAXCPU];
 
+int naps;
+
 void
 mp_start(void)
 {
@@ -152,8 +153,7 @@ mp_start(void)
 	int shift;
 
 	ncpus = optcpus;
-
-	mp_naps = ncpus - 1;
+	naps = ncpus - 1;
 
 	/* ncpus2 -- ncpus rounded down to the nearest power of 2 */
 	for (shift = 0; (1 << shift) <= ncpus; ++shift)
@@ -192,7 +192,7 @@ mp_announce(void)
 	kprintf("DragonFly/MP: Multiprocessor\n");
 	kprintf(" cpu0 (BSP)\n");
 
-	for (x = 1; x <= mp_naps; ++x)
+	for (x = 1; x <= naps; ++x)
 		kprintf(" cpu%d (AP)\n", x);
 }
 
@@ -405,8 +405,7 @@ start_all_aps(u_int boot_addr)
 	pthread_attr_init(&attr);
 
 	vm_object_hold(&kernel_object);
-	for (x = 1; x <= mp_naps; x++)
-	{
+	for (x = 1; x <= naps; ++x) {
 		/* Allocate space for the CPU's private space. */
 		for (i = 0; i < sizeof(struct mdglobaldata); i += PAGE_SIZE) {
 			va =(vm_offset_t)&CPU_prvspace[x].mdglobaldata + i;
@@ -439,7 +438,7 @@ start_all_aps(u_int boot_addr)
                 gd->gd_PADDR1 = (vpte_t *)ps->PPAGE1;
 #endif
 
-		ipiq_size = sizeof(struct lwkt_ipiq) * (mp_naps + 1);
+		ipiq_size = sizeof(struct lwkt_ipiq) * (naps + 1);
                 gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size,
 						    VM_SUBSYS_IPIQ);
                 bzero(gd->mi.gd_ipiq, ipiq_size);
@@ -487,7 +486,6 @@ start_all_aps(u_int boot_addr)
 /*
  * CPU TOPOLOGY DETECTION FUNCTIONS.
  */
-
 void
 detect_cpu_topology(void)
 {
@@ -503,16 +501,21 @@ get_chip_ID(int cpuid)
 }
 
 int
+get_chip_ID_from_APICID(int apicid)
+{
+        return apicid >> (logical_CPU_bits + core_bits);
+}
+
+int
 get_core_number_within_chip(int cpuid)
 {
-	return (get_apicid_from_cpuid(cpuid) >> logical_CPU_bits) &
-	    ( (1 << core_bits) -1);
+	return ((get_apicid_from_cpuid(cpuid) >> logical_CPU_bits) &
+		((1 << core_bits) - 1));
 }
 
 int
 get_logical_CPU_number_within_core(int cpuid)
 {
-	return get_apicid_from_cpuid(cpuid) &
-	    ( (1 << logical_CPU_bits) -1);
+	return (get_apicid_from_cpuid(cpuid) &
+		((1 << logical_CPU_bits) - 1));
 }
-

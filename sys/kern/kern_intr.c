@@ -887,6 +887,9 @@ ithread_handler(void *arg)
 	    for (rec = *list; rec; rec = nrec) {
 		/* rec may be invalid after call */
 		nrec = rec->next;
+		if (rec->handler == NULL) {
+		    kprintf("NULL HANDLER %s\n", rec->name);
+		} else
 		if (rec->serializer) {
 		    lwkt_serialize_handler_call(rec->serializer, rec->handler,
 						rec->argument, NULL);

@@ -202,6 +202,7 @@ typedef struct globaldata *globaldata_t;
 #define RQB_RUNNING		8	/* 0100 */
 #define RQB_SPINNING		9	/* 0200 */
 #define RQB_QUICKRET		10	/* 0400 */
+#define RQB_KQUEUE		11	/* 0800 (only used by vkernel) */
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)
@@ -213,16 +214,18 @@ typedef struct globaldata *globaldata_t;
 #define RQF_RUNNING		(1 << RQB_RUNNING)
 #define RQF_SPINNING		(1 << RQB_SPINNING)
 #define RQF_QUICKRET		(1 << RQB_QUICKRET)
+#define RQF_KQUEUE		(1 << RQB_KQUEUE)
 
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED)
-#define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND|RQF_TIMER)
+#define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND|RQF_TIMER|RQF_KQUEUE)
 #define RQF_IDLECHECK_WK_MASK	(RQF_IDLECHECK_MASK|RQF_AST_LWKT_RESCHED)
 
 /*
  * globaldata flags
  */
 #define GDF_KPRINTF		0x0001	/* kprintf() reentrancy */
+#define GDF_VIRTUSER		0x0002	/* used by vkernel only */
 
 #endif
 

@@ -46,6 +46,7 @@
 #include <machine/clock.h>
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
+#include <machine/cothread.h>
 
 #include <sys/thread2.h>
 
@@ -53,8 +54,6 @@
 #include <signal.h>
 
 #define VKTIMER_FREQ	1000000	/* 1us granularity */
-
-static void vktimer_intr(void *dummy, struct intrframe *frame);
 
 int disable_rtc_set;
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
@@ -73,16 +72,18 @@ int wall_cmos_clock = 0;
 SYSCTL_INT(_machdep, CPU_WALLCLOCK, wall_cmos_clock,
     CTLFLAG_RD, &wall_cmos_clock, 0, "");
 
-static struct kqueue_info *kqueue_timer_info;
-
 static int cputimer_mib[16];
 static int cputimer_miblen;
+static cothread_t vktimer_cotd;
+static int vktimer_running;
+static struct timespec vktimer_ts;
 
 /*
  * SYSTIMER IMPLEMENTATION
  */
 static sysclock_t vkernel_timer_get_timecount(void);
 static void vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock);
+static void vktimer_thread(cothread_t cotd);
 
 static struct cputimer vkernel_cputimer = {
         SLIST_ENTRY_INITIALIZER,
@@ -182,8 +183,68 @@ static void
 vktimer_intr_initclock(struct cputimer_intr *cti __unused,
 		       boolean_t selected __unused)
 {
+	vktimer_ts.tv_nsec = 1000000000 / 20;
+	vktimer_cotd = cothread_create(vktimer_thread, NULL, NULL, "vktimer");
+	while (vktimer_running == 0)
+		usleep(1000000 / 10);
+#if 0
 	KKASSERT(kqueue_timer_info == NULL);
 	kqueue_timer_info = kqueue_add_timer(vktimer_intr, NULL);
+#endif
+}
+
+/*
+ *
+ */
+static void
+vktimer_sigint(int signo)
+{
+	/* do nothing, just interrupt */
+}
+
+static void
+vktimer_thread(cothread_t cotd)
+{
+        struct sigaction sa;
+	globaldata_t gscan;
+
+        bzero(&sa, sizeof(sa));
+        sa.sa_handler = vktimer_sigint;
+        sa.sa_flags |= SA_NODEFER;
+        sigemptyset(&sa.sa_mask);
+        sigaction(SIGINT, &sa, NULL);
+
+	vktimer_running = 1;
+	while (vktimer_cotd == NULL)
+		usleep(1000000 / 10);
+
+	for (;;) {
+		long old;
+		int n;
+
+		/*
+		 * Wait for timeout or interrupt
+		 */
+		cothread_sleep(cotd, &vktimer_ts);
+
+		/*
+		 * Reinitialize with long timeout
+		 */
+		old = 1000000000 / 20;
+		vktimer_ts.tv_nsec = old;
+
+		/*
+		 * Poll cpus
+		 *
+		 * XXX we haven't distributed the timer to each cpu
+		 * yet.
+		 */
+		for (n = 0; n < ncpus; ++n) {
+			gscan = globaldata_find(n);
+			if (TAILQ_FIRST(&gscan->gd_systimerq))
+				pthread_kill(ap_tids[n], SIGURG);
+		}
+	}
 }
 
 /*
@@ -194,38 +255,31 @@ vktimer_intr_initclock(struct cputimer_intr *cti __unused,
 static void
 vktimer_intr_reload(struct cputimer_intr *cti __unused, sysclock_t reload)
 {
-	if (kqueue_timer_info) {
-		if ((int)reload < 1)
-			reload = 1;
-		kqueue_reload_timer(kqueue_timer_info, (reload + 999) / 1000);
+	if (reload >= 1000000)
+		reload = 999999999;
+	else
+		reload = reload * 1000;
+
+	if (reload < vktimer_ts.tv_nsec) {
+		while (reload < vktimer_ts.tv_nsec)
+			reload = atomic_swap_long(&vktimer_ts.tv_nsec, reload);
+		if (vktimer_cotd)
+			cothread_wakeup(vktimer_cotd, &vktimer_ts);
 	}
 }
 
 /*
- * clock interrupt.
- *
- * NOTE: frame is a struct intrframe pointer.
+ * pcpu clock interrupt (hard interrupt)
  */
-static void
-vktimer_intr(void *dummy, struct intrframe *frame)
+void
+vktimer_intr(struct intrframe *frame)
 {
-	static sysclock_t sysclock_count;
 	struct globaldata *gd = mycpu;
-        struct globaldata *gscan;
-	int n;
+	sysclock_t sysclock_count;
 
 	sysclock_count = sys_cputimer->count();
-	for (n = 0; n < ncpus; ++n) {
-		gscan = globaldata_find(n);
-		if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
-			continue;
-		if (gscan != gd) {
-			lwkt_send_ipiq3(gscan, (ipifunc3_t)systimer_intr,
-					&sysclock_count, 0);
-		} else {
-			systimer_intr(&sysclock_count, 0, frame);
-		}
-	}
+	++gd->gd_cnt.v_timer;
+	systimer_intr(&sysclock_count, 0, frame);
 }
 
 /*

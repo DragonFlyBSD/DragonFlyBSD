@@ -344,11 +344,15 @@ initclocks_other(void *dummy)
 		 * (8254 gets reset).  The sysclock will never jump backwards.
 		 * Our time sync is based on the actual sysclock, not the
 		 * ticks count.
+		 *
+		 * Install statclock before hardclock to prevent statclock
+		 * from misinterpreting gd_flags for tick assignment when
+		 * they overlap.
 		 */
-		systimer_init_periodic_nq(&gd->gd_hardclock, hardclock,
-					  NULL, hz);
 		systimer_init_periodic_nq(&gd->gd_statclock, statclock,
 					  NULL, stathz);
+		systimer_init_periodic_nq(&gd->gd_hardclock, hardclock,
+					  NULL, hz);
 		/* XXX correct the frequency for scheduler / estcpu tests */
 		systimer_init_periodic_nq(&gd->gd_schedclock, schedclock,
 					  NULL, ESTCPUFREQ);
@@ -709,6 +713,7 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	struct gmonparam *g;
 	int i;
 #endif
+	globaldata_t gd = mycpu;
 	thread_t td;
 	struct proc *p;
 	int bump;
@@ -725,7 +730,7 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	 *	 MPSAFE at early boot.
 	 */
 	cv = sys_cputimer->count();
-	scv = mycpu->statint.gd_statcv;
+	scv = gd->statint.gd_statcv;
 	if (scv == 0) {
 		bump = 1;
 	} else {
@@ -735,10 +740,10 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		if (bump > 1000000)
 			bump = 1000000;
 	}
-	mycpu->statint.gd_statcv = cv;
+	gd->statint.gd_statcv = cv;
 
 #if 0
-	stv = &mycpu->gd_stattv;
+	stv = &gd->gd_stattv;
 	if (stv->tv_sec == 0) {
 	    bump = 1;
 	} else {
@@ -772,7 +777,7 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		else
 			cpu_time.cp_user += bump;
 	} else {
-		int intr_nest = mycpu->gd_intr_nesting_level;
+		int intr_nest = gd->gd_intr_nesting_level;
 
 		if (in_ipi) {
 			/*
@@ -813,30 +818,47 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		 * XXX assume system if frame is NULL.  A NULL frame 
 		 * can occur if ipi processing is done from a crit_exit().
 		 */
-		if (IS_INTR_RUNNING)
-			td->td_iticks += bump;
-		else
-			td->td_sticks += bump;
-
 		if (IS_INTR_RUNNING) {
 			/*
 			 * If we interrupted an interrupt thread, well,
 			 * count it as interrupt time.
 			 */
+			td->td_iticks += bump;
 #ifdef DEBUG_PCTRACK
 			if (frame)
 				do_pctrack(frame, PCTRACK_INT);
 #endif
 			cpu_time.cp_intr += bump;
+#ifdef _KERNEL_VIRTUAL
+		} else if (gd->gd_flags & GDF_VIRTUSER) {
+			/*
+			 * The vkernel doesn't do a good job providing trap
+			 * frames that we can test.  If the GDF_VIRTUSER
+			 * flag is set we probably interrupted user mode.
+			 */
+			td->td_uticks += bump;
+
+			/*
+			 * Charge the time as appropriate
+			 */
+			if (p && p->p_nice > NZERO)
+				cpu_time.cp_nice += bump;
+			else
+				cpu_time.cp_user += bump;
+#endif
 		} else {
-			if (td == &mycpu->gd_idlethread) {
+#if 0
+			kprintf("THREAD %s %p %p %08x\n", td->td_comm, td, &gd->gd_idlethread, gd->gd_reqflags);
+#endif
+			td->td_sticks += bump;
+			if (td == &gd->gd_idlethread) {
 				/*
 				 * Even if the current thread is the idle
 				 * thread it could be due to token contention
 				 * in the LWKT scheduler.  Count such as
 				 * system time.
 				 */
-				if (mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK)
+				if (gd->gd_reqflags & RQF_IDLECHECK_WK_MASK)
 					cpu_time.cp_sys += bump;
 				else
 					cpu_time.cp_idle += bump;

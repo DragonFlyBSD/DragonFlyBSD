@@ -78,6 +78,12 @@
     atomic_set_int(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
 #define	need_ipiq()		\
     atomic_set_int(&mycpu->gd_reqflags, RQF_IPIQ)
+#define	need_timer()		\
+    atomic_set_int(&mycpu->gd_reqflags, RQF_TIMER)
+#ifdef _KERNEL_VIRTUAL
+#define	need_kqueue()		\
+    atomic_set_int(&mycpu->gd_reqflags, RQF_KQUEUE)
+#endif
 #define	signotify()		\
     atomic_set_int(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 #define	clear_user_resched()	\
