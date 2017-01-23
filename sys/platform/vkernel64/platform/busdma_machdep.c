@@ -542,7 +542,7 @@ static __inline vm_paddr_t
 _bus_dma_extract(pmap_t pmap, vm_offset_t vaddr)
 {
 	if (pmap)
-		return pmap_extract(pmap, vaddr);
+		return pmap_extract(pmap, vaddr, NULL);
 	else
 		return pmap_kextract(vaddr);
 }

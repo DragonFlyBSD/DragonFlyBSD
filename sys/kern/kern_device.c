@@ -240,7 +240,7 @@ dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
 	return (error);
 }
 
-int
+int64_t
 dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot, struct file *fp)
 {
 	struct dev_mmap_args ap;

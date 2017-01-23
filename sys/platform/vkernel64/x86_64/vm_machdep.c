@@ -323,14 +323,16 @@ kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
 {
 	vm_offset_t addr;
 
-	if (saddr >= trunc_page((vm_offset_t)&_start) && eaddr <= round_page((vm_offset_t)&_end))
+	if (saddr >= trunc_page((vm_offset_t)&_start) &&
+	    eaddr <= round_page((vm_offset_t)&_end)) {
 		return 0;
+	}
 	if (saddr < KvaStart)
 		return EFAULT;
 	if (eaddr >= KvaEnd)
 		return EFAULT;
 	for (addr = saddr; addr < eaddr; addr += PAGE_SIZE)  {
-		if (pmap_extract(&kernel_pmap, addr) == 0)
+		if (pmap_kextract(addr) == 0)
 			return EFAULT;
 	}
 	if (!kernacc((caddr_t)saddr, eaddr - saddr, prot))

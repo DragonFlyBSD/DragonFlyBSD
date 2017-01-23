@@ -329,7 +329,7 @@ void vm_object_chain_acquire(vm_object_t object, int shared);
 void vm_object_chain_release(vm_object_t object);
 void vm_object_chain_release_all(vm_object_t object, vm_object_t stopobj);
 void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t, int);
-void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
+void vm_object_madvise (vm_object_t, vm_pindex_t, vm_pindex_t, int);
 void vm_object_init2 (void);
 vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t,
 				vm_prot_t, int, int *, int *);

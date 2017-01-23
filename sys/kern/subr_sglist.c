@@ -105,11 +105,12 @@ _sglist_append_range(struct sglist *sg, struct sglist_seg **ssp,
  */
 static __inline int
 _sglist_append_buf(struct sglist *sg, void *buf, size_t len, pmap_t pmap,
-    size_t *donep)
+		   size_t *donep)
 {
 	struct sglist_seg *ss;
 	vm_offset_t vaddr, offset;
 	vm_paddr_t paddr;
+	void *handle;
 	size_t seglen;
 	int error;
 
@@ -121,10 +122,12 @@ _sglist_append_buf(struct sglist *sg, void *buf, size_t len, pmap_t pmap,
 	/* Do the first page.  It may have an offset. */
 	vaddr = (vm_offset_t)buf;
 	offset = vaddr & PAGE_MASK;
-	if (pmap != NULL)
-		paddr = pmap_extract(pmap, vaddr);
-	else
+	if (pmap != NULL) {
+		paddr = pmap_extract(pmap, vaddr, &handle);
+	} else {
 		paddr = pmap_kextract(vaddr);
+		handle = NULL;
+	}
 	seglen = MIN(len, PAGE_SIZE - offset);
 	if (sg->sg_nseg == 0) {
 		ss = sg->sg_segs;
@@ -134,9 +137,12 @@ _sglist_append_buf(struct sglist *sg, void *buf, size_t len, pmap_t pmap,
 	} else {
 		ss = &sg->sg_segs[sg->sg_nseg - 1];
 		error = _sglist_append_range(sg, &ss, paddr, seglen);
-		if (error)
+		if (error) {
+			pmap_extract_done(handle);
 			return (error);
+		}
 	}
+	pmap_extract_done(handle);
 	vaddr += seglen;
 	len -= seglen;
 	if (donep)
@@ -144,11 +150,14 @@ _sglist_append_buf(struct sglist *sg, void *buf, size_t len, pmap_t pmap,
 
 	while (len > 0) {
 		seglen = MIN(len, PAGE_SIZE);
-		if (pmap != NULL)
-			paddr = pmap_extract(pmap, vaddr);
-		else
+		if (pmap != NULL) {
+			paddr = pmap_extract(pmap, vaddr, &handle);
+			error = _sglist_append_range(sg, &ss, paddr, seglen);
+			pmap_extract_done(handle);
+		} else {
 			paddr = pmap_kextract(vaddr);
-		error = _sglist_append_range(sg, &ss, paddr, seglen);
+			error = _sglist_append_range(sg, &ss, paddr, seglen);
+		}
 		if (error)
 			return (error);
 		vaddr += seglen;

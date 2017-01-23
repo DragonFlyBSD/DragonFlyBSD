@@ -847,18 +847,22 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 				cpu_time.cp_user += bump;
 #endif
 		} else {
-#if 0
-			kprintf("THREAD %s %p %p %08x\n", td->td_comm, td, &gd->gd_idlethread, gd->gd_reqflags);
-#endif
 			td->td_sticks += bump;
 			if (td == &gd->gd_idlethread) {
 				/*
 				 * Token contention can cause us to mis-count
-				 * a contended as idle, but the previous use
-				 * of gd_reqflags was not a good way to figure
-				 * it out so for now just eat it.
+				 * a contended as idle, but it doesn't work
+				 * properly for VKERNELs so just test on a
+				 * real kernel.
 				 */
+#ifdef _KERNEL_VIRTUAL
 				cpu_time.cp_idle += bump;
+#else
+				if (mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK)
+					cpu_time.cp_sys += bump;
+				else
+					cpu_time.cp_idle += bump;
+#endif
 			} else {
 				/*
 				 * System thread was running.

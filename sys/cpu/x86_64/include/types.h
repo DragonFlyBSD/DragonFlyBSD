@@ -50,6 +50,7 @@ typedef unsigned long	vm_offset_t;    /* address space bounded offset */
 typedef unsigned long	vm_size_t;      /* address space bounded size */
 
 typedef __uint64_t	vm_pindex_t;    /* physical page index */
+typedef __uint64_t	vm_spindex_t;   /* physical page index (signed) */
 typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
 typedef __uint64_t	vm_poff_t;	/* physical offset */
 typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */

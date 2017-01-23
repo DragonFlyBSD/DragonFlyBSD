@@ -166,8 +166,7 @@ kva_p(const void *addr)
 #endif
 }
 
-void		 pmap_change_wiring (pmap_t, vm_offset_t, boolean_t,
-			vm_map_entry_t);
+vm_page_t	 pmap_unwire (pmap_t, vm_offset_t);
 void		 pmap_clear_modify (struct vm_page *m);
 void		 pmap_clear_reference (struct vm_page *m);
 void		 pmap_collect (void);
@@ -179,7 +178,8 @@ void		 pmap_enter (pmap_t, vm_offset_t, struct vm_page *,
 			vm_prot_t, boolean_t, struct vm_map_entry *);
 void		 pmap_enter_quick (pmap_t, vm_offset_t, struct vm_page *);
 vm_page_t	 pmap_fault_page_quick(pmap_t, vm_offset_t, vm_prot_t);
-vm_paddr_t	 pmap_extract (pmap_t pmap, vm_offset_t va);
+vm_paddr_t	 pmap_extract (pmap_t pmap, vm_offset_t va, void **handlep);
+void		 pmap_extract_done (void *handle);
 void		 pmap_growkernel (vm_offset_t, vm_offset_t);
 void		 pmap_init (void);
 boolean_t	 pmap_is_modified (struct vm_page *m);

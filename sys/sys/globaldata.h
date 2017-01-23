@@ -172,7 +172,8 @@ struct globaldata {
 	u_int		gd_idle_repeat;		/* repeated switches to idle */
 	int		gd_quick_color;		/* page-coloring helper */
 	int		gd_cachedvnodes;	/* accum across all cpus */
-	int		gd_ireserved[5];
+	int		gd_rand_incr;		/* random pcpu incrementor */
+	int		gd_ireserved[4];
 	const char	*gd_infomsg;		/* debugging */
 	struct lwkt_tokref gd_handoff;		/* hand-off tokref */
 	void		*gd_delayed_wakeup[2];

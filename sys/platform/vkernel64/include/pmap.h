@@ -163,7 +163,6 @@ struct pmap {
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 	int			pm_generation;	/* detect pvlist deletions */
 	struct spinlock		pm_spin;
-	struct lwkt_token	pm_token;
 };
 
 #define pmap_resident_count(pmap) ((pmap)->pm_stats.resident_count)

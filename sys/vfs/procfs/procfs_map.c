@@ -119,7 +119,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		resident = 0;
 		addr = entry->start;
 		while (addr < entry->end) {
-			if (pmap_extract(pmap, addr))
+			if (pmap_extract(pmap, addr, NULL))
 				resident++;
 			addr += PAGE_SIZE;
 		}
@@ -187,11 +187,23 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			ref_count = 0;
 			shadow_count = 0;
 			switch(entry->maptype) {
+			case VM_MAPTYPE_UNSPECIFIED:
+				type = "unspec";
+				break;
+			case VM_MAPTYPE_NORMAL:
+				type = "none";
+				break;
+			case VM_MAPTYPE_VPAGETABLE:
+				type = "vpgtbl";
+				break;
+			case VM_MAPTYPE_SUBMAP:
+				type = "submap";
+				break;
 			case VM_MAPTYPE_UKSMAP:
 				type = "uksmap";
 				break;
 			default:
-				type = "none";
+				type = "unknown";
 				break;
 			}
 		}

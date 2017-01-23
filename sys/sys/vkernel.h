@@ -88,14 +88,13 @@ struct vkernel_proc {
 struct vmspace_entry {
 	void *id;
 	struct vmspace *vmspace;
-	struct lwkt_token token;
-	int flags;
-	int refs;				/* current LWP assignments */
-	int cache_refs;
+	uint32_t flags;
+	uint32_t refs;			/* in-use + 1(on-tree */
+	uint32_t cache_refs;		/* cache count (separate) */
 	RB_ENTRY(vmspace_entry) rb_entry;
 };
 
-#define VKE_DELETED	0x0001
+#define VKE_REF_DELETED	0x80000000U
 
 #ifdef _KERNEL
 

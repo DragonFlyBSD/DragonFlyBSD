@@ -276,7 +276,8 @@ isavga_mmap(struct dev_mmap_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 
-	ap->a_result = vga_mmap(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_offset, ap->a_nprot);
+	ap->a_result = vga_mmap(dev, VGA_SOFTC(VGA_UNIT(dev)),
+				ap->a_offset, ap->a_nprot);
 	return(0);
 }
 

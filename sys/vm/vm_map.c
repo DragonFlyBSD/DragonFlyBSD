@@ -432,13 +432,14 @@ vmspace_terminate(struct vmspace *vm, int final)
 		 * intact.
 		 *
 		 * If the pmap does not contain wired pages we can bulk-delete
-		 * the pmap as a performance optimization before removing the related mappings.
+		 * the pmap as a performance optimization before removing the
+		 * related mappings.
 		 *
-		 * If the pmap contains wired pages we cannot do this pre-optimization
-		 * because currently vm_fault_unwire() expects the pmap pages to exist
-		 * and will not decrement p->wire_count if they do not.
+		 * If the pmap contains wired pages we cannot do this
+		 * pre-optimization because currently vm_fault_unwire()
+		 * expects the pmap pages to exist and will not decrement
+		 * p->wire_count if they do not.
 		 */
-		vm->vm_flags |= VMSPACE_EXIT1;
 		shmexit(vm);
 		if (vmspace_pmap(vm)->pm_stats.wired_count) {
 			vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
@@ -452,6 +453,7 @@ vmspace_terminate(struct vmspace *vm, int final)
 				      VM_MAX_USER_ADDRESS);
 		}
 		lwkt_reltoken(&vm->vm_map.token);
+		vm->vm_flags |= VMSPACE_EXIT1;
 	} else {
 		KKASSERT((vm->vm_flags & VMSPACE_EXIT1) != 0);
 		KKASSERT((vm->vm_flags & VMSPACE_EXIT2) == 0);
@@ -460,24 +462,23 @@ vmspace_terminate(struct vmspace *vm, int final)
 		 * Get rid of remaining basic resources.
 		 */
 		vm->vm_flags |= VMSPACE_EXIT2;
-		cpu_vmspace_free(vm);
 		shmexit(vm);
+
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+		vm_map_lock(&vm->vm_map);
+		cpu_vmspace_free(vm);
 
 		/*
 		 * Lock the map, to wait out all other references to it.
 		 * Delete all of the mappings and pages they hold, then call
 		 * the pmap module to reclaim anything left.
 		 */
-		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-		vm_map_lock(&vm->vm_map);
 		vm_map_delete(&vm->vm_map, vm->vm_map.min_offset,
 			      vm->vm_map.max_offset, &count);
 		vm_map_unlock(&vm->vm_map);
 		vm_map_entry_release(count);
 
-		lwkt_gettoken(&vmspace_pmap(vm)->pm_token);
 		pmap_release(vmspace_pmap(vm));
-		lwkt_reltoken(&vmspace_pmap(vm)->pm_token);
 		lwkt_reltoken(&vm->vm_map.token);
 		objcache_put(vmspace_cache, vm);
 	}
@@ -1952,10 +1953,10 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	case MADV_NOCORE:
 	case MADV_CORE:
 	case MADV_SETMAP:
-	case MADV_INVAL:
 		modify_map = 1;
 		vm_map_lock(map);
 		break;
+	case MADV_INVAL:
 	case MADV_WILLNEED:
 	case MADV_DONTNEED:
 	case MADV_FREE:
@@ -2017,17 +2018,6 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			case MADV_CORE:
 				current->eflags &= ~MAP_ENTRY_NOCOREDUMP;
 				break;
-			case MADV_INVAL:
-				/*
-				 * Invalidate the related pmap entries, used
-				 * to flush portions of the real kernel's
-				 * pmap when the caller has removed or
-				 * modified existing mappings in a virtual
-				 * page table.
-				 */
-				pmap_remove(map->pmap,
-					    current->start, current->end);
-				break;
 			case MADV_SETMAP:
 				/*
 				 * Set the page directory page for a map
@@ -2052,6 +2042,19 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				pmap_remove(map->pmap,
 					    current->start, current->end);
 				break;
+			case MADV_INVAL:
+				/*
+				 * Invalidate the related pmap entries, used
+				 * to flush portions of the real kernel's
+				 * pmap when the caller has removed or
+				 * modified existing mappings in a virtual
+				 * page table.
+				 *
+				 * (exclusive locked map version)
+				 */
+				pmap_remove(map->pmap,
+					    current->start, current->end);
+				break;
 			default:
 				error = EINVAL;
 				break;
@@ -2061,7 +2064,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		vm_map_unlock(map);
 	} else {
 		vm_pindex_t pindex;
-		int count;
+		vm_pindex_t delta;
 
 		/*
 		 * madvise behaviors that are implemented in the underlying
@@ -2070,8 +2073,9 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 * Since we don't clip the vm_map_entry, we have to clip
 		 * the vm_object pindex and count.
 		 *
-		 * NOTE!  We currently do not support these functions on
-		 * virtual page tables.
+		 * NOTE!  These functions are only supported on normal maps,
+		 *	  except MADV_INVAL which is also supported on
+		 *	  virtual page tables.
 		 */
 		for (current = entry;
 		     (current != &map->header) && (current->start < end);
@@ -2079,26 +2083,50 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		) {
 			vm_offset_t useStart;
 
-			if (current->maptype != VM_MAPTYPE_NORMAL)
+			if (current->maptype != VM_MAPTYPE_NORMAL &&
+			    (current->maptype != VM_MAPTYPE_VPAGETABLE ||
+			     behav != MADV_INVAL)) {
 				continue;
+			}
 
 			pindex = OFF_TO_IDX(current->offset);
-			count = atop(current->end - current->start);
+			delta = atop(current->end - current->start);
 			useStart = current->start;
 
 			if (current->start < start) {
 				pindex += atop(start - current->start);
-				count -= atop(start - current->start);
+				delta -= atop(start - current->start);
 				useStart = start;
 			}
 			if (current->end > end)
-				count -= atop(current->end - end);
+				delta -= atop(current->end - end);
 
-			if (count <= 0)
+			if ((vm_spindex_t)delta <= 0)
 				continue;
 
-			vm_object_madvise(current->object.vm_object,
-					  pindex, count, behav);
+			if (behav == MADV_INVAL) {
+				/*
+				 * Invalidate the related pmap entries, used
+				 * to flush portions of the real kernel's
+				 * pmap when the caller has removed or
+				 * modified existing mappings in a virtual
+				 * page table.
+				 *
+				 * (shared locked map version)
+				 */
+				KASSERT(useStart >= VM_MIN_USER_ADDRESS &&
+					    useStart + ptoa(delta) <=
+					    VM_MAX_USER_ADDRESS,
+					 ("Bad range %016jx-%016jx (%016jx)",
+					 useStart, useStart + ptoa(delta),
+					 delta));
+				pmap_remove(map->pmap,
+					    useStart,
+					    useStart + ptoa(delta));
+			} else {
+				vm_object_madvise(current->object.vm_object,
+						  pindex, delta, behav);
+			}
 
 			/*
 			 * Try to populate the page table.  Mappings governed

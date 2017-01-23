@@ -563,7 +563,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
-	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
 	spin_init(&kernel_pmap.pm_spin, "pmapbootstrap");
 
 	/*
@@ -708,7 +707,7 @@ pmap_track_modified(pmap_t pmap, vm_offset_t va)
  * No requirements.
  */
 vm_paddr_t
-pmap_extract(pmap_t pmap, vm_offset_t va)
+pmap_extract(pmap_t pmap, vm_offset_t va, void **handlep)
 {
 	vm_paddr_t rtval;
 	pt_entry_t *pte;
@@ -729,9 +728,22 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 			}
 		}
 	}
+	if (handlep)
+		*handlep = NULL;	/* XXX */
 	vm_object_drop(pmap->pm_pteobj);
 
 	return rtval;
+}
+
+void
+pmap_extract_done(void *handle)
+{
+	pmap_t pmap;
+
+	if (handle) {
+		pmap = handle;
+		vm_object_drop(pmap->pm_pteobj);
+	}
 }
 
 /*
@@ -1129,7 +1141,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		 * multiple wire counts.
 		 */
 		vm_page_unhold(m);
-		--m->wire_count;
+		atomic_add_int(&m->wire_count, -1);
 		KKASSERT(m->wire_count == 0);
 		atomic_add_int(&vmstats.v_wire_count, -1);
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
@@ -1248,7 +1260,6 @@ pmap_pinit(struct pmap *pmap)
 	TAILQ_INIT(&pmap->pm_pvlist);
 	TAILQ_INIT(&pmap->pm_pvlist_free);
 	spin_init(&pmap->pm_spin, "pmapinit");
-	lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 	pmap->pm_stats.resident_count = 1;
 }
@@ -1271,7 +1282,7 @@ pmap_puninit(pmap_t pmap)
 		KKASSERT(pmap->pm_pml4 != NULL);
 		pmap_kremove((vm_offset_t)pmap->pm_pml4);
 		vm_page_busy_wait(p, FALSE, "pgpun");
-		p->wire_count--;
+		atomic_add_int(&p->wire_count, -1);
 		atomic_add_int(&vmstats.v_wire_count, -1);
 		vm_page_free_zero(p);
 		pmap->pm_pdirm = NULL;
@@ -1334,7 +1345,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		int idx = (p->pindex - (NUPDE + NUPDPE)) % NPML4EPG;
 		KKASSERT(pml4[idx] != 0);
 		pml4[idx] = 0;
-		m4->hold_count--;
+		atomic_add_int(&m4->hold_count, -1);
 		/* JG What about wire_count? */
 	} else if (p->pindex >= NUPDE) {
 		/*
@@ -1347,7 +1358,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		int idx = (p->pindex - NUPDE) % NPDPEPG;
 		KKASSERT(pdp[idx] != 0);
 		pdp[idx] = 0;
-		m3->hold_count--;
+		atomic_add_int(&m3->hold_count, -1);
 		/* JG What about wire_count? */
 	} else {
 		/* We are a PT page.
@@ -1358,7 +1369,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		pd_entry_t *pd = (pd_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m2));
 		int idx = p->pindex % NPDEPG;
 		pd[idx] = 0;
-		m2->hold_count--;
+		atomic_add_int(&m2->hold_count, -1);
 		/* JG What about wire_count? */
 	}
 	KKASSERT(pmap->pm_stats.resident_count > 0);
@@ -1383,7 +1394,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		vm_page_wakeup(p);
 	} else {
 		abort();
-		p->wire_count--;
+		atomic_add_int(&p->wire_count, -1);
 		atomic_add_int(&vmstats.v_wire_count, -1);
 		/* JG eventually revert to using vm_page_free_zero() */
 		vm_page_free(p);
@@ -1414,7 +1425,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * Increment the hold count for the page we will be returning to
 	 * the caller.
 	 */
-	m->hold_count++;
+	atomic_add_int(&m->hold_count, 1);
 	vm_page_wire(m);
 
 	/*
@@ -1448,14 +1459,14 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 			/* Have to allocate a new PDP page, recurse */
 			if (_pmap_allocpte(pmap, NUPDE + NUPDPE + pml4index)
 			     == NULL) {
-				--m->wire_count;
+				atomic_add_int(&m->wire_count, -1);
 				vm_page_free(m);
 				return (NULL);
 			}
 		} else {
 			/* Add reference to the PDP page */
 			pdppg = PHYS_TO_VM_PAGE(*pml4 & VPTE_FRAME);
-			pdppg->hold_count++;
+			atomic_add_int(&pdppg->hold_count, 1);
 		}
 		pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & VPTE_FRAME);
 
@@ -1486,7 +1497,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 			/* Have to allocate a new PD page, recurse */
 			if (_pmap_allocpte(pmap, NUPDE + pdpindex)
 			     == NULL) {
-				--m->wire_count;
+				atomic_add_int(&m->wire_count, -1);
 				vm_page_free(m);
 				return (NULL);
 			}
@@ -1499,14 +1510,14 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 				/* Have to allocate a new PD page, recurse */
 				if (_pmap_allocpte(pmap, NUPDE + pdpindex)
 				     == NULL) {
-					--m->wire_count;
+					atomic_add_int(&m->wire_count, -1);
 					vm_page_free(m);
 					return (NULL);
 				}
 			} else {
 				/* Add reference to the PD page */
 				pdpg = PHYS_TO_VM_PAGE(*pdp & VPTE_FRAME);
-				pdpg->hold_count++;
+				atomic_add_int(&pdpg->hold_count, 1);
 			}
 		}
 		pd = (pd_entry_t *)PHYS_TO_DMAP(*pdp & VPTE_FRAME);
@@ -1592,8 +1603,6 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va)
  * Release any resources held by the given physical map.
  * Called when a pmap initialized by pmap_pinit is being released.
  * Should only be called if the map contains no valid mappings.
- *
- * Caller must hold pmap->pm_token
  */
 static int pmap_release_callback(struct vm_page *p, void *data);
 
@@ -2484,7 +2493,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * bits below.
 		 */
 		if (mpte)
-			mpte->hold_count--;
+			atomic_add_int(&mpte->hold_count, -1);
 
 		/*
 		 * We might be turning off write access to the page,
@@ -2612,7 +2621,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 				vm_page_wakeup(mpte);
 			}
 			if (mpte)
-				mpte->hold_count++;
+				atomic_add_int(&mpte->hold_count, 1);
 		} else {
 			mpte = _pmap_allocpte(pmap, ptepindex);
 		}
@@ -2816,22 +2825,21 @@ pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
  * The mapping must already exist in the pmap.
  * No other requirements.
  */
-void
-pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
-		   vm_map_entry_t entry __unused)
+vm_page_t
+pmap_unwire(pmap_t pmap, vm_offset_t va)
 {
 	pt_entry_t *pte;
+	vm_paddr_t pa;
+	vm_page_t m;
 
 	if (pmap == NULL)
-		return;
+		return NULL;
 
 	vm_object_hold(pmap->pm_pteobj);
 	pte = pmap_pte(pmap, va);
 
-	if (wired && !pmap_pte_w(pte))
-		atomic_add_long(&pmap->pm_stats.wired_count, 1);
-	else if (!wired && pmap_pte_w(pte))
-		atomic_add_long(&pmap->pm_stats.wired_count, -1);
+	if (pte == NULL || (*pte & VPTE_V) == 0)
+		return NULL;
 
 	/*
 	 * Wiring is not a hardware characteristic so there is no need to
@@ -2840,11 +2848,17 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
 	 * the pmap_inval_*() API that is)... it's ok to do this for simple
 	 * wiring changes.
 	 */
-	if (wired)
-		atomic_set_long(pte, VPTE_WIRED);
-	else
-		atomic_clear_long(pte, VPTE_WIRED);
+	if (pmap_pte_w(pte))
+		atomic_add_long(&pmap->pm_stats.wired_count, -1);
+	/* XXX else return NULL so caller doesn't unwire m ? */
+	atomic_clear_long(pte, VPTE_WIRED);
+
+	pa = *pte & VPTE_FRAME;
+	m = PHYS_TO_VM_PAGE(pa);	/* held by wired count */
+
 	vm_object_drop(pmap->pm_pteobj);
+
+	return m;
 }
 
 /*

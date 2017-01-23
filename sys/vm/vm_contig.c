@@ -552,7 +552,7 @@ contigfree(void *addr, unsigned long size, struct malloc_type *type)
 		panic("vm_contig_pg_kmap: size must not be 0");
 	size = round_page(size);
 
-	pa = pmap_extract(&kernel_pmap, (vm_offset_t)addr);
+	pa = pmap_kextract((vm_offset_t)addr);
 	pmap_qremove((vm_offset_t)addr, size / PAGE_SIZE);
 	kmem_free(&kernel_map, (vm_offset_t)addr, size);
 

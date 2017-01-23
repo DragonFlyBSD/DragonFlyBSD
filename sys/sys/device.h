@@ -122,7 +122,7 @@ struct dev_mmap_args {
 	struct dev_generic_args a_head;
 	vm_offset_t	a_offset;
 	int		a_nprot;
-	int		a_result;	/* page number */
+	int64_t		a_result;	/* page number */
 	struct file	*a_fp;
 };
 
@@ -330,7 +330,7 @@ int64_t dev_dpsize(cdev_t dev);
 int dev_dread(cdev_t dev, struct uio *uio, int ioflag, struct file *fp);
 int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag, struct file *fp);
 int dev_dkqfilter(cdev_t dev, struct knote *kn, struct file *fp);
-int dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot, struct file *fp);
+int64_t dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot, struct file *fp);
 int dev_dmmap_single(cdev_t dev, vm_ooffset_t *offset, vm_size_t size,
 			struct vm_object **object, int nprot, struct file *fp);
 int dev_dclone(cdev_t dev);

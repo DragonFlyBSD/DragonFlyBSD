@@ -1703,7 +1703,8 @@ vm_object_pmap_remove_callback(vm_page_t p, void *data)
  * No requirements.
  */
 void
-vm_object_madvise(vm_object_t object, vm_pindex_t pindex, int count, int advise)
+vm_object_madvise(vm_object_t object, vm_pindex_t pindex,
+		  vm_pindex_t count, int advise)
 {
 	vm_pindex_t end, tpindex;
 	vm_object_t tobject;

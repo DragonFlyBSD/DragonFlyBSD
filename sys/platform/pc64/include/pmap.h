@@ -268,7 +268,12 @@ RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 #define	PG_BITS_SIZE		12
 
 #define PROTECTION_CODES_SIZE	8
-#define PAT_INDEX_SIZE  8
+#define PAT_INDEX_SIZE  	8
+
+#define PM_PLACEMARKS		16		/* 4 per level x 4 levels */
+#define PM_PLACEMARKS_SHIFT	4		/* 1 << 4 == 16 */
+#define PM_NOPLACEMARK		((vm_pindex_t)-1)
+#define PM_PLACEMARK_WAKEUP	((vm_pindex_t)0x8000000000000000LLU)
 
 struct pmap {
 	pml4_entry_t		*pm_pml4;	/* KVA of level 4 page table */
@@ -280,10 +285,9 @@ struct pmap {
 	cpumask_t		pm_active;	/* active on cpus */
 	int			pm_flags;
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
-	struct pv_entry		*pm_pvhint;	/* pv_entry lookup hint */
-	int			pm_generation;	/* detect pvlist deletions */
 	struct spinlock		pm_spin;
-	struct lwkt_token	pm_token;
+	struct pv_entry		*pm_pvhint;	/* pv_entry lookup hint */
+	vm_pindex_t		pm_placemarks[PM_PLACEMARKS];
 	long			pm_invgen;
 	uint64_t		pmap_bits[PG_BITS_SIZE];
 	int			protection_codes[PROTECTION_CODES_SIZE];

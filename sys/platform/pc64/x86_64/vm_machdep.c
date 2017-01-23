@@ -387,7 +387,7 @@ kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
 	if (eaddr >= KvaEnd)
 		return EFAULT;
 	for (addr = saddr; addr < eaddr; addr += PAGE_SIZE)  {
-		if (pmap_extract(&kernel_pmap, addr) == 0)
+		if (pmap_kextract(addr) == 0)
 			return EFAULT;
 	}
 	if (!kernacc((caddr_t)saddr, eaddr - saddr, prot))

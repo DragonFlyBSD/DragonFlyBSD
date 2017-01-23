@@ -2085,12 +2085,11 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 	vm_offset_t start;
 	vm_offset_t end;
 	vm_offset_t va;
-	vm_paddr_t pa;
-	vm_page_t m;
 	pmap_t pmap;
 	int rv;
 	int wire_prot;
 	int fault_flags;
+	vm_page_t m;
 
 	lwkt_gettoken(&map->token);
 
@@ -2136,11 +2135,8 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 		if (rv) {
 			while (va > start) {
 				va -= PAGE_SIZE;
-				if ((pa = pmap_extract(pmap, va)) == 0)
-					continue;
-				pmap_change_wiring(pmap, va, FALSE, entry);
-				if (!fictitious) {
-					m = PHYS_TO_VM_PAGE(pa);
+				m = pmap_unwire(pmap, va);
+				if (m && !fictitious) {
 					vm_page_busy_wait(m, FALSE, "vmwrpg");
 					vm_page_unwire(m, 1);
 					vm_page_wakeup(m);
@@ -2167,9 +2163,8 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	vm_offset_t start;
 	vm_offset_t end;
 	vm_offset_t va;
-	vm_paddr_t pa;
-	vm_page_t m;
 	pmap_t pmap;
+	vm_page_t m;
 
 	lwkt_gettoken(&map->token);
 
@@ -2187,15 +2182,11 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	 * mappings from the physical map system.
 	 */
 	for (va = start; va < end; va += PAGE_SIZE) {
-		pa = pmap_extract(pmap, va);
-		if (pa != 0) {
-			pmap_change_wiring(pmap, va, FALSE, entry);
-			if (!fictitious) {
-				m = PHYS_TO_VM_PAGE(pa);
-				vm_page_busy_wait(m, FALSE, "vmwupg");
-				vm_page_unwire(m, 1);
-				vm_page_wakeup(m);
-			}
+		m = pmap_unwire(pmap, va);
+		if (m && !fictitious) {
+			vm_page_busy_wait(m, FALSE, "vmwrpg");
+			vm_page_unwire(m, 1);
+			vm_page_wakeup(m);
 		}
 	}
 	lwkt_reltoken(&map->token);

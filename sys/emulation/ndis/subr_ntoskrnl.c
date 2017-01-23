@@ -2442,7 +2442,7 @@ MmUnmapLockedPages(void *vaddr, mdl *buf)
 static uint64_t
 MmGetPhysicalAddress(void *base)
 {
-	return (pmap_extract(kernel_map.pmap, (vm_offset_t)base));
+	return (pmap_kextract((vm_offset_t)base));
 }
 
 void *
@@ -2458,7 +2458,7 @@ MmGetSystemRoutineAddress(unicode_string *ustr)
 uint8_t
 MmIsAddressValid(void *vaddr)
 {
-	if (pmap_extract(kernel_map.pmap, (vm_offset_t)vaddr))
+	if (pmap_kextract((vm_offset_t)vaddr))
 		return (TRUE);
 
 	return (FALSE);
