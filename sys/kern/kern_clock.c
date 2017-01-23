@@ -853,15 +853,12 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			td->td_sticks += bump;
 			if (td == &gd->gd_idlethread) {
 				/*
-				 * Even if the current thread is the idle
-				 * thread it could be due to token contention
-				 * in the LWKT scheduler.  Count such as
-				 * system time.
+				 * Token contention can cause us to mis-count
+				 * a contended as idle, but the previous use
+				 * of gd_reqflags was not a good way to figure
+				 * it out so for now just eat it.
 				 */
-				if (gd->gd_reqflags & RQF_IDLECHECK_WK_MASK)
-					cpu_time.cp_sys += bump;
-				else
-					cpu_time.cp_idle += bump;
+				cpu_time.cp_idle += bump;
 			} else {
 				/*
 				 * System thread was running.

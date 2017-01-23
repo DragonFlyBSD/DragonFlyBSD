@@ -52,8 +52,8 @@
 
 #include <unistd.h>
 #include <signal.h>
-
-#define VKTIMER_FREQ	1000000	/* 1us granularity */
+#include <time.h>
+#include <stdio.h>
 
 int disable_rtc_set;
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
@@ -72,11 +72,11 @@ int wall_cmos_clock = 0;
 SYSCTL_INT(_machdep, CPU_WALLCLOCK, wall_cmos_clock,
     CTLFLAG_RD, &wall_cmos_clock, 0, "");
 
-static int cputimer_mib[16];
-static int cputimer_miblen;
 static cothread_t vktimer_cotd;
 static int vktimer_running;
+static sysclock_t vktimer_target;
 static struct timespec vktimer_ts;
+static sysclock_t vktimer_reload[MAXCPU];
 
 /*
  * SYSTIMER IMPLEMENTATION
@@ -95,7 +95,7 @@ static struct cputimer vkernel_cputimer = {
         cputimer_default_fromus,
         vkernel_timer_construct,
         cputimer_default_destruct,
-	VKTIMER_FREQ,
+	1000000,
         0, 0, 0
 };
 
@@ -103,7 +103,7 @@ static void	vktimer_intr_reload(struct cputimer_intr *, sysclock_t);
 static void	vktimer_intr_initclock(struct cputimer_intr *, boolean_t);
 
 static struct cputimer_intr vkernel_cputimer_intr = {
-	.freq = VKTIMER_FREQ,
+	.freq = 1000000,
 	.reload = vktimer_intr_reload,
 	.enable = cputimer_intr_default_enable,
 	.config = cputimer_intr_default_config,
@@ -125,19 +125,7 @@ static struct cputimer_intr vkernel_cputimer_intr = {
 static void
 cpu_initclocks(void *arg __unused)
 {
-	size_t len;
-
 	kprintf("initclocks\n");
-	len = sizeof(vkernel_cputimer.freq);
-	if (sysctlbyname("kern.cputimer.freq", &vkernel_cputimer.freq, &len,
-		         NULL, 0) < 0) {
-		panic("cpu_initclocks: can't get kern.cputimer.freq!");
-	}
-	len = NELEM(cputimer_mib);
-	if (sysctlnametomib("kern.cputimer.clock", cputimer_mib, &len) < 0)
-		panic("cpu_initclocks: can't get kern.cputimer.clock!");
-	cputimer_miblen = len;
-
 	cputimer_intr_register(&vkernel_cputimer_intr);
 	cputimer_intr_select(&vkernel_cputimer_intr, 0);
 
@@ -164,15 +152,14 @@ vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock)
 static sysclock_t
 vkernel_timer_get_timecount(void)
 {
-	sysclock_t counter;
-	size_t len;
+	struct timespec ts;
+	sysclock_t count;
 
-	len = sizeof(counter);
-	if (sysctl(cputimer_mib, cputimer_miblen, &counter, &len,
-		   NULL, 0) < 0) {
-		panic("vkernel_timer_get_timecount: sysctl failed!");
-	}
-	return(counter);
+	clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	count = ts.tv_nsec / 1000;
+	count += ts.tv_sec * 1000000;
+
+	return count;
 }
 
 /*
@@ -183,6 +170,12 @@ static void
 vktimer_intr_initclock(struct cputimer_intr *cti __unused,
 		       boolean_t selected __unused)
 {
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	vktimer_target = ts.tv_nsec / 1000;
+	vktimer_target += ts.tv_sec * 1000000;
+
 	vktimer_ts.tv_nsec = 1000000000 / 20;
 	vktimer_cotd = cothread_create(vktimer_thread, NULL, NULL, "vktimer");
 	while (vktimer_running == 0)
@@ -219,30 +212,46 @@ vktimer_thread(cothread_t cotd)
 		usleep(1000000 / 10);
 
 	for (;;) {
-		long old;
+		struct timespec ts;
+		sysclock_t curtime;
+		sysclock_t reload;
+		ssysclock_t delta;
 		int n;
 
 		/*
-		 * Wait for timeout or interrupt
+		 * Sleep
 		 */
 		cothread_sleep(cotd, &vktimer_ts);
 
-		/*
-		 * Reinitialize with long timeout
-		 */
-		old = 1000000000 / 20;
-		vktimer_ts.tv_nsec = old;
+rescan:
+		clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+		curtime = ts.tv_nsec / 1000 + ts.tv_sec * 1000000;
+		reload = 999999;
 
 		/*
-		 * Poll cpus
-		 *
-		 * XXX we haven't distributed the timer to each cpu
-		 * yet.
+		 * Reset the target
 		 */
 		for (n = 0; n < ncpus; ++n) {
 			gscan = globaldata_find(n);
-			if (TAILQ_FIRST(&gscan->gd_systimerq))
+			delta = vktimer_reload[n] - curtime;
+			if (delta <= 0 && TAILQ_FIRST(&gscan->gd_systimerq))
 				pthread_kill(ap_tids[n], SIGURG);
+			if (delta > 0 && reload > delta)
+				reload = delta;
+		}
+		vktimer_ts.tv_nsec = reload * 1000;
+		reload += curtime;
+		vktimer_target = reload;
+
+		/*
+		 * Check for races
+		 */
+		reload -= curtime;
+		for (n = 0; n < ncpus; ++n) {
+			gscan = globaldata_find(n);
+			delta = vktimer_reload[n] - curtime;
+			if (delta > 0 && reload > delta)
+				goto rescan;
 		}
 	}
 }
@@ -255,16 +264,18 @@ vktimer_thread(cothread_t cotd)
 static void
 vktimer_intr_reload(struct cputimer_intr *cti __unused, sysclock_t reload)
 {
-	if (reload >= 1000000)
-		reload = 999999999;
-	else
-		reload = reload * 1000;
+	struct timespec ts;
 
-	if (reload < vktimer_ts.tv_nsec) {
-		while (reload < vktimer_ts.tv_nsec)
-			reload = atomic_swap_long(&vktimer_ts.tv_nsec, reload);
-		if (vktimer_cotd)
-			cothread_wakeup(vktimer_cotd, &vktimer_ts);
+	clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	if (reload >= 1000000)		/* uS */
+		reload = 1000000;
+	reload += ts.tv_nsec / 1000;
+	reload += ts.tv_sec * 1000000;
+	vktimer_reload[mycpu->gd_cpuid] = reload;
+	if (vktimer_cotd && (ssysclock_t)(reload - vktimer_target) < 0) {
+		while ((sysclock_t)(reload - vktimer_target) < 0)
+			reload = atomic_swap_int(&vktimer_target, reload);
+		cothread_wakeup(vktimer_cotd, &vktimer_ts);
 	}
 }
 

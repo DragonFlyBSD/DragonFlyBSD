@@ -50,15 +50,15 @@
  * System parameter formulae.
  */
 
-#ifndef HZ
-#define	HZ 100
+#ifndef HZ_DEFAULT
+#define	HZ_DEFAULT	100
 #endif
-#define	NPROC (20 + 16 * maxusers)
+#define	NPROC		(20 + 16 * maxusers)
 #ifndef NBUF
-#define NBUF 0
+#define NBUF		0
 #endif
 #ifndef MAXFILES
-#define	MAXFILES (maxproc * 16)
+#define	MAXFILES	(maxproc * 16)
 #endif
 #ifndef MAXPOSIXLOCKSPERUID
 #define MAXPOSIXLOCKSPERUID (maxusers * 64) /* Should be a safe value */
@@ -191,7 +191,7 @@ detect_virtual(void)
 void
 init_param1(void)
 {
-	hz = HZ;
+	hz = HZ_DEFAULT;
 	TUNABLE_INT_FETCH("kern.hz", &hz);
 	stathz = hz * 128 / 100;
 	profhz = stathz;
