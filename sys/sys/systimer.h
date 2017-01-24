@@ -112,10 +112,10 @@ struct cputimer {
     sysclock_t	(*fromus)(int us);
     void	(*construct)(struct cputimer *, sysclock_t);
     void	(*destruct)(struct cputimer *);
+    sysclock_t	base;		/* (implementation dependant) */
     sysclock_t	freq;		/* in Hz */
     int64_t	freq64_usec;	/* in (1e6 << 32) / timer_freq */
     int64_t	freq64_nsec;	/* in (1e9 << 32) / timer_freq */
-    sysclock_t	base;		/* (implementation dependant) */
 };
 
 extern struct cputimer *sys_cputimer;
