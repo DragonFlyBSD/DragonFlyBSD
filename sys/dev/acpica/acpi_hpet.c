@@ -73,17 +73,16 @@ static void		acpi_hpet_disable(struct acpi_hpet_softc *);
 static char *hpet_ids[] = { "PNP0103", NULL };
 
 static struct cputimer acpi_hpet_timer = {
-	SLIST_ENTRY_INITIALIZER,
-	"HPET",
-	CPUTIMER_PRI_HPET,
-	CPUTIMER_HPET,
-	acpi_hpet_get_timecount,
-	cputimer_default_fromhz,
-	cputimer_default_fromus,
-	acpi_hpet_construct,
-	cputimer_default_destruct,
-	0,
-	0, 0, 0
+	.next		= SLIST_ENTRY_INITIALIZER,
+	.name		= "HPET",
+	.pri		= CPUTIMER_PRI_HPET,
+	.type		= CPUTIMER_HPET,
+	.count		= acpi_hpet_get_timecount,
+	.fromhz		= cputimer_default_fromhz,
+	.fromus		= cputimer_default_fromus,
+	.construct	= acpi_hpet_construct,
+	.destruct	= cputimer_default_destruct,
+	.freq		= 0	/* determined later */
 };
 
 static device_method_t acpi_hpet_methods[] = {

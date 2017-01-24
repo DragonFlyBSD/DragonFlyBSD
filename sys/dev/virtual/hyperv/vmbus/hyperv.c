@@ -80,17 +80,16 @@ static u_int		hyperv_features3;
 hyperv_tc64_t		hyperv_tc64;
 
 static struct cputimer	hyperv_cputimer = {
-	SLIST_ENTRY_INITIALIZER,
-	"Hyper-V",
-	CPUTIMER_PRI_VMM,
-	CPUTIMER_VMM,
-	hyperv_cputimer_count,
-	cputimer_default_fromhz,
-	cputimer_default_fromus,
-	hyperv_cputimer_construct,
-	cputimer_default_destruct,
-	HYPERV_TIMER_FREQ,
-	0, 0, 0
+	.next		= SLIST_ENTRY_INITIALIZER,
+	.name		= "Hyper-V",
+	.pri		= CPUTIMER_PRI_VMM,
+	.type		= CPUTIMER_VMM,
+	.count		= hyperv_cputimer_count,
+	.fromhz		= cputimer_default_fromhz,
+	.fromus		= cputimer_default_fromus,
+	.construct	= hyperv_cputimer_construct,
+	.destruct	= cputimer_default_destruct,
+	.freq		= HYPERV_TIMER_FREQ
 };
 
 static struct hypercall_ctx	hypercall_context;

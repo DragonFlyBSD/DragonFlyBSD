@@ -51,17 +51,16 @@ static struct hyperv_reftsc_ctx	hyperv_ref_tsc;
 static hyperv_tc64_t	hyperv_tc64_saved;
 
 static struct cputimer	hyperv_tsc_cputimer = {
-	SLIST_ENTRY_INITIALIZER,
-	"Hyper-V-TSC",
-	CPUTIMER_PRI_VMM_HI,
-	CPUTIMER_VMM1,
-	NULL,				/* based on CPU types. */
-	cputimer_default_fromhz,
-	cputimer_default_fromus,
-	hyperv_tsc_cputimer_construct,
-	cputimer_default_destruct,
-	HYPERV_TIMER_FREQ,
-	0, 0, 0
+	.next		= SLIST_ENTRY_INITIALIZER,
+	.name		= "Hyper-V-TSC",
+	.pri		= CPUTIMER_PRI_VMM_HI,
+	.type		= CPUTIMER_VMM1,
+	.count		= NULL,	/* determined later */
+	.fromhz		= cputimer_default_fromhz,
+	.fromus		= cputimer_default_fromus,
+	.construct	= hyperv_tsc_cputimer_construct,
+	.destruct	= cputimer_default_destruct,
+	.freq		= HYPERV_TIMER_FREQ
 };
 
 uint64_t

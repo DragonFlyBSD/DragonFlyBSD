@@ -62,17 +62,16 @@ static sysclock_t acpi_timer_get_timecount_safe(void);
 static void acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock);
 
 static struct cputimer acpi_cputimer = {
-	SLIST_ENTRY_INITIALIZER,
-	"ACPI",
-	CPUTIMER_PRI_ACPI,
-	CPUTIMER_ACPI,
-	acpi_timer_get_timecount_safe,
-	cputimer_default_fromhz,
-	cputimer_default_fromus,
-	acpi_timer_construct,
-	cputimer_default_destruct,
-	ACPI_PM_TIMER_FREQUENCY,
-	0, 0, 0
+	.next		= SLIST_ENTRY_INITIALIZER,
+	.name		= "ACPI",
+	.pri		= CPUTIMER_PRI_ACPI,
+	.type		= CPUTIMER_ACPI,
+	.count		= acpi_timer_get_timecount_safe,
+	.fromhz		= cputimer_default_fromhz,
+	.fromus		= cputimer_default_fromus,
+	.construct	= acpi_timer_construct,
+	.destruct	= cputimer_default_destruct,
+	.freq		= ACPI_PM_TIMER_FREQUENCY
 };
 
 static int	acpi_timer_identify(driver_t *driver, device_t parent);

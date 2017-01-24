@@ -86,17 +86,16 @@ static void vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock);
 static void vktimer_thread(cothread_t cotd);
 
 static struct cputimer vkernel_cputimer = {
-        SLIST_ENTRY_INITIALIZER,
-        "VKERNEL",
-        CPUTIMER_PRI_VKERNEL,
-        CPUTIMER_VKERNEL,
-        vkernel_timer_get_timecount,
-        cputimer_default_fromhz,
-        cputimer_default_fromus,
-        vkernel_timer_construct,
-        cputimer_default_destruct,
-	1000000,
-        0, 0, 0
+	.next		= SLIST_ENTRY_INITIALIZER,
+	.name		= "VKERNEL",
+	.pri		= CPUTIMER_PRI_VKERNEL,
+	.type		= CPUTIMER_VKERNEL,
+	.count		= vkernel_timer_get_timecount,
+	.fromhz		= cputimer_default_fromhz,
+	.fromus		= cputimer_default_fromus,
+	.construct	= vkernel_timer_construct,
+	.destruct	= cputimer_default_destruct,
+	.freq		= 1000000
 };
 
 static void	vktimer_intr_reload(struct cputimer_intr *, sysclock_t);

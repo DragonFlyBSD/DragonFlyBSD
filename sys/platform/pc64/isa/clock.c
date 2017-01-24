@@ -134,17 +134,16 @@ static void i8254_cputimer_construct(struct cputimer *cputimer, sysclock_t last)
 static void i8254_cputimer_destruct(struct cputimer *cputimer);
 
 static struct cputimer	i8254_cputimer = {
-    SLIST_ENTRY_INITIALIZER,
-    "i8254",
-    CPUTIMER_PRI_8254,
-    0,
-    i8254_cputimer_count,
-    cputimer_default_fromhz,
-    cputimer_default_fromus,
-    i8254_cputimer_construct,
-    i8254_cputimer_destruct,
-    TIMER_FREQ,
-    0, 0, 0
+    .next		= SLIST_ENTRY_INITIALIZER,
+    .name		= "i8254",
+    .pri		= CPUTIMER_PRI_8254,
+    .type		= 0,	/* determined later */
+    .count		= i8254_cputimer_count,
+    .fromhz		= cputimer_default_fromhz,
+    .fromus		= cputimer_default_fromus,
+    .construct		= i8254_cputimer_construct,
+    .destruct		= i8254_cputimer_destruct,
+    .freq		= TIMER_FREQ
 };
 
 static sysclock_t tsc_cputimer_count_mfence(void);
@@ -152,17 +151,16 @@ static sysclock_t tsc_cputimer_count_lfence(void);
 static void tsc_cputimer_construct(struct cputimer *, sysclock_t);
 
 static struct cputimer	tsc_cputimer = {
-    SLIST_ENTRY_INITIALIZER,
-    "TSC",
-    CPUTIMER_PRI_TSC,
-    CPUTIMER_TSC,
-    tsc_cputimer_count_mfence, /* safe bet */
-    cputimer_default_fromhz,
-    cputimer_default_fromus,
-    tsc_cputimer_construct,
-    cputimer_default_destruct,
-    0,
-    0, 0, 0
+    .next		= SLIST_ENTRY_INITIALIZER,
+    .name		= "TSC",
+    .pri		= CPUTIMER_PRI_TSC,
+    .type		= CPUTIMER_TSC,
+    .count		= NULL,	/* determined later */
+    .fromhz		= cputimer_default_fromhz,
+    .fromus		= cputimer_default_fromus,
+    .construct		= tsc_cputimer_construct,
+    .destruct		= cputimer_default_destruct,
+    .freq		= 0	/* determined later */
 };
 
 static void i8254_intr_reload(struct cputimer_intr *, sysclock_t);

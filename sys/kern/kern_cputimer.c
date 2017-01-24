@@ -51,19 +51,18 @@ extern void	pcpu_timer_process_frame(struct intrframe *);
 static sysclock_t dummy_cputimer_count(void);
 
 static struct cputimer dummy_cputimer = {
-    SLIST_ENTRY_INITIALIZER,
-    "dummy",
-    CPUTIMER_PRI_DUMMY,
-    CPUTIMER_DUMMY,
-    dummy_cputimer_count,
-    cputimer_default_fromhz,
-    cputimer_default_fromus,
-    cputimer_default_construct,
-    cputimer_default_destruct,
-    1000000,
-    (1000000LL << 32) / 1000000,
-    (1000000000LL << 32) / 1000000,
-    0
+    .next		= SLIST_ENTRY_INITIALIZER,
+    .name		= "dummy",
+    .pri		= CPUTIMER_PRI_DUMMY,
+    .type		= CPUTIMER_DUMMY,
+    .count		= dummy_cputimer_count,
+    .fromhz		= cputimer_default_fromhz,
+    .fromus		= cputimer_default_fromus,
+    .construct		= cputimer_default_construct,
+    .destruct		= cputimer_default_destruct,
+    .freq		= 1000000,
+    .freq64_usec	= (1000000LL << 32) / 1000000,
+    .freq64_nsec	= (1000000000LL << 32) / 1000000
 };
 
 struct cputimer *sys_cputimer = &dummy_cputimer;
