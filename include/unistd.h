@@ -551,6 +551,14 @@ int	 iruserok(unsigned long, int, const char *, const char *);
 int	 iruserok_sa(const void *, int, int, const char *, const char *);
 int	 issetugid(void);
 long	 lpathconf(const char *, int);
+#ifndef _LWP_GETTID_DECLARED
+lwpid_t  lwp_gettid(void);
+#define _LWP_GETTID_DECLARED
+#endif
+#ifndef _LWP_SETNAME_DECLARED
+int	lwp_setname(lwpid_t, const char *);
+#define _LWP_SETNAME_DECLARED
+#endif
 #ifndef	_MKNOD_DECLARED
 int	 mknod(const char *, mode_t, dev_t);
 #define	_MKNOD_DECLARED

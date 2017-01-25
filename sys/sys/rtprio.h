@@ -81,6 +81,10 @@ struct rtprio {
 
 __BEGIN_DECLS
 int	rtprio (int, pid_t, struct rtprio *);
+#ifndef _LWP_RTPRIO_DECLARED
+int	lwp_rtprio (int, pid_t, lwpid_t, struct rtprio *);
+#define _LWP_RTPRIO_DECLARED
+#endif
 __END_DECLS
 #endif	/* !_KERNEL */
 #endif	/* !_SYS_RTPRIO_H_ */
