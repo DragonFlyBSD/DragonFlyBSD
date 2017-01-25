@@ -124,6 +124,7 @@ int next_cpu;		/* next real CPU to lock a virtual CPU to */
 int vkernel_b_arg;	/* no of logical CPU bits - only SMP */
 int vkernel_B_arg;	/* no of core bits - only SMP */
 int vmm_enabled;	/* VMM HW assisted enable */
+int use_precise_timer = 0;	/* use a precise timer (more expensive) */
 struct privatespace *CPU_prvspace;
 
 extern uint64_t KPML4phys;	/* phys addr of kernel level 4 */
@@ -263,7 +264,7 @@ main(int ac, char **av)
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvl:m:n:r:R:e:i:p:I:Ud")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvtl:m:n:r:R:e:i:p:I:Ud")) != -1) {
 		switch(c) {
 		case 'd':
 			dflag = 1;
@@ -310,6 +311,9 @@ main(int ac, char **av)
 			break;
 		case 's':
 			boothowto |= RB_SINGLE;
+			break;
+		case 't':
+			use_precise_timer = 1;
 			break;
 		case 'v':
 			bootverbose = 1;
@@ -613,7 +617,8 @@ init_kern_memory(void)
 	 * Try a number of different locations.
 	 */
 
-	base = mmap((void*)KERNEL_KVA_START, KERNEL_KVA_SIZE, PROT_READ|PROT_WRITE,
+	base = mmap((void*)KERNEL_KVA_START, KERNEL_KVA_SIZE,
+		    PROT_READ|PROT_WRITE,
 		    MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED|MAP_TRYFIXED,
 		    MemImageFd, (off_t)KERNEL_KVA_START);
 
@@ -637,6 +642,13 @@ init_kern_memory(void)
 		err(1, "Unable to mmap() kernel DMAP region!");
 		/* NOT REACHED */
 	}
+
+	/*
+	 * Prefault the memory.  The vkernel is going to fault it all in
+	 * anyway, and faults on the backing store itself are very expensive
+	 * once we go SMP (contend a lot).  So do it now.
+	 */
+	bzero(dmap_min_address,  Maxmem_bytes);
 
 	/*
 	 * Bootstrap the kernel_pmap

@@ -45,7 +45,7 @@
 .Cd "device vke"
 .Pp
 .Pa /var/vkernel/boot/kernel/kernel
-.Op Fl hdsUv
+.Op Fl hdstUv
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
@@ -274,6 +274,14 @@ read-write, modifications will eat system memory and
 swap space until the vkernel is shut down.
 .It Fl s
 Boot into single-user mode.
+.It Fl t
+Tell the vkernel to use a precise host timer when calculating clock values.
+This will impose higher overhead on the vkernel as it will have to make
+a system call to the real host every time it wants to get the time.
+However, the more precise timer might be necessary for your application.
+.Pp
+By default, the vkernel uses an imprecise (host-tick-resolution) timer
+which uses a user-mapped kernel page and does not have any syscall overhead.
 .It Fl U
 Enable writing to kernel memory and module loading.
 By default, those are disabled for security reasons.

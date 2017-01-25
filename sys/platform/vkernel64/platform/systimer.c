@@ -78,6 +78,8 @@ static sysclock_t vktimer_target;
 static struct timespec vktimer_ts;
 static sysclock_t vktimer_reload[MAXCPU];
 
+extern int use_precise_timer;
+
 /*
  * SYSTIMER IMPLEMENTATION
  */
@@ -154,7 +156,10 @@ vkernel_timer_get_timecount(void)
 	struct timespec ts;
 	sysclock_t count;
 
-	clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	if (use_precise_timer)
+		clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	else
+		clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
 	count = ts.tv_nsec / 1000;
 	count += ts.tv_sec * 1000000;
 
@@ -171,7 +176,10 @@ vktimer_intr_initclock(struct cputimer_intr *cti __unused,
 {
 	struct timespec ts;
 
-	clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	if (use_precise_timer)
+		clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	else
+		clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
 	vktimer_target = ts.tv_nsec / 1000;
 	vktimer_target += ts.tv_sec * 1000000;
 
@@ -223,7 +231,10 @@ vktimer_thread(cothread_t cotd)
 		cothread_sleep(cotd, &vktimer_ts);
 
 rescan:
-		clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+		if (use_precise_timer)
+			clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+		else
+			clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
 		curtime = ts.tv_nsec / 1000 + ts.tv_sec * 1000000;
 		reload = 999999;
 
@@ -265,7 +276,10 @@ vktimer_intr_reload(struct cputimer_intr *cti __unused, sysclock_t reload)
 {
 	struct timespec ts;
 
-	clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	if (use_precise_timer)
+		clock_gettime(CLOCK_MONOTONIC_PRECISE, &ts);
+	else
+		clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
 	if (reload >= 1000000)		/* uS */
 		reload = 1000000;
 	reload += ts.tv_nsec / 1000;
