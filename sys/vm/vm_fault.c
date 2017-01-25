@@ -506,9 +506,11 @@ RetryFault:
 	}
 
 	/*
-	 * swap_pager_unswapped() needs an exclusive object
+	 * VM_FAULT_UNSWAP - swap_pager_unswapped() needs an exclusive object
+	 * VM_FAULT_DIRTY  - may require swap_pager_unswapped() later, but
+	 *		     we can try shared first.
 	 */
-	if (fault_flags & (VM_FAULT_UNSWAP | VM_FAULT_DIRTY)) {
+	if (fault_flags & VM_FAULT_UNSWAP) {
 		fs.first_shared = 0;
 	}
 
@@ -758,9 +760,11 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	lwkt_gettoken(&map->token);
 
 	/*
-	 * swap_pager_unswapped() needs an exclusive object
+	 * VM_FAULT_UNSWAP - swap_pager_unswapped() needs an exclusive object
+	 * VM_FAULT_DIRTY  - may require swap_pager_unswapped() later, but
+	 *		     we can try shared first.
 	 */
-	if (fault_flags & (VM_FAULT_UNSWAP | VM_FAULT_DIRTY)) {
+	if (fault_flags & VM_FAULT_UNSWAP) {
 		fs.first_shared = 0;
 	}
 
@@ -1042,9 +1046,11 @@ vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
 	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
 
 	/*
-	 * Might require swap block adjustments
+	 * VM_FAULT_UNSWAP - swap_pager_unswapped() needs an exclusive object
+	 * VM_FAULT_DIRTY  - may require swap_pager_unswapped() later, but
+	 *		     we can try shared first.
 	 */
-	if (fs.first_shared && (fault_flags & (VM_FAULT_UNSWAP | VM_FAULT_DIRTY))) {
+	if (fs.first_shared && (fault_flags & VM_FAULT_UNSWAP)) {
 		fs.first_shared = 0;
 		vm_object_upgrade(object);
 	}
@@ -1289,6 +1295,10 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
  * clear the appropriate field(s) and return RETRY.  COWs require that
  * first_shared be 0, while page allocations (or frees) require that
  * shared be 0.  Renames require that both be 0.
+ *
+ * NOTE! fs->[first_]shared might be set with VM_FAULT_DIRTY also set.
+ *	 we will have to retry with it exclusive if the vm_page is
+ *	 PG_SWAPPED.
  *
  * fs->first_object must be held on call.
  */
@@ -2006,7 +2016,33 @@ readrest:
 		vm_set_nosync(fs->m, fs->entry);
 		if (fs->fault_flags & VM_FAULT_DIRTY) {
 			vm_page_dirty(fs->m);
-			swap_pager_unswapped(fs->m);
+			if (fs->m->flags & PG_SWAPPED) {
+				/*
+				 * If the page is swapped out we have to call
+				 * swap_pager_unswapped() which requires an
+				 * exclusive object lock.  If we are shared,
+				 * we must clear the shared flag and retry.
+				 */
+				if ((fs->object == fs->first_object &&
+				     fs->first_shared) ||
+				    (fs->object != fs->first_object &&
+				     fs->shared)) {
+					vm_page_wakeup(fs->m);
+					fs->m = NULL;
+					if (fs->object == fs->first_object)
+						fs->first_shared = 0;
+					else
+						fs->shared = 0;
+					vm_object_pip_wakeup(fs->first_object);
+					vm_object_chain_release_all(
+						fs->first_object, fs->object);
+					if (fs->object != fs->first_object)
+						vm_object_drop(fs->object);
+					unlock_and_deallocate(fs);
+					return (KERN_TRY_AGAIN);
+				}
+				swap_pager_unswapped(fs->m);
+			}
 		}
 	}
 
@@ -2529,6 +2565,11 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 	object = entry->object.vm_object;
 	KKASSERT(object != NULL);
 	KKASSERT(object == entry->object.vm_object);
+
+	/*
+	 * NOTE: VM_FAULT_DIRTY allowed later so must hold object exclusively
+	 *	 now (or do something more complex XXX).
+	 */
 	vm_object_hold(object);
 	vm_object_chain_acquire(object, 0);
 
