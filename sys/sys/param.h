@@ -145,9 +145,10 @@
  * 400708 - lwp_create2()
  * 400709 - pthread_attr_{set,get}affinity_np()
  * 400710 - sched_getcpu();
+ * 400711 - move lwp syscalls to sys/lwp.h
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400710	/* propagated to newvers */
+#define __DragonFly_version 400711	/* propagated to newvers */
 
 #include <sys/_null.h>
 
