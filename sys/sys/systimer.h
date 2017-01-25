@@ -88,18 +88,30 @@ void systimer_adjust_periodic(systimer_t, int);
 void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int);
 
 /*
- * cputimer interface.  This provides a free-running (non-interrupt) 
- * timebase for the system.  The cputimer
+ * The cputimer interface.  This provides a free-running (non-interrupt) 
+ * and monotonically increasing timebase for the system.
  *
- * These variables hold the fixed cputimer frequency, determining the
- * granularity of cputimer_count().
+ * The cputimer structure holds the fixed cputimer frequency, determining
+ * the granularity of sys_cputimer->count().
  *
- * Note that cputimer_count() always returns a full-width wrapping counter.
+ * Note that sys_cputimer->count() always returns a full-width wrapping
+ * counter.
  *
- * The 64 bit versions are used for converting count values into uS or nS
- * as follows:
+ * The 64 bit versions of the frequency are used for converting count
+ * values into uS or nS as follows:
  *
- *	usec = (cputimer_freq64_usec * count) >> 32
+ *	usec = (sys_cputimer->freq64_usec * count) >> 32
+ *
+ * NOTE: If count > sys_cputimer->freq, above conversion may overflow.
+ *
+ * REQUIREMENT FOR CPUTIMER IMPLEMENTATION:
+ *
+ * - 'freq' should not be too high, i.e. sysclock_t, which is 32 bits,
+ *   must be able to hold several seconds at least.
+ * - The values returned by count() must be MP synchronized.
+ * - The values returned by count() must be stable under all situation,
+ *   e.g. when the platform enters power saving mode.
+ * - The values returned by count() must be monotonically increasing.
  */
 
 struct cputimer {
@@ -114,8 +126,8 @@ struct cputimer {
     void	(*destruct)(struct cputimer *);
     sysclock_t	base;		/* (implementation dependant) */
     sysclock_t	freq;		/* in Hz */
-    int64_t	freq64_usec;	/* in (1e6 << 32) / timer_freq */
-    int64_t	freq64_nsec;	/* in (1e9 << 32) / timer_freq */
+    int64_t	freq64_usec;	/* in (1e6 << 32) / freq */
+    int64_t	freq64_nsec;	/* in (1e9 << 32) / freq */
 };
 
 extern struct cputimer *sys_cputimer;
