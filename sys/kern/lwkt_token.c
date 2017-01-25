@@ -776,14 +776,6 @@ lwkt_trytoken(lwkt_token_t tok)
 	return FALSE;
 }
 
-
-void
-lwkt_gettoken_hard(lwkt_token_t tok)
-{
-	lwkt_gettoken(tok);
-	crit_enter_hard();
-}
-
 lwkt_token_t
 lwkt_getpooltoken(void *ptr)
 {
@@ -815,13 +807,6 @@ lwkt_reltoken(lwkt_token_t tok)
 	_lwkt_reltokref(ref, td);
 	cpu_sfence();
 	td->td_toks_stop = ref;
-}
-
-void
-lwkt_reltoken_hard(lwkt_token_t tok)
-{
-	lwkt_reltoken(tok);
-	crit_exit_hard();
 }
 
 /*

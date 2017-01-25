@@ -144,34 +144,6 @@ typedef struct lwkt_token {
 #define ASSERT_NO_TOKENS_HELD(td)	\
 	KKASSERT((td)->td_toks_stop == &td->td_toks_array[0])
 
-/*
- * Assert that a particular token is held and we are in a hard
- * code execution section (interrupt, ipi, or hard code section).
- * Hard code sections are not allowed to block or potentially block.
- * e.g. lwkt_gettoken() would only be ok if the token were already
- * held.
- */
-#define ASSERT_LWKT_TOKEN_HARD(tok)					\
-	do {								\
-		globaldata_t zgd __debugvar = mycpu;			\
-		KKASSERT((tok)->t_ref &&				\
-			 (tok)->t_ref->tr_owner == zgd->gd_curthread &&	\
-			 zgd->gd_intr_nesting_level > 0);		\
-	} while(0)
-
-/*
- * Assert that a particular token is held and we are in a normal
- * critical section.  Critical sections will not be preempted but
- * can explicitly block (tsleep, lwkt_gettoken, etc).
- */
-#define ASSERT_LWKT_TOKEN_CRIT(tok)					\
-	do {								\
-		globaldata_t zgd __debugvar = mycpu;			\
-		KKASSERT((tok)->t_ref &&				\
-			 (tok)->t_ref->tr_owner == zgd->gd_curthread &&	\
-			 zgd->gd_curthread->td_critcount > 0);		\
-	} while(0)
-
 struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
     long		tr_count;	/* TOK_EXCLUSIVE|TOK_EXCLREQ or 0 */
@@ -455,10 +427,8 @@ extern void lwkt_maybe_splz(thread_t);
 
 extern void lwkt_gettoken(lwkt_token_t);
 extern void lwkt_gettoken_shared(lwkt_token_t);
-extern void lwkt_gettoken_hard(lwkt_token_t);
 extern int  lwkt_trytoken(lwkt_token_t);
 extern void lwkt_reltoken(lwkt_token_t);
-extern void lwkt_reltoken_hard(lwkt_token_t);
 extern int  lwkt_cnttoken(lwkt_token_t, thread_t);
 extern int  lwkt_getalltokens(thread_t, int);
 extern void lwkt_relalltokens(thread_t);

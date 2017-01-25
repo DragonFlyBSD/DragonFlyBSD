@@ -208,7 +208,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 
 		/* remove pending SIGTRAP, else the process will die */
 		spin_lock(&lp->lwp_spin);
-		lwp_delsig(lp, SIGTRAP);
+		lwp_delsig(lp, SIGTRAP, 1);
 		spin_unlock(&lp->lwp_spin);
 
 		/* give process back to original parent */

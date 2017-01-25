@@ -475,12 +475,14 @@ mfs_start(struct mount *mp, int flags)
 			gotsig = 0;
 			if (dounmount(mp, 0) != 0) {
 				KKASSERT(td->td_proc);
+				lwkt_gettoken(&td->td_proc->p_token);
 				sig = CURSIG(td->td_lwp);
 				if (sig) {
 					spin_lock(&td->td_lwp->lwp_spin);
-					lwp_delsig(td->td_lwp, sig);
+					lwp_delsig(td->td_lwp, sig, 1);
 					spin_unlock(&td->td_lwp->lwp_spin);
 				}
+				lwkt_reltoken(&td->td_proc->p_token);
 			}
 		}
 		else if (tsleep((caddr_t)mfsp, PCATCH, "mfsidl", 0))

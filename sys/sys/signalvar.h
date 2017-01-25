@@ -87,8 +87,14 @@ struct	sigacts {
 #define SIGADDSET(set, signo)						\
 	(set).__bits[_SIG_WORD(signo)] |= _SIG_BIT(signo)
 
+#define SIGADDSET_ATOMIC(set, signo)					\
+	atomic_set_int(&(set).__bits[_SIG_WORD(signo)], _SIG_BIT(signo))
+
 #define SIGDELSET(set, signo)						\
 	(set).__bits[_SIG_WORD(signo)] &= ~_SIG_BIT(signo)
+
+#define SIGDELSET_ATOMIC(set, signo)					\
+	atomic_clear_int(&(set).__bits[_SIG_WORD(signo)], _SIG_BIT(signo))
 
 #define SIGEMPTYSET(set)						\
 	do {								\
@@ -141,8 +147,15 @@ struct	sigacts {
 	SIGDELSET(set, SIGSTOP), SIGDELSET(set, SIGTSTP),		\
 	SIGDELSET(set, SIGTTIN), SIGDELSET(set, SIGTTOU)
 
+#define SIG_STOPSIGMASK_ATOMIC(set)					\
+	SIGDELSET_ATOMIC(set, SIGSTOP), SIGDELSET_ATOMIC(set, SIGTSTP),	\
+	SIGDELSET_ATOMIC(set, SIGTTIN), SIGDELSET_ATOMIC(set, SIGTTOU)
+
 #define SIG_CONTSIGMASK(set)						\
 	SIGDELSET(set, SIGCONT)
+
+#define SIG_CONTSIGMASK_ATOMIC(set)					\
+	SIGDELSET_ATOMIC(set, SIGCONT)
 
 #define sigcantmask	(sigmask(SIGKILL) | sigmask(SIGSTOP))
 
@@ -185,12 +198,12 @@ extern int sugid_coredump;	/* Sysctl variable kern.sugid_coredump */
  */
 void	execsigs (struct proc *p);
 void	gsignal (int pgid, int sig);
-int	issignal (struct lwp *lp, int maytrace);
+int	issignal (struct lwp *lp, int maytrace, int *ptokp);
 int	iscaught (struct lwp *p);
 void	killproc (struct proc *p, char *why);
 void	pgsigio (struct sigio *, int signum, int checkctty);
 void	pgsignal (struct pgrp *pgrp, int sig, int checkctty);
-void	postsig (int sig);
+void	postsig (int sig, int ptok);
 void	ksignal (struct proc *p, int sig);
 void	lwpsignal (struct proc *p, struct lwp *lp, int sig);
 void	siginit (struct proc *p);

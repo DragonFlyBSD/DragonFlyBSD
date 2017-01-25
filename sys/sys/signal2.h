@@ -52,6 +52,7 @@ lwp_sigpend(struct lwp *lp)
 
 	set = lp->lwp_proc->p_siglist;
 	SIGSETOR(set, lp->lwp_siglist);
+
 	return (set);
 }
 
@@ -61,15 +62,17 @@ lwp_sigpend(struct lwp *lp)
  * (p->p_token must be held, lp->lwp_spin must be held)
  */
 static __inline void
-lwp_delsig(struct lwp *lp, int sig)
+lwp_delsig(struct lwp *lp, int sig, int fromproc)
 {
 	SIGDELSET(lp->lwp_siglist, sig);
-	SIGDELSET(lp->lwp_proc->p_siglist, sig);
+	if (fromproc)
+		SIGDELSET_ATOMIC(lp->lwp_proc->p_siglist, sig);
 }
 
-#define	CURSIG(lp)		__cursig(lp, 1, 0)
-#define	CURSIG_TRACE(lp)	__cursig(lp, 1, 1)
-#define CURSIG_NOBLOCK(lp)	__cursig(lp, 0, 0)
+#define	CURSIG(lp)			__cursig(lp, 1, 0, NULL)
+#define	CURSIG_TRACE(lp)		__cursig(lp, 1, 1, NULL)
+#define	CURSIG_LCK_TRACE(lp, ptok)	__cursig(lp, 1, 1, ptok)
+#define CURSIG_NOBLOCK(lp)		__cursig(lp, 0, 0, NULL)
 
 /*
  * Determine signal that should be delivered to process p, the current
@@ -79,11 +82,14 @@ lwp_delsig(struct lwp *lp, int sig)
  * This function does not interlock pending signals.  If the caller needs
  * to interlock the caller must acquire the per-proc token.
  *
- * MPSAFE
+ * If ptok is non-NULL this function may return with proc->p_token held,
+ * indicating that the signal came from the process structure.  This is
+ * used by postsig to avoid holding p_token when possible.  Only applicable
+ * if mayblock is non-zero.
  */
 static __inline
 int
-__cursig(struct lwp *lp, int mayblock, int maytrace)
+__cursig(struct lwp *lp, int mayblock, int maytrace, int *ptok)
 {
 	struct proc *p = lp->lwp_proc;
 	sigset_t tmpset;
@@ -104,7 +110,7 @@ __cursig(struct lwp *lp, int mayblock, int maytrace)
 	}
 
 	if (mayblock)
-		r = issignal(lp, maytrace);
+		r = issignal(lp, maytrace, ptok);
 	else
 		r = TRUE;	/* simply state the fact */
 

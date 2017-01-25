@@ -274,7 +274,6 @@ int	fusword (void *base);
 int	susword (void *base, int word);
 u_long	casuword(volatile u_long *p, u_long oldval, u_long newval);
 
-void	realitexpire (void *);
 void	DELAY(int usec);
 void	DRIVERSLEEP(int usec);
 

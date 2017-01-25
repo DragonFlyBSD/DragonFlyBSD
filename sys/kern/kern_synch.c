@@ -550,7 +550,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 
 			/*
 			 * Causes ksignal to wake us up if a signal is
-			 * received (interlocked with p->p_token).
+			 * received (interlocked with lp->lwp_token).
 			 */
 			lp->lwp_flags |= LWP_SINTR;
 		}

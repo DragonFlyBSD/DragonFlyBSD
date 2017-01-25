@@ -218,6 +218,7 @@ userret(struct lwp *lp, struct trapframe *frame, int sticks)
 {
 	struct proc *p = lp->lwp_proc;
 	int sig;
+	int ptok;
 
 	/*
 	 * Charge system time if profiling.  Note: times are in microseconds.
@@ -274,10 +275,8 @@ recheck:
 	 *
 	 * WARNING!  postsig() can exit and not return.
 	 */
-	if ((sig = CURSIG_TRACE(lp)) != 0) {
-		lwkt_gettoken(&p->p_token);
-		postsig(sig);
-		lwkt_reltoken(&p->p_token);
+	if ((sig = CURSIG_LCK_TRACE(lp, &ptok)) != 0) {
+		postsig(sig, ptok);
 		goto recheck;
 	}
 

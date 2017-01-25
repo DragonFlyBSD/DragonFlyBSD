@@ -68,6 +68,7 @@ struct timezone tz;
 
 static int	settime(struct timeval *);
 static void	timevalfix(struct timeval *);
+static void	realitexpire(void *arg);
 
 /*
  * Nanosleep tries very hard to sleep for a precisely requested time
@@ -856,6 +857,7 @@ sys_setitimer(struct setitimer_args *uap)
  * that here since we want to appear to be in sync with the clock
  * interrupt even when we're delayed.
  */
+static
 void
 realitexpire(void *arg)
 {

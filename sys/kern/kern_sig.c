@@ -333,7 +333,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 		if (ps->ps_sigact[_SIG_IDX(sig)] == SIG_IGN ||
 		    (sigprop(sig) & SA_IGNORE &&
 		     ps->ps_sigact[_SIG_IDX(sig)] == SIG_DFL)) {
-			SIGDELSET(p->p_siglist, sig);
+			SIGDELSET_ATOMIC(p->p_siglist, sig);
 			FOREACH_LWP_IN_PROC(lp, p) {
 				spin_lock(&lp->lwp_spin);
 				SIGDELSET(lp->lwp_siglist, sig);
@@ -414,7 +414,7 @@ execsigs(struct proc *p)
 		if (sigprop(sig) & SA_IGNORE) {
 			if (sig != SIGCONT)
 				SIGADDSET(p->p_sigignore, sig);
-			SIGDELSET(p->p_siglist, sig);
+			SIGDELSET_ATOMIC(p->p_siglist, sig);
 			/* don't need spinlock */
 			SIGDELSET(lp->lwp_siglist, sig);
 		}
@@ -1102,12 +1102,13 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 	 * on.
 	 */
 	PHOLD(p);
-	lwkt_gettoken(&p->p_token);
 	if (lp) {
 		LWPHOLD(lp);
 		lwkt_gettoken(&lp->lwp_token);
-	} else if (p->p_flags & P_WEXIT) {
-		goto out;
+	} else {
+		lwkt_gettoken(&p->p_token);
+		if (p->p_flags & P_WEXIT)
+			goto out;
 	}
 
 	prop = sigprop(sig);
@@ -1126,11 +1127,8 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * if P_WEXIT is set in the process flags.
 		 */
 		if (lp && (lp->lwp_mpflags & LWP_MP_WEXIT) && sig != SIGKILL) {
-			if (lp) {
-				lwkt_reltoken(&lp->lwp_token);
-				LWPRELE(lp);
-			}
-			lwkt_reltoken(&p->p_token);
+			lwkt_reltoken(&lp->lwp_token);
+			LWPRELE(lp);
 			PRELE(p);
 			return;
 		}
@@ -1149,8 +1147,9 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			if (lp) {
 				lwkt_reltoken(&lp->lwp_token);
 				LWPRELE(lp);
+			} else {
+				lwkt_reltoken(&p->p_token);
 			}
-			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return;
 		}
@@ -1161,10 +1160,14 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 	}
 
 	/*
-	 * If continuing, clear any pending STOP signals.
+	 * If continuing, clear any pending STOP signals for the whole
+	 * process.
 	 */
-	if (prop & SA_CONT)
-		SIG_STOPSIGMASK(p->p_siglist);
+	if (prop & SA_CONT) {
+		lwkt_gettoken(&p->p_token);
+		SIG_STOPSIGMASK_ATOMIC(p->p_siglist);
+		lwkt_reltoken(&p->p_token);
+	}
 	
 	if (prop & SA_STOP) {
 		/*
@@ -1173,18 +1176,21 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * is default; don't stop the process below if sleeping,
 		 * and don't clear any pending SIGCONT.
 		 */
-		if (prop & SA_TTYSTOP && p->p_pgrp->pg_jobc == 0 &&
+		if ((prop & SA_TTYSTOP) && p->p_pgrp->pg_jobc == 0 &&
 		    action == SIG_DFL) {
 			if (lp) {
 				lwkt_reltoken(&lp->lwp_token);
 				LWPRELE(lp);
+			} else {
+				lwkt_reltoken(&p->p_token);
 			}
-			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 		        return;
 		}
-		SIG_CONTSIGMASK(p->p_siglist);
+		lwkt_gettoken(&p->p_token);
+		SIG_CONTSIGMASK_ATOMIC(p->p_siglist);
 		p->p_flags &= ~P_CONTINUED;
+		lwkt_reltoken(&p->p_token);
 	}
 
 	if (p->p_stat == SSTOP) {
@@ -1192,20 +1198,27 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * Nobody can handle this signal, add it to the lwp or
 		 * process pending list 
 		 */
+		lwkt_gettoken(&p->p_token);
+		if (p->p_stat != SSTOP) {
+			lwkt_reltoken(&p->p_token);
+			goto not_stopped;
+		}
 		if (lp) {
 			spin_lock(&lp->lwp_spin);
 			SIGADDSET(lp->lwp_siglist, sig);
 			spin_unlock(&lp->lwp_spin);
 		} else {
-			SIGADDSET(p->p_siglist, sig);
+			SIGADDSET_ATOMIC(p->p_siglist, sig);
 		}
 
 		/*
 		 * If the process is stopped and is being traced, then no
 		 * further action is necessary.
 		 */
-		if (p->p_flags & P_TRACED)
+		if (p->p_flags & P_TRACED) {
+			lwkt_reltoken(&p->p_token);
 			goto out;
+		}
 
 		/*
 		 * If the process is stopped and receives a KILL signal,
@@ -1213,6 +1226,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 */
 		if (sig == SIGKILL) {
 			proc_unstop(p, SSTOP);
+			lwkt_reltoken(&p->p_token);
 			goto active_process;
 		}
 
@@ -1241,10 +1255,11 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			p->p_flags |= P_CONTINUED;
 			wakeup(q);
 			if (action == SIG_DFL)
-				SIGDELSET(p->p_siglist, sig);
+				SIGDELSET_ATOMIC(p->p_siglist, sig);
 			proc_unstop(p, SSTOP);
 			lwkt_reltoken(&q->p_token);
 			PRELE(q);
+			lwkt_reltoken(&p->p_token);
 			if (action == SIG_CATCH)
 				goto active_process;
 			goto out;
@@ -1261,9 +1276,12 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * we don't want to wait until it reaches userret!
 		 */
 		if (prop & SA_STOP) {
+			lwkt_gettoken(&p->p_token);
 			if (lwkt_preempted_proc() == NULL ||
-			    lwkt_preempted_proc()->lwp_proc != p)
-				SIGDELSET(p->p_siglist, sig);
+			    lwkt_preempted_proc()->lwp_proc != p) {
+				SIGDELSET_ATOMIC(p->p_siglist, sig);
+			}
+			lwkt_reltoken(&p->p_token);
 		}
 
 		/*
@@ -1272,14 +1290,11 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * the process is continued a wakeup(p) will be issued which
 		 * will wakeup any threads sleeping in tstop().
 		 */
-		if (lp == NULL) {
-			/* NOTE: returns lp w/ token held */
-			lp = find_lwp_for_signal(p, sig);
-		}
 		goto out;
-
 		/* NOTREACHED */
 	}
+not_stopped:
+	;
 	/* else not stopped */
 active_process:
 
@@ -1294,6 +1309,9 @@ active_process:
 				lwkt_reltoken(&lp->lwp_token);
 				LWPRELE(lp);
 				lp = NULL;
+			} else {
+				lwkt_token_swap();
+				lwkt_reltoken(&p->p_token);
 			}
 		}
 	}
@@ -1305,7 +1323,7 @@ active_process:
 	 */
 	if (lp == NULL) {
 		KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
-		SIGADDSET(p->p_siglist, sig);
+		SIGADDSET_ATOMIC(p->p_siglist, sig);
 		goto out;
 	}
 
@@ -1315,7 +1333,9 @@ active_process:
 	 */
 	if (p->p_nice > NZERO && action == SIG_DFL && (prop & SA_KILL) &&
 	    (p->p_flags & P_TRACED) == 0) {
+		lwkt_gettoken(&p->p_token);
 		p->p_nice = NZERO;
+		lwkt_reltoken(&p->p_token);
 	}
 
 	/*
@@ -1329,8 +1349,10 @@ active_process:
 		 * could cause deadlock.  Take no action at this
 		 * time.
 		 */
+		lwkt_gettoken(&p->p_token);
 		if (p->p_flags & P_PPWAIT) {
-			SIGADDSET(p->p_siglist, sig);
+			SIGADDSET_ATOMIC(p->p_siglist, sig);
+			lwkt_reltoken(&p->p_token);
 			goto out;
 		}
 
@@ -1344,6 +1366,7 @@ active_process:
 			p->p_xstat = sig;
 			proc_stop(p, SSTOP);
 		}
+		lwkt_reltoken(&p->p_token);
 		goto out;
 	}
 
@@ -1366,8 +1389,9 @@ out:
 	if (lp) {
 		lwkt_reltoken(&lp->lwp_token);
 		LWPRELE(lp);
+	} else {
+		lwkt_reltoken(&p->p_token);
 	}
-	lwkt_reltoken(&p->p_token);
 	PRELE(p);
 }
 
@@ -1397,7 +1421,7 @@ lwp_signotify(struct lwp *lp)
 {
 	thread_t dtd;
 
-	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_proc->p_token);
+	ASSERT_LWKT_TOKEN_HELD(&lp->lwp_token);
 	dtd = lp->lwp_thread;
 
 	crit_enter();
@@ -1697,7 +1721,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 			SIGFILLSET(lp->lwp_sigmask);
 			SIGDELSET(lp->lwp_sigmask, sig);
 			SIG_CANTMASK(lp->lwp_sigmask);
-			sig = issignal(lp, 1);
+			sig = issignal(lp, 1, 0);
 			/*
 			 * It may be a STOP signal, in the case, issignal
 			 * returns 0, because we may stop there, and new
@@ -1764,7 +1788,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		bzero(info, sizeof(*info));
 		info->si_signo = sig;
 		spin_lock(&lp->lwp_spin);
-		lwp_delsig(lp, sig);	/* take the signal! */
+		lwp_delsig(lp, sig, 1);	/* take the signal! */
 		spin_unlock(&lp->lwp_spin);
 
 		if (sig == SIGKILL) {
@@ -1873,7 +1897,7 @@ iscaught(struct lwp *lp)
 }
 
 /*
- * If the current process has received a signal (should be caught or cause
+ * If the current lwp/proc has received a signal (should be caught or cause
  * termination, should interrupt current syscall), return the signal number.
  * Stop signals with default action are processed immediately, then cleared;
  * they aren't returned.  This is checked after each entry to the system for
@@ -1886,36 +1910,63 @@ iscaught(struct lwp *lp)
  *
  *	while (sig = CURSIG(curproc))
  *		postsig(sig);
- *
- * MPSAFE
  */
 int
-issignal(struct lwp *lp, int maytrace)
+issignal(struct lwp *lp, int maytrace, int *ptokp)
 {
 	struct proc *p = lp->lwp_proc;
 	sigset_t mask;
 	int sig, prop;
-
-	lwkt_gettoken(&p->p_token);
+	int haveptok;
 
 	for (;;) {
 		int traced = (p->p_flags & P_TRACED) || (p->p_stops & S_SIG);
 
+		haveptok = 0;
+
 		/*
 		 * If this process is supposed to stop, stop this thread.
 		 */
-		if (STOPLWP(p, lp))
+		if (STOPLWP(p, lp)) {
+			lwkt_gettoken(&p->p_token);
 			tstop();
+			lwkt_reltoken(&p->p_token);
+		}
 
+		/*
+		 * Quick check without token
+		 */
 		mask = lwp_sigpend(lp);
 		SIGSETNAND(mask, lp->lwp_sigmask);
 		if (p->p_flags & P_PPWAIT)
 			SIG_STOPSIGMASK(mask);
-		if (SIGISEMPTY(mask)) {		/* no signal to send */
-			lwkt_reltoken(&p->p_token);
+		if (SIGISEMPTY(mask)) 		/* no signal to send */
 			return (0);
-		}
+
+		/*
+		 * If the signal is a member of the process signal set
+		 * we need p_token (even if it is also a member of the
+		 * lwp signal set).
+		 */
 		sig = sig_ffs(&mask);
+		if (SIGISMEMBER(p->p_siglist, sig)) {
+			/*
+			 * Recheck with token
+			 */
+			haveptok = 1;
+			lwkt_gettoken(&p->p_token);
+
+			mask = lwp_sigpend(lp);
+			SIGSETNAND(mask, lp->lwp_sigmask);
+			if (p->p_flags & P_PPWAIT)
+				SIG_STOPSIGMASK(mask);
+			if (SIGISEMPTY(mask)) {		/* no signal to send */
+				/* haveptok is TRUE */
+				lwkt_reltoken(&p->p_token);
+				return (0);
+			}
+			sig = sig_ffs(&mask);
+		}
 
 		STOPEVENT(p, S_SIG, sig);
 
@@ -1925,8 +1976,10 @@ issignal(struct lwp *lp, int maytrace)
 		 */
 		if (SIGISMEMBER(p->p_sigignore, sig) && (traced == 0)) {
 			spin_lock(&lp->lwp_spin);
-			lwp_delsig(lp, sig);
+			lwp_delsig(lp, sig, haveptok);
 			spin_unlock(&lp->lwp_spin);
+			if (haveptok)
+				lwkt_reltoken(&p->p_token);
 			continue;
 		}
 		if (maytrace &&
@@ -1943,6 +1996,10 @@ issignal(struct lwp *lp, int maytrace)
 			 *
 			 * XXX not sure if this is still true
 			 */
+			if (haveptok == 0) {
+				lwkt_gettoken(&p->p_token);
+				haveptok = 1;
+			}
 			p->p_xstat = sig;
 			proc_stop(p, SSTOP);
 			do {
@@ -1955,11 +2012,14 @@ issignal(struct lwp *lp, int maytrace)
 			 * otherwise we just look for signals again.
 			 */
 			spin_lock(&lp->lwp_spin);
-			lwp_delsig(lp, sig);	/* clear old signal */
+			lwp_delsig(lp, sig, 1);	/* clear old signal */
 			spin_unlock(&lp->lwp_spin);
 			sig = p->p_xstat;
-			if (sig == 0)
+			if (sig == 0) {
+				/* haveptok is TRUE */
+				lwkt_reltoken(&p->p_token);
 				continue;
+			}
 
 			/*
 			 * Put the new signal into p_siglist.  If the
@@ -1967,19 +2027,28 @@ issignal(struct lwp *lp, int maytrace)
 			 *
 			 * XXX lwp might need a call to ksignal()
 			 */
-			SIGADDSET(p->p_siglist, sig);
-			if (SIGISMEMBER(lp->lwp_sigmask, sig))
+			SIGADDSET_ATOMIC(p->p_siglist, sig);
+			if (SIGISMEMBER(lp->lwp_sigmask, sig)) {
+				/* haveptok is TRUE */
+				lwkt_reltoken(&p->p_token);
 				continue;
+			}
 
 			/*
 			 * If the traced bit got turned off, go back up
 			 * to the top to rescan signals.  This ensures
 			 * that p_sig* and ps_sigact are consistent.
 			 */
-			if ((p->p_flags & P_TRACED) == 0)
+			if ((p->p_flags & P_TRACED) == 0) {
+				/* haveptok is TRUE */
+				lwkt_reltoken(&p->p_token);
 				continue;
+			}
 		}
 
+		/*
+		 * p_token may be held here
+		 */
 		prop = sigprop(sig);
 
 		/*
@@ -2008,6 +2077,10 @@ issignal(struct lwp *lp, int maytrace)
 			 * Handle the in-kernel checkpoint action
 			 */
 			if (prop & SA_CKPT) {
+				if (haveptok == 0) {
+					lwkt_gettoken(&p->p_token);
+					haveptok = 1;
+				}
 				checkpoint_signal_handler(lp);
 				break;
 			}
@@ -2020,6 +2093,10 @@ issignal(struct lwp *lp, int maytrace)
 			 * process group, ignore tty stop signals.
 			 */
 			if (prop & SA_STOP) {
+				if (haveptok == 0) {
+					lwkt_gettoken(&p->p_token);
+					haveptok = 1;
+				}
 				if (p->p_flags & P_TRACED ||
 		    		    (p->p_pgrp->pg_jobc == 0 &&
 				    prop & SA_TTYSTOP))
@@ -2037,7 +2114,10 @@ issignal(struct lwp *lp, int maytrace)
 				 */
 				break;		/* == ignore */
 			} else {
-				lwkt_reltoken(&p->p_token);
+				if (ptokp)
+					*ptokp = haveptok;
+				else if (haveptok)
+					lwkt_reltoken(&p->p_token);
 				return (sig);
 			}
 
@@ -2059,12 +2139,18 @@ issignal(struct lwp *lp, int maytrace)
 			 * This signal has an action, let
 			 * postsig() process it.
 			 */
-			lwkt_reltoken(&p->p_token);
+			if (ptokp)
+				*ptokp = haveptok;
+			else if (haveptok)
+				lwkt_reltoken(&p->p_token);
 			return (sig);
 		}
 		spin_lock(&lp->lwp_spin);
-		lwp_delsig(lp, sig);		/* take the signal! */
+		lwp_delsig(lp, sig, haveptok);		/* take the signal! */
 		spin_unlock(&lp->lwp_spin);
+
+		if (haveptok)
+			lwkt_reltoken(&p->p_token);
 	}
 	/* NOTREACHED */
 }
@@ -2073,10 +2159,12 @@ issignal(struct lwp *lp, int maytrace)
  * Take the action for the specified signal
  * from the current set of pending signals.
  *
- * Caller must hold p->p_token
+ * haveptok indicates whether the caller is holding
+ * p->p_token.  If the caller is, we are responsible
+ * for releasing it.
  */
 void
-postsig(int sig)
+postsig(int sig, int haveptok)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
@@ -2101,7 +2189,7 @@ postsig(int sig)
 	}
 
 	spin_lock(&lp->lwp_spin);
-	lwp_delsig(lp, sig);
+	lwp_delsig(lp, sig, haveptok);
 	spin_unlock(&lp->lwp_spin);
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
@@ -2109,6 +2197,12 @@ postsig(int sig)
 		ktrpsig(lp, sig, action, lp->lwp_flags & LWP_OLDMASK ?
 			&lp->lwp_oldsigmask : &lp->lwp_sigmask, 0);
 #endif
+	/*
+	 * We don't need p_token after this point.
+	 */
+	if (haveptok)
+		lwkt_reltoken(&p->p_token);
+
 	STOPEVENT(p, S_SIG, sig);
 
 	if (action == SIG_DFL) {
