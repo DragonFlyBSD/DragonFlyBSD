@@ -62,7 +62,6 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	char *fullpath, *freepath;
 	int error;
 	vm_map_t map = &p->p_vmspace->vm_map;
-	pmap_t pmap = vmspace_pmap(p->p_vmspace);
 	vm_map_entry_t entry;
 	struct sbuf *sb = NULL;
 	unsigned int last_timestamp;
@@ -78,12 +77,19 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	if (sb == NULL)
 		return EIO;
 
+	/*
+	 * Lock the map so we can access it.  Release the process token
+	 * to avoid unnecessary token stalls while we are processing the
+	 * map.
+	 */
 	vm_map_lock_read(map);
+	lwkt_reltoken(&p->p_token);
+
 	for (entry = map->header.next; entry != &map->header;
 		entry = entry->next) {
 		vm_object_t obj, tobj, lobj;
 		int ref_count, shadow_count, flags;
-		vm_offset_t e_start, e_end, addr;
+		vm_offset_t e_start, e_end;
 		vm_eflags_t e_eflags;
 		vm_prot_t e_prot;
 		int resident, privateresident;
@@ -114,8 +120,14 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		e_end = entry->end;
 
 		/*
-		 * Count resident pages (XXX can be horrible on 64-bit)
+		 * Don't count resident pages, its impossible on 64-bit.
+		 * A single mapping could be gigabytes or terrabytes.
 		 */
+		resident = -1;
+#if 0
+		pmap_t pmap = vmspace_pmap(p->p_vmspace);
+		vm_offset_t addr;
+
 		resident = 0;
 		addr = entry->start;
 		while (addr < entry->end) {
@@ -123,6 +135,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				resident++;
 			addr += PAGE_SIZE;
 		}
+#endif
 		if (obj) {
 			lobj = obj;
 			while ((tobj = lobj->backing_object) != NULL) {
@@ -251,6 +264,8 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		buflen = sbuf_len(sb);
 	error = uiomove_frombuf(sbuf_data(sb), buflen, uio);
 	sbuf_delete(sb);
+
+	lwkt_gettoken(&p->p_token);	/* re-acquire */
 
 	return error;
 }
