@@ -265,14 +265,16 @@ int	copyout(const void *kaddr, void *udaddr, size_t len)
 int	copyout_nofault(const void *kaddr, void *udaddr, size_t len)
 	    __nonnull(1) __nonnull(2);
 
-int	fubyte (const void *base);
-int	subyte (void *base, int byte);
-long	fuword (const void *base);
-int	suword (void *base, long word);
-int	suword32 (void *base, int word);
-int	fusword (void *base);
-int	susword (void *base, int word);
-u_long	casuword(volatile u_long *p, u_long oldval, u_long newval);
+int	fubyte (const uint8_t *base);
+int	subyte (uint8_t *base, uint8_t byte);
+int32_t	fuword32 (const uint32_t *base);
+int64_t	fuword64 (const uint64_t *base);
+int	suword32 (uint32_t *base, int word);
+int	suword64 (uint64_t *base, uint64_t word);
+uint32_t casu32(volatile uint32_t *p, uint32_t oldval, uint32_t newval);
+uint64_t casu64(volatile uint64_t *p, uint64_t oldval, uint64_t newval);
+uint32_t swapu32(volatile uint32_t *p, uint32_t val);
+uint64_t swapu64(volatile uint64_t *p, uint64_t val);
 
 void	DELAY(int usec);
 void	DRIVERSLEEP(int usec);

@@ -308,10 +308,10 @@ copyin_fault:
 	ret
 
 /*
- * casuword32.  Compare and set user integer.  Returns -1 or the current value.
- *        dst = %rdi, old = %rsi, new = %rdx
+ * casu32 - Compare and set user integer.  Returns -1 or the current value.
+ *          dst = %rdi, old = %rsi, new = %rdx
  */
-ENTRY(casuword32)
+ENTRY(casu32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -337,10 +337,37 @@ ENTRY(casuword32)
 	ret
 
 /*
- * casuword.  Compare and set user word.  Returns -1 or the current value.
- *        dst = %rdi, old = %rsi, new = %rdx
+ * swapu32 - Swap int in user space.  ptr = %rdi, val = %rsi
  */
-ENTRY(casuword)
+ENTRY(swapu32)
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
+
+	movq	$VM_MAX_USER_ADDRESS-8,%rax
+	cmpq	%rax,%rdi			/* verify address is valid */
+	ja	fusufault
+
+	movq	%rsi,%rax			/* old */
+	xchgl	%eax,(%rdi)
+
+	/*
+	 * The old value is in %rax.  If the store succeeded it will be the
+	 * value we expected (old) from before the store, otherwise it will
+	 * be the current value.
+	 */
+
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$0,PCB_ONFAULT(%rcx)
+	ret
+
+/*
+ * casu64 - Compare and set user word.  Returns -1 or the current value.
+ *          dst = %rdi, old = %rsi, new = %rdx
+ */
+ENTRY(casu64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -366,13 +393,39 @@ ENTRY(casuword)
 	ret
 
 /*
+ * swapu64 - Swap long in user space.  ptr = %rdi, val = %rsi
+ */
+ENTRY(swapu64)
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
+
+	movq	$VM_MAX_USER_ADDRESS-8,%rax
+	cmpq	%rax,%rdi			/* verify address is valid */
+	ja	fusufault
+
+	movq	%rsi,%rax			/* old */
+	xchgq	%rax,(%rdi)
+
+	/*
+	 * The old value is in %rax.  If the store succeeded it will be the
+	 * value we expected (old) from before the store, otherwise it will
+	 * be the current value.
+	 */
+
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$0,PCB_ONFAULT(%rcx)
+	ret
+
+/*
  * Fetch (load) a 64-bit word, a 32-bit word, a 16-bit word, or an 8-bit
  * byte from user memory.  All these functions are MPSAFE.
  * addr = %rdi
  */
 
-ALTENTRY(fuword64)
-ENTRY(std_fuword)
+ENTRY(std_fuword64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -386,7 +439,7 @@ ENTRY(std_fuword)
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
 
-ENTRY(fuword32)
+ENTRY(std_fuword32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -398,18 +451,6 @@ ENTRY(fuword32)
 
 	movl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
-	ret
-
-/*
- * fuswintr() and suswintr() are specialized variants of fuword16() and
- * suword16(), respectively.  They are called from the profiling code,
- * potentially at interrupt time.  If they fail, that's okay; good things
- * will happen later.  They always fail for now, until the trap code is
- * able to deal with this.
- */
-ALTENTRY(suswintr)
-ENTRY(fuswintr)
-	movq	$-1,%rax
 	ret
 
 ENTRY(fuword16)
@@ -457,8 +498,7 @@ fusufault:
  *
  * Write a long
  */
-ALTENTRY(suword64)
-ENTRY(std_suword)
+ENTRY(std_suword64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)

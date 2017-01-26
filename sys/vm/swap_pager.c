@@ -875,7 +875,7 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
  * does NOT change the m->dirty status of the page.  Also: MADV_FREE
  * depends on it.
  *
- * The page must be busied or soft-busied.
+ * The page must be busied.
  * The caller can hold the object to avoid blocking, else we might block.
  * No other requirements.
  */

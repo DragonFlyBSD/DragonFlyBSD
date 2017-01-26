@@ -296,11 +296,12 @@ struct pmap {
 	int (*copyinstr)(const void *, void *, size_t, size_t *);
 	int (*copyin)(const void *, void *, size_t);
 	int (*copyout)(const void *, void *, size_t);
-	int (*fubyte)(const void *);
-	int (*subyte)(void *, int);
-	long (*fuword)(const void *);
-	int (*suword)(void *, long);
-	int (*suword32)(void *, int);
+	int (*fubyte)(const uint8_t *);		/* returns int for -1 err */
+	int (*subyte)(uint8_t *, uint8_t);
+	int32_t (*fuword32)(const uint32_t *);
+	int64_t (*fuword64)(const uint64_t *);
+	int (*suword64)(uint64_t *, uint64_t);
+	int (*suword32)(uint32_t *, int);
 };
 
 #define PMAP_FLAG_SIMPLE	0x00000001

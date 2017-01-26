@@ -132,6 +132,13 @@ vmm_exit_vmm(void *dummy __unused)
 {
 }
 
+/*
+ * Swap the 64 bit value between *dstaddr and *srcaddr in a pmap-safe manner.
+ *
+ * v = *srcaddr
+ * v = swap(dstaddr, v)
+ * *dstaddr = v
+ */
 int
 sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 {
@@ -139,7 +146,6 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	cpulock_t olock;
 	cpulock_t nlock;
 	cpumask_t mask;
-	long val;
 	struct proc *p = curproc;
 
 	if (p->p_vmm == NULL)
@@ -195,9 +201,10 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	/*
 	 * Make the requested modification, wakeup any waiters.
 	 */
-	if (uap->srcaddr) {
-		copyin(uap->srcaddr, &val, sizeof(long));
-		copyout(&val, uap->dstaddr, sizeof(long));
+	if (uap->dstaddr) {
+		long v = fuword64(uap->srcaddr);
+		v = swapu64(uap->dstaddr, v);
+		suword64(uap->srcaddr, v);
 	}
 
 	/*

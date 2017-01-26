@@ -907,7 +907,7 @@ __elfN(dragonfly_fixup)(register_t **stack_base, struct image_params *imgp)
 	imgp->auxargs = NULL;
 
 	base--;
-	suword(base, (long)imgp->args->argc);
+	suword64(base, (long)imgp->args->argc);
 	*stack_base = (register_t *)base;
 	return (0);
 }

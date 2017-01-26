@@ -382,13 +382,7 @@ sys_profil(struct profil_args *uap)
 /*
  * Collect user-level profiling statistics; called on a profiling tick,
  * when a process is running in user-mode.  This routine may be called
- * from an interrupt context.  We try to update the user profiling buffers
- * cheaply with fuswintr() and suswintr().  If that fails, we revert to
- * an AST that will vector us to trap() with a context in which copyin
- * and copyout will work.  Trap will then call addupc_task().
- *
- * XXX fuswintr() and suswintr() never worked (always returnde -1), remove
- * them.  It's just a bad idea to try to do this from a hard interrupt.
+ * from an interrupt context.
  *
  * Note that we may (rarely) not get around to the AST soon enough, and
  * lose profile ticks when the next tick overwrites this one, but in this

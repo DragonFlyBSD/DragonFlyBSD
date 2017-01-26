@@ -257,11 +257,12 @@ extern int std_copyinstr (const void *udaddr, void *kaddr, size_t len,
     size_t *lencopied);
 extern int std_copyin (const void *udaddr, void *kaddr, size_t len);
 extern int std_copyout (const void *kaddr, void *udaddr, size_t len);
-extern int std_fubyte (const void *base);
-extern int std_subyte (void *base, int byte);
-extern long std_fuword (const void *base);
-extern int std_suword (void *base, long word);
-extern int std_suword32 (void *base, int word);
+extern int std_fubyte (const uint8_t *base);
+extern int std_subyte (uint8_t *base, uint8_t byte);
+extern int32_t std_fuword32 (const uint32_t *base);
+extern int64_t std_fuword64 (const uint64_t *base);
+extern int std_suword64 (uint64_t *base, uint64_t word);
+extern int std_suword32 (uint32_t *base, int word);
 
 static void pv_hold(pv_entry_t pv);
 static int _pv_hold_try(pv_entry_t pv
@@ -1758,8 +1759,9 @@ pmap_pinit_defaults(struct pmap *pmap)
 	pmap->copyout = std_copyout;
 	pmap->fubyte = std_fubyte;
 	pmap->subyte = std_subyte;
-	pmap->fuword = std_fuword;
-	pmap->suword = std_suword;
+	pmap->fuword32 = std_fuword32;
+	pmap->fuword64 = std_fuword64;
+	pmap->suword64 = std_suword64;
 	pmap->suword32 = std_suword32;
 }
 /*

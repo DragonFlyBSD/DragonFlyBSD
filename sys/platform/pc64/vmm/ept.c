@@ -283,9 +283,9 @@ ept_copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
 
 
 static int
-ept_fubyte(const void *base)
+ept_fubyte(const uint8_t *base)
 {
-	unsigned char c = 0;
+	uint8_t c = 0;
 
 	if (ept_copyin(base, &c, 1) == 0)
 		return((int)c);
@@ -293,7 +293,7 @@ ept_fubyte(const void *base)
 }
 
 static int
-ept_subyte(void *base, int byte)
+ept_subyte(uint8_t *base, uint8_t byte)
 {
 	unsigned char c = byte;
 
@@ -302,10 +302,20 @@ ept_subyte(void *base, int byte)
 	return(-1);
 }
 
-static long
-ept_fuword(const void *base)
+static int32_t
+ept_fuword32(const uint32_t *base)
 {
-	long v;
+	uint32_t v;
+
+	if (ept_copyin(base, &v, sizeof(v)) == 0)
+		return(v);
+	return(-1);
+}
+
+static int64_t
+ept_fuword64(const uint64_t *base)
+{
+	uint64_t v;
 
 	if (ept_copyin(base, &v, sizeof(v)) == 0)
 		return(v);
@@ -313,7 +323,7 @@ ept_fuword(const void *base)
 }
 
 static int
-ept_suword(void *base, long word)
+ept_suword64(uint64_t *base, uint64_t word)
 {
 	if (ept_copyout(&word, base, sizeof(word)) == 0)
 		return(0);
@@ -321,7 +331,7 @@ ept_suword(void *base, long word)
 }
 
 static int
-ept_suword32(void *base, int word)
+ept_suword32(uint32_t *base, int word)
 {
 	if (ept_copyout(&word, base, sizeof(word)) == 0)
 		return(0);
@@ -344,7 +354,8 @@ vmx_ept_pmap_pinit(pmap_t pmap)
 	pmap->copyout = ept_copyout;
 	pmap->fubyte = ept_fubyte;
 	pmap->subyte = ept_subyte;
-	pmap->fuword = ept_fuword;
-	pmap->suword = ept_suword;
+	pmap->fuword32 = ept_fuword32;
+	pmap->fuword64 = ept_fuword64;
+	pmap->suword64 = ept_suword64;
 	pmap->suword32 = ept_suword32;
 }

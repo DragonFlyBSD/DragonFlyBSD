@@ -328,9 +328,9 @@ RetryFault:
 	 * are initialized but not otherwise referenced or locked.
 	 *
 	 * NOTE!  vm_map_lookup will try to upgrade the fault_type to
-	 * VM_FAULT_WRITE if the map entry is a virtual page table and also
-	 * writable, so we can set the 'A'accessed bit in the virtual page
-	 * table entry.
+	 *	  VM_FAULT_WRITE if the map entry is a virtual page table
+	 *	  and also writable, so we can set the 'A'accessed bit in
+	 *	  the virtual page table entry.
 	 */
 	fs.map = map;
 	result = vm_map_lookup(&fs.map, vaddr, fault_type,
@@ -719,7 +719,7 @@ vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type, int *errorp)
  * updated.
  *
  * The returned page will be properly dirtied if VM_PROT_WRITE was specified,
- * and marked PG_REFERENCED as well.
+ * and marked PG_REFERENCED.  The page is not busied on return, only held.
  *
  * If the page cannot be faulted writable and VM_PROT_WRITE was specified, an
  * error will be returned.
@@ -779,8 +779,9 @@ RetryFault:
 	 * are initialized but not otherwise referenced or locked.
 	 *
 	 * NOTE!  vm_map_lookup will upgrade the fault_type to VM_FAULT_WRITE
-	 * if the map entry is a virtual page table and also writable,
-	 * so we can set the 'A'accessed bit in the virtual page table entry.
+	 *	  if the map entry is a virtual page table and also writable,
+	 *	  so we can set the 'A'accessed bit in the virtual page table
+	 *	  entry.
 	 */
 	fs.map = map;
 	result = vm_map_lookup(&fs.map, vaddr, fault_type,
@@ -1237,29 +1238,44 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		lwb = lwbuf_alloc(fs->m, &lwb_cache);
 		ptep = ((vpte_t *)lwbuf_kva(lwb) +
 		        ((*pindex >> vshift) & VPTE_PAGE_MASK));
-		vpte = *ptep;
+		vm_page_activate(fs->m);
 
 		/*
-		 * Page table write-back.  If the vpte is valid for the
-		 * requested operation, do a write-back to the page table.
+		 * Page table write-back - entire operation including
+		 * validation of the pte must be atomic to avoid races
+		 * against the vkernel changing the pte.
+		 *
+		 * If the vpte is valid for the* requested operation, do
+		 * a write-back to the page table.
 		 *
 		 * XXX VPTE_M is not set properly for page directory pages.
 		 * It doesn't get set in the page directory if the page table
 		 * is modified during a read access.
 		 */
-		vm_page_activate(fs->m);
-		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
-		    (vpte & VPTE_RW)) {
-			if ((vpte & (VPTE_M|VPTE_A)) != (VPTE_M|VPTE_A)) {
-				atomic_set_long(ptep, VPTE_M | VPTE_A);
-				vm_page_dirty(fs->m);
+		for (;;) {
+			vpte_t nvpte;
+
+			vpte = *ptep;
+			cpu_ccfence();
+			nvpte = vpte;
+
+			if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
+			    (vpte & VPTE_RW)) {
+				nvpte |= VPTE_M | VPTE_A;
 			}
-		}
-		if ((fault_type & VM_PROT_READ) && (vpte & VPTE_V)) {
-			if ((vpte & VPTE_A) == 0) {
-				atomic_set_long(ptep, VPTE_A);
-				vm_page_dirty(fs->m);
+			if ((fault_type & VM_PROT_READ) && (vpte & VPTE_V)) {
+				nvpte |= VPTE_A;
 			}
+			if (vpte == nvpte)
+				break;
+			if (atomic_cmpset_long(ptep, vpte, nvpte) == 0)
+				continue;
+			/*
+			 * Success
+			 */
+			if ((vpte ^ nvpte) & (VPTE_M | VPTE_A))
+				vm_page_dirty(fs->m);
+			break;
 		}
 		lwbuf_free(lwb);
 		vm_page_flag_set(fs->m, PG_REFERENCED);
@@ -1267,10 +1283,10 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		fs->m = NULL;
 		cleanup_successful_fault(fs);
 	}
+
 	/*
 	 * Combine remaining address bits with the vpte.
 	 */
-	/* JG how many bits from each? */
 	*pindex = ((vpte & VPTE_FRAME) >> PAGE_SHIFT) +
 		  (*pindex & ((1L << vshift) - 1));
 	return (KERN_SUCCESS);
@@ -1320,9 +1336,9 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 	vm_object_pip_add(fs->first_object, 1);
 
 	/* 
-	 * If a read fault occurs we try to make the page writable if
-	 * possible.  There are three cases where we cannot make the
-	 * page mapping writable:
+	 * If a read fault occurs we try to upgrade the page protection
+	 * and make it also writable if possible.  There are three cases
+	 * where we cannot make the page mapping writable:
 	 *
 	 * (1) The mapping is read-only or the VM object is read-only,
 	 *     fs->prot above will simply not have VM_PROT_WRITE set.

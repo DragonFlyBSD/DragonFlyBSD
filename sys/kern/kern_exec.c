@@ -358,7 +358,7 @@ interpret:
 	if (p->p_sysent->sv_fixup && imgp->resident == 0)
 		(*p->p_sysent->sv_fixup)(&stack_base, imgp);
 	else
-		suword(--stack_base, imgp->args->argc);
+		suword64(--stack_base, imgp->args->argc);
 
 	/*
 	 * For security and other reasons, the file descriptor table cannot
@@ -901,7 +901,8 @@ exec_copyin_args(struct image_args *args, char *fname,
 	if (argv == NULL)
 		error = EFAULT;
 	if (error == 0) {
-		while ((argp = (caddr_t)(intptr_t)fuword(argv++)) != NULL) {
+		while ((argp = (caddr_t)(intptr_t)
+			       fuword64((uintptr_t *)argv++)) != NULL) {
 			if (argp == (caddr_t)-1) {
 				error = EFAULT;
 				break;
@@ -936,7 +937,8 @@ exec_copyin_args(struct image_args *args, char *fname,
 	 * extract environment strings.  envv may be NULL.
 	 */
 	if (envv && error == 0) {
-		while ((envp = (caddr_t) (intptr_t) fuword(envv++))) {
+		while ((envp = (caddr_t)(intptr_t)
+			       fuword64((uintptr_t *)envv++))) {
 			if (envp == (caddr_t) -1) {
 				error = EFAULT;
 				break;
@@ -1068,37 +1070,37 @@ exec_copyout_strings(struct image_params *imgp)
 	/*
 	 * Fill in "ps_strings" struct for ps, w, etc.
 	 */
-	suword(&arginfo->ps_argvstr, (long)(intptr_t)vectp);
-	suword32(&arginfo->ps_nargvstr, argc);
+	suword64((void *)&arginfo->ps_argvstr, (uint64_t)(intptr_t)vectp);
+	suword32((void *)&arginfo->ps_nargvstr, argc);
 
 	/*
 	 * Fill in argument portion of vector table.
 	 */
 	for (; argc > 0; --argc) {
-		suword(vectp++, (long)(intptr_t)destp);
+		suword64((void *)vectp++, (uintptr_t)destp);
 		while (*stringp++ != 0)
 			destp++;
 		destp++;
 	}
 
 	/* a null vector table pointer separates the argp's from the envp's */
-	suword(vectp++, 0);
+	suword64((void *)vectp++, 0);
 
-	suword(&arginfo->ps_envstr, (long)(intptr_t)vectp);
-	suword32(&arginfo->ps_nenvstr, envc);
+	suword64((void *)&arginfo->ps_envstr, (uintptr_t)vectp);
+	suword32((void *)&arginfo->ps_nenvstr, envc);
 
 	/*
 	 * Fill in environment portion of vector table.
 	 */
 	for (; envc > 0; --envc) {
-		suword(vectp++, (long)(intptr_t)destp);
+		suword64((void *)vectp++, (uintptr_t)destp);
 		while (*stringp++ != 0)
 			destp++;
 		destp++;
 	}
 
 	/* end of vector table is a null pointer */
-	suword(vectp, 0);
+	suword64((void *)vectp, 0);
 
 	return (stack_base);
 }

@@ -4982,7 +4982,7 @@ sppp_params(struct sppp *sp, u_long cmd, void *data)
 	 * Check the cmd word first before attempting to fetch all the
 	 * data.
 	 */
-	if ((subcmd = fuword(ifr->ifr_data)) == -1) {
+	if ((subcmd = fuword64(ifr->ifr_data)) == -1) {
 		rv = EFAULT;
 		goto quit;
 	}

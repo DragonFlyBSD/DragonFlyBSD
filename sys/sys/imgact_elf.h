@@ -36,7 +36,7 @@
 
 #ifdef _KERNEL
 
-#define	AUXARGS_ENTRY(pos, id, val) {suword(pos++, id); suword(pos++, val);}
+#define	AUXARGS_ENTRY(pos, id, val) {suword64(pos++, id); suword64(pos++, val);}
 
 struct lwp;
 struct file;

@@ -644,9 +644,12 @@ start_init(void *dummy, struct trapframe *frame)
 		 * Move out the arg pointers.
 		 */
 		uap = (char **)((intptr_t)ucp & ~(sizeof(intptr_t)-1));
-		(void)suword((caddr_t)--uap, (long)0);	/* terminator */
-		(void)suword((caddr_t)--uap, (long)(intptr_t)arg1);
-		(void)suword((caddr_t)--uap, (long)(intptr_t)arg0);
+
+		/* terminator */
+		suword64((uint64_t *)(caddr_t)--uap, (uint64_t)0);
+
+		suword64((uint64_t *)(caddr_t)--uap, (uint64_t)(intptr_t)arg1);
+		suword64((uint64_t *)(caddr_t)--uap, (uint64_t)(intptr_t)arg0);
 
 		/*
 		 * Point at the arguments.

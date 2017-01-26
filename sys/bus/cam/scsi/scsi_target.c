@@ -562,12 +562,12 @@ targwrite(struct dev_write_args *ap)
 				  ("write - uiomove failed (%d)\n", error));
 			break;
 		}
-		priority = fuword(&user_ccb->ccb_h.pinfo.priority);
+		priority = fuword32(&user_ccb->ccb_h.pinfo.priority);
 		if (priority == -1) {
 			error = EINVAL;
 			break;
 		}
-		func_code = fuword(&user_ccb->ccb_h.func_code);
+		func_code = fuword32(&user_ccb->ccb_h.func_code);
 		switch (func_code) {
 		case XPT_ACCEPT_TARGET_IO:
 		case XPT_IMMED_NOTIFY:
@@ -661,8 +661,8 @@ targstart(struct cam_periph *periph, union ccb *start_ccb)
 			xpt_print(periph->path,
 			    "targsendccb failed, err %d\n", error);
 			xpt_release_ccb(start_ccb);
-			suword(&descr->user_ccb->ccb_h.status,
-			       CAM_REQ_CMP_ERR);
+			suword32(&descr->user_ccb->ccb_h.status,
+			         CAM_REQ_CMP_ERR);
 			crit_enter();
 			TAILQ_INSERT_TAIL(&softc->abort_queue, descr, tqe);
 			crit_exit();
@@ -691,10 +691,10 @@ targusermerge(struct targ_softc *softc, struct targ_cmd_descr *descr,
 	 * preserved, the rest we get from the user ccb. (See xpt_merge_ccb)
 	 */
 	xpt_setup_ccb(k_ccbh, softc->path, descr->priority);
-	k_ccbh->retry_count = fuword(&u_ccbh->retry_count);
+	k_ccbh->retry_count = fuword32(&u_ccbh->retry_count);
 	k_ccbh->func_code = descr->func_code;
-	k_ccbh->flags = fuword(&u_ccbh->flags);
-	k_ccbh->timeout = fuword(&u_ccbh->timeout);
+	k_ccbh->flags = fuword32(&u_ccbh->flags);
+	k_ccbh->timeout = fuword32(&u_ccbh->timeout);
 	ccb_len = targccblen(k_ccbh->func_code) - sizeof(struct ccb_hdr);
 	error = copyin(u_ccbh + 1, k_ccbh + 1, ccb_len);
 	if (error != 0) {
@@ -912,7 +912,7 @@ targread(struct dev_read_args *ap)
 		CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH,
 			  ("targread aborted descr %p (%p)\n",
 			  user_descr, user_ccb));
-		suword(&user_ccb->ccb_h.status, CAM_REQ_ABORTED);
+		suword32(&user_ccb->ccb_h.status, CAM_REQ_ABORTED);
 		cam_periph_unlock(softc->periph);
 		error = uiomove((caddr_t)&user_ccb, sizeof(user_ccb), uio);
 		cam_periph_lock(softc->periph);

@@ -25,31 +25,37 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 }
 
 int
-fubyte(const void *base)
+fubyte(const uint8_t *base)
 {
 	return curthread->td_proc->p_vmspace->vm_pmap.fubyte(base);
 }
 
 int
-subyte (void *base, int byte)
+subyte(uint8_t *base, uint8_t byte)
 {
 	return curthread->td_proc->p_vmspace->vm_pmap.subyte(base, byte);
 }
 
-long
-fuword(const void *base)
+int32_t
+fuword32(const uint32_t *base)
 {
-	return curthread->td_proc->p_vmspace->vm_pmap.fuword(base);
+	return curthread->td_proc->p_vmspace->vm_pmap.fuword32(base);
+}
+
+int64_t
+fuword64(const uint64_t *base)
+{
+	return curthread->td_proc->p_vmspace->vm_pmap.fuword64(base);
 }
 
 int
-suword(void *base, long word)
+suword64(uint64_t *base, uint64_t word)
 {
-	return curthread->td_proc->p_vmspace->vm_pmap.suword(base, word);
+	return curthread->td_proc->p_vmspace->vm_pmap.suword64(base, word);
 }
 
 int
-suword32(void *base, int word)
+suword32(uint32_t *base, int word)
 {
 	return curthread->td_proc->p_vmspace->vm_pmap.suword32(base, word);
 }
