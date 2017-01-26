@@ -1791,9 +1791,16 @@ vm_pageout_free_page_calc(vm_size_t count)
 
 	/*
 	 * Make sure the vmmeter slop can't blow out our global minimums.
+	 *
+	 * However, to accomodate weird configurations (vkernels with many
+	 * cpus and little memory, or artifically reduced hw.physmem), do
+	 * not allow v_free_min to exceed 1/20 of ram or the pageout demon
+	 * will go out of control.
 	 */
 	if (vmstats.v_free_min < VMMETER_SLOP_COUNT * ncpus * 10)
 		vmstats.v_free_min = VMMETER_SLOP_COUNT * ncpus * 10;
+	if (vmstats.v_free_min > vmstats.v_page_count / 20)
+		vmstats.v_free_min = vmstats.v_page_count / 20;
 
 	vmstats.v_free_reserved = vmstats.v_free_min * 4 / 8 + 7;
 	vmstats.v_free_severe = vmstats.v_free_min * 4 / 8 + 0;
@@ -1836,9 +1843,11 @@ vm_pageout_thread(void)
 	 * is signalled and run to free more pages.
 	 */
 	if (vmstats.v_free_count > 6144)
-		vmstats.v_free_target = 4 * vmstats.v_free_min + vmstats.v_free_reserved;
+		vmstats.v_free_target = 4 * vmstats.v_free_min +
+					vmstats.v_free_reserved;
 	else
-		vmstats.v_free_target = 2 * vmstats.v_free_min + vmstats.v_free_reserved;
+		vmstats.v_free_target = 2 * vmstats.v_free_min +
+					vmstats.v_free_reserved;
 
 	/*
 	 * NOTE: With the new buffer cache b_act_count we want the default
