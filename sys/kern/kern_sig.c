@@ -1276,12 +1276,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * we don't want to wait until it reaches userret!
 		 */
 		if (prop & SA_STOP) {
-			lwkt_gettoken(&p->p_token);
 			if (lwkt_preempted_proc() == NULL ||
 			    lwkt_preempted_proc()->lwp_proc != p) {
 				SIGDELSET_ATOMIC(p->p_siglist, sig);
 			}
-			lwkt_reltoken(&p->p_token);
 		}
 
 		/*
@@ -1290,6 +1288,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * the process is continued a wakeup(p) will be issued which
 		 * will wakeup any threads sleeping in tstop().
 		 */
+		lwkt_reltoken(&p->p_token);
 		goto out;
 		/* NOTREACHED */
 	}
@@ -1309,9 +1308,11 @@ active_process:
 				lwkt_reltoken(&lp->lwp_token);
 				LWPRELE(lp);
 				lp = NULL;
+				/* maintain proc token */
 			} else {
 				lwkt_token_swap();
 				lwkt_reltoken(&p->p_token);
+				/* maintain lp token */
 			}
 		}
 	}
