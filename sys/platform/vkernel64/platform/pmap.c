@@ -278,6 +278,25 @@ pmap_pde_to_pte(pd_entry_t *pde, vm_offset_t va)
 	return (&pte[pmap_pte_index(va)]);
 }
 
+/*
+ * Hold pt_m for page table scans to prevent it from getting reused out
+ * from under us across blocking conditions in the body of the loop.
+ */
+static __inline
+vm_page_t
+pmap_hold_pt_page(pd_entry_t *pde, vm_offset_t va)
+{
+	pt_entry_t pte;
+	vm_page_t pt_m;
+
+	pte = (pt_entry_t)*pde;
+	KKASSERT(pte != 0);
+	pt_m = PHYS_TO_VM_PAGE(pte & VPTE_FRAME);
+	vm_page_hold(pt_m);
+
+	return pt_m;
+}
+
 /* Return a pointer to the PT slot that corresponds to a VA */
 static __inline pt_entry_t *
 pmap_pte(pmap_t pmap, vm_offset_t va)
@@ -1921,6 +1940,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	pdp_entry_t *pdpe;
 	pd_entry_t ptpaddr, *pde;
 	pt_entry_t *pte;
+	vm_page_t pt_m;
 
 	if (pmap == NULL)
 		return;
@@ -2002,13 +2022,15 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		/*
 		 * NOTE: pmap_remove_pte() can block.
 		 */
+		pt_m = pmap_hold_pt_page(pde, sva);
 		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
-		    sva += PAGE_SIZE) {
-			if (*pte == 0)
-				continue;
-			if (pmap_remove_pte(pmap, pte, sva))
-				break;
+		     sva += PAGE_SIZE) {
+			if (*pte) {
+				if (pmap_remove_pte(pmap, pte, sva))
+					break;
+			}
 		}
+		vm_page_unhold(pt_m);
 	}
 	vm_object_drop(pmap->pm_pteobj);
 }
@@ -2177,6 +2199,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	pdp_entry_t *pdpe;
 	pd_entry_t ptpaddr, *pde;
 	pt_entry_t *pte;
+	vm_page_t pt_m;
 
 	/* JG review for NX */
 
@@ -2240,6 +2263,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		if (va_next > eva)
 			va_next = eva;
 
+		pt_m = pmap_hold_pt_page(pde, sva);
 		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
 		    sva += PAGE_SIZE) {
 			pt_entry_t pbits;
@@ -2271,6 +2295,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 				pbits = pmap_setro_pte(pte, pmap, sva);
 			}
 		}
+		vm_page_unhold(pt_m);
 	}
 	vm_object_drop(pmap->pm_pteobj);
 }
@@ -2326,9 +2351,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	}
 
 	/*
-	 * Deal with races on the original mapping (though don't worry
-	 * about VPTE_A races) by cleaning it.  This will force a fault
-	 * if an attempt is made to write to the page.
+	 * Deal with races on the original mapping by cleaning it, which
+	 * turns of PG_RW and gives us a definitive VPTE_M status.  We
+	 * are primarily concerned about VPTE_M races.
 	 */
 	pa = VM_PAGE_TO_PHYS(m);
 	origpte = pmap_clean_pte(pte, pmap, va);
@@ -2336,6 +2361,13 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 
 	if (origpte & VPTE_PS)
 		panic("pmap_enter: attempted pmap_enter on 2MB page");
+
+	if ((origpte & (VPTE_MANAGED|VPTE_M)) == (VPTE_MANAGED|VPTE_M)) {
+		if (pmap_track_modified(pmap, va)) {
+			vm_page_t om = PHYS_TO_VM_PAGE(opa);
+			vm_page_dirty(om);
+		}
+	}
 
 	/*
 	 * Mapping has not changed, must be protection or wiring change.
@@ -2357,12 +2389,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * so we go ahead and sense modify status.
 		 */
 		if (origpte & VPTE_MANAGED) {
-			if ((origpte & VPTE_M) &&
-			    pmap_track_modified(pmap, va)) {
-				vm_page_t om;
-				om = PHYS_TO_VM_PAGE(opa);
-				vm_page_dirty(om);
-			}
 			pa |= VPTE_MANAGED;
 			KKASSERT(m->flags & PG_MAPPED);
 		}
@@ -2951,8 +2977,12 @@ pmap_clearbit(vm_page_t m, int bit)
 				 */
 				pbits = pmap_clean_pte(pte, pv->pv_pmap,
 						       pv->pv_va);
-				if (pbits & VPTE_M)
-					vm_page_dirty(m);
+				if (pbits & VPTE_M) {
+					if (pmap_track_modified(pv->pv_pmap,
+								pv->pv_va)) {
+						vm_page_dirty(m);
+					}
+				}
 			} else if (bit == VPTE_M) {
 				/*
 				 * We do not have to make the page read-only
@@ -2973,6 +3003,7 @@ pmap_clearbit(vm_page_t m, int bit)
 				 * the dirty status of the VM page.
 				 */
 				pmap_clean_pte(pte, pv->pv_pmap, pv->pv_va);
+				panic("shouldn't be called");
 			} else {
 				/*
 				 * We've been asked to clear bits that do
@@ -3320,6 +3351,7 @@ pmap_pgscan(struct pmap_pgscan_info *pginfo)
 	pdp_entry_t *pdpe;
 	pd_entry_t ptpaddr, *pde;
 	pt_entry_t *pte;
+	vm_page_t pt_m;
 	int stop = 0;
 
 	vm_object_hold(pmap->pm_pteobj);
@@ -3374,6 +3406,7 @@ pmap_pgscan(struct pmap_pgscan_info *pginfo)
 		if (va_next > eva)
 			va_next = eva;
 
+		pt_m = pmap_hold_pt_page(pde, sva);
 		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
 		    sva += PAGE_SIZE) {
 			vm_page_t m;
@@ -3389,6 +3422,7 @@ pmap_pgscan(struct pmap_pgscan_info *pginfo)
 					stop = 1;
 			}
 		}
+		vm_page_unhold(pt_m);
 	}
 	vm_object_drop(pmap->pm_pteobj);
 }

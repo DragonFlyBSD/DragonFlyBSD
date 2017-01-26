@@ -132,8 +132,7 @@ pmap_inval_cpu(struct pmap *pmap, vm_offset_t va, size_t bytes)
  */
 static __inline
 void
-guest_sync_addr(struct pmap *pmap,
-		volatile vpte_t *dst_ptep, volatile vpte_t *src_ptep)
+guest_sync_addr(struct pmap *pmap, volatile vpte_t *ptep, vpte_t *srcv)
 {
 	globaldata_t gd = mycpu;
 	cpulock_t olock;
@@ -164,12 +163,11 @@ guest_sync_addr(struct pmap *pmap,
 	 */
 	if (CPUMASK_TESTZERO(pmap->pm_active) ||
 	    CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
-		if (dst_ptep && src_ptep)
-			*dst_ptep = *src_ptep;
+		if (ptep)
+			*srcv = atomic_swap_long(ptep, *srcv);
 		vmm_cpu_invltlb();
 	} else {
-		vmm_guest_sync_addr(__DEVOLATILE(void *, dst_ptep),
-				    __DEVOLATILE(void *, src_ptep));
+		vmm_guest_sync_addr(__DEVOLATILE(void *, ptep), srcv);
 	}
 
 	/*
@@ -196,8 +194,8 @@ pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	vpte_t pte;
 
 	if (vmm_enabled == 0) {
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 		atomic_swap_long(ptep, 0);
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 	} else {
 		pte = 0;
 		guest_sync_addr(pmap, ptep, &pte);
@@ -225,11 +223,11 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 void
 pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
+	atomic_swap_long(ptep, 0);
 	if (vmm_enabled)
 		vmm_cpu_invltlb();
 	else
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
-	atomic_swap_long(ptep, 0);
 }
 
 /*
@@ -243,8 +241,8 @@ pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	vpte_t pte;
 
 	if (vmm_enabled == 0) {
-		pmap_inval_cpu(pmap, va, SEG_SIZE);
 		atomic_swap_long(ptep, 0);
+		pmap_inval_cpu(pmap, va, SEG_SIZE);
 	} else if (CPUMASK_TESTMASK(pmap->pm_active,
 				    mycpu->gd_other_cpus) == 0) {
 		atomic_swap_long(ptep, 0);
@@ -283,14 +281,15 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_RW);
 		if (vmm_enabled == 0) {
+			atomic_clear_long(ptep, VPTE_RW);
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);
-			pte = *ptep;
+			pte = *ptep | (pte & VPTE_RW);
+			atomic_clear_long(ptep, VPTE_M);
 		} else {
-			guest_sync_addr(pmap, &pte, ptep);
+			pte &= ~(VPTE_RW | VPTE_M);
+			guest_sync_addr(pmap, ptep, &pte);
 		}
-		atomic_clear_long(ptep, VPTE_RW|VPTE_M);
 	}
 	return(pte);
 }
@@ -306,12 +305,14 @@ pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	if (pte & VPTE_V) {
 		atomic_clear_long(ptep, VPTE_RW);
 		if (vmm_enabled == 0) {
-			pmap_inval_cpu(pmap, va, SEG_SIZE);
-			pte = *ptep;
+			atomic_clear_long(ptep, VPTE_RW);
+			pmap_inval_cpu(pmap, va, PAGE_SIZE);
+			pte = *ptep | (pte & VPTE_RW);
+			atomic_clear_long(ptep, VPTE_M);
 		} else {
-			guest_sync_addr(pmap, &pte, ptep);
+			pte &= ~(VPTE_RW | VPTE_M);
+			guest_sync_addr(pmap, ptep, &pte);
 		}
-		atomic_clear_long(ptep, VPTE_RW|VPTE_M);
 	}
 	return(pte);
 }
@@ -328,17 +329,16 @@ vpte_t
 pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
 	vpte_t pte;
-	vpte_t npte;
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_RW);
 		if (vmm_enabled == 0) {
+			atomic_clear_long(ptep, VPTE_RW);
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);
 			pte |= *ptep & VPTE_M;
 		} else {
-			guest_sync_addr(pmap, &npte, ptep);
-			pte |= npte & VPTE_M;
+			pte &= ~VPTE_RW;
+			guest_sync_addr(pmap, ptep, &pte);
 		}
 	}
 	return(pte);
@@ -355,20 +355,19 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 			vm_offset_t va)
 {
 	vpte_t pte;
-	vpte_t npte;
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_RW);
 		if (vmm_enabled == 0) {
+			pte = atomic_swap_long(ptep, 0);
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);
-			pte = (pte & VPTE_RW) | *ptep;
 		} else {
-			guest_sync_addr(pmap, &npte, ptep);
-			pte = (pte & VPTE_RW) | npte;
+			pte = 0;
+			guest_sync_addr(pmap, ptep, &pte);
 		}
+	} else {
+		pte = atomic_swap_long(ptep, 0);
 	}
-	atomic_swap_long(ptep, 0);
 
 	return(pte);
 }

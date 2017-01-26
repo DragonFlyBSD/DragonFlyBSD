@@ -42,21 +42,18 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-/*
- * A bcopy that works dring low level boot, before FP is working
- */
-u_long
-casuword(volatile u_long *p, u_long oldval, u_long newval)
+uint64_t
+casu64(volatile uint64_t *p, uint64_t oldval, uint64_t newval)
 {
 	struct vmspace *vm = curproc->p_vmspace;
 	vm_offset_t kva;
 	vm_page_t m;
-	volatile u_long *dest;
-	u_long res;
+	volatile uint64_t *dest;
+	uint64_t res;
 	int error;
 
 	/* XXX No idea how to handle this case in a simple way, just abort */
-	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(u_long))
+	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
 		return -1;
 
 	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
@@ -66,7 +63,7 @@ casuword(volatile u_long *p, u_long oldval, u_long newval)
 		return -1;
 
 	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
-	dest = (u_long *)(kva + ((vm_offset_t)p & PAGE_MASK));
+	dest = (uint64_t *)(kva + ((vm_offset_t)p & PAGE_MASK));
 	res = oldval;
 	__asm __volatile(MPLOCKED "cmpxchgq %2,%1; " \
 			 : "+a" (res), "=m" (*dest) \
@@ -74,6 +71,99 @@ casuword(volatile u_long *p, u_long oldval, u_long newval)
 			 : "memory");
 
 	if (res == oldval)
+		vm_page_dirty(m);
+	vm_page_unhold(m);
+
+	return res;
+}
+
+u_int
+casu32(volatile u_int *p, u_int oldval, u_int newval)
+{
+	struct vmspace *vm = curproc->p_vmspace;
+	vm_offset_t kva;
+	vm_page_t m;
+	volatile u_int *dest;
+	u_int res;
+	int error;
+
+	/* XXX No idea how to handle this case in a simple way, just abort */
+	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(u_int))
+		return -1;
+
+	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
+			  VM_PROT_READ|VM_PROT_WRITE,
+			  VM_FAULT_NORMAL, &error);
+	if (error)
+		return -1;
+
+	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+	dest = (u_int *)(kva + ((vm_offset_t)p & PAGE_MASK));
+	res = oldval;
+	__asm __volatile(MPLOCKED "cmpxchgl %2,%1; " \
+			 : "+a" (res), "=m" (*dest) \
+			 : "r" (newval), "m" (*dest) \
+			 : "memory");
+
+	if (res == oldval)
+		vm_page_dirty(m);
+	vm_page_unhold(m);
+
+	return res;
+}
+
+uint64_t
+swapu64(volatile uint64_t *p, uint64_t val)
+{
+	struct vmspace *vm = curproc->p_vmspace;
+	vm_offset_t kva;
+	vm_page_t m;
+	uint64_t res;
+	int error;
+
+	/* XXX No idea how to handle this case in a simple way, just abort */
+	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
+		return -1;
+
+	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
+			  VM_PROT_READ|VM_PROT_WRITE,
+			  VM_FAULT_NORMAL, &error);
+	if (error)
+		return -1;
+
+	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+	res = atomic_swap_long((uint64_t *)(kva + ((vm_offset_t)p & PAGE_MASK)),
+			       val);
+	if (res != val)
+		vm_page_dirty(m);
+	vm_page_unhold(m);
+
+	return res;
+}
+
+uint32_t
+swapu32(volatile uint32_t *p, uint32_t val)
+{
+	struct vmspace *vm = curproc->p_vmspace;
+	vm_offset_t kva;
+	vm_page_t m;
+	u_int res;
+	int error;
+
+	/* XXX No idea how to handle this case in a simple way, just abort */
+	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
+		return -1;
+
+	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
+			  VM_PROT_READ|VM_PROT_WRITE,
+			  VM_FAULT_NORMAL, &error);
+	if (error)
+		return -1;
+
+	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+	res = atomic_swap_int((u_int *)(kva + ((vm_offset_t)p & PAGE_MASK)),
+			       val);
+	if (res != val)
 		vm_page_dirty(m);
 	vm_page_unhold(m);
 
@@ -221,9 +311,9 @@ copyout(const void *kaddr, void *udaddr, size_t len)
  * Fetch the byte at the specified user address.  Returns -1 on failure.
  */
 int
-fubyte(const void *base)
+fubyte(const uint8_t *base)
 {
-	unsigned char c;
+	uint8_t c;
 
 	if (copyin(base, &c, 1) == 0)
 		return((int)c);
@@ -234,9 +324,9 @@ fubyte(const void *base)
  * Store a byte at the specified user address.  Returns -1 on failure.
  */
 int
-subyte (void *base, int byte)
+subyte(uint8_t *base, uint8_t byte)
 {
-	unsigned char c = byte;
+	uint8_t c = byte;
 
 	if (copyout(&c, base, 1) == 0)
 		return(0);
@@ -246,10 +336,23 @@ subyte (void *base, int byte)
 /*
  * Fetch a word (integer, 32 bits) from user space
  */
-long
-fuword(const void *base)
+int32_t
+fuword32(const uint32_t *base)
 {
-	long v;
+	uint32_t v;
+
+	if (copyin(base, &v, sizeof(v)) == 0)
+		return(v);
+	return(-1);
+}
+
+/*
+ * Fetch a word (integer, 32 bits) from user space
+ */
+int64_t
+fuword64(const uint64_t *base)
+{
+	uint64_t v;
 
 	if (copyin(base, &v, sizeof(v)) == 0)
 		return(v);
@@ -260,7 +363,7 @@ fuword(const void *base)
  * Store a word (integer, 32 bits) to user space
  */
 int
-suword(void *base, long word)
+suword64(uint64_t *base, uint64_t word)
 {
 	if (copyout(&word, base, sizeof(word)) == 0)
 		return(0);
@@ -268,35 +371,9 @@ suword(void *base, long word)
 }
 
 int
-suword32(void *base, int word)
+suword32(uint32_t *base, int word)
 {
 	if (copyout(&word, base, sizeof(word)) == 0)
-		return(0);
-	return(-1);
-}
-
-/*
- * Fetch an short word (16 bits) from user space
- */
-int
-fusword(void *base)
-{
-	unsigned short sword;
-
-	if (copyin(base, &sword, sizeof(sword)) == 0)
-		return((int)sword);
-	return(-1);
-}
-
-/*
- * Store a short word (16 bits) to user space
- */
-int
-susword (void *base, int word)
-{
-	unsigned short sword = word;
-
-	if (copyout(&sword, base, sizeof(sword)) == 0)
 		return(0);
 	return(-1);
 }
