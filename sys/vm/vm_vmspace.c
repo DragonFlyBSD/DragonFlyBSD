@@ -158,8 +158,6 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 	error = ENOENT;
 	if ((ve = vkernel_find_vmspace(vkp, uap->id, 1)) != NULL) {
 		error = vmspace_entry_delete(ve, vkp, 2);
-		if (error)
-			vmspace_entry_cache_drop(ve);
 		/* else delete code dropped all refs */
 	}
 	lwkt_reltoken(&vkp->token);
@@ -567,6 +565,11 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp,
 		     int refs)
 {
 	int error;
+
+	if (ve->refs & VKE_REF_DELETED) {
+		kprintf("vmspace_entry_delete: %p already deleted\n", ve);
+		return 0;
+	}
 
 	if (atomic_cmpset_int(&ve->refs, refs, refs | VKE_REF_DELETED)) {
 		RB_REMOVE(vmspace_rb_tree, &vkp->root, ve);
