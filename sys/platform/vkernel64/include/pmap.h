@@ -71,9 +71,9 @@
 #define NKPML4E		1		/* number of kernel PML4 slots */
 #define NKPDPE		128		/* number of kernel PDP slots */
 
-#define	NUPML4E		(NPML4EPG/2)	/* number of userland PML4 pages */
-#define	NUPDPE		(NUPML4E*NPDPEPG)/* number of userland PDP pages */
-#define	NUPDE		(NUPDPE*NPDEPG)	/* number of userland PD entries */
+#define	NUPDP_TOTAL	(NPML4EPG/2)		/* total PDP pages */
+#define	NUPD_TOTAL	(NUPDP_TOTAL*NPDPEPG)	/* total PD pages */
+#define	NUPT_TOTAL	(NUPD_TOTAL*NPDEPG)	/* total PT pages */
 
 #define	NDMPML4E	1		/* number of dmap PML4 slots */
 #define	NDMPDPE		NPTEPG		/* number of dmap PDPE slots */
@@ -81,7 +81,9 @@
 /*
  * The *PML4I values control the layout of virtual memory
  */
-#define	PML4PML4I	(NPML4EPG/2)	/* Index of recursive pml4 mapping */
+#define	PML4PML4I	NUPDP_TOTAL	/* Index of recursive pml4 mapping */
+#define NUPML4E		NUPDP_TOTAL	/* for vmparam.h */
+
 
 
 #ifndef LOCORE

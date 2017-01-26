@@ -196,8 +196,8 @@ pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	vpte_t pte;
 
 	if (vmm_enabled == 0) {
-		atomic_swap_long(ptep, 0);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+		atomic_swap_long(ptep, 0);
 	} else {
 		pte = 0;
 		guest_sync_addr(pmap, ptep, &pte);
@@ -225,11 +225,11 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 void
 pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-	atomic_swap_long(ptep, 0);
 	if (vmm_enabled)
 		vmm_cpu_invltlb();
 	else
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+	atomic_swap_long(ptep, 0);
 }
 
 /*
@@ -243,11 +243,11 @@ pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	vpte_t pte;
 
 	if (vmm_enabled == 0) {
-		*ptep = 0;
 		pmap_inval_cpu(pmap, va, SEG_SIZE);
+		atomic_swap_long(ptep, 0);
 	} else if (CPUMASK_TESTMASK(pmap->pm_active,
 				    mycpu->gd_other_cpus) == 0) {
-		*ptep = 0;
+		atomic_swap_long(ptep, 0);
 		vmm_cpu_invltlb();
 	} else {
 		pte = 0;
@@ -295,6 +295,8 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	return(pte);
 }
 
+#if 0
+
 vpte_t
 pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
@@ -313,6 +315,8 @@ pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	}
 	return(pte);
 }
+
+#endif
 
 /*
  * This is an odd case and I'm not sure whether it even occurs in normal
@@ -355,7 +359,6 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		pte = *ptep;
 		atomic_clear_long(ptep, VPTE_RW);
 		if (vmm_enabled == 0) {
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);

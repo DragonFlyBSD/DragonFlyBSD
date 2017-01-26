@@ -94,8 +94,6 @@
 
 int (*pmath_emulate) (struct trapframe *);
 
-extern int trapwrite (unsigned addr);
-
 static int trap_pfault (struct trapframe *, int, vm_offset_t);
 static void trap_fatal (struct trapframe *, int, vm_offset_t);
 void dblfault_handler (void);
@@ -1016,50 +1014,6 @@ dblfault_handler(void)
 	/* two separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
 	panic("double fault");
-}
-
-/*
- * Compensate for 386 brain damage (missing URKR).
- * This is a little simpler than the pagefault handler in trap() because
- * it the page tables have already been faulted in and high addresses
- * are thrown out early for other reasons.
- */
-int
-trapwrite(unsigned addr)
-{
-	struct lwp *lp;
-	vm_offset_t va;
-	struct vmspace *vm;
-	int rv;
-
-	va = trunc_page((vm_offset_t)addr);
-	/*
-	 * XXX - MAX is END.  Changed > to >= for temp. fix.
-	 */
-	if (va >= VM_MAX_USER_ADDRESS)
-		return (1);
-
-	lp = curthread->td_lwp;
-	vm = lp->lwp_vmspace;
-
-	PHOLD(lp->lwp_proc);
-
-	if (!grow_stack (lp->lwp_proc, va)) {
-		PRELE(lp->lwp_proc);
-		return (1);
-	}
-
-	/*
-	 * fault the data page
-	 */
-	rv = vm_fault(&vm->vm_map, va, VM_PROT_WRITE, VM_FAULT_DIRTY);
-
-	PRELE(lp->lwp_proc);
-
-	if (rv != KERN_SUCCESS)
-		return 1;
-
-	return (0);
 }
 
 /*
