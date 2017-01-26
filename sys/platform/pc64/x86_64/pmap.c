@@ -2971,10 +2971,6 @@ pmap_remove_pv_page(pv_entry_t pv)
 	pv->pv_m = NULL;
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 	pmap_page_stats_deleting(m);
-	/*
-	if (m->object)
-		atomic_add_int(&m->object->agg_pv_list_count, -1);
-	*/
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 	vm_page_spin_unlock(m);

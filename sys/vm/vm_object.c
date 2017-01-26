@@ -382,7 +382,6 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 		vm_object_set_flag(object, OBJ_ONEMAPPING);
 	object->paging_in_progress = 0;
 	object->resident_page_count = 0;
-	object->agg_pv_list_count = 0;
 	object->shadow_count = 0;
 	/* cpu localization twist */
 	object->pg_color = vm_quickcolor();

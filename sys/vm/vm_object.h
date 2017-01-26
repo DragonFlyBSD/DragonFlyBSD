@@ -155,7 +155,7 @@ struct vm_object {
 	u_short pg_color;		/* color of first page in obj */
 	u_int paging_in_progress;	/* Paging (in or out) so don't collapse or destroy */
 	long resident_page_count;	/* number of resident pages */
-        u_int agg_pv_list_count;        /* aggregate pv list count */
+        u_int unused01;
 	struct vm_object *backing_object; /* object that I'm a shadow of */
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
 	TAILQ_ENTRY(vm_object) pager_object_list; /* list of all objects of this pager type */

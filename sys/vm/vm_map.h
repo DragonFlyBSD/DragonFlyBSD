@@ -485,7 +485,6 @@ vmspace_president_count(struct vmspace *vmspace)
 	vm_map_entry_t cur;
 	vm_object_t object;
 	u_int count = 0;
-	u_int n;
 
 #ifdef _KERNEL
 	if (map->president_ticks == ticks / hz || vm_map_lock_read_try(map))
@@ -502,6 +501,8 @@ vmspace_president_count(struct vmspace *vmspace)
 			    object->type != OBJT_SWAP) {
 				break;
 			}
+
+#if 0
 			/*
 			 * synchronize non-zero case, contents of field
 			 * can change at any time due to pmap ops.
@@ -512,6 +513,7 @@ vmspace_president_count(struct vmspace *vmspace)
 #endif
 				count += object->resident_page_count / n;
 			}
+#endif
 			break;
 		default:
 			break;
