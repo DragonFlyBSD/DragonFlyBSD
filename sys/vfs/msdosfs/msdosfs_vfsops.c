@@ -538,13 +538,19 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		if ((error = bread(devvp, de_bntodoff(pmp, pmp->pm_fsinfo), fsi_size(pmp), &bp)) != 0)
 			goto error_exit;
 		fp = (struct fsinfo *)bp->b_data;
-		if (!bcmp(fp->fsisig1, "RRaA", 4)
-		    && !bcmp(fp->fsisig2, "rrAa", 4)
-		    && !bcmp(fp->fsisig3, "\0\0\125\252", 4)
-		    && !bcmp(fp->fsisig4, "\0\0\125\252", 4)) {
+		if (!bcmp(fp->fsisig1, "RRaA", 4) &&
+		    !bcmp(fp->fsisig2, "rrAa", 4) &&
+		    !bcmp(fp->fsisig3, "\0\0\125\252", 4) &&
+		    !bcmp(fp->fsisig4, "\0\0\125\252", 4)) {
 			pmp->pm_nxtfree = getulong(fp->fsinxtfree);
-			if (pmp->pm_nxtfree == (u_long) -1)
+			if (pmp->pm_nxtfree == (u_long)-1)
 				pmp->pm_nxtfree = CLUST_FIRST;
+			if (pmp->pm_nxtfree == (u_int)-1) {
+				kprintf("msdosfs_mount(): "
+					"ignoring illegal nxtfree 0x%016jx\n",
+					(uintmax_t)pmp->pm_nxtfree);
+				pmp->pm_nxtfree = CLUST_FIRST;
+			}
 		} else
 			pmp->pm_fsinfo = 0;
 		bp->b_flags |= B_RELBUF;
