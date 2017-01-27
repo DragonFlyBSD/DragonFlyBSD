@@ -715,6 +715,12 @@ pmap_extract_done(void *handle)
 /*
  * Similar to extract but checks protections, SMP-friendly short-cut for
  * vm_fault_page[_quick]().
+ *
+ * WARNING! THE RETURNED PAGE IS ONLY HELD AND NEITHER IT NOR ITS TARGET
+ *	    DATA IS SUITABLE FOR WRITING.  Writing can interfere with
+ *	    pageouts flushes, msync, etc.  The hold_count is not enough
+ *	    to avoid races against pageouts and other flush code doesn't
+ *	    care about hold_count.
  */
 vm_page_t
 pmap_fault_page_quick(pmap_t pmap __unused, vm_offset_t vaddr __unused,

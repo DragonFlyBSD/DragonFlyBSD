@@ -91,7 +91,6 @@ typedef struct xio *xio_t;
 #if defined(_KERNEL)
 
 void xio_init(xio_t xio);
-int xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int vmprot);
 int xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes);
 int xio_init_pages(xio_t xio, struct vm_page **mbase, int npages, int xflags);
 void xio_release(xio_t xio);

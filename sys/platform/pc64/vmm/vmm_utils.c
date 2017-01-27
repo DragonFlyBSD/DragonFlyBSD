@@ -78,6 +78,10 @@ get_pt_entry(struct vmspace *vm, pt_entry_t *pte, vm_offset_t addr, int index)
 	int err = 0;
 	vm_page_t m;
 
+	/*
+	 * WARNING! vm_fault_page() on its own is only safe for reading
+	 *	    data.
+	 */
 	m = vm_fault_page(&vm->vm_map, trunc_page(addr),
 			  VM_PROT_READ, VM_FAULT_NORMAL, &err);
 	if (err) {

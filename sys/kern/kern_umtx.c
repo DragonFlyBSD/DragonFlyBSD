@@ -124,6 +124,10 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
      * When faulting in the page, force any COW pages to be resolved.
      * Otherwise the physical page we sleep on my not match the page
      * being woken up.
+     *
+     * WARNING! We can only use vm_fault_page*() for reading data.  We
+     *		cannot use it for writing data because there is no pmap
+     *	        interlock to protect against flushes/pageouts.
      */
     m = vm_fault_page_quick((vm_offset_t)uap->ptr,
 			    VM_PROT_READ|VM_PROT_WRITE, &error);
@@ -175,7 +179,6 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     }
 
     lwbuf_free(lwb);
-    /*vm_page_dirty(m); we don't actually dirty the page */
     vm_page_unhold(m);
 done:
     return(error);
@@ -215,6 +218,11 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 	uap->ptr = (const int *)gpa;
     }
 
+    /*
+     * WARNING! We can only use vm_fault_page*() for reading data.  We
+     *		cannot use it for writing data because there is no pmap
+     *	        interlock to protect against flushes/pageouts.
+     */
     cpu_mfence();
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
@@ -237,4 +245,3 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 done:
     return(error);
 }
-

@@ -1308,6 +1308,9 @@ pmap_extract_done(void *handle)
  * fall-through to the real fault code.
  *
  * The returned page, if not NULL, is held (and not busied).
+ *
+ * WARNING! THE RETURNED PAGE IS ONLY HELD AND NOT SUITABLE FOR READING
+ *	    OR WRITING AS-IS.
  */
 vm_page_t
 pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot)

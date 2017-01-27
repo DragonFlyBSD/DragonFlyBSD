@@ -85,80 +85,14 @@ xio_init(xio_t xio)
 }
 
 /*
- * Initialize an XIO given a userspace buffer.  0 is returned on success,
- * an error code on failure.  The actual number of bytes that could be
- * accomodated in the XIO will be stored in xio_bytes and the page offset
- * will be stored in xio_offset.
- */
-int
-xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
-{
-    vm_offset_t addr;
-    vm_page_t m;
-    vm_page_t m0;
-    int error;
-    int i;
-    int n;
-    int vmprot;
-
-    addr = trunc_page((vm_offset_t)ubase);
-    xio->xio_flags = flags;
-    xio->xio_bytes = 0;
-    xio->xio_error = 0;
-    if (ubytes == 0) {
-	xio->xio_offset = 0;
-	xio->xio_npages = 0;
-    } else {
-	vmprot = (flags & XIOF_WRITE) ? VM_PROT_WRITE : VM_PROT_READ;
-	xio->xio_offset = (vm_offset_t)ubase & PAGE_MASK;
-	xio->xio_pages = xio->xio_internal_pages;
-	if ((n = PAGE_SIZE - xio->xio_offset) > ubytes)
-	    n = ubytes;
-	m0 = NULL;
-	for (i = 0; n && i < XIO_INTERNAL_PAGES; ++i) {
-	    m = vm_fault_page_quick(addr, vmprot, &error);
-	    if (m == NULL)
-		break;
-	    xio->xio_pages[i] = m;
-	    ubytes -= n;
-	    xio->xio_bytes += n;
-	    if ((n = ubytes) > PAGE_SIZE)
-		n = PAGE_SIZE;
-	    addr += PAGE_SIZE;
-
-	    /*
-	     * Check linearity, used by syslink to memory map DMA buffers.
-	     */
-	    if (flags & XIOF_VMLINEAR) {
-		if (i == 0) {
-		    m0 = m;
-		} else 
-		if (m->object != m0->object || m->pindex != m0->pindex + i) {
-		    error = EINVAL;
-		    break;
-		}
-	    }
-	}
-	xio->xio_npages = i;
-
-	/*
-	 * If a failure occured clean out what we loaded and return EFAULT.
-	 * Return 0 on success.  Do not dirty the pages.
-	 */
-	if (i < XIO_INTERNAL_PAGES && n) {
-	    xio->xio_flags &= ~XIOF_WRITE;
-	    xio_release(xio);
-	    xio->xio_error = EFAULT;
-	}
-    }
-    return(xio->xio_error);
-}
-
-/*
  * Initialize an XIO given a kernelspace buffer.  0 is returned on success,
  * an error code on failure.  The actual number of bytes that could be
  * accomodated in the XIO will be stored in xio_bytes and the page offset
  * will be stored in xio_offset.
+ *
+ * WARNING! We cannot map user memory directly into an xio unless we also
+ *	    make the mapping use managed pages, otherwise modifications to
+ *	    the memory will race against pageouts and flushes.
  */
 int
 xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)

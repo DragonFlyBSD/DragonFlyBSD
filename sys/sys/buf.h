@@ -460,8 +460,6 @@ int	physwrite (struct dev_write_args *);
 void	vfs_bio_clrbuf (struct buf *);
 void	vfs_busy_pages (struct vnode *, struct buf *);
 void	vfs_unbusy_pages (struct buf *);
-int	vmapbuf (struct buf *, caddr_t, int);
-void	vunmapbuf (struct buf *);
 void	relpbuf (struct buf *, int *);
 void	brelvp (struct buf *);
 int	bgetvp (struct vnode *, struct buf *, int);
