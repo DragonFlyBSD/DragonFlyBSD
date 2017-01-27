@@ -589,8 +589,9 @@ camperiphfree(struct cam_periph *periph)
 }
 
 /*
- * Map user virtual pointers into kernel virtual address space, so we can
- * access the memory.  This won't work on physical pointers, for now it's
+ * We don't map user pointers into KVM, instead we use pbufs.
+ *
+ * This won't work on physical pointers(?OLD), for now it's
  * up to the caller to check for that.  (XXX KDM -- should we do that here
  * instead?)  This also only works for up to MAXPHYS memory.  Since we use
  * buffers to map stuff in and out, we're limited to the buffer size.
@@ -655,16 +656,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		 */
 		cmd[i] = BUF_CMD_WRITE;
 
-		/*
-		 * The userland data pointer passed in may not be page
-		 * aligned.  vmapbuf() truncates the address to a page
-		 * boundary, so if the address isn't page aligned, we'll
-		 * need enough space for the given transfer length, plus
-		 * whatever extra space is necessary to make it to the page
-		 * boundary.
-		 */
-		if ((lengths[i] +
-		    (((vm_offset_t)(*data_ptrs[i])) & PAGE_MASK)) > MAXPHYS){
+		if (lengths[i] > MAXPHYS) {
 			kprintf("cam_periph_mapmem: attempt to map %lu bytes, "
 			       "which is greater than MAXPHYS(%d)\n",
 			       (long)(lengths[i] +
@@ -714,39 +706,20 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		bp->b_cmd = cmd[i];
 
 		/*
-		 * Require 16-byte alignment and bounce if we don't get it.
-		 * (NATA does not realign buffers for DMA).
+		 * Always bounce the I/O through kernel memory.
 		 */
-		if ((intptr_t)*data_ptrs[i] & 15)
-			mapinfo->bounce[i] = 1;
-		else
-			mapinfo->bounce[i] = 0;
-
-		/*
-		 * Map the user buffer into kernel memory.  If the user
-		 * buffer is not aligned we have to allocate a bounce buffer
-		 * and copy.
-		 */
-		if (mapinfo->bounce[i]) {
-			bp->b_data = bp->b_kvabase;
-			bp->b_bcount = lengths[i];
-			vm_hold_load_pages(bp, (vm_offset_t)bp->b_data,
-				       (vm_offset_t)bp->b_data + bp->b_bcount);
-			if (mapinfo->dirs[i] & CAM_DIR_OUT) {
-				error = copyin(*data_ptrs[i], bp->b_data, bp->b_bcount);
-				if (error) {
-					vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bp->b_bcount);
-				}
-			} else {
-				error = 0;
+		bp->b_data = bp->b_kvabase;
+		bp->b_bcount = lengths[i];
+		vm_hold_load_pages(bp, (vm_offset_t)bp->b_data,
+				   (vm_offset_t)bp->b_data + bp->b_bcount);
+		if (mapinfo->dirs[i] & CAM_DIR_OUT) {
+			error = copyin(*data_ptrs[i], bp->b_data, bp->b_bcount);
+			if (error) {
+				vm_hold_free_pages(bp,
+						   (vm_offset_t)bp->b_data,
+						   (vm_offset_t)bp->b_data +
+						    bp->b_bcount);
 			}
-		} else if (vmapbuf(bp, *data_ptrs[i], lengths[i]) < 0) {
-			kprintf("cam_periph_mapmem: error, "
-				"address %p, length %lu isn't "
-				"user accessible any more\n",
-				(void *)*data_ptrs[i],
-				(u_long)lengths[i]);
-			error = EACCES;
 		} else {
 			error = 0;
 		}
@@ -819,18 +792,12 @@ cam_periph_unmapbufs(struct cam_periph_map_info *mapinfo,
 		/* Set the user's pointer back to the original value */
 		*data_ptrs[i] = mapinfo->saved_ptrs[i];
 
-		/* unmap the buffer */
-		if (mapinfo->bounce[i]) {
-			if (mapinfo->dirs[i] & CAM_DIR_IN) {
-				/* XXX return error */
-				copyout(bp->b_data, *data_ptrs[i],
-					bp->b_bcount);
-			}
-			vm_hold_free_pages(bp, (vm_offset_t)bp->b_data,
-				   (vm_offset_t)bp->b_data + bp->b_bcount);
-		} else {
-			vunmapbuf(bp);
+		if (mapinfo->dirs[i] & CAM_DIR_IN) {
+			/* XXX return error */
+			copyout(bp->b_data, *data_ptrs[i], bp->b_bcount);
 		}
+		vm_hold_free_pages(bp, (vm_offset_t)bp->b_data,
+				   (vm_offset_t)bp->b_data + bp->b_bcount);
 		relpbuf(bp, NULL);
 		mapinfo->bp[i] = NULL;
 	}
