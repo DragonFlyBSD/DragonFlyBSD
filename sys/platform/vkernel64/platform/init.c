@@ -450,8 +450,10 @@ main(int ac, char **av)
 	cpu_disable_intr();
 	if (vmm_enabled) {
 		/* use a MAP_ANON directly */
+		printf("VMM is available\n");
 		init_kern_memory_vmm();
 	} else {
+		printf("VMM is not available\n");
 		init_sys_memory(memImageFile);
 		init_kern_memory();
 	}
@@ -753,8 +755,9 @@ init_kern_memory_vmm(void)
 	 * MAP_ANON the region of the VKERNEL phyisical memory
 	 * (known as GPA - Guest Physical Address
 	 */
-	dmap_address = mmap(NULL, Maxmem_bytes, PROT_READ|PROT_WRITE|PROT_EXEC,
-	    MAP_ANON|MAP_SHARED, -1, 0);
+	dmap_address = mmap(NULL, Maxmem_bytes,
+			    PROT_READ|PROT_WRITE|PROT_EXEC,
+			    MAP_ANON|MAP_SHARED, -1, 0);
 	if (dmap_address == MAP_FAILED) {
 		err(1, "Unable to mmap() RAM region!");
 		/* NOT REACHED */
@@ -763,8 +766,8 @@ init_kern_memory_vmm(void)
 
 	/* Alloc a new stack in the lowmem */
 	vkernel_stack = mmap(NULL, KERNEL_STACK_SIZE,
-	    PROT_READ|PROT_WRITE|PROT_EXEC,
-	    MAP_ANON, -1, 0);
+			     PROT_READ|PROT_WRITE|PROT_EXEC,
+			     MAP_ANON, -1, 0);
 	if (vkernel_stack == MAP_FAILED) {
 		err(1, "Unable to allocate stack\n");
 	}
@@ -779,6 +782,7 @@ init_kern_memory_vmm(void)
 	/*
 	 * Enter VMM mode
 	 */
+	bzero(&options, sizeof(options));
 	options.guest_cr3 = (register_t) KPML4phys;
 	options.new_stack = (uint64_t) vkernel_stack + KERNEL_STACK_SIZE;
 	options.master = 1;

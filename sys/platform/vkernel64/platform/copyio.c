@@ -228,9 +228,6 @@ copyinstr(const void *udaddr, void *kaddr, size_t len, size_t *res)
 /*
  * Copy a binary buffer from user space to kernel space.
  *
- * NOTE: on a real system copyin/copyout are MP safe, but the current
- * implementation on a vkernel is not so we get the mp lock.
- *
  * Returns 0 on success, EFAULT on failure.
  */
 int

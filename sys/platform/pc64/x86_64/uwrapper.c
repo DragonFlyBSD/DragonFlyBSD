@@ -59,3 +59,15 @@ suword32(uint32_t *base, int word)
 {
 	return curthread->td_proc->p_vmspace->vm_pmap.suword32(base, word);
 }
+
+uint32_t
+swapu32(volatile uint32_t *base, uint32_t v)
+{
+	return curthread->td_proc->p_vmspace->vm_pmap.swapu32(base, v);
+}
+
+uint64_t
+swapu64(volatile uint64_t *base, uint64_t v)
+{
+	return curthread->td_proc->p_vmspace->vm_pmap.swapu64(base, v);
+}

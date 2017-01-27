@@ -164,7 +164,7 @@ ept_copyin(const void *udaddr, void *kaddr, size_t len)
 		}
 
 		m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
-		    VM_PROT_READ, VM_FAULT_NORMAL, &err);
+				  VM_PROT_READ, VM_FAULT_NORMAL, &err);
 		if (err) {
 			if (vmm_debug) {
 				kprintf("%s: could not fault in vm map, gpa: %llx\n",
@@ -213,8 +213,8 @@ ept_copyout(const void *kaddr, void *udaddr, size_t len)
 		}
 
 		m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
-		    VM_PROT_READ | VM_PROT_WRITE,
-		    VM_FAULT_NORMAL, &err);
+				  VM_PROT_READ | VM_PROT_WRITE,
+				  VM_FAULT_NORMAL, &err);
 		if (err) {
 			if (vmm_debug) {
 				kprintf("%s: could not fault in vm map, gpa: %llx\n",
@@ -338,6 +338,102 @@ ept_suword32(uint32_t *base, int word)
 	return(-1);
 }
 
+static uint32_t
+ept_swapu32(volatile uint32_t *uaddr, uint32_t v)
+{
+	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
+	vm_page_t m;
+	register_t gpa;
+	size_t n;
+	int err = 0;
+	struct vmspace *vm = curproc->p_vmspace;
+	struct vmx_thread_info *vti = curthread->td_vmm;
+	register_t guest_cr3 = vti->guest_cr3;
+	volatile void *ptr;
+
+	/* Get the GPA by manually walking the-GUEST page table*/
+	err = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
+	if (err) {
+		kprintf("%s: could not get guest_phys_addr\n", __func__);
+		return EFAULT;
+	}
+	m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
+			  VM_PROT_READ | VM_PROT_WRITE,
+			  VM_FAULT_NORMAL, &err);
+	if (err) {
+		if (vmm_debug) {
+			kprintf("%s: could not fault in vm map, gpa: %llx\n",
+				__func__, (unsigned long long) gpa);
+		}
+		return EFAULT;
+	}
+
+	n = PAGE_SIZE - ((vm_offset_t)uaddr & PAGE_MASK);
+	if (n > sizeof(uint32_t)) {
+		vm_page_unhold(m);
+		return EFAULT;
+	}
+
+	lwb = lwbuf_alloc(m, &lwb_cache);
+	ptr = (void *)(lwbuf_kva(lwb) + ((vm_offset_t)uaddr & PAGE_MASK));
+	v = atomic_swap_int(ptr, v);
+
+	vm_page_dirty(m);
+	lwbuf_free(lwb);
+	vm_page_unhold(m);
+
+	return 0;
+}
+
+static uint64_t
+ept_swapu64(volatile uint64_t *uaddr, uint64_t v)
+{
+	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
+	vm_page_t m;
+	register_t gpa;
+	size_t n;
+	int err = 0;
+	struct vmspace *vm = curproc->p_vmspace;
+	struct vmx_thread_info *vti = curthread->td_vmm;
+	register_t guest_cr3 = vti->guest_cr3;
+	volatile void *ptr;
+
+	/* Get the GPA by manually walking the-GUEST page table*/
+	err = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
+	if (err) {
+		kprintf("%s: could not get guest_phys_addr\n", __func__);
+		return EFAULT;
+	}
+	m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
+			  VM_PROT_READ | VM_PROT_WRITE,
+			  VM_FAULT_NORMAL, &err);
+	if (err) {
+		if (vmm_debug) {
+			kprintf("%s: could not fault in vm map, gpa: %llx\n",
+				__func__, (unsigned long long) gpa);
+		}
+		return EFAULT;
+	}
+
+	n = PAGE_SIZE - ((vm_offset_t)uaddr & PAGE_MASK);
+	if (n > sizeof(uint64_t)) {
+		vm_page_unhold(m);
+		return EFAULT;
+	}
+
+	lwb = lwbuf_alloc(m, &lwb_cache);
+	ptr = (void *)(lwbuf_kva(lwb) + ((vm_offset_t)uaddr & PAGE_MASK));
+	v = atomic_swap_long(ptr, v);
+
+	vm_page_dirty(m);
+	lwbuf_free(lwb);
+	vm_page_unhold(m);
+
+	return 0;
+}
+
 void
 vmx_ept_pmap_pinit(pmap_t pmap)
 {
@@ -356,6 +452,8 @@ vmx_ept_pmap_pinit(pmap_t pmap)
 	pmap->subyte = ept_subyte;
 	pmap->fuword32 = ept_fuword32;
 	pmap->fuword64 = ept_fuword64;
-	pmap->suword64 = ept_suword64;
 	pmap->suword32 = ept_suword32;
+	pmap->suword64 = ept_suword64;
+	pmap->swapu32 = ept_swapu32;
+	pmap->swapu64 = ept_swapu64;
 }

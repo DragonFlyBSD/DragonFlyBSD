@@ -339,13 +339,13 @@ ENTRY(casu32)
 /*
  * swapu32 - Swap int in user space.  ptr = %rdi, val = %rsi
  */
-ENTRY(swapu32)
+ENTRY(std_swapu32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
-	movq	$VM_MAX_USER_ADDRESS-8,%rax
+	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
 	ja	fusufault
 
@@ -395,7 +395,7 @@ ENTRY(casu64)
 /*
  * swapu64 - Swap long in user space.  ptr = %rdi, val = %rsi
  */
-ENTRY(swapu64)
+ENTRY(std_swapu64)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -450,20 +450,6 @@ ENTRY(std_fuword32)
 	ja	fusufault
 
 	movl	(%rdi),%eax
-	movq	$0,PCB_ONFAULT(%rcx)
-	ret
-
-ENTRY(fuword16)
-	movq	PCPU(curthread),%rcx
-	movq	TD_PCB(%rcx), %rcx
-	movq	$fusufault,PCB_ONFAULT(%rcx)
-	movq	%rsp,PCB_ONFAULT_SP(%rcx)
-
-	movq	$VM_MAX_USER_ADDRESS-2,%rax
-	cmpq	%rax,%rdi
-	ja	fusufault
-
-	movzwl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
 
@@ -531,23 +517,6 @@ ENTRY(std_suword32)
 	movl	%esi,(%rdi)
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rcx
-	movq	TD_PCB(%rcx), %rcx
-	movq	%rax,PCB_ONFAULT(%rcx)
-	ret
-
-ENTRY(suword16)
-	movq	PCPU(curthread),%rcx
-	movq	TD_PCB(%rcx), %rcx
-	movq	$fusufault,PCB_ONFAULT(%rcx)
-	movq	%rsp,PCB_ONFAULT_SP(%rcx)
-
-	movq	$VM_MAX_USER_ADDRESS-2,%rax
-	cmpq	%rax,%rdi			/* verify address validity */
-	ja	fusufault
-
-	movw	%si,(%rdi)
-	xorl	%eax,%eax
-	movq	PCPU(curthread),%rcx		/* restore trashed register */
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret

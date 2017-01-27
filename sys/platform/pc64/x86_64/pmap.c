@@ -263,6 +263,8 @@ extern int32_t std_fuword32 (const uint32_t *base);
 extern int64_t std_fuword64 (const uint64_t *base);
 extern int std_suword64 (uint64_t *base, uint64_t word);
 extern int std_suword32 (uint32_t *base, int word);
+extern uint32_t std_swapu32 (volatile uint32_t *base, uint32_t v);
+extern uint64_t std_swapu64 (volatile uint64_t *base, uint64_t v);
 
 static void pv_hold(pv_entry_t pv);
 static int _pv_hold_try(pv_entry_t pv
@@ -1761,8 +1763,10 @@ pmap_pinit_defaults(struct pmap *pmap)
 	pmap->subyte = std_subyte;
 	pmap->fuword32 = std_fuword32;
 	pmap->fuword64 = std_fuword64;
-	pmap->suword64 = std_suword64;
 	pmap->suword32 = std_suword32;
+	pmap->suword64 = std_suword64;
+	pmap->swapu32 = std_swapu32;
+	pmap->swapu64 = std_swapu64;
 }
 /*
  * Initialize pmap0/vmspace0.

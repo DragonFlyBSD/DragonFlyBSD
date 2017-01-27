@@ -119,9 +119,7 @@ void vkernel_trap(struct lwp *lp, struct trapframe *frame);
 /*
  * KERNEL AND USER DEFINITIONS
  *
- * WARNING: vpte_t is 64 bits on a 64-bit box and 32 bits on a 32 bit box.
- *	    A 2-layer page table is used on 32 bit boxes and a 4-layer
- *	    page table is used on 64 bit boxes.
+ * WARNING: vpte_t is 64 bits.  A 4-layer page table is used.
  */
 typedef u_long	vpte_t;
 
