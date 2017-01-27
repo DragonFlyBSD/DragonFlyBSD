@@ -46,7 +46,7 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
 #define	ZENTRY_FREE	0x12342378
 
-int zone_burst = 32;
+long zone_burst = 128;
 
 static void *zget(vm_zone_t z);
 
@@ -62,7 +62,7 @@ zalloc(vm_zone_t z)
 	globaldata_t gd = mycpu;
 	vm_zpcpu_t *zpcpu;
 	void *item;
-	int n;
+	long n;
 
 #ifdef INVARIANTS
 	if (z == NULL)
@@ -140,8 +140,8 @@ zfree(vm_zone_t z, void *item)
 	globaldata_t gd = mycpu;
 	vm_zpcpu_t *zpcpu;
 	void *tail_item;
-	int count;
-	int zmax;
+	long count;
+	long zmax;
 
 	zpcpu = &z->zpcpu[gd->gd_cpuid];
 
@@ -219,7 +219,7 @@ zfree(vm_zone_t z, void *item)
 
 LIST_HEAD(zlist, vm_zone) zlist = LIST_HEAD_INITIALIZER(zlist);
 static int sysctl_vm_zone(SYSCTL_HANDLER_ARGS);
-static int zone_kmem_pages, zone_kern_pages;
+static vm_pindex_t zone_kmem_pages, zone_kern_pages;
 static long zone_kmem_kvaspace;
 
 /*
@@ -247,8 +247,8 @@ static long zone_kmem_kvaspace;
  * No requirements.
  */
 int
-zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
-	int nentries, int flags)
+zinitna(vm_zone_t z, vm_object_t obj, char *name, size_t size,
+	long nentries, uint32_t flags)
 {
 	size_t totsize;
 
@@ -312,8 +312,19 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 				VM_ALLOC_NORMAL | VM_ALLOC_RETRY;
 		z->zmax += nentries;
 		z->zmax_pcpu = z->zmax / ncpus / 16;
+
+		/*
+		 * Set reasonable pcpu cache bounds.  Low-memory systems
+		 * might try to cache too little, large-memory systems
+		 * might try to cache more than necessarsy.
+		 *
+		 * In particular, pvzone can wind up being excessive and
+		 * waste memory unnecessarily.
+		 */
 		if (z->zmax_pcpu < 1024)
 			z->zmax_pcpu = 1024;
+		if (z->zmax_pcpu * z->zsize > 16*1024*1024)
+			z->zmax_pcpu = 16*1024*1024 / z->zsize;
 	} else {
 		z->zallocflag = VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM;
 		z->zmax = 0;
@@ -357,7 +368,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
  * No requirements.
  */
 vm_zone_t
-zinit(char *name, int size, int nentries, int flags)
+zinit(char *name, size_t size, long nentries, uint32_t flags)
 {
 	vm_zone_t z;
 
@@ -385,9 +396,9 @@ zinit(char *name, int size, int nentries, int flags)
  * Called from the low level boot code only.
  */
 void
-zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
+zbootinit(vm_zone_t z, char *name, size_t size, void *item, long nitems)
 {
-	int i;
+	long i;
 
 	spin_init(&z->zlock, "zbootinit");
 	bzero(z->zpcpu, sizeof(z->zpcpu));
@@ -429,7 +440,7 @@ void
 zdestroy(vm_zone_t z)
 {
 	vm_page_t m;
-	int i;
+	vm_pindex_t i;
 
 	if (z == NULL)
 		panic("zdestroy: null zone");
@@ -470,12 +481,12 @@ zdestroy(vm_zone_t z)
 		 */
 		vm_object_deallocate(z->zobj);
 		vm_object_drop(z->zobj);
-		atomic_subtract_int(&zone_kmem_pages, z->zpagecount);
+		atomic_subtract_long(&zone_kmem_pages, z->zpagecount);
 	} else {
 		for (i = 0; i < z->zkmcur; i++) {
 			kmem_free(&kernel_map, z->zkmvec[i],
 				  (size_t)z->zalloc * PAGE_SIZE);
-			atomic_subtract_int(&zone_kern_pages, z->zalloc);
+			atomic_subtract_long(&zone_kern_pages, z->zalloc);
 		}
 		if (z->zkmvec != NULL)
 			kfree(z->zkmvec, M_ZONE);
@@ -504,14 +515,14 @@ zdestroy(vm_zone_t z)
 static void *
 zget(vm_zone_t z)
 {
-	int i;
 	vm_page_t m;
-	int nitems;
-	int npages;
-	int savezpc;
+	long nitems;
+	long savezpc;
 	size_t nbytes;
 	size_t noffset;
 	void *item;
+	vm_pindex_t npages;
+	vm_pindex_t i;
 
 	if (z == NULL)
 		panic("zget: null zone");
@@ -535,7 +546,7 @@ zget(vm_zone_t z)
 		npages = z->zpagecount - savezpc;
 		nitems = ((size_t)(savezpc + npages) * PAGE_SIZE - noffset) /
 			 z->zsize;
-		atomic_add_int(&zone_kmem_pages, npages);
+		atomic_add_long(&zone_kmem_pages, npages);
 
 		/*
 		 * Now allocate the pages.  Note that we can block in the
@@ -574,7 +585,7 @@ zget(vm_zone_t z)
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {
-			atomic_add_int(&zone_kern_pages, z->zalloc);
+			atomic_add_long(&zone_kern_pages, z->zalloc);
 			bzero(item, nbytes);
 		} else {
 			nbytes = 0;
@@ -591,7 +602,7 @@ zget(vm_zone_t z)
 
 		/* note: z might be modified due to blocking */
 		if (item != NULL) {
-			atomic_add_int(&zone_kern_pages, z->zalloc);
+			atomic_add_long(&zone_kern_pages, z->zalloc);
 			bzero(item, nbytes);
 
 			if (z->zflags & ZONE_DESTROYABLE) {
@@ -660,10 +671,10 @@ zget(vm_zone_t z)
 static int
 sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 {
-	int error=0;
 	vm_zone_t curzone;
 	char tmpbuf[128];
 	char tmpname[14];
+	int error = 0;
 
 	ksnprintf(tmpbuf, sizeof(tmpbuf),
 	    "\nITEM            SIZE     LIMIT    USED    FREE  REQUESTS\n");
@@ -673,12 +684,12 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 
 	lwkt_gettoken(&vm_token);
 	LIST_FOREACH(curzone, &zlist, zlink) {
-		int i;
-		int n;
-		int len;
+		size_t i;
+		size_t len;
 		int offset;
-		int freecnt;
-		int znalloc;
+		long freecnt;
+		long znalloc;
+		int n;
 
 		len = strlen(curzone->zname);
 		if (len >= (sizeof(tmpname) - 1))
@@ -701,7 +712,7 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 		}
 
 		ksnprintf(tmpbuf + offset, sizeof(tmpbuf) - offset,
-			"%s %6.6u, %8.8u, %6.6u, %6.6u, %8.8u\n",
+			"%s %6.6lu, %8.8lu, %6.6lu, %6.6lu, %8.8lu\n",
 			tmpname, curzone->zsize, curzone->zmax,
 			(curzone->ztotal - freecnt),
 			freecnt, znalloc);
@@ -750,11 +761,11 @@ zerror(int error)
 SYSCTL_OID(_vm, OID_AUTO, zone, CTLTYPE_STRING|CTLFLAG_RD, \
 	NULL, 0, sysctl_vm_zone, "A", "Zone Info");
 
-SYSCTL_INT(_vm, OID_AUTO, zone_kmem_pages,
+SYSCTL_LONG(_vm, OID_AUTO, zone_kmem_pages,
 	CTLFLAG_RD, &zone_kmem_pages, 0, "Number of interrupt safe pages allocated by zone");
-SYSCTL_INT(_vm, OID_AUTO, zone_burst,
+SYSCTL_LONG(_vm, OID_AUTO, zone_burst,
 	CTLFLAG_RW, &zone_burst, 0, "Burst from depot to pcpu cache");
 SYSCTL_LONG(_vm, OID_AUTO, zone_kmem_kvaspace,
 	CTLFLAG_RD, &zone_kmem_kvaspace, 0, "KVA space allocated by zone");
-SYSCTL_INT(_vm, OID_AUTO, zone_kern_pages,
+SYSCTL_LONG(_vm, OID_AUTO, zone_kern_pages,
 	CTLFLAG_RD, &zone_kern_pages, 0, "Number of non-interrupt safe pages allocated by zone");

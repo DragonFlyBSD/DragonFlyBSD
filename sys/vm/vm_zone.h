@@ -36,8 +36,8 @@
  */
 struct vm_zpcpu {
 	void	*zitems;
-	int	zfreecnt;
-	int	znalloc;		/* allocations from pcpu */
+	long	zfreecnt;
+	long	znalloc;		/* allocations from pcpu */
 } __cachealign;
 
 typedef struct vm_zpcpu vm_zpcpu_t;
@@ -46,41 +46,42 @@ typedef struct vm_zone {
 	struct spinlock zlock;		/* lock for global portion */
 	vm_zpcpu_t	zpcpu[SMP_MAXCPU];
 	void		*zitems;	/* linked list of items */
-	int		zfreecnt;	/* free entries */
-	int		zfreemin;	/* minimum number of free entries */
-	int		znalloc;	/* allocations from global */
+	long		zfreecnt;	/* free entries */
+	long		zfreemin;	/* minimum number of free entries */
+	long		znalloc;	/* allocations from global */
 	vm_offset_t	zkva;		/* Base kva of zone */
-	int		zpagecount;	/* Total # of allocated pages */
-	int		zpagemax;	/* Max address space */
-	int		zmax;		/* Max number of entries allocated */
-	int		zmax_pcpu;	/* Max pcpu cache */
-	int		ztotal;		/* Total entries allocated now */
-	int		zsize;		/* size of each entry */
-	int		zalloc;		/* hint for # of pages to alloc */
-	int		zflags;		/* flags for zone */
-	int		zallocflag;	/* flag for allocation */
+	vm_pindex_t	zpagecount;	/* Total # of allocated pages */
+	vm_pindex_t	zpagemax;	/* Max address space */
+	long		zmax;		/* Max number of entries allocated */
+	long		zmax_pcpu;	/* Max pcpu cache */
+	long		ztotal;		/* Total entries allocated now */
+	long		zsize;		/* size of each entry */
+	long		zalloc;		/* hint for # of pages to alloc */
+	long		zflags;		/* flags for zone */
+	uint32_t	zallocflag;	/* flag for allocation */
 	struct vm_object *zobj;		/* object to hold zone */
 	char		*zname;		/* name for diags */
 	LIST_ENTRY(vm_zone) zlink;	/* link in zlist */
+
  	/*
  	 * The following fields track kmem_alloc()'ed blocks when
  	 * ZONE_DESTROYABLE set and normal zone (i.e. not ZONE_INTERRUPT nor
  	 * ZONE_SPECIAL).
  	 */
  	vm_offset_t	*zkmvec;	/* krealloc()'ed array */
- 	int		zkmcur;		/* next free slot in zkmvec */
- 	int		zkmmax;		/* # of slots in zkmvec */
+	long		zkmcur;		/* next free slot in zkmvec */
+	long		zkmmax;		/* # of slots in zkmvec */
 } *vm_zone_t;
 
 
 void		zerror (int) __dead2;
-vm_zone_t	zinit (char *name, int size, int nentries, int flags);
+vm_zone_t	zinit (char *name, size_t size, long nentries, uint32_t flags);
 int		zinitna (vm_zone_t z, struct vm_object *obj, char *name,
-			     int size, int nentries, int flags);
+			     size_t size, long nentries, uint32_t flags);
 void *		zalloc (vm_zone_t z);
 void		zfree (vm_zone_t z, void *item);
-void		zbootinit (vm_zone_t z, char *name, int size, void *item,
-			       int nitems);
+void		zbootinit (vm_zone_t z, char *name, size_t size, void *item,
+			       long nitems);
 void		zdestroy(vm_zone_t z);
 
 #endif	/* _VM_VM_ZONE_H_ */
