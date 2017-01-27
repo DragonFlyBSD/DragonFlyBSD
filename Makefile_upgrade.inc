@@ -3191,6 +3191,11 @@ TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_low_pisa.h
 TO_REMOVE+=/usr/share/man/man4/ncv.4.gz
 TO_REMOVE+=/usr/share/man/man4/nsp.4.gz
 TO_REMOVE+=/usr/share/man/man4/stg.4.gz
+TO_REMOVE+=/usr/share/man/man9/casuword.9.gz
+TO_REMOVE+=/usr/share/man/man9/fusword.9.gz
+TO_REMOVE+=/usr/share/man/man9/fuword.9.gz
+TO_REMOVE+=/usr/share/man/man9/susword.9.gz
+TO_REMOVE+=/usr/share/man/man9/suword.9.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

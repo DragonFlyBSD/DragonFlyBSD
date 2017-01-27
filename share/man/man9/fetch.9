@@ -33,16 +33,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/fetch.9,v 1.6.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/fetch.9,v 1.4 2007/04/07 19:29:52 swildner Exp $
 .\"
-.Dd March 14, 2010
+.Dd January 26, 2017
 .Dt FETCH 9
 .Os
 .Sh NAME
 .Nm fetch ,
 .Nm fubyte ,
-.Nm fusword ,
-.Nm fuword
+.Nm fuword32 ,
+.Nm fuword64
 .Nd fetch data from user-space
 .Sh SYNOPSIS
 .In sys/types.h
@@ -50,11 +49,11 @@
 .In sys/systm.h
 .In sys/resourcevar.h
 .Ft int
-.Fn fubyte "const void *base"
-.Ft int
-.Fn fusword "void *base"
-.Ft long
-.Fn fuword "const void *base"
+.Fn fubyte "const uint8_t *base"
+.Ft int32_t
+.Fn fuword32 "const uint32_t *base"
+.Ft int64_t
+.Fn fuword64 "const uint64_t *base"
 .Sh DESCRIPTION
 The
 .Nm
@@ -63,15 +62,15 @@ functions are designed to copy small amounts of data from user-space.
 The
 .Nm
 routines provide the following functionality:
-.Bl -tag -width ".Fn fusword"
+.Bl -tag -width ".Fn fuword32"
 .It Fn fubyte
 Fetches a byte of data from the user-space address
 .Fa base .
-.It Fn fusword
-Fetches a short word of data from the user-space address
+.It Fn fuword32
+Fetches 32 bits of data from the user-space address
 .Fa base .
-.It Fn fuword
-Fetches a word of data from the user-space address
+.It Fn fuword64
+Fetches 64 bits of data from the user-space address
 .Fa base .
 .El
 .Sh RETURN VALUES

@@ -34,32 +34,32 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/store.9,v 1.7.2.4 2001/12/17 11:30:19 ru Exp $
 .\"
-.Dd December 23, 2011
+.Dd January 26, 2017
 .Dt STORE 9
 .Os
 .Sh NAME
 .Nm store ,
-.Nm casuword ,
+.Nm casu32 ,
+.Nm casu64 ,
 .Nm subyte ,
-.Nm susword ,
-.Nm suword ,
-.Nm suword32
+.Nm suword32 ,
+.Nm suword64
 .Nd store data to user-space
 .Sh SYNOPSIS
 .In sys/types.h
 .In sys/time.h
 .In sys/systm.h
 .In sys/resourcevar.h
-.Ft u_long
-.Fn casuword "u_long *base" "u_long oldval" "u_long newval"
+.Ft uint32_t
+.Fn casu32 "volatile uint32_t *p" "uint32_t oldval" "uint32_t newval"
+.Ft uint64_t
+.Fn casu64 "volatile uint64_t *p" "uint64_t oldval" "uint64_t newval"
 .Ft int
-.Fn subyte "void *base" "int byte"
+.Fn subyte "uint8_t *base" "uint8_t byte"
 .Ft int
-.Fn susword "void *base" "int word"
+.Fn suword32 "uint32_t *base" "int word"
 .Ft int
-.Fn suword "void *base" "long word"
-.Ft int
-.Fn suword32 "void *base" "int word"
+.Fn suword64 "uint64_t *base" "uint64_t word"
 .Sh DESCRIPTION
 The
 .Nm
@@ -68,11 +68,23 @@ functions are designed to copy small amounts of data to user-space.
 The
 .Nm
 routines provide the following functionality:
-.Bl -tag -width ".Fn casuword"
-.It Fn casuword
-Compares
+.Bl -tag -width ".Fn suword32"
+.It Fn casu32
+Compares the 32 bit
 .Fa oldval
-with the word at
+with the 32 bits at
+.Fa base ,
+and if equal,
+.Fa base
+is set to
+.Fa newval .
+The old value at
+.Fa base
+is then returned.
+.It Fn casu64
+Compares the 64 bit
+.Fa oldval
+with the 64 bits at
 .Fa base ,
 and if equal,
 .Fa base
@@ -84,16 +96,12 @@ is then returned.
 .It Fn subyte
 Stores a byte of data to the user-space address
 .Fa base .
-.It Fn susword
-Stores a short word of data to the user-space address
-.Fa base .
-.It Fn suword
-Stores a word of data to the user-space address
-.Fa base .
 .It Fn suword32
-Like
-.Fn suword ,
-for cases when 32 bits are desired.
+Stores 32 bits of data to the user-space address
+.Fa base .
+.It Fn suword64
+Stores 64 bits of data to the user-space address
+.Fa base .
 .El
 .Sh RETURN VALUES
 The

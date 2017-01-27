@@ -480,8 +480,8 @@ MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 	EVENTHANDLER.9 EVENTHANDLER_REGISTER.9 \
 	EVENTHANDLER.9 eventhandler_register.9
 MLINKS+=fetch.9 fubyte.9 \
-	fetch.9 fusword.9 \
-	fetch.9 fuword.9
+	fetch.9 fuword32.9 \
+	fetch.9 fuword64.9
 MLINKS+=firmware.9 firmware_get.9 \
 	firmware.9 firmware_put.9 \
 	firmware.9 firmware_register.9 \
@@ -899,11 +899,11 @@ MLINKS+=spinlock.9 spin_init.9 \
 	spinlock.9 spin_unlock_quick.9 \
 	spinlock.9 spin_pool_lock.9 \
 	spinlock.9 spin_pool_unlock.9
-MLINKS+=store.9 casuword.9 \
+MLINKS+=store.9 casu32.9 \
+	store.9 casu64.9 \
 	store.9 subyte.9 \
-	store.9 susword.9 \
-	store.9 suword.9 \
-	store.9 suword32.9
+	store.9 suword32.9 \
+	store.9 suword64.9
 MLINKS+=syscall.9 syscalls.master.5
 MLINKS+=sysctl.9 SYSCTL_DECL.9 \
 	sysctl.9 SYSCTL_INT.9 \
