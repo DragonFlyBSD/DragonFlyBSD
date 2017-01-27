@@ -176,8 +176,13 @@ static int
 xhci_pci_attach(device_t self)
 {
 	struct xhci_softc *sc = device_get_softc(self);
-	int count, err, rid;
+	int err, rid;
 	uint8_t usedma32;
+#if defined(__DragonFly__)
+	int irq_flags;
+#else
+	int count;
+#endif
 
 	rid = PCI_XHCI_CBMEM;
 	sc->sc_io_res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid,
@@ -214,6 +219,10 @@ xhci_pci_attach(device_t self)
 	usb_callout_init_mtx(&sc->sc_callout, &sc->sc_bus.bus_lock, 0);
 
 	rid = 0;
+#if defined(__DragonFly__)
+	pci_alloc_1intr(self, xhci_use_msi, &rid, &irq_flags);
+	sc->sc_irq_rid = rid;
+#else
 	if (xhci_use_msi) {
 		count = pci_msi_count(self);
 		if (count >= 1) {
@@ -225,15 +234,21 @@ xhci_pci_attach(device_t self)
 			}
 		}
 	}
+#endif
 
 	/*
 	 * hw.usb.xhci.use_polling=1 to force polling.
 	 */
 	if (xhci_use_polling() == 0) {
+#if defined(__DragonFly__)
+		sc->sc_irq_res = bus_alloc_resource_any(self, SYS_RES_IRQ,
+		    &rid, irq_flags);
+#else
 		sc->sc_irq_res = bus_alloc_resource_any(
 					self, SYS_RES_IRQ,
 					&sc->sc_irq_rid,
 					RF_SHAREABLE | RF_ACTIVE);
+#endif
 		if (sc->sc_irq_res == NULL) {
 			pci_release_msi(self);
 			device_printf(self, "Could not allocate IRQ\n");
