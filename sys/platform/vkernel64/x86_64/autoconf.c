@@ -178,9 +178,6 @@ cpu_startup(void *dummy)
 				       nswbuf_kva * sizeof(struct buf),
 				       VM_SUBSYS_BUF);
 
-#ifdef DIRECTIO
-        ffs_rawread_setup();
-#endif
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
 		      (nbuf * MAXBSIZE * 2) +
 		      (nswbuf_mem + nswbuf_kva) *MAXPHYS +

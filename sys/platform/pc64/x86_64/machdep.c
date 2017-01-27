@@ -145,9 +145,6 @@ static void cpu_finish(void *);
 
 static void set_fpregs_xmm(struct save87 *, struct savexmm *);
 static void fill_fpregs_xmm(struct savexmm *, struct save87 *);
-#ifdef DIRECTIO
-extern void ffs_rawread_setup(void);
-#endif /* DIRECTIO */
 static void init_locks(void);
 
 extern void pcpu_timer_always(struct intrframe *);
@@ -442,9 +439,6 @@ again:
 #ifdef NSWBUF_MIN
 	if (nswbuf_kva < NSWBUF_MIN)
 		nswbuf_kva = NSWBUF_MIN;
-#endif
-#ifdef DIRECTIO
-	ffs_rawread_setup();
 #endif
 
 	valloc(swbuf_mem, struct buf, nswbuf_mem);

@@ -103,9 +103,6 @@ extern void dblfault_handler (void);
 
 static void set_fpregs_xmm (struct save87 *, struct savexmm *);
 static void fill_fpregs_xmm (struct savexmm *, struct save87 *);
-#ifdef DIRECTIO
-extern void ffs_rawread_setup(void);
-#endif /* DIRECTIO */
 
 int64_t tsc_offsets[MAXCPU];
 

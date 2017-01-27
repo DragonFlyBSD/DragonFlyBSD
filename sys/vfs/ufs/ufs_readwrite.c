@@ -48,10 +48,6 @@
 
 #define VN_KNOTE(vp, b) KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, (b))
 
-#ifdef DIRECTIO
-extern int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
-#endif
-
 SYSCTL_DECL(_vfs_ffs);
 
 /*
@@ -80,16 +76,6 @@ ffs_read(struct vop_read_args *ap)
 	ip = VTOI(vp);
 	uio = ap->a_uio;
 	ioflag = ap->a_ioflag;
-#ifdef DIRECTIO
-	if ((ioflag & IO_DIRECT) != 0) {
-		int workdone;
-
-		error = ffs_rawread(vp, uio, &workdone);
-		if (error || workdone)
-			return error;
-	}
-#endif
-
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_READ)
 		panic("ffs_read: mode");
