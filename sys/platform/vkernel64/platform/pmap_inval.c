@@ -87,8 +87,11 @@ static __inline
 void
 vmm_cpu_invltlb(void)
 {
-	vmm_guest_sync_addr(NULL, NULL);
 #if 0
+	/* not directly supported */
+	cpu_invltlb();
+#else
+	/* vmm_guest_sync_addr(NULL, NULL); */
 	/* For VMM mode forces vmmexit/resume */
 	uint64_t rax = -1;
 	__asm __volatile("syscall;"
@@ -96,6 +99,13 @@ vmm_cpu_invltlb(void)
 			: "a" (rax)
 			:);
 #endif
+}
+
+static __inline
+void
+vmm_cpu_invlpg(void *addr __unused)
+{
+	vmm_cpu_invltlb();
 }
 
 /*
@@ -203,6 +213,20 @@ pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 }
 
 /*
+ * Same as pmap_inval_pte() but only synchronize with the current
+ * cpu.  For the moment its the same as the non-quick version.
+ */
+void
+pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
+{
+	atomic_swap_long(ptep, 0);
+	if (vmm_enabled == 0)
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+	else
+		vmm_cpu_invltlb();
+}
+
+/*
  * Invalidate the tlb for a range of virtual addresses across all cpus
  * belonging to the pmap.
  */
@@ -214,20 +238,6 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 	} else {
 		guest_sync_addr(pmap, NULL, NULL);
 	}
-}
-
-/*
- * Same as pmap_inval_pte() but only synchronize with the current
- * cpu.  For the moment its the same as the non-quick version.
- */
-void
-pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
-{
-	atomic_swap_long(ptep, 0);
-	if (vmm_enabled)
-		vmm_cpu_invltlb();
-	else
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 }
 
 /*
@@ -357,18 +367,13 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 	vpte_t pte;
 
 	pte = *ptep;
-	if (pte & VPTE_V) {
-		if (vmm_enabled == 0) {
-			pte = atomic_swap_long(ptep, 0);
-			pmap_inval_cpu(pmap, va, PAGE_SIZE);
-		} else {
-			pte = 0;
-			guest_sync_addr(pmap, ptep, &pte);
-		}
-	} else {
+	if (vmm_enabled == 0) {
 		pte = atomic_swap_long(ptep, 0);
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+	} else {
+		pte = 0;
+		guest_sync_addr(pmap, ptep, &pte);
 	}
-
 	return(pte);
 }
 
@@ -376,7 +381,7 @@ void
 cpu_invlpg(void *addr)
 {
 	if (vmm_enabled)
-		vmm_cpu_invltlb(); /* For VMM mode forces vmmexit/resume */
+		vmm_cpu_invlpg(addr);
 	else
 		madvise(addr, PAGE_SIZE, MADV_INVAL);
 }
