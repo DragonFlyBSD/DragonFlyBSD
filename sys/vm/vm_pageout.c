@@ -649,6 +649,10 @@ vm_pageout_mdp_callback(struct pmap_pgscan_info *info, vm_offset_t va,
 	} else {
 		vm_page_wakeup(p);
 	}
+
+	/*
+	 * Must be at end to avoid SMP races.
+	 */
 done:
 	lwkt_user_yield();
 	return 0;

@@ -313,6 +313,8 @@ struct vmspace {
 	u_int	vm_refcnt;	/* normal ref count */
 };
 
+#define VM_REF_DELETED		0x80000000U
+
 #define VMSPACE_EXIT1		0x0001	/* partial exit */
 #define VMSPACE_EXIT2		0x0002	/* full exit */
 

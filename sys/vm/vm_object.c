@@ -1194,8 +1194,11 @@ vm_object_terminate(vm_object_t object)
 	 */
 	info.count = 0;
 	info.object = object;
-	vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
-				vm_object_terminate_callback, &info);
+	do {
+		info.error = 0;
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, NULL,
+					vm_object_terminate_callback, &info);
+	} while (info.error);
 
 	/*
 	 * Let the pager know object is dead.
@@ -1251,19 +1254,19 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 	struct rb_vm_page_scan_info *info = data;
 	vm_object_t object;
 
-	if ((++info->count & 63) == 0)
-		lwkt_user_yield();
 	object = p->object;
-	if (object != info->object) {
-		kprintf("vm_object_terminate_callback: obj/pg race %p/%p\n",
-			info->object, p);
-		return(0);
+	KKASSERT(object == info->object);
+	if (vm_page_busy_try(p, TRUE)) {
+		vm_page_sleep_busy(p, TRUE, "vmotrm");
+		info->error = 1;
+		return 0;
 	}
-	vm_page_busy_wait(p, TRUE, "vmpgtrm");
 	if (object != p->object) {
+		/* XXX remove once we determine it can't happen */
 		kprintf("vm_object_terminate: Warning: Encountered "
 			"busied page %p on queue %d\n", p, p->queue);
 		vm_page_wakeup(p);
+		info->error = 1;
 	} else if (p->wire_count == 0) {
 		/*
 		 * NOTE: p->dirty and PG_NEED_COMMIT are ignored.
@@ -1277,6 +1280,12 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 		vm_page_remove(p);
 		vm_page_wakeup(p);
 	}
+
+	/*
+	 * Must be at end to avoid SMP races, caller holds object token
+	 */
+	if ((++info->count & 63) == 0)
+		lwkt_user_yield();
 	return(0);
 }
 
@@ -1390,25 +1399,24 @@ vm_object_page_clean_pass1(struct vm_page *p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 
-	if ((++info->count & 63) == 0)
-		lwkt_user_yield();
-	if (p->object != info->object ||
-	    p->pindex < info->start_pindex ||
-	    p->pindex > info->end_pindex) {
-		kprintf("vm_object_page_clean_pass1: obj/pg race %p/%p\n",
-			info->object, p);
-		return(0);
-	}
+	KKASSERT(p->object == info->object);
+
 	vm_page_flag_set(p, PG_CLEANCHK);
 	if ((info->limit & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC)) {
 		info->error = 1;
-	} else if (vm_page_busy_try(p, FALSE) == 0) {
-		if (p->object == info->object)
-			vm_page_protect(p, VM_PROT_READ);
-		vm_page_wakeup(p);
-	} else {
+	} else if (vm_page_busy_try(p, FALSE)) {
 		info->error = 1;
+	} else {
+		KKASSERT(p->object == info->object);
+		vm_page_protect(p, VM_PROT_READ);
+		vm_page_wakeup(p);
 	}
+
+	/*
+	 * Must be at end to avoid SMP races, caller holds object token
+	 */
+	if ((++info->count & 63) == 0)
+		lwkt_user_yield();
 	return(0);
 }
 
@@ -1422,13 +1430,7 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	struct rb_vm_page_scan_info *info = data;
 	int generation;
 
-	if (p->object != info->object ||
-	    p->pindex < info->start_pindex ||
-	    p->pindex > info->end_pindex) {
-		kprintf("vm_object_page_clean_pass2: obj/pg race %p/%p\n",
-			info->object, p);
-		return(0);
-	}
+	KKASSERT(p->object == info->object);
 
 	/*
 	 * Do not mess with pages that were inserted after we started
@@ -1438,16 +1440,15 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 		goto done;
 
 	generation = info->object->generation;
-	vm_page_busy_wait(p, TRUE, "vpcwai");
 
-	if (p->object != info->object ||
-	    p->pindex < info->start_pindex ||
-	    p->pindex > info->end_pindex ||
-	    info->object->generation != generation) {
+	if (vm_page_busy_try(p, TRUE)) {
+		vm_page_sleep_busy(p, TRUE, "vpcwai");
 		info->error = 1;
-		vm_page_wakeup(p);
 		goto done;
 	}
+
+	KKASSERT(p->object == info->object &&
+		 info->object->generation == generation);
 
 	/*
 	 * Before wasting time traversing the pmaps, check for trivial
@@ -1491,10 +1492,13 @@ vm_object_page_clean_pass2(struct vm_page *p, void *data)
 	 */
 	vm_object_page_collect_flush(info->object, p, info->pagerflags);
 	/* vm_wait_nominal(); this can deadlock the system in syncer/pageout */
+
+	/*
+	 * Must be at end to avoid SMP races, caller holds object token
+	 */
 done:
 	if ((++info->count & 63) == 0)
 		lwkt_user_yield();
-
 	return(0);
 }
 
@@ -1644,14 +1648,19 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 
 	if (object == NULL)
 		return;
+	if (start == end)
+		return;
 	info.start_pindex = start;
 	info.end_pindex = end - 1;
 	info.count = 0;
 	info.object = object;
 
 	vm_object_hold(object);
-	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
-				vm_object_pmap_remove_callback, &info);
+	do {
+		info.error = 0;
+		vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
+					vm_object_pmap_remove_callback, &info);
+	} while (info.error);
 	if (start == 0 && end == object->size)
 		vm_object_clear_flag(object, OBJ_WRITEABLE);
 	vm_object_drop(object);
@@ -1665,19 +1674,22 @@ vm_object_pmap_remove_callback(vm_page_t p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 
-	if ((++info->count & 63) == 0)
-		lwkt_user_yield();
-
 	if (info->object != p->object ||
 	    p->pindex < info->start_pindex ||
 	    p->pindex > info->end_pindex) {
 		kprintf("vm_object_pmap_remove_callback: obj/pg race %p/%p\n",
 			info->object, p);
+		info->error = 1;
 		return(0);
 	}
 
 	vm_page_protect(p, VM_PROT_NONE);
 
+	/*
+	 * Must be at end to avoid SMP races, caller holds object token
+	 */
+	if ((++info->count & 63) == 0)
+		lwkt_user_yield();
 	return(0);
 }
 
@@ -2714,9 +2726,6 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 
-	if ((++info->count & 63) == 0)
-		lwkt_user_yield();
-
 	if (info->object != p->object ||
 	    p->pindex < info->start_pindex ||
 	    p->pindex > info->end_pindex) {
@@ -2753,7 +2762,7 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 		if (info->limit == 0)
 			p->valid = 0;
 		vm_page_wakeup(p);
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -2765,7 +2774,7 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 		vm_page_test_dirty(p);
 		if ((p->valid & p->dirty) || (p->flags & PG_NEED_COMMIT)) {
 			vm_page_wakeup(p);
-			return(0);
+			goto done;
 		}
 	}
 
@@ -2774,6 +2783,13 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	 */
 	vm_page_protect(p, VM_PROT_NONE);
 	vm_page_free(p);
+
+	/*
+	 * Must be at end to avoid SMP races, caller holds object token
+	 */
+done:
+	if ((++info->count & 63) == 0)
+		lwkt_user_yield();
 
 	return(0);
 }

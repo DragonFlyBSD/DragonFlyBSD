@@ -143,6 +143,7 @@ static int vm_map_relock_enable = 1;
 SYSCTL_INT(_vm, OID_AUTO, map_relock_enable, CTLFLAG_RW,
 	   &vm_map_relock_enable, 0, "Randomize mmap offsets");
 
+static void vmspace_drop_notoken(struct vmspace *vm);
 static void vm_map_entry_shadow(vm_map_entry_t entry, int addref);
 static vm_map_entry_t vm_map_entry_create(vm_map_t map, int *);
 static void vm_map_entry_dispose (vm_map_t map, vm_map_entry_t entry, int *);
@@ -210,7 +211,7 @@ vmspace_ctor(void *obj, void *privdata, int ocflags)
 	struct vmspace *vm = obj;
 
 	bzero(vm, sizeof(*vm));
-	vm->vm_refcnt = (u_int)-1;
+	vm->vm_refcnt = VM_REF_DELETED;
 
 	return 1;
 }
@@ -221,7 +222,7 @@ vmspace_dtor(void *obj, void *privdata)
 {
 	struct vmspace *vm = obj;
 
-	KKASSERT(vm->vm_refcnt == (u_int)-1);
+	KKASSERT(vm->vm_refcnt == VM_REF_DELETED);
 	pmap_puninit(vmspace_pmap(vm));
 }
 
@@ -252,7 +253,7 @@ void
 vmspace_initrefs(struct vmspace *vm)
 {
 	vm->vm_refcnt = 1;
-	vm->vm_holdcnt = 1;
+	vm->vm_holdcnt = 0;
 }
 
 /*
@@ -285,7 +286,7 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 	 * two stages, one on refs 1->0, and the the second on hold 1->0.
 	 */
 	KKASSERT(vm->vm_holdcnt == 0);
-	KKASSERT(vm->vm_refcnt == (u_int)-1);
+	KKASSERT(vm->vm_refcnt == VM_REF_DELETED);
 	vmspace_initrefs(vm);
 	vmspace_hold(vm);
 	pmap_pinit(vmspace_pmap(vm));		/* (some fields reused) */
@@ -299,39 +300,18 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 }
 
 /*
- * NOTE: Can return -1 if the vmspace is exiting.
+ * NOTE: Can return 0 if the vmspace is exiting.
  */
 int
 vmspace_getrefs(struct vmspace *vm)
 {
-	return ((int)vm->vm_refcnt);
-}
-
-/*
- * A vmspace object must already have a non-zero hold to be able to gain
- * further holds on it.
- */
-static void
-vmspace_hold_notoken(struct vmspace *vm)
-{
-	KKASSERT(vm->vm_holdcnt != 0);
-	refcount_acquire(&vm->vm_holdcnt);
-}
-
-static void
-vmspace_drop_notoken(struct vmspace *vm)
-{
-	if (refcount_release(&vm->vm_holdcnt)) {
-		if (vm->vm_refcnt == (u_int)-1) {
-			vmspace_terminate(vm, 1);
-		}
-	}
+	return ((int)(vm->vm_refcnt & ~VM_REF_DELETED));
 }
 
 void
 vmspace_hold(struct vmspace *vm)
 {
-	vmspace_hold_notoken(vm);
+	atomic_add_int(&vm->vm_holdcnt, 1);
 	lwkt_gettoken(&vm->vm_map.token);
 }
 
@@ -342,18 +322,32 @@ vmspace_drop(struct vmspace *vm)
 	vmspace_drop_notoken(vm);
 }
 
+static void
+vmspace_drop_notoken(struct vmspace *vm)
+{
+	if (atomic_fetchadd_int(&vm->vm_holdcnt, -1) == 1) {
+		if (vm->vm_refcnt & VM_REF_DELETED)
+			vmspace_terminate(vm, 1);
+	}
+}
+
 /*
  * A vmspace object must not be in a terminated state to be able to obtain
  * additional refs on it.
  *
- * Ref'ing a vmspace object also increments its hold count.
+ * These are official references to the vmspace, the count is used to check
+ * for vmspace sharing.  Foreign accessors should use 'hold' and not 'ref'.
+ *
+ * XXX we need to combine hold & ref together into one 64-bit field to allow
+ * holds to prevent stage-1 termination.
  */
 void
 vmspace_ref(struct vmspace *vm)
 {
-	KKASSERT((int)vm->vm_refcnt >= 0);
-	vmspace_hold_notoken(vm);
-	refcount_acquire(&vm->vm_refcnt);
+	uint32_t n;
+
+	n = atomic_fetchadd_int(&vm->vm_refcnt, 1);
+	KKASSERT((n & VM_REF_DELETED) == 0);
 }
 
 /*
@@ -364,11 +358,30 @@ vmspace_ref(struct vmspace *vm)
 void
 vmspace_rel(struct vmspace *vm)
 {
-	if (refcount_release(&vm->vm_refcnt)) {
-		vm->vm_refcnt = (u_int)-1;	/* no other refs possible */
-		vmspace_terminate(vm, 0);
+	uint32_t n;
+
+	for (;;) {
+		n = vm->vm_refcnt;
+		cpu_ccfence();
+		KKASSERT((int)n > 0);	/* at least one ref & not deleted */
+
+		if (n == 1) {
+			/*
+			 * We must have a hold first to interlock the
+			 * VM_REF_DELETED check that the drop tests.
+			 */
+			atomic_add_int(&vm->vm_holdcnt, 1);
+			if (atomic_cmpset_int(&vm->vm_refcnt, n,
+					      VM_REF_DELETED)) {
+				vmspace_terminate(vm, 0);
+				vmspace_drop_notoken(vm);
+				break;
+			}
+			vmspace_drop_notoken(vm);
+		} else if (atomic_cmpset_int(&vm->vm_refcnt, n, n - 1)) {
+			break;
+		} /* else retry */
 	}
-	vmspace_drop_notoken(vm);
 }
 
 /*
@@ -376,17 +389,17 @@ vmspace_rel(struct vmspace *vm)
  * longer in used by an exiting process, but the process has not yet
  * been reaped.
  *
- * We release the refcnt but not the associated holdcnt.
+ * We drop refs, allowing for stage-1 termination, but maintain a holdcnt
+ * to prevent stage-2 until the process is reaped.  Note hte order of
+ * operation, we must hold first.
  *
  * No requirements.
  */
 void
 vmspace_relexit(struct vmspace *vm)
 {
-	if (refcount_release(&vm->vm_refcnt)) {
-		vm->vm_refcnt = (u_int)-1;	/* no other refs possible */
-		vmspace_terminate(vm, 0);
-	}
+	atomic_add_int(&vm->vm_holdcnt, 1);
+	vmspace_rel(vm);
 }
 
 /*
@@ -426,6 +439,7 @@ vmspace_terminate(struct vmspace *vm, int final)
 	lwkt_gettoken(&vm->vm_map.token);
 	if (final == 0) {
 		KKASSERT((vm->vm_flags & VMSPACE_EXIT1) == 0);
+		vm->vm_flags |= VMSPACE_EXIT1;
 
 		/*
 		 * Get rid of most of the resources.  Leave the kernel pmap
@@ -453,7 +467,6 @@ vmspace_terminate(struct vmspace *vm, int final)
 				      VM_MAX_USER_ADDRESS);
 		}
 		lwkt_reltoken(&vm->vm_map.token);
-		vm->vm_flags |= VMSPACE_EXIT1;
 	} else {
 		KKASSERT((vm->vm_flags & VMSPACE_EXIT1) != 0);
 		KKASSERT((vm->vm_flags & VMSPACE_EXIT2) == 0);
