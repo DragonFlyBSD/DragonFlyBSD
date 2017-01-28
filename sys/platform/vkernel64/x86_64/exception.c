@@ -77,7 +77,9 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
 {
 	globaldata_t gd = mycpu;
 	thread_t td = gd->gd_curthread;
+	int save;
 
+	save = errno;
 	if (td->td_critcount == 0) {
 		++td->td_critcount;
 		++gd->gd_cnt.v_ipi;
@@ -89,6 +91,7 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
 	} else {
 		need_ipiq();
 	}
+	errno = save;
 }
 
 /*
@@ -109,7 +112,9 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	globaldata_t gd = mycpu;
 	thread_t td = gd->gd_curthread;
 	sigset_t ss;
+	int save;
 
+	save = errno;
 	sigemptyset(&ss);
 	sigaddset(&ss, SIGALRM);
 	sigaddset(&ss, SIGIO);
@@ -127,6 +132,8 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	}
 	--gd->gd_intr_nesting_level;
 	--td->td_critcount;
+
+	errno = save;
 }
 
 /*
@@ -138,7 +145,9 @@ kqueuesig(int nada, siginfo_t *info, void *ctxp)
 {
 	globaldata_t gd = mycpu;
 	thread_t td = gd->gd_curthread;
+	int save;
 
+	save = errno;
 	if (td->td_critcount == 0) {
 		++td->td_critcount;
 		++gd->gd_intr_nesting_level;
@@ -148,6 +157,7 @@ kqueuesig(int nada, siginfo_t *info, void *ctxp)
 	} else {
 		need_kqueue();
 	}
+	errno = save;
 }
 
 static
@@ -156,7 +166,9 @@ timersig(int nada, siginfo_t *info, void *ctxp)
 {
 	globaldata_t gd = mycpu;
 	thread_t td = gd->gd_curthread;
+	int save;
 
+	save = errno;
 	if (td->td_critcount == 0) {
 		++td->td_critcount;
 		++gd->gd_intr_nesting_level;
@@ -166,14 +178,19 @@ timersig(int nada, siginfo_t *info, void *ctxp)
 	} else {
 		need_timer();
 	}
+	errno = save;
 }
 
 static
 void
 cosig(int nada, siginfo_t *info, void *ctxp)
 {
+	int save;
+
+	save = errno;
 	/* handles critical section checks */
 	signalintr(1);
+	errno = save;
 }
 
 static
@@ -182,12 +199,15 @@ infosig(int nada, siginfo_t *info, void *ctxp)
 {
 	ucontext_t *ctx = ctxp;
 	char buf[256];
+	int save;
 
+	save = errno;
 	snprintf(buf, sizeof(buf), "lwp %d pc=%p sp=%p\n",
 		(lwpid_t)lwp_gettid(),
 		(void *)(intptr_t)ctx->uc_mcontext.mc_rip,
 		(void *)(intptr_t)ctx->uc_mcontext.mc_rsp);
 	write(2, buf, strlen(buf));
+	errno = save;
 }
 
 void
@@ -239,7 +259,9 @@ static void
 exc_segfault(int signo, siginfo_t *info, void *ctxp)
 {
 	ucontext_t *ctx = ctxp;
+	int save;
 
+	save = errno;
 #if 0
 	kprintf("CAUGHT SIG %d RIP %08lx ERR %08lx TRAPNO %ld "
 		"err %ld addr %08lx\n",
@@ -252,6 +274,7 @@ exc_segfault(int signo, siginfo_t *info, void *ctxp)
 #endif
 	kern_trap((struct trapframe *)&ctx->uc_mcontext.mc_rdi);
 	splz();
+	errno = save;
 }
 
 #ifdef DDB
@@ -260,13 +283,16 @@ static void
 exc_debugger(int signo, siginfo_t *info, void *ctxp)
 {
 	ucontext_t *ctx = ctxp;
+	int save;
 
+	save = errno;
 	kprintf("CAUGHT SIG %d RIP %08lx RSP %08lx TD %p\n",
 		signo,
 		ctx->uc_mcontext.mc_rip,
 		ctx->uc_mcontext.mc_rsp,
 		curthread);
 	Debugger("interrupt from console");
+	errno = save;
 }
 
 #endif
