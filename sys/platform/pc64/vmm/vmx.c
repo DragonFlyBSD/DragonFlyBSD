@@ -1573,6 +1573,7 @@ restart:
 				(uint64_t*)&vti->invept_desc));
 	}
 
+	gd->gd_flags |= GDF_VIRTUSER;
 	if (vti->launched) {
 		/*
 		 * vmresume called from vmx_trap.s
@@ -1612,7 +1613,10 @@ restart:
 		cpu_enable_intr();
 		trap_handle_userenter(td);
 		sticks = td->td_sticks;
+
 		crit_exit();
+		/* processing pending before clearing VIRTUSER */
+		gd->gd_flags &= ~GDF_VIRTUSER;
 
 		/*
 		 * Handle the VMEXIT reason
@@ -1656,17 +1660,23 @@ restart:
 done:
 	kprintf("VMM: vmx_vmrun: returning with success\n");
 	return 0;
+	/* NOT REACHED */
+
 error:
 	ATOMIC_CPUMASK_NANDBIT(td->td_proc->p_vmm_cpumask, gd->gd_cpuid);
 	atomic_add_int(&td->td_proc->p_vmm_cpulock, -CPULOCK_INCR);
 	cpu_enable_intr();
+
 error2:
 	trap_handle_userenter(td);
 	td->td_lwp->lwp_md.md_regs = save_frame;
 	KKASSERT(CPUMASK_TESTMASK(td->td_proc->p_vmm_cpumask,
 				  gd->gd_cpumask) == 0);
 	/*atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);*/
+
 	crit_exit();
+	/* processing pending before clearing VIRTUSER */
+	gd->gd_flags &= ~GDF_VIRTUSER;
 	kprintf("VMM: vmx_vmrun failed\n");
 
 	return err;

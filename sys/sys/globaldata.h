@@ -226,7 +226,7 @@ typedef struct globaldata *globaldata_t;
  * globaldata flags
  */
 #define GDF_KPRINTF		0x0001	/* kprintf() reentrancy */
-#define GDF_VIRTUSER		0x0002	/* used by vkernel only */
+#define GDF_VIRTUSER		0x0002	/* used by vmm & vkernel */
 
 #endif
 

@@ -829,12 +829,14 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 				do_pctrack(frame, PCTRACK_INT);
 #endif
 			cpu_time.cp_intr += bump;
-#ifdef _KERNEL_VIRTUAL
 		} else if (gd->gd_flags & GDF_VIRTUSER) {
 			/*
 			 * The vkernel doesn't do a good job providing trap
 			 * frames that we can test.  If the GDF_VIRTUSER
 			 * flag is set we probably interrupted user mode.
+			 *
+			 * We also use this flag on the host when entering
+			 * VMM mode.
 			 */
 			td->td_uticks += bump;
 
@@ -845,7 +847,6 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 				cpu_time.cp_nice += bump;
 			else
 				cpu_time.cp_user += bump;
-#endif
 		} else {
 			td->td_sticks += bump;
 			if (td == &gd->gd_idlethread) {
