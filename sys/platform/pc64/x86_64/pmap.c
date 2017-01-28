@@ -1305,7 +1305,8 @@ pmap_extract_done(void *handle)
 /*
  * Similar to extract but checks protections, SMP-friendly short-cut for
  * vm_fault_page[_quick]().  Can return NULL to cause the caller to
- * fall-through to the real fault code.
+ * fall-through to the real fault code.  Does not work with HVM page
+ * tables.
  *
  * The returned page, if not NULL, is held (and not busied).
  *
@@ -1313,9 +1314,11 @@ pmap_extract_done(void *handle)
  *	    OR WRITING AS-IS.
  */
 vm_page_t
-pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot)
+pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot, int *busyp)
 {
-	if (pmap && va < VM_MAX_USER_ADDRESS) {
+	if (pmap &&
+	    va < VM_MAX_USER_ADDRESS &&
+	    (pmap->pm_flags & PMAP_HVM) == 0) {
 		pv_entry_t pt_pv;
 		pv_entry_t pte_pv;
 		pt_entry_t *ptep;
@@ -1339,9 +1342,22 @@ pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot)
 		pte_pv = pv_get_try(pmap, pmap_pte_pindex(va), NULL, &error);
 		if (pte_pv && error == 0) {
 			m = pte_pv->pv_m;
-			vm_page_hold(m);
-			if (prot & VM_PROT_WRITE)
+			if (prot & VM_PROT_WRITE) {
+				/* interlocked by presence of pv_entry */
 				vm_page_dirty(m);
+			}
+			if (busyp) {
+				if (prot & VM_PROT_WRITE) {
+					if (vm_page_busy_try(m, TRUE))
+						m = NULL;
+					*busyp = 1;
+				} else {
+					vm_page_hold(m);
+					*busyp = 0;
+				}
+			} else {
+				vm_page_hold(m);
+			}
 			pv_put(pte_pv);
 		} else if (pte_pv) {
 			pv_drop(pte_pv);

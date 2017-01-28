@@ -724,7 +724,7 @@ pmap_extract_done(void *handle)
  */
 vm_page_t
 pmap_fault_page_quick(pmap_t pmap __unused, vm_offset_t vaddr __unused,
-		      vm_prot_t prot __unused)
+		      vm_prot_t prot __unused, int *busyp __unused)
 {
 	return(NULL);
 }
@@ -789,21 +789,20 @@ pmap_kextract(vm_offset_t va)
 void
 pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 {
-	pt_entry_t *pte;
+	pt_entry_t *ptep;
 	pt_entry_t npte;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 	npte = pa | VPTE_RW | VPTE_V | VPTE_U;
-	pte = vtopte(va);
+	ptep = vtopte(va);
 
 #if 1
-	atomic_swap_long(pte, 0);
-	pmap_inval_pte(pte, &kernel_pmap, va);
+	pmap_inval_pte(ptep, &kernel_pmap, va);
 #else
 	if (*pte & VPTE_V)
-		pmap_inval_pte(pte, &kernel_pmap, va);
+		pmap_inval_pte(ptep, &kernel_pmap, va);
 #endif
-	atomic_swap_long(pte, npte);
+	atomic_swap_long(ptep, npte);
 }
 
 /*
@@ -824,20 +823,24 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 
 	npte = (vpte_t)pa | VPTE_RW | VPTE_V | VPTE_U;
 	ptep = vtopte(va);
+
 #if 1
+	pmap_inval_pte_quick(ptep, &kernel_pmap, va);
 	res = 1;
 #else
 	/* FUTURE */
 	res = (*ptep != 0);
+	if (*pte & VPTE_V)
+		pmap_inval_pte(pte, &kernel_pmap, va);
 #endif
-
-	if (*ptep & VPTE_V)
-		pmap_inval_pte_quick(ptep, &kernel_pmap, va);
-	*ptep = npte;
+	atomic_swap_long(ptep, npte);
 
 	return res;
 }
 
+/*
+ * Invalidation will occur later, ok to be lazy here.
+ */
 int
 pmap_kenter_noinval(vm_offset_t va, vm_paddr_t pa)
 {
@@ -855,8 +858,7 @@ pmap_kenter_noinval(vm_offset_t va, vm_paddr_t pa)
 	/* FUTURE */
 	res = (*ptep != 0);
 #endif
-
-	*ptep = npte;
+	atomic_swap_long(ptep, npte);
 
 	return res;
 }
@@ -867,13 +869,13 @@ pmap_kenter_noinval(vm_offset_t va, vm_paddr_t pa)
 void
 pmap_kremove(vm_offset_t va)
 {
-	pt_entry_t *pte;
+	pt_entry_t *ptep;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	pte = vtopte(va);
-	atomic_swap_long(pte, 0);
-	pmap_inval_pte(pte, &kernel_pmap, va);
+	ptep = vtopte(va);
+	atomic_swap_long(ptep, 0);
+	pmap_inval_pte(ptep, &kernel_pmap, va);
 }
 
 /*
@@ -887,24 +889,27 @@ pmap_kremove(vm_offset_t va)
 void
 pmap_kremove_quick(vm_offset_t va)
 {
-	pt_entry_t *pte;
+	pt_entry_t *ptep;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	pte = vtopte(va);
-	atomic_swap_long(pte, 0);
-	pmap_inval_pte(pte, &kernel_pmap, va); /* NOT _quick */
+	ptep = vtopte(va);
+	atomic_swap_long(ptep, 0);
+	pmap_inval_pte(ptep, &kernel_pmap, va); /* NOT _quick */
 }
 
+/*
+ * Invalidation will occur later, ok to be lazy here.
+ */
 void
 pmap_kremove_noinval(vm_offset_t va)
 {
-	pt_entry_t *pte;
+	pt_entry_t *ptep;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	pte = vtopte(va);
-	atomic_swap_long(pte, 0);
+	ptep = vtopte(va);
+	atomic_swap_long(ptep, 0);
 }
 
 /*
@@ -924,80 +929,60 @@ pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
  * Map a set of unmanaged VM pages into KVM.
  */
 void
-pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
+pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
 {
 	vm_offset_t end_va;
+	vm_offset_t va;
 
-	end_va = va + count * PAGE_SIZE;
-	KKASSERT(va >= KvaStart && end_va < KvaEnd);
+	end_va = beg_va + count * PAGE_SIZE;
+	KKASSERT(beg_va >= KvaStart && end_va < KvaEnd);
 
-	while (va < end_va) {
-		pt_entry_t *pte;
+	for (va = beg_va; va < end_va; va += PAGE_SIZE) {
+		pt_entry_t *ptep;
 
-		pte = vtopte(va);
-		atomic_swap_long(pte, 0);
-		pmap_inval_pte(pte, &kernel_pmap, va);
-		atomic_swap_long(pte, VM_PAGE_TO_PHYS(*m) |
-				      VPTE_RW | VPTE_V | VPTE_U);
-		va += PAGE_SIZE;
-		m++;
+		ptep = vtopte(va);
+		atomic_swap_long(ptep, VM_PAGE_TO_PHYS(*m) |
+				       VPTE_RW | VPTE_V | VPTE_U);
+		++m;
 	}
+	pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+	/* pmap_inval_pte(pte, &kernel_pmap, va); */
 }
 
 /*
  * Undo the effects of pmap_qenter*().
  */
 void
-pmap_qremove(vm_offset_t va, int count)
+pmap_qremove(vm_offset_t beg_va, int count)
 {
 	vm_offset_t end_va;
+	vm_offset_t va;
 
-	end_va = va + count * PAGE_SIZE;
-	KKASSERT(va >= KvaStart && end_va < KvaEnd);
+	end_va = beg_va + count * PAGE_SIZE;
+	KKASSERT(beg_va >= KvaStart && end_va < KvaEnd);
 
-	while (va < end_va) {
-		pt_entry_t *pte;
+	for (va = beg_va; va < end_va; va += PAGE_SIZE) {
+		pt_entry_t *ptep;
 
-		pte = vtopte(va);
-		/* atomic_swap_long(pte, 0); */
-		pmap_inval_pte(pte, &kernel_pmap, va);
-		va += PAGE_SIZE;
+		ptep = vtopte(va);
+		atomic_swap_long(ptep, 0);
 	}
+	pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
 }
 
+/*
+ * Unlike the real pmap code, we can't avoid calling the real-kernel.
+ */
 void
 pmap_qremove_quick(vm_offset_t va, int count)
 {
-	vm_offset_t end_va;
-
-	end_va = va + count * PAGE_SIZE;
-	KKASSERT(va >= KvaStart && end_va < KvaEnd);
-
-	while (va < end_va) {
-		pt_entry_t *pte;
-
-		pte = vtopte(va);
-		atomic_swap_long(pte, 0);
-		cpu_invlpg((void *)va);
-		va += PAGE_SIZE;
-	}
+	pmap_qremove(va, count);
 }
 
 void
 pmap_qremove_noinval(vm_offset_t va, int count)
 {
-	vm_offset_t end_va;
-
-	end_va = va + count * PAGE_SIZE;
-	KKASSERT(va >= KvaStart && end_va < KvaEnd);
-
-	while (va < end_va) {
-		pt_entry_t *pte;
-
-		pte = vtopte(va);
-		atomic_swap_long(pte, 0);
-		va += PAGE_SIZE;
-	}
+	pmap_qremove(va, count);
 }
 
 /*
@@ -1046,6 +1031,7 @@ pmap_init_proc(struct proc *p)
  * table is passed in unbusied and must be busied if we cannot trivially
  * unwire it.
  */
+#include <unistd.h>
 static int
 pmap_unwire_pgtable(pmap_t pmap, vm_offset_t va, vm_page_t m)
 {
@@ -1065,6 +1051,7 @@ pmap_unwire_pgtable(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		 * Unmap the page table page.
 		 */
 		/* pmap_inval_add(info, pmap, -1); */
+		write(2, "X", 1);
 
 		if (m->pindex >= (NUPT_TOTAL + NUPD_TOTAL)) {
 			/* PDP page */

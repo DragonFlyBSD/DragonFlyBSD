@@ -702,13 +702,15 @@ done2:
  * No requirements.
  */
 vm_page_t
-vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type, int *errorp)
+vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type,
+		    int *errorp, int *busyp)
 {
 	struct lwp *lp = curthread->td_lwp;
 	vm_page_t m;
 
 	m = vm_fault_page(&lp->lwp_vmspace->vm_map, va, 
-			  fault_type, VM_FAULT_NORMAL, errorp);
+			  fault_type, VM_FAULT_NORMAL,
+			  errorp, busyp);
 	return(m);
 }
 
@@ -718,28 +720,35 @@ vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type, int *errorp)
  * a held VM page or NULL, and set *errorp.  The related pmap is not
  * updated.
  *
- * The returned page will be properly dirtied if VM_PROT_WRITE was specified,
- * and marked PG_REFERENCED.  The page is not busied on return, only held.
+ * If busyp is not NULL then *busyp will be set to TRUE if this routine
+ * decides to return a busied page (aka VM_PROT_WRITE), or FALSE if it
+ * does not (VM_PROT_WRITE not specified or busyp is NULL).
+ *
+ * If the caller has no intention of writing to the page's contents, busyp
+ * can be passed as NULL along with VM_PROT_WRITE to force a COW operation
+ * without busying the page.
+ *
+ * The returned page will also be marked PG_REFERENCED.
  *
  * If the page cannot be faulted writable and VM_PROT_WRITE was specified, an
  * error will be returned.
  *
- * WARNING!  THE RETURNED PAGE IS NOT SUITABLE FOR WRITING!  The hold_count
- *	     is insufficient to protect against pageout races, and is ignored
- *	     by other flushes like msync().
+ * The page will either be held or busied on returned depending on what this
+ * routine sets *busyp to.  It will only be held if busyp is NULL.
  *
  * No requirements.
  */
 vm_page_t
 vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
-	      int fault_flags, int *errorp)
+	      int fault_flags, int *errorp, int *busyp)
 {
 	vm_pindex_t first_pindex;
 	struct faultstate fs;
 	int result;
-	int retry = 0;
+	int retry;
 	vm_prot_t orig_fault_type = fault_type;
 
+	retry = 0;
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
 	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
@@ -747,8 +756,11 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	/*
 	 * Dive the pmap (concurrency possible).  If we find the
 	 * appropriate page we can terminate early and quickly.
+	 *
+	 * This works great for normal programs but will always return
+	 * NULL for host lookups of vkernel maps in VMM mode.
 	 */
-	fs.m = pmap_fault_page_quick(map->pmap, vaddr, fault_type);
+	fs.m = pmap_fault_page_quick(map->pmap, vaddr, fault_type, busyp);
 	if (fs.m) {
 		*errorp = 0;
 		return(fs.m);
@@ -835,7 +847,8 @@ RetryFault:
 		}
 		fs.m = PHYS_TO_VM_PAGE(fakem.phys_addr);
 		vm_page_hold(fs.m);
-
+		if (busyp)
+			*busyp = 0;	/* don't need to busy R or W */
 		unlock_things(&fs);
 		*errorp = 0;
 		goto done;
@@ -866,6 +879,7 @@ RetryFault:
 	     fs.first_object->backing_object)) {
 		*errorp = KERN_FAILURE;
 		unlock_things(&fs);
+		fs.m = NULL;
 		goto done2;
 	}
 
@@ -987,10 +1001,9 @@ RetryFault:
 	 * (so we don't want to lose the fact that the page will be dirtied
 	 * if a write fault was specified).
 	 */
-	vm_page_hold(fs.m);
-	vm_page_activate(fs.m);
 	if (fault_type & VM_PROT_WRITE)
 		vm_page_dirty(fs.m);
+	vm_page_activate(fs.m);
 
 	if (curthread->td_lwp) {
 		if (fs.hardfault) {
@@ -1001,9 +1014,20 @@ RetryFault:
 	}
 
 	/*
-	 * Unlock everything, and return the held page.
+	 * Unlock everything, and return the held or busied page.
 	 */
-	vm_page_wakeup(fs.m);
+	if (busyp) {
+		if (fault_type & VM_PROT_WRITE) {
+			*busyp = 1;
+		} else {
+			*busyp = 0;
+			vm_page_hold(fs.m);
+			vm_page_wakeup(fs.m);
+		}
+	} else {
+		vm_page_hold(fs.m);
+		vm_page_wakeup(fs.m);
+	}
 	/*vm_object_deallocate(fs.first_object);*/
 	/*fs.first_object = NULL; */
 	*errorp = 0;

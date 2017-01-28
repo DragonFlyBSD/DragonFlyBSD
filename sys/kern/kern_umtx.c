@@ -130,7 +130,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
      *	        interlock to protect against flushes/pageouts.
      */
     m = vm_fault_page_quick((vm_offset_t)uap->ptr,
-			    VM_PROT_READ|VM_PROT_WRITE, &error);
+			    VM_PROT_READ|VM_PROT_WRITE, &error, NULL);
     if (m == NULL) {
 	error = EFAULT;
 	goto done;
@@ -226,7 +226,8 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
     cpu_mfence();
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
-    m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ, &error);
+    m = vm_fault_page_quick((vm_offset_t)uap->ptr,
+			    VM_PROT_READ, &error, NULL);
     if (m == NULL) {
 	error = EFAULT;
 	goto done;

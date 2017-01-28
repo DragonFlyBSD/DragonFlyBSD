@@ -150,25 +150,32 @@ ept_copyin(const void *udaddr, void *kaddr, size_t len)
 	vm_page_t m;
 	register_t gpa;
 	size_t n;
-	int err = 0;
+	int error;
 	struct vmspace *vm = curproc->p_vmspace;
 	struct vmx_thread_info *vti = curthread->td_vmm;
 	register_t guest_cr3 = vti->guest_cr3;
 
+	error = 0;
+
 	while (len) {
 		/* Get the GPA by manually walking the-GUEST page table*/
-		err = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)udaddr);
-		if (err) {
-			kprintf("%s: could not get guest_phys_addr\n", __func__);
+		error = guest_phys_addr(vm, &gpa, guest_cr3,
+					(vm_offset_t)udaddr);
+		if (error) {
+			kprintf("%s: could not get guest_phys_addr\n",
+				__func__);
 			break;
 		}
 
 		m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
-				  VM_PROT_READ, VM_FAULT_NORMAL, &err);
-		if (err) {
+				  VM_PROT_READ, VM_FAULT_NORMAL,
+				  &error, NULL);
+		if (error) {
 			if (vmm_debug) {
-				kprintf("%s: could not fault in vm map, gpa: %llx\n",
-					__func__, (unsigned long long) gpa);
+				kprintf("%s: could not fault in "
+					"vm map, gpa: %jx\n",
+					__func__,
+					(uintmax_t)gpa);
 			}
 			break;
 		}
@@ -178,16 +185,18 @@ ept_copyin(const void *udaddr, void *kaddr, size_t len)
 			n = len;
 
 		lwb = lwbuf_alloc(m, &lwb_cache);
-		bcopy((char *)lwbuf_kva(lwb)+((vm_offset_t)udaddr & PAGE_MASK), kaddr, n);
+		bcopy((char *)lwbuf_kva(lwb) +
+		       ((vm_offset_t)udaddr & PAGE_MASK),
+		      kaddr, n);
 		len -= n;
 		udaddr = (const char *)udaddr + n;
 		kaddr = (char *)kaddr + n;
 		lwbuf_free(lwb);
 		vm_page_unhold(m);
 	}
-	if (err)
-		err = EFAULT;
-	return (err);
+	if (error)
+		error = EFAULT;
+	return (error);
 }
 
 /* Copyout from guest VMM */
@@ -199,26 +208,35 @@ ept_copyout(const void *kaddr, void *udaddr, size_t len)
 	vm_page_t m;
 	register_t gpa;
 	size_t n;
-	int err = 0;
+	int error;
 	struct vmspace *vm = curproc->p_vmspace;
 	struct vmx_thread_info *vti = curthread->td_vmm;
 	register_t guest_cr3 = vti->guest_cr3;
 
+	error = 0;
+
 	while (len) {
+		int busy;
+
 		/* Get the GPA by manually walking the-GUEST page table*/
-		err = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)udaddr);
-		if (err) {
-			kprintf("%s: could not get guest_phys_addr\n", __func__);
+		error = guest_phys_addr(vm, &gpa, guest_cr3,
+					(vm_offset_t)udaddr);
+		if (error) {
+			kprintf("%s: could not get guest_phys_addr\n",
+				__func__);
 			break;
 		}
 
 		m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
 				  VM_PROT_READ | VM_PROT_WRITE,
-				  VM_FAULT_NORMAL, &err);
-		if (err) {
+				  VM_FAULT_NORMAL,
+				  &error, &busy);
+		if (error) {
 			if (vmm_debug) {
-				kprintf("%s: could not fault in vm map, gpa: %llx\n",
-				    __func__, (unsigned long long) gpa);
+				kprintf("%s: could not fault in vm map, "
+					"gpa: 0x%jx\n",
+					__func__,
+					(uintmax_t)gpa);
 			}
 			break;
 		}
@@ -241,11 +259,14 @@ ept_copyout(const void *kaddr, void *udaddr, size_t len)
 			     ((vm_offset_t)udaddr & PAGE_MASK));
 #endif
 		lwbuf_free(lwb);
-		vm_page_unhold(m);
+		if (busy)
+			vm_page_wakeup(m);
+		else
+			vm_page_unhold(m);
 	}
-	if (err)
-		err = EFAULT;
-	return (err);
+	if (error)
+		error = EFAULT;
+	return (error);
 }
 
 static int
@@ -346,22 +367,24 @@ ept_swapu32(volatile uint32_t *uaddr, uint32_t v)
 	vm_page_t m;
 	register_t gpa;
 	size_t n;
-	int err = 0;
+	int error;
 	struct vmspace *vm = curproc->p_vmspace;
 	struct vmx_thread_info *vti = curthread->td_vmm;
 	register_t guest_cr3 = vti->guest_cr3;
 	volatile void *ptr;
+	int busy;
 
 	/* Get the GPA by manually walking the-GUEST page table*/
-	err = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
-	if (err) {
+	error = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
+	if (error) {
 		kprintf("%s: could not get guest_phys_addr\n", __func__);
 		return EFAULT;
 	}
 	m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
 			  VM_PROT_READ | VM_PROT_WRITE,
-			  VM_FAULT_NORMAL, &err);
-	if (err) {
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
+	if (error) {
 		if (vmm_debug) {
 			kprintf("%s: could not fault in vm map, gpa: %llx\n",
 				__func__, (unsigned long long) gpa);
@@ -370,9 +393,10 @@ ept_swapu32(volatile uint32_t *uaddr, uint32_t v)
 	}
 
 	n = PAGE_SIZE - ((vm_offset_t)uaddr & PAGE_MASK);
-	if (n > sizeof(uint32_t)) {
-		vm_page_unhold(m);
-		return EFAULT;
+	if (n < sizeof(uint32_t)) {
+		error = EFAULT;
+		v = (uint32_t)-error;
+		goto done;
 	}
 
 	lwb = lwbuf_alloc(m, &lwb_cache);
@@ -381,9 +405,13 @@ ept_swapu32(volatile uint32_t *uaddr, uint32_t v)
 
 	vm_page_dirty(m);
 	lwbuf_free(lwb);
-	vm_page_unhold(m);
-
-	return 0;
+	error = 0;
+done:
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
+	return v;
 }
 
 static uint64_t
@@ -394,22 +422,24 @@ ept_swapu64(volatile uint64_t *uaddr, uint64_t v)
 	vm_page_t m;
 	register_t gpa;
 	size_t n;
-	int err = 0;
+	int error;
 	struct vmspace *vm = curproc->p_vmspace;
 	struct vmx_thread_info *vti = curthread->td_vmm;
 	register_t guest_cr3 = vti->guest_cr3;
 	volatile void *ptr;
+	int busy;
 
 	/* Get the GPA by manually walking the-GUEST page table*/
-	err = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
-	if (err) {
+	error = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
+	if (error) {
 		kprintf("%s: could not get guest_phys_addr\n", __func__);
 		return EFAULT;
 	}
 	m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
 			  VM_PROT_READ | VM_PROT_WRITE,
-			  VM_FAULT_NORMAL, &err);
-	if (err) {
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
+	if (error) {
 		if (vmm_debug) {
 			kprintf("%s: could not fault in vm map, gpa: %llx\n",
 				__func__, (unsigned long long) gpa);
@@ -418,9 +448,10 @@ ept_swapu64(volatile uint64_t *uaddr, uint64_t v)
 	}
 
 	n = PAGE_SIZE - ((vm_offset_t)uaddr & PAGE_MASK);
-	if (n > sizeof(uint64_t)) {
-		vm_page_unhold(m);
-		return EFAULT;
+	if (n < sizeof(uint64_t)) {
+		error = EFAULT;
+		v = (uint64_t)-error;
+		goto done;
 	}
 
 	lwb = lwbuf_alloc(m, &lwb_cache);
@@ -429,9 +460,13 @@ ept_swapu64(volatile uint64_t *uaddr, uint64_t v)
 
 	vm_page_dirty(m);
 	lwbuf_free(lwb);
-	vm_page_unhold(m);
-
-	return 0;
+	error = 0;
+done:
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
+	return v;
 }
 
 void

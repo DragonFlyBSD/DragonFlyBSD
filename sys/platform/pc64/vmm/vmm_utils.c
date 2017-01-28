@@ -75,20 +75,17 @@ get_pt_entry(struct vmspace *vm, pt_entry_t *pte, vm_offset_t addr, int index)
 	struct lwbuf *lwb;
 	struct lwbuf lwb_cache;
 	pt_entry_t *pt;
-	int err = 0;
+	int error;
 	vm_page_t m;
 
-	/*
-	 * WARNING! vm_fault_page() on its own is only safe for reading
-	 *	    data.
-	 */
+	error = 0;
 	m = vm_fault_page(&vm->vm_map, trunc_page(addr),
-			  VM_PROT_READ, VM_FAULT_NORMAL, &err);
-	if (err) {
+			  VM_PROT_READ, VM_FAULT_NORMAL, &error, NULL);
+	if (error) {
 		kprintf("%s: could not get addr %llx\n",
 		    __func__, (unsigned long long)addr);
 		*pte = 0;	/* avoid gcc warnings */
-		goto error;
+		goto done;
 	}
 	lwb = lwbuf_alloc(m, &lwb_cache);
 	pt = (pt_entry_t *)lwbuf_kva(lwb) + ((vm_offset_t)addr & PAGE_MASK);
@@ -96,13 +93,13 @@ get_pt_entry(struct vmspace *vm, pt_entry_t *pte, vm_offset_t addr, int index)
 	*pte = pt[index];
 	lwbuf_free(lwb);
 	vm_page_unhold(m);
-error:
-	return err;
+done:
+	return error;
 }
 
 int
 guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
-    vm_offset_t uaddr)
+		vm_offset_t uaddr)
 {
 	pt_entry_t pml4e;
 	pt_entry_t pdpe;
@@ -122,7 +119,7 @@ guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
 	}
 
 	err = get_pt_entry(vm, &pdpe, pml4e & PG_FRAME,
-	    (uaddr & PML4MASK) >> PDPSHIFT);
+			   (uaddr & PML4MASK) >> PDPSHIFT);
 	if (err) {
 		kprintf("%s: could not get pdpe\n", __func__);
 		goto error;
@@ -138,7 +135,7 @@ guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
 	}
 
 	err = get_pt_entry(vm, &pde, pdpe & PG_FRAME,
-	    (uaddr & PDPMASK) >> PDRSHIFT);
+			   (uaddr & PDPMASK) >> PDRSHIFT);
 	if (err) {
 		kprintf("%s: could not get pdpe\n", __func__);
 		goto error;
@@ -154,7 +151,7 @@ guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
 	}
 
 	err = get_pt_entry(vm, &pte, pde & PG_FRAME,
-	    (uaddr & PDRMASK) >> PAGE_SHIFT);
+			   (uaddr & PDRMASK) >> PAGE_SHIFT);
 	if (err) {
 		kprintf("%s: could not get pte\n", __func__);
 		goto error;

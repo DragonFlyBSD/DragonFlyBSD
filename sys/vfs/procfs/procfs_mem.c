@@ -115,6 +115,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		vm_offset_t page_offset;	/* offset into page */
 		size_t len;
 		vm_page_t m;
+		int busy;
 
 		uva = (vm_offset_t) uio->uio_offset;
 
@@ -142,9 +143,13 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 
 		/*
 		 * Fault the page on behalf of the process
+		 *
+		 * XXX busied page on write fault can deadlock against our
+		 *     uiomove.
 		 */
 		m = vm_fault_page(map, pageno, reqprot,
-				  VM_FAULT_NORMAL, &error);
+				  VM_FAULT_NORMAL,
+				  &error, &busy);
 		if (error) {
 			KKASSERT(m == NULL);
 			error = EFAULT;
@@ -161,9 +166,12 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		pmap_kremove_quick(kva);
 
 		/*
-		 * release the page and we are done
+		 * Release the page and we are done
 		 */
-		vm_page_unhold(m);
+		if (busy)
+			vm_page_wakeup(m);
+		else
+			vm_page_unhold(m);
 	} while (error == 0 && uio->uio_resid > 0);
 
 	vmspace_drop(vm);

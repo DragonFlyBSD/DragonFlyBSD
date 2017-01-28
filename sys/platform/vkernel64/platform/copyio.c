@@ -51,6 +51,7 @@ casu64(volatile uint64_t *p, uint64_t oldval, uint64_t newval)
 	volatile uint64_t *dest;
 	uint64_t res;
 	int error;
+	int busy;
 
 	/* XXX No idea how to handle this case in a simple way, just abort */
 	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
@@ -58,7 +59,8 @@ casu64(volatile uint64_t *p, uint64_t oldval, uint64_t newval)
 
 	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
 			  VM_PROT_READ|VM_PROT_WRITE,
-			  VM_FAULT_NORMAL, &error);
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
 	if (error)
 		return -1;
 
@@ -70,9 +72,10 @@ casu64(volatile uint64_t *p, uint64_t oldval, uint64_t newval)
 			 : "r" (newval), "m" (*dest) \
 			 : "memory");
 
-	if (res == oldval)
-		vm_page_dirty(m);
-	vm_page_unhold(m);
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
 
 	return res;
 }
@@ -86,6 +89,7 @@ casu32(volatile u_int *p, u_int oldval, u_int newval)
 	volatile u_int *dest;
 	u_int res;
 	int error;
+	int busy;
 
 	/* XXX No idea how to handle this case in a simple way, just abort */
 	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(u_int))
@@ -93,7 +97,8 @@ casu32(volatile u_int *p, u_int oldval, u_int newval)
 
 	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
 			  VM_PROT_READ|VM_PROT_WRITE,
-			  VM_FAULT_NORMAL, &error);
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
 	if (error)
 		return -1;
 
@@ -105,9 +110,10 @@ casu32(volatile u_int *p, u_int oldval, u_int newval)
 			 : "r" (newval), "m" (*dest) \
 			 : "memory");
 
-	if (res == oldval)
-		vm_page_dirty(m);
-	vm_page_unhold(m);
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
 
 	return res;
 }
@@ -120,6 +126,7 @@ swapu64(volatile uint64_t *p, uint64_t val)
 	vm_page_t m;
 	uint64_t res;
 	int error;
+	int busy;
 
 	/* XXX No idea how to handle this case in a simple way, just abort */
 	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
@@ -127,16 +134,18 @@ swapu64(volatile uint64_t *p, uint64_t val)
 
 	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
 			  VM_PROT_READ|VM_PROT_WRITE,
-			  VM_FAULT_NORMAL, &error);
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
 	if (error)
 		return -1;
 
 	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	res = atomic_swap_long((uint64_t *)(kva + ((vm_offset_t)p & PAGE_MASK)),
 			       val);
-	if (res != val)
+	if (busy)
+		vm_page_wakeup(m);
+	else
 		vm_page_dirty(m);
-	vm_page_unhold(m);
 
 	return res;
 }
@@ -149,6 +158,7 @@ swapu32(volatile uint32_t *p, uint32_t val)
 	vm_page_t m;
 	u_int res;
 	int error;
+	int busy;
 
 	/* XXX No idea how to handle this case in a simple way, just abort */
 	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
@@ -156,16 +166,18 @@ swapu32(volatile uint32_t *p, uint32_t val)
 
 	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
 			  VM_PROT_READ|VM_PROT_WRITE,
-			  VM_FAULT_NORMAL, &error);
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
 	if (error)
 		return -1;
 
 	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	res = atomic_swap_int((u_int *)(kva + ((vm_offset_t)p & PAGE_MASK)),
 			       val);
-	if (res != val)
+	if (busy)
+		vm_page_wakeup(m);
+	else
 		vm_page_dirty(m);
-	vm_page_unhold(m);
 
 	return res;
 }
@@ -244,7 +256,8 @@ copyin(const void *udaddr, void *kaddr, size_t len)
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
 				  VM_PROT_READ,
-				  VM_FAULT_NORMAL, &error);
+				  VM_FAULT_NORMAL,
+				  &error, NULL);
 		if (error)
 			break;
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
@@ -277,13 +290,15 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 	struct lwbuf lwb_cache;
 	vm_page_t m;
 	int error;
+	int busy;
 	size_t n;
 
 	error = 0;
 	while (len) {
 		m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)udaddr),
 				  VM_PROT_READ|VM_PROT_WRITE,
-				  VM_FAULT_NORMAL, &error);
+				  VM_FAULT_NORMAL,
+				  &error, &busy);
 		if (error)
 			break;
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
@@ -297,7 +312,10 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		kaddr = (const char *)kaddr + n;
 		vm_page_dirty(m);
 		lwbuf_free(lwb);
-		vm_page_unhold(m);
+		if (busy)
+			vm_page_wakeup(m);
+		else
+			vm_page_unhold(m);
 	}
 	if (error)
 		error = EFAULT;
