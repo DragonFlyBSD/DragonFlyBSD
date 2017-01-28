@@ -133,7 +133,10 @@ vmm_exit_vmm(void *dummy __unused)
 }
 
 /*
- * Swap the 64 bit value between *dstaddr and *srcaddr in a pmap-safe manner.
+ * Swap the 64 bit value between *dstaddr and *srcaddr in a pmap-safe manner
+ * and invalidate the tlb on all cpus the vkernel is running on.
+ *
+ * If dstaddr is NULL, just invalidate the tlb on the current cpu.
  *
  * v = *srcaddr
  * v = swap(dstaddr, v)
@@ -147,9 +150,12 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	cpulock_t nlock;
 	cpumask_t mask;
 	struct proc *p = curproc;
+	long v;
 
 	if (p->p_vmm == NULL)
 		return ENOSYS;
+	if (uap->dstaddr == NULL)
+		return 0;
 
 	crit_enter_id("vmm_inval");
 
@@ -201,11 +207,9 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	/*
 	 * Make the requested modification, wakeup any waiters.
 	 */
-	if (uap->dstaddr) {
-		long v = fuword64(uap->srcaddr);
-		v = swapu64(uap->dstaddr, v);
-		suword64(uap->srcaddr, v);
-	}
+	v = fuword64(uap->srcaddr);
+	v = swapu64(uap->dstaddr, v);
+	suword64(uap->srcaddr, v);
 
 	/*
 	 * VMMs on remote cpus will not be re-entered until we
