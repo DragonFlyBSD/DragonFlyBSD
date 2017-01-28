@@ -762,7 +762,7 @@ init_kern_memory_vmm(void)
 		err(1, "Unable to mmap() RAM region!");
 		/* NOT REACHED */
 	}
-	/* bzero(dmap_address, Maxmem_bytes); */
+	bzero(dmap_address, Maxmem_bytes);
 
 	/* Alloc a new stack in the lowmem */
 	vkernel_stack = mmap(NULL, KERNEL_STACK_SIZE,
