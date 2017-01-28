@@ -571,10 +571,10 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp,
 		return 0;
 	}
 
+	vmspace_entry_cache_ref(ve);
 	if (atomic_cmpset_int(&ve->refs, refs, refs | VKE_REF_DELETED)) {
 		RB_REMOVE(vmspace_rb_tree, &vkp->root, ve);
 
-		vmspace_entry_cache_ref(ve);
 		while (refs) {
 			vmspace_entry_drop(ve);
 			--refs;
@@ -585,11 +585,12 @@ vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp,
 			      VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 		vmspace_rel(ve->vmspace);
 		ve->vmspace = NULL; /* safety */
-		vmspace_entry_cache_drop(ve);
 		error = 0;
 	} else {
 		error = EBUSY;
 	}
+	vmspace_entry_cache_drop(ve);
+
 	return error;
 }
 
