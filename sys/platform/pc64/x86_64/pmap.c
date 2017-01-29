@@ -3363,7 +3363,7 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 			pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot,
 							pindex);
 		}
-		while (pv == NULL) {
+		if (pv == NULL) {
 			/*
 			 * Block if there is a placemarker.  If we are to
 			 * return it, we must also aquire the spot.
@@ -5336,7 +5336,7 @@ restart_locked:
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
 			kprintf("Null pmap (cb) at pindex: %"PRIu64"\n",
-			    pv->pv_pindex);
+				pv->pv_pindex);
 			continue;
 		}
 #endif
