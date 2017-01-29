@@ -3188,6 +3188,7 @@ TO_REMOVE+=/boot/kernel/stg.ko
 TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_dvcfg.h
 TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_low.h
 TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_low_pisa.h
+TO_REMOVE+=/usr/include/sys/ccbque.h
 TO_REMOVE+=/usr/share/man/man4/ncv.4.gz
 TO_REMOVE+=/usr/share/man/man4/nsp.4.gz
 TO_REMOVE+=/usr/share/man/man4/stg.4.gz
