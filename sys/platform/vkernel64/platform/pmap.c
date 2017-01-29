@@ -2377,13 +2377,12 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		else if (!wired && (origpte & VPTE_WIRED))
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 
-		/*
-		 * We might be turning off write access to the page,
-		 * so we go ahead and sense modify status.
-		 */
 		if (origpte & VPTE_MANAGED) {
 			pa |= VPTE_MANAGED;
 			KKASSERT(m->flags & PG_MAPPED);
+			KKASSERT(!(m->flags & (PG_FICTITIOUS|PG_UNMANAGED)));
+		} else {
+			KKASSERT((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)));
 		}
 		goto validate;
 	}
@@ -2435,7 +2434,7 @@ validate:
 	/*
 	 * Now validate mapping with desired protection/wiring.
 	 */
-	newpte = (pt_entry_t) (pa | pte_prot(pmap, prot) | VPTE_V | VPTE_U);
+	newpte = (pt_entry_t)(pa | pte_prot(pmap, prot) | VPTE_V | VPTE_U);
 
 	if (wired)
 		newpte |= VPTE_WIRED;

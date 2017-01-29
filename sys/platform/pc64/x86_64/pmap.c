@@ -2709,6 +2709,10 @@ skip:
  * NOTE: Cannot be called on kernel page table pages, only KVM terminal
  *	 pages and user page table and terminal pages.
  *
+ * NOTE: The pte being removed might be unmanaged, and the pv supplied might
+ *	 be freshly allocated and not imply that the pte is managed.  In this
+ *	 case pv->pv_m should be NULL.
+ *
  * The pv must be locked.  The pvp, if supplied, must be locked.  All
  * supplied pv's will remain locked on return.
  *
@@ -2731,6 +2735,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		 * We are the top level PML4E table, there is no parent.
 		 */
 		p = pmap->pm_pmlpv->pv_m;
+		KKASSERT(pv->pv_m == p);	/* debugging */
 	} else if (ptepindex >= pmap_pdp_pindex(0)) {
 		/*
 		 * Remove a PDP page from the PML4E.  This can only occur
@@ -2753,6 +2758,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		KKASSERT((*pdp & pmap->pmap_bits[PG_V_IDX]) != 0);
 		p = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
 		pmap_inval_bulk(bulk, (vm_offset_t)-1, pdp, 0);
+		KKASSERT(pv->pv_m == p);	/* debugging */
 	} else if (ptepindex >= pmap_pd_pindex(0)) {
 		/*
 		 * Remove a PD page from the PDP
@@ -2784,6 +2790,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 			KKASSERT(pmap->pm_flags & PMAP_FLAG_SIMPLE);
 			p = pv->pv_m;		/* degenerate test later */
 		}
+		KKASSERT(pv->pv_m == p);	/* debugging */
 	} else if (ptepindex >= pmap_pt_pindex(0)) {
 		/*
 		 *  Remove a PT page from the PD
@@ -2822,11 +2829,15 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		}
 #endif
 		pmap_inval_bulk(bulk, (vm_offset_t)-1, pt, 0);
+		KKASSERT(pv->pv_m == p);	/* debugging */
 	} else {
 		/*
-		 * Remove a managed PTE from the PT page.  Userland pmaps
-		 * manage PT/PD/PDP page tables pages but the kernel_pmap
-		 * does not.
+		 * Remove a PTE from the PT page.  The PV might exist even if
+		 * the PTE is not managed, in whichcase pv->pv_m should be
+		 * NULL.
+		 *
+		 * NOTE: Userland pmaps manage the parent PT/PD/PDP page
+		 *	 table pages but the kernel_pmap does not.
 		 *
 		 * NOTE: pv's must be locked bottom-up to avoid deadlocking.
 		 *	 pv is a pte_pv so we can safely lock pt_pv.
@@ -2865,36 +2876,44 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		/*
 		 * Now update the vm_page_t
 		 */
-		if ((pte & (pmap->pmap_bits[PG_MANAGED_IDX] |
-			    pmap->pmap_bits[PG_V_IDX])) !=
-		    (pmap->pmap_bits[PG_MANAGED_IDX] |
-		     pmap->pmap_bits[PG_V_IDX])) {
-			kprintf("remove_pte badpte %016lx %016lx %d\n",
-				pte, pv->pv_pindex,
-				pv->pv_pindex < pmap_pt_pindex(0));
-		}
-
-		/* PHYS_TO_VM_PAGE() will not work for FICTITIOUS pages */
-		/*KKASSERT((pte & (PG_MANAGED|PG_V)) == (PG_MANAGED|PG_V));*/
-		if (pte & pmap->pmap_bits[PG_DEVICE_IDX])
-			p = pv->pv_m;
-		else
-			p = PHYS_TO_VM_PAGE(pte & PG_FRAME);
-		/* p = pv->pv_m; */
-
-		if (pte & pmap->pmap_bits[PG_M_IDX]) {
-			if (pmap_track_modified(ptepindex))
-				vm_page_dirty(p);
-		}
-		if (pte & pmap->pmap_bits[PG_A_IDX]) {
-			vm_page_flag_set(p, PG_REFERENCED);
+		if ((pte & pmap->pmap_bits[PG_MANAGED_IDX]) &&
+		    (pte & pmap->pmap_bits[PG_V_IDX])) {
+			/*
+			 * Valid managed page, adjust (p).
+			 */
+			if (pte & pmap->pmap_bits[PG_DEVICE_IDX]) {
+				p = pv->pv_m;
+			} else {
+				p = PHYS_TO_VM_PAGE(pte & PG_FRAME);
+				KKASSERT(pv->pv_m == p);
+			}
+			if (pte & pmap->pmap_bits[PG_M_IDX]) {
+				if (pmap_track_modified(ptepindex))
+					vm_page_dirty(p);
+			}
+			if (pte & pmap->pmap_bits[PG_A_IDX]) {
+				vm_page_flag_set(p, PG_REFERENCED);
+			}
+		} else {
+			/*
+			 * Unmanaged page, do not try to adjust the vm_page_t.
+			 * pv could be freshly allocated for a pmap_enter(),
+			 * replacing an unmanaged page with a managed one.
+			 *
+			 * pv->pv_m might reflect the new page and not the
+			 * existing page.
+			 *
+			 * We could extract p from the physical address and
+			 * adjust it but we explicitly do not for unmanaged
+			 * pages.
+			 */
+			p = NULL;
 		}
 		if (pte & pmap->pmap_bits[PG_W_IDX])
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 		if (pte & pmap->pmap_bits[PG_G_IDX])
 			cpu_invlpg((void *)va);
 	}
-	KKASSERT(pv->pv_m == p);	/* XXX remove me later */
 
 	/*
 	 * If requested, scrap the underlying pv->pv_m and the underlying
@@ -2907,31 +2926,12 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		 * page table page (PT, PD, PDP, PML4), caller was responsible
 		 * for testing wired_count.
 		 */
-		vm_page_t p;
-
 		KKASSERT(pv->pv_m->wire_count == 1);
 		p = pmap_remove_pv_page(pv);
 		pv_free(pv, pvp);
 		pv = NULL;
 
-		KKASSERT(p->flags & (PG_FICTITIOUS|PG_UNMANAGED));
 		vm_page_busy_wait(p, FALSE, "pgpun");
-
-#if 0
-		if (ptepindex != pmap_pml4_pindex()) {
-			pt_entry_t *ptep;
-			int i;
-
-			ptep = (void *)PHYS_TO_DMAP(p->phys_addr);
-			for (i = 0; i < 512; ++i) {
-				if (ptep[i]) {
-					kprintf("PGTBL %016jx@%d "
-						"not empty %016jx\n",
-						ptepindex, i, ptep[i]);
-				}
-			}
-		}
-#endif
 		vm_page_unwire(p, 0);
 		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
 		vm_page_free(p);
@@ -3363,9 +3363,10 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 			pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot,
 							pindex);
 		}
-		if (pv == NULL) {
+		while (pv == NULL) {
 			/*
-			 * Block if there is a placemarker
+			 * Block if there is a placemarker.  If we are to
+			 * return it, we must also aquire the spot.
 			 */
 			vm_pindex_t *pmark;
 
@@ -3378,7 +3379,10 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 				continue;
 			}
 			if (pmarkp) {
-				*pmark = pindex;
+				if (atomic_swap_long(pmark, pindex) !=
+				    PM_NOPLACEMARK) {
+					panic("_pv_get: pmark race");
+				}
 				*pmarkp = pmark;
 			}
 			spin_unlock(&pmap->pm_spin);
@@ -3441,8 +3445,9 @@ pv_get_try(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp, int *errorp)
 			*errorp = 0;
 		} else {
 			/*
-			 * Can't set a placemark with a NULL pmarkp, return
-			 * an error.
+			 * Can't set a placemark with a NULL pmarkp, or if
+			 * pmarkp is non-NULL but we failed to set our
+			 * placemark.
 			 */
 			*errorp = 1;
 		}
@@ -4083,6 +4088,7 @@ kernel_skip:
 				++ptep;
 				continue;
 			}
+			cpu_ccfence();
 
 			/*
 			 * Acquire the related pte_pv, if any.  If *ptep == 0
@@ -4364,7 +4370,9 @@ pmap_remove_all(vm_page_t m)
 		}
 
 		/*
-		 * Holding no spinlocks, pv is locked.
+		 * Holding no spinlocks, pv is locked.  Once we scrap
+		 * pv we can no longer use it as a list iterator (but
+		 * we are doing a TAILQ_FIRST() so we are ok).
 		 */
 		pmap_inval_bulk_init(&bulk, pv->pv_pmap);
 		pmap_remove_pv_pte(pv, NULL, &bulk, 2);
@@ -4406,7 +4414,10 @@ again:
 		}
 
 		/*
-		 * Holding no spinlocks, pv is locked.
+		 * Holding no spinlocks, pv is locked.  Once gone it can't
+		 * be used as an iterator.  In fact, because we couldn't
+		 * necessarily lock it atomically it may have moved within
+		 * the list and ALSO cannot be used as an iterator.
 		 */
 		pmap_inval_bulk_init(&bulk, pv->pv_pmap);
 		pmap_remove_pv_pte(pv, NULL, &bulk, 2);
@@ -4637,7 +4648,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 						   &pt_pv, entry, va);
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
 		}
-		pte_placemark = NULL;
+		pte_placemark = NULL;	/* safety */
 		origpte = *ptep;
 		cpu_ccfence();
 		KASSERT(origpte == 0 ||
@@ -4648,13 +4659,18 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	pa = VM_PAGE_TO_PHYS(m);
 	opa = origpte & PG_FRAME;
 
+	/*
+	 * Calculate the new PTE.  Note that pte_pv alone does not mean
+	 * the new pte_pv is managed, it could exist because the old pte
+	 * was managed even if the new one is not.
+	 */
 	newpte = (pt_entry_t)(pa | pte_prot(pmap, prot) |
 		 pmap->pmap_bits[PG_V_IDX] | pmap->pmap_bits[PG_A_IDX]);
 	if (wired)
 		newpte |= pmap->pmap_bits[PG_W_IDX];
 	if (va < VM_MAX_USER_ADDRESS)
 		newpte |= pmap->pmap_bits[PG_U_IDX];
-	if (pte_pv)
+	if (pte_pv && (m->flags & (/*PG_FICTITIOUS |*/ PG_UNMANAGED)) == 0)
 		newpte |= pmap->pmap_bits[PG_MANAGED_IDX];
 //	if (pmap == &kernel_pmap)
 //		newpte |= pgeflag;
@@ -4691,7 +4707,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			 *	 (managed or otherwise).
 			 *
 			 * NOTE: We are reusing the pte_pv so we do not
-			 *	 destroy it in pmap_remove_pv_pte().
+			 *	 destroy it in pmap_remove_pv_pte().  Also,
+			 *	 pte_pv might be freshly allocated with opa
+			 *	 being unmanaged and the new page being
+			 *	 managed, so pte_pv->pv_m may be NULL.
 			 */
 			if (prot & VM_PROT_NOSYNC) {
 				pmap_remove_pv_pte(pte_pv, pt_pv, NULL, 0);
@@ -4702,8 +4721,12 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 				pmap_remove_pv_pte(pte_pv, pt_pv, &bulk, 0);
 				pmap_inval_bulk_flush(&bulk);
 			}
-			if (pte_pv->pv_m)
+			if (origpte & pmap->pmap_bits[PG_MANAGED_IDX]) {
+				KKASSERT(pte_pv->pv_m);
 				pmap_remove_pv_page(pte_pv);
+			} else {
+				KKASSERT(pte_pv->pv_m == NULL);
+			}
 		} else if (prot & VM_PROT_NOSYNC) {
 			/*
 			 * Unmanaged page, NOSYNC (no mmu sync) requested.
@@ -4770,7 +4793,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if ((prot & VM_PROT_NOSYNC) == 0 && pt_pv == NULL) {
 		pmap_inval_smp(pmap, va, 1, ptep, newpte);
 	} else {
-		*(volatile pt_entry_t *)ptep = newpte;
+		atomic_swap_long(ptep, newpte);
 		if (pt_pv == NULL)
 			cpu_invlpg((void *)va);
 	}
@@ -5302,6 +5325,7 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	 */
 restart:
 	vm_page_spin_lock(m);
+restart_locked:
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		/*
 		 * don't write protect pager mappings
@@ -5317,6 +5341,7 @@ restart:
 		}
 #endif
 		pmap = pv->pv_pmap;
+
 		/*
 		 * Skip pages which do not have PG_RW set.
 		 */
@@ -5358,10 +5383,16 @@ restart:
 		 * If PG_M was found to be set while we were clearing PG_RW
 		 * we also clear PG_M (done above) and mark the page dirty.
 		 * Callers expect this behavior.
+		 *
+		 * we lost pv so it cannot be used as an iterator.  In fact,
+		 * because we couldn't necessarily lock it atomically it may
+		 * have moved within the list and ALSO cannot be used as an
+		 * iterator.
 		 */
 		if (pbits & pmap->pmap_bits[PG_M_IDX])
 			vm_page_dirty(m);
 		pv_put(pv);
+		goto restart_locked;
 	}
 	vm_page_spin_unlock(m);
 }
