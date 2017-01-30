@@ -336,6 +336,8 @@ typedef struct pv_entry {
 #ifdef PMAP_DEBUG
 	const char	*pv_func;
 	int		pv_line;
+	const char	*pv_func_lastfree;
+	int		pv_line_lastfree;
 #endif
 } *pv_entry_t;
 
