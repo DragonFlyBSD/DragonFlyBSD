@@ -166,7 +166,16 @@ MLINKS+=rename.2 renameat.2
 MLINKS+=rtprio.2 lwp_rtprio.2
 MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
 	sched_get_priority_max.2 sched_rr_get_interval.2
-MLINKS+=sched_setaffinity.2 sched_getaffinity.2
+MLINKS+=sched_setaffinity.2 CPU_AND.3 \
+	sched_setaffinity.2 CPU_CLR.3 \
+	sched_setaffinity.2 CPU_COUNT.3 \
+	sched_setaffinity.2 CPU_EQUAL.3 \
+	sched_setaffinity.2 CPU_ISSET.3 \
+	sched_setaffinity.2 CPU_OR.3 \
+	sched_setaffinity.2 CPU_SET.3 \
+	sched_setaffinity.2 CPU_XOR.3 \
+	sched_setaffinity.2 CPU_ZERO.3 \
+	sched_setaffinity.2 sched_getaffinity.2
 MLINKS+=sched_setparam.2 sched_getparam.2
 MLINKS+=sched_setscheduler.2 sched_getscheduler.2
 MLINKS+=select.2 FD_CLR.2 \
