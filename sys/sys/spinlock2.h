@@ -55,8 +55,7 @@ extern struct spinlock pmap_spin;
 
 int spin_trylock_contested(struct spinlock *spin);
 void _spin_lock_contested(struct spinlock *spin, const char *ident, int count);
-void _spin_lock_shared_contested(struct spinlock *spin, const char *ident,
-			int count);
+void _spin_lock_shared_contested(struct spinlock *spin, const char *ident);
 
 #define spin_lock(spin)			_spin_lock(spin, __func__)
 #define spin_lock_quick(spin)		_spin_lock_quick(spin, __func__)
@@ -115,7 +114,7 @@ _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 	cpu_ccfence();
 	++gd->gd_spinlocks;
 	if ((count = atomic_fetchadd_int(&spin->counta, 1)) != 0)
-		_spin_lock_contested(spin, ident, count + 1);
+		_spin_lock_contested(spin, ident, count);
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -182,8 +181,13 @@ spin_unlock(struct spinlock *spin)
 
 /*
  * Shared spinlock.  Acquire a count, if SPINLOCK_SHARED is not already
- * set then set it.  The bit will already be set in the unmixed critical
- * path.
+ * set then try a trivial conversion and drop into the contested code if
+ * the trivial cocnversion fails.  The SHARED bit is 'cached' when lock
+ * counts go to 0 so the critical path is typically just the fetchadd.
+ *
+ * WARNING!  Due to the way exclusive conflict resolution works, we cannot
+ *	     just unconditionally set the SHARED bit on previous-count == 0.
+ *	     Doing so will interfere with the exclusive contended code.
  */
 static __inline void
 _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
@@ -194,12 +198,13 @@ _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
+
 	counta = atomic_fetchadd_int(&spin->counta, 1);
-	if (counta == 0) {
-		atomic_set_int(&spin->counta, SPINLOCK_SHARED);
-	} else if ((counta & SPINLOCK_SHARED) == 0) {
-		atomic_add_int(&spin->counta, -1);
-		_spin_lock_shared_contested(spin, ident, counta);
+	if ((counta & SPINLOCK_SHARED) == 0) {
+		if (counta != 0 ||
+		    !atomic_cmpset_int(&spin->counta, 1, SPINLOCK_SHARED | 1)) {
+			_spin_lock_shared_contested(spin, ident);
+		}
 	}
 #ifdef DEBUG_LOCKS
 	int i;
@@ -219,6 +224,12 @@ _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
  * Unlock a shared lock.  For convenience we allow the last transition
  * to be to (SPINLOCK_SHARED|0), leaving the SPINLOCK_SHARED bit set
  * with a count to 0 which will optimize the next shared lock obtained.
+ *
+ * WARNING! In order to implement shared and exclusive spinlocks, an
+ *	    exclusive request will convert a multiply-held shared lock
+ *	    to exclusive and wait for shared holders to unlock.  So keep
+ *	    in mind that as of now the spinlock could actually be in an
+ *	    exclusive state.
  */
 static __inline void
 spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)

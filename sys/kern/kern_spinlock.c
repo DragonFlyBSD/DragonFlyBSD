@@ -136,7 +136,8 @@ spin_trylock_contested(struct spinlock *spin)
 
 /*
  * The spin_lock() inline was unable to acquire the lock and calls this
- * function with spin->counta already incremented.
+ * function with spin->counta already incremented, passing (spin->counta - 1)
+ * to the function (the result of the inline's fetchadd).
  *
  * atomic_swap_int() is the absolute fastest spinlock instruction, at
  * least on multi-socket systems.  All instructions seem to be about
@@ -180,20 +181,30 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	int i;
 
 	/*
-	 * Handle degenerate case.
+	 * WARNING! Caller has already incremented the lock.  We must
+	 *	    increment the count value (from the inline's fetch-add)
+	 *	    to match.
+	 *
+	 * Handle the degenerate case where the spinlock is flagged SHARED
+	 * with only our reference.  We can convert it to EXCLUSIVE.
 	 */
-	if (value == SPINLOCK_SHARED) {
-		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED|0, 1))
+	++value;
+	if (value == (SPINLOCK_SHARED | 1)) {
+		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED | 1, 1))
 			return;
 	}
 
 	/*
-	 * Transfer our count to the high bits, then loop until we can
-	 * acquire the low counter (== 1).  No new shared lock can be
-	 * acquired while we hold the EXCLWAIT bits.
+	 * Transfer our exclusive request to the high bits and clear the
+	 * SPINLOCK_SHARED bit if it was set.  This makes the spinlock
+	 * appear exclusive, preventing any NEW shared or exclusive
+	 * spinlocks from being obtained while we wait for existing
+	 * shared or exclusive holders to unlock.
 	 *
-	 * Force any existing shared locks to exclusive.  The shared unlock
-	 * understands that this may occur.
+	 * Don't tread on earlier exclusive waiters by stealing the lock
+	 * away early if the low bits happen to now be 1.
+	 *
+	 * The shared unlock understands that this may occur.
 	 */
 	atomic_add_int(&spin->counta, SPINLOCK_EXCLWAIT - 1);
 	if (value & SPINLOCK_SHARED)
@@ -204,13 +215,15 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	for (j = spinlocks_add_latency; j > 0; --j)
 		cpu_ccfence();
 #endif
+	/*
+	 * Spin until we can acquire a low-count of 1.
+	 */
 	i = 0;
-
 	/*logspin(beg, spin, 'w');*/
 	for (;;) {
 		/*
 		 * If the low bits are zero, try to acquire the exclusive lock
-		 * by transfering our high bit counter to the low bits.
+		 * by transfering our high bit reservation to the low bits.
 		 *
 		 * NOTE: Reading spin->counta prior to the swap is extremely
 		 *	 important on multi-chip/many-core boxes.  On 48-core
@@ -246,24 +259,31 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 }
 
 /*
- * Shared spinlock attempt was contested.
+ * The spin_lock_shared() inline was unable to acquire the lock and calls
+ * this function with spin->counta already incremented.
  *
- * The caller has not modified counta.
+ * This is not in the critical path unless there is contention between
+ * shared and exclusive holders.
  */
 void
-_spin_lock_shared_contested(struct spinlock *spin, const char *ident, int value)
+_spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 {
 	struct indefinite_info info = { 0, 0, ident };
 	int i;
+
+	/*
+	 * Undo the inline's increment.
+	 */
+	atomic_add_int(&spin->counta, -1);
 
 #ifdef DEBUG_LOCKS_LATENCY
 	long j;
 	for (j = spinlocks_add_latency; j > 0; --j)
 		cpu_ccfence();
 #endif
-	i = 0;
 
 	/*logspin(beg, spin, 'w');*/
+	i = 0;
 	for (;;) {
 		/*
 		 * Loop until we can acquire the shared spinlock.  Note that
