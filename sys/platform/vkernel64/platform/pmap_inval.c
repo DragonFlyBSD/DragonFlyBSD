@@ -366,7 +366,6 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 {
 	vpte_t pte;
 
-	pte = *ptep;
 	if (vmm_enabled == 0) {
 		pte = atomic_swap_long(ptep, 0);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);

@@ -1212,6 +1212,8 @@ RetryFault:
  * to the address space into a logical page number that is relative to the
  * backing object.  Use the virtual page table pointed to by (vpte).
  *
+ * Possibly downgrade the protection based on the vpte bits.
+ *
  * This implements an N-level page table.  Any level can terminate the
  * scan by setting VPTE_PS.   A linear mapping is accomplished by setting
  * VPTE_PS in the master page directory entry set via mcontrol(MADV_SETMAP).
@@ -1224,7 +1226,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 	struct lwbuf *lwb;
 	struct lwbuf lwb_cache;
 	int vshift = VPTE_FRAME_END - PAGE_SHIFT; /* index bits remaining */
-	int result = KERN_SUCCESS;
+	int result;
 	vpte_t *ptep;
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(fs->first_object));
@@ -1296,20 +1298,37 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 			}
 			if (vpte == nvpte)
 				break;
-			if (atomic_cmpset_long(ptep, vpte, nvpte) == 0)
-				continue;
-			/*
-			 * Success
-			 */
-			if ((vpte ^ nvpte) & (VPTE_M | VPTE_A))
+			if (atomic_cmpset_long(ptep, vpte, nvpte)) {
 				vm_page_dirty(fs->m);
-			break;
+				break;
+			}
 		}
 		lwbuf_free(lwb);
 		vm_page_flag_set(fs->m, PG_REFERENCED);
 		vm_page_wakeup(fs->m);
 		fs->m = NULL;
 		cleanup_successful_fault(fs);
+	}
+
+	/*
+	 * We can't reconcile the real page table's M bit back to the
+	 * virtual page table, so instead we force the real page table pte
+	 * to be read-only on a read-fault for a VPTE_RW vpagetable
+	 * fault, and set the VPTE_M bit manually (above) for a write-fault
+	 * on a VPTE_RW vpagetable fault.
+	 *
+	 * The virtual kernel must MADV_INVAL areas that it clears the
+	 * VPTE_M bit on to ensure that the real kernel is able to take
+	 * a write fault to set VPTE_M again.
+	 *
+	 * If we find the VPTE_M bit already set above, we don't have to
+	 * downgrade here.
+	 *
+	 * This guarantees that the M bit will be set.
+	 */
+	if ((fault_type & VM_PROT_WRITE) == 0 &&
+	    (vpte & (VPTE_RW | VPTE_M)) != (VPTE_RW | VPTE_M)) {
+		fs->first_prot &= ~VM_PROT_WRITE;
 	}
 
 	/*
@@ -1371,21 +1390,24 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 	 * (1) The mapping is read-only or the VM object is read-only,
 	 *     fs->prot above will simply not have VM_PROT_WRITE set.
 	 *
-	 * (2) If the mapping is a virtual page table we need to be able
+	 * (2) If the mapping is a virtual page table fs->first_prot will
+	 *     have already been properly adjusted by vm_fault_vpagetable().
 	 *     to detect writes so we can set VPTE_M in the virtual page
-	 *     table.
+	 *     table.  Used by vkernels.
 	 *
 	 * (3) If the VM page is read-only or copy-on-write, upgrading would
 	 *     just result in an unnecessary COW fault.
 	 *
-	 * VM_PROT_VPAGED is set if faulting via a virtual page table and
-	 * causes adjustments to the 'M'odify bit to also turn off write
-	 * access to force a re-fault.
+	 * (4) If the pmap specifically requests A/M bit emulation, downgrade
+	 *     here.
 	 */
+#if 0
+	/* see vpagetable code */
 	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		if ((fault_type & VM_PROT_WRITE) == 0)
 			fs->prot &= ~VM_PROT_WRITE;
 	}
+#endif
 
 	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&
 	    pmap_emulate_ad_bits(&curthread->td_lwp->lwp_vmspace->vm_pmap)) {

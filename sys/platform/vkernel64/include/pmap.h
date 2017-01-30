@@ -129,6 +129,10 @@ struct pv_entry;
 struct vm_page;
 struct vm_object;
 
+struct pv_entry_rb_tree;
+RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
+	      pv_entry_compare, vm_offset_t);
+
 struct md_page {
 	int pv_list_count;
 	TAILQ_HEAD(,pv_entry)	pv_list;
@@ -155,8 +159,7 @@ struct pmap {
 	vpte_t			pm_pdirpte;	/* pte mapping phys page */
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
-	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
-	TAILQ_HEAD(,pv_entry)	pm_pvlist_free;	/* free mappings */
+	RB_HEAD(pv_entry_rb_tree, pv_entry) pm_pvroot;
 	int			pm_count;	/* reference count */
 	cpulock_t		pm_active_lock; /* interlock */
 	cpumask_t		pm_active;	/* active on cpus */
@@ -185,7 +188,7 @@ typedef struct pv_entry {
 	pmap_t		pv_pmap;	/* pmap where mapping lies */
 	vm_offset_t	pv_va;		/* virtual address for mapping */
 	TAILQ_ENTRY(pv_entry)	pv_list;
-	TAILQ_ENTRY(pv_entry)	pv_plist;
+	RB_ENTRY(pv_entry)	pv_entry;
 	struct vm_page	*pv_ptem;	/* VM page for pte */
 } *pv_entry_t;
 
