@@ -84,11 +84,14 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	mount.2 mountctl.2 mprotect.2 \
 	msgctl.2 msgget.2 msgrcv.2 msgsnd.2 \
 	msync.2 munmap.2 nanosleep.2 \
-	nfssvc.2 ntp_adjtime.2 ntp_gettime.2 \
-	open.2 pathconf.2 pipe.2 poll.2 profil.2 pselect.2 ptrace.2 quotactl.2 \
+	nfssvc.2 ntp_adjtime.2 ntp_gettime.2 open.2 \
+	pathconf.2 pipe.2 poll.2 procctl.2 profil.2 pselect.2 ptrace.2 \
+	quotactl.2 \
 	read.2 readlink.2 reboot.2 recv.2 rename.2 revoke.2 rfork.2 rmdir.2 \
-	procctl.2 \
-	rtprio.2 select.2 semctl.2 semget.2 semop.2 send.2 sendfile.2 \
+	rtprio.2 \
+	sched_getcpu.2 sched_get_priority_max.2 sched_setaffinity.2 \
+	sched_setparam.2 sched_setscheduler.2 sched_yield.2 \
+	select.2 semctl.2 semget.2 semop.2 send.2 sendfile.2 \
 	setgroups.2 setpgid.2 setregid.2 setresuid.2 setreuid.2 setsid.2 \
 	setuid.2 shmat.2 shmctl.2 shmget.2 shutdown.2 \
 	sigaction.2 sigaltstack.2 sigpending.2 sigprocmask.2 sigreturn.2 \
@@ -99,11 +102,6 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	unlink.2 unlinkat.2 utimensat.2 utimes.2 utrace.2 usched_set.2 \
 	uuidgen.2 \
 	varsym.2 vfork.2 vmm.2 vquotactl.2 wait.2 write.2
-
-.if !defined(NO_P1003_1B)
-MAN+=	sched_get_priority_max.2 sched_getcpu.2 sched_setaffinity.2 \
-	sched_setparam.2 sched_setscheduler.2 sched_yield.2
-.endif
 
 MLINKS+=accept.2 accept4.2
 MLINKS+=access.2 eaccess.2 \
@@ -166,13 +164,11 @@ MLINKS+=readlink.2 readlinkat.2
 MLINKS+=recv.2 recvfrom.2 recv.2 recvmsg.2
 MLINKS+=rename.2 renameat.2
 MLINKS+=rtprio.2 lwp_rtprio.2
-.if !defined(NO_P1003_1B)
 MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
 	sched_get_priority_max.2 sched_rr_get_interval.2
+MLINKS+=sched_setaffinity.2 sched_getaffinity.2
 MLINKS+=sched_setparam.2 sched_getparam.2
 MLINKS+=sched_setscheduler.2 sched_getscheduler.2
-MLINKS+=sched_setaffinity.2 sched_getaffinity.2
-.endif
 MLINKS+=select.2 FD_CLR.2 \
 	select.2 FD_ISSET.2 \
 	select.2 FD_SET.2 \
