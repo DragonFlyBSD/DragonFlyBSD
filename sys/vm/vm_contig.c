@@ -415,9 +415,7 @@ again:
 			 * Clear all flags except PG_[S]BUSY and PG_WANTED,
 			 * then unbusy the now allocated page.
 			 */
-			vm_page_flag_clear(m, ~(PG_BUSY |
-						PG_SBUSY |
-						PG_WANTED));
+			vm_page_flag_clear(m, ~PG_KEEP_NEWPAGE_MASK);
 			vm_page_wire(m);
 			vm_page_wakeup(m);
 		}

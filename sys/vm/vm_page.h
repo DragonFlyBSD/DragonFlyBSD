@@ -305,6 +305,10 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_SBUSY	0x00020000	/* soft-busy also set */
 #define PG_NEED_COMMIT	0x00040000	/* clean page requires commit */
 
+#define PG_KEEP_NEWPAGE_MASK	(PG_BUSY | PG_SBUSY |		\
+				 PG_WANTED | PG_ACTIONLIST)
+
+
 /*
  * Misc constants.
  */

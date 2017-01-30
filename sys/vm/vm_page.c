@@ -1959,7 +1959,8 @@ done:
 	 * Initialize the structure, inheriting some flags but clearing
 	 * all the rest.  The page has already been busied for us.
 	 */
-	vm_page_flag_clear(m, ~(PG_BUSY | PG_SBUSY));
+	vm_page_flag_clear(m, ~PG_KEEP_NEWPAGE_MASK);
+
 	KKASSERT(m->wire_count == 0);
 	KKASSERT(m->busy == 0);
 	m->act_count = 0;
