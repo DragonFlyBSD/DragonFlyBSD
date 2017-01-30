@@ -1935,9 +1935,16 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * and unlocked.
 	 *
 	 * Request a shared lock on the vnode if possible.
+	 *
+	 * Executable binaries can race VTEXT against O_RDWR opens, so
+	 * use an exclusive lock for O_RDWR opens as well.
+	 *
+	 * NOTE: We need a flag to separate terminal vnode locking from
+	 *	 parent locking.  O_CREAT needs parent locking, but O_TRUNC
+	 *	 and O_RDWR only need to lock the terminal vnode exclusively.
 	 */
 	nd->nl_flags |= NLC_LOCKVP;
-	if ((flags & (O_CREAT|O_TRUNC)) == 0)
+	if ((flags & (O_CREAT|O_TRUNC|O_RDWR)) == 0)
 		nd->nl_flags |= NLC_SHAREDLOCK;
 
 	error = vn_open(nd, fp, flags, cmode);
