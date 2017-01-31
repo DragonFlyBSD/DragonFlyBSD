@@ -119,7 +119,8 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 	ve = kmalloc(sizeof(struct vmspace_entry), M_VKERNEL, M_WAITOK|M_ZERO);
 	ve->vmspace = vmspace_alloc(VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	ve->id = uap->id;
-	ve->refs = 1;		/* on-tree */
+	ve->refs = 0;		/* active refs (none) */
+	ve->cache_refs = 1;	/* on-tree, not deleted (prevent kfree) */
 	pmap_pinit2(vmspace_pmap(ve->vmspace));
 
 	lwkt_gettoken(&vkp->token);
@@ -157,8 +158,9 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 	lwkt_gettoken(&vkp->token);
 	error = ENOENT;
 	if ((ve = vkernel_find_vmspace(vkp, uap->id, 1)) != NULL) {
-		error = vmspace_entry_delete(ve, vkp, 2);
-		/* else delete code dropped all refs */
+		error = vmspace_entry_delete(ve, vkp, 1);
+		if (error == 0)
+			vmspace_entry_cache_drop(ve);
 	}
 	lwkt_reltoken(&vkp->token);
 
@@ -542,20 +544,25 @@ rb_vmspace_delete(struct vmspace_entry *ve, void *data)
 {
 	struct vkernel_proc *vkp = data;
 
-	if (vmspace_entry_delete(ve, vkp, 1) != 0)
+	if (vmspace_entry_delete(ve, vkp, 0) == 0)
+		vmspace_entry_cache_drop(ve);
+	else
 		panic("rb_vmspace_delete: invalid refs %d", ve->refs);
-
 	return(0);
 }
 
 /*
  * Remove a vmspace_entry from the RB tree and destroy it.  We have to clean
- * up the pmap, the vm_map, then destroy the vmspace.
+ * up the pmap, the vm_map, then destroy the vmspace.  We gain control of
+ * the associated cache_refs ref, which the caller will drop for us.
  *
  * The ve must not have any active references other than those from the
- * caller.  If it does, EBUSY is returned.
+ * caller.  If it does, EBUSY is returned.  The ve may still maintain
+ * any number of cache references which will drop as the related LWPs
+ * execute vmspace operations or exit.
  *
- * On sucess 0 is returned and all caller refs are dropped.
+ * 0 is returned on success, EBUSY on failure.  On success the caller must
+ * drop the last cache_refs.  We have dropped the callers active refs.
  *
  * The caller must hold vkp->token.
  */
@@ -564,34 +571,31 @@ int
 vmspace_entry_delete(struct vmspace_entry *ve, struct vkernel_proc *vkp,
 		     int refs)
 {
-	int error;
-
-	if (ve->refs & VKE_REF_DELETED) {
-		kprintf("vmspace_entry_delete: %p already deleted\n", ve);
-		return 0;
+	/*
+	 * Interlocked by vkp->token.
+	 *
+	 * Drop the callers refs and set VKE_REF_DELETED atomically, if
+	 * the remaining refs match exactly.  Dropping refs and setting
+	 * the DELETED flag atomically protects other threads from trying
+	 * to use the ve.
+	 *
+	 * The caller now owns the final cache_ref that was previously
+	 * associated with the live state of the ve.
+	 */
+	if (atomic_cmpset_int(&ve->refs, refs, VKE_REF_DELETED) == 0) {
+		KKASSERT(ve->refs >= refs);
+		return EBUSY;
 	}
+	RB_REMOVE(vmspace_rb_tree, &vkp->root, ve);
 
-	vmspace_entry_cache_ref(ve);
-	if (atomic_cmpset_int(&ve->refs, refs, refs | VKE_REF_DELETED)) {
-		RB_REMOVE(vmspace_rb_tree, &vkp->root, ve);
+	pmap_remove_pages(vmspace_pmap(ve->vmspace),
+			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
+	vm_map_remove(&ve->vmspace->vm_map,
+			  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
+	vmspace_rel(ve->vmspace);
+	ve->vmspace = NULL; /* safety */
 
-		while (refs) {
-			vmspace_entry_drop(ve);
-			--refs;
-		}
-		pmap_remove_pages(vmspace_pmap(ve->vmspace),
-				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
-		vm_map_remove(&ve->vmspace->vm_map,
-			      VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
-		vmspace_rel(ve->vmspace);
-		ve->vmspace = NULL; /* safety */
-		error = 0;
-	} else {
-		error = EBUSY;
-	}
-	vmspace_entry_cache_drop(ve);
-
-	return error;
+	return 0;
 }
 
 /*
@@ -605,17 +609,19 @@ vmspace_entry_cache_ref(struct vmspace_entry *ve)
 }
 
 /*
- * Unref a ve being removed from the cache.  If the primary ve has been
- * destroyed, no new primary refs are possible and the last drop of the
- * cache kills the ve.
+ * The ve cache_drop is the final word for a ve.  It gains an extra ref
+ * representing it being on the RB tree and not being in a deleted state.
+ * Removal from the RB tree and deletion manipulate this ref.  The last
+ * drop will thus include full deletion of the ve in addition to the last
+ * cached user going away.
  */
 static
 void
 vmspace_entry_cache_drop(struct vmspace_entry *ve)
 {
 	if (atomic_fetchadd_int(&ve->cache_refs, -1) == 1) {
-		if (ve->refs & VKE_REF_DELETED)
-			kfree(ve, M_VKERNEL);
+		KKASSERT(ve->refs & VKE_REF_DELETED);
+		kfree(ve, M_VKERNEL);
 	}
 }
 
