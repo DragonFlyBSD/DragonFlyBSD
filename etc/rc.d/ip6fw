@@ -19,7 +19,7 @@ ip6fw_prestart()
 {
 	# Load IPv6 firewall module, if not already loaded
 	if ! ${SYSCTL} net.inet6.ip6.fw.enable > /dev/null 2>&1; then
-		kldload -n ip6fw || return 1
+		kldstat -m ip6fw || kldload -n ip6fw || return 1
 	fi
 	return 0
 }

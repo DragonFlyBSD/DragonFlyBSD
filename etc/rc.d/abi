@@ -18,7 +18,7 @@ start_cmd="linux_start"
 linux_start()
 {
 	echo -n ' linux'
-	kldload -n linux
+	kldstat -m linux || kldload -n linux || return 1
 	if [ -x /compat/linux/sbin/ldconfig ]; then
 		/compat/linux/sbin/ldconfig
 	fi

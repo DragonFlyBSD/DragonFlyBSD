@@ -26,7 +26,7 @@ extra_commands="resync status"
 pflog_prestart()
 {
 	# load pflog kernel module if needed
-	kldload -n pf || exit 1
+	kldstat -m pf || kldload -n pf || exit 1
 
 	# set pflog0 interface to up state
 	if ! ifconfig pflog0 up; then

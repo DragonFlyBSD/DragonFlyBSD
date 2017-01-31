@@ -16,7 +16,7 @@ pidfile="/var/run/${name}.pid"
 vknetd_precmd()
 {
     # load if_tap kernel module if needed
-    kldload -n if_tap || exit 1
+    kldstat -m if_tap || kldload -n if_tap || exit 1
 }
 
 load_rc_config $name

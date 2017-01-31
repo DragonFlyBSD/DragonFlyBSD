@@ -23,7 +23,7 @@ addswap_start()
 	*)
 		if [ -w "${swapfile}" ]; then
 			# load vn kernel module if needed
-			kldload -n vn || exit 1
+			kldstat -m vn || kldload -n vn || exit 1
 			echo "Adding ${swapfile} as additional swap"
 			vnconfig -e vn0 ${swapfile} swap
 		fi

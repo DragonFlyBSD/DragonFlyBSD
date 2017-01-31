@@ -19,7 +19,7 @@ ipfw_precmd()
 {
 	# Load IPv4 firewall module, if not already loaded
 	if ! ${SYSCTL} net.inet.ip.fw.enable > /dev/null 2>&1; then
-		kldload -n ipfw || return 1
+		kldstat -m ipfw || kldload -n ipfw || return 1
 	fi
 	return 0
 }

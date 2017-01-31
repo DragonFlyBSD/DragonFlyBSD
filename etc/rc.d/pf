@@ -28,7 +28,7 @@ extra_commands="reload resync status"
 pf_prestart()
 {
 	# load pf kernel module if needed
-	kldload -n pf || exit 1
+	kldstat -m pf || kldload -n pf || exit 1
 
 	# check for pf rules
 	if [ ! -r "${pf_rules}" ]

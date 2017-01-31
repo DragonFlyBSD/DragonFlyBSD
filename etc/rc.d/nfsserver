@@ -16,7 +16,7 @@ stop_cmd=":"
 # Load nfs modules if they were not compiled into the kernel
 nfsserver_start()
 {
-	kldload -n nfs || return 1
+	kldstat -m nfs || kldload -n nfs || return 1
 	return 0
 }
 
