@@ -172,7 +172,7 @@ static __inline void	pmap_clearbit (vm_page_t m, int bit);
 
 static void	pmap_remove_all (vm_page_t m);
 static int pmap_remove_pte (struct pmap *pmap, pt_entry_t *ptq,
-				vm_offset_t sva);
+				pt_entry_t oldpte, vm_offset_t sva);
 static void pmap_remove_page (struct pmap *pmap, vm_offset_t va);
 static int pmap_remove_entry (struct pmap *pmap, vm_page_t m,
 				vm_offset_t va);
@@ -1599,8 +1599,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		if (pde == NULL) {
 			/* We need a new PDP entry */
 			nkpg = vm_page_alloc(&kptobj, nkpt,
-			                     VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM
-					     | VM_ALLOC_INTERRUPT);
+			                     VM_ALLOC_NORMAL |
+					     VM_ALLOC_SYSTEM |
+					     VM_ALLOC_INTERRUPT);
 			if (nkpg == NULL) {
 				panic("pmap_growkernel: no memory to "
 				      "grow kernel");
@@ -1862,13 +1863,15 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m,
  * page busy to prevent races.
  */
 static int
-pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va)
+pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, pt_entry_t oldpte,
+		vm_offset_t va)
 {
-	pt_entry_t oldpte;
 	vm_page_t m;
 	int error;
 
-	oldpte = pmap_inval_loadandclear(ptq, pmap, va);
+	if (ptq)
+		oldpte = pmap_inval_loadandclear(ptq, pmap, va);
+
 	if (oldpte & VPTE_WIRED)
 		atomic_add_long(&pmap->pm_stats.wired_count, -1);
 	KKASSERT(pmap->pm_stats.wired_count >= 0);
@@ -1930,7 +1933,7 @@ pmap_remove_page(struct pmap *pmap, vm_offset_t va)
 		return;
 	if ((*pte & VPTE_V) == 0)
 		return;
-	pmap_remove_pte(pmap, pte, va);
+	pmap_remove_pte(pmap, pte, 0, va);
 }
 
 /*
@@ -2038,7 +2041,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
 		     sva += PAGE_SIZE) {
 			if (*pte) {
-				if (pmap_remove_pte(pmap, pte, sva))
+				if (pmap_remove_pte(pmap, pte, 0, sva))
 					break;
 			}
 		}
@@ -2318,10 +2321,10 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
  * specified protection, and wire the mapping if requested.
  *
  * NOTE: This routine may not lazy-evaluate or lose information.  The
- * page must actually be inserted into the given map NOW.
+ *	 page must actually be inserted into the given map NOW.
  *
  * NOTE: When entering a page at a KVA address, the pmap must be the
- * kernel_pmap.
+ *	 kernel_pmap.
  *
  * No requirements.
  */
@@ -2361,12 +2364,12 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	}
 
 	/*
-	 * Deal with races on the original mapping by cleaning it, which
-	 * turns of PG_RW and gives us a definitive VPTE_M status.  We
-	 * are primarily concerned about VPTE_M races.
+	 * Deal with races against the kernel's real MMU by cleaning the
+	 * page, even if we are re-entering the same page.
 	 */
 	pa = VM_PAGE_TO_PHYS(m);
-	origpte = pmap_clean_pte(pte, pmap, va);
+	origpte = pmap_inval_loadandclear(pte, pmap, va);
+	/*origpte = pmap_clean_pte(pte, pmap, va);*/
 	opa = origpte & VPTE_FRAME;
 
 	if (origpte & VPTE_PS)
@@ -2416,7 +2419,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 */
 	if (opa) {
 		int err;
-		err = pmap_remove_pte(pmap, pte, va);
+		err = pmap_remove_pte(pmap, NULL, origpte, va);
 		if (err)
 			panic("pmap_enter: pte vanished, va: 0x%lx", va);
 	}
@@ -2460,7 +2463,11 @@ validate:
 		vm_page_flag_set(m, PG_WRITEABLE);
 	KKASSERT((newpte & VPTE_MANAGED) == 0 || (m->flags & PG_MAPPED));
 
-	atomic_swap_long(pte, newpte);
+	origpte = atomic_swap_long(pte, newpte);
+	if (origpte & VPTE_M) {
+		kprintf("pmap [M] race @ %016jx\n", va);
+		atomic_set_long(pte, VPTE_M);
+	}
 
 	if (mpte)
 		vm_page_wakeup(mpte);
@@ -2527,6 +2534,9 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	if (lp == NULL || pmap != vmspace_pmap(lp->lwp_vmspace))
 		return;
 
+	/*
+	 * Misc additional checks
+	 */
 	psize = x86_64_btop(size);
 
 	if ((object->type != OBJT_VNODE) ||
@@ -2647,8 +2657,10 @@ pmap_unwire(pmap_t pmap, vm_offset_t va)
 	vm_object_hold(pmap->pm_pteobj);
 	pte = pmap_pte(pmap, va);
 
-	if (pte == NULL || (*pte & VPTE_V) == 0)
+	if (pte == NULL || (*pte & VPTE_V) == 0) {
+		vm_object_drop(pmap->pm_pteobj);
 		return NULL;
+	}
 
 	/*
 	 * Wiring is not a hardware characteristic so there is no need to
@@ -2998,9 +3010,11 @@ restart:
 				 * VPTE_M.
 				 */
 				atomic_clear_long(pte, VPTE_M);
-				pmap_invalidate_range(pv->pv_pmap,
+				if (*pte & VPTE_RW) {
+					pmap_invalidate_range(pv->pv_pmap,
 						      pv->pv_va,
 						      pv->pv_va + PAGE_SIZE);
+				}
 			} else if ((bit & (VPTE_RW|VPTE_M)) ==
 				   (VPTE_RW|VPTE_M)) {
 				/*

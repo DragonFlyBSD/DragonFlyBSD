@@ -275,33 +275,24 @@ pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
  * setting of VPTE_M, allowing us to invalidate the tlb (the real cpu's
  * pmap) and get good status for VPTE_M.
  *
- * When messing with page directory entries we have to clear the cpu
- * mask to force a reload of the kernel's page table mapping cache.
- *
  * clean: clear VPTE_M and VPTE_RW
  * setro: clear VPTE_RW
  * load&clear: clear entire field
  */
-#include <stdio.h>
-
 vpte_t
 pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
 	vpte_t pte;
 
-	pte = *ptep;
-	if (pte & VPTE_V) {
-		if (vmm_enabled == 0) {
-			atomic_clear_long(ptep, VPTE_RW);
+	if (vmm_enabled == 0) {
+		pte = atomic_swap_long(ptep, *ptep & ~(VPTE_RW | VPTE_M));
+		if (pte & VPTE_RW)
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);
-			pte = *ptep | (pte & VPTE_RW);
-			atomic_clear_long(ptep, VPTE_M);
-		} else {
-			pte &= ~(VPTE_RW | VPTE_M);
-			guest_sync_addr(pmap, ptep, &pte);
-		}
+	} else {
+		pte = *ptep & ~(VPTE_RW | VPTE_M);
+		guest_sync_addr(pmap, ptep, &pte);
 	}
-	return(pte);
+	return pte;
 }
 
 #if 0
@@ -333,25 +324,27 @@ pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
  * This is an odd case and I'm not sure whether it even occurs in normal
  * operation.  Turn off write access to the page, clean out the tlb
  * (the real cpu's pmap), and deal with any VPTE_M race that may have
- * occured.  VPTE_M is not cleared.
+ * occured.
+ *
+ * VPTE_M is not cleared.  If we accidently removed it due to the swap
+ * we throw it back into the pte.
  */
 vpte_t
 pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
 	vpte_t pte;
 
-	pte = *ptep;
-	if (pte & VPTE_V) {
-		if (vmm_enabled == 0) {
-			atomic_clear_long(ptep, VPTE_RW);
+	if (vmm_enabled == 0) {
+		pte = atomic_swap_long(ptep, *ptep & ~VPTE_RW);
+		if (pte & VPTE_M)
+			atomic_set_long(ptep, VPTE_M);
+		if (pte & VPTE_RW)
 			pmap_inval_cpu(pmap, va, PAGE_SIZE);
-			pte |= *ptep & VPTE_M;
-		} else {
-			pte &= ~VPTE_RW;
-			guest_sync_addr(pmap, ptep, &pte);
-		}
+	} else {
+		pte = *ptep & ~(VPTE_RW | VPTE_M);
+		guest_sync_addr(pmap, ptep, &pte);
 	}
-	return(pte);
+	return pte;
 }
 
 /*

@@ -310,7 +310,6 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 		len -= n;
 		udaddr = (char *)udaddr + n;
 		kaddr = (const char *)kaddr + n;
-		vm_page_dirty(m);
 		lwbuf_free(lwb);
 		if (busy)
 			vm_page_wakeup(m);
