@@ -755,11 +755,14 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 			PRELE(p);
 			return (0);
 		}
-		lwkt_gettoken(&p->p_token);
-		if (!CANSIGNAL(p, sig)) {
+		if (p != curproc) {
+			lwkt_gettoken_shared(&p->p_token);
+			if (!CANSIGNAL(p, sig)) {
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
+				return (EPERM);
+			}
 			lwkt_reltoken(&p->p_token);
-			PRELE(p);
-			return (EPERM);
 		}
 
 		/*
@@ -768,21 +771,24 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		 * during exit, which is allowed.
 		 */
 		if (p->p_flags & P_WEXIT) {
-			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return (0);
 		}
 		if (tid != -1) {
+			lwkt_gettoken_shared(&p->p_token);
 			lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, tid);
 			if (lp == NULL) {
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
 				return (ESRCH);
 			}
+			LWPHOLD(lp);
+			lwkt_reltoken(&p->p_token);
 		}
 		if (sig)
 			lwpsignal(p, lp, sig);
-		lwkt_reltoken(&p->p_token);
+		if (lp)
+			LWPRELE(lp);
 		PRELE(p);
 
 		return (0);
@@ -2317,13 +2323,14 @@ sigexit(struct lwp *lp, int sig)
 		 * these messages.)
 		 * XXX : Todo, as well as euid, write out ruid too
 		 */
-		if (kern_logsigexit)
+		if (kern_logsigexit) {
 			log(LOG_INFO,
 			    "pid %d (%s), uid %d: exited on signal %d%s\n",
 			    p->p_pid, p->p_comm,
 			    p->p_ucred ? p->p_ucred->cr_uid : -1,
 			    sig &~ WCOREFLAG,
 			    sig & WCOREFLAG ? " (core dumped)" : "");
+		}
 	}
 	lwkt_reltoken(&p->p_token);
 	exit1(W_EXITCODE(0, sig));
