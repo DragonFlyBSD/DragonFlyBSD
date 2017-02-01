@@ -357,7 +357,7 @@ RetryFault:
 		{
 			if (result == KERN_INVALID_ADDRESS && growstack &&
 			    map != &kernel_map && curproc != NULL) {
-				result = vm_map_growstack(curproc, vaddr);
+				result = vm_map_growstack(map, vaddr);
 				if (result == KERN_SUCCESS) {
 					growstack = 0;
 					++retry;
@@ -724,7 +724,8 @@ vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type,
  *
  * If busyp is not NULL then *busyp will be set to TRUE if this routine
  * decides to return a busied page (aka VM_PROT_WRITE), or FALSE if it
- * does not (VM_PROT_WRITE not specified or busyp is NULL).
+ * does not (VM_PROT_WRITE not specified or busyp is NULL).  If busyp is
+ * NULL the returned page is only held.
  *
  * If the caller has no intention of writing to the page's contents, busyp
  * can be passed as NULL along with VM_PROT_WRITE to force a COW operation
@@ -734,9 +735,6 @@ vm_fault_page_quick(vm_offset_t va, vm_prot_t fault_type,
  *
  * If the page cannot be faulted writable and VM_PROT_WRITE was specified, an
  * error will be returned.
- *
- * The page will either be held or busied on returned depending on what this
- * routine sets *busyp to.  It will only be held if busyp is NULL.
  *
  * No requirements.
  */
@@ -821,7 +819,7 @@ RetryFault:
 		{
 			if (result == KERN_INVALID_ADDRESS && growstack &&
 			    map != &kernel_map && curproc != NULL) {
-				result = vm_map_growstack(curproc, vaddr);
+				result = vm_map_growstack(map, vaddr);
 				if (result == KERN_SUCCESS) {
 					growstack = 0;
 					++retry;

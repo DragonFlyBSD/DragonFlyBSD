@@ -1182,6 +1182,7 @@ loop:
 		cpu_lfence();
 		CPUMASK_ORMASK(cpumask, smp_invmask);
 		/*cpumask = smp_active_mask;*/	/* XXX */
+		cpu_lfence();
 
 		if (pmap_inval_intr(&cpumask, toolong) == 0) {
 			/*

@@ -417,14 +417,21 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
 	 * thread we don't have to invalidate the tlb (i.e. reload cr3).
-	 * YYY which naturally also means that the PM_ACTIVE bit had better
-	 * already have been set before we set it above, check? YYY
+	 *
+	 * XXX Temporary cludge, do NOT do this optimization!  The problem
+	 *     is that the pm_active bit for the cpu had dropped for a small
+	 *     period of time, just a few cycles, but even one cycle is long
+	 *     enough for some other cpu doing a pmap invalidation to not see
+	 *     our cpu.
+	 *
+	 *     When that happens, and we don't invltlb (by loading %cr3), we
+	 *     wind up with a stale TLB.
 	 */
 	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
 	movq	%cr3,%rsi			/* RSI = current CR3 */
 	movq	PCB_CR3(%rdx),%rcx		/* RCX = desired CR3 */
 	cmpq	%rsi,%rcx
-	je	4f
+	/*je	4f*/
 2:
 #if defined(SWTCH_OPTIM_STATS)
 	decl	_swtch_optim_stats
@@ -829,7 +836,13 @@ ENTRY(cpu_lwkt_restore)
 	testq	%r14,%r14
 	jne	1f			/* yes, borrow %cr3 from old thread */
 #endif
-	movq	KPML4phys,%rcx	/* YYY borrow but beware desched/cpuchg/exit */
+	/*
+	 * Don't reload %cr3 if it hasn't changed.  Since this is a LWKT
+	 * thread (a kernel thread), and the kernel_pmap always permanently
+	 * sets all pm_active bits, we don't have the same problem with it
+	 * that we do with process pmaps.
+	 */
+	movq	KPML4phys,%rcx
 	movq	%cr3,%rdx
 	cmpq	%rcx,%rdx
 	je	1f

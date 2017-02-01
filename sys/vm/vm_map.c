@@ -1953,7 +1953,6 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	 * various clipping operations.  Otherwise we only need a read-lock
 	 * on the map.
 	 */
-
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 
 	switch(behav) {
@@ -3257,7 +3256,7 @@ vm_map_split(vm_map_entry_t entry)
 		nobject->backing_object = bobject;
 		if (useshadowlist) {
 			bobject->shadow_count++;
-			bobject->generation++;
+			atomic_add_int(&bobject->generation, 1);
 			LIST_INSERT_HEAD(&bobject->shadow_head,
 					 nobject, shadow_list);
 			vm_object_clear_flag(bobject, OBJ_ONEMAPPING); /*XXX*/
@@ -3728,19 +3727,29 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
  * No requirements.
  */
 int
-vm_map_growstack (struct proc *p, vm_offset_t addr)
+vm_map_growstack (vm_map_t map, vm_offset_t addr)
 {
 	vm_map_entry_t prev_entry;
 	vm_map_entry_t stack_entry;
 	vm_map_entry_t new_stack_entry;
-	struct vmspace *vm = p->p_vmspace;
-	vm_map_t map = &vm->vm_map;
+	struct vmspace *vm;
+	struct lwp *lp;
+	struct proc *p;
 	vm_offset_t    end;
 	int grow_amount;
 	int rv = KERN_SUCCESS;
 	int is_procstack;
 	int use_read_lock = 1;
 	int count;
+
+	/*
+	 * Find the vm
+	 */
+	lp = curthread->td_lwp;
+	p = curthread->td_proc;
+	KKASSERT(lp != NULL);
+	vm = lp->lwp_vmspace;
+	KKASSERT(map == &vm->vm_map);
 
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 Retry:

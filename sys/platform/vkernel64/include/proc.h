@@ -42,11 +42,10 @@
  * in md_regs so emulation and other code can modify it for the return.
  */
 struct trapframe;
+struct vm_map;
 
 struct mdproc {
 	struct trapframe *md_regs;	/* registers on current frame */
 };
-
-int grow_stack(struct proc *p, u_long sp); /* XXX swildner */
 
 #endif /* !_MACHINE_PROC_H_ */

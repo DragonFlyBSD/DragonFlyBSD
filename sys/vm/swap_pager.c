@@ -108,6 +108,7 @@
 #include <sys/lock.h>
 #include <sys/thread2.h>
 
+#include <unistd.h>
 #include "opt_swap.h"
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -681,7 +682,7 @@ swap_pager_condfree_callback(struct swblock *swap, void *data)
  * into a VM object.  Checks whether swap has been assigned to
  * the page and sets PG_SWAPPED as necessary.
  *
- * No requirements.
+ * (m) must be busied by caller and remains busied on return.
  */
 void
 swap_pager_page_inserted(vm_page_t m)
@@ -871,9 +872,9 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
  * calls us in a special-case situation
  *
  * NOTE!!!  If the page is clean and the swap was valid, the caller
- * should make the page dirty before calling this routine.  This routine
- * does NOT change the m->dirty status of the page.  Also: MADV_FREE
- * depends on it.
+ *	    should make the page dirty before calling this routine.
+ *	    This routine does NOT change the m->dirty status of the page.
+ *	    Also: MADV_FREE depends on it.
  *
  * The page must be busied.
  * The caller can hold the object to avoid blocking, else we might block.
@@ -1439,7 +1440,12 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	}
 
 	/*
-	 * mreq is left bussied after completion, but all the other pages
+	 * Disallow speculative reads prior to the PG_SWAPINPROG test.
+	 */
+	cpu_lfence();
+
+	/*
+	 * mreq is left busied after completion, but all the other pages
 	 * are freed.  If we had an unrecoverable read error the page will
 	 * not be valid.
 	 */
@@ -1649,6 +1655,40 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		bp->b_cmd = BUF_CMD_WRITE;
 		bio->bio_caller_info1.index = SWBIO_WRITE;
 
+#if 0
+		/* PMAP TESTING CODE (useful, keep it in but #if 0'd) */
+		bio->bio_crc = iscsi_crc32(bp->b_data, bp->b_bcount);
+		{
+		    uint32_t crc = 0;
+		    for (j = 0; j < n; ++j) {
+			    vm_page_t mm = bp->b_xio.xio_pages[j];
+			    char *p = (char *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(mm));
+			    crc = iscsi_crc32_ext(p, PAGE_SIZE, crc);
+		    }
+		    if (bio->bio_crc != crc) {
+			    kprintf("PREWRITE MISMATCH-A "
+				    "bdata=%08x dmap=%08x bdata=%08x (%d)\n",
+				    bio->bio_crc,
+				    crc,
+				    iscsi_crc32(bp->b_data, bp->b_bcount),
+				    bp->b_bcount);
+#ifdef _KERNEL_VIRTUAL
+			    madvise(bp->b_data, bp->b_bcount, MADV_INVAL);
+#endif
+			    crc = 0;
+			    for (j = 0; j < n; ++j) {
+				    vm_page_t mm = bp->b_xio.xio_pages[j];
+				    char *p = (char *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(mm));
+				    crc = iscsi_crc32_ext(p, PAGE_SIZE, crc);
+			    }
+			    kprintf("PREWRITE MISMATCH-B "
+				    "bdata=%08x dmap=%08x\n",
+				    iscsi_crc32(bp->b_data, bp->b_bcount),
+				    crc);
+		    }
+		}
+#endif
+
 		/*
 		 * asynchronous
 		 */
@@ -1761,6 +1801,24 @@ swp_pager_async_iodone(struct bio *bio)
 	if (bp->b_xio.xio_npages)
 		object = bp->b_xio.xio_pages[0]->object;
 
+#if 0
+	/* PMAP TESTING CODE (useful, keep it in but #if 0'd) */
+	if (bio->bio_caller_info1.index & SWBIO_WRITE) {
+		if (bio->bio_crc != iscsi_crc32(bp->b_data, bp->b_bcount)) {
+			kprintf("SWAPOUT: BADCRC %08x %08x\n",
+				bio->bio_crc,
+				iscsi_crc32(bp->b_data, bp->b_bcount));
+			for (i = 0; i < bp->b_xio.xio_npages; ++i) {
+				vm_page_t m = bp->b_xio.xio_pages[i];
+				if (m->flags & PG_WRITEABLE)
+					kprintf("SWAPOUT: "
+						"%d/%d %p writable\n",
+						i, bp->b_xio.xio_npages, m);
+			}
+		}
+	}
+#endif
+
 	/*
 	 * remove the mapping for kernel virtual
 	 */
@@ -1798,15 +1856,21 @@ swp_pager_async_iodone(struct bio *bio)
 				 * up too because we cleared PG_SWAPINPROG and
 				 * someone may be waiting for that.
 				 *
-				 * NOTE: for reads, m->dirty will probably
-				 * be overridden by the original caller of
-				 * getpages so don't play cute tricks here.
+				 * NOTE: For reads, m->dirty will probably
+				 *	 be overridden by the original caller
+				 *	 of getpages so don't play cute tricks
+				 *	 here.
 				 *
 				 * NOTE: We can't actually free the page from
-				 * here, because this is an interrupt.  It
-				 * is not legal to mess with object->memq
-				 * from an interrupt.  Deactivate the page
-				 * instead.
+				 *	 here, because this is an interrupt.
+				 *	 It is not legal to mess with
+				 *	 object->memq from an interrupt.
+				 *	 Deactivate the page instead.
+				 *
+				 * WARNING! The instant PG_SWAPINPROG is
+				 *	    cleared another cpu may start
+				 *	    using the mreq page (it will
+				 *	    check m->valid immediately).
 				 */
 
 				m->valid = 0;
@@ -1842,15 +1906,17 @@ swp_pager_async_iodone(struct bio *bio)
 				 * do have backing store (the vnode).
 				 */
 				vm_page_busy_wait(m, FALSE, "swadpg");
+				vm_object_hold(m->object);
 				swp_pager_meta_ctl(m->object, m->pindex,
 						   SWM_FREE);
 				vm_page_flag_clear(m, PG_SWAPPED);
+				vm_object_drop(m->object);
 				if (m->object->type == OBJT_SWAP) {
 					vm_page_dirty(m);
 					vm_page_activate(m);
 				}
-				vm_page_flag_clear(m, PG_SWAPINPROG);
 				vm_page_io_finish(m);
+				vm_page_flag_clear(m, PG_SWAPINPROG);
 				vm_page_wakeup(m);
 			}
 		} else if (bio->bio_caller_info1.index & SWBIO_READ) {
@@ -1873,15 +1939,21 @@ swp_pager_async_iodone(struct bio *bio)
 			 */
 
 			/* 
-			 * NOTE: can't call pmap_clear_modify(m) from an
-			 * interrupt thread, the pmap code may have to map
-			 * non-kernel pmaps and currently asserts the case.
+			 * NOTE: Can't call pmap_clear_modify(m) from an
+			 *	 interrupt thread, the pmap code may have to
+			 *	 map non-kernel pmaps and currently asserts
+			 *	 the case.
+			 *
+			 * WARNING! The instant PG_SWAPINPROG is
+			 *	    cleared another cpu may start
+			 *	    using the mreq page (it will
+			 *	    check m->valid immediately).
 			 */
 			/*pmap_clear_modify(m);*/
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_undirty(m);
-			vm_page_flag_clear(m, PG_SWAPINPROG);
 			vm_page_flag_set(m, PG_SWAPPED);
+			vm_page_flag_clear(m, PG_SWAPINPROG);
 
 			/*
 			 * We have to wake specifically requested pages
@@ -1915,12 +1987,15 @@ swp_pager_async_iodone(struct bio *bio)
 			 *
 			 * When using the swap to cache clean vnode pages
 			 * we do not mess with the page dirty bits.
+			 *
+			 * NOTE! Nobody is waiting for the key mreq page
+			 *	 on write completion.
 			 */
 			vm_page_busy_wait(m, FALSE, "swadpg");
 			if (m->object->type == OBJT_SWAP)
 				vm_page_undirty(m);
-			vm_page_flag_clear(m, PG_SWAPINPROG);
 			vm_page_flag_set(m, PG_SWAPPED);
+			vm_page_flag_clear(m, PG_SWAPINPROG);
 			if (vm_page_count_severe())
 				vm_page_deactivate(m);
 			vm_page_io_finish(m);

@@ -54,7 +54,7 @@ typedef struct pmap_inval_bulk {
 	long		count;
 } pmap_inval_bulk_t;
 
-pt_entry_t pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
+pt_entry_t pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 			pt_entry_t *ptep, pt_entry_t npte);
 int pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va,
 			pt_entry_t *ptep, pt_entry_t opte, pt_entry_t npte);

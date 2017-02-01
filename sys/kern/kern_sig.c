@@ -911,7 +911,6 @@ trapsignal(struct lwp *lp, int sig, u_long code)
 		vkernel_trap(lp, tf);
 	}
 
-
 	if ((p->p_flags & P_TRACED) == 0 && SIGISMEMBER(p->p_sigcatch, sig) &&
 	    !SIGISMEMBER(lp->lwp_sigmask, sig)) {
 		lp->lwp_ru.ru_nsignals++;
@@ -2163,12 +2162,14 @@ issignal(struct lwp *lp, int maytrace, int *ptokp)
 }
 
 /*
- * Take the action for the specified signal
- * from the current set of pending signals.
+ * Take the action for the specified signal from the current set of
+ * pending signals.
  *
- * haveptok indicates whether the caller is holding
- * p->p_token.  If the caller is, we are responsible
- * for releasing it.
+ * haveptok indicates whether the caller is holding p->p_token.  If the
+ * caller is, we are responsible for releasing it.
+ *
+ * This routine can only be called from the top-level trap from usermode.
+ * It is expecting to be able to modify the top-level stack frame.
  */
 void
 postsig(int sig, int haveptok)
@@ -2182,8 +2183,6 @@ postsig(int sig, int haveptok)
 
 	KASSERT(sig != 0, ("postsig"));
 
-	KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
-
 	/*
 	 * If we are a virtual kernel running an emulated user process
 	 * context, switch back to the virtual kernel context before
@@ -2194,6 +2193,8 @@ postsig(int sig, int haveptok)
 		tf->tf_trapno = 0;
 		vkernel_trap(lp, tf);
 	}
+
+	KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
 
 	spin_lock(&lp->lwp_spin);
 	lwp_delsig(lp, sig, haveptok);

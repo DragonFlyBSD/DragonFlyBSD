@@ -69,6 +69,7 @@ struct bio {
 	biodone_t	*bio_done;   	/* MPSAFE caller completion function */
 	off_t		bio_offset;	/* Logical offset relative to device */
 	void		*bio_driver_info;
+	uint32_t	bio_crc;	/* Caller-specific */
 	int		bio_flags;
 	union {
 		void	*ptr;

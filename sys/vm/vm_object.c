@@ -389,7 +389,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->backing_object = NULL;
 	object->backing_object_offset = (vm_ooffset_t)0;
 
-	object->generation++;
+	atomic_add_int(&object->generation, 1);
 	object->swblock_count = 0;
 	RB_INIT(&object->swblock_root);
 	vm_object_lock_init(object);
@@ -1080,7 +1080,7 @@ skip:
 			if (object->flags & OBJ_ONSHADOW) {
 				LIST_REMOVE(object, shadow_list);
 				temp->shadow_count--;
-				temp->generation++;
+				atomic_add_int(&temp->generation, 1);
 				vm_object_clear_flag(object, OBJ_ONSHADOW);
 			}
 			object->backing_object = NULL;
@@ -1950,7 +1950,7 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 			LIST_INSERT_HEAD(&source->shadow_head,
 					 result, shadow_list);
 			source->shadow_count++;
-			source->generation++;
+			atomic_add_int(&source->generation, 1);
 			vm_object_set_flag(result, OBJ_ONSHADOW);
 		}
 		/* cpu localization twist */
@@ -2380,7 +2380,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			if (object->flags & OBJ_ONSHADOW) {
 				LIST_REMOVE(object, shadow_list);
 				backing_object->shadow_count--;
-				backing_object->generation++;
+				atomic_add_int(&backing_object->generation, 1);
 				vm_object_clear_flag(object, OBJ_ONSHADOW);
 			}
 
@@ -2412,7 +2412,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 					LIST_REMOVE(backing_object,
 						    shadow_list);
 					bbobj->shadow_count--;
-					bbobj->generation++;
+					atomic_add_int(&bbobj->generation, 1);
 					vm_object_clear_flag(backing_object,
 							     OBJ_ONSHADOW);
 				}
@@ -2424,7 +2424,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 					LIST_INSERT_HEAD(&bbobj->shadow_head,
 							 object, shadow_list);
 					bbobj->shadow_count++;
-					bbobj->generation++;
+					atomic_add_int(&bbobj->generation, 1);
 					vm_object_set_flag(object,
 							   OBJ_ONSHADOW);
 				}
@@ -2512,7 +2512,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			if (object->flags & OBJ_ONSHADOW) {
 				LIST_REMOVE(object, shadow_list);
 				backing_object->shadow_count--;
-				backing_object->generation++;
+				atomic_add_int(&backing_object->generation, 1);
 				vm_object_clear_flag(object, OBJ_ONSHADOW);
 			}
 
@@ -2533,7 +2533,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 					LIST_INSERT_HEAD(&bbobj->shadow_head,
 							 object, shadow_list);
 					bbobj->shadow_count++;
-					bbobj->generation++;
+					atomic_add_int(&bbobj->generation, 1);
 					vm_object_set_flag(object,
 							   OBJ_ONSHADOW);
 				} else {

@@ -76,6 +76,8 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include <vm/vm_page2.h>
+
 extern int vmm_enabled;
 
 /*
@@ -270,24 +272,67 @@ pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 }
 
 /*
- * These carefully handle interactions with other cpus and return
- * the original vpte.  Clearing VPTE_RW prevents us from racing the
- * setting of VPTE_M, allowing us to invalidate the TLB (the real cpu's
- * pmap) and get good status for VPTE_M.
+ * This is really nasty.
  *
- * By using an atomic op we can detect if the real PTE is writable by
- * testing whether VPTE_M was set.  If it wasn't set, the real PTE is
- * already read-only and we do not have to waste time invalidating it
- * further.
+ * (1) The vkernel interlocks pte operations with the related vm_page_t
+ *     spin-lock (and doesn't handle unmanaged page races).
  *
- * clean: clear VPTE_M and VPTE_RW
- * setro: clear VPTE_RW
- * load&clear: clear entire field
+ * (2) The vkernel must also issu an invalidation to the real cpu.  It
+ *     (nastily) does this while holding the spin-lock too.
+ *
+ * In addition, atomic ops must be used to properly interlock against
+ * other cpus and the real kernel (which could be taking a fault on another
+ * cpu and will adjust VPTE_M and VPTE_A appropriately).
+ *
+ * The atomicc ops do a good job of interlocking against other cpus, but
+ * we still need to lock the pte location (which we use the vm_page spin-lock
+ * for) to avoid races against PG_WRITEABLE and other tests.
+ *
+ * Cleaning the pte involves clearing VPTE_M and VPTE_RW, synchronizing with
+ * the real host, and updating the vm_page appropriately.
+ *
+ * If the caller passes a non-NULL (m), the caller holds the spin-lock,
+ * otherwise we must acquire and release the spin-lock.  (m) is only
+ * applicable to managed pages.
  */
 vpte_t
-pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
+pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va,
+	       vm_page_t m)
 {
 	vpte_t pte;
+	int spin = 0;
+
+	/*
+	 * Acquire (m) and spin-lock it.
+	 */
+	while (m == NULL) {
+		pte = *ptep;
+		if ((pte & VPTE_V) == 0)
+			return pte;
+		if ((pte & VPTE_MANAGED) == 0)
+			break;
+		m = PHYS_TO_VM_PAGE(pte & VPTE_FRAME);
+		vm_page_spin_lock(m);
+
+		pte = *ptep;
+		if ((pte & VPTE_V) == 0) {
+			vm_page_spin_unlock(m);
+			m = NULL;
+			continue;
+		}
+		if ((pte & VPTE_MANAGED) == 0) {
+			vm_page_spin_unlock(m);
+			m = NULL;
+			continue;
+		}
+		if (m != PHYS_TO_VM_PAGE(pte & VPTE_FRAME)) {
+			vm_page_spin_unlock(m);
+			m = NULL;
+			continue;
+		}
+		spin = 1;
+		break;
+	}
 
 	if (vmm_enabled == 0) {
 		for (;;) {
@@ -306,62 +351,18 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 		pte = *ptep & ~(VPTE_RW | VPTE_M);
 		guest_sync_addr(pmap, ptep, &pte);
 	}
-	return pte;
-}
 
-#if 0
-
-vpte_t
-pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
-{
-	vpte_t pte;
-
-	pte = *ptep;
-	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_RW);
-		if (vmm_enabled == 0) {
-			atomic_clear_long(ptep, VPTE_RW);
-			pmap_inval_cpu(pmap, va, PAGE_SIZE);
-			pte = *ptep | (pte & VPTE_RW);
-			atomic_clear_long(ptep, VPTE_M);
-		} else {
-			pte &= ~(VPTE_RW | VPTE_M);
-			guest_sync_addr(pmap, ptep, &pte);
+	if (m) {
+		if (pte & VPTE_A) {
+			vm_page_flag_set(m, PG_REFERENCED);
+			atomic_clear_long(ptep, VPTE_A);
 		}
-	}
-	return(pte);
-}
-
-#endif
-
-/*
- * This is an odd case and I'm not sure whether it even occurs in normal
- * operation.  Turn off write access to the page, clean out the tlb
- * (the real cpu's pmap), and deal with any VPTE_M race that may have
- * occured.
- *
- * VPTE_M is not cleared.  If we accidently removed it due to the swap
- * we throw it back into the pte.
- */
-vpte_t
-pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
-{
-	vpte_t pte;
-
-	if (vmm_enabled == 0) {
-		for (;;) {
-			pte = *ptep;
-			cpu_ccfence();
-			if ((pte & VPTE_RW) == 0)
-				break;
-			if (atomic_cmpset_long(ptep, pte, pte & ~VPTE_RW)) {
-				pmap_inval_cpu(pmap, va, PAGE_SIZE);
-				break;
-			}
+		if (pte & VPTE_M) {
+			if (pmap_track_modified(pmap, va))
+				vm_page_dirty(m);
 		}
-	} else {
-		pte = *ptep & ~(VPTE_RW | VPTE_M);
-		guest_sync_addr(pmap, ptep, &pte);
+		if (spin)
+			vm_page_spin_unlock(m);
 	}
 	return pte;
 }
@@ -406,11 +407,13 @@ cpu_invltlb(void)
 		madvise((void *)KvaStart, KvaEnd - KvaStart, MADV_INVAL);
 }
 
+/*
+ * Invalidate the TLB on all cpus.  Instead what the vkernel does is
+ * ignore VM_PROT_NOSYNC on pmap_enter() calls.
+ */
 void
 smp_invltlb(void)
 {
-	/* XXX must invalidate the tlb on all cpus */
-	/* at the moment pmap_inval_pte_quick */
 	/* do nothing */
 }
 

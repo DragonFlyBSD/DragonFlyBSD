@@ -87,7 +87,7 @@ struct pmap_inval_info {
 	pt_entry_t	npte;
 	enum { INVDONE, INVSTORE, INVCMPSET } mode;
 	int		success;
-	int		npgs;
+	vm_pindex_t	npgs;
 	cpumask_t	done;
 	cpumask_t	mask;
 #ifdef LOOPRECOVER
@@ -107,13 +107,16 @@ extern cpumask_t		smp_in_mask;
 #endif
 extern cpumask_t		smp_smurf_mask;
 #endif
-static long pmap_inval_bulk_count;
 static int pmap_inval_watchdog_print;	/* must always default off */
+static int pmap_inval_force_allcpus;
+static int pmap_inval_force_nonopt;
 
-SYSCTL_LONG(_machdep, OID_AUTO, pmap_inval_bulk_count, CTLFLAG_RW,
-	    &pmap_inval_bulk_count, 0, "");
 SYSCTL_INT(_machdep, OID_AUTO, pmap_inval_watchdog_print, CTLFLAG_RW,
 	    &pmap_inval_watchdog_print, 0, "");
+SYSCTL_INT(_machdep, OID_AUTO, pmap_inval_force_allcpus, CTLFLAG_RW,
+	    &pmap_inval_force_allcpus, 0, "");
+SYSCTL_INT(_machdep, OID_AUTO, pmap_inval_force_nonopt, CTLFLAG_RW,
+	    &pmap_inval_force_nonopt, 0, "");
 
 static void
 pmap_inval_init(pmap_t pmap)
@@ -256,7 +259,7 @@ _checksigmask(pmap_inval_info_t *info, const char *file, int line)
  * ptep must be NULL if npgs > 1
  */
 pt_entry_t
-pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
+pmap_inval_smp(pmap_t pmap, vm_offset_t va, vm_pindex_t npgs,
 	       pt_entry_t *ptep, pt_entry_t npte)
 {
 	globaldata_t gd = mycpu;
@@ -268,6 +271,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 
 	/*
 	 * Initialize invalidation for pmap and enter critical section.
+	 * This will enter a critical section for us.
 	 */
 	if (pmap == NULL)
 		pmap = &kernel_pmap;
@@ -276,32 +280,39 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	/*
 	 * Shortcut single-cpu case if possible.
 	 */
-	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
+	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask) &&
+	    pmap_inval_force_nonopt == 0) {
 		/*
 		 * Convert to invltlb if there are too many pages to
 		 * invlpg on.
 		 */
-		if (npgs > MAX_INVAL_PAGES) {
-			npgs = 0;
-			va = (vm_offset_t)-1;
-		}
-
-		/*
-		 * Invalidate the specified pages, handle invltlb if requested.
-		 */
-		while (npgs) {
-			--npgs;
-			if (ptep) {
+		if (npgs == 1) {
+			if (ptep)
 				opte = atomic_swap_long(ptep, npte);
-				++ptep;
-			}
 			if (va == (vm_offset_t)-1)
-				break;
-			cpu_invlpg((void *)va);
-			va += PAGE_SIZE;
-		}
-		if (va == (vm_offset_t)-1)
+				cpu_invltlb();
+			else
+				cpu_invlpg((void *)va);
+		} else if (va == (vm_offset_t)-1 || npgs > MAX_INVAL_PAGES) {
+			if (ptep) {
+				while (npgs) {
+					opte = atomic_swap_long(ptep, npte);
+					++ptep;
+					--npgs;
+				}
+			}
 			cpu_invltlb();
+		} else {
+			while (npgs) {
+				if (ptep) {
+					opte = atomic_swap_long(ptep, npte);
+					++ptep;
+				}
+				cpu_invlpg((void *)va);
+				va += PAGE_SIZE;
+				--npgs;
+			}
+		}
 		pmap_inval_done(pmap);
 
 		return opte;
@@ -316,7 +327,6 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	 * from a lost IPI.  Set to 1/16 second for now.
 	 */
 	info = &invinfo[cpu];
-	info->tsc_target = rdtsc() + (tsc_frequency * LOOPRECOVER_TIMEOUT1);
 
 	/*
 	 * We must wait for other cpus which may still be finishing up a
@@ -338,6 +348,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 		cpu_pause();
 	}
 	KKASSERT(info->mode == INVDONE);
+	cpu_mfence();
 
 	/*
 	 * Must set our cpu in the invalidation scan mask before
@@ -346,6 +357,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	 */
 	ATOMIC_CPUMASK_ORBIT(smp_invmask, cpu);
 
+	info->tsc_target = rdtsc() + (tsc_frequency * LOOPRECOVER_TIMEOUT1);
 	info->va = va;
 	info->npgs = npgs;
 	info->ptep = ptep;
@@ -357,6 +369,8 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	info->mode = INVSTORE;
 
 	tmpmask = pmap->pm_active;	/* volatile (bits may be cleared) */
+	if (pmap_inval_force_allcpus)
+		tmpmask = smp_active_mask;
 	cpu_ccfence();
 	CPUMASK_ANDMASK(tmpmask, smp_active_mask);
 
@@ -388,7 +402,7 @@ pmap_inval_smp(pmap_t pmap, vm_offset_t va, int npgs,
 	cpu_disable_intr();
 
 	ATOMIC_CPUMASK_COPY(info->done, tmpmask);
-	/* execution can begin here due to races */
+	/* execution can begin here on other cpus due to races */
 
 	/*
 	 * Pass our copy of the done bits (so they don't change out from
@@ -437,7 +451,8 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	/*
 	 * Shortcut single-cpu case if possible.
 	 */
-	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
+	if (CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask) &&
+	    pmap_inval_force_nonopt == 0) {
 		if (atomic_cmpset_long(ptep, opte, npte)) {
 			if (va == (vm_offset_t)-1)
 				cpu_invltlb();
@@ -457,7 +472,6 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 * pmap_inval*() command and create confusion below.
 	 */
 	info = &invinfo[cpu];
-	info->tsc_target = rdtsc() + (tsc_frequency * LOOPRECOVER_TIMEOUT1);
 
 	/*
 	 * We must wait for other cpus which may still be finishing
@@ -475,6 +489,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 		cpu_pause();
 	}
 	KKASSERT(info->mode == INVDONE);
+	cpu_mfence();
 
 	/*
 	 * Must set our cpu in the invalidation scan mask before
@@ -483,6 +498,7 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	 */
 	ATOMIC_CPUMASK_ORBIT(smp_invmask, cpu);
 
+	info->tsc_target = rdtsc() + (tsc_frequency * LOOPRECOVER_TIMEOUT1);
 	info->va = va;
 	info->npgs = 1;			/* unused */
 	info->ptep = ptep;
@@ -495,6 +511,8 @@ pmap_inval_smp_cmpset(pmap_t pmap, vm_offset_t va, pt_entry_t *ptep,
 	info->success = 0;
 
 	tmpmask = pmap->pm_active;	/* volatile */
+	if (pmap_inval_force_allcpus)
+		tmpmask = smp_active_mask;
 	cpu_ccfence();
 	CPUMASK_ANDMASK(tmpmask, smp_active_mask);
 	CPUMASK_ORBIT(tmpmask, cpu);
@@ -609,13 +627,11 @@ pmap_inval_bulk_flush(pmap_inval_bulk_t *bulk)
 {
 	if (bulk == NULL)
 		return;
-	if (bulk->count > 0)
-		pmap_inval_bulk_count += (bulk->count - 1);
 	if (bulk->va_beg != bulk->va_end) {
 		if (bulk->va_beg == (vm_offset_t)-1) {
 			pmap_inval_smp(bulk->pmap, bulk->va_beg, 1, NULL, 0);
 		} else {
-			long n;
+			vm_pindex_t n;
 
 			n = (bulk->va_end - bulk->va_beg) >> PAGE_SHIFT;
 			pmap_inval_smp(bulk->pmap, bulk->va_beg, n, NULL, 0);
@@ -627,7 +643,7 @@ pmap_inval_bulk_flush(pmap_inval_bulk_t *bulk)
 }
 
 /*
- * Called with a critical section held and interrupts enabled.
+ * Called from Xinvl with a critical section held and interrupts enabled.
  */
 int
 pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
@@ -656,9 +672,15 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 		info = &invinfo[n];
 
 		/*
+		 * Checkout cpu (cpu) for work in the target cpu info (n)
+		 *
+		 * if (n == cpu) - check our cpu for a master operation
+		 * if (n != cpu) - check other cpus for a slave operation
+		 *
 		 * Due to interrupts/races we can catch a new operation
-		 * in an older interrupt.  A fence is needed once we detect
-		 * the (not) done bit.
+		 * in an older interrupt in other cpus.
+		 *
+		 * A fence is needed once we detect the (not) done bit.
 		 */
 		if (!CPUMASK_TESTBIT(info->done, cpu))
 			continue;
@@ -693,7 +715,7 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 			 */
 			if (CPUMASK_TESTBIT(info->mask, cpu)) {
 				/*
-				 * Other cpu indicate to originator that they
+				 * Other cpus indicate to originator that they
 				 * are quiesced.
 				 */
 				ATOMIC_CPUMASK_NANDBIT(info->mask, cpu);
@@ -715,7 +737,7 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 				 * we can follow up with our own invalidation.
 				 */
 				vm_offset_t va = info->va;
-				int npgs;
+				vm_pindex_t npgs;
 
 				if (va == (vm_offset_t)-1 ||
 				    info->npgs > MAX_INVAL_PAGES) {
@@ -799,7 +821,7 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 			 * (asynchronously).
 			 */
 			vm_offset_t va = info->va;
-			int npgs;
+			vm_pindex_t npgs;
 
 			if (va == (vm_offset_t)-1 ||
 			    info->npgs > MAX_INVAL_PAGES) {

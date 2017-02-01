@@ -609,7 +609,7 @@ void vm_init2 (void);
 int vm_uiomove (vm_map_t, vm_object_t, off_t, int, vm_offset_t, int *);
 int vm_map_stack (vm_map_t, vm_offset_t, vm_size_t, int,
 		  vm_prot_t, vm_prot_t, int);
-int vm_map_growstack (struct proc *p, vm_offset_t addr);
+int vm_map_growstack (vm_map_t map, vm_offset_t addr);
 vm_offset_t vmspace_swap_count (struct vmspace *vmspace);
 vm_offset_t vmspace_anonymous_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);

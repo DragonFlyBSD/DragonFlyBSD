@@ -502,20 +502,18 @@ trap(struct trapframe *frame)
 
 		case T_PAGEFLT:		/* page fault */
 			i = trap_pfault(frame, TRUE);
-			if (frame->tf_rip == 0) {
 #ifdef DDB
+			if (frame->tf_rip == 0) {
 				/* used for kernel debugging only */
 				while (freeze_on_seg_fault)
 					tsleep(p, 0, "freeze", hz * 20);
-#endif
 			}
+#endif
 			if (i == -1 || i == 0)
 				goto out;
-
-
-			if (i == SIGSEGV)
+			if (i == SIGSEGV) {
 				ucode = SEGV_MAPERR;
-			else {
+			} else {
 				i = SIGSEGV;
 				ucode = SEGV_ACCERR;
 			}
@@ -745,9 +743,10 @@ trap(struct trapframe *frame)
 	}
 
 	/*
-	 * Virtual kernel intercept - if the fault is directly related to a
-	 * VM context managed by a virtual kernel then let the virtual kernel
-	 * handle it.
+	 * Fault from user mode, virtual kernel interecept.
+	 *
+	 * If the fault is directly related to a VM context managed by a
+	 * virtual kernel then let the virtual kernel handle it.
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		vkernel_trap(lp, frame);

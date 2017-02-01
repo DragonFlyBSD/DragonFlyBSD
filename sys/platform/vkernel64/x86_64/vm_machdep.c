@@ -298,18 +298,6 @@ cpu_thread_exit(void)
 	panic("cpu_thread_exit: lwkt_switch() unexpectedly returned");
 }
 
-int
-grow_stack(struct proc *p, u_long sp)
-{
-	int rv;
-
-	rv = vm_map_growstack (p, sp);
-	if (rv != KERN_SUCCESS)
-		return (0);
-
-	return (1);
-}
-
 /*
  * Used by /dev/kmem to determine if we can safely read or write
  * the requested KVA range.  Some portions of kernel memory are

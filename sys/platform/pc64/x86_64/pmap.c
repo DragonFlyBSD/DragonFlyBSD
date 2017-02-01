@@ -3723,6 +3723,8 @@ pmap_scan(struct pmap_scan_info *info, int smp_inval)
 	info->stop = 0;
 	if (pmap == NULL)
 		return;
+	if (info->sva == info->eva)
+		return;
 	if (smp_inval) {
 		info->bulk = &info->bulk_core;
 		pmap_inval_bulk_init(&info->bulk_core, pmap);
@@ -3847,9 +3849,13 @@ fast_skip:
 	/*
 	 * Nominal scan case, RB_SCAN() for PD pages and iterate from
 	 * there.
+	 *
+	 * WARNING! eva can overflow our standard ((N + mask) >> bits)
+	 *	    bounds, resulting in a pd_pindex of 0.  To solve the
+	 *	    problem we use an inclusive range.
 	 */
 	info->sva_pd_pindex = pmap_pd_pindex(info->sva);
-	info->eva_pd_pindex = pmap_pd_pindex(info->eva + NBPDP - 1);
+	info->eva_pd_pindex = pmap_pd_pindex(info->eva - PAGE_SIZE);
 
 	if (info->sva >= VM_MAX_USER_ADDRESS) {
 		/*
@@ -3859,9 +3865,11 @@ fast_skip:
 		bzero(&dummy_pv, sizeof(dummy_pv));
 		dummy_pv.pv_pindex = info->sva_pd_pindex;
 		spin_lock(&pmap->pm_spin);
-		while (dummy_pv.pv_pindex < info->eva_pd_pindex) {
+		while (dummy_pv.pv_pindex <= info->eva_pd_pindex) {
 			pmap_scan_callback(&dummy_pv, info);
 			++dummy_pv.pv_pindex;
+			if (dummy_pv.pv_pindex < info->sva_pd_pindex) /*wrap*/
+				break;
 		}
 		spin_unlock(&pmap->pm_spin);
 	} else {
@@ -3881,6 +3889,10 @@ fast_skip:
 
 /*
  * WARNING! pmap->pm_spin held
+ *
+ * WARNING! eva can overflow our standard ((N + mask) >> bits)
+ *	    bounds, resulting in a pd_pindex of 0.  To solve the
+ *	    problem we use an inclusive range.
  */
 static int
 pmap_scan_cmp(pv_entry_t pv, void *data)
@@ -3888,7 +3900,7 @@ pmap_scan_cmp(pv_entry_t pv, void *data)
 	struct pmap_scan_info *info = data;
 	if (pv->pv_pindex < info->sva_pd_pindex)
 		return(-1);
-	if (pv->pv_pindex >= info->eva_pd_pindex)
+	if (pv->pv_pindex > info->eva_pd_pindex)
 		return(1);
 	return(0);
 }
@@ -4282,6 +4294,15 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 	info.func = pmap_remove_callback;
 	info.arg = NULL;
 	pmap_scan(&info, 1);
+#if 0
+	cpu_invltlb();
+	if (eva - sva < 1024*1024) {
+		while (sva < eva) {
+			cpu_invlpg((void *)sva);
+			sva += PAGE_SIZE;
+		}
+	}
+#endif
 }
 
 static void
@@ -4342,17 +4363,14 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		}
 	} else if (sharept == 0) {
 		/*
-		 * Unmanaged page table (pt, pd, or pdp. Not pte).
+		 * Unmanaged pte (pte_placemark is non-NULL)
 		 *
 		 * pt_pv's wire_count is still bumped by unmanaged pages
 		 * so we must decrement it manually.
 		 *
 		 * We have to unwire the target page table page.
-		 *
-		 * It is unclear how we can invalidate a segment so we
-		 * invalidate -1 which invlidates the tlb.
 		 */
-		pte = pmap_inval_bulk(info->bulk, (vm_offset_t)-1, ptep, 0);
+		pte = pmap_inval_bulk(info->bulk, va, ptep, 0);
 		if (pte & pmap->pmap_bits[PG_W_IDX])
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
@@ -4579,7 +4597,10 @@ again:
 		}
 #endif
 		if (pbits != cbits) {
-			if (!pmap_inval_smp_cmpset(pmap, (vm_offset_t)-1,
+			vm_offset_t xva;
+
+			xva = (sharept) ? (vm_offset_t)-1 : va;
+			if (!pmap_inval_smp_cmpset(pmap, xva,
 						   ptep, pbits, cbits)) {
 				goto again;
 			}
@@ -4853,6 +4874,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			atomic_add_long(&pt_pv->pv_pmap->pm_stats.
 					resident_count, 1);
 		}
+		if (newpte & pmap->pmap_bits[PG_RW_IDX])
+			vm_page_flag_set(m, PG_WRITEABLE);
 	} else {
 		/*
 		 * Entering a managed page.  Our pte_pv takes care of the
@@ -4869,6 +4892,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		pmap_page_stats_adding(m);
 		TAILQ_INSERT_TAIL(&m->md.pv_list, pte_pv, pv_list);
 		vm_page_flag_set(m, PG_MAPPED);
+		if (newpte & pmap->pmap_bits[PG_RW_IDX])
+			vm_page_flag_set(m, PG_WRITEABLE);
 		vm_page_spin_unlock(m);
 
 		if (pt_pv && opa &&
@@ -4906,9 +4931,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		if (pt_pv == NULL)
 			cpu_invlpg((void *)va);
 	}
-
-	if (newpte & pmap->pmap_bits[PG_RW_IDX])
-		vm_page_flag_set(m, PG_WRITEABLE);
 
 	/*
 	 * Cleanup
@@ -5394,7 +5416,7 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	 *	 related while we hold the vm_page spin lock.
 	 *
 	 *	 *pte can be zero due to this race.  Since we are clearing
-	 *	 bits we basically do no harm when this race  ccurs.
+	 *	 bits we basically do no harm when this race occurs.
 	 */
 	if (bit_index != PG_RW_IDX) {
 		vm_page_spin_lock(m);
@@ -5440,14 +5462,7 @@ restart:
 		pmap = pv->pv_pmap;
 
 		/*
-		 * Skip pages which do not have PG_RW set.
-		 */
-		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
-		if ((*pte & pmap->pmap_bits[PG_RW_IDX]) == 0)
-			continue;
-
-		/*
-		 * Lock the PV
+		 * We must lock the PV to be able to safely test the pte.
 		 */
 		if (pv_hold_try(pv)) {
 			vm_page_spin_unlock(m);
@@ -5458,6 +5473,16 @@ restart:
 			pv_drop(pv);
 			goto restart;
 		}
+
+		/*
+		 * Skip pages which do not have PG_RW set.
+		 */
+		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
+		if ((*pte & pmap->pmap_bits[PG_RW_IDX]) == 0) {
+			pv_put(pv);
+			goto restart;
+		}
+
 		KKASSERT(pv->pv_pmap == pmap && pv->pv_m == m);
 		for (;;) {
 			pt_entry_t nbits;

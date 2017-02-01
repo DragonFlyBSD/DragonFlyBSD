@@ -846,6 +846,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 */
 		PHOLD(lp->lwp_proc);
 
+#if 0
 		/*
 		 * Grow the stack if necessary
 		 */
@@ -855,15 +856,16 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 		 * a growable stack region, or if the stack
 		 * growth succeeded.
 		 */
-		if (!grow_stack (lp->lwp_proc, va)) {
+		if (!grow_stack (map, va)) {
 			rv = KERN_FAILURE;
 			PRELE(lp->lwp_proc);
 			goto nogo;
 		}
+#endif
 
 		fault_flags = 0;
 		if (usermode)
-			fault_flags |= VM_FAULT_BURST;
+			fault_flags |= VM_FAULT_BURST | VM_FAULT_USERMODE;
 		if (ftype & VM_PROT_WRITE)
 			fault_flags |= VM_FAULT_DIRTY;
 		else
@@ -1351,6 +1353,7 @@ go_user(struct intrframe *frame)
 		 * be faster because the cost of taking a #NM fault through
 		 * the vkernel to the real kernel is astronomical.
 		 */
+		crit_enter();
 		tf->tf_xflags &= ~PGEX_FPFAULT;
 		if (mdcpu->gd_npxthread != curthread) {
 			if (mdcpu->gd_npxthread)
@@ -1393,6 +1396,16 @@ go_user(struct intrframe *frame)
 		gd->gd_flags &= ~GDF_VIRTUSER;
 
 		frame->if_xflags |= PGEX_U;
+
+		/*
+		 * Immediately save the user FPU state.  The vkernel is a
+		 * user program and libraries like libc will use the FP
+		 * unit.
+		 */
+		if (mdcpu->gd_npxthread == curthread) {
+			npxsave(mdcpu->gd_npxthread->td_savefpu);
+		}
+		crit_exit();
 #if 0
 		kprintf("GO USER %d trap %ld EVA %08lx RIP %08lx RSP %08lx XFLAGS %02lx/%02lx\n",
 			r, tf->tf_trapno, tf->tf_addr, tf->tf_rip, tf->tf_rsp,

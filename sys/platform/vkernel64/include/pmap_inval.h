@@ -51,9 +51,9 @@ void pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 void pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 void pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 void pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
-vpte_t pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
+vpte_t pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va,
+		      vm_page_t m);
 vpte_t pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
-vpte_t pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 vpte_t pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 
 #endif

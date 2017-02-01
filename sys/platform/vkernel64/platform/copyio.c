@@ -63,6 +63,7 @@ casu64(volatile uint64_t *p, uint64_t oldval, uint64_t newval)
 			  &error, &busy);
 	if (error)
 		return -1;
+	KKASSERT(m->busy == 0);
 
 	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	dest = (uint64_t *)(kva + ((vm_offset_t)p & PAGE_MASK));
@@ -101,6 +102,7 @@ casu32(volatile u_int *p, u_int oldval, u_int newval)
 			  &error, &busy);
 	if (error)
 		return -1;
+	KKASSERT(m->busy == 0);
 
 	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	dest = (u_int *)(kva + ((vm_offset_t)p & PAGE_MASK));
@@ -138,6 +140,7 @@ swapu64(volatile uint64_t *p, uint64_t val)
 			  &error, &busy);
 	if (error)
 		return -1;
+	KKASSERT(m->busy == 0);
 
 	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	res = atomic_swap_long((uint64_t *)(kva + ((vm_offset_t)p & PAGE_MASK)),
@@ -145,7 +148,7 @@ swapu64(volatile uint64_t *p, uint64_t val)
 	if (busy)
 		vm_page_wakeup(m);
 	else
-		vm_page_dirty(m);
+		vm_page_unhold(m);
 
 	return res;
 }
@@ -170,6 +173,7 @@ swapu32(volatile uint32_t *p, uint32_t val)
 			  &error, &busy);
 	if (error)
 		return -1;
+	KKASSERT(m->busy == 0);
 
 	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	res = atomic_swap_int((u_int *)(kva + ((vm_offset_t)p & PAGE_MASK)),
@@ -177,7 +181,7 @@ swapu32(volatile uint32_t *p, uint32_t val)
 	if (busy)
 		vm_page_wakeup(m);
 	else
-		vm_page_dirty(m);
+		vm_page_unhold(m);
 
 	return res;
 }
@@ -301,6 +305,7 @@ copyout(const void *kaddr, void *udaddr, size_t len)
 				  &error, &busy);
 		if (error)
 			break;
+		KKASSERT(m->busy == 0);
 		n = PAGE_SIZE - ((vm_offset_t)udaddr & PAGE_MASK);
 		if (n > len)
 			n = len;

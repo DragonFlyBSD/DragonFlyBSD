@@ -237,12 +237,8 @@ PQAVERAGE(int n)
 /*
  * vm_pageout_clean_helper:
  *
- * Clean the page and remove it from the laundry.  The page must not be
- * busy on-call.
- * 
- * We set the busy bit to cause potential page faults on this page to
- * block.  Note the careful timing, however, the busy bit isn't set till
- * late and we cannot do anything that will mess with the page.
+ * Clean the page and remove it from the laundry.  The page must be busied
+ * by the caller and will be disposed of (put away, flushed) by this routine.
  */
 static int
 vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
@@ -256,16 +252,7 @@ vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
 	object = m->object;
 
 	/*
-	 * It doesn't cost us anything to pageout OBJT_DEFAULT or OBJT_SWAP
-	 * with the new swapper, but we could have serious problems paging
-	 * out other object types if there is insufficient memory.  
-	 *
-	 * Unfortunately, checking free memory here is far too late, so the
-	 * check has been moved up a procedural level.
-	 */
-
-	/*
-	 * Don't mess with the page if it's busy, held, or special
+	 * Don't mess with the page if it's held or special.
 	 *
 	 * XXX do we really need to check hold_count here?  hold_count
 	 * isn't supposed to mess with vm_page ops except prevent the
@@ -452,9 +439,10 @@ vm_pageout_flush(vm_page_t *mc, int count, int vmflush_flags)
 	vm_object_pip_add(object, count);
 
 	vm_pager_put_pages(object, mc, count,
-	    (vmflush_flags |
-	     ((object == &kernel_object) ? VM_PAGER_PUT_SYNC : 0)),
-	    pageout_status);
+			   (vmflush_flags |
+			    ((object == &kernel_object) ?
+				VM_PAGER_PUT_SYNC : 0)),
+			   pageout_status);
 
 	for (i = 0; i < count; i++) {
 		vm_page_t mt = mc[i];

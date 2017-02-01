@@ -1189,7 +1189,7 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	if (m->object != NULL)
 		panic("vm_page_insert: already inserted");
 
-	object->generation++;
+	atomic_add_int(&object->generation, 1);
 
 	/*
 	 * Record the object/offset pair in this page and add the
@@ -1263,9 +1263,8 @@ vm_page_remove(vm_page_t m)
 	--object->resident_page_count;
 	--mycpu->gd_vmtotal.t_rm;
 	m->object = NULL;
+	atomic_add_int(&object->generation, 1);
 	vm_page_spin_unlock(m);
-
-	object->generation++;
 
 	vm_object_drop(object);
 }
@@ -2825,6 +2824,8 @@ vm_page_dontneed(vm_page_t m)
  * Because vm_pages can overlap buffers m->busy can be > 1.  m->busy is only
  * adjusted while the vm_page is PG_BUSY so the flash will occur when the
  * busy bit is cleared.
+ *
+ * The caller must hold the page BUSY when making these two calls.
  */
 void
 vm_page_io_start(vm_page_t m)
@@ -3165,7 +3166,7 @@ vm_page_set_invalid(vm_page_t m, int base, int size)
 	bits = vm_page_bits(base, size);
 	m->valid &= ~bits;
 	m->dirty &= ~bits;
-	m->object->generation++;
+	atomic_add_int(&m->object->generation, 1);
 }
 
 /*

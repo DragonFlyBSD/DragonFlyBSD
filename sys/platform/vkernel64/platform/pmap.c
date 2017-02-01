@@ -674,7 +674,7 @@ pmap_init2(void)
  * XXX User and kernel address spaces are independant for virtual kernels,
  * this function only applies to the kernel pmap.
  */
-static int
+int
 pmap_track_modified(pmap_t pmap, vm_offset_t va)
 {
 	if (pmap != &kernel_pmap)
@@ -953,7 +953,7 @@ pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
 	vm_offset_t va;
 
 	end_va = beg_va + count * PAGE_SIZE;
-	KKASSERT(beg_va >= KvaStart && end_va < KvaEnd);
+	KKASSERT(beg_va >= KvaStart && end_va <= KvaEnd);
 
 	for (va = beg_va; va < end_va; va += PAGE_SIZE) {
 		pt_entry_t *ptep;
@@ -1017,7 +1017,7 @@ pmap_page_lookup(vm_object_t object, vm_pindex_t pindex)
 	vm_page_t m;
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	m = vm_page_lookup_busy_wait(object, pindex, FALSE, "pplookp");
+	m = vm_page_lookup_busy_wait(object, pindex, TRUE, "pplookp");
 
 	return(m);
 }
@@ -1048,8 +1048,12 @@ pmap_init_proc(struct proc *p)
  * wire_count, so the page cannot go away.  The page representing the page
  * table is passed in unbusied and must be busied if we cannot trivially
  * unwire it.
+ *
+ * XXX NOTE!  This code is not usually run because we do not currently
+ *	      implement dynamic page table page removal.  The page in
+ *	      its parent assumes at least 1 wire count, so no call to this
+ *	      function ever sees a wire count less than 2.
  */
-#include <unistd.h>
 static int
 pmap_unwire_pgtable(pmap_t pmap, vm_offset_t va, vm_page_t m)
 {
@@ -1060,7 +1064,7 @@ pmap_unwire_pgtable(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	if (vm_page_unwire_quick(m) == 0)
 		return 0;
 
-	vm_page_busy_wait(m, FALSE, "pmuwpt");
+	vm_page_busy_wait(m, TRUE, "pmuwpt");
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_unwire_pgtable: %p->queue != PQ_NONE", m));
 
@@ -1247,7 +1251,7 @@ pmap_puninit(pmap_t pmap)
 	if ((p = pmap->pm_pdirm) != NULL) {
 		KKASSERT(pmap->pm_pml4 != NULL);
 		pmap_kremove((vm_offset_t)pmap->pm_pml4);
-		vm_page_busy_wait(p, FALSE, "pgpun");
+		vm_page_busy_wait(p, TRUE, "pgpun");
 		vm_page_unwire(p, 0);
 		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
 		vm_page_free(p);
@@ -1289,8 +1293,8 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	 * page-table pages.  Those pages are zero now, and
 	 * might as well be placed directly into the zero queue.
 	 */
-	if (vm_page_busy_try(p, FALSE)) {
-		vm_page_sleep_busy(p, FALSE, "pmaprl");
+	if (vm_page_busy_try(p, TRUE)) {
+		vm_page_sleep_busy(p, TRUE, "pmaprl");
 		return 1;
 	}
 
@@ -1368,7 +1372,8 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		      pmap, p, (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(p)),
 		      p->pindex, NUPT_TOTAL, NUPD_TOTAL, NUPDP_TOTAL);
 	}
-	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))
+
+	if (pmap->pm_ptphint == p)
 		pmap->pm_ptphint = NULL;
 
 	/*
@@ -1534,6 +1539,8 @@ pmap_release(struct pmap *pmap)
 				info.error = 1;
 		}
 	} while (info.error);
+
+	pmap->pm_ptphint = NULL;
 
 	KASSERT((pmap->pm_stats.wired_count == (pmap->pm_pdirm != NULL)),
 		("pmap_release: dangling count %p %ld",
@@ -1854,6 +1861,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m,
 	m->md.pv_list_count++;
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	pv = pv_entry_rb_tree_RB_INSERT(&pmap->pm_pvroot, pv);
+	vm_page_flag_set(m, PG_MAPPED);
 	KKASSERT(pv == NULL);
 }
 
@@ -2281,9 +2289,6 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		pt_m = pmap_hold_pt_page(pde, sva);
 		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
 		    sva += PAGE_SIZE) {
-			pt_entry_t pbits;
-			vm_page_t m;
-
 			/*
 			 * Clean managed pages and also check the accessed
 			 * bit.  Just remove write perms for unmanaged
@@ -2291,24 +2296,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			 * access will force a fault rather then setting
 			 * the modified bit at an unexpected time.
 			 */
-			if (*pte & VPTE_MANAGED) {
-				pbits = pmap_clean_pte(pte, pmap, sva);
-				m = NULL;
-				if (pbits & VPTE_A) {
-					m = PHYS_TO_VM_PAGE(pbits & VPTE_FRAME);
-					vm_page_flag_set(m, PG_REFERENCED);
-					atomic_clear_long(pte, VPTE_A);
-				}
-				if (pbits & VPTE_M) {
-					if (pmap_track_modified(pmap, sva)) {
-						if (m == NULL)
-							m = PHYS_TO_VM_PAGE(pbits & VPTE_FRAME);
-						vm_page_dirty(m);
-					}
-				}
-			} else {
-				pbits = pmap_setro_pte(pte, pmap, sva);
-			}
+			pmap_clean_pte(pte, pmap, sva, NULL);
 		}
 		vm_page_unhold(pt_m);
 	}
@@ -2340,7 +2328,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	pt_entry_t origpte, newpte;
 	vm_paddr_t opa;
 	vm_page_t mpte;
-	int spun = 0;
 
 	if (pmap == NULL)
 		return;
@@ -2372,7 +2359,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 */
 	pa = VM_PAGE_TO_PHYS(m);
 	origpte = pmap_inval_loadandclear(pte, pmap, va);
-	/*origpte = pmap_clean_pte(pte, pmap, va);*/
+	/*origpte = pmap_clean_pte(pte, pmap, va, NULL);*/
 	opa = origpte & VPTE_FRAME;
 
 	if (origpte & VPTE_PS)
@@ -2407,6 +2394,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		} else {
 			KKASSERT((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)));
 		}
+		vm_page_spin_lock(m);
 		goto validate;
 	}
 
@@ -2418,11 +2406,13 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 
 	/*
 	 * Mapping has changed, invalidate old range and fall through to
-	 * handle validating new mapping.
+	 * handle validating new mapping.  Don't inherit anything from
+	 * oldpte.
 	 */
 	if (opa) {
 		int err;
 		err = pmap_remove_pte(pmap, NULL, origpte, va);
+		origpte = 0;
 		if (err)
 			panic("pmap_enter: pte vanished, va: 0x%lx", va);
 	}
@@ -2445,10 +2435,12 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			vm_page_spin_lock(m);
 			pmap_insert_entry(pmap, va, mpte, m, pv);
 			pa |= VPTE_MANAGED;
-			vm_page_flag_set(m, PG_MAPPED);
-			spun = 1;
 			/* vm_page_spin_unlock(m); */
+		} else {
+			vm_page_spin_lock(m);
 		}
+	} else {
+		vm_page_spin_lock(m);
 	}
 
 	/*
@@ -2469,7 +2461,6 @@ validate:
 		newpte |= VPTE_WIRED;
 //	if (pmap != &kernel_pmap)
 		newpte |= VPTE_U;
-
 	if (newpte & VPTE_RW)
 		vm_page_flag_set(m, PG_WRITEABLE);
 	KKASSERT((newpte & VPTE_MANAGED) == 0 || (m->flags & PG_MAPPED));
@@ -2479,8 +2470,7 @@ validate:
 		kprintf("pmap [M] race @ %016jx\n", va);
 		atomic_set_long(pte, VPTE_M);
 	}
-	if (spun)
-		vm_page_spin_unlock(m);
+	vm_page_spin_unlock(m);
 
 	if (mpte)
 		vm_page_wakeup(mpte);
@@ -2959,6 +2949,8 @@ pmap_clearbit(vm_page_t m, int bit)
 	pv_entry_t pv;
 	pt_entry_t *pte;
 	pt_entry_t pbits;
+	vm_object_t pmobj;
+	pmap_t pmap;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS)) {
 		if (bit == VPTE_RW)
@@ -2970,20 +2962,37 @@ pmap_clearbit(vm_page_t m, int bit)
 	 * Loop over all current mappings setting/clearing as appropos If
 	 * setting RO do we need to clear the VAC?
 	 */
-	vm_page_spin_lock(m);
 restart:
+	vm_page_spin_lock(m);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
+		/*
+		 * Need the pmap object lock(?)
+		 */
+		pmap = pv->pv_pmap;
+		pmobj = pmap->pm_pteobj;
+
+		if (vm_object_hold_try(pmobj) == 0) {
+			refcount_acquire(&pmobj->hold_count);
+			vm_page_spin_unlock(m);
+			vm_object_lock(pmobj);
+			vm_object_drop(pmobj);
+			goto restart;
+		}
+
 		/*
 		 * don't write protect pager mappings
 		 */
 		if (bit == VPTE_RW) {
-			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
+			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va)) {
+				vm_object_drop(pmobj);
 				continue;
+			}
 		}
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
 			kprintf("Null pmap (cb) at va: 0x%lx\n", pv->pv_va);
+			vm_object_drop(pmobj);
 			continue;
 		}
 #endif
@@ -3007,14 +3016,7 @@ restart:
 				 * the page.
 				 */
 				pbits = pmap_clean_pte(pte, pv->pv_pmap,
-						       pv->pv_va);
-				if (pbits & VPTE_M) {
-					if (pmap_track_modified(pv->pv_pmap,
-								pv->pv_va)) {
-						vm_page_dirty(m);
-						goto restart;
-					}
-				}
+						       pv->pv_va, m);
 			} else if (bit == VPTE_M) {
 				/*
 				 * We must invalidate the real-kernel pte
@@ -3035,7 +3037,7 @@ restart:
 				 * the caller doesn't want us to update
 				 * the dirty status of the VM page.
 				 */
-				pmap_clean_pte(pte, pv->pv_pmap, pv->pv_va);
+				pmap_clean_pte(pte, pv->pv_pmap, pv->pv_va, m);
 				panic("shouldn't be called");
 			} else {
 				/*
@@ -3045,6 +3047,7 @@ restart:
 				atomic_clear_long(pte, bit);
 			}
 		}
+		vm_object_drop(pmobj);
 	}
 	if (bit == VPTE_RW)
 		vm_page_flag_clear(m, PG_WRITEABLE);
@@ -3141,14 +3144,17 @@ pmap_is_modified(vm_page_t m)
 }
 
 /*
- * Clear the modify bits on the specified physical page.
+ * Clear the modify bits on the specified physical page.  For the vkernel
+ * we really need to clean the page, which clears VPTE_RW and VPTE_M, in
+ * order to ensure that we take a fault on the next write to the page.
+ * Otherwise the page may become dirty without us knowing it.
  *
  * No other requirements.
  */
 void
 pmap_clear_modify(vm_page_t m)
 {
-	pmap_clearbit(m, VPTE_M);
+	pmap_clearbit(m, VPTE_RW);
 }
 
 /*
@@ -3271,7 +3277,6 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 	struct vmspace *oldvm;
 	struct lwp *lp;
 
-	crit_enter();
 	oldvm = p->p_vmspace;
 	if (oldvm != newvm) {
 		if (adjrefs)
@@ -3283,7 +3288,6 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 		if (adjrefs)
 			vmspace_rel(oldvm);
 	}
-	crit_exit();
 }
 
 /*
