@@ -1897,9 +1897,8 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 
 		old_prot = current->protection;
 		if (set_max) {
-			current->protection =
-			    (current->max_protection = new_prot) &
-			    old_prot;
+			current->max_protection = new_prot;
+			current->protection = new_prot & old_prot;
 		} else {
 			current->protection = new_prot;
 		}
@@ -4066,11 +4065,9 @@ RetryLookup:
 
 	/*
 	 * Check whether this task is allowed to have this page.
-	 * Note the special case for MAP_ENTRY_COW
-	 * pages with an override.  This is to implement a forced
-	 * COW for debuggers.
+	 * Note the special case for MAP_ENTRY_COW pages with an override.
+	 * This is to implement a forced COW for debuggers.
 	 */
-
 	if (fault_type & VM_PROT_OVERRIDE_WRITE)
 		prot = entry->max_protection;
 	else
@@ -4268,7 +4265,8 @@ DB_SHOW_COMMAND(map, vm_map_print)
 			db_iprintf(" prot=%x/%x/%s",
 			    entry->protection,
 			    entry->max_protection,
-			    inheritance_name[(int)(unsigned char)entry->inheritance]);
+			    inheritance_name[(int)(unsigned char)
+						entry->inheritance]);
 			if (entry->wired_count != 0)
 				db_printf(", wired");
 		}
