@@ -369,12 +369,12 @@ RetryFault:
 		}
 
 		/*
-   		 * If we are user-wiring a r/w segment, and it is COW, then
-   		 * we need to do the COW operation.  Note that we don't
+		 * If we are user-wiring a r/w segment, and it is COW, then
+		 * we need to do the COW operation.  Note that we don't
 		 * currently COW RO sections now, because it is NOT desirable
-   		 * to COW .text.  We simply keep .text from ever being COW'ed
-   		 * and take the heat that one cannot debug wired .text sections.
-   		 */
+		 * to COW .text.  We simply keep .text from ever being COW'ed
+		 * and take the heat that one cannot debug wired .text sections.
+		 */
 		result = vm_map_lookup(&fs.map, vaddr,
 				       VM_PROT_READ|VM_PROT_WRITE|
 				        VM_PROT_OVERRIDE_WRITE,
@@ -395,8 +395,10 @@ RetryFault:
 		 * XXX We have a shared lock, this will have a MP race but
 		 * I don't see how it can hurt anything.
 		 */
-		if ((fs.entry->protection & VM_PROT_WRITE) == 0)
-			fs.entry->max_protection &= ~VM_PROT_WRITE;
+		if ((fs.entry->protection & VM_PROT_WRITE) == 0) {
+			atomic_clear_char(&fs.entry->max_protection,
+					  VM_PROT_WRITE);
+		}
 	}
 
 	/*
@@ -746,6 +748,7 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	struct faultstate fs;
 	int result;
 	int retry;
+	int growstack;
 	vm_prot_t orig_fault_type = fault_type;
 
 	retry = 0;
@@ -762,6 +765,8 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	 */
 	fs.m = pmap_fault_page_quick(map->pmap, vaddr, fault_type, busyp);
 	if (fs.m) {
+		if (fault_type & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE))
+			vm_page_dirty(fs.m);
 		*errorp = 0;
 		return(fs.m);
 	}
@@ -770,9 +775,10 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	 * Otherwise take a concurrency hit and do a formal page
 	 * fault.
 	 */
+	fs.vp = NULL;
 	fs.shared = vm_shared_fault;
 	fs.first_shared = vm_shared_fault;
-	fs.vp = NULL;
+	growstack = 1;
 	lwkt_gettoken(&map->token);
 
 	/*
@@ -805,9 +811,61 @@ RetryFault:
 			       &first_pindex, &fs.first_prot, &fs.wired);
 
 	if (result != KERN_SUCCESS) {
-		*errorp = result;
-		fs.m = NULL;
-		goto done;
+		if (result == KERN_FAILURE_NOFAULT) {
+			*errorp = KERN_FAILURE;
+			fs.m = NULL;
+			goto done;
+		}
+		if (result != KERN_PROTECTION_FAILURE ||
+		    (fs.fault_flags & VM_FAULT_WIRE_MASK) != VM_FAULT_USER_WIRE)
+		{
+			if (result == KERN_INVALID_ADDRESS && growstack &&
+			    map != &kernel_map && curproc != NULL) {
+				result = vm_map_growstack(curproc, vaddr);
+				if (result == KERN_SUCCESS) {
+					growstack = 0;
+					++retry;
+					goto RetryFault;
+				}
+				result = KERN_FAILURE;
+			}
+			fs.m = NULL;
+			*errorp = result;
+			goto done;
+		}
+
+		/*
+		 * If we are user-wiring a r/w segment, and it is COW, then
+		 * we need to do the COW operation.  Note that we don't
+		 * currently COW RO sections now, because it is NOT desirable
+		 * to COW .text.  We simply keep .text from ever being COW'ed
+		 * and take the heat that one cannot debug wired .text sections.
+		 */
+		result = vm_map_lookup(&fs.map, vaddr,
+				       VM_PROT_READ|VM_PROT_WRITE|
+				        VM_PROT_OVERRIDE_WRITE,
+				       &fs.entry, &fs.first_object,
+				       &first_pindex, &fs.first_prot,
+				       &fs.wired);
+		if (result != KERN_SUCCESS) {
+			/* could also be KERN_FAILURE_NOFAULT */
+			*errorp = KERN_FAILURE;
+			fs.m = NULL;
+			goto done;
+		}
+
+		/*
+		 * If we don't COW now, on a user wire, the user will never
+		 * be able to write to the mapping.  If we don't make this
+		 * restriction, the bookkeeping would be nearly impossible.
+		 *
+		 * XXX We have a shared lock, this will have a MP race but
+		 * I don't see how it can hurt anything.
+		 */
+		if ((fs.entry->protection & VM_PROT_WRITE) == 0) {
+			atomic_clear_char(&fs.entry->max_protection,
+					  VM_PROT_WRITE);
+		}
 	}
 
 	/*
@@ -1017,7 +1075,8 @@ RetryFault:
 	 * Unlock everything, and return the held or busied page.
 	 */
 	if (busyp) {
-		if (fault_type & VM_PROT_WRITE) {
+		if (fault_type & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE)) {
+			vm_page_dirty(fs.m);
 			*busyp = 1;
 		} else {
 			*busyp = 0;
@@ -1245,7 +1304,6 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		}
 		if ((vpte & VPTE_PS) || vshift == 0)
 			break;
-		KKASSERT(vshift >= VPTE_PAGE_BITS);
 
 		/*
 		 * Get the page table page.  Nominally we only read the page
@@ -1285,17 +1343,21 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		for (;;) {
 			vpte_t nvpte;
 
+			/*
+			 * Reload for the cmpset, but make sure the pte is
+			 * still valid.
+			 */
 			vpte = *ptep;
 			cpu_ccfence();
 			nvpte = vpte;
 
-			if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
-			    (vpte & VPTE_RW)) {
+			if ((vpte & VPTE_V) == 0)
+				break;
+
+			if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_RW))
 				nvpte |= VPTE_M | VPTE_A;
-			}
-			if ((fault_type & VM_PROT_READ) && (vpte & VPTE_V)) {
+			if (fault_type & VM_PROT_READ)
 				nvpte |= VPTE_A;
-			}
 			if (vpte == nvpte)
 				break;
 			if (atomic_cmpset_long(ptep, vpte, nvpte)) {
@@ -1311,20 +1373,16 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 	}
 
 	/*
-	 * We can't reconcile the real page table's M bit back to the
-	 * virtual page table, so instead we force the real page table pte
-	 * to be read-only on a read-fault for a VPTE_RW vpagetable
-	 * fault, and set the VPTE_M bit manually (above) for a write-fault
-	 * on a VPTE_RW vpagetable fault.
+	 * When the vkernel sets VPTE_RW it expects the real kernel to
+	 * reflect VPTE_M back when the page is modified via the mapping.
+	 * In order to accomplish this the real kernel must map the page
+	 * read-only for read faults and use write faults to reflect VPTE_M
+	 * back.
 	 *
-	 * The virtual kernel must MADV_INVAL areas that it clears the
-	 * VPTE_M bit on to ensure that the real kernel is able to take
-	 * a write fault to set VPTE_M again.
-	 *
-	 * If we find the VPTE_M bit already set above, we don't have to
-	 * downgrade here.
-	 *
-	 * This guarantees that the M bit will be set.
+	 * Once VPTE_M has been set, the real kernel's pte allows writing.
+	 * If the vkernel clears VPTE_M the vkernel must be sure to
+	 * MADV_INVAL the real kernel's mappings to force the real kernel
+	 * to re-fault on the next write so oit can set VPTE_M again.
 	 */
 	if ((fault_type & VM_PROT_WRITE) == 0 &&
 	    (vpte & (VPTE_RW | VPTE_M)) != (VPTE_RW | VPTE_M)) {
@@ -2306,8 +2364,8 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 	vm_object_hold(src_object);
 	vm_object_hold(dst_object);
 	for (vaddr = dst_entry->start, dst_offset = 0;
-	    vaddr < dst_entry->end;
-	    vaddr += PAGE_SIZE, dst_offset += PAGE_SIZE) {
+	     vaddr < dst_entry->end;
+	     vaddr += PAGE_SIZE, dst_offset += PAGE_SIZE) {
 
 		/*
 		 * Allocate a page in the destination object

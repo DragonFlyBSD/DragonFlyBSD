@@ -5368,10 +5368,11 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	pt_entry_t pbits;
 	pmap_t pmap;
 
-	if (bit_index == PG_RW_IDX)
-		vm_page_flag_clear(m, PG_WRITEABLE);
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
+	if (!pmap_initialized || (m->flags & PG_FICTITIOUS)) {
+		if (bit_index == PG_RW_IDX)
+			vm_page_flag_clear(m, PG_WRITEABLE);
 		return;
+	}
 
 	/*
 	 * PG_M or PG_A case
@@ -5490,6 +5491,8 @@ restart:
 		pv_put(pv);
 		goto restart;
 	}
+	if (bit_index == PG_RW_IDX)
+		vm_page_flag_clear(m, PG_WRITEABLE);
 	vm_page_spin_unlock(m);
 }
 

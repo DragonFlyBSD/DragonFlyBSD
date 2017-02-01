@@ -1122,7 +1122,7 @@ pmap_unwire_pgtable(pmap_t pmap, vm_offset_t va, vm_page_t m)
 		KKASSERT(m->wire_count == 0);
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 		vm_page_flash(m);
-		vm_page_free_zero(m);
+		vm_page_free(m);
 		return 1;
 	} else {
 		/* XXX SMP race to 1 if not holding vmobj */
@@ -1215,7 +1215,7 @@ pmap_pinit(struct pmap *pmap)
 				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY |
 				     VM_ALLOC_ZERO);
 		pmap->pm_pdirm = ptdpg;
-		vm_page_flag_clear(ptdpg, PG_MAPPED);
+		vm_page_flag_clear(ptdpg, PG_MAPPED | PG_WRITEABLE);
 		vm_page_wire(ptdpg);
 		vm_page_wakeup(ptdpg);
 		pmap_kenter((vm_offset_t)pmap->pm_pml4, VM_PAGE_TO_PHYS(ptdpg));
@@ -1248,9 +1248,9 @@ pmap_puninit(pmap_t pmap)
 		KKASSERT(pmap->pm_pml4 != NULL);
 		pmap_kremove((vm_offset_t)pmap->pm_pml4);
 		vm_page_busy_wait(p, FALSE, "pgpun");
-		atomic_add_int(&p->wire_count, -1);
-		atomic_add_int(&vmstats.v_wire_count, -1);
-		vm_page_free_zero(p);
+		vm_page_unwire(p, 0);
+		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
+		vm_page_free(p);
 		pmap->pm_pdirm = NULL;
 		atomic_add_long(&pmap->pm_stats.wired_count, -1);
 		KKASSERT(pmap->pm_stats.wired_count == 0);
@@ -1415,6 +1415,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * Map the page table page into its parent, giving it 1 wire count.
 	 */
 	vm_page_wire(m);
+	vm_page_unmanage(m);
 	atomic_add_long(&pmap->pm_stats.resident_count, 1);
 	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
 
@@ -1818,10 +1819,10 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m, vm_offset_t va)
 	rtval = 0;
 	if (pv) {
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-		m->md.pv_list_count--;
-		KKASSERT(m->md.pv_list_count >= 0);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+		m->md.pv_list_count--;
+		KKASSERT(m->md.pv_list_count >= 0);
 		pv_entry_rb_tree_RB_REMOVE(&pmap->pm_pvroot, pv);
 		atomic_add_int(&pmap->pm_generation, 1);
 		vm_page_spin_unlock(m);
@@ -2128,16 +2129,17 @@ restart:
 				vm_page_dirty(m);
 		}
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-		pv_entry_rb_tree_RB_REMOVE(&pmap->pm_pvroot, pv);
-		atomic_add_int(&pmap->pm_generation, 1);
-		m->md.pv_list_count--;
-		KKASSERT(m->md.pv_list_count >= 0);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+		m->md.pv_list_count--;
+		KKASSERT(m->md.pv_list_count >= 0);
+		pv_entry_rb_tree_RB_REMOVE(&pmap->pm_pvroot, pv);
+		atomic_add_int(&pmap->pm_generation, 1);
 		vm_page_spin_unlock(m);
 		pmap_unuse_pt(pmap, pv->pv_va, pv->pv_ptem);
-		vm_object_drop(pmobj);
 		free_pv_entry(pv);
+
+		vm_object_drop(pmobj);
 		vm_page_spin_lock(m);
 	}
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
@@ -2338,6 +2340,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	pt_entry_t origpte, newpte;
 	vm_paddr_t opa;
 	vm_page_t mpte;
+	int spun = 0;
 
 	if (pmap == NULL)
 		return;
@@ -2431,12 +2434,20 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 */
 	if (pmap_initialized) {
 		if ((m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
+			/*
+			 * WARNING!  We are using m's spin-lock as a
+			 *	     man's pte lock to interlock against
+			 *	     pmap_page_protect() operations.
+			 *
+			 *	     This is a bad hack (obviously).
+			 */
 			pv = get_pv_entry();
 			vm_page_spin_lock(m);
 			pmap_insert_entry(pmap, va, mpte, m, pv);
 			pa |= VPTE_MANAGED;
 			vm_page_flag_set(m, PG_MAPPED);
-			vm_page_spin_unlock(m);
+			spun = 1;
+			/* vm_page_spin_unlock(m); */
 		}
 	}
 
@@ -2468,6 +2479,8 @@ validate:
 		kprintf("pmap [M] race @ %016jx\n", va);
 		atomic_set_long(pte, VPTE_M);
 	}
+	if (spun)
+		vm_page_spin_unlock(m);
 
 	if (mpte)
 		vm_page_wakeup(mpte);
@@ -2867,7 +2880,6 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
 		atomic_add_int(&pmap->pm_generation, 1);
 		save_generation = pmap->pm_generation;
-
 		m->md.pv_list_count--;
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		if (TAILQ_EMPTY(&m->md.pv_list))
@@ -2948,10 +2960,11 @@ pmap_clearbit(vm_page_t m, int bit)
 	pt_entry_t *pte;
 	pt_entry_t pbits;
 
-	if (bit == VPTE_RW)
-		vm_page_flag_clear(m, PG_WRITEABLE);
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
+	if (!pmap_initialized || (m->flags & PG_FICTITIOUS)) {
+		if (bit == VPTE_RW)
+			vm_page_flag_clear(m, PG_WRITEABLE);
 		return;
+	}
 
 	/*
 	 * Loop over all current mappings setting/clearing as appropos If
@@ -3033,6 +3046,8 @@ restart:
 			}
 		}
 	}
+	if (bit == VPTE_RW)
+		vm_page_flag_clear(m, PG_WRITEABLE);
 	vm_page_spin_unlock(m);
 }
 

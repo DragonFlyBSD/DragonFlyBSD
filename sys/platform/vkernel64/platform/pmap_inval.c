@@ -272,8 +272,13 @@ pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 /*
  * These carefully handle interactions with other cpus and return
  * the original vpte.  Clearing VPTE_RW prevents us from racing the
- * setting of VPTE_M, allowing us to invalidate the tlb (the real cpu's
+ * setting of VPTE_M, allowing us to invalidate the TLB (the real cpu's
  * pmap) and get good status for VPTE_M.
+ *
+ * By using an atomic op we can detect if the real PTE is writable by
+ * testing whether VPTE_M was set.  If it wasn't set, the real PTE is
+ * already read-only and we do not have to waste time invalidating it
+ * further.
  *
  * clean: clear VPTE_M and VPTE_RW
  * setro: clear VPTE_RW
@@ -285,9 +290,18 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	vpte_t pte;
 
 	if (vmm_enabled == 0) {
-		pte = atomic_swap_long(ptep, *ptep & ~(VPTE_RW | VPTE_M));
-		if (pte & VPTE_RW)
-			pmap_inval_cpu(pmap, va, PAGE_SIZE);
+		for (;;) {
+			pte = *ptep;
+			cpu_ccfence();
+			if ((pte & VPTE_RW) == 0)
+				break;
+			if (atomic_cmpset_long(ptep,
+					       pte,
+					       pte & ~(VPTE_RW | VPTE_M))) {
+				pmap_inval_cpu(pmap, va, PAGE_SIZE);
+				break;
+			}
+		}
 	} else {
 		pte = *ptep & ~(VPTE_RW | VPTE_M);
 		guest_sync_addr(pmap, ptep, &pte);
@@ -335,11 +349,16 @@ pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	vpte_t pte;
 
 	if (vmm_enabled == 0) {
-		pte = atomic_swap_long(ptep, *ptep & ~VPTE_RW);
-		if (pte & VPTE_M)
-			atomic_set_long(ptep, VPTE_M);
-		if (pte & VPTE_RW)
-			pmap_inval_cpu(pmap, va, PAGE_SIZE);
+		for (;;) {
+			pte = *ptep;
+			cpu_ccfence();
+			if ((pte & VPTE_RW) == 0)
+				break;
+			if (atomic_cmpset_long(ptep, pte, pte & ~VPTE_RW)) {
+				pmap_inval_cpu(pmap, va, PAGE_SIZE);
+				break;
+			}
+		}
 	} else {
 		pte = *ptep & ~(VPTE_RW | VPTE_M);
 		guest_sync_addr(pmap, ptep, &pte);
