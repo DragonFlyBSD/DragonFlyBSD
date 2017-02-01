@@ -4898,7 +4898,11 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if ((prot & VM_PROT_NOSYNC) == 0 && pt_pv == NULL) {
 		pmap_inval_smp(pmap, va, 1, ptep, newpte);
 	} else {
-		atomic_swap_long(ptep, newpte);
+		origpte = atomic_swap_long(ptep, newpte);
+		if (origpte & pmap->pmap_bits[PG_M_IDX]) {
+			kprintf("pmap [M] race @ %016jx\n", va);
+			atomic_set_long(ptep, pmap->pmap_bits[PG_M_IDX]);
+		}
 		if (pt_pv == NULL)
 			cpu_invlpg((void *)va);
 	}
