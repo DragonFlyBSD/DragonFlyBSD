@@ -7,9 +7,6 @@ DF404.0 {
     preadv;
     pwrite;
     pwritev;
-    sched_getaffinity;
-    sched_getcpu;
-    sched_setaffinity;
     truncate;
 
 /*  SYSCALLS  */
@@ -146,12 +143,9 @@ DF404.0 {
     lstat;
     lutimes;
     lwp_create;
-    lwp_create2;
-    lwp_getaffinity;
     lwp_gettid;
     lwp_kill;
     lwp_rtprio;
-    lwp_setaffinity;
     lwp_setname;
     madvise;
     mcontrol;
@@ -310,8 +304,20 @@ DF404.0 {
 };
 
 DF406.0 {
+/*  SYSCALLS  */
     kenv;
     ppoll;
+};
+
+DF408.0 {
+    sched_getaffinity;
+    sched_getcpu;
+    sched_setaffinity;
+
+/*  SYSCALLS  */
+    lwp_create2;
+    lwp_getaffinity;
+    lwp_setaffinity;
 };
 
 DFprivate_1.0 {
