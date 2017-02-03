@@ -29,7 +29,6 @@ MAN=	acct.5 \
 	libmap.conf.5 \
 	kernconf.5 \
 	link.5 \
-	linprocfs.5 \
 	loader.conf.5 \
 	mailer.conf.5 \
 	make.conf.5 \
