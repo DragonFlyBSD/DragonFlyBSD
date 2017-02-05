@@ -5462,6 +5462,13 @@ restart:
 		pmap = pv->pv_pmap;
 
 		/*
+		 * Skip pages which do not have PG_RW set.
+		 */
+		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
+		if ((*pte & pmap->pmap_bits[PG_RW_IDX]) == 0)
+			continue;
+
+		/*
 		 * We must lock the PV to be able to safely test the pte.
 		 */
 		if (pv_hold_try(pv)) {
@@ -5475,13 +5482,15 @@ restart:
 		}
 
 		/*
-		 * Skip pages which do not have PG_RW set.
+		 * Reload pte after acquiring pv.
 		 */
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
+#if 0
 		if ((*pte & pmap->pmap_bits[PG_RW_IDX]) == 0) {
 			pv_put(pv);
 			goto restart;
 		}
+#endif
 
 		KKASSERT(pv->pv_pmap == pmap && pv->pv_m == m);
 		for (;;) {
