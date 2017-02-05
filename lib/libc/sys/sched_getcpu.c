@@ -36,6 +36,10 @@
 #include <sys/usched.h>
 #include <sched.h>
 
+/* This DF408.0 symbol was originally named DF404.0 in error. */
+/* Remove after release following 4.7-DEVELOPMENT */
+__asm__(".symver sched_getcpu,sched_getcpu@DF404.0");
+
 int
 sched_getcpu(void)
 {
