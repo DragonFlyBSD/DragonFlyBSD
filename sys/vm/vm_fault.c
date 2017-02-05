@@ -297,6 +297,8 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	struct lwp *lp;
 	struct proc *p;
 	thread_t td;
+	struct vm_map_ilock ilock;
+	int didilock;
 	int growstack;
 	int retry = 0;
 	int inherit_prot;
@@ -538,17 +540,23 @@ RetryFault:
 	 * NOTE!  DEVELOPMENT IN PROGRESS, THIS IS AN INITIAL IMPLEMENTATION
 	 * ONLY
 	 */
+	didilock = 0;
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		vm_map_interlock(fs.map, &ilock, vaddr, vaddr + PAGE_SIZE);
+		didilock = 1;
 		result = vm_fault_vpagetable(&fs, &first_pindex,
 					     fs.entry->aux.master_pde,
 					     fault_type, 1);
 		if (result == KERN_TRY_AGAIN) {
+			vm_map_deinterlock(fs.map, &ilock);
 			vm_object_drop(fs.first_object);
 			++retry;
 			goto RetryFault;
 		}
-		if (result != KERN_SUCCESS)
+		if (result != KERN_SUCCESS) {
+			vm_map_deinterlock(fs.map, &ilock);
 			goto done;
+		}
 	}
 
 	/*
@@ -578,12 +586,17 @@ RetryFault:
 	}
 
 	if (result == KERN_TRY_AGAIN) {
+		if (didilock)
+			vm_map_deinterlock(fs.map, &ilock);
 		vm_object_drop(fs.first_object);
 		++retry;
 		goto RetryFault;
 	}
-	if (result != KERN_SUCCESS)
+	if (result != KERN_SUCCESS) {
+		if (didilock)
+			vm_map_deinterlock(fs.map, &ilock);
 		goto done;
+	}
 
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
@@ -595,6 +608,9 @@ RetryFault:
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot | inherit_prot,
 		   fs.wired, fs.entry);
+
+	if (didilock)
+		vm_map_deinterlock(fs.map, &ilock);
 
 	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
 	KKASSERT(fs.m->flags & PG_BUSY);

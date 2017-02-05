@@ -99,6 +99,8 @@ static void trap_fatal (struct trapframe *, int, vm_offset_t);
 void dblfault_handler (void);
 extern int vmm_enabled;
 
+static struct krate segfltrate = { 1 };
+
 #if 0
 extern inthand_t IDTVEC(syscall);
 #endif
@@ -898,8 +900,11 @@ nogo:
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
 	struct proc *p = td->td_proc;
-	kprintf("seg-fault accessing address %p rip=%p pid=%d p_comm=%s\n",
-		(void *)va, (void *)frame->tf_rip, p->p_pid, p->p_comm);
+	krateprintf(&segfltrate,
+		    "seg-fault accessing address %p "
+		    "rip=%p pid=%d p_comm=%s\n",
+		    (void *)va,
+		    (void *)frame->tf_rip, p->p_pid, p->p_comm);
 	/* Debugger("seg-fault"); */
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);

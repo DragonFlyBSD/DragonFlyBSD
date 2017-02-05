@@ -93,9 +93,12 @@
 #include <vm/swap_pager.h>
 #include <vm/vm_zone.h>
 
-#include <sys/thread2.h>
 #include <sys/random.h>
 #include <sys/sysctl.h>
+#include <sys/spinlock.h>
+
+#include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 /*
  * Virtual memory maps provide for the mapping, protection, and sharing
@@ -584,6 +587,8 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 {
 	map->header.next = map->header.prev = &map->header;
 	RB_INIT(&map->rb_root);
+	spin_init(&map->ilock_spin, "ilock");
+	map->ilock_base = NULL;
 	map->nentries = 0;
 	map->size = 0;
 	map->system_map = 0;
@@ -2061,7 +2066,8 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				 * modified existing mappings in a virtual
 				 * page table.
 				 *
-				 * (exclusive locked map version)
+				 * (exclusive locked map version does not
+				 * need the range interlock).
 				 */
 				pmap_remove(map->pmap,
 					    current->start, current->end);
@@ -2123,17 +2129,24 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end,
 				 * modified existing mappings in a virtual
 				 * page table.
 				 *
-				 * (shared locked map version)
+				 * (shared locked map version needs the
+				 * interlock, see vm_fault()).
 				 */
+				struct vm_map_ilock ilock;
+
 				KASSERT(useStart >= VM_MIN_USER_ADDRESS &&
 					    useStart + ptoa(delta) <=
 					    VM_MAX_USER_ADDRESS,
 					 ("Bad range %016jx-%016jx (%016jx)",
 					 useStart, useStart + ptoa(delta),
 					 delta));
+				vm_map_interlock(map, &ilock,
+						 useStart,
+						 useStart + ptoa(delta));
 				pmap_remove(map->pmap,
 					    useStart,
 					    useStart + ptoa(delta));
+				vm_map_deinterlock(map, &ilock);
 			} else {
 				vm_object_madvise(current->object.vm_object,
 						  pindex, delta, behav);
@@ -4233,6 +4246,55 @@ vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
 	vm_map_unlock_read(map);
 	if (count)
 		vm_map_entry_release(count);
+}
+
+/*
+ * Quick hack, needs some help to make it more SMP friendly.
+ */
+void
+vm_map_interlock(vm_map_t map, struct vm_map_ilock *ilock,
+		 vm_offset_t ran_beg, vm_offset_t ran_end)
+{
+	struct vm_map_ilock *scan;
+
+	ilock->ran_beg = ran_beg;
+	ilock->ran_end = ran_end;
+	ilock->flags = 0;
+
+	spin_lock(&map->ilock_spin);
+restart:
+	for (scan = map->ilock_base; scan; scan = scan->next) {
+		if (ran_end > scan->ran_beg && ran_beg < scan->ran_end) {
+			scan->flags |= ILOCK_WAITING;
+			ssleep(scan, &map->ilock_spin, 0, "ilock", 0);
+			goto restart;
+		}
+	}
+	ilock->next = map->ilock_base;
+	map->ilock_base = ilock;
+	spin_unlock(&map->ilock_spin);
+}
+
+void
+vm_map_deinterlock(vm_map_t map, struct  vm_map_ilock *ilock)
+{
+	struct vm_map_ilock *scan;
+	struct vm_map_ilock **scanp;
+
+	spin_lock(&map->ilock_spin);
+	scanp = &map->ilock_base;
+	while ((scan = *scanp) != NULL) {
+		if (scan == ilock) {
+			*scanp = ilock->next;
+			spin_unlock(&map->ilock_spin);
+			if (ilock->flags & ILOCK_WAITING)
+				wakeup(ilock);
+			return;
+		}
+		scanp = &scan->next;
+	}
+	spin_unlock(&map->ilock_spin);
+	panic("vm_map_deinterlock: missing ilock!");
 }
 
 #include "opt_ddb.h"

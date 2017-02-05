@@ -245,6 +245,18 @@ vm_map_entry_set_behavior(struct vm_map_entry *entry, u_char behavior)
 }                       
 
 /*
+ * VA interlock for map (VPAGETABLE / vkernel support)
+ */
+struct vm_map_ilock {
+	struct vm_map_ilock *next;
+	int	flags;
+	vm_offset_t ran_beg;
+	vm_offset_t ran_end;	/* non-inclusive */
+};
+
+#define ILOCK_WAITING	0x00000001
+
+/*
  * Maps are doubly-linked lists of map entries, kept sorted by address.
  * A single hint is provided to start searches again from the last
  * successful search, insertion, or removal.
@@ -273,6 +285,8 @@ struct vm_map {
 	struct pmap *pmap;		/* Physical map */
 	u_int president_cache;		/* Remember president count */
 	u_int president_ticks;		/* Save ticks for cache */
+	struct vm_map_ilock *ilock_base;/* interlocks */
+	struct spinlock ilock_spin;	/* interlocks (spinlock for) */
 	struct lwkt_token token;	/* Soft serializer */
 	vm_offset_t pgout_offset;	/* for RLIMIT_RSS scans */
 #define	min_offset		header.start
@@ -614,6 +628,11 @@ vm_offset_t vmspace_swap_count (struct vmspace *vmspace);
 vm_offset_t vmspace_anonymous_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
 void vm_map_transition_wait(vm_map_t map);
+
+void vm_map_interlock(vm_map_t map, struct vm_map_ilock *ilock,
+			vm_offset_t ran_beg, vm_offset_t ran_end);
+void vm_map_deinterlock(vm_map_t map, struct vm_map_ilock *ilock);
+
 
 #if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 int vkernel_module_memory_alloc(vm_offset_t *, size_t);
