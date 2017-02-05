@@ -84,5 +84,5 @@ NON_GPROF_ENTRY(btext)
 
 	.bss
 	ALIGN_DATA			/* just to be sure */
-	.space	0x1000			/* space for bootstack - temporary stack */
+	.space	16384			/* space for bootstack - temporary */
 bootstack:
