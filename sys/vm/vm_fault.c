@@ -317,7 +317,6 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	td = curthread;
 	if ((lp = td->td_lwp) != NULL)
 		lp->lwp_flags |= LWP_PAGING;
-	lwkt_gettoken(&map->token);
 
 RetryFault:
 	/*
@@ -681,7 +680,6 @@ done:
 	if (fs.first_object)
 		vm_object_drop(fs.first_object);
 done2:
-	lwkt_reltoken(&map->token);
 	if (lp)
 		lp->lwp_flags &= ~LWP_PAGING;
 
@@ -793,7 +791,6 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	fs.shared = vm_shared_fault;
 	fs.first_shared = vm_shared_fault;
 	growstack = 1;
-	lwkt_gettoken(&map->token);
 
 	/*
 	 * VM_FAULT_UNSWAP - swap_pager_unswapped() needs an exclusive object
@@ -1109,7 +1106,6 @@ done:
 	if (fs.first_object)
 		vm_object_drop(fs.first_object);
 done2:
-	lwkt_reltoken(&map->token);
 	return(fs.m);
 }
 
@@ -2232,8 +2228,6 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 	int fault_flags;
 	vm_page_t m;
 
-	lwkt_gettoken(&map->token);
-
 	if (user_wire) {
 		wire_prot = VM_PROT_READ;
 		fault_flags = VM_FAULT_USER_WIRE;
@@ -2247,6 +2241,7 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 	pmap = vm_map_pmap(map);
 	start = entry->start;
 	end = entry->end;
+
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
 	case VM_MAPTYPE_VPAGETABLE:
@@ -2289,7 +2284,7 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 	rv = KERN_SUCCESS;
 done:
 	vm_map_lock(map);
-	lwkt_reltoken(&map->token);
+
 	return (rv);
 }
 
@@ -2306,8 +2301,6 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	vm_offset_t va;
 	pmap_t pmap;
 	vm_page_t m;
-
-	lwkt_gettoken(&map->token);
 
 	pmap = vm_map_pmap(map);
 	start = entry->start;
@@ -2330,7 +2323,6 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 			vm_page_wakeup(m);
 		}
 	}
-	lwkt_reltoken(&map->token);
 }
 
 /*
