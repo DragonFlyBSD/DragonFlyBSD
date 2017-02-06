@@ -132,7 +132,14 @@ vmm_init(void)
 		    &vmm_debug, 0,
 		    "vmm debugging");
 
-		if (ctl->enable()) {
+		/*
+		 * Normally enable VMM if it is supported.  But for now
+		 * lets not, because the vkernel is not stable with it
+		 * enabled.
+		 */
+		if (1) {
+			kprintf("VMM: available, disabled by default\n");
+		} else if (ctl->enable()) {
 			kprintf("VMM: vmm enable() failed\n");
 		} else {
 			vmm_enabled = 1;
