@@ -45,7 +45,7 @@
 .Cd "device vke"
 .Pp
 .Pa /var/vkernel/boot/kernel/kernel
-.Op Fl hdstUv
+.Op Fl hdstUvz
 .Op Fl c Ar file
 .Op Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 .Op Fl i Ar file
@@ -188,6 +188,9 @@ if specified.
 .Ar CPU
 locks all virtual CPUs to the real CPU specified by
 .Ar CPU .
+.Pp
+Locking the vkernel to a set of cpus is recommended on multi-socket systems
+to improve NUMA locality of reference.
 .It Fl m Ar size
 Specify the amount of memory to be used by the kernel in bytes,
 .Cm K
@@ -287,6 +290,13 @@ Enable writing to kernel memory and module loading.
 By default, those are disabled for security reasons.
 .It Fl v
 Turn on verbose booting.
+.It Fl z
+Force the vkernel's ram to be pre-zerod.  Useful for benchmarking on
+single-socket systems where the memory allocation does not have to be
+NUMA-friendly.
+This options is not recommended on multi-socket systems or when the
+.Fl l
+option is used.
 .El
 .Sh DEVICES
 A number of virtual device drivers exist to supplement the virtual kernel.

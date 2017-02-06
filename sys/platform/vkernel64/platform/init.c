@@ -150,6 +150,7 @@ static void handle_term(int);
 pid_t childpid;
 
 static int save_ac;
+static int prezeromem;
 static char **save_av;
 
 /*
@@ -264,7 +265,7 @@ main(int ac, char **av)
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvtl:m:n:r:R:e:i:p:I:Ud")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvztl:m:n:r:R:e:i:p:I:Ud")) != -1) {
 		switch(c) {
 		case 'd':
 			dflag = 1;
@@ -433,6 +434,9 @@ main(int ac, char **av)
 			break;
 		case 'h':
 			usage_help(true);
+			break;
+		case 'z':
+			prezeromem = 1;
 			break;
 		default:
 			usage_help(false);
@@ -650,7 +654,8 @@ init_kern_memory(void)
 	 * anyway, and faults on the backing store itself are very expensive
 	 * once we go SMP (contend a lot).  So do it now.
 	 */
-	bzero(dmap_min_address,  Maxmem_bytes);
+	if (prezeromem)
+		bzero(dmap_min_address, Maxmem_bytes);
 
 	/*
 	 * Bootstrap the kernel_pmap
@@ -762,7 +767,8 @@ init_kern_memory_vmm(void)
 		err(1, "Unable to mmap() RAM region!");
 		/* NOT REACHED */
 	}
-	bzero(dmap_address, Maxmem_bytes);
+	if (prezeromem)
+		bzero(dmap_address, Maxmem_bytes);
 
 	/* Alloc a new stack in the lowmem */
 	vkernel_stack = mmap(NULL, KERNEL_STACK_SIZE,
