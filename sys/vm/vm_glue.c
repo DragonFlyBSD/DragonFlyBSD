@@ -390,49 +390,70 @@ loop:
 	goto loop;
 }
 
+/*
+ * Process only has its hold count bumped, we need the token
+ * to safely scan the LWPs
+ */
 static int
 scheduler_callback(struct proc *p, void *data)
 {
 	struct scheduler_info *info = data;
+	struct vmspace *vm;
 	struct lwp *lp;
 	segsz_t pgs;
 	int pri;
 
-	if (p->p_flags & P_SWAPWAIT) {
-		pri = 0;
-		FOREACH_LWP_IN_PROC(lp, p) {
-			/* XXX lwp might need a different metric */
-			pri += lp->lwp_slptime;
-		}
-		pri += p->p_swtime - p->p_nice * 8;
+	/*
+	 * We only care about processes in swap-wait.  Interlock test with
+	 * token if the flag is found set.
+	 */
+	if ((p->p_flags & P_SWAPWAIT) == 0)
+		return 0;
+	lwkt_gettoken_shared(&p->p_token);
+	if ((p->p_flags & P_SWAPWAIT) == 0) {
+		lwkt_reltoken(&p->p_token);
+		return 0;
+	}
 
-		/*
-		 * The more pages paged out while we were swapped,
-		 * the more work we have to do to get up and running
-		 * again and the lower our wakeup priority.
-		 *
-		 * Each second of sleep time is worth ~1MB
-		 */
-		lwkt_gettoken(&p->p_vmspace->vm_map.token);
-		pgs = vmspace_resident_count(p->p_vmspace);
-		if (pgs < p->p_vmspace->vm_swrss) {
-			pri -= (p->p_vmspace->vm_swrss - pgs) /
-				(1024 * 1024 / PAGE_SIZE);
-		}
-		lwkt_reltoken(&p->p_vmspace->vm_map.token);
+	/*
+	 * Calculate priority for swap-in
+	 */
+	pri = 0;
+	FOREACH_LWP_IN_PROC(lp, p) {
+		/* XXX lwp might need a different metric */
+		pri += lp->lwp_slptime;
+	}
+	pri += p->p_swtime - p->p_nice * 8;
 
-		/*
-		 * If this process is higher priority and there is
-		 * enough space, then select this process instead of
-		 * the previous selection.
-		 */
-		if (pri > info->ppri) {
-			if (info->pp)
-				PRELE(info->pp);
-			PHOLD(p);
-			info->pp = p;
-			info->ppri = pri;
+	/*
+	 * The more pages paged out while we were swapped,
+	 * the more work we have to do to get up and running
+	 * again and the lower our wakeup priority.
+	 *
+	 * Each second of sleep time is worth ~1MB
+	 */
+	if ((vm = p->p_vmspace) != NULL) {
+		vmspace_hold(vm);
+		pgs = vmspace_resident_count(vm);
+		if (pgs < vm->vm_swrss) {
+			pri -= (vm->vm_swrss - pgs) /
+			       (1024 * 1024 / PAGE_SIZE);
 		}
+		vmspace_drop(vm);
+	}
+	lwkt_reltoken(&p->p_token);
+
+	/*
+	 * If this process is higher priority and there is
+	 * enough space, then select this process instead of
+	 * the previous selection.
+	 */
+	if (pri > info->ppri) {
+		if (info->pp)
+			PRELE(info->pp);
+		PHOLD(p);
+		info->pp = p;
+		info->ppri = pri;
 	}
 	return(0);
 }
