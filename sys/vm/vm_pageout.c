@@ -1443,8 +1443,7 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 		 */
 		static int cache_rover = 0;
 
-		m = vm_page_list_find(PQ_CACHE,
-				      cache_rover & PQ_L2_MASK, FALSE);
+		m = vm_page_list_find(PQ_CACHE, cache_rover & PQ_L2_MASK);
 		if (m == NULL)
 			break;
 		/* page is returned removed from its queue and spinlocked */

@@ -837,7 +837,10 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 }
 
 /*
- * Helper function places the vm_page on the specified queue.
+ * Helper function places the vm_page on the specified queue.  Generally
+ * speaking only PQ_FREE pages are placed at the head, to allow them to
+ * be allocated sooner rather than later on the assumption that they
+ * are cache-hot.
  *
  * The vm_page must be spinlocked.
  * This function will return with both the page and the queue locked.
@@ -1129,7 +1132,7 @@ vm_page_unhold(vm_page_t m)
 	if (m->hold_count == 0 && m->queue - m->pc == PQ_HOLD) {
 		_vm_page_queue_spin_lock(m);
 		_vm_page_rem_queue_spinlocked(m);
-		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 0);
+		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 1);
 		_vm_page_queue_spin_unlock(m);
 	}
 	vm_page_spin_unlock(m);
@@ -1572,17 +1575,12 @@ vm_page_unqueue(vm_page_t m)
  */
 static __inline
 vm_page_t
-_vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
+_vm_page_list_find(int basequeue, int index)
 {
 	vm_page_t m;
 
 	for (;;) {
-		if (prefer_zero) {
-			m = TAILQ_LAST(&vm_page_queues[basequeue+index].pl,
-				       pglist);
-		} else {
-			m = TAILQ_FIRST(&vm_page_queues[basequeue+index].pl);
-		}
+		m = TAILQ_FIRST(&vm_page_queues[basequeue+index].pl);
 		if (m == NULL) {
 			m = _vm_page_list_find2(basequeue, index);
 			return(m);
@@ -1647,9 +1645,9 @@ _vm_page_list_find2(int basequeue, int index)
  * Returns a spinlocked vm_page that has been removed from its queue.
  */
 vm_page_t
-vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
+vm_page_list_find(int basequeue, int index)
 {
-	return(_vm_page_list_find(basequeue, index, prefer_zero));
+	return(_vm_page_list_find(basequeue, index));
 }
 
 /*
@@ -1668,7 +1666,7 @@ vm_page_select_cache(u_short pg_color)
 	vm_page_t m;
 
 	for (;;) {
-		m = _vm_page_list_find(PQ_CACHE, pg_color & PQ_L2_MASK, FALSE);
+		m = _vm_page_list_find(PQ_CACHE, pg_color & PQ_L2_MASK);
 		if (m == NULL)
 			break;
 		/*
@@ -1706,20 +1704,19 @@ vm_page_select_cache(u_short pg_color)
 }
 
 /*
- * Find a free or zero page, with specified preference.  We attempt to
- * inline the nominal case and fall back to _vm_page_select_free() 
- * otherwise.  A busied page is removed from the queue and returned.
+ * Find a free page.  We attempt to inline the nominal case and fall back
+ * to _vm_page_select_free() otherwise.  A busied page is removed from
+ * the queue and returned.
  *
  * This routine may not block.
  */
 static __inline vm_page_t
-vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
+vm_page_select_free(u_short pg_color)
 {
 	vm_page_t m;
 
 	for (;;) {
-		m = _vm_page_list_find(PQ_FREE, pg_color & PQ_L2_MASK,
-				       prefer_zero);
+		m = _vm_page_list_find(PQ_FREE, pg_color & PQ_L2_MASK);
 		if (m == NULL)
 			break;
 		if (vm_page_busy_try(m, TRUE)) {
@@ -1870,10 +1867,7 @@ loop:
 		/*
 		 * The free queue has sufficient free pages to take one out.
 		 */
-		if (page_req & (VM_ALLOC_ZERO | VM_ALLOC_FORCE_ZERO))
-			m = vm_page_select_free(pg_color, TRUE);
-		else
-			m = vm_page_select_free(pg_color, FALSE);
+		m = vm_page_select_free(pg_color);
 	} else if (page_req & VM_ALLOC_NORMAL) {
 		/*
 		 * Allocatable from the cache (non-interrupt only).  On
@@ -2389,7 +2383,7 @@ vm_page_free_toq(vm_page_t m)
 	if (m->hold_count != 0) {
 		_vm_page_add_queue_spinlocked(m, PQ_HOLD + m->pc, 0);
 	} else {
-		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 0);
+		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 1);
 	}
 
 	/*

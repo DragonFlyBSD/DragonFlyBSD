@@ -446,7 +446,7 @@ void vm_page_set_invalid (vm_page_t, int, int);
 int vm_page_is_valid (vm_page_t, int, int);
 void vm_page_test_dirty (vm_page_t);
 int vm_page_bits (int, int);
-vm_page_t vm_page_list_find(int basequeue, int index, boolean_t prefer_zero);
+vm_page_t vm_page_list_find(int basequeue, int index);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
 void vm_page_free_contig(vm_page_t m, unsigned long size);
