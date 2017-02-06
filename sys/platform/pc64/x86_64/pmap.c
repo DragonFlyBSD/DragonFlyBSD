@@ -213,18 +213,18 @@ struct msgbuf *msgbufp=NULL;
  * EPT/NPT pagetable pmap_bits for the VMM module
  */
 uint64_t pmap_bits_default[] = {
-		REGULAR_PMAP,					/* TYPE_IDX		0 */
-		X86_PG_V,					/* PG_V_IDX		1 */
-		X86_PG_RW,					/* PG_RW_IDX		2 */
-		X86_PG_U,					/* PG_U_IDX		3 */
-		X86_PG_A,					/* PG_A_IDX		4 */
-		X86_PG_M,					/* PG_M_IDX		5 */
-		X86_PG_PS,					/* PG_PS_IDX3		6 */
-		X86_PG_G,					/* PG_G_IDX		7 */
-		X86_PG_AVAIL1,					/* PG_AVAIL1_IDX	8 */
-		X86_PG_AVAIL2,					/* PG_AVAIL2_IDX	9 */
-		X86_PG_AVAIL3,					/* PG_AVAIL3_IDX	10 */
-		X86_PG_NC_PWT | X86_PG_NC_PCD,			/* PG_N_IDX	11 */
+		REGULAR_PMAP,			/* TYPE_IDX		0 */
+		X86_PG_V,			/* PG_V_IDX		1 */
+		X86_PG_RW,			/* PG_RW_IDX		2 */
+		X86_PG_U,			/* PG_U_IDX		3 */
+		X86_PG_A,			/* PG_A_IDX		4 */
+		X86_PG_M,			/* PG_M_IDX		5 */
+		X86_PG_PS,			/* PG_PS_IDX3		6 */
+		X86_PG_G,			/* PG_G_IDX		7 */
+		X86_PG_AVAIL1,			/* PG_AVAIL1_IDX	8 */
+		X86_PG_AVAIL2,			/* PG_AVAIL2_IDX	9 */
+		X86_PG_AVAIL3,			/* PG_AVAIL3_IDX	10 */
+		X86_PG_NC_PWT | X86_PG_NC_PCD,	/* PG_N_IDX		11 */
 };
 /*
  * Crashdump maps.
@@ -249,7 +249,7 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_mmu_optimize, CTLFLAG_RW,
 int pmap_fast_kernel_cpusync = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_fast_kernel_cpusync, CTLFLAG_RW,
     &pmap_fast_kernel_cpusync, 0, "Share page table pages when possible");
-int pmap_dynamic_delete = -1;
+int pmap_dynamic_delete = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
     &pmap_dynamic_delete, 0, "Dynamically delete PT/PD/PDPs");
 
@@ -3562,7 +3562,8 @@ pv_put(pv_entry_t pv)
 
 	/*
 	 * Normal put-aways must have a pv_m associated with the pv,
-	 * but allow the case where the pv has been destructed.
+	 * but allow the case where the pv has been destructed due
+	 * to pmap_dynamic_delete.
 	 */
 	KKASSERT(pv->pv_pmap == NULL || pv->pv_m != NULL);
 
