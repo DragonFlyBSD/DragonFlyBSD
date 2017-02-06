@@ -3561,9 +3561,10 @@ pv_put(pv_entry_t pv)
 #endif
 
 	/*
-	 * Normal put-aways must have a pv_m associated with the pv.
+	 * Normal put-aways must have a pv_m associated with the pv,
+	 * but allow the case where the pv has been destructed.
 	 */
-	KKASSERT(pv->pv_m != NULL);
+	KKASSERT(pv->pv_pmap == NULL || pv->pv_m != NULL);
 
 	/*
 	 * Fast - shortcut most common condition
