@@ -2253,7 +2253,10 @@ int drm_connector_register(struct drm_connector *connector);
 void drm_connector_unregister(struct drm_connector *connector);
 
 extern void drm_connector_cleanup(struct drm_connector *connector);
-extern unsigned int drm_connector_index(struct drm_connector *connector);
+static inline unsigned drm_connector_index(struct drm_connector *connector)
+{
+	return connector->connector_id;
+}
 
 /* helper to unplug all connectors from sysfs for device */
 extern void drm_connector_unplug_all(struct drm_device *dev);

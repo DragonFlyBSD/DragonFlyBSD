@@ -144,7 +144,7 @@ static const struct drm_prop_enum_list drm_dirty_info_enum_list[] = {
 struct drm_conn_prop_enum_list {
 	int type;
 	const char *name;
-	int count;
+	struct ida ida;
 };
 
 /*
@@ -192,22 +192,18 @@ static const struct drm_prop_enum_list drm_subpixel_enum_list[] = {
 
 void drm_connector_ida_init(void)
 {
-#if 0
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(drm_connector_enum_list); i++)
 		ida_init(&drm_connector_enum_list[i].ida);
-#endif
 }
 
 void drm_connector_ida_destroy(void)
 {
-#if 0
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(drm_connector_enum_list); i++)
 		ida_destroy(&drm_connector_enum_list[i].ida);
-#endif
 }
 
 /**
@@ -805,8 +801,8 @@ static void drm_mode_remove(struct drm_connector *connector,
 /**
  * drm_display_info_set_bus_formats - set the supported bus formats
  * @info: display info to store bus formats in
- * @fmts: array containing the supported bus formats
- * @nfmts: the number of entries in the fmts array
+ * @formats: array containing the supported bus formats
+ * @num_formats: the number of entries in the fmts array
  *
  * Store the supported bus formats in display info structure.
  * See MEDIA_BUS_FMT_* definitions in include/uapi/linux/media-bus-format.h for
@@ -908,22 +904,31 @@ int drm_connector_init(struct drm_device *dev,
 {
 	struct drm_mode_config *config = &dev->mode_config;
 	int ret;
+	struct ida *connector_ida =
+		&drm_connector_enum_list[connector_type].ida;
 
 	drm_modeset_lock_all(dev);
 
-	ret = drm_mode_object_get(dev, &connector->base, DRM_MODE_OBJECT_CONNECTOR);
+	ret = drm_mode_object_get_reg(dev, &connector->base, DRM_MODE_OBJECT_CONNECTOR, false);
 	if (ret)
 		goto out_unlock;
 
 	connector->base.properties = &connector->properties;
 	connector->dev = dev;
 	connector->funcs = funcs;
+
+	connector->connector_id = ida_simple_get(&config->connector_ida, 0, 0, GFP_KERNEL);
+	if (connector->connector_id < 0) {
+		ret = connector->connector_id;
+		goto out_put;
+	}
+
 	connector->connector_type = connector_type;
 	connector->connector_type_id =
-		++drm_connector_enum_list[connector_type].count; /* TODO */
+		ida_simple_get(connector_ida, 1, 0, GFP_KERNEL);
 	if (connector->connector_type_id < 0) {
 		ret = connector->connector_type_id;
-		goto out_put;
+		goto out_put_id;
 	}
 	connector->name =
 		kasprintf(GFP_KERNEL, "%s-%d",
@@ -931,7 +936,7 @@ int drm_connector_init(struct drm_device *dev,
 			  connector->connector_type_id);
 	if (!connector->name) {
 		ret = -ENOMEM;
-		goto out_put;
+		goto out_put_type_id;
 	}
 
 	INIT_LIST_HEAD(&connector->probed_modes);
@@ -959,7 +964,12 @@ int drm_connector_init(struct drm_device *dev,
 	}
 
 	connector->debugfs_entry = NULL;
-
+out_put_type_id:
+	if (ret)
+		ida_remove(connector_ida, connector->connector_type_id);
+out_put_id:
+	if (ret)
+		ida_remove(&config->connector_ida, connector->connector_id);
 out_put:
 	if (ret)
 		drm_mode_object_put(dev, &connector->base);
@@ -982,11 +992,22 @@ void drm_connector_cleanup(struct drm_connector *connector)
 	struct drm_device *dev = connector->dev;
 	struct drm_display_mode *mode, *t;
 
+	if (connector->tile_group) {
+		drm_mode_put_tile_group(dev, connector->tile_group);
+		connector->tile_group = NULL;
+	}
+
 	list_for_each_entry_safe(mode, t, &connector->probed_modes, head)
 		drm_mode_remove(connector, mode);
 
 	list_for_each_entry_safe(mode, t, &connector->modes, head)
 		drm_mode_remove(connector, mode);
+
+	ida_remove(&drm_connector_enum_list[connector->connector_type].ida,
+		   connector->connector_type_id);
+
+	ida_remove(&dev->mode_config.connector_ida,
+		   connector->connector_id);
 
 	kfree(connector->display_info.bus_formats);
 	drm_mode_object_put(dev, &connector->base);
@@ -1003,32 +1024,6 @@ void drm_connector_cleanup(struct drm_connector *connector)
 	memset(connector, 0, sizeof(*connector));
 }
 EXPORT_SYMBOL(drm_connector_cleanup);
-
-/**
- * drm_connector_index - find the index of a registered connector
- * @connector: connector to find index for
- *
- * Given a registered connector, return the index of that connector within a DRM
- * device's list of connectors.
- */
-unsigned int drm_connector_index(struct drm_connector *connector)
-{
-	unsigned int index = 0;
-	struct drm_connector *tmp;
-	struct drm_mode_config *config = &connector->dev->mode_config;
-
-	WARN_ON(!drm_modeset_is_locked(&config->connection_mutex));
-
-	drm_for_each_connector(tmp, connector->dev) {
-		if (tmp == connector)
-			return index;
-
-		index++;
-	}
-
-	BUG();
-}
-EXPORT_SYMBOL(drm_connector_index);
 
 /**
  * drm_connector_register - register a connector
@@ -1198,6 +1193,18 @@ void drm_encoder_cleanup(struct drm_encoder *encoder)
 }
 EXPORT_SYMBOL(drm_encoder_cleanup);
 
+static unsigned int drm_num_planes(struct drm_device *dev)
+{
+	unsigned int num = 0;
+	struct drm_plane *tmp;
+
+	drm_for_each_plane(tmp, dev) {
+		num++;
+	}
+
+	return num;
+}
+
 /**
  * drm_universal_plane_init - Initialize a new universal plane object
  * @dev: DRM device
@@ -1233,10 +1240,26 @@ int drm_universal_plane_init(struct drm_device *dev, struct drm_plane *plane,
 	plane->base.properties = &plane->properties;
 	plane->dev = dev;
 	plane->funcs = funcs;
-	plane->format_types = kmalloc(sizeof(uint32_t) * format_count,
+	plane->format_types = kmalloc(format_count * sizeof(uint32_t),
 				      M_DRM, M_WAITOK);
 	if (!plane->format_types) {
 		DRM_DEBUG_KMS("out of memory when allocating plane\n");
+		drm_mode_object_put(dev, &plane->base);
+		return -ENOMEM;
+	}
+
+	if (name) {
+		__va_list ap;
+
+		__va_start(ap, name);
+		plane->name = kvasprintf(GFP_KERNEL, name, ap);
+		__va_end(ap);
+	} else {
+		plane->name = kasprintf(GFP_KERNEL, "plane-%d",
+					drm_num_planes(dev));
+	}
+	if (!plane->name) {
+		kfree(plane->format_types);
 		drm_mode_object_put(dev, &plane->base);
 		return -ENOMEM;
 	}
@@ -1330,6 +1353,8 @@ void drm_plane_cleanup(struct drm_plane *plane)
 	WARN_ON(plane->state && !plane->funcs->atomic_destroy_state);
 	if (plane->state && plane->funcs->atomic_destroy_state)
 		plane->funcs->atomic_destroy_state(plane, plane->state);
+
+	kfree(plane->name);
 
 	memset(plane, 0, sizeof(*plane));
 }
@@ -3152,7 +3177,7 @@ int drm_mode_addfb(struct drm_device *dev,
 
 	or->fb_id = r.fb_id;
 
-	return ret;
+	return 0;
 }
 
 static int format_check(const struct drm_mode_fb_cmd2 *r)
@@ -5392,12 +5417,9 @@ void drm_mode_config_reset(struct drm_device *dev)
 			encoder->funcs->reset(encoder);
 
 	mutex_lock(&dev->mode_config.mutex);
-	drm_for_each_connector(connector, dev) {
-		connector->status = connector_status_unknown;
-
+	drm_for_each_connector(connector, dev)
 		if (connector->funcs->reset)
 			connector->funcs->reset(connector);
-	}
 	mutex_unlock(&dev->mode_config.mutex);
 }
 EXPORT_SYMBOL(drm_mode_config_reset);
@@ -5828,6 +5850,7 @@ void drm_mode_config_init(struct drm_device *dev)
 	INIT_LIST_HEAD(&dev->mode_config.plane_list);
 	idr_init(&dev->mode_config.crtc_idr);
 	idr_init(&dev->mode_config.tile_idr);
+	ida_init(&dev->mode_config.connector_ida);
 
 	drm_modeset_lock_all(dev);
 	drm_mode_create_standard_properties(dev);
@@ -5908,6 +5931,7 @@ void drm_mode_config_cleanup(struct drm_device *dev)
 		crtc->funcs->destroy(crtc);
 	}
 
+	ida_destroy(&dev->mode_config.connector_ida);
 	idr_destroy(&dev->mode_config.tile_idr);
 	idr_destroy(&dev->mode_config.crtc_idr);
 	drm_modeset_lock_fini(&dev->mode_config.connection_mutex);
