@@ -196,8 +196,6 @@ copies:		mtree_setup
 .for i in ${SHDRS}
 	${LN} -sf ../sys/$i ${DESTDIR}/usr/include/machine/$i
 .endfor
-	cpdup -o ${.CURDIR}/../crypto/libressl/include/openssl \
-		${DESTDIR}/usr/include/openssl
 .for i in ${RMHEADERS}
 	rm -f ${DESTDIR}/usr/include/$i
 .endfor
@@ -221,9 +219,6 @@ symlinks:	mtree_setup
 		${DESTDIR}/usr/include/machine
 	cpdup -o ${.CURDIR}/../sys/platform/${MACHINE_PLATFORM}/include \
 		${DESTDIR}/usr/include/machine
-	rm -rf ${DESTDIR}/usr/include/openssl
-	${LN} -s ${.CURDIR}/../crypto/libressl/include/openssl \
-		${DESTDIR}/usr/include/openssl
 
 .include <bsd.prog.mk>
 

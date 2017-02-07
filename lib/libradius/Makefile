@@ -34,6 +34,8 @@ LDADD=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
 .else
+# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
+CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
 DPADD=		${LIBMD}
 LDADD=		-lmd
 .endif

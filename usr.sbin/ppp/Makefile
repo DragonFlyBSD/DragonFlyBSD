@@ -90,4 +90,7 @@ SRCS+=	netgraph.c
 
 NO_STRICT_ALIASING=
 
+# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
+CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
+
 .include <bsd.prog.mk>

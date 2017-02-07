@@ -23,11 +23,14 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libtacplus/Makefile,v 1.2.2.2 2002/10/09 08:50:42 pst Exp $
-#	$DragonFly: src/lib/libtacplus/Makefile,v 1.5 2008/10/28 16:54:09 swildner Exp $
 
 LIB=		tacplus
 SRCS=		taclib.c
 INCS=		taclib.h
+
+# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
+CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
+
 DPADD+=		${LIBMD}
 LDADD+=		-lmd
 SHLIB_MAJOR=	2

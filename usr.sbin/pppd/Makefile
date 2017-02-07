@@ -34,4 +34,7 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 
+# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
+CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
+
 .include <bsd.prog.mk>
