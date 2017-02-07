@@ -6,7 +6,8 @@
 .if ${CCVER:Mgcc*}
 CFLAGS+=	-mpreferred-stack-boundary=4
 .endif
-CFLAGS+=	-fno-stack-protector
+CFLAGS+=	-fno-stack-protector -fno-strict-aliasing
+CFLAGS+=	-fno-strict-overflow
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
 CFLAGS+=	-D_KERNEL_VIRTUAL
 CFLAGS+=	-fno-omit-frame-pointer

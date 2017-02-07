@@ -7,7 +7,10 @@
 # operations inside the kernel itself.  These operations are exclusively
 # reserved for user applications.
 #
-CFLAGS+=	-fno-stack-protector
+# -fno-strict-aliasing required for -O2 compilation.
+#
+CFLAGS+=	-fno-stack-protector -fno-strict-aliasing
+CFLAGS+=	-fno-strict-overflow
 CFLAGS+=	-mcmodel=kernel -mno-red-zone -mfpmath=387
 
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3

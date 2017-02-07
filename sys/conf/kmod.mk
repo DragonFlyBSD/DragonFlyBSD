@@ -81,8 +81,10 @@ KMODMODE?=	${BINMODE}
 WERROR=-Werror
 .endif
 
+COPTFLAGS?=-O2 -pipe
+
 WORLD_CCOPTLEVEL=	# XXX prevent world opt level affecting kernel modules
-CFLAGS+=	${COPTS} -D_KERNEL ${CWARNFLAGS} ${WERROR}
+CFLAGS+=	${COPTFLAGS} ${COPTS} -D_KERNEL ${CWARNFLAGS} ${WERROR}
 CFLAGS+=	-DKLD_MODULE
 
 # Don't use any standard include directories.

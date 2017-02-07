@@ -16,7 +16,7 @@ M=	${MACHINE_ARCH}
 SIZE?=		size
 OBJCOPY?=	objcopy
 
-COPTFLAGS?=-O -pipe
+COPTFLAGS?=-O2 -pipe
 #COPTFLAGS?=-O -pipe -flto -fno-fat-lto-objects
 #COPTFLAGS?=-O -fthread-jumps -fcse-follow-jumps -fcrossjumping -frerun-cse-after-loop -fno-guess-branch-probability --param min-crossjump-insns=1 -pipe
 #COPTFLAGS?=-O -fcrossjumping -pipe
