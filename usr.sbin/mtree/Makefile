@@ -17,6 +17,7 @@ CFLAGS+= -DUSE_MD5 -DUSE_SHA1 -DUSE_RMD160
 DPADD=  ${LIBMD} ${LIBRECRYPTO}
 LDADD=  -lmd -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+CFLAGS+= 	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 
 .include <bsd.prog.mk>

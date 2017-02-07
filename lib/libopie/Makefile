@@ -32,6 +32,7 @@ CFLAGS+=	-DINSECURE_OVERRIDE -DPATH_ACCESS_FILE=${ACCESSFILE}
 LDADD+=	-lmd -lprivate_crypto
 DPADD+=	${LIBMD} ${LIBRECRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 MAN=	${OPIE_DIST}/opie.4 ${OPIE_DIST}/opiekeys.5 ${OPIE_DIST}/opieaccess.5
 

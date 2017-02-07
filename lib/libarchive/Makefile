@@ -16,6 +16,7 @@ WARNS?=	2
 DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBRECRYPTO} ${LIBZ}
 LDADD=	-lbz2 -llzma -lmd -lprivate_crypto -lz
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 INCS=	archive.h archive_entry.h
 

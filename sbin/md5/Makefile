@@ -16,5 +16,6 @@ MLINKS=	md5.1 rmd160.1 \
 DPADD=	${LIBMD} ${LIBRECRYPTO}
 LDADD=	-lmd -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 .include <bsd.prog.mk>

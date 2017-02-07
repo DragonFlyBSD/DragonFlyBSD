@@ -6,6 +6,7 @@ MAN=	uefisign.8
 
 LDADD=	-lprivate_crypto
 DPADD=	${LIBRECRYPTO}
-LDFLAGS+= -rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
+LDFLAGS+= ${PRIVATELIB_LDFLAGS}
+CFLAGS+= -I${.CURDIR}/../../crypto/libressl/include
 
 .include <bsd.prog.mk>

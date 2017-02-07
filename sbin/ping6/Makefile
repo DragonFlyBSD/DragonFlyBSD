@@ -11,6 +11,7 @@ BINMODE=4555
 LDADD=	-lipsec -lm -lmd -lprivate_crypto
 DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD} ${LIBRECRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 NO_STRICT_ALIASING=
 
 # kame scopeid hack
