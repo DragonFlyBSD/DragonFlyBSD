@@ -4,6 +4,6 @@
 KMOD=	warp_saver
 SRCS= 	warp_saver.c
 
-CFLAGS+= -I${.CURDIR}/..
+KCFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

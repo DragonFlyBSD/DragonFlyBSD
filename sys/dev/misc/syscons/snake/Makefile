@@ -4,6 +4,6 @@
 KMOD=	snake_saver
 SRCS= 	snake_saver.c
 
-CFLAGS+= -I${.CURDIR}/..
+KCFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

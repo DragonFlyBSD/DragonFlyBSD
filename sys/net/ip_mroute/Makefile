@@ -4,7 +4,7 @@
 .PATH:	${.CURDIR}/../../netinet
 KMOD=	ip_mroute
 SRCS=	ip_mroute.c opt_mrouting.h
-CFLAGS+= -DMROUTE_LKM -DMROUTING
+KCFLAGS+= -DMROUTE_LKM -DMROUTING
 
 opt_mrouting.h:
 	echo "#define MROUTING 1" > ${.TARGET}

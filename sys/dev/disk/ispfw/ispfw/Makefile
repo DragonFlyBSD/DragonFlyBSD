@@ -31,6 +31,6 @@
 KMOD=	ispfw
 SRCS=	ispfw.c
 
-CFLAGS += -DISP_ALL
+KCFLAGS += -DISP_ALL
 
 .include <bsd.kmod.mk>

@@ -4,6 +4,6 @@
 KMOD=	fire_saver
 SRCS= 	fire_saver.c
 
-CFLAGS+= -I${.CURDIR}/..
+KCFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

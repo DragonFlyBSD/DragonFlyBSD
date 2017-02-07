@@ -318,12 +318,14 @@ The baud rate to use for the console if the boot blocks have
 been configured to use a serial console instead of the keyboard/video card.
 .It Va COPTFLAGS
 .Pq Vt str
-Controls the compiler settings when building the
-kernel.
-Optimization levels above
-.Fl O
-.Pq Fl O2 , No ...
-are not guaranteed to work.
+Controls the compiler optimization settings for kernel and module compiles.
+.It Va KCFLAGS
+Allows you to add additional compiler flags for kernel and module compiles.
+But use
+.Va COPTFLAGS
+.Pq Vt str
+to specify any optimization overrides, as some modules may have to override
+it to enforce a lower optimization level.
 .It Va KERNCONF
 .Pq Vt str
 Controls which kernel configurations will be

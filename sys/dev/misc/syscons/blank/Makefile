@@ -4,6 +4,6 @@
 KMOD=	blank_saver
 SRCS= 	blank_saver.c
 
-CFLAGS+= -I${.CURDIR}/..
+KCFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

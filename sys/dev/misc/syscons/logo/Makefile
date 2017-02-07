@@ -4,6 +4,6 @@
 KMOD=	logo_saver
 SRCS= 	logo_saver.c
 
-CFLAGS+= -I${.CURDIR}/.. -I${.CURDIR}
+KCFLAGS+= -I${.CURDIR}/.. -I${.CURDIR}
 
 .include <bsd.kmod.mk>

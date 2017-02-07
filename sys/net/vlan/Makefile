@@ -5,7 +5,7 @@ KMOD=	if_vlan
 SRCS=	if_vlan.c
 SRCS+=	opt_inet.h
 SRCS+=	device_if.h bus_if.h
-CFLAGS+= -DNVLAN=0
+KCFLAGS+= -DNVLAN=0
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

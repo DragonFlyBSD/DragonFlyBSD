@@ -407,7 +407,7 @@ echo ".PATH:  ${PWD} ${STUBPATH}"				>  ${MAKEFILE}
 echo "KMOD= ${SYSBASE}"						>> ${MAKEFILE}
 echo "SRCS+= ${STUBFILE} ${DNAME}.h bus_if.h device_if.h"	>> ${MAKEFILE}
 echo "OBJS+=${FRMLIST} ${DNAME}.o"				>> ${MAKEFILE}
-echo "CFLAGS+=	\\"						>> ${MAKEFILE}
+echo "KCFLAGS+=	\\"						>> ${MAKEFILE}
 echo "	-DDRV_DATA_START=ndis_${SYSBASE}_drv_data_start \\"		>> ${MAKEFILE}
 echo "	-DDRV_NAME=ndis_${SYSBASE} \\"				>> ${MAKEFILE}
 echo "	-DDRV_DATA_END=ndis_${SYSBASE}_drv_data_end"			>> ${MAKEFILE}

@@ -4,6 +4,6 @@
 KMOD=	green_saver
 SRCS= 	green_saver.c
 
-CFLAGS+= -I${.CURDIR}/..
+KCFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

@@ -30,6 +30,6 @@
 KMOD=	isp_2400_multi
 SRCS=	ispfw.c
 
-CFLAGS += -DISP_2400_MULTI -DMODULE_NAME=\"${KMOD}\"
+KCFLAGS += -DISP_2400_MULTI -DMODULE_NAME=\"${KMOD}\"
 
 .include <bsd.kmod.mk>

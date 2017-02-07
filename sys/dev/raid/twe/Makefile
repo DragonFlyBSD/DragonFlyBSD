@@ -20,6 +20,6 @@ SRCS=	bus_if.h device_if.h pci_if.h twe.c twe_freebsd.c
 # during a disk write.  This configuration is more suitable if the system
 # has reliable power, but may be unstable for other reasons.
 #
-CFLAGS+=-DTWE_SHUTDOWN_NOTIFICATION
+KCFLAGS+=-DTWE_SHUTDOWN_NOTIFICATION
 
 .include <bsd.kmod.mk>

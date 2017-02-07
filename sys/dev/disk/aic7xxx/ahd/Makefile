@@ -26,7 +26,7 @@ SRCS= ${GENSRCS}
 AHD_REG_PRETTY_PRINT=1
 .ifdef AHD_REG_PRETTY_PRINT
 SRCS+= aic79xx_reg_print.c
-CFLAGS+= -DAHD_REG_PRETTY_PRINT=1
+KCFLAGS+= -DAHD_REG_PRETTY_PRINT=1
 .endif
 SRCS+= aic79xx.c aic79xx_osm.c aic79xx_pci.c ahd_pci.c
 SRCS+= opt_scsi.h opt_aic79xx.h opt_cam.h opt_ddb.h

@@ -143,7 +143,7 @@ SRCS	+=								\
 	iicbus_if.h							\
 	pci_if.h
 
-CFLAGS+= -I${SYSDIR}/dev/drm/include
-CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
+KCFLAGS+= -I${SYSDIR}/dev/drm/include
+KCFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 
 .include <bsd.kmod.mk>

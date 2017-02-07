@@ -4,6 +4,6 @@
 KMOD=	rain_saver
 SRCS= 	rain_saver.c
 
-CFLAGS+= -I${.CURDIR}/..
+KCFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

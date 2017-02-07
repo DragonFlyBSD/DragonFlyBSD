@@ -252,6 +252,14 @@ Directory for automatic backup of binaries of installed world (default:
 When defined, the automatic backup feature of
 .Cm installworld
 is inhibited.
+.It Ev COPTFLAGS
+Overrides the default optimization flags for kernel and module compiles.
+.It Ev KCFLAGS
+Allows you to add additional compiler flags for kernel and module compiles.
+But use
+.Ev COPTFLAGS
+to specify any optimization overrides, as some modules may have to override
+it to enforce a lower optimization level.
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/Makefile_upgrade.inc" -compact

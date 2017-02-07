@@ -10,6 +10,6 @@ SRCS	+= device_if.h bus_if.h pci_if.h opt_iwm.h opt_wlan.h
 
 SUBDIR	= fw
 
-CFLAGS += -DIWM_DEBUG
+KCFLAGS += -DIWM_DEBUG
 
 .include <bsd.kmod.mk>

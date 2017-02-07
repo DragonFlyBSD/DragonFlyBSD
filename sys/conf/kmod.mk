@@ -83,8 +83,12 @@ WERROR=-Werror
 
 COPTFLAGS?=-O2 -pipe
 
+# useful for debugging
+#.warning "KMOD-PREFILTER ${CFLAGS}"
+
 WORLD_CCOPTLEVEL=	# XXX prevent world opt level affecting kernel modules
-CFLAGS+=	${COPTFLAGS} ${COPTS} -D_KERNEL ${CWARNFLAGS} ${WERROR}
+CFLAGS=		${COPTFLAGS} ${KCFLAGS} ${COPTS} -D_KERNEL
+CFLAGS+=	${CWARNFLAGS} ${WERROR}
 CFLAGS+=	-DKLD_MODULE
 
 # Don't use any standard include directories.

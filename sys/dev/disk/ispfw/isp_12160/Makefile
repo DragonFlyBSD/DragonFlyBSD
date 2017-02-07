@@ -31,6 +31,6 @@
 KMOD=	isp_12160
 SRCS=	ispfw.c
 
-CFLAGS += -DISP_12160 -DMODULE_NAME=\"${KMOD}\"
+KCFLAGS += -DISP_12160 -DMODULE_NAME=\"${KMOD}\"
 
 .include <bsd.kmod.mk>

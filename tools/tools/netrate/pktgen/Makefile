@@ -1,7 +1,7 @@
 KMOD=	pktgen
 SRCS=	pktgen.c
 
-CFLAGS+= -g
-CFLAGS+= -DINVARIANTS 
+KCFLAGS+= -g
+KCFLAGS+= -DINVARIANTS
 
 .include <bsd.kmod.mk>

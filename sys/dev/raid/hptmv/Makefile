@@ -39,6 +39,6 @@ DEBUGOPT += -DDEBUG_LEVEL=1
 DEBUGOPT += -DFOR_DEMO
 .endif
 
-CFLAGS = ${DEBUGOPT}
+KCFLAGS = ${DEBUGOPT}
 
 .include <bsd.kmod.mk>

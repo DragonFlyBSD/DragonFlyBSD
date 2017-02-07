@@ -2,7 +2,7 @@
 
 HAL	= ${.CURDIR}/../ath_hal
 HALOSDEP= ${.CURDIR}/../ath_hal
-CFLAGS	+= -I${HALOSDEP}
+KCFLAGS	+= -I${HALOSDEP}
 
 opt_inet.h:
 	echo "#define INET	1" > ${.TARGET}

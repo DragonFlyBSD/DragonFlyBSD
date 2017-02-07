@@ -12,6 +12,6 @@ SRCS=	ahc_pci.c aic7xxx_pci.c ../aic7xxx_reg.h
 SRCS+=	device_if.h bus_if.h pci_if.h
 SRCS+=	opt_scsi.h opt_cam.h opt_aic7xxx.h
 
-CFLAGS+= -I${.CURDIR}/../.. -I..
+KCFLAGS+= -I${.CURDIR}/../.. -I..
 
 .include <bsd.kmod.mk>

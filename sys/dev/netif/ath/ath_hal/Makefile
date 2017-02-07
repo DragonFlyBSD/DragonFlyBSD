@@ -110,6 +110,6 @@ SRCS+= ar9300_stub_funcs.c ar9300_timer.c ar9300_tx99_tgt.c ar9300_txbf.c
 SRCS+= ar9300_txbf_cal.c ar9300_xmit.c ar9300_xmit_ds.c
 # missing ar9300_sim.c
 
-CFLAGS+=  -I. -I${HAL} -I${HALCONTRIB}
+KCFLAGS+=  -I. -I${HAL} -I${HALCONTRIB}
 
 .include <bsd.kmod.mk>
