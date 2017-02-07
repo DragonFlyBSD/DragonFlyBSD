@@ -113,8 +113,11 @@ _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
-	if ((count = atomic_fetchadd_int(&spin->counta, 1)) != 0)
+
+	count = atomic_fetchadd_int(&spin->counta, 1);
+	if (__predict_false(count != 0)) {
 		_spin_lock_contested(spin, ident, count);
+	}
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -200,7 +203,7 @@ _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 	++gd->gd_spinlocks;
 
 	counta = atomic_fetchadd_int(&spin->counta, 1);
-	if ((counta & SPINLOCK_SHARED) == 0) {
+	if (__predict_false((counta & SPINLOCK_SHARED) == 0)) {
 		if (counta != 0 ||
 		    !atomic_cmpset_int(&spin->counta, 1, SPINLOCK_SHARED | 1)) {
 			_spin_lock_shared_contested(spin, ident);
