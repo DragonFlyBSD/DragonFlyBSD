@@ -72,6 +72,8 @@
     libdata
         clang
         ..
+        clangb
+        ..
         gcc47
             objc
             ..
@@ -105,6 +107,8 @@
             ..
         ..
         clang
+        ..
+        clangb
         ..
         custom
         ..
