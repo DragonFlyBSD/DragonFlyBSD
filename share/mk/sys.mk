@@ -61,7 +61,7 @@ CXX		?=	c++
 CXX_LINK	?=	${CXX}
 NXCXX		?=	${NXENV} ${CXX}
 NXCXX_LINK	?=	${NXENV} ${CXX_LINK}
-CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS:N-std=*:N-Wnested-externs:N-W*-prototypes:N-Wno-pointer-sign:N-Wold-style-definition}
+CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS:N-std=*:N-Wnested-externs:N-W*-prototypes:N-Wno-pointer-sign:N-Wold-style-definition:N-Wsystem-headers}
 .if !defined(SYSBUILD) && defined(.MAKE.BUILT.BY) && ${.MAKE.BUILT.BY:Mgcc47}
 CXXFLAGS	+=	-D_GLIBCXX_USE_CXX11_ABI=0
 .endif
