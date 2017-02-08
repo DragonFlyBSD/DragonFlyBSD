@@ -4710,7 +4710,7 @@ bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
 	/*
 	 * Ok, now we are really in trouble.
 	 */
-	{
+	if (bootverbose) {
 		static struct krate biokrate = { .freq = 1 };
 		krateprintf(&biokrate,
 			    "Warning: bio_page_alloc: memory exhausted "
