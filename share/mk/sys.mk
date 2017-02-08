@@ -98,8 +98,8 @@ LFLAGS		?=
 LD		?=	ld
 NXLD		?=	${NXENV} ${LD}
 LDFLAGS		?=
-NXCFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*}
-NXCXXFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*}
+NXCFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*:N-flto}
+NXCXXFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*:N-flto:N-std=*}
 NXLDLIBS	?=	${LDLIBS}
 NXLDFLAGS	?=	-static ${LDFLAGS}
 
@@ -257,7 +257,10 @@ MACHINE_PLATFORM!=sysctl -n hw.platform
 # .no == native object file, for helper code when cross building.
 #
 .c.no:
-	${NXCC} ${_${.IMPSRC:T}_FLAGS} ${NXCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCC} ${_${.IMPSRC:T}_FLAGS} ${NXCFLAGS:N-flto} -c ${.IMPSRC} -o ${.TARGET}
+
+.cc.no .C.no .cpp.no .cxx.no:
+	${NXCXX} ${_${.IMPSRC:T}_FLAGS} ${NXCXXFLAGS:N-flto} -c ${.IMPSRC} -o ${.TARGET}
 
 .y.no:
 	${YACC} ${YFLAGS} ${.IMPSRC}
