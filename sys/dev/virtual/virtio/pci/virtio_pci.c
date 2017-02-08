@@ -53,13 +53,9 @@ struct vtpci_softc {
 	struct resource			*vtpci_msix_res;
 	uint64_t			 vtpci_features;
 	uint32_t			 vtpci_flags;
-	int				 vtpci_irq_type;
-	int				 vtpci_irq_rid;
-#define VIRTIO_PCI_FLAG_NO_MSI		 0x0001
-#define VIRTIO_PCI_FLAG_MSI		 0x0002
-#define VIRTIO_PCI_FLAG_NO_MSIX		 0x0010
-#define VIRTIO_PCI_FLAG_MSIX		 0x0020
-#define VIRTIO_PCI_FLAG_SHARED_MSIX	 0x0040
+#define VIRTIO_PCI_FLAG_MSI		 0x0001
+#define VIRTIO_PCI_FLAG_MSIX		 0x0010
+#define VIRTIO_PCI_FLAG_SHARED_MSIX	 0x0020
 
 	device_t			 vtpci_child_dev;
 	struct virtio_feature_desc	*vtpci_child_feat_desc;
@@ -92,6 +88,7 @@ struct vtpci_softc {
 	 * vtpci_intr_res[] is used.
 	 */
 	int				 vtpci_nintr_res;
+	int				 vtpci_irq_flags;
 	struct vtpci_intr_resource {
 		struct resource	*irq;
 		int		 rid;
@@ -132,7 +129,6 @@ static int	vtpci_alloc_interrupts(struct vtpci_softc *, int, int,
 		    struct vq_alloc_info *);
 static int	vtpci_alloc_intr_resources(struct vtpci_softc *, int,
 		    struct vq_alloc_info *);
-static int	vtpci_alloc_msi(struct vtpci_softc *);
 static int	vtpci_alloc_msix(struct vtpci_softc *, int);
 static int	vtpci_register_msix_vector(struct vtpci_softc *, int, int);
 
@@ -234,7 +230,7 @@ vtpci_attach(device_t dev)
 {
 	struct vtpci_softc *sc;
 	device_t child;
-	int rid;
+	int msix_cap, rid;
 
 	sc = device_get_softc(dev);
 	sc->vtpci_dev = dev;
@@ -249,17 +245,13 @@ vtpci_attach(device_t dev)
 		return (ENXIO);
 	}
 
-	if (pci_find_extcap(dev, PCIY_MSI, NULL) != 0)
-		sc->vtpci_flags |= VIRTIO_PCI_FLAG_NO_MSI;
-#if 0 /* XXX(vsrinivas): Check out how to get MSI-X */
-	if (pci_find_extcap(dev, PCIY_MSIX, NULL) == 0) {
-		rid = PCIR_BAR(1);
+	if (pci_find_extcap(dev, PCIY_MSIX, &msix_cap) == 0) {
+		uint32_t val;
+		val = pci_read_config(dev, msix_cap + PCIR_MSIX_TABLE, 4);
+		rid = PCIR_BAR(val & PCIM_MSIX_BIR_MASK);
 		sc->vtpci_msix_res = bus_alloc_resource_any(dev,
 		    SYS_RES_MEMORY, &rid, RF_ACTIVE);
 	}
-#endif
-	if (sc->vtpci_msix_res == NULL)
-		sc->vtpci_flags |= VIRTIO_PCI_FLAG_NO_MSIX;
 
 	vtpci_reset(sc);
 
@@ -298,8 +290,8 @@ vtpci_detach(device_t dev)
 	vtpci_reset(sc);
 
 	if (sc->vtpci_msix_res != NULL) {
-		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BAR(1),
-		    sc->vtpci_msix_res);
+		bus_release_resource(dev, SYS_RES_MEMORY,
+		    rman_get_rid(sc->vtpci_msix_res), sc->vtpci_msix_res);
 		sc->vtpci_msix_res = NULL;
 	}
 
@@ -458,6 +450,7 @@ vtpci_alloc_virtqueues(device_t dev, int flags, int nvqs,
 	}
 
 	if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) {
+		pci_enable_msix(dev);
 		error = vtpci_register_msix_vector(sc,
 		    VIRTIO_MSI_CONFIG_VECTOR, 0);
 		if (error)
@@ -583,6 +576,7 @@ vtpci_reinit(device_t dev, uint64_t features)
 	vtpci_negotiate_features(dev, features);
 
 	if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) {
+		pci_enable_msix(dev);
 		error = vtpci_register_msix_vector(sc,
 		    VIRTIO_MSI_CONFIG_VECTOR, 0);
 		if (error)
@@ -765,19 +759,23 @@ vtpci_alloc_interrupts(struct vtpci_softc *sc, int flags, int nvqs,
 			nvectors++;
 
 	if (vtpci_disable_msix != 0 ||
-	    sc->vtpci_flags & VIRTIO_PCI_FLAG_NO_MSIX ||
+	    sc->vtpci_msix_res == NULL ||
 	    flags & VIRTIO_ALLOC_VQS_DISABLE_MSIX ||
 	    vtpci_alloc_msix(sc, nvectors) != 0) {
 		/*
 		 * Use MSI interrupts if available. Otherwise, we fallback
 		 * to legacy interrupts.
 		 */
-		if ((sc->vtpci_flags & VIRTIO_PCI_FLAG_NO_MSI) == 0 &&
-		    vtpci_alloc_msi(sc) == 0)
+		sc->vtpci_intr_res[0].rid = 0;
+		if (pci_alloc_1intr(sc->vtpci_dev, 1,
+		    &sc->vtpci_intr_res[0].rid,
+		    &sc->vtpci_irq_flags) == PCI_INTR_TYPE_MSI) {
 			sc->vtpci_flags |= VIRTIO_PCI_FLAG_MSI;
-
+		}
 		sc->vtpci_nintr_res = 1;
 	}
+	KKASSERT(!((sc->vtpci_flags & VIRTIO_PCI_FLAG_MSI) != 0 &&
+		   (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) != 0));
 
 	error = vtpci_alloc_intr_resources(sc, nvqs, vq_info);
 
@@ -788,68 +786,37 @@ static int
 vtpci_alloc_intr_resources(struct vtpci_softc *sc, int nvqs,
     struct vq_alloc_info *vq_info)
 {
-	device_t dev;
+	device_t dev = sc->vtpci_dev;
 	struct resource *irq;
-	struct vtpci_virtqueue *vqx;
-	int i, rid, flags, res_idx;
-
-	dev = sc->vtpci_dev;
-	flags = RF_ACTIVE;
-
-	if ((sc->vtpci_flags &
-	    (VIRTIO_PCI_FLAG_MSI | VIRTIO_PCI_FLAG_MSIX)) == 0) {
-		rid = 0;
-		flags |= RF_SHAREABLE;
-	} else
-		rid = 1;
+	int i;
 
 	for (i = 0; i < sc->vtpci_nintr_res; i++) {
-		irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, flags);
+		irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+		    &sc->vtpci_intr_res[i].rid, sc->vtpci_irq_flags);
 		if (irq == NULL)
 			return (ENXIO);
 
 		sc->vtpci_intr_res[i].irq = irq;
-		sc->vtpci_intr_res[i].rid = rid++;
 	}
 
 	/*
 	 * Map the virtqueue into the correct index in vq_intr_res[]. Note the
 	 * first index is reserved for configuration changes notifications.
 	 */
-	for (i = 0, res_idx = 1; i < nvqs; i++) {
-		vqx = &sc->vtpci_vqx[i];
+	for (i = 0; i < nvqs; i++) {
+		struct vtpci_virtqueue *vqx = &sc->vtpci_vqx[i];
 
 		if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) {
 			if (vq_info[i].vqai_intr == NULL)
 				vqx->ires_idx = -1;
 			else if (sc->vtpci_flags & VIRTIO_PCI_FLAG_SHARED_MSIX)
-				vqx->ires_idx = res_idx;
+				vqx->ires_idx = 1;
 			else
-				vqx->ires_idx = res_idx++;
-		} else
+				vqx->ires_idx = i + 1;
+		} else {
 			vqx->ires_idx = -1;
+		}
 	}
-
-	return (0);
-}
-
-static int
-vtpci_alloc_msi(struct vtpci_softc *sc)
-{
-	device_t dev;
-	int nmsi;
-	u_int irq_flags;
-
-	dev = sc->vtpci_dev;
-	nmsi = pci_msi_count(dev);
-
-	if (nmsi < 1)
-		return (1);
-
-	sc->vtpci_irq_rid = 0;
-        sc->vtpci_irq_type = pci_alloc_1intr(dev, 1,
-            &sc->vtpci_irq_rid, &irq_flags);
-
 
 	return (0);
 }
@@ -857,54 +824,50 @@ vtpci_alloc_msi(struct vtpci_softc *sc)
 static int
 vtpci_alloc_msix(struct vtpci_softc *sc, int nvectors)
 {
-	/* XXX(vsrinivas): Huh? Is this how MSI-X works?*/
-	/* XXX(vsrinivas): All of this was disabled... */
-#if 0
-	device_t dev;
-	int nmsix, cnt, required;
-
-	dev = sc->vtpci_dev;
+	device_t dev = sc->vtpci_dev;
+	int nmsix, cnt, i, required;
 
 	nmsix = pci_msix_count(dev);
-	if (nmsix < 1)
+	if (nmsix < 2)
 		return (1);
+
+	if (pci_setup_msix(dev) != 0) {
+		device_printf(dev, "pci_setup_msix failed\n");
+		return (1);
+	}
 
 	/* An additional vector is needed for the config changes. */
 	required = nvectors + 1;
-	if (nmsix >= required) {
-		cnt = required;
-		if (pci_alloc_msix(dev, &cnt) == 0 && cnt >= required)
-			goto out;
+	if (required > nmsix)
+		required = 2;
 
-		pci_release_msi(dev);
+	for (cnt = 0; cnt < required; cnt++) {
+		int rid;
+		if (pci_alloc_msix_vector(dev, cnt, &rid,
+		    (device_get_unit(dev) + cnt) % ncpus) != 0)
+			goto err;
+		sc->vtpci_intr_res[cnt].rid = rid;
 	}
-
-	/* Attempt shared MSIX configuration. */
-	required = 2;
-	if (nmsix >= required) {
-		cnt = required;
-		if (pci_alloc_msix(dev, &cnt) == 0 && cnt >= required) {
-			sc->vtpci_flags |= VIRTIO_PCI_FLAG_SHARED_MSIX;
-			goto out;
-		}
-
-		pci_release_msi(dev);
-	}
-
-	return (1);
-
-out:
 	sc->vtpci_nintr_res = required;
+	sc->vtpci_irq_flags = RF_ACTIVE;
 	sc->vtpci_flags |= VIRTIO_PCI_FLAG_MSIX;
-
+	if (nvectors + 1 > nmsix)
+		sc->vtpci_flags |= VIRTIO_PCI_FLAG_SHARED_MSIX;
 	if (bootverbose) {
 		if (sc->vtpci_flags & VIRTIO_PCI_FLAG_SHARED_MSIX)
 			device_printf(dev, "using shared virtqueue MSIX\n");
 		else
 			device_printf(dev, "using per virtqueue MSIX\n");
 	}
-#endif
 	return (0);
+
+err:
+	for (i = 0; i < cnt; i++) {
+		pci_release_msix_vector(dev, sc->vtpci_intr_res[i].rid);
+		sc->vtpci_intr_res[i].rid = 0;
+	}
+	pci_teardown_msix(dev);
+	return (1);
 }
 
 static int
@@ -921,9 +884,10 @@ vtpci_register_msix_vector(struct vtpci_softc *sc, int offset, int res_idx)
 
 	if (res_idx != -1) {
 		/* Map from rid to host vector. */
-		vector = sc->vtpci_intr_res[res_idx].rid - 1;
-	} else
+		vector = res_idx;
+	} else {
 		vector = VIRTIO_MSI_NO_VECTOR;
+	}
 
 	/* The first resource is special; make sure it is used correctly. */
 	if (res_idx == 0) {
@@ -946,35 +910,38 @@ vtpci_register_msix_vector(struct vtpci_softc *sc, int offset, int res_idx)
 static void
 vtpci_free_interrupts(struct vtpci_softc *sc)
 {
-	device_t dev;
+	device_t dev = sc->vtpci_dev;
 	struct vtpci_intr_resource *ires;
 	int i;
 
-	dev = sc->vtpci_dev;
-	sc->vtpci_nintr_res = 0;
-
-	if (sc->vtpci_flags & (VIRTIO_PCI_FLAG_MSI | VIRTIO_PCI_FLAG_MSIX)) {
-		pci_release_msi(dev);
-		sc->vtpci_flags &= ~(VIRTIO_PCI_FLAG_MSI |
-		    VIRTIO_PCI_FLAG_MSIX | VIRTIO_PCI_FLAG_SHARED_MSIX);
-	}
-
-	for (i = 0; i < 1 + VIRTIO_MAX_VIRTQUEUES; i++) {
+	for (i = 0; i < sc->vtpci_nintr_res; i++) {
 		ires = &sc->vtpci_intr_res[i];
 
 		if (ires->intrhand != NULL) {
 			bus_teardown_intr(dev, ires->irq, ires->intrhand);
 			ires->intrhand = NULL;
 		}
-
 		if (ires->irq != NULL) {
 			bus_release_resource(dev, SYS_RES_IRQ, ires->rid,
 			    ires->irq);
 			ires->irq = NULL;
 		}
-
-		ires->rid = -1;
+		if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX)
+			pci_release_msix_vector(dev, ires->rid);
+		ires->rid = 0;
 	}
+	sc->vtpci_nintr_res = 0;
+	if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSI) {
+		pci_release_msi(dev);
+		sc->vtpci_flags &= ~VIRTIO_PCI_FLAG_MSI;
+	}
+	if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) {
+		pci_disable_msix(dev);
+		pci_teardown_msix(dev);
+		sc->vtpci_flags &=
+		    ~(VIRTIO_PCI_FLAG_MSIX | VIRTIO_PCI_FLAG_SHARED_MSIX);
+	}
+
 }
 
 static void
@@ -1018,12 +985,10 @@ static int
 vtpci_legacy_intr(void *xsc)
 {
 	struct vtpci_softc *sc;
-	struct vtpci_virtqueue *vqx;
 	int i;
 	uint8_t isr;
 
 	sc = xsc;
-	vqx = &sc->vtpci_vqx[0];
 
 	/* Reading the ISR also clears it. */
 	isr = vtpci_read_config_1(sc, VIRTIO_PCI_ISR);
@@ -1031,9 +996,10 @@ vtpci_legacy_intr(void *xsc)
 	if (isr & VIRTIO_PCI_ISR_CONFIG)
 		vtpci_config_intr(sc);
 
-	if (isr & VIRTIO_PCI_ISR_INTR)
-		for (i = 0; i < sc->vtpci_nvqs; i++, vqx++)
-			virtqueue_intr(vqx->vq);
+	if (isr & VIRTIO_PCI_ISR_INTR) {
+		for (i = 0; i < sc->vtpci_nvqs; i++)
+			virtqueue_intr(sc->vtpci_vqx[i].vq);
+	}
 
 	return isr;
 }
@@ -1042,15 +1008,13 @@ static int
 vtpci_vq_shared_intr(void *xsc)
 {
 	struct vtpci_softc *sc;
-	struct vtpci_virtqueue *vqx;
 	int i, rc;
 
 	rc = 0;
 	sc = xsc;
-	vqx = &sc->vtpci_vqx[0];
 
-	for (i = 0; i < sc->vtpci_nvqs; i++, vqx++)
-		rc |= virtqueue_intr(vqx->vq);
+	for (i = 0; i < sc->vtpci_nvqs; i++)
+		rc |= virtqueue_intr(sc->vtpci_vqx[i].vq);
 
 	return rc;
 }

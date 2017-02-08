@@ -344,8 +344,6 @@ vtblk_attach(device_t dev)
 		goto fail;
 	}
 
-	vtblk_alloc_disk(sc, &blkcfg);
-
 	error = virtio_setup_intr(dev, &sc->vtblk_slz);
 	if (error) {
 		device_printf(dev, "cannot setup virtqueue interrupt\n");
@@ -353,6 +351,8 @@ vtblk_attach(device_t dev)
 	}
 
 	virtqueue_enable_intr(sc->vtblk_vq);
+
+	vtblk_alloc_disk(sc, &blkcfg);
 
 fail:
 	if (error)

@@ -1906,6 +1906,14 @@ pci_msi_blacklisted(void)
 	if (!pci_honor_msi_blacklist)
 		return (0);
 
+	/*
+	 * Always assume that MSI-X works in virtual machines. This is
+	 * for example needed for most (or all) qemu based setups, since
+	 * the emulated chipsets tend to be very old.
+	 */
+	if (vmm_guest != VMM_GUEST_NONE)
+		return (0);
+
 	/* Blacklist all non-PCI-express and non-PCI-X chipsets. */
 	if (!(pcie_chipset || pcix_chipset))
 		return (1);
