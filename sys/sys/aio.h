@@ -19,8 +19,25 @@
 #ifndef _SYS_AIO_H_
 #define	_SYS_AIO_H_
 
+#include <sys/_pthreadtypes.h>
 #include <sys/_timespec.h>
 #include <sys/signal.h>
+#include <sys/stdint.h>
+
+#ifndef _OFF_T_DECLARED
+typedef	__off_t		off_t;
+#define	_OFF_T_DECLARED
+#endif
+
+#ifndef _SIZE_T_DECLARED
+#define	_SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#endif
+
+#ifndef _SSIZE_T_DECLARED
+#define	_SSIZE_T_DECLARED
+typedef	__ssize_t	ssize_t;
+#endif
 
 /*
  * Returned by aio_cancel:
