@@ -2558,8 +2558,7 @@ pmap_release_callback(pv_entry_t pv, void *data)
 	} else {
 		spin_unlock(&pmap->pm_spin);
 		pv_lock(pv);
-		pv_unlock(pv);
-		pv_drop(pv);
+		pv_put(pv);
 		info->retry = 1;
 		return -1;
 	}
@@ -3339,8 +3338,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		}
 		spin_unlock(&pmap->pm_spin);
 		_pv_lock(pv PMAP_DEBUG_COPY);
-		pv_unlock(pv);
-		pv_drop(pv);
+		pv_put(pv);
 		spin_lock(&pmap->pm_spin);
 	}
 }
@@ -3401,8 +3399,7 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 		}
 		spin_unlock(&pmap->pm_spin);
 		_pv_lock(pv PMAP_DEBUG_COPY);
-		pv_unlock(pv);
-		pv_drop(pv);
+		pv_put(pv);
 		spin_lock(&pmap->pm_spin);
 	}
 }
@@ -4002,6 +3999,9 @@ pmap_scan_callback(pv_entry_t pv, void *data)
 
 		/*
 		 * PT cache
+		 *
+		 * NOTE: The cached pt_pv can be removed from the pmap when
+		 *	 pmap_dynamic_delete is enabled.
 		 */
 		if (pt_pv && (pt_pv->pv_pmap != pmap ||
 			      pt_pv->pv_pindex != pmap_pt_pindex(sva))) {
@@ -4016,8 +4016,7 @@ pmap_scan_callback(pv_entry_t pv, void *data)
 				pd_pv = NULL;
 				if (pt_pv) {
 					pv_lock(pt_pv);
-					pv_unlock(pt_pv);
-					pv_drop(pt_pv);
+					pv_put(pt_pv);
 					pt_pv = NULL;
 				} else {
 					pv_placemarker_wait(pmap, pt_placemark);
@@ -4151,8 +4150,7 @@ kernel_skip:
 				}
 				if (pte_pv) {		/* block */
 					pv_lock(pte_pv);
-					pv_unlock(pte_pv);
-					pv_drop(pte_pv);
+					pv_put(pte_pv);
 					pte_pv = NULL;
 				} else {
 					pv_placemarker_wait(pmap,
@@ -4262,6 +4260,19 @@ kernel_skip:
 					break;
 				}
 			}
+
+			/*
+			 * NOTE: The cached pt_pv can be removed from the
+			 *	 pmap when pmap_dynamic_delete is enabled,
+			 *	 which will cause ptep to become stale.
+			 *
+			 *	 This also means that no pages remain under
+			 *	 the PT, so we can just break out of the inner
+			 *	 loop and let the outer loop clean everything
+			 *	 up.
+			 */
+			if (pt_pv && pt_pv->pv_pmap != pmap)
+				break;
 			pte_pv = NULL;
 			sva += PAGE_SIZE;
 			++ptep;
@@ -4428,8 +4439,7 @@ pmap_remove_all(vm_page_t m)
 		} else {
 			vm_page_spin_unlock(m);
 			pv_lock(pv);
-			pv_unlock(pv);
-			pv_drop(pv);
+			pv_put(pv);
 			vm_page_spin_lock(m);
 			continue;
 		}
@@ -4473,8 +4483,7 @@ again:
 		} else {
 			vm_page_spin_unlock(m);
 			pv_lock(pv);
-			pv_unlock(pv);
-			pv_drop(pv);
+			pv_put(pv);
 			goto again;
 		}
 		KKASSERT(pv->pv_pmap == pmap && pv->pv_m == m);
@@ -5478,8 +5487,7 @@ restart:
 		} else {
 			vm_page_spin_unlock(m);
 			pv_lock(pv);	/* held, now do a blocking lock */
-			pv_unlock(pv);
-			pv_drop(pv);
+			pv_put(pv);
 			goto restart;
 		}
 
@@ -5908,6 +5916,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 
 	if (oldvm != newvm) {
 		crit_enter();
+		KKASSERT((newvm->vm_refcnt & VM_REF_DELETED) == 0);
 		lp->lwp_vmspace = newvm;
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);

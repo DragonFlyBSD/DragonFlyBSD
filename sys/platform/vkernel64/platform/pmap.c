@@ -3281,6 +3281,7 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 	if (oldvm != newvm) {
 		if (adjrefs)
 			vmspace_ref(newvm);
+		KKASSERT((newvm->vm_refcnt & VM_REF_DELETED) == 0);
 		p->p_vmspace = newvm;
 		KKASSERT(p->p_nthreads == 1);
 		lp = RB_ROOT(&p->p_lwp_tree);
@@ -3304,6 +3305,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 	oldvm = lp->lwp_vmspace;
 	if (oldvm != newvm) {
 		crit_enter();
+		KKASSERT((newvm->vm_refcnt & VM_REF_DELETED) == 0);
 		lp->lwp_vmspace = newvm;
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
