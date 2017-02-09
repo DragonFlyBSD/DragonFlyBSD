@@ -27,14 +27,22 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/_timeval.h,v 1.1 2008/06/18 09:36:07 hasso Exp $
  */
 
 #ifndef	_SYS__TIMEVAL_H_
 #define	_SYS__TIMEVAL_H_
 
-#include <sys/types.h>
+#include <machine/stdint.h>
+
+#ifndef _SUSECONDS_T_DECLARED
+typedef	long		suseconds_t;
+#define	_SUSECONDS_T_DECLARED
+#endif
+
+#ifndef _TIME_T_DECLARED
+typedef	__time_t	time_t;
+#define	_TIME_T_DECLARED
+#endif
 
 /*
  * Structure returned by gettimeofday(2) system call and used in other calls.

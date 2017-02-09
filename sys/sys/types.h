@@ -108,11 +108,14 @@ typedef	__pid_t		pid_t;		/* process id */
 typedef	__pid_t		lwpid_t;	/* light weight process id */
 typedef	quad_t		rlim_t;		/* resource limit */
 typedef	__segsz_t	segsz_t;	/* segment size */
+#ifndef _SUSECONDS_T_DECLARED
+typedef	long		suseconds_t;	/* microseconds (signed) */
+#define	_SUSECONDS_T_DECLARED
+#endif
 #ifndef _UID_T_DECLARED
 typedef	__uint32_t	uid_t;		/* user id */
 #define	_UID_T_DECLARED
 #endif
-typedef	long		suseconds_t;	/* microseconds (signed) */
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 typedef	int		mqd_t;		/* message queue descriptor */
 

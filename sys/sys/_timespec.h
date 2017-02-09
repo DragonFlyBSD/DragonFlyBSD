@@ -32,7 +32,12 @@
 #ifndef	_SYS__TIMESPEC_H_
 #define	_SYS__TIMESPEC_H_
 
-#include <sys/types.h>
+#include <machine/stdint.h>
+
+#ifndef _TIME_T_DECLARED
+typedef	__time_t	time_t;
+#define	_TIME_T_DECLARED
+#endif
 
 struct timespec {
 	time_t	tv_sec;		/* seconds */
