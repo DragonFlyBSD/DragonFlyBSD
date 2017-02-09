@@ -256,7 +256,7 @@ void
 vmspace_initrefs(struct vmspace *vm)
 {
 	vm->vm_refcnt = 1;
-	vm->vm_holdcnt = 0;
+	vm->vm_holdcnt = 1;
 }
 
 /*
@@ -308,7 +308,13 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 int
 vmspace_getrefs(struct vmspace *vm)
 {
-	return ((int)(vm->vm_refcnt & ~VM_REF_DELETED));
+	int32_t n;
+
+	n = vm->vm_refcnt;
+	cpu_ccfence();
+	if (n & VM_REF_DELETED)
+		n = -1;
+	return n;
 }
 
 void
@@ -318,6 +324,9 @@ vmspace_hold(struct vmspace *vm)
 	lwkt_gettoken(&vm->vm_map.token);
 }
 
+/*
+ * Drop with final termination interlock.
+ */
 void
 vmspace_drop(struct vmspace *vm)
 {
@@ -349,6 +358,7 @@ vmspace_ref(struct vmspace *vm)
 {
 	uint32_t n;
 
+	atomic_add_int(&vm->vm_holdcnt, 1);
 	n = atomic_fetchadd_int(&vm->vm_refcnt, 1);
 	KKASSERT((n & VM_REF_DELETED) == 0);
 }
@@ -363,28 +373,23 @@ vmspace_rel(struct vmspace *vm)
 {
 	uint32_t n;
 
-	for (;;) {
+	/*
+	 * Drop refs.  Each ref also has a hold which is also dropped.
+	 *
+	 * When refs hits 0 compete to get the VM_REF_DELETED flag (hold
+	 * prevent finalization) to start termination processing.
+	 * Finalization occurs when the last hold count drops to 0.
+	 */
+	n = atomic_fetchadd_int(&vm->vm_refcnt, -1) - 1;
+	while (n == 0) {
+		if (atomic_cmpset_int(&vm->vm_refcnt, 0, VM_REF_DELETED)) {
+			vmspace_terminate(vm, 0);
+			break;
+		}
 		n = vm->vm_refcnt;
 		cpu_ccfence();
-		KKASSERT((int)n > 0);	/* at least one ref & not deleted */
-
-		if (n == 1) {
-			/*
-			 * We must have a hold first to interlock the
-			 * VM_REF_DELETED check that the drop tests.
-			 */
-			atomic_add_int(&vm->vm_holdcnt, 1);
-			if (atomic_cmpset_int(&vm->vm_refcnt, n,
-					      VM_REF_DELETED)) {
-				vmspace_terminate(vm, 0);
-				vmspace_drop_notoken(vm);
-				break;
-			}
-			vmspace_drop_notoken(vm);
-		} else if (atomic_cmpset_int(&vm->vm_refcnt, n, n - 1)) {
-			break;
-		} /* else retry */
 	}
+	vmspace_drop_notoken(vm);
 }
 
 /*
