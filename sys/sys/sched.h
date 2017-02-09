@@ -38,12 +38,6 @@
 #ifndef _SCHED_H_
 #define	_SCHED_H_
 
-#include <sys/types.h>	/* For pid_t */
-
-#ifndef _KERNEL
-#include <time.h>		/* Per P1003.4 */
-#endif
-
 /* Scheduling policies
  */
 #define	SCHED_FIFO	1
@@ -57,8 +51,11 @@ struct sched_param
 
 #ifndef _KERNEL
 #include <sys/cdefs.h>
+#include <sys/types.h>		/* For pid_t */
 
-__BEGIN_DECLS
+#include <time.h>		/* Per P1003.4 */
+
+#if __BSD_VISIBLE
 #include <machine/cpumask.h>
 
 typedef	cpumask_t		cpu_set_t;
@@ -108,21 +105,26 @@ do {						\
 } while (0)
 
 #define	CPU_EQUAL(set1, set2)	CPUMASK_CMPMASKEQ(*set1, *set2)
+#endif /* __BSD_VISIBLE */
 
+__BEGIN_DECLS
 int sched_setparam(pid_t, const struct sched_param *);
 int sched_getparam(pid_t, struct sched_param *);
 
 int sched_setscheduler(pid_t, int, const struct sched_param *);
 int sched_getscheduler(pid_t);
 
-int sched_setaffinity(pid_t, size_t, const cpu_set_t *);
-int sched_getaffinity(pid_t, size_t, cpu_set_t *);
-
 int sched_yield(void);
 int sched_get_priority_max(int);
 int sched_get_priority_min(int);
 int sched_rr_get_interval(pid_t, struct timespec *);
+
+#if __BSD_VISIBLE
+int sched_setaffinity(pid_t, size_t, const cpu_set_t *);
+int sched_getaffinity(pid_t, size_t, cpu_set_t *);
+
 int sched_getcpu(void);
+#endif
 __END_DECLS
 
 #endif
