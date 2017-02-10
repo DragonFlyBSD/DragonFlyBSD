@@ -5,6 +5,7 @@ SRCS=	gencat.c
 WARNS?=	2
 
 .if defined(BOOTSTRAPPING)
+. if ${WORLD_VERSION} <= 400103
 nl_types.h:	../../include/nl_types.h
 	cp ${.CURDIR}/../../include/nl_types.h ${.TARGET}
 
@@ -13,9 +14,10 @@ types.h: ${.CURDIR}/../../sys/sys/types.h
 	cp ${.ALLSRC} sys/${.TARGET}
 
 SRCS+=		nl_types.h types.h
-CFLAGS+=	-I${.OBJDIR} -DBOOTSTRAPPING
+CFLAGS+=	-I${.OBJDIR}
 CLEANFILES+=	nl_types.h
 CLEANDIRS+=	sys
+. endif
 .endif
 
 .include <bsd.prog.mk>

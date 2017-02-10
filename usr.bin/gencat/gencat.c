@@ -84,10 +84,6 @@ up-to-date.  Many thanks.
 #include <string.h>
 #include <unistd.h>
 
-#ifdef BOOTSTRAPPING
-#define	getline	get_line /* help bootstrap previous stdio.h */
-#endif
-
 struct _msgT {
 	long    msgId;
 	char   *str;
