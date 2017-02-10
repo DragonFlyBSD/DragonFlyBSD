@@ -409,7 +409,9 @@ update:
 	if (!error) {
 		if (mp->mnt_ncmountpt.ncp == NULL) {
 			/* 
-			 * allocate, then unlock, but leave the ref intact 
+			 * Allocate, then unlock, but leave the ref intact.
+			 * This is the mnt_refs (1) that we will retain
+			 * through to the unmount.
 			 */
 			cache_allocroot(&mp->mnt_ncmountpt, mp, NULL);
 			cache_unlock(&mp->mnt_ncmountpt);
@@ -632,16 +634,27 @@ sys_unmount(struct unmount_args *uap)
 		goto out;
 	}
 
+	/*
+	 * If no error try to issue the unmount.  We lose our cache
+	 * ref when we call nlookup_done so we must hold the mount point
+	 * to prevent use-after-free races.
+	 */
 out:
-	nlookup_done(&nd);
-	if (error == 0)
+	if (error == 0) {
+		mount_hold(mp);
+		nlookup_done(&nd);
 		error = dounmount(mp, uap->flags);
+		mount_drop(mp);
+	} else {
+		nlookup_done(&nd);
+	}
 done:
 	return (error);
 }
 
 /*
- * Do the actual file system unmount.
+ * Do the actual file system unmount (interlocked against the mountlist
+ * token and mp->mnt_token).
  */
 static int
 dounmount_interlock(struct mount *mp)
@@ -667,6 +680,11 @@ unmount_allproc_cb(struct proc *p, void *arg)
 	return 0;
 }
 
+/*
+ * The guts of the unmount code.  The mount owns one ref and one hold
+ * count.  If we successfully interlock the unmount, those refs are ours.
+ * (The ref is from mnt_ncmountpt).
+ */
 int
 dounmount(struct mount *mp, int flags)
 {
@@ -680,13 +698,16 @@ dounmount(struct mount *mp, int flags)
 	int retry;
 
 	lwkt_gettoken(&mp->mnt_token);
+
 	/*
-	 * Exclusive access for unmounting purposes
+	 * Exclusive access for unmounting purposes.
 	 */
 	if ((error = mountlist_interlock(dounmount_interlock, mp)) != 0)
 		goto out;
 
 	/*
+	 * We now 'own' the last mp->mnt_refs
+	 *
 	 * Allow filesystems to detect that a forced unmount is in progress.
 	 */
 	if (flags & MNT_FORCE)
@@ -713,6 +734,8 @@ dounmount(struct mount *mp, int flags)
 	 * If this filesystem isn't aliasing other filesystems,
 	 * try to invalidate any remaining namecache entries and
 	 * check the count afterwords.
+	 *
+	 * We own the last mnt_refs by owning mnt_ncmountpt.
 	 */
 	if ((mp->mnt_kern_flag & MNTK_NCALIASED) == 0) {
 		cache_lock(&mp->mnt_ncmountpt);
@@ -835,6 +858,8 @@ dounmount(struct mount *mp, int flags)
 	/*
 	 * Remove any installed vnode ops here so the individual VFSs don't
 	 * have to.
+	 *
+	 * mnt_refs should go to zero when we scrap mnt_ncmountpt.
 	 */
 	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
 	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
@@ -859,6 +884,10 @@ dounmount(struct mount *mp, int flags)
 	mp->mnt_vfc->vfc_refcount--;
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
+
+	/*
+	 * Release the lock
+	 */
 	lockmgr(&mp->mnt_lock, LK_RELEASE);
 	if (mp->mnt_kern_flag & MNTK_MWAIT) {
 		mp->mnt_kern_flag &= ~MNTK_MWAIT;
@@ -867,13 +896,18 @@ dounmount(struct mount *mp, int flags)
 
 	/*
 	 * If we reach here and freeok != 0 we must free the mount.
-	 * If refs > 1 cycle and wait, just in case someone tried
-	 * to busy the mount after we decided to do the unmount.
+	 * mnt_refs should already have dropped to 0, so if it is not
+	 * zero we must cycle the caches and wait.
+	 *
+	 * When we are satisfied that the mount has disconnected we can
+	 * drop the hold on the mp that represented the mount (though the
+	 * caller might actually have another, so the caller's drop may
+	 * do the actual free).
 	 */
 	if (freeok) {
-		if (mp->mnt_refs > 1)
+		if (mp->mnt_refs > 0)
 			cache_clearmntcache();
-		while (mp->mnt_refs > 1) {
+		while (mp->mnt_refs > 0) {
 			cache_unmounting(mp);
 			wakeup(mp);
 			tsleep(&mp->mnt_refs, 0, "umntrwait", hz / 10 + 1);

@@ -253,11 +253,15 @@ vfs_busy(struct mount *mp, int flags)
 		}
 		/* XXX not MP safe */
 		mp->mnt_kern_flag |= MNTK_MWAIT;
+
 		/*
 		 * Since all busy locks are shared except the exclusive
 		 * lock granted when unmounting, the only place that a
 		 * wakeup needs to be done is at the release of the
 		 * exclusive lock at the end of dounmount.
+		 *
+		 * WARNING! mp can potentially go away once we release
+		 *	    our ref.
 		 */
 		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
 		lwkt_reltoken(&mp->mnt_token);
@@ -274,14 +278,19 @@ vfs_busy(struct mount *mp, int flags)
 /*
  * Free a busy filesystem.
  *
- * Decrement refs before releasing the lock so e.g. a pending umount
- * doesn't give us an unexpected busy error.
+ * Once refs is decremented the mount point can potentially get ripped
+ * out from under us, but we want to clean up our refs before unlocking
+ * so do a hold/drop around the whole mess.
+ *
+ * This is not in the critical path (I hope).
  */
 void
 vfs_unbusy(struct mount *mp)
 {
+	mount_hold(mp);
 	atomic_add_int(&mp->mnt_refs, -1);
 	lockmgr(&mp->mnt_lock, LK_RELEASE);
+	mount_drop(mp);
 }
 
 /*
@@ -343,7 +352,7 @@ mount_init(struct mount *mp)
 	TAILQ_INIT(&mp->mnt_jlist);
 	mp->mnt_nvnodelistsize = 0;
 	mp->mnt_flag = 0;
-	mp->mnt_hold = 1;
+	mp->mnt_hold = 1;		/* hold for umount last drop */
 	mp->mnt_iosize_max = MAXPHYS;
 	vn_syncer_thr_create(mp);
 }
@@ -357,8 +366,10 @@ mount_hold(struct mount *mp)
 void
 mount_drop(struct mount *mp)
 {
-	if (atomic_fetchadd_int(&mp->mnt_hold, -1) == 1)
+	if (atomic_fetchadd_int(&mp->mnt_hold, -1) == 1) {
+		KKASSERT(mp->mnt_refs == 0);
 		kfree(mp, M_MOUNT);
+	}
 }
 
 /*
