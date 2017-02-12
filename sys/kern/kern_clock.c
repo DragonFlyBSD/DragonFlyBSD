@@ -165,7 +165,7 @@ SYSCTL_PROC(_kern, OID_AUTO, cputime, (CTLTYPE_OPAQUE|CTLFLAG_RD), 0, 0,
 static int
 sysctl_cp_time(SYSCTL_HANDLER_ARGS)
 {
-	long cpu_states[5] = {0};
+	long cpu_states[CPUSTATES] = {0};
 	int cpu, error = 0;
 	size_t size = sizeof(cpu_states);
 
