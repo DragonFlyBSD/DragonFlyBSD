@@ -3554,8 +3554,13 @@ ifnet_array_del(struct ifnet *ifp, const struct ifnet_array *old_arr)
 const struct ifnet_array *
 ifnet_array_get(void)
 {
+	const struct ifnet_array *ret;
+
 	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
-	return ifnet_array;
+	ret = ifnet_array;
+	/* Make sure 'ret' is really used. */
+	cpu_ccfence();
+	return (ret);
 }
 
 int

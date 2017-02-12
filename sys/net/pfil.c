@@ -106,6 +106,8 @@ pfil_run_hooks(struct pfil_head *ph, struct mbuf **mp, struct ifnet *ifp,
 	else
 		return 0; /* XXX panic? */
 
+	/* Make sure 'list' is really used. */
+	cpu_ccfence();
 	TAILQ_FOREACH(pfh, list, pfil_link) {
 		if (pfh->pfil_func != NULL) {
 			rv = pfh->pfil_func(pfh->pfil_arg, &m, ifp, dir);

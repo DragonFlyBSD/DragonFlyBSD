@@ -1051,6 +1051,8 @@ post_stats:
 		void (*vlan_input_func)(struct mbuf *);
 
 		vlan_input_func = vlan_input_p;
+		/* Make sure 'vlan_input_func' is really used. */
+		cpu_ccfence();
 		if (vlan_input_func != NULL) {
 			vlan_input_func(m);
 		} else {
