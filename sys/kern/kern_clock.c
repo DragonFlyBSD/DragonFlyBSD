@@ -183,7 +183,29 @@ sysctl_cp_time(SYSCTL_HANDLER_ARGS)
 }
 
 SYSCTL_PROC(_kern, OID_AUTO, cp_time, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
-	sysctl_cp_time, "LU", "CPU time statistics");
+    sysctl_cp_time, "LU", "CPU time statistics");
+
+static int
+sysctl_cp_times(SYSCTL_HANDLER_ARGS)
+{
+	long cpu_states[CPUSTATES] = {0};
+	int cpu, error;
+	size_t size = sizeof(cpu_states);
+
+	for (error = 0, cpu = 0; error == 0 && cpu < ncpus; ++cpu) {
+		cpu_states[CP_USER] = cputime_percpu[cpu].cp_user;
+		cpu_states[CP_NICE] = cputime_percpu[cpu].cp_nice;
+		cpu_states[CP_SYS] = cputime_percpu[cpu].cp_sys;
+		cpu_states[CP_INTR] = cputime_percpu[cpu].cp_intr;
+		cpu_states[CP_IDLE] = cputime_percpu[cpu].cp_idle;
+		error = SYSCTL_OUT(req, cpu_states, size);
+	}
+
+	return (error);
+}
+
+SYSCTL_PROC(_kern, OID_AUTO, cp_times, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
+    sysctl_cp_times, "LU", "per-CPU time statistics");
 
 /*
  * boottime is used to calculate the 'real' uptime.  Do not confuse this with

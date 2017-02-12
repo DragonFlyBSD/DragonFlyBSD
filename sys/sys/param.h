@@ -147,9 +147,10 @@
  * 400710 - sched_getcpu();
  * 400711 - move lwp syscalls to sys/lwp.h
  * 400712 - restore lwp syscalls (except lwp_create*) declaration
+ * 400713 - add sysctl kern.cp_times
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400712	/* propagated to newvers */
+#define __DragonFly_version 400713	/* propagated to newvers */
 
 #include <sys/_null.h>
 
