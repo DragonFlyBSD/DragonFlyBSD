@@ -313,7 +313,13 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 		}
 	}
 
+	/*
+	 * XXX NOT MPSAFE.
+	 * Make sure that pc_ifname is not gone.
+	 */
+	ifnet_lock();
 	ifp = ifunit(conf->pc_ifname);
+	ifnet_unlock();
 	if (ifp == NULL) {
 		error = ENXIO;
 		goto failed;
