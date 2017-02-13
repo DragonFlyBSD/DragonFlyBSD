@@ -525,7 +525,7 @@ struct thread;
 int	 in_broadcast(struct in_addr, struct ifnet *);
 int	 in_canforward(struct in_addr);
 int	 in_localaddr(struct in_addr);
-char	*inet_ntoa(struct in_addr); /* in libkern */
+char	*kinet_ntoa(struct in_addr, char *); /* in libkern */
 char	*inet_ntop(int, const void * __restrict, char * __restrict,
 	    socklen_t); /* in libkern */
 

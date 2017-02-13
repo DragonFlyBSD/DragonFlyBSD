@@ -37,9 +37,8 @@
 #include <netinet/in.h>
 
 char *
-inet_ntoa(struct in_addr ina)
+kinet_ntoa(struct in_addr ina, char *buf)
 {
-	static char buf[sizeof "aaa.bbb.ccc.ddd"];
 	unsigned char *ucp = (unsigned char *)&ina;
 
 	ksprintf(buf, "%d.%d.%d.%d",
@@ -47,6 +46,5 @@ inet_ntoa(struct in_addr ina)
 		 ucp[1] & 0xff,
 		 ucp[2] & 0xff,
 		 ucp[3] & 0xff);
-	return buf;
+	return (buf);
 }
-

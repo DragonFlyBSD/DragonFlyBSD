@@ -642,11 +642,13 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			port = ntohs(sin->sin_port);
 			if (port >= IPPORT_RESERVED && 
 			    nd->nd_procnum != NFSPROC_NULL) {
+			    char addr[INET_ADDRSTRLEN];
+
 			    nd->nd_procnum = NFSPROC_NOOP;
 			    nd->nd_repstat = (NFSERR_AUTHERR | AUTH_TOOWEAK);
 			    cacherep = RC_DOIT;
 			    kprintf("NFS request from unprivileged port (%s:%d)\n",
-				   inet_ntoa(sin->sin_addr), port);
+				    kinet_ntoa(sin->sin_addr, addr), port);
 			}
 		    }
 		}

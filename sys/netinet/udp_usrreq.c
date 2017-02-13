@@ -623,13 +623,12 @@ done:
 	    udp_reuseport_ext ? m : NULL);
 	if (inp == NULL) {
 		if (log_in_vain) {
-			char buf[sizeof "aaa.bbb.ccc.ddd"];
+			char src[INET_ADDRSTRLEN], dst[INET_ADDRSTRLEN];
 
-			strcpy(buf, inet_ntoa(ip->ip_dst));
 			log(LOG_INFO,
 			    "Connection attempt to UDP %s:%d from %s:%d\n",
-			    buf, ntohs(uh->uh_dport), inet_ntoa(ip->ip_src),
-			    ntohs(uh->uh_sport));
+			    kinet_ntoa(ip->ip_dst, dst), ntohs(uh->uh_dport),
+			    kinet_ntoa(ip->ip_src, src), ntohs(uh->uh_sport));
 		}
 		udp_stat.udps_noport++;
 		if (m->m_flags & (M_BCAST | M_MCAST)) {

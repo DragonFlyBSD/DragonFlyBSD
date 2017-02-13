@@ -889,8 +889,7 @@ findpcb:
 #ifdef INET6
 			char dbuf[INET6_ADDRSTRLEN+2], sbuf[INET6_ADDRSTRLEN+2];
 #else
-			char dbuf[sizeof "aaa.bbb.ccc.ddd"];
-			char sbuf[sizeof "aaa.bbb.ccc.ddd"];
+			char dbuf[INET_ADDRSTRLEN], sbuf[INET_ADDRSTRLEN];
 #endif
 			if (isipv6) {
 				strcpy(dbuf, "[");
@@ -900,8 +899,8 @@ findpcb:
 				strcat(sbuf, ip6_sprintf(&ip6->ip6_src));
 				strcat(sbuf, "]");
 			} else {
-				strcpy(dbuf, inet_ntoa(ip->ip_dst));
-				strcpy(sbuf, inet_ntoa(ip->ip_src));
+				kinet_ntoa(ip->ip_dst, dbuf);
+				kinet_ntoa(ip->ip_src, sbuf);
 			}
 			switch (log_in_vain) {
 			case 1:

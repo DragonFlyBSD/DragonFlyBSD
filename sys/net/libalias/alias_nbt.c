@@ -341,6 +341,9 @@ AliasHandleUdpNbt(
     u_short alias_port
 )
 {
+#ifdef LIBALIAS_DEBUG
+	char abuf[INET_ADDRSTRLEN];
+#endif
 	struct udphdr *uh;
 	NbtDataHeader *ndh;
 	u_char *p = NULL;
@@ -380,7 +383,8 @@ AliasHandleUdpNbt(
 	if (p == NULL || (char *)p > pmax)
 		p = NULL;
 #ifdef LIBALIAS_DEBUG
-	kprintf("%s:%d-->", inet_ntoa(ndh->source_ip), ntohs(ndh->source_port));
+	kprintf("%s:%d-->", kinet_ntoa(ndh->source_ip, abuf),
+	    ntohs(ndh->source_port));
 #endif
 	/* Doing an IP address and Port number Translation */
 	if (uh->uh_sum != 0) {
@@ -400,7 +404,8 @@ AliasHandleUdpNbt(
 	ndh->source_ip = *alias_address;
 	ndh->source_port = alias_port;
 #ifdef LIBALIAS_DEBUG
-	kprintf("%s:%d\n", inet_ntoa(ndh->source_ip), ntohs(ndh->source_port));
+	kprintf("%s:%d\n", kinet_ntoa(ndh->source_ip, abuf),
+	    ntohs(ndh->source_port));
 	fflush(stdout);
 #endif
 	return ((p == NULL) ? -1 : 0);
@@ -481,6 +486,9 @@ AliasHandleResourceNB(
 {
 	NBTNsRNB *nb;
 	u_short bcount;
+#ifdef LIBALIAS_DEBUG
+	char abuf[INET_ADDRSTRLEN];
+#endif
 
 	if (q == NULL || (char *)(q + 1) > pmax)
 		return (NULL);
@@ -492,8 +500,8 @@ AliasHandleResourceNB(
 
 	/* Processing all in_addr array */
 #ifdef LIBALIAS_DEBUG
-	kprintf("NB rec[%s", inet_ntoa(nbtarg->oldaddr));
-	kprintf("->%s, %dbytes] ", inet_ntoa(nbtarg->newaddr), bcount);
+	kprintf("NB rec[%s", kinet_ntoa(nbtarg->oldaddr, abuf));
+	kprintf("->%s, %dbytes] ", kinet_ntoa(nbtarg->newaddr, abuf), bcount);
 #endif
 	while (nb != NULL && bcount != 0) {
 		if ((char *)(nb + 1) > pmax) {
@@ -501,7 +509,7 @@ AliasHandleResourceNB(
 			break;
 		}
 #ifdef LIBALIAS_DEBUG
-		kprintf("<%s>", inet_ntoa(nb->addr));
+		kprintf("<%s>", kinet_ntoa(nb->addr, abuf));
 #endif
 		if (!bcmp(&nbtarg->oldaddr, &nb->addr, sizeof(struct in_addr))) {
 			if (*nbtarg->uh_sum != 0) {
@@ -548,6 +556,9 @@ AliasHandleResourceA(
 {
 	NBTNsResourceA *a;
 	u_short bcount;
+#ifdef LIBALIAS_DEBUG
+	char abuf[INET_ADDRSTRLEN];
+#endif
 
 	if (q == NULL || (char *)(q + 1) > pmax)
 		return (NULL);
@@ -560,14 +571,14 @@ AliasHandleResourceA(
 
 	/* Processing all in_addr array */
 #ifdef LIBALIAS_DEBUG
-	kprintf("Arec [%s", inet_ntoa(nbtarg->oldaddr));
-	kprintf("->%s]", inet_ntoa(nbtarg->newaddr));
+	kprintf("Arec [%s", kinet_ntoa(nbtarg->oldaddr, abuf));
+	kprintf("->%s]", kinet_ntoa(nbtarg->newaddr, abuf));
 #endif
 	while (bcount != 0) {
 		if (a == NULL || (char *)(a + 1) > pmax)
 			return (NULL);
 #ifdef LIBALIAS_DEBUG
-		kprintf("..%s", inet_ntoa(a->addr));
+		kprintf("..%s", kinet_ntoa(a->addr, abuf));
 #endif
 		if (!bcmp(&nbtarg->oldaddr, &a->addr, sizeof(struct in_addr))) {
 			if (*nbtarg->uh_sum != 0) {

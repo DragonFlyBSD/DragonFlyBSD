@@ -530,8 +530,10 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 			rt = la->la_rt;
 	}
 	if (la == NULL || rt == NULL) {
+		char addr[INET_ADDRSTRLEN];
+
 		log(LOG_DEBUG, "arpresolve: can't allocate llinfo for %s%s%s\n",
-		    inet_ntoa(SIN(dst)->sin_addr), la ? "la" : " ",
+		    kinet_ntoa(SIN(dst)->sin_addr, addr), la ? "la" : " ",
 		    rt ? "rt" : "");
 		m_freem(m);
 		return (0);
@@ -692,6 +694,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	struct sockaddr_dl *sdl;
 	struct rtentry *rt;
 	char hexstr[2][64];
+	char sbuf[INET_ADDRSTRLEN];
 	int changed = create;
 
 	KASSERT(curthread->td_type == TD_TYPE_NETISR,
@@ -737,7 +740,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 				log(LOG_ERR,
 				    "arp: %s is on %s "
 				    "but got reply from %s on %s\n",
-				    inet_ntoa(isaddr),
+				    kinet_ntoa(isaddr, sbuf),
 				    rt->rt_ifp->if_xname, hexstr[0],
 				    ifp->if_xname);
 			}
@@ -769,7 +772,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 					    hexstr[1], HEX_NCPYLEN(ifp->if_addrlen), ":");
 			    		log(LOG_INFO,
 					    "arp: %s moved from %s to %s on %s\n",
-					    inet_ntoa(isaddr), hexstr[0], hexstr[1],
+					    kinet_ntoa(isaddr, sbuf), hexstr[0], hexstr[1],
 					    ifp->if_xname);
 				}
 			} else {
@@ -779,7 +782,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 					log(LOG_ERR,
 					"arp: %s attempts to modify "
 					"permanent entry for %s on %s\n",
-					hexstr[0], inet_ntoa(isaddr), ifp->if_xname);
+					hexstr[0], kinet_ntoa(isaddr, sbuf), ifp->if_xname);
 				}
 				return changed;
 			}
@@ -859,7 +862,7 @@ in_arpinput(struct mbuf *m)
 	uint8_t *enaddr = NULL;
 	int req_len;
 	int changed;
-	char hexstr[64];
+	char hexstr[64], sbuf[INET_ADDRSTRLEN];
 
 	req_len = arphdr_len2(ifp->if_addrlen, sizeof(struct in_addr));
 	if (m->m_len < req_len && (m = m_pullup(m, req_len)) == NULL) {
@@ -1014,7 +1017,7 @@ match:
 	if (!bcmp(ar_sha(ah), ifp->if_broadcastaddr, ifp->if_addrlen)) {
 		log(LOG_ERR,
 		    "arp: link address is broadcast for IP address %s!\n",
-		    inet_ntoa(isaddr));
+		    kinet_ntoa(isaddr, sbuf));
 		m_freem(m);
 		return;
 	}
@@ -1023,7 +1026,7 @@ match:
 		    hexstr, HEX_NCPYLEN(ifp->if_addrlen), ":");
 		log(LOG_ERR,
 		   "arp: %s is using my IP address %s!\n",
-		    hexstr, inet_ntoa(isaddr));
+		    hexstr, kinet_ntoa(isaddr, sbuf));
 		itaddr = myaddr;
 		goto reply;
 	}
@@ -1149,6 +1152,9 @@ in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 		la = arplookup(taddr, FALSE, RTL_DONTREPORT, SIN_PROXY);
 		if (la == NULL) {
 			struct sockaddr_in sin;
+#ifdef DEBUG_PROXY
+			char tbuf[INET_ADDRSTRLEN];
+#endif
 
 			if (!arp_proxyall) {
 				m_freem(m);
@@ -1178,7 +1184,8 @@ in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 			memcpy(ar_tha(ah), ar_sha(ah), ah->ar_hln);
 			memcpy(ar_sha(ah), enaddr, ah->ar_hln);
 #ifdef DEBUG_PROXY
-			kprintf("arp: proxying for %s\n", inet_ntoa(itaddr));
+			kprintf("arp: proxying for %s\n",
+			    kinet_ntoa(itaddr, tbuf));
 #endif
 		} else {
 			struct sockaddr_dl *sdl;
@@ -1273,8 +1280,10 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
 
 	if (why) {
 		if (create && log_arp_creation_failure) {
+			char abuf[INET_ADDRSTRLEN];
+
 			log(LOG_DEBUG, "arplookup %s failed: %s\n",
-			    inet_ntoa(sin.sin_addr), why);
+			    kinet_ntoa(sin.sin_addr, abuf), why);
 		}
 		if (rt->rt_refcnt <= 0 && (rt->rt_flags & RTF_WASCLONED)) {
 			/* No references to this route.  Purge it. */

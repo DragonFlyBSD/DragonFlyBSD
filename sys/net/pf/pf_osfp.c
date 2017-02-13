@@ -136,7 +136,7 @@ pf_osfp_fingerprint_hdr(const struct ip *ip, const struct ip6_hdr *ip6, const st
 		if (ip->ip_off & IP_DF)
 			fp.fp_flags |= PF_OSFP_DF;
 #ifdef _KERNEL
-		strlcpy(srcname, inet_ntoa(ip->ip_src), sizeof(srcname));
+		kinet_ntoa(ip->ip_src, srcname);
 #else
 		memset(&sin, 0, sizeof(sin));
 		sin.sin_family = AF_INET;

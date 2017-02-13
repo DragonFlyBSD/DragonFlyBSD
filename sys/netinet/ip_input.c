@@ -1581,16 +1581,17 @@ ip_dooptions(struct mbuf *m, int pass, struct sockaddr_in *next_hop)
 				goto dropit;
 			if (!ip_dosourceroute) {
 				if (ipforwarding) {
-					char buf[sizeof "aaa.bbb.ccc.ddd"];
+					char sbuf[INET_ADDRSTRLEN];
+					char dbuf[INET_ADDRSTRLEN];
 
 					/*
 					 * Acting as a router, so generate ICMP
 					 */
 nosourcerouting:
-					strcpy(buf, inet_ntoa(ip->ip_dst));
 					log(LOG_WARNING,
 					    "attempted source route from %s to %s\n",
-					    inet_ntoa(ip->ip_src), buf);
+					    kinet_ntoa(ip->ip_src, sbuf),
+					    kinet_ntoa(ip->ip_dst, dbuf));
 					type = ICMP_UNREACH;
 					code = ICMP_UNREACH_SRCFAIL;
 					goto bad;

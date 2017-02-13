@@ -389,7 +389,7 @@ ProxyEncodeTcpStream(struct alias_link *lnk,
     int maxpacketsize)
 {
 	int slen;
-	char buffer[40];
+	char buffer[40], addr[INET_ADDRSTRLEN];
 	struct tcphdr *tc;
 
 /* Compute pointer to tcp header */
@@ -402,7 +402,8 @@ ProxyEncodeTcpStream(struct alias_link *lnk,
 
 /* Translate destination address and port to string form */
 	ksnprintf(buffer, sizeof(buffer) - 2, "[DEST %s %d]",
-	    inet_ntoa(GetProxyAddress(lnk)), (u_int) ntohs(GetProxyPort(lnk)));
+	    kinet_ntoa(GetProxyAddress(lnk), addr),
+	    (u_int) ntohs(GetProxyPort(lnk)));
 
 /* Pad string out to a multiple of two in length */
 	slen = strlen(buffer);

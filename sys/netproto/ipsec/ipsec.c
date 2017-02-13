@@ -1755,10 +1755,13 @@ vshiftl(unsigned char *bitmap, int nbit, int wsize)
 char *
 ipsec_address(union sockaddr_union* sa)
 {
+	/* XXX not MPSAFE */
+	static char sbuf[INET_ADDRSTRLEN];
+
 	switch (sa->sa.sa_family) {
 #if INET
 	case AF_INET:
-		return inet_ntoa(sa->sin.sin_addr);
+		return kinet_ntoa(sa->sin.sin_addr, sbuf);
 #endif /* INET */
 
 #if INET6

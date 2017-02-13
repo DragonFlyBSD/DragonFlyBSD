@@ -652,6 +652,9 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 static int
 gre_compute_route(struct gre_softc *sc)
 {
+#ifdef DIAGNOSTIC
+	char abuf[INET_ADDRSTRLEN];
+#endif
 	struct route *ro;
 	u_int32_t a, b, c;
 
@@ -680,7 +683,7 @@ gre_compute_route(struct gre_softc *sc)
 
 #ifdef DIAGNOSTIC
 	kprintf("%s: searching a route to %s", if_name(&sc->sc_if),
-	    inet_ntoa(((struct sockaddr_in *)&ro->ro_dst)->sin_addr));
+	    kinet_ntoa(((struct sockaddr_in *)&ro->ro_dst)->sin_addr, abuf));
 #endif
 
 	rtalloc(ro);
@@ -708,7 +711,8 @@ gre_compute_route(struct gre_softc *sc)
 
 #ifdef DIAGNOSTIC
 	kprintf(", choosing %s with gateway %s", if_name(ro->ro_rt->rt_ifp),
-	    inet_ntoa(((struct sockaddr_in *)(ro->ro_rt->rt_gateway))->sin_addr));
+	    kinet_ntoa(
+	        ((struct sockaddr_in *)(ro->ro_rt->rt_gateway))->sin_addr, abuf));
 	kprintf("\n");
 #endif
 

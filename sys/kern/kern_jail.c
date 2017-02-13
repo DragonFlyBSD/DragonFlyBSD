@@ -604,11 +604,13 @@ retry:
 
 		/* Copy the IPS */
 		SLIST_FOREACH(jip, &pr->pr_ips, entries) {
+			char buf[INET_ADDRSTRLEN];
+
 			jsin = (struct sockaddr_in *)&jip->ip;
 
 			switch(jsin->sin_family) {
 			case AF_INET:
-				oip = inet_ntoa(jsin->sin_addr);
+				oip = kinet_ntoa(jsin->sin_addr, buf);
 				break;
 #ifdef INET6
 			case AF_INET6:

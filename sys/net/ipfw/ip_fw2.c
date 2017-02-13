@@ -659,7 +659,7 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 {
 	char *action;
 	int limit_reached = 0;
-	char action2[40], proto[48], fragment[28];
+	char action2[40], proto[48], fragment[28], abuf[INET_ADDRSTRLEN];
 
 	fragment[0] = '\0';
 	proto[0] = '\0';
@@ -738,8 +738,8 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 				int len;
 
 				len = ksnprintf(SNPARGS(action2, 0),
-						"Forward to %s",
-						inet_ntoa(sa->sa.sin_addr));
+				    "Forward to %s",
+				    kinet_ntoa(sa->sa.sin_addr, abuf));
 				if (sa->sa.sin_port) {
 					ksnprintf(SNPARGS(action2, len), ":%d",
 						  sa->sa.sin_port);
@@ -776,29 +776,29 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 		switch (ip->ip_p) {
 		case IPPROTO_TCP:
 			len = ksnprintf(SNPARGS(proto, 0), "TCP %s",
-					inet_ntoa(ip->ip_src));
+					kinet_ntoa(ip->ip_src, abuf));
 			if (offset == 0) {
 				ksnprintf(SNPARGS(proto, len), ":%d %s:%d",
 					  ntohs(tcp->th_sport),
-					  inet_ntoa(ip->ip_dst),
+					  kinet_ntoa(ip->ip_dst, abuf),
 					  ntohs(tcp->th_dport));
 			} else {
 				ksnprintf(SNPARGS(proto, len), " %s",
-					  inet_ntoa(ip->ip_dst));
+					  kinet_ntoa(ip->ip_dst, abuf));
 			}
 			break;
 
 		case IPPROTO_UDP:
 			len = ksnprintf(SNPARGS(proto, 0), "UDP %s",
-					inet_ntoa(ip->ip_src));
+					kinet_ntoa(ip->ip_src, abuf));
 			if (offset == 0) {
 				ksnprintf(SNPARGS(proto, len), ":%d %s:%d",
 					  ntohs(udp->uh_sport),
-					  inet_ntoa(ip->ip_dst),
+					  kinet_ntoa(ip->ip_dst, abuf),
 					  ntohs(udp->uh_dport));
 			} else {
 				ksnprintf(SNPARGS(proto, len), " %s",
-					  inet_ntoa(ip->ip_dst));
+					  kinet_ntoa(ip->ip_dst, abuf));
 			}
 			break;
 
@@ -812,16 +812,16 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 				len = ksnprintf(SNPARGS(proto, 0), "ICMP ");
 			}
 			len += ksnprintf(SNPARGS(proto, len), "%s",
-					 inet_ntoa(ip->ip_src));
+					 kinet_ntoa(ip->ip_src, abuf));
 			ksnprintf(SNPARGS(proto, len), " %s",
-				  inet_ntoa(ip->ip_dst));
+				  kinet_ntoa(ip->ip_dst, abuf));
 			break;
 
 		default:
 			len = ksnprintf(SNPARGS(proto, 0), "P:%d %s", ip->ip_p,
-					inet_ntoa(ip->ip_src));
+					kinet_ntoa(ip->ip_src, abuf));
 			ksnprintf(SNPARGS(proto, len), " %s",
-				  inet_ntoa(ip->ip_dst));
+				  kinet_ntoa(ip->ip_dst, abuf));
 			break;
 		}
 

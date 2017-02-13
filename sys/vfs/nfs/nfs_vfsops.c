@@ -563,7 +563,7 @@ nfs_mountroot(struct mount *mp)
 	struct thread *td = curthread;		/* XXX */
 	int error, i;
 	u_long l;
-	char buf[128];
+	char buf[128], addr[INET_ADDRSTRLEN];
 
 #if defined(BOOTP_NFSROOT) && defined(BOOTP)
 	bootpc_init();		/* use bootp to get nfs_diskless filled in */
@@ -592,11 +592,11 @@ nfs_mountroot(struct mount *mp)
 #define SINP(sockaddr)	((struct sockaddr_in *)(sockaddr))
 	kprintf("nfs_mountroot: interface %s ip %s",
 		nd->myif.ifra_name,
-		inet_ntoa(SINP(&nd->myif.ifra_addr)->sin_addr));
+		kinet_ntoa(SINP(&nd->myif.ifra_addr)->sin_addr, addr));
 	kprintf(" bcast %s",
-		inet_ntoa(SINP(&nd->myif.ifra_broadaddr)->sin_addr));
+		kinet_ntoa(SINP(&nd->myif.ifra_broadaddr)->sin_addr, addr));
 	kprintf(" mask %s\n",
-		inet_ntoa(SINP(&nd->myif.ifra_mask)->sin_addr));
+		kinet_ntoa(SINP(&nd->myif.ifra_mask)->sin_addr, addr));
 #undef SINP
 
 	/*
@@ -635,7 +635,7 @@ nfs_mountroot(struct mount *mp)
 		sin.sin_family = AF_INET;
 		sin.sin_len = sizeof(sin);
 		kprintf("nfs_mountroot: gateway %s\n",
-			inet_ntoa(nd->mygateway.sin_addr));
+			kinet_ntoa(nd->mygateway.sin_addr, addr));
 		error = rtrequest_global(RTM_ADD, (struct sockaddr *)&sin,
 					(struct sockaddr *)&nd->mygateway,
 					(struct sockaddr *)&mask,
