@@ -851,7 +851,7 @@ init_machclk(void)
 #endif
 
 	if (!machclk_usepcc) {
-		/* emulate 256MHz using microtime() */
+		/* emulate 256MHz using microuptime() */
 		machclk_freq = 1000000LLU << MACHCLK_SHIFT;
 		machclk_per_tick = machclk_freq / hz;
 #ifdef ALTQ_DEBUG
@@ -912,9 +912,9 @@ read_machclk(void)
 	} else {
 		struct timeval tv;
 
-		microtime(&tv);
-		val = (((uint64_t)(tv.tv_sec - boottime.tv_sec) * 1000000
-		    + tv.tv_usec) << MACHCLK_SHIFT);
+		microuptime(&tv);
+		val = (((uint64_t)tv.tv_sec * 1000000 + tv.tv_usec) <<
+		    MACHCLK_SHIFT);
 	}
 	return (val);
 }
