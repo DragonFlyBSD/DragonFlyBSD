@@ -163,6 +163,14 @@ static struct cputimer	tsc_cputimer = {
     .freq		= 0	/* determined later */
 };
 
+static struct cpucounter tsc_cpucounter = {
+    .freq		= 0,	/* determined later */
+    .count		= NULL,	/* determined later */
+    .flags		= 0,	/* adjusted later */
+    .prio		= CPUCOUNTER_PRIO_TSC,
+    .type		= CPUCOUNTER_TSC
+};
+
 static void i8254_intr_reload(struct cputimer_intr *, sysclock_t);
 static void i8254_intr_config(struct cputimer_intr *, const struct cputimer *);
 static void i8254_intr_initclock(struct cputimer_intr *, boolean_t);
@@ -1405,14 +1413,35 @@ tsc_cputimer_count_mfence(void)
 	return tsc_cputimer_count();
 }
 
+static uint64_t
+tsc_cpucounter_count_lfence(void)
+{
+
+	cpu_lfence();
+	return (rdtsc());
+}
+
+static uint64_t
+tsc_cpucounter_count_mfence(void)
+{
+
+	cpu_mfence();
+	return (rdtsc());
+}
+
 static void
 tsc_cputimer_register(void)
 {
 	uint64_t freq;
 	int enable = 1;
 
-	if (!tsc_mpsync)
+	if (!tsc_mpsync) {
+		if (tsc_invariant) {
+			/* Per-cpu cpucounter still works. */
+			goto regcnt;
+		}
 		return;
+	}
 
 	TUNABLE_INT_FETCH("hw.tsc_cputimer_enable", &enable);
 	if (!enable)
@@ -1435,6 +1464,18 @@ tsc_cputimer_register(void)
 
 	cputimer_register(&tsc_cputimer);
 	cputimer_select(&tsc_cputimer, 0);
+
+	tsc_cpucounter.flags |= CPUCOUNTER_FLAG_MPSYNC;
+regcnt:
+	tsc_cpucounter.freq = tsc_frequency;
+	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
+		tsc_cpucounter.count =
+		    tsc_cpucounter_count_lfence;
+	} else {
+		tsc_cpucounter.count =
+		    tsc_cpucounter_count_mfence; /* safe bet */
+	}
+	cpucounter_register(&tsc_cpucounter);
 }
 SYSINIT(tsc_cputimer_reg, SI_BOOT2_POST_SMP, SI_ORDER_FIRST,
 	tsc_cputimer_register, NULL);

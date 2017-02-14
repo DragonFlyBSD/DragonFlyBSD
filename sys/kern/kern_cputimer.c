@@ -48,6 +48,8 @@
 extern void	pcpu_timer_process(void);
 extern void	pcpu_timer_process_frame(struct intrframe *);
 
+static uint64_t dummy_cpucounter_count(void);
+
 static sysclock_t dummy_cputimer_count(void);
 
 static struct cputimer dummy_cputimer = {
@@ -65,8 +67,19 @@ static struct cputimer dummy_cputimer = {
     .freq64_nsec	= (1000000000LL << 32) / 1000000
 };
 
+static struct cpucounter dummy_cpucounter = {
+	.freq		= 1000000ULL,
+	.count		= dummy_cpucounter_count,
+	.flags		= CPUCOUNTER_FLAG_MPSYNC,
+	.prio		= CPUCOUNTER_PRIO_DUMMY,
+	.type		= CPUCOUNTER_DUMMY
+};
+
 struct cputimer *sys_cputimer = &dummy_cputimer;
 SLIST_HEAD(, cputimer) cputimerhead = SLIST_HEAD_INITIALIZER(&cputimerhead);
+
+static SLIST_HEAD(, cpucounter) cpucounterhead =
+    SLIST_HEAD_INITIALIZER(cpucounterhead);
 
 static int	cputimer_intr_ps_reqs;
 static struct lwkt_serialize cputimer_intr_ps_slize =
@@ -608,4 +621,49 @@ void
 pcpu_timer_process_frame(struct intrframe *frame)
 {
 	pcpu_timer_process_oncpu(mycpu, frame);
+}
+
+static uint64_t
+dummy_cpucounter_count(void)
+{
+	struct timeval tv;
+
+	microuptime(&tv);
+	return ((tv.tv_sec * 1000000ULL) + tv.tv_usec);
+}
+
+const struct cpucounter *
+cpucounter_find_pcpu(void)
+{
+	const struct cpucounter *cc, *ret;
+
+	ret = &dummy_cpucounter;
+	SLIST_FOREACH(cc, &cpucounterhead, link) {
+		if (cc->prio > ret->prio)
+			ret = cc;
+	}
+	return (ret);
+}
+
+const struct cpucounter *
+cpucounter_find(void)
+{
+	const struct cpucounter *cc, *ret;
+
+	ret = &dummy_cpucounter;
+	SLIST_FOREACH(cc, &cpucounterhead, link) {
+		if ((cc->flags & CPUCOUNTER_FLAG_MPSYNC) &&
+		    cc->prio > ret->prio)
+			ret = cc;
+	}
+	KASSERT(ret->flags & CPUCOUNTER_FLAG_MPSYNC,
+	    ("cpucounter %u is not MPsync", ret->type));
+	return (ret);
+}
+
+void
+cpucounter_register(struct cpucounter *cc)
+{
+
+	SLIST_INSERT_HEAD(&cpucounterhead, cc, link);
 }

@@ -270,6 +270,44 @@ int  cputimer_intr_select_caps(uint32_t);
 int  cputimer_intr_powersave_addreq(void);
 void cputimer_intr_powersave_remreq(void);
 
+/*
+ * The cpucounter interface.
+ *
+ * REQUIREMENT FOR CPUCOUNTER IMPLEMENTATION:
+ *
+ * - The values returned by count() must be MP synchronized, if
+ *   CPUCOUNTER_FLAG_MPSYNC is set on 'flags'.
+ * - The values returned by count() must be stable under all situation,
+ *   e.g. when the platform enters power saving mode.
+ * - The values returned by count() must be monotonically increasing.
+ */
+struct cpucounter {
+	uint64_t	freq;
+	uint64_t	(*count)(void);
+	uint16_t	flags;		/* CPUCOUNTER_FLAG_ */
+	uint16_t	prio;		/* CPUCOUNTER_PRIO_ */
+	uint16_t	type;		/* CPUCOUNTER_ */
+	uint16_t	reserved;
+	SLIST_ENTRY(cpucounter) link;
+} __cachealign;
+
+#define CPUCOUNTER_FLAG_MPSYNC		0x0001
+
+#define CPUCOUNTER_DUMMY		0
+#define CPUCOUNTER_TSC			1
+#define CPUCOUNTER_VMM			2
+#define CPUCOUNTER_VMM1			3
+#define CPUCOUNTER_VMM2			4
+
+#define CPUCOUNTER_PRIO_DUMMY		0
+#define CPUCOUNTER_PRIO_TSC		50
+#define CPUCOUNTER_PRIO_VMM		100
+#define CPUCOUNTER_PRIO_VMM_HI		150
+
+void cpucounter_register(struct cpucounter *);
+const struct cpucounter *cpucounter_find_pcpu(void);
+const struct cpucounter *cpucounter_find(void);
+
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #endif	/* !_SYS_SYSTIMER_H_ */
