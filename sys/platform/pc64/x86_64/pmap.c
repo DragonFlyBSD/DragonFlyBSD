@@ -5167,12 +5167,15 @@ pmap_unwire(pmap_t pmap, vm_offset_t va)
 		if (pmap_pt(pmap, va) == 0)
 			return NULL;
 		ptep = pmap_pte_quick(pmap, va);
-
-		if (pmap_pte_w(pmap, ptep))
-			atomic_add_long(&pmap->pm_stats.wired_count,-1);
-		atomic_clear_long(ptep, pmap->pmap_bits[PG_W_IDX]);
-		pa = *ptep & PG_FRAME;
-		m = PHYS_TO_VM_PAGE(pa);
+		if (pmap_pte_v(pmap, ptep)) {
+			if (pmap_pte_w(pmap, ptep))
+				atomic_add_long(&pmap->pm_stats.wired_count,-1);
+			atomic_clear_long(ptep, pmap->pmap_bits[PG_W_IDX]);
+			pa = *ptep & PG_FRAME;
+			m = PHYS_TO_VM_PAGE(pa);
+		} else {
+			m = NULL;
+		}
 	} else {
 		/*
 		 * We can only [un]wire pmap-local pages (we cannot wire
