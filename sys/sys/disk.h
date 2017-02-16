@@ -186,7 +186,7 @@ int bounds_check_with_mediasize(struct bio *bio, int secsize, uint64_t mediasize
 void disk_iocom_init(struct disk *dp);
 void disk_iocom_update(struct disk *dp);
 void disk_iocom_uninit(struct disk *dp);
-int disk_iocom_ioctl(struct disk *dp, u_long cmd, caddr_t *data);
+int disk_iocom_ioctl(struct disk *dp, u_long cmd, void *data);
 void disk_clusterctl_wakeup(kdmsg_iocom_t *iocom);
 
 typedef struct disk_msg {

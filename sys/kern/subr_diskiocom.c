@@ -107,7 +107,7 @@ disk_iocom_uninit(struct disk *dp)
 }
 
 int
-disk_iocom_ioctl(struct disk *dp, u_long cmd, caddr_t *data)
+disk_iocom_ioctl(struct disk *dp, u_long cmd, void *data)
 {
 	struct file *fp;
 	struct disk_ioc_recluster *recl;
