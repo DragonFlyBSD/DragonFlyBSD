@@ -92,6 +92,14 @@ static struct cputimer	hyperv_cputimer = {
 	.freq		= HYPERV_TIMER_FREQ
 };
 
+static struct cpucounter hyperv_cpucounter = {
+	.freq		= HYPERV_TIMER_FREQ,
+	.count		= hyperv_tc64_rdmsr,
+	.flags		= CPUCOUNTER_FLAG_MPSYNC,
+	.prio		= CPUCOUNTER_PRIO_VMM,
+	.type		= CPUCOUNTER_VMM
+};
+
 static struct hypercall_ctx	hypercall_context;
 
 uint64_t
@@ -299,9 +307,10 @@ hyperv_init(void *dummy __unused)
 	wrmsr(MSR_HV_GUEST_OS_ID, MSR_HV_GUESTID_DRAGONFLY);
 
 	if (hyperv_features & CPUID_HV_MSR_TIME_REFCNT) {
-		/* Register Hyper-V systimer */
+		/* Register Hyper-V cputimers */
 		cputimer_register(&hyperv_cputimer);
 		cputimer_select(&hyperv_cputimer, 0);
+		cpucounter_register(&hyperv_cpucounter);
 		hyperv_tc64 = hyperv_tc64_rdmsr;
 	}
 

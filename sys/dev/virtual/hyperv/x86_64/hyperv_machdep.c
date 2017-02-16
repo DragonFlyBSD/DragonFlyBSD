@@ -63,6 +63,14 @@ static struct cputimer	hyperv_tsc_cputimer = {
 	.freq		= HYPERV_TIMER_FREQ
 };
 
+static struct cpucounter hyperv_tsc_cpucounter = {
+	.freq		= HYPERV_TIMER_FREQ,
+	.count		= NULL, /* determined later */
+	.flags		= CPUCOUNTER_FLAG_MPSYNC,
+	.prio		= CPUCOUNTER_PRIO_VMM_HI,
+	.type		= CPUCOUNTER_VMM1
+};
+
 uint64_t
 hypercall_md(volatile void *hc_addr, uint64_t in_val,
     uint64_t in_paddr, uint64_t out_paddr)
@@ -172,6 +180,8 @@ hyperv_md_init(void)
 		/* Unsupport CPU vendors. */
 		return;
 	}
+	KASSERT(tc64 != NULL, ("tc64 is not set"));
+	hyperv_tsc_cpucounter.count = tc64;
 
 	hyperv_ref_tsc.tsc_ref = hyperv_dmamem_alloc(NULL, PAGE_SIZE, 0,
 	    sizeof(struct hyperv_reftsc), &hyperv_ref_tsc.tsc_ref_dma,
@@ -187,10 +197,10 @@ hyperv_md_init(void)
 	     MSR_HV_REFTSC_PGSHIFT);
 	wrmsr(MSR_HV_REFERENCE_TSC, val);
 
-	/* Register Hyper-V reference TSC systimer. */
+	/* Register Hyper-V reference TSC cputimers. */
 	cputimer_register(&hyperv_tsc_cputimer);
 	cputimer_select(&hyperv_tsc_cputimer, 0);
-	KASSERT(tc64 != NULL, ("tc64 is not set"));
+	cpucounter_register(&hyperv_tsc_cpucounter);
 	hyperv_tc64_saved = hyperv_tc64;
 	hyperv_tc64 = tc64;
 }
