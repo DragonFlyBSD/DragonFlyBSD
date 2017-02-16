@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.18 2007/04/19 22:46:26 scottl Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.12 2008/07/18 00:07:21 dillon Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H
@@ -159,7 +158,7 @@ int		cam_periph_runccb(union ccb *ccb,
 						       u_int32_t sense_flags),
 				  cam_flags camflags, u_int32_t sense_flags,
 				  struct devstat *ds);
-int		cam_periph_ioctl(struct cam_periph *periph, int cmd, 
+int		cam_periph_ioctl(struct cam_periph *periph, u_long cmd, 
 				 caddr_t addr,
 				 int (*error_routine)(union ccb *ccb,
 						      cam_flags camflags,
