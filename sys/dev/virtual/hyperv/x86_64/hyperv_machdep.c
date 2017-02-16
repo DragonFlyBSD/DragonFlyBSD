@@ -33,9 +33,9 @@
 #include <machine/msi_machdep.h>
 
 #include <dev/virtual/hyperv/hyperv_busdma.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_reg.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_var.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_machdep.h>
+#include <dev/virtual/hyperv/hyperv_machdep.h>
+#include <dev/virtual/hyperv/hyperv_reg.h>
+#include <dev/virtual/hyperv/hyperv_var.h>
 
 struct hyperv_reftsc_ctx {
 	struct hyperv_reftsc	*tsc_ref;

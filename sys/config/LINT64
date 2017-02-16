@@ -2179,6 +2179,11 @@ device		ichwd		# Intel ICH watchdog interrupt timer
 device		tbridge		# regression testing
 
 #
+# Hyper-V support
+#
+device		vmbus
+
+#
 # Virtio support
 #
 device		virtio

@@ -41,9 +41,9 @@
 #include <machine/smp.h>
 
 #include <dev/virtual/hyperv/hyperv_busdma.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_machdep.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_reg.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_var.h>
+#include <dev/virtual/hyperv/hyperv_machdep.h>
+#include <dev/virtual/hyperv/hyperv_reg.h>
+#include <dev/virtual/hyperv/hyperv_var.h>
 #include <dev/virtual/hyperv/vmbus/vmbus_reg.h>
 #include <dev/virtual/hyperv/vmbus/vmbus_var.h>
 

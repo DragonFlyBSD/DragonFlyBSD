@@ -34,9 +34,9 @@
 #include <machine/cpufunc.h>
 
 #include <dev/virtual/hyperv/hyperv_busdma.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_machdep.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_reg.h>
-#include <dev/virtual/hyperv/vmbus/hyperv_var.h>
+#include <dev/virtual/hyperv/hyperv_machdep.h>
+#include <dev/virtual/hyperv/hyperv_reg.h>
+#include <dev/virtual/hyperv/hyperv_var.h>
 
 #define HYPERV_DRAGONFLY_BUILD		0ULL
 #define HYPERV_DRAGONFLY_VERSION	((uint64_t)__DragonFly_version)
