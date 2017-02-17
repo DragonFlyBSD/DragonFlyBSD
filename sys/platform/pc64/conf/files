@@ -224,4 +224,6 @@ platform/pc64/vmm/ept.c			standard
 platform/pc64/vmm/vmx_trap.s		standard
 platform/pc64/vmm/svm.c			standard
 
+dev/virtual/hyperv/hyperv.c		standard
+dev/virtual/hyperv/hyperv_busdma.c	standard
 dev/virtual/hyperv/x86_64/hyperv_machdep.c	standard

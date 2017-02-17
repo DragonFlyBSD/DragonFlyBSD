@@ -2690,8 +2690,6 @@ bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio
 #
 # Hyper-V support
 #
-dev/virtual/hyperv/hyperv.c		standard
-dev/virtual/hyperv/hyperv_busdma.c	standard
 dev/virtual/hyperv/vmbus/vmbus.c	optional vmbus
 
 #
