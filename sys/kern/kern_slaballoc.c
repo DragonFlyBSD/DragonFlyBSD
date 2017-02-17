@@ -159,7 +159,9 @@ static uintptr_t ZoneMask;
 static int ZoneBigAlloc;		/* in KB */
 static int ZoneGenAlloc;		/* in KB */
 struct malloc_type *kmemstatistics;	/* exported to vmstat */
+#ifdef INVARIANTS
 static int32_t weirdary[16];
+#endif
 
 static void *kmem_slab_alloc(vm_size_t bytes, vm_offset_t align, int flags);
 static void kmem_slab_free(void *ptr, vm_size_t bytes);
@@ -178,13 +180,14 @@ static void chunk_mark_free(SLZone *z, void *chunk);
  */
 #define ZONE_RELS_THRESH	32		/* threshold number of zones */
 
+#ifdef INVARIANTS
 /*
  * The WEIRD_ADDR is used as known text to copy into free objects to
  * try to create deterministic failure cases if the data is accessed after
  * free.
  */    
 #define WEIRD_ADDR      0xdeadc0de
-#define MAX_COPY        sizeof(weirdary)
+#endif
 #define ZERO_LENGTH_PTR	((void *)-8)
 
 /*
@@ -262,7 +265,9 @@ kmeminit(void *dummy)
 {
     size_t limsize;
     int usesize;
+#ifdef INVARIANTS
     int i;
+#endif
 
     limsize = kmem_lim_size();
     usesize = (int)(limsize * 1024);	/* convert to KB */
@@ -295,8 +300,10 @@ kmeminit(void *dummy)
     ZoneMask = ~(uintptr_t)(ZoneSize - 1);
     ZonePageCount = ZoneSize / PAGE_SIZE;
 
+#ifdef INVARIANTS
     for (i = 0; i < NELEM(weirdary); ++i)
 	weirdary[i] = WEIRD_ADDR;
+#endif
 
     ZeroPage = kmem_slab_alloc(PAGE_SIZE, PAGE_SIZE, M_WAITOK|M_ZERO);
 
