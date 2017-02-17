@@ -2236,7 +2236,6 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	pd_entry_t npte;	/* contents of *pt */
 	vm_page_t m;
 
-retry:
 	/*
 	 * Basic tests, require a non-NULL vm_map_entry, require proper
 	 * alignment and type for the vm_map_entry, require that the
@@ -2338,6 +2337,7 @@ retry:
 	 */
 	pt_pv = NULL;
 	pte_pv = pmap_allocpte(obpmap, ptepindex, &pt_pv);
+retry:
 	if (ptepindex >= pmap_pt_pindex(0))
 		xpv = pte_pv;
 	else
@@ -2383,6 +2383,9 @@ retry:
 	 * process pmap.  If the old pt is not empty we cannot dispose of it
 	 * until we clean it out.  This case should not arise very often so
 	 * it is not optimized.
+	 *
+	 * Leave pt_pv and pte_pv (in our object pmap) locked and intact
+	 * for the retry.
 	 */
 	if (proc_pt_pv) {
 		pmap_inval_bulk_t bulk;
@@ -2390,8 +2393,6 @@ retry:
 		if (proc_pt_pv->pv_m->wire_count != 1) {
 			pv_put(proc_pd_pv);
 			pv_put(proc_pt_pv);
-			pv_put(pt_pv);
-			pv_put(pte_pv);
 			pmap_remove(pmap,
 				    va & ~(vm_offset_t)SEG_MASK,
 				    (va + SEG_SIZE) & ~(vm_offset_t)SEG_MASK);
