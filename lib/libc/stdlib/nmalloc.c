@@ -188,9 +188,6 @@ typedef struct slzone {
 	int		z_ZoneIndex;
 	int		z_Flags;
 	struct slchunk *z_PageAry[ZALLOC_ZONE_SIZE / PAGE_SIZE];
-#if defined(INVARIANTS)
-	__uint32_t	z_Bitmap[];	/* bitmap of free chunks / sanity */
-#endif
 } *slzone_t;
 
 typedef struct slglobaldata {
@@ -213,15 +210,9 @@ typedef struct slglobaldata {
 #define IN_SAME_PAGE_MASK	(~(intptr_t)PAGE_MASK | MIN_CHUNK_MASK)
 
 /*
- * The WEIRD_ADDR is used as known text to copy into free objects to
- * try to create deterministic failure cases if the data is accessed after
- * free.
- *
  * WARNING: A limited number of spinlocks are available, BIGXSIZE should
  *	    not be larger then 64.
  */
-#define WEIRD_ADDR      0xdeadc0de
-#define MAX_COPY        sizeof(weirdary)
 #define ZERO_LENGTH_PTR	((void *)&malloc_dummy_pointer)
 
 #define BIGHSHIFT	10			/* bigalloc hash table */
@@ -359,13 +350,6 @@ static int malloc_panic;
 static int malloc_dummy_pointer;
 static size_t excess_alloc;				/* excess big allocs */
 
-static const int32_t weirdary[16] = {
-	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
-	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
-	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
-	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR
-};
-
 static void *_slaballoc(size_t size, int flags);
 static void *_slabrealloc(void *ptr, size_t size);
 static void _slabfree(void *ptr, int, bigalloc_t *);
@@ -381,10 +365,6 @@ static slzone_t zone_alloc(int flags);
 static void zone_free(void *z);
 static void _mpanic(const char *ctl, ...) __printflike(1, 2);
 static void malloc_init(void) __constructor(101);
-#if defined(INVARIANTS)
-static void chunk_mark_allocated(slzone_t z, void *chunk);
-static void chunk_mark_free(slzone_t z, void *chunk);
-#endif
 
 struct nmalloc_utrace {
 	void *p;
@@ -401,13 +381,6 @@ struct nmalloc_utrace {
 		};						\
 		utrace(&ut, sizeof(ut));			\
 	}
-
-#ifdef INVARIANTS
-/*
- * If enabled any memory allocated without M_ZERO is initialized to -1.
- */
-static int  use_malloc_pattern;
-#endif
 
 static void
 malloc_init(void)
@@ -938,9 +911,6 @@ _slaballoc(size_t size, int flags)
 	slglobaldata_t slgd;
 	size_t chunking;
 	int zi;
-#ifdef INVARIANTS
-	int i;
-#endif
 	int off;
 	void *obj;
 
@@ -1052,18 +1022,7 @@ _slaballoc(size_t size, int flags)
 		/*
 		 * How big is the base structure?
 		 */
-#if defined(INVARIANTS)
-		/*
-		 * Make room for z_Bitmap.  An exact calculation is
-		 * somewhat more complicated so don't make an exact
-		 * calculation.
-		 */
-		off = offsetof(struct slzone,
-				z_Bitmap[(ZoneSize / size + 31) / 32]);
-		bzero(z->z_Bitmap, (ZoneSize / size + 31) / 8);
-#else
 		off = sizeof(struct slzone);
-#endif
 
 		/*
 		 * Align the storage in the zone based on the chunking.
@@ -1126,17 +1085,6 @@ _slaballoc(size_t size, int flags)
 	 */
 	while (z->z_FirstFreePg < ZonePageCount) {
 		if ((chunk = z->z_PageAry[z->z_FirstFreePg]) != NULL) {
-#ifdef DIAGNOSTIC
-			/*
-			 * Diagnostic: c_Next is not total garbage.
-			 */
-			MASSERT(chunk->c_Next == NULL ||
-			    ((intptr_t)chunk->c_Next & IN_SAME_PAGE_MASK) ==
-			    ((intptr_t)chunk & IN_SAME_PAGE_MASK));
-#endif
-#ifdef INVARIANTS
-			chunk_mark_allocated(z, chunk);
-#endif
 			MASSERT((uintptr_t)chunk & ZoneMask);
 			z->z_PageAry[z->z_FirstFreePg] = chunk->c_Next;
 			goto done;
@@ -1164,25 +1112,11 @@ _slaballoc(size_t size, int flags)
 		flags &= ~SAFLAG_ZERO;
 		flags |= SAFLAG_PASSIVE;
 	}
-#if defined(INVARIANTS)
-	chunk_mark_allocated(z, chunk);
-#endif
 
 done:
 	slgd_unlock(slgd);
-	if (flags & SAFLAG_ZERO) {
+	if (flags & SAFLAG_ZERO)
 		bzero(chunk, size);
-#ifdef INVARIANTS
-	} else if ((flags & (SAFLAG_ZERO|SAFLAG_PASSIVE)) == 0) {
-		if (use_malloc_pattern) {
-			for (i = 0; i < size; i += sizeof(int)) {
-				*(int *)((char *)chunk + i) = -1;
-			}
-		}
-		/* avoid accidental double-free check */
-		chunk->c_Next = (void *)-1;
-#endif
-	}
 	return(chunk);
 fail:
 	slgd_unlock(slgd);
@@ -1414,10 +1348,6 @@ fastslabrealloc:
 				ptr = big->base;	/* reload */
 				size = big->bytes;
 				_slabfree(big, 0, NULL);
-#ifdef INVARIANTS
-				MASSERT(sizeof(weirdary) <= size);
-				bcopy(weirdary, ptr, sizeof(weirdary));
-#endif
 				_vmem_free(ptr, size);
 				return;
 			}
@@ -1447,34 +1377,6 @@ fastslabrealloc:
 	chunk = ptr;
 	slgd = &SLGlobalData;
 	slgd_lock(slgd);
-
-#ifdef INVARIANTS
-	/*
-	 * Attempt to detect a double-free.  To reduce overhead we only check
-	 * if there appears to be link pointer at the base of the data.
-	 */
-	if (((intptr_t)chunk->c_Next - (intptr_t)z) >> PAGE_SHIFT == pgno) {
-		slchunk_t scan;
-
-		for (scan = z->z_PageAry[pgno]; scan; scan = scan->c_Next) {
-			if (scan == chunk)
-				_mpanic("Double free at %p", chunk);
-		}
-	}
-	chunk_mark_free(z, chunk);
-#endif
-
-	/*
-	 * Put weird data into the memory to detect modifications after
-	 * freeing, illegal pointer use after freeing (we should fault on
-	 * the odd address), and so forth.
-	 */
-#ifdef INVARIANTS
-	if (z->z_ChunkSize < sizeof(weirdary))
-		bcopy(weirdary, chunk, z->z_ChunkSize);
-	else
-		bcopy(weirdary, chunk, sizeof(weirdary));
-#endif
 
 	/*
 	 * Add this free non-zero'd chunk to a linked list for reuse, adjust
@@ -1512,40 +1414,6 @@ fastslabrealloc:
 	}
 	slgd_unlock(slgd);
 }
-
-#if defined(INVARIANTS)
-/*
- * Helper routines for sanity checks
- */
-static
-void
-chunk_mark_allocated(slzone_t z, void *chunk)
-{
-	int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
-	__uint32_t *bitptr;
-
-	MASSERT(bitdex >= 0 && bitdex < z->z_NMax);
-	bitptr = &z->z_Bitmap[bitdex >> 5];
-	bitdex &= 31;
-	MASSERT((*bitptr & (1 << bitdex)) == 0);
-	*bitptr |= 1 << bitdex;
-}
-
-static
-void
-chunk_mark_free(slzone_t z, void *chunk)
-{
-	int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
-	__uint32_t *bitptr;
-
-	MASSERT(bitdex >= 0 && bitdex < z->z_NMax);
-	bitptr = &z->z_Bitmap[bitdex >> 5];
-	bitdex &= 31;
-	MASSERT((*bitptr & (1 << bitdex)) != 0);
-	*bitptr &= ~(1 << bitdex);
-}
-
-#endif
 
 /*
  * Allocate and return a magazine.  NULL is returned and *burst is adjusted
