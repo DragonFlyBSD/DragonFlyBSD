@@ -411,6 +411,9 @@ vtblk_open(struct dev_open_args *ap)
 	if (sc == NULL)
 		return (ENXIO);
 
+	if ((ap->a_oflags & FWRITE) && (sc->vtblk_flags & VTBLK_FLAG_READONLY))
+		return (EACCES);
+
 	return (sc->vtblk_flags & VTBLK_FLAG_DETACH ? ENXIO : 0);
 }
 
@@ -462,23 +465,10 @@ vtblk_strategy(struct dev_strategy_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 	struct bio *bio = ap->a_bio;
-	struct buf *bp = bio->bio_buf;
 
 	if (sc == NULL) {
 		vtblk_finish_bio(bio, EINVAL);
 		return EINVAL;
-	}
-
-	/*
-	 * Fail any write if RO. Unfortunately, there does not seem to
-	 * be a better way to report our readonly'ness to GEOM above.
-	 *
-	 * XXX: Is that true in DFly?
-	 */
-	if (sc->vtblk_flags & VTBLK_FLAG_READONLY &&
-	    (bp->b_cmd == BUF_CMD_READ || bp->b_cmd == BUF_CMD_FLUSH)) {
-		vtblk_finish_bio(bio, EROFS);
-		return (EINVAL);
 	}
 
 	lwkt_serialize_enter(&sc->vtblk_slz);
