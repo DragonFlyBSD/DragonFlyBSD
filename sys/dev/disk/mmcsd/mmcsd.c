@@ -285,6 +285,12 @@ mmcsd_resume(device_t dev)
 static int
 mmcsd_open(struct dev_open_args *ap __unused)
 {
+	struct mmcsd_softc *sc;
+
+	sc = (struct mmcsd_softc *)ap->a_head.a_dev->si_drv1;
+	if ((ap->a_oflags & FWRITE) && mmc_get_read_only(sc->dev))
+		return (EACCES);
+
 	return (0);
 }
 
@@ -522,14 +528,6 @@ mmcsd_task(void *arg)
 		MMCSD_UNLOCK(sc);
 		bp = bio->bio_buf;
 		devstat_start_transaction(&sc->device_stats);
-		if (bp->b_cmd != BUF_CMD_READ && mmc_get_read_only(dev)) {
-			bp->b_error = EROFS;
-			bp->b_resid = bp->b_bcount;
-			bp->b_flags |= B_ERROR;
-			devstat_end_transaction_buf(&sc->device_stats, bp);
-			biodone(bio);
-			continue;
-		}
 		MMCBUS_ACQUIRE_BUS(device_get_parent(dev), dev);
 		sz = sc->disk.d_info.d_media_blksize;
 		block = bio->bio_offset / sz;
