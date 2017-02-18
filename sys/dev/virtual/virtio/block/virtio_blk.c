@@ -50,11 +50,10 @@
 
 struct vtblk_request {
 	struct virtio_blk_outhdr	 vbr_hdr __aligned(16);
-	struct bio			*vbr_bp;
+	struct bio			*vbr_bio;
 	uint8_t				 vbr_ack;
-	uint8_t				 vbr_barrier;
 
-	TAILQ_ENTRY(vtblk_request)	 vbr_link;
+	SLIST_ENTRY(vtblk_request)	 vbr_link;
 };
 
 enum vtblk_cache_mode {
@@ -83,11 +82,8 @@ struct vtblk_softc {
 	struct devstat		 stats;
 
 	struct bio_queue_head	 vtblk_bioq;
-	TAILQ_HEAD(, vtblk_request)
+	SLIST_HEAD(, vtblk_request)
 				 vtblk_req_free;
-	TAILQ_HEAD(, vtblk_request)
-				 vtblk_req_ready;
-	struct vtblk_request	*vtblk_req_ordered;
 
 	int			 vtblk_sector_size;
 	int			 vtblk_max_nsegs;
@@ -171,10 +167,6 @@ static struct vtblk_request * vtblk_dequeue_request(struct vtblk_softc *);
 static void	vtblk_enqueue_request(struct vtblk_softc *,
 		    struct vtblk_request *);
 
-static struct vtblk_request * vtblk_dequeue_ready(struct vtblk_softc *);
-static void	vtblk_enqueue_ready(struct vtblk_softc *,
-		    struct vtblk_request *);
-
 static int	vtblk_request_error(struct vtblk_request *);
 static void	vtblk_finish_bio(struct bio *, int);
 
@@ -251,8 +243,7 @@ vtblk_attach(device_t dev)
 	lwkt_serialize_init(&sc->vtblk_slz);
 
 	bioq_init(&sc->vtblk_bioq);
-	TAILQ_INIT(&sc->vtblk_req_free);
-	TAILQ_INIT(&sc->vtblk_req_ready);
+	SLIST_INIT(&sc->vtblk_req_free);
 
 	virtio_set_feature_desc(dev, vtblk_feature_desc);
 	vtblk_negotiate_features(sc);
@@ -480,7 +471,6 @@ vtblk_strategy(struct dev_strategy_args *ap)
 
 	lwkt_serialize_enter(&sc->vtblk_slz);
 	if ((sc->vtblk_flags & VTBLK_FLAG_DETACH) == 0) {
-		devstat_start_transaction(&sc->stats);
 		bioqdisksort(&sc->vtblk_bioq, bio);
 		vtblk_startio(sc);
 		lwkt_serialize_exit(&sc->vtblk_slz);
@@ -662,15 +652,16 @@ vtblk_startio(struct vtblk_softc *sc)
 		return;
 
 	while (!virtqueue_full(vq)) {
-		if ((req = vtblk_dequeue_ready(sc)) == NULL)
-			req = vtblk_bio_request(sc);
+		req = vtblk_bio_request(sc);
 		if (req == NULL)
 			break;
 
 		if (vtblk_execute_request(sc, req) != 0) {
-			vtblk_enqueue_ready(sc, req);
+			bioqdisksort(&sc->vtblk_bioq, req->vbr_bio);
+			vtblk_enqueue_request(sc, req);
 			break;
 		}
+		devstat_start_transaction(&sc->stats);
 
 		enq++;
 	}
@@ -697,9 +688,8 @@ vtblk_bio_request(struct vtblk_softc *sc)
 		return (NULL);
 
 	bio = bioq_takefirst(bioq);
-	req->vbr_bp = bio;
+	req->vbr_bio = bio;
 	req->vbr_ack = -1;
-	req->vbr_barrier = 0;
 	req->vbr_hdr.ioprio = 1;
 	bp = bio->bio_buf;
 
@@ -721,15 +711,6 @@ vtblk_bio_request(struct vtblk_softc *sc)
 		break;
 	}
 
-#if 0
-	if (bp->b_flags & B_ORDERED) {
-		if ((sc->vtblk_flags & VTBLK_FLAG_BARRIER) == 0)
-			req->vbr_barrier = 1;
-		else
-			req->vbr_hdr.type |= VIRTIO_BLK_T_BARRIER;
-	}
-#endif
-
 	return (req);
 }
 
@@ -739,26 +720,12 @@ vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
 	struct sglist *sg;
 	struct bio *bio;
 	struct buf *bp;
-	int ordered, writable, error;
+	int writable, error;
 
 	sg = sc->vtblk_sglist;
-	bio = req->vbr_bp;
+	bio = req->vbr_bio;
 	bp = bio->bio_buf;
-	ordered = 0;
 	writable = 0;
-
-	if (sc->vtblk_req_ordered != NULL)
-		return (EBUSY);
-
-	if (req->vbr_barrier) {
-		/*
-		 * This request will be executed once all
-		 * the in-flight requests are completed.
-		 */
-		if (!virtqueue_empty(sc->vtblk_vq))
-			return (EBUSY);
-		ordered = 1;
-	}
 
 	/*
 	 * sglist is live throughout this subroutine.
@@ -789,8 +756,6 @@ vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
 
 	error = virtqueue_enqueue(sc->vtblk_vq, req, sg,
 				  sg->sg_nseg - writable, writable);
-	if (error == 0 && ordered)
-		sc->vtblk_req_ordered = req;
 
 	sglist_reset(sg);
 
@@ -826,14 +791,8 @@ retry:
 		return;
 
 	while ((req = virtqueue_dequeue(vq, NULL)) != NULL) {
-		bio = req->vbr_bp;
+		bio = req->vbr_bio;
 		bp = bio->bio_buf;
-
-		if (sc->vtblk_req_ordered != NULL) {
-			/* This should be the only outstanding request. */
-			KKASSERT(sc->vtblk_req_ordered == req);
-			sc->vtblk_req_ordered = NULL;
-		}
 
 		if (req->vbr_ack == VIRTIO_BLK_S_OK)
 			bp->b_resid = 0;
@@ -926,7 +885,7 @@ vtblk_write_dump(struct vtblk_softc *sc, void *virtual, off_t offset,
 	req->vbr_hdr.ioprio = 1;
 	req->vbr_hdr.sector = offset / 512;
 
-	req->vbr_bp = &bio;
+	req->vbr_bio = &bio;
 	bzero(&bio, sizeof(struct bio));
 	bzero(&buf, sizeof(struct buf));
 
@@ -951,7 +910,7 @@ vtblk_flush_dump(struct vtblk_softc *sc)
 	req->vbr_hdr.ioprio = 1;
 	req->vbr_hdr.sector = 0;
 
-	req->vbr_bp = &bio;
+	req->vbr_bio = &bio;
 	bzero(&bio, sizeof(struct bio));
 	bzero(&bp, sizeof(struct buf));
 
@@ -1000,12 +959,11 @@ vtblk_drain_vq(struct vtblk_softc *sc, int skip_done)
 
 	while ((req = virtqueue_drain(vq, &last)) != NULL) {
 		if (!skip_done)
-			vtblk_finish_bio(req->vbr_bp, ENXIO);
+			vtblk_finish_bio(req->vbr_bio, ENXIO);
 
 		vtblk_enqueue_request(sc, req);
 	}
 
-	sc->vtblk_req_ordered = NULL;
 	KASSERT(virtqueue_empty(vq), ("virtqueue not empty"));
 }
 
@@ -1013,22 +971,16 @@ static void
 vtblk_drain(struct vtblk_softc *sc)
 {
 	struct bio_queue_head *bioq;
-	struct vtblk_request *req;
-	struct bio *bp;
+	struct bio *bio;
 
 	bioq = &sc->vtblk_bioq;
 
 	if (sc->vtblk_vq != NULL)
 		vtblk_drain_vq(sc, 0);
 
-	while ((req = vtblk_dequeue_ready(sc)) != NULL) {
-		vtblk_finish_bio(req->vbr_bp, ENXIO);
-		vtblk_enqueue_request(sc, req);
-	}
-
 	while (bioq_first(bioq) != NULL) {
-		bp = bioq_takefirst(bioq);
-		vtblk_finish_bio(bp, ENXIO);
+		bio = bioq_takefirst(bioq);
+		vtblk_finish_bio(bio, ENXIO);
 	}
 
 	vtblk_free_requests(sc);
@@ -1086,9 +1038,9 @@ vtblk_dequeue_request(struct vtblk_softc *sc)
 {
 	struct vtblk_request *req;
 
-	req = TAILQ_FIRST(&sc->vtblk_req_free);
+	req = SLIST_FIRST(&sc->vtblk_req_free);
 	if (req != NULL)
-		TAILQ_REMOVE(&sc->vtblk_req_free, req, vbr_link);
+		SLIST_REMOVE_HEAD(&sc->vtblk_req_free, vbr_link);
 
 	return (req);
 }
@@ -1098,26 +1050,7 @@ vtblk_enqueue_request(struct vtblk_softc *sc, struct vtblk_request *req)
 {
 
 	bzero(req, sizeof(struct vtblk_request));
-	TAILQ_INSERT_HEAD(&sc->vtblk_req_free, req, vbr_link);
-}
-
-static struct vtblk_request *
-vtblk_dequeue_ready(struct vtblk_softc *sc)
-{
-	struct vtblk_request *req;
-
-	req = TAILQ_FIRST(&sc->vtblk_req_ready);
-	if (req != NULL)
-		TAILQ_REMOVE(&sc->vtblk_req_ready, req, vbr_link);
-
-	return (req);
-}
-
-static void
-vtblk_enqueue_ready(struct vtblk_softc *sc, struct vtblk_request *req)
-{
-
-	TAILQ_INSERT_HEAD(&sc->vtblk_req_ready, req, vbr_link);
+	SLIST_INSERT_HEAD(&sc->vtblk_req_free, req, vbr_link);
 }
 
 static int
@@ -1141,10 +1074,10 @@ vtblk_request_error(struct vtblk_request *req)
 }
 
 static void
-vtblk_finish_bio(struct bio *bp, int error)
+vtblk_finish_bio(struct bio *bio, int error)
 {
 
-	biodone(bp);
+	biodone(bio);
 }
 
 static void
