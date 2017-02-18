@@ -287,7 +287,7 @@ struct socket;
 int	ip6_mrouter_set (struct socket *so, struct sockopt *sopt);
 int	ip6_mrouter_get (struct socket *so, struct sockopt *sopt);
 int	ip6_mrouter_done (void);
-int	mrt6_ioctl (int, caddr_t);
+int	mrt6_ioctl (u_long, caddr_t);
 #endif /* _KERNEL */
 
 #endif /* !_NETINET6_IP6_MROUTE_H_ */

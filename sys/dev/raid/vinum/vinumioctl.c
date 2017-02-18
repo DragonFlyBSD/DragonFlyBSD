@@ -317,12 +317,12 @@ vinumioctl(struct dev_ioctl_args *ap)
 	case VINUM_MOVE:
 	    moveobject((struct vinum_ioctl_msg *) data);
 	    break;
+	case VINUM_LABEL:
 	default:
 	    error = EINVAL;
 	    break;
 	}
 	break;
-    case VINUM_LABEL:
     case VINUM_DRIVE_TYPE:
     case VINUM_SD_TYPE:
     case VINUM_RAWSD_TYPE:
