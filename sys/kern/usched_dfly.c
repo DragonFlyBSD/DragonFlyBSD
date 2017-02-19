@@ -69,7 +69,7 @@ int dfly_rebalanced;
 #define PRIBASE_THREAD		(MAXPRI * 3)
 #define PRIBASE_NULL		(MAXPRI * 4)
 
-#define NQS	32			/* 32 run queues per priority */
+#define NQS	32			/* 32 run queues. */
 #define PPQ	(MAXPRI / NQS)		/* priorities per queue */
 #define PPQMASK	(PPQ - 1)
 
@@ -80,9 +80,9 @@ int dfly_rebalanced;
  */
 #define NICEPPQ		2
 #define ESTCPUPPQ	512
-#define ESTCPUMAX	(ESTCPUPPQ * NQS / 2)
+#define ESTCPUMAX	(ESTCPUPPQ * NQS)
 #define BATCHMAX	(ESTCPUFREQ * 30)
-#define PRIO_RANGE	(PRIO_MAX - PRIO_MIN + 1)	/* 41 */
+#define PRIO_RANGE	(PRIO_MAX - PRIO_MIN + 1)
 
 #define ESTCPULIM(v)	min((v), ESTCPUMAX)
 
@@ -1067,9 +1067,8 @@ dfly_resetpriority(struct lwp *lp)
 		 */
 		newpriority = (lp->lwp_proc->p_nice - PRIO_MIN) * PPQ / NICEPPQ;
 		newpriority += estcpu * PPQ / ESTCPUPPQ;
-		newpriority = newpriority * MAXPRI /
-			      (PRIO_RANGE * PPQ / NICEPPQ +
-			       ESTCPUMAX * PPQ / ESTCPUPPQ);
+		newpriority = newpriority * MAXPRI / (PRIO_RANGE * PPQ /
+			      NICEPPQ + ESTCPUMAX * PPQ / ESTCPUPPQ);
 		newpriority = PRIBASE_NORMAL + (newpriority & PRIMASK);
 		break;
 	case RTP_PRIO_IDLE:
