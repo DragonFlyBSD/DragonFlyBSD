@@ -558,7 +558,7 @@ struct radeon_sa_bo {
  * GEM objects.
  */
 struct radeon_gem {
-	struct spinlock		mutex;
+	struct lock		mutex;
 	struct list_head	objects;
 };
 
@@ -2379,7 +2379,7 @@ struct radeon_device {
 	unsigned 		debugfs_count;
 	/* virtual memory */
 	struct radeon_vm_manager	vm_manager;
-	struct spinlock			gpu_clock_mutex;
+	struct lock			gpu_clock_mutex;
 	/* memory stats */
 	atomic64_t			vram_usage;
 	atomic64_t			gtt_usage;
@@ -2388,7 +2388,7 @@ struct radeon_device {
 	struct radeon_atif		atif;
 	struct radeon_atcs		atcs;
 	/* srbm instance registers */
-	struct spinlock			srbm_mutex;
+	struct lock			srbm_mutex;
 	/* clock, powergating flags */
 	u32 cg_flags;
 	u32 pg_flags;

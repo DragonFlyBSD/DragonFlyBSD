@@ -1279,11 +1279,12 @@ int radeon_device_init(struct radeon_device *rdev,
 	lockinit(&rdev->dc_hw_i2c_mutex,
 		 "drm__radeon_device__dc_hw_i2c_mutex", 0, LK_CANRECURSE);
 	atomic_set(&rdev->ih.lock, 0);
-	spin_init(&rdev->gem.mutex, "radeon_gemmtx");
+	lockinit(&rdev->gem.mutex, "radeon_gemmtx", 0, LK_CANRECURSE);
 	lockinit(&rdev->pm.mutex, "drm__radeon_device__pm__mutex", 0,
 		 LK_CANRECURSE);
-	spin_init(&rdev->gpu_clock_mutex, "radeon_clockmtx");
-	spin_init(&rdev->srbm_mutex, "radeon_srbm_mutex");
+
+	lockinit(&rdev->gpu_clock_mutex, "radeon_clockmtx", 0, LK_CANRECURSE);
+	lockinit(&rdev->srbm_mutex, "radeon_srbm_mutex", 0, LK_CANRECURSE);
 	lockinit(&rdev->pm.mclk_lock, "drm__radeon_device__pm__mclk_lock", 0,
 		 LK_CANRECURSE);
 	lockinit(&rdev->exclusive_lock, "drm__radeon_device__exclusive_lock",

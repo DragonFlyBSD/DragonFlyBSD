@@ -75,9 +75,9 @@ static void radeon_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 
 	radeon_update_memory_usage(bo, bo->tbo.mem.mem_type, -1);
 
-	spin_lock(&bo->rdev->gem.mutex);
+	mutex_lock(&bo->rdev->gem.mutex);
 	list_del_init(&bo->list);
-	spin_unlock(&bo->rdev->gem.mutex);
+	mutex_unlock(&bo->rdev->gem.mutex);
 	radeon_bo_clear_surface_reg(bo);
 	WARN_ON(!list_empty(&bo->va));
 	drm_gem_object_release(&bo->gem_base);
@@ -403,9 +403,9 @@ void radeon_bo_force_delete(struct radeon_device *rdev)
 		dev_err(rdev->dev, "%p %p %lu %lu force free\n",
 			&bo->gem_base, bo, (unsigned long)bo->gem_base.size,
 			*((unsigned long *)&bo->gem_base.refcount));
-		spin_lock(&bo->rdev->gem.mutex);
+		mutex_lock(&bo->rdev->gem.mutex);
 		list_del_init(&bo->list);
-		spin_unlock(&bo->rdev->gem.mutex);
+		mutex_unlock(&bo->rdev->gem.mutex);
 		/* this should unref the ttm bo */
 		drm_gem_object_unreference(&bo->gem_base);
 	}

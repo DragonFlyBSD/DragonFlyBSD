@@ -88,9 +88,9 @@ retry:
 	*obj = &robj->gem_base;
 	robj->pid = curproc ? curproc->p_pid : 0;
 
-	spin_lock(&rdev->gem.mutex);
+	mutex_lock(&rdev->gem.mutex);
 	list_add_tail(&robj->list, &rdev->gem.objects);
-	spin_unlock(&rdev->gem.mutex);
+	mutex_unlock(&rdev->gem.mutex);
 
 	return 0;
 }
