@@ -596,7 +596,7 @@ static int intel_fbc_alloc_cfb(struct intel_crtc *crtc)
 			   dev_priv->mm.stolen_base + compressed_llb->start);
 	}
 
-	DRM_DEBUG_KMS("reserved %lu bytes of contiguous stolen space for FBC, threshold: %d\n",
+	DRM_DEBUG_KMS("reserved %llu bytes of contiguous stolen space for FBC, threshold: %d\n",
 		      fbc->compressed_fb.size, fbc->threshold);
 
 	return 0;

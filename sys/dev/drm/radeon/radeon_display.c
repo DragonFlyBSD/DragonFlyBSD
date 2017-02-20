@@ -495,7 +495,7 @@ static int radeon_crtc_page_flip(struct drm_crtc *crtc,
 	}
 	/* Only 27 bit offset for legacy CRTC */
 	r = radeon_bo_pin_restricted(new_rbo, RADEON_GEM_DOMAIN_VRAM,
-				     ASIC_IS_AVIVO(rdev) ? 0 : 1 << 27, &base);
+				     ASIC_IS_AVIVO(rdev) ? 0 : 1 << 27, (u64 *)&base);
 	if (unlikely(r != 0)) {
 		radeon_bo_unreserve(new_rbo);
 		r = -EINVAL;

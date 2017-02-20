@@ -536,7 +536,7 @@ struct radeon_sa_manager {
 	struct list_head	flist[RADEON_NUM_RINGS];
 	struct list_head	olist;
 	unsigned		size;
-	uint64_t		gpu_addr;
+	u64			gpu_addr;
 	void			*cpu_ptr;
 	uint32_t		domain;
 	uint32_t		align;
@@ -962,19 +962,19 @@ struct r600_ih {
 struct radeon_rlc {
 	/* for power gating */
 	struct radeon_bo	*save_restore_obj;
-	uint64_t		save_restore_gpu_addr;
+	u64			save_restore_gpu_addr;
 	volatile uint32_t	*sr_ptr;
 	const u32               *reg_list;
 	u32                     reg_list_size;
 	/* for clear state */
 	struct radeon_bo	*clear_state_obj;
-	uint64_t		clear_state_gpu_addr;
+	u64			clear_state_gpu_addr;
 	volatile uint32_t	*cs_ptr;
 	const struct cs_section_def   *cs_data;
 	u32                     clear_state_size;
 	/* for cp tables */
 	struct radeon_bo	*cp_table_obj;
-	uint64_t		cp_table_gpu_addr;
+	u64			cp_table_gpu_addr;
 	volatile uint32_t	*cp_table_ptr;
 	u32                     cp_table_size;
 };
@@ -1644,7 +1644,7 @@ int radeon_pm_get_type_index(struct radeon_device *rdev,
 struct radeon_uvd {
 	struct radeon_bo	*vcpu_bo;
 	void			*cpu_addr;
-	uint64_t		gpu_addr;
+	u64			gpu_addr;
 	void			*saved_bo;
 	atomic_t		handles[RADEON_MAX_UVD_HANDLES];
 	struct drm_file		*filp[RADEON_MAX_UVD_HANDLES];
@@ -1687,7 +1687,7 @@ int radeon_uvd_send_upll_ctlreq(struct radeon_device *rdev,
 
 struct radeon_vce {
 	struct radeon_bo	*vcpu_bo;
-	uint64_t		gpu_addr;
+	u64			gpu_addr;
 	unsigned		fw_version;
 	unsigned		fb_version;
 	atomic_t		handles[RADEON_MAX_VCE_HANDLES];

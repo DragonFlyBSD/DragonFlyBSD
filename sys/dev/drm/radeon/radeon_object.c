@@ -418,9 +418,9 @@ int radeon_bo_init(struct radeon_device *rdev)
 		rdev->mc.vram_mtrr = arch_phys_wc_add(rdev->mc.aper_base,
 						      rdev->mc.aper_size);
 	}
-	DRM_INFO("Detected VRAM RAM=%juM, BAR=%juM\n",
+	DRM_INFO("Detected VRAM RAM=%lluM, BAR=%lluM\n",
 		rdev->mc.mc_vram_size >> 20,
-		(uintmax_t)rdev->mc.aper_size >> 20);
+		(unsigned long long)rdev->mc.aper_size >> 20);
 	DRM_INFO("RAM width %dbits %cDR\n",
 			rdev->mc.vram_width, rdev->mc.vram_is_ddr ? 'D' : 'S');
 	return radeon_ttm_init(rdev);

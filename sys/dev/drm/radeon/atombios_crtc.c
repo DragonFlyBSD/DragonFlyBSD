@@ -1166,7 +1166,7 @@ static int dce4_crtc_do_set_base(struct drm_crtc *crtc,
 	if (atomic)
 		fb_location = radeon_bo_gpu_offset(rbo);
 	else {
-		r = radeon_bo_pin(rbo, RADEON_GEM_DOMAIN_VRAM, &fb_location);
+		r = radeon_bo_pin(rbo, RADEON_GEM_DOMAIN_VRAM, (u64 *)&fb_location);
 		if (unlikely(r != 0)) {
 			radeon_bo_unreserve(rbo);
 			return -EINVAL;
@@ -1479,7 +1479,7 @@ static int avivo_crtc_do_set_base(struct drm_crtc *crtc,
 	if (atomic)
 		fb_location = radeon_bo_gpu_offset(rbo);
 	else {
-		r = radeon_bo_pin(rbo, RADEON_GEM_DOMAIN_VRAM, &fb_location);
+		r = radeon_bo_pin(rbo, RADEON_GEM_DOMAIN_VRAM, (u64 *)&fb_location);
 		if (unlikely(r != 0)) {
 			radeon_bo_unreserve(rbo);
 			return -EINVAL;

@@ -3308,7 +3308,7 @@ static int framebuffer_check(const struct drm_mode_fb_cmd2 *r)
 		}
 
 		if (r->modifier[i] && !(r->flags & DRM_MODE_FB_MODIFIERS)) {
-			DRM_DEBUG_KMS("bad fb modifier %lu for plane %d\n",
+			DRM_DEBUG_KMS("bad fb modifier %llu for plane %d\n",
 				      r->modifier[i], i);
 			return -EINVAL;
 		}
@@ -5512,7 +5512,7 @@ int drm_mode_mmap_dumb_ioctl(struct drm_device *dev,
 	if (!dev->driver->dumb_map_offset)
 		return -ENOSYS;
 
-	return dev->driver->dumb_map_offset(file_priv, dev, args->handle, &args->offset);
+	return dev->driver->dumb_map_offset(file_priv, dev, args->handle, (uint64_t *)&args->offset);
 }
 
 /**

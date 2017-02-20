@@ -429,7 +429,7 @@ retry:
 		return r;
 	/* Only 27 bit offset for legacy CRTC */
 	r = radeon_bo_pin_restricted(rbo, RADEON_GEM_DOMAIN_VRAM, 1 << 27,
-				     &base);
+				     (u64 *)&base);
 	if (unlikely(r != 0)) {
 		radeon_bo_unreserve(rbo);
 

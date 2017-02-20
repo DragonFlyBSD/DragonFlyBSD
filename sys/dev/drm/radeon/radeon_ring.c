@@ -398,7 +398,7 @@ int radeon_ring_init(struct radeon_device *rdev, struct radeon_ring *ring, unsig
 			return r;
 		}
 		r = radeon_bo_pin(ring->ring_obj, RADEON_GEM_DOMAIN_GTT,
-					&ring->gpu_addr);
+					(u64 *)&ring->gpu_addr);
 		if (r) {
 			radeon_bo_unreserve(ring->ring_obj);
 			radeon_bo_unref(&ring->ring_obj);

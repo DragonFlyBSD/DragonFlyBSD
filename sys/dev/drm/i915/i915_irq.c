@@ -2834,7 +2834,7 @@ semaphore_wait_to_signaller_ring(struct intel_engine_cs *ring, u32 ipehr, u64 of
 		}
 	}
 
-	DRM_ERROR("No signaller ring found for ring %i, ipehr 0x%08x, offset 0x%016lx\n",
+	DRM_ERROR("No signaller ring found for ring %i, ipehr 0x%08x, offset 0x%016llx\n",
 		  ring->id, ipehr, offset);
 
 	return NULL;

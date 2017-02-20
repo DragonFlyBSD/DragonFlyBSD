@@ -154,7 +154,7 @@ int radeon_crtc_cursor_set(struct drm_crtc *crtc,
 	struct radeon_device *rdev = crtc->dev->dev_private;
 	struct drm_gem_object *obj;
 	struct radeon_bo *robj;
-	uint64_t gpu_addr;
+	u64 gpu_addr;
 	int ret;
 
 	if (!handle) {

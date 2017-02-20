@@ -334,7 +334,7 @@ int radeon_gem_mmap_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_radeon_gem_mmap *args = data;
 
-	return radeon_mode_dumb_mmap(filp, dev, args->handle, &args->addr_ptr);
+	return radeon_mode_dumb_mmap(filp, dev, args->handle, (uint64_t *)&args->addr_ptr);
 }
 
 int radeon_gem_busy_ioctl(struct drm_device *dev, void *data,

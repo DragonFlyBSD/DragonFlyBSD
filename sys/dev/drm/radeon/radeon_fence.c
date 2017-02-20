@@ -431,7 +431,7 @@ static int radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
  */
 int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 {
-	uint64_t seq[RADEON_NUM_RINGS] = {};
+	u64 seq[RADEON_NUM_RINGS] = {};
 	int r;
 
 	if (fence == NULL) {
@@ -465,7 +465,7 @@ int radeon_fence_wait_any(struct radeon_device *rdev,
 			  struct radeon_fence **fences,
 			  bool intr)
 {
-	uint64_t seq[RADEON_NUM_RINGS];
+	u64 seq[RADEON_NUM_RINGS];
 	unsigned i, num_rings = 0;
 	int r;
 
@@ -512,7 +512,7 @@ int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
 		   already the last emited fence */
 		return -ENOENT;
 	}
-	r = radeon_fence_wait_seq_timeout(rdev, seq, false, INT_MAX);
+	r = radeon_fence_wait_seq_timeout(rdev, (u64 *)seq, false, INT_MAX);
 	if (r < 0)
 		return r;
 	return 0;
@@ -530,7 +530,7 @@ int radeon_fence_wait_next(struct radeon_device *rdev, int ring)
  */
 int radeon_fence_wait_empty(struct radeon_device *rdev, int ring)
 {
-	uint64_t seq[RADEON_NUM_RINGS] = {};
+	u64 seq[RADEON_NUM_RINGS] = {};
 	int r;
 
 	seq[ring] = rdev->fence_drv[ring].sync_seq[ring];

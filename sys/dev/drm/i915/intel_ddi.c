@@ -862,8 +862,8 @@ static void hsw_wrpll_update_rnp(uint64_t freq2k, unsigned budget,
 	 */
 	a = freq2k * budget * p * r2;
 	b = freq2k * budget * best->p * best->r2;
-	diff = abs_diff(freq2k * p * r2, LC_FREQ_2K * n2);
-	diff_best = abs_diff(freq2k * best->p * best->r2,
+	diff = abs_diff((u64)freq2k * p * r2, LC_FREQ_2K * n2);
+	diff_best = abs_diff((u64)freq2k * best->p * best->r2,
 			     LC_FREQ_2K * best->n2);
 	c = 1000000 * diff;
 	d = 1000000 * diff_best;

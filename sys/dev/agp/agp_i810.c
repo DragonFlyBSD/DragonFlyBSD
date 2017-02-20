@@ -1629,8 +1629,8 @@ intel_gtt_clear_range(u_int first_entry, u_int num_entries)
 	agp_intel_gtt_clear_range(intel_agp, first_entry, num_entries);
 }
 
-void intel_gtt_get(size_t *gtt_total, size_t *stolen_size,
-		   phys_addr_t *mappable_base, unsigned long *mappable_end)
+void intel_gtt_get(u64 *gtt_total, size_t *stolen_size,
+		   phys_addr_t *mappable_base, u64 *mappable_end)
 {
 	struct agp_info ainfo;
 

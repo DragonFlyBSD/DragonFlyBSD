@@ -446,7 +446,7 @@ int radeon_wb_init(struct radeon_device *rdev)
 			return r;
 		}
 		r = radeon_bo_pin(rdev->wb.wb_obj, RADEON_GEM_DOMAIN_GTT,
-				&rdev->wb.gpu_addr);
+				(u64 *)&rdev->wb.gpu_addr);
 		if (r) {
 			radeon_bo_unreserve(rdev->wb.wb_obj);
 			dev_warn(rdev->dev, "(%d) pin WB bo failed\n", r);
@@ -556,7 +556,7 @@ void radeon_vram_location(struct radeon_device *rdev, struct radeon_mc *mc, u64 
 	mc->vram_end = mc->vram_start + mc->mc_vram_size - 1;
 	if (limit && limit < mc->real_vram_size)
 		mc->real_vram_size = limit;
-	dev_info(rdev->dev, "VRAM: %juM 0x%016jX - 0x%016jX (%juM used)\n",
+	dev_info(rdev->dev, "VRAM: %lluM 0x%016llX - 0x%016llX (%lluM used)\n",
 			mc->mc_vram_size >> 20, mc->vram_start,
 			mc->vram_end, mc->real_vram_size >> 20);
 }
@@ -593,7 +593,7 @@ void radeon_gtt_location(struct radeon_device *rdev, struct radeon_mc *mc)
 		mc->gtt_start = (mc->vram_end + 1 + mc->gtt_base_align) & ~mc->gtt_base_align;
 	}
 	mc->gtt_end = mc->gtt_start + mc->gtt_size - 1;
-	dev_info(rdev->dev, "GTT: %juM 0x%016jX - 0x%016jX\n",
+	dev_info(rdev->dev, "GTT: %lluM 0x%016llX - 0x%016llX\n",
 			mc->gtt_size >> 20, mc->gtt_start, mc->gtt_end);
 }
 
@@ -1453,7 +1453,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	if (r)
 		DRM_ERROR("ib ring test failed (%d).\n", r);
 
-	DRM_INFO("%s: Taking over the fictitious range 0x%jx-0x%jx\n",
+	DRM_INFO("%s: Taking over the fictitious range 0x%lx-0x%llx\n",
 	    __func__, (uintmax_t)rdev->mc.aper_base,
 	    (uintmax_t)rdev->mc.aper_base + rdev->mc.visible_vram_size);
 	r = vm_phys_fictitious_reg_range(
@@ -1462,7 +1462,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	    VM_MEMATTR_WRITE_COMBINING);
 	if (r != 0) {
 		DRM_ERROR("Failed to register fictitious range "
-		    "0x%jx-0x%jx (%d).\n", (uintmax_t)rdev->mc.aper_base,
+		    "0x%lx-0x%llx (%d).\n", (uintmax_t)rdev->mc.aper_base,
 		    (uintmax_t)rdev->mc.aper_base + rdev->mc.visible_vram_size, r);
 		return (-r);
 	}

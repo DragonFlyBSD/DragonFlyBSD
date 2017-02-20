@@ -153,7 +153,7 @@ int radeon_gart_table_vram_alloc(struct radeon_device *rdev)
  */
 int radeon_gart_table_vram_pin(struct radeon_device *rdev)
 {
-	uint64_t gpu_addr;
+	u64 gpu_addr;
 	int r;
 
 	r = radeon_bo_reserve(rdev->gart.robj, false);

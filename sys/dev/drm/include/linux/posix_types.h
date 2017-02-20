@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,23 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _ASM_GENERIC_INT_LL64_H_
-#define _ASM_GENERIC_INT_LL64_H_
+#ifndef _POSIX_TYPES_H_
+#define _POSIX_TYPES_H_
 
-#include <uapi_asm-generic/int-ll64.h>
+#include <sys/types.h>
 
-typedef int8_t s8;
-typedef uint8_t u8;
+typedef size_t __kernel_size_t;
 
-typedef int16_t s16;
-typedef uint16_t u16;
-
-typedef int32_t s32;
-typedef uint32_t u32;
-
-typedef signed long long s64;
-typedef unsigned long long u64;
-
-#define U64_C(x) x ## ULL
-
-#endif	/* _ASM_GENERIC_INT_LL64_H_ */
+#endif	/* _POSIX_TYPES_H_ */

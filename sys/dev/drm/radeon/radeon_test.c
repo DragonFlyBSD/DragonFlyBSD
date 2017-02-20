@@ -36,7 +36,7 @@ static void radeon_do_test_moves(struct radeon_device *rdev, int flag)
 	struct radeon_bo *vram_obj = NULL;
 	struct radeon_bo **gtt_obj = NULL;
 	struct radeon_fence *fence = NULL;
-	uint64_t gtt_addr, vram_addr;
+	u64 gtt_addr, vram_addr;
 	unsigned n, size;
 	int i, r, ring;
 
@@ -206,7 +206,7 @@ static void radeon_do_test_moves(struct radeon_device *rdev, int flag)
 
 		radeon_bo_kunmap(gtt_obj[i]);
 
-		DRM_INFO("Tested GTT->VRAM and VRAM->GTT copy for GTT offset 0x%jx\n",
+		DRM_INFO("Tested GTT->VRAM and VRAM->GTT copy for GTT offset 0x%llx\n",
 			 (uintmax_t)gtt_addr - rdev->mc.gtt_start);
 	}
 

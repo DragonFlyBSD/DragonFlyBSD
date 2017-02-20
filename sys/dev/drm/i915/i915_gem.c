@@ -2244,7 +2244,7 @@ i915_gem_mmap_gtt_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_i915_gem_mmap_gtt *args = data;
 
-	return i915_gem_mmap_gtt(file, dev, args->handle, &args->offset);
+	return i915_gem_mmap_gtt(file, dev, args->handle, (uint64_t *)&args->offset);
 }
 
 /* Immediately discard the backing storage */
@@ -3652,7 +3652,7 @@ i915_gem_object_bind_to_vm(struct drm_i915_gem_object *obj,
 	 * attempt to find space.
 	 */
 	if (size > end) {
-		DRM_DEBUG("Attempting to bind an object (view type=%u) larger than the aperture: size=%lu > %s aperture=%lu\n",
+		DRM_DEBUG("Attempting to bind an object (view type=%u) larger than the aperture: size=%llu > %s aperture=%llu\n",
 			  ggtt_view ? ggtt_view->type : 0,
 			  size,
 			  flags & PIN_MAPPABLE ? "mappable" : "total",

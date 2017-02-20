@@ -697,7 +697,7 @@ struct intel_uncore_funcs {
 	uint8_t  (*mmio_readb)(struct drm_i915_private *dev_priv, i915_reg_t r, bool trace);
 	uint16_t (*mmio_readw)(struct drm_i915_private *dev_priv, i915_reg_t r, bool trace);
 	uint32_t (*mmio_readl)(struct drm_i915_private *dev_priv, i915_reg_t r, bool trace);
-	uint64_t (*mmio_readq)(struct drm_i915_private *dev_priv, i915_reg_t r, bool trace);
+	u64      (*mmio_readq)(struct drm_i915_private *dev_priv, i915_reg_t r, bool trace);
 
 	void (*mmio_writeb)(struct drm_i915_private *dev_priv, i915_reg_t r,
 				uint8_t val, bool trace);
@@ -706,7 +706,7 @@ struct intel_uncore_funcs {
 	void (*mmio_writel)(struct drm_i915_private *dev_priv, i915_reg_t r,
 				uint32_t val, bool trace);
 	void (*mmio_writeq)(struct drm_i915_private *dev_priv, i915_reg_t r,
-				uint64_t val, bool trace);
+				u64 val, bool trace);
 };
 
 struct intel_uncore {

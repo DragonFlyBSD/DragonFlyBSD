@@ -104,7 +104,7 @@ static void radeon_benchmark_move(struct radeon_device *rdev, unsigned size,
 	r = radeon_bo_reserve(sobj, false);
 	if (unlikely(r != 0))
 		goto out_cleanup;
-	r = radeon_bo_pin(sobj, sdomain, &saddr);
+	r = radeon_bo_pin(sobj, sdomain, (u64 *)&saddr);
 	radeon_bo_unreserve(sobj);
 	if (r) {
 		goto out_cleanup;
@@ -116,7 +116,7 @@ static void radeon_benchmark_move(struct radeon_device *rdev, unsigned size,
 	r = radeon_bo_reserve(dobj, false);
 	if (unlikely(r != 0))
 		goto out_cleanup;
-	r = radeon_bo_pin(dobj, ddomain, &daddr);
+	r = radeon_bo_pin(dobj, ddomain, (u64 *)&daddr);
 	radeon_bo_unreserve(dobj);
 	if (r) {
 		goto out_cleanup;
