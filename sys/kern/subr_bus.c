@@ -2084,11 +2084,24 @@ resource_kenv(const char *name, int unit, const char *resname, long *result)
 	const char *env;
 	char buf[64];
 
+	/*
+	 * DragonFly style loader.conf hinting
+	 */
 	ksnprintf(buf, sizeof(buf), "%s%d.%s", name, unit, resname);
 	if ((env = kgetenv(buf)) != NULL) {
 		*result = strtol(env, NULL, 0);
 		return(0);
 	}
+
+	/*
+	 * Also support FreeBSD style loader.conf hinting
+	 */
+	ksnprintf(buf, sizeof(buf), "hint.%s.%d.%s", name, unit, resname);
+	if ((env = kgetenv(buf)) != NULL) {
+		*result = strtol(env, NULL, 0);
+		return(0);
+	}
+
 	return (ENOENT);
 }
 
@@ -2140,7 +2153,19 @@ resource_string_value(const char *name, int unit, const char *resname,
 	char buf[64];
 	const char *env;
 
+	/*
+	 * DragonFly style loader.conf hinting
+	 */
 	ksnprintf(buf, sizeof(buf), "%s%d.%s", name, unit, resname);
+	if ((env = kgetenv(buf)) != NULL) {
+		*result = env;
+		return 0;
+	}
+
+	/*
+	 * Also support FreeBSD style loader.conf hinting
+	 */
+	ksnprintf(buf, sizeof(buf), "hint.%s.%d.%s", name, unit, resname);
 	if ((env = kgetenv(buf)) != NULL) {
 		*result = env;
 		return 0;
