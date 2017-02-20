@@ -16,8 +16,8 @@ CFLAGS+=	-I${.CURDIR}/../../lib/libncurses/include
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.OBJDIR}
 
-# Ideally this should be -lprivate_ncursesw
-# Wide version can be used when DragonFly 3.3 branch is created
+# Glue for cross-build situations such as when building release on master
+#
 .if defined(BOOTSTRAPPING)
 CFLAGS+=	-DBOOTSTRAPPING
 .  if exists (/usr/lib/libncurses.a)
@@ -27,6 +27,7 @@ LDADD=		-lncurses
 DPADD=		${LIBNCURSES}
 LDADD=		-lprivate_ncurses
 LDFLAGS+=	-rpath /lib/priv -L /usr/lib/priv
+CFLAGS+=	-I/usr/include/priv/ncurses
 .  endif
 .else
 DPADD=		${LIBNCURSES}

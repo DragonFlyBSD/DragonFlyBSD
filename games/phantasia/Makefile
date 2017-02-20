@@ -12,6 +12,10 @@ HIDEGAME=hidegame
 MAN=	phantasia.6
 CLEANFILES=${DATAFILES} cross-phantglobs.no map setup.nx setup.no stamp.setuprun
 
+# Needed in order to build release on master
+#
+NXCFLAGS+= -I/usr/include/priv/ncurses
+
 all: stamp.setuprun
 
 build-tools: setup.nx
