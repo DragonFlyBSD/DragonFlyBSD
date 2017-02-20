@@ -35,8 +35,8 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 	int i;
 	int error;
 	int saflags;
-	int iolen;
-	int bcount;
+	size_t iolen;
+	size_t bcount;
 	caddr_t ubase;
 	struct buf *bp;
 
