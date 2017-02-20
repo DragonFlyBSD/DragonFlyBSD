@@ -438,6 +438,8 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 
 	if (count <= 0)
 		return EINVAL;
+	/* catch call argument mistakes */
+	KKASSERT(pri > 0 && pri < TDPRI_MAX);
 
 	tq = *tqp;
 	cpu = ncpu;

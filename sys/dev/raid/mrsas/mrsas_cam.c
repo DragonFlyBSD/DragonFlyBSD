@@ -144,7 +144,8 @@ int mrsas_cam_attach(struct mrsas_softc *sc)
         taskqueue_thread_enqueue, &sc->ev_tq);
 
     /* Run the task queue with lowest priority */
-    taskqueue_start_threads(&sc->ev_tq, 1, 255, -1, "%s taskq",
+    taskqueue_start_threads(&sc->ev_tq, 1, TDPRI_KERN_DAEMON,
+			    -1, "%s taskq",
         device_get_nameunit(sc->mrsas_dev));
     lockmgr(&sc->sim_lock, LK_EXCLUSIVE);
     if (xpt_bus_register(sc->sim_0, 0) != CAM_SUCCESS)

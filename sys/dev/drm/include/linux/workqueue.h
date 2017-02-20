@@ -148,7 +148,8 @@ _create_workqueue_common(char *name, int cpus)
 	wq = kmalloc(sizeof(*wq), M_DRM, M_WAITOK);
 	wq->taskqueue = taskqueue_create((name), M_WAITOK,
 	    taskqueue_thread_enqueue,  &wq->taskqueue);
-	taskqueue_start_threads(&wq->taskqueue, cpus, 0, -1, "%s", name);
+	taskqueue_start_threads(&wq->taskqueue, cpus,
+				TDPRI_KERN_DAEMON, -1, "%s", name);
 
 	return (wq);
 }

@@ -1407,7 +1407,8 @@ int radeon_device_init(struct radeon_device *rdev,
 
 	rdev->tq = taskqueue_create("radeonkms", M_WAITOK,
 	    taskqueue_thread_enqueue, &rdev->tq);
-	taskqueue_start_threads(&rdev->tq, 1, 0, -1, "radeon taskq");
+	taskqueue_start_threads(&rdev->tq, 1, TDPRI_KERN_DAEMON,
+				-1, "radeon taskq");
 
 	if (rdev->flags & RADEON_IS_PX)
 		radeon_device_handle_px_quirks(rdev);

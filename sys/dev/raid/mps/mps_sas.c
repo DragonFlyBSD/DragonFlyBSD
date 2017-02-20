@@ -722,7 +722,8 @@ mps_attach_sas(struct mps_softc *sc)
 	    taskqueue_thread_enqueue, &sassc->ev_tq);
 
 	/* Run the task queue with lowest priority */
-	taskqueue_start_threads(&sassc->ev_tq, 1, 255, -1, "%s taskq",
+	taskqueue_start_threads(&sassc->ev_tq, 1, TDPRI_KERN_DAEMON,
+				-1, "%s taskq",
 	    device_get_nameunit(sc->mps_dev));
 
 	TAILQ_INIT(&sassc->ccb_scanq);
