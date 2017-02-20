@@ -82,7 +82,7 @@ int dfly_rebalanced;
  *
  * Remember that NICE runs over the whole -20 to +20 range.
  */
-#define NICE_QS		12	/* -20 to +20 shift in whole queues */
+#define NICE_QS		24	/* -20 to +20 shift in whole queues */
 #define EST_QS		12	/* 0-MAX shift in whole queues */
 #define ESTCPUPPQ	512
 #define ESTCPUMAX	(ESTCPUPPQ * EST_QS)
@@ -970,7 +970,7 @@ dfly_recalculate_estcpu(struct lwp *lp)
 			ttlticks = 0;
 			lp->lwp_cpbase = cpbase;
 		}
-		if (ttlticks == 0)
+		if (ttlticks < 4)
 			return;
 		updatepcpu(lp, lp->lwp_cpticks, ttlticks);
 
