@@ -2186,7 +2186,6 @@ options		DEBUG_PCTRACK
 # Note that documenting these are not considered an affront.
 
 #options	ACPI_NO_SEMAPHORES
-options 	AHC_DUMP_EEPROM
 #options 	BKTR_ALLOC_PAGES=xxx
 options 	CAM_DEBUG_DELAY
 options 	CLUSTERDEBUG
