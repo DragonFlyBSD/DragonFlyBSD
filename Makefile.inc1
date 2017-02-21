@@ -723,9 +723,6 @@ nativekernel:	bk_build_list bk_kernwarn
 	echo ${KERNEL_VERSION_${_kernel}} > ${KRNLOBJDIR}/${_kernel}/version
 .endif
 	touch ${KRNLOBJDIR}/${_kernel}/.nativekernel_run
-	cd ${KRNLOBJDIR}/${_kernel}; \
-	    MAKESRCPATH=${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm \
-	    make -DBOOTSTRAPPING -f ${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm/Makefile
 .if !defined(NO_KERNELDEPEND)
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    make KERNEL=${INSTKERNNAME} depend
