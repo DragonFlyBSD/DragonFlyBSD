@@ -302,7 +302,7 @@ TUNABLE_INT("hw.re.eee_enable", &eee_enable);
 static int phy_power_saving = 1;
 TUNABLE_INT("hw.re.phy_power_saving", &phy_power_saving);
 static int phy_mdix_mode = RE_ETH_PHY_AUTO_MDI_MDIX;
-TUNABLE_INT("hw.re.phy_mdix_mode", &phy_power_saving);
+TUNABLE_INT("hw.re.phy_mdix_mode", &phy_mdix_mode);
 
 #define RE_CSUM_FEATURES    (CSUM_IP | CSUM_TCP | CSUM_UDP)
 
