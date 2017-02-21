@@ -3767,7 +3767,15 @@ vm_map_growstack (vm_map_t map, vm_offset_t addr)
 	p = curthread->td_proc;
 	KKASSERT(lp != NULL);
 	vm = lp->lwp_vmspace;
-	KKASSERT(map == &vm->vm_map);
+
+	/*
+	 * Growstack is only allowed on the current process.  We disallow
+	 * other use cases, e.g. trying to access memory via procfs that
+	 * the stack hasn't grown into.
+	 */
+	if (map != &vm->vm_map) {
+		return KERN_FAILURE;
+	}
 
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 Retry:
