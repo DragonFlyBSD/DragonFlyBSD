@@ -33,36 +33,6 @@
 # Adaptec Array Controller driver options
 AAC_DEBUG		opt_aac.h
 
-# Adaptec aic7xxx SCSI controller options
-AHC_ALLOW_MEMIO		opt_aic7xxx.h	# Allow PCI devices to use memory
-					# mapped I/O
-
-AHC_TMODE_ENABLE	opt_aic7xxx.h	# Bitmap of units to enable
-					# targetmode operations.
-
-AHC_DUMP_EEPROM		opt_aic7xxx.h	# Dump the contents of our
-					# configuration prom.
-
-AHC_DEBUG		opt_aic7xxx.h	# Compile in Aic7xxx Debugging code.
-
-AHC_DEBUG_OPTS		opt_aic7xxx.h	# Aic7xxx driver debugging options.
-					# See sys/dev/aic7xxx/aic7xxx.h
-
-AHC_REG_PRETTY_PRINT	opt_aic7xxx.h	# Print register bitfields in debug
-					# output.  Adds ~15k to driver.
-
-# Adaptec aic79xx SCSI controller options
-AHD_DEBUG		opt_aic79xx.h	# Compile in Aic79xx Debugging code.
-
-AHD_DEBUG_OPTS		opt_aic79xx.h	# Aic79xx driver debugging options.
-					# See sys/dev/aic7xxx/aic79xx.h
-
-AHD_TMODE_ENABLE	opt_aic79xx.h	# Bitmap of units to enable
-					# targetmode operations.
-
-AHD_REG_PRETTY_PRINT	opt_aic79xx.h	# Print register bitfields in debug
-					# output.  Adds ~15k to driver.
-
 ADW_ALLOW_MEMIO		opt_adw.h	# Allow PCI devices to use memory
 					# mapped I/O
 AMR_DEBUG		opt_amr.h

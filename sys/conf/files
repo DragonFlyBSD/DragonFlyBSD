@@ -9,32 +9,6 @@ acpi_quirks.h			optional acpi				   \
 	compile-with	"${AWK} -f $S/tools/acpi_quirks2h.awk $S/dev/acpica/acpi_quirks" \
 	no-obj no-implicit-rule before-depend				   \
 	clean		"acpi_quirks.h"
-aicasm.nx			optional ahc				   \
-	dependency 	"$S/dev/disk/aic7xxx/aicasm/*.[chyl]"		   \
-	compile-with	"${MAKE} -f $S/dev/disk/aic7xxx/aicasm/Makefile MAKESRCPATH=$S/dev/disk/aic7xxx/aicasm" \
-	no-obj no-implicit-rule						   \
-	clean		"aicasm* y.tab.h"
-aicasm.nx			optional ahd			  	   \
-	dependency 	"$S/dev/disk/aic7xxx/aicasm/*.[chyl]"		   \
-	compile-with	"${MAKE} -f $S/dev/disk/aic7xxx/aicasm/Makefile MAKESRCPATH=$S/dev/disk/aic7xxx/aicasm" \
-	no-obj no-implicit-rule						   \
-	clean		"aicasm* y.tab.h"
-aic7xxx_{seq.h,reg.h,reg_print.c}	optional ahc			   \
-	compile-with	"./aicasm.nx ${INCLUDES} -I$S/bus/cam/scsi -I$S/dev/disk/aic7xxx -o aic7xxx_seq.h -r aic7xxx_reg.h -p aic7xxx_reg_print.c -i $S/dev/disk/aic7xxx/aic7xxx_osm.h $S/dev/disk/aic7xxx/aic7xxx.seq"   \
-	no-obj no-implicit-rule before-depend				   \
-	clean		"aic7xxx_seq.h aic7xxx_reg.h aic7xxx_reg_print.c"  \
-	dependency	"$S/dev/disk/aic7xxx/aic7xxx.{reg,seq} $S/bus/cam/scsi/scsi_message.h aicasm.nx"
-aic7xxx_reg_print.o		optional ahc ahc_reg_pretty_print	\
-	compile-with	"${NORMAL_C} ${WERROR}"			\
-	no-implicit-rule local
-aic79xx_{seq.h,reg.h,reg_print.c}	optional ahd pci		   \
-	compile-with	"./aicasm.nx ${INCLUDES} -I$S/bus/cam/scsi -I$S/dev/disk/aic7xxx -o aic79xx_seq.h -r aic79xx_reg.h -p aic79xx_reg_print.c -i $S/dev/disk/aic7xxx/aic79xx_osm.h $S/dev/disk/aic7xxx/aic79xx.seq"   \
-	no-obj no-implicit-rule before-depend				   \
-	clean		"aic79xx_seq.h aic79xx_reg.h aic79xx_reg_print.c"  \
-	dependency	"$S/dev/disk/aic7xxx/aic79xx.{reg,seq} $S/bus/cam/scsi/scsi_message.h aicasm.nx"
-aic79xx_reg_print.o		optional ahd pci ahd_reg_pretty_print	\
-	compile-with	"${NORMAL_C} ${WERROR}"			\
-	no-implicit-rule local
 feeder_eq_gen.h			optional sound				   \
 	dependency	"$S/tools/sound/feeder_eq_mkfilter.awk"		   \
 	compile-with	"${AWK} -f $S/tools/sound/feeder_eq_mkfilter.awk -- ${FEEDER_EQ_PRESETS} > feeder_eq_gen.h" \
@@ -181,17 +155,6 @@ dev/raid/amr/amr.c			optional amr
 dev/raid/amr/amr_cam.c			optional amrp amr
 dev/raid/amr/amr_disk.c			optional amr
 dev/raid/amr/amr_pci.c			optional amr pci
-dev/disk/aic/aic.c			optional aic
-dev/disk/aic/aic_pccard.c		optional aic pccard
-dev/disk/aic7xxx/ahc_pci.c		optional ahc pci
-dev/disk/aic7xxx/aic7xxx.c		optional ahc
-dev/disk/aic7xxx/aic7xxx_93cx6.c	optional ahc
-dev/disk/aic7xxx/aic7xxx_osm.c		optional ahc
-dev/disk/aic7xxx/aic7xxx_pci.c		optional ahc pci
-dev/disk/aic7xxx/ahd_pci.c		optional ahd pci
-dev/disk/aic7xxx/aic79xx.c		optional ahd pci
-dev/disk/aic7xxx/aic79xx_osm.c		optional ahd pci
-dev/disk/aic7xxx/aic79xx_pci.c		optional ahd pci
 dev/netif/ath/ath_hal/ah_osdep.c			optional ath_hal
 dev/netif/ath/ath_hal/ah.c 				optional ath_hal
 dev/netif/ath/ath_hal/ah_eeprom_v1.c 			optional ath_hal

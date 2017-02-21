@@ -917,8 +917,6 @@ options 	SC_TWOBUTTON_MOUSE
 #
 # adv: All Narrow SCSI bus AdvanSys controllers.
 # adw: Second Generation AdvanSys controllers including the ADV940UW.
-# ahc: Adaptec 274x/284x/294x
-# aic: Adaptec 1460
 # bt: Most Buslogic controllers
 #
 # Note that the order is important in order for Buslogic cards to be
@@ -928,7 +926,6 @@ options 	SC_TWOBUTTON_MOUSE
 device		bt
 device		adv
 device		adw
-device		aic
 
 #
 # Adaptec FSA RAID controllers, including integrated DELL controller,
@@ -1266,16 +1263,6 @@ device		nmdm
 device		tpm
 device		ipmi
 
-# The `ahc' device provides support for the Adaptec 274X and 284X
-# adapters.
-device		ahc
-
-# The aic7xxx driver will attempt to use memory mapped I/O for all PCI
-# controllers that have it configured only if this option is set. Unfortunately,
-# this doesn't work on some motherboards, which prevents it from being the
-# default.
-options 	AHC_ALLOW_MEMIO
-
 # The adw driver will attempt to use memory mapped I/O for all PCI
 # controllers that have it configured only if this option is set.
 options 	ADW_ALLOW_MEMIO
@@ -1298,20 +1285,6 @@ device		agp
 #
 options                AGP_DEBUG
 
-# The `ahc' device provides support for the Adaptec 29/3940(U)(W)
-# and motherboard based AIC7870/AIC7880 adapters.
-options 	AHC_DEBUG
-options 	AHC_DEBUG_OPTS=0xffffffff
-options 	AHC_REG_PRETTY_PRINT
-options 	AHC_TMODE_ENABLE
-#
-# The 'ahd' device provides support for the Adaptec 79xx Ultra320
-# SCSI adapters. Options are documented in the ahd(4) manpage:
-options 	AHD_DEBUG
-options 	AHD_DEBUG_OPTS=0xffffffff
-options 	AHD_REG_PRETTY_PRINT
-#options 	AHD_TMODE_ENABLE=0xff
-#
 # The `amd' device provides support for the AMD 53C974 SCSI host
 # adapter chip as found on devices such as the Tekram DC-390(T).
 #
@@ -1492,8 +1465,6 @@ options 	AHD_REG_PRETTY_PRINT
 # These options can be used to select a specific device, regardless of
 # the autodetection and i2c device checks (see comments in bktr_card.c).
 #
-device		ahc		# AHA2940 and onboard AIC7xxx devices
-device		ahd		# AIC79xx devices
 device		amd		# AMD 53C974 (Tekram DC-390(T))
 device		isp		# Qlogic family
 device		ispfw		# Firmware for QLogic HBAs
