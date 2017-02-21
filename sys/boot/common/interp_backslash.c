@@ -33,7 +33,7 @@ backslash(char *str)
     /*
      * Remove backslashes from the strings. Turn \040 etc. into a single
      * character (we allow eight bit values). Currently NUL is not
-     * allowed.
+     * allowed.  Also escape as needed.
      *
      * Turn "\n" and "\t" into '\n' and '\t' characters. Etc.
      *
@@ -41,10 +41,20 @@ backslash(char *str)
     char *new_str;
     int seenbs = 0;
     int i = 0;
+    int j = 0;
 
-    if ((new_str = strdup(str)) == NULL)
-	return NULL;
+    for (i = 0; str[i]; ++i) {
+	if (str[i] == '\'' ||
+	    str[i] == '"' ||
+	    str[i] == '$') {
+		++j;
+	}
+    }
+    j += i + 2;	/* terminator + possible final backslash */
 
+    new_str = malloc(j);
+
+    i = 0;
     while (*str) {
 	if (seenbs) {
 	    seenbs = 0;
@@ -150,9 +160,9 @@ backslash(char *str)
             if (*str == '\\') {
                 seenbs = 1;
                 str++;
-            }
-	    else
+            } else {
 		new_str[i++] = *str++;
+	    }
         }
     }
 
@@ -162,6 +172,9 @@ backslash(char *str)
          */
 	new_str[i++] = '\\';
     }
-    new_str[i] = '\0';
+    new_str[i] = 0;
+    if (i >= j)
+	panic("bls");
+
     return new_str;
 }
