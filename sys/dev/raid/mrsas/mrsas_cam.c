@@ -150,8 +150,8 @@ int mrsas_cam_attach(struct mrsas_softc *sc)
     lockmgr(&sc->sim_lock, LK_EXCLUSIVE);
     if (xpt_bus_register(sc->sim_0, 0) != CAM_SUCCESS)
     {
-        cam_sim_free(sc->sim_0);
         cam_simq_release(devq);
+        cam_sim_free(sc->sim_0);
         lockmgr(&sc->sim_lock, LK_RELEASE); 
         return(ENXIO);
     }
@@ -159,8 +159,8 @@ int mrsas_cam_attach(struct mrsas_softc *sc)
                          CAM_TARGET_WILDCARD,
                          CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
         xpt_bus_deregister(cam_sim_path(sc->sim_0));
-        cam_sim_free(sc->sim_0);
         cam_simq_release(devq);
+        cam_sim_free(sc->sim_0);
         lockmgr(&sc->sim_lock, LK_RELEASE); 
         return(ENXIO);
     }
