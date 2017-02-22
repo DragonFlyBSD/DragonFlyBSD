@@ -3289,17 +3289,25 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 			vm_pindex_t *pmark;
 
 			/*
-			 * We need to block if someone is holding a
-			 * placemarker.  The exclusive spinlock is a
-			 * sufficient interlock, as long as we determine
-			 * the placemarker has not been aquired we do not
-			 * need to get it.
+			 * We need to block if someone is holding our
+			 * placemarker.  As long as we determine the
+			 * placemarker has not been aquired we do not
+			 * need to get it as acquision also requires
+			 * the pmap spin lock.
+			 *
+			 * However, we can race the wakeup.
 			 */
 			pmark = pmap_placemarker_hash(pmap, pindex);
 
 			if (((*pmark ^ pindex) & ~PM_PLACEMARK_WAKEUP) == 0) {
 				atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
-				ssleep(pmark, &pmap->pm_spin, 0, "pvplc", 0);
+				tsleep_interlock(pmark, 0);
+				if (((*pmark ^ pindex) &
+				     ~PM_PLACEMARK_WAKEUP) == 0) {
+					spin_unlock(&pmap->pm_spin);
+					tsleep(pmark, PINTERLOCKED, "pvplc", 0);
+					spin_lock(&pmap->pm_spin);
+				}
 				continue;
 			}
 
@@ -3381,8 +3389,15 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 		}
 		if (pv == NULL) {
 			/*
-			 * Block if there is a placemarker.  If we are to
-			 * return it, we must also aquire the spot.
+			 * Block if there is ANY placemarker.  If we are to
+			 * return it, we must also aquire the spot, so we
+			 * have to block even if the placemarker is held on
+			 * a different address.
+			 *
+			 * OPTIMIZATION: If pmarkp is passed as NULL the
+			 * caller is just probing (or looking for a real
+			 * pv_entry), and in this case we only need to check
+			 * to see if the placemarker matches pindex.
 			 */
 			vm_pindex_t *pmark;
 
@@ -3391,7 +3406,14 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 			if ((pmarkp && *pmark != PM_NOPLACEMARK) ||
 			    ((*pmark ^ pindex) & ~PM_PLACEMARK_WAKEUP) == 0) {
 				atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
-				ssleep(pmark, &pmap->pm_spin, 0, "pvpld", 0);
+				tsleep_interlock(pmark, 0);
+				if ((pmarkp && *pmark != PM_NOPLACEMARK) ||
+				    ((*pmark ^ pindex) &
+				     ~PM_PLACEMARK_WAKEUP) == 0) {
+					spin_unlock(&pmap->pm_spin);
+					tsleep(pmark, PINTERLOCKED, "pvpld", 0);
+					spin_lock(&pmap->pm_spin);
+				}
 				continue;
 			}
 			if (pmarkp) {
@@ -6127,19 +6149,23 @@ pmap_pgscan(struct pmap_pgscan_info *pginfo)
 
 /*
  * Wait for a placemarker that we do not own to clear.  The placemarker
- * in question is not necessary set to the pindex we want, we may have
+ * in question is not necessarily set to the pindex we want, we may have
  * to wait on the element because we want to reserve it ourselves.
+ *
+ * NOTE: PM_PLACEMARK_WAKEUP sets a bit which is already set in
+ *	 PM_NOPLACEMARK, so it does not interfere with placemarks
+ *	 which have already been woken up.
  */
 static
 void
 pv_placemarker_wait(pmap_t pmap, vm_pindex_t *pmark)
 {
-	spin_lock(&pmap->pm_spin);
 	if (*pmark != PM_NOPLACEMARK) {
 		atomic_set_long(pmark, PM_PLACEMARK_WAKEUP);
-		ssleep(pmark, &pmap->pm_spin, 0, "pvplw", 0);
+		tsleep_interlock(pmark, 0);
+		if (*pmark != PM_NOPLACEMARK)
+			tsleep(pmark, PINTERLOCKED, "pvplw", 0);
 	}
-	spin_unlock(&pmap->pm_spin);
 }
 
 /*
@@ -6152,9 +6178,7 @@ pv_placemarker_wakeup(pmap_t pmap, vm_pindex_t *pmark)
 {
 	vm_pindex_t pindex;
 
-	spin_lock(&pmap->pm_spin);
 	pindex = atomic_swap_long(pmark, PM_NOPLACEMARK);
-	spin_unlock(&pmap->pm_spin);
 	KKASSERT(pindex != PM_NOPLACEMARK);
 	if (pindex & PM_PLACEMARK_WAKEUP)
 		wakeup(pmark);
