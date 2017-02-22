@@ -42,7 +42,7 @@
 
 #ifndef __DragonFly__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.92 " __DATE__ " " __TIME__ "  wpaul Exp $");
+__FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.93 " __DATE__ " " __TIME__ "  wpaul Exp $");
 
 /*
 * This driver also support Realtek 8139C+, 8110S/SB/SC, RTL8111B/C/CP/D and RTL8101E/8102E/8103E.
@@ -58,6 +58,7 @@ __FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.92 " __DATE__ " " __TIME__ "  wpa
 #include <sys/taskqueue.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -860,6 +861,10 @@ static void DisableMcuBPs(struct re_softc *sc)
         case MACFG_67:
         case MACFG_68:
         case MACFG_69:
+                CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_WRITECFG);
+                CSR_WRITE_1(sc, RE_CFG5, CSR_READ_1(sc, RE_CFG5) & ~BIT_0);
+                CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) & ~BIT_7);
+                CSR_WRITE_1(sc, RE_EECMD, RE_EEMODE_OFF);
 
                 MP_WriteMcuAccessRegWord(sc, 0xFC28, 0x0000);
                 MP_WriteMcuAccessRegWord(sc, 0xFC2A, 0x0000);
@@ -1241,10 +1246,10 @@ static void re_hw_mac_mcu_config(struct re_softc *sc)
                 MP_WriteMcuAccessRegWord(sc, 0xF808, 0xE04C);
                 MP_WriteMcuAccessRegWord(sc, 0xF80A, 0xE053);
                 MP_WriteMcuAccessRegWord(sc, 0xF80C, 0xE055);
-                MP_WriteMcuAccessRegWord(sc, 0xF80E, 0xE079);
-                MP_WriteMcuAccessRegWord(sc, 0xF810, 0xC602);
-                MP_WriteMcuAccessRegWord(sc, 0xF812, 0xBE00);
-                MP_WriteMcuAccessRegWord(sc, 0xF814, 0x0000);
+                MP_WriteMcuAccessRegWord(sc, 0xF80E, 0xE06C);
+                MP_WriteMcuAccessRegWord(sc, 0xF810, 0xC202);
+                MP_WriteMcuAccessRegWord(sc, 0xF812, 0xBA00);
+                MP_WriteMcuAccessRegWord(sc, 0xF814, 0x0DFC);
                 MP_WriteMcuAccessRegWord(sc, 0xF816, 0xC511);
                 MP_WriteMcuAccessRegWord(sc, 0xF818, 0x74A2);
                 MP_WriteMcuAccessRegWord(sc, 0xF81A, 0x8CA5);
@@ -1325,54 +1330,342 @@ static void re_hw_mac_mcu_config(struct re_softc *sc)
                 MP_WriteMcuAccessRegWord(sc, 0xF8B0, 0xC502);
                 MP_WriteMcuAccessRegWord(sc, 0xF8B2, 0xBD00);
                 MP_WriteMcuAccessRegWord(sc, 0xF8B4, 0x0132);
-                MP_WriteMcuAccessRegWord(sc, 0xF8B6, 0xC523);
-                MP_WriteMcuAccessRegWord(sc, 0xF8B8, 0x9EA0);
-                MP_WriteMcuAccessRegWord(sc, 0xF8BA, 0x1C1C);
-                MP_WriteMcuAccessRegWord(sc, 0xF8BC, 0x484F);
-                MP_WriteMcuAccessRegWord(sc, 0xF8BE, 0x9CA2);
-                MP_WriteMcuAccessRegWord(sc, 0xF8C0, 0x74A2);
-                MP_WriteMcuAccessRegWord(sc, 0xF8C2, 0x49CF);
-                MP_WriteMcuAccessRegWord(sc, 0xF8C4, 0xF1FE);
-                MP_WriteMcuAccessRegWord(sc, 0xF8C6, 0x1600);
-                MP_WriteMcuAccessRegWord(sc, 0xF8C8, 0xF115);
-                MP_WriteMcuAccessRegWord(sc, 0xF8CA, 0xC417);
-                MP_WriteMcuAccessRegWord(sc, 0xF8CC, 0x9CA0);
-                MP_WriteMcuAccessRegWord(sc, 0xF8CE, 0x1C13);
-                MP_WriteMcuAccessRegWord(sc, 0xF8D0, 0x484F);
-                MP_WriteMcuAccessRegWord(sc, 0xF8D2, 0x9CA2);
-                MP_WriteMcuAccessRegWord(sc, 0xF8D4, 0x74A2);
-                MP_WriteMcuAccessRegWord(sc, 0xF8D6, 0x49CF);
-                MP_WriteMcuAccessRegWord(sc, 0xF8D8, 0xF1FE);
-                MP_WriteMcuAccessRegWord(sc, 0xF8DA, 0xC410);
-                MP_WriteMcuAccessRegWord(sc, 0xF8DC, 0x9CA0);
-                MP_WriteMcuAccessRegWord(sc, 0xF8DE, 0x1C13);
-                MP_WriteMcuAccessRegWord(sc, 0xF8E0, 0x484F);
-                MP_WriteMcuAccessRegWord(sc, 0xF8E2, 0x9CA2);
-                MP_WriteMcuAccessRegWord(sc, 0xF8E4, 0x74A2);
-                MP_WriteMcuAccessRegWord(sc, 0xF8E6, 0x49CF);
-                MP_WriteMcuAccessRegWord(sc, 0xF8E8, 0xF1FE);
-                MP_WriteMcuAccessRegWord(sc, 0xF8EA, 0xC50A);
-                MP_WriteMcuAccessRegWord(sc, 0xF8EC, 0x74B8);
-                MP_WriteMcuAccessRegWord(sc, 0xF8EE, 0x48C3);
-                MP_WriteMcuAccessRegWord(sc, 0xF8F0, 0x8CB8);
-                MP_WriteMcuAccessRegWord(sc, 0xF8F2, 0xC502);
-                MP_WriteMcuAccessRegWord(sc, 0xF8F4, 0xBD00);
-                MP_WriteMcuAccessRegWord(sc, 0xF8F6, 0x0A46);
-                MP_WriteMcuAccessRegWord(sc, 0xF8F8, 0x0481);
-                MP_WriteMcuAccessRegWord(sc, 0xF8FA, 0x0C81);
-                MP_WriteMcuAccessRegWord(sc, 0xF8FC, 0xDE20);
-                MP_WriteMcuAccessRegWord(sc, 0xF8FE, 0xE000);
-                MP_WriteMcuAccessRegWord(sc, 0xF900, 0xC602);
-                MP_WriteMcuAccessRegWord(sc, 0xF902, 0xBE00);
-                MP_WriteMcuAccessRegWord(sc, 0xF904, 0x0000);
+                MP_WriteMcuAccessRegWord(sc, 0xF8B6, 0xC50C);
+                MP_WriteMcuAccessRegWord(sc, 0xF8B8, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xF8BA, 0x49CE);
+                MP_WriteMcuAccessRegWord(sc, 0xF8BC, 0xF1FE);
+                MP_WriteMcuAccessRegWord(sc, 0xF8BE, 0x1C00);
+                MP_WriteMcuAccessRegWord(sc, 0xF8C0, 0x9EA0);
+                MP_WriteMcuAccessRegWord(sc, 0xF8C2, 0x1C1C);
+                MP_WriteMcuAccessRegWord(sc, 0xF8C4, 0x484F);
+                MP_WriteMcuAccessRegWord(sc, 0xF8C6, 0x9CA2);
+                MP_WriteMcuAccessRegWord(sc, 0xF8C8, 0xC402);
+                MP_WriteMcuAccessRegWord(sc, 0xF8CA, 0xBC00);
+                MP_WriteMcuAccessRegWord(sc, 0xF8CC, 0x0AFA);
+                MP_WriteMcuAccessRegWord(sc, 0xF8CE, 0xDE20);
+                MP_WriteMcuAccessRegWord(sc, 0xF8D0, 0xE000);
+                MP_WriteMcuAccessRegWord(sc, 0xF8D2, 0xE092);
+                MP_WriteMcuAccessRegWord(sc, 0xF8D4, 0xE430);
+                MP_WriteMcuAccessRegWord(sc, 0xF8D6, 0xDE20);
+                MP_WriteMcuAccessRegWord(sc, 0xF8D8, 0xE0C0);
+                MP_WriteMcuAccessRegWord(sc, 0xF8DA, 0xE860);
+                MP_WriteMcuAccessRegWord(sc, 0xF8DC, 0xE84C);
+                MP_WriteMcuAccessRegWord(sc, 0xF8DE, 0xB400);
+                MP_WriteMcuAccessRegWord(sc, 0xF8E0, 0xB430);
+                MP_WriteMcuAccessRegWord(sc, 0xF8E2, 0xE410);
+                MP_WriteMcuAccessRegWord(sc, 0xF8E4, 0xC0AE);
+                MP_WriteMcuAccessRegWord(sc, 0xF8E6, 0xB407);
+                MP_WriteMcuAccessRegWord(sc, 0xF8E8, 0xB406);
+                MP_WriteMcuAccessRegWord(sc, 0xF8EA, 0xB405);
+                MP_WriteMcuAccessRegWord(sc, 0xF8EC, 0xB404);
+                MP_WriteMcuAccessRegWord(sc, 0xF8EE, 0xB403);
+                MP_WriteMcuAccessRegWord(sc, 0xF8F0, 0xB402);
+                MP_WriteMcuAccessRegWord(sc, 0xF8F2, 0xB401);
+                MP_WriteMcuAccessRegWord(sc, 0xF8F4, 0xC7EE);
+                MP_WriteMcuAccessRegWord(sc, 0xF8F6, 0x76F4);
+                MP_WriteMcuAccessRegWord(sc, 0xF8F8, 0xC2ED);
+                MP_WriteMcuAccessRegWord(sc, 0xF8FA, 0xC3ED);
+                MP_WriteMcuAccessRegWord(sc, 0xF8FC, 0xC1EF);
+                MP_WriteMcuAccessRegWord(sc, 0xF8FE, 0xC5F3);
+                MP_WriteMcuAccessRegWord(sc, 0xF900, 0x74A0);
+                MP_WriteMcuAccessRegWord(sc, 0xF902, 0x49CD);
+                MP_WriteMcuAccessRegWord(sc, 0xF904, 0xF001);
+                MP_WriteMcuAccessRegWord(sc, 0xF906, 0xC5EE);
+                MP_WriteMcuAccessRegWord(sc, 0xF908, 0x74A0);
+                MP_WriteMcuAccessRegWord(sc, 0xF90A, 0x49C1);
+                MP_WriteMcuAccessRegWord(sc, 0xF90C, 0xF105);
+                MP_WriteMcuAccessRegWord(sc, 0xF90E, 0xC5E4);
+                MP_WriteMcuAccessRegWord(sc, 0xF910, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xF912, 0x49CE);
+                MP_WriteMcuAccessRegWord(sc, 0xF914, 0xF00B);
+                MP_WriteMcuAccessRegWord(sc, 0xF916, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xF918, 0x484B);
+                MP_WriteMcuAccessRegWord(sc, 0xF91A, 0x9C44);
+                MP_WriteMcuAccessRegWord(sc, 0xF91C, 0x1C10);
+                MP_WriteMcuAccessRegWord(sc, 0xF91E, 0x9C62);
+                MP_WriteMcuAccessRegWord(sc, 0xF920, 0x1C11);
+                MP_WriteMcuAccessRegWord(sc, 0xF922, 0x8C60);
+                MP_WriteMcuAccessRegWord(sc, 0xF924, 0x1C00);
+                MP_WriteMcuAccessRegWord(sc, 0xF926, 0x9CF6);
+                MP_WriteMcuAccessRegWord(sc, 0xF928, 0xE0E1);
+                MP_WriteMcuAccessRegWord(sc, 0xF92A, 0x49E7);
+                MP_WriteMcuAccessRegWord(sc, 0xF92C, 0xF016);
+                MP_WriteMcuAccessRegWord(sc, 0xF92E, 0x1D80);
+                MP_WriteMcuAccessRegWord(sc, 0xF930, 0x8DF4);
+                MP_WriteMcuAccessRegWord(sc, 0xF932, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF934, 0x4843);
+                MP_WriteMcuAccessRegWord(sc, 0xF936, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xF938, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF93A, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF93C, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xF93E, 0x48C8);
+                MP_WriteMcuAccessRegWord(sc, 0xF940, 0x48C9);
+                MP_WriteMcuAccessRegWord(sc, 0xF942, 0x48CA);
+                MP_WriteMcuAccessRegWord(sc, 0xF944, 0x9C44);
+                MP_WriteMcuAccessRegWord(sc, 0xF946, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF948, 0x4844);
+                MP_WriteMcuAccessRegWord(sc, 0xF94A, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xF94C, 0x1E01);
+                MP_WriteMcuAccessRegWord(sc, 0xF94E, 0xE8D0);
+                MP_WriteMcuAccessRegWord(sc, 0xF950, 0x7420);
+                MP_WriteMcuAccessRegWord(sc, 0xF952, 0x48C1);
+                MP_WriteMcuAccessRegWord(sc, 0xF954, 0x9C20);
+                MP_WriteMcuAccessRegWord(sc, 0xF956, 0xE0CA);
+                MP_WriteMcuAccessRegWord(sc, 0xF958, 0x49E6);
+                MP_WriteMcuAccessRegWord(sc, 0xF95A, 0xF029);
+                MP_WriteMcuAccessRegWord(sc, 0xF95C, 0x1D40);
+                MP_WriteMcuAccessRegWord(sc, 0xF95E, 0x8DF4);
+                MP_WriteMcuAccessRegWord(sc, 0xF960, 0x74FC);
+                MP_WriteMcuAccessRegWord(sc, 0xF962, 0x49C0);
+                MP_WriteMcuAccessRegWord(sc, 0xF964, 0xF123);
+                MP_WriteMcuAccessRegWord(sc, 0xF966, 0x49C1);
+                MP_WriteMcuAccessRegWord(sc, 0xF968, 0xF121);
+                MP_WriteMcuAccessRegWord(sc, 0xF96A, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF96C, 0x49C0);
+                MP_WriteMcuAccessRegWord(sc, 0xF96E, 0xF01E);
+                MP_WriteMcuAccessRegWord(sc, 0xF970, 0x48C4);
+                MP_WriteMcuAccessRegWord(sc, 0xF972, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xF974, 0x1E00);
+                MP_WriteMcuAccessRegWord(sc, 0xF976, 0xE8BC);
+                MP_WriteMcuAccessRegWord(sc, 0xF978, 0xC5B2);
+                MP_WriteMcuAccessRegWord(sc, 0xF97A, 0x74A0);
+                MP_WriteMcuAccessRegWord(sc, 0xF97C, 0x49C3);
+                MP_WriteMcuAccessRegWord(sc, 0xF97E, 0xF016);
+                MP_WriteMcuAccessRegWord(sc, 0xF980, 0xC5B0);
+                MP_WriteMcuAccessRegWord(sc, 0xF982, 0x74A4);
+                MP_WriteMcuAccessRegWord(sc, 0xF984, 0x49C2);
+                MP_WriteMcuAccessRegWord(sc, 0xF986, 0xF005);
+                MP_WriteMcuAccessRegWord(sc, 0xF988, 0xC5AB);
+                MP_WriteMcuAccessRegWord(sc, 0xF98A, 0x74B2);
+                MP_WriteMcuAccessRegWord(sc, 0xF98C, 0x49C9);
+                MP_WriteMcuAccessRegWord(sc, 0xF98E, 0xF10E);
+                MP_WriteMcuAccessRegWord(sc, 0xF990, 0xC5A7);
+                MP_WriteMcuAccessRegWord(sc, 0xF992, 0x74A8);
+                MP_WriteMcuAccessRegWord(sc, 0xF994, 0x4845);
+                MP_WriteMcuAccessRegWord(sc, 0xF996, 0x4846);
+                MP_WriteMcuAccessRegWord(sc, 0xF998, 0x4847);
+                MP_WriteMcuAccessRegWord(sc, 0xF99A, 0x4848);
+                MP_WriteMcuAccessRegWord(sc, 0xF99C, 0x9CA8);
+                MP_WriteMcuAccessRegWord(sc, 0xF99E, 0x74B2);
+                MP_WriteMcuAccessRegWord(sc, 0xF9A0, 0x4849);
+                MP_WriteMcuAccessRegWord(sc, 0xF9A2, 0x9CB2);
+                MP_WriteMcuAccessRegWord(sc, 0xF9A4, 0x74A0);
+                MP_WriteMcuAccessRegWord(sc, 0xF9A6, 0x484F);
+                MP_WriteMcuAccessRegWord(sc, 0xF9A8, 0x9CA0);
+                MP_WriteMcuAccessRegWord(sc, 0xF9AA, 0xE0A0);
+                MP_WriteMcuAccessRegWord(sc, 0xF9AC, 0x49E4);
+                MP_WriteMcuAccessRegWord(sc, 0xF9AE, 0xF018);
+                MP_WriteMcuAccessRegWord(sc, 0xF9B0, 0x1D10);
+                MP_WriteMcuAccessRegWord(sc, 0xF9B2, 0x8DF4);
+                MP_WriteMcuAccessRegWord(sc, 0xF9B4, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9B6, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9B8, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9BA, 0x4843);
+                MP_WriteMcuAccessRegWord(sc, 0xF9BC, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9BE, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9C0, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9C2, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9C4, 0x4844);
+                MP_WriteMcuAccessRegWord(sc, 0xF9C6, 0x4842);
+                MP_WriteMcuAccessRegWord(sc, 0xF9C8, 0x4841);
+                MP_WriteMcuAccessRegWord(sc, 0xF9CA, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9CC, 0x1E01);
+                MP_WriteMcuAccessRegWord(sc, 0xF9CE, 0xE890);
+                MP_WriteMcuAccessRegWord(sc, 0xF9D0, 0x7420);
+                MP_WriteMcuAccessRegWord(sc, 0xF9D2, 0x4841);
+                MP_WriteMcuAccessRegWord(sc, 0xF9D4, 0x9C20);
+                MP_WriteMcuAccessRegWord(sc, 0xF9D6, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xF9D8, 0x4848);
+                MP_WriteMcuAccessRegWord(sc, 0xF9DA, 0x9C44);
+                MP_WriteMcuAccessRegWord(sc, 0xF9DC, 0xE087);
+                MP_WriteMcuAccessRegWord(sc, 0xF9DE, 0x49E5);
+                MP_WriteMcuAccessRegWord(sc, 0xF9E0, 0xF038);
+                MP_WriteMcuAccessRegWord(sc, 0xF9E2, 0x1D20);
+                MP_WriteMcuAccessRegWord(sc, 0xF9E4, 0x8DF4);
+                MP_WriteMcuAccessRegWord(sc, 0xF9E6, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9E8, 0x48C2);
+                MP_WriteMcuAccessRegWord(sc, 0xF9EA, 0x4841);
+                MP_WriteMcuAccessRegWord(sc, 0xF9EC, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xF9EE, 0x1E01);
+                MP_WriteMcuAccessRegWord(sc, 0xF9F0, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xF9F2, 0x49CA);
+                MP_WriteMcuAccessRegWord(sc, 0xF9F4, 0xF103);
+                MP_WriteMcuAccessRegWord(sc, 0xF9F6, 0x49C2);
+                MP_WriteMcuAccessRegWord(sc, 0xF9F8, 0xF00C);
+                MP_WriteMcuAccessRegWord(sc, 0xF9FA, 0x49C1);
+                MP_WriteMcuAccessRegWord(sc, 0xF9FC, 0xF004);
+                MP_WriteMcuAccessRegWord(sc, 0xF9FE, 0x6447);
+                MP_WriteMcuAccessRegWord(sc, 0xFA00, 0x2244);
+                MP_WriteMcuAccessRegWord(sc, 0xFA02, 0xE002);
+                MP_WriteMcuAccessRegWord(sc, 0xFA04, 0x1C01);
+                MP_WriteMcuAccessRegWord(sc, 0xFA06, 0x9C62);
+                MP_WriteMcuAccessRegWord(sc, 0xFA08, 0x1C11);
+                MP_WriteMcuAccessRegWord(sc, 0xFA0A, 0x8C60);
+                MP_WriteMcuAccessRegWord(sc, 0xFA0C, 0x1C00);
+                MP_WriteMcuAccessRegWord(sc, 0xFA0E, 0x9CF6);
+                MP_WriteMcuAccessRegWord(sc, 0xFA10, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xFA12, 0x49C8);
+                MP_WriteMcuAccessRegWord(sc, 0xFA14, 0xF017);
+                MP_WriteMcuAccessRegWord(sc, 0xFA16, 0x74FC);
+                MP_WriteMcuAccessRegWord(sc, 0xFA18, 0x49C0);
+                MP_WriteMcuAccessRegWord(sc, 0xFA1A, 0xF114);
+                MP_WriteMcuAccessRegWord(sc, 0xFA1C, 0x49C1);
+                MP_WriteMcuAccessRegWord(sc, 0xFA1E, 0xF112);
+                MP_WriteMcuAccessRegWord(sc, 0xFA20, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xFA22, 0x49C0);
+                MP_WriteMcuAccessRegWord(sc, 0xFA24, 0xF00F);
+                MP_WriteMcuAccessRegWord(sc, 0xFA26, 0x49C6);
+                MP_WriteMcuAccessRegWord(sc, 0xFA28, 0xF10D);
+                MP_WriteMcuAccessRegWord(sc, 0xFA2A, 0xE86B);
+                MP_WriteMcuAccessRegWord(sc, 0xFA2C, 0x48C4);
+                MP_WriteMcuAccessRegWord(sc, 0xFA2E, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xFA30, 0x7420);
+                MP_WriteMcuAccessRegWord(sc, 0xFA32, 0x48C1);
+                MP_WriteMcuAccessRegWord(sc, 0xFA34, 0x9C20);
+                MP_WriteMcuAccessRegWord(sc, 0xFA36, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xFA38, 0x48C8);
+                MP_WriteMcuAccessRegWord(sc, 0xFA3A, 0x48CA);
+                MP_WriteMcuAccessRegWord(sc, 0xFA3C, 0x9C44);
+                MP_WriteMcuAccessRegWord(sc, 0xFA3E, 0x48E0);
+                MP_WriteMcuAccessRegWord(sc, 0xFA40, 0xE006);
+                MP_WriteMcuAccessRegWord(sc, 0xFA42, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xFA44, 0x49CA);
+                MP_WriteMcuAccessRegWord(sc, 0xFA46, 0xF004);
+                MP_WriteMcuAccessRegWord(sc, 0xFA48, 0x48CA);
+                MP_WriteMcuAccessRegWord(sc, 0xFA4A, 0x9C44);
+                MP_WriteMcuAccessRegWord(sc, 0xFA4C, 0xE851);
+                MP_WriteMcuAccessRegWord(sc, 0xFA4E, 0xE04E);
+                MP_WriteMcuAccessRegWord(sc, 0xFA50, 0x49E8);
+                MP_WriteMcuAccessRegWord(sc, 0xFA52, 0xF020);
+                MP_WriteMcuAccessRegWord(sc, 0xFA54, 0x1D01);
+                MP_WriteMcuAccessRegWord(sc, 0xFA56, 0x8DF5);
+                MP_WriteMcuAccessRegWord(sc, 0xFA58, 0x7440);
+                MP_WriteMcuAccessRegWord(sc, 0xFA5A, 0x49C0);
+                MP_WriteMcuAccessRegWord(sc, 0xFA5C, 0xF11A);
+                MP_WriteMcuAccessRegWord(sc, 0xFA5E, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xFA60, 0x49C8);
+                MP_WriteMcuAccessRegWord(sc, 0xFA62, 0xF017);
+                MP_WriteMcuAccessRegWord(sc, 0xFA64, 0x49CA);
+                MP_WriteMcuAccessRegWord(sc, 0xFA66, 0xF115);
+                MP_WriteMcuAccessRegWord(sc, 0xFA68, 0x49C0);
+                MP_WriteMcuAccessRegWord(sc, 0xFA6A, 0xF103);
+                MP_WriteMcuAccessRegWord(sc, 0xFA6C, 0x49C1);
+                MP_WriteMcuAccessRegWord(sc, 0xFA6E, 0xF011);
+                MP_WriteMcuAccessRegWord(sc, 0xFA70, 0x4849);
+                MP_WriteMcuAccessRegWord(sc, 0xFA72, 0x9C44);
+                MP_WriteMcuAccessRegWord(sc, 0xFA74, 0x1C00);
+                MP_WriteMcuAccessRegWord(sc, 0xFA76, 0x9CF6);
+                MP_WriteMcuAccessRegWord(sc, 0xFA78, 0x7444);
+                MP_WriteMcuAccessRegWord(sc, 0xFA7A, 0x49C1);
+                MP_WriteMcuAccessRegWord(sc, 0xFA7C, 0xF004);
+                MP_WriteMcuAccessRegWord(sc, 0xFA7E, 0x6446);
+                MP_WriteMcuAccessRegWord(sc, 0xFA80, 0x1E07);
+                MP_WriteMcuAccessRegWord(sc, 0xFA82, 0xE003);
+                MP_WriteMcuAccessRegWord(sc, 0xFA84, 0x1C01);
+                MP_WriteMcuAccessRegWord(sc, 0xFA86, 0x1E03);
+                MP_WriteMcuAccessRegWord(sc, 0xFA88, 0x9C62);
+                MP_WriteMcuAccessRegWord(sc, 0xFA8A, 0x1C11);
+                MP_WriteMcuAccessRegWord(sc, 0xFA8C, 0x8C60);
+                MP_WriteMcuAccessRegWord(sc, 0xFA8E, 0xE830);
+                MP_WriteMcuAccessRegWord(sc, 0xFA90, 0xE02D);
+                MP_WriteMcuAccessRegWord(sc, 0xFA92, 0x49E9);
+                MP_WriteMcuAccessRegWord(sc, 0xFA94, 0xF004);
+                MP_WriteMcuAccessRegWord(sc, 0xFA96, 0x1D02);
+                MP_WriteMcuAccessRegWord(sc, 0xFA98, 0x8DF5);
+                MP_WriteMcuAccessRegWord(sc, 0xFA9A, 0xE7A6);
+                MP_WriteMcuAccessRegWord(sc, 0xFA9C, 0x49E3);
+                MP_WriteMcuAccessRegWord(sc, 0xFA9E, 0xF006);
+                MP_WriteMcuAccessRegWord(sc, 0xFAA0, 0x1D08);
+                MP_WriteMcuAccessRegWord(sc, 0xFAA2, 0x8DF4);
+                MP_WriteMcuAccessRegWord(sc, 0xFAA4, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xFAA6, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xFAA8, 0xE745);
+                MP_WriteMcuAccessRegWord(sc, 0xFAAA, 0x49E1);
+                MP_WriteMcuAccessRegWord(sc, 0xFAAC, 0xF007);
+                MP_WriteMcuAccessRegWord(sc, 0xFAAE, 0x1D02);
+                MP_WriteMcuAccessRegWord(sc, 0xFAB0, 0x8DF4);
+                MP_WriteMcuAccessRegWord(sc, 0xFAB2, 0x1E01);
+                MP_WriteMcuAccessRegWord(sc, 0xFAB4, 0xE7B1);
+                MP_WriteMcuAccessRegWord(sc, 0xFAB6, 0xDE20);
+                MP_WriteMcuAccessRegWord(sc, 0xFAB8, 0xE410);
+                MP_WriteMcuAccessRegWord(sc, 0xFABA, 0x49E0);
+                MP_WriteMcuAccessRegWord(sc, 0xFABC, 0xF017);
+                MP_WriteMcuAccessRegWord(sc, 0xFABE, 0x1D01);
+                MP_WriteMcuAccessRegWord(sc, 0xFAC0, 0x8DF4);
+                MP_WriteMcuAccessRegWord(sc, 0xFAC2, 0xC5FA);
+                MP_WriteMcuAccessRegWord(sc, 0xFAC4, 0x1C00);
+                MP_WriteMcuAccessRegWord(sc, 0xFAC6, 0x8CA0);
+                MP_WriteMcuAccessRegWord(sc, 0xFAC8, 0x1C1B);
+                MP_WriteMcuAccessRegWord(sc, 0xFACA, 0x9CA2);
+                MP_WriteMcuAccessRegWord(sc, 0xFACC, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xFACE, 0x49CF);
+                MP_WriteMcuAccessRegWord(sc, 0xFAD0, 0xF0FE);
+                MP_WriteMcuAccessRegWord(sc, 0xFAD2, 0xC5F3);
+                MP_WriteMcuAccessRegWord(sc, 0xFAD4, 0x74A0);
+                MP_WriteMcuAccessRegWord(sc, 0xFAD6, 0x4849);
+                MP_WriteMcuAccessRegWord(sc, 0xFAD8, 0x9CA0);
+                MP_WriteMcuAccessRegWord(sc, 0xFADA, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xFADC, 0x49C0);
+                MP_WriteMcuAccessRegWord(sc, 0xFADE, 0xF006);
+                MP_WriteMcuAccessRegWord(sc, 0xFAE0, 0x48C3);
+                MP_WriteMcuAccessRegWord(sc, 0xFAE2, 0x8CF8);
+                MP_WriteMcuAccessRegWord(sc, 0xFAE4, 0xE81C);
+                MP_WriteMcuAccessRegWord(sc, 0xFAE6, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xFAE8, 0x74F8);
+                MP_WriteMcuAccessRegWord(sc, 0xFAEA, 0xC42A);
+                MP_WriteMcuAccessRegWord(sc, 0xFAEC, 0xBC00);
+                MP_WriteMcuAccessRegWord(sc, 0xFAEE, 0xC5E4);
+                MP_WriteMcuAccessRegWord(sc, 0xFAF0, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xFAF2, 0x49CE);
+                MP_WriteMcuAccessRegWord(sc, 0xFAF4, 0xF1FE);
+                MP_WriteMcuAccessRegWord(sc, 0xFAF6, 0x9EA0);
+                MP_WriteMcuAccessRegWord(sc, 0xFAF8, 0x1C1C);
+                MP_WriteMcuAccessRegWord(sc, 0xFAFA, 0x484F);
+                MP_WriteMcuAccessRegWord(sc, 0xFAFC, 0x9CA2);
+                MP_WriteMcuAccessRegWord(sc, 0xFAFE, 0xFF80);
+                MP_WriteMcuAccessRegWord(sc, 0xFB00, 0xC5DB);
+                MP_WriteMcuAccessRegWord(sc, 0xFB02, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xFB04, 0x49CE);
+                MP_WriteMcuAccessRegWord(sc, 0xFB06, 0xF1FE);
+                MP_WriteMcuAccessRegWord(sc, 0xFB08, 0xC419);
+                MP_WriteMcuAccessRegWord(sc, 0xFB0A, 0x9CA0);
+                MP_WriteMcuAccessRegWord(sc, 0xFB0C, 0xC416);
+                MP_WriteMcuAccessRegWord(sc, 0xFB0E, 0x1C13);
+                MP_WriteMcuAccessRegWord(sc, 0xFB10, 0x484F);
+                MP_WriteMcuAccessRegWord(sc, 0xFB12, 0x9CA2);
+                MP_WriteMcuAccessRegWord(sc, 0xFB14, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xFB16, 0x49CF);
+                MP_WriteMcuAccessRegWord(sc, 0xFB18, 0xF1FE);
+                MP_WriteMcuAccessRegWord(sc, 0xFB1A, 0xFF80);
+                MP_WriteMcuAccessRegWord(sc, 0xFB1C, 0xC5CD);
+                MP_WriteMcuAccessRegWord(sc, 0xFB1E, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xFB20, 0x49CE);
+                MP_WriteMcuAccessRegWord(sc, 0xFB22, 0xF1FE);
+                MP_WriteMcuAccessRegWord(sc, 0xFB24, 0xC40C);
+                MP_WriteMcuAccessRegWord(sc, 0xFB26, 0x9CA0);
+                MP_WriteMcuAccessRegWord(sc, 0xFB28, 0xC408);
+                MP_WriteMcuAccessRegWord(sc, 0xFB2A, 0x1C13);
+                MP_WriteMcuAccessRegWord(sc, 0xFB2C, 0x484F);
+                MP_WriteMcuAccessRegWord(sc, 0xFB2E, 0x9CA2);
+                MP_WriteMcuAccessRegWord(sc, 0xFB30, 0x74A2);
+                MP_WriteMcuAccessRegWord(sc, 0xFB32, 0x49CF);
+                MP_WriteMcuAccessRegWord(sc, 0xFB34, 0xF1FE);
+                MP_WriteMcuAccessRegWord(sc, 0xFB36, 0xFF80);
+                MP_WriteMcuAccessRegWord(sc, 0xFB38, 0x0000);
+                MP_WriteMcuAccessRegWord(sc, 0xFB3A, 0x0481);
+                MP_WriteMcuAccessRegWord(sc, 0xFB3C, 0x0C81);
+                MP_WriteMcuAccessRegWord(sc, 0xFB3E, 0x0AE0);
 
                 MP_WriteMcuAccessRegWord(sc, 0xFC26, 0x8000);
 
+                MP_WriteMcuAccessRegWord(sc, 0xFC28, 0x0000);
                 MP_WriteMcuAccessRegWord(sc, 0xFC2A, 0x0A2F);
                 MP_WriteMcuAccessRegWord(sc, 0xFC2C, 0x0297);
                 MP_WriteMcuAccessRegWord(sc, 0xFC2E, 0x0A61);
                 MP_WriteMcuAccessRegWord(sc, 0xFC30, 0x00A9);
                 MP_WriteMcuAccessRegWord(sc, 0xFC32, 0x012D);
+                MP_WriteMcuAccessRegWord(sc, 0xFC34, 0x0000);
+                MP_WriteMcuAccessRegWord(sc, 0xFC36, 0x08DF);
                 break;
         case MACFG_60:
                 DisableMcuBPs(sc);
@@ -3058,7 +3351,7 @@ static int re_attach(device_t dev)
         /*
          * A RealTek chip was detected. Inform the world.
          */
-        device_printf(dev,"version:1.92\n");
+        device_printf(dev,"version:1.93\n");
         device_printf(dev,"Ethernet address: %6D\n", eaddr, ":");
         printf("\nThis product is covered by one or more of the following patents: \
            \nUS6,570,884, US6,115,776, and US6,327,625.\n");
@@ -5657,6 +5950,7 @@ static void re_txeof(struct re_softc *sc)  	/* Transmit OK/ERR handler */
 {
         union TxDesc *txptr;
         struct ifnet		*ifp;
+        u_int32_t           txstat;
 
         /*	printf("X");*/
 
@@ -5671,8 +5965,11 @@ static void re_txeof(struct re_softc *sc)  	/* Transmit OK/ERR handler */
                         sc->re_desc.tx_desc_dmamap,
                         BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE);
 
-        txptr=&(sc->re_desc.tx_desc[sc->re_desc.tx_last_index]);
-        while ((txptr->ul[0]&htole32(RL_TDESC_STAT_OWN))==0 && sc->re_desc.tx_last_index!=sc->re_desc.tx_cur_index) {
+        while (sc->re_desc.tx_last_index!=sc->re_desc.tx_cur_index) {
+                txptr=&(sc->re_desc.tx_desc[sc->re_desc.tx_last_index]);
+                txstat = le32toh(txptr->ul[0]);
+                if (txstat & RL_TDESC_STAT_OWN)
+                        break;
 #ifdef _DEBUG_
                 printf("**** Tx OK  ****\n");
 #endif
@@ -5688,8 +5985,23 @@ static void re_txeof(struct re_softc *sc)  	/* Transmit OK/ERR handler */
                 }
 
                 sc->re_desc.tx_last_index = (sc->re_desc.tx_last_index+1)%RE_TX_BUF_NUM;
-                txptr=&sc->re_desc.tx_desc[sc->re_desc.tx_last_index];
-                ifp->if_opackets++;
+#if OS_VER < VERSION(11,0)
+                if (txstat & (RL_TDESC_STAT_EXCESSCOL|
+                              RL_TDESC_STAT_COLCNT))
+                        ifp->if_collisions++;
+                if (txstat & RL_TDESC_STAT_TXERRSUM)
+                        ifp->if_oerrors++;
+                else
+                        ifp->if_opackets++;
+#else
+                if (txstat & (RL_TDESC_STAT_EXCESSCOL|
+                              RL_TDESC_STAT_COLCNT))
+                        if_inc_counter(ifp, IFCOUNTER_COLLISIONS, 1);
+                if (txstat & RL_TDESC_STAT_TXERRSUM)
+                        if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
+                else
+                        if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
+#endif
                 ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
         }
 
@@ -5754,6 +6066,11 @@ struct re_softc		*sc;
                 /* Check if this packet is received correctly*/
                 if (opts1&0x200000) {	/*Check RES bit*/
                         bError=1;
+#if OS_VER < VERSION(11,0)
+                        ifp->if_ierrors++;
+#else
+                        if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+#endif
                         goto update_desc;
                 }
                 opts2 = le32toh(rxptr->ul[1]);
@@ -5770,6 +6087,11 @@ struct re_softc		*sc;
                 buf = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, size);
                 if (buf==NULL) {
                         bError=1;
+#if OS_VER < VERSION(11,0)
+                        ifp->if_iqdrops++;
+#else
+                        if_inc_counter(ifp, IFCOUNTER_IQDROPS, 1);
+#endif
                         goto update_desc;
                 }
 
@@ -5832,7 +6154,11 @@ struct re_softc		*sc;
                 }
 
                 eh = mtod(m, struct ether_header *);
+#if OS_VER < VERSION(11,0)
                 ifp->if_ipackets++;
+#else
+                if_inc_counter(ifp, IFCOUNTER_IPACKETS, 1);
+#endif
 #ifdef _DEBUG_
                 printf("Rcv Packet, Len=%d \n", m->m_len);
 #endif
@@ -5906,11 +6232,14 @@ static int re_intr(void *arg)  	/* Interrupt Handler */
 
 #if OS_VER < VERSION(7,0)
         re_int_task(arg, 0);
-#else
+#else //OS_VER < VERSION(7,0)
+#if OS_VER < VERSION(11,0)
         taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
-
+#else ////OS_VER < VERSION(11,0)
+        taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
+#endif //OS_VER < VERSION(11,0)
         return (FILTER_HANDLED);
-#endif
+#endif //OS_VER < VERSION(7,0)
 }
 
 static void re_int_task(void *arg, int npending)
@@ -5987,10 +6316,14 @@ static void re_int_task(void *arg, int npending)
 
 #if OS_VER>=VERSION(7,0)
         if (CSR_READ_2(sc, RE_ISR) & RE_INTRS) {
+#if OS_VER < VERSION(11,0)
                 taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
+#else ////OS_VER < VERSION(11,0)
+                taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
+#endif //OS_VER < VERSION(11,0)
                 return;
         }
-#endif
+#endif //OS_VER>=VERSION(7,0)
 
         /* Re-enable interrupts. */
         CSR_WRITE_2(sc, RE_IMR, RE_INTRS);
@@ -6473,7 +6806,11 @@ struct ifnet		*ifp;
         sc = ifp->if_softc;
 
         printf("re%d: watchdog timeout\n", sc->re_unit);
+#if OS_VER < VERSION(11,0)
         ifp->if_oerrors++;
+#else
+        if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
+#endif
 
         re_txeof(sc);
         re_rxeof(sc);

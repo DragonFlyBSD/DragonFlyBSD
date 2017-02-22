@@ -42,6 +42,10 @@
 #endif
 #define OS_VER	__FreeBSD_version
 
+#ifndef	M_DONTWAIT
+#define	M_DONTWAIT	M_NOWAIT
+#endif
+
 #if OS_VER>=VERSION(4,0)
 #define	RE_USE_NEW_CALLOUT_FUN	1
 #endif
