@@ -2561,6 +2561,8 @@ pmap_release_callback(pv_entry_t pv, void *data)
 		pv_lock(pv);
 		pv_put(pv);
 		info->retry = 1;
+		spin_lock(&pmap->pm_spin);
+
 		return -1;
 	}
 	KKASSERT(pv->pv_pmap == pmap && pindex == pv->pv_pindex);
@@ -3253,7 +3255,22 @@ pv_entry_t
 _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 {
 	pv_entry_t pv;
-	pv_entry_t pnew = NULL;
+	pv_entry_t pnew;
+	struct mdglobaldata *md = mdcpu;
+
+	pnew = NULL;
+	if (md->gd_newpv) {
+#if 0
+		pnew = atomic_swap_ptr((void *)&md->gd_newpv, NULL);
+#else
+		crit_enter();
+		pnew = md->gd_newpv;	/* might race NULL */
+		md->gd_newpv = NULL;
+		crit_exit();
+#endif
+	}
+	if (pnew == NULL)
+		pnew = zalloc(pvzone);
 
 	spin_lock(&pmap->pm_spin);
 	for (;;) {
@@ -3270,16 +3287,6 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		}
 		if (pv == NULL) {
 			vm_pindex_t *pmark;
-
-			/*
-			 * We need to stage a new pv entry
-			 */
-			if (pnew == NULL) {
-				spin_unlock(&pmap->pm_spin);
-				pnew = zalloc(pvzone);
-				spin_lock(&pmap->pm_spin);
-				continue;
-			}
 
 			/*
 			 * We need to block if someone is holding a
@@ -3320,18 +3327,23 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		}
 
 		/*
-		 * We have an entry, clean up any staged pv we had allocated,
-		 * then block until we can lock the entry.
+		 * We already have an entry, cleanup the staged pnew if
+		 * we can get the lock, otherwise block and retry.
 		 */
-		if (pnew) {
+		if (__predict_true(_pv_hold_try(pv PMAP_DEBUG_COPY))) {
 			spin_unlock(&pmap->pm_spin);
-			zfree(pvzone, pnew);
-			pnew = NULL;
-			spin_lock(&pmap->pm_spin);
-			continue;
-		}
-		if (_pv_hold_try(pv PMAP_DEBUG_COPY)) {
-			spin_unlock(&pmap->pm_spin);
+#if 0
+			pnew = atomic_swap_ptr((void *)&md->gd_newpv, pnew);
+			if (pnew)
+				zfree(pvzone, pnew);
+#else
+			crit_enter();
+			if (md->gd_newpv == NULL)
+				md->gd_newpv = pnew;
+			else
+				zfree(pvzone, pnew);
+			crit_exit();
+#endif
 			KKASSERT(pv->pv_pmap == pmap &&
 				 pv->pv_pindex == pindex);
 			*isnew = 0;
@@ -3342,6 +3354,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		pv_put(pv);
 		spin_lock(&pmap->pm_spin);
 	}
+	/* NOT REACHED */
 }
 
 /*

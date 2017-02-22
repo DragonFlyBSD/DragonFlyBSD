@@ -46,6 +46,8 @@
 #include <machine/tss.h>	/* struct x86_64tss */
 #include <machine/npx.h>
 
+struct pv_entry;
+
 /*
  * Note on interrupt control.  Pending interrupts not yet dispatched are
  * marked in gd_fpending or gd_spending.  Once dispatched the interrupt's
@@ -85,7 +87,7 @@ struct mdglobaldata {
 	caddr_t		gd_aunused0;
 	caddr_t		gd_aunused1;
 	caddr_t		gd_aunused2;
-	pt_entry_t	*gd_aunused3;
+	struct pv_entry	*gd_newpv;
 	u_int		gd_acpi_id;
 	u_int		gd_apic_id;
 	register_t	gd_scratch_rsp;
