@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -57,5 +57,17 @@ static inline void spin_unlock_irq(struct lock *lock)
 
 #define spin_lock_irqsave(lock, flags)		do { flags = 0; spin_lock_irq(lock); } while(0)
 #define spin_unlock_irqrestore(lock, flags)	do { flags = 0; spin_unlock_irq(lock); } while(0)
+
+static inline void
+spin_lock_bh(struct lock *lock)
+{
+	spin_lock_irq(lock);
+}
+
+static inline void
+spin_unlock_bh(struct lock *lock)
+{
+	spin_unlock_irq(lock);
+}
 
 #endif	/* _LINUX_SPINLOCK_H_ */

@@ -7,6 +7,7 @@
 #include <sys/endian.h>
 #include <sys/systm.h>
 #include <sys/serialize.h>
+#include <linux/interrupt.h>	/* For task queue support */
 #include <linux/delay.h>
 
 /* Handle the DRM options from kernel config. */
