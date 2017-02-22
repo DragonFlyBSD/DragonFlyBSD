@@ -197,6 +197,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	if (status != CAM_REQ_CMP)
 		goto failure;
 
+	xpt_lock_buses();
 	cur_periph = TAILQ_FIRST(&(*p_drv)->units);
 	while (cur_periph != NULL
 	    && cur_periph->unit_number < periph->unit_number)
@@ -208,6 +209,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 		TAILQ_INSERT_TAIL(&(*p_drv)->units, periph, unit_links);
 		(*p_drv)->generation++;
 	}
+	xpt_unlock_buses();
 
 	init_level++;
 
@@ -223,7 +225,9 @@ failure:
 		CAM_SIM_UNLOCK(sim);
 		break;
 	case 3:
+		xpt_lock_buses();
 		TAILQ_REMOVE(&(*p_drv)->units, periph, unit_links);
+		xpt_unlock_buses();
 		xpt_remove_periph(periph);
 		/* FALLTHROUGH */
 	case 2:
