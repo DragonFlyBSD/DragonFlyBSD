@@ -19,7 +19,7 @@ cd ${COMPILEDIR}/${KERNELNAME}
 
 nm -gon `echo *.o /boot/kernel/*.ok	\
 	| tr ' ' '\012'					\
-	| egrep -v '(aicasm|genassym)'`			\
+	| egrep -v '(genassym)'`			\
 	| tr : ' ' | awk '
 NF > 1	{
 	if (length($2) == 8) {

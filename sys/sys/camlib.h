@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.h,v 1.2 1999/08/28 00:04:06 peter Exp $
- * $DragonFly: src/sys/sys/camlib.h,v 1.6 2007/11/24 03:13:03 pavalos Exp $
  */
 /*
  * Buffer encoding/decoding routines taken from the original FreeBSD SCSI
@@ -115,7 +114,7 @@ struct cam_device {
 					 * particular device.
 					 */
 	
-	char		sim_name[SIM_IDLEN+1]; /* Controller name, e.g. 'ahc' */
+	char		sim_name[SIM_IDLEN+1]; /* Controller name, e.g. 'ahci' */
 	u_int32_t	sim_unit_number; /* Controller unit number */
 	u_int32_t	bus_id;		 /* Controller bus number */
 	lun_id_t	target_lun;	 /* Logical Unit Number */

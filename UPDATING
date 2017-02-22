@@ -12,11 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
-NCV, NSP AND STG DRIVERS REMOVED
---------------------------------
+AHC, AHD, AIC, NCV, NSP AND STG DRIVERS REMOVED
+-----------------------------------------------
 
-They were all in our X86_64_GENERIC kernel configuration file, so any
-custom configuration files derived from it need adjustment.
+They were all in our X86_64_GENERIC kernel configuration file, along with
+the AHC_REG_PRETTY_PRINT and AHD_REG_PRETTY_PRINT options, so any custom
+configuration files derived from it need adjustment.
 
 PORTAL FILE SYSTEM REMOVED
 --------------------------

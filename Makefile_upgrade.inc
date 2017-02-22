@@ -3201,6 +3201,13 @@ TO_REMOVE+=/etc/rc.d/abi
 TO_REMOVE+=/sbin/mount_linprocfs
 TO_REMOVE+=/usr/share/man/man5/linprocfs.5.gz
 TO_REMOVE+=/usr/share/man/man8/mount_linprocfs.8.gz
+TO_REMOVE+=/boot/kernel/ahc.ko
+TO_REMOVE+=/boot/kernel/ahc_pci.ko
+TO_REMOVE+=/boot/kernel/ahd.ko
+TO_REMOVE+=/boot/kernel/aic.ko
+TO_REMOVE+=/usr/share/man/man4/ahc.4.gz
+TO_REMOVE+=/usr/share/man/man4/ahd.4.gz
+TO_REMOVE+=/usr/share/man/man4/aic.4.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

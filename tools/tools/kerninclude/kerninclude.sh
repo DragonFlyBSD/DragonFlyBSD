@@ -101,7 +101,6 @@ do
 	( cd $i ; ls *.o 2>/dev/null )
 done
 ) | sed '
-/aicasm/d	
 /genassym/d
 /vers.o/d
 /setdef0.o/d

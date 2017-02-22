@@ -33,9 +33,9 @@
 .Nd CAM SCSI subsystem
 .Sh SYNOPSIS
 .Cd "device scbus"
-.Cd "device scbus1 at ahc0"
-.Cd "device scbus3 at ahc1 bus 0"
-.Cd "device scbus2 at ahc1 bus 1"
+.Cd "device scbus1 at ahci0"
+.Cd "device scbus3 at ahci1 bus 0"
+.Cd "device scbus2 at ahci1 bus 1"
 .Cd "device cd"
 .Cd "device ch"
 .Cd "device da"
@@ -158,12 +158,12 @@ to assign changer 1 as the changer with SCSI ID 4,
 SCSI logical unit 0 on SCSI bus 0.
 Individual scbuses can be wired down to specific controllers with
 a config line similar to
-.Cd "device scbus0 at ahc0"
-which assigns scsi bus 0 to the first unit using the ahc driver.
+.Cd "device scbus0 at ahci0"
+which assigns scsi bus 0 to the first unit using the ahci driver.
 For controllers supporting more than one bus,
 the particular bus can be specified as in
-.Cd "device scbus3 at ahc1 bus 1"
-which assigns scbus 1 to the second bus probed on the ahc1 device.
+.Cd "device scbus3 at ahci1 bus 1"
+which assigns scbus 1 to the second bus probed on the ahci1 device.
 .Pp
 When you have a mixture of wired down and counted devices then the
 counting begins with the first non-wired down unit for a particular
@@ -258,7 +258,7 @@ utility.  See
 .Xr camcontrol 8
 for details.
 .Sh SEE ALSO
-.Xr ahc 4 ,
+.Xr ahci 4 ,
 .Xr bt 4 ,
 .Xr cd 4 ,
 .Xr ch 4 ,
