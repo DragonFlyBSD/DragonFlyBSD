@@ -67,8 +67,14 @@
  */
 #if defined(KLD_MODULE)
 #define ATOMIC_ASM(NAME, TYPE, OP, CONS, V)		\
-	extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v); \
-	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
+	extern void atomic_##NAME##_##TYPE		\
+		(volatile u_##TYPE *p, u_##TYPE v);	\
+	extern void atomic_##NAME##_##TYPE##_nonlocked	\
+		(volatile u_##TYPE *p, u_##TYPE v);	\
+	extern void atomic_##NAME##_##TYPE##_xacquire	\
+		(volatile u_##TYPE *p, u_##TYPE v);	\
+	extern void atomic_##NAME##_##TYPE##_xrelease	\
+		(volatile u_##TYPE *p, u_##TYPE v);	\
 
 int	atomic_testandset_int(volatile u_int *p, u_int v);
 int	atomic_testandset_long(volatile u_long *p, u_long v);
@@ -76,7 +82,14 @@ int	atomic_testandclear_int(volatile u_int *p, u_int v);
 int	atomic_testandclear_long(volatile u_long *p, u_long v);
 
 #else /* !KLD_MODULE */
+
+/*
+ * locked bus cycle
+ * lock elision (backwards compatible)
+ */
 #define MPLOCKED	"lock ; "
+#define XACQUIRE	"repne; "	/* lock elision */
+#define XRELEASE	"repe; "	/* lock elision */
 
 /*
  * The assembly is volatilized to demark potential before-and-after side
@@ -101,6 +114,20 @@ static __inline void					\
 atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
 	__asm __volatile(MPLOCKED OP			\
+			 : "+m" (*p)			\
+			 : CONS (V)); 			\
+}							\
+static __inline void					\
+atomic_##NAME##_##TYPE##_xacquire(volatile u_##TYPE *p, u_##TYPE v)\
+{							\
+	__asm __volatile(XACQUIRE MPLOCKED OP		\
+			 : "+m" (*p)			\
+			 : CONS (V)); 			\
+}							\
+static __inline void					\
+atomic_##NAME##_##TYPE##_xrelease(volatile u_##TYPE *p, u_##TYPE v)\
+{							\
+	__asm __volatile(XRELEASE MPLOCKED OP		\
 			 : "+m" (*p)			\
 			 : CONS (V)); 			\
 }							\
@@ -422,11 +449,23 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 extern int atomic_cmpxchg_int(volatile u_int *_dst, u_int _old, u_int _new);
 extern int atomic_cmpxchg_long_test(volatile u_long *_dst, u_long _old, u_long _new);
 extern int atomic_cmpset_short(volatile u_short *_dst,
-	u_short _old, u_short _new);
+			u_short _old, u_short _new);
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
+extern int atomic_cmpset_int_xacquire(volatile u_int *_dst,
+			u_int _old, u_int _new);
+extern int atomic_cmpset_int_xrelease(volatile u_int *_dst,
+			u_int _old, u_int _new);
 extern int atomic_cmpset_long(volatile u_long *_dst, u_long _exp, u_long _src);
+extern int atomic_cmpset_long_xacquire(volatile u_long *_dst,
+			u_long _exp, u_long _src);
+extern int atomic_cmpset_long_xrelease(volatile u_long *_dst,
+			u_long _exp, u_long _src);
 extern u_int atomic_fetchadd_int(volatile u_int *_p, u_int _v);
+extern u_int atomic_fetchadd_int_xacquire(volatile u_int *_p, u_int _v);
+extern u_int atomic_fetchadd_int_xrelease(volatile u_int *_p, u_int _v);
 extern u_long atomic_fetchadd_long(volatile u_long *_p, u_long _v);
+extern u_long atomic_fetchadd_long_xacquire(volatile u_long *_p, u_long _v);
+extern u_long atomic_fetchadd_long_xrelease(volatile u_long *_p, u_long _v);
 
 #else
 
@@ -481,11 +520,59 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 }
 
 static __inline int
+atomic_cmpset_int_xacquire(volatile u_int *_dst, u_int _old, u_int _new)
+{
+	u_int res = _old;
+
+	__asm __volatile(XACQUIRE MPLOCKED "cmpxchgl %2,%1; " \
+			 : "+a" (res), "=m" (*_dst) \
+			 : "r" (_new), "m" (*_dst) \
+			 : "memory");
+	return (res == _old);
+}
+
+static __inline int
+atomic_cmpset_int_xrelease(volatile u_int *_dst, u_int _old, u_int _new)
+{
+	u_int res = _old;
+
+	__asm __volatile(XRELEASE MPLOCKED "cmpxchgl %2,%1; " \
+			 : "+a" (res), "=m" (*_dst) \
+			 : "r" (_new), "m" (*_dst) \
+			 : "memory");
+	return (res == _old);
+}
+
+static __inline int
 atomic_cmpset_long(volatile u_long *_dst, u_long _old, u_long _new)
 {
 	u_long res = _old;
 
 	__asm __volatile(MPLOCKED "cmpxchgq %2,%1; " \
+			 : "+a" (res), "=m" (*_dst) \
+			 : "r" (_new), "m" (*_dst) \
+			 : "memory");
+	return (res == _old);
+}
+
+static __inline int
+atomic_cmpset_long_xacquire(volatile u_long *_dst, u_long _old, u_long _new)
+{
+	u_long res = _old;
+
+	__asm __volatile(XACQUIRE MPLOCKED "cmpxchgq %2,%1; " \
+			 : "+a" (res), "=m" (*_dst) \
+			 : "r" (_new), "m" (*_dst) \
+			 : "memory");
+	return (res == _old);
+}
+
+static __inline int
+atomic_cmpset_long_xrelease(volatile u_long *_dst, u_long _old, u_long _new)
+{
+	u_long res = _old;
+
+	__asm __volatile(XRELEASE MPLOCKED "cmpxchgq %2,%1; " \
 			 : "+a" (res), "=m" (*_dst) \
 			 : "r" (_new), "m" (*_dst) \
 			 : "memory");
@@ -506,10 +593,50 @@ atomic_fetchadd_int(volatile u_int *_p, u_int _v)
 	return (_v);
 }
 
+static __inline u_int
+atomic_fetchadd_int_xacquire(volatile u_int *_p, u_int _v)
+{
+	__asm __volatile(XACQUIRE MPLOCKED "xaddl %0,%1; " \
+			 : "+r" (_v), "=m" (*_p)	\
+			 : "m" (*_p)		\
+			 : "memory");
+	return (_v);
+}
+
+static __inline u_int
+atomic_fetchadd_int_xrelease(volatile u_int *_p, u_int _v)
+{
+	__asm __volatile(XRELEASE MPLOCKED "xaddl %0,%1; " \
+			 : "+r" (_v), "=m" (*_p)	\
+			 : "m" (*_p)		\
+			 : "memory");
+	return (_v);
+}
+
 static __inline u_long
 atomic_fetchadd_long(volatile u_long *_p, u_long _v)
 {
 	__asm __volatile(MPLOCKED "xaddq %0,%1; " \
+			 : "+r" (_v), "=m" (*_p)	\
+			 : "m" (*_p)		\
+			 : "memory");
+	return (_v);
+}
+
+static __inline u_long
+atomic_fetchadd_long_xacquire(volatile u_long *_p, u_long _v)
+{
+	__asm __volatile(XACQUIRE MPLOCKED "xaddq %0,%1; " \
+			 : "+r" (_v), "=m" (*_p)	\
+			 : "m" (*_p)		\
+			 : "memory");
+	return (_v);
+}
+
+static __inline u_long
+atomic_fetchadd_long_xrelease(volatile u_long *_p, u_long _v)
+{
+	__asm __volatile(XRELEASE MPLOCKED "xaddq %0,%1; " \
 			 : "+r" (_v), "=m" (*_p)	\
 			 : "m" (*_p)		\
 			 : "memory");
