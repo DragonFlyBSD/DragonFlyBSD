@@ -37,6 +37,8 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/lock.h>
+#else
+#include <sys/types.h>
 #endif
 
 typedef enum idtype {
