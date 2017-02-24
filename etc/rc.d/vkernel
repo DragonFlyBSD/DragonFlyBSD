@@ -16,8 +16,8 @@ vkernel_start()
 	echo -n 'Starting virtual kernels:'
 	for _vkernel in ${vkernel_list}
 	do
-		# Make sure the list of root images is empty
-		unset rootimgs
+		# Start with a clean set of variables
+		unset pidfile bin memsize rootimgs ifaces logfile flags
 
 		# Check if already running
 		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
@@ -25,7 +25,7 @@ vkernel_start()
 			eval pid=`cat ${pidfile}`
 			if [ ! -z "${pid}" -a ! -z "`ps axwwp ${pid} | grep -wE "^[ ]*${pid}" | grep -v grep | awk '{print $1}'`" ]; then
 				echo
-				warn "Vkernel ${_vkernel} already running? (check ${pidfile})"
+				warn "vkernel ${_vkernel} already running? (check ${pidfile})"
 				continue
 			fi
 		fi
