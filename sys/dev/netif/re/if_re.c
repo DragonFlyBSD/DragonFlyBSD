@@ -1890,7 +1890,7 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		if (ifp->if_capenable & IFCAP_TXCSUM)
 			sc->re_tx_cstag = 1;
 		else
-			sc->re_rx_cstag = 0;
+			sc->re_tx_cstag = 0;
 
 		if (mask && (ifp->if_flags & IFF_RUNNING))
 			re_init(sc);
