@@ -14,7 +14,9 @@ CLEANFILES=${DATAFILES} cross-phantglobs.no map setup.nx setup.no stamp.setuprun
 
 # Needed in order to build release on master
 #
+.if exists(/usr/include/priv/ncurses)
 NXCFLAGS+= -I/usr/include/priv/ncurses
+.endif
 
 all: stamp.setuprun
 
