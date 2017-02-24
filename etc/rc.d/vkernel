@@ -16,6 +16,9 @@ vkernel_start()
 	echo -n 'Starting virtual kernels:'
 	for _vkernel in ${vkernel_list}
 	do
+		# Make sure the list of root images is empty
+		unset rootimgs
+
 		# Check if already running
 		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
 		if [ -f "${pidfile}" ]; then
