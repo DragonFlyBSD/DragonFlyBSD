@@ -8,6 +8,7 @@
 
 name="vkernel"
 rcvar=`set_rcvar`
+
 start_cmd="vkernel_start"
 stop_cmd="vkernel_stop"
 
@@ -17,7 +18,16 @@ vkernel_start()
 	for _vkernel in ${vkernel_list}
 	do
 		# Start with a clean set of variables
-		unset pidfile bin memsize rootimgs ifaces logfile flags
+		unset pidfile bin memsize rootimgs ifaces logfile flags vkuser vkgroup
+
+		# Configure user to run vkernel
+		eval vkuser=\"\${vkernel_${_vkernel}_user}\"
+		if [ -z "${vkuser}" ]; then
+		    vkuser="root"
+		    vkgroup="wheel"
+		else
+		    vkgroup=$(id -ng ${vkuser})
+		fi
 
 		# Check if already running
 		eval pidfile="/var/run/vkernel.${_vkernel}.pid"
@@ -28,6 +38,9 @@ vkernel_start()
 				warn "vkernel ${_vkernel} already running? (check ${pidfile})"
 				continue
 			fi
+		else
+			# Regular users do not have write access in /var/run
+			install -c -o ${vkuser} -g ${vkgroup} /dev/null ${pidfile}
 		fi
 
 		# Configure vkernel binary
@@ -80,7 +93,7 @@ vkernel_start()
 		# Configure optional flags
 		eval flags=\"\${vkernel_${_vkernel}_flags}\"
 
-		eval "daemon ${bin} ${memsize} ${rootimgs} ${ifaces} ${flags} -p ${pidfile} >>${logfile} 2>&1 </dev/null"
+		eval "daemon -u ${vkuser} ${bin} ${memsize} ${rootimgs} ${ifaces} ${flags} -p ${pidfile} >>${logfile} 2>&1 </dev/null"
 		echo -n " ${_vkernel}"
 	done
 	echo '.'
