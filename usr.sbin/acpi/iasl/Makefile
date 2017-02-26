@@ -82,6 +82,9 @@ SRCS=	\
 	aslwalks.c \
 	aslxref.c \
 	aslxrefout.c \
+	cvcompiler.c \
+	cvdisasm.c \
+	cvparser.c \
 	cmfsize.c \
 	dbfileio.c \
 	dmbuffer.c \

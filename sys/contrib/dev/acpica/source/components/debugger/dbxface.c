@@ -45,6 +45,7 @@
 #include "accommon.h"
 #include "amlcode.h"
 #include "acdebug.h"
+#include "acinterp.h"
 
 #ifdef ACPI_DEBUGGER
 
@@ -138,7 +139,7 @@ ErrorExit:
  *
  * RETURN:      Status
  *
- * DESCRIPTION: Called for AML_BREAK_POINT_OP
+ * DESCRIPTION: Called for AML_BREAKPOINT_OP
  *
  ******************************************************************************/
 
@@ -405,7 +406,9 @@ AcpiDbSingleStep (
     }
 
 
+    AcpiExExitInterpreter ();
     Status = AcpiDbStartCommand (WalkState, Op);
+    AcpiExEnterInterpreter ();
 
     /* User commands complete, continue execution of the interrupted method */
 
