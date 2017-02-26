@@ -525,7 +525,7 @@ save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 			bsize = atol(dfui_dataset_get_value(ds, "bsize"));
 			tmpfsbacked = (strcmp(dfui_dataset_get_value(ds, "tmpfsbacked"), "Y") == 0);
 		} else {
-			softupdates = (strcmp(mountpoint, "/") == 0 ? 0 : 1);
+			softupdates = (strcmp(mountpoint, "/boot") == 0 ? 0 : 1);
 			tmpfsbacked = 0;
 			fsize = -1;
 			bsize = -1;
@@ -596,7 +596,7 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 			dfui_dataset_celldata_add(ds, "encrypted", "N");
 			if (expert) {
 				dfui_dataset_celldata_add(ds, "softupdates",
-				    strcmp(def_mountpt[mtpt], "/") != 0 ? "Y" : "N");
+				    strcmp(def_mountpt[mtpt], "/boot") != 0 ? "Y" : "N");
 				dfui_dataset_celldata_add(ds, "tmpfsbacked",
 				    "N");
 				dfui_dataset_celldata_add(ds, "fsize",
