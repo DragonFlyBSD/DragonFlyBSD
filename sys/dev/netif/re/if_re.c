@@ -1526,26 +1526,29 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	else
 		ctl_csum = 0;
 
-	/*
-	 * With some of the RealTek chips, using the checksum offload
-	 * support in conjunction with the autopadding feature results
-	 * in the transmission of corrupt frames. For example, if we
-	 * need to send a really small IP fragment that's less than 60
-	 * bytes in size, and IP header checksumming is enabled, the
-	 * resulting ethernet frame that appears on the wire will
-	 * have garbled payload. To work around this, if TX checksum
-	 * offload is enabled, we always manually pad short frames out
-	 * to the minimum ethernet frame size.
-	 *
-	 * Note: this appears unnecessary for TCP, and doing it for TCP
-	 * with PCIe adapters seems to result in bad checksums.
-	 */
-	if ((m->m_pkthdr.csum_flags & (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
-	    (m->m_pkthdr.csum_flags & CSUM_TCP) == 0 &&
-	    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
-		error = m_devpad(m, RE_MIN_FRAMELEN);
-		if (error)
-			goto back;
+	if (sc->re_coalesce_tx_pkt) {
+		/*
+		 * With some of the RealTek chips, using the checksum offload
+		 * support in conjunction with the autopadding feature results
+		 * in the transmission of corrupt frames. For example, if we
+		 * need to send a really small IP fragment that's less than 60
+		 * bytes in size, and IP header checksumming is enabled, the
+		 * resulting ethernet frame that appears on the wire will
+		 * have garbled payload. To work around this, if TX checksum
+		 * offload is enabled, we always manually pad short frames out
+		 * to the minimum ethernet frame size.
+		 *
+		 * Note: this appears unnecessary for TCP, and doing it for TCP
+		 * with PCIe adapters seems to result in bad checksums.
+		 */
+		if ((m->m_pkthdr.csum_flags &
+		     (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
+		    (m->m_pkthdr.csum_flags & CSUM_TCP) == 0 &&
+		    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
+			error = m_devpad(m, RE_MIN_FRAMELEN);
+			if (error)
+				goto back;
+		}
 	}
 
 	vlantag = 0;
