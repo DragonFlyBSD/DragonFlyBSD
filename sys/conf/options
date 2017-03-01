@@ -78,7 +78,6 @@ MSGTQL		opt_sysvipc.h
 UCONSOLE
 ICMP_BANDLIM
 SHOW_BUSYBUFS
-DIRECTIO	opt_directio.h
 
 # POSIX kernel options
 _KPOSIX_PRIORITY_SCHEDULING	opt_posix.h

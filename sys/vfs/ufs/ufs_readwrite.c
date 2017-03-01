@@ -44,8 +44,6 @@
 #include <sys/sysctl.h>
 #include <vm/vm_page2.h>
 
-#include "opt_directio.h"
-
 #define VN_KNOTE(vp, b) KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, (b))
 
 SYSCTL_DECL(_vfs_ffs);
