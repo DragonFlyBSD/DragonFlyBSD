@@ -18,7 +18,8 @@ vkernel_start()
 	for _vkernel in ${vkernel_list}
 	do
 		# Start with a clean set of variables
-		unset pidfile bin memsize rootimgs ifaces logfile flags vkuser vkgroup
+		unset pidfile bin memsize rootimgs ifaces logfile flags
+		unset vkuser vkgroup memimg
 
 		# Configure user to run vkernel
 		eval vkuser=\"\${vkernel_${_vkernel}_user}\"
@@ -65,6 +66,35 @@ vkernel_start()
 			memsize="-m ${_memsize}"
 		fi
 
+		# Configure vkernel memory image file
+		eval _memimg=\"\${vkernel_${_vkernel}_memimg}\"
+		if [ -z "${_memimg}" ]; then
+			mkdir -m 1777 -p /var/vkernel
+
+			for n in $(seq 0 999999)
+			do
+				eval _memf=$(printf "/var/vkernel/memimg.%06s" ${n})
+				if [ ! -f "${_memf}" ]
+				then
+					memimg=" -i ${_memf}"
+					break
+				else
+					if lockf -kst 0 ${_memf} echo >/dev/null
+					then
+						# Test if memimg is writable by vkuser
+						su - ${vkuser} -c "test -w ${_memf}"
+						if [ $? -eq 0 ]
+						then
+							memimg="-i ${_memf}"
+							break
+						fi
+					fi
+				fi
+			done
+		else
+			memimg="-i ${_memimg}"
+		fi
+
 		# Configure vkernel root image(s)
 		eval _rootimgs=\"\${vkernel_${_vkernel}_rootimg_list}\"
 		if [ -z "${_rootimgs}" ]; then
@@ -93,7 +123,9 @@ vkernel_start()
 		# Configure optional flags
 		eval flags=\"\${vkernel_${_vkernel}_flags}\"
 
-		eval "daemon -u ${vkuser} ${bin} ${memsize} ${rootimgs} ${ifaces} ${flags} -p ${pidfile} >>${logfile} 2>&1 </dev/null"
+		eval "daemon -u ${vkuser} ${bin} ${memsize} ${rootimgs} " \
+		     "${memimg} ${ifaces} ${flags} -p ${pidfile}" \
+		     ">>${logfile} 2>&1 </dev/null"
 		echo -n " ${_vkernel}"
 	done
 	echo '.'
