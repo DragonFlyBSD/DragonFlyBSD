@@ -57,17 +57,17 @@
 #define	CLOCKS_PER_SEC	((clock_t)128)
 
 #ifndef _CLOCK_T_DECLARED
-#define _CLOCK_T_DECLARED
+#define	_CLOCK_T_DECLARED
 typedef	__clock_t	clock_t;
 #endif
 
 #ifndef _TIME_T_DECLARED
-#define _TIME_T_DECLARED
+#define	_TIME_T_DECLARED
 typedef	__time_t	time_t;
 #endif
 
 #ifndef _SIZE_T_DECLARED
-#define _SIZE_T_DECLARED
+#define	_SIZE_T_DECLARED
 typedef	__size_t	size_t;
 #endif
 
@@ -77,12 +77,12 @@ typedef	__size_t	size_t;
  */
 #include <sys/timespec.h>
 #ifndef _CLOCKID_T_DECLARED
-#define _CLOCKID_T_DECLARED
+#define	_CLOCKID_T_DECLARED
 typedef	__clockid_t	clockid_t;
 #endif
 
 #ifndef _TIMER_T_DECLARED
-#define _TIMER_T_DECLARED
+#define	_TIMER_T_DECLARED
 typedef	__timer_t	timer_t;
 #endif
 #elif __ISO_C_VISIBLE >= 2011
@@ -98,29 +98,29 @@ typedef	__pid_t		pid_t;
 
 /* These macros are also in sys/time.h. */
 #if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 199309
-#define CLOCK_REALTIME		0
+#define	CLOCK_REALTIME		0
 #ifdef __BSD_VISIBLE
-#define CLOCK_VIRTUAL		1
-#define CLOCK_PROF		2
+#define	CLOCK_VIRTUAL		1
+#define	CLOCK_PROF		2
 #endif
-#define CLOCK_MONOTONIC		4
-#define CLOCK_UPTIME		5	/* FreeBSD-specific. */
-#define CLOCK_UPTIME_PRECISE	7	/* FreeBSD-specific. */
-#define CLOCK_UPTIME_FAST	8	/* FreeBSD-specific. */
-#define CLOCK_REALTIME_PRECISE	9	/* FreeBSD-specific. */
-#define CLOCK_REALTIME_FAST	10	/* FreeBSD-specific. */
-#define CLOCK_MONOTONIC_PRECISE	11	/* FreeBSD-specific. */
-#define CLOCK_MONOTONIC_FAST	12	/* FreeBSD-specific. */
-#define CLOCK_SECOND		13	/* FreeBSD-specific. */
-#define CLOCK_THREAD_CPUTIME_ID	14
+#define	CLOCK_MONOTONIC		4
+#define	CLOCK_UPTIME		5	/* FreeBSD-specific. */
+#define	CLOCK_UPTIME_PRECISE	7	/* FreeBSD-specific. */
+#define	CLOCK_UPTIME_FAST	8	/* FreeBSD-specific. */
+#define	CLOCK_REALTIME_PRECISE	9	/* FreeBSD-specific. */
+#define	CLOCK_REALTIME_FAST	10	/* FreeBSD-specific. */
+#define	CLOCK_MONOTONIC_PRECISE	11	/* FreeBSD-specific. */
+#define	CLOCK_MONOTONIC_FAST	12	/* FreeBSD-specific. */
+#define	CLOCK_SECOND		13	/* FreeBSD-specific. */
+#define	CLOCK_THREAD_CPUTIME_ID	14
 #define	CLOCK_PROCESS_CPUTIME_ID	15
 #endif /* !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 199309 */
 
 #if !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 199309
 #if __BSD_VISIBLE
-#define TIMER_RELTIME	0x0	/* relative timer */
+#define	TIMER_RELTIME	0x0	/* relative timer */
 #endif
-#define TIMER_ABSTIME	0x1	/* absolute timer */
+#define	TIMER_ABSTIME	0x1	/* absolute timer */
 #endif /* !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 199309 */
 
 #if __ISO_C_VISIBLE >= 2011
