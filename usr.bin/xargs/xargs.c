@@ -112,7 +112,7 @@ main(int argc, char *argv[])
 	}
 
 	maxprocs = 1;
-	while ((ch = getopt(argc, argv, "0E:I:J:L:n:opP:R:s:tx")) != -1)
+	while ((ch = getopt(argc, argv, "0E:I:J:L:n:oprP:R:s:tx")) != -1)
 		switch(ch) {
 		case 'E':
 			eofstr = optarg;
@@ -151,6 +151,10 @@ main(int argc, char *argv[])
 		case 'R':
 			if ((Rflag = atoi(optarg)) <= 0)
 				errx(1, "illegal number of replacements");
+			break;
+		case 'r':
+			/* GNU compatibility */
+			/* --no-run-if-empty (this is our default) */
 			break;
 		case 's':
 			nline = atoi(optarg);
