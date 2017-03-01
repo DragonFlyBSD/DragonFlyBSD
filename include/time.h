@@ -43,7 +43,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/_null.h>
-#include <sys/types.h>
+#include <sys/stdint.h>
 
 #if __POSIX_VISIBLE > 0 && __POSIX_VISIBLE < 200112 || __BSD_VISIBLE
 /*

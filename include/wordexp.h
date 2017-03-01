@@ -30,9 +30,9 @@
 #define	_WORDEXP_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
-#if __XSI_VISIBLE && !defined(_SIZE_T_DECLARED)
+#ifndef _SIZE_T_DECLARED
 typedef	__size_t	size_t;
 #define	_SIZE_T_DECLARED
 #endif
@@ -62,7 +62,7 @@ typedef	struct {
 #define	WRDE_BADVAL	2		/* undefined variable */
 #define	WRDE_CMDSUB	3		/* command substitution not allowed */
 #define	WRDE_NOSPACE	4		/* no memory for result */
-#if __XSI_VISIBLE
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 #define	WRDE_NOSYS	5		/* obsolete, reserved */
 #endif
 #define	WRDE_SYNTAX	6		/* shell syntax error */

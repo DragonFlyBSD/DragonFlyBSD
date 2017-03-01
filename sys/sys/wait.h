@@ -89,8 +89,11 @@
 #endif /* __BSD_VISIBLE */
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
+#include <sys/stdint.h>
+
+#ifndef _PID_T_DECLARED
+typedef	__pid_t		pid_t;		/* process id */
+#define	_PID_T_DECLARED
 #endif
 
 __BEGIN_DECLS
