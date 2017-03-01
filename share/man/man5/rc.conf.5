@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd June 9, 2016
+.Dd March 1, 2017
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2549,16 +2549,24 @@ you would have the following dependent variables
 vkernel_example_bin="/usr/obj/usr/src/sys/VKERNEL64/kernel.debug"
 vkernel_example_memsize="64m"
 vkernel_example_rootimg_list="/var/vkernel/rootimg.01"
+vkernel_example_memimg="/var/vkernel/memimg.000001"
+vkernel_example_user="myuser"
 vkernel_example_iface_list="auto:bridge0"
 vkernel_example_logfile="/dev/null"
 vkernel_example_flags="-U"
 vkernel_example_kill_timeout="45"
 .Ed
 .Pp
-The last five are optional.
+The last six are optional.
 They default to an empty string if not set, except for logfile which defaults to
 .Pa /dev/null
 if it is not set.
+.Pp
+Note that in case
+.Va vkernel_memimg
+is not specified, the rc.d script will create directory
+.Pa /var/vkernel
+, which is the default one, and set permissions to 1777 for all users to be able to create memory images there.
 .It Va autofs_enable
 .Pq Vt bool
 If set to
