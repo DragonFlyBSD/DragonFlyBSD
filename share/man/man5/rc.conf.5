@@ -2564,9 +2564,14 @@ if it is not set.
 .Pp
 Note that in case
 .Va vkernel_memimg
-is not specified, the rc.d script will create directory
-.Pa /var/vkernel
-, which is the default one, and set permissions to 1777 for all users to be able to create memory images there.
+is not set, the
+.Pa rc.d
+script will create
+.Pa /var/vkernel ,
+which is the vkernel's default directory for memory images,
+with permissions of 1777, i.e. world writable with the sticky bit set
+(see
+.Xr sticky 8 ) .
 .It Va autofs_enable
 .Pq Vt bool
 If set to
