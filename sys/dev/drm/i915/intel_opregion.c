@@ -724,6 +724,9 @@ static void intel_didl_outputs(struct drm_device *dev)
 	max_outputs = ARRAY_SIZE(opregion->acpi->didl) +
 		ARRAY_SIZE(opregion->acpi->did2);
 
+#ifdef __DragonFly__
+	acpi_cdev = NULL;
+#endif
 	while (AcpiGetNextObject(ACPI_TYPE_DEVICE, acpi_video_bus, acpi_cdev,
 				 &acpi_cdev) != AE_NOT_FOUND) {
 		if (i >= max_outputs) {
