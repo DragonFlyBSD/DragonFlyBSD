@@ -662,7 +662,7 @@ vke_rx_thread(cothread_t cotd)
 			fprintf(stderr,
 				VKE_DEVNAME "%d: NULL rxring mbuf\n",
 				sc->sc_unit);
-			*(int *)0 = 1;
+			*(volatile int *)0 = 1;
 		}
 		n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
 		if (n > 0) {
