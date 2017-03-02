@@ -565,7 +565,6 @@ typedef struct lock	ieee80211_node_lock_t;
 typedef struct lock	ieee80211_scan_lock_t;
 typedef struct lock	ieee80211_com_lock_t;
 typedef struct lock	ieee80211_tx_lock_t;
-typedef struct lock	ieee80211_ageq_lock_t;
 typedef struct lock	ieee80211_scan_table_lock_t;
 typedef struct lock	ieee80211_scan_iter_lock_t;
 typedef struct lock	acl_lock_t;
