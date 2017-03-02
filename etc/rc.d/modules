@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+
+# PROVIDE: modules
+# REQUIRE: root
+
+. /etc/rc.subr
+
+name="modules"
+start_cmd="modules_start"
+stop_cmd=":"
+
+modules_start()
+{
+	load_vars=`set | awk -F "=" '{print $1}' | grep '_load$'`
+	for load_var in ${load_vars}; do
+		if checkyesno ${load_var}; then
+			m=${load_var%%_load}
+			eval mod_name=\$${m}_name
+			if [ "${mod_name}" != '' ]; then
+				m=${mod_name}
+			fi
+			load_kld -m ${m} ${m}
+		fi
+	done
+}
+
+load_rc_config $name
+run_rc_command "$1"

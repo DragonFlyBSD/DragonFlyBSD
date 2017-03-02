@@ -112,6 +112,11 @@ If no
 is defined (see below), the
 module's name is taken to be
 .Aq Ar module .
+Only modules necessary for mounting the root file system should be loaded from
+.Nm loader.conf
+due to memory limitations in the early boot phase.
+Other modules can be loaded later via similar entries in
+.Xr rc.conf 5 .
 .It Ao Ar module Ac Ns Ar _name
 Defines the name of the module.
 .It Ao Ar module Ac Ns Ar _type

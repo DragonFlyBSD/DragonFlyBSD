@@ -13,7 +13,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS \
 	inetd initdiskless initrandom ip6fw ipfw ipsec \
 	jail keyserv \
 	ldconfig local localdaemons lockd lpd lvm \
-	mixer motd mountcritlocal mountcritremote \
+	mixer modules motd mountcritlocal mountcritremote \
 	mountd moused mroute6d mrouted msgs \
 	named netif netoptions newsyslog \
 	network_ipv6 nfsclient nfsd nfsserver nisdomain nscd nsswitch \

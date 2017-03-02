@@ -6,7 +6,7 @@
 #
 
 # PROVIDE: sysctl
-# REQUIRE: root
+# REQUIRE: root modules
 # BEFORE:  DAEMON
 
 . /etc/rc.subr
