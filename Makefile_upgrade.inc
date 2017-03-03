@@ -3124,6 +3124,7 @@ TO_REMOVE+=/usr/lib/libprivate_panelw.a
 TO_REMOVE+=/usr/lib/libprivate_panelw.so
 TO_REMOVE+=/usr/lib/libprivate_panelw.so.59
 TO_REMOVE+=/usr/lib/libprivate_panelw.so.60
+TO_REMOVE+=/usr/share/zoneinfo/Pacific/Johnston
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
