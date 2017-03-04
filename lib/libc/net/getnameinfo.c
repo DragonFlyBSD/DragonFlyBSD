@@ -400,20 +400,19 @@ getnameinfo_link(const struct sockaddr *sa, socklen_t salen __unused,
 	switch (sdl->sdl_type) {
 	/*
 	 * The following have zero-length addresses.
-	 * IFT_ATM	(net/if_atmsubr.c)
-	 * IFT_FAITH	(net/if_faith.c)
-	 * IFT_GIF	(net/if_gif.c)
-	 * IFT_LOOP	(net/if_loop.c)
-	 * IFT_PPP	(net/if_ppp.c, net/if_spppsubr.c)
-	 * IFT_SLIP	(net/if_sl.c, net/if_strip.c)
-	 * IFT_STF	(net/if_stf.c)
-	 * IFT_L2VLAN	(net/if_vlan.c)
-	 * IFT_BRIDGE (net/if_bridge.h>
+	 * IFT_FAITH	(net/faith/if_faith.c)
+	 * IFT_GIF	(net/gif/if_gif.c)
+	 * IFT_LOOP	(net/if_loop.c, net/disc/if_disc.c)
+	 * IFT_PPP	(net/ppp/if_ppp.c, net/sppp/if_spppsubr.c)
+	 * IFT_SLIP	(net/sl/if_sl.c)
+	 * IFT_STF	(net/stf/if_stf.c)
+	 * IFT_L2VLAN	(net/vlan/if_vlan.c)
+	 * IFT_BRIDGE   (net/bridge/if_bridge.c)
 	 */
 	/*
 	 * The following use IPv4 addresses as link-layer addresses:
-	 * IFT_OTHER	(net/if_gre.c)
-	 * IFT_OTHER	(netinet/ip_ipip.c)
+	 * IFT_OTHER	(net/gre/if_gre.c)
+	 * IFT_OTHER	(netproto/ipsec/xform_ipip.c)
 	 */
 	/* default below is believed correct for all these. */
 	case IFT_ARCNET:
