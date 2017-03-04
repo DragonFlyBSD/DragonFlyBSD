@@ -407,7 +407,7 @@ getnameinfo_link(const struct sockaddr *sa, socklen_t salen __unused,
 	 * IFT_SLIP	(net/sl/if_sl.c)
 	 * IFT_STF	(net/stf/if_stf.c)
 	 * IFT_L2VLAN	(net/vlan/if_vlan.c)
-	 * IFT_BRIDGE   (net/bridge/if_bridge.c)
+	 * IFT_BRIDGE	(net/bridge/if_bridge.c)
 	 */
 	/*
 	 * The following use IPv4 addresses as link-layer addresses:
