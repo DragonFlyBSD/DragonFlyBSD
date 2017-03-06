@@ -137,10 +137,10 @@ static void	vtpci_free_virtqueues(struct vtpci_softc *);
 static void	vtpci_release_child_resources(struct vtpci_softc *);
 static void	vtpci_reset(struct vtpci_softc *);
 
-static int	vtpci_legacy_intr(void *);
-static int	vtpci_vq_shared_intr(void *);
-static int	vtpci_vq_intr(void *);
-static int	vtpci_config_intr(void *);
+static void	vtpci_legacy_intr(void *);
+static void	vtpci_vq_shared_intr(void *);
+static void	vtpci_vq_intr(void *);
+static void	vtpci_config_intr(void *);
 
 /*
  * I/O port read/write wrappers.
@@ -500,13 +500,13 @@ vtpci_setup_intr(device_t dev, lwkt_serialize_t slz)
 
 	if ((sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) == 0) {
 		error = bus_setup_intr(dev, ires->irq, flags,
-				       (driver_intr_t *) vtpci_legacy_intr,
+				       vtpci_legacy_intr,
 				       sc, &ires->intrhand, slz);
 		return (error);
 	}
 
 	error = bus_setup_intr(dev, ires->irq, flags,
-			       (driver_intr_t *) vtpci_config_intr,
+			       vtpci_config_intr,
 			       sc, &ires->intrhand, slz);
 	if (error)
 		return (error);
@@ -514,7 +514,7 @@ vtpci_setup_intr(device_t dev, lwkt_serialize_t slz)
 	if (sc->vtpci_flags & VIRTIO_PCI_FLAG_SHARED_MSIX) {
 		ires = &sc->vtpci_intr_res[1];
 		error = bus_setup_intr(dev, ires->irq, flags,
-				       (driver_intr_t *) vtpci_vq_shared_intr,
+				       vtpci_vq_shared_intr,
 				       sc, &ires->intrhand, slz);
 
 		return (error);
@@ -528,7 +528,7 @@ vtpci_setup_intr(device_t dev, lwkt_serialize_t slz)
 
 		ires = &sc->vtpci_intr_res[vqx->ires_idx];
 		error = bus_setup_intr(dev, ires->irq, flags,
-				       (driver_intr_t *) vtpci_vq_intr,
+				       vtpci_vq_intr,
 				       vqx->vq, &ires->intrhand, slz);
 		if (error)
 			return (error);
@@ -981,7 +981,7 @@ vtpci_reset(struct vtpci_softc *sc)
 	vtpci_set_status(sc->vtpci_dev, VIRTIO_CONFIG_STATUS_RESET);
 }
 
-static int
+static void
 vtpci_legacy_intr(void *xsc)
 {
 	struct vtpci_softc *sc;
@@ -1000,50 +1000,39 @@ vtpci_legacy_intr(void *xsc)
 		for (i = 0; i < sc->vtpci_nvqs; i++)
 			virtqueue_intr(sc->vtpci_vqx[i].vq);
 	}
-
-	return isr;
 }
 
-static int
+static void
 vtpci_vq_shared_intr(void *xsc)
 {
 	struct vtpci_softc *sc;
-	int i, rc;
+	int i;
 
-	rc = 0;
 	sc = xsc;
 
 	for (i = 0; i < sc->vtpci_nvqs; i++)
-		rc |= virtqueue_intr(sc->vtpci_vqx[i].vq);
-
-	return rc;
+		virtqueue_intr(sc->vtpci_vqx[i].vq);
 }
 
-static int
+static void
 vtpci_vq_intr(void *xvq)
 {
 	struct virtqueue *vq;
-	int rc;
 
 	vq = xvq;
-	rc = virtqueue_intr(vq);
 
-	return rc;
+	virtqueue_intr(vq);
 }
 
-static int
+static void
 vtpci_config_intr(void *xsc)
 {
 	struct vtpci_softc *sc;
 	device_t child;
-	int rc;
 
-	rc = 0;
 	sc = xsc;
 	child = sc->vtpci_child_dev;
 
 	if (child != NULL)
-		rc = VIRTIO_CONFIG_CHANGE(child);
-
-	return rc;
+		VIRTIO_CONFIG_CHANGE(child);
 }

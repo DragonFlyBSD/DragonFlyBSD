@@ -30,14 +30,13 @@
 INTERFACE virtio;
 
 CODE {
-	static int
+	static void
 	virtio_default_config_change(device_t dev)
 	{
-		/* Return that we've handled the change. */
-		return (1);
+		/* Nothing */
 	}
 };
 
-METHOD int config_change {
+METHOD void config_change {
 	device_t	dev;
 } DEFAULT virtio_default_config_change;
