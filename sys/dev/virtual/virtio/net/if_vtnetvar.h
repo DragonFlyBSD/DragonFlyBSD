@@ -78,9 +78,7 @@ struct vtnet_softc {
 	struct vtnet_mac_filter *vtnet_macfilter;
 
 	int			vtnet_hdr_size;
-	int			vtnet_tx_size;
 	int			vtnet_tx_nsegs;
-	int			vtnet_rx_size;
 	int			vtnet_rx_process_limit;
 	int			vtnet_rx_nsegs;
 	int			vtnet_rx_mbuf_size;
@@ -114,20 +112,18 @@ struct vtnet_softc {
 #define VTNET_VLAN_SHADOW_SIZE	(4096 / 32)
 	int			vtnet_nvlans;
 	uint32_t		vtnet_vlan_shadow[VTNET_VLAN_SHADOW_SIZE];
-
-	char			vtnet_mtx_name[16];
 };
 
 /*
  * When mergeable buffers are not negotiated, the vtnet_rx_header structure
- * below is placed at the beginning of the mbuf data. Use 4 bytes of pad to
+ * below is placed at the beginning of the mbuf data. Use 2 bytes of pad to
  * both keep the VirtIO header and the data non-contiguous and to keep the
  * frame's payload 4 byte aligned.
  *
  * When mergeable buffers are negotiated, the host puts the VirtIO header in
  * the beginning of the first mbuf's data.
  */
-#define VTNET_RX_HEADER_PAD	4
+#define VTNET_RX_HEADER_PAD	2
 struct vtnet_rx_header {
 	struct virtio_net_hdr	vrh_hdr;
 	char			vrh_pad[VTNET_RX_HEADER_PAD];
