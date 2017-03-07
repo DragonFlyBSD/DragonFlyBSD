@@ -72,9 +72,9 @@
 struct cluster_cache {
 	struct vnode *vp;
 	u_int	locked;
-	off_t	v_lastw;		/* last write (write cluster) */
-	off_t	v_cstart;		/* start block of cluster */
-	off_t	v_lasta;		/* last allocation */
+	off_t	v_lastw;		/* last write (end) (write cluster) */
+	off_t	v_cstart;		/* start block (beg) of cluster */
+	off_t	v_lasta;		/* last allocation (end) */
 	u_int	v_clen;			/* length of current cluster */
 	u_int	iterator;
 } __cachealign;
@@ -1220,9 +1220,9 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 	if (loffset == 0)
 		cc->v_lasta = cc->v_clen = cc->v_cstart = cc->v_lastw = 0;
 
-	if (cc->v_clen == 0 || loffset != cc->v_lastw + blksize ||
+	if (cc->v_clen == 0 || loffset != cc->v_lastw ||
 	    (bp->b_bio2.bio_offset != NOOFFSET &&
-	     (bp->b_bio2.bio_offset != cc->v_lasta + blksize))) {
+	     (bp->b_bio2.bio_offset != cc->v_lasta))) {
 		/*
 		 * Next block is not logically sequential, or, if physical
 		 * block offsets are available, not physically sequential.
@@ -1248,9 +1248,9 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 			 * later on in the buf_daemon or update daemon
 			 * flush.
 			 */
-			cursize = cc->v_lastw - cc->v_cstart + blksize;
+			cursize = cc->v_lastw - cc->v_cstart;
 			if (bp->b_loffset + blksize < filesize ||
-			    loffset != cc->v_lastw + blksize ||
+			    loffset != cc->v_lastw ||
 			    cc->v_clen <= cursize) {
 				if (!async && seqcount > 0) {
 					cluster_wbuild_wb(vp, blksize,
@@ -1263,7 +1263,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 				buflist = cluster_collectbufs(cc, vp,
 							      bp, blksize);
 				endbp = &buflist->bs_children
-				    [buflist->bs_nchildren - 1];
+					[buflist->bs_nchildren - 1];
 				if (VOP_REALLOCBLKS(vp, buflist)) {
 					/*
 					 * Failed, push the previous cluster
@@ -1294,8 +1294,9 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 					     bpp <= endbp; bpp++)
 						bdwrite(*bpp);
 					kfree(buflist, M_SEGMENT);
-					cc->v_lastw = loffset;
-					cc->v_lasta = bp->b_bio2.bio_offset;
+					cc->v_lastw = loffset + blksize;
+					cc->v_lasta = bp->b_bio2.bio_offset +
+						      blksize;
 					cluster_putcache(cc);
 					return;
 				}
@@ -1314,18 +1315,18 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		     bp->b_bio2.bio_offset == NOOFFSET)) {
 			bdwrite(bp);
 			cc->v_clen = 0;
-			cc->v_lasta = bp->b_bio2.bio_offset;
-			cc->v_cstart = loffset + blksize;
-			cc->v_lastw = loffset;
+			cc->v_lasta = bp->b_bio2.bio_offset + blksize;
+			cc->v_cstart = loffset;
+			cc->v_lastw = loffset + blksize;
 			cluster_putcache(cc);
 			return;
 		}
 		if (maxclen > blksize)
-			cc->v_clen = maxclen - blksize;
+			cc->v_clen = maxclen;
 		else
-			cc->v_clen = 0;
+			cc->v_clen = blksize;
 		if (!async && cc->v_clen == 0) { /* I/O not contiguous */
-			cc->v_cstart = loffset + blksize;
+			cc->v_cstart = loffset;
 			bdwrite(bp);
 		} else {	/* Wait for rest of cluster */
 			cc->v_cstart = loffset;
@@ -1342,7 +1343,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 			cluster_wbuild_wb(vp, blksize, cc->v_cstart,
 					  cc->v_clen + blksize);
 		cc->v_clen = 0;
-		cc->v_cstart = loffset + blksize;
+		cc->v_cstart = loffset;
 	} else if (vm_page_count_severe() &&
 		   bp->b_loffset + blksize < filesize) {
 		/*
@@ -1357,8 +1358,8 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		 */
 		bdwrite(bp);
 	}
-	cc->v_lastw = loffset;
-	cc->v_lasta = bp->b_bio2.bio_offset;
+	cc->v_lastw = loffset + blksize;
+	cc->v_lasta = bp->b_bio2.bio_offset + blksize;
 	cluster_putcache(cc);
 }
 
@@ -1669,7 +1670,7 @@ cluster_collectbufs(cluster_cache_t *cc, struct vnode *vp,
 	int j;
 	int k;
 
-	len = (int)(cc->v_lastw - cc->v_cstart + blksize) / blksize;
+	len = (int)(cc->v_lastw - cc->v_cstart) / blksize;
 	KKASSERT(len > 0);
 	buflist = kmalloc(sizeof(struct buf *) * (len + 1) + sizeof(*buflist),
 			 M_SEGMENT, M_WAITOK);
