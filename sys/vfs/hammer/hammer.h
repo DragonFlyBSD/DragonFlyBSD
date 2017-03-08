@@ -1508,8 +1508,6 @@ static __inline void
 hammer_modify_node(hammer_transaction_t trans, hammer_node_t node,
 		   void *base, int len)
 {
-	hammer_crc_t *crcptr;
-
 	KKASSERT((char *)base >= (char *)node->ondisk &&
 		 (char *)base + len <=
 		    (char *)node->ondisk + sizeof(*node->ondisk));
@@ -1519,9 +1517,8 @@ hammer_modify_node(hammer_transaction_t trans, hammer_node_t node,
 		hammer_modify_node_all(trans, node);
 	} else {
 		hammer_modify_buffer(trans, node->buffer, base, len);
-		crcptr = &node->ondisk->crc;
-		hammer_modify_buffer(trans, node->buffer,
-				     crcptr, sizeof(hammer_crc_t));
+		hammer_modify_buffer(trans, node->buffer, &node->ondisk->crc,
+				     sizeof(hammer_crc_t));
 		--node->buffer->io.modify_refs;	/* only want one ref */
 	}
 }
