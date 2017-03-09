@@ -40,9 +40,9 @@
 static void check_volume(struct volume_info *vol);
 static void get_buffer_readahead(struct buffer_info *base);
 static __inline int readhammervol(struct volume_info *vol);
-static __inline int readhammerbuf(struct buffer_info *buf);
+static __inline int readhammerbuf(struct buffer_info *buffer);
 static __inline int writehammervol(struct volume_info *vol);
-static __inline int writehammerbuf(struct buffer_info *buf);
+static __inline int writehammerbuf(struct buffer_info *buffer);
 
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
@@ -68,16 +68,16 @@ static struct buffer_info*
 find_buffer(hammer_off_t zone2_offset)
 {
 	struct volume_info *volume;
-	struct buffer_info *buf;
+	struct buffer_info *buffer;
 	int hi;
 
 	volume = get_volume(HAMMER_VOL_DECODE(zone2_offset));
 	assert(volume);
 
 	hi = buffer_hash(zone2_offset);
-	TAILQ_FOREACH(buf, &volume->buffer_lists[hi], entry)
-		if (buf->zone2_offset == zone2_offset)
-			return(buf);
+	TAILQ_FOREACH(buffer, &volume->buffer_lists[hi], entry)
+		if (buffer->zone2_offset == zone2_offset)
+			return(buffer);
 	return(NULL);
 }
 
@@ -291,32 +291,32 @@ static struct buffer_info *
 __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 {
 	struct volume_info *volume;
-	struct buffer_info *buf;
+	struct buffer_info *buffer;
 	int hi;
 
 	volume = get_volume(HAMMER_VOL_DECODE(zone2_offset));
 	assert(volume != NULL);
 
-	buf = calloc(1, sizeof(*buf));
-	buf->zone2_offset = zone2_offset;
-	buf->raw_offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
-	buf->volume = volume;
-	buf->ondisk = calloc(1, HAMMER_BUFSIZE);
+	buffer = calloc(1, sizeof(*buffer));
+	buffer->zone2_offset = zone2_offset;
+	buffer->raw_offset = hammer_xlate_to_phys(volume->ondisk, zone2_offset);
+	buffer->volume = volume;
+	buffer->ondisk = calloc(1, HAMMER_BUFSIZE);
 
 	if (isnew <= 0) {
-		if (readhammerbuf(buf) == -1) {
+		if (readhammerbuf(buffer) == -1) {
 			err(1, "Failed to read %s:%016jx at %016jx",
 			    volume->name,
-			    (intmax_t)buf->zone2_offset,
-			    (intmax_t)buf->raw_offset);
+			    (intmax_t)buffer->zone2_offset,
+			    (intmax_t)buffer->raw_offset);
 		}
 	}
 
 	hi = buffer_hash(zone2_offset);
-	TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
-	hammer_cache_add(&buf->cache);
+	TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buffer, entry);
+	hammer_cache_add(&buffer->cache);
 
-	return(buf);
+	return(buffer);
 }
 
 /*
@@ -325,7 +325,7 @@ __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 static struct buffer_info *
 get_buffer(hammer_off_t buf_offset, int isnew)
 {
-	struct buffer_info *buf;
+	struct buffer_info *buffer;
 	hammer_off_t zone2_offset;
 	int dora = 0;
 
@@ -334,34 +334,34 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		return(NULL);
 
 	zone2_offset &= ~HAMMER_BUFMASK64;
-	buf = find_buffer(zone2_offset);
+	buffer = find_buffer(zone2_offset);
 
-	if (buf == NULL) {
-		buf = __alloc_buffer(zone2_offset, isnew);
+	if (buffer == NULL) {
+		buffer = __alloc_buffer(zone2_offset, isnew);
 		dora = (isnew == 0);
 	} else {
 		assert(isnew != -1);
-		hammer_cache_used(&buf->cache);
+		hammer_cache_used(&buffer->cache);
 	}
-	assert(buf->ondisk != NULL);
+	assert(buffer->ondisk != NULL);
 
-	++buf->cache.refs;
+	++buffer->cache.refs;
 	hammer_cache_flush();
 
 	if (isnew > 0) {
-		assert(buf->cache.modified == 0);
-		bzero(buf->ondisk, HAMMER_BUFSIZE);
-		buf->cache.modified = 1;
+		assert(buffer->cache.modified == 0);
+		bzero(buffer->ondisk, HAMMER_BUFSIZE);
+		buffer->cache.modified = 1;
 	}
 	if (dora)
-		get_buffer_readahead(buf);
-	return(buf);
+		get_buffer_readahead(buffer);
+	return(buffer);
 }
 
 static void
 get_buffer_readahead(struct buffer_info *base)
 {
-	struct buffer_info *buf;
+	struct buffer_info *buffer;
 	struct volume_info *vol;
 	hammer_off_t zone2_offset;
 	int64_t raw_offset;
@@ -381,11 +381,11 @@ get_buffer_readahead(struct buffer_info *base)
 		}
 		zone2_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
 			raw_offset - vol->ondisk->vol_buf_beg);
-		buf = find_buffer(zone2_offset);
-		if (buf == NULL) {
+		buffer = find_buffer(zone2_offset);
+		if (buffer == NULL) {
 			/* call with -1 to prevent another readahead */
-			buf = get_buffer(zone2_offset, -1);
-			rel_buffer(buf);
+			buffer = get_buffer(zone2_offset, -1);
+			rel_buffer(buffer);
 		}
 		++ri;
 		raw_offset += HAMMER_BUFSIZE;
@@ -898,9 +898,10 @@ readhammervol(struct volume_info *vol)
 }
 
 static __inline int
-readhammerbuf(struct buffer_info *buf)
+readhammerbuf(struct buffer_info *buffer)
 {
-	return(__read(buf->volume, buf->ondisk, buf->raw_offset, HAMMER_BUFSIZE));
+	return(__read(buffer->volume, buffer->ondisk, buffer->raw_offset,
+		HAMMER_BUFSIZE));
 }
 
 static int
@@ -924,9 +925,10 @@ writehammervol(struct volume_info *vol)
 }
 
 static __inline int
-writehammerbuf(struct buffer_info *buf)
+writehammerbuf(struct buffer_info *buffer)
 {
-	return(__write(buf->volume, buf->ondisk, buf->raw_offset, HAMMER_BUFSIZE));
+	return(__write(buffer->volume, buffer->ondisk, buffer->raw_offset,
+		HAMMER_BUFSIZE));
 }
 
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)

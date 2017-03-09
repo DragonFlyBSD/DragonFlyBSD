@@ -151,7 +151,7 @@ void print_blockmap(const struct volume_info *vol);
 
 void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);
-void flush_buffer(struct buffer_info *buf);
+void flush_buffer(struct buffer_info *buffer);
 
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
 int64_t init_memory_log_size(int64_t value, off_t avg_vol_size);
