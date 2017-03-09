@@ -40,7 +40,7 @@ static void hammer_ask_yn(void);
 void
 hammer_cmd_strip(void)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
@@ -55,8 +55,8 @@ hammer_cmd_strip(void)
 
 	hammer_ask_yn();
 
-	vol = get_root_volume();
-	rootmap = &vol->ondisk->vol0_blockmap[zone];
+	volume = get_root_volume();
+	rootmap = &volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
 	for (phys_offset = HAMMER_ZONE_ENCODE(zone, 0);
@@ -100,11 +100,11 @@ hammer_cmd_strip(void)
 	rel_buffer(buffer2);
 
 	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
-		vol = get_volume(i);
-		if (vol) {
-			printf("%s\n", vol->name);
-			bzero(vol->ondisk, sizeof(*vol->ondisk));
-			memcpy(&vol->ondisk->vol_signature, "STRIPPED", 8);
+		volume = get_volume(i);
+		if (volume) {
+			printf("%s\n", volume->name);
+			bzero(volume->ondisk, sizeof(*volume->ondisk));
+			memcpy(&volume->ondisk->vol_signature, "STRIPPED", 8);
 		}
 	}
 
@@ -147,23 +147,23 @@ hammer_strip_bigblock(int zone, hammer_off_t offset)
 static void
 hammer_ask_yn(void)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 	int i;
 
-	vol = get_root_volume();
+	volume = get_root_volume();
 
 	/*
 	 * This format is taken from hammer pfs-destroy.
 	 */
 	printf("You have requested that HAMMER filesystem (%s) be stripped\n",
-		vol->ondisk->vol_label);
+		volume->ondisk->vol_label);
 	printf("Do you really want to do this? [y/n] ");
 	fflush(stdout);
 
 	if (getyn() == 0)
 		errx(1, "No action taken");
 
-	printf("Stripping HAMMER filesystem (%s)", vol->ondisk->vol_label);
+	printf("Stripping HAMMER filesystem (%s)", volume->ondisk->vol_label);
 
 	if (DebugOpt) {
 		printf("\n");

@@ -571,7 +571,7 @@ static
 void
 __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 {
-	struct volume_info *vol = NULL;
+	struct volume_info *volume = NULL;
 	char *copy;
 	char *volname;
 	int volnum = 0;
@@ -589,8 +589,8 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 		if (strchr(volname, ':'))
 			__hammer_parsedevs(volname, oflags, verify);
 		else {
-			vol = load_volume(volname, oflags, verify);
-			assert(vol);
+			volume = load_volume(volname, oflags, verify);
+			assert(volume);
 			++volnum;
 		}
 		free(volname);
@@ -600,10 +600,10 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 	/*
 	 * All volumes have the same vol_count.
 	 */
-	assert(vol);
-	if (volnum != vol->ondisk->vol_count)
+	assert(volume);
+	if (volnum != volume->ondisk->vol_count)
 		errx(1, "Volume header says %d volumes, but %d specified.",
-			vol->ondisk->vol_count, volnum);
+			volume->ondisk->vol_count, volnum);
 
 	if (get_root_volume() == NULL)
 		errx(1, "No root volume found");

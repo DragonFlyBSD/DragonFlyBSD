@@ -747,7 +747,7 @@ static
 hammer_off_t
 scan_raw_limit(void)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
@@ -760,8 +760,8 @@ scan_raw_limit(void)
 	hammer_off_t offset = 0;
 	int zone = HAMMER_ZONE_FREEMAP_INDEX;
 
-	vol = get_root_volume();
-	rootmap = &vol->ondisk->vol0_blockmap[zone];
+	volume = get_root_volume();
+	rootmap = &volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
 	for (phys_offset = HAMMER_ZONE_ENCODE(zone, 0);
@@ -813,7 +813,7 @@ static
 void
 scan_bigblocks(int target_zone)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
@@ -826,8 +826,8 @@ scan_bigblocks(int target_zone)
 	hammer_off_t offset = 0;
 	int zone = HAMMER_ZONE_FREEMAP_INDEX;
 
-	vol = get_root_volume();
-	rootmap = &vol->ondisk->vol0_blockmap[zone];
+	volume = get_root_volume();
+	rootmap = &volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
 	for (phys_offset = HAMMER_ZONE_ENCODE(zone, 0);

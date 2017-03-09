@@ -52,7 +52,7 @@ void
 hammer_cmd_volume_add(char **av, int ac)
 {
 	struct hammer_ioc_volume ioc;
-	struct volume_info *vol;
+	struct volume_info *volume;
 	int fd;
 	const char *device, *filesystem;
 
@@ -69,18 +69,18 @@ hammer_cmd_volume_add(char **av, int ac)
 	/*
 	 * Initialize and check the device
 	 */
-	vol = init_volume(device, O_RDONLY, -1);
-	assert(vol->vol_no == -1);
-	if (strcmp(vol->type, "DEVICE"))
+	volume = init_volume(device, O_RDONLY, -1);
+	assert(volume->vol_no == -1);
+	if (strcmp(volume->type, "DEVICE"))
 		errx(1, "Not a block device: %s", device);
-	close(vol->fd);
+	close(volume->fd);
 
 	/*
 	 * volume-add ioctl
 	 */
 	bzero(&ioc, sizeof(ioc));
 	strncpy(ioc.device_name, device, MAXPATHLEN);
-	ioc.vol_size = vol->size;
+	ioc.vol_size = volume->size;
 	ioc.boot_area_size = init_boot_area_size(0, ioc.vol_size);
 	ioc.memory_log_size = init_memory_log_size(0, ioc.vol_size);
 

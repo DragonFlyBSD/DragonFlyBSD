@@ -38,11 +38,11 @@
 #include "hammer_util.h"
 
 static int64_t getsize(const char *str, int pw);
-static int trim_volume(struct volume_info *vol);
-static void format_volume(struct volume_info *vol, int nvols,const char *label);
+static int trim_volume(struct volume_info *volume);
+static void format_volume(struct volume_info *volume, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
-static void print_volume(const struct volume_info *vol);
+static void print_volume(const struct volume_info *volume);
 static void usage(int exit_code);
 static void test_header_junk_size(int64_t size);
 static void test_boot_area_size(int64_t size);
@@ -69,7 +69,7 @@ main(int ac, char **av)
 	int nvols;
 	int eflag = 0;
 	const char *label = NULL;
-	struct volume_info *vol;
+	struct volume_info *volume;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -179,16 +179,16 @@ main(int ac, char **av)
 
 	total = 0;
 	for (i = 0; i < nvols; ++i) {
-		vol = init_volume(av[i], O_RDWR, i);
+		volume = init_volume(av[i], O_RDWR, i);
 		printf("Volume %d %s %-15s size %s\n",
-			vol->vol_no, vol->type, vol->name,
-			sizetostr(vol->size));
+			volume->vol_no, volume->type, volume->name,
+			sizetostr(volume->size));
 
 		if (eflag) {
-			if (trim_volume(vol) == -1 && ForceOpt == 0)
+			if (trim_volume(volume) == -1 && ForceOpt == 0)
 				errx(1, "Use -f option to proceed");
 		}
-		total += vol->size;
+		total += volume->size;
 	}
 
 	/*
@@ -230,7 +230,7 @@ main(int ac, char **av)
 
 static
 void
-print_volume(const struct volume_info *vol)
+print_volume(const struct volume_info *volume)
 {
 	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t blockmap;
@@ -240,7 +240,7 @@ print_volume(const struct volume_info *vol)
 	const char *name = NULL;
 	char *fsidstr;
 
-	ondisk = vol->ondisk;
+	ondisk = volume->ondisk;
 	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	nvols = ondisk->vol_count;
@@ -270,7 +270,7 @@ print_volume(const struct volume_info *vol)
 	printf("undo-buffer-size:    %s\n",
 		sizetostr(HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset)));
 	printf("total-pre-allocated: %s\n",
-		sizetostr(HAMMER_OFF_SHORT_ENCODE(vol->vol_free_off)));
+		sizetostr(HAMMER_OFF_SHORT_ENCODE(volume->vol_free_off)));
 	printf("fsid:                %s\n", fsidstr);
 	printf("\n");
 	printf("NOTE: Please remember that you may have to manually set up a\n"
@@ -461,7 +461,7 @@ nowtime(void)
  */
 static
 int
-trim_volume(struct volume_info *vol)
+trim_volume(struct volume_info *volume)
 {
 	size_t olen;
 	char *dev_name, *p;
@@ -469,17 +469,17 @@ trim_volume(struct volume_info *vol)
 	int trim_enabled;
 	off_t ioarg[2];
 
-	if (strcmp(vol->type, "DEVICE")) {
-		hwarnx("Cannot TRIM regular file %s", vol->name);
+	if (strcmp(volume->type, "DEVICE")) {
+		hwarnx("Cannot TRIM regular file %s", volume->name);
 		return(-1);
 	}
-	if (strncmp(vol->name, "/dev/da", 7)) {
-		hwarnx("%s does not support the TRIM command", vol->name);
+	if (strncmp(volume->name, "/dev/da", 7)) {
+		hwarnx("%s does not support the TRIM command", volume->name);
 		return(-1);
 	}
 
 	/* Extract a number from /dev/da?s? */
-	dev_name = strdup(vol->name);
+	dev_name = strdup(volume->name);
 	p = strtok(dev_name + strlen("/dev/da"), "s");
 	sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", p);
 	free(dev_name);
@@ -489,7 +489,7 @@ trim_volume(struct volume_info *vol)
 
 	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) == -1) {
 		hwarnx("%s (%s) does not support the TRIM command",
-			vol->name, sysctl_name);
+			volume->name, sysctl_name);
 		return(-1);
 	}
 	if (!trim_enabled) {
@@ -498,16 +498,16 @@ trim_volume(struct volume_info *vol)
 		return(-1);
 	}
 
-	ioarg[0] = vol->device_offset;
-	ioarg[1] = vol->size;
+	ioarg[0] = volume->device_offset;
+	ioarg[1] = volume->size;
 
 	printf("Trimming %s %s, sectors %llu-%llu\n",
-		vol->type, vol->name,
+		volume->type, volume->name,
 		(unsigned long long)ioarg[0] / 512,
 		(unsigned long long)ioarg[1] / 512);
 
-	if (ioctl(vol->fd, IOCTLTRIM, ioarg) == -1)
-		err(1, "Trimming %s failed", vol->name);
+	if (ioctl(volume->fd, IOCTLTRIM, ioarg) == -1)
+		err(1, "Trimming %s failed", volume->name);
 
 	return(0);
 }
@@ -517,7 +517,7 @@ trim_volume(struct volume_info *vol)
  */
 static
 void
-format_volume(struct volume_info *vol, int nvols, const char *label)
+format_volume(struct volume_info *volume, int nvols, const char *label)
 {
 	struct volume_info *root_vol;
 	hammer_volume_ondisk_t ondisk;
@@ -530,12 +530,12 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	/*
 	 * Initialize basic information in the on-disk volume structure.
 	 */
-	ondisk = vol->ondisk;
+	ondisk = volume->ondisk;
 
 	ondisk->vol_fsid = Hammer_FSId;
 	ondisk->vol_fstype = Hammer_FSType;
 	snprintf(ondisk->vol_label, sizeof(ondisk->vol_label), "%s", label);
-	ondisk->vol_no = vol->vol_no;
+	ondisk->vol_no = volume->vol_no;
 	ondisk->vol_count = nvols;
 	ondisk->vol_version = HammerVersion;
 
@@ -549,32 +549,32 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 	 * The remaining area is the zone 2 buffer allocation area.
 	 */
 	ondisk->vol_buf_beg = vol_alloc;
-	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;
+	ondisk->vol_buf_end = volume->size & ~(int64_t)HAMMER_BUFMASK;
 	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 
 	if (vol_buf_size < (int64_t)sizeof(*ondisk)) {
 		errx(1, "volume %d %s is too small to hold the volume header",
-		     vol->vol_no, vol->name);
+		     volume->vol_no, volume->name);
 	}
 	if ((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) != 0) {
-		errx(1, "volume %d %s is too large", vol->vol_no, vol->name);
+		errx(1, "volume %d %s is too large", volume->vol_no, volume->name);
 	}
 
 	ondisk->vol_rootvol = HAMMER_ROOT_VOLNO;
 	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
 
-	vol->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
-	vol->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
+	volume->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
+	volume->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
 				vol_buf_size & ~HAMMER_BIGBLOCK_MASK64);
 
 	/*
 	 * Format the root volume.
 	 */
-	if (vol->vol_no == HAMMER_ROOT_VOLNO) {
+	if (volume->vol_no == HAMMER_ROOT_VOLNO) {
 		/*
 		 * Check freemap counts before formatting
 		 */
-		freeblks = count_freemap(vol);
+		freeblks = count_freemap(volume);
 		freebytes = freeblks * HAMMER_BIGBLOCK_SIZE64;
 		if (freebytes < 10*GIG && ForceOpt == 0) {
 			errx(1, "Cannot create a HAMMER filesystem less than 10GB "
@@ -593,16 +593,16 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 * the number of big-blocks available for anything
 		 * other than freemap zone at this point.
 		 */
-		format_freemap(vol);
+		format_freemap(volume);
 		assert(ondisk->vol0_stat_freebigblocks == 0);
-		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
+		ondisk->vol0_stat_freebigblocks = initialize_freemap(volume);
 
 		/*
 		 * Format zones that are mapped to zone-2.
 		 */
 		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
 			if (hammer_is_index_record(i))
-				format_blockmap(vol, i, 0);
+				format_blockmap(volume, i, 0);
 		}
 
 		/*
@@ -610,7 +610,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		 * vol0_stat_freebigblocks whenever a new big-block
 		 * is allocated for undo zone.
 		 */
-		format_undomap(vol, &UndoBufferSize);
+		format_undomap(volume, &UndoBufferSize);
 		assert(ondisk->vol0_stat_bigblocks == 0);
 		ondisk->vol0_stat_bigblocks = ondisk->vol0_stat_freebigblocks;
 
@@ -622,7 +622,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label)
 		ondisk->vol0_btree_root = format_root_directory(label);
 		++ondisk->vol0_stat_inodes;	/* root inode */
 	} else {
-		freeblks = initialize_freemap(vol);
+		freeblks = initialize_freemap(volume);
 		root_vol = get_root_volume();
 		root_vol->ondisk->vol0_stat_freebigblocks += freeblks;
 		root_vol->ondisk->vol0_stat_bigblocks += freeblks;

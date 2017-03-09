@@ -37,11 +37,11 @@
 
 #include "hammer_util.h"
 
-static void check_volume(struct volume_info *vol);
+static void check_volume(struct volume_info *volume);
 static void get_buffer_readahead(struct buffer_info *base);
-static __inline int readhammervol(struct volume_info *vol);
+static __inline int readhammervol(struct volume_info *volume);
 static __inline int readhammerbuf(struct buffer_info *buffer);
-static __inline int writehammervol(struct volume_info *vol);
+static __inline int writehammervol(struct volume_info *volume);
 static __inline int writehammerbuf(struct buffer_info *buffer);
 
 uuid_t Hammer_FSType;
@@ -85,58 +85,58 @@ static
 struct volume_info *
 __alloc_volume(const char *volname, int oflags)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 	int i;
 
-	vol = calloc(1, sizeof(*vol));
-	vol->vol_no = -1;
-	vol->rdonly = (oflags == O_RDONLY);
-	vol->name = strdup(volname);
-	vol->fd = open(vol->name, oflags);
-	if (vol->fd < 0)
-		err(1, "alloc_volume: Failed to open %s", vol->name);
-	check_volume(vol);
+	volume = calloc(1, sizeof(*volume));
+	volume->vol_no = -1;
+	volume->rdonly = (oflags == O_RDONLY);
+	volume->name = strdup(volname);
+	volume->fd = open(volume->name, oflags);
+	if (volume->fd < 0)
+		err(1, "alloc_volume: Failed to open %s", volume->name);
+	check_volume(volume);
 
-	vol->ondisk = calloc(1, HAMMER_BUFSIZE);
+	volume->ondisk = calloc(1, HAMMER_BUFSIZE);
 
 	for (i = 0; i < HAMMER_BUFLISTS; ++i)
-		TAILQ_INIT(&vol->buffer_lists[i]);
+		TAILQ_INIT(&volume->buffer_lists[i]);
 
-	return(vol);
+	return(volume);
 }
 
 static void
-__add_volume(struct volume_info *vol)
+__add_volume(struct volume_info *volume)
 {
 	struct volume_info *scan;
 	struct stat st1, st2;
 
-	if (fstat(vol->fd, &st1) != 0)
-		errx(1, "add_volume: %s: Failed to stat", vol->name);
+	if (fstat(volume->fd, &st1) != 0)
+		errx(1, "add_volume: %s: Failed to stat", volume->name);
 
 	TAILQ_FOREACH(scan, &VolList, entry) {
-		if (scan->vol_no == vol->vol_no) {
+		if (scan->vol_no == volume->vol_no) {
 			errx(1, "add_volume: %s: Duplicate volume number %d "
 				"against %s",
-				vol->name, vol->vol_no, scan->name);
+				volume->name, volume->vol_no, scan->name);
 		}
 		if (fstat(scan->fd, &st2) != 0) {
 			errx(1, "add_volume: %s: Failed to stat %s",
-				vol->name, scan->name);
+				volume->name, scan->name);
 		}
 		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev)) {
 			errx(1, "add_volume: %s: Specified more than once",
-				vol->name);
+				volume->name);
 		}
 	}
 
-	TAILQ_INSERT_TAIL(&VolList, vol, entry);
+	TAILQ_INSERT_TAIL(&VolList, volume, entry);
 }
 
 static void
-__verify_volume(struct volume_info *vol)
+__verify_volume(struct volume_info *volume)
 {
-	hammer_volume_ondisk_t ondisk = vol->ondisk;
+	hammer_volume_ondisk_t ondisk = volume->ondisk;
 
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		errx(1, "verify_volume: Invalid volume signature %016jx",
@@ -148,11 +148,11 @@ __verify_volume(struct volume_info *vol)
 	}
 	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
 		errx(1, "verify_volume: %s: Header does not indicate "
-			"that this is a HAMMER volume", vol->name);
+			"that this is a HAMMER volume", volume->name);
 	}
 	if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
 		errx(1, "verify_volume: %s: FSId does not match other volumes!",
-			vol->name);
+			volume->name);
 	}
 }
 
@@ -162,14 +162,14 @@ __verify_volume(struct volume_info *vol)
 struct volume_info *
 init_volume(const char *filename, int oflags, int32_t vol_no)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 
-	vol = __alloc_volume(filename, oflags);
-	vol->vol_no = vol->ondisk->vol_no = vol_no;
+	volume = __alloc_volume(filename, oflags);
+	volume->vol_no = volume->ondisk->vol_no = vol_no;
 
-	__add_volume(vol);
+	__add_volume(volume);
 
-	return(vol);
+	return(volume);
 }
 
 /*
@@ -178,32 +178,32 @@ init_volume(const char *filename, int oflags, int32_t vol_no)
 struct volume_info*
 load_volume(const char *filename, int oflags, int verify)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 	int n;
 
-	vol = __alloc_volume(filename, oflags);
+	volume = __alloc_volume(filename, oflags);
 
-	n = readhammervol(vol);
+	n = readhammervol(volume);
 	if (n == -1) {
-		err(1, "load_volume: %s: Read failed at offset 0", vol->name);
+		err(1, "load_volume: %s: Read failed at offset 0", volume->name);
 	}
-	vol->vol_no = vol->ondisk->vol_no;
+	volume->vol_no = volume->ondisk->vol_no;
 
 	if (valid_hammer_volumes++ == 0)
-		Hammer_FSId = vol->ondisk->vol_fsid;
+		Hammer_FSId = volume->ondisk->vol_fsid;
 	if (verify)
-		__verify_volume(vol);
+		__verify_volume(volume);
 
-	__add_volume(vol);
+	__add_volume(volume);
 
-	return(vol);
+	return(volume);
 }
 
 /*
  * Check basic volume characteristics.
  */
 static void
-check_volume(struct volume_info *vol)
+check_volume(struct volume_info *volume)
 {
 	struct partinfo pinfo;
 	struct stat st;
@@ -211,14 +211,14 @@ check_volume(struct volume_info *vol)
 	/*
 	 * Get basic information about the volume
 	 */
-	if (ioctl(vol->fd, DIOCGPART, &pinfo) < 0) {
+	if (ioctl(volume->fd, DIOCGPART, &pinfo) < 0) {
 		/*
 		 * Allow the formatting of regular files as HAMMER volumes
 		 */
-		if (fstat(vol->fd, &st) < 0)
-			err(1, "Unable to stat %s", vol->name);
-		vol->size = st.st_size;
-		vol->type = "REGFILE";
+		if (fstat(volume->fd, &st) < 0)
+			err(1, "Unable to stat %s", volume->name);
+		volume->size = st.st_size;
+		volume->type = "REGFILE";
 	} else {
 		/*
 		 * When formatting a block device as a HAMMER volume the
@@ -235,32 +235,32 @@ check_volume(struct volume_info *vol)
 			     pinfo.media_blksize);
 		}
 
-		vol->size = pinfo.media_size;
-		vol->device_offset = pinfo.media_offset;
-		vol->type = "DEVICE";
+		volume->size = pinfo.media_size;
+		volume->device_offset = pinfo.media_offset;
+		volume->type = "DEVICE";
 	}
 }
 
 void
-assert_volume_offset(struct volume_info *vol)
+assert_volume_offset(struct volume_info *volume)
 {
-	assert(hammer_is_zone_raw_buffer(vol->vol_free_off));
-	assert(hammer_is_zone_raw_buffer(vol->vol_free_end));
-	if (vol->vol_free_off >= vol->vol_free_end)
+	assert(hammer_is_zone_raw_buffer(volume->vol_free_off));
+	assert(hammer_is_zone_raw_buffer(volume->vol_free_end));
+	if (volume->vol_free_off >= volume->vol_free_end)
 		errx(1, "Ran out of room, filesystem too small");
 }
 
 struct volume_info *
 get_volume(int32_t vol_no)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 
-	TAILQ_FOREACH(vol, &VolList, entry) {
-		if (vol->vol_no == vol_no)
+	TAILQ_FOREACH(volume, &VolList, entry) {
+		if (volume->vol_no == vol_no)
 			break;
 	}
 
-	return(vol);
+	return(volume);
 }
 
 struct volume_info *
@@ -362,25 +362,25 @@ static void
 get_buffer_readahead(struct buffer_info *base)
 {
 	struct buffer_info *buffer;
-	struct volume_info *vol;
+	struct volume_info *volume;
 	hammer_off_t zone2_offset;
 	int64_t raw_offset;
 	int ri = UseReadBehind;
 	int re = UseReadAhead;
 
 	raw_offset = base->raw_offset + ri * HAMMER_BUFSIZE;
-	vol = base->volume;
+	volume = base->volume;
 
 	while (ri < re) {
-		if (raw_offset >= vol->ondisk->vol_buf_end)
+		if (raw_offset >= volume->ondisk->vol_buf_end)
 			break;
-		if (raw_offset < vol->ondisk->vol_buf_beg || ri == 0) {
+		if (raw_offset < volume->ondisk->vol_buf_beg || ri == 0) {
 			++ri;
 			raw_offset += HAMMER_BUFSIZE;
 			continue;
 		}
-		zone2_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
-			raw_offset - vol->ondisk->vol_buf_beg);
+		zone2_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
+			raw_offset - volume->ondisk->vol_buf_beg);
 		buffer = find_buffer(zone2_offset);
 		if (buffer == NULL) {
 			/* call with -1 to prevent another readahead */
@@ -544,7 +544,7 @@ format_freemap(struct volume_info *root_vol)
  * Returns the number of big-blocks available.
  */
 int64_t
-initialize_freemap(struct volume_info *vol)
+initialize_freemap(struct volume_info *volume)
 {
 	struct volume_info *root_vol;
 	struct buffer_info *buffer1 = NULL;
@@ -562,10 +562,10 @@ initialize_freemap(struct volume_info *vol)
 
 	root_vol = get_root_volume();
 
-	assert_volume_offset(vol);
-	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(vol->vol_free_end);
+	assert_volume_offset(volume);
+	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(volume->vol_free_end);
 
-	printf("initialize freemap volume %d\n", vol->vol_no);
+	printf("initialize freemap volume %d\n", volume->vol_no);
 
 	/*
 	 * Initialize the freemap.  First preallocate the big-blocks required
@@ -574,14 +574,14 @@ initialize_freemap(struct volume_info *vol)
 	 */
 	freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
-	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
 		layer1_offset = freemap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-			layer1->phys_offset = bootstrap_bigblock(vol);
+			layer1->phys_offset = bootstrap_bigblock(volume);
 			layer1->blocks_free = 0;
 			buffer1->cache.modified = 1;
 			hammer_crc_set_layer1(layer1);
@@ -591,7 +591,7 @@ initialize_freemap(struct volume_info *vol)
 	/*
 	 * Now fill everything in.
 	 */
-	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
 		layer1_count = 0;
@@ -608,7 +608,7 @@ initialize_freemap(struct volume_info *vol)
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 			bzero(layer2, sizeof(*layer2));
 
-			if (phys_offset + block_offset < vol->vol_free_off) {
+			if (phys_offset + block_offset < volume->vol_free_off) {
 				/*
 				 * Big-blocks already allocated as part
 				 * of the freemap bootstrap.
@@ -616,7 +616,7 @@ initialize_freemap(struct volume_info *vol)
 				layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
 				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 				layer2->bytes_free = 0;
-			} else if (phys_offset + block_offset < vol->vol_free_end) {
+			} else if (phys_offset + block_offset < volume->vol_free_end) {
 				layer2->zone = 0;
 				layer2->append_off = 0;
 				layer2->bytes_free = HAMMER_BIGBLOCK_SIZE;
@@ -646,33 +646,33 @@ initialize_freemap(struct volume_info *vol)
  * without formatting.
  */
 int64_t
-count_freemap(struct volume_info *vol)
+count_freemap(struct volume_info *volume)
 {
 	hammer_off_t phys_offset;
 	hammer_off_t vol_free_off;
 	hammer_off_t aligned_vol_free_end;
 	int64_t count = 0;
 
-	vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	vol_free_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 
-	assert_volume_offset(vol);
-	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(vol->vol_free_end);
+	assert_volume_offset(volume);
+	aligned_vol_free_end = HAMMER_BLOCKMAP_LAYER2_DOALIGN(volume->vol_free_end);
 
-	if (vol->vol_no == HAMMER_ROOT_VOLNO)
+	if (volume->vol_no == HAMMER_ROOT_VOLNO)
 		vol_free_off += HAMMER_BIGBLOCK_SIZE;
 
-	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
 		vol_free_off += HAMMER_BIGBLOCK_SIZE;
 	}
 
-	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BIGBLOCK_SIZE) {
 		if (phys_offset < vol_free_off) {
 			;
-		} else if (phys_offset < vol->vol_free_end) {
+		} else if (phys_offset < volume->vol_free_end) {
 			++count;
 		}
 	}
@@ -799,7 +799,7 @@ const char *zone_labels[] = {
 };
 
 void
-print_blockmap(const struct volume_info *vol)
+print_blockmap(const struct volume_info *volume)
 {
 	hammer_blockmap_t blockmap;
 	hammer_volume_ondisk_t ondisk;
@@ -807,7 +807,7 @@ print_blockmap(const struct volume_info *vol)
 	int i;
 #define INDENT ""
 
-	ondisk = vol->ondisk;
+	ondisk = volume->ondisk;
 	printf(INDENT"vol_label\t%s\n", ondisk->vol_label);
 	printf(INDENT"vol_count\t%d\n", ondisk->vol_count);
 	printf(INDENT"vol_bot_beg\t%s\n", sizetostr(ondisk->vol_bot_beg));
@@ -846,10 +846,10 @@ print_blockmap(const struct volume_info *vol)
 void
 flush_all_volumes(void)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 
-	TAILQ_FOREACH(vol, &VolList, entry)
-		flush_volume(vol);
+	TAILQ_FOREACH(volume, &VolList, entry)
+		flush_volume(volume);
 }
 
 void
@@ -869,11 +869,11 @@ flush_volume(struct volume_info *volume)
 void
 flush_buffer(struct buffer_info *buffer)
 {
-	struct volume_info *vol;
+	struct volume_info *volume;
 
-	vol = buffer->volume;
+	volume = buffer->volume;
 	if (writehammerbuf(buffer) == -1)
-		err(1, "Write volume %d (%s)", vol->vol_no, vol->name);
+		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
 	buffer->cache.modified = 0;
 }
 
@@ -881,20 +881,20 @@ flush_buffer(struct buffer_info *buffer)
  * Core I/O operations
  */
 static int
-__read(struct volume_info *vol, void *data, int64_t offset, int size)
+__read(struct volume_info *volume, void *data, int64_t offset, int size)
 {
 	ssize_t n;
 
-	n = pread(vol->fd, data, size, offset);
+	n = pread(volume->fd, data, size, offset);
 	if (n != size)
 		return(-1);
 	return(0);
 }
 
 static __inline int
-readhammervol(struct volume_info *vol)
+readhammervol(struct volume_info *volume)
 {
-	return(__read(vol, vol->ondisk, 0, HAMMER_BUFSIZE));
+	return(__read(volume, volume->ondisk, 0, HAMMER_BUFSIZE));
 }
 
 static __inline int
@@ -905,23 +905,23 @@ readhammerbuf(struct buffer_info *buffer)
 }
 
 static int
-__write(struct volume_info *vol, const void *data, int64_t offset, int size)
+__write(struct volume_info *volume, const void *data, int64_t offset, int size)
 {
 	ssize_t n;
 
-	if (vol->rdonly)
+	if (volume->rdonly)
 		return(0);
 
-	n = pwrite(vol->fd, data, size, offset);
+	n = pwrite(volume->fd, data, size, offset);
 	if (n != size)
 		return(-1);
 	return(0);
 }
 
 static __inline int
-writehammervol(struct volume_info *vol)
+writehammervol(struct volume_info *volume)
 {
-	return(__write(vol, vol->ondisk, 0, HAMMER_BUFSIZE));
+	return(__write(volume, volume->ondisk, 0, HAMMER_BUFSIZE));
 }
 
 static __inline int

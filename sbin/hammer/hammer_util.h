@@ -120,7 +120,7 @@ extern const char *zone_labels[];
 
 struct volume_info *init_volume(const char *filename, int oflags, int32_t vol_no);
 struct volume_info *load_volume(const char *filename, int oflags, int verify);
-void assert_volume_offset(struct volume_info *vol);
+void assert_volume_offset(struct volume_info *volume);
 struct volume_info *get_volume(int32_t vol_no);
 struct volume_info *get_root_volume(void);
 void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
@@ -143,14 +143,14 @@ hammer_node_ondisk_t alloc_btree_node(hammer_off_t *offp,
 void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 			 struct buffer_info **data_bufferp);
 
-void format_blockmap(struct volume_info *vol, int zone, hammer_off_t offset);
+void format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset);
 void format_freemap(struct volume_info *root_vol);
-int64_t initialize_freemap(struct volume_info *vol);
-int64_t count_freemap(struct volume_info *vol);
-void print_blockmap(const struct volume_info *vol);
+int64_t initialize_freemap(struct volume_info *volume);
+int64_t count_freemap(struct volume_info *volume);
+void print_blockmap(const struct volume_info *volume);
 
 void flush_all_volumes(void);
-void flush_volume(struct volume_info *vol);
+void flush_volume(struct volume_info *volume);
 void flush_buffer(struct buffer_info *buffer);
 
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
