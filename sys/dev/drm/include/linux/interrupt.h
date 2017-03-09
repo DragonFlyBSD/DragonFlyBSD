@@ -61,14 +61,15 @@ enum {
 static inline void
 tasklet_schedule(struct tasklet_struct *t)
 {
-	set_bit(TASKLET_STATE_SCHED, t->state);
+	set_bit(TASKLET_STATE_SCHED, &t->state);
 
 	lockmgr(&t->lock, LK_EXCLUSIVE);
-	clear_bit(TASKLET_STATE_SCHED, t->state);
+	clear_bit(TASKLET_STATE_SCHED, &t->state);
 
-	set_bit(TASKLET_STATE_RUN, t->state);
-	t->func(t->data);
-	clear_bit(TASKLET_STATE_RUN, t->state);
+	set_bit(TASKLET_STATE_RUN, &t->state);
+	if (t->func)
+		t->func(t->data);
+	clear_bit(TASKLET_STATE_RUN, &t->state);
 
 	lockmgr(&t->lock, LK_RELEASE);
 }
@@ -79,7 +80,7 @@ static inline void
 tasklet_kill(struct tasklet_struct *t)
 {
 	lockmgr(&t->lock, LK_EXCLUSIVE);
-	clear_bit(TASKLET_STATE_SCHED, t->state);
+	clear_bit(TASKLET_STATE_SCHED, &t->state);
 	lockmgr(&t->lock, LK_RELEASE);
 }
 
