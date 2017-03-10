@@ -13,7 +13,7 @@ uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
-#undef ISCSI
+#define ISCSI
 
 int
 main(int ac, char **av)
