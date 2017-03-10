@@ -278,6 +278,10 @@ main(int argc, char **argv)
 		 * If the spec is not a file and contains a ':' then assume
 		 * NFS.
 		 *
+		 * If the spec is not a file and contains a '@' then assume
+		 * HAMMER2.  Note that there may not be a raw device
+		 * specified in this situation.
+		 *
 		 * If the spec is a cdev attempt to extract the fstype from
 		 * the label.
 		 *
@@ -287,6 +291,9 @@ main(int argc, char **argv)
 			if (strpbrk(argv[0], ":") != NULL &&
 			    access(argv[0], 0) == -1) {
 				vfstype = "nfs";
+			} else if (strpbrk(argv[0], "@") != NULL &&
+				   access(argv[0], 0) == -1) {
+				vfstype = "hammer2";
 			} else {
 				checkdisklabel(argv[0], &vfstype);
 			}
