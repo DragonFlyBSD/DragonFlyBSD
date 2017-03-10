@@ -306,8 +306,10 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
 }
 
 /*
- * Core PFS allocator.  Used to allocate the pmp structure for PFS cluster
- * mounts and the spmp structure for media (hmp) structures.
+ * Core PFS allocator.  Used to allocate or reference the pmp structure
+ * for PFS cluster mounts and the spmp structure for media (hmp) structures.
+ * The pmp can be passed in or loaded by this function using the chain and
+ * inode data.
  *
  * pmp->modify_tid tracks new modify_tid transaction ids for front-end
  * transactions.  Note that synchronization does not use this field.
@@ -317,14 +319,17 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
  * XXX check locking
  */
 hammer2_pfs_t *
-hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
+hammer2_pfsalloc(hammer2_chain_t *chain,
+		 const hammer2_inode_data_t *ripdata,
 		 hammer2_tid_t modify_tid, hammer2_dev_t *force_local)
 {
-	hammer2_inode_t *iroot;
 	hammer2_pfs_t *pmp;
+	hammer2_inode_t *iroot;
 	int count;
 	int i;
 	int j;
+
+	pmp = NULL;
 
 	/*
 	 * Locate or create the PFS based on the cluster id.  If ripdata
@@ -346,8 +351,6 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 					break;
 			}
 		}
-	} else {
-		pmp = NULL;
 	}
 
 	if (pmp == NULL) {
@@ -392,7 +395,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 	}
 
 	/*
-	 * Create the PFS's root inode.
+	 * Create the PFS's root inode and any missing XOP helper threads.
 	 */
 	if ((iroot = pmp->iroot) == NULL) {
 		iroot = hammer2_inode_get(pmp, NULL, NULL, -1);
@@ -521,8 +524,12 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 
 	/*
 	 * Create missing Xop threads
+	 *
+	 * NOTE: We create helper threads for all mounted PFSs or any
+	 *	 PFSs with 2+ nodes (so the sync thread can update them,
+	 *	 even if not mounted).
 	 */
-	if (pmp->mp)
+	if (pmp->mp || iroot->cluster.nchains >= 2)
 		hammer2_xop_helper_create(pmp);
 
 	hammer2_mtx_unlock(&iroot->lock);
@@ -828,6 +835,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	if (*label == '\0')
 		return (EINVAL);
 
+	kprintf("hammer2_mount: dev=\"%s\" label=\"%s\"\n",
+		dev, label);
+
 	if (mp->mnt_flag & MNT_UPDATE) {
 		/*
 		 * Update mount.  Note that pmp->iroot->cluster is
@@ -857,24 +867,33 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * HMP device mount
 	 *
-	 * Lookup name and verify it refers to a block device.
+	 * If a path is specified and dev is not an empty string, lookup the
+	 * name and verify that it referes to a block device.
+	 *
+	 * If a path is specified and dev is an empty string we fall through
+	 * and locate the label in the hmp search.
 	 */
-	if (path) {
+	if (path && *dev != 0) {
 		error = nlookup_init(&nd, dev, UIO_SYSSPACE, NLC_FOLLOW);
 		if (error == 0)
 			error = nlookup(&nd);
 		if (error == 0)
 			error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
 		nlookup_done(&nd);
-	} else {
+	} else if (path == NULL) {
 		/* root mount */
 		cdev_t cdev = kgetdiskbyname(dev);
 		error = bdevvp(cdev, &devvp);
 		if (error)
 			kprintf("hammer2: cannot find '%s'\n", dev);
+	} else {
+		/*
+		 * We will locate the hmp using the label in the hmp loop.
+		 */
+		error = 0;
 	}
 
-	if (error == 0) {
+	if (error == 0 && devvp) {
 		if (vn_isdisk(devvp, &error))
 			error = vfs_mountedon(devvp);
 	}
@@ -885,9 +904,31 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * hammer2 mounts from the same device.
 	 */
 	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
-	TAILQ_FOREACH(hmp, &hammer2_mntlist, mntentry) {
-		if (hmp->devvp == devvp)
-			break;
+	if (devvp) {
+		/*
+		 * Match the device
+		 */
+		TAILQ_FOREACH(hmp, &hammer2_mntlist, mntentry) {
+			if (hmp->devvp == devvp)
+				break;
+		}
+	} else if (error == 0) {
+		/*
+		 * Match the label to a pmp already probed.
+		 */
+		TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
+			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+				if (pmp->pfs_names[i] &&
+				    strcmp(pmp->pfs_names[i], label) == 0) {
+					hmp = pmp->pfs_hmps[i];
+					break;
+				}
+			}
+			if (hmp)
+				break;
+		}
+		if (hmp == NULL)
+			error = ENOENT;
 	}
 
 	/*
@@ -1167,9 +1208,15 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	ripdata = &chain->data->ipdata;
 	bref = chain->bref;
-	pmp = hammer2_pfsalloc(NULL, ripdata, bref.modify_tid, force_local);
+	pmp = hammer2_pfsalloc(NULL, ripdata,
+			       bref.modify_tid, force_local);
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
+
+	/*
+	 * Finish the mount
+	 */
+        kprintf("hammer2_mount hmp=%p pmp=%p\n", hmp, pmp);
 
 	if (pmp->mp) {
 		kprintf("hammer2_mount: PFS already mounted!\n");
@@ -1179,11 +1226,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 		return EBUSY;
 	}
-
-	/*
-	 * Finish the mount
-	 */
-        kprintf("hammer2_mount hmp=%p pmp=%p\n", hmp, pmp);
 
 	pmp->hflags = info.hflags;
         mp->mnt_flag = MNT_LOCAL;

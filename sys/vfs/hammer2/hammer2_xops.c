@@ -130,13 +130,13 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
  * to the inode_tid and modify_tid.
  */
 void
-hammer2_xop_ipcluster(hammer2_xop_t *arg, int clindex)
+hammer2_xop_ipcluster(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_ipcluster_t *xop = &arg->xop_ipcluster;
 	hammer2_chain_t *chain;
 	int error;
 
-	chain = hammer2_inode_chain(xop->head.ip1, clindex,
+	chain = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				    HAMMER2_RESOLVE_ALWAYS |
 				    HAMMER2_RESOLVE_SHARED);
 	if (chain)
@@ -144,7 +144,7 @@ hammer2_xop_ipcluster(hammer2_xop_t *arg, int clindex)
 	else
 		error = EIO;
 		
-	hammer2_xop_feed(&xop->head, chain, clindex, error);
+	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -155,7 +155,7 @@ hammer2_xop_ipcluster(hammer2_xop_t *arg, int clindex)
  * Backend for hammer2_vop_readdir()
  */
 void
-hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
+hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_readdir_t *xop = &arg->xop_readdir;
 	hammer2_chain_t *parent;
@@ -173,7 +173,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 	 * The inode's chain is the iterator.  If we cannot acquire it our
 	 * contribution ends here.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {
@@ -194,7 +194,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 					     HAMMER2_LOOKUP_SHARED);
 	}
 	while (chain) {
-		error = hammer2_xop_feed(&xop->head, chain, clindex, 0);
+		error = hammer2_xop_feed(&xop->head, chain, thr->clindex, 0);
 		if (error)
 			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
@@ -209,14 +209,14 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 done:
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 }
 
 /*
  * Backend for hammer2_vop_nresolve()
  */
 void
-hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
+hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_nresolve_t *xop = &arg->xop_nresolve;
 	hammer2_chain_t *parent;
@@ -229,7 +229,7 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;	/* XXX */
 	int error;
 
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {
@@ -272,12 +272,12 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	if (chain) {
 		if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 			error = hammer2_chain_hardlink_find(&parent, &chain,
-							    clindex,
+							    thr->clindex,
 							HAMMER2_LOOKUP_SHARED);
 		}
 	}
 done:
-	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	error = hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -307,7 +307,7 @@ done:
  * and for decrementing nlinks.
  */
 void
-hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
+hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_unlink_t *xop = &arg->xop_unlink;
 	hammer2_chain_t *parent;
@@ -324,7 +324,7 @@ again:
 	/*
 	 * Requires exclusive lock
 	 */
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
@@ -394,7 +394,7 @@ again:
 		 * EAGAIN is returned.
 		 */
 		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
-		    (error = checkdirempty(parent, chain, clindex)) != 0) {
+		    (error = checkdirempty(parent, chain, thr->clindex)) != 0) {
 			/* error may be EAGAIN or ENOTEMPTY */
 			if (error == EAGAIN) {
 				hammer2_chain_unlock(chain);
@@ -435,7 +435,7 @@ again:
 		lhc = chain->data->ipdata.meta.inum;
 
 		error2 = hammer2_chain_hardlink_find(&parent, &chain,
-						     clindex, 0);
+						     thr->clindex, 0);
 		if (error2) {
 			kprintf("hardlink_find: %016jx %p failed\n",
 				lhc, chain);
@@ -450,7 +450,7 @@ again:
 	 * hammer2_inode_unlink_finisher().
 	 */
 done:
-	hammer2_xop_feed(&xop->head, chain, clindex, error);
+	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -480,7 +480,7 @@ done:
  *	replace the original namespace {fdip,name} with a hardlink pointer.
  */
 void
-hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
+hammer2_xop_nlink(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_nlink_t *xop = &arg->xop_nlink;
 	hammer2_pfs_t *pmp;
@@ -499,7 +499,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 	 */
 	ip = xop->head.ip2;
 	pmp = ip->pmp;
-	parent = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
+	parent = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (parent)
 		hammer2_chain_getparent(&parent, HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
@@ -507,7 +507,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
-	chain = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (chain == NULL) {
 		error = EIO;
 		goto done;
@@ -587,7 +587,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 		 * chain.  XXX just use chain->parent or
 		 * inode_chain_and_parent() ?
 		 */
-		parent = hammer2_inode_chain(xop->head.ip3, clindex,
+		parent = hammer2_inode_chain(xop->head.ip3, thr->clindex,
 					     HAMMER2_RESOLVE_ALWAYS);
 		if (parent == NULL) {
 			error = EIO;
@@ -626,7 +626,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 	 * may have already been updated by the front-end, so use xop->lhc.
 	 */
 done:
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -645,7 +645,7 @@ done:
  * actual inode or renaming the hardlink pointer.
  */
 void
-hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
+hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_nrename_t *xop = &arg->xop_nrename;
 	hammer2_pfs_t *pmp;
@@ -671,7 +671,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		/*
 		 * Find ip's direct parent chain.
 		 */
-		parent = hammer2_inode_chain(ip, clindex,
+		parent = hammer2_inode_chain(ip, thr->clindex,
 					     HAMMER2_RESOLVE_ALWAYS);
 		if (parent)
 			hammer2_chain_getparent(&parent,
@@ -680,7 +680,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 			error = EIO;
 			goto done;
 		}
-		chain = hammer2_inode_chain(ip, clindex,
+		chain = hammer2_inode_chain(ip, thr->clindex,
 					    HAMMER2_RESOLVE_ALWAYS);
 		if (chain == NULL) {
 			error = EIO;
@@ -697,7 +697,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		const char *name;
 		size_t name_len;
 
-		parent = hammer2_inode_chain(xop->head.ip1, clindex,
+		parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 					     HAMMER2_RESOLVE_ALWAYS);
 		if (parent == NULL) {
 			kprintf("xop_nrename: NULL parent\n");
@@ -785,7 +785,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 	/*
 	 * We must seek parent properly for the create.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip3, clindex,
+	parent = hammer2_inode_chain(xop->head.ip3, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = EIO;
@@ -808,7 +808,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 				     HAMMER2_INODE_BYTES,
 				     xop->head.mtid, 0, 0);
 done:
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -825,7 +825,7 @@ done:
  * Used by the inode create code to locate an unused lhc.
  */
 void
-hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
+hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_scanlhc_t *xop = &arg->xop_scanlhc;
 	hammer2_chain_t *parent;
@@ -834,7 +834,7 @@ hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;	/* XXX */
 	int error = 0;
 
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {
@@ -855,7 +855,7 @@ hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
-		error = hammer2_xop_feed(&xop->head, chain, clindex,
+		error = hammer2_xop_feed(&xop->head, chain, thr->clindex,
 					 chain->error);
 		if (error) {
 			hammer2_chain_unlock(chain);
@@ -871,7 +871,7 @@ hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 					   HAMMER2_LOOKUP_SHARED);
 	}
 done:
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -884,7 +884,7 @@ done:
  * Used by the inode hidden directory code to find the hidden directory.
  */
 void
-hammer2_xop_lookup(hammer2_xop_t *arg, int clindex)
+hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_scanlhc_t *xop = &arg->xop_scanlhc;
 	hammer2_chain_t *parent;
@@ -893,7 +893,7 @@ hammer2_xop_lookup(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;	/* XXX */
 	int error = 0;
 
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	chain = NULL;
@@ -912,9 +912,9 @@ hammer2_xop_lookup(hammer2_xop_t *arg, int clindex)
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_SHARED);
 	if (chain)
-		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
+		hammer2_xop_feed(&xop->head, chain, thr->clindex, chain->error);
 	else
-		hammer2_xop_feed(&xop->head, NULL, clindex, ENOENT);
+		hammer2_xop_feed(&xop->head, NULL, thr->clindex, ENOENT);
 
 done:
 	if (chain) {
@@ -936,7 +936,7 @@ done:
  *	    retained.
  */
 void
-hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
+hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_scanall_t *xop = &arg->xop_scanall;
 	hammer2_chain_t *parent;
@@ -955,7 +955,7 @@ hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
 	 * The inode's chain is the iterator.  If we cannot acquire it our
 	 * contribution ends here.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     xop->resolve_flags);
 	if (parent == NULL) {
 		kprintf("xop_readdir: NULL parent\n");
@@ -970,7 +970,7 @@ hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
 				     xop->key_beg, xop->key_end,
 				     &cache_index, xop->lookup_flags);
 	while (chain) {
-		error = hammer2_xop_feed(&xop->head, chain, clindex, 0);
+		error = hammer2_xop_feed(&xop->head, chain, thr->clindex, 0);
 		if (error)
 			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
@@ -984,5 +984,5 @@ hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 done:
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 }

@@ -1146,7 +1146,7 @@ hammer2_flush_quick(hammer2_dev_t *hmp)
  * Primarily called from vfs_sync().
  */
 void
-hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
+hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_flush_t *xop = &arg->xop_flush;
 	hammer2_chain_t *chain;
@@ -1159,7 +1159,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	/*
 	 * Flush core chains
 	 */
-	chain = hammer2_inode_chain(xop->head.ip1, clindex,
+	chain = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
 	if (chain) {
 		hmp = chain->hmp;
@@ -1181,7 +1181,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	 * Flush volume roots.  Avoid replication, we only want to
 	 * flush each hammer2_dev (hmp) once.
 	 */
-	for (j = clindex - 1; j >= 0; --j) {
+	for (j = thr->clindex - 1; j >= 0; --j) {
 		if ((chain = xop->head.ip1->cluster.array[j].chain) != NULL) {
 			if (chain->hmp == hmp) {
 				chain = NULL;	/* safety */
@@ -1302,5 +1302,5 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 
 	hammer2_trans_done(hmp->spmp);  /* spmp trans */
 skip:
-	error = hammer2_xop_feed(&xop->head, NULL, clindex, total_error);
+	error = hammer2_xop_feed(&xop->head, NULL, thr->clindex, total_error);
 }

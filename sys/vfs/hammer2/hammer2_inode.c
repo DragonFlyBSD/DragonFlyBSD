@@ -1245,7 +1245,7 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
  * frontend.
  */
 void
-hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
+hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_create_t *xop = &arg->xop_create;
 	hammer2_chain_t *parent;
@@ -1256,9 +1256,9 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 
 	if (hammer2_debug & 0x0001)
 		kprintf("inode_create lhc %016jx clindex %d\n",
-			xop->lhc, clindex);
+			xop->lhc, thr->clindex);
 
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = EIO;
@@ -1295,7 +1295,7 @@ fail:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
-	hammer2_xop_feed(&xop->head, chain, clindex, error);
+	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -1308,7 +1308,7 @@ fail:
  * Generally used by hammer2_run_sideq()
  */
 void
-hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
+hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_destroy_t *xop = &arg->xop_destroy;
 	hammer2_pfs_t *pmp;
@@ -1325,14 +1325,14 @@ hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
 	chain = NULL;
 
 again:
-	parent = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
+	parent = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (parent)
 		hammer2_chain_getparent(&parent, HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = EIO;
 		goto done;
 	}
-	chain = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (chain == NULL) {
 		error = EIO;
 		goto done;
@@ -1351,7 +1351,7 @@ again:
 	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 	error = 0;
 done:
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -1363,7 +1363,7 @@ done:
 }
 
 void
-hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
+hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_unlinkall_t *xop = &arg->xop_unlinkall;
 	hammer2_chain_t *parent;
@@ -1374,7 +1374,7 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 	/*
 	 * We need the precise parent chain to issue the deletion.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
@@ -1388,7 +1388,7 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 	while (chain) {
 		hammer2_chain_delete(parent, chain,
 				     xop->head.mtid, HAMMER2_DELETE_PERMANENT);
-		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
+		hammer2_xop_feed(&xop->head, chain, thr->clindex, chain->error);
 		/* depend on function to unlock the shared lock */
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, xop->key_end,
@@ -1396,7 +1396,7 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 					   HAMMER2_LOOKUP_ALWAYS);
 	}
 done:
-	hammer2_xop_feed(&xop->head, NULL, clindex, ENOENT);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, ENOENT);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -1408,7 +1408,7 @@ done:
 }
 
 void
-hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
+hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_connect_t *xop = &arg->xop_connect;
 	hammer2_inode_data_t *wipdata;
@@ -1424,7 +1424,7 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	 * for the create.  The lookup is expected to fail.
 	 */
 	pmp = xop->head.ip1->pmp;
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		chain = NULL;
@@ -1448,7 +1448,7 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	 * NOTE: Frontend must also adjust ip2->meta on success, we can't
 	 *	 do it here.
 	 */
-	chain = hammer2_inode_chain(xop->head.ip2, clindex,
+	chain = hammer2_inode_chain(xop->head.ip2, thr->clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
 	hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
 	wipdata = &chain->data->ipdata;
@@ -1475,7 +1475,7 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	 * Feed result back.
 	 */
 fail:
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -1490,14 +1490,14 @@ fail:
  * Synchronize the in-memory inode with the chain.
  */
 void
-hammer2_inode_xop_chain_sync(hammer2_xop_t *arg, int clindex)
+hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 {
 	hammer2_xop_fsync_t *xop = &arg->xop_fsync;
 	hammer2_chain_t	*parent;
 	hammer2_chain_t	*chain;
 	int error;
 
-	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
@@ -1556,7 +1556,8 @@ hammer2_inode_xop_chain_sync(hammer2_xop_t *arg, int clindex)
 		if (parent->bref.type != HAMMER2_BREF_TYPE_INODE) {
 			hammer2_chain_unlock(parent);
 			hammer2_chain_drop(parent);
-			parent = hammer2_inode_chain(xop->head.ip1, clindex,
+			parent = hammer2_inode_chain(xop->head.ip1,
+						     thr->clindex,
 						     HAMMER2_RESOLVE_ALWAYS);
 			kprintf("hammer2: TRUNCATE RESET on '%s'\n",
 				parent->data->ipdata.filename);
@@ -1582,6 +1583,6 @@ done:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
-	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 }
 

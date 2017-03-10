@@ -151,7 +151,7 @@ main(int ac, char *av[])
 	/*
 	 * Try to mount it, prefix if necessary.
 	 */
-	if (devpath[0] != '/') {
+	if (devpath[0] != '/' && devpath[0] != '@') {
 		char *p2;
 		asprintf(&p2, "/dev/%s", devpath);
 		free(devpath);

@@ -79,7 +79,7 @@ hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags)
 
 		if (oflags & HAMMER2_THREAD_CLIENTWAIT) {
 			if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
-				wakeup(thr);
+				wakeup(&thr->flags);
 				break;
 			}
 		} else {
@@ -104,9 +104,9 @@ hammer2_thr_wait(hammer2_thread_t *thr, uint32_t flags)
 		if ((oflags & flags) == flags)
 			break;
 		nflags = oflags | HAMMER2_THREAD_CLIENTWAIT;
-		tsleep_interlock(thr, 0);
+		tsleep_interlock(&thr->flags, 0);
 		if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
-			tsleep(thr, PINTERLOCKED, "h2twait", hz*60);
+			tsleep(&thr->flags, PINTERLOCKED, "h2twait", hz*60);
 		}
 	}
 }
@@ -126,9 +126,9 @@ hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags)
 		if ((oflags & flags) == 0)
 			break;
 		nflags = oflags | HAMMER2_THREAD_CLIENTWAIT;
-		tsleep_interlock(thr, 0);
+		tsleep_interlock(&thr->flags, 0);
 		if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
-			tsleep(thr, PINTERLOCKED, "h2twait", hz*60);
+			tsleep(&thr->flags, PINTERLOCKED, "h2twait", hz*60);
 		}
 	}
 }
@@ -136,6 +136,9 @@ hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags)
 /*
  * Initialize the supplied thread structure, starting the specified
  * thread.
+ *
+ * NOTE: thr structure can be retained across mounts and unmounts for this
+ *	 pmp, so make sure the flags are in a sane state.
  */
 void
 hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
@@ -146,6 +149,12 @@ hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 	thr->clindex = clindex;
 	thr->repidx = repidx;
 	TAILQ_INIT(&thr->xopq);
+	atomic_clear_int(&thr->flags, HAMMER2_THREAD_STOP |
+				      HAMMER2_THREAD_STOPPED |
+				      HAMMER2_THREAD_FREEZE |
+				      HAMMER2_THREAD_FROZEN);
+	if (thr->scratch == NULL)
+		thr->scratch = kmalloc(MAXPHYS, M_HAMMER2, M_WAITOK | M_ZERO);
 	if (repidx >= 0) {
 		lwkt_create(func, thr, &thr->td, NULL, 0, repidx % ncpus,
 			    "%s-%s.%02d", id, pmp->pfs_names[clindex], repidx);
@@ -170,6 +179,10 @@ hammer2_thr_delete(hammer2_thread_t *thr)
 	hammer2_thr_signal(thr, HAMMER2_THREAD_STOP);
 	hammer2_thr_wait(thr, HAMMER2_THREAD_STOPPED);
 	thr->pmp = NULL;
+	if (thr->scratch) {
+		kfree(thr->scratch, M_HAMMER2);
+		thr->scratch = NULL;
+	}
 	KKASSERT(TAILQ_EMPTY(&thr->xopq));
 }
 
@@ -361,6 +374,7 @@ hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp)
 				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
 		}
 	}
+	pmp->has_xop_threads = 0;
 }
 
 /*
@@ -386,18 +400,19 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 		hammer2_xop_helper_create(pmp);
 
 	/*
-	 * The intent of the XOP sequencer is to ensure that ops on the same inode
-	 * execute in the same order.  This is necessary when issuing modifying operations
-	 * to multiple targets because some targets might get behind and the frontend is
-	 * allowed to complete the moment a quorum of targets succeed.
+	 * The intent of the XOP sequencer is to ensure that ops on the same
+	 * inode execute in the same order.  This is necessary when issuing
+	 * modifying operations to multiple targets because some targets might
+	 * get behind and the frontend is allowed to complete the moment a
+	 * quorum of targets succeed.
 	 *
-	 * Strategy operations must be segregated from non-strategy operations to avoid
-	 * a deadlock.  For example, if a vfsync and a bread/bwrite were queued to
-	 * the same worker thread, the locked buffer in the strategy operation can deadlock
-	 * the vfsync's buffer list scan.
+	 * Strategy operations must be segregated from non-strategy operations
+	 * to avoid a deadlock.  For example, if a vfsync and a bread/bwrite
+	 * were queued to the same worker thread, the locked buffer in the
+	 * strategy operation can deadlock the vfsync's buffer list scan.
 	 *
-	 * TODO - RENAME fails here because it is potentially modifying three different
-	 *	  inodes.
+	 * TODO - RENAME fails here because it is potentially modifying
+	 *	  three different inodes.
 	 */
 	if (xop->flags & HAMMER2_XOP_STRATEGY) {
 		hammer2_xop_strategy_t *xopst;
@@ -432,6 +447,7 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 			thr = &pmp->xop_groups[ng].thrs[i];
 			atomic_set_int(&xop->run_mask, 1U << i);
 			atomic_set_int(&xop->chk_mask, 1U << i);
+			xop->collect[i].thr = thr;
 			TAILQ_INSERT_TAIL(&thr->xopq, xop, collect[i].entry);
 		}
 	}
@@ -826,8 +842,7 @@ done:
 
 /*
  * N x M processing threads are available to handle XOPs, N per cluster
- * index x M cluster nodes.  All the threads for any given cluster index
- * share and pull from the same xopq.
+ * index x M cluster nodes.
  *
  * Locate and return the next runnable xop, or NULL if no xops are
  * present or none of the xops are currently runnable (for various reasons).
@@ -1038,7 +1053,7 @@ hammer2_primary_xops_thread(void *arg)
 		while ((xop = hammer2_xop_next(thr)) != NULL) {
 			if (hammer2_xop_active(xop)) {
 				last_func = xop->func;
-				xop->func((hammer2_xop_t *)xop, thr->clindex);
+				xop->func(thr, (hammer2_xop_t *)xop);
 				hammer2_xop_dequeue(thr, xop);
 				hammer2_xop_retire(xop, mask);
 			} else {
@@ -1080,5 +1095,4 @@ hammer2_primary_xops_thread(void *arg)
 	thr->td = NULL;
 	hammer2_thr_return(thr, HAMMER2_THREAD_STOPPED);
 	/* thr structure can go invalid after this point */
-	wakeup(thr);
 }

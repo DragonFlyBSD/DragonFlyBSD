@@ -802,6 +802,7 @@ struct hammer2_thread {
 	int		depth;
 	int		clindex;	/* cluster element index */
 	int		repidx;
+	char		*scratch;	/* MAXPHYS */
 };
 
 typedef struct hammer2_thread hammer2_thread_t;
@@ -846,7 +847,8 @@ typedef struct hammer2_dedup hammer2_dedup_t;
  *
  * This structure also sequences operations on up to three inodes.
  */
-typedef void (*hammer2_xop_func_t)(union hammer2_xop *xop, int clidx);
+typedef void (*hammer2_xop_func_t)(hammer2_thread_t *thr,
+				   union hammer2_xop *xop);
 
 struct hammer2_xop_fifo {
 	TAILQ_ENTRY(hammer2_xop_head) entry;
@@ -855,6 +857,7 @@ struct hammer2_xop_fifo {
 	int			ri;
 	int			wi;
 	int			flags;
+	hammer2_thread_t	*thr;
 };
 
 typedef struct hammer2_xop_fifo hammer2_xop_fifo_t;
@@ -1565,21 +1568,21 @@ void hammer2_primary_sync_thread(void *arg);
  * XOP backends in hammer2_xops.c, primarily for VNOPS.  Other XOP backends
  * may be integrated into other source files.
  */
-void hammer2_xop_ipcluster(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_readdir(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_nresolve(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_unlink(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_nrename(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_nlink(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_scanlhc(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_scanall(hammer2_xop_t *xop, int clidx);
-void hammer2_xop_lookup(hammer2_xop_t *xop, int clidx);
-void hammer2_inode_xop_create(hammer2_xop_t *xop, int clidx);
-void hammer2_inode_xop_destroy(hammer2_xop_t *xop, int clidx);
-void hammer2_inode_xop_chain_sync(hammer2_xop_t *xop, int clidx);
-void hammer2_inode_xop_unlinkall(hammer2_xop_t *xop, int clidx);
-void hammer2_inode_xop_connect(hammer2_xop_t *xop, int clidx);
-void hammer2_inode_xop_flush(hammer2_xop_t *xop, int clidx);
+void hammer2_xop_ipcluster(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_nlink(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *xop);
 
 /*
  * hammer2_msgops.c
