@@ -588,10 +588,10 @@ static int
 vtblk_write_cache_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	struct vtblk_softc *sc;
-	int wc, error;
+	int oldwc, wc, error;
 
 	sc = oidp->oid_arg1;
-	wc = sc->vtblk_write_cache;
+	oldwc = wc = sc->vtblk_write_cache;
 
 	error = sysctl_handle_int(oidp, &wc, 0, req);
 	if (error || req->newptr == NULL)
@@ -600,6 +600,9 @@ vtblk_write_cache_sysctl(SYSCTL_HANDLER_ARGS)
 		return (EPERM);
 	if (wc < 0 || wc >= VTBLK_CACHE_MAX)
 		return (EINVAL);
+
+	if (oldwc == wc)
+		return (0);
 
 	lwkt_serialize_enter(&sc->vtblk_slz);
 	sc->vtblk_write_cache = wc;
