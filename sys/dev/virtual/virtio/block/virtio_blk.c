@@ -147,7 +147,6 @@ static int	vtblk_execute_request(struct vtblk_softc *,
 		    struct vtblk_request *);
 
 static int	vtblk_vq_intr(void *);
-static void	vtblk_complete(void *);
 
 static void	vtblk_stop(struct vtblk_softc *);
 
@@ -743,8 +742,6 @@ vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
 	/*
 	 * sglist is live throughout this subroutine.
 	 */
-	sglist_reset(sg);
-	
 	error = sglist_append(sg, &req->vbr_hdr,
 			      sizeof(struct virtio_blk_outhdr));
 	KASSERT(error == 0, ("error adding header to sglist"));
@@ -776,24 +773,13 @@ vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
 }
 
 static int
-vtblk_vq_intr(void *xsc)
+vtblk_vq_intr(void *arg)
 {
-	vtblk_complete(xsc);
-
-	return (1);
-}
-
-static void
-vtblk_complete(void *arg)
-{
-	struct vtblk_softc *sc;
+	struct vtblk_softc *sc = arg;
+	struct virtqueue *vq = sc->vtblk_vq;
 	struct vtblk_request *req;
-	struct virtqueue *vq;
 	struct bio *bio;
 	struct buf *bp;
-	
-	sc = arg;
-	vq = sc->vtblk_vq;
 
 	lwkt_serialize_handler_disable(&sc->vtblk_slz);
 	virtqueue_disable_intr(sc->vtblk_vq);
@@ -801,15 +787,15 @@ vtblk_complete(void *arg)
 
 retry:
 	if (sc->vtblk_flags & VTBLK_FLAG_DETACH)
-		return;
+		return (1);
 
 	while ((req = virtqueue_dequeue(vq, NULL)) != NULL) {
 		bio = req->vbr_bio;
 		bp = bio->bio_buf;
 
-		if (req->vbr_ack == VIRTIO_BLK_S_OK)
+		if (req->vbr_ack == VIRTIO_BLK_S_OK) {
 			bp->b_resid = 0;
-		else {
+		} else {
 			bp->b_flags |= B_ERROR;
 			if (req->vbr_ack == VIRTIO_BLK_S_UNSUPP) {
 				bp->b_error = ENOTSUP;
@@ -824,7 +810,7 @@ retry:
 		/*
 		 * Unlocking the controller around biodone() does not allow
 		 * processing further device interrupts; when we queued
-		 * vtblk_complete, we disabled interrupts. It will allow
+		 * vtblk_vq_intr, we disabled interrupts. It will allow
 		 * concurrent vtblk_strategy/_startio command dispatches.
 		 */
 		biodone(bio);
@@ -846,6 +832,8 @@ retry:
 		goto retry;
 	}
 	lwkt_serialize_handler_enable(&sc->vtblk_slz);
+
+	return (1);
 }
 
 static void
