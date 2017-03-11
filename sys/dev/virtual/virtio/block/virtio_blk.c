@@ -36,7 +36,6 @@
 #include <sys/module.h>
 #include <sys/sglist.h>
 #include <sys/sysctl.h>
-#include <sys/lock.h>
 #include <sys/queue.h>
 #include <sys/serialize.h>
 #include <sys/buf2.h>
@@ -112,8 +111,6 @@ static struct virtio_feature_desc vtblk_feature_desc[] = {
 
 	{ 0, NULL }
 };
-
-static int	vtblk_modevent(module_t, int, void *);
 
 static int	vtblk_probe(device_t);
 static int	vtblk_attach(device_t);
@@ -225,32 +222,9 @@ static driver_t vtblk_driver = {
 };
 static devclass_t vtblk_devclass;
 
-DRIVER_MODULE(virtio_blk, virtio_pci, vtblk_driver, vtblk_devclass,
-    vtblk_modevent, NULL);
+DRIVER_MODULE(virtio_blk, virtio_pci, vtblk_driver, vtblk_devclass, NULL, NULL);
 MODULE_VERSION(virtio_blk, 1);
 MODULE_DEPEND(virtio_blk, virtio, 1, 1, 1);
-
-static int
-vtblk_modevent(module_t mod, int type, void *unused)
-{
-	int error;
-
-	error = 0;
-
-	switch (type) {
-	case MOD_LOAD:
-		break;
-	case MOD_UNLOAD:
-		break;
-	case MOD_SHUTDOWN:
-		break;
-	default:
-		error = EOPNOTSUPP;
-		break;
-	}
-
-	return (error);
-}
 
 static int
 vtblk_probe(device_t dev)

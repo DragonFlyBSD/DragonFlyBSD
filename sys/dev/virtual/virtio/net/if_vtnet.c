@@ -74,8 +74,6 @@
 
 MALLOC_DEFINE(M_VTNET, "VTNET_TX", "Outgoing VTNET TX frame header");
 
-static int	vtnet_modevent(module_t, int, void *);
-
 static int	vtnet_probe(device_t);
 static int	vtnet_attach(device_t);
 static int	vtnet_detach(device_t);
@@ -220,7 +218,7 @@ static device_method_t vtnet_methods[] = {
 	/* VirtIO methods. */
 	DEVMETHOD(virtio_config_change, vtnet_config_change),
 
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t vtnet_driver = {
@@ -231,32 +229,9 @@ static driver_t vtnet_driver = {
 
 static devclass_t vtnet_devclass;
 
-DRIVER_MODULE(vtnet, virtio_pci, vtnet_driver, vtnet_devclass,
-    vtnet_modevent, 0);
+DRIVER_MODULE(vtnet, virtio_pci, vtnet_driver, vtnet_devclass, NULL, NULL);
 MODULE_VERSION(vtnet, 1);
 MODULE_DEPEND(vtnet, virtio, 1, 1, 1);
-
-static int
-vtnet_modevent(module_t mod, int type, void *unused)
-{
-	int error;
-
-	error = 0;
-
-	switch (type) {
-	case MOD_LOAD:
-		break;
-	case MOD_UNLOAD:
-		break;
-	case MOD_SHUTDOWN:
-		break;
-	default:
-		error = EOPNOTSUPP;
-		break;
-	}
-
-	return (error);
-}
 
 static int
 vtnet_probe(device_t dev)
