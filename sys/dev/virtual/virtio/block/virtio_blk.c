@@ -251,8 +251,6 @@ vtblk_attach(device_t dev)
 	if (virtio_with_feature(dev, VIRTIO_BLK_F_CONFIG_WCE))
 		sc->vtblk_flags |= VTBLK_FLAG_WC_CONFIG;
 
-	vtblk_setup_sysctl(sc);
-
 	/* Get local copy of config. */
 	virtio_read_device_config(dev, 0, &blkcfg,
 				  sizeof(struct virtio_blk_config));
@@ -324,6 +322,7 @@ vtblk_attach(device_t dev)
 	virtqueue_enable_intr(sc->vtblk_vq);
 
 	vtblk_alloc_disk(sc, &blkcfg);
+	vtblk_setup_sysctl(sc);
 
 fail:
 	if (error)
