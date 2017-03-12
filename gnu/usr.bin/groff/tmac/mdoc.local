@@ -70,7 +70,7 @@
 .
 .
 .\" Default .Os value
-.ds doc-default-operating-system DragonFly\~4.7
+.ds doc-default-operating-system DragonFly\~4.9
 .
 .
 .\" DragonFly releases not found in doc-common
@@ -100,6 +100,7 @@
 .ds doc-operating-system-DragonFly-4.5 4.5
 .ds doc-operating-system-DragonFly-4.6 4.6
 .ds doc-operating-system-DragonFly-4.7 4.7
+.ds doc-operating-system-DragonFly-4.9 4.9
 .
 .\" FreeBSD releases not found in doc-common.
 .ds doc-operating-system-FreeBSD-7.2  7.2

@@ -148,6 +148,8 @@
  * 400711 - move lwp syscalls to sys/lwp.h
  * 400712 - restore lwp syscalls (except lwp_create*) declaration
  * 400713 - add sysctl kern.cp_times
+ * 400800 - 4.8 release
+ * 400900 - 4.9 development
  */
 #undef __DragonFly_version
 #define __DragonFly_version 400713	/* propagated to newvers */
