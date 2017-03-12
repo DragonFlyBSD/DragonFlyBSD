@@ -35,14 +35,12 @@ To compile VirtIO device support into the kernel, place the following lines
 in your kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device virtio"
-.Cd "device virtio_pci"
 .Ed
 .Pp
 Alternatively, to load VirtIO support as modules at boot time, place the
 following lines in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
-virtio_load="YES"
 virtio_pci_load="YES"
 .Ed
 .Sh DESCRIPTION
