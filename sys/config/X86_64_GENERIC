@@ -140,7 +140,6 @@ device		virtio		# VirtIO core
 device		virtio_blk	# VirtIO disk driver
 device		virtio_scsi	# VirtIO SCSI driver
 device		vtnet		# VirtIO network driver
-device		virtio_pci	# VirtIO transport over PCI bus
 
 # VMware support
 device		vmx		# VMware VMXNET3 Ethernet

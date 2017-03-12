@@ -2142,7 +2142,6 @@ device		virtio
 device		virtio_blk
 device		virtio_scsi
 device		vtnet
-device		virtio_pci
 
 # VMware support
 #
