@@ -32,9 +32,6 @@
 #include <drm/drmP.h>
 #include <asm/cpufeature.h>
 
-#include <machine/md_var.h>
-#include <machine/cpufunc.h>
-
 /*
  * clflushopt is an unordered instruction which needs fencing with mfence or
  * sfence to avoid ordering issues.  For drm_clflush_page this fencing happens
@@ -52,7 +49,7 @@ drm_clflush_page(struct vm_page *page)
 
 	page_virtual = kmap_atomic(page);
 	for (i = 0; i < PAGE_SIZE; i += size)
-		clflush((u_long)(page_virtual + i));
+		clflushopt(page_virtual + i);
 	kunmap_atomic(page_virtual);
 }
 
@@ -91,7 +88,7 @@ drm_clflush_virt_range(void *in_addr, unsigned long length)
 		addr = (void *)(((unsigned long)addr) & -size);
 		mb();
 		for (; addr < end; addr += size)
-			clflush((unsigned long)addr);
+			clflushopt(addr);
 		mb();
 		return;
 	}

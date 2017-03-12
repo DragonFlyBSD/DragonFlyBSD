@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,40 +24,23 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _ASM_CACHEFLUSH_H_
-#define _ASM_CACHEFLUSH_H_
+#ifndef _ASM_SPECIAL_INSNS_H_
+#define _ASM_SPECIAL_INSNS_H_
 
-#include <asm/special_insns.h>
-
-#include <vm/pmap.h>
-#include <vm/vm_page.h>
-
-static inline int set_memory_wc(unsigned long vaddr, int numpages)
+static inline void
+linux_clflush(volatile void *p)
 {
-	pmap_change_attr(vaddr, numpages, PAT_WRITE_COMBINING);
-	return 0;
+	__asm __volatile("clflush %0" : "+m" (*(volatile char *)p));
 }
 
-static inline int set_memory_wb(unsigned long vaddr, int numpages)
+/*
+ * clflushopt has only been introduced with Skylake (2015) CPUs.
+ * Do not bother with it for now.
+ */
+static inline void
+clflushopt(volatile void *p)
 {
-	pmap_change_attr(vaddr, numpages, PAT_WRITE_BACK);
-	return 0;
+	linux_clflush(p);
 }
 
-static inline int set_pages_uc(struct vm_page *page, int num_pages)
-{
-	pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page)),
-			 num_pages, PAT_UNCACHED);
-
-	return 0;
-}
-
-static inline int set_pages_wb(struct vm_page *page, int num_pages)
-{
-	pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page)),
-			 num_pages, PAT_WRITE_BACK);
-
-	return 0;
-}
-
-#endif	/* _ASM_CACHEFLUSH_H_ */
+#endif	/* _ASM_SPECIAL_INSNS_H_ */
