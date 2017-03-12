@@ -614,11 +614,6 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 
 	ether_ifattach(ifp, sc->vtnet_hwaddr, NULL);
 
-	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)){
-		//ifp->if_capabilities |= IFCAP_LINKSTATE;
-		 kprintf("add dynamic link state\n");
-	}
-
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 	ifp->if_capabilities |= IFCAP_JUMBO_MTU | IFCAP_VLAN_MTU;
@@ -730,8 +725,12 @@ vtnet_is_link_up(struct vtnet_softc *sc)
 
 	ASSERT_SERIALIZED(&sc->vtnet_slz);
 
-	status = virtio_read_dev_config_2(dev,
-			offsetof(struct virtio_net_config, status));
+	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
+		status = virtio_read_dev_config_2(dev,
+				offsetof(struct virtio_net_config, status));
+	} else {
+		status = VIRTIO_NET_S_LINK_UP;
+	}
 
 	return ((status & VIRTIO_NET_S_LINK_UP) != 0);
 }
