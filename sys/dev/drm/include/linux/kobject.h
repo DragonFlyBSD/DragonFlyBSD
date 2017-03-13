@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,17 +29,30 @@
 
 #include <linux/types.h>
 #include <linux/list.h>
-#include <linux/sysfs.h>
 #include <linux/compiler.h>
 #include <linux/spinlock.h>
 #include <linux/kref.h>
-#include <linux/kobject_ns.h>
 #include <linux/kernel.h>
 #include <linux/wait.h>
 #include <linux/atomic.h>
-#include <linux/workqueue.h>
+
+enum kobject_action {
+	KOBJ_ADD,
+	KOBJ_REMOVE,
+	KOBJ_CHANGE,
+	KOBJ_MOVE,
+	KOBJ_ONLINE,
+	KOBJ_OFFLINE,
+	KOBJ_MAX
+};
 
 struct kobject {
 };
+
+static inline int
+kobject_uevent_env(struct kobject *kobj, enum kobject_action action, char *envp[])
+{
+	return 0;
+}
 
 #endif	/* _LINUX_KOBJECT_H_ */

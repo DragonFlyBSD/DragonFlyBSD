@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #ifndef	_LINUX_DEVICE_H_
 #define	_LINUX_DEVICE_H_
 
+#include <linux/kobject.h>
 #include <linux/list.h>
 #include <linux/lockdep.h>
 #include <linux/compiler.h>
@@ -39,6 +40,8 @@
 
 struct device {
 	struct device	*parent;
+
+	struct kobject kobj;
 
 	device_t	bsddev;
 };

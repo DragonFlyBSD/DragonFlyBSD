@@ -785,7 +785,7 @@ struct drm_info_node {
 struct drm_minor {
 	int index;			/**< Minor device number */
 	int type;                       /**< Control or render */
-	device_t kdev;			/**< OS device */
+	struct device *kdev;		/**< Linux device */
 	struct drm_device *dev;
 
 	/* currently active master for this node. Protected by master_mutex */

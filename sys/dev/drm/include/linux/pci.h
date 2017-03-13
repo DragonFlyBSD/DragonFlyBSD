@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 François Tigeot
+ * Copyright (c) 2014-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,7 @@
 #include <linux/list.h>
 #include <linux/compiler.h>
 #include <linux/errno.h>
+#include <linux/kobject.h>
 #include <linux/atomic.h>
 #include <linux/device.h>
 #include <linux/io.h>
