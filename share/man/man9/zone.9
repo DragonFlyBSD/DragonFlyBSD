@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
 .\"
-.Dd December 30, 2016
+.Dd March 13, 2017
 .Dt ZONE 9
 .Os
 .Sh NAME
@@ -41,11 +41,11 @@
 .In sys/queue.h
 .In vm/vm_zone.h
 .Ft void
-.Fn zbootinit "vm_zone_t z" "char *name" "int size" "void *item" "int nitems"
+.Fn zbootinit "vm_zone_t z" "char *name" "size_t size" "void *item" "long nitems"
 .Ft int
-.Fn zinitna "vm_zone_t z" "struct vm_object *obj" "char *name" "int size" "int nentries" "int flags"
+.Fn zinitna "vm_zone_t z" "struct vm_object *obj" "char *name" "size_t size" "long nentries" "uint32_t flags"
 .Ft vm_zone_t
-.Fn zinit "char *name" "int size" "int nentries" "int flags"
+.Fn zinit "char *name" "size_t size" "long nentries" "uint32_t flags"
 .Ft void
 .Fn zdestroy "vm_zone_t z"
 .Ft void *
