@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,15 @@ union ktime {
 };
 
 typedef union ktime ktime_t;
+
+static inline ktime_t
+ktime_set(const s64 secs, const unsigned long nsecs)
+{
+	ktime_t kt;
+
+	kt.tv64 = secs * NSEC_PER_SEC + (s64)nsecs;
+	return kt;
+}
 
 static inline s64
 ktime_to_us(const ktime_t kt)

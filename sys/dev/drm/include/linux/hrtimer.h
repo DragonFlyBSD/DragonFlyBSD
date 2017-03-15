@@ -1,5 +1,5 @@
-/*-
- * Copyright (c) 2015-2017 François Tigeot
+/*
+ * Copyright (c) 2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,70 +23,41 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _LINUX_HRTIMER_H_
+#define _LINUX_HRTIMER_H_
 
-#ifndef	_LINUX_SCHED_H_
-#define	_LINUX_SCHED_H_
-
-#include <linux/capability.h>
-#include <linux/kernel.h>
-#include <linux/types.h>
-#include <linux/jiffies.h>
-#include <linux/errno.h>
-
-#include <asm/page.h>
-
-#include <linux/compiler.h>
-#include <linux/completion.h>
-#include <linux/rculist.h>
-
-#include <linux/time.h>
+#include <linux/ktime.h>
+#include <linux/list.h>
+#include <linux/wait.h>
 #include <linux/timer.h>
-#include <linux/hrtimer.h>
-#include <linux/gfp.h>
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/proc.h>
-#include <sys/sched.h>
-#include <sys/signal2.h>
+enum hrtimer_mode {
+	HRTIMER_MODE_ABS = 0x0,
+	HRTIMER_MODE_REL = 0x1,
+};
 
-#define	TASK_RUNNING		0
-#define	TASK_INTERRUPTIBLE	1
-#define	TASK_UNINTERRUPTIBLE	2
+enum hrtimer_restart {
+	HRTIMER_NORESTART,	/* Timer is not restarted */
+	HRTIMER_RESTART,	/* Timer must be restarted */
+};
 
-/*
- * schedule_timeout - sleep until timeout
- * @timeout: timeout value in jiffies
- */
-static inline long
-schedule_timeout(signed long timeout)
-{
-	static int dummy;
+struct hrtimer {
+	struct callout timer_callout;
+	clockid_t 		clock_id;
+	enum hrtimer_mode	ht_mode;
+	bool active;
+	enum hrtimer_restart	(*function)(struct hrtimer *);
+	struct lwkt_token timer_token;
+};
 
-	if (timeout < 0) {
-		kprintf("schedule_timeout(): timeout cannot be negative\n");
-		return 0;
-	}
+extern void hrtimer_init(struct hrtimer *timer, clockid_t which_clock,
+			 enum hrtimer_mode mode);
 
-	tsleep(&dummy, 0, "lstim", timeout);
+extern void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
+				   u64 range_ns, const enum hrtimer_mode mode);
 
-	return 0;
-}
+extern int hrtimer_cancel(struct hrtimer *timer);
 
-#define TASK_COMM_LEN	MAXCOMLEN
+extern bool hrtimer_active(const struct hrtimer *timer);
 
-#define signal_pending(lp)	CURSIG(lp)
-
-/*
- * local_clock: fast time source, monotonic on the same cpu
- */
-static inline uint64_t
-local_clock(void)
-{
-	struct timespec ts;
-
-	getnanouptime(&ts);
-	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
-}
-
-#endif	/* _LINUX_SCHED_H_ */
+#endif /* _LINUX_HRTIMER_H_ */
