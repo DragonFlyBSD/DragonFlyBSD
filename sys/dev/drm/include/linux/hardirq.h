@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 François Tigeot
+ * Copyright (c) 2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,43 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_HIGHMEM_H_
-#define _LINUX_HIGHMEM_H_
+#ifndef _LINUX_HARDIRQ_H_
+#define _LINUX_HARDIRQ_H_
 
-#include <machine/vmparam.h>
-
-#include <linux/kernel.h>
-#include <linux/bug.h>
-#include <linux/mm.h>
-#include <linux/uaccess.h>
-#include <linux/hardirq.h>
-
-#include <asm/cacheflush.h>
-
-static inline struct vm_page *
-kmap_to_page(void *addr)
+static inline void
+synchronize_irq(unsigned int irq)
 {
-	return PHYS_TO_VM_PAGE(vtophys(addr));
 }
 
-static inline void *kmap(struct vm_page *pg)
-{
-	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
-}
-
-static inline void kunmap(struct vm_page *pg)
-{
-	/* Nothing to do on systems with a direct memory map */
-}
-
-static inline void *kmap_atomic(struct vm_page *pg)
-{
-	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
-}
-
-static inline void kunmap_atomic(void *vaddr)
-{
-	/* Nothing to do on systems with a direct memory map */
-}
-
-#endif	/* _LINUX_HIGHMEM_H_ */
+#endif	/* _LINUX_HARDIRQ_H_ */
