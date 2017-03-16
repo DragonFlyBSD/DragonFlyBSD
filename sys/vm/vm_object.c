@@ -2935,8 +2935,6 @@ vm_object_set_writeable_dirty(vm_object_t object)
 
 #include "opt_ddb.h"
 #ifdef DDB
-#include <sys/kernel.h>
-
 #include <sys/cons.h>
 
 #include <ddb/ddb.h>

@@ -3324,8 +3324,6 @@ vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 
 #include "opt_ddb.h"
 #ifdef DDB
-#include <sys/kernel.h>
-
 #include <ddb/ddb.h>
 
 DB_SHOW_COMMAND(page, vm_page_print_page_info)

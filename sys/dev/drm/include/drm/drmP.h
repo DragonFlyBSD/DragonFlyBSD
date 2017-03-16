@@ -54,7 +54,6 @@
 #include <sys/filio.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
-#include <sys/queue.h>
 #include <sys/signalvar.h>
 #include <sys/poll.h>
 #include <linux/highmem.h>
@@ -97,7 +96,6 @@
 #include <linux/mm.h>
 #include <linux/moduleparam.h>
 #include <linux/mutex.h>
-#include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/scatterlist.h>
 #include <linux/timer.h>

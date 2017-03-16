@@ -4312,8 +4312,6 @@ vm_map_deinterlock(vm_map_t map, struct  vm_map_ilock *ilock)
 
 #include "opt_ddb.h"
 #ifdef DDB
-#include <sys/kernel.h>
-
 #include <ddb/ddb.h>
 
 /*
