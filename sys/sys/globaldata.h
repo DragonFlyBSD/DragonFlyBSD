@@ -67,7 +67,7 @@
 #include <sys/time.h>		/* struct timeval */
 #endif
 #ifndef _SYS_VMMETER_H_
-#include <sys/vmmeter.h>	/* struct vmmeter */
+#include <sys/vmmeter.h>	/* struct vmmeter, pcpu vmstats adj */
 #endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>		/* struct thread */
@@ -83,9 +83,6 @@
 #endif
 #ifndef _SYS_SYSID_H_
 #include <sys/sysid.h>		/* sysid_t */
-#endif
-#ifndef _SYS_VMMETER_H_
-#include <sys/vmmeter.h>	/* pcpu vmstats adj */
 #endif
 
 /*
