@@ -57,6 +57,31 @@ the stale and potentially vulnerable version, but all binaries that are
 dynamically linked to the OpenSSL libraries should be rebuilt first to
 avoid breakage.
 
+OPENSSH HPN REMOVED
+-------------------
+
+It has become too cumbersome to maintain HPN patches in OpenSSH in base.
+To use OpenSSH in base remove HPN config, if you have added it.
+Check files below for HPN config, see a few lines below.
+  /etc/ssh/ssh_config, /etc/ssh/sshd_config, ~/.ssh/config
+sshd(8) will fail to start if HPN config is used.
+
+NOTE: HPN config in sshd_config will prohibit remote access to host using ssh.
+
+HPN config:
+HPNDisabled
+HPNBufferSize
+TcpRcvBuf
+TcpRcvBufPoll
+NoneEnabled
+NoneSwitch
+cipher MTR-AES-CTR
+cipher NONE
+
+OpenSSH HPN is a patch set to OpenSSH providing higher performance under some
+circumstances, especially for networking.
+If HPN functionality is needed, install security/openssh from dports.
+
 CS, EX AND VX DRIVERS REMOVED
 -----------------------------
 
