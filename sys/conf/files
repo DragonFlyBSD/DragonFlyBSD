@@ -2042,6 +2042,7 @@ dev/drm/linux_i2c.c			optional drm
 dev/drm/linux_iomapping.c		optional drm
 dev/drm/linux_list_sort.c		optional drm
 dev/drm/linux_shmem.c			optional drm
+dev/drm/linux_vmalloc.c			optional drm
 dev/drm/linux_workqueue.c		optional drm
 dev/drm/ttm/ttm_lock.c			optional drm
 dev/drm/ttm/ttm_object.c		optional drm

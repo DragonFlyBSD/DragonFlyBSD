@@ -957,7 +957,7 @@ static u32 *copy_batch(struct drm_i915_gem_object *dest_obj,
 	memcpy(dst, src, batch_len);
 
 unmap_src:
-	vunmap(src_base, batch_len);
+	vunmap(src_base);
 unpin_src:
 	i915_gem_object_unpin_pages(src_obj);
 
@@ -1208,7 +1208,7 @@ int i915_parse_cmds(struct intel_engine_cs *ring,
 		ret = -EINVAL;
 	}
 
-	vunmap(batch_base, batch_len);
+	vunmap(batch_base);
 
 	return ret;
 }
