@@ -293,7 +293,7 @@ fill_default_server_options(ServerOptions *options)
 	if (options->gss_strict_acceptor == -1)
 		options->gss_strict_acceptor = 0;
 	if (options->password_authentication == -1)
-		options->password_authentication = 1;
+		options->password_authentication = 0;
 	if (options->kbd_interactive_authentication == -1)
 		options->kbd_interactive_authentication = 0;
 	if (options->challenge_response_authentication == -1)
