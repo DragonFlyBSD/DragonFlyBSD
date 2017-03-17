@@ -57,4 +57,4 @@ KBD_RESETDELAY		opt_kbd.h
 KBDIO_DEBUG		opt_kbd.h
 
 # EFI Runtime services support
-EFIRT			opt_efirt.h
+EFIRT			opt_dontuse.h
