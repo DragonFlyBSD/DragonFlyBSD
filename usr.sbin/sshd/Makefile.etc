@@ -4,5 +4,13 @@ FILESMODE=	644
 FILESOWN=	${BINOWN}
 FILESGRP=	${BINGRP}
 
+# Make sure sshd_config disables PasswordAuthentication
+#
+beforeinstall:
+	@if [ "`(cat ${.CURDIR}/../../crypto/openssh/sshd_config | sort | uniq; cat ${.CURDIR}/sshd_config_expect) | sort | uniq -d | wc -l`" != "`cat ${.CURDIR}/sshd_config_expect | wc -l`" ]; then \
+		echo "crypto sshd_config missing expected directives"; \
+		exit 1;	\
+	fi
+
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
