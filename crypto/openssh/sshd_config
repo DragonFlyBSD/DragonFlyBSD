@@ -67,9 +67,9 @@ AuthorizedKeysFile	.ssh/authorized_keys
 # Don't read the user's ~/.rhosts and ~/.shosts files
 #IgnoreRhosts yes
 
-# Tunneled clear text passwords are disabled by default in DragonFly.
-# Change to yes to get OpenSSH's default.
-#PasswordAuthentication no
+# Don't trust sshd defaults, make sure Tunneled clear text passwords are
+# disabled in a default install.  Change to yes to enable.
+PasswordAuthentication no
 
 #PermitEmptyPasswords no
 

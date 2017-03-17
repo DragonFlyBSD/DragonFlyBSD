@@ -1924,7 +1924,7 @@ fill_default_options(Options * options)
 	if (options->gss_deleg_creds == -1)
 		options->gss_deleg_creds = 0;
 	if (options->password_authentication == -1)
-		options->password_authentication = 1;
+		options->password_authentication = 0;
 	if (options->kbd_interactive_authentication == -1)
 		options->kbd_interactive_authentication = 1;
 	if (options->rhosts_rsa_authentication == -1)
