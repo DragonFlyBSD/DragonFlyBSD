@@ -54,7 +54,6 @@ static int64_t HeaderJunkSize = -1;
 static int64_t BootAreaSize = -1;
 static int64_t MemoryLogSize = -1;
 static int64_t UndoBufferSize;
-static int HammerVersion = -1;
 
 #define GIG	(1024LL*1024*1024)
 
@@ -139,7 +138,7 @@ main(int ac, char **av)
 	av += optind;
 	nvols = ac;
 
-	if (HammerVersion < 0) {
+	if (HammerVersion == (uint32_t)-1) {
 		size_t olen = sizeof(HammerVersion);
 		HammerVersion = HAMMER_VOL_VERSION_DEFAULT;
 
@@ -711,7 +710,7 @@ format_root_directory(const char *label)
 
 	elm->leaf.data_offset = idata_off;
 	elm->leaf.data_len = sizeof(*idata);
-	hammer_crc_set_leaf(idata, &elm->leaf);
+	hammer_crc_set_leaf(HammerVersion, idata, &elm->leaf);
 
 	/*
 	 * Create the second node element for the PFS data.
@@ -732,9 +731,9 @@ format_root_directory(const char *label)
 
 	elm->leaf.data_offset = pfsd_off;
 	elm->leaf.data_len = sizeof(*pfsd);
-	hammer_crc_set_leaf(pfsd, &elm->leaf);
+	hammer_crc_set_leaf(HammerVersion, pfsd, &elm->leaf);
 
-	hammer_crc_set_btree(bnode);
+	hammer_crc_set_btree(HammerVersion, bnode);
 
 	rel_buffer(data_buffer0);
 	rel_buffer(data_buffer1);

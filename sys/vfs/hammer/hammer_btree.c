@@ -762,7 +762,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	 * Deal with CRC errors on the extracted data.
 	 */
 	if (error == 0 &&
-	    hammer_crc_test_leaf(cursor->data, &elm->leaf) == 0) {
+	    hammer_crc_test_leaf(hmp->version, cursor->data, &elm->leaf) == 0) {
 		hdkprintf("CRC DATA @ %016jx/%d FAILED\n",
 			(intmax_t)elm->leaf.data_offset, elm->leaf.data_len);
 		if (hammer_debug_critical)

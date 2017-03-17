@@ -586,9 +586,9 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 		if ((copy = strchr(copy, ':')) != NULL)
 			*copy++ = 0;
 		volname = getdevpath(volname, 0);
-		if (strchr(volname, ':'))
+		if (strchr(volname, ':')) {
 			__hammer_parsedevs(volname, oflags, verify);
-		else {
+		} else {
 			volume = load_volume(volname, oflags, verify);
 			assert(volume);
 			++volnum;

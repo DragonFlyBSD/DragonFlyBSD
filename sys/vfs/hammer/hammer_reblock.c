@@ -457,6 +457,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	hammer_buffer_t data_buffer = NULL;
 	hammer_off_t odata_offset;
 	hammer_off_t ndata_offset;
+	uint32_t ncrc;
 	int error;
 	void *ndata;
 
@@ -477,9 +478,15 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	 * The blockmap_free may free up the entire big-block and
 	 * will not be able to invalidate it if the cursor is holding
 	 * a data buffer cached in that big-block.
+	 *
+	 * Unconditionally regenerate the CRC.  This is a slightly hack
+	 * to ensure that the crc method is the latest for the filesystem
+	 * version (e.g. upgrade from v6 to v7).
 	 */
 	hammer_modify_buffer_noundo(cursor->trans, data_buffer);
 	bcopy(cursor->data, ndata, elm->leaf.data_len);
+	ncrc = hammer_crc_get_leaf(cursor->trans->hmp->version, ndata,
+				   &elm->leaf);
 	hammer_modify_buffer_done(data_buffer);
 	hammer_cursor_invalidate_cache(cursor);
 
@@ -490,6 +497,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 			   &elm->leaf.data_offset, sizeof(hammer_off_t));
 	odata_offset = elm->leaf.data_offset;
 	elm->leaf.data_offset = ndata_offset;
+	elm->leaf.data_crc = ncrc;
 	hammer_modify_node_done(cursor->node);
 
 	if (hammer_debug_general & 0x4000) {

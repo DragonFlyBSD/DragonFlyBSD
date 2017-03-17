@@ -328,6 +328,7 @@ hammer_softprune_scanmeta(int fd, struct softprune *scan, int delete_all)
 	bzero(&version, sizeof(version));
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		return(-1);
+	HammerVersion = version.cur_version;
 	if (version.cur_version < 3)
 		return(0);
 

@@ -120,6 +120,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 			"Use 'hammer snapshot' for legacy operation.");
 		/* not reached */
 	}
+	HammerVersion = version.cur_version;
 
 	/*
 	 * Synctid to get a transaction id for the snapshot.
@@ -440,6 +441,7 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
 	 */
         if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) == 0 &&
 	    version.cur_version >= 3) {
+		HammerVersion = version.cur_version;
 		snapshot.index = 0;
 		snapshot.count = 1;
 		snapshot.snaps[0].tid = tid;
@@ -540,6 +542,7 @@ snapshot_del(int fsfd, hammer_tid_t tid)
         if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0) {
 		err(2, "hammer snaprm 0x%016jx", (uintmax_t)tid);
 	}
+	HammerVersion = version.cur_version;
 	if (version.cur_version < 3) {
 		errx(2, "hammer snaprm 0x%016jx: You must upgrade to version "
 			" 3 to use this directive", (uintmax_t)tid);

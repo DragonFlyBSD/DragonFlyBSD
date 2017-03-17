@@ -1264,6 +1264,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 {
 	hammer_buffer_t buffer;
 	hammer_off_t buf_offset;
+	hammer_mount_t hmp = trans->hmp;
 	int error;
 
 	error = 0;
@@ -1305,7 +1306,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 		 */
 		if (isnew == 0 &&
 		    (node->flags & HAMMER_NODE_CRCANY) == 0) {
-			if (hammer_crc_test_btree(node->ondisk) == 0) {
+			if (hammer_crc_test_btree(hmp->version, node->ondisk) == 0) {
 				hdkprintf("CRC B-TREE NODE @ %016jx/%lu FAILED\n",
 					(intmax_t)node->node_offset,
 					sizeof(*node->ondisk));

@@ -1015,7 +1015,7 @@ restart:
 			node->flags &= ~HAMMER_NODE_NEEDSCRC;
 			KKASSERT(node->ondisk);
 			if (inval == 0)
-				hammer_crc_set_btree(node->ondisk);
+				hammer_crc_set_btree(hmp->version, node->ondisk);
 			hammer_rel_node(node);
 			goto restart;
 		}
@@ -1578,6 +1578,7 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 		} else {
 			bio->bio_caller_info2.index = 0;
 		}
+		bio->bio_caller_info3.ptr = hmp;
 
 		hce = hammer_cluster_enable;
 		if (hce > 0) {
@@ -1621,6 +1622,7 @@ hammer_indirect_callback(struct bio *bio)
 	struct buf *bp = bio->bio_buf;
 	struct buf *obp;
 	struct bio *obio;
+	hammer_mount_t hmp;
 
 	/*
 	 * If BIO_DONE is already set the device buffer was already
@@ -1643,16 +1645,32 @@ hammer_indirect_callback(struct bio *bio)
 
 	obio = bio->bio_caller_info1.ptr;
 	obp = obio->bio_buf;
+	hmp = obio->bio_caller_info3.ptr;
 
 	if (bp->b_flags & B_ERROR) {
+		/*
+		 * Error from block device
+		 */
 		obp->b_flags |= B_ERROR;
 		obp->b_error = bp->b_error;
 	} else if (obio->bio_caller_info2.index &&
 		   obio->bio_caller_info1.uvalue32 !=
-		    crc32(bp->b_data, bp->b_bufsize)) {
+		    hammer_datacrc(hmp->version,
+				   bp->b_data, obp->b_bufsize) &&
+		    obio->bio_caller_info1.uvalue32 !=
+		    hammer_datacrc(HAMMER_VOL_VERSION_SIX,
+				   bp->b_data, obp->b_bufsize)) {
+		/*
+		 * CRC error.  First check against current hammer version,
+		 * then back-off and check against version 6 (the original
+		 * crc).
+		 */
 		obp->b_flags |= B_ERROR;
 		obp->b_error = EIO;
 	} else {
+		/*
+		 * Everything is ok
+		 */
 		KKASSERT(bp->b_bufsize >= obp->b_bufsize);
 		bcopy(bp->b_data, obp->b_data, obp->b_bufsize);
 		obp->b_resid = 0;

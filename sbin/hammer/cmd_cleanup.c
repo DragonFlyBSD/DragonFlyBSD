@@ -197,6 +197,7 @@ do_cleanup(const char *path)
 		close(fd);
 		return;
 	}
+	HammerVersion = version.cur_version;
 
 	bzero(&config, sizeof(config));
 	if (version.cur_version >= 3) {

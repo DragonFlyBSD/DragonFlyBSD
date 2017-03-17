@@ -157,10 +157,10 @@ struct hammer_rterm_rb_tree;
 RB_HEAD(hammer_rterm_rb_tree, hammer_rterm);
 RB_PROTOTYPE(hammer_rterm_rb_tree, hammer_rterm, rb_node, hammer_rterm_rb_cmp);
 
-static int hammer_check_tail_signature(hammer_fifo_tail_t tail,
-			hammer_off_t end_off);
-static int hammer_check_head_signature(hammer_fifo_head_t head,
-			hammer_off_t beg_off);
+static int hammer_check_tail_signature(hammer_mount_t hmp,
+			hammer_fifo_tail_t tail, hammer_off_t end_off);
+static int hammer_check_head_signature(hammer_mount_t hmp,
+			hammer_fifo_head_t head, hammer_off_t beg_off);
 static void hammer_recover_copy_undo(hammer_off_t undo_offset,
 			char *src, char *dst, int bytes);
 static hammer_fifo_any_t hammer_recover_scan_fwd(hammer_mount_t hmp,
@@ -804,7 +804,7 @@ hammer_recover_scan_rev(hammer_mount_t hmp, hammer_volume_t root_volume,
 		return (NULL);
 	}
 
-	if (hammer_check_tail_signature(tail, scan_offset) != 0) {
+	if (hammer_check_tail_signature(hmp, tail, scan_offset) != 0) {
 		hvkprintf(root_volume,
 			"Illegal UNDO TAIL signature at %016jx\n",
 			(intmax_t)scan_offset - sizeof(*tail));
@@ -849,7 +849,7 @@ hammer_recover_scan_fwd(hammer_mount_t hmp, hammer_volume_t root_volume,
 		return (NULL);
 	}
 
-	if (hammer_check_head_signature(&head->head, scan_offset) != 0) {
+	if (hammer_check_head_signature(hmp, &head->head, scan_offset) != 0) {
 		hvkprintf(root_volume,
 			"Illegal UNDO TAIL signature at %016jx\n",
 			(intmax_t)scan_offset);
@@ -872,11 +872,11 @@ hammer_recover_scan_fwd(hammer_mount_t hmp, hammer_volume_t root_volume,
  */
 static __inline
 int
-_hammer_check_signature(hammer_fifo_head_t head, hammer_fifo_tail_t tail,
+_hammer_check_signature(hammer_mount_t hmp,
+			hammer_fifo_head_t head, hammer_fifo_tail_t tail,
 			hammer_off_t beg_off)
 {
 	hammer_off_t end_off;
-	uint32_t crc;
 	int bytes;
 
 	/*
@@ -928,11 +928,10 @@ _hammer_check_signature(hammer_fifo_head_t head, hammer_fifo_tail_t tail,
 	 * least large enough to fit the head and tail.
 	 */
 	if (head->hdr_type != HAMMER_HEAD_TYPE_PAD) {
-		crc = hammer_crc_get_fifo_head(head, head->hdr_size);
-		if (head->hdr_crc != crc) {
-			hkprintf("FIFO record CRC failed %08x %08x at %016jx\n",
-				head->hdr_crc, crc,
-				(intmax_t)beg_off);
+		if (hammer_crc_test_fifo_head(hmp->version,
+					      head, head->hdr_size) == 0) {
+			hkprintf("FIFO record CRC failed %08x at %016jx\n",
+				head->hdr_crc, (intmax_t)beg_off);
 			return(EIO);
 		}
 		if (head->hdr_size < sizeof(*head) + sizeof(*tail)) {
@@ -972,7 +971,8 @@ _hammer_check_signature(hammer_fifo_head_t head, hammer_fifo_tail_t tail,
  * but does not check beyond the signature, type, and size.
  */
 static int
-hammer_check_head_signature(hammer_fifo_head_t head, hammer_off_t beg_off)
+hammer_check_head_signature(hammer_mount_t hmp, hammer_fifo_head_t head,
+			    hammer_off_t beg_off)
 {
 	hammer_fifo_tail_t tail;
 	hammer_off_t end_off;
@@ -992,7 +992,7 @@ hammer_check_head_signature(hammer_fifo_head_t head, hammer_off_t beg_off)
 	if ((beg_off ^ (end_off - 1)) & ~HAMMER_BUFMASK64)
 		return(1);
 	tail = (void *)((char *)head + head->hdr_size - sizeof(*tail));
-	return (_hammer_check_signature(head, tail, beg_off));
+	return (_hammer_check_signature(hmp, head, tail, beg_off));
 }
 
 /*
@@ -1004,7 +1004,8 @@ hammer_check_head_signature(hammer_fifo_head_t head, hammer_off_t beg_off)
  * but does not check beyond the signature, type, and size.
  */
 static int
-hammer_check_tail_signature(hammer_fifo_tail_t tail, hammer_off_t end_off)
+hammer_check_tail_signature(hammer_mount_t hmp, hammer_fifo_tail_t tail,
+			    hammer_off_t end_off)
 {
 	hammer_fifo_head_t head;
 	hammer_off_t beg_off;
@@ -1023,7 +1024,7 @@ hammer_check_tail_signature(hammer_fifo_tail_t tail, hammer_off_t end_off)
 	if ((beg_off ^ (end_off - 1)) & ~HAMMER_BUFMASK64)
 		return(1);
 	head = (void *)((char *)tail + sizeof(*tail) - tail->tail_size);
-	return (_hammer_check_signature(head, tail, beg_off));
+	return (_hammer_check_signature(hmp, head, tail, beg_off));
 }
 
 static int

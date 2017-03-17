@@ -1599,6 +1599,11 @@ Deduplication support.
 Directory hash ALG1.
 Tends to maintain inode number / directory name entry ordering better
 for files after minor renaming.
+.It 7
+.Dx 4.8 .
+Use the ISCSI crc32 algorithm instead of our custom polynomial.  This makes
+it easier to use faster cpu implementation of the crc algorithm.  CPU
+overhead is reduced but performance is unlikely to be impacted a whole lot.
 .El
 .El
 .Sh PSEUDO-FILESYSTEM (PFS) NOTES
@@ -1801,6 +1806,12 @@ field a signed value instead of unsigned, allowing it to go negative.
 A version 5 filesystem is required for dedup operation.
 .Sh UPGRADE INSTRUCTIONS HAMMER V5 TO V6
 It is possible to upgrade a V5 file system to V6 in place.
+.Sh UPGRADE INSTRUCTIONS HAMMER V6 TO V7
+It is possible to upgrade a V6 file system to V7 in place.
+After upgrading any new files will use the new, faster CRC.
+You can convert all existing files to use the new CRC by issuing
+a full reblock via 'hammer reblock <fs>'.
+You only have to do this once.
 .Sh FSYNC FLUSH MODES
 .Nm HAMMER
 implements five different fsync flush modes via the

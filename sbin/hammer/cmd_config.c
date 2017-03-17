@@ -206,6 +206,7 @@ config_get(const char *dirpath, struct hammer_ioc_config *config)
 		err(2, "hammer config: unable to open directory %s", dirpath);
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		errx(2, "hammer config: not a HAMMER filesystem!");
+	HammerVersion = version.cur_version;
 	if (ioctl(fd, HAMMERIOC_GET_CONFIG, config) < 0)
 		errx(2, "hammer config: config_get");
 	close(fd);
@@ -222,6 +223,7 @@ config_set(const char *dirpath, struct hammer_ioc_config *config)
 		errx(2, "hammer config: unable to open directory %s", dirpath);
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		errx(2, "hammer config: not a HAMMER filesystem!");
+	HammerVersion = version.cur_version;
 	if (ioctl(fd, HAMMERIOC_SET_CONFIG, config) < 0)
 		err(2, "hammer config");
 	close(fd);

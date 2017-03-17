@@ -62,6 +62,7 @@ hammer_cmd_get_version(char **av, int ac)
 	bzero(&version, sizeof(version));
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		err(1, "hammer version ioctl");
+	HammerVersion = version.cur_version;
 
 	snprintf(wip, 16, "%d", version.wip_version);
 	printf("min=%d wip=%s max=%d current=%d description=\"%s\"\n",
@@ -111,6 +112,7 @@ hammer_cmd_set_version(char **av, int ac)
 	bzero(&version, sizeof(version));
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		err(1, "hammer ioctl");
+	HammerVersion = version.cur_version;
 	overs = version.cur_version;
 
 	version.cur_version = strtol(av[1], NULL, 0);
@@ -118,6 +120,7 @@ hammer_cmd_set_version(char **av, int ac)
 
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		err(1, "hammer ioctl");
+	HammerVersion = version.cur_version;
 	if (version.cur_version >= version.wip_version && ac != 3)
 		errx(1, "The requested version is a work-in-progress"
 			" and requires the 'force' directive");

@@ -1256,7 +1256,7 @@ void hammer_generate_redo_sync(hammer_transaction_t trans);
 void hammer_redo_fifo_start_flush(hammer_inode_t ip);
 void hammer_redo_fifo_end_flush(hammer_inode_t ip);
 
-void hammer_format_undo(void *base, uint32_t seqno);
+void hammer_format_undo(hammer_mount_t hmp, void *base, uint32_t seqno);
 int hammer_upgrade_undo_4(hammer_transaction_t trans);
 
 hammer_off_t hammer_freemap_alloc(hammer_transaction_t trans,

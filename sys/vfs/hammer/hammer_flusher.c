@@ -684,8 +684,10 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		if (root_volume->io.modified) {
 			hammer_modify_volume(trans, root_volume,
 					     dundomap, sizeof(hmp->blockmap));
-			for (i = 0; i < HAMMER_MAX_ZONES; ++i)
-				hammer_crc_set_blockmap(&cundomap[i]);
+			for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
+				hammer_crc_set_blockmap(hmp->version,
+							&cundomap[i]);
+			}
 			bcopy(cundomap, dundomap, sizeof(hmp->blockmap));
 			hammer_modify_volume_done(root_volume);
 		}
@@ -741,7 +743,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_modify_volume_noundo(NULL, root_volume);
 		dundomap->first_offset = cundomap->first_offset;
 		dundomap->next_offset = save_undo_next_offset;
-		hammer_crc_set_blockmap(dundomap);
+		hammer_crc_set_blockmap(hmp->version, dundomap);
 		hammer_modify_volume_done(root_volume);
 	}
 
@@ -761,7 +763,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_modify_volume_noundo(NULL, root_volume);
 		if (root_volume->ondisk->vol0_next_tid < trans->tid)
 			root_volume->ondisk->vol0_next_tid = trans->tid;
-		hammer_crc_set_volume(root_volume->ondisk);
+		hammer_crc_set_volume(hmp->version, root_volume->ondisk);
 		hammer_modify_volume_done(root_volume);
 		hammer_io_write_interlock(&root_volume->io);
 		hammer_io_flush(&root_volume->io, 0);

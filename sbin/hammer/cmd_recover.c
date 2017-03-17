@@ -225,8 +225,10 @@ hammer_cmd_recover(char **av, int ac)
 			}
 
 			if (b) {
-				if (hammer_crc_test_layer1(&b->layer1) &&
-				    hammer_crc_test_layer2(&b->layer2) &&
+				if (hammer_crc_test_layer1(HammerVersion,
+							   &b->layer1) &&
+				    hammer_crc_test_layer2(HammerVersion,
+							   &b->layer2) &&
 				    off_blk >= b->layer2.append_off) {
 					off = HAMMER_ZONE_LAYER2_NEXT_OFFSET(off);
 					continue;
@@ -281,7 +283,7 @@ recover_top(char *ptr, hammer_off_t offset)
 	int isnode;
 
 	for (node = (void *)ptr; (char *)node < ptr + HAMMER_BUFSIZE; ++node) {
-		isnode = hammer_crc_test_btree(node);
+		isnode = hammer_crc_test_btree(HammerVersion, node);
 		maxcount = hammer_node_max_elements(node->type);
 
 		if (DebugOpt) {
@@ -774,7 +776,7 @@ scan_raw_limit(void)
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
-		if (!hammer_crc_test_layer1(layer1)) {
+		if (!hammer_crc_test_layer1(HammerVersion, layer1)) {
 			offset = 0; /* failed */
 			goto end;
 		}
@@ -791,7 +793,7 @@ scan_raw_limit(void)
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
-			if (!hammer_crc_test_layer2(layer2)) {
+			if (!hammer_crc_test_layer2(HammerVersion, layer2)) {
 				offset = 0; /* failed */
 				goto end;
 			}
@@ -841,7 +843,7 @@ scan_bigblocks(int target_zone)
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
 		/*
-		if (!hammer_crc_test_layer1(layer1)) {
+		if (!hammer_crc_test_layer1(HammerVersion, layer1)) {
 		}
 		*/
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
@@ -859,7 +861,7 @@ scan_bigblocks(int target_zone)
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 			/*
-			if (!hammer_crc_test_layer2(layer2)) {
+			if (!hammer_crc_test_layer2(HammerVersion, layer2)) {
 			}
 			*/
 			if (layer2->zone == target_zone) {

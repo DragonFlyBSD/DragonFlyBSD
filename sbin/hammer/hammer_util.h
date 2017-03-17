@@ -116,6 +116,7 @@ extern uuid_t Hammer_FSId;
 extern int UseReadBehind;
 extern int UseReadAhead;
 extern int DebugOpt;
+extern uint32_t HammerVersion;
 extern const char *zone_labels[];
 
 struct volume_info *init_volume(const char *filename, int oflags, int32_t vol_no);

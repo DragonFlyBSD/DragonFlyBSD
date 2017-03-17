@@ -89,7 +89,7 @@ hammer_cmd_strip(void)
 				layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
 				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 				layer2->bytes_free = 0;
-				hammer_crc_set_layer2(layer2);
+				hammer_crc_set_layer2(HammerVersion, layer2);
 				buffer2->cache.modified = 1;
 			} else if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
 				break;

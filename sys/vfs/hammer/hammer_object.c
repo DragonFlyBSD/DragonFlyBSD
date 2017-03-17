@@ -42,7 +42,7 @@ static int hammer_bulk_scan_callback(hammer_record_t record, void *data);
 static int hammer_record_needs_overwrite_delete(hammer_record_t record);
 static int hammer_delete_general(hammer_cursor_t cursor, hammer_inode_t ip,
 				hammer_btree_leaf_elm_t leaf);
-static int hammer_cursor_localize_data(hammer_data_ondisk_t data,
+static int hammer_cursor_localize_data(hammer_mount_t hmp, hammer_data_ondisk_t data,
 				hammer_btree_leaf_elm_t leaf);
 
 struct rec_trunc_info {
@@ -972,7 +972,7 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	if (bytes == 0)
 		crc = 0;
 	else
-		crc = crc32(data, bytes);
+		crc = hammer_datacrc(ip->hmp->version, data, bytes);
 
 	if (hammer_live_dedup == 0)
 		goto nodedup;
@@ -1146,6 +1146,7 @@ int
 hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 {
 	hammer_transaction_t trans = cursor->trans;
+	hammer_mount_t hmp = trans->hmp;
 	int64_t file_offset;
 	int bytes;
 	void *bdata;
@@ -1298,7 +1299,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 					  0, &error);
 		if (bdata == NULL)
 			goto done_unlock;
-		hammer_crc_set_leaf(record->data, &record->leaf);
+		hammer_crc_set_leaf(hmp->version, record->data, &record->leaf);
 		hammer_modify_buffer_noundo(trans, cursor->data_buffer);
 		bcopy(record->data, bdata, record->leaf.data_len);
 		hammer_modify_buffer_done(cursor->data_buffer);
@@ -2305,6 +2306,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			void *udata, int mode)
 {
 	hammer_transaction_t trans;
+	hammer_mount_t hmp;
 	hammer_buffer_t data_buffer;
 	hammer_off_t ndata_offset;
 	hammer_tid_t high_tid;
@@ -2313,6 +2315,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 	int doprop;
 
 	trans = cursor->trans;
+	hmp = trans->hmp;
 	data_buffer = NULL;
 	ndata_offset = 0;
 	doprop = 0;
@@ -2339,21 +2342,21 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 		case HAMMER_CREATE_MODE_UMIRROR:
 			error = copyin(udata, ndata, leaf->data_len);
 			if (error == 0) {
-				if (hammer_crc_test_leaf(ndata, leaf) == 0) {
+				if (hammer_crc_test_leaf(hmp->version, ndata, leaf) == 0) {
 					hdkprintf("CRC DATA @ %016jx/%d MISMATCH ON PIPE\n",
 						(intmax_t)ndata_offset,
 						leaf->data_len);
 					error = EINVAL;
 				} else {
 					error = hammer_cursor_localize_data(
-							ndata, leaf);
+							hmp, ndata, leaf);
 				}
 			}
 			break;
 		case HAMMER_CREATE_MODE_SYS:
 			bcopy(udata, ndata, leaf->data_len);
 			error = 0;
-			hammer_crc_set_leaf(ndata, leaf);
+			hammer_crc_set_leaf(hmp->version, ndata, leaf);
 			break;
 		default:
 			hpanic("bad mode %d", mode);
@@ -2672,7 +2675,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
  */
 static
 int
-hammer_cursor_localize_data(hammer_data_ondisk_t data,
+hammer_cursor_localize_data(hammer_mount_t hmp, hammer_data_ondisk_t data,
 			    hammer_btree_leaf_elm_t leaf)
 {
 	uint32_t localization;
@@ -2682,7 +2685,7 @@ hammer_cursor_localize_data(hammer_data_ondisk_t data,
 			       HAMMER_LOCALIZE_PSEUDOFS_MASK;
 		if (data->entry.localization != localization) {
 			data->entry.localization = localization;
-			hammer_crc_set_leaf(data, leaf);
+			hammer_crc_set_leaf(hmp->version, data, leaf);
 		}
 	}
 	return(0);

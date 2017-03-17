@@ -154,7 +154,8 @@ hammer_generate_undo(hammer_transaction_t trans,
 		 */
 		if ((next_offset & HAMMER_BUFMASK) == 0) {
 			undo = hammer_bnew(hmp, next_offset, &error, &buffer);
-			hammer_format_undo(undo, hmp->undo_seqno ^ 0x40000000);
+			hammer_format_undo(hmp, undo,
+					   hmp->undo_seqno ^ 0x40000000);
 		} else {
 			undo = hammer_bread(hmp, next_offset, &error, &buffer);
 		}
@@ -238,7 +239,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 		tail->tail_size = bytes;
 
 		KKASSERT(bytes >= sizeof(undo->head));
-		hammer_crc_set_fifo_head(&undo->head, bytes);
+		hammer_crc_set_fifo_head(hmp->version, &undo->head, bytes);
 		undomap->next_offset += bytes;
 		hammer_stats_undo += bytes;
 
@@ -301,7 +302,7 @@ hammer_generate_undo(hammer_transaction_t trans,
  * NOTE: Also used by the REDO code.
  */
 void
-hammer_format_undo(void *base, uint32_t seqno)
+hammer_format_undo(hammer_mount_t hmp, void *base, uint32_t seqno)
 {
 	hammer_fifo_head_t head;
 	hammer_fifo_tail_t tail;
@@ -324,7 +325,7 @@ hammer_format_undo(void *base, uint32_t seqno)
 		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
 		tail->tail_size = bytes;
 
-		hammer_crc_set_fifo_head(head, bytes);
+		hammer_crc_set_fifo_head(hmp->version, head, bytes);
 	}
 }
 
@@ -395,7 +396,7 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
 		tail->tail_size = bytes;
 
-		hammer_crc_set_fifo_head(head, bytes);
+		hammer_crc_set_fifo_head(hmp->version, head, bytes);
 		hammer_modify_buffer_done(buffer);
 
 		hammer_stats_undo += bytes;

@@ -49,6 +49,7 @@ uuid_t Hammer_FSId;
 int UseReadBehind = -4;
 int UseReadAhead = 4;
 int DebugOpt;
+uint32_t HammerVersion = -1;
 
 TAILQ_HEAD(volume_list, volume_info);
 static struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
@@ -185,9 +186,11 @@ load_volume(const char *filename, int oflags, int verify)
 
 	n = readhammervol(volume);
 	if (n == -1) {
-		err(1, "load_volume: %s: Read failed at offset 0", volume->name);
+		err(1, "load_volume: %s: Read failed at offset 0",
+		    volume->name);
 	}
 	volume->vol_no = volume->ondisk->vol_no;
+	HammerVersion = volume->ondisk->vol_version;
 
 	if (valid_hammer_volumes++ == 0)
 		Hammer_FSId = volume->ondisk->vol_fsid;
@@ -498,7 +501,7 @@ format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset)
 	blockmap->first_offset = zone_base;
 	blockmap->next_offset = zone_base;
 	blockmap->alloc_offset = HAMMER_ENCODE(zone, 255, -1);
-	hammer_crc_set_blockmap(blockmap);
+	hammer_crc_set_blockmap(HammerVersion, blockmap);
 }
 
 /*
@@ -524,7 +527,7 @@ format_freemap(struct volume_info *root_vol)
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
 		layer1->blocks_free = 0;
-		hammer_crc_set_layer1(layer1);
+		hammer_crc_set_layer1(HammerVersion, layer1);
 	}
 	assert(i == HAMMER_BIGBLOCK_SIZE);
 	rel_buffer(buffer);
@@ -535,7 +538,7 @@ format_freemap(struct volume_info *root_vol)
 	blockmap->first_offset = 0;
 	blockmap->next_offset = HAMMER_ENCODE_RAW_BUFFER(0, 0);
 	blockmap->alloc_offset = HAMMER_ENCODE_RAW_BUFFER(255, -1);
-	hammer_crc_set_blockmap(blockmap);
+	hammer_crc_set_blockmap(HammerVersion, blockmap);
 }
 
 /*
@@ -584,7 +587,7 @@ initialize_freemap(struct volume_info *volume)
 			layer1->phys_offset = bootstrap_bigblock(volume);
 			layer1->blocks_free = 0;
 			buffer1->cache.modified = 1;
-			hammer_crc_set_layer1(layer1);
+			hammer_crc_set_layer1(HammerVersion, layer1);
 		}
 	}
 
@@ -627,12 +630,12 @@ initialize_freemap(struct volume_info *volume)
 				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 				layer2->bytes_free = 0;
 			}
-			hammer_crc_set_layer2(layer2);
+			hammer_crc_set_layer2(HammerVersion, layer2);
 			buffer2->cache.modified = 1;
 		}
 
 		layer1->blocks_free += layer1_count;
-		hammer_crc_set_layer1(layer1);
+		hammer_crc_set_layer1(HammerVersion, layer1);
 		buffer1->cache.modified = 1;
 	}
 
@@ -729,7 +732,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 	blockmap->first_offset = HAMMER_ENCODE_UNDO(0);
 	blockmap->next_offset = blockmap->first_offset;
 	blockmap->alloc_offset = HAMMER_ENCODE_UNDO(undo_limit);
-	hammer_crc_set_blockmap(blockmap);
+	hammer_crc_set_blockmap(HammerVersion, blockmap);
 
 	limit_index = undo_limit / HAMMER_BIGBLOCK_SIZE;
 	assert(limit_index <= HAMMER_MAX_UNDO_BIGBLOCKS);
@@ -772,7 +775,7 @@ format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
 		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
 		tail->tail_size = bytes;
 
-		hammer_crc_set_fifo_head(head, bytes);
+		hammer_crc_set_fifo_head(HammerVersion, head, bytes);
 
 		scan += bytes;
 	}

@@ -1343,7 +1343,7 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 			}
 			if (mrec->rec.leaf.data_len &&
 			    mrec->rec.leaf.data_offset &&
-			    hammer_crc_test_leaf(&mrec->rec + 1, &mrec->rec.leaf) == 0) {
+			    hammer_crc_test_leaf(HammerVersion, &mrec->rec + 1, &mrec->rec.leaf) == 0) {
 				fprintf(stderr,
 					"read_mrecords: data_crc did not "
 					"match data! obj=%016jx key=%016jx\n",

@@ -586,6 +586,10 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 		ksnprintf(ver->description, sizeof(ver->description),
 			  "Directory Hash ALG1 (tmp/rename resistance)");
 		break;
+	case 7:
+		ksnprintf(ver->description, sizeof(ver->description),
+			  "Use ISCSI CRC (faster than original crc32)");
+		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "Unknown");

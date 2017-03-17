@@ -82,7 +82,7 @@ alloc_undo_bigblock(struct volume_info *volume)
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	--layer1->blocks_free;
-	hammer_crc_set_layer1(layer1);
+	hammer_crc_set_layer1(HammerVersion, layer1);
 	buffer1->cache.modified = 1;
 
 	/*
@@ -95,7 +95,7 @@ alloc_undo_bigblock(struct volume_info *volume)
 	layer2->zone = HAMMER_ZONE_UNDO_INDEX;
 	layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 	layer2->bytes_free = 0;
-	hammer_crc_set_layer2(layer2);
+	hammer_crc_set_layer2(HammerVersion, layer2);
 	buffer2->cache.modified = 1;
 
 	--volume->ondisk->vol0_stat_freebigblocks;
@@ -175,7 +175,7 @@ again:
 	 */
 	if (layer2->zone == 0) {
 		--layer1->blocks_free;
-		hammer_crc_set_layer1(layer1);
+		hammer_crc_set_layer1(HammerVersion, layer1);
 		layer2->zone = zone;
 		--volume->ondisk->vol0_stat_freebigblocks;
 		assert(layer2->bytes_free == HAMMER_BIGBLOCK_SIZE);
@@ -192,7 +192,7 @@ again:
 	*result_offp = blockmap->next_offset;
 	blockmap->next_offset += bytes;
 	layer2->append_off = (int)blockmap->next_offset & HAMMER_BIGBLOCK_MASK;
-	hammer_crc_set_layer2(layer2);
+	hammer_crc_set_layer2(HammerVersion, layer2);
 
 	ptr = get_buffer_data(*result_offp, bufferp, 0);
 	(*bufferp)->cache.modified = 1;

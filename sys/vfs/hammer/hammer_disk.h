@@ -800,9 +800,9 @@ typedef struct hammer_volume_ondisk {
 	 sizeof(hammer_crc_t))
 
 #define HAMMER_VOL_VERSION_MIN		1	/* minimum supported version */
-#define HAMMER_VOL_VERSION_DEFAULT	6	/* newfs default version */
-#define HAMMER_VOL_VERSION_WIP		7	/* version >= this is WIP */
-#define HAMMER_VOL_VERSION_MAX		6	/* maximum supported version */
+#define HAMMER_VOL_VERSION_DEFAULT	7	/* newfs default version */
+#define HAMMER_VOL_VERSION_WIP		8	/* version >= this is WIP */
+#define HAMMER_VOL_VERSION_MAX		7	/* maximum supported version */
 
 #define HAMMER_VOL_VERSION_ONE		1
 #define HAMMER_VOL_VERSION_TWO		2	/* new dirent layout (2.3+) */
@@ -810,6 +810,7 @@ typedef struct hammer_volume_ondisk {
 #define HAMMER_VOL_VERSION_FOUR		4	/* new undo/flush (2.5+) */
 #define HAMMER_VOL_VERSION_FIVE		5	/* dedup (2.9+) */
 #define HAMMER_VOL_VERSION_SIX		6	/* DIRHASH_ALG1 */
+#define HAMMER_VOL_VERSION_SEVEN	7	/* use the faster iscsi_crc */
 
 /*
  * Translate a zone-2 address to physical address

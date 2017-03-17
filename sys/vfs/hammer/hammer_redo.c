@@ -109,7 +109,8 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		if ((next_offset & HAMMER_BUFMASK) == 0) {
 			redo = hammer_bnew(hmp, next_offset, &error, &buffer);
-			hammer_format_undo(redo, hmp->undo_seqno ^ 0x40000000);
+			hammer_format_undo(hmp,
+					   redo, hmp->undo_seqno ^ 0x40000000);
 		} else {
 			redo = hammer_bread(hmp, next_offset, &error, &buffer);
 		}
@@ -238,7 +239,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		tail->tail_size = bytes;
 
 		KKASSERT(bytes >= sizeof(redo->head));
-		hammer_crc_set_fifo_head(&redo->head, bytes);
+		hammer_crc_set_fifo_head(hmp->version, &redo->head, bytes);
 		undomap->next_offset += bytes;
 		hammer_stats_redo += bytes;
 

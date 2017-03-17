@@ -541,6 +541,7 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 		bzero(&version, sizeof(version));
 		if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 			return;
+		HammerVersion = version.cur_version;
 		if (version.cur_version < 3) {
 			if (hammer_is_pfs_slave(pfsd)) {
 				printf("    snapshots directory not set for "
