@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2015-2017 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -196,7 +196,8 @@ hammer2_primary_sync_thread(void *arg)
 				hammer2_inode_t *nip;
 
 				nip = defer->ip;
-				error = hammer2_sync_slaves(thr, nip, &list, 0);
+				error = hammer2_sync_slaves(thr, nip, &list,
+							(nip == pmp->iroot));
 				if (error && error != EAGAIN && error != ENOENT)
 					break;
 				if (hammer2_thr_break(thr)) {
@@ -256,7 +257,6 @@ hammer2_primary_sync_thread(void *arg)
 	thr->td = NULL;
 	hammer2_thr_return(thr, HAMMER2_THREAD_STOPPED);
 	/* thr structure can go invalid after this point */
-	wakeup(thr);
 }
 
 #if 0
@@ -395,6 +395,10 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	/*
 	 * Resolve the root inode of the PFS and determine if synchronization
 	 * is needed by checking modify_tid.
+	 *
+	 * Retain the synchronization TID from the focus inode and use it
+	 * later to synchronize the focus inode if/when the recursion
+	 * succeeds.
 	 */
 	{
 		hammer2_xop_ipcluster_t *xop2;
@@ -407,7 +411,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		hammer2_inode_unlock(ip);
 		error = hammer2_xop_collect(&xop2->head, 0);
 		if (error == 0 && (focus = xop2->head.cluster.focus) != NULL) {
-			sync_tid = focus->bref.modify_tid; /* XXX */
+			sync_tid = focus->bref.modify_tid;
 			chain = hammer2_inode_chain_and_parent(ip, idx,
 						    &parent,
 						    HAMMER2_RESOLVE_ALWAYS |
@@ -458,9 +462,11 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);
 	error = hammer2_xop_collect(&xop->head, 0);
-	kprintf("START_SCAN IP=%016jx chain=%p (%016jx)\n",
-		ip->meta.name_key, chain,
-		(chain ? chain->bref.key : -1));
+	if (hammer2_debug & 0x8000) {
+		kprintf("START_SCAN IP=%016jx chain=%p (%016jx)\n",
+			ip->meta.name_key, chain,
+			(chain ? chain->bref.key : -1));
+	}
 
 	for (;;) {
 		/*
@@ -680,10 +686,13 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		error = hammer2_xop_collect(&xop2->head, 0);
 		if (error == 0) {
 			focus = xop2->head.cluster.focus;
-			kprintf("syncthr: update inode %p (%s)\n",
-				focus,
-				(focus ?
-				 (char *)focus->data->ipdata.filename : "?"));
+			if (hammer2_debug & 0x8000) {
+				kprintf("syncthr: update inode %p (%s)\n",
+					focus,
+					(focus ? (char *)focus->data->
+							 ipdata.filename :
+						 "?"));
+			}
 			chain = hammer2_inode_chain_and_parent(ip, idx,
 						    &parent,
 						    HAMMER2_RESOLVE_ALWAYS |
@@ -830,7 +839,6 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 		     hammer2_tid_t mtid, int idx)
 {
 	hammer2_chain_t *chain;
-	hammer2_chain_t *parent;
 	hammer2_key_t key_next;
 	hammer2_key_t save_key;
 	int cache_index = -1;
@@ -867,7 +875,7 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 	hammer2_chain_unlock(*parentp);	/* relock shared */
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_SHARED |
 				     HAMMER2_RESOLVE_ALWAYS);
-	*chainp = hammer2_chain_lookup(&parent, &key_next,
+	*chainp = hammer2_chain_lookup(parentp, &key_next,
 				     save_key, HAMMER2_KEY_MAX,
 				     &cache_index,
 				     HAMMER2_LOOKUP_SHARED |

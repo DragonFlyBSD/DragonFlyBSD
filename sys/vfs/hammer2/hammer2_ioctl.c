@@ -681,16 +681,60 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_ioc_pfs_t *pfs = data;
 	hammer2_dev_t	*hmp;
 	hammer2_pfs_t	*spmp;
+	hammer2_pfs_t	*pmp;
 	hammer2_xop_unlink_t *xop;
 	hammer2_inode_t *dip;
+	hammer2_inode_t *iroot;
 	int error;
+	int i;
 
-	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure termination */
-
+	/*
+	 * The PFS should be probed, so we should be able to
+	 * locate it.  We only delete the PFS from the
+	 * specific H2 block device (hmp), not all of
+	 * them.  We must remove the PFS from the cluster
+	 * before we can destroy it.
+	 */
 	hmp = ip->pmp->pfs_hmps[0];
 	if (hmp == NULL)
 		return (EINVAL);
 
+	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure termination */
+
+	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
+
+	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			if (pmp->pfs_hmps[i] != hmp)
+				continue;
+			if (pmp->pfs_names[i] &&
+			    strcmp(pmp->pfs_names[i], pfs->name) == 0) {
+				break;
+			}
+		}
+		if (i != HAMMER2_MAXCLUSTER)
+			break;
+	}
+
+	if (pmp == NULL) {
+		lockmgr(&hammer2_mntlk, LK_RELEASE);
+		return ENOENT;
+	}
+
+	/*
+	 * Ok, we found the pmp and we have the index.  Permanently remove
+	 * the PFS from the cluster
+	 */
+	iroot = pmp->iroot;
+	kprintf("FOUND PFS %s CLINDEX %d\n", pfs->name, i);
+	hammer2_pfsdealloc(pmp, i, 1);
+
+	lockmgr(&hammer2_mntlk, LK_RELEASE);
+
+	/*
+	 * Now destroy the PFS under its device using the per-device
+	 * super-root.
+	 */
 	spmp = hmp->spmp;
 	dip = spmp->iroot;
 	hammer2_trans_init(spmp, 0);
@@ -699,12 +743,27 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	hammer2_xop_setname(&xop->head, pfs->name, strlen(pfs->name));
 	xop->isdir = 2;
-	xop->dopermanent = 1;
+	xop->dopermanent = 2 | 1;	/* FORCE | PERMANENT */
 	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
 
 	error = hammer2_xop_collect(&xop->head, 0);
 
 	hammer2_inode_unlock(dip);
+
+#if 0
+        if (error == 0) {
+                ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
+                hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+                if (ip) {
+                        hammer2_inode_unlink_finisher(ip, 0);
+                        hammer2_inode_unlock(ip);
+                }
+        } else {
+                hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+        }
+#endif
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+
 	hammer2_trans_done(spmp);
 
 	return (error);

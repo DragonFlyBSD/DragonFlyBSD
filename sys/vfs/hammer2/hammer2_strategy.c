@@ -850,7 +850,7 @@ hammer2_write_file_core(char *data, hammer2_inode_t *ip,
 				HAMMER2_ENC_CHECK(ip->meta.check_algo);
 			hammer2_chain_setcheck(chain, data);
 		} else {
-			hammer2_write_bp(chain, bdata, ioflag, pblksize,
+			hammer2_write_bp(chain, data, ioflag, pblksize,
 					 mtid, errorp, ip->meta.check_algo);
 		}
 		if (chain) {
@@ -1033,7 +1033,7 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 		hammer2_chain_modify_ip(ip, chain, mtid, 0);
 		wipdata = &chain->data->ipdata;
 		KKASSERT(wipdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA);
-		bcopy(bdata, wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
+		bcopy(data, wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
 		++hammer2_iod_file_wembed;
 	} else if (bdata == NULL) {
 		/*

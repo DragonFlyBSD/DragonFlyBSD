@@ -65,6 +65,9 @@ hammer2_thr_signal(hammer2_thread_t *thr, uint32_t flags)
 
 /*
  * Return status to waiting client(s)
+ *
+ * WARNING! During teardown (thr) can disappear the instant our cmpset
+ *	    succeeds.
  */
 void
 hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags)
@@ -91,6 +94,9 @@ hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags)
 
 /*
  * Wait until the bits in flags are set.
+ *
+ * WARNING! During teardown (thr) can disappear the instant our cmpset
+ *	    succeeds.
  */
 void
 hammer2_thr_wait(hammer2_thread_t *thr, uint32_t flags)
@@ -113,6 +119,9 @@ hammer2_thr_wait(hammer2_thread_t *thr, uint32_t flags)
 
 /*
  * Wait until the bits in flags are clear.
+ *
+ * WARNING! During teardown (thr) can disappear the instant our cmpset
+ *	    succeeds.
  */
 void
 hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags)

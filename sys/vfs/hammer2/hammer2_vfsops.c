@@ -72,10 +72,10 @@ struct hammer2_sync_info {
 };
 
 TAILQ_HEAD(hammer2_mntlist, hammer2_dev);
-TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 static struct hammer2_mntlist hammer2_mntlist;
-static struct hammer2_pfslist hammer2_pfslist;
-static struct lock hammer2_mntlk;
+
+struct hammer2_pfslist hammer2_pfslist;
+struct lock hammer2_mntlk;
 
 int hammer2_debug;
 int hammer2_cluster_read = 4;		/* physical read-ahead */
@@ -536,6 +536,71 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 	hammer2_inode_drop(iroot);
 done:
 	return pmp;
+}
+
+/*
+ * Deallocate an element of a probed PFS.  If destroying and this is a
+ * MASTER, adjust nmasters.
+ *
+ * This function does not physically destroy the PFS element in its device
+ * under the super-root  (see hammer2_ioctl_pfs_delete()).
+ */
+void
+hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying)
+{
+	hammer2_inode_t *iroot;
+	hammer2_chain_t *chain;
+	int j;
+
+	/*
+	 * Cleanup our reference on iroot.  iroot is (should) not be needed
+	 * by the flush code.
+	 */
+	iroot = pmp->iroot;
+	if (iroot) {
+		/*
+		 * Stop synchronizing
+		 *
+		 * XXX flush after acquiring the iroot lock.
+		 * XXX clean out the cluster index from all inode structures.
+		 */
+		hammer2_thr_delete(&pmp->sync_thrs[clindex]);
+
+		/*
+		 * Remove the cluster index from the group.  If destroying
+		 * the PFS and this is a master, adjust pfs_nmasters.
+		 */
+		hammer2_mtx_ex(&iroot->lock);
+		chain = iroot->cluster.array[clindex].chain;
+		iroot->cluster.array[clindex].chain = NULL;
+
+		switch(pmp->pfs_types[clindex]) {
+		case HAMMER2_PFSTYPE_MASTER:
+			if (destroying && pmp->pfs_nmasters > 0)
+				--pmp->pfs_nmasters;
+			/* XXX adjust ripdata->meta.pfs_nmasters */
+			break;
+		default:
+			break;
+		}
+		pmp->pfs_types[clindex] = HAMMER2_PFSTYPE_NONE;
+
+		hammer2_mtx_unlock(&iroot->lock);
+
+		/*
+		 * Release the chain.
+		 */
+		if (chain) {
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
+			hammer2_chain_drop(chain);
+		}
+
+		/*
+		 * Terminate all XOP threads for the cluster index.
+		 */
+		for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
+			hammer2_thr_delete(&pmp->xop_groups[j].thrs[clindex]);
+	}
 }
 
 /*

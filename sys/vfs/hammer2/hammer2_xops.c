@@ -289,8 +289,8 @@ done:
 }
 
 /*
- * Backend for hammer2_vop_nremove(), hammer2_vop_nrmdir(), and helper
- * for hammer2_vop_nrename().
+ * Backend for hammer2_vop_nremove(), hammer2_vop_nrmdir(), helper
+ * for hammer2_vop_nrename(), and backend for pfs_delete.
  *
  * This function locates and removes a directory entry.  If the entry is
  * a hardlink pointer, this function does NOT remove the hardlink target,
@@ -366,7 +366,8 @@ again:
 	 */
 	error = 0;
 	if (chain) {
-		int dopermanent = xop->dopermanent;
+		int dopermanent = xop->dopermanent & 1;
+		int doforce = xop->dopermanent & 2;
 		uint8_t type;
 
 		/*
@@ -393,9 +394,19 @@ again:
 		 * If it no longer matches chain->parent after re-locking,
 		 * EAGAIN is returned.
 		 */
-		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
-		    (error = checkdirempty(parent, chain, thr->clindex)) != 0) {
-			/* error may be EAGAIN or ENOTEMPTY */
+		if (type == HAMMER2_OBJTYPE_DIRECTORY && doforce) {
+			/*
+			 * If doforce then execute the operation even if
+			 * the directory is not empty.
+			 */
+			error = chain->error;
+			hammer2_chain_delete(parent, chain,
+					     xop->head.mtid, dopermanent);
+		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
+			   (error = checkdirempty(parent, chain, thr->clindex)) != 0) {
+			/*
+			 * error may be EAGAIN or ENOTEMPTY
+			 */
 			if (error == EAGAIN) {
 				hammer2_chain_unlock(chain);
 				hammer2_chain_drop(chain);

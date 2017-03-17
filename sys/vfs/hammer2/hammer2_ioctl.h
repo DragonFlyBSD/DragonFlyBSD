@@ -93,7 +93,7 @@ struct hammer2_ioc_pfs {
 	uint8_t			pfs_subtype;	/* e.g. SNAPSHOT */
 	uint8_t			reserved0012;
 	uint8_t			reserved0013;
-	uint32_t		reserved0014;
+	uint32_t		pfs_flags;
 	uint64_t		reserved0018;
 	uuid_t			pfs_fsid;	/* identifies PFS instance */
 	uuid_t			pfs_clid;	/* identifies PFS cluster */

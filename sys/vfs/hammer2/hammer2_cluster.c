@@ -735,11 +735,6 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	nflags = 0;
 	ttlmasters = 0;
 	ttlslaves = 0;
-	nmasters = 0;
-	nmasters_keymatch = 0;
-	umasters = 0;
-	nslaves = 0;
-
 
 	/*
 	 * Pass 1
@@ -823,10 +818,15 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 * The quorum-agreed TID is the highest matching TID.
 	 */
 	last_best_quorum_tid = HAMMER2_TID_MAX;
+	umasters = 0;
+	nmasters = 0;
+	nmasters_keymatch = 0;
 	quorum_tid = 0;		/* fix gcc warning */
 
 	while (nmasters < nquorum && last_best_quorum_tid != 0) {
+		umasters = 0;
 		nmasters = 0;
+		nmasters_keymatch = 0;
 		quorum_tid = 0;
 
 		for (i = 0; i < cluster->nchains; ++i) {
@@ -866,12 +866,15 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 				   (key == (hammer2_key_t)-1 ||
 				    chain->bref.key == key)) {
 				++nmasters_keymatch;
-				if (quorum_tid < last_best_quorum_tid &&
-				    (quorum_tid < chain->bref.modify_tid ||
-				     nmasters == 0)) {
+
+				if (chain->bref.modify_tid <
+				     last_best_quorum_tid &&
+				    quorum_tid < chain->bref.modify_tid) {
 					/*
-					 * Better TID located, reset
-					 * nmasters count.
+					 * Select new TID as master if better
+					 * than any found so far in this loop,
+					 * as long as it does not reach the
+					 * best tid found in the previous loop.
 					 */
 					nmasters = 0;
 					quorum_tid = chain->bref.modify_tid;
@@ -932,7 +935,9 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 *
 	 * We have quorum agreement, validate elements, not end of scan.
 	 */
+	nslaves = 0;
 	cluster->error = 0;
+
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
 		error = cluster->array[i].error;

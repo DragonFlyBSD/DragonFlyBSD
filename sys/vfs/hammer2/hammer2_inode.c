@@ -202,10 +202,12 @@ hammer2_inode_chain_and_parent(hammer2_inode_t *ip, int clindex,
 		 * Get parent, lock order must be (parent, chain).
 		 */
 		parent = chain->parent;
-		hammer2_chain_ref(parent);
-		hammer2_chain_unlock(chain);
-		hammer2_chain_lock(parent, how);
-		hammer2_chain_lock(chain, how);
+		if (parent) {
+			hammer2_chain_ref(parent);
+			hammer2_chain_unlock(chain);
+			hammer2_chain_lock(parent, how);
+			hammer2_chain_lock(chain, how);
+		}
 		if (ip->cluster.array[clindex].chain == chain &&
 		    chain->parent == parent) {
 			break;
@@ -216,8 +218,10 @@ hammer2_inode_chain_and_parent(hammer2_inode_t *ip, int clindex,
 		 */
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
-		hammer2_chain_unlock(parent);
-		hammer2_chain_drop(parent);
+		if (parent) {
+			hammer2_chain_unlock(parent);
+			hammer2_chain_drop(parent);
+		}
 	}
 	*parentp = parent;
 

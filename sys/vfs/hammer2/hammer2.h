@@ -1183,6 +1183,8 @@ struct hammer2_pfs {
 
 typedef struct hammer2_pfs hammer2_pfs_t;
 
+TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
+
 #define HAMMER2_LRU_LIMIT		1024	/* per pmp lru_list */
 
 #define HAMMER2_DIRTYCHAIN_WAITING	0x80000000
@@ -1268,6 +1270,9 @@ MPTOPMP(struct mount *mp)
 extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
+extern struct hammer2_pfslist hammer2_pfslist;
+extern struct lock hammer2_mntlk;
+
 
 extern int hammer2_debug;
 extern int hammer2_cluster_read;
@@ -1600,6 +1605,7 @@ hammer2_pfs_t *hammer2_pfsalloc(hammer2_chain_t *chain,
 				const hammer2_inode_data_t *ripdata,
 				hammer2_tid_t modify_tid,
 				hammer2_dev_t *force_local);
+void hammer2_pfsdealloc(hammer2_pfs_t *pmp, int clindex, int destroying);
 int hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 				ino_t ino, struct vnode **vpp);
 
