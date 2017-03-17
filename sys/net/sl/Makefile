@@ -4,7 +4,7 @@
 KMOD=   if_sl
 SRCS=   if_sl.c slcompress.c opt_inet.h use_sl.h
 
-NSL?=		2
+NSL?=		4
 
 KCFLAGS+=	-DINET
 

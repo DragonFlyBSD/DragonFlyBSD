@@ -1084,3 +1084,5 @@ sl_outfill(void *chan)
 	}
 	lwkt_reltoken(&tty_token);
 }
+
+MODULE_VERSION(if_sl, 1);

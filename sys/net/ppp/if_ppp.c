@@ -1573,3 +1573,5 @@ ppp_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 	sc = ifp->if_softc;
 	(*sc->sc_start)(sc);
 }
+
+MODULE_VERSION(if_ppp, 1);
