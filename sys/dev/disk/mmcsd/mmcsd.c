@@ -160,6 +160,10 @@ mmcsd_attach(device_t dev)
 	bzero(&info, sizeof(info));
 	info.d_media_blksize = sector_size;
 	info.d_media_blocks = mmc_get_media_size(dev);
+	info.d_secpertrack = 1024;
+	info.d_nheads = 1;
+	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	info.d_ncylinders =  (u_int)(info.d_media_blocks / info.d_secpercyl);
 
 	/*
 	 * Display in most natural units.  There's no cards < 1MB.
