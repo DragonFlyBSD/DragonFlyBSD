@@ -452,6 +452,12 @@ fn_install_os(struct i_fn_args *a)
 	}
 
 	/*
+	 * Ensure /var has all directories it needs.
+	 */
+	command_add(cmds, "%s%s -deU -f %setc/mtree/BSD.var.dist -p %smnt/var",
+	    a->os_root, cmd_name(a, "MTREE"), a->os_root, a->os_root);
+
+	/*
 	 * Create symlinks.
 	 */
 

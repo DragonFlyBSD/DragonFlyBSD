@@ -154,8 +154,6 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/rc.d
-	mkdir -p ${DESTDIR}/var/run/sem
-	chmod 1777 ${DESTDIR}/var/run/sem
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
 	cd ${UPGRADE_SRCDIR}/devd; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/autofs
@@ -234,6 +232,8 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	done
 	ldconfig -R
 	mkdir -p ${DESTDIR}/dev
+	mkdir -p ${DESTDIR}/var/run/sem
+	chmod 1777 ${DESTDIR}/var/run/sem
 
 # The existence of cleartext_pass_ok means pam config files are out of date.
 	@set - `fgrep cleartext_pass_ok ${DESTDIR}/etc/pam.d/*`; \
