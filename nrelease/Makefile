@@ -397,7 +397,7 @@ mkimg:
 	echo "/dev/${IMGUSBDEV}s2a / ufs rw,noatime 0 1" > ${IMGMNT}/etc/fstab
 	echo "dummy /tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "dummy /var/tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
-	echo "dummy /var/run tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
+	echo "dummy /var/run tmpfs rw,-C 0 0" >> ${IMGMNT}/etc/fstab
 	echo "dummy /usr/obj tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
