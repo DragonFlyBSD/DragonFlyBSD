@@ -73,7 +73,8 @@ struct vtnet_softc {
 
 	int			vtnet_txhdrcount;
 	struct vtnet_tx_header	*vtnet_txhdrarea;
-	uint32_t		vtnet_txhdridx;
+	SLIST_HEAD(, vtnet_tx_header)
+				vtnet_txhdr_free;
 	struct vtnet_mac_filter *vtnet_macfilter;
 
 	int			vtnet_hdr_size;
@@ -134,7 +135,7 @@ struct vtnet_rx_header {
 
 /*
  * For each outgoing frame, the vtnet_tx_header below is allocated from
- * the vtnet_tx_header_zone.
+ * a free-list.
  */
 struct vtnet_tx_header {
 	union {
@@ -143,6 +144,7 @@ struct vtnet_tx_header {
 	} vth_uhdr;
 
 	struct mbuf *vth_mbuf;
+	SLIST_ENTRY(vtnet_tx_header) link;
 };
 
 /*

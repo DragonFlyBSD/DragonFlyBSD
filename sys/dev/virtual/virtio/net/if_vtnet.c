@@ -119,6 +119,8 @@ static int	vtnet_rxeof(struct vtnet_softc *, int, int *);
 static void	vtnet_rx_intr_task(void *);
 static int	vtnet_rx_vq_intr(void *);
 
+static void	vtnet_enqueue_txhdr(struct vtnet_softc *,
+		    struct vtnet_tx_header *);
 static void	vtnet_txeof(struct vtnet_softc *);
 static struct mbuf * vtnet_tx_offload(struct vtnet_softc *, struct mbuf *,
 		    struct virtio_net_hdr *);
@@ -285,6 +287,7 @@ vtnet_attach(device_t dev)
 	ifmedia_set(&sc->vtnet_media, VTNET_MEDIATYPE);
 
 	vtnet_add_statistics(sc);
+	SLIST_INIT(&sc->vtnet_txhdr_free);
 
 	/* Register our feature descriptions. */
 	virtio_set_feature_desc(dev, vtnet_feature_desc);
@@ -413,6 +416,7 @@ vtnet_detach(device_t dev)
 		    M_VTNET);
 		sc->vtnet_txhdrarea = NULL;
 	}
+	SLIST_INIT(&sc->vtnet_txhdr_free);
 	if (sc->vtnet_macfilter != NULL) {
 		contigfree(sc->vtnet_macfilter,
 		    sizeof(struct vtnet_mac_filter), M_DEVBUF);
@@ -586,7 +590,7 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 {
 	device_t dev;
 	struct ifnet *ifp;
-	int tx_size;
+	int i, tx_size;
 
 	dev = sc->vtnet_dev;
 
@@ -608,7 +612,7 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 
 	tx_size = virtqueue_size(sc->vtnet_tx_vq);
 	sc->vtnet_tx_size = tx_size;
-	sc->vtnet_txhdridx = 0;
+	/* Select size, such that we never run out of tx_header entries. */
 	if (sc->vtnet_flags & VTNET_FLAG_INDIRECT)
 		sc->vtnet_txhdrcount = sc->vtnet_tx_size;
 	else
@@ -620,6 +624,8 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 		device_printf(dev, "cannot contigmalloc the tx headers\n");
 		return (ENOMEM);
 	}
+	for (i = 0; i < sc->vtnet_txhdrcount; i++)
+		vtnet_enqueue_txhdr(sc, &sc->vtnet_txhdrarea[i]);
 	sc->vtnet_macfilter = contigmalloc(
 	    sizeof(struct vtnet_mac_filter),
 	    M_DEVBUF, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
@@ -1046,6 +1052,7 @@ vtnet_free_tx_mbufs(struct vtnet_softc *sc)
 
 	while ((txhdr = virtqueue_drain(vq, &last)) != NULL) {
 		m_freem(txhdr->vth_mbuf);
+		vtnet_enqueue_txhdr(sc, txhdr);
 	}
 
 	KASSERT(virtqueue_empty(vq), ("mbufs remaining in Tx Vq"));
@@ -1572,6 +1579,13 @@ vtnet_rx_vq_intr(void *xsc)
 }
 
 static void
+vtnet_enqueue_txhdr(struct vtnet_softc *sc, struct vtnet_tx_header *txhdr)
+{
+	bzero(txhdr, sizeof(*txhdr));
+	SLIST_INSERT_HEAD(&sc->vtnet_txhdr_free, txhdr, link);
+}
+
+static void
 vtnet_txeof(struct vtnet_softc *sc)
 {
 	struct virtqueue *vq;
@@ -1589,6 +1603,7 @@ vtnet_txeof(struct vtnet_softc *sc)
 		deq++;
 		ifp->if_opackets++;
 		m_freem(txhdr->vth_mbuf);
+		vtnet_enqueue_txhdr(sc, txhdr);
 	}
 
 	if (deq > 0) {
@@ -1800,8 +1815,10 @@ vtnet_encap(struct vtnet_softc *sc, struct mbuf **m_head)
 	struct mbuf *m;
 	int error;
 
-	txhdr = &sc->vtnet_txhdrarea[sc->vtnet_txhdridx];
-	memset(txhdr, 0, sizeof(struct vtnet_tx_header));
+	txhdr = SLIST_FIRST(&sc->vtnet_txhdr_free);
+	if (txhdr == NULL)
+		return (ENOBUFS);
+	SLIST_REMOVE_HEAD(&sc->vtnet_txhdr_free, link);
 
 	/*
 	 * Always use the non-mergeable header to simplify things. When
@@ -1829,10 +1846,9 @@ vtnet_encap(struct vtnet_softc *sc, struct mbuf **m_head)
 	}
 
 	error = vtnet_enqueue_txbuf(sc, m_head, txhdr);
-	if (error == 0)
-		sc->vtnet_txhdridx =
-		    (sc->vtnet_txhdridx + 1) % sc->vtnet_txhdrcount;
 fail:
+	if (error != 0)
+		vtnet_enqueue_txhdr(sc, txhdr);
 	return (error);
 }
 
