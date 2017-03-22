@@ -158,17 +158,7 @@ time_t mktime(struct tm *);
 size_t strftime(char * __restrict, size_t, const char * __restrict,
     const struct tm * __restrict);
 time_t time(time_t *);
-#if 0 /* XXX missing */
-#if __POSIX_VISIBLE >= 200112
-struct sigevent;
-int timer_create(clockid_t, struct sigevent *__restrict, timer_t *__restrict);
-int timer_delete(timer_t);
-int timer_gettime(timer_t, struct itimerspec *);
-int timer_getoverrun(timer_t);
-int timer_settime(timer_t, int, const struct itimerspec *__restrict,
-	struct itimerspec *__restrict);
-#endif
-#endif
+
 #if __POSIX_VISIBLE
 void tzset(void);
 #endif
@@ -181,17 +171,24 @@ int clock_settime(clockid_t, const struct timespec *);
 int nanosleep(const struct timespec *, struct timespec *);
 #endif /* __POSIX_VISIBLE >= 199309 */
 
-#if 0 /* XXX missing */
-#if __POSIX_VISIBLE >= 200112
-int clock_getcpuclockid(pid_t, clockid_t *);
-#endif
-#endif
-
 #if __POSIX_VISIBLE >= 199506
 char *asctime_r(const struct tm *, char *);
 char *ctime_r(const time_t *, char *);
 struct tm *gmtime_r(const time_t *, struct tm *);
 struct tm *localtime_r(const time_t *, struct tm *);
+#endif
+
+#if __POSIX_VISIBLE >= 200112
+#if 0 /* XXX missing */
+struct sigevent;
+int clock_getcpuclockid(pid_t, clockid_t *);
+int timer_create(clockid_t, struct sigevent *__restrict, timer_t *__restrict);
+int timer_delete(timer_t);
+int timer_gettime(timer_t, struct itimerspec *);
+int timer_getoverrun(timer_t);
+int timer_settime(timer_t, int, const struct itimerspec *__restrict,
+	struct itimerspec *__restrict);
+#endif
 #endif
 
 #if __XSI_VISIBLE
