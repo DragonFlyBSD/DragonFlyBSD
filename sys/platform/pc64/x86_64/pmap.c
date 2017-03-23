@@ -195,7 +195,6 @@ static uint64_t	DMPDPphys;	/* phys addr of direct mapped level 3 */
  */
 static vm_zone_t pvzone;
 static struct vm_zone pvzone_store;
-static struct vm_object pvzone_obj;
 static int pv_entry_max=0, pv_entry_high_water=0;
 static int pmap_pagedaemon_waken = 0;
 static struct pv_entry *pvinit;
@@ -1194,7 +1193,7 @@ pmap_init2(void)
 	if (entry_max <= 0)
 		entry_max = 1;
 
-	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT);
+	zinitna(pvzone, NULL, 0, entry_max, ZONE_INTERRUPT);
 
 	/*
 	 * Enable dynamic deletion of empty higher-level page table pages

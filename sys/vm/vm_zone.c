@@ -98,7 +98,7 @@ retry:
 	 * Per-zone spinlock for the remainder.  Always load at least one
 	 * item.
 	 */
-	spin_lock(&z->zlock);
+	spin_lock(&z->zspin);
 	if (z->zfreecnt > z->zfreemin) {
 		n = zone_burst;
 		do {
@@ -114,10 +114,10 @@ retry:
 			zpcpu->zitems = item;
 			++zpcpu->zfreecnt;
 		} while (--n > 0 && z->zfreecnt > z->zfreemin);
-		spin_unlock(&z->zlock);
+		spin_unlock(&z->zspin);
 		goto retry;
 	} else {
-		spin_unlock(&z->zlock);
+		spin_unlock(&z->zspin);
 		item = zget(z);
 		/*
 		 * PANICFAIL allows the caller to assume that the zalloc()
@@ -192,11 +192,11 @@ zfree(vm_zone_t z, void *item)
 	 * Also implement hysteresis by freeing a number of pcpu
 	 * entries.
 	 */
-	spin_lock(&z->zlock);
+	spin_lock(&z->zspin);
 	((void **)tail_item)[0] = z->zitems;
 	z->zitems = item;
 	z->zfreecnt += count;
-	spin_unlock(&z->zlock);
+	spin_unlock(&z->zspin);
 
 	crit_exit_gd(gd);
 }
@@ -247,8 +247,7 @@ static long zone_kmem_kvaspace;
  * No requirements.
  */
 int
-zinitna(vm_zone_t z, vm_object_t obj, char *name, size_t size,
-	long nentries, uint32_t flags)
+zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 {
 	size_t totsize;
 
@@ -264,7 +263,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, size_t size,
 	 */
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = roundup2(size, ZONE_ROUNDING);
-		spin_init(&z->zlock, "zinitna");
+		spin_init(&z->zspin, "zinitna");
 		z->zfreecnt = 0;
 		z->ztotal = 0;
 		z->zmax = 0;
@@ -301,13 +300,6 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, size_t size,
 		}
 
 		z->zpagemax = totsize / PAGE_SIZE;
-		if (obj == NULL) {
-			z->zobj = vm_object_allocate(OBJT_DEFAULT, z->zpagemax);
-		} else {
-			z->zobj = obj;
-			_vm_object_allocate(OBJT_DEFAULT, z->zpagemax, obj);
-			vm_object_drop(obj);
-		}
 		z->zallocflag = VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT |
 				VM_ALLOC_NORMAL | VM_ALLOC_RETRY;
 		z->zmax += nentries;
@@ -352,7 +344,8 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, size_t size,
 		void *buf;
 
 		buf = zget(z);
-		zfree(z, buf);
+		if (buf)
+			zfree(z, buf);
 	}
 
 	return 1;
@@ -377,8 +370,7 @@ zinit(char *name, size_t size, long nentries, uint32_t flags)
 		return NULL;
 
 	z->zflags = 0;
-	if (zinitna(z, NULL, name, size, nentries,
-	            flags & ~ZONE_DESTROYABLE) == 0) {
+	if (zinitna(z, name, size, nentries, flags & ~ZONE_DESTROYABLE) == 0) {
 		kfree(z, M_ZONE);
 		return NULL;
 	}
@@ -400,12 +392,11 @@ zbootinit(vm_zone_t z, char *name, size_t size, void *item, long nitems)
 {
 	long i;
 
-	spin_init(&z->zlock, "zbootinit");
+	spin_init(&z->zspin, "zbootinit");
 	bzero(z->zpcpu, sizeof(z->zpcpu));
 	z->zname = name;
 	z->zsize = size;
 	z->zpagemax = 0;
-	z->zobj = NULL;
 	z->zflags = ZONE_BOOT;
 	z->zfreemin = 0;
 	z->zallocflag = 0;
@@ -439,7 +430,6 @@ zbootinit(vm_zone_t z, char *name, size_t size, void *item, long nitems)
 void
 zdestroy(vm_zone_t z)
 {
-	vm_page_t m;
 	vm_pindex_t i;
 
 	if (z == NULL)
@@ -454,45 +444,16 @@ zdestroy(vm_zone_t z)
 	/*
 	 * Release virtual mappings, physical memory and update sysctl stats.
 	 */
-	if (z->zflags & ZONE_INTERRUPT) {
-		/*
-		 * Pages mapped via pmap_kenter() must be removed from the
-		 * kernel_pmap() before calling kmem_free() to avoid issues
-		 * with kernel_pmap.pm_stats.resident_count.
-		 */
-		pmap_qremove(z->zkva, z->zpagemax);
-		vm_object_hold(z->zobj);
-		for (i = 0; i < z->zpagecount; ++i) {
-			m = vm_page_lookup_busy_wait(z->zobj, i, TRUE, "vmzd");
-			vm_page_unwire(m, 0);
-			vm_page_free(m);
-		}
-
-		/*
-		 * Free the mapping.
-		 */
-		kmem_free(&kernel_map, z->zkva,
-			  (size_t)z->zpagemax * PAGE_SIZE);
-		atomic_subtract_long(&zone_kmem_kvaspace,
-				     (size_t)z->zpagemax * PAGE_SIZE);
-
-		/*
-		 * Free the backing object and physical pages.
-		 */
-		vm_object_deallocate(z->zobj);
-		vm_object_drop(z->zobj);
-		atomic_subtract_long(&zone_kmem_pages, z->zpagecount);
-	} else {
-		for (i = 0; i < z->zkmcur; i++) {
-			kmem_free(&kernel_map, z->zkmvec[i],
-				  (size_t)z->zalloc * PAGE_SIZE);
-			atomic_subtract_long(&zone_kern_pages, z->zalloc);
-		}
-		if (z->zkmvec != NULL)
-			kfree(z->zkmvec, M_ZONE);
+	KKASSERT((z->zflags & ZONE_INTERRUPT) == 0);
+	for (i = 0; i < z->zkmcur; i++) {
+		kmem_free(&kernel_map, z->zkmvec[i],
+			  (size_t)z->zalloc * PAGE_SIZE);
+		atomic_subtract_long(&zone_kern_pages, z->zalloc);
 	}
+	if (z->zkmvec != NULL)
+		kfree(z->zkmvec, M_ZONE);
 
-	spin_uninit(&z->zlock);
+	spin_uninit(&z->zspin);
 	kfree(z, M_ZONE);
 }
 
@@ -510,11 +471,14 @@ zdestroy(vm_zone_t z)
 /*
  * Internal zone routine.  Not to be called from external (non vm_zone) code.
  *
+ * This function may return NULL.
+ *
  * No requirements.
  */
 static void *
 zget(vm_zone_t z)
 {
+	vm_page_t pgs[ZONE_MAXPGLOAD];
 	vm_page_t m;
 	long nitems;
 	long savezpc;
@@ -522,6 +486,7 @@ zget(vm_zone_t z)
 	size_t noffset;
 	void *item;
 	vm_pindex_t npages;
+	vm_pindex_t nalloc;
 	vm_pindex_t i;
 
 	if (z == NULL)
@@ -532,34 +497,48 @@ zget(vm_zone_t z)
 		 * Interrupt zones do not mess with the kernel_map, they
 		 * simply populate an existing mapping.
 		 *
-		 * First reserve the required space.
+		 * First allocate as many pages as we can, stopping at
+		 * our limit or if the page allocation fails.
 		 */
-		vm_object_hold(z->zobj);
+		for (i = 0; i < ZONE_MAXPGLOAD && i < z->zalloc; ++i) {
+			m = vm_page_alloc(NULL,
+					  mycpu->gd_rand_incr++,
+					  z->zallocflag);
+			if (m == NULL)
+				break;
+			pgs[i] = m;
+		}
+		nalloc = i;
+
+		/*
+		 * Account for the pages.
+		 *
+		 * NOTE! Do not allow overlap with a prior page as it
+		 *	 may still be undergoing allocation on another
+		 *	 cpu.
+		 */
+		spin_lock(&z->zspin);
 		noffset = (size_t)z->zpagecount * PAGE_SIZE;
-		noffset -= noffset % z->zsize;
+		/* noffset -= noffset % z->zsize; */
 		savezpc = z->zpagecount;
-		if (z->zpagecount + z->zalloc > z->zpagemax)
+		if (z->zpagecount + nalloc > z->zpagemax)
 			z->zpagecount = z->zpagemax;
 		else
-			z->zpagecount += z->zalloc;
+			z->zpagecount += nalloc;
 		item = (char *)z->zkva + noffset;
 		npages = z->zpagecount - savezpc;
 		nitems = ((size_t)(savezpc + npages) * PAGE_SIZE - noffset) /
 			 z->zsize;
 		atomic_add_long(&zone_kmem_pages, npages);
+		spin_unlock(&z->zspin);
 
 		/*
-		 * Now allocate the pages.  Note that we can block in the
-		 * loop, so we've already done all the necessary calculations
-		 * and reservations above.
+		 * Enter the pages into the reserved KVA space.
 		 */
 		for (i = 0; i < npages; ++i) {
 			vm_offset_t zkva;
 
-			m = vm_page_alloc(z->zobj, savezpc + i, z->zallocflag);
-			KKASSERT(m != NULL);
-			/* note: z might be modified due to blocking */
-
+			m = pgs[i];
 			KKASSERT(m->queue == PQ_NONE);
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_wire(m);
@@ -569,7 +548,10 @@ zget(vm_zone_t z)
 			pmap_kenter(zkva, VM_PAGE_TO_PHYS(m));
 			bzero((void *)zkva, PAGE_SIZE);
 		}
-		vm_object_drop(z->zobj);
+		for (i = npages; i < nalloc; ++i) {
+			m = pgs[i];
+			vm_page_free(m);
+		}
 	} else if (z->zflags & ZONE_SPECIAL) {
 		/*
 		 * The special zone is the one used for vm_map_entry_t's.
@@ -621,13 +603,18 @@ zget(vm_zone_t z)
 		nitems = nbytes / z->zsize;
 	}
 
-	spin_lock(&z->zlock);
+	/*
+	 * Enter any new pages into the pool, reserving one, or get the
+	 * item from the existing pool.
+	 */
+	spin_lock(&z->zspin);
 	z->ztotal += nitems;
 
-	/*
-	 * Save one for immediate allocation
-	 */
 	if (nitems != 0) {
+		/*
+		 * Enter pages into the pool saving one for immediate
+		 * allocation.
+		 */
 		nitems -= 1;
 		for (i = 0; i < nitems; i++) {
 			((void **)item)[0] = z->zitems;
@@ -640,6 +627,9 @@ zget(vm_zone_t z)
 		z->zfreecnt += nitems;
 		++z->znalloc;
 	} else if (z->zfreecnt > 0) {
+		/*
+		 * Get an item from the existing pool.
+		 */
 		item = z->zitems;
 		z->zitems = ((void **)item)[0];
 #ifdef INVARIANTS
@@ -650,9 +640,12 @@ zget(vm_zone_t z)
 		--z->zfreecnt;
 		++z->znalloc;
 	} else {
+		/*
+		 * No items available.
+		 */
 		item = NULL;
 	}
-	spin_unlock(&z->zlock);
+	spin_unlock(&z->zspin);
 
 	/*
 	 * A special zone may have used a kernel-reserved vm_map_entry.  If
