@@ -153,6 +153,7 @@
 
 #if __POSIX_VISIBLE >= 200809
 #define	_PC_2_SYMLINKS		22
+#define	_PC_TIMESTAMP_RESOLUTION 23
 #endif
 
 #if __BSD_VISIBLE
