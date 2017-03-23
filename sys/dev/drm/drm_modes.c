@@ -97,7 +97,7 @@ void drm_mode_destroy(struct drm_device *dev, struct drm_display_mode *mode)
 	if (!mode)
 		return;
 
-	drm_mode_object_put(dev, &mode->base);
+	drm_mode_object_unregister(dev, &mode->base);
 
 	kfree(mode);
 }
@@ -1513,6 +1513,8 @@ int drm_mode_convert_umode(struct drm_display_mode *out,
 	out->status = drm_mode_validate_basic(out);
 	if (out->status != MODE_OK)
 		goto out;
+
+	drm_mode_set_crtcinfo(out, CRTC_INTERLACE_HALVE_V);
 
 	ret = 0;
 

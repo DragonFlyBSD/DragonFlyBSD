@@ -50,6 +50,7 @@ struct i915_params {
 	int use_mmio_flip;
 	int mmio_debug;
 	int edp_vswing;
+	unsigned int inject_load_failure;
 	/* leave bools at the end to not create holes */
 	bool enable_hangcheck;
 	bool fastboot;
@@ -60,6 +61,7 @@ struct i915_params {
 	bool enable_guc_submission;
 	bool verbose_state_checks;
 	bool nuclear_pageflip;
+	bool enable_dp_mst;
 };
 
 extern struct i915_params i915 __read_mostly;

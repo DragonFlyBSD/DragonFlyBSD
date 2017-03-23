@@ -33,8 +33,12 @@
 #include "drm_legacy.h"
 #include "drm_internal.h"
 
-/* Provides three levels of debug: off, minimal, verbose */
+/*
+ * drm_debug: Enable debug output.
+ * Bitmask of DRM_UT_x. See include/drm/drmP.h for details.
+ */
 #ifdef __DragonFly__
+/* Provides three levels of debug: off, minimal, verbose */
 #if DRM_DEBUG_DEFAULT_ON == 1
 #define DRM_DEBUGBITS_ON (DRM_UT_CORE | DRM_UT_DRIVER | DRM_UT_KMS |	\
 			  DRM_UT_PRIME| DRM_UT_ATOMIC | DRM_UT_FIOCTL)
@@ -47,13 +51,19 @@
 #endif
 unsigned int drm_debug = DRM_DEBUGBITS_ON;	/* defaults to 0 */
 #else
-unsigned int drm_debug = 0;	/* bitmask of DRM_UT_x */
+unsigned int drm_debug = 0;
 #endif /* __DragonFly__ */
 EXPORT_SYMBOL(drm_debug);
 
 MODULE_AUTHOR(CORE_AUTHOR);
 MODULE_DESCRIPTION(CORE_DESC);
-MODULE_PARM_DESC(debug, "Enable debug output");
+MODULE_PARM_DESC(debug, "Enable debug output, where each bit enables a debug category.\n"
+"\t\tBit 0 (0x01) will enable CORE messages (drm core code)\n"
+"\t\tBit 1 (0x02) will enable DRIVER messages (drm controller code)\n"
+"\t\tBit 2 (0x04) will enable KMS messages (modesetting code)\n"
+"\t\tBit 3 (0x08) will enable PRIME messages (prime code)\n"
+"\t\tBit 4 (0x10) will enable ATOMIC messages (atomic code)\n"
+"\t\tBit 5 (0x20) will enable VBL messages (vblank code)");
 module_param_named(debug, drm_debug, int, 0600);
 
 #if 0
@@ -128,10 +138,10 @@ static void drm_master_destroy(struct kref *kref)
 	struct drm_device *dev = master->minor->dev;
 	struct drm_map_list *r_list, *list_temp;
 
-	mutex_lock(&dev->struct_mutex);
 	if (dev->driver->master_destroy)
 		dev->driver->master_destroy(dev, master);
 
+	mutex_lock(&dev->struct_mutex);
 	list_for_each_entry_safe(r_list, list_temp, &dev->maplist, head) {
 		if (r_list->master == master) {
 			drm_legacy_rmmap_locked(dev, r_list->map);
@@ -569,6 +579,7 @@ struct drm_device *drm_dev_alloc(struct drm_driver *driver,
 	spin_lock_init(&dev->buf_lock);
 	spin_lock_init(&dev->event_lock);
 	mutex_init(&dev->struct_mutex);
+	mutex_init(&dev->filelist_mutex);
 	mutex_init(&dev->ctxlist_mutex);
 	mutex_init(&dev->master_mutex);
 
@@ -696,7 +707,11 @@ EXPORT_SYMBOL(drm_dev_unref);
  *
  * Register the DRM device @dev with the system, advertise device to user-space
  * and start normal device operation. @dev must be allocated via drm_dev_alloc()
- * previously.
+ * previously. Right after drm_dev_register() the driver should call
+ * drm_connector_register_all() to register all connectors in sysfs. This is
+ * a separate call for backward compatibility with drivers still using
+ * the deprecated ->load() callback, where connectors are registered from within
+ * the ->load() callback.
  *
  * Never call this twice on any device!
  *
@@ -1189,7 +1204,6 @@ void drm_cdevpriv_dtor(void *cd)
 {
 	struct drm_file *file_priv = cd;
 	struct drm_device *dev = file_priv->dev;
-	int retcode = 0;
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
@@ -1226,7 +1240,7 @@ void drm_cdevpriv_dtor(void *cd)
 	atomic_inc(&dev->counts[_DRM_STAT_CLOSES]);
 	device_unbusy(dev->dev->bsddev);
 	if (--dev->open_count == 0) {
-		retcode = drm_lastclose(dev);
+		drm_lastclose(dev);
 	}
 
 	DRM_UNLOCK(dev);

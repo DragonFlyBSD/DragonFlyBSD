@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,11 @@
 
 #include <sys/types.h>
 #include <sys/systm.h>
+
+struct va_format {
+	const char *fmt;
+	__va_list *va;
+};
 
 #define printk(X...)	kprintf(X)
 

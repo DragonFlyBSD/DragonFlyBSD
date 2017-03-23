@@ -931,14 +931,6 @@ struct drm_device {
 	int irq;			/* Interrupt used by board */
 
 	/*
-	 * At load time, disabling the vblank interrupt won't be allowed since
-	 * old clients may not call the modeset ioctl and therefore misbehave.
-	 * Once the modeset ioctl *has* been called though, we can safely
-	 * disable them when unused.
-	 */
-	bool vblank_disable_allowed;
-
-	/*
 	 * If true, vblank interrupt will be disabled immediately when the
 	 * refcount drops to zero, as opposed to via the vblank disable
 	 * timer.
@@ -981,6 +973,11 @@ struct drm_device {
 
 	/*@} */
 
+	struct {
+		int context;
+		struct drm_hw_lock *lock;
+	} sigdata;
+
 	struct drm_agp_head *agp;	/**< AGP data */
 
 	struct device *dev;             /**< Device structure */
@@ -1007,7 +1004,9 @@ struct drm_device {
 
 	int switch_power_state;
 
+#ifdef __DragonFly__
 	atomic_t unplugged; /* device has been unplugged or gone away */
+#endif	/* __DragonFly__ */
 };
 
 #define DRM_SWITCH_POWER_ON 0

@@ -287,6 +287,27 @@ drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
 	drm_gem_object_unreference_unlocked(obj);
 }
 
+/*
+ * Called at device close to release the file's
+ * handle references on objects.
+ */
+static int
+drm_gem_object_release_handle(int id, void *ptr, void *data)
+{
+	struct drm_file *file_priv = data;
+	struct drm_gem_object *obj = ptr;
+	struct drm_device *dev = obj->dev;
+
+	drm_gem_remove_prime_handles(obj, file_priv);
+
+	if (dev->driver->gem_close_object)
+		dev->driver->gem_close_object(obj, file_priv);
+
+	drm_gem_object_handle_unreference_unlocked(obj);
+
+	return 0;
+}
+
 /**
  * drm_gem_handle_delete - deletes the given file-private handle
  * @filp: drm file-private structure to use for the handle look up
@@ -440,6 +461,10 @@ EXPORT_SYMBOL(drm_gem_handle_create);
  * @obj: obj in question
  *
  * This routine frees fake offsets allocated by drm_gem_create_mmap_offset().
+ *
+ * Note that drm_gem_object_release() already calls this function, so drivers
+ * don't have to take care of releasing the mmap offset themselves when freeing
+ * the GEM object.
  */
 void
 drm_gem_free_mmap_offset(struct drm_gem_object *obj)
@@ -473,6 +498,9 @@ EXPORT_SYMBOL(drm_gem_free_mmap_offset);
  * This routine allocates and attaches a fake offset for @obj, in cases where
  * the virtual size differs from the physical size (ie. obj->size).  Otherwise
  * just use drm_gem_create_mmap_offset().
+ *
+ * This function is idempotent and handles an already allocated mmap offset
+ * transparently. Drivers do not need to check for this case.
  */
 int
 drm_gem_create_mmap_offset_size(struct drm_gem_object *obj, size_t size)
@@ -509,6 +537,9 @@ EXPORT_SYMBOL(drm_gem_create_mmap_offset_size);
  * structures.
  *
  * This routine allocates and attaches a fake offset for @obj.
+ *
+ * Drivers can call drm_gem_free_mmap_offset() before freeing @obj to release
+ * the fake offset again.
  */
 int drm_gem_create_mmap_offset(struct drm_gem_object *obj)
 {
@@ -528,8 +559,7 @@ EXPORT_SYMBOL(drm_gem_create_mmap_offset);
  * otherwise.
  */
 struct drm_gem_object *
-drm_gem_object_lookup(struct drm_device *dev, struct drm_file *filp,
-		      u32 handle)
+drm_gem_object_lookup(struct drm_file *filp, u32 handle)
 {
 	struct drm_gem_object *obj;
 
@@ -590,7 +620,7 @@ drm_gem_flink_ioctl(struct drm_device *dev, void *data,
 	if (!drm_core_check_feature(dev, DRIVER_GEM))
 		return -ENODEV;
 
-	obj = drm_gem_object_lookup(dev, file_priv, args->handle);
+	obj = drm_gem_object_lookup(file_priv, args->handle);
 	if (obj == NULL)
 		return -ENOENT;
 
@@ -680,27 +710,6 @@ drm_gem_open(struct drm_device *dev, struct drm_file *file_private)
 	lockinit(&file_private->table_lock, "fptab", 0, LK_CANRECURSE);
 }
 
-/*
- * Called at device close to release the file's
- * handle references on objects.
- */
-static int
-drm_gem_object_release_handle(int id, void *ptr, void *data)
-{
-	struct drm_file *file_priv = data;
-	struct drm_gem_object *obj = ptr;
-	struct drm_device *dev = obj->dev;
-
-	drm_gem_remove_prime_handles(obj, file_priv);
-
-	if (dev->driver->gem_close_object)
-		dev->driver->gem_close_object(obj, file_priv);
-
-	drm_gem_object_handle_unreference_unlocked(obj);
-
-	return 0;
-}
-
 /**
  * drm_gem_release - release file-private GEM resources
  * @dev: drm_device which is being closed by userspace
@@ -718,6 +727,13 @@ drm_gem_release(struct drm_device *dev, struct drm_file *file_private)
 	idr_destroy(&file_private->object_idr);
 }
 
+/**
+ * drm_gem_object_release - release GEM buffer object resources
+ * @obj: GEM buffer object
+ *
+ * This releases any structures and resources used by @obj and is the invers of
+ * drm_gem_object_init().
+ */
 void
 drm_gem_object_release(struct drm_gem_object *obj)
 {

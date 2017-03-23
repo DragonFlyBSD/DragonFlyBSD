@@ -53,16 +53,35 @@ drm_clflush_page(struct vm_page *page)
 	kunmap_atomic(page_virtual);
 }
 
+static void drm_cache_flush_clflush(struct vm_page *pages[],
+				    unsigned long num_pages)
+{
+	unsigned long i;
+
+	mb();
+	for (i = 0; i < num_pages; i++)
+		drm_clflush_page(*pages++);
+	mb();
+}
+
 void
 drm_clflush_pages(vm_page_t *pages, unsigned long num_pages)
 {
 	pmap_invalidate_cache_pages(pages, num_pages);
+
+	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
+		drm_cache_flush_clflush(pages, num_pages);
+		return;
+	}
+
+	cpu_wbinvd_on_all_cpus();
 }
+EXPORT_SYMBOL(drm_clflush_pages);
 
 void
 drm_clflush_sg(struct sg_table *st)
 {
-	if (cpu_has_clflush) {
+	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
 		struct sg_page_iter sg_iter;
 
 		mb();
@@ -82,13 +101,14 @@ drm_clflush_virt_range(void *in_addr, unsigned long length)
 {
 	char *addr = in_addr;
 
-	if (cpu_has_clflush) {
+	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
 		const int size = cpu_clflush_line_size;
 		char *end = addr + length;
 		addr = (void *)(((unsigned long)addr) & -size);
 		mb();
 		for (; addr < end; addr += size)
 			clflushopt(addr);
+		clflushopt(end - 1); /* force serialisation */
 		mb();
 		return;
 	}

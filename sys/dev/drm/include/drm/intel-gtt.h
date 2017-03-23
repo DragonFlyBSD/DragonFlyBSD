@@ -1,6 +1,6 @@
-/*-
+/*
  * Copyright (c) 2011 The FreeBSD Foundation
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * This software was developed by Konstantin Belousov under sponsorship from
@@ -28,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef AGP_AGP_I810_H
-#define	AGP_AGP_I810_H
+#ifndef _AGP_INTEL_GTT_H_
+#define _AGP_INTEL_GTT_H_
 
 #include <sys/param.h>
 
@@ -93,4 +93,6 @@ static inline void intel_gmch_remove(void)
 {
 }
 
-#endif
+bool intel_enable_gtt(void);
+
+#endif		/* _AGP_INTEL_GTT_H_ */

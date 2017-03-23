@@ -28,11 +28,13 @@
 #include <linux/async.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/console.h>
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/delay.h>
 #include <linux/fb.h>
+#include <linux/vga_switcheroo.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
@@ -128,6 +130,7 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	struct drm_framebuffer *fb;
 	struct drm_device *dev = helper->dev;
 	struct drm_i915_private *dev_priv = to_i915(dev);
+	struct i915_ggtt *ggtt = &dev_priv->ggtt;
 	struct drm_mode_fb_cmd2 mode_cmd = {};
 	struct drm_i915_gem_object *obj = NULL;
 	int size, ret;
@@ -152,7 +155,7 @@ static int intelfb_alloc(struct drm_fb_helper *helper,
 	/* If the FB is too big, just don't use it since fbdev is not very
 	 * important and we should probably use that space with FBC or other
 	 * features. */
-	if (size * 2 < dev_priv->gtt.stolen_usable_size)
+	if (size * 2 < ggtt->stolen_usable_size)
 		obj = i915_gem_object_create_stolen(dev, size);
 	if (obj == NULL)
 		obj = i915_gem_alloc_object(dev, size);
@@ -187,7 +190,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		container_of(helper, struct intel_fbdev, helper);
 	struct intel_framebuffer *intel_fb = ifbdev->fb;
 	struct drm_device *dev = helper->dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct fb_info *info;
 	struct drm_framebuffer *fb;
 	struct drm_i915_gem_object *obj;
@@ -227,7 +230,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	 * This also validates that any existing fb inherited from the
 	 * BIOS is suitable for own access.
 	 */
-	ret = intel_pin_and_fence_fb_obj(NULL, &ifbdev->fb->base, NULL);
+	ret = intel_pin_and_fence_fb_obj(&ifbdev->fb->base, BIT(DRM_ROTATE_0));
 	if (ret)
 		goto out_unlock;
 
@@ -250,7 +253,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->height = sizes->fb_height;
 	info->stride = fb->pitches[0];
 	info->depth = sizes->surface_bpp;
-	info->paddr = dev_priv->gtt.mappable_base + i915_gem_obj_ggtt_offset(obj);
+	info->paddr = dev_priv->ggtt.mappable_base + i915_gem_obj_ggtt_offset(obj);
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 	info->vaddr = (vm_offset_t)pmap_mapdev_attr(info->paddr, size,
 		VM_MEMATTR_WRITE_COMBINING);
@@ -263,13 +266,13 @@ static int intelfb_create(struct drm_fb_helper *helper,
 
 	/* setup aperture base/size for vesafb takeover */
 	info->apertures->ranges[0].base = dev->mode_config.fb_base;
-	info->apertures->ranges[0].size = dev_priv->gtt.mappable_end;
+	info->apertures->ranges[0].size = ggtt->mappable_end;
 
 	info->fix.smem_start = dev->mode_config.fb_base + i915_gem_obj_ggtt_offset(obj);
 	info->fix.smem_len = size;
 
 	info->screen_base =
-		ioremap_wc(dev_priv->gtt.mappable_base + i915_gem_obj_ggtt_offset(obj),
+		ioremap_wc(ggtt->mappable_base + i915_gem_obj_ggtt_offset(obj),
 			   size);
 	if (!info->screen_base) {
 		DRM_ERROR("Failed to remap framebuffer into virtual memory\n");
@@ -390,12 +393,12 @@ static bool intel_fb_initial_config(struct drm_fb_helper *fb_helper,
 	uint64_t conn_configured = 0, mask;
 	int pass = 0;
 
-	save_enabled = kcalloc(dev->mode_config.num_connector, sizeof(bool),
+	save_enabled = kcalloc(fb_helper->connector_count, sizeof(bool),
 			       GFP_KERNEL);
 	if (!save_enabled)
 		return false;
 
-	memcpy(save_enabled, enabled, dev->mode_config.num_connector);
+	memcpy(save_enabled, enabled, fb_helper->connector_count);
 	mask = (1 << fb_helper->connector_count) - 1;
 retry:
 	for (i = 0; i < fb_helper->connector_count; i++) {
@@ -403,6 +406,7 @@ retry:
 		struct drm_connector *connector;
 		struct drm_encoder *encoder;
 		struct drm_fb_helper_crtc *new_crtc;
+		struct intel_crtc *intel_crtc;
 
 		fb_conn = fb_helper->connector_info[i];
 		connector = fb_conn->connector;
@@ -443,6 +447,13 @@ retry:
 		}
 
 		num_connectors_enabled++;
+
+		intel_crtc = to_intel_crtc(connector->state->crtc);
+		for (j = 0; j < 256; j++) {
+			intel_crtc->lut_r[j] = j;
+			intel_crtc->lut_g[j] = j;
+			intel_crtc->lut_b[j] = j;
+		}
 
 		new_crtc = intel_fb_helper_crtc(fb_helper, connector->state->crtc);
 
@@ -534,7 +545,7 @@ retry:
 	if (fallback) {
 bail:
 		DRM_DEBUG_KMS("Not using firmware configuration\n");
-		memcpy(enabled, save_enabled, dev->mode_config.num_connector);
+		memcpy(enabled, save_enabled, fb_helper->connector_count);
 		kfree(save_enabled);
 		return false;
 	}

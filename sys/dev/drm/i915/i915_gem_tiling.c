@@ -29,7 +29,6 @@
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
-#include "intel_drv.h"
 
 /**
  * DOC: buffer object tiling
@@ -166,7 +165,7 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 	struct drm_i915_gem_object *obj;
 	int ret = 0;
 
-	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
+	obj = to_intel_bo(drm_gem_object_lookup(file, args->handle));
 	if (&obj->base == NULL)
 		return -ENOENT;
 
@@ -297,7 +296,7 @@ i915_gem_get_tiling(struct drm_device *dev, void *data,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_gem_object *obj;
 
-	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
+	obj = to_intel_bo(drm_gem_object_lookup(file, args->handle));
 	if (&obj->base == NULL)
 		return -ENOENT;
 

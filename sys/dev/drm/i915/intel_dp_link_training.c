@@ -160,7 +160,6 @@ intel_dp_link_training_clock_recovery(struct intel_dp *intel_dp)
 			break;
 		}
 
-
 		/* Check to see if we've tried the max voltage */
 		for (i = 0; i < intel_dp->lane_count; i++)
 			if ((intel_dp->train_set[i] & DP_TRAIN_MAX_SWING_REACHED) == 0)

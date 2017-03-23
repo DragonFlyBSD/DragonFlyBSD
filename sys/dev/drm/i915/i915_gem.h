@@ -1,5 +1,5 @@
 /*
- * Copyright © 2008 Intel Corporation
+ * Copyright © 2016 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,43 +20,15 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- * Authors:
- *     Jesse Barnes <jbarnes@virtuousgeek.org>
- *
  */
-#ifndef _DRM_MEM_UTIL_H_
-#define _DRM_MEM_UTIL_H_
 
-#include <linux/vmalloc.h>
+#ifndef __I915_GEM_H__
+#define __I915_GEM_H__
 
-static __inline__ void *drm_calloc_large(size_t nmemb, size_t size)
-{
-	if (size != 0 && nmemb > SIZE_MAX / size)
-		return NULL;
-
-	return kmalloc(nmemb * size, M_DRM, M_WAITOK | M_ZERO);
-}
-
-/* Modeled after cairo's malloc_ab, it's like calloc but without the zeroing. */
-static __inline__ void *drm_malloc_ab(size_t nmemb, size_t size)
-{
-	if (size != 0 && nmemb > SIZE_MAX / size)
-		return NULL;
-
-	return kmalloc(nmemb * size, M_DRM, M_WAITOK);
-}
-
-static __inline__ void *drm_malloc_gfp(size_t nmemb, size_t size, gfp_t gfp)
-{
-	if (size != 0 && nmemb > SIZE_MAX / size)
-		return NULL;
-
-	return kmalloc(nmemb * size, M_DRM, gfp);
-}
-
-static __inline void drm_free_large(void *ptr)
-{
-	kfree(ptr);
-}
-
+#ifdef CONFIG_DRM_I915_DEBUG_GEM
+#define GEM_BUG_ON(expr) BUG_ON(expr)
+#else
+#define GEM_BUG_ON(expr)
 #endif
+
+#endif /* __I915_GEM_H__ */
