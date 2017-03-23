@@ -1670,6 +1670,7 @@ dev/video/cxm/cxm_ir.c		optional cxm pci
 dev/video/cxm/cxm_msp34xxx.c	optional cxm pci
 dev/video/cxm/cxm_saa7115.c	optional cxm pci
 dev/video/cxm/cxm_tuner.c	optional cxm pci
+dev/video/vga/vga_switcheroo.c	optional vga_switcheroo
 dev/netif/dc/if_dc.c		optional dc
 dev/netif/de/if_de.c		optional de
 dev/netif/pcn/if_pcn.c		optional pcn
