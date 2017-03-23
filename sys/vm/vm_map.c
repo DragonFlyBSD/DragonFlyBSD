@@ -133,7 +133,6 @@ static struct objcache *vmspace_cache;
 
 static struct vm_zone mapentzone_store;
 static vm_zone_t mapentzone;
-static struct vm_object mapentobj;
 
 static struct vm_map_entry map_entry_init[MAX_MAPENT];
 static struct vm_map_entry cpu_map_entry_init_bsp[MAPENTRYBSP_CACHE];
@@ -197,8 +196,7 @@ vm_init2(void)
 						0, ncpus * 4,
 						vmspace_ctor, vmspace_dtor,
 						NULL);
-	zinitna(mapentzone, &mapentobj, NULL, 0, 0, 
-		ZONE_USE_RESERVE | ZONE_SPECIAL);
+	zinitna(mapentzone, NULL, 0, 0, ZONE_USE_RESERVE | ZONE_SPECIAL);
 	pmap_init2();
 	vm_object_init2();
 }

@@ -149,7 +149,6 @@ extern void *vkernel_stack;
  */
 static vm_zone_t pvzone;
 static struct vm_zone pvzone_store;
-static struct vm_object pvzone_obj;
 static int pv_entry_count = 0;
 static int pv_entry_max = 0;
 static int pv_entry_high_water = 0;
@@ -658,7 +657,7 @@ pmap_init2(void)
 	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
 	TUNABLE_INT_FETCH("vm.pmap.pv_entries", &pv_entry_max);
 	pv_entry_high_water = 9 * (pv_entry_max / 10);
-	zinitna(pvzone, &pvzone_obj, NULL, 0, pv_entry_max, ZONE_INTERRUPT);
+	zinitna(pvzone, NULL, 0, pv_entry_max, ZONE_INTERRUPT);
 }
 
 

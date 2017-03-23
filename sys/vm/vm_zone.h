@@ -25,6 +25,8 @@
 #define ZONE_USE_RESERVE 0x0020	/* use reserve memory if necessary */
 #define ZONE_DESTROYABLE 0x0040 /* can be zdestroy()'ed */
 
+#define ZONE_MAXPGLOAD	8	/* max VM pages burst in zget() */
+
 #include <sys/spinlock.h>
 #include <sys/thread.h>
 
@@ -43,7 +45,7 @@ struct vm_zpcpu {
 typedef struct vm_zpcpu vm_zpcpu_t;
 
 typedef struct vm_zone {
-	struct spinlock zlock;		/* lock for global portion */
+	struct spinlock zspin;		/* lock for global portion */
 	vm_zpcpu_t	zpcpu[SMP_MAXCPU];
 	void		*zitems;	/* linked list of items */
 	long		zfreecnt;	/* free entries */
@@ -59,7 +61,6 @@ typedef struct vm_zone {
 	long		zalloc;		/* hint for # of pages to alloc */
 	long		zflags;		/* flags for zone */
 	uint32_t	zallocflag;	/* flag for allocation */
-	struct vm_object *zobj;		/* object to hold zone */
 	char		*zname;		/* name for diags */
 	LIST_ENTRY(vm_zone) zlink;	/* link in zlist */
 
@@ -76,7 +77,7 @@ typedef struct vm_zone {
 
 void		zerror (int) __dead2;
 vm_zone_t	zinit (char *name, size_t size, long nentries, uint32_t flags);
-int		zinitna (vm_zone_t z, struct vm_object *obj, char *name,
+int		zinitna (vm_zone_t z, char *name,
 			     size_t size, long nentries, uint32_t flags);
 void *		zalloc (vm_zone_t z);
 void		zfree (vm_zone_t z, void *item);
