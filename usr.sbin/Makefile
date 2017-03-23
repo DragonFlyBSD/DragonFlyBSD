@@ -33,6 +33,7 @@ SUBDIR= 802_11 \
 	dntpd \
 	edquota \
 	efivar \
+	efisetup \
 	faithd \
 	fdcontrol \
 	fdformat \
