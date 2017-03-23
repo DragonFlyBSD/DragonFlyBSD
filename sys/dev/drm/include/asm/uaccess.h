@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -91,5 +91,10 @@ __copy_from_user_inatomic_nocache(void *to, const void __user *from,
 	 */
 	return ((copyin_nofault(__DECONST(void *, from), to, n) != 0 ? n : 0));
 }
+
+#define __put_user(x, ptr)					\
+({								\
+	__copy_to_user_inatomic((ptr), &(x), sizeof(x));	\
+})
 
 #endif	/* _ASM_UACCESS_H_ */

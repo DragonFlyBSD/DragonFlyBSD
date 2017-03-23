@@ -47,7 +47,9 @@ SRCS += \
 	intel_atomic_plane.c \
 	intel_acpi.c \
 	intel_bios.c \
+	intel_color.c \
 	intel_display.c \
+	intel_dpll_mgr.c \
 	intel_fbc.c \
 	intel_fifo_underrun.c \
 	intel_frontbuffer.c \

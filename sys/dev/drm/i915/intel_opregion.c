@@ -36,12 +36,6 @@
 #include <contrib/dev/acpica/source/include/accommon.h>
 #include <dev/acpica/acpivar.h>
 
-#define PCI_ASLE		0xe4
-#define PCI_ASLS		0xfc
-#define PCI_SWSCI		0xe8
-#define PCI_SWSCI_SCISEL	(1 << 15)
-#define PCI_SWSCI_GSSCIE	(1 << 0)
-
 #define OPREGION_HEADER_OFFSET 0
 #define OPREGION_ACPI_OFFSET   0x100
 #define   ACPI_CLID 0x01ac /* current lid state indicator */
@@ -248,13 +242,12 @@ struct opregion_asle_ext {
 
 #define MAX_DSLP	1500
 
-#ifdef CONFIG_ACPI
 static int swsci(struct drm_device *dev, u32 function, u32 parm, u32 *parm_out)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct opregion_swsci *swsci = dev_priv->opregion.swsci;
 	u32 main_function, sub_function, scic;
-	u16 pci_swsci;
+	u16 swsci_val;
 	u32 dslp;
 
 	if (!swsci)
@@ -302,16 +295,16 @@ static int swsci(struct drm_device *dev, u32 function, u32 parm, u32 *parm_out)
 	swsci->scic = scic;
 
 	/* Ensure SCI event is selected and event trigger is cleared. */
-	pci_read_config_word(dev->pdev, PCI_SWSCI, &pci_swsci);
-	if (!(pci_swsci & PCI_SWSCI_SCISEL) || (pci_swsci & PCI_SWSCI_GSSCIE)) {
-		pci_swsci |= PCI_SWSCI_SCISEL;
-		pci_swsci &= ~PCI_SWSCI_GSSCIE;
-		pci_write_config_word(dev->pdev, PCI_SWSCI, pci_swsci);
+	pci_read_config_word(dev->pdev, SWSCI, &swsci_val);
+	if (!(swsci_val & SWSCI_SCISEL) || (swsci_val & SWSCI_GSSCIE)) {
+		swsci_val |= SWSCI_SCISEL;
+		swsci_val &= ~SWSCI_GSSCIE;
+		pci_write_config_word(dev->pdev, SWSCI, swsci_val);
 	}
 
 	/* Use event trigger to tell bios to check the mail. */
-	pci_swsci |= PCI_SWSCI_GSSCIE;
-	pci_write_config_word(dev->pdev, PCI_SWSCI, pci_swsci);
+	swsci_val |= SWSCI_GSSCIE;
+	pci_write_config_word(dev->pdev, SWSCI, swsci_val);
 
 	/* Poll for the result. */
 #define C (((scic = swsci->scic) & SWSCI_SCIC_INDICATOR) == 0)
@@ -923,9 +916,6 @@ static void swsci_setup(struct drm_device *dev)
 			 opregion->swsci_gbda_sub_functions,
 			 opregion->swsci_sbcb_sub_functions);
 }
-#else /* CONFIG_ACPI */
-static inline void swsci_setup(struct drm_device *dev) {}
-#endif  /* CONFIG_ACPI */
 
 static int intel_no_opregion_vbt_callback(const struct dmi_system_id *id)
 {
@@ -961,16 +951,14 @@ int intel_opregion_setup(struct drm_device *dev)
 	BUILD_BUG_ON(sizeof(struct opregion_asle) != 0x100);
 	BUILD_BUG_ON(sizeof(struct opregion_asle_ext) != 0x400);
 
-	pci_read_config_dword(dev->pdev, PCI_ASLS, &asls);
+	pci_read_config_dword(dev->pdev, ASLS, &asls);
 	DRM_DEBUG_DRIVER("graphic opregion physical addr: 0x%x\n", asls);
 	if (asls == 0) {
 		DRM_DEBUG_DRIVER("ACPI OpRegion not supported!\n");
 		return -ENOTSUP;
 	}
 
-#ifdef CONFIG_ACPI
 	INIT_WORK(&opregion->asle_work, asle_work);
-#endif
 
 	base = (void *)pmap_mapbios(asls, OPREGION_SIZE);
 	if (!base)
@@ -1041,4 +1029,70 @@ int intel_opregion_setup(struct drm_device *dev)
 err_out:
 	iounmap(base);
 	return err;
+}
+
+static int intel_use_opregion_panel_type_callback(const struct dmi_system_id *id)
+{
+	DRM_INFO("Using panel type from OpRegion on %s\n", id->ident);
+	return 1;
+}
+
+static const struct dmi_system_id intel_use_opregion_panel_type[] = {
+	{
+		.callback = intel_use_opregion_panel_type_callback,
+		.ident = "Conrac GmbH IX45GM2",
+		.matches = {DMI_MATCH(DMI_SYS_VENDOR, "Conrac GmbH"),
+			    DMI_MATCH(DMI_PRODUCT_NAME, "IX45GM2"),
+		},
+	},
+	{ }
+};
+
+int
+intel_opregion_get_panel_type(struct drm_device *dev)
+{
+	u32 panel_details;
+	int ret;
+
+	ret = swsci(dev, SWSCI_GBDA_PANEL_DETAILS, 0x0, &panel_details);
+	if (ret) {
+		DRM_DEBUG_KMS("Failed to get panel details from OpRegion (%d)\n",
+			      ret);
+		return ret;
+	}
+
+	ret = (panel_details >> 8) & 0xff;
+	if (ret > 0x10) {
+		DRM_DEBUG_KMS("Invalid OpRegion panel type 0x%x\n", ret);
+		return -EINVAL;
+	}
+
+	/* fall back to VBT panel type? */
+	if (ret == 0x0) {
+		DRM_DEBUG_KMS("No panel type in OpRegion\n");
+		return -ENODEV;
+	}
+
+	/*
+	 * So far we know that some machined must use it, others must not use it.
+	 * There doesn't seem to be any way to determine which way to go, except
+	 * via a quirk list :(
+	 */
+	if (!dmi_check_system(intel_use_opregion_panel_type)) {
+		DRM_DEBUG_KMS("Ignoring OpRegion panel type (%d)\n", ret - 1);
+		return -ENODEV;
+	}
+
+	/*
+	 * FIXME On Dell XPS 13 9350 the OpRegion panel type (0) gives us
+	 * low vswing for eDP, whereas the VBT panel type (2) gives us normal
+	 * vswing instead. Low vswing results in some display flickers, so
+	 * let's simply ignore the OpRegion panel type on SKL for now.
+	 */
+	if (IS_SKYLAKE(dev)) {
+		DRM_DEBUG_KMS("Ignoring OpRegion panel type (%d)\n", ret - 1);
+		return -ENODEV;
+	}
+
+	return ret - 1;
 }

@@ -1651,8 +1651,8 @@ dev/agp/agp.c			optional agp
 dev/agp/agp_via.c		optional agp
 dev/agp/agp_sis.c		optional agp
 dev/agp/agp_amd64.c		optional agp
-dev/agp/agp_i810.c		optional agp
 dev/agp/agp_if.m		optional agp
+dev/agp/intel-gtt.c		optional agp
 dev/disk/amd/amd.c		optional amd
 dev/video/bktr/bktr_audio.c	optional bktr pci
 dev/video/bktr/bktr_card.c	optional bktr pci
@@ -2004,6 +2004,8 @@ dev/drm/drm_context.c			optional drm
 dev/drm/drm_crtc.c			optional drm
 dev/drm/drm_crtc_helper.c		optional drm
 dev/drm/drm_dma.c			optional drm
+dev/drm/drm_dp_aux_dev.c		optional drm
+dev/drm/drm_dp_dual_mode_helper.c	optional drm
 dev/drm/drm_dp_helper.c			optional drm
 dev/drm/drm_dp_iic_helper.c		optional drm
 dev/drm/drm_dp_mst_topology.c		optional drm
@@ -2088,10 +2090,12 @@ dev/drm/i915/intel_atomic.c		optional i915 drm
 dev/drm/i915/intel_atomic_plane.c	optional i915 drm
 dev/drm/i915/intel_audio.c		optional i915 drm
 dev/drm/i915/intel_bios.c		optional i915 drm
+dev/drm/i915/intel_color.c		optional i915 drm
 dev/drm/i915/intel_crt.c		optional i915 drm
 dev/drm/i915/intel_csr.c		optional i915 drm
 dev/drm/i915/intel_ddi.c		optional i915 drm
 dev/drm/i915/intel_display.c		optional i915 drm
+dev/drm/i915/intel_dpll_mgr.c		optional i915 drm
 dev/drm/i915/intel_dp.c			optional i915 drm
 dev/drm/i915/intel_dp_link_training.c	optional i915 drm
 dev/drm/i915/intel_dp_mst.c		optional i915 drm

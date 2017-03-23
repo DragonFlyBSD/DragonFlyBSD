@@ -282,7 +282,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
  *
  * \sa drm_device
  */
-int drm_lastclose(struct drm_device * dev)
+void drm_lastclose(struct drm_device * dev)
 {
 	DRM_DEBUG("\n");
 
@@ -301,7 +301,7 @@ int drm_lastclose(struct drm_device * dev)
 		dev->unique_len = 0;
 	}
 
-	drm_agp_clear(dev);
+	drm_legacy_agp_clear(dev);
 
 	drm_legacy_sg_cleanup(dev);
 	drm_legacy_dma_takedown(dev);
@@ -315,7 +315,6 @@ int drm_lastclose(struct drm_device * dev)
 	mutex_unlock(&dev->struct_mutex);
 
 	DRM_DEBUG("lastclose completed\n");
-	return 0;
 }
 
 /**

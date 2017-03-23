@@ -2,6 +2,7 @@
  * Copyright (c) 2000 Doug Rabson
  * Copyright (c) 2000 Ruslan Ermilov
  * Copyright (c) 2011 The FreeBSD Foundation
+ * Copyright (c) 2017 François Tigeot
  * All rights reserved.
  *
  * Portions of this software were developed by Konstantin Belousov
@@ -71,13 +72,6 @@
 #include <linux/slab.h>
 #include <linux/scatterlist.h>
 #include <drm/intel-gtt.h>
-
-#define bus_read_1(r, o) \
-		   bus_space_read_1((r)->r_bustag, (r)->r_bushandle, (o))
-#define bus_read_4(r, o) \
-		   bus_space_read_4((r)->r_bustag, (r)->r_bushandle, (o))
-#define bus_write_4(r, o, v) \
-		    bus_space_write_4((r)->r_bustag, (r)->r_bushandle, (o), (v))
 
 struct agp_i810_match;
 
@@ -1672,4 +1666,22 @@ intel_gtt_write(u_int entry, uint32_t val)
 
 	sc = device_get_softc(intel_agp);
 	sc->match->driver->write_gtt(intel_agp, entry, val);
+}
+
+#define GFX_FLSH_CNTL	0x2170
+
+bool
+intel_enable_gtt(void)
+{
+	struct agp_i810_softc *sc = device_get_softc(intel_agp);
+
+	/* Some chipsets such as Pineview can't report if the GTT
+	 * has been enabled or not.
+	 * Assume everything is fine. */
+
+	/* Flush all chipset write buffers nevertheless */
+	bus_write_4(sc->sc_res[0], GFX_FLSH_CNTL, 1);
+	bus_write_4(sc->sc_res[0], GFX_FLSH_CNTL, 0);
+
+	return true;
 }

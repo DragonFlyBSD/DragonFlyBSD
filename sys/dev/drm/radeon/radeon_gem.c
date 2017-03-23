@@ -297,7 +297,7 @@ int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 	lockmgr(&rdev->exclusive_lock, LK_SHARED);
 
 	/* just do a BO wait for now */
-	gobj = drm_gem_object_lookup(dev, filp, args->handle);
+	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL) {
 		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
 		return -ENOENT;
@@ -319,7 +319,7 @@ int radeon_mode_dumb_mmap(struct drm_file *filp,
 	struct drm_gem_object *gobj;
 	struct radeon_bo *robj;
 
-	gobj = drm_gem_object_lookup(dev, filp, handle);
+	gobj = drm_gem_object_lookup(filp, handle);
 	if (gobj == NULL) {
 		return -ENOENT;
 	}
@@ -347,7 +347,7 @@ int radeon_gem_busy_ioctl(struct drm_device *dev, void *data,
 	int r;
 	uint32_t cur_placement = 0;
 
-	gobj = drm_gem_object_lookup(dev, filp, args->handle);
+	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL) {
 		return -ENOENT;
 	}
@@ -369,7 +369,7 @@ int radeon_gem_wait_idle_ioctl(struct drm_device *dev, void *data,
 	int r;
 	uint32_t cur_placement = 0;
 
-	gobj = drm_gem_object_lookup(dev, filp, args->handle);
+	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL) {
 		return -ENOENT;
 	}
@@ -395,7 +395,7 @@ int radeon_gem_set_tiling_ioctl(struct drm_device *dev, void *data,
 	int r = 0;
 
 	DRM_DEBUG("%d \n", args->handle);
-	gobj = drm_gem_object_lookup(dev, filp, args->handle);
+	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL)
 		return -ENOENT;
 	robj = gem_to_radeon_bo(gobj);
@@ -413,7 +413,7 @@ int radeon_gem_get_tiling_ioctl(struct drm_device *dev, void *data,
 	int r = 0;
 
 	DRM_DEBUG("\n");
-	gobj = drm_gem_object_lookup(dev, filp, args->handle);
+	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL)
 		return -ENOENT;
 	rbo = gem_to_radeon_bo(gobj);
@@ -486,7 +486,7 @@ int radeon_gem_va_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	gobj = drm_gem_object_lookup(dev, filp, args->handle);
+	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL) {
 		args->operation = RADEON_VA_RESULT_ERROR;
 		return -ENOENT;
@@ -538,7 +538,7 @@ int radeon_gem_op_ioctl(struct drm_device *dev, void *data,
 	struct radeon_bo *robj;
 	int r;
 
-	gobj = drm_gem_object_lookup(dev, filp, args->handle);
+	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL) {
 		return -ENOENT;
 	}

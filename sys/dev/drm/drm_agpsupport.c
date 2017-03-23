@@ -507,7 +507,7 @@ struct drm_agp_head *drm_agp_init(struct drm_device *dev)
 }
 
 /**
- * drm_agp_clear - Clear AGP resource list
+ * drm_legacy_agp_clear - Clear AGP resource list
  * @dev: DRM device
  *
  * Iterate over all AGP resources and remove them. But keep the AGP head
@@ -518,7 +518,7 @@ struct drm_agp_head *drm_agp_init(struct drm_device *dev)
  * resources from getting destroyed. Drivers are responsible of cleaning them up
  * during device shutdown.
  */
-void drm_agp_clear(struct drm_device *dev)
+void drm_legacy_agp_clear(struct drm_device *dev)
 {
 	struct drm_agp_mem *entry, *nexte;
 

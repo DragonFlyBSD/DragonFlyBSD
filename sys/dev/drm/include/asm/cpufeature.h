@@ -27,9 +27,18 @@
 #ifndef _ASM_CPUFEATURE_H_
 #define _ASM_CPUFEATURE_H_
 
-#include <asm/pci-dma-compat.h>
+#include <asm/cpufeatures.h>
 
-/* All amd64 CPUs have the clflush instruction */
-#define cpu_has_clflush		1
+static inline bool
+static_cpu_has(uint16_t feature)
+{
+	switch(feature) {
+	case X86_FEATURE_CLFLUSH:
+		/* All amd64 CPUs have the clflush instruction */
+		return true;
+	default:
+		return false;
+	}
+}
 
 #endif	/* _ASM_CPUFEATURE_H_ */

@@ -58,6 +58,8 @@ struct drm_mode_object {
 	uint32_t id;
 	uint32_t type;
 	struct drm_object_properties *properties;
+	struct kref refcount;
+	void (*free_cb)(struct kref *kref);
 };
 
 #define DRM_OBJECT_MAX_PROPERTY 24
@@ -232,8 +234,8 @@ struct drm_framebuffer {
 	 * should be deferred.  In cases like this, the driver would like to
 	 * hold a ref to the fb even though it has already been removed from
 	 * userspace perspective.
+	 * The refcount is stored inside the mode object.
 	 */
-	struct kref refcount;
 	/*
 	 * Place on the dev->mode_config.fb_list, access protected by
 	 * dev->mode_config.fb_lock.
@@ -2255,8 +2257,9 @@ void drm_connector_unregister(struct drm_connector *connector);
 extern void drm_connector_cleanup(struct drm_connector *connector);
 extern unsigned int drm_connector_index(struct drm_connector *connector);
 
-/* helper to unplug all connectors from sysfs for device */
-extern void drm_connector_unplug_all(struct drm_device *dev);
+/* helpers to {un}register all connectors from sysfs for device */
+extern int drm_connector_register_all(struct drm_device *dev);
+extern void drm_connector_unregister_all(struct drm_device *dev);
 
 extern int drm_bridge_add(struct drm_bridge *bridge);
 extern void drm_bridge_remove(struct drm_bridge *bridge);
@@ -2384,8 +2387,6 @@ extern int drm_framebuffer_init(struct drm_device *dev,
 				const struct drm_framebuffer_funcs *funcs);
 extern struct drm_framebuffer *drm_framebuffer_lookup(struct drm_device *dev,
 						      uint32_t id);
-extern void drm_framebuffer_unreference(struct drm_framebuffer *fb);
-extern void drm_framebuffer_reference(struct drm_framebuffer *fb);
 extern void drm_framebuffer_remove(struct drm_framebuffer *fb);
 extern void drm_framebuffer_cleanup(struct drm_framebuffer *fb);
 extern void drm_framebuffer_unregister_private(struct drm_framebuffer *fb);
@@ -2443,6 +2444,8 @@ extern int drm_mode_crtc_set_gamma_size(struct drm_crtc *crtc,
 					 int gamma_size);
 extern struct drm_mode_object *drm_mode_object_find(struct drm_device *dev,
 		uint32_t id, uint32_t type);
+void drm_mode_object_reference(struct drm_mode_object *obj);
+void drm_mode_object_unreference(struct drm_mode_object *obj);
 
 /* IOCTLs */
 extern int drm_mode_getresources(struct drm_device *dev,
@@ -2508,6 +2511,8 @@ extern int drm_edid_header_is_valid(const u8 *raw_edid);
 extern bool drm_edid_block_valid(u8 *raw_edid, int block, bool print_bad_edid,
 				 bool *edid_corrupt);
 extern bool drm_edid_is_valid(struct edid *edid);
+extern void drm_edid_get_monitor_name(struct edid *edid, char *name,
+				      int buflen);
 
 extern struct drm_tile_group *drm_mode_create_tile_group(struct drm_device *dev,
 							 char topology[8]);
@@ -2573,7 +2578,16 @@ static inline struct drm_encoder *drm_encoder_find(struct drm_device *dev,
 	return mo ? obj_to_encoder(mo) : NULL;
 }
 
-static inline struct drm_connector *drm_connector_find(struct drm_device *dev,
+/**
+ * drm_connector_lookup - lookup connector object
+ * @dev: DRM device
+ * @id: connector object id
+ *
+ * This function looks up the connector object specified by id
+ * add takes a reference to it.
+ */
+static inline struct drm_connector *drm_connector_lookup(struct drm_device *dev,
+
 		uint32_t id)
 {
 	struct drm_mode_object *mo;
@@ -2602,6 +2616,61 @@ static inline uint32_t drm_color_lut_extract(uint32_t user_input,
 	val >>= 16 - bit_precision;
 
 	return clamp_val(val, 0, max);
+}
+
+/*
+ * drm_framebuffer_reference - incr the fb refcnt
+ * @fb: framebuffer
+ *
+ * This functions increments the fb's refcount.
+ */
+static inline void drm_framebuffer_reference(struct drm_framebuffer *fb)
+{
+	drm_mode_object_reference(&fb->base);
+}
+
+/**
+ * drm_framebuffer_unreference - unref a framebuffer
+ * @fb: framebuffer to unref
+ *
+ * This functions decrements the fb's refcount and frees it if it drops to zero.
+ */
+static inline void drm_framebuffer_unreference(struct drm_framebuffer *fb)
+{
+	drm_mode_object_unreference(&fb->base);
+}
+
+/**
+ * drm_framebuffer_read_refcount - read the framebuffer reference count.
+ * @fb: framebuffer
+ *
+ * This functions returns the framebuffer's reference count.
+ */
+static inline uint32_t drm_framebuffer_read_refcount(struct drm_framebuffer *fb)
+{
+	return atomic_read(&fb->base.refcount.refcount);
+}
+
+/**
+ * drm_connector_reference - incr the connector refcnt
+ * @connector: connector
+ *
+ * This function increments the connector's refcount.
+ */
+static inline void drm_connector_reference(struct drm_connector *connector)
+{
+	drm_mode_object_reference(&connector->base);
+}
+
+/**
+ * drm_connector_unreference - unref a connector
+ * @connector: connector to unref
+ *
+ * This function decrements the connector's refcount and frees it if it drops to zero.
+ */
+static inline void drm_connector_unreference(struct drm_connector *connector)
+{
+	drm_mode_object_unreference(&connector->base);
 }
 
 /* Plane list iterator for legacy (overlay only) planes. */
