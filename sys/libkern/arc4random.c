@@ -59,11 +59,17 @@ arc4_randomstir (void)
 			key[n] = key[n % r];
 	}
 
-	for (n = 0; n < 256; n++)
-	{
+	for (n = 0; n < 256; n++) {
 		arc4_j = (arc4_j + arc4_sbox[n] + key[n]) % 256;
 		arc4_swap(&arc4_sbox[n], &arc4_sbox[arc4_j]);
 	}
+
+	/*
+	 * Discard early keystream, as per recommendations in:
+	 * "(Not So) Random Shuffles of RC4" by Ilya Mironov.
+	 */
+	for (n = 0; n < 768*4; n++)
+		arc4_randbyte();
 
 	/* Reset for next reseed cycle. */
 	getmicrotime(&arc4_tv_nextreseed);
@@ -87,11 +93,10 @@ arc4_init(void)
 	arc4_initialized = 1;
 
 	/*
-	 * Throw away the first N words of output, as suggested in the
-	 * paper "Weaknesses in the Key Scheduling Algorithm of RC4"
-	 * by Fluher, Mantin, and Shamir.  (N = 256 in our case.)
+	 * Discard early keystream, as per recommendations in:
+	 * "(Not So) Random Shuffles of RC4" by Ilya Mironov.
 	 */
-	for (n = 0; n < 256*4; n++)
+	for (n = 0; n < 768*4; n++)
 		arc4_randbyte();
 }
 

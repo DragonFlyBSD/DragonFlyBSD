@@ -153,13 +153,10 @@ arc4_stir(void)
 	arc4_addrandom((u_char *)rnd, n);
 
 	/*
-	 * Throw away the first N bytes of output, as suggested in the
-	 * paper "Weaknesses in the Key Scheduling Algorithm of RC4"
-	 * by Fluher, Mantin, and Shamir.  N=1024 is based on
-	 * suggestions in the paper "(Not So) Random Shuffles of RC4"
-	 * by Ilya Mironov.
+	 * Discard early keystream, as per recommendations in:
+	 * "(Not So) Random Shuffles of RC4" by Ilya Mironov.
 	 */
-	for (n = 0; n < 1024; n++)
+	for (n = 0; n < 3072; n++)
 		arc4_getbyte();
 
 	/*
