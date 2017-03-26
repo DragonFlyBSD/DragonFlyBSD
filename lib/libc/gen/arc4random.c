@@ -155,11 +155,11 @@ arc4_stir(void)
 	/*
 	 * Throw away the first N bytes of output, as suggested in the
 	 * paper "Weaknesses in the Key Scheduling Algorithm of RC4"
-	 * by Fluher, Mantin, and Shamir.  N=1024 is based on
+	 * by Fluher, Mantin, and Shamir.  N=3072 is based on
 	 * suggestions in the paper "(Not So) Random Shuffles of RC4"
 	 * by Ilya Mironov.
 	 */
-	for (n = 0; n < 1024; n++)
+	for (n = 0; n < 3072; n++)
 		arc4_getbyte();
 
 	/*
