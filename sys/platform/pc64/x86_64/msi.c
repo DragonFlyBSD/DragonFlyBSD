@@ -214,7 +214,8 @@ extern inthand_t
 	IDTVEC(msi_intr172),
 	IDTVEC(msi_intr173),
 	IDTVEC(msi_intr174),
-	IDTVEC(msi_intr175),
+	IDTVEC(msi_intr175);
+#if 0
 	IDTVEC(msi_intr176),
 	IDTVEC(msi_intr177),
 	IDTVEC(msi_intr178),
@@ -231,6 +232,7 @@ extern inthand_t
 	IDTVEC(msi_intr189),
 	IDTVEC(msi_intr190),
 	IDTVEC(msi_intr191);
+#endif
 
 static inthand_t *msi_intr[IDT_HWI_VECTORS] = {
 	&IDTVEC(msi_intr0),
@@ -408,7 +410,8 @@ static inthand_t *msi_intr[IDT_HWI_VECTORS] = {
 	&IDTVEC(msi_intr172),
 	&IDTVEC(msi_intr173),
 	&IDTVEC(msi_intr174),
-	&IDTVEC(msi_intr175),
+	&IDTVEC(msi_intr175)
+#if 0
 	&IDTVEC(msi_intr176),
 	&IDTVEC(msi_intr177),
 	&IDTVEC(msi_intr178),
@@ -425,6 +428,7 @@ static inthand_t *msi_intr[IDT_HWI_VECTORS] = {
 	&IDTVEC(msi_intr189),
 	&IDTVEC(msi_intr190),
 	&IDTVEC(msi_intr191)
+#endif
 };
 
 void
