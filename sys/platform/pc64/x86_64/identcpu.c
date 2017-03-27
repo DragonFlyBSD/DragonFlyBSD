@@ -353,7 +353,7 @@ printcpuinfo(void)
 				"\033DBE"	/* Data Breakpoint Extension */
 				"\034PTSC"	/* Performance TSC */
 				"\035PCX_L2I"	/* L2I Performance Counter */
-				"\036<b29>"
+		       	        "\036MWAITX"	/* MONITORX/MWAITX instructions */
 				"\037<b30>"
 				"\040<b31>"
 				);
