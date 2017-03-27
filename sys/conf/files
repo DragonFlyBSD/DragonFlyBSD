@@ -1138,6 +1138,7 @@ kern/kern_xxx.c		standard
 kern/md5c.c		standard
 kern/subr_autoconf.c	standard
 kern/subr_bus.c		standard
+kern/subr_cpuhelper.c	standard
 kern/subr_csprng.c	standard
 kern/subr_busdma.c	standard
 kern/subr_devstat.c	standard

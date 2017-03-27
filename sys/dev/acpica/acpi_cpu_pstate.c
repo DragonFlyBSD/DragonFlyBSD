@@ -36,6 +36,7 @@
 
 #include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/cpuhelper.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
@@ -43,10 +44,6 @@
 #include <sys/sysctl.h>
 #include <sys/msgport2.h>
 #include <sys/cpu_topology.h>
-
-#include <net/netisr2.h>
-#include <net/netmsg2.h>
-#include <net/if_var.h>
 
 #include "acpi.h"
 #include "acpivar.h"
@@ -68,10 +65,10 @@
 struct acpi_pst_softc;
 LIST_HEAD(acpi_pst_list, acpi_pst_softc);
 
-struct netmsg_acpi_pst {
-	struct netmsg_base base;
-	const struct acpi_pst_res *ctrl;
-	const struct acpi_pst_res *status;
+struct acpi_pst_chmsg {
+	struct cpuhelper_msg	ch_msg;
+	const struct acpi_pst_res *ch_ctrl;
+	const struct acpi_pst_res *ch_status;
 };
 
 struct acpi_pst_domain {
@@ -149,11 +146,11 @@ static int	acpi_pst_alloc_resource(device_t, ACPI_OBJECT *, int,
 static int	acpi_pst_eval_ppc(struct acpi_pst_softc *, int *);
 static int	acpi_pst_eval_pdl(struct acpi_pst_softc *, int *);
 
-static void	acpi_pst_check_csr_handler(netmsg_t);
-static void	acpi_pst_check_pstates_handler(netmsg_t);
-static void	acpi_pst_init_handler(netmsg_t);
-static void	acpi_pst_set_pstate_handler(netmsg_t);
-static void	acpi_pst_get_pstate_handler(netmsg_t);
+static void	acpi_pst_check_csr_handler(struct cpuhelper_msg *);
+static void	acpi_pst_check_pstates_handler(struct cpuhelper_msg *);
+static void	acpi_pst_init_handler(struct cpuhelper_msg *);
+static void	acpi_pst_set_pstate_handler(struct cpuhelper_msg *);
+static void	acpi_pst_get_pstate_handler(struct cpuhelper_msg *);
 
 static int	acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS);
 static int	acpi_pst_sysctl_freqs_bin(SYSCTL_HANDLER_ARGS);
@@ -1335,133 +1332,132 @@ acpi_pst_sysctl_global(SYSCTL_HANDLER_ARGS)
 }
 
 static void
-acpi_pst_check_csr_handler(netmsg_t msg)
+acpi_pst_check_csr_handler(struct cpuhelper_msg *msg)
 {
-	struct netmsg_acpi_pst *rmsg = (struct netmsg_acpi_pst *)msg;
+	struct acpi_pst_chmsg *pmsg = (struct acpi_pst_chmsg *)msg;
 	int error;
 
-	error = acpi_pst_md->pmd_check_csr(rmsg->ctrl, rmsg->status);
-	lwkt_replymsg(&rmsg->base.lmsg, error);
+	error = acpi_pst_md->pmd_check_csr(pmsg->ch_ctrl, pmsg->ch_status);
+	cpuhelper_replymsg(msg, error);
 }
 
 static int
 acpi_pst_check_csr(struct acpi_pst_softc *sc)
 {
-	struct netmsg_acpi_pst msg;
+	struct acpi_pst_chmsg msg;
 
 	if (acpi_pst_md == NULL)
 		return 0;
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-		    MSGF_PRIORITY, acpi_pst_check_csr_handler);
-	msg.ctrl = &sc->pst_creg;
-	msg.status = &sc->pst_sreg;
+	cpuhelper_initmsg(&msg.ch_msg, &curthread->td_msgport,
+	    acpi_pst_check_csr_handler, NULL, MSGF_PRIORITY);
+	msg.ch_ctrl = &sc->pst_creg;
+	msg.ch_status = &sc->pst_sreg;
 
-	return lwkt_domsg(netisr_cpuport(sc->pst_cpuid), &msg.base.lmsg, 0);
+	return (cpuhelper_domsg(&msg.ch_msg, sc->pst_cpuid));
 }
 
 static void
-acpi_pst_check_pstates_handler(netmsg_t msg)
+acpi_pst_check_pstates_handler(struct cpuhelper_msg *msg)
 {
 	int error;
 
 	error = acpi_pst_md->pmd_check_pstates(acpi_pstates, acpi_npstates);
-	lwkt_replymsg(&msg->lmsg, error);
+	cpuhelper_replymsg(msg, error);
 }
 
 static int
 acpi_pst_check_pstates(struct acpi_pst_softc *sc)
 {
-	struct netmsg_base msg;
+	struct cpuhelper_msg msg;
 
 	if (acpi_pst_md == NULL)
 		return 0;
 
-	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    MSGF_PRIORITY, acpi_pst_check_pstates_handler);
-
-	return lwkt_domsg(netisr_cpuport(sc->pst_cpuid), &msg.lmsg, 0);
+	cpuhelper_initmsg(&msg, &curthread->td_msgport,
+	    acpi_pst_check_pstates_handler, NULL, MSGF_PRIORITY);
+	return (cpuhelper_domsg(&msg, sc->pst_cpuid));
 }
 
 static void
-acpi_pst_init_handler(netmsg_t msg)
+acpi_pst_init_handler(struct cpuhelper_msg *msg)
 {
-	struct netmsg_acpi_pst *rmsg = (struct netmsg_acpi_pst *)msg;
+	struct acpi_pst_chmsg *pmsg = (struct acpi_pst_chmsg *)msg;
 	int error;
 
-	error = acpi_pst_md->pmd_init(rmsg->ctrl, rmsg->status);
-	lwkt_replymsg(&rmsg->base.lmsg, error);
+	error = acpi_pst_md->pmd_init(pmsg->ch_ctrl, pmsg->ch_status);
+	cpuhelper_replymsg(msg, error);
 }
 
 static int
 acpi_pst_init(struct acpi_pst_softc *sc)
 {
-	struct netmsg_acpi_pst msg;
+	struct acpi_pst_chmsg msg;
 
 	if (acpi_pst_md == NULL)
 		return 0;
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-		    MSGF_PRIORITY, acpi_pst_init_handler);
-	msg.ctrl = &sc->pst_creg;
-	msg.status = &sc->pst_sreg;
+	cpuhelper_initmsg(&msg.ch_msg, &curthread->td_msgport,
+	    acpi_pst_init_handler, NULL, MSGF_PRIORITY);
+	msg.ch_ctrl = &sc->pst_creg;
+	msg.ch_status = &sc->pst_sreg;
 
-	return lwkt_domsg(netisr_cpuport(sc->pst_cpuid), &msg.base.lmsg, 0);
+	return (cpuhelper_domsg(&msg.ch_msg, sc->pst_cpuid));
 }
 
 static void
-acpi_pst_set_pstate_handler(netmsg_t msg)
+acpi_pst_set_pstate_handler(struct cpuhelper_msg *msg)
 {
-	struct netmsg_acpi_pst *rmsg = (struct netmsg_acpi_pst *)msg;
+	struct acpi_pst_chmsg *pmsg = (struct acpi_pst_chmsg *)msg;
 	int error;
 
-	error = acpi_pst_md->pmd_set_pstate(rmsg->ctrl, rmsg->status,
-					    rmsg->base.lmsg.u.ms_resultp);
-	lwkt_replymsg(&rmsg->base.lmsg, error);
+	error = acpi_pst_md->pmd_set_pstate(pmsg->ch_ctrl, pmsg->ch_status,
+	    msg->ch_cbarg);
+	cpuhelper_replymsg(msg, error);
 }
 
 static int
 acpi_pst_set_pstate(struct acpi_pst_softc *sc, const struct acpi_pstate *pstate)
 {
-	struct netmsg_acpi_pst msg;
+	struct acpi_pst_chmsg msg;
 
 	KKASSERT(acpi_pst_md != NULL);
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-		    MSGF_PRIORITY, acpi_pst_set_pstate_handler);
-	msg.base.lmsg.u.ms_resultp = __DECONST(void *, pstate);
-	msg.ctrl = &sc->pst_creg;
-	msg.status = &sc->pst_sreg;
+	cpuhelper_initmsg(&msg.ch_msg, &curthread->td_msgport,
+	    acpi_pst_set_pstate_handler, __DECONST(void *, pstate),
+	    MSGF_PRIORITY);
+	msg.ch_ctrl = &sc->pst_creg;
+	msg.ch_status = &sc->pst_sreg;
 
-	return lwkt_domsg(netisr_cpuport(sc->pst_cpuid), &msg.base.lmsg, 0);
+	return (cpuhelper_domsg(&msg.ch_msg, sc->pst_cpuid));
 }
 
 static void
-acpi_pst_get_pstate_handler(netmsg_t msg)
+acpi_pst_get_pstate_handler(struct cpuhelper_msg *msg)
 {
-	struct netmsg_acpi_pst *rmsg = (struct netmsg_acpi_pst *)msg;
+	struct acpi_pst_chmsg *pmsg = (struct acpi_pst_chmsg *)msg;
 	const struct acpi_pstate *pstate;
 
-	pstate = acpi_pst_md->pmd_get_pstate(rmsg->status, acpi_pstates,
-					     acpi_npstates);
-	rmsg->base.lmsg.u.ms_resultp = __DECONST(void *, pstate);
-	lwkt_replymsg(&rmsg->base.lmsg, 0);
+	pstate = acpi_pst_md->pmd_get_pstate(pmsg->ch_status, acpi_pstates,
+	    acpi_npstates);
+	msg->ch_cbarg = __DECONST(void *, pstate);
+	cpuhelper_replymsg(msg, 0);
 }
 
 static const struct acpi_pstate *
 acpi_pst_get_pstate(struct acpi_pst_softc *sc)
 {
-	struct netmsg_acpi_pst msg;
+	struct acpi_pst_chmsg msg;
 
 	if (acpi_pst_md == NULL)
 		return 0;
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-		    MSGF_PRIORITY, acpi_pst_get_pstate_handler);
-	msg.status = &sc->pst_sreg;
+	cpuhelper_initmsg(&msg.ch_msg, &curthread->td_msgport,
+	    acpi_pst_get_pstate_handler, NULL, MSGF_PRIORITY);
+	msg.ch_status = &sc->pst_sreg;
 
-	lwkt_domsg(netisr_cpuport(sc->pst_cpuid), &msg.base.lmsg, 0);
-	return msg.base.lmsg.u.ms_resultp;
+	cpuhelper_domsg(&msg.ch_msg, sc->pst_cpuid);
+	return (msg.ch_msg.ch_cbarg);
 }
 
 static int

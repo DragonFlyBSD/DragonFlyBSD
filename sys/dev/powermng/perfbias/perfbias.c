@@ -36,12 +36,10 @@
 #include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/cpuhelper.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
-
-#include <net/netmsg2.h>
-#include <net/netisr2.h>
 
 #include <machine/specialreg.h>
 #include <machine/cpufunc.h>
@@ -60,18 +58,12 @@ struct perfbias_softc {
 	struct sysctl_oid	*sc_sysctl_tree;
 };
 
-struct netmsg_perfbias {
-	struct netmsg_base	base;
-	struct perfbias_softc	*sc;
-	int			hint;
-};
-
 static void	perfbias_identify(driver_t *, device_t);
 static int	perfbias_probe(device_t);
 static int	perfbias_attach(device_t);
 static int	perfbias_detach(device_t);
 
-static void	perfbias_set_handler(netmsg_t);
+static void	perfbias_set_handler(struct cpuhelper_msg *);
 static int	perfbias_set(struct perfbias_softc *, int);
 
 static int	perfbias_sysctl(SYSCTL_HANDLER_ARGS);
@@ -178,29 +170,27 @@ perfbias_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 static void
-perfbias_set_handler(netmsg_t msg)
+perfbias_set_handler(struct cpuhelper_msg *msg)
 {
-	struct netmsg_perfbias *pmsg = (struct netmsg_perfbias *)msg;
-	struct perfbias_softc *sc = pmsg->sc;
-	uint64_t hint = pmsg->hint;
+	struct perfbias_softc *sc = msg->ch_cbarg;
+	uint64_t hint = msg->ch_cbarg1;
 
 	wrmsr(INTEL_MSR_PERF_BIAS, hint);
 	hint = rdmsr(INTEL_MSR_PERF_BIAS);
 
 	sc->sc_hint = hint & INTEL_MSR_PERF_BIAS_HINTMASK;
 
-	lwkt_replymsg(&pmsg->base.lmsg, 0);
+	cpuhelper_replymsg(msg, 0);
 }
 
 static int
 perfbias_set(struct perfbias_softc *sc, int hint)
 {
-	struct netmsg_perfbias msg;
+	struct cpuhelper_msg msg;
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
-	    perfbias_set_handler);
-	msg.hint = hint;
-	msg.sc = sc;
+	cpuhelper_initmsg(&msg, &curthread->td_msgport,
+	    perfbias_set_handler, sc, MSGF_PRIORITY);
+	msg.ch_cbarg1 = hint;
 
-	return lwkt_domsg(netisr_cpuport(sc->sc_cpuid), &msg.base.lmsg, 0);
+	return (cpuhelper_domsg(&msg, sc->sc_cpuid));
 }

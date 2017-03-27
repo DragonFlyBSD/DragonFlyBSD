@@ -30,6 +30,7 @@
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/cpuhelper.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/globaldata.h>
@@ -49,10 +50,6 @@
 #include <machine/smp.h>
 #include <sys/rman.h>
 
-#include <net/netisr2.h>
-#include <net/netmsg2.h>
-#include <net/if_var.h>
-
 #include "acpi.h"
 #include "acpivar.h"
 #include "acpi_cpu.h"
@@ -65,12 +62,6 @@
 /* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_PROCESSOR
 ACPI_MODULE_NAME("PROCESSOR")
-
-struct netmsg_acpi_cst {
-	struct netmsg_base base;
-	struct acpi_cst_softc *sc;
-	int		val;
-};
 
 #define MAX_CX_STATES	 8
 
@@ -499,10 +490,8 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-#ifdef INVARIANTS
     if (reprobe)
-	KKASSERT(&curthread->td_msgport == netisr_cpuport(sc->cst_cpuid));
-#endif
+	cpuhelper_assert(sc->cst_cpuid, true);
 
     buf.Pointer = NULL;
     buf.Length = ACPI_ALLOCATE_BUFFER;
@@ -699,25 +688,22 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 }
 
 static void
-acpi_cst_cx_reprobe_cst_handler(netmsg_t msg)
+acpi_cst_cx_reprobe_cst_handler(struct cpuhelper_msg *msg)
 {
-    struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
     int error;
 
-    error = acpi_cst_cx_probe_cst(rmsg->sc, 1);
-    lwkt_replymsg(&rmsg->base.lmsg, error);
+    error = acpi_cst_cx_probe_cst(msg->ch_cbarg, 1);
+    cpuhelper_replymsg(msg, error);
 }
 
 static int
 acpi_cst_cx_reprobe_cst(struct acpi_cst_softc *sc)
 {
-    struct netmsg_acpi_cst msg;
+    struct cpuhelper_msg msg;
 
-    netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
-	acpi_cst_cx_reprobe_cst_handler);
-    msg.sc = sc;
-
-    return lwkt_domsg(netisr_cpuport(sc->cst_cpuid), &msg.base.lmsg, 0);
+    cpuhelper_initmsg(&msg, &curthread->td_msgport,
+        acpi_cst_cx_reprobe_cst_handler, sc, MSGF_PRIORITY);
+    return (cpuhelper_domsg(&msg, sc->cst_cpuid));
 }
 
 /*
@@ -818,24 +804,21 @@ acpi_cst_support_list(struct acpi_cst_softc *sc)
 }	
 
 static void
-acpi_cst_c3_bm_rld_handler(netmsg_t msg)
+acpi_cst_c3_bm_rld_handler(struct cpuhelper_msg *msg)
 {
-    struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
 
     AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
-    lwkt_replymsg(&rmsg->base.lmsg, 0);
+    cpuhelper_replymsg(msg, 0);
 }
 
 static void
 acpi_cst_c3_bm_rld(struct acpi_cst_softc *sc)
 {
-    struct netmsg_acpi_cst msg;
+    struct cpuhelper_msg msg;
 
-    netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
-	acpi_cst_c3_bm_rld_handler);
-    msg.sc = sc;
-
-    lwkt_domsg(netisr_cpuport(sc->cst_cpuid), &msg.base.lmsg, 0);
+    cpuhelper_initmsg(&msg, &curthread->td_msgport,
+	acpi_cst_c3_bm_rld_handler, sc, MSGF_PRIORITY);
+    cpuhelper_domsg(&msg, sc->cst_cpuid);
 }
 
 static void
@@ -1008,8 +991,7 @@ acpi_cst_notify(device_t dev)
 {
     struct acpi_cst_softc *sc = device_get_softc(dev);
 
-    KASSERT(curthread->td_type != TD_TYPE_NETISR,
-        ("notify in netisr%d", mycpuid));
+    cpuhelper_assert(mycpuid, false);
 
     lwkt_serialize_enter(&acpi_cst_slize);
 
@@ -1184,26 +1166,24 @@ acpi_cst_set_lowest_oncpu(struct acpi_cst_softc *sc, int val)
 }
 
 static void
-acpi_cst_set_lowest_handler(netmsg_t msg)
+acpi_cst_set_lowest_handler(struct cpuhelper_msg *msg)
 {
-    struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
     int error;
 
-    error = acpi_cst_set_lowest_oncpu(rmsg->sc, rmsg->val);
-    lwkt_replymsg(&rmsg->base.lmsg, error);
+    error = acpi_cst_set_lowest_oncpu(msg->ch_cbarg, msg->ch_cbarg1);
+    cpuhelper_replymsg(msg, error);
 }
 
 static int
 acpi_cst_set_lowest(struct acpi_cst_softc *sc, int val)
 {
-    struct netmsg_acpi_cst msg;
+    struct cpuhelper_msg msg;
 
-    netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
-	acpi_cst_set_lowest_handler);
-    msg.sc = sc;
-    msg.val = val;
+    cpuhelper_initmsg(&msg, &curthread->td_msgport,
+	acpi_cst_set_lowest_handler, sc, MSGF_PRIORITY);
+    msg.ch_cbarg1 = val;
 
-    return lwkt_domsg(netisr_cpuport(sc->cst_cpuid), &msg.base.lmsg, 0);
+    return (cpuhelper_domsg(&msg, sc->cst_cpuid));
 }
 
 static int
