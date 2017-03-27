@@ -1522,6 +1522,14 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 		kprintf("Warning: system low on memory+swap "
 			"shortage %d for %d ticks!\n",
 			avail_shortage, ticks - swap_fail_ticks);
+		if (bootverbose)
+		kprintf("Metrics: spaf=%d spf=%d pass=%d avail=%d target=%d last=%u\n",
+			swap_pager_almost_full,
+			swap_pager_full,
+			pass,
+			avail_shortage,
+			vm_paging_target(),
+			(unsigned int)(ticks - lastkillticks));
 	}
 	if (swap_pager_full &&
 	    pass > 1 &&
@@ -1537,6 +1545,8 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 		info.bigsize = 0;
 		allproc_scan(vm_pageout_scan_callback, &info);
 		if (info.bigproc != NULL) {
+			kprintf("Try to kill process %d %s\n",
+				info.bigproc->p_pid, info.bigproc->p_comm);
 			info.bigproc->p_nice = PRIO_MIN;
 			info.bigproc->p_usched->resetpriority(
 				FIRST_LWP_IN_PROC(info.bigproc));
