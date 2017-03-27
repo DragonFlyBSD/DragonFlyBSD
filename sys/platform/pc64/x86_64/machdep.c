@@ -852,7 +852,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 * i386 abi specifies that the direction flag must be cleared
 	 * on function entry
 	 */
-	regs->tf_rflags &= ~(PSL_T|PSL_D);
+	regs->tf_rflags &= ~(PSL_T | PSL_D);
 
 	/*
 	 * 64 bit mode has a code and stack selector but
@@ -1150,7 +1150,8 @@ cpu_idle(void)
 		 * cpu_idle_hlt:
 		 *	0	Never halt, just spin
 		 *
-		 *	1	Always use HLT (or MONITOR/MWAIT if avail).
+		 *	1	Always use MONITOR/MWAIT if avail, HLT
+		 *		otherwise.
 		 *
 		 *		Better default for modern (Haswell+) Intel
 		 *		cpus.
@@ -1167,7 +1168,11 @@ cpu_idle(void)
 		 *		will be slow waking up.  Slows down e.g.
 		 *		compiles and other pipe/event oriented stuff.
 		 *
+		 *		Usually the best default for AMD cpus.
+		 *
 		 *	4	Always use HLT.
+		 *
+		 *	5	Always spin.
 		 *
 		 * NOTE: Interrupts are enabled and we are not in a critical
 		 *	 section.
@@ -1199,7 +1204,7 @@ cpu_idle(void)
 		++gd->gd_idle_repeat;
 		reqflags = gd->gd_reqflags;
 		quick = (cpu_idle_hlt == 1) ||
-			(cpu_idle_hlt < 3 &&
+			(cpu_idle_hlt == 2 &&
 			 gd->gd_idle_repeat < cpu_idle_repeat);
 
 		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
@@ -1223,10 +1228,13 @@ cpu_idle(void)
 			crit_enter_gd(gd);
 			ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
 			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
-				if (quick)
+				if (cpu_idle_hlt == 5) {
+					__asm __volatile("sti");
+				} else if (quick || cpu_idle_hlt == 4) {
 					cpu_idle_default_hook();
-				else
+				} else {
 					cpu_idle_hook();
+				}
 			}
 			__asm __volatile("sti");
 			stat->halt++;
@@ -1241,6 +1249,8 @@ cpu_idle(void)
 			splz();
 			__asm __volatile("sti");
 			stat->spin++;
+			crit_enter_gd(gd);
+			crit_exit_gd(gd);
 		}
 	}
 }
@@ -2388,25 +2398,29 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	initializecpu(0);	/* Initialize CPU registers */
 
 	/*
-	 * On modern intel cpus, haswell or later, cpu_idle_hlt=1 is better
+	 * On modern Intel cpus, haswell or later, cpu_idle_hlt=1 is better
 	 * because the cpu does significant power management in MWAIT
 	 * (also suggested is to set sysctl machdep.mwait.CX.idle=AUTODEEP).
 	 *
-	 * On modern amd cpus cpu_idle_hlt=3 is better, because the cpu does
-	 * significant power management in HLT or ACPI (but cpu_idle_hlt=1
-	 * would try to use MWAIT).
+	 * On modern AMD cpus cpu_idle_hlt=3 is better, because the cpu does
+	 * significant power management only when using ACPI halt mode.
 	 *
-	 * On older amd or intel cpus, cpu_idle_hlt=2 is better because ACPI
+	 * On older AMD or Intel cpus, cpu_idle_hlt=2 is better because ACPI
 	 * is needed to reduce power consumption, but wakeup times are often
-	 * longer.
+	 * too long longer.
 	 */
 	if (cpu_vendor_id == CPU_VENDOR_INTEL &&
 	    CPUID_TO_MODEL(cpu_id) >= 0x3C) {	/* Haswell or later */
 		cpu_idle_hlt = 1;
 	}
-	if (cpu_vendor_id == CPU_VENDOR_AMD &&
-	    CPUID_TO_FAMILY(cpu_id) >= 0x14) {	/* Bobcat or later */
-		cpu_idle_hlt = 3;
+	if (cpu_vendor_id == CPU_VENDOR_AMD) {
+		if (CPUID_TO_FAMILY(cpu_id) >= 0x17) {
+			/* Ryzen or later */
+			cpu_idle_hlt = 3;
+		} else if (CPUID_TO_FAMILY(cpu_id) >= 0x14) {
+			/* Bobcat or later */
+			cpu_idle_hlt = 3;
+		}
 	}
 
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &ioapic_enable); /* for compat */
