@@ -113,6 +113,7 @@ ASSYM(GD_SAMPLE_PC, offsetof(struct mdglobaldata, mi.gd_sample_pc));
 ASSYM(GD_SAMPLE_SP, offsetof(struct mdglobaldata, mi.gd_sample_sp));
 ASSYM(GD_CPUMASK_SIMPLE, offsetof(struct mdglobaldata, mi.gd_cpumask_simple));
 ASSYM(GD_CPUMASK_OFFSET, offsetof(struct mdglobaldata, mi.gd_cpumask_offset));
+ASSYM(GD_IRESERVED, offsetof(struct mdglobaldata, mi.gd_ireserved[0]));
 
 ASSYM(PCB_CR3, offsetof(struct pcb, pcb_cr3));
 ASSYM(PCB_R15, offsetof(struct pcb, pcb_r15));

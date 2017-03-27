@@ -66,6 +66,9 @@
 	.set	gd_fpu_lock, globaldata + GD_FPU_LOCK
 	.set	gd_savefpu, globaldata + GD_SAVEFPU
 
+	.globl	gd_ireserved
+	.set	gd_ireserved, globaldata + GD_IRESERVED
+
 	/*
 	 * The BSP version of these get setup in locore.s and pmap.c, while
 	 * the AP versions are setup in mp_machdep.c.
