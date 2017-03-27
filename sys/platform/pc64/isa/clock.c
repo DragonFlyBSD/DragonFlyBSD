@@ -1330,16 +1330,31 @@ tsc_mpsync_test(void)
 	 * Forcing can be used w/qemu to reduce contention
 	 */
 	TUNABLE_INT_FETCH("hw.tsc_cputimer_force", &tsc_mpsync);
-	if (tsc_mpsync) {
-		kprintf("TSC as cputimer forced\n");
-		return;
+
+	if (tsc_mpsync == 0) {
+		switch(cpu_vendor_id) {
+		case CPU_VENDOR_INTEL:
+			/*
+			 * Intel probably works
+			 */
+			break;
+		case CPU_VENDOR_AMD:
+			/*
+			 * AMD < Ryzen probably doesn't work
+			 */
+			if (CPUID_TO_FAMILY(cpu_id) < 0x17)
+				return;
+			break;
+		default:
+			/* probably won't work */
+			return;
+		}
 	}
 
-	if (cpu_vendor_id != CPU_VENDOR_INTEL) {
-		/* XXX only Intel works */
-		return;
-	}
-
+	/*
+	 * Test even if forced above.  If forced, we will use the TSC
+	 * even if the test fails.
+	 */
 	kprintf("TSC testing MP synchronization ...\n");
 
 	tsc_mpsync_test_loop(&arg);
