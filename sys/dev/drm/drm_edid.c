@@ -31,6 +31,7 @@
 #include <linux/hdmi.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
+#include <linux/vga_switcheroo.h>
 #include <drm/drmP.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_displayid.h>
@@ -1499,7 +1500,6 @@ EXPORT_SYMBOL(drm_get_edid);
  *
  * Return: Pointer to valid EDID or %NULL if we couldn't find any.
  */
-#if 0
 struct edid *drm_get_edid_switcheroo(struct drm_connector *connector,
 				     struct i2c_adapter *adapter)
 {
@@ -1513,7 +1513,6 @@ struct edid *drm_get_edid_switcheroo(struct drm_connector *connector,
 	return edid;
 }
 EXPORT_SYMBOL(drm_get_edid_switcheroo);
-#endif
 
 /**
  * drm_edid_duplicate - duplicate an EDID and the extensions
