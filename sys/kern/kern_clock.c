@@ -129,6 +129,11 @@ struct kinfo_pcheader cputime_pcheader = { PCTRACK_SIZE, PCTRACK_ARYSIZE };
 struct kinfo_pctrack cputime_pctrack[MAXCPU][PCTRACK_SIZE];
 #endif
 
+static int sniff_enable = 1;
+static int sniff_target = -1;
+SYSCTL_INT(_kern, OID_AUTO, sniff_enable, CTLFLAG_RW, &sniff_enable, 0 , "");
+SYSCTL_INT(_kern, OID_AUTO, sniff_target, CTLFLAG_RW, &sniff_target, 0 , "");
+
 static int
 sysctl_cputime(SYSCTL_HANDLER_ARGS)
 {
@@ -154,8 +159,15 @@ sysctl_cputime(SYSCTL_HANDLER_ARGS)
 			break;
 	}
 
-	if (root_error == 0)
-		smp_sniff();
+	if (root_error == 0) {
+		if (sniff_enable) {
+			int n = sniff_target;
+			if (n < 0)
+				smp_sniff();
+			else if (n < ncpus)
+				cpu_sniff(n);
+		}
+	}
 
 	return (error);
 }

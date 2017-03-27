@@ -687,6 +687,7 @@ cpu_invltlb(void)
 
 extern void smp_invltlb(void);
 extern void smp_sniff(void);
+extern void cpu_sniff(int dcpu);
 
 static __inline u_short
 rfs(void)

@@ -773,17 +773,15 @@ pmap_inval_intr(cpumask_t *cpumaskp, int toolong)
 					info->failed = 1;
 					loopdebug("C", info);
 					/* XXX recover from possible bug */
-					mdcpu->gd_xinvaltlb = 0;
+					cpu_disable_intr();
 					ATOMIC_CPUMASK_NANDMASK(smp_smurf_mask,
 								info->mask);
-					cpu_disable_intr();
 					smp_invlpg(&smp_active_mask);
 
 					/*
 					 * Force outer-loop retest of Xinvltlb
 					 * requests (see mp_machdep.c).
 					 */
-					mdcpu->gd_xinvaltlb = 2;
 					cpu_enable_intr();
 				}
 #endif

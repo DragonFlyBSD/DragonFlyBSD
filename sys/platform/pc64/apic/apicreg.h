@@ -324,6 +324,28 @@
  *	triggered the APIC will send an EOI to all I/O APICs.  For the moment
  *	you can write garbage to the EOI register but for future compatibility
  *	0 should be written.
+ *
+ * 03F0 SELF_IPI
+ * 0400 EXT_FEAT
+ * 0410 EXT_CTRL
+ * 0420 EXT_SEOI
+ * 0430
+ * 0440
+ * 0450
+ * 0460
+ * 0470
+ * 0480 EXT_IER0
+ * 0490 EXT_IER1
+ * 04A0 EXT_IER2
+ * 04B0 EXT_IER3
+ * 04C0 EXT_IER4
+ * 04D0 EXT_IER5
+ * 04E0 EXT_IER6
+ * 04F0 EXT_IER7
+ * 0500 EXT_LVT0
+ * 0510 EXT_LVT1
+ * 0520 EXT_LVT2
+ * 0530 EXT_LVT3
  */
 
 #ifndef LOCORE
@@ -390,14 +412,33 @@ struct LAPIC {
 	u_int32_t lvt_lint1;	PAD3;
 	u_int32_t lvt_error;	PAD3;
 	u_int32_t icr_timer;	PAD3;
-	u_int32_t ccr_timer;	PAD3;
+	u_int32_t ccr_timer;	PAD3;	/* e9 */
 	/* reserved */		PAD4;
 	/* reserved */		PAD4;
 	/* reserved */		PAD4;
 	/* reserved */		PAD4;
-	u_int32_t dcr_timer;	PAD3;
+	u_int32_t dcr_timer;	PAD3;	/* 3e */
+	u_int32_t self_ipi;	PAD3;	/* 3f - Only in x2APIC */
+	u_int32_t ext_feat;	PAD3;
+	u_int32_t ext_ctrl;	PAD3;
+	u_int32_t ext_seoi;	PAD3;
 	/* reserved */		PAD4;
-};
+	/* reserved */		PAD4;
+	/* reserved */		PAD4;
+	/* reserved */		PAD4;
+	/* reserved */		PAD4;
+	u_int32_t ext_ier0;	PAD3;
+	u_int32_t ext_ier1;	PAD3;
+	u_int32_t ext_ier2;	PAD3;
+	u_int32_t ext_ier3;	PAD3;
+	u_int32_t ext_ier4;	PAD3;
+	u_int32_t ext_ier5;	PAD3;
+	u_int32_t ext_ier6;	PAD3;
+	u_int32_t ext_ier7;	PAD3;
+	struct {			/* 50 */
+		u_int32_t lvt;	PAD3;
+	} ext_lvt[16];
+} __packed;
 
 typedef struct LAPIC lapic_t;
 
@@ -458,6 +499,8 @@ typedef struct IOAPIC ioapic_t;
 #define APIC_VER_VERSION	0x000000ff
 #define APIC_VER_MAXLVT		0x00ff0000
 #define MAXLVTSHIFT		16
+#define APIC_VER_EOI_SUPP	0x01000000
+#define APIC_VER_AMD_EXT_SPACE	0x80000000
 
 /*
  * lapic.ldr (rw)
@@ -493,6 +536,7 @@ typedef struct IOAPIC ioapic_t;
 #define APIC_SVR_VECTOR		0x000000ff
 #define APIC_SVR_ENABLE		0x00000100
 #define APIC_SVR_FOCUS_DISABLE	0x00000200
+#define APIC_SVR_EOI_SUPP	0x00001000
 
 /*
  * lapic.tpr
@@ -713,6 +757,31 @@ typedef struct IOAPIC ioapic_t;
 #define APIC_TDCR_64		0x09
 #define APIC_TDCR_128		0x0a
 #define APIC_TDCR_1		0x0b
+
+/*
+ * lapic.self_ipi (x2APIC only)
+ */
+/*
+ * lapic.ext_feat (AMD only)
+ */
+#define APIC_EXTFEAT_MASK	0x00ff0000
+#define APIC_EXTFEAT_SHIFT    	16
+#define APIC_EXTFEAT_EXTID_CAP	0x00000004
+#define APIC_EXTFEAT_SEIO_CAP	0x00000002
+#define APIC_EXTFEAT_IER_CAP	0x00000001
+
+/*
+ * lapic.ext_ctrl
+ * lapic.ext_seoi
+ * lapic.ext_ier{0-7}
+ */
+/*
+ * lapic.ext_lvt[N].lvt
+ */
+#define APIC_EXTLVT_IBS		0	/* Instruction based sampling */
+#define APIC_EXTLVT_MCA		1	/* MCE thresholding */
+#define APIC_EXTLVT_DEI		2	/* Deferred error interrupt */
+#define APIC_EXTLVT_SBI		3	/* Sideband interface */
 
 /******************************************************************************
  * I/O APIC defines

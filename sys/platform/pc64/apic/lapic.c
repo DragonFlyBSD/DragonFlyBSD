@@ -31,6 +31,7 @@
 #include <sys/bus.h>
 #include <sys/machintr.h>
 #include <machine/globaldata.h>
+#include <machine/clock.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
 #include <machine/pmap.h>
@@ -42,6 +43,7 @@
 #include <machine_base/icu/icu_var.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/cputypes.h>
 #include <machine/intr_machdep.h>
@@ -112,7 +114,8 @@ lapic_init(boolean_t bsp)
 	 */
 	if (bsp) {
 		if (cpu_vendor_id == CPU_VENDOR_AMD &&
-		    CPUID_TO_FAMILY(cpu_id) >= 0xf) {
+		    CPUID_TO_FAMILY(cpu_id) >= 0x0f &&
+		    CPUID_TO_FAMILY(cpu_id) < 0x17) {	/* XXX */
 			uint32_t tcr;
 
 			/*
@@ -237,12 +240,66 @@ lapic_init(boolean_t bsp)
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
 	lapic->tpr = temp;
 
+	/*
+	 * AMD specific setup
+	 */
+	if (cpu_vendor_id == CPU_VENDOR_AMD &&
+	    (lapic->version & APIC_VER_AMD_EXT_SPACE)) {
+		uint32_t ext_feat;
+		uint32_t count;
+		uint32_t max_count;
+		uint32_t lvt;
+		uint32_t i;
+
+		ext_feat = lapic->ext_feat;
+		count = (ext_feat & APIC_EXTFEAT_MASK) >> APIC_EXTFEAT_SHIFT;
+		max_count = sizeof(lapic->ext_lvt) / sizeof(lapic->ext_lvt[0]);
+		if (count > max_count)
+			count = max_count;
+		for (i = 0; i < count; ++i) {
+			lvt = lapic->ext_lvt[i].lvt;
+
+			lvt &= ~(APIC_LVT_POLARITY_MASK | APIC_LVT_TRIG_MASK |
+				 APIC_LVT_DM_MASK | APIC_LVT_MASKED);
+			lvt |= APIC_LVT_MASKED | APIC_LVT_DM_FIXED;
+
+			switch(i) {
+			case APIC_EXTLVT_IBS:
+				break;
+			case APIC_EXTLVT_MCA:
+				break;
+			case APIC_EXTLVT_DEI:
+				break;
+			case APIC_EXTLVT_SBI:
+				break;
+			default:
+				break;
+			}
+			if (bsp) {
+				kprintf("   LAPIC AMD elvt%d: 0x%08x",
+					i, lapic->ext_lvt[i].lvt);
+				if (lapic->ext_lvt[i].lvt != lvt)
+					kprintf(" -> 0x%08x", lvt);
+				kprintf("\n");
+			}
+			lapic->ext_lvt[i].lvt = lvt;
+		}
+	}
+
 	/* 
 	 * Enable the LAPIC 
 	 */
 	temp = lapic->svr;
 	temp |= APIC_SVR_ENABLE;	/* enable the LAPIC */
 	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
+
+	if (lapic->version & APIC_VER_EOI_SUPP) {
+		if (temp & APIC_SVR_EOI_SUPP) {
+			temp &= ~APIC_SVR_EOI_SUPP;
+			if (bsp)
+				kprintf("    LAPIC disabling EOI supp\n");
+		}
+	}
 
 	/*
 	 * Set the spurious interrupt vector.  The low 4 bits of the vector
@@ -488,51 +545,67 @@ apic_dump(char* str)
 int
 apic_ipi(int dest_type, int vector, int delivery_mode)
 {
-	unsigned long rflags;
-	u_long  icr_lo;
+	uint32_t icr_hi;
+	uint32_t icr_lo;
+	int64_t tsc;
 	int loops = 1;
 
-	rflags = read_rflags();
-	cpu_disable_intr();
-	while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-		cpu_pause();
-		if (++loops == 10000000)
-			kprintf("apic_ipi stall cpu %d\n", mycpuid);
+	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
+		tsc = rdtsc();
+		while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
+			cpu_pause();
+			if ((int64_t)(rdtsc() - (tsc + tsc_frequency)) > 0) {
+				kprintf("apic_ipi stall cpu %d (sing)\n",
+					mycpuid);
+				tsc = rdtsc();
+				if (++loops > 30)
+					panic("apic stall");
+			}
+		}
 	}
+	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
 	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK) | dest_type | 
-		delivery_mode | vector;
+		 APIC_LEVEL_ASSERT | delivery_mode | vector;
+	lapic->icr_hi = icr_hi;
 	lapic->icr_lo = icr_lo;
-	write_rflags(rflags);
 
 	return 0;
 }
 
+/*
+ * Interrupts must be hard-disabled by caller
+ */
 void
 single_apic_ipi(int cpu, int vector, int delivery_mode)
 {
-	unsigned long rflags;
-	u_long  icr_lo;
-	u_long  icr_hi;
+	uint32_t  icr_lo;
+	uint32_t  icr_hi;
+	int64_t tsc;
 	int loops = 1;
 
-	rflags = read_rflags();
-	cpu_disable_intr();
-	while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-		cpu_pause();
-		if (++loops == 10000000)
-			kprintf("apic_ipi stall cpu %d (sing)\n", mycpuid);
+	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
+		tsc = rdtsc();
+		while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
+			cpu_pause();
+			if ((int64_t)(rdtsc() - (tsc + tsc_frequency)) > 0) {
+				kprintf("single_apic_ipi stall cpu %d (sing)\n",
+					mycpuid);
+				tsc = rdtsc();
+				if (++loops > 30)
+					panic("apic stall");
+			}
+		}
 	}
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
 	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
-	lapic->icr_hi = icr_hi;
 
 	/* build ICR_LOW */
 	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK) |
-		 APIC_DEST_DESTFLD | delivery_mode | vector;
+		 APIC_LEVEL_ASSERT | APIC_DEST_DESTFLD | delivery_mode | vector;
 
 	/* write APIC ICR */
+	lapic->icr_hi = icr_hi;
 	lapic->icr_lo = icr_lo;
-	write_rflags(rflags);
 }
 
 #if 0	
@@ -579,17 +652,17 @@ single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
  * target is a bitmask of destination cpus.  Vector is any
  * valid system INT vector.  Delivery mode may be either
  * APIC_DELMODE_FIXED or APIC_DELMODE_LOWPRIO.
+ *
+ * Interrupts must be hard-disabled by caller
  */
 void
 selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 {
-	crit_enter();
 	while (CPUMASK_TESTNZERO(target)) {
 		int n = BSFCPUMASK(target);
 		CPUMASK_NANDBIT(target, n);
 		single_apic_ipi(n, vector, delivery_mode);
 	}
-	crit_exit();
 }
 
 /*

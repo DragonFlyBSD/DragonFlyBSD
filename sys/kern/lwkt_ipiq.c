@@ -266,8 +266,10 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 				gd->gd_cpuid, target->gd_cpuid, repeating,
 				target->gd_sample_pc, target->gd_sample_sp);
 			smp_sniff();
+			cpu_disable_intr();
 			ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
 			cpu_send_ipiq(target->gd_cpuid);
+			cpu_enable_intr();
 		} else {
 			kprintf("send_ipiq %d->%d tgt not draining (%d)\n",
 				gd->gd_cpuid, target->gd_cpuid, repeating);

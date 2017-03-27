@@ -824,6 +824,7 @@ smitest(void)
 cpumask_t smp_smurf_mask;
 static cpumask_t smp_invltlb_mask;
 #define LOOPRECOVER
+#define LOOPMASK_IN
 #ifdef LOOPMASK_IN
 cpumask_t smp_in_mask;
 #endif
@@ -945,7 +946,8 @@ smp_invltlb(void)
 	 */
 	CPUMASK_ORMASK(mask, md->mi.gd_cpumask);
 	if (all_but_self_ipi_enable &&
-	    CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
+	    (all_but_self_ipi_enable >= 2 ||
+	     CPUMASK_CMPMASKEQ(smp_startup_mask, mask))) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
 		CPUMASK_NANDMASK(mask, md->mi.gd_cpumask);
@@ -972,10 +974,22 @@ smp_invltlb(void)
 		cpu_pause();
 #ifdef LOOPRECOVER
 		if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
-			kprintf("smp_invltlb %d: waited too long %08jx "
-				"dbg=%08jx %08jx\n",
+			/*
+			 * cpuid 	- cpu doing the waiting
+			 * invltlb_mask - IPI in progress
+			 */
+			kprintf("smp_invltlb %d: waited too long inv=%08jx "
+				"smurf=%08jx "
+#ifdef LOOPMASK_IN
+				"in=%08jx "
+#endif
+				"idle=%08jx/%08jx\n",
 				md->mi.gd_cpuid,
 				smp_invltlb_mask.ary[0],
+				smp_smurf_mask.ary[0],
+#ifdef LOOPMASK_IN
+				smp_in_mask.ary[0],
+#endif
 				smp_idleinvl_mask.ary[0],
 				smp_idleinvl_reqs.ary[0]);
 			mdcpu->gd_xinvaltlb = 0;
@@ -1035,7 +1049,8 @@ smp_invlpg(cpumask_t *cmdmask)
 	 * We do not include our own cpu when issuing the IPI.
 	 */
 	if (all_but_self_ipi_enable &&
-	    CPUMASK_CMPMASKEQ(smp_startup_mask, mask)) {
+	    (all_but_self_ipi_enable >= 2 ||
+	     CPUMASK_CMPMASKEQ(smp_startup_mask, mask))) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
 		CPUMASK_NANDMASK(mask, md->mi.gd_cpumask);
@@ -1057,13 +1072,35 @@ smp_sniff(void)
 {
 	globaldata_t gd = mycpu;
 	int dummy;
+	register_t rflags;
 
 	/*
 	 * Ignore all_but_self_ipi_enable here and just use it.
 	 */
+	rflags = read_rflags();
+	cpu_disable_intr();
 	all_but_self_ipi(XSNIFF_OFFSET);
 	gd->gd_sample_pc = smp_sniff;
 	gd->gd_sample_sp = &dummy;
+	write_rflags(rflags);
+}
+
+void
+cpu_sniff(int dcpu)
+{
+	globaldata_t rgd = globaldata_find(dcpu);
+	register_t rflags;
+	int dummy;
+
+	/*
+	 * Ignore all_but_self_ipi_enable here and just use it.
+	 */
+	rflags = read_rflags();
+	cpu_disable_intr();
+	single_apic_ipi(dcpu, XSNIFF_OFFSET, APIC_DELMODE_FIXED);
+	rgd->gd_sample_pc = cpu_sniff;
+	rgd->gd_sample_sp = &dummy;
+	write_rflags(rflags);
 }
 
 /*
@@ -1125,11 +1162,11 @@ smp_inval_intr(void)
 	 *	    on the reentrancy detect (caused by another interrupt).
 	 */
 	cpumask = smp_invmask;
-loop:
-	cpu_enable_intr();
 #ifdef LOOPMASK_IN
 	ATOMIC_CPUMASK_ORBIT(smp_in_mask, md->mi.gd_cpuid);
 #endif
+loop:
+	cpu_enable_intr();
 	ATOMIC_CPUMASK_NANDBIT(smp_smurf_mask, md->mi.gd_cpuid);
 
 	/*
@@ -1152,11 +1189,24 @@ loop:
 
 #ifdef LOOPRECOVER
 		if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
+			/*
+			 * cpuid 	- cpu doing the waiting
+			 * invmask	- IPI in progress
+			 * invltlb_mask - which ones are TLB invalidations?
+			 */
 			kprintf("smp_inval_intr %d inv=%08jx tlbm=%08jx "
+				"smurf=%08jx "
+#ifdef LOOPMASK_IN
+				"in=%08jx "
+#endif
 				"idle=%08jx/%08jx\n",
 				md->mi.gd_cpuid,
 				smp_invmask.ary[0],
 				smp_invltlb_mask.ary[0],
+				smp_smurf_mask.ary[0],
+#ifdef LOOPMASK_IN
+				smp_in_mask.ary[0],
+#endif
 				smp_idleinvl_mask.ary[0],
 				smp_idleinvl_reqs.ary[0]);
 			tsc_base = rdtsc();
@@ -1215,9 +1265,6 @@ loop:
 		cpu_mfence();
 	}
 
-#ifdef LOOPMASK_IN
-	ATOMIC_CPUMASK_NANDBIT(smp_in_mask, md->mi.gd_cpuid);
-#endif
 	/*
 	 * Check to see if another Xinvltlb interrupt occurred and loop up
 	 * if it did.
@@ -1227,6 +1274,9 @@ loop:
 		md->gd_xinvaltlb = 1;
 		goto loop;
 	}
+#ifdef LOOPMASK_IN
+	ATOMIC_CPUMASK_NANDBIT(smp_in_mask, md->mi.gd_cpuid);
+#endif
 	md->gd_xinvaltlb = 0;
 }
 
@@ -1238,7 +1288,7 @@ cpu_wbinvd_on_all_cpus_callback(void *arg)
 
 /*
  * When called the executing CPU will send an IPI to all other CPUs
- *  requesting that they halt execution.
+ * requesting that they halt execution.
  *
  * Usually (but not necessarily) called with 'other_cpus' as its arg.
  *
@@ -1526,6 +1576,9 @@ ap_finish(void)
 
 SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL);
 
+/*
+ * Interrupts must be hard-disabled by caller
+ */
 void
 cpu_send_ipiq(int dcpu)
 {
