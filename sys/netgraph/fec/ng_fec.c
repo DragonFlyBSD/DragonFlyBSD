@@ -933,7 +933,7 @@ ng_fec_choose_port(struct ng_fec_bundle *b,
 #ifdef INET6
 	case M_FEC_INET6:
 		port = (ip6->ip6_dst.s6_addr[15] ^
-		    ip6->ip6_dst.s6_addr[15]) & mask;
+		    ip6->ip6_src.s6_addr[15]) & mask;
 		break;
 #endif
 #endif
