@@ -51,7 +51,7 @@ NON_GPROF_ENTRY(sigcode)
 	/*
 	 * Work around a Ryzen bug (say whut?)
 	 */
-	.space	224
+	.space	1088
 
 	ALIGN_TEXT
 esigcode:
