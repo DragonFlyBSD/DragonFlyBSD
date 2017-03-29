@@ -165,6 +165,7 @@ static int AdjustCpuFreq = 1;
 static int AdjustCstate = 0;
 static int HighestCpuFreq;
 static int LowestCpuFreq;
+static int AdjustUsched = 1;
 
 static int AdjustCpuFreqOverride;
 
@@ -202,7 +203,7 @@ main(int ac, char **av)
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "b:cdefh:l:p:r:tu:B:H:L:P:QT:")) != -1) {
+	while ((ch = getopt(ac, av, "b:cdefh:l:p:r:tu:B:H:L:P:QT:U")) != -1) {
 		switch(ch) {
 		case 'b':
 			BackLightPct = strtol(optarg, NULL, 10);
@@ -262,6 +263,9 @@ main(int ac, char **av)
 			break;
 		case 'T':
 			srt = strtod(optarg, NULL);
+			break;
+		case 'U':
+			AdjustUsched = 0;
 			break;
 		default:
 			usage();
@@ -683,7 +687,7 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: powerd [-cdeftQ] [-p hysteresis] "
+	fprintf(stderr, "usage: powerd [-cdeftQU] [-p hysteresis] "
 	    "[-h highest_freq] [-l lowest_freq] "
 	    "[-r poll_interval] [-u trigger_up] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
@@ -1182,19 +1186,22 @@ adj_cpu_perf(int cpu, int inc)
 static void
 adj_perf(cpumask_t xcpu_used, cpumask_t xcpu_pwrdom_used)
 {
-	cpumask_t old_usched_used;
 	int cpu, inc;
 
-	/*
-	 * Set cpus requiring performance to the userland process
-	 * scheduler.  Leave the rest of cpus unmapped.
-	 */
-	old_usched_used = usched_cpu_used;
-	usched_cpu_used = cpu_used;
-	if (CPUMASK_TESTZERO(usched_cpu_used))
-		CPUMASK_ORBIT(usched_cpu_used, 0);
-	if (CPUMASK_CMPMASKNEQ(usched_cpu_used, old_usched_used))
-		set_uschedcpus();
+	if (AdjustUsched) {
+		cpumask_t old_usched_used;
+
+		/*
+		 * Set cpus requiring performance to the userland process
+		 * scheduler.  Leave the rest of cpus unmapped.
+		 */
+		old_usched_used = usched_cpu_used;
+		usched_cpu_used = cpu_used;
+		if (CPUMASK_TESTZERO(usched_cpu_used))
+			CPUMASK_ORBIT(usched_cpu_used, 0);
+		if (CPUMASK_CMPMASKNEQ(usched_cpu_used, old_usched_used))
+			set_uschedcpus();
+	}
 
 	/*
 	 * Adjust per-cpu performance for any cpus which changed.

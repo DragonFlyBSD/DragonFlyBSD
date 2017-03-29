@@ -9,7 +9,7 @@
 .Nd simple CPU performance control and battery life monitor
 .Sh SYNOPSIS
 .Nm
-.Op Fl cdeftQ
+.Op Fl cdeftQU
 .Op Fl b Ar backlight_percentage
 .Op Fl h Ar highest_freq
 .Op Fl l Ar lowest_freq
@@ -155,6 +155,8 @@ and cpus on an idle machine.
 Longer times will ratchet down more slowly.
 For example,
 a workstation might want to use a value of 30.0.
+.It Fl U
+Don't adjust userland scheduler's usable CPUs.
 .El
 .Sh EXIT STATUS
 The
