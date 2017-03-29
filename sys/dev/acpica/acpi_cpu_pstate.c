@@ -598,6 +598,13 @@ fetch_pss:
 				return ENXIO;
 			}
 		}
+		if (p->st_freq & 0x80000000) {
+			device_printf(dev, "Invalid _PSS P%d freq: 0x%08x\n",
+			    i, p->st_freq);
+			AcpiOsFree(obj);
+			kfree(pstate, M_TEMP);
+			return ENXIO;
+		}
 	}
 
 	/* Free _PSS */
