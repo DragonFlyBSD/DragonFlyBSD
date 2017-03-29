@@ -49,9 +49,11 @@ NON_GPROF_ENTRY(sigcode)
 	jmp	0b
 
 	/*
-	 * Work around a Ryzen bug (say whut?)
+	 * Work around a Ryzen bug (say whut?).  There appears to be an
+	 * issue with the kernel iretq'ing to a %rip near the end of the
+	 * user address space (top of stack).
 	 */
-	.space	224
+	.space	1088
 
 	ALIGN_TEXT
 esigcode:
