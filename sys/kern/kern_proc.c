@@ -42,6 +42,7 @@
 #include <sys/spinlock.h>
 #include <sys/random.h>
 #include <sys/vnode.h>
+#include <sys/exec.h>
 #include <vm/vm.h>
 #include <sys/lock.h>
 #include <vm/pmap.h>
@@ -1845,6 +1846,30 @@ done:
 	return (error);
 }
 
+static int
+sysctl_kern_proc_sigtramp(SYSCTL_HANDLER_ARGS)
+{
+        /*int *name = (int *)arg1;*/
+        u_int namelen = arg2;
+        struct kinfo_sigtramp kst;
+        const struct sysentvec *sv;
+        int error;
+
+        if (namelen > 1)
+                return (EINVAL);
+        /* ignore pid if passed in (freebsd compatibility) */
+
+        sv = curproc->p_sysent;
+        bzero(&kst, sizeof(kst));
+        if (sv->sv_szsigcode) {
+                kst.ksigtramp_start = (char *)PS_STRINGS - *sv->sv_szsigcode;
+                kst.ksigtramp_end = (void *)PS_STRINGS;
+        }
+        error = SYSCTL_OUT(req, &kst, sizeof(kst));
+
+        return (error);
+}
+
 SYSCTL_NODE(_kern, KERN_PROC, proc, CTLFLAG_RD,  0, "Process table");
 
 SYSCTL_PROC(_kern_proc, KERN_PROC_ALL, all, CTLFLAG_RD|CTLTYPE_STRUCT,
@@ -1891,3 +1916,7 @@ SYSCTL_NODE(_kern_proc, KERN_PROC_CWD, cwd, CTLFLAG_RD | CTLFLAG_ANYBODY,
 
 static SYSCTL_NODE(_kern_proc, KERN_PROC_PATHNAME, pathname, CTLFLAG_RD,
 	sysctl_kern_proc_pathname, "Process executable path");
+
+SYSCTL_PROC(_kern_proc, KERN_PROC_SIGTRAMP, sigtramp, CTLFLAG_RD|CTLTYPE_STRUCT,
+        0, 0, sysctl_kern_proc_sigtramp, "S,sigtramp",
+        "Return sigtramp address range");
