@@ -28,6 +28,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#include <sys/kinfo.h>
 #include <signal.h>
 #include <sys/ucontext.h>
 #include <machine/sigframe.h>
@@ -43,16 +44,26 @@ static void
 x86_64_sigtramp_range (unsigned char **start, unsigned char **end)
 {
   unsigned long ps_strings;
-  int mib[2];
+  struct kinfo_sigtramp tramp;
+  int mib[3];
   size_t len;
 
   mib[0] = CTL_KERN;
-  mib[1] = KERN_PS_STRINGS;
-  len = sizeof (ps_strings);
-  sysctl (mib, 2, &ps_strings, &len, NULL, 0);
+  mib[1] = KERN_PROC;
+  mib[2] = KERN_PROC_SIGTRAMP;
+  len = sizeof (tramp);
+  if (sysctl (mib, 3, &tramp, &len, NULL, 0) == 0) {
+    *start = (unsigned char *)tramp.ksigtramp_start;
+    *end   = (unsigned char *)tramp.ksigtramp_end;
+  } else {
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PS_STRINGS;
+    len = sizeof (ps_strings);
+    sysctl (mib, 2, &ps_strings, &len, NULL, 0);
 
-  *start = (unsigned char *)ps_strings - 32;
-  *end   = (unsigned char *)ps_strings;
+    *start = (unsigned char *)ps_strings - 32;
+    *end   = (unsigned char *)ps_strings;
+  }
 }
 
 
