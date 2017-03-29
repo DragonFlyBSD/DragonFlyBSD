@@ -215,6 +215,15 @@ struct kinfo_proc {
 	int		kp_spare[2];
 };
 
+/*
+ * KERN_SIGTRAMP
+ */
+struct kinfo_sigtramp {
+	void		*ksigtramp_start;
+	void		*ksigtramp_end;
+	void		*ksigtramp_spare[4];
+};
+
 struct proc;
 struct lwp;
 struct thread;
