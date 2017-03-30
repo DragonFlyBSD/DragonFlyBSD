@@ -422,3 +422,9 @@ smp_sniff(void)
 {
 	/* not implemented */
 }
+
+void
+cpu_sniff(int dcpu __unused)
+{
+	/* not implemented */
+}
