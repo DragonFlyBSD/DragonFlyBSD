@@ -442,6 +442,7 @@ help all:
 	@echo "GITHOST may be used to override git.dragonflybsd.org"
 	@echo "GITHOST_DPORTS may be used to override mirror-master.dragonflybsd.org"
 	@echo "IMGSIZE may be used to override the .img (in 512-byte sectors)"
+	@echo "MAKE_JOBS may be used to override the default value (sysctl hw.ncpu)"
 
 .PHONY: release quickrel realquickrel
 .PHONY: installer
