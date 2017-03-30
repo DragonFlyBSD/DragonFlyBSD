@@ -485,7 +485,7 @@ readmap(pid_t pid)
 
 		len = 0;
 		n = sscanf(mapbuf + pos, "%lx %lx %*d %*d %*x %3[-rwx]"
-		    " %*d %*d %*x %*s %*s %16s %*s%*[\n]%n",
+		    " %*d %*d %*x %*s %*s %15s %*s%*[\n]%n",
 		    &start, &end, prot, type, &len);
 		if (n != 4)
 			errx(1, "ill-formed line in %s", mapname);
