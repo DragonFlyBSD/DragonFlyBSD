@@ -2223,11 +2223,16 @@ devfs_clone(cdev_t dev, const char *name, size_t len, int mode,
 	TAILQ_FOREACH(chandler, &devfs_chandler_list, link) {
 		if (chandler->namlen != len)
 			continue;
-		if ((!memcmp(chandler->name, name, len)) && (chandler->nhandler)) {
+		if ((!memcmp(chandler->name, name, len)) &&
+		    (chandler->nhandler)) {
+			/*
+			 * We have to unlock across the config and the
+			 * callback to avoid deadlocking.  The device is
+			 * likely to obtain its own lock in the callback
+			 * and might then call into devfs.
+			 */
 			lockmgr(&devfs_lock, LK_RELEASE);
 			devfs_config();
-			lockmgr(&devfs_lock, LK_EXCLUSIVE);
-
 			ap.a_head.a_dev = dev;
 			ap.a_dev = NULL;
 			ap.a_name = name;
@@ -2235,6 +2240,7 @@ devfs_clone(cdev_t dev, const char *name, size_t len, int mode,
 			ap.a_mode = mode;
 			ap.a_cred = cred;
 			error = (chandler->nhandler)(&ap);
+			lockmgr(&devfs_lock, LK_EXCLUSIVE);
 			if (error)
 				continue;
 
