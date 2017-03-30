@@ -359,6 +359,7 @@ load_format(const char *pagedb_path, int page)
 	int found;
 	int lineno;
 	enum { LOCATE, PAGENAME, PAGEDEF } state;
+	int cc;
 	char c;
 
 #define	SETSTATE_LOCATE do {						\
@@ -394,7 +395,8 @@ load_format(const char *pagedb_path, int page)
 	lineno = 0;
 	found = 0;
 	SETSTATE_LOCATE;
-	while ((c = fgetc(pagedb)) != EOF) {
+	while ((cc = fgetc(pagedb)) != EOF) {
+		c = (char)cc;
 
 		/* Keep a line count to make error messages more useful. */
 		UPDATE_LINENO;
@@ -402,8 +404,9 @@ load_format(const char *pagedb_path, int page)
 		/* Skip over comments anywhere in the mode database. */
 		if (c == '#') {
 			do {
-				c = fgetc(pagedb);
-			} while (c != '\n' && c != EOF);
+				cc = fgetc(pagedb);
+			} while (cc != '\n' && cc != EOF);
+			c = (char)cc;
 			UPDATE_LINENO;
 			continue;
 		}
