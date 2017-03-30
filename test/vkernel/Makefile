@@ -7,6 +7,7 @@ PHYSMEM ?= 256m
 NCPUS ?= 2
 FSTYPE ?=
 EXTRAOPTS ?=
+MAKE_JOBS?=     $$(sysctl -n hw.ncpu)
 
 all: help
 
@@ -32,6 +33,7 @@ help:
 	@echo "    setenv ROOTSIZE size (optional)"
 	@echo "    setenv VKDIR target_dir"
 	@echo "    setenv FSTYPE fstype (optional. values:hammer, 4.2BSD)"
+	@echo "    setenv MAKE_JOBS njobs (optional)"
 	@echo ""
 	@echo "Meta target components:"
 	@echo ""
@@ -71,22 +73,22 @@ clean: check
 #
 #
 world: checkq
-	cd ${SRCDIR} && make -j 4 buildworld
+	cd ${SRCDIR} && make -j ${MAKE_JOBS} buildworld
 
 kernel: checkq
-	cd ${SRCDIR} && make -j 4 KERNCONF=${USEKERNEL} buildkernel
+	cd ${SRCDIR} && make -j ${MAKE_JOBS} KERNCONF=${USEKERNEL} buildkernel
 
 nativekernel: checkq
-	cd ${SRCDIR} && make -j 4 KERNCONF=${USEKERNEL} nativekernel
+	cd ${SRCDIR} && make -j ${MAKE_JOBS} KERNCONF=${USEKERNEL} nativekernel
 
 # Quick build - just rebuild the kernel quickly
 #
 #
 quickworld: checkq
-	cd ${SRCDIR} && make -j 4 quickworld
+	cd ${SRCDIR} && make -j ${MAKE_JOBS} quickworld
 
 quickkernel: checkq
-	cd ${SRCDIR} && make -j 4 KERNCONF=${USEKERNEL} quickkernel
+	cd ${SRCDIR} && make -j ${MAKE_JOBS} KERNCONF=${USEKERNEL} quickkernel
 
 # Build and mount an empty filesystem for the emulated root disk
 #
