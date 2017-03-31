@@ -36,32 +36,37 @@
 This program will create a fresh UEFI install of DragonFly on a drive.
 The drive will be completely reformatted and any prior contents will be
 lost!
-.Pp
 .Bl -tag -width 20m
 .It Fl s Ar swapsize{m,g}
 Specify the size of the swap partition, default is "8g".
 .It Fl S Ar serialno
 Specify the serial number of the device as it would appear
-under /dev/serno/*.  In most cases this is simply the reported
-serial number, however note that the
+under
+.Pa /dev/serno/* .
+In most cases this is simply the reported serial number, however note that the
 .Xr nvme 4
 driver will tack on a namespace id to the reported serial number,
 typically "-1".
 Only specify the serial number, do not specify a path prefix.
 If you use this option the script will install path references in fstab
-and so forth using the serno/ path.  If you do not use this option,
-the drive name will be used instead.
+and so forth using the
+.Pa serno/
+path.
+If you do not use this option, the drive name will be used instead.
 We recommend using this option.
 .It Ar drive
-Specify the drive, for example "nvme0".  You may omit the "/dev/" prefix
-if you wish.
-The raw drive should be specified, do not specify a serno/ path here.
+Specify the drive, for example "nvme0".
+You may omit the
+.Pa /dev/
+prefix if you wish.
+The raw drive should be specified, do not specify a
+.Pa serno/
+path here.
 .El
 .Sh USAGE
 .Nm
 expects you to have completed a buildworld and buildkernel
-sequence before running the program,
-see
+sequence before running the program, see
 .Xr build 7
 for more information on how to build a fresh system.
 .Pp
@@ -74,19 +79,24 @@ in the disklabel, mount them, and install the world and kernel.
 .Pp
 After the world and kernel are installed,
 .Nm
-will make adjustments to the target /boot/loader.conf, /etc/fstab,
-and /etc/rc.conf with the appropriate disk paths, then unmount.
+will make adjustments to the target
+.Pa /boot/loader.conf ,
+.Pa /etc/fstab ,
+and
+.Pa /etc/rc.conf
+with the appropriate disk paths, then unmount.
 .Pp
 After completion of the operation you should be able to boot from the
-drive and then finish up your adjustments to /etc/rc.conf to get
-the network up and so forth.
+drive and then finish up your adjustments to
+.Pa /etc/rc.conf
+to get the network up and so forth.
 This script does only a very basic installation.
 For a more substantial initial installation you should boot from a
-DragonFlyBSD install image and select an EFI installation.
+.Dx
+install image and select an EFI installation.
 .Sh SEE ALSO
-.Xr efivar 3
-.Xr efivar 8
-.Pp
+.Xr uefi 8
+.Sh HISTORY
 The
 .Nm
 utility appeared in
