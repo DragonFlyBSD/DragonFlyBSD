@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man8/uefi.8 295522 2016-02-11 14:45:18Z emaste $
 .\"
-.Dd January 15, 2017
+.Dd March 31, 2017
 .Dt UEFI 8
 .Os
 .Sh NAME
@@ -123,16 +123,19 @@ typical non-default kernel (optional)
 .El
 .Sh SEE ALSO
 .\".Xr boot.config 5 ,
+.Xr efivar 3 ,
 .Xr disklabel64 5 ,
 .Xr msdos 5 ,
 .Xr boot 8 ,
+.Xr efisetup 8 ,
+.Xr efivar 8 ,
 .Xr uefisign 8
 .Sh HISTORY
 .Nm
 boot support first appeared in
 .Fx 10.1
 and was brought into
-.Dx 4.5 .
+.Dx 4.7 .
 .Sh AUTHORS
 .An -nosplit
 .Nm
