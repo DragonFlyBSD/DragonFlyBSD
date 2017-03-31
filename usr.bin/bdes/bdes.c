@@ -362,7 +362,7 @@ cvtkey(DES_cblock obuf, char *ibuf)
 			/*
 			 * now translate it, bombing on any illegal hex digit
 			 */
-			for (i = 0; ibuf[i] && i < 16; i++)
+			for (i = 0; i < 16 && ibuf[i]; i++)
 				if ((nbuf[i] = tobinhex(ibuf[i], 16)) == -1)
 					warnx("bad hex digit in key");
 			while (i < 16)
@@ -382,7 +382,7 @@ cvtkey(DES_cblock obuf, char *ibuf)
 			/*
 			 * now translate it, bombing on any illegal binary digit
 			 */
-			for (i = 0; ibuf[i] && i < 16; i++)
+			for (i = 0; i < 16 && ibuf[i]; i++)
 				if ((nbuf[i] = tobinhex(ibuf[i], 2)) == -1)
 					warnx("bad binary digit in key");
 			while (i < 64)
