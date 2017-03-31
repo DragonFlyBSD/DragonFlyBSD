@@ -1043,7 +1043,7 @@ rtrlist(void)
  		exit(1);
  	}
 #define DR dr.defrouter[i]
-	for (i = 0 ; DR.if_index && i < DRLSTSIZ ; i++) {
+	for (i = 0 ; i < DRLSTSIZ && DR.if_index ; i++) {
 		struct sockaddr_in6 sin6;
 
 		bzero(&sin6, sizeof(sin6));
@@ -1207,7 +1207,7 @@ plist(void)
  		exit(1);
  	}
 #define PR pr.prefix[i]
-	for (i = 0; PR.if_index && i < PRLSTSIZ ; i++) {
+	for (i = 0; i < PRLSTSIZ && PR.if_index ; i++) {
 		struct sockaddr_in6 p6;
 		char namebuf[NI_MAXHOST];
 		int niflags;
