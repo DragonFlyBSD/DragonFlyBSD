@@ -135,7 +135,7 @@ is_proc_mem(const char *p)
 	if (strncmp(proc, p, sizeof(proc) - 1))
 		return 0;
 	p += sizeof(proc) - 1;
-	for (; p != '\0'; ++p)
+	for (; *p != '\0'; ++p)
 		if (!isdigit(*p))
 			break;
 	if (!isdigit(*(p - 1)))
