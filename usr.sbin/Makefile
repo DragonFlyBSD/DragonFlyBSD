@@ -32,8 +32,8 @@ SUBDIR= 802_11 \
 	dev_mkdb \
 	dntpd \
 	edquota \
-	efivar \
 	efisetup \
+	efivar \
 	faithd \
 	fdcontrol \
 	fdformat \
