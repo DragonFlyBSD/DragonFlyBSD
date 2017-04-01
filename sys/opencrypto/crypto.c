@@ -770,7 +770,7 @@ crypto_unblock(u_int32_t driverid, int what)
 		for (n = 0; n < ncpus; ++n) {
 			tdinfo = &tdinfo_array[n];
 			CRYPTO_Q_LOCK(tdinfo);
-			if (tdinfo[n].crp_sleep)
+			if (tdinfo->crp_sleep)
 				wakeup_one(&tdinfo->crp_q);
 			CRYPTO_Q_UNLOCK(tdinfo);
 		}
