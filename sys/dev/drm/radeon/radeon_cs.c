@@ -92,7 +92,7 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 	if (p->relocs_ptr == NULL) {
 		return -ENOMEM;
 	}
-	p->relocs = kcalloc(p->nrelocs, sizeof(struct radeon_cs_reloc), GFP_KERNEL);
+	p->relocs = kcalloc(p->nrelocs, sizeof(struct radeon_bo_list), GFP_KERNEL);
 	if (p->relocs == NULL) {
 		return -ENOMEM;
 	}
@@ -101,30 +101,32 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 
 	for (i = 0; i < p->nrelocs; i++) {
 		struct drm_radeon_cs_reloc *r;
+		struct drm_gem_object *gobj;
 		unsigned priority;
 
 		duplicate = false;
 		r = (struct drm_radeon_cs_reloc *)&chunk->kdata[i*4];
 		for (j = 0; j < i; j++) {
-			if (r->handle == p->relocs[j].handle) {
+			struct drm_radeon_cs_reloc *other;
+			other = (void *)&chunk->kdata[j*4];
+			if (r->handle == other->handle) {
 				p->relocs_ptr[i] = &p->relocs[j];
 				duplicate = true;
 				break;
 			}
 		}
 		if (duplicate) {
-			p->relocs[i].handle = 0;
 			continue;
 		}
 
-		p->relocs[i].gobj = drm_gem_object_lookup(p->filp, r->handle);
-		if (p->relocs[i].gobj == NULL) {
+		gobj = drm_gem_object_lookup(p->filp, r->handle);
+		if (gobj == NULL) {
 			DRM_ERROR("gem object lookup failed 0x%x\n",
 				  r->handle);
 			return -ENOENT;
 		}
 		p->relocs_ptr[i] = &p->relocs[i];
-		p->relocs[i].robj = gem_to_radeon_bo(p->relocs[i].gobj);
+		p->relocs[i].robj = gem_to_radeon_bo(gobj);
 
 		/* The userspace buffer priorities are from 0 to 15. A higher
 		 * number means the buffer is more important.
@@ -169,7 +171,6 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 		}
 
 		p->relocs[i].tv.bo = &p->relocs[i].robj->tbo;
-		p->relocs[i].handle = r->handle;
 
 		radeon_cs_buckets_add(&buckets, &p->relocs[i].tv.head,
 				      priority);
@@ -229,14 +230,11 @@ static int radeon_cs_get_ring(struct radeon_cs_parser *p, u32 ring, s32 priority
 
 static void radeon_cs_sync_rings(struct radeon_cs_parser *p)
 {
-	int i;
+	struct radeon_bo_list *reloc;
 
-	for (i = 0; i < p->nrelocs; i++) {
-		if (!p->relocs[i].robj)
-			continue;
-
+	list_for_each_entry(reloc, &p->validated, tv.head) {
 		radeon_semaphore_sync_to(p->ib.semaphore,
-					 p->relocs[i].robj->tbo.sync_obj);
+					 reloc->robj->tbo.sync_obj);
 	}
 }
 
@@ -249,11 +247,13 @@ int radeon_cs_parser_init(struct radeon_cs_parser *p, void *data)
 	u32 ring = RADEON_CS_RING_GFX;
 	s32 priority = 0;
 
+	INIT_LIST_HEAD(&p->validated);
+
 	if (!cs->num_chunks) {
 		return 0;
 	}
+
 	/* get chunks */
-	INIT_LIST_HEAD(&p->validated);
 	p->idx = 0;
 	p->ib.sa_bo = NULL;
 	p->ib.semaphore = NULL;
@@ -372,8 +372,8 @@ int radeon_cs_parser_init(struct radeon_cs_parser *p, void *data)
 static int cmp_size_smaller_first(void *priv, struct list_head *a,
 				  struct list_head *b)
 {
-	struct radeon_cs_reloc *la = list_entry(a, struct radeon_cs_reloc, tv.head);
-	struct radeon_cs_reloc *lb = list_entry(b, struct radeon_cs_reloc, tv.head);
+	struct radeon_bo_list *la = list_entry(a, struct radeon_bo_list, tv.head);
+	struct radeon_bo_list *lb = list_entry(b, struct radeon_bo_list, tv.head);
 
 	/* Sort A before B if A is smaller. */
 	return (int)la->robj->tbo.num_pages - (int)lb->robj->tbo.num_pages;
@@ -414,8 +414,11 @@ static void radeon_cs_parser_fini(struct radeon_cs_parser *parser, int error, bo
 
 	if (parser->relocs != NULL) {
 		for (i = 0; i < parser->nrelocs; i++) {
-			if (parser->relocs[i].gobj)
-				drm_gem_object_unreference_unlocked(parser->relocs[i].gobj);
+			struct radeon_bo *bo = parser->relocs[i].robj;
+			if (bo == NULL)
+				continue;
+
+			drm_gem_object_unreference_unlocked(&bo->gem_base);
 		}
 	}
 	kfree(parser->track);
@@ -535,7 +538,7 @@ static int radeon_cs_ib_vm_chunk(struct radeon_device *rdev,
 	if (parser->ring == R600_RING_TYPE_UVD_INDEX)
 		radeon_uvd_note_usage(rdev);
 
-	lockmgr(&vm->mutex, LK_EXCLUSIVE);
+	mutex_lock(&vm->mutex);
 	r = radeon_bo_vm_update_pte(parser, vm);
 	if (r) {
 		goto out;
@@ -551,7 +554,7 @@ static int radeon_cs_ib_vm_chunk(struct radeon_device *rdev,
 	}
 
 out:
-	lockmgr(&vm->mutex, LK_RELEASE);
+	mutex_unlock(&vm->mutex);
 	return r;
 }
 
@@ -702,6 +705,7 @@ int radeon_cs_packet_parse(struct radeon_cs_parser *p,
 	struct radeon_cs_chunk *ib_chunk = &p->chunks[p->chunk_ib_idx];
 	struct radeon_device *rdev = p->rdev;
 	uint32_t header;
+	int ret = 0, i;
 
 	if (idx >= ib_chunk->length_dw) {
 		DRM_ERROR("Can not parse packet at %d after CS end %d !\n",
@@ -730,14 +734,25 @@ int radeon_cs_packet_parse(struct radeon_cs_parser *p,
 		break;
 	default:
 		DRM_ERROR("Unknown packet type %d at %d !\n", pkt->type, idx);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto dump_ib;
 	}
 	if ((pkt->count + 1 + pkt->idx) >= ib_chunk->length_dw) {
 		DRM_ERROR("Packet (%d:%d:%d) end after CS buffer (%d) !\n",
 			  pkt->idx, pkt->type, pkt->count, ib_chunk->length_dw);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto dump_ib;
 	}
 	return 0;
+
+dump_ib:
+	for (i = 0; i < ib_chunk->length_dw; i++) {
+		if (i == idx)
+			printk("\t0x%08x <---\n", radeon_get_ib_value(p, i));
+		else
+			printk("\t0x%08x\n", radeon_get_ib_value(p, i));
+	}
+	return ret;
 }
 
 /**
@@ -793,7 +808,7 @@ void radeon_cs_dump_packet(struct radeon_cs_parser *p,
  * GPU offset using the provided start.
  **/
 int radeon_cs_packet_next_reloc(struct radeon_cs_parser *p,
-				struct radeon_cs_reloc **cs_reloc,
+				struct radeon_bo_list **cs_reloc,
 				int nomm)
 {
 	struct radeon_cs_chunk *relocs_chunk;

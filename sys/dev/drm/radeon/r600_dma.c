@@ -366,12 +366,18 @@ int r600_dma_ib_test(struct radeon_device *rdev, struct radeon_ring *ring)
 		DRM_ERROR("radeon: failed to schedule ib (%d).\n", r);
 		return r;
 	}
-	r = radeon_fence_wait(ib.fence, false);
-	if (r) {
-		radeon_ib_free(rdev, &ib); /* zRJ XXX culprit */
-		DRM_ERROR("radeon: fence wait failed (%d).\n", r);
-		return r;
-	}
+	r = radeon_fence_wait_timeout(ib.fence, false, usecs_to_jiffies(
+		RADEON_USEC_IB_TEST_TIMEOUT));
+	if (r < 0) {
+ 		DRM_ERROR("radeon: fence wait failed (%d).\n", r);
+ 		return r;
+	} else if (r == 0) {
+		DRM_ERROR("radeon: fence wait timed out.\n");
+#if 0
+		return -ETIMEDOUT;
+#endif
+ 	}
+	r = 0;
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		tmp = le32_to_cpu(rdev->wb.wb[index/4]);
 		if (tmp == 0xDEADBEEF)

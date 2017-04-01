@@ -40,6 +40,8 @@
 #define ATOM_MAX_HW_I2C_WRITE 3
 #define ATOM_MAX_HW_I2C_READ  255
 
+int radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num);
+
 static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 				 u8 slave_addr, u8 flags,
 				 u8 *buf, u8 num)
@@ -54,8 +56,8 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 
 	memset(&args, 0, sizeof(args));
 
-	lockmgr(&chan->mutex, LK_EXCLUSIVE);
-	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_EXCLUSIVE);
+	mutex_lock(&chan->mutex);
+	mutex_lock(&rdev->mode_info.atom_context->scratch_mutex);
 
 	base = (unsigned char *)rdev->mode_info.atom_context->scratch;
 
@@ -103,14 +105,13 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 		radeon_atom_copy_swap(buf, base, num, false);
 
 done:
-	lockmgr(&rdev->mode_info.atom_context->scratch_mutex, LK_RELEASE);
-	lockmgr(&chan->mutex, LK_RELEASE);
+	mutex_unlock(&rdev->mode_info.atom_context->scratch_mutex);
+	mutex_unlock(&chan->mutex);
 
 	return r;
 }
 
-static int
-radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
+int radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
 {
 	struct radeon_i2c_chan *i2c = device_get_softc(dev);
 	struct iic_msg *p;

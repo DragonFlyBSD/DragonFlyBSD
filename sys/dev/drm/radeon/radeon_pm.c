@@ -29,6 +29,7 @@
 #include "radeon.h"
 #include "avivod.h"
 #include "atom.h"
+#include "r600_dpm.h"
 
 #define RADEON_IDLE_LOOP_MS 100
 #define RADEON_RECLOCK_DELAY_MS 200
@@ -42,9 +43,11 @@ static const char *radeon_pm_state_type_name[5] = {
 	"Performance",
 };
 
-#ifdef DUMBBELL_WIP
+#define DUMBBELL_PM 1
+
+#ifdef DUMBBELL_PM
 static void radeon_dynpm_idle_work_handler(struct work_struct *work);
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 static int radeon_debugfs_pm_init(struct radeon_device *rdev);
 static bool radeon_pm_in_vbl(struct radeon_device *rdev);
 static bool radeon_pm_debug_check_in_vbl(struct radeon_device *rdev, bool finish);
@@ -72,7 +75,7 @@ int radeon_pm_get_type_index(struct radeon_device *rdev,
 void radeon_pm_acpi_event_handler(struct radeon_device *rdev)
 {
 	if ((rdev->pm.pm_method == PM_METHOD_DPM) && rdev->pm.dpm_enabled) {
-		lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+		mutex_lock(&rdev->pm.mutex);
 		if (power_profile_get_state() == POWER_PROFILE_PERFORMANCE)
 			rdev->pm.dpm.ac_power = true;
 		else
@@ -81,13 +84,13 @@ void radeon_pm_acpi_event_handler(struct radeon_device *rdev)
 			if (rdev->asic->dpm.enable_bapm)
 				radeon_dpm_enable_bapm(rdev, rdev->pm.dpm.ac_power);
 		}
-		lockmgr(&rdev->pm.mutex, LK_RELEASE);
+		mutex_unlock(&rdev->pm.mutex);
         } else if (rdev->pm.pm_method == PM_METHOD_PROFILE) {
 		if (rdev->pm.profile == PM_PROFILE_AUTO) {
-			lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+			mutex_lock(&rdev->pm.mutex);
 			radeon_pm_update_profile(rdev);
 			radeon_pm_set_clocks(rdev);
-			lockmgr(&rdev->pm.mutex, LK_RELEASE);
+			mutex_unlock(&rdev->pm.mutex);
 		}
 	}
 }
@@ -161,11 +164,11 @@ static void radeon_sync_with_vblank(struct radeon_device *rdev)
 {
 	if (rdev->pm.active_crtcs) {
 		rdev->pm.vblank_sync = false;
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 		wait_event_timeout(
 			rdev->irq.vblank_queue, rdev->pm.vblank_sync,
 			msecs_to_jiffies(RADEON_WAIT_VBLANK_TIMEOUT));
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 	}
 }
 
@@ -258,9 +261,8 @@ static void radeon_pm_set_clocks(struct radeon_device *rdev)
 	    (rdev->pm.requested_power_state_index == rdev->pm.current_power_state_index))
 		return;
 
-	DRM_LOCK(rdev->ddev);
 	lockmgr(&rdev->pm.mclk_lock, LK_EXCLUSIVE); // down_write
-	lockmgr(&rdev->ring_lock, LK_EXCLUSIVE);
+	mutex_lock(&rdev->ring_lock);
 
 	/* wait for the rings to drain */
 	for (i = 0; i < RADEON_NUM_RINGS; i++) {
@@ -271,9 +273,8 @@ static void radeon_pm_set_clocks(struct radeon_device *rdev)
 		r = radeon_fence_wait_empty(rdev, i);
 		if (r) {
 			/* needs a GPU reset dont reset here */
-			lockmgr(&rdev->ring_lock, LK_RELEASE);
+			mutex_unlock(&rdev->ring_lock);
 			lockmgr(&rdev->pm.mclk_lock, LK_RELEASE); // up_write
-			DRM_UNLOCK(rdev->ddev);
 			return;
 		}
 	}
@@ -283,8 +284,13 @@ static void radeon_pm_set_clocks(struct radeon_device *rdev)
 	if (rdev->irq.installed) {
 		for (i = 0; i < rdev->num_crtc; i++) {
 			if (rdev->pm.active_crtcs & (1 << i)) {
-				rdev->pm.req_vblank |= (1 << i);
-				drm_vblank_get(rdev->ddev, i);
+				/* This can fail if a modeset is in progress */
+				if (drm_vblank_get(rdev->ddev, i) == 0)
+					rdev->pm.req_vblank |= (1 << i);
+				else
+					DRM_DEBUG_DRIVER("crtc %d no vblank, can glitch\n",
+							 i);
+			
 			}
 		}
 	}
@@ -307,9 +313,8 @@ static void radeon_pm_set_clocks(struct radeon_device *rdev)
 
 	rdev->pm.dynpm_planned_action = DYNPM_ACTION_NONE;
 
-	lockmgr(&rdev->ring_lock, LK_RELEASE);
+	mutex_unlock(&rdev->ring_lock);
 	lockmgr(&rdev->pm.mclk_lock, LK_RELEASE); // up_write
-	DRM_UNLOCK(rdev->ddev);
 }
 
 static void radeon_pm_print_states(struct radeon_device *rdev)
@@ -375,7 +380,7 @@ static ssize_t radeon_set_pm_profile(struct device *dev,
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return -EINVAL;
 
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	if (rdev->pm.pm_method == PM_METHOD_PROFILE) {
 		if (strncmp("default", buf, strlen("default")) == 0)
 			rdev->pm.profile = PM_PROFILE_DEFAULT;
@@ -397,7 +402,7 @@ static ssize_t radeon_set_pm_profile(struct device *dev,
 		count = -EINVAL;
 
 fail:
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 
 	return count;
 }
@@ -437,21 +442,21 @@ static ssize_t radeon_set_pm_method(struct device *dev,
 	}
 
 	if (strncmp("dynpm", buf, strlen("dynpm")) == 0) {
-		lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+		mutex_lock(&rdev->pm.mutex);
 		rdev->pm.pm_method = PM_METHOD_DYNPM;
 		rdev->pm.dynpm_state = DYNPM_STATE_PAUSED;
 		rdev->pm.dynpm_planned_action = DYNPM_ACTION_DEFAULT;
-		lockmgr(&rdev->pm.mutex, LK_RELEASE);
+		mutex_unlock(&rdev->pm.mutex);
 	} else if (strncmp("profile", buf, strlen("profile")) == 0) {
-		lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+		mutex_lock(&rdev->pm.mutex);
 		/* disable dynpm */
 		rdev->pm.dynpm_state = DYNPM_STATE_DISABLED;
 		rdev->pm.dynpm_planned_action = DYNPM_ACTION_NONE;
 		rdev->pm.pm_method = PM_METHOD_PROFILE;
-		lockmgr(&rdev->pm.mutex, LK_RELEASE);
-#ifdef DUMBBELL_WIP
+		mutex_unlock(&rdev->pm.mutex);
+#ifdef DUMBBELL_PM
 		cancel_delayed_work_sync(&rdev->pm.dynpm_idle_work);
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 	} else {
 		count = -EINVAL;
 		goto fail;
@@ -482,7 +487,7 @@ static ssize_t radeon_set_dpm_state(struct device *dev,
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct radeon_device *rdev = ddev->dev_private;
 
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	if (strncmp("battery", buf, strlen("battery")) == 0)
 		rdev->pm.dpm.user_state = POWER_STATE_TYPE_BATTERY;
 	else if (strncmp("balanced", buf, strlen("balanced")) == 0)
@@ -490,11 +495,11 @@ static ssize_t radeon_set_dpm_state(struct device *dev,
 	else if (strncmp("performance", buf, strlen("performance")) == 0)
 		rdev->pm.dpm.user_state = POWER_STATE_TYPE_PERFORMANCE;
 	else {
-		lockmgr(&rdev->pm.mutex, LK_RELEASE);
+		mutex_unlock(&rdev->pm.mutex);
 		count = -EINVAL;
 		goto fail;
 	}
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 
 	/* Can't set dpm state when the card is off */
 	if (!(rdev->flags & RADEON_IS_PX) ||
@@ -537,7 +542,7 @@ static ssize_t radeon_set_dpm_forced_performance_level(struct device *dev,
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON))
 		return -EINVAL;
 
-	spin_lock(&rdev->pm.mutex);
+	mutex_lock(&rdev->pm.mutex);
 	if (strncmp("low", buf, strlen("low")) == 0) {
 		level = RADEON_DPM_FORCED_LEVEL_LOW;
 	} else if (strncmp("high", buf, strlen("high")) == 0) {
@@ -558,9 +563,103 @@ static ssize_t radeon_set_dpm_forced_performance_level(struct device *dev,
 			count = -EINVAL;
 	}
 fail:
-	spin_unlock(&rdev->pm.mutex);
+	mutex_unlock(&rdev->pm.mutex);
 
 	return count;
+}
+
+static ssize_t radeon_hwmon_get_pwm1_enable(struct device *dev,
+					    struct device_attribute *attr,
+					    char *buf)
+{
+	struct radeon_device *rdev = dev_get_drvdata(dev);
+	u32 pwm_mode = 0;
+
+	if (rdev->asic->dpm.fan_ctrl_get_mode)
+		pwm_mode = rdev->asic->dpm.fan_ctrl_get_mode(rdev);
+
+	/* never 0 (full-speed), fuse or smc-controlled always */
+	return sprintf(buf, "%i\n", pwm_mode == FDO_PWM_MODE_STATIC ? 1 : 2);
+}
+
+static ssize_t radeon_hwmon_set_pwm1_enable(struct device *dev,
+					    struct device_attribute *attr,
+					    const char *buf,
+					    size_t count)
+{
+	struct radeon_device *rdev = dev_get_drvdata(dev);
+	int err;
+	int value;
+
+	if(!rdev->asic->dpm.fan_ctrl_set_mode)
+		return -EINVAL;
+
+	err = kstrtoint(buf, 10, &value);
+	if (err)
+		return err;
+
+	switch (value) {
+	case 1: /* manual, percent-based */
+		rdev->asic->dpm.fan_ctrl_set_mode(rdev, FDO_PWM_MODE_STATIC);
+		break;
+	default: /* disable */
+		rdev->asic->dpm.fan_ctrl_set_mode(rdev, 0);
+		break;
+	}
+
+	return count;
+}
+
+static ssize_t radeon_hwmon_get_pwm1_min(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	return sprintf(buf, "%i\n", 0);
+}
+
+static ssize_t radeon_hwmon_get_pwm1_max(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	return sprintf(buf, "%i\n", 255);
+}
+
+static ssize_t radeon_hwmon_set_pwm1(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	struct radeon_device *rdev = dev_get_drvdata(dev);
+	int err;
+	u32 value;
+
+	err = kstrtou32(buf, 10, &value);
+	if (err)
+		return err;
+
+	value = (value * 100) / 255;
+
+	err = rdev->asic->dpm.set_fan_speed_percent(rdev, value);
+	if (err)
+		return err;
+
+	return count;
+}
+
+static ssize_t radeon_hwmon_get_pwm1(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	struct radeon_device *rdev = dev_get_drvdata(dev);
+	int err;
+	u32 speed;
+
+	err = rdev->asic->dpm.get_fan_speed_percent(rdev, &speed);
+	if (err)
+		return err;
+
+	speed = (speed * 255) / 100;
+
+	return sprintf(buf, "%i\n", speed);
 }
 
 static DEVICE_ATTR(power_profile, S_IRUGO | S_IWUSR, radeon_get_pm_profile, radeon_set_pm_profile);
@@ -610,11 +709,19 @@ static ssize_t radeon_hwmon_show_temp_thresh(struct device *dev,
 static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO, radeon_hwmon_show_temp, NULL, 0);
 static SENSOR_DEVICE_ATTR(temp1_crit, S_IRUGO, radeon_hwmon_show_temp_thresh, NULL, 0);
 static SENSOR_DEVICE_ATTR(temp1_crit_hyst, S_IRUGO, radeon_hwmon_show_temp_thresh, NULL, 1);
+static SENSOR_DEVICE_ATTR(pwm1, S_IRUGO | S_IWUSR, radeon_hwmon_get_pwm1, radeon_hwmon_set_pwm1, 0);
+static SENSOR_DEVICE_ATTR(pwm1_enable, S_IRUGO | S_IWUSR, radeon_hwmon_get_pwm1_enable, radeon_hwmon_set_pwm1_enable, 0);
+static SENSOR_DEVICE_ATTR(pwm1_min, S_IRUGO, radeon_hwmon_get_pwm1_min, NULL, 0);
+static SENSOR_DEVICE_ATTR(pwm1_max, S_IRUGO, radeon_hwmon_get_pwm1_max, NULL, 0);
 
 static struct attribute *hwmon_attributes[] = {
 	&sensor_dev_attr_temp1_input.dev_attr.attr,
 	&sensor_dev_attr_temp1_crit.dev_attr.attr,
 	&sensor_dev_attr_temp1_crit_hyst.dev_attr.attr,
+	&sensor_dev_attr_pwm1.dev_attr.attr,
+	&sensor_dev_attr_pwm1_enable.dev_attr.attr,
+	&sensor_dev_attr_pwm1_min.dev_attr.attr,
+	&sensor_dev_attr_pwm1_max.dev_attr.attr,
 	NULL
 };
 
@@ -623,14 +730,47 @@ static umode_t hwmon_attributes_visible(struct kobject *kobj,
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct radeon_device *rdev = dev_get_drvdata(dev);
+	umode_t effective_mode = attr->mode;
 
-	/* Skip limit attributes if DPM is not enabled */
+	/* Skip attributes if DPM is not enabled */
 	if (rdev->pm.pm_method != PM_METHOD_DPM &&
 	    (attr == &sensor_dev_attr_temp1_crit.dev_attr.attr ||
-	     attr == &sensor_dev_attr_temp1_crit_hyst.dev_attr.attr))
+	     attr == &sensor_dev_attr_temp1_crit_hyst.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1_enable.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1_max.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1_min.dev_attr.attr))
 		return 0;
 
-	return attr->mode;
+	/* Skip fan attributes if fan is not present */
+	if (rdev->pm.no_fan &&
+	    (attr == &sensor_dev_attr_pwm1.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1_enable.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1_max.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1_min.dev_attr.attr))
+		return 0;
+
+	/* mask fan attributes if we have no bindings for this asic to expose */
+	if ((!rdev->asic->dpm.get_fan_speed_percent &&
+	     attr == &sensor_dev_attr_pwm1.dev_attr.attr) || /* can't query fan */
+	    (!rdev->asic->dpm.fan_ctrl_get_mode &&
+	     attr == &sensor_dev_attr_pwm1_enable.dev_attr.attr)) /* can't query state */
+		effective_mode &= ~S_IRUGO;
+
+	if ((!rdev->asic->dpm.set_fan_speed_percent &&
+	     attr == &sensor_dev_attr_pwm1.dev_attr.attr) || /* can't manage fan */
+	    (!rdev->asic->dpm.fan_ctrl_set_mode &&
+	     attr == &sensor_dev_attr_pwm1_enable.dev_attr.attr)) /* can't manage state */
+		effective_mode &= ~S_IWUSR;
+
+	/* hide max/min values if we can't both query and manage the fan */
+	if ((!rdev->asic->dpm.set_fan_speed_percent &&
+	     !rdev->asic->dpm.get_fan_speed_percent) &&
+	    (attr == &sensor_dev_attr_pwm1_max.dev_attr.attr ||
+	     attr == &sensor_dev_attr_pwm1_min.dev_attr.attr))
+		return 0;
+
+	return effective_mode;
 }
 
 static const struct attribute_group hwmon_attrgroup = {
@@ -760,12 +900,8 @@ static void radeon_dpm_thermal_work_handler(void *arg, int pending)
 	radeon_pm_compute_clocks(rdev);
 }
 
-static struct radeon_ps *radeon_dpm_pick_power_state(struct radeon_device *rdev,
-						     enum radeon_pm_state_type dpm_state)
+static bool radeon_dpm_single_display(struct radeon_device *rdev)
 {
-	int i;
-	struct radeon_ps *ps;
-	u32 ui_class;
 	bool single_display = (rdev->pm.dpm.new_active_crtc_count < 2) ?
 		true : false;
 
@@ -774,6 +910,23 @@ static struct radeon_ps *radeon_dpm_pick_power_state(struct radeon_device *rdev,
 		if (radeon_dpm_vblank_too_short(rdev))
 			single_display = false;
 	}
+
+	/* 120hz tends to be problematic even if they are under the
+	 * vblank limit.
+	 */
+	if (single_display && (r600_dpm_get_vrefresh(rdev) >= 120))
+		single_display = false;
+
+	return single_display;
+}
+
+static struct radeon_ps *radeon_dpm_pick_power_state(struct radeon_device *rdev,
+						     enum radeon_pm_state_type dpm_state)
+{
+	int i;
+	struct radeon_ps *ps;
+	u32 ui_class;
+	bool single_display = radeon_dpm_single_display(rdev);
 
 	/* certain older asics have a separare 3D performance state,
 	 * so try that first if the user selected performance
@@ -900,6 +1053,7 @@ static void radeon_dpm_change_power_state_locked(struct radeon_device *rdev)
 	struct radeon_ps *ps;
 	enum radeon_pm_state_type dpm_state;
 	int ret;
+	bool single_display = radeon_dpm_single_display(rdev);
 
 	/* if dpm init failed */
 	if (!rdev->pm.dpm_enabled)
@@ -923,6 +1077,9 @@ static void radeon_dpm_change_power_state_locked(struct radeon_device *rdev)
 	if (rdev->pm.dpm.current_ps == rdev->pm.dpm.requested_ps) {
 		/* vce just modifies an existing state so force a change */
 		if (ps->vce_active != rdev->pm.dpm.vce_active)
+			goto force;
+		/* user has made a display change (such as timing) */
+		if (rdev->pm.dpm.single_display != single_display)
 			goto force;
 		if ((rdev->family < CHIP_BARTS) || (rdev->flags & RADEON_IS_IGP)) {
 			/* for pre-BTC and APUs if the num crtcs changed but state is the same,
@@ -968,9 +1125,8 @@ force:
 		radeon_dpm_print_power_state(rdev, rdev->pm.dpm.requested_ps);
 	}
 
-	lockmgr(&rdev->ddev->struct_mutex, LK_EXCLUSIVE);
 	lockmgr(&rdev->pm.mclk_lock, LK_EXCLUSIVE); // down_write
-	lockmgr(&rdev->ring_lock, LK_EXCLUSIVE);
+	mutex_lock(&rdev->ring_lock);
 
 	/* update whether vce is active */
 	ps->vce_active = rdev->pm.dpm.vce_active;
@@ -983,9 +1139,6 @@ force:
 	radeon_bandwidth_update(rdev);
 	/* update displays */
 	radeon_dpm_display_configuration_changed(rdev);
-
-	rdev->pm.dpm.current_active_crtcs = rdev->pm.dpm.new_active_crtcs;
-	rdev->pm.dpm.current_active_crtc_count = rdev->pm.dpm.new_active_crtc_count;
 
 	/* wait for the rings to drain */
 	for (i = 0; i < RADEON_NUM_RINGS; i++) {
@@ -1002,6 +1155,10 @@ force:
 
 	radeon_dpm_post_set_power_state(rdev);
 
+	rdev->pm.dpm.current_active_crtcs = rdev->pm.dpm.new_active_crtcs;
+	rdev->pm.dpm.current_active_crtc_count = rdev->pm.dpm.new_active_crtc_count;
+	rdev->pm.dpm.single_display = single_display;
+
 	if (rdev->asic->dpm.force_performance_level) {
 		if (rdev->pm.dpm.thermal_active) {
 			enum radeon_dpm_forced_level level = rdev->pm.dpm.forced_level;
@@ -1016,9 +1173,8 @@ force:
 	}
 
 done:
-	lockmgr(&rdev->ring_lock, LK_RELEASE);
+	mutex_unlock(&rdev->ring_lock);
 	lockmgr(&rdev->pm.mclk_lock, LK_RELEASE); // up_write
-	lockmgr(&rdev->ddev->struct_mutex, LK_RELEASE);
 }
 
 void radeon_dpm_enable_uvd(struct radeon_device *rdev, bool enable)
@@ -1082,27 +1238,27 @@ void radeon_dpm_enable_vce(struct radeon_device *rdev, bool enable)
 
 static void radeon_pm_suspend_old(struct radeon_device *rdev)
 {
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	if (rdev->pm.pm_method == PM_METHOD_DYNPM) {
 		if (rdev->pm.dynpm_state == DYNPM_STATE_ACTIVE)
 			rdev->pm.dynpm_state = DYNPM_STATE_SUSPENDED;
 	}
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 	cancel_delayed_work_sync(&rdev->pm.dynpm_idle_work);
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 }
 
 static void radeon_pm_suspend_dpm(struct radeon_device *rdev)
 {
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	/* disable dpm */
 	radeon_dpm_disable(rdev);
 	/* reset the power state */
 	rdev->pm.dpm.current_ps = rdev->pm.dpm.requested_ps = rdev->pm.dpm.boot_ps;
 	rdev->pm.dpm_enabled = false;
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 }
 
 void radeon_pm_suspend(struct radeon_device *rdev)
@@ -1131,7 +1287,7 @@ static void radeon_pm_resume_old(struct radeon_device *rdev)
 			radeon_set_memory_clock(rdev, rdev->pm.default_mclk);
 	}
 	/* asic init will reset the default power state */
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	rdev->pm.current_power_state_index = rdev->pm.default_power_state_index;
 	rdev->pm.current_clock_mode_index = 0;
 	rdev->pm.current_sclk = rdev->pm.default_sclk;
@@ -1143,12 +1299,12 @@ static void radeon_pm_resume_old(struct radeon_device *rdev)
 	if (rdev->pm.pm_method == PM_METHOD_DYNPM
 	    && rdev->pm.dynpm_state == DYNPM_STATE_SUSPENDED) {
 		rdev->pm.dynpm_state = DYNPM_STATE_ACTIVE;
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 		schedule_delayed_work(&rdev->pm.dynpm_idle_work,
 				      msecs_to_jiffies(RADEON_IDLE_LOOP_MS));
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 	}
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 	radeon_pm_compute_clocks(rdev);
 }
 
@@ -1157,11 +1313,11 @@ static void radeon_pm_resume_dpm(struct radeon_device *rdev)
 	int ret;
 
 	/* asic init will reset to the boot state */
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	rdev->pm.dpm.current_ps = rdev->pm.dpm.requested_ps = rdev->pm.dpm.boot_ps;
 	radeon_dpm_setup_asic(rdev);
 	ret = radeon_dpm_enable(rdev);
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 	if (ret)
 		goto dpm_resume_fail;
 	rdev->pm.dpm_enabled = true;
@@ -1237,23 +1393,11 @@ static int radeon_pm_init_old(struct radeon_device *rdev)
 	if (ret)
 		return ret;
 
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 	INIT_DELAYED_WORK(&rdev->pm.dynpm_idle_work, radeon_dynpm_idle_work_handler);
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 
 	if (rdev->pm.num_power_states > 1) {
-		/* where's the best place to put these? */
-#ifdef DUMBBELL_WIP
-		ret = device_create_file(rdev->dev, &dev_attr_power_profile);
-#endif /* DUMBBELL_WIP */
-		if (ret)
-			DRM_ERROR("failed to create device file for power profile\n");
-#ifdef DUMBBELL_WIP
-		ret = device_create_file(rdev->dev, &dev_attr_power_method);
-#endif /* DUMBBELL_WIP */
-		if (ret)
-			DRM_ERROR("failed to create device file for power method\n");
-
 		if (radeon_debugfs_pm_init(rdev)) {
 			DRM_ERROR("Failed to register debugfs file for PM!\n");
 		}
@@ -1299,33 +1443,19 @@ static int radeon_pm_init_dpm(struct radeon_device *rdev)
 		return ret;
 
 	TASK_INIT(&rdev->pm.dpm.thermal.work, 0, radeon_dpm_thermal_work_handler, rdev);
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	radeon_dpm_init(rdev);
 	rdev->pm.dpm.current_ps = rdev->pm.dpm.requested_ps = rdev->pm.dpm.boot_ps;
 	if (radeon_dpm == 1)
 		radeon_dpm_print_power_states(rdev);
 	radeon_dpm_setup_asic(rdev);
 	ret = radeon_dpm_enable(rdev);
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 	if (ret)
 		goto dpm_failed;
 	rdev->pm.dpm_enabled = true;
 
 #ifdef TODO_DEVICE_FILE
-	ret = device_create_file(rdev->dev, &dev_attr_power_dpm_state);
-	if (ret)
-		DRM_ERROR("failed to create device file for dpm state\n");
-	ret = device_create_file(rdev->dev, &dev_attr_power_dpm_force_performance_level);
-	if (ret)
-		DRM_ERROR("failed to create device file for dpm state\n");
-	/* XXX: these are noops for dpm but are here for backwards compat */
-	ret = device_create_file(rdev->dev, &dev_attr_power_profile);
-	if (ret)
-		DRM_ERROR("failed to create device file for power profile\n");
-	ret = device_create_file(rdev->dev, &dev_attr_power_method);
-	if (ret)
-		DRM_ERROR("failed to create device file for power method\n");
-
 	if (radeon_debugfs_pm_init(rdev)) {
 		DRM_ERROR("Failed to register debugfs file for dpm!\n");
 	}
@@ -1355,8 +1485,39 @@ dpm_failed:
 	return ret;
 }
 
+struct radeon_dpm_quirk {
+	u32 chip_vendor;
+	u32 chip_device;
+	u32 subsys_vendor;
+	u32 subsys_device;
+};
+
+/* cards with dpm stability problems */
+static struct radeon_dpm_quirk radeon_dpm_quirk_list[] = {
+	/* TURKS - https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1386534 */
+	{ PCI_VENDOR_ID_ATI, 0x6759, 0x1682, 0x3195 },
+	/* TURKS - https://bugzilla.kernel.org/show_bug.cgi?id=83731 */
+	{ PCI_VENDOR_ID_ATI, 0x6840, 0x1179, 0xfb81 },
+	{ 0, 0, 0, 0 },
+};
+
 int radeon_pm_init(struct radeon_device *rdev)
 {
+	struct radeon_dpm_quirk *p = radeon_dpm_quirk_list;
+	bool disable_dpm = false;
+
+	/* Apply dpm quirks */
+	while (p && p->chip_device != 0) {
+		if (rdev->pdev->vendor == p->chip_vendor &&
+		    rdev->pdev->device == p->chip_device &&
+		    rdev->pdev->subsystem_vendor == p->subsys_vendor &&
+		    rdev->pdev->subsystem_device == p->subsys_device) {
+			disable_dpm = true;
+			break;
+		}
+		++p;
+	}
+
 	/* enable dpm on rv6xx+ */
 	switch (rdev->family) {
 	case CHIP_RV610:
@@ -1412,6 +1573,8 @@ int radeon_pm_init(struct radeon_device *rdev)
 			 (!(rdev->flags & RADEON_IS_IGP)) &&
 			 (!rdev->smc_fw))
 			rdev->pm.pm_method = PM_METHOD_PROFILE;
+		else if (disable_dpm && (radeon_dpm == -1))
+			rdev->pm.pm_method = PM_METHOD_PROFILE;
 		else if (radeon_dpm == 0)
 			rdev->pm.pm_method = PM_METHOD_PROFILE;
 		else
@@ -1434,18 +1597,63 @@ int radeon_pm_late_init(struct radeon_device *rdev)
 	int ret = 0;
 
 	if (rdev->pm.pm_method == PM_METHOD_DPM) {
-		lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
-		ret = radeon_dpm_late_enable(rdev);
-		lockmgr(&rdev->pm.mutex, LK_RELEASE);
-	}
+		if (rdev->pm.dpm_enabled) {
+#ifdef TODO_DEVICE_FILE
+			if (!rdev->pm.sysfs_initialized) {
+				ret = device_create_file(rdev->dev, &dev_attr_power_dpm_state);
+				if (ret)
+					DRM_ERROR("failed to create device file for dpm state\n");
+				ret = device_create_file(rdev->dev, &dev_attr_power_dpm_force_performance_level);
+				if (ret)
+					DRM_ERROR("failed to create device file for dpm state\n");
+				/* XXX: these are noops for dpm but are here for backwards compat */
+				ret = device_create_file(rdev->dev, &dev_attr_power_profile);
+				if (ret)
+					DRM_ERROR("failed to create device file for power profile\n");
+				ret = device_create_file(rdev->dev, &dev_attr_power_method);
+				if (ret)
+					DRM_ERROR("failed to create device file for power method\n");
+				if (!ret)
+					rdev->pm.sysfs_initialized = true;
+			}
+#endif
+
+			mutex_lock(&rdev->pm.mutex);
+			ret = radeon_dpm_late_enable(rdev);
+			mutex_unlock(&rdev->pm.mutex);
+			if (ret) {
+				rdev->pm.dpm_enabled = false;
+				DRM_ERROR("radeon_pm_late_init failed, disabling dpm\n");
+			} else {
+				/* set the dpm state for PX since there won't be
+				 * a modeset to call this.
+				 */
+				radeon_pm_compute_clocks(rdev);
+			}
+		}
+	} else {
+#ifdef TODO_DEVICE_FILE
+		if ((rdev->pm.num_power_states > 1) &&
+		    (!rdev->pm.sysfs_initialized)) {
+ 			/* where's the best place to put these? */
+			ret = device_create_file(rdev->dev, &dev_attr_power_profile);
+			if (ret)
+				DRM_ERROR("failed to create device file for power profile\n");
+			ret = device_create_file(rdev->dev, &dev_attr_power_method);
+			if (ret)
+				DRM_ERROR("failed to create device file for power method\n");
+			if (!ret)
+			rdev->pm.sysfs_initialized = true;
+		}
+#endif
+ 	}
 	return ret;
 }
 
 static void radeon_pm_fini_old(struct radeon_device *rdev)
 {
 	if (rdev->pm.num_power_states > 1) {
-		DRM_UNLOCK(rdev->ddev); /* Work around LOR. */
-		lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+		mutex_lock(&rdev->pm.mutex);
 		if (rdev->pm.pm_method == PM_METHOD_PROFILE) {
 			rdev->pm.profile = PM_PROFILE_DEFAULT;
 			radeon_pm_update_profile(rdev);
@@ -1456,12 +1664,13 @@ static void radeon_pm_fini_old(struct radeon_device *rdev)
 			rdev->pm.dynpm_planned_action = DYNPM_ACTION_DEFAULT;
 			radeon_pm_set_clocks(rdev);
 		}
-		lockmgr(&rdev->pm.mutex, LK_RELEASE);
-		DRM_LOCK(rdev->ddev);
+		mutex_unlock(&rdev->pm.mutex);
+
+#ifdef DUMBBELL_PM
+		cancel_delayed_work_sync(&rdev->pm.dynpm_idle_work);
+#endif /* DUMBBELL_PM */
 
 #ifdef DUMBBELL_WIP
-		cancel_delayed_work_sync(&rdev->pm.dynpm_idle_work);
-
 		device_remove_file(rdev->dev, &dev_attr_power_profile);
 		device_remove_file(rdev->dev, &dev_attr_power_method);
 #endif /* DUMBBELL_WIP */
@@ -1483,9 +1692,9 @@ static void radeon_pm_fini_old(struct radeon_device *rdev)
 static void radeon_pm_fini_dpm(struct radeon_device *rdev)
 {
 	if (rdev->pm.num_power_states > 1) {
-		lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+		mutex_lock(&rdev->pm.mutex);
 		radeon_dpm_disable(rdev);
-		lockmgr(&rdev->pm.mutex, LK_RELEASE);
+		mutex_unlock(&rdev->pm.mutex);
 
 #ifdef TODO_DEVICE_FILE
 		device_remove_file(rdev->dev, &dev_attr_power_dpm_state);
@@ -1528,7 +1737,7 @@ static void radeon_pm_compute_clocks_old(struct radeon_device *rdev)
 	if (rdev->pm.num_power_states < 2)
 		return;
 
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 
 	rdev->pm.active_crtcs = 0;
 	rdev->pm.active_crtc_count = 0;
@@ -1550,9 +1759,9 @@ static void radeon_pm_compute_clocks_old(struct radeon_device *rdev)
 		if (rdev->pm.dynpm_state != DYNPM_STATE_DISABLED) {
 			if (rdev->pm.active_crtc_count > 1) {
 				if (rdev->pm.dynpm_state == DYNPM_STATE_ACTIVE) {
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 					cancel_delayed_work(&rdev->pm.dynpm_idle_work);
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 
 					rdev->pm.dynpm_state = DYNPM_STATE_PAUSED;
 					rdev->pm.dynpm_planned_action = DYNPM_ACTION_DEFAULT;
@@ -1570,23 +1779,23 @@ static void radeon_pm_compute_clocks_old(struct radeon_device *rdev)
 					radeon_pm_get_dynpm_state(rdev);
 					radeon_pm_set_clocks(rdev);
 
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 					schedule_delayed_work(&rdev->pm.dynpm_idle_work,
 							      msecs_to_jiffies(RADEON_IDLE_LOOP_MS));
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 				} else if (rdev->pm.dynpm_state == DYNPM_STATE_PAUSED) {
 					rdev->pm.dynpm_state = DYNPM_STATE_ACTIVE;
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 					schedule_delayed_work(&rdev->pm.dynpm_idle_work,
 							      msecs_to_jiffies(RADEON_IDLE_LOOP_MS));
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM*/
 					DRM_DEBUG_DRIVER("radeon: dynamic power management activated\n");
 				}
 			} else { /* count == 0 */
 				if (rdev->pm.dynpm_state != DYNPM_STATE_MINIMUM) {
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 					cancel_delayed_work(&rdev->pm.dynpm_idle_work);
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 
 					rdev->pm.dynpm_state = DYNPM_STATE_MINIMUM;
 					rdev->pm.dynpm_planned_action = DYNPM_ACTION_MINIMUM;
@@ -1597,7 +1806,7 @@ static void radeon_pm_compute_clocks_old(struct radeon_device *rdev)
 		}
 	}
 
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 }
 
 static void radeon_pm_compute_clocks_dpm(struct radeon_device *rdev)
@@ -1609,7 +1818,7 @@ static void radeon_pm_compute_clocks_dpm(struct radeon_device *rdev)
 	if (!rdev->pm.dpm_enabled)
 		return;
 
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 
 	/* update active crtc counts */
 	rdev->pm.dpm.new_active_crtcs = 0;
@@ -1633,7 +1842,7 @@ static void radeon_pm_compute_clocks_dpm(struct radeon_device *rdev)
 
 	radeon_dpm_change_power_state_locked(rdev);
 
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 
 }
 
@@ -1655,7 +1864,9 @@ static bool radeon_pm_in_vbl(struct radeon_device *rdev)
 	 */
 	for (crtc = 0; (crtc < rdev->num_crtc) && in_vbl; crtc++) {
 		if (rdev->pm.active_crtcs & (1 << crtc)) {
-			vbl_status = radeon_get_crtc_scanoutpos(rdev->ddev, crtc, 0,
+			vbl_status = radeon_get_crtc_scanoutpos(rdev->ddev,
+								crtc,
+								USE_REAL_VBLANKSTART,
 								&vpos, &hpos, NULL, NULL,
 								&rdev->mode_info.crtcs[crtc]->base.hwmode);
 			if ((vbl_status & DRM_SCANOUTPOS_VALID) &&
@@ -1678,7 +1889,7 @@ static bool radeon_pm_debug_check_in_vbl(struct radeon_device *rdev, bool finish
 	return in_vbl;
 }
 
-#ifdef DUMBBELL_WIP
+#ifdef DUMBBELL_PM
 static void radeon_dynpm_idle_work_handler(struct work_struct *work)
 {
 	struct radeon_device *rdev;
@@ -1687,7 +1898,7 @@ static void radeon_dynpm_idle_work_handler(struct work_struct *work)
 				pm.dynpm_idle_work.work);
 
 	resched = ttm_bo_lock_delayed_workqueue(&rdev->mman.bdev);
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 	if (rdev->pm.dynpm_state == DYNPM_STATE_ACTIVE) {
 		int not_processed = 0;
 		int i;
@@ -1736,10 +1947,10 @@ static void radeon_dynpm_idle_work_handler(struct work_struct *work)
 		schedule_delayed_work(&rdev->pm.dynpm_idle_work,
 				      msecs_to_jiffies(RADEON_IDLE_LOOP_MS));
 	}
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 	ttm_bo_unlock_delayed_workqueue(&rdev->mman.bdev, resched);
 }
-#endif /* DUMBBELL_WIP */
+#endif /* DUMBBELL_PM */
 
 /*
  * Debugfs info
@@ -1757,12 +1968,12 @@ static int radeon_debugfs_pm_info(struct seq_file *m, void *data)
 	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON)) {
 		seq_printf(m, "PX asic powered off\n");
 	} else if (rdev->pm.dpm_enabled) {
-		spin_lock(&rdev->pm.mutex);
+		mutex_lock(&rdev->pm.mutex);
 		if (rdev->asic->dpm.debugfs_print_current_performance_level)
 			radeon_dpm_debugfs_print_current_performance_level(rdev, m);
 		else
 			seq_printf(m, "Debugfs support not implemented for this asic\n");
-		spin_unlock(&rdev->pm.mutex);
+		mutex_unlock(&rdev->pm.mutex);
 	} else {
 		seq_printf(m, "default engine clock: %u0 kHz\n", rdev->pm.default_sclk);
 		/* radeon_get_engine_clock is not reliable on APUs so just print the current clock */

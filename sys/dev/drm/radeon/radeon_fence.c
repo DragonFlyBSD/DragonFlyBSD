@@ -419,6 +419,42 @@ static int radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 }
 
 /**
+ * radeon_fence_wait_timeout - wait for a fence to signal with timeout
+ *
+ * @fence: radeon fence object
+ * @intr: use interruptible sleep
+ *
+ * Wait for the requested fence to signal (all asics).
+ * @intr selects whether to use interruptable (true) or non-interruptable
+ * (false) sleep when waiting for the fence.
+ * @timeout: maximum time to wait, or MAX_SCHEDULE_TIMEOUT for infinite wait
+ * Returns remaining time if the sequence number has passed, 0 when
+ * the wait timeout, or an error for all other cases.
+ */
+int radeon_fence_wait_timeout(struct radeon_fence *fence, bool intr, int timeout)
+{
+	u64 seq[RADEON_NUM_RINGS] = {};
+	int r;
+
+	if (timeout < 0) {
+		DRM_ERROR("radeon_fence_wait_timeout (%d) < 0!\n", timeout);
+	}
+
+	if (fence == NULL) {
+		WARN(1, "Querying an invalid fence : %p !\n", fence);
+		return -EINVAL;
+	}
+
+	seq[fence->ring] = fence->seq;
+	r = radeon_fence_wait_seq_timeout(fence->rdev, seq, intr, timeout);
+	if (r <= 0) {
+		return r;
+	}
+
+	return 0;
+}
+
+/**
  * radeon_fence_wait - wait for a fence to signal
  *
  * @fence: radeon fence object
@@ -431,21 +467,12 @@ static int radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
  */
 int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 {
-	u64 seq[RADEON_NUM_RINGS] = {};
-	int r;
-
-	if (fence == NULL) {
-		WARN(1, "Querying an invalid fence : %p !\n", fence);
-		return -EINVAL;
-	}
-
-	seq[fence->ring] = fence->seq;
-	r = radeon_fence_wait_seq_timeout(fence->rdev, seq, intr, INT_MAX);
-	if (r < 0) {
+	int r = radeon_fence_wait_timeout(fence, intr, INT_MAX);
+	if (r > 0) {
+		return 0;
+	} else {
 		return r;
 	}
-
-	return 0;
 }
 
 /**

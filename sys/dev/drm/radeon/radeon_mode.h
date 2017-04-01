@@ -35,6 +35,9 @@
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_fixed.h>
 #include <drm/drm_crtc_helper.h>
+#include <linux/i2c.h>
+#include <linux/i2c-algo-bit.h>
+
 
 struct radeon_bo;
 struct radeon_device;
@@ -81,6 +84,13 @@ enum radeon_hpd_id {
 	RADEON_HPD_5,
 	RADEON_HPD_6,
 	RADEON_HPD_NONE = 0xff,
+};
+
+enum radeon_output_csc {
+	RADEON_OUTPUT_CSC_BYPASS = 0,
+	RADEON_OUTPUT_CSC_TVRGB = 1,
+	RADEON_OUTPUT_CSC_YCBCR601 = 2,
+	RADEON_OUTPUT_CSC_YCBCR709 = 3,
 };
 
 #define RADEON_MAX_I2C_BUS 16
@@ -187,13 +197,16 @@ struct radeon_pll {
 };
 
 struct radeon_i2c_chan {
-	device_t adapter;
-	device_t iic_bus;
+	struct i2c_adapter adapter;
 	struct drm_device *dev;
+	struct i2c_algo_bit_data bit;
 	struct radeon_i2c_bus_rec rec;
 	struct drm_dp_aux aux;
+	bool has_aux;
 	struct lock mutex;
 	char   name[48];
+	device_t iic_bus;
+	device_t adapter_dev;
 };
 
 /* mostly for macs, but really any system without connector tables */
@@ -227,7 +240,6 @@ struct radeon_afmt {
 	int offset;
 	bool last_buffer_filled_status;
 	int id;
-	struct r600_audio_pin *pin;
 };
 
 struct radeon_mode_info {
@@ -253,6 +265,8 @@ struct radeon_mode_info {
 	struct drm_property *audio_property;
 	/* FMT dithering */
 	struct drm_property *dither_property;
+	/* Output CSC */
+	struct drm_property *output_csc_property;
 	/* hardcoded DFP edid from BIOS */
 	struct edid *bios_hardcoded_edid;
 	int bios_hardcoded_edid_size;
@@ -263,6 +277,9 @@ struct radeon_mode_info {
 	u16 firmware_flags;
 	/* pointer to backlight encoder */
 	struct radeon_encoder *bl_encoder;
+
+	/* bitmask for active encoder frontends */
+	uint32_t active_encoders;
 };
 
 #define RADEON_MAX_BL_LEVEL 0xFF
@@ -319,12 +336,15 @@ struct radeon_crtc {
 	uint32_t crtc_offset;
 	struct drm_gem_object *cursor_bo;
 	uint64_t cursor_addr;
+	int cursor_x;
+	int cursor_y;
+	int cursor_hot_x;
+	int cursor_hot_y;
 	int cursor_width;
 	int cursor_height;
 	int max_cursor_width;
 	int max_cursor_height;
 	uint32_t legacy_display_base_addr;
-	uint32_t legacy_cursor_offset;
 	enum radeon_rmx_type rmx_type;
 	u8 h_border;
 	u8 v_border;
@@ -350,7 +370,9 @@ struct radeon_crtc {
 	u32 line_time;
 	u32 wm_low;
 	u32 wm_high;
+	u32 lb_vblank_lead_lines;
 	struct drm_display_mode hw_mode;
+	enum radeon_output_csc output_csc;
 };
 
 struct radeon_encoder_primary_dac {
@@ -420,6 +442,7 @@ struct radeon_encoder_atom_dig {
 	uint8_t backlight_level;
 	int panel_mode;
 	struct radeon_afmt *afmt;
+	struct r600_audio_pin *pin;
 };
 
 struct radeon_encoder_atom_dac {
@@ -443,12 +466,13 @@ struct radeon_encoder {
 	int audio_polling_active;
 	bool is_ext_encoder;
 	u16 caps;
+	struct radeon_audio_funcs *audio;
+	enum radeon_output_csc output_csc;
 };
 
 struct radeon_connector_atom_dig {
 	uint32_t igp_lane_info;
 	/* displayport */
-	struct radeon_i2c_chan *dp_i2c_bus;
 	u8 dpcd[DP_RECEIVER_CAP_SIZE];
 	u8 dp_sink_type;
 	int dp_clock;
@@ -461,6 +485,7 @@ struct radeon_gpio_rec {
 	u8 id;
 	u32 reg;
 	u32 mask;
+	u32 shift;
 };
 
 struct radeon_hpd {
@@ -704,19 +729,28 @@ extern u8 radeon_dp_getsinktype(struct radeon_connector *radeon_connector);
 extern bool radeon_dp_getdpcd(struct radeon_connector *radeon_connector);
 extern int radeon_dp_get_panel_mode(struct drm_encoder *encoder,
 				    struct drm_connector *connector);
+extern int radeon_dp_get_dp_link_config(struct drm_connector *connector,
+					const u8 *dpcd,
+					unsigned pix_clock,
+					unsigned *dp_lanes, unsigned *dp_rate);
 extern void radeon_dp_set_rx_power_state(struct drm_connector *connector,
 					 u8 power_state);
 extern void radeon_dp_aux_init(struct radeon_connector *radeon_connector);
+extern ssize_t
+radeon_dp_aux_transfer_native(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg);
+
 extern void atombios_dig_encoder_setup(struct drm_encoder *encoder, int action, int panel_mode);
+extern void atombios_dig_encoder_setup2(struct drm_encoder *encoder, int action, int panel_mode, int enc_override);
 extern void radeon_atom_encoder_init(struct radeon_device *rdev);
 extern void radeon_atom_disp_eng_pll_init(struct radeon_device *rdev);
 extern void atombios_dig_transmitter_setup(struct drm_encoder *encoder,
 					   int action, uint8_t lane_num,
 					   uint8_t lane_set);
+extern void atombios_dig_transmitter_setup2(struct drm_encoder *encoder,
+					    int action, uint8_t lane_num,
+					    uint8_t lane_set, int fe);
 extern void radeon_atom_ext_encoder_setup_ddc(struct drm_encoder *encoder);
 extern struct drm_encoder *radeon_get_external_encoder(struct drm_encoder *encoder);
-extern int radeon_dp_i2c_aux_ch(device_t dev, int mode,
-				u8 write_byte, u8 *read_byte);
 void radeon_atom_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le);
 
 extern void radeon_i2c_init(struct radeon_device *rdev);
@@ -728,9 +762,6 @@ extern void radeon_i2c_add(struct radeon_device *rdev,
 			   const char *name);
 extern struct radeon_i2c_chan *radeon_i2c_lookup(struct radeon_device *rdev,
 						 struct radeon_i2c_bus_rec *i2c_bus);
-extern struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
-						    struct radeon_i2c_bus_rec *rec,
-						    const char *name);
 extern struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 						 struct radeon_i2c_bus_rec *rec,
 						 const char *name);
@@ -753,6 +784,8 @@ extern bool radeon_atombios_get_ppll_ss_info(struct radeon_device *rdev,
 extern bool radeon_atombios_get_asic_ss_info(struct radeon_device *rdev,
 					     struct radeon_atom_ss *ss,
 					     int id, u32 clock);
+extern struct radeon_gpio_rec radeon_atombios_lookup_gpio(struct radeon_device *rdev,
+							  u8 id);
 
 extern void radeon_compute_pll_legacy(struct radeon_pll *pll,
 				      uint64_t freq,
@@ -807,17 +840,19 @@ extern int radeon_crtc_set_base_atomic(struct drm_crtc *crtc,
 extern int radeon_crtc_do_set_base(struct drm_crtc *crtc,
 				   struct drm_framebuffer *fb,
 				   int x, int y, int atomic);
-extern int radeon_crtc_cursor_set(struct drm_crtc *crtc,
-				  struct drm_file *file_priv,
-				  uint32_t handle,
-				  uint32_t width,
-				  uint32_t height);
+extern int radeon_crtc_cursor_set2(struct drm_crtc *crtc,
+				   struct drm_file *file_priv,
+				   uint32_t handle,
+				   uint32_t width,
+				   uint32_t height,
+				   int32_t hot_x,
+				   int32_t hot_y);
 extern int radeon_crtc_cursor_move(struct drm_crtc *crtc,
 				   int x, int y);
+extern void radeon_cursor_reset(struct drm_crtc *crtc);
 
-extern int radeon_get_crtc_scanoutpos(struct drm_device *dev, int crtc,
-				      unsigned int flags,
-				      int *vpos, int *hpos,
+extern int radeon_get_crtc_scanoutpos(struct drm_device *dev, unsigned int pipe,
+				      unsigned int flags, int *vpos, int *hpos,
 				      ktime_t *stime, ktime_t *etime,
 				      const struct drm_display_mode *mode);
 
@@ -927,7 +962,14 @@ void radeon_fbdev_restore_mode(struct radeon_device *rdev);
 void radeon_fb_output_poll_changed(struct radeon_device *rdev);
 
 void radeon_crtc_handle_vblank(struct radeon_device *rdev, int crtc_id);
+
+void radeon_fb_add_connector(struct radeon_device *rdev, struct drm_connector *connector);
+void radeon_fb_remove_connector(struct radeon_device *rdev, struct drm_connector *connector);
+
 void radeon_crtc_handle_flip(struct radeon_device *rdev, int crtc_id);
 
 int radeon_align_pitch(struct radeon_device *rdev, int width, int bpp, bool tiled);
+
+int radeon_atom_pick_dig_encoder(struct drm_encoder *encoder, int fe_idx);
+void radeon_atom_release_dig_encoder(struct radeon_device *rdev, int enc_idx);
 #endif

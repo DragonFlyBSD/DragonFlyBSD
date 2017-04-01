@@ -78,7 +78,7 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 static bool radeon_read_bios(struct radeon_device *rdev)
 {
 	device_t vga_dev;
-	uint8_t __iomem *bios;
+	uint8_t __iomem *bios, val1, val2;
 	size_t size;
 
 	DRM_INFO("%s: ===> Try PCI Expansion ROM...\n", __func__);
@@ -92,7 +92,10 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 	}
 	DRM_INFO("%s: Map address: %p (%zu bytes)\n", __func__, bios, size);
 
-	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
+	val1 = readb(&bios[0]);
+	val2 = readb(&bios[1]);
+
+	if (size == 0 || val1 != 0x55 || val2 != 0xaa) {
 		if (size == 0) {
 			DRM_INFO("%s: Incorrect BIOS size\n", __func__);
 		} else {
@@ -102,8 +105,12 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 		vga_pci_unmap_bios(vga_dev, bios);
 		return false;
 	}
-	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
-	memcpy(rdev->bios, bios, size);
+	rdev->bios = kmalloc(size, M_DRM, M_WAITOK | M_ZERO);
+ 	if (rdev->bios == NULL) {
+		vga_pci_unmap_bios(vga_dev, bios);
+ 		return false;
+ 	}
+	memcpy_fromio(rdev->bios, bios, size);
 	vga_pci_unmap_bios(vga_dev, bios);
 	return true;
 }

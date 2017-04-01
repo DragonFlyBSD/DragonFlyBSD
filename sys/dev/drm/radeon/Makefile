@@ -22,6 +22,7 @@ SRCS	+=								\
 	radeon_agp.c							\
 	radeon_asic.c							\
 	radeon_atombios.c						\
+	radeon_audio.c						\
 	radeon_benchmark.c						\
 	radeon_bios.c							\
 	radeon_clocks.c							\
@@ -31,6 +32,7 @@ SRCS	+=								\
 	radeon_cursor.c							\
 	radeon_device.c							\
 	radeon_display.c						\
+	radeon_dp_auxch.c						\
 	radeon_drv.c							\
 	radeon_encoders.c						\
 	radeon_fb.c							\

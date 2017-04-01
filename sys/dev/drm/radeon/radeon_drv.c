@@ -93,11 +93,17 @@
  *   2.39.0 - Add INFO query for number of active CUs
  *   2.40.0 - Add RADEON_GEM_GTT_WC/UC, flush HDP cache before submitting
  *            CS to GPU on >= r600
+ *   2.41.0 - evergreen/cayman: Add SET_BASE/DRAW_INDIRECT command parsing support
+ *   2.42.0 - Add VCE/VUI (Video Usability Information) support
+ *   2.43.0 - RADEON_INFO_GPU_RESET_COUNTER
+ *   2.44.0 - SET_APPEND_CNT packet3 support
+ *   2.45.0 - Allow setting shader registers using DMA/COPY packet3 on SI
  */
 #define KMS_DRIVER_MAJOR	2
-#define KMS_DRIVER_MINOR	40
+#define KMS_DRIVER_MINOR	45
 #define KMS_DRIVER_PATCHLEVEL	0
-int radeon_suspend_kms(struct drm_device *dev, bool suspend, bool fbcon);
+int radeon_suspend_kms(struct drm_device *dev, bool suspend,
+		       bool fbcon, bool freeze);
 int radeon_resume_kms(struct drm_device *dev, bool resume, bool fbcon);
 u32 radeon_get_vblank_counter_kms(struct drm_device *dev, unsigned int pipe);
 int radeon_enable_vblank_kms(struct drm_device *dev, unsigned int pipe);
@@ -173,6 +179,9 @@ int radeon_deep_color = 0;
 int radeon_use_pflipirq = 2;
 int radeon_bapm = -1;
 int radeon_backlight = -1;
+int radeon_auxch = -1;
+int radeon_uvd = 1;
+int radeon_vce = 1;
 
 TUNABLE_INT("drm.radeon.no_wb", &radeon_no_wb);
 MODULE_PARM_DESC(no_wb, "Disable AGP writeback for scratch registers");
@@ -285,6 +294,18 @@ TUNABLE_INT("drm.radeon.backlight", &radeon_backlight);
 MODULE_PARM_DESC(backlight, "backlight support (1 = enable, 0 = disable, -1 = auto)");
 module_param_named(backlight, radeon_backlight, int, 0444);
 
+TUNABLE_INT("drm.radeon.auxch", &radeon_auxch);
+MODULE_PARM_DESC(auxch, "Use native auxch experimental support (1 = enable, 0 = disable, -1 = auto)");
+module_param_named(auxch, radeon_auxch, int, 0444);
+
+TUNABLE_INT("drm.radeon.uvd", &radeon_uvd);
+MODULE_PARM_DESC(uvd, "uvd enable/disable uvd support (1 = enable, 0 = disable)");
+module_param_named(uvd, radeon_uvd, int, 0444);
+
+TUNABLE_INT("drm.radeon.vce", &radeon_vce);
+MODULE_PARM_DESC(vce, "vce enable/disable vce support (1 = enable, 0 = disable)");
+module_param_named(vce, radeon_vce, int, 0444);
+
 static drm_pci_id_list_t pciidlist[] = {
 	radeon_PCI_IDS
 };
@@ -338,7 +359,7 @@ static int radeon_pmops_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
-	return radeon_suspend_kms(drm_dev, true, true);
+	return radeon_suspend_kms(drm_dev, true, true, false);
 }
 
 static int radeon_pmops_resume(struct device *dev)
@@ -352,7 +373,7 @@ static int radeon_pmops_freeze(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
-	return radeon_suspend_kms(drm_dev, false, true);
+	return radeon_suspend_kms(drm_dev, false, true, true);
 }
 
 static int radeon_pmops_thaw(struct device *dev)
@@ -379,7 +400,7 @@ static int radeon_pmops_runtime_suspend(struct device *dev)
 	drm_kms_helper_poll_disable(drm_dev);
 	vga_switcheroo_set_dynamic_switch(pdev, VGA_SWITCHEROO_OFF);
 
-	ret = radeon_suspend_kms(drm_dev, false, false);
+	ret = radeon_suspend_kms(drm_dev, false, false, false);
 	pci_save_state(pdev);
 	pci_disable_device(pdev);
 	pci_set_power_state(pdev, PCI_D3cold);
@@ -612,7 +633,7 @@ radeon_suspend(device_t kdev)
 	int ret;
 
 	dev = device_get_softc(kdev);
-	ret = radeon_suspend_kms(dev, true, true);
+	ret = radeon_suspend_kms(dev, true, true, false);
 
 	return (-ret);
 }

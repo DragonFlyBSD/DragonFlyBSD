@@ -26,6 +26,7 @@
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
+#include "radeon_audio.h"
 #include <uapi_drm/radeon_drm.h>
 #include "sid.h"
 #include "atom.h"
@@ -119,6 +120,8 @@ static void si_init_cg(struct radeon_device *rdev);
 static void si_fini_pg(struct radeon_device *rdev);
 static void si_fini_cg(struct radeon_device *rdev);
 static void si_rlc_stop(struct radeon_device *rdev);
+
+int si_vce_send_vcepll_ctlreq(struct radeon_device *rdev);
 
 static const u32 verde_rlc_save_restore_register_list[] =
 {
@@ -1252,6 +1255,36 @@ static void si_init_golden_registers(struct radeon_device *rdev)
 	}
 }
 
+/**
+ * si_get_allowed_info_register - fetch the register for the info ioctl
+ *
+ * @rdev: radeon_device pointer
+ * @reg: register offset in bytes
+ * @val: register value
+ *
+ * Returns 0 for success or -EINVAL for an invalid register
+ *
+ */
+int si_get_allowed_info_register(struct radeon_device *rdev,
+				 u32 reg, u32 *val)
+{
+	switch (reg) {
+	case GRBM_STATUS:
+	case GRBM_STATUS2:
+	case GRBM_STATUS_SE0:
+	case GRBM_STATUS_SE1:
+	case SRBM_STATUS:
+	case SRBM_STATUS2:
+	case (DMA_STATUS_REG + DMA0_REGISTER_OFFSET):
+	case (DMA_STATUS_REG + DMA1_REGISTER_OFFSET):
+	case UVD_STATUS:
+		*val = RREG32(reg);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
 #define PCIE_BUS_CLK                10000
 #define TCLK                        (PCIE_BUS_CLK / 10)
 
@@ -2358,6 +2391,9 @@ static void dce6_program_watermarks(struct radeon_device *rdev,
 		c.full = dfixed_div(c, a);
 		priority_b_mark = dfixed_trunc(c);
 		priority_b_cnt |= priority_b_mark & PRIORITY_MARK_MASK;
+
+		/* Save number of lines the linebuffer leads before the scanout */
+		radeon_crtc->lb_vblank_lead_lines = DIV_ROUND_UP(lb_size, mode->crtc_hdisplay);
 	}
 
 	/* select wm A */
@@ -2421,8 +2457,10 @@ void dce6_bandwidth_update(struct radeon_device *rdev)
  */
 static void si_tiling_mode_table_init(struct radeon_device *rdev)
 {
-	const u32 num_tile_mode_states = 32;
-	u32 reg_offset, gb_tile_moden, split_equal_to_row_size;
+	u32 *tile = rdev->config.si.tile_mode_array;
+	const u32 num_tile_mode_states =
+			ARRAY_SIZE(rdev->config.si.tile_mode_array);
+	u32 reg_offset, split_equal_to_row_size;
 
 	switch (rdev->config.si.mem_row_size_in_kb) {
 	case 1:
@@ -2437,491 +2475,442 @@ static void si_tiling_mode_table_init(struct radeon_device *rdev)
 		break;
 	}
 
-	if ((rdev->family == CHIP_TAHITI) ||
-	    (rdev->family == CHIP_PITCAIRN)) {
-		for (reg_offset = 0; reg_offset < num_tile_mode_states; reg_offset++) {
-			switch (reg_offset) {
-			case 0:  /* non-AA compressed depth or any compressed stencil */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 1:  /* 2xAA/4xAA compressed depth only */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 2:  /* 8xAA compressed depth only */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 3:  /* 2xAA/4xAA compressed depth with stencil (for depth buffer) */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 4:  /* Maps w/ a dimension less than the 2D macro-tile dimensions (for mipmapped depth textures) */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 5:  /* Uncompressed 16bpp depth - and stencil buffer allocated with it */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 6:  /* Uncompressed 32bpp depth - and stencil buffer allocated with it */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			case 7:  /* Uncompressed 8bpp stencil without depth (drivers typically do not use) */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 8:  /* 1D and 1D Array Surfaces */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_LINEAR_ALIGNED) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 9:  /* Displayable maps. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 10:  /* Display 8bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 11:  /* Display 16bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 12:  /* Display 32bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			case 13:  /* Thin. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 14:  /* Thin 8 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			case 15:  /* Thin 16 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			case 16:  /* Thin 32 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			case 17:  /* Thin 64 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			case 21:  /* 8 bpp PRT. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_2) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 22:  /* 16 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 23:  /* 32 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 24:  /* 64 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 25:  /* 128 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_1KB) |
-						 NUM_BANKS(ADDR_SURF_8_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			default:
-				gb_tile_moden = 0;
-				break;
-			}
-			rdev->config.si.tile_mode_array[reg_offset] = gb_tile_moden;
-			WREG32(GB_TILE_MODE0 + (reg_offset * 4), gb_tile_moden);
-		}
-	} else if ((rdev->family == CHIP_VERDE) ||
-		   (rdev->family == CHIP_OLAND) ||
-		   (rdev->family == CHIP_HAINAN)) {
-		for (reg_offset = 0; reg_offset < num_tile_mode_states; reg_offset++) {
-			switch (reg_offset) {
-			case 0:  /* non-AA compressed depth or any compressed stencil */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 1:  /* 2xAA/4xAA compressed depth only */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 2:  /* 8xAA compressed depth only */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 3:  /* 2xAA/4xAA compressed depth with stencil (for depth buffer) */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 4:  /* Maps w/ a dimension less than the 2D macro-tile dimensions (for mipmapped depth textures) */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 5:  /* Uncompressed 16bpp depth - and stencil buffer allocated with it */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 6:  /* Uncompressed 32bpp depth - and stencil buffer allocated with it */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 7:  /* Uncompressed 8bpp stencil without depth (drivers typically do not use) */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 8:  /* 1D and 1D Array Surfaces */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_LINEAR_ALIGNED) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 9:  /* Displayable maps. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 10:  /* Display 8bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 11:  /* Display 16bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 12:  /* Display 32bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 13:  /* Thin. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 14:  /* Thin 8 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 15:  /* Thin 16 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 16:  /* Thin 32 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 17:  /* Thin 64 bpp. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P4_8x16) |
-						 TILE_SPLIT(split_equal_to_row_size) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 21:  /* 8 bpp PRT. */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_2) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 22:  /* 16 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
-				break;
-			case 23:  /* 32 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 24:  /* 64 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
-						 NUM_BANKS(ADDR_SURF_16_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
-				break;
-			case 25:  /* 128 bpp PRT */
-				gb_tile_moden = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
-						 MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
-						 PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
-						 TILE_SPLIT(ADDR_SURF_TILE_SPLIT_1KB) |
-						 NUM_BANKS(ADDR_SURF_8_BANK) |
-						 BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
-						 BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
-						 MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
-				break;
-			default:
-				gb_tile_moden = 0;
-				break;
-			}
-			rdev->config.si.tile_mode_array[reg_offset] = gb_tile_moden;
-			WREG32(GB_TILE_MODE0 + (reg_offset * 4), gb_tile_moden);
-		}
-	} else
+	for (reg_offset = 0; reg_offset < num_tile_mode_states; reg_offset++)
+		tile[reg_offset] = 0;
+
+	switch(rdev->family) {
+	case CHIP_TAHITI:
+	case CHIP_PITCAIRN:
+		/* non-AA compressed depth or any compressed stencil */
+		tile[0] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 2xAA/4xAA compressed depth only */
+		tile[1] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 8xAA compressed depth only */
+		tile[2] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 2xAA/4xAA compressed depth with stencil (for depth buffer) */
+		tile[3] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Maps w/ a dimension less than the 2D macro-tile dimensions (for mipmapped depth textures) */
+		tile[4] = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Uncompressed 16bpp depth - and stencil buffer allocated with it */
+		tile[5] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Uncompressed 32bpp depth - and stencil buffer allocated with it */
+		tile[6] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+		/* Uncompressed 8bpp stencil without depth (drivers typically do not use) */
+		tile[7] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 1D and 1D Array Surfaces */
+		tile[8] = (ARRAY_MODE(ARRAY_LINEAR_ALIGNED) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Displayable maps. */
+		tile[9] = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Display 8bpp. */
+		tile[10] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Display 16bpp. */
+		tile[11] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Display 32bpp. */
+		tile[12] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+		/* Thin. */
+		tile[13] = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Thin 8 bpp. */
+		tile[14] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+		/* Thin 16 bpp. */
+		tile[15] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+		/* Thin 32 bpp. */
+		tile[16] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+		/* Thin 64 bpp. */
+		tile[17] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+		/* 8 bpp PRT. */
+		tile[21] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_2) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 16 bpp PRT */
+		tile[22] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* 32 bpp PRT */
+		tile[23] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 64 bpp PRT */
+		tile[24] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 128 bpp PRT */
+		tile[25] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_1KB) |
+			   NUM_BANKS(ADDR_SURF_8_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+
+		for (reg_offset = 0; reg_offset < num_tile_mode_states; reg_offset++)
+			WREG32(GB_TILE_MODE0 + (reg_offset * 4), tile[reg_offset]);
+		break;
+
+	case CHIP_VERDE:
+	case CHIP_OLAND:
+	case CHIP_HAINAN:
+		/* non-AA compressed depth or any compressed stencil */
+		tile[0] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* 2xAA/4xAA compressed depth only */
+		tile[1] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* 8xAA compressed depth only */
+		tile[2] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* 2xAA/4xAA compressed depth with stencil (for depth buffer) */
+		tile[3] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_128B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* Maps w/ a dimension less than the 2D macro-tile dimensions (for mipmapped depth textures) */
+		tile[4] = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Uncompressed 16bpp depth - and stencil buffer allocated with it */
+		tile[5] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Uncompressed 32bpp depth - and stencil buffer allocated with it */
+		tile[6] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Uncompressed 8bpp stencil without depth (drivers typically do not use) */
+		tile[7] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DEPTH_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* 1D and 1D Array Surfaces */
+		tile[8] = (ARRAY_MODE(ARRAY_LINEAR_ALIGNED) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Displayable maps. */
+		tile[9] = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Display 8bpp. */
+		tile[10] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* Display 16bpp. */
+		tile[11] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Display 32bpp. */
+		tile[12] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_DISPLAY_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Thin. */
+		tile[13] = (ARRAY_MODE(ARRAY_1D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_64B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Thin 8 bpp. */
+		tile[14] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Thin 16 bpp. */
+		tile[15] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Thin 32 bpp. */
+		tile[16] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* Thin 64 bpp. */
+		tile[17] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P4_8x16) |
+			   TILE_SPLIT(split_equal_to_row_size) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 8 bpp PRT. */
+		tile[21] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_2) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 16 bpp PRT */
+		tile[22] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_4) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_4));
+		/* 32 bpp PRT */
+		tile[23] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_256B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_2) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 64 bpp PRT */
+		tile[24] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_512B) |
+			   NUM_BANKS(ADDR_SURF_16_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_2));
+		/* 128 bpp PRT */
+		tile[25] = (ARRAY_MODE(ARRAY_2D_TILED_THIN1) |
+			   MICRO_TILE_MODE(ADDR_SURF_THIN_MICRO_TILING) |
+			   PIPE_CONFIG(ADDR_SURF_P8_32x32_8x16) |
+			   TILE_SPLIT(ADDR_SURF_TILE_SPLIT_1KB) |
+			   NUM_BANKS(ADDR_SURF_8_BANK) |
+			   BANK_WIDTH(ADDR_SURF_BANK_WIDTH_1) |
+			   BANK_HEIGHT(ADDR_SURF_BANK_HEIGHT_1) |
+			   MACRO_TILE_ASPECT(ADDR_SURF_MACRO_ASPECT_1));
+
+		for (reg_offset = 0; reg_offset < num_tile_mode_states; reg_offset++)
+			WREG32(GB_TILE_MODE0 + (reg_offset * 4), tile[reg_offset]);
+		break;
+
+	default:
 		DRM_ERROR("unknown asic: 0x%x\n", rdev->family);
+	}
 }
 
 static void si_select_se_sh(struct radeon_device *rdev,
@@ -3174,6 +3163,8 @@ static void si_gpu_init(struct radeon_device *rdev)
 	}
 
 	WREG32(GRBM_CNTL, GRBM_READ_TIMEOUT(0xff));
+	WREG32(SRBM_INT_CNTL, 1);
+	WREG32(SRBM_INT_ACK, 1);
 
 	evergreen_fix_pci_max_read_req_size(rdev);
 
@@ -4058,9 +4049,14 @@ static void si_gpu_pci_config_reset(struct radeon_device *rdev)
 	}
 }
 
-int si_asic_reset(struct radeon_device *rdev)
+int si_asic_reset(struct radeon_device *rdev, bool hard)
 {
 	u32 reset_mask;
+
+	if (hard) {
+		si_gpu_pci_config_reset(rdev);
+		return 0;
+	}
 
 	reset_mask = si_gpu_check_soft_reset(rdev);
 
@@ -4298,7 +4294,8 @@ static int si_pcie_gart_enable(struct radeon_device *rdev)
 	/* empty context1-15 */
 	/* set vm size, must be a multiple of 4 */
 	WREG32(VM_CONTEXT1_PAGE_TABLE_START_ADDR, 0);
-	WREG32(VM_CONTEXT1_PAGE_TABLE_END_ADDR, rdev->vm_manager.max_pfn);
+	WREG32(VM_CONTEXT1_PAGE_TABLE_END_ADDR, rdev->vm_manager.max_pfn - 1);
+
 	/* Assign the pt base to something valid for now; the pts used for
 	 * the VMs are determined by the application and setup and assigned
 	 * on the fly in the vm part of radeon_gart.c
@@ -4381,6 +4378,10 @@ static bool si_vm_reg_valid(u32 reg)
 {
 	/* context regs are fine */
 	if (reg >= 0x28000)
+		return true;
+
+	/* shader regs are also fine */
+	if (reg >= 0xB000 && reg < 0xC000)
 		return true;
 
 	/* check config regs */
@@ -4711,12 +4712,6 @@ int si_ib_parse(struct radeon_device *rdev, struct radeon_ib *ib)
 		switch (pkt.type) {
 		case RADEON_PACKET_TYPE0:
 			dev_err(rdev->dev, "Packet0 not allowed!\n");
-			for (i = 0; i < ib->length_dw; i++) {
-				if (i == idx)
-					printk("\t0x%08x <---\n", ib->ptr[i]);
-				else
-					printk("\t0x%08x\n", ib->ptr[i]);
-			}
 			ret = -EINVAL;
 			break;
 		case RADEON_PACKET_TYPE2:
@@ -4748,8 +4743,15 @@ int si_ib_parse(struct radeon_device *rdev, struct radeon_ib *ib)
 			ret = -EINVAL;
 			break;
 		}
-		if (ret)
-			break;
+		if (ret) {
+			for (i = 0; i < ib->length_dw; i++) {
+				if (i == idx)
+					printk("\t0x%08x <---\n", ib->ptr[i]);
+				else
+					printk("\t0x%08x\n", ib->ptr[i]);
+			}
+ 			break;
+		}
 	} while (idx < ib->length_dw);
 
 	return ret;
@@ -5036,27 +5038,23 @@ static void si_vm_decode_fault(struct radeon_device *rdev,
 	       block, mc_id);
 }
 
-void si_vm_flush(struct radeon_device *rdev, int ridx, struct radeon_vm *vm)
+void si_vm_flush(struct radeon_device *rdev, struct radeon_ring *ring,
+		 unsigned vm_id, uint64_t pd_addr)
 {
-	struct radeon_ring *ring = &rdev->ring[ridx];
-
-	if (vm == NULL)
-		return;
-
 	/* write new base address */
 	radeon_ring_write(ring, PACKET3(PACKET3_WRITE_DATA, 3));
 	radeon_ring_write(ring, (WRITE_DATA_ENGINE_SEL(1) |
 				 WRITE_DATA_DST_SEL(0)));
 
-	if (vm->id < 8) {
+	if (vm_id < 8) {
 		radeon_ring_write(ring,
-				  (VM_CONTEXT0_PAGE_TABLE_BASE_ADDR + (vm->id << 2)) >> 2);
+				  (VM_CONTEXT0_PAGE_TABLE_BASE_ADDR + (vm_id << 2)) >> 2);
 	} else {
 		radeon_ring_write(ring,
-				  (VM_CONTEXT8_PAGE_TABLE_BASE_ADDR + ((vm->id - 8) << 2)) >> 2);
+				  (VM_CONTEXT8_PAGE_TABLE_BASE_ADDR + ((vm_id - 8) << 2)) >> 2);
 	}
 	radeon_ring_write(ring, 0);
-	radeon_ring_write(ring, vm->pd_gpu_addr >> 12);
+	radeon_ring_write(ring, pd_addr >> 12);
 
 	/* flush hdp cache */
 	radeon_ring_write(ring, PACKET3(PACKET3_WRITE_DATA, 3));
@@ -5072,7 +5070,17 @@ void si_vm_flush(struct radeon_device *rdev, int ridx, struct radeon_vm *vm)
 				 WRITE_DATA_DST_SEL(0)));
 	radeon_ring_write(ring, VM_INVALIDATE_REQUEST >> 2);
 	radeon_ring_write(ring, 0);
-	radeon_ring_write(ring, 1 << vm->id);
+	radeon_ring_write(ring, 1 << vm_id);
+
+	/* wait for the invalidate to complete */
+	radeon_ring_write(ring, PACKET3(PACKET3_WAIT_REG_MEM, 5));
+	radeon_ring_write(ring, (WAIT_REG_MEM_FUNCTION(0) |  /* always */
+				 WAIT_REG_MEM_ENGINE(0))); /* me */
+	radeon_ring_write(ring, VM_INVALIDATE_REQUEST >> 2);
+	radeon_ring_write(ring, 0);
+	radeon_ring_write(ring, 0); /* ref */
+	radeon_ring_write(ring, 0); /* mask */
+	radeon_ring_write(ring, 0x20); /* poll interval */
 
 	/* sync PFP to ME, otherwise we might get invalid PFP reads */
 	radeon_ring_write(ring, PACKET3(PACKET3_PFP_SYNC_ME, 0));
@@ -5916,6 +5924,7 @@ static void si_disable_interrupt_state(struct radeon_device *rdev)
 	tmp = RREG32(DMA_CNTL + DMA1_REGISTER_OFFSET) & ~TRAP_ENABLE;
 	WREG32(DMA_CNTL + DMA1_REGISTER_OFFSET, tmp);
 	WREG32(GRBM_INT_CNTL, 0);
+	WREG32(SRBM_INT_CNTL, 0);
 	if (rdev->num_crtc >= 2) {
 		WREG32(INT_MASK + EVERGREEN_CRTC0_REGISTER_OFFSET, 0);
 		WREG32(INT_MASK + EVERGREEN_CRTC1_REGISTER_OFFSET, 0);
@@ -6057,12 +6066,12 @@ int si_irq_set(struct radeon_device *rdev)
 		(CNTX_BUSY_INT_ENABLE | CNTX_EMPTY_INT_ENABLE);
 
 	if (!ASIC_IS_NODCE(rdev)) {
-		hpd1 = RREG32(DC_HPD1_INT_CONTROL) & ~DC_HPDx_INT_EN;
-		hpd2 = RREG32(DC_HPD2_INT_CONTROL) & ~DC_HPDx_INT_EN;
-		hpd3 = RREG32(DC_HPD3_INT_CONTROL) & ~DC_HPDx_INT_EN;
-		hpd4 = RREG32(DC_HPD4_INT_CONTROL) & ~DC_HPDx_INT_EN;
-		hpd5 = RREG32(DC_HPD5_INT_CONTROL) & ~DC_HPDx_INT_EN;
-		hpd6 = RREG32(DC_HPD6_INT_CONTROL) & ~DC_HPDx_INT_EN;
+		hpd1 = RREG32(DC_HPD1_INT_CONTROL) & ~(DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN);
+		hpd2 = RREG32(DC_HPD2_INT_CONTROL) & ~(DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN);
+		hpd3 = RREG32(DC_HPD3_INT_CONTROL) & ~(DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN);
+		hpd4 = RREG32(DC_HPD4_INT_CONTROL) & ~(DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN);
+		hpd5 = RREG32(DC_HPD5_INT_CONTROL) & ~(DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN);
+		hpd6 = RREG32(DC_HPD6_INT_CONTROL) & ~(DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN);
 	}
 
 	dma_cntl = RREG32(DMA_CNTL + DMA0_REGISTER_OFFSET) & ~TRAP_ENABLE;
@@ -6125,27 +6134,27 @@ int si_irq_set(struct radeon_device *rdev)
 	}
 	if (rdev->irq.hpd[0]) {
 		DRM_DEBUG("si_irq_set: hpd 1\n");
-		hpd1 |= DC_HPDx_INT_EN;
+		hpd1 |= DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN;
 	}
 	if (rdev->irq.hpd[1]) {
 		DRM_DEBUG("si_irq_set: hpd 2\n");
-		hpd2 |= DC_HPDx_INT_EN;
+		hpd2 |= DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN;
 	}
 	if (rdev->irq.hpd[2]) {
 		DRM_DEBUG("si_irq_set: hpd 3\n");
-		hpd3 |= DC_HPDx_INT_EN;
+		hpd3 |= DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN;
 	}
 	if (rdev->irq.hpd[3]) {
 		DRM_DEBUG("si_irq_set: hpd 4\n");
-		hpd4 |= DC_HPDx_INT_EN;
+		hpd4 |= DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN;
 	}
 	if (rdev->irq.hpd[4]) {
 		DRM_DEBUG("si_irq_set: hpd 5\n");
-		hpd5 |= DC_HPDx_INT_EN;
+		hpd5 |= DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN;
 	}
 	if (rdev->irq.hpd[5]) {
 		DRM_DEBUG("si_irq_set: hpd 6\n");
-		hpd6 |= DC_HPDx_INT_EN;
+		hpd6 |= DC_HPDx_INT_EN | DC_HPDx_RX_INT_EN;
 	}
 
 	WREG32(CP_INT_CNTL_RING0, cp_int_cntl);
@@ -6204,6 +6213,9 @@ int si_irq_set(struct radeon_device *rdev)
 	}
 
 	WREG32(CG_THERMAL_INT, thermal_int);
+
+	/* posting read */
+	RREG32(SRBM_STATUS);
 
 	return 0;
 }
@@ -6305,6 +6317,37 @@ static inline void si_irq_ack(struct radeon_device *rdev)
 		tmp |= DC_HPDx_INT_ACK;
 		WREG32(DC_HPD6_INT_CONTROL, tmp);
 	}
+
+	if (rdev->irq.stat_regs.evergreen.disp_int & DC_HPD1_RX_INTERRUPT) {
+		tmp = RREG32(DC_HPD1_INT_CONTROL);
+		tmp |= DC_HPDx_RX_INT_ACK;
+		WREG32(DC_HPD1_INT_CONTROL, tmp);
+	}
+	if (rdev->irq.stat_regs.evergreen.disp_int_cont & DC_HPD2_RX_INTERRUPT) {
+		tmp = RREG32(DC_HPD2_INT_CONTROL);
+		tmp |= DC_HPDx_RX_INT_ACK;
+		WREG32(DC_HPD2_INT_CONTROL, tmp);
+	}
+	if (rdev->irq.stat_regs.evergreen.disp_int_cont2 & DC_HPD3_RX_INTERRUPT) {
+		tmp = RREG32(DC_HPD3_INT_CONTROL);
+		tmp |= DC_HPDx_RX_INT_ACK;
+		WREG32(DC_HPD3_INT_CONTROL, tmp);
+	}
+	if (rdev->irq.stat_regs.evergreen.disp_int_cont3 & DC_HPD4_RX_INTERRUPT) {
+		tmp = RREG32(DC_HPD4_INT_CONTROL);
+		tmp |= DC_HPDx_RX_INT_ACK;
+		WREG32(DC_HPD4_INT_CONTROL, tmp);
+	}
+	if (rdev->irq.stat_regs.evergreen.disp_int_cont4 & DC_HPD5_RX_INTERRUPT) {
+		tmp = RREG32(DC_HPD5_INT_CONTROL);
+		tmp |= DC_HPDx_RX_INT_ACK;
+		WREG32(DC_HPD5_INT_CONTROL, tmp);
+	}
+	if (rdev->irq.stat_regs.evergreen.disp_int_cont5 & DC_HPD6_RX_INTERRUPT) {
+		tmp = RREG32(DC_HPD5_INT_CONTROL);
+		tmp |= DC_HPDx_RX_INT_ACK;
+		WREG32(DC_HPD6_INT_CONTROL, tmp);
+	}
 }
 
 static void si_irq_disable(struct radeon_device *rdev)
@@ -6370,6 +6413,7 @@ irqreturn_t si_irq_process(struct radeon_device *rdev)
 	u32 src_id, src_data, ring_id;
 	u32 ring_index;
 	bool queue_hotplug = false;
+	bool queue_dp = false;
 	bool queue_thermal = false;
 	u32 status, addr;
 
@@ -6384,7 +6428,7 @@ restart_ih:
 		return IRQ_NONE;
 
 	rptr = rdev->ih.rptr;
-	DRM_DEBUG_VBLANK("si_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
+	DRM_DEBUG("si_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
 
 	/* Order reading of wptr vs. reading of IH ring data */
 	rmb();
@@ -6403,23 +6447,27 @@ restart_ih:
 		case 1: /* D1 vblank/vline */
 			switch (src_data) {
 			case 0: /* D1 vblank */
-				if (rdev->irq.stat_regs.evergreen.disp_int & LB_D1_VBLANK_INTERRUPT) {
-					if (rdev->irq.crtc_vblank_int[0]) {
-						drm_handle_vblank(rdev->ddev, 0);
-						rdev->pm.vblank_sync = true;
-						wake_up(&rdev->irq.vblank_queue);
-					}
-					if (atomic_read(&rdev->irq.pflip[0]))
-						radeon_crtc_handle_vblank(rdev, 0);
-					rdev->irq.stat_regs.evergreen.disp_int &= ~LB_D1_VBLANK_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D1 vblank\n");
+				if (!(rdev->irq.stat_regs.evergreen.disp_int & LB_D1_VBLANK_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				if (rdev->irq.crtc_vblank_int[0]) {
+					drm_handle_vblank(rdev->ddev, 0);
+					rdev->pm.vblank_sync = true;
+					wake_up(&rdev->irq.vblank_queue);
 				}
+				if (atomic_read(&rdev->irq.pflip[0]))
+					radeon_crtc_handle_vblank(rdev, 0);
+				rdev->irq.stat_regs.evergreen.disp_int &= ~LB_D1_VBLANK_INTERRUPT;
+				DRM_DEBUG("IH: D1 vblank\n");
+
 				break;
 			case 1: /* D1 vline */
-				if (rdev->irq.stat_regs.evergreen.disp_int & LB_D1_VLINE_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int &= ~LB_D1_VLINE_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D1 vline\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int & LB_D1_VLINE_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int &= ~LB_D1_VLINE_INTERRUPT;
+				DRM_DEBUG("IH: D1 vline\n");
+
 				break;
 			default:
 				DRM_DEBUG("Unhandled interrupt: %d %d\n", src_id, src_data);
@@ -6429,23 +6477,27 @@ restart_ih:
 		case 2: /* D2 vblank/vline */
 			switch (src_data) {
 			case 0: /* D2 vblank */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont & LB_D2_VBLANK_INTERRUPT) {
-					if (rdev->irq.crtc_vblank_int[1]) {
-						drm_handle_vblank(rdev->ddev, 1);
-						rdev->pm.vblank_sync = true;
-						wake_up(&rdev->irq.vblank_queue);
-					}
-					if (atomic_read(&rdev->irq.pflip[1]))
-						radeon_crtc_handle_vblank(rdev, 1);
-					rdev->irq.stat_regs.evergreen.disp_int_cont &= ~LB_D2_VBLANK_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D2 vblank\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont & LB_D2_VBLANK_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				if (rdev->irq.crtc_vblank_int[1]) {
+					drm_handle_vblank(rdev->ddev, 1);
+					rdev->pm.vblank_sync = true;
+					wake_up(&rdev->irq.vblank_queue);
+ 				}
+				if (atomic_read(&rdev->irq.pflip[1]))
+					radeon_crtc_handle_vblank(rdev, 1);
+				rdev->irq.stat_regs.evergreen.disp_int_cont &= ~LB_D2_VBLANK_INTERRUPT;
+				DRM_DEBUG("IH: D2 vblank\n");
+
 				break;
 			case 1: /* D2 vline */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont & LB_D2_VLINE_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont &= ~LB_D2_VLINE_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D2 vline\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont & LB_D2_VLINE_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont &= ~LB_D2_VLINE_INTERRUPT;
+				DRM_DEBUG("IH: D2 vline\n");
+
 				break;
 			default:
 				DRM_DEBUG("Unhandled interrupt: %d %d\n", src_id, src_data);
@@ -6455,23 +6507,27 @@ restart_ih:
 		case 3: /* D3 vblank/vline */
 			switch (src_data) {
 			case 0: /* D3 vblank */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont2 & LB_D3_VBLANK_INTERRUPT) {
-					if (rdev->irq.crtc_vblank_int[2]) {
-						drm_handle_vblank(rdev->ddev, 2);
-						rdev->pm.vblank_sync = true;
-						wake_up(&rdev->irq.vblank_queue);
-					}
-					if (atomic_read(&rdev->irq.pflip[2]))
-						radeon_crtc_handle_vblank(rdev, 2);
-					rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~LB_D3_VBLANK_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D3 vblank\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont2 & LB_D3_VBLANK_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				if (rdev->irq.crtc_vblank_int[2]) {
+					drm_handle_vblank(rdev->ddev, 2);
+					rdev->pm.vblank_sync = true;
+					wake_up(&rdev->irq.vblank_queue);
+ 				}
+				if (atomic_read(&rdev->irq.pflip[2]))
+					radeon_crtc_handle_vblank(rdev, 2);
+				rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~LB_D3_VBLANK_INTERRUPT;
+				DRM_DEBUG("IH: D3 vblank\n");
+
 				break;
 			case 1: /* D3 vline */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont2 & LB_D3_VLINE_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~LB_D3_VLINE_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D3 vline\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont2 & LB_D3_VLINE_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~LB_D3_VLINE_INTERRUPT;
+				DRM_DEBUG("IH: D3 vline\n");
+
 				break;
 			default:
 				DRM_DEBUG("Unhandled interrupt: %d %d\n", src_id, src_data);
@@ -6481,23 +6537,27 @@ restart_ih:
 		case 4: /* D4 vblank/vline */
 			switch (src_data) {
 			case 0: /* D4 vblank */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont3 & LB_D4_VBLANK_INTERRUPT) {
-					if (rdev->irq.crtc_vblank_int[3]) {
-						drm_handle_vblank(rdev->ddev, 3);
-						rdev->pm.vblank_sync = true;
-						wake_up(&rdev->irq.vblank_queue);
-					}
-					if (atomic_read(&rdev->irq.pflip[3]))
-						radeon_crtc_handle_vblank(rdev, 3);
-					rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~LB_D4_VBLANK_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D4 vblank\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont3 & LB_D4_VBLANK_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				if (rdev->irq.crtc_vblank_int[3]) {
+					drm_handle_vblank(rdev->ddev, 3);
+					rdev->pm.vblank_sync = true;
+					wake_up(&rdev->irq.vblank_queue);
+ 				}
+				if (atomic_read(&rdev->irq.pflip[3]))
+					radeon_crtc_handle_vblank(rdev, 3);
+				rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~LB_D4_VBLANK_INTERRUPT;
+				DRM_DEBUG("IH: D4 vblank\n");
+
 				break;
 			case 1: /* D4 vline */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont3 & LB_D4_VLINE_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~LB_D4_VLINE_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D4 vline\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont3 & LB_D4_VLINE_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~LB_D4_VLINE_INTERRUPT;
+				DRM_DEBUG("IH: D4 vline\n");
+
 				break;
 			default:
 				DRM_DEBUG("Unhandled interrupt: %d %d\n", src_id, src_data);
@@ -6507,23 +6567,27 @@ restart_ih:
 		case 5: /* D5 vblank/vline */
 			switch (src_data) {
 			case 0: /* D5 vblank */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont4 & LB_D5_VBLANK_INTERRUPT) {
-					if (rdev->irq.crtc_vblank_int[4]) {
-						drm_handle_vblank(rdev->ddev, 4);
-						rdev->pm.vblank_sync = true;
-						wake_up(&rdev->irq.vblank_queue);
-					}
-					if (atomic_read(&rdev->irq.pflip[4]))
-						radeon_crtc_handle_vblank(rdev, 4);
-					rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~LB_D5_VBLANK_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D5 vblank\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont4 & LB_D5_VBLANK_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				if (rdev->irq.crtc_vblank_int[4]) {
+					drm_handle_vblank(rdev->ddev, 4);
+					rdev->pm.vblank_sync = true;
+					wake_up(&rdev->irq.vblank_queue);
+ 				}
+				if (atomic_read(&rdev->irq.pflip[4]))
+					radeon_crtc_handle_vblank(rdev, 4);
+				rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~LB_D5_VBLANK_INTERRUPT;
+				DRM_DEBUG("IH: D5 vblank\n");
+
 				break;
 			case 1: /* D5 vline */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont4 & LB_D5_VLINE_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~LB_D5_VLINE_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D5 vline\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont4 & LB_D5_VLINE_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~LB_D5_VLINE_INTERRUPT;
+				DRM_DEBUG("IH: D5 vline\n");
+
 				break;
 			default:
 				DRM_DEBUG("Unhandled interrupt: %d %d\n", src_id, src_data);
@@ -6533,23 +6597,27 @@ restart_ih:
 		case 6: /* D6 vblank/vline */
 			switch (src_data) {
 			case 0: /* D6 vblank */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont5 & LB_D6_VBLANK_INTERRUPT) {
-					if (rdev->irq.crtc_vblank_int[5]) {
-						drm_handle_vblank(rdev->ddev, 5);
-						rdev->pm.vblank_sync = true;
-						wake_up(&rdev->irq.vblank_queue);
-					}
-					if (atomic_read(&rdev->irq.pflip[5]))
-						radeon_crtc_handle_vblank(rdev, 5);
-					rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~LB_D6_VBLANK_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D6 vblank\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont5 & LB_D6_VBLANK_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				if (rdev->irq.crtc_vblank_int[5]) {
+					drm_handle_vblank(rdev->ddev, 5);
+					rdev->pm.vblank_sync = true;
+					wake_up(&rdev->irq.vblank_queue);
+ 				}
+				if (atomic_read(&rdev->irq.pflip[5]))
+					radeon_crtc_handle_vblank(rdev, 5);
+				rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~LB_D6_VBLANK_INTERRUPT;
+				DRM_DEBUG("IH: D6 vblank\n");
+
 				break;
 			case 1: /* D6 vline */
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont5 & LB_D6_VLINE_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~LB_D6_VLINE_INTERRUPT;
-					DRM_DEBUG_VBLANK("IH: D6 vline\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont5 & LB_D6_VLINE_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~LB_D6_VLINE_INTERRUPT;
+				DRM_DEBUG("IH: D6 vline\n");
+
 				break;
 			default:
 				DRM_DEBUG("Unhandled interrupt: %d %d\n", src_id, src_data);
@@ -6562,58 +6630,128 @@ restart_ih:
 		case 14: /* D4 page flip */
 		case 16: /* D5 page flip */
 		case 18: /* D6 page flip */
-			DRM_DEBUG_VBLANK("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
+			DRM_DEBUG("IH: D%d flip\n", ((src_id - 8) >> 1) + 1);
 			if (radeon_use_pflipirq > 0)
 				radeon_crtc_handle_flip(rdev, (src_id - 8) >> 1);
 			break;
 		case 42: /* HPD hotplug */
 			switch (src_data) {
 			case 0:
-				if (rdev->irq.stat_regs.evergreen.disp_int & DC_HPD1_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int &= ~DC_HPD1_INTERRUPT;
-					queue_hotplug = true;
-					DRM_DEBUG("IH: HPD1\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int & DC_HPD1_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int &= ~DC_HPD1_INTERRUPT;
+				queue_hotplug = true;
+				DRM_DEBUG("IH: HPD1\n");
+
 				break;
 			case 1:
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont & DC_HPD2_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont &= ~DC_HPD2_INTERRUPT;
-					queue_hotplug = true;
-					DRM_DEBUG("IH: HPD2\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont & DC_HPD2_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont &= ~DC_HPD2_INTERRUPT;
+				queue_hotplug = true;
+				DRM_DEBUG("IH: HPD2\n");
+
 				break;
 			case 2:
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont2 & DC_HPD3_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~DC_HPD3_INTERRUPT;
-					queue_hotplug = true;
-					DRM_DEBUG("IH: HPD3\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont2 & DC_HPD3_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~DC_HPD3_INTERRUPT;
+				queue_hotplug = true;
+				DRM_DEBUG("IH: HPD3\n");
+
 				break;
 			case 3:
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont3 & DC_HPD4_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~DC_HPD4_INTERRUPT;
-					queue_hotplug = true;
-					DRM_DEBUG("IH: HPD4\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont3 & DC_HPD4_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~DC_HPD4_INTERRUPT;
+				queue_hotplug = true;
+				DRM_DEBUG("IH: HPD4\n");
+
 				break;
 			case 4:
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont4 & DC_HPD5_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~DC_HPD5_INTERRUPT;
-					queue_hotplug = true;
-					DRM_DEBUG("IH: HPD5\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont4 & DC_HPD5_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~DC_HPD5_INTERRUPT;
+				queue_hotplug = true;
+				DRM_DEBUG("IH: HPD5\n");
+
 				break;
 			case 5:
-				if (rdev->irq.stat_regs.evergreen.disp_int_cont5 & DC_HPD6_INTERRUPT) {
-					rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~DC_HPD6_INTERRUPT;
-					queue_hotplug = true;
-					DRM_DEBUG("IH: HPD6\n");
-				}
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont5 & DC_HPD6_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~DC_HPD6_INTERRUPT;
+				queue_hotplug = true;
+				DRM_DEBUG("IH: HPD6\n");
+
+				break;
+			case 6:
+				if (!(rdev->irq.stat_regs.evergreen.disp_int & DC_HPD1_RX_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int &= ~DC_HPD1_RX_INTERRUPT;
+				queue_dp = true;
+				DRM_DEBUG("IH: HPD_RX 1\n");
+
+				break;
+			case 7:
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont & DC_HPD2_RX_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont &= ~DC_HPD2_RX_INTERRUPT;
+				queue_dp = true;
+				DRM_DEBUG("IH: HPD_RX 2\n");
+
+				break;
+			case 8:
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont2 & DC_HPD3_RX_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont2 &= ~DC_HPD3_RX_INTERRUPT;
+				queue_dp = true;
+				DRM_DEBUG("IH: HPD_RX 3\n");
+
+				break;
+			case 9:
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont3 & DC_HPD4_RX_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont3 &= ~DC_HPD4_RX_INTERRUPT;
+				queue_dp = true;
+				DRM_DEBUG("IH: HPD_RX 4\n");
+
+				break;
+			case 10:
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont4 & DC_HPD5_RX_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont4 &= ~DC_HPD5_RX_INTERRUPT;
+				queue_dp = true;
+				DRM_DEBUG("IH: HPD_RX 5\n");
+
+				break;
+			case 11:
+				if (!(rdev->irq.stat_regs.evergreen.disp_int_cont5 & DC_HPD6_RX_INTERRUPT))
+					DRM_DEBUG("IH: IH event w/o asserted irq bit?\n");
+
+				rdev->irq.stat_regs.evergreen.disp_int_cont5 &= ~DC_HPD6_RX_INTERRUPT;
+				queue_dp = true;
+				DRM_DEBUG("IH: HPD_RX 6\n");
+
 				break;
 			default:
 				DRM_DEBUG("Unhandled interrupt: %d %d\n", src_id, src_data);
 				break;
 			}
+			break;
+		case 96:
+			DRM_ERROR("SRBM_READ_ERROR: 0x%x\n", RREG32(SRBM_READ_ERROR));
+			WREG32(SRBM_INT_ACK, 0x1);
 			break;
 		case 124: /* UVD */
 			DRM_DEBUG("IH: UVD int: 0x%08x\n", src_data);
@@ -6688,6 +6826,8 @@ restart_ih:
 		rptr &= rdev->ih.ptr_mask;
 		WREG32(IH_RB_RPTR, rptr);
 	}
+	if (queue_dp)
+		schedule_work(&rdev->dp_work);
 	if (queue_hotplug)
 		taskqueue_enqueue(rdev->tq, &rdev->hotplug_work);
 	if (queue_thermal && rdev->pm.dpm_enabled)
@@ -6706,6 +6846,159 @@ restart_ih:
 /*
  * startup/shutdown callbacks
  */
+static void si_uvd_init(struct radeon_device *rdev)
+{
+	int r;
+
+	if (!rdev->has_uvd)
+		return;
+
+	r = radeon_uvd_init(rdev);
+	if (r) {
+		dev_err(rdev->dev, "failed UVD (%d) init.\n", r);
+		/*
+		 * At this point rdev->uvd.vcpu_bo is NULL which trickles down
+		 * to early fails uvd_v2_2_resume() and thus nothing happens
+		 * there. So it is pointless to try to go through that code
+		 * hence why we disable uvd here.
+		 */
+		rdev->has_uvd = 0;
+		return;
+	}
+	rdev->ring[R600_RING_TYPE_UVD_INDEX].ring_obj = NULL;
+	r600_ring_init(rdev, &rdev->ring[R600_RING_TYPE_UVD_INDEX], 4096);
+}
+
+static void si_uvd_start(struct radeon_device *rdev)
+{
+	int r;
+
+	if (!rdev->has_uvd)
+		return;
+
+	r = uvd_v2_2_resume(rdev);
+	if (r) {
+		dev_err(rdev->dev, "failed UVD resume (%d).\n", r);
+		goto error;
+	}
+	r = radeon_fence_driver_start_ring(rdev, R600_RING_TYPE_UVD_INDEX);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing UVD fences (%d).\n", r);
+		goto error;
+	}
+	return;
+
+error:
+	rdev->ring[R600_RING_TYPE_UVD_INDEX].ring_size = 0;
+}
+
+static void si_uvd_resume(struct radeon_device *rdev)
+{
+	struct radeon_ring *ring;
+	int r;
+
+	if (!rdev->has_uvd || !rdev->ring[R600_RING_TYPE_UVD_INDEX].ring_size)
+		return;
+
+	ring = &rdev->ring[R600_RING_TYPE_UVD_INDEX];
+	r = radeon_ring_init(rdev, ring, ring->ring_size, 0, RADEON_CP_PACKET2);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing UVD ring (%d).\n", r);
+		return;
+	}
+	r = uvd_v1_0_init(rdev);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing UVD (%d).\n", r);
+		return;
+	}
+}
+
+static void si_vce_init(struct radeon_device *rdev)
+{
+	int r;
+
+	if (!rdev->has_vce)
+		return;
+
+	r = radeon_vce_init(rdev);
+	if (r) {
+		dev_err(rdev->dev, "failed VCE (%d) init.\n", r);
+		/*
+		 * At this point rdev->vce.vcpu_bo is NULL which trickles down
+		 * to early fails si_vce_start() and thus nothing happens
+		 * there. So it is pointless to try to go through that code
+		 * hence why we disable vce here.
+		 */
+		rdev->has_vce = 0;
+		return;
+	}
+	rdev->ring[TN_RING_TYPE_VCE1_INDEX].ring_obj = NULL;
+	r600_ring_init(rdev, &rdev->ring[TN_RING_TYPE_VCE1_INDEX], 4096);
+	rdev->ring[TN_RING_TYPE_VCE2_INDEX].ring_obj = NULL;
+	r600_ring_init(rdev, &rdev->ring[TN_RING_TYPE_VCE2_INDEX], 4096);
+}
+
+static void si_vce_start(struct radeon_device *rdev)
+{
+	int r;
+
+	if (!rdev->has_vce)
+		return;
+
+	r = radeon_vce_resume(rdev);
+	if (r) {
+		dev_err(rdev->dev, "failed VCE resume (%d).\n", r);
+		goto error;
+	}
+	r = vce_v1_0_resume(rdev);
+	if (r) {
+		dev_err(rdev->dev, "failed VCE resume (%d).\n", r);
+		goto error;
+	}
+	r = radeon_fence_driver_start_ring(rdev, TN_RING_TYPE_VCE1_INDEX);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing VCE1 fences (%d).\n", r);
+		goto error;
+	}
+	r = radeon_fence_driver_start_ring(rdev, TN_RING_TYPE_VCE2_INDEX);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing VCE2 fences (%d).\n", r);
+		goto error;
+	}
+	return;
+
+error:
+	rdev->ring[TN_RING_TYPE_VCE1_INDEX].ring_size = 0;
+	rdev->ring[TN_RING_TYPE_VCE2_INDEX].ring_size = 0;
+}
+
+static void si_vce_resume(struct radeon_device *rdev)
+{
+	struct radeon_ring *ring;
+	int r;
+
+	if (!rdev->has_vce || !rdev->ring[TN_RING_TYPE_VCE1_INDEX].ring_size)
+		return;
+
+	ring = &rdev->ring[TN_RING_TYPE_VCE1_INDEX];
+	r = radeon_ring_init(rdev, ring, ring->ring_size, 0, VCE_CMD_NO_OP);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing VCE1 ring (%d).\n", r);
+		return;
+	}
+	ring = &rdev->ring[TN_RING_TYPE_VCE2_INDEX];
+	r = radeon_ring_init(rdev, ring, ring->ring_size, 0, VCE_CMD_NO_OP);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing VCE1 ring (%d).\n", r);
+		return;
+	}
+	r = vce_v1_0_init(rdev);
+	if (r) {
+		dev_err(rdev->dev, "failed initializing VCE (%d).\n", r);
+		return;
+	}
+}
+
 static int si_startup(struct radeon_device *rdev)
 {
 	struct radeon_ring *ring;
@@ -6784,17 +7077,8 @@ static int si_startup(struct radeon_device *rdev)
 		return r;
 	}
 
-	if (rdev->has_uvd) {
-		r = uvd_v2_2_resume(rdev);
-		if (!r) {
-			r = radeon_fence_driver_start_ring(rdev,
-							   R600_RING_TYPE_UVD_INDEX);
-			if (r)
-				dev_err(rdev->dev, "UVD fences init error (%d).\n", r);
-		}
-		if (r)
-			rdev->ring[R600_RING_TYPE_UVD_INDEX].ring_size = 0;
-	}
+	si_uvd_start(rdev);
+	si_vce_start(rdev);
 
 	/* Enable IRQ */
 	if (!rdev->irq.installed) {
@@ -6852,17 +7136,8 @@ static int si_startup(struct radeon_device *rdev)
 	if (r)
 		return r;
 
-	if (rdev->has_uvd) {
-		ring = &rdev->ring[R600_RING_TYPE_UVD_INDEX];
-		if (ring->ring_size) {
-			r = radeon_ring_init(rdev, ring, ring->ring_size, 0,
-					     RADEON_CP_PACKET2);
-			if (!r)
-				r = uvd_v1_0_init(rdev);
-			if (r)
-				DRM_ERROR("radeon: failed initializing UVD (%d).\n", r);
-		}
-	}
+	si_uvd_resume(rdev);
+	si_vce_resume(rdev);
 
 	r = radeon_ib_pool_init(rdev);
 	if (r) {
@@ -6876,7 +7151,7 @@ static int si_startup(struct radeon_device *rdev)
 		return r;
 	}
 
-	r = dce6_audio_init(rdev);
+	r = radeon_audio_init(rdev);
 	if (r)
 		return r;
 
@@ -6915,7 +7190,7 @@ int si_resume(struct radeon_device *rdev)
 int si_suspend(struct radeon_device *rdev)
 {
 	radeon_pm_suspend(rdev);
-	dce6_audio_fini(rdev);
+	radeon_audio_fini(rdev);
 	radeon_vm_manager_fini(rdev);
 	si_cp_enable(rdev, false);
 	cayman_dma_stop(rdev);
@@ -6923,6 +7198,8 @@ int si_suspend(struct radeon_device *rdev)
 		uvd_v1_0_fini(rdev);
 		radeon_uvd_suspend(rdev);
 	}
+	if (rdev->has_vce)
+		radeon_vce_suspend(rdev);
 	si_fini_pg(rdev);
 	si_fini_cg(rdev);
 	si_irq_suspend(rdev);
@@ -7020,14 +7297,8 @@ int si_init(struct radeon_device *rdev)
 	ring->ring_obj = NULL;
 	r600_ring_init(rdev, ring, 64 * 1024);
 
-	if (rdev->has_uvd) {
-		r = radeon_uvd_init(rdev);
-		if (!r) {
-			ring = &rdev->ring[R600_RING_TYPE_UVD_INDEX];
-			ring->ring_obj = NULL;
-			r600_ring_init(rdev, ring, 4096);
-		}
-	}
+	si_uvd_init(rdev);
+	si_vce_init(rdev);
 
 	rdev->ih.ring_obj = NULL;
 	r600_ih_ring_init(rdev, 64 * 1024);
@@ -7081,6 +7352,8 @@ void si_fini(struct radeon_device *rdev)
 		uvd_v1_0_fini(rdev);
 		radeon_uvd_fini(rdev);
 	}
+	if (rdev->has_vce)
+		radeon_vce_fini(rdev);
 	si_pcie_gart_fini(rdev);
 	r600_vram_scratch_fini(rdev);
 	radeon_gem_fini(rdev);
@@ -7126,8 +7399,7 @@ int si_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 	WREG32_P(CG_UPLL_FUNC_CNTL, UPLL_BYPASS_EN_MASK, ~UPLL_BYPASS_EN_MASK);
 
 	if (!vclk || !dclk) {
-		/* keep the Bypass mode, put PLL to sleep */
-		WREG32_P(CG_UPLL_FUNC_CNTL, UPLL_SLEEP_MASK, ~UPLL_SLEEP_MASK);
+		/* keep the Bypass mode */
 		return 0;
 	}
 
@@ -7143,8 +7415,7 @@ int si_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 	/* set VCO_MODE to 1 */
 	WREG32_P(CG_UPLL_FUNC_CNTL, UPLL_VCO_MODE_MASK, ~UPLL_VCO_MODE_MASK);
 
-	/* toggle UPLL_SLEEP to 1 then back to 0 */
-	WREG32_P(CG_UPLL_FUNC_CNTL, UPLL_SLEEP_MASK, ~UPLL_SLEEP_MASK);
+	/* disable sleep mode */
 	WREG32_P(CG_UPLL_FUNC_CNTL, 0, ~UPLL_SLEEP_MASK);
 
 	/* deassert UPLL_RESET */
@@ -7566,4 +7837,125 @@ static void si_program_aspm(struct radeon_device *rdev)
 			}
 		}
 	}
+}
+
+int si_vce_send_vcepll_ctlreq(struct radeon_device *rdev)
+{
+        unsigned i;
+
+        /* make sure VCEPLL_CTLREQ is deasserted */
+        WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, 0, ~UPLL_CTLREQ_MASK);
+
+        mdelay(10);
+
+        /* assert UPLL_CTLREQ */
+        WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, UPLL_CTLREQ_MASK, ~UPLL_CTLREQ_MASK);
+
+        /* wait for CTLACK and CTLACK2 to get asserted */
+        for (i = 0; i < 100; ++i) {
+                uint32_t mask = UPLL_CTLACK_MASK | UPLL_CTLACK2_MASK;
+                if ((RREG32_SMC(CG_VCEPLL_FUNC_CNTL) & mask) == mask)
+                        break;
+                mdelay(10);
+        }
+
+        /* deassert UPLL_CTLREQ */
+        WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, 0, ~UPLL_CTLREQ_MASK);
+
+        if (i == 100) {
+                DRM_ERROR("Timeout setting UVD clocks!\n");
+                return -ETIMEDOUT;
+        }
+
+        return 0;
+}
+
+int si_set_vce_clocks(struct radeon_device *rdev, u32 evclk, u32 ecclk)
+{
+	unsigned fb_div = 0, evclk_div = 0, ecclk_div = 0;
+	int r;
+
+	/* bypass evclk and ecclk with bclk */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL_2,
+		     EVCLK_SRC_SEL(1) | ECCLK_SRC_SEL(1),
+		     ~(EVCLK_SRC_SEL_MASK | ECCLK_SRC_SEL_MASK));
+
+	/* put PLL in bypass mode */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, VCEPLL_BYPASS_EN_MASK,
+		     ~VCEPLL_BYPASS_EN_MASK);
+
+	if (!evclk || !ecclk) {
+		/* keep the Bypass mode, put PLL to sleep */
+		WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, VCEPLL_SLEEP_MASK,
+			     ~VCEPLL_SLEEP_MASK);
+		return 0;
+	}
+
+	r = radeon_uvd_calc_upll_dividers(rdev, evclk, ecclk, 125000, 250000,
+					  16384, 0x03FFFFFF, 0, 128, 5,
+					  &fb_div, &evclk_div, &ecclk_div);
+	if (r)
+		return r;
+
+	/* set RESET_ANTI_MUX to 0 */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL_5, 0, ~RESET_ANTI_MUX_MASK);
+
+	/* set VCO_MODE to 1 */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, VCEPLL_VCO_MODE_MASK,
+		     ~VCEPLL_VCO_MODE_MASK);
+
+	/* toggle VCEPLL_SLEEP to 1 then back to 0 */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, VCEPLL_SLEEP_MASK,
+		     ~VCEPLL_SLEEP_MASK);
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, 0, ~VCEPLL_SLEEP_MASK);
+
+	/* deassert VCEPLL_RESET */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, 0, ~VCEPLL_RESET_MASK);
+
+	mdelay(1);
+
+	r = si_vce_send_vcepll_ctlreq(rdev);
+	if (r)
+		return r;
+
+	/* assert VCEPLL_RESET again */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, VCEPLL_RESET_MASK, ~VCEPLL_RESET_MASK);
+
+	/* disable spread spectrum. */
+	WREG32_SMC_P(CG_VCEPLL_SPREAD_SPECTRUM, 0, ~SSEN_MASK);
+
+	/* set feedback divider */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL_3, VCEPLL_FB_DIV(fb_div), ~VCEPLL_FB_DIV_MASK);
+
+	/* set ref divider to 0 */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, 0, ~VCEPLL_REF_DIV_MASK);
+
+	/* set PDIV_A and PDIV_B */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL_2,
+		     VCEPLL_PDIV_A(evclk_div) | VCEPLL_PDIV_B(ecclk_div),
+		     ~(VCEPLL_PDIV_A_MASK | VCEPLL_PDIV_B_MASK));
+
+	/* give the PLL some time to settle */
+	mdelay(15);
+
+	/* deassert PLL_RESET */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, 0, ~VCEPLL_RESET_MASK);
+
+	mdelay(15);
+
+	/* switch from bypass mode to normal mode */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL, 0, ~VCEPLL_BYPASS_EN_MASK);
+
+	r = si_vce_send_vcepll_ctlreq(rdev);
+	if (r)
+		return r;
+
+	/* switch VCLK and DCLK selection */
+	WREG32_SMC_P(CG_VCEPLL_FUNC_CNTL_2,
+		     EVCLK_SRC_SEL(16) | ECCLK_SRC_SEL(16),
+		     ~(EVCLK_SRC_SEL_MASK | ECCLK_SRC_SEL_MASK));
+
+	mdelay(100);
+
+	return 0;
 }

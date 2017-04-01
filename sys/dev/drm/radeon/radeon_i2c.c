@@ -67,10 +67,9 @@ bool radeon_ddc_probe(struct radeon_connector *radeon_connector, bool use_aux)
 		radeon_router_select_ddc_port(radeon_connector);
 
 	if (use_aux) {
-		struct radeon_connector_atom_dig *dig = radeon_connector->con_priv;
-		ret = iicbus_transfer(dig->dp_i2c_bus->adapter, msgs, 2);
+		ret = iicbus_transfer(radeon_connector->ddc_bus->aux.dev->bsddev, msgs, 2);
 	} else {
-		ret = iicbus_transfer(radeon_connector->ddc_bus->adapter, msgs, 2);
+		ret = iicbus_transfer(radeon_connector->ddc_bus->adapter_dev, msgs, 2);
 	}
 
 	if (ret != 0)
@@ -98,7 +97,7 @@ static int radeon_iicbb_pre_xfer(device_t dev)
 	struct radeon_i2c_bus_rec *rec = &i2c->rec;
 	uint32_t temp;
 
-	lockmgr(&i2c->mutex, LK_EXCLUSIVE);
+	mutex_lock(&i2c->mutex);
 
 	/* RV410 appears to have a bug where the hw i2c in reset
 	 * holds the i2c port in a bad state - switch hw i2c away before
@@ -116,7 +115,7 @@ static int radeon_iicbb_pre_xfer(device_t dev)
 			else
 				reg = RADEON_GPIO_CRT2_DDC;
 
-			lockmgr(&rdev->dc_hw_i2c_mutex, LK_EXCLUSIVE);
+			mutex_lock(&rdev->dc_hw_i2c_mutex);
 			if (rec->a_clk_reg == reg) {
 				WREG32(RADEON_DVI_I2C_CNTL_0, (RADEON_I2C_SOFT_RST |
 							       R200_DVI_I2C_PIN_SEL(R200_SEL_DDC1)));
@@ -124,7 +123,7 @@ static int radeon_iicbb_pre_xfer(device_t dev)
 				WREG32(RADEON_DVI_I2C_CNTL_0, (RADEON_I2C_SOFT_RST |
 							       R200_DVI_I2C_PIN_SEL(R200_SEL_DDC3)));
 			}
-			lockmgr(&rdev->dc_hw_i2c_mutex, LK_RELEASE);
+			mutex_unlock(&rdev->dc_hw_i2c_mutex);
 		}
 	}
 
@@ -177,7 +176,7 @@ static void radeon_iicbb_post_xfer(device_t dev)
 	WREG32(rec->mask_data_reg, temp);
 	temp = RREG32(rec->mask_data_reg);
 
-	lockmgr(&i2c->mutex, LK_RELEASE);
+	mutex_unlock(&i2c->mutex);
 }
 
 static int radeon_iicbb_get_clock(device_t dev)
@@ -414,9 +413,9 @@ static int r100_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 	u32 i2c_cntl_0, i2c_cntl_1, i2c_data;
 	u32 tmp, reg;
 
-	lockmgr(&rdev->dc_hw_i2c_mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->dc_hw_i2c_mutex);
 	/* take the pm lock since we need a constant sclk */
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 
 	prescale = radeon_get_i2c_prescale(rdev);
 
@@ -646,8 +645,8 @@ done:
 		WREG32(RADEON_BIOS_6_SCRATCH, tmp);
 	}
 
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
-	lockmgr(&rdev->dc_hw_i2c_mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
+	mutex_unlock(&rdev->dc_hw_i2c_mutex);
 
 	return ret;
 }
@@ -666,9 +665,9 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 	u32 tmp, reg;
 	u32 saved1, saved2;
 
-	lockmgr(&rdev->dc_hw_i2c_mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->dc_hw_i2c_mutex);
 	/* take the pm lock since we need a constant sclk */
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	mutex_lock(&rdev->pm.mutex);
 
 	prescale = radeon_get_i2c_prescale(rdev);
 
@@ -881,8 +880,8 @@ done:
 	tmp &= ~ATOM_S6_HW_I2C_BUSY_STATE;
 	WREG32(RADEON_BIOS_6_SCRATCH, tmp);
 
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
-	lockmgr(&rdev->dc_hw_i2c_mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
+	mutex_unlock(&rdev->dc_hw_i2c_mutex);
 
 	return ret;
 }
@@ -895,7 +894,7 @@ static int radeon_hw_i2c_xfer(device_t dev,
 	struct radeon_i2c_bus_rec *rec = &i2c->rec;
 	int ret = 0;
 
-	lockmgr(&i2c->mutex, LK_EXCLUSIVE);
+	mutex_lock(&i2c->mutex);
 
 	switch (rdev->family) {
 	case CHIP_R100:
@@ -963,7 +962,7 @@ static int radeon_hw_i2c_xfer(device_t dev,
 		break;
 	}
 
-	lockmgr(&i2c->mutex, LK_RELEASE);
+	mutex_unlock(&i2c->mutex);
 
 	return ret;
 }
@@ -1016,7 +1015,6 @@ radeon_hw_i2c_reset(device_t dev, u_char speed, u_char addr, u_char *oldaddr)
 	return 0;
 }
 
-
 static device_method_t radeon_hw_i2c_methods[] = {
 	DEVMETHOD(device_probe,		radeon_hw_i2c_probe),
 	DEVMETHOD(device_attach,	radeon_hw_i2c_attach),
@@ -1061,7 +1059,15 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 	get_mplock();
 
 	i2c->rec = *rec;
+#if 0
+	i2c->adapter.owner = THIS_MODULE;
+	i2c->adapter.class = I2C_CLASS_DDC;
+	i2c->adapter.dev.parent = &dev->pdev->dev;
+#endif
 	i2c->dev = dev;
+#if 0
+	i2c_set_adapdata(&i2c->adapter, i2c);
+#endif
 	lockinit(&i2c->mutex, "ri2cmtx", 0, LK_CANRECURSE);
 	if (rec->mm_i2c ||
 	    (rec->hw_capable &&
@@ -1088,12 +1094,13 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 			goto out_free;
 		}
 
-		i2c->adapter = device_find_child(iicbus_dev, "iicbus", -1);
-		if (i2c->adapter == NULL) {
+		i2c->adapter_dev = device_find_child(iicbus_dev, "iicbus", -1);
+		if (i2c->adapter_dev == NULL) {
 			DRM_ERROR("hw i2c bridge doesn't have iicbus child\n");
 			device_delete_child(dev->dev->bsddev, iicbus_dev);
 			goto out_free;
 		}
+		DRM_INFO("Created radeon_hw_i2c bus\n");
 	} else if (rec->hw_capable &&
 		   radeon_hw_i2c &&
 		   ASIC_IS_DCE3(rdev)) {
@@ -1117,12 +1124,13 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 			goto out_free;
 		}
 
-		i2c->adapter = device_find_child(iicbus_dev, "iicbus", -1);
-		if (i2c->adapter == NULL) {
+		i2c->adapter_dev = device_find_child(iicbus_dev, "iicbus", -1);
+		if (i2c->adapter_dev == NULL) {
 			DRM_ERROR("hw i2c bridge doesn't have iicbus child\n");
 			device_delete_child(dev->dev->bsddev, iicbus_dev);
 			goto out_free;
 		}
+		DRM_INFO("Created radeon_atom_hw_bus\n");
 	} else {
 		device_t iicbb_dev;
 
@@ -1153,13 +1161,14 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 			goto out_free;
 		}
 
-		i2c->adapter = device_find_child(iicbb_dev, "iicbus", -1);
-		if (i2c->adapter == NULL) {
+		i2c->adapter_dev = device_find_child(iicbb_dev, "iicbus", -1);
+		if (i2c->adapter_dev == NULL) {
 			DRM_ERROR(
 			    "bbbus bridge doesn't have iicbus grandchild\n");
 			device_delete_child(dev->dev->bsddev, iicbus_dev);
 			goto out_free;
 		}
+		DRM_INFO("Created Radeon i2c bit bus for (%s)\n", name);
 	}
 
 	i2c->iic_bus = iicbus_dev;
@@ -1169,35 +1178,6 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 	return i2c;
 out_free:
 	rel_mplock();
-	kfree(i2c);
-	return NULL;
-
-}
-
-struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
-					     struct radeon_i2c_bus_rec *rec,
-					     const char *name)
-{
-	struct radeon_i2c_chan *i2c;
-	int ret;
-
-	i2c = kzalloc(sizeof(struct radeon_i2c_chan), GFP_KERNEL);
-	if (i2c == NULL)
-		return NULL;
-
-	i2c->rec = *rec;
-	i2c->dev = dev;
-	ksnprintf(i2c->name, sizeof(i2c->name), "Radeon aux bus %s", name);
-	ret = iic_dp_aux_add_bus(dev->dev->bsddev, i2c->name,
-	    radeon_dp_i2c_aux_ch, i2c, &i2c->iic_bus,
-	    &i2c->adapter);
-	if (ret) {
-		DRM_INFO("Failed to register i2c %s\n", name);
-		goto out_free;
-	}
-
-	return i2c;
-out_free:
 	kfree(i2c);
 	return NULL;
 
@@ -1216,6 +1196,8 @@ void radeon_i2c_destroy(struct radeon_i2c_chan *i2c)
 		KASSERT(ret == 0, ("unable to detach iic bus %s: %d",
 		    i2c->name, ret));
 	}
+	if (i2c->has_aux)
+		drm_dp_aux_unregister(&i2c->aux);
 	kfree(i2c);
 }
 
@@ -1300,7 +1282,7 @@ void radeon_i2c_get_byte(struct radeon_i2c_chan *i2c_bus,
 	out_buf[0] = addr;
 	out_buf[1] = 0;
 
-	if (iicbus_transfer(i2c_bus->adapter, msgs, 2) == 0) {
+	if (iicbus_transfer(i2c_bus->adapter_dev, msgs, 2) == 0) {
 		*val = in_buf[0];
 		DRM_DEBUG("val = 0x%02x\n", *val);
 	} else {
@@ -1326,7 +1308,7 @@ void radeon_i2c_put_byte(struct radeon_i2c_chan *i2c_bus,
 	out_buf[0] = addr;
 	out_buf[1] = val;
 
-	if (iicbus_transfer(i2c_bus->adapter, &msg, 1) != 0)
+	if (iicbus_transfer(i2c_bus->adapter_dev, &msg, 1) != 0)
 		DRM_DEBUG("i2c 0x%02x 0x%02x write failed\n",
 			  addr, val);
 }

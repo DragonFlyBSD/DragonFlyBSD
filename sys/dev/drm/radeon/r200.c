@@ -120,6 +120,10 @@ int r200_copy_dma(struct radeon_device *rdev,
 	radeon_ring_write(ring, RADEON_WAIT_DMA_GUI_IDLE);
 	if (fence) {
 		r = radeon_fence_emit(rdev, fence, RADEON_RING_TYPE_GFX_INDEX);
+		if (r) {
+			radeon_ring_unlock_undo(rdev, ring);
+			return r;
+ 		}
 	}
 	radeon_ring_unlock_commit(rdev, ring, false);
 	return r;
@@ -143,7 +147,7 @@ int r200_packet0_check(struct radeon_cs_parser *p,
 		       struct radeon_cs_packet *pkt,
 		       unsigned idx, unsigned reg)
 {
-	struct radeon_cs_reloc *reloc;
+	struct radeon_bo_list *reloc;
 	struct r100_cs_track *track;
 	volatile uint32_t *ib;
 	uint32_t tmp;

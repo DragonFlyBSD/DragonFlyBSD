@@ -195,9 +195,32 @@ static void radeon_evict_flags(struct ttm_buffer_object *bo,
 	rbo = container_of(bo, struct radeon_bo, tbo);
 	switch (bo->mem.mem_type) {
 	case TTM_PL_VRAM:
-		if (rbo->rdev->ring[RADEON_RING_TYPE_GFX_INDEX].ready == false)
+		if (rbo->rdev->ring[radeon_copy_ring_index(rbo->rdev)].ready == false)
 			radeon_ttm_placement_from_domain(rbo, RADEON_GEM_DOMAIN_CPU);
-		else
+		else if (rbo->rdev->mc.visible_vram_size < rbo->rdev->mc.real_vram_size &&
+			 bo->mem.start < (rbo->rdev->mc.visible_vram_size >> PAGE_SHIFT)) {
+			unsigned fpfn = rbo->rdev->mc.visible_vram_size >> PAGE_SHIFT;
+			int i;
+
+			/* Try evicting to the CPU inaccessible part of VRAM
+			 * first, but only set GTT as busy placement, so this
+			 * BO will be evicted to GTT rather than causing other
+			 * BOs to be evicted from VRAM
+			 */
+			radeon_ttm_placement_from_domain(rbo, RADEON_GEM_DOMAIN_VRAM |
+							 RADEON_GEM_DOMAIN_GTT);
+			rbo->placement.num_busy_placement = 0;
+			for (i = 0; i < rbo->placement.num_placement; i++) {
+				if (rbo->placements[i].flags & TTM_PL_FLAG_VRAM) {
+					if (rbo->placements[0].fpfn < fpfn)
+						rbo->placements[0].fpfn = fpfn;
+				} else {
+					rbo->placement.busy_placement =
+						&rbo->placements[i];
+					rbo->placement.num_busy_placement = 1;
+				}
+			}
+		} else
 			radeon_ttm_placement_from_domain(rbo, RADEON_GEM_DOMAIN_GTT);
 		break;
 	case TTM_PL_TT:
@@ -234,8 +257,8 @@ static int radeon_move_blit(struct ttm_buffer_object *bo,
 
 	rdev = radeon_get_rdev(bo->bdev);
 	ridx = radeon_copy_ring_index(rdev);
-	old_start = old_mem->start << PAGE_SHIFT;
-	new_start = new_mem->start << PAGE_SHIFT;
+	old_start = (u64)old_mem->start << PAGE_SHIFT;
+	new_start = (u64)new_mem->start << PAGE_SHIFT;
 
 	switch (old_mem->mem_type) {
 	case TTM_PL_VRAM:
@@ -371,8 +394,14 @@ static int radeon_bo_move(struct ttm_buffer_object *bo,
 			struct ttm_mem_reg *new_mem)
 {
 	struct radeon_device *rdev;
+	struct radeon_bo *rbo;
 	struct ttm_mem_reg *old_mem = &bo->mem;
 	int r;
+
+	/* Can't move a pinned BO */
+	rbo = container_of(bo, struct radeon_bo, tbo);
+	if (WARN_ON_ONCE(rbo->pin_count > 0))
+		return -EINVAL;
 
 	rdev = radeon_get_rdev(bo->bdev);
 	if (old_mem->mem_type == TTM_PL_SYSTEM && bo->ttm == NULL) {
@@ -649,7 +678,7 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 						       0, PAGE_SIZE,
 						       PCI_DMA_BIDIRECTIONAL);
 		if (pci_dma_mapping_error(rdev->pdev, gtt->ttm.dma_address[i])) {
-			while (--i) {
+			while (i--) {
 				pci_unmap_page(rdev->pdev, gtt->ttm.dma_address[i],
 					       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
 				gtt->ttm.dma_address[i] = 0;
@@ -724,7 +753,7 @@ static struct ttm_bo_driver radeon_bo_driver = {
 
 int radeon_ttm_init(struct radeon_device *rdev)
 {
-	int r, r2;
+	int r;
 
 	r = radeon_ttm_global_init(rdev);
 	if (r) {
@@ -757,10 +786,8 @@ int radeon_ttm_init(struct radeon_device *rdev)
 		return r;
 	}
 	r = radeon_bo_reserve(rdev->stollen_vga_memory, false);
-	if (r) {
-		radeon_bo_unref(&rdev->stollen_vga_memory);
-		return r;
-	}
+	if (r)
+ 		return r;
 	r = radeon_bo_pin(rdev->stollen_vga_memory, RADEON_GEM_DOMAIN_VRAM, NULL);
 	radeon_bo_unreserve(rdev->stollen_vga_memory);
 	if (r) {
@@ -773,12 +800,6 @@ int radeon_ttm_init(struct radeon_device *rdev)
 				rdev->mc.gtt_size >> PAGE_SHIFT);
 	if (r) {
 		DRM_ERROR("Failed initializing GTT heap.\n");
-		r2 = radeon_bo_reserve(rdev->stollen_vga_memory, false);
-		if (likely(r2 == 0)) {
-			radeon_bo_unpin(rdev->stollen_vga_memory);
-			radeon_bo_unreserve(rdev->stollen_vga_memory);
-		}
-		radeon_bo_unref(&rdev->stollen_vga_memory);
 		return r;
 	}
 	DRM_INFO("radeon: %uM of GTT memory ready.\n",
@@ -787,12 +808,6 @@ int radeon_ttm_init(struct radeon_device *rdev)
 	r = radeon_ttm_debugfs_init(rdev);
 	if (r) {
 		DRM_ERROR("Failed to init debugfs\n");
-		r2 = radeon_bo_reserve(rdev->stollen_vga_memory, false);
-		if (likely(r2 == 0)) {
-			radeon_bo_unpin(rdev->stollen_vga_memory);
-			radeon_bo_unreserve(rdev->stollen_vga_memory);
-		}
-		radeon_bo_unref(&rdev->stollen_vga_memory);
 		return r;
 	}
 	return 0;

@@ -2172,6 +2172,7 @@ dev/drm/radeon/radeon_acpi.c		optional radeon drm
 dev/drm/radeon/radeon_agp.c		optional radeon drm
 dev/drm/radeon/radeon_asic.c		optional radeon drm
 dev/drm/radeon/radeon_atombios.c	optional radeon drm
+dev/drm/radeon/radeon_audio.c		optional radeon drm
 dev/drm/radeon/radeon_benchmark.c	optional radeon drm
 dev/drm/radeon/radeon_bios.c		optional radeon drm
 dev/drm/radeon/radeon_clocks.c		optional radeon drm
@@ -2181,6 +2182,7 @@ dev/drm/radeon/radeon_cs.c		optional radeon drm
 dev/drm/radeon/radeon_cursor.c		optional radeon drm
 dev/drm/radeon/radeon_device.c		optional radeon drm
 dev/drm/radeon/radeon_display.c		optional radeon drm
+dev/drm/radeon/radeon_dp_auxch.c	optional radeon drm
 dev/drm/radeon/radeon_drv.c		optional radeon drm
 dev/drm/radeon/radeon_encoders.c	optional radeon drm
 dev/drm/radeon/radeon_fb.c		optional radeon drm
