@@ -124,7 +124,6 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	hammer_off_t tmp_offset;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
-	hammer_off_t block_offset;
 	void *ptr;
 
 	volume = get_root_volume();
@@ -148,7 +147,6 @@ again:
 	if ((blockmap->next_offset ^ tmp_offset) & ~HAMMER_BUFMASK64) {
 		blockmap->next_offset = tmp_offset & ~HAMMER_BUFMASK64;
 	}
-	block_offset = blockmap->next_offset & HAMMER_BIGBLOCK_MASK;
 
 	/*
 	 * Dive layer 1.
@@ -157,7 +155,8 @@ again:
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(blockmap->next_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	assert(!(block_offset == 0 && layer1->blocks_free == 0));
+	assert(!((blockmap->next_offset & HAMMER_BIGBLOCK_MASK) == 0 &&
+		layer1->blocks_free == 0));
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
@@ -187,7 +186,8 @@ again:
 		goto again;
 	}
 
-	assert(layer2->append_off == block_offset);
+	assert(layer2->append_off ==
+		(blockmap->next_offset & HAMMER_BIGBLOCK_MASK));
 	layer2->bytes_free -= bytes;
 	*result_offp = blockmap->next_offset;
 	blockmap->next_offset += bytes;

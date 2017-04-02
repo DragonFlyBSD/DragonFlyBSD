@@ -563,7 +563,7 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 	hammer_blockmap_layer2_t track2;
 	hammer_blockmap_layer2_t layer2;
 	hammer_off_t offset;
-	int i, zone;
+	int i;
 
 	for (i = 0; i < HAMMER_BLOCKMAP_RADIX2; ++i) {
 		track2 = &collect->track2[i];
@@ -577,11 +577,10 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 		if (track2->entry_crc == 0)
 			continue;
 
-		zone = layer2->zone;
 		if (DebugOpt) {
-			assert((zone == HAMMER_ZONE_UNDO_INDEX) ||
-				(zone == HAMMER_ZONE_FREEMAP_INDEX) ||
-				hammer_is_index_record(zone));
+			assert((layer2->zone == HAMMER_ZONE_UNDO_INDEX) ||
+				(layer2->zone == HAMMER_ZONE_FREEMAP_INDEX) ||
+				hammer_is_index_record(layer2->zone));
 		}
 		if (stats)
 			hammer_add_zone_stat_layer2(stats, layer2);
