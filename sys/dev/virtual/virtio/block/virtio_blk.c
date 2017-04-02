@@ -72,8 +72,7 @@ struct vtblk_softc {
 #define VTBLK_FLAG_DETACH	0x0004
 #define VTBLK_FLAG_SUSPEND	0x0008
 #define VTBLK_FLAG_DUMPING	0x0010
-#define VTBLK_FLAG_BARRIER	0x0020
-#define VTBLK_FLAG_WC_CONFIG	0x0040
+#define VTBLK_FLAG_WC_CONFIG	0x0020
 
 	struct virtqueue	*vtblk_vq;
 	struct sglist		*vtblk_sglist;
@@ -179,8 +178,7 @@ TUNABLE_INT("hw.vtblk.writecache_mode", &vtblk_writecache_mode);
 
 /* Features desired/implemented by this driver. */
 #define VTBLK_FEATURES \
-    (VIRTIO_BLK_F_BARRIER		| \
-     VIRTIO_BLK_F_SIZE_MAX		| \
+    (VIRTIO_BLK_F_SIZE_MAX		| \
      VIRTIO_BLK_F_SEG_MAX		| \
      VIRTIO_BLK_F_GEOMETRY		| \
      VIRTIO_BLK_F_RO			| \
@@ -252,8 +250,6 @@ vtblk_attach(device_t dev)
 		sc->vtblk_flags |= VTBLK_FLAG_INDIRECT;
 	if (virtio_with_feature(dev, VIRTIO_BLK_F_RO))
 		sc->vtblk_flags |= VTBLK_FLAG_READONLY;
-	if (virtio_with_feature(dev, VIRTIO_BLK_F_BARRIER))
-		sc->vtblk_flags |= VTBLK_FLAG_BARRIER;
 	if (virtio_with_feature(dev, VIRTIO_BLK_F_CONFIG_WCE))
 		sc->vtblk_flags |= VTBLK_FLAG_WC_CONFIG;
 
