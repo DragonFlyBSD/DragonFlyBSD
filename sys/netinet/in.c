@@ -269,7 +269,7 @@ in_ialink_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&msg->lmsg, cpu + 1);
+	netisr_forwardmsg(&msg->base, cpu + 1);
 }
 
 static void
@@ -293,7 +293,7 @@ in_iaunlink_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&msg->lmsg, cpu + 1);
+	netisr_forwardmsg(&msg->base, cpu + 1);
 }
 
 static void
@@ -318,7 +318,7 @@ in_iahashins_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&msg->lmsg, cpu + 1);
+	netisr_forwardmsg(&msg->base, cpu + 1);
 }
 
 static void
@@ -342,7 +342,7 @@ in_iahashrem_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&msg->lmsg, cpu + 1);
+	netisr_forwardmsg(&msg->base, cpu + 1);
 }
 
 static void
@@ -354,7 +354,7 @@ in_ialink(struct in_ifaddr *ia)
 		    0, in_ialink_dispatch);
 	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(&msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 }
 
 void
@@ -366,7 +366,7 @@ in_iaunlink(struct in_ifaddr *ia)
 		    0, in_iaunlink_dispatch);
 	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(&msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 }
 
 void
@@ -378,7 +378,7 @@ in_iahash_insert(struct in_ifaddr *ia)
 		    0, in_iahashins_dispatch);
 	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(&msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 }
 
 void
@@ -390,7 +390,7 @@ in_iahash_remove(struct in_ifaddr *ia)
 		    0, in_iahashrem_dispatch);
 	msg.lmsg.u.ms_resultp = ia;
 
-	ifa_domsg(&msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 }
 
 static __inline struct in_ifaddr *

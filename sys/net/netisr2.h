@@ -70,15 +70,10 @@
 #error "kernel only header file"
 #endif
 
-#ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
-#endif
-#ifndef _SYS_THREAD_H_
+#include <sys/msgport2.h>
 #include <sys/thread.h>
-#endif
-#ifndef _NET_NETISR_H_
 #include <net/netisr.h>
-#endif
 
 extern struct thread *netisr_cpu[MAXCPU];
 
@@ -128,5 +123,41 @@ netisr_hashport(uint16_t hash)
 #define ASSERT_CANDOMSG_NETISR0(td) \
 	KASSERT((td)->td_type != TD_TYPE_NETISR || IS_NETISR((td), 0), \
 	    ("can't domsg to netisr0 from thread %p", (td)))
+
+static __inline int
+netisr_domsg_port(struct netmsg_base *nm, lwkt_port_t port)
+{
+
+#ifdef INVARIANTS
+	if (port == netisr_cpuport(0))
+		ASSERT_CANDOMSG_NETISR0(curthread);
+#endif
+	return (lwkt_domsg(port, &nm->lmsg, 0));
+}
+
+static __inline int
+netisr_domsg(struct netmsg_base *nm, int cpu)
+{
+
+	return (netisr_domsg_port(nm, netisr_cpuport(cpu)));
+}
+
+static __inline void
+netisr_replymsg(struct netmsg_base *nm, int error)
+{
+
+	lwkt_replymsg(&nm->lmsg, error);
+}
+
+static __inline void
+netisr_forwardmsg(struct netmsg_base *nm, int next_cpu)
+{
+
+	KKASSERT(next_cpu > mycpuid && next_cpu <= ncpus);
+	if (next_cpu < ncpus)
+		lwkt_forwardmsg(netisr_cpuport(next_cpu), &nm->lmsg);
+	else
+		netisr_replymsg(nm, 0);
+}
 
 #endif	/* _NET_NETISR2_H_ */

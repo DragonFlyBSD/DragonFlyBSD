@@ -3148,7 +3148,7 @@ ifa_iflink_dispatch(netmsg_t nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&nmsg->lmsg, cpu + 1);
+	netisr_forwardmsg(&nmsg->base, cpu + 1);
 }
 
 void
@@ -3162,7 +3162,7 @@ ifa_iflink(struct ifaddr *ifa, struct ifnet *ifp, int tail)
 	msg.ifp = ifp;
 	msg.tail = tail;
 
-	ifa_domsg(&msg.base.lmsg, 0);
+	netisr_domsg(&msg.base, 0);
 }
 
 static void
@@ -3186,7 +3186,7 @@ ifa_ifunlink_dispatch(netmsg_t nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&nmsg->lmsg, cpu + 1);
+	netisr_forwardmsg(&nmsg->base, cpu + 1);
 }
 
 void
@@ -3199,7 +3199,7 @@ ifa_ifunlink(struct ifaddr *ifa, struct ifnet *ifp)
 	msg.ifa = ifa;
 	msg.ifp = ifp;
 
-	ifa_domsg(&msg.base.lmsg, 0);
+	netisr_domsg(&msg.base, 0);
 }
 
 static void
@@ -3208,7 +3208,7 @@ ifa_destroy_dispatch(netmsg_t nmsg)
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 
 	IFAFREE(msg->ifa);
-	ifa_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 void
@@ -3220,7 +3220,7 @@ ifa_destroy(struct ifaddr *ifa)
 		    0, ifa_destroy_dispatch);
 	msg.ifa = ifa;
 
-	ifa_domsg(&msg.base.lmsg, 0);
+	netisr_domsg(&msg.base, 0);
 }
 
 struct lwkt_port *
