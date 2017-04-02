@@ -642,7 +642,7 @@ vlan_link_dispatch(netmsg_t msg)
 	LIST_INSERT_HEAD(&trunk->vlan_list, entry, ifv_link);
 	crit_exit();
 
-	ifnet_forwardmsg(&vmsg->base.lmsg, cpu + 1);
+	netisr_forwardmsg(&vmsg->base, cpu + 1);
 }
 
 static void
@@ -672,7 +672,7 @@ vlan_link(struct ifvlan *ifv, struct ifnet *ifp_p)
 	vmsg.nv_ifv = ifv;
 	vmsg.nv_ifp_p = ifp_p;
 
-	ifnet_domsg(&vmsg.base.lmsg, 0);
+	netisr_domsg(&vmsg.base, 0);
 }
 
 static void
@@ -800,7 +800,7 @@ vlan_unlink_dispatch(netmsg_t msg)
 	LIST_REMOVE(entry, ifv_link);
 	crit_exit();
 
-	ifnet_forwardmsg(&vmsg->base.lmsg, cpu + 1);
+	netisr_forwardmsg(&vmsg->base, cpu + 1);
 }
 
 static void
@@ -822,7 +822,7 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 	vmsg.nv_ifv = ifv;
 	vmsg.nv_ifp_p = ifp_p;
 
-	ifnet_domsg(&vmsg.base.lmsg, 0);
+	netisr_domsg(&vmsg.base, 0);
 
 	crit_enter();
 	if (LIST_EMPTY(&vlantrunks[mycpuid].vlan_list)) {
