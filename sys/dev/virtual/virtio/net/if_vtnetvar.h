@@ -78,6 +78,7 @@ struct vtnet_softc {
 	struct vtnet_mac_filter *vtnet_macfilter;
 
 	int			vtnet_hdr_size;
+	int			vtnet_tx_size;
 	int			vtnet_tx_nsegs;
 	int			vtnet_rx_process_limit;
 	int			vtnet_rx_nsegs;

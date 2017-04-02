@@ -565,7 +565,7 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 {
 	device_t dev;
 	struct ifnet *ifp;
-	int i, tx_size;
+	int i;
 
 	dev = sc->vtnet_dev;
 
@@ -583,11 +583,11 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	ifp->if_ioctl = vtnet_ioctl;
 
 	sc->vtnet_rx_process_limit = virtqueue_size(sc->vtnet_rx_vq);
-	tx_size = virtqueue_size(sc->vtnet_tx_vq);
+	sc->vtnet_tx_size = virtqueue_size(sc->vtnet_tx_vq);
 	if (sc->vtnet_flags & VTNET_FLAG_INDIRECT)
-		sc->vtnet_txhdrcount = tx_size;
+		sc->vtnet_txhdrcount = sc->vtnet_tx_size;
 	else
-		sc->vtnet_txhdrcount = (tx_size / 2) + 1;
+		sc->vtnet_txhdrcount = (sc->vtnet_tx_size / 2) + 1;
 	sc->vtnet_txhdrarea = contigmalloc(
 	    sc->vtnet_txhdrcount * sizeof(struct vtnet_tx_header),
 	    M_VTNET, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
@@ -605,7 +605,7 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 		    "cannot contigmalloc the mac filter table\n");
 		return (ENOMEM);
 	}
-	ifq_set_maxlen(&ifp->if_snd, tx_size - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->vtnet_tx_size - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, sc->vtnet_hwaddr, NULL);
