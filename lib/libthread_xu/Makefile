@@ -14,6 +14,7 @@ CFLAGS+=-I${.CURDIR}/../libc/include -I${.CURDIR}/thread \
 	-I${.CURDIR}/../../include
 CFLAGS+=-I${.CURDIR}/arch/${MACHINE_ARCH}/include
 CFLAGS+=-I${.CURDIR}/../libthread_db
+CFLAGS+=-I${.CURDIR}/../../libexec/rtld-elf
 
 # XXX this breaks threaded applications
 #LDFLAGS=-Wl,-version-script=${.CURDIR}/pthread.map

@@ -26,10 +26,12 @@
  * $FreeBSD: src/lib/libpthread/thread/thr_rtld.c,v 1.5 2003/11/05 18:19:24 deischen Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 #include <stdlib.h>
 #include <pthread.h>
 
+#include "un-namespace.h"
 #include "rtld_lock.h"
 #include "thr_private.h"
 
@@ -66,7 +68,7 @@ _thr_rtld_rlock_acquire(void *lock)
 	pthread_rwlock_t prwlock;
 
 	prwlock = (pthread_rwlock_t)lock;
-	_thr_rwlock_rdlock(&prwlock);
+	_pthread_rwlock_rdlock(&prwlock);
 }
 
 static void
@@ -75,7 +77,7 @@ _thr_rtld_wlock_acquire(void *lock)
 	pthread_rwlock_t prwlock;
 
 	prwlock = (pthread_rwlock_t)lock;
-	_thr_rwlock_wrlock(&prwlock);
+	_pthread_rwlock_wrlock(&prwlock);
 }
 
 static void
@@ -84,7 +86,7 @@ _thr_rtld_lock_release(void *lock)
 	pthread_rwlock_t prwlock;
 
 	prwlock = (pthread_rwlock_t)lock;
-	_thr_rwlock_unlock(&prwlock);
+	_pthread_rwlock_unlock(&prwlock);
 }
 
 

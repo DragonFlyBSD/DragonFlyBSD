@@ -226,8 +226,8 @@ lock_release(rtld_lock_t lock, RtldLockState *lockstate)
 		break;
 	case RTLD_LOCK_RLOCKED:
 	case RTLD_LOCK_WLOCKED:
-		thread_mask_clear(lock->mask);
 		lockinfo.lock_release(lock->handle);
+		thread_mask_clear(lock->mask);
 		break;
 	default:
 		assert(0);
