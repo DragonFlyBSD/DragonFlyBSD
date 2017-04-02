@@ -531,7 +531,7 @@ ipflow_ifaddr_handler(netmsg_t nmsg)
 			IPFLOW_FREE(ipf);
 		}
 	}
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -557,7 +557,7 @@ ipflow_ifaddr(void *arg __unused, struct ifnet *ifp __unused,
 		    MSGF_PRIORITY, ipflow_ifaddr_handler);
 	amsg.ipf_addr = ifatoia(ifa)->ia_addr.sin_addr;
 
-	ifnet_domsg(&amsg.base.lmsg, 0);
+	netisr_domsg(&amsg.base, 0);
 }
 
 static void
