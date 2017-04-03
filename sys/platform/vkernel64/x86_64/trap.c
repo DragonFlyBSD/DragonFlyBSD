@@ -838,6 +838,8 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 
 	if (frame->tf_err & PGEX_W)
 		ftype = VM_PROT_READ | VM_PROT_WRITE;
+	else if (frame->tf_err & PGEX_I)
+		ftype = VM_PROT_EXECUTE;
 	else
 		ftype = VM_PROT_READ;
 

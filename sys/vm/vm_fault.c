@@ -1302,13 +1302,18 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 	for (;;) {
 		/*
 		 * We cannot proceed if the vpte is not valid, not readable
-		 * for a read fault, or not writable for a write fault.
+		 * for a read fault, not writable for a write fault, or
+		 * not executable for an instruction execution fault.
 		 */
 		if ((vpte & VPTE_V) == 0) {
 			unlock_and_deallocate(fs);
 			return (KERN_FAILURE);
 		}
 		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_RW) == 0) {
+			unlock_and_deallocate(fs);
+			return (KERN_FAILURE);
+		}
+		if ((fault_type & VM_PROT_EXECUTE) && (vpte & VPTE_NX)) {
 			unlock_and_deallocate(fs);
 			return (KERN_FAILURE);
 		}
@@ -1366,7 +1371,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 
 			if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_RW))
 				nvpte |= VPTE_M | VPTE_A;
-			if (fault_type & VM_PROT_READ)
+			if (fault_type & (VM_PROT_READ | VM_PROT_EXECUTE))
 				nvpte |= VPTE_A;
 			if (vpte == nvpte)
 				break;
@@ -1398,6 +1403,12 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 	    (vpte & (VPTE_RW | VPTE_M)) != (VPTE_RW | VPTE_M)) {
 		fs->first_prot &= ~VM_PROT_WRITE;
 	}
+
+	/*
+	 * Disable EXECUTE perms if NX bit is set.
+	 */
+	if (vpte & VPTE_NX)
+		fs->first_prot &= ~VM_PROT_EXECUTE;
 
 	/*
 	 * Combine remaining address bits with the vpte.
