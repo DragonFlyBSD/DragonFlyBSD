@@ -3166,7 +3166,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 static void
 bridge_rtmsg_sync_handler(netmsg_t msg)
 {
-	ifnet_forwardmsg(&msg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&msg->base, mycpuid + 1);
 }
 
 static void
@@ -3176,9 +3176,10 @@ bridge_rtmsg_sync(struct bridge_softc *sc)
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
+	/* XXX use netmsg_service_sync */
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
 		    0, bridge_rtmsg_sync_handler);
-	ifnet_domsg(&msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 }
 
 static __inline void
@@ -3264,15 +3265,15 @@ bridge_rtinstall_handler(netmsg_t msg)
 				       &brmsg->br_rtinfo);
 	if (error) {
 		KKASSERT(mycpuid == 0 && brmsg->br_rtinfo == NULL);
-		lwkt_replymsg(&brmsg->base.lmsg, error);
+		netisr_replymsg(&brmsg->base, error);
 		return;
 	} else if (brmsg->br_rtinfo == NULL) {
 		/* rtnode already exists for 'dst' */
 		KKASSERT(mycpuid == 0);
-		lwkt_replymsg(&brmsg->base.lmsg, 0);
+		netisr_replymsg(&brmsg->base, 0);
 		return;
 	}
-	ifnet_forwardmsg(&brmsg->base.lmsg, mycpuid + 1);
+	netisr_forwardmsg(&brmsg->base, mycpuid + 1);
 }
 
 /*
@@ -3309,7 +3310,7 @@ bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
 		brmsg->br_softc = sc;
 		brmsg->br_rtinfo = NULL;
 
-		ifnet_sendmsg(&brmsg->base.lmsg, 0);
+		netisr_sendmsg(&brmsg->base, 0);
 		return 0;
 	}
 	bridge_rtinfo_update(brt->brt_info, dst_if, 0, flags,
@@ -3334,7 +3335,7 @@ bridge_rtsaddr(struct bridge_softc *sc, const uint8_t *dst,
 	brmsg.br_softc = sc;
 	brmsg.br_rtinfo = NULL;
 
-	return ifnet_domsg(&brmsg.base.lmsg, 0);
+	return netisr_domsg(&brmsg.base, 0);
 }
 
 /*
@@ -3362,7 +3363,7 @@ bridge_rtreap_handler(netmsg_t msg)
 		if (brt->brt_info->bri_dead)
 			bridge_rtnode_destroy(sc, brt);
 	}
-	ifnet_forwardmsg(&msg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&msg->base, mycpuid + 1);
 }
 
 static void
@@ -3376,7 +3377,7 @@ bridge_rtreap(struct bridge_softc *sc)
 		    0, bridge_rtreap_handler);
 	msg.lmsg.u.ms_resultp = sc;
 
-	ifnet_domsg(&msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 }
 
 static void
@@ -3390,7 +3391,7 @@ bridge_rtreap_async(struct bridge_softc *sc)
 		    0, bridge_rtreap_handler);
 	msg->lmsg.u.ms_resultp = sc;
 
-	ifnet_sendmsg(&msg->lmsg, 0);
+	netisr_sendmsg(msg, 0);
 }
 
 /*
@@ -4418,7 +4419,7 @@ bridge_add_bif_handler(netmsg_t msg)
 
 	TAILQ_INSERT_HEAD(&sc->sc_iflists[mycpuid], bif, bif_next);
 
-	ifnet_forwardmsg(&amsg->base.lmsg, mycpuid + 1);
+	netisr_forwardmsg(&amsg->base, mycpuid + 1);
 }
 
 static void
@@ -4435,7 +4436,7 @@ bridge_add_bif(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 	amsg.br_bif_info = bif_info;
 	amsg.br_bif_ifp = ifp;
 
-	ifnet_domsg(&amsg.base.lmsg, 0);
+	netisr_domsg(&amsg.base, 0);
 }
 
 static void
@@ -4461,7 +4462,7 @@ bridge_del_bif_handler(netmsg_t msg)
 	/* Save the removed bif for later freeing */
 	TAILQ_INSERT_HEAD(dmsg->br_bif_list, bif, bif_next);
 
-	ifnet_forwardmsg(&dmsg->base.lmsg, mycpuid + 1);
+	netisr_forwardmsg(&dmsg->base, mycpuid + 1);
 }
 
 static void
@@ -4478,5 +4479,5 @@ bridge_del_bif(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 	dmsg.br_bif_info = bif_info;
 	dmsg.br_bif_list = saved_bifs;
 
-	ifnet_domsg(&dmsg.base.lmsg, 0);
+	netisr_domsg(&dmsg.base, 0);
 }

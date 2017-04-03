@@ -143,6 +143,13 @@ netisr_domsg(struct netmsg_base *nm, int cpu)
 }
 
 static __inline void
+netisr_sendmsg(struct netmsg_base *nm, int cpu)
+{
+
+	lwkt_sendmsg(netisr_cpuport(cpu), &nm->lmsg);
+}
+
+static __inline void
 netisr_replymsg(struct netmsg_base *nm, int error)
 {
 
