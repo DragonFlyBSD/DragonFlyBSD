@@ -57,6 +57,7 @@
 #include <net/netmsg2.h>
 #include <sys/mplock2.h>
 
+static void netmsg_service_port_init(lwkt_port_t);
 static void netmsg_service_loop(void *arg);
 static void netisr_hashfn0(struct mbuf **mp, int hoff);
 static void netisr_nohashck(struct mbuf *, const struct pktinfo *);
@@ -219,7 +220,7 @@ SYSINIT(netisr, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, netisr_init, NULL);
  * registers the port for synchronous cleanup operations such as when an
  * ifnet is being destroyed.  There is no deregistration API yet.
  */
-void
+static void
 netmsg_service_port_init(lwkt_port_t port)
 {
 	struct netmsg_port_registration *reg;

@@ -162,7 +162,6 @@ static struct netmsg_base	if_slowtimo_netmsg;
 
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
-static struct thread	*ifnet_threads[MAXCPU];
 static struct mtx	ifnet_mtx = MTX_INITIALIZER("ifnet");
 
 static struct ifsubq_stage_head	ifsubq_stage_heads[MAXCPU];
@@ -3223,52 +3222,6 @@ ifa_destroy(struct ifaddr *ifa)
 	netisr_domsg(&msg.base, 0);
 }
 
-struct lwkt_port *
-ifnet_portfn(int cpu)
-{
-	return &ifnet_threads[cpu]->td_msgport;
-}
-
-void
-ifnet_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
-{
-	KKASSERT(next_cpu > mycpuid && next_cpu <= ncpus);
-
-	if (next_cpu < ncpus)
-		lwkt_forwardmsg(ifnet_portfn(next_cpu), lmsg);
-	else
-		lwkt_replymsg(lmsg, 0);
-}
-
-int
-ifnet_domsg(struct lwkt_msg *lmsg, int cpu)
-{
-	KKASSERT(cpu < ncpus);
-	return lwkt_domsg(ifnet_portfn(cpu), lmsg, 0);
-}
-
-void
-ifnet_sendmsg(struct lwkt_msg *lmsg, int cpu)
-{
-	KKASSERT(cpu < ncpus);
-	lwkt_sendmsg(ifnet_portfn(cpu), lmsg);
-}
-
-/*
- * Generic netmsg service loop.  Some protocols may roll their own but all
- * must do the basic command dispatch function call done here.
- */
-static void
-ifnet_service_loop(void *arg __unused)
-{
-	netmsg_t msg;
-
-	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-		KASSERT(msg->base.nm_dispatch, ("ifnet_service: badmsg"));
-		msg->base.nm_dispatch(msg);
-	}
-}
-
 static void
 if_start_rollup(void)
 {
@@ -3315,16 +3268,6 @@ static void
 ifnetinit(void *dummy __unused)
 {
 	int i;
-
-	for (i = 0; i < ncpus; ++i) {
-		struct thread **thr = &ifnet_threads[i];
-
-		lwkt_create(ifnet_service_loop, NULL, thr, NULL,
-			    TDF_NOSTART|TDF_FORCE_SPINPORT|TDF_FIXEDCPU,
-			    i, "ifnet %d", i);
-		netmsg_service_port_init(&(*thr)->td_msgport);
-		lwkt_schedule(*thr);
-	}
 
 	for (i = 0; i < ncpus; ++i)
 		TAILQ_INIT(&ifsubq_stage_heads[i].stg_head);

@@ -812,11 +812,6 @@ IFAFREE(struct ifaddr *_ifa)
 	_IFAFREE(_ifa, mycpuid);
 }
 
-struct lwkt_port *ifnet_portfn(int);
-int	ifnet_domsg(struct lwkt_msg *, int);
-void	ifnet_sendmsg(struct lwkt_msg *, int);
-void	ifnet_forwardmsg(struct lwkt_msg *, int);
-
 static __inline void
 ifnet_serialize_array_enter(lwkt_serialize_t *_arr, int _arrcnt,
     enum ifnet_serialize _slz)
