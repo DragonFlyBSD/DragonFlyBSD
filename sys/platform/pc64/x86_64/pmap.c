@@ -4557,7 +4557,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 
 	if (pmap == NULL)
 		return;
-	if ((prot & VM_PROT_READ) == VM_PROT_NONE) {
+	if ((prot & (VM_PROT_READ | VM_PROT_EXECUTE)) == VM_PROT_NONE) {
 		pmap_remove(pmap, sva, eva);
 		return;
 	}

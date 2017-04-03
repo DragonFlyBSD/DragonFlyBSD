@@ -128,7 +128,7 @@ static pd_entry_t *pmap_pde(pmap_t pmap, vm_offset_t va);
  */
 #define pte_prot(m, p)		\
 	(protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
-static int protection_codes[8];
+static uint64_t protection_codes[8];
 
 struct pmap kernel_pmap;
 
@@ -1703,7 +1703,7 @@ cpu_vmspace_alloc(struct vmspace *vm)
 		panic("vmspace_create() failed");
 
 	rp = vmspace_mmap(&vm->vm_pmap, VM_MIN_USER_ADDRESS, USER_SIZE,
-			  PROT_READ|PROT_WRITE,
+			  PROT_READ|PROT_WRITE|PROT_EXEC,
 			  MAP_FILE|MAP_SHARED|MAP_VPAGETABLE|MAP_FIXED,
 			  MemImageFd, 0);
 	if (rp == MAP_FAILED)
@@ -2228,7 +2228,7 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 	if (pmap == NULL)
 		return;
 
-	if ((prot & VM_PROT_READ) == VM_PROT_NONE) {
+	if ((prot & (VM_PROT_READ | VM_PROT_EXECUTE)) == VM_PROT_NONE) {
 		pmap_remove(pmap, sva, eva);
 		return;
 	}
@@ -3061,7 +3061,6 @@ restart:
 void
 pmap_page_protect(vm_page_t m, vm_prot_t prot)
 {
-	/* JG NX support? */
 	if ((prot & VM_PROT_WRITE) == 0) {
 		if (prot & (VM_PROT_READ | VM_PROT_EXECUTE)) {
 			pmap_clearbit(m, VPTE_RW);
@@ -3170,20 +3169,20 @@ pmap_clear_reference(vm_page_t m)
 /*
  * Miscellaneous support routines follow
  */
-
 static void
 i386_protection_init(void)
 {
-	int *kp, prot;
+	uint64_t *kp;
+	int prot;
 
 	kp = protection_codes;
 	for (prot = 0; prot < 8; prot++) {
 		if (prot & VM_PROT_READ)
-			*kp |= 0; /* if it's VALID is readeable */
+			*kp |= 0;			/* R */
 		if (prot & VM_PROT_WRITE)
-			*kp |= VPTE_RW;
-		if (prot & VM_PROT_EXECUTE)
-			*kp |= 0; /* if it's VALID is executable */
+			*kp |= VPTE_RW;			/* R+W */
+		if (prot && (prot & VM_PROT_EXECUTE) == 0)
+			*kp |= VPTE_NX;			/* NX - !executable */
 		++kp;
 	}
 }

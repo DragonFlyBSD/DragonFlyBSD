@@ -184,8 +184,9 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		return (EINVAL);
 
 	if (flags & MAP_STACK) {
-		if ((fd != -1) ||
-		    ((prot & (PROT_READ | PROT_WRITE)) != (PROT_READ | PROT_WRITE)))
+		if (fd != -1)
+			return (EINVAL);
+		if ((prot & (PROT_READ|PROT_WRITE)) != (PROT_READ|PROT_WRITE))
 			return (EINVAL);
 		flags |= MAP_ANON;
 		pos = 0;
@@ -342,7 +343,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			 * credentials do we use for determination? What if
 			 * proc does a setuid?
 			 */
-			maxprot = VM_PROT_EXECUTE;	/* ??? */
+			maxprot = VM_PROT_EXECUTE;
 			if (fp->f_flag & FREAD) {
 				maxprot |= VM_PROT_READ;
 			} else if (prot & PROT_READ) {
@@ -593,10 +594,6 @@ sys_mprotect(struct mprotect_args *uap)
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
 	prot = uap->prot & VM_PROT_ALL;
-#if defined(VM_PROT_READ_IS_EXEC)
-	if (prot & VM_PROT_READ)
-		prot |= VM_PROT_EXECUTE;
-#endif
 
 	pageoff = (addr & PAGE_MASK);
 	addr -= pageoff;
@@ -1395,14 +1392,6 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		docow |= MAP_DISABLE_SYNCER;
 	if (flags & MAP_NOCORE)
 		docow |= MAP_DISABLE_COREDUMP;
-
-#if defined(VM_PROT_READ_IS_EXEC)
-	if (prot & VM_PROT_READ)
-		prot |= VM_PROT_EXECUTE;
-
-	if (maxprot & VM_PROT_READ)
-		maxprot |= VM_PROT_EXECUTE;
-#endif
 
 	/*
 	 * This may place the area in its own page directory if (size) is

@@ -150,7 +150,7 @@ typedef u_long	vpte_t;
 #define VPTE_G		0x00000100	/* global bit ?? */
 #define VPTE_WIRED	0x00000200	/* wired */
 #define VPTE_MANAGED	0x00000400	/* managed bit ?? */
-
+#define VPTE_NX		0x00000800	/* no-execute bit */
 
 #endif
 
