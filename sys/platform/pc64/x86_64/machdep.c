@@ -846,7 +846,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	}
 
 	regs->tf_rsp = (register_t)sfp;
-	regs->tf_rip = PS_STRINGS - *(p->p_sysent->sv_szsigcode);
+	regs->tf_rip = trunc_page64(PS_STRINGS - *(p->p_sysent->sv_szsigcode));
 
 	/*
 	 * i386 abi specifies that the direction flag must be cleared

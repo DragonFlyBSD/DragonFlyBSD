@@ -152,7 +152,7 @@
  */
 #define pte_prot(m, p)		\
 	(m->protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
-static int protection_codes[PROTECTION_CODES_SIZE];
+static uint64_t protection_codes[PROTECTION_CODES_SIZE];
 
 struct pmap kernel_pmap;
 
@@ -224,6 +224,7 @@ uint64_t pmap_bits_default[] = {
 		X86_PG_AVAIL2,			/* PG_AVAIL2_IDX	9 */
 		X86_PG_AVAIL3,			/* PG_AVAIL3_IDX	10 */
 		X86_PG_NC_PWT | X86_PG_NC_PCD,	/* PG_N_IDX		11 */
+		X86_PG_NX,			/* PG_NX_IDX		12 */
 };
 /*
  * Crashdump maps.
@@ -5690,26 +5691,48 @@ static
 void
 i386_protection_init(void)
 {
-	int *kp, prot;
+	uint64_t *kp;
+	int prot;
 
-	/* JG NX support may go here; No VM_PROT_EXECUTE ==> set NX bit  */
+	/*
+	 * 0 is basically read-only access, but also set the NX (no-execute)
+	 * bit when VM_PROT_EXECUTE is not specified.
+	 */
 	kp = protection_codes;
 	for (prot = 0; prot < PROTECTION_CODES_SIZE; prot++) {
 		switch (prot) {
 		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_NONE:
 			/*
-			 * Read access is also 0. There isn't any execute bit,
-			 * so just make it readable.
+			 * This case handled elsewhere
 			 */
+			*kp++ = 0;
+			break;
 		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_NONE:
+			/*
+			 * Read-only is 0|NX
+			 */
+			*kp++ = pmap_bits_default[PG_NX_IDX];
+			break;
 		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_EXECUTE:
 		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_EXECUTE:
+			/*
+			 * Execute requires read access
+			 */
 			*kp++ = 0;
 			break;
 		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_NONE:
-		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE:
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_NONE:
+			/*
+			 * Write without execute is RW|NX
+			 */
+			*kp++ = pmap_bits_default[PG_RW_IDX] |
+				pmap_bits_default[PG_NX_IDX];
+			break;
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE:
+		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE:
+			/*
+			 * Write with execute is RW
+			 */
 			*kp++ = pmap_bits_default[PG_RW_IDX];
 			break;
 		}

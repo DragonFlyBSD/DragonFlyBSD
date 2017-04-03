@@ -657,6 +657,11 @@ trap(struct trapframe *frame)
 			 */
 			if (frame->tf_rflags & PSL_NT) {
 				frame->tf_rflags &= ~PSL_NT;
+#if 0
+				/* do we need this? */
+				if (frame->tf_rip == (long)doreti_iret)
+					frame->tf_rip = (long)doreti_iret_fault;
+#endif
 				goto out2;
 			}
 			break;
@@ -868,10 +873,8 @@ trap_pfault(struct trapframe *frame, int usermode)
 	 */
 	if (frame->tf_err & PGEX_W)
 		ftype = VM_PROT_WRITE;
-#if 0 /* JG */
-	else if ((frame->tf_err & PGEX_I) && pg_nx != 0)
+	else if (frame->tf_err & PGEX_I)
 		ftype = VM_PROT_EXECUTE;
-#endif
 	else
 		ftype = VM_PROT_READ;
 

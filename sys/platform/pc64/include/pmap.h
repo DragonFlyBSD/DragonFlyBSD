@@ -265,7 +265,8 @@ RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 #define	PG_MANAGED_IDX		9
 #define	PG_DEVICE_IDX		10
 #define	PG_N_IDX		11
-#define	PG_BITS_SIZE		12
+#define	PG_NX_IDX		12
+#define	PG_BITS_SIZE		13
 
 #define PROTECTION_CODES_SIZE	8
 #define PAT_INDEX_SIZE  	8
@@ -290,7 +291,7 @@ struct pmap {
 	vm_pindex_t		pm_placemarks[PM_PLACEMARKS];
 	long			pm_invgen;
 	uint64_t		pmap_bits[PG_BITS_SIZE];
-	int			protection_codes[PROTECTION_CODES_SIZE];
+	uint64_t		protection_codes[PROTECTION_CODES_SIZE];
 	pt_entry_t		pmap_cache_bits[PAT_INDEX_SIZE];
 	pt_entry_t		pmap_cache_mask;
 	int (*copyinstr)(const void *, void *, size_t, size_t *);

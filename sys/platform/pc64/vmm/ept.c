@@ -52,7 +52,7 @@
 
 static uint64_t pmap_bits_ept[PG_BITS_SIZE];
 static pt_entry_t pmap_cache_bits_ept[PAT_INDEX_SIZE];
-static int ept_protection_codes[PROTECTION_CODES_SIZE];
+static uint64_t ept_protection_codes[PROTECTION_CODES_SIZE];
 static pt_entry_t pmap_cache_mask_ept;
 
 static int pmap_pm_flags_ept = PMAP_HVM;
@@ -100,7 +100,7 @@ vmx_ept_init(void)
 	pmap_bits_ept[PG_MANAGED_IDX] = EPT_PG_AVAIL2;
 	pmap_bits_ept[PG_DEVICE_IDX] = EPT_PG_AVAIL3;
 	pmap_bits_ept[PG_N_IDX] = EPT_IGNORE_PAT | EPT_MEM_TYPE_UC;
-
+	pmap_bits_ept[PG_NX_IDX] = 0;	/* XXX inverted sense */
 
 	pmap_cache_mask_ept = EPT_IGNORE_PAT | EPT_MEM_TYPE_MASK;
 

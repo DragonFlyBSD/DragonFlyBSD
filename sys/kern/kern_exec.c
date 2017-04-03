@@ -841,9 +841,16 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		map = &vmspace->vm_map;
 	}
 
-	/* Allocate a new stack */
+	/*
+	 * Allocate a new stack, generally make the stack non-executable
+	 * but allow the program to adjust that (the program may desire to
+	 * use areas of the stack for executable code).
+	 */
 	error = vm_map_stack(&vmspace->vm_map, stack_addr, (vm_size_t)maxssiz,
-			     0, VM_PROT_ALL, VM_PROT_ALL, 0);
+			     0,
+			     VM_PROT_READ|VM_PROT_WRITE,
+			     VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE,
+			     0);
 	if (error)
 		return (error);
 
@@ -982,8 +989,8 @@ exec_free_args(struct image_args *args)
  *	[sgap]
  *	[SPARE_USRSPACE]
  *	[execpath]
- *	[szsigcode]
- *	[ps_strings]			top of user stack
+ *	[szsigcode]   RO|NX
+ *	[ps_strings]  RO|NX		Top of user stack
  *
  */
 static register_t *
@@ -993,7 +1000,7 @@ exec_copyout_strings(struct image_params *imgp)
 	int gap;
 	int argsenvspace;
 	char **vectp;
-	char *stringp, *destp;
+	char *stringp, *destp, *szsigbase;
 	register_t *stack_base;
 	struct ps_strings *arginfo;
 	size_t execpath_len;
@@ -1025,8 +1032,9 @@ exec_copyout_strings(struct image_params *imgp)
 	/*
 	 * Calculate destp, which points to [args & env] and above.
 	 */
-	destp = (caddr_t)arginfo -
-		szsigcode -
+	szsigbase = (char *)(intptr_t)trunc_page64(
+					(intptr_t)arginfo - szsigcode);
+	destp = szsigbase -
 		roundup(execpath_len, sizeof(char *)) -
 		SPARE_USRSPACE -
 		sgap -
@@ -1035,18 +1043,15 @@ exec_copyout_strings(struct image_params *imgp)
 	/*
 	 * install sigcode
 	 */
-	if (szsigcode) {
-		copyout(imgp->proc->p_sysent->sv_sigcode,
-			((caddr_t)arginfo - szsigcode), szsigcode);
-	}
+	if (szsigcode)
+		copyout(imgp->proc->p_sysent->sv_sigcode, szsigbase, szsigcode);
 
 	/*
 	 * Copy the image path for the rtld
 	 */
 	if (execpath_len) {
-		imgp->execpathp = (uintptr_t)arginfo
-				  - szsigcode
-				  - roundup(execpath_len, sizeof(char *));
+		imgp->execpathp = (uintptr_t)szsigbase -
+				  roundup(execpath_len, sizeof(char *));
 		copyout(imgp->execpath, (void *)imgp->execpathp, execpath_len);
 	}
 
@@ -1101,6 +1106,20 @@ exec_copyout_strings(struct image_params *imgp)
 
 	/* end of vector table is a null pointer */
 	suword64((void *)vectp, 0);
+
+	/*
+	 * Make the signal trampoline executable.  This also makes ps_strings
+	 * executable but generally speaking there should be no direct access
+	 * to ps_strings after the program has gotten to _main().
+	 *
+	 * At the moment the space is writable because ps_strings needs to be
+	 * writable.  XXX future give sigtramp its own page (maybe put it in
+	 * the kpmap).
+	 */
+	vm_map_protect(&imgp->proc->p_vmspace->vm_map,
+		       (vm_offset_t)szsigbase,
+		       (vm_offset_t)szsigbase + PAGE_SIZE,
+		       VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE, FALSE);
 
 	return (stack_base);
 }
