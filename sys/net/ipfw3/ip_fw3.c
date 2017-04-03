@@ -738,7 +738,7 @@ ipfw_add_rule_dispatch(netmsg_t nmsg)
 		/* Statistics only need to be updated once */
 		ipfw_inc_static_count(rule);
 	}
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 /*
@@ -787,7 +787,7 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule)
 			0, ipfw_add_rule_dispatch);
 	fwmsg.ioc_rule = ioc_rule;
 
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 
 	DPRINTF("++ installed rule %d, static count now %d\n",
 			ioc_rule->rulenum, static_count);
@@ -841,7 +841,7 @@ ipfw_flush_rule_dispatch(netmsg_t nmsg)
 		kfree(the_rule, M_IPFW3);
 	}
 
-	ifnet_forwardmsg(lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -850,7 +850,7 @@ ipfw_append_state_dispatch(netmsg_t nmsg)
 	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
 	struct ipfw_ioc_state *ioc_state = dmsg->ioc_state;
 	(*ipfw_basic_append_state_prt)(ioc_state);
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -867,7 +867,7 @@ ipfw_delete_state_dispatch(netmsg_t nmsg)
 	}
 
 	(*ipfw_basic_flush_state_prt)(rule);
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 /*
@@ -906,7 +906,7 @@ ipfw_ctl_flush_rule(int kill_default)
 		bzero(&dmsg, sizeof(dmsg));
 		netmsg_init(&dmsg.base, NULL, &curthread->td_msgport,
 				0, ipfw_delete_state_dispatch);
-		ifnet_domsg(&dmsg.base.lmsg, 0);
+		netisr_domsg(&dmsg.base, 0);
 	}
 	/*
 	 * Press the 'flush' button
@@ -916,7 +916,7 @@ ipfw_ctl_flush_rule(int kill_default)
 			0, ipfw_flush_rule_dispatch);
 	lmsg = &nmsg.lmsg;
 	lmsg->u.ms_result = kill_default;
-	ifnet_domsg(lmsg, 0);
+	netisr_domsg(&nmsg, 0);
 
 	if (kill_default) {
 		KASSERT(static_count == 0,
@@ -946,7 +946,7 @@ ipfw_delete_rule_dispatch(netmsg_t nmsg)
 		rule = rule->next;
 	}
 
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static int
@@ -964,7 +964,7 @@ ipfw_alt_delete_rule(uint16_t rulenum)
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
 			0, ipfw_delete_state_dispatch);
 	dmsg.rulenum = rulenum;
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 
 	/*
 	 * Get rid of the rule duplications on all CPUs
@@ -974,7 +974,7 @@ ipfw_alt_delete_rule(uint16_t rulenum)
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
 			0, ipfw_delete_rule_dispatch);
 	dmsg.rulenum = rulenum;
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	return 0;
 }
 
@@ -1003,7 +1003,7 @@ ipfw_alt_delete_ruleset_dispatch(netmsg_t nmsg)
 	}
 	KASSERT(del, ("no match set?!"));
 
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -1025,7 +1025,7 @@ ipfw_disable_ruleset_state_dispatch(netmsg_t nmsg)
 	}
 	KASSERT(cleared, ("no match set?!"));
 
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static int
@@ -1063,7 +1063,7 @@ ipfw_alt_delete_ruleset(uint8_t set)
 				0, ipfw_disable_ruleset_state_dispatch);
 		dmsg.from_set = set;
 
-		ifnet_domsg(&nmsg->lmsg, 0);
+		netisr_domsg(nmsg, 0);
 	}
 
 	/*
@@ -1075,7 +1075,7 @@ ipfw_alt_delete_ruleset(uint8_t set)
 			0, ipfw_alt_delete_ruleset_dispatch);
 	dmsg.from_set = set;
 
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	return 0;
 }
 
@@ -1097,7 +1097,7 @@ ipfw_alt_move_rule_dispatch(netmsg_t nmsg)
 			rule->set = dmsg->to_set;
 		rule = rule->next;
 	}
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static int
@@ -1127,7 +1127,7 @@ ipfw_alt_move_rule(uint16_t rulenum, uint8_t set)
 	dmsg.rulenum = rulenum;
 	dmsg.to_set = set;
 
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	KKASSERT(dmsg.start_rule == NULL);
 	return 0;
 }
@@ -1143,7 +1143,7 @@ ipfw_alt_move_ruleset_dispatch(netmsg_t nmsg)
 		if (rule->set == dmsg->from_set)
 			rule->set = dmsg->to_set;
 	}
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static int
@@ -1159,7 +1159,7 @@ ipfw_alt_move_ruleset(uint8_t from_set, uint8_t to_set)
 	dmsg.from_set = from_set;
 	dmsg.to_set = to_set;
 
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	return 0;
 }
 
@@ -1176,7 +1176,7 @@ ipfw_alt_swap_ruleset_dispatch(netmsg_t nmsg)
 		else if (rule->set == dmsg->to_set)
 			rule->set = dmsg->from_set;
 	}
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static int
@@ -1192,7 +1192,7 @@ ipfw_alt_swap_ruleset(uint8_t set1, uint8_t set2)
 	dmsg.from_set = set1;
 	dmsg.to_set = set2;
 
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	return 0;
 }
 
@@ -1272,7 +1272,7 @@ ipfw_zero_entry_dispatch(netmsg_t nmsg)
 			}
 		}
 	}
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 /**
@@ -1316,7 +1316,7 @@ ipfw_ctl_zero_entry(int rulenum, int log_only)
 		msg = log_only ? "ipfw: Entry %d logging count reset.\n"
 				   : "ipfw: Entry %d cleared.\n";
 	}
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	KKASSERT(zmsg.start_rule == NULL);
 
 	if (fw_verbose)
@@ -1335,7 +1335,7 @@ ipfw_ctl_add_state(struct sockopt *sopt)
 		netmsg_init(&dmsg.base, NULL, &curthread->td_msgport,
 			0, ipfw_append_state_dispatch);
 		(&dmsg)->ioc_state = ioc_state;
-		ifnet_domsg(&dmsg.base.lmsg, 0);
+		netisr_domsg(&dmsg.base, 0);
 	}
 	return 0;
 }
@@ -1374,7 +1374,7 @@ ipfw_ctl_delete_state(struct sockopt *sopt)
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
 			0, ipfw_delete_state_dispatch);
 	dmsg.rulenum = rulenum;
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	return 0;
 }
 
@@ -1392,7 +1392,7 @@ ipfw_ctl_flush_state(struct sockopt *sopt)
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
 			0, ipfw_delete_state_dispatch);
 	dmsg.rulenum = 0;
-	ifnet_domsg(&nmsg->lmsg, 0);
+	netisr_domsg(nmsg, 0);
 	return 0;
 }
 
@@ -1560,7 +1560,7 @@ ipfw_set_disable_dispatch(netmsg_t nmsg)
 
 	ctx->ipfw_set_disable = lmsg->u.ms_result32;
 
-	ifnet_forwardmsg(lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -1580,7 +1580,7 @@ ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
 	lmsg = &nmsg.lmsg;
 	lmsg->u.ms_result32 = set_disable;
 
-	ifnet_domsg(lmsg, 0);
+	netisr_domsg(&nmsg, 0);
 }
 
 
@@ -2000,7 +2000,7 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 	if (mycpuid == 0)
 		ipfw_inc_static_count(def_rule);
 
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -2017,7 +2017,7 @@ ipfw_init_dispatch(netmsg_t nmsg)
 	bzero(&fwmsg, sizeof(fwmsg));
 	netmsg_init(&fwmsg.base, NULL, &curthread->td_msgport,
 			0, ipfw_ctx_init_dispatch);
-	ifnet_domsg(&fwmsg.base.lmsg, 0);
+	netisr_domsg(&fwmsg.base, 0);
 
 	ip_fw_chk_ptr = ipfw_chk;
 	ip_fw_ctl_x_ptr = ipfw_ctl_x;

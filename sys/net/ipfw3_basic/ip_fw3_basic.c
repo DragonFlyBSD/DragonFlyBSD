@@ -141,7 +141,7 @@ ipfw_sysctl_adjust_hash_size(SYSCTL_HANDLER_ARGS)
 
 		netmsg_init(msg, NULL, &curthread->td_msgport,
 				0, adjust_hash_size_dispatch);
-		ifnet_domsg(&msg->lmsg, 0);
+		netisr_domsg(msg, 0);
 	}
 back:
 	return error;
@@ -172,7 +172,7 @@ adjust_hash_size_dispatch(netmsg_t nmsg)
 				sizeof(struct ipfw_state_context),
 				M_IPFW3_BASIC, M_WAITOK | M_ZERO);
 	ctx->state_hash_size = state_hash_size;
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 
@@ -1045,7 +1045,7 @@ ipfw_cleanup_expired_state(netmsg_t nmsg)
 			}
 		}
 	}
-	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -1069,7 +1069,7 @@ ipfw_tick(void *dummy __unused)
 
 	netmsg_init(msg, NULL, &curthread->td_msgport, 0,
 			ipfw_cleanup_expired_state);
-	ifnet_domsg(&msg->lmsg, 0);
+	netisr_domsg(msg, 0);
 }
 
 static void

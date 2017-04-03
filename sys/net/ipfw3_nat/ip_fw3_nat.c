@@ -280,7 +280,7 @@ badnat:
 			} else {
 				msg->is_outgoing = 1;
 			}
-			ifnet_sendmsg(&msg->base.lmsg, nextcpu);
+			netisr_sendmsg(&msg->base, nextcpu);
 		}
 	}
 	if (ldt) {
@@ -612,7 +612,7 @@ nat_add_dispatch(netmsg_t nat_add_msg)
 
 	nat_ctx = ipfw_nat_ctx[mycpuid];
 	HOOK_NAT(&(nat_ctx->nat), ptr);
-	ifnet_forwardmsg(&msg->base.lmsg, mycpuid + 1);
+	netisr_forwardmsg(&msg->base, mycpuid + 1);
 }
 
 int
@@ -643,7 +643,7 @@ ipfw_ctl_nat_add(struct sockopt *sopt)
 				0, nat_add_dispatch);
 
 
-		ifnet_domsg(&msg->base.lmsg, 0);
+		netisr_domsg(&msg->base, 0);
 		kfree(msg->buf, M_IPFW_NAT);
 	} else {
 		goto done;
@@ -705,7 +705,7 @@ ipfw_ctl_nat_del(struct sockopt *sopt)
 	netmsg_init(&msg->base, NULL, &curthread->td_msgport,
 			0, nat_del_dispatch);
 
-	ifnet_domsg(&msg->base.lmsg, 0);
+	netisr_domsg(&msg->base, 0);
 	return 0;
 }
 
@@ -778,7 +778,7 @@ nat_init_ctx_dispatch(netmsg_t msg)
 	tmp = kmalloc(sizeof(struct ipfw_nat_context),
 				M_IPFW_NAT, M_WAITOK | M_ZERO);
 	ipfw_nat_ctx[mycpuid] = tmp;
-	ifnet_forwardmsg(&msg->lmsg, mycpuid + 1);
+	netisr_forwardmsg(&msg->base, mycpuid + 1);
 }
 
 static
@@ -791,7 +791,7 @@ int ipfw_nat_init(void)
 	ipfw_ctl_nat_ptr = ipfw_ctl_nat_sockopt;
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
 			0, nat_init_ctx_dispatch);
-	ifnet_domsg(&msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 	return 0;
 }
 
