@@ -48,11 +48,6 @@ NON_GPROF_ENTRY(sigcode)
 0:	hlt				/* trap priviliged instruction */
 	jmp	0b
 
-	/*
-	 * Work around a Ryzen bug (say whut?)
-	 */
-	.space	1088
-
 	ALIGN_TEXT
 esigcode:
 

@@ -1862,8 +1862,13 @@ sysctl_kern_proc_sigtramp(SYSCTL_HANDLER_ARGS)
         sv = curproc->p_sysent;
         bzero(&kst, sizeof(kst));
         if (sv->sv_szsigcode) {
-                kst.ksigtramp_start = (char *)PS_STRINGS - *sv->sv_szsigcode;
-                kst.ksigtramp_end = (void *)PS_STRINGS;
+		intptr_t sigbase;
+
+		sigbase = trunc_page64((intptr_t)PS_STRINGS -
+				       *sv->sv_szsigcode);
+
+                kst.ksigtramp_start = (void *)sigbase;
+                kst.ksigtramp_end = (void *)(sigbase + *sv->sv_szsigcode);
         }
         error = SYSCTL_OUT(req, &kst, sizeof(kst));
 
