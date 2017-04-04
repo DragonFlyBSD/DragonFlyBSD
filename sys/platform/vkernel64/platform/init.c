@@ -772,7 +772,7 @@ init_kern_memory_vmm(void)
 
 	/* Alloc a new stack in the lowmem */
 	vkernel_stack = mmap(NULL, KERNEL_STACK_SIZE,
-			     PROT_READ|PROT_WRITE|PROT_EXEC|PROT_EXEC,
+			     PROT_READ|PROT_WRITE|PROT_EXEC,
 			     MAP_ANON, -1, 0);
 	if (vkernel_stack == MAP_FAILED) {
 		err(1, "Unable to allocate stack\n");
@@ -1671,7 +1671,7 @@ vkernel_module_memory_alloc(vm_offset_t *basep, size_t bytes)
 	bzero((void *)*basep, bytes);
 #else
 	*basep = (vm_offset_t)mmap((void *)0x000000000, bytes,
-				   PROT_READ|PROT_WRITE|PROT_EXEC|PROT_EXEC,
+				   PROT_READ|PROT_WRITE|PROT_EXEC,
 				   MAP_ANON|MAP_SHARED, -1, 0);
 	if ((void *)*basep == MAP_FAILED)
 		return ENOMEM;
