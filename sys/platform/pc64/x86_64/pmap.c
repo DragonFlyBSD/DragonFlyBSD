@@ -6,7 +6,7 @@
  * Copyright (c) 2005-2008 Alan L. Cox <alc@cs.rice.edu>
  * Copyright (c) 2008, 2009 The DragonFly Project.
  * Copyright (c) 2008, 2009 Jordan Gordeev.
- * Copyright (c) 2011-2012 Matthew Dillon
+ * Copyright (c) 2011-2017 Matthew Dillon
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -252,6 +252,9 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_fast_kernel_cpusync, CTLFLAG_RW,
 int pmap_dynamic_delete = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
     &pmap_dynamic_delete, 0, "Dynamically delete PT/PD/PDPs");
+
+static int pmap_nx_enable = 1;
+/* needs manual TUNABLE in early probe, see below */
 
 #define DISABLE_PSE
 
@@ -5693,6 +5696,13 @@ i386_protection_init(void)
 {
 	uint64_t *kp;
 	int prot;
+
+	/*
+	 * NX supported? (boot time loader.conf override only)
+	 */
+	TUNABLE_INT_FETCH("machdep.pmap_nx_enable", &pmap_nx_enable);
+	if (pmap_nx_enable == 0 || (amd_feature & AMDID_NX) == 0)
+		pmap_bits_default[PG_NX_IDX] = 0;
 
 	/*
 	 * 0 is basically read-only access, but also set the NX (no-execute)
