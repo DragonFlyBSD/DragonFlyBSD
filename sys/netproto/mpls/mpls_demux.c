@@ -42,8 +42,6 @@
 #include <netproto/mpls/mpls.h>
 #include <netproto/mpls/mpls_var.h>
 
-extern struct thread netisr_cpu[];
-
 static __inline int
 MPLSP_MPORT_HASH(mpls_label_t label, u_short if_index)
 {

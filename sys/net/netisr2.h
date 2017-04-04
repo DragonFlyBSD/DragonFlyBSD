@@ -75,7 +75,7 @@
 #include <sys/thread.h>
 #include <net/netisr.h>
 
-extern struct thread *netisr_cpu[MAXCPU];
+extern struct thread *netisr_threads[MAXCPU];
 
 /*
  * Return the message port for the general protocol message servicing
@@ -85,7 +85,7 @@ static __inline lwkt_port_t
 netisr_cpuport(int cpu)
 {
 	KKASSERT(cpu >= 0 && cpu < ncpus);
-	return &netisr_cpu[cpu]->td_msgport;
+	return &netisr_threads[cpu]->td_msgport;
 }
 
 /*
