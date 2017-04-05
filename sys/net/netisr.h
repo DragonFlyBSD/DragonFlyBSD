@@ -152,6 +152,7 @@ struct netisr {
 #define NETISR_ROLLUP_PRIO_TCP		200
 #define NETISR_ROLLUP_PRIO_IFSTART	50
 
+extern int	 netisr_ncpus;
 extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
 extern lwkt_port netisr_afree_free_so_rport;

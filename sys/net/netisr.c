@@ -94,6 +94,7 @@ static TAILQ_HEAD(,netmsg_rollup) netrulist;
 
 /* Per-CPU thread to handle any protocol.  */
 struct thread *netisr_threads[MAXCPU];
+
 lwkt_port netisr_afree_rport;
 lwkt_port netisr_afree_free_so_rport;
 lwkt_port netisr_adone_rport;
@@ -103,10 +104,14 @@ lwkt_port netisr_sync_port;
 static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
 
 SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
+
 static int netisr_rollup_limit = 32;
 SYSCTL_INT(_net_netisr, OID_AUTO, rollup_limit, CTLFLAG_RW,
 	&netisr_rollup_limit, 0, "Message to process before rollup");
 
+int netisr_ncpus;
+SYSCTL_INT(_net_netisr, OID_AUTO, ncpus, CTLFLAG_RW,
+	&netisr_ncpus, 0, "# of CPUs to handle network messages");
 
 /*
  * netisr_afree_rport replymsg function, only used to handle async
@@ -179,6 +184,8 @@ netisr_init(void)
 {
 	int i;
 
+	netisr_ncpus = ncpus2;
+
 	TAILQ_INIT(&netreglist);
 	TAILQ_INIT(&netrulist);
 
@@ -211,7 +218,6 @@ netisr_init(void)
 	 */
 	lwkt_initport_putonly(&netisr_sync_port, netmsg_sync_putport);
 }
-
 SYSINIT(netisr, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, netisr_init, NULL);
 
 /*
