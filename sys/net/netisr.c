@@ -110,7 +110,7 @@ SYSCTL_INT(_net_netisr, OID_AUTO, rollup_limit, CTLFLAG_RW,
 	&netisr_rollup_limit, 0, "Message to process before rollup");
 
 int netisr_ncpus;
-SYSCTL_INT(_net_netisr, OID_AUTO, ncpus, CTLFLAG_RW,
+SYSCTL_INT(_net_netisr, OID_AUTO, ncpus, CTLFLAG_RD,
 	&netisr_ncpus, 0, "# of CPUs to handle network messages");
 
 /*
