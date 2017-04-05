@@ -26,6 +26,7 @@
  *      Dave Airlie <airlied@linux.ie>
  *      Jesse Barnes <jesse.barnes@intel.com>
  */
+#include "opt_drm.h"
 
 #include <linux/dmi.h>
 #include <linux/i2c.h>

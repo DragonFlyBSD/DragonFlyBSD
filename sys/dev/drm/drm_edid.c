@@ -27,6 +27,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#include "opt_drm.h"
+
 #include <linux/kernel.h>
 #include <linux/hdmi.h>
 #include <linux/i2c.h>
