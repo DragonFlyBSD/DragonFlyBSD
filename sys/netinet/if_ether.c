@@ -138,6 +138,7 @@ static int	useloopback = 1; /* use loopback interface for local traffic */
 static int	arp_proxyall = 0;
 static int	arp_refresh = 60; /* refresh arp cache ~60 (not impl yet) */
 static int	arp_restricted_match = 0;
+static int	arp_ignore_probes = 1;
 
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, maxtries, CTLFLAG_RW,
 	   &arp_maxtries, 0, "ARP resolution attempts before returning error");
@@ -149,6 +150,8 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, restricted_match, CTLFLAG_RW,
 	   &arp_restricted_match, 0, "Only match against the sender");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, refresh, CTLFLAG_RW,
 	   &arp_refresh, 0, "Preemptively refresh the ARP");
+SYSCTL_INT(_net_link_ether_inet, OID_AUTO, ignore_probes, CTLFLAG_RW,
+	   &arp_ignore_probes, 0, "Ignore ARP probes");
 
 static void	arp_rtrequest(int, struct rtentry *);
 static void	arprequest(struct ifnet *, const struct in_addr *,
@@ -1258,6 +1261,10 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
 	struct rtentry *rt;
 	struct sockaddr_inarp sin = { sizeof sin, AF_INET };
 	const char *why = NULL;
+
+	/* Check ARP probes, e.g. from Cisco switches. */
+	if (addr == INADDR_ANY && arp_ignore_probes)
+		return (NULL);
 
 	sin.sin_addr.s_addr = addr;
 	sin.sin_other = proxy ? SIN_PROXY : 0;
