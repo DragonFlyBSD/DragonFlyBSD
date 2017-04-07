@@ -150,9 +150,10 @@
  * 400713 - add sysctl kern.cp_times
  * 400800 - 4.8 release
  * 400900 - 4.9 development
+ * 400901 - moved sigtramp, NX protection + associated sysctls
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400900	/* propagated to newvers */
+#define __DragonFly_version 400901	/* propagated to newvers */
 
 #include <sys/_null.h>
 
