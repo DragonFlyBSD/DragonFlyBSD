@@ -131,8 +131,6 @@ struct llinfo_arp {
 	u_short	la_asked;	/* #times we QUERIED following expiration */
 };
 
-static	LIST_HEAD(, llinfo_arp) llinfo_arp_list[MAXCPU];
-
 static int	arp_maxtries = 5;
 static int	useloopback = 1; /* use loopback interface for local traffic */
 static int	arp_proxyall = 0;
@@ -170,13 +168,13 @@ static void	arp_update_msghandler(netmsg_t);
 static void	arp_reply_msghandler(netmsg_t);
 #endif
 
-struct arptimer_ctx {
+struct arp_pcpu_data {
 	struct callout		timer_ch;
 	struct netmsg_base	timer_nmsg;
-	int			timer_inited;
+	LIST_HEAD(, llinfo_arp) llinfo_list;
 } __cachealign;
 
-static struct arptimer_ctx	arptimer_context[MAXCPU];
+static struct arp_pcpu_data	arp_data[MAXCPU];
 
 /*
  * Timeout routine.  Age arp_tab entries periodically.
@@ -185,26 +183,25 @@ static void
 arptimer_dispatch(netmsg_t nmsg)
 {
 	struct llinfo_arp *la, *nla;
-	int cpuid = mycpuid;
+	struct arp_pcpu_data *ad = &arp_data[mycpuid];
 
 	/* Reply ASAP */
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);
 	crit_exit();
 
-	LIST_FOREACH_MUTABLE(la, &llinfo_arp_list[cpuid], la_le, nla) {
+	LIST_FOREACH_MUTABLE(la, &ad->llinfo_list, la_le, nla) {
 		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_uptime)
 			arptfree(la);
 	}
-	callout_reset(&arptimer_context[cpuid].timer_ch, arpt_prune * hz,
-	    arptimer, NULL);
+	callout_reset(&ad->timer_ch, arpt_prune * hz, arptimer, NULL);
 }
 
 static void
 arptimer(void *arg __unused)
 {
 	int cpuid = mycpuid;
-	struct lwkt_msg *lmsg = &arptimer_context[cpuid].timer_nmsg.lmsg;
+	struct lwkt_msg *lmsg = &arp_data[cpuid].timer_nmsg.lmsg;
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
@@ -226,15 +223,6 @@ arp_rtrequest(int req, struct rtentry *rt)
 
 	struct sockaddr_dl null_sdl = { sizeof null_sdl, AF_LINK };
 
-	if (__predict_false(!arptimer_context[mycpuid].timer_inited)) {
-		struct arptimer_ctx *ctx = &arptimer_context[mycpuid];
-
-		ctx->timer_inited = TRUE;
-		netmsg_init(&ctx->timer_nmsg, NULL, &netisr_adone_rport,
-		    MSGF_PRIORITY, arptimer_dispatch);
-		callout_init_mp(&ctx->timer_ch);
-		callout_reset(&ctx->timer_ch, hz, arptimer, NULL);
-	}
 	if (rt->rt_flags & RTF_GATEWAY)
 		return;
 
@@ -295,7 +283,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 		bzero(la, sizeof *la);
 		la->la_rt = rt;
 		rt->rt_flags |= RTF_LLINFO;
-		LIST_INSERT_HEAD(&llinfo_arp_list[mycpuid], la, la_le);
+		LIST_INSERT_HEAD(&arp_data[mycpuid].llinfo_list, la, la_le);
 
 #ifdef INET
 		/*
@@ -1347,8 +1335,16 @@ arp_init(void)
 {
 	int cpu;
 
-	for (cpu = 0; cpu < ncpus; cpu++)
-		LIST_INIT(&llinfo_arp_list[cpu]);
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		struct arp_pcpu_data *ad = &arp_data[cpu];
+
+		LIST_INIT(&ad->llinfo_list);
+		netmsg_init(&ad->timer_nmsg, NULL, &netisr_adone_rport,
+		    MSGF_PRIORITY, arptimer_dispatch);
+		callout_init_mp(&ad->timer_ch);
+
+		callout_reset_bycpu(&ad->timer_ch, hz, arptimer, NULL, cpu);
+	}
 
 	netisr_register(NETISR_ARP, arpintr, NULL);
 
