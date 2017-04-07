@@ -242,8 +242,7 @@ extern inthand_t
 	IDTVEC(ioapic_intr172),
 	IDTVEC(ioapic_intr173),
 	IDTVEC(ioapic_intr174),
-	IDTVEC(ioapic_intr175);
-#if 0
+	IDTVEC(ioapic_intr175),
 	IDTVEC(ioapic_intr176),
 	IDTVEC(ioapic_intr177),
 	IDTVEC(ioapic_intr178),
@@ -260,7 +259,6 @@ extern inthand_t
 	IDTVEC(ioapic_intr189),
 	IDTVEC(ioapic_intr190),
 	IDTVEC(ioapic_intr191);
-#endif
 
 static inthand_t *ioapic_intr[IOAPIC_HWI_VECTORS] = {
 	&IDTVEC(ioapic_intr0),
@@ -439,7 +437,6 @@ static inthand_t *ioapic_intr[IOAPIC_HWI_VECTORS] = {
 	&IDTVEC(ioapic_intr173),
 	&IDTVEC(ioapic_intr174),
 	&IDTVEC(ioapic_intr175),
-#if 0
 	&IDTVEC(ioapic_intr176),
 	&IDTVEC(ioapic_intr177),
 	&IDTVEC(ioapic_intr178),
@@ -456,7 +453,6 @@ static inthand_t *ioapic_intr[IOAPIC_HWI_VECTORS] = {
 	&IDTVEC(ioapic_intr189),
 	&IDTVEC(ioapic_intr190),
 	&IDTVEC(ioapic_intr191)
-#endif
 };
 
 #define IOAPIC_HWI_SYSCALL	(IDT_OFFSET_SYSCALL - IDT_OFFSET)

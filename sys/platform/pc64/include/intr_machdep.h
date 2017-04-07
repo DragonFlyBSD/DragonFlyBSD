@@ -47,7 +47,7 @@
 
 #define IDT_OFFSET		0x20
 #define IDT_OFFSET_SYSCALL	0x80
-#define IDT_OFFSET_IPI		0xd0
+#define IDT_OFFSET_IPI		0xe0
 
 #define IDT_HWI_VECTORS		(IDT_OFFSET_IPI - IDT_OFFSET)
 
@@ -55,9 +55,9 @@
  * Local APIC TPR priority vector levels:
  *
  *	0xff (255) +-------------+
- *		   |             | 15 (IPIs)
+ *		   |             | 15 (IPIs: Xcpustop, Xspuriousint)
  *	0xf0 (240) +-------------+
- *		   |             | 14 (IPIs)
+ *		   |             | 14 (IPIs: Xinvltlb, Xipiq, Xtimer, Xsniff)
  *	0xe0 (224) +-------------+
  *		   |             | 13
  *	0xd0 (208) +-------------+
@@ -93,36 +93,42 @@
 /* Local APIC Task Priority Register */
 #define TPR_IPI			(IDT_OFFSET_IPI - 1)
 
-/*
- * Each IPI group represents a priority class
- */
-#define IDT_OFFSET_IPIG1	(IDT_OFFSET_IPI + TPR_STEP * 0)
-#define IDT_OFFSET_IPIG2	(IDT_OFFSET_IPI + TPR_STEP * 1)
-#define IDT_OFFSET_IPIG3	(IDT_OFFSET_IPI + TPR_STEP * 2)
 
 /*
- * IPI vectors, higher groups are higher priority.
- *
- * Each priority class has its own 2-entry interrupt receive fifo.  If
- * the receive fifo fills up the LAPIC can no longer receive interrupts
- * at that particular priority class and the sender will block.
- *
- * We avoid sending multiple IPIs for the same vector for IPIQ and INVLTLB
- * through the use of an atomic bit which is cleared by the target handler.
- * SNIFF is allowed to be asynchronous and used only for debugging.
- *
- * Avoid using sub-group 0.
- *
- * NOTE: The spurious interrupt must have a sub-class of 15.
+ * IPI group1
  */
-#define XIPIQ_OFFSET		(IDT_OFFSET_IPIG1 + 1)	/* IPIQ */
-#define XTIMER_OFFSET		(IDT_OFFSET_IPIG1 + 2)	/* TIMER */
+#define IDT_OFFSET_IPIG1	IDT_OFFSET_IPI
 
-#define XINVLTLB_OFFSET		(IDT_OFFSET_IPIG2 + 1)	/* INVLTLB/PG */
+/* TLB shootdowns */
+#define XINVLTLB_OFFSET		(IDT_OFFSET_IPIG1 + 0)
 
-#define XSNIFF_OFFSET		(IDT_OFFSET_IPIG3 + 13)	/* SNIFF */
-#define XCPUSTOP_OFFSET		(IDT_OFFSET_IPIG3 + 14)	/* CPUSTOP */
-#define XSPURIOUSINT_OFFSET	(IDT_OFFSET_IPIG3 + 15) /* spurious int */
+/* IPI group1 1: unused (was inter-cpu clock handling) */
+/* IPI group1 2: unused (was inter-cpu rendezvous) */
+
+/* IPIQ rendezvous */
+#define XIPIQ_OFFSET		(IDT_OFFSET_IPIG1 + 3)
+
+/* TIMER rendezvous */
+#define XTIMER_OFFSET		(IDT_OFFSET_IPIG1 + 4)
+
+/* SNIFF rendezvous */
+#define XSNIFF_OFFSET		(IDT_OFFSET_IPIG1 + 5)
+
+/* IPI group1 6 ~ 15: unused */
+
+
+/*
+ * IPI group2
+ */
+#define IDT_OFFSET_IPIG2	(IDT_OFFSET_IPIG1 + TPR_STEP)
+
+/* IPI to signal CPUs to stop and wait for another CPU to restart them */
+#define XCPUSTOP_OFFSET		(IDT_OFFSET_IPIG2 + 0)
+
+/* IPI group2 1 ~ 14: unused */
+
+/* NOTE: this vector MUST be xxxx1111 */
+#define XSPURIOUSINT_OFFSET	(IDT_OFFSET_IPIG2 + 15)
 
 #ifndef	LOCORE
 
