@@ -1340,7 +1340,7 @@ arp_init(void)
 {
 	int cpu;
 
-	for (cpu = 0; cpu < ncpus2; cpu++)
+	for (cpu = 0; cpu < ncpus; cpu++)
 		LIST_INIT(&llinfo_arp_list[cpu]);
 
 	netisr_register(NETISR_ARP, arpintr, NULL);
