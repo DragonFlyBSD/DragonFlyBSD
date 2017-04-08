@@ -454,27 +454,27 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip, int *cpuid)
 }
 
 static __inline struct lwkt_port *
-initport_ncpus2(void)
+inp_initport(void)
 {
 	int cpu = mycpuid;
 
-	if (cpu < ncpus2) {
+	if (cpu < netisr_ncpus) {
 		return netisr_cpuport(cpu);
 	} else {
 		return netisr_cpuport(
-		    ((initport_indices[cpu].port_index++) + (uint32_t)cpu) &
-		    ncpus2_mask);
+		    ((initport_indices[cpu].port_index++) + (uint32_t)cpu) %
+		    netisr_ncpus);
 	}
 }
 
 struct lwkt_port *
 tcp_initport(void)
 {
-	return initport_ncpus2();
+	return inp_initport();
 }
 
 struct lwkt_port *
 udp_initport(void)
 {
-	return initport_ncpus2();
+	return inp_initport();
 }
