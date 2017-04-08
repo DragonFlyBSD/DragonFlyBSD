@@ -543,8 +543,8 @@ struct inpcb *
 void	in_pcbglobalinit(void);
 void	in_pcbresetroute(struct inpcb *);
 
-int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
-int	in_pcblist_global_ncpus2(SYSCTL_HANDLER_ARGS);
+int	in_pcblist_range(SYSCTL_HANDLER_ARGS);
+int	in_pcblist_ncpus(SYSCTL_HANDLER_ARGS);
 
 struct inpcb *
 	in_pcbmarker(int cpuid);

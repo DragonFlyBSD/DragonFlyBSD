@@ -847,7 +847,7 @@ done:
 }
 
 SYSCTL_PROC(_net_inet_udp, UDPCTL_PCBLIST, pcblist, CTLFLAG_RD, udbinfo, 0,
-	    in_pcblist_global_ncpus2, "S,xinpcb", "List of active UDP sockets");
+	    in_pcblist_ncpus, "S,xinpcb", "List of active UDP sockets");
 
 static int
 udp_getcred(SYSCTL_HANDLER_ARGS)

@@ -760,7 +760,7 @@ rip_send(netmsg_t msg)
 }
 
 SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, &ripcbinfo, 1,
-	    in_pcblist_global, "S,xinpcb", "List of active raw IP sockets");
+	    in_pcblist_range, "S,xinpcb", "List of active raw IP sockets");
 
 struct pr_usrreqs rip_usrreqs = {
 	.pru_abort = rip_abort,

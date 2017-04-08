@@ -2199,7 +2199,7 @@ prison_xinpcb(struct thread *td, struct inpcb *inp)
 }
 
 int
-in_pcblist_global(SYSCTL_HANDLER_ARGS)
+in_pcblist_range(SYSCTL_HANDLER_ARGS)
 {
 	struct inpcbinfo *pcbinfo_arr = arg1;
 	int pcbinfo_arrlen = arg2;
@@ -2288,9 +2288,10 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 }
 
 int
-in_pcblist_global_ncpus2(SYSCTL_HANDLER_ARGS)
+in_pcblist_ncpus(SYSCTL_HANDLER_ARGS)
 {
-	return in_pcblist_global(oidp, arg1, ncpus2, req);
+
+	return (in_pcblist_range(oidp, arg1, netisr_ncpus, req));
 }
 
 void
