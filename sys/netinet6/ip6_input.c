@@ -792,6 +792,9 @@ hbhcheck:
 			lwkt_port_t port;
 
 			port = netisr_cpuport(0); /* XXX */
+			if ((m->m_flags & M_HASH) == 0)
+				m_sethash(m, 0); /* XXX */
+
 			KKASSERT(port != NULL);
 			pmsg = &m->m_hdr.mh_netmsg;
 			netmsg_init(&pmsg->base, NULL,
