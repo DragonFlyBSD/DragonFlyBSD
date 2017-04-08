@@ -1382,7 +1382,7 @@ in_ifdetach_dispatch(netmsg_t nmsg)
 	int cpu;
 
 	in_pcbpurgeif0(&ripcbinfo, ifp);
-	for (cpu = 0; cpu < ncpus2; ++cpu)
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
 		in_pcbpurgeif0(&udbinfo[cpu], ifp);
 
 	lwkt_replymsg(lmsg, 0);
