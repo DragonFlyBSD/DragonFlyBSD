@@ -85,6 +85,12 @@ hammer_crc_get_blockmap(uint32_t vol_version, hammer_blockmap_t blockmap)
 	return(hammer_datacrc(vol_version, blockmap, HAMMER_BLOCKMAP_CRCSIZE));
 }
 
+static __inline hammer_crc_t
+__hammer_crc_get_blockmap(hammer_blockmap_t blockmap)
+{
+	return(crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE));
+}
+
 static __inline void
 hammer_crc_set_blockmap(uint32_t vol_version, hammer_blockmap_t blockmap)
 {
@@ -97,8 +103,7 @@ hammer_crc_test_blockmap(uint32_t vol_version, hammer_blockmap_t blockmap)
 	if (blockmap->entry_crc == hammer_crc_get_blockmap(vol_version, blockmap))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (blockmap->entry_crc == hammer_crc_get_blockmap(HAMMER_VOL_VERSION_SIX,
-								   blockmap))
+		if (blockmap->entry_crc == __hammer_crc_get_blockmap(blockmap))
 			return(1);
 	}
 	return(0);
@@ -113,6 +118,12 @@ hammer_crc_get_layer1(uint32_t vol_version, hammer_blockmap_layer1_t layer1)
 	return(hammer_datacrc(vol_version, layer1, HAMMER_LAYER1_CRCSIZE));
 }
 
+static __inline hammer_crc_t
+__hammer_crc_get_layer1(hammer_blockmap_layer1_t layer1)
+{
+	return(crc32(layer1, HAMMER_LAYER1_CRCSIZE));
+}
+
 static __inline void
 hammer_crc_set_layer1(uint32_t vol_version, hammer_blockmap_layer1_t layer1)
 {
@@ -125,7 +136,7 @@ hammer_crc_test_layer1(uint32_t vol_version, hammer_blockmap_layer1_t layer1)
 	if (layer1->layer1_crc == hammer_crc_get_layer1(vol_version, layer1))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (layer1->layer1_crc == hammer_crc_get_layer1(HAMMER_VOL_VERSION_SIX, layer1))
+		if (layer1->layer1_crc == __hammer_crc_get_layer1(layer1))
 			return(1);
 	}
 	return(0);
@@ -140,6 +151,12 @@ hammer_crc_get_layer2(uint32_t vol_version, hammer_blockmap_layer2_t layer2)
 	return(hammer_datacrc(vol_version, layer2, HAMMER_LAYER2_CRCSIZE));
 }
 
+static __inline hammer_crc_t
+__hammer_crc_get_layer2(hammer_blockmap_layer2_t layer2)
+{
+	return(crc32(layer2, HAMMER_LAYER2_CRCSIZE));
+}
+
 static __inline void
 hammer_crc_set_layer2(uint32_t vol_version, hammer_blockmap_layer2_t layer2)
 {
@@ -152,7 +169,7 @@ hammer_crc_test_layer2(uint32_t vol_version, hammer_blockmap_layer2_t layer2)
 	if (layer2->entry_crc == hammer_crc_get_layer2(vol_version, layer2))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (layer2->entry_crc == hammer_crc_get_layer2(HAMMER_VOL_VERSION_SIX, layer2))
+		if (layer2->entry_crc == __hammer_crc_get_layer2(layer2))
 			return(1);
 	}
 	return(0);
@@ -168,6 +185,13 @@ hammer_crc_get_volume(uint32_t vol_version, hammer_volume_ondisk_t ondisk)
 		hammer_datacrc(vol_version, &ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2));
 }
 
+static __inline hammer_crc_t
+__hammer_crc_get_volume(hammer_volume_ondisk_t ondisk)
+{
+	return(crc32(ondisk, HAMMER_VOL_CRCSIZE1) ^
+		crc32(&ondisk->vol_crc + 1, HAMMER_VOL_CRCSIZE2));
+}
+
 static __inline void
 hammer_crc_set_volume(uint32_t vol_version, hammer_volume_ondisk_t ondisk)
 {
@@ -180,7 +204,7 @@ hammer_crc_test_volume(uint32_t vol_version, hammer_volume_ondisk_t ondisk)
 	if (ondisk->vol_crc == hammer_crc_get_volume(vol_version, ondisk))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (ondisk->vol_crc == hammer_crc_get_volume(HAMMER_VOL_VERSION_SIX, ondisk))
+		if (ondisk->vol_crc == __hammer_crc_get_volume(ondisk))
 			return(1);
 	}
 	return(0);
@@ -196,6 +220,13 @@ hammer_crc_get_fifo_head(uint32_t vol_version, hammer_fifo_head_t head, int byte
 		hammer_datacrc(vol_version, head + 1, bytes - sizeof(*head)));
 }
 
+static __inline hammer_crc_t
+__hammer_crc_get_fifo_head(hammer_fifo_head_t head, int bytes)
+{
+	return(crc32(head, HAMMER_FIFO_HEAD_CRCOFF) ^
+		crc32(head + 1, bytes - sizeof(*head)));
+}
+
 static __inline void
 hammer_crc_set_fifo_head(uint32_t vol_version, hammer_fifo_head_t head, int bytes)
 {
@@ -208,8 +239,7 @@ hammer_crc_test_fifo_head(uint32_t vol_version, hammer_fifo_head_t head, int byt
 	if (head->hdr_crc == hammer_crc_get_fifo_head(vol_version, head, bytes))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (head->hdr_crc == hammer_crc_get_fifo_head(HAMMER_VOL_VERSION_SIX,
-							      head, bytes))
+		if (head->hdr_crc == __hammer_crc_get_fifo_head(head, bytes))
 			return(1);
 	}
 	return(0);
@@ -224,6 +254,12 @@ hammer_crc_get_btree(uint32_t vol_version, hammer_node_ondisk_t node)
 	return(hammer_datacrc(vol_version, &node->crc + 1, HAMMER_BTREE_CRCSIZE));
 }
 
+static __inline hammer_crc_t
+__hammer_crc_get_btree(hammer_node_ondisk_t node)
+{
+	return(crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE));
+}
+
 static __inline void
 hammer_crc_set_btree(uint32_t vol_version, hammer_node_ondisk_t node)
 {
@@ -236,7 +272,7 @@ hammer_crc_test_btree(uint32_t vol_version, hammer_node_ondisk_t node)
 	if (node->crc == hammer_crc_get_btree(vol_version, node))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (node->crc == hammer_crc_get_btree(HAMMER_VOL_VERSION_SIX, node))
+		if (node->crc == __hammer_crc_get_btree(node))
 			return(1);
 	}
 	return(0);
@@ -273,6 +309,27 @@ hammer_crc_get_leaf(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t le
 	return(crc);
 }
 
+static __inline hammer_crc_t
+__hammer_crc_get_leaf(void *data, hammer_btree_leaf_elm_t leaf)
+{
+	hammer_crc_t crc;
+
+	if (leaf->data_len == 0)
+		return(0);
+
+	switch(leaf->base.rec_type) {
+	case HAMMER_RECTYPE_INODE:
+		if (leaf->data_len != sizeof(struct hammer_inode_data))
+			return(0);  /* This shouldn't happen */
+		crc = crc32(data, HAMMER_INODE_CRCSIZE);
+		break;
+	default:
+		crc = crc32(data, leaf->data_len);
+		break;
+	}
+	return(crc);
+}
+
 static __inline void
 hammer_crc_set_leaf(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf)
 {
@@ -291,7 +348,7 @@ hammer_crc_test_leaf(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t l
 	if (leaf->data_crc == hammer_crc_get_leaf(vol_version, data, leaf))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (leaf->data_crc == hammer_crc_get_leaf(HAMMER_VOL_VERSION_SIX, data, leaf))
+		if (leaf->data_crc == __hammer_crc_get_leaf(data, leaf))
 			return(1);
 	}
 	return(0);
