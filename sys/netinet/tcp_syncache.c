@@ -193,7 +193,7 @@ struct tcp_syncache_percpu {
 	struct syncache_list	timerq[SYNCACHE_MAXREXMTS + 1];
 	struct callout		tt_timerq[SYNCACHE_MAXREXMTS + 1];
 	struct msgrec		mrec[SYNCACHE_MAXREXMTS + 1];
-};
+} __cachealign;
 static struct tcp_syncache_percpu tcp_syncache_percpu[MAXCPU];
 
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, syncache, CTLFLAG_RW, 0, "TCP SYN cache");
@@ -333,8 +333,9 @@ syncache_init(void)
 
 		syncache_percpu = &tcp_syncache_percpu[cpu];
 		/* Allocate the hash table. */
-		syncache_percpu->hashbase = kmalloc(tcp_syncache.hashsize * sizeof(struct syncache_head),
-						    M_SYNCACHE, M_WAITOK);
+		syncache_percpu->hashbase = kmalloc_cachealign(
+		    tcp_syncache.hashsize * sizeof(struct syncache_head),
+		    M_SYNCACHE, M_WAITOK);
 
 		/* Initialize the hash buckets. */
 		for (i = 0; i < tcp_syncache.hashsize; i++) {
