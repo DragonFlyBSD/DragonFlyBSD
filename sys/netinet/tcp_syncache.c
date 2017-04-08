@@ -328,7 +328,7 @@ syncache_init(void)
 	}
 	tcp_syncache.hashmask = tcp_syncache.hashsize - 1;
 
-	for (cpu = 0; cpu < ncpus2; cpu++) {
+	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
 		struct tcp_syncache_percpu *syncache_percpu;
 
 		syncache_percpu = &tcp_syncache_percpu[cpu];
