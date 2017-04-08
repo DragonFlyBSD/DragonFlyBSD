@@ -365,7 +365,7 @@ ip_init(void)
 			"error %d\n", __func__, i);
 	}
 
-	maxnipq = (nmbclusters / 32) / ncpus2;
+	maxnipq = (nmbclusters / 32) / ncpus;
 	if (maxnipq < MAXIPFRAG_MIN)
 		maxnipq = MAXIPFRAG_MIN;
 	maxfragsperpacket = 16;
