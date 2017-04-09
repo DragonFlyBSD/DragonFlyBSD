@@ -125,7 +125,7 @@ hammer_strip_bigblock(int zone, hammer_off_t offset)
 	/*
 	 * This format is taken from hammer blockmap.
 	 */
-	if (VerboseOpt) {
+	if (VerboseOpt)
 		printf("%016jx zone=%-2d vol=%-3d L1#=%-6d L2#=%-6d L1=%-7lu L2=%-7lu\n",
 			offset,
 			zone,
@@ -134,9 +134,8 @@ hammer_strip_bigblock(int zone, hammer_off_t offset)
 			HAMMER_BLOCKMAP_LAYER2_INDEX(offset),
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(offset),
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(offset));
-	} else {
+	else
 		printf("%016jx\n", offset);
-	}
 
 	for (i = 0; i < HAMMER_BIGBLOCK_SIZE; i += HAMMER_BUFSIZE) {
 		get_buffer_data(offset + i, &buffer, 1);

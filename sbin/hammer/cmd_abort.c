@@ -63,9 +63,8 @@ hammer_cmd_abort_cleanup(char **av __unused, int ac __unused)
 	static const char termmsg[] = "Terminated cleanup process %u\n";
 	const size_t pflen = sizeof(prefix) - 1;
 
-	if ((dir = opendir(pidfile_loc)) == NULL) {
+	if ((dir = opendir(pidfile_loc)) == NULL)
 	        return;
-	}
 
 	while ((den = readdir(dir)) != NULL) {
 		if (strncmp(den->d_name, prefix, pflen) == 0) {
@@ -73,19 +72,16 @@ hammer_cmd_abort_cleanup(char **av __unused, int ac __unused)
 				pidfile_loc, den->d_name);
 			pid = strtol((char *)(den->d_name + pflen), &str, 10);
 			pf_fd = open(pidfile, O_RDONLY | O_CLOEXEC);
-			if (pf_fd == -1) {
+			if (pf_fd == -1)
 				continue;
-			}
 
 			if (flock(pf_fd, LOCK_EX | LOCK_NB) < 0) {
 				if (errno == EWOULDBLOCK) {
 					/* error expected during cleanup */
-					if (kill (pid, SIGTERM) == 0) {
+					if (kill (pid, SIGTERM) == 0)
 						printf (termmsg, pid);
-					}
 				}
-			}
-			else {
+			} else {
 				/* lock succeeded so pidfile is stale */
 				flock (pf_fd, LOCK_UN);
 			}

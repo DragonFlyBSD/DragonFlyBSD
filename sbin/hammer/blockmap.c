@@ -144,9 +144,8 @@ again:
 	assert(blockmap->next_offset != HAMMER_ZONE_ENCODE(zone + 1, 0));
 
 	tmp_offset = blockmap->next_offset + bytes - 1;
-	if ((blockmap->next_offset ^ tmp_offset) & ~HAMMER_BUFMASK64) {
+	if ((blockmap->next_offset ^ tmp_offset) & ~HAMMER_BUFMASK64)
 		blockmap->next_offset = tmp_offset & ~HAMMER_BUFMASK64;
-	}
 
 	/*
 	 * Dive layer 1.

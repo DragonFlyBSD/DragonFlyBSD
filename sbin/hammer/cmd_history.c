@@ -117,13 +117,12 @@ hammer_do_history(const char *path, off_t off, long len)
 			printf("    %016jx %s",
 			       (uintmax_t)hist.hist_ary[i].tid,
 			       timestr32(hist.hist_ary[i].time32));
-			if (off >= 0) {
+			if (off >= 0)
 				if (VerboseOpt) {
 					printf(" '");
 					dumpat(hist_path, off, len);
 					printf("'");
 				}
-			}
 			printf("\n");
 			free(hist_path);
 		}

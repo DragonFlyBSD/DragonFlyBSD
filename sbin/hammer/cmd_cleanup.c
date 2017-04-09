@@ -113,7 +113,7 @@ hammer_cmd_cleanup(char **av, int ac)
 	tzset();
 	if (ac == 0) {
 		mntsize = getmntinfo(&stfsbuf, MNT_NOWAIT);
-		if (mntsize > 0) {
+		if (mntsize > 0)
 			for (i=0; i < mntsize; i++) {
 				/*
 				 * We will cleanup in the case fstype is hammer.
@@ -131,8 +131,6 @@ hammer_cmd_cleanup(char **av, int ac)
 					do_cleanup(path);
 				}
 			}
-		}
-
 	} else {
 		while (ac) {
 			do_cleanup(*av);
@@ -200,24 +198,21 @@ do_cleanup(const char *path)
 	HammerVersion = version.cur_version;
 
 	bzero(&config, sizeof(config));
-	if (version.cur_version >= 3) {
+	if (version.cur_version >= 3)
 		if (ioctl(fd, HAMMERIOC_GET_CONFIG, &config) == 0 &&
-		    config.head.error == 0) {
+		    config.head.error == 0)
 			new_config = 1;
-		}
-	}
 
 	/*
 	 * Make sure we have not already handled this PFS.  Several nullfs
 	 * mounts might alias the same PFS.
 	 */
-	for (didpfs = FirstPFS; didpfs; didpfs = didpfs->next) {
+	for (didpfs = FirstPFS; didpfs; didpfs = didpfs->next)
 		if (bcmp(&didpfs->uuid, &mrec_tmp.pfs.pfsd.unique_uuid, sizeof(uuid_t)) == 0) {
 			printf(" PFS#%d already handled\n", pfs.pfs_id);
 			close(fd);
 			return;
 		}
-	}
 	didpfs = malloc(sizeof(*didpfs));
 	didpfs->next = FirstPFS;
 	FirstPFS = didpfs;
@@ -291,7 +286,7 @@ do_cleanup(const char *path)
 		/*
 		 * Create missing snapshots directory for HAMMER VERSION < 3
 		 */
-		if (stat(snapshots_path, &st) < 0) {
+		if (stat(snapshots_path, &st) < 0)
 			if (mkdir(snapshots_path, 0755) != 0) {
 				free(snapshots_path);
 				printf(" unable to create snapshot dir \"%s\": %s\n",
@@ -299,7 +294,6 @@ do_cleanup(const char *path)
 				close(fd);
 				return;
 			}
-		}
 
 		/*
 		 *  Create missing config file for HAMMER VERSION < 3
@@ -354,9 +348,9 @@ do_cleanup(const char *path)
 					runcmd(&r, "mkdir -p %s", npath);
 					runcmd(&r, "cpdup %s %s", snapshots_path, npath);
 					if (r != 0) {
-				    printf("Unable to move snapshots directory!\n");
-				    printf("Please fix this critical error.\n");
-				    printf("Aborting cleanup of %s\n", path);
+						printf("Unable to move snapshots directory!\n");
+						printf("Please fix this critical error.\n");
+						printf("Aborting cleanup of %s\n", path);
 						close(fd);
 						return;
 					}
@@ -390,9 +384,8 @@ do_cleanup(const char *path)
 	snprintf (pidfile, PIDFILE_BUFSIZE, "%s/hammer.cleanup.%d",
 		pidfile_loc, getpid());
 	pfh = pidfile_open(pidfile, 0644, NULL);
-	if (pfh == NULL) {
+	if (pfh == NULL)
 		warn ("Unable to open or create %s", pidfile);
-	}
 	pidfile_write(pfh);
 
 	/*
@@ -457,13 +450,12 @@ do_cleanup(const char *path)
 			printf("disabled\n");
 		} else if (strcmp(cmd, "prune") == 0) {
 			if (check_period(snapshots_path, cmd, arg1, &savet)) {
-				if (prune_warning) {
+				if (prune_warning)
 					printf("run - WARNING snapshot "
 					       "softlinks present "
 					       "but snapshots disabled\n");
-				} else {
+				else
 					printf("run\n");
-				}
 				r = cleanup_prune(path, snapshots_path,
 					      arg1, arg2, snapshots_disabled);
 			} else {
@@ -526,13 +518,12 @@ do_cleanup(const char *path)
 	 * Add new rebalance feature if the config doesn't have it.
 	 * (old style config only).
 	 */
-	if (new_config == 0 && found_rebal == 0) {
+	if (new_config == 0 && found_rebal == 0)
 		if ((fp = fopen(config_path, "r+")) != NULL) {
 			fseek(fp, 0L, 2);
 			fprintf(fp, "rebalance 1d 5m\n");
 			fclose(fp);
 		}
-	}
 
 	/*
 	 * Cleanup, and delay a little
@@ -553,11 +544,10 @@ config_init(const char *path, struct hammer_ioc_config *config)
 
 	if (strcmp(path, "/tmp") == 0 ||
 	    strcmp(path, "/var/tmp") == 0 ||
-	    strcmp(path, "/usr/obj") == 0) {
+	    strcmp(path, "/usr/obj") == 0)
 		snapshots = "snapshots 0d 0d\n";
-	} else {
+	else
 		snapshots = "snapshots 1d 60d\n";
-	}
 	bzero(config->config.text, sizeof(config->config.text));
 	snprintf(config->config.text, sizeof(config->config.text) - 1, "%s%s",
 		snapshots,
@@ -604,9 +594,8 @@ migrate_snapshots(int fd, const char *snapshots_path)
 			if (den->d_name[0] == '.')
 				continue;
 			asprintf(&fpath, "%s/%s", snapshots_path, den->d_name);
-			if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode)) {
+			if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode))
 				migrate_one_snapshot(fd, fpath, &snapshot);
-			}
 			free(fpath);
 		}
 		closedir(dir);
@@ -665,9 +654,8 @@ migrate_one_snapshot(int fd, const char *fpath,
 		bzero(linkbuf, sizeof(linkbuf));
 		if (readlink(fpath, linkbuf, sizeof(linkbuf) - 1) > 0 &&
 		    (ptr = strrchr(linkbuf, '@')) != NULL &&
-		    ptr > linkbuf && ptr[-1] == '@') {
+		    ptr > linkbuf && ptr[-1] == '@')
 			tid = strtoull(ptr + 1, NULL, 16);
-		}
 		if (t != (time_t)-1 && tid != (hammer_tid_t)(int64_t)-1) {
 			snap = &snapshot->snaps[snapshot->count];
 			bzero(snap, sizeof(*snap));
@@ -879,11 +867,9 @@ check_softlinks(int fd, int new_config, const char *snapshots_path)
 
 		bzero(&snapshot, sizeof(snapshot));
 		do {
-			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0) {
+			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0)
 				err(2, "hammer cleanup: check_softlink "
 					"snapshot error");
-				/* not reached */
-			}
 			res += snapshot.count;
 		} while (snapshot.head.error == 0 && snapshot.count);
 	}
@@ -914,10 +900,9 @@ cleanup_softlinks(int fd, int new_config,
 			if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode) &&
 			    (anylink || strncmp(den->d_name, "snap-", 5) == 0)) {
 				if (check_expired(den->d_name, arg2)) {
-					if (VerboseOpt) {
+					if (VerboseOpt)
 						printf("    expire %s\n",
 							fpath);
-					}
 					remove(fpath);
 				}
 			}
@@ -943,19 +928,16 @@ cleanup_softlinks(int fd, int new_config,
 		bzero(&snapshot, sizeof(snapshot));
 		bzero(&dsnapshot, sizeof(dsnapshot));
 		do {
-			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0) {
+			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0)
 				err(2, "hammer cleanup: check_softlink "
 					"snapshot error");
-				/* not reached */
-			}
 			for (i = 0; i < snapshot.count; ++i) {
 				snap = &snapshot.snaps[i];
 				t = snap->ts / 1000000ULL;
 				dt = time(NULL) - t;
-				if ((int)dt > arg2 || snap->tid == 0) {
+				if ((int)dt > arg2 || snap->tid == 0)
 					dsnapshot.snaps[dsnapshot.count++] =
 						*snap;
-				}
 				if ((int)dt > arg2 && VerboseOpt) {
 					tp = localtime(&t);
 					strftime(snapts, sizeof(snapts),
@@ -1075,18 +1057,17 @@ cleanup_prune(const char *path, const char *snapshots_path,
 	 * If snapshots have been disabled run prune-everything instead
 	 * of prune.
 	 */
-	if (snapshots_disabled && arg2) {
+	if (snapshots_disabled && arg2)
 		runcmd(NULL,
 		       "hammer -c %s/.prune.cycle -t %d prune-everything %s",
 		       snapshots_path, arg2, path);
-	} else if (snapshots_disabled) {
+	else if (snapshots_disabled)
 		runcmd(NULL, "hammer prune-everything %s", path);
-	} else if (arg2) {
+	else if (arg2)
 		runcmd(NULL, "hammer -c %s/.prune.cycle -t %d prune %s",
 			snapshots_path, arg2, path_or_snapshots_path);
-	} else {
+	else
 		runcmd(NULL, "hammer prune %s", path_or_snapshots_path);
-	}
 	return(0);
 }
 

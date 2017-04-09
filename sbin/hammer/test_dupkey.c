@@ -32,9 +32,8 @@ main(int ac, char **av)
 		key = namekey(name);
 		ptr = &bitmap[key / 32];
 		mask = 1 << (key & 31);
-		if (*ptr & mask) {
+		if (*ptr & mask)
 			break;
-		}
 		*ptr |= mask;
 		++count;
 	}

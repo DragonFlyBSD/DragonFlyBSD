@@ -117,9 +117,8 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 			filesystem,
 			(uintmax_t)reblock.key_cur.obj_id,
 			reblock.key_cur.localization);
-		if (CyclePath) {
+		if (CyclePath)
 			hammer_set_cycle(&reblock.key_cur, 0);
-		}
 	} else {
 		if (CyclePath)
 			hammer_reset_cycle();

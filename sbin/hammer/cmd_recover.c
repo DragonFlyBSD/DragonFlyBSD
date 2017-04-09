@@ -147,10 +147,9 @@ hammer_cmd_recover(char **av, int ac)
 	}
 	assert(!full || !quick);
 
-	if (mkdir(TargetDir, 0777) == -1) {
+	if (mkdir(TargetDir, 0777) == -1)
 		if (errno != EEXIST)
 			err(1, "mkdir");
-	}
 
 	printf("Running %sraw scan of HAMMER image, recovering to %s\n",
 		full ? "full " : quick ? "quick " : "",
@@ -207,12 +206,11 @@ hammer_cmd_recover(char **av, int ac)
 			if (off_blk == 0)
 				b = get_bigblock_entry(off);
 
-			if (raw_limit) {
+			if (raw_limit)
 				if (off >= raw_limit) {
 					printf("Done %016jx\n", (uintmax_t)off);
 					goto end;
 				}
-			}
 			if (zone_limit) {
 				if (off >= zone_limit) {
 					printf("Done %016jx\n", (uintmax_t)off);
@@ -294,13 +292,12 @@ recover_top(char *ptr, hammer_off_t offset)
 		}
 		offset += sizeof(*node);
 
-		if (isnode && node->type == HAMMER_BTREE_TYPE_LEAF) {
+		if (isnode && node->type == HAMMER_BTREE_TYPE_LEAF)
 			for (i = 0; i < node->count && i < maxcount; ++i) {
 				elm = &node->elms[i];
 				if (elm->base.btype == HAMMER_BTREE_TYPE_RECORD)
 					recover_elm(&elm->leaf);
 			}
-		}
 	}
 }
 
@@ -369,10 +366,9 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		 * We found an inode which also tells us where the file
 		 * or directory is in the directory hierarchy.
 		 */
-		if (VerboseOpt) {
+		if (VerboseOpt)
 			printf("inode %016jx:%05d found\n",
 				(uintmax_t)leaf->base.obj_id, pfs_id);
-		}
 		path1 = recover_path(dict);
 
 		/*
@@ -431,13 +427,12 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		 */
 		if (leaf->base.obj_id == 0)
 			break;
-		if (VerboseOpt) {
+		if (VerboseOpt)
 			printf("inode %016jx:%05d data %016jx,%d\n",
 				(uintmax_t)leaf->base.obj_id,
 				pfs_id,
 				(uintmax_t)leaf->base.key - len,
 				len);
-		}
 
 		/*
 		 * Update the dictionary entry
@@ -463,11 +458,10 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		 * Create the file if necessary, report file creations
 		 */
 		path1 = recover_path(dict);
-		if (CachedPath && strcmp(CachedPath, path1) == 0) {
+		if (CachedPath && strcmp(CachedPath, path1) == 0)
 			fd = CachedFd;
-		} else {
+		else
 			fd = open(path1, O_CREAT|O_RDWR, 0666);
-		}
 		if (fd < 0) {
 			printf("Unable to create %s: %s\n",
 				path1, strerror(errno));
@@ -493,10 +487,9 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		lseek(fd, (off_t)file_offset, SEEK_SET);
 		while (len) {
 			if (dict->size == -1) {
-				for (zfill = chunk - 1; zfill >= 0; --zfill) {
+				for (zfill = chunk - 1; zfill >= 0; --zfill)
 					if (((char *)ondisk)[zfill])
 						break;
-				}
 				++zfill;
 			} else {
 				zfill = chunk;
@@ -547,13 +540,12 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		name[nlen] = 0;
 		sanitize_string(name);
 
-		if (VerboseOpt) {
+		if (VerboseOpt)
 			printf("dir %016jx:%05d entry %016jx \"%s\"\n",
 				(uintmax_t)leaf->base.obj_id,
 				pfs_id,
 				(uintmax_t)ondisk->entry.obj_id,
 				name);
-		}
 
 		/*
 		 * We can't deal with hardlinks so if the object already
@@ -620,12 +612,10 @@ get_dict(int64_t obj_id, uint16_t pfs_id)
 		return(NULL);
 
 	i = crc32(&obj_id, sizeof(obj_id)) & RD_HMASK;
-	for (dict = RDHash[i]; dict; dict = dict->next) {
-		if (dict->obj_id == obj_id &&
-		    dict->pfs_id == pfs_id) {
+	for (dict = RDHash[i]; dict; dict = dict->next)
+		if (dict->obj_id == obj_id && dict->pfs_id == pfs_id)
 			break;
-		}
-	}
+
 	if (dict == NULL) {
 		dict = malloc(sizeof(*dict));
 		bzero(dict, sizeof(*dict));
@@ -703,11 +693,10 @@ recover_path_helper(struct recover_dict *dict, struct path_info *info)
 		++info->len;
 
 		if (dict->parent &&
-		    (dict->parent->flags & DICTF_TRAVERSED) == 0) {
+		    (dict->parent->flags & DICTF_TRAVERSED) == 0)
 			recover_path_helper(dict->parent, info);
-		} else {
+		else
 			info->len += strlen(TargetDir) + 1;
-		}
 		break;
 	case PI_LOAD:
 		if (dict->parent &&
@@ -719,15 +708,14 @@ recover_path_helper(struct recover_dict *dict, struct path_info *info)
 		}
 
 		*info->next++ = '/';
-		if (dict->obj_id == HAMMER_OBJID_ROOT) {
+		if (dict->obj_id == HAMMER_OBJID_ROOT)
 			snprintf(info->next, STRLEN_PFSID + 1,
 				"PFS%05d", info->pfs_id);
-		} else if (dict->name) {
+		else if (dict->name)
 			strcpy(info->next, dict->name);
-		} else {
+		else
 			snprintf(info->next, STRLEN_OBJID + 1,
 				"obj_0x%016jx", (uintmax_t)dict->obj_id);
-		}
 		info->next += strlen(info->next);
 		break;
 	}
@@ -797,11 +785,10 @@ scan_raw_limit(void)
 				offset = 0; /* failed */
 				goto end;
 			}
-			if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
+			if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX)
 				break;
-			} else if (layer2->zone && layer2->zone != zone) {
+			else if (layer2->zone && layer2->zone != zone)
 				offset = phys_offset + block_offset;
-			}
 		}
 	}
 end:
@@ -864,11 +851,10 @@ scan_bigblocks(int target_zone)
 			if (!hammer_crc_test_layer2(HammerVersion, layer2)) {
 			}
 			*/
-			if (layer2->zone == target_zone) {
+			if (layer2->zone == target_zone)
 				add_bigblock_entry(offset, layer1, layer2);
-			} else if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
+			else if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX)
 				break;
-			}
 		}
 	}
 	rel_buffer(buffer1);

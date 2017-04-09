@@ -88,9 +88,8 @@ hammer_cmd_rebalance(char **av, int ac)
 			filesystem,
 			(uintmax_t)rebal.key_cur.obj_id,
 			rebal.key_cur.localization);
-		if (CyclePath) {
+		if (CyclePath)
 			hammer_set_cycle(&rebal.key_cur, 0);
-		}
 	} else {
 		if (CyclePath)
 			hammer_reset_cycle();

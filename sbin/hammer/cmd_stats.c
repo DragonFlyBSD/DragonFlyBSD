@@ -217,9 +217,8 @@ hammer_cmd_stats(char **av, int ac)
 		collect_bstats(&bst1);
 		collect_iostats(&ist1);
 		if (count) {
-			if ((count & 15) == 1) {
+			if ((count & 15) == 1)
 				printf(bstats_title"\t"iostats_title"\n");
-			}
 			print_bstats(&bst1, &bst2);
 			printf("\t");
 			print_iostats(&ist1, &ist2);

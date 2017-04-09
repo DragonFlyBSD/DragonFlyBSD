@@ -155,13 +155,12 @@ hammer_cmd_volume_list(char **av, int ac)
 	for (i = 0; i < ioc.nvols; i++) {
 		device_name = ioc.vols[i].device_name;
 		vol_no = ioc.vols[i].vol_no;
-		if (VerboseOpt) {
+		if (VerboseOpt)
 			printf("%d\t%s%s\n", vol_no, device_name,
 				(vol_no == HAMMER_ROOT_VOLNO ?
 				" (Root Volume)" : ""));
-		} else {
+		else
 			printf("%s\n", device_name);
-		}
 	}
 
 	free(ioc.vols);

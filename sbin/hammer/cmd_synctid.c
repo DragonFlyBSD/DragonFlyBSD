@@ -63,11 +63,10 @@ hammer_cmd_synctid(char **av, int ac)
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
-	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0) {
+	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0)
 		err(1, "Synctid %s failed", filesystem);
-	} else {
+	else
 		printf("0x%016jx\n", (uintmax_t)synctid.tid);
-	}
 	close(fd);
 }
 
