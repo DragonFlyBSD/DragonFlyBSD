@@ -192,7 +192,7 @@ struct iopoll_sysctl_netmsg {
 	struct iopoll_ctx	*ctx;
 };
 
-void		ifpoll_init_pcpu(int);
+static void	ifpoll_init_pcpu(int);
 static void	ifpoll_register_handler(netmsg_t);
 static void	ifpoll_deregister_handler(netmsg_t);
 
@@ -322,13 +322,11 @@ sched_iopollmore(struct iopoll_ctx *io_ctx)
 }
 
 /*
- * Initialize per-cpu polling(4) context.  Called from kern_clock.c:
+ * Initialize per-cpu polling(4) context.
  */
-void
+static void
 ifpoll_init_pcpu(int cpuid)
 {
-	if (cpuid >= ncpus2)
-		return;
 
 	poll_comm_init(cpuid);
 
@@ -338,6 +336,30 @@ ifpoll_init_pcpu(int cpuid)
 
 	poll_comm_start(cpuid);
 }
+
+static void
+ifpoll_init_handler(netmsg_t msg)
+{
+	int cpu = mycpuid, nextcpu;
+
+	ifpoll_init_pcpu(cpu);
+
+	nextcpu = cpu + 1;
+	if (nextcpu < ncpus2)
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
+	else
+		lwkt_replymsg(&msg->base.lmsg, 0);
+}
+
+static void
+ifpoll_sysinit(void *dummy __unused)
+{
+	struct netmsg_base msg;
+
+	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, ifpoll_init_handler);
+	lwkt_domsg(netisr_cpuport(0), &msg.lmsg, 0);
+}
+SYSINIT(ifpoll, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, ifpoll_sysinit, NULL);
 
 int
 ifpoll_register(struct ifnet *ifp)

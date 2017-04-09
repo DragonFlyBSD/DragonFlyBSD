@@ -69,7 +69,6 @@
  */
 
 #include "opt_ntp.h"
-#include "opt_ifpoll.h"
 #include "opt_pctrack.h"
 
 #include <sys/param.h>
@@ -105,10 +104,6 @@
 
 #ifdef GPROF
 #include <sys/gmon.h>
-#endif
-
-#ifdef IFPOLL_ENABLE
-extern void ifpoll_init_pcpu(int);
 #endif
 
 #ifdef DEBUG_PCTRACK
@@ -390,9 +385,6 @@ initclocks_other(void *dummy)
 		/* XXX correct the frequency for scheduler / estcpu tests */
 		systimer_init_periodic_nq(&gd->gd_schedclock, schedclock,
 					  NULL, ESTCPUFREQ);
-#ifdef IFPOLL_ENABLE
-		ifpoll_init_pcpu(gd->gd_cpuid);
-#endif
 	}
 	lwkt_setcpu_self(ogd);
 }
