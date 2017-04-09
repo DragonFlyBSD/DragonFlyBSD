@@ -345,7 +345,7 @@ ifpoll_init_handler(netmsg_t msg)
 	ifpoll_init_pcpu(cpu);
 
 	nextcpu = cpu + 1;
-	if (nextcpu < ncpus2)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
 	else
 		lwkt_replymsg(&msg->base.lmsg, 0);
@@ -450,7 +450,7 @@ ifpoll_register_handler(netmsg_t nmsg)
 	int cpuid = mycpuid, nextcpu;
 	int error;
 
-	KKASSERT(cpuid < ncpus2);
+	KKASSERT(cpuid < netisr_ncpus);
 	KKASSERT(&curthread->td_msgport == netisr_cpuport(cpuid));
 
 	if (cpuid == 0) {
@@ -473,7 +473,7 @@ ifpoll_register_handler(netmsg_t nmsg)
 	poll_comm_adjust_pollhz(poll_common[cpuid]);
 
 	nextcpu = cpuid + 1;
-	if (nextcpu < ncpus2)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nmsg->lmsg);
 	else
 		lwkt_replymsg(&nmsg->lmsg, 0);
@@ -488,7 +488,7 @@ ifpoll_deregister_handler(netmsg_t nmsg)
 	struct ifnet *ifp = nmsg->lmsg.u.ms_resultp;
 	int cpuid = mycpuid, nextcpu;
 
-	KKASSERT(cpuid < ncpus2);
+	KKASSERT(cpuid < netisr_ncpus);
 	KKASSERT(&curthread->td_msgport == netisr_cpuport(cpuid));
 
 	/* Ignore errors */
@@ -501,7 +501,7 @@ ifpoll_deregister_handler(netmsg_t nmsg)
 	poll_comm_adjust_pollhz(poll_common[cpuid]);
 
 	nextcpu = cpuid + 1;
-	if (nextcpu < ncpus2)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nmsg->lmsg);
 	else
 		lwkt_replymsg(&nmsg->lmsg, 0);
@@ -667,7 +667,7 @@ iopoll_reset_state(struct iopoll_ctx *io_ctx)
 static void
 iopoll_init(int cpuid)
 {
-	KKASSERT(cpuid < ncpus2);
+	KKASSERT(cpuid < netisr_ncpus);
 
 	rxpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_RX);
 	txpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_TX);
@@ -1533,7 +1533,7 @@ ifpoll_compat_setup(struct ifpoll_compat *cp,
 	cp->ifpc_stfrac = ((poll_common[0]->poll_stfrac + 1) *
 	    howmany(IOPOLL_BURST_MAX, IOPOLL_EACH_BURST)) - 1;
 
-	cp->ifpc_cpuid = unit % ncpus2;
+	cp->ifpc_cpuid = unit % netisr_ncpus;
 	cp->ifpc_serializer = slz;
 
 	if (sysctl_ctx != NULL && sysctl_tree != NULL) {
@@ -1583,7 +1583,7 @@ sysctl_compat_npoll_cpuid(SYSCTL_HANDLER_ARGS)
 	cpuid = cp->ifpc_cpuid;
 	error = sysctl_handle_int(oidp, &cpuid, 0, req);
 	if (!error && req->newptr != NULL) {
-		if (cpuid < 0 || cpuid >= ncpus2)
+		if (cpuid < 0 || cpuid >= netisr_ncpus)
 			error = EINVAL;
 		else
 			cp->ifpc_cpuid = cpuid;
