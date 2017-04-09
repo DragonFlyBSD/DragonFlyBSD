@@ -80,6 +80,30 @@ hammer_cmd_info(char **av, int ac)
 	}
 }
 
+/*
+ * This is an adhoc function which exists only because libhammer can't
+ * properly handle variety of errors.
+ */
+static void
+__test_if_hammer_or_abort(const char *path)
+{
+	struct hammer_ioc_info info;
+	int fd;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		err(1, "Failed to open %s", path);
+
+	/*
+	 * This ioctl never fails as long as fd is for HAMMER filesystem,
+	 * thus we can assume path isn't in HAMMER if this fails.
+	 */
+	if (ioctl(fd, HAMMERIOC_GET_INFO, &info) < 0)
+		err(1, "%s is probably not a HAMMER filesystem", path);
+
+	close(fd);
+}
+
 void
 show_info(char *path)
 {
@@ -98,6 +122,9 @@ show_info(char *path)
 	usedbigblocks = 0;
 
 	usedbytes = totalbytes = rsvbytes = freebytes = 0;
+
+	/* Need to do this before libhammer gets involved */
+	__test_if_hammer_or_abort(path);
 
 	fip = libhammer_get_fsinfo(path);
 	if (fip == NULL)
