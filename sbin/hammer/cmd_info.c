@@ -128,7 +128,7 @@ show_info(char *path)
 
 	fip = libhammer_get_fsinfo(path);
 	if (fip == NULL)
-		errx(1, "libhammer_get_fsinfo");
+		errx(1, "Failed to get filesystem info");
 
 	/* Find out the UUID strings */
 	uuid_to_string(&fip->vol_fsid, &fsid, NULL);
