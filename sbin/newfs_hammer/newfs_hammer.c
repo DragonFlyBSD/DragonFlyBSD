@@ -127,6 +127,7 @@ main(int ac, char **av)
 				     "I don't understand how to format "
 				     "HAMMER version %d",
 				     HammerVersion);
+				/* not reached */
 			}
 			break;
 		default:
@@ -155,11 +156,15 @@ main(int ac, char **av)
 		}
 	}
 
-	if (nvols == 0)
+	if (nvols == 0) {
 		errx(1, "You must specify at least one special file (volume)");
-	if (nvols > HAMMER_MAX_VOLUMES)
+		/* not reached */
+	}
+	if (nvols > HAMMER_MAX_VOLUMES) {
 		errx(1, "The maximum number of volumes is %d",
 			HAMMER_MAX_VOLUMES);
+		/* not reached */
+	}
 
 	if (label == NULL) {
 		hwarnx("A filesystem label must be specified");
@@ -174,6 +179,7 @@ main(int ac, char **av)
 	if (status != uuid_s_ok) {
 		errx(1, "uuids file does not have the DragonFly "
 			"HAMMER filesystem type");
+		/* not reached */
 	}
 
 	total = 0;
@@ -184,8 +190,10 @@ main(int ac, char **av)
 			sizetostr(volume->size));
 
 		if (eflag) {
-			if (trim_volume(volume) == -1 && ForceOpt == 0)
+			if (trim_volume(volume) == -1 && ForceOpt == 0) {
 				errx(1, "Use -f option to proceed");
+				/* not reached */
+			}
 		}
 		total += volume->size;
 	}
@@ -312,6 +320,7 @@ test_header_junk_size(int64_t size)
 		if (ForceOpt == 0) {
 			errx(1, "The minimum header junk size is %s",
 				sizetostr(HAMMER_MIN_VOL_JUNK));
+			/* not reached */
 		} else {
 			hwarnx("You have specified header junk size less than %s",
 				sizetostr(HAMMER_MIN_VOL_JUNK));
@@ -319,6 +328,7 @@ test_header_junk_size(int64_t size)
 	} else if (size > HAMMER_MAX_VOL_JUNK) {
 		errx(1, "The maximum header junk size is %s",
 			sizetostr(HAMMER_MAX_VOL_JUNK));
+		/* not reached */
 	}
 }
 
@@ -329,6 +339,7 @@ test_boot_area_size(int64_t size)
 		if (ForceOpt == 0) {
 			errx(1, "The minimum boot area size is %s",
 				sizetostr(HAMMER_BOOT_MINBYTES));
+			/* not reached */
 		} else {
 			hwarnx("You have specified boot area size less than %s",
 				sizetostr(HAMMER_BOOT_MINBYTES));
@@ -336,6 +347,7 @@ test_boot_area_size(int64_t size)
 	} else if (size > HAMMER_BOOT_MAXBYTES) {
 		errx(1, "The maximum boot area size is %s",
 			sizetostr(HAMMER_BOOT_MAXBYTES));
+		/* not reached */
 	}
 }
 
@@ -346,6 +358,7 @@ test_memory_log_size(int64_t size)
 		if (ForceOpt == 0) {
 			errx(1, "The minimum memory log size is %s",
 				sizetostr(HAMMER_MEM_MINBYTES));
+			/* not reached */
 		} else {
 			hwarnx("You have specified memory log size less than %s",
 				sizetostr(HAMMER_MEM_MINBYTES));
@@ -353,6 +366,7 @@ test_memory_log_size(int64_t size)
 	} else if (size > HAMMER_MEM_MAXBYTES) {
 		errx(1, "The maximum memory log size is %s",
 			sizetostr(HAMMER_MEM_MAXBYTES));
+		/* not reached */
 	}
 }
 
@@ -368,6 +382,7 @@ test_undo_buffer_size(int64_t size)
 		if (ForceOpt == 0) {
 			errx(1, "The minimum UNDO/REDO FIFO size is %s",
 				sizetostr(minbuf));
+			/* not reached */
 		} else {
 			hwarnx("You have specified an UNDO/REDO FIFO size less "
 				"than %s, which may lead to VFS panics",
@@ -376,6 +391,7 @@ test_undo_buffer_size(int64_t size)
 	} else if (size > maxbuf) {
 		errx(1, "The maximum UNDO/REDO FIFO size is %s",
 			sizetostr(maxbuf));
+		/* not reached */
 	}
 }
 
@@ -505,8 +521,10 @@ trim_volume(struct volume_info *volume)
 		(unsigned long long)ioarg[0] / 512,
 		(unsigned long long)ioarg[1] / 512);
 
-	if (ioctl(volume->fd, IOCTLTRIM, ioarg) == -1)
+	if (ioctl(volume->fd, IOCTLTRIM, ioarg) == -1) {
 		err(1, "Trimming %s failed", volume->name);
+		/* not reached */
+	}
 
 	return(0);
 }
@@ -554,9 +572,12 @@ format_volume(struct volume_info *volume, int nvols, const char *label)
 	if (vol_buf_size < (int64_t)sizeof(*ondisk)) {
 		errx(1, "volume %d %s is too small to hold the volume header",
 		     volume->vol_no, volume->name);
+		/* not reached */
 	}
-	if ((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) != 0)
+	if ((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) != 0) {
 		errx(1, "volume %d %s is too large", volume->vol_no, volume->name);
+		/* not reached */
+	}
 
 	ondisk->vol_rootvol = HAMMER_ROOT_VOLNO;
 	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
@@ -579,6 +600,7 @@ format_volume(struct volume_info *volume, int nvols, const char *label)
 				"unless you use -f\n(for the size of Volume %d).  "
 				"HAMMER filesystems less than 50GB are not "
 				"recommended.", HAMMER_ROOT_VOLNO);
+			/* not reached */
 		}
 
 		/*
