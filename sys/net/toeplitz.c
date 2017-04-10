@@ -179,6 +179,7 @@ toeplitz_init(void *dummy __unused)
 	toeplitz_verify();
 #endif
 }
+/* After netisr_init */
 SYSINIT(toeplitz, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, toeplitz_init, NULL);
 
 void
