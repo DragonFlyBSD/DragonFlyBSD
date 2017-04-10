@@ -519,7 +519,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 			de = RB_MAX(dedup_entry_rb_tree, &dedup_tree);
 			if (de == NULL || de->leaf.data_crc < DedupCrcEnd)
 				break;
-			if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS)
+			if (de->flags & HAMMER_DEDUP_ENTRY_FICTITIOUS) {
 				while ((sha_de = RB_ROOT(&de->u.fict_root)) !=
 				       NULL) {
 					RB_REMOVE(sha_dedup_entry_rb_tree,
@@ -527,6 +527,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 					MemoryUse -= sizeof(*sha_de);
 					free(sha_de);
 				}
+			}
 			RB_REMOVE(dedup_entry_rb_tree, &dedup_tree, de);
 			MemoryUse -= sizeof(*de);
 			free(de);
@@ -563,7 +564,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 		 * data_offset/data_len in the SHA elements we already have
 		 * before reading the data block and generating a new SHA.
 		 */
-		RB_FOREACH(sha_de, sha_dedup_entry_rb_tree, &de->u.fict_root)
+		RB_FOREACH(sha_de, sha_dedup_entry_rb_tree, &de->u.fict_root) {
 			if (sha_de->leaf.data_offset ==
 						scan_leaf->data_offset &&
 			    sha_de->leaf.data_len == scan_leaf->data_len) {
@@ -571,6 +572,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 					SHA256_DIGEST_LENGTH);
 				break;
 			}
+		}
 
 		/*
 		 * Entry in CRC tree is fictitious, so we already had problems
@@ -869,10 +871,11 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 	hammer_key_beg_init(&mirror.key_beg);
 	hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
 
-	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID)
+	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
 		if (VerboseOpt)
 			fprintf(stderr, "%s: mirror-read: Resuming at object %016jx\n",
 			    id, (uintmax_t)mirror.key_beg.obj_id);
+	}
 
 	hammer_key_end_init(&mirror.key_end);
 
@@ -927,8 +930,9 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 					if (elm.data_crc < DedupCrcStart)
 						continue;
 					if (DedupCrcEnd &&
-					    elm.data_crc >= DedupCrcEnd)
+					    elm.data_crc >= DedupCrcEnd) {
 						continue;
+					}
 				}
 				func(&elm, 0);
 			}
@@ -984,11 +988,12 @@ dump_simulated_dedup(void)
 	struct sim_dedup_entry *sim_de;
 
 	printf("=== Dumping simulated dedup entries:\n");
-	RB_FOREACH(sim_de, sim_dedup_entry_rb_tree, &sim_dedup_tree)
+	RB_FOREACH(sim_de, sim_dedup_entry_rb_tree, &sim_dedup_tree) {
 		printf("\tcrc=%08x cnt=%ju size=%ju\n",
 			sim_de->crc,
 			(intmax_t)sim_de->ref_blks,
 			(intmax_t)sim_de->ref_size);
+	}
 	printf("end of dump ===\n");
 }
 

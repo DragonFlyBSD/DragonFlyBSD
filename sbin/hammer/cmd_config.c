@@ -57,33 +57,39 @@ hammer_cmd_config(char **av, int ac)
 	bzero(&config, sizeof(config));
 	if (ac == 0) {
 		config_get(".", &config);
-		if (config.head.error == 0)
+		if (config.head.error == 0) {
 			printf("%s", config.config.text);
-		else
+		} else {
 			errx(2, "hammer config: no configuration found");
+			/* not reached */
+		}
 		return;
 	}
 	dirpath = av[0];
 	if (ac == 1) {
 		config_get(dirpath, &config);
-		if (config.head.error == 0)
+		if (config.head.error == 0) {
 			printf("%s", config.config.text);
-		else
+		} else {
 			errx(2, "hammer config: no configuration found");
+			/* not reached */
+		}
 		return;
 	}
 	config_get(dirpath, &config);	/* ignore errors */
 	config.head.error = 0;
 
 	fd = open(av[1], O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(2, "hammer config: %s", av[1]);
-
+		/* not reached */
+	}
 	n = read(fd, config.config.text, sizeof(config.config.text) - 1);
-	if (n == sizeof(config.config.text) - 1)
+	if (n == sizeof(config.config.text) - 1) {
 		err(2, "hammer config: config file too big, limit %zu bytes",
 		    sizeof(config.config.text) - 1);
-
+		/* not reached */
+	}
 	bzero(config.config.text + n, sizeof(config.config.text) - n);
 	config_set(dirpath, &config);
 	close(fd);
@@ -104,8 +110,10 @@ hammer_cmd_viconfig(char **av, int ac)
 	ssize_t n;
 	int fd;
 
-	if (ac > 1)
+	if (ac > 1) {
 		errx(1, "hammer viconfig: 0 or 1 argument (<fs>) only");
+		/* not reached */
+	}
 	if (ac == 0)
 		dirpath = ".";
 	else
@@ -125,9 +133,11 @@ hammer_cmd_viconfig(char **av, int ac)
                         "#recopy    30d 10m\n");
 		config.head.error = 0;
 	}
-	if (config.head.error)
+	if (config.head.error) {
 		errx(2, "hammer viconfig: read config failed error: %s",
 			strerror(config.head.error));
+		/* not reached */
+	}
 
 	/*
 	 * Edit a temporary file and write back if it was modified.
@@ -174,10 +184,11 @@ hammer_cmd_viconfig(char **av, int ac)
 	n = read(fd, config.config.text, sizeof(config.config.text) - 1);
 	if (n < 0)
 		err(2, "hammer viconfig: unable to read %s", path);
-	if (n == sizeof(config.config.text) - 1)
+	if (n == sizeof(config.config.text) - 1) {
 		err(2, "hammer config: config file too big, limit %zu bytes",
 		    sizeof(config.config.text) - 1);
-
+		/* not reached */
+	}
 	bzero(config.config.text + n, sizeof(config.config.text) - n);
 	config_set(dirpath, &config);
 	free(editor);

@@ -193,9 +193,10 @@ again:
 	 *     now picking it up again.  Do another histogram.
 	 */
 #if 0
-	if (streaming && histogram && histindex == histend)
+	if (streaming && histogram && histindex == histend) {
 		if (mirror.tid_end - mirror.tid_beg > BULK_MINIMUM)
 			histogram = 0;
+	}
 #endif
 
 	/*
@@ -257,9 +258,10 @@ again:
 		fprintf(stderr, "\n");
 		fflush(stderr);
 	}
-	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID)
+	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
 		fprintf(stderr, "Mirror-read: Resuming at object %016jx\n",
 			(uintmax_t)mirror.key_beg.obj_id);
+	}
 
 	/*
 	 * Nothing to do if begin equals end.
@@ -296,11 +298,12 @@ again:
 				filesystem, mirror.head.error);
 		}
 		if (mirror.count) {
-			if (BandwidthOpt)
+			if (BandwidthOpt) {
 				n = writebw(1, mirror.ubuf, mirror.count,
 					    &bwcount, &bwtv);
-			else
+			} else {
 				n = write(1, mirror.ubuf, mirror.count);
+			}
 			if (n != mirror.count) {
 				score_printf(LINE3,
 					     "Mirror-read %s failed: "
@@ -361,12 +364,13 @@ done:
 	 * Write out the termination sync record - only if not interrupted
 	 */
 	if (interrupted == 0) {
-		if (didwork)
+		if (didwork) {
 			write_mrecord(1, HAMMER_MREC_TYPE_SYNC,
 				      &mrec_tmp, sizeof(mrec_tmp.sync));
-		else
+		} else {
 			write_mrecord(1, HAMMER_MREC_TYPE_IDLE,
 				      &mrec_tmp, sizeof(mrec_tmp.sync));
+		}
 	}
 
 	/*
@@ -378,9 +382,10 @@ done:
 		mrec = read_mrecord(0, &error, &pickup);
 		if (mrec == NULL ||
 		    mrec->head.type != HAMMER_MREC_TYPE_UPDATE ||
-		    mrec->head.rec_size != sizeof(mrec->update))
+		    mrec->head.rec_size != sizeof(mrec->update)) {
 			errx(1, "mirror_read: Did not get final "
 				"acknowledgement packet from target");
+		}
 		if (interrupted) {
 			if (CyclePath) {
 				hammer_set_cycle(&mirror.key_cur,
@@ -415,14 +420,16 @@ done:
 		 * way if we get interrupted a restart doesn't have to
 		 * start from scratch.
 		 */
-		if (streaming && histogram)
+		if (streaming && histogram) {
 			if (histindex != histmax) {
 				if (VerboseOpt && VerboseOpt < 2 &&
-				    streaming >= 0)
+				    streaming >= 0) {
 					fprintf(stderr, " (bulk incremental)");
+				}
 				relpfs(fd, &pfs);
 				goto again;
 			}
+		}
 
 		if (VerboseOpt && streaming >= 0) {
 			fprintf(stderr, " W");
@@ -512,9 +519,10 @@ generate_histogram(int fd, const char *filesystem,
 	tid_end = mirror.tid_end;
 	mirror.head.flags |= HAMMER_IOC_MIRROR_NODATA;
 
-	if (*histogram_ary == NULL)
+	if (*histogram_ary == NULL) {
 		*histogram_ary = malloc(sizeof(struct histogram) *
 					(HIST_COUNT + 2));
+	}
 	if (tid_beg >= tid_end)
 		return(0);
 
@@ -597,9 +605,10 @@ generate_histogram(int fd, const char *filesystem,
 			if (tid && tid >= tid_beg && tid <= tid_end) {
 				len = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
 				if (mrec->head.type ==
-				    HAMMER_MREC_TYPE_REC_NODATA)
+				    HAMMER_MREC_TYPE_REC_NODATA) {
 					len += HAMMER_HEAD_DOALIGN(
 						    mrec->rec.leaf.data_len);
+				}
 				i = (tid - tid_beg) * HIST_COUNT /
 				    (tid_end - tid_beg);
 				tidx = tid_beg + i * (tid_end - tid_beg) /
@@ -844,11 +853,12 @@ again:
 			errx(1, "Mirror-write %s fatal error %d",
 				filesystem, mirror.head.error);
 #if 0
-		if (mirror.head.flags & HAMMER_IOC_HEAD_INTR)
+		if (mirror.head.flags & HAMMER_IOC_HEAD_INTR) {
 			errx(1, "Mirror-write %s interrupted by timer at"
 				" %016llx",
 				filesystem,
 				mirror.key_cur.obj_id);
+		}
 #endif
 	}
 
@@ -868,10 +878,11 @@ again:
 	if (mrec == NULL ||
 	    (mrec->head.type != HAMMER_MREC_TYPE_SYNC &&
 	     mrec->head.type != HAMMER_MREC_TYPE_IDLE) ||
-	    mrec->head.rec_size != sizeof(mrec->sync))
+	    mrec->head.rec_size != sizeof(mrec->sync)) {
 		errx(1, "Mirror-write %s: Did not get termination "
 			"sync record, or rec_size is wrong rt=%d",
 			filesystem, (mrec ? (int)mrec->head.type : -1));
+	}
 
 	/*
 	 * Update the PFS info on the target so the user has visibility
@@ -884,9 +895,10 @@ again:
 		synctid.op = HAMMER_SYNCTID_SYNC2;
 		ioctl(fd, HAMMERIOC_SYNCTID, &synctid);
 
-		if (VerboseOpt >= 2)
+		if (VerboseOpt >= 2) {
 			fprintf(stderr, "Mirror-write %s: succeeded\n",
 				filesystem);
+		}
 	}
 
 	free(mrec);
@@ -971,8 +983,9 @@ again:
 					mrec->rec.leaf.base.rec_type,
 					mrec->rec.leaf.base.obj_type);
 				if (mrec->head.type ==
-				    HAMMER_MREC_TYPE_REC_BADCRC)
+				    HAMMER_MREC_TYPE_REC_BADCRC) {
 					printf(" (BAD CRC)");
+				}
 				printf("\n");
 				printf("       tids %016jx:%016jx data=%d\n",
 				    (uintmax_t)mrec->rec.leaf.base.create_tid,
@@ -1016,9 +1029,10 @@ again:
 	mrec = read_mrecord(0, &error, &pickup);
 	if (mrec == NULL ||
 	    (mrec->head.type != HAMMER_MREC_TYPE_SYNC &&
-	     mrec->head.type != HAMMER_MREC_TYPE_IDLE))
+	     mrec->head.type != HAMMER_MREC_TYPE_IDLE)) {
 		fprintf(stderr, "Mirror-dump: Did not get termination "
 				"sync record\n");
+	}
 	free(mrec);
 
 	/*
@@ -1279,8 +1293,9 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 		if (type != HAMMER_MREC_TYPE_PFSD &&
 		    type != HAMMER_MREC_TYPE_REC &&
 		    type != HAMMER_MREC_TYPE_SKIP &&
-		    type != HAMMER_MREC_TYPE_PASS)
+		    type != HAMMER_MREC_TYPE_PASS) {
 			break;
+		}
 
 		/*
 		 * Read the remainder and clear the pickup signature.
@@ -1314,9 +1329,10 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 
 		if (type == HAMMER_MREC_TYPE_REC) {
 			if (mrec->head.rec_size <
-			    sizeof(mrec->rec) + mrec->rec.leaf.data_len)
+			    sizeof(mrec->rec) + mrec->rec.leaf.data_len) {
 				errx(1, "read_mrecords: malformed record on "
 					"pipe, illegal element data_len");
+			}
 			if (mrec->rec.leaf.data_len &&
 			    mrec->rec.leaf.data_offset &&
 			    hammer_crc_test_leaf(HammerVersion, &mrec->rec + 1, &mrec->rec.leaf) == 0) {
@@ -1660,8 +1676,9 @@ hammer_check_restrict(const char *filesystem)
 	while (filesystem[rlen]) {
 		if (atslash &&
 		    filesystem[rlen] == '.' &&
-		    filesystem[rlen+1] == '.')
+		    filesystem[rlen+1] == '.') {
 			errx(1, "hammer-remote: '..' not allowed");
+		}
 		if (filesystem[rlen] == '/')
 			atslash = 1;
 		else

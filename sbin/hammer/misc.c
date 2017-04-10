@@ -77,8 +77,9 @@ getyn(void)
 	if (strcmp(buf, "y") == 0 ||
 	    strcmp(buf, "yes") == 0 ||
 	    strcmp(buf, "Y") == 0 ||
-	    strcmp(buf, "YES") == 0)
+	    strcmp(buf, "YES") == 0) {
 		return(1);
+	}
 	return(0);
 }
 
@@ -87,19 +88,20 @@ sizetostr(off_t size)
 {
 	static char buf[32];
 
-	if (size < 1024 / 2)
+	if (size < 1024 / 2) {
 		snprintf(buf, sizeof(buf), "%6.2fB", (double)size);
-	else if (size < 1024 * 1024 / 2)
+	} else if (size < 1024 * 1024 / 2) {
 		snprintf(buf, sizeof(buf), "%6.2fKB", (double)size / 1024);
-	else if (size < 1024 * 1024 * 1024LL / 2)
+	} else if (size < 1024 * 1024 * 1024LL / 2) {
 		snprintf(buf, sizeof(buf), "%6.2fMB",
 			(double)size / (1024 * 1024));
-	else if (size < 1024 * 1024 * 1024LL * 1024LL / 2)
+	} else if (size < 1024 * 1024 * 1024LL * 1024LL / 2) {
 		snprintf(buf, sizeof(buf), "%6.2fGB",
 			(double)size / (1024 * 1024 * 1024LL));
-	else
+	} else {
 		snprintf(buf, sizeof(buf), "%6.2fTB",
 			(double)size / (1024 * 1024 * 1024LL * 1024LL));
+	}
 	return(buf);
 }
 
@@ -146,11 +148,12 @@ hammer_fs_to_rootvol(const char *fs, char *buf, int len)
 	if (hammer_fs_to_vol(fs, &ioc) == -1)
 		return(-1);
 
-	for (i = 0; i < ioc.nvols; i++)
+	for (i = 0; i < ioc.nvols; i++) {
 		if (ioc.vols[i].vol_no == HAMMER_ROOT_VOLNO) {
 			strlcpy(buf, ioc.vols[i].device_name, len);
 			break;
 		}
+	}
 	assert(i != ioc.nvols);  /* root volume must exist */
 
 	free(ioc.vols);
@@ -239,11 +242,12 @@ hammer_cleanup_zone_stat(struct zone_stat *stats)
 {
 	int i;
 
-	if (l1_bits)
+	if (l1_bits) {
 		for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
 			free(l1_bits[i]);
 			l1_bits[i] = NULL;
 		}
+	}
 
 	free(l1_bits);
 	l1_bits = NULL;

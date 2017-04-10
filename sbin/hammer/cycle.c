@@ -61,10 +61,12 @@ hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *extra)
 				CyclePath, strerror(errno));
 			return;
 		}
-		if (extra)
-			if (read(fd, extra, sizeof(*extra)) != sizeof(*extra))
+		if (extra) {
+			if (read(fd, extra, sizeof(*extra)) != sizeof(*extra)) {
 				fprintf(stderr, "cycle-file %s: Warning, malformed\n",
 					CyclePath);
+			}
+		}
 		close(fd);
 	}
 	/* ok if the file does not exist */

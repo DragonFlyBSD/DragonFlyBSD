@@ -92,6 +92,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	} else {
 		err(2, "hammer snap: File %s exists and is not a directory",
 		    av[0]);
+		/* not reached */
 	}
 
 	/*
@@ -99,21 +100,26 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	 * ioctl (so it is stored in the correct PFS).
 	 */
 	fsfd = open(dirpath, O_RDONLY);
-	if (fsfd < 0)
+	if (fsfd < 0) {
 		err(2, "hammer snap: Cannot open directory %s", dirpath);
+		/* not reached */
+	}
 
 	/*
 	 * Must be at least version 3 to use this command.
 	 */
 	bzero(&version, sizeof(version));
 
-	if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0)
+	if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0) {
 		err(2, "Unable to create snapshot");
-	else if (version.cur_version < 3)
+		/* not reached */
+	} else if (version.cur_version < 3) {
 		errx(2, "Unable to create snapshot: This directive requires "
 			"you to upgrade\n"
 			"the filesystem to version 3.  "
 			"Use 'hammer snapshot' for legacy operation.");
+		/* not reached */
+	}
 	HammerVersion = version.cur_version;
 
 	/*
@@ -121,16 +127,18 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	 */
 	bzero(&synctid, sizeof(synctid));
 	synctid.op = HAMMER_SYNCTID_SYNC2;
-	if (ioctl(fsfd, HAMMERIOC_SYNCTID, &synctid) < 0)
+	if (ioctl(fsfd, HAMMERIOC_SYNCTID, &synctid) < 0) {
 		err(2, "hammer snap: Synctid %s failed",
 		    dirpath);
+	}
 	if (tostdout) {
-		if (strcmp(dirpath, ".") == 0 || strcmp(dirpath, "..") == 0)
+		if (strcmp(dirpath, ".") == 0 || strcmp(dirpath, "..") == 0) {
 			printf("%s/@@0x%016jx\n",
 				dirpath, (uintmax_t)synctid.tid);
-		else
+		} else {
 			printf("%s@@0x%016jx\n",
 				dirpath, (uintmax_t)synctid.tid);
+		}
 		fsym = NULL;
 		tsym = NULL;
 	}
@@ -141,9 +149,10 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	if (fsbase) {
 		struct statfs buf;
 
-		if (statfs(dirpath, &buf) < 0)
+		if (statfs(dirpath, &buf) < 0) {
 			err(2, "hammer snap: Cannot determine mount for %s",
 			    dirpath);
+		}
 		asprintf(&fsym, "%s/@@0x%016jx",
 			 buf.f_mntonname, (uintmax_t)synctid.tid);
 	} else if (strcmp(dirpath, ".") == 0 || strcmp(dirpath, "..") == 0) {
@@ -206,9 +215,11 @@ hammer_cmd_snaprm(char **av, int ac)
 	for (i = 0; i < ac; ++i) {
 		if (lstat(av[i], &st) < 0) {
 			tid = strtoull(av[i], &ptr, 16);
-			if (*ptr)
+			if (*ptr) {
 				err(2, "hammer snaprm: not a file or tid: %s",
 				    av[i]);
+				/* not reached */
+			}
 			if (mode == path_m) {
 				snapshot_usage(1);
 				/* not reached */
@@ -225,16 +236,20 @@ hammer_cmd_snaprm(char **av, int ac)
 			if (fsfd >= 0)
 				close(fsfd);
 			fsfd = open(av[i], O_RDONLY);
-			if (fsfd < 0)
+			if (fsfd < 0) {
 				err(2, "hammer snaprm: cannot open dir %s",
 				    av[i]);
+				/* not reached */
+			}
 			mode = tid_m;
 		} else if (S_ISLNK(st.st_mode)) {
 			dirpath = dirpart(av[i]);
 			bzero(linkbuf, sizeof(linkbuf));
-			if (readlink(av[i], linkbuf, sizeof(linkbuf) - 1) < 0)
+			if (readlink(av[i], linkbuf, sizeof(linkbuf) - 1) < 0) {
 				err(2, "hammer snaprm: cannot read softlink: "
 				       "%s", av[i]);
+				/* not reached */
+			}
 			if (linkbuf[0] == '/') {
 				free(dirpath);
 				dirpath = dirpart(linkbuf);
@@ -248,9 +263,11 @@ hammer_cmd_snaprm(char **av, int ac)
 			if (fsfd >= 0)
 				close(fsfd);
 			fsfd = open(dirpath, O_RDONLY);
-			if (fsfd < 0)
+			if (fsfd < 0) {
 				err(2, "hammer snaprm: cannot open dir %s",
 				    dirpath);
+				/* not reached */
+			}
 
 			delete = 1;
 			if (i == 0 && ac > 1) {
@@ -281,6 +298,7 @@ hammer_cmd_snaprm(char **av, int ac)
 		} else {
 			err(2, "hammer snaprm: not directory or snapshot "
 			       "softlink: %s", av[i]);
+			/* not reached */
 		}
 	}
 	if (fsfd >= 0)
@@ -324,9 +342,10 @@ hammer_cmd_snapshot(char **av, int ac)
 			err(2, "File %s already exists", softlink_dir);
 
 		if (filesystem == NULL) {
-			if (statfs(softlink_dir, &buf) != 0)
+			if (statfs(softlink_dir, &buf) != 0) {
 				err(2, "Unable to determine filesystem of %s",
 				    softlink_dir);
+			}
 			filesystem = buf.f_mntonname;
 		}
 
@@ -353,12 +372,14 @@ hammer_cmd_snapshot(char **av, int ac)
 				*pos = '\0';
 
 			if (stat(softlink_fmt, &st) != 0 ||
-			    !S_ISDIR(st.st_mode))
+			    !S_ISDIR(st.st_mode)) {
 				err(2, "Unable to determine softlink dir %s",
 				    softlink_fmt);
-			if (statfs(softlink_fmt, &buf) != 0)
+			}
+			if (statfs(softlink_fmt, &buf) != 0) {
 				err(2, "Unable to determine filesystem of %s",
 				    softlink_fmt);
+			}
 			filesystem = buf.f_mntonname;
 
 			/* restore '/' */
@@ -425,16 +446,19 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
 		snapshot.count = 1;
 		snapshot.snaps[0].tid = tid;
 		snapshot.snaps[0].ts = time(NULL) * 1000000ULL;
-		if (label)
+		if (label) {
 			snprintf(snapshot.snaps[0].label,
 				 sizeof(snapshot.snaps[0].label),
 				 "%s",
 				 label);
-		if (ioctl(fd, HAMMERIOC_ADD_SNAPSHOT, &snapshot) < 0)
+		}
+		if (ioctl(fd, HAMMERIOC_ADD_SNAPSHOT, &snapshot) < 0) {
 			err(2, "Unable to create snapshot");
-		else if (snapshot.head.error && snapshot.head.error != EEXIST)
+		} else if (snapshot.head.error &&
+			   snapshot.head.error != EEXIST) {
 			errx(2, "Unable to create snapshot: %s",
 				strerror(snapshot.head.error));
+		}
         }
 
 	/*
@@ -443,8 +467,9 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
 	 */
 	if (fsym && tsym) {
 		remove(tsym);
-		if (symlink(fsym, tsym) < 0)
+		if (symlink(fsym, tsym) < 0) {
 			err(2, "Unable to create symlink %s", tsym);
+		}
 	}
 }
 
@@ -464,25 +489,33 @@ snapshot_ls(const char *path)
 	char snapts[64];
 
 	fd = open(path, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(2, "hammer snapls: cannot open %s", path);
+		/* not reached */
+	}
 
 	clrpfs(&pfs, &pfs_od, -1);
-	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0)
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 		err(2, "hammer snapls: cannot retrieve PFS info on %s", path);
+		/* not reached */
+	}
 
 	bzero(&info, sizeof(info));
-	if ((ioctl(fd, HAMMERIOC_GET_INFO, &info)) < 0)
+	if ((ioctl(fd, HAMMERIOC_GET_INFO, &info)) < 0) {
                 err(2, "hammer snapls: cannot retrieve HAMMER info");
+		/* not reached */
+	}
 
 	printf("Snapshots on %s\tPFS#%d\n", path, pfs.pfs_id);
 	printf("Transaction ID\t\tTimestamp\t\tNote\n");
 
 	bzero(&snapshot, sizeof(snapshot));
 	do {
-		if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0)
+		if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0) {
 			err(2, "hammer snapls: %s: not HAMMER fs or "
 				"version < 3", path);
+			/* not reached */
+		}
 		for (i = 0; i < snapshot.count; ++i) {
 			snap = &snapshot.snaps[i];
 
@@ -506,12 +539,14 @@ snapshot_del(int fsfd, hammer_tid_t tid)
 
         bzero(&version, sizeof(version));
 
-        if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0)
+        if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0) {
 		err(2, "hammer snaprm 0x%016jx", (uintmax_t)tid);
+	}
 	HammerVersion = version.cur_version;
-	if (version.cur_version < 3)
+	if (version.cur_version < 3) {
 		errx(2, "hammer snaprm 0x%016jx: You must upgrade to version "
 			" 3 to use this directive", (uintmax_t)tid);
+	}
 
 	bzero(&snapshot, sizeof(snapshot));
 	snapshot.count = 1;
@@ -520,16 +555,17 @@ snapshot_del(int fsfd, hammer_tid_t tid)
 	/*
 	 * Do not abort if we are unable to remove the meta-data.
 	 */
-	if (ioctl(fsfd, HAMMERIOC_DEL_SNAPSHOT, &snapshot) < 0)
+	if (ioctl(fsfd, HAMMERIOC_DEL_SNAPSHOT, &snapshot) < 0) {
 		err(2, "hammer snaprm 0x%016jx",
 		      (uintmax_t)tid);
-	else if (snapshot.head.error == ENOENT)
+	} else if (snapshot.head.error == ENOENT) {
 		fprintf(stderr, "Warning: hammer snaprm 0x%016jx: "
 				"meta-data not found\n",
 			(uintmax_t)tid);
-	else if (snapshot.head.error)
+	} else if (snapshot.head.error) {
 		fprintf(stderr, "Warning: hammer snaprm 0x%016jx: %s\n",
 			(uintmax_t)tid, strerror(snapshot.head.error));
+	}
 }
 
 static

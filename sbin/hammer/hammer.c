@@ -237,9 +237,10 @@ main(int ac, char **av)
 		char *elm, *dup;
 
 		dup = ptr = strdup(restrictcmd);
-		while ((elm = strsep(&ptr, ",")) != NULL)
+		while ((elm = strsep(&ptr, ",")) != NULL) {
 			if (strcmp(av[0], elm) == 0)
 				break;
+		}
 		if (elm == NULL)
 			errx(1, "hammer-remote: request does not match "
 				"restricted command");
@@ -250,9 +251,10 @@ main(int ac, char **av)
 	 * Lookup the filesystem type
 	 */
 	uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING, &status);
-	if (status != uuid_s_ok)
+	if (status != uuid_s_ok) {
 		errx(1, "uuids file does not have the DragonFly "
 			"HAMMER filesystem type");
+	}
 
 	/*
 	 * Parse commands
@@ -573,9 +575,10 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 	char *volname;
 	int volnum = 0;
 
-	if (blkdevs == NULL)
+	if (blkdevs == NULL) {
 		errx(1, "A -f blkdevs specification is required "
 			"for this command");
+	}
 
 	copy = strdup(blkdevs);
 	while ((volname = copy) != NULL) {

@@ -391,19 +391,21 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 		pseudofs_usage(1);
 	fd = getpfs(&pfs, av[0]);
 
-	if (pfs.pfs_id == HAMMER_ROOT_PFSID)
+	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
 		errx(1, "You cannot upgrade PFS#%d"
 			" (It should already be a master)",
 			HAMMER_ROOT_PFSID);
-	else if (hammer_is_pfs_master(pfs.ondisk))
+	} else if (hammer_is_pfs_master(pfs.ondisk)) {
 		errx(1, "It is already a master");
+	}
 
-	if (ioctl(fd, HAMMERIOC_UPG_PSEUDOFS, &pfs) == 0)
+	if (ioctl(fd, HAMMERIOC_UPG_PSEUDOFS, &pfs) == 0) {
 		printf("pfs-upgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
-	else
+	} else {
 		err(1, "pfs-upgrade of PFS#%d (%s) failed",
 			pfs.pfs_id, pfs.ondisk->label);
+	}
 	relpfs(fd, &pfs);
 }
 
@@ -422,12 +424,13 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 	else if (hammer_is_pfs_slave(pfs.ondisk))
 		errx(1, "It is already a slave");
 
-	if (ioctl(fd, HAMMERIOC_DGD_PSEUDOFS, &pfs) == 0)
+	if (ioctl(fd, HAMMERIOC_DGD_PSEUDOFS, &pfs) == 0) {
 		printf("pfs-downgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
-	else
+	} else {
 		err(1, "pfs-downgrade of PFS#%d (%s) failed",
 			pfs.pfs_id, pfs.ondisk->label);
+	}
 	relpfs(fd, &pfs);
 }
 
@@ -447,17 +450,19 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 		parse_pfsd_options(av + 1, ac - 1, pfs.ondisk);
 		if (hammer_is_pfs_slave(pfs.ondisk) &&
-		    pfs.pfs_id == HAMMER_ROOT_PFSID)
+		    pfs.pfs_id == HAMMER_ROOT_PFSID) {
 			errx(1, "The real mount point cannot be made a PFS "
 			       "slave, only PFS sub-directories can be made "
 			       "slaves");
+		}
 		pfs.bytes = sizeof(*pfs.ondisk);
 		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) == 0) {
-			if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0)
+			if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 				dump_pfsd(pfs.ondisk, fd);
-			else
+			} else {
 				err(1, "Unable to retrieve PFS configuration "
 					"after successful update");
+			}
 		} else {
 			err(1, "Unable to adjust PFS configuration");
 		}
@@ -499,19 +504,20 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 	printf("    label=\"%s\"\n", pfsd->label);
 	if (pfsd->snapshots[0])
 		printf("    snapshots=\"%s\"\n", pfsd->snapshots);
-	if (pfsd->prune_min < (60 * 60 * 24))
+	if (pfsd->prune_min < (60 * 60 * 24)) {
 		printf("    prune-min=%02d:%02d:%02d\n",
 			pfsd->prune_min / 60 / 60 % 24,
 			pfsd->prune_min / 60 % 60,
 			pfsd->prune_min % 60);
-	else if (pfsd->prune_min % (60 * 60 * 24))
+	} else if (pfsd->prune_min % (60 * 60 * 24)) {
 		printf("    prune-min=%dd/%02d:%02d:%02d\n",
 			pfsd->prune_min / 60 / 60 / 24,
 			pfsd->prune_min / 60 / 60 % 24,
 			pfsd->prune_min / 60 % 60,
 			pfsd->prune_min % 60);
-	else
+	} else {
 		printf("    prune-min=%dd\n", pfsd->prune_min / 60 / 60 / 24);
+	}
 
 	if (hammer_is_pfs_slave(pfsd))
 		printf("    operating as a SLAVE\n");
@@ -530,12 +536,13 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 			return;
 		HammerVersion = version.cur_version;
 		if (version.cur_version < 3) {
-			if (hammer_is_pfs_slave(pfsd))
+			if (hammer_is_pfs_slave(pfsd)) {
 				printf("    snapshots directory not set for "
 				       "slave\n");
-			else
+			} else {
 				printf("    snapshots directory for master "
 				       "defaults to <pfs>/snapshots\n");
+			}
 		} else {
 			printf("    snapshots directory defaults to "
 			       "/var/hammer/<pfs>\n");
@@ -586,24 +593,27 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 				fprintf(stderr,
 					"option %s: '%s' must be an "
 					"absolute path\n", cmd, ptr);
-				if (ptr[0] == 0)
+				if (ptr[0] == 0) {
 					fprintf(stderr,
 						"use 'snapshots-clear' "
 						"to unset snapshots dir\n");
+				}
 				exit(1);
 			}
-			if (len >= (int)sizeof(pfsd->snapshots))
+			if (len >= (int)sizeof(pfsd->snapshots)) {
 				errx(1, "option %s: path too long, %d "
 					"character limit", cmd, len);
+			}
 			snprintf(pfsd->snapshots, sizeof(pfsd->snapshots),
 				 "%s", ptr);
 		} else if (strcmp(cmd, "snapshots-clear") == 0) {
 			pfsd->snapshots[0] = 0;
 		} else if (strcmp(cmd, "prune-min") == 0) {
 			pfsd->prune_min = timetosecs(ptr);
-			if (pfsd->prune_min < 0)
+			if (pfsd->prune_min < 0) {
 				errx(1, "option %s: illegal time spec, "
 					"use Nd or [Nd/]hh[:mm[:ss]]", ptr);
+			}
 		} else {
 			errx(1, "invalid option: %s", cmd);
 		}

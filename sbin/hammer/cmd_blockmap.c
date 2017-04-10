@@ -135,8 +135,9 @@ dump_blockmap(int zone)
 			++num_bad_layer1;
 		}
 		if (xerr == ' ' &&
-		    layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
+		    layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 			continue;
+		}
 		printf("%c layer1 %016jx @%016jx blocks-free %jd\n",
 			xerr,
 			(uintmax_t)phys_offset,
@@ -171,17 +172,19 @@ dump_blockmap(int zone)
 
 			if (VerboseOpt < 2 &&
 			    xerr == ' ' && aerr == ' ' && ferr == ' ' &&
-			    layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX)
+			    layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
 				break;
+			}
 			printf("%c%c%c     %016jx zone=%-2d ",
 				xerr, aerr, ferr, (uintmax_t)zone_offset, layer2->zone);
-			if (VerboseOpt)
+			if (VerboseOpt) {
 				printf("vol=%-3d L1#=%-6d L2#=%-6d L1=%-7lu L2=%-7lu ",
 					HAMMER_VOL_DECODE(zone_offset),
 					HAMMER_BLOCKMAP_LAYER1_INDEX(zone_offset),
 					HAMMER_BLOCKMAP_LAYER2_INDEX(zone_offset),
 					HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_offset),
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset));
+			}
 			printf("app=%-7d free=%-7d",
 				layer2->append_off,
 				layer2->bytes_free);
@@ -570,10 +573,11 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 		if (track2->entry_crc == 0)
 			continue;
 
-		if (DebugOpt)
+		if (DebugOpt) {
 			assert((layer2->zone == HAMMER_ZONE_UNDO_INDEX) ||
 				(layer2->zone == HAMMER_ZONE_FREEMAP_INDEX) ||
 				hammer_is_index_record(layer2->zone));
+		}
 		if (stats)
 			hammer_add_zone_stat_layer2(stats, layer2);
 

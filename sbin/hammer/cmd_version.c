@@ -131,12 +131,13 @@ hammer_cmd_set_version(char **av, int ac)
 		errx(1, "hammer version-upgrade ioctl");
 
 	printf("hammer version-upgrade: succeeded\n");
-	if (overs < 3 && nvers >= 3)
+	if (overs < 3 && nvers >= 3) {
 		printf("NOTE!  Please run 'hammer cleanup' to convert the\n"
 		       "<pfs>/snapshots directories to the new meta-data\n"
 		       "format.  Once converted configuration data will\n"
 		       "no longer resides in <pfs>/snapshots and you can\n"
 		       "even rm -rf it entirely if you want.\n");
+	}
 
 	close(fd);
 }

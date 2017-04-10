@@ -222,7 +222,7 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	for (i = 0; i < node->count; ++i) {
 		elm = &node->elms[i];
 		ext = NULL;
-		if (opt.limit)
+		if (opt.limit) {
 			switch (node->type) {
 			case HAMMER_BTREE_TYPE_INTERNAL:
 				if (!test_btree_out_of_range(elm))
@@ -233,6 +233,7 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 					ext = "*";
 				break;
 			}
+		}
 		print_btree_elm(node, node_offset, elm, lbe, ext);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
@@ -242,12 +243,13 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	}
 	printf("%s     }\n", INDENT);
 
-	if (node->type == HAMMER_BTREE_TYPE_INTERNAL)
+	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		for (i = 0; i < node->count; ++i) {
 			elm = &node->elms[i];
-			if (opt.limit && opt.filter)
+			if (opt.limit && opt.filter) {
 				if (test_btree_out_of_range(elm))
 					continue;
+			}
 			if (elm->internal.subtree_offset) {
 				print_subtree(elm);
 				/*
@@ -259,6 +261,7 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 					opt.filter = 0;
 			}
 		}
+	}
 	rel_buffer(buffer);
 	depth--;
 }
@@ -487,14 +490,17 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			flags |= FLAG_BADCHILDPARENT;
 
 		if (node->mirror_tid == 0 &&
-		    !(node->parent == 0 && node->count == 2))
+		    !(node->parent == 0 && node->count == 2)) {
 			flags |= FLAG_BADMIRRORTID;
+		}
 		if (elm->base.create_tid && node->mirror_tid &&
-		    elm->base.create_tid > node->mirror_tid)
+		    elm->base.create_tid > node->mirror_tid) {
 			flags |= FLAG_BADMIRRORTID;
+		}
 		if (elm->base.delete_tid && node->mirror_tid &&
-		    elm->base.delete_tid > node->mirror_tid)
+		    elm->base.delete_tid > node->mirror_tid) {
 			flags |= FLAG_BADMIRRORTID;
+		}
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
 			flags |= test_lr(elm, lbe);
@@ -731,11 +737,12 @@ print_config(char *cfgtxt)
 
 	printf("\n%s%17s", INDENT, "");
 	printf("config text=\"\n");
-	if (cfgtxt != NULL)
+	if (cfgtxt != NULL) {
 		while((token = strsep(&cfgtxt, "\r\n")) != NULL)
 			if (strlen(token))
 				printf("%s%17s            %s\n",
 					INDENT, "", token);
+	}
 	printf("%s%17s            \"", INDENT, "");
 }
 

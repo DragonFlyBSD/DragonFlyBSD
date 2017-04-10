@@ -175,12 +175,13 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 		 * Finalize operations
 		 */
 		hammer_softprune_finalize(scan);
-		if (everything_opt)
+		if (everything_opt) {
 			printf("Prune %s: EVERYTHING\n",
 			       scan->filesystem);
-		else
+		} else {
 			printf("Prune %s: %d snapshots\n",
 			       scan->filesystem, scan->prune.nelms);
+		}
 		if (scan->prune.nelms == 0 &&
 		    (scan->prune.head.flags & HAMMER_IOC_PRUNE_ALL) == 0) {
 			fprintf(stderr, "No snapshots found\n");
@@ -277,10 +278,11 @@ hammer_softprune_scandir(struct softprune **basep,
 			continue;
 		linkbuf[len] = 0;
 		if ((ptr = strrchr(linkbuf, '@')) &&
-		    ptr > linkbuf && ptr[-1] == '@')
+		    ptr > linkbuf && ptr[-1] == '@') {
 			hammer_softprune_addentry(basep, template,
 						  dirname, den->d_name, &st,
 						  linkbuf, ptr - 1);
+		}
 	}
 	free(linkbuf);
 	if (path)
@@ -403,14 +405,15 @@ hammer_softprune_addentry(struct softprune **basep,
 	/*
 	 * Calculate filesystem path.
 	 */
-	if (linkbuf[0] == '/')
+	if (linkbuf[0] == '/') {
 		asprintf(&fspath, "%*.*s",
 			 (int)(tidptr - linkbuf), (int)(tidptr - linkbuf),
 			 linkbuf);
-	else
+	} else {
 		asprintf(&fspath, "%s/%*.*s", dirpath,
 			 (int)(tidptr - linkbuf), (int)(tidptr - linkbuf),
 			 linkbuf);
+	}
 	if (statfs(fspath, &fs) < 0) {
 		free(fspath);
 		return(NULL);
@@ -538,9 +541,10 @@ hammer_softprune_finalize(struct softprune *scan)
 			 * Remove duplicate
 			 */
 			--scan->prune.nelms;
-			if (i != scan->prune.nelms)
+			if (i != scan->prune.nelms) {
 				bcopy(elm + 1, elm,
 				      (scan->prune.nelms - i) * sizeof(*elm));
+			}
 			--i;
 			continue;
 		} else {

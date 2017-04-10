@@ -109,7 +109,7 @@ hammer_cache_flush(void)
 	struct cache_info *first = NULL;
 	int count = 0;
 
-	if (CacheUse >= CacheMax)
+	if (CacheUse >= CacheMax) {
 		while ((cache = TAILQ_FIRST(&CacheList)) != NULL) {
 			if (cache == first)
 				break; /* seen this ref'd before */
@@ -133,5 +133,6 @@ hammer_cache_flush(void)
 			if (CacheUse < CacheMax / 2)
 				break;
 		}
+	}
 }
 

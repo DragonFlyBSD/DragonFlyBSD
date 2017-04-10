@@ -116,16 +116,19 @@ __add_volume(struct volume_info *volume)
 		errx(1, "add_volume: %s: Failed to stat", volume->name);
 
 	TAILQ_FOREACH(scan, &VolList, entry) {
-		if (scan->vol_no == volume->vol_no)
+		if (scan->vol_no == volume->vol_no) {
 			errx(1, "add_volume: %s: Duplicate volume number %d "
 				"against %s",
 				volume->name, volume->vol_no, scan->name);
-		if (fstat(scan->fd, &st2) != 0)
+		}
+		if (fstat(scan->fd, &st2) != 0) {
 			errx(1, "add_volume: %s: Failed to stat %s",
 				volume->name, scan->name);
-		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev))
+		}
+		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev)) {
 			errx(1, "add_volume: %s: Specified more than once",
 				volume->name);
+		}
 	}
 
 	TAILQ_INSERT_TAIL(&VolList, volume, entry);
@@ -136,18 +139,22 @@ __verify_volume(struct volume_info *volume)
 {
 	hammer_volume_ondisk_t ondisk = volume->ondisk;
 
-	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME)
+	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		errx(1, "verify_volume: Invalid volume signature %016jx",
 			ondisk->vol_signature);
-	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO)
+	}
+	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
 		errx(1, "verify_volume: Invalid root volume# %d",
 			ondisk->vol_rootvol);
-	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType)))
+	}
+	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
 		errx(1, "verify_volume: %s: Header does not indicate "
 			"that this is a HAMMER volume", volume->name);
-	if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId)))
+	}
+	if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
 		errx(1, "verify_volume: %s: FSId does not match other volumes!",
 			volume->name);
+	}
 }
 
 /*
@@ -178,9 +185,10 @@ load_volume(const char *filename, int oflags, int verify)
 	volume = __alloc_volume(filename, oflags);
 
 	n = readhammervol(volume);
-	if (n == -1)
+	if (n == -1) {
 		err(1, "load_volume: %s: Read failed at offset 0",
 		    volume->name);
+	}
 	volume->vol_no = volume->ondisk->vol_no;
 	HammerVersion = volume->ondisk->vol_version;
 
@@ -220,13 +228,15 @@ check_volume(struct volume_info *volume)
 		 * sector size must be compatible.  HAMMER uses 16384 byte
 		 * filesystem buffers.
 		 */
-		if (pinfo.reserved_blocks)
+		if (pinfo.reserved_blocks) {
 			errx(1, "HAMMER cannot be placed in a partition "
 				"which overlaps the disklabel or MBR");
+		}
 		if (pinfo.media_blksize > HAMMER_BUFSIZE ||
-		    HAMMER_BUFSIZE % pinfo.media_blksize)
+		    HAMMER_BUFSIZE % pinfo.media_blksize) {
 			errx(1, "A media sector size of %d is not supported",
 			     pinfo.media_blksize);
+		}
 
 		volume->size = pinfo.media_size;
 		volume->device_offset = pinfo.media_offset;
@@ -248,9 +258,10 @@ get_volume(int32_t vol_no)
 {
 	struct volume_info *volume;
 
-	TAILQ_FOREACH(volume, &VolList, entry)
+	TAILQ_FOREACH(volume, &VolList, entry) {
 		if (volume->vol_no == vol_no)
 			break;
+	}
 
 	return(volume);
 }
@@ -295,12 +306,14 @@ __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 	buffer->volume = volume;
 	buffer->ondisk = calloc(1, HAMMER_BUFSIZE);
 
-	if (isnew <= 0)
-		if (readhammerbuf(buffer) == -1)
+	if (isnew <= 0) {
+		if (readhammerbuf(buffer) == -1) {
 			err(1, "Failed to read %s:%016jx at %016jx",
 			    volume->name,
 			    (intmax_t)buffer->zone2_offset,
 			    (intmax_t)buffer->raw_offset);
+		}
+	}
 
 	hi = buffer_hash(zone2_offset);
 	TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buffer, entry);
@@ -391,7 +404,7 @@ rel_buffer(struct buffer_info *buffer)
 	if (buffer == NULL)
 		return;
 	assert(buffer->cache.refs > 0);
-	if (--buffer->cache.refs == 0)
+	if (--buffer->cache.refs == 0) {
 		if (buffer->cache.delete) {
 			hi = buffer_hash(buffer->zone2_offset);
 			volume = buffer->volume;
@@ -402,6 +415,7 @@ rel_buffer(struct buffer_info *buffer)
 			free(buffer->ondisk);
 			free(buffer);
 		}
+	}
 }
 
 /*
@@ -652,8 +666,9 @@ count_freemap(struct volume_info *volume)
 
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
-	     phys_offset += HAMMER_BLOCKMAP_LAYER2)
+	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
 		vol_free_off += HAMMER_BIGBLOCK_SIZE;
+	}
 
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
@@ -843,9 +858,10 @@ flush_volume(struct volume_info *volume)
 	struct buffer_info *buffer;
 	int i;
 
-	for (i = 0; i < HAMMER_BUFLISTS; ++i)
+	for (i = 0; i < HAMMER_BUFLISTS; ++i) {
 		TAILQ_FOREACH(buffer, &volume->buffer_lists[i], entry)
 			flush_buffer(buffer);
+	}
 	if (writehammervol(volume) == -1)
 		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
 }
