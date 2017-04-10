@@ -179,7 +179,7 @@ toeplitz_init(void *dummy __unused)
 	toeplitz_verify();
 #endif
 }
-SYSINIT(toeplitz, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, toeplitz_init, NULL);
+SYSINIT(toeplitz, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, toeplitz_init, NULL);
 
 void
 toeplitz_get_key(uint8_t *key, int keylen)
