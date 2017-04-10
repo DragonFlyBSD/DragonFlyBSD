@@ -98,12 +98,23 @@ netisr_curport(void)
 }
 
 /*
+ * Return the LSB of the hash.
+ */
+static __inline uint32_t
+netisr_hashlsb(uint32_t hash)
+{
+
+	return (hash & NETISR_CPUMASK);
+}
+
+/*
  * Return the cpu for the hash.
  */
 static __inline int
 netisr_hashcpu(uint16_t hash)
 {
-	return (hash & ncpus2_mask);
+
+	return (netisr_hashlsb(hash) % netisr_ncpus);
 }
 
 /*

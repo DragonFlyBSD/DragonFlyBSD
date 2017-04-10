@@ -149,6 +149,10 @@ struct netisr {
 
 #ifdef _KERNEL
 
+/* NOTE: MUST be power-of-2 */
+#define NETISR_CPUMAX			128	/* supported by most NICs */
+#define NETISR_CPUMASK			(NETISR_CPUMAX - 1)
+
 #define NETISR_ROLLUP_PRIO_TCP		200
 #define NETISR_ROLLUP_PRIO_IFSTART	50
 
