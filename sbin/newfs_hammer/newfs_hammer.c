@@ -114,10 +114,13 @@ main(int ac, char **av)
 			break;
 		case 'h':
 			usage(0);
+			/* not reached */
 			break;
 		case 'C':
-			if (hammer_parse_cache_size(optarg) == -1)
+			if (hammer_parse_cache_size(optarg) == -1) {
 				usage(1);
+				/* not reached */
+			}
 			break;
 		case 'V':
 			HammerVersion = strtol(optarg, NULL, 0);
@@ -132,6 +135,7 @@ main(int ac, char **av)
 			break;
 		default:
 			usage(1);
+			/* not reached */
 			break;
 		}
 	}
@@ -169,6 +173,7 @@ main(int ac, char **av)
 	if (label == NULL) {
 		hwarnx("A filesystem label must be specified");
 		usage(1);
+		/* not reached */
 	}
 
 	/*

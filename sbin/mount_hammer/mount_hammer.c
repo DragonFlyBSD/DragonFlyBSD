@@ -108,6 +108,7 @@ main(int ac, char **av)
 		default:
 			usage();
 			/* not reached */
+			break;
 		}
 	}
 	ac -= optind;
