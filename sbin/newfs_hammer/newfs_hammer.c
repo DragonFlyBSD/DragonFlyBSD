@@ -122,11 +122,12 @@ main(int ac, char **av)
 		case 'V':
 			HammerVersion = strtol(optarg, NULL, 0);
 			if (HammerVersion < HAMMER_VOL_VERSION_MIN ||
-			    HammerVersion >= HAMMER_VOL_VERSION_WIP)
+			    HammerVersion >= HAMMER_VOL_VERSION_WIP) {
 				errx(1,
 				     "I don't understand how to format "
 				     "HAMMER version %d",
 				     HammerVersion);
+			}
 			break;
 		default:
 			usage(1);
@@ -170,9 +171,10 @@ main(int ac, char **av)
 	 */
 	uuidgen(&Hammer_FSId, 1);
 	uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING, &status);
-	if (status != uuid_s_ok)
+	if (status != uuid_s_ok) {
 		errx(1, "uuids file does not have the DragonFly "
 			"HAMMER filesystem type");
+	}
 
 	total = 0;
 	for (i = 0; i < nvols; ++i) {
@@ -181,9 +183,10 @@ main(int ac, char **av)
 			volume->vol_no, volume->type, volume->name,
 			sizetostr(volume->size));
 
-		if (eflag)
+		if (eflag) {
 			if (trim_volume(volume) == -1 && ForceOpt == 0)
 				errx(1, "Use -f option to proceed");
+		}
 		total += volume->size;
 	}
 
@@ -213,9 +216,10 @@ main(int ac, char **av)
 	 * bootstrap the freemap.
 	 */
 	format_volume(get_root_volume(), nvols, label);
-	for (i = 0; i < nvols; ++i)
+	for (i = 0; i < nvols; ++i) {
 		if (i != HAMMER_ROOT_VOLNO)
 			format_volume(get_volume(i), nvols, label);
+	}
 
 	print_volume(get_root_volume());
 
@@ -274,18 +278,20 @@ print_volume(const struct volume_info *volume)
 		"on a nightly basis.  The periodic.conf(5) variable\n"
 		"'daily_clean_hammer_enable' can be unset to disable this.\n"
 		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
-	if (total < 10*GIG)
+	if (total < 10*GIG) {
 		printf("\nWARNING: The minimum UNDO/REDO FIFO is %s, "
 			"you really should not\n"
 			"try to format a HAMMER filesystem this small.\n",
 			sizetostr(HAMMER_BIGBLOCK_SIZE *
 			       HAMMER_MIN_UNDO_BIGBLOCKS));
-	if (total < 50*GIG)
+	}
+	if (total < 50*GIG) {
 		printf("\nWARNING: HAMMER filesystems less than 50GB are "
 			"not recommended!\n"
 			"You may have to run 'hammer prune-everything' and "
 			"'hammer reblock'\n"
 			"quite often, even if using a nohistory mount.\n");
+	}
 }
 
 static
@@ -303,12 +309,13 @@ static void
 test_header_junk_size(int64_t size)
 {
 	if (size < HAMMER_MIN_VOL_JUNK) {
-		if (ForceOpt == 0)
+		if (ForceOpt == 0) {
 			errx(1, "The minimum header junk size is %s",
 				sizetostr(HAMMER_MIN_VOL_JUNK));
-		else
+		} else {
 			hwarnx("You have specified header junk size less than %s",
 				sizetostr(HAMMER_MIN_VOL_JUNK));
+		}
 	} else if (size > HAMMER_MAX_VOL_JUNK) {
 		errx(1, "The maximum header junk size is %s",
 			sizetostr(HAMMER_MAX_VOL_JUNK));
@@ -319,12 +326,13 @@ static void
 test_boot_area_size(int64_t size)
 {
 	if (size < HAMMER_BOOT_MINBYTES) {
-		if (ForceOpt == 0)
+		if (ForceOpt == 0) {
 			errx(1, "The minimum boot area size is %s",
 				sizetostr(HAMMER_BOOT_MINBYTES));
-		else
+		} else {
 			hwarnx("You have specified boot area size less than %s",
 				sizetostr(HAMMER_BOOT_MINBYTES));
+		}
 	} else if (size > HAMMER_BOOT_MAXBYTES) {
 		errx(1, "The maximum boot area size is %s",
 			sizetostr(HAMMER_BOOT_MAXBYTES));
@@ -335,12 +343,13 @@ static void
 test_memory_log_size(int64_t size)
 {
 	if (size < HAMMER_MEM_MINBYTES) {
-		if (ForceOpt == 0)
+		if (ForceOpt == 0) {
 			errx(1, "The minimum memory log size is %s",
 				sizetostr(HAMMER_MEM_MINBYTES));
-		else
+		} else {
 			hwarnx("You have specified memory log size less than %s",
 				sizetostr(HAMMER_MEM_MINBYTES));
+		}
 	} else if (size > HAMMER_MEM_MAXBYTES) {
 		errx(1, "The maximum memory log size is %s",
 			sizetostr(HAMMER_MEM_MAXBYTES));
@@ -356,13 +365,14 @@ test_undo_buffer_size(int64_t size)
 	maxbuf = HAMMER_BIGBLOCK_SIZE * HAMMER_MAX_UNDO_BIGBLOCKS;
 
 	if (size < minbuf) {
-		if (ForceOpt == 0)
+		if (ForceOpt == 0) {
 			errx(1, "The minimum UNDO/REDO FIFO size is %s",
 				sizetostr(minbuf));
-		else
+		} else {
 			hwarnx("You have specified an UNDO/REDO FIFO size less "
 				"than %s, which may lead to VFS panics",
 				sizetostr(minbuf));
+		}
 	} else if (size > maxbuf) {
 		errx(1, "The maximum UNDO/REDO FIFO size is %s",
 			sizetostr(maxbuf));
@@ -398,15 +408,22 @@ getsize(const char *str, int powerof2)
 		break;
 	default:
 		errx(1, "Unknown suffix in number '%s'", str);
+		/* not reached */
 	}
 
-	if (ptr[1])
+	if (ptr[1]) {
 		errx(1, "Unknown suffix in number '%s'", str);
-	if ((powerof2 & 1) && (val ^ (val - 1)) != ((val << 1) - 1))
+		/* not reached */
+	}
+	if ((powerof2 & 1) && (val ^ (val - 1)) != ((val << 1) - 1)) {
 		errx(1, "Value not power of 2: %s", str);
-	if ((powerof2 & 2) && (val & HAMMER_BUFMASK))
+		/* not reached */
+	}
+	if ((powerof2 & 2) && (val & HAMMER_BUFMASK)) {
 		errx(1, "Value not an integral multiple of %dK: %s",
 		     HAMMER_BUFSIZE / 1024, str);
+		/* not reached */
+	}
 	return(val);
 }
 
@@ -534,9 +551,10 @@ format_volume(struct volume_info *volume, int nvols, const char *label)
 	ondisk->vol_buf_end = volume->size & ~(int64_t)HAMMER_BUFMASK;
 	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 
-	if (vol_buf_size < (int64_t)sizeof(*ondisk))
+	if (vol_buf_size < (int64_t)sizeof(*ondisk)) {
 		errx(1, "volume %d %s is too small to hold the volume header",
 		     volume->vol_no, volume->name);
+	}
 	if ((vol_buf_size & ~HAMMER_OFF_SHORT_MASK) != 0)
 		errx(1, "volume %d %s is too large", volume->vol_no, volume->name);
 
@@ -556,11 +574,12 @@ format_volume(struct volume_info *volume, int nvols, const char *label)
 		 */
 		freeblks = count_freemap(volume);
 		freebytes = freeblks * HAMMER_BIGBLOCK_SIZE64;
-		if (freebytes < 10*GIG && ForceOpt == 0)
+		if (freebytes < 10*GIG && ForceOpt == 0) {
 			errx(1, "Cannot create a HAMMER filesystem less than 10GB "
 				"unless you use -f\n(for the size of Volume %d).  "
 				"HAMMER filesystems less than 50GB are not "
 				"recommended.", HAMMER_ROOT_VOLNO);
+		}
 
 		/*
 		 * Starting TID
@@ -579,9 +598,10 @@ format_volume(struct volume_info *volume, int nvols, const char *label)
 		/*
 		 * Format zones that are mapped to zone-2.
 		 */
-		for (i = 0; i < HAMMER_MAX_ZONES; ++i)
+		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
 			if (hammer_is_index_record(i))
 				format_blockmap(volume, i, 0);
+		}
 
 		/*
 		 * Format undo zone.  Formatting decrements
