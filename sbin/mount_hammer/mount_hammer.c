@@ -245,16 +245,19 @@ void
 __verify_volume(hammer_volume_ondisk_t ondisk,
 	const char *vol_name, int vol_count)
 {
-	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME)
+	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		errx(1, "%s: Invalid volume signature %016jx",
 			vol_name, ondisk->vol_signature);
-	if (ondisk->vol_count != vol_count)
+	}
+	if (ondisk->vol_count != vol_count) {
 		errx(1, "%s: Invalid volume count %d, "
 			"volume header says %d volumes",
 			vol_name, vol_count, ondisk->vol_count);
-	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO)
+	}
+	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
 		errx(1, "%s: Invalid root volume# %d",
 			vol_name, ondisk->vol_rootvol);
+	}
 }
 
 /*
