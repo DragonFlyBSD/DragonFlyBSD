@@ -2884,7 +2884,8 @@ pf_get_sport(struct pf_pdesc *pd, sa_family_t af,
 	struct pf_state_key_cmp	key;
 	struct pf_addr		init_addr;
 	u_int16_t		cut;
-	u_int32_t		toeplitz_sport;
+	u_int32_t		hash_base = 0;
+	int			do_hash = 0;
 
 	bzero(&init_addr, sizeof(init_addr));
 	if (pf_map_addr(af, r, saddr, naddr, &init_addr, sn))
@@ -2915,16 +2916,17 @@ pf_get_sport(struct pf_pdesc *pd, sa_family_t af,
 		 */
 		switch(af) {
 		case AF_INET:
-			toeplitz_sport =
-				toeplitz_piecemeal_port(sport) ^
-				toeplitz_piecemeal_addr(saddr->v4.s_addr) ^
-				toeplitz_piecemeal_addr(naddr->v4.s_addr);
+			if (proto == IPPROTO_TCP) {
+				do_hash = 1;
+				hash_base = toeplitz_piecemeal_port(dport) ^
+				    toeplitz_piecemeal_addr(daddr->v4.s_addr) ^
+				    toeplitz_piecemeal_addr(naddr->v4.s_addr);
+			}
 			break;
 		case AF_INET6:
 			/* XXX TODO XXX */
 		default:
 			/* XXX TODO XXX */
-			toeplitz_sport = 0;
 			break;
 		}
 
@@ -2991,9 +2993,13 @@ pf_get_sport(struct pf_pdesc *pd, sa_family_t af,
 			/* low <= cut <= high */
 			for (tmp = cut; tmp <= high; ++(tmp)) {
 				key.port[1] = htons(tmp);
-				if ((toeplitz_piecemeal_port(key.port[1]) ^
-				     toeplitz_sport) & ncpus2_mask) {
-					continue;
+				if (do_hash) {
+					uint32_t hash;
+
+					hash = hash_base ^
+					toeplitz_piecemeal_port(key.port[1]);
+					if (netisr_hashcpu(hash) != mycpuid)
+						continue;
 				}
 				if (pf_find_state_all(&key, PF_IN, NULL) ==
 				    NULL && !in_baddynamic(tmp, proto)) {
@@ -3005,9 +3011,13 @@ pf_get_sport(struct pf_pdesc *pd, sa_family_t af,
 			}
 			for (tmp = cut - 1; tmp >= low; --(tmp)) {
 				key.port[1] = htons(tmp);
-				if ((toeplitz_piecemeal_port(key.port[1]) ^
-				     toeplitz_sport) & ncpus2_mask) {
-					continue;
+				if (do_hash) {
+					uint32_t hash;
+
+					hash = hash_base ^
+					toeplitz_piecemeal_port(key.port[1]);
+					if (netisr_hashcpu(hash) != mycpuid)
+						continue;
 				}
 				if (pf_find_state_all(&key, PF_IN, NULL) ==
 				    NULL && !in_baddynamic(tmp, proto)) {
