@@ -123,8 +123,10 @@ main(int ac, char **av)
 			/* not reached */
 		}
 		mountpt = av[0];
-		if (mount(vfc.vfc_name, mountpt, mount_flags, &info))
+		if (mount(vfc.vfc_name, mountpt, mount_flags, &info)) {
 			err(1, "mountpoint %s", mountpt);
+			/* not reached */
+		}
 		exit(0);
 	}
 
@@ -145,13 +147,17 @@ main(int ac, char **av)
 	 */
 	error = getvfsbyname("hammer", &vfc);
 	if (error && vfsisloadable("hammer")) {
-		if (vfsload("hammer") != 0)
+		if (vfsload("hammer") != 0) {
 			err(1, "vfsload(hammer)");
+			/* not reached */
+		}
 		endvfsent();
 		error = getvfsbyname("hammer", &vfc);
 	}
-	if (error)
+	if (error) {
 		errx(1, "hammer filesystem is not available");
+		/* not reached */
+	}
 
 	if (mount(vfc.vfc_name, mountpt, mount_flags, &info)) {
 		perror("mount");
@@ -248,15 +254,18 @@ __verify_volume(hammer_volume_ondisk_t ondisk,
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		errx(1, "%s: Invalid volume signature %016jx",
 			vol_name, ondisk->vol_signature);
+		/* not reached */
 	}
 	if (ondisk->vol_count != vol_count) {
 		errx(1, "%s: Invalid volume count %d, "
 			"volume header says %d volumes",
 			vol_name, vol_count, ondisk->vol_count);
+		/* not reached */
 	}
 	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
 		errx(1, "%s: Invalid root volume# %d",
 			vol_name, ondisk->vol_rootvol);
+		/* not reached */
 	}
 }
 
@@ -276,12 +285,16 @@ test_volumes(struct hammer_mount_info *info)
 	for (i = 0; i < info->nvolumes; i++) {
 		const char *vol = info->volumes[i];
 		fd = open(vol, O_RDONLY);
-		if (fd < 0)
+		if (fd < 0) {
 			err(1, "%s: Failed to open", vol);
+			/* not reached */
+		}
 
 		bzero(buf, sizeof(buf));
-		if (pread(fd, buf, sizeof(buf), 0) != sizeof(buf))
+		if (pread(fd, buf, sizeof(buf), 0) != sizeof(buf)) {
 			err(1, "%s: Failed to read volume header", vol);
+			/* not reached */
+		}
 
 		__verify_volume(ondisk, vol, info->nvolumes);
 		close(fd);
