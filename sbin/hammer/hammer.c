@@ -99,6 +99,7 @@ main(int ac, char **av)
 				break;
 			default:
 				usage(1);
+				/* not reached */
 			}
 			break;
 		case 'S':
@@ -122,6 +123,7 @@ main(int ac, char **av)
 				break;
 			default:
 				usage(1);
+				/* not reached */
 			}
 			break;
 		case 'c':
@@ -197,8 +199,10 @@ main(int ac, char **av)
 			BulkOpt = 1;
 			break;
 		case 'C':
-			if (hammer_parse_cache_size(optarg) == -1)
+			if (hammer_parse_cache_size(optarg) == -1) {
 				usage(1);
+				/* not reached */
+			}
 			break;
 		case 'F':
 			ForceOpt = 1;
@@ -269,8 +273,10 @@ main(int ac, char **av)
 		int len;
 		const char *aname = av[1];
 
-		if (aname == NULL)
+		if (aname == NULL) {
 			usage(1);
+			/* not reached */
+		}
 		len = strlen(aname);
 		key = (uint32_t)crc32(aname, len) & 0xFFFFFFFEU;
 
@@ -305,8 +311,10 @@ main(int ac, char **av)
 	if (strcmp(av[0], "namekey1") == 0) {
 		int64_t key;
 
-		if (av[1] == NULL)
+		if (av[1] == NULL) {
 			usage(1);
+			/* not reached */
+		}
 		key = (int64_t)(crc32(av[1], strlen(av[1])) & 0x7FFFFFFF) << 32;
 		if (key == 0)
 			key |= 0x100000000LL;
@@ -316,8 +324,10 @@ main(int ac, char **av)
 	if (strcmp(av[0], "namekey32") == 0) {
 		int32_t key;
 
-		if (av[1] == NULL)
+		if (av[1] == NULL) {
 			usage(1);
+			/* not reached */
+		}
 		key = crc32(av[1], strlen(av[1])) & 0x7FFFFFFF;
 		if (key == 0)
 			++key;
@@ -381,8 +391,10 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "ssh-remote") == 0) {
-		if (ac != 3)
+		if (ac != 3) {
 			usage(1);
+			/* not reached */
+		}
 		hammer_cmd_sshremote(av[1], av[2]);
 		exit(0);
 	}
@@ -444,8 +456,10 @@ main(int ac, char **av)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DIRS);
 		else if (strcmp(av[0], "reblock-data") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DATA);
-		else
+		else {
 			usage(1);
+			/* not reached */
+		}
 		exit(0);
 	}
 	if (strncmp(av[0], "mirror", 6) == 0) {
@@ -461,8 +475,10 @@ main(int ac, char **av)
 			hammer_cmd_mirror_copy(av + 1, ac - 1, 1);
 		else if (strcmp(av[0], "mirror-dump") == 0)
 			hammer_cmd_mirror_dump(av + 1, ac - 1);
-		else
+		else {
 			usage(1);
+			/* not reached */
+		}
 		exit(0);
 	}
 	if (strcmp(av[0], "dedup-simulate") == 0) {

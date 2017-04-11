@@ -60,15 +60,19 @@ hammer_cmd_rebalance(char **av, int ac)
 	rebal.key_end.obj_id = HAMMER_MAX_OBJID;
 	rebal.allpfs = AllPFS;
 
-	if (ac == 0)
+	if (ac == 0) {
 		rebalance_usage(1);
+		/* not reached */
+	}
 	filesystem = av[0];
 	if (ac == 1) {
 		perc = 85;
 	} else {
 		perc = strtol(av[1], NULL, 0);
-		if (perc < 50 || perc > 100)
+		if (perc < 50 || perc > 100) {
 			rebalance_usage(1);
+			/* not reached */
+		}
 	}
 	rebal.saturation = HAMMER_BTREE_INT_ELMS * perc / 100;
 

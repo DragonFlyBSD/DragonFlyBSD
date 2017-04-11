@@ -99,8 +99,10 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	/*
 	 * For now just allow one directory
 	 */
-	if (ac == 0 || ac > 1)
+	if (ac == 0 || ac > 1) {
 		softprune_usage(1);
+		/* not reached */
+	}
 
 	/*
 	 * Scan the softlink directory.
@@ -110,8 +112,10 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 		scan = hammer_softprune_addentry(&base, &template,
 						 *av, NULL, NULL,
 						 dummylink, dummylink);
-		if (scan == NULL)
+		if (scan == NULL) {
 			softprune_usage(1);
+			/* not reached */
+		}
 		scan->prune.nelms = 0;
 		scan->prune.head.flags |= HAMMER_IOC_PRUNE_ALL;
 	} else {
@@ -121,8 +125,10 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			scan = hammer_softprune_addentry(&base, &template,
 							 *av, NULL, NULL,
 							 dummylink, dummylink);
-			if (scan == NULL)
+			if (scan == NULL) {
 				softprune_usage(1);
+				/* not reached */
+			}
 			scan->prune.nelms = 0;
 		}
 		++av;

@@ -200,8 +200,10 @@ hammer_cmd_dedup_simulate(char **av, int ac)
 {
 	struct sim_dedup_entry *sim_de;
 
-	if (ac != 1)
+	if (ac != 1) {
 		dedup_usage(1);
+		/* not reached */
+	}
 
 	glob_fd = getpfs(&glob_pfs, av[0]);
 
@@ -263,8 +265,10 @@ hammer_cmd_dedup(char **av, int ac)
 	if (TimeoutOpt > 0)
 		alarm(TimeoutOpt);
 
-	if (ac != 1)
+	if (ac != 1) {
 		dedup_usage(1);
+		/* not reached */
+	}
 
 	STAILQ_INIT(&pass2_dedup_queue);
 

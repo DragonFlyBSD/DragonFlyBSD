@@ -252,8 +252,10 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	int pfs_id;
 	int fd;
 
-	if (ac == 0)
+	if (ac == 0) {
 		pseudofs_usage(1);
+		/* not reached */
+	}
 	path = av[0];
 	if (lstat(path, &st) == 0) {
 		errx(1, "Cannot create %s, file exists!", path);
@@ -343,8 +345,10 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	int fd;
 	int i;
 
-	if (ac == 0)
+	if (ac == 0) {
 		pseudofs_usage(1);
+		/* not reached */
+	}
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
@@ -411,8 +415,10 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 	struct hammer_ioc_pseudofs_rw pfs;
 	int fd;
 
-	if (ac == 0)
+	if (ac == 0) {
 		pseudofs_usage(1);
+		/* not reached */
+	}
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
@@ -442,8 +448,10 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 	struct hammer_ioc_pseudofs_rw pfs;
 	int fd;
 
-	if (ac == 0)
+	if (ac == 0) {
 		pseudofs_usage(1);
+		/* not reached */
+	}
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == HAMMER_ROOT_PFSID) {
@@ -471,8 +479,10 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 	struct hammer_ioc_pseudofs_rw pfs;
 	int fd;
 
-	if (ac == 0)
+	if (ac == 0) {
 		pseudofs_usage(1);
+		/* not reached */
+	}
 	fd = getpfs(&pfs, av[0]);
 
 	printf("%s\n", av[0]);

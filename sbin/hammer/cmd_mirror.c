@@ -110,8 +110,10 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	uint64_t bwcount;
 	uint64_t estbytes;
 
-	if (ac == 0 || ac > 2)
+	if (ac == 0 || ac > 2) {
 		mirror_usage(1);
+		/* not reached */
+	}
 	filesystem = av[0];
 	hammer_check_restrict(filesystem);
 
@@ -770,8 +772,10 @@ hammer_cmd_mirror_write(char **av, int ac)
 	int fd;
 	int n;
 
-	if (ac != 1)
+	if (ac != 1) {
 		mirror_usage(1);
+		/* not reached */
+	}
 	filesystem = av[0];
 	hammer_check_restrict(filesystem);
 
@@ -955,10 +959,12 @@ hammer_cmd_mirror_dump(char **av, int ac)
 	int bytes;
 	int header_only = 0;
 
-	if (ac == 1 && strcmp(*av, "header") == 0)
+	if (ac == 1 && strcmp(*av, "header") == 0) {
 		header_only = 1;
-	else if (ac != 0)
+	} else if (ac != 0) {
 		mirror_usage(1);
+		/* not reached */
+	}
 
 	/*
 	 * Read and process the PFS header
@@ -1083,8 +1089,10 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 	char *sh, *user, *host, *rfs;
 	int xac;
 
-	if (ac != 2)
+	if (ac != 2) {
 		mirror_usage(1);
+		/* not reached */
+	}
 
 	TwoWayPipeOpt = 1;
 	signal(SIGPIPE, SIG_IGN);

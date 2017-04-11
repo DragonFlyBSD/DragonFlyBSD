@@ -85,15 +85,19 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 		break;
 	}
 
-	if (ac == 0)
+	if (ac == 0) {
 		reblock_usage(1);
+		/* not reached */
+	}
 	filesystem = av[0];
 	if (ac == 1) {
 		perc = 100;
 	} else {
 		perc = strtol(av[1], NULL, 0);
-		if (perc < 0 || perc > 100)
+		if (perc < 0 || perc > 100) {
 			reblock_usage(1);
+			/* not reached */
+		}
 	}
 	reblock.free_level = (int)((int64_t)perc *
 				   HAMMER_BIGBLOCK_SIZE / 100);
