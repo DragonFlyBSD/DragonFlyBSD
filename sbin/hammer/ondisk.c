@@ -244,6 +244,12 @@ check_volume(struct volume_info *volume)
 	}
 }
 
+int
+is_regfile(struct volume_info *volume)
+{
+	return(strcmp(volume->type, "REGFILE") ? 0 : 1);
+}
+
 void
 assert_volume_offset(struct volume_info *volume)
 {

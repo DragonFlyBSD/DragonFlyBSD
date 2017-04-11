@@ -71,7 +71,7 @@ hammer_cmd_volume_add(char **av, int ac)
 	 */
 	volume = init_volume(device, O_RDONLY, -1);
 	assert(volume->vol_no == -1);
-	if (strcmp(volume->type, "DEVICE"))
+	if (is_regfile(volume))
 		errx(1, "Not a block device: %s", device);
 	close(volume->fd);
 

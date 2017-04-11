@@ -477,7 +477,7 @@ nowtime(void)
 }
 
 /*
- * TRIM the volume, but only if the backing store is a DEVICE
+ * TRIM the volume, but only if the backing store is not a regular file
  */
 static
 int
@@ -489,7 +489,7 @@ trim_volume(struct volume_info *volume)
 	int trim_enabled;
 	off_t ioarg[2];
 
-	if (strcmp(volume->type, "DEVICE")) {
+	if (is_regfile(volume)) {
 		hwarnx("Cannot TRIM regular file %s", volume->name);
 		return(-1);
 	}
