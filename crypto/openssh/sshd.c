@@ -473,6 +473,9 @@ sshd_exchange_identification(struct ssh *ssh, int sock_in, int sock_out)
 	/*
 	 * Check that the versions match.  In future this might accept
 	 * several versions and set appropriate flags to handle them.
+	 *
+	 * NOTE: unbounded string to remote_version, but limited size of
+	 *       buf prevents overflow.
 	 */
 	if (sscanf(client_version_string, "SSH-%d.%d-%[^\n]\n",
 	    &remote_major, &remote_minor, remote_version) != 3) {
