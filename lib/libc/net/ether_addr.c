@@ -64,13 +64,17 @@
 /*
  * Parse a string of text containing an ethernet address and hostname and
  * separate it into its component parts.
+ *
+ * XXX Hack, constrain hostname scan to 255 characters.  Hardwired from
+ * MAXHOSTNAMELEN which is 256. The API is badly broken but cannot be
+ * changed.
  */
 int
 ether_line(const char *l, struct ether_addr *e, char *hostname)
 {
 	int i, o[6];
 
-	i = sscanf(l, "%x:%x:%x:%x:%x:%x %s", &o[0], &o[1], &o[2], &o[3],
+	i = sscanf(l, "%x:%x:%x:%x:%x:%x %255s", &o[0], &o[1], &o[2], &o[3],
 	    &o[4], &o[5], hostname);
 	if (i != 7)
 		return (i);
