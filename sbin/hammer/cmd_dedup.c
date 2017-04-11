@@ -904,11 +904,15 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 		mirror.count = 0;
 		mirror.pfs_id = glob_pfs.pfs_id;
 		mirror.shared_uuid = glob_pfs.ondisk->shared_uuid;
-		if (ioctl(glob_fd, HAMMERIOC_MIRROR_READ, &mirror) < 0)
+		if (ioctl(glob_fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
 			err(1, "Mirror-read %s failed", filesystem);
-		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR)
+			/* not reached */
+		}
+		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
 			errx(1, "Mirror-read %s fatal error %d",
 				filesystem, mirror.head.error);
+			/* not reached */
+		}
 		if (mirror.count) {
 			offset = 0;
 			while (offset < mirror.count) {

@@ -150,11 +150,15 @@ hammer_cmd_viconfig(char **av, int ac)
 	atexit(config_remove_path);
 
 	fd = open(path, O_RDWR|O_CREAT|O_TRUNC, 0600);
-	if (fd < 0)
+	if (fd < 0) {
 		err(2, "hammer viconfig: creating temporary file %s", path);
+		/* not reached */
+	}
 	write(fd, config.config.text, strlen(config.config.text));
-	if (fstat(fd, &st) < 0)
+	if (fstat(fd, &st) < 0) {
 		err(2, "hammer viconfig");
+		/* not reached */
+	}
 	times[0].tv_sec = st.st_mtime - 1;
 	times[0].tv_usec = 0;
 	times[1] = times[0];
@@ -170,20 +174,26 @@ hammer_cmd_viconfig(char **av, int ac)
 	asprintf(&runcmd, "%s %s", editor, path);
 	system(runcmd);
 
-	if (stat(path, &st) < 0)
+	if (stat(path, &st) < 0) {
 		err(2, "hammer viconfig: unable to stat file after vi");
+		/* not reached */
+	}
 	if (times[0].tv_sec == st.st_mtime) {
 		printf("hammer viconfig: no changes were made\n");
 		remove(path);
 		return;
 	}
 	fd = open(path, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(2, "hammer viconfig: unable to read %s", path);
+		/* not reached */
+	}
 	remove(path);
 	n = read(fd, config.config.text, sizeof(config.config.text) - 1);
-	if (n < 0)
+	if (n < 0) {
 		err(2, "hammer viconfig: unable to read %s", path);
+		/* not reached */
+	}
 	if (n == sizeof(config.config.text) - 1) {
 		err(2, "hammer config: config file too big, limit %zu bytes",
 		    sizeof(config.config.text) - 1);
@@ -202,13 +212,19 @@ config_get(const char *dirpath, struct hammer_ioc_config *config)
 	int fd;
 
 	bzero(&version, sizeof(version));
-	if ((fd = open(dirpath, O_RDONLY)) < 0)
+	if ((fd = open(dirpath, O_RDONLY)) < 0) {
 		err(2, "hammer config: unable to open directory %s", dirpath);
-	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
+		/* not reached */
+	}
+	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0) {
 		errx(2, "hammer config: not a HAMMER filesystem!");
+		/* not reached */
+	}
 	HammerVersion = version.cur_version;
-	if (ioctl(fd, HAMMERIOC_GET_CONFIG, config) < 0)
+	if (ioctl(fd, HAMMERIOC_GET_CONFIG, config) < 0) {
 		errx(2, "hammer config: config_get");
+		/* not reached */
+	}
 	close(fd);
 }
 
@@ -219,13 +235,19 @@ config_set(const char *dirpath, struct hammer_ioc_config *config)
 	int fd;
 
 	bzero(&version, sizeof(version));
-	if ((fd = open(dirpath, O_RDONLY)) < 0)
+	if ((fd = open(dirpath, O_RDONLY)) < 0) {
 		errx(2, "hammer config: unable to open directory %s", dirpath);
-	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
+		/* not reached */
+	}
+	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0) {
 		errx(2, "hammer config: not a HAMMER filesystem!");
+		/* not reached */
+	}
 	HammerVersion = version.cur_version;
-	if (ioctl(fd, HAMMERIOC_SET_CONFIG, config) < 0)
+	if (ioctl(fd, HAMMERIOC_SET_CONFIG, config) < 0) {
 		err(2, "hammer config");
+		/* not reached */
+	}
 	close(fd);
 }
 

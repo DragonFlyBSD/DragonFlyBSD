@@ -77,8 +77,10 @@ hammer_cmd_rebalance(char **av, int ac)
 		rebal.key_beg.localization);
 
 	fd = open(filesystem, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(1, "Unable to open %s", filesystem);
+		/* not reached */
+	}
 	RunningIoctl = 1;
 	if (ioctl(fd, HAMMERIOC_REBALANCE, &rebal) < 0) {
 		printf("Rebalance %s failed: %s\n",

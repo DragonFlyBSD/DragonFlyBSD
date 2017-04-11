@@ -135,8 +135,10 @@ hammer_cmd_recover(char **av, int ac)
 	int full = 0;
 	int quick = 0;
 
-	if (ac < 1)
+	if (ac < 1) {
 		errx(1, "hammer recover <target_dir> [full|quick]");
+		/* not reached */
+	}
 
 	TargetDir = av[0];
 	if (ac > 1) {
@@ -148,8 +150,10 @@ hammer_cmd_recover(char **av, int ac)
 	assert(!full || !quick);
 
 	if (mkdir(TargetDir, 0777) == -1) {
-		if (errno != EEXIST)
+		if (errno != EEXIST) {
 			err(1, "mkdir");
+			/* not reached */
+		}
 	}
 
 	printf("Running %sraw scan of HAMMER image, recovering to %s\n",

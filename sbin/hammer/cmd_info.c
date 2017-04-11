@@ -91,15 +91,19 @@ __test_if_hammer_or_abort(const char *path)
 	int fd;
 
 	fd = open(path, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(1, "Failed to open %s", path);
+		/* not reached */
+	}
 
 	/*
 	 * This ioctl never fails as long as fd is for HAMMER filesystem,
 	 * thus we can assume path isn't in HAMMER if this fails.
 	 */
-	if (ioctl(fd, HAMMERIOC_GET_INFO, &info) < 0)
+	if (ioctl(fd, HAMMERIOC_GET_INFO, &info) < 0) {
 		err(1, "%s is probably not a HAMMER filesystem", path);
+		/* not reached */
+	}
 
 	close(fd);
 }
@@ -127,19 +131,25 @@ show_info(char *path)
 	__test_if_hammer_or_abort(path);
 
 	fip = libhammer_get_fsinfo(path);
-	if (fip == NULL)
+	if (fip == NULL) {
 		errx(1, "Failed to get filesystem info");
+		/* not reached */
+	}
 
 	/* Find out the UUID strings */
 	uuid_to_string(&fip->vol_fsid, &fsid, NULL);
 
 	/* Get the volume paths */
-	if (hammer_fs_to_vol(path, &ioc) == -1)
+	if (hammer_fs_to_vol(path, &ioc) == -1) {
 		errx(1, "Failed to get volume paths");
+		/* not reached */
+	}
 
 	/* Get the root volume path */
-	if (hammer_fs_to_rootvol(path, rootvol, sizeof(rootvol)) == -1)
+	if (hammer_fs_to_rootvol(path, rootvol, sizeof(rootvol)) == -1) {
 		errx(1, "Failed to get root volume path");
+		/* not reached */
+	}
 
 	/* Volume information */
 	printf("Volume identification\n");

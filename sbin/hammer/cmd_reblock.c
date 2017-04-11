@@ -107,8 +107,10 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 		HAMMER_BIGBLOCK_SIZE);
 
 	fd = open(filesystem, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(1, "Unable to open %s", filesystem);
+		/* not reached */
+	}
 	RunningIoctl = 1;
 	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0) {
 		printf("Reblock %s failed: %s\n", filesystem, strerror(errno));

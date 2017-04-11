@@ -290,12 +290,14 @@ again:
 			score_printf(LINE3, "Mirror-read %s failed: %s",
 				     filesystem, strerror(errno));
 			err(1, "Mirror-read %s failed", filesystem);
+			/* not reached */
 		}
 		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
 			score_printf(LINE3, "Mirror-read %s fatal error %d",
 				     filesystem, mirror.head.error);
 			errx(1, "Mirror-read %s fatal error %d",
 				filesystem, mirror.head.error);
+			/* not reached */
 		}
 		if (mirror.count) {
 			if (BandwidthOpt) {
@@ -311,6 +313,7 @@ again:
 					     filesystem);
 				errx(1, "Mirror-read %s failed: short write",
 					filesystem);
+				/* not reached */
 			}
 		}
 		total_bytes += mirror.count;
@@ -385,6 +388,7 @@ done:
 		    mrec->head.rec_size != sizeof(mrec->update)) {
 			errx(1, "mirror_read: Did not get final "
 				"acknowledgement packet from target");
+			/* not reached */
 		}
 		if (interrupted) {
 			if (CyclePath) {
@@ -549,11 +553,15 @@ generate_histogram(int fd, const char *filesystem,
 	chunkno = 0;
 	for (;;) {
 		mirror.count = 0;
-		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0)
+		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
 			err(1, "Mirror-read %s failed", filesystem);
-		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR)
+			/* not reached */
+		}
+		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
 			errx(1, "Mirror-read %s fatal error %d",
 				filesystem, mirror.head.error);
+			/* not reached */
+		}
 		for (off = 0;
 		     off < mirror.count;
 		     off += HAMMER_HEAD_DOALIGN(mrec->head.rec_size)) {
@@ -697,8 +705,10 @@ create_pfs(const char *filesystem, uuid_t *s_uuid)
 			"Do you want to create a new slave PFS? [y/n] ",
 			filesystem);
 		fflush(stderr);
-		if (getyntty() != 1)
+		if (getyntty() != 1) {
 			errx(1, "Aborting operation");
+			/* not reached */
+		}
 	}
 
 	uint32_t status;
@@ -710,8 +720,10 @@ create_pfs(const char *filesystem, uuid_t *s_uuid)
 		 filesystem, shared_uuid);
 	free(shared_uuid);
 
-	if (cmd == NULL)
+	if (cmd == NULL) {
 		errx(1, "Failed to alloc memory");
+		/* not reached */
+	}
 	if (system(cmd) != 0)
 		fprintf(stderr, "Failed to create PFS\n");
 	free(cmd);
@@ -777,8 +789,10 @@ again:
 	 */
 	mrec = read_mrecord(0, &error, &pickup);
 	if (mrec == NULL) {
-		if (error == 0)
+		if (error == 0) {
 			errx(1, "validate_mrec_header: short read");
+			/* not reached */
+		}
 		exit(1);
 	}
 	/*
@@ -788,11 +802,15 @@ again:
 		free(buf);
 		return;
 	}
-	if (mrec->head.type != HAMMER_MREC_TYPE_PFSD)
+	if (mrec->head.type != HAMMER_MREC_TYPE_PFSD) {
 		errx(1, "validate_mrec_header: did not get expected "
 			"PFSD record type");
-	if (mrec->head.rec_size != sizeof(mrec->pfs))
+		/* not reached */
+	}
+	if (mrec->head.rec_size != sizeof(mrec->pfs)) {
 		errx(1, "validate_mrec_header: unexpected payload size");
+		/* not reached */
+	}
 
 	/*
 	 * Create slave PFS if it doesn't yet exist
@@ -847,17 +865,22 @@ again:
 		mirror.size = read_mrecords(0, buf, SERIALBUF_SIZE, &pickup);
 		if (mirror.size <= 0)
 			break;
-		if (ioctl(fd, HAMMERIOC_MIRROR_WRITE, &mirror) < 0)
+		if (ioctl(fd, HAMMERIOC_MIRROR_WRITE, &mirror) < 0) {
 			err(1, "Mirror-write %s failed", filesystem);
-		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR)
+			/* not reached */
+		}
+		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
 			errx(1, "Mirror-write %s fatal error %d",
 				filesystem, mirror.head.error);
+			/* not reached */
+		}
 #if 0
 		if (mirror.head.flags & HAMMER_IOC_HEAD_INTR) {
 			errx(1, "Mirror-write %s interrupted by timer at"
 				" %016llx",
 				filesystem,
 				mirror.key_cur.obj_id);
+			/* not reached */
 		}
 #endif
 	}
@@ -882,6 +905,7 @@ again:
 		errx(1, "Mirror-write %s: Did not get termination "
 			"sync record, or rec_size is wrong rt=%d",
 			filesystem, (mrec ? (int)mrec->head.type : -1));
+		/* not reached */
 	}
 
 	/*
@@ -969,8 +993,10 @@ again:
 		while (offset < size) {
 			mrec = (void *)((char *)buf + offset);
 			bytes = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
-			if (offset + bytes > size)
+			if (offset + bytes > size) {
 				errx(1, "Misaligned record");
+				/* not reached */
+			}
 
 			switch(mrec->head.type & HAMMER_MRECF_TYPE_MASK) {
 			case HAMMER_MREC_TYPE_REC_BADCRC:
@@ -1064,8 +1090,10 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 	signal(SIGPIPE, SIG_IGN);
 
 again:
-	if (pipe(fds) < 0)
+	if (pipe(fds) < 0) {
 		err(1, "pipe");
+		/* not reached */
+	}
 
 	/*
 	 * Source
@@ -1264,16 +1292,22 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 			}
 			if (n == 0)
 				break;
-			if (n != HAMMER_MREC_HEADSIZE)
+			if (n != HAMMER_MREC_HEADSIZE) {
 				errx(1, "read_mrecords: short read on pipe");
-			if (pickup->signature != HAMMER_IOC_MIRROR_SIGNATURE)
+				/* not reached */
+			}
+			if (pickup->signature != HAMMER_IOC_MIRROR_SIGNATURE) {
 				errx(1, "read_mrecords: malformed record on pipe, "
 					"bad signature");
+				/* not reached */
+			}
 		}
 		if (pickup->rec_size < HAMMER_MREC_HEADSIZE ||
-		    pickup->rec_size > sizeof(*mrec) + HAMMER_XBUFSIZE)
+		    pickup->rec_size > sizeof(*mrec) + HAMMER_XBUFSIZE) {
 			errx(1, "read_mrecords: malformed record on pipe, "
 				"illegal rec_size");
+			/* not reached */
+		}
 
 		/*
 		 * Stop if we have insufficient space for the record and data.
@@ -1305,8 +1339,10 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 			if (i <= 0)
 				break;
 		}
-		if (n != bytes)
+		if (n != bytes) {
 			errx(1, "read_mrecords: short read on pipe");
+			/* not reached */
+		}
 
 		bcopy(pickup, buf + count, HAMMER_MREC_HEADSIZE);
 		pickup->signature = 0;
@@ -1316,8 +1352,10 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 		/*
 		 * Validate the completed record
 		 */
-		if (!hammer_crc_test_mrec_head(&mrec->head, mrec->head.rec_size))
+		if (!hammer_crc_test_mrec_head(&mrec->head, mrec->head.rec_size)) {
 			errx(1, "read_mrecords: malformed record on pipe, bad crc");
+			/* not reached */
+		}
 
 		/*
 		 * If its a B-Tree record validate the data crc.
@@ -1332,6 +1370,7 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 			    sizeof(mrec->rec) + mrec->rec.leaf.data_len) {
 				errx(1, "read_mrecords: malformed record on "
 					"pipe, illegal element data_len");
+				/* not reached */
 			}
 			if (mrec->rec.leaf.data_len &&
 			    mrec->rec.leaf.data_offset &&
@@ -1433,12 +1472,16 @@ write_mrecord(int fdout, uint32_t type, hammer_ioc_mrecord_any_t mrec,
 	mrec->head.type = type;
 	mrec->head.rec_size = bytes;
 	hammer_crc_set_mrec_head(&mrec->head, bytes);
-	if (write(fdout, mrec, bytes) != bytes)
+	if (write(fdout, mrec, bytes) != bytes) {
 		err(1, "write_mrecord");
+		/* not reached */
+	}
 	if (pad) {
 		bzero(zbuf, pad);
-		if (write(fdout, zbuf, pad) != pad)
+		if (write(fdout, zbuf, pad) != pad) {
 			err(1, "write_mrecord");
+			/* not reached */
+		}
 	}
 }
 
@@ -1455,10 +1498,14 @@ generate_mrec_header(int fd, int pfs_id,
 	bzero(mrec_tmp, sizeof(*mrec_tmp));
 	clrpfs(&pfs, &mrec_tmp->pfs.pfsd, pfs_id);
 
-	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0)
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
 		err(1, "Mirror-read: not a HAMMER fs/pseudofs!");
-	if (pfs.version != HAMMER_IOC_PSEUDOFS_VERSION)
+		/* not reached */
+	}
+	if (pfs.version != HAMMER_IOC_PSEUDOFS_VERSION) {
 		errx(1, "Mirror-read: HAMMER PFS version mismatch!");
+		/* not reached */
+	}
 	mrec_tmp->pfs.version = pfs.version;
 }
 
@@ -1482,15 +1529,21 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 	 * Get the PFSD info from the target filesystem.
 	 */
 	clrpfs(&pfs, &pfsd, pfs_id);
-	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0)
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
 		err(1, "mirror-write: not a HAMMER fs/pseudofs!");
-	if (pfs.version != HAMMER_IOC_PSEUDOFS_VERSION)
+		/* not reached */
+	}
+	if (pfs.version != HAMMER_IOC_PSEUDOFS_VERSION) {
 		errx(1, "mirror-write: HAMMER PFS version mismatch!");
+		/* not reached */
+	}
 
 	mrec = read_mrecord(fdin, &error, pickup);
 	if (mrec == NULL) {
-		if (error == 0)
+		if (error == 0) {
 			errx(1, "validate_mrec_header: short read");
+			/* not reached */
+		}
 		exit(1);
 	}
 	if (mrec->head.type == HAMMER_MREC_TYPE_TERM) {
@@ -1498,23 +1551,33 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 		return(-1);
 	}
 
-	if (mrec->head.type != HAMMER_MREC_TYPE_PFSD)
+	if (mrec->head.type != HAMMER_MREC_TYPE_PFSD) {
 		errx(1, "validate_mrec_header: did not get expected "
 			"PFSD record type");
-	if (mrec->head.rec_size != sizeof(mrec->pfs))
+		/* not reached */
+	}
+	if (mrec->head.rec_size != sizeof(mrec->pfs)) {
 		errx(1, "validate_mrec_header: unexpected payload size");
-	if (mrec->pfs.version != pfs.version)
+		/* not reached */
+	}
+	if (mrec->pfs.version != pfs.version) {
 		errx(1, "validate_mrec_header: Version mismatch");
+		/* not reached */
+	}
 
 	/*
 	 * Whew.  Ok, is the read PFS info compatible with the target?
 	 */
 	if (bcmp(&mrec->pfs.pfsd.shared_uuid, &pfsd.shared_uuid,
-		sizeof(pfsd.shared_uuid)) != 0)
+		sizeof(pfsd.shared_uuid)) != 0) {
 		errx(1, "mirror-write: source and target have "
 			"different shared-uuid's!");
-	if (is_target && hammer_is_pfs_master(&pfsd))
+		/* not reached */
+	}
+	if (is_target && hammer_is_pfs_master(&pfsd)) {
 		errx(1, "mirror-write: target must be in slave mode");
+		/* not reached */
+	}
 	if (tid_begp)
 		*tid_begp = mrec->pfs.pfsd.sync_beg_tid;
 	if (tid_endp)
@@ -1530,13 +1593,17 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 	struct hammer_pseudofs_data pfsd;
 
 	clrpfs(&pfs, &pfsd, pfs_id);
-	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0)
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
 		err(1, "update_pfs_snapshot (read)");
+		/* not reached */
+	}
 
 	if (pfsd.sync_end_tid != snapshot_tid) {
 		pfsd.sync_end_tid = snapshot_tid;
-		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) != 0)
+		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) != 0) {
 			err(1, "update_pfs_snapshot (rewrite)");
+			/* not reached */
+		}
 		if (VerboseOpt >= 2) {
 			fprintf(stderr,
 				"Mirror-write: Completed, updated snapshot "
@@ -1669,8 +1736,10 @@ hammer_check_restrict(const char *filesystem)
 	if (RestrictTarget == NULL)
 		return;
 	rlen = strlen(RestrictTarget);
-	if (strncmp(filesystem, RestrictTarget, rlen) != 0)
+	if (strncmp(filesystem, RestrictTarget, rlen) != 0) {
 		errx(1, "hammer-remote: restricted target");
+		/* not reached */
+	}
 
 	atslash = 1;
 	while (filesystem[rlen]) {
@@ -1678,6 +1747,7 @@ hammer_check_restrict(const char *filesystem)
 		    filesystem[rlen] == '.' &&
 		    filesystem[rlen+1] == '.') {
 			errx(1, "hammer-remote: '..' not allowed");
+			/* not reached */
 		}
 		if (filesystem[rlen] == '/')
 			atslash = 1;

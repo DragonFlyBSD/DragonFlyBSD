@@ -132,9 +132,11 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	/*
 	 * XXX future (need to store separate cycles for each filesystem)
 	 */
-	if (base->next)
+	if (base->next) {
 		errx(1, "Currently only one HAMMER filesystem may "
 			"be specified in the softlink scan");
+		/* not reached */
+	}
 
 	/*
 	 * Issue the prunes
@@ -260,8 +262,10 @@ hammer_softprune_scandir(struct softprune **basep,
 	path = NULL;
 	linkbuf = malloc(MAXPATHLEN);
 
-	if ((dir = opendir(dirname)) == NULL)
+	if ((dir = opendir(dirname)) == NULL) {
 		err(1, "Cannot open directory %s", dirname);
+		/* not reached */
+	}
 	while ((den = readdir(dir)) != NULL) {
 		if (strcmp(den->d_name, ".") == 0)
 			continue;

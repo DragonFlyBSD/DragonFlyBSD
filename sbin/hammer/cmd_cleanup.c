@@ -721,6 +721,7 @@ strtosecs(char *ptr)
 		break;
 	default:
 		errx(1, "illegal suffix converting %s", ptr);
+		/* not reached */
 		break;
 	}
 	return(val);

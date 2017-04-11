@@ -161,14 +161,17 @@ parse_attr(const char *s, cmd_attr_t *ca)
 	if (test_strtoll(errno, offset)) {
 		*rptr = '\0';  /* side effect */
 		err(1, "%s", s);
+		/* not reached */
 	}
 	ca->offset = offset;
 
 	if (*rptr == ',') {
 		errno = 0;  /* clear */
 		length = strtol(rptr + 1, NULL, 0);
-		if (test_strtol(errno, length))
+		if (test_strtol(errno, length)) {
 			err(1, "%s", rptr);
+			/* not reached */
+		}
 		if (length >= 0)
 			ca->length = length;
 	}

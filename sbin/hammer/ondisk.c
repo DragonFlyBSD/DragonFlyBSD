@@ -94,8 +94,10 @@ __alloc_volume(const char *volname, int oflags)
 	volume->rdonly = (oflags == O_RDONLY);
 	volume->name = strdup(volname);
 	volume->fd = open(volume->name, oflags);
-	if (volume->fd < 0)
+	if (volume->fd < 0) {
 		err(1, "alloc_volume: Failed to open %s", volume->name);
+		/* not reached */
+	}
 	check_volume(volume);
 
 	volume->ondisk = calloc(1, HAMMER_BUFSIZE);
@@ -112,22 +114,27 @@ __add_volume(struct volume_info *volume)
 	struct volume_info *scan;
 	struct stat st1, st2;
 
-	if (fstat(volume->fd, &st1) != 0)
+	if (fstat(volume->fd, &st1) != 0) {
 		errx(1, "add_volume: %s: Failed to stat", volume->name);
+		/* not reached */
+	}
 
 	TAILQ_FOREACH(scan, &VolList, entry) {
 		if (scan->vol_no == volume->vol_no) {
 			errx(1, "add_volume: %s: Duplicate volume number %d "
 				"against %s",
 				volume->name, volume->vol_no, scan->name);
+			/* not reached */
 		}
 		if (fstat(scan->fd, &st2) != 0) {
 			errx(1, "add_volume: %s: Failed to stat %s",
 				volume->name, scan->name);
+			/* not reached */
 		}
 		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev)) {
 			errx(1, "add_volume: %s: Specified more than once",
 				volume->name);
+			/* not reached */
 		}
 	}
 
@@ -142,18 +149,22 @@ __verify_volume(struct volume_info *volume)
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		errx(1, "verify_volume: Invalid volume signature %016jx",
 			ondisk->vol_signature);
+		/* not reached */
 	}
 	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
 		errx(1, "verify_volume: Invalid root volume# %d",
 			ondisk->vol_rootvol);
+		/* not reached */
 	}
 	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
 		errx(1, "verify_volume: %s: Header does not indicate "
 			"that this is a HAMMER volume", volume->name);
+		/* not reached */
 	}
 	if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
 		errx(1, "verify_volume: %s: FSId does not match other volumes!",
 			volume->name);
+		/* not reached */
 	}
 }
 
@@ -188,6 +199,7 @@ load_volume(const char *filename, int oflags, int verify)
 	if (n == -1) {
 		err(1, "load_volume: %s: Read failed at offset 0",
 		    volume->name);
+		/* not reached */
 	}
 	volume->vol_no = volume->ondisk->vol_no;
 	HammerVersion = volume->ondisk->vol_version;
@@ -215,8 +227,10 @@ check_volume(struct volume_info *volume)
 	 * Allow the formatting of block devices or regular files
 	 */
 	if (ioctl(volume->fd, DIOCGPART, &pinfo) < 0) {
-		if (fstat(volume->fd, &st) < 0)
+		if (fstat(volume->fd, &st) < 0) {
 			err(1, "Unable to stat %s", volume->name);
+			/* not reached */
+		}
 		if (S_ISREG(st.st_mode)) {
 			volume->size = st.st_size;
 			volume->type = "REGFILE";
@@ -233,11 +247,13 @@ check_volume(struct volume_info *volume)
 		if (pinfo.reserved_blocks) {
 			errx(1, "HAMMER cannot be placed in a partition "
 				"which overlaps the disklabel or MBR");
+			/* not reached */
 		}
 		if (pinfo.media_blksize > HAMMER_BUFSIZE ||
 		    HAMMER_BUFSIZE % pinfo.media_blksize) {
 			errx(1, "A media sector size of %d is not supported",
 			     pinfo.media_blksize);
+			/* not reached */
 		}
 
 		volume->size = pinfo.media_size;
@@ -257,8 +273,10 @@ assert_volume_offset(struct volume_info *volume)
 {
 	assert(hammer_is_zone_raw_buffer(volume->vol_free_off));
 	assert(hammer_is_zone_raw_buffer(volume->vol_free_end));
-	if (volume->vol_free_off >= volume->vol_free_end)
+	if (volume->vol_free_off >= volume->vol_free_end) {
 		errx(1, "Ran out of room, filesystem too small");
+		/* not reached */
+	}
 }
 
 struct volume_info *
@@ -320,6 +338,7 @@ __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 			    volume->name,
 			    (intmax_t)buffer->zone2_offset,
 			    (intmax_t)buffer->raw_offset);
+			/* not reached */
 		}
 	}
 
@@ -870,8 +889,10 @@ flush_volume(struct volume_info *volume)
 		TAILQ_FOREACH(buffer, &volume->buffer_lists[i], entry)
 			flush_buffer(buffer);
 	}
-	if (writehammervol(volume) == -1)
+	if (writehammervol(volume) == -1) {
 		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
+		/* not reached */
+	}
 }
 
 void
@@ -880,8 +901,10 @@ flush_buffer(struct buffer_info *buffer)
 	struct volume_info *volume;
 
 	volume = buffer->volume;
-	if (writehammerbuf(buffer) == -1)
+	if (writehammerbuf(buffer) == -1) {
 		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
+		/* not reached */
+	}
 	buffer->cache.modified = 0;
 }
 

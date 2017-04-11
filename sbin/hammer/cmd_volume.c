@@ -56,23 +56,29 @@ hammer_cmd_volume_add(char **av, int ac)
 	int fd;
 	const char *device, *filesystem;
 
-	if (ac != 2)
+	if (ac != 2) {
 		errx(1, "hammer volume-add <device> <filesystem>");
+		/* not reached */
+	}
 
 	device = av[0];
 	filesystem = av[1];
 
         fd = open(filesystem, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(1, "hammer volume-add: unable to access %s", filesystem);
+		/* not reached */
+	}
 
 	/*
 	 * Initialize and check the device
 	 */
 	volume = init_volume(device, O_RDONLY, -1);
 	assert(volume->vol_no == -1);
-	if (is_regfile(volume))
+	if (is_regfile(volume)) {
 		errx(1, "Not a block device: %s", device);
+		/* not reached */
+	}
 	close(volume->fd);
 
 	/*
@@ -84,8 +90,10 @@ hammer_cmd_volume_add(char **av, int ac)
 	ioc.boot_area_size = init_boot_area_size(0, ioc.vol_size);
 	ioc.memory_log_size = init_memory_log_size(0, ioc.vol_size);
 
-	if (ioctl(fd, HAMMERIOC_ADD_VOLUME, &ioc) < 0)
+	if (ioctl(fd, HAMMERIOC_ADD_VOLUME, &ioc) < 0) {
 		err(1, "hammer volume-add ioctl");
+		/* not reached */
+	}
 
 	close(fd);
 	hammer_cmd_volume_list(av + 1, ac - 1);
@@ -101,15 +109,19 @@ hammer_cmd_volume_del(char **av, int ac)
 	int fd, retried = 0;
 	const char *device, *filesystem;
 
-	if (ac != 2)
+	if (ac != 2) {
 		errx(1, "hammer volume-del <device> <filesystem>");
+		/* not reached */
+	}
 
 	device = av[0];
 	filesystem = av[1];
 
         fd = open(filesystem, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(1, "hammer volume-del: unable to access %s", filesystem);
+		/* not reached */
+	}
 
 	/*
 	 * volume-del ioctl
@@ -130,6 +142,7 @@ retry:
 			}
 		}
 		err(1, "hammer volume-del ioctl");
+		/* not reached */
 	}
 
 	close(fd);
@@ -146,11 +159,15 @@ hammer_cmd_volume_list(char **av, int ac)
 	char *device_name;
 	int vol_no, i;
 
-	if (ac < 1)
+	if (ac < 1) {
 		errx(1, "hammer volume-list <filesystem>");
+		/* not reached */
+	}
 
-	if (hammer_fs_to_vol(av[0], &ioc) == -1)
+	if (hammer_fs_to_vol(av[0], &ioc) == -1) {
 		errx(1, "hammer volume-list: failed");
+		/* not reached */
+	}
 
 	for (i = 0; i < ioc.nvols; i++) {
 		device_name = ioc.vols[i].device_name;
@@ -176,11 +193,15 @@ hammer_cmd_volume_blkdevs(char **av, int ac)
 	struct hammer_ioc_volume_list ioc;
 	int i;
 
-	if (ac < 1)
+	if (ac < 1) {
 		errx(1, "hammer volume-blkdevs <filesystem>");
+		/* not reached */
+	}
 
-	if (hammer_fs_to_vol(av[0], &ioc) == -1)
+	if (hammer_fs_to_vol(av[0], &ioc) == -1) {
 		errx(1, "hammer volume-list: failed");
+		/* not reached */
+	}
 
 	for (i = 0; i < ioc.nvols; i++) {
 		printf("%s", ioc.vols[i].device_name);

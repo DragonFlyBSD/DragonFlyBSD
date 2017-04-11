@@ -890,8 +890,10 @@ _strtoul(const char *p, int base)
 
 	errno = 0;  /* clear */
 	retval = strtoul(p, NULL, base);
-	if (errno == ERANGE && retval == ULONG_MAX)
+	if (errno == ERANGE && retval == ULONG_MAX) {
 		err(1, "strtoul");
+		/* not reached */
+	}
 	return retval;
 }
 
@@ -903,8 +905,10 @@ _strtoull(const char *p, int base)
 
 	errno = 0;  /* clear */
 	retval = strtoull(p, NULL, base);
-	if (errno == ERANGE && retval == ULLONG_MAX)
+	if (errno == ERANGE && retval == ULLONG_MAX) {
 		err(1, "strtoull");
+		/* not reached */
+	}
 	return retval;
 }
 

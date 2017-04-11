@@ -130,6 +130,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	if (ioctl(fsfd, HAMMERIOC_SYNCTID, &synctid) < 0) {
 		err(2, "hammer snap: Synctid %s failed",
 		    dirpath);
+		/* not reached */
 	}
 	if (tostdout) {
 		if (strcmp(dirpath, ".") == 0 || strcmp(dirpath, "..") == 0) {
@@ -152,6 +153,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		if (statfs(dirpath, &buf) < 0) {
 			err(2, "hammer snap: Cannot determine mount for %s",
 			    dirpath);
+			/* not reached */
 		}
 		asprintf(&fsym, "%s/@@0x%016jx",
 			 buf.f_mntonname, (uintmax_t)synctid.tid);
@@ -338,21 +340,26 @@ hammer_cmd_snapshot(char **av, int ac)
 	}
 
 	if (stat(softlink_dir, &st) == 0) {
-		if (!S_ISDIR(st.st_mode))
+		if (!S_ISDIR(st.st_mode)) {
 			err(2, "File %s already exists", softlink_dir);
+			/* not reached */
+		}
 
 		if (filesystem == NULL) {
 			if (statfs(softlink_dir, &buf) != 0) {
 				err(2, "Unable to determine filesystem of %s",
 				    softlink_dir);
+				/* not reached */
 			}
 			filesystem = buf.f_mntonname;
 		}
 
 		softlink_fmt = malloc(strlen(softlink_dir) + 1 + 1 +
 		                      sizeof(DEFAULT_SNAPSHOT_NAME));
-		if (softlink_fmt == NULL)
+		if (softlink_fmt == NULL) {
 			err(2, "Failed to allocate string");
+			/* not reached */
+		}
 
 		strcpy(softlink_fmt, softlink_dir);
 		if (softlink_fmt[strlen(softlink_fmt)-1] != '/')
@@ -375,10 +382,12 @@ hammer_cmd_snapshot(char **av, int ac)
 			    !S_ISDIR(st.st_mode)) {
 				err(2, "Unable to determine softlink dir %s",
 				    softlink_fmt);
+				/* not reached */
 			}
 			if (statfs(softlink_fmt, &buf) != 0) {
 				err(2, "Unable to determine filesystem of %s",
 				    softlink_fmt);
+				/* not reached */
 			}
 			filesystem = buf.f_mntonname;
 
@@ -395,23 +404,33 @@ hammer_cmd_snapshot(char **av, int ac)
 	synctid.op = HAMMER_SYNCTID_SYNC2;
 
 	int fd = open(filesystem, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		err(2, "Unable to open %s", filesystem);
-	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0)
+		/* not reached */
+	}
+	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0) {
 		err(2, "Synctid %s failed", filesystem);
+		/* not reached */
+	}
 
 	asprintf(&from, "%s/@@0x%016jx", filesystem, (uintmax_t)synctid.tid);
-	if (from == NULL)
+	if (from == NULL) {
 		err(2, "Couldn't generate string");
+		/* not reached */
+	}
 
 	int sz = strlen(softlink_fmt) + 50;
 	to = malloc(sz);
-	if (to == NULL)
+	if (to == NULL) {
 		err(2, "Failed to allocate string");
+		/* not reached */
+	}
 
 	time_t t = time(NULL);
-	if (strftime(to, sz, softlink_fmt, localtime(&t)) == 0)
+	if (strftime(to, sz, softlink_fmt, localtime(&t)) == 0) {
 		err(2, "String buffer too small");
+		/* not reached */
+	}
 
 	asprintf(&from, "%s/@@0x%016jx", filesystem, (uintmax_t)synctid.tid);
 
@@ -454,10 +473,12 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
 		}
 		if (ioctl(fd, HAMMERIOC_ADD_SNAPSHOT, &snapshot) < 0) {
 			err(2, "Unable to create snapshot");
+			/* not reached */
 		} else if (snapshot.head.error &&
 			   snapshot.head.error != EEXIST) {
 			errx(2, "Unable to create snapshot: %s",
 				strerror(snapshot.head.error));
+			/* not reached */
 		}
         }
 
@@ -469,6 +490,7 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
 		remove(tsym);
 		if (symlink(fsym, tsym) < 0) {
 			err(2, "Unable to create symlink %s", tsym);
+			/* not reached */
 		}
 	}
 }
@@ -541,11 +563,13 @@ snapshot_del(int fsfd, hammer_tid_t tid)
 
         if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0) {
 		err(2, "hammer snaprm 0x%016jx", (uintmax_t)tid);
+		/* not reached */
 	}
 	HammerVersion = version.cur_version;
 	if (version.cur_version < 3) {
 		errx(2, "hammer snaprm 0x%016jx: You must upgrade to version "
 			" 3 to use this directive", (uintmax_t)tid);
+		/* not reached */
 	}
 
 	bzero(&snapshot, sizeof(snapshot));
@@ -558,6 +582,7 @@ snapshot_del(int fsfd, hammer_tid_t tid)
 	if (ioctl(fsfd, HAMMERIOC_DEL_SNAPSHOT, &snapshot) < 0) {
 		err(2, "hammer snaprm 0x%016jx",
 		      (uintmax_t)tid);
+		/* not reached */
 	} else if (snapshot.head.error == ENOENT) {
 		fprintf(stderr, "Warning: hammer snaprm 0x%016jx: "
 				"meta-data not found\n",

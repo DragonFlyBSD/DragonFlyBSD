@@ -73,4 +73,5 @@ hammer_cmd_sshremote(const char *cmd, const char *target)
 	free(dup);
 	execv("/sbin/hammer", (void *)av);
 	err(1, "hammer-remote: execv failed");
+	/* not reached */
 }
