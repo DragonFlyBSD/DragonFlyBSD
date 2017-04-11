@@ -333,7 +333,7 @@ rsaencpwd_reply(ap, data, cnt)
 		if (*ptr != 0x04) {
 		  return;
 		}
-		*ptr++;
+		ptr++;	/* skip 0x04 */
 		challenge_len = DecodeValueLength(ptr);
 		ptr += NumEncodeLengthOctets(challenge_len);
 		memmove(challenge, ptr, challenge_len);
@@ -341,7 +341,7 @@ rsaencpwd_reply(ap, data, cnt)
 		if (*ptr != 0x04) {
 		  return;
 		}
-		*ptr++;
+		ptr++;	/* skip 0x04 */
 		pubkey_len = DecodeValueLength(ptr);
 		ptr += NumEncodeLengthOctets(pubkey_len);
 		memmove(pubkey, ptr, pubkey_len);
