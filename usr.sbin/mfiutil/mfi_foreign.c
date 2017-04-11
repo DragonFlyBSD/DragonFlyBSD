@@ -171,8 +171,8 @@ static int
 foreign_show_cfg(int fd, uint32_t opcode, uint8_t cfgidx)
 {
 	struct mfi_config_data *config;
-	char prefix[26];
 	int error;
+	char *prefix;
 	uint8_t mbox[4];
 
 	bzero(mbox, sizeof(mbox));
@@ -186,9 +186,9 @@ foreign_show_cfg(int fd, uint32_t opcode, uint8_t cfgidx)
 	}
 
 	if (opcode == MFI_DCMD_CFG_FOREIGN_PREVIEW)
-		sprintf(prefix, "Foreign configuration preview %d", cfgidx);
+		asprintf(&prefix, "Foreign configuration preview %d", cfgidx);
 	else
-		sprintf(prefix, "Foreign configuration %d", cfgidx);
+		asprintf(&prefix, "Foreign configuration %d", cfgidx);
 	/*
 	 * MegaCli uses DCMD opcodes: 0x03100200 (which fails) followed by
 	 * 0x1a721880 which returns what looks to be drive / volume info
@@ -197,6 +197,7 @@ foreign_show_cfg(int fd, uint32_t opcode, uint8_t cfgidx)
 	 */
 	dump_config(fd, config, prefix);
 	free(config);
+	free(prefix);
 
 	return (0);
 }
