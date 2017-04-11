@@ -191,14 +191,16 @@ link_ProtocolRecord(struct link *l, u_short proto, int type)
 {
   int i;
 
-  for (i = 0; i < NPROTOSTAT; i++)
+  for (i = 0; i < NPROTOSTAT; i++) {
     if (ProtocolStat[i].number == proto)
       break;
-
-  if (type == PROTO_IN)
-    l->proto_in[i]++;
-  else
-    l->proto_out[i]++;
+  }
+  if (i != NPROTOSTAT) {
+      if (type == PROTO_IN)
+	l->proto_in[i]++;
+      else
+	l->proto_out[i]++;
+  }
 }
 
 void
