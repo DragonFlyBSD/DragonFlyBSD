@@ -1171,7 +1171,7 @@ input(int *cmd)
 				return (0);
 			}
 
-			len = (num > MAXLINE) ? MAXLINE : num;
+			len = (num >= MAXLINE) ? MAXLINE - 1 : num;
 			memcpy(buf, bp, len);
 			buf[len] = 0;
 			history(hist, &he, H_ENTER, bp);
