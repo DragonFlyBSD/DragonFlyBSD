@@ -609,18 +609,14 @@ selectdevs(struct device_selection **dev_select, int *num_selected,
 			  && ((devices[j].device_type & DEVSTAT_TYPE_MASK) ==
 			        (matches[i].device_type & DEVSTAT_TYPE_MASK))
 			  &&(((matches[i].match_fields & DEVSTAT_MATCH_PASS)!=0)
-			   || (((matches[i].match_fields & 
-				DEVSTAT_MATCH_PASS) == 0)
-			    && ((devices[j].device_type &
+			   || (((devices[j].device_type &
 			        DEVSTAT_TYPE_PASS) == 0)))
 			  && (--num_match_categories == 0)) 
 			 || (((matches[i].match_fields & DEVSTAT_MATCH_IF) != 0)
 			  && ((devices[j].device_type & DEVSTAT_TYPE_IF_MASK) ==
 			        (matches[i].device_type & DEVSTAT_TYPE_IF_MASK))
 			  &&(((matches[i].match_fields & DEVSTAT_MATCH_PASS)!=0)
-			   || (((matches[i].match_fields &
-				DEVSTAT_MATCH_PASS) == 0)
-			    && ((devices[j].device_type & 
+			   || (((devices[j].device_type &
 				DEVSTAT_TYPE_PASS) == 0)))
 			  && (--num_match_categories == 0))
 			 || (((matches[i].match_fields & DEVSTAT_MATCH_PASS)!=0)
