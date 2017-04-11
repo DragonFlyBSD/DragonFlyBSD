@@ -929,7 +929,7 @@ hammer_open(const char *path, struct open_file *f)
 	}
 
 #if DEBUG
-	printf("hammer_open %s %p %ld\n", path, f);
+	printf("hammer_open %s %p\n", path, f);
 #endif
 
 	hf->ino = hlookup(&hf->hfs, path);
