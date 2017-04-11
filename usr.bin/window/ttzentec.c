@@ -56,7 +56,7 @@ tt_zentec(void)
 {
 	if (tt_generic() < 0)
 		return -1;
-	if (tt.tt_availmodes | WWM_GRP)
+	if (tt.tt_availmodes & WWM_GRP)
 		tt.tt_frame = zentec_frame;
 	return 0;
 }
