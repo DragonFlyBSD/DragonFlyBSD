@@ -844,9 +844,8 @@ static void
 CleanupAliasData(void)
 {
     struct alias_link *link;
-    int i, icount;
+    int i;
 
-    icount = 0;
     for (i=0; i<LINK_TABLE_OUT_SIZE; i++)
     {
         link = LIST_FIRST(&linkTableOut[i]);
@@ -854,7 +853,6 @@ CleanupAliasData(void)
         {
             struct alias_link *link_next;
             link_next = LIST_NEXT(link, list_out);
-            icount++;
             DeleteLink(link);
             link = link_next;
         }
@@ -867,10 +865,8 @@ CleanupAliasData(void)
 static void
 IncrementalCleanup(void)
 {
-    int icount;
     struct alias_link *link;
 
-    icount = 0;
     link = LIST_FIRST(&linkTableOut[cleanupIndex++]);
     while (link != NULL)
     {
@@ -891,7 +887,6 @@ IncrementalCleanup(void)
                      || tcp_aux->state.out != ALIAS_TCP_STATE_CONNECTED)
                     {
                         DeleteLink(link);
-                        icount++;
                     }
                 }
                 break;
@@ -899,7 +894,6 @@ IncrementalCleanup(void)
                 if (idelta > link->expire_time)
                 {
                     DeleteLink(link);
-                    icount++;
                 }
                 break;
         }
