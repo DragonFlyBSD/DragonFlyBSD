@@ -625,6 +625,9 @@ ssh_exchange_identification(int timeout_ms)
 	/*
 	 * Check that the versions match.  In future this might accept
 	 * several versions and set appropriate flags to handle them.
+	 *
+	 * NOTE: unbounded string to remote_version, but limited size of
+	 *       buf prevents overflow.
 	 */
 	if (sscanf(server_version_string, "SSH-%d.%d-%[^\n]\n",
 	    &remote_major, &remote_minor, remote_version) != 3)
