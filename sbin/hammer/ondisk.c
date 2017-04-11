@@ -212,16 +212,18 @@ check_volume(struct volume_info *volume)
 	struct stat st;
 
 	/*
-	 * Get basic information about the volume
+	 * Allow the formatting of block devices or regular files
 	 */
 	if (ioctl(volume->fd, DIOCGPART, &pinfo) < 0) {
-		/*
-		 * Allow the formatting of regular files as HAMMER volumes
-		 */
 		if (fstat(volume->fd, &st) < 0)
 			err(1, "Unable to stat %s", volume->name);
-		volume->size = st.st_size;
-		volume->type = "REGFILE";
+		if (S_ISREG(st.st_mode)) {
+			volume->size = st.st_size;
+			volume->type = "REGFILE";
+		} else {
+			errx(1, "Unsupported file type for %s", volume->name);
+			/* not reached */
+		}
 	} else {
 		/*
 		 * When formatting a block device as a HAMMER volume the
