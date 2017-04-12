@@ -37,11 +37,11 @@
 
 #include "hammer_util.h"
 
-static void check_volume(struct volume_info *volume);
+static void check_volume(volume_info_t volume);
 static void get_buffer_readahead(struct buffer_info *base);
-static __inline int readhammervol(struct volume_info *volume);
+static __inline int readhammervol(volume_info_t volume);
 static __inline int readhammerbuf(struct buffer_info *buffer);
-static __inline int writehammervol(struct volume_info *volume);
+static __inline int writehammervol(volume_info_t volume);
 static __inline int writehammerbuf(struct buffer_info *buffer);
 
 uuid_t Hammer_FSType;
@@ -68,7 +68,7 @@ buffer_hash(hammer_off_t zone2_offset)
 static struct buffer_info*
 find_buffer(hammer_off_t zone2_offset)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	struct buffer_info *buffer;
 	int hi;
 
@@ -83,10 +83,10 @@ find_buffer(hammer_off_t zone2_offset)
 }
 
 static
-struct volume_info *
+volume_info_t
 __alloc_volume(const char *volname, int oflags)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	int i;
 
 	volume = calloc(1, sizeof(*volume));
@@ -109,9 +109,9 @@ __alloc_volume(const char *volname, int oflags)
 }
 
 static void
-__add_volume(struct volume_info *volume)
+__add_volume(volume_info_t volume)
 {
-	struct volume_info *scan;
+	volume_info_t scan;
 	struct stat st1, st2;
 
 	if (fstat(volume->fd, &st1) != 0) {
@@ -142,7 +142,7 @@ __add_volume(struct volume_info *volume)
 }
 
 static void
-__verify_volume(struct volume_info *volume)
+__verify_volume(volume_info_t volume)
 {
 	hammer_volume_ondisk_t ondisk = volume->ondisk;
 
@@ -171,10 +171,10 @@ __verify_volume(struct volume_info *volume)
 /*
  * Initialize a volume structure and ondisk vol_no field.
  */
-struct volume_info *
+volume_info_t
 init_volume(const char *filename, int oflags, int32_t vol_no)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 
 	volume = __alloc_volume(filename, oflags);
 	volume->vol_no = volume->ondisk->vol_no = vol_no;
@@ -187,10 +187,10 @@ init_volume(const char *filename, int oflags, int32_t vol_no)
 /*
  * Initialize a volume structure and read ondisk volume header.
  */
-struct volume_info*
+volume_info_t
 load_volume(const char *filename, int oflags, int verify)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	int n;
 
 	volume = __alloc_volume(filename, oflags);
@@ -218,7 +218,7 @@ load_volume(const char *filename, int oflags, int verify)
  * Check basic volume characteristics.
  */
 static void
-check_volume(struct volume_info *volume)
+check_volume(volume_info_t volume)
 {
 	struct partinfo pinfo;
 	struct stat st;
@@ -263,13 +263,13 @@ check_volume(struct volume_info *volume)
 }
 
 int
-is_regfile(struct volume_info *volume)
+is_regfile(volume_info_t volume)
 {
 	return(strcmp(volume->type, "REGFILE") ? 0 : 1);
 }
 
 void
-assert_volume_offset(struct volume_info *volume)
+assert_volume_offset(volume_info_t volume)
 {
 	assert(hammer_is_zone_raw_buffer(volume->vol_free_off));
 	assert(hammer_is_zone_raw_buffer(volume->vol_free_end));
@@ -279,10 +279,10 @@ assert_volume_offset(struct volume_info *volume)
 	}
 }
 
-struct volume_info *
+volume_info_t
 get_volume(int32_t vol_no)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 
 	TAILQ_FOREACH(volume, &VolList, entry) {
 		if (volume->vol_no == vol_no)
@@ -292,7 +292,7 @@ get_volume(int32_t vol_no)
 	return(volume);
 }
 
-struct volume_info *
+volume_info_t
 get_root_volume(void)
 {
 	return(get_volume(HAMMER_ROOT_VOLNO));
@@ -319,7 +319,7 @@ __blockmap_xlate_to_zone2(hammer_off_t buf_offset)
 static struct buffer_info *
 __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	struct buffer_info *buffer;
 	int hi;
 
@@ -392,7 +392,7 @@ static void
 get_buffer_readahead(struct buffer_info *base)
 {
 	struct buffer_info *buffer;
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_off_t zone2_offset;
 	int64_t raw_offset;
 	int ri = UseReadBehind;
@@ -425,7 +425,7 @@ get_buffer_readahead(struct buffer_info *base)
 void
 rel_buffer(struct buffer_info *buffer)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	int hi;
 
 	if (buffer == NULL)
@@ -510,7 +510,7 @@ alloc_meta_element(hammer_off_t *offp, int32_t data_len,
  * all allocations are now actually done from the freemap.
  */
 void
-format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset)
+format_blockmap(volume_info_t root_vol, int zone, hammer_off_t offset)
 {
 	hammer_blockmap_t blockmap;
 	hammer_off_t zone_base;
@@ -536,7 +536,7 @@ format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset)
  * code will load each volume's freemap.
  */
 void
-format_freemap(struct volume_info *root_vol)
+format_freemap(volume_info_t root_vol)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_off_t layer1_offset;
@@ -574,9 +574,9 @@ format_freemap(struct volume_info *root_vol)
  * Returns the number of big-blocks available.
  */
 int64_t
-initialize_freemap(struct volume_info *volume)
+initialize_freemap(volume_info_t volume)
 {
-	struct volume_info *root_vol;
+	volume_info_t root_vol;
 	struct buffer_info *buffer1 = NULL;
 	struct buffer_info *buffer2 = NULL;
 	hammer_blockmap_layer1_t layer1;
@@ -676,7 +676,7 @@ initialize_freemap(struct volume_info *volume)
  * without formatting.
  */
 int64_t
-count_freemap(struct volume_info *volume)
+count_freemap(volume_info_t volume)
 {
 	hammer_off_t phys_offset;
 	hammer_off_t vol_free_off;
@@ -713,7 +713,7 @@ count_freemap(struct volume_info *volume)
  * Format the undomap for the root volume.
  */
 void
-format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size)
+format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size)
 {
 	hammer_off_t undo_limit;
 	hammer_blockmap_t blockmap;
@@ -826,7 +826,7 @@ const char *zone_labels[] = {
 };
 
 void
-print_blockmap(const struct volume_info *volume)
+print_blockmap(const volume_info_t volume)
 {
 	hammer_blockmap_t blockmap;
 	hammer_volume_ondisk_t ondisk;
@@ -873,14 +873,14 @@ print_blockmap(const struct volume_info *volume)
 void
 flush_all_volumes(void)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 
 	TAILQ_FOREACH(volume, &VolList, entry)
 		flush_volume(volume);
 }
 
 void
-flush_volume(struct volume_info *volume)
+flush_volume(volume_info_t volume)
 {
 	struct buffer_info *buffer;
 	int i;
@@ -898,7 +898,7 @@ flush_volume(struct volume_info *volume)
 void
 flush_buffer(struct buffer_info *buffer)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 
 	volume = buffer->volume;
 	if (writehammerbuf(buffer) == -1) {
@@ -912,7 +912,7 @@ flush_buffer(struct buffer_info *buffer)
  * Core I/O operations
  */
 static int
-__read(struct volume_info *volume, void *data, int64_t offset, int size)
+__read(volume_info_t volume, void *data, int64_t offset, int size)
 {
 	ssize_t n;
 
@@ -923,7 +923,7 @@ __read(struct volume_info *volume, void *data, int64_t offset, int size)
 }
 
 static __inline int
-readhammervol(struct volume_info *volume)
+readhammervol(volume_info_t volume)
 {
 	return(__read(volume, volume->ondisk, 0, HAMMER_BUFSIZE));
 }
@@ -936,7 +936,7 @@ readhammerbuf(struct buffer_info *buffer)
 }
 
 static int
-__write(struct volume_info *volume, const void *data, int64_t offset, int size)
+__write(volume_info_t volume, const void *data, int64_t offset, int size)
 {
 	ssize_t n;
 
@@ -950,7 +950,7 @@ __write(struct volume_info *volume, const void *data, int64_t offset, int size)
 }
 
 static __inline int
-writehammervol(struct volume_info *volume)
+writehammervol(volume_info_t volume)
 {
 	return(__write(volume, volume->ondisk, 0, HAMMER_BUFSIZE));
 }

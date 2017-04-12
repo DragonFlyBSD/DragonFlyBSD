@@ -52,7 +52,7 @@ void
 hammer_cmd_volume_add(char **av, int ac)
 {
 	struct hammer_ioc_volume ioc;
-	struct volume_info *volume;
+	volume_info_t volume;
 	int fd;
 	const char *device, *filesystem;
 

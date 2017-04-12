@@ -97,7 +97,7 @@ static
 void
 dump_blockmap(int zone)
 {
-	struct volume_info *root_volume;
+	volume_info_t root_volume;
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
@@ -220,7 +220,7 @@ dump_blockmap(int zone)
 void
 hammer_cmd_checkmap(void)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_blockmap_t freemap;
 	hammer_blockmap_t undomap;
 	hammer_off_t node_offset;

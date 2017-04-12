@@ -106,7 +106,7 @@ static const char* _indents[] = {
 void
 hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_volume_ondisk_t ondisk;
 	struct zone_stat *stats = NULL;
 
@@ -1033,7 +1033,7 @@ test_btree_out_of_range(hammer_btree_elm_t elm)
 void
 hammer_cmd_show_undo(void)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_blockmap_t rootmap;
 	hammer_off_t scan_offset;
 	hammer_fifo_any_t head;

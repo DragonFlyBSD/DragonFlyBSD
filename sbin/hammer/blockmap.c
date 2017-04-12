@@ -41,7 +41,7 @@
  * We are bootstrapping the freemap itself and cannot update it yet.
  */
 hammer_off_t
-bootstrap_bigblock(struct volume_info *volume)
+bootstrap_bigblock(volume_info_t volume)
 {
 	hammer_off_t result_offset;
 
@@ -57,7 +57,7 @@ bootstrap_bigblock(struct volume_info *volume)
  * Allocate a big-block for zone-3 for UNDO/REDO FIFO.
  */
 hammer_off_t
-alloc_undo_bigblock(struct volume_info *volume)
+alloc_undo_bigblock(volume_info_t volume)
 {
 	hammer_blockmap_t freemap;
 	struct buffer_info *buffer1 = NULL;
@@ -114,7 +114,7 @@ void *
 alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	       struct buffer_info **bufferp)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
 	struct buffer_info *buffer1 = NULL;
@@ -218,7 +218,7 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 		hammer_blockmap_layer2_t save_layer2,
 		int *errorp)
 {
-	struct volume_info *root_volume = NULL;
+	volume_info_t root_volume = NULL;
 	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;

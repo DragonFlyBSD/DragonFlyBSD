@@ -68,7 +68,7 @@
  * vol_free_off and vol_free_end are zone-2 offsets.
  * These two are initialized only when newly creating a filesystem.
  */
-struct volume_info {
+typedef struct volume_info {
 	TAILQ_ENTRY(volume_info) entry;
 	const char		*name;
 	const char		*type;
@@ -84,7 +84,7 @@ struct volume_info {
 	hammer_volume_ondisk_t ondisk;
 
 	TAILQ_HEAD(, buffer_info) buffer_lists[HAMMER_BUFLISTS];
-};
+} *volume_info_t;
 
 struct cache_info {
 	TAILQ_ENTRY(cache_info) entry;
@@ -98,7 +98,7 @@ struct buffer_info {
 	TAILQ_ENTRY(buffer_info) entry;
 	hammer_off_t		zone2_offset;	/* zone-2 offset */
 	int64_t			raw_offset;	/* physical offset */
-	struct volume_info	*volume;
+	volume_info_t		volume;
 	void			*ondisk;
 };
 
@@ -119,13 +119,12 @@ extern int DebugOpt;
 extern uint32_t HammerVersion;
 extern const char *zone_labels[];
 
-struct volume_info *init_volume(const char *filename, int oflags,
-			int32_t vol_no);
-struct volume_info *load_volume(const char *filename, int oflags, int verify);
-int is_regfile(struct volume_info *volume);
-void assert_volume_offset(struct volume_info *volume);
-struct volume_info *get_volume(int32_t vol_no);
-struct volume_info *get_root_volume(void);
+volume_info_t init_volume(const char *filename, int oflags, int32_t vol_no);
+volume_info_t load_volume(const char *filename, int oflags, int verify);
+int is_regfile(volume_info_t volume);
+void assert_volume_offset(volume_info_t volume);
+volume_info_t get_volume(int32_t vol_no);
+volume_info_t get_root_volume(void);
 void rel_buffer(struct buffer_info *buffer);
 void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 			int isnew);
@@ -133,21 +132,20 @@ hammer_node_ondisk_t alloc_btree_node(hammer_off_t *offp,
 			struct buffer_info **data_bufferp);
 void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 			struct buffer_info **data_bufferp);
-void format_blockmap(struct volume_info *root_vol, int zone,
-			hammer_off_t offset);
-void format_freemap(struct volume_info *root_vol);
-int64_t initialize_freemap(struct volume_info *volume);
-int64_t count_freemap(struct volume_info *volume);
-void format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size);
-void print_blockmap(const struct volume_info *volume);
+void format_blockmap(volume_info_t root_vol, int zone, hammer_off_t offset);
+void format_freemap(volume_info_t root_vol);
+int64_t initialize_freemap(volume_info_t volume);
+int64_t count_freemap(volume_info_t volume);
+void format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size);
+void print_blockmap(const volume_info_t volume);
 void flush_all_volumes(void);
-void flush_volume(struct volume_info *volume);
+void flush_volume(volume_info_t volume);
 void flush_buffer(struct buffer_info *buffer);
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
 int64_t init_memory_log_size(int64_t value, off_t avg_vol_size);
 
-hammer_off_t bootstrap_bigblock(struct volume_info *volume);
-hammer_off_t alloc_undo_bigblock(struct volume_info *volume);
+hammer_off_t bootstrap_bigblock(volume_info_t volume);
+hammer_off_t alloc_undo_bigblock(volume_info_t volume);
 void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 			struct buffer_info **bufferp);
 hammer_off_t blockmap_lookup(hammer_off_t bmap_off, int *errorp);

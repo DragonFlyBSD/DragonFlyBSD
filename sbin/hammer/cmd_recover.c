@@ -122,7 +122,7 @@ void
 hammer_cmd_recover(char **av, int ac)
 {
 	struct buffer_info *data_buffer;
-	struct volume_info *volume;
+	volume_info_t volume;
 	bigblock_t b = NULL;
 	hammer_off_t off;
 	hammer_off_t off_end;
@@ -751,7 +751,7 @@ static
 hammer_off_t
 scan_raw_limit(void)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
@@ -817,7 +817,7 @@ static
 void
 scan_bigblocks(int target_zone)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;

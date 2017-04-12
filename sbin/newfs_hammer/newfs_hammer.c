@@ -38,11 +38,11 @@
 #include "hammer_util.h"
 
 static int64_t getsize(const char *str, int pw);
-static int trim_volume(struct volume_info *volume);
-static void format_volume(struct volume_info *volume, int nvols,const char *label);
+static int trim_volume(volume_info_t volume);
+static void format_volume(volume_info_t volume, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
-static void print_volume(const struct volume_info *volume);
+static void print_volume(const volume_info_t volume);
 static void usage(int exit_code);
 static void test_header_junk_size(int64_t size);
 static void test_boot_area_size(int64_t size);
@@ -68,7 +68,7 @@ main(int ac, char **av)
 	int nvols;
 	int eflag = 0;
 	const char *label = NULL;
-	struct volume_info *volume;
+	volume_info_t volume;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -242,7 +242,7 @@ main(int ac, char **av)
 
 static
 void
-print_volume(const struct volume_info *volume)
+print_volume(const volume_info_t volume)
 {
 	hammer_volume_ondisk_t ondisk;
 	hammer_blockmap_t blockmap;
@@ -257,7 +257,7 @@ print_volume(const struct volume_info *volume)
 
 	nvols = ondisk->vol_count;
 	for (i = 0; i < nvols; ++i) {
-		struct volume_info *p = get_volume(i);
+		volume_info_t p = get_volume(i);
 		total += p->size;
 		if (p->vol_no == HAMMER_ROOT_VOLNO) {
 			assert(name == NULL);
@@ -481,7 +481,7 @@ nowtime(void)
  */
 static
 int
-trim_volume(struct volume_info *volume)
+trim_volume(volume_info_t volume)
 {
 	size_t olen;
 	char *dev_name, *p;
@@ -539,9 +539,9 @@ trim_volume(struct volume_info *volume)
  */
 static
 void
-format_volume(struct volume_info *volume, int nvols, const char *label)
+format_volume(volume_info_t volume, int nvols, const char *label)
 {
-	struct volume_info *root_vol;
+	volume_info_t root_vol;
 	hammer_volume_ondisk_t ondisk;
 	int64_t freeblks;
 	int64_t freebytes;

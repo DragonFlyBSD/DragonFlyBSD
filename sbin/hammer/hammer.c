@@ -591,7 +591,7 @@ static
 void
 __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 {
-	struct volume_info *volume = NULL;
+	volume_info_t volume = NULL;
 	char *copy;
 	char *volname;
 	int volnum = 0;

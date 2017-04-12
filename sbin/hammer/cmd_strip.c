@@ -40,7 +40,7 @@ static void hammer_ask_yn(void);
 void
 hammer_cmd_strip(void)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
@@ -147,7 +147,7 @@ hammer_strip_bigblock(int zone, hammer_off_t offset)
 static void
 hammer_ask_yn(void)
 {
-	struct volume_info *volume;
+	volume_info_t volume;
 	int i;
 
 	volume = get_root_volume();
