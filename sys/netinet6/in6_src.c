@@ -424,8 +424,8 @@ in6_pcbsetlport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 
 	inp->inp_flags |= INP_ANONPORT;
 
-	step = pcbinfo->portinfo_mask + 1;
-	portinfo_first = mycpuid & pcbinfo->portinfo_mask;
+	step = pcbinfo->portinfo_cnt;
+	portinfo_first = mycpuid % pcbinfo->portinfo_cnt;
 	portinfo_idx = portinfo_first;
 loop:
 	portinfo = &pcbinfo->portinfo[portinfo_idx];
@@ -467,7 +467,7 @@ loop:
 			}
 			lport = in_pcblastport_down(lastport, first, last,
 			    step);
-			KKASSERT((lport & pcbinfo->portinfo_mask) ==
+			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
 			    portinfo->offset);
 			lport = htons(lport);
 
@@ -490,7 +490,7 @@ loop:
 				break;
 			}
 			lport = in_pcblastport_up(lastport, first, last, step);
-			KKASSERT((lport & pcbinfo->portinfo_mask) ==
+			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
 			    portinfo->offset);
 			lport = htons(lport);
 
@@ -505,7 +505,7 @@ loop:
 	if (error) {
 		/* Try next portinfo */
 		portinfo_idx++;
-		portinfo_idx &= pcbinfo->portinfo_mask;
+		portinfo_idx %= pcbinfo->portinfo_cnt;
 		if (portinfo_idx != portinfo_first)
 			goto loop;
 

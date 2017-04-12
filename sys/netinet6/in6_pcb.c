@@ -222,8 +222,8 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		 */
 		pcbinfo = inp->inp_pcbinfo;
 		portinfo =
-		    &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
-		KKASSERT((lport_ho & pcbinfo->portinfo_mask) ==
+		    &pcbinfo->portinfo[lport_ho % pcbinfo->portinfo_cnt];
+		KKASSERT((lport_ho % pcbinfo->portinfo_cnt) ==
 		    portinfo->offset);
 
 		/*

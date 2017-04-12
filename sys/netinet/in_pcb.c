@@ -400,8 +400,8 @@ in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 
 	inp->inp_flags |= INP_ANONPORT;
 
-	step = pcbinfo->portinfo_mask + 1;
-	portinfo_first = mycpuid & pcbinfo->portinfo_mask;
+	step = pcbinfo->portinfo_cnt;
+	portinfo_first = mycpuid % pcbinfo->portinfo_cnt;
 	portinfo_idx = portinfo_first;
 loop:
 	portinfo = &pcbinfo->portinfo[portinfo_idx];
@@ -447,7 +447,7 @@ loop:
 			}
 			lport = in_pcblastport_down(lastport,
 			    first, last, step);
-			KKASSERT((lport & pcbinfo->portinfo_mask) ==
+			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
 			    portinfo->offset);
 			lport = htons(lport);
 
@@ -470,7 +470,7 @@ loop:
 				break;
 			}
 			lport = in_pcblastport_up(lastport, first, last, step);
-			KKASSERT((lport & pcbinfo->portinfo_mask) ==
+			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
 			    portinfo->offset);
 			lport = htons(lport);
 
@@ -485,7 +485,7 @@ loop:
 	if (error) {
 		/* Try next portinfo */
 		portinfo_idx++;
-		portinfo_idx &= pcbinfo->portinfo_mask;
+		portinfo_idx %= pcbinfo->portinfo_cnt;
 		if (portinfo_idx != portinfo_first)
 			goto loop;
 		inp->inp_laddr.s_addr = INADDR_ANY;
@@ -581,8 +581,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		 */
 		pcbinfo = inp->inp_pcbinfo;
 		portinfo =
-		    &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
-		KKASSERT((lport_ho & pcbinfo->portinfo_mask) ==
+		    &pcbinfo->portinfo[lport_ho % pcbinfo->portinfo_cnt];
+		KKASSERT((lport_ho % pcbinfo->portinfo_cnt) ==
 		    portinfo->offset);
 
 		/*
@@ -760,11 +760,11 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 
 	inp->inp_flags |= INP_ANONPORT;
 
-	step = pcbinfo->portinfo_mask + 1;
-	portinfo_first = mycpuid & pcbinfo->portinfo_mask;
+	step = pcbinfo->portinfo_cnt;
+	portinfo_first = mycpuid % pcbinfo->portinfo_cnt;
 	portinfo_idx = portinfo_first;
 loop:
-	hash_cpu = portinfo_idx & ncpus2_mask;
+	hash_cpu = portinfo_idx % netisr_ncpus;
 	portinfo = &pcbinfo->portinfo[portinfo_idx];
 	selfconn = 0;
 
@@ -816,7 +816,7 @@ loop:
 
 			lport = in_pcblastport_down(lastport, first, last,
 			    step);
-			KKASSERT((lport & pcbinfo->portinfo_mask) ==
+			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
 			    portinfo->offset);
 			lport = htons(lport);
 			if (IS_SELFCONNECT(inp, lport, sin)) {
@@ -831,7 +831,8 @@ loop:
 				--hash_count;
 				hash = hash_base ^
 				    toeplitz_piecemeal_port(lport);
-				if ((hash & ncpus2_mask) != hash_cpu && hash_count)
+				if (netisr_hashcpu(hash) != hash_cpu &&
+				    hash_count)
 					continue;
 			}
 
@@ -855,7 +856,7 @@ loop:
 			}
 
 			lport = in_pcblastport_up(lastport, first, last, step);
-			KKASSERT((lport & pcbinfo->portinfo_mask) ==
+			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
 			    portinfo->offset);
 			lport = htons(lport);
 			if (IS_SELFCONNECT(inp, lport, sin)) {
@@ -870,7 +871,8 @@ loop:
 				--hash_count;
 				hash = hash_base ^
 				    toeplitz_piecemeal_port(lport);
-				if ((hash & ncpus2_mask) != hash_cpu && hash_count)
+				if (netisr_hashcpu(hash) != hash_cpu &&
+				    hash_count)
 					continue;
 			}
 
@@ -887,7 +889,7 @@ loop:
 	if (error) {
 		/* Try next portinfo */
 		portinfo_idx++;
-		portinfo_idx &= pcbinfo->portinfo_mask;
+		portinfo_idx %= pcbinfo->portinfo_cnt;
 		if (portinfo_idx != portinfo_first)
 			goto loop;
 		inp->inp_laddr.s_addr = INADDR_ANY;
@@ -1789,8 +1791,8 @@ in_pcbinsporthash_lport(struct inpcb *inp)
 
 	/* Locate the proper portinfo based on lport */
 	lport_ho = ntohs(inp->inp_lport);
-	portinfo = &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
-	KKASSERT((lport_ho & pcbinfo->portinfo_mask) == portinfo->offset);
+	portinfo = &pcbinfo->portinfo[lport_ho % pcbinfo->portinfo_cnt];
+	KKASSERT((lport_ho % pcbinfo->portinfo_cnt) == portinfo->offset);
 
 	porthash = in_pcbporthash_head(portinfo, inp->inp_lport);
 	GET_PORTHASH_TOKEN(porthash);
@@ -2337,12 +2339,12 @@ in_pcbportrange(u_short *hi0, u_short *lo0, u_short ofs, u_short step)
 	hi = *hi0;
 	lo = *lo0;
 
-	hi = rounddown2(hi, step);
+	hi = rounddown(hi, step);
 	hi += ofs;
 	if (hi > (int)*hi0)
 		hi -= step;
 
-	lo = roundup2(lo, step);
+	lo = roundup(lo, step);
 	lo -= (step - ofs);
 	if (lo < (int)*lo0)
 		lo += step;

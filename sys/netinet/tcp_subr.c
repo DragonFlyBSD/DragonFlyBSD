@@ -395,7 +395,7 @@ tcp_init(void)
 					  &ticb->hashmask);
 		in_pcbportinfo_init(&portinfo[cpu], hashsize, cpu);
 		ticb->portinfo = portinfo;
-		ticb->portinfo_mask = ncpus2_mask;
+		ticb->portinfo_cnt = netisr_ncpus;
 		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,
 						  &ticb->wildcardhashmask);
 		ticb->localgrphashbase = hashinit(hashsize, M_PCB,

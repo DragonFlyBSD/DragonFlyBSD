@@ -302,7 +302,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct	lwkt_token *infotoken;	/* if this inpcbinfo is shared */
 	struct	inpcbhead *hashbase;
 	u_long	hashmask;
-	int	portinfo_mask;
+	int	portinfo_cnt;
 	struct	inpcbportinfo *portinfo;
 	struct 	inpcbport *portsave;	/* port allocation cache */
 	struct	inpcontainerhead *wildcardhashbase;
