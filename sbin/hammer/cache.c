@@ -82,21 +82,21 @@ hammer_parse_cache_size(const char *arg)
 }
 
 void
-hammer_cache_add(struct cache_info *cache)
+hammer_cache_add(cache_info_t cache)
 {
 	TAILQ_INSERT_HEAD(&CacheList, cache, entry);
 	CacheUse += HAMMER_BUFSIZE;
 }
 
 void
-hammer_cache_del(struct cache_info *cache)
+hammer_cache_del(cache_info_t cache)
 {
 	TAILQ_REMOVE(&CacheList, cache, entry);
 	CacheUse -= HAMMER_BUFSIZE;
 }
 
 void
-hammer_cache_used(struct cache_info *cache)
+hammer_cache_used(cache_info_t cache)
 {
 	TAILQ_REMOVE(&CacheList, cache, entry);
 	TAILQ_INSERT_TAIL(&CacheList, cache, entry);
@@ -105,8 +105,8 @@ hammer_cache_used(struct cache_info *cache)
 void
 hammer_cache_flush(void)
 {
-	struct cache_info *cache;
-	struct cache_info *first = NULL;
+	cache_info_t cache;
+	cache_info_t first = NULL;
 	int count = 0;
 
 	if (CacheUse >= CacheMax) {

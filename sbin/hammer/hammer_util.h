@@ -86,12 +86,12 @@ typedef struct volume_info {
 	TAILQ_HEAD(, buffer_info) buffer_lists[HAMMER_BUFLISTS];
 } *volume_info_t;
 
-struct cache_info {
+typedef struct cache_info {
 	TAILQ_ENTRY(cache_info) entry;
 	int			refs;		/* structural references */
 	int			modified;	/* ondisk modified flag */
 	int			delete;		/* delete flag - delete on last ref */
-};
+} *cache_info_t;
 
 typedef struct buffer_info {
 	struct cache_info	cache;		/* must be at offset 0 */
@@ -155,9 +155,9 @@ hammer_off_t blockmap_lookup_save(hammer_off_t bmap_off,
 				int *errorp);
 
 int hammer_parse_cache_size(const char *arg);
-void hammer_cache_add(struct cache_info *cache);
-void hammer_cache_del(struct cache_info *cache);
-void hammer_cache_used(struct cache_info *cache);
+void hammer_cache_add(cache_info_t cache);
+void hammer_cache_del(cache_info_t cache);
+void hammer_cache_used(cache_info_t cache);
 void hammer_cache_flush(void);
 
 void hammer_key_beg_init(hammer_base_elm_t base);
