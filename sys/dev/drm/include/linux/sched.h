@@ -27,13 +27,28 @@
 #ifndef	_LINUX_SCHED_H_
 #define	_LINUX_SCHED_H_
 
+#include <linux/capability.h>
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/jiffies.h>
+#include <linux/errno.h>
+
+#include <asm/page.h>
+
+#include <linux/compiler.h>
+#include <linux/completion.h>
+#include <linux/rculist.h>
+
+#include <linux/time.h>
+#include <linux/timer.h>
+#include <linux/hrtimer.h>
+#include <linux/gfp.h>
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/sched.h>
 #include <sys/signal2.h>
-
-#include <linux/time.h>
 
 #define	TASK_RUNNING		0
 #define	TASK_INTERRUPTIBLE	1

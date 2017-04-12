@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013-2016 François Tigeot
+ * Copyright (c) 2013-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -152,5 +152,12 @@ static inline int atomic_add_unless(atomic_t *v, int add, int unless)
 
 #define smp_mb__before_atomic()	cpu_ccfence()
 #define smp_mb__after_atomic()	cpu_ccfence()
+
+static inline void
+atomic_andnot(int i, atomic_t *v)
+{
+	/* v->counter = v->counter & ~i; */
+	atomic_clear_int(&v->counter, i);
+}
 
 #endif	/* _LINUX_ATOMIC_H_ */

@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2014-2016 François Tigeot
+ * Copyright (c) 2014-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -80,7 +80,9 @@ do {									\
 	TASK_INIT(&(work)->work_task, 0, _work_fn, (work));		\
 } while (0)
 
-#define	INIT_DELAYED_WORK(_work, func)					\
+#define INIT_WORK_ONSTACK(work, func)	INIT_WORK(work, func)
+
+#define INIT_DELAYED_WORK(_work, func)					\
 do {									\
 	INIT_WORK(&(_work)->work, func);				\
 	lwkt_token_init(&(_work)->token, "workqueue token");		\
@@ -245,6 +247,11 @@ flush_work(struct work_struct *work)
 {
 	taskqueue_drain(work->taskqueue, &work->work_task);
 	return true;
+}
+
+static inline void
+destroy_work_on_stack(struct work_struct *work)
+{
 }
 
 /* System-wide workqueues */

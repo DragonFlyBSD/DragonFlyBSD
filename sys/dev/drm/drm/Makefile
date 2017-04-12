@@ -48,9 +48,11 @@ SRCS	= \
 	linux_compat.c \
 	linux_hdmi.c \
 	linux_i2c.c \
+	linux_hrtimer.c \
 	linux_iomapping.c \
 	linux_list_sort.c \
 	linux_shmem.c \
+	linux_vmalloc.c \
 	linux_workqueue.c \
 	ttm_lock.c \
 	ttm_object.c \

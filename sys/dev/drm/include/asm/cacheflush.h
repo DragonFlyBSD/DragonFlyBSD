@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
 
 #ifndef _ASM_CACHEFLUSH_H_
 #define _ASM_CACHEFLUSH_H_
+
+#include <asm/special_insns.h>
 
 #include <vm/pmap.h>
 #include <vm/vm_page.h>

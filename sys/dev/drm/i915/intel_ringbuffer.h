@@ -104,7 +104,6 @@ struct intel_ringbuffer {
 	struct intel_engine_cs *ring;
 	struct list_head link;
 
-	unsigned int virtual_count;
 	u32 head;
 	u32 tail;
 	int space;

@@ -3,8 +3,8 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2015 François Tigeot
  * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -145,5 +145,7 @@ static inline unsigned long get_num_physpages(void)
 {
 	return Realmem / PAGE_SIZE;
 }
+
+int is_vmalloc_addr(const void *x);
 
 #endif	/* _LINUX_MM_H_ */

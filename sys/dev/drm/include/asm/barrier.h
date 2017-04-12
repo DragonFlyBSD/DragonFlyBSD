@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,5 +34,10 @@
 #define smp_mb()	mb()
 #define smp_rmb()	rmb()
 #define smp_wmb()	barrier()
+
+#define smp_store_mb(var, value) do {	\
+	WRITE_ONCE(var, value);		\
+	cpu_mfence();			\
+} while (0)
 
 #endif	/* _ASM_BARRIER_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,33 +29,9 @@
 
 #include <vm/vm_extern.h>
 
-static inline void *
-vmap(struct vm_page **pages, unsigned int count,
-		unsigned long flags, unsigned long prot)
-{
-	vm_offset_t off;
-	size_t size;
+void *vmap(struct vm_page **pages, unsigned int count,
+	   unsigned long flags, unsigned long prot);
 
-	size = count * PAGE_SIZE;
-	off = kmem_alloc_nofault(&kernel_map, size,
-				 VM_SUBSYS_DRM_VMAP, PAGE_SIZE);
-	if (off == 0)
-		return (NULL);
-
-	pmap_qenter(off, pages, count);
-
-	return (void *)off;
-}
-
-/*
- * DragonFly note: kmem_free() requires a page count, linux code augmented
- * to provide it.
- */
-static inline void
-vunmap(const void *addr, unsigned int count)
-{
-	pmap_qremove((vm_offset_t)addr, count);
-	kmem_free(&kernel_map, (vm_offset_t)addr, IDX_TO_OFF(count));
-}
+void vunmap(const void *addr);
 
 #endif	/* _LINUX_VMALLOC_H_ */

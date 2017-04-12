@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,8 @@
 #ifndef _LINUX_DMI_H_
 #define _LINUX_DMI_H_
 
+#include <linux/list.h>
+#include <linux/kobject.h>
 #include <linux/mod_devicetable.h>
 
 enum dmi_field {

@@ -1275,51 +1275,11 @@ drm_mmap_single(struct dev_mmap_single_args *ap)
 	}
 }
 
-/* XXX broken code */
-#if DRM_LINUX
-
-#include <sys/sysproto.h>
-
-MODULE_DEPEND(DRIVER_NAME, linux, 1, 1, 1);
-
-#define LINUX_IOCTL_DRM_MIN		0x6400
-#define LINUX_IOCTL_DRM_MAX		0x64ff
-
-static linux_ioctl_function_t drm_linux_ioctl;
-static struct linux_ioctl_handler drm_handler = {drm_linux_ioctl,
-    LINUX_IOCTL_DRM_MIN, LINUX_IOCTL_DRM_MAX};
-
-/* The bits for in/out are switched on Linux */
-#define LINUX_IOC_IN	IOC_OUT
-#define LINUX_IOC_OUT	IOC_IN
-
-static int
-drm_linux_ioctl(DRM_STRUCTPROC *p, struct linux_ioctl_args* args)
-{
-	int error;
-	int cmd = args->cmd;
-
-	args->cmd &= ~(LINUX_IOC_IN | LINUX_IOC_OUT);
-	if (cmd & LINUX_IOC_IN)
-		args->cmd |= IOC_IN;
-	if (cmd & LINUX_IOC_OUT)
-		args->cmd |= IOC_OUT;
-	
-	error = ioctl(p, (struct ioctl_args *)args);
-
-	return error;
-}
-#endif /* DRM_LINUX */
-
 static int
 drm_core_init(void *arg)
 {
 
 	drm_global_init();
-
-#if DRM_LINUX
-	linux_ioctl_register_handler(&drm_handler);
-#endif /* DRM_LINUX */
 
 	DRM_INFO("Initialized %s %d.%d.%d %s\n",
 		 CORE_NAME, CORE_MAJOR, CORE_MINOR, CORE_PATCHLEVEL, CORE_DATE);
@@ -1329,10 +1289,6 @@ drm_core_init(void *arg)
 static void
 drm_core_exit(void *arg)
 {
-
-#if DRM_LINUX
-	linux_ioctl_unregister_handler(&drm_handler);
-#endif /* DRM_LINUX */
 
 	drm_global_release();
 }

@@ -20,8 +20,6 @@
 #    define DRM_DEBUG_DEFAULT_ON 1
 #  endif
 #undef DRM_DEBUG
-/* XXX disable DRM_LINUX for now to unbreak LINT64 */
-#undef DRM_LINUX
 #endif /* DRM_DEBUG */
 #endif /* DragonFly */
 

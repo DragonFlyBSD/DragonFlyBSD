@@ -34,6 +34,7 @@
 #include <asm/uaccess.h>
 #include <linux/gfp.h>
 #include <linux/bitops.h>
+#include <linux/hardirq.h>
 
 static inline int
 fault_in_multipages_writeable(char __user *uaddr, int size)

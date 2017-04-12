@@ -1,9 +1,9 @@
-/*-
+/*
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2016 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2016-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 #include <linux/list.h>
 #include <linux/compiler.h>
 #include <linux/cache.h>
+#include <linux/kobject.h>
 #include <linux/moduleparam.h>
 #include <linux/jump_label.h>
 #include <linux/export.h>

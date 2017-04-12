@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017 François Tigeot
+ * Copyright (c) 2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,36 +23,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef _LINUX_KOBJECT_H_
-#define _LINUX_KOBJECT_H_
+#ifndef	_LINUX_CONSOLE_H_
+#define	_LINUX_CONSOLE_H_
 
 #include <linux/types.h>
-#include <linux/list.h>
-#include <linux/compiler.h>
-#include <linux/spinlock.h>
-#include <linux/kref.h>
-#include <linux/kernel.h>
-#include <linux/wait.h>
-#include <linux/atomic.h>
 
-enum kobject_action {
-	KOBJ_ADD,
-	KOBJ_REMOVE,
-	KOBJ_CHANGE,
-	KOBJ_MOVE,
-	KOBJ_ONLINE,
-	KOBJ_OFFLINE,
-	KOBJ_MAX
-};
-
-struct kobject {
-};
-
-static inline int
-kobject_uevent_env(struct kobject *kobj, enum kobject_action action, char *envp[])
+static inline bool
+vgacon_text_force(void)
 {
-	return 0;
+	return false;
 }
 
-#endif	/* _LINUX_KOBJECT_H_ */
+#endif	/* _LINUX_CONSOLE_H_ */
