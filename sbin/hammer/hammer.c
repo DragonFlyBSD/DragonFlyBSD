@@ -245,9 +245,11 @@ main(int ac, char **av)
 			if (strcmp(av[0], elm) == 0)
 				break;
 		}
-		if (elm == NULL)
+		if (elm == NULL) {
 			errx(1, "hammer-remote: request does not match "
 				"restricted command");
+			/* not reached */
+		}
 		free(dup);
 	}
 
@@ -258,6 +260,7 @@ main(int ac, char **av)
 	if (status != uuid_s_ok) {
 		errx(1, "uuids file does not have the DragonFly "
 			"HAMMER filesystem type");
+		/* not reached */
 	}
 
 	/*
@@ -522,8 +525,10 @@ main(int ac, char **av)
 		int indent = 0;
 
 		hammer_parsedevs(blkdevs, O_RDONLY);
-		if (ac > 3)
+		if (ac > 3) {
 			errx(1, "Too many options specified");
+			/* not reached */
+		}
 		if (ac > 1)
 			arg = av[1];
 		if (ac > 2) {
@@ -594,6 +599,7 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 	if (blkdevs == NULL) {
 		errx(1, "A -f blkdevs specification is required "
 			"for this command");
+		/* not reached */
 	}
 
 	copy = strdup(blkdevs);
@@ -616,12 +622,16 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 	 * All volumes have the same vol_count.
 	 */
 	assert(volume);
-	if (volnum != volume->ondisk->vol_count)
+	if (volnum != volume->ondisk->vol_count) {
 		errx(1, "Volume header says %d volumes, but %d specified.",
 			volume->ondisk->vol_count, volnum);
+		/* not reached */
+	}
 
-	if (get_root_volume() == NULL)
+	if (get_root_volume() == NULL) {
 		errx(1, "No root volume found");
+		/* not reached */
+	}
 }
 
 static __inline

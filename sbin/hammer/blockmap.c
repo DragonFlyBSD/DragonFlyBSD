@@ -164,8 +164,10 @@ again:
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(blockmap->next_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
-	if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX)
+	if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
 		errx(1, "alloc_blockmap: layer2 ran out of space!");
+		/* not reached */
+	}
 
 	/*
 	 * If we are entering a new big-block assign ownership to our

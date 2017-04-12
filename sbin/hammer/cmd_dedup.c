@@ -650,6 +650,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 		case DEDUP_VERS_FAILURE:
 			errx(1, "HAMMER filesystem must be at least "
 				"version 5 to dedup");
+			/* not reached */
 		default:
 			fprintf(stderr, "Unknown error\n");
 			goto terminate_early;
@@ -691,6 +692,7 @@ sha256_failure:
 		case DEDUP_VERS_FAILURE:
 			errx(1, "HAMMER filesystem must be at least "
 				"version 5 to dedup");
+			/* not reached */
 		default:
 			fprintf(stderr, "Unknown error\n");
 			goto terminate_early;
@@ -922,8 +924,10 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 			while (offset < mirror.count) {
 				mrec = (void *)((char *)buf + offset);
 				bytes = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
-				if (offset + bytes > mirror.count)
+				if (offset + bytes > mirror.count) {
 					errx(1, "Misaligned record");
+					/* not reached */
+				}
 				assert((mrec->head.type &
 				       HAMMER_MRECF_TYPE_MASK) ==
 				       HAMMER_MREC_TYPE_REC);

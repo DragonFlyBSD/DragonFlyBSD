@@ -46,8 +46,10 @@ hammer_cmd_sshremote(const char *cmd, const char *target)
 	const char *av[REMOTE_MAXARGS + 1];
 	int ac;
 
-	if ((env = getenv("SSH_ORIGINAL_COMMAND")) == NULL)
+	if ((env = getenv("SSH_ORIGINAL_COMMAND")) == NULL) {
 		errx(1, "SSH_ORIGINAL_COMMAND env missing");
+		/* not reached */
+	}
 
 	dup = env = strdup(env);
 	av[0] = "hammer";
@@ -58,11 +60,15 @@ hammer_cmd_sshremote(const char *cmd, const char *target)
 	ac = 5;
 
 	str = strsep(&env, " \t\r\n");
-	if (str == NULL)
+	if (str == NULL) {
 		errx(1, "hammer-remote: null command");
+		/* not reached */
+	}
 
-	if (strstr(str, "hammer") == NULL)
+	if (strstr(str, "hammer") == NULL) {
 		errx(1, "hammer-remote: Command not 'hammer'");
+		/* not reached */
+	}
 
 	while (ac < REMOTE_MAXARGS) {
 		av[ac] = strsep(&env, " \t\r\n");

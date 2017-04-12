@@ -160,8 +160,10 @@ hammer_ask_yn(void)
 	printf("Do you really want to do this? [y/n] ");
 	fflush(stdout);
 
-	if (getyn() == 0)
+	if (getyn() == 0) {
 		errx(1, "No action taken");
+		/* not reached */
+	}
 
 	printf("Stripping HAMMER filesystem (%s)", volume->ondisk->vol_label);
 
