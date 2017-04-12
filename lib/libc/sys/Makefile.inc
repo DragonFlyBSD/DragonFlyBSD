@@ -52,15 +52,7 @@ CLEANFILES+=	${SASM} ${SPSEUDO}
 # Generate the syscalls source-files
 NOTE_GNU_STACK='.section .note.GNU-stack,"",%%progbits\n'
 
-# These DF408.0 symbols were originally named DF404.0 in error.
-# Remove after release following 4.7-DEVELOPMENT
-lwp_create2.S lwp_getaffinity.S lwp_setaffinity.S:
-	echo "#include \"SYS.h\"" > ${.TARGET}
-	echo ".symver ${.PREFIX},${.PREFIX}@DF404.0" >> ${.TARGET}
-	echo "RSYSCALL(${.PREFIX})" >> ${.TARGET}
-	printf  ${NOTE_GNU_STACK} >> ${.TARGET}
-
-${SASM:Nlwp_create2.S:Nlwp_getaffinity.S:Nlwp_setaffinity.S}:
+${SASM}:
 	printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' > ${.TARGET}
 	printf  ${NOTE_GNU_STACK} >> ${.TARGET}
 

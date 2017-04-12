@@ -36,10 +36,6 @@
 #include <sched.h>
 #include <string.h>
 
-/* This DF408.0 symbol was originally named DF404.0 in error. */
-/* Remove after release following 4.7-DEVELOPMENT */
-__asm__(".symver sched_setaffinity,sched_setaffinity@DF404.0");
-
 int
 sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask)
 {
