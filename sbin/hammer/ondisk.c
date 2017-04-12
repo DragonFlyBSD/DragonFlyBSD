@@ -38,11 +38,11 @@
 #include "hammer_util.h"
 
 static void check_volume(volume_info_t volume);
-static void get_buffer_readahead(struct buffer_info *base);
+static void get_buffer_readahead(buffer_info_t base);
 static __inline int readhammervol(volume_info_t volume);
-static __inline int readhammerbuf(struct buffer_info *buffer);
+static __inline int readhammerbuf(buffer_info_t buffer);
 static __inline int writehammervol(volume_info_t volume);
-static __inline int writehammerbuf(struct buffer_info *buffer);
+static __inline int writehammerbuf(buffer_info_t buffer);
 
 uuid_t Hammer_FSType;
 uuid_t Hammer_FSId;
@@ -65,11 +65,11 @@ buffer_hash(hammer_off_t zone2_offset)
 	return(hi);
 }
 
-static struct buffer_info*
+static buffer_info_t
 find_buffer(hammer_off_t zone2_offset)
 {
 	volume_info_t volume;
-	struct buffer_info *buffer;
+	buffer_info_t buffer;
 	int hi;
 
 	volume = get_volume(HAMMER_VOL_DECODE(zone2_offset));
@@ -316,11 +316,11 @@ __blockmap_xlate_to_zone2(hammer_off_t buf_offset)
 	return(zone2_offset);
 }
 
-static struct buffer_info *
+static buffer_info_t
 __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 {
 	volume_info_t volume;
-	struct buffer_info *buffer;
+	buffer_info_t buffer;
 	int hi;
 
 	volume = get_volume(HAMMER_VOL_DECODE(zone2_offset));
@@ -352,10 +352,10 @@ __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 /*
  * Acquire the 16KB buffer for specified zone offset.
  */
-static struct buffer_info *
+static buffer_info_t
 get_buffer(hammer_off_t buf_offset, int isnew)
 {
-	struct buffer_info *buffer;
+	buffer_info_t buffer;
 	hammer_off_t zone2_offset;
 	int dora = 0;
 
@@ -389,9 +389,9 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 }
 
 static void
-get_buffer_readahead(struct buffer_info *base)
+get_buffer_readahead(buffer_info_t base)
 {
-	struct buffer_info *buffer;
+	buffer_info_t buffer;
 	volume_info_t volume;
 	hammer_off_t zone2_offset;
 	int64_t raw_offset;
@@ -423,7 +423,7 @@ get_buffer_readahead(struct buffer_info *base)
 }
 
 void
-rel_buffer(struct buffer_info *buffer)
+rel_buffer(buffer_info_t buffer)
 {
 	volume_info_t volume;
 	int hi;
@@ -451,8 +451,7 @@ rel_buffer(struct buffer_info *buffer)
  * If bufferp is freed a referenced buffer is loaded into it.
  */
 void *
-get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
-		int isnew)
+get_buffer_data(hammer_off_t buf_offset, buffer_info_t *bufferp, int isnew)
 {
 	hammer_off_t xor;
 
@@ -480,7 +479,7 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
  * Allocate HAMMER elements - B-Tree nodes
  */
 hammer_node_ondisk_t
-alloc_btree_node(hammer_off_t *offp, struct buffer_info **data_bufferp)
+alloc_btree_node(hammer_off_t *offp, buffer_info_t *data_bufferp)
 {
 	hammer_node_ondisk_t node;
 
@@ -495,7 +494,7 @@ alloc_btree_node(hammer_off_t *offp, struct buffer_info **data_bufferp)
  */
 void *
 alloc_meta_element(hammer_off_t *offp, int32_t data_len,
-		   struct buffer_info **data_bufferp)
+		   buffer_info_t *data_bufferp)
 {
 	void *data;
 
@@ -538,7 +537,7 @@ format_blockmap(volume_info_t root_vol, int zone, hammer_off_t offset)
 void
 format_freemap(volume_info_t root_vol)
 {
-	struct buffer_info *buffer = NULL;
+	buffer_info_t buffer = NULL;
 	hammer_off_t layer1_offset;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_layer1_t layer1;
@@ -577,8 +576,8 @@ int64_t
 initialize_freemap(volume_info_t volume)
 {
 	volume_info_t root_vol;
-	struct buffer_info *buffer1 = NULL;
-	struct buffer_info *buffer2 = NULL;
+	buffer_info_t buffer1 = NULL;
+	buffer_info_t buffer2 = NULL;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
 	hammer_off_t layer1_offset;
@@ -718,7 +717,7 @@ format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size)
 	hammer_off_t undo_limit;
 	hammer_blockmap_t blockmap;
 	hammer_volume_ondisk_t ondisk;
-	struct buffer_info *buffer = NULL;
+	buffer_info_t buffer = NULL;
 	hammer_off_t scan;
 	int n;
 	int limit_index;
@@ -882,7 +881,7 @@ flush_all_volumes(void)
 void
 flush_volume(volume_info_t volume)
 {
-	struct buffer_info *buffer;
+	buffer_info_t buffer;
 	int i;
 
 	for (i = 0; i < HAMMER_BUFLISTS; ++i) {
@@ -896,7 +895,7 @@ flush_volume(volume_info_t volume)
 }
 
 void
-flush_buffer(struct buffer_info *buffer)
+flush_buffer(buffer_info_t buffer)
 {
 	volume_info_t volume;
 
@@ -929,7 +928,7 @@ readhammervol(volume_info_t volume)
 }
 
 static __inline int
-readhammerbuf(struct buffer_info *buffer)
+readhammerbuf(buffer_info_t buffer)
 {
 	return(__read(buffer->volume, buffer->ondisk, buffer->raw_offset,
 		HAMMER_BUFSIZE));
@@ -956,7 +955,7 @@ writehammervol(volume_info_t volume)
 }
 
 static __inline int
-writehammerbuf(struct buffer_info *buffer)
+writehammerbuf(buffer_info_t buffer)
 {
 	return(__write(buffer->volume, buffer->ondisk, buffer->raw_offset,
 		HAMMER_BUFSIZE));

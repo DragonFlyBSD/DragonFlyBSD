@@ -128,7 +128,7 @@ hammer_cache_flush(void)
 
 			cache->refs = 1;
 			cache->delete = 1;
-			rel_buffer((struct buffer_info*)cache);
+			rel_buffer((buffer_info_t)cache);
 
 			if (CacheUse < CacheMax / 2)
 				break;

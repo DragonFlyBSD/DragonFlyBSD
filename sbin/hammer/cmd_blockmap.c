@@ -101,8 +101,8 @@ dump_blockmap(int zone)
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
-	struct buffer_info *buffer1 = NULL;
-	struct buffer_info *buffer2 = NULL;
+	buffer_info_t buffer1 = NULL;
+	buffer_info_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
 	hammer_off_t phys_offset;
@@ -254,7 +254,7 @@ static void
 check_freemap(hammer_blockmap_t freemap)
 {
 	hammer_off_t offset;
-	struct buffer_info *buffer1 = NULL;
+	buffer_info_t buffer1 = NULL;
 	hammer_blockmap_layer1_t layer1;
 	int i;
 
@@ -272,7 +272,7 @@ check_freemap(hammer_blockmap_t freemap)
 static void
 check_btree_node(hammer_off_t node_offset, int depth)
 {
-	struct buffer_info *buffer = NULL;
+	buffer_info_t buffer = NULL;
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	int i;
@@ -334,7 +334,7 @@ check_btree_node(hammer_off_t node_offset, int depth)
 static void
 check_undo(hammer_blockmap_t undomap)
 {
-	struct buffer_info *buffer = NULL;
+	buffer_info_t buffer = NULL;
 	hammer_off_t scan_offset;
 	hammer_fifo_head_t head;
 

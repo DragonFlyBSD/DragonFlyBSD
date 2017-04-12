@@ -121,7 +121,7 @@ RB_GENERATE2(bigblock_rb_tree, bigblock, entry, bigblock_cmp, hammer_off_t,
 void
 hammer_cmd_recover(char **av, int ac)
 {
-	struct buffer_info *data_buffer;
+	buffer_info_t data_buffer;
 	volume_info_t volume;
 	bigblock_t b = NULL;
 	hammer_off_t off;
@@ -311,7 +311,7 @@ recover_top(char *ptr, hammer_off_t offset)
 static void
 recover_elm(hammer_btree_leaf_elm_t leaf)
 {
-	struct buffer_info *data_buffer = NULL;
+	buffer_info_t data_buffer = NULL;
 	struct recover_dict *dict;
 	struct recover_dict *dict2;
 	hammer_data_ondisk_t ondisk;
@@ -755,8 +755,8 @@ scan_raw_limit(void)
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
-	struct buffer_info *buffer1 = NULL;
-	struct buffer_info *buffer2 = NULL;
+	buffer_info_t buffer1 = NULL;
+	buffer_info_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
 	hammer_off_t phys_offset;
@@ -821,8 +821,8 @@ scan_bigblocks(int target_zone)
 	hammer_blockmap_t rootmap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
-	struct buffer_info *buffer1 = NULL;
-	struct buffer_info *buffer2 = NULL;
+	buffer_info_t buffer1 = NULL;
+	buffer_info_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
 	hammer_off_t phys_offset;

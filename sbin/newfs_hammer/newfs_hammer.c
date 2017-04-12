@@ -668,9 +668,9 @@ format_root_directory(const char *label)
 	hammer_node_ondisk_t bnode;
 	hammer_inode_data_t idata;
 	hammer_pseudofs_data_t pfsd;
-	struct buffer_info *data_buffer0 = NULL;
-	struct buffer_info *data_buffer1 = NULL;
-	struct buffer_info *data_buffer2 = NULL;
+	buffer_info_t data_buffer0 = NULL;
+	buffer_info_t data_buffer1 = NULL;
+	buffer_info_t data_buffer2 = NULL;
 	hammer_btree_elm_t elm;
 	uint64_t xtime;
 

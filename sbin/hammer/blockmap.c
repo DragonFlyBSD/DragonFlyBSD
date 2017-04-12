@@ -60,8 +60,8 @@ hammer_off_t
 alloc_undo_bigblock(volume_info_t volume)
 {
 	hammer_blockmap_t freemap;
-	struct buffer_info *buffer1 = NULL;
-	struct buffer_info *buffer2 = NULL;
+	buffer_info_t buffer1 = NULL;
+	buffer_info_t buffer2 = NULL;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
 	hammer_off_t layer1_offset;
@@ -112,13 +112,13 @@ alloc_undo_bigblock(volume_info_t volume)
  */
 void *
 alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
-	       struct buffer_info **bufferp)
+	       buffer_info_t *bufferp)
 {
 	volume_info_t volume;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
-	struct buffer_info *buffer1 = NULL;
-	struct buffer_info *buffer2 = NULL;
+	buffer_info_t buffer1 = NULL;
+	buffer_info_t buffer2 = NULL;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
 	hammer_off_t tmp_offset;
@@ -224,8 +224,8 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 	hammer_blockmap_t freemap;
 	hammer_blockmap_layer1_t layer1;
 	hammer_blockmap_layer2_t layer2;
-	struct buffer_info *buffer1 = NULL;
-	struct buffer_info *buffer2 = NULL;
+	buffer_info_t buffer1 = NULL;
+	buffer_info_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset = HAMMER_OFF_BAD;;

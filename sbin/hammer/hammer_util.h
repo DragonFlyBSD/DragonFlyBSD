@@ -93,14 +93,14 @@ struct cache_info {
 	int			delete;		/* delete flag - delete on last ref */
 };
 
-struct buffer_info {
+typedef struct buffer_info {
 	struct cache_info	cache;		/* must be at offset 0 */
 	TAILQ_ENTRY(buffer_info) entry;
 	hammer_off_t		zone2_offset;	/* zone-2 offset */
 	int64_t			raw_offset;	/* physical offset */
 	volume_info_t		volume;
 	void			*ondisk;
-};
+} *buffer_info_t;
 
 /*
  * Data structure for zone statistics.
@@ -125,13 +125,13 @@ int is_regfile(volume_info_t volume);
 void assert_volume_offset(volume_info_t volume);
 volume_info_t get_volume(int32_t vol_no);
 volume_info_t get_root_volume(void);
-void rel_buffer(struct buffer_info *buffer);
-void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
+void rel_buffer(buffer_info_t buffer);
+void *get_buffer_data(hammer_off_t buf_offset, buffer_info_t *bufferp,
 			int isnew);
 hammer_node_ondisk_t alloc_btree_node(hammer_off_t *offp,
-			struct buffer_info **data_bufferp);
+			buffer_info_t *data_bufferp);
 void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
-			struct buffer_info **data_bufferp);
+			buffer_info_t *data_bufferp);
 void format_blockmap(volume_info_t root_vol, int zone, hammer_off_t offset);
 void format_freemap(volume_info_t root_vol);
 int64_t initialize_freemap(volume_info_t volume);
@@ -140,14 +140,14 @@ void format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size);
 void print_blockmap(const volume_info_t volume);
 void flush_all_volumes(void);
 void flush_volume(volume_info_t volume);
-void flush_buffer(struct buffer_info *buffer);
+void flush_buffer(buffer_info_t buffer);
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
 int64_t init_memory_log_size(int64_t value, off_t avg_vol_size);
 
 hammer_off_t bootstrap_bigblock(volume_info_t volume);
 hammer_off_t alloc_undo_bigblock(volume_info_t volume);
 void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
-			struct buffer_info **bufferp);
+			buffer_info_t *bufferp);
 hammer_off_t blockmap_lookup(hammer_off_t bmap_off, int *errorp);
 hammer_off_t blockmap_lookup_save(hammer_off_t bmap_off,
 				hammer_blockmap_layer1_t layer1,

@@ -174,7 +174,7 @@ static void
 print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	hammer_btree_elm_t lbe)
 {
-	struct buffer_info *buffer = NULL;
+	buffer_info_t buffer = NULL;
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	int i;
@@ -270,7 +270,7 @@ static int
 test_node_count(hammer_node_ondisk_t node, char *badmp)
 {
 	hammer_node_ondisk_t parent_node;
-	struct buffer_info *buffer = NULL;
+	buffer_info_t buffer = NULL;
 	int maxcount;
 
 	maxcount = hammer_node_max_elements(node->type);
@@ -463,7 +463,7 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			if (child_offset == 0) {
 				flags |= FLAG_BADCHILDPARENT;
 			} else {
-				struct buffer_info *buffer = NULL;
+				buffer_info_t buffer = NULL;
 				hammer_node_ondisk_t subnode;
 				subnode = get_buffer_data(child_offset, &buffer, 0);
 				if (subnode == NULL)
@@ -621,7 +621,7 @@ static
 const char *
 check_data_crc(hammer_btree_elm_t elm, const char **whichp)
 {
-	struct buffer_info *data_buffer;
+	buffer_info_t data_buffer;
 	hammer_off_t data_offset;
 	int32_t data_len;
 	uint32_t crc;
@@ -661,7 +661,7 @@ uint32_t
 get_buf_crc(hammer_off_t buf_offset, int32_t buf_len, uint32_t leaf_crc,
 	    const char **whichp)
 {
-	struct buffer_info *data_buffer = NULL;
+	buffer_info_t data_buffer = NULL;
 	int32_t len;
 	uint32_t crc = 0;
 	uint32_t ncrc = 0;
@@ -750,7 +750,7 @@ static
 void
 print_record(hammer_btree_elm_t elm)
 {
-	struct buffer_info *data_buffer;
+	buffer_info_t data_buffer;
 	hammer_off_t data_offset;
 	int32_t data_len;
 	hammer_data_ondisk_t data;
@@ -1038,7 +1038,7 @@ hammer_cmd_show_undo(void)
 	hammer_off_t scan_offset;
 	hammer_fifo_any_t head;
 	hammer_fifo_head_t hdr;
-	struct buffer_info *data_buffer = NULL;
+	buffer_info_t data_buffer = NULL;
 	struct zone_stat *stats = NULL;
 
 	volume = get_root_volume();
