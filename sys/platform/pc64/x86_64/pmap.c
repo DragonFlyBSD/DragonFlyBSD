@@ -253,7 +253,7 @@ int pmap_dynamic_delete = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
     &pmap_dynamic_delete, 0, "Dynamically delete PT/PD/PDPs");
 
-static int pmap_nx_enable = 1;
+static int pmap_nx_enable = 0;
 /* needs manual TUNABLE in early probe, see below */
 
 #define DISABLE_PSE
