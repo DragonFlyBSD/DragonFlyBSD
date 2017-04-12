@@ -58,13 +58,6 @@
 #include <vfs/hammer/hammer_crc.h>
 #include <uuid.h>
 
-struct cache_info {
-	TAILQ_ENTRY(cache_info) entry;
-	int refs;	/* structural references */
-	int modified;	/* ondisk modified flag */
-	int delete;	/* delete flag - delete on last ref */
-};
-
 #define HAMMER_BUFLISTS		64
 #define HAMMER_BUFLISTMASK	(HAMMER_BUFLISTS - 1)
 
@@ -93,6 +86,13 @@ struct volume_info {
 	TAILQ_HEAD(, buffer_info) buffer_lists[HAMMER_BUFLISTS];
 };
 
+struct cache_info {
+	TAILQ_ENTRY(cache_info) entry;
+	int			refs;		/* structural references */
+	int			modified;	/* ondisk modified flag */
+	int			delete;		/* delete flag - delete on last ref */
+};
+
 struct buffer_info {
 	struct cache_info	cache;		/* must be at offset 0 */
 	TAILQ_ENTRY(buffer_info) entry;
@@ -119,44 +119,42 @@ extern int DebugOpt;
 extern uint32_t HammerVersion;
 extern const char *zone_labels[];
 
-struct volume_info *init_volume(const char *filename, int oflags, int32_t vol_no);
+struct volume_info *init_volume(const char *filename, int oflags,
+			int32_t vol_no);
 struct volume_info *load_volume(const char *filename, int oflags, int verify);
 int is_regfile(struct volume_info *volume);
 void assert_volume_offset(struct volume_info *volume);
 struct volume_info *get_volume(int32_t vol_no);
 struct volume_info *get_root_volume(void);
-void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
-				int isnew);
 void rel_buffer(struct buffer_info *buffer);
+void *get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
+			int isnew);
+hammer_node_ondisk_t alloc_btree_node(hammer_off_t *offp,
+			struct buffer_info **data_bufferp);
+void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
+			struct buffer_info **data_bufferp);
+void format_blockmap(struct volume_info *root_vol, int zone,
+			hammer_off_t offset);
+void format_freemap(struct volume_info *root_vol);
+int64_t initialize_freemap(struct volume_info *volume);
+int64_t count_freemap(struct volume_info *volume);
+void format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size);
+void print_blockmap(const struct volume_info *volume);
+void flush_all_volumes(void);
+void flush_volume(struct volume_info *volume);
+void flush_buffer(struct buffer_info *buffer);
+int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
+int64_t init_memory_log_size(int64_t value, off_t avg_vol_size);
 
 hammer_off_t bootstrap_bigblock(struct volume_info *volume);
 hammer_off_t alloc_undo_bigblock(struct volume_info *volume);
 void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
-	       struct buffer_info **bufferp);
+			struct buffer_info **bufferp);
 hammer_off_t blockmap_lookup(hammer_off_t bmap_off, int *errorp);
 hammer_off_t blockmap_lookup_save(hammer_off_t bmap_off,
 				hammer_blockmap_layer1_t layer1,
 				hammer_blockmap_layer2_t layer2,
 				int *errorp);
-void format_undomap(struct volume_info *root_vol, int64_t *undo_buffer_size);
-
-hammer_node_ondisk_t alloc_btree_node(hammer_off_t *offp,
-			 struct buffer_info **data_bufferp);
-void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
-			 struct buffer_info **data_bufferp);
-
-void format_blockmap(struct volume_info *root_vol, int zone, hammer_off_t offset);
-void format_freemap(struct volume_info *root_vol);
-int64_t initialize_freemap(struct volume_info *volume);
-int64_t count_freemap(struct volume_info *volume);
-void print_blockmap(const struct volume_info *volume);
-
-void flush_all_volumes(void);
-void flush_volume(struct volume_info *volume);
-void flush_buffer(struct buffer_info *buffer);
-
-int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
-int64_t init_memory_log_size(int64_t value, off_t avg_vol_size);
 
 int hammer_parse_cache_size(const char *arg);
 void hammer_cache_add(struct cache_info *cache);
@@ -170,7 +168,6 @@ int getyn(void);
 const char *sizetostr(off_t size);
 int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);
 int hammer_fs_to_rootvol(const char *fs, char *buf, int len);
-
 struct zone_stat *hammer_init_zone_stat(void);
 struct zone_stat *hammer_init_zone_stat_bits(void);
 void hammer_cleanup_zone_stat(struct zone_stat *stats);

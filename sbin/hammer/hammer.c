@@ -369,6 +369,10 @@ main(int ac, char **av)
 		hammer_cmd_softprune(av + 1, ac - 1, 0);
 		exit(0);
 	}
+	if (strcmp(av[0], "prune-everything") == 0) {
+		hammer_cmd_softprune(av + 1, ac - 1, 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "config") == 0) {
 		hammer_cmd_config(av + 1, ac - 1);
 		exit(0);
@@ -387,10 +391,6 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "info") == 0) {
 		hammer_cmd_info(av + 1, ac - 1);
-		exit(0);
-	}
-	if (strcmp(av[0], "prune-everything") == 0) {
-		hammer_cmd_softprune(av + 1, ac - 1, 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "ssh-remote") == 0) {
