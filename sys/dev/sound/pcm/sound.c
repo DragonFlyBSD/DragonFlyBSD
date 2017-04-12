@@ -1421,20 +1421,26 @@ sound_modevent(module_t mod, int type, void *data)
 				       PCMMKMINOR(PCMUNIT_DEFAULT,
 						  SND_DEV_DSP, 0),
 				       UID_ROOT, GID_WHEEL, 0666, "dsp");
-		devfs_clone_handler_add("dsp", dsp_clone);
+		if (default_dsp)
+			devfs_clone_handler_add("dsp", dsp_clone);
 		default_mixer = make_dev(&mixer_ops,
 				       PCMMKMINOR(PCMUNIT_DEFAULT, 0, 0),
 				       UID_ROOT, GID_WHEEL, 0666, "mixer");
-		devfs_clone_handler_add("mixer", mixer_clone);
+		if (default_mixer)
+			devfs_clone_handler_add("mixer", mixer_clone);
 		break;
 	case MOD_UNLOAD:
 		ret = sndstat_acquire(curthread);
 		if (ret != 0)
 			break;
-		if (default_dsp)
+		if (default_dsp) {
+			devfs_clone_handler_del("dsp");
 			destroy_dev(default_dsp);
-		if (default_mixer)
+		}
+		if (default_mixer) {
+			devfs_clone_handler_del("mixer");
 			destroy_dev(default_mixer);
+		}
 		if (pcmsg_unrhdr != NULL) {
 			delete_unrhdr(pcmsg_unrhdr);
 			pcmsg_unrhdr = NULL;
