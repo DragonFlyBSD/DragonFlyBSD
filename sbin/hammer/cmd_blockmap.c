@@ -81,7 +81,7 @@ static hammer_blockmap_layer2_t collect_get_track(
 	hammer_blockmap_layer2_t layer2);
 static collect_t collect_get(hammer_off_t phys_offset);
 static void dump_collect_table(void);
-static void dump_collect(collect_t collect, struct zone_stat *stats);
+static void dump_collect(collect_t collect, zone_stat_t stats);
 
 static int num_bad_layer1 = 0;
 static int num_bad_layer2 = 0;
@@ -107,7 +107,7 @@ dump_blockmap(int zone)
 	hammer_off_t layer2_offset;
 	hammer_off_t phys_offset;
 	hammer_off_t block_offset;
-	struct zone_stat *stats = NULL;
+	zone_stat_t stats = NULL;
 	int xerr, aerr, ferr;
 
 	root_volume = get_root_volume();
@@ -525,7 +525,7 @@ dump_collect_table(void)
 {
 	collect_t collect;
 	int error = 0;
-	struct zone_stat *stats = NULL;
+	zone_stat_t stats = NULL;
 
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat();
@@ -554,7 +554,7 @@ dump_collect_table(void)
 
 static
 void
-dump_collect(collect_t collect, struct zone_stat *stats)
+dump_collect(collect_t collect, zone_stat_t stats)
 {
 	hammer_blockmap_layer2_t track2;
 	hammer_blockmap_layer2_t layer2;

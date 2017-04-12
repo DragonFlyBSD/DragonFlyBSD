@@ -213,13 +213,13 @@ hammer_extend_layer1_bits(int vol, int newsiz, int oldsiz)
 	bzero(p, HAMMER_LAYER1_BYTES * (newsiz - oldsiz));
 }
 
-struct zone_stat*
+zone_stat_t
 hammer_init_zone_stat(void)
 {
 	return(calloc(HAMMER_MAX_ZONES, sizeof(struct zone_stat)));
 }
 
-struct zone_stat*
+zone_stat_t
 hammer_init_zone_stat_bits(void)
 {
 	int i;
@@ -244,7 +244,7 @@ hammer_init_zone_stat_bits(void)
 }
 
 void
-hammer_cleanup_zone_stat(struct zone_stat *stats)
+hammer_cleanup_zone_stat(zone_stat_t stats)
 {
 	int i;
 
@@ -266,10 +266,10 @@ hammer_cleanup_zone_stat(struct zone_stat *stats)
 
 static
 void
-_hammer_add_zone_stat(struct zone_stat *stats, int zone, int bytes,
+_hammer_add_zone_stat(zone_stat_t stats, int zone, int bytes,
 	int new_block, int new_item)
 {
-	struct zone_stat *sp = stats + zone;
+	zone_stat_t sp = stats + zone;
 
 	if (new_block)
 		sp->blocks++;
@@ -279,7 +279,7 @@ _hammer_add_zone_stat(struct zone_stat *stats, int zone, int bytes,
 }
 
 void
-hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset, int bytes)
+hammer_add_zone_stat(zone_stat_t stats, hammer_off_t offset, int bytes)
 {
 	int zone, vol, i, j, new_block;
 	uint64_t *p;
@@ -307,7 +307,7 @@ hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset, int bytes)
  * If the same layer2 is used more than once the result will be wrong.
  */
 void
-hammer_add_zone_stat_layer2(struct zone_stat *stats,
+hammer_add_zone_stat_layer2(zone_stat_t stats,
 	hammer_blockmap_layer2_t layer2)
 {
 	_hammer_add_zone_stat(stats, layer2->zone,
@@ -328,13 +328,13 @@ _calc_used_percentage(int64_t blocks, int64_t used)
 }
 
 void
-hammer_print_zone_stat(const struct zone_stat *stats)
+hammer_print_zone_stat(zone_stat_t stats)
 {
 	int i;
 	int64_t total_blocks = 0;
 	int64_t total_items = 0;
 	int64_t total_used = 0;
-	const struct zone_stat *p = stats;
+	zone_stat_t p = stats;
 #define INDENT ""
 
 	printf("HAMMER zone statistics\n");

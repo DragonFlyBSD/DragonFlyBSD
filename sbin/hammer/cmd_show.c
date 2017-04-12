@@ -48,7 +48,7 @@ struct {
 	int filter;	/* filter type (default -1) */
 	int obfuscate;	/* obfuscate direntry name */
 	int indent;	/* use depth indentation */
-	struct zone_stat *stats;
+	zone_stat_t stats;
 } opt;
 
 static __inline void print_btree(hammer_off_t node_offset);
@@ -108,7 +108,7 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 {
 	volume_info_t volume;
 	hammer_volume_ondisk_t ondisk;
-	struct zone_stat *stats = NULL;
+	zone_stat_t stats = NULL;
 
 	volume = get_root_volume();
 	ondisk = volume->ondisk;
@@ -1039,7 +1039,7 @@ hammer_cmd_show_undo(void)
 	hammer_fifo_any_t head;
 	hammer_fifo_head_t hdr;
 	buffer_info_t data_buffer = NULL;
-	struct zone_stat *stats = NULL;
+	zone_stat_t stats = NULL;
 
 	volume = get_root_volume();
 	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];

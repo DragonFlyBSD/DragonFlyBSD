@@ -105,11 +105,11 @@ typedef struct buffer_info {
 /*
  * Data structure for zone statistics.
  */
-struct zone_stat {
+typedef struct zone_stat {
 	int64_t			blocks;		/* number of big-blocks */
 	int64_t			items;		/* number of items */
 	int64_t			used;		/* bytes used */
-};
+} *zone_stat_t;
 
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
@@ -166,14 +166,13 @@ int getyn(void);
 const char *sizetostr(off_t size);
 int hammer_fs_to_vol(const char *fs, struct hammer_ioc_volume_list *iocp);
 int hammer_fs_to_rootvol(const char *fs, char *buf, int len);
-struct zone_stat *hammer_init_zone_stat(void);
-struct zone_stat *hammer_init_zone_stat_bits(void);
-void hammer_cleanup_zone_stat(struct zone_stat *stats);
-void hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
-			int bytes);
-void hammer_add_zone_stat_layer2(struct zone_stat *stats,
+zone_stat_t hammer_init_zone_stat(void);
+zone_stat_t hammer_init_zone_stat_bits(void);
+void hammer_cleanup_zone_stat(zone_stat_t stats);
+void hammer_add_zone_stat(zone_stat_t stats, hammer_off_t offset, int bytes);
+void hammer_add_zone_stat_layer2(zone_stat_t stats,
 			hammer_blockmap_layer2_t layer2);
-void hammer_print_zone_stat(const struct zone_stat *stats);
+void hammer_print_zone_stat(const zone_stat_t stats);
 
 #define hwarn(format, args...)	warn("WARNING: "format,## args)
 #define hwarnx(format, args...)	warnx("WARNING: "format,## args)
