@@ -121,8 +121,8 @@ extern const char *zone_labels[];
 
 volume_info_t init_volume(const char *filename, int oflags, int32_t vol_no);
 volume_info_t load_volume(const char *filename, int oflags, int verify);
-int is_regfile(volume_info_t volume);
-void assert_volume_offset(volume_info_t volume);
+int is_regfile(const volume_info_t volume);
+void assert_volume_offset(const volume_info_t volume);
 volume_info_t get_volume(int32_t vol_no);
 volume_info_t get_root_volume(void);
 void rel_buffer(buffer_info_t buffer);
@@ -135,7 +135,7 @@ void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 void format_blockmap(volume_info_t root_vol, int zone, hammer_off_t offset);
 void format_freemap(volume_info_t root_vol);
 int64_t initialize_freemap(volume_info_t volume);
-int64_t count_freemap(volume_info_t volume);
+int64_t count_freemap(const volume_info_t volume);
 void format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size);
 void print_blockmap(const volume_info_t volume);
 void flush_all_volumes(void);

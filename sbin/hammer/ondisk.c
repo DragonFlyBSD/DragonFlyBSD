@@ -109,7 +109,7 @@ __alloc_volume(const char *volname, int oflags)
 }
 
 static void
-__add_volume(volume_info_t volume)
+__add_volume(const volume_info_t volume)
 {
 	volume_info_t scan;
 	struct stat st1, st2;
@@ -142,7 +142,7 @@ __add_volume(volume_info_t volume)
 }
 
 static void
-__verify_volume(volume_info_t volume)
+__verify_volume(const volume_info_t volume)
 {
 	hammer_volume_ondisk_t ondisk = volume->ondisk;
 
@@ -263,13 +263,13 @@ check_volume(volume_info_t volume)
 }
 
 int
-is_regfile(volume_info_t volume)
+is_regfile(const volume_info_t volume)
 {
 	return(strcmp(volume->type, "REGFILE") ? 0 : 1);
 }
 
 void
-assert_volume_offset(volume_info_t volume)
+assert_volume_offset(const volume_info_t volume)
 {
 	assert(hammer_is_zone_raw_buffer(volume->vol_free_off));
 	assert(hammer_is_zone_raw_buffer(volume->vol_free_end));
@@ -389,7 +389,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 }
 
 static void
-get_buffer_readahead(buffer_info_t base)
+get_buffer_readahead(const buffer_info_t base)
 {
 	buffer_info_t buffer;
 	volume_info_t volume;
@@ -675,7 +675,7 @@ initialize_freemap(volume_info_t volume)
  * without formatting.
  */
 int64_t
-count_freemap(volume_info_t volume)
+count_freemap(const volume_info_t volume)
 {
 	hammer_off_t phys_offset;
 	hammer_off_t vol_free_off;
