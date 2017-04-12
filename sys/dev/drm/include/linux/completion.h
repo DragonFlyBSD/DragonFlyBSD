@@ -40,6 +40,12 @@ init_completion(struct completion *c)
 	init_waitqueue_head(&c->wait);
 }
 
+static inline void
+reinit_completion(struct completion *c)
+{
+	c->done = 0;
+}
+
 #define	INIT_COMPLETION(c)	(c.done = 0)
 
 /*
