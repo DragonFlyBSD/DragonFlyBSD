@@ -188,7 +188,7 @@ init_volume(const char *filename, int oflags, int32_t vol_no)
  * Initialize a volume structure and read ondisk volume header.
  */
 volume_info_t
-load_volume(const char *filename, int oflags, int verify)
+load_volume(const char *filename, int oflags, int verify_volume)
 {
 	volume_info_t volume;
 	int n;
@@ -206,7 +206,7 @@ load_volume(const char *filename, int oflags, int verify)
 
 	if (valid_hammer_volumes++ == 0)
 		Hammer_FSId = volume->ondisk->vol_fsid;
-	if (verify)
+	if (verify_volume)
 		__verify_volume(volume);
 
 	__add_volume(volume);

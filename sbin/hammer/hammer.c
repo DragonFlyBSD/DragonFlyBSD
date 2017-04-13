@@ -35,7 +35,8 @@
 #include "hammer.h"
 
 static void hammer_parsedevs(const char *blkdevs, int oflags);
-static void hammer_parsedevs_noverify(const char *blkdevs, int oflags);
+static void __hammer_parsedevs(const char *blkdevs, int oflags,
+		int verify_volume, int verify_count);
 static void sigalrm(int signo);
 static void sigintr(int signo);
 static void usage(int exit_code);
@@ -554,7 +555,7 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "recover") == 0) {
-		hammer_parsedevs_noverify(blkdevs, O_RDONLY);
+		__hammer_parsedevs(blkdevs, O_RDONLY, 0, 1);
 		hammer_cmd_recover(av + 1, ac - 1);
 		exit(0);
 	}
@@ -569,7 +570,7 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "strip") == 0) {
-		hammer_parsedevs(blkdevs, O_RDWR);
+		__hammer_parsedevs(blkdevs, O_RDWR, 0, 1);
 		hammer_cmd_strip();
 		exit(0);
 	}
@@ -589,12 +590,13 @@ main(int ac, char **av)
  */
 static
 void
-__hammer_parsedevs(const char *blkdevs, int oflags, int verify)
+__hammer_parsedevs(const char *blkdevs, int oflags, int verify_volume,
+	int verify_count)
 {
 	volume_info_t volume = NULL;
 	char *copy;
 	char *volname;
-	int volnum = 0;
+	int vol_count = 0;
 
 	if (blkdevs == NULL) {
 		errx(1, "A -f blkdevs specification is required "
@@ -608,29 +610,28 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify)
 			*copy++ = 0;
 		volname = getdevpath(volname, 0);
 		if (strchr(volname, ':')) {
-			__hammer_parsedevs(volname, oflags, verify);
+			__hammer_parsedevs(volname, oflags, verify_volume,
+				verify_count);
 		} else {
-			volume = load_volume(volname, oflags, verify);
+			volume = load_volume(volname, oflags, verify_volume);
 			assert(volume);
-			++volnum;
+			++vol_count;
 		}
 		free(volname);
 	}
 	free(copy);
 
-	/*
-	 * All volumes have the same vol_count.
-	 */
 	assert(volume);
-	if (volnum != volume->ondisk->vol_count) {
-		errx(1, "Volume header says %d volumes, but %d specified.",
-			volume->ondisk->vol_count, volnum);
-		/* not reached */
-	}
-
-	if (get_root_volume() == NULL) {
-		errx(1, "No root volume found");
-		/* not reached */
+	if (verify_count) {
+		if (vol_count != volume->ondisk->vol_count) {
+			errx(1, "Volume header says %d volumes, but %d specified.",
+				volume->ondisk->vol_count, vol_count);
+			/* not reached */
+		}
+		if (get_root_volume() == NULL) {
+			errx(1, "No root volume found");
+			/* not reached */
+		}
 	}
 }
 
@@ -638,14 +639,7 @@ static __inline
 void
 hammer_parsedevs(const char *blkdevs, int oflags)
 {
-	__hammer_parsedevs(blkdevs, oflags, 1);
-}
-
-static __inline
-void
-hammer_parsedevs_noverify(const char *blkdevs, int oflags)
-{
-	__hammer_parsedevs(blkdevs, oflags, 0);
+	__hammer_parsedevs(blkdevs, oflags, 1, 1);
 }
 
 static

@@ -120,7 +120,7 @@ extern uint32_t HammerVersion;
 extern const char *zone_labels[];
 
 volume_info_t init_volume(const char *filename, int oflags, int32_t vol_no);
-volume_info_t load_volume(const char *filename, int oflags, int verify);
+volume_info_t load_volume(const char *filename, int oflags, int verify_volume);
 int is_regfile(const volume_info_t volume);
 void assert_volume_offset(const volume_info_t volume);
 volume_info_t get_volume(int32_t vol_no);
