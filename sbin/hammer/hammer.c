@@ -34,8 +34,8 @@
 
 #include "hammer.h"
 
-static void hammer_parsedevs(const char *blkdevs, int oflags);
-static void __hammer_parsedevs(const char *blkdevs, int oflags,
+static void hammer_parse_blkdevs(const char *blkdevs, int oflags);
+static void __hammer_parse_blkdevs(const char *blkdevs, int oflags,
 		int verify_volume, int verify_count);
 static void sigalrm(int signo);
 static void sigintr(int signo);
@@ -525,7 +525,7 @@ main(int ac, char **av)
 		int obfuscate = 0;
 		int indent = 0;
 
-		hammer_parsedevs(blkdevs, O_RDONLY);
+		hammer_parse_blkdevs(blkdevs, O_RDONLY);
 		if (ac > 3) {
 			errx(1, "Too many options specified");
 			/* not reached */
@@ -550,27 +550,27 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "show-undo") == 0) {
-		hammer_parsedevs(blkdevs, O_RDONLY);
+		hammer_parse_blkdevs(blkdevs, O_RDONLY);
 		hammer_cmd_show_undo();
 		exit(0);
 	}
 	if (strcmp(av[0], "recover") == 0) {
-		__hammer_parsedevs(blkdevs, O_RDONLY, 0, 1);
+		__hammer_parse_blkdevs(blkdevs, O_RDONLY, 0, 1);
 		hammer_cmd_recover(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "blockmap") == 0) {
-		hammer_parsedevs(blkdevs, O_RDONLY);
+		hammer_parse_blkdevs(blkdevs, O_RDONLY);
 		hammer_cmd_blockmap();
 		exit(0);
 	}
 	if (strcmp(av[0], "checkmap") == 0) {
-		hammer_parsedevs(blkdevs, O_RDONLY);
+		hammer_parse_blkdevs(blkdevs, O_RDONLY);
 		hammer_cmd_checkmap();
 		exit(0);
 	}
 	if (strcmp(av[0], "strip") == 0) {
-		__hammer_parsedevs(blkdevs, O_RDWR, 0, 0);
+		__hammer_parse_blkdevs(blkdevs, O_RDWR, 0, 0);
 		hammer_cmd_strip();
 		exit(0);
 	}
@@ -590,7 +590,7 @@ main(int ac, char **av)
  */
 static
 void
-__hammer_parsedevs(const char *blkdevs, int oflags, int verify_volume,
+__hammer_parse_blkdevs(const char *blkdevs, int oflags, int verify_volume,
 	int verify_count)
 {
 	volume_info_t volume = NULL;
@@ -610,7 +610,7 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify_volume,
 			*copy++ = 0;
 		volname = getdevpath(volname, 0);
 		if (strchr(volname, ':')) {
-			__hammer_parsedevs(volname, oflags, verify_volume,
+			__hammer_parse_blkdevs(volname, oflags, verify_volume,
 				verify_count);
 		} else {
 			volume = load_volume(volname, oflags, verify_volume);
@@ -637,9 +637,9 @@ __hammer_parsedevs(const char *blkdevs, int oflags, int verify_volume,
 
 static __inline
 void
-hammer_parsedevs(const char *blkdevs, int oflags)
+hammer_parse_blkdevs(const char *blkdevs, int oflags)
 {
-	__hammer_parsedevs(blkdevs, oflags, 1, 1);
+	__hammer_parse_blkdevs(blkdevs, oflags, 1, 1);
 }
 
 static
