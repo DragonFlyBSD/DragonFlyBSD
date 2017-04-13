@@ -1528,7 +1528,7 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 			 * completion queue token contention, thus more
 			 * cpu time is saved.
 			 */
-			idx = pkt_hash % grp->il_inpcnt;
+			idx = netisr_hashlsb(pkt_hash) % grp->il_inpcnt;
 			if (grp->il_laddr.s_addr == laddr.s_addr)
 				return grp->il_inp[idx];
 			else if (grp->il_laddr.s_addr == INADDR_ANY)
