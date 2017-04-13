@@ -80,7 +80,8 @@ struct va_format {
 	({ if (0) printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__); 0; })
 #endif
 
-#define pr_debug(fmt, ...)	printk(KERN_DEBUG # fmt, ##__VA_ARGS__)
+#define pr_debug(fmt, ...) \
+	printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
 
 /*
  * Print a one-time message (analogous to WARN_ONCE() et al):
