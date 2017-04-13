@@ -570,7 +570,7 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "strip") == 0) {
-		__hammer_parsedevs(blkdevs, O_RDWR, 0, 1);
+		__hammer_parsedevs(blkdevs, O_RDWR, 0, 0);
 		hammer_cmd_strip();
 		exit(0);
 	}

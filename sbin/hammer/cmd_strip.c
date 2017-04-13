@@ -34,6 +34,7 @@
 
 #include "hammer.h"
 
+static int hammer_test_offset(const char *msg, hammer_off_t offset);
 static void hammer_strip_bigblock(int zone, hammer_off_t offset);
 static void hammer_ask_yn(void);
 
@@ -56,8 +57,14 @@ hammer_cmd_strip(void)
 	hammer_ask_yn();
 
 	volume = get_root_volume();
+	if (volume == NULL) {
+		printf("No root volume found\n");
+		goto strip_header;
+	}
+
 	rootmap = &volume->ondisk->vol0_blockmap[zone];
-	assert(rootmap->phys_offset != 0);
+	if (!hammer_test_offset("layer1 physical", rootmap->phys_offset))
+		goto strip_header;
 
 	for (phys_offset = HAMMER_ZONE_ENCODE(zone, 0);
 	     phys_offset < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
@@ -67,6 +74,8 @@ hammer_cmd_strip(void)
 		 */
 		layer1_offset = rootmap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
+		if (!hammer_test_offset("layer1", layer1_offset))
+			break;
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
@@ -81,6 +90,8 @@ hammer_cmd_strip(void)
 			 */
 			layer2_offset = layer1->phys_offset +
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
+			if (!hammer_test_offset("layer2", layer2_offset))
+				break;
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 			if (layer2->zone == HAMMER_ZONE_BTREE_INDEX ||
@@ -99,16 +110,32 @@ hammer_cmd_strip(void)
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
 
+strip_header:
 	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
 		volume = get_volume(i);
 		if (volume) {
-			printf("%s\n", volume->name);
 			bzero(volume->ondisk, sizeof(*volume->ondisk));
 			memcpy(&volume->ondisk->vol_signature, "STRIPPED", 8);
+			printf("Stripped volume header %s\n", volume->name);
 		}
 	}
 
 	flush_all_volumes();
+}
+
+static int
+hammer_test_offset(const char *msg, hammer_off_t offset)
+{
+	if (get_volume(HAMMER_VOL_DECODE(offset)) == NULL) {
+		printf("Invalid volume# %d\n", HAMMER_VOL_DECODE(offset));
+		return(0);
+	}
+	if (!hammer_is_zone_raw_buffer(offset)) {
+		printf("Invalid %s offset 0x%jx\n", msg, offset);
+		return(0);
+	}
+
+	return(1);
 }
 
 static void
@@ -125,6 +152,7 @@ hammer_strip_bigblock(int zone, hammer_off_t offset)
 	/*
 	 * This format is taken from hammer blockmap.
 	 */
+	printf("Stripped big-block ");
 	if (VerboseOpt) {
 		printf("%016jx zone=%-2d vol=%-3d L1#=%-6d L2#=%-6d L1=%-7lu L2=%-7lu\n",
 			offset,
@@ -148,24 +176,50 @@ static void
 hammer_ask_yn(void)
 {
 	volume_info_t volume;
+#define _HAMMER "HAMMER filesystem"
+	char type[64];
+	char label[64 + 4];
 	int i;
 
 	volume = get_root_volume();
 
+	if (volume && volume->ondisk->vol_signature == HAMMER_FSBUF_VOLUME)
+		strcpy(type, _HAMMER);
+	else
+		strcpy(type, "devices");
+
+	if (volume && volume->ondisk->vol_label[0]) {
+		snprintf(label, sizeof(label), " (%s)",
+			volume->ondisk->vol_label);
+	} else {
+		strcpy(label, "");
+	}
+
 	/*
 	 * This format is taken from hammer pfs-destroy.
 	 */
-	printf("You have requested that HAMMER filesystem (%s) be stripped\n",
-		volume->ondisk->vol_label);
+	printf("You have requested that %s%s be stripped", type, label);
+	if (strcmp(type, _HAMMER))
+		printf(", but %s may not be %s volumes\n", type, _HAMMER);
+	else
+		printf("\n");
+
 	printf("Do you really want to do this? [y/n] ");
 	fflush(stdout);
-
 	if (getyn() == 0) {
 		errx(1, "No action taken");
 		/* not reached */
 	}
 
-	printf("Stripping HAMMER filesystem (%s)", volume->ondisk->vol_label);
+	if (strcmp(type, _HAMMER)) {
+		printf("Are you absolutely sure you want to do this? [y/n] ");
+		if (getyn() == 0) {
+			errx(1, "No action taken");
+			/* not reached */
+		}
+	}
+
+	printf("Stripping %s%s", type, label);
 
 	if (DebugOpt) {
 		printf("\n");
