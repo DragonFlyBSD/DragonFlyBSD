@@ -10,6 +10,7 @@ LEAPFILE=
 
 TZFILES=	africa antarctica asia australasia etcetera europe \
 		northamerica southamerica systemv
+TZFILES+=	dragonfly
 POSIXRULES=	America/New_York
 
 .if defined(OLDTIMEZONES)
