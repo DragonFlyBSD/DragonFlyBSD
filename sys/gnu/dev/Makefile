@@ -1,3 +1,3 @@
-SUBDIR=	dev vfs
+SUBDIR=	apple_gmux
 
 .include <bsd.subdir.mk>
