@@ -213,6 +213,7 @@ hammer_ask_yn(void)
 
 	if (strcmp(type, _HAMMER)) {
 		printf("Are you absolutely sure you want to do this? [y/n] ");
+		fflush(stdout);
 		if (getyn() == 0) {
 			errx(1, "No action taken");
 			/* not reached */
