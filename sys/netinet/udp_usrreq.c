@@ -222,8 +222,7 @@ udp_init(void)
 		uicb->hashbase = hashinit(UDBHASHSIZE, M_PCB, &uicb->hashmask);
 
 		in_pcbportinfo_init(&portinfo[cpu], UDBHASHSIZE, cpu);
-		uicb->portinfo = portinfo;
-		uicb->portinfo_cnt = netisr_ncpus;
+		in_pcbportinfo_set(uicb, portinfo, netisr_ncpus);
 
 		uicb->wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
 		    &uicb->wildcardhashmask);

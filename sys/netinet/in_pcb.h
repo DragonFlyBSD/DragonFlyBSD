@@ -495,6 +495,7 @@ void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
 void	in_pcbinfo_init (struct inpcbinfo *, int, boolean_t);
 void	in_pcbportinfo_init (struct inpcbportinfo *, int, u_short);
+void	in_pcbportinfo_set(struct inpcbinfo *, struct inpcbportinfo *, int);
 int	in_pcballoc (struct socket *, struct inpcbinfo *);
 void	in_pcbunlink (struct inpcb *, struct inpcbinfo *);
 void	in_pcbunlink_flags (struct inpcb *, struct inpcbinfo *, int);

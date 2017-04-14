@@ -224,6 +224,16 @@ in_pcbinfo_init(struct inpcbinfo *pcbinfo, int cpu, boolean_t shared)
 	}
 }
 
+void
+in_pcbportinfo_set(struct inpcbinfo *pcbinfo, struct inpcbportinfo *portinfo,
+    int portinfo_cnt)
+{
+
+	KASSERT(portinfo_cnt > 0, ("invalid portinfo_cnt %d", portinfo_cnt));
+	pcbinfo->portinfo = portinfo;
+	pcbinfo->portinfo_cnt = portinfo_cnt;
+}
+
 struct baddynamicports baddynamicports;
 
 /*

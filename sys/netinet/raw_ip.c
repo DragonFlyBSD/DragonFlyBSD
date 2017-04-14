@@ -136,7 +136,7 @@ rip_init(void)
 	 * over the place for hashbase == NULL.
 	 */
 	ripcbinfo.hashbase = hashinit(1, M_PCB, &ripcbinfo.hashmask);
-	ripcbinfo.portinfo = &ripcbportinfo;
+	in_pcbportinfo_set(&ripcbinfo, &ripcbportinfo, 1);
 	ripcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &ripcbinfo.wildcardhashmask);
 	ripcbinfo.ipi_size = sizeof(struct inpcb);

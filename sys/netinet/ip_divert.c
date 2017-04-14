@@ -133,7 +133,7 @@ div_init(void)
 	 * over the place for hashbase == NULL.
 	 */
 	divcbinfo.hashbase = hashinit(1, M_PCB, &divcbinfo.hashmask);
-	divcbinfo.portinfo = &divcbportinfo;
+	in_pcbportinfo_set(&divcbinfo, &divcbportinfo, 1);
 	divcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &divcbinfo.wildcardhashmask);
 	divcbinfo.ipi_size = sizeof(struct inpcb);
