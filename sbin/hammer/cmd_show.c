@@ -695,16 +695,16 @@ hammer_crc_t
 get_leaf_crc(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf,
 	     const char **whichp)
 {
-        hammer_crc_t crc;
+	hammer_crc_t crc;
 
 	*whichp = "";
-        if (leaf->data_len == 0)
-                return(0);
+	if (leaf->data_len == 0)
+		return(0);
 
-        switch(leaf->base.rec_type) {
-        case HAMMER_RECTYPE_INODE:
-                if (leaf->data_len != sizeof(struct hammer_inode_data))
-                        return(0);  /* This shouldn't happen */
+	switch(leaf->base.rec_type) {
+	case HAMMER_RECTYPE_INODE:
+		if (leaf->data_len != sizeof(struct hammer_inode_data))
+			return(0);  /* This shouldn't happen */
 		if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
 			crc = iscsi_crc32(data, HAMMER_INODE_CRCSIZE);
 			if (crc == leaf->data_crc) {
@@ -715,8 +715,8 @@ get_leaf_crc(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf,
 		crc = crc32(data, HAMMER_INODE_CRCSIZE);
 		if (crc == leaf->data_crc)
 			*whichp = "o";
-                break;
-        default:
+		break;
+	default:
 		if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
 			crc = iscsi_crc32(data, leaf->data_len);
 			if (crc == leaf->data_crc) {
@@ -727,9 +727,9 @@ get_leaf_crc(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf,
 		crc = crc32(data, leaf->data_len);
 		if (crc == leaf->data_crc)
 			*whichp = "o";
-                break;
-        }
-        return(crc);
+		break;
+	}
+	return(crc);
 }
 
 static
