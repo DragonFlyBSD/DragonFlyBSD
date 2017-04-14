@@ -198,7 +198,7 @@ static void udp_remwildcardhash(struct inpcb *inp);
 static __inline int
 udp_lportcpu(short lport)
 {
-	return (ntohs(lport) & ncpus2_mask);
+	return (ntohs(lport) % netisr_ncpus);
 }
 
 void
@@ -207,10 +207,10 @@ udp_init(void)
 	struct inpcbportinfo *portinfo;
 	int cpu;
 
-	portinfo = kmalloc_cachealign(sizeof(*portinfo) * ncpus2, M_PCB,
+	portinfo = kmalloc_cachealign(sizeof(*portinfo) * netisr_ncpus, M_PCB,
 	    M_WAITOK);
 
-	for (cpu = 0; cpu < ncpus2; cpu++) {
+	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
 		struct inpcbinfo *uicb = &udbinfo[cpu];
 
 		/*
@@ -750,7 +750,7 @@ udp_notifyall_oncpu(netmsg_t msg)
 	in_pcbnotifyall(&udbinfo[cpu], nm->nm_faddr, nm->nm_arg, nm->nm_notify);
 
 	nextcpu = cpu + 1;
-	if (nextcpu < ncpus2)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nm->base.lmsg);
 	else
 		lwkt_replymsg(&nm->base.lmsg, 0);
@@ -824,7 +824,7 @@ udp_ctlinput(netmsg_t msg)
 	} else if (msg->ctlinput.nm_direct) {
 		if (cpuid != ncpus && cpuid != mycpuid)
 			goto done;
-		if (mycpuid >= ncpus2)
+		if (mycpuid >= netisr_ncpus)
 			goto done;
 
 		in_pcbnotifyall(&udbinfo[mycpuid], faddr, inetctlerrmap[cmd],
@@ -1281,7 +1281,7 @@ udp_inswildcardhash_oncpu(struct inpcb *inp, struct netmsg_base *msg)
 	    ("not on owner cpu"));
 
 	in_pcbinswildcardhash(inp);
-	for (cpu = 0; cpu < ncpus2; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		if (cpu == mycpuid) {
 			/*
 			 * This inpcb has been inserted by the above
@@ -1297,7 +1297,7 @@ udp_inswildcardhash_oncpu(struct inpcb *inp, struct netmsg_base *msg)
 		 * For SO_REUSEPORT socket, redistribute it based on its
 		 * local group index.
 		 */
-		cpu = inp->inp_lgrpindex & ncpus2_mask;
+		cpu = inp->inp_lgrpindex % netisr_ncpus;
 		if (cpu != mycpuid) {
 			struct lwkt_port *port = netisr_cpuport(cpu);
 			lwkt_msg_t lmsg = &msg->lmsg;
@@ -1643,7 +1643,7 @@ udp_remwildcardhash(struct inpcb *inp)
 	KASSERT(inp->inp_pcbinfo == &udbinfo[mycpuid],
 	    ("not on owner cpu"));
 
-	for (cpu = 0; cpu < ncpus2; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		if (cpu == mycpuid) {
 			/*
 			 * This inpcb will be removed by the later
@@ -1738,7 +1738,7 @@ udp_detach_oncpu_dispatch(netmsg_t msg)
 	}
 
 	nextcpu = cpuid + 1;
-	if (nextcpu < ncpus2) {
+	if (nextcpu < netisr_ncpus) {
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &clomsg->lmsg);
 	} else {
 		/*
@@ -1785,7 +1785,7 @@ udp_detach(netmsg_t msg)
 	 */
 	lwkt_replymsg(&msg->detach.base.lmsg, EJUSTRETURN);
 
-	if (ncpus2 == 1) {
+	if (netisr_ncpus == 1) {
 		/* Only one CPU, detach the inpcb directly. */
 		udp_detach2(so);
 		return;
