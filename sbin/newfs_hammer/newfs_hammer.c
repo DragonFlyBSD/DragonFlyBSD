@@ -318,7 +318,8 @@ usage(int exit_code)
 	exit(exit_code);
 }
 
-static void
+static
+void
 test_header_junk_size(int64_t size)
 {
 	if (size < HAMMER_MIN_VOL_JUNK) {
@@ -337,7 +338,8 @@ test_header_junk_size(int64_t size)
 	}
 }
 
-static void
+static
+void
 test_boot_area_size(int64_t size)
 {
 	if (size < HAMMER_BOOT_MINBYTES) {
@@ -356,7 +358,8 @@ test_boot_area_size(int64_t size)
 	}
 }
 
-static void
+static
+void
 test_memory_log_size(int64_t size)
 {
 	if (size < HAMMER_MEM_MINBYTES) {
@@ -375,7 +378,8 @@ test_memory_log_size(int64_t size)
 	}
 }
 
-static void
+static
+void
 test_undo_buffer_size(int64_t size)
 {
 	int64_t minbuf, maxbuf;
@@ -403,7 +407,8 @@ test_undo_buffer_size(int64_t size)
 /*
  * Convert a string to a 64 bit signed integer with various requirements.
  */
-static int64_t
+static
+int64_t
 getsize(const char *str, int powerof2)
 {
 	int64_t val;
@@ -455,7 +460,8 @@ getsize(const char *str, int powerof2)
  * We could start at 1 here but start at 2^32 to reserve a small domain for
  * possible future use.
  */
-static hammer_tid_t
+static
+hammer_tid_t
 createtid(void)
 {
 	static hammer_tid_t lasttid;
@@ -465,7 +471,8 @@ createtid(void)
 	return(lasttid++);
 }
 
-static uint64_t
+static
+uint64_t
 nowtime(void)
 {
 	struct timeval tv;

@@ -277,7 +277,8 @@ print_node(hammer_node_ondisk_t node, hammer_off_t offset)
  * If the CRC is good we attempt to process the node, building the
  * object space and creating the dictionary as we go.
  */
-static void
+static
+void
 recover_top(char *ptr, hammer_off_t offset)
 {
 	hammer_node_ondisk_t node;
@@ -308,7 +309,8 @@ recover_top(char *ptr, hammer_off_t offset)
 	}
 }
 
-static void
+static
+void
 recover_elm(hammer_btree_leaf_elm_t leaf)
 {
 	buffer_info_t data_buffer = NULL;

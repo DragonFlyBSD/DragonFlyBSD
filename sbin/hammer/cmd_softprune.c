@@ -252,7 +252,8 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
  *	 snapshot mechanic we don't have to scan softlinks any more
  *	 and can just use the meta-data.  But for now we do both.
  */
-static void
+static
+void
 hammer_softprune_scandir(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
 			 const char *dirname)
@@ -382,7 +383,8 @@ hammer_softprune_scanmeta(int fd, struct softprune *scan, int delete_all)
  * Flush any entries built up in the deletion snapshot ioctl structure.
  * Used during a prune-everything.
  */
-static void
+static
+void
 hammer_meta_flushdelete(int fd, struct hammer_ioc_snapshot *dsnap)
 {
 	while (dsnap->index < dsnap->count) {
@@ -471,7 +473,8 @@ hammer_softprune_addentry(struct softprune **basep,
  *
  * Always leave one entry free for our terminator.
  */
-static void
+static
+void
 hammer_softprune_addelm(struct softprune *scan, hammer_tid_t tid,
 			time_t ct, time_t mt)
 {
@@ -505,7 +508,8 @@ hammer_softprune_addelm(struct softprune *scan, hammer_tid_t tid,
  *
  * The array must end up in descending order.
  */
-static int
+static
+int
 hammer_softprune_qsort_cmp(const void *arg1, const void *arg2)
 {
 	const struct hammer_ioc_prune_elm *elm1 = arg1;
@@ -518,7 +522,8 @@ hammer_softprune_qsort_cmp(const void *arg1, const void *arg2)
 	return(0);
 }
 
-static void
+static
+void
 hammer_softprune_finalize(struct softprune *scan)
 {
 	struct hammer_ioc_prune_elm *elm;

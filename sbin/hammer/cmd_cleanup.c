@@ -544,7 +544,8 @@ do_cleanup(const char *path)
 /*
  * Initialize new config data (new or old style)
  */
-static void
+static
+void
 config_init(const char *path, struct hammer_ioc_config *config)
 {
 	const char *snapshots;
@@ -570,7 +571,8 @@ config_init(const char *path, struct hammer_ioc_config *config)
  * Migrate configuration data from the old snapshots/config
  * file to the new meta-data format.
  */
-static void
+static
+void
 migrate_config(FILE *fp, struct hammer_ioc_config *config)
 {
 	int n;
@@ -586,7 +588,8 @@ migrate_config(FILE *fp, struct hammer_ioc_config *config)
  * this way the pruning code won't lose track of them if you
  * happen to blow away the snapshots directory.
  */
-static void
+static
+void
 migrate_snapshots(int fd, const char *snapshots_path)
 {
 	struct hammer_ioc_snapshot snapshot;
@@ -616,7 +619,8 @@ migrate_snapshots(int fd, const char *snapshots_path)
  * Migrate a single snapshot.  If fpath is NULL the ioctl is flushed,
  * otherwise it is flushed when it fills up.
  */
-static void
+static
+void
 migrate_one_snapshot(int fd, const char *fpath,
 		     struct hammer_ioc_snapshot *snapshot)
 {
@@ -727,7 +731,8 @@ strtosecs(char *ptr)
 	return(val);
 }
 
-static const char *
+static
+const char *
 dividing_slash(const char *path)
 {
 	int len = strlen(path);
@@ -748,7 +753,8 @@ dividing_slash(const char *path)
  *
  * If ForceOpt is set always return true.
  */
-static int
+static
+int
 check_period(const char *snapshots_path, const char *cmd, int arg1,
 	time_t *savep)
 {
@@ -819,7 +825,8 @@ check_period(const char *snapshots_path, const char *cmd, int arg1,
 /*
  * Store the start time of the last successful operation.
  */
-static void
+static
+void
 save_period(const char *snapshots_path, const char *cmd,
 			time_t savet)
 {
@@ -844,7 +851,8 @@ save_period(const char *snapshots_path, const char *cmd,
 /*
  * Simply count the number of softlinks in the snapshots dir
  */
-static int
+static
+int
 check_softlinks(int fd, int new_config, const char *snapshots_path)
 {
 	struct dirent *den;
@@ -891,7 +899,8 @@ check_softlinks(int fd, int new_config, const char *snapshots_path)
 /*
  * Clean up expired softlinks in the snapshots dir
  */
-static void
+static
+void
 cleanup_softlinks(int fd, int new_config,
 		  const char *snapshots_path, int arg2, char *arg3)
 {
@@ -973,7 +982,8 @@ cleanup_softlinks(int fd, int new_config,
 	}
 }
 
-static void
+static
+void
 delete_snapshots(int fd, struct hammer_ioc_snapshot *dsnapshot)
 {
 	for (;;) {
@@ -1002,7 +1012,8 @@ delete_snapshots(int fd, struct hammer_ioc_snapshot *dsnapshot)
  * expiration in seconds (arg2) and return non-zero if the softlink
  * has expired.
  */
-static int
+static
+int
 check_expired(const char *fpath, int arg2)
 {
 	struct tm tm;
@@ -1043,7 +1054,8 @@ check_expired(const char *fpath, int arg2)
 /*
  * Issue a snapshot.
  */
-static int
+static
+int
 create_snapshot(const char *path, const char *snapshots_path)
 {
 	int r;
@@ -1052,7 +1064,8 @@ create_snapshot(const char *path, const char *snapshots_path)
 	return(r);
 }
 
-static int
+static
+int
 cleanup_prune(const char *path, const char *snapshots_path,
 		  int arg1 __unused, int arg2, int snapshots_disabled)
 {
@@ -1088,7 +1101,8 @@ cleanup_prune(const char *path, const char *snapshots_path,
 	return(0);
 }
 
-static int
+static
+int
 cleanup_rebalance(const char *path, const char *snapshots_path,
 		  int arg1 __unused, int arg2)
 {
@@ -1109,7 +1123,8 @@ cleanup_rebalance(const char *path, const char *snapshots_path,
 	return(0);
 }
 
-static int
+static
+int
 cleanup_reblock(const char *path, const char *snapshots_path,
 		  int arg1 __unused, int arg2)
 {
@@ -1165,7 +1180,8 @@ cleanup_reblock(const char *path, const char *snapshots_path,
 	return(0);
 }
 
-static int
+static
+int
 cleanup_recopy(const char *path, const char *snapshots_path,
 		  int arg1 __unused, int arg2)
 {
@@ -1202,7 +1218,8 @@ cleanup_recopy(const char *path, const char *snapshots_path,
 	return(0);
 }
 
-static int
+static
+int
 cleanup_dedup(const char *path, const char *snapshots_path __unused,
 		  int arg1 __unused, int arg2)
 {

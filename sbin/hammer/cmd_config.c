@@ -205,7 +205,8 @@ hammer_cmd_viconfig(char **av, int ac)
 	free(runcmd);
 }
 
-static void
+static
+void
 config_get(const char *dirpath, struct hammer_ioc_config *config)
 {
 	struct hammer_ioc_version version;
@@ -228,7 +229,8 @@ config_get(const char *dirpath, struct hammer_ioc_config *config)
 	close(fd);
 }
 
-static void
+static
+void
 config_set(const char *dirpath, struct hammer_ioc_config *config)
 {
 	struct hammer_ioc_version version;
@@ -251,7 +253,8 @@ config_set(const char *dirpath, struct hammer_ioc_config *config)
 	close(fd);
 }
 
-static void
+static
+void
 config_remove_path(void)
 {
 	remove(ConfigPath);

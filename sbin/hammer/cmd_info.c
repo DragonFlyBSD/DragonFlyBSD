@@ -84,7 +84,8 @@ hammer_cmd_info(char **av, int ac)
  * This is an adhoc function which exists only because libhammer can't
  * properly handle variety of errors.
  */
-static void
+static
+void
 __test_if_hammer_or_abort(const char *path)
 {
 	struct hammer_ioc_info info;
@@ -233,7 +234,8 @@ show_info(char *path)
 
 }
 
-static double
+static
+double
 percent(int64_t value, int64_t total)
 {
 	/* Avoid divide-by-zero */

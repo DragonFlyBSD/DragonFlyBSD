@@ -170,7 +170,8 @@ print_subtree(hammer_btree_elm_t elm)
 	print_btree_node(i->subtree_offset, i->mirror_tid, elm);
 }
 
-static void
+static
+void
 print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	hammer_btree_elm_t lbe)
 {
@@ -266,7 +267,8 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	depth--;
 }
 
-static int
+static
+int
 test_node_count(hammer_node_ondisk_t node, char *badmp)
 {
 	hammer_node_ondisk_t parent_node;
@@ -688,7 +690,8 @@ get_buf_crc(hammer_off_t buf_offset, int32_t buf_len, uint32_t leaf_crc,
 	return ncrc;
 }
 
-static hammer_crc_t
+static
+hammer_crc_t
 get_leaf_crc(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf,
 	     const char **whichp)
 {
@@ -869,7 +872,8 @@ print_record(hammer_btree_elm_t elm)
  * which is 16KB.  Passing record data length larger than 16KB to
  * hexdump(3) is invalid even if the leaf node elm says >16KB data.
  */
-static void
+static
+void
 hexdump_record(const void *ptr, int length, const char *hdr)
 {
 	int data_len = length;
@@ -912,7 +916,8 @@ _strtoull(const char *p, int base)
 	return retval;
 }
 
-static int
+static
+int
 init_btree_search(const char *arg)
 {
 	char *s, *p;
@@ -952,7 +957,8 @@ init_btree_search(const char *arg)
 	return(i);
 }
 
-static int
+static
+int
 test_btree_search(hammer_btree_elm_t elm)
 {
 	hammer_base_elm_t base1 = &elm->base;

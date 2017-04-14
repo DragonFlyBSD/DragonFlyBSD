@@ -499,7 +499,8 @@ done:
  */
 #define HIST_COUNT	(1024 * 1024)
 
-static int
+static
+int
 generate_histogram(int fd, const char *filesystem,
 		   histogram_t *histogram_ary,
 		   struct hammer_ioc_mirror_rw *mirror_base,
@@ -695,7 +696,8 @@ generate_histogram(int fd, const char *filesystem,
 	return(res);
 }
 
-static void
+static
+void
 create_pfs(const char *filesystem, uuid_t *s_uuid)
 {
 	if (ForceYesOpt == 1) {
@@ -1274,7 +1276,8 @@ again:
 /*
  * Read and return multiple mrecords
  */
-static int
+static
+int
 read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 {
 	hammer_ioc_mrecord_any_t mrec;
@@ -1497,7 +1500,8 @@ write_mrecord(int fdout, uint32_t type, hammer_ioc_mrecord_any_t mrec,
  * Generate a mirroring header with the pfs information of the
  * originating filesytem.
  */
-static void
+static
+void
 generate_mrec_header(int fd, int pfs_id,
 		     union hammer_ioc_mrecord_any *mrec_tmp)
 {
@@ -1523,7 +1527,8 @@ generate_mrec_header(int fd, int pfs_id,
  *
  * return -1 if we got a TERM record
  */
-static int
+static
+int
 validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 		     struct hammer_ioc_mrecord_head *pickup,
 		     hammer_tid_t *tid_begp, hammer_tid_t *tid_endp)
@@ -1594,7 +1599,8 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 	return(0);
 }
 
-static void
+static
+void
 update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
@@ -1670,7 +1676,8 @@ writebw(int fd, const void *buf, size_t nbytes,
  * Get a yes or no answer from the terminal.  The program may be run as
  * part of a two-way pipe so we cannot use stdin for this operation.
  */
-static int
+static
+int
 getyntty(void)
 {
 	char buf[256];
@@ -1699,7 +1706,8 @@ getyntty(void)
 	return(result);
 }
 
-static void
+static
+void
 score_printf(size_t i, size_t w, const char *ctl, ...)
 {
 	va_list va;
@@ -1735,7 +1743,8 @@ score_printf(size_t i, size_t w, const char *ctl, ...)
 	pwrite(SFd, ScoreBuf, SSize, 0);
 }
 
-static void
+static
+void
 hammer_check_restrict(const char *filesystem)
 {
 	size_t rlen;
@@ -1765,7 +1774,8 @@ hammer_check_restrict(const char *filesystem)
 	}
 }
 
-static void
+static
+void
 mirror_usage(int code)
 {
 	fprintf(stderr,

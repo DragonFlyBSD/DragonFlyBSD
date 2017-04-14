@@ -75,7 +75,8 @@ hammer_cmd_history(const char *offset_str, char **av, int ac)
 	}
 }
 
-static void
+static
+void
 hammer_do_history(const char *path, off_t off, long len)
 {
 	struct hammer_ioc_history hist;
@@ -143,7 +144,8 @@ hammer_do_history(const char *path, off_t off, long len)
 	close(fd);
 }
 
-static int
+static
+int
 parse_attr(const char *s, cmd_attr_t *ca)
 {
 	long long offset;
@@ -179,7 +181,8 @@ parse_attr(const char *s, cmd_attr_t *ca)
 	return(0);
 }
 
-static int
+static
+int
 parse_attr_path(const char *s, cmd_attr_t *ca)
 {
 	int length, ret;
@@ -204,7 +207,8 @@ parse_attr_path(const char *s, cmd_attr_t *ca)
 	return(ret);
 }
 
-static void
+static
+void
 dumpat(const char *path, off_t off, long len)
 {
 	char buf[1024];
@@ -235,7 +239,8 @@ dumpat(const char *path, off_t off, long len)
 /*
  * Return a human-readable timestamp
  */
-static const char *
+static
+const char *
 timestr32(uint32_t time32)
 {
 	static char timebuf[64];
@@ -250,13 +255,15 @@ timestr32(uint32_t time32)
 /*
  * Return non-zero on either overflow or underflow
  */
-static __inline int
+static __inline
+int
 test_strtol(int res, long val)
 {
 	return(res == ERANGE && (val == LONG_MIN || val == LONG_MAX));
 }
 
-static __inline int
+static __inline
+int
 test_strtoll(int res, long long val)
 {
 	return(res == ERANGE && (val == LLONG_MIN || val == LLONG_MAX));

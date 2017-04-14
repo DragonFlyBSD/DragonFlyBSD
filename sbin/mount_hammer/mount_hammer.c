@@ -170,7 +170,9 @@ main(int ac, char **av)
 	return(0);
 }
 
-static void test_master_id(int master_id)
+static
+void
+test_master_id(int master_id)
 {
 	switch (master_id) {
 	case 0:

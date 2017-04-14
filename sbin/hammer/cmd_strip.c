@@ -123,7 +123,8 @@ strip_header:
 	flush_all_volumes();
 }
 
-static int
+static
+int
 hammer_test_offset(const char *msg, hammer_off_t offset)
 {
 	if (get_volume(HAMMER_VOL_DECODE(offset)) == NULL) {
@@ -138,7 +139,8 @@ hammer_test_offset(const char *msg, hammer_off_t offset)
 	return(1);
 }
 
-static void
+static
+void
 hammer_strip_bigblock(int zone, hammer_off_t offset)
 {
 	buffer_info_t buffer = NULL;
@@ -172,7 +174,8 @@ hammer_strip_bigblock(int zone, hammer_off_t offset)
 	}
 }
 
-static void
+static
+void
 hammer_ask_yn(void)
 {
 	volume_info_t volume;

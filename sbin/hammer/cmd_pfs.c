@@ -66,7 +66,8 @@ clrpfs(struct hammer_ioc_pseudofs_rw *pfs, hammer_pseudofs_data_t pfsd,
  * If it's a directory via symlink, strip trailing /
  * from strdup'd path and return the symlink.
  */
-static char*
+static
+char*
 getlink(const char *path)
 {
 	int i;
@@ -134,7 +135,8 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 /*
  * Extract the PFS id from path.
  */
-static int
+static
+int
 scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
 	char *linkpath;
@@ -203,7 +205,8 @@ relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs)
 	}
 }
 
-static void
+static
+void
 print_pfs_status(char *path)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
@@ -514,7 +517,8 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 	relpfs(fd, &pfs);
 }
 
-static void
+static
+void
 init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 {
 	uint32_t status;
@@ -594,7 +598,8 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 	}
 }
 
-static void
+static
+void
 parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 {
 	char *cmd;

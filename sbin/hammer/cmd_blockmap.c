@@ -250,7 +250,8 @@ hammer_cmd_checkmap(void)
 	dump_collect_table();
 }
 
-static void
+static
+void
 check_freemap(hammer_blockmap_t freemap)
 {
 	hammer_off_t offset;
@@ -269,7 +270,8 @@ check_freemap(hammer_blockmap_t freemap)
 	rel_buffer(buffer1);
 }
 
-static void
+static
+void
 check_btree_node(hammer_off_t node_offset, int depth)
 {
 	buffer_info_t buffer = NULL;
@@ -331,7 +333,8 @@ check_btree_node(hammer_off_t node_offset, int depth)
 	rel_buffer(buffer);
 }
 
-static void
+static
+void
 check_undo(hammer_blockmap_t undomap)
 {
 	buffer_info_t buffer = NULL;

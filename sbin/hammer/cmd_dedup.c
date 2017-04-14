@@ -151,7 +151,8 @@ RB_GENERATE2(dedup_entry_rb_tree, dedup_entry, rb_entry,
 RB_GENERATE(sha_dedup_entry_rb_tree, sha_dedup_entry, fict_entry,
 		rb_sha_dedup_entry_compare);
 
-static int
+static
+int
 rb_sim_dedup_entry_compare(struct sim_dedup_entry *sim_de1,
 			struct sim_dedup_entry *sim_de2)
 {
@@ -163,7 +164,8 @@ rb_sim_dedup_entry_compare(struct sim_dedup_entry *sim_de1,
 	return (0);
 }
 
-static int
+static
+int
 rb_dedup_entry_compare(struct dedup_entry *de1, struct dedup_entry *de2)
 {
 	if (de1->leaf.data_crc < de2->leaf.data_crc)
@@ -174,7 +176,8 @@ rb_dedup_entry_compare(struct dedup_entry *de1, struct dedup_entry *de2)
 	return (0);
 }
 
-static int
+static
+int
 rb_sha_dedup_entry_compare(struct sha_dedup_entry *sha_de1,
 			struct sha_dedup_entry *sha_de2)
 {
@@ -390,13 +393,15 @@ hammer_cmd_dedup(char **av, int ac)
 	}
 }
 
-static int
+static
+int
 count_btree_elm(hammer_btree_leaf_elm_t scan_leaf __unused, int flags __unused)
 {
 	return(1);
 }
 
-static int
+static
+int
 collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 {
 	struct sim_dedup_entry *sim_de;
@@ -445,7 +450,8 @@ collect_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags __unused)
 	return (1);
 }
 
-static __inline int
+static __inline
+int
 validate_dedup_pair(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 {
 	if (HAMMER_ZONE(p->data_offset) != HAMMER_ZONE(q->data_offset))
@@ -462,7 +468,8 @@ validate_dedup_pair(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 #define DEDUP_UNDERFLOW		4
 #define DEDUP_VERS_FAILURE	5
 
-static __inline int
+static __inline
+int
 deduplicate(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 {
 	struct hammer_ioc_dedup dedup;
@@ -497,7 +504,8 @@ deduplicate(hammer_btree_leaf_elm_t p, hammer_btree_leaf_elm_t q)
 	return (0);
 }
 
-static int
+static
+int
 process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 {
 	struct dedup_entry *de;
@@ -797,7 +805,8 @@ terminate_early:
 	return (0);
 }
 
-static int
+static
+int
 upgrade_chksum(hammer_btree_leaf_elm_t leaf, uint8_t *sha_hash)
 {
 	struct hammer_ioc_data data;
@@ -835,19 +844,22 @@ done:
 	return (error);
 }
 
-static void
+static
+void
 sigAlrm(int signo __unused)
 {
 	SigAlrmFlag = 1;
 }
 
-static void
+static
+void
 sigInfo(int signo __unused)
 {
 	SigInfoFlag = 1;
 }
 
-static void
+static
+void
 scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 {
 	struct hammer_ioc_mirror_rw mirror;
@@ -994,7 +1006,8 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 	free(buf);
 }
 
-static void
+static
+void
 dump_simulated_dedup(void)
 {
 	struct sim_dedup_entry *sim_de;
@@ -1009,7 +1022,8 @@ dump_simulated_dedup(void)
 	printf("end of dump ===\n");
 }
 
-static void
+static
+void
 dump_real_dedup(void)
 {
 	struct dedup_entry *de;
@@ -1041,7 +1055,8 @@ dump_real_dedup(void)
 	printf("end of dump ===\n");
 }
 
-static void
+static
+void
 dedup_usage(int code)
 {
 	fprintf(stderr,

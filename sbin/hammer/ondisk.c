@@ -65,7 +65,8 @@ buffer_hash(hammer_off_t zone2_offset)
 	return(hi);
 }
 
-static buffer_info_t
+static
+buffer_info_t
 find_buffer(hammer_off_t zone2_offset)
 {
 	volume_info_t volume;
@@ -108,7 +109,8 @@ __alloc_volume(const char *volname, int oflags)
 	return(volume);
 }
 
-static void
+static
+void
 __add_volume(const volume_info_t volume)
 {
 	volume_info_t scan;
@@ -141,7 +143,8 @@ __add_volume(const volume_info_t volume)
 	TAILQ_INSERT_TAIL(&VolList, volume, entry);
 }
 
-static void
+static
+void
 __verify_volume(const volume_info_t volume)
 {
 	hammer_volume_ondisk_t ondisk = volume->ondisk;
@@ -223,7 +226,8 @@ load_volume(const char *filename, int oflags, int verify_volume)
 /*
  * Check basic volume characteristics.
  */
-static void
+static
+void
 check_volume(volume_info_t volume)
 {
 	struct partinfo pinfo;
@@ -304,7 +308,8 @@ get_root_volume(void)
 	return(get_volume(HAMMER_ROOT_VOLNO));
 }
 
-static hammer_off_t
+static
+hammer_off_t
 __blockmap_xlate_to_zone2(hammer_off_t buf_offset)
 {
 	hammer_off_t zone2_offset;
@@ -322,7 +327,8 @@ __blockmap_xlate_to_zone2(hammer_off_t buf_offset)
 	return(zone2_offset);
 }
 
-static buffer_info_t
+static
+buffer_info_t
 __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 {
 	volume_info_t volume;
@@ -358,7 +364,8 @@ __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 /*
  * Acquire the 16KB buffer for specified zone offset.
  */
-static buffer_info_t
+static
+buffer_info_t
 get_buffer(hammer_off_t buf_offset, int isnew)
 {
 	buffer_info_t buffer;
@@ -394,7 +401,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	return(buffer);
 }
 
-static void
+static
+void
 get_buffer_readahead(const buffer_info_t base)
 {
 	buffer_info_t buffer;
@@ -916,7 +924,8 @@ flush_buffer(buffer_info_t buffer)
 /*
  * Core I/O operations
  */
-static int
+static
+int
 __read(volume_info_t volume, void *data, int64_t offset, int size)
 {
 	ssize_t n;
@@ -927,20 +936,23 @@ __read(volume_info_t volume, void *data, int64_t offset, int size)
 	return(0);
 }
 
-static __inline int
+static __inline
+int
 readhammervol(volume_info_t volume)
 {
 	return(__read(volume, volume->ondisk, 0, HAMMER_BUFSIZE));
 }
 
-static __inline int
+static __inline
+int
 readhammerbuf(buffer_info_t buffer)
 {
 	return(__read(buffer->volume, buffer->ondisk, buffer->raw_offset,
 		HAMMER_BUFSIZE));
 }
 
-static int
+static
+int
 __write(volume_info_t volume, const void *data, int64_t offset, int size)
 {
 	ssize_t n;
@@ -954,13 +966,15 @@ __write(volume_info_t volume, const void *data, int64_t offset, int size)
 	return(0);
 }
 
-static __inline int
+static __inline
+int
 writehammervol(volume_info_t volume)
 {
 	return(__write(volume, volume->ondisk, 0, HAMMER_BUFSIZE));
 }
 
-static __inline int
+static __inline
+int
 writehammerbuf(buffer_info_t buffer)
 {
 	return(__write(buffer->volume, buffer->ondisk, buffer->raw_offset,
