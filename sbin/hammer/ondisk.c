@@ -166,6 +166,12 @@ __verify_volume(const volume_info_t volume)
 			volume->name);
 		/* not reached */
 	}
+	if (ondisk->vol_version < HAMMER_VOL_VERSION_MIN ||
+	    ondisk->vol_version >= HAMMER_VOL_VERSION_WIP) {
+		errx(1, "verify_volume: %s: Invalid volume version %u",
+			volume->name, ondisk->vol_version);
+		/* not reached */
+	}
 }
 
 /*
