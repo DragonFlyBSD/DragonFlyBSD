@@ -39,6 +39,7 @@
 #define	_SYS_SIGNAL_H_
 
 #include <sys/cdefs.h>
+#include <sys/_pthreadtypes.h>
 #include <machine/stdint.h>	/* for __ types */
 
 /*
@@ -232,7 +233,7 @@ struct sigevent {
 	union {
 		int	__sigev_signo;	/* Signal number */
 		int	__sigev_notify_kqueue;
-		void	*__sigev_notify_attributes;
+		pthread_attr_t *__sigev_notify_attributes;
 	} __sigev_u;
 	union sigval sigev_value;	/* Signal value */
 	void (*sigev_notify_function)(union sigval);
