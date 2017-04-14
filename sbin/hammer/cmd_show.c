@@ -690,12 +690,15 @@ get_buf_crc(hammer_off_t buf_offset, int32_t buf_len, uint32_t leaf_crc,
 	return ncrc;
 }
 
+/*
+ * XXX Despite the name of function, this only works for inode.
+ */
 static
 hammer_crc_t
 get_leaf_crc(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf,
 	     const char **whichp)
 {
-	hammer_crc_t crc;
+	hammer_crc_t crc = 0;
 
 	*whichp = "";
 	if (leaf->data_len == 0)
@@ -717,16 +720,7 @@ get_leaf_crc(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf,
 			*whichp = "o";
 		break;
 	default:
-		if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-			crc = iscsi_crc32(data, leaf->data_len);
-			if (crc == leaf->data_crc) {
-				*whichp = "i";
-				break;
-			}
-		}
-		crc = crc32(data, leaf->data_len);
-		if (crc == leaf->data_crc)
-			*whichp = "o";
+		assert(0); /* temporary plus never comes here */
 		break;
 	}
 	return(crc);
