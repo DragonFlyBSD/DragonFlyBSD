@@ -48,11 +48,13 @@
 /*
  * The db(3) support for ndbm always appends this suffix to the
  * file name to avoid overwriting the user's original database.
+ *
+ * XXX dsize should be size_t; see 1003.1-2008
  */
 #define	DBM_SUFFIX	".db"
 
 typedef struct {
-	char *dptr;
+	void *dptr;
 	int dsize;
 } datum;
 
