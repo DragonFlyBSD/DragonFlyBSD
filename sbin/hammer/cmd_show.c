@@ -66,7 +66,8 @@ static void print_bigblock_fill(hammer_off_t offset);
 static const char *check_data_crc(hammer_btree_elm_t elm, const char **whichp);
 static hammer_crc_t get_inode_crc(hammer_btree_leaf_elm_t leaf,
 	const char **whichp);
-static uint32_t get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp);
+static hammer_crc_t get_buf_crc(hammer_btree_leaf_elm_t leaf,
+	const char **whichp);
 static void print_record(hammer_btree_elm_t elm);
 static int init_btree_search(const char *arg);
 static int test_btree_search(hammer_btree_elm_t elm);
@@ -676,15 +677,16 @@ end:
 	return(crc);
 }
 
+typedef uint32_t (*crc32_ext_fn)(const void *, size_t, uint32_t);
+
 static
-uint32_t
-get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
+hammer_crc_t
+__get_buf_crc(hammer_btree_leaf_elm_t leaf, crc32_ext_fn f)
 {
 	buffer_info_t data_buffer = NULL;
 	hammer_off_t buf_offset;
 	int32_t buf_len, len;
 	uint32_t crc = 0;
-	uint32_t ncrc = 0;
 	char *ptr;
 
 	buf_offset = leaf->data_offset;
@@ -696,23 +698,40 @@ get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
 		if (len > buf_len)
 			len = (int)buf_len;
 		assert(len <= HAMMER_BUFSIZE);
-		crc = crc32_ext(ptr, len, crc);
-		ncrc = iscsi_crc32_ext(ptr, len, ncrc);
+		crc = f(ptr, len, crc);
 		buf_len -= len;
 		buf_offset += len;
 	}
 	rel_buffer(data_buffer);
 
-	if (leaf->data_crc == crc) {
+	return(crc);
+}
+
+static
+hammer_crc_t
+get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
+{
+	buffer_info_t data_buffer = NULL;
+	hammer_crc_t crc;
+
+	if (HammerVersion >= HAMMER_VOL_VERSION_SEVEN) {
+		crc = __get_buf_crc(leaf, iscsi_crc32_ext);
+		if (crc == leaf->data_crc) {
+			*whichp = "i";
+			goto end;
+		}
+	}
+
+	crc = __get_buf_crc(leaf, crc32_ext);
+	if (crc == leaf->data_crc) {
 		*whichp = "o";
-		return crc;
-	} else if (leaf->data_crc == ncrc) {
-		*whichp = "i";
-		return ncrc;
+		goto end;
 	}
 
 	*whichp = "";
-	return ncrc;
+end:
+	rel_buffer(data_buffer);
+	return(crc);
 }
 
 static
