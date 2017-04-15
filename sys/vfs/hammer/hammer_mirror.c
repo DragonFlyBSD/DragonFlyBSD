@@ -84,7 +84,7 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 	int eatdisk;
 	int mrec_flags;
 	uint32_t localization;
-	uint32_t rec_crc;
+	hammer_crc_t rec_crc;
 
 	localization = pfs_to_lo(mirror->pfs_id);
 

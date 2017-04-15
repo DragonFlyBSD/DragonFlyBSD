@@ -286,7 +286,7 @@ struct hammer_ioc_mirror_rw {
  */
 typedef struct hammer_ioc_mrecord_head {
 	uint32_t		signature;	/* signature for byte order */
-	uint32_t		rec_crc;
+	hammer_crc_t		rec_crc;
 	uint32_t		rec_size;
 	uint32_t		type;
 	/* extended */

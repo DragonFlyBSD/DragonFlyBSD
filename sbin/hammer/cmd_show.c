@@ -623,7 +623,7 @@ static
 const char *
 check_data_crc(hammer_btree_elm_t elm, const char **whichp)
 {
-	uint32_t crc;
+	hammer_crc_t crc;
 
 	*whichp = "";
 	if (elm->leaf.data_offset == 0 || elm->leaf.data_len == 0)
@@ -685,8 +685,8 @@ __get_buf_crc(hammer_btree_leaf_elm_t leaf, crc32_ext_fn f)
 {
 	buffer_info_t data_buffer = NULL;
 	hammer_off_t buf_offset;
+	hammer_crc_t crc = 0;
 	int32_t buf_len, len;
-	uint32_t crc = 0;
 	char *ptr;
 
 	buf_offset = leaf->data_offset;

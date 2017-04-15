@@ -457,7 +457,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	hammer_buffer_t data_buffer = NULL;
 	hammer_off_t odata_offset;
 	hammer_off_t ndata_offset;
-	uint32_t ncrc;
+	hammer_crc_t ncrc;
 	int error;
 	void *ndata;
 
