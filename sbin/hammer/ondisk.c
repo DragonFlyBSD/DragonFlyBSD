@@ -211,7 +211,8 @@ load_volume(const char *filename, int oflags, int verify_volume)
 		/* not reached */
 	}
 	volume->vol_no = volume->ondisk->vol_no;
-	HammerVersion = volume->ondisk->vol_version;
+	if (volume->vol_no == HAMMER_ROOT_VOLNO)
+		HammerVersion = volume->ondisk->vol_version;
 
 	if (valid_hammer_volumes++ == 0)
 		Hammer_FSId = volume->ondisk->vol_fsid;
