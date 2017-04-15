@@ -685,8 +685,12 @@ get_buf_crc(hammer_off_t buf_offset, int32_t buf_len, uint32_t leaf_crc,
 	if (leaf_crc == crc) {
 		*whichp = "o";
 		return crc;
+	} else if (leaf_crc == ncrc) {
+		*whichp = "i";
+		return ncrc;
 	}
-	*whichp = "i";
+
+	*whichp = "";
 	return ncrc;
 }
 
