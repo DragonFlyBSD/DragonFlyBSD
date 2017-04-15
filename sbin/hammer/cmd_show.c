@@ -64,10 +64,9 @@ static int test_lr(hammer_btree_elm_t elm, hammer_btree_elm_t lbe);
 static int test_rbn_lr(hammer_btree_elm_t elm, hammer_btree_elm_t lbe);
 static void print_bigblock_fill(hammer_off_t offset);
 static const char *check_data_crc(hammer_btree_elm_t elm, const char **whichp);
-static hammer_crc_t get_leaf_crc(uint32_t vol_version, void *data,
-	hammer_btree_leaf_elm_t leaf, const char **whichp);
-static uint32_t get_buf_crc(hammer_off_t buf_offset, int32_t buf_len,
-	uint32_t leaf_crc, const char **whichp);
+static hammer_crc_t get_inode_crc(hammer_btree_leaf_elm_t leaf,
+	const char **whichp);
+static uint32_t get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp);
 static void print_record(hammer_btree_elm_t elm);
 static int init_btree_search(const char *arg);
 static int test_btree_search(hammer_btree_elm_t elm);
@@ -623,31 +622,20 @@ static
 const char *
 check_data_crc(hammer_btree_elm_t elm, const char **whichp)
 {
-	buffer_info_t data_buffer;
-	hammer_off_t data_offset;
-	int32_t data_len;
 	uint32_t crc;
-	char *ptr;
 
 	*whichp = "";
-	data_offset = elm->leaf.data_offset;
-	data_len = elm->leaf.data_len;
-	data_buffer = NULL;
-	if (data_offset == 0 || data_len == 0)
+	if (elm->leaf.data_offset == 0 || elm->leaf.data_len == 0)
 		return("ZO");  /* zero offset or length */
 
-	crc = 0;
 	switch (elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
-		if (data_len != sizeof(struct hammer_inode_data))
+		if (elm->leaf.data_len != sizeof(struct hammer_inode_data))
 			return("BI");  /* bad inode size */
-		ptr = get_buffer_data(data_offset, &data_buffer, 0);
-		crc = get_leaf_crc(HammerVersion, ptr, &elm->leaf, whichp);
-		rel_buffer(data_buffer);
+		crc = get_inode_crc(&elm->leaf, whichp);
 		break;
 	default:
-		crc = get_buf_crc(data_offset, data_len, elm->leaf.data_crc,
-				  whichp);
+		crc = get_buf_crc(&elm->leaf, whichp);
 		break;
 	}
 
@@ -659,15 +647,48 @@ check_data_crc(hammer_btree_elm_t elm, const char **whichp)
 }
 
 static
-uint32_t
-get_buf_crc(hammer_off_t buf_offset, int32_t buf_len, uint32_t leaf_crc,
-	    const char **whichp)
+hammer_crc_t
+get_inode_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
 {
 	buffer_info_t data_buffer = NULL;
-	int32_t len;
+	hammer_crc_t crc;
+	char *ptr;
+
+	ptr = get_buffer_data(leaf->data_offset, &data_buffer, 0);
+
+	if (HammerVersion >= HAMMER_VOL_VERSION_SEVEN) {
+		crc = iscsi_crc32(ptr, HAMMER_INODE_CRCSIZE);
+		if (crc == leaf->data_crc) {
+			*whichp = "i";
+			goto end;
+		}
+	}
+
+	crc = crc32(ptr, HAMMER_INODE_CRCSIZE);
+	if (crc == leaf->data_crc) {
+		*whichp = "o";
+		goto end;
+	}
+
+	*whichp = "";
+end:
+	rel_buffer(data_buffer);
+	return(crc);
+}
+
+static
+uint32_t
+get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
+{
+	buffer_info_t data_buffer = NULL;
+	hammer_off_t buf_offset;
+	int32_t buf_len, len;
 	uint32_t crc = 0;
 	uint32_t ncrc = 0;
 	char *ptr;
+
+	buf_offset = leaf->data_offset;
+	buf_len = leaf->data_len;
 
 	while (buf_len) {
 		ptr = get_buffer_data(buf_offset, &data_buffer, 0);
@@ -682,52 +703,16 @@ get_buf_crc(hammer_off_t buf_offset, int32_t buf_len, uint32_t leaf_crc,
 	}
 	rel_buffer(data_buffer);
 
-	if (leaf_crc == crc) {
+	if (leaf->data_crc == crc) {
 		*whichp = "o";
 		return crc;
-	} else if (leaf_crc == ncrc) {
+	} else if (leaf->data_crc == ncrc) {
 		*whichp = "i";
 		return ncrc;
 	}
 
 	*whichp = "";
 	return ncrc;
-}
-
-/*
- * XXX Despite the name of function, this only works for inode.
- */
-static
-hammer_crc_t
-get_leaf_crc(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf,
-	     const char **whichp)
-{
-	hammer_crc_t crc = 0;
-
-	*whichp = "";
-	if (leaf->data_len == 0)
-		return(0);
-
-	switch(leaf->base.rec_type) {
-	case HAMMER_RECTYPE_INODE:
-		if (leaf->data_len != sizeof(struct hammer_inode_data))
-			return(0);  /* This shouldn't happen */
-		if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-			crc = iscsi_crc32(data, HAMMER_INODE_CRCSIZE);
-			if (crc == leaf->data_crc) {
-				*whichp = "i";
-				break;
-			}
-		}
-		crc = crc32(data, HAMMER_INODE_CRCSIZE);
-		if (crc == leaf->data_crc)
-			*whichp = "o";
-		break;
-	default:
-		assert(0); /* temporary plus never comes here */
-		break;
-	}
-	return(crc);
 }
 
 static
