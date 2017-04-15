@@ -711,7 +711,6 @@ static
 hammer_crc_t
 get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
 {
-	buffer_info_t data_buffer = NULL;
 	hammer_crc_t crc;
 
 	if (HammerVersion >= HAMMER_VOL_VERSION_SEVEN) {
@@ -730,7 +729,6 @@ get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
 
 	*whichp = "";
 end:
-	rel_buffer(data_buffer);
 	return(crc);
 }
 
