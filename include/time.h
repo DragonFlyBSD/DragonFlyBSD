@@ -151,7 +151,9 @@ char *asctime(const struct tm *);
 clock_t clock(void);
 char *ctime(const time_t *);
 double difftime(time_t, time_t);
-/* XXX missing: getdate() */
+#if 0 /* XXX missing */
+struct tm *getdate(const char *);
+#endif
 struct tm *gmtime(const time_t *);
 struct tm *localtime(const time_t *);
 time_t mktime(struct tm *);
@@ -167,7 +169,6 @@ void tzset(void);
 int clock_getres(clockid_t, struct timespec *);
 int clock_gettime(clockid_t, struct timespec *);
 int clock_settime(clockid_t, const struct timespec *);
-/* XXX missing: clock_nanosleep() */
 int nanosleep(const struct timespec *, struct timespec *);
 #endif /* __POSIX_VISIBLE >= 199309 */
 
@@ -182,6 +183,7 @@ struct tm *localtime_r(const time_t *, struct tm *);
 #if 0 /* XXX missing */
 struct sigevent;
 int clock_getcpuclockid(pid_t, clockid_t *);
+int clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *);
 int timer_create(clockid_t, struct sigevent *__restrict, timer_t *__restrict);
 int timer_delete(timer_t);
 int timer_gettime(timer_t, struct itimerspec *);
