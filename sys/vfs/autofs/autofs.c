@@ -448,11 +448,8 @@ autofs_trigger_one(struct autofs_node *anp,
 		    amp->am_options, sizeof(ar->ar_options));
 		TIMEOUT_TASK_INIT(_taskqueue_thread, &ar->ar_task, 0,
 		    autofs_task, ar);
-		error = taskqueue_enqueue_timeout(_taskqueue_thread,
-		    &ar->ar_task, autofs_timeout * hz);
-		if (error)
-			AUTOFS_WARN("taskqueue_enqueue_timeout() failed "
-			    "with error %d", error);
+		taskqueue_enqueue_timeout(_taskqueue_thread, &ar->ar_task,
+		    autofs_timeout * hz);
 		refcount_init(&ar->ar_refcount, 1);
 		TAILQ_INSERT_TAIL(&autofs_softc->sc_requests, ar, ar_next);
 	}
