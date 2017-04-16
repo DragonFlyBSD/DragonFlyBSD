@@ -51,6 +51,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 
+#include <net/netisr.h>
 #include <net/netmsg.h>
 
 #include <netinet/in.h>
