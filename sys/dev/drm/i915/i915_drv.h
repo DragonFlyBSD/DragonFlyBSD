@@ -2024,7 +2024,7 @@ static inline struct drm_i915_private *to_i915(const struct drm_device *dev)
 
 static inline struct drm_i915_private *dev_to_i915(struct device *dev)
 {
-	BUG();
+	return to_i915(device_get_softc(dev->bsddev));
 }
 
 static inline struct drm_i915_private *guc_to_i915(struct intel_guc *guc)
