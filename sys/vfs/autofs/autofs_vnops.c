@@ -470,8 +470,8 @@ autofs_print(struct vop_print_args *ap)
 {
 	struct autofs_node *anp = VTOI(ap->a_vp);
 
-	kprintf("tag VT_AUTOFS, node %p, ino %jd, name %s, cached %d, retries %d\n",
-	    anp, (intmax_t)anp->an_ino, anp->an_name, anp->an_cached, anp->an_retries);
+	kprintf("tag VT_AUTOFS, node %p, ino %jd, name %s, cached %d, retries %d, wildcards %d\n",
+	    anp, (intmax_t)anp->an_ino, anp->an_name, anp->an_cached, anp->an_retries, anp->an_wildcards);
 
 	return (0);
 }
