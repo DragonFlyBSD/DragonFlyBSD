@@ -300,7 +300,7 @@ sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
 {
 	int cpu, error = 0;
 
-	for (cpu = 0; cpu < ncpus2; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		if ((error = SYSCTL_OUT(req, &tcpstats_percpu[cpu],
 					sizeof(struct tcp_stats))))
 			break;
@@ -385,10 +385,10 @@ tcp_init(void)
 	}
 	tcp_tcbhashsize = hashsize;
 
-	portinfo = kmalloc_cachealign(sizeof(*portinfo) * ncpus2, M_PCB,
+	portinfo = kmalloc_cachealign(sizeof(*portinfo) * netisr_ncpus, M_PCB,
 	    M_WAITOK);
 
-	for (cpu = 0; cpu < ncpus2; cpu++) {
+	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
 		ticb = &tcbinfo[cpu];
 		in_pcbinfo_init(ticb, cpu, FALSE);
 		ticb->hashbase = hashinit(hashsize, M_PCB,
@@ -420,13 +420,13 @@ tcp_init(void)
 	/*
 	 * Initialize TCP statistics counters for each CPU.
 	 */
-	for (cpu = 0; cpu < ncpus2; ++cpu)
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
 		bzero(&tcpstats_percpu[cpu], sizeof(struct tcp_stats));
 
 	/*
 	 * Initialize netmsgs for TCP drain
 	 */
-	for (cpu = 0; cpu < ncpus2; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		netmsg_init(&tcp_drain_netmsg[cpu], NULL, &netisr_adone_rport,
 		    MSGF_PRIORITY, tcp_drain_dispatch);
 	}
@@ -824,7 +824,7 @@ tcp_listen_detach_handler(netmsg_t msg)
 	in_pcbremwildcardhash_oncpu(tp->t_inpcb, &tcbinfo[cpu]);
 
 	nextcpu = cpu + 1;
-	if (nextcpu < ncpus2)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nmsg->base.lmsg);
 	else
 		lwkt_replymsg(&nmsg->base.lmsg, 0);
@@ -889,7 +889,7 @@ tcp_close(struct tcpcb *tp)
 	 * no longer be available to the rest of the protocol threads, so we
 	 * are safe to whack the inp in the following code.
 	 */
-	if ((inp->inp_flags & INP_WILDCARD) && ncpus2 > 1) {
+	if ((inp->inp_flags & INP_WILDCARD) && netisr_ncpus > 1) {
 		struct netmsg_listen_detach nmsg;
 
 		KKASSERT(so->so_port == netisr_cpuport(0));
@@ -1152,7 +1152,7 @@ tcp_drain(void)
 	 *      however, that will require M_WAITOK memory allocation
 	 *      for the inpcb marker.
 	 */
-	CPUMASK_ASSBMASK(mask, ncpus2);
+	CPUMASK_ASSBMASK(mask, netisr_ncpus);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 	if (CPUMASK_TESTNZERO(mask))
 		lwkt_send_ipiq_mask(mask, tcp_drain_ipi, NULL);
@@ -1210,7 +1210,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * resource-intensive to repeat twice on every request.
 	 */
 	if (req->oldptr == NULL) {
-		for (ccpu = 0; ccpu < ncpus2; ++ccpu)
+		for (ccpu = 0; ccpu < netisr_ncpus; ++ccpu)
 			n += tcbinfo[ccpu].ipi_count;
 		req->oldidx = (n + n/8 + 10) * sizeof(struct xtcpcb);
 		return (0);
@@ -1230,7 +1230,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * cpu to avoid races).
 	 */
 	origcpu = mycpu->gd_cpuid;
-	for (ccpu = 0; ccpu < ncpus2 && error == 0; ++ccpu) {
+	for (ccpu = 0; ccpu < netisr_ncpus && error == 0; ++ccpu) {
 		caddr_t inp_ppcb;
 		struct xtcpcb xt;
 
@@ -1384,7 +1384,7 @@ tcp_notifyall_oncpu(netmsg_t msg)
 			nm->nm_arg, nm->nm_notify);
 
 	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus2)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nm->base.lmsg);
 	else
 		lwkt_replymsg(&nm->base.lmsg, 0);
@@ -1492,7 +1492,7 @@ tcp_ctlinput(netmsg_t msg)
 	} else if (msg->ctlinput.nm_direct) {
 		if (cpuid != ncpus && cpuid != mycpuid)
 			goto done;
-		if (mycpuid >= ncpus2)
+		if (mycpuid >= netisr_ncpus)
 			goto done;
 
 		in_pcbnotifyall(&tcbinfo[mycpuid], faddr, arg, notify);
@@ -2458,7 +2458,7 @@ sysctl_tcps_count(SYSCTL_HANDLER_ARGS)
 	int cpu;
 
 	memset(state_count, 0, sizeof(state_count));
-	for (cpu = 0; cpu < ncpus2; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		int i;
 
 		for (i = 0; i < TCP_NSTATES; ++i)
@@ -2480,10 +2480,10 @@ tcp_pcbport_create(struct tcpcb *tp)
 	    ("not a listen tcpcb"));
 
 	KASSERT(tp->t_pcbport == NULL, ("tcpcb port cache was created"));
-	tp->t_pcbport = kmalloc_cachealign(sizeof(struct tcp_pcbport) * ncpus2,
-	    M_PCB, M_WAITOK);
+	tp->t_pcbport = kmalloc_cachealign(
+	    sizeof(struct tcp_pcbport) * netisr_ncpus, M_PCB, M_WAITOK);
 
-	for (cpu = 0; cpu < ncpus2; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		struct inpcbport *phd;
 
 		phd = &tp->t_pcbport[cpu].t_phd;
@@ -2500,7 +2500,7 @@ tcp_pcbport_merge_oncpu(struct tcpcb *tp)
 	struct inpcb *inp;
 	int cpu = mycpuid;
 
-	KASSERT(cpu < ncpus2, ("invalid cpu%d", cpu));
+	KASSERT(cpu < netisr_ncpus, ("invalid cpu%d", cpu));
 	phd = &tp->t_pcbport[cpu].t_phd;
 
 	while ((inp = LIST_FIRST(&phd->phd_pcblist)) != NULL) {
@@ -2520,7 +2520,7 @@ tcp_pcbport_destroy(struct tcpcb *tp)
 #ifdef INVARIANTS
 	int cpu;
 
-	for (cpu = 0; cpu < ncpus2; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		KASSERT(LIST_EMPTY(&tp->t_pcbport[cpu].t_phd.phd_pcblist),
 		    ("tcpcb port cache is not empty"));
 	}

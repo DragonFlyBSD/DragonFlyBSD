@@ -427,7 +427,7 @@ in_pcbinswildcardhash_handler(netmsg_t msg)
 	in_pcbinswildcardhash_oncpu(nm->nm_inp, &tcbinfo[cpu]);
 
 	nextcpu = cpu + 1;
-	if (nextcpu < ncpus2)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nm->base.lmsg);
 	else
 		lwkt_replymsg(&nm->base.lmsg, 0);
@@ -497,7 +497,7 @@ tcp_usr_listen(netmsg_t msg)
 	 */
 	tcp_pcbport_create(tp);
 
-	if (ncpus2 > 1) {
+	if (netisr_ncpus > 1) {
 		/*
 		 * Put this inpcb into wildcard hash on other cpus.
 		 */
@@ -547,7 +547,7 @@ tcp6_usr_listen(netmsg_t msg)
 	 */
 	tcp_pcbport_create(tp);
 
-	if (ncpus2 > 1) {
+	if (netisr_ncpus > 1) {
 		/*
 		 * Put this inpcb into wildcard hash on other cpus.
 		 */
@@ -1497,7 +1497,7 @@ tcp_ctloutput(netmsg_t msg)
 			 * is not set.
 			 */
 			if (so->so_options & SO_REUSEPORT)
-				optval = (inp->inp_lgrpindex & ncpus2_mask);
+				optval = inp->inp_lgrpindex % netisr_ncpus;
 			else
 				optval = -1; /* no hint */
 		} else {

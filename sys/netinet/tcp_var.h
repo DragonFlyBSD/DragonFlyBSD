@@ -770,7 +770,7 @@ tcp_pcbport_insert(struct tcpcb *ltp, struct inpcb *inp)
 	}
 
 	cpu = mycpuid;
-	KASSERT(cpu < ncpus2, ("invalid cpu%d", cpu));
+	KASSERT(cpu < netisr_ncpus, ("invalid cpu%d", cpu));
 	phd = &ltp->t_pcbport[cpu].t_phd;
 
 	/*
