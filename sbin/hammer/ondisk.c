@@ -77,9 +77,10 @@ find_buffer(hammer_off_t zone2_offset)
 	assert(volume);
 
 	hi = buffer_hash(zone2_offset);
-	TAILQ_FOREACH(buffer, &volume->buffer_lists[hi], entry)
+	TAILQ_FOREACH(buffer, &volume->buffer_lists[hi], entry) {
 		if (buffer->zone2_offset == zone2_offset)
 			return(buffer);
+	}
 	return(NULL);
 }
 
@@ -795,10 +796,9 @@ format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size)
 	while (scan < blockmap->alloc_offset) {
 		hammer_fifo_head_t head;
 		hammer_fifo_tail_t tail;
-		int isnew;
 		int bytes = HAMMER_UNDO_ALIGN;
+		int isnew = ((scan & HAMMER_BUFMASK64) == 0);
 
-		isnew = ((scan & HAMMER_BUFMASK64) == 0);
 		head = get_buffer_data(scan, &buffer, isnew);
 		buffer->cache.modified = 1;
 		tail = (void *)((char *)head + bytes - sizeof(*tail));
@@ -982,7 +982,8 @@ writehammerbuf(buffer_info_t buffer)
 		HAMMER_BUFSIZE));
 }
 
-int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
+int64_t
+init_boot_area_size(int64_t value, off_t avg_vol_size)
 {
 	if (value == 0) {
 		value = HAMMER_BOOT_NOMBYTES;
@@ -998,7 +999,8 @@ int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
 	return(value);
 }
 
-int64_t init_memory_log_size(int64_t value, off_t avg_vol_size)
+int64_t
+init_memory_log_size(int64_t value, off_t avg_vol_size)
 {
 	if (value == 0) {
 		value = HAMMER_MEM_NOMBYTES;

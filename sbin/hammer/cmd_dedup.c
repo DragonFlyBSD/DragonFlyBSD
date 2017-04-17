@@ -284,12 +284,13 @@ hammer_cmd_dedup(char **av, int ac)
 	 * the default snapshots directory.
 	 */
 	if (!CyclePath) {
-		if (glob_pfs.ondisk->snapshots[0] != '/')
+		if (glob_pfs.ondisk->snapshots[0] != '/') {
 			asprintf(&tmp, "%s/%s/.dedup.cycle",
 			    SNAPSHOTS_BASE, av[0]);
-		else
+		} else {
 			asprintf(&tmp, "%s/.dedup.cycle",
 			    glob_pfs.ondisk->snapshots);
+		}
 		CyclePath = tmp;
 		needfree = 1;
 	}
@@ -756,7 +757,7 @@ crc_failure:
 			goto pass2_insert;
 		sha_de = RB_FIND(sha_dedup_entry_rb_tree, &de->u.fict_root,
 				 &temp);
-		if (sha_de != NULL)
+		if (sha_de != NULL) {
 			/* There is an entry with this SHA already, but the only
 			 * RB-tree element at this point is that entry we just
 			 * added. We know for sure these blocks are different
@@ -764,6 +765,7 @@ crc_failure:
 			 * collision.
 			 */
 			goto sha256_failure;
+		}
 
 		sha_de = calloc(1, sizeof(*sha_de));
 		sha_de->leaf = *scan_leaf;
@@ -890,9 +892,10 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 	hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
 
 	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
-		if (VerboseOpt)
+		if (VerboseOpt) {
 			fprintf(stderr, "%s: mirror-read: Resuming at object %016jx\n",
 			    id, (uintmax_t)mirror.key_beg.obj_id);
+		}
 	}
 
 	hammer_key_end_init(&mirror.key_end);
@@ -963,13 +966,15 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 		}
 		mirror.key_beg = mirror.key_cur;
 		if (DidInterrupt || SigAlrmFlag) {
-			if (VerboseOpt)
+			if (VerboseOpt) {
 				fprintf(stderr, "%s\n",
 				    (DidInterrupt ? "Interrupted" : "Timeout"));
+			}
 			hammer_set_cycle(&mirror.key_cur, mirror.tid_beg);
-			if (VerboseOpt)
+			if (VerboseOpt) {
 				fprintf(stderr, "Cyclefile %s updated for "
 				    "continuation\n", CyclePath);
+			}
 			exit(1);
 		}
 		if (SigInfoFlag) {

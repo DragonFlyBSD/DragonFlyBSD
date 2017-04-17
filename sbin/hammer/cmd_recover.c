@@ -545,8 +545,9 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		if ((int)nlen < 0)	/* illegal length */
 			break;
 		if (ondisk->entry.obj_id == 0 ||
-		    ondisk->entry.obj_id == HAMMER_OBJID_ROOT)
+		    ondisk->entry.obj_id == HAMMER_OBJID_ROOT) {
 			break;
+		}
 		name = malloc(nlen + 1);
 		bcopy(ondisk->entry.name, name, nlen);
 		name[nlen] = 0;

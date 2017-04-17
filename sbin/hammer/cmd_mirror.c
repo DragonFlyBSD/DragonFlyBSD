@@ -539,9 +539,10 @@ generate_histogram(int fd, const char *filesystem,
 
 	if (*repeatp == 0) {
 		fprintf(stderr, "Prescan to break up bulk transfer");
-		if (VerboseOpt > 1)
+		if (VerboseOpt > 1) {
 			fprintf(stderr, " (%juMB chunks)",
 				(uintmax_t)(SplitupOpt / (1024 * 1024)));
+		}
 		fprintf(stderr, "\n");
 	}
 

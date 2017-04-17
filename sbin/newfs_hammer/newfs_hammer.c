@@ -272,9 +272,10 @@ print_volume(const volume_info_t volume)
 	printf("%d volume%s total size %s\n",
 		nvols, (nvols == 1 ? "" : "s"), sizetostr(total));
 	printf("root-volume:         %s\n", name);
-	if (DebugOpt)
+	if (DebugOpt) {
 		printf("header-junk-size:    %s\n",
 			sizetostr(ondisk->vol_bot_beg));
+	}
 	printf("boot-area-size:      %s\n",
 		sizetostr(ondisk->vol_mem_beg - ondisk->vol_bot_beg));
 	printf("memory-log-size:     %s\n",

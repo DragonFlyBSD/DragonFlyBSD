@@ -419,10 +419,11 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			print_bigblock_fill(elm->leaf.data_offset);
 			if (QuietOpt < 2)
 				print_record(elm);
-			if (opt.stats)
+			if (opt.stats) {
 				hammer_add_zone_stat(opt.stats,
 					elm->leaf.data_offset,
 					elm->leaf.data_len);
+			}
 			break;
 		default:
 			printf(" badtype=%d", elm->base.btype);
@@ -741,10 +742,12 @@ print_config(char *cfgtxt)
 	printf("\n%s%17s", INDENT, "");
 	printf("config text=\"\n");
 	if (cfgtxt != NULL) {
-		while((token = strsep(&cfgtxt, "\r\n")) != NULL)
-			if (strlen(token))
+		while((token = strsep(&cfgtxt, "\r\n")) != NULL) {
+			if (strlen(token)) {
 				printf("%s%17s            %s\n",
 					INDENT, "", token);
+			}
+		}
 	}
 	printf("%s%17s            \"", INDENT, "");
 }
@@ -792,9 +795,10 @@ print_record(hammer_btree_elm_t elm)
 			(uintmax_t)data->inode.ctime,
 			(uintmax_t)data->inode.mtime,
 			(uintmax_t)data->inode.atime);
-		if (data->inode.ext.symlink[0])
+		if (data->inode.ext.symlink[0]) {
 			printf(" symlink=\"%s\"",
 				data->inode.ext.symlink);
+		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
 		data_len -= HAMMER_ENTRY_NAME_OFF;
@@ -802,9 +806,10 @@ print_record(hammer_btree_elm_t elm)
 		printf("dir-entry objid=%016jx lo=%08x",
 		       (uintmax_t)data->entry.obj_id,
 		       data->entry.localization);
-		if (!opt.obfuscate)
+		if (!opt.obfuscate) {
 			printf(" name=\"%*.*s\"",
 			       data_len, data_len, data->entry.name);
+		}
 		break;
 	case HAMMER_RECTYPE_FIX:
 		switch(elm->leaf.base.key) {

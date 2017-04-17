@@ -166,10 +166,11 @@ hammer_cmd_viconfig(char **av, int ac)
 	utimes(path, times);
 
 	if ((tmp = getenv("EDITOR")) != NULL ||
-	    (tmp = getenv("VISUAL")) != NULL)
+	    (tmp = getenv("VISUAL")) != NULL) {
 		editor = strdup(tmp);
-	else
+	} else {
 		editor = strdup("vi");
+	}
 
 	asprintf(&runcmd, "%s %s", editor, path);
 	system(runcmd);
