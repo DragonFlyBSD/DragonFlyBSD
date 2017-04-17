@@ -202,26 +202,24 @@ extract_volumes(struct hammer_mount_info *info, char **av, int ac)
 {
 	int idx = 0;
 	int arymax = 32;
-	char **ary = malloc(sizeof(char *) * arymax);
-	char *ptr;
-	char *next;
-	char *orig;
+	char **ary, *ptr, *next, *orig;
+
+#define _extend_ary(ary, arymax) ({	\
+		(arymax) += 32;		\
+		realloc(ary, (arymax) * sizeof(char *)); \
+	})
+	ary = calloc(arymax, sizeof(char *));
 
 	while (ac) {
-		if (idx == arymax) {
-			arymax += 32;
-			ary = realloc(ary, sizeof(char *) * arymax);
-		}
+		if (idx == arymax)
+			ary = _extend_ary(ary, arymax);
 		if (strchr(*av, ':') == NULL) {
 			ary[idx++] = strdup(*av);
 		} else {
 			orig = next = strdup(*av);
 			while ((ptr = next) != NULL) {
-				if (idx == arymax) {
-					arymax += 32;
-					ary = realloc(ary, sizeof(char *) *
-						      arymax);
-				}
+				if (idx == arymax)
+					ary = _extend_ary(ary, arymax);
 				if ((next = strchr(ptr, ':')) != NULL)
 					*next++ = 0;
 				ary[idx++] = strdup(ptr);
