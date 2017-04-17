@@ -358,19 +358,19 @@ hammer_crc_test_leaf(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t l
  * Mirror record head
  */
 static __inline hammer_crc_t
-hammer_crc_get_mrec_head(hammer_ioc_mrecord_head_t head, int bytes)
+hammer_crc_get_mrec_head(struct hammer_ioc_mrecord_head *head, int bytes)
 {
 	return(crc32(&head->rec_size, bytes - HAMMER_MREC_CRCOFF));
 }
 
 static __inline void
-hammer_crc_set_mrec_head(hammer_ioc_mrecord_head_t head, int bytes)
+hammer_crc_set_mrec_head(struct hammer_ioc_mrecord_head *head, int bytes)
 {
 	head->rec_crc = hammer_crc_get_mrec_head(head, bytes);
 }
 
 static __inline int
-hammer_crc_test_mrec_head(hammer_ioc_mrecord_head_t head, int bytes)
+hammer_crc_test_mrec_head(struct hammer_ioc_mrecord_head *head, int bytes)
 {
 	return(head->rec_crc == hammer_crc_get_mrec_head(head, bytes));
 }

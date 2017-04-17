@@ -153,11 +153,11 @@ struct hammer_ioc_rebalance {
 
 #define HAMMER_MAX_HISTORY_ELMS	64
 
-typedef struct hammer_ioc_hist_entry {
+struct hammer_ioc_hist_entry {
 	hammer_tid_t	tid;
 	uint32_t	time32;
 	uint32_t	reserved01;
-} *hammer_ioc_hist_entry_t;
+};
 
 struct hammer_ioc_history {
 	struct hammer_ioc_head head;
@@ -284,13 +284,13 @@ struct hammer_ioc_mirror_rw {
  * NOTE: crc is for the data block starting at rec_size, not including the
  * data[] array.
  */
-typedef struct hammer_ioc_mrecord_head {
+struct hammer_ioc_mrecord_head {
 	uint32_t		signature;	/* signature for byte order */
 	hammer_crc_t		rec_crc;
 	uint32_t		rec_size;
 	uint32_t		type;
 	/* extended */
-} *hammer_ioc_mrecord_head_t;
+};
 
 struct hammer_ioc_mrecord_rec {
 	struct hammer_ioc_mrecord_head	head;

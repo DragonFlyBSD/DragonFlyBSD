@@ -49,13 +49,13 @@ const char *ScoreBoardFile;
 const char *RestrictTarget;
 
 static int read_mrecords(int fd, char *buf, u_int size,
-			 hammer_ioc_mrecord_head_t pickup);
+			 struct hammer_ioc_mrecord_head *pickup);
 static int generate_histogram(int fd, const char *filesystem,
 			 histogram_t *histogram_ary,
 			 struct hammer_ioc_mirror_rw *mirror_base,
 			 int *repeatp);
 static hammer_ioc_mrecord_any_t read_mrecord(int fdin, int *errorp,
-			 hammer_ioc_mrecord_head_t pickup);
+			 struct hammer_ioc_mrecord_head *pickup);
 static void write_mrecord(int fdout, uint32_t type,
 			 hammer_ioc_mrecord_any_t mrec, int bytes);
 static void generate_mrec_header(int fd, int pfs_id,
@@ -1279,7 +1279,7 @@ again:
  */
 static
 int
-read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
+read_mrecords(int fd, char *buf, u_int size, struct hammer_ioc_mrecord_head *pickup)
 {
 	hammer_ioc_mrecord_any_t mrec;
 	u_int count;
@@ -1406,7 +1406,7 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
  */
 static
 hammer_ioc_mrecord_any_t
-read_mrecord(int fdin, int *errorp, hammer_ioc_mrecord_head_t pickup)
+read_mrecord(int fdin, int *errorp, struct hammer_ioc_mrecord_head *pickup)
 {
 	hammer_ioc_mrecord_any_t mrec;
 	struct hammer_ioc_mrecord_head mrechd;

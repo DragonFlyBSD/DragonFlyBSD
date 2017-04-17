@@ -103,7 +103,7 @@ static hammer_tid_t parse_delta_time(const char *timeStr, int *flags,
 		   int ind_flag);
 static FILE *_fopen(const char *filename, const char *mode);
 static void runcmd(int fd, const char *cmd, ...);
-static char *timestamp(hammer_ioc_hist_entry_t hen);
+static char *timestamp(struct hammer_ioc_hist_entry *hen);
 static void usage(void);
 
 static int VerboseOpt;
@@ -706,7 +706,7 @@ runcmd(int fd, const char *cmd, ...)
  * Convert tid to timestamp.
  */
 static char *
-timestamp(hammer_ioc_hist_entry_t hen)
+timestamp(struct hammer_ioc_hist_entry *hen)
 {
 	static char timebuf[64];
 	time_t t = (time_t)hen->time32;
