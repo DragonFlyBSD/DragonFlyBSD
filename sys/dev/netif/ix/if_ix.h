@@ -117,7 +117,10 @@
 				 key[(i) * IX_RSSRK_SIZE + 3] << 24)
 #define IX_NRETA		32
 #define IX_NRETA_X550		128
+#define IX_NRETA_MAX		128
 #define IX_RETA_SIZE		4
+
+#define IX_RDRTABLE_SIZE	(IX_NRETA_MAX * IX_RETA_SIZE)
 
 /*
  * EITR
@@ -348,8 +351,12 @@ struct ix_softc {
 	uint16_t		max_frame_size;
 	int16_t			sts_msix_vec;	/* status MSI-X vector */
 
-	int			rx_npoll_off;
-	int			tx_npoll_off;
+	struct if_ringmap	*tx_rmap;
+	struct if_ringmap	*tx_rmap_intr;
+	struct if_ringmap	*rx_rmap;
+	struct if_ringmap	*rx_rmap_intr;
+
+	int			rdr_table[IX_RDRTABLE_SIZE];
 
 #ifdef IX_RSS_DEBUG
 	int			rss_debug;

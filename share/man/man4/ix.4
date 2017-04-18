@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ixgbe.4,v 1.2 2008/06/17 21:14:02 brueffer Exp $
 .\"
-.Dd November 26, 2015
+.Dd May 8, 2017
 .Dt IX 4
 .Os
 .Sh NAME
@@ -237,39 +237,6 @@ as many transmission queues ready-for-use as allowed by the number of CPUs.
 By default,
 the driver will use MSI-X if it is supported.
 This behaviour can be turned off by setting this tunable to 0.
-.It Va hw.ix.msix.agg_rxtx Va hw.ixY.msix.agg_rxtx
-If MSI-X is used,
-the driver aggregates transmission queue and reception queue processing
-by default.
-This behaviour could be turned off by setting this tunable to 0.
-If the number of MSI-X vectors is not enough to
-put transmission queue processing and reception queue processing
-onto independent MSI-X vector,
-then transmission queue and reception queue processing are always
-aggregated.
-.It Va hw.ixY.msix.off
-If MSI-X is used,
-and transmission queue and reception queue processing are aggregated,
-this tunable specifies the leading target CPU for
-transmission and reception queues processing.
-The value specificed must be aligned to the maximum of
-the number of reception queues
-and the number of transmission queues enabled,
-and must be less than the power of 2 number of CPUs.
-.It Va hw.ixY.msix.rxoff
-If MSI-X is used,
-and transmission queue and reception queue processing are not aggregated,
-this tunable specifies the leading target CPU for reception queues processing.
-The value specificed must be aligned to the number of reception queues enabled
-and must be less than the power of 2 number of CPUs.
-.It Va hw.ixY.msix.txoff
-If MSI-X is used,
-and transmission queue and reception queue processing are not aggregated,
-this tunable specifies the leading target CPU
-for transmission queues processing.
-The value specificed must be aligned to
-the number of transmission queues enabled
-and must be less than the power of 2 number of CPUs.
 .It Va hw.ix.msi.enable Va hw.ixY.msi.enable
 If MSI-X is disabled and MSI is supported,
 the driver will use MSI.
@@ -277,20 +244,6 @@ This behavior can be turned off by setting this tunable to 0.
 .It Va hw.ixY.msi.cpu
 If MSI is used,
 it specifies the MSI's target CPU.
-.It Va hw.ixY.npoll.txoff
-This tunable specifies the leading target CPU for
-transmission queue
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of transmission queues
-enabled and must be less than the power of 2 number of CPUs.
-.It Va hw.ixY.npoll.rxoff
-This tunable specifies the leading target CPU for
-reception queue
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
 .It Va hw.ix.unsupported_sfp
 By default,
 this driver does not allow "unsupported" SFP modules.
@@ -394,18 +347,6 @@ Setting this value too high will make device drop incoming packets.
 Setting this value too low will hurt overall reception performance
 due to the frequent hardware register writing.
 The default value is 32.
-.It Va npoll_rxoff
-See the tunable
-.Va hw.ixY.npoll.rxoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
-.It Va npoll_txoff
-See the tunable
-.Va hw.ixY.npoll.txoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
 .El
 .Sh SEE ALSO
 .Xr altq 4 ,
