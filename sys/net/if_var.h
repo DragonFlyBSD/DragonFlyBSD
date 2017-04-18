@@ -659,6 +659,9 @@ struct ifmultiaddr {
 
 #ifdef _KERNEL
 
+#include <sys/bus.h>
+#include <sys/sysctl.h>
+
 struct ifaddr_marker {
 	struct ifaddr		ifa;
 	struct ifaddr_container	ifac;
@@ -970,6 +973,20 @@ struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
 void	if_devstart(struct ifnet *ifp); /* COMPAT */
 void	if_devstart_sched(struct ifnet *ifp); /* COMPAT */
+
+struct if_ringmap;
+
+struct if_ringmap *if_ringmap_alloc(device_t dev, int cnt, int cnt_max);
+void	if_ringmap_free(struct if_ringmap *rm);
+void	if_ringmap_match(device_t dev, struct if_ringmap *rm0,
+	    struct if_ringmap *rm1);
+void	if_ringmap_align(device_t dev, struct if_ringmap *rm0,
+	    struct if_ringmap *rm1);
+int	if_ringmap_count(const struct if_ringmap *rm);
+int	if_ringmap_cpumap(const struct if_ringmap *rm, int ring);
+void	if_ringmap_rdrtable(const struct if_ringmap *rm, int table[],
+	    int table_nent);
+int	if_ringmap_cpumap_sysctl(SYSCTL_HANDLER_ARGS);
 int	if_ring_count2(int cnt, int cnt_max);
 
 void	ifnet_lock(void);

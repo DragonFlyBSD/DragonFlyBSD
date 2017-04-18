@@ -1,5 +1,5 @@
 KMOD=	pktgen
-SRCS=	pktgen.c
+SRCS=	pktgen.c device_if.h bus_if.h
 
 KCFLAGS+= -g
 KCFLAGS+= -DINVARIANTS

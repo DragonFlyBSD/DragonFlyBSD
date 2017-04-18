@@ -89,6 +89,7 @@ void		ifq_set_methods(struct ifaltq *, altq_mapsubq_t,
 		    ifsq_enqueue_t, ifsq_dequeue_t, ifsq_request_t);
 int		ifq_mapsubq_default(struct ifaltq *, int);
 int		ifq_mapsubq_mask(struct ifaltq *, int);
+int		ifq_mapsubq_modulo(struct ifaltq *, int);
 
 void		ifsq_devstart(struct ifaltq_subque *ifsq);
 void		ifsq_devstart_sched(struct ifaltq_subque *ifsq);
@@ -560,8 +561,19 @@ ifq_set_subq_cnt(struct ifaltq *_ifq, int _cnt)
 static __inline void
 ifq_set_subq_mask(struct ifaltq *_ifq, uint32_t _mask)
 {
+
 	KASSERT(((_mask + 1) & _mask) == 0, ("invalid mask %08x", _mask));
-	_ifq->altq_subq_mask = _mask;
+	_ifq->altq_subq_mappriv = _mask;
+}
+
+static __inline void
+ifq_set_subq_divisor(struct ifaltq *_ifq, uint32_t _divisor)
+{
+
+	KASSERT(_divisor > 0, ("invalid divisor %u", _divisor));
+	KASSERT(_divisor <= _ifq->altq_subq_cnt,
+	    ("invalid divisor %u, max %d", _divisor, _ifq->altq_subq_cnt));
+	_ifq->altq_subq_mappriv = _divisor;
 }
 
 /* COMPAT */

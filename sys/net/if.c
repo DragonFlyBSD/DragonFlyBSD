@@ -97,6 +97,12 @@ struct ifsubq_stage_head {
 	TAILQ_HEAD(, ifsubq_stage)	stg_head;
 } __cachealign;
 
+struct if_ringmap {
+	int		rm_cnt;
+	int		rm_grid;
+	int		rm_cpumap[];
+};
+
 /*
  * System initialization
  */
@@ -130,6 +136,7 @@ extern void	nd6_setmtu(struct ifnet *);
 
 SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
+SYSCTL_NODE(_net_link, OID_AUTO, ringmap, CTLFLAG_RW, 0, "link ringmap");
 
 static int ifsq_stage_cntmax = 4;
 TUNABLE_INT("net.link.stage_cntmax", &ifsq_stage_cntmax);
@@ -139,6 +146,10 @@ SYSCTL_INT(_net_link, OID_AUTO, stage_cntmax, CTLFLAG_RW,
 static int if_stats_compat = 0;
 SYSCTL_INT(_net_link, OID_AUTO, stats_compat, CTLFLAG_RW,
     &if_stats_compat, 0, "Compat the old ifnet stats");
+
+static int if_ringmap_dumprdr = 0;
+SYSCTL_INT(_net_link_ringmap, OID_AUTO, dump_rdr, CTLFLAG_RW,
+    &if_ringmap_dumprdr, 0, "dump redirect table");
 
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL);
 SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, ifnetinit, NULL);
@@ -3299,31 +3310,6 @@ if_deregister_com_alloc(u_char type)
         if_com_free[type] = NULL;
 }
 
-int
-if_ring_count2(int cnt, int cnt_max)
-{
-	int shift = 0;
-
-	KASSERT(cnt_max >= 1 && powerof2(cnt_max),
-	    ("invalid ring count max %d", cnt_max));
-
-	if (cnt <= 0)
-		cnt = cnt_max;
-	if (cnt > ncpus2)
-		cnt = ncpus2;
-	if (cnt > cnt_max)
-		cnt = cnt_max;
-
-	while ((1 << (shift + 1)) <= cnt)
-		++shift;
-	cnt = 1 << shift;
-
-	KASSERT(cnt >= 1 && cnt <= ncpus2 && cnt <= cnt_max,
-	    ("calculate cnt %d, ncpus2 %d, cnt max %d",
-	     cnt, ncpus2, cnt_max));
-	return cnt;
-}
-
 void
 ifq_set_maxlen(struct ifaltq *ifq, int len)
 {
@@ -3339,7 +3325,15 @@ ifq_mapsubq_default(struct ifaltq *ifq __unused, int cpuid __unused)
 int
 ifq_mapsubq_mask(struct ifaltq *ifq, int cpuid)
 {
-	return (cpuid & ifq->altq_subq_mask);
+
+	return (cpuid & ifq->altq_subq_mappriv);
+}
+
+int
+ifq_mapsubq_modulo(struct ifaltq *ifq, int cpuid)
+{
+
+	return (cpuid % ifq->altq_subq_mappriv);
 }
 
 static void
@@ -3529,4 +3523,179 @@ ifa_marker_init(struct ifaddr_marker *mark, struct ifnet *ifp)
 	ifa->ifa_dstaddr = &mark->dstaddr;
 	ifa->ifa_netmask = &mark->netmask;
 	ifa->ifa_ifp = ifp;
+}
+
+static int
+if_ringcnt_fixup(int ring_cnt, int ring_cntmax)
+{
+
+	KASSERT(ring_cntmax > 0, ("invalid ring count max %d", ring_cntmax));
+	if (ring_cnt == 1 || ring_cntmax == 1 || netisr_ncpus == 1)
+		return (1);
+
+	if (ring_cnt <= 0 || ring_cnt > ring_cntmax)
+		ring_cnt = ring_cntmax;
+	if (ring_cnt > netisr_ncpus)
+		ring_cnt = netisr_ncpus;
+	return (ring_cnt);
+}
+
+static void
+if_ringmap_set_grid(device_t dev, struct if_ringmap *rm, int grid)
+{
+	int i, offset;
+
+	KASSERT(grid > 0, ("invalid if_ringmap grid %d", grid));
+	rm->rm_grid = grid;
+
+	offset = (rm->rm_grid * device_get_unit(dev)) % netisr_ncpus;
+	for (i = 0; i < rm->rm_cnt; ++i)
+		rm->rm_cpumap[i] = (offset + i) % netisr_ncpus;
+}
+
+struct if_ringmap *
+if_ringmap_alloc(device_t dev, int ring_cnt, int ring_cntmax)
+{
+	struct if_ringmap *rm;
+	int i, grid = 0;
+
+	ring_cnt = if_ringcnt_fixup(ring_cnt, ring_cntmax);
+	rm = kmalloc(__offsetof(struct if_ringmap, rm_cpumap[ring_cnt]),
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	rm->rm_cnt = ring_cnt;
+	for (i = 0; i < netisr_ncpus; ++i) {
+		if (netisr_ncpus % (i + 1) != 0)
+			continue;
+
+		if (rm->rm_cnt > netisr_ncpus / (i + 2)) {
+			grid = netisr_ncpus / (i + 1);
+			if (rm->rm_cnt > grid)
+				rm->rm_cnt = grid;
+			break;
+		}
+	}
+	if_ringmap_set_grid(dev, rm, grid);
+
+	return (rm);
+}
+
+void
+if_ringmap_free(struct if_ringmap *rm)
+{
+
+	kfree(rm, M_DEVBUF);
+}
+
+void
+if_ringmap_align(device_t dev, struct if_ringmap *rm0, struct if_ringmap *rm1)
+{
+
+	if (rm0->rm_grid > rm1->rm_grid)
+		if_ringmap_set_grid(dev, rm1, rm0->rm_grid);
+	else if (rm0->rm_grid < rm1->rm_grid)
+		if_ringmap_set_grid(dev, rm0, rm1->rm_grid);
+}
+
+void
+if_ringmap_match(device_t dev, struct if_ringmap *rm0, struct if_ringmap *rm1)
+{
+
+	if (rm0->rm_grid == netisr_ncpus || rm1->rm_grid == netisr_ncpus)
+		return;
+	if_ringmap_align(dev, rm0, rm1);
+}
+
+int
+if_ringmap_count(const struct if_ringmap *rm)
+{
+
+	return (rm->rm_cnt);
+}
+
+int
+if_ringmap_cpumap(const struct if_ringmap *rm, int ring)
+{
+
+	KASSERT(ring >= 0 && ring < rm->rm_cnt, ("invalid ring %d", ring));
+	return (rm->rm_cpumap[ring]);
+}
+
+void
+if_ringmap_rdrtable(const struct if_ringmap *rm, int table[], int table_nent)
+{
+	int i, grid_idx, grid_cnt, patch_off, patch_cnt, ncopy;
+
+	KASSERT(table_nent > 0 && (table_nent & NETISR_CPUMASK) == 0,
+	    ("invalid redirect table entries %d", table_nent));
+
+	grid_idx = 0;
+	for (i = 0; i < NETISR_CPUMAX; ++i) {
+		table[i] = grid_idx++ % rm->rm_cnt;
+
+		if (grid_idx == rm->rm_grid)
+			grid_idx = 0;
+	}
+
+	/*
+	 * Make the ring distributed more evenly for the remainder of each
+	 * grid.
+	 */
+	patch_cnt = rm->rm_grid % rm->rm_cnt;
+	if (patch_cnt == 0)
+		goto done;
+	patch_off = rm->rm_grid - (rm->rm_grid % rm->rm_cnt);
+
+	grid_cnt = roundup(NETISR_CPUMAX, rm->rm_grid) / rm->rm_grid;
+	grid_idx = 0;
+	for (i = 0; i < grid_cnt; ++i) {
+		int j;
+
+		for (j = 0; j < patch_cnt; ++j) {
+			int fix_idx;
+
+			fix_idx = (i * rm->rm_grid) + patch_off + j;
+			if (fix_idx >= NETISR_CPUMAX)
+				goto done;
+			table[fix_idx] = grid_idx++ % rm->rm_cnt;
+		}
+	}
+done:
+	ncopy = table_nent / NETISR_CPUMAX;
+	for (i = 1; i < ncopy; ++i) {
+		memcpy(&table[i * NETISR_CPUMAX], table,
+		    NETISR_CPUMAX * sizeof(table[0]));
+	}
+	if (if_ringmap_dumprdr) {
+		for (i = 0; i < table_nent; ++i) {
+			if (i != 0 && i % 16 == 0)
+				kprintf("\n");
+			kprintf("%03d ", table[i]);
+		}
+		kprintf("\n");
+	}
+}
+
+int
+if_ringmap_cpumap_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	struct if_ringmap *rm = arg1;
+	int i, error = 0;
+
+	for (i = 0; i < rm->rm_cnt; ++i) {
+		int cpu = rm->rm_cpumap[i];
+
+		error = SYSCTL_OUT(req, &cpu, sizeof(cpu));
+		if (error)
+			break;
+	}
+	return (error);
+}
+
+int
+if_ring_count2(int ring_cnt, int ring_cntmax)
+{
+
+	ring_cnt = if_ringcnt_fixup(ring_cnt, ring_cntmax);
+	return (1 << (fls(ring_cnt) - 1));
 }
