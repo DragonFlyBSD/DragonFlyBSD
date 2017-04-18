@@ -44,14 +44,17 @@
  * RX ring count
  */
 #define IX_MAX_RXRING		16
+#define IX_MAX_RXRING_X550	64
 #define IX_MIN_RXRING_RSS	2
 
 /*
  * TX ring count
  */
+#define IX_MAX_TXRING		16
 #define IX_MAX_TXRING_82598	32
 #define IX_MAX_TXRING_82599	64
 #define IX_MAX_TXRING_X540	64
+#define IX_MAX_TXRING_X550	64
 
 /*
  * Default number of segments received before writing to RX related registers

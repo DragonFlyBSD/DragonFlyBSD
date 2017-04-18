@@ -392,8 +392,19 @@ ix_attach(device_t dev)
 	/*
 	 * Configure total supported RX/TX ring count
 	 */
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
+		ring_cnt_max = IX_MAX_RXRING_X550;
+		break;
+
+	default:
+		ring_cnt_max = IX_MAX_RXRING;
+		break;
+	}
 	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", ix_rxr);
-	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, IX_MAX_RXRING);
+	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, ring_cnt_max);
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
 
 	switch (hw->mac.type) {
@@ -409,8 +420,14 @@ ix_attach(device_t dev)
 		ring_cnt_max = IX_MAX_TXRING_X540;
 		break;
 
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
+		ring_cnt_max = IX_MAX_TXRING_X550;
+		break;
+
 	default:
-		ring_cnt_max = 1;
+		ring_cnt_max = IX_MAX_TXRING;
 		break;
 	}
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr", ix_txr);
