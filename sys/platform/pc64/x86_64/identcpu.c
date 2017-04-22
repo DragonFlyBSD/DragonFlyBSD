@@ -406,6 +406,8 @@ printcpuinfo(void)
 				    "\006ECMD"
 				    /* Package thermal management */
 				    "\007PTM"
+				    /* Hardware P-states */
+				    "\010HWP"
 				    );
 			}
 
