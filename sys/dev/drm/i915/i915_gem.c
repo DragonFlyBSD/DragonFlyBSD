@@ -1807,7 +1807,7 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct i915_ggtt_view view = i915_ggtt_view_normal;
 	unsigned long page_offset;
-	vm_page_t m, oldm = NULL;
+	vm_page_t m;
 	int ret = 0;
 	bool write = !!(prot & VM_PROT_WRITE);
 
@@ -1815,6 +1815,27 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 
 	/* We don't use vmf->pgoff since that has the fake offset */
 	page_offset = (unsigned long)offset;
+
+	/*
+	 * vm_fault() has supplied us with a busied page placeholding
+	 * the operation.  This presents a lock order reversal issue
+	 * again i915_gem_release_mmap() for our device mutex.
+	 *
+	 * Deal with the problem by getting rid of the placeholder now,
+	 * and then dealing with the potential for a new placeholder when
+	 * we try to insert later.
+	 */
+	if (*mres != NULL) {
+		m = *mres;
+		*mres = NULL;
+		if ((m->flags & PG_BUSY) == 0)
+			kprintf("i915_gem_fault: Page was not busy\n");
+		else
+			vm_page_remove(m);
+		vm_page_free(m);
+	}
+
+	m = NULL;
 
 retry:
 	ret = i915_mutex_lock_interruptible(dev);
@@ -1876,23 +1897,6 @@ retry:
 	 */
 	vm_object_pip_add(vm_obj, 1);
 
-	/*
-	 * XXX We must currently remove the placeholder page now to avoid
-	 * a deadlock against a concurrent i915_gem_release_mmap().
-	 * Otherwise concurrent operation will block on the busy page
-	 * while holding locks which we need to obtain.
-	 */
-	if (*mres != NULL) {
-		oldm = *mres;
-		if ((oldm->flags & PG_BUSY) == 0)
-			kprintf("i915_gem_fault: Page was not busy\n");
-		else
-			vm_page_remove(oldm);
-		*mres = NULL;
-	} else {
-		oldm = NULL;
-	}
-
 	ret = 0;
 	m = NULL;
 
@@ -1939,7 +1943,21 @@ retry:
 	}
 	m->valid = VM_PAGE_BITS_ALL;
 
-#if 0
+#if 1
+	/*
+	 * This should always work since we already checked via a lookup
+	 * above.
+	 */
+	if (vm_page_insert(m, vm_obj, OFF_TO_IDX(offset)) == FALSE) {
+		kprintf("i915:gem_fault: page %p,%jd already in object\n",
+			vm_obj,
+			OFF_TO_IDX(offset));
+		vm_page_wakeup(m);
+		ret = -EINTR;
+		goto unpin;
+	}
+#else
+	/* NOT COMPILED ATM */
 	if (unlikely(view.type == I915_GGTT_VIEW_PARTIAL)) {
 		/* Overriding existing pages in partial view does not cause
 		 * us any trouble as TLBs are still valid because the fault
@@ -1977,9 +1995,6 @@ retry:
 			ret = vm_insert_pfn(vma,
 					    (unsigned long)vmf->virtual_address,
 					    pfn + page_offset);
-#endif
-			vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
-#if 0
 	}
 #endif
 
@@ -2033,8 +2048,6 @@ out:
 	}
 
 done:
-	if (oldm != NULL)
-		vm_page_free(oldm);
 	vm_object_pip_wakeup(vm_obj);
 
 	intel_runtime_pm_put(dev_priv);
