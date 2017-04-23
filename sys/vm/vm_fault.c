@@ -1842,8 +1842,16 @@ readrest:
 			 * what to do in that case.
 			 */
 			if (fs->object != fs->first_object) {
-				vnode_pager_freepage(fs->m);
-				fs->m = NULL;
+				/*
+				 * Scrap the page.  Check to see if the
+				 * vm_pager_get_page() call has already
+				 * dealt with it.
+				 */
+				if (fs->m) {
+					vnode_pager_freepage(fs->m);
+					fs->m = NULL;
+				}
+
 				/*
 				 * XXX - we cannot just fall out at this
 				 * point, m has been freed and is invalid!
