@@ -3187,6 +3187,11 @@ wpi_transmit(struct ieee80211com *ic, struct mbuf *m)
 	do {
 		mnext = m->m_nextpkt;
 		if (wpi_tx_data(sc, m, ni) != 0) {
+			/*
+			 * Breakout if error, but we will return 0 (no error)
+			 * for this case so we are responsible for freeing
+			 * the mbuf and the node.
+			 */
 			if_inc_counter(ni->ni_vap->iv_ifp, IFCOUNTER_OERRORS,
 			    nmbufs);
 			wpi_free_txfrags(sc, ac);

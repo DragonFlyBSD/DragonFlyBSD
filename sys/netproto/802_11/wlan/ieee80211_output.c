@@ -277,6 +277,8 @@ ieee80211_vap_pkt_send_dest(struct ieee80211vap *vap, struct mbuf *m,
 			return (ENOBUFS);
 		}
 	}
+	/* HACK - added by DragonFly, mbuf could lose rcvif assignment above */
+	m->m_pkthdr.rcvif = (void *)ni;
 	(void) ieee80211_parent_xmitpkt(ic, m);
 
 	/*

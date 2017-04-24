@@ -3266,10 +3266,7 @@ ath_transmit(struct ieee80211com *ic, struct mbuf *m)
 		ATH_PCU_UNLOCK(sc);
 		sc->sc_stats.ast_tx_qstop++;
 		ATH_KTR(sc, ATH_KTR_TX, 0, "ath_start_task: OACTIVE, finish");
-#if defined(__DragonFly__)
-		m_freem(m);
-		m = NULL;		/* safety */
-#endif
+		/* mbuf left intact on error */
 		return (ENOBUFS);	/* XXX should be EINVAL or? */
 	}
 	sc->sc_txstart_cnt++;
