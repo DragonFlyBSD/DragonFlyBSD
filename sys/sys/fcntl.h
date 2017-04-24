@@ -255,6 +255,61 @@ union fcntl_dat {
 #define	LOCK_UN		0x08		/* unlock file */
 #endif
 
+/* Always ensure that these are consistent with <stdio.h> and <unistd.h>! */
+#ifndef SEEK_SET
+#define	SEEK_SET	0	/* set file offset to offset */
+#endif
+#ifndef SEEK_CUR
+#define	SEEK_CUR	1	/* set file offset to current plus offset */
+#endif
+#ifndef SEEK_END
+#define	SEEK_END	2	/* set file offset to EOF plus offset */
+#endif
+
+/* Always ensure that these are consistent with <stat.h>! */
+#ifndef S_ISUID
+#define	S_ISUID	0004000			/* set user id on execution */
+#endif
+#ifndef S_ISGID
+#define	S_ISGID	0002000			/* set group id on execution */
+#endif
+#ifndef S_IRWXU
+#define	S_IRWXU	0000700			/* RWX mask for owner */
+#endif
+#ifndef S_IRUSR
+#define	S_IRUSR	0000400			/* R for owner */
+#endif
+#ifndef S_IWUSR
+#define	S_IWUSR	0000200			/* W for owner */
+#endif
+#ifndef S_IXUSR
+#define	S_IXUSR	0000100			/* X for owner */
+#endif
+#ifndef S_IRWXG
+#define	S_IRWXG	0000070			/* RWX mask for group */
+#endif
+#ifndef S_IRGRP
+#define	S_IRGRP	0000040			/* R for group */
+#endif
+#ifndef S_IWGRP
+#define	S_IWGRP	0000020			/* W for group */
+#endif
+#ifndef S_IXGRP
+#define	S_IXGRP	0000010			/* X for group */
+#endif
+#ifndef S_IRWXO
+#define	S_IRWXO	0000007			/* RWX mask for other */
+#endif
+#ifndef S_IROTH
+#define	S_IROTH	0000004			/* R for other */
+#endif
+#ifndef S_IWOTH
+#define	S_IWOTH	0000002			/* W for other */
+#endif
+#ifndef S_IXOTH
+#define	S_IXOTH	0000001			/* X for other */
+#endif
+
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 __BEGIN_DECLS
 int	open(const char *, int, ...);

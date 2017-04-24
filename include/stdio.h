@@ -168,6 +168,7 @@ __END_DECLS
 #define	L_tmpnam	1024	/* XXX must be == PATH_MAX */
 #define	TMP_MAX		308915776
 
+/* Always ensure that these are consistent with <fcntl.h> and <unistd.h>! */
 #ifndef SEEK_SET
 #define	SEEK_SET	0	/* set file offset to offset */
 #endif

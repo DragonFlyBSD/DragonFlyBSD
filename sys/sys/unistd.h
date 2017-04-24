@@ -108,10 +108,17 @@
 #define	W_OK		0x02	/* test for write permission */
 #define	R_OK		0x04	/* test for read permission */
 
-/* whence values for lseek(2) */
+/*
+ * whence values for lseek(2)
+ * Always ensure that these are consistent with <fcntl.h> and <stdio.h>!
+ */
 #ifndef SEEK_SET
 #define	SEEK_SET	0	/* set file offset to offset */
+#endif
+#ifndef SEEK_CUR
 #define	SEEK_CUR	1	/* set file offset to current plus offset */
+#endif
+#ifndef SEEK_END
 #define	SEEK_END	2	/* set file offset to EOF plus offset */
 #endif
 #if __BSD_VISIBLE
