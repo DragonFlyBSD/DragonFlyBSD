@@ -2,7 +2,7 @@
 .\" the BSD Copyright as specified in the file "/usr/src/COPYRIGHT" in
 .\" the source tree.
 .\"
-.Dd June 12, 2016
+.Dd Aprip 27, 2017
 .Dt TUNING 7
 .Os
 .Sh NAME
@@ -234,9 +234,6 @@ well over 2GBytes/sec into the system.
 .Pp
 There are various other buffer-cache and VM page cache related sysctls.
 We do not recommend modifying their values.
-As of
-.Dx 4.3 ,
-the VM system does an extremely good job tuning itself.
 .Pp
 The
 .Va net.inet.tcp.sendspace
@@ -665,9 +662,13 @@ shared memory configuration as you will be wiring the memory.
 .Sh HISTORY
 The
 .Nm
-manual page was originally written by
-.An Matthew Dillon
-and first appeared
-in
-.Dx 4.3 ,
+manual page was inherited from
+.Fx
+and first appeared in
+.Fx 4.3 ,
 May 2001.
+.Sh AUTHORS
+The
+.Nm
+manual page was originally written by
+.An Matthew Dillon .
