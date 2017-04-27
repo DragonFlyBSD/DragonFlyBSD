@@ -34,8 +34,6 @@
 #include <uapi_linux/i2c.h>
 
 #include <bus/iicbus/iic.h>
-#include <bus/iicbus/iiconf.h>
-#include "iicbus_if.h"
 
 #define I2C_M_RD	IIC_M_RD
 #define I2C_M_NOSTART	IIC_M_NOSTART
