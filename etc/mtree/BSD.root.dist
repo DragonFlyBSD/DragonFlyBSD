@@ -64,8 +64,6 @@
         ..
         upgrade
         ..
-        uucp            uname=uucp gname=uucp mode=0770
-        ..
     ..
     lib
         priv

@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)login.1	8.2 (Berkeley) 5/5/94
 .\" $FreeBSD: src/usr.bin/login/login.1,v 1.33 2007/11/30 11:02:36 philip Exp $
-.\" $DragonFly: src/usr.bin/login/login.1,v 1.2 2003/06/17 04:29:28 dillon Exp $
 .\"
 .Dd September 13, 2006
 .Dt LOGIN 1
@@ -97,7 +96,7 @@ If the file
 .Pa .hushlogin
 exists in the user's home directory, all of these messages are suppressed.
 This is to simplify logins for non-human users, such as
-.Xr uucp 1 .
+.Xr uucp 1 Pq Pa net/freebsd-uucp .
 .Pp
 The
 .Nm

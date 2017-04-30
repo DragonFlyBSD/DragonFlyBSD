@@ -1,7 +1,6 @@
 .\" -*- nroff -*-
 .\" manual page [] for chat 1.8
 .\" $FreeBSD: src/usr.bin/chat/chat.8,v 1.15.2.3 2003/02/24 22:37:41 trhodes Exp $
-.\" $DragonFly: src/usr.bin/chat/chat.8,v 1.7 2008/05/09 20:31:04 swildner Exp $
 .Dd September 27, 1996
 .Dt CHAT 8
 .Os
@@ -618,10 +617,10 @@ was received from the modem as opposed to
 While the first event may be retried, the second will probably have little
 chance of succeeding during a retry.
 .Sh SEE ALSO
-.Xr uucico 1 ,
-.Xr uucp 1 ,
+.Xr uucp 1 Pq Pa net/freebsd-uucp ,
 .Xr syslog 3 ,
-.Xr syslogd 8
+.Xr syslogd 8 ,
+.Xr uucico 8 Pq Pa net/freebsd-uucp ,
 .Pp
 Additional information about
 .Nm
@@ -629,7 +628,7 @@ scripts may be found with UUCP documentation.
 The
 .Nm
 script was taken from the ideas proposed by the scripts used by the
-.Xr uucico 1
+.Xr uucico 8 Pq Pa net/freebsd-uucp
 program.
 .Sh COPYRIGHT
 The

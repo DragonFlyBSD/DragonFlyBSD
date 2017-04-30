@@ -3209,6 +3209,7 @@ TO_REMOVE+=/usr/share/man/man4/ahc.4.gz
 TO_REMOVE+=/usr/share/man/man4/ahd.4.gz
 TO_REMOVE+=/usr/share/man/man4/aic.4.gz
 TO_REMOVE+=/usr/share/zoneinfo/Pacific/Johnston
+TO_REMOVE+=/usr/libexec/uucp
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
