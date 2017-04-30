@@ -40,17 +40,6 @@
 
 #include "acpi.h"
 #include "acpi_sdt_var.h"
-#include "acpi_sci_var.h"
-
-extern int naps;
-
-#define MADT_VPRINTF(fmt, arg...) \
-do { \
-	if (bootverbose) \
-		kprintf("ACPI MADT: " fmt , ##arg); \
-} while (0)
-
-#define MADT_INT_BUS_ISA	0
 
 typedef union srat_entry {
 	ACPI_SUBTABLE_HEADER	head;
