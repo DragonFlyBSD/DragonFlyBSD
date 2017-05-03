@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd November 24, 2016
+.Dd May 3, 2017
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -79,6 +79,9 @@ see
 system configuration files and scripts
 .Pp
 .Bl -tag -width ".Pa bluetooth/" -compact
+.It Pa autofs/
+shell scripts to implement special maps and directory services via
+.Xr autofs 5
 .It Pa bluetooth/
 bluetooth configuration files
 .It Pa defaults/
@@ -198,11 +201,11 @@ The SCSI device on top of CAM
 C include files for programming various
 .Dx
 devices
-.It Pa emulation/
-Include Files for various emulation layers
 .It Pa fs/
 .Pp
-.Bl -tag -width ".Pa smbfs/" -compact
+.Bl -tag -width ".Pa autofs/" -compact
+.It Pa autofs/
+automounter filesystem
 .It Pa smbfs/
 SMB/CIFS filesystem
 .El
