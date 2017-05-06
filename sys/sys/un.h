@@ -37,10 +37,6 @@
 #include <sys/types.h>
 #endif
 
-#ifndef _SYS_FILE_H_
-#include <sys/file.h>
-#endif
-
 #ifndef _SA_FAMILY_T_DECLARED
 typedef	__uint8_t	sa_family_t;
 #define	_SA_FAMILY_T_DECLARED
@@ -49,7 +45,7 @@ typedef	__uint8_t	sa_family_t;
 /*
  * Definitions for UNIX IPC domain.
  */
-struct	sockaddr_un {
+struct sockaddr_un {
 	uint8_t		sun_len;	/* sockaddr len including null */
 	sa_family_t	sun_family;	/* AF_UNIX */
 	char		sun_path[104];	/* path name (gag) */
@@ -61,7 +57,6 @@ struct	sockaddr_un {
 #ifdef _KERNEL
 struct mbuf;
 struct socket;
-struct sockopt;
 union netmsg;
 
 int	uipc_usrreq(struct socket *so, int req, struct mbuf *m,

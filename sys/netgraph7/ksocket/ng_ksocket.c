@@ -55,6 +55,7 @@
 #include <sys/ctype.h>
 #include <sys/protosw.h>
 #include <sys/errno.h>
+#include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/socketops.h>
 #include <sys/socketvar.h>
