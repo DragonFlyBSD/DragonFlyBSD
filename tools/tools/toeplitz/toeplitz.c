@@ -10,6 +10,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#define HASHMASK	0x7f
+
 #define KEYLEN		40
 #define HASHLEN		12
 
@@ -22,7 +24,7 @@ static void	getaddrport(char *, uint32_t *, uint16_t *);
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s [-s s1_hex [-s s2_hex]] [-p] [-m mask] "
+	fprintf(stderr, "%s [-s s1_hex [-s s2_hex]] [-p] [-m mask] [-d div] "
 	    "addr1.port1 addr2.port2\n", cmd);
 	exit(1);
 }
@@ -32,7 +34,7 @@ main(int argc, char *argv[])
 {
 	uint32_t saddr, daddr;
 	uint16_t sport, dport;
-	uint32_t res, mask;
+	uint32_t res, mask, divisor;
 
 	const char *cmd = argv[0];
 	uint8_t seeds[2] = { 0x6d, 0x5a };
@@ -41,21 +43,26 @@ main(int argc, char *argv[])
 	i = 0;
 	use_port = 0;
 	mask = 0xffffffff;
+	divisor = 0;
 
-	while ((opt = getopt(argc, argv, "s:pm:")) != -1) {
+	while ((opt = getopt(argc, argv, "d:m:ps:")) != -1) {
 		switch (opt) {
-		case 's':
-			if (i >= 2)
-				usage(cmd);
-			seeds[i++] = strtoul(optarg, NULL, 16);
+		case 'd':
+			divisor = strtoul(optarg, NULL, 10);
+			break;
+
+		case 'm':
+			mask = strtoul(optarg, NULL, 16);
 			break;
 
 		case 'p':
 			use_port = 1;
 			break;
 
-		case 'm':
-			mask = strtoul(optarg, NULL, 16);
+		case 's':
+			if (i >= 2)
+				usage(cmd);
+			seeds[i++] = strtoul(optarg, NULL, 16);
 			break;
 
 		default:
@@ -95,7 +102,11 @@ main(int argc, char *argv[])
 		res ^= hash_table[11][(dport >> 8)  & 0xff];
 	}
 
-	printf("0x%08x, masked 0x%08x\n", res, res & mask);
+	printf("0x%08x, masked 0x%08x", res, res & mask);
+	if (divisor == 0)
+		printf("\n");
+	else
+		printf(", modulo %u\n", (res & HASHMASK) % divisor);
 	exit(0);
 }
 
