@@ -110,6 +110,7 @@ SYSCTL_INT(_net_netisr, OID_AUTO, rollup_limit, CTLFLAG_RW,
 	&netisr_rollup_limit, 0, "Message to process before rollup");
 
 int netisr_ncpus;
+TUNABLE_INT("net.netisr.ncpus", &netisr_ncpus);
 SYSCTL_INT(_net_netisr, OID_AUTO, ncpus, CTLFLAG_RD,
 	&netisr_ncpus, 0, "# of CPUs to handle network messages");
 
@@ -184,7 +185,14 @@ netisr_init(void)
 {
 	int i;
 
-	netisr_ncpus = ncpus2;
+	if (netisr_ncpus <= 0) {
+		/* Default. */
+		netisr_ncpus = ncpus2;
+	} else if (netisr_ncpus > ncpus) {
+		netisr_ncpus = ncpus;
+	}
+	if (netisr_ncpus > NETISR_CPUMAX)
+		netisr_ncpus = NETISR_CPUMAX;
 
 	TAILQ_INIT(&netreglist);
 	TAILQ_INIT(&netrulist);
