@@ -494,6 +494,28 @@ static int i915_load_modeset_init(struct drm_device *dev)
 
 	drm_kms_helper_poll_init(dev);
 
+#ifdef __DragonFly__
+	/*
+	 * If we are dealing with dual GPU machines the vga_switcheroo module
+	 * has been loaded. Machines with dual GPUs have an integrated graphics
+	 * device (IGD), which we assume is an Intel device. The other, the
+	 * discrete device (DIS), is either an NVidia or a Radeon device. For
+	 * now we will force switch the gmux so the intel driver outputs
+	 * both to the laptop panel and the external monitor.
+	 *
+	 * DragonFly does not have an nvidia native driver yet. In the future,
+	 * we will check for the radeon device: if present, we will leave
+	 * the gmux switch as it is, so the user can choose between the IGD and
+	 * the DIS using the /dev/vga_switcheroo device.
+	 */
+	if (vga_switcheroo_handler_flags() & VGA_SWITCHEROO_CAN_SWITCH_DDC) {
+		ret = vga_switcheroo_force_migd();
+		if (ret) {
+			DRM_INFO("could not switch gmux to IGD\n");
+		}
+	}
+#endif
+
 	return 0;
 
 cleanup_gem:

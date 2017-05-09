@@ -1222,6 +1222,23 @@ out:
 	return (error);
 }
 
+#ifdef __DragonFly__
+int
+vga_switcheroo_force_migd(void)
+{
+	enum vga_switcheroo_client_id client_id = VGA_SWITCHEROO_IGD;
+	int ret;
+
+	mutex_lock(&vgasr_priv->mux_hw_lk);
+	ret = vgasr_priv->handler->switchto(client_id);
+	mutex_unlock(&vgasr_priv->mux_hw_lk);
+	if (ret)
+		pr_err("failed to switch gmux to IGD\n");
+
+	return (ret);
+}
+#endif
+
 MODULE_VERSION(vga_switcheroo, 1);
 DEV_MODULE(vga_switcheroo, vga_switcheroo_handler, NULL);
 
