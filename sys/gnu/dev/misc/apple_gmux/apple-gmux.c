@@ -40,9 +40,11 @@
 #include <linux/delay.h>
 #include <linux/completion.h>
 
-#define VGA_SWITCHEROO
-#include <linux/vga_switcheroo.h>
 #include <drm/drmP.h>
+#ifndef VGA_SWITCHEROO
+#define	VGA_SWITCHEROO	1	/* Must be always defined */
+#endif
+#include <linux/vga_switcheroo.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
