@@ -1495,8 +1495,11 @@ tcp_ctloutput(netmsg_t msg)
 			 * Listen sockets owner cpuid is always 0,
 			 * which does not make sense if SO_REUSEPORT
 			 * is not set.
+			 *
+			 * NOTE: inp_lgrpindex is _not_ assigned in jail.
 			 */
-			if (so->so_options & SO_REUSEPORT)
+			if ((so->so_options & SO_REUSEPORT) &&
+			    inp->inp_lgrpindex >= 0)
 				optval = inp->inp_lgrpindex % netisr_ncpus;
 			else
 				optval = -1; /* no hint */

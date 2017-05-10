@@ -1292,7 +1292,9 @@ udp_inswildcardhash_oncpu(struct inpcb *inp, struct netmsg_base *msg)
 		in_pcbinswildcardhash_oncpu(inp, &udbinfo[cpu]);
 	}
 
-	if (inp->inp_socket->so_options & SO_REUSEPORT) {
+	/* NOTE: inp_lgrpindex is _not_ assigned in jail. */
+	if ((inp->inp_socket->so_options & SO_REUSEPORT) &&
+	    inp->inp_lgrpindex >= 0) {
 		/*
 		 * For SO_REUSEPORT socket, redistribute it based on its
 		 * local group index.
