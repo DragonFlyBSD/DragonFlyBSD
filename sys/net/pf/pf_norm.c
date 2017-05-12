@@ -882,6 +882,9 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 	if (!fragoff && !mff)
 		goto no_fragment;
 
+	/* A fragment; rehash required. */
+	m->m_flags &= ~M_HASH;
+
 	/* We're dealing with a fragment now. Don't allow fragments
 	 * with IP_DF to enter the cache. If the flag was cleared by
 	 * no-df above, fine. Otherwise drop it.
