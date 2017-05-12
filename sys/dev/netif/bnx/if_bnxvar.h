@@ -299,6 +299,9 @@ struct bnx_intr_data {
 #define BNX_TX_RING_MAX		4
 #define BNX_INTR_MAX		5
 
+#define BNX_RDRTABLE_SIZE	(BGE_RSS_INDIR_TBLENT_CNT * \
+				 BGE_RSS_INDIR_TBL_CNT)
+
 struct bnx_softc {
 	struct arpcom		arpcom;		/* interface info */
 	device_t		bnx_dev;
@@ -372,14 +375,16 @@ struct bnx_softc {
 	int			bnx_tick_cpuid;
 	struct callout		bnx_tick_timer;
 
-	int			bnx_npoll_rxoff;
-	int			bnx_npoll_txoff;
+	struct if_ringmap	*bnx_tx_rmap;
+	struct if_ringmap	*bnx_rx_rmap;
 
 	int			bnx_msix_mem_rid;
 	struct resource		*bnx_msix_mem_res;
 	int			bnx_intr_type;
 	int			bnx_intr_cnt;
 	struct bnx_intr_data	bnx_intr_data[BNX_INTR_MAX];
+
+	int			bnx_rdr_table[BNX_RDRTABLE_SIZE];
 
 	int			bnx_phyno;
 	uint32_t		bnx_coal_chg;

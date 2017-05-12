@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd November 28, 2014
+.Dd May 13, 2017
 .Dt BNX 4
 .Os
 .Sh NAME
@@ -228,56 +228,12 @@ By default,
 the driver will use MSI-X
 if it is supported.
 This behaviour can be turned off by setting this tunable to 0.
-.It Va hw.bnxX.msix.offset
-For BCM5717C,
-BCM5719 and BCM5720,
-if more than 1 reception queues
-and more than 1 transmission queues are enabled,
-this tunable specifies the leading target CPU for transmission
-and reception queues processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
-.It Va hw.bnxX.msix.txoff
-If more than 1 reception queues are enabled
-and only 1 transmission queue is enabled,
-this tunable specifies the target CPU for transmission queue processing.
-The value specificed must be less than the power of 2 number of CPUs.
-.It Va hw.bnxX.msix.rxoff
-If more than 1 reception queues are enabled
-and only 1 transmission queue is enabled,
-this tunable specifies the leading target CPU for reception queues processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
 .It Va hw.bnx.msi.enable Va hw.bnxX.msi.enable
 If MSI-X is disabled and MSI is supported,
 the driver will use MSI.
 This behavior can be turned off by setting this tunable to 0.
 .It Va hw.bnxX.msi.cpu
 If MSI is used, it specifies the MSI's target CPU.
-.It Va hw.bnxX.npoll.offset
-If only 1 reception queue and only 1 transmission queue are enabled
-or more than 1 reception queues and more than 1 transmission queues are enabled,
-this tunable specifies the leading target CPU for transmission and reception
-queues
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
-.It Va hw.bnxX.npoll.txoff
-If more than 1 reception queues are enabled
-and only 1 transmission queue is enabled,
-this tunable specifies the target CPU for transmission queue
-.Xr polling 4
-processing.
-The value specificed must be less than the power of 2 number of CPUs.
-.It Va hw.bnxX.npoll.rxoff
-If more than 1 reception queues are enabled
-and only 1 transmission queue is enabled,
-this tunable specifies the leading target CPU for reception queue
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
 .El
 .Sh MIB Variables
 A number of per-interface variables are implemented in the
@@ -377,24 +333,6 @@ Maximum number of sending BDs which must be processed by the device
 before the device updates the status block
 during host interrupt processing.
 Default value is 64.
-.It Va npoll_offset
-See the tunable
-.Va hw.bnxX.npoll.offset .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
-.It Va npoll_txoff
-See the tunable
-.Va hw.bnxX.npoll.txoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
-.It Va npoll_rxoff
-See the tunable
-.Va hw.bnxX.npoll.rxoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
 .It Va norxbds
 Number of times the standard reception producer ring is short
 of reception BDs.

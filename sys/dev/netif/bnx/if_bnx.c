@@ -307,11 +307,6 @@ static int	bnx_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
 		    int, int, uint32_t);
-#ifdef IFPOLL_ENABLE
-static int	bnx_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS);
-static int	bnx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
-static int	bnx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
-#endif
 static int	bnx_sysctl_std_refill(SYSCTL_HANDLER_ARGS);
 
 static void	bnx_sig_post_reset(struct bnx_softc *, int);
@@ -1847,9 +1842,6 @@ bnx_attach(device_t dev)
 #if defined(BNX_TSO_DEBUG) || defined(BNX_RSS_DEBUG) || defined(BNX_TSS_DEBUG)
 	char desc[32];
 #endif
-#ifdef IFPOLL_ENABLE
-	int offset, offset_def;
-#endif
 
 	sc = device_get_softc(dev);
 	sc->bnx_dev = dev;
@@ -2108,61 +2100,6 @@ bnx_attach(device_t dev)
 	if (error)
 		goto fail;
 
-#ifdef IFPOLL_ENABLE
-	if (sc->bnx_flags & BNX_FLAG_RXTX_BUNDLE) {
-		/*
-		 * NPOLLING RX/TX CPU offset
-		 */
-		if (sc->bnx_rx_retcnt == ncpus2) {
-			offset = 0;
-		} else {
-			offset_def =
-			(sc->bnx_rx_retcnt * device_get_unit(dev)) % ncpus2;
-			offset = device_getenv_int(dev, "npoll.offset",
-			    offset_def);
-			if (offset >= ncpus2 ||
-			    offset % sc->bnx_rx_retcnt != 0) {
-				device_printf(dev, "invalid npoll.offset %d, "
-				    "use %d\n", offset, offset_def);
-				offset = offset_def;
-			}
-		}
-		sc->bnx_npoll_rxoff = offset;
-		sc->bnx_npoll_txoff = offset;
-	} else {
-		/*
-		 * NPOLLING RX CPU offset
-		 */
-		if (sc->bnx_rx_retcnt == ncpus2) {
-			offset = 0;
-		} else {
-			offset_def =
-			(sc->bnx_rx_retcnt * device_get_unit(dev)) % ncpus2;
-			offset = device_getenv_int(dev, "npoll.rxoff",
-			    offset_def);
-			if (offset >= ncpus2 ||
-			    offset % sc->bnx_rx_retcnt != 0) {
-				device_printf(dev, "invalid npoll.rxoff %d, "
-				    "use %d\n", offset, offset_def);
-				offset = offset_def;
-			}
-		}
-		sc->bnx_npoll_rxoff = offset;
-
-		/*
-		 * NPOLLING TX CPU offset
-		 */
-		offset_def = device_get_unit(dev) % ncpus2;
-		offset = device_getenv_int(dev, "npoll.txoff", offset_def);
-		if (offset >= ncpus2) {
-			device_printf(dev, "invalid npoll.txoff %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-		sc->bnx_npoll_txoff = offset;
-	}
-#endif	/* IFPOLL_ENABLE */
-
 	/*
 	 * Allocate interrupt
 	 */
@@ -2402,23 +2339,27 @@ bnx_attach(device_t dev)
 	    sc, 0, bnx_sysctl_tx_coal_bds_int, "I",
 	    "Transmit max coalesced BD count during interrupt.");
 
-#ifdef IFPOLL_ENABLE
-	if (sc->bnx_flags & BNX_FLAG_RXTX_BUNDLE) {
-		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
-		    "npoll_offset", CTLTYPE_INT | CTLFLAG_RW,
-		    sc, 0, bnx_sysctl_npoll_offset, "I",
-		    "NPOLLING cpu offset");
+	if (sc->bnx_intr_type == PCI_INTR_TYPE_MSIX) {
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "tx_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD,
+		    sc->bnx_tx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+		    "TX ring CPU map");
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "rx_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD,
+		    sc->bnx_rx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+		    "RX ring CPU map");
 	} else {
-		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
-		    "npoll_rxoff", CTLTYPE_INT | CTLFLAG_RW,
-		    sc, 0, bnx_sysctl_npoll_rxoff, "I",
-		    "NPOLLING RX cpu offset");
-		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
-		    "npoll_txoff", CTLTYPE_INT | CTLFLAG_RW,
-		    sc, 0, bnx_sysctl_npoll_txoff, "I",
-		    "NPOLLING TX cpu offset");
-	}
+#ifdef IFPOLL_ENABLE
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "tx_poll_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD,
+		    sc->bnx_tx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+		    "TX poll CPU map");
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "rx_poll_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD,
+		    sc->bnx_rx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+		    "RX poll CPU map");
 #endif
+	}
 
 #ifdef BNX_RSS_DEBUG
 	SYSCTL_ADD_INT(ctx, tree, OID_AUTO,
@@ -2495,7 +2436,7 @@ bnx_attach(device_t dev)
 	/*
 	 * Create RX standard ring refilling thread
 	 */
-	std_cpuid_def = device_get_unit(dev) % ncpus;
+	std_cpuid_def = if_ringmap_cpumap(sc->bnx_rx_rmap, 0);
 	std_cpuid = device_getenv_int(dev, "std.cpuid", std_cpuid_def);
 	if (std_cpuid < 0 || std_cpuid >= ncpus) {
 		device_printf(dev, "invalid std.cpuid %d, use %d\n",
@@ -3078,28 +3019,28 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 		for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 			struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
-			int idx = i + sc->bnx_npoll_txoff;
+			int cpu = if_ringmap_cpumap(sc->bnx_tx_rmap, i);
 
-			KKASSERT(idx < ncpus2);
+			KKASSERT(cpu < netisr_ncpus);
 			if (sc->bnx_flags & BNX_FLAG_RXTX_BUNDLE) {
-				info->ifpi_tx[idx].poll_func =
+				info->ifpi_tx[cpu].poll_func =
 				    bnx_npoll_tx_notag;
 			} else {
-				info->ifpi_tx[idx].poll_func = bnx_npoll_tx;
+				info->ifpi_tx[cpu].poll_func = bnx_npoll_tx;
 			}
-			info->ifpi_tx[idx].arg = txr;
-			info->ifpi_tx[idx].serializer = &txr->bnx_tx_serialize;
-			ifsq_set_cpuid(txr->bnx_ifsq, idx);
+			info->ifpi_tx[cpu].arg = txr;
+			info->ifpi_tx[cpu].serializer = &txr->bnx_tx_serialize;
+			ifsq_set_cpuid(txr->bnx_ifsq, cpu);
 		}
 
 		for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
 			struct bnx_rx_ret_ring *ret = &sc->bnx_rx_ret_ring[i];
-			int idx = i + sc->bnx_npoll_rxoff;
+			int cpu = if_ringmap_cpumap(sc->bnx_rx_rmap, i);
 
-			KKASSERT(idx < ncpus2);
-			info->ifpi_rx[idx].poll_func = bnx_npoll_rx;
-			info->ifpi_rx[idx].arg = ret;
-			info->ifpi_rx[idx].serializer =
+			KKASSERT(cpu < netisr_ncpus);
+			info->ifpi_rx[cpu].poll_func = bnx_npoll_rx;
+			info->ifpi_rx[cpu].arg = ret;
+			info->ifpi_rx[cpu].serializer =
 			    &ret->bnx_rx_ret_serialize;
 		}
 
@@ -5531,89 +5472,6 @@ bnx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 
 #endif	/* INVARIANTS */
 
-#ifdef IFPOLL_ENABLE
-
-static int
-bnx_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS)
-{
-	struct bnx_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->bnx_npoll_rxoff;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->bnx_rx_retcnt != 0) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->bnx_npoll_txoff = off;
-		sc->bnx_npoll_rxoff = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-static int
-bnx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS)
-{
-	struct bnx_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->bnx_npoll_rxoff;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->bnx_rx_retcnt != 0) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->bnx_npoll_rxoff = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-static int
-bnx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
-{
-	struct bnx_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->bnx_npoll_txoff;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->bnx_npoll_txoff = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-#endif	/* IFPOLL_ENABLE */
-
 static void
 bnx_set_tick_cpuid(struct bnx_softc *sc, boolean_t polling)
 {
@@ -5757,9 +5615,10 @@ bnx_init_rss(struct bnx_softc *sc)
 	KKASSERT(BNX_RSS_ENABLED(sc));
 
 	/*
-	 * Configure RSS redirect table in following fashion:
-	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+	 * Configure RSS redirect table.
 	 */
+	if_ringmap_rdrtable(sc->bnx_rx_rmap, sc->bnx_rdr_table,
+	    BNX_RDRTABLE_SIZE);
 	r = 0;
 	for (j = 0; j < BGE_RSS_INDIR_TBL_CNT; ++j) {
 		uint32_t tbl = 0;
@@ -5767,7 +5626,7 @@ bnx_init_rss(struct bnx_softc *sc)
 		for (i = 0; i < BGE_RSS_INDIR_TBLENT_CNT; ++i) {
 			uint32_t q;
 
-			q = r % sc->bnx_rx_retcnt;
+			q = sc->bnx_rdr_table[r];
 			tbl |= q << (BGE_RSS_INDIR_TBLENT_SHIFT *
 			    (BGE_RSS_INDIR_TBLENT_CNT - i - 1));
 			++r;
@@ -5791,67 +5650,43 @@ bnx_init_rss(struct bnx_softc *sc)
 static void
 bnx_setup_ring_cnt(struct bnx_softc *sc)
 {
-	int msix_enable, i, msix_cnt, msix_cnt2, ring_max;
+	int msix_enable, msix_cnt, msix_ring, ring_max, ring_cnt;
 
-	sc->bnx_tx_ringcnt = 1;
-	sc->bnx_rx_retcnt = 1;
-	sc->bnx_intr_cnt = 1;
+	/* One RX ring. */
+	sc->bnx_rx_rmap = if_ringmap_alloc(sc->bnx_dev, 1, 1);
+
+	if (netisr_ncpus == 1)
+		goto skip_rx;
 
 	msix_enable = device_getenv_int(sc->bnx_dev, "msix.enable",
 	    bnx_msix_enable);
 	if (!msix_enable)
-		return;
-
-	if (ncpus2 == 1)
-		return;
-
-	msix_cnt = pci_msix_count(sc->bnx_dev);
-	if (msix_cnt <= 1)
-		return;
-
-	i = 0;
-	while ((1 << (i + 1)) <= msix_cnt)
-		++i;
-	msix_cnt2 = 1 << i;
+		goto skip_rx;
 
 	/*
 	 * One MSI-X vector is dedicated to status or single TX queue,
 	 * so make sure that there are enough MSI-X vectors.
 	 */
-	if (msix_cnt == msix_cnt2) {
-		/*
-		 * XXX
-		 * This probably will not happen; 57785/5718 families
-		 * come with at least 5 MSI-X vectors.
-		 */
-		msix_cnt2 >>= 1;
-		if (msix_cnt2 <= 1) {
-			device_printf(sc->bnx_dev,
-			    "MSI-X count %d could not be used\n", msix_cnt);
-			return;
-		}
-		device_printf(sc->bnx_dev, "MSI-X count %d is power of 2\n",
-		    msix_cnt);
-	}
+	msix_cnt = pci_msix_count(sc->bnx_dev);
+	if (msix_cnt <= 1)
+		goto skip_rx;
+	if (bootverbose)
+		device_printf(sc->bnx_dev, "MSI-X count %d\n", msix_cnt);
+	msix_ring = msix_cnt - 1;
 
 	/*
 	 * Setup RX ring count
 	 */
 	ring_max = BNX_RX_RING_MAX;
-	if (ring_max > msix_cnt2)
-		ring_max = msix_cnt2;
-	sc->bnx_rx_retcnt = device_getenv_int(sc->bnx_dev, "rx_rings",
-	    bnx_rx_rings);
-	sc->bnx_rx_retcnt = if_ring_count2(sc->bnx_rx_retcnt, ring_max);
+	if (ring_max > msix_ring)
+		ring_max = msix_ring;
+	ring_cnt = device_getenv_int(sc->bnx_dev, "rx_rings", bnx_rx_rings);
 
-	if (sc->bnx_rx_retcnt == 1)
-		return;
+	if_ringmap_free(sc->bnx_rx_rmap);
+	sc->bnx_rx_rmap = if_ringmap_alloc(sc->bnx_dev, ring_cnt, ring_max);
 
-	/*
-	 * We need one extra MSI-X vector for link status or
-	 * TX ring (if only one TX ring is enabled).
-	 */
-	sc->bnx_intr_cnt = sc->bnx_rx_retcnt + 1;
+skip_rx:
+	sc->bnx_rx_retcnt = if_ringmap_count(sc->bnx_rx_rmap);
 
 	/*
 	 * Setup TX ring count
@@ -5862,14 +5697,40 @@ bnx_setup_ring_cnt(struct bnx_softc *sc)
 	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
 	    sc->bnx_asicrev == BGE_ASICREV_BCM5720) {
 		ring_max = BNX_TX_RING_MAX;
-		if (ring_max > msix_cnt2)
-			ring_max = msix_cnt2;
 		if (ring_max > sc->bnx_rx_retcnt)
 			ring_max = sc->bnx_rx_retcnt;
-		sc->bnx_tx_ringcnt = device_getenv_int(sc->bnx_dev, "tx_rings",
+		ring_cnt = device_getenv_int(sc->bnx_dev, "tx_rings",
 		    bnx_tx_rings);
-		sc->bnx_tx_ringcnt = if_ring_count2(sc->bnx_tx_ringcnt,
-		    ring_max);
+	} else {
+		ring_max = 1;
+		ring_cnt = 1;
+	}
+	sc->bnx_tx_rmap = if_ringmap_alloc(sc->bnx_dev, ring_cnt, ring_max);
+	if_ringmap_align(sc->bnx_dev, sc->bnx_rx_rmap, sc->bnx_tx_rmap);
+
+	sc->bnx_tx_ringcnt = if_ringmap_count(sc->bnx_tx_rmap);
+	KASSERT(sc->bnx_tx_ringcnt <= sc->bnx_rx_retcnt,
+	    ("invalid TX ring count %d and RX ring count %d",
+	     sc->bnx_tx_ringcnt, sc->bnx_rx_retcnt));
+
+	/*
+	 * Setup interrupt count.
+	 */
+	if (sc->bnx_rx_retcnt == 1) {
+		sc->bnx_intr_cnt = 1;
+	} else {
+		/*
+		 * We need one extra MSI-X vector for link status or
+		 * TX ring (if only one TX ring is enabled).
+		 */
+		sc->bnx_intr_cnt = sc->bnx_rx_retcnt + 1;
+	}
+	KKASSERT(sc->bnx_intr_cnt <= BNX_INTR_MAX);
+
+	if (bootverbose) {
+		device_printf(sc->bnx_dev, "intr count %d, "
+		    "RX ring %d, TX ring %d\n", sc->bnx_intr_cnt,
+		    sc->bnx_rx_retcnt, sc->bnx_tx_ringcnt);
 	}
 }
 
@@ -5878,7 +5739,7 @@ bnx_alloc_msix(struct bnx_softc *sc)
 {
 	struct bnx_intr_data *intr;
 	boolean_t setup = FALSE;
-	int error, i, offset, offset_def;
+	int error, i;
 
 	KKASSERT(sc->bnx_intr_cnt > 1);
 	KKASSERT(sc->bnx_intr_cnt == sc->bnx_rx_retcnt + 1);
@@ -5903,23 +5764,6 @@ bnx_alloc_msix(struct bnx_softc *sc)
 		/*
 		 * RX/TX rings
 		 */
-		if (sc->bnx_rx_retcnt == ncpus2) {
-			offset = 0;
-		} else {
-			offset_def = (sc->bnx_rx_retcnt *
-			    device_get_unit(sc->bnx_dev)) % ncpus2;
-
-			offset = device_getenv_int(sc->bnx_dev,
-			    "msix.offset", offset_def);
-			if (offset >= ncpus2 ||
-			    offset % sc->bnx_rx_retcnt != 0) {
-				device_printf(sc->bnx_dev,
-				    "invalid msix.offset %d, use %d\n",
-				    offset, offset_def);
-				offset = offset_def;
-			}
-		}
-
 		for (i = 1; i < sc->bnx_intr_cnt; ++i) {
 			int idx = i - 1;
 
@@ -5938,8 +5782,9 @@ bnx_alloc_msix(struct bnx_softc *sc)
 			    &intr->bnx_ret->bnx_saved_status_tag;
 
 			intr->bnx_intr_arg = intr->bnx_ret;
-			KKASSERT(idx + offset < ncpus2);
-			intr->bnx_intr_cpuid = idx + offset;
+			intr->bnx_intr_cpuid =
+			    if_ringmap_cpumap(sc->bnx_rx_rmap, idx);
+			KKASSERT(intr->bnx_intr_cpuid < netisr_ncpus);
 
 			if (intr->bnx_txr == NULL) {
 				intr->bnx_intr_check = bnx_check_intr_rx;
@@ -5948,12 +5793,23 @@ bnx_alloc_msix(struct bnx_softc *sc)
 				    sizeof(intr->bnx_intr_desc0), "%s rx%d",
 				    device_get_nameunit(sc->bnx_dev), idx);
 			} else {
+#ifdef INVARIANTS
+				int tx_cpuid;
+#endif
+
 				intr->bnx_intr_check = bnx_check_intr_rxtx;
 				intr->bnx_intr_func = bnx_msix_rxtx;
 				ksnprintf(intr->bnx_intr_desc0,
 				    sizeof(intr->bnx_intr_desc0), "%s rxtx%d",
 				    device_get_nameunit(sc->bnx_dev), idx);
 
+#ifdef INVARIANTS
+				tx_cpuid = if_ringmap_cpumap(sc->bnx_tx_rmap,
+				    idx);
+				KASSERT(intr->bnx_intr_cpuid == tx_cpuid,
+				    ("RX intr cpu%d, TX intr cpu%d, mismatch",
+				     intr->bnx_intr_cpuid, tx_cpuid));
+#endif
 				intr->bnx_txr->bnx_tx_cpuid =
 				    intr->bnx_intr_cpuid;
 			}
@@ -5963,18 +5819,8 @@ bnx_alloc_msix(struct bnx_softc *sc)
 		}
 	} else {
 		/*
-		 * TX ring and link status
+		 * TX ring0 and link status
 		 */
-		offset_def = device_get_unit(sc->bnx_dev) % ncpus2;
-		offset = device_getenv_int(sc->bnx_dev, "msix.txoff",
-		    offset_def);
-		if (offset >= ncpus2) {
-			device_printf(sc->bnx_dev,
-			    "invalid msix.txoff %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-
 		intr = &sc->bnx_intr_data[0];
 
 		intr->bnx_txr = &sc->bnx_tx_ring[0];
@@ -5985,7 +5831,8 @@ bnx_alloc_msix(struct bnx_softc *sc)
 
 		intr->bnx_intr_func = bnx_msix_tx_status;
 		intr->bnx_intr_arg = intr->bnx_txr;
-		intr->bnx_intr_cpuid = offset;
+		intr->bnx_intr_cpuid = if_ringmap_cpumap(sc->bnx_tx_rmap, 0);
+		KKASSERT(intr->bnx_intr_cpuid < netisr_ncpus);
 
 		ksnprintf(intr->bnx_intr_desc0, sizeof(intr->bnx_intr_desc0),
 		    "%s ststx", device_get_nameunit(sc->bnx_dev));
@@ -5996,23 +5843,6 @@ bnx_alloc_msix(struct bnx_softc *sc)
 		/*
 		 * RX rings
 		 */
-		if (sc->bnx_rx_retcnt == ncpus2) {
-			offset = 0;
-		} else {
-			offset_def = (sc->bnx_rx_retcnt *
-			    device_get_unit(sc->bnx_dev)) % ncpus2;
-
-			offset = device_getenv_int(sc->bnx_dev,
-			    "msix.rxoff", offset_def);
-			if (offset >= ncpus2 ||
-			    offset % sc->bnx_rx_retcnt != 0) {
-				device_printf(sc->bnx_dev,
-				    "invalid msix.rxoff %d, use %d\n",
-				    offset, offset_def);
-				offset = offset_def;
-			}
-		}
-
 		for (i = 1; i < sc->bnx_intr_cnt; ++i) {
 			int idx = i - 1;
 
@@ -6028,8 +5858,9 @@ bnx_alloc_msix(struct bnx_softc *sc)
 
 			intr->bnx_intr_func = bnx_msix_rx;
 			intr->bnx_intr_arg = intr->bnx_ret;
-			KKASSERT(idx + offset < ncpus2);
-			intr->bnx_intr_cpuid = idx + offset;
+			intr->bnx_intr_cpuid =
+			    if_ringmap_cpumap(sc->bnx_rx_rmap, idx);
+			KKASSERT(intr->bnx_intr_cpuid < netisr_ncpus);
 
 			ksnprintf(intr->bnx_intr_desc0,
 			    sizeof(intr->bnx_intr_desc0), "%s rx%d",
