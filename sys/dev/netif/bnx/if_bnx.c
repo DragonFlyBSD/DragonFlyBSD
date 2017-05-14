@@ -2155,8 +2155,8 @@ bnx_attach(device_t dev)
 	ifq_set_subq_cnt(&ifp->if_snd, sc->bnx_tx_ringcnt);
 
 	if (sc->bnx_tx_ringcnt > 1) {
-		ifp->if_mapsubq = ifq_mapsubq_mask;
-		ifq_set_subq_mask(&ifp->if_snd, sc->bnx_tx_ringcnt - 1);
+		ifp->if_mapsubq = ifq_mapsubq_modulo;
+		ifq_set_subq_divisor(&ifp->if_snd, sc->bnx_tx_ringcnt);
 	}
 
 	/*
