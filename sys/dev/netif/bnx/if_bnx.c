@@ -2517,6 +2517,11 @@ bnx_detach(device_t dev)
 	if (sc->bnx_serialize != NULL)
 		kfree(sc->bnx_serialize, M_DEVBUF);
 
+	if (sc->bnx_rx_rmap != NULL)
+		if_ringmap_free(sc->bnx_rx_rmap);
+	if (sc->bnx_tx_rmap != NULL)
+		if_ringmap_free(sc->bnx_tx_rmap);
+
 	return 0;
 }
 
