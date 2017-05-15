@@ -160,10 +160,6 @@ static void	igb_set_ring_inuse(struct igb_softc *, boolean_t);
 static int	igb_get_rxring_inuse(const struct igb_softc *, boolean_t);
 static int	igb_get_txring_inuse(const struct igb_softc *, boolean_t);
 static void	igb_set_timer_cpuid(struct igb_softc *, boolean_t);
-#ifdef IFPOLL_ENABLE
-static int	igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
-static int	igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
-#endif
 
 static void	igb_vf_init_stats(struct igb_softc *);
 static void	igb_reset(struct igb_softc *, boolean_t);
@@ -171,7 +167,7 @@ static void	igb_update_stats_counters(struct igb_softc *);
 static void	igb_update_vf_stats_counters(struct igb_softc *);
 static void	igb_update_link_status(struct igb_softc *);
 static void	igb_init_tx_unit(struct igb_softc *);
-static void	igb_init_rx_unit(struct igb_softc *);
+static void	igb_init_rx_unit(struct igb_softc *, boolean_t);
 static void	igb_init_dmac(struct igb_softc *, uint32_t);
 
 static void	igb_set_vlan(struct igb_softc *);
@@ -179,6 +175,9 @@ static void	igb_set_multi(struct igb_softc *);
 static void	igb_set_promisc(struct igb_softc *);
 static void	igb_disable_promisc(struct igb_softc *);
 
+static int	igb_get_ring_max(const struct igb_softc *);
+static void	igb_get_rxring_cnt(const struct igb_softc *, int *, int *);
+static void	igb_get_txring_cnt(const struct igb_softc *, int *, int *);
 static int	igb_alloc_rings(struct igb_softc *);
 static void	igb_free_rings(struct igb_softc *);
 static int	igb_create_tx_ring(struct igb_tx_ring *);
@@ -234,8 +233,6 @@ static void	igb_free_intr(struct igb_softc *);
 static void	igb_teardown_intr(struct igb_softc *, int);
 static void	igb_alloc_msix(struct igb_softc *);
 static void	igb_free_msix(struct igb_softc *, boolean_t);
-static void	igb_msix_rx_conf(struct igb_softc *, int, int *, int);
-static void	igb_msix_tx_conf(struct igb_softc *, int, int *, int);
 static void	igb_msix_rx(void *);
 static void	igb_msix_tx(void *);
 static void	igb_msix_status(void *);
@@ -277,7 +274,6 @@ static int	igb_rxr = 0;
 static int	igb_txr = 0;
 static int	igb_msi_enable = 1;
 static int	igb_msix_enable = 1;
-static int	igb_msix_agg_rxtx = 1;
 static int	igb_eee_disabled = 1;	/* Energy Efficient Ethernet */
 
 static char	igb_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_RXPAUSE;
@@ -294,7 +290,6 @@ TUNABLE_INT("hw.igb.rxr", &igb_rxr);
 TUNABLE_INT("hw.igb.txr", &igb_txr);
 TUNABLE_INT("hw.igb.msi.enable", &igb_msi_enable);
 TUNABLE_INT("hw.igb.msix.enable", &igb_msix_enable);
-TUNABLE_INT("hw.igb.msix.agg_rxtx", &igb_msix_agg_rxtx);
 TUNABLE_STR("hw.igb.flow_ctrl", igb_flowctrl, sizeof(igb_flowctrl));
 
 /* i350 specific */
@@ -354,6 +349,53 @@ igb_rssinfo(struct mbuf *m, struct pktinfo *pi,
 }
 
 static int
+igb_get_ring_max(const struct igb_softc *sc)
+{
+
+	switch (sc->hw.mac.type) {
+	case e1000_82575:
+		return (IGB_MAX_RING_82575);
+
+	case e1000_82576:
+		return (IGB_MAX_RING_82576);
+
+	case e1000_82580:
+		return (IGB_MAX_RING_82580);
+
+	case e1000_i350:
+		return (IGB_MAX_RING_I350);
+
+	case e1000_i354:
+		return (IGB_MAX_RING_I354);
+
+	case e1000_i210:
+		return (IGB_MAX_RING_I210);
+
+	case e1000_i211:
+		return (IGB_MAX_RING_I211);
+
+	default:
+		return (IGB_MIN_RING);
+	}
+}
+
+static void
+igb_get_rxring_cnt(const struct igb_softc *sc, int *ring_cnt, int *ring_max)
+{
+
+	*ring_max = igb_get_ring_max(sc);
+	*ring_cnt = device_getenv_int(sc->dev, "rxr", igb_rxr);
+}
+
+static void
+igb_get_txring_cnt(const struct igb_softc *sc, int *ring_cnt, int *ring_max)
+{
+
+	*ring_max = igb_get_ring_max(sc);
+	*ring_cnt = device_getenv_int(sc->dev, "txr", igb_txr);
+}
+
+static int
 igb_probe(device_t dev)
 {
 	const struct igb_device *d;
@@ -376,11 +418,8 @@ igb_attach(device_t dev)
 {
 	struct igb_softc *sc = device_get_softc(dev);
 	uint16_t eeprom_data;
-	int error = 0, ring_max;
+	int error = 0, ring_max, ring_cnt;
 	char flowctrl[IFM_ETH_FC_STRLEN];
-#ifdef IFPOLL_ENABLE
-	int offset, offset_def;
-#endif
 
 #ifdef notyet
 	/* SYSCTL stuff */
@@ -424,52 +463,15 @@ igb_attach(device_t dev)
 	/*
 	 * Configure total supported RX/TX ring count
 	 */
-	switch (sc->hw.mac.type) {
-	case e1000_82575:
-		ring_max = IGB_MAX_RING_82575;
-		break;
+	igb_get_rxring_cnt(sc, &ring_cnt, &ring_max);
+	sc->rx_rmap = if_ringmap_alloc(dev, ring_cnt, ring_max);
+	igb_get_txring_cnt(sc, &ring_cnt, &ring_max);
+	sc->tx_rmap = if_ringmap_alloc(dev, ring_cnt, ring_max);
+	if_ringmap_match(dev, sc->rx_rmap, sc->tx_rmap);
 
-	case e1000_82576:
-		ring_max = IGB_MAX_RING_82576;
-		break;
-
-	case e1000_82580:
-		ring_max = IGB_MAX_RING_82580;
-		break;
-
-	case e1000_i350:
-		ring_max = IGB_MAX_RING_I350;
-		break;
-
-	case e1000_i354:
-		ring_max = IGB_MAX_RING_I354;
-		break;
-
-	case e1000_i210:
-		ring_max = IGB_MAX_RING_I210;
-		break;
-
-	case e1000_i211:
-		ring_max = IGB_MAX_RING_I211;
-		break;
-
-	default:
-		ring_max = IGB_MIN_RING;
-		break;
-	}
-
-	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", igb_rxr);
-	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, ring_max);
-#ifdef IGB_RSS_DEBUG
-	sc->rx_ring_cnt = device_getenv_int(dev, "rxr_debug", sc->rx_ring_cnt);
-#endif
+	sc->rx_ring_cnt = if_ringmap_count(sc->rx_rmap);
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
-
-	sc->tx_ring_cnt = device_getenv_int(dev, "txr", igb_txr);
-	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, ring_max);
-#ifdef IGB_TSS_DEBUG
-	sc->tx_ring_cnt = device_getenv_int(dev, "txr_debug", sc->tx_ring_cnt);
-#endif
+	sc->tx_ring_cnt = if_ringmap_count(sc->tx_rmap);
 	sc->tx_ring_inuse = sc->tx_ring_cnt;
 
 	/* Setup flow control. */
@@ -524,42 +526,6 @@ igb_attach(device_t dev)
 	error = igb_alloc_rings(sc);
 	if (error)
 		goto failed;
-
-#ifdef IFPOLL_ENABLE
-	/*
-	 * NPOLLING RX CPU offset
-	 */
-	if (sc->rx_ring_cnt == ncpus2) {
-		offset = 0;
-	} else {
-		offset_def = (sc->rx_ring_cnt * device_get_unit(dev)) % ncpus2;
-		offset = device_getenv_int(dev, "npoll.rxoff", offset_def);
-		if (offset >= ncpus2 ||
-		    offset % sc->rx_ring_cnt != 0) {
-			device_printf(dev, "invalid npoll.rxoff %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-	}
-	sc->rx_npoll_off = offset;
-
-	/*
-	 * NPOLLING TX CPU offset
-	 */
-	if (sc->tx_ring_cnt == ncpus2) {
-		offset = 0;
-	} else {
-		offset_def = (sc->tx_ring_cnt * device_get_unit(dev)) % ncpus2;
-		offset = device_getenv_int(dev, "npoll.txoff", offset_def);
-		if (offset >= ncpus2 ||
-		    offset % sc->tx_ring_cnt != 0) {
-			device_printf(dev, "invalid npoll.txoff %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-	}
-	sc->tx_npoll_off = offset;
-#endif
 
 	/* Allocate interrupt */
 	error = igb_alloc_intr(sc);
@@ -761,6 +727,14 @@ igb_detach(device_t dev)
 		kfree(sc->stats, M_DEVBUF);
 	if (sc->serializes != NULL)
 		kfree(sc->serializes, M_DEVBUF);
+	if (sc->rx_rmap != NULL)
+		if_ringmap_free(sc->rx_rmap);
+	if (sc->rx_rmap_intr != NULL)
+		if_ringmap_free(sc->rx_rmap_intr);
+	if (sc->tx_rmap != NULL)
+		if_ringmap_free(sc->tx_rmap);
+	if (sc->tx_rmap_intr != NULL)
+		if_ringmap_free(sc->tx_rmap_intr);
 
 	return 0;
 }
@@ -956,7 +930,7 @@ igb_init(void *xsc)
 
 	/* Configured used RX/TX rings */
 	igb_set_ring_inuse(sc, polling);
-	ifq_set_subq_mask(&ifp->if_snd, sc->tx_ring_inuse - 1);
+	ifq_set_subq_divisor(&ifp->if_snd, sc->tx_ring_inuse);
 
 	/* Initialize interrupt */
 	igb_init_intr(sc);
@@ -993,7 +967,7 @@ igb_init(void *xsc)
 			return;
 		}
 	}
-	igb_init_rx_unit(sc);
+	igb_init_rx_unit(sc, polling);
 
 	/* Enable VLAN support */
 	if (ifp->if_capenable & IFCAP_VLAN_HWTAGGING)
@@ -1554,8 +1528,8 @@ igb_setup_ifp(struct igb_softc *sc)
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);
 
-	ifp->if_mapsubq = ifq_mapsubq_mask;
-	ifq_set_subq_mask(&ifp->if_snd, 0);
+	ifp->if_mapsubq = ifq_mapsubq_modulo;
+	ifq_set_subq_divisor(&ifp->if_snd, 1);
 
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
 
@@ -1665,13 +1639,25 @@ do { \
 	    sc, 0, igb_sysctl_rx_wreg_nsegs, "I",
 	    "# of segments received before write to hardware register");
 
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+		    OID_AUTO, "tx_msix_cpumap", CTLTYPE_OPAQUE | CTLFLAG_RD,
+		    sc->tx_rmap_intr, 0, if_ringmap_cpumap_sysctl, "I",
+		    "TX MSI-X CPU map");
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+		    OID_AUTO, "rx_msix_cpumap", CTLTYPE_OPAQUE | CTLFLAG_RD,
+		    sc->rx_rmap_intr, 0, if_ringmap_cpumap_sysctl, "I",
+		    "RX MSI-X CPU map");
+	}
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-	    OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
-	    sc, 0, igb_sysctl_npoll_rxoff, "I", "NPOLLING RX cpu offset");
+	    OID_AUTO, "tx_poll_cpumap", CTLTYPE_OPAQUE | CTLFLAG_RD,
+	    sc->tx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+	    "TX polling CPU map");
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-	    OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
-	    sc, 0, igb_sysctl_npoll_txoff, "I", "NPOLLING TX cpu offset");
+	    OID_AUTO, "rx_poll_cpumap", CTLTYPE_OPAQUE | CTLFLAG_RD,
+	    sc->rx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+	    "RX polling CPU map");
 #endif
 
 #ifdef IGB_RSS_DEBUG
@@ -1724,6 +1710,7 @@ igb_alloc_rings(struct igb_softc *sc)
 		/* Set up some basics */
 		txr->sc = sc;
 		txr->me = i;
+		txr->tx_intr_cpuid = -1;
 		lwkt_serialize_init(&txr->tx_serialize);
 
 		error = igb_create_tx_ring(txr);
@@ -2369,7 +2356,7 @@ igb_init_rx_ring(struct igb_rx_ring *rxr)
 }
 
 static void
-igb_init_rx_unit(struct igb_softc *sc)
+igb_init_rx_unit(struct igb_softc *sc, boolean_t polling)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct e1000_hw *hw = &sc->hw;
@@ -2475,8 +2462,9 @@ igb_init_rx_unit(struct igb_softc *sc)
 	}
 	E1000_WRITE_REG(&sc->hw, E1000_RXCSUM, rxcsum);
 
-	if (IGB_ENABLE_HWRSS(sc)) {
+	if (sc->rx_ring_inuse > 1) {
 		uint8_t key[IGB_NRSSRK * IGB_RSSRK_SIZE];
+		const struct if_ringmap *rm;
 		uint32_t reta_shift;
 		int j, r;
 
@@ -2501,9 +2489,14 @@ igb_init_rx_unit(struct igb_softc *sc)
 		}
 
 		/*
-		 * Configure RSS redirect table in following fashion:
-	 	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+		 * Configure RSS redirect table
 		 */
+		if (polling)
+			rm = sc->rx_rmap;
+		else
+			rm = sc->rx_rmap_intr;
+		if_ringmap_rdrtable(rm, sc->rdr_table, IGB_RDRTABLE_SIZE);
+
 		reta_shift = IGB_RETA_SHIFT;
 		if (hw->mac.type == e1000_82575)
 			reta_shift = IGB_RETA_SHIFT_82575;
@@ -2515,7 +2508,7 @@ igb_init_rx_unit(struct igb_softc *sc)
 			for (i = 0; i < IGB_RETA_SIZE; ++i) {
 				uint32_t q;
 
-				q = (r % sc->rx_ring_inuse) << reta_shift;
+				q = sc->rdr_table[r] << reta_shift;
 				reta |= q << (8 * i);
 				++r;
 			}
@@ -3131,44 +3124,32 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info) {
-		int off;
+		int cpu;
 
 		info->ifpi_status.status_func = igb_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
 		txr_cnt = igb_get_txring_inuse(sc, TRUE);
-		off = sc->tx_npoll_off;
 		for (i = 0; i < txr_cnt; ++i) {
 			struct igb_tx_ring *txr = &sc->tx_rings[i];
-			int idx = i + off;
 
-			KKASSERT(idx < ncpus2);
-			info->ifpi_tx[idx].poll_func = igb_npoll_tx;
-			info->ifpi_tx[idx].arg = txr;
-			info->ifpi_tx[idx].serializer = &txr->tx_serialize;
-			ifsq_set_cpuid(txr->ifsq, idx);
+			cpu = if_ringmap_cpumap(sc->tx_rmap, i);
+			KKASSERT(cpu < netisr_ncpus);
+			info->ifpi_tx[cpu].poll_func = igb_npoll_tx;
+			info->ifpi_tx[cpu].arg = txr;
+			info->ifpi_tx[cpu].serializer = &txr->tx_serialize;
+			ifsq_set_cpuid(txr->ifsq, cpu);
 		}
 
 		rxr_cnt = igb_get_rxring_inuse(sc, TRUE);
-		off = sc->rx_npoll_off;
 		for (i = 0; i < rxr_cnt; ++i) {
 			struct igb_rx_ring *rxr = &sc->rx_rings[i];
-			int idx = i + off;
 
-			KKASSERT(idx < ncpus2);
-			info->ifpi_rx[idx].poll_func = igb_npoll_rx;
-			info->ifpi_rx[idx].arg = rxr;
-			info->ifpi_rx[idx].serializer = &rxr->rx_serialize;
-		}
-
-		if (ifp->if_flags & IFF_RUNNING) {
-			if (rxr_cnt == sc->rx_ring_inuse &&
-			    txr_cnt == sc->tx_ring_inuse) {
-				igb_set_timer_cpuid(sc, TRUE);
-				igb_disable_intr(sc);
-			} else {
-				igb_init(sc);
-			}
+			cpu = if_ringmap_cpumap(sc->rx_rmap, i);
+			KKASSERT(cpu < netisr_ncpus);
+			info->ifpi_rx[cpu].poll_func = igb_npoll_rx;
+			info->ifpi_rx[cpu].arg = rxr;
+			info->ifpi_rx[cpu].serializer = &rxr->rx_serialize;
 		}
 	} else {
 		for (i = 0; i < sc->tx_ring_cnt; ++i) {
@@ -3176,20 +3157,9 @@ igb_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 			ifsq_set_cpuid(txr->ifsq, txr->tx_intr_cpuid);
 		}
-
-		if (ifp->if_flags & IFF_RUNNING) {
-			txr_cnt = igb_get_txring_inuse(sc, FALSE);
-			rxr_cnt = igb_get_rxring_inuse(sc, FALSE);
-
-			if (rxr_cnt == sc->rx_ring_inuse &&
-			    txr_cnt == sc->tx_ring_inuse) {
-				igb_set_timer_cpuid(sc, FALSE);
-				igb_enable_intr(sc);
-			} else {
-				igb_init(sc);
-			}
-		}
 	}
+	if (ifp->if_flags & IFF_RUNNING)
+		igb_init(sc);
 }
 
 #endif /* IFPOLL_ENABLE */
@@ -3702,62 +3672,6 @@ igb_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
 	return 0;
 }
 
-#ifdef IFPOLL_ENABLE
-
-static int
-igb_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS)
-{
-	struct igb_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->rx_npoll_off;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->rx_ring_cnt != 0) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->rx_npoll_off = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-static int
-igb_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
-{
-	struct igb_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->tx_npoll_off;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->tx_ring_cnt != 0) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->tx_npoll_off = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-#endif	/* IFPOLL_ENABLE */
-
 static void
 igb_init_intr(struct igb_softc *sc)
 {
@@ -4102,16 +4016,45 @@ igb_set_intr_mask(struct igb_softc *sc)
 static int
 igb_alloc_intr(struct igb_softc *sc)
 {
+	struct igb_tx_ring *txr;
 	struct igb_intr_data *intr;
 	int i, intr_vec, intr_vecmax;
 	u_int intr_flags;
 
 	igb_alloc_msix(sc);
-	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+		igb_set_ring_inuse(sc, FALSE);
 		goto done;
+	}
 
-	if (sc->intr_data != NULL)
+	/*
+	 * Reset some settings changed by igb_alloc_msix().
+	 */
+	if (sc->rx_rmap_intr != NULL) {
+		if_ringmap_free(sc->rx_rmap_intr);
+		sc->rx_rmap_intr = NULL;
+	}
+	if (sc->tx_rmap_intr != NULL) {
+		if_ringmap_free(sc->tx_rmap_intr);
+		sc->tx_rmap_intr = NULL;
+	}
+	if (sc->intr_data != NULL) {
 		kfree(sc->intr_data, M_DEVBUF);
+		sc->intr_data = NULL;
+	}
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		txr = &sc->tx_rings[i];
+		txr->tx_intr_vec = 0;
+		txr->tx_intr_mask = 0;
+		txr->tx_intr_cpuid = -1;
+	}
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		struct igb_rx_ring *rxr = &sc->rx_rings[i];
+
+		rxr->rx_intr_vec = 0;
+		rxr->rx_intr_mask = 0;
+		rxr->rx_txr = NULL;
+	}
 
 	sc->intr_cnt = 1;
 	sc->intr_data = kmalloc(sizeof(struct igb_intr_data), M_DEVBUF,
@@ -4155,8 +4098,7 @@ igb_alloc_intr(struct igb_softc *sc)
 	intr->intr_rate = IGB_INTR_RATE;
 	intr->intr_use = IGB_INTR_USE_RXTX;
 
-	for (i = 0; i < sc->tx_ring_cnt; ++i)
-		sc->tx_rings[i].tx_intr_cpuid = intr->intr_cpuid;
+	sc->tx_rings[0].tx_intr_cpuid = intr->intr_cpuid;
 
 	/*
 	 * Setup MSI/legacy interrupt mask
@@ -4200,9 +4142,25 @@ igb_alloc_intr(struct igb_softc *sc)
 	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		igb_set_rxintr_mask(&sc->rx_rings[i], &intr_vec, intr_vecmax);
 	sc->sts_intr_mask = E1000_EICR_OTHER;
-done:
+
 	igb_set_ring_inuse(sc, FALSE);
+	KKASSERT(sc->rx_ring_inuse <= IGB_MIN_RING_RSS);
+	if (sc->rx_ring_inuse == IGB_MIN_RING_RSS) {
+		/*
+		 * Allocate RX ring map for RSS setup.
+		 */
+		sc->rx_rmap_intr = if_ringmap_alloc(sc->dev,
+		    IGB_MIN_RING_RSS, IGB_MIN_RING_RSS);
+		KASSERT(if_ringmap_count(sc->rx_rmap_intr) ==
+		    sc->rx_ring_inuse, ("RX ring inuse mismatch"));
+	}
+done:
 	igb_set_intr_mask(sc);
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		txr = &sc->tx_rings[i];
+		if (txr->tx_intr_cpuid < 0)
+			txr->tx_intr_cpuid = 0;
+	}
 	return 0;
 }
 
@@ -4247,11 +4205,11 @@ igb_teardown_intr(struct igb_softc *sc, int intr_cnt)
 static void
 igb_alloc_msix(struct igb_softc *sc)
 {
-	int msix_enable, msix_cnt, msix_cnt2, alloc_cnt;
+	int msix_enable, msix_cnt, msix_ring, alloc_cnt;
 	int i, x, error;
-	int offset, offset_def, agg_rxtx, ring_max;
+	int ring_cnt, ring_cntmax;
 	struct igb_intr_data *intr;
-	boolean_t aggregate, setup = FALSE;
+	boolean_t setup = FALSE;
 
 	/*
 	 * Don't enable MSI-X on 82575, see:
@@ -4274,77 +4232,47 @@ igb_alloc_msix(struct igb_softc *sc)
 	msix_cnt = device_getenv_int(sc->dev, "msix.count", msix_cnt);
 #endif
 	if (msix_cnt <= 1) {
-		/* One MSI-X model does not make sense */
+		/* One MSI-X model does not make sense. */
 		return;
 	}
+	if (bootverbose)
+		device_printf(sc->dev, "MSI-X count %d\n", msix_cnt);
+	msix_ring = msix_cnt - 1; /* -1 for status */
 
-	i = 0;
-	while ((1 << (i + 1)) <= msix_cnt)
-		++i;
-	msix_cnt2 = 1 << i;
+	/*
+	 * Configure # of RX/TX rings usable by MSI-X.
+	 */
+	igb_get_rxring_cnt(sc, &ring_cnt, &ring_cntmax);
+	if (ring_cntmax > msix_ring)
+		ring_cntmax = msix_ring;
+	sc->rx_rmap_intr = if_ringmap_alloc(sc->dev, ring_cnt, ring_cntmax);
 
-	if (bootverbose) {
-		device_printf(sc->dev, "MSI-X count %d/%d\n",
-		    msix_cnt2, msix_cnt);
-	}
+	igb_get_txring_cnt(sc, &ring_cnt, &ring_cntmax);
+	if (ring_cntmax > msix_ring)
+		ring_cntmax = msix_ring;
+	sc->tx_rmap_intr = if_ringmap_alloc(sc->dev, ring_cnt, ring_cntmax);
 
-	KKASSERT(msix_cnt2 <= msix_cnt);
-	if (msix_cnt == msix_cnt2) {
-		/* We need at least one MSI-X for link status */
-		msix_cnt2 >>= 1;
-		if (msix_cnt2 <= 1) {
-			/* One MSI-X for RX/TX does not make sense */
-			device_printf(sc->dev, "not enough MSI-X for TX/RX, "
-			    "MSI-X count %d/%d\n", msix_cnt2, msix_cnt);
-			return;
-		}
-		KKASSERT(msix_cnt > msix_cnt2);
+	if_ringmap_match(sc->dev, sc->rx_rmap_intr, sc->tx_rmap_intr);
+	sc->rx_ring_msix = if_ringmap_count(sc->rx_rmap_intr);
+	KASSERT(sc->rx_ring_msix <= sc->rx_ring_cnt,
+	    ("total RX ring count %d, MSI-X RX ring count %d",
+	     sc->rx_ring_cnt, sc->rx_ring_msix));
+	sc->tx_ring_msix = if_ringmap_count(sc->tx_rmap_intr);
+	KASSERT(sc->tx_ring_msix <= sc->tx_ring_cnt,
+	    ("total TX ring count %d, MSI-X TX ring count %d",
+	     sc->tx_ring_cnt, sc->tx_ring_msix));
 
-		if (bootverbose) {
-			device_printf(sc->dev, "MSI-X count fixup %d/%d\n",
-			    msix_cnt2, msix_cnt);
-		}
-	}
+	/*
+	 * Aggregate TX/RX MSI-X
+	 */
+	ring_cntmax = sc->rx_ring_msix;
+	if (ring_cntmax < sc->tx_ring_msix)
+		ring_cntmax = sc->tx_ring_msix;
+	KASSERT(ring_cntmax <= msix_ring,
+	    ("invalid ring count max %d, MSI-X count for rings %d",
+	     ring_cntmax, msix_ring));
 
-	sc->rx_ring_msix = sc->rx_ring_cnt;
-	if (sc->rx_ring_msix > msix_cnt2)
-		sc->rx_ring_msix = msix_cnt2;
-
-	sc->tx_ring_msix = sc->tx_ring_cnt;
-	if (sc->tx_ring_msix > msix_cnt2)
-		sc->tx_ring_msix = msix_cnt2;
-
-	ring_max = sc->rx_ring_msix;
-	if (ring_max < sc->tx_ring_msix)
-		ring_max = sc->tx_ring_msix;
-
-	/* Allow user to force independent RX/TX MSI-X handling */
-	agg_rxtx = device_getenv_int(sc->dev, "msix.agg_rxtx",
-	    igb_msix_agg_rxtx);
-
-	if (!agg_rxtx && msix_cnt >= sc->tx_ring_msix + sc->rx_ring_msix + 1) {
-		/*
-		 * Independent TX/RX MSI-X
-		 */
-		aggregate = FALSE;
-		if (bootverbose)
-			device_printf(sc->dev, "independent TX/RX MSI-X\n");
-		alloc_cnt = sc->tx_ring_msix + sc->rx_ring_msix;
-	} else {
-		/*
-		 * Aggregate TX/RX MSI-X
-		 */
-		aggregate = TRUE;
-		if (bootverbose)
-			device_printf(sc->dev, "aggregate TX/RX MSI-X\n");
-		alloc_cnt = msix_cnt2;
-		if (alloc_cnt > ring_max)
-			alloc_cnt = ring_max;
-		KKASSERT(alloc_cnt >= sc->rx_ring_msix &&
-		    alloc_cnt >= sc->tx_ring_msix);
-	}
-	++alloc_cnt;	/* For link status */
-
+	alloc_cnt = ring_cntmax + 1; /* +1 for status */
 	if (bootverbose) {
 		device_printf(sc->dev, "MSI-X alloc %d, "
 		    "RX ring %d, TX ring %d\n", alloc_cnt,
@@ -4374,104 +4302,82 @@ igb_alloc_msix(struct igb_softc *sc)
 	}
 
 	x = 0;
-	if (!aggregate) {
-		/*
-		 * RX rings
-		 */
-		if (sc->rx_ring_msix == ncpus2) {
-			offset = 0;
-		} else {
-			offset_def = (sc->rx_ring_msix *
-			    device_get_unit(sc->dev)) % ncpus2;
+	for (i = 0; i < sc->rx_ring_msix; ++i) {
+		struct igb_rx_ring *rxr = &sc->rx_rings[i];
+		struct igb_tx_ring *txr = NULL;
+		int cpuid, j;
 
-			offset = device_getenv_int(sc->dev,
-			    "msix.rxoff", offset_def);
-			if (offset >= ncpus2 ||
-			    offset % sc->rx_ring_msix != 0) {
-				device_printf(sc->dev,
-				    "invalid msix.rxoff %d, use %d\n",
-				    offset, offset_def);
-				offset = offset_def;
-			}
-		}
-		igb_msix_rx_conf(sc, 0, &x, offset);
+		KKASSERT(x < sc->intr_cnt);
+		rxr->rx_intr_vec = x;
+		rxr->rx_intr_mask = 1 << rxr->rx_intr_vec;
+
+		cpuid = if_ringmap_cpumap(sc->rx_rmap_intr, i);
 
 		/*
-		 * TX rings
+		 * Try finding TX ring to piggyback.
 		 */
-		if (sc->tx_ring_msix == ncpus2) {
-			offset = 0;
-		} else {
-			offset_def = (sc->tx_ring_msix *
-			    device_get_unit(sc->dev)) % ncpus2;
-
-			offset = device_getenv_int(sc->dev,
-			    "msix.txoff", offset_def);
-			if (offset >= ncpus2 ||
-			    offset % sc->tx_ring_msix != 0) {
-				device_printf(sc->dev,
-				    "invalid msix.txoff %d, use %d\n",
-				    offset, offset_def);
-				offset = offset_def;
+		for (j = 0; j < sc->tx_ring_msix; ++j) {
+			if (cpuid ==
+			    if_ringmap_cpumap(sc->tx_rmap_intr, j)) {
+				txr = &sc->tx_rings[j];
+				KKASSERT(txr->tx_intr_cpuid < 0);
+				break;
 			}
 		}
-		igb_msix_tx_conf(sc, 0, &x, offset);
-	} else {
-		int ring_agg;
+		rxr->rx_txr = txr;
 
-		ring_agg = sc->rx_ring_msix;
-		if (ring_agg > sc->tx_ring_msix)
-			ring_agg = sc->tx_ring_msix;
+		intr = &sc->intr_data[x++];
+		intr->intr_serialize = &rxr->rx_serialize;
+		intr->intr_cpuid = cpuid;
+		KKASSERT(intr->intr_cpuid < netisr_ncpus);
+		intr->intr_funcarg = rxr;
+		if (txr != NULL) {
+			intr->intr_func = igb_msix_rxtx;
+			intr->intr_use = IGB_INTR_USE_RXTX;
+			ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0),
+			    "%s rx%dtx%d", device_get_nameunit(sc->dev),
+			    i, txr->me);
 
-		if (ring_max == ncpus2) {
-			offset = 0;
-		} else {
-			offset_def = (ring_max * device_get_unit(sc->dev)) %
-			    ncpus2;
-
-			offset = device_getenv_int(sc->dev, "msix.off",
-			    offset_def);
-			if (offset >= ncpus2 || offset % ring_max != 0) {
-				device_printf(sc->dev,
-				    "invalid msix.off %d, use %d\n",
-				    offset, offset_def);
-				offset = offset_def;
-			}
-		}
-
-		for (i = 0; i < ring_agg; ++i) {
-			struct igb_tx_ring *txr = &sc->tx_rings[i];
-			struct igb_rx_ring *rxr = &sc->rx_rings[i];
-
-			KKASSERT(x < sc->intr_cnt);
-			rxr->rx_intr_vec = x;
-			rxr->rx_intr_mask = 1 << rxr->rx_intr_vec;
-			rxr->rx_txr = txr;
 			txr->tx_intr_vec = rxr->rx_intr_vec;
 			txr->tx_intr_mask = rxr->rx_intr_mask;
-
-			intr = &sc->intr_data[x++];
-
-			intr->intr_serialize = &rxr->rx_serialize;
-			intr->intr_func = igb_msix_rxtx;
-			intr->intr_funcarg = rxr;
-			intr->intr_use = IGB_INTR_USE_RXTX;
-
-			intr->intr_cpuid = i + offset;
-			KKASSERT(intr->intr_cpuid < ncpus2);
 			txr->tx_intr_cpuid = intr->intr_cpuid;
+		} else {
+			intr->intr_func = igb_msix_rx;
+			intr->intr_rate = IGB_MSIX_RX_RATE;
+			intr->intr_use = IGB_INTR_USE_RX;
 
 			ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0),
-			    "%s rxtx%d", device_get_nameunit(sc->dev), i);
-			intr->intr_desc = intr->intr_desc0;
+			    "%s rx%d", device_get_nameunit(sc->dev), i);
+		}
+		intr->intr_desc = intr->intr_desc0;
+	}
+
+	for (i = 0; i < sc->tx_ring_msix; ++i) {
+		struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+		if (txr->tx_intr_cpuid >= 0) {
+			/* Piggybacked by RX ring. */
+			continue;
 		}
 
-		if (ring_agg != ring_max) {
-			if (ring_max == sc->tx_ring_msix)
-				igb_msix_tx_conf(sc, i, &x, offset);
-			else
-				igb_msix_rx_conf(sc, i, &x, offset);
-		}
+		KKASSERT(x < sc->intr_cnt);
+		txr->tx_intr_vec = x;
+		txr->tx_intr_mask = 1 << txr->tx_intr_vec;
+
+		intr = &sc->intr_data[x++];
+		intr->intr_serialize = &txr->tx_serialize;
+		intr->intr_func = igb_msix_tx;
+		intr->intr_funcarg = txr;
+		intr->intr_rate = IGB_MSIX_TX_RATE;
+		intr->intr_use = IGB_INTR_USE_TX;
+
+		intr->intr_cpuid = if_ringmap_cpumap(sc->tx_rmap_intr, i);
+		KKASSERT(intr->intr_cpuid < netisr_ncpus);
+		txr->tx_intr_cpuid = intr->intr_cpuid;
+
+		ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0), "%s tx%d",
+		    device_get_nameunit(sc->dev), i);
+		intr->intr_desc = intr->intr_desc0;
 	}
 
 	/*
@@ -4482,7 +4388,6 @@ igb_alloc_msix(struct igb_softc *sc)
 	sc->sts_intr_mask = 1 << sc->sts_msix_vec;
 
 	intr = &sc->intr_data[x++];
-
 	intr->intr_serialize = &sc->main_serialize;
 	intr->intr_func = igb_msix_status;
 	intr->intr_funcarg = sc;
@@ -4758,69 +4663,6 @@ igb_setup_serialize(struct igb_softc *sc)
 	}
 
 	KKASSERT(i == sc->serialize_cnt);
-}
-
-static void
-igb_msix_rx_conf(struct igb_softc *sc, int i, int *x0, int offset)
-{
-	int x = *x0;
-
-	for (; i < sc->rx_ring_msix; ++i) {
-		struct igb_rx_ring *rxr = &sc->rx_rings[i];
-		struct igb_intr_data *intr;
-
-		KKASSERT(x < sc->intr_cnt);
-		rxr->rx_intr_vec = x;
-		rxr->rx_intr_mask = 1 << rxr->rx_intr_vec;
-
-		intr = &sc->intr_data[x++];
-
-		intr->intr_serialize = &rxr->rx_serialize;
-		intr->intr_func = igb_msix_rx;
-		intr->intr_funcarg = rxr;
-		intr->intr_rate = IGB_MSIX_RX_RATE;
-		intr->intr_use = IGB_INTR_USE_RX;
-
-		intr->intr_cpuid = i + offset;
-		KKASSERT(intr->intr_cpuid < ncpus2);
-
-		ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0), "%s rx%d",
-		    device_get_nameunit(sc->dev), i);
-		intr->intr_desc = intr->intr_desc0;
-	}
-	*x0 = x;
-}
-
-static void
-igb_msix_tx_conf(struct igb_softc *sc, int i, int *x0, int offset)
-{
-	int x = *x0;
-
-	for (; i < sc->tx_ring_msix; ++i) {
-		struct igb_tx_ring *txr = &sc->tx_rings[i];
-		struct igb_intr_data *intr;
-
-		KKASSERT(x < sc->intr_cnt);
-		txr->tx_intr_vec = x;
-		txr->tx_intr_mask = 1 << txr->tx_intr_vec;
-
-		intr = &sc->intr_data[x++];
-
-		intr->intr_serialize = &txr->tx_serialize;
-		intr->intr_func = igb_msix_tx;
-		intr->intr_funcarg = txr;
-		intr->intr_rate = IGB_MSIX_TX_RATE;
-		intr->intr_use = IGB_INTR_USE_TX;
-
-		intr->intr_cpuid = i + offset;
-		KKASSERT(intr->intr_cpuid < ncpus2);
-		txr->tx_intr_cpuid = intr->intr_cpuid;
-
-		ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0), "%s tx%d",
-		    device_get_nameunit(sc->dev), i);
-		intr->intr_desc = intr->intr_desc0;
-	}
-	*x0 = x;
 }
 
 static void

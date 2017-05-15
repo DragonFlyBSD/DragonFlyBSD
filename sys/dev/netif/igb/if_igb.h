@@ -207,6 +207,8 @@
 #define IGB_RETA_SHIFT			0
 #define IGB_RETA_SHIFT_82575		6
 
+#define IGB_RDRTABLE_SIZE		(IGB_NRETA * IGB_RETA_SIZE)
+
 #define IGB_EITR_INTVL_MASK		0x7ffc
 #define IGB_EITR_INTVL_SHIFT		2
 
@@ -349,8 +351,6 @@ struct igb_softc {
 	/* Multicast array pointer */
 	uint8_t			*mta;
 
-	int			rx_npoll_off;
-	int			tx_npoll_off;
 	int			serialize_cnt;
 	struct lwkt_serialize	**serializes;
 	struct lwkt_serialize	main_serialize;
@@ -399,6 +399,13 @@ struct igb_softc {
 
 	int			intr_cnt;
 	struct igb_intr_data	*intr_data;
+
+	struct if_ringmap	*rx_rmap;
+	struct if_ringmap	*rx_rmap_intr;
+	struct if_ringmap	*tx_rmap;
+	struct if_ringmap	*tx_rmap_intr;
+
+	int			rdr_table[IGB_RDRTABLE_SIZE];
 };
 
 #define IGB_ENABLE_HWRSS(sc)	((sc)->rx_ring_cnt > 1)

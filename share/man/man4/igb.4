@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/igb.4,v 1.2 2010/05/14 20:11:30 marius Exp $
 .\"
-.Dd December 21, 2015
+.Dd May 24, 2015
 .Dt IGB 4
 .Os
 .Sh NAME
@@ -319,39 +319,6 @@ as many transmission queues ready-for-use as allowed by the number of CPUs.
 By default,
 the driver will use MSI-X if it is supported.
 This behaviour can be turned off by setting this tunable to 0.
-.It Va hw.igb.msix.agg_rxtx Va hw.igbX.msix.agg_rxtx
-If MSI-X is used,
-the driver aggregates transmission queue and reception queue processing
-by default.
-This behaviour could be turned off by setting this tunable to 0.
-If the number of MSI-X vectors is not enough to
-put transmission queue processing and reception queue processing
-onto independent MSI-X vector,
-then transmission queue and reception queue processing are always
-aggregated.
-.It Va hw.igbX.msix.off
-If MSI-X is used,
-and transmission queue and reception queue processing are aggregated,
-this tunable specifies the leading target CPU for
-transmission and reception queues processing.
-The value specificed must be aligned to the maximum of
-the number of reception queues
-and the number of transmission queues enabled,
-and must be less than the power of 2 number of CPUs.
-.It Va hw.igbX.msix.rxoff
-If MSI-X is used,
-and transmission queue and reception queue processing are not aggregated,
-this tunable specifies the leading target CPU for reception queues processing.
-The value specificed must be aligned to the number of reception queues enabled
-and must be less than the power of 2 number of CPUs.
-.It Va hw.igbX.msix.txoff
-If MSI-X is used,
-and transmission queue and reception queue processing are not aggregated,
-this tunable specifies the leading target CPU
-for transmission queues processing.
-The value specificed must be aligned to
-the number of transmission queues enabled
-and must be less than the power of 2 number of CPUs.
 .It Va hw.igb.msi.enable Va hw.igbX.msi.enable
 If MSI-X is disabled and MSI is supported,
 the driver will use MSI.
@@ -365,20 +332,6 @@ by default,
 the driver assumes the interrupt could be shared.
 Setting this tunable to 1 allows the driver to perform certain
 optimization based on the knowledge that the interrupt is not shared.
-.It Va hw.igbX.npoll.txoff
-This tunable specifies the leading target CPU for
-transmission queue
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of transmission queues
-enabled and must be less than the power of 2 number of CPUs.
-.It Va hw.igbX.npoll.rxoff
-This tunable specifies the leading target CPU for
-reception queue
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
 .It Va hw.igb.flow_ctrl Va hw.igbX.flow_ctrl
 The default flow control settings.
 Supported values are:
@@ -478,18 +431,6 @@ Setting this value too high will make device drop incoming packets.
 Setting this value too low will hurt overall reception performance
 due to the frequent hardware register writing.
 The default value is 32.
-.It Va npoll_rxoff
-See the tunable
-.Va hw.igbX.npoll.rxoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
-.It Va npoll_txoff
-See the tunable
-.Va hw.igbX.npoll.txoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
 .El
 .\".Sh SUPPORT
 .\"For general information and support,
