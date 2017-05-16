@@ -150,7 +150,7 @@ These commands manipulate the operation level of the mouse driver.
 .It Dv MOUSE_GETHWINFO Ar mousehw_t *hw
 Returns the hardware information of the attached device in the following
 Except for the
-.Dv iftype
+.Fa iftype
 field, the device driver may not always fill the structure with correct
 values.
 Consult manual pages of individual drivers for details of support.
@@ -165,14 +165,14 @@ typedef struct mousehw {
 .Ed
 .Pp
 The
-.Dv buttons
+.Fa buttons
 field holds the number of buttons detected by the driver.
 The driver
 may put an arbitrary value, such as two, in this field, if it cannot
 determine the exact number.
 .Pp
 The
-.Dv iftype
+.Fa iftype
 is the type of interface:
 .Dv MOUSE_IF_SERIAL ,
 .Dv MOUSE_IF_BUS ,
@@ -184,7 +184,7 @@ or
 .Dv MOUSE_IF_UNKNOWN .
 .Pp
 The
-.Dv type
+.Fa type
 tells the device type:
 .Dv MOUSE_MOUSE ,
 .Dv MOUSE_TRACKBALL ,
@@ -194,7 +194,7 @@ or
 .Dv MOUSE_UNKNOWN .
 .Pp
 The
-.Dv model
+.Fa model
 may be
 .Dv MOUSE_MODEL_GENERIC
 or one of
@@ -202,7 +202,7 @@ or one of
 constants.
 .Pp
 The
-.Dv hwid
+.Fa hwid
 is the ID value returned by the pointing device.
 It
 depend on the interface type; refer to the manual page of
@@ -223,7 +223,7 @@ typedef struct mousemode {
 .Ed
 .Pp
 The
-.Dv protocol
+.Fa protocol
 field tells the format in which the device status is returned
 when the mouse data is read by the user program.
 It is one of
@@ -231,38 +231,38 @@ It is one of
 constants.
 .Pp
 The
-.Dv rate
+.Fa rate
 field is the status report rate (reports/sec) at which the device will send
 movement reports to the host computer. -1 if unknown or not applicable.
 .Pp
 The
-.Dv resolution
+.Fa resolution
 field holds a value specifying resolution of the pointing device.
 It is a positive value or one of
 .Dv MOUSE_RES_XXX
 constants.
 .Pp
 The
-.Dv accelfactor
+.Fa accelfactor
 field holds a value to control acceleration feature.
 It must be zero or greater.
 If it is zero, acceleration is disabled.
 .Pp
 The
-.Dv packetsize
+.Fa packetsize
 field tells the length of the fixed-size data packet or the length
 of the fixed part of the variable-length packet.
 The size depends on the interface type, the device type and model, the
 protocol and the operation level of the driver.
 .Pp
 The array
-.Dv syncmask
+.Fa syncmask
 holds a bit mask and pattern to detect the first byte of the
 data packet.
-.Dv syncmask[0]
+.Fa syncmask Ns Bq 0
 is the bit mask to be ANDed with a byte.
 If the result is equal to
-.Dv syncmask[1] ,
+.Fa syncmask Ns Bq 1 ,
 the byte is likely to be the first byte of the data packet.
 Note that this method of detecting the first byte is not 100% reliable,
 thus, should be taken only as an advisory measure.
@@ -272,11 +272,11 @@ The command changes the current operation parameters of the mouse driver
 as specified in
 .Ar mode .
 Only
-.Dv rate ,
-.Dv resolution ,
-.Dv level
+.Fa rate ,
+.Fa resolution ,
+.Fa level
 and
-.Dv accelfactor
+.Fa accelfactor
 may be modifiable.
 Setting values in the other field does not generate
 error and has no effect.
@@ -284,9 +284,9 @@ error and has no effect.
 If you do not want to change the current setting of a field, put -1
 there.
 You may also put zero in
-.Dv resolution
+.Fa resolution
 and
-.Dv rate ,
+.Fa rate ,
 and the default value for the fields will be selected.
 .\" .Pp
 .\" .It Dv MOUSE_GETVARS Ar mousevar_t *vars
@@ -320,7 +320,7 @@ typedef struct mousedata {
 .Ed
 .Pp
 The calling process must fill the
-.Dv len
+.Fa len
 field with the number of bytes to be read into the buffer.
 This command may not be supported by all drivers.
 .Pp
@@ -344,9 +344,9 @@ typedef struct mousestatus {
 .Ed
 .Pp
 The
-.Dv button
+.Fa button
 and
-.Dv obutton
+.Fa obutton
 fields hold the current and the previous state of the mouse buttons.
 When a button is pressed, the corresponding bit is set.
 The mouse drivers may support up to 31 buttons with the bit 0 through 31.
@@ -359,12 +359,12 @@ The first three buttons correspond to left, middle and right buttons.
 If the state of the button has changed since the last
 .Dv MOUSE_GETSTATUS
 call, the corresponding bit in the
-.Dv flags
+.Fa flags
 field will be set.
 If the mouse has moved since the last call, the
 .Dv MOUSE_POSCHANGED
 bit in the
-.Dv flags
+.Fa flags
 field will also be set.
 .Pp
 The other fields hold movement counts since the last
