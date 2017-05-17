@@ -898,10 +898,62 @@ dev/disk/mpt/mpt_pci.c		optional mpt pci
 dev/disk/mpt/mpt_raid.c		optional mpt
 dev/disk/mpt/mpt_user.c		optional mpt
 dev/netif/mxge/if_mxge.c	optional mxge pci
-dev/netif/mxge/fw/eth_z8e/mxge_eth_z8e.c	optional mxge pci
-dev/netif/mxge/fw/ethp_z8e/mxge_ethp_z8e.c	optional mxge pci
-dev/netif/mxge/fw/rss_eth_z8e/mxge_rss_eth_z8e.c	optional mxge pci
-dev/netif/mxge/fw/rss_ethp_z8e/mxge_rss_ethp_z8e.c	optional mxge pci
+mxge_eth_z8e.c		optional mxgefw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk mxge_eth_z8e.fw:mxge_eth_z8e:377284 -mmxge_eth_z8e -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"mxge_eth_z8e.c"
+mxge_eth_z8e.fwo	optional mxgefw					\
+	dependency	"mxge_eth_z8e.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"mxge_eth_z8e.fwo"
+mxge_eth_z8e.fw		optional mxgefw					\
+	dependency	"$S/contrib/dev/mxge/mxge_eth_z8e.fw.uu"        \
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"mxge_eth_z8e.fw"
+mxge_ethp_z8e.c		optional mxgefw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk mxge_ethp_z8e.fw:mxge_ethp_z8e:377284 -mmxge_ethp_z8e -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"mxge_ethp_z8e.c"
+mxge_ethp_z8e.fwo	optional mxgefw					\
+	dependency	"mxge_ethp_z8e.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"mxge_ethp_z8e.fwo"
+mxge_ethp_z8e.fw	optional mxgefw					\
+	dependency	"$S/contrib/dev/mxge/mxge_ethp_z8e.fw.uu"       \
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"mxge_ethp_z8e.fw"
+mxge_rss_eth_z8e.c	optional mxgefw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk mxge_rss_eth_z8e.fw:mxge_rss_eth_z8e:377284 -mmxge_rss_eth_z8e -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"mxge_rss_eth_z8e.c"
+mxge_rss_eth_z8e.fwo	optional mxgefw					\
+	dependency	"mxge_rss_eth_z8e.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"mxge_rss_eth_z8e.fwo"
+mxge_rss_eth_z8e.fw	optional mxgefw					\
+	dependency	"$S/contrib/dev/mxge/mxge_rss_eth_z8e.fw.uu"    \
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"mxge_rss_eth_z8e.fw"
+mxge_rss_ethp_z8e.c	optional mxgefw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk mxge_rss_ethp_z8e.fw:mxge_rss_ethp_z8e:377284 -mmxge_rss_ethp_z8e -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"mxge_rss_ethp_z8e.c"
+mxge_rss_ethp_z8e.fwo	optional mxgefw					\
+	dependency	"mxge_rss_ethp_z8e.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"mxge_rss_ethp_z8e.fwo"
+mxge_rss_ethp_z8e.fw	optional mxgefw					\
+	dependency	"$S/contrib/dev/mxge/mxge_rss_ethp_z8e.fw.uu"   \
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"mxge_rss_ethp_z8e.fw"
 net/zlib.c			optional mxge pci
 dev/netif/my/if_my.c		optional my
 dev/misc/musycc/musycc.c	optional musycc
