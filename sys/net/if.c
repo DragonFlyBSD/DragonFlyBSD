@@ -3549,8 +3549,12 @@ if_ringmap_set_grid(device_t dev, struct if_ringmap *rm, int grid)
 	rm->rm_grid = grid;
 
 	offset = (rm->rm_grid * device_get_unit(dev)) % netisr_ncpus;
-	for (i = 0; i < rm->rm_cnt; ++i)
-		rm->rm_cpumap[i] = (offset + i) % netisr_ncpus;
+	for (i = 0; i < rm->rm_cnt; ++i) {
+		rm->rm_cpumap[i] = offset + i;
+		KASSERT(rm->rm_cpumap[i] < netisr_ncpus,
+		    ("invalid cpumap[%d] = %d, offset %d", i,
+		     rm->rm_cpumap[i], offset));
+	}
 }
 
 struct if_ringmap *
@@ -3600,10 +3604,58 @@ if_ringmap_align(device_t dev, struct if_ringmap *rm0, struct if_ringmap *rm1)
 void
 if_ringmap_match(device_t dev, struct if_ringmap *rm0, struct if_ringmap *rm1)
 {
+	int subset_grid, cnt, divisor, mod, offset, i;
+	struct if_ringmap *subset_rm, *rm;
+	int old_rm0_grid, old_rm1_grid;
 
-	if (rm0->rm_grid == netisr_ncpus || rm1->rm_grid == netisr_ncpus)
+	if (rm0->rm_grid == rm1->rm_grid)
 		return;
+
+	/* Save grid for later use */
+	old_rm0_grid = rm0->rm_grid;
+	old_rm1_grid = rm1->rm_grid;
+
 	if_ringmap_align(dev, rm0, rm1);
+
+	if (rm0->rm_cnt >= (2 * old_rm1_grid)) {
+		cnt = rm0->rm_cnt;
+		subset_grid = old_rm1_grid;
+		subset_rm = rm1;
+		rm = rm0;
+	} else if (rm1->rm_cnt > (2 * old_rm0_grid)) {
+		cnt = rm1->rm_cnt;
+		subset_grid = old_rm0_grid;
+		subset_rm = rm0;
+		rm = rm1;
+	} else {
+		/* No space to shift */
+		return;
+	}
+
+	mod = cnt / subset_grid;
+	KKASSERT(mod >= 2);
+	divisor = netisr_ncpus / rm->rm_grid;
+	offset = ((device_get_unit(dev) / divisor) % mod) * subset_grid;
+
+	for (i = 0; i < subset_rm->rm_cnt; ++i) {
+		subset_rm->rm_cpumap[i] += offset;
+		KASSERT(subset_rm->rm_cpumap[i] < netisr_ncpus,
+		    ("match: invalid cpumap[%d] = %d, offset %d",
+		     i, subset_rm->rm_cpumap[i], offset));
+	}
+#ifdef INVARIANTS
+	for (i = 0; i < subset_rm->rm_cnt; ++i) {
+		int j;
+
+		for (j = 0; j < rm->rm_cnt; ++j) {
+			if (rm->rm_cpumap[j] == subset_rm->rm_cpumap[i])
+				break;
+		}
+		KASSERT(j < rm->rm_cnt,
+		    ("subset cpumap[%d] = %d not found in superset",
+		     i, subset_rm->rm_cpumap[i]));
+	}
+#endif
 }
 
 int
