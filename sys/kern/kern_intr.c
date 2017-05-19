@@ -673,22 +673,16 @@ ithread_livelock_wakeup(systimer_t st, int in_ipi __unused,
 /*
  * Schedule ithread within fast intr handler
  *
- * XXX Protect sched_ithd_hard() call with gd_intr_nesting_level?
- * Interrupts aren't enabled, but still...
+ * Temporarily bump the current thread's td_nest_count to prevent deep
+ * preemptions and splz/doreti stacks.
  */
 static __inline void
 ithread_fast_sched(int intr, thread_t td)
 {
     ++td->td_nest_count;
-
-    /*
-     * We are already in critical section, exit it now to
-     * allow preemption.
-     */
     crit_exit_quick(td);
     sched_ithd_hard(intr);
     crit_enter_quick(td);
-
     --td->td_nest_count;
 }
 

@@ -857,10 +857,15 @@ lwkt_switch_return(thread_t otd)
 
 /*
  * Request that the target thread preempt the current thread.  Preemption
- * can only occur if our only critical section is the one that we were called
- * with, the relative priority of the target thread is higher, and the target
- * thread holds no tokens.  This also only works if we are not holding any
- * spinlocks (obviously).
+ * can only occur only:
+ *
+ *	- If our critical section is the one that we were called with
+ *	- The relative priority of the target thread is higher
+ *	- The target is not excessively interrupt-nested via td_nest_count
+ *	- The target thread holds no tokens.
+ *	- The target thread is not already scheduled and belongs to the
+ *	  current cpu.
+ *	- The current thread is not holding any spin-locks.
  *
  * THE CALLER OF LWKT_PREEMPT() MUST BE IN A CRITICAL SECTION.  Typically
  * this is called via lwkt_schedule() through the td_preemptable callback.
@@ -908,6 +913,10 @@ lwkt_preempt(thread_t ntd, int critcount)
 	return;
     }
     if (td->td_critcount > critcount) {
+	++preempt_miss;
+	return;
+    }
+    if (td->td_nest_count >= 2) {
 	++preempt_miss;
 	return;
     }
