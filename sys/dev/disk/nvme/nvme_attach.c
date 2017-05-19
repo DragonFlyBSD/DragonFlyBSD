@@ -203,8 +203,28 @@ nvme_pci_attach(device_t dev)
 			pci_enable_msix(dev);
 		}
 	}
+
+	/*
+	 * If we have to use a normal interrupt we fake the cputovect[] in
+	 * order to try to map at least (ncpus) submission queues.  The admin
+	 * code will limit the number of completion queues to something
+	 * reasonable when nirqs is 1 since the single interrupt polls all
+	 * completion queues.
+	 *
+	 * NOTE: We do NOT want to map a single completion queue (#0), because
+	 *	 then an I/O submission and/or completion queue will overlap
+	 *	 the admin submission or completion queue, and that can cause
+	 *	 havoc when admin commands are submitted that don't return
+	 *	 for long periods of time.
+	 *
+	 * NOTE: Chipsets supporting MSI-X *MIGHT* *NOT* properly support
+	 *	 a normal pin-based level interrupt.  For example, the BPX
+	 *	 NVMe SSD just leaves the level interrupt stuck on.  Do not
+	 *	 disable MSI-X unless you have no choice.
+	 */
 	if (msix_enable == 0 || error) {
 		uint32_t irq_flags;
+		int i;
 
 		error = 0;
 		sc->nirqs = 1;
@@ -212,6 +232,9 @@ nvme_pci_attach(device_t dev)
 					       &sc->rid_irq[0], &irq_flags);
 		sc->irq[0] = bus_alloc_resource_any(dev, SYS_RES_IRQ,
 						 &sc->rid_irq[0], irq_flags);
+
+		for (i = 0; i < ncpus; ++i)
+			sc->cputovect[i] = i + 1;
 	}
 	if (sc->irq[0] == NULL) {
 		device_printf(dev, "unable to map interrupt\n");

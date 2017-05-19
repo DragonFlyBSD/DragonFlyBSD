@@ -91,6 +91,20 @@ nvme_enable(nvme_softc_t *sc, int enable)
 		}
 		nvme_os_sleep(50);	/* 50ms poll */
 	}
+
+	/*
+	 * Interrupt masking (only applicable when MSI-X not used, 3.1.3 and
+	 * 3.1.4 state that these registers should not be accessed with MSI-X)
+	 */
+	if (error == 0 && sc->nirqs == 1) {
+		if (enable) {
+			nvme_write(sc, NVME_REG_INTSET, ~1);
+			nvme_write(sc, NVME_REG_INTCLR, 1);
+		} else {
+			nvme_write(sc, NVME_REG_INTSET, ~1);
+		}
+	}
+
 	if (error) {
 		device_printf(sc->dev, "Cannot %s device\n",
 			      (enable ? "enable" : "disable"));
@@ -217,7 +231,6 @@ nvme_alloc_comqueue(nvme_softc_t *sc, uint16_t qid)
 	 */
 	lockinit(&queue->lk, "nvqlk", 0, 0);
 	queue->sc = sc;
-	queue->nqe = sc->maxqe;
 	queue->qid = qid;
 	queue->phase = NVME_COMQ_STATUS_PHASE;
 	queue->comq_doorbell_reg = NVME_REG_COMQ_BELL(qid, sc->dstrd4);
@@ -235,8 +248,13 @@ nvme_alloc_comqueue(nvme_softc_t *sc, uint16_t qid)
 	}
 
 	/*
-	 * Error handling
+	 * Set nqe last.  The comq polling loop tests this field and we
+	 * do not want it to spuriously assume that the comq is initialized
+	 * until it actually is.
 	 */
+	if (error == 0)
+		queue->nqe = sc->maxqe;
+
 	if (error)
 		nvme_free_comqueue(sc, qid);
 	return error;
@@ -274,6 +292,11 @@ void
 nvme_free_comqueue(nvme_softc_t *sc, uint16_t qid)
 {
 	nvme_comqueue_t *queue = &sc->comqueues[qid];
+
+	/*
+	 * Clear this field first so poll loops ignore the comq.
+	 */
+	queue->nqe = 0;
 
 	if (queue->kcomq) {
 		bus_dmamem_free(sc->cque_tag, queue->kcomq, queue->cque_map);
@@ -626,6 +649,16 @@ nvme_poll_completions(nvme_comqueue_t *comq, struct lock *lk)
 #endif
 }
 
+/*
+ * Core interrupt handler (called from dedicated interrupt thread, possibly
+ * preempts other threads).
+ *
+ * NOTE: For pin-based level interrupts, the chipset interrupt is cleared
+ *	 automatically once all the head doorbells are updated.  However,
+ *	 most chipsets assume MSI-X will be used and MAY NOT IMPLEMENT
+ *	 pin-based interrupts properly.  I found the BPX card, for example,
+ *	 is unable to clear a pin-based interrupt.
+ */
 void
 nvme_intr(void *arg)
 {
@@ -634,6 +667,12 @@ nvme_intr(void *arg)
 	int i;
 	int skip;
 
+	/*
+	 * Process all completion queues associated with this vector.  The
+	 * interrupt is masked in the APIC.  Do NOT mess with the NVMe
+	 * masking registers because (1) We don't need to and it wastes time,
+	 * and (2) We aren't supposed to touch them if using MSI-X anyway.
+	 */
 	sc = comq->sc;
 	if (sc->nirqs == 1)
 		skip = 1;

@@ -284,15 +284,32 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	 *
 	 * +1 for dumps			XXX future
 	 * +1 for async events		XXX future
+	 *
+	 * NOTE: Set one less than the #define because we use 1...N for I/O
+	 *	 queues (queue 0 is used for the admin queue).  Easier this
+	 *	 way.
 	 */
 	req = nvme_get_admin_request(sc, NVME_OP_SET_FEATURES);
 
 	niosubqs = ncpus * 2 + 0;
 	niocomqs = ncpus + 0;
-	if (niosubqs > NVME_MAX_QUEUES)
-		niosubqs = NVME_MAX_QUEUES;
-	if (niocomqs > NVME_MAX_QUEUES)
-		niocomqs = NVME_MAX_QUEUES;
+	if (niosubqs >= NVME_MAX_QUEUES)
+		niosubqs = NVME_MAX_QUEUES - 1;
+	if (niocomqs >= NVME_MAX_QUEUES)
+		niocomqs = NVME_MAX_QUEUES - 1;
+
+	/*
+	 * If there are insufficient MSI-X vectors or we use a normal
+	 * interrupt, the completion queues are going to wind up being
+	 * polled by a single admin interrupt.  Limit the number of
+	 * completion queues in this case to something reasonable.
+	 */
+	if (sc->nirqs == 1 && niocomqs > 4) {
+		niocomqs = 4;
+		device_printf(sc->dev, "no MSI-X support, limit comqs to %d\n",
+			      niocomqs);
+	}
+
 	device_printf(sc->dev, "Request %u/%u queues, ", niosubqs, niocomqs);
 
 	req->cmd.setfeat.flags = NVME_FID_NUMQUEUES;
@@ -302,7 +319,10 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	nvme_submit_request(req);
 
 	/*
-	 * Get response and set our operations mode.
+	 * Get response and set our operations mode.  Limit the returned
+	 * queue counts to no more than we requested (some chipsets may
+	 * return more than the requested number of queues while others
+	 * will not).
 	 */
 	status = nvme_wait_request(req, hz);
 	/* XXX handle status */
@@ -310,6 +330,10 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	if (status == 0) {
 		sc->niosubqs = 1 + (req->res.setfeat.dw0 & 0xFFFFU);
 		sc->niocomqs = 1 + ((req->res.setfeat.dw0 >> 16) & 0xFFFFU);
+		if (sc->niosubqs > niosubqs)
+			sc->niosubqs = niosubqs;
+		if (sc->niocomqs > niocomqs)
+			sc->niocomqs = niocomqs;
 	} else {
 		sc->niosubqs = 0;
 		sc->niocomqs = 0;
@@ -451,15 +475,13 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	}
 
 	/*
-	 * Basically interrupt coalescing is worthless if we care about
-	 * performance, at least on the Intel 750.  Setting the threshold
-	 * has no effect if time is set to 0.  The smallest time that can
-	 * be set is a value of 1 (== 100uS), which is much too long.  That
-	 * is only 10,000 interrupts/sec/cpu and on the Intel 750 it totally
-	 * destroys sequential performance.
+	 * Disable interrupt coalescing.  It is basically worthless because
+	 * setting the threshold has no effect when time is set to 0, and the
+	 * smallest time that can be set is 1 (== 100uS), which is too long.
+	 * Sequential performance is destroyed (on e.g. the Intel 750).
+	 * So kill it.
 	 */
 	req = nvme_get_admin_request(sc, NVME_OP_SET_FEATURES);
-
 	device_printf(sc->dev, "Interrupt Coalesce: 100uS / 4 qentries\n");
 
 	req->cmd.setfeat.flags = NVME_FID_INTCOALESCE;
