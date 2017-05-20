@@ -58,21 +58,12 @@
 #
 
 #include <sys/types.h>
-#include <sys/systm.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
+#include <sys/bus.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 
-#include <sys/bus.h>
-
 #include <bus/mmc/bridge.h>
-#include <bus/mmc/mmcreg.h>
 #include <dev/disk/sdhci/sdhci.h>
-
-CODE {
-	struct sdhci_slot;
-}
 
 INTERFACE sdhci;
 
