@@ -206,11 +206,11 @@ struct mmc_request {
 #define	MMC_SET_BLOCKLEN	16
 #define	MMC_READ_SINGLE_BLOCK	17
 #define	MMC_READ_MULTIPLE_BLOCK	18
-			/* reserved: 19 */
+#define	MMC_SEND_TUNING_BLOCK	19
+#define	MMC_SEND_TUNING_BLOCK_HS200 21
 
 /* Class 3: Stream write commands */
 #define	MMC_WRITE_DAT_UNTIL_STOP 20
-			/* reserved: 21 */
 			/* reserved: 22 */
 
 /* Class 4: Block oriented write commands */
@@ -301,16 +301,28 @@ struct mmc_request {
 #define EXT_CSD_ERASE_GRP_DEF	175	/* R/W */
 #define	EXT_CSD_PART_CONFIG	179	/* R/W */
 #define EXT_CSD_BUS_WIDTH	183	/* R/W */
+#define	EXT_CSD_STROBE_SUPPORT	184	/* RO */
 #define EXT_CSD_HS_TIMING	185	/* R/W */
+#define	EXT_CSD_POWER_CLASS	187	/* R/W */
 #define EXT_CSD_CARD_TYPE	196	/* RO */
+#define	EXT_CSD_DRIVER_STRENGTH	197	/* RO */
 #define EXT_CSD_REV		192	/* RO */
 #define	EXT_CSD_PART_SWITCH_TO	199	/* RO */
+#define	EXT_CSD_PWR_CL_52_195	200	/* RO */
+#define	EXT_CSD_PWR_CL_26_195	201	/* RO */
+#define	EXT_CSD_PWR_CL_52_360	202	/* RO */
+#define	EXT_CSD_PWR_CL_26_360	203	/* RO */
 #define EXT_CSD_SEC_CNT		212	/* RO, 4 bytes */
 #define	EXT_CSD_HC_WP_GRP_SIZE	221	/* RO */
 #define EXT_CSD_ERASE_TO_MULT	223	/* RO */
 #define EXT_CSD_ERASE_GRP_SIZE	224	/* RO */
 #define	EXT_CSD_BOOT_SIZE_MULT	226	/* RO */
+#define	EXT_CSD_PWR_CL_200_195  236	/* RO */
+#define	EXT_CSD_PWR_CL_200_360  237	/* RO */
+#define	EXT_CSD_PWR_CL_52_195_DDR 238	/* RO */
+#define	EXT_CSD_PWR_CL_52_360_DDR 239	/* RO */
 #define	EXT_CSD_GEN_CMD6_TIME	248	/* RO */
+#define	EXT_CSD_PWR_CL_200_360_DDR 253	/* RO */
 
 /*
  * EXT_CSD field definitions
@@ -359,15 +371,38 @@ struct mmc_request {
 #define EXT_CSD_CMD_SET_SECURE		2
 #define EXT_CSD_CMD_SET_CPSECURE	4
 
-#define EXT_CSD_CARD_TYPE_26	1
-#define EXT_CSD_CARD_TYPE_52	2
+#define	EXT_CSD_HS_TIMING_BC		0
+#define	EXT_CSD_HS_TIMING_HS		1
+#define	EXT_CSD_HS_TIMING_DDR200		2
+#define	EXT_CSD_HS_TIMING_DDR400		3
+#define	EXT_CSD_HS_TIMING_DRV_STR_SHIFT	4
+
+#define	EXT_CSD_POWER_CLASS_8BIT_MASK	0xf0
+#define	EXT_CSD_POWER_CLASS_8BIT_SHIFT	4
+#define	EXT_CSD_POWER_CLASS_4BIT_MASK	0x0f
+#define	EXT_CSD_POWER_CLASS_4BIT_SHIFT	0
+
+#define	EXT_CSD_CARD_TYPE_HS_26		0x0001
+#define	EXT_CSD_CARD_TYPE_HS_52		0x0002
+#define	EXT_CSD_CARD_TYPE_DDR_52_1_8V	0x0004
+#define	EXT_CSD_CARD_TYPE_DDR_52_1_2V	0x0008
+#define	EXT_CSD_CARD_TYPE_HS200_1_8V	0x0010
+#define	EXT_CSD_CARD_TYPE_HS200_1_2V	0x0020
+#define	EXT_CSD_CARD_TYPE_HS400_1_8V	0x0040
+#define	EXT_CSD_CARD_TYPE_HS400_1_2V	0x0080
+#define	EXT_CSD_CARD_TYPE_HS400ES	0x0100
 
 #define EXT_CSD_BUS_WIDTH_1	0
 #define EXT_CSD_BUS_WIDTH_4	1
 #define EXT_CSD_BUS_WIDTH_8	2
+#define	EXT_CSD_BUS_WIDTH_4_DDR	5
+#define	EXT_CSD_BUS_WIDTH_8_DDR	6
+#define	EXT_CSD_BUS_WIDTH_ES	0x80
 
-#define MMC_TYPE_26_MAX_HS	26000000
-#define MMC_TYPE_52_MAX_HS	52000000
+#define	MMC_TYPE_HS_26_MAX		26000000
+#define	MMC_TYPE_HS_52_MAX		52000000
+#define	MMC_TYPE_DDR52_MAX		52000000
+#define	MMC_TYPE_HS200_HS400ES_MAX	200000000
 
 /*
  * SD bus widths
@@ -383,19 +418,30 @@ struct mmc_request {
 #define SD_SWITCH_GROUP1	0
 #define SD_SWITCH_NORMAL_MODE	0
 #define SD_SWITCH_HS_MODE	1
+#define	SD_SWITCH_SDR50_MODE	2
+#define	SD_SWITCH_SDR104_MODE	3
+#define	SD_SWITCH_DDR50		4
 #define SD_SWITCH_NOCHANGE	0xF
 
 #define	SD_CLR_CARD_DETECT	0
 #define	SD_SET_CARD_DETECT	1
 
-#define	SD_MAX_HS		50000000
+#define	SD_HS_MAX		50000000
+#define	SD_DDR50_MAX		50000000
+#define	SD_SDR12_MAX		25000000
+#define	SD_SDR25_MAX		50000000
+#define	SD_SDR50_MAX		100000000
+#define	SD_SDR104_MAX		208000000
+
+/* Specifications require 400 kHz max. during ID phase. */
+#define	SD_MMC_CARD_ID_FREQUENCY	400000
 
 /* OCR bits */
 
 /*
  * in SD 2.0 spec, bits 8-14 are now marked reserved
  * Low voltage in SD2.0 spec is bit 7, TBD voltage
- * Low voltage in MC 3.31 spec is bit 7, 1.65-1.95V
+ * Low voltage in MMC 3.31 spec is bit 7, 1.65-1.95V
  * Specs prior to  MMC 3.31 defined bits 0-7 as voltages down to 1.5V.
  * 3.31 redefined them to be reserved and also said that cards had to
  * support the 2.7-3.6V and fixed the OCR to be 0xfff8000 for high voltage
@@ -406,9 +452,9 @@ struct mmc_request {
  * The MMC_OCR_CCS appears to be valid for only SD cards.
  */
 #define	MMC_OCR_VOLTAGE	0x3fffffffU	/* Vdd Voltage mask */
+#define	MMC_OCR_MIN_VOLTAGE_SHIFT	7
 #define	MMC_OCR_LOW_VOLTAGE (1u << 7)	/* Low Voltage Range -- tbd */
 #define	MMC_OCR_200_210	(1U << 8)	/* Vdd voltage 2.00 ~ 2.10 */
-#define	MMC_OCR_MIN_VOLTAGE_SHIFT	8
 #define	MMC_OCR_210_220	(1U << 9)	/* Vdd voltage 2.10 ~ 2.20 */
 #define	MMC_OCR_220_230	(1U << 10)	/* Vdd voltage 2.20 ~ 2.30 */
 #define	MMC_OCR_230_240	(1U << 11)	/* Vdd voltage 2.30 ~ 2.40 */
@@ -425,6 +471,12 @@ struct mmc_request {
 #define	MMC_OCR_340_350	(1U << 22)	/* Vdd voltage 3.40 ~ 3.50 */
 #define	MMC_OCR_350_360	(1U << 23)	/* Vdd voltage 3.50 ~ 3.60 */
 #define	MMC_OCR_MAX_VOLTAGE_SHIFT	23
+#define	MMC_OCR_S18R	(1U << 24)	/* Switching to 1.8 V requested (SD) */
+#define	MMC_OCR_S18A	MMC_OCR_S18R	/* Switching to 1.8 V accepted (SD) */
+#define	MMC_OCR_XPC	(1U << 28)	/* SDXC Power Control */
+#define	MMC_OCR_ACCESS_MODE_BYTE (0U << 29) /* Access Mode Byte (MMC) */
+#define	MMC_OCR_ACCESS_MODE_SECT (1U << 29) /* Access Mode Sector (MMC) */
+#define	MMC_OCR_ACCESS_MODE_MASK (3U << 29)
 #define	MMC_OCR_CCS	(1u << 30)	/* Card Capacity status (SD vs SDHC) */
 #define	MMC_OCR_CARD_BUSY (1U << 31)	/* Card Power up status */
 

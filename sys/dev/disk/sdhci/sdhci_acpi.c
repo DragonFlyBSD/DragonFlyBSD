@@ -143,18 +143,32 @@ sdhci_acpi_write_multi_4(device_t dev, struct sdhci_slot *slot __unused,
 
 static void sdhci_acpi_intr(void *arg);
 
+#define INTEL_ATOM_QUIRKS_SDCARD					\
+	SDHCI_QUIRK_WHITELIST_ADMA2 | SDHCI_QUIRK_WAIT_WHILE_BUSY
+#define INTEL_ATOM_QUIRKS_EMMC						\
+	INTEL_ATOM_QUIRKS_SDCARD | SDHCI_QUIRK_MMC_DDR52 |		\
+	SDHCI_QUIRK_CAPS_BIT63_FOR_MMC_HS400 | SDHCI_QUIRK_PRESET_VALUE_BROKEN
+
 static struct {
 	char *hid;
+	char *uid;
 	u_int quirks;
 } sdhci_devices[] = {
-	/* The Intel Bay Trail and Braswell controllers work fine with ADMA2. */
-	{"80860F14", SDHCI_QUIRK_WHITELIST_ADMA2 | SDHCI_QUIRK_WAIT_WHILE_BUSY},
-	{"80860F16", SDHCI_QUIRK_WHITELIST_ADMA2 | SDHCI_QUIRK_WAIT_WHILE_BUSY},
+	/* The Intel Atom integrated controllers work fine with ADMA2. */
+	/* Bay Trail / Braswell */
+	{"80860F14", "1", INTEL_ATOM_QUIRKS_EMMC},
+	{"80860F14", "3", INTEL_ATOM_QUIRKS_SDCARD},
+	{"80860F16", NULL, INTEL_ATOM_QUIRKS_SDCARD},
+	/* Apollo Lake */
+	{"80865ACA", NULL, INTEL_ATOM_QUIRKS_SDCARD},
+	{"80865ACC", NULL, INTEL_ATOM_QUIRKS_EMMC},
 };
 
 static char *sdhci_ids[] = {
 	"80860F14",
 	"80860F16",
+	"80865ACA",
+	"80865ACC",
 	NULL
 };
 
@@ -187,11 +201,15 @@ sdhci_acpi_attach(device_t dev)
 
 	quirks = 0;
 	for (i = 0; i < NELEM(sdhci_devices); i++) {
-		if (strcmp(sdhci_devices[i].hid, id) == 0) {
+		if (strcmp(sdhci_devices[i].hid, id) == 0 &&
+		    (sdhci_devices[i].uid == NULL ||
+		     acpi_MatchUid(sc->handle, sdhci_devices[i].uid))) {
 			quirks = sdhci_devices[i].quirks;
 			break;
 		}
 	}
+	quirks &= ~sdhci_quirk_clear;
+	quirks |= sdhci_quirk_set;
 
 	/* Allocate IRQ. */
 	rid = 0;
@@ -306,13 +324,14 @@ static device_method_t sdhci_methods[] = {
 	DEVMETHOD(bus_write_ivar,	sdhci_generic_write_ivar),
 
 	/* mmcbr_if */
-	DEVMETHOD(mmcbr_update_ios, sdhci_generic_update_ios),
-	DEVMETHOD(mmcbr_request, sdhci_generic_request),
-	DEVMETHOD(mmcbr_get_ro, sdhci_generic_get_ro),
-	DEVMETHOD(mmcbr_acquire_host, sdhci_generic_acquire_host),
-	DEVMETHOD(mmcbr_release_host, sdhci_generic_release_host),
+	DEVMETHOD(mmcbr_update_ios,	sdhci_generic_update_ios),
+	DEVMETHOD(mmcbr_switch_vccq,	sdhci_generic_switch_vccq),
+	DEVMETHOD(mmcbr_request,	sdhci_generic_request),
+	DEVMETHOD(mmcbr_get_ro,		sdhci_generic_get_ro),
+	DEVMETHOD(mmcbr_acquire_host,	sdhci_generic_acquire_host),
+	DEVMETHOD(mmcbr_release_host,	sdhci_generic_release_host),
 
-	/* SDHCI registers accessors */
+	/* SDHCI accessors */
 	DEVMETHOD(sdhci_read_1,		sdhci_acpi_read_1),
 	DEVMETHOD(sdhci_read_2,		sdhci_acpi_read_2),
 	DEVMETHOD(sdhci_read_4,		sdhci_acpi_read_4),
@@ -321,6 +340,7 @@ static device_method_t sdhci_methods[] = {
 	DEVMETHOD(sdhci_write_2,	sdhci_acpi_write_2),
 	DEVMETHOD(sdhci_write_4,	sdhci_acpi_write_4),
 	DEVMETHOD(sdhci_write_multi_4,	sdhci_acpi_write_multi_4),
+	DEVMETHOD(sdhci_set_uhs_timing,	sdhci_generic_set_uhs_timing),
 
 	DEVMETHOD_END
 };

@@ -65,6 +65,15 @@
 #include <bus/mmc/bridge.h>
 #include <dev/disk/sdhci/sdhci.h>
 
+CODE {
+	static void
+	null_set_uhs_timing(device_t brdev __unused,
+	    struct sdhci_slot *slot __unused)
+	{
+
+	}
+}
+
 INTERFACE sdhci;
 
 METHOD uint8_t read_1 {
@@ -147,3 +156,8 @@ METHOD boolean_t get_card_present {
 	device_t		brdev;
 	struct sdhci_slot	*slot;
 } DEFAULT sdhci_generic_get_card_present;
+
+METHOD void set_uhs_timing {
+	device_t		brdev;
+	struct sdhci_slot	*slot;
+} DEFAULT null_set_uhs_timing;

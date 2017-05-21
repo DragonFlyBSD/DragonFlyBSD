@@ -84,6 +84,10 @@ Set to 1 to allow using ADMA2 transfer mode on untested controller models.
 Set to 1 to disable the SDMA transfer mode.
 .It Va hw.sdhci.adma2_disable
 Set to 1 to disable the ADMA2 transfer mode.
+.It Va hw.sdhci.quirk_clear
+Set bit mask of quirks to clear.
+.It Va hw.sdhci.quirk_set
+Set bit mask of quirks to set, this is applied after the clearing mask.
 .El
 .Sh SEE ALSO
 .Xr mmc 4 ,
