@@ -26,7 +26,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/resource.h>
@@ -39,13 +38,10 @@
 
 #include <bus/pci/pcivar.h>
 
-#include <machine/stdarg.h>
-
 #include <bus/mmc/bridge.h>
-#include <bus/mmc/mmcreg.h>
-#include <bus/mmc/mmcbrvar.h>
 
-#include "sdhci.h"
+#include <dev/disk/sdhci/sdhci.h>
+
 #include "mmcbr_if.h"
 #include "sdhci_if.h"
 

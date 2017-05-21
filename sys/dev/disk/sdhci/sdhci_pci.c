@@ -26,11 +26,9 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/module.h>
-#include <sys/mutex.h>
 #include <sys/resource.h>
 #include <sys/rman.h>
 #include <sys/sysctl.h>
@@ -42,20 +40,17 @@
 
 #include <sys/bus.h>
 #include <sys/resource.h>
-#include <machine/stdarg.h>
 
 #include <bus/mmc/bridge.h>
-#include <bus/mmc/mmcreg.h>
-#include <bus/mmc/mmcbrvar.h>
 
-#include "sdhci.h"
+#include <dev/disk/sdhci/sdhci.h>
+
 #include "mmcbr_if.h"
 #include "sdhci_if.h"
 
 /*
  * PCI registers
  */
-
 #define PCI_SDHCI_IFPIO			0x00
 #define PCI_SDHCI_IFDMA			0x01
 #define PCI_SDHCI_IFVENDOR		0x02

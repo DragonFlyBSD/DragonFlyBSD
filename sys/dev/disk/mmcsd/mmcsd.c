@@ -282,13 +282,13 @@ mmcsd_resume(device_t dev)
 }
 
 static int
-mmcsd_open(struct dev_open_args *ap)
+mmcsd_open(struct dev_open_args *ap __unused)
 {
 	return (0);
 }
 
 static int
-mmcsd_close(struct dev_close_args *ap)
+mmcsd_close(struct dev_close_args *ap __unused)
 {
 	return (0);
 }
