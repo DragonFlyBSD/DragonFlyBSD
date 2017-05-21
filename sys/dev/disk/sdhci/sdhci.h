@@ -67,6 +67,9 @@
 #define	SDHCI_QUIRK_BCM577XX_400KHZ_CLKSRC		(1<<16)
 /* Allow ADMA2 to be used. */
 #define	SDHCI_QUIRK_WHITELIST_ADMA2			(1<<17)
+/* Controller waits for busy responses. */
+#define	SDHCI_QUIRK_WAIT_WHILE_BUSY			(1<<22)
+
 
 /*
  * Controller registers

@@ -717,6 +717,8 @@ sdhci_init_slot(device_t dev, struct sdhci_slot *slot, int num)
 		slot->host.caps |= MMC_CAP_8_BIT_DATA;
 	if (caps & SDHCI_CAN_DO_HISPD)
 		slot->host.caps |= MMC_CAP_HSPEED;
+	if (slot->quirks & SDHCI_QUIRK_WAIT_WHILE_BUSY)
+		slot->host.caps |= MMC_CAP_WAIT_WHILE_BUSY;
 	/* Decide if we have usable DMA. */
 	if (caps & SDHCI_CAN_DO_DMA)
 		slot->opt |= SDHCI_HAVE_SDMA;
@@ -1025,7 +1027,7 @@ sdhci_start_command(struct sdhci_slot *slot, struct mmc_command *cmd)
 	/* 
 	 * Interrupt aggregation: To reduce total number of interrupts
 	 * group response interrupt with data interrupt when possible.
-	 * If there going to be data interrupt, mask response one.
+	 * If there is going to be a data interrupt, mask the response one.
 	 */
 	if (slot->data_done == 0) {
 		WR4(slot, SDHCI_SIGNAL_ENABLE,
@@ -1706,6 +1708,12 @@ sdhci_generic_read_ivar(device_t bus, device_t child, int which, uintptr_t *resu
 		break;
 	case MMCBR_IVAR_MAX_DATA:
 		*(int *)result = 65535;
+		break;
+	case MMCBR_IVAR_MAX_BUSY_TIMEOUT:
+		/*
+		 * Currently, sdhci_start_data() hardcodes 1 s for all CMDs.
+		 */
+		*result = 1000000;
 		break;
 	}
 	return (0);

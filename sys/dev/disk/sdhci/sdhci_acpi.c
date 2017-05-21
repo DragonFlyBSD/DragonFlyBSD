@@ -143,13 +143,28 @@ sdhci_acpi_write_multi_4(device_t dev, struct sdhci_slot *slot __unused,
 
 static void sdhci_acpi_intr(void *arg);
 
+static struct {
+	char *hid;
+	u_int quirks;
+} sdhci_devices[] = {
+	/* The Intel Bay Trail and Braswell controllers work fine with ADMA2. */
+	{"80860F14", SDHCI_QUIRK_WHITELIST_ADMA2 | SDHCI_QUIRK_WAIT_WHILE_BUSY},
+	{"80860F16", SDHCI_QUIRK_WHITELIST_ADMA2 | SDHCI_QUIRK_WAIT_WHILE_BUSY},
+};
+
+static char *sdhci_ids[] = {
+	"80860F14",
+	"80860F16",
+	NULL
+};
+
 static int
 sdhci_acpi_probe(device_t dev)
 {
-	static char *sdhci_ids[] = { "80860F14", "80860F16", NULL };
+	if (acpi_disabled("sdhci"))
+		return (ENXIO);
 
-	if (acpi_disabled("sdhci") ||
-	    ACPI_ID_PROBE(device_get_parent(dev), dev, sdhci_ids) == NULL)
+	if (ACPI_ID_PROBE(device_get_parent(dev), dev, sdhci_ids) == NULL)
 		return (ENXIO);
 
 	device_set_desc(dev, "SDHCI controller");
@@ -160,10 +175,23 @@ static int
 sdhci_acpi_attach(device_t dev)
 {
 	struct sdhci_acpi_softc *sc = device_get_softc(dev);
-	int err, rid;
+	char *id;
+	int err, i, rid, quirks;
+
+	id = ACPI_ID_PROBE(device_get_parent(dev), dev, sdhci_ids);
+	if (id == NULL)
+		return (ENXIO);
 
 	sc->dev = dev;
 	sc->handle = acpi_get_handle(dev);
+
+	quirks = 0;
+	for (i = 0; i < NELEM(sdhci_devices); i++) {
+		if (strcmp(sdhci_devices[i].hid, id) == 0) {
+			quirks = sdhci_devices[i].quirks;
+			break;
+		}
+	}
 
 	/* Allocate IRQ. */
 	rid = 0;
@@ -186,8 +214,8 @@ sdhci_acpi_attach(device_t dev)
 	}
 
 	pci_set_powerstate(dev, PCI_POWERSTATE_D0);
-	/* The Intel sdhci controllers all work fine with ADMA2. */
-	sc->slot.quirks = SDHCI_QUIRK_WHITELIST_ADMA2;
+
+	sc->slot.quirks = quirks;
 	if (sdhci_init_slot(dev, &sc->slot, 0) != 0) {
 		device_printf(dev, "sdhci initialization failed\n");
 		pci_set_powerstate(dev, PCI_POWERSTATE_D3);

@@ -100,6 +100,27 @@ static const struct sdhci_device {
 	    SDHCI_QUIRK_RESET_AFTER_REQUEST },
 	{ 0x16bc14e4,	0xffff,	"Broadcom BCM577xx SDXC/MMC Card Reader",
 	    SDHCI_QUIRK_BCM577XX_400KHZ_CLKSRC },
+	{ 0x0f148086,	0xffff, "Intel Bay Trail eMMC 4.5 Controller",
+	    SDHCI_QUIRK_WHITELIST_ADMA2 |
+	    SDHCI_QUIRK_WAIT_WHILE_BUSY },
+	{ 0x0f158086,	0xffff, "Intel Bay Trail SDXC Controller",
+	    SDHCI_QUIRK_WHITELIST_ADMA2 |
+	    SDHCI_QUIRK_WAIT_WHILE_BUSY },
+	{ 0x0f508086,	0xffff, "Intel Bay Trail eMMC 4.5 Controller",
+	    SDHCI_QUIRK_WHITELIST_ADMA2 |
+	    SDHCI_QUIRK_WAIT_WHILE_BUSY },
+	{ 0x22948086,	0xffff, "Intel Braswell eMMC 4.5.1 Controller",
+	    SDHCI_QUIRK_WHITELIST_ADMA2 |
+	    SDHCI_QUIRK_WAIT_WHILE_BUSY },
+	{ 0x22968086,	0xffff, "Intel Braswell SDXC Controller",
+	    SDHCI_QUIRK_WHITELIST_ADMA2 |
+	    SDHCI_QUIRK_WAIT_WHILE_BUSY },
+	{ 0x5aca8086,	0xffff, "Intel Apollo Lake SDXC Controller",
+	    SDHCI_QUIRK_BROKEN_DMA |	/* APL18 erratum */
+	    SDHCI_QUIRK_WAIT_WHILE_BUSY },
+	{ 0x5acc8086,	0xffff, "Intel Apollo Lake eMMC 5.0 Controller",
+	    SDHCI_QUIRK_BROKEN_DMA |	/* APL18 erratum */
+	    SDHCI_QUIRK_WAIT_WHILE_BUSY },
 	{ 0,		0xffff,	NULL,
 	    0 }
 };

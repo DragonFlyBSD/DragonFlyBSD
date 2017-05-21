@@ -878,6 +878,7 @@ dev/raid/mlx/mlx_disk.c		optional mlx
 dev/raid/mlx/mlx_pci.c		optional mlx
 dev/raid/mlx/mlx.c		optional mlx
 dev/raid/mly/mly.c		optional mly
+bus/mmc/mmc_subr.c		optional mmc
 bus/mmc/mmc.c			optional mmc
 bus/mmc/mmcbr_if.m		standard
 bus/mmc/mmcbus_if.m		standard

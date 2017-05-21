@@ -69,6 +69,7 @@
 
 #include <sys/buf2.h>
 
+#include <bus/mmc/bridge.h>
 #include <bus/mmc/mmcvar.h>
 #include <bus/mmc/mmcreg.h>
 

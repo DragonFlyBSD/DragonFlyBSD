@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2006 Bernd Walter.  All rights reserved.
  * Copyright (c) 2006 M. Warner Losh.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,92 +49,24 @@
  * or the SD Card Association to disclose or distribute any technical
  * information, know-how or other confidential information to any third party.
  *
- * $FreeBSD: src/sys/dev/mmc/bridge.h,v 1.3 2008/10/08 17:35:41 mav Exp $
+ * $FreeBSD: head/sys/dev/mmc/mmc_subr.h 315430 2017-03-16 22:23:04Z marius $
  */
 
-#ifndef BUS_MMC_BRIDGE_H
-#define BUS_MMC_BRIDGE_H
+#ifndef DEV_MMC_SUBR_H
+#define	DEV_MMC_SUBR_H
 
-/*
- * This file defines interfaces for the mmc bridge.  The names chosen
- * are similar to or the same as the names used in Linux to allow for
- * easy porting of what Linux calls mmc host drivers.  I use the
- * FreeBSD terminology of bridge and bus for consistency with other
- * drivers in the system.  This file corresponds roughly to the Linux
- * linux/mmc/host.h file.
- *
- * A mmc bridge is a chipset that can have one or more mmc and/or sd
- * cards attached to it.  mmc cards are attached on a bus topology,
- * while sd and sdio cards are attached using a star topology (meaning
- * in practice each sd card has its own, independent slot).  Each
- * mmcbr is assumed to be derived from the mmcbr.  This is done to
- * allow for easier addition of bridges (as each bridge does not need
- * to be added to the mmcbus file).
- *
- * Attached to the mmc bridge is an mmcbus.  The mmcbus is described
- * in bus/mmc/mmcbus_if.m.
- */
+struct mmc_command;
 
+int mmc_send_ext_csd(device_t brdev, device_t reqdev, uint8_t *rawextcsd);
+int mmc_send_status(device_t brdev, device_t reqdev, uint16_t rca,
+    uint32_t *status);
+int mmc_switch(device_t brdev, device_t reqdev, uint16_t rca, uint8_t set,
+    uint8_t index, uint8_t value, u_int timeout, bool send_status);
+int mmc_switch_status(device_t brdev, device_t reqdev, uint16_t rca,
+    u_int timeout);
+int mmc_wait_for_app_cmd(device_t brdev, device_t reqdev, uint16_t rca,
+    struct mmc_command *cmd, int retries);
+int mmc_wait_for_cmd(device_t brdev, device_t reqdev, struct mmc_command *cmd,
+    int retries);
 
-/*
- * mmc_ios is a structure that is used to store the state of the mmc/sd
- * bus configuration.  This include the bus' clock speed, its voltage,
- * the bus mode for command output, the SPI chip select, some power
- * states and the bus width.
- */
-enum mmc_vdd {
-	vdd_150 = 0, vdd_155, vdd_160, vdd_165, vdd_170, vdd_180,
-	vdd_190, vdd_200, vdd_210, vdd_220, vdd_230, vdd_240, vdd_250,
-	vdd_260, vdd_270, vdd_280, vdd_290, vdd_300, vdd_310, vdd_320,
-	vdd_330, vdd_340, vdd_350, vdd_360
-};
-
-enum mmc_power_mode {
-	power_off = 0, power_up, power_on
-};
-
-enum mmc_bus_mode {
-	opendrain = 1, pushpull
-};
-
-enum mmc_chip_select {
-	cs_dontcare = 0, cs_high, cs_low
-};
-
-enum mmc_bus_width {
-	bus_width_1 = 0, bus_width_4 = 2, bus_width_8 = 3
-};
-
-enum mmc_bus_timing {
-	bus_timing_normal = 0, bus_timing_hs
-};
-
-struct mmc_ios {
-	uint32_t	clock;	/* Speed of the clock in Hz to move data */
-	enum mmc_vdd	vdd;	/* Voltage to apply to the power pins */
-	enum mmc_bus_mode bus_mode;
-	enum mmc_chip_select chip_select;
-	enum mmc_bus_width bus_width;
-	enum mmc_power_mode power_mode;
-	enum mmc_bus_timing timing;
-};
-
-enum mmc_card_mode {
-	mode_mmc, mode_sd
-};
-
-struct mmc_host {
-	int f_min;
-	int f_max;
-	uint32_t host_ocr;
-	uint32_t ocr;
-	uint32_t caps;
-#define MMC_CAP_4_BIT_DATA	(1 << 0) /* Can do 4-bit data transfers */
-#define MMC_CAP_8_BIT_DATA	(1 << 1) /* Can do 8-bit data transfers */
-#define MMC_CAP_HSPEED		(1 << 2) /* Can do High Speed transfers */
-#define MMC_CAP_WAIT_WHILE_BUSY	(1 << 3) /* Host waits for busy responses */
-	enum mmc_card_mode mode;
-	struct mmc_ios ios;	/* Current state of the host */
-};
-
-#endif /* BUS_MMC_BRIDGE_H */
+#endif /* DEV_MMC_SUBR_H */
