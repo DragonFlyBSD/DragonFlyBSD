@@ -2264,7 +2264,7 @@ em_alloc_pci_res(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
 	u_int intr_flags;
-	int val, rid, msi_enable;
+	int val, rid, msi_enable, cap;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -2327,10 +2327,13 @@ em_alloc_pci_res(struct adapter *adapter)
 	 *
 	 * Don't enable MSI on 82571/82572, see:
 	 * 82571/82572 specification update errata #63
+	 *
+	 * Some versions of I219 only have PCI AF.
 	 */
 	msi_enable = em_msi_enable;
 	if (msi_enable &&
-	    (!pci_is_pcie(dev) ||
+	    (!(pci_is_pcie(dev) ||
+	       pci_find_extcap(dev, PCIY_PCIAF, &cap) == 0) ||
 	     adapter->hw.mac.type == e1000_82571 ||
 	     adapter->hw.mac.type == e1000_82572))
 		msi_enable = 0;
