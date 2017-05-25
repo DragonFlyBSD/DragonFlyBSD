@@ -3396,22 +3396,41 @@ mxge_open(mxge_softc_t *sc)
 			if (bootverbose)
 				if_printf(ifp, "RSS key updated\n");
 		} else {
+			int itable_nent;
+
+			if (powerof2(sc->num_slices))
+				itable_nent = sc->num_slices;
+			else
+				itable_nent = 1 << fls(sc->num_slices);
+			if (bootverbose) {
+				if_printf(ifp, "%d rss table entries\n",
+				    itable_nent);
+			}
+again:
 			/* Setup the indirection table */
-			cmd.data0 = sc->num_slices;
+			cmd.data0 = itable_nent;
 			err = mxge_send_cmd(sc,
 			    MXGEFW_CMD_SET_RSS_TABLE_SIZE, &cmd);
 
 			err |= mxge_send_cmd(sc,
 			    MXGEFW_CMD_GET_RSS_TABLE_OFFSET, &cmd);
 			if (err != 0) {
+				if (err == MXGEFW_CMD_ERROR_RANGE &&
+				    itable_nent >= 2) {
+					itable_nent >>= 1;
+					KKASSERT(powerof2(itable_nent));
+					if_printf(ifp, "retry rss table setup, "
+					    "%d entries\n", itable_nent);
+					goto again;
+				}
 				if_printf(ifp, "failed to setup rss tables\n");
 				return err;
 			}
 
 			/* Just enable an identity mapping */
 			itable = sc->sram + cmd.data0;
-			for (i = 0; i < sc->num_slices; i++)
-				itable[i] = (uint8_t)i;
+			for (i = 0; i < itable_nent; i++)
+				itable[i] = (uint8_t)(i % sc->num_slices);
 		}
 
 		cmd.data0 = 1;
