@@ -3591,6 +3591,23 @@ if_ringmap_free(struct if_ringmap *rm)
 	kfree(rm, M_DEVBUF);
 }
 
+/*
+ * Align the two ringmaps.
+ *
+ * e.g. 8 netisrs, rm0 contains 4 rings, rm1 contains 2 rings.
+ *
+ * Before:
+ *
+ * CPU      0  1  2  3   4  5  6  7
+ * NIC_RX               n0 n1 n2 n3
+ * NIC_TX        N0 N1
+ *
+ * After:
+ *
+ * CPU      0  1  2  3   4  5  6  7
+ * NIC_RX               n0 n1 n2 n3
+ * NIC_TX               N0 N1
+ */
 void
 if_ringmap_align(device_t dev, struct if_ringmap *rm0, struct if_ringmap *rm1)
 {
@@ -3617,6 +3634,20 @@ if_ringmap_match(device_t dev, struct if_ringmap *rm0, struct if_ringmap *rm1)
 
 	if_ringmap_align(dev, rm0, rm1);
 
+	/*
+	 * Re-shuffle rings to get more even distribution.
+	 *
+	 * e.g. 12 netisrs, rm0 contains 4 rings, rm1 contains 2 rings.
+	 *
+	 * CPU       0  1  2  3   4  5  6  7   8  9 10 11
+	 *
+	 * NIC_RX   a0 a1 a2 a3  b0 b1 b2 b3  c0 c1 c2 c3
+	 * NIC_TX   A0 A1        B0 B1        C0 C1
+	 *
+	 * NIC_RX   d0 d1 d2 d3  e0 e1 e2 e3  f0 f1 f2 f3
+	 * NIC_TX         D0 D1        E0 E1        F0 F1
+	 */
+
 	if (rm0->rm_cnt >= (2 * old_rm1_grid)) {
 		cnt = rm0->rm_cnt;
 		subset_grid = old_rm1_grid;
@@ -3628,7 +3659,7 @@ if_ringmap_match(device_t dev, struct if_ringmap *rm0, struct if_ringmap *rm1)
 		subset_rm = rm0;
 		rm = rm1;
 	} else {
-		/* No space to shift */
+		/* No space to shuffle. */
 		return;
 	}
 
@@ -3690,8 +3721,24 @@ if_ringmap_rdrtable(const struct if_ringmap *rm, int table[], int table_nent)
 	}
 
 	/*
-	 * Make the ring distributed more evenly for the remainder of each
-	 * grid.
+	 * Make the ring distributed more evenly for the remainder
+	 * of each grid.
+	 *
+	 * e.g. 12 netisrs, rm contains 8 rings.
+	 *
+	 * Redirect table before:
+	 *
+	 *  0  1  2  3  4  5  6  7  0  1  2  3  0  1  2  3
+	 *  4  5  6  7  0  1  2  3  0  1  2  3  4  5  6  7
+	 *  0  1  2  3  0  1  2  3  4  5  6  7  0  1  2  3
+	 *  ....
+	 *
+	 * Redirect table after being patched (pX, patched entries):
+	 *
+	 *  0  1  2  3  4  5  6  7 p0 p1 p2 p3  0  1  2  3
+	 *  4  5  6  7 p4 p5 p6 p7  0  1  2  3  4  5  6  7
+	 * p0 p1 p2 p3  0  1  2  3  4  5  6  7 p4 p5 p6 p7
+	 *  ....
 	 */
 	patch_cnt = rm->rm_grid % rm->rm_cnt;
 	if (patch_cnt == 0)
@@ -3713,6 +3760,12 @@ if_ringmap_rdrtable(const struct if_ringmap *rm, int table[], int table_nent)
 		}
 	}
 done:
+	/*
+	 * If the device supports larger redirect table, duplicate
+	 * the first NETISR_CPUMAX entries to the rest of the table,
+	 * so that it matches upper layer's expectation:
+	 * (hash & NETISR_CPUMASK) % netisr_ncpus
+	 */
 	ncopy = table_nent / NETISR_CPUMAX;
 	for (i = 1; i < ncopy; ++i) {
 		memcpy(&table[i * NETISR_CPUMAX], table,
