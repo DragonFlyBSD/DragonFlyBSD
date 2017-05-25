@@ -1427,6 +1427,12 @@ mxge_add_sysctls(mxge_softc_t *sc)
 	    CTLFLAG_RD, &sc->watchdog_resets, 0,
 	    "Number of times NIC was reset");
 
+	if (sc->num_slices > 1) {
+		SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "slice_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD, sc->ring_map, 0,
+		    if_ringmap_cpumap_sysctl, "I", "slice CPU map");
+	}
+
 	/*
 	 * Performance related tunables
 	 */
@@ -3204,8 +3210,8 @@ mxge_alloc_rings(mxge_softc_t *sc)
 	ifq_set_subq_cnt(&sc->ifp->if_snd, sc->num_tx_rings);
 
 	if (sc->num_tx_rings > 1) {
-		sc->ifp->if_mapsubq = ifq_mapsubq_mask;
-		ifq_set_subq_mask(&sc->ifp->if_snd, sc->num_tx_rings - 1);
+		sc->ifp->if_mapsubq = ifq_mapsubq_modulo;
+		ifq_set_subq_divisor(&sc->ifp->if_snd, sc->num_tx_rings);
 	}
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
@@ -3340,25 +3346,34 @@ mxge_open(mxge_softc_t *sc)
 	}
 
 	if (sc->num_slices > 1) {
-		/* Setup the indirection table */
-		cmd.data0 = sc->num_slices;
-		err = mxge_send_cmd(sc, MXGEFW_CMD_SET_RSS_TABLE_SIZE, &cmd);
-
-		err |= mxge_send_cmd(sc, MXGEFW_CMD_GET_RSS_TABLE_OFFSET, &cmd);
-		if (err != 0) {
-			if_printf(ifp, "failed to setup rss tables\n");
-			return err;
-		}
-
-		/* Just enable an identity mapping */
-		itable = sc->sram + cmd.data0;
-		for (i = 0; i < sc->num_slices; i++)
-			itable[i] = (uint8_t)i;
-
 		if (sc->use_rss) {
 			volatile uint8_t *hwkey;
 			uint8_t swkey[MXGE_HWRSS_KEYLEN];
 
+			/*
+			 * Setup the indirect table.
+			 */
+			if_ringmap_rdrtable(sc->ring_map, sc->rdr_table,
+			    NETISR_CPUMAX);
+
+			cmd.data0 = NETISR_CPUMAX;
+			err = mxge_send_cmd(sc,
+			    MXGEFW_CMD_SET_RSS_TABLE_SIZE, &cmd);
+
+			err |= mxge_send_cmd(sc,
+			    MXGEFW_CMD_GET_RSS_TABLE_OFFSET, &cmd);
+			if (err != 0) {
+				if_printf(ifp, "failed to setup rss tables\n");
+				return err;
+			}
+
+			itable = sc->sram + cmd.data0;
+			for (i = 0; i < NETISR_CPUMAX; i++)
+				itable[i] = sc->rdr_table[i];
+
+			/*
+			 * Setup Toeplitz key.
+			 */
 			err = mxge_send_cmd(sc, MXGEFW_CMD_GET_RSS_KEY_OFFSET,
 			    &cmd);
 			if (err != 0) {
@@ -3380,6 +3395,23 @@ mxge_open(mxge_softc_t *sc)
 			}
 			if (bootverbose)
 				if_printf(ifp, "RSS key updated\n");
+		} else {
+			/* Setup the indirection table */
+			cmd.data0 = sc->num_slices;
+			err = mxge_send_cmd(sc,
+			    MXGEFW_CMD_SET_RSS_TABLE_SIZE, &cmd);
+
+			err |= mxge_send_cmd(sc,
+			    MXGEFW_CMD_GET_RSS_TABLE_OFFSET, &cmd);
+			if (err != 0) {
+				if_printf(ifp, "failed to setup rss tables\n");
+				return err;
+			}
+
+			/* Just enable an identity mapping */
+			itable = sc->sram + cmd.data0;
+			for (i = 0; i < sc->num_slices; i++)
+				itable[i] = (uint8_t)i;
 		}
 
 		cmd.data0 = 1;
@@ -3994,7 +4026,7 @@ static void
 mxge_slice_probe(mxge_softc_t *sc)
 {
 	int status, max_intr_slots, max_slices, num_slices;
-	int msix_cnt, msix_enable, i, multi_tx;
+	int msix_cnt, msix_enable, multi_tx;
 	mxge_cmd_t cmd;
 	const char *old_fw;
 
@@ -4005,7 +4037,7 @@ mxge_slice_probe(mxge_softc_t *sc)
 	if (num_slices == 1)
 		return;
 
-	if (ncpus2 == 1)
+	if (netisr_ncpus == 1)
 		return;
 
 	msix_enable = device_getenv_int(sc->dev, "msix.enable",
@@ -4016,14 +4048,8 @@ mxge_slice_probe(mxge_softc_t *sc)
 	msix_cnt = pci_msix_count(sc->dev);
 	if (msix_cnt < 2)
 		return;
-
-	/*
-	 * Round down MSI-X vector count to the nearest power of 2
-	 */
-	i = 0;
-	while ((1 << (i + 1)) <= msix_cnt)
-		++i;
-	msix_cnt = 1 << i;
+	if (bootverbose)
+		device_printf(sc->dev, "MSI-X count %d\n", msix_cnt);
 
 	/*
 	 * Now load the slice aware firmware see what it supports
@@ -4079,20 +4105,14 @@ mxge_slice_probe(mxge_softc_t *sc)
 		goto abort_with_fw;
 	}
 	max_slices = cmd.data0;
-
-	/*
-	 * Round down max slices count to the nearest power of 2
-	 */
-	i = 0;
-	while ((1 << (i + 1)) <= max_slices)
-		++i;
-	max_slices = 1 << i;
+	if (bootverbose)
+		device_printf(sc->dev, "max slices %d\n", max_slices);
 
 	if (max_slices > msix_cnt)
 		max_slices = msix_cnt;
 
-	sc->num_slices = num_slices;
-	sc->num_slices = if_ring_count2(sc->num_slices, max_slices);
+	sc->ring_map = if_ringmap_alloc(sc->dev, num_slices, max_slices);
+	sc->num_slices = if_ringmap_count(sc->ring_map);
 
 	multi_tx = device_getenv_int(sc->dev, "multi_tx", mxge_multi_tx);
 	if (multi_tx)
@@ -4221,12 +4241,12 @@ mxge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 	 */
 	for (i = 0; i < sc->num_slices; ++i) {
 		struct mxge_slice_state *ss = &sc->ss[i];
-		int idx = ss->intr_cpuid;
+		int cpu = ss->intr_cpuid;
 
-		KKASSERT(idx < ncpus2);
-		info->ifpi_rx[idx].poll_func = mxge_npoll_rx;
-		info->ifpi_rx[idx].arg = ss;
-		info->ifpi_rx[idx].serializer = &ss->rx_data.rx_serialize;
+		KKASSERT(cpu < netisr_ncpus);
+		info->ifpi_rx[cpu].poll_func = mxge_npoll_rx;
+		info->ifpi_rx[cpu].arg = ss;
+		info->ifpi_rx[cpu].serializer = &ss->rx_data.rx_serialize;
 	}
 }
 
@@ -4511,6 +4531,9 @@ mxge_detach(device_t dev)
 	if (sc->parent_dmat != NULL)
 		bus_dma_tag_destroy(sc->parent_dmat);
 
+	if (sc->ring_map != NULL)
+		if_ringmap_free(sc->ring_map);
+
 	return 0;
 }
 
@@ -4545,27 +4568,10 @@ static int
 mxge_alloc_msix(struct mxge_softc *sc)
 {
 	struct mxge_slice_state *ss;
-	int offset, rid, error, i;
+	int rid, error, i;
 	boolean_t setup = FALSE;
 
 	KKASSERT(sc->num_slices > 1);
-
-	if (sc->num_slices == ncpus2) {
-		offset = 0;
-	} else {
-		int offset_def;
-
-		offset_def = (sc->num_slices * device_get_unit(sc->dev)) %
-		    ncpus2;
-
-		offset = device_getenv_int(sc->dev, "msix.offset", offset_def);
-		if (offset >= ncpus2 ||
-		    offset % sc->num_slices != 0) {
-			device_printf(sc->dev, "invalid msix.offset %d, "
-			    "use %d\n", offset, offset_def);
-			offset = offset_def;
-		}
-	}
 
 	ss = &sc->ss[0];
 
@@ -4574,7 +4580,7 @@ mxge_alloc_msix(struct mxge_softc *sc)
 	ksnprintf(ss->intr_desc0, sizeof(ss->intr_desc0),
 	    "%s comb", device_get_nameunit(sc->dev));
 	ss->intr_desc = ss->intr_desc0;
-	ss->intr_cpuid = offset;
+	ss->intr_cpuid = if_ringmap_cpumap(sc->ring_map, 0);
 
 	for (i = 1; i < sc->num_slices; ++i) {
 		ss = &sc->ss[i];
@@ -4583,14 +4589,14 @@ mxge_alloc_msix(struct mxge_softc *sc)
 		if (sc->num_tx_rings == 1) {
 			ss->intr_func = mxge_msix_rx;
 			ksnprintf(ss->intr_desc0, sizeof(ss->intr_desc0),
-			    "%s rx", device_get_nameunit(sc->dev));
+			    "%s rx%d", device_get_nameunit(sc->dev), i);
 		} else {
 			ss->intr_func = mxge_msix_rxtx;
 			ksnprintf(ss->intr_desc0, sizeof(ss->intr_desc0),
-			    "%s rxtx", device_get_nameunit(sc->dev));
+			    "%s rxtx%d", device_get_nameunit(sc->dev), i);
 		}
 		ss->intr_desc = ss->intr_desc0;
-		ss->intr_cpuid = offset + i;
+		ss->intr_cpuid = if_ringmap_cpumap(sc->ring_map, i);
 	}
 
 	rid = PCIR_BAR(2);

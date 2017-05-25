@@ -182,6 +182,8 @@ struct mxge_softc {
 	u_long ipackets;		/* saved ifnet.ipackets */
 	struct sysctl_oid *slice_sysctl_tree;
 	struct sysctl_ctx_list slice_sysctl_ctx;
+	struct if_ringmap *ring_map;
+	int rdr_table[NETISR_CPUMAX];
 	uint8_t	mac_addr[6];		/* eeprom mac address */
 	uint16_t pectl;			/* save PCIe CTL state */
 	char product_code_string[64];

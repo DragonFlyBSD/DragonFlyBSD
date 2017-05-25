@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mxge.4,v 1.7.4.2.4.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd November 26, 2015
+.Dd May 25, 2017
 .Dt MXGE 4
 .Os
 .Sh NAME
@@ -128,12 +128,6 @@ By default,
 the driver will use MSI-X
 if it is supported.
 This behaviour can be turned off by setting this tunable to 0.
-.It Va hw.mxgeX.msix.offset
-If more than 1 slices are enabled,
-this tunable specifies the leading target CPU for slice's
-transmission and reception queues processing.
-The value specificed must be aligned to the number of slices enabled and
-must be less than the power of 2 number of CPUs.
 .It Va hw.mxge.msi.enable Va hw.mxgeX.msi.enable
 If MSI-X is disabled and MSI is supported,
 the driver will use MSI.
