@@ -260,10 +260,6 @@ static int	emx_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
-#ifdef IFPOLL_ENABLE
-static int	emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
-static int	emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
-#endif
 static void	emx_add_sysctl(struct emx_softc *);
 
 static void	emx_serialize_skipmain(struct emx_softc *);
@@ -434,14 +430,12 @@ static int
 emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
-	int error = 0, i, throttle, msi_enable, tx_ring_max;
+	int error = 0, i, throttle, msi_enable;
+	int tx_ring_max, ring_cnt;
 	u_int intr_flags;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
 	char flowctrl[IFM_ETH_FC_STRLEN];
-#ifdef IFPOLL_ENABLE
-	int offset, offset_def;
-#endif
 
 	/*
 	 * Setup RX rings
@@ -653,13 +647,12 @@ again:
 	/* This controls when hardware reports transmit completion status. */
 	sc->hw.mac.report_tx_early = 1;
 
-	/* Calculate # of RX rings */
-	sc->rx_ring_cnt = device_getenv_int(dev, "rxr", emx_rxr);
-	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, EMX_NRX_RING);
-
 	/*
-	 * Calculate # of TX rings
+	 * Calculate # of RX/TX rings
 	 */
+	ring_cnt = device_getenv_int(dev, "rxr", emx_rxr);
+	sc->rx_rmap = if_ringmap_alloc(dev, ring_cnt, EMX_NRX_RING);
+
 	tx_ring_max = 1;
 	if (sc->hw.mac.type == e1000_82571 ||
 	    sc->hw.mac.type == e1000_82572 ||
@@ -668,8 +661,12 @@ again:
 	    sc->hw.mac.type == e1000_pch_spt ||
 	    sc->hw.mac.type == e1000_82574)
 		tx_ring_max = EMX_NTX_RING;
-	sc->tx_ring_cnt = device_getenv_int(dev, "txr", emx_txr);
-	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, tx_ring_max);
+	ring_cnt = device_getenv_int(dev, "txr", emx_txr);
+	sc->tx_rmap = if_ringmap_alloc(dev, ring_cnt, tx_ring_max);
+
+	if_ringmap_match(dev, sc->rx_rmap, sc->tx_rmap);
+	sc->rx_ring_cnt = if_ringmap_count(sc->rx_rmap);
+	sc->tx_ring_cnt = if_ringmap_count(sc->tx_rmap);
 
 	/* Allocate RX/TX rings' busdma(9) stuffs */
 	error = emx_dma_alloc(sc);
@@ -792,41 +789,7 @@ again:
 	/* XXX disable wol */
 	sc->wol = 0;
 
-#ifdef IFPOLL_ENABLE
-	/*
-	 * NPOLLING RX CPU offset
-	 */
-	if (sc->rx_ring_cnt == ncpus2) {
-		offset = 0;
-	} else {
-		offset_def = (sc->rx_ring_cnt * device_get_unit(dev)) % ncpus2;
-		offset = device_getenv_int(dev, "npoll.rxoff", offset_def);
-		if (offset >= ncpus2 ||
-		    offset % sc->rx_ring_cnt != 0) {
-			device_printf(dev, "invalid npoll.rxoff %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-	}
-	sc->rx_npoll_off = offset;
-
-	/*
-	 * NPOLLING TX CPU offset
-	 */
-	if (sc->tx_ring_cnt == ncpus2) {
-		offset = 0;
-	} else {
-		offset_def = (sc->tx_ring_cnt * device_get_unit(dev)) % ncpus2;
-		offset = device_getenv_int(dev, "npoll.txoff", offset_def);
-		if (offset >= ncpus2 ||
-		    offset % sc->tx_ring_cnt != 0) {
-			device_printf(dev, "invalid npoll.txoff %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-	}
-	sc->tx_npoll_off = offset;
-#endif
+	/* Initialized #of TX rings to use. */
 	sc->tx_ring_inuse = emx_get_txring_inuse(sc, FALSE);
 
 	/* Setup flow control. */
@@ -951,6 +914,11 @@ emx_detach(device_t dev)
 
 	if (sc->mta != NULL)
 		kfree(sc->mta, M_DEVBUF);
+
+	if (sc->rx_rmap != NULL)
+		if_ringmap_free(sc->rx_rmap);
+	if (sc->tx_rmap != NULL)
+		if_ringmap_free(sc->tx_rmap);
 
 	return (0);
 }
@@ -1310,7 +1278,7 @@ emx_init(void *xsc)
 		polling = TRUE;
 #endif
 	sc->tx_ring_inuse = emx_get_txring_inuse(sc, polling);
-	ifq_set_subq_mask(&ifp->if_snd, sc->tx_ring_inuse - 1);
+	ifq_set_subq_divisor(&ifp->if_snd, sc->tx_ring_inuse);
 
 	/* Prepare transmit descriptors and buffers */
 	for (i = 0; i < sc->tx_ring_inuse; ++i)
@@ -2086,8 +2054,8 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);
 
-	ifp->if_mapsubq = ifq_mapsubq_mask;
-	ifq_set_subq_mask(&ifp->if_snd, 0);
+	ifp->if_mapsubq = ifq_mapsubq_modulo;
+	ifq_set_subq_divisor(&ifp->if_snd, 1);
 
 	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
 
@@ -3006,7 +2974,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 */
 	if (sc->rx_ring_cnt > 1) {
 		uint8_t key[EMX_NRSSRK * EMX_RSSRK_SIZE];
-		uint32_t reta;
+		int r, j;
 
 		KASSERT(sc->rx_ring_cnt == EMX_NRX_RING,
 		    ("invalid number of RX ring (%d)", sc->rx_ring_cnt));
@@ -3032,20 +3000,25 @@ emx_init_rx_unit(struct emx_softc *sc)
 		}
 
 		/*
-		 * Configure RSS redirect table in following fashion:
-	 	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+		 * Configure RSS redirect table.
 		 */
-		reta = 0;
-		for (i = 0; i < EMX_RETA_SIZE; ++i) {
-			uint32_t q;
+		if_ringmap_rdrtable(sc->rx_rmap, sc->rdr_table,
+		    EMX_RDRTABLE_SIZE);
 
-			q = (i % sc->rx_ring_cnt) << EMX_RETA_RINGIDX_SHIFT;
-			reta |= q << (8 * i);
+		r = 0;
+		for (j = 0; j < EMX_NRETA; ++j) {
+			uint32_t reta = 0;
+
+			for (i = 0; i < EMX_RETA_SIZE; ++i) {
+				uint32_t q;
+
+				q = sc->rdr_table[r] << EMX_RETA_RINGIDX_SHIFT;
+				reta |= q << (8 * i);
+				++r;
+			}
+			EMX_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
+			E1000_WRITE_REG(&sc->hw, E1000_RETA(j), reta);
 		}
-		EMX_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
-
-		for (i = 0; i < EMX_NRETA; ++i)
-			E1000_WRITE_REG(&sc->hw, E1000_RETA(i), reta);
 
 		/*
 		 * Enable multiple receive queues.
@@ -3747,13 +3720,13 @@ emx_add_sysctl(struct emx_softc *sc)
 
 #ifdef IFPOLL_ENABLE
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-			OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
-			sc, 0, emx_sysctl_npoll_rxoff, "I",
-			"NPOLLING RX cpu offset");
+	    OID_AUTO, "tx_poll_cpumap", CTLTYPE_OPAQUE | CTLFLAG_RD,
+	    sc->tx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+	    "TX polling CPU map");
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
-			OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
-			sc, 0, emx_sysctl_npoll_txoff, "I",
-			"NPOLLING TX cpu offset");
+	    OID_AUTO, "rx_poll_cpumap", CTLTYPE_OPAQUE | CTLFLAG_RD,
+	    sc->rx_rmap, 0, if_ringmap_cpumap_sysctl, "I",
+	    "RX polling CPU map");
 #endif
 
 #ifdef EMX_RSS_DEBUG
@@ -3882,62 +3855,6 @@ emx_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS)
 
 	return 0;
 }
-
-#ifdef IFPOLL_ENABLE
-
-static int
-emx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS)
-{
-	struct emx_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->rx_npoll_off;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->rx_ring_cnt != 0) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->rx_npoll_off = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-static int
-emx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
-{
-	struct emx_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->tx_npoll_off;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->tx_ring_cnt != 0) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->tx_npoll_off = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-#endif	/* IFPOLL_ENABLE */
 
 static int
 emx_dma_alloc(struct emx_softc *sc)
@@ -4103,40 +4020,31 @@ emx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info) {
-		int off;
+		int cpu;
 
 		info->ifpi_status.status_func = emx_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
 		txr_cnt = emx_get_txring_inuse(sc, TRUE);
-		off = sc->tx_npoll_off;
 		for (i = 0; i < txr_cnt; ++i) {
 			struct emx_txdata *tdata = &sc->tx_data[i];
-			int idx = i + off;
 
-			KKASSERT(idx < ncpus2);
-			info->ifpi_tx[idx].poll_func = emx_npoll_tx;
-			info->ifpi_tx[idx].arg = tdata;
-			info->ifpi_tx[idx].serializer = &tdata->tx_serialize;
-			ifsq_set_cpuid(tdata->ifsq, idx);
+			cpu = if_ringmap_cpumap(sc->tx_rmap, i);
+			KKASSERT(cpu < netisr_ncpus);
+			info->ifpi_tx[cpu].poll_func = emx_npoll_tx;
+			info->ifpi_tx[cpu].arg = tdata;
+			info->ifpi_tx[cpu].serializer = &tdata->tx_serialize;
+			ifsq_set_cpuid(tdata->ifsq, cpu);
 		}
 
-		off = sc->rx_npoll_off;
 		for (i = 0; i < sc->rx_ring_cnt; ++i) {
 			struct emx_rxdata *rdata = &sc->rx_data[i];
-			int idx = i + off;
 
-			KKASSERT(idx < ncpus2);
-			info->ifpi_rx[idx].poll_func = emx_npoll_rx;
-			info->ifpi_rx[idx].arg = rdata;
-			info->ifpi_rx[idx].serializer = &rdata->rx_serialize;
-		}
-
-		if (ifp->if_flags & IFF_RUNNING) {
-			if (txr_cnt == sc->tx_ring_inuse)
-				emx_disable_intr(sc);
-			else
-				emx_init(sc);
+			cpu = if_ringmap_cpumap(sc->rx_rmap, i);
+			KKASSERT(cpu < netisr_ncpus);
+			info->ifpi_rx[cpu].poll_func = emx_npoll_rx;
+			info->ifpi_rx[cpu].arg = rdata;
+			info->ifpi_rx[cpu].serializer = &rdata->rx_serialize;
 		}
 	} else {
 		for (i = 0; i < sc->tx_ring_cnt; ++i) {
@@ -4145,15 +4053,9 @@ emx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			ifsq_set_cpuid(tdata->ifsq,
 			    rman_get_cpuid(sc->intr_res));
 		}
-
-		if (ifp->if_flags & IFF_RUNNING) {
-			txr_cnt = emx_get_txring_inuse(sc, FALSE);
-			if (txr_cnt == sc->tx_ring_inuse)
-				emx_enable_intr(sc);
-			else
-				emx_init(sc);
-		}
 	}
+	if (ifp->if_flags & IFF_RUNNING)
+		emx_init(sc);
 }
 
 #endif	/* IFPOLL_ENABLE */

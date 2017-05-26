@@ -185,6 +185,8 @@
 #define EMX_RETA_SIZE			4
 #define EMX_RETA_RINGIDX_SHIFT		7
 
+#define EMX_RDRTABLE_SIZE		(EMX_NRETA * EMX_RETA_SIZE)
+
 #define EMX_NRX_RING			2
 #define EMX_NTX_RING			2
 #define EMX_NSERIALIZE			5
@@ -378,9 +380,6 @@ struct emx_softc {
 	uint32_t		smartspeed;
 	int			int_throttle_ceil;
 
-	int			rx_npoll_off;
-	int			tx_npoll_off;
-
 	struct lwkt_serialize	main_serialize;
 	struct lwkt_serialize	*serializes[EMX_NSERIALIZE];
 
@@ -398,6 +397,10 @@ struct emx_softc {
 	unsigned long		rx_overruns;
 
 	struct e1000_hw_stats	stats;
+
+	struct if_ringmap	*rx_rmap;
+	struct if_ringmap	*tx_rmap;
+	int			rdr_table[EMX_RDRTABLE_SIZE];
 };
 
 struct emx_txbuf {

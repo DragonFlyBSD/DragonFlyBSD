@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.30 2008/10/06 21:55:53 simon Exp $
 .\"
-.Dd January 14, 2016
+.Dd May 26, 2017
 .Dt EM 4
 .Os
 .Sh NAME
@@ -387,19 +387,6 @@ Maximum allowed value for these tunables is 2.
 Setting these tunables to 0 allows the driver to enable transmission
 queues based on the number of CPUs.
 The default value is 1.
-.It Va hw.emxY.npoll.rxoff
-This tunable specifies the leading target CPU for reception queues
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of reception queues enabled
-and must be less than the power of 2 number of CPUs.
-.It Va hw.emxY.npoll.rxoff
-This tunable specifies the leading target CPU for transmission queues
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of transmission queues
-enabled
-and must be less than the power of 2 number of CPUs.
 .El
 .Sh MIB Variables
 A number of per-interface variables are implemented in the
@@ -464,22 +451,6 @@ or
 to configure it.
 .It Va tx_ring_inuse
 Number of transmission queues being used (read-only).
-This sysctl only applies to
-.Nm emx .
-.It Va npoll_rxoff
-See the tunable
-.Va hw.emxY.npoll.rxoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
-This sysctl only applies to
-.Nm emx .
-.It Va npoll_txoff
-See the tunable
-.Va hw.emxY.npoll.txoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
 This sysctl only applies to
 .Nm emx .
 .El
