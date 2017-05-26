@@ -64,6 +64,7 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/if_var.h>
+#include <net/if_ringmap.h>
 #include <net/ifq_var.h>
 #include <net/radix.h>
 #include <net/route.h>

@@ -50,6 +50,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/ifq_var.h>
+#include <net/if_ringmap.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
