@@ -414,7 +414,12 @@ sys_lwp_setaffinity(struct lwp_setaffinity_args *uap)
 	struct lwp *lp;
 	int error;
 
-	if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+	/*
+	 * NOTE:
+	 * Always allow change self CPU affinity.
+	 */
+	if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0 &&
+	    uap->pid != 0)
 		return (error);
 
 	error = copyin(uap->mask, &mask, sizeof(mask));
