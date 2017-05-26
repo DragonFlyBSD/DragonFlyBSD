@@ -61,7 +61,7 @@ struct sched_param
 typedef	cpumask_t		cpu_set_t;
 typedef	cpumask_t		cpuset_t;	/* FreeBSD compat */
 
-#define	CPU_SETSIZE		(sizeof(cpumask_t) * 8)
+#define	CPU_SETSIZE		((int)(sizeof(cpumask_t) * 8))
 
 #define	CPU_ZERO(set)		CPUMASK_ASSZERO(*set)
 #define	CPU_SET(cpu, set)	CPUMASK_ORBIT(*set, cpu)
