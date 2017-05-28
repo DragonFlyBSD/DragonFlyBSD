@@ -104,6 +104,9 @@ struct if_ringmap {
 	int		rm_cpumap[];
 };
 
+#define RINGMAP_FLAG_NONE		0x0
+#define RINGMAP_FLAG_POWEROF2		0x1
+
 /*
  * System initialization
  */
@@ -3558,8 +3561,9 @@ if_ringmap_set_grid(device_t dev, struct if_ringmap *rm, int grid)
 	}
 }
 
-struct if_ringmap *
-if_ringmap_alloc(device_t dev, int ring_cnt, int ring_cntmax)
+static struct if_ringmap *
+if_ringmap_alloc_flags(device_t dev, int ring_cnt, int ring_cntmax,
+    uint32_t flags)
 {
 	struct if_ringmap *rm;
 	int i, grid = 0;
@@ -3569,6 +3573,9 @@ if_ringmap_alloc(device_t dev, int ring_cnt, int ring_cntmax)
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	rm->rm_cnt = ring_cnt;
+	if (flags & RINGMAP_FLAG_POWEROF2)
+		rm->rm_cnt = 1 << (fls(rm->rm_cnt) - 1);
+
 	for (i = 0; i < netisr_ncpus; ++i) {
 		if (netisr_ncpus % (i + 1) != 0)
 			continue;
@@ -3580,9 +3587,27 @@ if_ringmap_alloc(device_t dev, int ring_cnt, int ring_cntmax)
 			break;
 		}
 	}
+	if (flags & RINGMAP_FLAG_POWEROF2)
+		rm->rm_cnt = 1 << (fls(rm->rm_cnt) - 1);
 	if_ringmap_set_grid(dev, rm, grid);
 
 	return (rm);
+}
+
+struct if_ringmap *
+if_ringmap_alloc(device_t dev, int ring_cnt, int ring_cntmax)
+{
+
+	return (if_ringmap_alloc_flags(dev, ring_cnt, ring_cntmax,
+	    RINGMAP_FLAG_NONE));
+}
+
+struct if_ringmap *
+if_ringmap_alloc2(device_t dev, int ring_cnt, int ring_cntmax)
+{
+
+	return (if_ringmap_alloc_flags(dev, ring_cnt, ring_cntmax,
+	    RINGMAP_FLAG_POWEROF2));
 }
 
 void

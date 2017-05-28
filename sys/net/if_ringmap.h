@@ -45,6 +45,8 @@
 struct if_ringmap;
 
 struct if_ringmap *if_ringmap_alloc(device_t dev, int cnt, int cnt_max);
+/* power-of-2 ring count */
+struct if_ringmap *if_ringmap_alloc2(device_t dev, int cnt, int cnt_max);
 void	if_ringmap_free(struct if_ringmap *rm);
 void	if_ringmap_match(device_t dev, struct if_ringmap *rm0,
 	    struct if_ringmap *rm1);
