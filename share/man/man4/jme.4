@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/jme.4,v 1.1 2008/05/27 01:59:17 yongari Exp $
 .\"
-.Dd November 28, 2014
+.Dd May 29, 2017
 .Dt JME 4
 .Os
 .Sh NAME
@@ -117,26 +117,6 @@ hw.jme.msix.enable=0
 hw.jmeX.msix.enable=0
 .Ed
 .Pp
-If MSI-X is used,
-the transmission queue MSI-X's target CPU
-can be specified using the following tunable:
-.Bd -literal -offset indent
-hw.jmeX.msix.txoff
-.Ed
-.Pp
-The maximum allowed value for this tunable is
-the power of 2 number of CPUs minus one.
-.Pp
-If MSI-X is used,
-the reception queue MSI-Xs' leading target CPU
-can be specified using the following tunable:
-.Bd -literal -offset indent
-hw.jmeX.msix.rxoff
-.Ed
-.Pp
-The value specificed must be aligned to the number of reception queues enabled
-and must be less than the power of 2 number of CPUs.
-.Pp
 If MSI-X is disabled,
 the driver will use MSI if it is supported.
 This behavior can be turned off by setting the following tunable:
@@ -159,8 +139,7 @@ hw.jme.rx_ring_count
 hw.jmeX.rx_ring_count
 .Ed
 .Pp
-Maximum allowed value for these tunables is 4
-and it must be power of 2 aligned.
+Maximum allowed value for these tunables is 4.
 Setting these tunables to 0 allows driver to enable as many reception queues
 as allowed by the number of CPUs.
 .Pp
@@ -179,24 +158,6 @@ hw.jmeX.tx_desc_count
 .Ed
 .Pp
 Maximum allowed value for these tunables is 1024.
-.Pp
-.Xr polling 4
-reception queues' leading target CPU can be specified by the following tunable:
-.Bd -literal -offset indent
-hw.jmeX.npoll.rxoff
-.Ed
-.Pp
-The value specificed must be aligned to the number of reception queues enabled
-and must be less than the power of 2 number of CPUs.
-.Pp
-.Xr polling 4
-transmission queue's target CPU can be specified by the following tunable:
-.Bd -literal -offset indent
-hw.jmeX.npoll.txoff
-.Ed
-.Pp
-The maximum allowed value for this tunable is
-the power of 2 number of CPUs minus one.
 .Ss MIB Variables
 A number of per-interface variables are implemented in the
 .Va dev.jme. Ns Em X
@@ -244,22 +205,6 @@ Setting this value too high will have negative effect on
 transmission timeliness.
 Setting this value too low will hurt overall transmission
 due to the frequent hardware register writing.
-.It Va npoll_rxoff
-.Xr polling 4
-reception queues' leading target CPU.
-It has the same constraints as the tunable
-.Va hw.jmeX.npoll.rxoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
-.It Va npoll_txoff
-.Xr polling 4
-transmission queue's target CPU.
-It has the same constraints as the tunable
-.Va hw.jmeX.npoll.txoff .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
 .El
 .Sh SEE ALSO
 .Xr altq 4 ,

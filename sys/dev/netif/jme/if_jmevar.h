@@ -230,6 +230,8 @@ struct jme_msix_data {
     (sizeof(struct jme_desc) * (rdata)->jme_rx_desc_cnt)
 #define	JME_SSB_SIZE		sizeof(struct jme_ssb)
 
+#define JME_RDRTABLE_SIZE	(RSSTBL_REGSIZE * RSSTBL_NREGS)
+
 /*
  * Software state per device.
  */
@@ -250,9 +252,9 @@ struct jme_softc {
 	int			jme_msix_cnt;
 	uint32_t		jme_msinum[JME_MSINUM_CNT];
 	int			jme_tx_cpuid;
+	struct if_ringmap	*jme_rx_rmap;
+	struct if_ringmap	*jme_tx_rmap;
 
-	int			jme_npoll_rxoff;
-	int			jme_npoll_txoff;
 
 	device_t		jme_miibus;
 	int			jme_phyaddr;
@@ -289,6 +291,8 @@ struct jme_softc {
 	int			jme_if_flags;
 	uint32_t		jme_txcsr;
 	uint32_t		jme_rxcsr;
+
+	int			jme_rdrtable[JME_RDRTABLE_SIZE];
 
 	/*
 	 * Sysctl variables
