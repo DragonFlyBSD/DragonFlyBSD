@@ -3534,8 +3534,6 @@ if_ringcnt_fixup(int ring_cnt, int ring_cntmax)
 {
 
 	KASSERT(ring_cntmax > 0, ("invalid ring count max %d", ring_cntmax));
-	if (ring_cnt == 1 || ring_cntmax == 1 || netisr_ncpus == 1)
-		return (1);
 
 	if (ring_cnt <= 0 || ring_cnt > ring_cntmax)
 		ring_cnt = ring_cntmax;
